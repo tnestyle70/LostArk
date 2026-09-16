@@ -1457,7 +1457,7 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 	if (m_iPendingDebugGate != NO_ACTIVE_DEBUG_GATE && m_DebugGatePendingPlacements.empty() &&
 		!m_PlayerController.Is_DebugPlayerPlacementPending())
 	{
-		if (!m_bDebugGateFailed && m_PlayerController.Did_DebugPlayerPlacementSucceed())
+		if (!m_bDebugGateFailed && (m_bDebugGatePreservesPlayerPosition || m_PlayerController.Did_DebugPlayerPlacementSucceed()))
 		{
 			const KAKUL_DEBUG_GATE& gate = Get_DebugGates()[m_iPendingDebugGate];
 			CCombatHUDViewModel::Get().Set_BossFocusArchetype(
@@ -1494,6 +1494,7 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 			m_strDebugGateStatus += "\nGate activation failed; correct the reported cause and retry.";
 		}
 		m_iPendingDebugGate = NO_ACTIVE_DEBUG_GATE;
+		m_bDebugGatePreservesPlayerPosition = false;
 		CKoukuSaydonPatternAuditionService::Get().Set_TargetTransitionPending(false);
 	}
 	if (m_bDebugStartPending && !m_PlayerController.Is_DebugPlayerPlacementPending())
@@ -2610,7 +2611,7 @@ bool_t Client::CLevel_KakulSaydonArena::Debug_ReturnToStart(std::string& outStat
 }
 
 bool_t Client::CLevel_KakulSaydonArena::Debug_ActivateGate(
-	const size_t gateIndex, std::string& outStatus)
+	const size_t gateIndex, std::string& outStatus, const bool_t preservePlayerPosition)
 {
 	const auto& gates = Get_DebugGates();
 	if (gateIndex >= gates.size())
@@ -2677,6 +2678,7 @@ bool_t Client::CLevel_KakulSaydonArena::Debug_ActivateGate(
 	CKoukuSaydonPatternAuditionService::Get().Set_TargetTransitionPending(true);
 	m_iActiveDebugGate = NO_ACTIVE_DEBUG_GATE;
 	m_iPendingDebugGate = gateIndex;
+	m_bDebugGatePreservesPlayerPosition = preservePlayerPosition;
 	m_fDebugGatePendingSeconds = 0.f;
 	m_bDebugGateFailed = false;
 	m_DebugGatePendingPlacements.clear();
@@ -2696,7 +2698,7 @@ bool_t Client::CLevel_KakulSaydonArena::Debug_ActivateGate(
 		m_DebugGatePendingPlacements.emplace(pPlacementId, requestToken);
 		++spawnRequests;
 	}
-	const bool_t teleportSubmitted = m_PlayerController.Request_DebugTeleportToPosition(
+	const bool_t teleportSubmitted = preservePlayerPosition || m_PlayerController.Request_DebugTeleportToPosition(
 		LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA,
 		gate.vPlayerPosition.x, gate.vPlayerPosition.y, gate.vPlayerPosition.z);
 	m_bDebugGateFailed = !teleportSubmitted;
@@ -2705,7 +2707,8 @@ bool_t Client::CLevel_KakulSaydonArena::Debug_ActivateGate(
 		": despawn + %zu spawn request(s) sent; player -> (%.2f, %.2f, %.2f) %s",
 		spawnRequests, gate.vPlayerPosition.x, gate.vPlayerPosition.y,
 		gate.vPlayerPosition.z, teleportSubmitted ? "submitted" : "not submitted");
-	m_strDebugGateStatus = label + summary;
+	m_strDebugGateStatus = preservePlayerPosition ?
+		label + ": boss activation submitted; preserving Server-approved sequence arrival positions." : label + summary;
 	if (!teleportSubmitted)
 	{
 		m_strDebugGateStatus += " (" +
@@ -2713,6 +2716,19 @@ bool_t Client::CLevel_KakulSaydonArena::Debug_ActivateGate(
 	}
 	outStatus = m_strDebugGateStatus;
 	return teleportSubmitted;
+}
+
+void Client::CLevel_KakulSaydonArena::Debug_ReturnToPlayerCamera()
+{
+	const auto character = m_Replication.Get_LocalCharacter();
+	if (!m_pCamera || !character || !character->Get_Transform()) return;
+	Stop_CompositionCamera(true);
+	Release_CameraShot();
+	m_pCamera->Set_FollowTarget(character->Get_Transform());
+	m_pCamera->Set_FollowEnabled(true);
+	(void)m_pCamera->Set_FollowPose(m_FollowCameraProfile.positionOffset,
+		CArenaCameraProfile::LookOffset(m_FollowCameraProfile), m_FollowCameraProfile.rotationDegrees.z,
+		m_FollowCameraProfile.fovYDegrees, m_FollowCameraProfile.followResponse);
 }
 
 void Client::CLevel_KakulSaydonArena::Debug_RetireGateActivation(const std::string& reason)
@@ -2726,6 +2742,7 @@ void Client::CLevel_KakulSaydonArena::Debug_RetireGateActivation(const std::stri
 	m_DebugGatePendingPlacements.clear();
 	m_fDebugGatePendingSeconds = 0.f;
 	m_bDebugGateFailed = true;
+	m_bDebugGatePreservesPlayerPosition = false;
 	m_strDebugGateStatus = finalReason;
 	m_PlayerController.Retire_DebugPlayerPlacementRequest(finalReason);
 	CCombatHUDViewModel::Get().Set_BossFocusArchetype("");
@@ -3217,6 +3234,50 @@ bool_t Client::CLevel_KakulSaydonArena::Capture_CameraShot(const std::string_vie
 		shot.vFollowLookAtOffset = float3_t(pose.vLookAt.x - position.x, pose.vLookAt.y - position.y, pose.vLookAt.z - position.z);
 	}
 	return Update_CameraShot(shot, outStatus);
+}
+
+bool_t Client::CLevel_KakulSaydonArena::Duplicate_CameraShot(const std::string_view sourceShotId,
+	const std::string_view name, std::string& outShotId, std::string& outStatus)
+{
+	if (!Ensure_CameraShotAuthoring(outStatus)) return false;
+	const auto source = std::find_if(m_AuthoringCameraShots.begin(), m_AuthoringCameraShots.end(),
+		[&](const auto& value) { return value.strShotId == sourceShotId; });
+	if (source == m_AuthoringCameraShots.end()) { outStatus = "Camera shot was not found."; return false; }
+	if (m_AuthoringCameraShots.size() >= CAMERA_SHOT_MAX_COUNT) { outStatus = "Camera shot limit is 128."; return false; }
+	auto shot = *source;
+	for (uint32_t ordinal = 1u; ordinal <= CAMERA_SHOT_MAX_COUNT + 1u; ++ordinal)
+	{
+		shot.strShotId = "camera.kouku.pattern." + std::to_string(ordinal);
+		if (std::none_of(m_AuthoringCameraShots.begin(), m_AuthoringCameraShots.end(),
+			[&](const auto& item) { return item.strShotId == shot.strShotId; })) break;
+	}
+	// The copy belongs to one Sequence box; the Area trigger keeps playing the source shot.
+	shot.strDisplayName = std::string(name);
+	shot.bPatternOnly = true;
+	shot.strSequenceInstanceId.clear();
+	if (shot.hasCameraTrack) shot.CameraTrack.strCueId = shot.strShotId;
+	DATA_JSON_VALUE root; std::string ignored;
+	(void)CDataJson::Parse(Camera_EmptyDocument(), root, ignored);
+	auto fields = root.Get_Object(); fields["shots"] = DATA_JSON_VALUE::Array({ Camera_ShotJson(shot, nullptr) });
+	std::vector<KAKUL_CAMERA_SHOT> validated;
+	if (!Parse_CameraShots(Camera_JsonText(DATA_JSON_VALUE::Object(std::move(fields))), validated, outStatus)) return false;
+	outShotId = shot.strShotId;
+	m_DirtyCameraShotIds.insert(shot.strShotId);
+	m_AuthoringCameraShots.push_back(std::move(shot));
+	outStatus = "Dedicated Camera shot created in the draft. Save Camera writes it to the Area source.";
+	return true;
+}
+
+bool_t Client::CLevel_KakulSaydonArena::Discard_UnsavedCameraShot(const std::string_view shotId, std::string& outStatus)
+{
+	std::vector<KAKUL_CAMERA_SHOT> saved;
+	if (!Parse_CameraShots(m_strCameraAuthoringBaseline.empty() ? Camera_EmptyDocument() : m_strCameraAuthoringBaseline,
+		saved, outStatus)) return false;
+	if (std::any_of(saved.begin(), saved.end(), [&](const auto& shot) { return shot.strShotId == shotId; }))
+	{ outStatus = "A saved Camera shot is never discarded here."; return false; }
+	std::erase_if(m_AuthoringCameraShots, [&](const auto& shot) { return shot.strShotId == shotId; });
+	m_DirtyCameraShotIds.erase(std::string(shotId));
+	return true;
 }
 
 bool_t Client::CLevel_KakulSaydonArena::Save_CameraShots(std::string& outStatus)

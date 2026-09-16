@@ -155,7 +155,8 @@ namespace Client::EffectDocumentCodecDetail
 		"alpha_two_sided_depth_read",
 		"additive_two_sided_depth_read",
 		"alpha_one_sided_depth_read",
-		"additive_one_sided_depth_read"
+		"additive_one_sided_depth_read",
+		"multiply_one_sided_depth_read"
 	};
 	inline constexpr const char_t* SOURCE_MATERIAL_STATUS_TOKENS[] =
 	{

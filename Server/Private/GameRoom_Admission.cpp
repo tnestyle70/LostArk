@@ -550,6 +550,7 @@ void LostArk::Server::CGameRoom::Leave(
 #endif
 	m_ValtanAuditionSequenceBySessionId.erase(sessionId);
 	m_WorldPlaybackRequestSequences.erase(sessionId);
+	m_RoomPlayerArrivalRuns.erase(sessionId);
 	m_ValtanPatternIdAuditionSequenceBySessionId.erase(sessionId);
 	m_ValtanPatternFlowStartSequenceBySessionId.erase(sessionId);
 	m_ValtanPatternFlowControlSequenceBySessionId.erase(sessionId);

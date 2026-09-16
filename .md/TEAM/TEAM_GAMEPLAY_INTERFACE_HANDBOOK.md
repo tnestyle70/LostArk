@@ -332,7 +332,7 @@ walkable nav cell 경계와 별개로, 투사체·지연 장판·보스 이동 �
 중복 요청은 이전 응답만 돌려주며 재이동하지 않는다. Release Server는 이 명령을 거절한다.
 UI 위 클릭은 ImGui와 제품 UI의 같은 프레임 mouse claim 모두에서 차단한다.
 
-현재 Shared protocol 85의 Server/Client를 함께 빌드·재시작한다. 새 기능을 이전 실행 파일로 확인하지 않는다.
+현재 Shared protocol 86의 Server/Client를 함께 빌드·재시작한다. 새 기능을 이전 실행 파일로 확인하지 않는다.
 
 F1 Sequence Viewer는 모든 Debug Level에서 쿠크/발탄 목록을 읽고, 아레나 실행은
 `IPlayerCommandSink -> C2S_DEBUG_WORLD_PLAYBACK -> Room command -> ServerTriggerSystem`
@@ -844,6 +844,14 @@ spawn/snapshot과 CNpc/CModel 경로로 표시한다. 부모 run 종료·교체�
 자식의 재귀 Summon·Logic·World·Scene·presentation·본체 reset은 지원하지 않으며 명시적으로 거부한다.
 본체의 Effect·추가 시퀀스는 기존 Pattern 행에 계속 저작한다. Publisher는 `SUMMON_PATTERNS` trigger와
 `PATTERNSUMMONSPAWN` 행으로 세부 배치를 연결하며 잘못된 자식은 기존 개체를 바꾸기 전에 거절한다.
+네 방향 중 본체를 고르는 Parent는 Summon occurrence 하나를 사용한다. 재사용 Summon definition에 `summonKind=CROSS_DIRECTION_CLONES`, 전방/후방/왼쪽/오른쪽 순서의 `directionPatternIds` 네 개와 `cloneEndStageId`를 설정한다. occurrence의 start/duration이 유일한 실행 시계이고 별도 Logic이나 Pattern row는 필요 없다. 기분나빠·십자 화염폭발·3갈래 불뿜기는 서로 다른 패턴 세트를 같은 정책으로 재사용한다. 이름만 있는 기존 Summon은 여전히 동작을 추측하지 않는다. typed Summon과 독립 patternSpawns 또는 같은 Summon을 참조하는 CROSS Logic을 함께 사용하면 거부한다. 이전 저작 데이터의 DURATION `CROSS_DIRECTION_CLONES` 연결도 호환한다. `directionPatternIds`는 전방/후방/왼쪽/오른쪽 순서의 네 animation+Effect leaf Pattern, `cloneEndStageId`는 분신이 끝낼 Stage, `summonOccurrenceId`는 같은 Pattern의 이름 있는 Summon 박스를 참조한다. Summon과 Logic 시작은 같고 Summon 수명은 Logic 전체를 포함하며 독립 patternSpawns를 겹치지 않는다. 네 child의 explicit duration은 기존 fixedTimeline으로 게시되고 Logic 창 안에 끝나야 한다. 서버는 현재 본체 위치·yaw와 cutoff까지의 실제 root motion으로 네 목적지를 계산하고 원래 arena boss spawn XZ에 가장 가까운 방향을 한 번 선택한다. 동률은 배열 순서다.
+
+Parent의 identity/clock/뒤쪽 Logic은 유지한다. 선택한 하나만 같은 실제 boss entity의 child animation/root motion/Effect를 재생하고 나머지 세 개는 기존 dependent Summon으로 생성하여 cutoff에서 종료한다. Parent의 Animation/Pattern/이동 Logic과 창이 겹치면 거절한다. Shared snapshot의 optional presentation pattern/action 및 시작 tick/stage는 이 child를 나타내며 parent gameplay snapshot을 대체하지 않는다. Client와 Server는 동일 protocol로 함께 빌드·재시작한다. 일반 Play는 기존 Preview 배우로 같은 네 방향 구성을 보여 주고, Complete Play는 Server의 확정 결과를 사용한다. 일반 Summon의 explicit patternSpawns도 Play에서 독립 배우를 재생한다.
+
+일반 Play는 연결된 `BOSS_TELEPORT_XZ`의 목적지와 시각을 Preview 배우에 적용하고 animation 높이·yaw를 유지한다. `BOSS_TRACK_TARGET`과 `SHOWTIME_PLAYER_TARGETS`의 본체 회전은 살아 있는 복제 플레이어 위치를 읽어 재생하며 기록된 입력으로 되감기를 재현한다. 이름만 등록되고 실행 kind가 없는 Logic은 이름으로 동작을 추측하지 않는다. 회전 외 Showtime 반복 발사·추적 투사체·랜덤 투사는 기존 Server combatobject 계약을 따른다.
+
+일반 Play의 `ALBION_BLUE_CIRCLE`은 countPerPlayer=1, radiusM=0이며 randomPlayerOnly와 arenaRandomCount가 꺼진 플레이어 중심 배치를 지원한다. Trigger 시점마다 살아 있는 플레이어별 발생 위치를 고정하고 기존 BossCatalog combatvisual의 Effect를 수명 동안 재생한다. 원 예고가 생긴 뒤 플레이어를 따라 위치를 옮기지 않으며 Stop/새 Play에서 이전 발생 위치를 정리한다. 전투 판정이나 Server entity를 Preview에서 생성하지 않는다.
+
 패턴 상세 Sequencer는 Stage/Animation/Logic/Summon/World/Scene Profile 및 모든 presentation lane을
 드래그 또는 Ctrl+click으로 함께 선택한다. 드래그는 박스의 시간폭 전체를 감싸며 Ctrl+drag는 선택을 추가한다.
 Duplicate 또는 Ctrl+D는 선택한 구간과 Collider↔Logic·World↔동반 Effect 연결을 새 stable ID로 복제한다.
@@ -855,6 +863,9 @@ Delete도 선택 전체를 한 번에 처리한다. Earlier/Later는 Stage/Anima
 Pattern/Parent/Bundle/Logic/Resource의 Rename은 현재 표시 이름을 열어 Apply하고 기존 Save로 저장한다.
 stable ID와 참조는 바뀌지 않는다. Stage 삽입·삭제는 겹치는 BossMotion 시간도 함께 늘리거나 압축하며
 이동 위치와 yaw를 보존한다. 이동 구간 전체를 제거할 때는 Move boss를 먼저 해제한다.
+Stage Duration/ Fit Stage to Animation은 Effect와 모든 비애니메이션 lane의 시작·길이·fade·배치·그룹을 보존한다.
+선택 animation의 playback window만 Stage 안으로 제한하고, 늦게 끝나는 행은 explicit Pattern lifetime을 늘려 끝까지 재생한다.
+leaf의 추가 tail은 마지막 source pose를 유지하며 fixed Animation Blend 충돌은 시간 변경 없이 전체 편집을 거절한다.
 Animation의 optional blendInMs는 직전 clip 끝점에서 현재 clip으로 보간한다. Product의 짧은 playMs는
 남은 Stage 동안 종료 자세를 유지하고 LOOP_TO_WINDOW는 지정한 시간창에서 반복한다.
 Preview, Product의 body/weapon 및 서버 bone-contact bake가 같은 샘플링 계약을 사용한다.
@@ -960,14 +971,25 @@ F1 Action Workbench 바로 아래 `Open Sequencer Benchmark`는 동일한 Timeli
 저장 정본은 `Data/Compositions/Sequences/KoukuSaydonSequenceComposition.json`, compositionId는
 `boss.composition.kakulsaydon.sequencer`이며 기존 Action 문서와 교차 Save/Reload를 거부한다.
 같은 Preview backend의 재생 소유자를 입력 focus와 분리하여 다른 창을 열거나 닫아도 활성 미리보기를
-덮지 않는다. 연출 Save는 Action/Server Product를 변경하지 않으며 파티 생성은 후속 Summon/Logic 작업이다.
+덮지 않는다. 연출 Save는 Action/Server Product를 변경하지 않는다.
+Sequence 전용 `TRIGGER / ROOM_PLAYER_ARRIVAL`은 Logic occurrence의 optional
+`roomPlayerArrival { playerSlot: 0..3, position: [x,y,z] }`를 사용한다. Box Detail에서는 슬롯을
+1..4로 표시하며 시간과 목적지를 각각 편집한다. 재생 시 `CPlayerController -> IPlayerCommandSink`
+의 Debug World Playback `PLACE_ROOM_PLAYER`가 run epoch, root Pattern ID, occurrence ID와
+목적지를 제출한다. Server는 첫 도착 요청에서 같은 방의 접속자를 PlayerId 순으로 고정하고,
+해당 슬롯의 이동 가능 상태·navigation·높이·충돌을 검증한 뒤 기존 teleport reset과 snapshot을
+사용한다. 빈 슬롯과 중간 퇴장자는 건너뛰며 새 입장자로 그 슬롯을 다시 채우지 않는다.
+다른 World와 Release Server는 실행하지 않는다. Pause·scrub은 이동 요청을 만들지 않고,
+같은 재생의 occurrence는 한 번만 보낸다. 거절·5초 응답 부재는 전투 진입을 막는다.
 Sequence의 `Complete Play`는 선택 Gate에서 `enterCombatOnFinish=true`인 입장 하나를 0ms부터 재생한다.
 Pause/Resume과 Stop은 현재 연출 시간을 유지하며 Reset·재생 실패·다른 Preview 소유자 전환은 전투 연결을 취소한다.
 F6 free camera에서는 camera track override를 해제하고 현재 pose/FOV를 유지한다. follow로 복귀하면
-현재 연출 시각의 camera track을 다시 적용한다. Complete 종료가 강제로 follow를 켜지 않는다.
+현재 연출 시각의 camera track을 다시 적용한다. 정상 종료에서는 플레이어 follow를 켠다.
 `1관문_통합_시퀀스`는 흡입·팝업북·피날레를 포함하며, 종료 뒤 기존 F1 Gate command로 열린 전투 아레나에 진입한다.
-입장 Pattern의 Play Sequence도 같은 전투 연결을 사용한다. legacy popup/finale·클리어·카드미로의 개별 Preview는
-저작 확인으로 유지하며 자동으로 보스를 생성하거나 Pattern Flow를 시작하지 않는다.
+일반 `Play Sequence`는 카메라와 입력만 복귀하고 자동 전투를 시작하지 않는다. `Complete Play`와
+`Complete Play - Sequences + Pattern Flow`만 서버 관문 승인 후 저장된 전투 순서를 이어간다.
+도착 Logic이 서버 승인을 받은 경우 관문 진입은 그 위치를 보존한다. Complete 재생 중 일반
+Play로 바꾸면 이전 자동 전투 연결을 취소한 뒤 새 미리보기를 시작한다.
 
 Kouku `Publish All Patterns`는 Product, 쿠크 범위 World, Gameplay balance를 같은 게시 작업으로 처리한다.
 F1 Boss Tuning의 Save가 기록한 `Gameplay.world.json` 위치·방향도 Server worldbootstrap에 포함한다.
@@ -1021,6 +1043,48 @@ Kouku Arena Loader는 BossCatalog의 해당 family V1 combat-object visuals를 �
 Product 준비 큐와 level activation probe에 넣는다. 첫 spawn이 prewarm을 생략하거나 Effect
 문서를 동기 로드하지 않는다. Client는 자연 완료의 잔상을 유지하고 Server의 Stop/사망/despawn은
 level-owned Effect handle까지 정리한다.
+
+Kouku `SHOWTIME_PLAYER_TARGETS` Duration은 같은 Pattern의 고정 Effect 그룹과 추적 occurrence를
+각각 선택한다. Publisher의 `PATTERNSHOWTIMETARGETS` 11필드는 encounter/pattern/occurrence,
+start/duration, fixed/tracking visual ID, fixed lifetime, interval, follow speed scale이다.
+비활성 ID는 `-`이며 최소 하나는 필요하다. fixed lifetime은 비활성일 때 0, 활성일 때
+1..600000ms이고 interval은 1..600000ms, speed scale은 0.01..10이다. 요청 기본값인 2000ms와
+0.5는 사용자 튜닝값이다. Server는 duration 시작과 interval마다 준비된 생존 player 1..4명의
+현재 XZ·server ground Y에 고정 group instance를 만든다. 추적은 window별 player당 하나이며
+실효 이동속도에 scale을 곱해 매 fixed tick 접근한다. death/leave/window end는 해당 tracking을
+despawn하고 기존 fixed group은 자체 저작 수명까지 남는다. join/revive는 새 tracker를 만들고,
+pattern abort/room reset은 전부 정리한다. 저작 run owner 퇴장은 기존 전체 abort 계약을 유지한다.
+기존 CombatObject spawn/snapshot/despawn의 object ID, spawn tick과 pinned revision을 사용하며
+archetype는 `combatobject.kouku.showtime.fixed` / `.tracking`이다. Client의 group clock과 상대
+TRS는 visual mapping이 소유한다. 새 damage나 Client player pose 입력은 없다.
+
+같은 duration 동안 보스 몸 방향은 기존 Server pattern target의 현재 위치를 향한다.
+대상이 죽거나 퇴장하면 기존 random-alive 선택 정책을 재사용하며 yaw는 snapshot으로만
+복제한다. TRIGGER `BOSS_TELEPORT_XZ`는 기존 `teleportPosition`의 XZ만 적용하고 Y는
+저작 참고값으로 보존한다. Server가 목적지 navigation과 실제 보스 크기의 overlap을 검증한
+뒤 현재 높이·animation clock을 유지하며, 캡처된 stage root XZ/지면 기준도 함께 옮긴다.
+절대 `BossMotion`과는 병용할 수 없고 animation root motion의 수직 진행은 유지한다.
+
+TRIGGER `ALBION_AIRBORNE`는 `airbornePhase`, `airborneHeightM`,
+`airborneDurationMs`, `teleportPosition`을 함께 저장한다. phase는
+`SELECT_PLAYER/JUMP/APPEAR_PLAYER/DISAPPEAR/CENTER/SLAM`이다. JUMP만 양수 높이와
+상승 시간을 사용하고 APPEAR_PLAYER는 양수 등장 높이를 사용한다. 나머지 높이·시간은0이며
+CENTER만 절대 목적지 XYZ를 가진다. 기존25열 mechanic 부모 뒤에 같은 occurrence의7열
+`PATTERNALBIONAIRBORNE`를 게시한다. Server가 살아 있는 플레이어 ID를 선택하고 등장할
+때 그 플레이어의 현재 XZ와 navigation·body collision을 검증한다. 같은 시각이면 선택부터
+처리한다. 기존 stage root 이동 경로가 phase의 높이를 소비하고 순간이동 때 root 원점도
+갱신한다. SLAM은 trigger 이후 원본 하강의 누적 최저값으로 착지하며 원본의 작은 반등으로
+다시 뜨지 않는다. 실패 시 기존 pose를 유지한다. 새 packet이나 Client gameplay 이동은 없다.
+일반 Play는 복제된 플레이어 ID와 등장 시점의 위치를 preview 실행에 고정해 seek에서도
+같은 결과를 사용한다. `Complete Play (Server)`가 실제 Server 권위 재생이며,
+`resetBossToSpawn`이 참이면 기존 Gate별 spawn에서 시작한다.
+
+DURATION `BOSS_TRACK_TARGET`은 추가 field 없이 지정된 Server pattern target을 향해 몸만
+회전한다. occurrence의 start/duration이 회전 구간이며, 현재 yaw에서 목표 yaw까지 최단 각도를
+남은 시간 비율로 보간해 마지막 유효 tick에 도달한다. 사망/이탈 시 기존 target 재선택을
+사용한다. Collider·결과·Hold·Effect template은 없고 시각 객체를 만들지 않는다. 게시 시 기존
+`mechanicTriggers`/25-field `PATTERNMECHANICTRIGGER`를 사용하고 다른 기믹 값은0 또는 `-`다.
+SHOWTIME_PLAYER_TARGETS의 장판/추적 visual과 독립이며 새 Client yaw 판정이나 packet은 없다.
 
 단순 피해 영역은 Collider의 Box Detail에서 데미지 모드를 선택하고 최대 HP 대비 피해율,
 반복 접촉 정책, 밀림 거리/시간/방향을 직접 편집한다. 내부적으로 기존 ENTER_AREA와
@@ -1508,9 +1572,9 @@ MAZE 진입 → 30tick 뒤 중앙의 Server 삐에로 상자(`MONSTER_KOUKU_CLOW
 
 ### 입장 Sequence와 열린 아레나 전투 연결
 
-Kouku Sequence Composition의 Pattern은 optional `enterCombatOnFinish`를 갖는다. GATE1/GATE2/GATE3별로 이 값이 true인 Pattern 정확히 하나를 Complete Play의 입장으로 선택하며, 해당 입장의 Play Sequence도 0ms부터 같은 경로를 사용한다. legacy popup/finale·클리어·카드미로는 자동 순회 대상이 아니다. 데이터와 새 소비 코드가 함께 설치돼야 하며 기존 Client에 새 metadata 문서를 먼저 배포하지 않는다.
+Kouku Sequence Composition의 Pattern은 optional `enterCombatOnFinish`를 갖는다. GATE1/GATE2/GATE3별로 이 값이 true인 Pattern 정확히 하나를 Complete Play의 입장으로 선택한다. 일반 Play Sequence는 현재 cursor에서 연출만 재생하고 종료 시 player follow camera로 복귀한다. 자동 전투 연결은 명시적인 Complete Play / Sequences + Pattern Flow에만 적용한다. legacy popup/finale·클리어·카드미로는 자동 순회 대상이 아니다. 데이터와 새 소비 코드가 함께 설치돼야 하며 기존 Client에 새 metadata 문서를 먼저 배포하지 않는다.
 
-MainApp은 입장 중 gameplay 입력과 보스 HUD를 보류하고, 종료 뒤 기존 Debug Gate command를 제출한다. Level은 Server 보스 생성 및 플레이어 이동 승인이 모두 확인된 뒤에만 gate를 확정한다. 성공하면 follow camera/HUD를 복귀하고 입장 시작과 같은 revision의 Pattern Flow를 제출한다. F1의 기존 1관문·3관문은 SL05 열린 전투 아레나를 즉시 시험하는 경로를 유지한다. Client transform이나 cinematic 프록시를 서버 전투 권위로 사용하지 않는다.
+MainApp은 입장 중 gameplay 입력과 보스 HUD를 보류하고, Complete 종료 뒤 기존 Debug Gate command를 제출한다. Sequence의 ROOM_PLAYER_ARRIVAL은 기존 typed command를 통해 Server가 승인한 위치를 사용하며, 마지막 이동 응답이 남으면 완료 이벤트를 보류한다. 승인된 도착 위치가 있으면 gate 전환 시 재이동하지 않고 보스 생성 승인을 기다린다. 해당 Logic이 없는 기존 gate 전환은 보스 생성 및 기본 플레이어 이동 승인을 모두 기다린다. 성공하면 follow camera/HUD를 복귀하고 입장 시작과 같은 revision의 Pattern Flow를 제출한다. F1의 기존 1관문·3관문은 SL05 열린 전투 아레나를 즉시 시험하는 경로를 유지한다. Client transform이나 cinematic 프록시를 서버 전투 권위로 사용하지 않는다.
 
 Object Tool의 Group Layout은 motion emission의 count·spacing·Delay를 소유한다. Box Detail의 Object/Motion 열기는 stable object ID와 instance ID를 전달하며 자동 preview·저장을 하지 않는다. WORLD Collider/전용 Logic 참조를 함께 바꾸는 저장은 source 변경을 재확인한 뒤 교체하며, 공유 또는 모호한 참조와 미저장 Composition은 이유를 표시하고 기존 문서를 보존한다.
 
@@ -1544,3 +1608,18 @@ Result kind를 싣는다. Server `CPlayerSkillSystem`은 DAMAGE 행만 HP 예산
 기존 v33 실행 파일/부트스트랩과 혼합하지 않으며 네트워크 packet version을 바꾼 계약은 아니다.
 
 통합 창의 사용법과 각 저장 owner는 `ANIMATION_TOOL_OWNER_HANDOFF.md`를 따른다.
+
+
+### SHOWTIME_PLAYER_TARGETS의 optional 랜덤 낙하 세트
+
+Composition logic는 기존 `fixedSelectionGroupId` 또는 `trackingPresentationOccurrenceId`를 유지하고 optional `randomVolleyOccurrenceSets`, `randomSpawnIntervalMs`, `randomArenaRadiusM`, `randomArenaHeightToleranceM`을 함께 저장한다. `randomVolleyOccurrenceSets`는 순서 있는 stable occurrence ID 배열1~32개다. 각 배열의 원본 시간 차이·TRS를 유지하며 최소 하나의 MAP 행과 선택적인 BOSS-follow 행을 허용한다. bone/World/Logic 부착은 지원하지 않는다. 랜덤은 서버 지면 위치 선택이며 세트 순서는 저장된 배열 순서다.
+
+Projector는 각 세트의 hash visual ID·lifetime을 `showtimeTargets.randomVolleys`로 게시한다. Gameplay publisher는 기존11field `PATTERNSHOWTIMETARGETS` 뒤에10field `PATTERNSHOWTIMERANDOM`을 추가한다: encounter, pattern, occurrence, ordinal, visual ID, lifetimeMs, intervalMs, radiusM, heightToleranceM. ordinal은같은 duration 안에서0부터 연속하며 같은 콘텐츠의 visual ID가 반복될 수 있다. 서버에는 Effect asset path나 selection group을 전달하지 않는다.
+
+서버는 보스 spawn 중심의 기존 arena sampler로 exact walkable/height를 검증하고 전역 한 세트를 각 간격에 생성한다. 4인이라고 랜덤 세트 수를4배로 만들지 않는다. 기존 플레이어별 fixed/tracking은 독립적으로 유지한다. 종료 뒤에는 새 세트만 멈추며 이미 생성한 finite 세트의 수명은 보존한다. Client는 같은 source entity의 실제 보스 transform/model과 CombatObject 지면 root를 기존 Sample 함수에 따로 전달해 BOSS 총구와 MAP 낙하를 같은 clock으로 표현한다.
+
+### World Object Collider 편집과 저장
+
+Object Sequencer의 Play 왼쪽과 Object Detail의 Edit Parent Object 왼쪽 Save는 같은 원본 저장을 사용한다. 새 Logic 정의만 만들었어도 Pattern 또는 Sequence 문서는 미저장 상태다. 해당 Save 후 Object Save를 사용한다. 이미 실행 중인 Publish만 완료를 기다리며, Object Save를 위해 Publish를 새로 시작할 필요는 없다. 저장 상태와 게시 상태는 별개로 표시한다.
+
+Collider 행은 일반 피해(DAMAGE, 최대 HP 정수 비율), 즉사(INSTANT_DEATH), 갈고리 부착(HOOK_CAPTURE)을 설정한다. 모델 자전과 독립된 수평 rectangle이 Object 이동을 따르며, 갈고리의 본과 미터 offset으로 실제 끝 위치를 지정한다. WorldSequence 데이터 계약은 AREA_DATA_LAYER_GUIDE의 Object Motion Collider 절을 따른다. 제품 결과는 기존 Server ENTER_AREA와 WORLD_HOOK_TIP attachment로 전달한다. 기존 잡힌 캐릭터 pose를 유지하므로 새 매달림 애니메이션을 복원했다는 의미는 아니다.

@@ -23,6 +23,25 @@ public:
     // each row keeps the facing captured for its own stage, even after a seek.
     bool Sample_Displacement(double clockMs, std::span<const float> rowYawDegrees,
         float3_t& outDisplacement) const;
+    struct AIRBORNE_EVENT final
+    {
+        std::string occurrenceId, phase;
+        uint32_t clockMs = 0u, durationMs = 0u;
+        double heightM = 0.0;
+        float3_t destination{};
+        size_t windowIndex = SIZE_MAX;
+        double sourceUp = 0.0, remainingMinimumUp = 0.0;
+        std::vector<std::pair<double, double>> landingPrefixUp;
+    };
+    // Includes absolute BOSS_TELEPORT_XZ source-clock rebases as well as Albion phases.
+    bool Prepare_Airborne(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
+        const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern, std::string& status);
+    const std::vector<AIRBORNE_EVENT>& Airborne_Events() const { return m_AirborneEvents; }
+    // Target positions are pinned by the presentation owner in event order;
+    // APPEAR_PLAYER samples the selected player at its own first appearance clock.
+    bool Sample_AirbornePosition(double clockMs, std::span<const float> rowYawDegrees,
+        const float3_t& initialPosition, std::span<const float3_t> selectionPositions,
+        float3_t& output) const;
     void Reset();
 private:
     struct WINDOW final
@@ -34,6 +53,8 @@ private:
         double albionTakeoffUp = 0.0;
     };
     bool Sample_Window(const WINDOW& window, double ageMs, float3_t& output) const;
+    bool Sample_AirborneUp(size_t windowIndex, double clockMs, double& output) const;
+    std::vector<AIRBORNE_EVENT> m_AirborneEvents;
     std::weak_ptr<Engine::CModel> m_Model;
     std::vector<WINDOW> m_Windows;
     uint32_t m_RootIndex = UINT32_MAX;

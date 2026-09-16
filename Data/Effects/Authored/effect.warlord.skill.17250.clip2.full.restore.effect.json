@@ -81972,7 +81972,7 @@
         "enabled": true,
         "follow": true,
         "sourceAnchorSlotId": "b_effectroot",
-        "runtimeAnchorSlotId": "b_effectroot",
+        "runtimeAnchorSlotId": "authored.warlord.altv.guardian-ground",
         "runtimeBoneName": "b_effectroot",
         "socketLocalTransform": {
           "position": [
@@ -81981,9 +81981,9 @@
             0.0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            90,
+            180,
+            0
           ],
           "scale": [
             1.0,
@@ -82002,7 +82002,7 @@
           "rotationDegrees": [
             0.0,
             0.0,
-            -0.0
+            0.0
           ],
           "revolutionDegreesPerSecond": [
             0.0,
@@ -82072,7 +82072,8 @@
           "useModelMaterial": true
         },
         "sprite": {
-          "billboard": true
+          "billboard": true,
+          "billboardRollDegrees": -0.0
         },
         "decal": {
           "size": [
@@ -83551,7 +83552,7 @@
         "enabled": true,
         "follow": true,
         "sourceAnchorSlotId": "b_effectroot",
-        "runtimeAnchorSlotId": "b_effectroot",
+        "runtimeAnchorSlotId": "authored.warlord.altv.guardian-ground",
         "runtimeBoneName": "b_effectroot",
         "socketLocalTransform": {
           "position": [
@@ -83560,9 +83561,9 @@
             0.0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            90,
+            180,
+            0
           ],
           "scale": [
             1.0,
@@ -83580,8 +83581,8 @@
           ],
           "rotationDegrees": [
             0.0,
-            0.0,
-            -0.0
+            -59.996337890625,
+            0.0
           ],
           "revolutionDegreesPerSecond": [
             0.0,
@@ -83651,7 +83652,8 @@
           "useModelMaterial": true
         },
         "sprite": {
-          "billboard": true
+          "billboard": true,
+          "billboardRollDegrees": 59.996337890625
         },
         "decal": {
           "size": [
@@ -85130,7 +85132,7 @@
         "enabled": true,
         "follow": true,
         "sourceAnchorSlotId": "b_effectroot",
-        "runtimeAnchorSlotId": "b_effectroot",
+        "runtimeAnchorSlotId": "authored.warlord.altv.guardian-ground",
         "runtimeBoneName": "b_effectroot",
         "socketLocalTransform": {
           "position": [
@@ -85139,9 +85141,9 @@
             0.0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            90,
+            180,
+            0
           ],
           "scale": [
             1.0,
@@ -85159,8 +85161,8 @@
           ],
           "rotationDegrees": [
             0.0,
-            0.0,
-            -0.0
+            -119.9981689453125,
+            0.0
           ],
           "revolutionDegreesPerSecond": [
             0.0,
@@ -85230,7 +85232,8 @@
           "useModelMaterial": true
         },
         "sprite": {
-          "billboard": true
+          "billboard": true,
+          "billboardRollDegrees": 119.9981689453125
         },
         "decal": {
           "size": [
@@ -86709,7 +86712,7 @@
         "enabled": true,
         "follow": true,
         "sourceAnchorSlotId": "b_effectroot",
-        "runtimeAnchorSlotId": "b_effectroot",
+        "runtimeAnchorSlotId": "authored.warlord.altv.guardian-ground",
         "runtimeBoneName": "b_effectroot",
         "socketLocalTransform": {
           "position": [
@@ -86718,9 +86721,9 @@
             0.0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            90,
+            180,
+            0
           ],
           "scale": [
             1.0,
@@ -86738,8 +86741,8 @@
           ],
           "rotationDegrees": [
             0.0,
-            0.0,
-            -0.0
+            180.0,
+            0.0
           ],
           "revolutionDegreesPerSecond": [
             0.0,
@@ -86809,7 +86812,8 @@
           "useModelMaterial": true
         },
         "sprite": {
-          "billboard": true
+          "billboard": true,
+          "billboardRollDegrees": -180.0
         },
         "decal": {
           "size": [
@@ -88288,7 +88292,7 @@
         "enabled": true,
         "follow": true,
         "sourceAnchorSlotId": "b_effectroot",
-        "runtimeAnchorSlotId": "b_effectroot",
+        "runtimeAnchorSlotId": "authored.warlord.altv.guardian-ground",
         "runtimeBoneName": "b_effectroot",
         "socketLocalTransform": {
           "position": [
@@ -88297,9 +88301,9 @@
             0.0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            90,
+            180,
+            0
           ],
           "scale": [
             1.0,
@@ -88317,8 +88321,8 @@
           ],
           "rotationDegrees": [
             0.0,
-            0.0,
-            -0.0
+            119.9981689453125,
+            0.0
           ],
           "revolutionDegreesPerSecond": [
             0.0,
@@ -88388,7 +88392,8 @@
           "useModelMaterial": true
         },
         "sprite": {
-          "billboard": true
+          "billboard": true,
+          "billboardRollDegrees": -119.9981689453125
         },
         "decal": {
           "size": [
@@ -89867,7 +89872,7 @@
         "enabled": true,
         "follow": true,
         "sourceAnchorSlotId": "b_effectroot",
-        "runtimeAnchorSlotId": "b_effectroot",
+        "runtimeAnchorSlotId": "authored.warlord.altv.guardian-ground",
         "runtimeBoneName": "b_effectroot",
         "socketLocalTransform": {
           "position": [
@@ -89876,9 +89881,9 @@
             0.0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            90,
+            180,
+            0
           ],
           "scale": [
             1.0,
@@ -89896,8 +89901,8 @@
           ],
           "rotationDegrees": [
             0.0,
-            0.0,
-            -0.0
+            59.996337890625,
+            0.0
           ],
           "revolutionDegreesPerSecond": [
             0.0,
@@ -89967,7 +89972,8 @@
           "useModelMaterial": true
         },
         "sprite": {
-          "billboard": true
+          "billboard": true,
+          "billboardRollDegrees": -59.996337890625
         },
         "decal": {
           "size": [
@@ -248284,7 +248290,7 @@
       "detail": {
         "transform": {
           "position": [
-            6.0,
+            2.625,
             0,
             -0.0
           ],
@@ -249300,9 +249306,9 @@
       "detail": {
         "transform": {
           "position": [
-            3.0,
+            1.3125,
             0,
-            -5.196152
+            -2.273316685
           ],
           "rotationDegrees": [
             0,
@@ -250316,9 +250322,9 @@
       "detail": {
         "transform": {
           "position": [
-            -3.0,
+            -1.3125,
             0,
-            -5.196152
+            -2.273316685
           ],
           "rotationDegrees": [
             0,
@@ -251332,7 +251338,7 @@
       "detail": {
         "transform": {
           "position": [
-            -6.0,
+            -2.625,
             0,
             -0.0
           ],
@@ -252348,9 +252354,9 @@
       "detail": {
         "transform": {
           "position": [
-            -3.0,
+            -1.3125,
             0,
-            5.196152
+            2.273316685
           ],
           "rotationDegrees": [
             0,
@@ -253364,9 +253370,9 @@
       "detail": {
         "transform": {
           "position": [
-            3.0,
+            1.3125,
             0,
-            5.196152
+            2.273316685
           ],
           "rotationDegrees": [
             0,
@@ -260534,7 +260540,7 @@
       "detail": {
         "transform": {
           "position": [
-            6.0,
+            2.625,
             0,
             -0.0
           ],
@@ -261608,9 +261614,9 @@
       "detail": {
         "transform": {
           "position": [
-            3.0,
+            1.3125,
             0,
-            -5.196152
+            -2.273316685
           ],
           "rotationDegrees": [
             0,
@@ -262682,9 +262688,9 @@
       "detail": {
         "transform": {
           "position": [
-            -3.0,
+            -1.3125,
             0,
-            -5.196152
+            -2.273316685
           ],
           "rotationDegrees": [
             0,
@@ -263756,7 +263762,7 @@
       "detail": {
         "transform": {
           "position": [
-            -6.0,
+            -2.625,
             0,
             -0.0
           ],
@@ -264830,9 +264836,9 @@
       "detail": {
         "transform": {
           "position": [
-            -3.0,
+            -1.3125,
             0,
-            5.196152
+            2.273316685
           ],
           "rotationDegrees": [
             0,
@@ -265904,9 +265910,9 @@
       "detail": {
         "transform": {
           "position": [
-            3.0,
+            1.3125,
             0,
-            5.196152
+            2.273316685
           ],
           "rotationDegrees": [
             0,
@@ -273181,7 +273187,7 @@
             0.629999989271164,
             1.4699999749660493
           ],
-          "localSpace": false,
+          "localSpace": true,
           "billboard": true,
           "sourceScale": {
             "count": 1,

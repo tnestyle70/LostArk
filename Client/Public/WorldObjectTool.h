@@ -44,6 +44,9 @@ public:
 private:
     bool Load_Source();
     bool Save_Source();
+    bool Render_SaveButton();
+    void Render_SaveStatus() const;
+    void Render_ColliderPreview();
     bool Matches_SourceBaseline();
     void Start_Publish();
     void Poll_Publish();
@@ -78,6 +81,9 @@ private:
     bool Build_SelectedEffectCandidate(CWorldSequenceDocument& staged, std::string& instanceId);
     const WORLD_SEQUENCE_INSTANCE* Effect_TargetInstance() const;
     void Render_EffectRows(WORLD_SEQUENCE_TEMPLATE& sequence);
+    void Render_ColliderRows(WORLD_SEQUENCE_TEMPLATE& sequence);
+    bool Append_ColliderTrack(WORLD_SEQUENCE_TEMPLATE& sequence);
+    bool Duplicate_ColliderTrack(WORLD_SEQUENCE_TEMPLATE& sequence, size_t index);
     bool Append_SelectedAnimation();
     bool Duplicate_TimelineBox(WORLD_SEQUENCE_TEMPLATE& sequence, bool animation, size_t index);
     bool Stage_SelectedModel(CWorldSequenceDocument& candidate);
@@ -94,6 +100,7 @@ private:
     void Render_PhysicalResources();
     void Rebuild_PhysicalTree();
 
+    int m_ColliderPreviewFrame = -1;
     bool m_Open = false;
     bool m_ResourcesOpen = true;
     bool m_SequencerOpen = true;
@@ -149,7 +156,8 @@ private:
     std::string m_SelectedInstance;
     size_t m_SelectedTrack = 0;
     size_t m_SelectedAnimationRow = 0;
-    int m_SelectedBoxKind = 0; // 0 Transform, 1 Animation, 2 Effect; authoring selection only.
+    int m_SelectedBoxKind = 0; // 0 Transform, 1 Animation, 2 Effect, 3 Collider; authoring selection only.
+    size_t m_SelectedColliderRow = 0;
     size_t m_SelectedKey = 0;
     uint64_t m_SavedGeneration = 0;
     std::array<char, 128> m_NewObjectName{};

@@ -2,7 +2,10 @@
 param(
     [ValidateSet('Validate', 'Publish', 'ContractTest')]
     [string]$Mode = 'Validate',
-    [string]$OutputRoot = 'Server/Bin/DataFiles/Navigation'
+    [string]$OutputRoot = 'Server/Bin/DataFiles/Navigation',
+    [ValidateSet('', 'LV_LUT_HEARTRB_ED', 'LV_LUT_MIDNIGHTC_ED',
+        'LV_DEV_TRAINING_GROUND', 'LV_LOBBY_CLASSSELECT_SL00', 'LV_BER_BERNCASTLE')]
+    [string]$AreaId = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -988,35 +991,38 @@ if ($Mode -eq 'ContractTest') {
     return
 }
 
-$grids = @(
-    (Convert-NavigationAuthoringGrid `
+$gridFactories = [ordered]@{
+    'LV_LUT_HEARTRB_ED' = { Convert-NavigationAuthoringGrid `
         -RelativeSourcePath 'Data/Navigation/LV_LUT_HEARTRB_ED.navsource' `
-        -RelativePaintPath 'Data/Navigation/LV_LUT_HEARTRB_ED.navpaint'),
+        -RelativePaintPath 'Data/Navigation/LV_LUT_HEARTRB_ED.navpaint' }
     # The recovered Kakul geometry contains five intentionally disconnected
     # source-level islands.  Do not require a single component or infer Mario
     # semantics; StageMarkers names the exact source-level identities instead.
-    (Convert-NavigationAuthoringGrid `
+    'LV_LUT_MIDNIGHTC_ED' = { Convert-NavigationAuthoringGrid `
         -RelativeSourcePath 'Data/Navigation/LV_LUT_MIDNIGHTC_ED.navsource' `
         -RelativePaintPath 'Data/Navigation/LV_LUT_MIDNIGHTC_ED.navpaint' `
-        -RuntimeMaximumStepHeight 1.0),
-    (New-UniformNavigationGrid `
+        -RuntimeMaximumStepHeight 1.0 }
+    'LV_DEV_TRAINING_GROUND' = { New-UniformNavigationGrid `
 		-RelativeAuthoringPath 'Data/Navigation/LV_DEV_TRAINING_GROUND.navgrid.json' `
-        -RuntimeMaximumStepHeight 0.6),
-    (Convert-NavigationAuthoringGrid `
+        -RuntimeMaximumStepHeight 0.6 }
+    'LV_LOBBY_CLASSSELECT_SL00' = { Convert-NavigationAuthoringGrid `
         -RelativeSourcePath 'Data/Navigation/LV_LOBBY_CLASSSELECT_SL00.navsource' `
         -RelativePaintPath 'Data/Navigation/LV_LOBBY_CLASSSELECT_SL00.navpaint' `
         -MaximumStepHeight 0.6 `
         -RuntimeMaximumStepHeight 0.6 `
-        -RequireSingleComponent),
+        -RequireSingleComponent }
     # Bern's single-height XZ bake sees bridges, terraces and archways above the
     # ground walkway. Version 3 paint corrects the three admitted corridor ridges
     # to their ground-deck heights. The runtime 1 m edge guard then separates the
     # remaining overlapping decks while preserving the authored staircase.
-    (Convert-NavigationAuthoringGrid `
+    'LV_BER_BERNCASTLE' = { Convert-NavigationAuthoringGrid `
         -RelativeSourcePath 'Data/Navigation/LV_BER_BERNCASTLE.navsource' `
         -RelativePaintPath 'Data/Navigation/LV_BER_BERNCASTLE.navpaint' `
-        -RuntimeMaximumStepHeight 1.0)
-)
+        -RuntimeMaximumStepHeight 1.0 }
+}
+$grids = @(foreach ($factory in $gridFactories.GetEnumerator()) {
+    if (-not $AreaId -or $factory.Key -eq $AreaId) { & $factory.Value }
+})
 
 $validated = foreach ($grid in $grids) {
     $regionGrids = @(Convert-NavigationRegionGrids -AreaId $grid.AreaId)

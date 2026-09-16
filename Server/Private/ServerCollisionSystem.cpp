@@ -365,25 +365,41 @@ bool LostArk::Server::CServerCollisionSystem::Is_PlayerPositionClear(
 	const float x, const float y, const float z,
 	const LostArk::Shared::NET_ENTITY_ID ignoredBodyId) const
 {
-	if (!std::isfinite(x) || !std::isfinite(y) || !std::isfinite(z))
+	return Is_CirclePositionClear(x, y, z, PLAYER_HALF_EXTENT_X,
+		PLAYER_HALF_EXTENT_Y, PLAYER_CENTER_OFFSET_Y, ignoredBodyId);
+}
+
+bool LostArk::Server::CServerCollisionSystem::Is_CirclePositionClear(
+	const float x, const float y, const float z, const float radius,
+	const float halfHeight, const float centerOffsetY,
+	const LostArk::Shared::NET_ENTITY_ID ignoredBodyId) const
+{
+	if (!std::isfinite(x) || !std::isfinite(y) || !std::isfinite(z) ||
+		!std::isfinite(radius) || radius <= 0.f || !std::isfinite(halfHeight) ||
+		halfHeight <= 0.f || !std::isfinite(centerOffsetY))
 		return false;
+	const float centerY = y + centerOffsetY;
+	if (!std::isfinite(centerY)) return false;
 	for (std::size_t index = 0u; index < m_CollisionBoxes.size(); ++index)
 	{
-		if (index < m_PlayerBlocking.size() && m_PlayerBlocking[index] &&
-			Is_PlayerCenterInsideExpandedBox(x, y, z, m_CollisionBoxes[index]))
+		if (index >= m_PlayerBlocking.size() || !m_PlayerBlocking[index]) continue;
+		const auto& box = m_CollisionBoxes[index];
+		const auto local = To_BoxLocal(x, z, box);
+		if (std::abs(local.x) <= box.fHalfExtentX + radius &&
+			std::abs(centerY - box.fPositionY) <= box.fHalfExtentY + halfHeight &&
+			std::abs(local.z) <= box.fHalfExtentZ + radius)
 			return false;
 	}
-	const float centerY = y + PLAYER_CENTER_OFFSET_Y;
 	for (const auto& body : m_BlockingBodies)
 	{
 		if (body.iNetEntityId == ignoredBodyId ||
-			centerY + PLAYER_HALF_EXTENT_Y < body.fCenterY - body.fHalfHeight ||
-			centerY - PLAYER_HALF_EXTENT_Y > body.fCenterY + body.fHalfHeight)
+			centerY + halfHeight < body.fCenterY - body.fHalfHeight ||
+			centerY - halfHeight > body.fCenterY + body.fHalfHeight)
 			continue;
 		const float dx = x - body.fX;
 		const float dz = z - body.fZ;
-		const float radius = PLAYER_HALF_EXTENT_X + body.fRadius + CONTACT_MARGIN;
-		if (dx * dx + dz * dz < radius * radius)
+		const float combinedRadius = radius + body.fRadius + CONTACT_MARGIN;
+		if (dx * dx + dz * dz < combinedRadius * combinedRadius)
 			return false;
 	}
 	return true;

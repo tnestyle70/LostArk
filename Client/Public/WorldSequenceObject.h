@@ -36,6 +36,10 @@ public:
     bool_t Reset_ForReuse();
     const float4x4_t& Get_SampledWorld() const { return m_World; }
     const std::string& Get_RenderStatus() const { return m_RenderStatus; }
+#ifdef _DEBUG
+    // The visible pose owns this sample; offsets are metres in a normalized bone basis.
+    bool_t Try_GetAttachmentWorld(const std::string& bone, float4x4_t& out) const;
+#endif
 private:
     CWorldSequenceObject(ComPtr<ID3D11Device>, ComPtr<ID3D11DeviceContext>);
     shared_ptr<Engine::CModel> m_Model;

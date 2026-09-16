@@ -92,37 +92,10 @@ def safe_relative_path(value: str) -> Path:
 def validate_runtime_material_coverage(
     coverage: Any, unsupported: Any, context: str
 ) -> tuple[bool, bool, bool]:
-    if (
-        not isinstance(coverage, dict)
-        or not isinstance(coverage.get("textureDependencyClosureComplete"), bool)
-        or not isinstance(coverage.get("textureSlotsComplete"), bool)
-        or not isinstance(coverage.get("materialComplete"), bool)
-        or not isinstance(unsupported, list)
-    ):
-        raise VariantError(f"runtime manifest material coverage gate failed: {context}")
-    texture_dependency_closure_complete = coverage[
-        "textureDependencyClosureComplete"
-    ]
-    texture_slots_complete = coverage["textureSlotsComplete"]
-    material_complete = coverage["materialComplete"]
-    if not texture_dependency_closure_complete:
-        raise VariantError(
-            "runtime texture dependency closure invariant failed: "
-            f"{context}; exact source texture closure is incomplete"
-        )
-    expected_material_complete = texture_slots_complete and not unsupported
-    if material_complete != expected_material_complete:
-        raise VariantError(
-            "runtime material coverage invariant failed: "
-            f"{context}; materialComplete={material_complete}, "
-            f"textureSlotsComplete={texture_slots_complete}, "
-            f"sourceOnlyUnsupportedEmpty={not unsupported}"
-        )
-    return (
-        texture_dependency_closure_complete,
-        texture_slots_complete,
-        material_complete,
-    )
+    try:
+        return scene.validate_runtime_material_coverage(coverage, unsupported, context)
+    except ValueError as error:
+        raise VariantError(str(error)) from error
 
 
 def variant_asset_id(base_asset_id: str, signature: str) -> str:
@@ -210,12 +183,14 @@ def build_inventory(
     null_slot_count = 0
     any_negative_count = 0
     reflected_count = 0
+    visibility_basis_counts: Counter[str] = Counter()
+    source_hidden_count = 0
 
     for path in placement_paths:
         document, placement_sha256 = load_json_snapshot(path)
         schema_version = document.get("schemaVersion")
         if (
-            schema_version not in (1, 2)
+            schema_version not in (1, 2, 3)
             or document.get("propertyErrors")
             or document.get("unresolvedPlacements")
         ):
@@ -227,6 +202,12 @@ def build_inventory(
             level = str(placement.get("levelPackage", ""))
             if not level.casefold().startswith(level_prefix.casefold()):
                 continue
+            try:
+                visibility = scene.placement_source_visibility(placement, int(schema_version))
+            except ValueError as error:
+                raise VariantError(f"{path}: {error}") from error
+            visibility_basis_counts[visibility["basis"]] += 1
+            source_hidden_count += int(visibility["visible"] is False)
             asset = placement.get("asset")
             if not isinstance(asset, dict):
                 raise VariantError(f"placement asset is missing: {path}")
@@ -371,6 +352,9 @@ def build_inventory(
             "nullMaterialSlots": null_slot_count,
             "anyNegativeScalePlacements": any_negative_count,
             "reflectedPlacements": reflected_count,
+            "sourceVisibilityBasisCounts": dict(sorted(visibility_basis_counts.items())),
+            "sourceHiddenPlacements": source_hidden_count,
+            "visibilityFiltersAssetInventory": False,
             "levelCounts": dict(sorted(level_counts.items())),
         },
         "sources": source_rows,
@@ -1659,6 +1643,7 @@ def cook_variant(
     contracts: dict[str, dict[str, Any]],
     timeout: float,
     force: bool,
+    package_root: Path | None = None,
 ) -> dict[str, Any]:
     validate_variant_asset(asset)
     asset_id = str(asset["assetId"])
@@ -1862,6 +1847,15 @@ def cook_variant(
         if not model.is_file() or model.read_bytes()[:4] not in base.REQUIRED_WMODEL_MAGICS:
             raise VariantError(f"invalid cooked WModel: {model}")
         try:
+            geometry_receipt = base.preserve_cooked_geometry(
+                source_gltf=staged_gltf, model=model,
+                source_receipt_path=source_receipt_path, converter=converter,
+                command=command, source_object=str(asset["fullPath"]),
+                package_root=package_root,
+            )
+        except base.PipelineError as error:
+            raise VariantError(str(error)) from error
+        try:
             info = base.run(
                 [str(converter), "info", str(model)],
                 pack,
@@ -1895,6 +1889,9 @@ def cook_variant(
             "materialSignatureSha256": asset["materialSignatureSha256"],
             "model": f"{asset_id}/{asset_id}.wmodel",
             "sourceReceiptSha256": sha256_file(source_receipt_path),
+            "geometry": geometry_receipt["geometry"],
+            "runtimeProductAdmission": False,
+            "materialCoverageMeaning": "converter input coverage; native shader/environment fidelity requires separate source material validation",
             "materials": material_rows,
             "sourceOnlyUnsupported": source_only_unsupported,
             "runtimeCoverage": {
@@ -1979,6 +1976,10 @@ def build_runtime_manifest(
                 "model": model_relative.as_posix(),
                 "runtimeCoverage": runtime_coverage,
                 "sourceOnlyUnsupported": source_only_unsupported,
+                "materials": [
+                    {key: material.get(key) for key in ("slot", "runtimeName", "objectPath", "sourceOnlyReason")}
+                    for material in receipt["materials"]
+                ],
                 "files": sorted(install_files, key=lambda row: row["path"]),
             }
         )
@@ -2502,6 +2503,7 @@ def main(argv: Iterable[str] | None = None) -> int:
                     contracts=contracts,
                     timeout=args.converter_timeout,
                     force=args.force,
+                    package_root=args.package_root,
                 )
                 print(
                     json.dumps(

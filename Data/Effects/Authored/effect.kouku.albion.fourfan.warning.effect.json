@@ -776,6 +776,40 @@
             ],
             "interpolation": "linear"
           }
+        ],
+        "materialParameterTracks": [
+          {
+            "name": "inner",
+            "kind": "SCALAR",
+            "keys": [
+              {
+                "timeSeconds": 0.0,
+                "value": [
+                  0.0
+                ],
+                "arriveTangent": [
+                  0
+                ],
+                "leaveTangent": [
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "timeSeconds": 1.4733333333333334,
+                "value": [
+                  1
+                ],
+                "arriveTangent": [
+                  0
+                ],
+                "leaveTangent": [
+                  0
+                ],
+                "interpolation": "linear"
+              }
+            ]
+          }
         ]
       }
     },
@@ -1543,6 +1577,40 @@
               0
             ],
             "interpolation": "linear"
+          }
+        ],
+        "materialParameterTracks": [
+          {
+            "name": "inner",
+            "kind": "SCALAR",
+            "keys": [
+              {
+                "timeSeconds": 0.0,
+                "value": [
+                  0.0
+                ],
+                "arriveTangent": [
+                  0
+                ],
+                "leaveTangent": [
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "timeSeconds": 1.4733333333333334,
+                "value": [
+                  1
+                ],
+                "arriveTangent": [
+                  0
+                ],
+                "leaveTangent": [
+                  0
+                ],
+                "interpolation": "linear"
+              }
+            ]
           }
         ]
       }
@@ -2312,6 +2380,40 @@
             ],
             "interpolation": "linear"
           }
+        ],
+        "materialParameterTracks": [
+          {
+            "name": "inner",
+            "kind": "SCALAR",
+            "keys": [
+              {
+                "timeSeconds": 0.0,
+                "value": [
+                  0.0
+                ],
+                "arriveTangent": [
+                  0
+                ],
+                "leaveTangent": [
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "timeSeconds": 1.4733333333333334,
+                "value": [
+                  1
+                ],
+                "arriveTangent": [
+                  0
+                ],
+                "leaveTangent": [
+                  0
+                ],
+                "interpolation": "linear"
+              }
+            ]
+          }
         ]
       }
     },
@@ -3079,6 +3181,40 @@
               0
             ],
             "interpolation": "linear"
+          }
+        ],
+        "materialParameterTracks": [
+          {
+            "name": "inner",
+            "kind": "SCALAR",
+            "keys": [
+              {
+                "timeSeconds": 0.0,
+                "value": [
+                  0.0
+                ],
+                "arriveTangent": [
+                  0
+                ],
+                "leaveTangent": [
+                  0
+                ],
+                "interpolation": "linear"
+              },
+              {
+                "timeSeconds": 1.4733333333333334,
+                "value": [
+                  1
+                ],
+                "arriveTangent": [
+                  0
+                ],
+                "leaveTangent": [
+                  0
+                ],
+                "interpolation": "linear"
+              }
+            ]
           }
         ]
       }

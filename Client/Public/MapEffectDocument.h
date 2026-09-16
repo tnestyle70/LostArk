@@ -35,6 +35,8 @@ enum class MAP_EFFECT_ACTIVATION_POLICY
 enum class MAP_EFFECT_PLAYBACK_POLICY
 {
 	LOCAL_LOOP,
+	SOURCE_LOOP,
+	SOURCE_ONCE,
 	SERVER_CLOCK_SAMPLE,
 	END
 };
@@ -97,6 +99,8 @@ struct MAP_EFFECT_WORLD_PRESENTATION final
 		MAP_EFFECT_ACTIVATION_POLICY::LEVEL_ACTIVE;
 	std::string activationSetId;
 	std::vector<MAP_EFFECT_ACTIVATION_WINDOW> activationWindows;
+	// Zero preserves the legacy unlimited range; positive values are source meters.
+	f32_t maxDrawDistanceMeters = 0.f;
 	MAP_EFFECT_PLAYBACK_POLICY playbackPolicy =
 		MAP_EFFECT_PLAYBACK_POLICY::LOCAL_LOOP;
 
@@ -117,6 +121,7 @@ struct MAP_EFFECT_WORLD_PRESENTATION final
 			activationPolicy == other.activationPolicy &&
 			activationSetId == other.activationSetId &&
 			activationWindows == other.activationWindows &&
+			maxDrawDistanceMeters == other.maxDrawDistanceMeters &&
 			playbackPolicy == other.playbackPolicy;
 	}
 };
@@ -128,7 +133,7 @@ struct MAP_EFFECT_WORLD_PRESENTATION final
 class CMapEffectDocument final
 {
 public:
-	static constexpr size_t MAX_PRESENTATION_COUNT = 64u;
+	static constexpr size_t MAX_PRESENTATION_COUNT = 2048u;
 	static constexpr size_t MAX_SURFACE_OWNER_COUNT = 256u;
 
 public:

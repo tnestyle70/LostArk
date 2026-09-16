@@ -666,6 +666,8 @@ namespace LostArk::Server
 		float fRotationY = 0.f, fRotationW = 1.f;
 		float fScaleX = 1.f, fScaleY = 1.f, fScaleZ = 1.f;
 		bool bVisible = true;
+		bool bHasGripPosition = false;
+		std::array<float, 3u> GripPosition{}; // Baked physical hook point in world metres.
 	};
 	struct BOSS_LOGIC_WORLD_TRANSFORM_TRACK final
 	{
@@ -751,7 +753,17 @@ namespace LostArk::Server
 		CARD_MAZE_HIDE_NEXT,
 		CARD_MAZE_ENTER,
 		ALBION_BLUE_CIRCLE,
-		SUMMON_PATTERNS
+		SUMMON_PATTERNS,
+		SHOWTIME_PLAYER_TARGETS,
+		BOSS_TELEPORT_XZ,
+		BOSS_TRACK_TARGET,
+		ALBION_AIRBORNE,
+		CROSS_DIRECTION_CLONES
+	};
+
+	enum class ALBION_AIRBORNE_PHASE : std::uint8_t
+	{
+		NONE, JUMP, SELECT_PLAYER, APPEAR_PLAYER, DISAPPEAR, CENTER, SLAM
 	};
 
 	struct BOSS_PATTERN_SUMMON_PATTERN_SPAWN final
@@ -760,6 +772,12 @@ namespace LostArk::Server
 		std::string strPatternId;
 		std::array<float, 3u> PositionOffset{};
 		float fYawOffsetDegrees = 0.f;
+	};
+
+	struct BOSS_SHOWTIME_RANDOM_VOLLEY final
+	{
+		std::string strClientVisualId;
+		std::uint32_t iLifetimeMs = 0u;
 	};
 
 	struct BOSS_PATTERN_MECHANIC_TRIGGER final
@@ -783,7 +801,21 @@ namespace LostArk::Server
 		float fArenaHeightToleranceM = 0.f;
 		float fArenaMinimumSpacingM = 0.f;
 		bool bRandomPlayerOnly = false;
+		// Authored visual groups; the Server transports stable IDs, never asset paths.
+		std::string strFixedVisualId;
+		std::string strTrackingVisualId;
+		std::uint32_t iFixedLifetimeMs = 0u;
+		std::uint32_t iSpawnIntervalMs = 0u;
+		float fFollowSpeedScale = 0.f;
+		std::vector<BOSS_SHOWTIME_RANDOM_VOLLEY> RandomVolleys;
+		std::uint32_t iRandomSpawnIntervalMs = 0u;
+		float fRandomArenaRadiusM = 0.f, fRandomArenaHeightToleranceM = 0.f;
+		ALBION_AIRBORNE_PHASE eAirbornePhase = ALBION_AIRBORNE_PHASE::NONE;
+		float fAirborneHeightM = 0.f;
+		std::uint32_t iAirborneDurationMs = 0u;
 		std::vector<BOSS_PATTERN_SUMMON_PATTERN_SPAWN> PatternSpawns;
+		std::vector<std::string> DirectionPatternIds;
+		std::string strCloneEndStageId;
 	};
 
 	/* Presentation cues the pattern clock fires. The Server only knows the

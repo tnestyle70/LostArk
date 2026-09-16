@@ -297,6 +297,13 @@ bool_t Client::CEffectDocumentCodec::Validate(
 			strOutError = "Element metadata, kind, profile, or duplicate is invalid.";
 			return false;
 		}
+        if (Element.Material.eRenderProfile == EFFECT_RENDER_PROFILE::MULTIPLY_ONE_SIDED_DEPTH_READ &&
+            (Element.eKind != EFFECT_ELEMENT_KIND::PARTICLE ||
+             Element.SourceRecipe.strRendererShape != "sprite" || !Has_ArtistMaterialContract(Element)))
+        {
+            strOutError = "Multiply requires an admitted native source sprite material: " + Element.strElementId;
+            return false;
+        }
 		ElementsById.emplace(Element.strElementId, &Element);
 		const EFFECT_ACTION_CUE_ATTACHMENT_DESC& Attachment =
 			Element.ActionCueAttachment;

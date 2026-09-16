@@ -647,6 +647,15 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 		snapshot.iPatternSequence = entity.iPatternSequence;
 		snapshot.iPatternStartTick = entity.iPatternStartTick;
 		snapshot.iPatternStageIndex = entity.iPatternStageIndex;
+		if (entity.KoukuDirectionPlayback && !entity.strPatternId.empty())
+		{
+			const auto& child = *entity.KoukuDirectionPlayback;
+			snapshot.strPresentationPatternId = child.strPatternId;
+			snapshot.strPresentationActionId = child.strActionId;
+			snapshot.iPresentationPatternStartTick = child.iPatternStartTick;
+			snapshot.iPresentationActionStartTick = child.iActionStartTick;
+			snapshot.iPresentationPatternStageIndex = child.iPatternStageIndex;
+		}
 		snapshot.iCurrentHp = entity.iCurrentHp;
 		snapshot.iMaximumHp = entity.iMaximumHp;
 		snapshot.iPhase = entity.iPhase;

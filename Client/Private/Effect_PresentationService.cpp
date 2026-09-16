@@ -136,6 +136,7 @@ namespace
 		bool_t bNormalizeSourceImportScale = false;
 		Client::EFFECT_ATTACHMENT_ORIENTATION eOrientation =
 			Client::EFFECT_ATTACHMENT_ORIENTATION::BONE;
+        bool_t bAllowMeasuredUnitSourceBasis = false;
     };
 
 	struct ARTIST_31470_ANCHOR_HISTORY_SAMPLE final
@@ -479,6 +480,7 @@ namespace
 	std::string g_RuntimePreparationFailureStatus;
 	bool g_RuntimePreparationAbandoned = false;
 	uint64_t g_RuntimePreparationFailureRevision = 0u;
+	std::string g_RuntimePreparationBlockingStatus;
 	PRODUCT_PREPARATION_WORKER g_RuntimePreparationWorker;
 
 	void Fail_RuntimePreparationTarget(const std::string& effectId,
@@ -502,7 +504,8 @@ namespace
 		{
 			// A broken queue identity must not turn into an unbounded retry every frame.
 			g_RuntimePreparationFailureRevision = revision;
-			g_strStatus = status + " Failure receipt could not settle: " + commitStatus;
+			g_RuntimePreparationBlockingStatus = status + " Failure receipt could not settle: " + commitStatus;
+			g_strStatus = g_RuntimePreparationBlockingStatus;
 		}
 	}
 
@@ -1241,7 +1244,8 @@ namespace
 				fActionFacingYawDegrees, OutRoot);
 	}
 
-	bool_t Has_ExpectedArtistSourceBoneCombinedScale(const float4x4_t& RawBone)
+	bool_t Has_ExpectedArtistSourceBoneCombinedScale(const float4x4_t& RawBone,
+        const f32_t fExpectedScale = ARTIST_SOURCE_BONE_COMBINED_SCALE)
 	{
 		if (!Is_NonDegenerateAffineMatrix(RawBone))
 			return false;
@@ -1252,16 +1256,17 @@ namespace
 			RawBone._21, RawBone._22, RawBone._23);
 		const f32_t fScaleZ = Basis_Length(
 			RawBone._31, RawBone._32, RawBone._33);
+        const f32_t fToleranceMultiplier = fExpectedScale / ARTIST_SOURCE_BONE_COMBINED_SCALE;
 		const f32_t fMinimumScale = (std::min)({ fScaleX, fScaleY, fScaleZ });
 		const f32_t fMaximumScale = (std::max)({ fScaleX, fScaleY, fScaleZ });
-		if (std::abs(fScaleX - ARTIST_SOURCE_BONE_COMBINED_SCALE) >
-				ARTIST_SOURCE_BONE_COMBINED_SCALE_TOLERANCE ||
-			std::abs(fScaleY - ARTIST_SOURCE_BONE_COMBINED_SCALE) >
-				ARTIST_SOURCE_BONE_COMBINED_SCALE_TOLERANCE ||
-			std::abs(fScaleZ - ARTIST_SOURCE_BONE_COMBINED_SCALE) >
-				ARTIST_SOURCE_BONE_COMBINED_SCALE_TOLERANCE ||
+		if (std::abs(fScaleX - fExpectedScale) >
+				ARTIST_SOURCE_BONE_COMBINED_SCALE_TOLERANCE * fToleranceMultiplier ||
+			std::abs(fScaleY - fExpectedScale) >
+				ARTIST_SOURCE_BONE_COMBINED_SCALE_TOLERANCE * fToleranceMultiplier ||
+			std::abs(fScaleZ - fExpectedScale) >
+				ARTIST_SOURCE_BONE_COMBINED_SCALE_TOLERANCE * fToleranceMultiplier ||
 			fMaximumScale - fMinimumScale >
-				ARTIST_SOURCE_BONE_UNIFORM_SCALE_TOLERANCE)
+				ARTIST_SOURCE_BONE_UNIFORM_SCALE_TOLERANCE * fToleranceMultiplier)
 		{
 			return false;
 		}
@@ -1517,8 +1522,11 @@ namespace
                     Element.ActionCueAttachment.strRuntimeBoneName,
                     Element.ActionCueAttachment.SocketLocalTransform,
                     Client::CEffectPresentationService::Requires_SourceBoneImportScaleNormalization(
-                        Document.strEffectAssetId),
-					Element.ActionCueAttachment.eOrientation });
+                        Document.strEffectAssetId,
+                        Element.ActionCueAttachment.strRuntimeAnchorSlotId),
+					Element.ActionCueAttachment.eOrientation,
+                    Document.strEffectAssetId.starts_with("effect.valtan.action.") &&
+                        Document.strEffectAssetId.ends_with(".full.restore") });
             }
             for (const Client::EFFECT_SOURCE_MODULE_DESC& Module :
                 Element.SourceRecipe.Modules)
@@ -1674,7 +1682,16 @@ namespace
 						Request.strRuntimeBoneName.c_str()));
 				XMStoreFloat4x4(&AnchorBuild.OwnerWorld, OwnerWorld);
 				float4x4_t NormalizedBoneAnchorWorld{};
-				if (!Client::CEffectPresentationService::
+                // The installed normal body retains a 0.01 combined basis;
+                // the measured ghost body already has a unit basis. Only
+                // this source-action family admits the latter unchanged.
+                if (Request.bAllowMeasuredUnitSourceBasis &&
+                    Has_ExpectedArtistSourceBoneCombinedScale(AnchorBuild.RawBone, 1.f))
+                {
+                    XMStoreFloat4x4(&NormalizedBoneAnchorWorld,
+                        XMLoadFloat4x4(&AnchorBuild.RawBone) * OwnerWorld);
+                }
+				else if (!Client::CEffectPresentationService::
 					Build_SourceBoneAnchorWorld(
 						AnchorBuild, NormalizedBoneAnchorWorld))
 				{
@@ -2859,8 +2876,12 @@ Client::EFFECT_PRODUCT_PREWARM_TARGET_PROBE
 Client::CEffectPresentationService::Get_ProductCuePreparationProbe(
 	const std::vector<std::string>& EffectAssetIds)
 {
-	return g_ProductPrewarmQueue.Get_TargetProbe(
-		EffectAssetIds, CEffectCatalog::Get_RuntimeRevision());
+	const uint64_t revision = CEffectCatalog::Get_RuntimeRevision();
+	auto probe = g_ProductPrewarmQueue.Get_TargetProbe(EffectAssetIds, revision);
+	if (revision != 0u && g_RuntimePreparationFailureRevision == revision &&
+		probe.bCatalogRevisionCurrent && probe.iPendingCount != 0u)
+		probe.strBlockingFailure = g_RuntimePreparationBlockingStatus;
+	return probe;
 }
 
 std::string Client::CEffectPresentationService::Get_ProductCuePreparationFailure(
@@ -3139,7 +3160,15 @@ void Client::CEffectPresentationService::Advance_LoadingProductCuePreparation(
 		   resources away from the UI frame. */
 		Staged.reset();
 		WorkerResult.pImmutablePayload.reset();
-		if (pJob == g_RuntimePreparationJob) g_RuntimePreparationFailureStatus = Status;
+		if (pJob == g_RuntimePreparationJob)
+		{
+			g_RuntimePreparationFailureStatus = Status;
+			// Settle the known target while its owner still pins the FIFO front.
+			// Releasing first lets next-frame priority enqueue move it behind another
+			// target before the cancelled worker finishes and its failure is consumed.
+			Fail_RuntimePreparationTarget(g_RuntimePreparationEffectId,
+				pJob->Get_CurrentCatalogRevision(), E_FAIL, Status);
+		}
 		g_strStatus = Status;
 		OutputDebugStringA(("[Client][EffectPresentation] " + Status + "\n").c_str());
 		std::string ReleaseStatus;
@@ -3156,6 +3185,17 @@ void Client::CEffectPresentationService::Advance_LoadingProductCuePreparation(
 				Displaced, CancelStatus);
 		}
 	};
+
+	// A new target can request a pacing yield while this worker is staging.
+	// Keep its completed result in the mailbox until the owned front is ready;
+	// YIELDED is not an identity failure. Terminal results still consume IDLE.
+	if (pJob->Get_PendingResultCount() == 0u)
+		return;
+	std::string EffectId;
+	const EFFECT_PRODUCT_PREWARM_STEP_RESULT Step =
+		g_ProductPrewarmQueue.Begin_LoadingFrame(iJobEpoch, EffectId);
+	if (EFFECT_PRODUCT_PREWARM_STEP_RESULT::YIELDED == Step)
+		return;
 
 	if (!pJob->Try_Pop_Result(WorkerResult))
 		return;
@@ -3195,9 +3235,6 @@ void Client::CEffectPresentationService::Advance_LoadingProductCuePreparation(
 		return;
 	}
 
-	std::string EffectId;
-	const EFFECT_PRODUCT_PREWARM_STEP_RESULT Step =
-		g_ProductPrewarmQueue.Begin_LoadingFrame(iJobEpoch, EffectId);
 	if (EFFECT_PRODUCT_PREWARM_STEP_RESULT::READY != Step ||
 		EffectId != WorkerResult.strEffectAssetId)
 	{
@@ -3732,16 +3769,16 @@ void Client::CEffectPresentationService::Advance_ProductCuePreparation(
 	if (epoch == 0u || !job->Open(epoch, iCatalogRevision, status) ||
 		!Begin_LoadingProductCuePreparation(job, epoch, {EffectId}, status))
 	{
-		Cancel_LoadingProductCuePreparation(job, epoch);
 		g_strStatus = "Product Effect preparation could not start: " + status;
 		Fail_RuntimePreparationTarget(EffectId, iCatalogRevision, E_FAIL, g_strStatus);
+		Cancel_LoadingProductCuePreparation(job, epoch);
 		return;
 	}
 	if (!g_RuntimePreparationWorker.Submit(pDevice, pContext, job))
 	{
-		Cancel_LoadingProductCuePreparation(job, epoch);
 		g_strStatus = "Product Effect preparation worker could not be started.";
 		Fail_RuntimePreparationTarget(EffectId, iCatalogRevision, E_FAIL, g_strStatus);
+		Cancel_LoadingProductCuePreparation(job, epoch);
 		return;
 	}
 	g_RuntimePreparationEpoch = epoch;
@@ -3933,14 +3970,25 @@ bool_t Client::CEffectPresentationService::Reload_SelectedProductEffect(
 }
 
 bool_t Client::CEffectPresentationService::Requires_SourceBoneImportScaleNormalization(
-	const std::string& strEffectAssetId)
+	const std::string& strEffectAssetId,
+	const std::string& strRuntimeAnchorSlotId)
 {
+	// The butterfly and its two companion emitters share this measured pelvis
+	// anchor. Leave the other Artist foot and camera attachments unchanged.
+	if (strEffectAssetId == "effect.artist.skill.31930.full.restore" &&
+		strRuntimeAnchorSlotId == "GRABBED_SOCKET_BODY")
+		return true;
+
 	// Source particles are already meters. These measured Warlord/Lance
 	// combined bones retain a 0.01 import basis while translations are meters.
 	// Normalize that basis once; preserve source StartSize and model geometry.
 	// Vehicle models (admission 0.0001, rig root 100) measure the same 0.01 basis.
 	return strEffectAssetId.starts_with("effect.vehicle.") ||
+		(strEffectAssetId.starts_with("effect.valtan.action.") &&
+		strEffectAssetId.ends_with(".full.restore")) ||
 		strEffectAssetId == WARLORD_Q_SOURCE_BONE_SCALE.strEffectAssetId ||
+		strEffectAssetId == "effect.warlord.skill.17250.clip1.full.restore" ||
+		strEffectAssetId == "effect.warlord.skill.17250.clip2.full.restore" ||
 		strEffectAssetId == "effect.lancemaster.skill.34610.clip1.full.restore" ||
 		strEffectAssetId == "effect.lancemaster.skill.34610.clip2.full.restore" ||
 		strEffectAssetId == "effect.lancemaster.skill.34610.clip3.full.restore" ||
@@ -4912,7 +4960,8 @@ bool_t Client::CEffectPresentationService::Spawn_LevelPlacement(
 		!Is_NonDegenerateAffineMatrix(Desc.RootWorld) ||
 		!std::isfinite(Desc.fInitialSampleTimeSeconds) ||
 		Desc.fInitialSampleTimeSeconds < 0.f ||
-		(Desc.bExternalModelCueAnchors && !Desc.bExternallySampled))
+		(Desc.bExternalModelCueAnchors && !Desc.bExternallySampled) ||
+		(Desc.bOwnerSustainedSourceLoops && Desc.bExternallySampled))
 	{
 		strOutStatus = "Level-placement Effect spawn descriptor is invalid.";
 		return false;
@@ -4933,6 +4982,7 @@ bool_t Client::CEffectPresentationService::Spawn_LevelPlacement(
 	spawn.bLevelOwned = true;
 	spawn.iLevelOwnerIndex = Desc.iLevelIndex;
 	spawn.bExternallySampled = Desc.bExternallySampled;
+	spawn.bOwnerSustainedSourceLoops = Desc.bOwnerSustainedSourceLoops;
 	spawn.bExternalModelCueAnchors = Desc.bExternalModelCueAnchors;
 	spawn.strLevelPlacementId = Desc.strPlacementId;
 	if (!Spawn(spawn, strOutStatus))
@@ -5279,8 +5329,10 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
 		(Desc.bVehicleModelAnchors &&
 			(nullptr == Owner.pCharacter || Desc.bUseWorldRoot || nullptr == Owner.Get_Model())) ||
 		(Desc.bOwnerSustainedSourceLoops &&
-			(!Desc.bUseWorldRoot || Desc.bLevelOwned || Desc.bExternallySampled ||
-				!Owner.pBoss || Owner.pCharacter || Desc.eStopPolicy != EFFECT_STOP_POLICY::NATURAL)))
+			(!Desc.bUseWorldRoot || Desc.bExternallySampled || Owner.pCharacter ||
+				(!Desc.bLevelOwned && !Owner.pBoss) ||
+				(Desc.bLevelOwned && Owner.pBoss) ||
+				Desc.eStopPolicy != EFFECT_STOP_POLICY::NATURAL)))
     {
         strOutStatus = "Effect spawn descriptor is invalid or not admitted.";
         g_strStatus = strOutStatus;
@@ -5863,6 +5915,7 @@ void Client::CEffectPresentationService::Release_PreparedResources()
 	g_RuntimePreparationJob.reset(); g_RuntimePreparationEpoch = 0u;
 	g_RuntimePreparationEffectId.clear(); g_RuntimePreparationFailureStatus.clear(); g_RuntimePreparationAbandoned = false;
 	g_RuntimePreparationFailureRevision = 0u;
+	g_RuntimePreparationBlockingStatus.clear();
     Release_ProductCamera(); g_ProductCameraCache.clear();
 	g_ProductPrewarmQueue.Clear();
 	g_ProductEffectBudgetCosts.clear();

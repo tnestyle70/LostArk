@@ -389,6 +389,7 @@ public:
 		uint32_t iPositionMs,
 		bool_t bPause,
 		std::string& strOutStatus);
+	/* Stops this composition's pattern and source-sequence preview owners. */
 	void Stop_ValtanCompositionPattern(std::string& strOutStatus);
 	/* A submitted Server replay retires the local clone without discarding drafts.
 	   Explicit local staging re-enables preview creation. */

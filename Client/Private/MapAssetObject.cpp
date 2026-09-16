@@ -88,7 +88,7 @@ HRESULT CMapAssetObject::Initialize(void* pArg)
 
 	if (FAILED(__super::Initialize(pArg)) ||
 		FAILED(Ready_Components(
-			desc.prototypeLevelIndex, desc.modelPrototypeTag)))
+			desc.prototypeLevelIndex, desc.modelPrototypeTag, desc.materialVariant)))
 		return E_FAIL;
 
 	m_iPlacementId = desc.placementId;
@@ -395,7 +395,8 @@ void CMapAssetObject::Set_PlacementTransform(const float3_t& position,
 
 HRESULT CMapAssetObject::Ready_Components(
 	uint32_t prototypeLevelIndex,
-	const std::wstring& modelPrototypeTag)
+	const std::wstring& modelPrototypeTag,
+	const std::optional<Engine::MODEL_ASSET_LOAD_DESC>& materialVariant)
 {
 	if (FAILED(__super::Add_Component(
 		prototypeLevelIndex,
@@ -406,6 +407,14 @@ HRESULT CMapAssetObject::Ready_Components(
 			TEXT("Com_Model"), m_pModelCom)))
 		return E_FAIL;
 
+	if (materialVariant)
+	{
+		auto variant = CModel::Create_MaterialVariant(*m_pModelCom, *materialVariant);
+		if (!variant)
+			return E_FAIL;
+		m_pModelCom = std::move(variant);
+		m_Components.at(TEXT("Com_Model")) = m_pModelCom;
+	}
 	return S_OK;
 }
 

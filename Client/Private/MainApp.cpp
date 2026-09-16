@@ -1070,7 +1070,7 @@ namespace
     if (instance->anchorKind == "WORLD")
     {
      float3_t baseline, position;
-     if (!arena->Try_GetWorldSequencePlacementBaseline(*instance, baseline))
+     if (!arena->Try_GetWorldSequencePlacementBaseline(*instance, baseline, &sequences))
      { status = "Resource preview cannot resolve its saved placement group."; return false; }
      if (!arena->Try_Get_AuthoringForwardPlacement(position, status)) return false;
      offset = {position.x - baseline.x, position.y - baseline.y, position.z - baseline.z};
@@ -1372,6 +1372,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		if (!m_pKoukuPresentationPlayer)
 			m_pKoukuPresentationPlayer = std::make_unique<CKoukuSaydonPresentationPlayer>(
 				m_pDevice, m_pContext, m_RenderingProfiles);
+		arena->Set_TargetedCombatPresentationPlayer(m_pKoukuPresentationPlayer.get());
 		std::vector<KOUKU_BOSS_PRESENTATION_VIEW> bosses;
 		m_pKoukuPresentationPlayer->Set_LightResources(&m_LightResources);
 		std::vector<KOUKU_CARD_PRESENTATION_VIEW> cards;
@@ -1445,10 +1446,11 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	{
 		if (m_bDeveloperToolsVisible && IsDebugToolVisible(DEBUG_TOOL::SEQUENCER) &&
 			nullptr != m_pSequencerTool &&
-			m_pSequencerTool->Is_BossSelected() && COMPOSITION_WORKBENCH_BOSS::VALTAN == m_pSequencerTool->Get_SelectedBoss())
+			m_pSequencerTool->Uses_ValtanSession())
 		{
 			StopCompositionPreview(m_eCompositionPreviewOwner);
-			m_eDebugInputOwner = DEBUG_TOOL::SEQUENCER;
+			m_eDebugInputOwner = m_pSequencerTool->Get_SelectedTarget() == COMPOSITION_WORKBENCH_TARGET::SEQUENCE ?
+				DEBUG_TOOL::SEQUENCER_BENCHMARK : DEBUG_TOOL::SEQUENCER;
 			m_strToolStatus =
 				"Valtan Action Workbench reclaimed viewport/preview input.";
 		}
@@ -1670,8 +1672,9 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		m_pValtanActionWorkbench->Set_PreviewOwnerActive(
 			m_bDeveloperToolsVisible &&
 			IsDebugToolVisible(DEBUG_TOOL::SEQUENCER) &&
-			DEBUG_TOOL::SEQUENCER == m_eDebugInputOwner && nullptr != m_pSequencerTool &&
-			m_pSequencerTool->Is_BossSelected() && COMPOSITION_WORKBENCH_BOSS::VALTAN == m_pSequencerTool->Get_SelectedBoss());
+			nullptr != m_pSequencerTool && m_pSequencerTool->Uses_ValtanSession() &&
+			m_eDebugInputOwner == (m_pSequencerTool->Get_SelectedTarget() == COMPOSITION_WORKBENCH_TARGET::SEQUENCE ?
+				DEBUG_TOOL::SEQUENCER_BENCHMARK : DEBUG_TOOL::SEQUENCER));
 	}
 	struct COMPOSITION_SESSION_ROUTE
 	{
@@ -1880,10 +1883,27 @@ void CMainApp::Update(const f32_t fTimeDelta)
     pattern, startClockMs, startPaused, targetAssetName))
   {
    const bool completeSequenceRequested = workbench->Is_CompleteSequencePlaying();
+   if (!completeSequenceRequested && route.owner == DEBUG_TOOL::SEQUENCER_BENCHMARK &&
+    !m_strKoukuCompletePlayFlowGate.empty())
+    CancelKoukuGateCompletePlay("Switched to Play Sequence; automatic combat entry was cancelled.");
    bool previewAccepted = false;
    const bool hasAnimation = std::any_of(pattern.Stages.begin(), pattern.Stages.end(),
     [](const auto& stage) { return !stage.AnimationOccurrences.empty(); });
-   if (hasAnimation && (!pattern.strActorProfileId.empty() || pattern.BossMotion || pattern.fAnimationRootVerticalScale != 1.0) && targetAssetName.empty())
+   const auto& previewDocument = workbench->Get_PatternPreviewDocument();
+   const bool hasActorLogic = std::any_of(pattern.SummonOccurrences.begin(), pattern.SummonOccurrences.end(),
+    [&](const auto& summon) {
+     return !summon.PatternSpawns.empty() || std::any_of(previewDocument.Summons.begin(), previewDocument.Summons.end(),
+      [&](const auto& definition) { return definition.strSummonId == summon.strSummonId &&
+       definition.strSummonKind == "CROSS_DIRECTION_CLONES"; });
+    }) ||
+    std::any_of(pattern.LogicOccurrences.begin(), pattern.LogicOccurrences.end(), [&](const auto& box) {
+     return box.bEnabled && std::any_of(previewDocument.Logics.begin(), previewDocument.Logics.end(),
+      [&](const auto& logic) { return logic.strLogicId == box.strLogicId &&
+       (logic.strJudgementKind == "CROSS_DIRECTION_CLONES" || logic.strJudgementKind == "BOSS_TRACK_TARGET" ||
+        logic.strJudgementKind == "SHOWTIME_PLAYER_TARGETS" || logic.strTriggerKind == "BOSS_TELEPORT_XZ" ||
+        logic.strTriggerKind == "ALBION_AIRBORNE" || logic.strTriggerKind == "ALBION_BLUE_CIRCLE"); });
+    });
+   if ((hasAnimation || hasActorLogic) && (!pattern.strActorProfileId.empty() || pattern.BossMotion || pattern.fAnimationRootVerticalScale != 1.0) && targetAssetName.empty())
    {
     auto document = workbench->Get_PatternPreviewDocument();
     for (auto& previewPattern : document.Patterns)
@@ -1936,6 +1956,12 @@ void CMainApp::Update(const f32_t fTimeDelta)
    }
    else if (previewed) previewRouteStatus = "Presentation preview requires the KoukuSaydon Arena.";
    else previewRouteStatus = m_strToolStatus;
+   }
+   if (previewAccepted && route.owner == DEBUG_TOOL::SEQUENCER_BENCHMARK)
+   {
+    previewAccepted = BeginKoukuSequenceArrivals(workbench->Get_PatternPreviewDocument(), pattern,
+     startClockMs, previewRouteStatus);
+    if (!previewAccepted) StopCompositionPreview(route.owner);
    }
    workbench->Notify_SequencePreviewAdmission(previewAccepted, previewRouteStatus);
    if (completeSequenceRequested && !previewAccepted)
@@ -2320,6 +2346,27 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		else if (!pivotReady && finalPreview.bPlaying)
 			finalPreview.strStatus = "Preview requires an active arena character or animation target.";
 	}
+	if (!previewFailed && m_eCompositionPreviewOwner == DEBUG_TOOL::SEQUENCER_BENCHMARK)
+	{
+		std::string arrivalStatus;
+		if (!SampleKoukuSequenceArrivals(finalPreview.iClockMs,
+			(finalPreview.bPlaying && !finalPreview.bPaused) || !completedPreviewId.empty(), arrivalStatus))
+			rejectPreview(finalPreview.strPatternId, arrivalStatus);
+		else
+		{
+			if (!completedPreviewId.empty())
+				m_strKoukuSequenceArrivalCompletedPreview = completedPreviewId;
+			if (!m_strKoukuSequenceArrivalCompletedPreview.empty())
+			{
+				if (KoukuSequenceArrivalsPending())
+				{
+					completedPreviewId.clear();
+					finalPreview.strStatus = "Sequence finished; waiting for Server player arrival approval.";
+				}
+				else completedPreviewId = std::exchange(m_strKoukuSequenceArrivalCompletedPreview, {});
+			}
+		}
+	}
 	if (previewStatusOwner == m_eCompositionPreviewOwner && !activePreviewRouteStatus.empty())
 		finalPreview.strStatus = activePreviewRouteStatus;
 	if (!previewFailed && !worldAnchorWaitingStatus.empty())
@@ -2334,9 +2381,23 @@ void CMainApp::Update(const f32_t fTimeDelta)
 			if (!completedPreviewId.empty() && route.workbench->Advance_CompleteSequencePlay(completedPreviewId, &completedGate))
 			{
 				finalPreview.strStatus = route.workbench->Get_Status();
-				if (!route.workbench->Is_CompleteSequencePlaying()) StopCompositionPreview(route.owner);
+				if (!route.workbench->Is_CompleteSequencePlaying())
+				{
+					m_bKoukuCompletePreservesArrivalPosition = std::any_of(m_KoukuSequenceArrivalCues.begin(),
+						m_KoukuSequenceArrivalCues.end(), [](const auto& cue) { return cue.moved; });
+					StopCompositionPreview(route.owner);
+					if (auto* arena = CLevel_KakulSaydonArena::Get_Active()) arena->Debug_ReturnToPlayerCamera();
+				}
 				if (!completedGate.empty() && route.owner == DEBUG_TOOL::SEQUENCER_BENCHMARK)
 					FinishKoukuGateCompletePlay(completedGate, finalPreview.strStatus);
+				route.workbench->Set_PreviewState(finalPreview);
+			}
+			else if (!completedPreviewId.empty() && route.owner == DEBUG_TOOL::SEQUENCER_BENCHMARK)
+			{
+				StopCompositionPreview(route.owner);
+				if (auto* arena = CLevel_KakulSaydonArena::Get_Active()) arena->Debug_ReturnToPlayerCamera();
+				m_eDebugInputOwner = DEBUG_TOOL::NONE;
+				finalPreview.strStatus = "Sequence finished. Player camera restored; combat was not started.";
 				route.workbench->Set_PreviewState(finalPreview);
 			}
 		}
@@ -7281,6 +7342,7 @@ void CMainApp::ClaimCompositionPreviewOwner(const DEBUG_TOOL owner)
 void CMainApp::StopCompositionPreview(const DEBUG_TOOL owner)
 {
 	if (owner == DEBUG_TOOL::NONE || m_eCompositionPreviewOwner != owner) return;
+	if (owner == DEBUG_TOOL::SEQUENCER_BENCHMARK) ClearKoukuSequenceArrivals();
 	if (m_pAnimationTool) { std::string stoppedAnimationStatus; (void)m_pAnimationTool->Stop_KoukuCompositionPreview(stoppedAnimationStatus); }
 	if (m_pKoukuPresentationPlayer) m_pKoukuPresentationPlayer->Stop_Preview();
 	if (auto* arena = CLevel_KakulSaydonArena::Get_Active()) arena->Debug_StopCompositionWorldPreview();
@@ -7443,14 +7505,26 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 		m_pWorldObjectTool->Set_LinkedSaveCallbacks(
 			[this](std::string& status) {
 				for (auto* editor : {m_pKoukuSaydonActionWorkbench.get(), m_pSequenceActionWorkbench.get()})
-					if (editor && (editor->Is_Dirty() || editor->Is_PublishRunning()))
-					{ status = "Save the open Pattern/Sequence edits and wait for Publish before saving linked Object rows. All drafts and files are preserved."; return false; }
+				{
+					if (!editor) continue;
+					const std::string owner = editor == m_pKoukuSaydonActionWorkbench.get() ? "Pattern" : "Sequence";
+					if (editor->Is_PublishRunning())
+					{ status = owner + " Publish is already running. Wait for it to finish, then retry Object Save. All edits are preserved."; return false; }
+					if (editor->Is_Dirty())
+					{ status = "Save " + owner + " edits first, including newly created Logic definitions, then retry Object Save. Starting Publish is not required. All edits are preserved."; return false; }
+				}
 				return true;
 			},
 			[this](bool publishPatterns, std::string& status) {
 				for (auto* editor : {m_pKoukuSaydonActionWorkbench.get(), m_pSequenceActionWorkbench.get()})
-					if (editor && (editor->Is_Dirty() || editor->Is_PublishRunning()))
-					{ status = "Pattern/Sequence now has edits or a running Publish. Its draft is preserved; resolve it, then retry Object Save."; return false; }
+				{
+					if (!editor) continue;
+					const std::string owner = editor == m_pKoukuSaydonActionWorkbench.get() ? "Pattern" : "Sequence";
+					if (editor->Is_PublishRunning())
+					{ status = "Object is saved; linked reload waits for the running " + owner + " Publish. Retry Object Save after it finishes."; return false; }
+					if (editor->Is_Dirty())
+					{ status = "Object is saved; new " + owner + " edits are preserved. Save them first, then retry Object Save. Starting Publish is not required."; return false; }
+				}
 				if (publishPatterns && !m_pKoukuSaydonActionWorkbench)
 				{
 					m_pKoukuSaydonActionWorkbench = make_unique<CKoukuSaydonActionWorkbench>();
@@ -7809,48 +7883,158 @@ void CMainApp::RenderArenaCameraAndPlayerControls()
 		else if (nullptr != kouku) kouku->Set_DebugCameraSpeed(speed);
 		else if (nullptr != characterSelect) (void)camera->Set_FreeMoveSpeed(speed);
 	};
-	ImGui::SeparatorText("Arena Camera / Player");
-	ImGui::Text("Current arena: %s", nullptr != valtan ? "Valtan" : nullptr != kouku ? "KoukuSaydon" : "Character Select");
-	f32_t speed = camera->Get_FreeMoveSpeed();
-	if (ImGui::DragFloat("Free camera speed (m/s)", &speed, 0.5f,
-		CCamera_Free::MIN_FREE_MOVE_SPEED, CCamera_Free::MAX_FREE_MOVE_SPEED,
-		"%.1f", ImGuiSliderFlags_AlwaysClamp))
-		setSpeed(speed);
-	if (ImGui::Button("Reset speed to 20 m/s"))
-		setSpeed(CCamera_Free::DEFAULT_ARENA_MOVE_SPEED);
-	ImGui::TextDisabled("Shift: x%.0f (%.1f m/s).",
-		CCamera_Free::FREE_MOVE_SPRINT_MULTIPLIER,
-		camera->Get_FreeMoveSpeed() * CCamera_Free::FREE_MOVE_SPRINT_MULTIPLIER);
-	ImGui::TextDisabled(characterSelect ? "Free-camera speed lasts for this map visit." :
-		"Free-camera speed is saved per arena for this session.");
+	if (ImGui::CollapsingHeader("Arena Camera / Player", ImGuiTreeNodeFlags_DefaultOpen))
+	{
+		ImGui::Text("Current arena: %s", nullptr != valtan ? "Valtan" : nullptr != kouku ? "KoukuSaydon" : "Character Select");
+		f32_t speed = camera->Get_FreeMoveSpeed();
+		if (ImGui::DragFloat("Free camera speed (m/s)", &speed, 0.5f,
+			CCamera_Free::MIN_FREE_MOVE_SPEED, CCamera_Free::MAX_FREE_MOVE_SPEED,
+			"%.1f", ImGuiSliderFlags_AlwaysClamp))
+			setSpeed(speed);
+		if (ImGui::Button("Reset speed to 20 m/s"))
+			setSpeed(CCamera_Free::DEFAULT_ARENA_MOVE_SPEED);
+		ImGui::TextDisabled("Shift: x%.0f (%.1f m/s).",
+			CCamera_Free::FREE_MOVE_SPRINT_MULTIPLIER,
+			camera->Get_FreeMoveSpeed() * CCamera_Free::FREE_MOVE_SPRINT_MULTIPLIER);
+		ImGui::TextDisabled(characterSelect ? "Free-camera speed lasts for this map visit." :
+			"Free-camera speed is saved per arena for this session.");
 
-	const bool_t freeCamera = !camera->Is_FollowRequested() &&
-		!camera->Is_PresentationOverrideActive();
-	ImGui::BeginDisabled(nullptr != characterSelect || !freeCamera || controller->Is_DebugPlayerPlacementPending() ||
-		controller->Is_DebugPlayerPlacementArmed());
-	if (ImGui::Button("Move Player"))
-	{
-		const auto world = nullptr != valtan ? LostArk::Shared::WORLD_ID::VALTAN_ARENA :
-			LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA;
-		if (controller->Begin_DebugPlayerPlacement(world))
-			camera->Set_MouseLookEnabled(false);
+		const bool_t freeCamera = !camera->Is_FollowRequested() &&
+			!camera->Is_PresentationOverrideActive();
+		ImGui::BeginDisabled(nullptr != characterSelect || !freeCamera || controller->Is_DebugPlayerPlacementPending() ||
+			controller->Is_DebugPlayerPlacementArmed());
+		if (ImGui::Button("Move Player"))
+		{
+			const auto world = nullptr != valtan ? LostArk::Shared::WORLD_ID::VALTAN_ARENA :
+				LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA;
+			if (controller->Begin_DebugPlayerPlacement(world))
+				camera->Set_MouseLookEnabled(false);
+		}
+		ImGui::EndDisabled();
+		if (controller->Is_DebugPlayerPlacementArmed())
+		{
+			ImGui::SameLine();
+			if (ImGui::Button("Cancel Pick"))
+				controller->Cancel_DebugPlayerPlacement();
+		}
+		ImGui::TextDisabled("F6 free camera -> Move Player -> click ground. Esc / right-click cancels.");
+		ImGui::TextDisabled("Tab toggles mouse-look. Only your player moves after Server approval.");
+		if (!controller->Get_DebugPlayerPlacementStatus().empty())
+			ImGui::TextWrapped("%s", controller->Get_DebugPlayerPlacementStatus().c_str());
+		if (nullptr != characterSelect)
+			ImGui::TextDisabled("Move Player is available in Valtan and KoukuSaydon arenas.");
 	}
-	ImGui::EndDisabled();
-	if (controller->Is_DebugPlayerPlacementArmed())
-	{
-		ImGui::SameLine();
-		if (ImGui::Button("Cancel Pick"))
-			controller->Cancel_DebugPlayerPlacement();
-	}
-	ImGui::TextDisabled("F6 free camera -> Move Player -> click ground. Esc / right-click cancels.");
-	ImGui::TextDisabled("Tab toggles mouse-look. Only your player moves after Server approval.");
-	if (!controller->Get_DebugPlayerPlacementStatus().empty())
-		ImGui::TextWrapped("%s", controller->Get_DebugPlayerPlacementStatus().c_str());
 	if (nullptr != characterSelect)
-		ImGui::TextDisabled("Move Player is available in Valtan and KoukuSaydon arenas.");
+		RenderCharacterSelectFloorSwapControls();
 	RenderArenaFollowCameraSettings();
 	if (nullptr != kouku)
 		RenderKoukuUiPreviewControls();
+}
+
+void CMainApp::RenderCharacterSelectFloorSwapControls()
+{
+	Engine::CProfilerScope panelScope(CGameInstance::Get().Get_Profiler(), "ImGui.Hub.CharacterSelectFloorSwap");
+	if (!ImGui::CollapsingHeader("Character Select Floor Swap", ImGuiTreeNodeFlags_DefaultOpen))
+		return;
+	CLevel_CharacterSelect* characterSelect = CLevel_CharacterSelect::Get_Active();
+	if (nullptr == characterSelect)
+	{
+		ImGui::TextDisabled("Enter Character Select to change its center floor.");
+		return;
+	}
+	ImGui::PushID("CharacterSelectFloorSwap");
+	if (ImGui::Button("Reload floor options"))
+		(void)characterSelect->Debug_ReloadFloorSwapOptions();
+	const auto& options = characterSelect->Debug_GetFloorSwapOptions();
+	const auto findOption = [&options](const std::string& id)
+	{
+		return std::find_if(options.begin(), options.end(), [&id](const auto& option)
+			{ return option.id == id; });
+	};
+	if (m_strCharacterSelectFloorDraftId.empty() && !options.empty())
+		m_strCharacterSelectFloorDraftId = options.front().id;
+	const auto selected = findOption(m_strCharacterSelectFloorDraftId);
+	const char* preview = selected != options.end() ? selected->label.c_str() : "Choose a floor";
+	if (ImGui::BeginCombo("Floor", preview))
+	{
+		for (const auto& option : options)
+		{
+			ImGui::PushID(option.id.c_str());
+			const bool isSelected = option.id == m_strCharacterSelectFloorDraftId;
+			if (ImGui::Selectable(option.label.c_str(), isSelected))
+				m_strCharacterSelectFloorDraftId = option.id;
+			if (isSelected) ImGui::SetItemDefaultFocus();
+			ImGui::PopID();
+		}
+		ImGui::EndCombo();
+	}
+	if (options.empty())
+		ImGui::TextDisabled("Reload floor options to load the available presets.");
+	ImGui::DragFloat3("Additional offset XYZ (m)", &m_vCharacterSelectFloorOffsetMeters.x,
+		0.01f, -50.f, 50.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+	ImGui::DragFloat("Additional yaw (deg)", &m_fCharacterSelectFloorYawDegrees,
+		0.25f, -180.f, 180.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+	constexpr const char* environmentNames[] = { "Source stage environment", "Center floor environment" };
+	ImGui::Combo("Environment", &m_iCharacterSelectFloorEnvironment,
+		environmentNames, IM_ARRAYSIZE(environmentNames));
+	ImGui::Checkbox("Compare shader default brightness (1)", &m_bCharacterSelectFloorShaderDefaultBrightness);
+	ImGui::TextDisabled("Off keeps authored brightness. On sets floor and star brightness to 1; use Apply floor.");
+	ImGui::TextWrapped("The preset keeps the floor at its original layer and raises only the star to clear the bridge.");
+	ImGui::TextDisabled("Additional XYZ offset moves both pieces from their preset positions.");
+	ImGui::BeginDisabled(findOption(m_strCharacterSelectFloorDraftId) == options.end());
+	if (ImGui::Button("Apply floor"))
+	{
+		CHARACTER_SELECT_FLOOR_SWAP_SETTINGS settings;
+		settings.offsetMeters = m_vCharacterSelectFloorOffsetMeters;
+		settings.yawDegrees = m_fCharacterSelectFloorYawDegrees;
+		settings.environment = static_cast<CHARACTER_SELECT_FLOOR_ENVIRONMENT>(m_iCharacterSelectFloorEnvironment);
+		settings.useShaderDefaultBrightness = m_bCharacterSelectFloorShaderDefaultBrightness;
+		(void)characterSelect->Debug_ApplyFloorSwap(m_strCharacterSelectFloorDraftId, settings);
+	}
+	ImGui::EndDisabled();
+	ImGui::SameLine();
+	if (ImGui::Button("Restore original floor"))
+		(void)characterSelect->Debug_ResetFloorSwap();
+	ImGui::SameLine();
+	if (ImGui::Button("Reset adjustments"))
+	{
+		m_vCharacterSelectFloorOffsetMeters = {};
+		m_fCharacterSelectFloorYawDegrees = 0.f;
+		m_iCharacterSelectFloorEnvironment = 1;
+		m_bCharacterSelectFloorShaderDefaultBrightness = false;
+	}
+	const auto& appliedId = characterSelect->Debug_GetFloorSwapSelectedId();
+	const auto applied = findOption(appliedId);
+	ImGui::TextWrapped("Applied floor: %s", appliedId.empty() ? "Original layout" :
+		(applied != options.end() ? applied->label.c_str() : appliedId.c_str()));
+	if (!appliedId.empty())
+	{
+		const auto& appliedSettings = characterSelect->Debug_GetFloorSwapSettings();
+		const char* appliedEnvironment = "Unknown environment";
+		switch (appliedSettings.environment)
+		{
+		case CHARACTER_SELECT_FLOOR_ENVIRONMENT::SOURCE_STAGE:
+			appliedEnvironment = "Source stage environment";
+			break;
+		case CHARACTER_SELECT_FLOOR_ENVIRONMENT::CENTER_FLOOR:
+			appliedEnvironment = "Center floor environment";
+			break;
+		}
+		ImGui::Text("Applied additional offset: (%.3f, %.3f, %.3f) m | yaw: %.2f deg",
+			appliedSettings.offsetMeters.x, appliedSettings.offsetMeters.y,
+			appliedSettings.offsetMeters.z, appliedSettings.yawDegrees);
+		ImGui::Text("Applied environment: %s", appliedEnvironment);
+		ImGui::Text("Applied brightness: %s", appliedSettings.useShaderDefaultBrightness ?
+			"Shader default 1 (comparison)" : "Authored material setting (star brightness 1)");
+	}
+	ImGui::TextDisabled("Use Apply floor after changing the draft settings.");
+	ImGui::TextWrapped("After updating presets, Reset adjustments then Apply floor.");
+	ImGui::TextDisabled("Session only. Leaving this map restores the original layout.");
+	ImGui::TextDisabled("Close character customization before applying or restoring a floor.");
+	ImGui::TextWrapped("Baked lighting stays with the source floor; it has not been rebaked for the center position.");
+	const auto& status = characterSelect->Debug_GetFloorSwapStatus();
+	if (!status.empty()) ImGui::TextWrapped("%s", status.c_str());
+	ImGui::PopID();
 }
 
 void CMainApp::RenderArenaFollowCameraSettings()
@@ -7869,8 +8053,9 @@ void CMainApp::RenderArenaFollowCameraSettings()
 		else if (bern) m_iArenaCameraSelectedMap = 2;
 		else if (valtan) m_iArenaCameraSelectedMap = 3;
 	}
+	if (!ImGui::CollapsingHeader("Player Follow Camera", ImGuiTreeNodeFlags_DefaultOpen))
+		return;
 	ImGui::PushID("ArenaFollowCameraSettings");
-	ImGui::SeparatorText("Player Follow Camera");
 	const char* names[] = { "Character Select", "KoukuSaydon", "Bern", "Valtan" };
 	const ARENA_CAMERA_MAP maps[] = { ARENA_CAMERA_MAP::CHARACTER_SELECT,
 		ARENA_CAMERA_MAP::KOUKU_SAYDON, ARENA_CAMERA_MAP::BERN, ARENA_CAMERA_MAP::VALTAN };
@@ -7944,6 +8129,18 @@ void CMainApp::RenderArenaFollowCameraSettings()
 		draft.fovYDegrees = std::clamp(draft.fovYDegrees, 10.f, 150.f);
 		edited = true;
 	}
+	f32_t orbitDistance = draft.focusDistance;
+	f32_t orbitPitch = draft.rotationDegrees.x;
+	f32_t orbitYaw = draft.rotationDegrees.y;
+	bool orbitEdited = ImGui::DragFloat("Camera distance (m)", &orbitDistance, 0.1f, 0.1f, 1000.f,
+		"%.2f", ImGuiSliderFlags_AlwaysClamp);
+	orbitEdited |= ImGui::DragFloat("Camera pitch (deg)", &orbitPitch, 0.25f, -89.f, 89.f,
+		"%.2f", ImGuiSliderFlags_AlwaysClamp);
+	orbitEdited |= ImGui::DragFloat("Camera yaw (deg)", &orbitYaw, 0.25f, -180.f, 180.f,
+		"%.2f", ImGuiSliderFlags_AlwaysClamp);
+	if (orbitEdited && CArenaCameraProfile::Set_OrbitAroundFocus(draft, orbitDistance, orbitPitch, orbitYaw, status))
+		edited = true;
+	ImGui::TextDisabled("Distance moves the camera toward or away from the same focus. Pitch changes the ground angle; yaw circles the focus.");
 	edited |= ImGui::SliderFloat("Character size", &draft.characterSizeMultiplier,
 		0.25f, 4.f, "%.3f x", ImGuiSliderFlags_AlwaysClamp);
 	ImGui::SameLine();
@@ -8024,7 +8221,8 @@ void CMainApp::RenderArenaFollowCameraSettings()
 void CMainApp::RenderKoukuUiPreviewControls()
 {
 	Engine::CProfilerScope panelScope(CGameInstance::Get().Get_Profiler(), "ImGui.Hub.KoukuUIPreview");
-	ImGui::SeparatorText("Kouku UI Preview (Debug)");
+	if (!ImGui::CollapsingHeader("Kouku UI Preview (Debug)", ImGuiTreeNodeFlags_DefaultOpen))
+		return;
 	CCombatHUDViewModel& viewModel = CCombatHUDViewModel::Get();
 	// Replication reset clears the override when the arena session ends.
 	m_bKoukuUiPreview = viewModel.Is_KoukuGimmickPreviewEnabled();
@@ -8671,7 +8869,7 @@ void CMainApp::RenderKoukuSaydonArenaControls()
 	const bool_t placementPending = pArena->Is_DebugGatePending() ||
 		pArena->Get_DebugPlayerController().Is_DebugPlayerPlacementPending();
 	ImGui::BeginDisabled(placementPending);
-	if (ImGui::Button("\xEC\x8B\x9C\xEC\x9E\x91\xEC\xA7\x80\xEC\xA0\x90", ImVec2(260.f, 0.f)))
+	if (ImGui::Button("Return to Start", ImVec2(260.f, 0.f)))
 	{
 		std::string status;
 		(void)pArena->Debug_ReturnToStart(status);
@@ -8742,72 +8940,79 @@ void CMainApp::RenderKoukuSaydonArenaControls()
 	ImGui::TextWrapped("%s", pArena->Get_DebugGateStatus().c_str());
 	ImGui::TextWrapped("%s",
 		pArena->Get_DebugPlayerController().Get_DebugPlayerPlacementStatus().c_str());
-			ImGui::SeparatorText("Mario Controls (Debug Jump)");
-			ImGui::TextWrapped("Mario 1/2/3/4: auto Clown. Left / Right: move along the fixed course line (release to stop). Camera / mouse cannot steer the player. Up: use an offered crossing, otherwise jump along the same line (up to 4 m / 0.6 s). Down / Shift jump: disabled. F6 free camera keeps Shift acceleration.");
-	ImGui::TextWrapped("%s", pArena->Get_DebugPlayerController().Get_DebugMarioJumpStatus().c_str());
-	ImGui::TextWrapped("0: return from Mario to Gate 3 through the Server-approved exit.");
-	ImGui::TextWrapped("%s", pArena->Get_DebugPlayerController().Get_MarioReturnStatus().c_str());
+	if (ImGui::CollapsingHeader("Mario Controls (Debug Jump)", ImGuiTreeNodeFlags_DefaultOpen))
+	{
+		ImGui::TextWrapped("Mario 1/2/3/4: auto Clown. Left / Right: move along the fixed course line (release to stop). Camera / mouse cannot steer the player. Up: use an offered crossing, otherwise jump along the same line (up to 4 m / 0.6 s). Down / Shift jump: disabled. F6 free camera keeps Shift acceleration.");
+		ImGui::TextWrapped("%s", pArena->Get_DebugPlayerController().Get_DebugMarioJumpStatus().c_str());
+		ImGui::TextWrapped("0: return from Mario to Gate 3 through the Server-approved exit.");
+		ImGui::TextWrapped("%s", pArena->Get_DebugPlayerController().Get_MarioReturnStatus().c_str());
+	}
 
-	ImGui::SeparatorText("--진짜 쿠크세이튼 찾기 시야 콜라이더--");
-	static CKoukuSaydonCompositionDocument gazeDocument;
-	static bool gazeLoadAttempted = false;
-	static bool gazeLoaded = false;
-	static bool gazeVisible = false;
-	static float gazeHalfAngle = 45.f, gazeDistance = 30.f;
-	static std::string gazeStatus;
-	const bool reloadGaze = ImGui::SmallButton("Reload Sight Settings");
-	if (!gazeLoadAttempted || reloadGaze)
+	// Folding keeps the last gaze state owned by the active arena.
+	if (ImGui::CollapsingHeader("Find the Real Saydon - Sight Collider", ImGuiTreeNodeFlags_DefaultOpen))
 	{
-		// A rejected document keeps its error until an explicit reload. Retrying
-		// the complete composition from this render path stalls every F1 frame.
-		gazeLoadAttempted = true;
-		gazeLoaded = gazeDocument.Reload(gazeStatus);
-		if (gazeLoaded)
-			for (const auto& logic : gazeDocument.Get_LastGood().Logics)
+		static CKoukuSaydonCompositionDocument gazeDocument;
+		static bool gazeLoadAttempted = false;
+		static bool gazeLoaded = false;
+		static bool gazeVisible = false;
+		static float gazeHalfAngle = 45.f, gazeDistance = 30.f;
+		static std::string gazeStatus;
+		const bool reloadGaze = ImGui::SmallButton("Reload Sight Settings");
+		if (!gazeLoadAttempted || reloadGaze)
+		{
+			// A rejected document keeps its error until an explicit reload. Retrying
+			// the complete composition from this render path stalls every F1 frame.
+			gazeLoadAttempted = true;
+			gazeLoaded = gazeDocument.Reload(gazeStatus);
+			if (gazeLoaded)
+				for (const auto& logic : gazeDocument.Get_LastGood().Logics)
+					if (logic.strJudgementKind == "GAZE_REAL_BOSS")
+					{ gazeHalfAngle = static_cast<float>(logic.fHalfAngleDegrees); gazeDistance = static_cast<float>(logic.fMaxDistanceM); break; }
+		}
+		ImGui::Checkbox("Debug Render##RealSaydonSight", &gazeVisible);
+		float fullAngle = gazeHalfAngle * 2.f;
+		if (ImGui::SliderFloat("View angle (degrees)", &fullAngle, 2.f, 360.f)) gazeHalfAngle = fullAngle * .5f;
+		ImGui::SliderFloat("View distance (m)", &gazeDistance, .1f, 100.f);
+		pArena->Set_DebugGazeView(gazeVisible, gazeHalfAngle, gazeDistance);
+		if (gazeLoaded && ImGui::SmallButton("Save Sight Settings"))
+		{
+			auto candidate = gazeDocument.Get_LastGood();
+			for (auto& logic : candidate.Logics)
 				if (logic.strJudgementKind == "GAZE_REAL_BOSS")
-				{ gazeHalfAngle = static_cast<float>(logic.fHalfAngleDegrees); gazeDistance = static_cast<float>(logic.fMaxDistanceM); break; }
+				{ logic.fHalfAngleDegrees = gazeHalfAngle; logic.fMaxDistanceM = gazeDistance; }
+			if (gazeDocument.Save_Atomic(candidate, gazeStatus))
+				gazeStatus = "Saved. Publish Gameplay Balance and restart Server to apply judgement settings.";
+		}
+		if (!gazeStatus.empty()) ImGui::TextWrapped("%s", gazeStatus.c_str());
 	}
-	ImGui::Checkbox("Debug Render##RealSaydonSight", &gazeVisible);
-	float fullAngle = gazeHalfAngle * 2.f;
-	if (ImGui::SliderFloat("View angle (degrees)", &fullAngle, 2.f, 360.f)) gazeHalfAngle = fullAngle * .5f;
-	ImGui::SliderFloat("View distance (m)", &gazeDistance, .1f, 100.f);
-	pArena->Set_DebugGazeView(gazeVisible, gazeHalfAngle, gazeDistance);
-	if (gazeLoaded && ImGui::SmallButton("Save Sight Settings"))
-	{
-		auto candidate = gazeDocument.Get_LastGood();
-		for (auto& logic : candidate.Logics)
-			if (logic.strJudgementKind == "GAZE_REAL_BOSS")
-			{ logic.fHalfAngleDegrees = gazeHalfAngle; logic.fMaxDistanceM = gazeDistance; }
-		if (gazeDocument.Save_Atomic(candidate, gazeStatus))
-			gazeStatus = "Saved. Publish Gameplay Balance and restart Server to apply judgement settings.";
-	}
-	if (!gazeStatus.empty()) ImGui::TextWrapped("%s", gazeStatus.c_str());
 
 	/* Madness avatar: the Server owns the form and the snapshot swaps the
 	   body, so the buttons only submit intent and follow the replicated form. */
-	ImGui::SeparatorText("Clown");
-	const HUD_PLAYER_STATE& hudPlayer = CCombatHUDViewModel::Get().Get_Player();
-	const bool_t isClown =
-		LostArk::Shared::PLAYER_MADNESS_FORM::CLOWN == hudPlayer.eMadnessForm;
-	CPlayerController& controller = pArena->Get_DebugPlayerController();
-	int mode = static_cast<int>(hudPlayer.eKoukuHudMode);
-	if (ImGui::Combo("HUD mode", &mode, "Player\0Clown\0Mario\0Dance\0Card Maze\0"))
-		(void)controller.Request_DebugKoukuHudMode(static_cast<LostArk::Shared::KOUKU_HUD_MODE>(mode));
-	ImGui::BeginDisabled(isClown || controller.Is_DebugMadnessFormPending());
-	if (ImGui::Button("Change to Clown", ImVec2(160.f, 0.f)))
-		(void)controller.Request_DebugMadnessForm(LostArk::Shared::PLAYER_MADNESS_FORM::CLOWN);
-	ImGui::EndDisabled();
-	ImGui::SameLine();
-	ImGui::BeginDisabled(!isClown || controller.Is_DebugMadnessFormPending());
-	if (ImGui::Button("Return to Player", ImVec2(160.f, 0.f)))
-		(void)controller.Request_DebugMadnessForm(LostArk::Shared::PLAYER_MADNESS_FORM::NORMAL);
-	ImGui::EndDisabled();
-	ImGui::SameLine();
-	ImGui::TextDisabled("Madness %u / %u | form: %s",
-		hudPlayer.iCurrentMadness, hudPlayer.iMaximumMadness,
-		isClown ? "clown" : "player");
-	if (!controller.Get_DebugMadnessFormStatus().empty())
-		ImGui::TextWrapped("%s", controller.Get_DebugMadnessFormStatus().c_str());
+	if (ImGui::CollapsingHeader("Clown", ImGuiTreeNodeFlags_DefaultOpen))
+	{
+		const HUD_PLAYER_STATE& hudPlayer = CCombatHUDViewModel::Get().Get_Player();
+		const bool_t isClown =
+			LostArk::Shared::PLAYER_MADNESS_FORM::CLOWN == hudPlayer.eMadnessForm;
+		CPlayerController& controller = pArena->Get_DebugPlayerController();
+		int mode = static_cast<int>(hudPlayer.eKoukuHudMode);
+		if (ImGui::Combo("HUD mode", &mode, "Player\0Clown\0Mario\0Dance\0Card Maze\0"))
+			(void)controller.Request_DebugKoukuHudMode(static_cast<LostArk::Shared::KOUKU_HUD_MODE>(mode));
+		ImGui::BeginDisabled(isClown || controller.Is_DebugMadnessFormPending());
+		if (ImGui::Button("Change to Clown", ImVec2(160.f, 0.f)))
+			(void)controller.Request_DebugMadnessForm(LostArk::Shared::PLAYER_MADNESS_FORM::CLOWN);
+		ImGui::EndDisabled();
+		ImGui::SameLine();
+		ImGui::BeginDisabled(!isClown || controller.Is_DebugMadnessFormPending());
+		if (ImGui::Button("Return to Player", ImVec2(160.f, 0.f)))
+			(void)controller.Request_DebugMadnessForm(LostArk::Shared::PLAYER_MADNESS_FORM::NORMAL);
+		ImGui::EndDisabled();
+		ImGui::SameLine();
+		ImGui::TextDisabled("Madness %u / %u | form: %s",
+			hudPlayer.iCurrentMadness, hudPlayer.iMaximumMadness,
+			isClown ? "clown" : "player");
+		if (!controller.Get_DebugMadnessFormStatus().empty())
+			ImGui::TextWrapped("%s", controller.Get_DebugMadnessFormStatus().c_str());
+	}
 }
 
 bool_t CMainApp::PrepareKoukuGateCompletePlay(const std::string_view gateId, std::string& status)
@@ -8832,6 +9037,7 @@ bool_t CMainApp::PrepareKoukuGateCompletePlay(const std::string_view gateId, std
 	if (!arena->Debug_DespawnArenaBosses(status)) return false;
 	arena->Debug_SetSequenceCombatPending(true);
 	m_bKoukuCompletePlayAwaitingGate = false;
+	m_bKoukuCompletePreservesArrivalPosition = false;
 	m_strKoukuCompletePlayFlowGate = std::string(gateId);
 	m_iKoukuCompletePlayFlowRevision = m_pKoukuSaydonBossTool->Get_SourceRevision();
 	m_iKoukuCompletePlayWorldGeneration = CNetworkManager::Get().Get_WorldInboundGeneration();
@@ -8861,7 +9067,7 @@ void CMainApp::FinishKoukuGateCompletePlay(const std::string_view gateId, std::s
 	}
 	// Use the same Server placements, profiles and spawn positions as the F1 gate.
 	// Defer the player move until the entire cinematic has actually completed.
-	if (!arena->Debug_ActivateGate(expectedGate, status))
+	if (!arena->Debug_ActivateGate(expectedGate, status, m_bKoukuCompletePreservesArrivalPosition))
 	{
 		CancelKoukuGateCompletePlay("Entry finished, but Server Gate activation failed: " + status);
 		status = m_strKoukuCompletePlayStatus;
@@ -8931,7 +9137,7 @@ void CMainApp::UpdateKoukuGateCompletePlay()
 	// Spawn and teleport are confirmed. Release presentation/input before submitting
 	// the existing Server-owned Pattern Flow, which resolves this gate's live boss.
 	arena->Debug_SetSequenceCombatPending(false);
-	arena->Stop_CompositionCamera(true);
+	arena->Debug_ReturnToPlayerCamera();
 	m_eDebugInputOwner = DEBUG_TOOL::NONE;
 	(void)m_pKoukuSaydonBossTool->Play_PatternFlow(gate, status, m_iKoukuCompletePlayFlowRevision);
 	m_strKoukuCompletePlayFlowGate.clear();
@@ -9626,9 +9832,9 @@ void CMainApp::RenderDeveloperTools()
 		toolCell("Camera Tool", DEBUG_TOOL::CAMERA);
 		toolCell("Action Workbench", DEBUG_TOOL::SEQUENCER);
 		toolCell("Animation Clip Tool", DEBUG_TOOL::ANIMATION);
-		toolCell("Open Effect Tool V1", DEBUG_TOOL::EFFECT);
-		toolCell("Open Effect Tool V2", DEBUG_TOOL::EFFECT_V2);
-		toolCell("Open World Level Tool", DEBUG_TOOL::WORLD_LEVEL);
+		toolCell("Effect Tool V1", DEBUG_TOOL::EFFECT);
+		toolCell("Effect Tool V2", DEBUG_TOOL::EFFECT_V2);
+		toolCell("World Level Tool", DEBUG_TOOL::WORLD_LEVEL);
 		toolCell("Map Tool", DEBUG_TOOL::MAP);
 		toolCell("Rendering Workbench", DEBUG_TOOL::RENDERING);
 		toolCell("Composition Profiler", DEBUG_TOOL::PROFILER);

@@ -1925,6 +1925,8 @@ HRESULT CModel::Apply_MaterialOverrides(MODEL_MATERIAL_SOURCE& materialSource, c
             surface.family != MODEL_SURFACE_FAMILY::SOURCE_BG_OPAQUE_MASKED &&
             surface.family != MODEL_SURFACE_FAMILY::SOURCE_FOLIAGE_MASKED &&
             surface.family != MODEL_SURFACE_FAMILY::SOURCE_GRASS_MASKED && !sourceSpecial &&
+            surface.family != MODEL_SURFACE_FAMILY::PBR_OPAQUE &&
+            surface.family != MODEL_SURFACE_FAMILY::PBR_SEAMLESS_OPAQUE &&
             (match->diffusePath.empty() || match->normalPath.empty() ||
 			(surface.family == MODEL_SURFACE_FAMILY::SPECULAR_TEXTURE_REFLECTION && match->specularPath.empty())))
 			return failOverride("required material input is absent");
@@ -1965,7 +1967,7 @@ HRESULT CModel::Apply_MaterialOverrides(MODEL_MATERIAL_SOURCE& materialSource, c
             if ((flags & ~127u) != 0u || ((flags & 8u) && !(flags & 4u)) ||
                 ((flags & 64u) && !(flags & 32u)) || surface.hasEnvironmentCube ||
                 surface.hasEmissive != ((flags & 32u) != 0u) ||
-                (surface.family == MODEL_SURFACE_FAMILY::SOURCE_GRASS_MASKED && (flags & (1u | 8u | 64u))) ||
+                (surface.family == MODEL_SURFACE_FAMILY::SOURCE_GRASS_MASKED && (flags & (1u | 8u))) ||
                 any_of(begin(values), end(values), [](float v) { return !std::isfinite(v) || v < 0.f; }))
                 return failOverride("invalid source foliage branch or parameter");
             const std::pair<const filesystem::path*, filesystem::path*> inputs[] = {
@@ -2055,7 +2057,8 @@ HRESULT CModel::Apply_MaterialOverrides(MODEL_MATERIAL_SOURCE& materialSource, c
                 surface.sourceBgBump.z, surface.sourceBgUV.x, surface.sourceBgUV.y,
                 surface.sourceBgUV.z, surface.sourceBgUV.w, surface.uvTiling.x, surface.uvTiling.y,
                 surface.reflectionOriginOffset.x, surface.reflectionOriginOffset.y };
-            if ((flags & ~65535u) != 0u || ((flags & 8u) != 0u && (flags & 4u) == 0u) ||
+            if ((flags & ~65535u) != 0u || ((flags & 8u) != 0u && (flags & 4u) == 0u &&
+                surface.sourceBgSubspecular.x <= 0.f) ||
                 ((flags & 32u) != 0u && (flags & 16u) == 0u) || surface.sourceBgFlicker > 2u ||
                 surface.hasEnvironmentCube ||
                 any_of(begin(values), end(values), [](float v) { return !std::isfinite(v); }) ||
@@ -2124,16 +2127,21 @@ HRESULT CModel::Apply_MaterialOverrides(MODEL_MATERIAL_SOURCE& materialSource, c
             const float values[] = { surface.overlayColor.x, surface.overlayColor.y, surface.overlayColor.z,
                 surface.overlayColor.w, surface.overlayTiling, surface.overlayNormalIntensity,
                 surface.overlaySharpness, surface.overlayBrightness, surface.overlaySaturation,
-                surface.overlaySpecularIntensity, surface.uvTiling.x, surface.uvTiling.y, surface.detailNormalIntensity, surface.detailNormalTiling };
+                surface.overlaySpecularIntensity, surface.uvTiling.x, surface.uvTiling.y, surface.detailNormalIntensity, surface.detailNormalTiling,
+                surface.sourceBgSubspecular.x, surface.sourceBgSubspecular.y, surface.sourceBgSpecularSaturation };
             if (any_of(begin(values), end(values), [](float v) { return !std::isfinite(v) || v < 0.f; }) ||
-                surface.sourceOverlayFlags > 511u || surface.overlayTiling <= 0.f || surface.uvTiling.x <= 0.f || surface.uvTiling.y <= 0.f || surface.hasEnvironmentCube || surface.hasEmissive ||
+                surface.sourceOverlayFlags > 2047u || surface.overlayTiling <= 0.f || surface.uvTiling.x <= 0.f || surface.uvTiling.y <= 0.f || surface.hasEnvironmentCube ||
                 !replacement.reflectionPath.empty()) return failOverride("invalid source overlay surface");
             const float signedValues[] = { surface.sourceOverlayDirection.x, surface.sourceOverlayDirection.y,
                 surface.sourceOverlayDirection.z, surface.sourceOverlayDirection.w,
-                surface.sourceBgUV.x, surface.sourceBgUV.y, surface.sourceBgUV.z, surface.sourceBgUV.w };
+                surface.sourceBgUV.x, surface.sourceBgUV.y, surface.sourceBgUV.z, surface.sourceBgUV.w,
+                surface.sourceBgBump.x, surface.sourceBgBump.y, surface.sourceBgBump.z, surface.sourceBgBump.w };
             if (any_of(begin(signedValues), end(signedValues), [](float v) { return !std::isfinite(v); }) ||
                 (((surface.sourceOverlayFlags & 32u) != 0u) != !replacement.detailNormalPath.empty()))
                 return failOverride("invalid source overlay direction, UV or detail branch");
+            if (surface.hasEmissive && (surface.emissiveFlickerMinimum != 0.f ||
+                surface.emissiveFlickerSpeed != 0.f || surface.emissivePhaseOffset != 0.f))
+                return failOverride("unsupported source overlay emissive flicker");
             if (surface.overlaySeparateSpecular)
             {
                 const auto path = replacement.surfaceSpecularPath.lexically_normal();
@@ -2204,6 +2212,7 @@ HRESULT CModel::Apply_MaterialOverrides(MODEL_MATERIAL_SOURCE& materialSource, c
 				surface.emissiveFlickerMinimum, surface.emissiveFlickerSpeed };
 			if ((surface.family != MODEL_SURFACE_FAMILY::PBR_SEAMLESS_OPAQUE &&
 				surface.family != MODEL_SURFACE_FAMILY::PBR_OPAQUE &&
+                surface.family != MODEL_SURFACE_FAMILY::SOURCE_OVERLAY_OPAQUE &&
                 surface.family != MODEL_SURFACE_FAMILY::SOURCE_BG_OPAQUE_MASKED &&
             surface.family != MODEL_SURFACE_FAMILY::SOURCE_FOLIAGE_MASKED &&
             surface.family != MODEL_SURFACE_FAMILY::SOURCE_GRASS_MASKED && !sourceSpecial) ||

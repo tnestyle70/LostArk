@@ -907,6 +907,9 @@
 	<ClCompile Include="..\Private\KoukuSaydonPresentationPlayer.cpp">
 	  <Filter>04. Network</Filter>
 	</ClCompile>
+	<ClCompile Include="..\Private\KoukuSaydonPresentationPlayer_LogicPreview.cpp">
+	  <Filter>04. Network</Filter>
+	</ClCompile>
 	<ClCompile Include="..\Private\KoukuCinematicAnimationCatalog.cpp">
 	  <Filter>03. Tools\11. KoukuSaydon</Filter>
 	</ClCompile>
@@ -1732,6 +1735,9 @@
 	<None Include="..\..\Data\Rendering\Authored\RenderingProfiles.json">
 	  <Filter>96.DataFiles\Rendering\Authored</Filter>
 	</None>
+	<None Include="..\..\Data\Rendering\Authored\CharacterSelectFloorSwap.json">
+	  <Filter>96.DataFiles\Rendering\Authored</Filter>
+	</None>
 	<None Include="..\..\Data\Compositions\Bosses\Valtan.bosscomposition.json">
 	  <Filter>96.DataFiles\Compositions\Bosses</Filter>
 	</None>
@@ -2090,6 +2096,8 @@
       <Filter>96.DataFiles\Effects\V2\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate2.intro.lights.effect.json">
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.albion.cross.electric.impact.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.albion.frontthree.electric.impact.effect.json"><Filter>96.DataFiles</Filter></None>
       <Filter>96.DataFiles</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.world.mouse_click.effect.json">
@@ -2332,7 +2340,55 @@
     <None Include="..\..\Data\Maps\Imported\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED.deployplacements">
       <Filter>96.DataFiles\Maps</Filter>
     </None>
-    <None Include="..\..\Data\Maps\Imported\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED.mapassets">
+    <None Include="..\..\Data\Maps\Imported\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED.mapset">
+      <Filter>96.DataFiles\Maps</Filter>
+    </None>
+    <None Include="..\..\Data\Maps\Imported\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED_BASE.mapassets">
+      <Filter>96.DataFiles\Maps</Filter>
+    </None>
+    <None Include="..\..\Data\Maps\Imported\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED_BASE.mapplacements">
+      <Filter>96.DataFiles\Maps</Filter>
+    </None>
+    <None Include="..\..\Data\Maps\Imported\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED_PS.mapassets">
+      <Filter>96.DataFiles\Maps</Filter>
+    </None>
+    <None Include="..\..\Data\Maps\Imported\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED_PS.mapplacements">
+      <Filter>96.DataFiles\Maps</Filter>
+    </None>
+    <None Include="..\..\Data\Maps\Imported\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED_SL00.mapassets">
+      <Filter>96.DataFiles\Maps</Filter>
+    </None>
+    <None Include="..\..\Data\Maps\Imported\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED_SL00.mapplacements">
+      <Filter>96.DataFiles\Maps</Filter>
+    </None>
+    <None Include="..\..\Data\Maps\Imported\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED_SL01.mapassets">
+      <Filter>96.DataFiles\Maps</Filter>
+    </None>
+    <None Include="..\..\Data\Maps\Imported\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED_SL01.mapplacements">
+      <Filter>96.DataFiles\Maps</Filter>
+    </None>
+    <None Include="..\..\Data\Maps\Imported\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED_SL02.mapassets">
+      <Filter>96.DataFiles\Maps</Filter>
+    </None>
+    <None Include="..\..\Data\Maps\Imported\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED_SL02.mapplacements">
+      <Filter>96.DataFiles\Maps</Filter>
+    </None>
+    <None Include="..\..\Data\Maps\Imported\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED_SL03.mapassets">
+      <Filter>96.DataFiles\Maps</Filter>
+    </None>
+    <None Include="..\..\Data\Maps\Imported\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED_SL03.mapplacements">
+      <Filter>96.DataFiles\Maps</Filter>
+    </None>
+    <None Include="..\..\Data\Maps\Imported\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED_SL04.mapassets">
+      <Filter>96.DataFiles\Maps</Filter>
+    </None>
+    <None Include="..\..\Data\Maps\Imported\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED_SL04.mapplacements">
+      <Filter>96.DataFiles\Maps</Filter>
+    </None>
+    <None Include="..\..\Data\Maps\Imported\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED_SL05.mapassets">
+      <Filter>96.DataFiles\Maps</Filter>
+    </None>
+    <None Include="..\..\Data\Maps\Imported\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED_SL05.mapplacements">
       <Filter>96.DataFiles\Maps</Filter>
     </None>
     <None Include="..\..\Data\Maps\Imported\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED.mapplacements">
@@ -2630,6 +2686,42 @@
     </None>
     <None Include="..\..\Data\Maps\Authoring\LV_BER_BERNCASTLE\LV_BER_BERNCASTLE.maplights.json">
       <Filter>96.DataFiles\Map</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.bern.environment.bfx_low_06.water.par_a_h_waterwave_001.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.bern.environment.bfx_low_06.water.par_b_waterfall_001.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.bern.environment.bfx_low_06.water.par_b_waterfall_002.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.bern.environment.bfx_low_06.water.par_c_fallmist_001.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.bern.environment.bfx_low_06.water.par_d_fall_w1_h1_002.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.bern.environment.bfx_low_06.water.par_d_fallmist_w3_002.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.bern.environment.bfx_low_06.water.par_d_fallsplash_w1_001.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.bern.environment.bfx_low_06.water.par_d_fallsplash_w2_001.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.bern.environment.bfx_low_06.water.par_d_fallsplash_w3_001.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.bern.environment.bfx_low_06.water.par_d_fallsplash_w3_007.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.bern.environment.bfx_low_16.water.par_g_magicpond_01.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Maps\Authoring\LV_BER_BERNCASTLE\LV_BER_BERNCASTLE.mapeffects.json">
+      <Filter>96.DataFiles</Filter>
     </None>
     <None Include="..\..\Data\Maps\Authoring\LV_LOBBY_CLASSSELECT_SL00\LV_LOBBY_CLASSSELECT_SL00.maplights.json">
       <Filter>96.DataFiles</Filter>
@@ -3925,5 +4017,188 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="..\Bin\ShaderFiles\Shader_EffectVehicleModelNative.hlsli"><Filter>97.ShaderFiles</Filter></None>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleKouku2496.hlsl"><Filter>97.ShaderFiles</Filter></FxCompile>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectKoukuNativeGroup2496.hlsli"><Filter>97.ShaderFiles</Filter></None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchKoukuNativeCases2496.hlsli"><Filter>97.ShaderFiles</Filter></None>
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshKouku2496.hlsl"><Filter>97.ShaderFiles</Filter></FxCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.action.400440.stage000.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.action.420618.stage000.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.action.420622.stage001.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.action.420623.stage003.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.action.420624.stage001.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.action.420624.stage005.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.action.420624.stage006.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.action.420624.stage007.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.action.420624.stage009.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.action.420624.stage010.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.action.420633.stage014.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.action.420633.stage015.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_bs_00.hit.par_d_groggyhit_01.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_bs_00.hit.par_e_counter_hit_01.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_bs_00.hit.par_k_raidgroggy_hit_01_loc_int.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_cm_00.dust.par_d_dust_001_pr.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_cm_00.dust.par_d_dust_002_pr.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_cm_00.dust.par_d_dust_007_pr.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_cm_00.dust.par_d_dust_009.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_cm_00.dust.par_mp_dust_high_01.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_cm_01.debris.par_d_debris_003.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_cm_01.debris.par_mp_deathmon_02.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_cm_01.distortion.par_mp_concavedis_z_08.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_cm_02.gatherenergy.par_d_genergy_01_pr.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_cm_02.light.par_mp_light_01.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_cm_02.light.par_mp_light_03.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_cm_02.light.par_mp_light_05_l.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_boss_01.rpbf.par_d_rpbf_eye_01_loc_int.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_boss_01.rpbf.par_rpbf_summon_001_loc_int.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_n.par_n_rpbf_atk_01_02.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_n.par_n_rpbf_atk_01_03.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_n.par_n_rpbf_atk_01_05.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_n.par_n_rpbf_atk_01_06.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_n.par_n_rpbf_atk_04_06.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_n.par_n_rpbf_atk_04_11.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_n.par_n_rpbf_atk_04_12.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_n.par_n_rpbf_atk_04_13.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_n.par_n_rpbf_atk_07_02.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_n.par_n_rpbf_atk_07_2.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_n.par_n_rpbf_atk_08_02.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_n.par_n_rpbf_atk_13_02.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_n.par_n_rpbf_blowslash_atk_01.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_n.par_n_rpbf_cast_exp_01.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_n.par_n_rpbf_castpi_01.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_n.par_n_rpbf_crack_01_02.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_n.par_n_rpbf_dash_01_1.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_n.par_n_rpbf_dust_01_01.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_n.par_n_rpbf_exp_05_04.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_n.par_n_rpbf_foot_01.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_n.par_n_rpbf_hold_01_01.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_n.par_n_rpbf_hold_01_02.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_n.par_n_rpbf_light_04_01.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_n.par_n_rpbf_light_04_1.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_n.par_n_rpbf_magiccsat_001.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_n.par_n_rpbf_potal_02_02.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_n.par_n_rpbf_ribbon_02_02.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_n.par_n_rpbf_sk09_exp_03.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_n.par_n_rpbf_sk09_exp_04.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_n.par_n_rpbf_stonewave_01_01.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_n.par_n_rpbf_stonewave_01_02.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_n.par_n_rpbf_swing_07.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_n.par_n_rpbf_wave_01.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_n.par_n_rpbf_wave_01_14.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_n.par_n_rpbf_wave_01_22.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_n.par_n_rpbf_wave_01_23.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_n.par_n_rpbf_wave_02.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_n.par_n_rpbf_wave_03.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_n.par_n_rpbf_wwind_01.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_o.par_o_rpbf_atk_01_01.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_o.par_o_rpbf_atk_01_02.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_o.par_o_rpbf_atk_01_03.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_o.par_o_rpbf_atk_01_04.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_o.par_o_rpbf_atk_01_05.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_o.par_o_rpbf_atk_01_08.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_o.par_o_rpbf_atk_02_01.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_o.par_o_rpbf_atk_02_02.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_o.par_o_rpbf_atk_02_03.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_o.par_o_rpbf_atk_02_04.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_o.par_o_rpbf_atk_02_08.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_o.par_o_rpbf_atk_06_03.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_o.par_o_rpbf_atk_06_04.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_o.par_o_rpbf_atk_06_05.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_o.par_o_rpbf_atk_06_08.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_o.par_o_rpbf_atk_07_01.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_o.par_o_rpbf_atk_07_02.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_o.par_o_rpbf_atk_09_01.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_o.par_o_rpbf_atk_09_02.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_o.par_o_rpbf_atk_09_03.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_o.par_o_rpbf_trail_01.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_s.par_s_rpbf_atk_01_2.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_s.par_s_rpbf_atk_02_1.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_s.par_s_rpbf_dash_01_1.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_s.par_s_rpbf_shout_01.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_s.par_s_rpbf_stone_01_1.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_s.par_s_rpbf_stone_01_2.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_s.par_s_rpbf_trail_01_1.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_s.par_s_rpbf_wave_01_1.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_s.par_s_rpbf_wave_01_2.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_s.par_s_rpbf_wave_01_3.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_s.par_s_rpbf_wave_01_4.effect.json"><Filter>96.DataFiles</Filter></None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.action.420630.stage004.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.action.420612.stage003.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.action.420612.stage004.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.action.420602.stage001.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.action.420602.stage002.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.action.420602.stage004.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.action.420603.stage002.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.action.420603.stage003.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.action.420609.stage008.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.action.420609.stage009.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.action.420609.stage010.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.action.420610.stage019.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.action.420610.stage021.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.action.420624.stage011.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.action.420629.stage006.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.action.420629.stage008.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.action.420630.stage002.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.action.420630.stage003.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.action.420630.stage005.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.action.420630.stage007.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.action.420642.stage000.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_post.fx_par.par_c_filmnoise_01.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_post.fx_par.par_c_zoomblur_01.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_post.fx_par.par_c_zoomblur_02.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_post.fx_par.par_c_zoomblur_03.effect.json"><Filter>96.DataFiles</Filter></None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.action.420623.stage001.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshKouku2624.hlsl"><Filter>97.ShaderFiles</Filter></FxCompile>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectKoukuNativeGroup2624.hlsli"><Filter>97.ShaderFiles</Filter></None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchKoukuNativeCases2624.hlsli"><Filter>97.ShaderFiles</Filter></None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.action.420627.stage000.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_d.par_d_rpbf_partsdestruction_01.effect.json"><Filter>96.DataFiles</Filter></None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.bomb.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.bomb.drop.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleKouku3648.hlsl"><Filter>97.ShaderFiles</Filter></FxCompile>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectKoukuNativeGroup3648.hlsli"><Filter>97.ShaderFiles</Filter></None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchKoukuNativeCases3648.hlsli"><Filter>97.ShaderFiles</Filter></None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate3.showtime.bomb.explosion.blue.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.mario.blade.normal.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.mario.blade.instant-death.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\ValtanFullRestoreAnimations.json"><Filter>96.DataFiles</Filter></None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.action.420624.stage000.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.source.fx_mn_rpbf_00_n.par_n_rpbf_potal_02_01.effect.json"><Filter>96.DataFiles</Filter></None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.action.420624.stage004.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.action.420624.stage003.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.action.420620.stage004.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
   </ItemGroup>
 </Project>

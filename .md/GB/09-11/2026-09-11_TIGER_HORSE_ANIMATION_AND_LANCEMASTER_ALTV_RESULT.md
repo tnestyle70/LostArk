@@ -239,3 +239,25 @@ native1360은 translucent 재질이고 alpha에 depth fade, `saturate(6 * abs(Nd
 `effect.lancemaster.skill.34650.clip2.full.restore.effect.json`의 두 ModelCue에서 `32.fresnal_power`만5→2로 낮췄다. 같은 각도의 계수는0.24/0.54가 되어 몸통 연결이 더 뚜렷해지는 방향이다. 노이즈·depth·emission·애니메이션·기존 손 부착 수정은 유지한다. 원본 shader 번역 변경이 아니라 사용자가 요청한 선명도 튜닝이다.
 
 변경 전 파일과 결과는 `out/LanceTNeckOpacity20260912_091404/`에 보존했다. JSON 재파싱과 전체 의미 비교에서 두 scalar 외 차이0, 0~1의 시선각1,001표본에서 계수의 finite·0~1범위·기존 대비 감소 없음이 통과했다. C++/shader 변경이 없어 이 T 조정에는 컴파일과 publisher가 필요 없다. 수정 후 T clip2를 다시 Load → Model / Summon (2) 또는 Play All로 확인한다. 실제 목 연결·선명도 화면은 사용자 확인 대기다.
+
+## G13. V/ALT V dragon의 local space 선택 복구 — 2026-09-15
+
+사용자는 자신이 local space를 끄도록 요청한 이력을 확인하고 V/ALT V dragon 모델만 다시 켜도록 범위를 확정했다. 9월 14일 `98d99eec` 전후 실제 세 모델의 SourceRecipe Required `buselocalspace=true`, actionCueAttachment, transformInheritance를 비교했다. 해당 변경에서 localSpace만 true→false가 됐고 attachment와 transformInheritance는 같았다. 현재 Playback은 false인 입자에 SpawnRootWorld를 유지하므로 본 앵커가 계속 갱신돼도 살아 있는 창 입자는 손을 따라가지 않는다.
+
+`fm_n_flm_ydr_00_sm`, `fm_x_flm_gdr_01`, `fm_x_flm_gdr_01_dragon`의 V clip1~3 세 행, ALT V clip1~4 열 행과 통합 full 열 행, 총 8문서 23행에만 `detail.particle.localSpace=true`를 적용했다. 실제 제품 경로는 V 세 cue와 ALT V 첫 clip의 단일 full cue다. 기존 hand anchor `b_weapon_rhand`, socket, 사용자 위치와 회전, TypeData, 그룹, 재질과 timing은 보존했다. 사용자 화면의 손 이름만으로 저장 bone을 바꾸지 않았다. 이전 unified 문서 및 다른 효과의 world-space 요청은 변경하지 않았다.
+
+`out/LanceHandFollow20260915/result.json`과 `before/`에 변경 전 bytes, SHA-256, stable ID, 원본 true 및 현재 attachment 검증을 보존했다. 실제 JSON 재파싱과 변경 전후 의미 비교에서 허용한 boolean 23개 외 차이0이며 기존 파일 bytes와 줄바꿈도 보존했다. 이 데이터 자체에는 새 C++/shader가 없으며 준비된 효과를 다시 읽어야 한다. 실제 본 pose/GPU 화면의 후속 검증을 수행했다고 기록하지 않는다.
+
+## G14. ALT V 바위 배경의 누락된 ambient 입력 연결 — 2026-09-15
+
+사용자 원작 첨부에는 붉은 원형 창 궤적 아래 바위 바닥과 뒤쪽 암석 기둥이 보인다. 실제 34630 제품 문서는 static Mesh 36행(opaque sceneBackdrop 32행, 별도 alpha 4행)을 갖고 있으며 참조 WModel과 텍스처가 설치돼 있다. 원본 배경 시간은 첫 clip 0.01~2.233초, 둘째 2.234~4.334초다. 9월 11일 사용자가 삭제한 첫 clip의 skillfloor01_sm section6~11 여섯 행은 복원하지 않았다.
+
+`Shader_EffectMeshFamilyCarrier.hlsli`는 Lance native input을 0 초기화한 뒤 ambientColor/skyUpperColor/skyLowerColor/skyIntensity를 채우지 않았다. 실제 바위 native782/786/793 등의 원본 PS는 diffuse에 그 ambient/hemisphere 항을 곱한다. selectioncolor RGB0인 native786에서는 이 입력 누락만으로 최종 RGB0이 된다. `Effect_DocumentRenderer_MaterialBinding.cpp::Bind_MaterialInputs`와 Mesh carrier에서 **Lance native782~800 Mesh에만** 현재 committed scene directional light의 ambient 합을 전달했다. 전용 uniform은 `g_LanceVAStaticAmbient`이며 Mesh family8/group768만 소비한다. 다른 스킬의 particle·모델과 native PS 수식은 변경하지 않았다.
+
+이 변경은 **현재 장면 주변광이 누락된 연결을 고친 것**이며 원작 ALT V 환경조명 수치를 완전히 복원한 것이 아니다. 현재 scene 계약에 별도 UE skylight hemisphere owner가 없어 해당 입력은 기존0을 유지했다. Reference animnotify의 34630 네 clip에는 point-light 발생 11회가 있고 Authored에도 11개의 light.point occurrence가 보존돼 있다. 그 ambient는 unresolved class default0이며 원작 scene ambient의 값이나 source light pass가 모두 연결됐다는 근거가 아니다. 원본 전체 action의 예전 중간 추출 폴더는 현 out에 없어 이번 bounded 조사에서 추가 scene 값을 확정하지 못했다.
+
+후속 Warlord17250 배경 조사에서 두 clip의 static Mesh48행도 같은 Lance native781~800과 BG_GDOGODS_C 자산을 사용함을 확인했다. 따라서 위 재질 입력 수정은 동일 family를 재사용하는 Warlord 배경에도 적용된다. 기존 Warlord family의 ambient bind는 이 Lance carrier에 전달되지 않던 상태였다. 현재 영향받는 Authored 문서는 Lance34630 clip1/clip2/full 및 Warlord17250 clip1/clip2 다섯 개이며 다른 character particle shader로 확대하지 않았다. Warlord의24+24행, actual Resources65개/문서, root snapshot과 설치 정점 bounds는 `out/WarlordAltVReview20260915/backdrop-audit.md`에 따로 기록했다.
+
+검증은 변경 MaterialBinding Debug TU compile, 실제 MeshLance768 FXC `/O1`, 해당 product FX11 shader의 WARP 수치 readback을 수행했다. native786의 실제 저작 parameter와 통제한 diffuse/normal texture로 4회×4,096픽셀을 검사했다. ambient0에서는 RGB0, `[0.2,0.3,0.4]`에서는 `[0.16,0.18,0.16]`, 다른 ambient와 다시0의 초기화까지 최대 오차0, D3D11 error0이었다. FXC는 통과했고 기존 warning은 남아 있다. 이것은 shader 입력·출력 수치 검사이며 실제 배경 모델/사용자 화면의 visual PASS가 아니다. 증거는 `out/LanceHandFollow20260915/backdrop.compile.log`, `backdrop.fxc.log`, `probe.log`, `source_34630_notify_excerpt.json`이다.
+
+이 단계는 제품 C++/HLSL 소스와 out 검증 완료다. 에이전트가 Client/UI를 실행·조작·캡처하지 않았고 해당 수정은 진행 중인 Client EXE/설치 CSO에 자동 반영되지 않는다. root의 후속 Client/CSO 빌드 뒤 사용자가 34630 ALT V를 다시 재생해 바위 배경과 손 부착을 확인한다. 최종 화면은 사용자 확인 대기다.

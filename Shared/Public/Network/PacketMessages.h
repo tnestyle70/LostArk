@@ -1547,6 +1547,13 @@ namespace LostArk::Shared
 		std::uint32_t iPatternSequence = 0;
 		std::uint32_t iPatternStartTick = 0;
 		std::uint32_t iPatternStageIndex = 0;
+		// One Server-selected animation child on the same boss. The parent
+		// identity and clock above remain authoritative for its other lanes.
+		std::string strPresentationPatternId;
+		std::string strPresentationActionId;
+		std::uint32_t iPresentationPatternStartTick = 0;
+		std::uint32_t iPresentationActionStartTick = 0;
+		std::uint32_t iPresentationPatternStageIndex = 0;
 		// Server-selected player locked by the running boss pattern. Non-boss
 		// entities must leave this invalid; Client presentation never reselects it.
 		NET_ENTITY_ID iPatternTargetNetEntityId = INVALID_NET_ENTITY_ID;
@@ -2798,12 +2805,12 @@ namespace LostArk::Shared
 	enum class WORLD_SEQUENCE_OPERATION : std::uint8_t { PLAY = 0, REPLAY = 1, STOP = 2, STOP_OWNER = 3, FINISH_OWNER = 4, END };
 	enum class DEBUG_WORLD_PLAYBACK_OPERATION : std::uint8_t
 	{
-		PLAY_TRIGGER, REPLAY_TRIGGER, PLAY_SEQUENCE, REPLAY_SEQUENCE, STOP_SEQUENCE, END
+		PLAY_TRIGGER, REPLAY_TRIGGER, PLAY_SEQUENCE, REPLAY_SEQUENCE, STOP_SEQUENCE, PLACE_ROOM_PLAYER, END
 	};
 	enum class DEBUG_WORLD_PLAYBACK_RESULT : std::uint8_t
 	{
 		ACCEPTED, DISABLED, WRONG_WORLD, INVALID_TARGET, INVALID_PLAYER, ALREADY_USED,
-		ACTION_REJECTED, STALE_REQUEST, END
+		ACTION_REJECTED, STALE_REQUEST, SKIPPED_PLAYER, END
 	};
 	struct C2S_DEBUG_WORLD_PLAYBACK
 	{
@@ -2811,6 +2818,11 @@ namespace LostArk::Shared
 		WORLD_ID eWorldId = WORLD_ID::END;
 		DEBUG_WORLD_PLAYBACK_OPERATION eOperation = DEBUG_WORLD_PLAYBACK_OPERATION::END;
 		std::string strTargetId;
+		// PLACE_ROOM_PLAYER only: one immutable Sequence run and occurrence.
+		std::uint32_t iRunEpoch = 0u;
+		std::string strOccurrenceId;
+		std::uint8_t iRoomPlayerSlot = 0u;
+		float fPositionX = 0.f, fPositionY = 0.f, fPositionZ = 0.f;
 	};
 	struct S2C_DEBUG_WORLD_PLAYBACK_RESULT
 	{

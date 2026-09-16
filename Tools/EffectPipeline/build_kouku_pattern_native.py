@@ -269,6 +269,26 @@ def prepare(evidence, first, last, reuse_roots=()):
                         name += '_' + str(number - 1)
                     path = row['textureOverrides'].get(name)
                     if not path:
+                        # Static MIC permutations can cache default texture
+                        # expressions absent from the parent's cooked variant.
+                        # Read that same source MIC's native resource table;
+                        # never replace an unresolved input with a guessed map.
+                        source_object = obj(row['sourceMaterial'])
+                        native_tail = source_object['tail']
+                        static_offset = row['mic'].get('staticParameterSetOffsetInNativeTail', 0)
+                        if len(native_tail) >= 40 and static_offset >= 40:
+                            source_count = struct.unpack_from('<I', native_tail, 36)[0]
+                            source_end = 40 + 4 * source_count
+                            source_index = expression['referencedTextureIndex']
+                            if (0 <= source_index < source_count <= 256 and
+                                    source_end <= min(len(native_tail), static_offset)):
+                                source_ref = struct.unpack_from('<i', native_tail, 40 + 4 * source_index)[0]
+                                if source_ref:
+                                    path = fullref(source_object['package'], pkg(source_object['package']), source_ref)
+                                    row.setdefault('nativeTextureDefaultEvidence', []).append(dict(
+                                        expressionIndex=index, sourceReference=source_ref,
+                                        sourceSerialSha256=source_object['serialSha256'], sourceTexture=path))
+                    if not path:
                         if 0 <= expression['referencedTextureIndex'] < len(references):
                             path = fullref(parent['package'], package, references[expression['referencedTextureIndex']])
                         else:
@@ -527,7 +547,8 @@ def generate_native(evidence, first, last):
     if companion:
         prepare_distortion(out, merged, first)
     write('merged_native_runtime_contract.json', merged)
-    tables.FIRST, tables.LAST = min([first] + [p['program'] for p in reused]), last
+    tables.FIRST = min([first] + [p['program'] for p in reused])
+    tables.LAST = max([last] + [p['program'] for p in reused])
     candidate = out / 'Effect_ArtistMaterial.candidate.h'
     candidate.write_bytes(read_material_bytes(ROOT / 'Client/Public/Effect_ArtistMaterial.h'))
     tables.install(out / 'merged_native_runtime_contract.json', out, candidate)

@@ -63,6 +63,11 @@ namespace LostArk::Server
 		[[nodiscard]] static bool Validate_SummonedPattern(
 			const BOSS_PATTERN_DEFINITION& owner, const BOSS_PATTERN_DEFINITION& child,
 			std::string& status);
+		[[nodiscard]] static bool Select_CrossDirection(
+			const SERVER_WORLD_ENTITY& boss, const BOSS_PATTERN_DEFINITION& parent,
+			const BOSS_PATTERN_MECHANIC_TRIGGER& trigger, const CGameplayCatalog& catalog,
+			std::size_t& selected, std::array<std::uint32_t, 4u>& cloneDurationsMs,
+			std::string& status);
 		[[nodiscard]] static const BOSS_PATTERN_DEFINITION*
 			Find_AnimationOnlyPattern(
 				const CGameplayCatalog& catalog,
@@ -100,6 +105,11 @@ namespace LostArk::Server
 			const BOSS_PATTERN_DEFINITION& pattern, std::uint32_t serverTick) noexcept;
 		[[nodiscard]] static ROOT_MOTION_SAMPLE Sample_StageRootMotion(
 			const std::vector<ROOT_MOTION_SAMPLE>& samples, double timeMs) noexcept;
+		[[nodiscard]] static double Pattern_ElapsedMs(const SERVER_WORLD_ENTITY& boss, std::uint32_t serverTick) noexcept;
+		[[nodiscard]] static double Stage_RootTimeMs(const SERVER_WORLD_ENTITY& boss,
+			const BOSS_PATTERN_DEFINITION& pattern, std::uint32_t serverTick) noexcept;
+		[[nodiscard]] static bool Sample_AlbionAirborneHeight(SERVER_ALBION_AIRBORNE_STATE& state,
+			double patternMs, std::uint32_t stageIndex, float sourceUp, float& outHeight) noexcept;
 		// The Room applies this once before Logic, through its authoritative traversal and collision.
 		[[nodiscard]] static bool Apply_StageRootMotion(SERVER_WORLD_ENTITY& boss,
 			const BOSS_PATTERN_DEFINITION& pattern, std::uint32_t serverTick,

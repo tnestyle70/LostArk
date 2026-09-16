@@ -209,6 +209,7 @@ bool LostArk::Server::CGameRoom::Build_WorldEntity(
 							std::any_of(pattern.MechanicTriggers.begin(), pattern.MechanicTriggers.end(),
 								[](const BOSS_PATTERN_MECHANIC_TRIGGER& trigger)
 								{ return BOSS_PATTERN_MECHANIC_TRIGGER_KIND::REAL_GAZE_TELEPORT == trigger.eKind ||
+									(BOSS_PATTERN_MECHANIC_TRIGGER_KIND::CROSS_DIRECTION_CLONES == trigger.eKind && trigger.DirectionPatternIds.size() == 4u) ||
 									(BOSS_PATTERN_MECHANIC_TRIGGER_KIND::SUMMON_PATTERNS == trigger.eKind && !trigger.PatternSpawns.empty()); });
 					const bool directFinaleOccurrence =
 						pattern.strPatternId == owner->strPatternId;

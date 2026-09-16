@@ -223,7 +223,14 @@ bool_t Client::CAnimation_Tool::Seek_ValtanCompositionPattern(
 void Client::CAnimation_Tool::Stop_ValtanCompositionPattern(
 	std::string& strOutStatus)
 {
-	if (const shared_ptr<Engine::CModel> pModel = Resolve_Model())
+	// Stop the original preview models, even if selection has already moved.
+	// Source Sequence preview owns a separate playlist from Pattern Master.
+	if (m_bValtanPatternPreviewPlaying)
+	{
+		Stop_ValtanPatternPreview(m_ValtanPatternPreviewModel.lock(),
+			"Action Composition source sequence preview stopped.");
+	}
+	if (const shared_ptr<Engine::CModel> pModel = m_ValtanPatternMasterModel.lock())
 	{
 		Stop_ValtanPatternMasterPreview(
 			pModel, "Action Composition preview stopped.");

@@ -123,7 +123,7 @@ const CLIENT_LEVEL_DESCRIPTOR* CLevelRegistry::Find(
 			"front.character-select",
 			"LV_LOBBY_CLASSSELECT_SL00",
 			"scene.character-select.warm-high-key.v1",
-			{ true, true, -792.f, 158.f, -750.f, 218.f },
+			MakeFullMapScope(),
 			CreateCharacterSelect,
 			&CLoader::Ready_For_CharacterSelect
 		},

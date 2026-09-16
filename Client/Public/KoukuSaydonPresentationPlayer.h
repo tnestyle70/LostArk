@@ -29,6 +29,7 @@ struct EFFECT_V2_TARGET;
 struct EFFECT_V2_TARGET_VIEW;
 struct ANIMATION_MODEL_TARGET_VIEW;
 struct EFFECT_DOCUMENT_DESC;
+class DATA_JSON_VALUE;
 
 struct KOUKU_BOSS_PRESENTATION_VIEW final
 {
@@ -59,6 +60,12 @@ public:
         ComPtr<ID3D11DeviceContext> context, CRenderingProfileService& profiles);
     ~CKoukuSaydonPresentationPlayer();
     bool Reload_Product(std::string& status, std::uint32_t expectedSourceRevision = 0u);
+    static bool Is_TargetedCombatObjectArchetype(std::string_view archetypeId) noexcept;
+    bool Start_TargetedCombatVisual(const LostArk::Shared::S2C_COMBAT_OBJECT_SPAWNED& spawn,
+        std::string& status);
+    bool Update_TargetedCombatVisual(const LostArk::Shared::COMBAT_OBJECT_SNAPSHOT& snapshot,
+        std::uint32_t serverTick, std::string& status);
+    void Stop_TargetedCombatVisual(LostArk::Shared::COMBAT_OBJECT_ID objectId);
     using WORLD_EMISSION_ANCHOR = std::function<bool_t(f32_t, float4x4_t&)>;
     static WORLD_EMISSION_ANCHOR Make_WorldEmissionAnchor(
         const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern,
@@ -183,11 +190,56 @@ private:
         std::uint32_t durationMs = 0;
         std::map<std::string, WORLD_EMISSION_ANCHOR> worldEmissionAnchors;
     };
+    struct LOGIC_PREVIEW_SPAWN final
+    {
+        SESSION session;
+        float4x4_t pivot{};
+    };
+    struct LOGIC_PREVIEW_TRIGGER final
+    {
+        PRODUCT_PATTERN presentation;
+        std::vector<LOGIC_PREVIEW_SPAWN> spawns;
+        bool captured = false;
+    };
+    std::map<std::string, std::map<std::string, LOGIC_PREVIEW_TRIGGER>> m_LogicPreviewTriggers;
+    std::vector<KOUKU_CARD_PRESENTATION_VIEW> m_LogicPreviewPlayers;
+    void Sample_LogicPreview(SESSION& session, const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
+        const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern, float clockMs, bool paused);
+    void Clear_LogicPreview();
+    bool Collect_LogicPreviewEffects(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
+        const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern, std::set<std::string>& targets);
     struct PRODUCT_BUNDLE final
     {
         PRODUCT_PATTERN common;
         std::vector<std::string> patternIds;
     };
+    struct TARGETED_COMBAT_VISUAL final
+    {
+        PRODUCT_PATTERN presentation;
+        PRODUCT_PATTERN sourceBossPresentation;
+        std::string archetypeId;
+        bool loop = false;
+    };
+    struct TARGETED_COMBAT_SESSION final
+    {
+        std::shared_ptr<const TARGETED_COMBAT_VISUAL> definition;
+        SESSION playback;
+        SESSION sourceBossPlayback;
+        LostArk::Shared::NET_ENTITY_ID sourceId = LostArk::Shared::INVALID_NET_ENTITY_ID;
+        LostArk::Shared::GameplayDataRevision pinnedRevision{};
+        std::uint32_t spawnTick = 0u, serverTick = 0u;
+        double elapsedMs = 0.0;
+        std::uint64_t cycle = 0u;
+        float4x4_t root{};
+        bool finished = false;
+        std::string failure;
+    };
+    using TARGETED_COMBAT_VISUALS = std::map<std::string, std::shared_ptr<const TARGETED_COMBAT_VISUAL>>;
+    static TARGETED_COMBAT_VISUALS Read_TargetedCombatVisuals(const DATA_JSON_VALUE& root);
+    bool Sample_TargetedCombatVisual(TARGETED_COMBAT_SESSION& session,
+        const KOUKU_BOSS_PRESENTATION_VIEW* sourceBoss = nullptr);
+    void Update_TargetedCombatVisuals(float dt,
+        const std::vector<KOUKU_BOSS_PRESENTATION_VIEW>& bosses);
     struct BUNDLE_PREVIEW_MEMBER final
     {
         std::string memberId;
@@ -196,18 +248,42 @@ private:
         std::shared_ptr<CNpc> actor;
         SESSION session;
         std::vector<KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE> animations;
+        std::vector<KOUKU_SAYDON_COMPOSITION_STAGE> facingStages;
+        bool finiteActorLifetime = false;
+        bool spatialLogicPreview = false;
+        std::map<std::string, std::pair<uint32_t, uint32_t>> cloneAnimationWindows;
         std::map<std::string, float3_t> worldOffsets;
         std::uint32_t initialAnimation = 0;
         float initialTicks = 0.f;
         float initialYawDegrees = 0.f;
         float3_t initialPosition{};
         std::unique_ptr<CKoukuSaydonPreviewRootMotion> rootMotion;
+        struct TARGET_TRACKING_WINDOW final
+        {
+            std::string occurrenceId;
+            uint32_t startMs = 0u, durationMs = 0u, targetEntityId = 0u;
+            bool immediate = false;
+            // Each first-visited fixed tick pins the then-current replicated target
+            // position. Replaying those inputs reproduces facing on any later seek.
+            std::map<uint32_t, std::optional<float3_t>> targetSamples;
+        };
+        std::vector<TARGET_TRACKING_WINDOW> targetTracking;
         std::map<std::string, float> stageFacingYawDegrees;
+        std::map<std::string, std::pair<uint32_t, float3_t>> airborneSelections;
+        std::map<std::string, float3_t> airborneAppearancePositions;
+        uint32_t airborneSelectionSeed = 0u;
     };
+    bool Prepare_CloneSplitPreview(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
+        std::vector<BUNDLE_PREVIEW_MEMBER>& members, std::string& status);
+    static const KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE* Resolve_PreviewAnimation(
+        const BUNDLE_PREVIEW_MEMBER& member, double localMs,
+        const KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE*& previous);
     void Sample_BundlePreview();
     bool Prepare_PreviewEffects();
     void Fail_Preview(std::string status);
     bool Sample_BundlePreviewFacing(BUNDLE_PREVIEW_MEMBER& member, double localMs);
+    bool Sample_BundlePreviewPose(BUNDLE_PREVIEW_MEMBER& member, double localMs,
+        float3_t& position, float& yaw, bool recordTargets);
     void Refresh_WorldPlacementAuthoring(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document);
     void Release_BundlePreviewMembers(std::vector<BUNDLE_PREVIEW_MEMBER>& members);
     struct CARD final
@@ -248,6 +324,8 @@ private:
     std::uint64_t m_iEffectCacheGeneration = 0u;
     std::set<std::string> m_QueuedV1Effects;
     std::uint64_t m_iV1CatalogRevision = 0u;
+    TARGETED_COMBAT_VISUALS m_TargetedCombatVisuals;
+    std::map<LostArk::Shared::COMBAT_OBJECT_ID, TARGETED_COMBAT_SESSION> m_TargetedCombatSessions;
     std::map<std::string, PRODUCT_PATTERN> m_FearPresentations;
     SESSION m_FearSession;
     std::string m_strCompletedFearKey;
@@ -258,6 +336,7 @@ private:
     std::uint32_t m_iProductReloadRunEpoch = 0u;
     std::set<std::string> m_MissingProductPatterns;
     std::map<std::uint32_t, SESSION> m_BossSessions;
+    std::map<std::uint32_t, SESSION> m_ChildBossSessions;
     std::map<std::uint32_t, SESSION> m_MarioEntrySessions;
     std::map<std::uint32_t, CARD> m_Cards;
     std::map<std::uint32_t, CARD> m_MazeExits;

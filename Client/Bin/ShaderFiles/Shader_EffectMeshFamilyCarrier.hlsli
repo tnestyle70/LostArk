@@ -42,6 +42,9 @@ float4x4 g_NormalMatrix;
 float4x4 g_ViewMatrix;
 float4x4 g_ProjMatrix;
 float4 g_CameraPosition;
+#if EFFECT_SHADER_FAMILY == 8 && EFFECT_NATIVE_PROFILE_GROUP == 768
+float4 g_LanceVAStaticAmbient = 0.f;
+#endif
 uint g_UseBaseOverride = 0;
 uint g_SourceMeshHasUV1 = 0u;
 float4 g_EffectDynamicParameter = float4(0.f, 0.f, 0.f, 0.f);
@@ -395,6 +398,14 @@ EFFECT_PS_OUT PS_MATERIAL(VS_OUT input, bool frontFace : SV_IsFrontFace)
         nativeInput.color = input.particleColor + g_ColorOffset;
         nativeInput.dynamicParameter = input.dynamicParameter;
         nativeInput.frontFace = frontFace;
+#if EFFECT_NATIVE_PROFILE_GROUP == 768
+        if (g_SourceMaterialProfile >= 782u && g_SourceMaterialProfile <= 800u)
+        {
+            // Preserve native surface math. The scene has ambient light but no
+            // UE skylight hemisphere owner, so only the owned input is supplied.
+            nativeInput.ambientColor = g_LanceVAStaticAmbient.xyz;
+        }
+#endif
         return Shade_EffectLanceMasterVANative(g_SourceMaterialProfile, nativeInput);
     }
 #endif

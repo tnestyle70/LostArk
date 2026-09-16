@@ -527,7 +527,7 @@ def decode_typed_payload(
     source_anchors: list[str] = []
     attachment_selector_offset: int | None = None
     transform_start = base + 60
-    for selector_offset, string_offset in ((52, 56), (56, 60)):
+    for selector_offset, string_offset in ((52, 56), (56, 60), (60, 64)):
         if base + selector_offset + 4 > len(raw):
             continue
         selector = struct.unpack_from("<i", raw, base + selector_offset)[0]
@@ -549,6 +549,18 @@ def decode_typed_payload(
             anchor, cursor = parsed
             parsed_anchors.append(anchor)
         if not parsed_anchors:
+            continue
+        # Some Valtan CEFParticleData records contain an empty leading
+        # attachment string followed by the actual anchor array at +60.
+        # Validate the complete transform/parameter header before choosing a
+        # layout; an empty FString alone does not establish its boundary.
+        candidate_extra = 4 if selector_offset == 52 else 0
+        if cursor + 92 + candidate_extra > len(raw):
+            continue
+        candidate_scale = struct.unpack_from('<3f', raw, cursor + 76 + candidate_extra)
+        candidate_count = struct.unpack_from('<i', raw, cursor + 88 + candidate_extra)[0]
+        if (not all(math.isfinite(v) and v > 0 for v in candidate_scale)
+                or not 0 <= candidate_count <= 128):
             continue
         source_anchors = [anchor for anchor in parsed_anchors if anchor]
         transform_start = cursor

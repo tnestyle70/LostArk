@@ -172,6 +172,7 @@ public:
 	   still completes owner reopen, graph refresh, and runtime publication. */
 	void Update_SaveState();
 	void Render();
+	void On_WorkbenchDeactivated() override;
 	void Begin_WorkbenchFrame() override;
 	void Render_WorkbenchPane(COMPOSITION_WORKBENCH_PANE pane) override;
 	void End_WorkbenchFrame() override;

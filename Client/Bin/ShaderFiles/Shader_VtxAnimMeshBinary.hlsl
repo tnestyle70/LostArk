@@ -168,6 +168,13 @@ struct PS_OUT
     float4 vCharacterGeometry : SV_TARGET7;
 };
 
+// Marker 0/5 retain PickPos XYZ and use free mantissa bit 8 for skinned geometry.
+// Animated BG materials return before this actor receiver tag is written.
+float Encode_SkinnedGroundWarningReceiver(float payload)
+{
+    return asfloat(asuint(payload) | 256u);
+}
+
 PS_OUT Evaluate_Material(
     VS_OUT input, bool alphaClip, float alphaClipThreshold, bool frontFace)
 {
@@ -212,6 +219,7 @@ PS_OUT Evaluate_Material(
             (1.f + clamp(g_fEffectBloomIntensity, 0.f, 16.f)) / 17.f : 0.f;
         output.vDepth = source.depth;
         output.vPickPos = source.pickPosition;
+        output.vPickPos.w = Encode_SkinnedGroundWarningReceiver(output.vPickPos.w);
         output.vEmissive = source.indirect;
         output.vMaterialSpecular = source.extraUV;
         output.vCharacterSurface = source.surfaceUVTangent;
@@ -306,6 +314,7 @@ PS_OUT Evaluate_Material(
         g_SpecularPower,
         0.f);
     output.vPickPos = input.vWorldPos;
+    output.vPickPos.w = Encode_SkinnedGroundWarningReceiver(output.vPickPos.w);
     output.vEmissive = 0.f;
     if (0 != g_HasEmissiveTexture)
     {
@@ -353,6 +362,21 @@ PS_OUT PS_MAIN_OPAQUE(VS_OUT input, bool frontFace : SV_IsFrontFace)
 PS_OUT PS_MAIN_EFFECT_MODEL_CUE_MASKED(VS_OUT input, bool frontFace : SV_IsFrontFace)
 {
     return Evaluate_Material(input, true, 0.333f, frontFace);
+}
+
+// Exact DimensionMaster T policy: keep coverage/depth, emit the authored surface
+// colour independently of deferred ambient, diffuse and specular map lights.
+PS_OUT PS_MAIN_EFFECT_MODEL_CUE_UNLIT(VS_OUT input, bool frontFace : SV_IsFrontFace)
+{
+    PS_OUT output = Evaluate_Material(input, true, 0.3f, frontFace);
+    output.vEmissive.rgb += output.vDiffuse.rgb;
+    output.vDiffuse.rgb = 0.f;
+    output.vNormal.a = 0.f;
+    output.vDepth.zw = 0.f;
+    output.vMaterialSpecular = 0.f;
+    output.vCharacterSurface = 0.f;
+    output.vCharacterGeometry = 0.f;
+    return output;
 }
 
 SCENE_COLOR_BLOOM_OUT PS_MAIN_EFFECT_MODEL_CUE_TRANSLUCENT(VS_OUT input)
@@ -847,7 +871,17 @@ technique11 DefaultTechnique
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_MAIN_SOURCE_CHARACTER_TRANSLUCENT();
     }
-    // Appended index 11: recovered BLEND_Masked skeletal material. Its coverage is the
+    // Appended index 11: exact T summon, same GBuffer/depth and skinning contract.
+    pass EffectModelCueUnlit
+    {
+        SetRasterizerState(RS_Default);
+        SetDepthStencilState(DSS_Default, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = EffectSourceModelVS;
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_MAIN_EFFECT_MODEL_CUE_UNLIT();
+    }
+    // Appended index 12: recovered BLEND_Masked skeletal material. Its coverage is the
     // native clip, so the surface writes depth instead of blending a self-overlapping
     // skin against itself in submission order.
     pass EffectModelCueNativeMasked
@@ -859,7 +893,7 @@ technique11 DefaultTechnique
         GeometryShader = NULL;
         PixelShader = EffectSourceModelPS;
     }
-    // Appended index 12 preserves a masked source material's two-sided rasterizer.
+    // Appended index 13 preserves a masked source material's two-sided rasterizer.
     pass EffectModelCueNativeMaskedTwoSided
     {
         SetRasterizerState(RS_Cull_None);

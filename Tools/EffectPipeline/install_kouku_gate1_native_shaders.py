@@ -208,6 +208,16 @@ def regroup_installed():
     return install_partitioned_groups(source, installed_kouku_cases(shaders))
 
 
+def color_case(row):
+    identifier = row['program']
+    if row['nativeBlend'] == 'blend_modulate':
+        # A native scene-color factor must bypass emission gain and bloom conversion.
+        assert row['rendererShape'] == 'sprite' and not row['nativeTwoSided']
+        return f'    case {identifier}u: output.SceneColor=ArtistNative{identifier}(input); return output;\n'
+    opaque = 'true' if row['nativeBlend'] in ('blend_additive', 'blend_masked', 'blend_opaque') else 'false'
+    return f'    case {identifier}u: nativeColor=ArtistNative{identifier}(input); opaqueCoverage={opaque}; break;\n'
+
+
 def append_reviewed(source_dir):
     """Add a bounded reviewed cohort while preserving installed shader bodies."""
     contract = json.loads((source_dir / 'native_runtime_contract.json').read_bytes())
@@ -243,9 +253,8 @@ def append_reviewed(source_dir):
                            ('MESH', 'PARTICLE', 'DECAL', 'TRAIL', 'SCREEN_POST') if kind != carrier)
         identifier = row['program']
         previous_blocks.append('#if ' + guard + '\n' + additions[identifier] + '\n#endif\n')
-        opaque = 'true' if row['nativeBlend'] in ('blend_additive', 'blend_masked', 'blend_opaque') else 'false'
         case_blocks.append(f'#if (!defined(EFFECT_NATIVE_PROFILE_GROUP) || EFFECT_NATIVE_PROFILE_GROUP == {identifier // 64 * 64}) && {guard}\n'
-                           f'    case {identifier}u: nativeColor=ArtistNative{identifier}(input); opaqueCoverage={opaque}; break;\n#endif\n')
+                           + color_case(row) + '#endif\n')
     # Material descriptors have the same reviewed IDs and preserve peer arrays.
     import install_kouku_gate1_native_materials as materials
     materials.install(source_dir / 'native_runtime_contract.json', source_dir, ROOT / 'Client/Public/Effect_ArtistMaterial.h')
@@ -364,7 +373,7 @@ def install(source_dir, append_source_dir=None):
 #endif
 '''
         else:
-            cases += f'    case {row["program"]}u: nativeColor=ArtistNative{row["program"]}(input); opaqueCoverage={opaque}; break;\n#endif\n'
+            cases += color_case(row) + '#endif\n'
     summary = install_partitioned_groups(shader_text, cases)
 
     # Descriptor admission alone is insufficient: the vertex and pixel carrier

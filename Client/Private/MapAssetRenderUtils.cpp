@@ -732,6 +732,10 @@ HRESULT Client::CMapAssetRenderUtils::Bind_ShadowMaterial(
 	}
 
 	const uint32_t noProgram = 0u;
+	const uint32_t pbrMasked = surface && surface->pbrAlphaMasked ? 1u : 0u;
+	if (FAILED(shader->Bind_RawValue("g_SurfacePBRMasked", &pbrMasked, sizeof(pbrMasked))) ||
+		(pbrMasked && FAILED(shader->Bind_RawValue("g_SurfaceUVTiling", &surface->uvTiling, sizeof(surface->uvTiling)))))
+		return E_FAIL;
 	if (FAILED(shader->Bind_RawValue("g_DiffuseMirrorU", &noProgram, sizeof(noProgram))))
 		return E_FAIL;
 	// A preceding character draw may share the Effect. Map instances omit these
@@ -1041,7 +1045,7 @@ HRESULT Client::CMapAssetRenderUtils::Bind_Material(
 		recordBinding();
 		return S_OK;
 	}
-	if ((program == 3u || program == 4u || program == 8u || program == 9u || program == 10u) && surface->hasEmissive)
+	if ((program == 3u || program == 4u || program == 7u || program == 8u || program == 9u || program == 10u) && surface->hasEmissive)
 	{
 		if (!std::isfinite(elapsedTime))
 			return E_INVALIDARG;
@@ -1052,7 +1056,9 @@ HRESULT Client::CMapAssetRenderUtils::Bind_Material(
 			FAILED(shader->Bind_RawValue("g_SurfaceEmissiveFlickerMinimum", &surface->emissiveFlickerMinimum, sizeof(surface->emissiveFlickerMinimum))) ||
 			FAILED(shader->Bind_RawValue("g_SurfaceEmissiveFlickerSpeed", &surface->emissiveFlickerSpeed, sizeof(surface->emissiveFlickerSpeed))) ||
 			FAILED(shader->Bind_RawValue("g_SurfaceEmissivePhaseOffset", &surface->emissivePhaseOffset, sizeof(surface->emissivePhaseOffset))) ||
-			FAILED(shader->Bind_RawValue("g_SurfaceEmissiveTime", &elapsedTime, sizeof(elapsedTime))))
+			FAILED(shader->Bind_RawValue("g_SurfaceEmissiveTime", &elapsedTime, sizeof(elapsedTime))) ||
+            ((program == 3u || program == 4u) &&
+             FAILED(shader->Bind_RawValue("g_SourceBgFlicker", &surface->sourceBgFlicker, sizeof(surface->sourceBgFlicker)))))
 			return E_FAIL;
 		const uint32_t hasSurfaceEmissive = 1u;
 		if (FAILED(shader->Bind_RawValue("g_HasSurfaceEmissive", &hasSurfaceEmissive, sizeof(hasSurfaceEmissive))))
@@ -1133,7 +1139,10 @@ HRESULT Client::CMapAssetRenderUtils::Bind_Material(
     if (program == 7u)
     {
         const uint32_t separateSpecular = surface->overlaySeparateSpecular ? 1u : 0u;
-        if (FAILED(shader->Bind_RawValue("g_SourceOverlayFlags", &surface->sourceOverlayFlags, sizeof(surface->sourceOverlayFlags))) ||
+        if (FAILED(shader->Bind_RawValue("g_SourceBgSubspecular", &surface->sourceBgSubspecular, sizeof(surface->sourceBgSubspecular))) ||
+            FAILED(shader->Bind_RawValue("g_SourceBgSpecularSaturation", &surface->sourceBgSpecularSaturation, sizeof(surface->sourceBgSpecularSaturation))) ||
+            FAILED(shader->Bind_RawValue("g_SourceBgBump", &surface->sourceBgBump, sizeof(surface->sourceBgBump))) ||
+            FAILED(shader->Bind_RawValue("g_SourceOverlayFlags", &surface->sourceOverlayFlags, sizeof(surface->sourceOverlayFlags))) ||
             FAILED(shader->Bind_RawValue("g_SourceOverlayDirection", &surface->sourceOverlayDirection, sizeof(surface->sourceOverlayDirection))) ||
             FAILED(shader->Bind_RawValue("g_SourceOverlayUV", &surface->sourceBgUV, sizeof(surface->sourceBgUV))) ||
             FAILED(shader->Bind_RawValue("g_SurfaceDetailNormalIntensity", &surface->detailNormalIntensity, sizeof(surface->detailNormalIntensity))) ||
@@ -1155,6 +1164,9 @@ HRESULT Client::CMapAssetRenderUtils::Bind_Material(
     }
 	if (program == 3u || program == 4u)
 	{
+		const uint32_t masked = surface->pbrAlphaMasked ? 1u : 0u;
+		if (FAILED(shader->Bind_RawValue("g_SurfacePBRMasked", &masked, sizeof(masked))))
+			return E_FAIL;
 		if (FAILED(model->Bind_SurfaceTexture(shader, "g_NormalTexture", meshIndex, aiTextureType_NORMALS)) ||
 			FAILED(model->Bind_SurfaceTexture(shader, "g_DetailNormalTexture", meshIndex, aiTextureType_HEIGHT)) ||
 			FAILED(model->Bind_SurfaceTexture(shader, "g_SurfaceORMTexture", meshIndex, aiTextureType_UNKNOWN)))

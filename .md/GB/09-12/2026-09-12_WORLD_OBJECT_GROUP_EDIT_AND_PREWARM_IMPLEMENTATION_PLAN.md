@@ -106,3 +106,21 @@ owner의 검색 함수를 호출한다. exact object ID를 먼저 찾은 뒤 다
 실제 helper/lookup/publication 함수를 out CPU fixture에서 검사해 모든 model 입력·Area/revision·
 device/context/catalog 격리, actor ID만 다른 재사용, 실패 후 기존 owner entry 보존을 확인한다.
 최소 CPP 컴파일은 out에서 수행하며 제품 실행 파일을 덮어쓰지 않는다.
+
+## G06. 마리오 일반·즉사 칼날과 Object Collider 행
+
+기존 바닥_칼날의 stable instance를 유지하고 이름을 바닥_일반칼날로 바꾼다. 별도 template/instance인 바닥_즉사칼날을 추가하며 최신 사용자 저장본의 모든 emission 배치 기준과 이동축을 함께 변환해 좌→우로 이동시킨다. 원본 PS의 일반/붉은 칼날 payload를 재사용해 쿠크세이튼 / 마리오 패턴의 일반칼날이펙트·즉사칼날이펙트를 등록한다. 원본 mesh/native material과 저작한 속도·배치는 구분하며 같은 칼날 본체를 두 번 그리지 않는다.
+
+WorldSequence v3 template에 optional `colliderTracks`를 추가한다. 각 행은 stable colliderTrackId, slotId, startMs/durationMs, positionOffset, halfExtents, yawDegrees, behavior, damagePercent, gripLocalOffset과 optional attachmentBone을 소유한다. shape는 수평 BOX, behavior는 DAMAGE/INSTANT_DEATH/HOOK_CAPTURE다. damagePercent는 DAMAGE일 때만 정수 1..100, gripLocalOffset/attachmentBone은 HOOK_CAPTURE일 때만 사용한다. 좌표·크기는 미터이고 grip offset은 model import scale 이후·object placement scale 이전 본 기준이다. 합산track수32, timeline내창, finite값·stableID·slot·대상참조를 codec과 publisher에서 같이 검증한다.
+
+`WorldSequenceDocument.h/.cpp`의 Parse/Validate/Save/Is_Equivalent가 optional행을 보존하고 `WorldObjectTool.h/.cpp`가 Collider 추가·선택·복제·삭제·시간·치수·동작 편집과 각 emission의 이동 와이어를 제공한다. 와이어는 현재 WorldSequencePlayer의 실제 object/bone pivot을 읽으며 판정 권위가 없다. Level과Player의 기존 preview 조회 경로만 확장한다. 원본 root 자전과 수평 판정 방향을 분리해 칼날 자전으로 collider를 세우지 않는다.
+
+Kouku projector는 WORLD occurrence가 참조하는 Collider 행을 기존 ENTER_AREA region.WorldTrack과 Damage/InstantDeath/GRAB_TO_WORLD_OBJECT 결과로 투영한다. object의 emission·delay·playbackSpeed·transform·velocity·animation을 기존 sampler 기준으로 계산하며 보이는 시간과 반복 경계를 넘는 sweep은 만들지 않는다. Server는 기존 fixed-tick 접촉 경로에서 이동BOX를 검사하고, 갈고리팁의 베이크된 위치로 기존 WORLD_HOOK_TIP attachment를 갱신한다. 본끝의 실제 native pose가 올라갈 때 잡힌 플레이어도 같은 위치를 따른다. 새 collision runtime이나 Client damage·local capture는 만들지 않는다.
+
+Map publisher와 Composition owner-source validator도 같은 optional행 계약을 지원한다. 최신 사용자 저장본을 백업하고 CAS로 필요한 등록만 설치한다. 기존갈고리의 중복 Collider/잡기 소비자가 겹치면 명시적인같은대상의 legacy 연결만 정리하고 시간·다른패턴은 보존한다. 실제 codec저장왕복·잘못된값거절·움직임/속도/지연·사각형 sweep·피해/즉사/본끝잡기·해제·반복 검증과 최소Client/Server컴파일, 공식게시·실제Catalog로드를 확인한다. C++ 신규파일/프로젝트등록은 예정하지 않으며 새Effect Data None만 등록한다. 제품EXE빌드·Client화면판정은 사용자가 수행한다.
+
+### G06 저장 진입점과 실행 파일 호환성
+
+Object Sequencer의 Play 왼쪽과 Object Detail의 Edit Parent Object 왼쪽에 기존 Save_Source를 호출하는 Save를 둔다. 현재 Saved/Unsaved 상태와 오류를 같은 화면에서 표시한다. Save가 문서의 참조를 교체할 수 있으므로 클릭한 프레임은 상세 편집을 즉시 종료한다. 새 Logic 정의 생성만으로도 Composition이 dirty가 되는 점을 안내하며, 미저장 상태와 이미 진행 중인 Publish를 별도로 표시한다. Object 저장 전에 새 Publish를 시작할 필요는 없다.
+
+실행 중인 이전 Client가 읽을 수 없는 새 Logic 필드를 먼저 설치하지 않는다. 이미 설치해 사용자의 저장을 막았다면 정확한 자기 변경만 CAS로 역변경하고, 사용자의 로직과 Object 저장을 실파일에서 확인한 뒤 새 필드를 최신본에 다시 합친다. 원본과 임시 호환본, 최종 후보를 별도로 보존하며 사용자 draft를 버리거나 freshness 검사를 제거하지 않는다.

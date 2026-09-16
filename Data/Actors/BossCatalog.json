@@ -328,7 +328,11 @@
       },
       "bodyModelPreScale": 0.017,
       "weaponModelPreScale": 0.01,
-      "weaponModelPreRotationDegrees": [-90.0, 0.0, 0.0]
+      "weaponModelPreRotationDegrees": [
+        -90.0,
+        0.0,
+        0.0
+      ]
     },
     {
       "archetypeId": "BOSS_KAKULSAYDON_G2_BIG_SAYDON",
@@ -425,7 +429,11 @@
       },
       "bodyModelPreScale": 0.017,
       "weaponModelPreScale": 0.01,
-      "weaponModelPreRotationDegrees": [-90.0, 0.0, 0.0]
+      "weaponModelPreRotationDegrees": [
+        -90.0,
+        0.0,
+        0.0
+      ]
     },
     {
       "archetypeId": "BOSS_KAKULSAYDON_BINGO_SAYDON",

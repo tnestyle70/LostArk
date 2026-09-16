@@ -34,7 +34,7 @@ static_assert(offsetof(LIGHT_DESC, fSpotInnerCos) == 92u);
 static_assert(offsetof(LIGHT_DESC, fSpotOuterCos) == 96u);
 static_assert(16u == ETOUI(DEFERRED::SPOT));
 static_assert(17u == ETOUI(DEFERRED::PRESENTATION_DISPLAY_OVERLAY));
-static_assert(18u == ETOUI(DEFERRED::END));
+static_assert(18u == ETOUI(DEFERRED::SOURCE_LIGHT_MASK));
 
 namespace
 {
@@ -257,7 +257,74 @@ namespace
                 ++cases;
             }
         std::cout << "Deferred receiver WARP pixels: " << cases << " passed\n";
-        return true;
+
+        // Real deferred passes must recover RGB floor highlights even though map
+        // lights intentionally leave the legacy specular channel at zero.
+        // Markers 0/2 retain the scalar normal-alpha mask, including when RT5
+        // contains stale RGB left by a previously drawn recovered floor.
+        if (!texture("g_NormalTexture", {.5f,.5f,0.f,.25f}) ||
+            !texture("g_MaterialSpecularTexture", {.2f,.3f,.5f,0.f}) ||
+            !texture("g_GeometricNormalTexture", {0.f,0.f,0.f,0.f})) return false;
+        auto manager = CLight_Manager::Create();
+        auto& presentation = CPresentation_Manager::Get();
+        const auto savedTransientLights = presentation.Get_TransientLights();
+        presentation.Clear_TransientLights();
+        unsigned specularCases = 0u, specularFailures = 0u;
+        for (const bool batched : {false, true})
+            for (const LIGHT type : {LIGHT::DIRECTIONAL, LIGHT::POINT, LIGHT::SPOT})
+                for (const float marker : {0.f, 1.f, 2.f})
+                    for (const bool legacySpecular : {false, true})
+                    {
+                        light.eType = type;
+                        light.eReceiver = LIGHT_RECEIVER::ALL;
+                        light.vDirection = {0.f,0.f,1.f,0.f};
+                        light.vDiffuse = {.8f,.4f,.2f,1.f};
+                        light.vSpecular = legacySpecular ? float4_t(.6f,.2f,.8f,0.f) : float4_t(0.f,0.f,0.f,0.f);
+                        light.fSpotInnerCos = .95f;
+                        light.fSpotOuterCos = .85f;
+                        if (!texture("g_DepthTexture", {.5f,.001f,32.f,marker})) return false;
+                        context->ClearRenderTargetView(views[0], clear);
+                        context->ClearRenderTargetView(views[1], clear);
+                        const HRESULT rendered = batched ?
+                            (FAILED(manager->Replace_SceneLights({light})) ? E_FAIL :
+                                manager->Render_Lights(shader, buffer, false)) :
+                            CLight::Render_Desc(light, shader, buffer);
+                        if (FAILED(rendered)) return false;
+                        // The one pixel is at (0,0,.5), with camera and light on
+                        // its -Z normal. Phong lobe/cone are one; point distance
+                        // 1.5 and range 10 yield linear attenuation .85.
+                        const float attenuation = type == LIGHT::DIRECTIONAL ? 1.f : .85f;
+                        const float expectedSpecular[3] = {
+                            (marker == 1.f ? .16f : (legacySpecular ? .15f : 0.f)) * attenuation,
+                            (marker == 1.f ? .12f : (legacySpecular ? .05f : 0.f)) * attenuation,
+                            (marker == 1.f ? .10f : (legacySpecular ? .20f : 0.f)) * attenuation};
+                        const float expectedShade[3] = {.8f * attenuation, .4f * attenuation, .2f * attenuation};
+                        for (unsigned target = 0u; target < 2u; ++target)
+                        {
+                            context->CopyResource(staging.Get(), result[target].Get());
+                            D3D11_MAPPED_SUBRESOURCE mapped{};
+                            if (FAILED(context->Map(staging.Get(), 0u, D3D11_MAP_READ, 0u, &mapped))) return false;
+                            float actual[3]{};
+                            std::memcpy(actual, mapped.pData, sizeof(actual));
+                            context->Unmap(staging.Get(), 0u);
+                            const float* expected = target == 0u ? expectedShade : expectedSpecular;
+                            for (unsigned channel = 0u; channel < 3u; ++channel)
+                                if (!std::isfinite(actual[channel]) || std::abs(actual[channel] - expected[channel]) > .00002f)
+                                {
+                                    std::cerr << "floor light RGB mismatch: batch=" << batched << " type=" << unsigned(type)
+                                        << " marker=" << marker << " legacySpecular=" << legacySpecular
+                                        << " target=" << target << " channel=" << channel
+                                        << " actual=" << actual[channel] << " expected=" << expected[channel] << "\n";
+                                    ++specularFailures;
+                                }
+                        }
+                        ++specularCases;
+                    }
+        for (const auto& saved : savedTransientLights)
+            if (FAILED(presentation.Add_TransientLight(saved))) return false;
+        std::cout << "Deferred floor RGB WARP pixels: " << specularCases
+            << " cases, " << specularFailures << " channel failures\n";
+        return specularFailures == 0u;
     }
 
 	bool_t RenderWithDeferredShader(

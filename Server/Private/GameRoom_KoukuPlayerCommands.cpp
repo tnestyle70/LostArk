@@ -803,30 +803,9 @@ LostArk::Server::CGameRoom::Apply_DebugTeleportToPosition(
 		player.LastDebugTeleportResult = result;
 		return result;
 	};
-	if (0u == player.iCurrentHp || PLAYER_ACTION_STATE::DEAD == player.eAction ||
-		PLAYER_ACTION_STATE::FALLING == player.eAction ||
-		PLAYER_ACTION_STATE::GRABBED == player.eAction || player.bPatternBound ||
-		INVALID_NET_ENTITY_ID != player.iAttachmentOwnerNetEntityId)
-		return reject(DEBUG_TELEPORT_RESULT::REJECTED_PLAYER_STATE);
-	if (!std::isfinite(request.fPositionX) || !std::isfinite(request.fPositionY) ||
-		!std::isfinite(request.fPositionZ) || std::abs(request.fPositionX) > 100000.f ||
-		std::abs(request.fPositionY) > 100000.f || std::abs(request.fPositionZ) > 100000.f)
-		return reject(DEBUG_TELEPORT_RESULT::REJECTED_INVALID_POSITION);
 	SERVER_NAV_POINT ground{};
-	if (!m_ServerNavigation.Is_PointWalkableExact(request.fPositionX, request.fPositionZ) ||
-		!m_ServerNavigation.Sample_Position(request.fPositionX, request.fPositionZ, ground))
-		return reject(DEBUG_TELEPORT_RESULT::REJECTED_NAVIGATION);
-	/* The single-layer Server grid owns Y. A picked roof/prop/other deck must
-	not silently land on whatever unrelated floor happens to share its XZ.
-	One metre covers authored mesh-vs-cell sampling variation, never whole decks. */
-	constexpr float MAX_PICKED_GROUND_HEIGHT_ERROR = 1.f;
-	if (!std::isfinite(ground.y) ||
-		std::abs(request.fPositionY - ground.y) > MAX_PICKED_GROUND_HEIGHT_ERROR)
-		return reject(DEBUG_TELEPORT_RESULT::REJECTED_HEIGHT);
-	Refresh_PlayerBlockingBodies();
-	if (!m_ServerCollisionSystem.Is_PlayerPositionClear(
-		ground.x, ground.y, ground.z, player.iNetEntityId))
-		return reject(DEBUG_TELEPORT_RESULT::REJECTED_COLLISION);
+	const auto validation = Validate_DebugTeleportDestination(player, request, ground);
+	if (validation != DEBUG_TELEPORT_RESULT::ACCEPTED) return reject(validation);
 	/* Validation is complete before any action, movement, projectile or
 	trigger state is cleared. Only this session's player is mutated. */
 	Reset_PlayerForDebugTeleport(player);
@@ -841,6 +820,37 @@ LostArk::Server::CGameRoom::Apply_DebugTeleportToPosition(
 	player.LastDebugTeleportResult = result;
 	return result;
 #endif
+}
+
+LostArk::Shared::DEBUG_TELEPORT_RESULT LostArk::Server::CGameRoom::Validate_DebugTeleportDestination(
+	const SERVER_PLAYER& player, const LostArk::Shared::C2S_DEBUG_TELEPORT_TO_POSITION& request,
+	SERVER_NAV_POINT& ground)
+{
+	using namespace LostArk::Shared;
+	if (0u == player.iCurrentHp || PLAYER_ACTION_STATE::DEAD == player.eAction ||
+		PLAYER_ACTION_STATE::FALLING == player.eAction ||
+		PLAYER_ACTION_STATE::GRABBED == player.eAction || player.bPatternBound ||
+		INVALID_NET_ENTITY_ID != player.iAttachmentOwnerNetEntityId)
+		return (DEBUG_TELEPORT_RESULT::REJECTED_PLAYER_STATE);
+	if (!std::isfinite(request.fPositionX) || !std::isfinite(request.fPositionY) ||
+		!std::isfinite(request.fPositionZ) || std::abs(request.fPositionX) > 100000.f ||
+		std::abs(request.fPositionY) > 100000.f || std::abs(request.fPositionZ) > 100000.f)
+		return (DEBUG_TELEPORT_RESULT::REJECTED_INVALID_POSITION);
+	if (!m_ServerNavigation.Is_PointWalkableExact(request.fPositionX, request.fPositionZ) ||
+		!m_ServerNavigation.Sample_Position(request.fPositionX, request.fPositionZ, ground))
+		return (DEBUG_TELEPORT_RESULT::REJECTED_NAVIGATION);
+	/* The single-layer Server grid owns Y. A picked roof/prop/other deck must
+	not silently land on whatever unrelated floor happens to share its XZ.
+	One metre covers authored mesh-vs-cell sampling variation, never whole decks. */
+	constexpr float MAX_PICKED_GROUND_HEIGHT_ERROR = 1.f;
+	if (!std::isfinite(ground.y) ||
+		std::abs(request.fPositionY - ground.y) > MAX_PICKED_GROUND_HEIGHT_ERROR)
+		return (DEBUG_TELEPORT_RESULT::REJECTED_HEIGHT);
+	Refresh_PlayerBlockingBodies();
+	if (!m_ServerCollisionSystem.Is_PlayerPositionClear(
+		ground.x, ground.y, ground.z, player.iNetEntityId))
+		return (DEBUG_TELEPORT_RESULT::REJECTED_COLLISION);
+	return DEBUG_TELEPORT_RESULT::ACCEPTED;
 }
 
 bool LostArk::Server::CGameRoom::Configure_MarioRail(

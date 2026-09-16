@@ -241,3 +241,35 @@ rollback 경계는 기존 조사와 같이 미확정이다. 깊이 검사가 있
 
 이번 확인은 코드/실행 데이터 변경이나 UI 조작 없이 수행했다. 렌더링 복원 정본의 오래된 꽃밭222행/
 Field01 제외 표기만 현재254행·provider 지원 상태로 정정했다. 사용자의 최종 화면 판정은 대기한다.
+
+
+## G12. 09-15 Alt V 나비 masked CB0 입력 수정
+
+사용자가 첨부한 원작 꽃밭 화면에는 흰색·노랑·분홍 나비가 있다. 현재 제품 연결은 `PlayerSkills.json:2010`의 Artist ALT_V31930 → `Artist.skillbindings.json:79`의 pungnyudo01/02 → `Artist.animevents:1035`의 첫 clip 0~6000ms → `effect.artist.skill.31930.full.restore`다. 현재 문서는240행/modelCue0으로, 과거254행 기록을 현재 정본 수량으로 사용하지 않는다. native536은 현재 Authored 중 이 문서의9개 mesh occurrence에만 연결돼 있고 모두 visible이다. atlas `fx_m_flowergarden_d_01`에는 나비 날개가 있으며 설치 mesh는 `Effect/Artist/Meshes/Native/FX_SM_03/fx_m_flowergarden_04.wmodel`이다.
+
+확정 결함은 발생기 누락이 아니라 native536의 엔진 constant-buffer 입력이다. 원본 설치 패키지에서 다시 추출한 PS `390b1fe8a7081c45bf96c8afc4bf11e9`(3176bytes, SHA256 `50fcddd5be34dd39dd85f4b308ff464031ce5aa52df04970c23a939d6c683ca7`), VS `d17daa101dec2b4493fce2f510407f32`, map `c06c13b3be74f9f896f1dd5cdc660bc0de1ea3e84c7dc8e6984c989ce09d9a31`를 대조했다. parent는 blend_masked이며 material binding이 CB0[1..7]을 소유하고 engine prefix는[0]이다. 원본 PS35는 texture mask에 CB0[0].w를 곱하고36~39에서0.3333 미만을 discard한다. PS45는 RGB에도 CB0[0].xyz를 곱한다. 현재 source[0].x=1은 W를0으로 남겨 매 픽셀을 버렸다. row1의 material selectionColor와 dispatcher의 opaqueCoverage=true는 이 discard를 되돌리지 못한다.
+
+`Shader_EffectArtistNativeGroup512.hlsli:3690`의 한 줄을 source[0]=input.color로 고쳤다. 실제 mesh carrier의 particleColor 입력을 사용하며 원본 PS 산술·mask·선택색·UV·texture·renderProfile을 유지한다. `generate_artist_native_runtime_shader.py:447`에는 Artist의 해당 PS만 기존 masked LocalVF 처리로 보내는3줄을 추가했다. VS·blend_masked·unownedCB0[0]·W 읽기 assertion을 재사용한다. 다른 작업의 dirty generator 변경은 보존했고 다른 프로그램·C++·Resources·240행 데이터·사용자 attachment 정책은 변경하지 않았다.
+
+실행한 검증은 다음과 같다.
+
+- **원본 raw PS 대조:** 동일한 합성 texture/material 입력으로 원본 packed PS, 수정 전 실제 함수, 한 줄 후보를 D3D11 WARP에서 비교했다. particleColor(.8,.4,.2), alpha0.2는 셋 모두 discard하며 alpha0.3333/0.5/1은 수정 전만 discard했다. 후보와 원본 RT0는 정확히(.8,.4,.2,0)으로 일치했다. native alpha0은 원래 출력이며 dispatcher가 masked coverage를1로 공급한다. 이 검사는 mask/색 입력 증거이며 원작 화면 전체의 일치 증거는 아니다.
+- **발생 소비자:** 실제 CEffectCatalog::Capture_ProductLoadStageRequest/Stage_ProductLoadTarget으로 현재240행 전체 문서를 읽고 현재 CEffectPlayback을 out에 다시 컴파일해0~6초 재생했다. 나비9/9가 생성됐고 transform/color는 finite, 각 발생기의 최대 alpha는1~4.93이었다. 카메라/본 attachment에는 수치 identity anchor를 넣었으므로 실제 골격 부착이나 화면 위치를 PASS로 판정하지 않았다.
+- **재생성:** 새로 회수한 원본 material/map/bindings/texture tags로1개 프로그램을 다시 생성했다. 수정 전후의 생성 HLSL 차이는 source[0] 한 줄뿐이며 수정 후2회 생성 SHA256은 `b8ac6088dc18eef0d4f644fd18ffc93ee393c7dba140d4829ac0fe6fec2fda75`로 같다. 기존 제품 함수와 생성기 사이의 동등한 passValues 배열 초기화 문법 차이는 보존했다. 같은 native 입력을 Kouku domain으로 생성한 결과는 수정 전후 byte exact다.
+- **최소 컴파일:** `Shader_VtxEffectMeshArtist512.hlsl` 전체 effect를 FXC fx_5_0로 out에 컴파일했다. exit0이며 X4000 경고가 있다. 이 작업에서 다른 제품 shader와 제품 EXE/CSO는 빌드·교체하지 않았다. generator Python 문법 검사, 대상 JSON parse, 변경 파일 diff check를 수행했다.
+
+근거는 `out/ArtistAltVButterfly20260915/{source-material.json,source/full_programs,three-way-warp.json,generation-check.json,butterfly_playback.json,compile-mesh512.log}`다. 현재9개 나비와 원본 Required의 localSpace 차이는 사용자09-14 일괄 정책과 연결되므로 이번 수정에서 바꾸지 않았다. 사용자 실행에서 새 셰이더가 로드된 뒤 Alt V의 나비 표시·카메라 배치·색·크기를 확인해야 한다. 현재 실행 중인 EXE의 반영이나 최종 visual PASS를 기록하지 않는다.
+
+## G13. 09-15 나비 실제 골격 배율과 Solo 검토
+
+사용자는 새 빌드에서도 나비가 보이지 않는다고 보고했다. 16:08:12 실행한 `Client/Bin/Debug/Client.exe`와15:50:26의 Artist512 CSO를 확인했다. 현재 소스를 빌드 tlog와 같은 `/Zi /O1`로 out에 재컴파일해 설치본과 대조했다. 내장3개 DXBC의 실행 명령·입출력 signature·RDEF·STAT가 모두 같고, SPDB와 그 checksum만 제외하면 FX11 컨테이너 전체도 같다. 따라서 G12 alpha 수정은 설치본에 포함됐으며 stale CSO가 원인은 아니다. 근거는 `installed-bytecode-check.json`과 `verify_installed_bytecode.py`다.
+
+나비9개는 모두 `fx_m_flowergarden_04.wmodel`의12정점·6삼각형을 사용한다. 설치 bounds는15.346×7.038×15.618 source cm이며 modelPreScale0.01이 m로 바꾼다. occurrence scale은 모두1이다. SourceRecipe의 mesh StartSize는 무차원 배율로 적용되므로 fallback `detail.particle.startSize=.01`만 보고100배 키우지 않는다. 현재 Catalog/Playback과 실제 정점을 대조한 카메라 나비 최대 직경은 Cam02 두 행13.35~13.37cm, Cam03 여섯 행9.25~9.37cm다. owner=1과 unit camera basis의 수치이며 화면 크기 판정은 아니다.
+
+골반에 붙는 `par_m_flowergarden_butterfly_01.particlespriteemitter_35`는 예외였다. 실제 설치 Artist의 두 Alt V clip에서16개 pelvis combined matrix를 읽었고 축 길이가0.01이었다. 기존 source anchor는 이 basis를 그대로 곱해 최대 직경44.5975cm인 나비가4.45982mm로 축소됐다. `Requires_SourceBoneImportScaleNormalization`에 optional runtime anchor ID를 추가하고, Artist31930 + `GRABBED_SOCKET_BODY`에만 기존 `Build_SourceBoneAnchorWorld`를 연결했다. 제품 request collector와 Tool collector 모두 실제 slot ID를 넘긴다. 같은 slot의 나비35와 동반32/24 세 행은 정책을 공유하며, 양발28행과 카메라56행 전체에는 전파하지 않았다. 나비 이외의 카메라 행도 포함한 수량이다. JSON, 사용자 위치·크기·Local Space 및 리소스는 수정하지 않았다.
+
+현재 함수 원문과 실제 Codec/Playback, 설치 pelvis를 사용한 검사에서 정규화축 최대오차3.57628e-7, bone translation 보존, 나비35의 particle axis0.04→4와 동반32의 sprite 크기0.015→1.5m, 생성수·색상 보존을 확인했다. 동반24는 현재 recipe spawn rate0/burst없음으로 전후 모두0행이며 표시 복구 증거가 아니다. 근거는 `scale/pelvis_group_probe.json`, `scale/measured-pelvis.json`, `scale/butterfly_playback.json`, `pelvis-scale-audit.json`, `bone-follow-scope.json`이다. 원본 크기 배율과 사용자 위치 offset은 구분했으며 별도100배 저작 보정은 없었다.
+
+`Effect_PresentationService.cpp`, `Effect_Tool_Helpers.cpp`의 Debug TU를 각각 out에 컴파일해 성공했다(기존 C4819 경고). 변경한 header/callsite 및 scoped diff check도 확인했다. **G13의 본 배율 수정은16:08 실행 파일 이후의 소스 변경이므로 다음 Client 빌드·재실행이 필요하다.** Agent는 Client/UI를 실행하거나 화면을 판정하지 않았다.
+
+사용자 Solo 경로는 `F1 → Effect Tool V1 → 이펙트_도화가AltV_전체` (`effect.artist.skill.31930.full.restore`)이다. 골반 나비는 `particlespriteemitter_35`, stable ID 끝 `215cdf3f9148931043afacbf`이며 Detail의 `Timeline Solo`가 원래 시작2.2333초로 이동한다. 실제 입자 발생 구간은2.2333~3.7333초, 저작 window는2.2333~4.6333초다. 카메라 나비는 Cam02의25/27과 Cam03의10/9/17/18/20/19다. 같은 emitter 이름이 겹칠 때 native536과 모델 경로로 구분한다. 이8개는 원본 localSpace=true와 현재 사용자 저장 false가 달라 생성 뒤 움직이는 카메라를 따라가지 않는다. 이번 배율 수정에서 그 정책은 변경하지 않았으며 실제 Solo/전체 화면의 미표시 원인이 모두 닫혔다고 기록하지 않는다.

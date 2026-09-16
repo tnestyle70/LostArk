@@ -1506,7 +1506,7 @@ namespace
 						SourceString(Module, "events[0].type");
 					const std::string_view Name =
 						SourceString(Module, "events[0].customname");
-					if ((Type != "epet_spawn" && Type != "epet_death") || Name.empty())
+					if ((Type != "epet_spawn" && Type != "epet_death" && Type != "epet_collision") || Name.empty())
 					{
 						strOutError =
 							"Portable source event generator route is invalid: " +
@@ -1525,7 +1525,7 @@ namespace
 						SourceString(Module, "eventgeneratortype");
 					const std::string_view Name =
 						SourceString(Module, "eventname");
-					if ((Type != "epet_spawn" && Type != "epet_death") || Name.empty())
+					if ((Type != "epet_spawn" && Type != "epet_death" && Type != "epet_collision") || Name.empty())
 					{
 						strOutError =
 							"Portable source event receiver route is invalid: " +
@@ -4948,7 +4948,7 @@ void Client::CEffectPlayback::Queue_ParticleEvents(
 			if (Type != strEventType)
 				continue;
 			const std::string CounterId = Module.strStableId + ":" +
-				std::to_string(iEvent) + (strEventType == "epet_death" ? ":death" : ":spawn");
+				std::to_string(iEvent) + ":" + std::string(strEventType);
 			const uint32_t iTrackingCount = ++State.EventTrackingCounts[CounterId];
 			const uint32_t iFrequency = static_cast<uint32_t>((std::max)(0.f,
 				SourceNumber(Module, Prefix + "frequency", 0.f)));
@@ -5011,7 +5011,7 @@ bool_t Client::CEffectPlayback::Dispatch_SourceEvents(
 				const std::string_view EventType = SourceString(
 					Module, "eventgeneratortype");
 				if (EventName != Event.strName || EventType != Event.strType ||
-					(EventType != "epet_spawn" && EventType != "epet_death"))
+					(EventType != "epet_spawn" && EventType != "epet_death" && EventType != "epet_collision"))
 				{
 					continue;
 				}
@@ -6121,6 +6121,9 @@ void Client::CEffectPlayback::Update_Particles(
 	{
 		PARTICLE_STATE& Particle = State.Particles[iParticle];
 		Particle.vSourceCollisionPreviousPosition = Particle.vPosition;
+		const auto PreviousRotation = Particle.vRotationDegrees;
+		const auto PreviousMeshRotation = Particle.vSourceMeshRotationDegrees;
+		const auto PreviousOrbitOffset = Particle.vOrbitOffset;
 		const bool_t bBirthStep =
 			Particle.iSpawnSimulationStep == m_iSimulationStep;
 		const f32_t fParticleDelta = bGeneratesDeath ? (bBirthStep ? 0.f :
@@ -6149,11 +6152,21 @@ void Client::CEffectPlayback::Update_Particles(
 					(std::max)(0.f, 1.f - Element.Detail.Particle.fDrag * fParticleDelta));
 			}
 		}
-		const float3_t EffectiveVelocity = fParticleDelta > 0.f ? Apply_TargetAttractor(
+		const float3_t EffectiveVelocity = Particle.bSourceCollisionMovementFrozen ? float3_t{} :
+			fParticleDelta > 0.f ? Apply_TargetAttractor(
 			Element, Particle, fNormalizedAge, fParticleDelta,
 			ElementWorld, RootWorld) : Multiply3(Particle.vVelocity, Particle.vVelocityScale);
 		Particle.vPosition = Add3(Particle.vPosition,
 			Scale3(EffectiveVelocity, fParticleDelta));
+		if (Particle.bSourceCollisionMovementFrozen)
+		{
+			// Cascade FreezeMovement stops translation and rotation only.
+			// Source color, size, SubUV and lifetime modules still update above.
+			Particle.vPosition = Particle.vSourceCollisionPreviousPosition;
+			Particle.vRotationDegrees = PreviousRotation;
+			Particle.vSourceMeshRotationDegrees = PreviousMeshRotation;
+			Particle.vOrbitOffset = PreviousOrbitOffset;
+		}
 		if (bGeneratesDeath && Particle.fAgeSeconds >= Particle.fLifeTimeSeconds)
 		{
 			// Preserve the terminal world position and effective velocity before removal.
@@ -6185,7 +6198,8 @@ void Client::CEffectPlayback::Apply_SourceWorldCollisions(const float4x4_t& Root
         const auto CurrentRoot = Evaluate_ElementWorld(Element, m_fSampleTimeSeconds, RootWorld);
         for (auto& Particle : StateIt->second.Particles)
         {
-            if (Particle.fAgeSeconds < Particle.fSourceCollisionDelay) continue;
+            if (Particle.bSourceCollisionMovementFrozen ||
+                Particle.fAgeSeconds < Particle.fSourceCollisionDelay) continue;
             const auto& Root = Element.Detail.Particle.bLocalSpace ? CurrentRoot : Particle.SpawnRootWorld;
             const matrix_t Matrix = XMLoadFloat4x4(&Root);
             const auto Start = Transform_Coord(Particle.vSourceCollisionPreviousPosition, Matrix);
@@ -6199,9 +6213,36 @@ void Client::CEffectPlayback::Apply_SourceWorldCollisions(const float4x4_t& Root
                 std::fabs(LocalHalf.x * Root._13) + std::fabs(LocalHalf.y * Root._23) + std::fabs(LocalHalf.z * Root._33));
             Engine::PHYSICS_STATIC_SWEEP_HIT Hit;
             if (!Physics->Sweep_StaticBox(Start, End, Half, Hit)) continue;
+            // The existing bounded event queue receives the actual contact
+            // before Kill/FreezeMovement or bounce changes the source particle.
+            // Collision receivers currently admit location-only spawning.
+            PARTICLE_STATE Impact = Particle;
+            Impact.vPosition = Transform_Coord(Lerp3Clamped(Start, End,
+                Hit.fTravelFraction), XMMatrixInverse(nullptr, Matrix));
+            const f32_t EmitterElapsed = (std::max)(0.f,
+                m_fSampleTimeSeconds - Element.Detail.Timing.fStartDelaySeconds -
+                Element.SourceRecipe.fEmitterDelaySeconds);
+            const f32_t EmitterDuration = Element.SourceRecipe.fEmitterDurationSeconds > 0.f ?
+                Element.SourceRecipe.fEmitterDurationSeconds : Element.Detail.Timing.fLifeTimeSeconds;
+            const bool_t FiniteComplete = Element.SourceRecipe.iEmitterLoopCount != 0u &&
+                EmitterElapsed >= EmitterDuration * Element.SourceRecipe.iEmitterLoopCount;
+            const f32_t EmitterTime = EmitterDuration <= 0.f ? EmitterElapsed :
+                FiniteComplete ? EmitterDuration : std::fmod(EmitterElapsed, EmitterDuration);
+            Queue_ParticleEvents(Element, StateIt->second, Impact, CurrentRoot,
+                "epet_collision", EmitterTime);
             if (Particle.iSourceCollisionsRemaining == 0u)
             {
-                Particle.fAgeSeconds = Particle.fLifeTimeSeconds;
+                if (SourceString(Module, "collisioncompletionoption") == "epcc_freezemovement")
+                {
+                    const auto Contact = Add3(Lerp3Clamped(Start, End, Hit.fTravelFraction), Scale3(Hit.vNormal, 1.e-4f));
+                    Particle.vPosition = Transform_Coord(Contact, XMMatrixInverse(nullptr, Matrix));
+                    Particle.vVelocity = {};
+                    Particle.vBaseVelocity = {};
+                    Particle.vTargetAttractorWorldVelocity = {};
+                    Particle.bSourceCollisionMovementFrozen = true;
+                }
+                else
+                    Particle.fAgeSeconds = Particle.fLifeTimeSeconds;
                 continue;
             }
             --Particle.iSourceCollisionsRemaining;
@@ -6244,6 +6285,7 @@ void Client::CEffectPlayback::Apply_SourceEmitterDirectLocations(const float4x4_
 		for (size_t index = 0u; index < count; ++index)
 		{
 			auto& particle = state->second.Particles[index];
+			if (particle.bSourceCollisionMovementFrozen) continue;
 			const auto& source = providerState->second.Particles[index];
 			// DirectLoc binds the same live index for the particle's life; it neither
 			// picks another random source nor adds another frame of velocity motion.
@@ -8327,7 +8369,11 @@ void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld,
 			XMStoreFloat4x4(&Evaluated.World, World);
 			XMStoreFloat4x4(&Evaluated.SourceEmitterWorld,
 				Element.Detail.Particle.bLocalSpace ?
-					XMLoadFloat4x4(&ParticleElementWorld) : XMMatrixIdentity());
+					XMLoadFloat4x4(&ParticleElementWorld) :
+					Element.Detail.Sprite.bFollowEmitterAxisRotation && Element.SourceRecipe.bEnabled &&
+						eSpriteAlignment >= EFFECT_PARTICLE_SPRITE_ALIGNMENT::AXIS_POSITIVE_X &&
+						eSpriteAlignment <= EFFECT_PARTICLE_SPRITE_ALIGNMENT::AXIS_NEGATIVE_Z ?
+						XMLoadFloat4x4(&ParticleRoot) : XMMatrixIdentity());
 			const float4_t ElementColor =
 				Evaluate_Color(Element, ParticleT).vColorMultiply;
 			if (Element.SourceRecipe.bEnabled)
@@ -8802,13 +8848,18 @@ bool_t Client::CEffectPlayback::Enable_OwnerSustainedSourceLoops(std::string& st
 				return !Is_PlaybackElementAdmitted(element) ||
 					element.eKind != EFFECT_ELEMENT_KIND::PARTICLE ||
 					!element.SourceRecipe.bEnabled ||
-					element.SourceRecipe.strRendererShape != "sprite" ||
-					element.SourceRecipe.iEmitterLoopCount != 0u ||
+					(element.SourceRecipe.strRendererShape != "sprite" &&
+					 element.SourceRecipe.strRendererShape != "mesh") ||
 					!std::isfinite(element.SourceRecipe.fEmitterDurationSeconds) ||
 					element.SourceRecipe.fEmitterDurationSeconds <= 0.f;
+			}) ||
+		std::none_of(document.Elements.begin(), document.Elements.end(),
+			[](const EFFECT_ELEMENT_DESC& element)
+			{
+				return element.SourceRecipe.iEmitterLoopCount == 0u;
 			}))
 	{
-		strOutError = "Owner-sustained playback requires only admitted source sprite emitters with EmitterLoops=0.";
+		strOutError = "Owner-sustained playback requires admitted source sprite/mesh emitters and at least one EmitterLoops=0 emitter.";
 		return false;
 	}
 	m_bOwnerSustainedSourceLoops = true;

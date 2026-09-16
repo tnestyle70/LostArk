@@ -2302,10 +2302,6 @@
               }
             ]
           },
-          "bodyVisibility": {
-            "hiddenFromMs": 0,
-            "hiddenToMs": 300
-          },
           "effectCues": [
             {
               "cueId": "cue.valtan.ghost.portal-once.dash-floor",
@@ -2341,7 +2337,11 @@
               "mappingBasis": "PROJECT_AUTHORED"
             }
           ],
-          "cameraInvocations": []
+          "cameraInvocations": [],
+          "bodyVisibility": {
+            "hiddenFromMs": 0,
+            "hiddenToMs": 300
+          }
         }
       ]
     },

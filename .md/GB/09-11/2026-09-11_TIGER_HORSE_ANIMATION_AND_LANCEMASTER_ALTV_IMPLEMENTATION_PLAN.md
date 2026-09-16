@@ -83,3 +83,11 @@ T `effect.lancemaster.skill.34650.clip1.full.restore.effect.json`과 `clip2.full
 후속 첨부 화면에서 T 돌진 용의 목과 몸통 사이가 끊겨 보인다. `34650.clip2.full.restore`의 ModelCue section0/1은 동일한 재질·시각·Transform을 사용한다. 실제 native1360은 masked pass가 아닌 translucent pass이며 alpha에 `saturate(6 * abs(NdotV)^5)`를 곱한다. NdotV 0.2/0.3에서 이 계수는 0.00192/0.01458이므로 비스듬한 목 표면을 거의 투명하게 만든다. 화면 한 장으로 지형 depth나 모든 pose 문제를 완전히 배제하지 않으며, 확인된 과도한 시선각 감쇠를 사용자 요청 튜닝으로 완화한다.
 
 두 ModelCue의 `material.sourceProfile.scalars`에서 `32.fresnal_power` 값만 `5 -> 2`로 변경한다. 동일 조건의 계수는 0.24/0.54가 된다. opacity strength6, 노이즈, depth fade, emission의 별도 Fresnel 및 애니메이션·손 부착은 유지한다. 원본 native 프로그램을 복원한 변경으로 표현하지 않고 프로젝트 가독성 조정으로 기록한다. 두 scalar 외 전체 JSON 의미 보존, 0~1 시선각의 alpha 계수 유한성·범위·기존 대비 감소 없음, JSON parse와 diff 검사를 수행한다. 새 C++나 shader가 없어 재빌드는 필요 없다. 최종 목 연결 화면은 사용자가 T clip2 Model/Summon 및 Play All에서 확인한다.
+
+## G10. V/ALT V dragon의 local space와 ALT V 배경 조명 입력 — 2026-09-15
+
+사용자가 V/ALT V dragon 모델에 한해 local space를 다시 켜도록 범위를 확정했다. 실제 세 모델 `fm_n_flm_ydr_00_sm`, `fm_x_flm_gdr_01`, `fm_x_flm_gdr_01_dragon`의 원본 Required `buselocalspace=true`와 제품 cue를 대조한다. V 세 clip, ALT V 네 clip 및 통합 full의 23행만 true로 바꾸고 손본, socket, TypeData 회전, 그룹, 기타 particle은 유지한다. 변경 전 bytes와 허용한 필드 외 의미 보존 검사를 out에 남긴다.
+
+ALT V 바위 배경은 static Mesh와 설치 Resources가 존재한다. 그러나 `Shader_EffectMeshFamilyCarrier.hlsli`의 Lance native 입력은 조명 네 필드를 0 초기화한 채 PS에 넘긴다. native782/786/793 등은 diffuse를 ambient/sky에 곱하므로 이 경로는 바위 표면을 검정으로 만든다. `Effect_DocumentRenderer_MaterialBinding.cpp::Bind_MaterialInputs`에서 기존 committed scene directional ambient를 읽어 Lance static profile782~800의 Mesh shader에만 전달하고, 같은 범위의 HLSL 입력 `ambientColor`로 연결한다. 기존 SourceCharacter/Artist/Warlord와 같은 scene ambient owner를 사용하며 없는 UE skylight hemisphere를 임의 상수로 만들지 않는다. 원본 PS 수식, 다른 skill profile, 9월 11일 사용자 삭제 여섯 행과 JSON 시간축은 보존한다.
+
+새 H/CPP나 프로젝트 항목은 없다. 변경 TU의 격리 Debug compile, affected Mesh shader768의 out FXC와 실제 shader의 숫자 readback으로 기존 zero ambient와 전달한 ambient의 차이를 확인한다. 이는 배경 픽셀 수식 검증이며 사용자 Client 화면 판정을 대신하지 않는다. 배경 C++/HLSL 변경은 새 Client/CSO 빌드가 필요하다.

@@ -5,6 +5,8 @@
 #include "MapAssetCatalog.h"
 #include "MapLoadScope.h"
 
+#include <optional>
+
 NS_BEGIN(Engine)
 class CModel;
 class CShader;
@@ -40,6 +42,8 @@ public:
 		bool_t visible = true;
 		MAP_ASSET_RENDER_PROFILE renderProfile;
 		Engine::MODEL_BAKED_LIGHTING_INSTANCE bakedLighting;
+		/* Optional immutable material clone; geometry identity must match the prototype. */
+		std::optional<Engine::MODEL_ASSET_LOAD_DESC> materialVariant;
 		MAP_FRUSTUM_CULLING_POLICY frustumCulling{};
 		/* Only set when the catalog resolved a water row for this asset. */
 		bool_t hasWaterProfile = false;
@@ -116,7 +120,8 @@ private:
 private:
 	MAP_ASSET_RENDER_PROFILE Get_MaterialRenderProfile(uint32_t meshIndex) const;
 	HRESULT Ready_Components(uint32_t prototypeLevelIndex,
-		const std::wstring& modelPrototypeTag);
+		const std::wstring& modelPrototypeTag,
+		const std::optional<Engine::MODEL_ASSET_LOAD_DESC>& materialVariant);
 	HRESULT Bind_ShaderResources(
 		const struct MAP_CAMERA_CULL_SNAPSHOT* cameraSnapshot);
 	HRESULT Bind_ShadowShaderResources();

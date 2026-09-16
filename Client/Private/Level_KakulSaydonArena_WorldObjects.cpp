@@ -1,3 +1,6 @@
+#ifdef _DEBUG
+#include "imgui.h"
+#endif
 #include "Level_KakulSaydonArena.h"
 #include "Character.h"
 #include "Npc.h"
@@ -10,6 +13,9 @@
 #include "KakulArenaHiddenPlacements.h"
 #include "Transform.h"
 #include "WorldGameplayDocument.h"
+#ifdef _DEBUG
+#include "GameInstance.h"
+#endif
 #include <cmath>
 #include <algorithm>
 #include <set>
@@ -439,9 +445,14 @@ void CLevel_KakulSaydonArena::Get_WorldObjectValidationTargets(
 }
 
 bool_t CLevel_KakulSaydonArena::Try_GetWorldSequencePlacementBaseline(
-    const WORLD_SEQUENCE_INSTANCE& instance, float3_t& outPosition) const
+    const WORLD_SEQUENCE_INSTANCE& instance, float3_t& outPosition, const CWorldSequenceDocument* document) const
 {
     if (instance.anchorKind != "WORLD" || instance.bindings.empty()) return false;
+    // Imported cutscene motions keep a zero instance position and absolute map
+    // coordinates in their keys; their first key is the placed centre.
+    const auto* sequence = document ? document->Find_Template(instance.templateId) : nullptr;
+    const bool absoluteKeys = sequence && sequence->objectMotion.emissions.empty() &&
+        instance.position.x == 0.f && instance.position.y == 0.f && instance.position.z == 0.f;
     std::set<std::pair<WORLD_SEQUENCE_TARGET_KIND, std::string>> seen;
     double sumX = 0.0, sumY = 0.0, sumZ = 0.0;
     size_t count = 0u;
@@ -450,7 +461,11 @@ bool_t CLevel_KakulSaydonArena::Try_GetWorldSequencePlacementBaseline(
         if (!seen.emplace(binding.targetKind, binding.targetId).second) continue;
         float3_t position{};
         if (binding.targetKind == WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE)
+        {
             position = instance.position;
+            const auto* track = absoluteKeys ? CWorldSequencePlayer::Find_Track(*sequence, binding.slotId) : nullptr;
+            if (track && !track->keys.empty()) position = track->keys.front().positionOffset;
+        }
         else
         {
             uint64_t id = 0u;
@@ -866,7 +881,7 @@ bool_t CLevel_KakulSaydonArena::Debug_BeginWorldObjectPreview(
     if (previewAtCharacter && instance && instance->anchorKind == "WORLD")
     {
         float3_t previewPosition{}, baseline{};
-        if (!Try_GetWorldSequencePlacementBaseline(*instance, baseline))
+        if (!Try_GetWorldSequencePlacementBaseline(*instance, baseline, &document))
         { status = "World preview cannot resolve every saved placement in this object group."; return false; }
         if (!Try_Get_AuthoringForwardPlacement(previewPosition, status)) return false;
         previewOffset = {previewPosition.x - baseline.x,
@@ -978,6 +993,57 @@ bool_t CLevel_KakulSaydonArena::Debug_SampleWorldObjectPreview(const f32_t clock
         status += m_pWorldObjectPreview->Get_ObjectSampleStatus(m_WorldObjectPreviewInstances.front());
     if (!m_strWorldObjectPreviewNotice.empty()) status += m_strWorldObjectPreviewNotice;
     return true;
+}
+
+void CLevel_KakulSaydonArena::Debug_DrawWorldObjectColliderPreview() const
+{
+    if (!m_pWorldObjectPreview || !ImGui::GetCurrentContext()) return;
+    std::vector<CWorldSequencePlayer::OBJECT_COLLIDER_SAMPLE> samples;
+    m_pWorldObjectPreview->Collect_ObjectColliderSamples(samples);
+    if (samples.empty()) return;
+    auto& game = Engine::CGameInstance::Get();
+    const matrix_t view = XMLoadFloat4x4(game.Get_Transform(D3DTS::VIEW));
+    const matrix_t projection = XMLoadFloat4x4(game.Get_Transform(D3DTS::PROJ));
+    auto* viewport = ImGui::GetMainViewport();
+    auto* draw = ImGui::GetBackgroundDrawList(viewport);
+    const auto project = [&](fvector_t world, ImVec2& out)
+    {
+        const vector_t v = XMVector3TransformCoord(world, view);
+        if (XMVectorGetZ(v) <= .1f) return false;
+        const vector_t p = XMVector3TransformCoord(v, projection);
+        out = {viewport->Pos.x + (XMVectorGetX(p) * .5f + .5f) * viewport->Size.x,
+            viewport->Pos.y + (.5f - XMVectorGetY(p) * .5f) * viewport->Size.y};
+        return std::isfinite(out.x) && std::isfinite(out.y);
+    };
+    for (const auto& sample : samples)
+    {
+        const ImU32 color = sample.behavior == "INSTANT_DEATH" ? IM_COL32(255, 65, 65, 240) :
+            sample.hasGrip ? IM_COL32(70, 225, 255, 240) : IM_COL32(255, 220, 65, 240);
+        const auto line = [&](fvector_t a, fvector_t b)
+        { ImVec2 pa{}, pb{}; if (project(a, pa) && project(b, pb)) draw->AddLine(pa, pb, color, 1.5f); };
+        const matrix_t rotation = XMMatrixRotationY(XMConvertToRadians(sample.yawDegrees));
+        const vector_t center = XMLoadFloat3(&sample.center);
+        vector_t corners[8];
+        for (int corner = 0; corner < 8; ++corner)
+            corners[corner] = center + XMVector3TransformNormal(XMVectorSet(
+                (corner & 1 ? 1.f : -1.f) * sample.halfExtents.x,
+                (corner & 2 ? 1.f : -1.f) * sample.halfExtents.y,
+                (corner & 4 ? 1.f : -1.f) * sample.halfExtents.z, 0.f), rotation);
+        for (int corner = 0; corner < 8; ++corner)
+            for (int axis = 0; axis < 3; ++axis)
+                if (!(corner & (1 << axis))) line(corners[corner], corners[corner | (1 << axis)]);
+        if (sample.hasGrip)
+        {
+            const vector_t grip = XMLoadFloat3(&sample.gripPosition);
+            for (int axis = 0; axis < 3; ++axis)
+            {
+                const vector_t radius = XMVectorSet(axis == 0 ? .12f : 0.f,
+                    axis == 1 ? .12f : 0.f, axis == 2 ? .12f : 0.f, 0.f);
+                line(grip - radius, grip + radius);
+            }
+            line(center, grip);
+        }
+    }
 }
 
 void CLevel_KakulSaydonArena::Debug_StopWorldObjectPreview()

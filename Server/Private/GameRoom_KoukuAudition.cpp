@@ -547,6 +547,7 @@ void LostArk::Server::CGameRoom::Clear_KoukuSaydonPatternAudition(const bool com
 		for (auto& entity : m_WorldEntities) if (entity.iNetEntityId == member.iBossEntityId) { boss = &entity; break; }
 		if (boss && !boss->strPatternId.empty()) m_KoukuSaydonBrain.Abort_Pattern(*boss, m_iServerTick);
 		(void)Release_PlayerAttachments(member.iBossEntityId, 0.f, 0u, false, 0u, m_iServerTick ? m_iServerTick : 1u);
+		if (boss) Clear_KoukuPlayerTargets(*boss, member.LogicLedger);
 		CKoukuSaydonLogicRuntime::Discard(member.LogicLedger, m_Players, boss);
 		// Explicit stop/restart cancels the owned volley; natural completion retains its tail.
 		if (!completed) m_CombatObjectRuntime.Cancel_Source(member.iBossEntityId);
@@ -904,8 +905,37 @@ bool LostArk::Server::CGameRoom::Update_KoukuSaydonBoss(SERVER_WORLD_ENTITY& bos
 	const auto* pattern = catalog ? CKoukuSaydonBrain::Find_AnimationOnlyPattern(*catalog, member->PatternIds[member->iPatternIndex], status) : nullptr;
 	if (!pattern || boss.strPatternId != pattern->strPatternId)
 	{ m_strStatus = "KoukuSaydon member lost its exact running pattern"; Clear_KoukuSaydonPatternAudition(); return true; }
-	CKoukuSaydonBrain::Apply_BossMotion(boss, *pattern, serverTick);
-	if (!CKoukuSaydonBrain::Apply_StageRootMotion(boss, *pattern, serverTick,
+	if (boss.KoukuDirectionPlayback && CKoukuSaydonLogicRuntime::Has_ReachedTick(serverTick, boss.iKoukuDirectionEndTick))
+	{
+		boss.KoukuDirectionPlayback.reset(); boss.iKoukuDirectionEndTick = 0u;
+		boss.bKoukuDirectionPlaybackComplete = false; boss.bPatternStageRootOriginCaptured = false;
+	}
+	if (boss.KoukuDirectionPlayback)
+	{
+		// Run the existing single-actor brain on a detached state. Only its pose
+		// and read-only presentation are committed; parent clocks never change.
+		auto child = std::make_shared<SERVER_WORLD_ENTITY>(*boss.KoukuDirectionPlayback);
+		const auto* childPattern = CKoukuSaydonBrain::Find_AnimationOnlyPattern(*catalog, child->strPatternId, status);
+		if (!childPattern || (!boss.bKoukuDirectionPlaybackComplete &&
+			!CKoukuSaydonBrain::Apply_StageRootMotion(*child, *childPattern, serverTick,
+				m_ServerNavigation, m_ServerCollisionSystem, status)))
+		{ m_strStatus = "Cross direction child failed: " + status; Clear_KoukuSaydonPatternAudition(); return true; }
+		if (!boss.bKoukuDirectionPlaybackComplete)
+		{
+			const auto finalPose = *child;
+			const auto result = m_KoukuSaydonBrain.Update(*child, *catalog, serverTick, status);
+			if (result == KOUKUSAYDON_BRAIN_UPDATE_RESULT::PATTERN_COMPLETED)
+			{ *child = finalPose; boss.bKoukuDirectionPlaybackComplete = true; }
+			else if (result == KOUKUSAYDON_BRAIN_UPDATE_RESULT::ABORTED_INVALID_DEFINITION ||
+				result == KOUKUSAYDON_BRAIN_UPDATE_RESULT::ABORTED_BOSS_DEAD)
+			{ m_strStatus = "Cross direction child failed: " + status; Clear_KoukuSaydonPatternAudition(); return true; }
+		}
+		boss.fPositionX = child->fPositionX; boss.fPositionY = child->fPositionY;
+		boss.fPositionZ = child->fPositionZ; boss.fYawDegrees = child->fYawDegrees;
+		boss.KoukuDirectionPlayback = std::move(child);
+	}
+	else CKoukuSaydonBrain::Apply_BossMotion(boss, *pattern, serverTick);
+	if (!boss.KoukuDirectionPlayback && !CKoukuSaydonBrain::Apply_StageRootMotion(boss, *pattern, serverTick,
 		m_ServerNavigation, m_ServerCollisionSystem, status))
 	{ m_strStatus = status; Clear_KoukuSaydonPatternAudition(); return true; }
 	const auto completedPatternId = boss.strPatternId;
@@ -917,6 +947,7 @@ bool LostArk::Server::CGameRoom::Update_KoukuSaydonBoss(SERVER_WORLD_ENTITY& bos
 		catalog->Find_KoukuMadnessPolicy(boss.strEncounterId), serverTick, m_TickDamageEvents, output,
         &m_ServerNavigation, &m_ServerCollisionSystem);
 	Update_KoukuMarioEntry(*member, serverTick);
+	Update_KoukuPlayerTargets(boss, *pattern, member->LogicLedger, *baseCatalog, serverTick);
 	const bool outputCompleted = Apply_KoukuLogicOutput(output, boss, serverTick);
 	const bool chainStarted = !outputCompleted && Start_KoukuCompletionChain(*member, boss, *pattern, serverTick);
 	const bool early = outputCompleted || chainStarted;
@@ -932,6 +963,7 @@ bool LostArk::Server::CGameRoom::Update_KoukuSaydonBoss(SERVER_WORLD_ENTITY& bos
 	{ m_strStatus = status; Clear_KoukuSaydonPatternAudition(); return true; }
 	if (update != KOUKUSAYDON_BRAIN_UPDATE_RESULT::PATTERN_COMPLETED) return true;
 	(void)Release_PlayerAttachments(boss.iNetEntityId, 0.f, 0u, false, 0u, serverTick);
+	Clear_KoukuPlayerTargets(boss, member->LogicLedger);
 	CKoukuSaydonLogicRuntime::Discard(member->LogicLedger, m_Players, &boss);
 	Queue_KoukuSaydonPatternAuditionLifecycle(completedPatternId, sequence, stage, KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::PATTERN_COMPLETED, {}, boss.iNetEntityId);
 	const auto completedIndex = member->iPatternIndex;

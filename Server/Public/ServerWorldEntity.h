@@ -8,11 +8,22 @@
 #include "NpcBehaviorRuntime.h"
 
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <vector>
 
 namespace LostArk::Server
 {
+	// The existing root-motion consumer owns this vertical phase for one Pattern.
+	struct SERVER_ALBION_AIRBORNE_STATE final
+	{
+		ALBION_AIRBORNE_PHASE ePhase = ALBION_AIRBORNE_PHASE::NONE;
+		std::uint32_t iPatternSequence = 0u, iStartMs = 0u, iDurationMs = 0u, iSourceStageIndex = 0u;
+		LostArk::Shared::NET_ENTITY_ID iSelectedPlayer = LostArk::Shared::INVALID_NET_ENTITY_ID;
+		float fJumpHeightM = 0.f, fPhaseHeightM = 0.f, fStartHeightM = 0.f;
+		float fSourceUpAtStart = 0.f, fSourceUpMinimum = 0.f, fLandingProgress = 0.f;
+	};
+
 	struct SERVER_BOSS_PATTERN_COOLDOWN final
 	{
 		/* Source-derived patterns that share the same primary action share one
@@ -152,6 +163,11 @@ namespace LostArk::Server
 		bool bKoukuSummonClone = false;
 		std::uint32_t iKoukuCloneOwnerSequence = 0u;
 		std::uint32_t iKoukuCloneEndTick = 0u;
+		// Immutable staged child reuses the existing brain/root consumer while
+		// this entity keeps the parent Pattern, HP, identity and Logic ledger.
+		std::shared_ptr<const SERVER_WORLD_ENTITY> KoukuDirectionPlayback;
+		std::uint32_t iKoukuDirectionEndTick = 0u;
+		bool bKoukuDirectionPlaybackComplete = false;
 		/* Auxiliary ghosts use their own deterministic occurrence identity and
 		next-spawn edge. Neither value is derived from the primary attack cursor,
 		portal cadence, entity allocation order, or the wall clock. */
@@ -196,6 +212,7 @@ namespace LostArk::Server
 		so the step never reaches back into the catalog. A stage that has one is
 		stepped along it and ignores fPatternForcedMotionSpeed. */
 		std::vector<ROOT_MOTION_SAMPLE> PatternStageRootMotion;
+		SERVER_ALBION_AIRBORNE_STATE AlbionAirborne;
 		bool bPortalMotionActive = false;
 		/* PORTAL_TARGET_RUSH captures its target, facing and endpoint on Stage
 		   entry so presentation can place both portals on the same edge. The

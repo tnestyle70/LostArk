@@ -79,6 +79,14 @@ struct MAP_RUNTIME_STATIC_BATCH_ENTRY
 	shared_ptr<CMapStaticBatchObject> object;
 };
 
+#ifdef _DEBUG
+struct MAP_DEBUG_PLACEMENT_PREVIEW
+{
+	MAP_PLACEMENT_RECORD record;
+	std::vector<Engine::MODEL_MATERIAL_OVERRIDE> materialOverrides;
+};
+#endif
+
 class CMapPlacementRuntime final
 {
 public:
@@ -168,7 +176,8 @@ public:
 		const CMapAssetCatalog& catalog,
 		const MAP_PLACEMENT_RECORD& record,
 		MAP_RUNTIME_PLACED_ENTRY& outEntry,
-		const MAP_FRUSTUM_CULLING_POLICY& frustumCulling = {});
+		const MAP_FRUSTUM_CULLING_POLICY& frustumCulling = {},
+		const std::vector<Engine::MODEL_MATERIAL_OVERRIDE>* materialOverrides = nullptr);
 
 	static bool_t Stage_PlacementRuntime(
 		uint32_t levelIndex,
@@ -190,6 +199,13 @@ public:
 		const MAP_RUNTIME_PLACED_ENTRY& entry,
 		bool_t& outVisible);
 #ifdef _DEBUG
+	/* Stages ordinary CMapAssetObjects and commits only after both material and
+	visibility operations succeed. The original placement order stays stable. */
+	bool_t Replace_DebugPlacementPreview(
+		const std::vector<MAP_DEBUG_PLACEMENT_PREVIEW>& previews,
+		const std::vector<std::string>& hiddenSourcePlacementIds,
+		std::string& outStatus);
+	bool_t Clear_DebugPlacementPreview(std::string& outStatus);
 	/* Debug presentation may address an authored occurrence group by its stable
 	sourceLevel. It never exposes vector order or prototype identity to callers. */
 	bool_t Set_DebugSourceLevelVisible(
@@ -223,6 +239,18 @@ private:
 	std::unordered_map<std::string, shared_ptr<Engine::CModel>> m_SelfMotionModels;
 	std::vector<MAP_RUNTIME_STATIC_BATCH_ENTRY> m_StaticBatches;
 	std::string m_Status = "Map runtime not loaded";
+	MAP_FRUSTUM_CULLING_POLICY m_FrustumCulling{};
+#ifdef _DEBUG
+	struct DEBUG_HIDDEN_PLACEMENT
+	{
+		uint64_t placementId = 0u;
+		std::string sourcePlacementId;
+		bool_t recordVisible = false;
+		bool_t runtimeVisible = false;
+	};
+	std::vector<uint64_t> m_DebugPreviewIds;
+	std::vector<DEBUG_HIDDEN_PLACEMENT> m_DebugHiddenPlacements;
+#endif
 };
 
 NS_END

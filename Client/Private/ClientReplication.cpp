@@ -3007,7 +3007,11 @@ bool Client::CClientReplication::Apply_CombatObjectSpawn(
 	{
 		return false;
 	}
-	if (!source->second.bPresentationIsolated &&
+	const bool targetedKouku = source->second.strArchetypeId.starts_with("BOSS_KAKULSAYDON_") &&
+        CKoukuSaydonPresentationPlayer::Is_TargetedCombatObjectArchetype(spawned.strCombatObjectArchetypeId);
+    // The typed sink resolves the exact published visual ID. Keeping the logical
+    // record lets an owner/resource that is still loading use the existing retry.
+	if (!source->second.bPresentationIsolated && !targetedKouku &&
 		nullptr == CActorCatalog::Find_BossCombatObjectVisual(
 			source->second.strArchetypeId,
 			spawned.strCombatObjectArchetypeId,
@@ -3063,11 +3067,14 @@ bool Client::CClientReplication::Apply_CombatObjectPresentationEvent(
 		const auto* record = m_CombatObjectProjectionRuntime.Find(event.iCombatObjectId);
 		if (source->second.pNpc.expired() || !record || record->iSourceNetEntityId != event.iSourceNetEntityId ||
 			record->Snapshot.PinnedDefinitionRevision != event.PinnedDefinitionRevision ||
-			record->strCombatObjectArchetypeId != "combatobject.kouku.albion.bluecircle" ||
 			event.strCombatObjectArchetypeId != record->strCombatObjectArchetypeId ||
-			record->strClientVisualId != "combatvisual.kouku.albion.bluecircle" ||
 			event.eKind != LostArk::Shared::COMBAT_OBJECT_PRESENTATION_EVENT_KIND::HIT_PULSE ||
-			event.iRepeatIndex != 0u || event.strHitId != "combatpresentation.kouku.albion.started")
+			event.iRepeatIndex != 0u ||
+			!(CKoukuSaydonPresentationPlayer::Is_TargetedCombatObjectArchetype(record->strCombatObjectArchetypeId)
+				? event.strHitId == "combatpresentation.kouku.showtime.started"
+				: (record->strCombatObjectArchetypeId == "combatobject.kouku.albion.bluecircle" &&
+					record->strClientVisualId == "combatvisual.kouku.albion.bluecircle" &&
+					event.strHitId == "combatpresentation.kouku.albion.started")))
 		{ m_strPendingPresentationFailure = "Kouku combat-object lifecycle marker has no matching live occurrence."; return false; }
 		// The runtime group already owns its warning and impact; do not replay it at this marker.
 		return true;
@@ -3125,13 +3132,22 @@ bool Client::CClientReplication::Spawn_CombatObjectPresentation(
 			"Combat-object visual revision does not match its boss occurrence.";
 		return false;
 	}
+    const bool koukuOwner = source->second.strArchetypeId.starts_with("BOSS_KAKULSAYDON_") && !source->second.pNpc.expired();
+    if (koukuOwner && CKoukuSaydonPresentationPlayer::Is_TargetedCombatObjectArchetype(spawned.strCombatObjectArchetypeId))
+    {
+        if (!m_pTargetedCombatPresentationPlayer)
+        { outStatus = "Targeted Kouku presentation owner is not ready."; return false; }
+        if (!m_pTargetedCombatPresentationPlayer->Start_TargetedCombatVisual(spawned, outStatus)) return false;
+        outHandle.eKind = COMBAT_OBJECT_PRESENTATION_KIND::KOUKU_TARGETED_GROUP;
+        outHandle.iValue = spawned.iCombatObjectId;
+        return true;
+    }
 	const std::shared_ptr<CValtan> boss = source->second.pValtan.lock();
 	const BOSS_COMBAT_OBJECT_VISUAL_ENTRY* visual =
 		CActorCatalog::Find_BossCombatObjectVisual(
 			source->second.strArchetypeId,
 			spawned.strCombatObjectArchetypeId,
 			spawned.strClientVisualId);
-	const bool koukuOwner = source->second.strArchetypeId.starts_with("BOSS_KAKULSAYDON_") && !source->second.pNpc.expired();
 	if ((!boss && !koukuOwner) || nullptr == visual)
 	{
 		outStatus = "Combat-object visual join is missing.";
@@ -3227,7 +3243,7 @@ bool Client::CClientReplication::Spawn_CombatObjectPresentation(
 
 bool Client::CClientReplication::Update_CombatObjectPresentation(
 	const COMBAT_OBJECT_PRESENTATION_HANDLE handle,
-	const LostArk::Shared::COMBAT_OBJECT_SNAPSHOT& snapshot)
+	const LostArk::Shared::COMBAT_OBJECT_SNAPSHOT& snapshot, const std::uint32_t serverTick)
 {
 	const COMBAT_OBJECT_PROJECTION_RECORD* record =
 		m_CombatObjectProjectionRuntime.Find(snapshot.iCombatObjectId);
@@ -3246,6 +3262,17 @@ bool Client::CClientReplication::Update_CombatObjectPresentation(
 	{
 		return false;
 	}
+    if (COMBAT_OBJECT_PRESENTATION_KIND::KOUKU_TARGETED_GROUP == handle.eKind)
+    {
+        if (!m_pTargetedCombatPresentationPlayer || handle.iValue != snapshot.iCombatObjectId ||
+            !source->second.strArchetypeId.starts_with("BOSS_KAKULSAYDON_") ||
+            !CKoukuSaydonPresentationPlayer::Is_TargetedCombatObjectArchetype(record->strCombatObjectArchetypeId))
+            return false;
+        std::string status;
+        const bool updated = m_pTargetedCombatPresentationPlayer->Update_TargetedCombatVisual(snapshot, serverTick, status);
+        if (!updated) m_strPendingPresentationFailure = std::move(status);
+        return updated;
+    }
 	const BOSS_COMBAT_OBJECT_VISUAL_ENTRY* visual =
 		CActorCatalog::Find_BossCombatObjectVisual(source->second.strArchetypeId,
 			record->strCombatObjectArchetypeId, record->strClientVisualId);
@@ -3294,6 +3321,13 @@ bool Client::CClientReplication::Update_CombatObjectPresentation(
 void Client::CClientReplication::Stop_CombatObjectPresentation(
 	const COMBAT_OBJECT_PRESENTATION_HANDLE handle)
 {
+    if (COMBAT_OBJECT_PRESENTATION_KIND::KOUKU_TARGETED_GROUP == handle.eKind)
+    {
+        if (m_pTargetedCombatPresentationPlayer)
+            m_pTargetedCombatPresentationPlayer->Stop_TargetedCombatVisual(
+                static_cast<LostArk::Shared::COMBAT_OBJECT_ID>(handle.iValue));
+        return;
+    }
 	if (COMBAT_OBJECT_PRESENTATION_KIND::EFFECT_V2_GROUP == handle.eKind)
 	{
 		CEffectV2Runtime::Stop_Group(static_cast<uint32_t>(handle.iValue));
@@ -3309,7 +3343,8 @@ void Client::CClientReplication::Release_CombatObjectPresentation(
 {
 	// Level-owned groups have no weak boss owner. Their Server lifetime includes the
 	// full visual tail, so any despawn can stop both active and pending elements.
-	if (COMBAT_OBJECT_PRESENTATION_KIND::EFFECT_V1_LEVEL_ROOT == handle.eKind)
+	if (COMBAT_OBJECT_PRESENTATION_KIND::EFFECT_V1_LEVEL_ROOT == handle.eKind ||
+        COMBAT_OBJECT_PRESENTATION_KIND::KOUKU_TARGETED_GROUP == handle.eKind)
 	{
 		Stop_CombatObjectPresentation(handle);
 		return;
@@ -3590,18 +3625,29 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 					continue;
 				}
 
+                // A duration Logic may give the original body a child action while
+                // the ordinary pattern fields retain the parent's gameplay clock.
+                const bool childPresentation = !entity.strPresentationPatternId.empty();
+                const auto& presentationActionId = childPresentation ?
+                    entity.strPresentationActionId : entity.strActionId;
+                const auto presentationActionStartTick = childPresentation ?
+                    entity.iPresentationActionStartTick : entity.iActionStartTick;
+                const auto presentationPatternStartTick = childPresentation ?
+                    entity.iPresentationPatternStartTick : entity.iPatternStartTick;
+                const auto presentationStageIndex = childPresentation ?
+                    entity.iPresentationPatternStageIndex : entity.iPatternStageIndex;
 				const bool_t newActionEdge =
-					iter->second.strActiveActionId != entity.strActionId ||
-					iter->second.iKoukuActionStartTick != entity.iActionStartTick ||
+					iter->second.strActiveActionId != presentationActionId ||
+					iter->second.iKoukuActionStartTick != presentationActionStartTick ||
 					iter->second.iPatternSequence != entity.iPatternSequence ||
 					iter->second.iPatternStageIndex !=
-						entity.iPatternStageIndex;
+						presentationStageIndex;
 				if (newActionEdge)
 				{
 					KOUKU_SAYDON_ACTION_PRESENTATION action;
 					const bool_t hasAction =
 						CKoukuSaydonPresentationAssetService::Try_Resolve_Action(
-							iter->second.strArchetypeId, entity.strActionId, action,
+							iter->second.strArchetypeId, presentationActionId, action,
                             m_KoukuBundleState.iRunEpoch ? m_KoukuBundleState.iPinnedSourceRevision : 0u);
 					const bool_t played = hasAction ?
 						boss->Play_NetworkAction(
@@ -3609,7 +3655,7 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 							action.fPlayRate, action.bUnblendedBoneContact ? 0.f : 0.05f, action.fAnimationRootVerticalScale) :
 						boss->Play_DefaultIdle(0.08f);
 					const bool_t missingProductAction = !hasAction &&
-						!entity.strPatternId.empty() && !entity.strActionId.empty();
+						!entity.strPatternId.empty() && !presentationActionId.empty();
 					if (!played || missingProductAction)
 					{
 						// Idle keeps the body usable, but cannot acknowledge a missing
@@ -3618,7 +3664,7 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 							"KoukuSaydon Product animation clip could not start: " +
 								action.strClip :
 							"KoukuSaydon Server action has no admitted Product animation binding: " +
-								entity.strActionId;
+								presentationActionId;
 						OutputDebugStringA(("[KoukuSaydonAnimation] " +
 							m_strPendingPresentationFailure + "\n").c_str());
 						allSucceeded = false;
@@ -3630,7 +3676,7 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 						float ageSeconds = 0.f;
 						const auto model = boss->Get_Model();
 						if (model && CActionPresentationTimeline::Try_ResolveActionAgeSeconds(
-							snapshot.iServerTick, entity.iActionStartTick, 30.f, ageSeconds))
+							snapshot.iServerTick, presentationActionStartTick, 30.f, ageSeconds))
 						{
                             const float startOffsetSeconds = action.iStartOffsetMs * .001f;
                             const float animationAge = (std::max)(0.f, ageSeconds - startOffsetSeconds);
@@ -3656,7 +3702,7 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
                                 {
                                     float patternAgeSeconds = 0.f;
                                     if (!CActionPresentationTimeline::Try_ResolveActionAgeSeconds(snapshot.iServerTick,
-                                        entity.iPatternStartTick, 30.f, patternAgeSeconds) ||
+                                        presentationPatternStartTick, 30.f, patternAgeSeconds) ||
                                         !boss->Set_NetworkAnimationBlendWindows(action.AnimationBlendWindows, action.strOccurrenceId, patternAgeSeconds))
                                     {
                                         allSucceeded = false;
@@ -3671,11 +3717,11 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 						iter->second.strCurrentClip = hasAction ?
 							action.strClip : iter->second.strResolvedIdleClip;
 					}
-					iter->second.strActiveActionId = entity.strActionId;
-					iter->second.iKoukuActionStartTick = entity.iActionStartTick;
+					iter->second.strActiveActionId = presentationActionId;
+					iter->second.iKoukuActionStartTick = presentationActionStartTick;
 					iter->second.iPatternSequence = entity.iPatternSequence;
 					iter->second.iPatternStageIndex =
-						entity.iPatternStageIndex;
+						presentationStageIndex;
 				}
 				if (INVALID_NET_ENTITY_ID == iter->second.iOwnerBossNetEntityId)
 					CCombatHUDViewModel::Get().Apply_Boss(
@@ -3784,7 +3830,7 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 			allSucceeded = false;
 	}
 	{
-		COMBAT_OBJECT_PRESENTATION_SINK sink{ *this };
+		COMBAT_OBJECT_PRESENTATION_SINK sink{ *this, snapshot.iServerTick };
 		std::string status;
 		if (!m_CombatObjectProjectionRuntime.Apply_Snapshot(
 			snapshot.iServerTick, snapshot.CombatObjects, sink, status))
@@ -4002,6 +4048,7 @@ void Client::CClientReplication::Reset_World()
 	//?щ씪吏?layer瑜?嫄대뱶由????덈떎.
 	COMBAT_OBJECT_PRESENTATION_SINK combatObjectSink{ *this };
 	m_CombatObjectProjectionRuntime.Reset(combatObjectSink);
+    m_pTargetedCombatPresentationPlayer = nullptr;
 	const std::vector<std::shared_ptr<CCharacter>> characters =
 		m_Registry.Get_LiveObjects();
 

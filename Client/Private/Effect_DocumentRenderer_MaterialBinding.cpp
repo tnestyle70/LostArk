@@ -46,6 +46,7 @@ uint32_t Client::CEffectDocumentRenderer::Select_Pass(
 	case EFFECT_RENDER_PROFILE::ADDITIVE_TWO_SIDED_DEPTH_READ: return 2u;
 	case EFFECT_RENDER_PROFILE::ALPHA_ONE_SIDED_DEPTH_READ: return 3u;
 	case EFFECT_RENDER_PROFILE::ADDITIVE_ONE_SIDED_DEPTH_READ: return 4u;
+	case EFFECT_RENDER_PROFILE::MULTIPLY_ONE_SIDED_DEPTH_READ: return 5u;
 	case EFFECT_RENDER_PROFILE::END:
 	default: return UINT32_MAX;
 	}
@@ -461,7 +462,21 @@ HRESULT Client::CEffectDocumentRenderer::Bind_MaterialInputs(
             break;
         }
         case EFFECT_SHADER_FAMILY::LANCE_MASTER:
-            NativeBindFailed = BindNativePacket("g_LanceVASourceMaterialParameters", "g_LanceVASourceMaterialTime", Resource.LanceVASourceMaterialParameters); break;
+        {
+            NativeBindFailed = BindNativePacket("g_LanceVASourceMaterialParameters", "g_LanceVASourceMaterialTime", Resource.LanceVASourceMaterialParameters);
+            if (pShaderProgram->eCarrier == EFFECT_SHADER_CARRIER::MESH &&
+                Resource.iSourceMaterialProfile >= 782u && Resource.iSourceMaterialProfile <= 800u)
+            {
+                // The authored ALT V static backdrop consumes the committed scene
+                // ambient through the same native lighting input as model cues.
+                float4_t SceneAmbient{};
+                for (const auto& Light : CGameInstance::Get().Get_SceneLights())
+                    if (Light.eType == LIGHT::DIRECTIONAL)
+                    { SceneAmbient.x += Light.vAmbient.x; SceneAmbient.y += Light.vAmbient.y; SceneAmbient.z += Light.vAmbient.z; }
+                NativeBindFailed = BindFailed(pShader->Bind_RawValue("g_LanceVAStaticAmbient", &SceneAmbient, sizeof(SceneAmbient))) || NativeBindFailed;
+            }
+            break;
+        }
         case EFFECT_SHADER_FAMILY::WARLORD:
         {
             NativeBindFailed = BindNativePacket("g_WarlordSourceMaterialParameters", "g_WarlordSourceMaterialTime", Resource.VSourceMaterialParameters);

@@ -16,7 +16,7 @@ from build_bern_castle_shards import (
     shard_file_name,
     validate_relative_filename,
 )
-from build_maptool_scene import imported_id
+from build_maptool_scene import EMPTY_MATERIAL_SIGNATURE, imported_id, source_visibility_from_chains
 
 
 class BernCastleShardBuilderTests(unittest.TestCase):
@@ -190,6 +190,9 @@ class BernCastleShardBuilderTests(unittest.TestCase):
             runtime_asset_root=None,
             overlay_manifest=None,
             render_profile_manifest=None,
+            allow_legacy_visibility=True,
+            allow_legacy_material_coverage=True,
+            allow_partial_material_preview=False,
             placements_dir=[first_directory, second_directory],
             landscape_catalog=landscape_catalog,
             landscape_placements=landscape_placements,
@@ -211,6 +214,27 @@ class BernCastleShardBuilderTests(unittest.TestCase):
             max_catalog_assets=512,
             expect_level_count=level_specs,
         )
+
+    def test_schema3_hidden_flags_survive_shard_normalization(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            args = self.create_fixture(root)
+            path = args.placements_dir[0] / "shared.placements.json"
+            document = json.loads(path.read_text())
+            selected = document["placements"].pop(0)
+            self.write_json(path, document)
+            selected["materialOverrides"] = {"propertyPresent": False, "slots": [], "signatureSha256": EMPTY_MATERIAL_SIGNATURE}
+            actor = [{"objectPath": "Actor", "physicalPackage": "source.upk", "packageSha256": "a" * 64,
+                      "exportIndex": 280, "serializedFlags": {"bHidden": True}}]
+            component = [{"objectPath": "Actor.Component", "physicalPackage": "source.upk", "packageSha256": "a" * 64,
+                          "exportIndex": 488, "serializedFlags": {}}]
+            selected["sourceVisibility"] = source_visibility_from_chains(actor, component)
+            self.write_json(args.placements_dir[0] / "source-v3.placements.json", {"schemaVersion": 3, "placements": [selected]})
+            build_shards(args)
+            catalog = parse_catalog(args.output_dir / shard_file_name("BASE", "mapassets"))
+            placements = parse_placements(args.output_dir / shard_file_name("BASE", "mapplacements"), catalog["assetIds"])
+            row = next(row for row in placements["rows"] if row["sourceId"] == selected["placementId"])
+            self.assertFalse(row["visible"])
 
     def attach_render_profile(
         self,

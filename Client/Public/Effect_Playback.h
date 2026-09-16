@@ -297,6 +297,7 @@ private:
         float3_t vSourceCollisionRotationDamping{};
         uint32_t iSourceCollisionsRemaining = 0u;
         f32_t fSourceCollisionDelay = 0.f;
+		bool_t bSourceCollisionMovementFrozen = false;
 		bool_t bSourceEmitterLocationResolved = true;
 		std::string strSourceAnchorName;
 		float3_t vSourceAnchorOffset{};

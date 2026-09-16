@@ -5,6 +5,8 @@
 #include "KoukuSaydonBrain.h"
 #include "ServerApp.h"
 #include "WorldDestructionBootstrapContractTests.h"
+#include "Network/PacketReader.h"
+#include "Network/PacketWriter.h"
 #include <Windows.h>
 #include <process.h>
 #include <algorithm>
@@ -37,6 +39,27 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuBundles(TESTS& tes
 {
 
 #ifdef _DEBUG
+	{
+		S2C_WORLD_SNAPSHOT snapshot{}; snapshot.iServerTick = 10u; snapshot.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+		snapshot.ActiveGameplayRevision.Bytes.front() = 1u;
+		PLAYER_SNAPSHOT player{}; player.iNetEntityId = 1u; player.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+		snapshot.Players.push_back(player);
+		WORLD_ENTITY_SNAPSHOT boss{}; boss.iNetEntityId = 2u; boss.eAction = WORLD_ENTITY_ACTION::PATTERN_ACTIVE;
+		boss.strPatternId = "parent.pattern"; boss.strActionId = "parent.action";
+		boss.iPatternSequence = 3u; boss.iPatternStartTick = 2u; boss.iActionStartTick = 2u;
+		boss.strPresentationPatternId = "child.pattern"; boss.strPresentationActionId = "child.breath";
+		boss.iPresentationPatternStartTick = 4u; boss.iPresentationActionStartTick = 8u; boss.iPresentationPatternStageIndex = 1u;
+		boss.hasBossCombatState = true; boss.BossCombat.iStateRevision = 1u; boss.PinnedDefinitionRevision = snapshot.ActiveGameplayRevision;
+		snapshot.Entities.push_back(boss); CPacketWriter writer;
+		const bool written = Write_Message(writer, snapshot); CPacketReader reader{writer.Get_Buffer()}; S2C_WORLD_SNAPSHOT decoded{};
+		tests.Require(written && Read_Message(reader, decoded) && decoded.Entities.size() == 1u &&
+			decoded.Entities[0].strPatternId == "parent.pattern" && decoded.Entities[0].strPresentationPatternId == "child.pattern" &&
+			decoded.Entities[0].strPresentationActionId == "child.breath" && decoded.Entities[0].iPresentationPatternStartTick == 4u &&
+			decoded.Entities[0].iPresentationActionStartTick == 8u && decoded.Entities[0].iPresentationPatternStageIndex == 1u,
+			"Cross direction snapshot preserves parent and independent child clocks");
+		snapshot.Entities[0].iPresentationPatternStartTick = 0u; CPacketWriter invalid;
+		tests.Require(!Write_Message(invalid, snapshot) && invalid.Get_Buffer().empty(), "Cross direction snapshot rejects incomplete child before writing");
+	}
 	{
 		// A temporary admitted generation exercises two actors without changing the user's empty entrance drafts.
 		namespace fs = std::filesystem;
@@ -121,6 +144,32 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuBundles(TESTS& tes
 				(invalidNavigation ? "99999" : "11.79") + "	10.56	326.79	314.7368\n";
 		}
 		const std::string contactId = "KAKULSAYDON_G1_CONTACT_CONTRACT";
+		const std::string crossParentId = "KAKULSAYDON_G1_CROSS_PARENT";
+		appendPattern(crossParentId, "BOSS_KAKULSAYDON_G2_KOUKU", "boss.kakulsaydon.g2.kouku", 1000u);
+		bytes += "PATTERNFIXEDTIMELINE\t" + encounter + "\t" + crossParentId + "\n";
+		std::array<std::string, 4u> crossIds{};
+		for (unsigned direction = 0u; direction < 4u; ++direction)
+		{
+			const auto id = crossIds[direction] = "KAKULSAYDON_G1_CROSS_CHILD_" + std::to_string(direction);
+			const auto begin = bytes.size();
+			appendPattern(id, "BOSS_KAKULSAYDON_G2_KOUKU", "boss.kakulsaydon.g2.kouku", 100u);
+			const auto reset = bytes.find("PATTERNSPAWNRESET\t" + encounter + "\t" + id + "\t1\n", begin);
+			bytes.erase(reset);
+			const auto count = bytes.find("\t1\t1\tANY\tANY\t0\n", begin);
+			bytes.replace(count, std::string("\t1\t1\tANY\tANY\t0\n").size(), "\t1\t2\tANY\tANY\t0\n");
+			const auto policy = bytes.find("\tNORMAL\t1\t1\tNONE\tNONE\n", begin);
+			bytes.replace(policy, std::string("\tNORMAL\t1\t1\tNONE\tNONE\n").size(), "\tMECHANIC\t1\t1\tNONE\tNONE\n");
+			const auto branch = bytes.find(id + ".stage.1\tTIMEOUT\t-\n", begin);
+			bytes.replace(branch, (id + ".stage.1\tTIMEOUT\t-\n").size(), id + ".stage.1\tTIMEOUT\t" + id + ".stage.2\n");
+			bytes += "PATTERNSTAGE\t" + encounter + "\t" + id + "\t1\tSTAGE_2\t" + id + ".stage.2\tACTIVE\t100\tNONE\t0\t0\t0\t0\t0\t0\t0\t0\t-\t0\t0\t0\t0\n";
+			bytes += "PATTERNSTAGEBRANCH\t" + encounter + "\t" + id + "\t" + id + ".stage.2\tTIMEOUT\t-\n";
+			bytes += "PATTERNFIXEDTIMELINE\t" + encounter + "\t" + id + "\n";
+			const std::array<std::string, 4u> endpoints{ "0:1", "0:-1", "1:0", "-1:0" };
+			bytes += "PATTERNSTAGEROOTMOTION\t" + encounter + "\t" + id + "\t0\t2\t0:0:0:0,100:" + endpoints[direction] + ":0\n";
+		}
+		bytes += "PATTERNCROSSDIRECTION\t" + encounter + "\t" + crossParentId + "\tcross.logic\t0\t200\t" +
+			crossIds[0] + "\t" + crossIds[1] + "\t" + crossIds[2] + "\t" + crossIds[3] + "\tSTAGE_1\n";
+		bytes += "PATTERNMECHANICTRIGGER\t" + encounter + "\t" + crossParentId + "\tparent.later.hud\tHUD_ENTER\t300\t300\t3\t0\t0\t0\t-\t0\t0\t0\t1\n";
 		const auto appendContactFixture = [&](const std::string& id, const bool miss, const bool lastTick)
 		{
 			appendPattern(id, "BOSS_KAKULSAYDON_G2_KOUKU", "boss.kakulsaydon.g2.kouku", 1000u);
@@ -173,6 +222,32 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuBundles(TESTS& tes
 		tests.Require(loaded, "Bundle loads typed target/member rows through normal catalog admission");
 		if (loaded)
 		{
+			const auto* crossParent = CKoukuSaydonBrain::Find_AnimationOnlyPattern(*generation, crossParentId, status);
+			tests.Require(crossParent && crossParent->MechanicTriggers.size() == 2u, "Cross direction catalog admits typed candidates");
+			if (crossParent && crossParent->MechanicTriggers.size() == 2u)
+			{
+				const auto& trigger = crossParent->MechanicTriggers.front();
+				for (unsigned expected = 0u; expected < 4u; ++expected)
+				{
+					SERVER_WORLD_ENTITY owner{};
+					owner.fPositionX = expected == 0u ? -10.f : expected == 1u ? 10.f : 0.f;
+					owner.fPositionZ = expected == 2u ? -10.f : expected == 3u ? 10.f : 0.f;
+					std::size_t selected = 99u; std::array<std::uint32_t, 4u> durations{};
+					tests.Require(CKoukuSaydonBrain::Select_CrossDirection(owner, *crossParent, trigger, *generation, selected, durations, status) &&
+						selected == expected && std::all_of(durations.begin(), durations.end(), [](auto value) { return value == 100u; }),
+						"Cross direction chooses actual root endpoint nearest center and cuts clones at Stage 1");
+				}
+				SERVER_WORLD_ENTITY rotated{}; rotated.fYawDegrees = 90.f; rotated.fPositionZ = 10.f;
+				std::size_t selected = 99u; std::array<std::uint32_t, 4u> durations{};
+				tests.Require(CKoukuSaydonBrain::Select_CrossDirection(rotated, *crossParent, trigger, *generation, selected, durations, status) && selected == 0u,
+					"Cross direction rotates root endpoints with the current boss yaw");
+				rotated.fPositionZ = 0.f;
+				tests.Require(CKoukuSaydonBrain::Select_CrossDirection(rotated, *crossParent, trigger, *generation, selected, durations, status) && selected == 0u,
+					"Cross direction center tie retains authored direction order");
+				auto invalid = trigger; invalid.strCloneEndStageId = "STAGE_2"; selected = 77u;
+				tests.Require(!CKoukuSaydonBrain::Select_CrossDirection(rotated, *crossParent, invalid, *generation, selected, durations, status) && selected == 77u,
+					"Cross direction rejects terminal clone cutoff without changing selection");
+			}
 			for (const std::string malformedSample : { "2000:0.6:0.3:", "2000:0.6:0.3:NaN", "2000:0.6:0.3:1.25:9" })
 			{
 				auto malformed = bytes;
@@ -229,6 +304,63 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuBundles(TESTS& tes
 				request.strBundleId = "kakulsaydon.bundle.contract." + std::to_string(offset); return request;
 			};
 			const auto tick = [](CGameRoom& room) { room.Update_WorldEntities(1.f / 30.f); ++room.m_iServerTick; };
+			{
+				auto room = makeRoom(); auto request = requestFor(*room, 0u);
+				request.eOperation = KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_SELECTED;
+				request.strBundleId.clear(); request.strPatternId = crossParentId;
+				request.Scope.strBossPlacementId = "boss.kakulsaydon.g2.kouku";
+				request.Scope.strBossArchetypeId = "BOSS_KAKULSAYDON_G2_KOUKU";
+				S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT result;
+				const bool queued = room->Evaluate_KoukuSaydonPatternAudition(917u, request, result) == KOUKUSAYDON_PATTERN_AUDITION_RESULT::QUEUED;
+				tick(*room); auto* boss = getBoss(*room, false);
+				const auto sequence = boss ? boss->iPatternSequence : 0u;
+				const auto start = boss ? boss->iPatternStartTick : 0u;
+				const auto clones = [&]() { return std::count_if(room->m_WorldEntities.begin(), room->m_WorldEntities.end(), [](const auto& entity) { return entity.bKoukuSummonClone; }); };
+				tests.Require(queued && boss && boss->KoukuDirectionPlayback && clones() == 3 && boss->strPatternId == crossParentId,
+					"Cross direction commits three clones and one child on the original parent identity");
+				const std::array<float, 3u> crossOrigin = boss ? std::array<float, 3u>{boss->fPositionX, boss->fPositionY, boss->fPositionZ} : std::array<float, 3u>{};
+				const float crossYaw = boss ? boss->fYawDegrees * .01745329251994329577f : 0.f;
+				for (unsigned index = 0u; index < 2u; ++index) tick(*room);
+				boss = getBoss(*room, false);
+				unsigned verifiedPoses = 0u, verifiedEndpoints = 0u;
+				for (const auto& entity : room->m_WorldEntities)
+				{
+					const auto* actor = entity.bKoukuSummonClone ? &entity : entity.KoukuDirectionPlayback.get();
+					if (!actor) continue;
+					const auto* childPattern = CKoukuSaydonBrain::Find_AnimationOnlyPattern(*generation, actor->strPatternId, status);
+					if (!childPattern) continue;
+					const auto root = CKoukuSaydonBrain::Sample_StageRootMotion(childPattern->Stages.front().Motion.RootMotion,
+						CKoukuSaydonBrain::Pattern_ElapsedMs(*actor, room->m_iServerTick));
+					const auto at = [&](const ROOT_MOTION_SAMPLE& value) { return std::array<float, 2u>{
+						crossOrigin[0] + value.fLateral * std::cos(crossYaw) + value.fForward * std::sin(crossYaw),
+						crossOrigin[2] - value.fLateral * std::sin(crossYaw) + value.fForward * std::cos(crossYaw)}; };
+					const auto expected = at(root);
+					if (std::abs(actor->fPositionX - expected[0]) < .002f && std::abs(actor->fPositionZ - expected[1]) < .002f) ++verifiedPoses;
+					auto terminal = *actor;
+					const auto endpoint = at(childPattern->Stages.front().Motion.RootMotion.back());
+					if (CKoukuSaydonBrain::Apply_StageRootMotion(terminal, *childPattern, actor->iPatternStartTick + 3u,
+						room->m_ServerNavigation, room->m_ServerCollisionSystem, status) &&
+						std::abs(terminal.fPositionX - endpoint[0]) < .002f && std::abs(terminal.fPositionZ - endpoint[1]) < .002f) ++verifiedEndpoints;
+				}
+				tests.Require(verifiedPoses == 4u && verifiedEndpoints == 4u,
+					"All four actual bodies move on their root curves and can reach exact directional endpoints without same-origin collision suppression");
+				for (unsigned index = 0u; index < 2u; ++index) tick(*room);
+				boss = getBoss(*room, false);
+				tests.Require(boss && boss->KoukuDirectionPlayback && clones() == 0 &&
+					boss->KoukuDirectionPlayback->iPatternStageIndex == 1u && boss->iPatternSequence == sequence && boss->iPatternStartTick == start,
+					"At Stage 1 cutoff all fake bodies disappear while only the original boss plays breath");
+				tests.Require(boss && std::abs(std::hypot(boss->fPositionX - crossOrigin[0], boss->fPositionZ - crossOrigin[2]) - 1.f) < .002f,
+					"Original boss reaches the full selected directional endpoint before breath");
+				for (unsigned index = 0u; index < 7u; ++index) tick(*room);
+				boss = getBoss(*room, false); const auto* member = boss ? room->Find_KoukuAuditionMember(boss->iNetEntityId) : nullptr;
+				tests.Require(boss && !boss->KoukuDirectionPlayback && boss->strPatternId == crossParentId && member &&
+					member->LogicLedger.eHudMode == KOUKU_HUD_MODE::DANCE && boss->iPatternSequence == sequence && boss->iPatternStartTick == start,
+					"Parent continues its original clock and later Logic after the selected child ends");
+				for (unsigned index = 0u; index < 22u; ++index) tick(*room);
+				boss = getBoss(*room, false);
+				tests.Require(boss && boss->strPatternId.empty() && !boss->KoukuDirectionPlayback && clones() == 0,
+					"Parent completion releases child and clone lifetime state");
+			}
 			{
 				const auto* root = CKoukuSaydonBrain::Find_AnimationOnlyPattern(*generation, rootId, status);
 				const auto* legacy = CKoukuSaydonBrain::Find_AnimationOnlyPattern(*generation, rootId + "_LEGACY", status);

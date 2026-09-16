@@ -2,6 +2,7 @@
 #define LOSTARK_MAP_MATERIAL_SURFACE
 
 uint g_SourceBgUnlit = 0u;
+uint g_SurfacePBRMasked = 0u;
 
 // A source-evidenced parallel N/T has a zero bitangent. Keep it finite and
 // preserve zero; never manufacture a normal axis for that native input.
@@ -174,6 +175,12 @@ float3 EvaluateMapSurfaceEmissive(float2 meshUV, uint surfaceProgram)
             SourceFoliageFlicker(phase, g_SurfaceEmissiveFlickerMinimum) : 1.f;
         return sampleValue.rgb * g_SurfaceEmissiveColor.rgb * g_SurfaceEmissiveIntensity * flicker;
     }
+    // Native overlay emission is independent of overlay coverage and has no
+    // flicker in the admitted permutation.
+    if (surfaceProgram == 7u ||
+        ((surfaceProgram == 3u || surfaceProgram == 4u) && g_SourceBgFlicker == 3u))
+        return g_SurfaceEmissiveTexture.Sample(SurfaceAnisotropicSampler,
+            meshUV * g_SurfaceEmissiveUVTiling).rgb * g_SurfaceEmissiveColor.rgb * g_SurfaceEmissiveIntensity;
     // Source bg_base_pbr_opa flicker, including its nested cosine modulation.
     // phaseOffset owns the unavailable engine-origin constant explicitly.
     const float phase = g_SurfaceEmissivePhaseOffset +
@@ -426,6 +433,10 @@ MAP_SURFACE_SAMPLE EvaluateMapPBRSurface(float2 meshUV, float3 worldPosition,
     const float2 tiledUV = meshUV * g_SurfaceUVTiling;
     const float2 normalUV = g_SurfaceUVFixedNormal != 0u ? meshUV : tiledUV;
     const float4 diffuse = g_DiffuseTexture.Sample(SurfaceAnisotropicSampler, tiledUV);
+    // Both source PBR masked permutations cut diffuse alpha at 0.3333 in
+    // their native base and directional passes. Opaque PBR keeps alpha=0.
+    if (g_SurfacePBRMasked != 0u)
+        clip(diffuse.a - 0.3333f);
     const float4 encodedNormal = g_NormalTexture.Sample(SurfaceAnisotropicSampler, normalUV);
     const float2 detailXY = g_DetailNormalTexture.Sample(SurfaceAnisotropicSampler,
         tiledUV * g_SurfaceDetailNormalTiling).rg * 2.f - 1.f;
@@ -667,31 +678,47 @@ MAP_STONE_GBUFFER EvaluateMapSourceStoneGeometry(float2 meshUV, float4 vertexCol
     material.overlaySpecularIntensity = g_SurfaceOverlaySpecularIntensity;
     material.specularPower = g_SurfaceSpecularPower;
     const float2 overlayUV = meshUV * g_SurfaceOverlayTiling;
-    const float2 surfaceUV = MapSourceOverlayUV(meshUV);
+    float2 surfaceUV = MapSourceOverlayUV(meshUV);
     const float3x3 tangentToWorld = float3x3(MapGeometryNormalizeOrZero(tangent),
         MapGeometryNormalizeOrZero(binormal), MapGeometryNormalizeOrZero(normal));
-    const float4 sampledDiffuse = SampleMapDiffuseTexture(surfaceUV, SurfaceAnisotropicSampler);
-    if ((g_SourceOverlayFlags & 64u) != 0u) clip(sampledDiffuse.a - 0.3333f);
+    const float3 tangentView = SourceStoneUnit(mul(tangentToWorld, g_vCamPosition.xyz - worldPosition));
+    float4 sampledDiffuse = SampleMapDiffuseTexture(surfaceUV, SurfaceAnisotropicSampler);
+    float opacity = sampledDiffuse.a;
+    if ((g_SourceOverlayFlags & 512u) != 0u)
+    {
+        const float originalAlpha = sampledDiffuse.a;
+        surfaceUV += (originalAlpha - g_SourceBgBump.x) * g_SourceBgBump.y * tangentView.xy;
+        sampledDiffuse = SampleMapDiffuseTexture(surfaceUV, SurfaceAnisotropicSampler);
+        opacity = saturate(originalAlpha + sampledDiffuse.a);
+        material.diffuseBrightness *= saturate(originalAlpha + g_SourceBgBump.z);
+    }
+    if ((g_SourceOverlayFlags & 64u) != 0u) clip(opacity - 0.3333f);
+    const float4 sampledOverlay = g_SurfaceOverlayDiffuseTexture.Sample(SurfaceAnisotropicSampler, overlayUV);
     // Original material instructions use SampleBias(0). The existing aniso
     // sampler is the project filtering adapter; it does not alter UV domains.
     SOURCE_STONE_SURFACE stone = EvaluateSourceStoneVariants(
         sampledDiffuse,
         (g_SourceOverlayFlags & 1u) != 0u ? g_NormalTexture.Sample(SurfaceAnisotropicSampler,
             (g_SourceOverlayFlags & 128u) != 0u ? meshUV : surfaceUV) : float4(0.5f, 0.5f, 1.f, 1.f),
-        g_SurfaceOverlayDiffuseTexture.Sample(SurfaceAnisotropicSampler, overlayUV),
+        sampledOverlay,
         (g_SourceOverlayFlags & 2u) != 0u ? g_SurfaceOverlayNormalTexture.Sample(SurfaceAnisotropicSampler, overlayUV) : float4(0.5f, 0.5f, 1.f, 1.f),
         (g_SourceOverlayFlags & 32u) != 0u ? g_DetailNormalTexture.Sample(SurfaceAnisotropicSampler,
             surfaceUV * g_SurfaceDetailNormalTiling) : float4(0.5f, 0.5f, 1.f, 1.f),
         vertexColor, material, g_SourceOverlayFlags, mul(tangentToWorld, g_SourceOverlayDirection.xyz),
         g_SourceOverlayDirection.w, g_SurfaceDetailNormalIntensity);
-    if (g_SurfaceOverlaySeparateSpecular != 0u)
-    {
-        const float3 baseSpecular = g_SpecularTexture.Sample(SurfaceAnisotropicSampler,
-            surfaceUV).rgb * material.specularColor * material.specularIntensity;
-        const float3 overlaySpecular = SourceStoneSaturation(g_SurfaceOverlayDiffuseTexture.Sample(
-            SurfaceAnisotropicSampler, overlayUV).rgb, material.overlaySaturation) * material.overlaySpecularIntensity;
-        stone.specular = lerp(baseSpecular, overlaySpecular, stone.overlayWeight);
-    }
+    // Subspecular uses the same raw specular color even when direct specular
+    // is disabled. Do not normalize the source mixed normal for this lobe.
+    const float3 specularSample = g_SurfaceOverlaySeparateSpecular != 0u ?
+        g_SpecularTexture.Sample(SurfaceAnisotropicSampler, surfaceUV).rgb : sampledDiffuse.rgb;
+    const float3 baseSpecular = SourceStoneSaturation(specularSample, g_SourceBgSpecularSaturation) *
+        material.specularColor * material.specularIntensity;
+    const float3 overlaySpecular = SourceStoneSaturation(sampledOverlay.rgb,
+        material.overlaySaturation) * material.overlaySpecularIntensity;
+    const float3 sourceSpecular = lerp(baseSpecular, overlaySpecular, stone.overlayWeight);
+    stone.specular = (g_SourceOverlayFlags & 256u) != 0u ? sourceSpecular : 0.f;
+    const float facing = saturate(dot(stone.directMixedNormal, tangentView));
+    const float3 subspecular = sourceSpecular * g_SourceBgSubspecular.x *
+        MapSurfaceSafePow(facing * facing, g_SourceBgSubspecular.y);
     const bool hasLightmap = g_HasBakedLighting != 0u && averageScale.w != 0.f;
     float3 average = 0.f, coefficients = 0.f;
     if (hasLightmap)
@@ -715,12 +742,13 @@ MAP_STONE_GBUFFER EvaluateMapSourceStoneGeometry(float2 meshUV, float4 vertexCol
         projectedPosition.w / 1000.f, material.specularPower, 7.f);
     output.pickPosition = float4(worldPosition,
         EncodeMapSurfaceGeometricNormal(normal, hasLightmap));
-    output.indirect = float4(base.radiance, 0.f);
+    output.indirect = float4(base.radiance + subspecular + EvaluateMapSurfaceEmissive(meshUV, 7u), 0.f);
     output.materialSpecular = float4(stone.specular, stone.overlayWeight);
     output.surface = float4(stone.diffuse, 0.f);
     // Preserve the length of the mixed normal: source Direct never normalizes
     // it. The selected Base/Baked normal is normalized inside the pure helper.
-    output.geometry = float4(mul(stone.directMixedNormal, tangentToWorld), 0.f);
+    output.geometry = float4(mul(stone.directMixedNormal, tangentToWorld),
+        (g_SourceOverlayFlags & 1024u) != 0u ? 1.f : 0.f);
     return output;
 }
 

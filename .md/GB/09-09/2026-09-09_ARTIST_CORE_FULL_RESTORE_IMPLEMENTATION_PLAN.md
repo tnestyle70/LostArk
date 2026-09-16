@@ -59,3 +59,18 @@ Data/Animation/Authored/Artist/Artist.animevents의 헤더만1047로 교정한�
 ## G10. 기존 Product 선택과 Alt V GPU 발생 수 일치
 
 사용자가 Q/W/R/A/S/F를 이전 Product로 되돌리도록 지정했다. 각 슬롯의 기존 unified를 재사용하며 A는 기존 linear-reveal.unified를 선택한다. R 두 clip의 ba1/ba4 연결을 유지하고 다른 슬롯의 full.restore를 보존한다. Alt V는 Playback이 simulation-only provider를 GPU 발생에서 제외하지만 Renderer의 Resolve_GpuRenderFamily가 sprite로 세어 전체 Render를 거부한다. 공통 family 분류에서 같은 provider를 END로 제외해 개수·순서·실제 draw 소비를 맞춘다. 기존 Codec·Playback·실제 Render 진입을 사용해254행 문서와 provider를 포함한 frame, 일반 문서와 잘못된 frame의 거부를 확인한다. 새 C++ 파일은 없으며 최소 Renderer 컴파일 후 최종 Product 빌드에 포함한다.
+
+
+## G12. 09-15 Alt V 나비의 원본 masked 색·알파 입력
+
+현재 제품 정본31930은240행이며9개 나비 mesh occurrence가 모두 native536을 사용한다. 원본 설치 패키지에서 회수한 PS `390b1fe8a7081c45bf96c8afc4bf11e9`와 VS `d17daa101dec2b4493fce2f510407f32`는 masked LocalVF의 CB0[0]에 particle RGBA를 읽는다. 현재 Shader_EffectArtistNativeGroup512의 source[0].x=1 초기화는 W를0으로 남겨 mask를 항상 clip한다. 동일 합성 입력으로 원본 packed PS·현재 함수·한 줄 후보를 WARP에서 대조해 이 불일치를 확인했다.
+
+`generate_artist_native_runtime_shader.py`의 기존 masked prefix 검증을 Artist의 해당 PS/VS 조합에만 연결하고, 생성된 native536 함수의 row0을 input.color로 맞춘다. 다른 dirty generator 변경과 모든 다른 프로그램·pass·Resources·사용자240행·attachment 정책을 보존한다. 원본 material/map/binding으로 격리 재생성하여 전후 함수 차이가 그 한 줄인지와 반복 생성 동치를 검사한다. 실제 Catalog/Playback의9개 발생, 필요한 mesh shader 최소 컴파일, JSON parse와 diff check를 기록하며 Client 실행과 최종 꽃밭 화면 판정은 사용자가 한다. 새 C++·프로젝트 등록은 없다.
+
+## G13. 09-15 나비 원본 배율과 설치 셰이더 확인
+
+사용자가 새 빌드에서도 나비가 보이지 않는다고 보고하고 원본 배율 및 Solo 항목 확인을 요청했다. 설치 Artist512 CSO와 현재 수정본의 내장 VS/PS 실행 bytecode는 일치한다. 원본 masked RGBA 수정의 배포 누락과 실제 본 배율을 분리한다. 설치 `fx_m_flowergarden_04.wmodel`의 12정점·6삼각형과 원본 StartSize·SizeLife, modelPreScale0.01, occurrence scale1을 확인한다. 실제 Artist Alt V clip의 pelvis combined basis는0.01이며, `GRABBED_SOCKET_BODY`가 이를 제거하지 않아 나비35의 최대 직경이 unit anchor의44.60cm에서4.46mm로 줄어든다.
+
+`CEffectPresentationService::Requires_SourceBoneImportScaleNormalization`에 실제 runtime anchor ID를 함께 전달해 Artist31930의 확인된 source anchor에만 기존 import-basis 제거를 적용한다. 제품의 `Collect_SourceAnchorRequests`와 Tool의 `Collect_ToolSourceAnchorRequests`가 같은 판단을 호출해야 한다. 같은 slot을 공유하는 source 발생은 동일 정책을 사용하며 양발28개와 카메라8개에 정규화를 전파하지 않는다. 기존 `Build_SourceBoneAnchorWorld`의 실제 basis 검증과 실패 보존, owner scale·원본 StartSize·사용자 occurrence scale은 유지한다. 새 C++ 파일과 프로젝트 등록, JSON 저장 형식 변경은 없다.
+
+실제 설치 골격을 넣은 Playback 크기 대조, 변경한 두 TU 최소 컴파일 및 공통 predicate/anchor 소비 검사로 검증한다. 실행 중 문서의 미저장 편집을 건드리지 않는다. 카메라8개는 원본 localSpace=true와 사용자 저장 false의 차이를 별도로 보고하며, 단순 생존 수치로 실제 화면 표시를 판정하지 않는다.

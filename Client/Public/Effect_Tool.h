@@ -314,6 +314,7 @@ private:
 		uint32_t iTimelineDurationMs = 0u;
 		uint32_t iOwningStageTimelineOffsetMs = 0u;
 		uint32_t iOwningClipTimelineOffsetMs = 0u;
+		bool_t bEditorSourceClip = false;
 	};
 
 	enum class VALTAN_PATTERN_EFFECT_SELECTION_KIND : uint8_t
@@ -550,6 +551,7 @@ private:
     void Render_ActiveAuthoredElementRow(const EFFECT_ELEMENT_DESC& element, size_t ordinal);
     void Render_CurrentEffectAttachmentGroups();
     bool_t Try_TranslateAttachmentGroup(const std::string& groupKey, const float3_t& delta);
+    bool_t Try_RotateAttachmentGroup(const std::string& groupKey, const float3_t& rotationDegrees);
     void Render_ProjectileDestinationControls();
     void Render_LoadedEffectContents();
     bool_t Render_ManualElementGroups(
@@ -1176,6 +1178,9 @@ private:
 	   gated by the canonical tree; this list owns no replacement runtime. */
 	std::vector<EFFECT_DIRECT_AUTHORED_SOURCE_ENTRY>
 		m_ValtanExactAuthoredSources;
+	std::unordered_map<std::string, std::vector<VALTAN_CLIP_OCCURRENCE_VIEW>>
+		m_ValtanFullRestoreSourceClips;
+	std::string m_strValtanFullRestoreSourceStatus;
 	std::shared_ptr<const EFFECT_RESOURCE_CATALOG_SNAPSHOT>
 		m_pValtanEffectResourceSnapshot;
 	VALTAN_VIEW_ADMISSION m_eValtanEffectResourceAdmission =
@@ -1308,6 +1313,7 @@ private:
 	string m_strSelectedModelCueId;
 	string m_strPreviewIsolationElementId;
 	string m_strPreviewIsolationGroupId;
+	std::vector<std::string> m_PreviewIsolationElementIds;
 	string m_strPreviewIsolationModelCueId;
 	EFFECT_AUTHORING_FAMILY m_ePreviewIsolationAuthoringFamily =
 		EFFECT_AUTHORING_FAMILY::END;

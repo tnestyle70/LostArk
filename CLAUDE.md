@@ -5,6 +5,7 @@
 계획서·설계서 요청은 `AGENTS.md`의 규칙 파일 탐색 순서를 따르고 `.md/GB/<MM-DD>/`에 PLAN/RESULT 문서를 작성한다.
 LostArk 맵 에셋 검색·추출·`.wmodel` 변환·MapTool 적용 작업은 `.md/GB/07-29/2026-07-29_LOSTARK_MAP_ASSET_EXTRACTION_RUNTIME_RESULT.md`를 먼저 읽는다.
 모든 오브젝트의 추출·변환·파생 모델 적용은 `.md/GB/렌더링이펙트복원V2.md`의 재질·환경 입력 공통 절차와 `Tools/ModelAssetConverter/README.md`를 함께 따른다. geometry/D/N/S 변환과 native 재질·IBL/BRDF·장면 조명 연결을 구분하며, 데이터 계약은 `.md/TEAM/AREA_DATA_LAYER_GUIDE.md`를 사용한다.
+팀 맵 재추출 명령은 `Tools/LevelPlacementExtractor/README.md`의 공통 순서를 따른다. placement schema3의 source visibility, 공통 cook의 WModel 추가 채널, `extract_source_map_material_parameters.py`와 `extract_ue3_texture_mips.py`, `build_source_map_materials.py`의 재질 입력·필드별 coverage를 기존 scene builder와 Area publisher에 연결한다. 이름 기반 숨김이나 out 전용 복원 스크립트를 새 추출의 기본 경로로 사용하지 않는다.
 
 @AGENTS.md
 

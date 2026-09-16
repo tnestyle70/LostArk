@@ -77893,7 +77893,7 @@
         "enabled": true,
         "follow": true,
         "sourceAnchorSlotId": "b_effectroot",
-        "runtimeAnchorSlotId": "b_effectroot",
+        "runtimeAnchorSlotId": "authored.warlord.altv.guardian-ground",
         "runtimeBoneName": "b_effectroot",
         "socketLocalTransform": {
           "position": [
@@ -77902,9 +77902,9 @@
             0.0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            90,
+            180,
+            0
           ],
           "scale": [
             1.0,
@@ -77917,7 +77917,7 @@
         "transform": {
           "position": [
             2.625,
-            0.0,
+            -0.3,
             -0.0
           ],
           "rotationDegrees": [
@@ -79853,7 +79853,7 @@
         "enabled": true,
         "follow": true,
         "sourceAnchorSlotId": "b_effectroot",
-        "runtimeAnchorSlotId": "b_effectroot",
+        "runtimeAnchorSlotId": "authored.warlord.altv.guardian-ground",
         "runtimeBoneName": "b_effectroot",
         "socketLocalTransform": {
           "position": [
@@ -79862,9 +79862,9 @@
             0.0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            90,
+            180,
+            0
           ],
           "scale": [
             1.0,
@@ -79877,8 +79877,8 @@
         "transform": {
           "position": [
             1.3125,
-            0.0,
-            2.2732499694824218
+            -0.3,
+            -2.273316685
           ],
           "rotationDegrees": [
             0.0,
@@ -81813,7 +81813,7 @@
         "enabled": true,
         "follow": true,
         "sourceAnchorSlotId": "b_effectroot",
-        "runtimeAnchorSlotId": "b_effectroot",
+        "runtimeAnchorSlotId": "authored.warlord.altv.guardian-ground",
         "runtimeBoneName": "b_effectroot",
         "socketLocalTransform": {
           "position": [
@@ -81822,9 +81822,9 @@
             0.0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            90,
+            180,
+            0
           ],
           "scale": [
             1.0,
@@ -81837,8 +81837,8 @@
         "transform": {
           "position": [
             -1.3125,
-            0.0,
-            2.2732499694824218
+            -0.3,
+            -2.273316685
           ],
           "rotationDegrees": [
             0.0,
@@ -83773,7 +83773,7 @@
         "enabled": true,
         "follow": true,
         "sourceAnchorSlotId": "b_effectroot",
-        "runtimeAnchorSlotId": "b_effectroot",
+        "runtimeAnchorSlotId": "authored.warlord.altv.guardian-ground",
         "runtimeBoneName": "b_effectroot",
         "socketLocalTransform": {
           "position": [
@@ -83782,9 +83782,9 @@
             0.0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            90,
+            180,
+            0
           ],
           "scale": [
             1.0,
@@ -83797,7 +83797,7 @@
         "transform": {
           "position": [
             -2.625,
-            0.0,
+            -0.3,
             -0.0
           ],
           "rotationDegrees": [
@@ -85733,7 +85733,7 @@
         "enabled": true,
         "follow": true,
         "sourceAnchorSlotId": "b_effectroot",
-        "runtimeAnchorSlotId": "b_effectroot",
+        "runtimeAnchorSlotId": "authored.warlord.altv.guardian-ground",
         "runtimeBoneName": "b_effectroot",
         "socketLocalTransform": {
           "position": [
@@ -85742,9 +85742,9 @@
             0.0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            90,
+            180,
+            0
           ],
           "scale": [
             1.0,
@@ -85757,8 +85757,8 @@
         "transform": {
           "position": [
             -1.3125,
-            0.0,
-            -2.2732499694824218
+            -0.3,
+            2.273316685
           ],
           "rotationDegrees": [
             0.0,
@@ -87693,7 +87693,7 @@
         "enabled": true,
         "follow": true,
         "sourceAnchorSlotId": "b_effectroot",
-        "runtimeAnchorSlotId": "b_effectroot",
+        "runtimeAnchorSlotId": "authored.warlord.altv.guardian-ground",
         "runtimeBoneName": "b_effectroot",
         "socketLocalTransform": {
           "position": [
@@ -87702,9 +87702,9 @@
             0.0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            90,
+            180,
+            0
           ],
           "scale": [
             1.0,
@@ -87717,8 +87717,8 @@
         "transform": {
           "position": [
             1.3125,
-            0.0,
-            -2.2732499694824218
+            -0.3,
+            2.273316685
           ],
           "rotationDegrees": [
             0.0,
@@ -278975,7 +278975,7 @@
       "detail": {
         "transform": {
           "position": [
-            6.0,
+            2.625,
             0,
             -0.0
           ],
@@ -279043,8 +279043,8 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 0.01,
-          "lifeTimeSeconds": 2.4,
+          "startDelaySeconds": 0.4972800016403198,
+          "lifeTimeSeconds": 1.90271999835968,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -279116,8 +279116,8 @@
           "burstCount": 1,
           "randomSeed": 1,
           "lifeTimeSeconds": [
-            2.4,
-            2.4
+            1.90271999835968,
+            1.90271999835968
           ],
           "initialPositionMin": [
             0,
@@ -279219,7 +279219,7 @@
         "enabled": true,
         "rendererShape": "mesh",
         "emitterDelaySeconds": 0,
-        "emitterDurationSeconds": 2.4,
+        "emitterDurationSeconds": 1.90271999835968,
         "emitterLoopCount": 1,
         "bursts": [
           {
@@ -279300,13 +279300,13 @@
                 "lookupTableTimeScale": 0,
                 "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  2.4,
+                  1.90271999835968,
                   0,
                   0,
                   0
                 ],
                 "defaultMaximum": [
-                  2.4,
+                  1.90271999835968,
                   0,
                   0,
                   0
@@ -279463,6 +279463,163 @@
                   1,
                   0,
                   0,
+                  0
+                ],
+                "lookupTable": [],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "authored.warlord.altv.clip1.outer.shield.1.source-descent",
+            "className": "particlemodulelocationdirect",
+            "objectPath": "project-authored:guardian-ring.source-descent",
+            "literals": [
+              {
+                "propertyPath": "basynctickable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "beditable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bspawnmodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bupdatemodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodduplicate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "direction",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [],
+                "keys": []
+              },
+              {
+                "propertyPath": "location",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 3,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 6.137806399116159,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  0.0,
+                  1600.0,
+                  0.0,
+                  0.0,
+                  1600.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "keys": []
+              },
+              {
+                "propertyPath": "locationoffset",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [],
+                "keys": []
+              },
+              {
+                "propertyPath": "scalefactor",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
+                "defaultMinimum": [
+                  1,
+                  1,
+                  1,
+                  0
+                ],
+                "defaultMaximum": [
+                  1,
+                  1,
+                  1,
                   0
                 ],
                 "lookupTable": [],
@@ -279991,9 +280148,9 @@
       "detail": {
         "transform": {
           "position": [
-            3.0,
+            1.3125,
             0,
-            -5.196152
+            -2.273316685
           ],
           "rotationDegrees": [
             0,
@@ -280059,8 +280216,8 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 0.01,
-          "lifeTimeSeconds": 2.4,
+          "startDelaySeconds": 0.6972000002861023,
+          "lifeTimeSeconds": 1.7027999997138976,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -280132,8 +280289,8 @@
           "burstCount": 1,
           "randomSeed": 1,
           "lifeTimeSeconds": [
-            2.4,
-            2.4
+            1.7027999997138976,
+            1.7027999997138976
           ],
           "initialPositionMin": [
             0,
@@ -280235,7 +280392,7 @@
         "enabled": true,
         "rendererShape": "mesh",
         "emitterDelaySeconds": 0,
-        "emitterDurationSeconds": 2.4,
+        "emitterDurationSeconds": 1.7027999997138976,
         "emitterLoopCount": 1,
         "bursts": [
           {
@@ -280316,13 +280473,13 @@
                 "lookupTableTimeScale": 0,
                 "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  2.4,
+                  1.7027999997138976,
                   0,
                   0,
                   0
                 ],
                 "defaultMaximum": [
-                  2.4,
+                  1.7027999997138976,
                   0,
                   0,
                   0
@@ -280479,6 +280636,163 @@
                   1,
                   0,
                   0,
+                  0
+                ],
+                "lookupTable": [],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "authored.warlord.altv.clip1.outer.shield.2.source-descent",
+            "className": "particlemodulelocationdirect",
+            "objectPath": "project-authored:guardian-ring.source-descent",
+            "literals": [
+              {
+                "propertyPath": "basynctickable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "beditable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bspawnmodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bupdatemodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodduplicate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "direction",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [],
+                "keys": []
+              },
+              {
+                "propertyPath": "location",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 3,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 5.492903182638051,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  0.0,
+                  1600.0,
+                  0.0,
+                  0.0,
+                  1600.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "keys": []
+              },
+              {
+                "propertyPath": "locationoffset",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [],
+                "keys": []
+              },
+              {
+                "propertyPath": "scalefactor",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
+                "defaultMinimum": [
+                  1,
+                  1,
+                  1,
+                  0
+                ],
+                "defaultMaximum": [
+                  1,
+                  1,
+                  1,
                   0
                 ],
                 "lookupTable": [],
@@ -281007,9 +281321,9 @@
       "detail": {
         "transform": {
           "position": [
-            -3.0,
+            -1.3125,
             0,
-            -5.196152
+            -2.273316685
           ],
           "rotationDegrees": [
             0,
@@ -281075,8 +281389,8 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 0.01,
-          "lifeTimeSeconds": 2.4,
+          "startDelaySeconds": 0.8971999883651733,
+          "lifeTimeSeconds": 1.5028000116348266,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -281148,8 +281462,8 @@
           "burstCount": 1,
           "randomSeed": 1,
           "lifeTimeSeconds": [
-            2.4,
-            2.4
+            1.5028000116348266,
+            1.5028000116348266
           ],
           "initialPositionMin": [
             0,
@@ -281251,7 +281565,7 @@
         "enabled": true,
         "rendererShape": "mesh",
         "emitterDelaySeconds": 0,
-        "emitterDurationSeconds": 2.4,
+        "emitterDurationSeconds": 1.5028000116348266,
         "emitterLoopCount": 1,
         "bursts": [
           {
@@ -281332,13 +281646,13 @@
                 "lookupTableTimeScale": 0,
                 "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  2.4,
+                  1.5028000116348266,
                   0,
                   0,
                   0
                 ],
                 "defaultMaximum": [
-                  2.4,
+                  1.5028000116348266,
                   0,
                   0,
                   0
@@ -281495,6 +281809,163 @@
                   1,
                   0,
                   0,
+                  0
+                ],
+                "lookupTable": [],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "authored.warlord.altv.clip1.outer.shield.3.source-descent",
+            "className": "particlemodulelocationdirect",
+            "objectPath": "project-authored:guardian-ring.source-descent",
+            "literals": [
+              {
+                "propertyPath": "basynctickable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "beditable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bspawnmodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bupdatemodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodduplicate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "direction",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [],
+                "keys": []
+              },
+              {
+                "propertyPath": "location",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 3,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 4.847741935731965,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  0.0,
+                  1600.0,
+                  0.0,
+                  0.0,
+                  1600.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "keys": []
+              },
+              {
+                "propertyPath": "locationoffset",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [],
+                "keys": []
+              },
+              {
+                "propertyPath": "scalefactor",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
+                "defaultMinimum": [
+                  1,
+                  1,
+                  1,
+                  0
+                ],
+                "defaultMaximum": [
+                  1,
+                  1,
+                  1,
                   0
                 ],
                 "lookupTable": [],
@@ -282023,7 +282494,7 @@
       "detail": {
         "transform": {
           "position": [
-            -6.0,
+            -2.625,
             0,
             -0.0
           ],
@@ -282091,8 +282562,8 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 0.01,
-          "lifeTimeSeconds": 2.4,
+          "startDelaySeconds": 1.097000002861023,
+          "lifeTimeSeconds": 1.302999997138977,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -282164,8 +282635,8 @@
           "burstCount": 1,
           "randomSeed": 1,
           "lifeTimeSeconds": [
-            2.4,
-            2.4
+            1.302999997138977,
+            1.302999997138977
           ],
           "initialPositionMin": [
             0,
@@ -282267,7 +282738,7 @@
         "enabled": true,
         "rendererShape": "mesh",
         "emitterDelaySeconds": 0,
-        "emitterDurationSeconds": 2.4,
+        "emitterDurationSeconds": 1.302999997138977,
         "emitterLoopCount": 1,
         "bursts": [
           {
@@ -282348,13 +282819,13 @@
                 "lookupTableTimeScale": 0,
                 "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  2.4,
+                  1.302999997138977,
                   0,
                   0,
                   0
                 ],
                 "defaultMaximum": [
-                  2.4,
+                  1.302999997138977,
                   0,
                   0,
                   0
@@ -282511,6 +282982,163 @@
                   1,
                   0,
                   0,
+                  0
+                ],
+                "lookupTable": [],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "authored.warlord.altv.clip1.outer.shield.4.source-descent",
+            "className": "particlemodulelocationdirect",
+            "objectPath": "project-authored:guardian-ring.source-descent",
+            "literals": [
+              {
+                "propertyPath": "basynctickable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "beditable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bspawnmodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bupdatemodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodduplicate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "direction",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [],
+                "keys": []
+              },
+              {
+                "propertyPath": "location",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 3,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 4.2032257648958256,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  0.0,
+                  1600.0,
+                  0.0,
+                  0.0,
+                  1600.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "keys": []
+              },
+              {
+                "propertyPath": "locationoffset",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [],
+                "keys": []
+              },
+              {
+                "propertyPath": "scalefactor",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
+                "defaultMinimum": [
+                  1,
+                  1,
+                  1,
+                  0
+                ],
+                "defaultMaximum": [
+                  1,
+                  1,
+                  1,
                   0
                 ],
                 "lookupTable": [],
@@ -283039,9 +283667,9 @@
       "detail": {
         "transform": {
           "position": [
-            -3.0,
+            -1.3125,
             0,
-            5.196152
+            2.273316685
           ],
           "rotationDegrees": [
             0,
@@ -283107,8 +283735,8 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 0.01,
-          "lifeTimeSeconds": 2.4,
+          "startDelaySeconds": 1.2970000505447388,
+          "lifeTimeSeconds": 1.1029999494552611,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -283180,8 +283808,8 @@
           "burstCount": 1,
           "randomSeed": 1,
           "lifeTimeSeconds": [
-            2.4,
-            2.4
+            1.1029999494552611,
+            1.1029999494552611
           ],
           "initialPositionMin": [
             0,
@@ -283283,7 +283911,7 @@
         "enabled": true,
         "rendererShape": "mesh",
         "emitterDelaySeconds": 0,
-        "emitterDurationSeconds": 2.4,
+        "emitterDurationSeconds": 1.1029999494552611,
         "emitterLoopCount": 1,
         "bursts": [
           {
@@ -283364,13 +283992,13 @@
                 "lookupTableTimeScale": 0,
                 "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  2.4,
+                  1.1029999494552611,
                   0,
                   0,
                   0
                 ],
                 "defaultMaximum": [
-                  2.4,
+                  1.1029999494552611,
                   0,
                   0,
                   0
@@ -283527,6 +284155,163 @@
                   1,
                   0,
                   0,
+                  0
+                ],
+                "lookupTable": [],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "authored.warlord.altv.clip1.outer.shield.5.source-descent",
+            "className": "particlemodulelocationdirect",
+            "objectPath": "project-authored:guardian-ring.source-descent",
+            "literals": [
+              {
+                "propertyPath": "basynctickable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "beditable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bspawnmodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bupdatemodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodduplicate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "direction",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [],
+                "keys": []
+              },
+              {
+                "propertyPath": "location",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 3,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 3.5580643257166926,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  0.0,
+                  1600.0,
+                  0.0,
+                  0.0,
+                  1600.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "keys": []
+              },
+              {
+                "propertyPath": "locationoffset",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [],
+                "keys": []
+              },
+              {
+                "propertyPath": "scalefactor",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
+                "defaultMinimum": [
+                  1,
+                  1,
+                  1,
+                  0
+                ],
+                "defaultMaximum": [
+                  1,
+                  1,
+                  1,
                   0
                 ],
                 "lookupTable": [],
@@ -284055,9 +284840,9 @@
       "detail": {
         "transform": {
           "position": [
-            3.0,
+            1.3125,
             0,
-            5.196152
+            2.273316685
           ],
           "rotationDegrees": [
             0,
@@ -284123,8 +284908,8 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 0.01,
-          "lifeTimeSeconds": 2.4,
+          "startDelaySeconds": 1.496999979019165,
+          "lifeTimeSeconds": 0.9030000209808349,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -284196,8 +284981,8 @@
           "burstCount": 1,
           "randomSeed": 1,
           "lifeTimeSeconds": [
-            2.4,
-            2.4
+            0.9030000209808349,
+            0.9030000209808349
           ],
           "initialPositionMin": [
             0,
@@ -284299,7 +285084,7 @@
         "enabled": true,
         "rendererShape": "mesh",
         "emitterDelaySeconds": 0,
-        "emitterDurationSeconds": 2.4,
+        "emitterDurationSeconds": 0.9030000209808349,
         "emitterLoopCount": 1,
         "bursts": [
           {
@@ -284380,13 +285165,13 @@
                 "lookupTableTimeScale": 0,
                 "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  2.4,
+                  0.9030000209808349,
                   0,
                   0,
                   0
                 ],
                 "defaultMaximum": [
-                  2.4,
+                  0.9030000209808349,
                   0,
                   0,
                   0
@@ -284543,6 +285328,163 @@
                   1,
                   0,
                   0,
+                  0
+                ],
+                "lookupTable": [],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "authored.warlord.altv.clip1.outer.shield.6.source-descent",
+            "className": "particlemodulelocationdirect",
+            "objectPath": "project-authored:guardian-ring.source-descent",
+            "literals": [
+              {
+                "propertyPath": "basynctickable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "beditable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bspawnmodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bupdatemodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodduplicate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "direction",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [],
+                "keys": []
+              },
+              {
+                "propertyPath": "location",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 3,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 2.9129032710836524,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  0.0,
+                  1600.0,
+                  0.0,
+                  0.0,
+                  1600.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "keys": []
+              },
+              {
+                "propertyPath": "locationoffset",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [],
+                "keys": []
+              },
+              {
+                "propertyPath": "scalefactor",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
+                "defaultMinimum": [
+                  1,
+                  1,
+                  1,
+                  0
+                ],
+                "defaultMaximum": [
+                  1,
+                  1,
+                  1,
                   0
                 ],
                 "lookupTable": [],
@@ -291225,7 +292167,7 @@
       "detail": {
         "transform": {
           "position": [
-            6.0,
+            2.625,
             0,
             -0.0
           ],
@@ -291293,8 +292235,8 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 0.01,
-          "lifeTimeSeconds": 2.4,
+          "startDelaySeconds": 0.4972800016403198,
+          "lifeTimeSeconds": 1.90271999835968,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -291366,8 +292308,8 @@
           "burstCount": 1,
           "randomSeed": 1,
           "lifeTimeSeconds": [
-            2.4,
-            2.4
+            1.90271999835968,
+            1.90271999835968
           ],
           "initialPositionMin": [
             0,
@@ -291469,7 +292411,7 @@
         "enabled": true,
         "rendererShape": "mesh",
         "emitterDelaySeconds": 0,
-        "emitterDurationSeconds": 2.4,
+        "emitterDurationSeconds": 1.90271999835968,
         "emitterLoopCount": 1,
         "bursts": [
           {
@@ -291550,13 +292492,13 @@
                 "lookupTableTimeScale": 0,
                 "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  2.4,
+                  1.90271999835968,
                   0,
                   0,
                   0
                 ],
                 "defaultMaximum": [
-                  2.4,
+                  1.90271999835968,
                   0,
                   0,
                   0
@@ -291713,6 +292655,163 @@
                   1,
                   0,
                   0,
+                  0
+                ],
+                "lookupTable": [],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "authored.warlord.altv.clip1.outer.shield.1.pbr-ornament.source-descent",
+            "className": "particlemodulelocationdirect",
+            "objectPath": "project-authored:guardian-ring.source-descent",
+            "literals": [
+              {
+                "propertyPath": "basynctickable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "beditable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bspawnmodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bupdatemodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodduplicate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "direction",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [],
+                "keys": []
+              },
+              {
+                "propertyPath": "location",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 3,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 6.137806399116159,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  0.0,
+                  1600.0,
+                  0.0,
+                  0.0,
+                  1600.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "keys": []
+              },
+              {
+                "propertyPath": "locationoffset",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [],
+                "keys": []
+              },
+              {
+                "propertyPath": "scalefactor",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
+                "defaultMinimum": [
+                  1,
+                  1,
+                  1,
+                  0
+                ],
+                "defaultMaximum": [
+                  1,
+                  1,
+                  1,
                   0
                 ],
                 "lookupTable": [],
@@ -292299,9 +293398,9 @@
       "detail": {
         "transform": {
           "position": [
-            3.0,
+            1.3125,
             0,
-            -5.196152
+            -2.273316685
           ],
           "rotationDegrees": [
             0,
@@ -292367,8 +293466,8 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 0.01,
-          "lifeTimeSeconds": 2.4,
+          "startDelaySeconds": 0.6972000002861023,
+          "lifeTimeSeconds": 1.7027999997138976,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -292440,8 +293539,8 @@
           "burstCount": 1,
           "randomSeed": 1,
           "lifeTimeSeconds": [
-            2.4,
-            2.4
+            1.7027999997138976,
+            1.7027999997138976
           ],
           "initialPositionMin": [
             0,
@@ -292543,7 +293642,7 @@
         "enabled": true,
         "rendererShape": "mesh",
         "emitterDelaySeconds": 0,
-        "emitterDurationSeconds": 2.4,
+        "emitterDurationSeconds": 1.7027999997138976,
         "emitterLoopCount": 1,
         "bursts": [
           {
@@ -292624,13 +293723,13 @@
                 "lookupTableTimeScale": 0,
                 "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  2.4,
+                  1.7027999997138976,
                   0,
                   0,
                   0
                 ],
                 "defaultMaximum": [
-                  2.4,
+                  1.7027999997138976,
                   0,
                   0,
                   0
@@ -292787,6 +293886,163 @@
                   1,
                   0,
                   0,
+                  0
+                ],
+                "lookupTable": [],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "authored.warlord.altv.clip1.outer.shield.2.pbr-ornament.source-descent",
+            "className": "particlemodulelocationdirect",
+            "objectPath": "project-authored:guardian-ring.source-descent",
+            "literals": [
+              {
+                "propertyPath": "basynctickable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "beditable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bspawnmodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bupdatemodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodduplicate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "direction",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [],
+                "keys": []
+              },
+              {
+                "propertyPath": "location",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 3,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 5.492903182638051,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  0.0,
+                  1600.0,
+                  0.0,
+                  0.0,
+                  1600.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "keys": []
+              },
+              {
+                "propertyPath": "locationoffset",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [],
+                "keys": []
+              },
+              {
+                "propertyPath": "scalefactor",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
+                "defaultMinimum": [
+                  1,
+                  1,
+                  1,
+                  0
+                ],
+                "defaultMaximum": [
+                  1,
+                  1,
+                  1,
                   0
                 ],
                 "lookupTable": [],
@@ -293373,9 +294629,9 @@
       "detail": {
         "transform": {
           "position": [
-            -3.0,
+            -1.3125,
             0,
-            -5.196152
+            -2.273316685
           ],
           "rotationDegrees": [
             0,
@@ -293441,8 +294697,8 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 0.01,
-          "lifeTimeSeconds": 2.4,
+          "startDelaySeconds": 0.8971999883651733,
+          "lifeTimeSeconds": 1.5028000116348266,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -293514,8 +294770,8 @@
           "burstCount": 1,
           "randomSeed": 1,
           "lifeTimeSeconds": [
-            2.4,
-            2.4
+            1.5028000116348266,
+            1.5028000116348266
           ],
           "initialPositionMin": [
             0,
@@ -293617,7 +294873,7 @@
         "enabled": true,
         "rendererShape": "mesh",
         "emitterDelaySeconds": 0,
-        "emitterDurationSeconds": 2.4,
+        "emitterDurationSeconds": 1.5028000116348266,
         "emitterLoopCount": 1,
         "bursts": [
           {
@@ -293698,13 +294954,13 @@
                 "lookupTableTimeScale": 0,
                 "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  2.4,
+                  1.5028000116348266,
                   0,
                   0,
                   0
                 ],
                 "defaultMaximum": [
-                  2.4,
+                  1.5028000116348266,
                   0,
                   0,
                   0
@@ -293861,6 +295117,163 @@
                   1,
                   0,
                   0,
+                  0
+                ],
+                "lookupTable": [],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "authored.warlord.altv.clip1.outer.shield.3.pbr-ornament.source-descent",
+            "className": "particlemodulelocationdirect",
+            "objectPath": "project-authored:guardian-ring.source-descent",
+            "literals": [
+              {
+                "propertyPath": "basynctickable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "beditable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bspawnmodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bupdatemodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodduplicate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "direction",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [],
+                "keys": []
+              },
+              {
+                "propertyPath": "location",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 3,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 4.847741935731965,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  0.0,
+                  1600.0,
+                  0.0,
+                  0.0,
+                  1600.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "keys": []
+              },
+              {
+                "propertyPath": "locationoffset",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [],
+                "keys": []
+              },
+              {
+                "propertyPath": "scalefactor",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
+                "defaultMinimum": [
+                  1,
+                  1,
+                  1,
+                  0
+                ],
+                "defaultMaximum": [
+                  1,
+                  1,
+                  1,
                   0
                 ],
                 "lookupTable": [],
@@ -294447,7 +295860,7 @@
       "detail": {
         "transform": {
           "position": [
-            -6.0,
+            -2.625,
             0,
             -0.0
           ],
@@ -294515,8 +295928,8 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 0.01,
-          "lifeTimeSeconds": 2.4,
+          "startDelaySeconds": 1.097000002861023,
+          "lifeTimeSeconds": 1.302999997138977,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -294588,8 +296001,8 @@
           "burstCount": 1,
           "randomSeed": 1,
           "lifeTimeSeconds": [
-            2.4,
-            2.4
+            1.302999997138977,
+            1.302999997138977
           ],
           "initialPositionMin": [
             0,
@@ -294691,7 +296104,7 @@
         "enabled": true,
         "rendererShape": "mesh",
         "emitterDelaySeconds": 0,
-        "emitterDurationSeconds": 2.4,
+        "emitterDurationSeconds": 1.302999997138977,
         "emitterLoopCount": 1,
         "bursts": [
           {
@@ -294772,13 +296185,13 @@
                 "lookupTableTimeScale": 0,
                 "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  2.4,
+                  1.302999997138977,
                   0,
                   0,
                   0
                 ],
                 "defaultMaximum": [
-                  2.4,
+                  1.302999997138977,
                   0,
                   0,
                   0
@@ -294935,6 +296348,163 @@
                   1,
                   0,
                   0,
+                  0
+                ],
+                "lookupTable": [],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "authored.warlord.altv.clip1.outer.shield.4.pbr-ornament.source-descent",
+            "className": "particlemodulelocationdirect",
+            "objectPath": "project-authored:guardian-ring.source-descent",
+            "literals": [
+              {
+                "propertyPath": "basynctickable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "beditable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bspawnmodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bupdatemodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodduplicate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "direction",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [],
+                "keys": []
+              },
+              {
+                "propertyPath": "location",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 3,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 4.2032257648958256,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  0.0,
+                  1600.0,
+                  0.0,
+                  0.0,
+                  1600.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "keys": []
+              },
+              {
+                "propertyPath": "locationoffset",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [],
+                "keys": []
+              },
+              {
+                "propertyPath": "scalefactor",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
+                "defaultMinimum": [
+                  1,
+                  1,
+                  1,
+                  0
+                ],
+                "defaultMaximum": [
+                  1,
+                  1,
+                  1,
                   0
                 ],
                 "lookupTable": [],
@@ -295521,9 +297091,9 @@
       "detail": {
         "transform": {
           "position": [
-            -3.0,
+            -1.3125,
             0,
-            5.196152
+            2.273316685
           ],
           "rotationDegrees": [
             0,
@@ -295589,8 +297159,8 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 0.01,
-          "lifeTimeSeconds": 2.4,
+          "startDelaySeconds": 1.2970000505447388,
+          "lifeTimeSeconds": 1.1029999494552611,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -295662,8 +297232,8 @@
           "burstCount": 1,
           "randomSeed": 1,
           "lifeTimeSeconds": [
-            2.4,
-            2.4
+            1.1029999494552611,
+            1.1029999494552611
           ],
           "initialPositionMin": [
             0,
@@ -295765,7 +297335,7 @@
         "enabled": true,
         "rendererShape": "mesh",
         "emitterDelaySeconds": 0,
-        "emitterDurationSeconds": 2.4,
+        "emitterDurationSeconds": 1.1029999494552611,
         "emitterLoopCount": 1,
         "bursts": [
           {
@@ -295846,13 +297416,13 @@
                 "lookupTableTimeScale": 0,
                 "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  2.4,
+                  1.1029999494552611,
                   0,
                   0,
                   0
                 ],
                 "defaultMaximum": [
-                  2.4,
+                  1.1029999494552611,
                   0,
                   0,
                   0
@@ -296009,6 +297579,163 @@
                   1,
                   0,
                   0,
+                  0
+                ],
+                "lookupTable": [],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "authored.warlord.altv.clip1.outer.shield.5.pbr-ornament.source-descent",
+            "className": "particlemodulelocationdirect",
+            "objectPath": "project-authored:guardian-ring.source-descent",
+            "literals": [
+              {
+                "propertyPath": "basynctickable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "beditable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bspawnmodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bupdatemodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodduplicate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "direction",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [],
+                "keys": []
+              },
+              {
+                "propertyPath": "location",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 3,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 3.5580643257166926,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  0.0,
+                  1600.0,
+                  0.0,
+                  0.0,
+                  1600.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "keys": []
+              },
+              {
+                "propertyPath": "locationoffset",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [],
+                "keys": []
+              },
+              {
+                "propertyPath": "scalefactor",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
+                "defaultMinimum": [
+                  1,
+                  1,
+                  1,
+                  0
+                ],
+                "defaultMaximum": [
+                  1,
+                  1,
+                  1,
                   0
                 ],
                 "lookupTable": [],
@@ -296595,9 +298322,9 @@
       "detail": {
         "transform": {
           "position": [
-            3.0,
+            1.3125,
             0,
-            5.196152
+            2.273316685
           ],
           "rotationDegrees": [
             0,
@@ -296663,8 +298390,8 @@
           "tileIndex": 0
         },
         "timing": {
-          "startDelaySeconds": 0.01,
-          "lifeTimeSeconds": 2.4,
+          "startDelaySeconds": 1.496999979019165,
+          "lifeTimeSeconds": 0.9030000209808349,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -296736,8 +298463,8 @@
           "burstCount": 1,
           "randomSeed": 1,
           "lifeTimeSeconds": [
-            2.4,
-            2.4
+            0.9030000209808349,
+            0.9030000209808349
           ],
           "initialPositionMin": [
             0,
@@ -296839,7 +298566,7 @@
         "enabled": true,
         "rendererShape": "mesh",
         "emitterDelaySeconds": 0,
-        "emitterDurationSeconds": 2.4,
+        "emitterDurationSeconds": 0.9030000209808349,
         "emitterLoopCount": 1,
         "bursts": [
           {
@@ -296920,13 +298647,13 @@
                 "lookupTableTimeScale": 0,
                 "lookupTableStartTime": 0,
                 "defaultMinimum": [
-                  2.4,
+                  0.9030000209808349,
                   0,
                   0,
                   0
                 ],
                 "defaultMaximum": [
-                  2.4,
+                  0.9030000209808349,
                   0,
                   0,
                   0
@@ -297083,6 +298810,163 @@
                   1,
                   0,
                   0,
+                  0
+                ],
+                "lookupTable": [],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "authored.warlord.altv.clip1.outer.shield.6.pbr-ornament.source-descent",
+            "className": "particlemodulelocationdirect",
+            "objectPath": "project-authored:guardian-ring.source-descent",
+            "literals": [
+              {
+                "propertyPath": "basynctickable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "beditable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bspawnmodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bupdatemodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodduplicate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "direction",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [],
+                "keys": []
+              },
+              {
+                "propertyPath": "location",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 3,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 2.9129032710836524,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  0.0,
+                  1600.0,
+                  0.0,
+                  0.0,
+                  1600.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "keys": []
+              },
+              {
+                "propertyPath": "locationoffset",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [],
+                "keys": []
+              },
+              {
+                "propertyPath": "scalefactor",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0,
+                "lookupTableStartTime": 0,
+                "defaultMinimum": [
+                  1,
+                  1,
+                  1,
+                  0
+                ],
+                "defaultMaximum": [
+                  1,
+                  1,
+                  1,
                   0
                 ],
                 "lookupTable": [],
@@ -303703,7 +305587,7 @@
         "enabled": true,
         "follow": true,
         "sourceAnchorSlotId": "b_effectroot",
-        "runtimeAnchorSlotId": "b_effectroot",
+        "runtimeAnchorSlotId": "authored.warlord.altv.guardian-ground",
         "runtimeBoneName": "b_effectroot",
         "socketLocalTransform": {
           "position": [
@@ -303712,9 +305596,9 @@
             0.0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            90,
+            180,
+            0
           ],
           "scale": [
             1.0,
@@ -303727,7 +305611,7 @@
         "transform": {
           "position": [
             2.625,
-            0.0,
+            -0.3,
             -0.0
           ],
           "rotationDegrees": [
@@ -305663,7 +307547,7 @@
         "enabled": true,
         "follow": true,
         "sourceAnchorSlotId": "b_effectroot",
-        "runtimeAnchorSlotId": "b_effectroot",
+        "runtimeAnchorSlotId": "authored.warlord.altv.guardian-ground",
         "runtimeBoneName": "b_effectroot",
         "socketLocalTransform": {
           "position": [
@@ -305672,9 +307556,9 @@
             0.0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            90,
+            180,
+            0
           ],
           "scale": [
             1.0,
@@ -305687,8 +307571,8 @@
         "transform": {
           "position": [
             1.3125,
-            0.0,
-            2.2732499694824218
+            -0.3,
+            -2.273316685
           ],
           "rotationDegrees": [
             0.0,
@@ -307623,7 +309507,7 @@
         "enabled": true,
         "follow": true,
         "sourceAnchorSlotId": "b_effectroot",
-        "runtimeAnchorSlotId": "b_effectroot",
+        "runtimeAnchorSlotId": "authored.warlord.altv.guardian-ground",
         "runtimeBoneName": "b_effectroot",
         "socketLocalTransform": {
           "position": [
@@ -307632,9 +309516,9 @@
             0.0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            90,
+            180,
+            0
           ],
           "scale": [
             1.0,
@@ -307647,8 +309531,8 @@
         "transform": {
           "position": [
             -1.3125,
-            0.0,
-            2.2732499694824218
+            -0.3,
+            -2.273316685
           ],
           "rotationDegrees": [
             0.0,
@@ -309583,7 +311467,7 @@
         "enabled": true,
         "follow": true,
         "sourceAnchorSlotId": "b_effectroot",
-        "runtimeAnchorSlotId": "b_effectroot",
+        "runtimeAnchorSlotId": "authored.warlord.altv.guardian-ground",
         "runtimeBoneName": "b_effectroot",
         "socketLocalTransform": {
           "position": [
@@ -309592,9 +311476,9 @@
             0.0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            90,
+            180,
+            0
           ],
           "scale": [
             1.0,
@@ -309607,7 +311491,7 @@
         "transform": {
           "position": [
             -2.625,
-            0.0,
+            -0.3,
             -0.0
           ],
           "rotationDegrees": [
@@ -311543,7 +313427,7 @@
         "enabled": true,
         "follow": true,
         "sourceAnchorSlotId": "b_effectroot",
-        "runtimeAnchorSlotId": "b_effectroot",
+        "runtimeAnchorSlotId": "authored.warlord.altv.guardian-ground",
         "runtimeBoneName": "b_effectroot",
         "socketLocalTransform": {
           "position": [
@@ -311552,9 +313436,9 @@
             0.0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            90,
+            180,
+            0
           ],
           "scale": [
             1.0,
@@ -311567,8 +313451,8 @@
         "transform": {
           "position": [
             -1.3125,
-            0.0,
-            -2.2732499694824218
+            -0.3,
+            2.273316685
           ],
           "rotationDegrees": [
             0.0,
@@ -313503,7 +315387,7 @@
         "enabled": true,
         "follow": true,
         "sourceAnchorSlotId": "b_effectroot",
-        "runtimeAnchorSlotId": "b_effectroot",
+        "runtimeAnchorSlotId": "authored.warlord.altv.guardian-ground",
         "runtimeBoneName": "b_effectroot",
         "socketLocalTransform": {
           "position": [
@@ -313512,9 +315396,9 @@
             0.0
           ],
           "rotationDegrees": [
-            0.0,
-            0.0,
-            0.0
+            90,
+            180,
+            0
           ],
           "scale": [
             1.0,
@@ -313527,8 +315411,8 @@
         "transform": {
           "position": [
             1.3125,
-            0.0,
-            -2.2732499694824218
+            -0.3,
+            2.273316685
           ],
           "rotationDegrees": [
             0.0,
@@ -315753,7 +317637,7 @@
             4.0,
             0.4
           ],
-          "localSpace": false,
+          "localSpace": true,
           "billboard": true,
           "sourceScale": {
             "count": 1,
@@ -317736,7 +319620,7 @@
             2.0799999237060547,
             1.4299999475479128
           ],
-          "localSpace": false,
+          "localSpace": true,
           "billboard": true,
           "sourceScale": {
             "count": 1,
@@ -319563,7 +321447,7 @@
             1.6899999380111694,
             1.6899999380111694
           ],
-          "localSpace": false,
+          "localSpace": true,
           "billboard": true,
           "sourceScale": {
             "count": 1,
@@ -321344,7 +323228,7 @@
             1.4000000000000001,
             1.4000000000000001
           ],
-          "localSpace": false,
+          "localSpace": true,
           "billboard": true,
           "sourceScale": {
             "count": 1,
@@ -323162,7 +325046,7 @@
             1.5600000619888306,
             1.2600000500679016
           ],
-          "localSpace": false,
+          "localSpace": true,
           "billboard": true,
           "sourceScale": {
             "count": 1,
@@ -324869,7 +326753,7 @@
             0.4,
             0.4
           ],
-          "localSpace": false,
+          "localSpace": true,
           "billboard": true,
           "sourceScale": {
             "count": 1,
@@ -326804,7 +328688,7 @@
             0.4,
             0.4
           ],
-          "localSpace": false,
+          "localSpace": true,
           "billboard": true,
           "sourceScale": {
             "count": 1,
@@ -328788,7 +330672,7 @@
             0.30000000000000004,
             0.30000000000000004
           ],
-          "localSpace": false,
+          "localSpace": true,
           "billboard": true,
           "sourceScale": {
             "count": 1,
@@ -330764,7 +332648,7 @@
             0.30000000000000004,
             0.30000000000000004
           ],
-          "localSpace": false,
+          "localSpace": true,
           "billboard": true,
           "sourceScale": {
             "count": 1,
@@ -370094,6 +371978,1606 @@
         "sourceEventId": "",
         "sourceOccurrenceIndex": 0,
         "sourceTimeSeconds": 0.0,
+        "parameters": []
+      },
+      "transformInheritance": {
+        "enabled": false,
+        "masterElementId": ""
+      }
+    },
+    {
+      "id": "authored.source-particle.full-warlord-alt_v.3a0318b0c3d175070829",
+      "displayName": "source-event-003 particlespriteemitter_12",
+      "groupId": "authored.source-particle.full-warlord-alt_v",
+      "sourceNode": "authored-source-particle:effect.warlord.skill.17250.clip1.full.restore|source:effect.warlord.skill.17250.imported|element:fx_pc_wgl_08.par_w_wgl_superaction_01_01.particlespriteemitter_12",
+      "visible": true,
+      "kind": "particle",
+      "resources": [
+        {
+          "slotId": "meshModel",
+          "assetId": "Effect/Warlord/Meshes/FX_SM_00/fm_d_cylinder_019.wmodel"
+        },
+        {
+          "slotId": "base",
+          "assetId": "Effect/Warlord/Textures/FX_TEX_02/fx_d_noise_043.dds"
+        },
+        {
+          "slotId": "noise",
+          "assetId": "Effect/Warlord/Textures/FX_TEX_02/fx_d_noise_031.dds"
+        },
+        {
+          "slotId": "mask",
+          "assetId": "Effect/Warlord/Textures/FX_TEX_02/fx_d_atypical_006_1_xcl.dds"
+        }
+      ],
+      "material": {
+        "templateId": "effect.source_material",
+        "sourceMaterialPath": "fx_m_mi_o_00.fx_mi.fx_o_me_superactionspace_01_02_tr",
+        "renderProfile": "alpha_one_sided_depth_read",
+        "sourceProfile": {
+          "enabled": true,
+          "profileId": "ue3.material.fx.m.mi.d.00.fx.m.fx.d.me.superactionspace.tr.5929f487d75f",
+          "runtimeShaderProfileId": "effect.ue3.warlord-673-native.v1",
+          "parentMaterialPath": "fx_m_mi_d_00.fx_m.fx_d_me_superactionspace_tr",
+          "semanticStatus": "reconstructed_profile",
+          "textures": [
+            {
+              "name": "02.map_e",
+              "sourceObjectPath": "fx_tex_02.fx_d_noise_043",
+              "assetId": "Effect/Warlord/Textures/FX_TEX_02/fx_d_noise_043.dds",
+              "addressU": "wrap",
+              "addressV": "wrap",
+              "colorSpace": "srgb",
+              "samplingEvidence": "source-texture-tags-and-project-class-default.v1"
+            },
+            {
+              "name": "12.map_f",
+              "sourceObjectPath": "fx_tex_02.fx_d_noise_031",
+              "assetId": "Effect/Warlord/Textures/FX_TEX_02/fx_d_noise_031.dds",
+              "addressU": "wrap",
+              "addressV": "wrap",
+              "colorSpace": "srgb",
+              "samplingEvidence": "source-texture-tags-and-project-class-default.v1"
+            },
+            {
+              "name": "22.map_f",
+              "sourceObjectPath": "fx_tex_02.fx_d_atypical_006_1_xcl",
+              "assetId": "Effect/Warlord/Textures/FX_TEX_02/fx_d_atypical_006_1_xcl.dds",
+              "addressU": "clamp",
+              "addressV": "wrap",
+              "colorSpace": "srgb",
+              "samplingEvidence": "source-texture-tags-and-project-class-default.v1"
+            }
+          ],
+          "scalars": [
+            {
+              "name": "offset.x",
+              "group": "None",
+              "value": 0.0
+            },
+            {
+              "name": "offset.y",
+              "group": "None",
+              "value": 0.3499999940395355
+            },
+            {
+              "name": "03.map_e_uvscale_r",
+              "group": "None",
+              "value": 3.0
+            },
+            {
+              "name": "04.map_e_uvscale_g",
+              "group": "None",
+              "value": 0.05000000074505806
+            },
+            {
+              "name": "13.map_f_uvscale_r",
+              "group": "None",
+              "value": 2.299999952316284
+            },
+            {
+              "name": "14.map_f_uvscale_g",
+              "group": "None",
+              "value": 0.10999999940395355
+            },
+            {
+              "name": "23.map_f_uvscale_r",
+              "group": "None",
+              "value": 1.0
+            },
+            {
+              "name": "24.map_f_uvscale_g",
+              "group": "None",
+              "value": 0.05000000074505806
+            },
+            {
+              "name": "05.map_e_panning_x",
+              "group": "None",
+              "value": 0.0
+            },
+            {
+              "name": "06.map_e_panning_y",
+              "group": "None",
+              "value": 1.0
+            },
+            {
+              "name": "07.map_e_desaturation",
+              "group": "None",
+              "value": 0.5
+            },
+            {
+              "name": "15.map_f_panning_x",
+              "group": "None",
+              "value": 0.0
+            },
+            {
+              "name": "16.map_f_panning_y",
+              "group": "None",
+              "value": 0.699999988079071
+            },
+            {
+              "name": "17.map_f_desaturation",
+              "group": "None",
+              "value": 0.5
+            },
+            {
+              "name": "25.map_f_panning_x",
+              "group": "None",
+              "value": 0.0
+            },
+            {
+              "name": "26.map_f_panning_y",
+              "group": "None",
+              "value": 1.0
+            },
+            {
+              "name": "21.map_f_amp",
+              "group": "None",
+              "value": 5.0
+            }
+          ],
+          "vectors": [
+            {
+              "name": "selectioncolor",
+              "group": "None",
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            },
+            {
+              "name": "meshemitterdynamicparameter",
+              "group": "None",
+              "value": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            {
+              "name": "color_2",
+              "group": "None",
+              "value": [
+                4.0,
+                2.0,
+                1.0,
+                0.699999988079071
+              ]
+            },
+            {
+              "name": "color_1",
+              "group": "None",
+              "value": [
+                15.0,
+                10.0,
+                5.0,
+                3.0
+              ]
+            }
+          ],
+          "staticSwitches": [],
+          "dynamicParameterSemantics": [
+            "unbound",
+            "unbound",
+            "unbound",
+            "unbound"
+          ],
+          "subUVMode": "none"
+        }
+      },
+      "actionCueAttachment": {
+        "enabled": true,
+        "follow": false,
+        "sourceAnchorSlotId": "root",
+        "runtimeAnchorSlotId": "root",
+        "runtimeBoneName": "",
+        "socketLocalTransform": {
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "snapshotRootSourceBasisYawDegrees": -90
+      },
+      "detail": {
+        "transform": {
+          "position": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "revolutionDegreesPerSecond": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "velocityPerSecond": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "color": {
+          "offset": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "multiply": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "clip": 0.0,
+          "emissiveIntensity": 1,
+          "distortionIntensity": 0.0,
+          "distortionOnBaseMaterial": false,
+          "radialTime": 0.0,
+          "radialIntensity": 0.0
+        },
+        "uv": {
+          "start": [
+            0,
+            0
+          ],
+          "speed": [
+            0,
+            0
+          ],
+          "wave": false,
+          "waveAmplitude": [
+            0.0,
+            0.0
+          ],
+          "waveFrequency": 1.0,
+          "sequence": false,
+          "loop": true,
+          "sequenceTerm": 0.1,
+          "tileColumns": 1,
+          "tileRows": 1,
+          "tileIndex": 0
+        },
+        "timing": {
+          "startDelaySeconds": 0.009999999776482582,
+          "lifeTimeSeconds": 1.0,
+          "afterImageSeconds": 0.0,
+          "dissolveStartNormalized": 1.0
+        },
+        "mesh": {
+          "useModelMaterial": false,
+          "modelPreScale": 0.01
+        },
+        "sprite": {
+          "billboard": true
+        },
+        "decal": {
+          "size": [
+            0.03,
+            0.03
+          ],
+          "depth": 0.25
+        },
+        "linearLerp": {
+          "position": false,
+          "endPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": false,
+          "endRotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "revolution": false,
+          "endRevolutionDegreesPerSecond": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": false,
+          "endScale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "velocity": false,
+          "endVelocityPerSecond": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "colorOffset": false,
+          "endColorOffset": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "colorMultiply": false,
+          "endColorMultiply": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "emissiveIntensity": false,
+          "endEmissiveIntensity": 1.0
+        },
+        "particle": {
+          "maxParticles": 3,
+          "spawnRatePerSecond": 0.0,
+          "burstCount": 0,
+          "randomSeed": 49,
+          "lifeTimeSeconds": [
+            0.4000000059604645,
+            0.4000000059604645
+          ],
+          "initialPositionMin": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "initialPositionMax": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "initialVelocityMin": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "initialVelocityMax": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "acceleration": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "startSize": [
+            0.03,
+            0.03
+          ],
+          "endSize": [
+            0.0,
+            0.0
+          ],
+          "localSpace": true,
+          "billboard": true,
+          "authoringApproximate": false,
+          "sourceScale": {
+            "count": 1,
+            "size": 1,
+            "lifeTime": 1,
+            "speed": 1,
+            "rotation": 1,
+            "alpha": 1,
+            "spawnDelay": 1
+          }
+        },
+        "trail": {
+          "maxPoints": 64,
+          "pointLifeTimeSeconds": 0.35,
+          "sampleIntervalSeconds": 0.0166667,
+          "minimumDistance": 0.01,
+          "startWidth": 0.2,
+          "endWidth": 0.0,
+          "faceCamera": true
+        },
+        "afterImage": {
+          "sampleIntervalSeconds": 0.05,
+          "maxCopies": 16,
+          "alphaExponent": 1.0
+        },
+        "light": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "range": 0.0,
+          "intensity": 0.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "ambient": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "falloffExponent": 0.0
+        },
+        "screenPost": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "intensity": 0.0,
+          "secondaryIntensity": 0.0,
+          "frequency": 0.0,
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "randomSeed": 1
+        }
+      },
+      "sourceRecipe": {
+        "enabled": true,
+        "rendererShape": "mesh",
+        "emitterDelaySeconds": 0,
+        "emitterDurationSeconds": 1.0,
+        "emitterLoopCount": 1,
+        "bursts": [
+          {
+            "timeSeconds": 0.0,
+            "countMinimum": 1,
+            "countMaximum": 1
+          }
+        ],
+        "modules": [
+          {
+            "stableId": "source.module.042aa437e705b41fd3d0312a",
+            "className": "particlemodulerequired",
+            "objectPath": "fx_pc_wgl_08.par_w_wgl_superaction_01_01.particlemodulerequired_11",
+            "literals": [
+              {
+                "propertyPath": "ballowimageflipping",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "basynctickable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bdrawshadowrenderpass",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "beditable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bkillondeactivate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bspawnmodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bupdatemodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "buselegacyemittertime",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "buselocalspace",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "busemaxdrawcount",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "emitterduration",
+                "kind": "number",
+                "value": 1.0
+              },
+              {
+                "propertyPath": "emitterloops",
+                "kind": "number",
+                "value": 1.0
+              },
+              {
+                "propertyPath": "farculldistance",
+                "kind": "number",
+                "value": 2100.0
+              },
+              {
+                "propertyPath": "farfadedistance",
+                "kind": "number",
+                "value": 2000.0
+              },
+              {
+                "propertyPath": "lodduplicate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              },
+              {
+                "propertyPath": "material",
+                "kind": "number",
+                "value": -258.0
+              },
+              {
+                "propertyPath": "material.objectpath",
+                "kind": "string",
+                "value": "fx_m_mi_o_00.fx_mi.fx_o_me_superactionspace_01_02_tr"
+              },
+              {
+                "propertyPath": "maxdrawcount",
+                "kind": "number",
+                "value": 500.0
+              },
+              {
+                "propertyPath": "nearculldistance",
+                "kind": "number",
+                "value": 10.0
+              },
+              {
+                "propertyPath": "nearfadedistance",
+                "kind": "number",
+                "value": 150.0
+              },
+              {
+                "propertyPath": "normalscylinderdirection.x",
+                "kind": "number",
+                "value": 0.0
+              },
+              {
+                "propertyPath": "normalscylinderdirection.y",
+                "kind": "number",
+                "value": 0.0
+              },
+              {
+                "propertyPath": "normalscylinderdirection.z",
+                "kind": "number",
+                "value": 1.0
+              },
+              {
+                "propertyPath": "normalsspherecenter.x",
+                "kind": "number",
+                "value": 0.0
+              },
+              {
+                "propertyPath": "normalsspherecenter.y",
+                "kind": "number",
+                "value": 0.0
+              },
+              {
+                "propertyPath": "normalsspherecenter.z",
+                "kind": "number",
+                "value": 100.0
+              },
+              {
+                "propertyPath": "offsetcenterx",
+                "kind": "number",
+                "value": 0.5
+              },
+              {
+                "propertyPath": "offsetcentery",
+                "kind": "number",
+                "value": 0.5
+              },
+              {
+                "propertyPath": "randomimagetime",
+                "kind": "number",
+                "value": 1.0
+              },
+              {
+                "propertyPath": "subimages_horizontal",
+                "kind": "number",
+                "value": 1.0
+              },
+              {
+                "propertyPath": "subimages_vertical",
+                "kind": "number",
+                "value": 1.0
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "spawnrate",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "source.module.8801e4d1077903aa21340d5b",
+            "className": "particlemodulelifetime",
+            "objectPath": "fx_bs_00.hit.par_b_mat_metal_001.particlemodulelifetime_9",
+            "literals": [
+              {
+                "propertyPath": "basynctickable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "beditable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bspawnmodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodduplicate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "lifetime",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 1,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  0.4000000059604645,
+                  0.4000000059604645,
+                  0.4000000059604645,
+                  0.4000000059604645
+                ],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "source.module.b02aa210e6959bd9df2bfe2c",
+            "className": "particlemodulecolor",
+            "objectPath": "fx_bs_00.hit.par_s_ghe_hit_backcri_holy_01.particlemodulecolor_1",
+            "literals": [
+              {
+                "propertyPath": "basynctickable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bclampalpha",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bcurvesascolor",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "beditable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bspawnmodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodduplicate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 1.0
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "startalpha",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [],
+                "keys": []
+              },
+              {
+                "propertyPath": "startcolor",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 3,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  2.0,
+                  2.0,
+                  2.0,
+                  2.0,
+                  2.0,
+                  2.0,
+                  2.0,
+                  2.0
+                ],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "source.module.1d5d08c5e8442447e2ea2b36",
+            "className": "particlemodulesize",
+            "objectPath": "fx_bs_05.prj.par_l_sworda_prj_01.particlemodulesize_0",
+            "literals": [
+              {
+                "propertyPath": "basynctickable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "beditable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bspawnmodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodduplicate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "startsize",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 3,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  3.0,
+                  3.0,
+                  3.0,
+                  3.0,
+                  3.0,
+                  3.0,
+                  3.0,
+                  3.0
+                ],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "source.module.579201c1d1536e02eabacae3",
+            "className": "particlemodulelocation",
+            "objectPath": "bfx_high_01.light.par_j_lighthit_002.particlemodulelocation_0",
+            "literals": [
+              {
+                "propertyPath": "basynctickable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "beditable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bspawnmodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bsupported3ddrawmode",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodduplicate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "startlocation",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "source.module.f8c68041414deb0417ad26d9",
+            "className": "particlemoduleparameterdynamic",
+            "objectPath": "fx_pc_wgl_08.par_w_wgl_superaction_01_01.particlemoduleparameterdynamic_1",
+            "literals": [
+              {
+                "propertyPath": "basynctickable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "beditable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bspawnmodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bupdatemodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "dynamicparams[0].bscalevelocitybyparamvalue",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "dynamicparams[0].bspawntimeonly",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "dynamicparams[0].buseemittertime",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "dynamicparams[0].paramname",
+                "kind": "string",
+                "value": "rot[0-12]"
+              },
+              {
+                "propertyPath": "dynamicparams[0].valuemethod",
+                "kind": "string",
+                "value": "edpv_userset"
+              },
+              {
+                "propertyPath": "dynamicparams[1].bscalevelocitybyparamvalue",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "dynamicparams[1].bspawntimeonly",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "dynamicparams[1].buseemittertime",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "dynamicparams[1].paramname",
+                "kind": "string",
+                "value": "_"
+              },
+              {
+                "propertyPath": "dynamicparams[1].valuemethod",
+                "kind": "string",
+                "value": "edpv_userset"
+              },
+              {
+                "propertyPath": "dynamicparams[2].bscalevelocitybyparamvalue",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "dynamicparams[2].bspawntimeonly",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "dynamicparams[2].buseemittertime",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "dynamicparams[2].paramname",
+                "kind": "string",
+                "value": "_"
+              },
+              {
+                "propertyPath": "dynamicparams[2].valuemethod",
+                "kind": "string",
+                "value": "edpv_userset"
+              },
+              {
+                "propertyPath": "dynamicparams[3].bscalevelocitybyparamvalue",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "dynamicparams[3].bspawntimeonly",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "dynamicparams[3].buseemittertime",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "dynamicparams[3].paramname",
+                "kind": "string",
+                "value": "_"
+              },
+              {
+                "propertyPath": "dynamicparams[3].valuemethod",
+                "kind": "string",
+                "value": "edpv_userset"
+              },
+              {
+                "propertyPath": "lodduplicate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              },
+              {
+                "propertyPath": "updateflags",
+                "kind": "number",
+                "value": 15.0
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "dynamicparams[0].paramvalue",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 1,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  0.25,
+                  0.25,
+                  0.25,
+                  0.25
+                ],
+                "keys": []
+              },
+              {
+                "propertyPath": "dynamicparams[1].paramvalue",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 1,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  1.0,
+                  1.0,
+                  1.0,
+                  1.0
+                ],
+                "keys": []
+              },
+              {
+                "propertyPath": "dynamicparams[2].paramvalue",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 1,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  1.0,
+                  1.0,
+                  1.0,
+                  1.0
+                ],
+                "keys": []
+              },
+              {
+                "propertyPath": "dynamicparams[3].paramvalue",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 1,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  1.0,
+                  1.0,
+                  1.0,
+                  1.0
+                ],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "source.module.5054a5364aef671a8591e96a",
+            "className": "particlemodulecolorscaleoverlife",
+            "objectPath": "fx_pc_wgl_08.par_w_wgl_superaction_01_01.particlemodulecolorscaleoverlife_26",
+            "literals": [
+              {
+                "propertyPath": "basynctickable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bcurvesascolor",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "beditable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bspawnmodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bupdatemodule",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodduplicate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "alphascaleoverlife",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 1,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 20.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  0.0,
+                  1.0,
+                  0.5,
+                  1.0,
+                  1.0,
+                  1.0,
+                  1.0,
+                  1.0,
+                  1.0,
+                  0.8084081411361694,
+                  0.6429483890533447,
+                  0.5017092227935791,
+                  0.3827797472476959,
+                  0.28424811363220215,
+                  0.20420318841934204,
+                  0.1407334804534912,
+                  0.09192794561386108,
+                  0.05587473511695862,
+                  0.030662834644317627,
+                  0.014380723237991333,
+                  0.005117230117321014,
+                  0.0009607411921024323,
+                  0.0
+                ],
+                "keys": []
+              },
+              {
+                "propertyPath": "colorscaleoverlife",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 3,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 3,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  1.0,
+                  1.0,
+                  1.0,
+                  1.0,
+                  1.0,
+                  1.0,
+                  1.0,
+                  1.0
+                ],
+                "keys": []
+              }
+            ]
+          },
+          {
+            "stableId": "source.module.dca2567ef3551f44ad29c2eb",
+            "className": "particlemoduletypedatamesh",
+            "objectPath": "fx_pc_wgl_08.par_w_wgl_superaction_01_01.particlemoduletypedatamesh_0",
+            "literals": [
+              {
+                "propertyPath": "basynctickable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "beditable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "boverridematerial",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodduplicate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              },
+              {
+                "propertyPath": "mesh",
+                "kind": "number",
+                "value": -2855.0
+              },
+              {
+                "propertyPath": "mesh.objectpath",
+                "kind": "string",
+                "value": "fx_sm_00.fm_d_cylinder_019"
+              }
+            ],
+            "distributions": []
+          },
+          {
+            "stableId": "source.module.937e09d5f04a7ecafbb62ad6",
+            "className": "particlemodulespawn",
+            "objectPath": "bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11",
+            "literals": [
+              {
+                "propertyPath": "basynctickable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "beditable",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "benabled",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bprocessburstlist",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "bprocessspawnrate",
+                "kind": "boolean",
+                "value": true
+              },
+              {
+                "propertyPath": "burstlist[0].count",
+                "kind": "number",
+                "value": 1.0
+              },
+              {
+                "propertyPath": "burstlist[0].countlow",
+                "kind": "number",
+                "value": -1.0
+              },
+              {
+                "propertyPath": "burstlist[0].time",
+                "kind": "number",
+                "value": 0.0
+              },
+              {
+                "propertyPath": "lodduplicate",
+                "kind": "boolean",
+                "value": false
+              },
+              {
+                "propertyPath": "lodvalidity",
+                "kind": "number",
+                "value": 3.0
+              }
+            ],
+            "distributions": [
+              {
+                "propertyPath": "rate",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 1,
+                "lookupTableNumElements": 1,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "keys": []
+              },
+              {
+                "propertyPath": "ratescale",
+                "sourceClass": "",
+                "sourceObjectPath": "",
+                "componentCount": 1,
+                "operation": 1,
+                "randomLockAxes": 0,
+                "lookupTableChunkSize": 0,
+                "lookupTableNumElements": 0,
+                "lookupTableTimeScale": 0.0,
+                "lookupTableStartTime": 0.0,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "lookupTable": [],
+                "keys": []
+              }
+            ]
+          }
+        ]
+      },
+      "sourcePresentation": {
+        "enabled": false,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": "",
+        "status": "unresolved",
+        "sourceObjectPath": "",
+        "sourceActionCueId": "action-17250/stage-000/notify-010",
+        "sourceEventId": "source-event-003",
+        "sourceOccurrenceIndex": 0,
+        "sourceTimeSeconds": 0.009999999776482582,
         "parameters": []
       },
       "transformInheritance": {

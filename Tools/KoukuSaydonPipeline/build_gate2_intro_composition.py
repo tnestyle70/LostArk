@@ -490,15 +490,22 @@ def make_world(rows, group, actor, resource, label):
 
 def make_cameras(rows, matinee=329, interp_data=394, duration=DURATION,
                  prefix=PREFIX, display_name="2관문 진입", range_start=0):
-    directors=[x["p"]["cuttrack"] for g in rows[interp_data]["p"]["interpgroups"]
+    directors=[x["p"].get("cuttrack", []) for g in rows[interp_data]["p"]["interpgroups"]
                for x in active_tracks(rows,g) if x["cls"]=="interptrackdirector"]
     assert len(directors)==1, (matinee,"Expected one enabled Director")
     director=directors[0]
     groups={rows[g]["p"].get("groupname"):g for g in rows[interp_data]["p"]["interpgroups"]}
+    director_names={str(rows[g]["p"].get("groupname", "dirgroup")).casefold()
+                    for g in rows[interp_data]["p"]["interpgroups"]
+                    if rows[g]["cls"] == "interpgroupdirector"}
     shots=[]
     for n,cut in enumerate(director):
         start=max(range_start,round(cut["time"]*1000)); end=min(duration,round(director[n+1]["time"]*1000)) if n+1<len(director) else duration
         if end<=start:continue
+        # The Director group is the player's view, not a missing CameraActor.
+        # Preserve the gap in the returned windows so its caller releases the
+        # cinematic camera at the source cut. An inherited empty track has no cuts.
+        if cut["targetcamgroup"].casefold() in director_names:continue
         group=groups[cut["targetcamgroup"]];actor=group_actor(rows,group,matinee)[0]
         fov_tracks=[x["p"] for x in active_tracks(rows,group) if x["cls"]=="interptrackfloatprop"
                     and x["p"].get("propertyname","").lower()=="fovangle"]

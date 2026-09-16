@@ -218,4 +218,9 @@
 #if !defined(EFFECT_NATIVE_PARTICLE_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
     case 671u: nativeColor=WarlordNative671(input); additive=true; break;
 #endif
+// BEGIN WARLORD BLACK SPHERE 673
+#if !defined(EFFECT_NATIVE_PARTICLE_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
+    case 673u: nativeColor=WarlordNative673(input); additive=false; break;
+#endif
+// END WARLORD BLACK SPHERE 673
 #endif

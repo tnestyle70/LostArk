@@ -33,6 +33,725 @@ def copy_repository_inputs(root: Path) -> None:
 
 
 class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
+    def cross_direction_document(self):
+        document, parent, template = self.parent_fixture()
+        parent.update(stages=[], durationMs=5000, patternOccurrences=[], nextLogicOccurrenceOrdinal=2,
+                      nextSummonOccurrenceOrdinal=2)
+        document["nextPatternOrdinal"] = 1000
+        document["nextLogicOrdinal"] = 1000
+        document["nextSummonOrdinal"] = 1000
+        definition = dict(logicId="kakulsaydon.g1.logic.999", displayName="Cross", logicType="DURATION",
+                          judgementKind="CROSS_DIRECTION_CLONES", cloneEndStageId="STAGE_1",
+                          summonOccurrenceId=parent["patternId"] + ".summon.1", directionPatternIds=[])
+        parent["logicOccurrences"] = [dict(occurrenceId=parent["patternId"] + ".logic.1",
+            logicId=definition["logicId"], startMs=500, durationMs=2000)]
+        parent["summonOccurrences"] = [dict(occurrenceId=definition["summonOccurrenceId"],
+            summonId="kakulsaydon.g1.summon.999", startMs=500, durationMs=4500)]
+        document["summons"] = [dict(summonId="kakulsaydon.g1.summon.999", displayName="Bodies")]
+        document["logics"] = [definition]
+        children = []
+        for index in range(4):
+            child = copy.deepcopy(template)
+            child.update(patternId=f"KAKULSAYDON_G1_PATTERN_{101 + index}", category="MECHANIC",
+                         durationMs=2000, nextStageOrdinal=3, nextAnimationOrdinal=3)
+            child["stages"] = [copy.deepcopy(template["stages"][0]) for _ in range(2)]
+            for stage_index, stage in enumerate(child["stages"], 1):
+                stage.update(stageId=f"STAGE_{stage_index}", actionId=child["patternId"] + f".stage.{stage_index}", durationMs=1000)
+                stage["animationOccurrences"][0].update(occurrenceId=child["patternId"] + f".animation.{stage_index}",
+                    startOffsetMs=0, playMs=1000, endPolicy="LOOP_TO_WINDOW")
+            children.append(child); definition["directionPatternIds"].append(child["patternId"])
+        document["patterns"] = [parent, *children]
+        document["playAllPatternIds"] = [row["patternId"] for row in document["patterns"]]
+        return document, parent, definition
+
+    def test_cross_direction_projects_one_typed_trigger_and_keeps_parent_summon(self):
+        document, parent, definition = self.cross_direction_document()
+        before = copy.deepcopy(document)
+        subject._validate_cross_direction(document, parent)
+        self.assertEqual(set(definition["directionPatternIds"]), subject._pattern_dependencies(document, parent))
+        with mock.patch.object(subject, "_project_pattern_root_motion", return_value={}):
+            encounter = subject.project_encounter(document)
+        projected = next(row for row in encounter["patterns"] if row["patternId"] == parent["patternId"])
+        self.assertEqual([], projected["logicWindows"])
+        self.assertEqual(1, len(projected["mechanicTriggers"]))
+        self.assertEqual(definition["directionPatternIds"], projected["mechanicTriggers"][0]["directionPatternIds"])
+        self.assertEqual("CROSS_DIRECTION_CLONES", projected["mechanicTriggers"][0]["kind"])
+        self.assertEqual(before, document)
+
+    def test_cross_direction_rejects_other_action_owners_invalid_summon_and_incomplete_children(self):
+        for mutation in ("summon", "start", "window", "spawns", "pattern", "animation", "cutoff", "duration", "nested", "empty_cutoff", "tracking"):
+            with self.subTest(mutation=mutation):
+                document, parent, definition = self.cross_direction_document()
+                if mutation == "summon": definition["summonOccurrenceId"] = "missing.summon"
+                if mutation == "start": parent["summonOccurrences"][0]["startMs"] = 0
+                if mutation == "window": parent["summonOccurrences"][0]["durationMs"] = 1000
+                if mutation == "spawns": parent["summonOccurrences"][0]["patternSpawns"] = [{}]
+                if mutation == "pattern": parent["patternOccurrences"] = [dict(startMs=1000, durationMs=100)]
+                if mutation == "animation": parent["stages"] = [copy.deepcopy(document["patterns"][1]["stages"][0])]
+                if mutation == "cutoff": definition["cloneEndStageId"] = "STAGE_2"
+                if mutation == "duration": document["patterns"][1].pop("durationMs")
+                if mutation == "nested": document["patterns"][1]["logicOccurrences"] = [{}]
+                if mutation == "empty_cutoff": document["patterns"][1]["stages"][0]["animationOccurrences"] = []
+                if mutation == "tracking":
+                    document["logics"].append(dict(logicId="other.logic", judgementKind="BOSS_TRACK_TARGET"))
+                    parent["logicOccurrences"].append(dict(logicId="other.logic", startMs=800, durationMs=500))
+                with self.assertRaises(subject.CompositionError): subject._validate_cross_direction(document, parent)
+
+    def test_cross_direction_parent_expansion_remaps_the_exact_named_summon(self):
+        document, child, definition = self.cross_direction_document()
+        parent = copy.deepcopy(child)
+        parent.update(patternId="KAKULSAYDON_G1_PATTERN_201", stages=[], durationMs=6000,
+            logicOccurrences=[], summonOccurrences=[], nextPatternOccurrenceOrdinal=2,
+            patternOccurrences=[dict(occurrenceId="KAKULSAYDON_G1_PATTERN_201.pattern.1", patternId=child["patternId"],
+                startMs=1000, durationMs=5000, repeat=False)])
+        document["patterns"].append(parent)
+        expanded = subject.expand_pattern_document(document, parent["patternId"])
+        projected = next(row for row in expanded["patterns"] if row["patternId"] == parent["patternId"])
+        copied = next(row for row in expanded["logics"] if row["logicId"] == projected["logicOccurrences"][0]["logicId"])
+        self.assertEqual(projected["summonOccurrences"][0]["occurrenceId"], copied["summonOccurrenceId"])
+        self.assertEqual(1500, projected["summonOccurrences"][0]["startMs"])
+        self.assertEqual(1500, projected["logicOccurrences"][0]["startMs"])
+        subject._validate_cross_direction(expanded, projected)
+
+    def cross_summon_document(self):
+        document, parent, logic = self.cross_direction_document()
+        definition = document["summons"][0]
+        definition.update(summonKind="CROSS_DIRECTION_CLONES",
+            directionPatternIds=list(logic["directionPatternIds"]), cloneEndStageId=logic["cloneEndStageId"])
+        parent["logicOccurrences"] = []
+        document["logics"] = []
+        return document, parent, definition
+
+    def test_cross_summon_alone_uses_box_clock_and_existing_runtime_trigger(self):
+        document, parent, definition = self.cross_summon_document()
+        before = copy.deepcopy(document)
+        subject.validate_document(document)
+        self.assertEqual(set(definition["directionPatternIds"]), subject._pattern_dependencies(document, parent))
+        with mock.patch.object(subject, "_project_pattern_root_motion", return_value={}):
+            encounter = subject.project_encounter(document)
+        projected = next(row for row in encounter["patterns"] if row["patternId"] == parent["patternId"])
+        self.assertEqual([], projected["logicWindows"])
+        self.assertEqual(1, len(projected["mechanicTriggers"]))
+        trigger = projected["mechanicTriggers"][0]
+        self.assertEqual(parent["summonOccurrences"][0]["occurrenceId"], trigger["triggerId"])
+        self.assertEqual((500, 4500), (trigger["startMs"], trigger["durationMs"]))
+        legacy, legacy_parent, _ = self.cross_direction_document()
+        legacy_parent["logicOccurrences"][0]["durationMs"] = 4500
+        with mock.patch.object(subject, "_project_pattern_root_motion", return_value={}):
+            legacy_trigger = next(row for row in subject.project_encounter(legacy)["patterns"]
+                if row["patternId"] == legacy_parent["patternId"])["mechanicTriggers"][0]
+        legacy_trigger["triggerId"] = trigger["triggerId"]
+        self.assertEqual(legacy_trigger, trigger)
+        self.assertEqual(before, document)
+
+    def test_cross_summon_legacy_named_box_remains_authoring_only(self):
+        document, parent, definition = self.cross_summon_document()
+        for key in ("summonKind", "directionPatternIds", "cloneEndStageId"):
+            definition.pop(key)
+        subject.validate_document(document)
+        self.assertEqual(set(), subject._pattern_dependencies(document, parent))
+        with mock.patch.object(subject, "_project_pattern_root_motion", return_value={}):
+            projected = next(row for row in subject.project_encounter(document)["patterns"]
+                if row["patternId"] == parent["patternId"])
+        self.assertEqual([], projected["mechanicTriggers"])
+        self.assertEqual([], projected["logicWindows"])
+
+    def test_cross_summon_preserves_other_parent_logic(self):
+        document, parent, definition = self.cross_summon_document()
+        document["logics"] = [dict(logicId="kakulsaydon.g1.logic.998", displayName="HUD", logicType="TRIGGER",
+            triggerKind="HUD_ENTER", hudMode="MARIO")]
+        parent["logicOccurrences"] = [dict(occurrenceId=parent["patternId"] + ".logic.1",
+            logicId=document["logics"][0]["logicId"], startMs=4800, durationMs=100)]
+        subject._validate_cross_direction(document, parent)
+        with mock.patch.object(subject, "_project_pattern_root_motion", return_value={}):
+            projected = next(row for row in subject.project_encounter(document)["patterns"] if row["patternId"] == parent["patternId"])
+        self.assertEqual({"HUD_ENTER", "CROSS_DIRECTION_CLONES"}, {row["kind"] for row in projected["mechanicTriggers"]})
+        self.assertEqual(4800, next(row for row in projected["mechanicTriggers"] if row["kind"] == "HUD_ENTER")["startMs"])
+
+    def test_cross_summon_rejects_invalid_policy_or_competing_owner(self):
+        for mutation in ("kind", "empty_kind", "count", "duplicate", "missing_kind", "cutoff", "child_duration", "window",
+                         "spawns", "duplicate_window", "animation", "legacy_logic", "tracking"):
+            with self.subTest(mutation=mutation):
+                document, parent, definition = self.cross_summon_document()
+                if mutation == "kind": definition["summonKind"] = "UNKNOWN"
+                if mutation == "empty_kind": definition["summonKind"] = ""
+                if mutation == "count": definition["directionPatternIds"].pop()
+                if mutation == "duplicate": definition["directionPatternIds"][1] = definition["directionPatternIds"][0]
+                if mutation == "missing_kind": definition.pop("summonKind")
+                if mutation == "cutoff": definition["cloneEndStageId"] = "STAGE_2"
+                if mutation == "child_duration": parent["summonOccurrences"][0]["durationMs"] = 1000
+                if mutation == "window": parent["summonOccurrences"][0]["durationMs"] = 5000
+                if mutation == "spawns": parent["summonOccurrences"][0]["patternSpawns"] = [{}]
+                if mutation == "duplicate_window":
+                    parent["summonOccurrences"].append(dict(parent["summonOccurrences"][0],
+                        occurrenceId=parent["patternId"] + ".summon.2", startMs=1000, durationMs=2000))
+                if mutation == "animation": parent["stages"] = [copy.deepcopy(document["patterns"][1]["stages"][0])]
+                if mutation in {"legacy_logic", "tracking"}:
+                    _, legacy, legacy_definition = self.cross_direction_document()
+                    document["logics"] = [legacy_definition]
+                    parent["logicOccurrences"] = legacy["logicOccurrences"]
+                    if mutation == "tracking": document["logics"][0]["judgementKind"] = "BOSS_TRACK_TARGET"
+                with self.assertRaises(subject.CompositionError):
+                    subject._validate_summon_definition(definition, "fixture Summon")
+                    subject._validate_cross_direction(document, parent)
+
+    def test_cross_summon_parent_repeats_keep_definition_and_remap_occurrence_clock(self):
+        document, child, definition = self.cross_summon_document()
+        parent = copy.deepcopy(child)
+        parent.update(patternId="KAKULSAYDON_G1_PATTERN_201", stages=[], durationMs=11000,
+            logicOccurrences=[], summonOccurrences=[], nextPatternOccurrenceOrdinal=2,
+            patternOccurrences=[dict(occurrenceId="KAKULSAYDON_G1_PATTERN_201.pattern.1", patternId=child["patternId"],
+                startMs=1000, durationMs=10000, repeat=True)])
+        document["patterns"].append(parent)
+        expanded = subject.expand_pattern_document(document, parent["patternId"])
+        projected = next(row for row in expanded["patterns"] if row["patternId"] == parent["patternId"])
+        self.assertEqual([], projected["logicOccurrences"])
+        self.assertEqual([1500, 6500], [row["startMs"] for row in projected["summonOccurrences"]])
+        self.assertEqual([4500, 4500], [row["durationMs"] for row in projected["summonOccurrences"]])
+        self.assertEqual(2, len({row["occurrenceId"] for row in projected["summonOccurrences"]}))
+        self.assertEqual([definition["summonId"]] * 2, [row["summonId"] for row in projected["summonOccurrences"]])
+        self.assertEqual(set(definition["directionPatternIds"]), subject._pattern_dependencies(expanded, projected))
+        subject._validate_cross_direction(expanded, projected)
+
+    def showtime_document(self):
+        document, _, child = self.parent_fixture()
+        document.update(patterns=[child], playAllPatternIds=[FIRST_PRODUCT_ID], logics=[], worlds=[],
+                        summons=[], sceneProfiles=[], presentationResources=[], nextLogicOrdinal=2)
+        child.update(nextLogicOccurrenceOrdinal=2, nextPresentationOccurrenceOrdinal=7)
+        child["stages"][0]["durationMs"] = 6000
+        child["stages"][0]["animationOccurrences"][0].update(startOffsetMs=0, playMs=6000, endPolicy="LOOP_TO_WINDOW")
+        resource = {"resourceId": "effect.showtime.fixture", "displayName": "Marker",
+                    "kind": "EFFECT", "assetId": "effect.kouku.gate3.showtime.rectangle.warning",
+                    "resourceKind": "V1_EFFECT", "durationMs": 1700}
+        document["presentationResources"] = [resource]
+        group = "showtime.fixed.group"
+        starts = [1000, 2000, 2500, 3000, 800, 100]
+        durations = [1000, 500, 800, 1400, 4200, 300]
+        positions = [[10, -.2, 20], [11, .52, 21], [10, 1.17, 22], [12, 1.32, 20], [24, 1.32, 35], [70, 0, 80]]
+        child["presentationOccurrences"] = [
+            {"occurrenceId": f"{FIRST_PRODUCT_ID}.presentation.{i+1}", "resourceId": resource["resourceId"],
+             "startMs": starts[i], "durationMs": durations[i], "positionOffset": positions[i],
+             "rotationDegrees": [12, 31, -8], "scale": [2, .7, 3], "fadeInMs": 20, "fadeOutMs": 30,
+             "dissolveStart": .7, "dissolveEnd": .9, "anchorKind": "MAP", "followBoss": False,
+             **({"selectionGroupId": group} if i < 4 else {})} for i in range(6)]
+        definition = {"logicId": "kakulsaydon.g1.logic.1", "displayName": "Showtime targets", "logicType": "DURATION",
+                      "judgementKind": "SHOWTIME_PLAYER_TARGETS", "fixedSelectionGroupId": group,
+                      "trackingPresentationOccurrenceId": f"{FIRST_PRODUCT_ID}.presentation.5",
+                      "spawnIntervalMs": 2000, "followSpeedScale": .5}
+        document["logics"] = [definition]
+        child["logicOccurrences"] = [{"occurrenceId": f"{FIRST_PRODUCT_ID}.logic.1", "logicId": definition["logicId"],
+                                      "startMs": 500, "durationMs": 4500}]
+        return document
+
+    def airborne_document(self, phase="JUMP"):
+        document = self.showtime_document()
+        document["logics"][0] = dict(logicId="kakulsaydon.g1.logic.1", displayName="Albion air",
+            logicType="TRIGGER", triggerKind="ALBION_AIRBORNE", airbornePhase=phase,
+            airborneHeightM=13.6788133052 if phase=="JUMP" else (3.27831143163 if phase=="APPEAR_PLAYER" else 0),
+            airborneDurationMs=200 if phase=="JUMP" else 0,
+            teleportPosition=[-.07,1.32,942.33] if phase=="CENTER" else [0,0,0])
+        return document
+
+    def test_airborne_phases_project_with_source_clock_and_existing_rows_preserved(self):
+        for phase in ("SELECT_PLAYER", "JUMP", "APPEAR_PLAYER", "DISAPPEAR", "CENTER", "SLAM"):
+            with self.subTest(phase=phase):
+                document = self.airborne_document(phase)
+                before = copy.deepcopy(document)
+                self.validate(document)
+                with mock.patch.object(subject, "_project_pattern_root_motion", return_value={}):
+                    encounter = subject.project_encounter(document)
+                trigger = self.first_product(encounter)["mechanicTriggers"][0]
+                self.assertEqual(("ALBION_AIRBORNE",500,4500), (trigger["kind"],trigger["startMs"],trigger["durationMs"]))
+                for field in ("airbornePhase", "airborneHeightM", "airborneDurationMs", "teleportPosition"):
+                    self.assertEqual(document["logics"][0][field],trigger[field])
+                self.assertEqual(before, document)
+
+    def test_airborne_rejects_missing_unrelated_and_phase_inappropriate_values(self):
+        valid = self.airborne_document()["logics"][0]
+        candidates = []
+        for key in ("airbornePhase", "airborneHeightM", "airborneDurationMs", "teleportPosition"):
+            value = copy.deepcopy(valid); del value[key]; candidates.append(value)
+        for field,value in (("airbornePhase", "INVALID"), ("airbornePhase", {}),
+                ("airborneHeightM",0), ("airborneHeightM",float("nan")), ("airborneHeightM",True),
+                ("airborneDurationMs",0), ("airborneDurationMs",600001), ("airborneDurationMs",.2),
+                ("teleportPosition",[1,0,0]), ("teleportPosition",[0,0]), ("radiusM",3)):
+            row=copy.deepcopy(valid); row[field]=value; candidates.append(row)
+        for phase in ("SELECT_PLAYER","DISAPPEAR","CENTER","SLAM"):
+            row=copy.deepcopy(valid); row["airbornePhase"]=phase; candidates.append(row)
+        for row in candidates:
+            before=copy.deepcopy(row)
+            with self.subTest(row=row), self.assertRaises(subject.CompositionError):
+                subject._validate_logic_definition(row,"airborne test",2)
+            self.assertEqual(before.keys(),row.keys())
+        for other in ("BOSS_TELEPORT_XZ","ALBION_BLUE_CIRCLE"):
+            row=copy.deepcopy(valid); row["triggerKind"]=other
+            with self.assertRaises(subject.CompositionError):
+                subject._validate_logic_definition(row,"unrelated trigger",2)
+
+    def test_rotate_only_duration_projects_without_visual_templates(self):
+        document = self.showtime_document()
+        document["logics"][0] = dict(logicId="kakulsaydon.g1.logic.1", displayName="Track target",
+                                      logicType="DURATION", judgementKind="BOSS_TRACK_TARGET")
+        before = copy.deepcopy(document)
+        self.validate(document)
+        with mock.patch.object(subject, "_project_pattern_root_motion", return_value={}):
+            encounter = subject.project_encounter(document)
+        pattern = self.first_product(encounter)
+        self.assertEqual([], pattern["logicWindows"])
+        self.assertNotIn("showtimeTargets", pattern)
+        self.assertEqual(1, len(pattern["mechanicTriggers"]))
+        row = pattern["mechanicTriggers"][0]
+        self.assertEqual(("BOSS_TRACK_TARGET", 500, 4500), (row["kind"], row["startMs"], row["durationMs"]))
+        self.assertEqual((0, 0, 0, [], ""), (row["countPerPlayer"], row["effectLifetimeMs"], row["arenaRandomCount"], row["clockHours"], row["clonePatternId"]))
+        self.assertEqual([], subject.project_presentation(document).get("targetedCombatVisuals", []))
+        self.assertEqual(before, document)
+
+    def test_rotate_only_duration_rejects_template_and_outcome_values(self):
+        document = self.showtime_document()
+        definition = document["logics"][0] = dict(logicId="kakulsaydon.g1.logic.1", displayName="Track target",
+                                                 logicType="DURATION", judgementKind="BOSS_TRACK_TARGET")
+        for field, value in (("fixedSelectionGroupId", "effect.group"), ("followSpeedScale", .5), ("threshold", 1)):
+            with self.subTest(field=field):
+                bad = copy.deepcopy(document); bad["logics"][0][field] = value
+                with self.assertRaises(subject.CompositionError): self.validate(bad)
+        document["nextLogicOrdinal"] = 3
+        document["logics"].append(dict(logicId="kakulsaydon.g1.logic.2", displayName="Damage", logicType="RESULT",
+                                       outcomeKind="MAX_HP_PERCENT_DAMAGE", percent=10, durationMs=0))
+        document["patterns"][0]["logicOccurrences"][0]["onSuccessLogicIds"] = ["kakulsaydon.g1.logic.2"]
+        with self.assertRaisesRegex(subject.CompositionError, "has no outcomes"):
+            self.validate(document)
+
+    def test_empty_leaf_tail_projects_the_existing_clip_window_as_pose_hold(self):
+        document = self.showtime_document()
+        pattern = document["patterns"][0]
+        stage = pattern["stages"][0]
+        stage["durationMs"] = 3863
+        animation = stage["animationOccurrences"][0]
+        animation.update(startOffsetMs=0, sourceStartMs=0, playMs=2400, playRate=1.0, endPolicy="EXACT")
+        pattern["stages"].append(dict(stageId="STAGE_2", actionId=pattern["patternId"] + ".stage.2",
+                                     stageKind=stage["stageKind"], durationMs=2580, animationOccurrences=[]))
+        pattern["nextStageOrdinal"] = max(3, pattern["nextStageOrdinal"])
+        before = copy.deepcopy(document)
+        self.validate(document)
+        projected = subject._expand_parent_patterns(document)
+        held = projected["patterns"][0]["stages"][0]
+        self.assertEqual(before, document)
+        self.assertEqual(1, len(projected["patterns"][0]["stages"]))
+        self.assertEqual(6443, held["durationMs"])
+        self.assertEqual(stage["stageId"], held["stageId"])
+        self.assertEqual(stage["actionId"], held["actionId"])
+        self.assertEqual(stage["animationOccurrences"], held["animationOccurrences"])
+        self.assertTrue(subject._animation_holds_window_end(held, animation))
+        for lane in ("presentationOccurrences", "logicOccurrences"):
+            self.assertEqual(pattern[lane], projected["patterns"][0][lane])
+        self.assertEqual(subject._project_showtime_targets(document, pattern),
+                         subject._project_showtime_targets(projected, projected["patterns"][0]))
+        curve = [{"timeMs": 0, "forward": 0., "lateral": 0., "up": 0.},
+                 {"timeMs": 5000, "forward": 10., "lateral": 2., "up": 1.}]
+        with mock.patch.object(subject, "_animation_root_curve", return_value=(5000., curve)):
+            samples = subject._build_animation_root_motion_samples({}, animation, held["durationMs"])
+        endpoint = subject._sample_root_curve(samples, 2400)
+        for clock in (2400, 3863, 5000, 6443):
+            self.assertEqual(endpoint, subject._sample_root_curve(samples, clock))
+
+    def test_empty_tail_admission_keeps_unrepresentable_stage_owners_rejected(self):
+        base = {"stages": [{"stageKind": "ACTIVE", "durationMs": 1000, "animationOccurrences": [{}]},
+                           {"stageKind": "ACTIVE", "durationMs": 1000, "animationOccurrences": []}]}
+        self.assertEqual(0, subject._trailing_pose_hold_source(base))
+        for mode in ("retarget", "stage_kind", "interior", "all_empty", "multi_clip", "parent", "tick_change"):
+            with self.subTest(mode=mode):
+                value = copy.deepcopy(base)
+                if mode == "retarget": value["stages"][-1]["retargetOnEnter"] = True
+                if mode == "stage_kind": value["stages"][-1]["stageKind"] = "RECOVERY"
+                if mode == "interior": value["stages"].append(copy.deepcopy(value["stages"][0]))
+                if mode == "all_empty": value["stages"][0]["animationOccurrences"] = []
+                if mode == "multi_clip": value["stages"][0]["animationOccurrences"].append({})
+                if mode == "parent": value["patternOccurrences"] = [{}]
+                if mode == "tick_change":
+                    value["stages"][0]["durationMs"] = 1001
+                    value["stages"][1]["durationMs"] = 1
+                self.assertIsNone(subject._trailing_pose_hold_source(value))
+                document = {"patterns": [value]}
+                self.assertIs(document, subject._coalesce_trailing_pose_holds(document))
+
+    def test_explicit_leaf_lifetime_preserves_effect_clocks_and_holds_final_pose(self):
+        document = self.showtime_document()
+        pattern = document["patterns"][0]
+        pattern["durationMs"] = 6000
+        stage = pattern["stages"][0]
+        stage["durationMs"] = 3000
+        stage["animationOccurrences"][0].update(playMs=2000, endPolicy="EXACT")
+        before = copy.deepcopy(document)
+        self.validate(document)
+        projected = subject._expand_parent_patterns(document)
+        held = projected["patterns"][0]
+        self.assertEqual(before, document)
+        self.assertEqual(6000, held["stages"][0]["durationMs"])
+        self.assertEqual(stage["animationOccurrences"], held["stages"][0]["animationOccurrences"])
+        expected = copy.deepcopy(pattern)
+        expected["stages"] = held["stages"]
+        self.assertEqual(expected, held)
+        self.assertTrue(subject._animation_holds_window_end(held["stages"][0], held["stages"][0]["animationOccurrences"][0]))
+        self.assertEqual(subject._project_showtime_targets(document, pattern),
+                         subject._project_showtime_targets(projected, held))
+
+    def test_explicit_leaf_empty_tail_uses_absolute_clock_and_preserves_source(self):
+        document = self.showtime_document()
+        pattern = document["patterns"][0]
+        pattern["durationMs"] = 6000
+        stage = pattern["stages"][0]
+        stage["durationMs"] = 3001
+        stage["animationOccurrences"][0].update(playMs=2000, endPolicy="EXACT")
+        pattern["stages"].append(dict(stageId="STAGE_2", actionId=pattern["patternId"] + ".stage.2",
+                                     stageKind=stage["stageKind"], durationMs=1, animationOccurrences=[]))
+        pattern["nextStageOrdinal"] = max(3, pattern["nextStageOrdinal"])
+        before = copy.deepcopy(document)
+        self.validate(document)
+        projected = subject._expand_parent_patterns(document)
+        self.assertEqual(before, document)
+        held = projected["patterns"][0]
+        self.assertEqual(1, len(held["stages"]))
+        self.assertEqual(6000, held["stages"][0]["durationMs"])
+        self.assertEqual(stage["stageId"], held["stages"][0]["stageId"])
+        self.assertEqual(stage["animationOccurrences"], held["stages"][0]["animationOccurrences"])
+        self.assertEqual(pattern["presentationOccurrences"], held["presentationOccurrences"])
+        self.assertEqual(pattern["logicOccurrences"], held["logicOccurrences"])
+
+    def random_volley_document(self):
+        document = self.showtime_document()
+        pattern = self.first_product(document)
+        # A muzzle starts before the first MAP marker and keeps its boss-local TRS.
+        muzzle = copy.deepcopy(pattern["presentationOccurrences"][-1])
+        muzzle.update(occurrenceId=FIRST_PRODUCT_ID + ".presentation.7", startMs=500,
+                      anchorKind="BOSS", followBoss=True, positionOffset=[3, 7, -2])
+        pattern["presentationOccurrences"].append(muzzle)
+        pattern["nextPresentationOccurrenceOrdinal"] = 8
+        ids = [muzzle["occurrenceId"]] + [row["occurrenceId"] for row in pattern["presentationOccurrences"][:4]]
+        document["logics"][0].update(randomVolleyOccurrenceSets=[ids], randomSpawnIntervalMs=500,
+                                    randomArenaRadiusM=16.0, randomArenaHeightToleranceM=.1)
+        return document
+
+    def test_showtime_random_mixed_template_preserves_clock_map_pivot_boss_and_legacy(self):
+        baseline = self.showtime_document()
+        old = subject._project_showtime_targets(baseline, self.first_product(baseline))
+        document = self.random_volley_document()
+        before = copy.deepcopy(document)
+        self.validate(document)
+        rows, templates, controlled = subject._project_showtime_targets(document, self.first_product(document))
+        random = templates[rows[0]["randomVolleys"][0]["clientVisualId"]]
+        self.assertEqual((3900, False), (random["durationMs"], random["loop"]))
+        self.assertEqual([0, 500, 1500, 2000, 2500], [row["startMs"] for row in random["occurrences"]])
+        self.assertEqual([3, 7, -2], random["occurrences"][0]["positionOffset"])
+        self.assertEqual(("BOSS", True), (random["occurrences"][0]["anchorKind"], random["occurrences"][0]["followBoss"]))
+        self.assertEqual([[0, -.2, 0], [1, .52, 1], [0, 1.17, 2], [2, 1.32, 0]],
+                         [row["positionOffset"] for row in random["occurrences"][1:]])
+        for row in random["occurrences"]:
+            for field in ("rotationDegrees", "scale", "fadeInMs", "fadeOutMs", "dissolveStart", "dissolveEnd"):
+                self.assertEqual(before["patterns"][0]["presentationOccurrences"][0][field], row[field])
+        for identity, template in old[1].items(): self.assertEqual(template, templates[identity])
+        for field, value in old[0][0].items(): self.assertEqual(value, rows[0][field])
+        self.assertEqual(6, len(controlled))
+        self.assertEqual([FIRST_PRODUCT_ID + ".presentation.6"], [row["occurrenceId"] for row in
+            self.first_product(subject.project_presentation(document))["presentationOccurrences"]])
+        self.assertEqual(before, document)
+
+    def test_showtime_random_order_repeated_visual_ids_and_content_identity(self):
+        document = self.random_volley_document()
+        pattern = self.first_product(document)
+        first = document["logics"][0]["randomVolleyOccurrenceSets"][0]
+        second = [FIRST_PRODUCT_ID + ".presentation.6"]
+        document["logics"][0]["randomVolleyOccurrenceSets"] = [first, second] * 3
+        self.validate(document)
+        rows, templates, _ = subject._project_showtime_targets(document, pattern)
+        ids = [v["clientVisualId"] for v in rows[0]["randomVolleys"]]
+        self.assertEqual(ids[:2] * 3, ids)
+        self.assertNotEqual(ids[0], ids[1])
+        self.assertEqual(4, len(templates))
+        self.assertEqual([3900, 300] * 3, [v["lifetimeMs"] for v in rows[0]["randomVolleys"]])
+        self.assertEqual((500, 16, .1), tuple(rows[0][key] for key in
+            ("randomSpawnIntervalMs", "randomArenaRadiusM", "randomArenaHeightToleranceM")))
+        self.assertEqual([], self.first_product(subject.project_presentation(document))["presentationOccurrences"])
+
+    def test_showtime_random_save_contract_rejects_partial_ranges_and_invalid_members(self):
+        baseline = self.random_volley_document()
+        mutations = []
+        for field, value in (("randomVolleyOccurrenceSets", []), ("randomVolleyOccurrenceSets", [[]]),
+                             ("randomVolleyOccurrenceSets", [[1]]), ("randomSpawnIntervalMs", 0),
+                             ("randomSpawnIntervalMs", 600001), ("randomArenaRadiusM", 0),
+                             ("randomArenaRadiusM", 1001), ("randomArenaHeightToleranceM", 0),
+                             ("randomArenaHeightToleranceM", 11)):
+            bad = copy.deepcopy(baseline); bad["logics"][0][field] = value; mutations.append(bad)
+        for mode in ("partial", "duplicate", "missing", "no_map", "boss_not_following", "bone", "world", "logic", "random_only", "non_effect"):
+            bad = copy.deepcopy(baseline); logic = bad["logics"][0]; pattern = self.first_product(bad)
+            if mode == "partial": del logic["randomSpawnIntervalMs"]
+            if mode == "duplicate": logic["randomVolleyOccurrenceSets"][0].append(logic["randomVolleyOccurrenceSets"][0][0])
+            if mode == "missing": logic["randomVolleyOccurrenceSets"][0][0] = "missing.occurrence"
+            if mode == "no_map": logic["randomVolleyOccurrenceSets"] = [[FIRST_PRODUCT_ID + ".presentation.7"]]
+            if mode == "boss_not_following": pattern["presentationOccurrences"][-1]["followBoss"] = False
+            if mode == "bone": pattern["presentationOccurrences"][-1]["bone"] = "Bip002"
+            if mode == "world": pattern["presentationOccurrences"][-1]["worldId"] = "world.fixture"
+            if mode == "logic": pattern["presentationOccurrences"][-1]["logicOccurrenceId"] = FIRST_PRODUCT_ID + ".logic.1"
+            if mode == "random_only": logic.update(fixedSelectionGroupId="", trackingPresentationOccurrenceId="")
+            if mode == "non_effect": bad["presentationResources"][0]["kind"] = "SOUND"
+            mutations.append(bad)
+        for index, bad in enumerate(mutations):
+            before = copy.deepcopy(bad)
+            for draft in (False, True):
+                check = copy.deepcopy(bad)
+                if draft:
+                    check["patterns"][0]["authoringStatus"] = "DRAFT"
+                    check["patterns"][0]["logicOccurrences"][0]["enabled"] = False
+                    check["playAllPatternIds"] = []
+                with self.subTest(case=index, draft=draft), self.assertRaises(subject.CompositionError):
+                    self.validate(check)
+            self.assertEqual(before, bad)
+
+    def test_showtime_random_parent_copy_remaps_every_member_and_rejects_truncation(self):
+        document = self.random_volley_document()
+        child = self.first_product(document)
+        parent = copy.deepcopy(child)
+        parent.update(patternId=DRAFT_ID, stages=[], durationMs=12000, presentationOccurrences=[], logicOccurrences=[],
+                      nextPatternOccurrenceOrdinal=2, patternOccurrences=[{"occurrenceId": DRAFT_ID + ".pattern.1",
+                      "patternId": FIRST_PRODUCT_ID, "startMs": 0, "durationMs": 12000, "repeat": True}])
+        document["patterns"].append(parent); document["playAllPatternIds"].append(DRAFT_ID)
+        before = copy.deepcopy(document)
+        expanded = subject.expand_pattern_document(document, DRAFT_ID)
+        self.validate(expanded)
+        target = self.draft(expanded)
+        ids = {row["occurrenceId"] for row in target["presentationOccurrences"]}
+        definitions = {row["logicId"]: row for row in expanded["logics"]}
+        for box in target["logicOccurrences"]:
+            for volley in definitions[box["logicId"]]["randomVolleyOccurrenceSets"]:
+                self.assertTrue(set(volley) <= ids)
+                self.assertTrue(all(identity.startswith(DRAFT_ID) for identity in volley))
+        rows, templates, controlled = subject._project_showtime_targets(expanded, target)
+        self.assertEqual([500, 6500], [row["startMs"] for row in rows])
+        self.assertEqual(rows[0]["randomVolleys"], rows[1]["randomVolleys"])
+        self.assertEqual((3, 12), (len(templates), len(controlled)))
+        self.assertEqual(before, document)
+        parent["patternOccurrences"][0]["durationMs"] = 9000
+        with self.assertRaisesRegex(subject.CompositionError, "truncate a SHOWTIME"):
+            subject.expand_pattern_document(document, DRAFT_ID)
+
+    def test_showtime_projection_preserves_template_timing_trs_height_and_static_ownership(self):
+        document = self.showtime_document()
+        before = copy.deepcopy(document)
+        self.validate(document)
+        pattern = self.first_product(document)
+        rows, templates, controlled = subject._project_showtime_targets(document, pattern)
+        fixed, tracking = templates[rows[0]["fixedVisualId"]], templates[rows[0]["trackingVisualId"]]
+        self.assertEqual((3400, False), (fixed["durationMs"], fixed["loop"]))
+        self.assertEqual((4200, True), (tracking["durationMs"], tracking["loop"]))
+        self.assertEqual([0, 1000, 1500, 2000], [row["startMs"] for row in fixed["occurrences"]])
+        self.assertEqual([[0, -.2, 0], [1, .52, 1], [0, 1.17, 2], [2, 1.32, 0]],
+                         [row["positionOffset"] for row in fixed["occurrences"]])
+        self.assertEqual([0, 1.32, 0], tracking["occurrences"][0]["positionOffset"])
+        for index, row in enumerate(fixed["occurrences"]):
+            original = pattern["presentationOccurrences"][index]
+            for field in ("durationMs", "rotationDegrees", "scale", "fadeInMs", "fadeOutMs", "dissolveStart", "dissolveEnd"):
+                self.assertEqual(original[field], row[field])
+            self.assertEqual((1700, "MAP", False, "", ""),
+                             (row["resourceDurationMs"], row["anchorKind"], row["followBoss"], row["bone"], row["worldId"]))
+        presentation = subject.project_presentation(document)
+        static = self.first_product(presentation)["presentationOccurrences"]
+        self.assertEqual([f"{FIRST_PRODUCT_ID}.presentation.6"], [row["occurrenceId"] for row in static])
+        self.assertEqual(5, len(controlled))
+        self.assertEqual(2, len(presentation["targetedCombatVisuals"]))
+        encounter = self.first_product(subject.project_encounter(document))
+        self.assertEqual([], encounter["logicWindows"])
+        self.assertEqual(rows, encounter["showtimeTargets"])
+        self.assertEqual(before, document)
+
+    def test_showtime_content_identity_deduplicates_copies_and_pins_changed_content(self):
+        document = self.showtime_document()
+        pattern = self.first_product(document)
+        first = subject._project_showtime_targets(document, pattern)
+        copy_document = copy.deepcopy(document)
+        clone = self.first_product(copy_document)
+        for row in clone["presentationOccurrences"]:
+            row["occurrenceId"] += ".copy"
+            row["positionOffset"][0] += 100
+            row["positionOffset"][2] += 200
+            row["startMs"] += 10
+            if "selectionGroupId" in row: row["selectionGroupId"] += ".copy"
+        logic = copy_document["logics"][0]
+        logic["fixedSelectionGroupId"] += ".copy"
+        logic["trackingPresentationOccurrenceId"] += ".copy"
+        self.assertEqual(set(first[1]), set(subject._project_showtime_targets(copy_document, clone)[1]))
+        clone["presentationOccurrences"][0]["scale"][0] += .1
+        self.assertNotEqual(first[0][0]["fixedVisualId"], subject._project_showtime_targets(copy_document, clone)[0][0]["fixedVisualId"])
+        pattern["logicOccurrences"].append({**pattern["logicOccurrences"][0], "occurrenceId": f"{FIRST_PRODUCT_ID}.logic.2", "startMs": 1000})
+        pattern["nextLogicOccurrenceOrdinal"] = 3
+        rows, templates, _ = subject._project_showtime_targets(document, pattern)
+        self.assertEqual((2, 2), (len(rows), len(templates)))
+        self.assertEqual(rows[0]["fixedVisualId"], rows[1]["fixedVisualId"])
+
+    def test_showtime_optional_roles_disabled_control_and_incomplete_authoring(self):
+        for omitted in ("fixedSelectionGroupId", "trackingPresentationOccurrenceId"):
+            document = self.showtime_document()
+            document["logics"][0][omitted] = ""
+            self.validate(document)
+            rows, templates, controlled = subject._project_showtime_targets(document, self.first_product(document))
+            self.assertEqual(1, len(templates))
+            if omitted == "fixedSelectionGroupId":
+                self.assertEqual(("", 0, 1), (rows[0]["fixedVisualId"], rows[0]["fixedLifetimeMs"], len(controlled)))
+            else:
+                self.assertEqual(("", 3400, 4), (rows[0]["trackingVisualId"], rows[0]["fixedLifetimeMs"], len(controlled)))
+        document = self.showtime_document()
+        pattern = self.first_product(document)
+        pattern["logicOccurrences"][0]["enabled"] = False
+        self.assertEqual(([], {}, set()), subject._project_showtime_targets(document, pattern))
+        self.assertEqual(6, len(subject._project_pattern_presentation(document, pattern)["presentationOccurrences"]))
+        pattern["logicOccurrences"][0]["enabled"] = True
+        document["logics"][0].update(fixedSelectionGroupId="", trackingPresentationOccurrenceId="")
+        pattern["authoringStatus"] = "DRAFT"
+        document["playAllPatternIds"] = []
+        self.validate(document)
+        pattern["authoringStatus"] = "PRODUCT"
+        document["playAllPatternIds"] = [FIRST_PRODUCT_ID]
+        with self.assertRaisesRegex(subject.CompositionError, "requires a fixed"):
+            self.validate(document)
+
+    def test_showtime_invalid_refs_ranges_and_nonmap_templates_reject_without_mutation(self):
+        for field, value in (("fixedSelectionGroupId", None), ("trackingPresentationOccurrenceId", "../bad"),
+                             ("spawnIntervalMs", 0), ("spawnIntervalMs", 600001), ("spawnIntervalMs", True),
+                             ("followSpeedScale", .009), ("followSpeedScale", 10.001), ("followSpeedScale", float("nan"))):
+            document = self.showtime_document()
+            document["logics"][0][field] = value
+            with self.subTest(field=field, value=value), self.assertRaises(subject.CompositionError):
+                self.validate(document)
+        for field in ("fixedSelectionGroupId", "trackingPresentationOccurrenceId"):
+            document = self.showtime_document()
+            document["logics"][0][field] = "missing.same.pattern.reference"
+            before = copy.deepcopy(document)
+            with self.assertRaisesRegex(subject.CompositionError, "unresolved"):
+                self.validate(document)
+            self.assertEqual(before, document)
+        for change in ({"anchorKind": "BOSS", "followBoss": True}, {"anchorKind": "WORLD", "worldId": "other"}):
+            document = self.showtime_document()
+            self.first_product(document)["presentationOccurrences"][0].update(change)
+            with self.assertRaises(subject.CompositionError):
+                self.validate(document)
+
+    def test_showtime_publication_keeps_unresolved_saved_pattern_visible_and_admits_ready_pattern(self):
+        document = self.showtime_document()
+        target = self.first_product(document)
+        document["logics"][0]["trackingPresentationOccurrenceId"] = "missing.tracking.box"
+        ready = copy.deepcopy(target)
+        ready.update(patternId=DRAFT_ID, logicOccurrences=[], presentationOccurrences=[])
+        ready["stages"][0]["actionId"] = DRAFT_ID + "_ACTION_1"
+        for animation in ready["stages"][0]["animationOccurrences"]:
+            animation["occurrenceId"] = animation["occurrenceId"].replace(FIRST_PRODUCT_ID, DRAFT_ID)
+        document["patterns"].append(ready)
+        document["playAllPatternIds"].append(DRAFT_ID)
+        before = copy.deepcopy(document)
+        product, inventory = subject.prepare_publication(document, ROOT)
+        self.assertEqual([DRAFT_ID], product["playAllPatternIds"])
+        unavailable = self.first_product(inventory)
+        self.assertIn("unresolved", unavailable["unavailableReason"])
+        self.assertEqual("", self.draft(inventory)["unavailableReason"])
+        self.assertEqual(before, document)
+
+    def test_showtime_parent_repeats_remap_group_and_tracking_refs_without_duplicating_templates(self):
+        document = self.showtime_document()
+        child = self.first_product(document)
+        parent = copy.deepcopy(child)
+        parent.update(patternId=DRAFT_ID, stages=[], durationMs=12000, presentationOccurrences=[], logicOccurrences=[],
+                      nextPatternOccurrenceOrdinal=2, patternOccurrences=[{"occurrenceId": DRAFT_ID + ".pattern.1",
+                      "patternId": FIRST_PRODUCT_ID, "startMs": 0, "durationMs": 12000, "repeat": True}])
+        document["patterns"].append(parent)
+        document["playAllPatternIds"].append(DRAFT_ID)
+        before = copy.deepcopy(document)
+        expanded = subject.expand_pattern_document(document, DRAFT_ID)
+        self.validate(expanded)
+        rows, templates, controlled = subject._project_showtime_targets(expanded, self.draft(expanded))
+        self.assertEqual([500, 6500], [row["startMs"] for row in rows])
+        self.assertEqual((2, 10), (len(templates), len(controlled)))
+        self.assertEqual(rows[0]["fixedVisualId"], rows[1]["fixedVisualId"])
+        self.assertEqual(before, document)
+        parent["patternOccurrences"][0]["durationMs"] = 9000
+        with self.assertRaisesRegex(subject.CompositionError, "truncate a SHOWTIME"):
+            subject.expand_pattern_document(document, DRAFT_ID)
+
+    def test_showtime_bootstrap_exact_joins_visuals_and_emits_eleven_fields(self):
+        document = self.showtime_document()
+        encounter = self.first_product(subject.project_encounter(document))
+        bindings = subject.project_presentation(document)
+        publisher = (ROOT / "Tools/GameplayPipeline/Publish-GameplayBalance.ps1").read_text(encoding="utf-8-sig")
+        definitions = [re.search(r"(?ms)^function " + name + r"\b.*?^\}", publisher).group(0)
+                       for name in ("Assert-ExactProperties", "Assert-StableId", "Assert-JsonString", "Assert-JsonInteger",
+                                    "Assert-JsonNumber", "Format-InvariantFloat", "Get-KoukuTargetedVisualIndex", "New-KoukuShowtimeTargetRows")]
+        with tempfile.TemporaryDirectory() as temporary:
+            folder = Path(temporary)
+            script = "$ErrorActionPreference='Stop'\n$stableIdPattern='^[A-Za-z0-9_.-]{1,128}$'\n" + "\n".join(definitions)
+            script += "\n$fixture=Get-Content -Raw (Join-Path $PSScriptRoot 'fixture.json') | ConvertFrom-Json\n"
+            script += "$visuals=Get-KoukuTargetedVisualIndex $fixture.bindings $fixture.revision\n"
+            script += "$rows=@(New-KoukuShowtimeTargetRows $fixture.pattern 'ENCOUNTER_KAKULSAYDON_G1' 6000 $visuals)\n"
+            script += "ConvertTo-Json -InputObject @($rows) -Compress\n"
+            path = folder / "validate.ps1"
+            path.write_text(script, encoding="utf-8-sig")
+            def run(pattern, presentation=bindings, revision=document["revision"]):
+                (folder / "fixture.json").write_text(json.dumps({"pattern": pattern, "bindings": presentation, "revision": revision}), encoding="utf-8")
+                return subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(path)],
+                                      capture_output=True, text=True, timeout=30)
+            result = run(encounter)
+            self.assertEqual(0, result.returncode, result.stderr)
+            fields = json.loads(result.stdout)[0].split("\t")
+            self.assertEqual(11, len(fields))
+            self.assertEqual(["PATTERNSHOWTIMETARGETS", "ENCOUNTER_KAKULSAYDON_G1", FIRST_PRODUCT_ID], fields[:3])
+            self.assertEqual(["3400", "2000", "0.5"], fields[-3:])
+            tracking_only = copy.deepcopy(encounter)
+            tracking_only["showtimeTargets"][0].update(fixedVisualId="", fixedLifetimeMs=0)
+            response = run(tracking_only)
+            self.assertEqual(0, response.returncode, response.stderr)
+            self.assertEqual("-", json.loads(response.stdout)[0].split("\t")[6])
+            for field, value in (("fixedVisualId", "unknown.visual"), ("fixedLifetimeMs", 3399), ("spawnIntervalMs", 0),
+                                 ("followSpeedScale", .001), ("durationMs", 6000), ("trackingVisualId", None)):
+                invalid = copy.deepcopy(encounter)
+                invalid["showtimeTargets"][0][field] = value
+                with self.subTest(field=field): self.assertNotEqual(0, run(invalid).returncode)
+            duplicate = copy.deepcopy(encounter)
+            duplicate["showtimeTargets"].append(copy.deepcopy(duplicate["showtimeTargets"][0]))
+            self.assertNotEqual(0, run(duplicate).returncode)
+            self.assertNotEqual(0, run(encounter, revision=document["revision"]+1).returncode)
+            invalid_bindings = copy.deepcopy(bindings)
+            invalid_bindings["targetedCombatVisuals"][0]["loop"] = not invalid_bindings["targetedCombatVisuals"][0]["loop"]
+            self.assertNotEqual(0, run(encounter, invalid_bindings).returncode)
+
+    def test_showtime_world_admission_preserves_only_the_bounded_optional_kouku_lane(self):
+        encounter = self.first_product(subject.project_encounter(self.showtime_document()))
+        publisher = (ROOT / "Tools/WorldPipeline/Publish-WorldGameplay.ps1").read_text(encoding="utf-8-sig")
+        definitions = [re.search(r"(?ms)^function " + name + r"\b.*?^\}", publisher).group(0)
+                       for name in ("Assert-ExactProperties", "Assert-StableId", "Assert-JsonString")]
+        start = publisher.index("\t\t\t$patternProperties = @(")
+        end = publisher.index("\n\t\t\tAssert-JsonNumber $pattern.minimumRange", start)
+        with tempfile.TemporaryDirectory() as temporary:
+            folder = Path(temporary)
+            script = "$ErrorActionPreference='Stop'\n$stableIdPattern='^[A-Za-z0-9_.-]{1,128}$'\n" + "\n".join(definitions)
+            script += "\n$fixture=Get-Content -Raw (Join-Path $PSScriptRoot 'pattern.json') | ConvertFrom-Json\n"
+            script += "$pattern=$fixture.pattern; $isKoukuSaydon=$fixture.kouku; $document=[pscustomobject]@{encounterId='fixture.encounter'}\n"
+            script += publisher[start:end] + "\n'PASS'\n"
+            path = folder / "validate.ps1"
+            path.write_text(script, encoding="utf-8-sig")
+            def run(value, kouku=True):
+                (folder / "pattern.json").write_text(json.dumps({"pattern": value, "kouku": kouku}), encoding="utf-8")
+                return subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(path)],
+                                      capture_output=True, text=True, timeout=30)
+            self.assertEqual(0, run(encounter).returncode)
+            before = copy.deepcopy(encounter)
+            for value in (None, {}, "targets", [encounter["showtimeTargets"][0]] * 65):
+                invalid = copy.deepcopy(encounter)
+                invalid["showtimeTargets"] = value
+                self.assertNotEqual(0, run(invalid).returncode)
+            typo = copy.deepcopy(encounter)
+            typo["showtimeTarget"] = typo.pop("showtimeTargets")
+            self.assertNotEqual(0, run(typo).returncode)
+            legacy = copy.deepcopy(encounter)
+            legacy.pop("showtimeTargets")
+            self.assertEqual(0, run(legacy).returncode)
+            self.assertNotEqual(0, run(encounter, kouku=False).returncode)
+            self.assertEqual(before, encounter)
+
     @staticmethod
     def collider_selection_group_fixture():
         resource = {"resourceId": "collider.group.fixture", "displayName": "Box",
@@ -2438,6 +3157,22 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
         with self.assertRaises(subject.CompositionError):
             self.validate(invalid)
 
+    def test_room_player_arrival_cannot_publish_as_boss_gameplay(self):
+        document = copy.deepcopy(self.document)
+        ordinal = document["nextLogicOrdinal"]
+        document["nextLogicOrdinal"] += 1
+        definition = {"logicId": f"kakulsaydon.g1.logic.{ordinal}",
+                      "displayName": "Sequence arrival", "logicType": "TRIGGER",
+                      "triggerKind": "ROOM_PLAYER_ARRIVAL"}
+        document["logics"].append(definition)
+        before = copy.deepcopy(document)
+        with self.assertRaisesRegex(subject.CompositionError, "Sequence debug authoring"):
+            subject.validate_document(document, ROOT)
+        self.assertEqual(document, before)
+        invalid = {**definition, "playerSlot": 0}
+        with self.assertRaisesRegex(subject.CompositionError, "unknown=.*playerSlot"):
+            subject._validate_logic_definition(invalid, "arrival", document["nextLogicOrdinal"])
+
     def test_typed_logic_definitions_follow_their_kind(self):
         logics = {logic["logicId"]: logic for logic in self.document["logics"]}
         self.assertEqual("STAGGER_WINDOW", logics["kakulsaydon.g1.logic.1"]["judgementKind"])
@@ -3810,6 +4545,34 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
             next(r for r in invalid["logics"] if r["logicId"] == trigger["logicId"]).update(change)
             with self.subTest(change=change), self.assertRaises(subject.CompositionError):
                 self.validate(invalid)
+
+    def test_xz_teleport_preserves_reference_y_and_rejects_absolute_motion(self):
+        document = self.without_catalog_boxes(copy.deepcopy(self.document))
+        trigger = next(row for row in document["logics"] if row["logicId"] == "kakulsaydon.g1.logic.9")
+        for key in subject.LOGIC_TRIGGER_VALUE_KEYS:
+            trigger.pop(key, None)
+        trigger.update(triggerKind="BOSS_TELEPORT_XZ", teleportPosition=[2.57, 1.3, 952.27])
+        product = self.strip_lanes(self.first_product(document))
+        product["nextLogicOccurrenceOrdinal"] = 2
+        product["logicOccurrences"] = [{"occurrenceId": product["patternId"] + ".logic.1",
+            "logicId": trigger["logicId"], "startMs": 250, "durationMs": 100}]
+        self.validate(document)
+        row = next(p for p in subject.project_encounter(document)["patterns"]
+                   if p["patternId"] == product["patternId"])["mechanicTriggers"][0]
+        self.assertEqual("BOSS_TELEPORT_XZ", row["kind"])
+        self.assertEqual([2.57, 1.3, 952.27], row["teleportPosition"])
+        self.assertEqual([], row["clockHours"])
+        self.assertEqual("", row["clonePatternId"])
+        trigger["teleportPosition"][0] = 100001
+        with self.assertRaises(subject.CompositionError):
+            self.validate(document)
+        trigger["teleportPosition"][0] = 2.57
+        product["bossMotion"] = {"startMs": 0, "endMs": 100, "startPosition": [0, 0, 0],
+                                 "endPosition": [0, 0, 1], "yawDegrees": 0}
+        product["resetBossToSpawn"] = False
+        product.pop("resetBossYawDegrees", None)
+        with self.assertRaisesRegex(subject.CompositionError, "cannot also teleport"):
+            self.validate(document)
 
     def test_typed_trigger_projects_exact_target_and_rejects_missing_clone(self):
         document = self.without_catalog_boxes(copy.deepcopy(self.document))

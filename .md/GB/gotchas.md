@@ -1,5 +1,76 @@
 # LostArk merge 회귀 방지 정본
 
+### 발탄 복원본은 실제 source clip과 함께 재생한다
+
+- `.restore` suffix는 player skill identity가 아니다. 발탄 Full Restore는 원본 action/stage의
+  정확한 clip occurrence와 연결하고 일반 Play/Restart/Solo/Group에서 같은 clock을 유지한다.
+- action 하나에 여러 공격이 있으므로 SourceActionIds만으로 패턴 목록에 모두 넣지 않는다.
+  ValtanFullRestoreAnimations 정본의 clip과 현재 ClipOccurrences를 함께 비교한다.
+- 원본 notify delay/root basis 회전은 문서에 포함된다. preview cue에 같은 값을 더하지 않는다.
+  메모리 내 editor source preview를 Product 연결 또는 제품 승격으로 처리하지 않는다.
+- 맵 prototypes 진행 수치가 멈추면 구조화된 실패 로그의 모델부터 CModel로 재현한다.
+  catalog/shader가 허용하는 subspecular-only·grass flicker를 모델 guard가 다르게 거부하지
+  않는지 확인한다. 한 모델 수정 후 전체 admission에서 뒤에 가려진 실패도 확인한다.
+- embedded material PNG가 없으면 실제 원본 DDS와 대응을 확인해 그 필드만 교정한다.
+  모델·재질 입력 오류를 맵 scope 축소나 배치 숨김으로 우회하지 않는다.
+- 근거: [맵·발탄 G24-V](09-15/2026-09-15_MAP_AND_VALTAN_FULL_RESTORATION_RESULT.md).
+
+### full restore의 누락과 사용자 삭제를 이력으로 구분한다
+
+- 원본 활성 발생기가 legacy에 있고 full에 없으면 최초 full 생성 커밋과 generator의 제외
+  조건을 확인한다. native 재질 미연결로 빠진 항목을 사용자 삭제로 오인해 영구 보존하지 않는다.
+- cylinder나 sphere 메시도 PS가 화면 좌표·종횡비·SceneDepth를 읽을 수 있다. 원본 PS/VS,
+  uniform binding과 실제 읽는 varying을 확인하고 viewport 및 깊이 단위를 기존 carrier에
+  연결한다. 사용하지 않는 UV/vertex color나 legacy의 미해결 texture를 임의 대체하지 않는다.
+- 등록 뒤 원본 PS 비교와 함께 실제 Product Catalog Stage 및 발생기 재생까지 확인한다.
+  [워로드 Alt+V 결과 G17](09-09/2026-09-09_WARLORD_ASVF_FULL_RESTORE_IMPLEMENTATION_RESULT.md)을 따른다.
+
+### native 배경 메시의 조명 입력도 carrier에서 전달한다
+
+- 원본 material PS가 존재하고 mesh/resource stage가 성공해도 ambient/sky 입력을 0으로 초기화한 채
+  넘기면 diffuse 표면은 검게 출력될 수 있다. 실제 native PS 소비 항과 Mesh carrier의 입력을 함께 확인한다.
+- Lance ALT V static Mesh782~800은 committed scene ambient를 명시적으로 전달한다. 원작 환경조명의
+  값 복원과 현재 장면 입력 연결을 구분하며, 없는 skylight owner를 임의 상수로 채우지 않는다.
+- V/ALT V dragon 23행은 사용자 요청으로 원본 `localSpace=true`를 선택 복구했다. 다른 particle의
+  world-space 요청과 손본·socket·사용자 Transform은 유지한다.
+- 근거: [창술사 G13/G14 결과](09-11/2026-09-11_TIGER_HORSE_ANIMATION_AND_LANCEMASTER_ALTV_RESULT.md#g13-v-alt-v-dragon의-local-space-선택-복구--2026-09-15).
+
+### 원본 색 패스와 별도 distortion 패스를 따로 닫는다
+
+- `bUsesDistortion` 재질은 기본 색 PS 일치만으로 복구되지 않는다. 선택 shader map의 별도
+  distortion PS, 실제 serialized uniform binding과 VF 입력을 확인한다. binding 배열의
+  겹치는 후보를 추정 선택하지 않고 같은 shader class의 검증된 직렬화 경계와 대조한다.
+- 원본 distortion discard는 해당 왜곡 기여만 제거한다. 기본 색까지 clip하지 않는다.
+  원본 양/음 누적 RGBA와 현재 signed XY MRT, scene-depth 단위 변환은 명시적으로 연결한다.
+- 동일 원본 DXBC와 후보 PS를 강도·particle dynamic·시선·가림 조건으로 비교하고 실제
+  0이 아닌 기여도 포함한다. 수치 일치를 사용자 화면 복원 완료로 대신 기록하지 않는다.
+- 근거: [차원술사 V distortion 결과](09-15/2026-09-15_DIMENSIONMASTER_T_UNLIT_V_RECTANGLE_IMPLEMENTATION_RESULT.md#g06-유리-재질의-별도-원본-distortion-pass-연결).
+
+### localSpace의 이동 정책과 본·카메라 부착은 구분한다
+
+- 캐릭터 이펙트의 `localSpace`를 일괄 해제하면 손에 붙어야 할 무기와 `camera_view` 입자도
+  생성 당시 world에 남는다. 실제 skillbinding/cue/asset → Catalog DIRECT/reconstructed →
+  원본 Required `buselocalspace` → Playback 소비자를 확인하고 필요한 모델·카메라 요소만 복구한다.
+- 앵커가 갱신된다는 사실만으로 기존 입자가 따라온다고 판단하지 않는다. 같은 살아 있는 입자의
+  위치를 앵커 이동 전후로 비교한다. 사용자 요청으로 world-space를 택한 다른 이펙트는 유지한다.
+- camera sprite의 local axis 조건을 풀기 전에 socket·UE camera basis를 대조한다. 잘못된
+  회전은 법선을 camera up으로 만들어 옆면 소실을 일으킬 수 있다.
+- 특정 소환 모델의 조명 제외는 exact cue의 기존 mask/depth를 유지한 emissive 출력 정책으로
+  제한한다. 모든 캐릭터·메시에 unlit을 전파하지 않는다.
+- 근거: [차원술사 T/V 결과](09-15/2026-09-15_DIMENSIONMASTER_T_UNLIT_V_RECTANGLE_IMPLEMENTATION_RESULT.md).
+
+### Sequence의 일반 Play와 전투 재생은 종료 의도를 따로 보존한다
+
+- `enterCombatOnFinish`는 Complete Play에서 고를 입장 Sequence의 표시다. 일반 Play를
+  자동으로 Complete로 바꾸지 않는다. Complete에서 일반 Play로 전환할 때는 기존 전투
+  연결을 새 미리보기 시작 전에 취소한다. 뒤늦은 취소가 새 미리보기를 중지하면 안 된다.
+- Sequence 이동은 불변 Pattern의 시계와 occurrence/run ID로 한 번만 제출하고, Pause와
+  scrub으로 플레이어를 이동시키지 않는다. 공유 응답 큐는 request ID의 원래 소비자에게
+  분배하며 다른 도구의 응답을 pop한 뒤 버리지 않는다.
+- 도착 승인 전 완료 이벤트는 보존하고, 실패·시간 초과 때 전투로 넘어가지 않는다.
+  이미 승인된 도착 위치를 후속 Gate의 기본 teleport로 덮어쓰지 않는다.
+- 근거: [Sequence 결과 G26](09-14/2026-09-14_KOUKU_SEQUENCE_PLAYBACK_EDITOR_IMPLEMENTATION_RESULT.md).
+
 ### 원본 정적 메시의 접선 부호는 두 좌표계 변환을 함께 계산한다
 
 - UE packed TangentZ.W의 부호를 glTF tangent.w에 그대로 복사하지 않는다.
@@ -55,6 +126,9 @@
   재사용하면 W=0으로 원본 mask가 전부 discard된다. 원본 PS/VS, serialized float4 wire,
   material-owned row와 기존 창술사 masked 교정을 대조하고 실제 particle color/alpha를 연결한다.
   mask 임계값 삭제나 상수 alpha1은 원본 fade를 보존하는 수정이 아니다.
+- 같은 결함은 도화가 Alt+V 나비의 native536에도 있었다. dispatcher에서 opaque coverage를
+  바꿔도 함수 내부 discard는 복구되지 않는다. material-owned row1..7과 unowned row0,
+  정확한 PS/VS를 확인한 분기로 생성기와 설치 함수를 함께 고친다. [도화가 결과 G12](09-09/2026-09-09_ARTIST_CORE_FULL_RESTORE_IMPLEMENTATION_RESULT.md)를 따른다.
 - additive+distortion의 early return은 원본 RGB에 포함된 opacity를 다시 곱하지 않아야 한다.
   하나를 고친 뒤 같은 sourceBlend·PS 출력·dispatch 계약의 설치 cohort 전체를 대조한다.
   이름에 fire가 있는지로 수정 대상을 결정하거나 translucent alpha까지1로 바꾸지 않는다.
@@ -1529,7 +1603,7 @@ optional 저작 필드를 추가해도 구 EXE의 strict shape parser에는 호�
 
 - 캡처 ready 이후 화면이 사라졌다 다시 나타나면 render race로 단정하지 않는다. Renderer 순서의 왜곡 → capture Color/Bloom 고정 → display-space overlay를 함께 확인한다. Kouku P4의 V2 fade가 20.5초에 화면 전체를 덮고 23.13초까지 걷히면 정상 frozen scene도 어둡게 보인다. 처음 0~2초 fade와 두 번째 전환은 구분해서 수정한다.
 - V1 Composition 박스 종료만 당겨도 ScreenPost의 authored shrink seconds는 자동 변경되지 않았으므로 중간 크기에서 잘렸다. `Seek_WorldRoot`의 owning-box end age를 pending/active Object/Renderer까지 전달해 scene-collapse만 가용 시간으로 제한한다. particle age, freeze된 SRV, 차원술사 cube target 계약은 유지한다. user 선택은 capture 19,819 → popup 21,010ms다.
-- Stage 길이를 줄이면 애니메이션 pose 경계는 움직이지만 절대 시간 ANIMATION_BLEND는 그대로여서 저장이 거절될 수 있다. Stage/Pattern 시작 offset 변경 전에 실제 source/target stable occurrence pair를 resolve하고 target 경계 이동량만큼 blend를 retime한 뒤 동일 pair·단일 경계·충돌을 다시 검증한다. validator를 완화하거나 사용자 draft를 버리지 않는다. 일반 Effect/Logic/WORLD의 독립 시간은 건드리지 않는다.
+- Stage 길이를 줄이면 애니메이션 pose 경계는 움직이지만 절대 시간 ANIMATION_BLEND는 그대로여서 저장이 거절될 수 있다. Pattern 시작 offset 변경은 실제 source/target stable occurrence pair를 resolve해 기존 정책으로 검증한다. Stage 길이 변경은 비애니메이션 시간 보존 정책에 따라 blend를 retime하지 않고 충돌 시 candidate를 거절한다. validator를 완화하거나 사용자 draft를 버리지 않는다. 일반 Effect/Logic/WORLD의 독립 시간은 건드리지 않는다.
 - 외부 JSON 편집 전 저작 도구의 미저장 draft와 LastGood/disk를 확인한다. clean 확인 뒤에도 직전 파일 bytes가 바뀌면 재조사하며 사용자 조명·패턴 수정 전체를 이전 snapshot으로 덮어쓰지 않는다.
 
 
@@ -1626,3 +1700,289 @@ Append의 기본 길이도 Detail 수명 합산 대신 기존 Playback의 source
 - 원본 tone/LUT의 수치 일치는 현재 맵의 완성된 조명 출력과 화면 일치를 뜻하지 않는다. 기존
   활성 맵 profile의 노출·Bloom·gamma·region까지 한 번에 대체하지 않는다. 밝기 회귀는 이전
   활성 profile로 복구하고 source 비교용 profile과 재질·geometry 복원은 분리해 유지한다.
+
+### 선택 바닥의 직접 반사와 광원 입력
+
+쿠크 FLOOR08/FLOOR08A(marker1)의 RGB reflectance는 MapLight의 diffuse radiance로
+조명한다. MapLight의 legacy specular는0이므로 이를 곱하면 재질이 정상이어도 직접
+반사가 사라진다. marker0/2의 legacy specular 설정과 다른 native family는 유지한다.
+원본 Phong/Blinn 차이, base-color reflection과 직접 반사, 사용자의 화면 판정은 구분한다.
+근거: [3관문 조사와 반영 범위](09-15/2026-09-15_MAP_AND_VALTAN_FULL_RESTORATION_RESULT.md#G08).
+
+### Typed Effect Lights는 현재 맵 광원도 차단한다
+
+Rendering Workbench의 Typed Effect Lights는 Presentation_Manager의 전체 transient
+광원 스위치다. 맵 SPOT도 같은 큐를 사용하므로 off이면 maplights의 enabled가 true여도
+0개가 제출된다. 어두운 3관문에서는 바닥 기본색까지 사라질 수 있다. MapLight의
+submitted 상태 문자열은 S_FALSE suppression을 구분하지 않으므로 실제 전체 Light count와
+스위치 상태를 대조한다. 이 경로의 존재와 사용자의 실제 발생 원인 확인은 구분한다.
+
+### Typed Effect Lights는 현재 맵 광원에도 적용됨
+
+Rendering Workbench의 Typed Effect Lights는 CPresentation_Manager의 transient
+light 제출 전체를 제어한다. CMapLightPresentationRuntime의 저작 맵 Point/Spot도
+같은 Add_TransientLight를 사용하므로 OFF에서 함께 억제된다. 방향광/환경광이0인
+쿠크3관문에서는 유일한 SPOT까지 사라져 바닥 재질이 없어진 듯 보인다. 텍스처나
+크기를 되돌리기 전에 이 체크와 Last submitted Light를 확인한다. Selected Reference
+A/B Start와 RenderingProfiles Save/Publish는 이 메모리 토글을 복구하지 않는다.
+반사 입력0 결함과 전체 광원 억제 증상을 구분한다.
+
+### Effect 비동기 완료 결과에서 YIELDED를 FIFO 불일치로 취급하지 않는다
+
+Enqueue/Enqueue_Priority는 다른 target이 Loading owner에서 준비 중이어도 새 target을
+추가하면 다음 frame 양보를 요청한다. 완료 결과를 먼저 Pop한 다음 Begin_LoadingFrame의
+YIELDED/빈 ID를 identity 실패로 처리하면 정상 target이 영구 FAILED receipt로 남는다.
+Advance_LoadingProductCuePreparation은 결과가 있을 때 pacing gate를 먼저 확인하고
+YIELDED면 mailbox payload를 유지한다. READY의 exact ID/epoch/revision 검사는 유지하고
+EPOCH_STAGE_COMPLETE는 마지막 target 소진 후 IDLE에서도 소비한다. 사용자 저장
+Composition/Effect 손상으로 오진하거나 fail-closed 검사를 삭제해 우회하지 않는다.
+
+### 쿠크 GroundEffect의 actor 수신과 source GBuffer row
+
+- 깊이6m와 upward cutoff만으로는 보스의 위쪽 표면을 제외할 수 없다. 원본 projector 깊이나 장판색을 먼저 줄이지 말고 실제 receiver 경로와 Light 요소 유무를 구분한다.
+- marker5의 depth.z는 source program이 아니라 프레임 material row다. Decal은 RGBA32_FLOAT PickPos.W low8 mantissa의 program ID를 정확한 Load로 읽는다. Static shadow exponent·bit22와 non-marker5의 map normal payload를 침범하지 않는다.
+- native3600/3601/3602/3607의 program21/26 제외는 확인된 재질군 정책이며 범용 actor mask가 아니다. 같은 program의 다른 monster에도 적용되므로 Map/Actor catalog 실측과 Picking·Deferred reader 검사를 함께 유지한다. [수신 수정 결과](09-12/2026-09-12_KOUKU_SHOWTIME_WARNING_GROUPS_IMPLEMENTATION_RESULT.md#g03-노란-예고의-쿠크-표면-수신-제외--2026-09-15).
+
+
+### 원본 overlay의 일반 광택과 추가 반사광은 독립 입력
+
+`use_specular=false`라도 `use_subspecular=true`이면 specular texture/color를 제거하면 안 된다.
+subspecular의 view dot은 원본 비정규화 mixed normal을 소비한다. 또한 방향 기반 overlay의
+specular half-dot과 vertex-paint overlay의 half-dot은 서로 다른 normal을 사용할 수 있으므로
+기존 floor 수식을 전역 교체하지 말고 exact native static permutation을 확인한다. Map parser의
+새 family 입력을 허용했다면 Engine Model의 override 검증과 Material texture whitelist, static과
+instanced binder/Deferred까지 함께 대조한다. parser 통과만으로 제품 지원을 판정하지 않는다.
+
+
+### 명시 PBR 입력과 텍스처의 실제 파일 형식을 함께 검사한다
+
+원본 material을 명시 surface 입력으로 교체했으면 Model override와 Material 생성도
+같은 입력을 검사한다. WModel dummy 기본 normal이 비어 있다는 이유만으로 정상
+PBR을 거부하거나, 우회용 dummy texture를 채우지 않는다. 실제 PBR D/N/detail/ORM,
+Resources 경계와 기존 legacy 입력 검사는 유지한다.
+
+확장자를 .dds로 바꾸는 것은 DDS 변환이 아니다. UModel이 TGA로 출력한 작은 기본
+normal/white texture와 일반 normal도 실제 magic/decoder를 확인하고 픽셀을 보존해
+변환한다. exists/hash만으로 설치 성공을 기록하지 않고, 실제 CModel 및 material variant
+생성으로 해당 로딩 범위 전체를 확인한다. [Character Select 로딩 교정 G11](09-15/2026-09-15_MAP_AND_VALTAN_FULL_RESTORATION_RESULT.md#g11-character-select-로더-23127과-후속-재질-로딩-오류)에 원인과 검증을 기록했다.
+
+### 원본 낙하와 지속 방패를 정지 ring 하나로 바꿀 때
+
+동일 mesh/material의 낙하와 착지 이후 발생이 따로 있으면 처음부터 정지 ring을 켜지 않는다. 기존 stable ID·사용자 반경/수량은 보존하고 실제 source start·낙하곡선과 persistent span을 연결한다. 두 발생을 하나로 결합한 clock remap과 default adapter는 source raw값과 구분한다. 빈 LocationDirect ScaleFactor를0으로 곱해 원본 낙하를 지워서는 안 된다. camera bUseLocalSpace와 월드 잔상의 사용자선택을 구분하며 한 스킬의 모든 world-space 입자를 FOLLOW로 바꾸지 않는다. [워로드 Alt V G16](09-09/2026-09-09_WARLORD_ASVF_FULL_RESTORE_IMPLEMENTATION_RESULT.md#g16-2026-09-15-alt-v-배경낙하번개-재검토)을 따른다.
+
+### Matinee의 Director 반환과 카메라 거리 조절
+
+원본 Director track의 자기 Director group cut은 플레이어 시점 반환이다. 없는 CameraActor로
+처리하거나 마지막 cinematic shot을 끝까지 늘리지 않고 해당 시간 구간을 비워 반환한다.
+상속된 빈 cut track도 정상적인 무카메라 구간이다. 기존 scene 결과 보존과 shot key/clock 검사를
+함께 한다. Follow Camera 거리를 조절할 때는 주시점을 유지한 채 실제 eye offset을 바꾼다.
+거리 숫자만 변경하거나 같은 시점에 FOV·캐릭터 배율까지 바꾸면 거리 조절의 결과를 분리할 수 없다.
+[발탄 카메라 결과](09-15/2026-09-15_MAP_AND_VALTAN_FULL_RESTORATION_RESULT.md#g14-v-원본-발탄-컷씬-카메라의-현재-준비-범위).
+
+### 본체가 있는 이펙트의 모델 생성과 GBuffer 제출
+
+심지·총구만 있는 순수 ParticleSystem에는 NPC/무기 본체가 포함되지 않을 수 있다.
+기존 WorldObject가 본체를 생성해 쓰는 leaf에 모델을 추가하지 말고 실제 생성 owner와
+독립 preview를 구분한다. ModelCue는 실제 설치 본·소켓·preScale·NPC 크기를 한 번만
+소비하도록 측정하며 개별 emitter isolation이 standalone 모델을 숨기는 정책도 확인한다.
+
+CModel 기반 OPAQUE/MASKED cue는 명시 Effect material이 없을 때 GBuffer를 쓴다.
+캐릭터 shader의 opaque pass를 post-light Effect BLEND에서 호출하면 원본 material을
+로드해도 scene lighting을 올바르게 받지 못한다. NONBLEND 제출 조건과 모델 draw의
+분류를 같은 함수로 맞추고 투명 pass4,명시 Effect native7/8,기존 exact T11을 보존한다.
+[쇼타임 폭탄과 분류 검사](09-11/2026-09-11_KOUKU_SHOWTIME_RESOURCE_INVENTORY_RESULT.md#15-09-15-해골폭탄-본체심지-및-cmodel-cue-조명-연결)에 현재 candidate/소스/빌드 경계를 기록했다.
+
+### Native Modulate·collision event·baked history의 반복 방지
+
+- 원본 Modulate의 alpha 의미는 PS 계산과 blend state를 함께 대조한다. RGB factor에 opacity가 이미 반영된 원본을 Alpha/V2 Multiply로 합성하지 않는다. 원본 출력 RT별 write를 확인하고 emission gain·bloom을 자동 적용하지 않는다. 기존 profile ID는 append-only로 보존한다.
+- FreezeMovement는 위치뿐 아니라 회전과 orbit 이동도 멈춘다. direct-location update 뒤에도 동결 위치를 유지하고 색·크기·수명은 계속 진행해야 한다. 실제 world hit가 없는 synthetic particle count를 collision 성공으로 기록하지 않는다.
+- Collision Event의 generator/receiver는 기존 bounded queue와 원본 접촉점을 공유한다. 같은 source PS를 여러 팔/owner에 복제할 때 event 이름을 source occurrence별로 분리한다. 미지원 상속·first/last-only 옵션을 묵살하지 않는다.
+- baked history의 notify duration이 마지막 source sample보다 길면 실제 sample 끝까지 clamp한다. history ID 정렬 계약도 유지하며 원본 폭 0을 임의로 늘리지 않는다.
+- native table을 추가한 뒤 실제 codec 검증은 해당 table을 소비하는 OBJ까지 재컴파일한다. 오래된 OBJ에서 생긴 metadata 오류를 validator 완화로 숨기지 않는다. NULL texture는 같은 MIC의 serialized referenced-texture index를 검증하며 parent 유사재질로 추측하지 않는다.
+- 검증용 full restore catalog와 제품 cue는 별도다. 실행 중 저작 draft/freshness를 보존하고 승격 보류 요청 뒤에는 생성 문서·native 지원을 검증한 것을 전투 연결 완료로 기록하지 않는다.
+- All Effects의 패턴 아래 `[FULL RESTORE]`는 원본 action별 복원 문서를 여는 로컬 preview다. source stage 번호를 제품 occurrence 번호로 취급하거나 PRODUCT cue로 자동 승격하지 않는다. 표시·검색은 기존 exact authored index를 사용하고 선택 시 기존 Product unlink 선택을 해제한다.
+
+현재 발탄의 실제 130문서 admission, PhysX 74검사, D3D 116검사와 제품 cue 0의 근거는
+[09-15 결과 G15-V](09-15/2026-09-15_MAP_AND_VALTAN_FULL_RESTORATION_RESULT.md#g15-v-원본-modulate-포털과-source-충돌-event-검증)에 있다.
+
+
+### 맵 데이터 존재와 제품 로딩 범위를 따로 검증한다
+
+- 원격 청크·장식이 Authoring/runtime placement에 있어도 `CLevelRegistry::MapLoadScope`가
+  제외하면 일반 Level에서 생성되지 않는다. 카메라 이동과 frustum culling 검사는 이 누락을
+  해결하지 못한다. Loader의 모델 집합과 Level의 배치 집합이 같은 범위를 쓰는지 대조한다.
+- 전체 복원·전체 맵 요청에서는 전체 배치 수와 실제 로드 대상 수, 제외 stable ID와 이유를
+  확인한다. Map Editor 전체 Area에서 찾은 객체를 제품 입장에도 있다고 보고하지 않는다.
+- geometry·재질·placementLighting 보존과 실제 제품 대상 포함, EXE 배포, 사용자 화면 확인을
+  구분한다. [맵·발탄 결과 G13-CS](09-15/2026-09-15_MAP_AND_VALTAN_FULL_RESTORATION_RESULT.md#g13-cs-character-select-전체-area-배치-로딩)를 따른다.
+
+### 같은 Effect의 카메라와 본 배율을 한꺼번에 정규화하지 않는다
+
+- 원본 StartSize가 맞아도 설치 combined bone의0.01과 메시 cm→m가 중복되면 실제 표시가100배 작아진다. actual WModel/clip의 basis와 최종 particle 행렬을 함께 측정한다.
+- 같은 document에 본·카메라·발 anchor가 섞여 있으면 확인한 runtime anchor만 기존 정규화에 연결한다. 제품과 Tool은 같은 document/anchor 판단을 사용한다. slot으로 중복 제거하는 collector에 같은 slot의 상충하는 정책을 넣지 않는다.
+- 설치 CSO hash가 재컴파일과 다르면 실행 코드와 디버그 정보의 차이를 분리한다. Artist512는 debug chunk만 달랐으며 나비 alpha 수정은 이미 배포돼 있었다. 픽셀 생존과 실제 배율·위치 문제를 서로 대신하지 않는다.
+- 상세 실측과 남은 화면 확인은 [도화가 결과 G13](09-09/2026-09-09_ARTIST_CORE_FULL_RESTORE_IMPLEMENTATION_RESULT.md#g13-09-15-나비-실제-골격-배율과-solo-검토)에 기록한다.
+
+### 방향성 장판은 생성 중심과 실제 quad의 방향을 함께 확인한다
+
+원본 notify가60도 간격이어도 변환에서 FRotator가 누락되거나 axis-locked sprite가 emitter 회전을 방향에 소비하지 않으면 겹치거나 같은 방향으로 그려진다. 기존 source TRS와 billboard roll의 실제 소비를 대조하고 발생 수를 늘리지 않는다. 원본 각도·배치와 사용자 카메라/반경/높이 튜닝은 구분한다. 실제 모델 bounds의 시야 포함과 띠 장축·법선 검증은 [워로드 결과 G18](09-09/2026-09-09_WARLORD_ASVF_FULL_RESTORE_IMPLEMENTATION_RESULT.md)에 둔다.
+
+
+### 별도 조각의 원본 조명은 native component payload까지 확인한다
+
+- tagged properties에 lightEnvironment가 없다고 lightmap이 없는 것으로 판정하지 않는다.
+  StaticMeshComponent의 native suffix를 끝까지 읽고 LightMapType, texture refs, GUID,
+  UV scale/bias와 배치별 RGB scale을 회수한다. 별 같은 작은 조각도 RNM 영역을 가진다.
+- material shader cache에 NoLightMap 프로그램이 있다는 사실은 해당 배치가 그 프로그램을
+  사용한다는 증거가 아니다. 실제 component LightMapType에 맞는 shader permutation을 비교한다.
+- CModel 생성 PASS는 파일·리소스 준비 성공이다. 누락된 RNM/환경 입력과 잘못된 조명 수식,
+  검은 재질까지 검사했다고 보고하지 않는다. 원본 비교 shader fixture의 동일 입력과 실제
+  원본 엔진이 공급한 입력의 동일성을 구분한다.
+- 사용자 빌드와 에이전트 빌드는 따로 추적한다. 에이전트가 링크하지 않았더라도 사용자가
+  중간에 빌드해 변경이 EXE에 들어갈 수 있다. 소스 보류·복귀 전에 OBJ의 source checksum,
+  실제 링크 입력과 EXE 시각을 확인해 다음 빌드에서 이미 사용한 기능이 사라지지 않게 한다.
+- diffuseBrightness0인 원본 PBR에서 환경 cube/lookup이 빠지면 RNM이 있어도 넓은 면은
+  검정이고 일부 2D reflection만 점처럼 남을 수 있다. 실제 texture/UV 표본에서 RNM과
+  환경 기여를 분리해 검사하며 원본 brightness를 임의로 올려 누락을 숨기지 않는다.
+- 멀리 떨어진 조립체를 가까이 전시할 때는 pair에 같은 평행이동을 적용해 상대 높이와
+  개별 lightmap tile을 보존한다. 하늘 구체의 큰 AABB 안에 있다는 사실과 shell 표면에
+  겹치거나 가려진다는 사실을 구분한다. 현재 정적 tile을 새 위치의 조명 bake로 부르지 않는다.
+
+### 원격 바닥의 축소 mip와 교체 preview
+
+- LV_MODULE/nav/water/FX 이름 분류를 visibility로 사용하지 않는다. 실제 원판488도 이
+  규칙으로 숨겨졌다. source actor/component의 HiddenGame/bHidden/bVisible과 archetype/CDO
+  근거를 보존하고 navigation 참여와 분리한다. source schema3와 공용 scene 계약을 사용한다.
+- 원판·별 조립체 전체를 올리면 더 위에 있어야 하는 큰 장식 링을 원판이 가릴 수 있다.
+  같은 XZ의 실제 삼각형 높이를 비교하고 원판의 원래 층과 별의 bridge clearance를 분리한다.
+  bounds 높이만으로 최소 offset을 정하지 않는다.
+- 원본 MIC의 밝기0과 missing default는 다르다. 원본 uniform expression/DXBC에서 실제로
+  밝기0을 소비하면 환경 cube를 연결해도 diffuse가 복구되지는 않는다. 진단용 기본값1은
+  별도 preview variant로 대조한다. 사용자 요청으로 저작값을 보정할 때도 원본0을 보존하고 프로젝트 보정으로 기록하며 원작 실행 중 값으로 주장하지 않는다.
+- 공유 source material compiler의 coverage는 slot/MIC/정확한 field 단위다. 모든 scalar나
+  renderFlag를 일괄 지원 처리하지 않는다. PBR normalmap OFF처럼
+  현재 carrier와 다른 active branch는 명시적으로 거부한다. RNM 색공간, normal linear,
+  DDS 전체 payload/mip/hash와 runtime scalar 범위를 모델 생성 전에 확인한다. PBR steady는 명시 mode=none으로 연결하고 기존 mode 부재/0 descriptor의 nested와 BG0/1/2를 보존한다.
+
+- DDS는 원본 mip0만 추출돼도 생성에 성공한다. 먼 거리에서 반사점이 모자이크처럼
+  보이면 설치 DDS, 실제 texture/SRV의 mip 수, sampler와 설치 CSO를 각각 대조한다.
+  같은 원본 mip0와 decode 경로를 먼저 확인한 뒤 하위 mip을 회수한다. 범용 Crunch의
+  CRC 성공만으로 LostArk 원본 BC 데이터 일치를 주장하지 않는다.
+- 같은 geometry/MIC를 사용하는 배치도 RNM atlas/UV/RGB scale이 다를 수 있다.
+  교체할 때 record의 bakedLighting을 통째로 보존하고 원판과 별에 같은 조립체 변환을
+  적용한다. 중앙 환경 선택은 새 위치에서 조명을 다시 굽는 기능이 아니다.
+- 현재 map cube 방향식에서 source-local 환경을 유지하는 yaw 보정은 기존 각도에서
+  조립체 yaw를 빼는 것이다. 원본 native binder의 규약까지 같은 것으로 일반화하지 않는다.
+- preview material을 분리할 때 empty override를 새 variant로 전달하지 않는다. Layer
+  삽입 뒤 던질 수 있는 entry/status 할당은 stage 전에 끝내고, 생성·visibility 실패와
+  원복을 검사한다. 함수 소비자 stub 검사와 실제 CModel/GPU 생성 검사를 구분한다.
+
+현재 구현·원본 mip 설치와 남은 화면 경계는
+[맵 복원 결과 G19-CS](09-15/2026-09-15_MAP_AND_VALTAN_FULL_RESTORATION_RESULT.md#g19-cs-중앙-바닥-교체-ui와-원본-축소-mip-복구)에 둔다.
+
+### Composition 저장 충돌과 서버 제어 Effect template
+
+- 실행 중 외부 등록으로 Composition의 Pattern/World가 바뀌면 기존 편집기의 Save는
+  `composition changed before save`로 거부된다. 미저장 draft가 JSON에 있다는 뜻이 아니다.
+  baseline·등록본을 보존하고 호환되는 append-only resource 상태로만 복구한 뒤 사용자가
+  실제 Save했는지 revision/신규 Logic/occurrence 시간을 재확인한다. freshness 검사는 유지한다.
+- Server가 반복 생성하는 그룹은 원본 occurrence를 동시에 static 재생하지 않는다. 같은
+  시각자료·상대 시간/TRS를 template로 소비하며, 별도 CombatObject ID로 플레이어별 수명을
+  관리한다. 부모 반복 확장 시 fixed group·tracking reference를 함께 scope-remap하고,
+  template가 잘릴 경우 수명이나 상대 시간을 조용히 바꾸지 않고 publish를 거부한다.
+- 전용 CombatObject의 started marker는 기존 live identity/revision 검증 후 consume해야 한다.
+  실제 시각 생성을 이미 spawn에서 수행했다면 marker로 같은 이펙트를 중복 생성하지 않는다.
+
+- Encounter Pattern에 optional lane을 추가할 때 Gameplay 발행기와 함께 WorldPipeline의
+  Get-EncounterProfiles strict allowed-key도 확인한다. World는 해당 보스의 optional 배열
+  형태만 검증하고 실제 값·Client template join 계약은 Gameplay 발행기가 계속 소유한다.
+
+### 노란 장판의 actor 수신과 실제 부채꼴 저작
+
+- 같은 source material program이 움직이는 폭탄과 정적 Map에 쓰이면 program 전체를 차단하지 않는다. 실제 skinned writer의 표식과 receiver 소유 marker를 함께 확인한다. marker0/5의 bit8과 source program low8은 RGBA32_FLOAT로 왕복 검사하고, 다른 Map marker의 normal/RNM·shadow payload를 actor 표식으로 해석하지 않는다.
+- shader가 지원하는 inner 채움 수식이 해당 원본 occurrence에서 사용됐다는 뜻은 아니다. 사용자가 채움이 없음을 확인했다면 해당 occurrence의 시작값을 고정하고 inner track만 제거한다. 다른 원형·도넛의 채움까지 같은 보정을 적용하지 않는다.
+
+### ModelCue가 있는 Effect의 수명 연장
+
+- Composition duration, ModelCue visible duration, source emitter emission window와 개별
+  particle tail을 각각 확인한다. holdLastFrame은 clip 마지막 자세만 유지하며 ModelCue의
+  종료 시각을 자동 연장하지 않는다. 원본 낙하2초를 사용자 존재시간까지 느리게 늘리면 안 된다.
+- ModelCue가 있는 문서는 level 소유 무한 source-loop 경로의 대상이 아니다. 특정 존재시간
+  연장에는 해당 cue와 원본 loops0 emitter의 유한 배출 구간만 맞추고 원본 속도·개별 수명을
+  보존한다. 끝의 폭발은 source notify의 hide-gap/TRS/parameter를 대조해 별도 occurrence로
+  연결하며, 폭발 tail로 사용자가 저장한 몸체 존재시간을 덮어쓰지 않는다.
+
+
+### Kouku Stage 길이와 빈 tail의 게시
+
+Stage 길이 편집은 Effect/Logic/World 등 비애니메이션 행의 시작·길이·fade·TRS를 바꾸는 명령이 아니다. `Set_StageDuration → Extend_PatternLifetimeForAuthoredLanes`는 선택 animation window만 제한하고 모든 저작 행의 마지막 끝까지 explicit Pattern 수명을 연장한다. 이미 명시한 lifetime은 줄이지 않는다. ANIMATION_BLEND 절대 시간이 새 pose 경계와 충돌하면 전체 편집을 거절하며 Logic을 조용히 retime하지 않는다. 별도 staged geometry는 Transform만 합쳐야 하며 이전 timing으로 새 clock을 덮지 않는다.
+
+Codec의 저작 admission과 Product 게시를 구분한다. 마지막 빈 Stage의 Preview는 직전 animation playMs 끝을 hold하며, 같은 kind·retarget 없는 leaf tail을 publisher 파생 사본에서 직전Stage duration으로 합쳐 기존 holdAtWindowEnd에 연결한다. implicit clock은 동일30Hz tick 합을 요구하고, explicit lifetime은 기존 fixedTimeline 절대 경계로 끝 pose를 유지한다. Source Stage 삭제·임의idle/clip 대입·Product one-clip검증 해제로 숨기지 않는다. 실제 prepare_publication의 Pattern 포함, targeted template refs, native root curve의 tail 정지까지 확인한다. 세부와 증거는09-14 Kouku Sequence Implementation RESULT의 G29/G30-P에 있다.
+
+
+### Effect preparation failure는 owner 해제 전에 정산한다
+
+runtime worker의 structural failure target을 pending 상태로 owner부터 해제하면 priority enqueue가 front를 바꾸고 뒤늦은 front-only failure receipt가 거절되어 revision 전체가 멈출 수 있다. known target은 소유 상태에서 먼저 terminal commit하고 해제한다. 실제 identity 손상은 same-revision/requested-pending blocking failure로 Preview에 전달하며 timeout으로 ready 처리하지 않는다. ready 분기는 과거 held 문구를 지우되 occurrence 오류를 덮지 않는다. 근거: `.md/GB/09-14/2026-09-14_KOUKU_SEQUENCE_PLAYBACK_EDITOR_IMPLEMENTATION_RESULT.md` G31.
+
+
+### 쇼타임 랜덤 낙하의 MAP/BOSS 혼합 기준점 (2026-09-15)
+
+- Gameplay bootstrap의 부모·자식 행은 생성 함수의 append 순서만 확인하면 안 된다. 최종 정렬 키에서 `PATTERNSHOWTIMETARGETS`를 같은 encounter/pattern/trigger의 `PATTERNSHOWTIMERANDOM`보다 먼저 두고 자식 ordinal은 숫자 순서로 보존한다. 생성물의 행 개수·내용 검증에 더해 실제 `CGameplayCatalog` 전체 로드를 확인한다. `Test-GameplayBootstrapRowOrder.ps1`이 최종 정렬 함수의 다중 소유자·32개 순번과 기존 의존 순서를 검사한다.
+
+여러 발사가 묶인 selection group을 통째로 MAP 템플릿으로 바꾸면 총구의 BOSS-local 위치가 랜덤 바닥 위치로 이동한다. 반복할 세트는 stable occurrence ID로 명시하고 MAP 기준점은 첫 MAP 예고에서 구한다. 총구는 같은 CombatObject source entity의 실제 CNpc root/model, 바닥 효과는 Server가 정한 root를 기존 Sample 경로에 전달한다. 두 세션은 같은 Server 생성 clock을 사용하고 실패/종료/Reset 때 함께 정리한다. 원본 총구가 아직 준비되지 않았다면 MAP root를 총구의 임시 보스로 사용하지 않는다.
+
+random pool은 기존 플레이어 위치 fixed/tracking에 추가하는 optional 계약이다. Source codec/projector/Gameplay publisher/Server parser의 pool 범위·필수 필드를 일치시키고, 내용이 같은 A/B 세트의 visual hash 중복은 순서 배열에서 보존한다. Duration 종료 후 새 생성을 중단해도 이미 생성한 폭발/장판은 자기 수명을 마친다. 샘플러의 exact walkable 중심 검사는 모든 이펙트 정점이 원형 바닥 내부라는 보장이 아니다.
+
+### 독립 전기 그룹의 전방과 원본 notify 위치
+
+원본 notify yaw의 중앙값만 보고 전체 leaf를 돌리지 않는다. 설치 mesh의 실제 끝점에 CPU particle World와 modelPreScale을 적용해 주축을 확인하고, 새 독립 그룹에 필요한 배우 basis만 한 번 합성한다. 같은 basis는 notify translation에도 적용해야 한다. 비대칭 FRotator 각도는 반올림하지 않고 source byte offset과 실수 변환을 함께 남긴다. 배우 전방을 따라야 하는 새 library resource는 BOSS anchor가 실제로 그 yaw를 소비하는지도 확인한다. 원본 leaf와 다른 소비자의 각도는 유지한다. 알비온 근거는09-14 Sequence Implementation RESULT G35에 있다.
+
+- 생성 위치에 남아야 하는 전기 효과는 `detail.particle.localSpace`와 바깥 occurrence의 `followBoss`를 함께 확인한다. 입자를 world-space로 바꿔도 움직이는 root에서 후속 입자를 계속 생성할 수 있다. BOSS anchor는 생성 시 방향을 제공하고, 추적을 끈 occurrence는 그때 만든 root를 유지한다. 원본 Required 모듈의 literal은 추출 근거로 보존하며 요청된 runtime override와 구분한다.
+- V1의 `groupId` 저장과 `Group Center`의 실제 그룹 키는 별도 소비자다. root-local 수동 그룹은 기존 `manual.*` ID를 중심 편집 키에 포함해야 독립 이동할 수 있다. source 자동 그룹과 본별 그룹의 기존 묶음, source track·inheritance·범위 검증을 유지한다. 세부 적용은09-14 Sequence Implementation RESULT G37에 기록한다.
+
+### 공중 등장과 원본 착지 곡선
+
+알비온 `_24_03`은 고정 공중 자세다. 클립의 Y 자체를 상승 곡선으로 오인하거나 모든 animation의 속도·수직 배율을 바꾸지 않는다. 기존 후속 낙하로 계산한 정점 높이와 TRIGGER의 상승 시간을 분리하고, stage·animation clock은 유지한다. 순간이동은 기존 root 원점과 navigation 지면을 함께 갱신해야 다음 sample에서 돌아가지 않는다. SLAM은 trigger부터 현재 시각까지 원본 곡선의 누적 최저값을 사용한다. fixed tick이 실제 최저점을 건너뛰거나 원본 끝에서 미세한 반등이 있어도 지면에 머물러야 하며, Preview seek도 과거 프레임 상태 없이 같은 결과를 낸다.
+
+플레이어 선택은 ID를 고정하고 등장은 해당 시점의 위치를 읽는다. 두 trigger를 같은 시각에만 시험하면 오래된 위치에 등장하는 결함을 놓친다. Preview는 등장 시각의 복제 위치를 별도로 고정하고 Server는 실제 살아 있는 플레이어·navigation·body collision을 검증한다. supplemental bootstrap 행은 해당 부모 뒤로 정렬하고 실제 전체 Catalog 로드를 확인한다.
+
+Composition 외부 변경 때문에 Save가 충돌했다면 미저장 draft를 Reload로 버리거나 freshness 검사를 해제하지 않는다. 자기 변경의 before/after bytes가 확정된 경우 해당 field와 revision만 CAS 역변경해 저장 기준을 복구하고 사용자 Save 성공 후 최신본에 다시 적용할 수 있다. 이후 사용자 저장이 계속되면 예전 후보 설치는 거절하고 최신 편집을 보존해 다시 준비한다. 실제 사례는09-14 Sequence Implementation RESULT G38이다.
+
+### 이전 Client와 새 Composition 필드, Object Save의 선행 저장
+
+`Logic definition has unexpected properties`는 이름이나 로직 생성 자체가 아니라 실행 중인 codec이 모르는 JSON 필드일 수 있다. 새 typed Logic 필드를 설치하기 전에 기존 Client의 사용자 편집을 저장해야 한다. 이미 충돌하면 자기 변경의 before/after를 확인해 writer lock + CAS로 역변경하고, 사용자 Save 뒤 새 정의·배치 개수를 실파일에서 읽어 보존한다. 새 후보는 최신 저장본에 합친다. 역변경한 필드의 runtime 재게시나 완료를 임시 복구와 혼동하지 않는다.
+
+`Is_Dirty || Is_PublishRunning`을 한 안내로 표시하면 사용자가 불필요하게 Publish를 누를 수 있다. 새 Logic 정의만 생성해도 dirty이며, 패턴에 배치했는지는 이 검사와 무관하다. 미저장 owner의 Save와 이미 실행 중인 Publish 대기를 각각 안내한다. 근거와 저장 복구 기록은 09-12 World Object Group RESULT의 마리오 Collider 절에 둔다.
+
+### Effect 그룹 중심 회전과 쿠크 분신 행동 소유
+
+Effect Tool 그룹 회전은 같은 anchor 안에서 공통 quaternion delta로 중심 기준 위치·방향과 선형 이동 끝점·속도를 함께 변환한다. 저장 기준은 각 Element Transform이며 별도 누적 UI 각도를 정본으로 만들지 않는다. 원본 회전 animation/revolution owner가 있으면 해당 편집을 거절한다. 실제 helper/codec 검사와 현재 커서 preview 갱신, 사용자 화면 판정을 구분한다.
+
+네 방향 Pattern은 한 보스의 동시 action으로 겹쳐 넣지 않는다. CROSS_DIRECTION_CLONES는 parent clock을 보존한 채 선택된 child만 본체를 소유하고 나머지는 dependent Summon이다. 생성 admission의 ownerRunsFinale, 부모 종료 정리, cutoff deadline, Client child animation/Effect snapshot까지 연결한다. Summon 이름만 있는 박스는 네 방향을 추측하지 않는다. Summon definition의 CROSS_DIRECTION_CLONES 정책과 네 방향/종료 Stage 설정을 occurrence 하나가 실행하며, 이전 typed Logic의 summonOccurrenceId 연결도 같은 실행 window로 해석한다. No child Patterns 안내를 Play 실패로 혼동하지 말고 typed Summon 실행 여부를 확인한다. 여러 Parent의 재사용은 가능하나 기존 Animation host와 공유한 이름뿐인 Summon 정의를 일괄 typed로 바꾸지 않는다. 늦은 tick에 이미 끝난 duration을 새 분신 생성으로 되살리지 않는다. 실제 root 이동 곡선을 사용하고 전방/후방 이름을 임의 좌표축에 대응시키지 않는다.
+
+
+### Play의 Logic 공간 샘플과 Local Space만 수정하는 후보
+
+BOSS_TELEPORT_XZ는 이름이 아니라 typed 정의와 발생 시각으로 재생한다. Preview에서 목적지만 더하면 다음 root 샘플에 원위치로 돌아가므로 destination + D(t) - D(trigger)를 사용하고 animation Y·yaw를 유지한다. Effect 발생 위치와 particle birth도 같은 source clock sampler를 사용해야 짧은 순간이동의 보간과 첫 seek의 잘못된 frozen pivot을 피한다. 플레이어 추적은 ID만 고정하고 현재 위치를 계속 읽되 되감기는 이미 기록한 입력을 사용한다.
+
+Local Space 필드만 수정할 때 JSON 전체 dump는 사용자 음수0(-0)을0으로 정규화할 수 있다. 실제 codec Serialize 비교가 차이를 검출한 경우 구조 비교만으로 동일하다고 처리하지 않는다. 최신 원본 bytes의 해당 boolean 토큰만 교체하고 source Required literal·사용자 TRS·그룹·시간이 모두 보존되는지 확인한다. 입자 Local Space 해제를 Composition BOSS follow 해제로 확장하지 않는다. 실제 범위와 수치 검사는09-14 Sequence Implementation RESULT G40/G41을 따른다.
+
+### 발탄 Full Restore의 masked 재질·본 basis·별도 FRotator
+
+원본 LocalVF masked PS가 CB0[0].rgba를 particle color/opacity로 읽으면 opacity X만1로
+채우지 않는다. 실제 VS/PS와 unowned binding prefix를 확인하고 color RGBA를 전달한다.
+정적 mesh carrier의 기본 dynamic0은 원본 dissolve/emission을 없앨 수 있으므로 실제
+소비자가 source dynamic을 전달하는지 확인한다. native additive의 alpha0은 최종 dispatch의
+opaqueCoverage까지 확인해야 하며 중간값만 보고 blend를 바꾸지 않는다.
+
+arena snapshot의 크기1과 bone-follow의 실제 owner 배율은 별개다. 본 local notify와 socket의
+좌표를 UE world축으로 다시 바꾸지 않는다. float 회전 필드가0이어도 같은 source payload의
+별도 FRotator 정수가 유효할 수 있으므로 occurrence별 원본 단위·정확한 offset을 검증한다.
+재질 이름에 의한 전체 회전/크기 보정은 금지한다. 직접 PlayDecalEffect는 particle 목록 밖에
+있으므로 particle244/244 성공을 stage전체 복원 완료로 기록하지 않는다. source Anim 길이,
+무조건 stage전환, 조건부 preview 범위와 NATURAL effect tail도 구분한다.
+근거: 09-15 MAP_AND_VALTAN_FULL_RESTORATION_RESULT G25-V.
+
+### Fixed-axis Sprite의 저작 회전
+
+SourceRecipe axis-lock Sprite의 최종 billboard 면은 SourceTransformTrack이 없으면 Element/Group 회전을 소비하지 않을 수 있다. 선택적 sprite.followEmitterAxisRotation은 고정 축 Sprite에서 정규화한 emitter basis를 한 번 적용한다. Local Space는 현재 basis, World Space는 spawn 시점 basis다. 기본 false이며 camera/velocity billboard와 기존 Matinee/local 및 수동 billboard roll 보정을 전역 변경하지 않는다. source 좌표 변환을 재적용하거나 모든 Sprite billboard를 끄지 않는다. 새 bool이 기존 struct padding에 들어가도 구버전 OBJ 생성자는 초기화하지 않으므로 codec core와 소비자를 같은 헤더로 컴파일해 검사한다.

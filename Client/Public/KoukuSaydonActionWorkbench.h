@@ -356,10 +356,11 @@ namespace Client
 		// Collider groups are authoring selection metadata; geometry remains on each occurrence.
 		bool_t Set_ColliderSelectionGroup(std::string_view patternId,
 			const std::vector<std::string>& occurrenceIds, bool_t grouped, std::string& outStatus);
-		// Effect groups retain each anchor; a shared frame also supports placement translation.
+		// Effect groups retain each anchor; a shared frame supports translation and rotation around their center.
 		bool_t Set_EffectSelectionGroup(std::string_view patternId,
 			const std::vector<std::string>& occurrenceIds, bool_t grouped, std::string& outStatus);
-		bool_t Translate_SelectedEffects(const std::array<double, 3u>& translation, std::string& outStatus);
+		bool_t Transform_SelectedEffects(const std::array<double, 3u>& translation,
+			const std::array<double, 4u>& rotationDelta, std::string& outStatus);
 		bool_t Transform_SelectedColliders(const std::array<double, 3u>& translation,
 			double yawDeltaDegrees, std::string& outStatus);
 		// Total lifetime is the sum of Stage clocks; only the final Stage is resized.
@@ -707,11 +708,14 @@ namespace Client
 			const KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE* collider = nullptr);
 		void Render_LogicBoxDetails(const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern);
 		bool_t Render_LogicOutcomeSlots(const std::string& patternId, const std::string& occurrenceId);
+        bool_t Render_SummonPolicy(const KOUKU_SAYDON_COMPOSITION_SUMMON_DEFINITION& summon,
+            const KOUKU_SAYDON_COMPOSITION_PATTERN* parent);
 		void Render_SummonResources();
 		void Render_SummonBoxDetails(const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern);
 		void Render_PresentationResources(KOUKU_SAYDON_PRESENTATION_KIND kind);
-		void Render_CameraAuthoring(std::string_view shotId);
+		void Render_CameraAuthoring(std::string_view shotId, std::string_view patternId = {}, std::string_view occurrenceId = {});
 		void Render_CameraWindow();
+		bool_t Make_DedicatedCameraShot(std::string_view patternId, std::string_view occurrenceId, std::string& outStatus);
 		bool_t Move_PresentationTimelineSelection(std::string_view patternId, const std::vector<std::string>& occurrenceIds,
 			std::int64_t deltaMs, std::uint64_t generation, std::string& outStatus);
 		bool_t Collect_EffectPlacements(std::string_view patternId,
@@ -792,6 +796,8 @@ namespace Client
 		// Summon authoring session state; a new box defaults to the remaining Pattern lifetime.
 		char_t m_NewSummonName[256]{};
 		std::string m_strSelectedSummonId;
+        std::map<std::string, std::pair<KOUKU_SAYDON_COMPOSITION_SUMMON_DEFINITION,
+            KOUKU_SAYDON_COMPOSITION_SUMMON_DEFINITION>> m_SummonPolicyDrafts;
 		std::string m_strSelectedSummonOccurrenceId;
 		int32_t m_iNewSummonBoxDurationMs = 1000;
 		bool_t m_bNewSummonBoxToPatternEnd = true;
@@ -826,6 +832,11 @@ namespace Client
 		// The Area level owns the validated camera draft; these values are UI state.
 		bool_t m_bCameraWindowOpen = false;
 		std::string m_strCameraWindowShotId;
+		// The Sequence CAMERA box that opened the window maps shot time to Sequence time.
+		std::string m_strCameraWindowPatternId;
+		std::string m_strCameraWindowOccurrenceId;
+		// A shot played by several owners stays read-only until this names it.
+		std::string m_strCameraSharedEditShotId;
 		std::string m_strCameraKeyId;
 		int32_t m_iCameraCaptureMs = 1000;
 		char_t m_NewCameraActionName[129]{};
@@ -851,6 +862,8 @@ namespace Client
 		KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE m_PresentationBoxEdit;
 		std::string m_strColliderSelectionTransformKey;
 		float m_fColliderSelectionYaw = 0.f;
+		std::string m_strEffectSelectionTransformKey;
+		std::array<float, 3u> m_EffectSelectionRotationDegrees{};
 		KOUKU_MAP_EFFECT_PLACEMENT_REQUEST m_MapEffectPlacementRequest;
 		KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE m_MapEffectPlacementEditSnapshot;
 		std::uint64_t m_iNextMapEffectPlacementToken = 0u;

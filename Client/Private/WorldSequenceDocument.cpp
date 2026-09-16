@@ -556,7 +556,7 @@ bool_t Client::CWorldSequenceDocument::Load(
 				  "interpolation", "tracks" }) :
 			Is_ObjectShape(templateValue,
 				{ "sequenceId", "displayName", "category", "durationMs",
-				  "interpolation", "tracks", "animationTracks" }, { "objectMotion", "effectTracks" });
+				  "interpolation", "tracks", "animationTracks" }, { "objectMotion", "effectTracks", "colliderTracks" });
 		if (!validTemplateShape)
 		{
 			outStatus = "World sequence template shape is invalid";
@@ -768,6 +768,40 @@ bool_t Client::CWorldSequenceDocument::Load(
 					!Read_Float3(row.Find("scale"), effect.scale))
 				{ outStatus = "World Object effect timing or transform is invalid"; return false; }
 				parsedTemplate.effectTracks.push_back(std::move(effect));
+			}
+		}
+
+		if (const auto* colliders = templateValue.Find("colliderTracks"))
+		{
+			if (parsedFormatVersion < 3u || !colliders->Is_Array() || colliders->Get_Array().size() > MAX_TRACK_COUNT)
+			{ outStatus = "World Object colliderTracks must be a bounded v3 array"; return false; }
+			for (const auto& row : colliders->Get_Array())
+			{
+				WORLD_SEQUENCE_COLLIDER_TRACK collider;
+				if (!Is_ObjectShape(row, { "colliderTrackId", "slotId", "startMs", "durationMs", "positionOffset",
+					"halfExtents", "yawDegrees", "behavior", "damagePercent", "gripLocalOffset" }, { "attachmentBone" }))
+				{ outStatus = "World Object collider track shape is invalid"; return false; }
+				for (const char* key : { "colliderTrackId", "slotId", "behavior" })
+					if (!row.Find(key)->Is_String())
+					{ outStatus = "World Object collider identity must be text"; return false; }
+				collider.colliderTrackId = row.Find("colliderTrackId")->Get_String();
+				collider.slotId = row.Find("slotId")->Get_String();
+				collider.behavior = row.Find("behavior")->Get_String();
+				if (const auto* bone = row.Find("attachmentBone"))
+				{
+					if (!bone->Is_String()) { outStatus = "World Object collider attachmentBone must be text"; return false; }
+					collider.attachmentBone = bone->Get_String();
+				}
+				if (!Read_Uint32(row.Find("startMs"), collider.startMs, MAX_DURATION_MS) ||
+					!Read_Uint32(row.Find("durationMs"), collider.durationMs, MAX_DURATION_MS) ||
+					!Read_Float3(row.Find("positionOffset"), collider.positionOffset) ||
+					!Read_Float3(row.Find("halfExtents"), collider.halfExtents) ||
+					!Read_Float3(row.Find("gripLocalOffset"), collider.gripLocalOffset) ||
+					!row.Find("yawDegrees")->Is_Number() || !row.Find("damagePercent")->Is_Number())
+				{ outStatus = "World Object collider timing or values are invalid"; return false; }
+				collider.yawDegrees = static_cast<f32_t>(row.Find("yawDegrees")->Get_Number());
+				collider.damagePercent = static_cast<f32_t>(row.Find("damagePercent")->Get_Number());
+				parsedTemplate.colliderTracks.push_back(std::move(collider));
 			}
 		}
 
@@ -1103,6 +1137,25 @@ bool_t Client::CWorldSequenceDocument::Save(
 			}
 			output << "\n      ]";
 		}
+		if (!value.colliderTracks.empty())
+		{
+			output << ",\n      \"colliderTracks\": [";
+			for (size_t index = 0; index < value.colliderTracks.size(); ++index)
+			{
+				const auto& collider = value.colliderTracks[index];
+				output << (index ? ",\n" : "\n") << "        { \"colliderTrackId\": \"" << CDataJson::Escape(collider.colliderTrackId)
+					<< "\", \"slotId\": \"" << CDataJson::Escape(collider.slotId)
+					<< "\", \"startMs\": " << collider.startMs << ", \"durationMs\": " << collider.durationMs
+					<< ", \"positionOffset\": [" << collider.positionOffset.x << ", " << collider.positionOffset.y << ", " << collider.positionOffset.z
+					<< "], \"halfExtents\": [" << collider.halfExtents.x << ", " << collider.halfExtents.y << ", " << collider.halfExtents.z
+					<< "], \"yawDegrees\": " << collider.yawDegrees << ", \"behavior\": \"" << collider.behavior
+					<< "\", \"damagePercent\": " << collider.damagePercent << ", \"gripLocalOffset\": ["
+					<< collider.gripLocalOffset.x << ", " << collider.gripLocalOffset.y << ", " << collider.gripLocalOffset.z << "]";
+				if (!collider.attachmentBone.empty()) output << ", \"attachmentBone\": \"" << CDataJson::Escape(collider.attachmentBone) << "\"";
+				output << " }";
+			}
+			output << "\n      ]";
+		}
 		output << "\n    }";
 	}
 	output << (m_Templates.empty() ? "],\n" : "\n  ],\n")
@@ -1260,7 +1313,7 @@ bool_t Client::CWorldSequenceDocument::Validate(
 			(WORLD_SEQUENCE_INTERPOLATION::LINEAR != value.interpolation &&
 				WORLD_SEQUENCE_INTERPOLATION::SMOOTH_STEP != value.interpolation) ||
 			(value.tracks.empty() && value.animationTracks.empty()) ||
-			value.tracks.size() + value.animationTracks.size() + value.effectTracks.size() > MAX_TRACK_COUNT)
+			value.tracks.size() + value.animationTracks.size() + value.effectTracks.size() + value.colliderTracks.size() > MAX_TRACK_COUNT)
 		{
 			outStatus = "Invalid or duplicate world sequence template: " +
 				value.sequenceId;
@@ -1295,6 +1348,31 @@ bool_t Client::CWorldSequenceDocument::Validate(
 				!Is_BoundedFloat3(effect.scale) || effect.scale.x < MIN_SCALE || effect.scale.y < MIN_SCALE || effect.scale.z < MIN_SCALE ||
 				value.PresentationSpanMs() > MAX_DURATION_MS)
 			{ outStatus = "Invalid World Object effect track: " + value.sequenceId + "/" + effect.effectTrackId; return false; }
+		}
+		if (!value.colliderTracks.empty() && (motion.spawnHalfExtents.x != 0.f || motion.spawnHalfExtents.y != 0.f ||
+			motion.spawnHalfExtents.z != 0.f || motion.spreadDegrees != 0.f))
+		{ outStatus = "Collider tracks require deterministic Motion emission positions: " + value.sequenceId; return false; }
+		std::unordered_set<std::string> colliderIds;
+		for (const auto& collider : value.colliderTracks)
+		{
+			const bool hook = collider.behavior == "HOOK_CAPTURE";
+			const bool damage = collider.behavior == "DAMAGE";
+			const bool slotExists = std::any_of(value.tracks.begin(), value.tracks.end(),
+				[&](const auto& track) { return track.slotId == collider.slotId; });
+			if (!Is_ValidStableId(collider.colliderTrackId) || !colliderIds.insert(collider.colliderTrackId).second ||
+				!Is_ValidStableId(collider.slotId) || !slotExists ||
+				collider.durationMs == 0u || uint64_t(collider.startMs) + collider.durationMs > value.durationMs ||
+				!Is_BoundedFloat3(collider.positionOffset) || !Is_BoundedFloat3(collider.halfExtents) ||
+				collider.halfExtents.x <= .001f || collider.halfExtents.y <= .001f || collider.halfExtents.z <= .001f ||
+				collider.halfExtents.x > 1000.f || collider.halfExtents.y > 1000.f || collider.halfExtents.z > 1000.f ||
+				!std::isfinite(collider.yawDegrees) || std::abs(collider.yawDegrees) > 36000.f ||
+				(!hook && !damage && collider.behavior != "INSTANT_DEATH") || !std::isfinite(collider.damagePercent) ||
+				(damage ? collider.damagePercent < 1.f || collider.damagePercent > 100.f || std::floor(collider.damagePercent) != collider.damagePercent : collider.damagePercent != 0.f) ||
+				!Is_BoundedFloat3(collider.gripLocalOffset) || collider.attachmentBone.size() > 256u ||
+				!Is_ValidUtf8DisplayText(collider.attachmentBone) ||
+				(!hook && (!collider.attachmentBone.empty() || collider.gripLocalOffset.x != 0.f ||
+					collider.gripLocalOffset.y != 0.f || collider.gripLocalOffset.z != 0.f)))
+			{ outStatus = "Invalid World Object collider track: " + value.sequenceId + "/" + collider.colliderTrackId; return false; }
 		}
 		std::unordered_set<std::string> slotIds;
 		for (const WORLD_SEQUENCE_TRACK& track : value.tracks)
@@ -1387,6 +1465,9 @@ bool_t Client::CWorldSequenceDocument::Validate(
 			outStatus = "Invalid world sequence instance: " + value.instanceId;
 			return false;
 		}
+		if (!targetTemplate->colliderTracks.empty() && (value.bindings.size() != 1u ||
+			value.bindings.front().targetKind != WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE || value.anchorKind != "WORLD"))
+		{ outStatus = "Collider tracks require one WORLD Object Resource binding: " + value.instanceId; return false; }
 		if (!targetTemplate->effectTracks.empty() && (value.bindings.size() != 1u ||
 			value.bindings.front().targetKind != WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE))
 		{ outStatus = "Effect lanes require one Object Resource binding: " + value.instanceId; return false; }
@@ -1422,6 +1503,10 @@ bool_t Client::CWorldSequenceDocument::Validate(
 				{
 					return track.slotId == binding.slotId;
 				});
+			const bool colliderSlot = std::any_of(targetTemplate->colliderTracks.begin(), targetTemplate->colliderTracks.end(),
+				[&](const auto& collider) { return collider.slotId == binding.slotId; });
+			if (colliderSlot && binding.targetKind != WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE)
+			{ outStatus = "Collider tracks require an Object Resource binding: " + value.instanceId + "/" + binding.slotId; return false; }
 			const auto animationSlot = std::find_if(
 				targetTemplate->animationTracks.begin(),
 				targetTemplate->animationTracks.end(),
@@ -1462,8 +1547,11 @@ bool_t Client::CWorldSequenceDocument::Validate(
 			if (WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE == binding.targetKind)
 			{
 				const auto* object = Find_ObjectResource(binding.targetId);
+				const bool colliderBone = std::any_of(targetTemplate->colliderTracks.begin(), targetTemplate->colliderTracks.end(),
+					[&](const auto& collider) { return collider.slotId == binding.slotId && !collider.attachmentBone.empty(); });
 				if (!object || object->modelAssetId.empty() || !object->sequenceInstanceId.empty() ||
-					(hasAnimationSlot && !object->animated) ||
+					((hasAnimationSlot || colliderBone) && !object->animated) ||
+					(colliderSlot && object->anchorKind != "WORLD") ||
 					((value.anchorKind == "BOSS" || object->anchorKind == "BOSS") &&
 					 (value.anchorKind != "BOSS" || object->anchorKind != "BOSS" || value.bindings.size() != 1u)))
 				{ outStatus = "Invalid object resource binding: " + value.instanceId + "/" + binding.slotId; return false; }
@@ -1707,6 +1795,7 @@ bool_t Client::CWorldSequenceDocument::Is_Equivalent(
 			left.tracks.size() != right.tracks.size() ||
 			left.animationTracks.size() != right.animationTracks.size() ||
 			left.effectTracks.size() != right.effectTracks.size() ||
+			left.colliderTracks.size() != right.colliderTracks.size() ||
 			!sameFloat3(left.objectMotion.velocity, right.objectMotion.velocity) ||
 			!sameFloat3(left.objectMotion.acceleration, right.objectMotion.acceleration) ||
 			!sameFloat3(left.objectMotion.angularVelocityDegrees, right.objectMotion.angularVelocityDegrees) ||
@@ -1732,6 +1821,15 @@ bool_t Client::CWorldSequenceDocument::Is_Equivalent(
 				a.resourceId != b.resourceId || a.followObject != b.followObject || a.bone != b.bone || a.timing != b.timing || a.startMs != b.startMs || a.durationMs != b.durationMs ||
 				!sameFloat3(a.positionOffset, b.positionOffset) || !sameFloat3(a.rotationDegrees, b.rotationDegrees) ||
 				!sameFloat3(a.scale, b.scale)) return false;
+		}
+		for (size_t index = 0; index < left.colliderTracks.size(); ++index)
+		{
+			const auto& a = left.colliderTracks[index]; const auto& b = right.colliderTracks[index];
+			if (a.colliderTrackId != b.colliderTrackId || a.slotId != b.slotId || a.startMs != b.startMs ||
+				a.durationMs != b.durationMs || !sameFloat3(a.positionOffset, b.positionOffset) ||
+				!sameFloat3(a.halfExtents, b.halfExtents) || !sameFloat(a.yawDegrees, b.yawDegrees) ||
+				a.behavior != b.behavior || !sameFloat(a.damagePercent, b.damagePercent) ||
+				!sameFloat3(a.gripLocalOffset, b.gripLocalOffset) || a.attachmentBone != b.attachmentBone) return false;
 		}
 		for (size_t trackIndex = 0u; trackIndex < left.tracks.size(); ++trackIndex)
 		{
@@ -1961,7 +2059,7 @@ bool_t CWorldSequenceDocument::Duplicate_TimelineBox(const std::string& sequence
     auto candidate = *this;
     auto* staged = candidate.Find_Template(sequence.sequenceId);
     if (!staged) return false;
-    if (staged->tracks.size() + staged->animationTracks.size() + staged->effectTracks.size() >= CWorldSequenceDocument::MAX_TRACK_COUNT)
+    if (staged->tracks.size() + staged->animationTracks.size() + staged->effectTracks.size() + staged->colliderTracks.size() >= CWorldSequenceDocument::MAX_TRACK_COUNT)
     { outStatus = "Duplicate refused: Motion track limit reached. Existing draft preserved."; return false; }
     const uint32_t oldDuration = staged->durationMs;
     uint32_t duration = oldDuration;
@@ -2016,5 +2114,31 @@ bool_t CWorldSequenceDocument::Duplicate_TimelineBox(const std::string& sequence
     sequence = std::move(*staged);
     outIndex = selected;
     outStatus = "Duplicated the selected box after its window.";
+    return true;
+}
+
+bool_t CWorldSequenceDocument::Duplicate_ColliderTrack(const std::string& sequenceId,
+    const size_t index, const WORLD_SEQUENCE_PLACEMENT_MAP& mapPlacements,
+    const WORLD_SEQUENCE_DEPLOY_MAP& deployPlacements, size_t& outIndex, std::string& outStatus)
+{
+    auto* current = Find_Template(sequenceId);
+    if (!current || index >= current->colliderTracks.size())
+    { outStatus = "Collider row is unavailable: " + sequenceId; return false; }
+    auto candidate = *this;
+    auto* staged = candidate.Find_Template(sequenceId);
+    if (staged->tracks.size() + staged->animationTracks.size() + staged->effectTracks.size() + staged->colliderTracks.size() >= MAX_TRACK_COUNT)
+    { outStatus = "Duplicate refused: Motion track limit reached. Existing draft preserved."; return false; }
+    auto duplicate = staged->colliderTracks[index];
+    uint32_t serial = 1u;
+    do { duplicate.colliderTrackId = "collider." + std::to_string(serial++); }
+    while (std::any_of(staged->colliderTracks.begin(), staged->colliderTracks.end(),
+        [&](const auto& row) { return row.colliderTrackId == duplicate.colliderTrackId; }));
+    staged->colliderTracks.insert(staged->colliderTracks.begin() + index + 1u, duplicate);
+    std::string status;
+    if (!candidate.Validate(mapPlacements, deployPlacements, status))
+    { outStatus = "Duplicate refused: " + status + ". Existing draft preserved."; return false; }
+    *current = std::move(*staged);
+    outIndex = index + 1u;
+    outStatus = "Duplicated the collider with its original time window.";
     return true;
 }

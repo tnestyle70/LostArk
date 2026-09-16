@@ -130,3 +130,36 @@ BOSS/MAP 기본 Effect, Light와 이미 배치한 WORLD 박스는 변경하지 �
 명시 WORLD 연결, 없는 worldId의 계속된 거절을 확인한다. 테스트 전용 접근은 기존 harness
 매크로에 한정하며 제품 API나 객체 layout을 바꾸지 않는다. 관련 최소 컴파일 뒤 사용자의
 저장·종료를 확인하고 정규 제품 빌드를 수행한다. Client/UI 입력은 사용자가 확인한다.
+
+## G09. 09-15 쇼타임 위쪽 쿠크의 바주카
+
+현재 P35의 양손 총은 큰 세이튼의 b_wp_1/2에 연결돼 있고, 위쪽 작은 쿠크의
+원본 바주카는 별도 Bip002-R-Hand 부착이다. 2관문 레이저의 실제 LaserCannon
+CModel/CMaterial과 보정된 local 회전을 재사용하되 G3 Saydon BODY의
+`bip002-r-hand`를 쓰는 별도 Object/template/instance를 추가한다.
+
+원본 Action4219939/4219985 notify를 현재 P35의 sourceStartMs, sourceEndMs,
+playRate와 반복 구간에 다시 결합해 원본 바주카가 존재하는 WORLD 박스만 만든다.
+기존 총, 사용자 placement, P35 애니메이션 편집 및 다른 Pattern은 보존한다.
+실제 설치 BODY의 본 basis1.7, source StartSize4, notify scale.3을 분리하고
+정규화하는 WorldSequence anchor에서는 소품 scale2.04로 한 번 적용한다.
+
+실행 중 도구의 미저장 draft 보존을 먼저 확인한다. 확인 전에는 out candidate만
+만들고, 설치 직전에 최신 원본으로 다시 준비하여 원본 bytes 비교 성공 시에만
+바뀐 행을 합친다. 원본 모델·본과 실제 WorldSequence 함수로 수치 검증하고
+기존 publisher를 사용한다. C++/shader/새 모델은 이 항목에 필요하지 않다.
+
+### G09 저장 완료 후 현재 세션에서 등록
+
+사용자는 저장 완료와 등록 동안 편집 중지를 명시했다. Client41664와 Server29600의
+정확한 PID·기동 시각을 task 전용 receipt에 기록하고 이 세션에서 JSON 등록만 허용한다.
+실제 compiler/build와 새 프로세스는 계속 거부한다. 이전 Composition805 후보는
+복사하지 않고 최신 저장본에서 원본 notify를 다시 결합하여 기존 행의 bytes와 ID를
+보존하는 단일 merge/CAS로 적용한다. 기준 변경은 설치 전에 거부하고 다시 준비한다.
+
+Composition의 기존 writer lock을 획득하고 기준·후보·백업 hash를 검증한 뒤 원자적으로
+교체한다. 실패 시 이번 commit만 역순 복구한다. 공용 Save의 freshness 검사와
+미저장 draft 거부 정책은 바꾸지 않는다. 기존 순수 심지와 빙고 WorldObject 및
+source 근거가 없는 전투 spawn은 변경하지 않는다. Area WorldSequence와 Kouku
+Composition 기존 publisher/check를 수행한다. 실행 중 EXE는 모델 조명 수정을 이미
+포함하므로 데이터 등록을 위한 재빌드·프로세스 종료·UI 조작은 수행하지 않는다.

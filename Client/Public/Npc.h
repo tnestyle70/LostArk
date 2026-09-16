@@ -318,6 +318,7 @@ public:
 		std::uint32_t iServerTick = 0u,
 		bool_t snapToSnapshot = false);
 	void Trigger_HitFlash();
+    void Set_PresentationVisible(bool visible) { m_bPresentationVisible = visible; }
 #ifdef _DEBUG
 	void Set_CombatColliderDebugVisible(bool_t isVisible) {
 		m_isCombatColliderDebugVisible = isVisible;
@@ -390,6 +391,7 @@ private:
 	f32_t m_fTransitionAgeSeconds = 0.f, m_fTransitionPlayRate = 1.f;
 	CNpcNetworkTransformInterpolator m_NetworkTransformInterpolator;
 	bool_t m_bSuppressRootMotion = false;
+    bool m_bPresentationVisible = true;
 	bool_t m_bInterpolateNetworkTransform = false;
 	f32_t m_fTransientActionRemainingSeconds = 0.f;
 	std::string m_strTransientReturnClip;

@@ -49,3 +49,39 @@ Client/UI를 실행하거나 캡처하지 않았다. 첨부 이미지와의 최�
 
 루트의 최종 Client 컴파일/링크·Server 빌드와 revision 352 공식 Kouku 4-domain 게시를 완료했다. 노란 3종은 Composition과 Client project에 등록했고 검증한 Decal CSO를 기본 Debug 경로에 반영했다. 상세 로그·중단 범위·사용자 실행 경로는 [통합 결과](2026-09-12_KOUKU_PARENT_PATTERN_TIMELINE_IMPLEMENTATION_RESULT.md#G03-배포와-사용자-확인)를 따른다. 사용자 화면 확인은 대기다.
 
+## G03. 노란 예고의 쿠크 표면 수신 제외 — 2026-09-15
+
+사용자가 보스가 노란 장판과 겹치면 몸이 노랗게 그려진다고 보고했다. 현재 쿠크 Decal 131요소 중 GroundEffect native3600/3601/3602/3607을 쓰는 26요소는 projector 깊이6m, upward cutoff0.5다. 원본 Near/Far -300/+300cm를 보존한 이 투영은 높이1m·위쪽 법선인 보스 표면도 통과시킨다. 쇼타임 warning 9문서에는 Light 요소가 없다. 이 검사는 현재 장판 수신 경로의 결함을 확인하며 사용자의 화면을 자동 판정한 것은 아니다.
+
+`Shader_SourceCharacterMaterial.hlsli`의 marker5 PickPos.W에 실제 source program ID를 low8 mantissa로 기록했다. depth.z의 프레임 row는 변경하지 않았다. `Effect_DocumentRenderer_Geometry.cpp`가 Target_PickPos를 Decal SRV로 연결하고, `Shader_VtxEffectDecal.hlsl`은 정확한 Load로 읽어 위 네 GroundEffect에 대해서만 program21/26을 거부한다. 본체·무기12개 catalog binding이 두 program에 해당한다. program21은 다른 masked monster도 공유하므로 같은 재질군을 쓰는 다른 actor도 이 네 장판은 받지 않는다. 범용 object 종류 마스크나 원본 엔진의 모든 decal receiver 정책 복원이라고 주장하지 않는다.
+
+전체 Map authoring의 source 계열48행은 program25/30/80..83이며21/26은 없다. 이들 marker5 map과 legacy/map PBR·source BG 등 다른 marker는 유지한다. 원본 색·재질 수식·크기·깊이·채움 시간, 사용자 Effect·Composition 저작 JSON, 다른 Decal과 전역 조명은 변경하지 않았다. 따라서 별도 데이터 publish는 없다.
+
+### G03-01. packed W와 실행 검증
+
+- 실제 Target_PickPos와 Picking staging은 모두 RGBA32_FLOAT다. Picking은 W가0인지 검사한 뒤 XYZ를 사용하고 public W를1로 복구한다. Deferred의 source marker5 light는 PickPos.XYZ를 읽으며, Map normal/RNM decoder는 다른 marker 계약이다. Static shadow encoder는 low23 mantissa를 보존하고 exponent의 채널만 바꾼다.
+- 실제 WARP RGBA32_FLOAT texture에 program0..255와 shadow channel0..15 조합4096개를 저장·readback하여 program, exponent, XYZ, bit22가 보존됨을 확인했다. source encoding과 receiver filter는 수정된 제품 파일에서 원문을 추출했다. 이는 GPU texture 정밀도 검증이며 전체 native material draw 검사는 아니다.
+- 제품 receiver 함수의28,672개 조합에서 네 GroundEffect·marker5·program21/26만 거부했다. 현재 native Map program6종×4장판24조합은 보존했다. 이전 깊이·법선 검사에서 통과하는 actor overlap fixture가 새 정책에서 거부됨도 확인했다.
+- 실제 Decal FX, source21/26 skinned FX, source26 static FX의 `fxc /T fx_5_0 /O1` out 컴파일과 Geometry Debug TU 컴파일이 통과했다. 기존 native X4000과 SDK C4819 경고는 로그에 보존했다. 세 소스 파일의 기존 CRLF·UTF-8을 유지했고 변경 범위 diff 검사도 통과했다.
+
+근거는 `out/KoukuGroundReceiver20260915/validation.receipt.json`, `receiver_probe_result.txt`, `material-audit.txt`, `*_compile.log`와 변경 전 byte 사본이다. shared include를 Engine 정본에서 candidate 폴더로 복사해 검사했으며 실행 중인 제품의 SDK/CSO를 교체하지 않았다. 새 상설 테스트 프로젝트나 제품 빌드, Client/UI 실행·조작·캡처는 하지 않았다. 사용자 Product Build 이후 같은 장판의 몸 색과 바닥 유지 여부 확인이 남아 있다.
+
+
+## G04. 캐릭터·폭탄 수신 제외와 부채꼴 고정 — 2026-09-15
+
+사용자가 폭탄 본체와 심지가 실제 화면에 나타난 것을 확인한 뒤, 노란 예고가 폭탄과 플레이어도 물들이는 문제를 보고했다. 폭탄의 native program30은 정적 Map과 공유하므로 재질 번호 전체를 제외할 수 없다. 실제 skinned material writer에서 PickPos.W의 mantissa bit8을 기록하고, marker0/5의 이 표식과 native skin/equipment program1..24/26..29만 네 GroundEffect3600/3601/3602/3607에서 제외하도록 소스를 수정했다. Animated Map BG는 표식 전에 반환하고 다른 Map marker의 packed normal/RNM은 해석하지 않는다. program25/30/80..83의 정적 Map 수신은 유지한다.
+
+부채꼴 `kouku.showtime.warning.sector`는 기존 inner track의 첫 값0으로 고정한 JSON 후보를 만들었다. 시간에 따라0→1이던 inner track만 제거하며 반경11m, 각도45°, 원본 caustic/경계, 위치, 색과 fade는 보존한다. 생성 도구의 신규 부채꼴에도 같은 고정 정책을 적용했다. 과거의 G03 채움 보존 설명은 당시 상태이며 현재 요청은 이 정적 정책이다.
+
+### G04-01. 수치·컴파일 확인
+
+- 실제 RGBA32_FLOAT WARP texture의8192 program/skinned/shadow-channel 조합에서XYZ, exponent, bit22, source program과 bit8 roundtrip이 통과했다.
+- 제품 HLSL 원문을 추출한57,344 receiver 검사와 현재 정적 Map6개 program×4장판24조합이 통과했다. 기존 depth6m/upward 검사에서 통과하던 actor overlap은 새 필터에서 제외된다.
+- SourceGroup001/025 skinned FX와 Decal FX의 분리 `fxc /T fx_5_0 /O1` 컴파일이 모두 통과했다. 기존 native X4000 경고는 로그에 남아 있다. 이는 전체 장면의 GPU 표시나 사용자 visual PASS가 아니다.
+- 생성기 Python parse와 fan 후보의 inner0/track 제거·재적용 idempotence를 확인했다. 후보 등록 및 최종 codec/Owner 발행 결과는 아래 통합 설치 기록에 추가한다.
+
+근거는 `out/KoukuShowtimePolish20260915/{root-validation.receipt.json,fan-stage.json,receiver_result.log,native-map-audit.json,Shader_Vtx*.log}`다. 제품 빌드·EXE 교체·Client/UI 실행이나 캡처는 하지 않았다. 소스 반영 뒤 사용자 빌드와 같은 장판의 실제 화면 확인이 필요하다.
+
+### G04-02. 최종 설치
+
+최신 저장844의 다른 사용자 저작과 Stage52/57을 보존한 채 root가14파일을 byte CAS·Composition writer lock으로 설치해845가 됐다. Fan 후보는 실제 Effect codec Load를 통과했고 inner0/inner track 없음이 정본에서 확인됐다. 쇼타임 Owner의 product/map/world/gameplay 네 domain 발행은 모두 PASS다. shader와 C++ 소스·Data 등록까지 완료했으며 제품 빌드는 사용자가 수행한다. 실제 새 화면은 아직 확인하지 않았다. 설치 hash와 runtime 행은 `out/KoukuShowtimePolish20260915/installed-verification.json`에 있다.
