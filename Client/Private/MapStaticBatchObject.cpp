@@ -186,11 +186,10 @@ HRESULT CMapStaticBatchObject::Render()
 	if (CGameInstance::Get().Is_SceneEnvironmentReplaced())
 		return S_OK;
 
-	MAP_CAMERA_CULL_SNAPSHOT cameraSnapshot{};
-	const bool_t hasCameraSnapshot =
-		CMapAssetRenderUtils::Capture_CameraCullSnapshot(cameraSnapshot);
-	if (FAILED(Upload_VisibleInstances(
-		hasCameraSnapshot ? &cameraSnapshot : nullptr)))
+	const MAP_CAMERA_CULL_SNAPSHOT* cameraSnapshot =
+		CMapAssetRenderUtils::Capture_CameraCullSnapshotView();
+	const bool_t hasCameraSnapshot = nullptr != cameraSnapshot;
+	if (FAILED(Upload_VisibleInstances(cameraSnapshot)))
 	{
 		return E_FAIL;
 	}
@@ -199,7 +198,7 @@ HRESULT CMapStaticBatchObject::Render()
 
 	const HRESULT cameraBindResult = hasCameraSnapshot ?
 		CMapAssetRenderUtils::Bind_CameraCullSnapshot(
-			m_pShaderCom, cameraSnapshot) :
+			m_pShaderCom, *cameraSnapshot) :
 		(FAILED(CGameInstance::Get().Bind_Transform(
 			m_pShaderCom, "g_ViewMatrix", D3DTS::VIEW)) ||
 		 FAILED(CGameInstance::Get().Bind_Transform(
@@ -223,7 +222,7 @@ HRESULT CMapStaticBatchObject::Render()
 
     Engine::MESH_SCREEN_LOD_DESC screenLod{};
     const bool_t hasScreenLod = hasCameraSnapshot && m_RenderProfile.opacity >= 1.f &&
-        Build_ScreenLodView(cameraSnapshot, screenLod);
+        Build_ScreenLodView(*cameraSnapshot, screenLod);
 	const bool_t useSourceMaterials =
 		CGameInstance::Get().Get_MaterialRenderSettings().bUseSourceMaterials;
 	{

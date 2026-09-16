@@ -111,6 +111,8 @@ private:
 	HRESULT Ready_AnimationPreviewModels(uint32_t iLevelIndex);
 	HRESULT Ready_ValtanPresentation(uint32_t iLevelIndex);
 	HRESULT Run_EffectLoadPreparation();
+	static unsigned __stdcall EffectThreadMain(void* pArgument);
+	void Request_Cancellation() noexcept;
 	void Set_Status(const tchar_t* pStatus);
 	void Set_DeterminateStatus(
 		const tchar_t* pStatus,
@@ -129,7 +131,9 @@ private:
 	LostArk::Shared::CHARACTER_CLASS_ID m_ePreparedCharacterClass = LostArk::Shared::CHARACTER_CLASS_ID::END;
 	std::shared_ptr<const CPlayableCharacterAssetService::AUTHORING_INPUT> m_pCharacterAuthoringInput;
 	HANDLE m_hThread = {};
+	HANDLE m_hEffectThread = {};
 	CAssetPreparationBatch m_AssetPreparationBatch;
+	CAssetPreparationBatch m_EffectPreparationBatch;
 	tchar_t m_szLoadingText[MAX_PATH] = {};
 	mutable std::mutex m_StatusMutex;
 	bool_t m_bProgressDeterminate = false;
@@ -141,6 +145,7 @@ private:
 		std::chrono::steady_clock::now();
 	std::atomic<STATE> m_eState = STATE::IDLE;
 	std::atomic<long> m_iResult = S_FALSE;
+	std::atomic<long> m_iEffectResult = E_PENDING;
 	std::atomic_bool m_isCancellationRequested = false;
 	std::shared_ptr<CEffectLoadPreparationJob> m_pEffectLoadJob;
 

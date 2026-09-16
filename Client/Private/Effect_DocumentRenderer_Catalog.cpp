@@ -254,6 +254,7 @@ bool_t Client::CEffectDocumentRenderer::Prepare_VisualProgramCatalog(
 		g_pPreparedDevice = pDevice.Get();
 		g_iPreparedCatalogRevision = iCatalogRevision;
 		++g_iPreparedCatalogGeneration;
+		++g_iPreparedCatalogReplacementGeneration;
 		++g_EffectRenderPrewarmProbe.iCatalogCommitCount;
 		g_EffectRenderPrewarmProbe.iCatalogRevision = iCatalogRevision;
 		g_EffectRenderPrewarmProbe.iMaterialProgramRegistryGeneration =
@@ -365,6 +366,7 @@ bool_t Client::CEffectDocumentRenderer::Stage_VisualProgramTarget(
 			return false;
 		}
 		Stage->iStagedFromGeneration = g_iPreparedCatalogGeneration;
+		Stage->iStagedFromReplacementGeneration = g_iPreparedCatalogReplacementGeneration;
 		Stage->pStagedFromDevice = g_pPreparedDevice;
 		Stage->iStagedFromRevision = g_iPreparedCatalogRevision;
 		bMergeExisting = g_pPreparedDevice == pDevice.Get() &&
@@ -481,6 +483,144 @@ bool_t Client::CEffectDocumentRenderer::Stage_VisualProgramTarget(
 	return true;
 }
 
+bool_t Client::CEffectDocumentRenderer::Rebase_VisualProgramTargetStage(
+	const std::shared_ptr<PRODUCT_TARGET_STAGE>& Stage,
+	std::string& strOutError)
+{
+	if (!Stage || Stage->bConsumed || !Stage->pPrepared ||
+		!Stage->pDocument || !Stage->pMaterialProgramRegistry)
+	{
+		strOutError = "Effect parallel target rebase has no valid prepared candidate.";
+		return false;
+	}
+	try
+	{
+		std::map<PREPARED_KEY, std::shared_ptr<const PREPARED_DOCUMENT>> Documents;
+		std::unordered_map<const EFFECT_DOCUMENT_DESC*,
+			std::shared_ptr<const PREPARED_DOCUMENT>> ByIdentity;
+		std::shared_ptr<PRODUCT_PREWARM_SESSION> Session;
+		uint64_t generation = 0u;
+		uint64_t replacementGeneration = 0u;
+		ID3D11Device* device = nullptr;
+		uint64_t revision = 0u;
+		{
+			const std::scoped_lock Lock(g_EffectRenderCacheMutex);
+			const auto core = g_EffectRendererCores.find(Stage->pDevice.Get());
+			// A window may be the first admission into a new catalog session.
+			// Only its first additive target may advance the replacement marker;
+			// arbitrary replace/clear and a return to an old session remain stale.
+			const bool adoptsNewSession =
+				(Stage->pStagedFromDevice != Stage->pDevice.Get() ||
+				 Stage->iStagedFromRevision != Stage->iCatalogRevision) &&
+				Stage->iStagedFromReplacementGeneration != UINT64_MAX &&
+				g_iPreparedCatalogReplacementGeneration == Stage->iStagedFromReplacementGeneration + 1u &&
+				g_iPreparedCatalogAdoptionGeneration == g_iPreparedCatalogReplacementGeneration;
+			if ((!adoptsNewSession &&
+				 g_iPreparedCatalogReplacementGeneration != Stage->iStagedFromReplacementGeneration) ||
+				core == g_EffectRendererCores.end() ||
+				core->second.get() != Stage->pRendererCoreIdentity.get())
+			{
+				strOutError = "Effect parallel target was invalidated by catalog replacement or clear.";
+				return false;
+			}
+			if (g_iPreparedCatalogGeneration == Stage->iStagedFromGeneration)
+				return true;
+			// Only additive commits in this exact session are compatible. A new
+			// device, registry or authoring replacement must never revive stale work.
+			if (g_pPreparedDevice != Stage->pDevice.Get() ||
+				g_iPreparedCatalogRevision != Stage->iCatalogRevision ||
+				!g_pProductPrewarmSession ||
+				g_pProductPrewarmSession->pContext != Stage->pContextIdentity.Get() ||
+				g_pProductPrewarmSession->pMaterialProgramRegistry.get() !=
+					Stage->pMaterialProgramRegistry.get())
+			{
+				strOutError = "Effect parallel target prewarm session identity changed.";
+				return false;
+			}
+			generation = g_iPreparedCatalogGeneration;
+			replacementGeneration = g_iPreparedCatalogReplacementGeneration;
+			device = g_pPreparedDevice;
+			revision = g_iPreparedCatalogRevision;
+			if (Stage->bAlreadyPrepared)
+			{
+				const auto existing = g_PreparedEffectDocuments.find(Stage->Key);
+				if (existing == g_PreparedEffectDocuments.end() ||
+					existing->second.get() != Stage->pPrepared.get())
+				{
+					strOutError = "Effect parallel target prepared identity changed.";
+					return false;
+				}
+				Stage->iStagedFromGeneration = generation;
+				Stage->iStagedFromReplacementGeneration = replacementGeneration;
+				Stage->pStagedFromDevice = device;
+				Stage->iStagedFromRevision = revision;
+				return true;
+			}
+			for (const auto& [key, prepared] : g_PreparedEffectDocuments)
+			{
+				(void)prepared;
+				if (key.strEffectAssetId == Stage->strEffectAssetId)
+				{
+					strOutError = "Effect parallel target duplicates a committed target identity.";
+					return false;
+				}
+			}
+			Documents = g_PreparedEffectDocuments;
+			ByIdentity = g_PreparedEffectDocumentsByIdentity;
+			Session = std::make_shared<PRODUCT_PREWARM_SESSION>(*g_pProductPrewarmSession);
+		}
+		if (!Stage->pCandidateSession ||
+			!Documents.emplace(Stage->Key, Stage->pPrepared).second ||
+			!ByIdentity.emplace(Stage->pDocument.get(), Stage->pPrepared).second)
+		{
+			strOutError = "Effect parallel target merge identity is incomplete.";
+			return false;
+		}
+		// Keep resources already committed by earlier targets and add this
+		// candidate's resources. Prepared documents retain their exact own refs.
+		const auto& added = Stage->pCandidateSession->SharedAssets;
+		Session->SharedAssets.NonAnimatedModels.insert(
+			added.NonAnimatedModels.begin(), added.NonAnimatedModels.end());
+		Session->SharedAssets.AnimatedModelPrototypes.insert(
+			added.AnimatedModelPrototypes.begin(), added.AnimatedModelPrototypes.end());
+		Session->SharedAssets.Textures.insert(added.Textures.begin(), added.Textures.end());
+		uint64_t resolvedCount = 0u;
+		for (const auto& [key, prepared] : Documents)
+		{
+			(void)key;
+			if (prepared) resolvedCount += prepared->iMaterialProgramResolvedElementCount;
+		}
+		if (resolvedCount > UINT32_MAX || Documents.size() > UINT32_MAX)
+		{
+			strOutError = "Effect parallel target merge exceeds probe bounds.";
+			return false;
+		}
+		{
+			const std::scoped_lock Lock(g_EffectRenderCacheMutex);
+			if (g_iPreparedCatalogGeneration != generation ||
+				g_iPreparedCatalogReplacementGeneration != replacementGeneration)
+			{
+				strOutError = "Effect parallel target cache changed while rebuilding its candidate.";
+				return false;
+			}
+			Stage->CandidateDocuments.swap(Documents);
+			Stage->CandidateDocumentsByIdentity.swap(ByIdentity);
+			Stage->pCandidateSession.swap(Session);
+			Stage->iResolvedElementCount = static_cast<uint32_t>(resolvedCount);
+			Stage->iStagedFromGeneration = generation;
+			Stage->iStagedFromReplacementGeneration = replacementGeneration;
+			Stage->pStagedFromDevice = device;
+			Stage->iStagedFromRevision = revision;
+		}
+		return true;
+	}
+	catch (...)
+	{
+		strOutError.clear();
+		return false;
+	}
+}
+
 bool_t Client::CEffectDocumentRenderer::Commit_VisualProgramTargetStage(
 	const std::shared_ptr<PRODUCT_TARGET_STAGE>& pStage,
 	std::string& strOutError)
@@ -513,7 +653,8 @@ bool_t Client::CEffectDocumentRenderer::Commit_VisualProgramTargetStage(
 			"Effect incremental Product prewarm staged target has no commit status.";
 		return false;
 	}
-	if (g_iPreparedCatalogGeneration != pStage->iStagedFromGeneration ||
+	if (g_iPreparedCatalogReplacementGeneration != pStage->iStagedFromReplacementGeneration ||
+		g_iPreparedCatalogGeneration != pStage->iStagedFromGeneration ||
 		g_pPreparedDevice != pStage->pStagedFromDevice ||
 		g_iPreparedCatalogRevision != pStage->iStagedFromRevision)
 	{
@@ -580,6 +721,19 @@ bool_t Client::CEffectDocumentRenderer::Commit_VisualProgramTargetStage(
 		strOutError =
 			"Effect incremental Product prewarm candidate identity is incomplete.";
 		return false;
+	}
+
+	// The first session admits sibling candidates prepared from an empty cache.
+	// Replacing an existing session is destructive, including A -> B -> A.
+	if (g_pPreparedDevice && (g_pPreparedDevice != pStage->pDevice.Get() ||
+		g_iPreparedCatalogRevision != pStage->iCatalogRevision ||
+		(g_pProductPrewarmSession &&
+		 (g_pProductPrewarmSession->pContext != pStage->pContextIdentity.Get() ||
+		  g_pProductPrewarmSession->pMaterialProgramRegistry.get() !=
+			pStage->pMaterialProgramRegistry.get()))))
+	{
+		++g_iPreparedCatalogReplacementGeneration;
+		g_iPreparedCatalogAdoptionGeneration = g_iPreparedCatalogReplacementGeneration;
 	}
 
 	g_PreparedEffectDocuments.swap(pStage->CandidateDocuments);
@@ -740,6 +894,7 @@ bool_t Client::CEffectDocumentRenderer::Replace_VisualProgramTarget(
 		g_PreparedEffectDocumentsByIdentity = std::move(StagedByIdentity);
 		g_pProductPrewarmSession = std::move(StagedSession);
 		++g_iPreparedCatalogGeneration;
+		++g_iPreparedCatalogReplacementGeneration;
 		++g_EffectRenderPrewarmProbe.iCatalogCommitCount;
 		g_EffectRenderPrewarmProbe.iCatalogRevision = iCatalogRevision;
 		g_EffectRenderPrewarmProbe.iMaterialProgramRegistryGeneration =
@@ -1407,6 +1562,7 @@ void Client::CEffectDocumentRenderer::Clear_Prepared_Catalog()
 	g_pPreparedDevice = nullptr;
 	g_iPreparedCatalogRevision = 0u;
 	++g_iPreparedCatalogGeneration;
+	++g_iPreparedCatalogReplacementGeneration;
 	g_EffectRenderPrewarmProbe.iCatalogRevision = 0u;
 	g_EffectRenderPrewarmProbe.iMaterialProgramRegistryGeneration = 0u;
 	g_EffectRenderPrewarmProbe.iPreparedDocumentCount = 0u;

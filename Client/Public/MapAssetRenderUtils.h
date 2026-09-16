@@ -62,6 +62,10 @@ public:
 	static bool_t Capture_CameraCullSnapshot(
 		MAP_CAMERA_CULL_SNAPSHOT& outSnapshot,
 		std::string* outFailureReason = nullptr);
+	// Render-thread view of the same validated camera cache. Consume immediately;
+	// a later camera capture may replace it. Failure returns null, never stale data.
+	static const MAP_CAMERA_CULL_SNAPSHOT* Capture_CameraCullSnapshotView(
+		std::string* outFailureReason = nullptr);
 	static bool_t Build_ShadowCullSnapshot(
 		const float4x4_t& view,
 		const float4x4_t& projection,

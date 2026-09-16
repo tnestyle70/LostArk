@@ -4,6 +4,7 @@
 #include <charconv>
 
 #include "Character.h"
+#include "AssetPreparationBatch.h"
 #include "Effect_Catalog.h"
 #include "Effect_MaterialProgramRegistry.h"
 #include "Effect_LoadPreparationJob.h"
@@ -367,7 +368,9 @@ namespace
 	uint64_t g_iArtist31470GameplayConsumeCount = 0u;
 	std::string g_strStatus = "Effect presentation service is idle.";
 
-	// Only immutable device-stage inputs cross this single persistent worker.
+	constexpr size_t PRODUCT_PREPARATION_WINDOW_CAPACITY = 3u;
+
+	// Only immutable device-stage inputs cross this persistent worker and its children.
 	// Catalog publication, queue ownership and result ACK remain on the main thread.
 	class PRODUCT_PREPARATION_WORKER final
 	{
@@ -379,6 +382,7 @@ namespace
 			std::lock_guard lock(m_Mutex);
 			if (!m_Done.load(std::memory_order_acquire) || m_Stop) return false;
 			m_Device = std::move(device); m_Context = std::move(context); m_Job = job;
+			m_Cancellation.store(false, std::memory_order_release);
 			m_Done.store(false, std::memory_order_release);
 			m_HasWork = true;
 			try
@@ -396,6 +400,14 @@ namespace
 		}
 		bool Is_Done() const { return m_Done.load(std::memory_order_acquire); }
 		HRESULT Result() const { return m_Result.load(std::memory_order_relaxed); }
+		void Cancel_Pending()
+		{
+			m_Cancellation.store(true, std::memory_order_release);
+			m_Batch.Cancel_SynchronousIo();
+			std::lock_guard lock(m_Mutex);
+			if (m_Thread.joinable())
+				CancelSynchronousIo(static_cast<HANDLE>(m_Thread.native_handle()));
+		}
 		void Stop()
 		{
 			if (!m_Thread.joinable()) return;
@@ -411,8 +423,8 @@ namespace
 					job->Get_CurrentEpoch(), job->Get_CurrentCatalogRevision()), displaced, status);
 			}
 			m_Wake.notify_one();
+			Cancel_Pending();
 			const HANDLE handle = static_cast<HANDLE>(m_Thread.native_handle());
-			CancelSynchronousIo(handle);
 			if (WAIT_OBJECT_0 != WaitForSingleObject(handle, 10000u))
 			{
 				OutputDebugStringA("[EffectPreparation] Worker did not stop within 10 seconds.\n");
@@ -441,7 +453,7 @@ namespace
 				try
 				{
 					if (SUCCEEDED(com)) result = Client::CEffectPresentationService::Run_ProductPreparationWorker(
-						device, context, job);
+						device, context, job, &m_Cancellation, &m_Batch);
 				}
 				catch (...) { result = E_FAIL; }
 				// Retire queued payload on this worker before completion reaches the frame.
@@ -469,6 +481,8 @@ namespace
 		std::shared_ptr<Client::CEffectLoadPreparationJob> m_Job;
 		std::atomic<bool> m_Done{true};
 		std::atomic<HRESULT> m_Result{S_OK};
+		std::atomic_bool m_Cancellation{false};
+		Client::CAssetPreparationBatch m_Batch;
 		bool m_HasWork = false;
 		bool m_Stop = false;
 	};
@@ -476,7 +490,7 @@ namespace
 	std::atomic<uint64_t> g_NextProductPreparationEpoch{1u};
 	std::shared_ptr<Client::CEffectLoadPreparationJob> g_RuntimePreparationJob;
 	uint64_t g_RuntimePreparationEpoch = 0u;
-	std::string g_RuntimePreparationEffectId;
+	std::vector<std::string> g_RuntimePreparationEffectIds;
 	std::string g_RuntimePreparationFailureStatus;
 	bool g_RuntimePreparationAbandoned = false;
 	uint64_t g_RuntimePreparationFailureRevision = 0u;
@@ -506,6 +520,19 @@ namespace
 			g_RuntimePreparationFailureRevision = revision;
 			g_RuntimePreparationBlockingStatus = status + " Failure receipt could not settle: " + commitStatus;
 			g_strStatus = g_RuntimePreparationBlockingStatus;
+		}
+	}
+
+	void Fail_RuntimePreparationBatch(const std::vector<std::string>& effectIds,
+		const uint64_t revision, const HRESULT result, const std::string& status)
+	{
+		// Settle the entire owned front block before release lets priority enqueue
+		// reorder it. Already committed or isolated targets retain their outcome.
+		for (const std::string& effectId : effectIds)
+		{
+			Fail_RuntimePreparationTarget(effectId, revision, result, status);
+			if (g_RuntimePreparationFailureRevision == revision)
+				break;
 		}
 	}
 
@@ -3166,8 +3193,9 @@ void Client::CEffectPresentationService::Advance_LoadingProductCuePreparation(
 			// Settle the known target while its owner still pins the FIFO front.
 			// Releasing first lets next-frame priority enqueue move it behind another
 			// target before the cancelled worker finishes and its failure is consumed.
-			Fail_RuntimePreparationTarget(g_RuntimePreparationEffectId,
+			Fail_RuntimePreparationBatch(g_RuntimePreparationEffectIds,
 				pJob->Get_CurrentCatalogRevision(), E_FAIL, Status);
+			g_RuntimePreparationWorker.Cancel_Pending();
 		}
 		g_strStatus = Status;
 		OutputDebugStringA(("[Client][EffectPresentation] " + Status + "\n").c_str());
@@ -3231,7 +3259,9 @@ void Client::CEffectPresentationService::Advance_LoadingProductCuePreparation(
 	if (EFFECT_LOAD_JOB_RESULT_KIND::TARGET_STAGED != WorkerResult.eKind ||
 		WorkerResult.strEffectAssetId.empty())
 	{
-		FailStructural("Loading Product Effect worker returned an unknown result.");
+		FailStructural(WorkerResult.Failure.has_value() ?
+			WorkerResult.Failure->strRootMessage :
+			"Loading Product Effect worker returned an unknown result.");
 		return;
 	}
 
@@ -3415,6 +3445,8 @@ void Client::CEffectPresentationService::Cancel_LoadingProductCuePreparation(
 {
 	if (nullptr == pJob || 0u == iJobEpoch)
 		return;
+	if (pJob == g_RuntimePreparationJob)
+		g_RuntimePreparationWorker.Cancel_Pending();
 	std::string ReleaseStatus;
 	(void)g_ProductPrewarmQueue.Release_LoadingOwner(
 		iJobEpoch, EFFECT_PRODUCT_LOADING_OWNER_RELEASE::CANCELLED,
@@ -3466,7 +3498,7 @@ bool_t Client::CEffectPresentationService::Drain_RuntimePreparationForLoading()
 	if (!g_RuntimePreparationWorker.Is_Done()) return false;
 	g_RuntimePreparationJob.reset();
 	g_RuntimePreparationEpoch = 0u;
-	g_RuntimePreparationEffectId.clear(); g_RuntimePreparationFailureStatus.clear();
+	g_RuntimePreparationEffectIds.clear(); g_RuntimePreparationFailureStatus.clear();
 	g_RuntimePreparationAbandoned = false;
 	return true;
 }
@@ -3475,10 +3507,25 @@ HRESULT Client::CEffectPresentationService::Run_ProductPreparationWorker(
 	ComPtr<ID3D11Device> pDevice,
 	ComPtr<ID3D11DeviceContext> pContext,
 	const std::shared_ptr<CEffectLoadPreparationJob>& pJob,
-	const std::atomic<bool>* pCancellation)
+	const std::atomic<bool>* pCancellation,
+	CAssetPreparationBatch* pPreparationBatch)
 {
 	if (nullptr == pJob)
 		return S_OK;
+	CAssetPreparationBatch LocalBatch;
+	CAssetPreparationBatch& PreparationBatch =
+		pPreparationBatch ? *pPreparationBatch : LocalBatch;
+	struct WINDOW_TARGET final
+	{
+		std::shared_ptr<const EFFECT_PRODUCT_LOADING_TARGET_STAGE> Staged;
+		std::string Status;
+		bool_t bStaged = false;
+	};
+	const auto IsCancelled = [&]()
+	{
+		return (pCancellation && pCancellation->load(std::memory_order_acquire)) ||
+			pJob->Is_Cancelled();
+	};
 
 	std::optional<EFFECT_LOAD_JOB_COMMAND> PendingBatchCommand;
 	for (;;)
@@ -3538,119 +3585,179 @@ HRESULT Client::CEffectPresentationService::Run_ProductPreparationWorker(
 		pJob->Publish_Progress(Progress);
 
 		bool_t bEpochRebased = false;
-		for (size_t i = 0u; i < Batch->Targets.size(); ++i)
+		for (size_t iWindow = 0u; iWindow < Batch->Targets.size();
+			iWindow += PRODUCT_PREPARATION_WINDOW_CAPACITY)
 		{
-			if ((pCancellation && pCancellation->load(std::memory_order_acquire)) ||
-				pJob->Is_Cancelled())
-			{
+			if (IsCancelled())
 				return HRESULT_FROM_WIN32(ERROR_CANCELLED);
-			}
-
-			const EFFECT_PRODUCT_LOAD_STAGE_REQUEST& Request =
-				Batch->Targets[i];
-			Progress.iCompleted = static_cast<uint32_t>(i);
-			Progress.strCurrentId = Request.strEffectAssetId;
-			Progress.strStatus =
-				"Preparing Product Effect document and device resources.";
-			pJob->Publish_Progress(Progress);
-
-			std::shared_ptr<const EFFECT_PRODUCT_LOADING_TARGET_STAGE> Staged;
-			std::string StageStatus;
-			bool_t bStaged = false;
-			{
-				Engine::CProfilerScope targetScope(CGameInstance::Get().Get_Profiler(), "Effect.Prepare.WorkerTarget");
-				bStaged = CEffectPresentationService::Stage_LoadingProductTarget(
-					pDevice, pContext, Request, Staged, StageStatus);
-			}
-			EFFECT_LOAD_JOB_RESULT Result;
-			Result.eKind = EFFECT_LOAD_JOB_RESULT_KIND::TARGET_STAGED;
-			Result.iJobEpoch = Command.iJobEpoch;
-			Result.iCatalogRevision = Command.iCatalogRevision;
-			Result.strEffectAssetId = Request.strEffectAssetId;
-			if (bStaged)
-			{
-				/* Keep one worker-owned reference through the matching ACK.  The
-				   owner-thread renderer commit swaps the previous prepared maps and
-				   shared-asset session into this candidate; retaining this reference
-				   makes their potentially large COM/map destruction happen back on
-				   the Loader worker after the ACK instead of on the UI frame. */
-				Result.pImmutablePayload = Staged;
-			}
-			else
-			{
-				EFFECT_LOAD_FAILURE_RECEIPT Failure;
-				Failure.iJobEpoch = Command.iJobEpoch;
-				Failure.iCatalogRevision = Command.iCatalogRevision;
-				Failure.strEffectAssetId = Request.strEffectAssetId;
-				Failure.iRootCode = E_FAIL;
-				Failure.strRootMessage = StageStatus.empty() ?
-					"Product Effect worker stage failed." : StageStatus;
-				Result.Failure = std::move(Failure);
-				++Progress.iIsolatedFailureCount;
-			}
-
-			const EFFECT_LOAD_RESULT_PUSH_RESULT PushResult =
-				pJob->Push_Result_Wait(std::move(Result));
-			if (EFFECT_LOAD_RESULT_PUSH_RESULT::REBASED == PushResult)
+			if (pJob->Is_Closed())
+				return S_OK;
+			if (pJob->Get_CurrentEpoch() != Command.iJobEpoch ||
+				pJob->Get_CurrentCatalogRevision() != Command.iCatalogRevision)
 			{
 				bEpochRebased = true;
 				break;
 			}
-			if (EFFECT_LOAD_RESULT_PUSH_RESULT::CANCELLED == PushResult)
-				return HRESULT_FROM_WIN32(ERROR_CANCELLED);
-			if (EFFECT_LOAD_RESULT_PUSH_RESULT::CLOSED == PushResult)
-				return S_OK;
-			if (EFFECT_LOAD_RESULT_PUSH_RESULT::PUSHED != PushResult)
-				return E_FAIL;
-
-			/* The staged payload remains the worker's current target until the
-			   main-thread owner has committed either its prepared record or its
-			   isolated failure receipt.  This bounds in-flight GPU/resource work
-			   to one target and prevents worker staging from outrunning commit. */
+			const size_t iWindowCount = (std::min)(
+				PRODUCT_PREPARATION_WINDOW_CAPACITY, Batch->Targets.size() - iWindow);
+			std::array<WINDOW_TARGET, PRODUCT_PREPARATION_WINDOW_CAPACITY> Window;
+			Progress.strCurrentId = Batch->Targets[iWindow].strEffectAssetId;
 			Progress.strStatus =
-				"Waiting for Product Effect target commit acknowledgment.";
+				"Preparing Product Effect document and device resource window.";
 			pJob->Publish_Progress(Progress);
-			EFFECT_LOAD_JOB_COMMAND AckCommand;
-			const EFFECT_LOAD_MAILBOX_WAIT_RESULT AckWaitResult =
-				pJob->Wait_Pop_Command(AckCommand);
-			if (EFFECT_LOAD_MAILBOX_WAIT_RESULT::CANCELLED == AckWaitResult)
+			const CAssetPreparationBatch::RESULT Prepared = PreparationBatch.Run(
+				pDevice.Get(), iWindowCount, pCancellation, [&](const size_t iSlot) -> HRESULT
+				{
+					if (IsCancelled())
+						return HRESULT_FROM_WIN32(ERROR_CANCELLED);
+					if (pJob->Is_Closed() || pJob->Get_CurrentEpoch() != Command.iJobEpoch ||
+						pJob->Get_CurrentCatalogRevision() != Command.iCatalogRevision)
+					{
+						return S_OK; // The producer discards the obsolete window after join.
+					}
+					WINDOW_TARGET& Target = Window[iSlot];
+					Engine::CProfilerScope targetScope(
+						CGameInstance::Get().Get_Profiler(), "Effect.Prepare.WorkerTarget");
+					Target.bStaged = Stage_LoadingProductTarget(pDevice, pContext,
+						Batch->Targets[iWindow + iSlot], Target.Staged, Target.Status);
+					// An individual target failure is an ordered receipt, not a reason
+					// to discard the other independently staged targets in this window.
+					return S_OK;
+				});
+			if (IsCancelled())
 				return HRESULT_FROM_WIN32(ERROR_CANCELLED);
-			if (EFFECT_LOAD_MAILBOX_WAIT_RESULT::CLOSED == AckWaitResult)
+			if (pJob->Is_Closed())
 				return S_OK;
-			if (EFFECT_LOAD_MAILBOX_WAIT_RESULT::COMMAND != AckWaitResult ||
-				!AckCommand.Is_Valid())
+			if (pJob->Get_CurrentEpoch() != Command.iJobEpoch ||
+				pJob->Get_CurrentCatalogRevision() != Command.iCatalogRevision)
 			{
-				OutputDebugStringA(
-					"[Loader][Effect] Target commit ACK wait returned an invalid command.\n");
-				return E_FAIL;
-			}
-			if (EFFECT_LOAD_JOB_COMMAND_KIND::CANCEL == AckCommand.eKind)
-				return HRESULT_FROM_WIN32(ERROR_CANCELLED);
-			if (EFFECT_LOAD_JOB_COMMAND_KIND::CLOSE == AckCommand.eKind)
-				return S_OK;
-			if (EFFECT_LOAD_JOB_COMMAND_KIND::REBASE == AckCommand.eKind)
-			{
-				PendingBatchCommand = std::move(AckCommand);
 				bEpochRebased = true;
 				break;
 			}
-			if (EFFECT_LOAD_JOB_COMMAND_KIND::TARGET_COMMIT_ACK !=
-					AckCommand.eKind ||
-				AckCommand.iJobEpoch != Command.iJobEpoch ||
-				AckCommand.iCatalogRevision != Command.iCatalogRevision ||
-				1u != AckCommand.EffectAssetIds.size() ||
-				AckCommand.EffectAssetIds.front() != Request.strEffectAssetId)
+			if (FAILED(Prepared.result))
+				return Prepared.result;
+
+			// Child work has joined before any result is published. The producer
+			// retains at most three private target bundles and one unacknowledged
+			// result; main-thread commit never waits for preparation.
+			for (size_t iSlot = 0u; iSlot < iWindowCount; ++iSlot)
 			{
-				OutputDebugStringA(
-					"[Loader][Effect] Target commit ACK identity does not match the staged target.\n");
-				return E_FAIL;
+				const size_t i = iWindow + iSlot;
+				const EFFECT_PRODUCT_LOAD_STAGE_REQUEST& Request = Batch->Targets[i];
+				WINDOW_TARGET& Target = Window[iSlot];
+				auto& Staged = Target.Staged;
+				auto& StageStatus = Target.Status;
+				bool_t bStaged = Target.bStaged;
+				if (IsCancelled())
+					return HRESULT_FROM_WIN32(ERROR_CANCELLED);
+				if (pJob->Is_Closed())
+					return S_OK;
+				if (pJob->Get_CurrentEpoch() != Command.iJobEpoch ||
+					pJob->Get_CurrentCatalogRevision() != Command.iCatalogRevision)
+				{
+					bEpochRebased = true;
+					break;
+				}
+				Progress.strCurrentId = Request.strEffectAssetId;
+				const bool_t bRendererRebaseFailed = bStaged &&
+					!CEffectDocumentRenderer::Rebase_VisualProgramTargetStage(
+						Staged->pRendererStage, StageStatus);
+				if (bRendererRebaseFailed)
+					bStaged = false;
+				EFFECT_LOAD_JOB_RESULT Result;
+				Result.eKind = bRendererRebaseFailed ?
+					EFFECT_LOAD_JOB_RESULT_KIND::STRUCTURAL_FAILURE :
+					EFFECT_LOAD_JOB_RESULT_KIND::TARGET_STAGED;
+				Result.iJobEpoch = Command.iJobEpoch;
+				Result.iCatalogRevision = Command.iCatalogRevision;
+				Result.strEffectAssetId = Request.strEffectAssetId;
+				if (bStaged)
+				{
+					/* Keep one worker-owned reference through the matching ACK.  The
+					   owner-thread renderer commit swaps the previous prepared maps and
+					   shared-asset session into this candidate; retaining this reference
+					   makes their potentially large COM/map destruction happen back on
+					   the Loader worker after the ACK instead of on the UI frame. */
+					Result.pImmutablePayload = Staged;
+				}
+				else
+				{
+					EFFECT_LOAD_FAILURE_RECEIPT Failure;
+					Failure.iJobEpoch = Command.iJobEpoch;
+					Failure.iCatalogRevision = Command.iCatalogRevision;
+					Failure.strEffectAssetId = Request.strEffectAssetId;
+					Failure.iRootCode = E_FAIL;
+					Failure.strRootMessage = StageStatus.empty() ?
+						"Product Effect worker stage failed." : StageStatus;
+					Result.Failure = std::move(Failure);
+					if (!bRendererRebaseFailed)
+						++Progress.iIsolatedFailureCount;
+				}
+
+				const EFFECT_LOAD_RESULT_PUSH_RESULT PushResult =
+					pJob->Push_Result_Wait(std::move(Result));
+				if (EFFECT_LOAD_RESULT_PUSH_RESULT::REBASED == PushResult)
+				{
+					bEpochRebased = true;
+					break;
+				}
+				if (EFFECT_LOAD_RESULT_PUSH_RESULT::CANCELLED == PushResult)
+					return HRESULT_FROM_WIN32(ERROR_CANCELLED);
+				if (EFFECT_LOAD_RESULT_PUSH_RESULT::CLOSED == PushResult)
+					return S_OK;
+				if (EFFECT_LOAD_RESULT_PUSH_RESULT::PUSHED != PushResult)
+					return E_FAIL;
+
+				/* Only this FIFO result crosses to the owner before ACK. Other private
+				   window targets cannot publish or mutate the owner's commit token. */
+				Progress.strStatus =
+					"Waiting for Product Effect target commit acknowledgment.";
+				pJob->Publish_Progress(Progress);
+				EFFECT_LOAD_JOB_COMMAND AckCommand;
+				const EFFECT_LOAD_MAILBOX_WAIT_RESULT AckWaitResult =
+					pJob->Wait_Pop_Command(AckCommand);
+				if (EFFECT_LOAD_MAILBOX_WAIT_RESULT::CANCELLED == AckWaitResult)
+					return HRESULT_FROM_WIN32(ERROR_CANCELLED);
+				if (EFFECT_LOAD_MAILBOX_WAIT_RESULT::CLOSED == AckWaitResult)
+					return S_OK;
+				if (EFFECT_LOAD_MAILBOX_WAIT_RESULT::COMMAND != AckWaitResult ||
+					!AckCommand.Is_Valid())
+				{
+					OutputDebugStringA(
+						"[Loader][Effect] Target commit ACK wait returned an invalid command.\n");
+					return E_FAIL;
+				}
+				if (EFFECT_LOAD_JOB_COMMAND_KIND::CANCEL == AckCommand.eKind)
+					return HRESULT_FROM_WIN32(ERROR_CANCELLED);
+				if (EFFECT_LOAD_JOB_COMMAND_KIND::CLOSE == AckCommand.eKind)
+					return S_OK;
+				if (EFFECT_LOAD_JOB_COMMAND_KIND::REBASE == AckCommand.eKind)
+				{
+					PendingBatchCommand = std::move(AckCommand);
+					bEpochRebased = true;
+					break;
+				}
+				if (EFFECT_LOAD_JOB_COMMAND_KIND::TARGET_COMMIT_ACK !=
+						AckCommand.eKind ||
+					AckCommand.iJobEpoch != Command.iJobEpoch ||
+					AckCommand.iCatalogRevision != Command.iCatalogRevision ||
+					1u != AckCommand.EffectAssetIds.size() ||
+					AckCommand.EffectAssetIds.front() != Request.strEffectAssetId)
+				{
+					OutputDebugStringA(
+						"[Loader][Effect] Target commit ACK identity does not match the staged target.\n");
+					return E_FAIL;
+				}
+				Progress.iCompleted = static_cast<uint32_t>(i + 1u);
+				Staged.reset(); // Retire swapped-out maps/session on this producer after ACK.
+				Progress.strCurrentId.clear();
+				Progress.strStatus = Progress.iCompleted == Progress.iTotal ?
+					"Finalizing Product Effect staging epoch." :
+					"Product Effect target committed.";
+				pJob->Publish_Progress(Progress);
 			}
-			Progress.iCompleted = static_cast<uint32_t>(i + 1u);
-			Progress.strCurrentId.clear();
-			Progress.strStatus = Progress.iCompleted == Progress.iTotal ?
-				"Finalizing Product Effect staging epoch." :
-				"Product Effect target committed.";
-			pJob->Publish_Progress(Progress);
+			if (bEpochRebased)
+				break;
 		}
 		if (bEpochRebased)
 			continue;
@@ -3710,16 +3817,16 @@ void Client::CEffectPresentationService::Advance_ProductCuePreparation(
 			(FAILED(g_RuntimePreparationWorker.Result()) || !g_RuntimePreparationJob->Is_Closed()))
 		{
 			const std::string failure = g_RuntimePreparationFailureStatus.empty() ?
-				"Product Effect preparation worker failed for " + g_RuntimePreparationEffectId +
-				": HRESULT " + std::to_string(g_RuntimePreparationWorker.Result()) : g_RuntimePreparationFailureStatus;
+				"Product Effect preparation worker failed: HRESULT " +
+				std::to_string(g_RuntimePreparationWorker.Result()) : g_RuntimePreparationFailureStatus;
 			g_strStatus = failure;
-			Fail_RuntimePreparationTarget(g_RuntimePreparationEffectId, iCatalogRevision,
+			Fail_RuntimePreparationBatch(g_RuntimePreparationEffectIds, iCatalogRevision,
 				g_RuntimePreparationWorker.Result(), failure);
 			Cancel_LoadingProductCuePreparation(g_RuntimePreparationJob, g_RuntimePreparationEpoch);
 		}
 		g_RuntimePreparationJob.reset();
 		g_RuntimePreparationEpoch = 0u;
-		g_RuntimePreparationEffectId.clear(); g_RuntimePreparationFailureStatus.clear();
+		g_RuntimePreparationEffectIds.clear(); g_RuntimePreparationFailureStatus.clear();
 		g_RuntimePreparationAbandoned = false;
 	}
 	if (g_RuntimePreparationFailureRevision == iCatalogRevision) return;
@@ -3763,26 +3870,34 @@ void Client::CEffectPresentationService::Advance_ProductCuePreparation(
 		return;
 	}
 
+	std::vector<std::string> EffectIds =
+		g_ProductPrewarmQueue.Collect_PendingFrontTargets(
+			PRODUCT_PREPARATION_WINDOW_CAPACITY);
+	if (EffectIds.empty() || EffectIds.front() != EffectId)
+	{
+		g_strStatus = "Product Effect pending window does not match the FIFO front.";
+		return;
+	}
 	const uint64_t epoch = Allocate_ProductPreparationEpoch();
 	auto job = std::make_shared<CEffectLoadPreparationJob>();
 	std::string status;
 	if (epoch == 0u || !job->Open(epoch, iCatalogRevision, status) ||
-		!Begin_LoadingProductCuePreparation(job, epoch, {EffectId}, status))
+		!Begin_LoadingProductCuePreparation(job, epoch, EffectIds, status))
 	{
 		g_strStatus = "Product Effect preparation could not start: " + status;
-		Fail_RuntimePreparationTarget(EffectId, iCatalogRevision, E_FAIL, g_strStatus);
+		Fail_RuntimePreparationBatch(EffectIds, iCatalogRevision, E_FAIL, g_strStatus);
 		Cancel_LoadingProductCuePreparation(job, epoch);
 		return;
 	}
 	if (!g_RuntimePreparationWorker.Submit(pDevice, pContext, job))
 	{
 		g_strStatus = "Product Effect preparation worker could not be started.";
-		Fail_RuntimePreparationTarget(EffectId, iCatalogRevision, E_FAIL, g_strStatus);
+		Fail_RuntimePreparationBatch(EffectIds, iCatalogRevision, E_FAIL, g_strStatus);
 		Cancel_LoadingProductCuePreparation(job, epoch);
 		return;
 	}
 	g_RuntimePreparationEpoch = epoch;
-	g_RuntimePreparationEffectId = EffectId;
+	g_RuntimePreparationEffectIds = std::move(EffectIds);
 	g_RuntimePreparationFailureStatus.clear();
 	g_RuntimePreparationAbandoned = false;
 	g_RuntimePreparationJob = std::move(job);
@@ -5931,7 +6046,7 @@ void Client::CEffectPresentationService::Release_PreparedResources()
 	Cancel_LoadingProductCuePreparation(g_RuntimePreparationJob, g_RuntimePreparationEpoch);
 	g_RuntimePreparationWorker.Stop();
 	g_RuntimePreparationJob.reset(); g_RuntimePreparationEpoch = 0u;
-	g_RuntimePreparationEffectId.clear(); g_RuntimePreparationFailureStatus.clear(); g_RuntimePreparationAbandoned = false;
+	g_RuntimePreparationEffectIds.clear(); g_RuntimePreparationFailureStatus.clear(); g_RuntimePreparationAbandoned = false;
 	g_RuntimePreparationFailureRevision = 0u;
 	g_RuntimePreparationBlockingStatus.clear();
     Release_ProductCamera(); g_ProductCameraCache.clear();

@@ -199,6 +199,13 @@ HRESULT CLoader::Initialize(
 	// worker reads this immutable selection even if an explicit F1 reload occurs.
 	if (eNextLevelID != LEVEL::LOBBY)
 	{
+		// ActorCatalog's lazy initialization mutates shared vectors. Finish it
+		// on this owner before level and Effect preparation can read them.
+		if (!CActorCatalog::Initialize())
+		{
+			OutputDebugStringA(("[Loader] " + CActorCatalog::Get_Status() + "\n").c_str());
+			return E_FAIL;
+		}
 		m_ePreparedCharacterClass = CNetworkManager::Get().Get_LocalCharacterClass();
 		// Lobby's accepted enter-world generation preserves this exact class.
 		// The optional character-selection UI cache is not admission authority.
@@ -215,6 +222,17 @@ HRESULT CLoader::Initialize(
 	m_iResult.store(S_FALSE, std::memory_order_release);
 	m_eState.store(STATE::RUNNING, std::memory_order_release);
 
+	// Effect requests are captured and posted by the Loading Level owner.
+	// This producer can wait for that mailbox while map/character work starts;
+	// it never mutates the target level's prototype registry.
+	if (m_pEffectLoadJob &&
+		(m_pDevice->GetCreationFlags() & D3D11_CREATE_DEVICE_SINGLETHREADED) == 0u)
+	{
+		m_hEffectThread = reinterpret_cast<HANDLE>(_beginthreadex(
+			nullptr, 0u, &CLoader::EffectThreadMain, this, 0u, nullptr));
+		if (!m_hEffectThread)
+			OutputDebugStringA("[Loader] Effect producer creation failed; using serial preparation.\n");
+	}
 	m_hThread = reinterpret_cast<HANDLE>(_beginthreadex(
 		nullptr,
 		0,
@@ -224,6 +242,7 @@ HRESULT CLoader::Initialize(
 		nullptr));
 	if (nullptr == m_hThread)
 	{
+		Request_Cancellation();
 		m_iResult.store(E_FAIL, std::memory_order_release);
 		m_eState.store(STATE::FAILED, std::memory_order_release);
 		return E_FAIL;
@@ -237,15 +256,46 @@ HRESULT CLoader::Start_Loading()
 	   which they end, and long ones surface in its Long operations list. */
 	Engine::CProfiler* const pProfiler = CGameInstance::Get().Get_Profiler();
 	HRESULT result = S_OK;
+	try
 	{
 		Engine::CProfilerScope levelScope(pProfiler, "Loader.LevelLoad");
 		result = CLevelRegistry::Execute_Load(m_eNextLevelID, *this);
 	}
-	if (SUCCEEDED(result) && nullptr != m_pEffectLoadJob)
+	catch (const std::bad_alloc&) { result = E_OUTOFMEMORY; }
+	catch (...) { result = E_FAIL; }
+	if (FAILED(result))
+		Request_Cancellation();
+	if (nullptr != m_hEffectThread)
 	{
-		Engine::CProfilerScope effectScope(pProfiler, "Loader.EffectPreparation");
-		result = Run_EffectLoadPreparation();
+		// Main keeps consuming the Effect queue while this worker joins. Free
+		// owns the bounded shutdown deadline and both producer handles.
+		const DWORD waited = WaitForSingleObject(m_hEffectThread, INFINITE);
+		if (WAIT_OBJECT_0 != waited)
+		{
+			OutputDebugStringA("[Loader] Effect producer join failed; terminating the process.\n");
+			if (!TerminateProcess(GetCurrentProcess(), ERROR_INVALID_HANDLE))
+				std::terminate();
+			__assume(0);
+		}
+		const HRESULT effectResult = static_cast<HRESULT>(
+			m_iEffectResult.load(std::memory_order_acquire));
+		if (SUCCEEDED(result) || result == HRESULT_FROM_WIN32(ERROR_CANCELLED))
+			result = effectResult;
 	}
+	else if (SUCCEEDED(result) && nullptr != m_pEffectLoadJob)
+	{
+		try
+		{
+			Engine::CProfilerScope effectScope(pProfiler, "Loader.EffectPreparation");
+			result = Run_EffectLoadPreparation();
+		}
+		catch (const std::bad_alloc&) { result = E_OUTOFMEMORY; }
+		catch (...) { result = E_FAIL; }
+	}
+	if (SUCCEEDED(result) && m_isCancellationRequested.load(std::memory_order_acquire))
+		result = HRESULT_FROM_WIN32(ERROR_CANCELLED);
+	if (FAILED(result))
+		Request_Cancellation();
 	m_iResult.store(result, std::memory_order_release);
 	m_eState.store(
 		SUCCEEDED(result) ? STATE::SUCCEEDED : STATE::FAILED,
@@ -258,7 +308,51 @@ HRESULT CLoader::Start_Loading()
 HRESULT CLoader::Run_EffectLoadPreparation()
 {
 	return CEffectPresentationService::Run_ProductPreparationWorker(
-		m_pDevice, m_pContext, m_pEffectLoadJob, &m_isCancellationRequested);
+		m_pDevice, m_pContext, m_pEffectLoadJob, &m_isCancellationRequested,
+		&m_EffectPreparationBatch);
+}
+
+unsigned __stdcall CLoader::EffectThreadMain(void* pArgument)
+{
+	auto* loader = static_cast<CLoader*>(pArgument);
+	const HRESULT apartment = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+	HRESULT result = apartment;
+	if (SUCCEEDED(apartment))
+	{
+		try
+		{
+			Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "Loader.EffectPreparation");
+			result = loader->Run_EffectLoadPreparation();
+		}
+		catch (const std::bad_alloc&) { result = E_OUTOFMEMORY; }
+		catch (...) { result = E_FAIL; }
+		CoUninitialize();
+	}
+	loader->m_iEffectResult.store(result, std::memory_order_release);
+	if (FAILED(result))
+		loader->Request_Cancellation();
+	return FAILED(result) ? 1u : 0u;
+}
+
+void CLoader::Request_Cancellation() noexcept
+{
+	m_isCancellationRequested.store(true, std::memory_order_release);
+	try
+	{
+		if (m_pEffectLoadJob && !m_pEffectLoadJob->Is_Cancelled() &&
+			!m_pEffectLoadJob->Is_Closed())
+		{
+			std::optional<EFFECT_LOAD_JOB_COMMAND> displaced;
+			std::string status;
+			(void)m_pEffectLoadJob->Post_Command(EFFECT_LOAD_JOB_COMMAND::Cancel(
+				m_pEffectLoadJob->Get_CurrentEpoch(),
+				m_pEffectLoadJob->Get_CurrentCatalogRevision()), displaced, status);
+		}
+	}
+	catch (...)
+	{
+		OutputDebugStringA("[Loader] Could not post Effect cancellation; bounded shutdown remains active.\n");
+	}
 }
 
 void CLoader::Set_Status(const tchar_t* pStatus)
@@ -1464,22 +1558,15 @@ unique_ptr<CLoader> CLoader::Create(
 
 void CLoader::Free()
 {
-	if (nullptr != m_hThread)
+	Request_Cancellation();
+	HANDLE workers[2]{};
+	DWORD workerCount = 0u;
+	if (m_hThread)
+		workers[workerCount++] = m_hThread;
+	if (m_hEffectThread)
+		workers[workerCount++] = m_hEffectThread;
+	if (workerCount != 0u)
 	{
-		m_isCancellationRequested.store(true, std::memory_order_release);
-		if (nullptr != m_pEffectLoadJob &&
-			!m_pEffectLoadJob->Is_Cancelled() &&
-			!m_pEffectLoadJob->Is_Closed())
-		{
-			std::optional<EFFECT_LOAD_JOB_COMMAND> Displaced;
-			std::string CancelStatus;
-			(void)m_pEffectLoadJob->Post_Command(
-				EFFECT_LOAD_JOB_COMMAND::Cancel(
-					m_pEffectLoadJob->Get_CurrentEpoch(),
-					m_pEffectLoadJob->Get_CurrentCatalogRevision()),
-				Displaced,
-				CancelStatus);
-		}
 		const auto FailFastOnWaitFailure = [](const DWORD waitResult) noexcept
 		{
 			if (WAIT_FAILED != waitResult)
@@ -1495,13 +1582,15 @@ void CLoader::Free()
 			}
 			__assume(0);
 		};
-		DWORD waitResult = WaitForSingleObject(m_hThread, 5000);
+		DWORD waitResult = WaitForMultipleObjects(workerCount, workers, TRUE, 5000);
 		FailFastOnWaitFailure(waitResult);
 		if (WAIT_TIMEOUT == waitResult)
 		{
-			CancelSynchronousIo(m_hThread);
+			for (DWORD index = 0u; index < workerCount; ++index)
+				CancelSynchronousIo(workers[index]);
 			m_AssetPreparationBatch.Cancel_SynchronousIo();
-			waitResult = WaitForSingleObject(m_hThread, 5000);
+			m_EffectPreparationBatch.Cancel_SynchronousIo();
+			waitResult = WaitForMultipleObjects(workerCount, workers, TRUE, 5000);
 			FailFastOnWaitFailure(waitResult);
 		}
 		if (WAIT_TIMEOUT == waitResult)
@@ -1512,7 +1601,9 @@ void CLoader::Free()
 				std::terminate();
 			__assume(0);
 		}
-		CloseHandle(m_hThread);
+		for (DWORD index = 0u; index < workerCount; ++index)
+			CloseHandle(workers[index]);
 		m_hThread = nullptr;
+		m_hEffectThread = nullptr;
 	}
 }

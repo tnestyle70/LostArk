@@ -240,6 +240,30 @@ Client::CEffectProductPrewarmQueue::Begin_Frame(
 	return EFFECT_PRODUCT_PREWARM_STEP_RESULT::READY;
 }
 
+std::vector<std::string>
+Client::CEffectProductPrewarmQueue::Collect_PendingFrontTargets(
+	const size_t iMaximumCount) const
+{
+	std::vector<std::string> Targets;
+	if (m_FrontReservation.has_value() || 0u == m_iCatalogRevision)
+		return Targets;
+	Targets.reserve((std::min)(iMaximumCount, m_Pending.size()));
+	for (const std::string& EffectId : m_Pending)
+	{
+		if (Targets.size() == iMaximumCount)
+			break;
+		const auto Record = m_Records.find(EffectId);
+		if (m_Records.end() == Record ||
+			TARGET_STATE::PENDING != Record->second.eState ||
+			0u != Record->second.iLoadingOwnerEpoch)
+		{
+			break;
+		}
+		Targets.push_back(EffectId);
+	}
+	return Targets;
+}
+
 Client::EFFECT_PRODUCT_PREWARM_STEP_RESULT
 Client::CEffectProductPrewarmQueue::Begin_LoadingFrame(
 	const uint64_t iJobEpoch,

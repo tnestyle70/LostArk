@@ -2082,3 +2082,9 @@ Trail이 꼬이거나 끊길 때 tick이나 shader부터 바꾸지 않는다. �
 맵 shadow cache hit만으로 정적 장면 전체가 재사용된다고 판단하지 않는다. MapStaticBatchObject/MapAssetObject 외의 DeployPropObject처럼 같은 Render_Shadow 큐를 사용하는 소품도 별도로 확인한다. 파괴 가능한 소품은 intact STATIC, actual world/model, opaque presentation 및 시간·카메라 독립 alpha 입력을 검증한 때만 기존 depth 캐시에 참여하고 destruction/fade/animation/physics/debris/suppression/morph/texture override에는 기존 경로를 유지한다. source pass를 유지하며 camera 밖 shadow caster는 최종 light volume으로만 제외한다.
 
 GPU timestamp의 Shadow elapsed에는 CPU 명령 공급 공백이 포함될 수 있다. CPU NonBlend와 실제 draw/VS/PS 및 완전한 CPU 표본을 함께 읽고, enqueue 수를 실제 draw 수로 쓰지 않는다. 계측 예산이 차면 자식보다 늦게 종료하는 부모 scope도 사라질 수 있으므로 main root/pass 여유를 보존한다. detail 누락이 있으면 parent inclusive는 유효해도 SelfMs를 정확한 exclusive 비용이라고 보고하지 않는다. 안개는 별도 추정 대신 실제 포함 패스의 시간을 먼저 대조한다. [G34 결과](09-15/2026-09-15_MAP_AND_VALTAN_FULL_RESTORATION_RESULT.md)에 적용 및 검증 범위를 기록한다.
+
+### 모델·이펙트의 병렬 준비와 등록 순서를 구분한다
+
+서로 다른 모델·이펙트의 immutable 입력 준비는 제한된 공통 작업 예산으로 중첩할 수 있지만 Prototype registry와 Effect queue의 main commit까지 병렬화하지 않는다. Effect 후보는 먼저 끝난 순서가 아니라 원래 FIFO로 등록하고, 앞 target의 ACK 뒤 worker에서 현재 prepared catalog와 병합한다. main의 generation 검사를 제거하지 않는다. 새 session 최초 admission과 full replacement/clear를 구분해 병렬 sibling은 보존하고 A→B→A의 오래된 후보는 거부한다. 후보 개수와 미ACK 결과도 제한하며 큰 교체 자원은 worker가 해제한다.
+
+실행 중 EXE와 수정된 소스는 별개다. 개별 compile을 Product 배포나 실제 FPS 개선으로 보고하지 않는다. headless 실패 주입 검사는 CRT assertion/abort와 Windows 오류 대화상자를 로그로 돌린 뒤 실행한다. 검사 프로그램의 실패 창을 실행 중 Client 결함으로 오인하지 않도록 process 경로·시각을 함께 확인한다. 구현과 검증 경계는 [Cold loading 결과 G04~G06](09-16/2026-09-16_COLD_MAP_LOADING_IMPLEMENTATION_RESULT.md)에 둔다.

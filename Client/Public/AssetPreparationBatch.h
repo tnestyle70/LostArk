@@ -27,6 +27,10 @@ namespace Client
 		// Synchronous: every child is joined before returning. The callback may
 		// run concurrently and must own a distinct output slot for each task.
 		// The caller keeps this batch and cancellation flag alive until Run exits.
+		// All instances share at most four active callbacks and three child
+		// threads (fewer on small CPUs). Waiting owners do not consume permits.
+		// Nested batches execute serially using their parent's callback permit.
+		// A normal parent cannot upgrade to a single-thread device's exclusive permit.
 		RESULT Run(ID3D11Device* device, size_t taskCount,
 			const std::atomic_bool* cancellation,
 			const std::function<HRESULT(size_t)>& prepare);

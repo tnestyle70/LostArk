@@ -44,6 +44,8 @@ namespace EffectDocumentRendererDetail
 	ID3D11Device* g_pPreparedDevice = nullptr;
 	uint64_t g_iPreparedCatalogRevision = 0u;
 	uint64_t g_iPreparedCatalogGeneration = 0u;
+	uint64_t g_iPreparedCatalogReplacementGeneration = 0u;
+	uint64_t g_iPreparedCatalogAdoptionGeneration = 0u;
 	Client::EFFECT_RENDER_PREWARM_PROBE g_EffectRenderPrewarmProbe;
 
 	bool_t Read_ReconstructedAssetBytes(

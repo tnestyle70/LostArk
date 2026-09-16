@@ -1,7 +1,7 @@
 {
   "schema": "lostark.rendering-profiles",
   "formatVersion": 1,
-  "revision": 53,
+  "revision": 54,
   "globalQuality": {
     "ssaoEnabled": true,
     "ssaoRadius": 0.0399999991,

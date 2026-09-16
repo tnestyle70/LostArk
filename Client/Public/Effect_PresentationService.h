@@ -19,6 +19,7 @@
 NS_BEGIN(Client)
 
 class CCharacter;
+class CAssetPreparationBatch;
 class CCamera_Free;
 class CEffectLoadPreparationJob;
 struct EFFECT_PRODUCT_CAMERA_PREPARATION;
@@ -312,7 +313,7 @@ public:
 		f32_t& fOutDurationSeconds);
 	/* Called once from the main thread.  It consumes at most one queued
 	   document and performs no work on the registration frame. */
-	// One stage/ACK implementation serves Loading and in-level class preparation.
+	// A bounded staging window and ordered ACK serve Loading and in-level preparation.
 	static uint64_t Allocate_ProductPreparationEpoch();
 	// Main-thread poll: cancels runtime staging and yields until worker cleanup finishes.
 	static bool_t Drain_RuntimePreparationForLoading();
@@ -320,7 +321,8 @@ public:
 		ComPtr<ID3D11Device> pDevice,
 		ComPtr<ID3D11DeviceContext> pContext,
 		const std::shared_ptr<CEffectLoadPreparationJob>& pJob,
-		const std::atomic<bool>* pCancellation = nullptr);
+		const std::atomic<bool>* pCancellation = nullptr,
+		CAssetPreparationBatch* pPreparationBatch = nullptr);
 	static void Advance_ProductCuePreparation(
 		ComPtr<ID3D11Device> pDevice,
 		ComPtr<ID3D11DeviceContext> pContext);
