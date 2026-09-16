@@ -1355,3 +1355,155 @@ Server navigation은 이미 새 파일로 게시됐어도 실행 중 Server는 �
 정규화 출력,37개 실제 CModel,Client/Server nav bytes를 대조했다. 별도 게시 스크립트의
 PowerShell parse, 기존 project/filter XML2개와 변경 JSON parse, scoped diff 검사를 통과했다.
 Navigation의 AreaId 생략 전체5Area/쿠크4region Validate도 통과해 기존 호출을 보존했다.
+
+## G26. 발탄·베른 맵 shadow 비용, 발탄 밝기와 베른 진입 — 2026-09-16
+
+### 확인한 병목과 소스 반영
+
+사용자 저장본 `Client/Bin/ProfilerCaptures/profiler_20260916_104620_729_frame12_67768_0.json`은 12프레임 중 유효 GPU 8프레임의 평균이 142.518ms다. Shadow 112.852ms가 약79%이며 NonBlend 10.944ms, Lights 4.999ms, Render.Blend 0.038ms다. CPU 평균140.627ms이나 세부 scope 261318개가 누락돼 CPU 세부 합계를 병목 증거로 쓰지 않았다. 마지막 카운터는 draw8223, instanced4929, map placement13184다. 복원 이펙트의 입자 렌더링이 주 병목이라고 단정할 근거는 없었다.
+
+`Uses_OpaqueShadowPass`가 source material을 사용하는 완전 불투명 DEFERRED 정적 맵 표면만 선별한다. PBR3/4는 alphaMasked가 없을 때, SOURCE_SPECULAR_OPAQUE5, SOURCE_OVERLAY7/SOURCE_BG8은 mask flag64가 없을 때 허용한다. source off, fade, masked, 식생/캐릭터와 미확인 vertex 변형은 기존 경로를 유지한다. MapStaticBatchObject는 기존 depth-only pass21~23을 재사용하고, MapAssetObject는 binary shader의 새 pass20~22를 사용한다. 허용된 mesh는 Bind_ShadowMaterial과 재질 texture/RNM 계산을 생략한다. geometry, preScale, world/projection 곱셈 순서, cull mode와 draw count는 유지했다. 이는 두 맵이 공유하는 비용 절감이며 실제 FPS 상승률은 아직 측정하지 않았다.
+
+변경 CPP3개 개별 컴파일과 binary/instance 전체 FX 컴파일이 통과했다. 실제 전체 셰이더를 사용한 headless D3D11 WARP의 3264조건/835584 depth값은 기존 경로와 불일치0, nonfinite0, D3D오류0이다. 실제 두 맵의 family7/8 flag65조합, source on/off, fade, alpha, 3개 cull과 반전·비균일·shear basis를 포함한다. authored material coverage는 발탄10160배치, 베른16182배치에서 하나 이상 적용 가능하지만 light/frustum culling 전 집계이므로 실제 draw 절감 수로 보고하지 않는다. 증거는 `out/MapShadowPerf20260916/{capture_summary.json,source_material_coverage.json,verification.json,result.json}`이다.
+
+### 발탄 밝기
+
+RenderingProfiles revision49→50에서 활성 `scene.valtan.cool-low-key.v1`만 exposure1→0.73, base/두 region bloom threshold→2.74, intensity→0.5로 조정하고 공식 publisher의 Validate/Publish를 통과했다. 원본 LUT와 source tone 식, 비교용 source-rendering profile, 다른21개 profile/전역품질/광원은 유지했다. LUT 표본의 검정 출력은0이며 단독 white floor를 확인하지 못했다. 이 변경은 사용자가 보고한 밝기·번짐을 줄이는 프로젝트 튜닝이지 원본 값 복원이나 장면 픽셀 검증이 아니다. 증거는 `out/MapFrameAndValtanBrightness20260916/brightness-profile-change.json`이다. 실행 중 Client의 메모리 profile을 자동 reload하지 않았다.
+
+### 베른 진입과 bootstrap 소비
+
+`Client/Bin/Debug/Diagnostics/client-session-61448.jsonl`은 Server 승인 뒤 약250.295초에 target-level-create가 실패한 기록이다. `loading.complete`는 실패 원인이 아니라 activation 요청 이름이었다. 실제 MapEffect91배치/MapLight315개는 parse에 통과했지만, installed Resources를 사용하는 Product 준비에서는 물보라 `par_d_fallsplash_w1_001`과 `par_d_fallsplash_w3_001`의 `particlemodulevelocitycone`이 거절돼 9/11개만 준비됐다. Loader가 격리한 실패를 Bern Initialize의 필수 ambient transaction이 거절하는 재현 가능한 차단점이다. 이전 로그가 모든 Initialize 원인을 구분하지 않으므로 다른 실패가 전혀 없었다고 주장하지 않는다.
+
+기존 codec/spawn carrier에 exact VelocityCone의 scalar angle/velocity, 유효 direction과 emitter-space 모드를 연결했다. 원본85~100cm/s와 direction(0,0,1)을 한 번만 좌표·단위 변환한다. angle0~10을 degree로 해석한 수치 재구성이며 원작 random 알고리즘/원본 실행 코드 동일성까지 확인한 것은 아니다. world-space velocity, 추가 owner scale, vector 분포와 zero direction은 계속 거절한다. Bern Initialize는 실제 실패 단계의 recovery를 먼저 기록하고 기존 first-recovery 소비자가 generic MainApp detail의 덮어쓰기를 막는다.
+
+별도로 Client presentation reader의8192행 제한을 기존 Server/publisher32768행과 같은 Shared 상수로 통일했다. 실제23555행 bootstrap의 admission 실패를 제거하고, 엄격한 unsigned 파싱 및 선언 행 수와 payload 일치를 검사한다. 이 결함을 Bern map-effect 실패와 동일한 원인으로 기록하지 않는다.
+
+Client CPP4개·Server CPP1개·Shared CPP 개별 컴파일과 publisher PowerShell parse가 통과했다. 실제11/11 ambient가 준비·10초 CPU 재생에 통과했으며, cone velocity 표본6449개의 속도와 각도가 입력 범위 안이었다. 2배 크기/90도 회전에서도 기존 root basis가 한 번 적용됨을 확인했다. 미지원8개 입력 거절, 실제23555행/32768행과 malformed·초과·부족 bootstrap14개 검사가 통과했다. 상세 근거는 `out/BernEntry20260916/RESULT_NOTES.md`와 해당 폴더의 native 결과다.
+
+### 빌드·화면 경계
+
+에이전트는 실행 중 Client/Server를 종료하거나 제품 EXE/DLL을 교체하지 않았다. 사용자가 현재 Product 빌드를 직접 수행 중이다. 위 기록은 최소 컴파일·shader/depth/데이터 검증이며, 새 제품 빌드 성공·실제 베른 입장·개선 후 FPS·밝기 및 원작 시각 일치의 완료 기록이 아니다. 사용자 새 profiler를 같은 위치·설정으로 저장하면 기존 프레임과 비교할 수 있다. 작은 오망성과 독립 진입 포탈은 09-13 RADIAL MOTION RESULT의 후속 절에서 별도로 기록한다.
+
+## G27. 발탄 후속 캡처의 정적 depth 재사용과 local light 비용
+
+`profiler_20260916_155102_918_frame26_62472_0.json`의 CPU frame 평균은85.231ms, frame interval은86.565ms(11.552fps), 유효 GPU22개 평균은86.746ms다. Shadow54.724ms(63.1%), NonBlend20.001ms, Lights4.570ms이며 shadow VS11,602,859회다. 기존 G26 이후 shadow PS는 약573만→98만으로 줄었으나 geometry 재제출은 그대로였다. camera-visible601/placement13184로 컬링은 이미 작동한다. CPU scope403405개 누락 때문에 GPU elapsed만으로 순수 GPU 연산과 CPU 제출 지연의 비중을 확정하지 않는다.
+
+### 공통 소스 반영
+
+Engine의 기본 거절 `Try_GetStaticShadowRevision`을 통해 완전 불투명·비 morph인 기존 map batch만 정적 depth 캐시에 참여한다. light view/projection, source-material 설정, ordered weak owner/control block과 instance revision이 같을 때 이전 정적 depth를 복사하고 동적 caster를 이어 그린다. transform·visible·bounds 변경, 구성 변경, source 모드, scene replacement와 실패는 캐시를 무효화한다. 추가 texture 생성 실패는 기존 매 프레임 경로를 유지하며 weak owner는 객체 수명을 연장하지 않는다. 캐시 copy가 그림자 해상도·depth format·geometry·sampling을 바꾸지 않는다.
+
+fallback MapAssetObject는 실제 light volume 밖이면 shadow 제출을 생략한다. morph와 source-character43의 vertex displacement는 bounds 검사에서 제외한다. Deferred local light는 최종 attenuation이 정확히0인 pixel에서 뒤의 재질/BRDF 계산을 생략한다. 실제 광원 개수·범위·순서와 map visibility는 유지한다. Engine 정본과 Client shader 사본을 함께 변경했다.
+
+### 수치 검증
+
+- 실제 Renderer의 Render_Shadow/Ready_Shadow_Resources 본문을 추출한 headless WARP 비교:97검사,557056 depth값, 비배경538210값, bitwise 차이0, D3D오류·경고0. cold/hit,동적 ghost,revision·light·source·scene 변경,추가/삭제/순서,실패/재시도,queue append,weak lifetime 및 같은주소의 다른control block을 포함한다. 실제 맵 대신 통제한 caster를 썼으므로 실제 맵 FPS 증거는 아니다.
+- 실제 map 함수6개 기반 admission/culling:45검사 실패0. mutable morph·masked/fade·source off·revision overflow와 보수적6평면 경계를 포함한다. 설치 발탄 asset/material 기준 캐시 후보3384batch·8711배치·3615submesh·14,197,926indices는 light culling 전 집계이며 실제 절감량은 아니다.
+- 실제 전체 Deferred baseline/candidate FX를 hardware와 WARP에서 각각2176조건·163,931,136 FP16 channel 비교:차이0,nonfinite0,D3D오류0. 통제한1280×720·22point·9쌍 표본의 좁은범위 조건6.083→0.709ms는 shader fixture 결과이고 제품 Lights4.570ms나 FPS에 곧바로 환산하지 않는다.
+- Renderer/MapStaticBatchObject/MapAssetObject 개별 Debug 컴파일과 전체 Deferred FX 컴파일 통과. 제품 빌드는 아래 통합 빌드 절에서 별도 기록한다.
+
+근거는 `out/ValtanPerf20260916/{CaptureAnalysis,ShadowCache,ShadowAdmission,LightEarlyOut}`다. 실제 사용자 후속 캡처는 아직 없으며 새 FPS를 측정한 것으로 보고하지 않는다.
+
+## G28. 베른 직접 입장과 Create Character transaction
+
+Bern만 pending/created identity가 없으면 admission 이전에 실패했다. CharacterSelectionState의 pending Bern identity 우선은 유지하고, pending이 없을 때 Valtan/Kouku의 기존 created→AUDITION 선택을 공유하도록 수정했다. Lobby와 F1은 Server 승인 경로를 그대로 사용한다. 선택 class가 없으면 기존 Lance Master 기본값, created identity가 없으면 Test-<PID>를 사용한다. 직접 입장을 created identity로 만들지 않으며 실제 Bern Change_Level 이후 pending commit과 실패 cancel은 그대로다.
+
+실제 CharacterSelectionState.cpp와 현재 Shared Debug.lib를 사용한23검사 실패0, Level_Lobby 최소 Debug 컴파일 통과다. 초기 입장,선택class,pending우선,잘못된nickname,취소,commit,기존created재진입과 미지원world의출력보존을 확인했다. UTF-8-noBOM/CRLF와 무관한 dirty 변경을 보존했다. AGENTS 및 팀핸드북의 direct Bern 계약을 함께 갱신했다. 근거는 `out/BernDirectEntry20260916/`이며 실제 Client 화면 입장은 사용자 확인 영역이다.
+## G29. Character Select 최적화의 네 레벨 연결
+
+Character Select/Bern/Valtan/Kouku의 Loader map 준비, registry scope, MapPlacementRuntime,
+MapStaticBatchObject/MapAssetObject, Model/Material/Shader, player animation, Effect playback 및
+local light 실제 호출자를 대조했다. 배치·camera/light 컬링·GPU LOD·동일 instance 업로드 생략,
+geometry/texture/shader 입력 공유, pose/palette 및 Effect 평가 재사용은 공통 경로다. 이를
+Character Select에만 허용하는 레벨 조건은 발견하지 못했다. 감사 근거는
+`out/ValtanPerf20260916/CaptureAnalysis/common-level-optimization-audit.md`다.
+
+실제 누락은 Level_Loading의 선택 player Effect 사전 준비 조건이었다. Bern도 기존
+Queue_ProductCues_Priority와 로딩 worker의 target set에 포함하고 Effects 진행 표시와
+BERN label을 연결했다. boss별 준비 조건, optional 실패 격리, epoch/cancel과 activation gate는
+유지했다. 기존 Bern은 Character spawn 뒤 공통 incremental worker로 등록하므로 이는
+입장 후 cold preparation을 로딩 단계로 옮긴 변경이며, 측정한 첫 스킬 지연 수치는 없다.
+
+Bern의 far-plane 여유/hysteresis와 맵별 scope·재질 admission·LOD threshold를 유지했다.
+revision50의 기본 Bern 및 Kouku profile은 shadow가 꺼져 있으므로 G27의 캐시가 이 설정에서
+실행되지 않는 것은 연결 누락이 아니다. Character Select와 Valtan은 켜져 있다. 공통 최적화가
+연결돼도 맵의 배치 수·재질·광원 부하는 달라 실제 FPS가 같아지는 것은 아니다.
+
+## G30. 베른 Map Effect admission 거절 수정
+
+후속 `client-session-62472.jsonl` generation4는 Server 승인 뒤185.238초에 bern.map-effect admission이 실패했다. Initialize는 Change_Level 이전에 실행되므로 current가 LOADING인 상태에서 BERN 소유 descriptor를 제출했고 Spawn_LevelPlacement의 active-level 검사가 거절했다. 이 검사를 통과시켜도 queued Spawn의 SOURCE_LOOP 조건이 level-owned를 금지해 즉시 Spawn_Immediate와 불일치하는 두 번째 거절이 있었다.
+
+MapEffectPresentationRuntime은 임시 admission probe만 current==target 또는 current==LOADING을 허용하며 그 current layer에 잠깐 생성한다. 모든 probe는 반환 전에 Stop하며 실제 m_iLevelIndex와 활성화 후 spawn의 target은 유지한다. 잘못된 두 번째 sample 등 중간 실패에도 앞서 생성한 후보를 정리한다. 다른 활성 level의 요청과 실제 target-owned spawn의 LOADING 중 제출은 계속 거절한다. queued SOURCE_LOOP는 즉시 경로와 같은 world-root/NATURAL/비 external/비 character 및 level-owned/no-boss 또는 boss-owned/boss 조건으로 정렬했다.
+
+변경2CPP 최소 컴파일 통과. 실제 Build_WorldRoot/Spawn_LevelPlacement/Probe_WorldEffectAdmissions와 두 source-loop predicate를 추출한 검증152개 실패0, owner/policy 조합128개 일치다. 실제 게시된 Bern91행의 LOADING/BERN admission과 전probe정리, foreign level·invalid root·queue/clone/seek 실패·중간 sample 실패를 검사했다. clone backend는 fixture이므로 실제 GPU attach, Client Bern 입장 또는 FPS 성공 증거로 확대하지 않는다. 근거는 `out/ValtanPerf20260916/BernAdmission/`이다.
+
+### G27~G30 통합 빌드와 남은 화면 확인
+
+사용자가 미저장 편집을 저장하고 Client62472/Server51828을 종료했다고 확인한 뒤 실행 중 제품 프로세스가 없음을 검사했다. 공식 `Invoke-BuildAndRegression.ps1 -Configuration Debug -Profile Product`로 Engine→Shared→Server→Client가 모두 PASS다. 첫 빌드는354.597초, Bern 사전 준비를 추가한 마지막 증분 빌드는8.281초로 성공했고 마지막에는 Level_Loading OBJ1개와 Client binary1개만 갱신했다. receipt는 `out/BuildPipeline/runs/20260916T071531345Z-debug-product.json` 및 `20260916T071624844Z-debug-product.json`이다. 기존 C4819/FXC 경고는 남지만 컴파일·링크 오류는 없다.
+
+Engine DLL, Deferred CSO와 새 GameObject SDK 헤더의 원본/배포 SHA-256 일치를 확인했다. Client.exe 최종 수정 시각은2026-09-16 16:16:24 KST이며 Server는 현재 소스로 up-to-date라 기존 산출물을 재사용했다. 관련 project/filter XML5개 parse와 변경 범위 diff-check도 통과했다. 일반 Product 경로대로 별도 Data publish나 광역 runtime 진단은 실행하지 않았다.
+
+Client와 Server를 자율 실행하지 않았고 둘 다 종료 상태다. 사용자는 Server와 새 Client를 실행해 F1 Level Navigation→Bern 직접 입장, Character Select→Create Character→Bern, 세 맵의 같은 위치 profiler를 확인한다. 실제 Bern 입장·최종 시각 결과·개선 FPS는 아직 사용자 확인 전이며 이 기록을 화면 PASS로 사용하지 않는다.
+
+## G31. 후속 발탄 캡처와 남은 정적 그림자 제출
+
+사용자 16:22:57 저장본은 37 CPU/33 유효 GPU 프레임 모두 기존 정적 캐시에 적중한다. 이전 수정은 동작하지만 캐시에서 제외된 경로가 남았다. Shadow 전체 평균47.947ms, Dynamic46.498ms이며 shadow VS는 이전1160만에서542만으로 감소했다. 전체 캡처의 frame interval은75.981ms이고, 카메라·창 상태가 다른 표본이므로 이전 캡처와 통제된 A/B FPS로 비교하지 않는다. 근거는 `out/ValtanPerf20260916/Followup1622/`다.
+
+공통 MapAssetRenderUtils에 시간·카메라에 독립적인 alpha depth 조건을 추가하고 MapStaticBatchObject와 개별 MapAssetObject를 같은 정적 캐시에 연결했다. 기존 shader의 alpha 판정과 pass는 유지한다. BG parallax/panning, 움직이는 UV, morph, native 및 texture override는 기존 동적 경로를 사용한다. 개별 객체는 실제 world/bounds/pass를 비교하며 batch는 WorldInvTranspose 변경도 revision에 포함한다. Material/Model의 override 조회는 이 두 실제 소비자에 연결된다.
+
+설치 발탄의 기존 미참여653 active batch 중652개가 추가 후보이며, 나머지 BG parallax+mask는 제외한다. 이 숫자는 stage/light culling 전 집계이며 실제 draw 절감량이 아니다. MapStaticBatch 관련 실제 함수141검사와 최소3CPP 컴파일, 개별 MapAssetObject72검사와 최소 컴파일을 통과했다. 전체 원본 FX의 instance/binary 경로를 WARP 및 하드웨어에서 시간5개·카메라4개로 비교한106,168,320 depth값은 차이0, D3D 오류·경고0이다. 실제로 값이 변하는 parallax/panning 등5종 대조군도 확인했다. 근거는 `out/ValtanPerf20260916/{StaticMaskedCoverage,FallbackShadow}` 및 `out/MapShadowPerf20260916/G31StaticAlpha/`다. 실제 맵 FPS 검증을 대신하지 않는다.
+
+## G32. 베른 대형 맵의 Debug 순회와 빈 작업 계측
+
+사용자 16:35:32 베른 저장본34프레임은 placement50017, batch16421, visible429, 실제 draw883이다. shadow는 꺼져 있고 평균0.0044ms로, 발탄의 주 병목과 다르다. NonBlend36.9525ms와 Client.Update24.7043ms가 남았으며 CPU scope4096 상한 뒤 기록이 잘려 세부 CPU 전체를 분해할 수 없다. GPU elapsed에는 CPU 제출 대기도 포함될 수 있다. 베른의 배치 수는 발탄13184·쿠크3369·Character Select804보다 크다.
+
+기존 Debug 최적화 정책을 MapStaticBatchObject/MapAssetObject와 Engine GameObject/Layer/Object_Manager/GameInstance/Renderer의7CPP에 적용했다. Debug x64에만 MaxSpeed, ProgramDatabase, JMC 해제와 PCH 미사용을 지정하고 Debug CRT/STL ABI, float 정책 및 Release 설정은 보존한다. 프레임 순서·컬링·광원·그릴 객체를 바꾸는 정책은 추가하지 않았다.
+
+실제10개 hot 함수와 기존 Profiler.cpp를 사용한 CPU fixture는16421 batch/429 visible/매 프레임 카메라 변경에서 /Od7.469→/O2 3.778ms, profiler ON에서는13.513→10.064ms였다. 각80프레임×3회 비교에서 draw/instance/material/pass 수와 제출 순서 hash가 일치했다. GPU와 material backend는 stub이므로 제품 프레임 향상치로 환산하지 않는다. 근거는 `out/ValtanPerf20260916/Bern1635/HotPath/comparison.json`이다.
+
+동일 visibility cache를 즉시 반환하는 호출은 Visibility scope를 열지 않고, batch 전체가 컬링되면 비어 있는 CullAndPack scope를 만들지 않도록 위치를 옮겼다. 실제 계측이 필요한 작업과 카운터는 유지한다. 이는 profiler를 켠 상태의 불필요한 계측 비용도 줄이는 변경이다. 수정 후 실제 MapStaticBatchObject TU의 /O2 컴파일과 G31 141검사를 다시 통과했고, actual10 함수의 draw429/instance429와 제출 checksum도 동일하다. 근거는 `Bern1635/HotPath/trimmed_scope_verification.json`이다.
+
+## G33. 렌더링 기본값 요청의 정정과 보류
+
+최초 해석으로 베른에 발탄의 노출·블룸 일부만 복사하고 FXAA를 끈 revision51을 게시했다. 사용자는 FXAA를 원인으로 확정한 것이 아니라 오늘 밝기를 복구한 발탄의 옵션을 베른에도 원한다고 정정했다. 현재 발탄 FXAA는 true이며 이를 밝기 원인으로 판단한 근거는 없다. 사용자의 성능 우선 요청에 따라 이번 베른 변경을 이전 값으로 되돌렸으며 revision52 공식 Validate/Publish가 16:47:02 KST에 성공했다. parsed authoring/runtime은 revision 이외에 작업 전 전체22 profile과 일치한다. 근거는 `out/ValtanPerf20260916/BernRenderingDefaults/rollback52_*`다. 최종 옵션 복사는 보류한다.
+
+### G31~G32 사용자 빌드 인계
+
+사용자가 직접 빌드하겠다고 확인하여 모든 C++/헤더/project 변경을 동결하고 에이전트는 후속 Product 빌드를 시작하지 않았다. 위 결과는 소스 반영·개별 컴파일·수치 검증이며 새 통합 EXE/DLL 성공 기록은 아니다. 사용자는 Debug x64 솔루션의 정상 Build로 Engine SDK와 Client를 함께 갱신한다. Rebuild/Clean 또는 산출물 삭제는 필요하지 않다. 변경 전 실행 파일은 G27~G30의16:16 빌드이며 G31~G32는 이번 사용자 빌드가 성공한 뒤 실행에 반영된다. 최종 FPS와 화면 확인은 이후 사용자 실행 결과로 구분한다.
+
+## G34. 21:47 발탄 캡처 — 정적 Deploy 그림자와 CPU 렌더 제출
+
+### 실제 진단과 해석 범위
+
+사용자 profiler_20260916_214714_277_frame41_76132_0.json은30프레임이며 첫 interval0을 제외한29프레임/1.083초 평균37.3546ms=26.77fps다. 유효GPU25프레임 평균36.7595ms, Shadow19.5227ms(Dynamic19.4509), NonBlend4.9101ms다. CPU scope45420개 누락으로13/15/16의완전한3프레임만세부CPU비교에사용했다. 이표본의NonBlend18.6224ms 중기록된자식을뺀self12.1049ms,batch mesh submit4.0361ms,Shadow cache admission3.5575ms다. 이 값은 서로 중첩되며 합산하지 않는다.
+
+Present(0,0)과완전한프레임의Present0.038~0.056ms는30fps제한이주원인이라는주장을뒷받침하지않는다. GPU Shadow elapsed는CPU명령공급공백을포함할수있으므로19.5ms를순수GPU shader시간이라고하지않는다. 안개가포함된Combined0.0514ms,Blend0.1355ms,Lights0.6364ms,Bloom0.0163ms,Final0.0162ms로이번표본에서안개가주병목이라는증거도없다. 캡처에장면·해상도·binary hash가없어장시간안정FPS나통제된이전버전A/B로확대하지않는다. 근거는out/Valtan60Fps20260916/Capture의원본hash,summary와30프레임table이다.
+
+### 실제 소스 반영
+
+일반맵MapStaticBatch/MapAsset는정적shadow캐시에참여했지만CDeployPropObject는같은shadow큐에서매프레임Render_Static/pass12를실행했다. 새override는intact STATIC,실제world/model,opacity1과시간·camera독립alpha입력이같으면기존Renderer캐시를재사용한다. 파괴·숨김·fade·physics/animation preview·debris·suppression·morph·texture override는기존동적경로로돌아간다. 원래shader·pass·depth/alpha연산은유지한다. 실제world에서보수적으로확장한bounds로본체는최종camera,shadow는최종light범위를검사하며잘못된범위는draw를유지한다. Map.Deploy.Render/Shadow계측을추가해후속캡처에서소품비용을분리한다.
+
+MapAssetObject는실제WATER패스가없는mesh에대한물전용17uniform쓰기와불필요한종료reset을생략한다. 물설정시도는실패전표시하고실패해도reset하며vortex와공용입력계약을보존한다. Model/Material/Mesh/VIBuffer 및DeployPropObject의Debug x64에기존hot-TU와같은/O2를적용하고/MDd,_DEBUG,STL ABI,/fp:precise를유지한다. shader,geometry,해상도,광원·안개·투명품질,Server simulation간격은변경하지않았다.
+
+Profiler는전체8192개,detail/worker7168개,main depth3은8064개,depth0~2는8192개로bounded예약한다. 최대CPU sample payload는프레임256KiB/history1200개300MiB이며Snapshot복사는별도다. 기존drop와long-operation기록을유지한다. detail이잘린프레임의SelfMs는정확한exclusive시간이아니므로inclusive및drop상태와함께판단한다.
+
+### 수행한 자동 검증
+
+실제MapAssetObject의기존/수정Render_Group와water binder를추출한22571검사실패0이다.625mixed layout,water row유무,3rendergroup,water→일반공유FX,17uniform실패주입과camera/material/pass/draw/reset실패를포함한다. 일반4mesh의water전용raw bind85→0이며실제물draw의소비입력과종료상태는같다. 28개transitive shader include에서이17변수가water전용임을독립대조했다. GPU backend가stub인CPU계약검증이며게임FPS개선값이아니다.
+
+실제Profiler.cpp /MDd/O2 probe는6000/60000detail,20000pass,worker4개60000scope,late부모유지,정확한drop,누락long-operation,hard bound,nesting overflow,capture-off,1205frame순환을통과했다. 해당CPP/프로젝트설정과Deploy키·bounds·실패경계의독립읽기전용검토에서추가수정이필요한결함은발견하지못했다. Engine/Client project/filter XML4개parse와git diff --check가통과했다. 상세증거는out/Valtan60Fps20260916/FallbackWater,profiler,DeployShadow에둔다.
+
+### Deploy 검증과 실제 적용 후보
+
+실제 수정된 admission/cull 함수와 기존 shared alpha 판정·frustum 함수를 사용하는 5,060검사가 통과했다. 500개 affine/shear/비균일 변환의 4,000꼭짓점 포함 여부, 실제 world/model revision, 파괴 후 respawn, fade/preview/debris/morph/override/source-off, 잘못된 bounds/planes의 기존 draw 유지, camera/light 범위 분리와 revision overflow를 포함한다. 개별 Deploy CPP /O2 컴파일도 통과했다. 기존 Render_Static/Render_Animated/Bind_ShadowShaderResources/Render_DebrisPreview 본문 및 shader는 변경하지 않았다.
+
+설치된 12종/151개 authored Deploy 배치 중 143개 정적 intact 소품이 캐시 후보이며 animated 8개는 제외된다. 후보 원본은 302 mesh, 1,493,349 vertices, 3,699,690 indices지만 runtime phase/scope/visibility/light culling 전 집계다. 이를 실제 프레임 draw 절감량이나 19.5ms 전체 제거 증거로 쓰지 않는다. out/Valtan60Fps20260916/DeployShadow/installed_coverage.json과 snapshot_probe.result.json에 분모를 보존했다.
+
+### Debug 제품 빌드·배포와 사용자 확인
+
+공식 Product Debug Build가 2026-09-16 22:10:52 KST에 PASS로 종료됐다. 전체 134.828초이며 Engine→Shared→Server→Client 모두 성공했다. Engine OBJ35개·binary2개, Client OBJ186개·binary2개가 정상 증분 의존성에 따라 갱신됐고 PCH/CSO 갱신은0이다. Shared/Server는 기존 최신 산출물을 재사용했다. 기존 C4819/C4828 및 라이브러리 경고가 남아 있으며 무경고 빌드라는 뜻은 아니다. receipt는 out/BuildPipeline/runs/20260916T131052462Z-debug-product.json, 로그는 out/Valtan60Fps20260916/product-build.log다.
+
+빌드 전 동결한6개 수정 source/project hash는 종료 뒤 동일했다. 실제 CL tracking에서 대상 Engine4개/Profiler 및 Client Deploy/MapAsset의 /O2·/MDd·_DEBUG·/fp:precise와 RTC 미사용을 확인했다. Engine 원본/Client 배포 DLL 및 Deferred CSO가 각각 동일하다. 새 Client/Bin/Debug/Client.exe는 22:10:50 KST, Engine.dll은22:08:54 KST 산출물이다. 배포 hash·경로는 out/Valtan60Fps20260916/deployment-check.json에 기록했다.
+
+기존 쿠크 및 RenderingProfiles 미커밋 변경은 보존했고 자동 stage/commit·Data publish를 하지 않았다. Client/Server는 종료 상태이며 이 작업에서 Client/UI 실행·조작·화면 캡처는 하지 않았다. 사용자는 최신 Debug Server+Client로 Lobby→Valtan에 진입해 같은 위치·카메라·해상도·도구 조건에서 정지/이동/기둥 파괴를 확인한다. F1→Composition Profiler→Reset→Capture로 5~10초 수집하고 Save JSON을 누른다. 안쪽과 바깥쪽 위치의 캡처를 구분하면 소품 캐시 hit와 이동 중 남은 비용을 대조할 수 있다.
+
+이번 수정의 구현·자동 검증·제품 빌드는 완료다. 실제60fps 달성과 기둥 파괴/그림자 최종 화면은 사용자 후속 실행·캡처 전까지 미확인이다. 파괴 소품은 확인된 중복 렌더 경로이지만 30fps의 유일한 원인이나 전체 비용 비율로 단정하지 않는다.

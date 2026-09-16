@@ -29,6 +29,7 @@ struct EFFECT_V2_TARGET;
 struct EFFECT_V2_TARGET_VIEW;
 struct ANIMATION_MODEL_TARGET_VIEW;
 struct EFFECT_DOCUMENT_DESC;
+struct EFFECT_SOURCE_MODEL_PREVIEW;
 class DATA_JSON_VALUE;
 
 struct KOUKU_BOSS_PRESENTATION_VIEW final
@@ -102,7 +103,8 @@ public:
         std::unordered_map<std::string, float4x4_t>& anchors, std::string& error);
     static bool Sample_SourceAnchorWorlds(const EFFECT_DOCUMENT_DESC& document,
         const EFFECT_V2_TARGET_VIEW& view, const float4x4_t& root, float seconds,
-        std::unordered_map<std::string, float4x4_t>& anchors, std::string& error);
+        std::unordered_map<std::string, float4x4_t>& anchors, std::string& error,
+        const EFFECT_SOURCE_MODEL_PREVIEW* sourceOverride = nullptr);
     using V1_SOURCE_ANCHOR_SAMPLER = std::function<bool(float, const float4x4_t&,
         std::unordered_map<std::string, float4x4_t>&, std::string&)>;
     bool Preview_IsModelReference() const { return m_bModelReferencePreview; }

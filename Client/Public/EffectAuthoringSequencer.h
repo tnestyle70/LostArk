@@ -5,6 +5,7 @@
 #include "HitAreaWire.h"
 #include "CharacterPreviewPanel.h"
 #include "EffectCompositionModelPreview.h"
+#include "Effect_AuthoringDocument.h"
 #include "ValtanCinematicCameraDocument.h"
 #include "CompositionResourceTree.h"
 #include <array>
@@ -67,7 +68,9 @@ public:
     void Render_PreviewOverlays() { Render_Colliders(); }
     std::uint32_t Preview_DurationMs() const { return DurationMs(); }
     bool Select_KoukuEffect(const std::string& assetId, bool requiresSourceModel, bool reusePlayerAnchor = false,
-        const EFFECT_DOCUMENT_DESC* sourceDocument = nullptr);
+        const EFFECT_DOCUMENT_DESC* sourceDocument = nullptr,
+        std::optional<std::uint32_t> previewDurationMs = std::nullopt, std::uint32_t modelStartMs = 0u,
+        bool loopEffectToDuration = false);
     bool Select_WorldEffect(const std::string& assetId, bool reusePlayerAnchor = false);
     bool Preview(const EFFECT_RESOURCE_KEY& key, std::uint32_t durationMs = 3000u);
     bool Preview_Element(const EFFECT_RESOURCE_KEY& key, const std::string& elementId,
@@ -215,7 +218,8 @@ private:
     bool Select_Kouku(const std::string& id, bool bundle);
     bool Select_SceneEffectTarget(const std::string& assetId, bool requiresSourceModel,
         bool reusePlayerAnchor, std::optional<bool> loopPolicy,
-        std::optional<std::uint32_t> previewDurationMs = std::nullopt, const EFFECT_DOCUMENT_DESC* sourceDocument = nullptr);
+        std::optional<std::uint32_t> previewDurationMs = std::nullopt, const EFFECT_DOCUMENT_DESC* sourceDocument = nullptr,
+        std::uint32_t modelStartMs = 0u, bool loopEffectToDuration = false);
     bool Uses_TransientLoop() const
     { return m_Transient && (Is_ElementPreview() || (m_KoukuEffectPreview && m_KoukuEffectPreview->loopPolicy.has_value())); }
     bool Uses_KoukuSourceModel() const
@@ -259,6 +263,9 @@ private:
         // Only the independent preview consumes this; saved sequence Loop is unchanged.
         std::optional<bool> loopPolicy;
         std::optional<std::uint32_t> previewDurationMs;
+        std::uint32_t modelStartMs = 0u;
+        bool loopEffectToDuration = false;
+        std::optional<EFFECT_SOURCE_MODEL_PREVIEW> sourceModelPreview;
     };
     // Tool-only target; the saved arrangement and its dirty state never change.
     std::optional<KOUKU_EFFECT_PREVIEW_TARGET> m_KoukuEffectPreview, m_PendingKoukuEffectPreview;

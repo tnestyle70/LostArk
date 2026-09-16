@@ -4,6 +4,7 @@
 #include "GameplayCatalog.h"
 #include "GameRoom.h"
 #include "KoukuSaydonBrain.h"
+#include "Gameplay/WorldCollisionContract.h"
 #include "Network/PacketReader.h"
 #include "Network/PacketWriter.h"
 #include "ServerNavigation.h"
@@ -25,6 +26,7 @@
 #include <limits>
 #include <map>
 #include <memory>
+#include <random>
 #include <set>
 #include <span>
 #include <sstream>
@@ -37,21 +39,209 @@
 using namespace LostArk::Server;
 using namespace LostArk::Shared;
 
+void LostArk::Server::CServerGameplayContractRunner::Run_KoukuMarioEntryContact(TESTS& tests)
+{
+#ifdef _DEBUG
+    BOSS_PATTERN_DEFINITION root{};
+    BOSS_PATTERN_LOGIC_WINDOW entry{};
+    entry.eKind = BOSS_PATTERN_LOGIC_KIND::ENTER_AREA;
+    entry.iStartMs = 2998u;
+    BOSS_PATTERN_LOGIC_RESULT result{};
+    result.eKind = BOSS_PATTERN_LOGIC_RESULT_KIND::MARIO_ENTER;
+    entry.OnSuccess.push_back(result);
+    BOSS_LOGIC_REGION region{};
+    region.eAnchor = BOSS_LOGIC_REGION_ANCHOR::BOSS_CURRENT;
+    region.fHalfX = region.fHalfY = region.fHalfZ = 1.f;
+    entry.CardRegions.push_back(region);
+    root.LogicWindows.push_back(entry);
+    SERVER_WORLD_ENTITY anchor{};
+    anchor.fPositionX = -.07f; anchor.fPositionY = 1.32f; anchor.fPositionZ = 942.33f;
+    const auto contactTick = CKoukuSaydonLogicRuntime::Ticks_FromMs(entry.iStartMs);
+    CServerCollisionSystem collision;
+    std::string status;
+    tests.Require(collision.Initialize({}, status), "Initialize Mario contact movement collision");
+    collision.Set_BlockingBodies({{anchor.fPositionX, anchor.fPositionZ, 1.f,
+        anchor.fPositionY + 1.f, 1.f, 990u}});
+    const std::array interruptible{PLAYER_ACTION_STATE::NONE, PLAYER_ACTION_STATE::SKILL,
+        PLAYER_ACTION_STATE::INTERACTION, PLAYER_ACTION_STATE::KNOCKDOWN,
+        PLAYER_ACTION_STATE::FEAR, PLAYER_ACTION_STATE::ESTHER_CAST};
+    for (const float yaw : {0.f, 43.f, 90.f}) {
+        anchor.fYawDegrees = yaw;
+        const float radians = yaw * .017453292519943295f;
+        const float rightX = std::cos(radians), rightZ = -std::sin(radians);
+        SERVER_PLAYER player{};
+        player.iPlayerId = 991u; player.iNetEntityId = 992u; player.iCurrentHp = 100u; player.isCombatReady = true;
+        player.fPositionX = anchor.fPositionX + rightX * 1.5f;
+        player.fPositionY = anchor.fPositionY; player.fPositionZ = anchor.fPositionZ + rightZ * 1.5f;
+        const float proposedX = anchor.fPositionX + rightX * 1.4f;
+        const float proposedZ = anchor.fPositionZ + rightZ * 1.4f;
+        float x = 0.f, y = 0.f, z = 0.f; bool blocked = false;
+        const bool moved = collision.Resolve_PlayerMove(player, proposedX, anchor.fPositionY,
+            proposedZ, x, y, z, blocked);
+        player.fPositionX = x; player.fPositionY = y; player.fPositionZ = z;
+        const bool constrained = std::hypot(x - proposedX, z - proposedZ) > 0.001f;
+        const bool beforeEntry = CKoukuSaydonLogicRuntime::Is_InsideMarioEntry(root, anchor, player, contactTick - 1u);
+        const bool touchingEntry = CKoukuSaydonLogicRuntime::Is_InsideMarioEntry(root, anchor, player, contactTick);
+        const auto oldPrecision = std::cout.precision(9);
+        std::cout << "[MarioContactProbe] yaw=" << yaw << " proposed=(" << proposedX << ',' << proposedZ
+            << ") actual=(" << x << ',' << z << ") moved=" << moved << " blocked=" << blocked
+            << " constrained=" << constrained << " before=" << beforeEntry << " touching=" << touchingEntry << '\n';
+        std::cout.precision(oldPrecision);
+        // A successful tangent slide clears blocked; the clipped destination
+        // proves the body's collision was consumed during this short tick.
+        tests.Require(moved && constrained && !beforeEntry && touchingEntry,
+            "A real boss-body stop point touches the Mario entry on its first active tick, including movement skin");
+        auto outside = player; outside.fPositionX += rightX * .01f; outside.fPositionZ += rightZ * .01f;
+        tests.Require(!CKoukuSaydonLogicRuntime::Is_InsideMarioEntry(root, anchor, outside, contactTick),
+            "Mario body contact does not admit a player still outside the contact margin");
+        for (const auto action : interruptible) {
+            player.eAction = action;
+            tests.Require(CKoukuSaydonLogicRuntime::Is_InsideMarioEntry(root, anchor, player, contactTick),
+                "Mario body contact does not wait for ordinary actions, knockdown or fear to finish");
+        }
+        for (int invalid = 0; invalid < 8; ++invalid) {
+            auto rejected = player;
+            switch (invalid) {
+            case 0: rejected.iCurrentHp = 0u; break;
+            case 1: rejected.eAction = PLAYER_ACTION_STATE::FALLING; break;
+            case 2: rejected.eAction = PLAYER_ACTION_STATE::GRABBED; break;
+            case 3: rejected.bPatternBound = true; break;
+            case 4: rejected.iAttachmentOwnerNetEntityId = 7u; break;
+            case 5: rejected.bArenaEjectionActive = true; break;
+            case 6: rejected.TriggerMove.isActive = true; break;
+            case 7: rejected.iMarioStage = 1u; break;
+            }
+            tests.Require(!CKoukuSaydonLogicRuntime::Is_InsideMarioEntry(root, anchor, rejected, contactTick),
+                "Mario entry preserves death, fall, attachment, binding and existing-transfer ownership");
+        }
+    }
+    const auto seedOwnedObject = [&](CGameRoom& room, const SERVER_PLAYER& player) {
+        auto transaction = room.m_CombatObjectRuntime.Begin_Transaction();
+        SERVER_COMBAT_OBJECT object{};
+        object.iCombatObjectId = 993u; object.iSourceNetEntityId = player.iNetEntityId;
+        object.iSourcePlayerId = player.iPlayerId; object.fRemainingMilliseconds = 1000.f;
+        transaction.Objects.push_back(object);
+        return room.m_CombatObjectRuntime.Commit(std::move(transaction));
+    };
+    for (std::uint8_t stage = 1u; stage <= 4u; ++stage) {
+        auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+        tests.Require(room->Is_Ready(), "Load actual Mario stage navigation for contact admission");
+        for (const auto action : interruptible) {
+            SERVER_PLAYER player{};
+            player.iPlayerId = 994u; player.iNetEntityId = 995u; player.iCurrentHp = player.iMaximumHp = 100u;
+            player.isCombatReady = true; player.eAction = action; player.iCurrentSkillId = 34010u;
+            player.iActionStartTick = 1u; player.fActionElapsedSeconds = .1f; player.iComboStage = 2u;
+            player.Projectiles.emplace_back(); player.hasMoveGoal = true; player.fKnockbackRemainingSeconds = 1.f;
+            player.iKnockdownEndTick = player.iFearEndTick = 60u; player.strFearPresentationId = "contact-test";
+            player.CooldownEndTickBySkillId.emplace(34010u, 600u);
+            tests.Require(seedOwnedObject(*room, player), "Stage the entry action's delayed combat object");
+            const bool entered = room->Enter_MarioFromPattern(player, stage);
+            tests.Require(entered && player.iMarioStage == stage && player.eAction == PLAYER_ACTION_STATE::NONE &&
+                player.iCurrentSkillId == INVALID_SKILL_ID && player.Projectiles.empty() && !player.hasMoveGoal &&
+                player.fKnockbackRemainingSeconds == 0.f && !player.iKnockdownEndTick && !player.iFearEndTick &&
+                player.strFearPresentationId.empty() && player.isCombatReady && player.iCurrentHp == 100u &&
+                player.CooldownEndTickBySkillId.at(34010u) == 600u && room->m_CombatObjectRuntime.Get_LiveObjects().empty(),
+                "All four Mario stages interrupt the contacting action and cancel its objects only after admission");
+            tests.Require(!room->Enter_MarioFromPattern(player, stage), "Committed Mario entry remains one-shot");
+        }
+    }
+    {
+        auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+        SERVER_PLAYER player{};
+        player.iPlayerId = 996u; player.iNetEntityId = 997u; player.iCurrentHp = 100u; player.isCombatReady = true;
+        player.eAction = PLAYER_ACTION_STATE::SKILL; player.iCurrentSkillId = 34010u;
+        player.Projectiles.emplace_back(); player.fPositionX = 5.f; player.fPositionZ = 942.f;
+        tests.Require(seedOwnedObject(*room, player), "Stage a live action before a rejected Mario layout");
+        auto& groups = const_cast<std::vector<SPAWN_GROUP_DEFINITION>&>(room->m_SpawnGroupBootstrap.Get_Groups());
+        const auto group = std::find_if(groups.begin(), groups.end(), [](const auto& row) { return row.strSpawnGroupId == "spawn.mario1.source"; });
+        if (group == groups.end() || group->Waves.empty() || group->Waves.front().Entries.empty()) {
+            tests.Require(false, "Resolve the actual Mario source anchor for failed-admission preservation");
+        } else group->Waves.front().Entries.front().strAnchorId = "missing.mario.contact.test.anchor";
+        tests.Require(!room->Enter_MarioFromPattern(player, 1u) && !player.iMarioStage &&
+            player.eAction == PLAYER_ACTION_STATE::SKILL && player.iCurrentSkillId == 34010u &&
+            player.Projectiles.size() == 1u && player.fPositionX == 5.f && player.fPositionZ == 942.f &&
+            room->m_CombatObjectRuntime.Get_LiveObjects().size() == 1u,
+            "A post-destination Mario layout failure preserves the live action, position and delayed combat object");
+    }
+    for (const auto& [id, stage] : std::array<std::pair<const char*, std::uint8_t>, 2u>{
+        { {"Mario1_Trigger_1", 1u}, {"Mario4_Tigger_3", 4u} }}) {
+        auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+        const auto* trigger = room->Find_Placement(id);
+        if (!trigger) { tests.Require(false, "Resolve the exact authored Mario lane trigger ID"); continue; }
+        SERVER_PLAYER player{};
+        player.iPlayerId = 998u; player.iNetEntityId = 999u; player.iCurrentHp = 100u; player.isCombatReady = true;
+        player.iMarioStage = stage; player.bMarioRailReady = true; player.strMarioRailArrivalId = "preserved";
+        player.fPositionX = trigger->fPositionX; player.fPositionY = trigger->fPositionY; player.fPositionZ = trigger->fPositionZ;
+        for (const auto action : {PLAYER_ACTION_STATE::SKILL, PLAYER_ACTION_STATE::INTERACTION, PLAYER_ACTION_STATE::TRIGGER_MOVE}) {
+            auto contacting = player; contacting.eAction = action; contacting.iCurrentSkillId = 34010u;
+            contacting.TriggerMove.isActive = action == PLAYER_ACTION_STATE::TRIGGER_MOVE;
+            contacting.TriggerMove.strSourcePlacementId.clear(); // Debug Mario jump has no trigger owner.
+            tests.Require(room->Begin_MarioTriggerMove(*trigger, contacting, 100u) == SERVER_TRIGGER_MOVE_ENTRY_RESULT::STARTED &&
+                contacting.TriggerMove.isActive && contacting.iCurrentSkillId == INVALID_SKILL_ID &&
+                contacting.iMarioStage == stage && contacting.bMarioRailReady && contacting.strMarioRailArrivalId == "preserved",
+                "Actual Mario lane contacts interrupt skill, interaction and jump while preserving the current rail");
+            contacting.TriggerMove.strSourcePlacementId = id;
+            contacting.TriggerMove.fElapsedSeconds = .1f;
+            tests.Require(room->Begin_MarioTriggerMove(*trigger, contacting, 101u) == SERVER_TRIGGER_MOVE_ENTRY_RESULT::STARTED &&
+                contacting.TriggerMove.fElapsedSeconds == .1f, "The same active Mario trigger cannot restart its transfer");
+        }
+        CServerTriggerSystem triggers;
+        // Exercise automatic contact policy independently of the installed interaction flag.
+        auto contactTrigger = *trigger;
+        contactTrigger.requiresInteract = false;
+        contactTrigger.isTriggerOnce = false;
+        tests.Require(triggers.Initialize({contactTrigger}, status), "Load actual Mario geometry with repeatable automatic contact policy");
+        player.bPatternBound = true;
+        std::map<PLAYER_ID, SERVER_PLAYER> players{{player.iPlayerId, player}};
+        std::vector<SERVER_WORLD_TRANSFER_REQUEST> transfers;
+        std::vector<SERVER_INTERACT_PROMPT_EDGE> prompts;
+        const auto move = [&](const auto& box, auto& target, auto tick) { return room->Begin_MarioTriggerMove(box, target, tick); };
+        triggers.Evaluate_Entries(players, 102u, transfers, {}, prompts, move);
+        tests.Require(!players.at(player.iPlayerId).TriggerMove.isActive, "An owned Mario contact preserves a temporary authority lock");
+        players.at(player.iPlayerId).bPatternBound = false;
+        triggers.Evaluate_Entries(players, 103u, transfers, {}, prompts, move);
+        tests.Require(players.at(player.iPlayerId).TriggerMove.isActive,
+            "A rejected Mario contact retries immediately after unlock without requiring exit and re-entry");
+        auto unrelated = *trigger; unrelated.strPlacementId = "ordinary.movePlayer";
+        tests.Require(room->Begin_MarioTriggerMove(unrelated, player, 104u) == SERVER_TRIGGER_MOVE_ENTRY_RESULT::USE_DEFAULT,
+            "Mario action interruption does not change unrelated world movePlayer contracts");
+    }
+#endif
+}
+
 void LostArk::Server::CServerGameplayContractRunner::Run_KoukuProduct(TESTS& tests, CGameplayCatalog& catalog)
 {
 #ifdef _DEBUG
     // These use the published composition, real room and the same command
     // admission/terminal receipts consumed by Complete Play and its F1 test.
-    enum class MARIO_SCENARIO { NO_ENTRY, RETURN_AFTER_CHAIN, RETURN_EARLY, PARTY, DEATH, DISCONNECT, LAST_TICK_ENTRY };
+    enum class MARIO_SCENARIO { NO_ENTRY, RETURN_AFTER_CHAIN, RETURN_EARLY, PARTY, DEATH, DISCONNECT, LAST_TICK_ENTRY, NO_FOLLOWUP, CANCEL };
     std::uint32_t noEntryCompletionTick = 0u;
-    const auto marioScenario = [&](const MARIO_SCENARIO scenario) {
-        const bool enterPortal = scenario != MARIO_SCENARIO::NO_ENTRY;
+    const std::set<std::string> marioCandidates{
+        "KAKULSAYDON_G1_PATTERN_38", "KAKULSAYDON_G1_PATTERN_39", "KAKULSAYDON_G1_PATTERN_40",
+        "KAKULSAYDON_G1_PATTERN_43", "KAKULSAYDON_G1_PATTERN_52", "KAKULSAYDON_G1_PATTERN_46"};
+    const auto marioScenario = [&](const MARIO_SCENARIO scenario, const std::uint32_t seed = 71023u) {
+        const bool noFollowup = scenario == MARIO_SCENARIO::NO_FOLLOWUP || scenario == MARIO_SCENARIO::CANCEL;
+        const bool enterPortal = scenario != MARIO_SCENARIO::NO_ENTRY && !noFollowup;
         const bool abortScenario = scenario == MARIO_SCENARIO::DEATH || scenario == MARIO_SCENARIO::DISCONNECT;
         auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
         const auto* placement = room->Find_Placement("boss.kakulsaydon.g3.saydon");
         SERVER_WORLD_ENTITY boss{};
         if (!room->Is_Ready() || !placement || !room->Build_WorldEntity(*placement, room->m_iNextNetEntityId++, boss)) {
             tests.Require(false, "Load Mario scenario from the published Gate 3 placement"); return std::vector<std::string>{};
+        }
+        // An owned catalog copy exercises the still-supported optional followup.
+        // The default two-pattern terminal scenario consumes the actual published definition.
+        if (!noFollowup) {
+            auto generation = std::make_shared<CGameplayCatalog>(room->m_GameplayCatalog.Active());
+            auto* definitions = const_cast<std::vector<BOSS_PATTERN_DEFINITION>*>(generation->Find_BossPatterns("ENCOUNTER_KAKULSAYDON_G1"));
+            if (definitions) for (auto& definition : *definitions) if (definition.strPatternId == "KAKULSAYDON_G1_PATTERN_34")
+                for (auto& window : definition.LogicWindows) if (window.eKind == BOSS_PATTERN_LOGIC_KIND::PATTERN_COMPLETION_COUNT) {
+                    BOSS_PATTERN_LOGIC_RESULT followup{};
+                    followup.eKind = BOSS_PATTERN_LOGIC_RESULT_KIND::FOLLOWUP_PATTERN;
+                    followup.strPatternId = "KAKULSAYDON_G1_PATTERN_33";
+                    window.OnSuccess = {followup};
+                }
+            room->m_pKoukuPublishedProductGeneration = std::move(generation);
         }
         const auto bossId = boss.iNetEntityId;
         room->m_WorldEntities.push_back(boss);
@@ -81,12 +271,12 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuProduct(TESTS& tes
         request.Scope.ExpectedGameplayRevision = room->m_GameplayCatalog.Get_ActiveRevision();
         request.Scope.iExpectedSourceRevision = CKoukuSaydonBrain::Resolve_ProductSourceRevision(room->m_GameplayCatalog.Active());
         request.strPatternId = "KAKULSAYDON_G1_PATTERN_34";
-        request.iMarioTestStartStage = 3u; request.iMarioTestSeed = 71023u;
+        request.iMarioTestStartStage = 3u; request.iMarioTestSeed = seed;
         CPacketWriter requestWriter;
         C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST decoded{};
         bool codec = Write_Message(requestWriter, request);
         CPacketReader requestReader(requestWriter.Get_Buffer());
-        codec = codec && Read_Message(requestReader, decoded) && decoded.iMarioTestStartStage == 3u && decoded.iMarioTestSeed == 71023u;
+        codec = codec && Read_Message(requestReader, decoded) && decoded.iMarioTestStartStage == 3u && decoded.iMarioTestSeed == seed;
         auto oldPayload = requestWriter.Get_Buffer(); oldPayload.erase(oldPayload.begin(), oldPayload.begin() + 5u);
         CPacketReader oldReader(oldPayload);
         codec = codec && !Read_Message(oldReader, decoded) && decoded.iMarioTestStartStage == 3u;
@@ -98,7 +288,8 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuProduct(TESTS& tes
         std::vector<std::string> selected;
         std::uint32_t completed = 0u, phase2Tick = 0u, completionTick = 0u, returnTick = 0u;
         bool bounded = true, retained = false, wire = false, returnStarted = false, aborted = false, waited = false;
-        bool entryCommitted = false, landedBeforeThree = false;
+        bool entryCommitted = false, landedBeforeCount = false, terminalCompleted = false;
+        std::uint32_t finalChildStartTick = 0u, finalChildDurationTicks = 0u;
         for (std::uint32_t tick = 1u; tick < 2400u; ++tick) {
             room->m_iServerTick = tick;
             if (returnStarted && room->m_Players.contains(player.iPlayerId) && room->m_Players.at(player.iPlayerId).TriggerMove.isActive)
@@ -129,21 +320,44 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuProduct(TESTS& tes
                 }
                 bounded = bounded && aborted; break;
             }
-            if (!live || !room->Update_KoukuSaydonBoss(*live, tick) || room->m_KoukuSaydonPatternAudition.Members.empty()) { bounded = false; break; }
+            if (!live || !room->Update_KoukuSaydonBoss(*live, tick)) { bounded = false; break; }
+            if (room->m_KoukuSaydonPatternAudition.Members.empty()) {
+                const auto receipt = room->m_KoukuSaydonPatternAuditionReceiptBySessionId.find(player.iSessionId);
+                terminalCompleted = noFollowup && receipt != room->m_KoukuSaydonPatternAuditionReceiptBySessionId.end() &&
+                    receipt->second.LastLifecycle && receipt->second.LastLifecycle->eState == KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::COMPLETED;
+                bounded = bounded && terminalCompleted && completed == 1u && finalChildDurationTicks &&
+                    tick >= finalChildStartTick + finalChildDurationTicks && live->strPatternId.empty() && room->m_PendingKoukuMarioEntries.empty();
+                if (terminalCompleted) { completed = 2u; completionTick = tick; }
+                break;
+            }
             room->Commit_KoukuMarioEntries();
             // Committing the entry can append Mario objects and reallocate world entities.
             live = room->Find_KoukuSaydonArenaBoss(request.Scope.strBossPlacementId, request.Scope.strBossArchetypeId);
             if (!live) { bounded = false; break; }
             const auto& member = room->m_KoukuSaydonPatternAudition.Members.front();
+            if (noFollowup && member.bCompletionChainStarted && member.iCompletionChainCompleted == 1u &&
+                member.ePhase == CGameRoom::KOUKUSAYDON_PATTERN_AUDITION_PHASE::ACTIVE && !finalChildStartTick) {
+                finalChildStartTick = live->iPatternStartTick;
+                std::string childStatus;
+                const auto* child = CKoukuSaydonBrain::Find_AnimationOnlyPattern(*room->Resolve_KoukuProductCatalog(), live->strPatternId, childStatus);
+                if (child) {
+                    std::uint32_t totalMs = 0u;
+                    for (const auto& stage : child->Stages) {
+                        totalMs += stage.iDurationMs;
+                        finalChildDurationTicks += CKoukuSaydonLogicRuntime::Ticks_FromMs(stage.iDurationMs);
+                    }
+                    if (child->bFixedTimelineClock) finalChildDurationTicks = CKoukuSaydonLogicRuntime::Ticks_FromMs(totalMs);
+                }
+            }
             entryCommitted = entryCommitted || member.bMarioEntryConsumed;
             if (member.bCompletionChainStarted && selected.empty())
                 selected.assign(member.PatternIds.begin() + member.iCompletionChainFirstIndex,
                     member.PatternIds.begin() + member.iCompletionChainFirstIndex + member.iCompletionChainCount);
             bounded = bounded && member.iCompletionChainCompleted >= completed && member.iCompletionChainCompleted <= completed + 1u;
             completed = member.iCompletionChainCompleted;
-            if (completed == 3u && !completionTick) completionTick = tick;
-            if (member.bMarioReturnCompleted && !returnTick) { returnTick = tick; landedBeforeThree = completed < 3u; }
-            if (completed < 3u && member.bCompletionChainStarted) {
+            if (completed == 2u && !completionTick) completionTick = tick;
+            if (member.bMarioReturnCompleted && !returnTick) { returnTick = tick; landedBeforeCount = completed < 2u; }
+            if (completed < 2u && member.bCompletionChainStarted) {
                 bounded = bounded && std::find(member.PatternIds.begin(), member.PatternIds.end(), "KAKULSAYDON_G1_PATTERN_33") == member.PatternIds.end();
                 retained = retained || member.MarioEntryAnchor.has_value();
                 S2C_KOUKUSAYDON_BUNDLE_STATE state{}, decodedState{};
@@ -151,6 +365,8 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuProduct(TESTS& tes
                 if (room->Build_KoukuBundleState(state) && Write_Message(writer, state)) {
                     CPacketReader reader(writer.Get_Buffer());
                     wire = Read_Message(reader, decodedState) && decodedState.Members.front().iBossNetEntityId == bossId &&
+                        (member.ePhase != CGameRoom::KOUKUSAYDON_PATTERN_AUDITION_PHASE::ACTIVE ||
+                         decodedState.Members.front().iStartTick == live->iPatternStartTick) &&
                         (member.bMarioEntryConsumed ? decodedState.Members.front().strMarioEntryPatternId.empty() :
                             decodedState.Members.front().strMarioEntryPatternId == request.strPatternId && decodedState.Members.front().iMarioEntryStage == 3u);
                     auto truncated = writer.Get_Buffer(); truncated.pop_back(); CPacketReader shortReader(truncated);
@@ -162,6 +378,14 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuProduct(TESTS& tes
                     CPacketWriter invalidStateWriter;
                     wire = wire && !Read_Message(oldStateReader, decodedState) && !Write_Message(invalidStateWriter, invalidState);
                 }
+            }
+            if (scenario == MARIO_SCENARIO::CANCEL && member.bCompletionChainStarted && !completed) {
+                room->Clear_KoukuSaydonPatternAudition(false, "Mario chain contract cancellation");
+                const auto receipt = room->m_KoukuSaydonPatternAuditionReceiptBySessionId.find(player.iSessionId);
+                tests.Require(room->m_KoukuSaydonPatternAudition.Members.empty() && receipt != room->m_KoukuSaydonPatternAuditionReceiptBySessionId.end() &&
+                    receipt->second.LastLifecycle && receipt->second.LastLifecycle->eState == KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::ABORTED,
+                    "Cancellation before child completion aborts rather than completing the two-pattern chain");
+                return selected;
             }
             if (member.bCompletionChainAwaitingReturn && member.bMarioSoloReturnRequired && !member.bMarioReturnCompleted) {
                 waited = waited || tick > completionTick;
@@ -208,9 +432,10 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuProduct(TESTS& tes
             }
         }
         if (scenario == MARIO_SCENARIO::NO_ENTRY) noEntryCompletionTick = completionTick;
-        tests.Require(bounded && retained && wire && selected.size() == 3u && std::set<std::string>(selected.begin(), selected.end()).size() == 3u &&
-            completed == 3u && (abortScenario ? aborted && !phase2Tick : phase2Tick > 610u),
-            "Count three distinct real pattern receipts and admit phase 2 only when its participant gate succeeds");
+        tests.Require(bounded && retained && wire && selected.size() == 2u && std::set<std::string>(selected.begin(), selected.end()).size() == 2u &&
+            std::all_of(selected.begin(), selected.end(), [&](const auto& id) { return marioCandidates.contains(id); }) &&
+            completed == 2u && (noFollowup ? terminalCompleted && !phase2Tick : (abortScenario ? aborted && !phase2Tick : phase2Tick > completionTick)),
+            "Count two distinct Server-selected real pattern completions and preserve optional terminal or followup behavior");
         const auto expectedNextStage = scenario == MARIO_SCENARIO::DISCONNECT ? 1u : (enterPortal ? 4u : 3u);
         tests.Require(entryCommitted == enterPortal && room->m_iNextMarioEntryStage == expectedNextStage,
             "Advance the successful-entry count once and reset it after the last real session leaves");
@@ -218,15 +443,31 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuProduct(TESTS& tes
             tests.Require(waited && returnTick > completionTick && phase2Tick >= returnTick && !room->m_Players.at(player.iPlayerId).iMarioStage,
                 "Wait for the solo entrant's actual terminal landing even when entry commits on the last child tick");
         if (scenario == MARIO_SCENARIO::RETURN_EARLY)
-            tests.Require(landedBeforeThree && phase2Tick == completionTick + 1u,
-                "A solo return completed first still waits for three patterns and queues phase 2 once");
+            tests.Require(landedBeforeCount && phase2Tick == completionTick + 1u,
+                "A solo return completed first still waits for two patterns and queues phase 2 once");
         if (scenario == MARIO_SCENARIO::NO_ENTRY || scenario == MARIO_SCENARIO::PARTY)
             tests.Require(!waited && !returnStarted && phase2Tick == completionTick + 1u,
-                "No entrant and a multiplayer entry both keep the existing immediate three-pattern success path");
+                "No entrant and a multiplayer entry both keep the existing immediate two-pattern success path");
         if (abortScenario)
             tests.Require(waited && aborted && !phase2Tick, "A solo entrant death or disconnect aborts explicitly without phase-2 success");
         return selected;
     };
+    (void)marioScenario(MARIO_SCENARIO::NO_FOLLOWUP);
+    (void)marioScenario(MARIO_SCENARIO::CANCEL);
+    // Select a reproducible Server seed that includes the summon Parent; the
+    // actual room still performs the selection and runs its published duration.
+    std::uint32_t summonSeed = 0u;
+    for (; summonSeed < 1000u; ++summonSeed) {
+        std::vector<std::string> candidates{
+            "KAKULSAYDON_G1_PATTERN_38", "KAKULSAYDON_G1_PATTERN_39", "KAKULSAYDON_G1_PATTERN_40",
+            "KAKULSAYDON_G1_PATTERN_43", "KAKULSAYDON_G1_PATTERN_52", "KAKULSAYDON_G1_PATTERN_46"};
+        std::mt19937 random(summonSeed);
+        for (std::size_t i = candidates.size(); i > 1u; --i) std::swap(candidates[i - 1u], candidates[random() % i]);
+        if (candidates[0] == "KAKULSAYDON_G1_PATTERN_52" || candidates[1] == "KAKULSAYDON_G1_PATTERN_52") break;
+    }
+    const auto summonOrder = marioScenario(MARIO_SCENARIO::NO_FOLLOWUP, summonSeed);
+    tests.Require(std::find(summonOrder.begin(), summonOrder.end(), "KAKULSAYDON_G1_PATTERN_52") != summonOrder.end(),
+        "The actual two-pattern chain can select and complete the timed summon Parent");
     const auto firstMarioOrder = marioScenario(MARIO_SCENARIO::NO_ENTRY);
     const auto secondMarioOrder = marioScenario(MARIO_SCENARIO::RETURN_AFTER_CHAIN);
     tests.Require(!firstMarioOrder.empty() && firstMarioOrder == secondMarioOrder, "Replay the same Mario test seed through the same Server completion path");

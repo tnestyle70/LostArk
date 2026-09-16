@@ -459,3 +459,100 @@ Server 재시작 필요와 제품 EXE 미링크를 명시하고 사용자가 새
 실제 설치 WModel의 본·배율 및 시간 수치, 변경 JSON/XML parse와 scoped diff 검사를 수행한다.
 Client/Server 실행 중 EXE/DLL을 교체하지 않는다. 사용자 화면 조작·최종 판정은 별도이며,
 미확정 원본 입력·제품 빌드 상태와 실제 완료 증거는 대응 RESULT에 분리한다.
+
+## G26. 발탄·베른 맵 프레임과 활성 렌더링, 진입 실패 — 2026-09-16
+
+발탄 사용자 캡처 `profiler_20260916_104620_729_frame12_67768_0.json`의12프레임과 유효GPU8프레임을 기준으로 수정한다. GPU 평균142.518ms 중Shadow112.852ms이며 Render.Blend는0.038ms다. source BG의 완전 불투명 shadow는 재질·RNM·tangent 계산을 생략하는 기존 depth-only instancing을 재사용한다. fallback 정적 맵도 같은 조건에서 depth-only로 연결하고, masked·fade/dither 및 실제vertex변형이 필요한 경로를 보존한다. 정상/반전 winding과 실제 depth parity를 기존 수치 fixture로 확인한다. MapAssetRenderUtils, MapStaticBatchObject, MapAssetObject 및 해당 정적 mesh shader만 우선 변경한다.
+
+활성 발탄 렌더링 revision49는 원본 LUT와 base/region 후처리를 다시 사용 중이다. LUT 표본의 검정은0이며 동일HDR입력에 단독 white lift가 발생하지 않는다. baseBloom threshold0.3, region0.7의 넓은 blur기여와 현재노출1을 발탄 기본profile에서 조정한다. 원본 LUT·tone식과 source-rendering 비교profile은 보존하고, 기본profile의 exposure0.73, base/regionBloom threshold2.74와intensity0.5로 낮춘다. 이는 현재 렌더링용 밝기튜닝이며 원본값 복원으로 표시하지 않는다. 다른profile/전역품질/광원기하/원본texture는 그대로 두고 공식 RenderingProfiles publisher로 검증·게시한다.
+
+베른은 현재 세션의 Server승인 후 target-level-create 실패를 실제 Initialize 소비자까지 조사한다. ambient 물보라두effect의 velocitycone admission실패는 지원가능 원본값을 기존carrier로 연결하고, 실패표시가 단순loading.complete로 바뀌지 않도록 원인을 전달한다. 별도로 실제23555행 Gameplay.bootstrap을 거부하는 Client의8192행상한을 Server정본계약과 맞춘다. 실패한로드의 기존상태보존과 malformed입력거부를 유지한다.
+
+Root가 제품빌드를 조율한다. Client/UI 자동실행·캡처나 최종FPS/밝기판정을 하지 않는다. 실행중인 저작내용을 보존하고 필요한최소컴파일, depth/데이터진단, JSON/XMLparse와diff-check를 수행한다. 최종실제FPS는 같은위치에서 사용자가 저장한후속캡처로 비교한다. 작은오망성은 기존Sequence작업의별도복원범위에서 원본활성burst를 연결한다.
+
+## G27. 발탄 후속 캡처의 정적 그림자 재제출과 조명 범위 — 2026-09-16
+
+사용자가 저장한 `profiler_20260916_155102_918_frame26_62472_0.json`은26프레임 중 GPU22프레임이 유효하다. 평균 Shadow54.724ms, NonBlend20.001ms, Lights4.570ms이며 shadow VS는 약1160만회다. CPU scope403405개가 누락되어 부분 CPU scope합으로 주원인을 확정하지 않는다. 화면 mapVisibleInstances601개에 전체draw8113회, instanced4874회가 기록됐다. 기존 카메라 및 light-volume 컬링과 G26 depth-only 경로는 유지한다.
+
+`CGameObject::Try_GetStaticShadowRevision`은 기본false인 선택적 정적 depth 계약이다. `CMapStaticBatchObject`만 모든 shadow mesh가 기존 opaque pass 조건을 만족할 때 revision을 제공한다. instance transform·visible 변경은 revision을 증가시키고, source-material 설정 전환은 별도 key로 검사한다. animated/masked/fade 및 미지원 객체는 매 프레임 기존 Render_Shadow를 사용한다.
+
+`CRenderer::Render_Shadow`는 최종 frame provider 뒤 light view/projection, 캐시 대상의 weak owner와 revision, source-material 설정 및 scene replacement를 비교한다. miss에서는 기존 shadow depth에 정적 객체를 먼저 그리고 동일규격 GPU texture에 보존한다. hit에서는 기존 depth target으로 복사하고 동적 객체를 이어 그린다. 카메라 frustum으로 그림자 caster를 제한하지 않는다. 실패·객체 추가/삭제·light 변경·scene replacement는 캐시를 무효화하며 cached weak owner가 객체 수명을 연장하지 않는다. 크기와 depth format, cull mode, 원래 geometry와 shadow sampling은 유지한다.
+
+`CMapAssetObject::Render_Shadow`는 실제 light view/projection과 이미 계산한 보수적 world bounds로 완전히 벗어난 fallback 객체를 제외한다. `Shader_Deferred.hlsl::Resolve_LocalLight`는 유효한 감쇠값이0인 경우 최종0기여를 일찍 반환하여 뒤의 map/legacy 재질 계산을 생략한다. Engine 정본과 Client 사본을 함께 유지하고 광원 값·순서·개수와 수광 계약을 바꾸지 않는다.
+
+기존 C++/HLSL만 수정하므로 신규 project/filter 등록은 없다. 실제 depth copy와 static/dynamic 합성의 수치 동일성, 캐시 무효화·owner 수명·실패 복구, fallback light frustum 경계, local attenuation0의 출력 동일성을 확인한다. 관련 최소 컴파일과 HLSL 컴파일, XMLparse/diff검사를 수행하며 Engine public virtual 변경은 최종 Product 빌드의 SDK 및 Client 재컴파일이 필요하다. 실행 중 Client/Server를 자율 종료하지 않고 제품 빌드 가능 상태를 확인한다. 후속 사용자 캡처 전에는 개선 FPS를 확정하지 않는다.
+
+## G28. 베른 직접 입장의 audition identity와 생성 transaction 보존
+
+`CCharacterSelectionState::Try_Resolve_ForWorld(BERN)`만 pending/created identity가 없으면false를 반환하고 `CLevel_Lobby::Begin_NetworkEntry`가 캐릭터 생성 안내로 바꾼다. F1은 이미 typed Lobby 경로를 사용한다. 베른의pending우선·created재사용은 그대로 두고, 둘 다 없을 때 기존 선택class와 process-local Test nickname으로 AUDITION을 선택한다. Lobby Bern버튼과F1은 같은 Server 승인 경로를 소비한다. 생성된 identity를 가장하거나 local world로 우회하지 않는다.
+
+`CharacterSelectionState.cpp`와 `Level_Lobby.cpp`만 변경한다. MainApp의 실제 Bern활성화 성공 뒤 pending commit, 실패 cancel과 이전created 보존은 유지한다. 실제 identity함수와 현재Shared nickname validator로 초기audition·class선택·pending우선·실패취소·성공commit·created재진입·미지원world의출력보존을 검사한다. 변경된public입장계약은 AGENTS와팀핸드북의nickname문장에 반영한다.
+
+## G29. 네 제품 맵의 공통 최적화 연결 확인
+
+Character Select, Bern, Valtan, KoukuSaydon은 CLevelRegistry의scope를 기존 CMapPlacementRuntime에 전달하고 동일 MapStaticBatchObject/MapAssetObject를 생성한다. 공통camera/light 컬링, 동일instance GPU업로드생략, 불투명shadow, Shader clone공유입력재사용, 조명instancing, animation palette와Effect simulation/render준비의 실제caller를 대조한다. G27은 레벨이름을조건으로 삼지 않으므로 동일재질계약을 만족하는 네맵이 함께 사용한다. Bern의far-plane안전여유와쿠크의시퀀스가시성변경은 보존하고, 원래disabled인shadow를최적화명목으로켜지 않는다. 기존GPU LOD의draw크기·재질·morph검증도 각레벨에서같은조건으로사용하며미지원재질에강제하지 않는다. 확인한연결과미측정실제FPS를RESULT에서구분한다.
+
+## G30. 활성화 전 맵 이펙트 admission과 SOURCE_LOOP 소유자 일치
+
+Bern Initialize는 실제 Change_Level 전에 실행되어 current level이 LOADING이다. 이때 대상 BERN으로 임시 probe를 제출하면 기존 active-level 검사에 거절된다. CMapEffectPresentationRuntime의 admission probe는 current가 대상이면 그대로, LOADING이면 LOADING 소유 임시 객체로 시험한 뒤 모두 Stop한다. 실제 맵 런타임의 대상 level과 활성화 이후 spawn은 변경하지 않는다. 다른 활성 level 불일치는 명시 실패하며 Effect 서비스의 active-level 검사를 제거하지 않는다.
+
+queued Spawn의 owner-sustained source-loop 조건을 기존 Spawn_Immediate와 동일하게 정렬한다. world-root·NATURAL·비 external·비 character 조건을 유지하고 level-owned/no-boss 또는 boss-owned/boss만 허용한다. MapEffectPresentationRuntime.cpp와 Effect_PresentationService.cpp만 변경하며 잘못된 sample을 포함한 probe 실패 경로도 이미 만들어진 후보를 전부 Stop한다. 실제 함수 기반 검증으로 LOADING/대상/다른 level, queued와 immediate descriptor 일치, clone 실패·중간 실패 cleanup을 확인한다. 제품 빌드와 사용자 Bern 직접/생성 진입 화면 확인은 구분한다.
+### G29 추가 확인: Bern 선택 캐릭터의 로딩 중 Effect 준비
+
+실제 Level_Loading::Advance_TargetEffectPreparation의 선택 player cue 조건은 Character Select/Valtan/Kouku만 포함하고 Bern을 빠뜨린다. Bern도 같은 worker/map effect gate를 통과하지만 player cue는 Character spawn 이후 공통 incremental worker로 뒤늦게 등록된다. Bern을 기존 선택 class의 Queue_ProductCues_Priority 및 loading progress 표시에 포함한다. boss별 준비 조건, 맵 effect 집합, 실패 격리, epoch/cancel과 준비 완료 gate는 그대로 둔다. Level_Loading.cpp의 기존 소비자 조건만 확장하며 신규 API나 파일은 추가하지 않는다. 진행 중 Product 빌드 완료 후 반영하고 정상 증분 Product Build로 연결한다.
+## G31. 16:22 후속 캡처의 잔여 shadow 제출
+
+사용자 후속162257 캡처는37 CPU/33 유효GPU프레임이며 정적cache copy가 매 프레임 존재한다. shadow VS는1160만→542만으로 줄었지만 Dynamic shadow GPU46.498ms와 CPU30.644ms가 남았다. MapStaticBatch shadow submit1000회와 material bind665회는 batch부분만 기록하며 fallback비용은 별도로 구분해야 한다. CPU4096 cap 뒤의 NonBlend/Lights/Present가 없으므로 세부합으로 전체CPU 병목을 확정하지 않는다.
+
+먼저 MapAssetObject의 기존 position-only/null-PS shadow만 같은 캐시에 연결한다. 전체 fallback에는time-varying재질도 있으므로 visible/source on/비morph/실제로그리는모든mesh의기존opaque조건을 검증한다. current world, bounds/cull state와 mesh별 실제 cast/pass 선택을 비교하는 snapshot revision으로 transform·가시성·presentation opacity·표면 cast/cull 변경을 추적한다. cache-hit 상태에서도 mutable model eligibility를 재검사하며 dynamic/masked/변형/미확인 조건은 원래 경로에 남긴다. 기존class에override와private상태만 추가하고 별도renderer나새project파일은 만들지 않는다.
+
+MapStaticBatch의 미참여 재질도 실제 설치asset/material/shader의 alpha·time·camera 의존성을 먼저 대조한다. BG parallax는camera에의존할수있으므로 masked전체를무조건캐시하거나nullPS로바꾸지않는다. 안전한추가대상과invalidation입력을확인한뒤동일staticdepth계약을확장한다. 검증은실제소비함수와기존depth fixture를사용하고실제제품FPS와구분한다. 현재실행중Client48076/Server47868의저장을보존하고제품출력은종료확인후에만교체한다.
+### G31 확정된 정적 mask 범위와 변이 경계
+
+실제 WModel/material join에서 기존미참여653 activebatch 중652는time/camera-independent alpha depth후보다. BG parallax+mask1개는남긴다. 기존shader/pass는수정하지않고alpha판정을포함한깊이를그대로캐시한다. static-input helper는 source-on opaque, uvSpeed0인legacy/단순surface·foliage, PBRmasked, overlaymasked, BG masked의parallax없음·panning0조건만허용한다. source-character/unknown/morph는거절한다. CMaterial의읽기전용 Has_TextureOverrides와 CModel mesh별query를추가해외부SRV override가있으면dynamic으로돌린다. material정본surface는const이며generic설정을변경하는API가없음을확인하고,mutable nativeconstants는애초제외한다. castsShadow=false인mesh는실제Render와같이생략하고,WorldInvTranspose변경도instance revision에반영한다. Engine Material.h/Model.h/Model.cpp 및Client MapAssetRenderUtils.h/.cpp, MapStaticBatchObject.cpp만확장한다. 실제설치행수의stage/bounds차이는실draw절감으로단정하지않는다.
+개별 MapAssetObject도 같은 immutable alpha식·texture override·morph 경계를 확인한 뒤 공용 Uses_StaticShadowInputs를 사용한다. generic masked의 alpha는 mutable dye/tint를 읽지 않고 native는 제외되며 실제 pass12~14/20~22를 exact snapshot에 포함한다. no-shadow mesh의 morph/program43이 오브젝트 전체 light-volume culling을 바꾸는 기존 동작도 snapshot에 반영한다. 캐시 대상을 넓히기 위해 shader식이나 cull 정책을 바꾸지 않는다.
+## G32. 베른 대형 맵의 Debug 반복 경로
+
+16:35 Bern34프레임은50017배치/16421batch/1221fallback 중429instance가보이며실draw는883이다. Shadow0.0044ms(VS/PS0)는비활성, NonBlend36.9525ms와Client.Update24.7043ms가남는다. CPU4096scope한계뒤의NonBlend전체는기록되지않아timestamp를순수shader비용으로단정하지않는다. 설치발탄13184·쿠크3369·CharacterSelect804보다큰맵이며초기카메라에서대부분보이지않아도기존Level/Layer와renderqueue순회는존재한다.
+
+실측caller의MapStaticBatchObject/MapAssetObject 및Engine GameObject/Layer/Object_Manager/GameInstance/Renderer CPP는Debug에서/Od인반면기존MapAssetRenderUtils/Shader/Profiler/Animation은MaxSpeed다. 같은기존정책으로위7개hot-path TU에Debug x64 MaxSpeed, BasicRuntimeChecks Default, ProgramDatabase, JMC false와PCH미사용을적용한다. Release설정·Debug CRT/STL ABI·float정책·제품게임플레이·컬링·광원은유지한다. 실제소비본문의CPU루프비교와방문순서/제출수동일성, XMLparse, 정상Product증분Build로검증한다. 별도render경로나오브젝트숨김을만들지않는다.
+
+### G32 빈 배치의 계측 비용
+
+기존 visibility cache와 batch 단위 컬링으로 실제 작업이 없는 호출도 Upload/CullAndPack scope를 기록한다. 캐시 결과의 카운터와 반환 동작은 그대로 유지하고, CPU scope는 실제 업로드 준비나 instance 컬링을 수행할 때만 연다. 카메라·배치 revision, 제출 순서와 수는 바꾸지 않는다. 같은 실제 함수 fixture로 순서와 출력 동일성을 확인한다.
+
+## G33. 발탄 기준 베른 렌더링 기본값 — 성능 빌드 뒤로 보류
+
+사용자 의도는 오늘 밝기 문제를 되돌린 발탄의 렌더링 옵션을 베른에도 적용하는 것이다. 발탄의 FXAA가 켜져 있다는 현재 정본으로는 FXAA가 밝기의 원인이라고 판단할 수 없다. 최초 해석에서 베른 exposure/bloom만 복사하고 FXAA를 끈 revision51은 이 의도를 충족하지 않는다.
+
+사용자가 성능 수정과 빌드를 먼저 요청했으므로 이번에 바꾼 베른 profile만 작업 전 값으로 복귀하여 공식 Validate/Publish한다. 다른 profile을 되돌리지 않는다. 최종 옵션 복사는 실제 발탄 복구 내역과 적용 설정을 확인한 뒤 별도로 진행한다.
+
+## G34. 21:47 발탄 캡처의 CPU 제출 비용과 계측 손실
+
+사용자가 갱신한 profiler_20260916_214714_277_frame41_76132_0.json은 interval이 있는29프레임 평균37.3546ms(26.77fps)다. 4096 CPU scope 상한으로45420개가 누락되어 완전한13/15/16프레임만 CPU 부모/자식 비용 비교에 사용한다. 이3프레임의 NonBlend18.6224ms 중 계측되지 않은 self12.1049ms, batch mesh submit4.0361ms, Shadow cache admission3.5575ms가 남았다. Present는0.038~0.056ms이며 코드도Present(0,0)이므로30fps 제한으로 보지 않는다. GPU Shadow19.5227ms는 명령 공급 공백을 포함할 수 있는 elapsed이고 순수GPU shader시간으로 단정하지 않는다.
+
+### G34-01. Engine의 실제 draw 소비 경로
+
+MapStaticBatchObject/MapAssetObject는 이미Debug /O2이나 그 호출을 받는 Model/Material/Mesh/VIBuffer.cpp는/Od다. 이4CPP에 기존 프로젝트의Debug x64 MaxSpeed, BasicRuntimeChecks Default, ProgramDatabase, JMC false, PCH NotUsing 정책을 적용한다. Debug CRT/STL ABI와float precise, Release설정, geometry/draw 순서와shader입력은 유지한다. 해당 코드에 중복 준비가 있으면 실제 소비입력을 확인한 동일결과 변경만 반영한다. 신규C++ 파일과filters 재배치는 없다.
+
+### G34-02. 개별 맵 객체의 불필요한 water 입력
+
+MapAssetObject::Render_Group의 non-water mesh에서도 매번물전용17변수를 설정하고객체종료에서다시초기화한다. Shader_VtxMeshBinary의실제water전용소비를대조한뒤실제water bind시도에만해당설정과종료reset을수행한다. water의실패에도reset을유지하고shared FX를object별값cache로오인하지않는다. Vortex와다른공용shader입력의초기화는유지한다.
+
+### G34-03. 부모 구간을 보존하는 bounded profiler
+
+Profiler::End_Scope는자식scope부터4096개를채우고늦게끝나는Client.Render/Render.NonBlend를버린다. 예산을bounded로유지하며얕은부모구간의별도여유를확보하고누락수를계속기록한다. 다음캡처에선실제큰CPU구간이누락되어0처럼보이지않게한다. thread/중첩/long-operation동작과원래frame귀속을보존한다.
+
+### G34 검증과 실행 경계
+
+기존focused fixture와실제함수기반수치비교를사용한다. 물/비물/혼합/실패후공용FX상태,정적/변경world행렬,profiler overflow시부모유지와누락수,project XMLparse와diff-check를검사한다. C++변경은정상증분Product Debug Build로Engine SDK와Client에배포한다. 기존쿠크dirty변경과사용자JSON은보존하고자동stage/commit하지않는다. Client/UI를실행하지않으며최소60fps달성은사용자가동일위치·해상도·도구조건으로다시저장한캡처에서판정한다.
+
+### G34-04. 파괴 가능한 Deploy 소품의 정지 상태 그림자 재사용
+
+CDeployPropObject는기존MapAsset/MapStaticBatch와별도소비자로Try_GetStaticShadowRevision을구현하지않아움직이지않는기둥도매프레임깊이를그린다. 설치된발탄deployplacement151개는최대1493349개원본정점을가지며이개수는실제light-visible draw의측정치가아니다. 실제Render_Static의world,선택model,활성상태와opacity가일치하고정적depth입력이검증된경우만기존Renderer의캐시에참여한다. 파괴·숨김·source suppression·debris·preview·animated/morph·texture override는거절하거나revision을갱신하여기존경로로돌린다. 현재shadow pass12와재질alpha를보존하고Client DeployPropObject.cpp에도동일Debug x64 최적화정책을적용한다.
+
+Render시점의카메라/광원컬링도기존CModel bounds와최종world가정적입력조건을만족하는경우에만허용한다. 동적vertex변형이나불확실한범위에는적용하지않고화면밖그림자는light volume기준으로판정한다. 기존Draw 경로에집계scope를추가하여다음실제캡처에서Deploy와일반맵비용을구분한다. 새shader·runtime·geometry변환은추가하지않는다.
+
+### G34-05. 안개·투명·후처리의 실제 분모
+
+사용자추가요청에따라복구된안개와투명·후처리도전체GPU패스와실제shader소비로대조한다. 현재유효25프레임의Render.Combined는평균0.0514ms(안개포함),Blend0.1355ms,Lights0.6364ms,Bloom0.0163ms,Final0.0162ms다. 이표본의30fps주원인으로안개를지목하지않고이미작은항목의품질·주기를임의로낮추지않는다. 입력변경시에만재계산하는Deploy그림자최적화와CPU제출중복제거가이번변경의우선범위다.

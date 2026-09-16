@@ -2802,7 +2802,7 @@ namespace LostArk::Shared
 	// One authored world sequence instance started. The Server owns the trigger
 	// entry that decided when; the Client resolves the stable instance ID
 	// against the Area document it already loaded and plays only presentation.
-	enum class WORLD_SEQUENCE_OPERATION : std::uint8_t { PLAY = 0, REPLAY = 1, STOP = 2, STOP_OWNER = 3, FINISH_OWNER = 4, END };
+	enum class WORLD_SEQUENCE_OPERATION : std::uint8_t { PLAY = 0, REPLAY = 1, STOP = 2, STOP_OWNER = 3, FINISH_OWNER = 4, STOP_CUE = 5, END };
 	enum class DEBUG_WORLD_PLAYBACK_OPERATION : std::uint8_t
 	{
 		PLAY_TRIGGER, REPLAY_TRIGGER, PLAY_SEQUENCE, REPLAY_SEQUENCE, STOP_SEQUENCE, PLACE_ROOM_PLAYER, END
@@ -2847,6 +2847,8 @@ namespace LostArk::Shared
 		float fPositionOffsetY = 0.f;
 		float fPositionOffsetZ = 0.f;
 		std::uint32_t iDurationMs = 0u; // Zero uses the authored sequence lifetime.
+		// Server-owned combat object: no time limit; only death or explicit cancellation stops it.
+		bool bUntilDestroyed = false;
 		// Empty starts a sequence; otherwise apply its motion to this existing instance.
 		std::string strTargetSequenceInstanceId;
 		std::uint32_t iRunEpoch = 0u; // Zero is a non-audition map sequence.

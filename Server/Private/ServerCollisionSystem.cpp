@@ -16,7 +16,6 @@ namespace
 
 	constexpr float DEGREES_TO_RADIANS = 0.0174532925f;
 	constexpr float SWEEP_EPSILON = 0.000001f;
-	constexpr float CONTACT_MARGIN = 0.001f;
 
 	struct LOCAL_POINT final
 	{

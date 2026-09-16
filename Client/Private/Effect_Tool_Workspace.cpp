@@ -4,6 +4,7 @@
 #include "EffectAuthoringResourceTree.h"
 #include "EffectAuthoringSequencer.h"
 #include "Effect_DocumentCodec.h"
+#include "KoukuSaydonCompositionDocument.h"
 #include "Effect_Object.h"
 #include "Effect_VisualProgramCorpus.h"
 #include "EffectV2_Catalog.h"
@@ -20,6 +21,109 @@ namespace
 constexpr const wchar_t* AUTHORING_LAYER = L"Layer_EffectAuthoringSequencer";
 std::string Parent_Key(const EFFECT_RESOURCE_KEY& key)
 { return std::to_string(static_cast<int>(key.eOwnerKind)) + ":" + key.strStableId; }
+}
+
+bool CEffect_Tool::Build_KoukuPatternPreviewContext(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
+    const std::string& patternId, const std::string& occurrenceId, const std::string& effectId,
+    EFFECT_TOOL_KOUKU_PATTERN_PREVIEW& context, std::string& status)
+{
+    status.clear();
+    const auto pattern = std::find_if(document.Patterns.begin(), document.Patterns.end(),
+        [&](const auto& row) { return row.strPatternId == patternId; });
+    if (pattern == document.Patterns.end()) return false;
+    std::set<std::string> resources;
+    for (const auto& resource : document.PresentationResources)
+        if (resource.eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT && resource.strAssetId == effectId &&
+            (resource.strResourceKind == "V1_EFFECT" || resource.strResourceKind == "V1_ELEMENT"))
+            resources.insert(resource.strResourceId);
+    std::vector<const KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE*> matches;
+    const KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE* selected = nullptr;
+    for (const auto& row : pattern->PresentationOccurrences)
+        if (resources.contains(row.strResourceId))
+        {
+            matches.push_back(&row);
+            if (row.strOccurrenceId == occurrenceId) selected = &row;
+        }
+    if (matches.empty()) return false;
+    if (!selected && matches.size() == 1u) selected = matches.front();
+    const auto fallback = [&](const char* reason)
+    { status = std::string("Current Pattern preview unavailable: ") + reason + " Preview selection preserved."; return false; };
+    if (!selected) return fallback("select one of this Effect's Pattern boxes.");
+    if (!pattern->strLoadError.empty()) return fallback("the selected Pattern is invalid.");
+    if (!pattern->PatternOccurrences.empty() || !pattern->AnimationBlendWindows.empty())
+        return fallback("nested Patterns and animation blends require their Composition preview.");
+    if (!selected->iDurationMs || selected->iStartMs > 600000u ||
+        selected->iDurationMs > 600000u - selected->iStartMs)
+        return fallback("the selected box has an invalid timing window.");
+    EFFECT_TOOL_KOUKU_PATTERN_PREVIEW staged;
+    staged.strEffectAssetId = effectId;
+    staged.strPatternId = pattern->strPatternId;
+    staged.strOccurrenceId = selected->strOccurrenceId;
+    staged.iEffectStartMs = selected->iStartMs;
+    staged.iDurationMs = selected->iDurationMs;
+    staged.bLoopEffectToDuration = selected->bLoopEffectToDuration;
+    auto& source = staged.SourceModelPreview;
+    source.strGateId = pattern->strGateId;
+    source.strActorProfileId = pattern->strActorProfileId;
+    source.strTargetBossPlacementId = pattern->strTargetBossPlacementId;
+    std::uint32_t stageStartMs = 0u;
+    for (const auto& stage : pattern->Stages)
+    {
+        if (stage.iDurationMs > 600000u - stageStartMs)
+            return fallback("the stage duration exceeds the animation limit.");
+        for (const auto& animation : stage.AnimationOccurrences)
+        {
+            if (animation.iStartOffsetMs > stage.iDurationMs || !animation.iPlayMs ||
+                animation.iPlayMs > stage.iDurationMs - animation.iStartOffsetMs ||
+                animation.iSourceEndMs || animation.iBlendInMs || animation.iPoseStartMs != UINT32_MAX)
+                return fallback("trimmed or blended animation needs its Composition preview.");
+            EFFECT_SOURCE_MODEL_ANIMATION row;
+            row.strRuntimeClip = animation.strRuntimeClip;
+            row.iStartOffsetMs = stageStartMs + animation.iStartOffsetMs;
+            row.iSourceStartMs = animation.iSourceStartMs;
+            row.iPlayMs = animation.iPlayMs;
+            row.fPlayRate = animation.fPlayRate;
+            row.strEndPolicy = animation.strEndPolicy;
+            source.Animations.push_back(std::move(row));
+        }
+        stageStartMs += stage.iDurationMs;
+    }
+    if (source.Animations.empty()) return fallback("the selected Pattern has no animation.");
+    std::stable_sort(source.Animations.begin(), source.Animations.end(),
+        [](const auto& left, const auto& right) { return left.iStartOffsetMs < right.iStartOffsetMs; });
+    context = std::move(staged);
+    status = "Current Pattern " + context.strPatternId + " / " + context.strOccurrenceId +
+        ": animation at " + std::to_string(context.iEffectStartMs) + " ms, window " +
+        std::to_string(context.iDurationMs) + " ms; source speed preserved.";
+    return true;
+}
+
+void CEffect_Tool::Resolve_KoukuPatternPreviewContext(EFFECT_DOCUMENT_DESC& preview,
+    std::optional<std::uint32_t>& durationMs, std::uint32_t& modelStartMs, bool& loopEffectToDuration)
+{
+    durationMs.reset(); modelStartMs = 0u; loopEffectToDuration = false;
+    m_strKoukuPatternPreviewStatus.clear();
+    // The resource browser opens the Effect's saved source animation. An old
+    // Composition selection must not silently replace a shared Effect's clip.
+    if (!m_KoukuPatternPreviewContext ||
+        m_KoukuPatternPreviewContext->strEffectAssetId != preview.strEffectAssetId) return;
+    const auto& context = *m_KoukuPatternPreviewContext;
+    const auto savedSource = preview.SourceModelPreview;
+    preview.SourceModelPreview = context.SourceModelPreview;
+    std::string error;
+    if (!CEffectDocumentCodec::Validate(preview, error))
+    {
+        preview.SourceModelPreview = savedSource;
+        m_strKoukuPatternPreviewStatus = "Current Pattern animation is unsupported: " + error +
+            " Using the saved source animation.";
+        return;
+    }
+    durationMs = context.iDurationMs;
+    modelStartMs = context.iEffectStartMs;
+    loopEffectToDuration = context.bLoopEffectToDuration;
+    m_strKoukuPatternPreviewStatus = "Selected Pattern " + context.strPatternId + " / " + context.strOccurrenceId +
+        ": animation at " + std::to_string(modelStartMs) + " ms, window " +
+        std::to_string(*durationMs) + " ms; source speed preserved.";
 }
 
 void CEffect_Tool::Configure_AuthoringWorkspace(CKoukuSaydonPresentationPlayer* player)
@@ -198,6 +302,56 @@ void CEffect_Tool::Render_AuthoringResourceTree()
 void CEffect_Tool::Render_AuthoringCommands()
 {
     if (!m_pAuthoringSequencer) return;
+    if (m_ActiveDocument && m_ActiveDocument->strEffectAssetId.starts_with("effect.kouku."))
+    {
+        if (m_KoukuPatternPreviewContext &&
+            m_KoukuPatternPreviewContext->strEffectAssetId == m_ActiveDocument->strEffectAssetId)
+        {
+            ImGui::TextWrapped("Animation: Pattern %s / %s", m_KoukuPatternPreviewContext->strPatternId.c_str(),
+                m_KoukuPatternPreviewContext->strOccurrenceId.c_str());
+            if (ImGui::SmallButton("Use saved source animation"))
+            {
+                Deactivate_AuthoringWorkspace();
+                m_KoukuPatternPreviewContext.reset();
+                m_strKoukuPatternPreviewStatus.clear();
+                Recalculate_PreviewDuration();
+                m_strPreviewStatus = "Saved source animation selected. Play All or Play Group to preview.";
+            }
+        }
+        else
+        {
+            ImGui::TextDisabled("Animation: saved Effect source");
+            if (m_ActiveDocument->SourceModelPreview)
+                for (const auto& animation : m_ActiveDocument->SourceModelPreview->Animations)
+                    ImGui::TextDisabled("  %s", animation.strRuntimeClip.c_str());
+        }
+        ImGui::BeginDisabled(!m_KoukuPatternPreviewProvider);
+        if (ImGui::SmallButton("Use current Pattern animation"))
+        {
+            EFFECT_TOOL_KOUKU_PATTERN_PREVIEW context;
+            std::string status;
+            if (m_KoukuPatternPreviewProvider(m_ActiveDocument->strEffectAssetId, context, status))
+            {
+                EFFECT_DOCUMENT_DESC preview = *m_ActiveDocument;
+                preview.SourceModelPreview = context.SourceModelPreview;
+                if (context.strEffectAssetId == preview.strEffectAssetId && CEffectDocumentCodec::Validate(preview, status))
+                {
+                    Deactivate_AuthoringWorkspace();
+                    m_KoukuPatternPreviewContext = std::move(context);
+                    m_fPreviewDurationSeconds = static_cast<float>(m_KoukuPatternPreviewContext->iDurationMs) * .001f;
+                    m_strKoukuPatternPreviewStatus.clear();
+                    m_strPreviewStatus = "Pattern animation selected: " + m_KoukuPatternPreviewContext->strPatternId +
+                        " / " + m_KoukuPatternPreviewContext->strOccurrenceId + ". Play All or Play Group to preview.";
+                }
+                else m_strPreviewStatus = "Pattern animation was not changed: " + status;
+            }
+            else m_strPreviewStatus = status.empty() ?
+                "Select this Effect's box in a boss Pattern, then use its animation here. Current preview preserved." : status;
+        }
+        ImGui::EndDisabled();
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+            ImGui::SetTooltip("Use the selected Pattern box's animation and lifetime for this preview. Reopening an Effect restores its saved source animation.");
+    }
     EFFECT_RESOURCE_KEY selected;
     if (m_ActiveDocument) selected = {EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT, m_ActiveDocument->strEffectAssetId};
     ImGui::BeginDisabled(!selected.Is_Valid());

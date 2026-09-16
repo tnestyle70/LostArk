@@ -1,6 +1,11 @@
 #include "MapAssetObject.h"
 #include "CardMazeVisualPolicy.h"
 
+#pragma push_macro("new")
+#undef new
+#include "Engine_RenderTypes.h"
+#pragma pop_macro("new")
+
 #include "GameInstance.h"
 #include "Model.h"
 #include "Shader.h"
@@ -10,6 +15,8 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
+#include <limits>
 
 namespace
 {
@@ -220,6 +227,9 @@ HRESULT CMapAssetObject::Render_Group(RENDERGROUP group)
 
     const float4_t worldCullSphere(m_vWorldCullCenter.x, m_vWorldCullCenter.y,
         m_vWorldCullCenter.z, m_fWorldCullRadius);
+	// Only PS_WATER consumes the water uniforms. Ordinary meshes need no
+	// identity bind, including WATER rows downgraded to TRANSLUCENT below.
+	bool_t waterBindingsAttempted = false;
 	HRESULT renderResult = Bind_ShaderResources(
 		hasCameraSnapshot ? &cameraSnapshot : nullptr);
 	if (SUCCEEDED(renderResult))
@@ -233,8 +243,14 @@ HRESULT CMapAssetObject::Render_Group(RENDERGROUP group)
                 presentationProfile.renderMode = MAP_ASSET_RENDER_MODE::TRANSLUCENT;
             const uint32_t passIndex = CMapAssetRenderUtils::Select_Pass(presentationProfile, m_bMirrored);
             presentationProfile.opacity *= m_fPresentationOpacityMultiplier;
-            renderResult = Bind_WaterShaderResources(bWater);
-            if (FAILED(renderResult)) break;
+            if (bWater)
+            {
+                // Mark before binding so a partial failure still clears every
+                // shared FX11 water input before the next object is drawn.
+                waterBindingsAttempted = true;
+                renderResult = Bind_WaterShaderResources(true);
+                if (FAILED(renderResult)) break;
+            }
 			if (FAILED(
 				CMapAssetRenderUtils::Bind_Material(
 					m_pModelCom, m_pShaderCom, meshIndex,
@@ -255,7 +271,8 @@ HRESULT CMapAssetObject::Render_Group(RENDERGROUP group)
 	   draw so a later character, prop or ordinary map asset cannot inherit the
 	   presentation-only branch. */
 	const HRESULT resetResult = Reset_PresentationVortexShaderResources();
-	const HRESULT waterResetResult = Bind_WaterShaderResources(false);
+	const HRESULT waterResetResult = waterBindingsAttempted ?
+		Bind_WaterShaderResources(false) : S_OK;
 	if (FAILED(renderResult))
 		return renderResult;
 	return FAILED(resetResult) ? resetResult : waterResetResult;
@@ -264,10 +281,33 @@ HRESULT CMapAssetObject::Render_Group(RENDERGROUP group)
 HRESULT CMapAssetObject::Render_Shadow()
 {
 	constexpr uint32_t STATIC_SHADOW_PASS_BASE = 12u;
+	constexpr uint32_t OPAQUE_SHADOW_PASS_BASE = 20u;
 	if (!m_bVisible || m_fPresentationOpacityMultiplier <= 0.f ||
         CGameInstance::Get().Is_SceneEnvironmentReplaced())
 		return S_OK;
     if (!m_RenderProfile.castsShadow) return S_OK;
+
+	// Use the final light volume after frame providers, never the camera volume.
+	// The beach-wave source VS displaces vertices beyond the static model bounds.
+	bool_t hasVertexDisplacement = false;
+	for (uint32_t mesh = 0u; mesh < m_pModelCom->Get_NumMeshes(); ++mesh)
+	{
+		const auto* surface = m_pModelCom->Get_MaterialSurface(mesh);
+		if (m_pModelCom->Has_MorphBaseVertices(mesh) ||
+			(surface && surface->family == Engine::MODEL_SURFACE_FAMILY::SOURCE_CHARACTER &&
+				surface->sourceCharacter.program == 43u))
+		{
+			hasVertexDisplacement = true;
+			break;
+		}
+	}
+	MAP_SHADOW_CULL_SNAPSHOT lightSnapshot{};
+	if (m_bHasWorldCullBounds && !hasVertexDisplacement &&
+		CMapAssetRenderUtils::Capture_ShadowCullSnapshot(lightSnapshot) &&
+		!CMapAssetRenderUtils::Intersects_ShadowCullSnapshot(
+			lightSnapshot, m_vWorldCullCenter, m_fWorldCullRadius))
+		return S_OK;
+
     if (FAILED(Bind_ShadowShaderResources())) return E_FAIL;
 
 	for (uint32_t iMesh = 0;
@@ -278,17 +318,109 @@ HRESULT CMapAssetObject::Render_Shadow()
         const uint32_t iCullPass = CMapAssetRenderUtils::Select_Pass(presentationProfile, m_bMirrored);
         if (iCullPass > 2u) return E_UNEXPECTED;
         presentationProfile.opacity *= m_fPresentationOpacityMultiplier;
-		if (FAILED(CMapAssetRenderUtils::Bind_ShadowMaterial(
+		const bool_t opaqueShadow = CMapAssetRenderUtils::Uses_OpaqueShadowPass(
+			m_pModelCom->Get_MaterialSurface(iMesh), presentationProfile,
+			CGameInstance::Get().Get_MaterialRenderSettings().bUseSourceMaterials);
+		if ((!opaqueShadow && FAILED(CMapAssetRenderUtils::Bind_ShadowMaterial(
 				m_pModelCom, m_pShaderCom, iMesh,
-				presentationProfile, m_fElapsedTime)) ||
+				presentationProfile, m_fElapsedTime))) ||
 			FAILED(m_pShaderCom->Begin(
-				STATIC_SHADOW_PASS_BASE + iCullPass)) ||
+				(opaqueShadow ? OPAQUE_SHADOW_PASS_BASE : STATIC_SHADOW_PASS_BASE) + iCullPass)) ||
 			FAILED(m_pModelCom->Render(iMesh)))
 		{
 			return E_FAIL;
 		}
 	}
 	return S_OK;
+}
+
+bool_t CMapAssetObject::Try_GetStaticShadowRevision(uint64_t& outRevision) const
+{
+	outRevision = 0u;
+	const auto reject = [this]()
+	{
+		m_bStaticShadowSnapshotValid = false;
+		return false;
+	};
+	if (!m_bVisible || !m_RenderProfile.castsShadow || !m_pModelCom ||
+		!m_pTransformCom || m_pModelCom->Is_Skinned() ||
+		!std::isfinite(m_fPresentationOpacityMultiplier) ||
+		m_fPresentationOpacityMultiplier != 1.f ||
+		!std::isfinite(m_fPresentationVortexStrength) ||
+		m_fPresentationVortexStrength > 0.f ||
+		!CGameInstance::Get().Get_MaterialRenderSettings().bUseSourceMaterials)
+		return reject();
+
+	STATIC_SHADOW_SNAPSHOT current{};
+	current.model = m_pModelCom.get();
+	current.world = *m_pTransformCom->Get_WorldMatrixPtr();
+	for (const auto& row : current.world.m)
+		for (const auto component : row)
+			if (!std::isfinite(component)) return reject();
+	current.worldCullCenter = m_vWorldCullCenter;
+	current.worldCullRadius = m_fWorldCullRadius;
+	current.presentationOpacity = m_fPresentationOpacityMultiplier;
+	current.visible = m_bVisible;
+	current.mirrored = m_bMirrored;
+	current.hasWorldCullBounds = m_bHasWorldCullBounds;
+	if (current.hasWorldCullBounds &&
+		(!std::isfinite(current.worldCullCenter.x) ||
+		 !std::isfinite(current.worldCullCenter.y) ||
+		 !std::isfinite(current.worldCullCenter.z) ||
+		 !std::isfinite(current.worldCullRadius)))
+		return reject();
+
+	// Reuse capacity on cache hits; no per-frame candidate vector allocation.
+	m_StaticShadowCandidateMeshPasses.clear();
+	bool_t hasCaster = false;
+	for (uint32_t mesh = 0u; mesh < m_pModelCom->Get_NumMeshes(); ++mesh)
+	{
+		const auto* surface = m_pModelCom->Get_MaterialSurface(mesh);
+		const bool_t morph = m_pModelCom->Has_MorphBaseVertices(mesh);
+		// Render_Shadow disables the object's light cull for ANY such mesh,
+		// including a non-caster. Preserve that cull input in the snapshot.
+		current.hasVertexDisplacement |= morph ||
+			(surface && surface->family == Engine::MODEL_SURFACE_FAMILY::SOURCE_CHARACTER &&
+			 surface->sourceCharacter.program == 43u);
+		auto profile = Get_MaterialRenderProfile(mesh);
+		if (profile.renderMode != MAP_ASSET_RENDER_MODE::DEFERRED || !profile.castsShadow)
+		{
+			m_StaticShadowCandidateMeshPasses.push_back(3u); // No depth draw.
+			continue;
+		}
+		profile.opacity *= m_fPresentationOpacityMultiplier;
+		if (morph || m_pModelCom->Has_MaterialTextureOverrides(mesh) ||
+			!CMapAssetRenderUtils::Uses_StaticShadowInputs(surface, profile, true))
+			return reject();
+		const uint32_t cullPass = CMapAssetRenderUtils::Select_Pass(profile, m_bMirrored);
+		if (cullPass > 2u) return reject();
+		const bool_t opaque = CMapAssetRenderUtils::Uses_OpaqueShadowPass(surface, profile, true);
+		m_StaticShadowCandidateMeshPasses.push_back((opaque ? 20u : 12u) + cullPass);
+		hasCaster = true;
+	}
+	if (!hasCaster) return reject();
+
+	const auto& previous = m_StaticShadowSnapshot;
+	if (!m_bStaticShadowSnapshotValid || current.model != previous.model ||
+		0 != std::memcmp(&current.world, &previous.world, sizeof(current.world)) ||
+		0 != std::memcmp(&current.worldCullCenter, &previous.worldCullCenter, sizeof(current.worldCullCenter)) ||
+		0 != std::memcmp(&current.worldCullRadius, &previous.worldCullRadius, sizeof(current.worldCullRadius)) ||
+		0 != std::memcmp(&current.presentationOpacity, &previous.presentationOpacity, sizeof(current.presentationOpacity)) ||
+		current.visible != previous.visible || current.mirrored != previous.mirrored ||
+		current.hasWorldCullBounds != previous.hasWorldCullBounds ||
+		current.hasVertexDisplacement != previous.hasVertexDisplacement ||
+		m_StaticShadowMeshPasses != m_StaticShadowCandidateMeshPasses)
+	{
+		// Never recycle a published revision into an older cached key.
+		if (m_iStaticShadowRevision == (std::numeric_limits<uint64_t>::max)())
+			return reject();
+		m_StaticShadowSnapshot = current;
+		m_StaticShadowMeshPasses = m_StaticShadowCandidateMeshPasses;
+		++m_iStaticShadowRevision;
+		m_bStaticShadowSnapshotValid = true;
+	}
+	outRevision = m_iStaticShadowRevision;
+	return true;
 }
 
 void CMapAssetObject::Set_PresentationOpacityMultiplier(

@@ -2,14 +2,18 @@
 
 #include "Client_Defines.h"
 #include "KoukuSaydonCompositionDocument.h"
+#include "GameplayDataRevision.h"
 
 #include <cstdint>
+#include <functional>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
 
 namespace Client
 {
+	struct KOUKU_SAYDON_PATTERN_FLOW_ENTRY;
 	/* K-only Server playback and ordered Pattern Flow authoring. Pattern/Bundle
 	   definitions stay in Composition; Flow stores stable references to them. */
 	class CKoukuSaydonBossTool final
@@ -55,6 +59,9 @@ namespace Client
 		CKoukuSaydonBossTool() = default;
 
 		void Open();
+		void Update();
+		bool Is_PlayPreparationPending() const noexcept { return m_PlayPreparation.has_value(); }
+		bool Cancel_PlayPreparation(std::string& status);
 		[[nodiscard]] bool Is_Open() const noexcept { return m_bOpen; }
 		void Render();
 		// Shared F1 tree; selection kinds are 0 none, 1 parent, 2 bundle, 3 pattern.
@@ -102,9 +109,27 @@ namespace Client
 		}
 
 	private:
+		struct PLAY_PREPARATION final
+		{
+			std::vector<std::string> TargetPlacementIds;
+			LostArk::Shared::GameplayDataRevision GameplayRevision;
+			std::uint32_t iSourceRevision = 0u;
+			std::uint64_t iWorldGeneration = 0u;
+			std::uint64_t iDeadlineMilliseconds = 0u;
+			std::uint32_t iGateGeneration = 0u;
+			std::uint32_t iPreviousRequestSequence = 0u;
+			std::size_t iGateIndex = 0u;
+			std::function<bool(std::string&)> Submit;
+		};
+		bool Prepare_ServerPlay(std::string_view gateId, std::vector<std::string> targets,
+			std::function<bool(std::string&)> submit, std::string& status);
+		std::optional<PLAY_PREPARATION> m_PlayPreparation;
+
 		bool Play_Selected(std::string& outStatus);
 		bool Play_LoadedPatternById(std::string_view patternId, std::string& status);
 		bool Play_LoadedBundleById(std::string_view bundleId, std::string& status);
+		bool Play_LoadedFlow(std::string_view gateId,
+			const std::vector<KOUKU_SAYDON_PATTERN_FLOW_ENTRY>& entries, std::string& status);
 		void Normalize_Selection();
 		[[nodiscard]] const PRODUCT_PATTERN*
 			Find_SelectedPattern() const;
@@ -131,6 +156,8 @@ namespace Client
 		int m_iSelectedInventoryKind = 0;
 		int m_iSelectedGate = 0;
 		std::string m_strStatus;
+		std::string m_strProductLoadError;
+		std::string m_strFlowLoadError;
 		std::uint32_t m_iSourceRevision = 0u;
 		bool m_bOpen = true;
 		bool m_bLoadAttempted = false;

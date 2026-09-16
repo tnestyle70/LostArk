@@ -16,6 +16,7 @@
 #include <iomanip>
 #include <iterator>
 #include <limits>
+#include <set>
 #include <sstream>
 #include <unordered_map>
 #include <unordered_set>
@@ -833,11 +834,16 @@ namespace
 			{ "positionOffset", "rotationDegrees", "scale", "fadeInMs", "fadeOutMs",
 			  "dissolveStart", "dissolveEnd", "volume", "followBoss", "bone", "boneTarget",
 			  "regionId", "cardSymbol", "cardColor", "anchorKind", "worldId", "logicOccurrenceId", "debugRender", "worldOccurrenceId", "brightnessMultiplier",
-			  "worldEmissionIndex", "selectionGroupId", "fitEffectToDuration" })) return false;
+			  "worldEmissionIndex", "selectionGroupId", "fitEffectToDuration", "loopEffectToDuration" })) return false;
 		if (const auto* fit = value.Find("fitEffectToDuration"))
 		{
 			if (!fit->Is_Boolean()) return false;
 			row.bFitEffectToDuration = fit->Get_Boolean();
+		}
+		if (const auto* loop = value.Find("loopEffectToDuration"))
+		{
+			if (!loop->Is_Boolean()) return false;
+			row.bLoopEffectToDuration = loop->Get_Boolean();
 		}
 		const auto* debugRender = value.Find("debugRender");
 		if (nullptr != debugRender)
@@ -1752,9 +1758,11 @@ namespace
 				{ outStatus = "Invalid region identity, card or anchor: " + row.strOccurrenceId; return false; }
                 const auto* resource = presentationResources.at(row.strResourceId);
                 // Camera shots own their world coordinates; Sound does not bind an Object.
-				if (row.bFitEffectToDuration && (resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT ||
+				if ((row.bFitEffectToDuration || row.bLoopEffectToDuration) && (resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT ||
 					(resource->strResourceKind != "V1_EFFECT" && resource->strResourceKind != "V1_ELEMENT")))
-				{ outStatus = "Fit Effect lifetime requires a V1 Effect resource."; return false; }
+				{ outStatus = "Effect lifetime controls require a V1 Effect resource."; return false; }
+				if (row.bFitEffectToDuration && row.bLoopEffectToDuration)
+				{ outStatus = "Effect lifetime cannot stretch and loop simultaneously."; return false; }
                 const bool objectAnchored = resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT ||
                     resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::LIGHT || resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER;
                 if (objectAnchored && row.strAnchorKind == "WORLD" && row.strWorldId.empty())
@@ -1784,15 +1792,15 @@ namespace
 					row.strAnchorKind != "BOSS" || row.strBone.empty()))
 				{ outStatus = "WEAPON Bone anchors require a boss Collider and an explicit weapon bone."; return false; }
 				if ((resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::LIGHT &&
-					(row.strAnchorKind == "PLAYER" || (row.strAnchorKind == "MAP" && resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT) || row.fBrightnessMultiplier != 1.0)) ||
+					(row.strAnchorKind == "PLAYER" || (row.strAnchorKind == "MAP" && resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT && resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER) || row.fBrightnessMultiplier != 1.0)) ||
 					(resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::LIGHT &&
 					(row.Scale != std::array<double, 3u>{1.0, 1.0, 1.0} ||
 					 (row.strAnchorKind != "BOSS" && !row.strBone.empty()) ||
 					 (row.strAnchorKind == "PLAYER" && !row.bFollowBoss))))
 				{ outStatus = "Invalid Light anchor, scale, bone or brightness: " + row.strOccurrenceId; return false; }
-				if (resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT && row.strAnchorKind == "MAP" &&
-					(row.bFollowBoss || !row.strBone.empty() || row.strBoneTarget != "BODY" || !row.strWorldOccurrenceId.empty()))
-				{ outStatus = "MAP Effect requires a fixed position without a bone or World occurrence."; return false; }
+				if ((resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT || resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER) && row.strAnchorKind == "MAP" &&
+					(row.bFollowBoss || !row.strBone.empty() || row.strBoneTarget != "BODY" || !row.strWorldId.empty() || !row.strWorldOccurrenceId.empty() || (resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER && row.iWorldEmissionIndex != 0u)))
+				{ outStatus = "MAP Effect/Collider requires a fixed position without a bone or World occurrence."; return false; }
 				if (!row.strWorldOccurrenceId.empty())
 				{
 					const auto owner = std::find_if(pattern.WorldOccurrences.begin(), pattern.WorldOccurrences.end(),
@@ -2196,14 +2204,17 @@ namespace
                     if (owner->strJudgementKind == "PATTERN_COMPLETION_COUNT")
                     {
                         const auto* result = box.OnSuccessLogicIds.size() == 1u ? findLogic(box.OnSuccessLogicIds.front()) : nullptr;
-                        if (!result || result->strOutcomeKind != "FOLLOWUP_PATTERN" || !box.OnFailLogicIds.empty() || !box.OnTimeoutLogicIds.empty())
-                        { outStatus = "Completion count requires exactly one Success followup and no Fail/Timeout."; return false; }
+                        if (box.OnSuccessLogicIds.size() > 1u || (!box.OnSuccessLogicIds.empty() &&
+                            (!result || result->strOutcomeKind != "FOLLOWUP_PATTERN")) ||
+                            !box.OnFailLogicIds.empty() || !box.OnTimeoutLogicIds.empty())
+                        { outStatus = "Completion count accepts at most one Success followup and no Fail/Timeout."; return false; }
                         for (const auto& id : owner->PatternIds)
                         {
                             const auto child = std::find_if(document.Patterns.begin(), document.Patterns.end(), [&](const auto& row) { return row.strPatternId == id; });
                             if (child != document.Patterns.end() && !child->strLoadError.empty())
                             { outStatus = "Completion candidate " + id + " is unavailable: " + child->strLoadError; return false; }
-                            if (child == document.Patterns.end() || id == pattern.strPatternId || child->Stages.empty() ||
+                            // Timed Parents are expanded into runtime idle stages by the publisher.
+                            if (child == document.Patterns.end() || id == pattern.strPatternId || (child->Stages.empty() && !child->iDurationMs) ||
                                 child->strGateId != pattern.strGateId || child->strTargetBossPlacementId != pattern.strTargetBossPlacementId || child->strActorProfileId != pattern.strActorProfileId)
                             { outStatus = "Completion candidate must be a distinct playable Pattern for the same Gate and boss."; return false; }
                             for (const auto& childBox : child->LogicOccurrences)
@@ -2314,6 +2325,220 @@ namespace
 		}
 		return result + (value.Is_Array() ? "]" : "}");
 	}
+
+	// Compare the canonical typed projection, including opaque JSON number tokens.
+	bool Same_CompositionValue(const DATA_JSON_VALUE* left, const DATA_JSON_VALUE* right)
+	{
+		return (!left || !right) ? left == right : Preserve_Json(*left) == Preserve_Json(*right);
+	}
+
+	std::string_view Composition_ArrayIdentity(const std::string_view field)
+	{
+		if (field == "patterns") return "patternId";
+		if (field == "stages") return "stageId";
+		if (field == "logics") return "logicId";
+		if (field == "summons") return "summonId";
+		if (field == "worlds") return "worldId";
+		if (field == "sceneProfiles") return "sceneProfileId";
+		if (field == "presentationResources") return "resourceId";
+		if (field == "folders") return "folderId";
+		if (field == "bundles") return "bundleId";
+		if (field == "members") return "memberId";
+		if (field == "patternFlows") return "flowId";
+		if (field == "entries") return "entryId";
+		if (field == "patternSpawns") return "spawnId";
+		if (field == "animationOccurrences" || field == "logicOccurrences" ||
+			field == "presentationOccurrences" || field == "summonOccurrences" ||
+			field == "worldOccurrences" || field == "sceneProfileOccurrences" ||
+			field == "patternOccurrences") return "occurrenceId";
+		// Coordinates, ordered string references and opaque payload arrays are atomic.
+		return {};
+	}
+
+	bool Is_CompositionAllocationWatermark(const std::string& path, const std::string_view field)
+	{
+		const auto listed = [field](std::initializer_list<std::string_view> names) {
+			return std::find(names.begin(), names.end(), field) != names.end();
+		};
+		if (path == "$." + std::string(field))
+			return listed({ "nextPatternOrdinal", "nextFolderOrdinal", "nextBundleOrdinal", "nextLogicOrdinal",
+				"nextSummonOrdinal", "nextWorldOrdinal", "nextSceneProfileOrdinal", "nextPresentationResourceOrdinal" });
+		const auto rowEnd = path.find("].");
+		if (rowEnd == std::string::npos || path.substr(rowEnd + 2u) != field) return false;
+		if (path.starts_with("$.patterns[patternId="))
+			return listed({ "nextStageOrdinal", "nextAnimationOrdinal", "nextLogicOccurrenceOrdinal",
+				"nextSummonOccurrenceOrdinal", "nextWorldOccurrenceOrdinal", "nextSceneProfileOccurrenceOrdinal",
+				"nextPresentationOccurrenceOrdinal", "nextPatternOccurrenceOrdinal" });
+		return path.starts_with("$.bundles[bundleId=") &&
+			listed({ "nextMemberOrdinal", "nextSceneProfileOccurrenceOrdinal", "nextPresentationOccurrenceOrdinal" });
+	}
+
+	bool Merge_CompositionValue(const DATA_JSON_VALUE* base, const DATA_JSON_VALUE* draft,
+		const DATA_JSON_VALUE* current, const std::string& path, const std::string_view field,
+		std::optional<DATA_JSON_VALUE>& result, std::string& status)
+	{
+		const auto take = [&](const DATA_JSON_VALUE* value) {
+			result = value ? std::optional<DATA_JSON_VALUE>(*value) : std::nullopt;
+			return true;
+		};
+		if (Same_CompositionValue(draft, current)) return take(draft);
+		if (Same_CompositionValue(draft, base)) return take(current);
+		if (Same_CompositionValue(current, base)) return take(draft);
+		const auto conflict = [&](const std::string_view reason) {
+			status = std::string(reason) + " at " + path;
+			return false;
+		};
+		if (!base || !draft || !current)
+			return conflict("Conflicting addition or deletion versus edit");
+		// Allocation watermarks are metadata, not authored values. Their maximum
+		// reserves both sets of IDs; row collisions still pass through the merge below.
+		if (Is_CompositionAllocationWatermark(path, field) &&
+			base->Is_Number() && draft->Is_Number() && current->Is_Number() &&
+			draft->Get_Number() >= base->Get_Number() && current->Get_Number() >= base->Get_Number())
+		{
+			result = DATA_JSON_VALUE::Number((std::max)(draft->Get_Number(), current->Get_Number()));
+			return true;
+		}
+		if (base->Is_Object() && draft->Is_Object() && current->Is_Object())
+		{
+			std::set<std::string> keys;
+			for (const auto* object : { base, draft, current })
+				for (const auto& [key, value] : object->Get_Object()) keys.insert(key);
+			DATA_JSON_VALUE::OBJECT merged;
+			for (const auto& key : keys)
+			{
+				std::optional<DATA_JSON_VALUE> value;
+				if (!Merge_CompositionValue(base->Find(key), draft->Find(key), current->Find(key),
+					path + "." + key, key, value, status)) return false;
+				if (value) merged.emplace(key, std::move(*value));
+			}
+			result = DATA_JSON_VALUE::Object(std::move(merged));
+			return true;
+		}
+		const auto identity = Composition_ArrayIdentity(field);
+		if (!base->Is_Array() || !draft->Is_Array() || !current->Is_Array() || identity.empty())
+			return conflict("Different edits to the same field");
+
+		using ROWS = std::map<std::string, const DATA_JSON_VALUE*, std::less<>>;
+		std::array<ROWS, 3> rows;
+		std::array<std::vector<std::string>, 3> orders;
+		const DATA_JSON_VALUE* arrays[] = { base, draft, current };
+		for (std::size_t side = 0; side < rows.size(); ++side)
+			for (const auto& value : arrays[side]->Get_Array())
+			{
+				const auto* id = value.Is_Object() ? value.Find(identity) : nullptr;
+				if (!id || !id->Is_String() || id->Get_String().empty() ||
+					!rows[side].emplace(id->Get_String(), &value).second)
+					return conflict("Missing or duplicate stable array identity");
+				orders[side].push_back(id->Get_String());
+			}
+		std::set<std::string> ids;
+		for (const auto& side : rows) for (const auto& [id, value] : side) ids.insert(id);
+		DATA_JSON_VALUE::OBJECT mergedRows;
+		for (const auto& id : ids)
+		{
+			const auto find = [&](std::size_t side) -> const DATA_JSON_VALUE* {
+				const auto found = rows[side].find(id);
+				return found == rows[side].end() ? nullptr : found->second;
+			};
+			std::optional<DATA_JSON_VALUE> value;
+			if (!Merge_CompositionValue(find(0), find(1), find(2),
+				path + "[" + std::string(identity) + "=" + id + "]", {}, value, status)) return false;
+			if (value) mergedRows.emplace(id, std::move(*value));
+		}
+		std::array<std::vector<std::string>, 3> retainedOrder;
+		for (std::size_t side = 0; side < rows.size(); ++side)
+			for (const auto& id : orders[side])
+				if (rows[0].contains(id) && mergedRows.contains(id)) retainedOrder[side].push_back(id);
+		const bool draftReordered = retainedOrder[1] != retainedOrder[0];
+		const bool currentReordered = retainedOrder[2] != retainedOrder[0];
+		if (draftReordered && currentReordered && retainedOrder[1] != retainedOrder[2])
+			return conflict("Conflicting stable-ID order changes");
+		const auto& retained = draftReordered ? retainedOrder[1] : retainedOrder[2];
+
+		// Keep the chosen existing-row order and both sides' insertion anchors.
+		// A cycle is a real ordering conflict, never permission to discard a row.
+		std::map<std::string, std::set<std::string>, std::less<>> edges;
+		std::map<std::string, std::size_t, std::less<>> incoming, rank;
+		for (const auto& [id, value] : mergedRows) incoming.emplace(id, 0u);
+		const auto edge = [&](const std::string& from, const std::string& to) {
+			if (edges[from].insert(to).second) ++incoming.at(to);
+		};
+		for (std::size_t index = 1; index < retained.size(); ++index) edge(retained[index - 1], retained[index]);
+		for (const auto side : { 1u, 2u })
+		{
+			std::string previous;
+			for (const auto& id : orders[side])
+			{
+				if (!mergedRows.contains(id)) continue;
+				if (!rank.contains(id)) rank.emplace(id, rank.size());
+				if (!previous.empty() && (!rows[0].contains(previous) || !rows[0].contains(id))) edge(previous, id);
+				previous = id;
+			}
+		}
+		std::set<std::pair<std::size_t, std::string>> ready;
+		for (const auto& [id, count] : incoming) if (!count) ready.emplace(rank.at(id), id);
+		DATA_JSON_VALUE::ARRAY merged;
+		while (!ready.empty())
+		{
+			const std::string id = ready.begin()->second;
+			ready.erase(ready.begin());
+			merged.push_back(std::move(mergedRows.at(id)));
+			for (const auto& successor : edges[id])
+				if (--incoming.at(successor) == 0u) ready.emplace(rank.at(successor), successor);
+		}
+		if (merged.size() != mergedRows.size()) return conflict("Conflicting insertion anchors or row order");
+		result = DATA_JSON_VALUE::Array(std::move(merged));
+		return true;
+	}
+
+	bool Merge_CompositionDraft(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& baseline,
+		const KOUKU_SAYDON_COMPOSITION_DOCUMENT& draft,
+		const KOUKU_SAYDON_COMPOSITION_DOCUMENT& current,
+		KOUKU_SAYDON_COMPOSITION_DOCUMENT& merged, std::string& status)
+	{
+		auto baseProjection = baseline;
+		auto draftProjection = draft;
+		// Revision belongs to the guarded writer. Authoring fields merge independently.
+		baseProjection.iRevision = draftProjection.iRevision = current.iRevision;
+		DATA_JSON_VALUE baseJson, draftJson, currentJson;
+		if (!CDataJson::Parse(CKoukuSaydonCompositionDocument::Serialize(baseProjection), baseJson, status) ||
+			!CDataJson::Parse(CKoukuSaydonCompositionDocument::Serialize(draftProjection), draftJson, status) ||
+			!CDataJson::Parse(CKoukuSaydonCompositionDocument::Serialize(current), currentJson, status)) return false;
+		std::optional<DATA_JSON_VALUE> mergedJson;
+		if (!Merge_CompositionValue(&baseJson, &draftJson, &currentJson, "$", {}, mergedJson, status) ||
+			!mergedJson || !CKoukuSaydonCompositionDocument::Parse_Text(Preserve_Json(*mergedJson), merged, status)) return false;
+		const auto preservesExistingIsolation = [&](const auto& mergedRows, const auto& baselineRows,
+			const auto& draftRows, const auto& currentRows, const std::string_view collection,
+			const std::string_view identity, const auto& rowIdentity)
+		{
+			for (const auto& row : mergedRows)
+			{
+				if (row.strLoadError.empty()) continue;
+				const auto alreadyIsolated = [&](const auto& rows) {
+					return std::any_of(rows.begin(), rows.end(), [&](const auto& previous) {
+						return !previous.strLoadError.empty() && previous.strPreservedJson == row.strPreservedJson;
+					});
+				};
+				// Parse preserves invalid/orphan hierarchy rows for repair. Combining
+				// two valid edits must never silently create a newly isolated row.
+				if (!alreadyIsolated(baselineRows) && !alreadyIsolated(draftRows) && !alreadyIsolated(currentRows))
+				{
+					status = "Merged validation failed at $." + std::string(collection) + "[" +
+						std::string(identity) + "=" + rowIdentity(row) + "]: " + row.strLoadError;
+					return false;
+				}
+			}
+			return true;
+		};
+		return preservesExistingIsolation(merged.Patterns, baseline.Patterns, draft.Patterns, current.Patterns,
+			"patterns", "patternId", [](const auto& row) { return row.strPatternId; }) &&
+			preservesExistingIsolation(merged.Folders, baseline.Folders, draft.Folders, current.Folders,
+				"folders", "folderId", [](const auto& row) { return row.strFolderId; }) &&
+			preservesExistingIsolation(merged.Bundles, baseline.Bundles, draft.Bundles, current.Bundles,
+				"bundles", "bundleId", [](const auto& row) { return row.strBundleId; });
+	}
+
 
 	void Remove_Temporary(const std::filesystem::path& path)
 	{
@@ -4272,6 +4497,7 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 			output << ", \"rotationDegrees\": "; Write_PresentationVector(output, row.RotationDegrees);
 			output << ", \"scale\": "; Write_PresentationVector(output, row.Scale);
 			if (row.bFitEffectToDuration) output << ", \"fitEffectToDuration\": true";
+			if (row.bLoopEffectToDuration) output << ", \"loopEffectToDuration\": true";
 			output << ", \"fadeInMs\": " << row.iFadeInMs << ", \"fadeOutMs\": " << row.iFadeOutMs
 				<< ", \"dissolveStart\": " << row.fDissolveStart << ", \"dissolveEnd\": " << row.fDissolveEnd
 				<< ", \"brightnessMultiplier\": " << row.fBrightnessMultiplier
@@ -4346,6 +4572,7 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
                 output << ", \"rotationDegrees\": "; Write_PresentationVector(output, row.RotationDegrees);
                 output << ", \"scale\": "; Write_PresentationVector(output, row.Scale);
                 if (row.bFitEffectToDuration) output << ", \"fitEffectToDuration\": true";
+                if (row.bLoopEffectToDuration) output << ", \"loopEffectToDuration\": true";
                 output << ", \"fadeInMs\": " << row.iFadeInMs << ", \"fadeOutMs\": " << row.iFadeOutMs
                     << ", \"dissolveStart\": " << row.fDissolveStart << ", \"dissolveEnd\": " << row.fDissolveEnd
                     << ", \"brightnessMultiplier\": " << row.fBrightnessMultiplier << ", \"volume\": " << row.fVolume
@@ -4473,9 +4700,6 @@ bool_t Client::CKoukuSaydonCompositionDocument::Save_Atomic(
 	}
 	if (currentBytes != m_strBaselineSourceBytes)
 	{
-		// Library installation may append independent resources while the user
-		// authors a Pattern. Rebase only that proven change; never merge edited
-		// Patterns, reordered resources, or two different values for one ID.
 		KOUKU_SAYDON_COMPOSITION_DOCUMENT current;
 		const auto reject = [&](const std::string& reason) {
 			outStatus = m_strStatus = "Composition changed before Save: " + reason +
@@ -4483,29 +4707,14 @@ bool_t Client::CKoukuSaydonCompositionDocument::Save_Atomic(
 			m_bFresh = false;
 			return false;
 		};
-		if (!Parse_Text(currentBytes, current, status) || !Validate(current, m_References, status))
+		if (!Parse_Text(currentBytes, current, status) ||
+			!Matches_CompositionPath(m_Path, current, status) || !Validate(current, m_References, status))
 			return reject(status);
-		if (current.iRevision <= m_LastGood.iRevision || current.iRevision >= MAX_REVISION ||
-			current.PresentationResources.size() <= m_LastGood.PresentationResources.size() ||
-			!std::equal(m_LastGood.PresentationResources.begin(), m_LastGood.PresentationResources.end(),
-				current.PresentationResources.begin()))
-			return reject("external changes are not compatible resource additions");
-		auto unchanged = current;
-		unchanged.iRevision = m_LastGood.iRevision;
-		unchanged.PresentationResources = m_LastGood.PresentationResources;
-		if (unchanged != m_LastGood)
-			return reject("external Pattern or other authored values also changed");
-		for (std::size_t index = m_LastGood.PresentationResources.size();
-			index < current.PresentationResources.size(); ++index)
-		{
-			const auto& added = current.PresentationResources[index];
-			const auto existing = std::find_if(staged.PresentationResources.begin(), staged.PresentationResources.end(),
-				[&](const auto& row) { return row.strResourceId == added.strResourceId; });
-			if (existing == staged.PresentationResources.end()) staged.PresentationResources.push_back(added);
-			else if (*existing != added) return reject("resource ID conflicts: " + added.strResourceId);
-		}
-		staged.iRevision = current.iRevision;
-		if (!Validate(staged, m_References, status)) return reject(status);
+		if (current.iRevision <= m_LastGood.iRevision || current.iRevision >= MAX_REVISION)
+			return reject("external revision did not advance or is exhausted");
+		if (!Merge_CompositionDraft(m_LastGood, candidate, current, staged, status) ||
+			!Matches_CompositionPath(m_Path, staged, status) || !Validate(staged, m_References, status))
+			return reject(status);
 	}
 	++staged.iRevision;
 	const std::string serialized = Serialize(staged);

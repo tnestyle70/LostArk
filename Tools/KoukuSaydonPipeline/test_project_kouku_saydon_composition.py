@@ -1117,6 +1117,61 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
         document["presentationResources"] = [row for row in document["presentationResources"] if row["kind"] != "CAMERA"]
         return document, parent, child
 
+    def mario_completion_document(self):
+        source = copy.deepcopy(self.hierarchy_document)
+        definition = next(row for row in source["logics"] if row["logicId"] == "kakulsaydon.g1.logic.55")
+        definition.update(completionCount=2, patternIds=[f"KAKULSAYDON_G1_PATTERN_{number}"
+            for number in (38, 39, 40, 43, 52, 46)])
+        owner = self.find(source, "KAKULSAYDON_G1_PATTERN_34")
+        chain = next(row for row in owner["logicOccurrences"] if row["logicId"] == definition["logicId"])
+        chain["onSuccessLogicIds"] = []
+        patterns = {row["patternId"]: row for row in source["patterns"]}
+        closure, pending = set(), [owner["patternId"], "KAKULSAYDON_G1_PATTERN_33"]
+        while pending:
+            identity = pending.pop()
+            if identity in closure:
+                continue
+            closure.add(identity)
+            pending.extend(subject._pattern_dependencies(source, patterns[identity]) - closure)
+        return subject._publication_candidate(source, closure)
+
+    def test_mario_completion_accepts_two_of_six_with_summon_parent_and_optional_followup(self):
+        document = self.mario_completion_document()
+        before = copy.deepcopy(document)
+        subject.validate_document(document)
+        with mock.patch.object(subject, "_project_pattern_root_motion", return_value={}):
+            encounter = subject.project_encounter(document)
+        root = self.find(encounter, "KAKULSAYDON_G1_PATTERN_34")
+        chain = next(row for row in root["logicWindows"] if row["kind"] == "PATTERN_COMPLETION_COUNT")
+        self.assertEqual(2, chain["completionCount"])
+        self.assertEqual(6, len(set(chain["patternIds"])))
+        self.assertEqual([], chain["onSuccess"])
+        parent = self.find(encounter, "KAKULSAYDON_G1_PATTERN_52")
+        self.assertEqual(self.find(document, "KAKULSAYDON_G1_PATTERN_52")["durationMs"],
+                         sum(row["durationMs"] for row in parent["stages"]))
+        self.assertEqual("CROSS_DIRECTION_CLONES", parent["mechanicTriggers"][0]["kind"])
+        self.assertEqual(before, document)
+        owner = self.find(document, "KAKULSAYDON_G1_PATTERN_34")
+        next(row for row in owner["logicOccurrences"] if row["logicId"] == "kakulsaydon.g1.logic.55")["onSuccessLogicIds"] = ["kakulsaydon.g1.logic.60"]
+        subject.validate_document(document)
+
+    def test_mario_completion_rejects_invalid_terminal_outcomes_and_untimed_parent(self):
+        for mutation in ("duplicate_success", "wrong_success", "timeout", "untimed_parent", "nested_chain"):
+            with self.subTest(mutation=mutation):
+                document = self.mario_completion_document()
+                owner = self.find(document, "KAKULSAYDON_G1_PATTERN_34")
+                chain = next(row for row in owner["logicOccurrences"] if row["logicId"] == "kakulsaydon.g1.logic.55")
+                if mutation == "duplicate_success": chain["onSuccessLogicIds"] = ["kakulsaydon.g1.logic.60"] * 2
+                if mutation == "wrong_success": chain["onSuccessLogicIds"] = ["kakulsaydon.g1.logic.61"]
+                if mutation == "timeout": chain["onTimeoutLogicIds"] = ["kakulsaydon.g1.logic.60"]
+                parent = self.find(document, "KAKULSAYDON_G1_PATTERN_52")
+                if mutation == "untimed_parent": parent.pop("durationMs")
+                if mutation == "nested_chain":
+                    parent["nextLogicOccurrenceOrdinal"] = 2
+                    parent["logicOccurrences"] = [dict(chain, occurrenceId=parent["patternId"] + ".logic.1", startMs=0, durationMs=1000)]
+                with self.assertRaises(subject.CompositionError):
+                    subject.validate_document(document)
+
     def test_parent_repeats_full_child_and_cancels_only_truncated_logic(self):
         document, parent, child = self.parent_fixture()
         logic_id = f"kakulsaydon.g1.logic.{document['nextLogicOrdinal']}"
@@ -3876,6 +3931,67 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
             self.assertEqual(b'{"revision": 1}\n', backups[0].read_bytes())
             self.assertEqual(b'{"revision": 2}\n', destination.read_bytes())
 
+    def test_effect_source_loop_window_is_explicit_and_excludes_stretch(self):
+        pattern_id = "KAKULSAYDON_G1_PATTERN_33"
+        resource = dict(resourceId="effect.hand", kind="EFFECT", resourceKind="V1_EFFECT")
+        row = dict(occurrenceId=pattern_id + ".presentation.3", resourceId="effect.hand",
+                   startMs=3035, durationMs=24959, loopEffectToDuration=True)
+        pattern = dict(patternId=pattern_id, nextPresentationOccurrenceOrdinal=4,
+                       presentationOccurrences=[row])
+        def validate():
+            subject._validate_presentation_occurrences(pattern, {"effect.hand": resource}, 27994, {})
+        validate()
+        row["fitEffectToDuration"] = True
+        with self.assertRaisesRegex(subject.CompositionError, "stretch and loop"):
+            validate()
+        row["fitEffectToDuration"] = False
+        row["loopEffectToDuration"] = 1
+        with self.assertRaisesRegex(subject.CompositionError, "loopEffectToDuration"):
+            validate()
+        row["loopEffectToDuration"] = True
+        resource["resourceKind"] = "V2_GROUP"
+        with self.assertRaisesRegex(subject.CompositionError, "V1 Effect"):
+            validate()
+        # Omitted policy preserves the legacy finite source clock.
+        del row["loopEffectToDuration"]
+        validate()
+
+    def test_linked_map_collider_projects_absolute_world_anchor(self):
+        pattern_id = "KAKULSAYDON_G1_PATTERN_34"
+        logic_box = dict(occurrenceId=pattern_id + ".logic.3", startMs=2998, durationMs=21160)
+        row = dict(occurrenceId=pattern_id + ".presentation.3", resourceId="collider.portal",
+                   startMs=2998, durationMs=21160, logicOccurrenceId=logic_box["occurrenceId"],
+                   anchorKind="MAP", followBoss=False, positionOffset=[-.07, 1.32, 942.33],
+                   rotationDegrees=[0, 90, 0], scale=[2, 1, 3])
+        resource = dict(resourceId="collider.portal", kind="COLLIDER", shape="BOX", halfExtents=[1, 1, 1])
+        pattern = dict(patternId=pattern_id, nextPresentationOccurrenceOrdinal=4,
+                       logicOccurrences=[logic_box], presentationOccurrences=[row])
+        document = dict(presentationResources=[resource])
+        subject._validate_presentation_occurrences(pattern, {resource["resourceId"]: resource}, 40000, {})
+        region = subject._project_collider_regions(document, pattern, logic_box,
+            {"triggerKind": "ENTER_AREA"}, {}, ROOT)[0]
+        self.assertEqual("WORLD", region["anchorKind"])
+        self.assertEqual(row["positionOffset"], region["center"])
+        self.assertEqual([2, 1, 3], region["halfExtents"])
+        self.assertEqual(90, region["yawDegrees"])
+        self.assertNotIn("worldTrack", region)
+        # The same coordinates remain boss-relative only when explicitly authored BOSS.
+        row.update(anchorKind="BOSS", followBoss=True)
+        relative = subject._project_collider_regions(document, pattern, logic_box,
+            {"triggerKind": "ENTER_AREA"}, {}, ROOT)[0]
+        self.assertEqual("BOSS_CURRENT", relative["anchorKind"])
+        self.assertEqual(region["center"], relative["center"])
+        row.update(anchorKind="MAP", followBoss=False)
+        for invalid in ({"followBoss": True}, {"bone": "b_root"}, {"worldId": "world.portal"}):
+            before = copy.deepcopy(row)
+            row.update(invalid)
+            with self.subTest(invalid=invalid), self.assertRaisesRegex(subject.CompositionError, "MAP Effect/Collider"):
+                subject._validate_presentation_occurrences(pattern, {resource["resourceId"]: resource}, 40000, {})
+            row.clear(); row.update(before)
+        row["worldEmissionIndex"] = 1
+        with self.assertRaisesRegex(subject.CompositionError, "worldEmissionIndex belongs only"):
+            subject._validate_presentation_occurrences(pattern, {resource["resourceId"]: resource}, 40000, {})
+
     def test_linked_collider_reuses_duration_trigger_and_result_windows(self):
         for logic_type, field, kind in (("DURATION", "judgementKind", "AREA_OVERLAP"),
                                         ("TRIGGER", "triggerKind", "ENTER_AREA")):
@@ -5471,6 +5587,28 @@ class KoukuAnimationRootMotionTests(unittest.TestCase):
                 bad["stages"][0]["rootMotionSamples"][index][field] = value
                 with self.subTest(field=field, value=value):
                     self.assertNotEqual(0, run(bad).returncode)
+
+
+class KoukuInventoryAdmissionTests(unittest.TestCase):
+    def test_current_published_encounter_matches_client_limits(self):
+        content = (ROOT / subject.ENCOUNTER_PATH).read_bytes()
+        subject._validate_encounter_admission(json.loads(content), content)
+
+    def test_projected_outputs_reject_before_publication(self):
+        encounter = {"payload": "large"}
+        with mock.patch.object(subject, "project_encounter", return_value=encounter), \
+             mock.patch.object(subject, "project_presentation", return_value={}), \
+             mock.patch.object(subject, "MAX_ENCOUNTER_BYTES", 1):
+            with self.assertRaisesRegex(subject.CompositionError, "64 MiB"):
+                subject.projected_outputs({})
+
+    def test_depth_and_value_boundaries(self):
+        with mock.patch.object(subject, "MAX_ENCOUNTER_DEPTH", 2), \
+             mock.patch.object(subject, "MAX_ENCOUNTER_VALUES", 3):
+            subject._validate_encounter_admission({"a": [0]}, b"{}")
+            for document in ({"a": [[0]]}, {"a": [0, 1]}):
+                with self.assertRaisesRegex(subject.CompositionError, "depth/value"):
+                    subject._validate_encounter_admission(document, b"{}")
 
 
 if __name__ == "__main__":

@@ -301,31 +301,19 @@ HRESULT CMapStaticBatchObject::Render_Shadow()
 		const auto* surface = m_pModelCom->Get_MaterialSurface(iMesh);
 		if (surface && !surface->castsShadow)
 			continue;
-		// Existing complex families retain their complete source shadow shader.
-		uint32_t shadowPassBase = 12u;
-		if (!surface)
-			shadowPassBase = 18u;
-		else
+		const bool_t opaqueShadow = CMapAssetRenderUtils::Uses_OpaqueShadowPass(
+			surface, m_RenderProfile, useSourceMaterials);
+		uint32_t shadowPassBase = opaqueShadow ? 21u : 12u;
+		if (!opaqueShadow)
 		{
-			switch (surface->family)
-			{
-			case Engine::MODEL_SURFACE_FAMILY::LEGACY:
-			case Engine::MODEL_SURFACE_FAMILY::SPECULAR_TEXTURE_REFLECTION:
-			case Engine::MODEL_SURFACE_FAMILY::DIFFUSE_SPECULAR_REFLECTION:
+			// Simple families retain their alpha test when source mode is off or masked.
+			if (!surface || surface->family == Engine::MODEL_SURFACE_FAMILY::LEGACY ||
+				surface->family == Engine::MODEL_SURFACE_FAMILY::SPECULAR_TEXTURE_REFLECTION ||
+				surface->family == Engine::MODEL_SURFACE_FAMILY::DIFFUSE_SPECULAR_REFLECTION ||
+				surface->family == Engine::MODEL_SURFACE_FAMILY::PBR_SEAMLESS_OPAQUE ||
+				surface->family == Engine::MODEL_SURFACE_FAMILY::PBR_OPAQUE ||
+				surface->family == Engine::MODEL_SURFACE_FAMILY::SOURCE_SPECULAR_OPAQUE)
 				shadowPassBase = 18u;
-				break;
-			case Engine::MODEL_SURFACE_FAMILY::PBR_SEAMLESS_OPAQUE:
-			case Engine::MODEL_SURFACE_FAMILY::PBR_OPAQUE:
-				shadowPassBase = useSourceMaterials && !surface->pbrAlphaMasked ? 21u : 18u;
-				break;
-			case Engine::MODEL_SURFACE_FAMILY::SOURCE_SPECULAR_OPAQUE:
-				shadowPassBase = useSourceMaterials ? 21u : 18u;
-				break;
-			default:
-				break;
-			}
-		}
-		{
 			Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "Map.Shadow.Material.Bind");
 			if (FAILED(CMapAssetRenderUtils::Bind_ShadowMaterial(m_pModelCom, m_pShaderCom,
 				iMesh, m_RenderProfile, m_fElapsedTime))) return E_FAIL;
@@ -344,6 +332,35 @@ HRESULT CMapStaticBatchObject::Render_Shadow()
 	return S_OK;
 }
 
+bool_t CMapStaticBatchObject::Try_GetStaticShadowRevision(uint64_t& outRevision) const
+{
+	outRevision = 0u;
+	if (m_iStaticShadowRevision == 0u || !m_RenderProfile.castsShadow ||
+		!m_pModelCom || m_pModelCom->Get_NumMeshes() == 0u ||
+		!CGameInstance::Get().Get_MaterialRenderSettings().bUseSourceMaterials)
+		return false;
+
+	// Surface/profile constants are immutable after the batch is staged. Mutable
+	// texture overrides and morph clones must leave the cache before it is reused.
+	bool_t hasShadowCaster = false;
+	for (uint32_t mesh = 0u; mesh < m_pModelCom->Get_NumMeshes(); ++mesh)
+	{
+		const auto* surface = m_pModelCom->Get_MaterialSurface(mesh);
+		if (surface && !surface->castsShadow)
+			continue;
+		if (m_pModelCom->Has_MorphBaseVertices(mesh) ||
+			m_pModelCom->Has_MaterialTextureOverrides(mesh) ||
+			!CMapAssetRenderUtils::Uses_StaticShadowInputs(surface, m_RenderProfile, true))
+			return false;
+		hasShadowCaster = true;
+	}
+	if (!hasShadowCaster)
+		return false;
+
+	outRevision = m_iStaticShadowRevision;
+	return true;
+}
+
 HRESULT CMapStaticBatchObject::Update_Instance(
 	uint64_t placementId,
 	const FMapStaticInstance& instance)
@@ -358,6 +375,16 @@ HRESULT CMapStaticBatchObject::Update_Instance(
 	}
 
 	FMapStaticInstance& current = m_Instances[iter->second];
+	// Bounds participate in light-volume culling even when the world is unchanged.
+	const bool_t shadowChanged = current.Visible != instance.Visible ||
+		0 != std::memcmp(&current.World, &instance.World, sizeof(current.World)) ||
+		0 != std::memcmp(&current.WorldInvTranspose, &instance.WorldInvTranspose,
+			sizeof(current.WorldInvTranspose)) ||
+		0 != std::memcmp(&current.WorldBoundsCenter, &instance.WorldBoundsCenter,
+			sizeof(current.WorldBoundsCenter)) ||
+		current.WorldBoundsRadius != instance.WorldBoundsRadius;
+	if (shadowChanged && m_iStaticShadowRevision != 0u)
+		++m_iStaticShadowRevision;
 	if (current.Visible != instance.Visible)
 	{
 		if (instance.Visible)
@@ -392,6 +419,8 @@ HRESULT CMapStaticBatchObject::Set_InstanceVisible(
 		else
 			--m_iAuthoredVisibleInstanceCount;
 		instance.Visible = visible;
+		if (m_iStaticShadowRevision != 0u)
+			++m_iStaticShadowRevision;
         m_bBatchBoundsDirty = true;
 		m_bShadowInstancesDirty = true;
 		m_bVisibleInstancesDirty = true;
@@ -541,7 +570,6 @@ HRESULT CMapStaticBatchObject::Ensure_ShadowInstanceCapacity(
 HRESULT CMapStaticBatchObject::Upload_VisibleInstances(
 	const MAP_CAMERA_CULL_SNAPSHOT* cameraSnapshot)
 {
-	Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Map.Batch.Visibility");
 	const bool_t hasCameraSnapshot = nullptr != cameraSnapshot;
 	const uint64_t cameraRevision = hasCameraSnapshot ?
 		cameraSnapshot->revision : 0u;
@@ -559,6 +587,7 @@ HRESULT CMapStaticBatchObject::Upload_VisibleInstances(
 		return S_OK;
 	}
 
+	Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Map.Batch.Visibility");
 	m_CandidateVisibleInstances.clear();
 	bool_t requiresNextCameraTick = false;
     INSTANCE_ENVELOPE visibleEnvelope;
@@ -579,9 +608,10 @@ HRESULT CMapStaticBatchObject::Upload_VisibleInstances(
         }
     }
 
+	if (!rejectBatch)
 	{
 		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Map.Batch.CullAndPack");
-	if (!rejectBatch) for (size_t index = 0u; index < m_Instances.size(); ++index)
+	for (size_t index = 0u; index < m_Instances.size(); ++index)
 	{
         FMapStaticInstance& instance = m_Instances[index];
 		if (!instance.Visible)

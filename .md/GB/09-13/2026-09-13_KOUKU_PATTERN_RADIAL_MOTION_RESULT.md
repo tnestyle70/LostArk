@@ -249,3 +249,87 @@ Product C++/shader 변경과 Client/UI 실행·캡처·원작 화면 동등성 �
 - Debug Product 빌드에서 필요한 CSO 7개가 갱신됐다. C++ 변경이 없어 기존 Client.exe와 Server.exe는 다시 링크하지 않았다. 최종 확인 때 두 프로그램은 종료 상태였다.
 
 사용자가 직접 실행할 대상은 `Client/Bin/Debug/Client.exe`와 `Server/Bin/Debug/Server.exe`다. 3관문 패턴 목록에서 P60·P61·P62를 재생하고, 폭탄은 기존 WORLD 오브젝트의 기본 또는 Respawn 모션에서 심지를 확인할 수 있다. 이번 네 이펙트의 최종 시각 판정은 사용자 확인 전이며, 기존 1관문 시퀀스의 완료 확인과 구분한다.
+
+
+## G14. 작은 오망성의 원본 광주·파편 동반 폭발 — 2026-09-16
+
+사용자 첨부 이미지의 붉은 별 바닥·검은 파편·수직 광주를 분석했다. 기존15요소의 cast/shot과 native2811/2812 additive 처리는 그대로 있었지만, 광주와 파편을 담는 두 원본 system은 library에 없었다. Action4219932 stage0의 활성 notify012/013에서 down_lighting_Atk_02의11요소와 Atk_09_01의12요소를 가져왔다. P34의 실제 애니메이션은4219911/27_01이며,4219932도 같은clip·같은발생시간이다. downLighting은4219911에서도 활성이고 impact는4219911에서 비활성이다. 이번38요소 library는 사용자가 요청한 전체 폭발 조합이며 원래4219911 action의 enabled flag를 바꾸거나 동일한 gameplay cue라고 기록하지 않는다.
+
+기존15요소와 root 속성은 구조적으로 모두 동일하다. 추가23요소의 material은 설치 source leaf와 일치하고 참조49개가 모두 존재한다. 원본 notify의1.993970/2.051467초, scale2 및 offset을 보존했다. 비직렬화 nested CDO42분포를 원본 instance/class default 근거로 상속하고 downLighting의0.201266초 notify stop을 기존loop0 window로 연결했다. 원래cast/shot의 독립 root basis를 그대로 사용하며 전역회전·전체밝기 보정은 하지 않았다. 회색바닥/precast/손/ScreenPost는 추가하지 않았다.
+
+실제 current Codec Load/Validate/Serialize roundtrip·Product CPU stage·120Hz Playback252539검사에서 실패0이다. 총38개와 신규23개가 모두 발생하고 peak94입자, duration5.05147초, 마지막 생존4.55833초, 되감기오차0을 확인했다.3초 시점에는 신규 입자45개가 남으므로 P34의 전용presentation resource와 occurrence 두 duration만3000→5052ms로 바꾼 별도 byte-preserving 후보를 준비했다. 해당resource의 occurrence 소비자는P34 한 곳이다. portal2998ms·animation4667ms 등 다른 값은 모두 보존했다.
+
+현재 설치 CSO를 사용하는 headless D3D11 WARP에서 Document GPU stage와 Product GPU target stage가 모두 통과했다. 렌더러 준비와 resource/material 생성 검증이며 Draw·Client/UI·화면 캡처·visual PASS는 수행하지 않았다. 최초 격리 GPU 시도는 새 ActorCatalog의 MapAssetCatalog 링크 의존성과 EXE옆CSO 경로를 빠뜨린 harness 오류였고, 의존성을 닫고 현재CSO의 격리 hardlink를 둔 재실행이 통과했다. 제품 코드나 shader를 이 이유로 변경하지 않았다.
+
+증거: out/KoukuSmallPentagramBurst20260916/{static-validation.json,native_result.json,native_source_receipt.json,births.csv,gpu_result.log,composition-candidate.json,impact_source/impact-closure.json}. 생성기 두 파일과 38요소 Authored 정본은 반영했다. 사용자 지시 후 설치할 때 초기후보1052를 덮어쓰지 않고 최신 저장1060의 두 duration 필드만 수정해1061로 올렸으며 다른 사용자 편집은 byte/구조 비교로 보존했다. Effect는 Catalog의 DIRECT_AUTHORED_DOCUMENT가 직접 읽으므로 추가 Resource 복사는 없다.
+
+그러나 열린 편집기의 저장 기준은1060이어서 기존 Save가 외부의 duration 변경도 전부 충돌로 거절했다. source가 설치직후SHA와 같은 것을 writer lock 아래 확인하고 Composition만 정확한1060 bytes로 복구했다. 사용자가 Reload 없이 Save 성공을 확인했고 편집을 계속한다. 38요소 Effect 설치는 유지하되 resource/occurrence3000→5052ms와 Product publish는 아직 적용 대기다. 현재3초 occurrence의 tail이 전부 재생된다고 주장하지 않는다. `installed/{receipt.json,save-recovery.json}`가 설치/회복 근거이며 이전 설치 receipt를 최종 Composition 상태로 오인하지 않는다. Save의 겹치지 않는 필드 병합 수정은09-14 Sequence G46으로 연결한다. 사용자 Product 빌드와 최종 화면 확인은 별도다.
+
+## G15. 별도 진입 포탈의 원본 기둥·불꽃·왜곡 — 2026-09-16
+
+사용자 첨부 두 이미지의 높은 붉은 기둥은 기존 `mario.center.portal` 바닥7개와 다른 시스템이다. NPC480650 → Action4222001의15초 Effect422200109 → SkillBuff4219930 `KoukuSaton_Magic_Pillar` → data3.lpk ParticleSoundNew buff FX → `fx_mn_rpct_07_v.Par_V_RPCT_light_line_01_LOC_INT` 연결을 확인했다. Buff는5초이며 원본 CEFParticleData의 위치/회전0, 배율1, 명명된 anchor 없음이다. 원본 Color=[3,2.4,1.8], Lifetime0, Size0 override는 해당 이름을 소비하는 ParticleParameter 분포가 없으므로 전체 색·크기·수명에 강제로 곱하지 않았다. NPC ModelSize100은 확인했으나 LookInfo의 미확정 unnamed DrawScale을 추가 배율 근거로 삼지 않았다.
+
+신규 `effect.kouku.gate3.mario.entry.portal.full.restore`, 표시명 `진입 포탈`을 Authored/Catalog/Tree와 Client96.DataFiles에 설치했다. 원본6sprite+2mesh 자체에 기둥·불꽃ring·문양2층이 포함돼 기존 바닥7개나 큰 오망성을 합치지 않았다. 원래 전체 action의15초를 바꾸지 않고 독립 library의 Buff 활성 시작만0초로 정규화했다. 활성5초와 particle tail을 포함한 계산 길이는10초이며 실제 마지막 생존 표본은5.925초다. 기존 원본8의 module/CDO Distribution=None 누락12개를 복구했다. Resources는 이미 설치된14texture와2WModel을 사용한다.
+
+기존 프로그램5개를 재사용하고 native3684/3685/3686 세 개 및3686의 원본 distortion pass를 추가했다. 기존3648 Particle carrier에 더해 Mesh3648 shader/registry/project 항목을 연결했다. append-reviewed installer는 원본 material/VS/PS/shape가 일치하는 merged 계약 전체를 descriptor에도 전달한다. 특히 distortion이 추가한 requiresDepthSample을 primary 계약만 읽어 잃지 않도록 했다. 기존 함수1368개, 재질 descriptor1270개와 기존 프로젝트 항목은 독립 비교에서 동일했다.
+
+실제 Codec/CPU Playback305503검사 실패0,8/8출생·양수alpha, peak35, 되감기오차0이다. 실제 WModel preScale.01과 particle World를 적용한 camera-identity 수치에서 기둥sprite 최대높이37.5m, 다른 세로sprite17.4167m, cylinder1.88668m, ring0.500516m를 확인했다. 임의 전체배율은 추가하지 않았으며 이 수치는 원본 카메라의 최종 화면 크기 판정이 아니다. 기존 바닥7은 mesh높이0.045~0.115m와 평면sprite여서 높은 기둥의 대체물이 아님을 확인했다.
+
+FXC fx_5_0 /O1로 Mesh/Particle3648을 격리 컴파일했고 headless WARP의 Stage_Document 및 Product Stage_VisualProgramTarget이 통과했다. GPU 리소스 준비이며 Draw/UI/스크린샷/visual PASS는 수행하지 않았다. Python AST, JSON/XML, scoped diff와 생성기 idempotence 검사를 통과했다. 증거는 `out/KoukuMarioEntryPortal20260916/entry-validation-summary.json`, `entry-validation/`, `source-installed/receipt.json`, `library-installation/receipt.json`이다. 비교용 기존 바닥7의 루트 `native_result.json`과 신규8의 `entry-validation/native_result.json`을 혼동하지 않는다.
+
+공유 source7파일과 신규 라이브러리5파일은 before/after SHA 확인 및 원자 교체로 설치했다. 실행 중CSO/EXE와 사용자 Composition은 쓰지 않았다. All Effects의 KoukuSaydon →3관문→패턴→세이튼→마리오에서 `진입 포탈`로 찾을 수 있고 Workbench의 기존 inventory/Append가 새 source와 실제 길이를 가져온다. 외부 Composition 등록 후보는 보관했지만 사용자 편집과 충돌하지 않도록 정본에는 넣지 않았다. 새 native registry/carrier는 사용자의 다음 제품 빌드·재실행 뒤 적용된다.
+
+## G16. 기분나빠 브레스 전체4279ms 적용 — 2026-09-16
+
+현재 사용자 저장본을 기준으로 `분신소환_기분나빠_브레스`의 시간 값42개만 수정해 CAS로 설치했다. SourceRecipe 지속rate13개의 방출 창을 원래 입자 꼬리를 제외한 길이로 늘려 전체4279ms에 맞추고, initial-only burst2개는 원래 한 번만 발생시킨다. 기존14개 표시/1개 숨김, 크기·방향·색·재질·bloom·그룹·loop1·입자수명·곡선과 숫자 치환 밖의 파일 형식은 보존했다. 대부분1초에 끝나던 방출을2.779~3.979초까지 늘리고 원래0.3~1.5초 꼬리로 끝낸다. 모든 emitter의 timing 수명과 preview playMs도4279로 맞췄다.
+
+원본 clip31_01, sourceStart1989ms, playRate1과 HOLD_LAST_POSE는 유지했다. 원래 clip 이후의 남은 preview는 기존 마지막 자세 유지 정책을 사용한다. 이는 사용자가 요청한 저작 지속시간이며 source archive/action notify를 변경하거나 원본 길이라고 표시하지 않는다. 생성기의 현재저장본 duration 후보 모드와 기본 재생성에도 같은4279ms 정책을 연결했다.
+
+실제 Playback290745검사 실패0, 표시된 지속12개 모두 이전 방출 종료 뒤 새 입자가 생성됐고 burst2개는각1회였다. peak90, 마지막 live4.23333초, .1~4.0초의 빈 프레임0,4.279초+한 step 안에 잔류0, transform/color/dynamic parameter 되감기오차0이다. 데이터·재생성 집중검사4건과 diff check도 통과했다. 최초 테스트의 표시15개 기대값과120Hz 관측에 따른60Hz birth 중복 집계를 저장된 visibility/실제 fixed-step 기준으로 바로잡았으며 제품 runtime을 이 이유로 수정하지 않았다.
+
+설치 근거는 `out/KoukuCloneBreathDuration20260916/installed/receipt.json`; 검증은 `verification.json`, `duration_projection.json`이다. 설치 전 verification의 effectInstalled=false는 후보 검사 시점의 값이다. 사용자가 이미 P50 브레스 박스를4279ms로 저장한 것을 확인했고, P53/P54/P55의4223/4272/4172ms 및 전체Pattern9267ms 같은 사용자 박스 값은 그대로 뒀다. 기존 resource 기본3000→4279 후보는 별도 보관하며 편집 중 Composition을 외부 수정하지 않았다. Effect 본문은 다시 읽은 뒤 적용되고 최종 화면은 사용자가 확인한다.
+
+
+## G17. 반복 마리오2페이즈의 왼손 trail — 소스 검증, 설치 대기
+
+첨부 PNG는 손·몸에서 분리된 흰 선과 꺾인 궤적을 보여준다. 대상 Effect는2TRAIL+1PARTICLE이며 DECAL 요소가 아니다. native2836/3007의 primary/distortion4개 생성 body와 원본이 일치하고 재질 scalar/vector52개도 원본 effective 값과 같았다. 원본2836은 붉은 계열,3007은 흰색이므로 공통 흰색 shader로 덮어쓰지 않았다.
+
+### 현재 Pattern과 Effect Tool의 같은 본 시각
+
+P33은29_02를16개 animation row에 배치하지만 공용 Effect의 원본 SourceModelPreview는27_01이다. MainApp은 현재 Workbench의 선택 Pattern/occurrence를 읽기 전용 provider로 전달한다. Effect Tool은 Open/Play마다 임시 SourceModelPreview를 만들며 모델뿐 아니라 별도 source anchor sampler에도 같은 animation snapshot과 effect start를 전달한다. age0에서 Pattern3035ms/source46ms, age1621에서 다음 clip의0ms가 된다. 기존 공용 asset과 P61의 원본 preview는 바꾸지 않는다. 중복 occurrence 미선택 또는 미지원 nested/blend/trim은 메시지와 기존 source preview를 유지한다.
+
+### 복제 없이 반복 창까지 방출
+
+optional loopEffectToDuration은 기존 V1 occurrence의 source loop0 emitter만 native speed로 지속한다. fitEffectToDuration와 동시에 켜지지 않으며 finite loop·입자수명·emitter 주기는 보존한다. EffectPlayback/Object/PresentationService는 per-instance fSourceLoopEndSeconds를 받는다. backward seek/Reset은 instance 정책을 유지하고 새 document staging은 초기화한다. Product box 끝은 기존 Stop_WorldRoot가 정리하며 Tool도 같은 window에서 멈춘다.
+
+현재 마지막 animation end27994−effect start3035=24959ms다. Workbench에 Loop Effect through lifetime와 Match remaining animation time을 연결했고, out/KoukuMarioFinal20260916의 Composition1140→1141 후보는 P33.presentation.3의 duration24959/looptrue를 보존한다. actual prepare_publication/projected_outputs PASS, Product63개이며 생성된 patternbindings도 같은 값을 가진다. 이전 Mario 랜덤2/접촉 후보를 함께 포함하지만 정본에는 설치하지 않았다.
+
+### 실행한 수명·컴파일 검증
+
+기존 actual-model CPU probe를 최신 header/Playback으로 재컴파일하고 현재 설치 CModel(MN_RPCT_05,preScale.017)과 실제 왼손 bone/socket을 사용했다.5개 입력 모두PASS, 긴29_02 context2개에서205개씩410검사/실패0이다.24.959초까지2Ribbon 유지, native prefix 동일, late seek/rewind 동일, finite loop 비연장, end 뒤180fixedstep에서 tail 소멸, 잘못된 설정의 상태 보존과0clear/newStage를 검사했다. 이 검사는 Client 실행·GPU 표시·visual PASS가 아니다.
+
+Workbench/CompositionDocument/PresentationPlayer, EffectTool Workspace/CatalogPreview/Sequencer/MainApp, Playback/Object/PresentationService의 변경 TU 격리 Debug 컴파일 성공. 본 clock 교정 뒤 PresentationPlayer/Sequencer를 다시 컴파일했다. Python optional loop/type/상호배타/미지원V2 및 MAP Collider 집중 테스트2개 PASS. 제품 EXE와 기본 intermediate는 교체하지 않았다.
+
+근거는 out/KoukuRitualLeftTrail20260916/peer-native/lifetime-validation.json, material-audit-receipt.json, out/KoukuPatternEffectPreview20260916/compile-results.json, out/KoukuPatternAnchorClock20260916/{compile-results,source-anchor-clock-review}.json, out/KoukuMarioFinalCompile20260916/compile-results.json, out/KoukuMarioFinal20260916/projection-receipt.json이다. 기존 probe 초기 실패는 legacy Client/Bin/Engine.dll 또는 resource root 누락 때문이며 올바른 Debug DLL/LOSTARK_RESOURCE_ROOT로 재실행한 성공과 구분했다.
+
+사용자는 계속 편집 중이라고 명시했다. source/candidate 검증까지 진행했으며 live Effect/Composition 설치, publish, 정상 Product build 및 사용자 최종 화면 확인은 대기다. 새 저장이 있으면 최신 bytes에서 국소 후보를 다시 생성해야 한다.
+
+
+### G17-01. 위치·곡선의 확인된 원인
+
+원본 source StartLocation100cm는3007 흰 Ribbon에만 있다. 실제29_02 모델의 rootY3 기준으로 원본 흰 궤적 Y범위2.577..8.145m,0offset 후보는4.151..6.601m였다. 최대 누적길이는30.46→12.64m로 줄고 붉은 Ribbon10.025m는 같았다. SourceLocation0을 왼손 adaptation으로 선택하며 원본 source leaf와 material/timing은 보존한다. Transform[-1,0,0] 상쇄는 같은 중심 보정처럼 보여도 SPU 원점을 옮겨 white point수19→12와 손끝 gap을 바꾸므로 채택하지 않았다.
+
+Kouku native CascadeRibbon이며 source tangent 재계산 플래그가 켜진 경우에만 renderer의 기존 직선 세분화를 chord-limited Hermite로 교정했다.0길이/비유한/긴span은 기존 직선, 원래 control point끝점과 age/width/color/dynamic/UV누적거리 보존, 최대25분할/512control point로 제한한다. beam/baked와 일반trail 경로는 그대로다. 격리TU컴파일과 독립코드리뷰에서 결함 없음. 원본 UE CPU tangent weighting의 exact 회수 또는 최종 화면 PASS로 기록하지 않는다.
+
+SPU는 이미 worldspace인 emitter 이동거리와0.75m를 비교하므로 preScale1.7을 다시 곱하지 않는다.1초 loop마다 누적과 previous origin이 초기화되어0.75m도 실제 gap의 상한은 아니다. zerooffset 뒤에도1494활성frame에서 평균.259/P95 .634/최대1.509m gap이 있었다. 원본 bClipSourceSegement=true는 source head를 잘라내는 정책이다. 사용자가 요청한 손끝 연결은 흰3007에만false를 저작하며, 이 변경은 원본정책 보존과 구분한다. 세부 before 수치는 out/KoukuRitualLeftTrail20260916/peer-native/head-gap-summary.json이다.
+
+
+### G17-02. 손끝 head 최종 검증과 빌드 준비
+
+native Ribbon의 명시 bClipSourceSegement=false만 방출활성창에서 현재 emitter 원점을 evaluated geometry의 마지막 점으로 연결한다. live particle stream/RNG/SPU를 바꾸지 않고 source true/누락은 기존 경로다. point cap512/저작 iMaxPoints를 유지하고 끝나는 시각에 head를 제거한다. white3007만 위치0+head 연결로 저작한 최종후보는 기존 Effect bytes의6토큰만 바꾸며 SourceModelPreview27_01·전체 timing/material·앞2요소는 그대로다. 원본100cm와0후보의 white24047개 점은 payload/발생이 같고 위치만1.7m(최대오차8.34e-6m) 차이였으며 red14810점은 모든 값이 같았다.
+
+최종 최신소스 probe5회에서 lifetime410+head520=930검사/실패0이다.24.959초 후보의1496활성frame에서 손끝 최대gap9.968e-6m(약0.010mm), 원본27_01 최종후보는9.537e-7m였다. source true인 원본27/P33 long CSV는 수정 전후 SHA가 완전히 같다. endpoint cap·end 제거·tail 소멸·late seek/rewind도 확인했다. latest Playback/Object/PresentationService3TU 재컴파일 성공, independent head/curve code review에서 수정할 결함 없음이다.
+
+최종 증거는 out/KoukuRitualLeftTrail20260916/peer-native/final-validation.json, final-head-runs.json, final-head-gap.json, offset-comparison-receipt.json, geometry-analysis-receipt.json, source-validation-receipt.json이다. Renderer geometry 수치는 실제 CPU 점으로 계산한 독립 검증이며 GPU/화면 판정이 아니다. out/KoukuMarioFinal20260916에는 Composition/World/Effect3개 baseline·candidate와 검증영수증, 실행 중 Client/Server 및 stale bytes를 거절하는 Install-ExactMarioFinal.ps1을 준비했다. 이 시점에는 실행하지 않았다.
+
+사용자가 새 EXE 빌드 후 직접 검증하겠다고 요청했다. 현재 Client58036/Server57572가 실행 중이라 저장·두 프로그램 종료 확인을 요청했고 답변을 기다린다. 확인 후 최신 source SHA에 맞는 후보 설치→KoukuSaydon 명시 publish→정규 Debug Product build를 수행한다.

@@ -44,6 +44,7 @@ public:
 	void Set_TextureOverride(aiTextureType eType, uint32_t iTextureIndex,
 		ComPtr<ID3D11ShaderResourceView> pTexture);
 	void Clear_TextureOverrides();
+	bool_t Has_TextureOverrides() const { return !m_TextureOverrides.empty(); }
 	/* The creation screen repaints a dyed material: the authored colour stays in the asset
 	and the chosen one rides on the clone, so two characters sharing a prototype keep their
 	own. Only a material that already dyes accepts one -- an undyed material has no mask to

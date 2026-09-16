@@ -66,6 +66,7 @@ public:
 	virtual void Late_Update(f32_t fTimeDelta) override;
 	virtual HRESULT Render() override;
 	virtual HRESULT Render_Shadow() override;
+	virtual bool_t Try_GetStaticShadowRevision(uint64_t& outRevision) const override;
 
 public:
 	//Instance Update
@@ -137,6 +138,8 @@ private:
 	bool_t m_bShadowInstancesDirty = true;
 	bool_t m_bShadowInstancesUsedLight = false;
 	uint64_t m_iShadowLightRevision = {};
+	// Zero permanently opts out if the monotonic revision ever overflows.
+	uint64_t m_iStaticShadowRevision = 1u;
 	bool_t m_bVisibleInstancesDirty = true;
 	bool_t m_bVisibleInstancesUsedCamera = false;
 	uint64_t m_iVisibleCameraRevision = {};

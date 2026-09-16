@@ -96,6 +96,8 @@ private:
     void Render_GroupSequence(const WORLD_SEQUENCE_OBJECT_RESOURCE& resource, bool parentOverview = false);
     void Render_SelectedSequence();
     void Render_Sequence(WORLD_SEQUENCE_TEMPLATE& sequence);
+    bool Animation_EndMs(const WORLD_SEQUENCE_TEMPLATE& sequence, bool preserveWindows, uint32_t& outEnd);
+    bool Resize_Stage(WORLD_SEQUENCE_TEMPLATE& sequence, uint32_t durationMs);
     void Render_KeyEditor(WORLD_SEQUENCE_TEMPLATE& sequence);
     void Render_PhysicalResources();
     void Rebuild_PhysicalTree();
@@ -156,7 +158,11 @@ private:
     std::string m_SelectedInstance;
     size_t m_SelectedTrack = 0;
     size_t m_SelectedAnimationRow = 0;
-    int m_SelectedBoxKind = 0; // 0 Transform, 1 Animation, 2 Effect, 3 Collider; authoring selection only.
+    int m_SelectedBoxKind = 0; // 0 Transform, 1 Animation, 2 Effect, 3 Collider, 4 Stage.
+    bool m_TimelineFitRequested = false;
+    std::string m_StageResizeSequence;
+    uint32_t m_StageResizeOriginalMs = 0, m_StageResizeDurationMs = 0;
+    float m_StageResizePixelsPerMs = 1.f;
     size_t m_SelectedColliderRow = 0;
     size_t m_SelectedKey = 0;
     uint64_t m_SavedGeneration = 0;

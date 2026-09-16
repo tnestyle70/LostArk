@@ -132,19 +132,11 @@ bool_t Client::CCharacterSelectionState::Try_Resolve_ForWorld(
 			staged.strNickname = g_PendingCreation->strNickname;
 			staged.eSource =
 				CHARACTER_ENTRY_IDENTITY_SOURCE::PENDING_CREATION;
+			break;
 		}
-		else if (g_SelectedClass.has_value() &&
-			g_CreatedNickname.has_value())
-		{
-			staged.eCharacterClass = *g_SelectedClass;
-			staged.strNickname = *g_CreatedNickname;
-			staged.eSource = CHARACTER_ENTRY_IDENTITY_SOURCE::CREATED;
-		}
-		else
-		{
-			return false;
-		}
-		break;
+		// Direct entry shares the existing created-or-audition identity policy.
+		// Only an explicit pending creation is committed after Bern activation.
+		[[fallthrough]];
 
 	case WORLD_ID::VALTAN_ARENA:
 	case WORLD_ID::KAKULSAYDON_ARENA:

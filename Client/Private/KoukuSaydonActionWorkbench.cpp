@@ -4,6 +4,7 @@
 #include "KoukuSaydonPatternAuditionService.h"
 #include "KoukuSaydonBossTool.h"
 #include "CompositionTimeline.h"
+#include "ActionPresentationTimeline.h"
 #include "Level_KakulSaydonArena.h"
 #include "CameraTool.h"
 #include "ValtanCinematicCameraController.h"
@@ -227,7 +228,7 @@ namespace
 		includeLane(pattern.SceneProfileOccurrences);
 		if (pattern.BossMotion) lifetime = (std::max)(lifetime, std::uint64_t(pattern.BossMotion->iEndMs));
 		if (lifetime > MAX_EDITOR_TIME_MS)
-		{ status = "Stage resize would exceed the 600000 ms Pattern lifetime."; return false; }
+		{ status = "Stage edit would exceed the 600000 ms Pattern lifetime."; return false; }
 		if (pattern.iDurationMs || lifetime > stageDurationMs)
 			pattern.iDurationMs = static_cast<std::uint32_t>(lifetime);
 		return true;
@@ -650,6 +651,15 @@ namespace
 				return logic.strLogicId == logicId;
 			});
 		return found == document.Logics.end() ? nullptr : &*found;
+	}
+
+	bool Has_CompletionChain(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
+		const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern)
+	{
+		return std::any_of(pattern.LogicOccurrences.begin(), pattern.LogicOccurrences.end(), [&](const auto& box) {
+			const auto* logic = Find_Logic(document, box.strLogicId);
+			return box.bEnabled && logic && logic->strJudgementKind == "PATTERN_COMPLETION_COUNT";
+		});
 	}
 
 	KOUKU_SAYDON_COMPOSITION_LOGIC_OCCURRENCE* Find_LogicBox(
@@ -2550,46 +2560,149 @@ bool_t Client::CKoukuSaydonActionWorkbench::Render_PatternReferenceControls(
  return false;
 }
 
+std::vector<std::string> Client::CKoukuSaydonActionWorkbench::Collect_PatternDeleteReferences(
+	const std::string_view patternId) const
+{
+	std::vector<std::string> references;
+	const auto collectIds = [&](const std::vector<std::string>& ids, const std::string& owner)
+	{
+		const auto count = std::count(ids.begin(), ids.end(), patternId);
+		if (count) references.push_back(owner + " (" + std::to_string(count) + " references)");
+	};
+	for (const auto& logic : m_Draft.Logics)
+	{
+		const auto owner = "Logic: " + logic.strDisplayName + " [" + logic.strLogicId + "]";
+		collectIds(logic.DirectionPatternIds, owner + " / directionPatternIds");
+		collectIds(logic.PatternIds, owner + " / patternIds");
+		if (!logic.strFollowupPatternId.empty() && logic.strFollowupPatternId == patternId)
+			references.push_back(owner + " / followupPatternId");
+		if (!logic.strClonePatternId.empty() && logic.strClonePatternId == patternId)
+			references.push_back(owner + " / clonePatternId");
+	}
+	for (const auto& summon : m_Draft.Summons)
+		collectIds(summon.DirectionPatternIds, "Summon: " + summon.strDisplayName +
+			" [" + summon.strSummonId + "] / directionPatternIds");
+	for (const auto& parent : m_Draft.Patterns)
+	{
+		for (const auto& box : parent.PatternOccurrences)
+			if (box.strPatternId == patternId)
+				references.push_back("Parent Pattern: " + parent.strDisplayName + " [" +
+					parent.strPatternId + "] / " + box.strOccurrenceId);
+		for (const auto& box : parent.SummonOccurrences)
+			for (const auto& spawn : box.PatternSpawns)
+				if (spawn.strPatternId == patternId)
+					references.push_back("Summon in Pattern: " + parent.strDisplayName + " [" +
+						parent.strPatternId + "] / " + box.strOccurrenceId + " / " + spawn.strSpawnId);
+	}
+	for (const auto& folder : m_Draft.Folders)
+		if (folder.strTimelinePatternId == patternId)
+			references.push_back("Parent timeline: " + folder.strDisplayName + " [" + folder.strFolderId + "]");
+	for (const auto& bundle : m_Draft.Bundles)
+		for (const auto& member : bundle.Members)
+			if (member.strPatternId == patternId)
+				references.push_back("Bundle: " + bundle.strDisplayName + " [" +
+					bundle.strBundleId + "] / " + member.strMemberId);
+	for (const auto& flow : m_Draft.PatternFlows)
+		for (const auto& entry : flow.Entries)
+			if (entry.strKind == "PATTERN" && entry.strTargetId == patternId)
+				references.push_back("Pattern Flow: " + flow.strDisplayName + " [" +
+					flow.strFlowId + "] / " + entry.strEntryId);
+	return references;
+}
+
 bool_t Client::CKoukuSaydonActionWorkbench::Delete_Pattern(
 	const std::string_view patternId,
 	std::string& outStatus)
 {
-    for (const auto& logic : m_Draft.Logics)
-        if (std::find(logic.DirectionPatternIds.begin(), logic.DirectionPatternIds.end(), patternId) != logic.DirectionPatternIds.end())
-        { outStatus = m_strStatus = "Remove the direction reference from Logic " + logic.strDisplayName + " first."; return false; }
-	for (const auto& parent : m_Draft.Patterns)
-		for (const auto& box : parent.PatternOccurrences)
-			if (box.strPatternId == patternId)
-			{ outStatus = m_strStatus = "Remove the Pattern reference from " + parent.strDisplayName + " before deleting its source."; return false; }
-	if (Find_TimelineParent(m_Draft, patternId))
-	{ outStatus = m_strStatus = "This Pattern owns a Parent timeline. Remove its timeline from Parent Details first."; return false; }
-	for (const auto& bundle : m_Draft.Bundles)
-		for (const auto& member : bundle.Members)
-			if (member.strPatternId == patternId)
-			{ outStatus = m_strStatus = "Remove the reference from bundle " + bundle.strDisplayName + " before deleting the Pattern."; return false; }
+	// Callers may pass a view into m_Draft, which Commit_Candidate replaces.
+	const std::string targetId(patternId);
+	if (!m_bHasDraft || Is_PublishRunning() || !m_Document.Is_Fresh())
+	{ outStatus = m_strStatus = "Delete requires a current Composition and no publication in progress; draft preserved."; return false; }
+	const auto references = Collect_PatternDeleteReferences(targetId);
+	if (!references.empty())
+	{
+		outStatus = "Pattern is still used. Remove these references before deleting:";
+		for (const auto& reference : references) outStatus += "\n- " + reference;
+		m_strStatus = outStatus;
+		return false;
+	}
 	KOUKU_SAYDON_COMPOSITION_DOCUMENT candidate = m_Draft;
 	const auto found = std::find_if(candidate.Patterns.begin(), candidate.Patterns.end(),
-		[patternId](const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern)
+		[&targetId](const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern)
 		{
-			return pattern.strPatternId == patternId;
+			return pattern.strPatternId == targetId;
 		});
 	if (found == candidate.Patterns.end())
 	{
-		outStatus = "KoukuSaydon Pattern delete target is absent.";
+		outStatus = m_strStatus = "KoukuSaydon Pattern delete target is absent.";
 		return false;
 	}
 	candidate.Patterns.erase(found);
 	Rebuild_PlayAllPatternIds(candidate);
-	if (!Commit_Candidate(std::move(candidate), "Deleted KoukuSaydon Pattern.", outStatus))
+	if (!Commit_Candidate(std::move(candidate),
+		"Deleted Pattern from the draft. Save keeps this change; Publish All Patterns updates Server playback.", outStatus))
 		return false;
-	if (m_strSelectedPatternId == patternId)
-	{
-		m_strSelectedPatternId.clear();
-		m_strSelectedStageId.clear();
-		m_strSelectedOccurrenceId.clear();
-		Synchronize_EditorFields();
-	}
+	if (m_strAppendPatternId == targetId) m_strAppendPatternId.clear();
+	if (m_strParentReturnPatternId == targetId) m_strParentReturnPatternId.clear();
+	if (m_PreviewState.strPatternId == targetId) Stop_Preview();
+	m_strStatus = outStatus;
 	return true;
+}
+
+void Client::CKoukuSaydonActionWorkbench::Request_PatternDelete(const std::string_view patternId)
+{
+	if (!m_bHasDraft || Is_PublishRunning() || !Find_Pattern(m_Draft, patternId)) return;
+	m_strDeletePatternId = std::string(patternId);
+	m_iDeletePatternGeneration = m_iDraftGeneration;
+	m_bPatternDeleteConfirmationRequested = true;
+}
+
+void Client::CKoukuSaydonActionWorkbench::Render_PatternDeleteContext(const std::string_view patternId)
+{
+	if (!ImGui::BeginPopupContextItem()) return;
+	if (ImGui::MenuItem(m_bSequenceWorkspace ? "Delete Sequence..." : "Delete Pattern...",
+		nullptr, false, !Is_PublishRunning())) Request_PatternDelete(patternId);
+	ImGui::EndPopup();
+}
+
+void Client::CKoukuSaydonActionWorkbench::Render_PatternDeleteConfirmation()
+{
+	const char* const popup = m_bSequenceWorkspace ?
+		"Delete Sequence?###SequenceDeleteConfirmation" : "Delete Pattern?###PatternDeleteConfirmation";
+	if (m_bPatternDeleteConfirmationRequested)
+	{
+		ImGui::OpenPopup(popup);
+		m_bPatternDeleteConfirmationRequested = false;
+	}
+	ImGui::SetNextWindowSize(ImVec2(620.f, 0.f), ImGuiCond_Appearing);
+	if (!ImGui::BeginPopupModal(popup, nullptr, ImGuiWindowFlags_AlwaysAutoResize)) return;
+	const auto* pattern = Find_Pattern(m_Draft, m_strDeletePatternId);
+	ImGui::TextWrapped("%s", pattern ? pattern->strDisplayName.c_str() : m_strDeletePatternId.c_str());
+	ImGui::TextWrapped("ID: %s", m_strDeletePatternId.c_str());
+	const auto references = Collect_PatternDeleteReferences(m_strDeletePatternId);
+	const bool current = pattern && m_iDeletePatternGeneration == m_iDraftGeneration;
+	if (!current) ImGui::TextWrapped("The draft changed. Cancel and request Delete again to review the current Pattern.");
+	if (!references.empty())
+	{
+		ImGui::TextWrapped("Delete is blocked by %zu reference locations. Remove the listed connections in their owning editor first.", references.size());
+		if (ImGui::BeginChild("##PatternDeleteReferences", ImVec2(0.f, 220.f), ImGuiChildFlags_Borders))
+			for (const auto& reference : references) ImGui::TextWrapped("- %s", reference.c_str());
+		ImGui::EndChild();
+	}
+	else ImGui::TextWrapped("Delete this Pattern and its timeline boxes from the draft? Save stores the deletion. Shared Animation, Effect, Logic and other source resources remain available.");
+	ImGui::BeginDisabled(!current || !references.empty() || Is_PublishRunning());
+	if (ImGui::Button("Delete from Draft"))
+	{
+		std::string status;
+		if (Delete_Pattern(m_strDeletePatternId, status))
+		{ m_strDeletePatternId.clear(); ImGui::CloseCurrentPopup(); }
+	}
+	ImGui::EndDisabled();
+	ImGui::SameLine();
+	if (ImGui::Button("Cancel"))
+	{ m_strDeletePatternId.clear(); ImGui::CloseCurrentPopup(); }
+	ImGui::TextWrapped("%s", m_strStatus.c_str());
+	ImGui::EndPopup();
 }
 
 bool_t Client::CKoukuSaydonActionWorkbench::Rename_Pattern(
@@ -2799,6 +2912,8 @@ bool_t Client::CKoukuSaydonActionWorkbench::Add_Stage(
 	stage.iDurationMs = durationMs;
 	const std::string stageId = stage.strStageId;
 	pattern->Stages.push_back(std::move(stage));
+	if (!Extend_PatternLifetimeForAuthoredLanes(*pattern, outStatus))
+	{ m_strStatus = outStatus; return false; }
 	Mark_Draft(candidate, *pattern);
 	if (!Commit_Candidate(std::move(candidate),
 			"Added KoukuSaydon Stage " + stageId + ".", outStatus))
@@ -2864,6 +2979,8 @@ bool_t Client::CKoukuSaydonActionWorkbench::Append_AnimationAsStage(
 	const std::string occurrenceId = occurrence.strOccurrenceId;
 	stage.AnimationOccurrences.push_back(std::move(occurrence));
 	pattern->Stages.push_back(std::move(stage));
+	if (!Extend_PatternLifetimeForAuthoredLanes(*pattern, outStatus))
+	{ m_strStatus = outStatus; return false; }
 	Mark_Draft(candidate, *pattern);
 	if (!Commit_Candidate(std::move(candidate),
 			"Appended boss animation as Stage " + stageId + "." + policyNote, outStatus))
@@ -3026,6 +3143,8 @@ bool_t Client::CKoukuSaydonActionWorkbench::Set_PatternStartOffset(
 	firstStage.iDurationMs = static_cast<std::uint32_t>(stageDuration);
 	if (!Retime_AnimationBlendWindows(m_Draft, previous, *pattern, outStatus))
 	{ outStatus = m_strStatus = "KoukuSaydon edit rejected; draft preserved: " + outStatus; return false; }
+	if (!Extend_PatternLifetimeForAuthoredLanes(*pattern, outStatus))
+	{ m_strStatus = outStatus; return false; }
 	Mark_Draft(candidate, *pattern);
 	return Commit_Candidate(std::move(candidate),
 		"Changed Pattern Start Offset and kept Animation Blend boxes with their transitions. Other lane times are preserved. Press Save.", outStatus);
@@ -3140,6 +3259,8 @@ bool_t Client::CKoukuSaydonActionWorkbench::Bind_Animation(
 	(void)Normalize_EndPolicyForWindow(occurrence, policyNote);
 	stage->iDurationMs = (std::max)(stage->iDurationMs, startOffsetMs + occurrence.iPlayMs);
 	stage->AnimationOccurrences.push_back(std::move(occurrence));
+	if (!Extend_PatternLifetimeForAuthoredLanes(*pattern, outStatus))
+	{ m_strStatus = outStatus; return false; }
 	Mark_Draft(candidate, *pattern);
 	if (!Commit_Candidate(std::move(candidate),
 			"Bound KoukuSaydon animation " + occurrenceId + "." + policyNote, outStatus))
@@ -3814,6 +3935,8 @@ bool_t Client::CKoukuSaydonActionWorkbench::Append_ActionAsStages(
 		outStatus = m_strStatus = "The action has no clip slot to append.";
 		return false;
 	}
+	if (!Extend_PatternLifetimeForAuthoredLanes(*pattern, outStatus))
+	{ m_strStatus = outStatus; return false; }
 	Mark_Draft(candidate, *pattern);
 	if (!Commit_Candidate(std::move(candidate),
 			"Appended " + std::to_string(appendedStages) + " Stage(s) from action " +
@@ -3886,6 +4009,8 @@ bool_t Client::CKoukuSaydonActionWorkbench::Append_ActionToStage(
 	}
 	stage->iDurationMs = (std::max)(stage->iDurationMs, offsetMs);
 	const std::string targetStageId(stageId);
+	if (!Extend_PatternLifetimeForAuthoredLanes(*pattern, outStatus))
+	{ m_strStatus = outStatus; return false; }
 	Mark_Draft(candidate, *pattern);
 	if (!Commit_Candidate(std::move(candidate),
 			"Appended " + std::to_string(appendedClips) + " clip(s) to Stage " +
@@ -4494,6 +4619,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_PatternTree(const bool_t resour
 							{
 								selectPattern(member.strPatternId, bundle.strBundleId);
 							}
+							if (!resourcePicker && pattern) Render_PatternDeleteContext(member.strPatternId);
 							if (!resourcePicker && pattern && !m_strModelViewProfile.empty() && matches(*pattern)) ImGui::PopStyleColor();
 						}
 						ImGui::TreePop();
@@ -4505,6 +4631,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_PatternTree(const bool_t resour
 					const auto label = pattern.strDisplayName + " [" + Actor_Label(pattern.strActorProfileId, pattern.strGateId) + "]##" + pattern.strPatternId;
 					if (ImGui::Selectable(label.c_str(), selectedId == pattern.strPatternId))
 					{ selectPattern(pattern.strPatternId, {}); }
+					if (!resourcePicker) Render_PatternDeleteContext(pattern.strPatternId);
 				}
 				ImGui::TreePop();
 			}
@@ -4520,6 +4647,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_PatternTree(const bool_t resour
 			if (linked) continue;
 			if (ImGui::Selectable((pattern.strDisplayName + " [" + Actor_Label(pattern.strActorProfileId, pattern.strGateId) + "]##" + pattern.strPatternId).c_str(), selectedId == pattern.strPatternId))
 			{ selectPattern(pattern.strPatternId, {}); }
+			if (!resourcePicker) Render_PatternDeleteContext(pattern.strPatternId);
 		}
 		ImGui::TreePop();
 		}
@@ -4567,6 +4695,13 @@ void Client::CKoukuSaydonActionWorkbench::Render_PatternsAndResources()
 				ImGui::Selectable(Actor_Label(actor, m_strSelectedGateId), m_strModelViewProfile == actor)) (void)Select_ActorProfile(actor, status);
 		ImGui::EndCombo();
 	}
+	ImGui::BeginDisabled(Is_PublishRunning() || m_ePatternSelection != KOUKU_PATTERN_SELECTION::PATTERN ||
+		!Find_Pattern(m_Draft, m_strSelectedPatternId));
+	if (ImGui::Button(m_bSequenceWorkspace ? "Delete Selected Sequence..." : "Delete Selected Pattern..."))
+		Request_PatternDelete(m_strSelectedPatternId);
+	ImGui::EndDisabled();
+	if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+		ImGui::SetTooltip("Select a Pattern, then review its references before deleting. You can also right-click a Pattern in the tree.");
 	if (ImGui::BeginChild("##KoukuPatternList", ImVec2(0.f, 480.f), ImGuiChildFlags_Borders))
 	{
 		Render_PatternTree(false);
@@ -4678,7 +4813,9 @@ bool_t Client::CKoukuSaydonActionWorkbench::Request_SelectedServerPlay(std::stri
 		return reject("Save your changes, then finish Publish All Patterns before Play Pattern.");
 	if (!m_Document.Is_Fresh())
 		return reject("The saved Composition changed. Reload it before Play Pattern.");
-	if (m_bServerPlayRequestPending || !m_strPendingBundleServerId.empty())
+	if (CKoukuSaydonPatternAuditionService::Get().Get_Snapshot().Is_InFlight())
+		return reject("Stop the active Server playback before starting another Pattern.");
+	if (m_bServerPlayPreparationPending || m_bServerPlayRequestPending || !m_strPendingBundleServerId.empty())
 		return reject("A Server Play request is already waiting to be submitted.");
 
 	std::string patternId = m_strSelectedPatternId;
@@ -4740,10 +4877,74 @@ bool_t Client::CKoukuSaydonActionWorkbench::Request_SelectedServerPlay(std::stri
 		m_strPendingServerPlayPatternId = patternId;
 		m_iPendingServerPlaySourceRevision = m_Draft.iRevision;
 		m_bServerPlayRequestPending = true;
+		const auto* pattern = Find_Pattern(m_Draft, patternId);
+		m_strServerFollowRootPatternId = pattern && Has_CompletionChain(m_Draft, *pattern) ? patternId : std::string{};
+		m_strServerFollowLivePatternId.clear();
+		m_iServerFollowPreviousRequest = CKoukuSaydonPatternAuditionService::Get().Get_Snapshot().iRequestSequence;
+		m_bServerSelectionFollowSuspended = false;
 	}
 	outStatus = m_strStatus = "Requested the saved " + std::string(bundleSelected ? "Bundle" : "Pattern") +
 		" on the Server. Collider and Logic execution follows Server admission.";
 	return true;
+}
+
+void Client::CKoukuSaydonActionWorkbench::Synchronize_ServerPatternPlayback()
+{
+	if (m_bSequenceWorkspace || m_strServerFollowRootPatternId.empty() || m_bServerPlayRequestPending) return;
+	if (m_bServerPlayPreparationPending) return;
+	const auto& audition = CKoukuSaydonPatternAuditionService::Get().Get_Snapshot();
+	if (audition.eOperation == LostArk::Shared::KOUKUSAYDON_PATTERN_AUDITION_OPERATION::STOP && audition.Is_InFlight())
+	{ m_strStatus = audition.strStatus; return; }
+	if (audition.iRequestSequence == m_iServerFollowPreviousRequest ||
+		audition.strRequestedPatternId != m_strServerFollowRootPatternId ||
+		audition.iExpectedSourceRevision != m_Draft.iRevision)
+	{
+		m_strServerFollowRootPatternId.clear();
+		m_strServerFollowLivePatternId.clear();
+		return;
+	}
+	m_strStatus = audition.strStatus;
+	if (!audition.Is_InFlight())
+	{
+		if (audition.eState == KOUKU_SAYDON_PATTERN_AUDITION_STATE::COMPLETED)
+			if (const auto* pattern = m_strSelectedPatternId == m_strServerFollowLivePatternId ?
+				Find_Pattern(m_Draft, m_strServerFollowLivePatternId) : nullptr)
+				m_iCursorMs = Pattern_DurationMs(*pattern);
+		m_strServerFollowRootPatternId.clear();
+		m_strServerFollowLivePatternId.clear();
+		return;
+	}
+	// Selection and the playhead consume the admitted run; neither drives gameplay.
+	// Unapplied text/number buffers are not part of Is_Dirty(). Once edited,
+	// keep the selection for this run even after the input loses focus.
+	if (Is_Dirty() || ImGui::GetIO().WantTextInput || ImGui::IsAnyItemActive())
+		m_bServerSelectionFollowSuspended = true;
+	if (m_bServerSelectionFollowSuspended || !m_Document.Is_Fresh()) return;
+	const auto* arena = CLevel_KakulSaydonArena::Get_Active();
+	if (!arena) return;
+	const auto& run = arena->Get_KoukuBundleState();
+	if (run.iRunEpoch != audition.iRoomAuditionEpoch || run.iPinnedSourceRevision != m_Draft.iRevision) return;
+	for (const auto& member : run.Members)
+	{
+		if (member.iBossNetEntityId != audition.iBossNetEntityId || member.strPatternId.empty() ||
+			member.eState != LostArk::Shared::KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::ACTIVE) continue;
+		if (m_strServerFollowLivePatternId != member.strPatternId)
+		{
+			std::string status;
+			if (!Select_PatternById(member.strPatternId, status)) { m_strStatus = status; return; }
+			m_strServerFollowLivePatternId = member.strPatternId;
+		}
+		if (m_strSelectedPatternId != member.strPatternId) return;
+		const auto* pattern = Find_Pattern(m_Draft, member.strPatternId);
+		float ageSeconds = 0.f;
+		if (pattern && CActionPresentationTimeline::Try_ResolveActionAgeSeconds(
+			(std::max)(run.iServerTick, arena->Get_PresentationServerTick()), member.iStartTick, 30.f, ageSeconds))
+		{
+			m_strCursorPatternId = member.strPatternId;
+			m_iCursorMs = static_cast<std::uint32_t>((std::min)(ageSeconds * 1000.f, float(Pattern_DurationMs(*pattern))));
+		}
+		return;
+	}
 }
 
 void Client::CKoukuSaydonActionWorkbench::Render_ServerPlayButton(const char_t* label)
@@ -5220,6 +5421,8 @@ bool_t Client::CKoukuSaydonActionWorkbench::Append_CinematicGroup(
         stage.AnimationOccurrences.push_back(std::move(animation));
         pattern->Stages.push_back(std::move(stage));
     }
+    if (!Extend_PatternLifetimeForAuthoredLanes(*pattern, status))
+    { m_strStatus = status; return false; }
     Mark_Draft(candidate, *pattern);
     if (!Commit_Candidate(std::move(candidate),
         "Appended cinematic keys as chronological editing Stages. Original concurrent track weights remain in the reference catalog.", status)) return false;
@@ -5607,6 +5810,8 @@ bool_t Client::CKoukuSaydonActionWorkbench::Request_PatternPreview(
 	const std::string_view patternId, const std::uint32_t startClockMs, std::string& outStatus, const bool_t startPaused,
 	const KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE* presentationOverride)
 {
+	if (!m_strServerFollowRootPatternId.empty() && CKoukuSaydonPatternAuditionService::Get().Get_Snapshot().Is_InFlight())
+	{ outStatus = m_strStatus = "Stop Server playback before starting or scrubbing a local preview."; return false; }
 	const auto* pattern = Find_Pattern(m_Draft, patternId);
 	if (nullptr == pattern || !pattern->strLoadError.empty() || Pattern_DurationMs(*pattern) == 0u)
 	{
@@ -6597,6 +6802,358 @@ bool_t Client::CKoukuSaydonActionWorkbench::Render_EffectGroupDetails(
 	return true;
 }
 
+bool_t Client::CKoukuSaydonActionWorkbench::Copy_TimelineSelection(
+	const std::string_view patternId, const std::vector<std::string>& stageIds,
+	const std::vector<std::string>& occurrenceIds, std::string& outStatus)
+{
+	const auto reject = [&](const std::string& reason) { outStatus = m_strStatus = reason; return false; };
+	const auto* pattern = m_bHasDraft ? Find_Pattern(m_Draft, patternId) : nullptr;
+	if (!pattern || !pattern->strLoadError.empty()) return reject("Copy needs a valid Pattern; previous clipboard preserved.");
+	if (stageIds.empty() && occurrenceIds.empty()) return reject("Select Animation clips or Effects to copy.");
+	std::unordered_set<std::string> selectedStages(stageIds.begin(), stageIds.end());
+	std::unordered_set<std::string> selected(occurrenceIds.begin(), occurrenceIds.end());
+	if (selectedStages.size() != stageIds.size() || selected.size() != occurrenceIds.size())
+		return reject("Copy selection contains duplicate IDs; previous clipboard preserved.");
+	for (const auto& id : selectedStages)
+		if (!Find_Stage(*pattern, id)) return reject("Copy Stage is unavailable: " + id);
+	auto expanded = occurrenceIds;
+	Expand_PresentationSelection(*pattern, expanded);
+	selected.insert(expanded.begin(), expanded.end());
+	for (const auto& id : selected)
+	{
+		if (Find_Occurrence(*pattern, id)) continue;
+		const auto* box = Find_PresentationBox(*pattern, id);
+		const auto* resource = box ? Find_PresentationResource(m_Draft, box->strResourceId) : nullptr;
+		if (!resource || resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT)
+			return reject("Copy supports Animation clips and Effects only; unsupported box: " + id);
+	}
+	TIMELINE_CLIPBOARD clipboard;
+	clipboard.strCompositionId = m_Draft.strCompositionId;
+	clipboard.strAreaId = m_Draft.strAreaId;
+	clipboard.strActorProfileId = pattern->strActorProfileId;
+	clipboard.SelectedStageIds = stageIds;
+	clipboard.iNextPresentationResourceOrdinal = m_Draft.iNextPresentationResourceOrdinal;
+	clipboard.iNextWorldOrdinal = m_Draft.iNextWorldOrdinal;
+	clipboard.iNextLogicOrdinal = m_Draft.iNextLogicOrdinal;
+	std::uint64_t first = MAX_EDITOR_TIME_MS, last = 0u, base = 0u;
+	const auto include = [&](const std::uint64_t start, const std::uint64_t duration) {
+		first = (std::min)(first, start); last = (std::max)(last, start + duration);
+	};
+	std::unordered_set<std::string> animations;
+	std::vector<std::pair<std::uint64_t, const KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE*>> animationOrder;
+	for (const auto& stage : pattern->Stages)
+	{
+		const bool whole = selectedStages.contains(stage.strStageId);
+		if (whole) include(base, stage.iDurationMs);
+		for (const auto& box : stage.AnimationOccurrences)
+		{
+			animationOrder.emplace_back(base + box.iStartOffsetMs, &box);
+			if (whole || selected.contains(box.strOccurrenceId))
+			{
+				animations.insert(box.strOccurrenceId);
+				include(base + box.iStartOffsetMs, box.iPlayMs);
+			}
+		}
+		base += stage.iDurationMs;
+	}
+	std::unordered_set<std::string> resourceIds, worldIds, worldBoxIds;
+	const auto captureResource = [&](const std::string& id) {
+		const auto* resource = Find_PresentationResource(m_Draft, id);
+		if (!resource || resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT) return false;
+		if (resourceIds.insert(id).second) clipboard.Resources.push_back(*resource);
+		return true;
+	};
+	for (const auto& original : pattern->PresentationOccurrences)
+	{
+		if (!selected.contains(original.strOccurrenceId)) continue;
+		auto box = original;
+		const auto* resource = Find_PresentationResource(m_Draft, box.strResourceId);
+		if (!resource || !captureResource(box.strResourceId)) return reject("Copy Effect resource is unavailable: " + box.strResourceId);
+		for (const auto& pending : m_StagedPresentationGeometry)
+			if (pending.strPatternId == patternId && pending.Occurrence.strOccurrenceId == box.strOccurrenceId)
+				Copy_PresentationPlacement(pending.Occurrence, box, true);
+		if (!Valid_PresentationPlacement(*resource, box))
+			return reject("Correct the selected Effect placement before Copy; previous clipboard preserved.");
+		if (!box.strLogicOccurrenceId.empty()) return reject("Copy cannot carry a gameplay Logic link; copy an independent Effect.");
+		if (!box.strWorldOccurrenceId.empty() || box.strAnchorKind == "WORLD")
+		{
+			const KOUKU_SAYDON_COMPOSITION_WORLD_OCCURRENCE* owner = nullptr;
+			for (const auto& world : pattern->WorldOccurrences)
+				if (!box.strWorldOccurrenceId.empty() ? world.strOccurrenceId == box.strWorldOccurrenceId : world.strWorldId == box.strWorldId)
+				{
+					if (owner) return reject("Copy WORLD Effect needs one exact owner occurrence.");
+					owner = &world;
+				}
+			const auto* definition = owner ? Find_World(m_Draft, owner->strWorldId) : nullptr;
+			if (!definition || (box.strAnchorKind == "WORLD" && box.strWorldId != owner->strWorldId))
+				return reject("Copy Effect has a missing or mismatched World owner.");
+			if (box.strAnchorKind != "WORLD" && definition->strCompanionEffectResourceId != box.strResourceId)
+				return reject("Copy Effect companion does not match its World owner.");
+			if (!definition->strCompanionEffectResourceId.empty() && !captureResource(definition->strCompanionEffectResourceId))
+				return reject("Copy World companion resource is unavailable.");
+			if (worldIds.insert(definition->strWorldId).second) clipboard.WorldDefinitions.push_back(*definition);
+			if (worldBoxIds.insert(owner->strOccurrenceId).second)
+			{
+				clipboard.Worlds.push_back(*owner);
+				include(owner->iStartMs, owner->iDurationMs);
+			}
+			box.strWorldOccurrenceId = owner->strOccurrenceId;
+		}
+		include(box.iStartMs, box.iDurationMs);
+		clipboard.Effects.push_back(std::move(box));
+	}
+	std::vector<KOUKU_SAYDON_ANIMATION_BLEND_WINDOW> blends;
+	std::string status;
+	if (!animations.empty() && !CKoukuSaydonCompositionDocument::Try_ResolveAnimationBlendWindows(m_Draft, *pattern, blends, status))
+		return reject("Copy cannot resolve the original animation transition: " + status);
+	std::unordered_set<std::string> logicIds;
+	for (const auto& window : blends)
+	{
+		const bool sourceSelected = animations.contains(window.Source.strOccurrenceId);
+		const bool targetSelected = animations.contains(window.Target.strOccurrenceId);
+		if (!sourceSelected || !targetSelected)
+		{
+			if (sourceSelected || targetSelected) ++clipboard.iDetachedBoundaryBlends;
+			continue;
+		}
+		const auto box = std::find_if(pattern->LogicOccurrences.begin(), pattern->LogicOccurrences.end(),
+			[&](const auto& row) { return row.strOccurrenceId == window.strLogicOccurrenceId; });
+		const auto* logic = box == pattern->LogicOccurrences.end() ? nullptr : Find_Logic(m_Draft, box->strLogicId);
+		if (!logic || logic->strLogicType != "TRIGGER" || logic->strTriggerKind != "ANIMATION_BLEND" ||
+			!box->OnSuccessLogicIds.empty() || !box->OnFailLogicIds.empty() || !box->OnTimeoutLogicIds.empty() ||
+			!box->strHoldLogicOccurrenceId.empty() || box->RoomPlayerArrival)
+			return reject("Copy animation transition has unsupported gameplay links.");
+		if (logicIds.insert(logic->strLogicId).second) clipboard.LogicDefinitions.push_back(*logic);
+		clipboard.LogicOccurrences.push_back(*box);
+		include(box->iStartMs, box->iDurationMs);
+	}
+	if (last <= first || last > MAX_EDITOR_TIME_MS) return reject("Copy needs a positive selection span within 600000 ms.");
+	clipboard.iDurationMs = static_cast<std::uint32_t>(last - first);
+	std::sort(animationOrder.begin(), animationOrder.end(), [](const auto& a, const auto& b) {
+		return a.first != b.first ? a.first < b.first : a.second->strOccurrenceId < b.second->strOccurrenceId;
+	});
+	std::unordered_set<std::string> detachedBlends;
+	for (std::size_t i = 0u; i < animationOrder.size(); ++i)
+		if (animations.contains(animationOrder[i].second->strOccurrenceId) && animationOrder[i].second->iBlendInMs &&
+			(!i || !animations.contains(animationOrder[i - 1u].second->strOccurrenceId) ||
+			 animationOrder[i - 1u].first + animationOrder[i - 1u].second->iPlayMs != animationOrder[i].first))
+			detachedBlends.insert(animationOrder[i].second->strOccurrenceId);
+	clipboard.iDetachedBoundaryBlends += static_cast<std::uint32_t>(detachedBlends.size());
+	std::uint64_t cursor = first;
+	const auto appendGap = [&](const std::uint64_t end) {
+		if (end <= cursor) return;
+		KOUKU_SAYDON_COMPOSITION_STAGE gap;
+		gap.strStageKind = "RECOVERY"; gap.iDurationMs = static_cast<std::uint32_t>(end - cursor);
+		clipboard.Stages.push_back(std::move(gap)); cursor = end;
+	};
+	base = 0u;
+	if (!animations.empty() || !selectedStages.empty())
+	{
+		for (const auto& original : pattern->Stages)
+		{
+			const std::uint64_t end = base + original.iDurationMs;
+			const bool whole = selectedStages.contains(original.strStageId);
+			auto copy = original;
+			std::erase_if(copy.AnimationOccurrences, [&](const auto& row) { return !animations.contains(row.strOccurrenceId); });
+			if ((whole || !copy.AnimationOccurrences.empty()) && base < last && end > first)
+			{
+				std::uint64_t a = (std::max)(first, base), b = (std::min)(last, end);
+				if (!whole)
+				{
+					copy.bRetargetOnEnter = false;
+					const auto byStart = [](const auto& x, const auto& y) {
+						return x.iStartOffsetMs != y.iStartOffsetMs ? x.iStartOffsetMs < y.iStartOffsetMs : x.strOccurrenceId < y.strOccurrenceId;
+					};
+					const auto firstOriginal = std::min_element(original.AnimationOccurrences.begin(), original.AnimationOccurrences.end(), byStart);
+					const auto firstCopy = std::min_element(copy.AnimationOccurrences.begin(), copy.AnimationOccurrences.end(), byStart);
+					if (firstCopy->strOccurrenceId != firstOriginal->strOccurrenceId) a = (std::max)(a, base + firstCopy->iStartOffsetMs);
+				}
+				appendGap(a);
+				if (b <= a) return reject("Copy has an invalid Animation Stage span; previous clipboard preserved.");
+				copy.iDurationMs = static_cast<std::uint32_t>(b - a);
+				for (auto& row : copy.AnimationOccurrences)
+				{
+					row.iStartOffsetMs = static_cast<std::uint32_t>(base + row.iStartOffsetMs - a);
+					row.iPoseStartMs = UINT32_MAX;
+					if (detachedBlends.contains(row.strOccurrenceId)) row.iBlendInMs = 0u;
+				}
+				clipboard.Stages.push_back(std::move(copy)); cursor = b;
+			}
+			base = end;
+		}
+		appendGap(last);
+	}
+	for (auto& row : clipboard.Effects) row.iStartMs -= static_cast<std::uint32_t>(first);
+	for (auto& row : clipboard.Worlds) row.iStartMs -= static_cast<std::uint32_t>(first);
+	for (auto& row : clipboard.LogicOccurrences) row.iStartMs -= static_cast<std::uint32_t>(first);
+	m_TimelineClipboard = std::move(clipboard);
+	outStatus = m_strStatus = "Copied " + std::to_string(animations.size()) + " Animation clips and " +
+		std::to_string(m_TimelineClipboard->Effects.size()) + " Effects. Select a destination Pattern and paste.";
+	if (m_TimelineClipboard->iDetachedBoundaryBlends)
+		outStatus = m_strStatus += " Transitions to unselected clips are excluded from the copy.";
+	return true;
+}
+
+bool_t Client::CKoukuSaydonActionWorkbench::Paste_TimelineClipboard(
+	const std::string_view patternId, std::string& outStatus)
+{
+	const auto reject = [&](const std::string& reason) { outStatus = m_strStatus = reason; return false; };
+	if (!m_bHasDraft || !m_TimelineClipboard) return reject("Copy Animation clips or Effects before Paste.");
+	const auto& clipboard = *m_TimelineClipboard;
+	if (clipboard.strCompositionId != m_Draft.strCompositionId || clipboard.strAreaId != m_Draft.strAreaId)
+		return reject("The clipboard belongs to a different Composition or Area; current draft preserved.");
+	auto candidate = m_Draft;
+	auto* pattern = Find_Pattern(candidate, patternId);
+	if (!pattern || !pattern->strLoadError.empty()) return reject("Paste needs a valid destination Pattern.");
+	for (const auto& stage : clipboard.Stages)
+		for (const auto& row : stage.AnimationOccurrences)
+		{
+			if (CKoukuSaydonCompositionDocument::Resolve_ActorProfileId(row.strProfileId) != pattern->strActorProfileId)
+				return reject("Cannot paste Animation clips onto a different actor profile; current draft preserved.");
+			if (!Validate_SourceStart(row, outStatus)) return reject(outStatus);
+		}
+	for (const auto& row : clipboard.Effects)
+		if (!row.strBone.empty() && row.strAnchorKind == "BOSS" && clipboard.strActorProfileId != pattern->strActorProfileId)
+			return reject("Cannot paste a bone-bound Effect onto a different actor profile.");
+	for (const auto& resource : clipboard.Resources)
+	{
+		if (const auto* current = Find_PresentationResource(candidate, resource.strResourceId))
+		{
+			if (*current != resource) return reject("Copied Effect resource changed; copy again: " + resource.strResourceId);
+		}
+		else
+		{
+			candidate.PresentationResources.push_back(resource);
+			candidate.iNextPresentationResourceOrdinal = (std::max)(candidate.iNextPresentationResourceOrdinal, clipboard.iNextPresentationResourceOrdinal);
+		}
+	}
+	for (const auto& world : clipboard.WorldDefinitions)
+	{
+		if (const auto* current = Find_World(candidate, world.strWorldId))
+		{
+			if (*current != world) return reject("Copied World definition changed; copy again: " + world.strWorldId);
+		}
+		else
+		{
+			candidate.Worlds.push_back(world);
+			candidate.iNextWorldOrdinal = (std::max)(candidate.iNextWorldOrdinal, clipboard.iNextWorldOrdinal);
+		}
+	}
+	for (const auto& logic : clipboard.LogicDefinitions)
+	{
+		if (const auto* current = Find_Logic(candidate, logic.strLogicId))
+		{
+			if (*current != logic) return reject("Copied Animation Blend definition changed; copy again: " + logic.strLogicId);
+		}
+		else
+		{
+			candidate.Logics.push_back(logic);
+			candidate.iNextLogicOrdinal = (std::max)(candidate.iNextLogicOrdinal, clipboard.iNextLogicOrdinal);
+		}
+	}
+	std::uint64_t stageEnd = 0u;
+	for (const auto& stage : pattern->Stages) stageEnd += stage.iDurationMs;
+	std::uint64_t appendAt = (std::max)(stageEnd, std::uint64_t(Pattern_DurationMs(*pattern)));
+	const auto includeEnds = [&](const auto& rows) {
+		for (const auto& row : rows) appendAt = (std::max)(appendAt, std::uint64_t(row.iStartMs) + row.iDurationMs);
+	};
+	includeEnds(pattern->LogicOccurrences); includeEnds(pattern->SummonOccurrences); includeEnds(pattern->WorldOccurrences);
+	includeEnds(pattern->SceneProfileOccurrences); includeEnds(pattern->PresentationOccurrences); includeEnds(pattern->PatternOccurrences);
+	if (pattern->BossMotion) appendAt = (std::max)(appendAt, std::uint64_t(pattern->BossMotion->iEndMs));
+	if (!clipboard.iDurationMs || appendAt + clipboard.iDurationMs > MAX_EDITOR_TIME_MS)
+		return reject("Paste would exceed the 600000 ms Pattern lifetime; current draft preserved.");
+	const std::string targetId = pattern->strPatternId;
+	bool exhausted = false;
+	const auto allocate = [&](std::uint32_t& ordinal, const std::string& prefix) {
+		if (!ordinal || ordinal >= 1000000u) { exhausted = true; return std::string{}; }
+		return prefix + std::to_string(ordinal++);
+	};
+	std::vector<std::string> newStageIds, newBoxIds;
+	const auto appendStage = [&](KOUKU_SAYDON_COMPOSITION_STAGE stage, const bool select) {
+		stage.strStageId = allocate(pattern->iNextStageOrdinal, "STAGE_");
+		if (stage.strStageId.empty()) return;
+		stage.strActionId = targetId + ".stage." + stage.strStageId.substr(6u);
+		if (select) newStageIds.push_back(stage.strStageId);
+		for (auto& row : stage.AnimationOccurrences)
+		{
+			row.strOccurrenceId = allocate(pattern->iNextAnimationOrdinal, targetId + ".animation.");
+			row.iPoseStartMs = UINT32_MAX;
+			newBoxIds.push_back(row.strOccurrenceId);
+		}
+		pattern->Stages.push_back(std::move(stage));
+	};
+	if (!clipboard.Stages.empty())
+	{
+		if (stageEnd < appendAt)
+		{
+			KOUKU_SAYDON_COMPOSITION_STAGE gap;
+			gap.strStageKind = "RECOVERY"; gap.iDurationMs = static_cast<std::uint32_t>(appendAt - stageEnd);
+			appendStage(std::move(gap), false);
+		}
+		for (const auto& stage : clipboard.Stages)
+			appendStage(stage, !stage.AnimationOccurrences.empty() ||
+				std::find(clipboard.SelectedStageIds.begin(), clipboard.SelectedStageIds.end(), stage.strStageId) != clipboard.SelectedStageIds.end());
+	}
+	std::unordered_map<std::string, std::string> worldIds, groupIds;
+	for (auto row : clipboard.Worlds)
+	{
+		const auto oldId = row.strOccurrenceId;
+		row.strOccurrenceId = allocate(pattern->iNextWorldOccurrenceOrdinal, targetId + ".world.");
+		worldIds.emplace(oldId, row.strOccurrenceId);
+		row.iStartMs += static_cast<std::uint32_t>(appendAt);
+		pattern->WorldOccurrences.push_back(std::move(row));
+	}
+	std::unordered_set<std::string> usedGroups;
+	for (const auto& row : pattern->PresentationOccurrences) if (!row.strSelectionGroupId.empty()) usedGroups.insert(row.strSelectionGroupId);
+	for (auto row : clipboard.Effects)
+	{
+		row.strOccurrenceId = allocate(pattern->iNextPresentationOccurrenceOrdinal, targetId + ".presentation.");
+		row.iStartMs += static_cast<std::uint32_t>(appendAt);
+		if (!row.strRegionId.empty()) row.strRegionId = row.strOccurrenceId + ".region";
+		if (!row.strWorldOccurrenceId.empty())
+		{
+			const auto world = worldIds.find(row.strWorldOccurrenceId);
+			if (world == worldIds.end()) return reject("Clipboard World owner is unavailable; current draft preserved.");
+			row.strWorldOccurrenceId = world->second;
+		}
+		if (!row.strSelectionGroupId.empty())
+		{
+			auto [group, inserted] = groupIds.try_emplace(row.strSelectionGroupId);
+			if (inserted) do
+			{
+				group->second = allocate(pattern->iNextPresentationOccurrenceOrdinal, targetId + ".effectgroup.");
+				if (exhausted) return reject("Paste Effect group IDs are exhausted; current draft preserved.");
+			} while (!usedGroups.insert(group->second).second);
+			row.strSelectionGroupId = group->second;
+		}
+		newBoxIds.push_back(row.strOccurrenceId);
+		pattern->PresentationOccurrences.push_back(std::move(row));
+	}
+	for (auto row : clipboard.LogicOccurrences)
+	{
+		row.strOccurrenceId = allocate(pattern->iNextLogicOccurrenceOrdinal, targetId + ".logic.");
+		row.iStartMs += static_cast<std::uint32_t>(appendAt);
+		pattern->LogicOccurrences.push_back(std::move(row));
+	}
+	if (exhausted) return reject("Paste stable ID ordinals are exhausted; current draft preserved.");
+	if (!Extend_PatternLifetimeForAuthoredLanes(*pattern, outStatus)) return reject(outStatus);
+	Mark_Draft(candidate, *pattern);
+	if (!Commit_Candidate(std::move(candidate), "Pasted Animation clips and Effects at the Pattern end. Existing clocks preserved. Press Save.", outStatus)) return false;
+	Clear_TimelineSelection();
+	m_strSelectedPatternId = targetId; m_strTimelineSelectionPatternId = targetId;
+	m_TimelineSelectedStageIds = std::move(newStageIds); m_TimelineSelectedOccurrenceIds = std::move(newBoxIds);
+	m_strSelectedStageId.clear(); m_strSelectedOccurrenceId.clear(); m_strSelectedPresentationOccurrenceId.clear();
+	m_strSelectedLogicOccurrenceId.clear(); m_strSelectedSummonOccurrenceId.clear(); m_strSelectedWorldOccurrenceId.clear();
+	m_strSelectedSceneProfileOccurrenceId.clear(); m_strSelectedPatternOccurrenceId.clear();
+	if (!m_TimelineSelectedStageIds.empty()) m_strSelectedStageId = m_TimelineSelectedStageIds.back();
+	const auto* current = Find_Pattern(m_Draft, targetId);
+	for (const auto& id : m_TimelineSelectedOccurrenceIds)
+		if (Find_Occurrence(*current, id)) m_strSelectedOccurrenceId = id;
+		else if (Find_PresentationBox(*current, id)) m_strSelectedPresentationOccurrenceId = id;
+	Normalize_Selection(); Synchronize_EditorFields(); m_bFitRequested = false;
+	return true;
+}
+
 bool_t Client::CKoukuSaydonActionWorkbench::Duplicate_TimelineSelection(
 	const std::string_view patternId, const std::vector<std::string>& stageIds,
 	const std::vector<std::string>& occurrenceIds, std::string& outStatus, const bool_t atOriginalTime)
@@ -7201,7 +7758,11 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 	m_iCursorMs = (std::min)(m_iCursorMs, durationMs);
 	const bool_t patternPreview = patternReady && m_PreviewState.bPlaying &&
 		m_PreviewState.strPatternId == patternId;
-	const bool_t canPlayPattern = patternReady && durationMs > 0u;
+	const bool_t serverPlayback = !m_strServerFollowRootPatternId.empty() &&
+		CKoukuSaydonPatternAuditionService::Get().Get_Snapshot().Is_InFlight();
+	const bool_t canPlayPattern = patternReady && durationMs > 0u && !serverPlayback && !m_bServerPlayPreparationPending;
+	if (serverPlayback && m_bServerSelectionFollowSuspended)
+		ImGui::TextDisabled("Server playback continues. Automatic selection is paused to preserve editor input.");
 	const bool_t publishing = Is_PublishRunning();
 	ImGui::BeginDisabled(publishing || !m_bHasDraft || !Is_Dirty());
 	const bool_t saveRequested = ImGui::Button("Save##KoukuSequencer");
@@ -7211,15 +7772,25 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 	if (ImGui::Button("Play##KoukuSequencer"))
 	{
 		std::string status;
-		(void)Request_PatternPreview(patternId, m_iCursorMs, status);
+		if (!m_bSequenceWorkspace && Has_CompletionChain(m_Draft, *pattern))
+			(void)Request_SelectedServerPlay(status);
+		else
+			(void)Request_PatternPreview(patternId, m_iCursorMs, status);
 	}
 	ImGui::EndDisabled();
 	ImGui::SameLine();
-	ImGui::BeginDisabled(!m_PreviewState.bPlaying &&
+	ImGui::BeginDisabled(!m_bServerPlayPreparationPending && !serverPlayback && !m_PreviewState.bPlaying &&
 		!m_bPatternPreviewRequestPending && !m_bPreviewRequestPending);
 	if (ImGui::Button("Stop##KoukuSequencer"))
-	{ (void)Request_PreviewPause(); }
-	ImGui::SameLine(); if (ImGui::Button("Reset##KoukuSequencer")) Stop_Preview();
+	{
+		if (m_bServerPlayPreparationPending) m_bServerPlayCancelRequested = true;
+		else if (serverPlayback) (void)CKoukuSaydonPatternAuditionService::Get().Stop(m_strStatus);
+		else (void)Request_PreviewPause();
+	}
+	ImGui::SameLine();
+	ImGui::BeginDisabled(serverPlayback || m_bServerPlayPreparationPending);
+	if (ImGui::Button("Reset##KoukuSequencer")) Stop_Preview();
+	ImGui::EndDisabled();
 	ImGui::EndDisabled();
 	Render_ServerPlayButton("Play Pattern##KoukuSequencerServer");
 	ImGui::SameLine();
@@ -7272,6 +7843,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 	ImGui::TextDisabled("%zu Stages + %zu lane boxes",
 		m_TimelineSelectedStageIds.size(), m_TimelineSelectedOccurrenceIds.size());
 	ImGui::TextDisabled("Ctrl/Shift+click: toggle any lane | drag empty space: enclose boxes across lanes | Ctrl/Shift+drag: add | Ctrl+D: duplicate | Delete: remove");
+	ImGui::TextDisabled("Ctrl+C: copy Animation / Effect selection | Ctrl+V: append to the selected Pattern (Patterns or Sequencer focused)");
 	ImGui::TextDisabled("Earlier/Later and Left/Right reorder Stage/Animation selections only. Mixed lane selections keep their authored clocks.");
 	ImGui::TextWrapped("%s", Get_Status().c_str());
 	if (saveRequested || deleteRequested || duplicateRequested || durationRequested ||
@@ -7455,7 +8027,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 	ImGui::SetCursorScreenPos(ImVec2(origin.x + labelWidth, origin.y));
 	ImGui::InvisibleButton("##KoukuRuler",
 		ImVec2((std::max)(8.f, durationMs * scale), rulerHeight));
-	if (canInteract && !m_bTimelineMarqueeActive && ImGui::IsItemActive() && durationMs > 0u)
+	if (!serverPlayback && canInteract && !m_bTimelineMarqueeActive && ImGui::IsItemActive() && durationMs > 0u)
 	{
 		const f32_t mouseMs = (ImGui::GetIO().MousePos.x - (origin.x + labelWidth)) / scale;
 		const auto clockMs = static_cast<std::uint32_t>(std::clamp(
@@ -7468,7 +8040,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 	{
 		const f32_t playheadX = origin.x + labelWidth + playheadMs * scale;
 		draw->AddLine(ImVec2(playheadX, origin.y), ImVec2(playheadX, origin.y + height),
-			patternPreview ? IM_COL32(255, 220, 72, 230) : IM_COL32(200, 200, 200, 140), 1.5f);
+			(patternPreview || serverPlayback) ? IM_COL32(255, 220, 72, 230) : IM_COL32(200, 200, 200, 140), 1.5f);
 	}
 	draw->AddText(ImVec2(origin.x + 4.f, origin.y + rulerHeight + 4.f), IM_COL32_WHITE, "Stages");
 	draw->AddText(ImVec2(origin.x + 4.f, laneY(animationLane) + 4.f),
@@ -11222,15 +11794,24 @@ void Client::CKoukuSaydonActionWorkbench::Render_PresentationAnchor(
 			}
 		}
 	}
-	else if (ImGui::BeginCombo("Anchor", edit.strAnchorKind == "BOSS" ? "Boss" : "World Object"))
+	else if (ImGui::BeginCombo("Anchor", edit.strAnchorKind == "BOSS" ? "Boss" :
+		edit.strAnchorKind == "MAP" ? "Map (fixed position)" : "World Object"))
 	{
-		for (const char* kind : { "BOSS", "WORLD" })
-			if (ImGui::Selectable(std::string_view(kind) == "BOSS" ? "Boss" : "World Object", edit.strAnchorKind == kind))
+		for (const char* kind : { "BOSS", "WORLD", "MAP" })
+			if (ImGui::Selectable(std::string_view(kind) == "BOSS" ? "Boss" :
+				std::string_view(kind) == "MAP" ? "Map (fixed position)" : "World Object", edit.strAnchorKind == kind))
 			{
-				edit.strAnchorKind = kind;
-				edit.strWorldOccurrenceId.clear(); edit.iWorldEmissionIndex = 0u;
-				if (edit.strAnchorKind != "WORLD") edit.strWorldId.clear();
-				if (edit.strAnchorKind != "BOSS") { edit.strBone.clear(); edit.strBoneTarget = "BODY"; }
+				if (std::string_view(kind) == "MAP")
+				{
+					if (edit.strAnchorKind != "MAP") (void)chooseFixedWorld();
+				}
+				else
+				{
+					edit.strAnchorKind = kind;
+					edit.strWorldOccurrenceId.clear(); edit.iWorldEmissionIndex = 0u;
+					if (edit.strAnchorKind != "WORLD") edit.strWorldId.clear();
+					if (edit.strAnchorKind != "BOSS") { edit.strBone.clear(); edit.strBoneTarget = "BODY"; }
+				}
 			}
 		ImGui::EndCombo();
 	}
@@ -11375,9 +11956,26 @@ void Client::CKoukuSaydonActionWorkbench::Render_PresentationBoxDetails(
 	if (definition.eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT &&
 		(definition.strResourceKind == "V1_EFFECT" || definition.strResourceKind == "V1_ELEMENT"))
 	{
-		ImGui::Checkbox("Fit Effect lifetime to box", &edit.bFitEffectToDuration);
+		if (ImGui::Checkbox("Fit Effect lifetime to box", &edit.bFitEffectToDuration) && edit.bFitEffectToDuration)
+			edit.bLoopEffectToDuration = false;
 		if (edit.bFitEffectToDuration)
 			ImGui::TextDisabled("Source %u ms plays once over this box. Change Lifetime, then Apply and Save.", definition.iDurationMs);
+		if (ImGui::Checkbox("Loop Effect through lifetime", &edit.bLoopEffectToDuration) && edit.bLoopEffectToDuration)
+			edit.bFitEffectToDuration = false;
+		if (edit.bLoopEffectToDuration)
+		{
+			ImGui::TextDisabled("Continuous source emitters keep their original speed until this box ends.");
+			std::uint32_t animationEnd = 0u, stageStart = 0u;
+			for (const auto& stage : pattern.Stages)
+			{
+				for (const auto& animation : stage.AnimationOccurrences)
+					animationEnd = (std::max)(animationEnd, stageStart + animation.iStartOffsetMs + animation.iPlayMs);
+				stageStart += stage.iDurationMs;
+			}
+			ImGui::BeginDisabled(animationEnd <= edit.iStartMs);
+			if (ImGui::Button("Match remaining animation time")) edit.iDurationMs = animationEnd - edit.iStartMs;
+			ImGui::EndDisabled();
+		}
 	}
 	const auto vectorControl = [](const char* label, std::array<double, 3u>& values, const float minimum, const float maximum) {
 		float v[3] = { static_cast<float>(values[0]), static_cast<float>(values[1]), static_cast<float>(values[2]) };
@@ -11820,6 +12418,8 @@ void Client::CKoukuSaydonActionWorkbench::Render_WorldResources()
 	{
 		ImGui::TextUnformatted(selected->strObjectDisplayName.c_str());
 		ImGui::TextDisabled("%s", selected->strAnchorKind == "BOSS" ? "Anchor / Boss BODY Bone" : selected->strAnchorKind == "PLAYER" ? "Anchor / Character" : "Map");
+		if (selected->bUntilDestroyed)
+			ImGui::TextWrapped("HP: %u | After spawning, the Server keeps this Object alive until it is destroyed.", selected->iMaximumHp);
 		if (ready) ImGui::TextWrapped("Default: %s", selected->strDisplayName.c_str());
 		else ImGui::TextWrapped("Set an enabled default animation in Object Tool, then Save.");
 	}
@@ -11870,6 +12470,8 @@ void Client::CKoukuSaydonActionWorkbench::Render_WorldBoxDetails(
 	const std::string patternId = pattern.strPatternId;
 	const std::string occurrenceId = box->strOccurrenceId;
 	const std::uint32_t lifetimeMs = Pattern_DurationMs(pattern);
+	const bool untilDestroyed = world && std::any_of(m_WorldSequenceResources.begin(), m_WorldSequenceResources.end(),
+		[&](const auto& row) { return row.strInstanceId == world->strSequenceInstanceId && row.bUntilDestroyed; });
 	ImGui::SeparatorText("Object Box");
 	ImGui::Text("%s", nullptr == world ? "(missing World)" : world->strDisplayName.c_str());
 	ImGui::TextDisabled("%s -> %s", box->strWorldId.c_str(),
@@ -11931,6 +12533,8 @@ void Client::CKoukuSaydonActionWorkbench::Render_WorldBoxDetails(
 		if (initial != m_WorldSequenceResources.end())
 		{
 			ImGui::TextWrapped("Initial Motion: %s | Objects: %u", initial->strDisplayName.c_str(), initial->iEmissionCount);
+			if (initial->bUntilDestroyed)
+				ImGui::TextWrapped("HP: %u | Server lifetime: until destroyed", initial->iMaximumHp);
 			if (!objectId.empty() && ImGui::Button("Edit This Motion##WorldBox"))
 				m_PendingWorldObjectEditRequest = {objectId, initial->strInstanceId};
 		}
@@ -11960,7 +12564,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_WorldBoxDetails(
 	}
 	ImGui::SeparatorText("Timing");
 	ImGui::InputInt("Start ms##KoukuWorldBox", &m_iWorldBoxStartMs, 10, 100);
-	ImGui::InputInt("Lifetime ms##KoukuWorldBox", &m_iWorldBoxDurationMs, 10, 100);
+	ImGui::InputInt(untilDestroyed ? "Box length ms##KoukuWorldBox" : "Lifetime ms##KoukuWorldBox", &m_iWorldBoxDurationMs, 10, 100);
 	ImGui::InputFloat("Playback speed x##KoukuWorldBox", &m_fWorldBoxPlaybackSpeed, 0.05f, 0.25f, "%.2f");
 	m_iWorldBoxStartMs = std::clamp(m_iWorldBoxStartMs, 0, static_cast<int32_t>(MAX_EDITOR_TIME_MS));
 	m_iWorldBoxDurationMs = std::clamp(m_iWorldBoxDurationMs, 1, static_cast<int32_t>(MAX_EDITOR_TIME_MS));
@@ -11974,7 +12578,9 @@ void Client::CKoukuSaydonActionWorkbench::Render_WorldBoxDetails(
 			m_fWorldBoxPlaybackSpeed, status);
 		return;
 	}
-	ImGui::TextWrapped(m_bSequenceWorkspace ?
+	if (untilDestroyed)
+		ImGui::TextWrapped("Start ms sets the spawn time. In Server Play, the box end and normal Pattern end do not remove this Object; HP 0 or encounter reset does. Object Tool controls its repeating animation and Effect cycle.");
+	else ImGui::TextWrapped(m_bSequenceWorkspace ?
 		"Preview uses this box placement at Start ms with its playback speed. Lifetime ms limits the active World box; sequence motion uses its authored length and speed. Sequence lifetime %u ms." :
 		"Preview and Server Play use this box placement at Start ms with its playback speed. Lifetime ms limits the active World box; sequence motion uses its authored length and speed. Pattern lifetime %u ms.",
 		lifetimeMs);
@@ -13324,8 +13930,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_Details()
 		ImGui::TextWrapped("Original pattern JSON is preserved. Repair the source and Reload, or delete this pattern.");
 		if (ImGui::Button(m_bSequenceWorkspace ? "Delete Invalid Sequence###Delete Invalid Pattern" : "Delete Invalid Pattern"))
 		{
-			std::string status;
-			(void)Delete_Pattern(patternId, status);
+			Request_PatternDelete(patternId);
 		}
 		return;
 	}
@@ -13533,8 +14138,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_Details()
 	}
 	if (ImGui::Button(m_bSequenceWorkspace ? "Delete Sequence###Delete Pattern" : "Delete Pattern"))
 	{
-		std::string status;
-		(void)Delete_Pattern(patternId, status);
+		Request_PatternDelete(patternId);
 		return;
 	}
 
@@ -13859,15 +14463,51 @@ void Client::CKoukuSaydonActionWorkbench::Render_ReloadConfirmation()
 	ImGui::EndPopup();
 }
 
+void Client::CKoukuSaydonActionWorkbench::Process_TimelineClipboardShortcuts()
+{
+	const auto& io = ImGui::GetIO();
+	if (!m_bTimelineClipboardFocusThisFrame || !m_bHasDraft ||
+		m_ePatternSelection != KOUKU_PATTERN_SELECTION::PATTERN ||
+		!io.KeyCtrl || io.KeyAlt || io.KeyShift || io.KeySuper || io.WantTextInput ||
+		ImGui::IsAnyItemActive() || m_bTimelineMarqueeActive ||
+		ImGui::GetDragDropPayload() != nullptr ||
+		ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId | ImGuiPopupFlags_AnyPopupLevel) ||
+		m_iTimelineClipboardShortcutFrame == ImGui::GetFrameCount())
+		return;
+	for (int button = 0; button < ImGuiMouseButton_COUNT; ++button)
+		if (ImGui::IsMouseDown(button)) return;
+	const bool copy = ImGui::IsKeyPressed(ImGuiKey_C, false);
+	const bool paste = ImGui::IsKeyPressed(ImGuiKey_V, false);
+	if (!copy && !paste) return;
+	m_iTimelineClipboardShortcutFrame = ImGui::GetFrameCount();
+	std::string status;
+	if (copy)
+	{
+		if (m_strTimelineSelectionPatternId != m_strSelectedPatternId)
+		{
+			m_strStatus = "Select Animation or Effect boxes before copying.";
+			return;
+		}
+		(void)Copy_TimelineSelection(m_strSelectedPatternId,
+			m_TimelineSelectedStageIds, m_TimelineSelectedOccurrenceIds, status);
+	}
+	else if (Has_TimelineClipboard())
+		(void)Paste_TimelineClipboard(m_strSelectedPatternId, status);
+	else
+		m_strStatus = "Copy Animation or Effect boxes before pasting.";
+}
+
 void Client::CKoukuSaydonActionWorkbench::Begin_WorkbenchFrame()
 {
 	m_bSharedWorkspaceActive = true;
+	m_bTimelineClipboardFocusThisFrame = false;
 	if (!m_bLoadAttempted)
 	{
 		m_bLoadAttempted = true;
 		std::string status;
 		(void)Reload(status);
 	}
+	Synchronize_ServerPatternPlayback();
 }
 
 void Client::CKoukuSaydonActionWorkbench::Render_WorkbenchPane(COMPOSITION_WORKBENCH_PANE pane)
@@ -13883,6 +14523,9 @@ void Client::CKoukuSaydonActionWorkbench::Render_WorkbenchPane(COMPOSITION_WORKB
 	case COMPOSITION_WORKBENCH_PANE::PREVIEW: Render_Transport(); break;
 	default: break;
 	}
+	if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows))
+		m_bTimelineClipboardFocusThisFrame = pane == COMPOSITION_WORKBENCH_PANE::PATTERNS ||
+			pane == COMPOSITION_WORKBENCH_PANE::BOSS_PATTERN || pane == COMPOSITION_WORKBENCH_PANE::SEQUENCER;
 }
 
 Client::COMPOSITION_WORKBENCH_VIEW_REQUEST Client::CKoukuSaydonActionWorkbench::Consume_WorkbenchViewRequest()
@@ -13893,12 +14536,16 @@ Client::COMPOSITION_WORKBENCH_VIEW_REQUEST Client::CKoukuSaydonActionWorkbench::
 void Client::CKoukuSaydonActionWorkbench::End_WorkbenchFrame()
 {
 	Render_ReloadConfirmation();
+	Render_PatternDeleteConfirmation();
 	Render_CameraWindow();
+	// All pane-local Pattern and occurrence pointers have finished their frame.
+	Process_TimelineClipboardShortcuts();
 	m_bSharedWorkspaceActive = false;
 }
 
 void Client::CKoukuSaydonActionWorkbench::Render()
 {
+	m_bTimelineClipboardFocusThisFrame = false;
 	Poll_PublishProcess();
 	if (!m_bOpen)
 		return;
@@ -13908,6 +14555,7 @@ void Client::CKoukuSaydonActionWorkbench::Render()
 		std::string status;
 		(void)Reload(status);
 	}
+	Synchronize_ServerPatternPlayback();
 	ImGui::SetNextWindowSize(ImVec2(1180.f, 720.f), ImGuiCond_FirstUseEver);
 	if (!ImGui::Begin(m_bSequenceWorkspace ? "Sequencer Benchmark###KoukuSequenceWorkbench" :
 		"KoukuSaydon Composition###KoukuSaydonActionWorkbench", &m_bOpen))
@@ -13938,9 +14586,12 @@ void Client::CKoukuSaydonActionWorkbench::Render()
 		ImGui::EndTable();
 	}
 	Render_ReloadConfirmation();
+	Render_PatternDeleteConfirmation();
+	m_bTimelineClipboardFocusThisFrame = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
 	ImGui::End();
 	Render_ResourcesWindow();
 	Render_CameraWindow();
+	Process_TimelineClipboardShortcuts();
 }
 
 

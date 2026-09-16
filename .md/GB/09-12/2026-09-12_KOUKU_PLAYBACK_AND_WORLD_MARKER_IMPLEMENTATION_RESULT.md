@@ -125,3 +125,61 @@ commit, push하지 않았다. 준비된 자료를 GPU pixel 성공이나 사용�
    Composition Play All 또는 Complete Play - Sequences + Pattern Flow를 확인한다.
 5. 입구 우클릭에는 mouse_click만 나오고, 이동/종이 트리거 중심에는 금색 표식이 반복되는지 확인한다.
 6. 두 LocalDecal 링의 첫 표시와 Stop/Level 퇴장 후 정리 상태를 확인한다.
+
+## G06. 2026-09-16 우클릭 hold의 클릭 표식 반복 생성 수정
+
+### 반영한 변경
+
+현재 branch `codex/mario-random-two-play`, HEAD `16d052131a577327fb6383fa1143de6c66fed069`의 다른 작업을 보존했다.
+`CPlayerController::Update`는 raw 우클릭 press edge를 모든 early return 전에 관찰한다.
+일반 이동은 `Request_MoveToPoint(goal, isRightMousePressed)`를 호출하고,
+성공한 이동 송신 뒤 `playClickEffect`가 true일 때만 `CClickMoveEffect::Play`를 호출한다.
+기존 50ms 이동 목적지 재전송·도착 deadzone·예측·sequence는 변경하지 않았다.
+
+새 물리 입력 상태는 Set_LocalCharacter에서 초기화하고 Rebind_LocalCharacter에서는 보존한다.
+Bern의 NPC 접근 두 caller는 이미 raw press로 제한되며 기본 인자 true로 기존 피드백을 유지한다.
+송신 실패는 기존처럼 이펙트·예측·sequence 갱신 이전에 반환한다. 최초 press 송신이 실패한 뒤
+같은 hold에서 뒤늦게 성공해도 클릭 이펙트를 생성하지 않는다.
+H/CPP는 UTF-8 BOM 없음·CRLF를 유지했다. 새 C++ 파일·project/filter 등록·JSON/XML·Resources 변경은 없다.
+
+### 실행한 검증과 제품 반영 경계
+
+- 기존 `Tools/GameplayPipeline/test_ground_target_preview_prototype_scope.py`: 6 tests PASS. 주변 입력/타기팅 회귀이며 클릭 표식 횟수의 직접 실행 검사는 아니다.
+- 변경한 H/CPP·PLAN/RESULT·공통 문서의 `git diff --check` PASS. 독립 읽기 전용 diff 검토에서도 구체적 회귀를 발견하지 않았다.
+- 수정 `PlayerController.cpp`의 Debug x64 격리 컴파일 PASS. 현행 Product가 선택하는 VS 18 Insiders/v143 14.44.35207 및 Windows SDK 10.0.26100.0을 사용했다. 증거: `out/RightClickEdge20260916/compile.rsp`, `compile.log`, `PlayerController.obj`. 기존 SDK 헤더의 문자 인코딩 경고는 남는다.
+- 첫 격리 시도는 forced include의 상대 경로를 찾지 못해 실패했고, 절대 경로로 교정한 뒤 성공했다. 제품 출력은 변경하지 않았다.
+- 정식 `Invoke-BuildAndRegression.ps1 -Configuration Debug -Profile Product`는 Client PID 58036 / Server PID 57572가 표준 Debug 출력을 사용 중이어서 compile 전 보호 검사에서 차단됐다. 기록: `out/BuildPipeline/runs/20260916T052453366Z-debug-product.json`.
+- 이후 사용자가 소스 수정과 컴파일 확인까지만 요청했다. Product 빌드는 재시도하지 않고 실행 중 Client/Server와 제품 EXE를 보존했다. 자동 종료·실행·UI 조작·화면 검증은 하지 않았다.
+
+사용자 화면 확인은 추후 새 Product 빌드 후 진행한다. 플레이 가능한 맵에서 우클릭을 누르고
+커서를 움직여도 표식은 최초 한 번만 나오고 이동 목적지는 계속 갱신되어야 한다. 버튼을 놓고
+다시 누르면 새 표식이 한 번 나오며, Bern NPC 접근 클릭과 UI/타기팅 차단이 유지되는지 확인한다.
+
+
+## G07. 2026-09-16 Complete Play 대상 관문과 보스 애니메이션
+
+### 확인한 원인과 수정
+
+- 마리오 P34는 게시된 `boss.kakulsaydon.g3.saydon`을 요청하지만 단독 Complete Play에는 관문 활성화 단계가 없어, 현재 방에3관문 세이튼이 없으면 Server가 Parent/Summon 실행 전에 REJECTED_NO_BOSS를 반환했다. BossTool의 단독 Pattern·Bundle·Flow 시작을 기존 `Debug_ActivateGate`로 연결했다. 다른 관문에서는 spawn·teleport·맵·조명·HUD 승인과 replicated boss를 기다린 후 원래 저장 revision으로 audition을 제출한다. 이미 준비된 같은 관문은 즉시 제출하며 보스만 로컬 생성하는 우회는 없다.
+- 현재 애니메이션 binding revision1143은394 action과 targetedCombatVisuals5개를 포함한다. `560741ac`에서 쇼타임 관련 공용 필드가 추가됐지만 PresentationAssetService의 엄격 root allowlist에는 빠져 모든 animation binding을 거부했다. 지원 optional key를 추가하고 unknown key·schema·revision·clip 검증은 유지했다. 별도 PresentationPlayer의 Effect가 보이는 것과 CNpc body/weapon animation binding은 다른 소비자다.
+- `Reset(reason)`이 레벨 전환 사유를 사용하지 않은 Flow snapshot에 복사해 실제 ACTIVE/REJECTED 옆에 과거 `Level changed` 문구가 남았다. Reset은 Flow snapshot을 비우며 성공적으로 전송한 새 단독 요청도 이전 Flow 표시를 정리한다. 송신 실패와 동일 run의 Stop/Restart는 이전 결과를 보존한다.
+
+새 C++ 파일·프로젝트 등록·저장 schema·Shared/Server 변경은 없다. RenderingProfiles2개의 작업 시작 전 수정은 보존했다. Composition 및 Resources를 수정하거나 게시하지 않았다. Source branch는 codex/mario-random-two-play, 시작 HEAD는 c0c878cb413f30a45b5493ddd5f9cd84549b7110이다.
+
+### 수행한 집중 검증
+
+- 기존 producer/strict reader 호환 unittest1개 PASS(113.965초). 실제 prepare_publication의 미지원 Parent 격리를 거친 뒤 project_presentation을 검사하도록 기존 테스트를 교정했다. 전체 projected binding row와 unknown header 거절을 검사한다.
+- 실제 PatternAuditionService를 컴파일하고 네트워크만 stub한 native probe30검사/실패0. Reset·Selected·Bundle·PlayAll, send실패 보존·2entry Flow진행·Stop·Restart를 포함한다. 동일 probe의 HEAD 원본은 stale Flow 정리4개 검사만 실패하여 결함을 재현했다.
+- PatternAuditionService와 PresentationAssetService의 실제 Debug x64 격리 TU 컴파일 PASS. VS18 Insiders/v14314.44.35207/SDK26100을 사용했고 SDK의 기존 C4828 경고가 남는다. 산출물은 out/KoukuCompletePlay20260916에 격리했다.
+
+사용자는 처음 소스·컴파일만 요청한 뒤 Client/Server를 종료하고 Product 빌드를 승인했다. 최종 빌드 및 관문 준비 검사 결과는 아래 후속 항목에 기록한다. 에이전트는 Client/UI를 실행·조작·캡처하지 않으며 실제1관문 애니메이션과 마리오 재생 화면의 최종 판정은 사용자에게 남긴다.
+
+### G07 최종 컴파일과 사용자 빌드 인계
+
+사용자가 이후 “내가 빌드 돌릴게”라고 변경하여 에이전트는 Product 빌드를 시작하지 않았다. 최종 수정 BossTool·ActionWorkbench·MainApp도 같은 VS/SDK로 격리 Debug 컴파일 PASS다. 위 Service2개와 합쳐 변경 CPP5개가 모두 컴파일됐으며 새 헤더 계약도 실제 caller에서 확인했다. 기존 C4828 경고가 남지만 compile error는 없다. 각 로그와 OBJ는 out/KoukuCompletePlay20260916에 있고 표준 Product intermediate/EXE는 에이전트가 변경하지 않았다.
+
+Complete Play 준비는 같은 활성 관문의 늦게 생성되는 replicated NPC를 기다리며 이미 승인된 위치를 다시 초기화하지 않는다. target의 실제 gate 일치도 명령 전 검사한다. 지연 요청은 ID·target·Mario test 값·revision을 값으로 고정한다. MainApp의 매 frame Update가 창 표시 여부와 무관하게 완료/실패를 전달하고, Workbench의 Stop과 미저장 변경/게시 시작은 예약된 재생을 취소한다. 서버에 이미 제출된 관문 배치 명령 자체를 취소했다고 표시하지 않는다.
+
+사용자 확인 경로는 새 Debug Client의 Lobby → KoukuSaydon → F1 → 해당1관문 Pattern 또는3관문 세이튼_마리오_1페이즈 → Complete Play다.3관문을 따로 올리지 않은 경우 Preparing GATE3 뒤 보스·플레이어 승인과 ACTIVE가 이어져야 한다. 이미3관문이면 위치를 다시 옮기지 않는다.1관문은 Effect뿐 아니라 보스 body/weapon action animation도 진행해야 한다. 제품 최종 링크·사용자 화면 판정은 이 기록 시점에 미확인이다.
+
+추가 관문 준비 native probe75검사/실패0. 실제 제품 헤더와 Prepare/Update/Cancel 및 Pattern/Bundle wrapper·callback 본문, 실제 audition service를 컴파일하고 Arena/Network/문서 Reload/clock 경계만 대체했다. 다른 gate의 승인+replicated boss 대기, 같은 gate의 늦은 NPC에 activation0회, 취소·거부·gate/world/request/revision변경·timeout 후 송신0, inventory vector 교체 후 원래 ID/target/Mario seed 보존, Bundle 전체 target 대기 및 deferred 송신1회를 확인했다. 증거는 gate.run.log와 gate_methods_manifest.json이다. 이 검사는 실제 네트워크 spawn·화면 결과의 대체 증거가 아니다. 최종 git diff --check PASS이며 이번 작업의 JSON/XML 변경은 없다.

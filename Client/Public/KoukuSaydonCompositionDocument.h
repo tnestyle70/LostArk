@@ -419,6 +419,8 @@ namespace Client
 		bool_t bFollowBoss = true;
 		// Retimes the V1 source clock to this occurrence window without adding loops.
 		bool_t bFitEffectToDuration = false;
+		// Continues source loop-zero emitters at native speed for this occurrence.
+		bool_t bLoopEffectToDuration = false;
 		bool_t bDebugRender = true;
 		std::string strBone;
 		std::string strBoneTarget = "BODY";
@@ -685,9 +687,10 @@ namespace Client
 		bool_t Reload_FromPath(
 			const std::filesystem::path& path,
 			std::string& outStatus);
-		/* Candidate keeps the currently admitted revision. Save increments it,
-		   performs source compare-and-swap, atomically replaces the
-		   file, and only then commits the exact reopened document as LastGood. */
+		/* Candidate keeps the loaded revision. Under the writer lock, independent
+		   external stable-ID/field edits merge against LastGood; conflicting edits
+		   preserve both disk and draft. Save increments the newest revision, retains
+		   byte compare-and-swap, and commits LastGood only after atomic reopen. */
 		bool_t Save_Atomic(
 			const KOUKU_SAYDON_COMPOSITION_DOCUMENT& candidate,
 			std::string& outStatus);

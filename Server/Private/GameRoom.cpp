@@ -653,6 +653,37 @@ bool LostArk::Server::CGameRoom::Try_DequeueWorldTransfer(
 	return true;
 }
 
+LostArk::Server::SERVER_TRIGGER_MOVE_ENTRY_RESULT
+LostArk::Server::CGameRoom::Begin_MarioTriggerMove(
+	const WORLD_BOOTSTRAP_PLACEMENT& trigger, SERVER_PLAYER& player,
+	const std::uint32_t actionStartTick)
+{
+	using namespace LostArk::Shared;
+	using Result = SERVER_TRIGGER_MOVE_ENTRY_RESULT;
+	if (m_eWorldId != WORLD_ID::KAKULSAYDON_ARENA)
+		return Result::USE_DEFAULT;
+	const auto lane = std::find_if(MARIO_LANES.begin(), MARIO_LANES.end(),
+		[&trigger](const auto& row) { return trigger.strPlacementId == row.exit || trigger.strPlacementId == row.arrival; });
+	if (lane == MARIO_LANES.end())
+		return Result::USE_DEFAULT;
+	if (player.iMarioStage != lane->stage || !player.iCurrentHp || !player.isCombatReady ||
+		player.bPatternBound || player.bArenaEjectionActive || player.iAttachmentOwnerNetEntityId != INVALID_NET_ENTITY_ID ||
+		player.eAction == PLAYER_ACTION_STATE::DEAD || player.eAction == PLAYER_ACTION_STATE::FALLING ||
+		player.eAction == PLAYER_ACTION_STATE::GRABBED || trigger.TriggerActions.size() != 1u)
+		return Result::RETRY_WHILE_INSIDE;
+	if (player.TriggerMove.isActive && player.TriggerMove.strSourcePlacementId == trigger.strPlacementId)
+		return Result::STARTED;
+
+	SERVER_PLAYER candidate = player;
+	Reset_MarioContactAction(candidate);
+	if (!CServerTriggerSystem::Begin_MovePlayer(candidate, trigger.TriggerActions.front(), actionStartTick))
+		return Result::RETRY_WHILE_INSIDE;
+	// Only a committed Mario contact cancels the previous action's delayed hits.
+	m_CombatObjectRuntime.Cancel_Source(player.iNetEntityId);
+	player = std::move(candidate);
+	return Result::STARTED;
+}
+
 void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 {
 	if (!m_isReady)
@@ -874,6 +905,7 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 #ifdef _DEBUG
 	// WORLD supports and their first pattern tick must exist before any walking query.
 	Prepare_KoukuAuditionTick(updateTick);
+	Update_KoukuWorldBodies(updateTick);
 	if (!Refresh_KoukuSupportSurfaces(updateTick)) { recordTickDuration(); return; }
 #endif
 	Refresh_PlayerBlockingBodies();
@@ -935,7 +967,12 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 			}
 			return false;
 		},
-		promptEdges);
+		promptEdges,
+		[this](const WORLD_BOOTSTRAP_PLACEMENT& trigger, SERVER_PLAYER& player,
+			const std::uint32_t actionStartTick)
+		{
+			return Begin_MarioTriggerMove(trigger, player, actionStartTick);
+		});
 	}
 	for (auto& [playerId, player] : m_Players)
 	{
@@ -979,6 +1016,7 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 	m_EstherSkillSystem.Update(fixedDeltaSeconds, !m_Players.empty());
 	Update_WorldEntities(fixedDeltaSeconds);
 #ifdef _DEBUG
+	Update_KoukuWorldBodies(updateTick);
 	// An owner may have completed or aborted during the boss update this tick.
 	if (!Refresh_KoukuSupportSurfaces(updateTick)) { recordTickDuration(); return; }
 #endif

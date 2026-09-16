@@ -49,6 +49,18 @@ namespace LostArk::Server
 		bool bAvailable = false;
 	};
 
+	/* The room may own a specific move entry's interruption/admission policy.
+	   A rejected owned entry must remain eligible while the player overlaps. */
+	enum class SERVER_TRIGGER_MOVE_ENTRY_RESULT
+	{
+		USE_DEFAULT,
+		STARTED,
+		RETRY_WHILE_INSIDE
+	};
+
+	using SERVER_TRIGGER_MOVE_ENTRY_HANDLER = std::function<SERVER_TRIGGER_MOVE_ENTRY_RESULT(
+		const WORLD_BOOTSTRAP_PLACEMENT&, SERVER_PLAYER&, std::uint32_t)>;
+
 	class CServerTriggerSystem final
 	{
 	public:
@@ -65,7 +77,8 @@ namespace LostArk::Server
 			std::vector<SERVER_WORLD_TRANSFER_REQUEST>& outTransfers,
 			const std::function<bool(WORLD_TRIGGER_ACTION_KIND,
 				const std::string&)>& activateTarget,
-			std::vector<SERVER_INTERACT_PROMPT_EDGE>& outPromptEdges);
+			std::vector<SERVER_INTERACT_PROMPT_EDGE>& outPromptEdges,
+			const SERVER_TRIGGER_MOVE_ENTRY_HANDLER& moveEntry = {});
 		/* Runs one interact-gated box for one player. False means the request
 		   named a box that does not exist, is not gated, is spent, or that this
 		   player is no longer standing in -- the caller changes nothing. */

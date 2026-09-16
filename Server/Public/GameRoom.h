@@ -365,6 +365,10 @@ namespace LostArk::Server
 		void Handle_MarioReturn(SESSION_ID sessionId, const LostArk::Shared::C2S_MARIO_RETURN& request);
 		LostArk::Shared::S2C_MARIO_RETURN_RESULT Apply_MarioReturn(
 			SERVER_PLAYER& player, const LostArk::Shared::C2S_MARIO_RETURN& request);
+		static void Reset_MarioContactAction(SERVER_PLAYER& player);
+		SERVER_TRIGGER_MOVE_ENTRY_RESULT Begin_MarioTriggerMove(
+			const WORLD_BOOTSTRAP_PLACEMENT& trigger, SERVER_PLAYER& player,
+			std::uint32_t actionStartTick);
 		void Update_MarioControlState(SERVER_PLAYER& player);
 		std::uint8_t Begin_MarioStageObjects(std::uint8_t stage);
 		void Reset_MarioStageObjects(std::uint8_t stage);
@@ -615,6 +619,20 @@ namespace LostArk::Server
 		void Broadcast_KoukuBundleState(LostArk::Shared::KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE state);
 		void Broadcast_OwnedWorldSequence(const LostArk::Shared::S2C_WORLD_SEQUENCE_PLAY& message);
 		void Stop_KoukuWorldOwner(const std::string& memberId = {}, bool finished = false);
+		// Survives natural Pattern completion; reset/cancel and HP zero own removal.
+		struct KOUKU_DAMAGEABLE_WORLD_CUE final
+		{
+			LostArk::Shared::S2C_WORLD_SEQUENCE_PLAY Play;
+			LostArk::Shared::NET_ENTITY_ID iBodyId = LostArk::Shared::INVALID_NET_ENTITY_ID;
+			SESSION_ID iOwnerSessionId = INVALID_SESSION_ID;
+			bool bCancelled = false;
+		};
+		std::vector<KOUKU_DAMAGEABLE_WORLD_CUE> m_KoukuDamageableWorldCues;
+		std::vector<SERVER_WORLD_ENTITY> m_PendingKoukuWorldBodies;
+		bool Stage_KoukuWorldBody(const BOSS_PATTERN_WORLD_COMBAT_BODY& body,
+			const LostArk::Shared::S2C_WORLD_SEQUENCE_PLAY& play);
+		void Cancel_KoukuWorldBodies(const std::string& memberId = {}, SESSION_ID ownerSession = INVALID_SESSION_ID);
+		void Update_KoukuWorldBodies(std::uint32_t serverTick);
 
 		struct KOUKUSAYDON_PATTERN_AUDITION_RECEIPT final
 		{

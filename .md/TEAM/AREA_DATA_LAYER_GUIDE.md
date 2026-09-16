@@ -782,3 +782,13 @@ WorldSequence v3 template의 optional `colliderTracks`는 stable `colliderTrackI
 Object Tool은 Collider 행의 생성·시간·형태·결과·복제·삭제를 저장한다. 현재 객체와 본에서 읽은 와이어는 편집용이며 피해 권위가 없다. Kouku WORLD occurrence를 게시하면 projector가 emission·delay·속도·반복·원본 본 이동을 기존 ENTER_AREA region.WorldTrack으로 변환하고 Server가 접촉을 판정한다. 갈고리는 접촉 창 이후에도 이미 잡힌 플레이어가 원래 숨김 시점까지 본 끝을 따라갈 수 있다. 새 별도 collision runtime은 없다.
 
 움직이는 갈고리의 원본 본 궤적을 보존하기 위해 Gameplay bootstrap 전체 행 상한은 publisher와 CGameplayCatalog 모두 32,768이다. 패턴당64접촉 창과 track당4,096key 제한은 유지한다. 비결정적 spawn/spread나 기울어진 ground placement는 지원 완료로 간주하지 않고 명시적으로 거절한다.
+
+### 생존하는 Pattern World Object와 Object Tool 반복
+
+`objectResources[].combatBody`는 모델 하나를 가진 WORLD resource의 선택적 피격 body다. `maxHp`는 1..1000000000, `localCenterM`과 `halfExtentsM`은 modelPreScale을 적용한 뒤이면서 Object/placement scale 적용 전의 미터 값, `lifetimePolicy`는 `UNTIL_DESTROYED`다. 선택적 `shape`는 `BOX` 또는 `ELLIPSOID`이며 생략은 BOX다. ELLIPSOID의 halfExtents는 반축이다. projector가 저장 Transform을 한 번 적용해 기존 Server XZ BODY_CIRCLE로 투영한다. BOX는 모서리 외접원, ELLIPSOID는 합성 선형 변환의 XZ 투영 최대 singular value를 사용하므로 구형 모델의 피격 반지름이 상자 대각선으로 커지지 않는다. 이는 기존 Object→player `colliderTracks`와 별개의 player→Object 피격 입력이다.
+
+현재 제품 지원은 고정 WORLD 위치, 단일 모델 binding, count1, LOOP 모션이다. 이동·회전 운동, 다중 방출·random spread 및 다른 anchor를 이 계약으로 게시하면 거절한다. Map publisher는 문서를 검증하고, Kouku projector와 Gameplay publisher가 실제 Pattern의 WORLD occurrence를 `PATTERNWORLDCOMBAT`으로 연결한다. 모델·재질·애니메이션·Effect는 기존 `CWorldSequencePlayer -> CWorldSequenceObject -> CModel -> CMaterial`이 소유한다.
+
+Object Tool의 `Loop Animation + Effects`는 instance의 optional `loopFullPresentation=true`와 `motionEnd=LOOP`를 저장한다. 반복 길이는 저장된 Motion/Effect 창의 최대값이며, 원본 Effect의 보수적 particle tail 추정값으로 늘리지 않는다. 생략은 기존 반복 동작이다. V1 Effect track의 optional `fitEffectToDuration=true`는 원본 Effect 시계만 박스 길이에 맞추며 움직이는 모델·본의 시계는 그대로 둔다. Zoom 슬라이더·Ctrl+wheel·Fit, Stage 끝 드래그·Stage Duration·Fit Stage to Animation을 제공한다. Stage 변경은 기존 clip/Effect/Collider 시점을 이동시키지 않으며 내용을 자르는 축소를 거절한다. MOTION_END Effect는 이전 시작을 보존하도록 TIME으로 바꾸고 이를 상태 메시지에 알린다.
+
+Pattern의 WORLD 박스는 생존 Object의 생성 시점·배치를 소유한다. Server Play에서 박스/Pattern 정상 종료는 생성된 개체를 제거하지 않으며 HP0·명시 취소·새 run·보스 제거/사망·session 퇴장·room reset이 정확한 cue를 종료한다. 현재 wire는 protocol88이고 Client와 Server를 함께 빌드·재시작해야 한다. Object Tool의 로컬 Preview는 저작 재생이며 Server HP 판정이 아니다.

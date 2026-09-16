@@ -11,7 +11,11 @@ using namespace Engine;
 
 namespace
 {
-    constexpr size_t MAX_SCOPES_PER_FRAME = 4096;
+    constexpr size_t MAX_SCOPES_PER_FRAME = 8192;
+    // Children complete first. Keep main-thread pass/root samples available
+    // after dense map/particle detail exhausts its bounded frame budget.
+    constexpr size_t MAIN_PASS_SCOPE_RESERVE = 1024;
+    constexpr size_t MAIN_ROOT_SCOPE_RESERVE = 128;
     constexpr size_t MAX_OPEN_SCOPES_PER_THREAD = 64;
 
     uint64_t AllocateProfilerInstanceId()
@@ -218,8 +222,23 @@ void CProfiler::End_Scope(uint32_t token) noexcept
     const double durationMs = Ticks_ToMs(endTick - open.BeginTick);
 
     std::lock_guard lock(m_Mutex);
-    if (m_PendingScopes.size() < MAX_SCOPES_PER_FRAME)
+    size_t sampleLimit = MAX_SCOPES_PER_FRAME - MAIN_PASS_SCOPE_RESERVE;
+    if (sample.ThreadId == m_MainThreadId)
+    {
+        if (sample.Depth <= 2)
+            sampleLimit = MAX_SCOPES_PER_FRAME;
+        else if (sample.Depth == 3)
+            sampleLimit = MAX_SCOPES_PER_FRAME - MAIN_ROOT_SCOPE_RESERVE;
+    }
+    if (m_PendingScopes.size() < sampleLimit)
+    {
+        // Cap vector growth as well as sample count; normal frames still grow
+        // on demand and the history ring continues to recycle their buffers.
+        if (m_PendingScopes.size() == m_PendingScopes.capacity())
+            m_PendingScopes.reserve((std::min)(MAX_SCOPES_PER_FRAME,
+                (std::max)(size_t{128}, m_PendingScopes.capacity() * 2)));
         m_PendingScopes.push_back(sample);
+    }
     else
         ++m_DroppedCpuScopes;
     if (durationMs >= LONG_OPERATION_THRESHOLD_MS)

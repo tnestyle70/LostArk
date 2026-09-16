@@ -48,6 +48,70 @@ def enable_ring_axis_rotation(document):
     element['detail']['sprite']['followEmitterAxisRotation'] = True
 
 
+def enable_ring_flame_two_sided(document):
+    """Show both faces of only the assembled ring/flame's reviewed hoop sprite."""
+    if document['effectAssetId'] != PREFIX + 'ring.flame':
+        return
+    element_id = RING_AXIS_ELEMENTS[document['effectAssetId']]
+    selected = [e for e in document['elements'] if e['id'] == element_id]
+    assert len(selected) == 1, 'The reviewed ring/flame hoop element changed'
+    element = selected[0]
+    assert element['sourceNode'].endswith(
+        'fx_mn_rpct_05_g.par_g_rpct_05_firering_01_loc_int.particlespriteemitter_20')
+    assert element['sourceRecipe']['enabled'] and element['sourceRecipe']['rendererShape'] == 'sprite'
+    profile = element['material']['sourceProfile']
+    assert profile['runtimeShaderProfileId'] == 'effect.ue3.kouku-2876-native.v1'
+    assert any(t['sourceObjectPath'] == 'fx_tex_00.fx_a_noise_001' for t in profile['textures'])
+    element['detail']['sprite']['twoSided'] = True
+
+
+def stage_current_ring_two_sided(evidence):
+    """Stage one boolean byte edit against the current saved ring/flame document."""
+    evidence = evidence.resolve()
+    assert evidence.is_relative_to((ROOT / 'out').resolve()), 'Candidates must stay under out'
+    asset_id = PREFIX + 'ring.flame'
+    element_id = RING_AXIS_ELEMENTS[asset_id]
+    target = AUTHORED / (asset_id + '.effect.json')
+    raw = target.read_bytes()
+    before_sha = hashlib.sha256(raw).hexdigest()
+    before = json.loads(raw.decode('utf-8-sig'))
+    candidate = copy.deepcopy(before)
+    enable_ring_flame_two_sided(candidate)
+    sprite = next(e for e in before['elements'] if e['id'] == element_id)['detail']['sprite']
+    assert isinstance(sprite.get('twoSided', False), bool), 'Invalid authored two-sided flag'
+    locations = list(re.finditer(rb'"id"\s*:\s*' + re.escape(json.dumps(element_id).encode()), raw))
+    assert len(locations) == 1
+    block = re.search(rb'"sprite"\s*:\s*\{', raw[locations[0].end():])
+    assert block is not None and sprite, 'The reviewed sprite detail is absent'
+    start = locations[0].end() + block.end()
+    end = raw.index(b'}', start)
+    if 'twoSided' not in sprite:
+        offset, removed, inserted = start, b'', b' "twoSided": true,'
+    elif sprite['twoSided'] is False:
+        flag = re.search(rb'"twoSided"\s*:\s*false\b', raw[start:end])
+        assert flag is not None
+        offset, removed, inserted = start + flag.end() - 5, b'false', b'true'
+    else:
+        offset, removed, inserted = start, b'', b''
+    assert raw[offset:offset + len(removed)] == removed
+    candidate_raw = raw[:offset] + inserted + raw[offset + len(removed):]
+    assert json.loads(candidate_raw.decode('utf-8-sig')) == candidate, 'Unexpected raw field edit'
+    before_path = evidence / 'before' / target.name
+    candidate_path = evidence / 'candidate' / target.name
+    before_path.parent.mkdir(parents=True, exist_ok=True)
+    candidate_path.parent.mkdir(parents=True, exist_ok=True)
+    before_path.write_bytes(raw)
+    candidate_path.write_bytes(candidate_raw)
+    assert target.read_bytes() == raw, 'Source changed during staging'
+    source.write(evidence / 'stage.json', dict(scope='CURRENT_SAVED_SOURCE_ONLY_NO_INSTALL', rows=[dict(
+        path=target.relative_to(ROOT).as_posix(), sourcePath=str(target),
+        beforePath=before_path.relative_to(ROOT).as_posix(), candidatePath=candidate_path.relative_to(ROOT).as_posix(),
+        beforeSha256=before_sha, afterSha256=hashlib.sha256(candidate_raw).hexdigest(),
+        effectAssetId=asset_id, elementId=element_id, field='detail.sprite.twoSided',
+        byteEdit=dict(offset=offset, removed=removed.decode(), inserted=inserted.decode()))]))
+    print('Staged one ring/flame hoop two-sided flag; no Data writes')
+
+
 def stage_current_ring_axis_rotation(evidence):
     """Stage the new boolean without rewriting current transforms or source literals."""
     evidence = evidence.resolve()
@@ -149,6 +213,7 @@ def make_document(asset, name, calls):
     assert len({e['id'] for e in document['elements']}) == len(document['elements'])
     assert len(name.encode('utf-8')) <= 64
     enable_ring_axis_rotation(document)
+    enable_ring_flame_two_sided(document)
     return document
 
 
@@ -487,8 +552,13 @@ if __name__ == '__main__':
                         help='Stage current ring/backstep groups with the reviewed neutral shared flame; never installs')
     parser.add_argument('--current-ring-axis-rotation', action='store_true',
                         help='Stage only the two saved independent hoop sprite rotation flags; never installs')
+    parser.add_argument('--current-ring-two-sided', action='store_true',
+                        help='Stage only the saved ring/flame hoop sprite two-sided flag; never installs')
     args = parser.parse_args()
-    if args.current_ring_axis_rotation:
+    if args.current_ring_two_sided:
+        assert not args.install and not args.current_ring_axis_rotation and not args.shared_firebreath and not args.flame_motion_samples
+        stage_current_ring_two_sided(args.evidence_root)
+    elif args.current_ring_axis_rotation:
         assert not args.install and not args.shared_firebreath and not args.flame_motion_samples
         stage_current_ring_axis_rotation(args.evidence_root)
     elif args.shared_firebreath:

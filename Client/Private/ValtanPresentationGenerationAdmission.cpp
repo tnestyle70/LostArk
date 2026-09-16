@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <array>
 #include <bcrypt.h>
+#include <charconv>
 #include <cwctype>
 #include <fstream>
 #include <functional>
@@ -214,22 +215,21 @@ namespace
 		const auto header = Split_Tabs(line);
 		std::uint32_t version = 0u;
 		std::uint32_t rowCount = 0u;
-		try
+		const auto ParseUnsigned = [](const std::string_view text, std::uint32_t& value)
 		{
-			if (3u != header.size() ||
-				"LOSTARK_GAMEPLAY_BOOTSTRAP" != header[0])
-				throw std::invalid_argument("header");
-			version = static_cast<std::uint32_t>(std::stoul(std::string(header[1])));
-			rowCount = static_cast<std::uint32_t>(std::stoul(std::string(header[2])));
-		}
-		catch (const std::exception&)
+			if (text.empty()) return false;
+			const auto result = std::from_chars(text.data(), text.data() + text.size(), value);
+			return result.ec == std::errc{} && result.ptr == text.data() + text.size();
+		};
+		if (3u != header.size() || "LOSTARK_GAMEPLAY_BOOTSTRAP" != header[0] ||
+			!ParseUnsigned(header[1], version) || !ParseUnsigned(header[2], rowCount))
 		{
 			status = "Gameplay.bootstrap header is invalid.";
 			return false;
 		}
 		if (LostArk::Shared::GAMEPLAY_BOOTSTRAP_FORMAT_VERSION != version ||
 			0u == rowCount ||
-			rowCount > 8192u)
+			rowCount > LostArk::Shared::GAMEPLAY_BOOTSTRAP_MAX_ROWS)
 		{
 			status = "Gameplay.bootstrap version or row count is invalid.";
 			return false;
@@ -254,6 +254,15 @@ namespace
 					status = "Gameplay.bootstrap presentation generation row is invalid.";
 					return false;
 				}
+			}
+		}
+		while (std::getline(input, line))
+		{
+			if (!line.empty() && '\r' == line.back()) line.pop_back();
+			if (!line.empty())
+			{
+				status = "Gameplay.bootstrap row count does not match its payload.";
+				return false;
 			}
 		}
 		if (!generationId.Is_Valid())

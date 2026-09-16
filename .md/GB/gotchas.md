@@ -1917,6 +1917,8 @@ CModel 기반 OPAQUE/MASKED cue는 명시 Effect material이 없을 때 GBuffer�
 
 Stage 길이 편집은 Effect/Logic/World 등 비애니메이션 행의 시작·길이·fade·TRS를 바꾸는 명령이 아니다. `Set_StageDuration → Extend_PatternLifetimeForAuthoredLanes`는 선택 animation window만 제한하고 모든 저작 행의 마지막 끝까지 explicit Pattern 수명을 연장한다. 이미 명시한 lifetime은 줄이지 않는다. ANIMATION_BLEND 절대 시간이 새 pose 경계와 충돌하면 전체 편집을 거절하며 Logic을 조용히 retime하지 않는다. 별도 staged geometry는 Transform만 합쳐야 하며 이전 timing으로 새 clock을 덮지 않는다.
 
+Stage 합을 늘리는 Add Stage, clip append/bind, action/cinematic append와 Start Offset도 commit 전에 같은 lifetime 확장을 적용한다. explicit duration이 Stage 합과 같던 Pattern에서 Stage만 추가하면 `Explicit Pattern duration is shorter than its Stages`로 정상 입력까지 거절된다. implicit duration만 있는 새 Pattern의 추가 성공으로 이 경로를 검증했다고 처리하지 않는다. 기존 긴 tail과 비애니메이션 행을 보존하며 600000ms 상한·실패 rollback은 유지한다. 재현과 수정 증거는09-14 Kouku Sequence Implementation RESULT G45를 따른다.
+
 Codec의 저작 admission과 Product 게시를 구분한다. 마지막 빈 Stage의 Preview는 직전 animation playMs 끝을 hold하며, 같은 kind·retarget 없는 leaf tail을 publisher 파생 사본에서 직전Stage duration으로 합쳐 기존 holdAtWindowEnd에 연결한다. implicit clock은 동일30Hz tick 합을 요구하고, explicit lifetime은 기존 fixedTimeline 절대 경계로 끝 pose를 유지한다. Source Stage 삭제·임의idle/clip 대입·Product one-clip검증 해제로 숨기지 않는다. 실제 prepare_publication의 Pattern 포함, targeted template refs, native root curve의 tail 정지까지 확인한다. 세부와 증거는09-14 Kouku Sequence Implementation RESULT의 G29/G30-P에 있다.
 
 
@@ -1986,3 +1988,97 @@ arena snapshot의 크기1과 bone-follow의 실제 owner 배율은 별개다. �
 ### Fixed-axis Sprite의 저작 회전
 
 SourceRecipe axis-lock Sprite의 최종 billboard 면은 SourceTransformTrack이 없으면 Element/Group 회전을 소비하지 않을 수 있다. 선택적 sprite.followEmitterAxisRotation은 고정 축 Sprite에서 정규화한 emitter basis를 한 번 적용한다. Local Space는 현재 basis, World Space는 spawn 시점 basis다. 기본 false이며 camera/velocity billboard와 기존 Matinee/local 및 수동 billboard roll 보정을 전역 변경하지 않는다. source 좌표 변환을 재적용하거나 모든 Sprite billboard를 끄지 않는다. 새 bool이 기존 struct padding에 들어가도 구버전 OBJ 생성자는 초기화하지 않으므로 codec core와 소비자를 같은 헤더로 컴파일해 검사한다.
+
+### 맵 shadow 비용과 Loader 완료 뒤 activation 실패
+
+낮은 FPS를 복원 재질·입자 수만으로 추정하지 않는다. 유효 GPU scope와 누락 CPU 표본부터 구분한다. 완전 불투명 정적 맵 shadow는 검증된 source family/flags에서만 재질 바인딩과 pixel shader를 생략한다. masked/fade와 vertex 변형은 유지하고 실제 전체 shader의 depth·cull·basis parity로 검증한다. authored coverage를 실제 draw 절감이나 측정 FPS로 보고하지 않는다.
+
+Loader가 effect 준비 실패를 격리해도 Level Initialize는 필수 ambient의 누락을 거절할 수 있다. `loading.complete`는 activation 요청 이름일 수 있으므로 실제 거절 단계의 상세 진단을 먼저 보존한다. bootstrap version뿐 아니라 행 수 상한도 Client·Server·publisher가 같은 Shared 계약을 소비해야 한다. 적용과 증거는09-15 MAP_AND_VALTAN_FULL_RESTORATION_RESULT G26을 따른다.
+
+반복되는 정적 shadow geometry는 time-invariant depth 조건을 만족하는 batch만 캐시한다. owner/revision과 최종 light 행렬·source 모드가 모두 같아야 하며 화면 밖 caster도 light 범위 안이면 유지한다. weak owner의 control block까지 대조하고 scene replacement·실패·mutable morph는 기존 draw로 돌아간다. authored 적용 가능 개수와 실제 cache hit/FPS는 다르다. local light는 최종 감쇠0의 불필요한 재질 계산만 생략하고 출력 동일성을 확인한다. G27/G29가 해당 검증 근거다.
+
+캐시 hit인데 shadow가 비싸면 미참여 batch와 개별 fallback을 구분한다. alpha-tested라는 이유만으로 매 프레임 변하는 것은 아니지만 BG parallax는 camera, panning/UV 이동은 time에 의존할 수 있다. 기존 alpha PS를 유지하고 해당 입력이 정적인 경우만 캐시한다. 외부 texture override는 내용 변이를 추적하지 않고 dynamic으로 제외한다. 개별 객체는 placement setter뿐 아니라 실제 Transform과 bounds·mesh별 cast/pass도 비교해야 하며, 배치 WorldInvTranspose 변경도 revision에 포함한다. G31은 이 누락과 후속 캡처를 다룬다.
+
+Level 생성은 Change_Level 전이므로 ambient probe의 target level과 current LOADING이 다를 수 있다. probe만 현재 LOADING 소유로 잠깐 생성하고 모든 성공·실패 경로에서 제거한다. 실제 활성화 후 effect는 원래 target 소유를 유지한다. queued Spawn과 Spawn_Immediate의 SOURCE_LOOP owner 허용 조건이 다르면 첫 검사 수정 뒤 다음 단계에서 재거절된다. 두 경로를 함께 대조하고 active-level validation을 넓게 우회하지 않는다. Bern 직접 입장 identity는 pending 생성 우선, 이후 기존 created/audition을 사용하며 audition을 created로 commit하지 않는다. G28/G30에 구현 범위를 기록한다.
+
+### 같은 animation의 동반 burst와 effect 수명
+
+cast/shot의 emitter 수와 native shader 일치만으로 전체 폭발 복원을 판정하지 않는다. 동일 clip을 쓰는 source action들의 활성 notify를 비교하고, 조합 시 원래 action에서 비활성이던 system을 구분해 기록한다. notify emission 종료와 particle tail은 별개이며 Composition occurrence가 tail보다 짧으면 준비·재생 검사가 통과해도 화면에서 잘린다. 기존 사용자 TRS·시간을 보존하고 정확한 소비 occurrence의 수명만 수정한다. 작은 오망성의 근거는09-13 KOUKU_PATTERN_RADIAL_MOTION_RESULT G14다.
+
+### Composition의 서로 다른 외부 수정과 미저장 draft
+
+저장 기준본의 freshness를 없애는 대신 기준본·draft·디스크를 함께 비교한다. schema가 정한 stable ID 배열과 객체 필드는 겹치지 않는 변경만 병합하고, 같은 필드의 다른 값·삭제 대 수정·상충하는 순서는 경로와 함께 거절한다. 좌표·참조 순서 같은 비-ID 배열은 원자 값이다. revision은 최신 디스크 기준으로 한 번 증가하며 writer lock, temp validate/reopen와 byte CAS를 유지한다. 구버전 Client가 실행 중이면 새 소스만으로 이 정책이 적용되지 않는다. 열린 draft의 저장 복구는 자기 외부 변경의 exact before/after가 확인될 때만 역변경하고 사용자 Save 결과를 확인한다. 실행 중 정본을 반복 수정하지 않는다. 구현과 검증은09-14 Sequence RESULT G46을 따른다.
+
+Parser가 invalid/orphan Pattern·Folder·Bundle을 원문 그대로 격리하는 문서에서는 Parse 성공만으로 병합을 승인하지 않는다. 각자 유효한 start와 duration도 합치면 window를 넘을 수 있다. 이미 격리된 동일 JSON만 보존하고, 병합 때문에 새로 격리된 항목은 실패로 처리한다.
+
+
+### Source Sprite 단면·양면과 회전 옵션
+
+화염링처럼 fixed-axis Sprite를 회전하면 기존 단면 back-face cull이 드러난다. 회전 오류와 컬링을 구분하고 Source material renderProfile/native descriptor를 임의 양면으로 바꿔 exact 검증을 깨지 않는다. 선택적 detail.sprite.twoSided는 기본false이며 검증된 Artist-registry native Alpha/Additive One Sided Sprite에서만 기존 양면 패스를 선택한다. 원본 blend/depth/material ID는 보존한다. mesh/decal/trail/compiled adapter/native-v14 source contract에는 적용하지 않는다. 새 bool이 struct padding에 들어가더라도 구 OBJ 생성자와 섞지 않고 codec core와 소비자를 같은 헤더로 빌드한다. 활성 편집 파일에는 최신 사용자 저장 SHA를 확인해 지정 필드만 치환하고 기준본을 보존한다.
+
+### 패턴 간 선택 복사와 독립 창의 입력 소유
+
+패턴을 바꾸면 timeline 선택은 지워지므로 clipboard는 원본 포인터가 아닌 세션 값 snapshot으로 보관한다. animation의 source stage/slot ID와 대상의 새 occurrence ID를 구분하고 World owner·내부 Animation Blend·Effect 그룹을 함께 remap한다. Paste는 기존 행의 clock을 이동하지 않고 전체 lifetime 뒤에 추가하며 모든 검증 뒤 한 번만 commit한다. 공유 정의가 변경됐으면 무조건 덮어쓰지 않는다. Patterns와 Sequencer는 서로 다른 ImGui root window이므로 timeline 내부 focus 검사만으로는 대상 패턴을 고른 직후 Paste할 수 없다. 각 pane의 focus를 수집하고 행 포인터 사용이 끝난 뒤 처리하며 텍스트 입력·popup·drag를 먼저 보호한다. 구현과 검증은 09-14 Sequence RESULT G48에 기록한다.
+
+
+### 마리오 랜덤 후보와 현재 패턴의 시작 시각
+
+완료 횟수 Logic의 후보는 서버가 중복 없이 선택하고 실제 PATTERN_COMPLETED만 누적한다. Parent Summon의 authored Stage가 비어 있어도 명시 lifetime과 기존 확장 결과로 실행 여부를 판단한다. stage 합보다 긴 explicit lifetime을 짧게 자르지 않는다. Success가 비어 있으면 마지막 완료에서 portal과 대기 entry를 정리하고 정상 종료하며, 후속 Success가 있는 체인의 실제 복귀 대기는 보존한다.
+
+Bundle member의 최초 scheduled tick은 랜덤 child의 시작 tick이 아니다. 패턴 전환마다 실제 boss.iPatternStartTick을 복제하고 Sequencer는 해당 run/revision의 현재 member 시계만 읽는다. Stop 요청 대기 중에는 추적 상태를 버리지 않고 거절 시 원래 ACTIVE 상태로 돌아가야 한다. 자동 선택은 미적용 editor 입력을 잃게 하지 않으며 dirty 또는 활성 입력이 생기면 해당 실행의 선택 추적을 멈춘다. 적용·게시·제품 빌드 증거는 09-14 KOUKU_MARIO_SERVER_PROGRESSION RESULT G07에서 구분한다.
+
+## 생존 Object의 반복 길이·피격 범위·종료 소유자
+
+- Pattern 박스 duration을 HP 수명으로 재사용하지 않는다. UNTIL_DESTROYED는 Server의 개별 body/cue receipt가 소유하고 정상 완료된 run 밖에서도 boss 제거·사망·취소·퇴장을 정리해야 한다. 늦은 PLAY보다 exact STOP_CUE tombstone이 우선한다.
+- 구형 공을 모델 AABB의 대각선으로 피격 원에 투영하면 반지름이 약1.414배 커진다. 원본 모델 bounds를 유지하고 ELLIPSOID의 실제 transform을 투영한다. preScale·resource scale·occurrence scale은 각각 한 번 적용한다.
+- 전체 animation+Effect 반복의 주기는 저장한 창이다. burst/kill-on-deactivate 원본은 duration+particle life 추정값보다 실제 재생이 먼저 끝날 수 있으므로 그 추정값으로 반복 주기를 늘리지 않는다. stage 길이를 늘릴 때 기존 key·clip·Effect 시작과 속도를 자동 재분배하지 않는다.
+- ParticleModuleMeshMaterial의 non-null 전체 section 배열은 TypeData bOverrideMaterial=true여도 Required보다 먼저 소비한다. bool=true를 이유로 거절하거나 원본값을 false로 변조하지 않는다. 실제 mesh section별 슬롯 경로·native 계약·전체 coverage는 계속 검사하고 null/누락 슬롯은 명시적으로 거절한다.
+
+### 우클릭 hold 이동과 클릭 표식의 생성 주기를 분리한다
+
+- 이동 목적지 재전송마다 `CClickMoveEffect::Play`를 호출하면 이전 handle을 Stop하고 새 표식을 생성해 hold 중 클릭이 반복된다. typed 이동 송신·예측·sequence는 유지하며 표식만 최초 물리 press의 성공한 송신에 연결한다.
+- raw press 상태는 capture/Mario/타기팅의 early return 전에 갱신한다. 동일 player presentation rebind는 상태를 보존하고, Bern NPC의 명시 클릭은 기존 한 번의 표식을 유지한다.
+- 구현·컴파일·사용자 확인은 [World marker 결과 G06](09-12/2026-09-12_KOUKU_PLAYBACK_AND_WORLD_MARKER_IMPLEMENTATION_RESULT.md#g06-2026-09-16-우클릭-hold의-클릭-표식-반복-생성-수정)에서 구분한다.
+
+
+## 노이즈 왜곡과 Decal 수신 표면을 구분한다
+
+- 캐릭터나 폭탄이 두 번 보일 때 객체 spawn 수만 조사하지 않는다. source SceneColor 샘플, 별도 distortion pass, 실제 dispatch와 최종 화면 resolve를 연결해 본다. 노란 장판의 Decal actor 배제는 화면 distortion에 자동 적용되지 않는다.
+- 원본 pass가 존재해도 상수0일 수 있다. 이번 검토14개 중 실제 texture-dependent offset3개만 보호 채널로 옮겼으며 원본 색·크기·왜곡 식은 보존했다.
+- signed offset BA를 추가하면 RT 형식뿐 아니라 blend write mask, alpha blend operation, coverage, fixed-function admission과 생성기를 함께 바꾼다. 일반RG나 BA=0 writer가 기존 누적을 지우면 안 된다.
+- 이동된 UV의 중심 한 점만 검사하면 bilinear 이웃에서 actor 영상이 다시 섞인다. 현재/일반RG/BA 합성 footprint를 실제 필터 가중치로 검사하고, map marker의 packed payload와 actor bit를 구분한다. 경사면 깊이는 평면 기울기로 비교한다.
+- actor 표식이 없는 정적 prop 내부까지 완전 차단했다고 쓰지 않는다. 실제 source·공통 pass·Engine resolve 수치 검증과 사용자의 화면 관찰은 별개다. 적용 범위와 증거는09-14 Sequence RESULT G50이다.
+
+
+### 마리오 진입은 시각 창·접촉 원·실패 재시도를 함께 확인한다
+
+포탈이 보이는 시각과 Logic 시작, MAP 위치와 BOSS_CURRENT root, solid boss/player 반경을 따로 대조한다. 플레이어 중심만 박스 안으로 요구하면 body collision에 막혀 영원히 들어갈 수 있다. 기존 Shared body-circle와 solver margin을 동일하게 사용하고 Y gate도 실제 위치로 조사한다. 일반 action을 취소하는 Mario 접촉은 목적지 검증 뒤 commit하며 retryable 실패를 inside 캐시에 고정하지 않는다. 같은 active move를 다시 시작하거나 다른 trigger의 once/interaction 정책으로 확장하지 않는다. 근거와 설치 경계는09-14 Mario progression RESULT G08이다.
+
+
+### 반복 Pattern의 모델 시계와 source socket 시계를 함께 연결한다
+
+Effect Tool 모델을 현재 Pattern clip으로 바꿔도 SourceModelPreview 기반의 별도 bone sampler가 옛 clip을 읽으면 손과 trail이 다시 분리된다. 모델 pose와 source anchor 모두 동일한 animation snapshot과 effect start offset을 사용한다. 공용 Effect의 SourceModelPreview를 특정 occurrence 때문에 저장 변경하지 않는다. 긴 박스에 맞추는 시간 stretching과 loop0 emission 연장은 다른 정책이며 동시 적용하지 않는다. duration clamp·late seek·되감기·끝난 뒤 tail과 기존 owner cleanup을 함께 확인한다. 원본1m local offset과 bone preScale도 실제 월드 거리로 확인한다.
+
+
+### 게시 성공과 F1 목록 로드의 용량 계약을 함께 검사한다
+
+Kouku Encounter가 root-motion/월드 연출을 포함해 커지면 publisher 성공 뒤 BossTool의 선행 byte 상한에서 거절될 수 있다. 파일 크기 제한뿐 아니라 `CDataJson`의 기본16MiB와 value/depth 제한도 같은 호출에 명시한다. 현재 F1 Encounter 계약은64MiB/4,000,000values/depth64이며 projector가 같은 조건을 게시 전에 검사한다. Load 실패로 Flow까지 읽지 못한 상태를 `No saved Pattern Flow`로 표시하지 않고 실제 오류와 마지막 정상 목록을 유지한다. 재발 검증은09-14 Sequence RESULT G51.
+
+### 쿠크 Effect는 나오는데 보스 animation만 idle이면 binding root 계약을 확인한다
+
+`KoukuSaydon.patternbindings.json`은 보스 Animation과 별도 PresentationPlayer가 함께 소비한다. publisher가 `targetedCombatVisuals` 같은 공용 optional section을 추가하면 두 reader의 root 허용 필드를 함께 갱신한다. Effect 소비 성공은 CNpc의 action binding 로드 성공을 보장하지 않는다. unknown field·schema·revision·clip 검증을 제거하지 말고 실제 게시 문서로 기존 엄격 reader 호환 검사를 실행한다.
+
+Complete Play의 `target is not spawned`는 Parent/Summon 실행 전에 대상 보스가 없는 상태다. 다른 관문의 보스만 자동 생성하면 플레이어·맵·조명·HUD가 어긋나므로 기존 Gate 활성화의 spawn와 이동 승인을 기다린 뒤 저장 revision을 고정한 audition을 제출한다. Flow가 없는 새 session에 과거 `Level changed` 사유를 Flow 결과로 복사하지 않는다.
+
+### 공유 Effect의 원본 애니메이션과 Pattern 선택을 구분한다
+
+Effect를 원본 Resource 목록에서 열었는데 다른 동작이면 SourceModelPreview와 설치 clip을 먼저 비교한 뒤 Workbench의 선택 provider를 조사한다. 같은 Effect를 여러 Pattern이 사용하므로 마지막 편집 선택을 Open/Play 때 자동 소비하면 정상 저장 원본이 덮여 보인다. 기본은 저장 source이며 occurrence preview는 명시적으로 선택한 값 snapshot이다. 모델 pose와 bone sampler에 같은 snapshot/start/duration을 전달하고 성공한 문서 교체에서만 초기화한다. 선택 실패·로드 취소는 기존 상태를 보존한다. 해당 Effect를 특정 Pattern에 맞춰 재저장하는 우회는 하지 않는다.
+
+### Trail의 폭 축 연속성과 단면 winding을 함께 검사한다
+
+Trail이 꼬이거나 끊길 때 tick이나 shader부터 바꾸지 않는다. 설치 모델의 실제 궤적, 현재 sample cadence, camera와 tangent의 cross, 이웃 폭 축의 부호와 triangle winding을 함께 비교한다. 폭 축을 연속화하면서 단면 재질의 front/back을 바꾸면 일부 구간이 사라질 수 있다. 카메라 평행·왕복·중복점의 축과 완전퇴화 구간의 연결도 검사한다. baked AnimationTrail은 EdgePairs가 원본 geometry이며 centerline Points가 비어 있을 수 있으므로 centerline tessellation을 적용하지 않는다. 수치 검사와 사용자 GPU 화면 판정은 구분한다. 구현과 개별 증거는09-16 KOUKU_PATTERN_CLEANUP_AND_TRAIL_IMPLEMENTATION_RESULT에 둔다.
+### 정적 맵 캐시 밖의 Deploy 그림자와 GPU elapsed 해석
+
+맵 shadow cache hit만으로 정적 장면 전체가 재사용된다고 판단하지 않는다. MapStaticBatchObject/MapAssetObject 외의 DeployPropObject처럼 같은 Render_Shadow 큐를 사용하는 소품도 별도로 확인한다. 파괴 가능한 소품은 intact STATIC, actual world/model, opaque presentation 및 시간·카메라 독립 alpha 입력을 검증한 때만 기존 depth 캐시에 참여하고 destruction/fade/animation/physics/debris/suppression/morph/texture override에는 기존 경로를 유지한다. source pass를 유지하며 camera 밖 shadow caster는 최종 light volume으로만 제외한다.
+
+GPU timestamp의 Shadow elapsed에는 CPU 명령 공급 공백이 포함될 수 있다. CPU NonBlend와 실제 draw/VS/PS 및 완전한 CPU 표본을 함께 읽고, enqueue 수를 실제 draw 수로 쓰지 않는다. 계측 예산이 차면 자식보다 늦게 종료하는 부모 scope도 사라질 수 있으므로 main root/pass 여유를 보존한다. detail 누락이 있으면 parent inclusive는 유효해도 SelfMs를 정확한 exclusive 비용이라고 보고하지 않는다. 안개는 별도 추정 대신 실제 포함 패스의 시간을 먼저 대조한다. [G34 결과](09-15/2026-09-15_MAP_AND_VALTAN_FULL_RESTORATION_RESULT.md)에 적용 및 검증 범위를 기록한다.

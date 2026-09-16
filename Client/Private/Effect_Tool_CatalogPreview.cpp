@@ -997,6 +997,7 @@ bool_t Client::CEffect_Tool::Try_PlayUnifiedEffect(
 
 bool_t Client::CEffect_Tool::Prepare_RecoveryPreviewTarget()
 {
+    m_strKoukuPatternPreviewStatus.clear();
     if (!m_ActiveDocument || !m_pAuthoringSequencer)
     { m_strPreviewStatus = "Load the recovery Effect and its authoring workspace first."; return false; }
     const std::string assetId = m_ActiveDocument->strEffectAssetId;
@@ -1016,8 +1017,14 @@ bool_t Client::CEffect_Tool::Prepare_RecoveryPreviewTarget()
         const auto requests = Collect_ToolSourceAnchorRequests(draft);
         const bool requiresSourceModel = std::any_of(requests.begin(), requests.end(), [](const auto& request)
             { return request.eOrientation != EFFECT_ATTACHMENT_ORIENTATION::CAMERA_VIEW; });
-        const bool selected = m_pAuthoringSequencer->Select_KoukuEffect(assetId, requiresSourceModel, false, &draft);
+        std::optional<std::uint32_t> contextDurationMs;
+        std::uint32_t modelStartMs = 0u;
+        bool loopEffectToDuration = false;
+        Resolve_KoukuPatternPreviewContext(draft, contextDurationMs, modelStartMs, loopEffectToDuration);
+        const bool selected = m_pAuthoringSequencer->Select_KoukuEffect(assetId, requiresSourceModel, false, &draft,
+            contextDurationMs, modelStartMs, loopEffectToDuration);
         m_strPreviewStatus = m_pAuthoringSequencer->Status();
+        if (!m_strKoukuPatternPreviewStatus.empty()) m_strPreviewStatus += " " + m_strKoukuPatternPreviewStatus;
         return selected;
     }
     const auto binding = std::find_if(m_UnifiedCandidateBindings.begin(), m_UnifiedCandidateBindings.end(),
@@ -1084,6 +1091,7 @@ bool_t Client::CEffect_Tool::Try_PlayRecoveryEffect()
     const bool result = m_pAuthoringSequencer->Preview(
         {EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT, assetId}, duration);
     m_strPreviewStatus = m_pAuthoringSequencer->Status();
+    if (!m_strKoukuPatternPreviewStatus.empty()) m_strPreviewStatus += " " + m_strKoukuPatternPreviewStatus;
     if (!result) return false;
     Release_WorldPreview(true);
     Set_SynchronizedAnimationPaused(true);
@@ -1092,7 +1100,7 @@ bool_t Client::CEffect_Tool::Try_PlayRecoveryEffect()
     m_bPreviewVisibleRequested = false;
     m_ePreviewFilter = EFFECT_PREVIEW_FILTER::COMPLETE;
     m_fPreviewTimeSeconds = 0.f;
-    m_fPreviewDurationSeconds = durationSeconds;
+    m_fPreviewDurationSeconds = static_cast<float>(m_pAuthoringSequencer->Preview_DurationMs()) * .001f;
     return true;
 }
 
@@ -1114,6 +1122,7 @@ bool_t Client::CEffect_Tool::Try_PlayMarkedElementGroup()
 bool_t Client::CEffect_Tool::Try_PreviewElementsTimeline(
     const std::vector<std::string>& elementIds, const bool loop)
 {
+    m_strKoukuPatternPreviewStatus.clear();
     if (!m_ActiveDocument || !m_pAuthoringSequencer || elementIds.empty())
     { m_strPreviewStatus = "Open an authored Effect and select elements before previewing."; return false; }
     if (!Validate_ActiveRegistryBoundAuditionFreshness(m_strPreviewStatus)) return false;
@@ -1158,7 +1167,13 @@ bool_t Client::CEffect_Tool::Try_PreviewElementsTimeline(
         const auto requests = Collect_ToolSourceAnchorRequests(preview);
         const bool requiresSourceModel = std::any_of(requests.begin(), requests.end(), [](const auto& request)
             { return request.eOrientation != EFFECT_ATTACHMENT_ORIENTATION::CAMERA_VIEW; });
-        if (!m_pAuthoringSequencer->Select_KoukuEffect(key.strStableId, requiresSourceModel, true, &preview))
+        std::optional<std::uint32_t> contextDurationMs;
+        std::uint32_t modelStartMs = 0u;
+        bool loopEffectToDuration = false;
+        Resolve_KoukuPatternPreviewContext(preview, contextDurationMs, modelStartMs, loopEffectToDuration);
+        if (contextDurationMs) duration = *contextDurationMs;
+        if (!m_pAuthoringSequencer->Select_KoukuEffect(key.strStableId, requiresSourceModel, true, &preview,
+            contextDurationMs, modelStartMs, loopEffectToDuration))
         { m_strPreviewStatus = m_pAuthoringSequencer->Status(); return false; }
     }
     else if (Is_SequencerRecoveryEffectAssetId(key.strStableId) &&
@@ -1167,6 +1182,7 @@ bool_t Client::CEffect_Tool::Try_PreviewElementsTimeline(
         m_pAuthoringSequencer->Preview_Elements(key, elementIds, label, duration, focus, true) :
         m_pAuthoringSequencer->Preview_Element(key, elementIds.front(), label, duration, focus);
     m_strPreviewStatus = m_pAuthoringSequencer->Status();
+    if (!m_strKoukuPatternPreviewStatus.empty()) m_strPreviewStatus += " " + m_strKoukuPatternPreviewStatus;
     if (!result) return false;
     Release_WorldPreview(true);
     Set_SynchronizedAnimationPaused(true);
@@ -1177,7 +1193,7 @@ bool_t Client::CEffect_Tool::Try_PreviewElementsTimeline(
     m_strPreviewIsolationElementId = elementIds.size() == 1u ? elementIds.front() : std::string{};
     m_strPreviewIsolationGroupId.clear();
     m_fPreviewTimeSeconds = static_cast<float>(focus) * .001f;
-    m_fPreviewDurationSeconds = static_cast<float>(duration) * .001f;
+    m_fPreviewDurationSeconds = static_cast<float>(m_pAuthoringSequencer->Preview_DurationMs()) * .001f;
     return true;
 }
 

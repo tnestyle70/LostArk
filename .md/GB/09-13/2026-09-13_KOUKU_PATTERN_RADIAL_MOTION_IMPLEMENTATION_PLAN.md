@@ -126,3 +126,52 @@ generator는 현재 원본 bytes/hash와 baseline, 후보, 정확히 두 templat
 기록한다. live Data/Resources/Catalog/Tree/Composition은 통합 담당자의 CAS 대상으로 남긴다.
 검증은 원본·설치 mesh/재질 입력, 실제 CModel 및 Codec/Playback, JSON parse와 diff check다.
 Client/UI 실행·캡처와 원본 전체 frame 시각 일치 판정은 하지 않는다.
+
+
+## G12. 작은 오망성의 원본 광주·파편 동반 폭발 — 2026-09-16
+
+현재 작은 오망성은 cast8+star_shot7만 가진15요소다. 이전 G07의 native2811/2812 additive 교정은 현재 설치 셰이더에도 존재하므로 같은 수정을 반복하지 않는다. 사용자 첨부 원작의 광주·파편에 대응하는 원본 down_lighting_Atk_02와 Atk_09_01 system을 실제 Action4219932의 활성 notify에서 가져온다. 전자는 현재 P34가 쓰는4219911에서도 활성이고, 후자는4219911에서는 비활성이나4219932에서는 활성이다. 두 action은 같은27_01 clip과 같은 발생 시간을 가진다. 원본 action flag는 수정하지 않고 작은 오망성 독립 library의 범위를 확장한다.
+
+기존 build_kouku_ritual_hand_trail.py에 burst-only 후보 경로와 source impact 결합 함수를 추가하고, 기존 slam/mario 생성기도 같은 함수를 소비한다. 사용자 cast/shot15요소의 ID·TRS·시계·재질을 보존하고 원본1.993970초 광주11요소와2.051467초 폭발12요소만 추가한다. 회색바닥·precast·손 부착·ScreenPost는 이 변경에 합치지 않는다. 원본 notify scale2와 offset, native leaf 재질, nested CDO와 notify stop window를 대조한다.
+
+Effect candidate와 P34의 전용 resource/occurrence duration 두 필드를 함께 준비한다. 현재3초창에서 사라지는 원본 입자 꼬리는 실제 Playback 종료 시각에 맞춰 보존하며 portal2998ms 시작, animation4667ms와 기존 패턴 시간을 바꾸지 않는다. 실행 중 편집이 있으므로 정본은 즉시 덮어쓰지 않고 사용자 저장·종료 후 source SHA를 비교해 설치한다. 변경 C++/셰이더/신규JSON은 없으므로 project/filter 등록은 필요 없다.
+
+실제 Codec roundtrip·Product CPU/GPU resource stage·120Hz Playback의 발생, 유한값, 종료, 되감기와 기존15요소 보존을 검증한다. GPU resource stage는 화면 출력이나 visual fidelity 판정이 아니며 최종 화면은 사용자가 확인한다.
+
+## G13. 큰 오망성과 독립된 마리오 진입 포탈 — 2026-09-16
+
+첨부 두 이미지의 붉은 수직 기둥·주황 불꽃 링은 기존 center.portal의 바닥7요소와 구분한다. 실제 연결은 NPC480650의 Action4222001에서15초에 호출하는 Effect422200109, SkillBuff4219930 `KoukuSaton_Magic_Pillar`의5초 창과 ParticleSoundNew buff FX의 `fx_mn_rpct_07_v.Par_V_RPCT_light_line_01_LOC_INT`다. 이8요소는 붉은 cylinder, 불꽃ring, magic-circle2개와 sprite4개를 가진다.
+
+신규 `effect.kouku.gate3.mario.entry.portal.full.restore`를 표시 이름 `진입 포탈`로 별도 등록한다. 독립 library의 시작은 Buff 활성 시점을0초로 두며 원래 전체 마리오 action의15초 시계를 변경하지 않는다. 기존 center.portal7과 큰/combined 오망성은 유지한다. source Required와 module/CDO, 원본 MIC/native shader 입력, buff TRS/배율 및 실제 모델 preScale을 대조하고 emitter의 발생 창과 particle tail을 따로 계산한다.
+
+현재8요소의 재질 중 누락된3개 native shader는 기존 생성기·registry·carrier 경로에 연결하며 별도 renderer를 만들지 않는다. 새 Effect JSON의 Catalog/Tree 및 Client의96.DataFiles None/project filter를 최소 추가한다. 독립 검증용 shader는 out에서 컴파일하고 실행 중 Client의CSO/EXE는 교체하지 않는다. Composition presentation resource 등록은 최신 편집을 보존하는 후보로 준비하고 현재 사용자 편집 중 정본에 외부 쓰기를 하지 않는다.
+
+원본 연결·8요소/재질/resource closure, 실제 Codec/CPU Playback·GPU resource 준비와 필요한 shader/C++ 개별 컴파일, JSON/XML/diff 검사를 수행한다. 원본 입력 복구·설치·제품 빌드 및 사용자 화면 판정은 RESULT에서 구분한다.
+
+## G14. 기분나빠 브레스의 전체 재생 길이4279ms — 2026-09-16
+
+사용자가 저장한 `effect.kouku.gate3.clone.breath`의 현행15요소를 기준으로 변경한다. 표시 timeline은3초지만 지속rate13개가 대부분1초 후 방출을 멈춰, 뒤에 같은 문서를 duplicate해 붙이면 첫burst가 반복된다. 원래2개 burst는 한 번만 유지하고 지속13개의 emissionDuration을 `4.279 - startDelay - emitterDelay - afterImage - 원래 최대particle수명`으로 늘린다. 실제 lifeScale을 포함하며 Required.emitterduration도 같은 방출 창으로 맞춘다. 입자 고유수명·속도·색·곡선은 유지하므로 자연스러운 꼬리를 포함한 전체 길이가4279ms다.
+
+detail timing의 수명과 sourceModelPreview playMs는4.279초/4279ms로 맞춘다. 기존 sourceStart1989ms, clip31_01, playRate와 HOLD_LAST_POSE를 보존하며 원래clip이 끝난 뒤에는 기존 마지막 자세 유지 정책을 쓴다. 사용자 bloom·그룹·TRS·재질과 입자수/loop1을 변경하지 않는다. 생성기 `build_kouku_clone_breath_group.py`의 현재 저장본 변환 모드로 같은 정책을 재현하고 후보 hash/CAS로 Effect 정본만 반영한다. 실행 중 Composition의 resource/occurrence 시간은 별도 후보로 보관한다.
+
+실제 Codec/Playback에서1초 이후의 연속 방출, 마지막 입자 종료 시점·전체4279ms, 되감기 동일성과 변경 필드 외 보존을 검증한다. 최신 Effect 저장본이 바뀌면 오래된 후보를 덮어쓰지 않는다. 현재 요청의 지속시간은 프로젝트 저작값이며 원본 action notify 길이로 표시하지 않는다.
+
+
+## G15. 반복 패턴의 왼손 trail과 occurrence 수명 — 2026-09-16
+
+현재 P33의 세 번째 Effect는 원본 저주의식27_01 미리보기와3.174864초의 loop0 emission을 가진다. 실제 마리오2페이즈는29_02를16회 배치하며 마지막 animation end는27994ms, Effect start는3035ms다. 원본 Effect는 P61에서도 사용하므로 공용 asset의 clip·수명을 덮어쓰지 않는다. 선택한 Pattern/occurrence를 Effect Tool의 임시 미리보기 문맥으로 전달하고 실제 animation row와 시작 시각을 기존 model sampler에 연결한다.
+
+Composition occurrence에 loopEffectToDuration을 선택적으로 저장한다. 이 값은 V1 Effect의 source loop0 emitter만 occurrence 창까지 원래 속도로 유지하고 fitEffectToDuration의 시간 늘이기와 동시 적용하지 않는다. 기존 EffectPlayback/EffectObject/PresentationService에 유한 sourceLoopEndSeconds를 연결하며 원본 pointLife, emitterPeriod, finite loop와 다른 occurrence는 보존한다. 편집 UI에서 마지막 animation end까지 수명을 맞출 수 있게 하고 P33의 해당 occurrence는24959ms 후보로 준비한다. 사용자 편집 중 Composition 정본은 쓰지 않는다.
+
+현재 native2836/3007의 원본 pixel body와 UV1 전달을 먼저 대조한다. 실제29_02 CModel·왼손 본·socket15cm·원본 ribbon local position을 사용하여 손과 geometry의 거리를 확인하고, shader 또는 위치 계산은 원인이 확인된 범위만 교정한다. 첨부 이미지의 떨어진 선은 관찰값이며 shader 원인이나 visual PASS의 근거로 대신하지 않는다.
+
+검증은 기존 Codec/Playback의 loop0 late seek·유한 종료·되감기·finite loop 보존, 실제 본 sampling, projector roundtrip/거부 계약과 변경 C++ 격리 컴파일이다. 새 C++ 파일은 없으며 project/filter 등록도 추가하지 않는다. 실행 중 Client/Server와 공유 산출물을 보존하고 정상 Product build·publish와 사용자의 최종 화면 판정은 별도 상태로 기록한다.
+
+
+### G15-01. 흰 Ribbon의 손끝 부착과 곡선
+
+실제29_02 CModel 비교에서 white3007의 source StartLocation+1m가 바닥쪽 궤적을 만들었다. 사용자가 지정한 왼손 socket adaptation에서는 이 module lookup과 editable initial position만0으로 맞추며 원본 leaf/dump는 보존한다. Detail.Transform -1m 상쇄는 SPU 측정 원점을 바꿔 입자발생과 손끝 gap이 악화되므로 사용하지 않는다. 원본27_01 preview와 source timing은 이 후보에서 유지한다.
+
+원본 bClipSourceSegement=true는 마지막 입자와 현재 손 사이의 연결을 생략한다. 현행0.75m SPU는1초 loop경계의 누적초기화 때문에 zerooffset뒤에도 최대1.509m gap을 보였다. 이번 사용자 손끝 정책은 white3007에만 명시false를 저작한다. 기존 native ribbon playback이 false인경우 방출활성창에 현재 source origin을 geometry head로 연결하고 particle/RNG/SPU 자체는 바꾸지 않는다. 기본/원본true는 그대로이며 끝난뒤 head제거·point cap·되감기를 검증한다.
+
+Renderer는 Kouku native CascadeRibbon과 실제 source tangent flags에만 chord-limited Hermite를 연결한다. 최대25subdivision/512controlpoint, 정확한 끝점,0길이 및 긴span fallback, 기존 width/color/dynamic/UV를 보존한다. 이는 원본 CPU tangent 수식의 exact 회수가 아니라 source 설정을 소비하는 프로젝트 보간이다. 원본 pixel body는 변경하지 않는다.

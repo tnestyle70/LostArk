@@ -837,6 +837,13 @@ namespace LostArk::Server
 		float fScaleX = 1.f, fScaleY = 1.f, fScaleZ = 1.f;
 	};
 
+	struct BOSS_PATTERN_WORLD_COMBAT_BODY final
+	{
+		std::uint32_t iMaximumHp = 0u;
+		float fCenterX = 0.f, fCenterY = 0.f, fCenterZ = 0.f;
+		float fRadiusM = 0.f;
+	};
+
 	struct BOSS_PATTERN_WORLD_SEQUENCE final
 	{
 		std::uint32_t iDurationMs = 0u;
@@ -852,6 +859,7 @@ namespace LostArk::Server
 		float fAnchorPositionY = 0.f;
 		float fAnchorPositionZ = 0.f;
 		std::vector<BOSS_PATTERN_WORLD_SUPPORT_WINDOW> SupportWindows;
+		std::optional<BOSS_PATTERN_WORLD_COMBAT_BODY> CombatBody;
 		std::optional<BOSS_PATTERN_WORLD_PLACEMENT> Placement;
 	};
 

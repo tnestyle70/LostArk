@@ -434,7 +434,7 @@ bool_t Client::CWorldSequenceDocument::Load(
 		{
 			WORLD_SEQUENCE_OBJECT_RESOURCE object;
 			if (!Is_ObjectShape(row, { "objectId", "displayName", "modelAssetId", "modelPreScale",
-				"animated", "scale" }, { "diffuseTextureAssetId", "sequenceInstanceId", "anchorKind", "defaultMotionInstanceId", "anchorBossArchetypeId", "anchorBone", "materialProfile", "materialSourceModelAssetId", "mapMaterialBindings", "motionInstanceIds" }) ||
+				"animated", "scale" }, { "diffuseTextureAssetId", "sequenceInstanceId", "anchorKind", "defaultMotionInstanceId", "anchorBossArchetypeId", "anchorBone", "materialProfile", "materialSourceModelAssetId", "mapMaterialBindings", "motionInstanceIds", "combatBody" }) ||
 				!row.Find("objectId")->Is_String() || !row.Find("displayName")->Is_String() ||
 				!row.Find("modelAssetId")->Is_String() || !row.Find("animated")->Is_Boolean() ||
 				!Read_FiniteFloat(row.Find("modelPreScale"), object.modelPreScale) ||
@@ -447,6 +447,23 @@ bool_t Client::CWorldSequenceDocument::Load(
 			object.displayName = row.Find("displayName")->Get_String();
 			object.modelAssetId = row.Find("modelAssetId")->Get_String();
 			object.animated = row.Find("animated")->Get_Boolean();
+			if (const auto* value = row.Find("combatBody"))
+			{
+				WORLD_SEQUENCE_COMBAT_BODY body;
+				if (!Is_ObjectShape(*value, {"maxHp", "localCenterM", "halfExtentsM", "lifetimePolicy"}, {"shape"}) ||
+					!Read_Uint32(value->Find("maxHp"), body.maxHp, 1000000000u) ||
+					!Read_Float3(value->Find("localCenterM"), body.localCenterM) ||
+					!Read_Float3(value->Find("halfExtentsM"), body.halfExtentsM) ||
+					!value->Find("lifetimePolicy")->Is_String())
+				{ outStatus = "Invalid World Object combat body"; return false; }
+				if (const auto* shape = value->Find("shape"))
+				{
+					if (!shape->Is_String()) { outStatus = "World Object combat shape must be text"; return false; }
+					body.shape = shape->Get_String();
+				}
+				body.lifetimePolicy = value->Find("lifetimePolicy")->Get_String();
+				object.combatBody = std::move(body);
+			}
 			if (const auto* members = row.Find("motionInstanceIds"))
 			{
 				if (!members->Is_Array() || members->Get_Array().empty() || members->Get_Array().size() > 32u)
@@ -741,7 +758,7 @@ bool_t Client::CWorldSequenceDocument::Load(
 			{
 				WORLD_SEQUENCE_EFFECT_TRACK effect;
 				if (!Is_ObjectShape(row, { "effectTrackId", "slotId", "resourceKind", "resourceId",
-					"timing", "startMs", "durationMs", "positionOffset", "rotationDegrees", "scale" }, { "followObject", "bone" }))
+					"timing", "startMs", "durationMs", "positionOffset", "rotationDegrees", "scale" }, { "followObject", "bone", "fitEffectToDuration" }))
 				{ outStatus = "World Object effect track shape is invalid"; return false; }
 				for (const char* key : { "effectTrackId", "slotId", "resourceKind", "resourceId", "timing" })
 					if (!row.Find(key)->Is_String())
@@ -751,6 +768,11 @@ bool_t Client::CWorldSequenceDocument::Load(
 				effect.resourceKind = row.Find("resourceKind")->Get_String();
 				effect.resourceId = row.Find("resourceId")->Get_String();
 				effect.timing = row.Find("timing")->Get_String();
+				if (const auto* fit = row.Find("fitEffectToDuration"))
+				{
+					if (!fit->Is_Boolean()) { outStatus = "World Object effect fit must be boolean"; return false; }
+					effect.fitEffectToDuration = fit->Get_Boolean();
+				}
 				if (const auto* follow = row.Find("followObject"))
 				{
 					if (!follow->Is_Boolean()) { outStatus = "World Object effect followObject must be boolean"; return false; }
@@ -812,7 +834,7 @@ bool_t Client::CWorldSequenceDocument::Load(
 	{
 		if (!Is_ObjectShape(instanceValue,
 			{ "instanceId", "templateId", "enabled", "startDelayMs",
-			  "playbackSpeed", "bindings" }, { "anchorKind", "position", "motionEnd", "nextMotionId", "walkableSurface" }))
+			  "playbackSpeed", "bindings" }, { "anchorKind", "position", "motionEnd", "nextMotionId", "walkableSurface", "loopFullPresentation" }))
 		{
 			outStatus = "World sequence instance shape is invalid";
 			return false;
@@ -838,6 +860,12 @@ bool_t Client::CWorldSequenceDocument::Load(
 		parsedInstance.instanceId = instanceId->Get_String();
 		parsedInstance.templateId = templateId->Get_String();
 		parsedInstance.enabled = enabled->Get_Boolean();
+		if (const auto* loop = instanceValue.Find("loopFullPresentation"))
+		{
+			if (parsedFormatVersion < 3u || !loop->Is_Boolean())
+			{ outStatus = "World Object full presentation loop must be a v3 boolean"; return false; }
+			parsedInstance.loopFullPresentation = loop->Get_Boolean();
+		}
 		const DATA_JSON_VALUE* anchor = instanceValue.Find("anchorKind");
 		const DATA_JSON_VALUE* position = instanceValue.Find("position");
 		if ((parsedFormatVersion < 3u && (anchor || position)) ||
@@ -982,6 +1010,16 @@ bool_t Client::CWorldSequenceDocument::Save(
 				output << (i ? ", " : "") << "\"" << CDataJson::Escape(object.motionInstanceIds[i]) << "\"";
 			output << "]";
 		}
+        if (object.combatBody)
+        {
+            const auto& body = *object.combatBody;
+            output << ",\n      \"combatBody\": { \"maxHp\": " << body.maxHp
+                << ", \"localCenterM\": [" << body.localCenterM.x << ", " << body.localCenterM.y << ", " << body.localCenterM.z
+                << "], \"halfExtentsM\": [" << body.halfExtentsM.x << ", " << body.halfExtentsM.y << ", " << body.halfExtentsM.z
+                << "], \"lifetimePolicy\": \"UNTIL_DESTROYED\"";
+            if (body.shape != "BOX") output << ", \"shape\": \"" << CDataJson::Escape(body.shape) << "\"";
+            output << " }";
+        }
         if (!object.materialSourceModelAssetId.empty())
             output << ",\n      \"materialSourceModelAssetId\": \"" << CDataJson::Escape(object.materialSourceModelAssetId) << "\"";
         if (!object.mapMaterialBindings.empty())
@@ -1133,7 +1171,9 @@ bool_t Client::CWorldSequenceDocument::Save(
 					<< "\", \"startMs\": " << effect.startMs << ", \"durationMs\": " << effect.durationMs
 					<< ", \"positionOffset\": [" << effect.positionOffset.x << ", " << effect.positionOffset.y << ", " << effect.positionOffset.z
 					<< "], \"rotationDegrees\": [" << effect.rotationDegrees.x << ", " << effect.rotationDegrees.y << ", " << effect.rotationDegrees.z
-					<< "], \"scale\": [" << effect.scale.x << ", " << effect.scale.y << ", " << effect.scale.z << "] }";
+					<< "], \"scale\": [" << effect.scale.x << ", " << effect.scale.y << ", " << effect.scale.z << "]";
+				if (effect.fitEffectToDuration) output << ", \"fitEffectToDuration\": true";
+				output << " }";
 			}
 			output << "\n      ]";
 		}
@@ -1176,6 +1216,7 @@ bool_t Client::CWorldSequenceDocument::Save(
 			<< "      \"motionEnd\": \"" << MotionEnd_ToString(value.motionEnd) << "\",\n"
 			<< "      \"nextMotionId\": \"" << CDataJson::Escape(value.nextMotionId) << "\",\n"
 			;
+		if (value.loopFullPresentation) output << "      \"loopFullPresentation\": true,\n";
 		if (value.walkableSurface)
 			output << "      \"walkableSurface\": { \"radiusM\": " << value.walkableSurface->radiusM
 				<< ", \"localHeightM\": " << value.walkableSurface->localHeightM << " },\n";
@@ -1234,7 +1275,7 @@ bool_t Client::CWorldSequenceDocument::Validate(
 				object.displayName.empty() || object.displayName.size() > 128u || !Is_ValidUtf8DisplayText(object.displayName) ||
 				object.motionInstanceIds.size() > 32u || object.anchorKind != "WORLD" ||
 				!object.modelAssetId.empty() || !object.sequenceInstanceId.empty() || !object.defaultMotionInstanceId.empty() ||
-				object.animated || !object.diffuseTextureAssetId.empty() || object.materialProfile ||
+				object.animated || !object.diffuseTextureAssetId.empty() || object.materialProfile || object.combatBody ||
 				!object.materialSourceModelAssetId.empty() || !object.mapMaterialBindings.empty() ||
 				!object.anchorBossArchetypeId.empty() || !object.anchorBone.empty() ||
 				!std::isfinite(object.modelPreScale) || object.modelPreScale < MIN_SCALE || object.modelPreScale > MAX_COMPONENT ||
@@ -1274,6 +1315,16 @@ bool_t Client::CWorldSequenceDocument::Validate(
 			outStatus = "Invalid or duplicate world object resource: " + object.objectId;
 			return false;
 		}
+        if (object.combatBody)
+        {
+            const auto& body = *object.combatBody;
+            if (alias || object.anchorKind != "WORLD" || body.maxHp == 0u || body.maxHp > 1000000000u ||
+                (body.shape != "BOX" && body.shape != "ELLIPSOID") ||
+                body.lifetimePolicy != "UNTIL_DESTROYED" || !Is_BoundedFloat3(body.localCenterM) ||
+                !Is_BoundedFloat3(body.halfExtentsM) || body.halfExtentsM.x < .001f || body.halfExtentsM.y < .001f ||
+                body.halfExtentsM.z < .001f || body.halfExtentsM.x > 1000.f || body.halfExtentsM.y > 1000.f || body.halfExtentsM.z > 1000.f)
+            { outStatus = "Combat body requires a WORLD model with bounded HP and local bounds: " + object.objectId; return false; }
+        }
         if ((!object.materialSourceModelAssetId.empty() && (alias || !Is_ResourcePath(object.materialSourceModelAssetId, true))) ||
             object.mapMaterialBindings.size() > 64u || (alias && !object.mapMaterialBindings.empty()))
         { outStatus = "Invalid world object material source: " + object.objectId; return false; }
@@ -1340,6 +1391,7 @@ bool_t Client::CWorldSequenceDocument::Validate(
 			if (!Is_ValidStableId(effect.effectTrackId) || !effectIds.insert(effect.effectTrackId).second ||
 				!Is_ValidStableId(effect.slotId) || !slotExists || !Is_ValidStableId(effect.resourceId) ||
 				(effect.resourceKind != "LEAF" && effect.resourceKind != "GROUP" && effect.resourceKind != "V1_EFFECT") ||
+				(effect.fitEffectToDuration && effect.resourceKind != "V1_EFFECT") ||
 				effect.bone.size() > 256u || !Is_ValidUtf8DisplayText(effect.bone) ||
 				(effect.timing != "TIME" && effect.timing != "MOTION_END") ||
 				(effect.timing == "MOTION_END" && effect.startMs != 0u) ||
@@ -1465,6 +1517,9 @@ bool_t Client::CWorldSequenceDocument::Validate(
 			outStatus = "Invalid world sequence instance: " + value.instanceId;
 			return false;
 		}
+		if (value.loopFullPresentation && (value.motionEnd != WORLD_SEQUENCE_MOTION_END::LOOP ||
+			value.bindings.size() != 1u || value.bindings.front().targetKind != WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE))
+		{ outStatus = "Full presentation loop requires one looping Object Resource: " + value.instanceId; return false; }
 		if (!targetTemplate->colliderTracks.empty() && (value.bindings.size() != 1u ||
 			value.bindings.front().targetKind != WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE || value.anchorKind != "WORLD"))
 		{ outStatus = "Collider tracks require one WORLD Object Resource binding: " + value.instanceId; return false; }
@@ -1782,6 +1837,10 @@ bool_t Client::CWorldSequenceDocument::Is_Equivalent(
 			!sameFloat3(left.scale, right.scale) || left.sequenceInstanceId != right.sequenceInstanceId ||
 			left.motionInstanceIds != right.motionInstanceIds ||
 			left.defaultMotionInstanceId != right.defaultMotionInstanceId) return false;
+		if (left.combatBody.has_value() != right.combatBody.has_value() || (left.combatBody &&
+			(left.combatBody->maxHp != right.combatBody->maxHp || left.combatBody->shape != right.combatBody->shape || left.combatBody->lifetimePolicy != right.combatBody->lifetimePolicy ||
+			!sameFloat3(left.combatBody->localCenterM, right.combatBody->localCenterM) ||
+			!sameFloat3(left.combatBody->halfExtentsM, right.combatBody->halfExtentsM)))) return false;
 	}
 	for (size_t templateIndex = 0u; templateIndex < m_Templates.size();
 		++templateIndex)
@@ -1818,7 +1877,7 @@ bool_t Client::CWorldSequenceDocument::Is_Equivalent(
 		{
 			const auto& a = left.effectTracks[index]; const auto& b = right.effectTracks[index];
 			if (a.effectTrackId != b.effectTrackId || a.slotId != b.slotId || a.resourceKind != b.resourceKind ||
-				a.resourceId != b.resourceId || a.followObject != b.followObject || a.bone != b.bone || a.timing != b.timing || a.startMs != b.startMs || a.durationMs != b.durationMs ||
+				a.resourceId != b.resourceId || a.fitEffectToDuration != b.fitEffectToDuration || a.followObject != b.followObject || a.bone != b.bone || a.timing != b.timing || a.startMs != b.startMs || a.durationMs != b.durationMs ||
 				!sameFloat3(a.positionOffset, b.positionOffset) || !sameFloat3(a.rotationDegrees, b.rotationDegrees) ||
 				!sameFloat3(a.scale, b.scale)) return false;
 		}
@@ -1887,7 +1946,7 @@ bool_t Client::CWorldSequenceDocument::Is_Equivalent(
 			!sameFloat(left.playbackSpeed, right.playbackSpeed) ||
 			left.bindings.size() != right.bindings.size() || left.anchorKind != right.anchorKind ||
 			!sameFloat3(left.position, right.position) ||
-			left.motionEnd != right.motionEnd || left.nextMotionId != right.nextMotionId)
+			left.motionEnd != right.motionEnd || left.loopFullPresentation != right.loopFullPresentation || left.nextMotionId != right.nextMotionId)
 		{
 			return false;
 		}
@@ -1909,6 +1968,76 @@ bool_t Client::CWorldSequenceDocument::Is_Equivalent(
 		}
 	}
 	return true;
+}
+
+bool_t Client::CWorldSequenceDocument::Try_EffectTimeScale(
+    const WORLD_SEQUENCE_EFFECT_TRACK& effect, const f32_t sourceDurationSeconds, f32_t& outScale)
+{
+    if (!effect.fitEffectToDuration) { outScale = 1.f; return true; }
+    if (effect.resourceKind != "V1_EFFECT" || !effect.durationMs ||
+        !std::isfinite(sourceDurationSeconds) || sourceDurationSeconds <= 0.f) return false;
+    const double rate = double(sourceDurationSeconds) * 1000. / effect.durationMs;
+    if (!std::isfinite(rate) || rate <= 0. || rate > (std::numeric_limits<f32_t>::max)()) return false;
+    const f32_t scale = static_cast<f32_t>(rate);
+    if (!std::isfinite(scale) || scale <= 0.f) return false;
+    outScale = scale;
+    return true;
+}
+
+bool_t Client::CWorldSequenceDocument::Resize_TimelineDuration(const std::string& sequenceId,
+    const uint32_t durationMs, const uint32_t requiredAnimationEndMs,
+    const WORLD_SEQUENCE_PLACEMENT_MAP& mapPlacements,
+    const WORLD_SEQUENCE_DEPLOY_MAP& deployPlacements, std::string& outStatus)
+{
+    const auto reject = [&](const char* reason) { outStatus = reason; return false; };
+    auto* current = Find_Template(sequenceId);
+    if (!current || !durationMs || durationMs > MAX_DURATION_MS || durationMs < requiredAnimationEndMs)
+        return reject("Stage duration would cut an Animation or exceed the timeline limit. Existing rows preserved.");
+    if (durationMs == current->durationMs) return true;
+    auto candidate = *this;
+    auto* edited = candidate.Find_Template(sequenceId);
+    const auto samePose = [](const auto& a, const auto& b) {
+        return a.positionOffset.x == b.positionOffset.x && a.positionOffset.y == b.positionOffset.y && a.positionOffset.z == b.positionOffset.z &&
+            a.rotationQuaternion.x == b.rotationQuaternion.x && a.rotationQuaternion.y == b.rotationQuaternion.y &&
+            a.rotationQuaternion.z == b.rotationQuaternion.z && a.rotationQuaternion.w == b.rotationQuaternion.w &&
+            a.scaleMultiplier.x == b.scaleMultiplier.x && a.scaleMultiplier.y == b.scaleMultiplier.y && a.scaleMultiplier.z == b.scaleMultiplier.z &&
+            a.visible == b.visible;
+    };
+    for (auto& track : edited->tracks)
+    {
+        if (track.keys.size() < 2u) return reject("Stage requires valid Transform endpoints.");
+        if (durationMs > edited->durationMs)
+        {
+            if (track.keys.size() >= MAX_KEY_COUNT) return reject("Stage extension exceeds the Transform key limit.");
+            auto endpoint = track.keys.back(); endpoint.timeMs = durationMs;
+            track.keys.push_back(endpoint); // Never retime an authored key.
+        }
+        else
+        {
+            // Only trim a constant held tail. A changed pose/visibility is authored content.
+            while (track.keys.size() > 1u && track.keys.back().timeMs > durationMs)
+            {
+                if (!samePose(track.keys.back(), track.keys[track.keys.size() - 2u]))
+                    return reject("Stage shortening would cut a Transform or visibility change. Existing rows preserved.");
+                auto endpoint = track.keys.back(); track.keys.pop_back();
+                if (track.keys.back().timeMs < durationMs)
+                { endpoint.timeMs = durationMs; track.keys.push_back(endpoint); break; }
+            }
+            if (track.keys.size() < 2u) return reject("Stage shortening would remove a required Transform endpoint.");
+        }
+    }
+    bool pinnedMotionEnd = false;
+    for (auto& effect : edited->effectTracks)
+        if (effect.timing == "MOTION_END")
+        { effect.timing = "TIME"; effect.startMs = edited->durationMs; pinnedMotionEnd = true; }
+    edited->durationMs = durationMs;
+    // Validation rejects clipped starts, Collider windows and emission limits, without moving them.
+    if (!candidate.Validate(mapPlacements, deployPlacements, outStatus))
+    { outStatus = "Stage resize refused: " + outStatus + ". Existing rows preserved."; return false; }
+    *current = std::move(*edited); // Keep UI references to this template valid.
+    outStatus = "Stage duration updated; Animation, Effect and Collider timings are preserved.";
+    if (pinnedMotionEnd) outStatus += " Motion End Effects now use At Time to keep their previous start.";
+    return true;
 }
 
 bool_t Client::CWorldSequenceDocument::Try_SampleAnimationTicks(

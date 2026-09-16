@@ -51,7 +51,8 @@ class KoukuSaydonClientProductLevelContractTests(unittest.TestCase):
 
     def test_projected_animation_bindings_match_strict_client_reader(self) -> None:
         document = projector.load_json(ROOT / projector.SOURCE_PATH)
-        product = projector.project_presentation(document, ROOT)
+        admitted, _ = projector.prepare_publication(document, ROOT)
+        product = projector.project_presentation(admitted, ROOT)
         service = read("Client/Private/KoukuSaydonPresentationAssetService.cpp")
         loader = service[service.index("bool Load_PresentationBindings(") :]
         header = service[service.index("bool Has_BindingDocumentProperties("):service.index("bool Is_StableToken(")]

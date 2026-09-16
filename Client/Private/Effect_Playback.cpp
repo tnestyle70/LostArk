@@ -3522,6 +3522,7 @@ bool_t Client::CEffectPlayback::Stage_PrevalidatedDocumentInternal(
 	m_States = std::move(StagedStates);
 	m_TransformMasterIndices = std::move(StagedTransformMasterIndices);
 	m_fDurationSeconds = fStagedDuration;
+	m_fSourceLoopEndSeconds = 0.f;
 	m_bOwnerSustainedSourceLoops = false;
 	Reset();
 	strOutError.clear();
@@ -3683,6 +3684,7 @@ bool_t Client::CEffectPlayback::Stage_ReconstructedRuntimeProgram(
 	m_fSampleTimeSeconds = 0.f;
 	m_fAccumulatorSeconds = 0.0;
 	m_fDurationSeconds = 0.f;
+	m_fSourceLoopEndSeconds = 0.f;
 	m_bOwnerSustainedSourceLoops = false;
 	m_iSimulationStep = 0u;
 	m_ReconstructedRuntimeBoundary = std::move(StagedBoundary);
@@ -3943,7 +3945,7 @@ void Client::CEffectPlayback::Seek(
 	const f32_t fTarget = std::clamp(
 		std::isfinite(fSampleTimeSeconds) ? fSampleTimeSeconds : 0.f,
 		0.f,
-		m_fDurationSeconds);
+		Get_DurationSeconds());
 	Reset();
 	m_bFrameInputsDirty = true;
 	/* A zero-time product cue still needs to freeze snapshot attachments at the
@@ -4182,7 +4184,7 @@ bool_t Client::CEffectPlayback::Seek_WithTransformHistory(
 		return false;
 	}
 	const f32_t fTarget = std::clamp(
-		fSampleTimeSeconds, 0.f, m_fDurationSeconds);
+		fSampleTimeSeconds, 0.f, Get_DurationSeconds());
 	const uint64_t iTargetSteps = static_cast<uint64_t>(std::floor(
 		static_cast<f64_t>(fTarget) / FIXED_STEP_SECONDS_EXACT +
 		FIXED_STEP_EPSILON));
@@ -4335,6 +4337,8 @@ bool_t Client::CEffectPlayback::Step(
 					static_cast<f32_t>(
 						Element.SourceRecipe.iEmitterLoopCount)) :
 			Element.Detail.Timing.fLifeTimeSeconds;
+		const bool_t bBoundedSourceLoop = m_fSourceLoopEndSeconds > 0.f &&
+			Element.SourceRecipe.bEnabled && Element.SourceRecipe.iEmitterLoopCount == 0u;
 		const bool_t bFirstManualBurstStep = !State.bBurstSpawned &&
 			Is_ManualBurstOnlyParticle(
 				Element, Is_SourceVisualProgramElementAdmitted(Element)) &&
@@ -4343,7 +4347,8 @@ bool_t Client::CEffectPlayback::Step(
 		if (Is_ParticleSimulationElement(
 				Element, Is_SourceVisualProgramElementAdmitted(Element)) &&
 			fEmitterElapsed >= 0.f &&
-			(fEmitterElapsed <= fSourceEmissionDuration || bFirstManualBurstStep ||
+			((bBoundedSourceLoop ? m_fSampleTimeSeconds < m_fSourceLoopEndSeconds :
+				fEmitterElapsed <= fSourceEmissionDuration) || bFirstManualBurstStep ||
 				(m_bOwnerSustainedSourceLoops && Element.SourceRecipe.bEnabled &&
 					Element.SourceRecipe.iEmitterLoopCount == 0u)))
 		{
@@ -5799,48 +5804,37 @@ void Client::CEffectPlayback::Apply_SourceSpawnModules(
 		}
 		else if (Kind == SOURCE_SPAWN_MODULE_KIND::VELOCITY_CONE)
 		{
-			// Cascade VelocityCone: a direction Angle degrees off the cone axis at a
-			// random lathe angle, built in the frame UE3 derives from Direction.
-			const f32_t fAngle = XMConvertToRadians(Evaluate_ModuleFloat(
+			const f32_t angle = XMConvertToRadians(Evaluate_ModuleFloat(
 				State, Module, "angle", fEmitterTimeSeconds, 0.f));
-			const f32_t fSpeed = Evaluate_ModuleFloat(
+			const f32_t speed = Evaluate_ModuleFloat(
 				State, Module, "velocity", fEmitterTimeSeconds, 0.f);
-			const f32_t fLathe = Next_ModuleRandom(State, Module) * XM_2PI;
-			const float3_t Cone(-std::sin(fAngle) * std::cos(fLathe),
-				-std::sin(fAngle) * std::sin(fLathe), std::cos(fAngle));
-			float3_t Forward(SourceNumber(Module, "direction.x", 0.f),
-				SourceNumber(Module, "direction.y", 0.f), SourceNumber(Module, "direction.z", 1.f));
-			if (Length3(Forward) <= 0.f)
-				Forward = float3_t(0.f, 0.f, 1.f);
-			Forward = Normalize3(Forward);
-			const auto Cross = [](const float3_t& A, const float3_t& B)
-			{
-				return float3_t(A.y * B.z - A.z * B.y, A.z * B.x - A.x * B.z, A.x * B.y - A.y * B.x);
-			};
-			float3_t Up(0.f, 0.f, 1.f);
-			float3_t Right(1.f, 0.f, 0.f);
-			if (std::fabs(std::fabs(Forward.z) - 1.f) > 1.0e-6f)
-			{
-				Right = Cross(Up, Forward);
-				Up = Cross(Forward, Right);
-			}
-			else
-			{
-				Up = Cross(Forward, Right);
-				Right = Cross(Up, Forward);
-			}
-			Right = Normalize3(Right);
-			Up = Normalize3(Up);
-			const float3_t Direction = Add3(Add3(Scale3(Right, Cone.x), Scale3(Up, Cone.y)), Scale3(Forward, Cone.z));
-			float3_t StartVelocity = UE3_CentimetersToClient(Scale3(Direction, fSpeed));
+			const f32_t azimuth = Next_ModuleRandom(State, Module) * XM_2PI;
+			const float3_t sourceDirection = Normalize3(float3_t(
+				SourceNumber(Module, "direction.x", 0.f),
+				SourceNumber(Module, "direction.y", 0.f),
+				SourceNumber(Module, "direction.z", 1.f)));
+			const vector_t axis = XMLoadFloat3(&sourceDirection);
+			const vector_t reference = std::abs(sourceDirection.z) < 0.999f ?
+				XMVectorSet(0.f, 0.f, 1.f, 0.f) : XMVectorSet(0.f, 1.f, 0.f, 0.f);
+			const vector_t tangent = XMVector3Normalize(XMVector3Cross(reference, axis));
+			const vector_t bitangent = XMVector3Cross(axis, tangent);
+			float3_t coneDirection;
+			XMStoreFloat3(&coneDirection, axis * std::cos(angle) +
+				(tangent * std::cos(azimuth) + bitangent * std::sin(azimuth)) * std::sin(angle));
+			// Preserve the extracted cm/s and source XYZ until this single conversion.
+			// Element/owner rotation remains owned by the existing particle birth basis.
+			float3_t ConeVelocity = UE3_CentimetersToClient(Scale3(coneDirection, speed));
 			if (Element.Detail.Particle.bLocalSpace &&
 				SourceBool(Module, "binworldspace", false))
 			{
+				// A world-space cone on a local-space emitter is authored in world
+				// axes; undo the element basis so the birth matrix does not apply
+				// it twice. Only this module's own contribution is rotated.
 				const matrix_t InverseRoot = XMMatrixInverse(
 					nullptr, XMLoadFloat4x4(&ElementWorld));
-				StartVelocity = Transform_Normal(StartVelocity, InverseRoot);
+				ConeVelocity = Transform_Normal(ConeVelocity, InverseRoot);
 			}
-			Particle.vVelocity = Add3(Particle.vVelocity, StartVelocity);
+			Particle.vVelocity = Add3(Particle.vVelocity, ConeVelocity);
 		}
 		else if (Kind == SOURCE_SPAWN_MODULE_KIND::VELOCITY_INHERIT_PARENT)
 		{
@@ -8021,7 +8015,10 @@ void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld,
 		const bool_t bPresentationActive = bManualBurstOnly ?
 			!State.Particles.empty() : fPresentationTime >= 0.f &&
 				(fPresentationTime < fPresentationLifeTimeSeconds ||
-					m_bOwnerSustainedSourceLoops);
+					m_bOwnerSustainedSourceLoops ||
+				(m_fSourceLoopEndSeconds > 0.f && Element.SourceRecipe.bEnabled &&
+				 Element.SourceRecipe.iEmitterLoopCount == 0u &&
+				 m_fSampleTimeSeconds < m_fSourceLoopEndSeconds));
 		const bool_t bGpuVisualOccurrence = Is_GpuVisualOccurrence(Element);
 		const size_t iGpuOccurrence = m_Frame.GpuOccurrences.size();
 		if (bGpuVisualOccurrence)
@@ -8517,6 +8514,38 @@ void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld,
 			Trail.pElement = &Element;
 			Trail.Points.assign(
 				State.TrailPoints.begin(), State.TrailPoints.end());
+            const auto* ribbon = Is_PortableAuthoredRibbonCarrier(Element) ?
+                Find_SourceModule(Element, "particlemoduletypedataribbon") : nullptr;
+            const float elapsed = m_fSampleTimeSeconds - Element.Detail.Timing.fStartDelaySeconds -
+                Element.SourceRecipe.fEmitterDelaySeconds;
+            const float emissionWindow = Element.SourceRecipe.iEmitterLoopCount == 0u ?
+                Element.Detail.Timing.fLifeTimeSeconds : Element.SourceRecipe.fEmitterDurationSeconds *
+                    static_cast<float>(Element.SourceRecipe.iEmitterLoopCount);
+            const bool boundedLoop = m_fSourceLoopEndSeconds > 0.f &&
+                Element.SourceRecipe.iEmitterLoopCount == 0u;
+            const bool emissionActive = elapsed >= 0.f && (boundedLoop ?
+                m_fSampleTimeSeconds < m_fSourceLoopEndSeconds : elapsed < emissionWindow);
+            // The explicit source segment is presentation geometry, not a birth.
+            // Sample at the final render clock so it also vanishes exactly at end;
+            // source particles, RNG, distance accumulation and tails stay unchanged.
+            if (ribbon && !SourceBool(*ribbon, "bclipsourcesegement", true) && emissionActive)
+            {
+                const float3_t headPosition = Get_Translation(
+                    Evaluate_ElementWorld(Element, m_fSampleTimeSeconds, RootWorld));
+                const float distanceSquared = DistanceSquared(
+                    headPosition, Trail.Points.back().vWorldPosition);
+                const size_t maxPoints = (std::min)(size_t{512u},
+                    static_cast<size_t>(Element.Detail.Trail.iMaxPoints));
+                if (distanceSquared > 1.e-10f && std::isfinite(distanceSquared) && maxPoints >= 2u)
+                {
+                    auto head = Trail.Points.back();
+                    head.vWorldPosition = headPosition;
+                    head.fCumulativeDistance += std::sqrt(distanceSquared);
+                    Trail.Points.push_back(head);
+                    if (Trail.Points.size() > maxPoints)
+                        Trail.Points.erase(Trail.Points.begin(), Trail.Points.end() - maxPoints);
+                }
+            }
 			m_Frame.Trails.push_back(std::move(Trail));
 		}
 
@@ -8855,7 +8884,7 @@ float3_t Client::CEffectPlayback::Sample_AuthoredInitialVelocity(
 bool_t Client::CEffectPlayback::Enable_OwnerSustainedSourceLoops(std::string& strOutError)
 {
 	const auto& document = Get_StagedDocument();
-	if (document.Elements.empty() || !document.ModelCues.empty() ||
+	if (m_fSourceLoopEndSeconds > 0.f || document.Elements.empty() || !document.ModelCues.empty() ||
 		std::any_of(document.Elements.begin(), document.Elements.end(),
 			[this](const EFFECT_ELEMENT_DESC& element)
 			{
@@ -8882,9 +8911,52 @@ bool_t Client::CEffectPlayback::Enable_OwnerSustainedSourceLoops(std::string& st
 	return true;
 }
 
+bool_t Client::CEffectPlayback::Set_SourceLoopEndSeconds(
+	const f32_t fEndSeconds, std::string& strOutError)
+{
+	if (!std::isfinite(fEndSeconds) || fEndSeconds < 0.f ||
+		(fEndSeconds > 0.f && m_bOwnerSustainedSourceLoops))
+	{
+		strOutError = "Bounded source loops need a finite end and cannot share an owner-sustained clock.";
+		return false;
+	}
+	if (fEndSeconds > 0.f)
+	{
+		const auto& document = Get_StagedDocument();
+		if (document.Elements.empty() || !document.ModelCues.empty() ||
+			std::any_of(document.Elements.begin(), document.Elements.end(),
+				[this](const EFFECT_ELEMENT_DESC& element)
+				{
+					const bool_t bNativeParticle = Is_ParticleSimulationElement(element,
+						Is_SourceVisualProgramElementAdmitted(element)) &&
+						(element.SourceRecipe.strRendererShape == "sprite" ||
+						 element.SourceRecipe.strRendererShape == "mesh" ||
+						 Is_PortableAuthoredRibbonCarrier(element));
+					return !Is_PlaybackElementAdmitted(element) || !bNativeParticle ||
+						!element.SourceRecipe.bEnabled ||
+						!std::isfinite(element.SourceRecipe.fEmitterDurationSeconds) ||
+						element.SourceRecipe.fEmitterDurationSeconds <= 0.f;
+				}) ||
+			std::none_of(document.Elements.begin(), document.Elements.end(),
+				[](const EFFECT_ELEMENT_DESC& element)
+				{
+					return element.SourceRecipe.iEmitterLoopCount == 0u;
+				}))
+		{
+			strOutError = "Bounded source loops require admitted source sprite/mesh or native Cascade Ribbon emitters and EmitterLoops=0.";
+			return false;
+		}
+	}
+	// Reset/rewind preserves this instance policy. Staging another document clears it.
+	m_fSourceLoopEndSeconds = fEndSeconds;
+	m_bFrameInputsDirty = true;
+	strOutError.clear();
+	return true;
+}
+
 bool_t Client::CEffectPlayback::Is_Finished() const
 {
-	if (m_bOwnerSustainedSourceLoops || m_fSampleTimeSeconds < m_fDurationSeconds)
+	if (m_bOwnerSustainedSourceLoops || m_fSampleTimeSeconds < Get_DurationSeconds())
 		return false;
 	for (const auto& Pair : m_States)
 	{

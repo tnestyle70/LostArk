@@ -55,9 +55,69 @@ namespace
 		MAP_ASSET_RENDER_PROFILE renderProfile;
 	};
 
+	struct MAP_PATH_VALIDATION_CACHE final
+	{
+		std::unordered_map<std::filesystem::path,
+			std::unordered_map<std::filesystem::path, std::filesystem::path>> resolvedPaths;
+		std::unordered_map<std::filesystem::path,
+			std::unordered_set<std::filesystem::path>> pathsInsideRoot;
+		std::unordered_set<std::filesystem::path> regularFiles;
+	};
+
+	thread_local MAP_PATH_VALIDATION_CACHE* g_MapPathValidationCache = nullptr;
+
+	// A complete catalog transaction and its nested shards share one validation
+	// snapshot. Nothing survives the call or crosses into another loader thread.
+	class CMapPathValidationScope final
+	{
+	public:
+		CMapPathValidationScope() : m_Previous(g_MapPathValidationCache)
+		{
+			if (!m_Previous) g_MapPathValidationCache = &m_Cache;
+		}
+		~CMapPathValidationScope() { g_MapPathValidationCache = m_Previous; }
+		CMapPathValidationScope(const CMapPathValidationScope&) = delete;
+		CMapPathValidationScope& operator=(const CMapPathValidationScope&) = delete;
+	private:
+		MAP_PATH_VALIDATION_CACHE m_Cache;
+		MAP_PATH_VALIDATION_CACHE* m_Previous;
+	};
+
+	std::filesystem::path ResolveRuntimePath(const std::filesystem::path& relativePath)
+	{
+		if (!g_MapPathValidationCache)
+			return CRuntimeAssetRoot::Resolve(relativePath);
+		const auto root = CRuntimeAssetRoot::Get();
+		auto& paths = g_MapPathValidationCache->resolvedPaths[root];
+		const auto found = paths.find(relativePath);
+		if (found != paths.end()) return found->second;
+		const auto resolved = CRuntimeAssetRoot::Resolve(relativePath);
+		if (!resolved.empty()) paths.emplace(relativePath, resolved);
+		return resolved;
+	}
+
+	bool_t IsRegularFile(const std::filesystem::path& path, std::error_code& error)
+	{
+		if (g_MapPathValidationCache && g_MapPathValidationCache->regularFiles.contains(path))
+		{
+			error.clear();
+			return true;
+		}
+		const bool_t regular = std::filesystem::is_regular_file(path, error);
+		if (regular && !error && g_MapPathValidationCache)
+			g_MapPathValidationCache->regularFiles.insert(path);
+		return regular;
+	}
+
 	bool_t IsInsideRoot(const std::filesystem::path& root,
 		const std::filesystem::path& candidate)
 	{
+		if (g_MapPathValidationCache)
+		{
+			const auto found = g_MapPathValidationCache->pathsInsideRoot.find(root);
+			if (found != g_MapPathValidationCache->pathsInsideRoot.end() &&
+				found->second.contains(candidate)) return true;
+		}
 		std::error_code error;
 		const std::filesystem::path relative =
 			std::filesystem::relative(candidate, root, error);
@@ -65,7 +125,10 @@ namespace
 			return false;
 
 		const auto first = relative.begin();
-		return first != relative.end() && *first != L"..";
+		const bool_t inside = first != relative.end() && *first != L"..";
+		if (inside && g_MapPathValidationCache)
+			g_MapPathValidationCache->pathsInsideRoot[root].insert(candidate);
+		return inside;
 	}
 
 	bool_t IsValidScale(const float3_t& scale)
@@ -207,6 +270,7 @@ bool_t CMapAssetCatalog::Load_Source(
 	const std::string& expectedAreaId,
 	const std::filesystem::path& materialsPath)
 {
+	CMapPathValidationScope pathValidation;
 	const std::filesystem::path normalizedCatalog =
 		catalogPath.lexically_normal();
 	const std::filesystem::path normalizedPlacements =
@@ -267,6 +331,7 @@ bool_t CMapAssetCatalog::Bind_RuntimePrototypes(const CMapAssetCatalog& runtimeC
 
 bool_t CMapAssetCatalog::Load_Area(const std::string& areaId)
 {
+	CMapPathValidationScope pathValidation;
 	CMapAssetCatalog staged;
 	if (!staged.Load_AreaStaged(areaId) ||
 		!staged.Resolve_MaterialDocumentPath() ||
@@ -316,7 +381,7 @@ bool_t CMapAssetCatalog::Resolve_MaterialDocumentPath()
 	if (m_MaterialDocumentPath.empty())
 		return true;
 	std::error_code error;
-	if (!std::filesystem::is_regular_file(m_MaterialDocumentPath, error) || error)
+	if (!IsRegularFile(m_MaterialDocumentPath, error) || error)
 	{
 		m_Status = "Declared map material document is missing: " +
 			m_MaterialDocumentPath.string();
@@ -390,6 +455,7 @@ bool_t CMapAssetCatalog::Parse_ModelSurface(const DATA_JSON_VALUE& row,
 
 bool_t CMapAssetCatalog::Parse_MaterialOverrides(const DATA_JSON_VALUE& root)
 {
+	CMapPathValidationScope pathValidation;
 	const auto exactFields = [](const DATA_JSON_VALUE& value,
 		const std::unordered_set<std::string>& fields)
 	{
@@ -502,11 +568,11 @@ bool_t CMapAssetCatalog::Parse_MaterialOverrides(const DATA_JSON_VALUE& root)
             { m_Status = "Invalid static shadow transfer or source GUID: " + assetId; return false; }
             const std::filesystem::path relative(texture);
             std::error_code shadowError;
-            material.staticShadowPath = CRuntimeAssetRoot::Resolve(relative);
+            material.staticShadowPath = ResolveRuntimePath(relative);
             if (relative.is_absolute() || relative.has_root_path() || texture.find(':') != std::string::npos ||
                 relative.extension() != L".dds" || material.staticShadowPath.empty() ||
                 !IsInsideRoot(CRuntimeAssetRoot::Get(), material.staticShadowPath) ||
-                !std::filesystem::is_regular_file(material.staticShadowPath, shadowError) || shadowError)
+                !IsRegularFile(material.staticShadowPath, shadowError) || shadowError)
             { m_Status = "Invalid static shadow texture: " + assetId; return false; }
             material.surface.hasStaticShadow = true;
             material.surface.staticShadowChannel = static_cast<uint32_t>(channel);
@@ -584,11 +650,11 @@ bool_t CMapAssetCatalog::Parse_MaterialOverrides(const DATA_JSON_VALUE& root)
                 const uint32_t slot = static_cast<uint32_t>(index->Get_Number());
                 if ((supplied & (1u << slot)) != 0u || (required & (1u << slot)) == 0u) return reject("duplicate or unused native texture");
                 const std::filesystem::path relative(asset);
-                const auto path = CRuntimeAssetRoot::Resolve(relative);
+                const auto path = ResolveRuntimePath(relative);
                 std::error_code ec;
                 if (relative.is_absolute() || relative.has_root_path() || asset.find(':') != std::string::npos ||
                     relative.extension() != L".dds" || path.empty() || !IsInsideRoot(CRuntimeAssetRoot::Get(), path) ||
-                    !std::filesystem::is_regular_file(path, ec) || ec) return reject("missing or unsafe native texture");
+                    !IsRegularFile(path, ec) || ec) return reject("missing or unsafe native texture");
                 material.sourceCharacterTextures[slot].path = path;
                 material.sourceCharacterTextures[slot].srgb = space == "srgb";
                 supplied |= 1u << slot;
@@ -609,10 +675,10 @@ bool_t CMapAssetCatalog::Parse_MaterialOverrides(const DATA_JSON_VALUE& root)
                     if (!readString(*baked, key, value)) return false;
                     const std::filesystem::path relative(value);
                     std::error_code ec;
-                    output = CRuntimeAssetRoot::Resolve(relative);
+                    output = ResolveRuntimePath(relative);
                     return !relative.is_absolute() && !relative.has_root_path() && value.find(':') == std::string::npos &&
                         relative.extension() == L".dds" && !output.empty() && IsInsideRoot(CRuntimeAssetRoot::Get(), output) &&
-                        std::filesystem::is_regular_file(output, ec) && !ec;
+                        IsRegularFile(output, ec) && !ec;
                 };
                 if (!texture("averageTexture", material.bakedAveragePath) ||
                     !texture("directionalTexture", material.bakedDirectionalPath)) return reject("invalid native lightmap texture");
@@ -685,10 +751,10 @@ bool_t CMapAssetCatalog::Parse_MaterialOverrides(const DATA_JSON_VALUE& root)
                 if (!readString(object, key, value)) return false;
                 const std::filesystem::path relative(value);
                 std::error_code ec;
-                output = CRuntimeAssetRoot::Resolve(relative);
+                output = ResolveRuntimePath(relative);
                 return !relative.is_absolute() && !relative.has_root_path() && value.find(':') == std::string::npos &&
                     relative.extension() == L".dds" && !output.empty() && IsInsideRoot(CRuntimeAssetRoot::Get(), output) &&
-                    std::filesystem::is_regular_file(output, ec) && !ec;
+                    IsRegularFile(output, ec) && !ec;
             };
             if (!texture(row, "diffuseTexture", material.surfaceDiffusePath) ||
                 ((surface.sourceOverlayFlags & 1u) != 0u && !texture(row, "normalTexture", material.surfaceNormalPath)) ||
@@ -849,10 +915,10 @@ bool_t CMapAssetCatalog::Parse_MaterialOverrides(const DATA_JSON_VALUE& root)
             const auto texturePath = [&](const DATA_JSON_VALUE& owner, const char* key, std::filesystem::path& output) {
                 std::string name; if (!readString(owner, key, name)) return false;
                 const std::filesystem::path relative(name); std::error_code ec;
-                output = CRuntimeAssetRoot::Resolve(relative);
+                output = ResolveRuntimePath(relative);
                 return !relative.is_absolute() && !relative.has_root_path() && name.find(':') == std::string::npos &&
                     relative.extension() == L".dds" && !output.empty() && IsInsideRoot(CRuntimeAssetRoot::Get(), output) &&
-                    std::filesystem::is_regular_file(output, ec) && !ec;
+                    IsRegularFile(output, ec) && !ec;
             };
             for (const auto& texture : textures)
             {
@@ -959,9 +1025,9 @@ bool_t CMapAssetCatalog::Parse_MaterialOverrides(const DATA_JSON_VALUE& root)
                 if (!readString(object, key, value)) return false;
                 const std::filesystem::path relative(value);
                 std::error_code ec;
-                output = CRuntimeAssetRoot::Resolve(relative);
+                output = ResolveRuntimePath(relative);
                 return !relative.is_absolute() && !relative.has_root_path() && value.find(':') == std::string::npos && relative.extension() == L".dds" &&
-                    !output.empty() && IsInsideRoot(CRuntimeAssetRoot::Get(), output) && std::filesystem::is_regular_file(output, ec) && !ec;
+                    !output.empty() && IsInsideRoot(CRuntimeAssetRoot::Get(), output) && IsRegularFile(output, ec) && !ec;
             };
             if (!texture(row, "diffuseTexture", material.surfaceDiffusePath) ||
                 ((surface.sourceFoliageFlags & 1u) && !texture(row, "normalTexture", material.surfaceNormalPath)) ||
@@ -1120,10 +1186,10 @@ bool_t CMapAssetCatalog::Parse_MaterialOverrides(const DATA_JSON_VALUE& root)
                 if (!readString(object, key, value)) return false;
                 const std::filesystem::path relative(value);
                 std::error_code ec;
-                output = CRuntimeAssetRoot::Resolve(relative);
+                output = ResolveRuntimePath(relative);
                 return !relative.is_absolute() && !relative.has_root_path() && value.find(':') == std::string::npos &&
                     relative.extension() == L".dds" && !output.empty() && IsInsideRoot(CRuntimeAssetRoot::Get(), output) &&
-                    std::filesystem::is_regular_file(output, ec) && !ec;
+                    IsRegularFile(output, ec) && !ec;
             };
             if (!texture(row, "diffuseTexture", material.surfaceDiffusePath) ||
                 ((surface.sourceBgFlags & 1u) && !texture(row, "normalTexture", material.surfaceNormalPath)) ||
@@ -1247,10 +1313,10 @@ bool_t CMapAssetCatalog::Parse_MaterialOverrides(const DATA_JSON_VALUE& root)
                 if (!readString(object, key, value)) return false;
                 const std::filesystem::path relative(value);
                 std::error_code ec;
-                output = CRuntimeAssetRoot::Resolve(relative);
+                output = ResolveRuntimePath(relative);
                 return !relative.is_absolute() && !relative.has_root_path() && value.find(':') == std::string::npos &&
                     relative.extension() == L".dds" && !output.empty() && IsInsideRoot(CRuntimeAssetRoot::Get(), output) &&
-                    std::filesystem::is_regular_file(output, ec) && !ec;
+                    IsRegularFile(output, ec) && !ec;
             };
             if (!texture(row, "diffuseTexture", material.surfaceDiffusePath) ||
                 !texture(row, "normalTexture", material.surfaceNormalPath) ||
@@ -1376,11 +1442,11 @@ bool_t CMapAssetCatalog::Parse_MaterialOverrides(const DATA_JSON_VALUE& root)
 				if (!readString(row, texture.first, value)) return reject(texture.first);
 				const std::filesystem::path relative(value);
 				std::error_code ec;
-				*texture.second = CRuntimeAssetRoot::Resolve(relative);
+				*texture.second = ResolveRuntimePath(relative);
 				if (relative.is_absolute() || relative.has_root_path() || value.find(':') != std::string::npos ||
 					relative.extension() != L".dds" || texture.second->empty() ||
 					!IsInsideRoot(CRuntimeAssetRoot::Get(), *texture.second) ||
-					!std::filesystem::is_regular_file(*texture.second, ec) || ec) return reject(texture.first);
+					!IsRegularFile(*texture.second, ec) || ec) return reject(texture.first);
 			}
             const auto lightingTexture = [&](const DATA_JSON_VALUE& object, const char* field, std::filesystem::path& result)
             {
@@ -1388,10 +1454,10 @@ bool_t CMapAssetCatalog::Parse_MaterialOverrides(const DATA_JSON_VALUE& root)
                 if (!readString(object, field, value)) return false;
                 const std::filesystem::path relative(value);
                 std::error_code ec;
-                result = CRuntimeAssetRoot::Resolve(relative);
+                result = ResolveRuntimePath(relative);
                 return !relative.is_absolute() && !relative.has_root_path() && value.find(':') == std::string::npos &&
                     relative.extension() == L".dds" && !result.empty() && IsInsideRoot(CRuntimeAssetRoot::Get(), result) &&
-                    std::filesystem::is_regular_file(result, ec) && !ec;
+                    IsRegularFile(result, ec) && !ec;
             };
             if (const auto* baked = row.Find("bakedLighting"))
             {
@@ -1544,7 +1610,7 @@ bool_t CMapAssetCatalog::Parse_MaterialOverrides(const DATA_JSON_VALUE& root)
 		};
 		const std::filesystem::path relative(reflectionTexture);
 		std::error_code reflectionError;
-		material.reflectionPath = CRuntimeAssetRoot::Resolve(relative);
+		material.reflectionPath = ResolveRuntimePath(relative);
 		if (!readColorSpace("diffuse", surface.diffuseSRGB) ||
 			!readColorSpace("specular", surface.specularSRGB) ||
 			!readColorSpace("reflection", surface.reflectionSRGB) ||
@@ -1552,7 +1618,7 @@ bool_t CMapAssetCatalog::Parse_MaterialOverrides(const DATA_JSON_VALUE& root)
 			reflectionTexture.find(':') != std::string::npos ||
 			relative.extension() != L".dds" || material.reflectionPath.empty() ||
 			!IsInsideRoot(CRuntimeAssetRoot::Get(), material.reflectionPath) ||
-			!std::filesystem::is_regular_file(material.reflectionPath, reflectionError) || reflectionError)
+			!IsRegularFile(material.reflectionPath, reflectionError) || reflectionError)
 		{
 			m_Status = "Map material reflection path or color space is invalid: " + assetId;
 			return false;
@@ -1643,6 +1709,7 @@ const MAP_PLACEMENT_LIGHTING* CMapAssetCatalog::Find_PlacementLighting(const std
 
 bool_t CMapAssetCatalog::Load_AreaStaged(const std::string& areaId)
 {
+	CMapPathValidationScope pathValidation;
 	if (!IsValidGroupId(areaId))
 	{
 		m_Status = "Map area ID is invalid: " + areaId;
@@ -1863,6 +1930,7 @@ bool_t CMapAssetCatalog::Load_AreaStaged(const std::string& areaId)
 bool_t CMapAssetCatalog::Load(const std::filesystem::path& path,
 	const std::string& expectedAreaId)
 {
+	CMapPathValidationScope pathValidation;
 	std::ifstream input(path, std::ios::binary);
 	if (!input)
 	{
@@ -1983,7 +2051,7 @@ bool_t CMapAssetCatalog::Load(const std::filesystem::path& path,
 		entry.defaultScale = row.defaultScale;
 		entry.renderProfile = row.renderProfile;
 		entry.modelRelativePath = std::filesystem::path(row.modelPath).lexically_normal();
-		entry.resolvedModelPath = CRuntimeAssetRoot::Resolve(entry.modelRelativePath);
+		entry.resolvedModelPath = ResolveRuntimePath(entry.modelRelativePath);
 		entry.prototypeTag.assign(row.prototypeTag.begin(), row.prototypeTag.end());
 		if (row.anchor == "Origin")
 			entry.anchor = MAP_ASSET_ANCHOR::ORIGIN;

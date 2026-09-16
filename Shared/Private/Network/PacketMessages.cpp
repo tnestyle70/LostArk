@@ -5945,9 +5945,10 @@ bool LostArk::Shared::Write_Message(
 {
 	const bool stop = message.eOperation == WORLD_SEQUENCE_OPERATION::STOP_OWNER ||
 		message.eOperation == WORLD_SEQUENCE_OPERATION::FINISH_OWNER;
+	const bool stopCue = message.eOperation == WORLD_SEQUENCE_OPERATION::STOP_CUE;
 	const bool transportControl = message.eOperation == WORLD_SEQUENCE_OPERATION::REPLAY ||
 		message.eOperation == WORLD_SEQUENCE_OPERATION::STOP;
-	// Viewer transport owns saved instances; bundle cues use PLAY and owner lifecycle operations.
+	// Viewer transport is separate from exact owned cue and owner lifecycle operations.
 	if ((transportControl && (message.iRunEpoch != 0u || !message.strTargetSequenceInstanceId.empty() ||
 		!message.strTargetCueId.empty())) ||
 		(message.eOperation != WORLD_SEQUENCE_OPERATION::PLAY &&
@@ -5963,11 +5964,16 @@ bool LostArk::Shared::Write_Message(
 	for (const float value : { message.fWorldScaleX, message.fWorldScaleY, message.fWorldScaleZ })
 		if (!std::isfinite(value) || value < .001f || value > 1000.f) return false;
 	if ((!message.bHasPlacement && !identityPlacement) ||
-		(message.bHasPlacement && (stop || !message.strTargetSequenceInstanceId.empty() || !message.strTargetCueId.empty() ||
+		(message.bHasPlacement && (stop || stopCue || !message.strTargetSequenceInstanceId.empty() || !message.strTargetCueId.empty() ||
 			message.iRunEpoch == 0u || message.strOccurrenceId.empty() ||
 			message.fPositionOffsetX != 0.f || message.fPositionOffsetY != 0.f || message.fPositionOffsetZ != 0.f)) ||
-		(stop && (message.fPositionOffsetX != 0.f || message.fPositionOffsetY != 0.f || message.fPositionOffsetZ != 0.f)))
+		((stop || stopCue) && (message.fPositionOffsetX != 0.f || message.fPositionOffsetY != 0.f || message.fPositionOffsetZ != 0.f)))
 		return false;
+	if ((message.bUntilDestroyed && (message.eOperation != WORLD_SEQUENCE_OPERATION::PLAY ||
+		message.iRunEpoch == 0u || message.iDurationMs != 0u || !message.strTargetSequenceInstanceId.empty() ||
+		message.strOccurrenceId.empty())) ||
+		(stopCue && (message.iRunEpoch == 0u || message.strMemberId.empty() || message.strCueId.empty() ||
+			message.strOccurrenceId.empty() || message.iDurationMs != 0u))) return false;
 	if (message.eOperation >= WORLD_SEQUENCE_OPERATION::END ||
 		(!stop && !Is_Valid_SequenceInstanceId(message.strSequenceInstanceId)) ||
 		(stop && (message.iRunEpoch == 0u || !message.strSequenceInstanceId.empty())) ||
@@ -5976,7 +5982,7 @@ bool LostArk::Shared::Write_Message(
 		!Is_Valid_StableId(message.strCueId, stop || message.iRunEpoch == 0u) ||
 		!Is_Valid_StableId(message.strTargetCueId, true) ||
 		!Is_Valid_StableId(message.strOccurrenceId, true) ||
-		(!stop && message.iRunEpoch != 0u && (message.iBossNetEntityId == INVALID_NET_ENTITY_ID || message.iStartTick == 0u)) ||
+		(!stop && !stopCue && message.iRunEpoch != 0u && (message.iBossNetEntityId == INVALID_NET_ENTITY_ID || message.iStartTick == 0u)) ||
 		!std::isfinite(message.fPlaybackSpeed) || message.fPlaybackSpeed < .05f || message.fPlaybackSpeed > 16.f ||
 		!std::isfinite(message.fPositionOffsetX) || !std::isfinite(message.fPositionOffsetY) ||
 		!std::isfinite(message.fPositionOffsetZ) || message.iDurationMs > 600000u)
@@ -5997,12 +6003,13 @@ bool LostArk::Shared::Write_Message(
 	writer.Write_F32(message.fWorldPositionX); writer.Write_F32(message.fWorldPositionY); writer.Write_F32(message.fWorldPositionZ);
 	writer.Write_F32(message.fWorldRotationXDegrees); writer.Write_F32(message.fWorldRotationYDegrees); writer.Write_F32(message.fWorldRotationZDegrees);
 	writer.Write_F32(message.fWorldScaleX); writer.Write_F32(message.fWorldScaleY); writer.Write_F32(message.fWorldScaleZ);
+	writer.Write_U8(message.bUntilDestroyed ? 1u : 0u);
 	return true;
 }
 
 bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SEQUENCE_PLAY& message)
 {
-	S2C_WORLD_SEQUENCE_PLAY decoded{}; std::uint8_t operation = 0u, hasPlacement = 0u;
+	S2C_WORLD_SEQUENCE_PLAY decoded{}; std::uint8_t operation = 0u, hasPlacement = 0u, untilDestroyed = 0u;
 	if (!reader.Read_U8(operation) || !reader.Read_String(decoded.strSequenceInstanceId, MAX_SEQUENCE_INSTANCE_ID_BYTES) ||
 		!reader.Read_F32(decoded.fPlaybackSpeed) || !reader.Read_F32(decoded.fPositionOffsetX) ||
 		!reader.Read_F32(decoded.fPositionOffsetY) || !reader.Read_F32(decoded.fPositionOffsetZ) ||
@@ -6016,8 +6023,10 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SEQUENCE_PLA
 		!reader.Read_U8(hasPlacement) || hasPlacement > 1u ||
 		!reader.Read_F32(decoded.fWorldPositionX) || !reader.Read_F32(decoded.fWorldPositionY) || !reader.Read_F32(decoded.fWorldPositionZ) ||
 		!reader.Read_F32(decoded.fWorldRotationXDegrees) || !reader.Read_F32(decoded.fWorldRotationYDegrees) || !reader.Read_F32(decoded.fWorldRotationZDegrees) ||
-		!reader.Read_F32(decoded.fWorldScaleX) || !reader.Read_F32(decoded.fWorldScaleY) || !reader.Read_F32(decoded.fWorldScaleZ)) return false;
+		!reader.Read_F32(decoded.fWorldScaleX) || !reader.Read_F32(decoded.fWorldScaleY) || !reader.Read_F32(decoded.fWorldScaleZ) ||
+		!reader.Read_U8(untilDestroyed) || untilDestroyed > 1u) return false;
 	decoded.bHasPlacement = hasPlacement == 1u;
+	decoded.bUntilDestroyed = untilDestroyed == 1u;
 	decoded.eOperation = static_cast<WORLD_SEQUENCE_OPERATION>(operation);
 	CPacketWriter validation; if (!Write_Message(validation, decoded)) return false;
 	message = std::move(decoded); return true;

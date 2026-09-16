@@ -105,6 +105,7 @@ bool LostArk::Server::CGameRoom::Build_WorldEntity(
 		WORLD_BOOTSTRAP_KIND::PLAYER_SPAWN == placement.eKind ||
 		WORLD_BOOTSTRAP_KIND::TRIGGER_BOX == placement.eKind ||
 		WORLD_BOOTSTRAP_KIND::COLLISION_BOX == placement.eKind ||
+		WORLD_BOOTSTRAP_KIND::WORLD_OBJECT == placement.eKind ||
 		WORLD_BOOTSTRAP_KIND::END == placement.eKind ||
 		(LostArk::Shared::INVALID_NET_ENTITY_ID != ownerBossNetEntityId &&
 			(WORLD_BOOTSTRAP_KIND::BOSS != placement.eKind ||
@@ -344,6 +345,7 @@ bool LostArk::Server::CGameRoom::Reset_ReplayableArenaWhenEmpty()
 
 #ifdef _DEBUG
 	Clear_KoukuSaydonPatternAudition();
+	Update_KoukuWorldBodies(m_iServerTick);
 	m_iNextMarioEntryStage = 1u;
 #endif
 	std::string resetStatus;

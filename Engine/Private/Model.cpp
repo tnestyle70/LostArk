@@ -1567,6 +1567,15 @@ const MODEL_SURFACE_PARAMETERS* CModel::Get_MaterialSurface(uint32_t iMeshIndex)
 		&m_Materials[materialIndex]->Get_Surface() : nullptr;
 }
 
+bool_t CModel::Has_MaterialTextureOverrides(uint32_t iMeshIndex) const
+{
+	if (iMeshIndex >= m_Meshes.size() || !m_Meshes[iMeshIndex])
+		return true;
+	const uint32_t materialIndex = m_Meshes[iMeshIndex]->Get_MaterialIndex();
+	return materialIndex >= m_Materials.size() || !m_Materials[materialIndex] ||
+		m_Materials[materialIndex]->Has_TextureOverrides();
+}
+
 HRESULT CModel::Bind_SurfaceTexture(shared_ptr<CShader> pShader,
 	const char_t* pConstantName, uint32_t iMeshIndex, aiTextureType eType)
 {

@@ -533,7 +533,35 @@ namespace Client::EffectDocumentCodecDetail
 			return false;
 		}
 
-        if (strNormalizedClass == "particlemodulecollision")
+		if (strNormalizedClass == "particlemodulevelocitycone")
+		{
+			f64_t x = 0.0, y = 0.0, z = 1.0;
+			bool_t worldSpace = false, ownerScale = false;
+			// The current portable consumer admits the measured emitter-space cone.
+			// Other velocity-base modes must not become an implicit fallback.
+			if (Module.strClassName != strNormalizedClass ||
+				!ReadPortableNumberLiteral(Module, "direction.x", 0.0, x) ||
+				!ReadPortableNumberLiteral(Module, "direction.y", 0.0, y) ||
+				!ReadPortableNumberLiteral(Module, "direction.z", 1.0, z) ||
+				!std::isfinite(x * x + y * y + z * z) ||
+				x * x + y * y + z * z < 1.e-12 ||
+				x * x + y * y + z * z > (std::numeric_limits<f32_t>::max)() ||
+				!ReadPortableBoolLiteral(Module, "binworldspace", false, worldSpace) || worldSpace ||
+				!ReadPortableBoolLiteral(Module, "bapplyownerscale", false, ownerScale) || ownerScale)
+			{
+				strOutError = "Source VelocityCone requires a finite nonzero direction and emitter-space velocity without owner scaling.";
+				return false;
+			}
+			for (const auto& Distribution : Module.Distributions)
+			{
+				if (Distribution.iComponentCount != 1u)
+				{
+					strOutError = "Source VelocityCone angle and velocity distributions must be scalar.";
+					return false;
+				}
+			}
+		}
+        else if (strNormalizedClass == "particlemodulecollision")
         {
             bool World = false, ApplyPhysics = false, VerticalOnly = false;
             std::string_view Completion;

@@ -717,6 +717,11 @@ PS_OUT_LIGHT Resolve_LocalLight(PS_IN In, bool bSpot, DEFERRED_LIGHT_INPUT light
         fAtt *= fCone * fCone;
     }
     
+    // Every local-light output is multiplied by attenuation. Keep the same
+    // quad and blend order, but skip material/texture work for exact zero energy.
+    if (fAtt == 0.f)
+        return (PS_OUT_LIGHT)0;
+
     const uint shadowChannel = ((asuint(g_GeometricNormalTexture.Load(int3(int2(In.vPosition.xy), 0)).w) >> 23u) & 255u) - 127u;
     const float staticShadow = light.flags.y != 0u && shadowChannel == light.flags.y ?
         1.f - saturate(g_EmissiveTexture.Load(int3(int2(In.vPosition.xy), 0)).a) : 1.f;
@@ -1097,11 +1102,88 @@ float Presentation_Hash(float2 vPosition, uint iSeed)
         float2(12.9898f, 78.233f))) * 43758.5453f);
 }
 
+bool Is_ProtectedNoiseReceiver(int2 pixel, float4 depth)
+{
+    const uint bits = asuint(g_GeometricNormalTexture.Load(int3(pixel, 0)).w);
+    // Only default/source model writers own bit8. Other markers pack map data.
+    if ((depth.w == 0.f || depth.w == 5.f) && (bits & 256u) != 0u)
+        return true;
+    if (depth.w != 5.f)
+        return false;
+    const uint program = bits & 255u;
+    return (program >= 1u && program <= 24u) ||
+        (program >= 26u && program <= 29u);
+}
+
+float ProtectedNoise_DepthSlope(float before, float center, float after)
+{
+    // Use the neighbour on the same surface at an occlusion edge. NDC depth
+    // on a plane is affine in screen space, including a sloped arena floor.
+    const float a = center - before, b = after - center;
+    return abs(a) < abs(b) ? a : b;
+}
+
+bool ProtectedNoise_SafeFootprint(float2 uv, int2 dimensions, int2 centerPixel,
+    float4 centerDepth, float2 depthSlope)
+{
+    if (any(uv < 0.f) || any(uv > 1.f))
+        return false;
+    const float2 texel = uv * float2(dimensions) - .5f;
+    const int2 first = int2(floor(texel));
+    const float2 fraction = frac(texel);
+    // Five centimetres of depth tolerance; retain a small float precision floor.
+    const float tolerance = max(0.0000001f,
+        abs(1.f - centerDepth.x) * .05f / max(centerDepth.y * 1000.f, .05f));
+    [unroll] for (int y = 0; y < 2; ++y)
+    [unroll] for (int x = 0; x < 2; ++x)
+    {
+        const float weight = (x ? fraction.x : 1.f - fraction.x) *
+            (y ? fraction.y : 1.f - fraction.y);
+        if (weight <= 0.000001f) continue;
+        const int2 pixel = clamp(first + int2(x, y), int2(0, 0), dimensions - 1);
+        const float4 depth = g_DepthTexture.Load(int3(pixel, 0));
+        const float expected = centerDepth.x + dot(float2(pixel - centerPixel), depthSlope);
+        if (Is_ProtectedNoiseReceiver(pixel, depth) || depth.x >= .99999f ||
+            depth.y >= .99999f || abs(depth.x - expected) > tolerance)
+            return false;
+    }
+    return true;
+}
+
+float2 Resolve_ProtectedNoiseOffset(float2 uv, float2 ordinary, float2 protectedOffset)
+{
+    if (!any(protectedOffset != 0.f))
+        return ordinary;
+    uint width, height;
+    g_DepthTexture.GetDimensions(width, height);
+    if (!width || !height)
+        return ordinary;
+    const int2 dimensions = int2(width, height);
+    const int2 pixel = clamp(int2(uv * float2(dimensions)), int2(0, 0), dimensions - 1);
+    const float4 depth = g_DepthTexture.Load(int3(pixel, 0));
+    if (Is_ProtectedNoiseReceiver(pixel, depth) || depth.x >= .99999f || depth.y >= .99999f)
+        return ordinary;
+    const float left = g_DepthTexture.Load(int3(max(pixel - int2(1, 0), 0), 0)).x;
+    const float right = g_DepthTexture.Load(int3(min(pixel + int2(1, 0), dimensions - 1), 0)).x;
+    const float top = g_DepthTexture.Load(int3(max(pixel - int2(0, 1), 0), 0)).x;
+    const float bottom = g_DepthTexture.Load(int3(min(pixel + int2(0, 1), dimensions - 1), 0)).x;
+    const float2 slope = float2(ProtectedNoise_DepthSlope(left, depth.x, right),
+        ProtectedNoise_DepthSlope(top, depth.x, bottom));
+    const float2 combined = clamp(ordinary + protectedOffset, -0.05f, 0.05f);
+    // Both footprints matter: otherwise a shifted background pixel can pull a
+    // neighbouring character/bomb into a second image through linear filtering.
+    if (!ProtectedNoise_SafeFootprint(uv + ordinary, dimensions, pixel, depth, slope) ||
+        !ProtectedNoise_SafeFootprint(uv + combined, dimensions, pixel, depth, slope))
+        return ordinary;
+    return combined;
+}
+
 PS_OUT_BACKBUFFER PS_MAIN_SCENE_RESOLVE(PS_IN In)
 {
     PS_OUT_BACKBUFFER Out = (PS_OUT_BACKBUFFER)0;
-    float2 vDistortion = clamp(g_DistortionTexture.Sample(
-        PostProcessSampler, In.vTexcoord).rg, -0.05f, 0.05f);
+    const float4 distortion = g_DistortionTexture.Sample(PostProcessSampler, In.vTexcoord);
+    const float2 ordinary = clamp(distortion.rg, -0.05f, 0.05f);
+    const float2 vDistortion = Resolve_ProtectedNoiseOffset(In.vTexcoord, ordinary, distortion.ba);
     float3 vScene = Sanitize_HDR(g_SceneHDRTexture.Sample(
         PostProcessSampler, In.vTexcoord + vDistortion).rgb);
     Out.vBackBuffer = float4(vScene, 1.f);

@@ -1208,6 +1208,8 @@ bool_t Client::CEffect_Tool::Try_LoadDocumentPathStaged(
 	if (RetainedProductPreview.has_value())
 		m_ProductPreview = std::move(RetainedProductPreview);
 	m_ActiveDocument = std::move(Staged);
+    m_KoukuPatternPreviewContext.reset();
+    m_strKoukuPatternPreviewStatus.clear();
 	m_bMarkedElementIdsNeedPrune = true;
 	m_ActiveRegistryBoundAuditionProvenance =
 		std::move(StagedAuditionProvenance);

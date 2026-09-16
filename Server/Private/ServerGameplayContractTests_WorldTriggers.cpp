@@ -755,6 +755,103 @@ void LostArk::Server::CServerGameplayContractRunner::Run_WorldTriggers(TESTS& te
 
 	{
 		WORLD_BOOTSTRAP_PLACEMENT trigger{};
+		trigger.strPlacementId = "trigger.contract.room-owned-move";
+		trigger.eKind = WORLD_BOOTSTRAP_KIND::TRIGGER_BOX;
+		trigger.isEnabled = true;
+		trigger.isTriggerOnce = true;
+		trigger.fHalfExtentX = trigger.fHalfExtentY = trigger.fHalfExtentZ = 1.f;
+		WORLD_TRIGGER_ACTION move{};
+		move.eKind = WORLD_TRIGGER_ACTION_KIND::MOVE_PLAYER;
+		move.fTargetX = 8.f;
+		move.fDurationSeconds = 0.6f;
+		move.fArcHeight = 1.5f;
+		trigger.TriggerActions.push_back(move);
+		CServerTriggerSystem triggerSystem;
+		std::string status;
+		tests.Require(triggerSystem.Initialize({trigger}, status),
+			"Initialize room-owned movement entry fixture");
+		std::map<PLAYER_ID, SERVER_PLAYER> players;
+		auto& player = players[1u];
+		player.iPlayerId = 1u;
+		player.iCurrentHp = player.iMaximumHp = 100u;
+		player.eAction = PLAYER_ACTION_STATE::SKILL;
+		player.iCurrentSkillId = 34090u;
+		std::vector<SERVER_WORLD_TRANSFER_REQUEST> transfers;
+		std::vector<SERVER_INTERACT_PROMPT_EDGE> prompts;
+		unsigned attempts = 0u;
+		bool admit = false;
+		const SERVER_TRIGGER_MOVE_ENTRY_HANDLER roomEntry =
+			[&](const WORLD_BOOTSTRAP_PLACEMENT& placement, SERVER_PLAYER& target, const std::uint32_t tick)
+		{
+			++attempts;
+			if (!admit) return SERVER_TRIGGER_MOVE_ENTRY_RESULT::RETRY_WHILE_INSIDE;
+			SERVER_PLAYER candidate = target;
+			candidate.eAction = PLAYER_ACTION_STATE::NONE;
+			if (!CServerTriggerSystem::Begin_MovePlayer(candidate, placement.TriggerActions.front(), tick))
+				return SERVER_TRIGGER_MOVE_ENTRY_RESULT::RETRY_WHILE_INSIDE;
+			target = std::move(candidate);
+			return SERVER_TRIGGER_MOVE_ENTRY_RESULT::STARTED;
+		};
+		triggerSystem.Evaluate_Entries(players, 10u, transfers, {}, prompts, roomEntry);
+		triggerSystem.Evaluate_Entries(players, 11u, transfers, {}, prompts, roomEntry);
+		tests.Require(attempts == 2u && player.eAction == PLAYER_ACTION_STATE::SKILL &&
+			player.iCurrentSkillId == 34090u && !player.TriggerMove.isActive,
+			"Rejected owned move remains eligible while overlapping without changing player action");
+		admit = true;
+		triggerSystem.Evaluate_Entries(players, 12u, transfers, {}, prompts, roomEntry);
+		tests.Require(attempts == 3u && player.eAction == PLAYER_ACTION_STATE::TRIGGER_MOVE &&
+			player.TriggerMove.isActive && player.iActionStartTick == 12u &&
+			player.TriggerMove.strSourcePlacementId == trigger.strPlacementId &&
+			player.iCurrentSkillId == INVALID_SKILL_ID && player.fPositionX == 0.f,
+			"Owned move starts on the first admitted contact without leaving and preserves authored source");
+		triggerSystem.Evaluate_Entries(players, 13u, transfers, {}, prompts, roomEntry);
+		tests.Require(attempts == 3u && player.iActionStartTick == 12u,
+			"Successful owned move does not restart while the same contact remains occupied");
+		triggerSystem.Update_PlayerMotion(player, move.fDurationSeconds);
+		triggerSystem.Evaluate_Entries(players, 14u, transfers, {}, prompts, roomEntry);
+		player.fPositionX = 0.f;
+		triggerSystem.Evaluate_Entries(players, 15u, transfers, {}, prompts, roomEntry);
+		tests.Require(attempts == 3u && !player.TriggerMove.isActive,
+			"Owned one-shot move commits its latch only after successful admission");
+
+		(void)triggerSystem.Initialize({trigger}, status);
+		player.eAction = PLAYER_ACTION_STATE::SKILL;
+		triggerSystem.Evaluate_Entries(players, 20u, transfers, {}, prompts,
+			[](const WORLD_BOOTSTRAP_PLACEMENT&, SERVER_PLAYER&, std::uint32_t)
+			{ return SERVER_TRIGGER_MOVE_ENTRY_RESULT::USE_DEFAULT; });
+		tests.Require(player.eAction == PLAYER_ACTION_STATE::SKILL && !player.TriggerMove.isActive,
+			"Unowned move keeps ordinary action admission and does not interrupt skills");
+
+		(void)triggerSystem.Initialize({trigger}, status);
+		player.iCurrentHp = 0u;
+		const unsigned beforeDead = attempts;
+		triggerSystem.Evaluate_Entries(players, 21u, transfers, {}, prompts, roomEntry);
+		tests.Require(attempts == beforeDead && !player.TriggerMove.isActive,
+			"Dead players never invoke room-owned movement entry");
+
+		player.iCurrentHp = 100u;
+		trigger.requiresInteract = true;
+		(void)triggerSystem.Initialize({trigger}, status);
+		triggerSystem.Evaluate_Entries(players, 22u, transfers, {}, prompts, roomEntry);
+		tests.Require(attempts == beforeDead && prompts.size() == 1u && prompts.front().bAvailable &&
+			!player.TriggerMove.isActive,
+			"Room-owned automatic entry cannot bypass an authored interaction requirement");
+
+		trigger.requiresInteract = false;
+		trigger.isTriggerOnce = false;
+		(void)triggerSystem.Initialize({trigger}, status);
+		triggerSystem.Evaluate_Entries(players, 30u, transfers, {}, prompts, roomEntry);
+		triggerSystem.Update_PlayerMotion(player, move.fDurationSeconds);
+		triggerSystem.Evaluate_Entries(players, 31u, transfers, {}, prompts, roomEntry);
+		player.fPositionX = 0.f;
+		triggerSystem.Evaluate_Entries(players, 32u, transfers, {}, prompts, roomEntry);
+		tests.Require(attempts == beforeDead + 2u && player.TriggerMove.isActive &&
+			player.iActionStartTick == 32u && player.TriggerMove.strSourcePlacementId == trigger.strPlacementId,
+			"Repeatable owned move admits a later contact again after departure");
+	}
+
+	{
+		WORLD_BOOTSTRAP_PLACEMENT trigger{};
 		trigger.strPlacementId = "trigger.contract.change-level";
 		trigger.eKind = WORLD_BOOTSTRAP_KIND::TRIGGER_BOX;
 		trigger.isEnabled = true;

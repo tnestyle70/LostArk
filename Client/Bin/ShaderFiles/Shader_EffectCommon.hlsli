@@ -136,7 +136,7 @@ float3 Desaturate_SourceColor(float3 color, float amount)
 struct EFFECT_PS_OUT
 {
     float4 SceneColor : SV_TARGET0;
-    float4 Distortion : SV_TARGET1;
+    float4 Distortion : SV_TARGET1; // RG: ordinary offsets; BA: receiver-isolated offsets
     float4 BloomContribution : SV_TARGET2;
 };
 
@@ -177,7 +177,7 @@ EFFECT_PS_OUT Apply_GenericMeshRingFill(
     // Alpha/Additive effect passes both use SrcAlpha. Multiplying RGB here too
     // would apply the feather twice in the framebuffer blend.
     output.SceneColor.a *= coverage;
-    output.Distortion.xy *= coverage;
+    output.Distortion *= coverage;
     clip(coverage - (1.f / 255.f));
     return output;
 }
@@ -199,7 +199,7 @@ EFFECT_PS_OUT Apply_GenericLinearReveal(
     if (elapsed < 0.f)
     {
         output.SceneColor.a = 0.f;
-        output.Distortion.xy = float2(0.f, 0.f);
+        output.Distortion = 0.f;
         clip(-1.f);
         return output;
     }
@@ -226,7 +226,7 @@ EFFECT_PS_OUT Apply_GenericLinearReveal(
 		max(g_LinearRevealEdgeEmissive, 0.f) * edgeBand *
 		saturate(g_LinearRevealEdgeColor.a);
     output.SceneColor.a = carrierAlpha * max(visibleCoverage, edgeCoverage);
-    output.Distortion.xy *= visibleCoverage;
+    output.Distortion *= visibleCoverage;
     clip(output.SceneColor.a - max(g_ColorClip, 1.f / 255.f));
     return output;
 }
@@ -502,7 +502,7 @@ EFFECT_PS_OUT Shade_EffectParticleUV(
         output = Shade_Effect(uv, lighting, vertexColor);
         output.SceneColor.rgb *= emissive;
         output.SceneColor.a *= opacity;
-        output.Distortion.xy *= distortionScale;
+        output.Distortion *= distortionScale;
         clip(output.SceneColor.a - g_ColorClip);
         return output;
     }
@@ -2529,7 +2529,7 @@ BlendState BS_EffectOpaque
     SrcBlendAlpha[1] = One;
     DestBlendAlpha[1] = One;
     BlendOpAlpha[1] = Add;
-    RenderTargetWriteMask[1] = 0x03;
+    RenderTargetWriteMask[1] = 0x0F;
     BlendEnable[2] = false;
 };
 
@@ -2549,7 +2549,7 @@ BlendState BS_EffectAlpha
     SrcBlendAlpha[1] = One;
     DestBlendAlpha[1] = One;
     BlendOpAlpha[1] = Add;
-    RenderTargetWriteMask[1] = 0x03;
+    RenderTargetWriteMask[1] = 0x0F;
     BlendEnable[2] = true;
     SrcBlend[2] = Src_Alpha;
     DestBlend[2] = Inv_Src_Alpha;
@@ -2575,7 +2575,7 @@ BlendState BS_EffectAdditive
     SrcBlendAlpha[1] = One;
     DestBlendAlpha[1] = One;
     BlendOpAlpha[1] = Add;
-    RenderTargetWriteMask[1] = 0x03;
+    RenderTargetWriteMask[1] = 0x0F;
     BlendEnable[2] = true;
     SrcBlend[2] = Src_Alpha;
     DestBlend[2] = One;

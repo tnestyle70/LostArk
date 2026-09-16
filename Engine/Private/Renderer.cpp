@@ -48,6 +48,7 @@ namespace
 
 #include <algorithm>
 #include <cfloat>
+#include <cstring>
 #include <cmath>
 
 namespace
@@ -292,7 +293,7 @@ HRESULT CRenderer::Initialize()
 		DXGI_FORMAT_R16G16B16A16_FLOAT, float4_t(0.f, 0.f, 0.f, 0.f))))
 		return E_FAIL;
 
-	/* Signed RG offsets written by distortion-capable effect shaders. */
+	/* Signed offsets: RG for ordinary effects, BA for receiver-isolated noise. */
 	if (FAILED(CGameInstance::Get().Add_RenderTarget(TEXT("Target_Distortion"), vViewportSize.x, vViewportSize.y,
 		DXGI_FORMAT_R16G16B16A16_FLOAT, float4_t(0.f, 0.f, 0.f, 0.f))))
 		return E_FAIL;
@@ -897,55 +898,125 @@ HRESULT CRenderer::Render_Priority()
 
 HRESULT CRenderer::Render_Shadow()
 {
-	auto& ShadowObjects =
-		m_RenderObjects[ETOUI(RENDERGROUP::SHADOW)];
-	if (nullptr == m_pShadowDSV || nullptr == m_pShadowSRV ||
-		0u == m_iShadowMapSize)
-	{
-		ShadowObjects.clear();
-		return E_FAIL;
-	}
+    auto& objects = m_RenderObjects[ETOUI(RENDERGROUP::SHADOW)];
+    if (!m_pShadowDSV || !m_pShadowSRV || !m_pShadowDepthTexture || !m_iShadowMapSize)
+    {
+        m_bStaticShadowCacheValid = false;
+        objects.clear();
+        return E_FAIL;
+    }
 
-	D3D11_VIEWPORT OriginalViewports[
-		D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE]{};
-	UINT iViewportCount = _countof(OriginalViewports);
-	m_pContext->RSGetViewports(&iViewportCount, OriginalViewports);
+    auto& game = CGameInstance::Get();
+    const auto* view = game.Get_ShadowLightTransform(D3DTS::VIEW);
+    const auto* projection = game.Get_ShadowLightTransform(D3DTS::PROJ);
+    const bool enabled = game.Is_ShadowLightEnabled();
+    const bool sourceMaterials = m_MaterialRenderSettings.bUseSourceMaterials;
+    const bool allowCache = enabled && view && projection &&
+        m_pStaticShadowDepthTexture && !m_bSceneEnvironmentReplaced;
+    m_CandidateStaticShadowCasters.clear();
+    m_StaticShadowFlags.assign(objects.size(), 0u);
+    if (allowCache)
+    {
+        CProfilerScope scope(game.Get_Profiler(), "Render.Shadow.CacheAdmission");
+        for (size_t i = 0; i < objects.size(); ++i)
+        {
+            uint64_t revision = 0u;
+            if (objects[i] && objects[i]->Try_GetStaticShadowRevision(revision) && revision)
+            {
+                m_StaticShadowFlags[i] = 1u;
+                m_CandidateStaticShadowCasters.push_back({objects[i], objects[i].get(), revision});
+            }
+        }
+    }
+    const bool hasStatic = !m_CandidateStaticShadowCasters.empty();
+    bool reuse = hasStatic && m_bStaticShadowCacheValid &&
+        sourceMaterials == m_bStaticShadowSourceMaterials &&
+        0 == std::memcmp(view, &m_StaticShadowView, sizeof(*view)) &&
+        0 == std::memcmp(projection, &m_StaticShadowProjection, sizeof(*projection)) &&
+        m_CandidateStaticShadowCasters.size() == m_StaticShadowCasters.size();
+    for (size_t i = 0; reuse && i < m_StaticShadowCasters.size(); ++i)
+    {
+        const auto& previous = m_StaticShadowCasters[i];
+        const auto& current = m_CandidateStaticShadowCasters[i];
+        reuse = previous.Identity == current.Identity && previous.Revision == current.Revision &&
+            !previous.Owner.owner_before(current.Owner) && !current.Owner.owner_before(previous.Owner);
+    }
+    if (!reuse) m_bStaticShadowCacheValid = false;
+    if (!hasStatic) m_StaticShadowCasters.clear();
 
-	if (FAILED(CGameInstance::Get().Begin_DepthOnly(m_pShadowDSV)))
-	{
-		ShadowObjects.clear();
-		return E_FAIL;
-	}
+    D3D11_VIEWPORT originalViewports[D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE]{};
+    UINT viewportCount = _countof(originalViewports);
+    m_pContext->RSGetViewports(&viewportCount, originalViewports);
+    if (FAILED(game.Begin_DepthOnly(m_pShadowDSV)))
+    {
+        m_bStaticShadowCacheValid = false;
+        objects.clear();
+        return E_FAIL;
+    }
 
-	HRESULT hRenderResult = S_OK;
-	if (CGameInstance::Get().Is_ShadowLightEnabled())
-	{
-		SetUp_ViewportDesc(m_iShadowMapSize, m_iShadowMapSize);
-		for (size_t renderIndex = 0; renderIndex < ShadowObjects.size(); ++renderIndex)
-		{
-			CGameObject* const pRenderObject = ShadowObjects[renderIndex].get();
-			if (nullptr != pRenderObject &&
-				FAILED(pRenderObject->Render_Shadow()))
-			{
-				WriteRendererFailure(
-					"Render_Shadow_Object",
-					E_FAIL,
-					typeid(*pRenderObject).name());
-				hRenderResult = E_FAIL;
-				break;
-			}
-		}
-	}
-	ShadowObjects.clear();
+    // Keep the existing target manager's saved output pair. Only unbind the
+    // depth target for CopyResource; beginning another pass would clear it.
+    const auto copyDepth = [&](ID3D11Texture2D* destination, ID3D11Texture2D* source)
+    {
+        CProfilerScope scope(game.Get_Profiler(), "Render.Shadow.CacheCopy");
+        m_pContext->OMSetRenderTargets(0u, nullptr, nullptr);
+        m_pContext->CopyResource(destination, source);
+        m_pContext->OMSetRenderTargets(0u, nullptr, m_pShadowDSV.Get());
+    };
+    const auto drawObjects = [&](bool staticPass) -> HRESULT
+    {
+        for (size_t i = 0; i < objects.size(); ++i)
+        {
+            const bool isStatic = i < m_StaticShadowFlags.size() && m_StaticShadowFlags[i] != 0u;
+            if (isStatic != staticPass) continue;
+            // Hold this object across a callback that may append to the queue.
+            const auto object = objects[i];
+            if (object && FAILED(object->Render_Shadow()))
+            {
+                WriteRendererFailure("Render_Shadow_Object", E_FAIL, typeid(*object).name());
+                return E_FAIL;
+            }
+        }
+        return S_OK;
+    };
 
-	const HRESULT hEndResult =
-		CGameInstance::Get().End_DepthOnly();
-	if (0u < iViewportCount)
-		m_pContext->RSSetViewports(iViewportCount, OriginalViewports);
-	else
-		m_pContext->RSSetViewports(0u, nullptr);
-
-	return FAILED(hRenderResult) || FAILED(hEndResult) ? E_FAIL : S_OK;
+    HRESULT result = S_OK;
+    if (enabled)
+    {
+        SetUp_ViewportDesc(m_iShadowMapSize, m_iShadowMapSize);
+        if (reuse)
+            copyDepth(m_pShadowDepthTexture.Get(), m_pStaticShadowDepthTexture.Get());
+        else if (hasStatic)
+        {
+            CProfilerScope scope(game.Get_Profiler(), "Render.Shadow.StaticBuild");
+            CProfilerGpuScope gpuScope(game.Get_Profiler(), "Render.Shadow.StaticBuild");
+            result = drawObjects(true);
+            if (SUCCEEDED(result))
+            {
+                copyDepth(m_pStaticShadowDepthTexture.Get(), m_pShadowDepthTexture.Get());
+                m_StaticShadowCasters.swap(m_CandidateStaticShadowCasters);
+                m_StaticShadowView = *view;
+                m_StaticShadowProjection = *projection;
+                m_bStaticShadowSourceMaterials = sourceMaterials;
+                m_bStaticShadowCacheValid = true;
+            }
+        }
+        if (SUCCEEDED(result))
+        {
+            CProfilerScope scope(game.Get_Profiler(), "Render.Shadow.Dynamic");
+            CProfilerGpuScope gpuScope(game.Get_Profiler(), "Render.Shadow.Dynamic");
+            result = drawObjects(false);
+        }
+    }
+    objects.clear();
+    const HRESULT endResult = game.End_DepthOnly();
+    m_pContext->RSSetViewports(viewportCount, viewportCount ? originalViewports : nullptr);
+    if (FAILED(result) || FAILED(endResult))
+    {
+        m_bStaticShadowCacheValid = false;
+        return E_FAIL;
+    }
+    return S_OK;
 }
 
 HRESULT CRenderer::Render_NonBlend()
@@ -1492,6 +1563,10 @@ HRESULT CRenderer::Render_ScreenPostPass(
 			FAILED(CGameInstance::Get().Bind_RT_SRV(
 				TEXT("Target_Distortion"), m_pShader,
 				"g_DistortionTexture")) ||
+			FAILED(CGameInstance::Get().Bind_RT_SRV(
+				TEXT("Target_Depth"), m_pShader, "g_DepthTexture")) ||
+			FAILED(CGameInstance::Get().Bind_RT_SRV(
+				TEXT("Target_PickPos"), m_pShader, "g_GeometricNormalTexture")) ||
 			FAILED(CGameInstance::Get().Bind_RT_SRV(
 				TEXT("Target_SceneBloom"), m_pShader, "g_SceneBloomTexture")))
 		{
@@ -2065,6 +2140,15 @@ HRESULT CRenderer::Ready_Shadow_Resources()
 	m_pShadowDepthTexture = std::move(pStagedTexture);
 	m_pShadowDSV = std::move(pStagedDSV);
 	m_pShadowSRV = std::move(pStagedSRV);
+    m_bStaticShadowCacheValid = false;
+    m_StaticShadowCasters.clear();
+    m_CandidateStaticShadowCasters.clear();
+    m_pStaticShadowDepthTexture.Reset();
+    // The optional copy-only texture uses the identical depth format and size.
+    // Allocation failure preserves the ordinary uncached shadow path.
+    TextureDesc.BindFlags = 0u;
+    (void)m_pDevice->CreateTexture2D(&TextureDesc, nullptr,
+        m_pStaticShadowDepthTexture.GetAddressOf());
 	return S_OK;
 }
 

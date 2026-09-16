@@ -551,6 +551,9 @@ HRESULT Client::CEffectDocumentRenderer::Render_Particles(
 	const std::shared_ptr<const EFFECT_RESOLVED_MATERIAL_PROGRAM_BINDING>&
 		pMaterialProgramBinding = pResource->pMaterialProgramBinding;
 	uint32_t iPass = UINT32_MAX;
+	if (Source.Detail.Sprite.bTwoSided && nullptr != pMaterialProgramBinding)
+		return Fail_RenderOperation(
+			"Compiled Sprite adapters do not support a native culling override.", E_INVALIDARG, true);
 	if (nullptr != pMaterialProgramBinding)
 	{
 		const EFFECT_COMPILED_MATERIAL_ADAPTER_DESC& Adapter =
@@ -700,7 +703,7 @@ HRESULT Client::CEffectDocumentRenderer::Render_Particles(
 	if (FAILED(hResult))
 		return Fail_RenderOperation("Slice scene-depth shader binding failed.", hResult, true);
 	if (nullptr == pMaterialProgramBinding)
-		iPass = Select_Pass(Source.Material.eRenderProfile);
+		iPass = Select_Pass(Resolve_ArtistSpriteRenderProfile(Source));
 	if (UINT32_MAX == iPass)
 		return Fail_RenderOperation(
 			"Particle render-profile pass is invalid.", E_INVALIDARG, true);
@@ -777,6 +780,131 @@ HRESULT Client::CEffectDocumentRenderer::Render_Particles(
 	return S_OK;
 }
 
+namespace
+{
+struct NATIVE_RIBBON_CURVE_SETTINGS final
+{
+    bool enabled = false;
+    uint32_t maxSubdivisions = 25u;
+    float tangentTessellationScalar = 0.f;
+};
+
+NATIVE_RIBBON_CURVE_SETTINGS Native_RibbonCurveSettings(
+    const Client::EFFECT_ELEMENT_DESC& element)
+{
+    NATIVE_RIBBON_CURVE_SETTINGS result;
+    if (!element.SourceRecipe.bEnabled) return result;
+    for (const auto& module : element.SourceRecipe.Modules)
+    {
+        if (module.strStableId != element.RuntimeCarrier.strTypeDataModuleStableId ||
+            module.strClassName != "particlemoduletypedataribbon") continue;
+        if (std::any_of(module.Literals.begin(), module.Literals.end(), [](const auto& literal) {
+            return literal.strPropertyPath == "benabled" &&
+                literal.eKind == Client::EFFECT_SOURCE_LITERAL_KIND::BOOLEAN && !literal.bBoolean;
+        })) return result;
+        for (const auto& literal : module.Literals)
+        {
+            if (literal.eKind == Client::EFFECT_SOURCE_LITERAL_KIND::BOOLEAN &&
+                (literal.strPropertyPath == "btangentrecalculationeveryframe" ||
+                 literal.strPropertyPath == "benableprevioustangentrecalculation"))
+                result.enabled = result.enabled || literal.bBoolean;
+            if (literal.eKind != Client::EFFECT_SOURCE_LITERAL_KIND::NUMBER ||
+                !std::isfinite(literal.fNumber)) continue;
+            if (literal.strPropertyPath == "maxtessellationbetweenparticles")
+                result.maxSubdivisions = static_cast<uint32_t>(std::clamp(literal.fNumber, 1.0, 25.0));
+            if (literal.strPropertyPath == "tangenttessellationscalar")
+                result.tangentTessellationScalar = static_cast<float>(std::clamp(literal.fNumber, 0.0, 25.0));
+        }
+        break;
+    }
+    return result;
+}
+
+// Project interpolation of admitted source tangent flags, not recovered UE CPU code.
+// Chord-length-limited Hermite tangents keep Bezier controls inside the segment's
+// longitudinal slab, with lateral deviation bounded by one third of its length.
+// A span larger than the existing tessellation budget stays linear; it cannot
+// drag a neighbour's tangent across an unsampled loop seam or teleport.
+void Native_RibbonSegmentTangents(
+    const std::span<const Client::EFFECT_EVALUATED_TRAIL_POINT> points,
+    const size_t nextIndex, const float maxSampledSpan,
+    DirectX::XMVECTOR& startTangent, DirectX::XMVECTOR& endTangent)
+{
+    using namespace DirectX;
+    const auto start = XMLoadFloat3(&points[nextIndex - 1u].vWorldPosition);
+    const auto end = XMLoadFloat3(&points[nextIndex].vWorldPosition);
+    const auto chord = end - start;
+    startTangent = endTangent = chord;
+    const float length = XMVectorGetX(XMVector3Length(chord));
+    if (!std::isfinite(length) || length <= 1e-6f || length > maxSampledSpan) return;
+    const auto direction = chord / length;
+    const auto average = [direction, length, maxSampledSpan, chord](const XMVECTOR adjacent)
+    {
+        const float adjacentLength = XMVectorGetX(XMVector3Length(adjacent));
+        if (!std::isfinite(adjacentLength) || adjacentLength <= 1e-6f ||
+            adjacentLength > maxSampledSpan) return chord;
+        return (direction + adjacent / adjacentLength) *
+            (0.5f * (std::min)(length, adjacentLength));
+    };
+    if (nextIndex >= 2u)
+        startTangent = average(start - XMLoadFloat3(&points[nextIndex - 2u].vWorldPosition));
+    if (nextIndex + 1u < points.size())
+        endTangent = average(XMLoadFloat3(&points[nextIndex + 1u].vWorldPosition) - end);
+}
+
+// Keep one orientation along a centerline strip. Independently choosing the
+// camera-facing cross product can exchange its two edges at a turn or when
+// the camera crosses the tangent, creating a bow-tie between adjacent pairs.
+bool Resolve_TrailStripSide(
+    const DirectX::XMVECTOR position,
+    const DirectX::XMVECTOR previous,
+    const DirectX::XMVECTOR next,
+    const DirectX::XMVECTOR cameraPosition,
+    const bool faceCamera,
+    const bool hasPreviousSide,
+    const DirectX::XMVECTOR previousSide,
+    DirectX::XMVECTOR& side)
+{
+    using namespace DirectX;
+    XMVECTOR tangent;
+    if (!Normalize_Safe(next - previous, tangent) &&
+        !Normalize_Safe(next - position, tangent) &&
+        !Normalize_Safe(position - previous, tangent))
+        return false;
+
+    const auto up = XMVectorSet(0.f, 1.f, 0.f, 0.f);
+    const auto reference = faceCamera ? cameraPosition - position : up;
+    if (!Normalize_Safe(XMVector3Cross(reference, tangent), side))
+    {
+        // At the view/tangent singularity keep the preceding strip plane when
+        // possible, then use a finite perpendicular axis for the first pair.
+        if (!hasPreviousSide || !Normalize_Safe(previousSide - tangent *
+            XMVectorGetX(XMVector3Dot(previousSide, tangent)), side))
+        {
+            if (!Normalize_Safe(XMVector3Cross(up, tangent), side) &&
+                !Normalize_Safe(XMVector3Cross(
+                    XMVectorSet(1.f, 0.f, 0.f, 0.f), tangent), side))
+                return false;
+        }
+    }
+    if (hasPreviousSide && XMVectorGetX(XMVector3Dot(side, previousSide)) < 0.f)
+        side = -side;
+    return true;
+}
+
+// Stabilized UV edges can invert a triangle at a reversal. Keep the existing
+// clockwise front-face convention for one-sided camera-facing materials.
+bool Trail_TriangleNeedsWindingFlip(
+    const DirectX::XMVECTOR a, const DirectX::XMVECTOR b,
+    const DirectX::XMVECTOR c, const DirectX::XMVECTOR cameraPosition)
+{
+    using namespace DirectX;
+    return XMVectorGetX(XMVector3Dot(
+        XMVector3Cross(b - a, c - a), cameraPosition - a)) > 0.f;
+}
+
+}
+
 HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 	const EFFECT_EVALUATED_FRAME& Frame,
 	const std::span<const EFFECT_EVALUATED_TRAIL> Trails)
@@ -828,6 +956,11 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
              Trail.pElement->RuntimeCarrier.eKind == EFFECT_AUTHORED_RUNTIME_CARRIER_KIND::CASCADE_RIBBON_V1));
 		const bool_t bTypedSourceRibbon =
 			bTypedArtistRibbon || bFlowRibbon01 || bKoukuNativeRibbon;
+        const auto Curve = bKoukuNativeRibbon && !bSourceBeam &&
+            pResource->iSourceMaterialProfile >= 2304u && pResource->iSourceMaterialProfile <= 3711u ?
+            Native_RibbonCurveSettings(*Trail.pElement) : NATIVE_RIBBON_CURVE_SETTINGS{};
+        if (Curve.enabled && Trail.Points.size() > 512u)
+            return Fail_RenderOperation("Native Ribbon exceeds its control-point limit.", E_INVALIDARG, true);
 		if (35u == pResource->iSourceMaterialProfile && bBakedEdgeHistory)
 		{
 			return Fail_RenderOperation(
@@ -928,9 +1061,11 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 					"Trail typed point payload is invalid.", E_INVALIDARG, true);
 		}
 
-		const bool_t bDistanceTessellated = (!bSourceBeam && bTypedSourceRibbon && fTessellationStep > 0.f) ||
-			(std::isfinite(fTilingDistance) && fTilingDistance > 0.f &&
-			 std::isfinite(fTessellationStep) && fTessellationStep > 0.f);
+		// Baked edge histories already own their geometry and carry no centerline.
+		const bool_t bDistanceTessellated = !bBakedEdgeHistory &&
+			((!bSourceBeam && bTypedSourceRibbon && fTessellationStep > 0.f) ||
+			 (std::isfinite(fTilingDistance) && fTilingDistance > 0.f &&
+			  std::isfinite(fTessellationStep) && fTessellationStep > 0.f));
 		if (bDistanceTessellated)
 		{
 			TessellatedPoints.reserve(1u +
@@ -958,10 +1093,23 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 					return Fail_RenderOperation(
 						"Trail segment distance is non-finite.",
 						E_INVALIDARG, true);
+                const uint32_t maxSubdivisions = Curve.enabled ?
+                    Curve.maxSubdivisions : ARTIST_RIBBON_MAX_SUBDIVISIONS;
+                vector_t startTangent = NextPosition - PreviousPosition;
+                vector_t endTangent = startTangent;
+                f32_t tangentSubdivisions = 1.f;
+                if (Curve.enabled)
+                {
+                    Native_RibbonSegmentTangents(Trail.Points, iPoint,
+                        fTessellationStep * maxSubdivisions, startTangent, endTangent);
+                    const float bend = fSegmentDistance > 1e-6f ?
+                        XMVectorGetX(XMVector3Length(startTangent - endTangent)) / fSegmentDistance : 0.f;
+                    tangentSubdivisions += std::ceil(bend * Curve.tangentTessellationScalar);
+                }
 				const f32_t fSubdivisionCount = std::clamp(
-					static_cast<f32_t>(std::ceil(
-						fSegmentDistance / fTessellationStep)),
-					1.f, static_cast<f32_t>(ARTIST_RIBBON_MAX_SUBDIVISIONS));
+                    (std::max)(tangentSubdivisions,
+					static_cast<f32_t>(std::ceil(fSegmentDistance / fTessellationStep))),
+					1.f, static_cast<f32_t>(maxSubdivisions));
 				const uint32_t iSubdivisions =
 					static_cast<uint32_t>(fSubdivisionCount);
 				for (uint32_t iSubdivision = 1u;
@@ -970,7 +1118,11 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 					const f32_t fRatio = static_cast<f32_t>(iSubdivision) /
 						static_cast<f32_t>(iSubdivisions);
 					EFFECT_EVALUATED_TRAIL_POINT Point;
+                    // Preserve exact control points and their longitudinal UV distance.
+                    // Width, age, colour and dynamic lanes retain the existing interpolation.
 					XMStoreFloat3(&Point.vWorldPosition,
+                        Curve.enabled ? (iSubdivision == iSubdivisions ? NextPosition :
+                            XMVectorHermite(PreviousPosition, startTangent, NextPosition, endTangent, fRatio)) :
 						XMVectorLerp(PreviousPosition, NextPosition, fRatio));
 					Point.fNormalizedAge = PreviousPoint.fNormalizedAge +
 						(NextPoint.fNormalizedAge - PreviousPoint.fNormalizedAge) * fRatio;
@@ -1066,7 +1218,11 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 					Color, Point.vDynamicParameter });
 			}
 		}
-		else for (size_t iPoint = 0u; iPoint < RenderPoints.size(); ++iPoint)
+		const bool bStabilizeStrip = !bBakedEdgeHistory && !bSourceBeam &&
+			Trail.pElement->Detail.Trail.bFaceCamera;
+		bool bPreviousCenterlinePair = false;
+		vector_t PreviousSide = XMVectorZero();
+		if (!bBakedEdgeHistory) for (size_t iPoint = 0u; iPoint < RenderPoints.size(); ++iPoint)
 		{
 			const EFFECT_EVALUATED_TRAIL_POINT& Point = RenderPoints[iPoint];
 			if (bTypedSourceRibbon)
@@ -1116,21 +1272,31 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 				iPoint > 0u ? iPoint - 1u : iPoint].vWorldPosition);
 			const vector_t Next = XMLoadFloat3(&RenderPoints[
 				iPoint + 1u < RenderPoints.size() ? iPoint + 1u : iPoint].vWorldPosition);
-			vector_t Tangent;
-			if (!Normalize_Safe(Next - Previous, Tangent))
-				continue;
 			vector_t Side;
-			if (Trail.pElement->Detail.Trail.bFaceCamera)
+			bool bSideResolved = false;
+			if (bStabilizeStrip)
+				bSideResolved = Resolve_TrailStripSide(Position, Previous, Next, CameraPosition,
+					true, bPreviousCenterlinePair, PreviousSide, Side);
+			else
 			{
-				const vector_t View = CameraPosition - Position;
-				if (!Normalize_Safe(XMVector3Cross(View, Tangent), Side))
-					continue;
+				// Beams and authored ground-facing strips keep their original plane.
+				vector_t Tangent;
+				if (Normalize_Safe(Next - Previous, Tangent))
+				{
+					if (Trail.pElement->Detail.Trail.bFaceCamera)
+						bSideResolved = Normalize_Safe(XMVector3Cross(
+							CameraPosition - Position, Tangent), Side);
+					else
+						bSideResolved = Normalize_Safe(XMVector3Cross(
+							XMVectorSet(0.f, 1.f, 0.f, 0.f), Tangent), Side) ||
+							Normalize_Safe(XMVector3Cross(
+								XMVectorSet(1.f, 0.f, 0.f, 0.f), Tangent), Side);
+				}
 			}
-			else if (!Normalize_Safe(XMVector3Cross(
-				XMVectorSet(0.f, 1.f, 0.f, 0.f), Tangent), Side) &&
-				!Normalize_Safe(XMVector3Cross(
-					XMVectorSet(1.f, 0.f, 0.f, 0.f), Tangent), Side))
+			if (!bSideResolved)
 			{
+				// Do not bridge an omitted degenerate interval with a large quad.
+				bPreviousCenterlinePair = false;
 				continue;
 			}
 			const f32_t Age = Point.fNormalizedAge;
@@ -1152,16 +1318,40 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 				float2_t(U, 0.f), Color, Point.vDynamicParameter });
 			Vertices.push_back({ To_Float3(Position + HalfSide),
 				float2_t(U, 1.f), Color, Point.vDynamicParameter });
+			if (bPreviousCenterlinePair)
+			{
+				const uint32_t Base = static_cast<uint32_t>(Vertices.size()) - 4u;
+				Indices.insert(Indices.end(),
+					{ Base, Base + 1u, Base + 2u,
+					  Base + 1u, Base + 3u, Base + 2u });
+			}
+			PreviousSide = Side;
+			bPreviousCenterlinePair = true;
 		}
 		if (Vertices.size() < 4u)
 			continue;
 		const uint32_t iPairs = static_cast<uint32_t>(Vertices.size() / 2u);
-		for (uint32_t iPair = 0u; iPair + 1u < iPairs; ++iPair)
+		if (bBakedEdgeHistory) for (uint32_t iPair = 0u; iPair + 1u < iPairs; ++iPair)
 		{
 			const uint32_t Base = iPair * 2u;
 			Indices.insert(Indices.end(),
 				{ Base, Base + 1u, Base + 2u,
 				  Base + 1u, Base + 3u, Base + 2u });
+		}
+		if (Indices.empty())
+			continue;
+		if (bStabilizeStrip &&
+			(Trail.pElement->Material.eRenderProfile == EFFECT_RENDER_PROFILE::ALPHA_ONE_SIDED_DEPTH_READ ||
+			 Trail.pElement->Material.eRenderProfile == EFFECT_RENDER_PROFILE::ADDITIVE_ONE_SIDED_DEPTH_READ))
+		{
+			for (size_t iTriangle = 0u; iTriangle < Indices.size(); iTriangle += 3u)
+			{
+				if (Trail_TriangleNeedsWindingFlip(
+					XMLoadFloat3(&Vertices[Indices[iTriangle]].vPosition),
+					XMLoadFloat3(&Vertices[Indices[iTriangle + 1u]].vPosition),
+					XMLoadFloat3(&Vertices[Indices[iTriangle + 2u]].vPosition), CameraPosition))
+					std::swap(Indices[iTriangle + 1u], Indices[iTriangle + 2u]);
+			}
 		}
 		HRESULT hResult = m_pTrailBuffer->Update_Geometry(
 			std::span<const Engine::VTXEFFECT_TRAIL>(

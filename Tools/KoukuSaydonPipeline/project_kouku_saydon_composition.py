@@ -237,6 +237,10 @@ MAX_ORDINAL = 1_000_000
 MAX_TIMELINE_MS = 600_000
 MAX_PATTERNS = 4096
 MAX_PRODUCT_PATTERNS = 64
+# Match CKoukuSaydonBossTool admission before publishing any Product.
+MAX_ENCOUNTER_BYTES = 64 * 1024 * 1024
+MAX_ENCOUNTER_VALUES = 4_000_000
+MAX_ENCOUNTER_DEPTH = 64
 MAX_DRAFT_STAGES = 1024
 MAX_PRODUCT_STAGES = 64
 MAX_OCCURRENCES = 4096
@@ -1917,8 +1921,9 @@ def validate_document(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
                     f"{box_context} {kind} has no wrong answer and no Fail slot"
                 )
             if kind == "PATTERN_COMPLETION_COUNT":
-                if outcomes["Fail"] or outcomes["Timeout"] or len(outcomes["Success"]) != 1 or logic_defs[outcomes["Success"][0]].get("kind") != "FOLLOWUP_PATTERN":
-                    raise CompositionError(f"{box_context} completion chain requires exactly one Success followup and no Fail/Timeout")
+                if (outcomes["Fail"] or outcomes["Timeout"] or len(outcomes["Success"]) > 1 or
+                        (outcomes["Success"] and logic_defs[outcomes["Success"][0]].get("kind") != "FOLLOWUP_PATTERN")):
+                    raise CompositionError(f"{box_context} completion chain accepts at most one Success followup and no Fail/Timeout")
                 for candidate in owner["patternIds"]:
                     followup_targets.append((box_id, candidate))
             if kind == "OBJECT_CONTACT" and outcomes["Timeout"]:
@@ -2271,7 +2276,9 @@ def validate_document(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
         for chain in chains:
             for candidate_id in logic_defs[chain["logicId"]]["patternIds"]:
                 candidate = by_pattern[candidate_id]
-                if candidate is pattern or not candidate.get("stages") or any(candidate.get(key) != pattern.get(key) for key in ("gateId", "targetBossPlacementId", "actorProfileId")):
+                # A positive explicit Parent duration is materialized into idle stages by
+                # the existing expansion; its Summon/child owners still validate normally.
+                if candidate is pattern or (not candidate.get("stages") and not candidate.get("durationMs")) or any(candidate.get(key) != pattern.get(key) for key in ("gateId", "targetBossPlacementId", "actorProfileId")):
                     raise CompositionError("Completion candidates must be distinct playable patterns for the same Gate and boss")
                 for box in candidate.get("logicOccurrences", []):
                     if not box.get("enabled", True):
@@ -2863,6 +2870,91 @@ def _world_placement_point(placement, point):
     quaternion = (cr*sp*cy + sr*cp*sy, cr*cp*sy - sr*sp*cy, sr*cp*cy - cr*sp*sy, cr*cp*cy + sr*sp*sy)
     matrix = wmodel_pose.affine_matrix(placement["scale"], quaternion, placement["position"])
     return list(wmodel_pose.transform_point(tuple(point), matrix))
+
+
+def _project_world_combat_body(cue, world, sequences):
+    """Publish one stationary damageable Object through the existing XZ body runtime."""
+    if sequences is None:
+        return {}
+    instance = next((r for r in sequences["instances"] if r["instanceId"] == world["sequenceInstanceId"]), None)
+    if instance is None:
+        return {}
+    resources = {r["objectId"]: r for r in sequences.get("objectResources", [])}
+    bindings = instance.get("bindings", [])
+    selected = [(b, resources.get(b.get("targetId"))) for b in bindings if b.get("targetKind") == "OBJECT_RESOURCE"]
+    combat = [(b, r) for b, r in selected if r and "combatBody" in r]
+    if not combat:
+        return {}
+    if len(bindings) != 1 or len(combat) != 1:
+        raise CompositionError("Damageable World Object requires exactly one Object resource and emission")
+    binding, resource = combat[0]
+    body = resource["combatBody"]
+    body_fields = {"maxHp", "localCenterM", "halfExtentsM", "lifetimePolicy"}
+    if not isinstance(body, dict) or not body_fields <= set(body) or set(body) - body_fields - {"shape"}:
+        raise CompositionError("World combatBody has missing or unknown fields")
+    if type(body["maxHp"]) is not int or not 1 <= body["maxHp"] <= 1000000000 or body["lifetimePolicy"] != "UNTIL_DESTROYED":
+        raise CompositionError("World combatBody needs positive HP and UNTIL_DESTROYED lifetime")
+    shape = body.get("shape", "BOX")
+    if not isinstance(shape, str) or shape not in {"BOX", "ELLIPSOID"}:
+        raise CompositionError("World combat shape must be BOX or ELLIPSOID")
+    _vector3(body["localCenterM"], "World combat center", -100000, 100000)
+    _vector3(body["halfExtentsM"], "World combat half extents", .001, 1000)
+    if instance.get("anchorKind", "WORLD") != "WORLD" or resource.get("anchorKind", "WORLD") != "WORLD" or world.get("anchorKind", "NONE") not in {"NONE", "WORLD"}:
+        raise CompositionError("Damageable World Object requires a fixed WORLD anchor")
+    if not instance.get("enabled", True) or instance.get("startDelayMs", 0) or instance.get("motionEnd", "STOP") != "LOOP":
+        raise CompositionError("Damageable World Object requires an enabled LOOP state with no delayed spawn")
+    sequence = next((r for r in sequences["templates"] if r["sequenceId"] == instance["templateId"]), None)
+    if sequence is None:
+        raise CompositionError("Damageable World Object template is missing")
+    motion = sequence.get("objectMotion", {})
+    emissions = motion.get("emissions", [])
+    if motion.get("count", 1) != 1 or len(emissions) > 1 or (emissions and emissions[0].get("startDelayMs", 0)) or motion.get("spreadDegrees", 0) or any(motion.get("spawnHalfExtents", [0, 0, 0])):
+        raise CompositionError("Damageable World Object supports one deterministic immediate emission")
+    if any(any(motion.get(k, [0, 0, 0])) for k in ("velocity", "acceleration", "angularVelocityDegrees", "revolutionDegreesPerSecond")):
+        raise CompositionError("Damageable World Object must remain stationary; moving combat bodies are unsupported")
+    keys = [key for row in sequence.get("tracks", []) if row["slotId"] == binding["slotId"] for key in row["keys"]]
+    key = keys[0] if keys else {"positionOffset": [0, 0, 0], "scaleMultiplier": [1, 1, 1], "rotationQuaternion": [0, 0, 0, 1]}
+    if any(not k.get("visible", True) or any(k[f] != key[f] for f in ("positionOffset", "scaleMultiplier", "rotationQuaternion")) for k in keys):
+        raise CompositionError("Damageable World Object needs a constant visible Transform track")
+    scale = [a*b for a, b in zip(resource.get("scale", [1, 1, 1]), key["scaleMultiplier"])]
+    _vector3(scale, "World combat scale", .001, 1000)
+    placement = cue.get("placement")
+    instance_position = [0, 0, 0] if placement else instance.get("position", [0, 0, 0])
+    position = [a + (0 if emissions else b) for a, b in zip(key["positionOffset"], instance_position)]
+    visual = wmodel_pose.affine_matrix(scale, key["rotationQuaternion"], position)
+    def point(local):
+        value = list(wmodel_pose.transform_point(tuple(local), visual))
+        if emissions:
+            emission = emissions[0]
+            value = _world_placement_point({"scale": [1, 1, 1], "rotationDegrees": [0, emission.get("yawDegrees", 0), 0],
+                "position": emission["positionOffset"]}, value)
+            value = [a+b for a, b in zip(value, instance_position)]
+        if placement:
+            return _world_placement_point(placement, value)
+        return [a+b for a, b in zip(value, world.get("positionOffset", [0, 0, 0]))]
+    center = point(body["localCenterM"])
+    if shape == "ELLIPSOID":
+        # Columns of the transformed ellipsoid map (unit ball -> world XZ).
+        # The largest singular value is its exact projected outer radius, even
+        # with rotated nonuniform resource and placement scales (affine shear).
+        axes = []
+        for axis in range(3):
+            tip = list(body["localCenterM"])
+            tip[axis] += body["halfExtentsM"][axis]
+            transformed = point(tip)
+            axes.append((transformed[0] - center[0], transformed[2] - center[2]))
+        xx = sum(x*x for x, z in axes)
+        xz = sum(x*z for x, z in axes)
+        zz = sum(z*z for x, z in axes)
+        radius = math.sqrt(max(0.0, .5*(xx + zz + math.hypot(xx - zz, 2*xz))))
+    else:
+        corners = [point([body["localCenterM"][i] + sign[i]*body["halfExtentsM"][i] for i in range(3)])
+                   for sign in __import__("itertools").product((-1, 1), repeat=3)]
+        radius = max(math.hypot(p[0]-center[0], p[2]-center[2]) for p in corners)
+    _vector3(center, "World combat world center", -100000, 100000)
+    if not .001 < radius <= 1000:
+        raise CompositionError("World combat radius exceeds runtime bounds")
+    return {"combatBody": {"maxHp": body["maxHp"], "centerM": center, "radiusM": radius, "lifetimePolicy": "UNTIL_DESTROYED"}}
 
 
 def _project_world_placement(cue, world, sequences):
@@ -3929,7 +4021,7 @@ def _project_collider_regions(document, pattern, logic_box, logic, sequences, ro
         if row["rotationDegrees"][0] != 0 or row["rotationDegrees"][2] != 0:
             raise CompositionError("XZ gameplay Collider supports only Y rotation")
         position, yaw, scale = list(row["positionOffset"]), row["rotationDegrees"][1], list(row["scale"])
-        anchor = "BOSS_CURRENT"
+        anchor = "WORLD" if row["anchorKind"] == "MAP" else "BOSS_CURRENT"
         world_track = None
         if kind == "OBJECT_CONTACT" and row["bone"]:
             try:
@@ -4253,6 +4345,7 @@ def project_encounter(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
                         "anchorKind": worlds[box["worldId"]].get("anchorKind", "NONE"),
                         "anchorPosition": list(worlds[box["worldId"]].get("anchorPosition", [0.0, 0.0, 0.0])),
                         **_project_world_placement(box, worlds[box["worldId"]], world_sequences),
+                        **_project_world_combat_body(box, worlds[box["worldId"]], world_sequences),
                         **_project_walkable_surface(root, document["areaId"], world_sequences, worlds[box["worldId"]], box),
                     }
                     for box in world_boxes
@@ -4295,7 +4388,7 @@ PRESENTATION_OCCURRENCE_EDITOR_KEYS = {"selectionGroupId"}
 PRESENTATION_OCCURRENCE_DEFAULTS = {
     "positionOffset": [0.0, 0.0, 0.0], "rotationDegrees": [0.0, 0.0, 0.0], "scale": [1.0, 1.0, 1.0],
     "fadeInMs": 0, "fadeOutMs": 0, "dissolveStart": 0.85, "dissolveEnd": 1.0,
-    "fitEffectToDuration": False,
+    "fitEffectToDuration": False, "loopEffectToDuration": False,
     "volume": 1.0, "followBoss": True, "bone": "", "boneTarget": "BODY", "brightnessMultiplier": 1.0,
     "regionId": "", "cardSymbol": "NONE", "cardColor": "NONE",
     "anchorKind": "BOSS", "worldId": "", "logicOccurrenceId": "", "debugRender": True, "worldOccurrenceId": "",
@@ -4445,7 +4538,8 @@ def _validate_presentation_occurrences(pattern: dict[str, Any], resources: dict[
             raise CompositionError("collider card mapping is invalid")
         light = resources[box["resourceId"]]["kind"] == "LIGHT"
         effect = resources[box["resourceId"]]["kind"] == "EFFECT"
-        allowed_anchors = {"BOSS", "PLAYER", "MAP", "WORLD"} if light else ({"BOSS", "WORLD", "MAP"} if effect else {"BOSS", "WORLD"})
+        collider = resources[box["resourceId"]]["kind"] == "COLLIDER"
+        allowed_anchors = {"BOSS", "PLAYER", "MAP", "WORLD"} if light else ({"BOSS", "WORLD", "MAP"} if effect or collider else {"BOSS", "WORLD"})
         if normalized["anchorKind"] not in allowed_anchors:
             raise CompositionError("presentation anchorKind is invalid")
         if light and (normalized["scale"] != [1.0, 1.0, 1.0] or
@@ -4454,9 +4548,9 @@ def _validate_presentation_occurrences(pattern: dict[str, Any], resources: dict[
                       (normalized["anchorKind"] != "BOSS" and normalized["bone"]) or
                       (normalized["anchorKind"] == "PLAYER" and not normalized["followBoss"])):
             raise CompositionError("LIGHT requires unit scale, a valid anchor and Character follow without a bone")
-        if effect and normalized["anchorKind"] == "MAP" and (normalized["followBoss"] or
+        if (effect or collider) and normalized["anchorKind"] == "MAP" and (normalized["followBoss"] or
                 normalized["bone"] or normalized["boneTarget"] != "BODY" or normalized["worldId"] or normalized["worldOccurrenceId"]):
-            raise CompositionError("MAP Effect requires a fixed position without a bone or World occurrence")
+            raise CompositionError("MAP Effect/Collider requires a fixed position without a bone or World occurrence")
         if not light and normalized["brightnessMultiplier"] != 1.0:
             raise CompositionError("brightnessMultiplier belongs only to LIGHT")
         for field in ("regionId", "worldId", "logicOccurrenceId"):
@@ -4485,8 +4579,11 @@ def _validate_presentation_occurrences(pattern: dict[str, Any], resources: dict[
         _number(normalized["volume"], "presentation volume", 0, 1)
         _number(normalized["brightnessMultiplier"], "presentation brightnessMultiplier", 0, 16)
         _boolean(normalized["fitEffectToDuration"], "presentation fitEffectToDuration")
-        if normalized["fitEffectToDuration"] and (resources[box["resourceId"]]["kind"] != "EFFECT" or resources[box["resourceId"]].get("resourceKind") not in {"V1_EFFECT", "V1_ELEMENT"}):
-            raise CompositionError("Fit Effect lifetime requires a V1 Effect resource")
+        _boolean(normalized["loopEffectToDuration"], "presentation loopEffectToDuration")
+        if normalized["fitEffectToDuration"] and normalized["loopEffectToDuration"]:
+            raise CompositionError("Effect lifetime cannot stretch and loop simultaneously")
+        if (normalized["fitEffectToDuration"] or normalized["loopEffectToDuration"]) and (resources[box["resourceId"]]["kind"] != "EFFECT" or resources[box["resourceId"]].get("resourceKind") not in {"V1_EFFECT", "V1_ELEMENT"}):
+            raise CompositionError("Effect lifetime controls require a V1 Effect resource")
         _boolean(normalized["followBoss"], "presentation followBoss")
         _boolean(normalized["debugRender"], "presentation debugRender")
         if not isinstance(normalized["bone"], str) or len(normalized["bone"]) > 128 or "\0" in normalized["bone"]:
@@ -4558,7 +4655,7 @@ def _project_presentation_resource(resource: dict[str, Any]) -> dict[str, Any]:
 def _project_presentation_occurrence(document: dict[str, Any], pattern: dict[str, Any], box: dict[str, Any], resource: dict[str, Any]) -> dict[str, Any]:
     return {
         **_project_presentation_resource(resource),
-        **{key: value for key, value in PRESENTATION_OCCURRENCE_DEFAULTS.items() if key not in {"brightnessMultiplier", "boneTarget", "fitEffectToDuration"}},
+        **{key: value for key, value in PRESENTATION_OCCURRENCE_DEFAULTS.items() if key not in {"brightnessMultiplier", "boneTarget", "fitEffectToDuration", "loopEffectToDuration"}},
         **{key: value for key, value in box.items() if key not in PRESENTATION_OCCURRENCE_EDITOR_KEYS},
         **({"brightnessMultiplier": box.get("brightnessMultiplier", 1.0)} if resource["kind"] == "LIGHT" else {}),
         "worldSequenceInstanceId": next((w["sequenceInstanceId"] for w in document.get("worlds", []) if w["worldId"] == box.get("worldId", "")), ""),
@@ -4677,7 +4774,7 @@ def _project_pattern_presentation(document: dict[str, Any], pattern: dict[str, A
     for box in pattern.get("sceneProfileOccurrences", []):
         occurrences.append({
             **{key: value for key, value in PRESENTATION_RESOURCE_DEFAULTS.items() if key not in {"durationMs", "defaultAnchorKind"}},
-            **{key: value for key, value in PRESENTATION_OCCURRENCE_DEFAULTS.items() if key not in {"brightnessMultiplier", "boneTarget", "fitEffectToDuration"}},
+            **{key: value for key, value in PRESENTATION_OCCURRENCE_DEFAULTS.items() if key not in {"brightnessMultiplier", "boneTarget", "fitEffectToDuration", "loopEffectToDuration"}},
             "occurrenceId": box["occurrenceId"], "resourceId": box["sceneProfileId"],
             "kind": "SCENE_PROFILE", "worldSequenceInstanceId": "", "assetId": profiles[box["sceneProfileId"]]["renderingProfileId"],
             "resourceDurationMs": box["durationMs"], "startMs": box["startMs"], "durationMs": box["durationMs"],
@@ -4909,10 +5006,28 @@ def projected_outputs(document: dict[str, Any], root: Path = REPOSITORY_ROOT,
         lambda: (project_encounter(document, root), project_presentation(document, root)))
     if pattern_inventory is not None:
         encounter = {**encounter, "patternInventory": pattern_inventory}
+    encounter_bytes = serialize_json(encounter)
+    _validate_encounter_admission(encounter, encounter_bytes)
     return {
-        ENCOUNTER_PATH: serialize_json(encounter),
+        ENCOUNTER_PATH: encounter_bytes,
         PRESENTATION_PATH: serialize_json(presentation),
     }
+
+
+def _validate_encounter_admission(document: dict[str, Any], content: bytes) -> None:
+    if len(content) > MAX_ENCOUNTER_BYTES:
+        raise CompositionError(f"Encounter exceeds the F1 Client 64 MiB limit: {len(content)} bytes")
+    pending = [(document, 0)]
+    values = 0
+    while pending:
+        value, depth = pending.pop()
+        values += 1
+        if depth > MAX_ENCOUNTER_DEPTH or values > MAX_ENCOUNTER_VALUES:
+            raise CompositionError("Encounter exceeds the F1 Client JSON depth/value limit")
+        if isinstance(value, dict):
+            pending.extend((child, depth + 1) for child in value.values())
+        elif isinstance(value, list):
+            pending.extend((child, depth + 1) for child in value)
 
 
 def validate_outputs(root: Path, expected: dict[Path, bytes]) -> None:
