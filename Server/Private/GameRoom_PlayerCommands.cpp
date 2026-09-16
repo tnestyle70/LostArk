@@ -128,8 +128,49 @@ bool LostArk::Server::CGameRoom::Commit_MoveGoal(
 	const float goalX,
 	const float goalZ)
 {
+	if (m_ServerNavigation.Is_Loaded())
+	{
+		/* A held right mouse re-sends its goal about twenty times a second.
+		Routing each one restarted A* from a start cell that had moved, and the
+		first waypoint - always a neighbouring cell centre, since the search
+		drops the start cell - flipped between the two equal-cost diagonals, so
+		the player wove from side to side.
+
+		The request is compared, not the projected goal: a cursor resting on an
+		obstacle is not walkable, so it projects metres away and would never
+		look like the same goal twice. */
+		const float driftX = goalX - player.fMoveRequestX;
+		const float driftZ = goalZ - player.fMoveRequestZ;
+		if (player.hasMoveGoal && !player.MovePath.empty() &&
+			driftX * driftX + driftZ * driftZ <=
+				MOVE_ROUTE_KEEP_DISTANCE * MOVE_ROUTE_KEEP_DISTANCE)
+		{
+			player.isCombatReady = true;
+			return true;
+		}
+		/* A goal the player can walk straight at has no waypoint to flip, so
+		steer at it and let the existing body sweep slide along what it
+		touches. Only a closed line needs a route. */
+		SERVER_NAV_POINT exactGoal{};
+		if (m_ServerNavigation.Sample_Position(goalX, goalZ, exactGoal) &&
+			m_ServerNavigation.Has_LineOfSight(
+				player.fPositionX, player.fPositionZ, exactGoal.x, exactGoal.z))
+		{
+			player.MovePath.clear();
+			player.iMovePathIndex = 0;
+			player.fMoveRequestX = goalX;
+			player.fMoveRequestZ = goalZ;
+			player.fMoveGoalX = exactGoal.x;
+			player.fMoveGoalZ = exactGoal.z;
+			player.hasMoveGoal = true;
+			player.isCombatReady = true;
+			return true;
+		}
+	}
 	player.MovePath.clear();
 	player.iMovePathIndex = 0;
+	player.fMoveRequestX = goalX;
+	player.fMoveRequestZ = goalZ;
 	if (m_ServerNavigation.Is_Loaded())
 	{
 		if (!m_ServerNavigation.Find_Path(
