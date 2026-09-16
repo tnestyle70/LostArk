@@ -4491,7 +4491,7 @@
     "Sound/Asther/silian1_attack9_shot1__208313800.wav"
    ],
    "Silian1_Attack9_Shot2": [
-   "Sound/Asther/silian1_attack9_shot2__262622594.wav"
+    "Sound/Asther/silian1_attack9_shot2__262622594.wav"
    ]
   },
   "Valtan": {
@@ -5013,6 +5013,176 @@
    ],
    "G_Voltan2_DownM1": [
     "Sound/Valtan/g_voltan2_downm1__134755858.wav"
+   ]
+  },
+  "Vehicle": {
+   "S_Vehicle_TrisionHorse_Dash1": [
+    "Sound/Vehicle/S_Vehicle_TrisionHorse_Dash1__377584030.wav",
+    "Sound/Vehicle/S_Vehicle_TrisionHorse_Dash1__122210778.wav",
+    "Sound/Vehicle/S_Vehicle_TrisionHorse_Dash1__702686988.wav"
+   ],
+   "S_Vehicle_TrisionHorse_Skill1": [
+    "Sound/Vehicle/S_Vehicle_TrisionHorse_Skill1__9066984.wav",
+    "Sound/Vehicle/S_Vehicle_TrisionHorse_Skill1__449053931.wav",
+    "Sound/Vehicle/S_Vehicle_TrisionHorse_Skill1__646899163.wav"
+   ],
+   "S_Vehicle_TrisionHorse_Skill2": [
+    "Sound/Vehicle/S_Vehicle_TrisionHorse_Skill2__270826267.wav",
+    "Sound/Vehicle/S_Vehicle_TrisionHorse_Skill2__121761292.wav",
+    "Sound/Vehicle/S_Vehicle_TrisionHorse_Skill2__140442900.wav"
+   ],
+   "S_Vehicle_TrisionHorse_Skill3": [
+    "Sound/Vehicle/S_Vehicle_TrisionHorse_Skill3__299276268.wav",
+    "Sound/Vehicle/S_Vehicle_TrisionHorse_Skill3__292914668.wav",
+    "Sound/Vehicle/S_Vehicle_TrisionHorse_Skill3__499221668.wav"
+   ],
+   "Horse_FootStep_Foley1": [
+    "Sound/Vehicle/Horse_FootStep_Foley1__61427948.wav",
+    "Sound/Vehicle/Horse_FootStep_Foley1__101372645.wav",
+    "Sound/Vehicle/Horse_FootStep_Foley1__35359211.wav",
+    "Sound/Vehicle/Horse_FootStep_Foley1__87972404.wav",
+    "Sound/Vehicle/Horse_FootStep_Foley1__43661199.wav"
+   ],
+   "Horse_FootStep": [
+    "Sound/Vehicle/Horse_FootStep__277037149.wav",
+    "Sound/Vehicle/Horse_FootStep__169524703.wav",
+    "Sound/Vehicle/Horse_FootStep__49698092.wav",
+    "Sound/Vehicle/Horse_FootStep__120983642.wav",
+    "Sound/Vehicle/Horse_FootStep__257902166.wav"
+   ],
+   "S_Vehicle_Starlight1_Skill1": [
+    "Sound/Vehicle/S_Vehicle_Starlight1_Skill1__57689915.wav",
+    "Sound/Vehicle/S_Vehicle_Starlight1_Skill1__256924502.wav",
+    "Sound/Vehicle/S_Vehicle_Starlight1_Skill1__352864142.wav"
+   ],
+   "S_Vehicle_Starlight1_Skill2": [
+    "Sound/Vehicle/S_Vehicle_Starlight1_Skill2__631205564.wav",
+    "Sound/Vehicle/S_Vehicle_Starlight1_Skill2__608761880.wav",
+    "Sound/Vehicle/S_Vehicle_Starlight1_Skill2__674754048.wav"
+   ],
+   "S_Vehicle_Starlight1_Skill3": [
+    "Sound/Vehicle/S_Vehicle_Starlight1_Skill3__442181438.wav"
+   ],
+   "S_Vehicle_MocoBoard_Dash": [
+    "Sound/Vehicle/S_Vehicle_MocoBoard_Dash__751630972.wav",
+    "Sound/Vehicle/S_Vehicle_MocoBoard_Dash__512931528.wav"
+   ],
+   "S_Vehicle_HeavyWalkerBM_Dash1": [
+    "Sound/Vehicle/S_Vehicle_HeavyWalkerBM_Dash1__195233179.wav",
+    "Sound/Vehicle/S_Vehicle_HeavyWalkerBM_Dash1__455994881.wav",
+    "Sound/Vehicle/S_Vehicle_HeavyWalkerBM_Dash1__402817239.wav"
+   ],
+   "S_Vehicle_HeavyWalkerBM_Skill1": [
+    "Sound/Vehicle/S_Vehicle_HeavyWalkerBM_Skill1__458697389.wav",
+    "Sound/Vehicle/S_Vehicle_HeavyWalkerBM_Skill1__195168855.wav",
+    "Sound/Vehicle/S_Vehicle_HeavyWalkerBM_Skill1__814168381.wav"
+   ],
+   "S_Vehicle_HeavyWalkerBM_Skill2": [
+    "Sound/Vehicle/S_Vehicle_HeavyWalkerBM_Skill2__201308955.wav",
+    "Sound/Vehicle/S_Vehicle_HeavyWalkerBM_Skill2__285951503.wav",
+    "Sound/Vehicle/S_Vehicle_HeavyWalkerBM_Skill2__61047986.wav"
+   ],
+   "S_Vehicle_HeavyWalkerBM_Skill3": [
+    "Sound/Vehicle/S_Vehicle_HeavyWalkerBM_Skill3__38285121.wav",
+    "Sound/Vehicle/S_Vehicle_HeavyWalkerBM_Skill3__133135998.wav",
+    "Sound/Vehicle/S_Vehicle_HeavyWalkerBM_Skill3__320369559.wav"
+   ],
+   "S_Vehicle_HeavyWalkerBM_FootStep": [
+    "Sound/Vehicle/S_Vehicle_HeavyWalkerBM_FootStep__215770222.wav",
+    "Sound/Vehicle/S_Vehicle_HeavyWalkerBM_FootStep__579808418.wav",
+    "Sound/Vehicle/S_Vehicle_HeavyWalkerBM_FootStep__179576894.wav",
+    "Sound/Vehicle/S_Vehicle_HeavyWalkerBM_FootStep__401884395.wav"
+   ],
+   "S_Vehicle_UniconTube_Dash": [
+    "Sound/Vehicle/S_Vehicle_UniconTube_Dash__112126836.wav",
+    "Sound/Vehicle/S_Vehicle_UniconTube_Dash__196134266.wav",
+    "Sound/Vehicle/S_Vehicle_UniconTube_Dash__51387669.wav",
+    "Sound/Vehicle/S_Vehicle_UniconTube_Dash__152379885.wav",
+    "Sound/Vehicle/S_Vehicle_UniconTube_Dash__269850559.wav"
+   ],
+   "S_Vehicle_UniconTube_Skill1": [
+    "Sound/Vehicle/S_Vehicle_UniconTube_Skill1__48638919.wav",
+    "Sound/Vehicle/S_Vehicle_UniconTube_Skill1__439593325.wav"
+   ],
+   "S_Vehicle_UniconTube_Skill2_1": [
+    "Sound/Vehicle/S_Vehicle_UniconTube_Skill2_1__902140855.wav",
+    "Sound/Vehicle/S_Vehicle_UniconTube_Skill2_1__22947360.wav"
+   ],
+   "S_Vehicle_UniconTube_Skill2_2": [
+    "Sound/Vehicle/S_Vehicle_UniconTube_Skill2_2__642485691.wav",
+    "Sound/Vehicle/S_Vehicle_UniconTube_Skill2_2__925695701.wav",
+    "Sound/Vehicle/S_Vehicle_UniconTube_Skill2_2__748296104.wav"
+   ],
+   "S_Vehicle_UniconTube_Skill2_3": [
+    "Sound/Vehicle/S_Vehicle_UniconTube_Skill2_3__12183015.wav"
+   ],
+   "S_Vehicle_UniconTube_Skill_3_1": [
+    "Sound/Vehicle/S_Vehicle_UniconTube_Skill_3_1__9901185.wav",
+    "Sound/Vehicle/S_Vehicle_UniconTube_Skill_3_1__314416997.wav"
+   ],
+   "S_Vehicle_UniconTube_Skill_3_2": [
+    "Sound/Vehicle/S_Vehicle_UniconTube_Skill_3_2__112126836.wav",
+    "Sound/Vehicle/S_Vehicle_UniconTube_Skill_3_2__196134266.wav",
+    "Sound/Vehicle/S_Vehicle_UniconTube_Skill_3_2__26509205.wav",
+    "Sound/Vehicle/S_Vehicle_UniconTube_Skill_3_2__783053268.wav",
+    "Sound/Vehicle/S_Vehicle_UniconTube_Skill_3_2__890269689.wav",
+    "Sound/Vehicle/S_Vehicle_UniconTube_Skill_3_2__469190448.wav"
+   ],
+   "S_Vehicle_AncientDragon1_Dash1": [
+    "Sound/Vehicle/S_Vehicle_AncientDragon1_Dash1__461953170.wav",
+    "Sound/Vehicle/S_Vehicle_AncientDragon1_Dash1__204030155.wav",
+    "Sound/Vehicle/S_Vehicle_AncientDragon1_Dash1__389007670.wav"
+   ],
+   "S_Vehicle_AncientDragon1_Skill1": [
+    "Sound/Vehicle/S_Vehicle_AncientDragon1_Skill1__480123893.wav",
+    "Sound/Vehicle/S_Vehicle_AncientDragon1_Skill1__617509644.wav",
+    "Sound/Vehicle/S_Vehicle_AncientDragon1_Skill1__258937676.wav"
+   ],
+   "S_Vehicle_AncientDragon1_Skill1_Vox1": [
+    "Sound/Vehicle/S_Vehicle_AncientDragon1_Skill1_Vox1__720258799.wav",
+    "Sound/Vehicle/S_Vehicle_AncientDragon1_Skill1_Vox1__592351749.wav",
+    "Sound/Vehicle/S_Vehicle_AncientDragon1_Skill1_Vox1__313008255.wav"
+   ],
+   "S_Vehicle_AncientDragon1_Skill2_1": [
+    "Sound/Vehicle/S_Vehicle_AncientDragon1_Skill2_1__480033996.wav",
+    "Sound/Vehicle/S_Vehicle_AncientDragon1_Skill2_1__170433590.wav",
+    "Sound/Vehicle/S_Vehicle_AncientDragon1_Skill2_1__79060313.wav"
+   ],
+   "S_Vehicle_AncientDragon1_Skill2_Vox1": [
+    "Sound/Vehicle/S_Vehicle_AncientDragon1_Skill2_Vox1__552889509.wav",
+    "Sound/Vehicle/S_Vehicle_AncientDragon1_Skill2_Vox1__283191393.wav",
+    "Sound/Vehicle/S_Vehicle_AncientDragon1_Skill2_Vox1__84751562.wav"
+   ],
+   "S_Vehicle_AncientDragon1_Skill2_2": [
+    "Sound/Vehicle/S_Vehicle_AncientDragon1_Skill2_2__598662378.wav",
+    "Sound/Vehicle/S_Vehicle_AncientDragon1_Skill2_2__58616079.wav",
+    "Sound/Vehicle/S_Vehicle_AncientDragon1_Skill2_2__58608638.wav"
+   ],
+   "S_Vehicle_AncientDragon1_Skill3_Vox1": [
+    "Sound/Vehicle/S_Vehicle_AncientDragon1_Skill3_Vox1__483632050.wav",
+    "Sound/Vehicle/S_Vehicle_AncientDragon1_Skill3_Vox1__253927101.wav",
+    "Sound/Vehicle/S_Vehicle_AncientDragon1_Skill3_Vox1__20554429.wav"
+   ],
+   "S_Vehicle_AncientDragon1_Skill3": [
+    "Sound/Vehicle/S_Vehicle_AncientDragon1_Skill3__334149719.wav",
+    "Sound/Vehicle/S_Vehicle_AncientDragon1_Skill3__509367625.wav",
+    "Sound/Vehicle/S_Vehicle_AncientDragon1_Skill3__613440376.wav"
+   ],
+   "S_Vehicle_AncientDragon1_FootStep1": [
+    "Sound/Vehicle/S_Vehicle_AncientDragon1_FootStep1__737232244.wav",
+    "Sound/Vehicle/S_Vehicle_AncientDragon1_FootStep1__16465728.wav",
+    "Sound/Vehicle/S_Vehicle_AncientDragon1_FootStep1__420831409.wav",
+    "Sound/Vehicle/S_Vehicle_AncientDragon1_FootStep1__1052870350.wav",
+    "Sound/Vehicle/S_Vehicle_AncientDragon1_FootStep1__183155337.wav",
+    "Sound/Vehicle/S_Vehicle_AncientDragon1_FootStep1__201064831.wav",
+    "Sound/Vehicle/S_Vehicle_AncientDragon1_FootStep1__94088019.wav",
+    "Sound/Vehicle/S_Vehicle_AncientDragon1_FootStep1__41911508.wav",
+    "Sound/Vehicle/S_Vehicle_AncientDragon1_FootStep1__167883015.wav",
+    "Sound/Vehicle/S_Vehicle_AncientDragon1_FootStep1__58014001.wav",
+    "Sound/Vehicle/S_Vehicle_AncientDragon1_FootStep1__145784378.wav",
+    "Sound/Vehicle/S_Vehicle_AncientDragon1_FootStep1__203524812.wav",
+    "Sound/Vehicle/S_Vehicle_AncientDragon1_FootStep1__331706164.wav",
+    "Sound/Vehicle/S_Vehicle_AncientDragon1_FootStep1__123686701.wav"
    ]
   }
  }
