@@ -28,11 +28,12 @@ namespace Client::EffectDocumentCodecDetail
 {
 
 
-	constexpr std::array<std::string_view, 52u>
+	constexpr std::array<std::string_view, 53u>
 		PORTABLE_AUTHORED_PARTICLE_MODULE_CLASSES = {
 			"particlemodulecollision",
 			"particlemoduleattractorpoint",
 			"particlemodulekillheight",
+			"particlemodulekilllength",
 			"particlemoduleacceleration",
 			"particlemoduleaccelerationoverlifetime",
 			"particlemodulecameraoffset",
@@ -85,12 +86,13 @@ namespace Client::EffectDocumentCodecDetail
 		};
 
 
-	constexpr std::array<std::pair<std::string_view, std::string_view>, 82u>
+	constexpr std::array<std::pair<std::string_view, std::string_view>, 83u>
 		PORTABLE_AUTHORED_PARTICLE_DISTRIBUTION_PROPERTIES = {
 			std::pair{ "particlemoduleattractorpoint", "position" },
 			std::pair{ "particlemoduleattractorpoint", "range" },
 			std::pair{ "particlemoduleattractorpoint", "strength" },
 			std::pair{ "particlemodulekillheight", "height" },
+			std::pair{ "particlemodulekilllength", "length" },
             std::pair{ "particlemodulecollision", "dampingfactor" },
             std::pair{ "particlemodulecollision", "dampingfactorrotation" },
             std::pair{ "particlemodulecollision", "maxcollisions" },

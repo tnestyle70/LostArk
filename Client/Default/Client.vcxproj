@@ -2400,6 +2400,55 @@
     <None Include="..\..\Data\Effects\Authored\effect.valtan.source.default-aura.ghost.effect.json" />
   </ItemGroup>
   <ItemGroup>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshKouku3712.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshKouku3776.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleKouku3712.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleKouku3776.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectKoukuNativeGroup3712.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectKoukuNativeGroup3776.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchKoukuNativeCases3712.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectArtistNativeDispatchKoukuNativeCases3776.hlsli" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.vehicle.vehicle_mokoboard_rainbow.95722.0.full.restore.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.vehicle.vehicle_terpeion_gold.96000.0.full.restore.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.vehicle.vehicle_terpeion_gold.96010.0.full.restore.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.vehicle.vehicle_terpeion_gold.96020.0.full.restore.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.vehicle.vehicle_terpeion_gold.96030.0.full.restore.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.vehicle.vehicle_aufstehen_r.97300.0.full.restore.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.vehicle.vehicle_aufstehen_r.97310.0.full.restore.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.vehicle.vehicle_aufstehen_r.97320.0.full.restore.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.vehicle.vehicle_aufstehen_r.97330.0.full.restore.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.vehicle.vehicle_unicorn_tube_sea.97730.0.full.restore.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.vehicle.vehicle_unicorn_tube_sea.97731.0.full.restore.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.vehicle.vehicle_unicorn_tube_sea.97732.0.full.restore.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.vehicle.vehicle_unicorn_tube_sea.97732.1.full.restore.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.vehicle.vehicle_unicorn_tube_sea.97732.2.full.restore.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.vehicle.vehicle_unicorn_tube_sea.97733.0.full.restore.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.vehicle.vehicle_unicorn_tube_sea.97733.1.full.restore.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.vehicle.vehicle_starlight_blessing_serene.98380.0.full.restore.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.vehicle.vehicle_starlight_blessing_serene.98381.0.full.restore.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.vehicle.vehicle_starlight_blessing_serene.98382.1.full.restore.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.vehicle.vehicle_ancient_myth.98520.0.full.restore.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.vehicle.vehicle_ancient_myth.98521.0.full.restore.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.vehicle.vehicle_ancient_myth.98522.0.full.restore.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.vehicle.vehicle_ancient_myth.98522.1.full.restore.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.vehicle.vehicle_ancient_myth.98523.0.full.restore.effect.json"></None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectVehicleModelNative.hlsli" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticleKouku2496.hlsl">
       <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
       <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>

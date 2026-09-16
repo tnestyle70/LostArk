@@ -2761,6 +2761,8 @@ HRESULT Client::CEffectDocumentRenderer::Stage_ModelCueResource(
 			strOutError = "Animated Model Cue native parameter stage failed: " + Cue.strCueId;
 			return E_FAIL;
 		}
+		if (!Build_ArtistModelCueMaterialTrackBindings(Cue, StagedMaterial->ArtistMaterialTrackBindings, strOutError))
+			return E_INVALIDARG;
 		StagedMaterial->iSourceMaterialProfile = ArtistProgram ? ArtistProgram->iProfileIndex : LanceProgram ? LanceProgram->iProfileIndex : ALTVProgram->iProfileIndex;
 		StagedMaterial->bSourceRequiresSceneDepth = ArtistProgram ? ArtistProgram->bNeedsDepthSample : LanceProgram ? LanceProgram->bNeedsDepthSample : ALTVProgram->bNeedsDepthSample;
 		for (size_t iLane = 0u; iLane < Names.size(); ++iLane)

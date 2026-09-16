@@ -1,7 +1,7 @@
 """Install the selected Kouku native material tables without replacing peers.
 
 The existing Artist material interpreter owns the runtime. This tool updates
-only supplied program IDs within 2304..3711 and emits sourceMaterial patches. It does
+only supplied program IDs within 2304..3967 and emits sourceMaterial patches. It does
 not rewrite the renderer or Has_ArtistMaterialContract implementation.
 """
 from pathlib import Path
@@ -9,7 +9,7 @@ import argparse, copy, hashlib, json, re
 from native_material_tables import read_material_bytes, read_material_source, write_material_source
 
 ROOT=Path(__file__).resolve().parents[2]
-FIRST,LAST=2304,3711
+FIRST,LAST=2304,3967
 def read(path):return json.loads(path.read_text(encoding='utf-8-sig'))
 def write(path,value):
     path.parent.mkdir(parents=True,exist_ok=True)
@@ -35,10 +35,12 @@ def install(contract_path,evidence,header_path):
                     not p['requiresDepthSample']), 'Modulate requires the admitted one-sided source sprite carrier'
             render = 'MULTIPLY_ONE_SIDED_DEPTH_READ'
         # Static masked surfaces retain their native PS discard and write
-        # depth through the existing opaque pass. Particle masks keep their
+        # depth through the existing opaque pass. A masked model cue is the same
+        # kind of solid surface: blending a self-overlapping skin without depth
+        # write resolves per pixel by submission order. Particle masks keep their
         # authored translucent ordering/depth-read contract.
         if not p['nativeTwoSided'] and (p['nativeBlend']=='blend_opaque' or
-                source_transform_mesh and p['nativeBlend']=='blend_masked'):
+                (source_transform_mesh or p.get('modelCue')) and p['nativeBlend']=='blend_masked'):
             render='OPAQUE_BACK_DEPTH_WRITE'
         textures=p['textures'];parameters=p['parameters'];switches=p['staticSwitches']
         for texture in textures:

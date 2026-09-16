@@ -147,6 +147,9 @@ float4 ArtistNativeSample9(float2 uv, float lod, bool explicitLod)
 #if !defined(EFFECT_NATIVE_PROFILE_GROUP) || EFFECT_NATIVE_PROFILE_GROUP == 448
 #include "Shader_EffectArtistNativeGroup448.hlsli"
 #endif
+#if !defined(EFFECT_NATIVE_PROFILE_GROUP)
+#include "Shader_EffectVehicleModelNative.hlsli"
+#endif
 #if !defined(EFFECT_NATIVE_PROFILE_GROUP) || EFFECT_NATIVE_PROFILE_GROUP == 512
 #include "Shader_EffectArtistNativeGroup512.hlsli"
 #endif
@@ -405,6 +408,12 @@ float4 ArtistNativeSample9(float2 uv, float lod, bool explicitLod)
 #if !defined(ARTIST_NATIVE_MODEL_ONLY) && (!defined(EFFECT_NATIVE_PROFILE_GROUP) || EFFECT_NATIVE_PROFILE_GROUP == 3648)
 #include "Shader_EffectKoukuNativeGroup3648.hlsli"
 #endif
+#if !defined(ARTIST_NATIVE_MODEL_ONLY) && (!defined(EFFECT_NATIVE_PROFILE_GROUP) || EFFECT_NATIVE_PROFILE_GROUP == 3712 || defined(EFFECT_NATIVE_DECAL_CARRIER) || defined(EFFECT_NATIVE_TRAIL_CARRIER))
+#include "Shader_EffectKoukuNativeGroup3712.hlsli"
+#endif
+#if !defined(ARTIST_NATIVE_MODEL_ONLY) && (!defined(EFFECT_NATIVE_PROFILE_GROUP) || EFFECT_NATIVE_PROFILE_GROUP == 3776 || defined(EFFECT_NATIVE_TRAIL_CARRIER))
+#include "Shader_EffectKoukuNativeGroup3776.hlsli"
+#endif
 // END KOUKU NATIVE GROUP
 #ifndef ARTIST_NATIVE_MODEL_ONLY
 EFFECT_PS_OUT Shade_EffectArtistNative(uint profile, ARTIST_NATIVE_INPUT input)
@@ -500,6 +509,12 @@ EFFECT_PS_OUT Shade_EffectArtistNative(uint profile, ARTIST_NATIVE_INPUT input)
 #if !defined(EFFECT_NATIVE_PROFILE_GROUP) || EFFECT_NATIVE_PROFILE_GROUP == 3648
 #include "Shader_EffectArtistNativeDispatchKoukuNativeCases3648.hlsli"
 #endif
+#if !defined(EFFECT_NATIVE_PROFILE_GROUP) || EFFECT_NATIVE_PROFILE_GROUP == 3712 || defined(EFFECT_NATIVE_DECAL_CARRIER) || defined(EFFECT_NATIVE_TRAIL_CARRIER)
+#include "Shader_EffectArtistNativeDispatchKoukuNativeCases3712.hlsli"
+#endif
+#if !defined(EFFECT_NATIVE_PROFILE_GROUP) || EFFECT_NATIVE_PROFILE_GROUP == 3776 || defined(EFFECT_NATIVE_TRAIL_CARRIER)
+#include "Shader_EffectArtistNativeDispatchKoukuNativeCases3776.hlsli"
+#endif
 // END KOUKU NATIVE CASES
     default: clip(-1.f); return output;
     }
@@ -519,6 +534,12 @@ float4 Shade_ArtistModelNative(uint profile, ARTIST_NATIVE_INPUT input)
 #endif
 #if !defined(EFFECT_NATIVE_PROFILE_GROUP) || EFFECT_NATIVE_PROFILE_GROUP == 448
     case 461u: return ArtistNative461(input);
+#endif
+#if !defined(EFFECT_NATIVE_PROFILE_GROUP)
+    case 3828u: return ArtistNative3828(input);
+    case 3831u: return ArtistNative3831(input);
+    case 3832u: return ArtistNative3832(input);
+    case 3833u: return ArtistNative3833(input);
 #endif
     default: clip(-1.f); return 0.f;
     }

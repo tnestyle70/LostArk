@@ -164,6 +164,49 @@ inline bool Apply_ArtistMaterialTrackSamples(const EFFECT_SOURCE_TRANSFORM_TRACK
     return true;
 }
 
+// Model Cue scalar curves (PlaySkeletalMesh material fades) sampled at cue-local time.
+inline bool Build_ArtistModelCueMaterialTrackBindings(const EFFECT_MODEL_CUE_DESC& Cue,
+    std::vector<ARTIST_PARAMETER_DESC>& Bindings, std::string& Error)
+{
+    Bindings.clear();
+    if (Cue.MaterialParameterTracks.empty()) return true;
+    const auto* Program = Cue.Material ? Find_ArtistProgram(Cue.Material->SourceMaterial.strRuntimeShaderProfileId) : nullptr;
+    std::array<float4_t, 32u> Parameters;
+    if (!Program || !Program->bModelCue || Cue.MaterialParameterTracks.size() > 64u ||
+        !Build_ArtistParameters(Cue.Material->SourceMaterial, Parameters))
+    { Error = "Model Cue material parameter tracks require an admitted native skeletal material: " + Cue.strCueId; return false; }
+    std::vector<ARTIST_PARAMETER_DESC> Candidate;
+    for (const auto& Track : Cue.MaterialParameterTracks)
+    {
+        const auto Parameter = std::find_if(Program->Parameters.begin(), Program->Parameters.end(),
+            [&](const auto& Value) { return Value.strName == Track.strName && !Value.bVector; });
+        if (Track.bVector || Parameter == Program->Parameters.end() || Parameter->iRow >= 32u || Parameter->iLane >= 4u ||
+            std::any_of(Candidate.begin(), Candidate.end(), [&](const auto& Value) { return Value.strName == Track.strName; }) ||
+            Track.Values.Keys.empty() || Track.Values.iOperation != 1u || Track.Values.iComponentCount != 1u ||
+            !CEffectDistribution::Validate(Track.Values, Error))
+        { if (Error.empty()) Error = "Missing, duplicate or invalid Model Cue scalar material track: " + Track.strName; return false; }
+        Candidate.push_back(*Parameter);
+    }
+    Bindings = std::move(Candidate);
+    return true;
+}
+
+inline bool Apply_ArtistModelCueMaterialTrackSamples(const EFFECT_MODEL_CUE_DESC& Cue,
+    std::span<const ARTIST_PARAMETER_DESC> Bindings, const f32_t CueLocalSeconds,
+    std::array<float4_t, 32u>& Parameters)
+{
+    if (Bindings.size() != Cue.MaterialParameterTracks.size() || !std::isfinite(CueLocalSeconds)) return false;
+    for (size_t i = 0u; i < Bindings.size(); ++i)
+    {
+        const auto& Binding = Bindings[i];
+        const f32_t Value = CEffectDistribution::Evaluate(Cue.MaterialParameterTracks[i].Values, CueLocalSeconds, 0.f).x;
+        if (!std::isfinite(Value) || Binding.iRow >= Parameters.size() || Binding.iLane >= 4u) return false;
+        auto& Row = Parameters[Binding.iRow];
+        (Binding.iLane == 0u ? Row.x : Binding.iLane == 1u ? Row.y : Binding.iLane == 2u ? Row.z : Row.w) = Value;
+    }
+    return true;
+}
+
 inline bool Has_ArtistMaterialContract(const EFFECT_ELEMENT_DESC& Element)
 {
     const auto& Source=Element.Material.SourceMaterial;
@@ -270,8 +313,15 @@ inline bool Has_ArtistModelCueMaterialContract(const EFFECT_MODEL_CUE_DESC& Cue)
         Source.Textures.size()!=Program->TextureNames.size() || Source.StaticSwitches.size()!=Program->StaticSwitches.size()) return false;
     const std::string_view expected=Program->iProfileIndex==460u ?
         "Effect/Artist/Models/SK_SDM_TIG_00/sk_sdm_tig_00_sk.wmodel" :
+        Program->iProfileIndex==3828u ? "Effect/Vehicle/Terpeion/TerpeionWing/TerpeionWing.wmodel" :
+        Program->iProfileIndex==3831u ? "Effect/Vehicle/Aufstehen/AufstehenDoll/AufstehenDoll.wmodel" :
+        Program->iProfileIndex==3832u ? "Effect/Vehicle/Aufstehen/AufstehenDollHair/AufstehenDollHair.wmodel" :
+        Program->iProfileIndex==3833u ? "Effect/Vehicle/Aufstehen/AufstehenPuppet/AufstehenPuppet.wmodel" :
         "Effect/Artist/Models/SK_SDM_DRA_00/sk_sdm_dra_00_sk.wmodel";
-    if (Cue.strModelAssetId!=expected) return false;
+    // The Aufstehen doll's eyelash section shares its body skin material.
+    const bool bSharedDollSkin = Program->iProfileIndex==3831u &&
+        Cue.strModelAssetId=="Effect/Vehicle/Aufstehen/AufstehenDollLashes/AufstehenDollLashes.wmodel";
+    if (Cue.strModelAssetId!=expected && !bSharedDollSkin) return false;
     for (const auto name: Program->TextureNames)
         if(std::count_if(Source.Textures.begin(),Source.Textures.end(),[&](const auto& T){return T.strName==name&&!T.strAssetId.empty()&&!T.strSourceObjectPath.empty();})!=1) return false;
     for (const auto& S:Program->StaticSwitches)

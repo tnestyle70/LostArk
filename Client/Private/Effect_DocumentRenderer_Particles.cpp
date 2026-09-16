@@ -1206,7 +1206,7 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 					Point.fCumulativeDistance / fTilingDistance :
 					static_cast<f32_t>(iPair);
                 const bool bKoukuNativeTrail = pResource->iSourceMaterialProfile >= 2304u &&
-                    pResource->iSourceMaterialProfile <= 3711u;
+                    pResource->iSourceMaterialProfile <= 3967u;
                 if (bKoukuNativeTrail && Point.iSourceColorComponentMask != 0x0fu)
                     return Fail_RenderOperation("Kouku source trail color payload is incomplete.", E_INVALIDARG, true);
                 const float4_t Color = bKoukuNativeTrail ? Point.vSourceColor : bRuntimeMaterialV2Ribbon ?

@@ -383,7 +383,7 @@ for ordinal, selection in enumerate(selections):
             # Valtan destruction's masked monster section uses the original
             # actor/world-position prefix and tangent-space sky at rows 25..27.
             '9ae9112a9f0431448e28da5cf85ef088': ('239396ffe9f57b47a19ee2955207d2e8', 25, 'actor', [0, 1, 2, 25, 26, 27]),
-        }.get(sid) if arguments.profile_domain=='kouku' else None
+        }.get(sid) if arguments.profile_domain=='kouku' and not model else None
         if kouku_lit:
             assert selection['sourceVS'] == kouku_lit[0], ('Kouku lit vertex shader mismatch', selection['sourceVS'], kouku_lit[0])
             assert bindings['constantBufferClosure']['unownedConstantBuffer0Slots'] == kouku_lit[3], ('Kouku lit engine rows mismatch', bindings['constantBufferClosure']['unownedConstantBuffer0Slots'], kouku_lit[3])
@@ -496,11 +496,25 @@ for ordinal, selection in enumerate(selections):
             lines += ['    source[1]=g_ArtistSourceWorldToLocal[0];',
                       '    source[2]=g_ArtistSourceWorldToLocal[1];',
                       '    source[3]=g_ArtistSourceWorldToLocal[2];']
-        if model:
+        if model and sid == '5f33bef7c823444d8983ab12adf5b7bb':
+            # Terpeion wing ghost skin: engine rows are CB0[0].x opacity and
+            # CB0[22..25] (lighting channel, sky upper/lower, ambient+intensity).
+            assert bindings['constantBufferClosure']['unownedConstantBuffer0Slots'] == [0, 22, 23, 24, 25]
+            lines += ['    source[0]=float4(input.color.a,0.f,0.f,0.f);',
+                      '    source[23]=float4(input.skyUpperColor,0.f);', '    source[24]=float4(input.skyLowerColor,0.f);',
+                      '    source[25]=float4(input.ambientColor,input.skyIntensity);']
+        elif model:
             lines += ['    // Existing scene adapter: source world origin is absolute; camera is converted to source cm.', '    source[0]=0.f;', '    source[1]=float4(input.sourceCameraPosition,1.f);', '    float4 projection[4]; [unroll] for(uint i=0u;i<4u;++i) projection[i]=input.sourceProjection[i];']
             if 'tig_00' in r['sourceMaterial']:
                 lines += ['    source[2]=float4(input.sourceActorPosition,0.f); // Native actor-position seed for the emissive pulse.', '    source[3].x=input.color.a;']
                 sky=28
+            elif arguments.profile_domain == 'kouku':
+                # Skinned kouku-domain skins (vehicle PlaySkeletalMesh): engine rows are
+                # the world prefix [0,1] and the three trailing sky rows of this PS.
+                unowned = bindings['constantBufferClosure']['unownedConstantBuffer0Slots']
+                sky = unowned[2] if len(unowned) == 5 else None
+                assert sky is not None and unowned == [0, 1, sky, sky + 1, sky + 2], ('Skinned engine rows', sid, unowned)
+                lines += ['    source[1].w=input.color.a;']
             else:
                 lines += ['    source[1].w=input.color.a;'];sky=24
             lines += [f'    source[{sky}]=float4(input.skyUpperColor,0.f);',f'    source[{sky+1}]=float4(input.skyLowerColor,0.f);',f'    source[{sky+2}]=float4(input.ambientColor,input.skyIntensity);']
@@ -586,7 +600,9 @@ for ordinal, selection in enumerate(selections):
                 '286c952473acd34a8cdd4e981db6ec1f',
                 '2837f9c4eed1a745b242b4abb6f57be1',
                 '63b3600fc7b02a43999ea2a77bb81937',
-                '52f3a078c5510e46a8de35cbed7fda61', 'fb6f0054b2bc094ab3b058418968b930')), ('Unreviewed source pass constants', sid, pass_count)
+                '52f3a078c5510e46a8de35cbed7fda61', 'fb6f0054b2bc094ab3b058418968b930',
+                # Terpeion wing ghost skin: CB2[3]/CB2[4] diffuse/specular overrides only.
+                '5f33bef7c823444d8983ab12adf5b7bb')), ('Unreviewed source pass constants', sid, pass_count)
         lines += [f'    float4 passValues[{pass_count}]; [unroll] for(uint passIndex=0u;passIndex<{pass_count}u;++passIndex) passValues[passIndex]=0.f;',
                   '    passValues[0]=float4(.5f,-.5f,.5f,.5f);']
         if decal or kouku_lit or model:

@@ -692,7 +692,7 @@ private:
 		ELEMENT_RESOURCE& InOutResource,
 		std::string& strOutError,
 		PREWARM_ASSET_CACHE* pSharedAssets = nullptr) const;
-	HRESULT Bind_ModelCueNativeMaterial(
+	HRESULT Bind_ModelCueNativeMaterial(const EFFECT_MODEL_CUE_DESC& Cue,
 		const ELEMENT_RESOURCE& Resource, f32_t fLocalTimeSeconds);
 	HRESULT Stage_ModelCueResource(
 		const EFFECT_MODEL_CUE_DESC& Cue,
