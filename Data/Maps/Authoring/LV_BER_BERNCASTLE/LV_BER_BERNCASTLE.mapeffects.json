@@ -1,0 +1,2646 @@
+{
+  "schema": "lostark.map-effect-presentation",
+  "formatVersion": 1,
+  "areaId": "LV_BER_BERNCASTLE",
+  "presentations": [
+    {
+      "independentEffectId": "source-particle.ead6c3c465cc1e4983bf4c3e",
+      "displayName": "par_d_fallsplash_w3_007",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.ead6c3c465cc1e4983bf4c3e",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_d_fallsplash_w3_007",
+      "position": [
+        154.845478515625,
+        29.80554931640625,
+        -20.66703125
+      ],
+      "rotationQuaternion": [
+        -0.0,
+        -1.0,
+        -0.0,
+        6.123233995736766e-17
+      ],
+      "scale": [
+        0.8500000238418579,
+        0.8500000238418579,
+        0.8500000238418579
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 100.0
+    },
+    {
+      "independentEffectId": "source-particle.87f1f1a14837d8e220b39386",
+      "displayName": "par_d_fallsplash_w3_007",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.87f1f1a14837d8e220b39386",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_d_fallsplash_w3_007",
+      "position": [
+        149.0069921875,
+        29.6599951171875,
+        -16.28042724609375
+      ],
+      "rotationQuaternion": [
+        0.0,
+        0.8932243011955153,
+        0.0,
+        0.4496113296546067
+      ],
+      "scale": [
+        0.6000000238418579,
+        0.6000000238418579,
+        0.6000000238418579
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 100.0
+    },
+    {
+      "independentEffectId": "source-particle.1660245aa861e201c4fb9800",
+      "displayName": "par_b_waterfall_002",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.1660245aa861e201c4fb9800",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_b_waterfall_002",
+      "position": [
+        150.4940234375,
+        38.39391845703125,
+        -15.066700439453125
+      ],
+      "rotationQuaternion": [
+        0.0,
+        0.7242470829514669,
+        0.0,
+        0.6895405447370669
+      ],
+      "scale": [
+        0.8999999761581421,
+        0.8999999761581421,
+        0.8999999761581421
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 100.0
+    },
+    {
+      "independentEffectId": "source-particle.5d748c49124d5e90206ae78b",
+      "displayName": "par_b_waterfall_002",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.5d748c49124d5e90206ae78b",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_b_waterfall_002",
+      "position": [
+        153.624365234375,
+        38.39391845703125,
+        -17.187911376953124
+      ],
+      "rotationQuaternion": [
+        0.0,
+        0.9523750127197659,
+        0.0,
+        0.30492922973540226
+      ],
+      "scale": [
+        0.8999999761581421,
+        0.8999999761581421,
+        0.8999999761581421
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 100.0
+    },
+    {
+      "independentEffectId": "source-particle.81f8ea8c6c2bdd5bf29102f5",
+      "displayName": "par_b_waterfall_002",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.81f8ea8c6c2bdd5bf29102f5",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_b_waterfall_002",
+      "position": [
+        154.149375,
+        38.39391845703125,
+        -18.658642578125
+      ],
+      "rotationQuaternion": [
+        0.0,
+        0.9711391584497252,
+        0.0,
+        0.23851359484431842
+      ],
+      "scale": [
+        0.8999999761581421,
+        0.8999999761581421,
+        0.8999999761581421
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 100.0
+    },
+    {
+      "independentEffectId": "source-particle.f2476493c228541ae3fd04c5",
+      "displayName": "par_d_fallmist_w3_002",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.f2476493c228541ae3fd04c5",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_d_fallmist_w3_002",
+      "position": [
+        151.54197265625,
+        29.8461572265625,
+        -24.2474365234375
+      ],
+      "rotationQuaternion": [
+        -0.4134561444323041,
+        0.6423642258995499,
+        -0.3958115068429108,
+        0.5096621125475094
+      ],
+      "scale": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 100.0
+    },
+    {
+      "independentEffectId": "source-particle.3be6b08f2f12d9b86e2d6ed0",
+      "displayName": "par_d_fallmist_w3_002",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.3be6b08f2f12d9b86e2d6ed0",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_d_fallmist_w3_002",
+      "position": [
+        153.477314453125,
+        34.7532275390625,
+        -17.831981201171875
+      ],
+      "rotationQuaternion": [
+        -0.5717695655371593,
+        0.7609565702225858,
+        -0.1966760296273303,
+        0.23525135819067386
+      ],
+      "scale": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 100.0
+    },
+    {
+      "independentEffectId": "source-particle.8c0ab0feb2e9e3c458a403e1",
+      "displayName": "par_b_waterfall_002",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.8c0ab0feb2e9e3c458a403e1",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_b_waterfall_002",
+      "position": [
+        151.637197265625,
+        35.46884765625,
+        -15.623045654296876
+      ],
+      "rotationQuaternion": [
+        0.0,
+        0.8700869911087115,
+        0.0,
+        0.492898192229784
+      ],
+      "scale": [
+        0.8999999761581421,
+        0.8999999761581421,
+        0.8999999761581421
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 100.0
+    },
+    {
+      "independentEffectId": "source-particle.9b3507661750b2010e88cfcf",
+      "displayName": "par_b_waterfall_002",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.9b3507661750b2010e88cfcf",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_b_waterfall_002",
+      "position": [
+        152.018583984375,
+        30.067138671875,
+        -25.87583251953125
+      ],
+      "rotationQuaternion": [
+        0.0,
+        0.9807852804032305,
+        0.0,
+        0.1950903220161282
+      ],
+      "scale": [
+        0.8999999761581421,
+        0.8999999761581421,
+        0.8999999761581421
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 100.0
+    },
+    {
+      "independentEffectId": "source-particle.1b8a1a909e87cd9d8344eed3",
+      "displayName": "par_b_waterfall_002",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.1b8a1a909e87cd9d8344eed3",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_b_waterfall_002",
+      "position": [
+        149.01458984375,
+        38.39391845703125,
+        -14.825224609375
+      ],
+      "rotationQuaternion": [
+        0.0,
+        0.7883464276266064,
+        0.0,
+        0.6152315905806267
+      ],
+      "scale": [
+        0.8999999761581421,
+        0.8999999761581421,
+        0.8999999761581421
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 100.0
+    },
+    {
+      "independentEffectId": "source-particle.d0165091416f0f11848dcad4",
+      "displayName": "par_d_fallsplash_w3_007",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.d0165091416f0f11848dcad4",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_d_fallsplash_w3_007",
+      "position": [
+        132.0359765625,
+        24.86140625,
+        -43.215625
+      ],
+      "rotationQuaternion": [
+        0.0,
+        -0.47139673682599764,
+        0.0,
+        0.881921264348355
+      ],
+      "scale": [
+        0.699999988079071,
+        0.699999988079071,
+        0.699999988079071
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 100.0
+    },
+    {
+      "independentEffectId": "source-particle.8e7c9d4ffa15d4c169871298",
+      "displayName": "par_b_waterfall_002",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.8e7c9d4ffa15d4c169871298",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_b_waterfall_002",
+      "position": [
+        145.42701171875,
+        30.067138671875,
+        -20.0730126953125
+      ],
+      "rotationQuaternion": [
+        0.0,
+        0.8700869911087115,
+        0.0,
+        0.492898192229784
+      ],
+      "scale": [
+        0.8999999761581421,
+        0.8999999761581421,
+        0.8999999761581421
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 100.0
+    },
+    {
+      "independentEffectId": "source-particle.010a45420c82f90bd32ea102",
+      "displayName": "par_b_waterfall_002",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.010a45420c82f90bd32ea102",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_b_waterfall_002",
+      "position": [
+        146.8165625,
+        30.067138671875,
+        -20.9058544921875
+      ],
+      "rotationQuaternion": [
+        0.0,
+        0.8700869911087115,
+        0.0,
+        0.492898192229784
+      ],
+      "scale": [
+        0.8999999761581421,
+        0.8999999761581421,
+        0.8999999761581421
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 100.0
+    },
+    {
+      "independentEffectId": "source-particle.c592dc1176d414657df977b6",
+      "displayName": "par_b_waterfall_002",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.c592dc1176d414657df977b6",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_b_waterfall_002",
+      "position": [
+        133.888896484375,
+        23.4950244140625,
+        -37.49388427734375
+      ],
+      "rotationQuaternion": [
+        0.0,
+        -0.4928981922297841,
+        0.0,
+        0.8700869911087113
+      ],
+      "scale": [
+        0.8999999761581421,
+        0.8999999761581421,
+        0.8999999761581421
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 100.0
+    },
+    {
+      "independentEffectId": "source-particle.10d4835087fc83e981cbd6fa",
+      "displayName": "par_b_waterfall_002",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.10d4835087fc83e981cbd6fa",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_b_waterfall_002",
+      "position": [
+        134.95765625,
+        25.6150244140625,
+        -38.313515625
+      ],
+      "rotationQuaternion": [
+        0.0,
+        -0.5555702330196022,
+        0.0,
+        0.8314696123025452
+      ],
+      "scale": [
+        0.8999999761581421,
+        0.8999999761581421,
+        0.8999999761581421
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 100.0
+    },
+    {
+      "independentEffectId": "source-particle.54090d3f64020437a8283eec",
+      "displayName": "par_b_waterfall_002",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.54090d3f64020437a8283eec",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_b_waterfall_002",
+      "position": [
+        129.97755859375,
+        25.1150244140625,
+        -36.6709228515625
+      ],
+      "rotationQuaternion": [
+        0.0,
+        -0.6715589548470183,
+        0.0,
+        0.7409511253549593
+      ],
+      "scale": [
+        0.8999999761581421,
+        0.8999999761581421,
+        0.8999999761581421
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 100.0
+    },
+    {
+      "independentEffectId": "source-particle.424acad67c01fa633cc786d5",
+      "displayName": "par_b_waterfall_002",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.424acad67c01fa633cc786d5",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_b_waterfall_002",
+      "position": [
+        131.58978515625,
+        21.6350244140625,
+        -36.8296875
+      ],
+      "rotationQuaternion": [
+        0.0,
+        -0.6715589548470183,
+        0.0,
+        0.7409511253549593
+      ],
+      "scale": [
+        0.8999999761581421,
+        0.8999999761581421,
+        0.8999999761581421
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 100.0
+    },
+    {
+      "independentEffectId": "source-particle.4db6203e1f1422ab366535f9",
+      "displayName": "par_d_fallmist_w3_002",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.4db6203e1f1422ab366535f9",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_d_fallmist_w3_002",
+      "position": [
+        134.97587890625,
+        26.4338623046875,
+        -36.73669189453125
+      ],
+      "rotationQuaternion": [
+        0.6236105914159628,
+        -0.6199949445191908,
+        -0.1612421956589677,
+        0.44801456827156205
+      ],
+      "scale": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 100.0
+    },
+    {
+      "independentEffectId": "source-particle.5f4f457a01ad708c2e201ce4",
+      "displayName": "par_b_waterfall_002",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.5f4f457a01ad708c2e201ce4",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_b_waterfall_002",
+      "position": [
+        139.57765625,
+        26.0750244140625,
+        -40.953515625
+      ],
+      "rotationQuaternion": [
+        0.0,
+        -0.572039629324757,
+        0.0,
+        0.8202259825694347
+      ],
+      "scale": [
+        0.9866888619346383,
+        0.9866888619346383,
+        0.9866888619346383
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 100.0
+    },
+    {
+      "independentEffectId": "source-particle.0f6e88eaeb896c25cad53bcd",
+      "displayName": "par_d_fallmist_w3_002",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.0f6e88eaeb896c25cad53bcd",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_d_fallmist_w3_002",
+      "position": [
+        140.41587890625001,
+        17.1538623046875,
+        -42.336689453125004
+      ],
+      "rotationQuaternion": [
+        0.6450485371157963,
+        -0.6128252615508419,
+        -0.19115690736988297,
+        0.41450768428907947
+      ],
+      "scale": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 100.0
+    },
+    {
+      "independentEffectId": "source-particle.c306dd18dafe3ac39ab90985",
+      "displayName": "par_d_fallsplash_w3_007",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.c306dd18dafe3ac39ab90985",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_d_fallsplash_w3_007",
+      "position": [
+        131.3159765625,
+        24.86140625,
+        -49.735625
+      ],
+      "rotationQuaternion": [
+        0.0,
+        -0.5758081914178453,
+        0.0,
+        0.8175848131515837
+      ],
+      "scale": [
+        0.699999988079071,
+        0.699999988079071,
+        0.699999988079071
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 100.0
+    },
+    {
+      "independentEffectId": "source-particle.63ec0e27e71c3e412f4a30a2",
+      "displayName": "par_d_fallsplash_w3_007",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.63ec0e27e71c3e412f4a30a2",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_d_fallsplash_w3_007",
+      "position": [
+        144.3632421875,
+        3.7678564453125,
+        -46.3205859375
+      ],
+      "rotationQuaternion": [
+        0.0,
+        -0.5141027441932217,
+        0.0,
+        0.8577286100002721
+      ],
+      "scale": [
+        0.699999988079071,
+        0.699999988079071,
+        0.699999988079071
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 100.0
+    },
+    {
+      "independentEffectId": "source-particle.f62db0ac8c25ad8034dc57c2",
+      "displayName": "par_b_waterfall_002",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.f62db0ac8c25ad8034dc57c2",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_b_waterfall_002",
+      "position": [
+        144.80623046875002,
+        37.862216796875,
+        -136.48494140625002
+      ],
+      "rotationQuaternion": [
+        0.0,
+        -0.8314696123025452,
+        0.0,
+        0.5555702330196024
+      ],
+      "scale": [
+        0.8999999761581421,
+        0.8999999761581421,
+        0.8999999761581421
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 100.0
+    },
+    {
+      "independentEffectId": "source-particle.89713695be41a505e5a563af",
+      "displayName": "par_b_waterfall_002",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.89713695be41a505e5a563af",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_b_waterfall_002",
+      "position": [
+        143.47408203125,
+        37.862216796875,
+        -137.1723046875
+      ],
+      "rotationQuaternion": [
+        -0.0,
+        -0.881921264348355,
+        -0.0,
+        0.4713967368259977
+      ],
+      "scale": [
+        0.8999999761581421,
+        0.8999999761581421,
+        0.8999999761581421
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 100.0
+    },
+    {
+      "independentEffectId": "source-particle.7088586c171f567090dc5845",
+      "displayName": "par_b_waterfall_002",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.7088586c171f567090dc5845",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_b_waterfall_002",
+      "position": [
+        138.35125,
+        34.192216796875,
+        -138.316611328125
+      ],
+      "rotationQuaternion": [
+        0.0,
+        -0.7178700450557317,
+        0.0,
+        0.696177131491463
+      ],
+      "scale": [
+        0.8999999761581421,
+        0.8999999761581421,
+        0.8999999761581421
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 100.0
+    },
+    {
+      "independentEffectId": "source-particle.cf1a07daf62557602fdeda32",
+      "displayName": "par_b_waterfall_002",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.cf1a07daf62557602fdeda32",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_b_waterfall_002",
+      "position": [
+        136.836708984375,
+        34.192216796875,
+        -137.936064453125
+      ],
+      "rotationQuaternion": [
+        0.0,
+        -0.6681420414265185,
+        0.0,
+        0.7440337441799293
+      ],
+      "scale": [
+        0.8999999761581421,
+        0.8999999761581421,
+        0.8999999761581421
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 100.0
+    },
+    {
+      "independentEffectId": "source-particle.c19c4c7cb9989c551fa7dec5",
+      "displayName": "par_b_waterfall_002",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.c19c4c7cb9989c551fa7dec5",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_b_waterfall_002",
+      "position": [
+        134.932177734375,
+        35.562216796875,
+        -138.92966796875
+      ],
+      "rotationQuaternion": [
+        -0.0,
+        -0.973644249650812,
+        -0.0,
+        0.22807208317088581
+      ],
+      "scale": [
+        0.9426374424129733,
+        0.9426374424129733,
+        0.9426374424129733
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 100.0
+    },
+    {
+      "independentEffectId": "source-particle.6df85b7a2a915168594090ef",
+      "displayName": "par_b_waterfall_002",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.6df85b7a2a915168594090ef",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_b_waterfall_002",
+      "position": [
+        133.832890625,
+        35.562216796875,
+        -140.14073242187501
+      ],
+      "rotationQuaternion": [
+        -0.0,
+        -0.9555943341307711,
+        -0.0,
+        0.2946853721805143
+      ],
+      "scale": [
+        0.9426374424129733,
+        0.9426374424129733,
+        0.9426374424129733
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 100.0
+    },
+    {
+      "independentEffectId": "source-particle.038398fe027e3494806acf5f",
+      "displayName": "par_b_waterfall_002",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.038398fe027e3494806acf5f",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_b_waterfall_002",
+      "position": [
+        125.967685546875,
+        21.728369140625002,
+        -106.270087890625
+      ],
+      "rotationQuaternion": [
+        0.0,
+        -0.5141027441932217,
+        0.0,
+        0.8577286100002721
+      ],
+      "scale": [
+        0.8122499548792845,
+        0.8122499548792845,
+        0.8122499548792845
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 100.0
+    },
+    {
+      "independentEffectId": "source-particle.ec190fc852742853747d19fc",
+      "displayName": "par_b_waterfall_002",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.ec190fc852742853747d19fc",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_b_waterfall_002",
+      "position": [
+        126.967373046875,
+        23.641672363281252,
+        -106.961591796875
+      ],
+      "rotationQuaternion": [
+        0.0,
+        -0.5758081914178453,
+        0.0,
+        0.8175848131515837
+      ],
+      "scale": [
+        0.8122499548792845,
+        0.8122499548792845,
+        0.8122499548792845
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 100.0
+    },
+    {
+      "independentEffectId": "source-particle.79f0a70126c407208ccd75cc",
+      "displayName": "par_b_waterfall_002",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.79f0a70126c407208ccd75cc",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_b_waterfall_002",
+      "position": [
+        127.979892578125,
+        18.786220703125,
+        -104.79834960937501
+      ],
+      "rotationQuaternion": [
+        0.0,
+        -0.7071067811865475,
+        0.0,
+        0.7071067811865476
+      ],
+      "scale": [
+        0.8904869856970308,
+        0.8904869856970308,
+        0.8904869856970308
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 100.0
+    },
+    {
+      "independentEffectId": "source-particle.d2b98961c124eed721605f4e",
+      "displayName": "par_d_fallmist_w3_002",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.d2b98961c124eed721605f4e",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_d_fallmist_w3_002",
+      "position": [
+        128.513974609375,
+        20.300673828125,
+        -111.0594140625
+      ],
+      "rotationQuaternion": [
+        0.5249157547177077,
+        -0.5756839213852788,
+        -0.08465272453467483,
+        0.6211967396376644
+      ],
+      "scale": [
+        0.45124998688697815,
+        0.45124998688697815,
+        0.45124998688697815
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 100.0
+    },
+    {
+      "independentEffectId": "source-particle.f9ddb23628b81fa1499b9907",
+      "displayName": "par_b_waterfall_002",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.f9ddb23628b81fa1499b9907",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_b_waterfall_002",
+      "position": [
+        120.0258203125,
+        20.0497216796875,
+        -103.053193359375
+      ],
+      "rotationQuaternion": [
+        0.0,
+        -0.6895405447370668,
+        0.0,
+        0.724247082951467
+      ],
+      "scale": [
+        0.8122499548792845,
+        0.8122499548792845,
+        0.8122499548792845
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 100.0
+    },
+    {
+      "independentEffectId": "source-particle.10a074c0950562aea8bdae8c",
+      "displayName": "par_d_fallsplash_w3_007",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.10a074c0950562aea8bdae8c",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_d_fallsplash_w3_007",
+      "position": [
+        120.710810546875,
+        25.1816796875,
+        -108.78978515625
+      ],
+      "rotationQuaternion": [
+        0.0,
+        -0.5956993044924335,
+        0.0,
+        0.8032075314806448
+      ],
+      "scale": [
+        0.6317499708831313,
+        0.6317499708831313,
+        0.6317499708831313
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 100.0
+    },
+    {
+      "independentEffectId": "source-particle.fb5921ff5f316fa91fd66065",
+      "displayName": "par_d_fallsplash_w1_001",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.fb5921ff5f316fa91fd66065",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_d_fallsplash_w1_001",
+      "position": [
+        107.59412109375,
+        36.0416845703125,
+        -34.86413330078125
+      ],
+      "rotationQuaternion": [
+        -0.0,
+        -1.0,
+        -0.0,
+        6.123233995736766e-17
+      ],
+      "scale": [
+        0.6000000238418579,
+        0.6000000238418579,
+        0.6000000238418579
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 70.0
+    },
+    {
+      "independentEffectId": "source-particle.6acd35b5667cc7007a06e246",
+      "displayName": "par_d_fall_w1_h1_002",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.6acd35b5667cc7007a06e246",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_d_fall_w1_h1_002",
+      "position": [
+        108.11392578125,
+        37.200673828125,
+        -22.06921142578125
+      ],
+      "rotationQuaternion": [
+        0.0,
+        -0.3826834323650898,
+        0.0,
+        0.9238795325112867
+      ],
+      "scale": [
+        0.4419876155053615,
+        0.4419876155053615,
+        0.4419876155053615
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 70.0
+    },
+    {
+      "independentEffectId": "source-particle.6354f80a8c06667a47d69839",
+      "displayName": "par_d_fall_w1_h1_002",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.6354f80a8c06667a47d69839",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_d_fall_w1_h1_002",
+      "position": [
+        106.86377929687501,
+        37.360673828125,
+        -22.552724609375
+      ],
+      "rotationQuaternion": [
+        -0.06768810858436994,
+        0.9203048136759436,
+        0.027743793104999706,
+        0.384301511609445
+      ],
+      "scale": [
+        0.4419876155053615,
+        0.4419876155053615,
+        0.4419876155053615
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 70.0
+    },
+    {
+      "independentEffectId": "source-particle.8b06cceafcc09ac23d4bb9ee",
+      "displayName": "par_d_fallsplash_w1_001",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.8b06cceafcc09ac23d4bb9ee",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_d_fallsplash_w1_001",
+      "position": [
+        106.35412109375,
+        36.0416845703125,
+        -20.70413330078125
+      ],
+      "rotationQuaternion": [
+        -0.0,
+        -1.0,
+        -0.0,
+        6.123233995736766e-17
+      ],
+      "scale": [
+        0.6000000238418579,
+        0.6000000238418579,
+        0.6000000238418579
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 70.0
+    },
+    {
+      "independentEffectId": "source-particle.705743880bfde694c0d4121a",
+      "displayName": "par_d_fallsplash_w1_001",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.705743880bfde694c0d4121a",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_d_fallsplash_w1_001",
+      "position": [
+        106.23412109375,
+        36.0416845703125,
+        -21.90413330078125
+      ],
+      "rotationQuaternion": [
+        -0.0,
+        -1.0,
+        -0.0,
+        6.123233995736766e-17
+      ],
+      "scale": [
+        0.6000000238418579,
+        0.6000000238418579,
+        0.6000000238418579
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 70.0
+    },
+    {
+      "independentEffectId": "source-particle.3ccc48809677fc973fe13791",
+      "displayName": "par_d_fall_w1_h1_002",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.3ccc48809677fc973fe13791",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_d_fall_w1_h1_002",
+      "position": [
+        108.11392578125,
+        37.200673828125,
+        -35.82921142578125
+      ],
+      "rotationQuaternion": [
+        0.0,
+        -0.3826834323650898,
+        0.0,
+        0.9238795325112867
+      ],
+      "scale": [
+        0.4419876155053615,
+        0.4419876155053615,
+        0.4419876155053615
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 70.0
+    },
+    {
+      "independentEffectId": "source-particle.856601110140077002e3f450",
+      "displayName": "par_d_fallsplash_w1_001",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.856601110140077002e3f450",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_d_fallsplash_w1_001",
+      "position": [
+        75.5187890625,
+        33.92030029296875,
+        -28.453718261718752
+      ],
+      "rotationQuaternion": [
+        -0.0,
+        -1.0,
+        -0.0,
+        6.123233995736766e-17
+      ],
+      "scale": [
+        0.6000000238418579,
+        0.6000000238418579,
+        0.6000000238418579
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 70.0
+    },
+    {
+      "independentEffectId": "source-particle.036bb924255c9356094ec7ff",
+      "displayName": "par_d_fallsplash_w1_001",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.036bb924255c9356094ec7ff",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_d_fallsplash_w1_001",
+      "position": [
+        76.0933740234375,
+        33.92030029296875,
+        -28.854150390625
+      ],
+      "rotationQuaternion": [
+        0.0,
+        0.7071067811865476,
+        0.0,
+        0.7071067811865475
+      ],
+      "scale": [
+        0.6000000238418579,
+        0.6000000238418579,
+        0.6000000238418579
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 70.0
+    },
+    {
+      "independentEffectId": "source-particle.0e3db8a2aaf9c415e3b83c95",
+      "displayName": "par_d_fallsplash_w1_001",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.0e3db8a2aaf9c415e3b83c95",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_d_fallsplash_w1_001",
+      "position": [
+        75.91921875,
+        33.92030029296875,
+        -27.879130859375
+      ],
+      "rotationQuaternion": [
+        0.0,
+        -0.7071067811865475,
+        0.0,
+        0.7071067811865476
+      ],
+      "scale": [
+        0.6000000238418579,
+        0.6000000238418579,
+        0.6000000238418579
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 70.0
+    },
+    {
+      "independentEffectId": "source-particle.c90c5eb6e7e71990eeedaa07",
+      "displayName": "par_d_fall_w1_h1_002",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.c90c5eb6e7e71990eeedaa07",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_d_fall_w1_h1_002",
+      "position": [
+        107.053349609375,
+        37.360673828125,
+        -35.37548095703125
+      ],
+      "rotationQuaternion": [
+        -0.0,
+        -0.9238795325112867,
+        -0.0,
+        0.3826834323650898
+      ],
+      "scale": [
+        0.4419876155053615,
+        0.4419876155053615,
+        0.4419876155053615
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 70.0
+    },
+    {
+      "independentEffectId": "source-particle.9692bbf783e1a4c3653df599",
+      "displayName": "par_d_fall_w1_h1_002",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.9692bbf783e1a4c3653df599",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_d_fall_w1_h1_002",
+      "position": [
+        106.86377929687501,
+        37.360673828125,
+        -36.312724609375
+      ],
+      "rotationQuaternion": [
+        -0.06768810858436994,
+        0.9203048136759436,
+        0.027743793104999706,
+        0.384301511609445
+      ],
+      "scale": [
+        0.4419876155053615,
+        0.4419876155053615,
+        0.4419876155053615
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 70.0
+    },
+    {
+      "independentEffectId": "source-particle.77e9586f8fe1cd121c96c3d7",
+      "displayName": "par_d_fallsplash_w1_001",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.77e9586f8fe1cd121c96c3d7",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_d_fallsplash_w1_001",
+      "position": [
+        106.23412109375,
+        36.0416845703125,
+        -35.66413330078125
+      ],
+      "rotationQuaternion": [
+        -0.0,
+        -1.0,
+        -0.0,
+        6.123233995736766e-17
+      ],
+      "scale": [
+        0.6000000238418579,
+        0.6000000238418579,
+        0.6000000238418579
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 70.0
+    },
+    {
+      "independentEffectId": "source-particle.046814decb3293dadd174c00",
+      "displayName": "par_d_fallsplash_w1_001",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.046814decb3293dadd174c00",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_d_fallsplash_w1_001",
+      "position": [
+        106.35412109375,
+        36.0416845703125,
+        -34.46413330078125
+      ],
+      "rotationQuaternion": [
+        -0.0,
+        -1.0,
+        -0.0,
+        6.123233995736766e-17
+      ],
+      "scale": [
+        0.6000000238418579,
+        0.6000000238418579,
+        0.6000000238418579
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 70.0
+    },
+    {
+      "independentEffectId": "source-particle.25e2739bbc940f3d1d7a57c7",
+      "displayName": "par_d_fallsplash_w1_001",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.25e2739bbc940f3d1d7a57c7",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_d_fallsplash_w1_001",
+      "position": [
+        107.59412109375,
+        36.0416845703125,
+        -21.10413330078125
+      ],
+      "rotationQuaternion": [
+        -0.0,
+        -1.0,
+        -0.0,
+        6.123233995736766e-17
+      ],
+      "scale": [
+        0.6000000238418579,
+        0.6000000238418579,
+        0.6000000238418579
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 70.0
+    },
+    {
+      "independentEffectId": "source-particle.87b30c02dda0724c59c9d2aa",
+      "displayName": "par_d_fall_w1_h1_002",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.87b30c02dda0724c59c9d2aa",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_d_fall_w1_h1_002",
+      "position": [
+        107.053349609375,
+        37.360673828125,
+        -21.61548095703125
+      ],
+      "rotationQuaternion": [
+        -0.0,
+        -0.9238795325112867,
+        -0.0,
+        0.3826834323650898
+      ],
+      "scale": [
+        0.4419876155053615,
+        0.4419876155053615,
+        0.4419876155053615
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 70.0
+    },
+    {
+      "independentEffectId": "source-particle.ac85f44d06283381f7e226e6",
+      "displayName": "par_g_magicpond_01",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.ac85f44d06283381f7e226e6",
+      "effectAssetId": "effect.bern.environment.bfx_low_16.water.par_g_magicpond_01",
+      "position": [
+        145.32,
+        42.12,
+        221.86
+      ],
+      "rotationQuaternion": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scale": [
+        2.0,
+        2.0,
+        2.0
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 100.0
+    },
+    {
+      "independentEffectId": "source-particle.e3f321b1d86ce778f46e6284",
+      "displayName": "par_d_fallsplash_w1_001",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.e3f321b1d86ce778f46e6284",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_d_fallsplash_w1_001",
+      "position": [
+        88.581875,
+        52.1546875,
+        -156.56421875
+      ],
+      "rotationQuaternion": [
+        -0.0,
+        -1.0,
+        -0.0,
+        6.123233995736766e-17
+      ],
+      "scale": [
+        0.6000000238418579,
+        0.6000000238418579,
+        0.6000000238418579
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 70.0
+    },
+    {
+      "independentEffectId": "source-particle.793cbc9309bfc15c31002049",
+      "displayName": "par_d_fallsplash_w2_001",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.793cbc9309bfc15c31002049",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_d_fallsplash_w2_001",
+      "position": [
+        90.1043359375,
+        47.8329833984375,
+        -135.74962890625
+      ],
+      "rotationQuaternion": [
+        -0.0,
+        -1.0,
+        -0.0,
+        6.123233995736766e-17
+      ],
+      "scale": [
+        0.30000001192092896,
+        0.30000001192092896,
+        0.30000001192092896
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 70.0
+    },
+    {
+      "independentEffectId": "source-particle.dfec9c8fe68fafff650eb8f1",
+      "displayName": "par_b_waterfall_002",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.dfec9c8fe68fafff650eb8f1",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_b_waterfall_002",
+      "position": [
+        90.549794921875,
+        49.2458447265625,
+        -135.84259765625
+      ],
+      "rotationQuaternion": [
+        0.0,
+        1.0,
+        0.0,
+        6.123233995736766e-17
+      ],
+      "scale": [
+        0.421399282193196,
+        0.421399282193196,
+        0.421399282193196
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 100.0
+    },
+    {
+      "independentEffectId": "source-particle.f22128a65686946c4b0924d2",
+      "displayName": "par_d_fallsplash_w2_001",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.f22128a65686946c4b0924d2",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_d_fallsplash_w2_001",
+      "position": [
+        89.9343359375,
+        47.8329833984375,
+        -141.35962890625
+      ],
+      "rotationQuaternion": [
+        -0.0,
+        -1.0,
+        -0.0,
+        6.123233995736766e-17
+      ],
+      "scale": [
+        0.30000001192092896,
+        0.30000001192092896,
+        0.30000001192092896
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 70.0
+    },
+    {
+      "independentEffectId": "source-particle.b2fa429c1b6d5910e3218880",
+      "displayName": "par_b_waterfall_002",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.b2fa429c1b6d5910e3218880",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_b_waterfall_002",
+      "position": [
+        90.549794921875,
+        49.2458447265625,
+        -141.66259765625
+      ],
+      "rotationQuaternion": [
+        0.0,
+        1.0,
+        0.0,
+        6.123233995736766e-17
+      ],
+      "scale": [
+        0.421399282193196,
+        0.421399282193196,
+        0.421399282193196
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 100.0
+    },
+    {
+      "independentEffectId": "source-particle.748e226ed23139defa2cf001",
+      "displayName": "par_d_fallsplash_w2_001",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.748e226ed23139defa2cf001",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_d_fallsplash_w2_001",
+      "position": [
+        86.29433593750001,
+        47.8329833984375,
+        -141.35962890625
+      ],
+      "rotationQuaternion": [
+        -0.0,
+        -1.0,
+        -0.0,
+        6.123233995736766e-17
+      ],
+      "scale": [
+        0.30000001192092896,
+        0.30000001192092896,
+        0.30000001192092896
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 70.0
+    },
+    {
+      "independentEffectId": "source-particle.e16eef2199fc43ad9cdb5574",
+      "displayName": "par_d_fallsplash_w3_001",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.e16eef2199fc43ad9cdb5574",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_d_fallsplash_w3_001",
+      "position": [
+        86.54433593750001,
+        47.8329833984375,
+        -135.46962890625
+      ],
+      "rotationQuaternion": [
+        -0.0,
+        -1.0,
+        -0.0,
+        6.123233995736766e-17
+      ],
+      "scale": [
+        0.30000001192092896,
+        0.30000001192092896,
+        0.30000001192092896
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 70.0
+    },
+    {
+      "independentEffectId": "source-particle.d9b42b7b06abfa1eb360507f",
+      "displayName": "par_d_fallsplash_w3_001",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.d9b42b7b06abfa1eb360507f",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_d_fallsplash_w3_001",
+      "position": [
+        87.47,
+        51.480000000000004,
+        -153.03
+      ],
+      "rotationQuaternion": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scale": [
+        0.30000001192092896,
+        0.30000001192092896,
+        0.30000001192092896
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 70.0
+    },
+    {
+      "independentEffectId": "source-particle.4c07010caaf9bd6e53b9a609",
+      "displayName": "par_d_fallsplash_w3_001",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.4c07010caaf9bd6e53b9a609",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_d_fallsplash_w3_001",
+      "position": [
+        91.3,
+        51.480000000000004,
+        -156.20000000000002
+      ],
+      "rotationQuaternion": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scale": [
+        0.25,
+        0.25,
+        0.25
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 70.0
+    },
+    {
+      "independentEffectId": "source-particle.f907ad26f7e573d3de89e6ae",
+      "displayName": "par_d_fallsplash_w3_001",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.f907ad26f7e573d3de89e6ae",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_d_fallsplash_w3_001",
+      "position": [
+        84.47,
+        51.480000000000004,
+        -156.20000000000002
+      ],
+      "rotationQuaternion": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scale": [
+        0.25,
+        0.25,
+        0.25
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 70.0
+    },
+    {
+      "independentEffectId": "source-particle.351507c69080215a51e9248f",
+      "displayName": "par_d_fallsplash_w3_001",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.351507c69080215a51e9248f",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_d_fallsplash_w3_001",
+      "position": [
+        87.3,
+        51.480000000000004,
+        -159.72
+      ],
+      "rotationQuaternion": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scale": [
+        0.25,
+        0.25,
+        0.25
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 70.0
+    },
+    {
+      "independentEffectId": "source-particle.f783bea0bf590bf9bbee1c79",
+      "displayName": "par_d_fallsplash_w1_001",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.f783bea0bf590bf9bbee1c79",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_d_fallsplash_w1_001",
+      "position": [
+        87.111875,
+        52.1546875,
+        -156.56421875
+      ],
+      "rotationQuaternion": [
+        -0.0,
+        -1.0,
+        -0.0,
+        6.123233995736766e-17
+      ],
+      "scale": [
+        0.4000000059604645,
+        0.4000000059604645,
+        0.4000000059604645
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 70.0
+    },
+    {
+      "independentEffectId": "source-particle.bb2a94bc49f57fb3b28f8413",
+      "displayName": "par_d_fallsplash_w1_001",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.bb2a94bc49f57fb3b28f8413",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_d_fallsplash_w1_001",
+      "position": [
+        87.9065625,
+        52.1546875,
+        -157.4046875
+      ],
+      "rotationQuaternion": [
+        0.0,
+        0.7071067811865476,
+        0.0,
+        0.7071067811865475
+      ],
+      "scale": [
+        0.6000000238418579,
+        0.6000000238418579,
+        0.6000000238418579
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 70.0
+    },
+    {
+      "independentEffectId": "source-particle.4dd59d62af95c1534badf4c4",
+      "displayName": "par_d_fallsplash_w1_001",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.4dd59d62af95c1534badf4c4",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_d_fallsplash_w1_001",
+      "position": [
+        88.05234375,
+        52.1546875,
+        -155.60953125
+      ],
+      "rotationQuaternion": [
+        0.0,
+        -0.7071067811865475,
+        0.0,
+        0.7071067811865476
+      ],
+      "scale": [
+        0.4000000059604645,
+        0.4000000059604645,
+        0.4000000059604645
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 70.0
+    },
+    {
+      "independentEffectId": "source-particle.80b7a377e821c406ae681258",
+      "displayName": "par_b_waterfall_002",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.80b7a377e821c406ae681258",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_b_waterfall_002",
+      "position": [
+        85.8650390625,
+        49.2458447265625,
+        -141.719267578125
+      ],
+      "rotationQuaternion": [
+        0.0,
+        1.2246467991473532e-16,
+        0.0,
+        1.0
+      ],
+      "scale": [
+        0.421399282193196,
+        0.421399282193196,
+        0.421399282193196
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 100.0
+    },
+    {
+      "independentEffectId": "source-particle.627713c728bcc3ea693e5722",
+      "displayName": "par_b_waterfall_002",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.627713c728bcc3ea693e5722",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_b_waterfall_002",
+      "position": [
+        85.8650390625,
+        49.2458447265625,
+        -135.84259765625
+      ],
+      "rotationQuaternion": [
+        0.0,
+        1.2246467991473532e-16,
+        0.0,
+        1.0
+      ],
+      "scale": [
+        0.421399282193196,
+        0.421399282193196,
+        0.421399282193196
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 100.0
+    },
+    {
+      "independentEffectId": "source-particle.9c8e62646b53a7c98c4f1ce8",
+      "displayName": "par_d_fallsplash_w1_001",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.9c8e62646b53a7c98c4f1ce8",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_d_fallsplash_w1_001",
+      "position": [
+        87.65697265625,
+        48.08935546875,
+        -137.16111328125
+      ],
+      "rotationQuaternion": [
+        -0.0,
+        -1.0,
+        -0.0,
+        6.123233995736766e-17
+      ],
+      "scale": [
+        0.6581964515923033,
+        0.6581964515923033,
+        0.6581964515923033
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 70.0
+    },
+    {
+      "independentEffectId": "source-particle.638a13063d6d419a354bfd1e",
+      "displayName": "par_d_fallsplash_w1_001",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.638a13063d6d419a354bfd1e",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_d_fallsplash_w1_001",
+      "position": [
+        86.3695703125,
+        48.08935546875,
+        -138.52951171875
+      ],
+      "rotationQuaternion": [
+        0.0,
+        -0.42755509343028203,
+        0.0,
+        0.9039892931234433
+      ],
+      "scale": [
+        0.6567042134882684,
+        0.6567042134882684,
+        0.6567042134882684
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 100.0
+    },
+    {
+      "independentEffectId": "source-particle.e5fb1fb524cfd0cd1573074f",
+      "displayName": "par_d_fallsplash_w1_001",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.e5fb1fb524cfd0cd1573074f",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_d_fallsplash_w1_001",
+      "position": [
+        88.86927734375,
+        48.08935546875,
+        -138.1919140625
+      ],
+      "rotationQuaternion": [
+        0.0,
+        -0.42755509343028203,
+        0.0,
+        0.9039892931234433
+      ],
+      "scale": [
+        0.5415000057816499,
+        0.5415000057816499,
+        0.5415000057816499
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 70.0
+    },
+    {
+      "independentEffectId": "source-particle.b959ce14c4b2f4a07dd999ee",
+      "displayName": "par_d_fallsplash_w1_001",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.b959ce14c4b2f4a07dd999ee",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_d_fallsplash_w1_001",
+      "position": [
+        87.42037109375,
+        48.08935546875,
+        -139.84861328125
+      ],
+      "rotationQuaternion": [
+        0.0,
+        -0.42755509343028203,
+        0.0,
+        0.9039892931234433
+      ],
+      "scale": [
+        0.5415000057816499,
+        0.5415000057816499,
+        0.5415000057816499
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 70.0
+    },
+    {
+      "independentEffectId": "source-particle.4505fc23a27a860ed94c61e4",
+      "displayName": "par_a_h_waterwave_001",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.4505fc23a27a860ed94c61e4",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_a_h_waterwave_001",
+      "position": [
+        87.48,
+        48.28,
+        -139.54
+      ],
+      "rotationQuaternion": [
+        0.0,
+        0.8314696123025452,
+        0.0,
+        0.5555702330196024
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 100.0
+    },
+    {
+      "independentEffectId": "source-particle.2eb3f9b2bea09f0081565e7e",
+      "displayName": "par_b_waterfall_002",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.2eb3f9b2bea09f0081565e7e",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_b_waterfall_002",
+      "position": [
+        118.5655078125,
+        23.19042236328125,
+        -102.98145507812501
+      ],
+      "rotationQuaternion": [
+        0.0,
+        -0.6895405447370668,
+        0.0,
+        0.724247082951467
+      ],
+      "scale": [
+        0.8122499548792845,
+        0.8122499548792845,
+        0.8122499548792845
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 100.0
+    },
+    {
+      "independentEffectId": "source-particle.33ee0a7033bfbd2e9796edee",
+      "displayName": "par_d_fallmist_w3_002",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.33ee0a7033bfbd2e9796edee",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_d_fallmist_w3_002",
+      "position": [
+        119.953974609375,
+        23.660673828125,
+        -100.8994140625
+      ],
+      "rotationQuaternion": [
+        0.5802115297520971,
+        -0.5207591896547977,
+        -0.27972092544145283,
+        0.560286222392615
+      ],
+      "scale": [
+        0.45124998688697815,
+        0.45124998688697815,
+        0.45124998688697815
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 100.0
+    },
+    {
+      "independentEffectId": "source-particle.be2765ae4faaeabaf9c5ea69",
+      "displayName": "par_c_fallmist_001",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.be2765ae4faaeabaf9c5ea69",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_c_fallmist_001",
+      "position": [
+        178.51267578125,
+        23.641728515625,
+        -94.699384765625
+      ],
+      "rotationQuaternion": [
+        0.0,
+        -0.024541228522912288,
+        0.0,
+        0.9996988186962042
+      ],
+      "scale": [
+        3.0,
+        3.0,
+        3.0
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 100.0
+    },
+    {
+      "independentEffectId": "source-particle.e04809f7a9bc5ba6d3eb3dbb",
+      "displayName": "par_c_fallmist_001",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.e04809f7a9bc5ba6d3eb3dbb",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_c_fallmist_001",
+      "position": [
+        175.8888671875,
+        24.323068847656252,
+        -95.533203125
+      ],
+      "rotationQuaternion": [
+        0.0,
+        -0.024541228522912288,
+        0.0,
+        0.9996988186962042
+      ],
+      "scale": [
+        3.0,
+        3.0,
+        3.0
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 100.0
+    },
+    {
+      "independentEffectId": "source-particle.29c0a7cce2a8541ea0d290e5",
+      "displayName": "par_c_fallmist_001",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.29c0a7cce2a8541ea0d290e5",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_c_fallmist_001",
+      "position": [
+        174.451796875,
+        21.60306884765625,
+        -95.845244140625
+      ],
+      "rotationQuaternion": [
+        0.0,
+        -0.024541228522912288,
+        0.0,
+        0.9996988186962042
+      ],
+      "scale": [
+        3.0,
+        3.0,
+        3.0
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 100.0
+    },
+    {
+      "independentEffectId": "source-particle.54494b9522dd437513a8481e",
+      "displayName": "par_d_fallsplash_w3_007",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.54494b9522dd437513a8481e",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_d_fallsplash_w3_007",
+      "position": [
+        184.2776171875,
+        23.36652099609375,
+        -88.317646484375
+      ],
+      "rotationQuaternion": [
+        -0.0,
+        -0.9996988186962042,
+        -0.0,
+        0.024541228522912264
+      ],
+      "scale": [
+        0.699999988079071,
+        0.699999988079071,
+        0.699999988079071
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 100.0
+    },
+    {
+      "independentEffectId": "source-particle.a2092d9348e4ec17b59dc30e",
+      "displayName": "par_b_waterfall_001",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.a2092d9348e4ec17b59dc30e",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_b_waterfall_001",
+      "position": [
+        175.86271484375,
+        23.37236083984375,
+        -95.05111328125
+      ],
+      "rotationQuaternion": [
+        -0.0,
+        -0.9985590742297593,
+        -0.0,
+        0.05366353765273068
+      ],
+      "scale": [
+        1.5,
+        1.5,
+        1.5
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 100.0
+    },
+    {
+      "independentEffectId": "source-particle.1f7e9aa7320fa57216e9ccd3",
+      "displayName": "par_b_waterfall_002",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.1f7e9aa7320fa57216e9ccd3",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_b_waterfall_002",
+      "position": [
+        175.64271484375,
+        22.99236083984375,
+        -87.25111328125
+      ],
+      "rotationQuaternion": [
+        -0.0,
+        -0.9995752960467492,
+        -0.0,
+        0.029141508764193743
+      ],
+      "scale": [
+        1.5,
+        1.5,
+        1.5
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 100.0
+    },
+    {
+      "independentEffectId": "source-particle.5dde33eab0b5cc64de6b4a9b",
+      "displayName": "par_b_waterfall_002",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.5dde33eab0b5cc64de6b4a9b",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_b_waterfall_002",
+      "position": [
+        176.74271484375,
+        21.132360839843752,
+        -84.01111328125
+      ],
+      "rotationQuaternion": [
+        0.0,
+        0.9956252563809943,
+        0.0,
+        0.09343633584574779
+      ],
+      "scale": [
+        1.5,
+        1.5,
+        1.5
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 100.0
+    },
+    {
+      "independentEffectId": "source-particle.7327cb0b8f3cbe6ab39ce219",
+      "displayName": "par_b_waterfall_002",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.7327cb0b8f3cbe6ab39ce219",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_b_waterfall_002",
+      "position": [
+        175.14271484375,
+        17.452362060546875,
+        -83.05111328125
+      ],
+      "rotationQuaternion": [
+        0.0,
+        0.9956252563809943,
+        0.0,
+        0.09343633584574779
+      ],
+      "scale": [
+        1.5,
+        1.5,
+        1.5
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 100.0
+    },
+    {
+      "independentEffectId": "source-particle.328104dbdb57ff9097ac0798",
+      "displayName": "par_a_h_waterwave_001",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.328104dbdb57ff9097ac0798",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_a_h_waterwave_001",
+      "position": [
+        221.6142578125,
+        37.410236816406254,
+        -39.632197265625
+      ],
+      "rotationQuaternion": [
+        0.0,
+        0.47139673682599764,
+        0.0,
+        0.881921264348355
+      ],
+      "scale": [
+        0.699999988079071,
+        0.699999988079071,
+        0.699999988079071
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 100.0
+    },
+    {
+      "independentEffectId": "source-particle.6cc9e0536774b5a040377330",
+      "displayName": "par_d_fallmist_w3_002",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.6cc9e0536774b5a040377330",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_d_fallmist_w3_002",
+      "position": [
+        179.30490234375,
+        16.851220703125,
+        -92.443583984375
+      ],
+      "rotationQuaternion": [
+        0.5682602336748744,
+        -0.8014856915798139,
+        -0.06850575991738914,
+        0.17322804009381856
+      ],
+      "scale": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 100.0
+    },
+    {
+      "independentEffectId": "source-particle.651b959f2b7909f1bbd84760",
+      "displayName": "par_d_fallmist_w3_002",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.651b959f2b7909f1bbd84760",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_d_fallmist_w3_002",
+      "position": [
+        173.31525390625,
+        16.851220703125,
+        -95.166005859375
+      ],
+      "rotationQuaternion": [
+        0.45219406118180816,
+        -0.598400197390415,
+        -0.35090349577908886,
+        0.5606286395155269
+      ],
+      "scale": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 100.0
+    },
+    {
+      "independentEffectId": "source-particle.ee115e90ef8c52884ecd6f6f",
+      "displayName": "par_b_waterfall_002",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.ee115e90ef8c52884ecd6f6f",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_b_waterfall_002",
+      "position": [
+        178.33654296875,
+        20.812360839843752,
+        -99.95093750000001
+      ],
+      "rotationQuaternion": [
+        0.0,
+        0.9930323501978514,
+        0.0,
+        0.1178420615083249
+      ],
+      "scale": [
+        1.5,
+        1.5,
+        1.5
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 100.0
+    },
+    {
+      "independentEffectId": "source-particle.3cfa5e56cbc773b9321ada84",
+      "displayName": "par_b_waterfall_002",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.3cfa5e56cbc773b9321ada84",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_b_waterfall_002",
+      "position": [
+        176.41654296875,
+        20.332362060546874,
+        -98.67093750000001
+      ],
+      "rotationQuaternion": [
+        0.0,
+        0.9930323501978514,
+        0.0,
+        0.1178420615083249
+      ],
+      "scale": [
+        1.5,
+        1.5,
+        1.5
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 100.0
+    },
+    {
+      "independentEffectId": "source-particle.300a81a887e283d3482e5f43",
+      "displayName": "par_d_fallsplash_w3_007",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.300a81a887e283d3482e5f43",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_d_fallsplash_w3_007",
+      "position": [
+        187.9472265625,
+        22.72652099609375,
+        -83.318125
+      ],
+      "rotationQuaternion": [
+        -0.0,
+        -1.0,
+        -0.0,
+        6.123233995736766e-17
+      ],
+      "scale": [
+        1.2750000357627869,
+        0.8500000238418579,
+        0.8500000238418579
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 100.0
+    },
+    {
+      "independentEffectId": "source-particle.ca0073ee5b9cbdc4693e5319",
+      "displayName": "par_d_fallsplash_w3_007",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.ca0073ee5b9cbdc4693e5319",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_d_fallsplash_w3_007",
+      "position": [
+        184.54722656250001,
+        23.16652099609375,
+        -95.81812500000001
+      ],
+      "rotationQuaternion": [
+        -0.0,
+        -1.0,
+        -0.0,
+        6.123233995736766e-17
+      ],
+      "scale": [
+        1.1049999904632557,
+        0.8500000238418579,
+        0.8500000238418579
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 100.0
+    },
+    {
+      "independentEffectId": "source-particle.02d2e0e93fe40adce30b0c50",
+      "displayName": "par_d_fallsplash_w3_007",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.02d2e0e93fe40adce30b0c50",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_d_fallsplash_w3_007",
+      "position": [
+        192.5872265625,
+        23.36652099609375,
+        -89.958125
+      ],
+      "rotationQuaternion": [
+        -0.0,
+        -1.0,
+        -0.0,
+        6.123233995736766e-17
+      ],
+      "scale": [
+        1.2750000357627869,
+        0.8500000238418579,
+        0.8500000238418579
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 100.0
+    },
+    {
+      "independentEffectId": "source-particle.efec1b36a5255c0812e0f77e",
+      "displayName": "par_d_fallmist_w3_002",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.efec1b36a5255c0812e0f77e",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_d_fallmist_w3_002",
+      "position": [
+        172.2960546875,
+        16.57999755859375,
+        -88.743408203125
+      ],
+      "rotationQuaternion": [
+        -0.5667855107359989,
+        0.7549033945391673,
+        -0.2107211291381401,
+        0.2539126926085474
+      ],
+      "scale": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 100.0
+    },
+    {
+      "independentEffectId": "source-particle.47310b8c3b071026cf18d750",
+      "displayName": "par_b_waterfall_001",
+      "presentationKind": "EFFECT_DOCUMENT",
+      "placementId": "source-particle.47310b8c3b071026cf18d750",
+      "effectAssetId": "effect.bern.environment.bfx_low_06.water.par_b_waterfall_001",
+      "position": [
+        174.98271484375002,
+        23.37236083984375,
+        -88.53111328125
+      ],
+      "rotationQuaternion": [
+        -0.0,
+        -0.9985590742297593,
+        -0.0,
+        0.05366353765273068
+      ],
+      "scale": [
+        1.5,
+        1.5,
+        1.5
+      ],
+      "orientationPolicy": "WORLD",
+      "activationPolicy": "LEVEL_ACTIVE",
+      "activationSetId": "",
+      "activationWindows": [],
+      "playbackPolicy": "SOURCE_LOOP",
+      "maxDrawDistanceMeters": 100.0
+    }
+  ]
+}

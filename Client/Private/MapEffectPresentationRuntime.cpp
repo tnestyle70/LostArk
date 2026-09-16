@@ -93,8 +93,8 @@ bool_t CMapEffectPresentationRuntime::Load_Area(
 		m_Status = outStatus;
 		return false;
 	}
-	if (!Commit_StagedDocument(levelIndex, std::move(stagedDocument), deployRuntime,
-			destructionProjection, encounterReference, outStatus))
+	if (!Commit_StagedDocument(levelIndex, std::move(stagedDocument), &deployRuntime,
+			&destructionProjection, &encounterReference, outStatus))
 	{
 		return false;
 	}
@@ -108,17 +108,48 @@ bool_t CMapEffectPresentationRuntime::Load_Area(
 	return true;
 }
 
+bool_t CMapEffectPresentationRuntime::Load_AmbientArea(
+	const uint32_t levelIndex,
+	const std::string& areaId,
+	std::string& outStatus)
+{
+	if (levelIndex >= ETOUI(LEVEL::END) || areaId.empty())
+	{
+		outStatus = "Ambient Map Effect Area/level is invalid.";
+		return false;
+	}
+	CMapEffectDocument stagedDocument;
+	if (!stagedDocument.Load(CMapAssetCatalog::Get_MapDataRoot() /
+			(areaId + ".mapeffects.json"), areaId, outStatus) ||
+		!Commit_StagedDocument(levelIndex, std::move(stagedDocument),
+			nullptr, nullptr, nullptr, outStatus))
+	{
+		m_Status = outStatus;
+		return false;
+	}
+	m_AreaId = areaId;
+	m_pDeployRuntime = nullptr;
+	m_pDestructionProjection = nullptr;
+	m_pEncounterReference = nullptr;
+	g_pMapEffectAuthoringTarget = this;
+	return true;
+}
+
 bool_t CMapEffectPresentationRuntime::Commit_StagedDocument(
 	const uint32_t levelIndex,
 	CMapEffectDocument stagedDocument,
-	CDeployPropRuntime& deployRuntime,
-	const CWorldDestructionProjectionDocument& destructionProjection,
-	const CEncounterPatternReference& encounterReference,
+	CDeployPropRuntime* deployRuntime,
+	const CWorldDestructionProjectionDocument* destructionProjection,
+	const CEncounterPatternReference* encounterReference,
 	std::string& outStatus)
 {
 	if (!stagedDocument.Is_Ready() ||
-		stagedDocument.Get_AreaId() != deployRuntime.Get_Catalog().Get_AreaId() ||
-		stagedDocument.Get_AreaId() != destructionProjection.Get_AreaId())
+		(nullptr != deployRuntime && stagedDocument.Get_AreaId() !=
+		 deployRuntime->Get_Catalog().Get_AreaId()) ||
+		(nullptr != destructionProjection && stagedDocument.Get_AreaId() !=
+		 destructionProjection->Get_AreaId()) ||
+		((nullptr == deployRuntime || nullptr == destructionProjection) &&
+		 (!stagedDocument.Get_Surfaces().empty() || !m_Document.Get_Surfaces().empty())))
 	{
 		outStatus = "Map Effect staged document does not match the live Area";
 		m_Status = outStatus;
@@ -128,9 +159,10 @@ bool_t CMapEffectPresentationRuntime::Commit_StagedDocument(
 	std::vector<std::pair<uint64_t, DEPLOY_SURFACE_PRESENTATION_PACKET>> packets;
 	std::unordered_map<uint64_t, SURFACE_EMISSIVE_BASELINE> stagedBaselines;
 	std::vector<f32_t> stagedDurations;
-	if (!Validate_AndStageSurfacePackets(
-			stagedDocument, deployRuntime, destructionProjection,
-			m_SurfaceEmissiveBaselines, packets, stagedBaselines, outStatus) ||
+	if ((nullptr != deployRuntime && nullptr != destructionProjection &&
+		 !Validate_AndStageSurfacePackets(
+			stagedDocument, *deployRuntime, *destructionProjection,
+			m_SurfaceEmissiveBaselines, packets, stagedBaselines, outStatus)) ||
 		!Validate_WorldEffects(stagedDocument, encounterReference,
 			stagedDurations, outStatus) ||
 		!Probe_WorldEffectAdmissions(levelIndex, stagedDocument,
@@ -144,10 +176,10 @@ bool_t CMapEffectPresentationRuntime::Commit_StagedDocument(
 	   first live object.  The transaction is the union of previous and staged
 	   owners, so removing a row restores its captured catalog/live baseline.
 	   A world-only document deliberately skips this mutation seam. */
-	if (!packets.empty() && !deployRuntime.Set_SurfacePresentations(packets))
+	if (!packets.empty() && !deployRuntime->Set_SurfacePresentations(packets))
 	{
 		outStatus = "Map Effect surface packet transaction was rejected: " +
-			deployRuntime.Get_Status();
+			deployRuntime->Get_Status();
 		m_Status = outStatus;
 		return false;
 	}
@@ -176,12 +208,9 @@ bool_t CMapEffectPresentationRuntime::Request_DebugApply(
 	outStatus.clear();
 	CMapEffectPresentationRuntime* target = g_pMapEffectAuthoringTarget;
 	if (nullptr == target || !target->m_isLoaded ||
-		target->m_iLevelIndex != levelIndex ||
-		nullptr == target->m_pDeployRuntime ||
-		nullptr == target->m_pDestructionProjection ||
-		nullptr == target->m_pEncounterReference)
+		target->m_iLevelIndex != levelIndex)
 	{
-		outStatus = "No matching live Area Map Effect runtime is registered; enter Valtan Arena first";
+		outStatus = "No matching live Area Map Effect runtime is registered; enter its Area first";
 		return false;
 	}
 	if (stagedDocument.Get_AreaId() != target->m_AreaId)
@@ -190,8 +219,8 @@ bool_t CMapEffectPresentationRuntime::Request_DebugApply(
 		return false;
 	}
 	if (!target->Commit_StagedDocument(levelIndex, stagedDocument,
-			*target->m_pDeployRuntime, *target->m_pDestructionProjection,
-			*target->m_pEncounterReference, outStatus))
+			target->m_pDeployRuntime, target->m_pDestructionProjection,
+			target->m_pEncounterReference, outStatus))
 	{
 		return false;
 	}
@@ -208,15 +237,14 @@ bool_t CMapEffectPresentationRuntime::Request_PublishedReload(
 	outStatus.clear();
 	CMapEffectPresentationRuntime* target = g_pMapEffectAuthoringTarget;
 	if (nullptr == target || !target->m_isLoaded ||
-		target->m_iLevelIndex != levelIndex || target->m_AreaId.empty() ||
-		nullptr == target->m_pDeployRuntime ||
-		nullptr == target->m_pDestructionProjection ||
-		nullptr == target->m_pEncounterReference)
+		target->m_iLevelIndex != levelIndex || target->m_AreaId.empty())
 	{
-		outStatus = "No matching live Area Map Effect runtime is registered; enter Valtan Arena first";
+		outStatus = "No matching live Area Map Effect runtime is registered; enter its Area first";
 		return false;
 	}
 	const std::string areaId = target->m_AreaId;
+	if (nullptr == target->m_pDeployRuntime)
+		return target->Load_AmbientArea(levelIndex, areaId, outStatus);
 	return target->Load_Area(levelIndex, areaId,
 		*target->m_pDeployRuntime, *target->m_pDestructionProjection,
 		*target->m_pEncounterReference, outStatus);
@@ -332,7 +360,7 @@ bool_t CMapEffectPresentationRuntime::Validate_AndStageSurfacePackets(
 
 bool_t CMapEffectPresentationRuntime::Validate_WorldEffects(
 	const CMapEffectDocument& stagedDocument,
-	const CEncounterPatternReference& encounterReference,
+	const CEncounterPatternReference* encounterReference,
 	std::vector<f32_t>& outDurations,
 	std::string& outStatus)
 {
@@ -359,7 +387,8 @@ bool_t CMapEffectPresentationRuntime::Validate_WorldEffects(
 		if (MAP_EFFECT_ACTIVATION_POLICY::SERVER_PATTERN_WINDOW ==
 			world.activationPolicy)
 		{
-			if (MAP_EFFECT_PLAYBACK_POLICY::SERVER_CLOCK_SAMPLE !=
+			if (nullptr == encounterReference ||
+				MAP_EFFECT_PLAYBACK_POLICY::SERVER_CLOCK_SAMPLE !=
 				world.playbackPolicy || world.activationWindows.empty())
 			{
 				outStatus = "Server-window Map Effect must use SERVER_CLOCK_SAMPLE.";
@@ -369,7 +398,7 @@ bool_t CMapEffectPresentationRuntime::Validate_WorldEffects(
 				world.activationWindows)
 			{
 				const ENCOUNTER_STAGE_REFERENCE* stage = Find_EncounterStage(
-					encounterReference, window.patternId, window.stageId);
+					*encounterReference, window.patternId, window.stageId);
 				if (nullptr == stage ||
 					window.effectTimelineOffsetMs != stage->iStartOffsetMs)
 				{
@@ -458,7 +487,10 @@ bool_t CMapEffectPresentationRuntime::Probe_WorldEffectAdmissions(
 		probe.RootWorld = Build_WorldRoot(world);
 		probe.iSpawnTick = 1u;
 		probe.fInitialSampleTimeSeconds = sampleSeconds;
-		probe.bExternallySampled = true;
+		probe.bOwnerSustainedSourceLoops =
+			MAP_EFFECT_PLAYBACK_POLICY::SOURCE_LOOP == world.playbackPolicy;
+		probe.bExternallySampled = !probe.bOwnerSustainedSourceLoops &&
+			MAP_EFFECT_PLAYBACK_POLICY::SOURCE_ONCE != world.playbackPolicy;
 		STAGED_ADMISSION_PROBE stagedProbe;
 		stagedProbe.Root = probe.RootWorld;
 		stagedProbe.fSampleSeconds = sampleSeconds;
@@ -471,6 +503,22 @@ bool_t CMapEffectPresentationRuntime::Probe_WorldEffectAdmissions(
 			outStatus = "Map Effect world admission probe was rejected before clone: " +
 				world.effectAssetId + ": " + spawnStatus;
 			return false;
+		}
+		if (!probe.bExternallySampled)
+		{
+			// Distance-cullable native emitters need individual attach validation;
+			// their actual active set still obeys the unchanged scene admission budget.
+			CEffectPresentationService::Commit_PendingWorldRootSpawns({ stagedProbe.Handle });
+			const bool_t admitted = CEffectPresentationService::Update_WorldRoot(
+				stagedProbe.Handle, stagedProbe.Root);
+			CEffectPresentationService::Stop_WorldRoot(stagedProbe.Handle);
+			if (!admitted)
+			{
+				stopProbes();
+				outStatus = "Map Effect source-loop clone/attach rejected: " + world.effectAssetId;
+				return false;
+			}
+			continue;
 		}
 		probes.push_back(std::move(stagedProbe));
 	}
@@ -507,6 +555,21 @@ bool_t CMapEffectPresentationRuntime::Probe_WorldEffectAdmissions(
 	}
 	outStatus.clear();
 	return true;
+}
+
+bool_t CMapEffectPresentationRuntime::Is_WithinDrawDistance(
+	const MAP_EFFECT_WORLD_PRESENTATION& presentation) const
+{
+	if (presentation.maxDrawDistanceMeters <= 0.f)
+		return true;
+	const float4_t* camera = CGameInstance::Get().Get_CamPosition();
+	if (nullptr == camera)
+		return false;
+	const f32_t x = camera->x - presentation.position.x;
+	const f32_t y = camera->y - presentation.position.y;
+	const f32_t z = camera->z - presentation.position.z;
+	return x * x + y * y + z * z <= presentation.maxDrawDistanceMeters *
+		presentation.maxDrawDistanceMeters;
 }
 
 float4x4_t CMapEffectPresentationRuntime::Build_WorldRoot(
@@ -625,16 +688,21 @@ bool_t CMapEffectPresentationRuntime::Resolve_WorldSample(
 	return true;
 }
 
+void CMapEffectPresentationRuntime::Update_LevelPresentation(const f32_t timeDelta)
+{
+	Update_ServerPresentation(VALTAN_PRESENTATION_STATE{}, timeDelta);
+}
+
 void CMapEffectPresentationRuntime::Update_ServerPresentation(
 	const VALTAN_PRESENTATION_STATE& boss,
 	const f32_t timeDelta)
 {
-	if (!m_isLoaded || nullptr == m_pEncounterReference ||
-		m_iLevelIndex >= ETOUI(LEVEL::END))
+	if (!m_isLoaded || m_iLevelIndex >= ETOUI(LEVEL::END))
 		return;
 
 	const ENCOUNTER_PATTERN_REFERENCE* activePattern =
-		boss.isValid ? m_pEncounterReference->Find_Pattern(boss.strPatternId) :
+		boss.isValid && nullptr != m_pEncounterReference ?
+		m_pEncounterReference->Find_Pattern(boss.strPatternId) :
 		nullptr;
 	const ENCOUNTER_STAGE_REFERENCE* activeStage =
 		(nullptr != activePattern &&
@@ -645,6 +713,13 @@ void CMapEffectPresentationRuntime::Update_ServerPresentation(
 	for (size_t index = m_ActiveWorldEffects.size(); index-- > 0u;)
 	{
 		ACTIVE_WORLD_EFFECT& active = m_ActiveWorldEffects[index];
+		if (!Is_WithinDrawDistance(active.Presentation))
+		{
+			m_LevelActiveSpawnAttemptedPlacements.erase(active.Presentation.placementId);
+			Stop_WorldEffect(index);
+			m_ActiveWorldEffects.erase(m_ActiveWorldEffects.begin() + index);
+			continue;
+		}
 		f32_t sampleSeconds = 0.f;
 		uint32_t occurrenceSequence = 0u;
 		uint32_t sampleStartTick = 0u;
@@ -661,8 +736,8 @@ void CMapEffectPresentationRuntime::Update_ServerPresentation(
 		if (MAP_EFFECT_ACTIVATION_POLICY::LEVEL_ACTIVE ==
 			active.Presentation.activationPolicy)
 		{
-			sampleSeconds = std::fmod(sampleSeconds,
-				active.fDurationSeconds);
+			if (MAP_EFFECT_PLAYBACK_POLICY::LOCAL_LOOP == active.Presentation.playbackPolicy)
+				sampleSeconds = std::fmod(sampleSeconds, active.fDurationSeconds);
 		}
 		else if (active.iPatternSequence != occurrenceSequence ||
 			sampleSeconds > active.fDurationSeconds +
@@ -676,12 +751,18 @@ void CMapEffectPresentationRuntime::Update_ServerPresentation(
 		const float4x4_t root = Build_WorldRoot(active.Presentation);
 		if (!CEffectPresentationService::Update_WorldRoot(
 				active.Handle, root) ||
-			!CEffectPresentationService::Seek_WorldRoot(
-				active.Handle, sampleSeconds))
+			((MAP_EFFECT_PLAYBACK_POLICY::LOCAL_LOOP == active.Presentation.playbackPolicy ||
+			  MAP_EFFECT_PLAYBACK_POLICY::SERVER_CLOCK_SAMPLE == active.Presentation.playbackPolicy) &&
+			 !CEffectPresentationService::Seek_WorldRoot(
+				active.Handle, sampleSeconds)))
 		{
+			const bool_t completedSourceOnce =
+				MAP_EFFECT_PLAYBACK_POLICY::SOURCE_ONCE == active.Presentation.playbackPolicy &&
+				sampleSeconds + TIMELINE_EPSILON_SECONDS >= active.fDurationSeconds;
 			Stop_WorldEffect(index);
 			m_ActiveWorldEffects.erase(m_ActiveWorldEffects.begin() + index);
-			m_Status = "Map Effect world occurrence lost its admitted level-owned handle; the committed definition was preserved.";
+			if (!completedSourceOnce)
+				m_Status = "Map Effect world occurrence lost its admitted level-owned handle; the committed definition was preserved.";
 			continue;
 		}
 		active.iPatternSequence = occurrenceSequence;
@@ -695,6 +776,11 @@ void CMapEffectPresentationRuntime::Update_ServerPresentation(
 	for (size_t index = 0u; index < worlds.size(); ++index)
 	{
 		const MAP_EFFECT_WORLD_PRESENTATION& world = worlds[index];
+		if (!Is_WithinDrawDistance(world))
+		{
+			m_LevelActiveSpawnAttemptedPlacements.erase(world.placementId);
+			continue;
+		}
 		if (std::any_of(m_ActiveWorldEffects.begin(),
 			m_ActiveWorldEffects.end(), [&world](const ACTIVE_WORLD_EFFECT& active)
 			{
@@ -751,7 +837,10 @@ void CMapEffectPresentationRuntime::Update_ServerPresentation(
 		spawn.RootWorld = Build_WorldRoot(world);
 		spawn.iSpawnTick = sampleStartTick;
 		spawn.fInitialSampleTimeSeconds = sampleSeconds;
-		spawn.bExternallySampled = true;
+		spawn.bOwnerSustainedSourceLoops =
+			MAP_EFFECT_PLAYBACK_POLICY::SOURCE_LOOP == world.playbackPolicy;
+		spawn.bExternallySampled = !spawn.bOwnerSustainedSourceLoops &&
+			MAP_EFFECT_PLAYBACK_POLICY::SOURCE_ONCE != world.playbackPolicy;
 		EFFECT_WORLD_ROOT_HANDLE handle;
 		std::string status;
 		if (!CEffectPresentationService::Spawn_LevelPlacement(

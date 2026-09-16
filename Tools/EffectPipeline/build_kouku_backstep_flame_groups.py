@@ -10,6 +10,7 @@ import hashlib
 import json
 import math
 from pathlib import Path
+import re
 
 import build_kouku_gate1_full_restore as source
 import build_kouku_showtime_warning_groups as groups
@@ -24,6 +25,73 @@ FLAME_SCALE = 2.0
 RING_SCALE = 0.7
 RING_HEIGHT = 1.1
 RING_SOURCE_CENTER_CM = 225.0
+RING_AXIS_ELEMENTS = {
+    PREFIX + 'ring': 'kouku.backstep.5e96cc8179689934cd52.1',
+    PREFIX + 'ring.flame': 'kouku.backstep.c03d483eb0e60fc432c2.1',
+}
+
+
+def enable_ring_axis_rotation(document):
+    """Let only the two independent hoop sprites follow authored rotation."""
+    element_id = RING_AXIS_ELEMENTS.get(document['effectAssetId'])
+    if element_id is None:
+        return
+    selected = [e for e in document['elements'] if e['id'] == element_id]
+    assert len(selected) == 1, 'The reviewed independent hoop element changed'
+    element = selected[0]
+    assert element['sourceNode'].endswith(
+        'fx_mn_rpct_05_g.par_g_rpct_05_firering_01_loc_int.particlespriteemitter_20')
+    assert element['sourceRecipe']['enabled'] and element['sourceRecipe']['rendererShape'] == 'sprite'
+    assert any(m['className'] == 'particlemoduleorientationaxislock' and
+        any(l['propertyPath'] == 'lockaxisflags' and l['value'] == 'epal_negative_y'
+            for l in m['literals']) for m in element['sourceRecipe']['modules'])
+    element['detail']['sprite']['followEmitterAxisRotation'] = True
+
+
+def stage_current_ring_axis_rotation(evidence):
+    """Stage the new boolean without rewriting current transforms or source literals."""
+    evidence = evidence.resolve()
+    assert evidence.is_relative_to((ROOT / 'out').resolve()), 'Candidates must stay under out'
+    rows = []
+    for asset_id, element_id in RING_AXIS_ELEMENTS.items():
+        target = AUTHORED / (asset_id + '.effect.json')
+        raw = target.read_bytes()
+        before_sha = hashlib.sha256(raw).hexdigest()
+        before = json.loads(raw.decode('utf-8-sig'))
+        candidate = copy.deepcopy(before)
+        enable_ring_axis_rotation(candidate)
+        original = next(e for e in before['elements'] if e['id'] == element_id)
+        current = original['detail']['sprite'].get('followEmitterAxisRotation')
+        assert current is None or isinstance(current, bool), 'Invalid authored rotation flag'
+        element_key = re.compile(rb'"id"\s*:\s*' + re.escape(json.dumps(element_id).encode()))
+        locations = list(element_key.finditer(raw))
+        assert len(locations) == 1
+        sprite = re.search(rb'"sprite"\s*:\s*\{', raw[locations[0].end():])
+        assert sprite is not None
+        sprite_start = locations[0].end() + sprite.end()
+        if current is None:
+            candidate_raw = raw[:sprite_start] + b' "followEmitterAxisRotation": true,' + raw[sprite_start:]
+        elif current is False:
+            flag = re.search(rb'"followEmitterAxisRotation"\s*:\s*false\b', raw[sprite_start:])
+            assert flag is not None
+            end = sprite_start + flag.end()
+            candidate_raw = raw[:end - 5] + b'true' + raw[end:]
+        else:
+            candidate_raw = raw
+        assert json.loads(candidate_raw.decode('utf-8-sig')) == candidate, 'Unexpected raw field edit'
+        before_path = evidence / 'before' / target.name
+        candidate_path = evidence / 'candidate' / target.name
+        before_path.parent.mkdir(parents=True, exist_ok=True)
+        candidate_path.parent.mkdir(parents=True, exist_ok=True)
+        before_path.write_bytes(raw)
+        candidate_path.write_bytes(candidate_raw)
+        assert hashlib.sha256(target.read_bytes()).hexdigest() == before_sha, 'Source changed during staging'
+        rows.append(dict(path=target.relative_to(ROOT).as_posix(), sourcePath=str(target),
+            beforePath=before_path.relative_to(ROOT).as_posix(), candidatePath=candidate_path.relative_to(ROOT).as_posix(),
+            beforeSha256=before_sha, afterSha256=hashlib.sha256(candidate_raw).hexdigest(),
+            effectAssetId=asset_id, elementId=element_id))
+    source.write(evidence / 'stage.json', dict(scope='CURRENT_SAVED_SOURCE_ONLY_NO_INSTALL', rows=rows))
+    print('Staged', len(rows), 'independent hoop rotation candidates; no Data writes')
 
 
 def remap(value, identities):
@@ -80,6 +148,7 @@ def make_document(asset, name, calls):
     assert document['elements']
     assert len({e['id'] for e in document['elements']}) == len(document['elements'])
     assert len(name.encode('utf-8')) <= 64
+    enable_ring_axis_rotation(document)
     return document
 
 
@@ -261,6 +330,7 @@ def stage_shared_firebreath(evidence, shared_path):
             element for element in candidate['elements'] if element['id'] in kept]
         assert len(kept) == (3 if suffix == 'full' else 0), 'Unexpected authored members must be reviewed'
         assert len({element['id'] for element in candidate['elements']}) == len(candidate['elements'])
+        enable_ring_axis_rotation(candidate)
         checked = inspect_document(candidate)
         relative = path.relative_to(ROOT).as_posix()
         inputs[relative] = hashlib.sha256(before).hexdigest()
@@ -415,8 +485,13 @@ if __name__ == '__main__':
                         help='Stage three current flame repairs from actual CModel head samples; never installs')
     parser.add_argument('--shared-firebreath', type=Path,
                         help='Stage current ring/backstep groups with the reviewed neutral shared flame; never installs')
+    parser.add_argument('--current-ring-axis-rotation', action='store_true',
+                        help='Stage only the two saved independent hoop sprite rotation flags; never installs')
     args = parser.parse_args()
-    if args.shared_firebreath:
+    if args.current_ring_axis_rotation:
+        assert not args.install and not args.shared_firebreath and not args.flame_motion_samples
+        stage_current_ring_axis_rotation(args.evidence_root)
+    elif args.shared_firebreath:
         assert not args.install and not args.flame_motion_samples, 'Shared flame integration is a separate stage-only operation'
         stage_shared_firebreath(args.evidence_root, args.shared_firebreath)
     elif args.flame_motion_samples:

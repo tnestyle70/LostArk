@@ -59,6 +59,16 @@ namespace LostArk::Server
 		bool bStarted = false;
 	};
 
+	struct KOUKUSAYDON_PLAYER_TARGET_WINDOW_STATE final
+	{
+		std::uint32_t iTriggerIndex = 0u;
+		std::uint32_t iStartTick = 0u, iEndTick = 0u, iNextFixedTick = 0u;
+		std::uint32_t iLastUpdateTick = 0u;
+		std::uint32_t iNextRandomTick = 0u, iRandomWaveOrdinal = 0u;
+		bool bClosed = false;
+		std::map<LostArk::Shared::PLAYER_ID, LostArk::Shared::COMBAT_OBJECT_ID> TrackingObjects;
+	};
+
 	/* Everything the room keeps for the Logic of the pattern occurrence it is
 	auditioning. Built when the pattern begins, discarded when it ends. */
 	struct KOUKUSAYDON_LOGIC_LEDGER final
@@ -76,6 +86,7 @@ namespace LostArk::Server
 		std::map<std::pair<std::string, std::string>, std::uint32_t> AppliedContactMotionPriorities;
 		std::vector<KOUKUSAYDON_LOGIC_CUE_STATE> WorldSequences;
 		std::vector<KOUKUSAYDON_LOGIC_CUE_STATE> MechanicTriggers;
+		std::vector<KOUKUSAYDON_PLAYER_TARGET_WINDOW_STATE> PlayerTargetWindows;
 		// One snapshot of the entry roster: world X descending, then stable PlayerId.
 		bool bCardMazeEntryRosterCaptured = false;
 		std::vector<LostArk::Shared::PLAYER_ID> CardMazeEntryPlayers;

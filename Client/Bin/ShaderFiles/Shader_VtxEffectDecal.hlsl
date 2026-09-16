@@ -14,6 +14,7 @@ float4x4 g_ProjMatrixInverse;
 float4x4 g_DecalWorldInverse;
 Texture2D g_DepthTexture;
 Texture2D g_NormalTexture;
+Texture2D g_DecalReceiverTexture; // Target_PickPos, exact RGBA32_FLOAT payload
 float2 g_DecalSize = float2(1.f, 1.f);
 float g_DecalDepth = 1.f;
 float g_DecalEdgeFade = 0.f;
@@ -71,11 +72,37 @@ float3 Resolve_DecalReceiverNormalV1(
     return geometricNormal;
 }
 
+bool Reject_KoukuGroundWarningReceiver(uint materialProfile, float depthMarker,
+    float receiverPayload)
+{
+    const bool groundWarning = materialProfile == 3600u ||
+        materialProfile == 3601u || materialProfile == 3602u ||
+        materialProfile == 3607u;
+    if (!groundWarning)
+        return false;
+    const uint receiverBits = asuint(receiverPayload);
+    // Only default/source geometry owns this bit. Other markers pack map
+    // normals and baked/shadow state and must not be interpreted as actors.
+    if ((depthMarker == 0.f || depthMarker == 5.f) && (receiverBits & 256u) != 0u)
+        return true;
+    if (depthMarker != 5.f)
+        return false;
+    const uint sourceProgram = receiverBits & 255u;
+    // Native skin/equipment and these monster families are also used by
+    // rigid attachments. Source map families 25/30/80..83 remain receivers;
+    // program 30's animated bomb is excluded by the skinned bit above.
+    return (sourceProgram >= 1u && sourceProgram <= 24u) ||
+        (sourceProgram >= 26u && sourceProgram <= 29u);
+}
+
 EFFECT_PS_OUT PS_MATERIAL(VS_OUT input)
 {
     const float4 depth = g_DepthTexture.Sample(PointSampler, input.uv);
     clip(0.99999f - depth.x);
     clip(0.99999f - depth.y);
+    if (Reject_KoukuGroundWarningReceiver(g_SourceMaterialProfile, depth.w,
+        g_DecalReceiverTexture.Load(int3(int2(input.position.xy), 0)).w))
+        clip(-1.f);
     const float viewZ = depth.y * 1000.f;
     float4 worldPosition;
     worldPosition.x = input.uv.x * 2.f - 1.f;

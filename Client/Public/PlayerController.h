@@ -476,6 +476,9 @@ namespace Client
 		bool_t Request_DebugTeleportToPosition(
 			LostArk::Shared::WORLD_ID worldId, f32_t x, f32_t y, f32_t z);
 		bool_t Request_DebugReturnToKoukuStart();
+		bool_t Request_KoukuRoomPlayerArrival(std::uint32_t requestSequence, std::uint32_t runEpoch,
+			const std::string& rootPatternId, const std::string& occurrenceId, std::uint32_t playerSlot,
+			f32_t x, f32_t y, f32_t z, std::string& outStatus);
 		bool_t Is_DebugPlayerPlacementArmed() const { return m_debugPlacementArmed; }
 		bool_t Is_DebugPlayerPlacementPending() const { return 0u != m_pendingDebugPlacementSequence; }
 		bool_t Did_DebugPlayerPlacementSucceed() const { return m_debugPlacementSucceeded; }

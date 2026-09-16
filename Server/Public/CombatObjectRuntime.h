@@ -204,6 +204,12 @@ namespace LostArk::Server
 			std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents);
 
 		void Cancel_Source(LostArk::Shared::NET_ENTITY_ID sourceNetEntityId);
+		// Room-owned visual tracking updates only its exact damageless occurrence.
+		bool Set_OwnedVisualPosition(LostArk::Shared::COMBAT_OBJECT_ID objectId,
+			LostArk::Shared::NET_ENTITY_ID sourceId, std::uint32_t patternSequence,
+			float x, float y, float z);
+		bool Cancel_OwnedVisualObject(LostArk::Shared::COMBAT_OBJECT_ID objectId,
+			LostArk::Shared::NET_ENTITY_ID sourceId, std::uint32_t patternSequence);
 		void Reset();
 		/* Empty-room reset has no observer. Discarding its lifecycle prevents a
 		later party from receiving spawn/despawn edges from the prior epoch. */

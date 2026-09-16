@@ -342,6 +342,7 @@ void LostArk::Server::CGameRoom::Handle_DebugWorldPlayback(
 		auto& last = m_WorldPlaybackRequestSequences[sessionId];
 		if (request.iRequestSequence <= last) return Result::STALE_REQUEST;
 		last = request.iRequestSequence;
+		if (request.eOperation == Op::PLACE_ROOM_PLAYER) return Apply_DebugRoomPlayerArrival(sessionId, request);
 		const bool replay = request.eOperation == Op::REPLAY_TRIGGER || request.eOperation == Op::REPLAY_SEQUENCE;
 		const auto play = [&](const std::string& id)
 		{
@@ -385,6 +386,75 @@ void LostArk::Server::CGameRoom::Handle_DebugWorldPlayback(
 	if (session && Write_Message(writer, result) &&
 		!session->Send_Frame(PACKET_TYPE::S2C_DEBUG_WORLD_PLAYBACK_RESULT, writer.Get_Buffer()))
 		session->Request_Close();
+}
+
+LostArk::Shared::DEBUG_WORLD_PLAYBACK_RESULT LostArk::Server::CGameRoom::Apply_DebugRoomPlayerArrival(
+	const SESSION_ID sessionId, const LostArk::Shared::C2S_DEBUG_WORLD_PLAYBACK& request)
+{
+	using namespace LostArk::Shared;
+	using Result = DEBUG_WORLD_PLAYBACK_RESULT;
+#ifndef _DEBUG
+	(void)sessionId; (void)request;
+	return Result::DISABLED;
+#else
+	if (m_eWorldId != WORLD_ID::KAKULSAYDON_ARENA || request.eWorldId != m_eWorldId)
+		return Result::WRONG_WORLD;
+	CPacketWriter validation;
+	if (request.eOperation != DEBUG_WORLD_PLAYBACK_OPERATION::PLACE_ROOM_PLAYER || !Write_Message(validation, request) ||
+		!request.strTargetId.starts_with("KAKULSAYDON_G1_PATTERN_") ||
+		!request.strOccurrenceId.starts_with(request.strTargetId + ".")) return Result::INVALID_TARGET;
+	const auto requesterId = m_PlayerIdBySessionId.find(sessionId);
+	const auto requester = requesterId == m_PlayerIdBySessionId.end() ? m_Players.end() : m_Players.find(requesterId->second);
+	const auto requesterSession = Find_Session(sessionId);
+	if (requester == m_Players.end() || requester->second.iSessionId != sessionId || !requester->second.iCurrentHp ||
+		!requesterSession || !requesterSession->Is_Open() || requesterSession->Is_Closing()) return Result::INVALID_PLAYER;
+	auto& run = m_RoomPlayerArrivalRuns[sessionId];
+	if (request.iRunEpoch < run.iEpoch) return Result::STALE_REQUEST;
+	if (request.iRunEpoch == run.iEpoch && request.strTargetId != run.strRootPatternId) return Result::INVALID_TARGET;
+	if (request.iRunEpoch > run.iEpoch)
+	{
+		ROOM_PLAYER_ARRIVAL_RUN staged;
+		staged.iEpoch = request.iRunEpoch; staged.strRootPatternId = request.strTargetId;
+		// m_Players is ordered by stable PlayerId. Never resolve a slot again after leave/join.
+		for (const auto& [id, player] : m_Players)
+		{
+			const auto binding = m_PlayerIdBySessionId.find(player.iSessionId);
+			const auto connection = Find_Session(player.iSessionId);
+			if (binding != m_PlayerIdBySessionId.end() && binding->second == id && connection && connection->Is_Open() && !connection->Is_Closing())
+				staged.Players.emplace_back(id, player.iSessionId);
+			if (staged.Players.size() == 4u) break;
+		}
+		run = std::move(staged);
+	}
+	if (const auto done = run.Occurrences.find(request.strOccurrenceId); done != run.Occurrences.end())
+		return done->second == Result::ACCEPTED ? Result::ALREADY_USED : done->second;
+	if (run.Occurrences.size() >= 128u) return Result::INVALID_TARGET;
+	const auto finish = [&](Result result) { run.Occurrences.emplace(request.strOccurrenceId, result); return result; };
+	if (request.iRoomPlayerSlot >= run.Players.size()) return finish(Result::SKIPPED_PLAYER);
+	const auto [targetId, targetSessionId] = run.Players[request.iRoomPlayerSlot];
+	const auto target = m_Players.find(targetId);
+	const auto binding = m_PlayerIdBySessionId.find(targetSessionId);
+	const auto connection = Find_Session(targetSessionId);
+	if (target == m_Players.end() || target->second.iSessionId != targetSessionId ||
+		binding == m_PlayerIdBySessionId.end() || binding->second != targetId || !connection || !connection->Is_Open() || connection->Is_Closing())
+		return finish(Result::SKIPPED_PLAYER);
+	C2S_DEBUG_TELEPORT_TO_POSITION position{};
+	position.eWorldId = m_eWorldId;
+	position.fPositionX = request.fPositionX; position.fPositionY = request.fPositionY; position.fPositionZ = request.fPositionZ;
+	SERVER_NAV_POINT ground{};
+	const auto verdict = Validate_DebugTeleportDestination(target->second, position, ground);
+	if (verdict != DEBUG_TELEPORT_RESULT::ACCEPTED)
+	{
+		m_strStatus = "Sequence room player arrival rejected by teleport validation: " + std::to_string(static_cast<unsigned>(verdict));
+		return finish(verdict == DEBUG_TELEPORT_RESULT::REJECTED_PLAYER_STATE ? Result::INVALID_PLAYER : Result::ACTION_REJECTED);
+	}
+	// The same teleport validator accepted this participant and destination before live state changes.
+	Reset_PlayerForDebugTeleport(target->second);
+	target->second.fPositionX = ground.x; target->second.fPositionY = ground.y; target->second.fPositionZ = ground.z;
+	Update_MarioControlState(target->second);
+	m_strStatus = "Sequence room player arrival committed for slot " + std::to_string(request.iRoomPlayerSlot + 1u);
+	return finish(Result::ACCEPTED);
+#endif
 }
 
 bool LostArk::Server::CGameRoom::Broadcast_WorldSequencePlay(

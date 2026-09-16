@@ -207,13 +207,24 @@ def project_light_occurrences(index, source_occurrences, cue, notify, evidence):
         duration = IMPORTED.prop(required.properties, 'emitterduration', recipe['emitterDurationSeconds'])
         delay = IMPORTED.prop(required.properties, 'emitterdelay', 0)
         loops = IMPORTED.prop(required.properties, 'emitterloops', 0)
-        assert loops == 1, 'Light loop birth scheduling requires an owning bounded cue window'
-        active = min(duration, notify['durationSeconds']) if notify['durationSeconds'] > 0 else duration
-        births = [delay + b['timeSeconds'] for b in recipe['bursts'] for _ in range(b['countMinimum'])]
+        assert duration > 0 and loops >= 0
+        window = notify['durationSeconds']
+        assert loops > 0 or window > 0, 'Light loop birth scheduling requires an owning bounded cue window'
+        window = window if window > 0 else delay + duration * loops
+        cycles = math.ceil(max(0, window - delay) / duration)
+        if loops:
+            cycles = min(cycles, loops)
+        births = []
         assert all(b['countMinimum'] == b['countMaximum'] for b in recipe['bursts'])
-        if low:
-            births += [delay + i / low for i in range(1, math.floor(active * low) + 1)]
+        for cycle in range(cycles):
+            begin = delay + cycle * duration
+            active = min(duration, window - begin)
+            births += [begin + b['timeSeconds'] for b in recipe['bursts']
+                       if b['timeSeconds'] < active for _ in range(b['countMinimum'])]
+            if low:
+                births += [begin + i / low for i in range(1, math.floor(active * low) + 1)]
         schedules[row['elementId']] = sorted(births)
+        row['sourceLightBirthsExpanded'] = True
     # Each existing typed-light element owns one source particle. The emitter's
     # constant-rate births are expanded below; all original distributions are
     # restored after using the common one-particle light projector.
@@ -240,7 +251,8 @@ def project_light_occurrences(index, source_occurrences, cue, notify, evidence):
     return document
 
 
-def project_trail(index, source_occurrences, notify, profile, asset, evidence, native_materials):
+def project_trail(index, source_occurrences, notify, profile, asset, evidence, native_materials,
+                  *, measured_source_scale=None):
     raw = base64.b64decode(notify['serializedPayload']['data'])
     signature = b'CEFActionNotify_Trails\0'
     assert raw.startswith(signature) and raw[len(signature) + 12] in (0, 1)
@@ -262,7 +274,8 @@ def project_trail(index, source_occurrences, notify, profile, asset, evidence, n
     assert len(samples) >= 2 and all(b['relativeTimeSeconds'] > a['relativeTimeSeconds'] for a,b in zip(samples,samples[1:]))
     history = dict(historyId='kouku.trail.' + hashlib.sha256((profile + notify['notifyId']).encode()).hexdigest()[:24],
         coordinateBasis='UE3_CM_X_Z_NEG_Y_TO_RUNTIME_METERS', sourceEndTimeSeconds=samples[-1]['relativeTimeSeconds'],
-        playbackClampSeconds=notify['durationSeconds'], samples=samples)
+        playbackClampSeconds=min(notify['durationSeconds'], samples[-1]['relativeTimeSeconds']), samples=samples)
+    assert 0 < history['playbackClampSeconds'] <= history['sourceEndTimeSeconds']
     source.write(evidence / 'trails' / (history['historyId'] + '.source.json'), dict(sourcePath=paths[0], sourceRecord=row, projection=history))
     # First project the same Cascade modules through the common detail builder,
     # then select the existing authored baked-edge carrier with actual history.
@@ -281,15 +294,23 @@ def project_trail(index, source_occurrences, notify, profile, asset, evidence, n
     finally:
         source.SELECTED = previous
     document = source.read(evidence / 'trail_projection' / f'effect.kouku.gate1.{identity}.full.restore.effect.json')
-    actor = PROFILES[profile][1]
-    body = f'Character/KoukuSaton/{actor}/{actor}.wmodel'
-    catalog = source.read(ROOT / 'Data/Actors/BossCatalog.json')
-    scale = next(a['bodyModelPreScale'] for a in catalog['bosses'] if a.get('bodyModel') == body) / .01
+    if measured_source_scale is None:
+        actor = PROFILES[profile][1]
+        body = f'Character/KoukuSaton/{actor}/{actor}.wmodel'
+        catalog = source.read(ROOT / 'Data/Actors/BossCatalog.json')
+        scale = next(a['bodyModelPreScale'] for a in catalog['bosses'] if a.get('bodyModel') == body) / .01
+    else:
+        # A caller with a different cooked skeleton must measure the complete
+        # bind transform. PreScale alone is insufficient when the imported root
+        # already contains scale, as in Valtan's installed body.
+        assert math.isfinite(measured_source_scale) and measured_source_scale > 0
+        scale = measured_source_scale
     for element, occurrence in zip(document['elements'], source_occurrences):
         if occurrence['elementId'] in native_materials:
             element['material'] = copy.deepcopy(native_materials[occurrence['elementId']])
         element.update(id='kouku.trail.' + hashlib.sha256((profile + notify['notifyId'] + element['id']).encode()).hexdigest()[:24], groupId=asset)
         element['runtimeCarrier'] = dict(formatVersion=1, kind='animationTrailBakedEdgeV1', admission='bounded', historyId=history['historyId'])
+        element['detail']['timing']['lifeTimeSeconds'] = history['playbackClampSeconds']
         element['sourceRecipe'].update(enabled=False, rendererShape='animationTrail')
         element['detail']['transform']['scale'] = [scale] * 3
         element['detail']['trail'].update(maxPoints=len(samples), pointLifeTimeSeconds=max(element['detail']['particle']['lifeTimeSeconds']),
@@ -337,10 +358,24 @@ def instantiate(template, cue, notify, asset, profile, index):
                 detail['timing'].update(startDelaySeconds=start, lifeTimeSeconds=active)
             if 'particleSystemOccurrenceId' in recipe:
                 recipe['particleSystemOccurrenceId'] = profile + '/' + notify['notifyId'] + suffix
+            # A ParticleSystem owns its event routes. Repeated source systems
+            # (for example the same destruction cue on both arms) must not
+            # deliver a collision to the other occurrence's receiver.
+            event_scope = 'source.event.' + hashlib.sha256(
+                (profile + '|' + notify['notifyId'] + '|' +
+                 template.get('effectAssetId', original['sourcePresentation']['sourceObjectPath']) + suffix).encode()).hexdigest()[:24] + '.'
             for module in recipe['modules']:
                 for literal in module['literals']:
                     if literal['propertyPath'] == 'runtime.providerelementid':
                         literal['value'] = ids[literal['value']]
+                    if module['className'] == 'particlemoduleeventgenerator' and any(
+                            row['propertyPath'] == 'events[0].type' and row['value'] == 'epet_collision'
+                            for row in module['literals']) and literal['propertyPath'].endswith('.customname'):
+                        literal['value'] = event_scope + literal['value']
+                    elif module['className'] == 'particlemoduleeventreceiverspawn' and any(
+                            row['propertyPath'] == 'eventgeneratortype' and row['value'] == 'epet_collision'
+                            for row in module['literals']) and literal['propertyPath'] == 'eventname':
+                        literal['value'] = event_scope + literal['value']
             output.append(element)
     return output, parameter_evidence
 

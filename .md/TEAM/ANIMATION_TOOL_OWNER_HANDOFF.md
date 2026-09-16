@@ -1492,12 +1492,17 @@ Effect Resources의 World 배치는 Use Mouse Pos의 한 번 맵 피킹 또는 U
 다시 읽는다. 피킹 실패·취소는 이전 좌표를 보존하고 클릭은 gameplay command와 공유하지 않는다.
 소스 구현과 설치 여부는 대응 인형·Object/Sequence Effect RESULT에서 구분한다.
 
-### Effect Tool의 본별 Element 위치 편집
+### Effect Tool의 본별 Element 위치·회전 편집
 
 Current Effect의 `Group by anchor`는 같은 본 부착 좌표계를 쓰는 Element 또는 부착 없는 Effect root의 Element를 묶어 표시한다. 그룹 행 클릭은 전체 멤버를 선택하고 `Play Group`은 그 멤버만 기존 임시 미리보기로 재생한다. `Group Center (bone-local m)` 또는 root의 `Group Center (effect-local m)`는 멤버 위치의 평균이며 입력값을 바꾸면 기존 상대 위치를 유지한 채 해당 그룹의 모든 멤버가 함께 이동한다. 회전·크기·방출 후 local/world 입자 정책은 유지한다. `Save Changes`가 기존 Effect JSON에 각 Element 위치를 저장하므로 새 runtime 그룹이나 저장 필드는 없다. 미적용 개별 Detail은 Apply/Revert 후 그룹을 편집한다.
+
+`Group Center`와 `Group Rotation (deg)`는 드래그 즉시 기존 미리보기의 현재 커서에 반영된다. 회전은 첫 Element의 저장된 orientation을 기준으로 입력하며, 모든 멤버의 위치·방향을 그룹 중심 주위에서 같은 quaternion delta로 바꾼다. 선형 위치·속도 끝점도 같이 변환하고 시간·크기·본 부착은 유지한다. `Save Changes`가 각 Element의 Transform을 저장한다. Euler 회전 animation 또는 revolution을 가진 그룹은 회전 입력의 제한 이유를 표시하며 위치 편집은 기존 조건을 따른다. 미적용 Detail이나 문서/preview 준비 실패 시 기존 편집 상태를 유지한다.
 
 SourceContract, source transform track, master inheritance와 별도 runtime carrier는 공통 위치를 실제로 소유하지 않을 수 있으므로 그룹 위치 입력이 제한되고 이유가 표시된다. 원본 쇼타임 양손 발사 섬광은 왼손 b_wp_2 11개, 오른손 b_wp_1 11개다. 이 위치는 본 기준이며 총 WORLD에 붙인 한 손 리소스의 총구 local 좌표와 혼용하지 않는다.
 
 양손처럼 source model이 있는 Effect의 Play All/Play Group은 정확한 asset 참조·actor·Gate·target이 일치하는 저장 Pattern 중 지원 본 소품이 있는 유일한 문맥을 자동으로 불러온다. 쇼타임 양손은 P35의 두 총을 함께 표시하고 원래 source animation과 좌우 내부 본 부착을 유지한다. `Current Effect > Group by anchor`의 Left/Right `Group Center`로 각 손을 따로 맞추고 `Save Changes`로 저장한다. 특정 Pattern을 직접 고를 때는 Model View의 `Pattern source > KoukuSaydon Patterns`에서 stable ID를 선택하고 `Use selected Pattern props (Play All / Play Group)`를 켠다. 유효 후보가 여러 개면 이 명시 선택을 안내하며 임의로 고르지 않는다. 중립 WORLD용 한 손은 위 명시 설정 뒤 `Load saved Object anchors`와 `Neutral Effect preview anchor`에서 정확한 왼 총·오른 총 occurrence를 고른다. 내부 본 Effect는 이 단일 총 선택을 상속하지 않는다. 중립 WORLD용은 실제 총의 sampled pivot와 기존 과거 pose history가 Effect root를 제공한다. Object 배치 수정은 Action Workbench에서 먼저 저장하고 anchor 목록을 다시 읽어 snapshot을 갱신한다. 총 선택은 세션의 미리보기 설정이며 Effect/sequence JSON이나 제품 Pattern에 저장하지 않는다. Effect 내부에서 맞춘 local 총구 위치는 제품 Box offset에 다시 더하지 않고, Box는 실제 총 참조와 추가 occurrence 보정을 소유한다.
 
 WORLD 기본값을 가진 V1 리소스는 특정 Object ID가 정해진 것은 아니다. Boss Workbench Append는 유효한 고정 MAP 위치로 추가하고, Box Detail에서 실제 World Object/occurrence를 고른 뒤 저장한다. 기존 WORLD 박스와 필수 worldId 검증은 유지한다.
+
+
+고정 축 Source Sprite의 면까지 Element/Group 회전에 맞추려면 Particle Detail의 `Axis lock follows emitter rotation`을 사용한다. 카메라 방향 Sprite의 회전은 기존 Billboard Roll을 사용한다. 이 옵션은 `detail.sprite.followEmitterAxisRotation`으로 저장되며 Local Space는 현재 emitter 회전을 따르고 World Space는 생성 시점 회전을 유지한다.

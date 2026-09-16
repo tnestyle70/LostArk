@@ -804,7 +804,7 @@ private:
 		float4x4_t& OutWorld, std::string& strOutError);
 	HRESULT Render_ModelCues(
 		const EFFECT_EVALUATED_FRAME& Frame,
-		bool_t bNonBlendCharacterSurfaceOnly);
+		bool_t bNonBlendSurfaceOnly);
 	HRESULT Render_CompositionPhase(
 		const EFFECT_EVALUATED_FRAME& Frame,
 		EFFECT_COMPOSITION_LAYER ePhase,

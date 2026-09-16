@@ -19,6 +19,7 @@
 #include "Effect_AuthoringDocument.h"
 #include "GameInstance.h"
 #include "Profiler.h"
+#include "DirectXTK/SimpleMath.h"
 
 #include <Windows.h>
 
@@ -208,10 +209,35 @@ namespace
 		return true;
 	}
 
+	bool_t Extend_PatternLifetimeForAuthoredLanes(KOUKU_SAYDON_COMPOSITION_PATTERN& pattern,
+		std::string& status)
+	{
+		std::uint64_t stageDurationMs = 0u;
+		for (const auto& stage : pattern.Stages) stageDurationMs += stage.iDurationMs;
+		std::uint64_t lifetime = (std::max)(stageDurationMs, std::uint64_t(pattern.iDurationMs));
+		const auto includeLane = [&](const auto& rows) {
+			for (const auto& row : rows)
+				lifetime = (std::max)(lifetime, std::uint64_t(row.iStartMs) + row.iDurationMs);
+		};
+		includeLane(pattern.LogicOccurrences);
+		includeLane(pattern.SummonOccurrences);
+		includeLane(pattern.WorldOccurrences);
+		includeLane(pattern.PresentationOccurrences);
+		includeLane(pattern.PatternOccurrences);
+		includeLane(pattern.SceneProfileOccurrences);
+		if (pattern.BossMotion) lifetime = (std::max)(lifetime, std::uint64_t(pattern.BossMotion->iEndMs));
+		if (lifetime > MAX_EDITOR_TIME_MS)
+		{ status = "Stage resize would exceed the 600000 ms Pattern lifetime."; return false; }
+		if (pattern.iDurationMs || lifetime > stageDurationMs)
+			pattern.iDurationMs = static_cast<std::uint32_t>(lifetime);
+		return true;
+	}
+
 	bool_t Retime_AnimationBlendWindows(
 		const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
 		const KOUKU_SAYDON_COMPOSITION_PATTERN& previous,
-		KOUKU_SAYDON_COMPOSITION_PATTERN& candidate, std::string& status)
+		KOUKU_SAYDON_COMPOSITION_PATTERN& candidate, std::string& status,
+		const bool_t clampToPoseSpan = false)
 	{
 		std::vector<KOUKU_SAYDON_ANIMATION_BLEND_WINDOW> previousWindows;
 		if (!CKoukuSaydonCompositionDocument::Try_ResolveAnimationBlendWindows(
@@ -239,11 +265,32 @@ namespace
 				[&](const auto& row) { return row.strOccurrenceId == window.strLogicOccurrenceId; });
 			if (target == poseStarts.end() || box == candidate.LogicOccurrences.end())
 			{ status = "Animation blend retime lost its pose owner or Logic box."; return false; }
-			const std::int64_t start = std::int64_t(window.iStartMs) +
+			std::int64_t start = std::int64_t(window.iStartMs) +
 				std::int64_t(target->second) - window.Target.iPoseStartMs;
-			if (start < 0 || start + window.iDurationMs > MAX_EDITOR_TIME_MS)
+			std::int64_t end = start + window.iDurationMs;
+			if (clampToPoseSpan)
+			{
+				const auto source = poseStarts.find(window.Source.strOccurrenceId);
+				if (source == poseStarts.end() || source->second >= target->second)
+				{ status = "Stage resize cannot keep the Animation Blend's distinct pose owners."; return false; }
+				std::uint64_t limit = candidate.iDurationMs ? candidate.iDurationMs : origin;
+				std::uint64_t sourceLimit = source->second;
+				for (const auto& [id, time] : poseStarts)
+				{
+					if (time > target->second) limit = (std::min)(limit, time - 1u);
+					// A non-first source pose is itself a transition. Exclude it
+					// from this inclusive window so only the target is inside.
+					if (time < source->second) sourceLimit = source->second + 1u;
+				}
+				start = (std::max)(start, std::int64_t(sourceLimit));
+				end = (std::min)(end, std::int64_t(limit));
+				if (start >= end)
+				{ status = "Stage resize leaves no time for the existing Animation Blend."; return false; }
+			}
+			if (start < 0 || end > MAX_EDITOR_TIME_MS)
 			{ status = "Animation blend retime would leave the 0..600000 ms timeline."; return false; }
 			box->iStartMs = static_cast<std::uint32_t>(start);
+			box->iDurationMs = static_cast<std::uint32_t>(end - start);
 		}
 		std::vector<KOUKU_SAYDON_ANIMATION_BLEND_WINDOW> nextWindows;
 		if (!CKoukuSaydonCompositionDocument::Try_ResolveAnimationBlendWindows(
@@ -1730,7 +1777,8 @@ bool_t Client::CKoukuSaydonActionWorkbench::Select_PatternById(
 		outStatus = "KoukuSaydon Pattern selection is not in the authoring document.";
 		return false;
 	}
-	if (m_strSelectedPatternId != patternId || m_ePatternSelection != KOUKU_PATTERN_SELECTION::PATTERN)
+	const bool patternChanged = m_strSelectedPatternId != patternId || m_ePatternSelection != KOUKU_PATTERN_SELECTION::PATTERN;
+	if (patternChanged)
 	{
 		Stop_Preview();
 		m_bPresentationPreviewRequestPending = false;
@@ -1750,7 +1798,7 @@ bool_t Client::CKoukuSaydonActionWorkbench::Select_PatternById(
 	Clear_TimelineSelection();
 	if (!Find_PatternBox(*pattern, m_strSelectedPatternOccurrenceId)) m_strSelectedPatternOccurrenceId.clear();
 	m_strSelectedActorProfileId = pattern->strActorProfileId;
-	m_bFitRequested = true;
+	if (patternChanged) m_bFitRequested = true;
 	m_strSelectedPatternId = std::string(patternId);
 	m_strSelectedStageId = pattern->Stages.empty() ?
 		std::string{} : pattern->Stages.front().strStageId;
@@ -2392,6 +2440,7 @@ bool_t Client::CKoukuSaydonActionWorkbench::Repeat_ParentCycle(
   for (auto& id : copy.RegionIds) remap(id);
   for (auto& id : copy.TargetWorldOccurrenceIds) remap(id);
   for (auto& motion : copy.ContactMotions) remap(motion.strTargetWorldOccurrenceId);
+  remap(copy.strSummonOccurrenceId);
   remap(copy.strTargetLogicOccurrenceId);
   remap(copy.strContactTargetWorldOccurrenceId);
   remap(copy.strTargetWorldInstanceId);
@@ -2505,6 +2554,9 @@ bool_t Client::CKoukuSaydonActionWorkbench::Delete_Pattern(
 	const std::string_view patternId,
 	std::string& outStatus)
 {
+    for (const auto& logic : m_Draft.Logics)
+        if (std::find(logic.DirectionPatternIds.begin(), logic.DirectionPatternIds.end(), patternId) != logic.DirectionPatternIds.end())
+        { outStatus = m_strStatus = "Remove the direction reference from Logic " + logic.strDisplayName + " first."; return false; }
 	for (const auto& parent : m_Draft.Patterns)
 		for (const auto& box : parent.PatternOccurrences)
 			if (box.strPatternId == patternId)
@@ -2994,13 +3046,29 @@ bool_t Client::CKoukuSaydonActionWorkbench::Set_StageDuration(
 		outStatus = "KoukuSaydon Stage duration target is absent.";
 		return false;
 	}
-	const auto previous = *pattern;
+	const auto reject = [&](const std::string& reason) {
+		outStatus = m_strStatus = "KoukuSaydon edit rejected; draft preserved: " + reason;
+		return false;
+	};
+	if (!durationMs || durationMs > MAX_EDITOR_TIME_MS)
+		return reject("Stage duration must be 1..600000 ms.");
+	std::uint64_t totalMs = 0u;
+	for (const auto& row : pattern->Stages) totalMs += row.iDurationMs;
+	const auto deltaMs = std::int64_t(durationMs) - stage->iDurationMs;
+	if (std::int64_t(totalMs) + deltaMs > MAX_EDITOR_TIME_MS)
+		return reject("Stage resize would exceed the 600000 ms Pattern clock.");
 	stage->iDurationMs = durationMs;
-	if (!Retime_AnimationBlendWindows(m_Draft, previous, *pattern, outStatus))
-	{ outStatus = m_strStatus = "KoukuSaydon edit rejected; draft preserved: " + outStatus; return false; }
+	for (auto& animation : stage->AnimationOccurrences)
+	{
+		animation.iStartOffsetMs = (std::min)(animation.iStartOffsetMs, durationMs - 1u);
+		animation.iPlayMs = (std::min)(animation.iPlayMs, durationMs - animation.iStartOffsetMs);
+		animation.iBlendInMs = (std::min)(animation.iBlendInMs, animation.iPlayMs);
+	}
+	if (!Extend_PatternLifetimeForAuthoredLanes(*pattern, outStatus))
+		return reject(outStatus);
 	Mark_Draft(candidate, *pattern);
 	return Commit_Candidate(std::move(candidate),
-		"Changed Stage duration and kept Animation Blend boxes with their transitions. Press Save.", outStatus);
+		"Changed Stage duration. Effect and other lane times are preserved; Pattern lifetime includes their tails. Press Save.", outStatus);
 }
 
 bool_t Client::CKoukuSaydonActionWorkbench::Set_StageKind(
@@ -5960,9 +6028,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_Transport()
 	if (ImGui::Button(m_bSequenceWorkspace ? "Play Sequence###Play Pattern" : "Play Preview"))
 	{
 		std::string status;
-		if (m_bSequenceWorkspace && pattern->bEnterCombatOnFinish)
-			(void)Request_CompleteSequencePlay(status, pattern->strGateId);
-		else (void)Request_PatternPreview(pattern->strPatternId, m_iCursorMs, status);
+		(void)Request_PatternPreview(pattern->strPatternId, m_iCursorMs, status);
 	}
 	ImGui::SameLine();
 	const auto* selectedOccurrence = patternReady ? Find_Occurrence(*pattern, m_strSelectedOccurrenceId) : nullptr;
@@ -6358,23 +6424,53 @@ bool_t Client::CKoukuSaydonActionWorkbench::Collect_EffectPlacements(
 	return true;
 }
 
-bool_t Client::CKoukuSaydonActionWorkbench::Translate_SelectedEffects(
-	const std::array<double, 3u>& translation, std::string& outStatus)
+bool_t Client::CKoukuSaydonActionWorkbench::Transform_SelectedEffects(
+	const std::array<double, 3u>& translation, const std::array<double, 4u>& rotationDelta,
+	std::string& outStatus)
 {
 	const auto reject = [&](const char* reason) { outStatus = m_strStatus = reason; return false; };
 	if (m_ePatternSelection != KOUKU_PATTERN_SELECTION::PATTERN ||
 		m_strTimelineSelectionPatternId != m_strSelectedPatternId || !m_TimelineSelectedStageIds.empty())
 		return reject("Select only Effect boxes from the current Pattern.");
-	if (!std::all_of(translation.begin(), translation.end(), [](double value) { return std::isfinite(value); }))
-		return reject("Group translation must be finite. Previous positions are preserved.");
+	if (!std::all_of(translation.begin(), translation.end(), [](double value) { return std::isfinite(value); }) ||
+		!std::all_of(rotationDelta.begin(), rotationDelta.end(), [](double value) { return std::isfinite(value); }))
+		return reject("Group translation and rotation must be finite. Previous placements are preserved.");
+	const double rotationLength = std::hypot(std::hypot(rotationDelta[0], rotationDelta[1]),
+		std::hypot(rotationDelta[2], rotationDelta[3]));
+	if (!std::isfinite(rotationLength) || rotationLength <= std::numeric_limits<double>::epsilon())
+		return reject("Group rotation must be a valid quaternion. Previous placements are preserved.");
+	const auto delta = XMVectorSet(float(rotationDelta[0] / rotationLength), float(rotationDelta[1] / rotationLength),
+		float(rotationDelta[2] / rotationLength), float(rotationDelta[3] / rotationLength));
+	const bool rotated = rotationDelta[0] != 0.0 || rotationDelta[1] != 0.0 || rotationDelta[2] != 0.0;
+	DirectX::XMFLOAT4X4 rotation;
+	XMStoreFloat4x4(&rotation, XMMatrixRotationQuaternion(delta));
 	std::vector<KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE> boxes;
 	if (!Collect_EffectPlacements(m_strSelectedPatternId, m_TimelineSelectedOccurrenceIds, boxes, outStatus))
 	{ m_strStatus = outStatus; return false; }
+	std::array<double, 3u> center{};
+	for (const auto& box : boxes)
+		for (std::size_t axis = 0u; axis < 3u; ++axis) center[axis] += box.PositionOffset[axis] / double(boxes.size());
 	for (auto& box : boxes)
 	{
+		if (rotated)
+		{
+			const std::array<double, 3u> relative = {box.PositionOffset[0] - center[0],
+				box.PositionOffset[1] - center[1], box.PositionOffset[2] - center[2]};
+			for (std::size_t axis = 0u; axis < 3u; ++axis)
+				box.PositionOffset[axis] = center[axis] + relative[0] * rotation.m[0][axis] +
+					relative[1] * rotation.m[1][axis] + relative[2] * rotation.m[2][axis];
+			const auto previous = XMQuaternionRotationRollPitchYaw(XMConvertToRadians(float(box.RotationDegrees[0])),
+				XMConvertToRadians(float(box.RotationDegrees[1])), XMConvertToRadians(float(box.RotationDegrees[2])));
+			// DirectX row-vector order: rotate the occurrence in its shared anchor after its local rotation.
+			DirectX::SimpleMath::Quaternion composed;
+			XMStoreFloat4(&composed, XMQuaternionNormalize(XMQuaternionMultiply(previous, delta)));
+			const auto angles = composed.ToEuler();
+			box.RotationDegrees = {double(XMConvertToDegrees(angles.x)), double(XMConvertToDegrees(angles.y)),
+				double(XMConvertToDegrees(angles.z))};
+		}
 		for (std::size_t axis = 0u; axis < 3u; ++axis) box.PositionOffset[axis] += translation[axis];
 		if (!Valid_PresentationGeometry(box))
-			return reject("Group position exceeds an Effect's authoring range. The entire selection is unchanged.");
+			return reject("Group transform exceeds an Effect's authoring range. The entire selection is unchanged.");
 	}
 	const std::string patternId = m_strSelectedPatternId;
 	// Stage every validated member before requesting a preview. The first preview
@@ -6391,10 +6487,10 @@ bool_t Client::CKoukuSaydonActionWorkbench::Translate_SelectedEffects(
 	for (const auto& box : boxes)
 		if (!Request_PresentationGeometryPreview(patternId, box, outStatus))
 		{
-			outStatus = m_strStatus = "Group position is staged for Save; preview is unavailable: " + outStatus;
+			outStatus = m_strStatus = "Group transform is staged for Save; preview is unavailable: " + outStatus;
 			return true;
 		}
-	outStatus = m_strStatus = "Moved the Effect group. Relative positions, timing, rotation and scale are preserved; Save keeps the placement.";
+	outStatus = m_strStatus = "Transformed the Effect group. Relative placement, timing and scale are preserved; Save keeps the placement.";
 	return true;
 }
 
@@ -6430,27 +6526,58 @@ bool_t Client::CKoukuSaydonActionWorkbench::Render_EffectGroupDetails(
 		return true;
 	}
 	if (sameGroup) ImGui::TextDisabled("%s", firstGroup.c_str());
-	ImGui::TextWrapped("Drag a grouped box in the timeline to move its timing. Group position moves every member in space, keeping its relative placement and timing. Ungroup to edit one member.");
+	ImGui::TextWrapped("Drag a grouped box in the timeline to move its timing. Group position and rotation move every member together, keeping its relative placement and timing. Ungroup to edit one member.");
 	std::vector<KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE> boxes;
 	std::string reason;
 	const bool movable = Collect_EffectPlacements(pattern.strPatternId, m_TimelineSelectedOccurrenceIds, boxes, reason);
 	if (movable)
 	{
+		std::vector<std::string> ids;
+		for (const auto& box : boxes) ids.push_back(box.strOccurrenceId);
+		std::sort(ids.begin(), ids.end());
+		std::string key = pattern.strPatternId;
+		for (const auto& id : ids) key += "|" + id;
+		if (key != m_strEffectSelectionTransformKey)
+		{
+			m_strEffectSelectionTransformKey = std::move(key);
+			m_EffectSelectionRotationDegrees = {};
+		}
 		std::array<double, 3u> center{};
 		for (const auto& box : boxes)
 			for (std::size_t axis = 0u; axis < 3u; ++axis) center[axis] += box.PositionOffset[axis] / double(boxes.size());
 		float position[3] = {float(center[0]), float(center[1]), float(center[2])};
 		const bool fixedMap = boxes.front().strAnchorKind == "MAP";
-		if (ImGui::DragFloat3(fixedMap ? "Group position (world m)" : "Group center offset (m)",
-			position, .05f, -100000.f, 100000.f, "%.3f"))
+		const bool moved = ImGui::DragFloat3(fixedMap ? "Group position (world m)" : "Group center offset (m)",
+			position, .05f, -100000.f, 100000.f, "%.3f");
+		auto angles = m_EffectSelectionRotationDegrees;
+		const bool rotated = ImGui::DragFloat3("Group rotation (deg)", angles.data(), .25f, -36000.f, 36000.f, "%.2f");
+		if (moved || rotated)
 		{
 			std::array<double, 3u> translation{};
-			for (std::size_t axis = 0u; axis < 3u; ++axis) translation[axis] = double(position[axis]) - center[axis];
-			std::string status;
-			(void)Translate_SelectedEffects(translation, status);
+			if (moved) for (std::size_t axis = 0u; axis < 3u; ++axis) translation[axis] = double(position[axis]) - center[axis];
+			std::array<double, 4u> delta = {0.0, 0.0, 0.0, 1.0};
+			if (!std::all_of(angles.begin(), angles.end(), [](float value) { return std::isfinite(value) && std::abs(value) <= 36000.f; }))
+				m_strStatus = "Group rotation must be finite and within +/-36000 degrees. Previous placements are preserved.";
+			else
+			{
+				if (rotated)
+				{
+					const auto previous = XMQuaternionRotationRollPitchYaw(XMConvertToRadians(m_EffectSelectionRotationDegrees[0]),
+						XMConvertToRadians(m_EffectSelectionRotationDegrees[1]), XMConvertToRadians(m_EffectSelectionRotationDegrees[2]));
+					const auto next = XMQuaternionRotationRollPitchYaw(XMConvertToRadians(angles[0]),
+						XMConvertToRadians(angles[1]), XMConvertToRadians(angles[2]));
+					DirectX::XMFLOAT4 quaternion;
+					// Undo the previous group rotation, then apply the new XYZ rotation in the same anchor frame.
+					XMStoreFloat4(&quaternion, XMQuaternionNormalize(XMQuaternionMultiply(XMQuaternionInverse(previous), next)));
+					delta = {quaternion.x, quaternion.y, quaternion.z, quaternion.w};
+				}
+				std::string status;
+				if (Transform_SelectedEffects(translation, delta, status)) m_EffectSelectionRotationDegrees = angles;
+			}
 		}
 		ImGui::TextDisabled(fixedMap ? "Position is the average of all Effect pivots in world coordinates." :
 			"Position is the average of all Effect offsets in the shared anchor.");
+		ImGui::TextWrapped("Rotation is relative to this selection and turns every Effect around that center in the shared anchor. Scale and timing stay unchanged.");
 	}
 	else ImGui::TextWrapped("%s", reason.c_str());
 	ImGui::BeginDisabled(!sameGroup);
@@ -6496,8 +6623,14 @@ bool_t Client::CKoukuSaydonActionWorkbench::Duplicate_TimelineSelection(
 	{
 		expanded = false;
 		for (const auto& box : source.LogicOccurrences)
-			if (selected.contains(box.strOccurrenceId) && !box.strHoldLogicOccurrenceId.empty())
-				expanded |= selected.insert(box.strHoldLogicOccurrenceId).second;
+            {
+                if (selected.contains(box.strOccurrenceId))
+                {
+                    if (!box.strHoldLogicOccurrenceId.empty()) expanded |= selected.insert(box.strHoldLogicOccurrenceId).second;
+                    if (const auto* definition = Find_Logic(candidate, box.strLogicId); definition && !definition->strSummonOccurrenceId.empty())
+                        expanded |= selected.insert(definition->strSummonOccurrenceId).second;
+                }
+            }
 		for (const auto& box : source.PresentationOccurrences)
 		{
 			if (selected.contains(box.strOccurrenceId) && !box.strSelectionGroupId.empty())
@@ -6715,6 +6848,7 @@ bool_t Client::CKoukuSaydonActionWorkbench::Duplicate_TimelineSelection(
 		auto copy = *found;
 		for (auto& target : copy.TargetWorldOccurrenceIds) remap(target, ids);
 		for (auto& target : copy.ContactMotions) remap(target.strTargetWorldOccurrenceId, ids);
+		remap(copy.strSummonOccurrenceId, ids);
 		remap(copy.strTargetLogicOccurrenceId, ids); remap(copy.strContactTargetWorldOccurrenceId, ids);
 		for (auto& region : copy.RegionIds) remap(region, regionIds);
 		if (copy == *found) return true;
@@ -6759,7 +6893,7 @@ bool_t Client::CKoukuSaydonActionWorkbench::Duplicate_TimelineSelection(
 	if (!m_TimelineSelectedStageIds.empty()) m_strSelectedStageId = m_TimelineSelectedStageIds.back();
 	for (const auto& id : m_TimelineSelectedOccurrenceIds)
 		if (Find_Occurrence(*Find_Pattern(m_Draft, targetId), id).pOccurrence) m_strSelectedOccurrenceId = id;
-	Normalize_Selection(); Synchronize_EditorFields(); m_bFitRequested = true;
+	Normalize_Selection(); Synchronize_EditorFields(); m_bFitRequested = false;
 	if (atOriginalTime)
 	{
 		// A running preview owns a document snapshot. Admit the newly allocated
@@ -6849,6 +6983,7 @@ bool_t Client::CKoukuSaydonActionWorkbench::Delete_TimelineSelection(
 	if (!Commit_Candidate(std::move(candidate), "Deleted selected timeline boxes. Press Save.", outStatus)) return false;
 	std::erase_if(m_StagedPresentationGeometry, [&](const auto& row) { return row.strPatternId == targetId && boxes.contains(row.Occurrence.strOccurrenceId); });
 	Clear_TimelineSelection();
+	m_bFitRequested = false;
 	return true;
 }
 
@@ -7031,9 +7166,19 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 	if (patternReady && Find_TimelineParent(m_Draft, patternId))
 	{
 		ImGui::TextDisabled("Parent child Pattern boxes: %zu", pattern->PatternOccurrences.size());
-		if (pattern->PatternOccurrences.empty())
-			ImGui::TextWrapped("No child Patterns are placed. Use Append Pattern beside Publish All Patterns to add their playback windows. "
-				"Patterns listed under this Parent are organized here; only placed boxes and common timeline rows play.");
+        if (pattern->PatternOccurrences.empty())
+        {
+            std::vector<KOUKU_SAYDON_COMPOSITION_CROSS_DIRECTION_WINDOW> directions;
+            std::string resolveStatus;
+            if (CKoukuSaydonCompositionDocument::Try_ResolveCrossDirectionWindows(m_Draft, *pattern, directions, resolveStatus) &&
+                !directions.empty())
+                ImGui::TextWrapped("This Parent runs its four-direction Summon. Separate child Pattern boxes are unnecessary; the Summon chooses one real body and three clones.");
+            else if (!pattern->Stages.empty() || !pattern->LogicOccurrences.empty() || !pattern->SummonOccurrences.empty() ||
+                !pattern->WorldOccurrences.empty() || !pattern->SceneProfileOccurrences.empty() || !pattern->PresentationOccurrences.empty())
+                ImGui::TextWrapped("This Parent plays its common timeline rows. A named Summon needs a configured playback policy or explicit spawned Patterns to create actors.");
+            else
+                ImGui::TextWrapped("This Parent has no playback rows yet. Append a Pattern or add an Animation, Effect, Logic, Summon or World row.");
+        }
 	}
 	// All-lane Sequencer selection: stable occurrence IDs, typed Detail focus.
 	// Append/Detail paths may initially focus a box without a batch selection.
@@ -8182,6 +8327,24 @@ bool_t Client::CKoukuSaydonActionWorkbench::Append_LogicBox(
 	/* A typed judgement box may join a PRODUCT Pattern; a Logic that is still
 	   only a name has nothing the Server could run, so it returns to DRAFT. */
 	const KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION* const owner = Find_Logic(candidate, logicId);
+	if (owner && owner->strTriggerKind == "ROOM_PLAYER_ARRIVAL")
+	{
+		if (!m_bSequenceWorkspace) { outStatus = m_strStatus = "Player arrival belongs to the Sequence workspace."; return false; }
+		KOUKU_SAYDON_ROOM_PLAYER_ARRIVAL arrival;
+		if (m_WorldPlacementResolver)
+		{
+			KOUKU_SAYDON_WORLD_PLACEMENT placement;
+			if (!m_WorldPlacementResolver(placement, outStatus)) { m_strStatus = outStatus; return false; }
+			arrival.Position = placement.Position;
+		}
+		std::array<bool, 4> occupiedSlots{};
+		for (const auto& existing : pattern->LogicOccurrences)
+			if (existing.RoomPlayerArrival && existing.RoomPlayerArrival->iPlayerSlot < occupiedSlots.size())
+				occupiedSlots[existing.RoomPlayerArrival->iPlayerSlot] = true;
+		while (arrival.iPlayerSlot < occupiedSlots.size() && occupiedSlots[arrival.iPlayerSlot]) ++arrival.iPlayerSlot;
+		if (arrival.iPlayerSlot >= 4u) { outStatus = m_strStatus = "This Sequence already has four player arrival slots."; return false; }
+		box.RoomPlayerArrival = arrival;
+	}
 	const bool_t untypedDuration = nullptr != owner && "DURATION" == owner->strLogicType &&
 		owner->strJudgementKind.empty();
 	const bool_t returnedToDraft = untypedDuration && "PRODUCT" == pattern->strAuthoringStatus;
@@ -8376,10 +8539,15 @@ bool_t Client::CKoukuSaydonActionWorkbench::Set_LogicDefinitionValues(
 		{
 			for (auto& box : pattern.LogicOccurrences)
 			{
+				if (box.strLogicId == logicId)
+				{
+					if (found->strTriggerKind != "ROOM_PLAYER_ARRIVAL") box.RoomPlayerArrival.reset();
+					else if (!box.RoomPlayerArrival) box.RoomPlayerArrival = KOUKU_SAYDON_ROOM_PLAYER_ARRIVAL{};
+				}
 				if (box.strLogicId == logicId && found->strTriggerKind != "ENTER_AREA") box.strHoldLogicOccurrenceId.clear();
 				if (const auto* hold = Find_LogicBox(pattern, box.strHoldLogicOccurrenceId);
 					hold && hold->strLogicId == logicId && found->strJudgementKind != "ATTACHMENT_HOLD") box.strHoldLogicOccurrenceId.clear();
-				if (box.strLogicId == logicId && found->strJudgementKind == "ATTACHMENT_HOLD")
+				if (box.strLogicId == logicId && (found->strJudgementKind == "ATTACHMENT_HOLD" || found->strJudgementKind == "SHOWTIME_PLAYER_TARGETS" || found->strJudgementKind == "BOSS_TRACK_TARGET" || found->strJudgementKind == "CROSS_DIRECTION_CLONES"))
 				{
 					box.OnSuccessLogicIds.clear(); box.OnFailLogicIds.clear(); box.OnTimeoutLogicIds.clear();
 					for (auto& collider : pattern.PresentationOccurrences)
@@ -8587,6 +8755,88 @@ bool_t Client::CKoukuSaydonActionWorkbench::Delete_SummonBox(
 	return true;
 }
 
+bool_t Client::CKoukuSaydonActionWorkbench::Render_SummonPolicy(
+    const KOUKU_SAYDON_COMPOSITION_SUMMON_DEFINITION& summon,
+    const KOUKU_SAYDON_COMPOSITION_PATTERN* parent)
+{
+    auto& [source, draft] = m_SummonPolicyDrafts[summon.strSummonId];
+    if (source != summon) { source = summon; draft = summon; }
+    ImGui::SeparatorText("Summon Playback");
+    ImGui::TextDisabled("Shared settings for %zu placed Summon box(es).", Count_SummonReferences(m_Draft, summon.strSummonId));
+    const bool cross = draft.strSummonKind == "CROSS_DIRECTION_CLONES";
+    if (ImGui::BeginCombo("Behavior##SummonPolicy", cross ? "Four directions: one real body" : "Explicit spawned Patterns"))
+    {
+        if (ImGui::Selectable("Explicit spawned Patterns", !cross))
+        { draft.strSummonKind.clear(); draft.DirectionPatternIds.clear(); draft.strCloneEndStageId.clear(); }
+        if (ImGui::Selectable("Four directions: one real body", cross))
+        { draft.strSummonKind = "CROSS_DIRECTION_CLONES"; draft.DirectionPatternIds.resize(4u); }
+        ImGui::EndCombo();
+    }
+    if (draft.strSummonKind == "CROSS_DIRECTION_CLONES")
+    {
+        draft.DirectionPatternIds.resize(4u);
+        constexpr std::array<const char*, 4u> labels{"Front Pattern", "Back Pattern", "Left Pattern", "Right Pattern"};
+        for (size_t direction = 0u; direction < labels.size(); ++direction)
+        {
+            auto& id = draft.DirectionPatternIds[direction];
+            const auto* selected = Find_Pattern(m_Draft, id);
+            if (ImGui::BeginCombo(labels[direction], selected ? selected->strDisplayName.c_str() : "(select Pattern)"))
+            {
+                for (const auto& candidate : m_Draft.Patterns)
+                {
+                    if (!candidate.strLoadError.empty() || candidate.strCategory != "MECHANIC" || candidate.Stages.empty() ||
+                        !candidate.PatternOccurrences.empty() || !candidate.LogicOccurrences.empty() ||
+                        !candidate.SummonOccurrences.empty() || !candidate.WorldOccurrences.empty() ||
+                        !candidate.SceneProfileOccurrences.empty() || candidate.BossMotion || candidate.bResetBossToSpawn ||
+                        candidate.ResetBossYawDegrees || candidate.bEnterCombatOnFinish || Find_TimelineParent(m_Draft, candidate.strPatternId)) continue;
+                    if (parent && (candidate.strPatternId == parent->strPatternId || candidate.strGateId != parent->strGateId ||
+                        candidate.strActorProfileId != parent->strActorProfileId || candidate.strTargetBossPlacementId != parent->strTargetBossPlacementId)) continue;
+                    if (ImGui::Selectable((candidate.strDisplayName + "##" + candidate.strPatternId).c_str(), id == candidate.strPatternId))
+                        id = candidate.strPatternId;
+                }
+                ImGui::EndCombo();
+            }
+        }
+        if (ImGui::BeginCombo("Clones play through##SummonPolicy", draft.strCloneEndStageId.empty() ? "(select Stage)" : draft.strCloneEndStageId.c_str()))
+        {
+            if (const auto* first = Find_Pattern(m_Draft, draft.DirectionPatternIds.front()))
+                for (const auto& stage : first->Stages)
+                {
+                    const bool common = std::all_of(draft.DirectionPatternIds.begin(), draft.DirectionPatternIds.end(), [&](const auto& id) {
+                        const auto* child = Find_Pattern(m_Draft, id);
+                        return child && std::any_of(child->Stages.begin(), child->Stages.end(), [&](const auto& other) { return other.strStageId == stage.strStageId; });
+                    });
+                    if (common && ImGui::Selectable(stage.strStageId.c_str(), stage.strStageId == draft.strCloneEndStageId))
+                        draft.strCloneEndStageId = stage.strStageId;
+                }
+            ImGui::EndCombo();
+        }
+        ImGui::TextWrapped("At the Summon start, the direction ending nearest the arena center becomes the real body and plays its full animation and Effects. The other three clones disappear after the selected Stage. The Summon lifetime must cover all four Patterns.");
+    }
+    else ImGui::TextWrapped("Each Summon box configures its own spawned Pattern rows. A name alone creates no actors.");
+    ImGui::BeginDisabled(draft == summon || !m_bHasDraft);
+    if (ImGui::Button("Apply Summon Playback"))
+    {
+        auto candidate = m_Draft;
+        const auto found = std::find_if(candidate.Summons.begin(), candidate.Summons.end(),
+            [&](const auto& value) { return value.strSummonId == summon.strSummonId; });
+        if (found != candidate.Summons.end())
+        {
+            found->strSummonKind = draft.strSummonKind;
+            found->DirectionPatternIds = draft.DirectionPatternIds;
+            found->strCloneEndStageId = draft.strCloneEndStageId;
+            std::string status;
+            (void)Commit_Candidate(std::move(candidate), "Updated Summon playback. Save to keep the changes.", status);
+        }
+        ImGui::EndDisabled();
+        return true;
+    }
+    ImGui::EndDisabled();
+    ImGui::SameLine();
+    if (ImGui::Button("Reset Summon Playback")) draft = summon;
+    return false;
+}
+
 void Client::CKoukuSaydonActionWorkbench::Render_SummonResources()
 {
 	ImGui::SeparatorText("Summon Catalog");
@@ -8645,6 +8895,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_SummonResources()
 	ImGui::TextWrapped("%s", summonName.c_str());
 	if (Render_RenameControl(RENAME_TARGET::SUMMON, summonId, summonName)) return;
 	ImGui::TextDisabled("%s | %zu box(es)", summonId.c_str(), references);
+    if (Render_SummonPolicy(*selectedSummon, selectedPattern)) return;
 	ImGui::Checkbox("Until Pattern end##NewKoukuSummonBox", &m_bNewSummonBoxToPatternEnd);
 	if (!m_bNewSummonBoxToPatternEnd)
 	{
@@ -8724,6 +8975,14 @@ void Client::CKoukuSaydonActionWorkbench::Render_SummonBoxDetails(
 	}
 	ImGui::TextDisabled("The spawn appears at Spawn ms and despawns when Lifetime ends. Pattern lifetime %u ms.",
 		lifetimeMs);
+    if (summon && Render_SummonPolicy(*summon, &pattern)) return;
+    if (summon && summon->strSummonKind == "CROSS_DIRECTION_CLONES")
+    {
+        ImGui::TextWrapped("This box owns all four actors through its Summon playback settings. Separate spawned Pattern rows are unnecessary.");
+        if (ImGui::Button("Delete Summon Box"))
+        { std::string status; (void)Delete_SummonBox(patternId, occurrenceId, status); }
+        return;
+    }
     ImGui::SeparatorText("Spawned Patterns");
     ImGui::TextWrapped("Each row creates one actor at this box's start. Zero offsets keep the boss position and facing; the selected clip owns its pose.");
     auto spawns = box->PatternSpawns;
@@ -8769,7 +9028,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_SummonBoxDetails(
         spawns.push_back(std::move(spawn)); changed = true;
     }
     ImGui::EndDisabled();
-    if (spawns.empty()) ImGui::TextDisabled("No Pattern spawns: this box keeps the existing named Summon behavior.");
+    if (spawns.empty()) ImGui::TextDisabled("No Pattern spawns: configure Four directions above or add spawned Patterns to create actors.");
     if (choices.empty()) ImGui::TextDisabled("Add an Animation-only MECHANIC Pattern for this Gate and actor to select it here.");
     if (changed)
     {
@@ -11113,6 +11372,13 @@ void Client::CKoukuSaydonActionWorkbench::Render_PresentationBoxDetails(
 	int start = static_cast<int>(edit.iStartMs), duration = static_cast<int>(edit.iDurationMs);
 	if (ImGui::InputInt("Start ms##PresentationBox", &start)) edit.iStartMs = static_cast<std::uint32_t>((std::max)(0, start));
 	if (ImGui::InputInt(cameraBox ? "Entry + hold ms##PresentationBox" : "Lifetime ms##PresentationBox", &duration)) edit.iDurationMs = static_cast<std::uint32_t>((std::max)(1, duration));
+	if (definition.eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT &&
+		(definition.strResourceKind == "V1_EFFECT" || definition.strResourceKind == "V1_ELEMENT"))
+	{
+		ImGui::Checkbox("Fit Effect lifetime to box", &edit.bFitEffectToDuration);
+		if (edit.bFitEffectToDuration)
+			ImGui::TextDisabled("Source %u ms plays once over this box. Change Lifetime, then Apply and Save.", definition.iDurationMs);
+	}
 	const auto vectorControl = [](const char* label, std::array<double, 3u>& values, const float minimum, const float maximum) {
 		float v[3] = { static_cast<float>(values[0]), static_cast<float>(values[1]), static_cast<float>(values[2]) };
 		if (!ImGui::DragFloat3(label, v, 0.05f, minimum, maximum, "%.3f")) return false;
@@ -11943,6 +12209,13 @@ void Client::CKoukuSaydonActionWorkbench::Render_LogicDefinitionValues(
 						draft.fMaxDistanceM = 30.0;
 					}
 					else if ("EXTERNAL_SIGNAL" == draft.strJudgementKind || "COUNTER_WINDOW" == draft.strJudgementKind) draft.bEndsPatternOnSuccess = true;
+					else if ("SHOWTIME_PLAYER_TARGETS" == draft.strJudgementKind)
+					{
+						draft.iSpawnIntervalMs = 2000u;
+						draft.fFollowSpeedScale = .5;
+					}
+					else if ("CROSS_DIRECTION_CLONES" == draft.strJudgementKind)
+                    { draft.DirectionPatternIds.resize(4u); draft.strCloneEndStageId = "STAGE_1"; }
 					else if ("PATTERN_COMPLETION_COUNT" == draft.strJudgementKind) draft.iCompletionCount = 1u;
 					else if ("STAGGER_WINDOW" == draft.strJudgementKind)
 					{
@@ -12014,6 +12287,140 @@ void Client::CKoukuSaydonActionWorkbench::Render_LogicDefinitionValues(
 			ImGui::Checkbox("End Pattern on counter success", &draft.bEndsPatternOnSuccess);
 			ImGui::TextWrapped("A Server-approved counter hit during this window runs Success. Connect a FOLLOWUP_PATTERN Result to play groggy; without a counter the window runs Timeout.");
 		}
+		else if ("SHOWTIME_PLAYER_TARGETS" == draft.strJudgementKind)
+		{
+			const auto* pattern = Find_Pattern(m_Draft, colliderPatternId.empty() ? m_strSelectedPatternId : colliderPatternId);
+			if (ImGui::BeginCombo("Fixed drop group", draft.strFixedSelectionGroupId.empty() ? "(none)" : draft.strFixedSelectionGroupId.c_str()))
+			{
+				if (ImGui::Selectable("(none)", draft.strFixedSelectionGroupId.empty())) draft.strFixedSelectionGroupId.clear();
+				std::unordered_set<std::string> shown;
+				if (pattern) for (const auto& box : pattern->PresentationOccurrences)
+				{
+					const auto* resource = Find_PresentationResource(m_Draft, box.strResourceId);
+					if (!resource || resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT || box.strSelectionGroupId.empty() || !shown.insert(box.strSelectionGroupId).second) continue;
+					const auto count = std::count_if(pattern->PresentationOccurrences.begin(), pattern->PresentationOccurrences.end(),
+						[&](const auto& member) { return member.strSelectionGroupId == box.strSelectionGroupId; });
+					const std::string label = resource->strDisplayName + " | " + std::to_string(count) + " effects##" + box.strSelectionGroupId;
+					if (ImGui::Selectable(label.c_str(), draft.strFixedSelectionGroupId == box.strSelectionGroupId)) draft.strFixedSelectionGroupId = box.strSelectionGroupId;
+				}
+				ImGui::EndCombo();
+			}
+			if (ImGui::BeginCombo("Tracking target", draft.strTrackingPresentationOccurrenceId.empty() ? "(none)" : draft.strTrackingPresentationOccurrenceId.c_str()))
+			{
+				if (ImGui::Selectable("(none)", draft.strTrackingPresentationOccurrenceId.empty())) draft.strTrackingPresentationOccurrenceId.clear();
+				if (pattern) for (const auto& box : pattern->PresentationOccurrences)
+				{
+					const auto* resource = Find_PresentationResource(m_Draft, box.strResourceId);
+					if (!resource || resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT) continue;
+					const std::string label = resource->strDisplayName + " | " + std::to_string(box.iStartMs) + " ms##" + box.strOccurrenceId;
+					if (ImGui::Selectable(label.c_str(), draft.strTrackingPresentationOccurrenceId == box.strOccurrenceId)) draft.strTrackingPresentationOccurrenceId = box.strOccurrenceId;
+				}
+				ImGui::EndCombo();
+			}
+			int interval = static_cast<int>(draft.iSpawnIntervalMs);
+			if (ImGui::InputInt("Spawn interval (ms)", &interval, 100, 1000)) draft.iSpawnIntervalMs = static_cast<std::uint32_t>(std::clamp(interval, 1, 600000));
+			float speed = static_cast<float>(draft.fFollowSpeedScale);
+			if (ImGui::InputFloat("Player move speed multiplier", &speed, .05f, .1f, "%.2f")) draft.fFollowSpeedScale = std::clamp(static_cast<double>(speed), .01, 10.0);
+			ImGui::TextWrapped("Creates one fixed group per alive player at each interval. One tracking target follows each player until Duration ends. The selected Effect rows become templates for Server playback; their relative timing and transforms are preserved.");
+			ImGui::SeparatorText("Arena volley sequence");
+			ImGui::TextWrapped("Cycles one complete set per interval at a Server-selected walkable arena position. MAP effects move with that position; following BOSS effects retain the boss anchor.");
+			for (std::size_t set = 0; set < draft.RandomVolleyOccurrenceSets.size();)
+			{
+				ImGui::PushID(static_cast<int>(set));
+				auto& ids = draft.RandomVolleyOccurrenceSets[set];
+				const auto label = "Set " + std::to_string(set + 1u) + " (" + std::to_string(ids.size()) + " rows)";
+				if (ImGui::BeginCombo("Effect occurrences", label.c_str()))
+				{
+					if (pattern) for (const auto& row : pattern->PresentationOccurrences)
+					{
+						const auto* resource = Find_PresentationResource(m_Draft, row.strResourceId);
+						if (!resource || resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT ||
+							!row.strBone.empty() || row.strBoneTarget != "BODY" || !row.strWorldId.empty() ||
+							!row.strWorldOccurrenceId.empty() || row.iWorldEmissionIndex || !row.strLogicOccurrenceId.empty() ||
+							!((row.strAnchorKind == "MAP" && !row.bFollowBoss) || (row.strAnchorKind == "BOSS" && row.bFollowBoss))) continue;
+						const auto selected = std::find(ids.begin(), ids.end(), row.strOccurrenceId);
+						const bool wasSelected = selected != ids.end();
+						const auto choice = resource->strDisplayName + " | " + std::to_string(row.iStartMs) + " ms | " + row.strAnchorKind + "##" + row.strOccurrenceId;
+						if (ImGui::Selectable(choice.c_str(), wasSelected, ImGuiSelectableFlags_DontClosePopups))
+						{
+							if (wasSelected) ids.erase(selected);
+							else if (ids.size() < 64u) ids.push_back(row.strOccurrenceId);
+						}
+					}
+					ImGui::EndCombo();
+				}
+				bool removed = false;
+				if (ImGui::SmallButton("Remove set")) { draft.RandomVolleyOccurrenceSets.erase(draft.RandomVolleyOccurrenceSets.begin() + set); removed = true; }
+				if (!removed && set > 0u) { ImGui::SameLine(); if (ImGui::SmallButton("Earlier")) std::swap(draft.RandomVolleyOccurrenceSets[set], draft.RandomVolleyOccurrenceSets[set - 1u]); }
+				if (!removed && set + 1u < draft.RandomVolleyOccurrenceSets.size()) { ImGui::SameLine(); if (ImGui::SmallButton("Later")) std::swap(draft.RandomVolleyOccurrenceSets[set], draft.RandomVolleyOccurrenceSets[set + 1u]); }
+				ImGui::PopID();
+				if (!removed) ++set;
+			}
+			if (draft.RandomVolleyOccurrenceSets.size() < 32u && ImGui::Button("Add arena volley set"))
+			{
+				draft.RandomVolleyOccurrenceSets.emplace_back();
+				if (!draft.iRandomSpawnIntervalMs) draft.iRandomSpawnIntervalMs = 500u;
+			}
+			if (!draft.RandomVolleyOccurrenceSets.empty())
+			{
+				int randomInterval = static_cast<int>(draft.iRandomSpawnIntervalMs);
+				if (ImGui::InputInt("Arena spawn interval (ms)", &randomInterval, 100, 1000)) draft.iRandomSpawnIntervalMs = static_cast<std::uint32_t>(std::clamp(randomInterval, 1, 600000));
+				ImGui::InputDouble("Arena search radius (m)", &draft.fRandomArenaRadiusM, 1, 10, "%.3f");
+				ImGui::InputDouble("Arena height tolerance (m)", &draft.fRandomArenaHeightToleranceM, .1, 1, "%.3f");
+				ImGui::TextDisabled("Each set needs a MAP row; radius (0,1000] m and height tolerance (0,10] m are required.");
+			}
+			else { draft.iRandomSpawnIntervalMs = 0u; draft.fRandomArenaRadiusM = 0.0; draft.fRandomArenaHeightToleranceM = 0.0; }
+
+		}
+        else if ("CROSS_DIRECTION_CLONES" == draft.strJudgementKind)
+        {
+            draft.DirectionPatternIds.resize(4u);
+            constexpr std::array<const char*, 4u> labels{ "Front Pattern", "Back Pattern", "Left Pattern", "Right Pattern" };
+            const auto* parent = Find_Pattern(m_Draft, m_strSelectedPatternId);
+            for (std::size_t direction = 0; direction < labels.size(); ++direction)
+            {
+                auto& id = draft.DirectionPatternIds[direction];
+                const auto* selected = Find_Pattern(m_Draft, id);
+                const char* name = selected ? selected->strDisplayName.c_str() : (id.empty() ? "(select Pattern)" : id.c_str());
+                if (ImGui::BeginCombo(labels[direction], name))
+                {
+                    for (const auto& candidate : m_Draft.Patterns)
+                    {
+                        if (!candidate.strLoadError.empty() || candidate.strCategory != "MECHANIC" || !candidate.PatternOccurrences.empty() ||
+                            !candidate.LogicOccurrences.empty() || !candidate.SummonOccurrences.empty() ||
+                            !candidate.WorldOccurrences.empty() || !candidate.SceneProfileOccurrences.empty() ||
+                            candidate.BossMotion || candidate.bResetBossToSpawn || candidate.ResetBossYawDegrees ||
+                            candidate.bEnterCombatOnFinish || Find_TimelineParent(m_Draft, candidate.strPatternId)) continue;
+                        if (parent && (candidate.strPatternId == parent->strPatternId || candidate.strGateId != parent->strGateId ||
+                            candidate.strActorProfileId != parent->strActorProfileId || candidate.strTargetBossPlacementId != parent->strTargetBossPlacementId)) continue;
+                        if (ImGui::Selectable((candidate.strDisplayName + "##" + candidate.strPatternId).c_str(), id == candidate.strPatternId)) id = candidate.strPatternId;
+                    }
+                    ImGui::EndCombo();
+                }
+            }
+            const auto* summon = parent ? Find_SummonBox(*parent, draft.strSummonOccurrenceId) : nullptr;
+            if (ImGui::BeginCombo("Summon placement", summon ? summon->strOccurrenceId.c_str() : "(select Summon box)"))
+            {
+                if (parent) for (const auto& box : parent->SummonOccurrences)
+                {
+                    if (!box.PatternSpawns.empty()) continue;
+                    const auto* definition = Find_Summon(m_Draft, box.strSummonId);
+                    const std::string label = (definition ? definition->strDisplayName : box.strSummonId) + "##" + box.strOccurrenceId;
+                    if (ImGui::Selectable(label.c_str(), box.strOccurrenceId == draft.strSummonOccurrenceId)) draft.strSummonOccurrenceId = box.strOccurrenceId;
+                }
+                ImGui::EndCombo();
+            }
+            if (ImGui::BeginCombo("Clones play through", draft.strCloneEndStageId.empty() ? "(select Stage)" : draft.strCloneEndStageId.c_str()))
+            {
+                if (const auto* first = Find_Pattern(m_Draft, draft.DirectionPatternIds.front()))
+                    for (const auto& stage : first->Stages)
+                        if (ImGui::Selectable(stage.strStageId.c_str(), stage.strStageId == draft.strCloneEndStageId)) draft.strCloneEndStageId = stage.strStageId;
+                ImGui::EndCombo();
+            }
+            ImGui::TextWrapped("The Server compares each direction's movement endpoint with the arena center. One real body plays its full Pattern; three Summon clones stop after the selected Stage. Duration must cover all four complete Patterns.");
+        }
+		else if ("BOSS_TRACK_TARGET" == draft.strJudgementKind)
+			ImGui::TextWrapped("Rotate toward the Server-selected target over this box Duration. Uses the shortest arc, with no Effect template, Collider or outcome slots.");
 		else if ("ATTACHMENT_HOLD" == draft.strJudgementKind)
 			ImGui::TextWrapped("Keeps captured players attached until this window ends. It has no Collider or outcome slots. Select this window in the capture Trigger's Hold connection.");
 		else if ("AREA_OVERLAP" == draft.strJudgementKind)
@@ -12347,14 +12754,17 @@ void Client::CKoukuSaydonActionWorkbench::Render_LogicDefinitionValues(
 	}
 	else if ("TRIGGER" == logic.strLogicType)
 	{
-		const std::array<std::pair<const char*, const char*>, 9u> triggerKinds = {{
+		const std::array<std::pair<const char*, const char*>, 12u> triggerKinds = {{
 			{"", "(choose what activates this Trigger)"},
 			{"ANIMATION_BLEND", "Animation clip blending (ANIMATION_BLEND)"},
+			{"ROOM_PLAYER_ARRIVAL", "Sequence player arrival (ROOM_PLAYER_ARRIVAL)"},
 			{"ENTER_AREA", "Player contact (ENTER_AREA)"},
 			{"OBJECT_CONTACT", "World object contact (OBJECT_CONTACT)"},
 			{"HUD_ENTER", "Switch player HUD at start (HUD_ENTER)"},
 			{"CARD_MAZE_HIDE_NEXT", "Hide next player from the right (CARD_MAZE_HIDE_NEXT)"},
 			{"CARD_MAZE_ENTER", "Move entry participants into the card maze (CARD_MAZE_ENTER)"},
+			{"ALBION_AIRBORNE", "Albion jump, player appearance and landing (ALBION_AIRBORNE)"},
+			{"BOSS_TELEPORT_XZ", "Teleport boss XZ and preserve animation height (BOSS_TELEPORT_XZ)"},
 			{"REAL_GAZE_TELEPORT", "Teleport real Saydon and spawn decoys (REAL_GAZE_TELEPORT)"},
 			{"ALBION_BLUE_CIRCLE", "Albion player and arena circles (ALBION_BLUE_CIRCLE)"}
 		}};
@@ -12364,11 +12774,13 @@ void Client::CKoukuSaydonActionWorkbench::Render_LogicDefinitionValues(
 		{
 			for (const auto& [kind, label] : triggerKinds)
 			{
+				if (!m_bSequenceWorkspace && std::string_view(kind) == "ROOM_PLAYER_ARRIVAL") continue;
 				if (collider && *kind != '\0' && std::string_view(kind) != "ENTER_AREA" && std::string_view(kind) != "OBJECT_CONTACT") continue;
 				if (ImGui::Selectable(label, draft.strTriggerKind == kind) && draft.strTriggerKind != kind)
 				{
 					draft = KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION{ logic.strLogicId, logic.strDisplayName, logic.strLogicType };
 					draft.strTriggerKind = kind;
+					if (draft.strTriggerKind == "ALBION_AIRBORNE") draft.strAirbornePhase = "SELECT_PLAYER";
 					if (draft.strTriggerKind == "HUD_ENTER") draft.strHudMode = "NONE";
 					if (draft.strTriggerKind == "ALBION_BLUE_CIRCLE")
 					{
@@ -12386,6 +12798,8 @@ void Client::CKoukuSaydonActionWorkbench::Render_LogicDefinitionValues(
 			ImGui::TextWrapped("This Collider supplies the contact shape, position and size. Apply Values also matches the linked Trigger's start/lifetime to the Collider. HUD and teleport Triggers are placed on the Logic lane without a Collider.");
 		if (draft.strTriggerKind == "ANIMATION_BLEND")
 			ImGui::TextWrapped("The Logic box defines the actual 1..1000 ms clip transition, including time before the next clip starts. Place it across exactly one consecutive pose-owner boundary. Both source ranges keep their own delay, crop, rate and hold/loop policy. Overlapping Logic/clip transitions are rejected.");
+		else if (draft.strTriggerKind == "ROOM_PLAYER_ARRIVAL")
+			ImGui::TextWrapped("Each Logic box selects a player slot 1..4 and a destination. Play sends it once to the Server; Pause and scrub do not move players. Empty room slots are skipped.");
 		else if (draft.strTriggerKind == "ENTER_AREA")
 		{
 			int repeat = draft.bRepeatAfterKnockback ? 2 : draft.bRearmOnExit ? 1 : 0;
@@ -12509,6 +12923,33 @@ void Client::CKoukuSaydonActionWorkbench::Render_LogicDefinitionValues(
 					if (ImGui::Selectable(mode, draft.strHudMode == mode)) draft.strHudMode = mode;
 				ImGui::EndCombo();
 			}
+		}
+		else if (draft.strTriggerKind == "ALBION_AIRBORNE")
+		{
+			if (ImGui::BeginCombo("Airborne phase", draft.strAirbornePhase.c_str()))
+			{
+				for (const char* phase : { "SELECT_PLAYER", "JUMP", "APPEAR_PLAYER", "DISAPPEAR", "CENTER", "SLAM" })
+					if (ImGui::Selectable(phase, draft.strAirbornePhase == phase) && draft.strAirbornePhase != phase)
+					{ draft.strAirbornePhase = phase; draft.fAirborneHeightM = 0.0; draft.iAirborneDurationMs = 0u; draft.TeleportPosition = {}; }
+				ImGui::EndCombo();
+			}
+			if (draft.strAirbornePhase == "JUMP" || draft.strAirbornePhase == "APPEAR_PLAYER")
+				ImGui::InputDouble("Airborne height (m)", &draft.fAirborneHeightM, .1, 1.0, "%.6f");
+			if (draft.strAirbornePhase == "JUMP")
+			{
+				int duration = int(draft.iAirborneDurationMs);
+				if (ImGui::InputInt("Rise time (ms)", &duration)) draft.iAirborneDurationMs = uint32_t(std::clamp(duration, 1, 600000));
+			}
+			if (draft.strAirbornePhase == "CENTER")
+				ImGui::InputScalarN("Center destination XYZ (m)", ImGuiDataType_Double, draft.TeleportPosition.data(), 3, nullptr, nullptr, "%.3f");
+			ImGui::TextWrapped("Play Preview pins replicated player positions for its preview actor. Server Play selects live players and validates destinations. Animation time is unchanged; airborne phases own the actor height.");
+		}
+		else if (draft.strTriggerKind == "BOSS_TELEPORT_XZ")
+		{
+			double position[2] = { draft.TeleportPosition[0], draft.TeleportPosition[2] };
+			if (ImGui::InputScalarN("Boss destination XZ (m)", ImGuiDataType_Double, position, 2, nullptr, nullptr, "%.3f"))
+			{ draft.TeleportPosition[0] = position[0]; draft.TeleportPosition[2] = position[1]; }
+			ImGui::TextWrapped("Moves the boss horizontally when this Logic box starts. Its current height and animation continue at the destination.");
 		}
 		else if (draft.strTriggerKind == "REAL_GAZE_TELEPORT")
 		{
@@ -12833,7 +13274,31 @@ void Client::CKoukuSaydonActionWorkbench::Render_LogicBoxDetails(
 	}
 	ImGui::TextDisabled("Pattern lifetime %u ms. Drag the box edges on the Logic lane to resize it.",
 		lifetimeMs);
-	if (Render_LogicOutcomeSlots(patternId, occurrenceId)) return;
+	if (logic && logic->strTriggerKind == "ROOM_PLAYER_ARRIVAL" && box->RoomPlayerArrival)
+	{
+		auto arrival = *box->RoomPlayerArrival;
+		int slot = static_cast<int>(arrival.iPlayerSlot) + 1;
+		float position[3] = {float(arrival.Position[0]), float(arrival.Position[1]), float(arrival.Position[2])};
+		bool changed = ImGui::InputInt("Player slot (1..4)", &slot);
+		changed = ImGui::InputFloat3("Arrival position (m)", position) || changed;
+		if (changed)
+		{
+			arrival.iPlayerSlot = static_cast<uint32_t>(std::clamp(slot, 1, 4) - 1);
+			arrival.Position = {position[0], position[1], position[2]};
+			auto candidate = m_Draft;
+			auto* editablePattern = Find_Pattern(candidate, patternId);
+			auto* editableBox = editablePattern ? Find_LogicBox(*editablePattern, occurrenceId) : nullptr;
+			if (editableBox)
+			{
+				editableBox->RoomPlayerArrival = arrival;
+				std::string status;
+				(void)Commit_Candidate(std::move(candidate), "Updated player arrival. Save Sequence to retain it.", status);
+			}
+			return;
+		}
+		ImGui::TextWrapped("PlayerId order is fixed at this run's first arrival. Missing players are skipped. The Server validates the destination.");
+	}
+	else if (Render_LogicOutcomeSlots(patternId, occurrenceId)) return;
 	if (ImGui::Button("Delete Logic Box"))
 	{
 		std::string status;
@@ -13177,6 +13642,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_Details()
 			static_cast<std::uint32_t>(durationMs), status);
 		return;
 	}
+	ImGui::TextDisabled("Effect and other lane times stay unchanged. Pattern lifetime includes their tails.");
 	std::uint64_t animationEndMs = 0u;
 	for (const auto& animation : stage->AnimationOccurrences)
 		animationEndMs = (std::max)(animationEndMs,
@@ -13186,7 +13652,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_Details()
 	const bool fitStage = ImGui::Button("Fit Stage to Animation");
 	ImGui::EndDisabled();
 	if (ImGui::IsItemHovered())
-		ImGui::SetTooltip("Remove the trailing Stage gap. Following Stages and their Animation Blend boxes move together.");
+		ImGui::SetTooltip("Fit this Stage to its animation. Effect and other lane start times and durations stay unchanged.");
 	if (fitStage)
 	{
 		std::string status;

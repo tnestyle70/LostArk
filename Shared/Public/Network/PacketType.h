@@ -80,7 +80,8 @@ namespace LostArk::Shared
 	request/verdict. Both peers need 82. */
 	// 83 adds Mario entry test state and retained entry presentation to bundles.
 	// 84 adds Server-authorized Mario return intent and typed result.
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 85;
+	// 86 adds occurrence-scoped room player arrival to debug world playback.
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 87;
 
 	enum class WORLD_ID : std::uint16_t
 	{

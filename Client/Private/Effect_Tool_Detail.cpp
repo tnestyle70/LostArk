@@ -58,11 +58,28 @@ bool_t Client::CEffect_Tool::Try_TranslateAttachmentGroup(const std::string& gro
     return true;
 }
 
+bool_t Client::CEffect_Tool::Try_RotateAttachmentGroup(const std::string& groupKey, const float3_t& rotationDegrees)
+{
+    if (!m_ActiveDocument || (m_eActiveDocumentSource != EFFECT_DOCUMENT_SOURCE::AUTHORED &&
+        m_eActiveDocumentSource != EFFECT_DOCUMENT_SOURCE::NEW_DOCUMENT))
+    { m_strElementStatus = "Open an authored Current Effect before rotating an anchor group."; return false; }
+    if (Has_UnappliedDetailDraft())
+    { m_strElementStatus = "Apply or Revert the open Detail draft before rotating an anchor group; its edits are preserved."; return false; }
+    auto staged = *m_ActiveDocument;
+    if (!Rotate_AttachmentElementGroup(staged, groupKey, rotationDegrees, m_strElementStatus)) return false;
+    // The existing commit refreshes paused/playing previews at their current
+    // cursor and preserves the old document and preview when staging fails.
+    if (!Try_CommitDocument(std::move(staged))) return false;
+    Reset_DetailDraft();
+    m_strElementStatus = m_strDocumentStatus = "Rotated the group around its center in Current Effect memory. Save Changes keeps the rotation.";
+    return true;
+}
+
 void Client::CEffect_Tool::Render_CurrentEffectAttachmentGroups()
 {
     const auto groups = Build_AttachmentElementGroups(*m_ActiveDocument);
-    std::string movedGroup;
-    float3_t translation{};
+    std::string movedGroup, rotatedGroup;
+    float3_t translation{}, rotationDegrees{};
     for (const auto& group : groups)
     {
         ImGui::PushID(group.key.c_str());
@@ -81,16 +98,28 @@ void Client::CEffect_Tool::Render_CurrentEffectAttachmentGroups()
         {
             ImGui::BeginDisabled(!group.editable || Has_UnappliedDetailDraft());
             auto center = group.center;
-            if (ImGui::InputFloat3(group.rootLocal ? "Group Center (effect-local m)" : "Group Center (bone-local m)",
-                &center.x, "%.3f"))
+            if (ImGui::DragFloat3(group.rootLocal ? "Group Center (effect-local m)" : "Group Center (bone-local m)",
+                &center.x, .01f, -100000.f, 100000.f, "%.3f"))
             {
                 movedGroup = group.key;
                 translation = float3_t(center.x - group.center.x, center.y - group.center.y, center.z - group.center.z);
             }
             ImGui::EndDisabled();
+            ImGui::BeginDisabled(!group.rotationEditable || Has_UnappliedDetailDraft());
+            auto angles = group.rotationDegrees;
+            if (ImGui::DragFloat3("Group Rotation (deg)", &angles.x, .25f, -36000.f, 36000.f, "%.2f"))
+            {
+                rotatedGroup = group.key;
+                rotationDegrees = angles;
+            }
+            ImGui::EndDisabled();
             if (!group.editable) ImGui::TextWrapped("%s", group.editReason.c_str());
             else if (Has_UnappliedDetailDraft()) ImGui::TextDisabled("Apply or Revert the open Detail draft first; its edits are preserved.");
-            else ImGui::TextDisabled("Changes move this complete group in memory. Save Changes persists it. Individual offsets, rotations and sizes are preserved.");
+            else
+            {
+                ImGui::TextWrapped("Drag the center or rotation to update the preview at its current cursor. Rotation uses the first Element's orientation and turns every member around the center. Save Changes persists it.");
+                if (!group.rotationEditable) ImGui::TextWrapped("%s", group.rotationEditReason.c_str());
+            }
             for (size_t i = 0; i < group.elementIds.size(); ++i)
             {
                 const auto found = std::find_if(m_ActiveDocument->Elements.begin(), m_ActiveDocument->Elements.end(),
@@ -103,6 +132,7 @@ void Client::CEffect_Tool::Render_CurrentEffectAttachmentGroups()
     }
     // Commit only after the complete view releases every pointer into the old document.
     if (!movedGroup.empty()) (void)Try_TranslateAttachmentGroup(movedGroup, translation);
+    else if (!rotatedGroup.empty()) (void)Try_RotateAttachmentGroup(rotatedGroup, rotationDegrees);
 }
 
 void Client::CEffect_Tool::Render_ProjectileDestinationControls()
@@ -1009,7 +1039,7 @@ void Client::CEffect_Tool::Render_EffectDetailWindow()
 	ImGui::TextWrapped("Selected Element Solo: %s",
 		ElementPreviewAdmissionReason(*pCurrent));
     if (m_pAuthoringSequencer && !m_ProductPreview &&
-        (m_ActiveDocument->strEffectAssetId.ends_with(".restore") ||
+        (Is_SequencerRecoveryEffectAssetId(m_ActiveDocument->strEffectAssetId) ||
          Is_SceneAnchoredEffectAssetId(m_ActiveDocument->strEffectAssetId)))
     {
         if (ImGui::Button("Timeline Solo##SelectedElement"))

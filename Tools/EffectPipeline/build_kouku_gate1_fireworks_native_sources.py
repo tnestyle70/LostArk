@@ -241,7 +241,7 @@ def select_programs():
       names={v['vertexFactoryType'] for v in r['materialMap']['vertexFactories']}
       if shape=='mesh':vf='flocalvertexfactory'
       elif shape=='decal':vf='flocaldecalvertexfactory'
-      elif shape=='animationTrail':vf='fparticlebeamtraildynamicparametervertexfactory' if any('parameterdynamic' in k for k in o['moduleOrder']) else 'fparticlebeamtrailvertexfactory'
+      elif shape in ('animationTrail', 'ribbon', 'beam'):vf='fparticlebeamtraildynamicparametervertexfactory' if any('parameterdynamic' in k for k in o['moduleOrder']) else 'fparticlebeamtrailvertexfactory'
       else:
        # Cooked material usage selects whether the sprite vertex stream has dynamic lanes.
        # Offset-center and SubUV are the emitter's Required module inputs.

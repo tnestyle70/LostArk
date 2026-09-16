@@ -412,6 +412,31 @@ EFFECT_PS_OUT PS_MAIN(VS_OUT input, bool frontFace : SV_IsFrontFace)
     return output;
 }
 
+#if EFFECT_SHADER_FAMILY == 7
+// Native Modulate emits a scene-color factor. The source PS has no auxiliary RT outputs.
+EFFECT_PS_OUT PS_MODULATE(VS_OUT input, bool frontFace : SV_IsFrontFace)
+{
+    return PS_MATERIAL(input, frontFace);
+}
+
+BlendState BS_SourceModulate
+{
+    BlendEnable[0] = true;
+    SrcBlend[0] = Dest_Color;
+    DestBlend[0] = Zero;
+    BlendOp[0] = Add;
+    SrcBlendAlpha[0] = Zero;
+    DestBlendAlpha[0] = One;
+    BlendOpAlpha[0] = Add;
+    RenderTargetWriteMask[0] = 0x07;
+    BlendEnable[1] = false;
+    RenderTargetWriteMask[1] = 0x00;
+    BlendEnable[2] = false;
+    RenderTargetWriteMask[2] = 0x00;
+};
+PixelShader SourceModulatePS = compile ps_5_0 PS_MODULATE();
+#endif
+
 VertexShader EffectPreviewVS = compile vs_5_0 VS_MAIN();
 PixelShader EffectPreviewPS = compile ps_5_0 PS_MAIN();
 
@@ -462,4 +487,15 @@ technique11 DefaultTechnique
         GeometryShader = NULL;
         PixelShader = EffectPreviewPS;
     }
+#if EFFECT_SHADER_FAMILY == 7
+    pass MultiplyOneSidedDepthRead
+    {
+        SetRasterizerState(RS_Default);
+        SetDepthStencilState(DSS_ReadOnly, 0);
+        SetBlendState(BS_SourceModulate, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = EffectPreviewVS;
+        GeometryShader = NULL;
+        PixelShader = SourceModulatePS;
+    }
+#endif
 }

@@ -986,7 +986,7 @@ bool_t Client::CEffect_Tool::Try_PlayUnifiedEffect(
 		}
 	}
 	if (m_ActiveDocument && !m_ProductPreview &&
-		(m_ActiveDocument->strEffectAssetId.ends_with(".restore") ||
+		(Is_SequencerRecoveryEffectAssetId(m_ActiveDocument->strEffectAssetId) ||
 		 Is_SceneAnchoredEffectAssetId(m_ActiveDocument->strEffectAssetId)))
 		return Try_PlayRecoveryEffect();
 	if (!Try_SetPreviewFilter(EFFECT_PREVIEW_FILTER::COMPLETE))
@@ -1127,6 +1127,24 @@ bool_t Client::CEffect_Tool::Try_PreviewElementsTimeline(
     uint32_t focus = 0u, duration = 0u;
     std::string label;
     if (!Resolve_ElementsPreviewWindow(preview, elementIds, focus, duration, label, m_strPreviewStatus)) return false;
+    if (preview.strEffectAssetId.starts_with("effect.valtan."))
+    {
+        // Boss groups keep the same clip/source clock as Complete and Solo.
+        // Attachment groups and marked selections can span authored group IDs.
+        const auto previousIds = m_PreviewIsolationElementIds;
+        const auto previousGroup = m_strPreviewIsolationGroupId;
+        m_PreviewIsolationElementIds = elementIds;
+        m_strPreviewIsolationGroupId.clear();
+        if (!Try_SetPreviewFilter(EFFECT_PREVIEW_FILTER::SOLO_SELECTED_GROUP))
+        {
+            m_PreviewIsolationElementIds = previousIds;
+            m_strPreviewIsolationGroupId = previousGroup;
+            return false;
+        }
+        m_bPreviewLoop = loop;
+        Start_WorldPreviewFromBeginning();
+        return m_bPreviewPlaying;
+    }
     const EFFECT_RESOURCE_KEY key{EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT, preview.strEffectAssetId};
     // Selected projections include their hidden source providers. Keep the
     // captured root when Solo/Group changes while staging any new model need.
@@ -1143,7 +1161,7 @@ bool_t Client::CEffect_Tool::Try_PreviewElementsTimeline(
         if (!m_pAuthoringSequencer->Select_KoukuEffect(key.strStableId, requiresSourceModel, true, &preview))
         { m_strPreviewStatus = m_pAuthoringSequencer->Status(); return false; }
     }
-    else if (key.strStableId.ends_with(".restore") &&
+    else if (Is_SequencerRecoveryEffectAssetId(key.strStableId) &&
         !m_pAuthoringSequencer->Uses_Resource(key) && !Prepare_RecoveryPreviewTarget()) return false;
     const bool result = loop ?
         m_pAuthoringSequencer->Preview_Elements(key, elementIds, label, duration, focus, true) :
@@ -1241,7 +1259,7 @@ bool_t Client::CEffect_Tool::Try_PlayActiveUnifiedEffect()
 		return false;
 	}
 	if (m_ActiveDocument && !m_ProductPreview &&
-		(m_ActiveDocument->strEffectAssetId.ends_with(".restore") ||
+		(Is_SequencerRecoveryEffectAssetId(m_ActiveDocument->strEffectAssetId) ||
 		 Is_SceneAnchoredEffectAssetId(m_ActiveDocument->strEffectAssetId)))
 		return Try_PlayRecoveryEffect();
 	if (!Try_SetPreviewFilter(EFFECT_PREVIEW_FILTER::COMPLETE))

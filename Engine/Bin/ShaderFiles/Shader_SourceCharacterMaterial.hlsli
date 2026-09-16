@@ -172,7 +172,11 @@ SOURCE_CHARACTER_GBUFFER EvaluateSourceCharacterGeometry(float2 uv, float4 extra
     output.normal = float4(mappedNormal * .5f + .5f, 0.f);
     output.depth = float4(clipPosition.z / clipPosition.w, clipPosition.w / 1000.f,
         float(g_SourceCharacterRow), 5.f);
-    output.pickPosition = float4(worldPosition, 1.f);
+    // Marker-5 PickPos.W uses low 8 mantissa bits for the source program.
+    // Keep exponent 127: the RGBA32_FLOAT payload stays finite/nonzero, and
+    // EncodeMapStaticShadowChannel preserves these bits. Picking consumes XYZ.
+    output.pickPosition = float4(worldPosition,
+        asfloat(0x3f800000u | (g_SourceCharacterProgram & 255u)));
     output.indirect = float4(native.targets[0].rgb, 0.f);
     if (g_SourceCharacterProgram >= 80u && g_SourceCharacterProgram <= 83u)
     {

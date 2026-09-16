@@ -44,6 +44,8 @@ struct EFFECT_PRODUCT_PREWARM_TARGET_PROBE final
 	uint32_t iQueuePendingCount = 0u;
 	bool bCatalogRevisionCurrent = false;
 	bool bSettled = false;
+	// Service-level queue failure; individual failed targets remain terminal.
+	std::string strBlockingFailure;
 };
 
 struct EFFECT_PRODUCT_PREWARM_FAILURE_RECEIPT final

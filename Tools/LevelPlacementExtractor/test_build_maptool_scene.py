@@ -1,7 +1,9 @@
 import argparse
+import hashlib
 import json
 import math
 import tempfile
+import struct
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -9,17 +11,18 @@ from unittest.mock import patch
 from build_maptool_scene import (
     EMPTY_MATERIAL_SIGNATURE,
     IMPORTED_ID_BIT,
-    classify_non_visual_asset,
+    classify_asset_name_hint,
     compile_scene,
     convert_position,
     convert_rotation,
     convert_scale,
     directx_row_matrix_from_quaternion,
     imported_id,
-    is_non_visual_helper_asset,
     material_signature_from_slots,
     parse_args,
     scale_flags,
+    source_visibility_from_chains,
+    validate_source_material_geometry,
 )
 
 
@@ -62,41 +65,40 @@ class MapToolSceneTransformTests(unittest.TestCase):
         self.assertNotEqual(imported_id(source) & IMPORTED_ID_BIT, 0)
         self.assertEqual(imported_id(source), imported_id(source))
 
-    def test_lv_navimesh_assets_are_non_visual_helpers(self):
+    def test_lv_navimesh_name_is_diagnostic_only(self):
         asset = {
             "rootImport": "lv_navimesh",
             "logicalPackage": "LV_NAVIMESH",
             "fullPath": "lv_navimesh.mesh.lv_common_mesh_cul_box_8",
         }
-        self.assertTrue(is_non_visual_helper_asset(asset))
-        self.assertEqual(classify_non_visual_asset(asset), "nav-helper")
+        self.assertEqual(classify_asset_name_hint(asset), "nav-package")
 
-    def test_lv_module_proxy_is_hidden_until_special_surface_support(self):
+    def test_lv_module_name_is_diagnostic_only(self):
         asset = {
             "rootImport": "lv_module",
             "logicalPackage": "LV_MODULE",
             "objectName": "lv_module_water02_512",
             "fullPath": "lv_module.mesh.lv_module_water02_512",
         }
-        self.assertEqual(classify_non_visual_asset(asset), "module-proxy")
+        self.assertEqual(classify_asset_name_hint(asset), "module-package")
 
-    def test_heartrb_water_is_deferred_instead_of_rendered_gray(self):
+    def test_water_name_is_diagnostic_only(self):
         asset = {
             "rootImport": "lv_lut_heartrb",
             "logicalPackage": "LV_LUT_HEARTRB",
             "objectName": "lv_lut_heartrb_water01_sm",
             "fullPath": "lv_lut_heartrb.mesh.lv_lut_heartrb_water01_sm",
         }
-        self.assertEqual(classify_non_visual_asset(asset), "deferred-water")
+        self.assertEqual(classify_asset_name_hint(asset), "water-name")
 
-    def test_bfx_mesh_is_deferred_instead_of_rendered_opaque(self):
+    def test_bfx_name_is_diagnostic_only(self):
         asset = {
             "rootImport": "bfx_sm_00",
             "logicalPackage": "BFX_SM_00",
             "objectName": "bfm_mossfog_001",
             "fullPath": "bfx_sm_00.bfm_mossfog_001",
         }
-        self.assertEqual(classify_non_visual_asset(asset), "deferred-fx")
+        self.assertEqual(classify_asset_name_hint(asset), "fx-name")
 
     def test_regular_level_asset_remains_visible(self):
         asset = {
@@ -104,7 +106,41 @@ class MapToolSceneTransformTests(unittest.TestCase):
             "logicalPackage": "PVP_RETOWN_A",
             "fullPath": "pvp_retown_a.mesh.bg_pvp_retown_floor01_sm",
         }
-        self.assertFalse(is_non_visual_helper_asset(asset))
+        self.assertIsNone(classify_asset_name_hint(asset))
+
+
+class SourceMaterialGeometryChannelTests(unittest.TestCase):
+    def test_rnm_and_overlay_require_actual_uv1_and_color_bytes(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            model = Path(temporary) / "mesh.wmodel"
+            model.write_bytes(b"actual model payload")
+            rows = [{"bakedLighting": {"averageTexture": "average.dds"}},
+                    {"family": "bg_base_opa_overlay", "sourceOverlayFlags": 4}]
+            parsed = {"hasTexcoord1": True, "hasColor0": True, "vertexStride": 60, "submeshes": [{}]}
+            with patch("build_maptool_scene.geometry.parse_geometry_wmodel", return_value=parsed) as parse:
+                result = validate_source_material_geometry(model, rows)
+                parse.assert_called_once_with(b"actual model payload")
+                self.assertEqual(result["requiredChannels"], ["COLOR0", "TEXCOORD1"])
+                self.assertEqual(result["modelSha256"], hashlib.sha256(model.read_bytes()).hexdigest())
+            for field, channel in (("hasTexcoord1", "TEXCOORD1"), ("hasColor0", "COLOR0")):
+                with self.subTest(field=field), patch("build_maptool_scene.geometry.parse_geometry_wmodel", return_value={**parsed, field: False}):
+                    with self.assertRaisesRegex(ValueError, channel):
+                        validate_source_material_geometry(model, rows)
+
+    def test_legacy_without_rnm_or_vertex_overlay_keeps_existing_path(self):
+        with patch("build_maptool_scene.geometry.parse_geometry_wmodel") as parse:
+            result = validate_source_material_geometry(Path("unused.wmodel"), [
+                {"family": "bg_base_pbr_opa"}, {"family": "bg_base_opa_overlay", "sourceOverlayFlags": 0}])
+            parse.assert_not_called()
+            self.assertEqual(result["validation"], "no-extra-channel-required")
+
+    def test_malformed_actual_model_cannot_supply_required_channels(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            model = Path(temporary) / "mesh.wmodel"
+            model.write_bytes(b"WMOD-four-byte-magic-is-not-geometry")
+            for row in ({"bakedLighting": {"averageTexture": "average.dds"}}, {"family": "bg_base_opa_overlay"}):
+                with self.assertRaisesRegex(ValueError, "cannot be verified"):
+                    validate_source_material_geometry(model, [row])
 
 
 class MapToolSceneCompileTests(unittest.TestCase):
@@ -166,6 +202,9 @@ class MapToolSceneCompileTests(unittest.TestCase):
             runtime_asset_root=None,
             overlay_manifest=None,
             render_profile_manifest=None,
+            allow_legacy_visibility=True,
+            allow_legacy_material_coverage=True,
+            allow_partial_material_preview=False,
             placements_dir=placements_dir,
             catalog_output=root / f"catalog{suffix}.txt",
             placement_output=root / f"placements{suffix}.txt",
@@ -188,6 +227,235 @@ class MapToolSceneCompileTests(unittest.TestCase):
             expect_hidden_category=[],
             expect_level_count=[],
         )
+
+    def visibility_fixture(self, root, *, hidden=False, name="LV_MODULE.Mesh.OpaqueFloor"):
+        actor = [{"objectPath": "Actor", "physicalPackage": "source.upk", "packageSha256": "a" * 64,
+                  "exportIndex": 280, "serializedFlags": {"bHidden": hidden}}]
+        component = [{"objectPath": "Actor.Component", "physicalPackage": "source.upk", "packageSha256": "a" * 64,
+                      "exportIndex": 488, "serializedFlags": {}}]
+        placement = self.placement("LV_TEST:export:488", "floor", "LV_TEST")
+        placement["asset"]["objectPath"] = name
+        placement["materialOverrides"] = {"propertyPresent": False, "slots": [], "signatureSha256": EMPTY_MATERIAL_SIGNATURE}
+        placement["sourceVisibility"] = source_visibility_from_chains(actor, component)
+        asset = self.asset("floor", full_path=name)
+        asset["logicalPackage"] = asset["rootImport"] = name.split(".")[0]
+        asset["objectName"] = name.split(".")[-1]
+        self.write_json(root / "assets.json", {"areaId": "TEST", "assets": [asset]})
+        runtime = {"assetId": "floor", "model": "floor.wmodel", "runtimeCoverage": {
+            "textureDependencyClosureComplete": True, "textureSlotsComplete": True, "materialComplete": True},
+            "sourceOnlyUnsupported": []}
+        self.write_json(root / "runtime.json", {"areaId": "TEST", "assets": [runtime]})
+        self.write_json(root / "placements/source.placements.json", {"schemaVersion": 3, "placements": [placement]})
+        (root / "floor.wmodel").write_bytes(b"WMOD-fixture")
+        args = self.arguments(root, root / "assets.json", root / "runtime.json", root, root / "placements")
+        args.allow_legacy_visibility = args.allow_legacy_material_coverage = False
+        return args, placement, runtime
+
+    def test_source_visible_module_nav_water_and_fx_names_are_not_hidden(self):
+        for name in ("LV_MODULE.Mesh.OpaqueFloor", "LV_NAVIMESH.Mesh.Box", "LV_LUT_HEARTRB.Mesh.lv_lut_heartrb_water01", "BFX_SM_00.bfm_cloudplane"):
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as temporary:
+                args, _, _ = self.visibility_fixture(Path(temporary), name=name)
+                receipt = compile_scene(args)
+                self.assertTrue(args.placement_output.read_text().splitlines()[1].endswith(" 1"))
+                self.assertEqual(receipt["sourceHiddenCategoryCounts"], {})
+                self.assertEqual(sum(receipt["assetNameHintsDiagnosticOnly"].values()), 1)
+
+    def test_original_hidden_flag_and_explicit_override_are_separate(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            args, _, _ = self.visibility_fixture(root, hidden=True)
+            self.assertEqual(compile_scene(args)["hiddenCategoryCounts"], {"source-hidden": 1})
+            args.render_profile_manifest = root / "profile.json"
+            self.write_json(args.render_profile_manifest, {"schemaVersion": 1, "areaId": "TEST", "profiles": [],
+                "visibilityOverrides": [{"sourcePlacementId": "LV_TEST:export:488", "visible": True}]})
+            self.assertEqual(compile_scene(args)["hiddenCategoryCounts"], {})
+
+    def test_visibility_tamper_and_unknown_legacy_fail_without_replacing_outputs(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            args, placement, _ = self.visibility_fixture(root)
+            compile_scene(args)
+            previous = args.placement_output.read_bytes()
+            placement["sourceVisibility"]["visible"] = False
+            self.write_json(root / "placements/source.placements.json", {"schemaVersion": 3, "placements": [placement]})
+            with self.assertRaisesRegex(ValueError, "visible mismatch"):
+                compile_scene(args)
+            self.assertEqual(previous, args.placement_output.read_bytes())
+            del placement["sourceVisibility"]
+            self.write_json(root / "placements/source.placements.json", {"schemaVersion": 2, "placements": [placement]})
+            with self.assertRaisesRegex(ValueError, "visibility was not extracted"):
+                compile_scene(args)
+            args.allow_legacy_visibility = True
+            self.assertEqual(compile_scene(args)["sourceVisibilityBasisCounts"], {"legacy-unrecorded": 1})
+
+    def test_material_support_failure_is_not_a_visibility_override(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            args, _, runtime = self.visibility_fixture(root)
+            compile_scene(args)
+            previous = args.placement_output.read_bytes()
+            runtime["runtimeCoverage"]["materialComplete"] = False
+            runtime["sourceOnlyUnsupported"] = [{"material": "NativeWater", "unsupported": ["shader:water"]}]
+            self.write_json(root / "runtime.json", {"areaId": "TEST", "assets": [runtime]})
+            with self.assertRaisesRegex(ValueError, "sourceOnlyUnsupported"):
+                compile_scene(args)
+            self.assertEqual(previous, args.placement_output.read_bytes())
+            args.allow_partial_material_preview = True
+            receipt = compile_scene(args)
+            self.assertEqual(receipt["runtimeMaterialAdmission"]["floor"]["mode"], "geometry-preview-partial-material")
+            self.assertTrue(args.placement_output.read_text().splitlines()[1].endswith(" 1"))
+            runtime["runtimeCoverage"]["textureDependencyClosureComplete"] = False
+            self.write_json(root / "runtime.json", {"areaId": "TEST", "assets": [runtime]})
+            with self.assertRaisesRegex(ValueError, "texture dependency closure"):
+                compile_scene(args)
+
+    def source_material_fixture(self, root):
+        args, placement, runtime = self.visibility_fixture(root)
+        args.runtime_asset_root = root / "Resources"
+        texture = args.runtime_asset_root / "Map/source.dds"
+        texture.parent.mkdir(parents=True)
+        header = [0] * 31
+        header[0], header[2], header[3], header[6] = 124, 4, 4, 1
+        header[18], header[19], header[20], header[26] = 32, 4, int.from_bytes(b"DXT1", "little"), 0x1000
+        texture.write_bytes(b"DDS " + struct.pack("<31I", *header) + b"x" * 8)
+        runtime["runtimeCoverage"]["materialComplete"] = False
+        runtime["sourceOnlyUnsupported"] = [{"slot": 0, "fields": ["scalar:diffuse_brightness", "texture:texture_reflection"]}]
+        runtime["materials"] = [{"slot": 0, "runtimeName": "FloorSlot", "objectPath": "PKG.Material.Floor", "sourceOnlyReason": None}]
+        self.write_json(root / "runtime.json", {"areaId": "TEST", "assets": [runtime]})
+        import build_source_map_materials as builder
+        values = {key: 1.0 for key in (
+            "diffuse_brightness", "normal_intensity", "reflection_contrast", "metallic_intensity", "metallic_power",
+            "roughness_intensity", "roughness_power", "ao_intensity", "ao_power", "specular_pbr_intensity",
+            "nonmetallic_brightness", "metallic_brightness")}
+        values.update(diffuse_brightness=0.0, diffuse_color=[1, 1, 1, 1], reflection_color=[1, 1, 1, 1])
+        parameters = {"format": "lostark-source-map-material-parameters", "formatVersion": 1, "failures": [], "sources": [],
+            "materials": {"pkg.material.floor": {"sourceMaterial": "pkg.material.floor", "terminal": "original.graph.bg_base_pbr_opa",
+            "values": values, "switches": {"1.use_diffuse_to_albedo": True, "1.use_normalmap": True},
+            "textures": {key: "source.texture.dds" for key in ("texture_diffuse", "texture_normal", "texture_detail_normal", "texture_orm", "texture_reflection")}}}}
+        self.write_json(root / "native-parameters.json", parameters)
+        (root / "native-evidence.json").write_text("{}")
+        def file_record(path):
+            return {"path": str(path), "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
+        manifest = {"format": "lostark-source-map-material-input", "formatVersion": 1, "areaId": "TEST",
+            "parameters": file_record(root / "native-parameters.json"), "evidence": [file_record(root / "native-evidence.json")],
+            "textures": [{"sourceObject": "source.texture.dds", "assetId": "Map/source.dds", "sha256": hashlib.sha256(texture.read_bytes()).hexdigest(),
+                          "colorSpace": "linear", "mipCount": 1, "mipEvidence": "source-unmipped"}],
+            "slots": [{"assetId": "floor", "materialName": "FloorSlot", "sourceMaterial": "pkg.material.floor", "component": {
+                "rendering": {"castsShadow": True, "renderMode": "deferred", "cullMode": "back"},
+                "lightingEvidence": "source-absent", "environmentEvidence": "source-absent",
+                "minimumRoughness": 0.04, "minimumRoughnessEvidence": "project-authored"}}]}
+        self.write_json(root / "native-input.json", manifest)
+        output, receipt = builder.compile_materials(root / "native-input.json", args.runtime_asset_root)
+        self.write_json(root / "native-materials.json", output)
+        receipt["output"] = file_record(root / "native-materials.json")
+        args.source_materials_receipt = root / "native-receipt.json"
+        args.materials_output = root / "authoring-materials.json"
+        self.write_json(args.source_materials_receipt, receipt)
+        return args, runtime, receipt
+
+    def test_verified_native_materials_cover_known_legacy_gaps_and_preserve_zero(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            args, runtime, native_receipt = self.source_material_fixture(root)
+            receipt = compile_scene(args)
+            self.assertEqual(receipt["runtimeMaterialAdmission"]["floor"]["mode"], "source-material-inputs-complete")
+            self.assertEqual(json.loads(args.materials_output.read_text())["materials"][0]["diffuseBrightness"], 0)
+            self.assertFalse(receipt["sourceMaterialBuild"]["originalVisualFidelityVerified"])
+            runtime["sourceOnlyUnsupported"][0]["fields"].append("material:unknown-source-carrier")
+            self.write_json(root / "runtime.json", {"areaId": "TEST", "assets": [runtime]})
+            previous = args.materials_output.read_bytes()
+            with self.assertRaisesRegex(ValueError, "coverage incomplete"):
+                compile_scene(args)
+            self.assertEqual(previous, args.materials_output.read_bytes())
+
+    def test_adding_unknown_scalar_to_receipt_does_not_claim_mapper_support(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            args, runtime, native_receipt = self.source_material_fixture(root)
+            compile_scene(args)
+            previous = args.materials_output.read_bytes()
+            runtime["sourceOnlyUnsupported"][0]["fields"].append("scalar:unknown_future_parameter")
+            self.write_json(root / "runtime.json", {"areaId": "TEST", "assets": [runtime]})
+            with self.assertRaisesRegex(ValueError, "coverage incomplete"):
+                compile_scene(args)
+            native_receipt["bindings"][0]["materialCoverage"][0]["coveredSourceOnly"].append("scalar:unknown_future_parameter")
+            self.write_json(args.source_materials_receipt, native_receipt)
+            with self.assertRaisesRegex(ValueError, "pinned compiler inputs"):
+                compile_scene(args)
+            self.assertEqual(previous, args.materials_output.read_bytes())
+
+    def test_scene_outputs_cannot_overwrite_pinned_source_evidence(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            args, _, _ = self.source_material_fixture(root)
+            evidence = root / "native-parameters.json"
+            before = evidence.read_bytes()
+            args.materials_output = evidence
+            with self.assertRaisesRegex(ValueError, "overwrite source inputs"):
+                compile_scene(args)
+            self.assertEqual(before, evidence.read_bytes())
+            self.assertFalse(args.catalog_output.exists())
+
+    def test_rnm_material_cannot_commit_with_a_model_without_verified_uv1(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            args, _, _ = self.source_material_fixture(root)
+            compile_scene(args)
+            targets = (args.catalog_output, args.placement_output, args.materials_output, args.receipt_output)
+            previous = [path.read_bytes() for path in targets]
+            manifest_path = root / "native-input.json"
+            manifest = json.loads(manifest_path.read_text())
+            manifest["slots"][0]["component"].update(lightingEvidence="source-bound", bakedLighting={
+                "averageTexture": "Map/source.dds", "directionalTexture": "Map/source.dds", "colorSpace": "linear"})
+            self.write_json(manifest_path, manifest)
+            import build_source_map_materials as builder
+            output, receipt = builder.compile_materials(manifest_path, args.runtime_asset_root)
+            self.write_json(root / "native-materials.json", output)
+            receipt["output"] = {"path": str(root / "native-materials.json"), "sha256": hashlib.sha256((root / "native-materials.json").read_bytes()).hexdigest()}
+            self.write_json(args.source_materials_receipt, receipt)
+            with self.assertRaisesRegex(ValueError, "geometry channels cannot be verified"):
+                compile_scene(args)
+            self.assertEqual(previous, [path.read_bytes() for path in targets])
+
+    def test_source_material_evidence_and_slot_mismatch_fail_before_outputs_change(self):
+        for field in ("input", "output", "resource", "slot"):
+            with self.subTest(field=field), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                args, runtime, receipt = self.source_material_fixture(root)
+                compile_scene(args)
+                old = [path.read_bytes() for path in (args.catalog_output, args.placement_output, args.materials_output)]
+                if field == "input":
+                    (root / "native-input.json").write_text("changed")
+                elif field == "output":
+                    (root / "native-materials.json").write_text("changed")
+                elif field == "resource":
+                    (args.runtime_asset_root / "Map/source.dds").write_bytes(b"changed")
+                else:
+                    runtime["materials"][0]["objectPath"] = "PKG.Material.Other"
+                    self.write_json(root / "runtime.json", {"areaId": "TEST", "assets": [runtime]})
+                with self.assertRaises(ValueError):
+                    compile_scene(args)
+                self.assertEqual(old, [path.read_bytes() for path in (args.catalog_output, args.placement_output, args.materials_output)])
+
+    def test_scene_promotion_failure_rolls_back_catalog_placements_materials_and_receipt(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            args, _, _ = self.source_material_fixture(root)
+            compile_scene(args)
+            targets = (args.catalog_output, args.placement_output, args.materials_output, args.receipt_output)
+            old = [path.read_bytes() for path in targets]
+            import os
+            replace = os.replace
+            count = 0
+            def fail_second(source, target):
+                nonlocal count
+                count += 1
+                if count == 2:
+                    raise OSError("promotion fixture")
+                replace(source, target)
+            with patch("build_maptool_scene.os.replace", side_effect=fail_second), self.assertRaisesRegex(OSError, "promotion fixture"):
+                compile_scene(args)
+            self.assertEqual(old, [path.read_bytes() for path in targets])
 
     def test_repeatable_directories_and_level_filter_prune_exact_assets(self):
         with tempfile.TemporaryDirectory() as temporary:

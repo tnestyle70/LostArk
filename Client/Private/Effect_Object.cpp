@@ -995,9 +995,9 @@ HRESULT Client::CEffectObject::Submit_RenderGroups()
         CGameInstance::Get().Request_SceneEnvironmentReplacement();
 	if (m_pRenderer->Has_NonBlendModelCues())
 	{
-		/* The exact Dimension Summon uses the ordinary animated-character
-		   deferred pass. Submit it before lighting; the remaining Effect rows
-		   keep their existing SceneHDR blend submission. */
+		/* CModel opaque/masked cues write their surface before scene lighting.
+		   The exact Dimension Summon keeps its unlit pass; other Effect rows
+		   retain the SceneHDR blend submission. */
 		m_bNonBlendModelCuePassPending = true;
 		CGameInstance::Get().Add_RenderObject(
 			RENDERGROUP::NONBLEND,

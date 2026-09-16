@@ -677,6 +677,32 @@ bool CWorldObjectTool::Save_Source()
     return true;
 }
 
+bool CWorldObjectTool::Render_SaveButton()
+{
+    ImGui::PushID("LocalMotionSave");
+    ImGui::BeginDisabled(!m_Ready || m_PublishProcess != nullptr);
+    const bool clicked = ImGui::Button(m_Dirty ? "Save *" : "Save");
+    ImGui::EndDisabled();
+    ImGui::PopID();
+    if (clicked) Save_Source();
+    // Save replaces m_Document: the caller must return before reading document references.
+    return clicked;
+}
+
+void CWorldObjectTool::Render_SaveStatus() const
+{
+    ImGui::TextDisabled("%s", m_Dirty ? "Unsaved local changes" : "Local changes saved");
+    if (!m_Status.empty()) ImGui::TextWrapped("%s", m_Status.c_str());
+}
+
+void CWorldObjectTool::Render_ColliderPreview()
+{
+    if (!m_PreviewActive || !m_PreviewLevel || m_ColliderPreviewFrame == ImGui::GetFrameCount()) return;
+    if (m_PreviewLevel != CLevel_KakulSaydonArena::Get_Active()) return;
+    m_ColliderPreviewFrame = ImGui::GetFrameCount();
+    m_PreviewLevel->Debug_DrawWorldObjectColliderPreview();
+}
+
 void CWorldObjectTool::Start_Publish()
 {
     if (!m_Ready || m_Dirty || m_PublishProcess) return;
@@ -981,7 +1007,7 @@ void CWorldObjectTool::Select_State(const std::string& id)
         // Editing another row must not stop, rewind or solo the combined preview.
         m_SelectedObject = instance->bindings.front().targetId;
         m_SelectedInstance = id;
-        m_SelectedTrack = 0; m_SelectedKey = 0; m_SelectedEffectRow = 0;
+        m_SelectedTrack = 0; m_SelectedKey = 0; m_SelectedEffectRow = 0; m_SelectedColliderRow = 0; m_SelectedBoxKind = 0;
         return;
     }
     const auto* resource = m_Document.Find_ObjectResource(m_SelectedObject);
@@ -989,6 +1015,7 @@ void CWorldObjectTool::Select_State(const std::string& id)
     if (std::find(motions.begin(), motions.end(), id) == motions.end())
     { m_Status = "The selected motion does not belong to this object."; return; }
     Stop_Preview(); m_SelectedInstance = id; m_SelectedTrack = 0; m_SelectedKey = 0; m_ClockMs = 0.f;
+    m_SelectedColliderRow = 0; m_SelectedBoxKind = 0;
     if (const auto* instance = m_Document.Find_Instance(id))
         if (const auto* sequence = m_Document.Find_Template(instance->templateId))
             m_GroupCount = static_cast<int>(sequence->objectMotion.EmissionCount());
@@ -1069,6 +1096,11 @@ void CWorldObjectTool::Change_ResourceAnchor(
     WORLD_SEQUENCE_OBJECT_RESOURCE& resource, const std::string& anchorKind)
 {
     if (resource.anchorKind == anchorKind || !resource.sequenceInstanceId.empty()) return;
+    if (anchorKind != "WORLD")
+        for (const auto& id : StateIds(resource))
+            if (const auto* instance = m_Document.Find_Instance(id))
+                if (const auto* sequence = m_Document.Find_Template(instance->templateId); sequence && !sequence->colliderTracks.empty())
+                { m_Status = "Collider Motions require a Map anchor. Existing Object and Collider rows preserved."; return; }
     float3_t position{};
     if (anchorKind == "WORLD")
     {
@@ -1099,6 +1131,7 @@ void CWorldObjectTool::Begin_WorkbenchFrame()
 
 void CWorldObjectTool::Render_WorkbenchPane(const COMPOSITION_WORKBENCH_PANE pane)
 {
+    Render_ColliderPreview();
     ImGui::PushID("WorldObjectWorkbenchSession");
     if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) && ImGui::IsMouseClicked(0))
         m_InteractionRequested = true;
@@ -1131,7 +1164,7 @@ void CWorldObjectTool::Render_WorkbenchPane(const COMPOSITION_WORKBENCH_PANE pan
             ImGui::TextWrapped("Select a Motion and use Play in Composition Sequencer. Selecting a parent lists its linked Motion tracks.");
         break;
     case COMPOSITION_WORKBENCH_PANE::BOSS_PATTERN:
-        ImGui::TextWrapped("Object motion edits are shared by every action using that stable Object/Motion ID. Collider and Result logic belong to the action that places the object.");
+        ImGui::TextWrapped("Object motion and Collider rows are shared by every action using that stable Object/Motion ID. Result logic belongs to the action that places the object.");
         break;
     default:
         break;
@@ -1153,6 +1186,7 @@ void CWorldObjectTool::Render_SelectedSequence()
 void CWorldObjectTool::Render()
 {
     if (!m_Open) return;
+    Render_ColliderPreview();
     const auto* viewport = ImGui::GetMainViewport();
     const ImVec2 origin = viewport ? viewport->WorkPos : ImVec2(0.f, 0.f);
     const ImVec2 available = viewport ? viewport->WorkSize : ImVec2(1600.f, 900.f);
@@ -1604,6 +1638,130 @@ bool CWorldObjectTool::Begin_EffectPreview(CWorldSequenceDocument staged, const 
     return true;
 }
 
+bool CWorldObjectTool::Append_ColliderTrack(WORLD_SEQUENCE_TEMPLATE& sequence)
+{
+    const auto* instance = m_Document.Find_Instance(m_SelectedInstance);
+    if (!instance || instance->templateId != sequence.sequenceId || instance->anchorKind != "WORLD" ||
+        instance->bindings.size() != 1u || instance->bindings.front().targetKind != WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE)
+    { m_Status = "Add Collider requires one Map-anchored Object binding. Existing draft preserved."; return false; }
+    const auto& binding = instance->bindings.front();
+    const auto* resource = m_Document.Find_ObjectResource(binding.targetId);
+    if (!resource || resource->anchorKind != "WORLD" || std::none_of(sequence.tracks.begin(), sequence.tracks.end(),
+        [&](const auto& row) { return row.slotId == binding.slotId; }))
+    { m_Status = "Add Collider requires the Object's Map anchor and Transform track. Existing draft preserved."; return false; }
+    if (sequence.tracks.size() + sequence.animationTracks.size() + sequence.effectTracks.size() + sequence.colliderTracks.size() >= CWorldSequenceDocument::MAX_TRACK_COUNT)
+    { m_Status = "The Motion has reached its 32-track limit. Existing draft preserved."; return false; }
+    auto candidate = m_Document;
+    auto* staged = candidate.Find_Template(sequence.sequenceId);
+    WORLD_SEQUENCE_COLLIDER_TRACK row;
+    uint32_t ordinal = 1u;
+    do { row.colliderTrackId = "collider." + std::to_string(ordinal++); }
+    while (std::any_of(staged->colliderTracks.begin(), staged->colliderTracks.end(),
+        [&](const auto& existing) { return existing.colliderTrackId == row.colliderTrackId; }));
+    row.slotId = binding.slotId;
+    row.durationMs = sequence.durationMs;
+    staged->colliderTracks.push_back(row);
+    std::string reason;
+    if (!candidate.Validate(m_MapTargets, m_DeployTargets, reason))
+    { m_Status = "Add Collider refused: " + reason + " Existing draft preserved."; return false; }
+    sequence = std::move(*staged);
+    m_SelectedColliderRow = sequence.colliderTracks.size() - 1u;
+    m_SelectedBoxKind = 3;
+    Mark_Dirty();
+    m_Status = "Collider added for the full Motion. Adjust its rectangle, timing and behavior, then Save.";
+    return true;
+}
+
+bool CWorldObjectTool::Duplicate_ColliderTrack(WORLD_SEQUENCE_TEMPLATE& sequence, const size_t index)
+{
+    size_t selected = 0u;
+    if (!m_Document.Duplicate_ColliderTrack(sequence.sequenceId, index,
+        m_MapTargets, m_DeployTargets, selected, m_Status)) return false;
+    m_SelectedColliderRow = selected;
+    m_SelectedBoxKind = 3;
+    Mark_Dirty();
+    m_Status += " Save commits the draft.";
+    return true;
+}
+
+void CWorldObjectTool::Render_ColliderRows(WORLD_SEQUENCE_TEMPLATE& sequence)
+{
+    if (!ImGui::CollapsingHeader("Collider Rows", ImGuiTreeNodeFlags_DefaultOpen)) return;
+    if (ImGui::Button("Add Rectangle Collider")) { Append_ColliderTrack(sequence); return; }
+    if (sequence.colliderTracks.empty())
+    { ImGui::TextWrapped("Add a rectangle to this Map-anchored Motion. Its active window repeats with each object emission."); return; }
+    m_SelectedColliderRow = (std::min)(m_SelectedColliderRow, sequence.colliderTracks.size() - 1u);
+    for (size_t index = 0; index < sequence.colliderTracks.size(); ++index)
+    {
+        const auto& row = sequence.colliderTracks[index];
+        const auto label = row.colliderTrackId + " / " + row.behavior;
+        if (ImGui::Selectable(label.c_str(), m_SelectedBoxKind == 3 && m_SelectedColliderRow == index))
+        { m_SelectedColliderRow = index; m_SelectedBoxKind = 3; }
+    }
+    if (ImGui::Button("Duplicate Selected Collider"))
+    { Duplicate_ColliderTrack(sequence, m_SelectedColliderRow); return; }
+    ImGui::SameLine();
+    if (ImGui::Button("Remove Selected Collider"))
+    {
+        auto candidate = m_Document;
+        auto* staged = candidate.Find_Template(sequence.sequenceId);
+        staged->colliderTracks.erase(staged->colliderTracks.begin() + static_cast<ptrdiff_t>(m_SelectedColliderRow));
+        std::string reason;
+        if (!candidate.Validate(m_MapTargets, m_DeployTargets, reason))
+            m_Status = "Remove Collider refused: " + reason + " Existing draft preserved.";
+        else
+        {
+            sequence = std::move(*staged);
+            m_SelectedColliderRow = sequence.colliderTracks.empty() ? 0u : (std::min)(m_SelectedColliderRow, sequence.colliderTracks.size() - 1u);
+            Mark_Dirty();
+            m_Status = "Collider removed from the local draft. Save commits the change.";
+        }
+        return;
+    }
+    auto edited = sequence.colliderTracks[m_SelectedColliderRow];
+    ImGui::TextDisabled("%s / slot %s", edited.colliderTrackId.c_str(), edited.slotId.c_str());
+    bool changed = EditUInt("Collider Start (ms)", edited.startMs, sequence.durationMs - 1u);
+    changed |= EditUInt("Collider Duration (ms)", edited.durationMs, sequence.durationMs, 1u);
+    changed |= ImGui::DragFloat3("Collider Offset (m)", &edited.positionOffset.x, .01f, -100000.f, 100000.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+    changed |= ImGui::DragFloat3("Collider Half Extents (m)", &edited.halfExtents.x, .01f, .0011f, 1000.f, "%.4f", ImGuiSliderFlags_AlwaysClamp);
+    changed |= ImGui::DragFloat("Collider Yaw (deg)", &edited.yawDegrees, .5f, -36000.f, 36000.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+    int behavior = edited.behavior == "HOOK_CAPTURE" ? 2 : edited.behavior == "INSTANT_DEATH" ? 1 : 0;
+    if (ImGui::Combo("Collider Behavior", &behavior, "Damage\0Instant Death\0Hook Capture\0"))
+    {
+        edited.behavior = behavior == 2 ? "HOOK_CAPTURE" : behavior == 1 ? "INSTANT_DEATH" : "DAMAGE";
+        edited.damagePercent = behavior == 0 ? 20.f : 0.f;
+        if (behavior != 2) { edited.gripLocalOffset = {}; edited.attachmentBone.clear(); }
+        changed = true;
+    }
+    if (edited.behavior == "DAMAGE")
+    {
+        int percent = static_cast<int>(edited.damagePercent);
+        if (ImGui::InputInt("Damage (% max HP)", &percent))
+        { edited.damagePercent = static_cast<f32_t>(percent); changed = true; }
+    }
+    if (edited.behavior == "HOOK_CAPTURE")
+    {
+        changed |= ImGui::DragFloat3("Grip Offset (m)", &edited.gripLocalOffset.x, .01f, -100000.f, 100000.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+        std::array<char, 257> bone{};
+        std::snprintf(bone.data(), bone.size(), "%s", edited.attachmentBone.c_str());
+        if (ImGui::InputText("Grip Bone (empty = root)", bone.data(), bone.size()))
+        { edited.attachmentBone = bone.data(); changed = true; }
+        ImGui::TextWrapped("Grip Offset uses meters after the model import scale and before Object scale. A named bone requires an animated model and an existing bone.");
+    }
+    ImGui::TextWrapped("Half Extents are half the rectangle dimensions. Ground collision uses Collider Yaw and ignores visual mesh spin. Start + Duration must fit inside Motion Lifetime.");
+    if (!changed) return;
+    auto candidate = m_Document;
+    auto* staged = candidate.Find_Template(sequence.sequenceId);
+    staged->colliderTracks[m_SelectedColliderRow] = std::move(edited);
+    std::string reason;
+    if (!candidate.Validate(m_MapTargets, m_DeployTargets, reason))
+    { m_Status = "Collider edit refused: " + reason + " Existing Collider preserved."; return; }
+    sequence = std::move(*staged);
+    m_SelectedBoxKind = 3;
+    Mark_Dirty();
+    m_Status = "Collider updated in the local draft. Save commits the change.";
+}
+
 void CWorldObjectTool::Render_EffectRows(WORLD_SEQUENCE_TEMPLATE& sequence)
 {
     if (!ImGui::CollapsingHeader("Effect Rows", ImGuiTreeNodeFlags_DefaultOpen)) return;
@@ -1820,7 +1978,7 @@ bool CWorldObjectTool::Append_SelectedAnimation()
     }
     if (slotId.empty())
     { m_Status = "The selected pattern does not bind the selected object. Existing draft preserved."; return false; }
-    if (sequence->tracks.size() + sequence->animationTracks.size() + sequence->effectTracks.size() >= CWorldSequenceDocument::MAX_TRACK_COUNT)
+    if (sequence->tracks.size() + sequence->animationTracks.size() + sequence->effectTracks.size() + sequence->colliderTracks.size() >= CWorldSequenceDocument::MAX_TRACK_COUNT)
     { m_Status = "The pattern has reached its track limit. Existing draft preserved."; return false; }
     const bool firstOfSlot = std::none_of(sequence->animationTracks.begin(), sequence->animationTracks.end(), [&](const auto& clip) {
         return clip.slotId == slotId;
@@ -2168,7 +2326,13 @@ void CWorldObjectTool::Render_Detail()
     if (!resource) { ImGui::TextUnformatted("Select an object resource."); return; }
     if (m_SelectedInstance.empty()) { Render_ObjectDetail(*resource); return; }
     ImGui::TextWrapped("Object: %s", resource->displayName.c_str());
-    if (!Preview_Group() && ImGui::Button("Edit Parent Object")) { Select_Object(resource->objectId); return; }
+    if (Render_SaveButton()) return;
+    if (!Preview_Group())
+    {
+        ImGui::SameLine();
+        if (ImGui::Button("Edit Parent Object")) { Select_Object(resource->objectId); return; }
+    }
+    Render_SaveStatus();
     const bool alias = !resource->sequenceInstanceId.empty();
     bool changed = false;
     auto* instance = m_Document.Find_Instance(m_SelectedInstance);
@@ -2223,6 +2387,8 @@ void CWorldObjectTool::Render_Detail()
         // Preserve the key order and endpoint contract even when shortening a state.
         bool valid = true;
         for (const auto& track : sequence->tracks) if (duration + 1u < track.keys.size()) valid = false;
+        for (const auto& collider : sequence->colliderTracks)
+            if (uint64_t(collider.startMs) + collider.durationMs > duration) valid = false;
         for (const auto& animation : sequence->animationTracks)
             if (static_cast<size_t>(duration) < std::count_if(sequence->animationTracks.begin(), sequence->animationTracks.end(),
                 [&](const auto& other) { return other.slotId == animation.slotId; })) valid = false;
@@ -2260,7 +2426,7 @@ void CWorldObjectTool::Render_Detail()
                 emission.startDelayMs = (std::min)(emission.startDelayMs, sequence->effectTracks.empty() ? duration - 1 : CWorldSequenceDocument::MAX_DURATION_MS - duration);
             changed = true;
         }
-        else m_Status = "Lifetime must leave at least one millisecond between every existing key or clip.";
+        else m_Status = "Lifetime must contain every Collider window and leave at least one millisecond between every existing key or clip. Rows preserved.";
     }
     ImGui::EndDisabled();
     if (savedTravel) ImGui::TextDisabled("Edit Individual Lifetime above; this timeline also includes the last emission delay when needed.");
@@ -2361,9 +2527,14 @@ void CWorldObjectTool::Render_Detail()
         const uint32_t maxInterval = motion.count > 1 ? emissionDelayLimit / (motion.count - 1) : CWorldSequenceDocument::MAX_DURATION_MS;
         if (motion.intervalMs > maxInterval) { motion.intervalMs = maxInterval; changed = true; }
         changed |= EditUInt("Creation Interval (ms)", motion.intervalMs, maxInterval);
+        ImGui::BeginDisabled(!sequence->colliderTracks.empty());
         changed |= ImGui::DragFloat(sequence->effectTracks.empty() ? "Spread (deg)" : "Horizontal Spread (deg)", &motion.spreadDegrees, .5f, 0.f, sequence->effectTracks.empty() ? 180.f : 360.f, "%.1f", ImGuiSliderFlags_AlwaysClamp);
         ImGui::EndDisabled();
+        ImGui::EndDisabled();
+        ImGui::BeginDisabled(!sequence->colliderTracks.empty());
         changed |= ImGui::DragFloat3("Spawn Half Extents (m)", &motion.spawnHalfExtents.x, .05f, 0.f, 100000.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+        ImGui::EndDisabled();
+        if (!sequence->colliderTracks.empty()) ImGui::TextDisabled("Collider Motion uses exact emission positions. Use Authored Emissions for multiple objects.");
         ImGui::TextDisabled("Width / height / depth = twice these values. Set Y to 0 for a ground rectangle.");
         changed |= EditUInt("Seed", motion.seed, INT_MAX);
         ImGui::SeparatorText("Authored Emissions");
@@ -2611,6 +2782,7 @@ void CWorldObjectTool::Render_Detail()
         }
     }
     if (changed) Mark_Dirty();
+    if (!alias) Render_ColliderRows(*sequence);
     if (!alias) Render_EffectRows(*sequence);
     ImGui::SeparatorText("Selected Key");
     Render_KeyEditor(*sequence);
@@ -2653,6 +2825,8 @@ void CWorldObjectTool::Render_GroupSequence(const WORLD_SEQUENCE_OBJECT_RESOURCE
     }
     else
     {
+        if (Render_SaveButton()) return;
+        ImGui::SameLine();
         if (ImGui::Button(m_Playing || (m_PreviewPreparationPending && m_PlayAfterPreparation) ? "Pause" : "Play"))
         {
             if (m_Playing || (m_PreviewPreparationPending && m_PlayAfterPreparation))
@@ -2663,6 +2837,7 @@ void CWorldObjectTool::Render_GroupSequence(const WORLD_SEQUENCE_OBJECT_RESOURCE
         if (ImGui::Button("Stop / Restore")) { Stop_Preview(); m_ClockMs = 0.f; }
         ImGui::SameLine();
         if (ImGui::Checkbox("Preview at Character", &m_PreviewAtCharacter)) m_PreviewDirty = m_PreviewActive;
+        Render_SaveStatus();
         ImGui::TextWrapped("Click a motion row or key to edit it in Object Detail. All %zu motions keep playing together.", resource.motionInstanceIds.size());
         if (!m_PreviewStatus.empty()) ImGui::TextWrapped("%s", m_PreviewStatus.c_str());
     }
@@ -2774,6 +2949,18 @@ void CWorldObjectTool::Render_GroupSequence(const WORLD_SEQUENCE_OBJECT_RESOURCE
                 { if (m_SelectedInstance != id) Select_State(id); m_SelectedEffectRow = index; m_SelectedBoxKind = 2; m_DetailOpen = true; }
                 y += 32.f;
             }
+            for (size_t index = 0; index < sequence->colliderTracks.size(); ++index)
+            {
+                const auto& collider = sequence->colliderTracks[index];
+                const ImVec2 first(timeX(static_cast<float>(collider.startMs)), y);
+                const ImVec2 last(timeX(static_cast<float>(collider.startMs + collider.durationMs)), y + 25.f);
+                const auto title = "Collider / " + collider.behavior;
+                CompositionTimeline::DrawBox(draw, first, last, IM_COL32(49, 143, 119, 255),
+                    id == m_SelectedInstance && m_SelectedBoxKind == 3 && m_SelectedColliderRow == index, title.c_str());
+                if (ImGui::IsWindowHovered() && ImGui::IsMouseHoveringRect(first, last) && ImGui::IsMouseClicked(0))
+                { if (m_SelectedInstance != id) Select_State(id); m_SelectedColliderRow = index; m_SelectedBoxKind = 3; m_DetailOpen = true; }
+                y += 32.f;
+            }
             ImGui::PopID();
             y += 8.f;
         }
@@ -2787,6 +2974,8 @@ void CWorldObjectTool::Render_GroupSequence(const WORLD_SEQUENCE_OBJECT_RESOURCE
 void CWorldObjectTool::Render_Sequence(WORLD_SEQUENCE_TEMPLATE& sequence)
 {
     ImGui::SeparatorText(sequence.displayName.c_str());
+    if (Render_SaveButton()) return;
+    ImGui::SameLine();
     if (ImGui::Button(m_Playing || (m_PreviewPreparationPending && m_PlayAfterPreparation) ? "Pause" : "Play"))
     {
         if (m_Playing || (m_PreviewPreparationPending && m_PlayAfterPreparation))
@@ -2807,6 +2996,7 @@ void CWorldObjectTool::Render_Sequence(WORLD_SEQUENCE_TEMPLATE& sequence)
         if (ImGui::IsItemHovered())
             ImGui::SetTooltip("Preview at the current character without changing the saved Map position. Clear to preview the authored position.");
     }
+    Render_SaveStatus();
     if (selectedInstance) ImGui::TextDisabled("On Complete: %s", MotionEndLabel(selectedInstance->motionEnd));
     if (m_PreviewActive) ImGui::TextWrapped("%s", m_PreviewStatus.c_str());
     if (m_ClockMs >= SpanMs() && selectedInstance &&
@@ -2816,11 +3006,16 @@ void CWorldObjectTool::Render_Sequence(WORLD_SEQUENCE_TEMPLATE& sequence)
     if (ImGui::SliderFloat("Motion + Effect (ms)", &clock, 0.f, (std::max)(1.f, SpanMs()), "%.0f")) Seek(clock);
     ImGui::TextDisabled("Playback elapsed: %.0f ms", m_ClockMs);
     ImGui::SetNextItemWidth(180.f); ImGui::SliderFloat("Timeline Zoom", &m_Zoom, 10.f, 500.f, "%.0f px/s");
-    ImGui::BeginDisabled((m_SelectedBoxKind != 1 && m_SelectedBoxKind != 2) ||
+    ImGui::BeginDisabled((m_SelectedBoxKind != 1 && m_SelectedBoxKind != 2 && m_SelectedBoxKind != 3) ||
         (m_SelectedBoxKind == 1 && m_SelectedAnimationRow >= sequence.animationTracks.size()) ||
-        (m_SelectedBoxKind == 2 && m_SelectedEffectRow >= sequence.effectTracks.size()));
-    if (ImGui::Button("Duplicate Selected Box")) Duplicate_TimelineBox(sequence, m_SelectedBoxKind == 1,
-        m_SelectedBoxKind == 1 ? m_SelectedAnimationRow : m_SelectedEffectRow);
+        (m_SelectedBoxKind == 2 && m_SelectedEffectRow >= sequence.effectTracks.size()) ||
+        (m_SelectedBoxKind == 3 && m_SelectedColliderRow >= sequence.colliderTracks.size()));
+    if (ImGui::Button("Duplicate Selected Box"))
+    {
+        if (m_SelectedBoxKind == 3) Duplicate_ColliderTrack(sequence, m_SelectedColliderRow);
+        else Duplicate_TimelineBox(sequence, m_SelectedBoxKind == 1,
+            m_SelectedBoxKind == 1 ? m_SelectedAnimationRow : m_SelectedEffectRow);
+    }
     ImGui::EndDisabled();
     const float rowHeight = 32.f;
     const float labelWidth = 110.f;
@@ -2831,7 +3026,7 @@ void CWorldObjectTool::Render_Sequence(WORLD_SEQUENCE_TEMPLATE& sequence)
     const float width = (std::max)(ImGui::GetContentRegionAvail().x - 12.f, timelineDuration * m_Zoom * .001f);
     const float pixelsPerMs = width / timelineDuration;
     const bool showPhysics = resource && resource->sequenceInstanceId.empty();
-    const float tracksHeight = rowHeight * static_cast<float>(1u + sequence.tracks.size() + animationSlots.size() + sequence.effectTracks.size());
+    const float tracksHeight = rowHeight * static_cast<float>(1u + sequence.tracks.size() + animationSlots.size() + sequence.effectTracks.size() + sequence.colliderTracks.size());
     const float height = 28.f + tracksHeight + (showPhysics ? 64.f : 0.f);
     if (ImGui::BeginChild("ObjectTimeline", ImVec2(0, (std::max)(110.f, ImGui::GetContentRegionAvail().y)), true, ImGuiWindowFlags_HorizontalScrollbar))
     {
@@ -2916,6 +3111,23 @@ void CWorldObjectTool::Render_Sequence(WORLD_SEQUENCE_TEMPLATE& sequence)
                 IM_COL32(167, 95, 51, 255), m_SelectedBoxKind == 2 && m_SelectedEffectRow == index, effect.resourceId.c_str());
             if (ImGui::IsItemHovered()) ImGui::SetTooltip("Effect: %s / %u..%u ms\nSelect to edit or duplicate in Box Detail.",
                 effect.resourceId.c_str(), sequence.EffectStartMs(effect), sequence.EffectStartMs(effect) + effect.durationMs);
+            ImGui::PopID();
+        }
+        for (size_t index = 0; index < sequence.colliderTracks.size(); ++index)
+        {
+            const auto& collider = sequence.colliderTracks[index];
+            const float y = origin.y + 28.f + rowHeight * (1u + sequence.tracks.size() + animationSlots.size() + sequence.effectTracks.size() + index);
+            label("Collider", y);
+            const float x = origin.x + collider.startMs * pixelsPerMs;
+            const float endX = x + collider.durationMs * pixelsPerMs;
+            ImGui::PushID(collider.colliderTrackId.c_str());
+            ImGui::SetCursorScreenPos(ImVec2(x, y));
+            ImGui::InvisibleButton("ColliderBox", ImVec2((std::max)(8.f, endX - x), 25.f));
+            if (ImGui::IsItemClicked()) { m_SelectedColliderRow = index; m_SelectedBoxKind = 3; m_DetailOpen = true; }
+            CompositionTimeline::DrawBox(draw, ImVec2(x, y), ImVec2(endX, y + 25.f), IM_COL32(49, 143, 119, 255),
+                m_SelectedBoxKind == 3 && m_SelectedColliderRow == index, collider.behavior.c_str());
+            if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s / %u..%u ms\nSelect to edit the rectangle or duplicate it in Box Detail.",
+                collider.colliderTrackId.c_str(), collider.startMs, collider.startMs + collider.durationMs);
             ImGui::PopID();
         }
         if (showPhysics)

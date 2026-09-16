@@ -116,3 +116,57 @@ surface family를 판정하게 한다. native surface는 기존 map material 준
 재질·리소스·placement·파괴 상태와 다른 Deploy10종을 보존한다. 실제 설치 A/B의 재질
 입력과 초기화 분기, Area Validate/Check, 최소 컴파일과 Product build를 확인한다.
 실제 입장과 화면 확인은 사용자가 Lobby → Valtan에서 수행한다.
+
+## G09. 전체 PS·SL 원본 재질과 정점·조명 연결
+
+PS와 SL00~SL05 전체로 범위를 확장한다. 원본 StaticMeshComponent의 ordered material override와
+native section 기본 MIC, native mesh index와 UModel corner를 대응한다. 원본 COLOR, UV0~UV2,
+tangent.W, RNM 평균·방향 계수와 component atlas 좌표를 함께 운반한다. 추출 identity는 package를
+포함한 source 전체 경로다. 같은 leaf 이름으로 다른 package의 원본을 대신하지 않는다.
+
+지원 BG·overlay·foliage·grass family는 실제 static 분기와 대조한다. NULL texture는 부모 이름으로
+채우지 않고 native material map의 uniform expression/referencedTextures index로 확인한다.
+RNM·shadow texture 조합별 variant가 single 2,048개 한도를 넘으면 기존 Bern mapset 경로를 재사용한다.
+BASE/PS/SL00~SL05 여덟 shard와 MapCatalog canonical entry, 96.DataFiles의 None항목을 갱신한다.
+source asset 정의와 placement stable ID/TRS/visibility, 기존 CModel/CMaterial 경로를 보존한다.
+
+설치 직전 source SHA를 확인하고 새 resource만 추가한다. 공식 Area publisher의 Publish/Check,
+전체 placement 보존과 resource closure를 확인한다. Client/UI와 최종 화면 확인은 사용자가 수행한다.
+
+## G10. overlay 후속 분기
+
+subspecular, specular saturation, emissive, bump는 실제 MIC별 native shader를 먼저 대조한다.
+기존 BG shared parameter를 program7에서도 소비하도록 parser, MapAssetRenderUtils, shader,
+publisher를 함께 연결한다. 다른 static surface로 flag를 덮어써 통과시키지 않는다.
+실행 중 Client의 EXE/DLL/CSO 교체와 Product 빌드는 root 통합 작업에서 수행한다.
+
+
+G10의 추가 분기는 source material native map 9종의 Base/Direct 명령을 수치로 대조한다.
+방향 기반 overlay의 specular half-dot은 비정규화 mixed normal, vertex-paint overlay는
+base normal을 사용하므로 bit1024를 별도로 운반한다. `sourceBump`는 bit512에 대응하며
+기존 MODEL_SURFACE의 BG 파라미터 필드를 재사용한다. Engine Model의 허용값 검증과
+Material의 emissive texture 준비까지 같은 경로로 연결한다. 새 C++/header 파일은 없다.
+
+사용자 검증 전 새 overlay 배치는 `out/ValtanArenaMaterial20260915/BroadAuthoring`과
+native/model/texture receipt에서 검증용 세트로 준비한다. 현재 설치된 3,967 asset의 Area를
+자동으로 교체하지 않는다. 별도 PS525/528 및 LightFunction은 원본 CPU 조명·blend/depth와
+shader 입력 소유자를 확인해 검증 세트를 준비한다.
+
+## G11. 검증된 overlay 9종의 추가 설치
+
+후속 사용자 요청에 따라 root가 실행 중 Client/Server의 종료를 확인하고 검증 완료 후보의
+추가 설치를 요청했다. 앞선 out-only 인계와 구분해 9 MIC/922배치만 설치 대상으로 삼는다.
+원본11파일의 SHA가 후보 작성 시점과 일치함을 다시 확인했다. 사용자 VS 빌드가 진행 중이므로
+빌드 종료 확인 전에는 out-only staging과 문서 갱신만 수행한다.
+
+`BroadAuthoring`의 검증된 305 variant/387 material/922 lighting을 현재 파일과 대조한다.
+13,184 placement의 stable ID/source ID/TRS/visibility와 기존 material/lighting 행은 보존하고,
+922개 asset 참조만 변경한다. 기존8개 shard에 필요한 정의만 더하고 MapCatalog의 해당 Area
+수치만 변경한다. 새 리소스만 설치하며 기존 동일 경로의 byte가 다르면 덮어쓰지 않는다.
+
+별도 OverlayInstall 디렉터리에 staging·변경 전 원본·SHA·receipt를 둔다. 쓰기 직전 원본과
+staging SHA를 재검사하고 변경이 있으면 설치를 중단한다. 과거 Pass2 installer/backup은
+사용하지 않는다. 다른 Area publisher와 순서를 맞춘 뒤 공식 Area Publish/Check를 수행한다.
+실제 새 리소스의 존재, 전체 배치 보존과 JSON parse, diff 검사를 RESULT에 기록한다.
+최종 Product 통합 빌드는 root가 수행한다. 하늘 program90, LightFunction, 환경 기본값과
+FX product cue는 이 설치에 포함하지 않으며 화면 판정은 사용자가 한다.

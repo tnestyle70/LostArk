@@ -282,3 +282,83 @@ Engine/Shared/Server/Client compile·link·deploy가 모두 PASS다.
 두 Alt+V 문서의 JSON parse와 실제 Resources 참조, 최종 `git diff --check`를 확인했다.
 서버/Client는 마지막 확인에서 종료 상태이며, 사용자가 Server + Client profile을 실행하고
 Character Select의 Warlord F와 Alt+V를 비교한다. 황금색/개수/타이밍의 시각 확인은 USER_PENDING이다.
+
+## G16. 2026-09-15 Alt V 배경·낙하·번개 재검토
+
+원본 제품 경로는 WARLORD ALT_V17250 → Warlord.skillbindings의 guardianofprotection01/02 → clip1/clip2.full.restore다. 이 작업은 해당 두 문서와 기존 source bone helper의 ID 선택만 수정했다. 사용자의230/186요소 수, 기존 ring24개씩의 stable ID·반경·크기·mesh·material, 다른310개 world-space 선택을 유지했다. source 또는 일반 shader를 전체 rollback하지 않았다.
+
+설치 Warlord.wmodel SHA25627c78be4bb7323e998d4910b5de5ea68bc76de7942566507a429e3a85d788d4e의 두 clip과 b_effectroot/spine2를40조합으로 읽었다. admission0.0001×rigroot100의0.01 basis가 이미 m단위인 source particle에 다시 곱해졌다. `Requires_SourceBoneImportScaleNormalization`에 두17250 ID만 추가하고 기존 strict validation 및3x3만100배, translation보존 함수를 재사용했다. 원본 파일에서 직접 추출한 함수·검증 본문이40행렬을 전부 통과했고 단위축 최대 오차는4.18e-7, translation변화는0이었다.
+
+Required bUseLocalSpace=true인 camera_view10개(clip1 9/clip2 1)의 detail.localSpace만 true로 맞췄다. actual Catalog/Playback에서 이미 살아 있는 particle에camera+1m를 적용하면 이전ΔX0, 수정후ΔX1로10개 모두 일치했다. 카메라 외 바닥·연기·잔상을 일괄 FOLLOW로 바꾸지 않았다.
+
+원본 SD_00은0.497280011/0.697200000/0.897199988/1.097000003/1.297000051/1.496999979초에 두 mesh pair를0.310000002초 동안16m→0으로 내리고 SD_01이 같은 pair를 지면에 다시 생성한다. 기존clip1 ring24 stable ID에 원본 start와location lookup을 연결했다. 이전처럼0.01초부터 방패가 전부 서 있거나 낙하 복제본이 추가되지 않는다. 사용자6+6 배치와 크기를 유지하기 위해 두 원본 발생을 persistent ring하나로 결합했으며, 이 결합과 lifetime clock remap 및 명시적 identity ScaleFactor는 project-authored adapter다. raw source module을 그대로 재생했다고 기록하지 않는다.
+
+actual Codec/Playback의2016 particle-frame에서24 carrier 모두 조기출현0, source하강 최대오차1.91e-6m, clip1 지면상태→clip2 첫 frame 행렬오차0이었다. 최초 표시 fixed tick은0.5/0.7/0.9/1.1/1.3/1.5초다. clip2 ring과 다른206개clip1 요소는 그대로다. 두 파일 bytes를 CAS 보존한 뒤 후보와 동일한 원본 JSON을 적용했다.
+
+번개 native1166의 실제12발생은1476particle-frame 전부 Color.w와Dynamic.w가 양수였다(최대50/1). 같은 source anchor로 rawbasis와정규화basis를 재생한 폭은0.00586~0.01424m에서0.5859~1.424m로100배 정상화됐다. 입자 발생 수는 같고 비율 최대오차1.53e-5다. 별도 원본 PS 재검토에서1166의36instruction,1122/1123의 base14/light32 maskinstruction이 현재와 일치했다. 방패48개 materialDynamic1/dead0,기본DDSalpha255이므로 흰색/alpha때문에 전체discard한다는 근거는 없었다. 이 세 shader는 수정하지 않았다.
+
+배경 rock/sky는 Warlord가 Lance native781~800을 재사용한다. 공용Lance mesh의 미연결ambientColor 수정이 이 배경에도 적용된다. 해당 수정과 range는 병렬scene_visibility 결과를 따른다. Warlord1122/1123의 내부빛 경로와 구분한다.
+
+원본 typed point light는clip1 6/clip2 3=9개가 남아 있으며 source component 기반range2m·brightness10·white·falloff2다. actualCodec/Playback936light-frame 모두 양수이고 기존 Frame.Lights→Effect_Object::Submit_Presentation→Presentation.Add_TransientLight 경로가 유지된다. Warlord material binder는 transient lights를Guardian shader에 전달한다. `F1 → Rendering Workbench → Rendering Workbench 창 → Effect Presentation → Typed Effect Lights`가 꺼져 있으면 제출이S_FALSE로 억제된다. 실행중 사용자toggle은 읽거나 바꾸지 않았다.
+
+검증자료는out/WarlordAltVReview20260915의anchor_audit.json, camera_playback.json, ring_playback.json, lightning_playback.json, lights_playback.json, validation.receipt.json이다. 원본 SD_00/SD_01 package export와module hash는down_source_package.json, originalactionpayload hash는ring_patch.json에 있다. native PS 대조는out/WarlordAltVPrefixReview20260915/prefix-mask-review.md다. 최소 Effect_PresentationService 번역단위 컴파일과 두JSON 실제Codec검증, scoped git diff --check는PASS이며 기존SDK 한글encoding경고는 남는다. 새C++·project/filter·Resources 추가가 없고 Product빌드·Client/UI실행·캡처는 하지 않았다. 사용자의 현재EXE에 최신C++가 포함됐는지와 최종 외형판정은 USER_PENDING이다.
+
+### G16-01. 추가 복구 전 superAction 원본 발생의 누락 진단
+
+clip1의source notify010은0.01초에 `FX_PC_WGL_08.Par_W_WGL_superAction_01_01`을 실행하며 raw enabled와현재firstLOD emitter12가 모두true다. 기존clip1.unified의 `authored.source-particle.1e417a0ec62ce89e0e82ccf0`는아직남아있으나full에는없다. 이발생은 `fm_d_cylinder_019`와 `fx_o_me_superactionspace_01_02_tr`을사용한다. legacy grouped-translucent입력과빈umodel_dependency참조만남아있고native registry에는해당재질이없다. fullgenerator의미연결native제외경로와맞지만개별최초제외receipt는추가추적중이다. 사용자삭제였다고단정하지않는다.
+
+배경바위·sky의Lance ambient입력수정과이누락된cylinder발생은별개다. 현재G16의카메라/방패/번개·pointlight검증으로이발생까지복원완료처리하지않는다. 원본 MIC/native 재질과 해당 occurrence는 아래 G17에서 제품 경로까지 추가 복구했다. 원본rawexport는down_source_package.json,기존입력은out/WarlordAltVReview20260915/blackSphere_unified.json에보존했다.
+
+## G17. Alt V 시작 공간 효과의 원본 발생과 native673 연결
+
+원본 `action-17250/stage-000/notify-010`과 firstLOD emitter12는 현재 설치 원본에서도 활성이다. 최초 full 생성 커밋c67a47b2의179개 행부터 해당 발생이 없었고, legacy unified에는 visible=true로 남아 있다. native 프로그램 미연결에 따른 full 생성 제외 경로와 일치하며 후속 사용자 삭제로 볼 근거는 없다. 개별 최초 exclusion receipt의 문자열까지는 남아 있지 않아 그 부분은 확정하지 않았다.
+
+원본 UPK의9개 module을 다시 추출하고 상속되는19개 CDO의 serial hash를 현재 원본 package와 대조했다. 기존 compiler로 원본 start0.0099999998초, emitter1초, particle lifetime0.400000006초, burst1, StartSize3, startColorRGB2, Dynamic[0.25,1,1,1]을 투영했다. attachment는 원본 ROOT SNAPSHOT와 identity notify TRS이며 기존 full의 root source basis yaw-90을 사용한다. 기존 본 FOLLOW 정규화와 별도 경로다. 원본 Required localSpace=true는 새로 복구하는 이 발생에만 적용했다.
+
+`fm_d_cylinder_019`도 fresh UModel로 재추출했다. 현재 설치 WModel의142정점·216삼각형과 원본의 위치·노멀·UV0·방향 보존 삼각형이 정확히 같고, preScale0.01에서 bounds는[-1,1]×[0,2]×[-1,1]m다. 원본 VS에 WPO가 없고 PS가 COLOR0/1을 읽지 않으므로 이 geometry를 그대로 사용한다. legacy의 비어 있던 cloud032 참조는 정답 texture가 아니었다. 실제 MIC가 선택하는 기존 세 texture와 이 mesh를 사용하므로 새 Resources는 없다.
+
+원본 재질은 `effect.ue3.warlord-673-native.v1`로 연결했다. 병렬 native 작업의 완성 material을 그대로 받아 `authored.source-particle.full-warlord-alt_v.3a0318b0c3d175070829` 하나를 clip1 full에 추가했다. 기존230개 요소를 모두 보존했고 최종 문서 개수는231/186이다. generic/legacy shader fallback을 활성화하지 않았다.
+
+최신 `Effect_WarlordNativeMaterial.cpp`를 out에만 다시 컴파일한 실제 Codec → serialize/parse → Playback이 통과했다. 이어 실제 제품 Catalog의 Capture_ProductLoadStageRequest → Stage_ProductLoadTarget으로231행 전체 로드를 확인했다. 실제 staged material의 native registry가673/bMesh=true를 반환하고 ShaderFamily의 MESH/WARLORD/673 선택이 `Shader_VtxEffectMeshWarlord.hlsl`로 연결되는 것까지 검사했다. 새 발생은 동시 최대1개,24 particle-frame, 첫 표시0.0166667초~마지막0.4초, RGBpeak2/alphapeak1, Dynamic[0.25,1,1,1], particle world basis3으로 재생됐다. 다른230행의 동일성도 저장 전후 대조했다.
+
+Source와 변환 근거는 `out/WarlordAltVReview20260915/blackSphere_source_records.json`, `blackSphere_cue.json`, `blackSphere_projection.json`, `blackSphere_geometry.json`이다. 최종 제품 검증은 `blackSphere_product.json`, CAS 적용은 `blackSphere_apply.json`에 있다. 원본 native PS/VS와 FXC/GPU 수치 대조는 병렬 native 담당의 아래 G17-01을 따른다. 이 작업은 Client/UI를 실행하거나 화면을 판정하지 않았으며, 사용자의 최종 화면 확인은 남아 있다.
+
+
+## G17-01. 시작 배경 cylinder의 원본 native673 재질·shader 검증
+
+source MIC `fx_m_mi_o_00.fx_mi.fx_o_me_superactionspace_01_02_tr`, parent `fx_m_mi_d_00.fx_m.fx_d_me_superactionspace_tr`의 현재 설치본 material map과 packed PS/VS를 다시 회수했다. LocalVF PS는 `591444cc4fff1f449dd154b804f25bb8`(원본 SHA256 `b104bf203fe99412b07d7e2db59021527c4b76d73977359341eef8cbbb4c2dc6`), VS는 `70ef36e78c7b254f96b485b73b366538`다. parent는 translucent/one-sided이며 PS material CB0[2..14], engine prefix[0,1]과 texture3개가 모두 닫혔다. 원본texture는 `fx_tex_02.fx_d_noise_043`, `fx_d_noise_031`, `fx_d_atypical_006_1_xcl`이며 기존 `Effect/Warlord/Textures/FX_TEX_02`의 해당 DDS와 원본 sampler 주소/sRGB 태그를 연결했다. legacy 미해결 cloud032를 대체 입력으로 사용하지 않았다.
+
+원본은 cylinder의 UV를 읽는 일반 표면 재질이 아니라 화면 좌표/화면 종횡비/SceneDepth로 텍스처3개를 합성한다. VS105instruction에는 material WPO·texture sample이 없고 position→world→projection 및 fog varying을 출력한다. PS의 COLOR0/1 read mask는0, UV0/1 varying도 없으므로 기존 WModel의 vertex COLOR 부재는 이 RT0 복구를 막지 않는다. 기존 cylinder P/N/UV0·triangle의 원본 동치와 occurrence 복구는 G17의 실측을 따른다.
+
+비어 있던 기존 native673을 사용해 `Effect_WarlordNativeMaterial_Tables.inl`, `Shader_EffectWarlordNativeGroup000.hlsli`, `Shader_EffectWarlordNativeDispatchBase0.hlsli`에 한 프로그램만 추가했다. profile은 `effect.ue3.warlord-673-native.v1`, 명명 scalar17/vector4/texture3, requiresDepthSample=true다. 원본 engine opacity CB0[0].x=1, CB0[1]=particle RGBA, 실제 Dynamic 모듈→CB0[3], 원본 color_1/color_2 FName 번호와 named uniform을 보존한다. masked나 강제 불투명 pass로 바꾸지 않았다. 기존 Warlord660..719 carrier 범위와 group0 shader source를 재사용한다.
+
+`generate_artist_native_runtime_shader.py`에는 이 exact PS/VS·LocalVF·engine prefix·clip varying을 검증하는 guard만 추가했다. 기존 CB2[6].xy=view-size 어댑터와 분리된 SceneDepth sample/reconstruction 처리를 재사용한다. 화면 크기는 실제 depth target의 width/height, scene depth와 particle clipW는 기존 m→source cm 계약을 각각 따른다. `generate_warlord_black_sphere_native.py`는 해당 원본 한 프로그램을 기존 instruction translator로 생성하고 Warlord table/function/dispatch 및 occurrence용 material JSON을 출력한다. --install은 이 세 제품 파일만 갱신하며 다른 프로그램과 공개 header는 보존한다.
+
+검증 결과:
+
+- root의 독립 WARP 대조는 원본 uniform AST와 serialized binding으로 raw PS의 CB를 구성하고 후보와180조건을 비교했다. 16:9/4:3/세로 viewport, 공간적으로 변하는 texture3개, 화면 좌표3점, 시각2개, Dynamic.x2개, scene-depth gap5개를 사용했다. max absolute error는1.1682510603350238e-6이며 양수 RGB/alpha 출력도 포함한다. `native673-warp.json`, `verify_native673.py`가 근거다. 후보 fragment SHA256 `cf319b1b1ef380503af9a23adb632989f2438b56a497329e447cd08b85c1f804`와 설치 제품 함수가 정확히 같음을 별도로 확인했다.
+- 생성/설치2회 후 native673 출력·제품 shader/table/header bytes가 같다. 기존 Artist536 재생성도 이전 출력과 byte exact여서 새 viewport guard가 해당 복원을 바꾸지 않았다. `generation-check.json`에 기록했다.
+- `Shader_VtxEffectMeshWarlord.hlsl` 전체 effect의 out FXC fx_5_0 컴파일 exit0, X4000 warning 있음. 기존 제품 CSO를 덮어쓰지 않았다. 변경 Python 문법 검사와 diff check를 통과했다.
+- workbench의 최신 `Effect_WarlordNativeMaterial.cpp` out 컴파일·실제 Codec/serialize roundtrip/Playback 및231행 Product Catalog Stage는 G17과 `out/WarlordAltVReview20260915/blackSphere_product.json`을 따른다. 동적 입력[.25,1,1,1]과24 live frame을 확인했으며 단순 등록만으로 완료하지 않았다.
+
+원본과 생성 근거 루트는 `out/WarlordAltVBlackSphere20260915`다. 설치 CSO/사용자 실행 중 EXE 반영과 실제 원작 배경의 화면 일치·visual PASS는 이 수치 검증에 포함하지 않았다.
+
+## G18. 09-15 사용자 확인 후 큰 방패 중심 배치와 검은 균열6방향
+
+사용자는 앞선 수정 뒤 번개가 나오고 방패가 순차 생성되는 것을 확인했다. 추가 요청은 큰 방패를 순차 낙하 대상으로 보이게 하고, 번개를 해당 큰 방패 위치에 맞추며, 마지막 중앙에서 바깥으로 뻗는 검은 균열·띠를 원본6방향으로 표시하는 것이다. 이 관찰을 이번 추가 변경의 visual PASS로 확장하지 않는다.
+
+clip1 inner12 carrier는 낙하 추가 전의0.01초 동시 생성·정지로 복구했다. outer12는 원본의 여섯 시작 시각과0.31초 하강을 유지한다. 두 clip의 outer 반경은6→2.625m로 줄였고 사용자 mesh 크기2, 양쪽6개 개수, 두 재질 pair와 stable ID를 보존했다.2.625m는 source SD00 원본 배치 반경이며 크기2는 이전 사용자 저작값이다. 큰 방패만 순차 낙하하고 작은 방패는 다시 지면에 동시에 나타난다.
+
+원본 Sequence eye/lookAt/up·key time은 모두 보존했다. 설치 shield 두 mesh의 bounds와 크기2로 계산하면 반경6m는 거의179도와 카메라 뒤 꼭짓점 때문에 FOV만으로 해결되지 않는다. 반경2.625m의 착지한 shield bounds는0.81~2.0초603개 key에서 필요한 수평FOV 최대111.999803도였다. FOV는450~700ms에 smoothstep으로114도에 접근하고2000~2150ms에 원본값으로 복귀한다. 카메라 방향과2150ms 이후 close-up은 그대로다.859개 FOV값과 source 문자열의 PROJECT_TUNED 표기만 바꿨으며, 시야 위16m에서 내려오기 시작하는 순간도 화면 안이라고 판단하지 않는다.
+
+설치 b_effectroot는 source import0.01배율뿐 아니라 X반전·Y/Z교환 basis가 남는다. 앞선 검사는 번개 크기를 닫았지만 이번에는 정확히 해당 본의 위치와 최종 quad를 대조했다. 낙뢰1166 12개와 바닥1140 6개에만 `authored.warlord.altv.guardian-ground` slot을 지정하고 기존 socketLocalTransform의[90,180,0]도 역행렬을 사용했다. 실제 본20샘플에서 source scale 정규화 뒤 단위 basis 오차는3.38e-7 이하이고 본 위치는 그대로다. 다른 bone/camera/world-space 저작, 공용 렌더러와 owner_yaw 검증은 변경하지 않았다.
+
+낙뢰12개는 큰 방패의 같은 여섯 XZ 위치와 순서를 사용한다. 추가 Y=-0.3m만 사용자 요청의 낮춤으로 적용했다. 원본 sprite 수명·15~18m 시작 분포·속도·13m 길이·상단 pivot·재질과 alpha는 유지한다. 실제 재생1476행에서 방패 지점에 대한 교차축 최대오차2.39e-6m이며 source 가로 jitter 범위0.55m와 양수 Color.w/Dynamic.w가 유지됐다. 원본 분포·수명·size 변화가 있으므로 모든 낙뢰 quad의 밑단을 지면 한 높이로 강제하지 않았다.
+
+마지막 검은 균열은 새 시작 native673과 별개인 clip2 native1140의 기존6개다. 현재 원본 notify024~029의690byte payload는 FRotator yaw464..467byte만 [0,-10922,-21845,32768,21845,10922]로 다르다. 기존 Albion raw decoder의 동일 계약으로 이를 읽었다. emitter Y회전은 source6.8m 중심 위치를 회전시키고, axis-locked quad에서 별도로 읽는 billboardRollDegrees=-yaw는 원본 StartRotation90도를 보존하면서 띠의 장축을 같은 방사 방향으로 향하게 한다. 중심 배치와 quad 방향은 다른 소비자이므로 같은 회전을 두 번 적용한 것이 아니다. sourceRecipe·material과6개 발생 수를 보존했다.
+
+검증은 실제 Codec/serialize roundtrip/Stage/Playback과 제품 Make_ParticleSpriteWorld 본문을 그대로 추출한 out probe로 수행했다. 방패2724행에서 outer12/inner12와 하강 최대오차1.91e-6m, clip1→clip2 행렬오차0을 확인했다. 바닥654행은 중심6방향·반경6.8m 오차1.44e-6m·높이0.100001m였으며 최종 quad의 지면 법선Y와 방사 장축dot가 모두1이었다. 원본 normalization 함수 본문과 fixture 동일성도 최종 source로 재확인했다. 새 제품 C++/shader/Resources는 없으며 out 최소 컴파일과 최종 JSON parse·scoped diff check를 통과했다.
+
+최종 요소 수는231/186이다. 이번 변경은 clip1의36개, clip2의18개 요소에만 적용했다. 나머지195/168개 요소와 모든 material·resource는 완전히 같고, 파일 읽기 당시 SHA와 일치할 때만 요소/key별 CAS 후보를 설치했다. 기존 제품 camera loader가 이 Sequence를 source0에서 읽는 경로를 유지하며 추가 publisher/catalog 항목은 없다. 실행 중 저작 draft나 Client/Server를 조작하지 않았다. 새 테스트 입력이 최신 파일을 읽는지와 최종 시야·큰 방패·번개 높이·검은 띠 외형은 사용자가 확인한다.
+
+근거는 `out/WarlordAltVPlacement20260915`의 `source-notifies.json`, `candidate.receipt.json`, `camera-fit.json`, `camera-verification.json`, `quad-extraction.json`, `placement.json`, `apply.json`, `validation.receipt.json`이다. `prepare.py`는 이번 입력의 격리된 후보 생성 기록이며 제품 경로에 별도 도구나 하네스를 추가하지 않았다.

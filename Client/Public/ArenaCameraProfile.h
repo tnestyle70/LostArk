@@ -42,6 +42,9 @@ public:
 	static bool_t Save(ARENA_CAMERA_MAP map, const ARENA_CAMERA_PROFILE& profile,
 		std::string& status, std::string* sourceBaseline = nullptr);
 	static float3_t LookOffset(const ARENA_CAMERA_PROFILE& profile);
+	// Move the eye around the current focus; lens and focus position stay fixed.
+	static bool_t Set_OrbitAroundFocus(ARENA_CAMERA_PROFILE& profile,
+		f32_t distance, f32_t pitchDegrees, f32_t yawDegrees, std::string& status);
 	static std::filesystem::path Path(ARENA_CAMERA_MAP map);
 };
 

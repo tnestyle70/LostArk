@@ -639,14 +639,14 @@ bool_t CMapAssetCatalog::Parse_MaterialOverrides(const DATA_JSON_VALUE& root)
             };
             if (const auto* flags = row.Find("sourceOverlayFlags"))
             {
-                if (!flags->Is_Number() || flags->Get_Number() < 0 || flags->Get_Number() > 511 ||
+                if (!flags->Is_Number() || flags->Get_Number() < 0 || flags->Get_Number() > 2047 ||
                     std::floor(flags->Get_Number()) != flags->Get_Number()) return reject("invalid overlay flags");
                 surface.sourceOverlayFlags = static_cast<uint32_t>(flags->Get_Number());
                 fields.insert("sourceOverlayFlags");
                 if ((surface.sourceOverlayFlags & 1u) == 0u) fields.erase("normalTexture");
                 if ((surface.sourceOverlayFlags & 2u) == 0u) fields.erase("overlayNormalTexture");
             }
-            for (const char* optional : { "uvTiling", "specularTexture", "bakedLighting", "sourceDirection", "sourceUV", "detailNormalTexture", "detailNormalIntensity", "detailNormalTiling" })
+            for (const char* optional : { "uvTiling", "specularTexture", "bakedLighting", "sourceDirection", "sourceUV", "detailNormalTexture", "detailNormalIntensity", "detailNormalTiling", "sourceSubspecular", "sourceSpecularSaturation", "sourceBump", "emissive" })
                 if (row.Find(optional)) fields.insert(optional);
             if (version->Get_Number() != 2.0 || !exactFields(row, fields)) return reject("invalid fields or version");
             const std::pair<const char*, float*> scalars[] = {
@@ -695,7 +695,7 @@ bool_t CMapAssetCatalog::Parse_MaterialOverrides(const DATA_JSON_VALUE& root)
                 !texture(row, "overlayDiffuseTexture", material.overlayDiffusePath) ||
                 ((surface.sourceOverlayFlags & 2u) != 0u && !texture(row, "overlayNormalTexture", material.overlayNormalPath))) return reject("missing or invalid texture");
             for (const auto& entry : { std::pair<const char*, float4_t*>{ "sourceDirection", &surface.sourceOverlayDirection },
-                { "sourceUV", &surface.sourceBgUV } })
+                { "sourceUV", &surface.sourceBgUV }, { "sourceBump", &surface.sourceBgBump } })
             {
                 const auto* vector = row.Find(entry.first);
                 if (!vector) continue;
@@ -707,6 +707,22 @@ bool_t CMapAssetCatalog::Parse_MaterialOverrides(const DATA_JSON_VALUE& root)
                     out[i] = static_cast<float>(c.Get_Number());
                 }
             }
+            const bool hasBump = (surface.sourceOverlayFlags & 512u) != 0u;
+            if (hasBump != (row.Find("sourceBump") != nullptr)) return reject("inconsistent overlay bump branch");
+            if (const auto* subspecular = row.Find("sourceSubspecular"))
+            {
+                if (!subspecular->Is_Array() || subspecular->Get_Array().size() != 2u) return reject("invalid overlay subspecular");
+                float* components = &surface.sourceBgSubspecular.x;
+                for (size_t i = 0; i < 2u; ++i) {
+                    const auto& value = subspecular->Get_Array()[i];
+                    if (!value.Is_Number() || !std::isfinite(value.Get_Number()) || value.Get_Number() < 0.0 ||
+                        value.Get_Number() > 1000000.0) return reject("invalid overlay subspecular component");
+                    components[i] = static_cast<float>(value.Get_Number());
+                }
+            }
+            if (row.Find("sourceSpecularSaturation") &&
+                (!readNumber(row, "sourceSpecularSaturation", surface.sourceBgSpecularSaturation) ||
+                 surface.sourceBgSpecularSaturation > 1000000.f)) return reject("invalid overlay specular saturation");
             const bool hasDetail = (surface.sourceOverlayFlags & 32u) != 0u;
             if (hasDetail != (row.Find("detailNormalTexture") != nullptr) ||
                 hasDetail != (row.Find("detailNormalIntensity") != nullptr) ||
@@ -744,6 +760,44 @@ bool_t CMapAssetCatalog::Parse_MaterialOverrides(const DATA_JSON_VALUE& root)
                     !texture(row, "specularTexture", material.surfaceSpecularPath)) return reject("invalid overlay specular");
                 surface.overlaySeparateSpecular = true;
                 surface.specularSRGB = color == "srgb";
+            }
+            if (const auto* emissive = row.Find("emissive"))
+            {
+                std::string colorSpace;
+                const auto* flicker = emissive->Find("flicker");
+                const auto* tiling = emissive->Find("uvTiling");
+                if (!exactFields(*emissive, { "texture", "color", "intensity", "uvTiling", "colorSpace", "flicker" }) ||
+                    !texture(*emissive, "texture", material.surfaceEmissivePath) ||
+                    !readColor(*emissive, "color", surface.emissiveColor) ||
+                    !readNumber(*emissive, "intensity", surface.emissiveIntensity) ||
+                    !readString(*emissive, "colorSpace", colorSpace) ||
+                    (colorSpace != "linear" && colorSpace != "srgb") ||
+                    !flicker || !exactFields(*flicker, { "minimum", "speed", "phaseOffset" }) ||
+                    !readNumber(*flicker, "minimum", surface.emissiveFlickerMinimum) ||
+                    !readNumber(*flicker, "speed", surface.emissiveFlickerSpeed) ||
+                    !tiling || !tiling->Is_Array() || tiling->Get_Array().size() != 2u)
+                    return reject("invalid source emissive inputs");
+                const auto* phase = flicker->Find("phaseOffset");
+                if (!phase || !phase->Is_Number() || !std::isfinite(phase->Get_Number()) ||
+                    std::abs(phase->Get_Number()) > (std::numeric_limits<float>::max)())
+                    return reject("invalid emissive phase");
+                surface.emissivePhaseOffset = static_cast<float>(phase->Get_Number());
+                float components[2]{};
+                for (size_t i = 0; i < 2u; ++i)
+                {
+                    const auto& component = tiling->Get_Array()[i];
+                    if (!component.Is_Number() || !std::isfinite(component.Get_Number()) ||
+                        component.Get_Number() <= 0.0 ||
+                        component.Get_Number() > (std::numeric_limits<float>::max)())
+                        return reject("invalid emissive UV tiling");
+                    components[i] = static_cast<float>(component.Get_Number());
+                }
+                surface.emissiveUVTiling = float2_t(components[0], components[1]);
+                surface.emissiveSRGB = colorSpace == "srgb";
+                // This overlay permutation has a constant emission multiplier.
+                if (surface.emissiveFlickerMinimum != 0.f || surface.emissiveFlickerSpeed != 0.f ||
+                    surface.emissivePhaseOffset != 0.f) return reject("unsupported overlay emissive flicker");
+                surface.hasEmissive = true;
             }
             staged[assetId].push_back(std::move(material));
             continue;
@@ -972,8 +1026,7 @@ bool_t CMapAssetCatalog::Parse_MaterialOverrides(const DATA_JSON_VALUE& root)
                 return reject("invalid BG flags or flicker mode");
             surface.sourceBgFlags = static_cast<uint32_t>(flags->Get_Number());
             surface.sourceBgFlicker = static_cast<uint32_t>(mode->Get_Number());
-            if (((surface.sourceBgFlags & 8u) && !(surface.sourceBgFlags & 4u)) ||
-                ((surface.sourceBgFlags & 32u) && !(surface.sourceBgFlags & 16u))) return reject("inconsistent BG flags");
+            if ((surface.sourceBgFlags & 32u) && !(surface.sourceBgFlags & 16u)) return reject("inconsistent BG flags");
             for (const auto& vector : { std::pair<const char*, float4_t*>("sourceBump", &surface.sourceBgBump),
                 std::pair<const char*, float4_t*>("sourceUV", &surface.sourceBgUV) })
             {
@@ -1047,6 +1100,8 @@ bool_t CMapAssetCatalog::Parse_MaterialOverrides(const DATA_JSON_VALUE& root)
                     components[i] = static_cast<float>(c.Get_Number());
                 }
             }
+            if ((surface.sourceBgFlags & 8u) && !(surface.sourceBgFlags & 4u) &&
+                surface.sourceBgSubspecular.x <= 0.f) return reject("specular texture has no selected source branch");
             if (row.Find("sourceRimlight") && !readColor(row, "sourceRimlight", surface.sourceBgRimlight)) return reject("invalid source rimlight");
             if (row.Find("sourceSpecularSaturation") && !readNumber(row, "sourceSpecularSaturation", surface.sourceBgSpecularSaturation)) return reject("invalid source specular saturation");
             const auto* spaces = row.Find("textureColorSpace");
@@ -1213,9 +1268,10 @@ bool_t CMapAssetCatalog::Parse_MaterialOverrides(const DATA_JSON_VALUE& root)
             staged[assetId].push_back(std::move(material));
             continue;
         }
-		if (family == "bg_base_pbr_seamless_opa" || family == "bg_base_pbr_opa")
+		if (family == "bg_base_pbr_seamless_opa" || family == "bg_base_pbr_opa" || family == "bg_base_pbr_msk")
 		{
 			auto& pbr = material.surface;
+			pbr.pbrAlphaMasked = family == "bg_base_pbr_msk";
 			pbr.family = family == "bg_base_pbr_seamless_opa" ?
 				Engine::MODEL_SURFACE_FAMILY::PBR_SEAMLESS_OPAQUE : Engine::MODEL_SURFACE_FAMILY::PBR_OPAQUE;
 			const auto reject = [&](const std::string& reason)
@@ -1359,7 +1415,8 @@ bool_t CMapAssetCatalog::Parse_MaterialOverrides(const DATA_JSON_VALUE& root)
                     !readNumber(*emissive, "intensity", pbr.emissiveIntensity) ||
                     !readString(*emissive, "colorSpace", colorSpace) ||
                     (colorSpace != "linear" && colorSpace != "srgb") ||
-                    !flicker || !exactFields(*flicker, { "minimum", "speed", "phaseOffset" }) ||
+                    !flicker || !(exactFields(*flicker, { "minimum", "speed", "phaseOffset" }) ||
+                        exactFields(*flicker, { "minimum", "speed", "phaseOffset", "mode" })) ||
                     !readNumber(*flicker, "minimum", pbr.emissiveFlickerMinimum) ||
                     pbr.emissiveFlickerMinimum > 1.f ||
                     !readNumber(*flicker, "speed", pbr.emissiveFlickerSpeed) ||
@@ -1370,6 +1427,20 @@ bool_t CMapAssetCatalog::Parse_MaterialOverrides(const DATA_JSON_VALUE& root)
                     std::abs(phase->Get_Number()) > (std::numeric_limits<float>::max)())
                     return reject("invalid emissive phase");
                 pbr.emissivePhaseOffset = static_cast<float>(phase->Get_Number());
+                // PBR zero-initialized/old descriptors keep the historical nested flicker.
+                // Value 3 is PBR-only steady emission; BG values 0/1/2 are unchanged.
+                if (flicker->Find("mode"))
+                {
+                    std::string mode;
+                    if (!readString(*flicker, "mode", mode) || (mode != "none" && mode != "nested"))
+                        return reject("invalid PBR emissive mode");
+                    if (mode == "none")
+                    {
+                        if (pbr.emissiveFlickerMinimum != 0.f || pbr.emissiveFlickerSpeed != 0.f ||
+                            pbr.emissivePhaseOffset != 0.f) return reject("steady PBR emissive has phase inputs");
+                        pbr.sourceBgFlicker = 3u;
+                    }
+                }
                 float components[2]{};
                 for (size_t i = 0; i < 2u; ++i)
                 {

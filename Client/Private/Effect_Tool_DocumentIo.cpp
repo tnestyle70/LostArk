@@ -89,7 +89,8 @@ bool_t Client::CEffect_Tool::Try_ApplyDraftAndSave()
 {
 	const bool_t bJoinedValtanPatternDocument =
 		!m_strActiveValtanPatternDraftId.empty() ||
-		m_ValtanProductPreview.has_value() ||
+		(m_ValtanProductPreview.has_value() &&
+		 !m_ValtanProductPreview->bEditorSourceClip) ||
 		m_ValtanCombatObjectIndependentPreview.has_value() ||
 		0u != m_iValtanWorldOwnerStageDurationMs;
 	if (bJoinedValtanPatternDocument &&
@@ -176,7 +177,8 @@ bool_t Client::CEffect_Tool::Try_SaveDocument(
     if (bSequencerActive) m_pAuthoringSequencer->Preserve_ClockDuringAuthoring();
 	const bool_t bJoinedValtanPatternDocument =
 		!m_strActiveValtanPatternDraftId.empty() ||
-		m_ValtanProductPreview.has_value() ||
+		(m_ValtanProductPreview.has_value() &&
+		 !m_ValtanProductPreview->bEditorSourceClip) ||
 		m_ValtanCombatObjectIndependentPreview.has_value() ||
 		0u != m_iValtanWorldOwnerStageDurationMs;
 	if (bJoinedValtanPatternDocument &&

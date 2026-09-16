@@ -1104,6 +1104,24 @@ Client::CEffect_Tool::Build_PreviewDocument(
     if (EFFECT_PREVIEW_FILTER::SOLO_SELECTED_GROUP == m_ePreviewFilter ||
         EFFECT_PREVIEW_FILTER::MUTE_SELECTED_GROUP == m_ePreviewFilter)
     {
+        if (m_strPreviewIsolationGroupId.empty() && !m_PreviewIsolationElementIds.empty())
+        {
+            if (EFFECT_PREVIEW_FILTER::SOLO_SELECTED_GROUP == m_ePreviewFilter)
+            {
+                EFFECT_DOCUMENT_DESC Selected;
+                std::string Error;
+                if (Build_ElementsPreviewDocument(Preview, m_PreviewIsolationElementIds, Selected, Error))
+                    return Selected;
+                // A stale selection must never expose the complete Effect.
+                Preview.Elements.clear();
+                Preview.ModelCues.clear();
+                return Preview;
+            }
+            std::erase_if(Preview.Elements, [this](const EFFECT_ELEMENT_DESC& Element)
+                { return std::find(m_PreviewIsolationElementIds.begin(), m_PreviewIsolationElementIds.end(),
+                    Element.strElementId) != m_PreviewIsolationElementIds.end(); });
+            return Preview;
+        }
 		if (m_strPreviewIsolationGroupId.empty())
             return Preview;
         const bool_t bGroupExists = std::any_of(
@@ -1669,6 +1687,7 @@ bool_t Client::CEffect_Tool::Seek_WorldPreviewWithSourceAnchorHistory(
 			WallDuration + Clip.fHoldAfterSeconds : static_cast<f32_t>(Clip.iAuthoringWallMs) * 0.001f);
 	}
 	const bool_t bValtanScalePolicy = m_ValtanProductPreview.has_value();
+	const bool_t bValtanSourceRestore = bValtanScalePolicy && m_ValtanProductPreview->bEditorSourceClip;
 	const VALTAN_PATTERN_EFFECT_SCALE_POLICY eValtanScalePolicy =
 		bValtanScalePolicy ? m_ValtanProductPreview->Cue.eScalePolicy :
 			VALTAN_PATTERN_EFFECT_SCALE_POLICY::OWNER_RELATIVE;
@@ -1677,14 +1696,14 @@ bool_t Client::CEffect_Tool::Seek_WorldPreviewWithSourceAnchorHistory(
 
 	const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER TransformProvider =
 		[this, &PoseBindings, &ClipTimings, &WallBudgets, &Requests, &BoneNames, EffectRoot,
-		 bSingleClip, bNeedsOwnerYaw, bValtanScalePolicy, eValtanScalePolicy,
+		 bSingleClip, bNeedsOwnerYaw, bValtanScalePolicy, bValtanSourceRestore, eValtanScalePolicy,
 		 vValtanWorldScale, ActualOwnerWorld](const f32_t fHistoryEffectSeconds,
 			EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& OutSample,
 			std::string& strProviderError)
 		{
 			const f32_t fTimelineSeconds = Resolve_EffectTimelineTime(fHistoryEffectSeconds);
 			ACTION_PRESENTATION_SAMPLE AnimationSample;
-			const bool_t bMapped = bSingleClip && !bNeedsOwnerYaw ?
+			const bool_t bMapped = bSingleClip && !bNeedsOwnerYaw && !bValtanSourceRestore ?
 				CActionPresentationTimeline::Resolve_Sample(
 					ClipTimings, fTimelineSeconds, AnimationSample) :
 				CActionPresentationTimeline::Resolve_PreviewSequenceSample(
@@ -1722,7 +1741,7 @@ bool_t Client::CEffect_Tool::Seek_WorldPreviewWithSourceAnchorHistory(
 				}
 				const size_t iBoneSample = iBone++;
 				float4x4_t BoneWorld{};
-				if (bValtanScalePolicy ||
+				if ((bValtanScalePolicy && !bValtanSourceRestore) ||
 					Request.eOrientation == EFFECT_ATTACHMENT_ORIENTATION::OWNER_YAW)
 				{
 					if (!Build_ToolValtanSourceAnchorWorld(
@@ -2013,6 +2032,7 @@ void Client::CEffect_Tool::Clear_ProductCuePreview()
 	m_iPlayerPreviewCueCandidateIndex = 0u;
 	m_strPreviewIsolationElementId.clear();
 	m_strPreviewIsolationGroupId.clear();
+    m_PreviewIsolationElementIds.clear();
     Reset_ProductCueSnapshot();
 }
 
@@ -2057,7 +2077,7 @@ void Client::CEffect_Tool::Start_WorldPreviewFromBeginning()
     // effect's lifetime before its first playback update.
     m_bSkipNextWorldPreviewDelta = true;
     if (m_pAuthoringSequencer && m_ActiveDocument && !m_ProductPreview &&
-        (m_ActiveDocument->strEffectAssetId.ends_with(".restore") ||
+        (Is_SequencerRecoveryEffectAssetId(m_ActiveDocument->strEffectAssetId) ||
          Is_SceneAnchoredEffectAssetId(m_ActiveDocument->strEffectAssetId)) &&
         m_ePreviewFilter == EFFECT_PREVIEW_FILTER::SOLO_SELECTED)
     {
@@ -2065,7 +2085,7 @@ void Client::CEffect_Tool::Start_WorldPreviewFromBeginning()
         return;
     }
     if (m_ActiveDocument && !m_ProductPreview &&
-        (m_ActiveDocument->strEffectAssetId.ends_with(".restore") ||
+        (Is_SequencerRecoveryEffectAssetId(m_ActiveDocument->strEffectAssetId) ||
          Is_SceneAnchoredEffectAssetId(m_ActiveDocument->strEffectAssetId)) &&
         m_ePreviewFilter == EFFECT_PREVIEW_FILTER::COMPLETE)
     {

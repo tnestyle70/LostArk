@@ -439,6 +439,8 @@ namespace Client::EffectDocumentCodecDetail
 				&Out.Mesh.vSourceTypeDataRotationDegrees.x, 3u, strOutError) &&
 			Read_MeshRingFill(*pMesh, Out.Mesh.RingFill, strOutError) &&
 			Read_Bool(*pSprite, "billboard", Out.Sprite.bBillboard, strOutError) &&
+			Read_OptionalBool(*pSprite, "followEmitterAxisRotation",
+				Out.Sprite.bFollowEmitterAxisRotation, strOutError) &&
 			Read_OptionalFloat(*pSprite, "billboardRollDegrees",
 				Out.Sprite.fBillboardRollDegrees, strOutError) &&
 			Read_OptionalFloat(*pSprite, "billboardRollDegreesPerSecond",
@@ -799,6 +801,8 @@ namespace Client::EffectDocumentCodecDetail
 			<< ", \"billboardRollDegrees\": " << Detail.Sprite.fBillboardRollDegrees
 			<< ", \"billboardRollDegreesPerSecond\": "
 			<< Detail.Sprite.fBillboardRollDegreesPerSecond;
+		if (Detail.Sprite.bFollowEmitterAxisRotation)
+			Output << ", \"followEmitterAxisRotation\": true";
 		if (Detail.Sprite.LinearReveal.bEnabled)
 		{
 			Output << ", \"linearReveal\": { \"enabled\": true, \"axis\": \""

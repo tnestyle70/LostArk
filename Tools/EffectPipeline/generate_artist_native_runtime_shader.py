@@ -21,7 +21,7 @@ parser.add_argument('--install-additional-groups',action='store_true',
     help='Install the generated additional program groups while preserving every existing Artist shader group.')
 arguments=parser.parse_args()
 OUT=arguments.source_dir.resolve()
-source = json.loads((OUT / 'native_material_inputs.json').read_text())
+source = json.loads((OUT / 'native_material_inputs.json').read_text(encoding='utf-8-sig'))
 def args(s):
     return [x.strip() for x in re.split(',\\s*(?![^()]*\\))', s)]
 
@@ -173,7 +173,7 @@ def walk(x):
         for v in x:
             yield from walk(v)
 
-asset_map=json.loads((OUT/'texture_asset_map.json').read_text())
+asset_map=json.loads((OUT/'texture_asset_map.json').read_text(encoding='utf-8-sig'))
 def asset(path):
     if path not in asset_map:raise ValueError(('source texture has no exact runtime mapping',path))
     return asset_map[path]
@@ -239,7 +239,7 @@ for i in range(10):
 
 rows = []
 program_code = []
-selections=json.loads((arguments.selection_file or OUT/'selected_runtime_material_programs.json').read_text())['programs']
+selections=json.loads((arguments.selection_file or OUT/'selected_runtime_material_programs.json').read_text(encoding='utf-8-sig'))['programs']
 byid={r['sourceMaterial']:r for r in source['materials']};errors=[]
 for ordinal, selection in enumerate(selections):
     program=selection.get('program', arguments.program_start+ordinal if arguments.program_start is not None else (460+ordinal if ordinal<100 else 820+ordinal-100))
@@ -255,7 +255,7 @@ for ordinal, selection in enumerate(selections):
             errors.append({'program':program,'material':r['sourceMaterial'],'reason':'Distinct non-unlit engine CB prefix, world-position varying; separately restore exact inputs.'});continue
         name=r['sourceMaterial'].rsplit('.',1)[-1]
         sid=selection['sourcePS']
-        p=json.loads((OUT/'full_programs'/(sid+'.json')).read_text())
+        p=json.loads((OUT/'full_programs'/(sid+'.json')).read_text(encoding='utf-8-sig'))
         uniform = copy.deepcopy(r['materialMap']['uniformExpressionSet'])
         for node in walk(uniform):
             if node.get('parameterNameNumber',0):
@@ -310,6 +310,7 @@ for ordinal, selection in enumerate(selections):
             if t == 'periodic': return 'ArtistNativePeriodic('+expression(x['input'])+')'
             if t == 'max': return 'max('+expression(x['a'])+','+expression(x['b'])+')'
             if t == 'floor': return 'floor('+expression(x['input'])+')'
+            if t == 'frac': return 'frac('+expression(x['input'])+')'
             if t == 'abs': return 'abs('+expression(x['input'])+')'
             if t == 'fmod': return 'fmod('+expression(x['a'])+','+expression(x['b'])+')'
             if t == 'clamp': return 'clamp('+expression(x['input'])+','+expression(x['minimum'])+','+expression(x['maximum'])+')'
@@ -369,6 +370,19 @@ for ordinal, selection in enumerate(selections):
             '5add713d06b8684d84689591b7ef144f': ('0c1413bd3ee54d449ce7fdac8c7f1542', 10, 'none', [10, 11, 12]),
             '3a96e00bdfda46489bb6aa32ae1ac89c': ('0c1413bd3ee54d449ce7fdac8c7f1542', 6, 'color', [0, 5, 6, 7, 8]),
             '8c7feae3b54e7a46835555bfa86e7e6e': ('239396ffe9f57b47a19ee2955207d2e8', 26, 'actor', [0, 1, 2, 26, 27, 28]),
+            # Valtan crack: absolute world XY plus opacity W in row 0,
+            # mesh particle color in row 1 and tangent-up sky rows 14..16.
+            'a80ec5aa8c23c54bbe0ed08528804b78': ('f4505ea22bef0b4895dbadfe1d6fc15c', 14, 'world_color', [0, 1, 14, 15, 16]),
+            # Valtan heat mesh: particle color/opacity, tangent-up sky 7..9.
+            # Row 6 and CB2[4] feed only the archived secondary MRT.
+            '63b3600fc7b02a43999ea2a77bb81937': ('7266a7a50d72d14db4f432d74ed5818d', 7, 'opacity', [0, 1, 6, 7, 8, 9]),
+            # Bern smoke/leaf RT0 consumes the engine opacity in Y. X is
+            # the secondary normal MRT flag, not the visible opacity.
+            '30a8a4c7070a6043bcc86e56fda2d34e': ('b203af051145314e8d66b49a6dc552cb', 3, 'opacity_y', [0, 3, 4, 5]),
+            'e9352e2d45f99a47b54ef208b7a3ce2f': ('7266a7a50d72d14db4f432d74ed5818d', 5, 'opacity_y', [0, 1, 5, 6, 7]),
+            # Valtan destruction's masked monster section uses the original
+            # actor/world-position prefix and tangent-space sky at rows 25..27.
+            '9ae9112a9f0431448e28da5cf85ef088': ('239396ffe9f57b47a19ee2955207d2e8', 25, 'actor', [0, 1, 2, 25, 26, 27]),
         }.get(sid) if arguments.profile_domain=='kouku' else None
         if kouku_lit:
             assert selection['sourceVS'] == kouku_lit[0], ('Kouku lit vertex shader mismatch', selection['sourceVS'], kouku_lit[0])
@@ -391,6 +405,12 @@ for ordinal, selection in enumerate(selections):
             'bafb98b5f548184bab9a40cf2ed5d9c1': ('5d79421dc8571c45aa49790f50274f51', 16, [0, 1, 2, 14, 15, 16, 17, 18]),
             'e0c1218459011e4ba1a50550c3bf358e': ('5d79421dc8571c45aa49790f50274f51', 17, [0, 1, 2, 15, 16, 17, 18, 19]),
             'f5b16f4555698c43993f2cde2666d2d2': ('772e94581a5e6548b9529bc7cc103bca', None, [0, 1, 2]),
+            '482aad52a559da4aa7e3dbfedbe9c4b9': ('772e94581a5e6548b9529bc7cc103bca', None, [0, 1, 2]),
+            '0dc937f93ccdd2479f044bde8d2d07d4': ('5d79421dc8571c45aa49790f50274f51', 17, [0, 1, 2, 15, 16, 17, 18, 19]),
+            'aafa1b2d458b5746b5f1db2d070d99a4': ('5d79421dc8571c45aa49790f50274f51', 15, [0, 1, 2, 13, 14, 15, 16, 17]),
+            '0dce6ac02eeca942b3fa542f1b46a2f7': ('5d79421dc8571c45aa49790f50274f51', 15, [0, 1, 2, 13, 14, 15, 16, 17]),
+            '26fddc3c63c71642b5dbb20d55a3e61c': ('772e94581a5e6548b9529bc7cc103bca', None, [0, 1, 2]),
+            'db50bb574893fd46bb16839799006a50': ('772e94581a5e6548b9529bc7cc103bca', None, [0, 1, 2]),
         }.get(sid) if decal else None
         if kouku_decal:
             assert selection['sourceVS'] == kouku_decal[0]
@@ -401,7 +421,14 @@ for ordinal, selection in enumerate(selections):
             '76df7d394e7b4242b700d26cf69db77b',
             # GroundEffect 2113 rectangle retains the same LocalDecal
             # VS, world-position input and engine-owned CB0[0..3] prefix.
-            '2dd9378b07e40a4893bb599b57c0d913')
+            '2dd9378b07e40a4893bb599b57c0d913',
+            # Valtan GroundEffect 2002 circle has the same VS and prefix.
+            # PS register v7 is TEXCOORD5 (absolute source world XY),
+            # not TEXCOORD7; retain its radial mask and world-noise samples.
+            '6b8e8fca5028ea449cbe6a1d5aebb3c6',
+            # GroundEffect 2001 fan uses the same original projection ABI;
+            # its radial/angular material expressions remain native.
+            'c390f9f83fce2b4791421e47db4cdcc6')
         if kouku_ground:
             # GroundEffect's LocalDecal VS exports absolute world position at
             # TEXCOORD5. Its PS adds a pre-view translation before the existing
@@ -423,7 +450,12 @@ for ordinal, selection in enumerate(selections):
             '4ab03586b8ab06498e9d56b87dce4fee': 'd17daa101dec2b4493fce2f510407f32',
             '653bac92bfa279408665fa859b7765f6': 'd17daa101dec2b4493fce2f510407f32',
             'b0aebbf53cbd8249b28cd0b8fc7da17c': 'd17daa101dec2b4493fce2f510407f32',
+            # Valtan cracked stone: mask alpha and final RGB both use CB0[0].
+            '2232b9d7f30bd146afe89b9fc661279e': 'd17daa101dec2b4493fce2f510407f32',
         }.get(sid) if arguments.profile_domain == 'kouku' else None
+        # Artist flowergarden's masked LocalVF uses the same row-0 RGBA ABI.
+        if arguments.profile_domain == 'artist' and sid == '390b1fe8a7081c45bf96c8afc4bf11e9':
+            masked_color_vertex_shader = 'd17daa101dec2b4493fce2f510407f32'
         opacity_prefix = '    source[0].x=1.f; // Project engine opacity multiplier.'
         if masked_color_vertex_shader:
             assert mesh and selection['sourceVF'] == 'flocalvertexfactory'
@@ -449,7 +481,7 @@ for ordinal, selection in enumerate(selections):
             assert bindings['constantBufferClosure']['unownedConstantBuffer0Slots'] == kouku_fire_world[1]
             assert all(r['materialMap']['uniformExpressionCounts'][name] == 0 for name in (
                 'vertexVectorExpressions', 'vertexScalarExpressions', 'vertexTexture2DExpressions'))
-            vertex = json.loads((OUT/'full_programs'/(selection['sourceVS']+'.json')).read_text())
+            vertex = json.loads((OUT/'full_programs'/(selection['sourceVS']+'.json')).read_text(encoding='utf-8-sig'))
             assert not vertex['disassembly']['sampleInstructions']
             assert 'mov o7.xyzw, r3.xyzw' in vertex['disassembly']['instructions']
             assert 'mul o0.w, r0.x, cb0[0].w' in instructions
@@ -504,6 +536,15 @@ for ordinal, selection in enumerate(selections):
                 lines += ['    source[0]=input.color; // Native opaque mesh particle color has no opacity prefix.']
             elif prefix_kind=='actor_only':
                 lines += ['    source[0]=float4(input.sourceActorPosition,0.f); // Native card UV seed is actor location in UE centimetres.']
+            elif prefix_kind=='opacity_y':
+                assert any(re.search(r'\bo0\.w,.*cb0\[0\]\.y', line) for line in instructions)
+                lines += ['    source[0]=float4(0.f,1.f,0.f,0.f); // Native RT0 external opacity is row 0 Y.']
+            elif prefix_kind=='world_color':
+                vertex = json.loads((OUT/'full_programs'/(selection['sourceVS']+'.json')).read_text(encoding='utf-8-sig'))
+                assert 'mov o8.xyzw, r0.xyzw' in vertex['disassembly']['instructions']
+                assert 'mul o0.w, r0.x, cb0[0].w' in instructions
+                lines += ['    source[0]=float4(0.f,0.f,0.f,1.f); // Absolute world origin and neutral external opacity.',
+                          '    float4 projection[4]; [unroll] for(uint i=0u;i<4u;++i) projection[i]=input.sourceProjection[i];']
             lines += [f'    source[{sky}]=float4(input.skyUpperColor,0.f);', f'    source[{sky+1}]=float4(input.skyLowerColor,0.f);', f'    source[{sky+2}]=float4(input.ambientColor,input.skyIntensity);']
         if mesh and sid == '8f0b8e72c2782945b5c7c927c80a73c5':
             # Quest's opaque pass has no leading opacity uniform. Its sole
@@ -525,13 +566,27 @@ for ordinal, selection in enumerate(selections):
         for b in bindings['scalarGroups']:
             for lane,exp in enumerate(uniform['pixelScalarExpressions'][b['expressionIndexOrGroup']*4:b['expressionIndexOrGroup']*4+4]):
                 lines += [f'    source[{b["baseIndex"]//16}].'+ 'xyzw'[lane]+f' = ({expression(exp)}).x;']
+        # The super-action cylinder samples screen coordinates rather than mesh UVs.
+        # Its exact LocalVF exports clip position, and CB2[6].xy supplies viewport size.
+        screen_space_mesh = sid == '591444cc4fff1f449dd154b804f25bb8'
+        if screen_space_mesh:
+            assert mesh and selection['sourceVF'] == 'flocalvertexfactory'
+            assert selection['sourceVS'] == '70ef36e78c7b254f96b485b73b366538'
+            assert bindings['constantBufferClosure']['unownedConstantBuffer0Slots'] == [0, 1]
+            assert 'div r0.x, cb2[6].x, cb2[6].y' in instructions
+            vertex = json.loads((OUT/'full_programs'/(selection['sourceVS']+'.json')).read_text(encoding='utf-8-sig'))
+            assert 'mov o6.xyzw, r4.xyzw' in vertex['disassembly']['instructions']
+            assert not vertex['disassembly']['sampleInstructions']
+            assert all(r['materialMap']['uniformExpressionCounts'][name] == 0 for name in (
+                'vertexVectorExpressions', 'vertexScalarExpressions', 'vertexTexture2DExpressions'))
         pass_count = max(4, next((int(re.search(r'CB2\[(\d+)\]', d)[1]) for d in declarations if d.startswith('dcl_constantbuffer CB2[')), 0))
         if pass_count > 4:
-            assert arguments.profile_domain == 'kouku' and sid in (
+            assert screen_space_mesh or (arguments.profile_domain == 'kouku' and sid in (
                 '1eb6e82b0befd243ba7ffc9e49b6d067', '42ebb4e66c0c0b4b92db497fcd69ccc2',
                 '286c952473acd34a8cdd4e981db6ec1f',
                 '2837f9c4eed1a745b242b4abb6f57be1',
-                '52f3a078c5510e46a8de35cbed7fda61', 'fb6f0054b2bc094ab3b058418968b930'), ('Unreviewed source pass constants', sid, pass_count)
+                '63b3600fc7b02a43999ea2a77bb81937',
+                '52f3a078c5510e46a8de35cbed7fda61', 'fb6f0054b2bc094ab3b058418968b930')), ('Unreviewed source pass constants', sid, pass_count)
         lines += [f'    float4 passValues[{pass_count}]; [unroll] for(uint passIndex=0u;passIndex<{pass_count}u;++passIndex) passValues[passIndex]=0.f;',
                   '    passValues[0]=float4(.5f,-.5f,.5f,.5f);']
         if decal or kouku_lit or model:
@@ -550,11 +605,12 @@ for ordinal, selection in enumerate(selections):
         ribbon_uv1_vs = {
             '59a22eeec5a51f439595f929dddfe8bf': ('f6b274c2c28e4b45b0c2762be4e095fb', 'mov o2.xyzw, v3.xyzw'),
             'e924ddbcfb7336408af5883ef3ddbf89': ('91ccb94877dac34e988dd1d7bf625e2c', 'mov o1.xyzw, v3.xyzw'),
+            '4d739536c182294da40111bf6ba66fd1': ('f6b274c2c28e4b45b0c2762be4e095fb', 'mov o2.xyzw, v3.xyzw'),
         }.get(sid) if arguments.profile_domain == 'kouku' and selection['rendererShape'] == 'ribbon' else None
         if ribbon_uv1_vs:
             assert selection['sourceVF'] == 'fparticlebeamtraildynamicparametervertexfactory'
             assert selection['sourceVS'] == ribbon_uv1_vs[0], 'Unreviewed ribbon UV1 vertex shader'
-            vertex = json.loads((OUT/'full_programs'/(selection['sourceVS']+'.json')).read_text())
+            vertex = json.loads((OUT/'full_programs'/(selection['sourceVS']+'.json')).read_text(encoding='utf-8-sig'))
             assert ribbon_uv1_vs[1] in vertex['disassembly']['instructions']
         for sig in p['inputSignature']:
             semantic=sig['semanticName'].lower();index=sig['semanticIndex'];reg=sig['register']
@@ -572,7 +628,7 @@ for ordinal, selection in enumerate(selections):
                     values[5]='float4(input.sourceWorldPosition,1.f)'
                 if kouku_lit:
                     values[7]='float4(input.tangentUp,0.f)'
-                    if kouku_lit[2] in ('world','actor'): values[5]='float4(input.sourceWorldPosition,1.f)'
+                    if kouku_lit[2] in ('world','actor','world_color'): values[5]='float4(input.sourceWorldPosition,1.f)'
                 if kouku_ice:
                     values[5]='float4(input.sourceWorldPosition,1.f)'
                 if index not in values:
@@ -721,4 +777,4 @@ if arguments.install_additional_groups:
     assert main.count(marker)==1
     write_partitioned_dispatch(main_path, main.replace(marker,cases+marker,1))
 (output_dir/'native_runtime_contract.json').write_text(json.dumps({'programs':rows,'deferredPrograms':errors,'hlsli':str(target)},indent=2),encoding='utf-8')
-print('Generated',len(rows),'native material programs, deferred',errors,'lines',len(target.read_text().splitlines()))
+print('Generated',len(rows),'native material programs, deferred',errors,'lines',len(target.read_text(encoding='utf-8-sig').splitlines()))

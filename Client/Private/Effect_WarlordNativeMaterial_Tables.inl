@@ -8325,7 +8325,35 @@ constexpr std::array<WARLORD_NATIVE_SWITCH_DESC,8> WARLORD_NATIVE_SWITCHES_2008 
     {"31.fresnal.invert", false},
 }};
 
-constexpr std::array<WARLORD_NATIVE_PROGRAM_DESC,275> WARLORD_NATIVE_PROGRAM_STORAGE = {{
+// BEGIN WARLORD BLACK SPHERE 673
+constexpr std::array<std::string_view,3> WARLORD_NATIVE_TEXTURES_673 = {{"02.map_e","12.map_f","22.map_f"}};
+constexpr std::array<WARLORD_NATIVE_PARAMETER_DESC,21> WARLORD_NATIVE_PARAMETERS_673 = {{
+    {"selectioncolor", 8u, 0u, true},
+    {"meshemitterdynamicparameter", 7u, 0u, true},
+    {"offset.x", 3u, 3u, false},
+    {"offset.y", 4u, 0u, false},
+    {"03.map_e_uvscale_r", 0u, 0u, false},
+    {"04.map_e_uvscale_g", 0u, 1u, false},
+    {"13.map_f_uvscale_r", 1u, 1u, false},
+    {"14.map_f_uvscale_g", 1u, 2u, false},
+    {"color_2", 6u, 0u, true},
+    {"color_1", 5u, 0u, true},
+    {"23.map_f_uvscale_r", 2u, 3u, false},
+    {"24.map_f_uvscale_g", 3u, 0u, false},
+    {"05.map_e_panning_x", 0u, 2u, false},
+    {"06.map_e_panning_y", 0u, 3u, false},
+    {"07.map_e_desaturation", 1u, 0u, false},
+    {"15.map_f_panning_x", 1u, 3u, false},
+    {"16.map_f_panning_y", 2u, 0u, false},
+    {"17.map_f_desaturation", 2u, 1u, false},
+    {"25.map_f_panning_x", 3u, 1u, false},
+    {"26.map_f_panning_y", 3u, 2u, false},
+    {"21.map_f_amp", 2u, 2u, false},
+}};
+constexpr std::array<WARLORD_NATIVE_SWITCH_DESC,0> WARLORD_NATIVE_SWITCHES_673 = {{
+}};
+// END WARLORD BLACK SPHERE 673
+constexpr std::array<WARLORD_NATIVE_PROGRAM_DESC,276> WARLORD_NATIVE_PROGRAM_STORAGE = {{
     {1122u,"effect.ue3.warlord-1122-native.v1","fx_m_mi_w_00.mi.fx_w_wgl_gdd_pbr_02","efbasematerial_prologue.ch.realpbr.base.realpbr_wp_dead_msk","ue3.material.efbasematerial.prologue.ch.realpbr.base.realpbr.wp.dead.msk.a2f90b5232d3",true,"mesh",false,false,true,false,EFFECT_RENDER_PROFILE::ALPHA_ONE_SIDED_DEPTH_READ,WARLORD_NATIVE_TEXTURES_1122,WARLORD_NATIVE_PARAMETERS_1122,WARLORD_NATIVE_SWITCHES_1122},
     {1123u,"effect.ue3.warlord-1123-native.v1","fx_m_mi_w_00.mi.fx_w_wgl_gdd_pbr_01","efbasematerial_prologue.ch.realpbr.base.realpbr_wp_dead_msk","ue3.material.efbasematerial.prologue.ch.realpbr.base.realpbr.wp.dead.msk.a2f90b5232d3",true,"mesh",false,false,true,false,EFFECT_RENDER_PROFILE::ALPHA_ONE_SIDED_DEPTH_READ,WARLORD_NATIVE_TEXTURES_1123,WARLORD_NATIVE_PARAMETERS_1123,WARLORD_NATIVE_SWITCHES_1123},
 
@@ -8602,4 +8630,5 @@ constexpr std::array<WARLORD_NATIVE_PROGRAM_DESC,275> WARLORD_NATIVE_PROGRAM_STO
     {2006u,"effect.ue3.warlord-2006-native.v1","fx_m_mi_w_00.mi.fx_w_pa_ring_11_28_ad","fx_m_mi_03.fx_m.fx_d_pa_ring_11_ad","ue3.material.fx.m.mi.03.fx.m.fx.d.pa.ring.11.ad.43bcef3b2175",false,"sprite",false,false,false,true,EFFECT_RENDER_PROFILE::ADDITIVE_ONE_SIDED_DEPTH_READ,WARLORD_NATIVE_TEXTURES_2006,WARLORD_NATIVE_PARAMETERS_2006,WARLORD_NATIVE_SWITCHES_2006},
     {2007u,"effect.ue3.warlord-2007-native.v1","fx_m_mi_03.fx_mi.fx_d_pa_turbulence_01_22_dt_tr","fx_m_mi_03.fx_m.fx_d_pa_turbulence_01_tr","ue3.material.fx.m.mi.03.fx.m.fx.d.pa.turbulence.01.tr.324978c21e60",false,"sprite",false,true,false,true,EFFECT_RENDER_PROFILE::ALPHA_ONE_SIDED_DEPTH_READ,WARLORD_NATIVE_TEXTURES_2007,WARLORD_NATIVE_PARAMETERS_2007,WARLORD_NATIVE_SWITCHES_2007},
     {2008u,"effect.ue3.warlord-2008-native.v1","fx_m_mi_d_00.fx_mi.fx_d_pa_turbulence_01_104_dt_ad","fx_m_mi_03.fx_m.fx_d_pa_turbulence_01_ad","ue3.material.fx.m.mi.03.fx.m.fx.d.pa.turbulence.01.ad.798cb913f060",false,"sprite",false,true,false,true,EFFECT_RENDER_PROFILE::ADDITIVE_ONE_SIDED_DEPTH_READ,WARLORD_NATIVE_TEXTURES_2008,WARLORD_NATIVE_PARAMETERS_2008,WARLORD_NATIVE_SWITCHES_2008},
+    {673u,"effect.ue3.warlord-673-native.v1","fx_m_mi_o_00.fx_mi.fx_o_me_superactionspace_01_02_tr","fx_m_mi_d_00.fx_m.fx_d_me_superactionspace_tr","ue3.material.fx.m.mi.d.00.fx.m.fx.d.me.superactionspace.tr.5929f487d75f",true,"mesh",false,true,false,false,EFFECT_RENDER_PROFILE::ALPHA_ONE_SIDED_DEPTH_READ,WARLORD_NATIVE_TEXTURES_673,WARLORD_NATIVE_PARAMETERS_673,WARLORD_NATIVE_SWITCHES_673},
 }};

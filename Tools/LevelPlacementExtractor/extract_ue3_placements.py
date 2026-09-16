@@ -1111,6 +1111,144 @@ def property_value(properties: dict[str, Any], name: str, default: Any) -> Any:
     return default
 
 
+class SourceVisibilityResolver:
+    """Read instance/archetype/CDO flags, never infer visibility from mesh names.
+
+    Script filenames may be encrypted. Imported CDO paths are matched against
+    exact export paths in sibling .u packages; an ambiguous match is an error.
+    Every resolved object records its physical package hash as evidence.
+    """
+
+    def __init__(self, path: Path, logical_name: str, summary: PackageSummary,
+                 names: list[str], imports: list[ImportEntry],
+                 exports: list[ExportEntry], logical: bytes,
+                 script_root: Path | None = None):
+        self.current = {
+            "path": path, "logicalName": logical_name, "summary": summary,
+            "names": names, "imports": imports, "exports": exports,
+            "read": lambda entry: logical[entry.serial_offset:entry.serial_offset + entry.serial_size],
+            "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+        }
+        self.script_root = script_root or (path.parent.parent if path.parent.name.casefold() == "packages" else path.parent)
+        self.scripts: list[dict[str, Any]] | None = None
+        self.script_errors: list[str] = []
+        self.cache: dict[tuple[str, int], list[dict[str, Any]]] = {}
+
+    def _load_scripts(self) -> None:
+        if self.scripts is not None:
+            return
+        self.scripts = []
+        for path in sorted(self.script_root.glob("*.u")):
+            try:
+                summary = read_package_summary(path)
+                reader = LostArkPackageRangeReader(path, summary)
+                header = reader.read_logical_range(0, summary.header_size)
+                names = parse_name_table(header, summary)
+                imports = parse_import_table(header, summary, names)
+                exports = parse_export_table(header, summary, names)
+                self.scripts.append({
+                    "path": path, "summary": summary, "names": names,
+                    "imports": imports, "exports": exports,
+                    "read": lambda entry, source=reader: source.read_logical_range(entry.serial_offset, entry.serial_size),
+                    "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+                    "defaultPaths": {
+                        package_ref_path(e.index + 1, imports, exports).casefold(): e
+                        for e in exports
+                        if package_ref_path(e.index + 1, imports, exports).casefold().startswith("default__")
+                    },
+                })
+            except (ExtractionError, OSError) as error:
+                self.script_errors.append(f"{path}: {error}")
+
+    def _default_object(self, object_path: str, preferred: dict[str, Any]) -> tuple[dict[str, Any], ExportEntry]:
+        parts = object_path.split(".")
+        wanted = ".".join(parts[1:]) if len(parts) > 1 and not parts[0].casefold().startswith("default__") else object_path
+        wanted = wanted.casefold()
+        qualified = len(parts) > 1 and not parts[0].casefold().startswith("default__")
+        local = [e for e in preferred["exports"]
+                 if (not qualified or parts[0].casefold() == preferred.get("logicalName", "").casefold())
+                 and package_ref_path(e.index + 1, preferred["imports"], preferred["exports"]).casefold() == wanted]
+        if len(local) == 1:
+            return preferred, local[0]
+        self._load_scripts()
+        matches = [(package, package["defaultPaths"][wanted])
+                   for package in self.scripts or [] if wanted in package["defaultPaths"]]
+        if len(matches) != 1:
+            raise ExtractionError(f"visibility archetype/CDO unresolved or ambiguous: {object_path}; matches={len(matches)}; script errors={self.script_errors}")
+        return matches[0]
+
+    def chain(self, package: dict[str, Any], entry: ExportEntry,
+              visiting: frozenset[tuple[str, int]] = frozenset()) -> list[dict[str, Any]]:
+        key = (str(package["path"]), entry.index)
+        if key in visiting:
+            raise ExtractionError(f"visibility archetype cycle: {key}")
+        if key in self.cache:
+            return self.cache[key]
+        serial = package["read"](entry)
+        names = package["names"]
+        # An empty CDO is NetIndex + None, and has no first Property tag.
+        start = 4 if package["summary"].version >= 322 else 0
+        if len(serial) == start + 8 and parse_fname(Reader(serial, start), names)[0].casefold() == "none":
+            properties = {}
+        else:
+            properties, _ = parse_tagged_properties(serial, names, package["summary"].version)
+        flags = {}
+        for name, prop in properties.items():
+            if name.casefold() in {"bhidden", "hiddengame", "bhiddengame", "bvisible"}:
+                if prop.get("type", "").casefold() != "boolproperty" or type(prop.get("value")) is not bool:
+                    raise ExtractionError(f"visibility flag is not BoolProperty: {name}")
+                flags[name] = prop["value"]
+        imports, exports = package["imports"], package["exports"]
+        object_path = package_ref_path(entry.index + 1, imports, exports)
+        result = [{"objectPath": object_path, "physicalPackage": str(package["path"]),
+                   "packageSha256": package["sha256"], "exportIndex": entry.index,
+                   "serializedFlags": flags}]
+        if entry.archetype_index > 0:
+            if entry.archetype_index > len(exports):
+                raise ExtractionError(f"invalid visibility archetype: {object_path}")
+            parent_package, parent = package, exports[entry.archetype_index - 1]
+        elif entry.archetype_index < 0:
+            parent_package, parent = self._default_object(package_ref_path(entry.archetype_index, imports, exports), package)
+        elif object_path.casefold().startswith("default__") and "." not in object_path:
+            parent_package, parent = None, None  # Root CDO: unassigned BoolProperty bits are zero.
+        else:
+            class_path = package_ref_path(entry.class_index, imports, exports)
+            pieces = class_path.split(".")
+            pieces[-1] = "Default__" + pieces[-1]
+            parent_package, parent = self._default_object(".".join(pieces), package)
+        if parent is not None:
+            result.extend(self.chain(parent_package, parent, visiting | {key}))
+        self.cache[key] = result
+        return result
+
+    def resolve(self, actor: ExportEntry, component: ExportEntry) -> dict[str, Any]:
+        return source_visibility_from_chains(self.chain(self.current, actor), self.chain(self.current, component))
+
+
+def source_visibility_from_chains(actor_chain: list[dict[str, Any]],
+                                  component_chain: list[dict[str, Any]]) -> dict[str, Any]:
+    def flag(chain: list[dict[str, Any]], aliases: set[str], absent: bool | None) -> dict[str, Any]:
+        if not chain:
+            raise ExtractionError("visibility inheritance chain is empty")
+        for index, source in enumerate(chain):
+            values = {key: value for key, value in source["serializedFlags"].items() if key.casefold() in aliases}
+            if any(type(value) is not bool for value in values.values()) or len(set(values.values())) > 1:
+                raise ExtractionError(f"invalid/conflicting visibility flags: {values}")
+            if values:
+                return {"value": next(iter(values.values())), "origin": "instance" if index == 0 else "archetype-cdo", "sourceIndex": index}
+        return {"value": absent, "origin": "absent" if absent is None else "zero-default", "sourceIndex": None}
+
+    actor_hidden = flag(actor_chain, {"bhidden"}, False)
+    component_hidden = flag(component_chain, {"hiddengame", "bhiddengame"}, False)
+    component_visible = flag(component_chain, {"bvisible"}, None)
+    return {
+        "basis": "ue3-instance-archetype-cdo", "actorChain": actor_chain,
+        "componentChain": component_chain, "actorHidden": actor_hidden,
+        "componentHiddenGame": component_hidden, "componentVisible": component_visible,
+        "visible": not actor_hidden["value"] and not component_hidden["value"] and component_visible["value"] is not False,
+    }
+
+
 def material_override_slots(
     properties: dict[str, Any],
     imports: list[ImportEntry],
@@ -1219,9 +1357,10 @@ def extract_package(
     logical_name: str,
     aes_key: str,
     *,
-    schema_version: int = 2,
+    schema_version: int = 3,
+    script_root: Path | None = None,
 ) -> dict[str, Any]:
-    if schema_version not in (1, 2):
+    if schema_version not in (1, 2, 3):
         raise ExtractionError(f"unsupported placement schema version {schema_version}")
     physical = package_path.read_bytes()
     summary = parse_summary(physical)
@@ -1229,6 +1368,9 @@ def extract_package(
     names = parse_name_table(logical, summary)
     imports = parse_import_table(logical, summary, names)
     exports = parse_export_table(logical, summary, names)
+    visibility_resolver = SourceVisibilityResolver(
+        package_path, logical_name, summary, names, imports, exports, logical, script_root
+    ) if schema_version >= 3 else None
 
     properties_by_export: dict[int, dict[str, Any]] = {}
     property_errors: list[dict[str, Any]] = []
@@ -1386,10 +1528,19 @@ def extract_package(
                     "scale3D": resolved_scale,
                 },
             }
-        if schema_version == 2:
+        if schema_version >= 2:
             placement["materialOverrides"] = material_override_slots(
                 component_properties, imports, exports
             )
+        if visibility_resolver is not None:
+            try:
+                placement["sourceVisibility"] = visibility_resolver.resolve(actor, component)
+            except ExtractionError as error:
+                unresolved_placements.append({
+                    "placementId": placement["placementId"],
+                    "reason": "source-visibility-unresolved", "error": str(error),
+                })
+                continue
         placements.append(placement)
 
     material_override_placements = [
@@ -1419,7 +1570,7 @@ def extract_package(
         "propertyErrorCount": len(property_errors),
         "unresolvedPlacementCount": len(unresolved_placements),
     }
-    if schema_version == 2:
+    if schema_version >= 2:
         summary_fields.update(
             {
                 "materialOverridePlacementCount": len(material_override_placements),
@@ -1439,12 +1590,19 @@ def extract_package(
                 "uniqueStaticMeshMaterialVariantCount": len(variants),
             }
         )
+    if schema_version >= 3:
+        summary_fields.update({
+            "sourceVisiblePlacementCount": sum(p["sourceVisibility"]["visible"] for p in placements),
+            "sourceHiddenPlacementCount": sum(not p["sourceVisibility"]["visible"] for p in placements),
+            "sourceVisibilityBasis": "ue3-instance-archetype-cdo",
+        })
 
     return {
         "schemaVersion": schema_version,
         "source": {
             "logicalPackage": logical_name,
             "physicalPackage": str(package_path),
+            "sha256": hashlib.sha256(physical).hexdigest(),
             "packageVersion": summary.version,
             "licenseeVersion": summary.licensee_version,
             "engineVersion": summary.engine_version,
@@ -1504,7 +1662,8 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--region", default="kr", choices=("kr", "na", "ru", "jp", "tw", "cn"))
     parser.add_argument("--aes-key", default=LOSTARK_KR_AES_KEY)
-    parser.add_argument("--schema-version", type=int, choices=(1, 2), default=2)
+    parser.add_argument("--schema-version", type=int, choices=(1, 2, 3), default=3)
+    parser.add_argument("--script-root", type=Path, help="Original .u directory for source visibility archetype/CDO resolution")
     parser.add_argument("packages", nargs="+")
     return parser.parse_args(argv)
 
@@ -1533,6 +1692,7 @@ def main(argv: Iterable[str] | None = None) -> int:
             logical_name,
             args.aes_key,
             schema_version=args.schema_version,
+            script_root=args.script_root,
         )
         output_path = args.output / f"{logical_name}.placements.json"
         output_path.write_text(
@@ -1597,7 +1757,7 @@ def main(argv: Iterable[str] | None = None) -> int:
         "propertyErrorCount": total_property_errors,
         "unresolvedPlacementCount": total_unresolved_placements,
     }
-    if args.schema_version == 2:
+    if args.schema_version >= 2:
         manifest_summary.update(
             {
                 "materialOverridePlacementCount": total_override_placements,

@@ -24,10 +24,13 @@ from typing import Any, Iterable, Sequence
 from build_maptool_scene import (
     EDITOR_ID_MASK,
     atomic_write_text,
+    asset_material_signature,
     compile_scene,
     convert_scale,
     imported_id,
     load_json,
+    placement_material_signature,
+    placement_source_visibility,
     scale_flags,
     sha256,
 )
@@ -155,9 +158,9 @@ def scan_static_sources(
         )
     if manifest.get("assetCount", len(assets)) != len(assets):
         raise ShardBuildError("static asset manifest count mismatch")
-    assets_by_path = {str(row["fullPath"]).casefold(): row for row in assets}
+    assets_by_variant = {(str(row["fullPath"]).casefold(), asset_material_signature(row)): row for row in assets}
     asset_ids = {str(row["assetId"]) for row in assets}
-    if len(assets_by_path) != len(assets) or len(asset_ids) != len(assets):
+    if len(assets_by_variant) != len(assets) or len(asset_ids) != len(assets):
         raise ShardBuildError("duplicate static asset path/ID")
 
     groups = {
@@ -180,7 +183,8 @@ def scan_static_sources(
 
     for _, path in sources:
         document = load_json(path)
-        if document.get("schemaVersion") != 1 or document.get("propertyErrors"):
+        schema_version = document.get("schemaVersion")
+        if schema_version not in (1, 2, 3) or document.get("propertyErrors"):
             raise ShardBuildError(f"invalid placement source: {path}")
         unresolved = document.get("unresolvedPlacements", [])
         if not isinstance(unresolved, list) or unresolved:
@@ -192,6 +196,11 @@ def scan_static_sources(
         if not isinstance(rows, list):
             raise ShardBuildError(f"placements must be an array: {path}")
         for row in rows:
+            try:
+                placement_source_visibility(row, schema_version)
+                material_signature = placement_material_signature(row, schema_version)
+            except ValueError as error:
+                raise ShardBuildError(f"{path}: {error}") from error
             transform = row.get("transform", {})
             actor = row.get("actor")
             if (
@@ -222,14 +231,14 @@ def scan_static_sources(
             if runtime_id in all_runtime_ids:
                 raise ShardBuildError(f"static runtime placement ID collision: {runtime_id}")
             object_path = str(row.get("asset", {}).get("objectPath", "")).casefold()
-            asset = assets_by_path.get(object_path)
+            asset = assets_by_variant.get((object_path, material_signature))
             if asset is None:
                 raise ShardBuildError(f"static placement asset join missing: {object_path}")
             scale = convert_scale(row["transform"]["scale3D"])
             any_negative, reflected = scale_flags(scale)
 
             group = groups[shard_id]
-            group["rows"].append(row)
+            group["rows"].append({**row, "_placementSchemaVersion": schema_version})
             group["assetIds"].add(str(asset["assetId"]))
             group["sourceIds"].add(source_id)
             group["runtimeIds"].add(runtime_id)
@@ -599,8 +608,16 @@ def parse_placements(path: Path, catalog_ids: set[str]) -> dict[str, Any]:
 
 
 def write_normalized_placements(path: Path, rows: Sequence[dict[str, Any]]) -> None:
-    document = {"schemaVersion": 1, "propertyErrors": [], "placements": list(rows)}
-    atomic_write_text(path, json.dumps(document, ensure_ascii=False) + "\n")
+    # Mixed old/new extracts retain their individual source contracts. Do not
+    # downgrade schema3 flags or fabricate material overrides for schema1 rows.
+    by_version: dict[int, list[dict[str, Any]]] = {}
+    for row in rows:
+        version = row.get("_placementSchemaVersion", 1)
+        by_version.setdefault(version, []).append({key: value for key, value in row.items() if key != "_placementSchemaVersion"})
+    for index, (version, selected) in enumerate(sorted(by_version.items())):
+        target = path if index == 0 else path.with_name(f"{path.stem}.v{version}.placements.json")
+        document = {"schemaVersion": version, "propertyErrors": [], "unresolvedPlacements": [], "placements": selected}
+        atomic_write_text(target, json.dumps(document, ensure_ascii=False) + "\n")
 
 
 def child_compile_arguments(
@@ -642,6 +659,9 @@ def child_compile_arguments(
         runtime_asset_root=getattr(args, "runtime_asset_root", None),
         overlay_manifest=overlay_manifest,
         render_profile_manifest=render_profile_manifest,
+        allow_legacy_visibility=getattr(args, "allow_legacy_visibility", False),
+        allow_legacy_material_coverage=getattr(args, "allow_legacy_material_coverage", False),
+        allow_partial_material_preview=getattr(args, "allow_partial_material_preview", False),
         placements_dir=source_directory,
         catalog_output=stage / shard_file_name(shard_id, "mapassets"),
         placement_output=stage / shard_file_name(shard_id, "mapplacements"),
@@ -1375,6 +1395,9 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--runtime-manifest", type=Path, required=True)
     parser.add_argument("--runtime-root", type=Path, required=True)
     parser.add_argument("--runtime-asset-root", type=Path)
+    parser.add_argument("--allow-legacy-visibility", action="store_true")
+    parser.add_argument("--allow-legacy-material-coverage", action="store_true")
+    parser.add_argument("--allow-partial-material-preview", action="store_true")
     parser.add_argument("--overlay-manifest", type=Path)
     parser.add_argument(
         "--render-profile-manifest",

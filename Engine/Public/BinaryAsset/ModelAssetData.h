@@ -110,6 +110,7 @@ struct MODEL_SURFACE_PARAMETERS
     MODEL_SURFACE_RENDER_MODE renderMode = MODEL_SURFACE_RENDER_MODE::INHERIT;
     MODEL_SURFACE_CULL_MODE cullMode = MODEL_SURFACE_CULL_MODE::INHERIT;
 	MODEL_SURFACE_FAMILY family = MODEL_SURFACE_FAMILY::LEGACY;
+	bool_t pbrAlphaMasked = false; // Source PBR masked: diffuse alpha cutoff 0.3333.
 	MODEL_SOURCE_CHARACTER_PARAMETERS sourceCharacter;
     // Native BG static-switch branches; selected source textures only are required.
     // normal=1, bump=2, specular=4, specular texture=8, reflection=16,

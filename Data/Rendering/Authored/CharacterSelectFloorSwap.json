@@ -1,0 +1,27 @@
+{
+  "schema": "lostark.character-select-floor-swap",
+  "formatVersion": 1,
+  "areaId": "LV_LOBBY_CLASSSELECT_SL00",
+  "targetFloorSourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:336",
+  "hiddenSourcePlacementIds": [
+    "LV_LOBBY_CLASSSELECT_SL00:export:336",
+    "editor:LV_LOBBY_CLASSSELECT_SL00:1"
+  ],
+  "previewFloorPlacementId": "9000001",
+  "previewStarPlacementId": "9000002",
+  "offsetMeters": [0.0, 0.0, 0.0],
+  "starOffsetMeters": [0.0, 0.030731623924803, 0.0],
+  "options": [
+    {"id": "class.hunter", "label": "01 Hunter", "floorSourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:1036", "starSourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:1040"},
+    {"id": "class.warrior", "label": "02 Warrior", "floorSourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:1041", "starSourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:1042"},
+    {"id": "class.magician", "label": "03 Magician", "floorSourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:1043", "starSourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:1044"},
+    {"id": "class.delain", "label": "04 Delain", "floorSourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:1045", "starSourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:1046"},
+    {"id": "class.hunter_female", "label": "05 Hunter Female", "floorSourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:1047", "starSourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:1048"},
+    {"id": "class.specialist", "label": "06 Specialist", "floorSourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:1049", "starSourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:1050"},
+    {"id": "class.warrior_female", "label": "07 Warrior Female", "floorSourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:1051", "starSourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:1052"},
+    {"id": "class.fighter", "label": "08 Fighter", "floorSourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:1053", "starSourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:1054"},
+    {"id": "class.fighter_male", "label": "09 Fighter Male", "floorSourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:1055", "starSourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:1056"},
+    {"id": "class.dragon_human", "label": "10 Dragon Human", "floorSourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:1057", "starSourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:1058"},
+    {"id": "class.specialist_male", "label": "11 Specialist Male", "floorSourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:1108", "starSourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:1109"}
+  ]
+}

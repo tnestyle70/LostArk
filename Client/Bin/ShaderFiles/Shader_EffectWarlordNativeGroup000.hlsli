@@ -8012,3 +8012,167 @@ float4 WarlordNative671(WARLORD_NATIVE_INPUT input)
     return output;
 }
 
+// BEGIN WARLORD BLACK SPHERE 673
+#if !defined(EFFECT_NATIVE_PARTICLE_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
+// fx_o_me_superactionspace_01_02_tr: 591444cc4fff1f449dd154b804f25bb8; selected map 812c1fbd8fde013b183f6c8996326a915bd2d7e466bac34c50b7083f063162c3.
+float4 WarlordNative673(WARLORD_NATIVE_INPUT input)
+{
+    float4 source[15]; [unroll] for (uint i=0u; i<15u; ++i) source[i]=0.f;
+    source[0].x=1.f; // Project engine opacity multiplier.
+    float4 output=0.f;
+    source[1]=input.color; // Native mesh particle color prefix.
+    source[2] = g_WarlordSourceMaterialParameters[8u];
+    source[3] = input.dynamicParameter;
+    source[4] = WarlordNativeAppend(g_WarlordSourceMaterialParameters[3u].wwww,g_WarlordSourceMaterialParameters[4u].xxxx,1u);
+    source[5] = WarlordNativeAppend(g_WarlordSourceMaterialParameters[0u].xxxx,g_WarlordSourceMaterialParameters[0u].yyyy,1u);
+    source[6] = WarlordNativeAppend(g_WarlordSourceMaterialParameters[1u].yyyy,g_WarlordSourceMaterialParameters[1u].zzzz,1u);
+    source[7] = g_WarlordSourceMaterialParameters[6u];
+    source[8] = g_WarlordSourceMaterialParameters[5u];
+    source[9] = WarlordNativeAppend(g_WarlordSourceMaterialParameters[2u].wwww,g_WarlordSourceMaterialParameters[3u].xxxx,1u);
+    source[10].x = (g_WarlordSourceMaterialParameters[0u].zzzz).x;
+    source[10].y = (g_WarlordSourceMaterialTime.xxxx).x;
+    source[10].z = (g_WarlordSourceMaterialParameters[4u].xxxx).x;
+    source[10].w = (g_WarlordSourceMaterialParameters[3u].wwww).x;
+    source[11].x = (g_WarlordSourceMaterialParameters[0u].yyyy).x;
+    source[11].y = (g_WarlordSourceMaterialParameters[0u].xxxx).x;
+    source[11].z = (g_WarlordSourceMaterialParameters[0u].wwww).x;
+    source[11].w = (g_WarlordSourceMaterialParameters[1u].xxxx).x;
+    source[12].x = (g_WarlordSourceMaterialParameters[1u].wwww).x;
+    source[12].y = (g_WarlordSourceMaterialParameters[1u].zzzz).x;
+    source[12].z = (g_WarlordSourceMaterialParameters[1u].yyyy).x;
+    source[12].w = (g_WarlordSourceMaterialParameters[2u].xxxx).x;
+    source[13].x = (g_WarlordSourceMaterialParameters[2u].yyyy).x;
+    source[13].y = (g_WarlordSourceMaterialParameters[3u].yyyy).x;
+    source[13].z = (g_WarlordSourceMaterialParameters[3u].xxxx).x;
+    source[13].w = (g_WarlordSourceMaterialParameters[2u].wwww).x;
+    source[14].x = (g_WarlordSourceMaterialParameters[3u].zzzz).x;
+    source[14].y = (g_WarlordSourceMaterialParameters[2u].zzzz).x;
+    float4 passValues[7]; [unroll] for(uint passIndex=0u;passIndex<7u;++passIndex) passValues[passIndex]=0.f;
+    passValues[0]=float4(.5f,-.5f,.5f,.5f);
+    uint viewportWidth, viewportHeight; g_EffectSceneDepthTexture.GetDimensions(viewportWidth,viewportHeight);
+    passValues[6]=float4(max(float2(viewportWidth,viewportHeight),1.f),0.f,0.f);
+    float4 v0 = float4(input.sourceBasisX,0.f); // native texcoord10
+    float4 v1 = float4(input.sourceBasisZ,input.handedness); // native texcoord11
+    float4 v2 = input.vertexColor; // native color0
+    float4 v3 = float4(0.f,0.f,0.f,0.f); // native color1
+    float4 v4 = float4(0.f,0.f,0.f,1.f); // native texcoord4
+    float4 v5 = float4(input.tangentView,1.f); // native texcoord6
+    float4 v6 = float4((input.screenUV*float2(2.f,-2.f)+float2(-1.f,1.f))*input.projectionW,input.projectionZ,input.projectionW); // native texcoord5
+    float4 v7 = asfloat(uint4(input.frontFace ? 0xffffffffu : 0u,0u,0u,0u)); // native sv_isfrontface0
+    float4 r0=0.f, r1=0.f, r2=0.f, r3=0.f, r4=0.f;
+    // 1: mul r0.z, cb0[10].x, cb0[10].y
+    r0.z = ((source[10].xxxx)*(source[10].yyyy)).z;
+    // 2: div r0.x, cb2[6].x, cb2[6].y
+    r0.x = ((passValues[6].xxxx)/(passValues[6].yyyy)).x;
+    // 3: div r1.xy, v6.xyxx, v6.wwww
+    r1.xy = ((v6.xyxx)/(v6.wwww)).xy;
+    // 4: mad r1.xy, r1.xyxx, cb2[0].xyxx, cb2[0].wzww
+    r1.xy = ((r1.xyxx)*(passValues[0].xyxx)+(passValues[0].wzww)).xy;
+    // 5: mov r0.yw, l(0,1.000000,0,0.500000)
+    r0.yw = (float4(asfloat(0u),1.000000,asfloat(0u),0.500000)).yw;
+    // 6: mad r0.xy, r1.xyxx, r0.xyxx, l(-0.500000, -0.500000, 0.000000, 0.000000)
+    r0.xy = ((r1.xyxx)*(r0.xyxx)+(float4(-0.500000,-0.500000,0.000000,0.000000))).xy;
+    // Native 7: source device depth mapped to centimetre view depth; reconstruction at 51.
+    r1.x = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, (r1.xyxx).xy, 0.f).y * 100000.f;
+    // 9: mad r0.xy, r0.xyxx, l(1.500000, 1.500000, 0.000000, 0.000000), cb0[4].xyxx
+    r0.xy = ((r0.xyxx)*(float4(1.500000,1.500000,0.000000,0.000000))+(source[4].xyxx)).xy;
+    // 10: mul r1.y, cb0[3].x, l(-0.523599)
+    r1.y = ((source[3].xxxx)*(float4(-0.523599,-0.523599,-0.523599,-0.523599))).y;
+    // 11: sincos r2.x, r3.x, r1.y
+    r2.x = (sin(r1.yyyy)).x; r3.x = (cos(r1.yyyy)).x;
+    // 12: mov r4.x, -r2.x
+    r4.x = (-(r2.xxxx)).x;
+    // 13: mov r4.y, r3.x
+    r4.y = (r3.xxxx).y;
+    // 14: mov r4.z, r2.x
+    r4.z = (r2.xxxx).z;
+    // 15: dp2 r2.y, r4.zyzz, r0.xyxx
+    r2.y = (dot((r4.zyzz).xy,(r0.xyxx).xy).xxxx).y;
+    // 16: dp2 r2.x, r4.yxyy, r0.xyxx
+    r2.x = (dot((r4.yxyy).xy,(r0.xyxx).xy).xxxx).x;
+    // 17: mad r0.xy, r2.xyxx, cb0[5].xyxx, r0.zwzz
+    r0.xy = ((r2.xyxx)*(source[5].xyxx)+(r0.zwzz)).xy;
+    // 18: add r3.x, r0.x, l(0.500000)
+    r3.x = ((r0.xxxx)+(float4(0.500000,0.500000,0.500000,0.500000))).x;
+    // 19: mad r3.y, cb0[10].y, cb0[11].z, r0.y
+    r3.y = ((source[10].yyyy)*(source[11].zzzz)+(r0.yyyy)).y;
+    // 20: sample_b_indexable(texture2d)(float,float,float,float) r0.xyz, r3.xyxx, t1.xyzw, s1, l(0.000000)
+    r0.xyz = (WarlordNativeSample0((r3.xyxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x, false).xyzw).xyz;
+    // 21: dp3 r0.w, r0.xyzx, l(0.300000, 0.590000, 0.110000, 0.000000)
+    r0.w = (dot((r0.xyzx).xyz,(float4(0.300000,0.590000,0.110000,0.000000)).xyz).xxxx).w;
+    // 22: add r1.yzw, -r0.xxyz, r0.wwww
+    r1.yzw = ((-(r0.xxyz))+(r0.wwww)).yzw;
+    // 23: mad r0.xyz, cb0[11].wwww, r1.yzwy, r0.xyzx
+    r0.xyz = ((source[11].wwww)*(r1.yzwy)+(r0.xyzx)).xyz;
+    // 24: mul r3.x, cb0[10].y, cb0[12].x
+    r3.x = ((source[10].yyyy)*(source[12].xxxx)).x;
+    // 25: mov r3.z, l(0.500000)
+    r3.z = (float4(0.500000,0.500000,0.500000,0.500000)).z;
+    // 26: mad r1.yz, r2.xxyx, cb0[6].xxyx, r3.xxzx
+    r1.yz = ((r2.xxyx)*(source[6].xxyx)+(r3.xxzx)).yz;
+    // 27: add r3.x, r1.y, l(0.500000)
+    r3.x = ((r1.yyyy)+(float4(0.500000,0.500000,0.500000,0.500000))).x;
+    // 28: mad r3.y, cb0[10].y, cb0[12].w, r1.z
+    r3.y = ((source[10].yyyy)*(source[12].wwww)+(r1.zzzz)).y;
+    // 29: sample_b_indexable(texture2d)(float,float,float,float) r1.yzw, r3.xyxx, t2.wxyz, s2, l(0.000000)
+    r1.yzw = (WarlordNativeSample1((r3.xyxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x, false).wxyz).yzw;
+    // 30: dp3 r0.w, r1.yzwy, l(0.300000, 0.590000, 0.110000, 0.000000)
+    r0.w = (dot((r1.yzwy).xyz,(float4(0.300000,0.590000,0.110000,0.000000)).xyz).xxxx).w;
+    // 31: add r3.xyz, -r1.yzwy, r0.wwww
+    r3.xyz = ((-(r1.yzwy))+(r0.wwww)).xyz;
+    // 32: mad r1.yzw, cb0[13].xxxx, r3.xxyz, r1.yyzw
+    r1.yzw = ((source[13].xxxx)*(r3.xxyz)+(r1.yyzw)).yzw;
+    // 33: mul r0.xyz, r0.xyzx, r1.yzwy
+    r0.xyz = ((r0.xyzx)*(r1.yzwy)).xyz;
+    // 34: mul r1.yzw, cb0[7].xxyz, cb0[7].wwww
+    r1.yzw = ((source[7].xxyz)*(source[7].wwww)).yzw;
+    // 35: mul r1.yzw, r0.xxyz, r1.yyzw
+    r1.yzw = ((r0.xxyz)*(r1.yyzw)).yzw;
+    // 36: mul r3.xyz, cb0[8].xyzx, cb0[8].wwww
+    r3.xyz = ((source[8].xyzx)*(source[8].wwww)).xyz;
+    // 37: mad r0.xyz, r0.xyzx, r3.xyzx, -r1.yzwy
+    r0.xyz = ((r0.xyzx)*(r3.xyzx)+(-(r1.yzwy))).xyz;
+    // 38: mul r3.x, cb0[10].y, cb0[13].y
+    r3.x = ((source[10].yyyy)*(source[13].yyyy)).x;
+    // 39: mov r3.y, l(0.500000)
+    r3.y = (float4(0.500000,0.500000,0.500000,0.500000)).y;
+    // 40: mad r2.xy, r2.xyxx, cb0[9].xyxx, r3.xyxx
+    r2.xy = ((r2.xyxx)*(source[9].xyxx)+(r3.xyxx)).xy;
+    // 41: add r3.x, r2.x, l(0.500000)
+    r3.x = ((r2.xxxx)+(float4(0.500000,0.500000,0.500000,0.500000))).x;
+    // 42: mad r3.y, cb0[10].y, cb0[14].x, r2.y
+    r3.y = ((source[10].yyyy)*(source[14].xxxx)+(r2.yyyy)).y;
+    // 43: sample_b_indexable(texture2d)(float,float,float,float) r2.xyz, r3.xyxx, t3.xyzw, s3, l(0.000000)
+    r2.xyz = (WarlordNativeSample2((r3.xyxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x, false).xyzw).xyz;
+    // 44: add r0.w, r2.y, r2.x
+    r0.w = ((r2.yyyy)+(r2.xxxx)).w;
+    // 45: add r0.w, r2.z, r0.w
+    r0.w = ((r2.zzzz)+(r0.wwww)).w;
+    // 46: mul r0.w, r0.w, cb0[14].y
+    r0.w = ((r0.wwww)*(source[14].yyyy)).w;
+    // 47: mul_sat r0.w, r0.w, l(0.333330)
+    r0.w = (saturate((r0.wwww)*(float4(0.333330,0.333330,0.333330,0.333330)))).w;
+    // 48: mad r0.xyz, r0.wwww, r0.xyzx, r1.yzwy
+    r0.xyz = ((r0.wwww)*(r0.xyzx)+(r1.yzwy)).xyz;
+    // 49: mad r0.xyz, r0.xyzx, cb0[1].xyzx, cb0[2].xyzx
+    r0.xyz = ((r0.xyzx)*(source[1].xyzx)+(source[2].xyzx)).xyz;
+    // 50: mad o0.xyz, r0.xyzx, v4.wwww, v4.xyzx
+    output.xyz = ((r0.xyzx)*(v4.wwww)+(v4.xyzx)).xyz;
+    // Native 51-54: reconstructed view depth is supplied by the runtime adapter.
+    r0.x = r1.x;
+    // 55: add r0.x, r0.x, -v6.w
+    r0.x = ((r0.xxxx)+(-(v6.wwww))).x;
+    // 56: mul_sat r0.x, r0.x, l(0.111111)
+    r0.x = (saturate((r0.xxxx)*(float4(0.111111,0.111111,0.111111,0.111111)))).x;
+    // 57: add r0.x, -r0.x, l(1.000000)
+    r0.x = ((-(r0.xxxx))+(float4(1.000000,1.000000,1.000000,1.000000))).x;
+    // 58: mad r0.x, -r0.x, r0.x, l(1.000000)
+    r0.x = ((-(r0.xxxx))*(r0.xxxx)+(float4(1.000000,1.000000,1.000000,1.000000))).x;
+    // 59: mul_sat r0.x, r0.x, cb0[1].w
+    r0.x = (saturate((r0.xxxx)*(source[1].wwww))).x;
+    // 60: mul o0.w, r0.x, cb0[0].x
+    output.w = ((r0.xxxx)*(source[0].xxxx)).w;
+    return output;
+}
+#endif
+// END WARLORD BLACK SPHERE 673

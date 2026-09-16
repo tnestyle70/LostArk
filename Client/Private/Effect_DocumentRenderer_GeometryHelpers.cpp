@@ -278,16 +278,17 @@ namespace EffectDocumentRendererDetail
 			Orientation = XMMatrixRotationZ(fRoll) * CameraWorld;
 			break;
 		}
-		// Matinee-authored local-space axis locks are expressed in the emitter
-		// frame. Keeping EPAL_Z in world Y flattens a vertical portal and makes
-		// occurrence rotation move its center without turning the sprite plane.
-		const bool_t bSourceLocalAxis = Particle.pElement &&
-			Particle.pElement->SourceTransformTrack &&
+		// Preserve the existing Matinee local-axis contract. Authored opt-in also
+		// rotates fixed-axis sprites in the emitter frame: current for local
+		// particles, captured at birth for world particles. Camera/velocity
+		// billboards and legacy roll compensation keep their original basis.
+		const bool_t bSourceEmitterAxis = Particle.pElement &&
 			Particle.pElement->SourceRecipe.bEnabled &&
-			Particle.pElement->Detail.Particle.bLocalSpace &&
+			(Particle.pElement->Detail.Sprite.bFollowEmitterAxisRotation ||
+			 (Particle.pElement->SourceTransformTrack && Particle.pElement->Detail.Particle.bLocalSpace)) &&
 			Particle.eSpriteAlignment >= Client::EFFECT_PARTICLE_SPRITE_ALIGNMENT::AXIS_POSITIVE_X &&
 			Particle.eSpriteAlignment <= Client::EFFECT_PARTICLE_SPRITE_ALIGNMENT::AXIS_NEGATIVE_Z;
-		if (bSourceLocalAxis)
+		if (bSourceEmitterAxis)
 		{
 			matrix_t EmitterBasis = XMLoadFloat4x4(&Particle.SourceEmitterWorld);
 			for (uint32_t Axis = 0u; Axis < 3u; ++Axis)

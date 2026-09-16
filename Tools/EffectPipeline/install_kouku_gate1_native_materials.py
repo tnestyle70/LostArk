@@ -26,9 +26,14 @@ def install(contract_path,evidence,header_path):
     programs.sort(key=lambda p:p['program']);materials=[];arrays=[];entries=[]
     for p in programs:
         i=p['program'];parent=p['parentMaterial'];pid=profile_id(parent);runtime=f'effect.ue3.kouku-{i}-native.v1'
-        assert p['nativeBlend'] in ('blend_additive','blend_translucent','blend_opaque','blend_masked'),p['nativeBlend']
+        assert p['nativeBlend'] in ('blend_additive','blend_translucent','blend_opaque','blend_masked','blend_modulate'),p['nativeBlend']
         source_transform_mesh = bool(p.get('sourceTransformMesh', False))
         render=('ADDITIVE' if p['nativeBlend']=='blend_additive' else 'ALPHA')+('_TWO_SIDED_DEPTH_READ' if p['nativeTwoSided'] else '_ONE_SIDED_DEPTH_READ')
+        if p['nativeBlend'] == 'blend_modulate':
+            assert (p['rendererShape'] == 'sprite' and not p['nativeTwoSided'] and
+                    not p['modelCue'] and not p['requiresSceneColor'] and
+                    not p['requiresDepthSample']), 'Modulate requires the admitted one-sided source sprite carrier'
+            render = 'MULTIPLY_ONE_SIDED_DEPTH_READ'
         # Static masked surfaces retain their native PS discard and write
         # depth through the existing opaque pass. Particle masks keep their
         # authored translucent ordering/depth-read contract.

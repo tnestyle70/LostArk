@@ -1169,6 +1169,10 @@ namespace ServerGameplayContractDetail
 			teleport.strClonePatternId = "KAKULSAYDON_TEST_CLONE";
 			teleport.ClockHours = { 4u, 7u, 10u };
 			pattern.MechanicTriggers.push_back(teleport);
+			BOSS_PATTERN_MECHANIC_TRIGGER cross{};
+			cross.strTriggerId = "cross.expired"; cross.eKind = BOSS_PATTERN_MECHANIC_TRIGGER_KIND::CROSS_DIRECTION_CLONES;
+			cross.iStartMs = 0u; cross.iDurationMs = 200u;
+			pattern.MechanicTriggers.push_back(cross);
 			std::map<PLAYER_ID, SERVER_PLAYER> players;
 			players.emplace(1u, makePlayer(1u, 0.f, 0.f, 0.f));
 			KOUKUSAYDON_LOGIC_LEDGER ledger;

@@ -75,6 +75,21 @@ class ActionCueRecipeTests(unittest.TestCase):
                 self.assertEqual(typed["parameterOverrides"][0]["name"], "Alpha")
                 self.assertEqual(typed["parameterOverrides"][0]["scalarValue"], 2.0)
 
+    def test_valtan_deferred_anchor_array_does_not_select_leading_empty_string(self) -> None:
+        raw = bytearray(base64.b64decode(self._particle_payload(
+            True, [("Color", "vector", [1.0, 0.3, 0.2])])))
+        reference = b"ParticleSystem'FX_TEST.Par_Test'\x00"
+        base = raw.index(reference) + len(reference)
+        suffix = bytes(raw[base + 60:])
+        raw = (raw[:base + 52] + struct.pack('<iii', 1, 0, 1)
+               + self._payload_string('FX_State_02') + suffix)
+        typed = decode_typed_payload('PlayParticleEffect', {
+            'data': base64.b64encode(raw).decode('ascii')})
+        self.assertEqual(typed['attachment']['sourceAnchorNames'], ['FX_State_02'])
+        self.assertEqual(typed['localTransform']['scale'], [1.0, 1.0, 1.0])
+        self.assertEqual(typed['parameterOverrides'][0]['name'], 'Color')
+        self.assertAlmostEqual(typed['parameterOverrides'][0]['vectorValue'][1], 0.3)
+
     def test_decodes_standalone_skeletal_model_transform_once(self) -> None:
         raw = bytearray(512)
         signature = b"CEFActionNotify_PlaySkeletalMesh\x00"

@@ -218,3 +218,54 @@ Effect anchor 그룹, saved prop preview, WORLD Append 변경 포함을 확인�
 증거는 `out/KoukuFlameUnification20260914/user-build-verification.json`과
 09-12 KOUKU_GATE3_EFFECT_GROUPS_V1_IMPLEMENTATION_RESULT의G15-02다.
 사용자는 시퀀스 재생을 확인했으며 각 이펙트의 최종 시각 판정은 별도 사용자 확인 범위다.
+
+## G09. 09-15 작은 쿠크 바주카 — 저작본 등록
+
+원본 PS `FX_MN_RPCT_07_V.Par_V_RPCT_Bazooka_mesh_01`은
+`Bip002-R-Hand`에 `fm_g_rhkp_06`을 붙인다. 설치 MN_RPCT_05에서 정확한
+본은 `bip002-r-hand`이며 큰 세이튼의 b_wp_1과 다르다. 원본 MIC는 기존
+2관문 레이저와 같은 `wp_mn_rhkp_06.mat.wp_mn_rhkp_06_mi_dead`다.
+FullRestore mesh와 기존 LaserCannon의5485개 XYZ 및21108 indices를 대조해
+같은 geometry임을 확인했다. 기존 G2의 모델·재질·calibrated quaternion을
+재사용하며, 이 quaternion의 G3 최종 손 정렬은 사용자 화면 확인 대상이다.
+
+`out/KoukuBazookaBombInstall20260915/receipt.json`은 최신 저장 Composition815를
+기준으로 816을 설치했고 World1848을 1849로 올렸다. P35 원본 notify12개를
+사용자의 최신 애니메이션 편집에 다시 결합하여 아래 5구간을 추가했다.
+
+| WORLD occurrence | 시작–끝(ms) |
+|---|---:|
+| KAKULSAYDON_G1_PATTERN_35.world.3 | 1024–4100 |
+| KAKULSAYDON_G1_PATTERN_35.world.4 | 5500–18031 |
+| KAKULSAYDON_G1_PATTERN_35.world.5 | 18122–22864 |
+| KAKULSAYDON_G1_PATTERN_35.world.6 | 22955–33263 |
+| KAKULSAYDON_G1_PATTERN_35.world.7 | 37672–51004 |
+
+이전 후보의 4구간은 복사하지 않았다. resource는 `kakulsaydon.g1.world.23`,
+object는 `world.object.kouku.g3.bazooka`다. 기존 62 Patterns의 편집과
+181 presentationResources, 기존 양손 총 placement를 모두 보존했다.
+World resource의 G3 actor/bone, 실제 Level의 replicated-boss resolver와
+단일/다중 Bundle actor resolver가 같은 기존 런타임을 소비함을 확인했다.
+
+실제 CModel의 P35 16clip/48pose와 현재 WorldSequence 함수602검사에서 실패0,
+Bip002 basis1.69999–1.7, pivot 오차0, root 이동 오차4.76837e-7이다.
+source4 × notify.3000000119 × owner1.7 =2.040000081을 적용한다.
+현재 저장본의 전체 publisher에서 P35 unavailableReason은 비어 있다.
+
+사용자는 저장 완료와 등록 동안 편집 중지를 명시했다. 정확한 Client41664/Server29600
+기동 시각을 기록한 task 전용 허용, Composition writer lock, 기준/후보/백업 hash와
+각 파일 commit 직전 CAS를 적용했다. 8파일 등록과 Map WorldSequences publish/check,
+Kouku Composition publish/check를 완료했다. JSON6/XML2 parse와 최종 설치 31검사에서
+실패0이다. 기존 renderer 수치 검사를 불필요하게 재실행하지 않았다.
+
+현재 Client Level은 진입 때 읽은 WorldSequence 문서를 보유하므로 외부 게시 뒤에는
+쿠크 아레나에 다시 입장하고 Composition `Reload` 후 P35를 새로 재생한다.
+Source Preview와 Complete Play의 실제 사용자 화면 판정은 남아 있다. Client/UI
+실행·조작·캡처와 EXE 교체·재빌드는 수행하지 않았다.
+
+기존 `Invoke-BuildDomainOwner.ps1 -Owner KoukuSaydon`을 expected revision816으로
+완료했다. product/map/world.gameplay/gameplay.balance 4도메인 PASS이며 실제
+Gameplay.bootstrap의 `KOUKUSAYDONPRODUCTREVISION`은816이다. 새 Complete Play는
+기존 Server의 Kouku generation admission으로 적용되므로 이번 Client 소품 등록에
+Server 재시작은 필요 없다. 진행 중 재생은 Stop 후 새 Play해야 하며 Restart는
+이전 pinned revision을 유지한다. 게시 후 최종 31검사와 관련 diff--check도 성공했다.

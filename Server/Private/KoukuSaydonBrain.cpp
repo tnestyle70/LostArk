@@ -247,6 +247,79 @@ bool LostArk::Server::CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
 	std::unordered_set<std::string> triggerIds;
 	for (const auto& trigger : pattern.MechanicTriggers)
 	{
+		if (trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::CROSS_DIRECTION_CLONES)
+		{
+			std::unordered_set<std::string> directions(trigger.DirectionPatternIds.begin(), trigger.DirectionPatternIds.end());
+			if (pattern.BossMotion || trigger.DirectionPatternIds.size() != 4u || directions.size() != 4u ||
+				directions.count("") || directions.count(pattern.strPatternId) || trigger.strCloneEndStageId.empty() ||
+				trigger.eHudMode != LostArk::Shared::KOUKU_HUD_MODE::NONE || trigger.fTeleportX != 0.f ||
+				trigger.fTeleportY != 0.f || trigger.fTeleportZ != 0.f || !trigger.strClonePatternId.empty() ||
+				!trigger.ClockHours.empty() || !trigger.PatternSpawns.empty() || trigger.iCountPerPlayer ||
+				trigger.iEffectLifetimeMs || trigger.iArenaRandomCount || trigger.bRandomPlayerOnly)
+			{ status = "Cross direction requires four distinct child Patterns and one clone end Stage"; return false; }
+		}
+		else if (!trigger.DirectionPatternIds.empty() || !trigger.strCloneEndStageId.empty())
+		{ status = "Only cross direction owns directional Pattern references"; return false; }
+
+		using Air = ALBION_AIRBORNE_PHASE;
+		if (trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::ALBION_AIRBORNE)
+		{
+			const auto phase = trigger.eAirbornePhase;
+			const bool jump = phase == Air::JUMP, appear = phase == Air::APPEAR_PLAYER;
+			if (phase == Air::NONE || phase > Air::SLAM || pattern.BossMotion ||
+				!std::isfinite(trigger.fAirborneHeightM) || trigger.fAirborneHeightM < 0.f || trigger.fAirborneHeightM > 100000.f ||
+				((jump || appear) != (trigger.fAirborneHeightM > 0.f)) ||
+				(jump ? (trigger.iAirborneDurationMs == 0u || trigger.iAirborneDurationMs > 600000u ||
+				 std::uint64_t(trigger.iStartMs) + trigger.iAirborneDurationMs > patternDurationMs) : trigger.iAirborneDurationMs != 0u) ||
+				trigger.eHudMode != LostArk::Shared::KOUKU_HUD_MODE::NONE || !trigger.strClonePatternId.empty() || !trigger.ClockHours.empty() ||
+				trigger.fFaceCenterYawOffsetDegrees != 0.f || trigger.iCountPerPlayer || trigger.fPlayerEffectRadiusM != 0.f || trigger.iEffectLifetimeMs ||
+				trigger.iArenaRandomCount || trigger.bRandomPlayerOnly || !trigger.PatternSpawns.empty() ||
+				!std::isfinite(trigger.fTeleportX) || !std::isfinite(trigger.fTeleportY) || !std::isfinite(trigger.fTeleportZ) ||
+				std::abs(trigger.fTeleportX) > 100000.f || std::abs(trigger.fTeleportY) > 100000.f || std::abs(trigger.fTeleportZ) > 100000.f ||
+				(phase != Air::CENTER && (trigger.fTeleportX != 0.f || trigger.fTeleportY != 0.f || trigger.fTeleportZ != 0.f)))
+			{ status = "Albion airborne phase has invalid or unrelated values"; return false; }
+			if (phase != Air::JUMP && phase != Air::SELECT_PLAYER && !std::any_of(pattern.MechanicTriggers.begin(), pattern.MechanicTriggers.end(),
+				[&](const auto& row) { return row.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::ALBION_AIRBORNE &&
+				 row.eAirbornePhase == Air::JUMP && row.iStartMs <= trigger.iStartMs; }))
+			{ status = "Albion airborne phase requires its initial jump"; return false; }
+			if (phase == Air::SLAM)
+			{
+				std::uint64_t start = 0u; const BOSS_PATTERN_STAGE_DEFINITION* source = nullptr;
+				for (const auto& stage : pattern.Stages) { if (trigger.iStartMs < start + stage.iDurationMs) { source = &stage; break; } start += stage.iDurationMs; }
+				if (!source || source->Motion.RootMotion.empty()) { status = "Albion slam requires source root motion"; return false; }
+				const double age = double(trigger.iStartMs - start);
+				const float up = Sample_StageRootMotion(source->Motion.RootMotion, age).fUp;
+				float minimum = up;
+				for (const auto& sample : source->Motion.RootMotion) if (sample.iTimeMs >= age) minimum = (std::min)(minimum, sample.fUp);
+				if (up - minimum <= .000001f) { status = "Albion slam has no remaining source descent"; return false; }
+			}
+		}
+		else if (trigger.eAirbornePhase != Air::NONE || trigger.fAirborneHeightM != 0.f || trigger.iAirborneDurationMs != 0u)
+		{ status = "Non-Albion trigger carries airborne values"; return false; }
+		const bool hasRandomVolleys = !trigger.RandomVolleys.empty();
+		if (hasRandomVolleys ?
+			(trigger.eKind != BOSS_PATTERN_MECHANIC_TRIGGER_KIND::SHOWTIME_PLAYER_TARGETS || trigger.RandomVolleys.size() > 32u ||
+			 trigger.iRandomSpawnIntervalMs == 0u || trigger.iRandomSpawnIntervalMs > 600000u ||
+			 !std::isfinite(trigger.fRandomArenaRadiusM) || trigger.fRandomArenaRadiusM <= 0.f || trigger.fRandomArenaRadiusM > 1000.f ||
+			 !std::isfinite(trigger.fRandomArenaHeightToleranceM) || trigger.fRandomArenaHeightToleranceM <= 0.f || trigger.fRandomArenaHeightToleranceM > 10.f ||
+			 std::any_of(trigger.RandomVolleys.begin(), trigger.RandomVolleys.end(), [](const auto& volley) {
+				return volley.strClientVisualId.empty() || volley.iLifetimeMs == 0u || volley.iLifetimeMs > 600000u; })) :
+			(trigger.iRandomSpawnIntervalMs != 0u || trigger.fRandomArenaRadiusM != 0.f || trigger.fRandomArenaHeightToleranceM != 0.f))
+		{ status = "Showtime random volley pool, cadence or arena contract is invalid"; return false; }
+		if (trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::SHOWTIME_PLAYER_TARGETS &&
+			(trigger.strFixedVisualId == trigger.strTrackingVisualId ||
+			 trigger.strFixedVisualId.empty() != (trigger.iFixedLifetimeMs == 0u) || trigger.iFixedLifetimeMs > 600000u ||
+			 trigger.iSpawnIntervalMs == 0u || trigger.iSpawnIntervalMs > 600000u ||
+			 !std::isfinite(trigger.fFollowSpeedScale) || trigger.fFollowSpeedScale < .01f || trigger.fFollowSpeedScale > 10.f))
+		{ status = "Showtime player-target visual or timing contract is invalid"; return false; }
+		if (trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_TRACK_TARGET &&
+			(trigger.iDurationMs > 600000u || !trigger.strFixedVisualId.empty() || !trigger.strTrackingVisualId.empty() ||
+			 trigger.iFixedLifetimeMs != 0u || trigger.iSpawnIntervalMs != 0u || trigger.fFollowSpeedScale != 0.f ||
+			 trigger.eHudMode != LostArk::Shared::KOUKU_HUD_MODE::NONE || trigger.fTeleportX != 0.f || trigger.fTeleportY != 0.f ||
+			 trigger.fTeleportZ != 0.f || !trigger.strClonePatternId.empty() || !trigger.ClockHours.empty() ||
+			 trigger.fFaceCenterYawOffsetDegrees != 0.f || trigger.iCountPerPlayer != 0u || trigger.fPlayerEffectRadiusM != 0.f ||
+			 trigger.iEffectLifetimeMs != 0u || trigger.iArenaRandomCount != 0u || trigger.bRandomPlayerOnly || !trigger.PatternSpawns.empty()))
+		{ status = "Boss tracking duration must not create visuals or carry another mechanic's values"; return false; }
 		if (trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::SUMMON_PATTERNS)
 		{
 			std::unordered_set<std::string> spawnIds;
@@ -263,6 +336,10 @@ bool LostArk::Server::CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
 		if (trigger.strTriggerId.empty() || !triggerIds.insert(trigger.strTriggerId).second ||
 			trigger.iStartMs >= patternDurationMs || 0u == trigger.iDurationMs ||
 			static_cast<std::uint64_t>(trigger.iStartMs) + trigger.iDurationMs > patternDurationMs ||
+			(BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_TELEPORT_XZ == trigger.eKind &&
+			 (pattern.BossMotion || !std::isfinite(trigger.fTeleportX) || !std::isfinite(trigger.fTeleportY) ||
+			  !std::isfinite(trigger.fTeleportZ) || std::abs(trigger.fTeleportX) > 100000.f ||
+			  std::abs(trigger.fTeleportY) > 100000.f || std::abs(trigger.fTeleportZ) > 100000.f)) ||
 			(BOSS_PATTERN_MECHANIC_TRIGGER_KIND::REAL_GAZE_TELEPORT == trigger.eKind &&
 			 (pattern.BossMotion || trigger.strClonePatternId.empty() || trigger.ClockHours.size() != 3u)))
 		{
@@ -412,6 +489,25 @@ bool LostArk::Server::CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
 			}
 			return true;
 		};
+        for (const auto& region : window.CardRegions)
+        {
+            const auto& track = region.WorldTrack;
+            const bool hasGrip = std::any_of(track.Keys.begin(), track.Keys.end(), [](const auto& key) { return key.bHasGripPosition; });
+            if (!hasGrip) continue;
+            if (!track.bEnabled || region.eAnchor != BOSS_LOGIC_REGION_ANCHOR::WORLD ||
+                window.eKind != BOSS_PATTERN_LOGIC_KIND::ENTER_AREA || window.OnSuccess.size() != 1u ||
+                window.OnSuccess.front().eKind != BOSS_PATTERN_LOGIC_RESULT_KIND::GRAB_TO_WORLD_OBJECT ||
+                !window.OnFail.empty() || !window.OnTimeout.empty() || region.bCircle || region.bSector ||
+                track.iStartMs != window.iStartMs || track.iDurationMs < window.iDurationMs || track.iStartDelayMs ||
+                track.fPlaybackSpeed != 1.f || track.bSmoothStep || track.fBaselineX != 0.f || track.fBaselineY != 0.f ||
+                track.fBaselineZ != 0.f || track.fBaselineYawDegrees != 0.f || track.fBaselineScaleX != 1.f ||
+                track.fBaselineScaleY != 1.f || track.fBaselineScaleZ != 1.f || track.Keys.front().iTimeMs != 0u ||
+                track.Keys.back().iTimeMs != track.iDurationMs ||
+                std::any_of(track.Keys.begin(), track.Keys.end(), [](const auto& key) {
+                    return !key.bHasGripPosition || std::any_of(key.GripPosition.begin(), key.GripPosition.end(),
+                        [](float x) { return !std::isfinite(x) || std::abs(x) > 100000.f; }); }))
+            { status = "Physical hook grip requires a complete identity-baseline ENTER_AREA BOX track and sole world-hook result."; return false; }
+        }
 		if (window.strWindowId.empty() || !windowIds.insert(window.strWindowId).second ||
 			0u == window.iDurationMs || endMs > patternDurationMs || !valuesValid ||
 			(window.bInsideIsFail && BOSS_PATTERN_LOGIC_KIND::AREA_OVERLAP != window.eKind &&
@@ -491,6 +587,53 @@ bool LostArk::Server::CKoukuSaydonBrain::Validate_SummonedPattern(
 	}
 	status.clear();
 	return true;
+}
+
+bool LostArk::Server::CKoukuSaydonBrain::Select_CrossDirection(
+	const SERVER_WORLD_ENTITY& boss, const BOSS_PATTERN_DEFINITION& parent,
+	const BOSS_PATTERN_MECHANIC_TRIGGER& trigger, const CGameplayCatalog& catalog,
+	std::size_t& selected, std::array<std::uint32_t, 4u>& cloneDurationsMs,
+	std::string& status)
+{
+	if (trigger.eKind != BOSS_PATTERN_MECHANIC_TRIGGER_KIND::CROSS_DIRECTION_CLONES ||
+		trigger.DirectionPatternIds.size() != 4u || trigger.strCloneEndStageId.empty())
+	{ status = "Cross direction requires four Patterns and a clone end Stage"; return false; }
+	std::array<std::uint32_t, 4u> stagedDurations{};
+	std::size_t stagedSelection = 0u;
+	double bestDistance = (std::numeric_limits<double>::max)();
+	const double yaw = boss.fYawDegrees * 0.01745329251994329577;
+	std::unordered_set<std::string> identities;
+	for (std::size_t index = 0u; index < 4u; ++index)
+	{
+		const auto* child = Find_AnimationOnlyPattern(catalog, trigger.DirectionPatternIds[index], status);
+		if (!identities.insert(trigger.DirectionPatternIds[index]).second || !child ||
+			!Validate_SummonedPattern(parent, *child, status)) return false;
+		double forward = 0., lateral = 0.;
+		std::uint64_t duration = 0u;
+		bool foundEnd = false;
+		for (const auto& stage : child->Stages)
+		{
+			duration += stage.iDurationMs;
+			if (!foundEnd)
+			{
+				const auto endpoint = Sample_StageRootMotion(stage.Motion.RootMotion, stage.iDurationMs);
+				forward += endpoint.fForward; lateral += endpoint.fLateral;
+				if (stage.strStageId == trigger.strCloneEndStageId)
+				{ foundEnd = true; stagedDurations[index] = static_cast<std::uint32_t>(duration); }
+			}
+		}
+		if (!child->bFixedTimelineClock || !foundEnd || duration > trigger.iDurationMs || stagedDurations[index] >= duration)
+		{ status = "Cross direction child requires a clone end Stage before its full ending, within the Logic duration"; return false; }
+		const double x = boss.fPositionX + lateral * std::cos(yaw) + forward * std::sin(yaw);
+		const double z = boss.fPositionZ - lateral * std::sin(yaw) + forward * std::cos(yaw);
+		const double dx = x - boss.fSpawnPositionX, dz = z - boss.fSpawnPositionZ;
+		const double distance = dx * dx + dz * dz;
+		if (!std::isfinite(distance) || forward * forward + lateral * lateral < .000001)
+		{ status = "Cross direction child has no finite directional movement at the clone end Stage"; return false; }
+		// Equal distances keep the authored front/back/left/right order.
+		if (distance < bestDistance - .00001) { bestDistance = distance; stagedSelection = index; }
+	}
+	selected = stagedSelection; cloneDurationsMs = stagedDurations; status.clear(); return true;
 }
 
 bool LostArk::Server::CKoukuSaydonBrain::Select_AnimationOnlySequence(
@@ -629,7 +772,11 @@ bool LostArk::Server::CKoukuSaydonBrain::Begin_Pattern(
 		return false;
 	}
 	boss.PinnedDefinitionRevision = revision;
+	boss.KoukuDirectionPlayback.reset();
+	boss.iKoukuDirectionEndTick = 0u;
+	boss.bKoukuDirectionPlaybackComplete = false;
 	boss.PatternTerminalReceipt = {};
+	boss.AlbionAirborne = {};
 	boss.strPatternId = pattern.strPatternId;
 	boss.iPatternStartTick = serverTick;
 	boss.iPatternSequence = boss.iPatternSequence ==
@@ -654,6 +801,10 @@ void LostArk::Server::CKoukuSaydonBrain::Finish_Pattern(
 		boss.PatternTerminalReceipt.eResult = result;
 	}
 	boss.PatternStageRootMotion.clear();
+	boss.KoukuDirectionPlayback.reset();
+	boss.iKoukuDirectionEndTick = 0u;
+	boss.bKoukuDirectionPlaybackComplete = false;
+	boss.AlbionAirborne = {};
 	boss.bPatternStageRootOriginCaptured = false;
 	boss.iPatternStageRootLastTick = 0u;
 	boss.fPatternStageOriginX = boss.fPatternStageOriginY = boss.fPatternStageOriginZ = 0.f;
@@ -819,13 +970,63 @@ LostArk::Server::CKoukuSaydonBrain::Sample_StageRootMotion(
 		static_cast<float>(previous.fUp + (next->fUp - previous.fUp) * alpha) };
 }
 
+double LostArk::Server::CKoukuSaydonBrain::Pattern_ElapsedMs(
+	const SERVER_WORLD_ENTITY& boss, const std::uint32_t serverTick) noexcept
+{
+	const std::uint64_t ticks = serverTick >= boss.iPatternStartTick ? serverTick - boss.iPatternStartTick :
+	 static_cast<std::uint64_t>((std::numeric_limits<std::uint32_t>::max)() - boss.iPatternStartTick) + serverTick;
+	return double(ticks) * 1000.0 / SERVER_TICK_HZ;
+}
+
+double LostArk::Server::CKoukuSaydonBrain::Stage_RootTimeMs(
+	const SERVER_WORLD_ENTITY& boss, const BOSS_PATTERN_DEFINITION& pattern, const std::uint32_t serverTick) noexcept
+{
+	if (!pattern.bFixedTimelineClock) return double(Stage_ElapsedTicks(boss, serverTick)) * 1000.0 / SERVER_TICK_HZ;
+	std::uint64_t start = 0u;
+	for (std::uint32_t index = 0u; index < boss.iPatternStageIndex && index < pattern.Stages.size(); ++index)
+	 start += pattern.Stages[index].iDurationMs;
+	return (std::max)(0.0, Pattern_ElapsedMs(boss, serverTick) - double(start));
+}
+
+bool LostArk::Server::CKoukuSaydonBrain::Sample_AlbionAirborneHeight(
+	SERVER_ALBION_AIRBORNE_STATE& state, const double patternMs, const std::uint32_t stageIndex,
+	const float sourceUp, float& outHeight) noexcept
+{
+	using Phase = ALBION_AIRBORNE_PHASE;
+	switch (state.ePhase)
+	{
+	case Phase::JUMP:
+	 if (state.iDurationMs == 0u) return false;
+	 outHeight = static_cast<float>(state.fStartHeightM + (state.fJumpHeightM - state.fStartHeightM) *
+	  (std::clamp)((patternMs - state.iStartMs) / state.iDurationMs, 0.0, 1.0));
+	 break;
+	case Phase::APPEAR_PLAYER:
+	 outHeight = stageIndex == state.iSourceStageIndex ? state.fPhaseHeightM + sourceUp : 0.f;
+	 break;
+	case Phase::DISAPPEAR: case Phase::CENTER:
+	 outHeight = state.fJumpHeightM;
+	 break;
+	case Phase::SLAM:
+	 if (state.fSourceUpAtStart - state.fSourceUpMinimum <= .000001f) return false;
+	 if (stageIndex != state.iSourceStageIndex) state.fLandingProgress = 1.f;
+	 else state.fLandingProgress = (std::max)(state.fLandingProgress,
+	  (std::clamp)((state.fSourceUpAtStart - sourceUp) / (state.fSourceUpAtStart - state.fSourceUpMinimum), 0.f, 1.f));
+	 outHeight = state.fStartHeightM * (1.f - state.fLandingProgress);
+	 break;
+	default: return false;
+	}
+	return std::isfinite(outHeight) && std::abs(outHeight) <= 100000.f;
+}
+
 bool LostArk::Server::CKoukuSaydonBrain::Apply_StageRootMotion(
 	SERVER_WORLD_ENTITY& boss, const BOSS_PATTERN_DEFINITION& pattern,
 	const std::uint32_t serverTick, const CServerNavigation& navigation,
 	const CServerCollisionSystem& collision, std::string& status)
 {
 	status.clear();
-	if (boss.PatternStageRootMotion.empty() || boss.strPatternId.empty() ||
+	const bool airborne = boss.AlbionAirborne.iPatternSequence == boss.iPatternSequence &&
+		boss.AlbionAirborne.ePhase != ALBION_AIRBORNE_PHASE::NONE;
+	if ((!airborne && boss.PatternStageRootMotion.empty()) || boss.strPatternId.empty() ||
 		boss.iPatternStageRootLastTick == serverTick) return true;
 	if (serverTick == 0u || boss.strPatternId != pattern.strPatternId ||
 		boss.iPatternStageIndex >= pattern.Stages.size())
@@ -845,16 +1046,7 @@ bool LostArk::Server::CKoukuSaydonBrain::Apply_StageRootMotion(
 		boss.fPatternStageRootGroundY = originGround.y;
 		boss.bPatternStageRootOriginCaptured = true;
 	}
-	double elapsedMs = static_cast<double>(Stage_ElapsedTicks(boss, serverTick)) * 1000.0 / SERVER_TICK_HZ;
-	if (pattern.bFixedTimelineClock)
-	{
-		const std::uint64_t ticks = serverTick >= boss.iPatternStartTick ? serverTick - boss.iPatternStartTick :
-			static_cast<std::uint64_t>((std::numeric_limits<std::uint32_t>::max)() - boss.iPatternStartTick) + serverTick;
-		std::uint64_t stageStartMs = 0u;
-		for (std::uint32_t index = 0u; index < boss.iPatternStageIndex; ++index)
-			stageStartMs += pattern.Stages[index].iDurationMs;
-		elapsedMs = (std::max)(0.0, static_cast<double>(ticks) * 1000.0 / SERVER_TICK_HZ - stageStartMs);
-	}
+	const double elapsedMs = Stage_RootTimeMs(boss, pattern, serverTick);
 	const auto sample = Sample_StageRootMotion(boss.PatternStageRootMotion, elapsedMs);
 	constexpr double RADIANS_PER_DEGREE = 3.14159265358979323846 / 180.0;
 	const double yaw = boss.fPatternStageOriginYawDegrees * RADIANS_PER_DEGREE;
@@ -877,6 +1069,24 @@ bool LostArk::Server::CKoukuSaydonBrain::Apply_StageRootMotion(
 	{ status = "KoukuSaydon root motion lost its current ground"; return false; }
 	const float targetGroundY = ground.y;
 	destination.y += targetGroundY - boss.fPatternStageRootGroundY;
+	auto airborneState = boss.AlbionAirborne;
+	if (airborne)
+	{
+		float height = 0.f;
+		float airborneSourceUp = sample.fUp;
+		if (airborneState.ePhase == ALBION_AIRBORNE_PHASE::SLAM && boss.iPatternStageIndex == airborneState.iSourceStageIndex)
+		{
+			std::uint64_t stageStart = 0u;
+			for (std::uint32_t index = 0u; index < boss.iPatternStageIndex; ++index) stageStart += pattern.Stages[index].iDurationMs;
+			const double triggerAge = (std::max)(0.0, double(airborneState.iStartMs) - double(stageStart));
+			// A delayed fixed tick still consumes the original minimum it crossed.
+			for (const auto& key : boss.PatternStageRootMotion)
+				if (key.iTimeMs >= triggerAge && key.iTimeMs <= elapsedMs) airborneSourceUp = (std::min)(airborneSourceUp, key.fUp);
+		}
+		if (!Sample_AlbionAirborneHeight(airborneState, Pattern_ElapsedMs(boss, serverTick), boss.iPatternStageIndex, airborneSourceUp, height))
+		{ status = "Albion airborne height lost its validated phase"; return false; }
+		destination.y = targetGroundY + height;
+	}
 	const SERVER_NAV_POINT proposed = destination;
 	bool blocked = false;
 	if (!collision.Resolve_CircleMove(boss.fPositionX, boss.fPositionY, boss.fPositionZ,
@@ -916,6 +1126,7 @@ bool LostArk::Server::CKoukuSaydonBrain::Apply_StageRootMotion(
 	}
 	// Commit XYZ together only after both navigation and the body sweep succeed.
 	boss.fPositionX = destination.x; boss.fPositionY = destination.y; boss.fPositionZ = destination.z;
+	if (airborne) boss.AlbionAirborne = airborneState;
 	boss.iPatternStageRootLastTick = serverTick;
 	return true;
 }

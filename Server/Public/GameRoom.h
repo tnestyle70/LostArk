@@ -513,7 +513,16 @@ namespace LostArk::Server
 			BOSS_PATTERN_MECHANIC_TRIGGER Trigger;
 		};
 		std::vector<KOUKU_PENDING_MECHANIC_TRIGGER> m_PendingKoukuMechanicTriggers;
+		[[nodiscard]] bool Commit_KoukuAlbionAirborne(SERVER_WORLD_ENTITY& boss,
+			const BOSS_PATTERN_DEFINITION& pattern, const BOSS_PATTERN_MECHANIC_TRIGGER& trigger, std::uint32_t serverTick);
 		void Commit_KoukuMechanicTriggers(std::uint32_t serverTick);
+		void Update_KoukuPlayerTargets(SERVER_WORLD_ENTITY& boss,
+			const BOSS_PATTERN_DEFINITION& pattern, KOUKUSAYDON_LOGIC_LEDGER& ledger,
+			const CGameplayCatalog& catalog, std::uint32_t serverTick);
+		void Clear_KoukuPlayerTargets(SERVER_WORLD_ENTITY& boss, KOUKUSAYDON_LOGIC_LEDGER& ledger);
+		void Update_KoukuRandomVolley(SERVER_WORLD_ENTITY& boss,
+			const BOSS_PATTERN_MECHANIC_TRIGGER& trigger, KOUKUSAYDON_PLAYER_TARGET_WINDOW_STATE& window,
+			const CGameplayCatalog& catalog, std::uint32_t serverTick, bool hasAlivePlayers);
 		void Update_KoukuGazeClones(std::uint32_t serverTick);
 		bool Apply_KoukuLogicOutput(
 			const KOUKUSAYDON_LOGIC_OUTPUT& output,
@@ -1005,6 +1014,19 @@ namespace LostArk::Server
 			LostArk::Shared::WORLD_SEQUENCE_OPERATION operation = LostArk::Shared::WORLD_SEQUENCE_OPERATION::PLAY);
 		void Handle_DebugWorldPlayback(SESSION_ID sessionId, const LostArk::Shared::C2S_DEBUG_WORLD_PLAYBACK& request);
 		std::unordered_map<SESSION_ID, std::uint32_t> m_WorldPlaybackRequestSequences;
+		LostArk::Shared::DEBUG_WORLD_PLAYBACK_RESULT Apply_DebugRoomPlayerArrival(
+			SESSION_ID sessionId, const LostArk::Shared::C2S_DEBUG_WORLD_PLAYBACK& request);
+		LostArk::Shared::DEBUG_TELEPORT_RESULT Validate_DebugTeleportDestination(
+			const SERVER_PLAYER& player, const LostArk::Shared::C2S_DEBUG_TELEPORT_TO_POSITION& request,
+			SERVER_NAV_POINT& ground);
+		struct ROOM_PLAYER_ARRIVAL_RUN final
+		{
+			std::uint32_t iEpoch = 0u;
+			std::string strRootPatternId;
+			std::vector<std::pair<LostArk::Shared::PLAYER_ID, SESSION_ID>> Players;
+			std::map<std::string, LostArk::Shared::DEBUG_WORLD_PLAYBACK_RESULT> Occurrences;
+		};
+		std::unordered_map<SESSION_ID, ROOM_PLAYER_ARRIVAL_RUN> m_RoomPlayerArrivalRuns;
 		/* Offers or withdraws one interact-gated box for the one player it
 		   concerns. Unlike the sequence broadcast this is never room-wide. */
 		void Send_InteractPrompt(const SERVER_INTERACT_PROMPT_EDGE& edge);
@@ -1173,6 +1195,8 @@ namespace LostArk::Server
 			std::uint32_t serverTick,
 			std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& stagedPlayers,
 			std::vector<LostArk::Shared::DAMAGE_EVENT>& stagedDamageEvents);
+		SERVER_PLAYER* Select_BossRandomAliveTarget(const SERVER_WORLD_ENTITY& boss,
+			const std::string& actionId, const std::string& targetId, std::uint32_t serverTick);
 		bool Commit_BossPatternPlayerStageActions(
 			SERVER_WORLD_ENTITY& boss,
 			const CGameplayCatalog& catalog,

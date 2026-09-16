@@ -75,3 +75,38 @@ CAS 저장으로 동시에 편집된 문서를 덮지 않고 재실행 시 기�
 변경 JSON parse, 실제 리소스 존재, 보존·멱등성·기존 Effect 구조 검사와 가능한 기존
 codec/playback 수치 검사를 수행한다. 제품 통합 빌드는 root가 소유한다. 최종 황금색,
 개수와 크기 확인은 사용자가 Character Select → Warlord → Alt+V에서 수행한다.
+
+## G08. 2026-09-15 Alt V 본 스케일과 카메라 배경 추적 복구
+
+`Effect_PresentationService.cpp`의 `Requires_SourceBoneImportScaleNormalization`에 실제 제품 cue인17250 clip1/clip2 두 ID를 추가한다. 설치 Warlord WModel의 두 action clip과 b_effectroot·spine2를 40시점/본 조합으로 읽었을 때 admission0.0001과 root100이 남기는 축은0.009999996~0.010000002다. 기존 엄격한 basis 검증과 translation 보존 함수를 그대로 소비하고 source StartSize·사용자 ring 반경은 바꾸지 않는다. 새 C++·project/filter 등록은 없다.
+
+두 Alt V 저작 문서의 camera_view10개는 Required의 bUseLocalSpace=true와 달리 detail.particle.localSpace=false다. 이10개만 true로 맞춰 이미 태어난 배경 particle도 이후 camera anchor를 따른다. 다른 occurrence와 기존 본·root attachment는 보존한다. JSON은 현재 bytes를 보관한 뒤 필드 단위 CAS로 변경한다. 실제 Catalog/Playback의 camera 이동 전후 수치와 본 행렬을 검증하고 최소 TU 컴파일과 diff check를 수행한다. 사용자의 실행 중 Client/Server와 미저장 저작 도구에는 접근하지 않는다.
+
+낙하 방패는 원본 SD_00의 활성 mesh emitter16/5와 정지6+6 프로젝트 ring을 분리해 조사한다. 원본 package·module·mesh·native material과 실제 재생 경로가 닫히기 전 임의 높이·시간 또는 modelCue를 추가하지 않는다. 기존 사용자 반경과 수량 변경은 보존하고 원본 복구값과 구분한다.
+
+## G09. Alt V 기존 6+6 방패의 순차 낙하 연결
+
+원본 SD_00의 emitter16/5는 sk_wgl_gdd_01/PBR1123와 fx_w_wgl_gdd_02/PBR1122를0.31초 동안16m에서0으로 내린다. SD_01은 같은 pair를 다시 지면에 만든다. 이미 저장된 사용자6+6 ring과 정확히 같은 자산이므로 새12개를 겹치지 않는다. clip1의24 stable ID와 XY 평면 반경6/1.4m, 크기2/1, 재질·방향은 그대로 두고 원본 action의6시작 시각0.497280011/0.697200000/0.897199988/1.097000003/1.297000051/1.496999979초를 연결한다. 각 낙하 후2.4초 clip 끝까지 지면에 유지하며 clip2 ring은 그대로 이어받는다.
+
+기존 LocationDirect 소비자에 원본 location lookup[0,1600,0,0,1600,0,0,0]을 사용하고, 현재 ring의 남은 lifetime/0.31로 lookup clock을 바꾼다. 이 조합은 원본 SD_00과 SD_01을 사용자의 persistent occurrence 하나로 결합한 저작이다. 원본의 빈 ScaleFactor를 현재 runtime에서0배율로 오인하지 않도록 이 저작 adapter만 명시적 identity를 넣는다. 원본 module 자체·공용 C++의 기본값을 바꾸지 않는다. sourceRecipe의 spawn/lifetime, detail의 timing/lifetime만 같은 span으로 맞추며 다른310개 world-space 선택은 유지한다.
+
+실제 Codec/Playback의24 pair carrier를2016 frame sample로 검사해 조기 출현0, 원본 하강 곡선 최대 오차0.000001908m와 clip1 지면→clip2 첫 frame 행렬 오차0을 확인한 후보만CAS 적용한다. Client 실행·화면 검증은 사용자 소유다.
+
+
+## G17. 09-15 Alt V 시작 배경 cylinder의 native 재질 연결
+
+사용자는 Alt V 원본 배경 전체 복원을 요청했다. clip1 notify010의0.01초 활성 FX_PC_WGL_08.Par_W_WGL_superAction_01_01/emitter12는 기존 unified에 남고 최초 full부터 빠졌다. 실제 carrier는 fm_d_cylinder_019이며 사용자 삭제로 간주하지 않는다. legacy grouped-translucent와 미해결 cloud032 입력을 유지한 채 완료하지 않고, 현재 설치 MIC fx_m_mi_o_00.fx_mi.fx_o_me_superactionspace_01_02_tr의 parent/map/LocalVF PS·VS/native texture·uniform을 회수한다. 확인한 MIC texture overrides는 noise043/noise031/atypical006_1_xcl이며 셋 모두 기존 Warlord Resources에 있다.
+
+정확한 원본 PS closure와 WPO 여부를 확인한 뒤 비어 있는 기존 Warlord673/group0에 한 프로그램을 등록한다. 기존 Warlord material table·group000 함수·group0 dispatch를 확장하고 새 carrier를 만들지 않는다. generator에서 동일 source MIC·PS/VS와 명명 parameter/texture 계약을 재현하도록 연결한다. occurrence의 원본 module/notify TRS·원본 수명·카메라 배경 데이터 복구는 해당 발생 담당과 결합하고 다른 사용자 요소를 보존한다. 새 C++ 파일이나 새 shader group은 제안하지 않으며 실제 family/range/CSO 선택·Catalog Stage·Playback과 source PS/WARP를 확인한다. 최소 컴파일은 out에서 수행하고 Client/UI 실행·사용자 최종 화면 판정은 대신하지 않는다.
+
+## G18. 09-15 사용자 화면 확인 후 큰 방패·낙뢰·마지막 균열 방향 정리
+
+사용자는 번개가 복구되고 방패가 순차 생성되는 것을 확인했으며, 큰 방패가 순서대로 내려오도록 보이는 범위와 낙뢰 위치를 조정하고 마지막 검은 균열을 원본의6방향으로 요청했다. 기존 clip1의 inner12 carrier는09-15 낙하 추가 전0.01초 동시 생성·정지로 되돌리고 outer12만 원본 시작·0.31초 하강을 유지한다. outer는 두 clip에서 반경6m를 원본 SD00의2.625m로 맞추고 사용자 크기2는 유지한다. 원본 반경과 사용자 확대값을 구분한다.
+
+설치 shield 두 mesh의 bounds와 실제 Sequence 카메라를 계산했다. 반경6m는 거의179도와 카메라 뒤 꼭짓점을 요구하므로 FOV만 확대하지 않는다. 반경2.625m의 착지한 shield bounds는0.81~2.0초603개 원본 key에서 최대111.9998도다. clip1의 원본 eye/lookAt/up과 모든 key time을 보존하고450~700ms/2000~2150ms smoothstep으로 수평FOV114도를 연결한다. 마지막2150ms 이후 원본 close-up은 그대로 두며 카메라 source 문자열에 PROJECT_TUNED를 명시한다. 시야 위16m에서 진입하는 순간까지 전부 화면 안이라고 주장하지 않는다.
+
+낙뢰1166의12개와 마지막 바닥1140의6개만 전용 runtimeAnchorSlotId를 사용한다. 실제 WModel b_effectroot의20샘플은 X반전·Y/Z교환 basis를 가진다. 기존 source scale 정규화 뒤 socketLocalTransform의[90,180,0]도 역행렬로 이18개를 지면 basis에 연결하고 본 위치와 기존 world-space 출생을 보존한다. SourceRecipe에서 금지한 owner_yaw 검사를 완화하지 않는다. 낙뢰12개는 큰 방패의6개 XZ 위치에 같은 순서로 연결하고 추가 Y=-0.3m만 사용자가 요청한 낮춤으로 기록한다.
+
+마지막 native1140은 원본 notify024~029 raw payload690bytes가 FRotator yaw 필드464..467만 다르다. 기존 Albion decoder의 정확한 named-anchor 경계로 [0,-10922,-21845,32768,21845,10922]를 읽고 해당6개에만 회전을 연결한다. emitter 회전은 중심을6방향으로 배치하고 axis-locked quad의 별도 billboardRollDegrees=-yaw는 띠의 장축을 같은 방사 방향으로 향하게 한다. 원본 StartRotation90도는 보존하며 서로 다른 위치/quad 소비자가 읽는 것이므로 이중회전이 아니다. 발생 개수와 재질은 그대로다.
+
+out의 실제 Codec/serialize/Stage/Playback, 설치 본20개와 실제 Make_ParticleSpriteWorld 본문 추출을 사용해 inner 정지/outer 하강, clip handoff, 낙뢰 XZ 및 양수 opacity, 균열6중심·법선·장축을 검증한다. 제품은 현재 bytes SHA가 동일할 때 해당 요소와 camera key만 CAS로 바꾸고 다른 저작 변경·실행 중 draft·프로세스에는 접근하지 않는다. 새 C++/shader/Resources/project 등록은 없다.

@@ -1864,7 +1864,7 @@ bool_t Client::CEffect_Tool::Try_SoloElement(
 		return false;
 	}
 	if (m_pAuthoringSequencer && !m_ProductPreview &&
-		(m_ActiveDocument->strEffectAssetId.ends_with(".restore") ||
+		(Is_SequencerRecoveryEffectAssetId(m_ActiveDocument->strEffectAssetId) ||
 		 Is_SceneAnchoredEffectAssetId(m_ActiveDocument->strEffectAssetId)))
 		return Try_PreviewElementTimeline(strElementId);
 	const std::string strPreviousElement = m_strPreviewIsolationElementId;
@@ -3262,7 +3262,7 @@ bool_t Client::CEffect_Tool::Try_SetPreviewFilter(
     }
     if ((EFFECT_PREVIEW_FILTER::SOLO_SELECTED_GROUP == eFilter ||
         EFFECT_PREVIEW_FILTER::MUTE_SELECTED_GROUP == eFilter) &&
-		m_strPreviewIsolationGroupId.empty())
+		m_strPreviewIsolationGroupId.empty() && m_PreviewIsolationElementIds.empty())
     {
         m_strPreviewStatus =
 			"Use a Play Group button before choosing Group Solo/Mute.";
@@ -3289,10 +3289,19 @@ bool_t Client::CEffect_Tool::Try_SetPreviewFilter(
 		return false;
 	}
 
+    if (EFFECT_PREVIEW_FILTER::SOLO_SELECTED_GROUP == eFilter &&
+        m_strPreviewIsolationGroupId.empty() && !m_PreviewIsolationElementIds.empty())
+    {
+        EFFECT_DOCUMENT_DESC Selected;
+        if (!Build_ElementsPreviewDocument(*m_ActiveDocument, m_PreviewIsolationElementIds,
+            Selected, m_strPreviewStatus))
+            return false;
+    }
+
 	// Loading an authored document is CPU-only. Solo must select its own
 	// character before resolving player-root or bone attachments.
 	if (m_pAuthoringSequencer && !m_ProductPreview &&
-		m_ActiveDocument->strEffectAssetId.ends_with(".restore") &&
+		Is_SequencerRecoveryEffectAssetId(m_ActiveDocument->strEffectAssetId) &&
 		!Prepare_RecoveryPreviewTarget())
 		return false;
 

@@ -40,6 +40,11 @@ public:
 		const CWorldDestructionProjectionDocument& destructionProjection,
 		const CEncounterPatternReference& encounterReference,
 		std::string& outStatus);
+	bool_t Load_AmbientArea(
+		uint32_t levelIndex,
+		const std::string& areaId,
+		std::string& outStatus);
+	void Update_LevelPresentation(f32_t timeDelta);
 	void Update_ServerPresentation(
 		const VALTAN_PRESENTATION_STATE& boss,
 		f32_t timeDelta);
@@ -95,7 +100,7 @@ private:
 		std::string& outStatus) const;
 	bool_t Validate_WorldEffects(
 		const CMapEffectDocument& stagedDocument,
-		const CEncounterPatternReference& encounterReference,
+		const CEncounterPatternReference* encounterReference,
 		std::vector<f32_t>& outDurations,
 		std::string& outStatus);
 	bool_t Probe_WorldEffectAdmissions(
@@ -106,10 +111,12 @@ private:
 	bool_t Commit_StagedDocument(
 		uint32_t levelIndex,
 		CMapEffectDocument stagedDocument,
-		CDeployPropRuntime& deployRuntime,
-		const CWorldDestructionProjectionDocument& destructionProjection,
-		const CEncounterPatternReference& encounterReference,
+		CDeployPropRuntime* deployRuntime,
+		const CWorldDestructionProjectionDocument* destructionProjection,
+		const CEncounterPatternReference* encounterReference,
 		std::string& outStatus);
+	bool_t Is_WithinDrawDistance(
+		const MAP_EFFECT_WORLD_PRESENTATION& presentation) const;
 	float4x4_t Build_WorldRoot(
 		const MAP_EFFECT_WORLD_PRESENTATION& presentation) const;
 	bool_t Resolve_WorldSample(

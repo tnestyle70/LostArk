@@ -1003,3 +1003,153 @@ Pattern 남은 창으로 clamp한다. Sequence 배치는 같은 currentResource�
 occurrence는 복사한 duration·TRS를 유지한다. `Configure_SequenceEffectOccurrence()`는 새
 row에만 호출한다. `Render_PresentationResources()`의 source 선택/확장도 같은 helper와
 요소 계산을 사용해 목록과 V1_ELEMENT 기본 길이를 맞춘다.
+
+## G19. V1 비동기 준비 결과를 대기 상태에서 보존
+
+목표는 양손 발사 섬광과 장판 V1 준비 중 새 target enqueue가 발생해도 완료 결과를
+FIFO 불일치로 폐기하지 않는 것이다. 저장된 Composition·Effect 문서는 변경하지 않는다.
+
+변경 파일은 Client/Private/Effect_PresentationService.cpp의
+Advance_LoadingProductCuePreparation이다. 새 H/include/enum/상태/API는 없다.
+현재 Enqueue/Enqueue_Priority는 후속 target 추가 시 m_bYieldNextFrame을 켠다.
+기존 소비자는 결과를 먼저 Pop한 뒤 Begin_LoadingFrame의 YIELDED를 structural
+failure로 처리한다. 결과가 있을 때 먼저 Begin_LoadingFrame을 호출하고 YIELDED면
+Pop 없이 다음 프레임으로 넘긴다. READY/IDLE의 결과는 이후 기존 epoch/revision/kind
+검사, terminal complete 및 정확한 front ID 검증과 stage/commit/ACK를 그대로 거친다.
+EPOCH_STAGE_COMPLETE는 owner의 마지막 target이 소진된 IDLE 상태에서도 처리한다.
+
+기존 실제 queue/job을 사용해 추가 normal/priority enqueue 중 result 보존, 다음 frame
+동일 target commit 가능, terminal complete, 잘못된 ID/epoch 거부를 검사한다.
+대응 CPP 최소 Debug 컴파일과 diff 검사를 수행한다. 새 project/filter 등록은 없다.
+사용자가 직접 수행 중인 Product 빌드·Client를 중지하거나 자동 재실행하지 않는다.
+최종 재생 확인은 새 빌드의 쇼타임 양손 발사 섬광·장판 조준/폭발·화염장판이다.
+
+## G20-Server. 쇼타임 duration의 플레이어별 고정·추적 그룹
+
+이 절의 소유 범위는 Server이며 Client/Publisher/저장 데이터는 root가 연결한다. 현재 저장
+revision816과 실행 중 미저장 duration은 외부에서 교체하지 않는다. 사용자 요청값인2초와
+이동속도50%는 원작 복원값으로 기록하지 않는다.
+
+기존 MechanicTrigger에 SHOWTIME_PLAYER_TARGETS와 두 visual ID, 고정 그룹 수명,
+생성 간격, 추적 속도 비율을 추가한다. PATTERNSHOWTIMETARGETS의11필드가 encounter,
+pattern, occurrence, start/duration, fixed/tracking visual ID, fixed lifetime, interval,
+speed scale을 저장한다. 기존 bootstrap 행과 Shared packet 구조는 유지한다.
+
+고정·추적은 각각 단독 또는 함께 쓸 수 있다. 비활성 visual ID의 TSV 값은 `-`이며 최소
+한 ID가 필요하다. fixed가 없으면 lifetime은 0, 있으면 1..600000ms다. interval은
+1..600000ms, speed scale은 0.01..10이며 두 활성 visual ID는 달라야 한다.
+
+Logic ledger는 window 시작·종료·다음 고정 생성 tick과 플레이어별 tracking object ID를
+소유한다. room은 시작tick과60tick 간격에 현재 살아 있는 player의 서버 좌표에서 고정 그룹을
+stage/commit하고, tracking은 player당 하나만 만든다. 매 tick 실효 이동속도의0.5배만큼
+대상 위치로 접근하며 같은 지면 높이를 조회한다. 죽음·퇴장·duration 종료에는 tracking만
+정리하고 고정 그룹의 남은 저작 수명은 유지한다. Pattern abort/room reset은 기존 전체
+owner 정리를 사용한다. Late join도 기존 CombatObject live spawn/snapshot 경로를 사용한다.
+
+Client는 기존 iCombatObjectId로 독립 인스턴스를 구별하고 iSpawnTick으로 그룹 clock을
+계산한다. 새 damage는 없으며 archetype는 combatobject.kouku.showtime.fixed와
+combatobject.kouku.showtime.tracking이다. 그룹의 상대 시간·TRS는 Client visual mapping이
+보존한다. Server는 Effect asset path나 Client 모델 좌표를 받지 않는다.
+
+기존 Server 계약 검사에서1~4인 생성·60tick 반복·fixed 위치 보존·0.5속도·join/leave/revive·
+종료/abort와 실패 rollback을 검증한다. 변경 TU와 struct를 사용하는 실제 Server 소비자를
+out에 격리 컴파일하며 제품 빌드·publish·
+실행 종료·reload는 수행하지 않는다. 새 C++ 파일과 project/filter 등록은 필요하지 않다.
+
+## G20-Authoring. 쇼타임 플레이어별 생성과 추적 연결
+
+기존 DURATION 정의에 SHOWTIME_PLAYER_TARGETS를 추가한다. fixedSelectionGroupId와
+trackingPresentationOccurrenceId는 같은 Pattern의 실제 Effect 그룹/occurrence를 참조한다.
+spawnIntervalMs=2000, followSpeedScale=0.5는 사용자 요청 튜닝값이며 원작 근거로 분류하지 않는다.
+이 판정은 Collider와 Success/Fail/Timeout 결과를 소유하지 않는다. 새 값은 기존
+Composition parse/validate/serialize와 Workbench Apply/Save를 통과한다. 정의 선택만 한
+미완료 저작은 보존하고 실제 publish는 하나 이상의 유효한 template을 요구한다.
+
+Python projector는 저작된 child의 상대 시간·TRS·수명을 보존한 targetedCombatVisuals를
+기존 patternbindings 문서에 기록한다. 서버가 제어하는 source row는 static 재생에서 제외하며
+source JSON은 보존한다. Server는 visual ID와 수명만 받아 기존 CombatObject spawn/snapshot/
+despawn을 사용한다. MainApp이 소유하는 PresentationPlayer를 실제 arena replication에 연결한다.
+
+현재 Save 충돌 복구용 revision816은 사용자가 Save할 때까지 변경하지 않는다. 새 Duration의
+저장값을 확인한 뒤 바주카 Composition 등록을 합치고 변경된 authoring을 검증·publish한다.
+변경 TU 컴파일, JSON 왕복·오류 보존과 기존 publisher/server 계약 검사를 수행한다. Client
+실행·화면 확인은 사용자가 수행한다. 새 C++ 파일/project 등록은 없다.
+
+## G21-Server. 쇼타임 XZ 순간이동과 서버 대상 방향
+
+사용자 요청 좌표 X=2.57, Z=952.27은 기존 TRIGGER의 새 BOSS_TELEPORT_XZ 값으로
+저장한다. teleportPosition의 Y=1.30은 저작 참고값이며 서버 캐릭터 높이에 대입하지 않는다.
+기존 PATTERNMECHANICTRIGGER 행과 snapshot을 재사용한다. Client 문서 검증·저장,
+Workbench Trigger 선택·XZ 입력, Python projection과 Gameplay publisher 및 Server parser를
+같이 연결한다. 절대 위치 BossMotion과의 병용은 거부하고 animation root motion은 허용한다.
+
+Server는 목적지 navigation과 실제 보스 크기의 destination overlap을 먼저 검사한다.
+성공하면 보스 XZ와 이미 캡처한 stage root origin XZ를 같은 차이만큼 옮기며, 지면 기준도
+새 위치로 보정한다. 캐릭터 Y, root origin Y, 애니메이션·stage·pattern 시각과 ID는 보존한다.
+실패하면 위치와 루트 기준을 모두 유지한다. Client의 기존 snapshot 소비자는 같은 action
+시퀀스의 위치·yaw만 반영하므로 새 Play_NetworkAction이나 vertical root reset을 만들지 않는다.
+
+SHOWTIME_PLAYER_TARGETS 활성 duration에서는 기존 서버 pattern target을 유지하며 현재
+좌표를 향해 보스 yaw를 갱신한다. 유효한 대상이 사라지면 기존 RETARGET_RANDOM_ALIVE의
+살아 있는 전투 준비 player 선택 함수를 재사용한다. 여러 플레이어의 순회 순서가 몸 회전을
+덮어쓰지 않으며, duration 밖에서는 새 회전을 하지 않는다. fixed/tracking 그룹의 map 축은
+기존대로 보존한다. 새 Shared packet과 damage는 없다.
+
+기존 Server 계약 검사에 Y·root clock 보존, 다음 root frame의 이동 유지, 잘못된 목적지
+rollback, 대상 유지·사망 재선택·duration 종료를 추가한다. 변경 C++는 out에 격리 컴파일하고
+Python/PowerShell의 실제 저장·projection 행을 검사한다. logic63 변경은 최신 source의 SHA와
+함께 out 후보로만 준비하며 원본 JSON CAS 반영·제품 빌드·publish는 root가 담당한다.
+새 C++ 파일과 project/filter 등록은 없다.
+
+## G21-Bomb. 해골 폭탄의 사용자 수명과 원본 파란 폭발
+
+현재 저장된 P35.presentation.638은 낙하 폭탄을 5290ms 동안 배치하지만 원본 복원
+문서의 ModelCue와 세 심지 emitter의 배출 구간은 2초다. 같은 문서만 수정하여 ModelCue의
+visible duration과 원본 EmitterLoops=0 요소의 유한 배출 구간을 5.29초로 맞춘다.
+Bomb_respawn_1의 2초 source animation, holdLastFrame, scale3, b_body와 fx_01 부착,
+개별 입자 수명·속도·재질은 보존한다. 낙하를 느리게 늘리거나 반복하지 않는다.
+
+원본 Action4223102의 Par_X_RHCN_Exp_02 first LOD 18개 요소를 기존 source importer와
+native material/VF 경로로 복원한다. source HidePawn5초와 폭발5.010초의 간격을 보존하여
+사용자 폭탄 박스 종료 10ms 뒤에 별도 폭발 occurrence를 추가한다. source Exp01/02의
+색·재질 비교와 NPC480712의 AI selector 미확정은 결과에서 구분한다. 사용자 5290ms를
+폭발 tail 길이로 덮어쓰지 않고 별도 occurrence가 원본 입자 tail을 소유한다.
+
+Authored Effect, Catalog/ResourceTree, Composition resource·occurrence와 프로젝트 None
+등록은 최신 파일 hash를 포함한 out 후보로 준비한다. 원본 정본 merge/CAS와 publisher는
+root가 소유한다. 현재 source shader/table의 기존 행을 보존하며 신규 native4개만 별도로
+준비한다. 공유 C++의 duration 정책이나 기존 순수 심지·빙고 문서를 바꾸지 않는다.
+실제 CModel의 착지 hold와 기존 CPU Playback의 2초 이후 심지 emission, 폭발의 source
+material/geometry와 tail을 최소 수치 검사한다. Client/UI와 제품 빌드는 실행하지 않는다.
+
+Exp02는 Action4223102 notify012의 Color=[1,1,1], source scale2와 UE Z=2.5cm를
+정확히 소비한다. 후보의 모든 element에 runtime Y=0.025m와 scale2를 한 번만 적용한다.
+native program3680~3683은 기존1359개 함수와1264개 table 행을 보존한 out 분할 shader와
+table 후보로 검증하며 ParticleKouku3648의 실제 제품 carrier를 컴파일한다.
+새 Effect JSON의 None/96.DataFiles와 새 native carrier의 프로젝트 등록을 함께 준비한다.
+
+## G22-Sector. 기존 native Fan 경계의 노란 외곽선 element
+
+현재11m/45도 warning과 같은 native3602의 방사 경계·원호식을 사용한다. 별도 source
+ParticleSystem을 찾았다고 표시하지 않고, 사용자 요청에 따른 노란색 경계 강조 layer로
+명시한다. `kouku.showtime.warning.sector.outline`을 기존 warning의 source recipe,
+TRS·projection volume·angle·inner0·fade track과 같은 값으로 추가한다. 원본 warning은
+보존하고 새 layer의 색만 yellow로 지정한다. 별도 geometry/shader/runtime는 추가하지 않는다.
+
+generator가 새 layer를 한 번만 생성하도록 stable ID로 검증한다. 기존 사용자 outline이
+있으면 덮어쓰지 않으며 warning-only 단계도 이 layer를 보존한다. 정본 Effect JSON은
+외부 저장과 충돌하지 않도록 source hash와 element append patch가 있는 out 후보로 준비한다.
+native 수식의 내부/원호/양쪽 경계 alpha와 실제 CPU Playback의 두 decal matrix·수명·방향을
+검사한다. occurrence 전체시간 맞춤은 통합 담당의 기존 runtime 경로에서 처리한다.
+
+## G23-Bomb. 수명 끝에 원본 ModelCue 애니메이션 1회 재생
+
+**사용자 정정으로 철회 / 제품 미적용.** 사용자가 폭탄 복제 후 위치를 옮기지 않아 겹쳤으며 기존 폭탄 애니메이션과 대형 폭발 크기가 정상임을 확인했다. 아래는 취소된 후보의 준비·검증 기록이다. `endAlignedAnimation` 관련 이번 7개 파일의 field/codec/runtime/UI 변경은 지정 구문만 제거했고, 폭탄·폭발 정본 JSON은 변경하지 않았다. sector 외곽선과 generator 변경은 유지한다. 이 후보를 설치하거나 재활성화하지 않는다.
+
+optional `endAlignedAnimation`은 기본 false다. true이면 CModel이 읽은 실제 clip 길이로 cue 종료에서 역산하여, 그 전에는 첫 pose를 유지하고 마지막 구간에서 원래 속도로 한 번 재생한다. 5.29초 cue와 2초 clip은 3.29초 대기 뒤 낙하한다. 기존 `Sample_ModelCuePose`를 쓰는 몸 렌더링과 심지 bone anchor 모두 같은 clock을 소비한다. 별도 심지 위치 보정은 없다.
+
+Effect 문서 optional bool parse/serialize/validation, 준비된 실제 CModel clip과 cue 길이 검증, Model Cue detail 선택까지 연결한다. loop와 병용하거나 cue가 clip보다 짧으면 명시 거부한다. 기존 옵션 없는 cue와 hold/loop 동작은 유지한다. 새 C++ 파일이나 프로젝트 항목은 없다. 정본 drop JSON은 쓰지 않고 최신 hash의 out 후보를 root에 전달한다.
+
+최소 검증은 실제 codec 왕복·이전 문서 기본값·잘못된 조합 거부, 현재 CModel의 첫 pose hold/끝의 원본 2초 재생·심지 anchor 동등성이다. 변경된 TU는 out 격리 컴파일한다. Client/UI 및 Product 빌드는 실행하지 않는다.
+
+G23 설치 후보는 root의 전체 박스 source-clock fit와 맞추기 위해 ModelCue visible duration을 기존 전체 Effect 수명 5.645초로 맞춘다. 심지의 5.29초 배출과 0.355초 tail은 그대로다. 실제 source pose는 3.645초 대기 후 원본 2초를 재생한다. 박스를 6.355초로 fit하면 source clock 전체가 같은 비율로 늘어나므로 애니메이션의 표시 시간은 약 2.25155초다. 이것은 원본 clip 길이 변경과 구별한다.

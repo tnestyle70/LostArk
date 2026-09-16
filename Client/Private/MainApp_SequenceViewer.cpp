@@ -13,6 +13,9 @@
 #include "Level_ValtanArena.h"
 #include "PlayerCommandSink.h"
 #include "KoukuSaydonBossTool.h"
+#include "KoukuSaydonCompositionDocument.h"
+#include "PlayerController.h"
+#include "NetworkManager.h"
 #include "ValtanBossTool.h"
 #include <fstream>
 #include <algorithm>
@@ -313,6 +316,110 @@ void CMainApp::ExecuteSequenceViewerAction(const int action)
 		"서버 응답 대기 중: " + row.id : "요청 전송 실패: 서버 접속과 아레나 상태를 확인해 주세요.";
 }
 
+
+void CMainApp::ClearKoukuSequenceArrivals()
+{
+    m_KoukuSequenceArrivalCues.clear();
+    m_strKoukuSequenceArrivalPatternId.clear();
+    m_strKoukuSequenceArrivalFailure.clear();
+    m_strKoukuSequenceArrivalCompletedPreview.clear();
+    m_iKoukuSequenceArrivalWorldGeneration = 0u;
+}
+
+bool CMainApp::BeginKoukuSequenceArrivals(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
+    const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern, const uint32_t startClockMs, std::string& status)
+{
+    ClearKoukuSequenceArrivals();
+    std::vector<KOUKU_SEQUENCE_ARRIVAL_CUE> cues;
+    std::array<bool, 4> usedSlots{};
+    for (const auto& box : pattern.LogicOccurrences)
+    {
+        if (!box.bEnabled) continue;
+        const auto definition = std::find_if(document.Logics.begin(), document.Logics.end(),
+            [&](const auto& logic) { return logic.strLogicId == box.strLogicId; });
+        if (definition == document.Logics.end() || definition->strLogicType != "TRIGGER" ||
+            definition->strTriggerKind != "ROOM_PLAYER_ARRIVAL") continue;
+        if (!box.RoomPlayerArrival || box.RoomPlayerArrival->iPlayerSlot >= usedSlots.size() ||
+            usedSlots[box.RoomPlayerArrival->iPlayerSlot])
+        { status = "Sequence player arrival requires distinct slots 1..4 and a destination per box."; return false; }
+        const auto& arrival = *box.RoomPlayerArrival;
+        usedSlots[arrival.iPlayerSlot] = true;
+        KOUKU_SEQUENCE_ARRIVAL_CUE cue;
+        cue.occurrenceId = box.strOccurrenceId;
+        cue.startMs = box.iStartMs;
+        cue.playerSlot = arrival.iPlayerSlot;
+        cue.position = {float(arrival.Position[0]), float(arrival.Position[1]), float(arrival.Position[2])};
+        // Starting halfway through an authoring preview does not replay earlier gameplay.
+        cue.submitted = cue.completed = cue.startMs < startClockMs;
+        cues.push_back(std::move(cue));
+    }
+    if (cues.empty()) return true;
+    if (!CLevel_KakulSaydonArena::Get_Active() || m_iKoukuSequenceArrivalRunEpoch == UINT32_MAX)
+    { status = "Sequence player arrival requires the Kouku arena and an available run epoch."; return false; }
+    std::stable_sort(cues.begin(), cues.end(), [](const auto& a, const auto& b) {
+        return a.startMs != b.startMs ? a.startMs < b.startMs : a.playerSlot < b.playerSlot;
+    });
+    ++m_iKoukuSequenceArrivalRunEpoch;
+    m_KoukuSequenceArrivalCues = std::move(cues);
+    m_strKoukuSequenceArrivalPatternId = pattern.strPatternId;
+    m_iKoukuSequenceArrivalWorldGeneration = CNetworkManager::Get().Get_WorldInboundGeneration();
+    return true;
+}
+
+bool CMainApp::SampleKoukuSequenceArrivals(const uint32_t clockMs, const bool advance, std::string& status)
+{
+    if (m_KoukuSequenceArrivalCues.empty()) return true;
+    const auto fail = [&](std::string reason) {
+        status = m_strKoukuSequenceArrivalFailure = std::move(reason);
+        return false;
+    };
+    if (!m_strKoukuSequenceArrivalFailure.empty())
+    { status = m_strKoukuSequenceArrivalFailure; return false; }
+    auto* arena = CLevel_KakulSaydonArena::Get_Active();
+    if (!arena || m_iKoukuSequenceArrivalWorldGeneration != CNetworkManager::Get().Get_WorldInboundGeneration())
+        return fail("Sequence player arrival cancelled because the Server room changed.");
+    const auto now = std::chrono::steady_clock::now();
+    for (auto& cue : m_KoukuSequenceArrivalCues)
+    {
+        if (cue.submitted && !cue.completed && now >= cue.deadline)
+            return fail("Server player arrival timed out: " + cue.occurrenceId);
+        if (!advance || cue.submitted || clockMs < cue.startMs) continue;
+        if (m_iSequenceViewerRequest == UINT32_MAX)
+            return fail("Sequence request IDs are exhausted; restart the Client.");
+        cue.requestSequence = ++m_iSequenceViewerRequest;
+        if (!arena->Get_DebugPlayerController().Request_KoukuRoomPlayerArrival(cue.requestSequence,
+            m_iKoukuSequenceArrivalRunEpoch, m_strKoukuSequenceArrivalPatternId, cue.occurrenceId,
+            static_cast<uint8_t>(cue.playerSlot), cue.position.x, cue.position.y, cue.position.z, status))
+            return fail("Sequence player arrival could not be submitted: " + cue.occurrenceId + ": " + status);
+        cue.submitted = true;
+        cue.deadline = now + std::chrono::seconds(5);
+    }
+    return true;
+}
+
+bool CMainApp::KoukuSequenceArrivalsPending() const
+{
+    return std::any_of(m_KoukuSequenceArrivalCues.begin(), m_KoukuSequenceArrivalCues.end(),
+        [](const auto& cue) { return cue.submitted && !cue.completed; });
+}
+
+bool CMainApp::ConsumeKoukuSequenceArrivalResult(const LostArk::Shared::S2C_DEBUG_WORLD_PLAYBACK_RESULT& result)
+{
+    if (result.eOperation != PlaybackOp::PLACE_ROOM_PLAYER) return false;
+    const auto found = std::find_if(m_KoukuSequenceArrivalCues.begin(), m_KoukuSequenceArrivalCues.end(),
+        [&](const auto& cue) { return cue.submitted && !cue.completed && cue.requestSequence == result.iRequestSequence; });
+    if (found == m_KoukuSequenceArrivalCues.end()) return true;
+    if (result.eWorldId != LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA ||
+        result.strTargetId != m_strKoukuSequenceArrivalPatternId ||
+        m_iKoukuSequenceArrivalWorldGeneration != CNetworkManager::Get().Get_WorldInboundGeneration())
+    { m_strKoukuSequenceArrivalFailure = "Player arrival reply belongs to another Sequence or room."; return true; }
+    found->completed = true;
+    found->moved = result.eResult == PlaybackResult::ACCEPTED;
+    if (result.eResult != PlaybackResult::ACCEPTED && result.eResult != PlaybackResult::SKIPPED_PLAYER)
+        m_strKoukuSequenceArrivalFailure = "Server rejected player arrival " + found->occurrenceId + ": " + ResultText(result.eResult);
+    return true;
+}
+
 void CMainApp::UpdateSequenceViewer()
 {
 	Engine::CProfilerScope panelScope(CGameInstance::Get().Get_Profiler(), "ImGui.Hub.SequenceViewer.Update");
@@ -323,6 +430,7 @@ void CMainApp::UpdateSequenceViewer()
 		LostArk::Shared::S2C_DEBUG_WORLD_PLAYBACK_RESULT result{};
 		while (sink && sink->Consume_DebugWorldPlaybackResult(result))
 		{
+			if (ConsumeKoukuSequenceArrivalResult(result)) continue;
 			if (result.iRequestSequence != m_iSequenceViewerAwaitingRequest) continue;
 			m_iSequenceViewerAwaitingRequest = 0u;
 			m_SequenceViewerStatus = std::string(ResultText(result.eResult)) + "\n" + result.strTargetId;

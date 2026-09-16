@@ -32,6 +32,30 @@ class CRaidEntryPreviewView;
 class IPlayerCommandSink;
 class IWorldEntityCommandSink;
 class CMapLightPresentationRuntime;
+class CMapEffectPresentationRuntime;
+
+#ifdef _DEBUG
+enum class CHARACTER_SELECT_FLOOR_ENVIRONMENT
+{
+	SOURCE_STAGE,
+	CENTER_FLOOR
+};
+
+struct CHARACTER_SELECT_FLOOR_SWAP_OPTION
+{
+	std::string id;
+	std::string label;
+};
+
+struct CHARACTER_SELECT_FLOOR_SWAP_SETTINGS
+{
+	/* Added to the JSON document's baseline offset; never changes navigation. */
+	float3_t offsetMeters = {};
+	f32_t yawDegrees = 0.f;
+	CHARACTER_SELECT_FLOOR_ENVIRONMENT environment = CHARACTER_SELECT_FLOOR_ENVIRONMENT::SOURCE_STAGE;
+	bool_t useShaderDefaultBrightness = false;
+};
+#endif
 
 class CLevel_CharacterSelect final : public CLevel
 {
@@ -210,6 +234,16 @@ public:
 #ifdef _DEBUG
 	/* F1 Level Navigation reuses the same typed product routes as this Level's
 	   own buttons.  It never reaches the socket or changes Level directly. */
+	bool_t Debug_ReloadFloorSwapOptions();
+	const std::vector<CHARACTER_SELECT_FLOOR_SWAP_OPTION>& Debug_GetFloorSwapOptions() const
+	{ return m_FloorSwapOptions; }
+	bool_t Debug_ApplyFloorSwap(const std::string& optionId,
+		const CHARACTER_SELECT_FLOOR_SWAP_SETTINGS& settings);
+	bool_t Debug_ResetFloorSwap();
+	const std::string& Debug_GetFloorSwapSelectedId() const { return m_FloorSwapSelectedId; }
+	const std::string& Debug_GetFloorSwapStatus() const { return m_FloorSwapStatus; }
+	const CHARACTER_SELECT_FLOOR_SWAP_SETTINGS& Debug_GetFloorSwapSettings() const
+	{ return m_FloorSwapAppliedSettings; }
 	bool_t Debug_Request_ProductStage(LOBBY_STAGE eStage)
 	{
 		return Enter_Stage(eStage);
@@ -250,8 +284,29 @@ private:
 	std::array<std::string, ETOI(EQUIPMENT_SLOT_ID::END)> m_CustomizingOutfit{};
 
 	CMapPlacementRuntime m_MapRuntime;
+#ifdef _DEBUG
+	struct FLOOR_SWAP_SOURCE_PAIR
+	{
+		std::string optionId;
+		std::string floorSourcePlacementId;
+		std::string starSourcePlacementId;
+	};
+	std::vector<CHARACTER_SELECT_FLOOR_SWAP_OPTION> m_FloorSwapOptions;
+	std::vector<FLOOR_SWAP_SOURCE_PAIR> m_FloorSwapSources;
+	std::string m_FloorSwapTargetSourceId;
+	std::vector<std::string> m_FloorSwapHiddenSourceIds;
+	uint64_t m_FloorSwapPreviewFloorId = 0u;
+	uint64_t m_FloorSwapPreviewStarId = 0u;
+	float3_t m_FloorSwapBaseOffset = {};
+	/* Independent world-space clearance for the raised star; the floor keeps its layer. */
+	float3_t m_FloorSwapStarOffset = {};
+	CHARACTER_SELECT_FLOOR_SWAP_SETTINGS m_FloorSwapAppliedSettings;
+	std::string m_FloorSwapSelectedId;
+	std::string m_FloorSwapStatus = "Floor swap options not loaded.";
+#endif
 	bool_t m_isCustomizingStageHidden = false;
 	shared_ptr<CMapLightPresentationRuntime> m_pMapLightPresentation;
+	shared_ptr<CMapEffectPresentationRuntime> m_pMapEffectPresentation;
 	shared_ptr<CMapLightPresentationRuntime> m_pMapLightAuthoringOverride;
 	bool_t m_bMapLightSubmissionFailureReported = false;
 	unique_ptr<CUILayoutRuntime> m_pClassSelectView = { nullptr };

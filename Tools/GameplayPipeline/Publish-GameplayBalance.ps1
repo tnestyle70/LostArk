@@ -271,6 +271,181 @@ function Assert-JsonString([object]$Value, [string]$Context) {
     if ($Value -isnot [string]) { throw "$Context must be a JSON string." }
 }
 
+function Get-KoukuTargetedVisualIndex([object]$Bindings, [uint32]$ExpectedRevision) {
+    # Full resource/occurrence parity is checked by the composition projector
+    # above. This join pins the Server's IDs/lifetimes to that same Client Product.
+    Assert-JsonInteger $Bindings.sourceRevision 'Kouku targeted visual sourceRevision' 1 ([uint32]::MaxValue)
+    if ($Bindings.schema -cne 'lostark.kouku-saydon-pattern-bindings' -or
+        $Bindings.formatVersion -ne 1 -or $Bindings.sourceRevision -ne $ExpectedRevision -or
+        $Bindings.targetedCombatVisuals -isnot [Array] -or
+        @($Bindings.targetedCombatVisuals).Count -gt 8192) {
+        throw 'Kouku targeted visuals require the same-revision Pattern bindings Product.'
+    }
+    $index = [Collections.Generic.Dictionary[string,object]]::new([StringComparer]::Ordinal)
+    foreach ($visual in @($Bindings.targetedCombatVisuals)) {
+        Assert-ExactProperties $visual @('clientVisualId','combatObjectArchetypeId','durationMs','loop','resources','occurrences') 'Kouku targeted visual'
+        Assert-JsonString $visual.clientVisualId 'Kouku targeted clientVisualId'
+        Assert-JsonString $visual.combatObjectArchetypeId 'Kouku targeted archetype'
+        Assert-JsonInteger $visual.durationMs 'Kouku targeted durationMs' 1 600000
+        $role = if ($visual.combatObjectArchetypeId -ceq 'combatobject.kouku.showtime.fixed') { 'fixed' }
+            elseif ($visual.combatObjectArchetypeId -ceq 'combatobject.kouku.showtime.tracking') { 'tracking' } else { '' }
+        if (-not $role -or $visual.clientVisualId -cnotmatch ('^kouku\.showtime\.' + $role + '\.[0-9a-f]{64}$') -or
+            $index.ContainsKey([string]$visual.clientVisualId) -or $visual.loop -isnot [bool] -or
+            $visual.loop -ne ($role -ceq 'tracking') -or $visual.resources -isnot [Array] -or
+            @($visual.resources).Count -lt 1 -or @($visual.resources).Count -gt 1024 -or
+            $visual.occurrences -isnot [Array] -or @($visual.occurrences).Count -lt 1 -or @($visual.occurrences).Count -gt 1024) {
+            throw 'Kouku targeted visual identity, lifetime or bounded template is invalid.'
+        }
+        $index.Add([string]$visual.clientVisualId, $visual)
+    }
+    return ,$index
+}
+
+function New-KoukuShowtimeTargetRows([object]$Pattern, [string]$EncounterId,
+    [uint32]$PatternDurationMs, [Collections.Generic.Dictionary[string,object]]$Visuals) {
+    if ($Pattern.showtimeTargets -isnot [Array] -or @($Pattern.showtimeTargets).Count -gt 64) {
+        throw 'Kouku SHOWTIME targets must be a bounded array.'
+    }
+    $ids = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    $rows = [Collections.Generic.List[string]]::new()
+    foreach ($target in @($Pattern.showtimeTargets)) {
+        $randomKeys = @('randomVolleys','randomSpawnIntervalMs','randomArenaRadiusM','randomArenaHeightToleranceM')
+        $hasRandom = @($randomKeys | Where-Object { $null -ne $target.PSObject.Properties[$_] }).Count
+        if ($hasRandom -ne 0 -and $hasRandom -ne $randomKeys.Count) { throw 'Kouku random volleys require their pool, interval and arena bounds together.' }
+        Assert-ExactProperties $target (@('occurrenceId','startMs','durationMs','fixedVisualId','trackingVisualId',
+            'fixedLifetimeMs','spawnIntervalMs','followSpeedScale') + $(if ($hasRandom) { $randomKeys } else { @() })) 'Kouku SHOWTIME target'
+        foreach ($field in @('occurrenceId','fixedVisualId','trackingVisualId')) {
+            Assert-JsonString $target.$field "Kouku SHOWTIME $field"
+        }
+        Assert-StableId $target.occurrenceId 'Kouku SHOWTIME occurrenceId'
+        Assert-JsonInteger $target.startMs 'Kouku SHOWTIME startMs' 0 600000
+        Assert-JsonInteger $target.durationMs 'Kouku SHOWTIME durationMs' 1 600000
+        Assert-JsonInteger $target.fixedLifetimeMs 'Kouku SHOWTIME fixedLifetimeMs' 0 600000
+        Assert-JsonInteger $target.spawnIntervalMs 'Kouku SHOWTIME spawnIntervalMs' 1 600000
+        Assert-JsonNumber $target.followSpeedScale 'Kouku SHOWTIME followSpeedScale'
+        if (-not $ids.Add([string]$target.occurrenceId) -or
+            @($Pattern.logicWindows | Where-Object { $_.windowId -ceq $target.occurrenceId }).Count -ne 0 -or
+            ([uint64]$target.startMs + [uint64]$target.durationMs) -gt $PatternDurationMs -or
+            $target.followSpeedScale -lt .01 -or $target.followSpeedScale -gt 10 -or
+            (-not $target.fixedVisualId -and -not $target.trackingVisualId) -or
+            (-not $target.fixedVisualId -and $target.fixedLifetimeMs -ne 0)) {
+            throw 'Kouku SHOWTIME target identity, window, selection or movement is invalid.'
+        }
+        foreach ($role in @('fixed','tracking')) {
+            $visualId = [string]$target.($role + 'VisualId')
+            if (-not $visualId) { continue }
+            Assert-StableId $visualId "Kouku SHOWTIME $role visual"
+            if (-not $Visuals.ContainsKey($visualId) -or
+                $Visuals[$visualId].combatObjectArchetypeId -cne ('combatobject.kouku.showtime.' + $role) -or
+                ($role -ceq 'fixed' -and $Visuals[$visualId].durationMs -ne $target.fixedLifetimeMs)) {
+                throw "Kouku SHOWTIME $role visual does not exact-join its Client template."
+            }
+        }
+        $fixed = if ($target.fixedVisualId) { $target.fixedVisualId } else { '-' }
+        $tracking = if ($target.trackingVisualId) { $target.trackingVisualId } else { '-' }
+        $speed = Format-InvariantFloat $target.followSpeedScale 'Kouku SHOWTIME follow speed'
+        $rows.Add((@('PATTERNSHOWTIMETARGETS', $EncounterId, $Pattern.patternId, $target.occurrenceId,
+            $target.startMs, $target.durationMs, $fixed, $tracking, $target.fixedLifetimeMs, $target.spawnIntervalMs, $speed) -join "`t"))
+        if ($hasRandom) {
+            if ($target.randomVolleys -isnot [Array] -or @($target.randomVolleys).Count -lt 1 -or @($target.randomVolleys).Count -gt 32) {
+                throw 'Kouku random volley pool requires 1..32 ordered templates.'
+            }
+            Assert-JsonInteger $target.randomSpawnIntervalMs 'Kouku random interval' 1 600000
+            Assert-JsonNumber $target.randomArenaRadiusM 'Kouku random arena radius'
+            Assert-JsonNumber $target.randomArenaHeightToleranceM 'Kouku random arena height tolerance'
+            if ($target.randomArenaRadiusM -le 0 -or $target.randomArenaRadiusM -gt 1000 -or
+                $target.randomArenaHeightToleranceM -le 0 -or $target.randomArenaHeightToleranceM -gt 10) { throw 'Kouku random arena bounds are invalid.' }
+            $radius = Format-InvariantFloat $target.randomArenaRadiusM 'Kouku random arena radius'
+            $height = Format-InvariantFloat $target.randomArenaHeightToleranceM 'Kouku random arena height'
+            $ordinal = 0
+            foreach ($volley in @($target.randomVolleys)) {
+                Assert-ExactProperties $volley @('clientVisualId','lifetimeMs') 'Kouku random volley'
+                Assert-JsonString $volley.clientVisualId 'Kouku random visual ID'
+                Assert-StableId $volley.clientVisualId 'Kouku random visual ID'
+                Assert-JsonInteger $volley.lifetimeMs 'Kouku random lifetime' 1 600000
+                if (-not $Visuals.ContainsKey($volley.clientVisualId) -or
+                    $Visuals[$volley.clientVisualId].combatObjectArchetypeId -cne 'combatobject.kouku.showtime.fixed' -or
+                    $Visuals[$volley.clientVisualId].loop -ne $false -or $Visuals[$volley.clientVisualId].durationMs -ne $volley.lifetimeMs) {
+                    throw 'Kouku random volley does not exact-join a finite fixed Client template.'
+                }
+                $rows.Add((@('PATTERNSHOWTIMERANDOM',$EncounterId,$Pattern.patternId,$target.occurrenceId,$ordinal,
+                    $volley.clientVisualId,$volley.lifetimeMs,$target.randomSpawnIntervalMs,$radius,$height) -join "`t"))
+                ++$ordinal
+            }
+        }
+    }
+    return $rows.ToArray()
+}
+
+function New-KoukuAlbionAirborneRow([object]$Trigger,[string]$EncounterId,[string]$PatternId,[uint32]$PatternDurationMs) {
+    $fields = @('airbornePhase','airborneHeightM','airborneDurationMs')
+    $present = @($fields | Where-Object { $null -ne $Trigger.PSObject.Properties[$_] }).Count
+    if ($Trigger.kind -cne 'ALBION_AIRBORNE') {
+        if ($present) { throw 'Only ALBION_AIRBORNE owns airborne phase values.' }
+        return
+    }
+    if ($present -ne 3) { throw 'ALBION_AIRBORNE requires its three phase values together.' }
+    Assert-JsonString $Trigger.airbornePhase 'Albion airborne phase'
+    Assert-JsonNumber $Trigger.airborneHeightM 'Albion airborne height'
+    Assert-JsonInteger $Trigger.airborneDurationMs 'Albion airborne duration' 0 600000
+    $phase = [string]$Trigger.airbornePhase
+    $height = [double]$Trigger.airborneHeightM
+    $duration = [uint32]$Trigger.airborneDurationMs
+    if ($phase -cnotin @('JUMP','SELECT_PLAYER','APPEAR_PLAYER','DISAPPEAR','CENTER','SLAM') -or
+        $height -lt 0 -or $height -gt 100000 -or (($phase -cin @('JUMP','APPEAR_PLAYER')) -ne ($height -gt 0)) -or
+        ($phase -ceq 'JUMP' -and ($duration -eq 0 -or ([uint64]$Trigger.startMs + $duration) -gt $PatternDurationMs)) -or
+        ($phase -cne 'JUMP' -and $duration -ne 0) -or $Trigger.hudMode -cne 'NONE' -or
+        $Trigger.faceCenterYawOffsetDegrees -ne 0 -or
+        @($Trigger.teleportPosition | Where-Object { [Math]::Abs([double]$_) -gt 100000 }).Count -ne 0 -or
+        ($phase -cne 'CENTER' -and @($Trigger.teleportPosition | Where-Object { $_ -ne 0 }).Count -ne 0)) {
+        throw 'Albion airborne phase, height, duration or coordinate ownership is invalid.'
+    }
+    return (@('PATTERNALBIONAIRBORNE',$EncounterId,$PatternId,$Trigger.triggerId,$phase,
+        (Format-InvariantFloat $height 'Albion airborne height'),$duration) -join "`t")
+}
+
+function Assert-BossDefaultParticles([object]$Boss) {
+    # Match ActorCatalog::ReadDefaultParticles. These are Client presentation
+    # inputs; validation must not add effect or bone paths to Server rows.
+    $particles = $Boss.defaultParticles
+    if ($particles -isnot [Array] -or @($particles).Count -gt 16 -or
+        (@($particles).Count -gt 0 -and
+            [string]$Boss.clientPresentationId -cne 'boss.valtan.client.v1')) {
+        throw 'Boss default particles require a bounded Valtan presentation list.'
+    }
+    $ids = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    foreach ($particle in @($particles)) {
+        Assert-ExactProperties $particle @('occurrenceId','effectAssetId','boneName',
+            'position','rotationDegrees','scale') 'boss default particle'
+        foreach ($field in @('occurrenceId','effectAssetId','boneName')) {
+            Assert-JsonString $particle.$field "boss default particle $field"
+        }
+        Assert-StableId $particle.occurrenceId 'boss default particle occurrenceId'
+        Assert-StableId $particle.effectAssetId 'boss default particle effectAssetId'
+        if (-not $ids.Add([string]$particle.occurrenceId) -or
+            [string]::IsNullOrEmpty([string]$particle.boneName) -or
+            [Text.Encoding]::UTF8.GetByteCount([string]$particle.boneName) -gt 128) {
+            throw 'Boss default particle occurrence or bone is invalid.'
+        }
+        foreach ($field in @('position','rotationDegrees','scale')) {
+            $vector = $particle.$field
+            if ($vector -isnot [Array] -or @($vector).Count -ne 3) {
+                throw "Boss default particle $field requires three numbers."
+            }
+            $minimum = if ($field -eq 'scale') { 0.0001 } elseif ($field -eq 'position') { -1000.0 } else { -360.0 }
+            $maximum = if ($field -eq 'scale') { 100.0 } elseif ($field -eq 'position') { 1000.0 } else { 360.0 }
+            foreach ($component in @($vector)) {
+                Assert-JsonNumber $component "boss default particle $field"
+                $number = [double]$component
+                if ([double]::IsNaN($number) -or [double]::IsInfinity($number) -or
+                    $number -lt $minimum -or $number -gt $maximum) {
+                    throw "Boss default particle $field is out of range."
+                }
+            }
+        }
+    }
+}
+
 function Assert-DisplayText(
 	[object]$Value,
 	[int]$MaximumBytes,
@@ -1329,12 +1504,17 @@ if ([string]$bossCatalogDocument.schema -cne 'lostark.boss-catalog' -or
 	throw 'Boss presentation catalog header is invalid.'
 }
 foreach ($presentationBoss in @($bossCatalogDocument.bosses)) {
-	Assert-ExactProperties $presentationBoss @(
+	$presentationBossProperties = @(
 		'archetypeId','visualAssetId','presentationScale','bodyModel',
 		'weaponModel','armorModels','armorParts','combatObjectVisuals',
 		'animationSetId','serverProfileId','clientPresentationId',
 		'presentationStatus','presentationClips','bodyModelPreScale',
-		'weaponModelPreScale','weaponModelPreRotationDegrees') 'boss presentation row'
+		'weaponModelPreScale','weaponModelPreRotationDegrees')
+	if ($presentationBoss.PSObject.Properties['defaultParticles']) {
+		$presentationBossProperties += 'defaultParticles'
+		Assert-BossDefaultParticles $presentationBoss
+	}
+	Assert-ExactProperties $presentationBoss $presentationBossProperties 'boss presentation row'
 	# v8: a weapon row carries three finite pitch/yaw/roll degrees that turn the
 	# authored weapon axes onto the socket bone; a weaponless row keeps null.
 	$weaponRotation = $presentationBoss.weaponModelPreRotationDegrees
@@ -3195,12 +3375,18 @@ $koukuGateTargets = @{
     'BINGO|MN_RPCT_05' = 'boss.kakulsaydon.bingo.saydon'
 }
 $koukuFollowupTargets = [Collections.Generic.List[string]]::new()
+$koukuTargetedVisuals = [Collections.Generic.Dictionary[string,object]]::new([StringComparer]::Ordinal)
+if (@($koukuEncounterDocument.patterns | Where-Object { $null -ne $_.PSObject.Properties['showtimeTargets'] }).Count -gt 0) {
+    $koukuTargetBindings = Read-JsonDocument 'Data/Animation/Authored/KoukuSaydon/KoukuSaydon.patternbindings.json'
+    $koukuTargetedVisuals = Get-KoukuTargetedVisualIndex $koukuTargetBindings $koukuEncounterDocument.sourceRevision
+}
 foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 	$koukuOptionalProperties = @()
 	if ($null -ne $koukuPattern.PSObject.Properties['resetBossYawDegrees']) { $koukuOptionalProperties += 'resetBossYawDegrees' }
 	if ($null -ne $koukuPattern.PSObject.Properties['bossMotion']) { $koukuOptionalProperties += 'bossMotion' }
 	if ($null -ne $koukuPattern.PSObject.Properties['folderId']) { $koukuOptionalProperties += 'folderId' }
 	if ($null -ne $koukuPattern.PSObject.Properties['fixedTimeline']) { $koukuOptionalProperties += 'fixedTimeline' }
+	if ($null -ne $koukuPattern.PSObject.Properties['showtimeTargets']) { $koukuOptionalProperties += 'showtimeTargets' }
 	Assert-ExactProperties $koukuPattern (@(
 		'patternId','category','minimumPhase','maximumPhase','targetPolicy',
 		'aimPolicy','displayName','actionId','sourceActionIds','selectionMode',
@@ -3482,7 +3668,7 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 			}
 		}
 		if ([double]$bossMotion.startPosition[1] -ne [double]$bossMotion.endPosition[1]) { throw 'KoukuSaydon bossMotion base Y must remain constant' }
-		if (@($koukuPattern.mechanicTriggers | Where-Object { $_.kind -ceq 'REAL_GAZE_TELEPORT' }).Count -gt 0) { throw 'KoukuSaydon bossMotion cannot also teleport the boss' }
+		if (@($koukuPattern.mechanicTriggers | Where-Object { $_.kind -cin @('REAL_GAZE_TELEPORT','BOSS_TELEPORT_XZ') }).Count -gt 0) { throw 'KoukuSaydon bossMotion cannot also teleport the boss' }
 		$bossMotionRow = @('PATTERNBOSSMOTION', $koukuEncounterDocument.encounterId, $koukuPattern.patternId, $bossMotion.startMs, $bossMotion.endMs)
 		foreach ($component in @($bossMotion.startPosition) + @($bossMotion.endPosition) + @($bossMotion.yawDegrees)) {
 			$bossMotionRow += Format-InvariantSignedFloat $component 'KoukuSaydon bossMotion'
@@ -3789,7 +3975,7 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 				Assert-JsonNumber $track.playbackSpeed 'Collider WORLD playbackSpeed'
 				if ($track.startMs -gt $window.startMs -or $track.playbackSpeed -le 0 -or
 					@($track.baselineScale | Where-Object { [double]$_ -le 0 }).Count -gt 0 -or
-					[Math]::Abs([double]$track.baselineScale[0]-[double]$track.baselineScale[2]) -gt 0.0001) { throw 'Collider WORLD clock/scale is invalid' }
+					($region.shape -cne 'BOX' -and [Math]::Abs([double]$track.baselineScale[0]-[double]$track.baselineScale[2]) -gt 0.0001)) { throw 'Collider WORLD clock/scale is invalid' }
 				$baselineNumbers = @($track.baselinePosition) + @($track.baselineYawDegrees) + @($track.baselineScale)
 				foreach ($number in $baselineNumbers) { Assert-JsonNumber $number 'Collider WORLD baseline' }
 				if ($isBossBoneTrack -and ($track.startMs -ne $window.startMs -or $track.durationMs -ne $window.durationMs -or
@@ -3805,7 +3991,10 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 				$lastKeyTime = -1
 				for ($keyOrdinal=0; $keyOrdinal -lt @($track.keys).Count; ++$keyOrdinal) {
 					$key = $track.keys[$keyOrdinal]
-					Assert-ExactProperties $key @('timeMs','positionOffset','rotationY','rotationW','scaleMultiplier','visible') 'Collider WORLD key'
+					$keyFields = @('timeMs','positionOffset','rotationY','rotationW','scaleMultiplier','visible')
+					$hasGrip = $null -ne $key.PSObject.Properties['gripPosition']
+					if ($hasGrip) { $keyFields += 'gripPosition' }
+					Assert-ExactProperties $key $keyFields 'Collider WORLD key'
 					Assert-JsonInteger $key.timeMs 'Collider WORLD key timeMs' 0 $track.durationMs
 					if ($key.timeMs -le $lastKeyTime -or @($key.positionOffset).Count -ne 3 -or @($key.scaleMultiplier).Count -ne 3 -or $key.visible -isnot [bool]) { throw 'Collider WORLD key is invalid' }
 					$lastKeyTime = $key.timeMs
@@ -3814,12 +4003,29 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 					if ($isBossBoneTrack -and ($key.rotationY -ne 0 -or $key.rotationW -ne 1 -or -not $key.visible -or
 						@($key.scaleMultiplier | Where-Object { [double]$_ -ne 1 }).Count -ne 0)) { throw 'Boss Bone Collider keys must preserve target yaw and authored scale' }
 					if (@($key.scaleMultiplier | Where-Object { [double]$_ -lt 0 }).Count -gt 0 -or
-						[Math]::Abs([double]$key.scaleMultiplier[0]-[double]$key.scaleMultiplier[2]) -gt 0.0001 -or
+						($region.shape -cne 'BOX' -and [Math]::Abs([double]$key.scaleMultiplier[0]-[double]$key.scaleMultiplier[2]) -gt 0.0001) -or
 						[Math]::Abs([double]$key.rotationY*[double]$key.rotationY+[double]$key.rotationW*[double]$key.rotationW-1) -gt 0.001) { throw 'Collider WORLD quaternion/scale is invalid' }
 					$keyText = @($keyNumbers | ForEach-Object { Format-InvariantSignedFloat $_ 'Collider WORLD key geometry' })
+					$gripFields = @()
+					if ($hasGrip) {
+                        if ($region.anchorKind -cne 'WORLD' -or $region.shape -cne 'BOX' -or $windowKind -cne 'ENTER_AREA' -or
+                            @($window.onSuccess).Count -ne 1 -or $window.onSuccess[0].kind -cne 'GRAB_TO_WORLD_OBJECT' -or
+                            @($window.onFail).Count -or @($window.onTimeout).Count -or @($key.gripPosition).Count -ne 3 -or
+                            $track.startMs -ne $window.startMs -or $track.durationMs -lt $window.durationMs -or $track.startDelayMs -ne 0 -or
+                            $track.playbackSpeed -ne 1 -or $track.interpolation -cne 'LINEAR' -or $track.baselineYawDegrees -ne 0 -or
+                            @($track.baselinePosition | Where-Object { [double]$_ -ne 0 }).Count -or
+                            @($track.baselineScale | Where-Object { [double]$_ -ne 1 }).Count -or
+                            $track.keys[0].timeMs -ne 0 -or $track.keys[-1].timeMs -ne $track.durationMs) { throw 'Physical grip needs an exact world hook BOX track' }
+                        foreach ($number in $key.gripPosition) {
+                            Assert-JsonNumber $number 'Hook grip XYZ'
+                            if ([math]::Abs([double]$number) -gt 100000) { throw 'Hook grip XYZ exceeds bounds' }
+                            $gripFields += Format-InvariantSignedFloat $number 'Hook grip XYZ'
+                        }
+                    }
+                    if ($hasGrip -ne ($null -ne $track.keys[0].PSObject.Properties['gripPosition'])) { throw 'Hook grip positions must exist on every key' }
 					$visibleFlag = if ($key.visible) { 1 } else { 0 }
 					$patternRows.Add((@('PATTERNLOGICREGIONWORLDKEY',$koukuEncounterDocument.encounterId,$koukuPattern.patternId,
-						$window.windowId,$region.regionId,$keyOrdinal,$key.timeMs) + $keyText + @($visibleFlag) -join "`t"))
+						$window.windowId,$region.regionId,$keyOrdinal,$key.timeMs) + $keyText + @($visibleFlag) + $gripFields -join "`t"))
 				}
 			}
 		}
@@ -3979,13 +4185,64 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 	}
 	# Forward Hold references resolve only after every PATTERNLOGIC row exists.
 	foreach ($holdRow in $koukuHoldRows) { $patternRows.Add($holdRow) }
+	if ($null -ne $koukuPattern.PSObject.Properties['showtimeTargets']) {
+		foreach ($targetRow in @(New-KoukuShowtimeTargetRows $koukuPattern $koukuEncounterDocument.encounterId $koukuPatternDurationMs $koukuTargetedVisuals)) {
+			$patternRows.Add($targetRow)
+		}
+	}
 	if ($koukuPattern.mechanicTriggers -isnot [Array] -or @($koukuPattern.mechanicTriggers).Count -gt 64) {
 		throw "KoukuSaydon mechanic trigger list is invalid"
 	}
 	$triggerIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 	foreach ($trigger in @($koukuPattern.mechanicTriggers)) {
+		if ($trigger.kind -ceq 'CROSS_DIRECTION_CLONES') {
+			Assert-ExactProperties $trigger @('triggerId','kind','startMs','durationMs','hudMode','teleportPosition','clonePatternId',
+				'clockHours','faceCenterYawOffsetDegrees','countPerPlayer','radiusM','effectLifetimeMs','arenaRandomCount',
+				'arenaRandomRadiusM','arenaHeightToleranceM','arenaMinimumSpacingM','randomPlayerOnly','directionPatternIds','cloneEndStageId') 'Cross direction Logic'
+			Assert-StableId $trigger.triggerId 'Cross direction occurrence'
+			Assert-StableId $trigger.cloneEndStageId 'Cross direction clone end Stage'
+			Assert-JsonInteger $trigger.startMs 'Cross direction startMs' 0 600000
+			Assert-JsonInteger $trigger.durationMs 'Cross direction durationMs' 1 600000
+			if (-not $triggerIds.Add([string]$trigger.triggerId) -or $trigger.directionPatternIds -isnot [Array] -or
+				@($trigger.directionPatternIds).Count -ne 4 -or @($trigger.directionPatternIds | Select-Object -Unique).Count -ne 4 -or
+				([uint64]$trigger.startMs + [uint64]$trigger.durationMs) -gt $koukuPatternDurationMs -or
+				$trigger.hudMode -cne 'NONE' -or $trigger.clonePatternId -cne '' -or @($trigger.clockHours).Count -ne 0 -or
+				$trigger.teleportPosition -isnot [Array] -or @($trigger.teleportPosition).Count -ne 3 -or
+				@($trigger.teleportPosition | Where-Object { $_ -ne 0 }).Count -ne 0 -or
+				$trigger.faceCenterYawOffsetDegrees -ne 0 -or $trigger.countPerPlayer -ne 0 -or $trigger.radiusM -ne 0 -or
+				$trigger.effectLifetimeMs -ne 0 -or $trigger.arenaRandomCount -ne 0 -or $trigger.arenaRandomRadiusM -ne 0 -or
+				$trigger.arenaHeightToleranceM -ne 0 -or $trigger.arenaMinimumSpacingM -ne 0 -or $trigger.randomPlayerOnly) {
+				throw 'Cross direction requires exactly four distinct candidates and a bounded duration without unrelated values'
+			}
+			foreach ($identity in $trigger.directionPatternIds) {
+				Assert-StableId $identity 'Cross direction Pattern ID'
+				$children = @($koukuEncounterDocument.patterns | Where-Object { $_.patternId -ceq $identity })
+				if ($children.Count -ne 1 -or $identity -ceq $koukuPattern.patternId) { throw 'Cross direction child Pattern is unavailable' }
+				$child = $children[0]; $childDuration = [uint64]0; $cutoff = [uint64]0
+				foreach ($stage in @($child.stages)) {
+					$childDuration += [uint64]$stage.durationMs
+					if ($stage.stageId -ceq $trigger.cloneEndStageId) { $cutoff = $childDuration }
+				}
+				if ($child.gateId -cne $koukuPattern.gateId -or $child.actorProfileId -cne $koukuPattern.actorProfileId -or
+					$child.targetBossPlacementId -cne $koukuPattern.targetBossPlacementId -or $child.category -cne 'MECHANIC' -or
+					-not $child.fixedTimeline -or $cutoff -eq 0 -or $cutoff -ge $childDuration -or $childDuration -gt [uint64]$trigger.durationMs -or
+					@($child.logicWindows).Count -ne 0 -or @($child.mechanicTriggers).Count -ne 0 -or
+					@($child.worldSequences).Count -ne 0 -or @($child.sceneProfiles).Count -ne 0 -or
+					$null -ne $child.PSObject.Properties['bossMotion'] -or $child.resetBossToSpawn) {
+					throw 'Cross direction child must be a same-body Animation Pattern with a cutoff before its full ending'
+				}
+				$koukuFollowupTargets.Add([string]$identity)
+			}
+			$patternRows.Add((@('PATTERNCROSSDIRECTION',$koukuEncounterDocument.encounterId,$koukuPattern.patternId,
+				$trigger.triggerId,[uint32]$trigger.startMs,[uint32]$trigger.durationMs) + @($trigger.directionPatternIds) +
+				@($trigger.cloneEndStageId)) -join "`t")
+			continue
+		}
 		$triggerOptionalProperties = @()
 		if ($null -ne $trigger.PSObject.Properties['patternSpawns']) { $triggerOptionalProperties += 'patternSpawns' }
+		foreach ($field in @('airbornePhase','airborneHeightM','airborneDurationMs')) {
+			if ($null -ne $trigger.PSObject.Properties[$field]) { $triggerOptionalProperties += $field }
+		}
 		Assert-ExactProperties $trigger (@('triggerId','kind','startMs','durationMs',
 			'hudMode','teleportPosition','clonePatternId','clockHours','faceCenterYawOffsetDegrees','countPerPlayer','radiusM','effectLifetimeMs',
 			'arenaRandomCount','arenaRandomRadiusM','arenaHeightToleranceM','arenaMinimumSpacingM','randomPlayerOnly') + $triggerOptionalProperties) 'KoukuSaydon mechanic trigger'
@@ -3995,7 +4252,7 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 		$modes = @('NONE','POLYMORPH','MARIO','DANCE','MAZE')
 		$triggerHudMode = [Array]::IndexOf($modes, [string]$trigger.hudMode)
 		if (-not $triggerIds.Add([string]$trigger.triggerId) -or $triggerHudMode -lt 0 -or
-			$trigger.kind -cnotin @('REAL_GAZE_TELEPORT','HUD_ENTER','CARD_MAZE_HIDE_NEXT','CARD_MAZE_ENTER','ALBION_BLUE_CIRCLE','SUMMON_PATTERNS') -or
+			$trigger.kind -cnotin @('REAL_GAZE_TELEPORT','BOSS_TELEPORT_XZ','BOSS_TRACK_TARGET','HUD_ENTER','CARD_MAZE_HIDE_NEXT','CARD_MAZE_ENTER','ALBION_BLUE_CIRCLE','SUMMON_PATTERNS','ALBION_AIRBORNE') -or
 			([uint64]$trigger.startMs + [uint64]$trigger.durationMs) -gt $koukuPatternDurationMs -or
 			$trigger.teleportPosition -isnot [Array] -or @($trigger.teleportPosition).Count -ne 3 -or
 			$trigger.clockHours -isnot [Array]) {
@@ -4003,9 +4260,10 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 		}
 		$position = @($trigger.teleportPosition)
 		foreach ($coordinate in $position) { Assert-JsonNumber $coordinate 'KoukuSaydon teleport coordinate' }
-		if ($trigger.kind -cin @('CARD_MAZE_HIDE_NEXT','CARD_MAZE_ENTER') -and
+		if ($trigger.kind -ceq 'BOSS_TELEPORT_XZ' -and @($position | Where-Object { [Math]::Abs([double]$_) -gt 100000 }).Count -ne 0) { throw 'Boss XZ teleport coordinates exceed the world bounds' }
+		if ($trigger.kind -cin @('CARD_MAZE_HIDE_NEXT','CARD_MAZE_ENTER','BOSS_TELEPORT_XZ','BOSS_TRACK_TARGET') -and
 			($triggerHudMode -ne 0 -or $trigger.faceCenterYawOffsetDegrees -ne 0 -or
-			 ($trigger.kind -ceq 'CARD_MAZE_HIDE_NEXT' -and @($position | Where-Object { $_ -ne 0 }).Count -ne 0))) {
+			 ($trigger.kind -cin @('CARD_MAZE_HIDE_NEXT','BOSS_TRACK_TARGET') -and @($position | Where-Object { $_ -ne 0 }).Count -ne 0))) {
 			throw "KoukuSaydon card maze trigger carries unrelated values"
 		}
 		Assert-JsonInteger $trigger.countPerPlayer 'KoukuSaydon circles per player' 0 8
@@ -4091,7 +4349,8 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 					(Format-InvariantSignedFloat $spawn.yawOffsetDegrees 'Summon yaw offset')) -join "`t"))
 			}
 		}
-		elseif ($triggerOptionalProperties.Count -ne 0) { throw 'Only a Summon trigger can carry patternSpawns' }
+		elseif ($null -ne $trigger.PSObject.Properties['patternSpawns']) { throw 'Only a Summon trigger can carry patternSpawns' }
+		$airborneRow = New-KoukuAlbionAirborneRow $trigger $koukuEncounterDocument.encounterId $koukuPattern.patternId $koukuPatternDurationMs
 		$patternRows.Add((@('PATTERNMECHANICTRIGGER', $koukuEncounterDocument.encounterId,
 			$koukuPattern.patternId, $trigger.triggerId, $trigger.kind,
 			[uint32]$trigger.startMs, [uint32]$trigger.durationMs, $triggerHudMode,
@@ -4105,6 +4364,7 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 			(Format-InvariantSignedFloat $trigger.arenaHeightToleranceM 'KoukuSaydon arena height tolerance'),
 			(Format-InvariantSignedFloat $trigger.arenaMinimumSpacingM 'KoukuSaydon arena minimum spacing'), [int]$trigger.randomPlayerOnly) -join "`t"))
 		foreach ($spawnRow in $spawnRows) { $patternRows.Add($spawnRow) }
+		if ($airborneRow) { $patternRows.Add($airborneRow) }
 	}
 	foreach ($worldSequence in @($koukuPattern.worldSequences)) {
 		$worldSequenceProperties = @('sequenceInstanceId','occurrenceId','startMs','durationMs','playbackSpeed','positionOffset','anchorKind','anchorPosition')
@@ -6338,6 +6598,20 @@ function Get-BootstrapRowSortKey {
 	param([Parameter(Mandatory = $true)][string]$Row)
 
 	$fields = @($Row.Split("`t"))
+	if ($fields.Count -ge 4 -and $fields[0] -cin @('PATTERNMECHANICTRIGGER','PATTERNALBIONAIRBORNE')) {
+		# Airborne settings resolve their exact, already loaded mechanic occurrence.
+		$dependencyOrder = if ($fields[0] -ceq 'PATTERNMECHANICTRIGGER') { 0 } else { 1 }
+		$Row = (@('PATTERNMECHANICTRIGGER',$fields[1],$fields[2],$fields[3],$dependencyOrder) +
+			@($fields[4..($fields.Count - 1)])) -join "`t"
+	}
+	if ($fields.Count -ge 5 -and $fields[0] -cin @(
+		'PATTERNSHOWTIMETARGETS','PATTERNSHOWTIMERANDOM')) {
+		# Random volleys resolve an already loaded target occurrence. Keep the
+		# parent first, then its dense numeric volley ordinals, for each owner.
+		$dependencyOrder = if ($fields[0] -ceq 'PATTERNSHOWTIMETARGETS') { 0 } else { 1 }
+		$Row = (@('PATTERNSHOWTIMETARGETS', $fields[1], $fields[2],
+			$fields[3], $dependencyOrder) + @($fields[4..($fields.Count - 1)])) -join "`t"
+	}
 	if ($fields.Count -ge 4 -and $fields[0] -cin @(
 		'PATTERNWORLDSEQUENCE','PATTERNWORLDPLACEMENT','PATTERNWORLDSUPPORT')) {
 		# Placement/support rows resolve an already loaded World occurrence.
@@ -6442,7 +6716,7 @@ $rows = @($damageRows + $skillRows + $playerRows + $bossRows +
 	$patternRows + @($presentationGenerationRow) | Sort-Object -Property @{
 		Expression = { Get-BootstrapRowSortKey -Row $_ } })
 # Matches CGameplayCatalog admission; reject before any bootstrap is staged.
-$maximumGameplayBootstrapRows = 8192
+$maximumGameplayBootstrapRows = 32768
 if ($rows.Count -eq 0 -or $rows.Count -gt $maximumGameplayBootstrapRows) {
     throw "Gameplay bootstrap row count must be in 1..$maximumGameplayBootstrapRows (got $($rows.Count))"
 }

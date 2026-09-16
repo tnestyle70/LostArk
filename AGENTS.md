@@ -138,6 +138,10 @@ CModel preScale·socket offset·particle 단위를 함께 실측한다. syntheti
 ## 구현 원칙
 
 - 추측보다 현재 코드와 데이터 실측을 우선한다.
+- 맵 추출의 가시성은 actor/component와 archetype/CDO의 원본 설정으로 결정한다.
+  `LV_MODULE`, nav, water, FX 이름이나 navigation 참여만으로 배치를 숨기지 않는다.
+  geometry·재질 미지원은 가시성과 별도 실패 근거로 남긴다. 재추출은
+  `Tools/LevelPlacementExtractor/README.md`의 schema3·WModel 채널·source 재질 절차를 따른다.
 - 기존 Prototype/Clone/Layer/CModel 경로를 확장하고 같은 역할의 두 번째 런타임 경로를 만들지 않는다.
 - `CCookedModel`과 `CBinaryAssetObject` 경로는 제거됐다. 신규 기능과 MapTool 에셋은 반드시 `CModel -> CMaterial` 통합 경로를 사용하며 동등한 두 번째 모델 런타임을 만들지 않는다.
 - Engine은 범용 기능, Client는 LostArk의 Level, GameObject, 에디터 흐름과 Scene 데이터를 소유한다.

@@ -621,7 +621,7 @@ function Read-MapEffectDocument {
         throw "Map Effect header is invalid: $Path"
     }
     $presentations = @($document.presentations)
-    if ($presentations.Count -lt 1 -or $presentations.Count -gt 64) {
+    if ($presentations.Count -lt 1 -or $presentations.Count -gt 2048) {
         throw "Map Effect presentation count is invalid: $Path"
     }
     $independentIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
@@ -695,11 +695,19 @@ function Read-MapEffectDocument {
             continue
         }
         if ($presentation.presentationKind -eq 'EFFECT_DOCUMENT') {
-            Assert-ExactJsonProperties $presentation `
-                @('independentEffectId','displayName','presentationKind','placementId',
+            $worldProperties = @('independentEffectId','displayName','presentationKind','placementId',
                   'effectAssetId','position','rotationQuaternion','scale',
                   'orientationPolicy','activationPolicy','activationSetId',
-                  'activationWindows','playbackPolicy') 'Map Effect world row'
+                  'activationWindows','playbackPolicy')
+            if ($presentation.PSObject.Properties.Name -contains 'maxDrawDistanceMeters') {
+                $worldProperties += 'maxDrawDistanceMeters'
+                if (-not (Test-JsonNumber $presentation.maxDrawDistanceMeters) -or
+                    [double]$presentation.maxDrawDistanceMeters -lt 0 -or
+                    [double]$presentation.maxDrawDistanceMeters -gt 100000) {
+                    throw "Map Effect draw distance is invalid: $Path"
+                }
+            }
+            Assert-ExactJsonProperties $presentation $worldProperties 'Map Effect world row'
             if ($presentation.placementId -isnot [string] -or
                 $presentation.placementId -notmatch '^[A-Za-z0-9._-]{1,160}$' -or
                 -not $worldPlacementIds.Add($presentation.placementId) -or
@@ -707,7 +715,7 @@ function Read-MapEffectDocument {
                 $presentation.effectAssetId -notmatch '^[A-Za-z0-9._-]{1,160}$' -or
                 $presentation.orientationPolicy -notin @('WORLD','CAMERA_FACING_WORLD') -or
                 $presentation.activationPolicy -notin @('LEVEL_ACTIVE','SERVER_PATTERN_WINDOW') -or
-                $presentation.playbackPolicy -notin @('LOCAL_LOOP','SERVER_CLOCK_SAMPLE') -or
+                $presentation.playbackPolicy -notin @('LOCAL_LOOP','SOURCE_LOOP','SOURCE_ONCE','SERVER_CLOCK_SAMPLE') -or
                 (($presentation.activationPolicy -eq 'SERVER_PATTERN_WINDOW') -ne
                  ($presentation.playbackPolicy -eq 'SERVER_CLOCK_SAMPLE'))) {
                 throw "Map Effect world identity/policy is invalid: $Path"
@@ -1374,6 +1382,7 @@ function Read-MapWaterDocument {
 
 function Read-WorldSequenceDocument {
     param([string]$Path)
+    if ([IO.FileInfo]::new($Path).Length -gt 16777216) { throw 'World sequence source exceeds the Client 16 MiB admission limit' }
     $raw = [IO.File]::ReadAllText($Path, [Text.UTF8Encoding]::new($false, $true))
     try { $document = $raw | ConvertFrom-Json }
     catch { throw "World sequence JSON parse failed: $Path" }
@@ -1610,6 +1619,7 @@ function Read-WorldSequenceDocument {
         $templateProperties = @('sequenceId','displayName','category','durationMs','interpolation','tracks','animationTracks')
         if ($document.formatVersion -eq 3 -and $null -ne $template.PSObject.Properties['objectMotion']) { $templateProperties += 'objectMotion' }
         if ($document.formatVersion -eq 3 -and $null -ne $template.PSObject.Properties['effectTracks']) { $templateProperties += 'effectTracks' }
+        if ($document.formatVersion -eq 3 -and $null -ne $template.PSObject.Properties['colliderTracks']) { $templateProperties += 'colliderTracks' }
         Assert-ExactJsonProperties $template $templateProperties 'World sequence template'
         if ($template.sequenceId -isnot [string] -or
             $template.sequenceId -notmatch $stableId -or
@@ -1839,6 +1849,38 @@ function Read-WorldSequenceDocument {
                 Assert-SequenceVector $effect.positionOffset 'World Object effect position'
                 Assert-SequenceVector $effect.rotationDegrees 'World Object effect rotation'
                 Assert-SequenceVector $effect.scale 'World Object effect scale' $true
+            }
+        }
+        if ($null -ne $template.PSObject.Properties['colliderTracks']) {
+            if ($template.colliderTracks -isnot [System.Array] -or
+                @($template.tracks).Count + @($template.animationTracks | Where-Object { $null -ne $_ }).Count + @($template.effectTracks | Where-Object { $null -ne $_ }).Count + @($template.colliderTracks).Count -gt 32) {
+                throw 'World Object colliderTracks exceed the combined 32-track limit'
+            }
+            if (@($template.colliderTracks).Count -gt 0 -and ([double]$template.objectMotion.spreadDegrees -ne 0 -or @($template.objectMotion.spawnHalfExtents | Where-Object { $null -ne $_ -and [double]$_ -ne 0 }).Count)) { throw 'World Object collider publication requires zero random spread and spawn extents' }
+            $colliderIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+            foreach ($row in $template.colliderTracks) {
+                $fields = @('colliderTrackId','slotId','startMs','durationMs','positionOffset','halfExtents','yawDegrees','behavior','damagePercent','gripLocalOffset')
+                if ($null -ne $row.PSObject.Properties['attachmentBone']) { $fields += 'attachmentBone' }
+                Assert-ExactJsonProperties $row $fields 'World Object collider track'
+                if ($row.colliderTrackId -isnot [string] -or $row.colliderTrackId -notmatch $stableId -or -not $colliderIds.Add($row.colliderTrackId) -or
+                    $row.slotId -isnot [string] -or @($template.tracks | Where-Object { $_.slotId -ceq $row.slotId }).Count -ne 1 -or
+                    $row.behavior -cnotin @('DAMAGE','INSTANT_DEATH','HOOK_CAPTURE')) { throw 'Invalid collider identity, transform slot or behavior' }
+                foreach ($field in @('startMs','durationMs','damagePercent')) {
+                    if (-not (Test-JsonNumber $row.$field) -or [double]$row.$field -ne [math]::Floor([double]$row.$field)) { throw "Collider $field must be an integer" }
+                }
+                if ($row.startMs -lt 0 -or $row.durationMs -lt 1 -or $row.startMs + $row.durationMs -gt $template.durationMs -or
+                    $row.damagePercent -lt 0 -or $row.damagePercent -gt 100 -or
+                    ($row.behavior -ceq 'DAMAGE' -and $row.damagePercent -lt 1) -or
+                    ($row.behavior -cne 'DAMAGE' -and $row.damagePercent -ne 0) -or
+                    -not (Test-JsonNumber $row.yawDegrees) -or [math]::Abs([double]$row.yawDegrees) -gt 36000) { throw 'Invalid collider clock, damage or yaw' }
+                foreach ($field in @('positionOffset','halfExtents','gripLocalOffset')) {
+                    Assert-SequenceVector $row.$field "Collider $field"
+                    $maximum = if ($field -ceq 'halfExtents') { 1000 } else { 100000 }
+                    if (@($row.$field | Where-Object { [math]::Abs([double]$_) -gt $maximum -or ($field -ceq 'halfExtents' -and [double]$_ -le 0.001) }).Count) { throw 'Invalid collider vector range' }
+                }
+                if ($row.behavior -cne 'HOOK_CAPTURE' -and (@($row.gripLocalOffset | Where-Object { [double]$_ -ne 0 }).Count -or -not [string]::IsNullOrEmpty([string]$row.attachmentBone))) { throw 'Only hook capture carries a grip or bone' }
+                if ($null -ne $row.PSObject.Properties['attachmentBone'] -and ($row.attachmentBone -isnot [string] -or
+                    [Text.Encoding]::UTF8.GetByteCount([string]$row.attachmentBone) -gt 256 -or $row.attachmentBone -match '[\x00-\x1f\x7f]')) { throw 'Invalid collider attachmentBone' }
             }
         }
         # One binding per slot, so a chained slot and a slot that also carries
@@ -2686,7 +2728,7 @@ function Read-MapMaterialDocument {
         $isSourceBg = $row.family -ceq 'bg-source-opaque-masked'
         $isSourceOverlay = $row.family -ceq 'bg_base_opa_overlay'
         $isSourceSpecular = $row.family -ceq 'bg_seamless-specular_opa'
-        $isPBR = $row.family -cin @('bg_base_pbr_seamless_opa','bg_base_pbr_opa')
+        $isPBR = $row.family -cin @('bg_base_pbr_seamless_opa','bg_base_pbr_opa','bg_base_pbr_msk')
         if ($isPBR) {
             if ($document.formatVersion -ne 2) { throw 'PBR map material requires formatVersion 2' }
             $fields = @('assetId','materialName','sourceMaterial','family','textureColorSpace','diffuseColor','reflectionColor','uvTiling','reflectionOriginOffset','diffuseBrightness','normalIntensity','reflectionIntensity','reflectionContrast','reflectionTiling','diffuseSaturation','detailNormalIntensity','detailNormalTiling','metallicIntensity','metallicPower','roughnessIntensity','roughnessPower','aoIntensity','aoPower','specularPBRIntensity','nonmetallicBrightness','metallicBrightness','minimumRoughness','vertexAlpha','uvFixedNormal','useWorldReflection','castsShadow','diffuseTexture','normalTexture','detailNormalTexture','ormTexture','reflectionTexture')
@@ -2697,6 +2739,7 @@ function Read-MapMaterialDocument {
             'bg_base_msk' { $fields += 'diffuseSaturation'; $scalarFields += 'diffuseSaturation' }
             'bg_base_pbr_seamless_opa' { }
             'bg_base_pbr_opa' { }
+            'bg_base_pbr_msk' { }
             'bg-source-opaque-masked' {
                 if ($document.formatVersion -ne 2) { throw 'Source BG requires formatVersion 2' }
                 $fields = @('assetId','materialName','sourceMaterial','family','textureColorSpace',
@@ -2722,11 +2765,11 @@ function Read-MapMaterialDocument {
                 foreach ($optional in @('bakedLighting','uvTiling','specularTexture')) {
                     if ($null -ne $row.PSObject.Properties[$optional]) { $fields += $optional }
                 }
-                foreach ($optional in @('sourceOverlayFlags','sourceDirection','sourceUV','detailNormalTexture','detailNormalIntensity','detailNormalTiling')) {
+                foreach ($optional in @('sourceOverlayFlags','sourceDirection','sourceUV','detailNormalTexture','detailNormalIntensity','detailNormalTiling','sourceSubspecular','sourceSpecularSaturation','sourceBump','emissive')) {
                     if ($null -ne $row.PSObject.Properties[$optional]) { $fields += $optional }
                 }
                 if ($null -ne $row.PSObject.Properties['sourceOverlayFlags']) {
-                    if (-not (Test-JsonNumber $row.sourceOverlayFlags) -or $row.sourceOverlayFlags -lt 0 -or $row.sourceOverlayFlags -gt 511 -or [Math]::Floor($row.sourceOverlayFlags) -ne $row.sourceOverlayFlags) { throw 'Invalid source overlay flags' }
+                    if (-not (Test-JsonNumber $row.sourceOverlayFlags) -or $row.sourceOverlayFlags -lt 0 -or $row.sourceOverlayFlags -gt 2047 -or [Math]::Floor($row.sourceOverlayFlags) -ne $row.sourceOverlayFlags) { throw 'Invalid source overlay flags' }
                     if (($row.sourceOverlayFlags -band 1) -eq 0) { $fields = @($fields | Where-Object { $_ -cne 'normalTexture' }) }
                     if (($row.sourceOverlayFlags -band 2) -eq 0) { $fields = @($fields | Where-Object { $_ -cne 'overlayNormalTexture' }) }
                 }
@@ -2828,7 +2871,8 @@ function Read-MapMaterialDocument {
             }
             if ($null -ne $row.PSObject.Properties['sourceSpecularSaturation'] -and
                 (-not (Test-JsonNumber $row.sourceSpecularSaturation) -or $row.sourceSpecularSaturation -lt 0 -or $row.sourceSpecularSaturation -gt 1000000)) { throw 'Invalid source specular saturation' }
-            if ((($flags -band 8) -ne 0 -and ($flags -band 4) -eq 0) -or
+            $hasSourceSubspecular = $null -ne $row.PSObject.Properties['sourceSubspecular'] -and $row.sourceSubspecular[0] -gt 0
+            if ((($flags -band 8) -ne 0 -and ($flags -band 4) -eq 0 -and -not $hasSourceSubspecular) -or
                 (($flags -band 32) -ne 0 -and ($flags -band 16) -eq 0)) { throw 'Inconsistent source BG branches' }
             foreach ($vector in @('sourceBump','sourceUV')) {
                 if ($row.$vector -isnot [array] -or $row.$vector.Count -ne 4) { throw "Invalid source BG vector: $vector" }
@@ -2841,6 +2885,23 @@ function Read-MapMaterialDocument {
             if ([Math]::Abs($row.sourceUV[0]*$row.sourceUV[0]+$row.sourceUV[1]*$row.sourceUV[1]-1) -gt 0.0001) {
                 throw 'Source BG UV rotation must be unit length'
             }
+        }
+        if ($isSourceOverlay) {
+            $hasOverlayBump = $null -ne $row.PSObject.Properties['sourceOverlayFlags'] -and ($row.sourceOverlayFlags -band 512) -ne 0
+            if ($hasOverlayBump -ne ($null -ne $row.PSObject.Properties['sourceBump'])) { throw 'Inconsistent source overlay bump branch' }
+            foreach ($key in @('sourceSubspecular','sourceBump')) {
+                if ($null -eq $row.PSObject.Properties[$key]) { continue }
+                $count = if ($key -ceq 'sourceBump') { 4 } else { 2 }
+                if ($row.$key -isnot [array] -or $row.$key.Count -ne $count) { throw 'Invalid source overlay branch vector' }
+                foreach ($value in $row.$key) {
+                    if (-not (Test-JsonNumber $value) -or [Math]::Abs([double]$value) -gt 1000000 -or
+                        ($key -ceq 'sourceSubspecular' -and $value -lt 0)) { throw 'Invalid source overlay branch component' }
+                }
+            }
+            if ($null -ne $row.PSObject.Properties['sourceSpecularSaturation'] -and
+                (-not (Test-JsonNumber $row.sourceSpecularSaturation) -or $row.sourceSpecularSaturation -lt 0 -or $row.sourceSpecularSaturation -gt 1000000)) { throw 'Invalid overlay specular saturation' }
+            if ($null -ne $row.PSObject.Properties['emissive'] -and
+                ($row.emissive.flicker.minimum -ne 0 -or $row.emissive.flicker.speed -ne 0 -or $row.emissive.flicker.phaseOffset -ne 0)) { throw 'Unsupported source overlay emissive flicker' }
         }
         $spaceKeys = if ($isSourceOverlay) { @('diffuse','normal','overlayDiffuse','overlayNormal') } elseif ($isSourceSpecular -or $isSourceBg) { @('diffuse','normal','specular','reflection') } elseif ($isPBR) { @('diffuse','normal','detailNormal','reflection','orm') } else { @('diffuse','specular','reflection') }
         if ($isSourceOverlay -and $null -ne $row.PSObject.Properties['specularTexture']) { $spaceKeys += 'specular' }
@@ -2918,7 +2979,16 @@ function Read-MapMaterialDocument {
                 $emissive.uvTiling -isnot [array] -or $emissive.uvTiling.Count -ne 2) {
                 throw 'Invalid source emissive color space or vector'
             }
-            Assert-ExactJsonProperties $emissive.flicker @('minimum','speed','phaseOffset') 'Source emissive flicker'
+            $flickerFields = @('minimum','speed','phaseOffset')
+            if ($null -ne $emissive.flicker.PSObject.Properties['mode']) {
+                if ($row.family -cnotin @('bg_base_pbr_opa','bg_base_pbr_seamless_opa','bg_base_pbr_msk') -or
+                    $emissive.flicker.mode -cnotin @('none','nested')) { throw 'Invalid PBR emissive mode' }
+                $flickerFields += 'mode'
+                if ($emissive.flicker.mode -ceq 'none' -and
+                    ($emissive.flicker.minimum -ne 0 -or $emissive.flicker.speed -ne 0 -or
+                     $emissive.flicker.phaseOffset -ne 0)) { throw 'Steady PBR emissive has phase inputs' }
+            }
+            Assert-ExactJsonProperties $emissive.flicker $flickerFields 'Source emissive flicker'
             foreach ($value in @($emissive.color) + @($emissive.intensity,$emissive.flicker.minimum,$emissive.flicker.speed)) {
                 if (-not (Test-JsonNumber $value) -or $value -lt 0 -or $value -gt [single]::MaxValue) {
                     throw 'Invalid source emissive nonnegative value'

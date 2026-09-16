@@ -26,7 +26,7 @@ bool CKoukuSaydonPreviewRootMotion::Prepare(const std::shared_ptr<Engine::CModel
     const std::vector<KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE>& rows,
     const float verticalScale, std::string& status)
 {
-    if (m_SuppressionActive || !model || rows.empty() ||
+    if (m_SuppressionActive || !model ||
         !std::isfinite(verticalScale) || verticalScale < 0.f)
     { status = "Root motion requires an idle prepared owner and finite source rows."; return false; }
     const auto root = model->Find_BoneIndex("b_root");
@@ -126,7 +126,8 @@ bool CKoukuSaydonPreviewRootMotion::Prepare(const std::shared_ptr<Engine::CModel
 bool CKoukuSaydonPreviewRootMotion::Begin_Suppression()
 {
     const auto model = m_Model.lock();
-    if (m_SuppressionActive || !model || m_Windows.empty()) return false;
+    if (m_SuppressionActive || !model) return false;
+    if (m_Windows.empty()) return true; // Spatial-only preview has no native root to suppress.
     const auto previous = model->Capture_RootMotionSuppression();
     // All transferred XYZ lives in the actor; no second vertical jump in bones.
     if (!model->Configure_RootMotionSuppressionFromRest(m_RootIndex, 2, 0.f)) return false;
@@ -185,6 +186,173 @@ bool CKoukuSaydonPreviewRootMotion::Sample_Displacement(const double clockMs,
     return true;
 }
 
+bool CKoukuSaydonPreviewRootMotion::Sample_AirborneUp(const size_t windowIndex,
+    const double clockMs, double& output) const
+{
+    if (windowIndex >= m_Windows.size()) return false;
+    const auto& window = m_Windows[windowIndex];
+    float3_t delta;
+    const double age = (std::clamp)(clockMs - window.row.iStartOffsetMs, 0.0, window.maxAgeMs);
+    if (!Sample_Window(window, age, delta)) return false;
+    // Native phase displacement only; the automatic _03 ascent is a separate policy.
+    output = delta.y - (window.maxAgeMs > 0.0 ? window.albionTakeoffUp * age / window.maxAgeMs : 0.0);
+    return std::isfinite(output);
+}
+
+bool CKoukuSaydonPreviewRootMotion::Prepare_Airborne(
+    const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
+    const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern, std::string& status)
+{
+    std::vector<AIRBORNE_EVENT> staged;
+    for (const auto& box : pattern.LogicOccurrences)
+    {
+        if (!box.bEnabled) continue;
+        const auto logic = std::find_if(document.Logics.begin(), document.Logics.end(),
+            [&](const auto& row) { return row.strLogicId == box.strLogicId; });
+        if (logic == document.Logics.end() || (logic->strTriggerKind != "ALBION_AIRBORNE" &&
+            logic->strTriggerKind != "BOSS_TELEPORT_XZ")) continue;
+        AIRBORNE_EVENT event;
+        event.occurrenceId = box.strOccurrenceId;
+        event.phase = logic->strTriggerKind == "BOSS_TELEPORT_XZ" ? "TELEPORT_XZ" : logic->strAirbornePhase;
+        event.clockMs = box.iStartMs; event.durationMs = logic->iAirborneDurationMs;
+        event.heightM = logic->fAirborneHeightM;
+        event.destination = {float(logic->TeleportPosition[0]), float(logic->TeleportPosition[1]), float(logic->TeleportPosition[2])};
+        staged.push_back(std::move(event));
+    }
+    std::stable_sort(staged.begin(), staged.end(), [](const auto& a, const auto& b) {
+        if (a.clockMs != b.clockMs) return a.clockMs < b.clockMs;
+        if ((a.phase == "SELECT_PLAYER") != (b.phase == "SELECT_PLAYER")) return a.phase == "SELECT_PLAYER";
+        return false; // Equal-clock triggers retain authored order, as on the Server.
+    });
+    bool jump = false, selection = false;
+    for (auto& event : staged)
+    {
+        if (event.phase == "TELEPORT_XZ")
+        {
+            if (!std::isfinite(event.destination.x) || !std::isfinite(event.destination.z))
+            { status = "Teleport preview requires finite destination XZ."; return false; }
+            continue;
+        }
+        if (event.phase == "SELECT_PLAYER") selection = true;
+        else if (event.phase == "JUMP") jump = true;
+        else if (!jump || (event.phase == "APPEAR_PLAYER" && !selection))
+        { status = "Albion preview requires JUMP before height phases and SELECT_PLAYER before APPEAR_PLAYER."; return false; }
+        if (event.phase != "APPEAR_PLAYER" && event.phase != "SLAM") continue;
+        for (size_t i = 0u; i < m_Windows.size(); ++i)
+            if (m_Windows[i].row.iPoseStartMs <= event.clockMs) event.windowIndex = i;
+        if (event.windowIndex == SIZE_MAX || m_Windows[event.windowIndex].row.strRuntimeClip !=
+            (event.phase == "SLAM" ? "rpct00_att_battle_24_05" : "rpct00_att_battle_24_04") ||
+            !Sample_AirborneUp(event.windowIndex, event.clockMs, event.sourceUp))
+        { status = "Albion phase needs its original _04 appearance or _05 landing pose owner."; return false; }
+        event.remainingMinimumUp = event.sourceUp;
+        event.landingPrefixUp.emplace_back(event.clockMs, event.sourceUp);
+        const auto& window = m_Windows[event.windowIndex];
+        const double endMs = window.row.iStartOffsetMs + window.maxAgeMs;
+        // Native translation keys interpolate linearly. Include every source tick
+        // plus both authored endpoints when finding the remaining landing minimum.
+        const double stepMs = 1000.0 / (double(window.ticksPerSecond) * window.row.fPlayRate);
+        const double ageAtEvent = (std::max)(0.0, double(event.clockMs) - window.row.iStartOffsetMs);
+        double age = std::ceil((window.sourceStart + ageAtEvent * window.row.fPlayRate) * window.ticksPerSecond * .001) * stepMs
+            - window.sourceStart / window.row.fPlayRate;
+        for (double clock = window.row.iStartOffsetMs + age; clock < endMs; clock += stepMs)
+        {
+            double up = 0.0;
+            if (!Sample_AirborneUp(event.windowIndex, clock, up)) return false;
+            event.remainingMinimumUp = (std::min)(event.remainingMinimumUp, up);
+            event.landingPrefixUp.emplace_back(clock, event.remainingMinimumUp);
+        }
+        double lastUp = 0.0;
+        if (!Sample_AirborneUp(event.windowIndex, endMs, lastUp)) return false;
+        event.remainingMinimumUp = (std::min)(event.remainingMinimumUp, lastUp);
+        event.landingPrefixUp.emplace_back(endMs, event.remainingMinimumUp);
+        if (event.phase == "SLAM" && event.sourceUp - event.remainingMinimumUp <= .000001)
+        { status = "Albion SLAM needs a remaining downward native source curve."; return false; }
+    }
+    m_AirborneEvents = std::move(staged);
+    status.clear();
+    return true;
+}
+
+bool CKoukuSaydonPreviewRootMotion::Sample_AirbornePosition(const double clockMs,
+    const std::span<const float> rowYawDegrees, const float3_t& initial,
+    const std::span<const float3_t> selections, float3_t& output) const
+{
+    if (selections.size() != m_AirborneEvents.size() || !std::isfinite(clockMs)) return false;
+    float3_t displacement;
+    if (!Sample_Displacement(clockMs, rowYawDegrees, displacement)) return false;
+    float3_t position{initial.x + displacement.x, initial.y + displacement.y, initial.z + displacement.z};
+    float3_t selected = initial;
+    double floor = initial.y, fullHeight = 0.0, phaseStartY = initial.y, offsetX = 0.0, offsetZ = 0.0;
+    const AIRBORNE_EVENT* active = nullptr;
+    const auto heightAt = [&](const double clock, double& y) {
+        if (!active)
+        {
+            float3_t delta;
+            if (!Sample_Displacement(clock, rowYawDegrees, delta)) return false;
+            y = initial.y + delta.y; return true;
+        }
+        const auto& phase = active->phase;
+        if (phase == "JUMP")
+            y = phaseStartY + (floor + fullHeight - phaseStartY) *
+                (std::clamp)((clock - active->clockMs) / double(active->durationMs), 0.0, 1.0);
+        else if (phase == "APPEAR_PLAYER" || phase == "SLAM")
+        {
+            double up = 0.0;
+            if (!Sample_AirborneUp(active->windowIndex, clock, up)) return false;
+            if (phase == "APPEAR_PLAYER") y = floor + (std::max)(0.0, active->heightM + up);
+            else
+            {
+                // Prefix minima reproduce the Server's monotonic landing even
+                // when the authored root has a small rebound after touchdown.
+                // Cached source ticks keep backward/forward seeks deterministic.
+                const auto next = std::upper_bound(active->landingPrefixUp.begin(), active->landingPrefixUp.end(), clock,
+                    [](double value, const auto& sample) { return value < sample.first; });
+                if (next != active->landingPrefixUp.begin()) up = (std::min)(up, std::prev(next)->second);
+                const double fraction = (std::clamp)((active->sourceUp - up) /
+                    (active->sourceUp - active->remainingMinimumUp), 0.0, 1.0);
+                y = floor + (phaseStartY - floor) * (1.0 - fraction);
+            }
+        }
+        else y = floor + fullHeight;
+        return std::isfinite(y);
+    };
+    for (size_t i = 0u; i < m_AirborneEvents.size(); ++i)
+    {
+        const auto& event = m_AirborneEvents[i];
+        if (event.clockMs > clockMs) break;
+        if (event.phase == "SELECT_PLAYER")
+        { selected = selections[i]; continue; }
+        if (event.phase == "TELEPORT_XZ")
+        {
+            float3_t atEvent;
+            if (!Sample_Displacement(event.clockMs, rowYawDegrees, atEvent)) return false;
+            offsetX = event.destination.x - initial.x - atEvent.x;
+            offsetZ = event.destination.z - initial.z - atEvent.z;
+            // XZ relocation does not reset the source clock, facing or airborne Y.
+            continue;
+        }
+        if (!heightAt(event.clockMs, phaseStartY)) return false;
+        if (event.phase == "JUMP") fullHeight = event.heightM;
+        if (event.phase == "APPEAR_PLAYER") selected = selections[i];
+        if (event.phase == "APPEAR_PLAYER" || event.phase == "CENTER")
+        {
+            const auto& destination = event.phase == "CENTER" ? event.destination : selected;
+            float3_t atEvent;
+            if (!Sample_Displacement(event.clockMs, rowYawDegrees, atEvent)) return false;
+            offsetX = destination.x - initial.x - atEvent.x;
+            offsetZ = destination.z - initial.z - atEvent.z;
+            floor = destination.y;
+        }
+        active = &event;
+    }
+    double height = position.y;
+    if (!heightAt(clockMs, height)) return false;
+    position.x += float(offsetX); position.z += float(offsetZ); position.y = float(height);
+    if (!std::isfinite(position.x) || !std::isfinite(position.y) || !std::isfinite(position.z)) return false;
+    output = position;
+    return true;
+}
+
 void CKoukuSaydonPreviewRootMotion::Reset()
 {
     if (m_SuppressionActive)
@@ -199,5 +367,6 @@ void CKoukuSaydonPreviewRootMotion::Reset()
     m_PreviousSuppression = {};
     m_Model.reset();
     m_Windows.clear();
+    m_AirborneEvents.clear();
     m_RootIndex = UINT32_MAX;
 }

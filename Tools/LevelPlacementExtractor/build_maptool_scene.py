@@ -5,9 +5,15 @@ import hashlib
 import json
 import math
 import os
+import sys
 import tempfile
 from pathlib import Path
 from typing import Any, Iterable, Sequence
+
+from extract_ue3_placements import ExtractionError, source_visibility_from_chains
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "ModelAssetConverter"))
+import cook_wmodel_geometry_contract as geometry
 
 BASIS = (
     (1.0, 0.0, 0.0),
@@ -25,6 +31,35 @@ def load_json(path: Path) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise ValueError(f"JSON root is not an object: {path}")
     return value
+
+
+def atomic_write_scene(outputs: list[tuple[Path, str]]) -> None:
+    """Stage all scene documents before promotion; restore existing files on error."""
+    paths = [path.resolve() for path, _ in outputs]
+    if len(set(paths)) != len(paths):
+        raise ValueError("scene output paths must be distinct")
+    before = {path: path.read_bytes() if path.exists() else None for path in paths}
+    staged, promoted = [], []
+    try:
+        for (path, value), target in zip(outputs, paths):
+            target.parent.mkdir(parents=True, exist_ok=True)
+            handle, name = tempfile.mkstemp(prefix=target.name + ".", suffix=".tmp", dir=target.parent)
+            staged.append((Path(name), target))
+            with os.fdopen(handle, "w", encoding="utf-8", newline="\n") as stream:
+                stream.write(value)
+        for temporary, target in staged:
+            os.replace(temporary, target)
+            promoted.append(target)
+    except BaseException:
+        for target in reversed(promoted):
+            if before[target] is None:
+                target.unlink(missing_ok=True)
+            else:
+                target.write_bytes(before[target])
+        raise
+    finally:
+        for temporary, _ in staged:
+            temporary.unlink(missing_ok=True)
 
 
 def atomic_write_text(path: Path, text: str) -> None:
@@ -175,7 +210,8 @@ def imported_id(source_placement_id: str) -> int:
     return int.from_bytes(digest[:8], "big") | IMPORTED_ID_BIT
 
 
-def classify_non_visual_asset(asset: dict[str, Any]) -> str | None:
+def classify_asset_name_hint(asset: dict[str, Any]) -> str | None:
+    """Diagnostic search hints only; package/object names do not set visibility."""
     root_import = str(asset.get("rootImport", "")).casefold()
     logical_package = str(asset.get("logicalPackage", "")).casefold()
     object_path = str(asset.get("fullPath", "")).casefold()
@@ -185,26 +221,204 @@ def classify_non_visual_asset(asset: dict[str, Any]) -> str | None:
         or logical_package == "lv_navimesh"
         or object_path.startswith("lv_navimesh.")
     ):
-        return "nav-helper"
+        return "nav-package"
     if root_import == "lv_module" or logical_package == "lv_module":
-        return "module-proxy"
+        return "module-package"
     if (
         (root_import == "lv_lut_heartrb" or logical_package == "lv_lut_heartrb")
         and object_name.startswith("lv_lut_heartrb_water")
     ):
-        return "deferred-water"
+        return "water-name"
     if (
         root_import.startswith("bfx_")
         or logical_package.startswith("bfx_")
         or object_name.startswith("bfm_")
         or "cloudplane" in object_name
     ):
-        return "deferred-fx"
+        return "fx-name"
     return None
 
 
-def is_non_visual_helper_asset(asset: dict[str, Any]) -> bool:
-    return classify_non_visual_asset(asset) is not None
+def placement_source_visibility(placement: dict[str, Any], schema_version: int) -> dict[str, Any]:
+    if schema_version in (1, 2):
+        if "sourceVisibility" in placement:
+            raise ValueError("legacy placement unexpectedly contains sourceVisibility")
+        return {"basis": "legacy-unrecorded", "visible": None}
+    value = placement.get("sourceVisibility")
+    if not isinstance(value, dict) or value.get("basis") != "ue3-instance-archetype-cdo":
+        raise ValueError("schema v3 placement is missing sourceVisibility evidence")
+    for field in ("actorChain", "componentChain"):
+        chain = value.get(field)
+        if not isinstance(chain, list) or not chain:
+            raise ValueError(f"invalid sourceVisibility.{field}")
+        for row in chain:
+            if (not isinstance(row, dict) or not isinstance(row.get("serializedFlags"), dict)
+                    or not isinstance(row.get("objectPath"), str) or not row["objectPath"]
+                    or not isinstance(row.get("physicalPackage"), str) or not row["physicalPackage"]
+                    or type(row.get("exportIndex")) is not int or row["exportIndex"] < 0
+                    or not isinstance(row.get("packageSha256"), str)
+                    or len(row["packageSha256"]) != 64
+                    or any(c not in "0123456789abcdef" for c in row["packageSha256"])):
+                raise ValueError(f"invalid sourceVisibility.{field} evidence row")
+    try:
+        expected = source_visibility_from_chains(value["actorChain"], value["componentChain"])
+    except ExtractionError as error:
+        raise ValueError(str(error)) from error
+    if value != expected:
+        raise ValueError("sourceVisibility flags/effective visible mismatch")
+    return value
+
+
+def validate_runtime_material_coverage(coverage: Any, unsupported: Any, context: str) -> tuple[bool, bool, bool]:
+    """Validate converter input coverage, not native shader/visual fidelity."""
+    fields = ("textureDependencyClosureComplete", "textureSlotsComplete", "materialComplete")
+    if not isinstance(coverage, dict) or any(type(coverage.get(field)) is not bool for field in fields) or not isinstance(unsupported, list):
+        raise ValueError(f"runtime manifest material coverage gate failed: {context}")
+    closure, slots, complete = (coverage[field] for field in fields)
+    if not closure:
+        raise ValueError(f"runtime texture dependency closure invariant failed: {context}; exact source texture closure is incomplete")
+    if complete != (slots and not unsupported):
+        raise ValueError(f"runtime material coverage invariant failed: {context}; materialComplete={complete}, textureSlotsComplete={slots}, sourceOnlyUnsupportedEmpty={not unsupported}")
+    return closure, slots, complete
+
+
+def rooted_resource(root: Path, value: str) -> Path:
+    relative = Path(value)
+    if not value or "\\" in value or ":" in value or relative.is_absolute() or any(p in (".", "..") for p in value.split("/")):
+        raise ValueError(f"invalid relative asset path: {value!r}")
+    result = (root / relative).resolve()
+    if not result.is_relative_to(root.resolve()):
+        raise ValueError(f"asset escapes root: {value!r}")
+    return result
+
+
+def load_source_material_build(path: Path, resources_root: Path, area_id: str) -> dict[str, Any]:
+    receipt = load_json(path)
+    if (receipt.get("format") != "lostark-source-map-material-build" or receipt.get("formatVersion") != 1
+            or receipt.get("areaId") != area_id or receipt.get("failures") != []
+            or receipt.get("runtimeMaterialInputsComplete") is not True
+            or receipt.get("originalVisualFidelityVerified") is not False):
+        raise ValueError("source material build receipt is incomplete or invalid")
+    def verified(item):
+        source = Path(item["path"])
+        if not source.is_absolute():
+            source = path.parent / source
+        payload = source.read_bytes()
+        if hashlib.sha256(payload).hexdigest() != item["sha256"]:
+            raise ValueError(f"source material evidence hash mismatch: {source}")
+        return payload
+    if not isinstance(receipt.get("inputs"), list) or not receipt["inputs"]:
+        raise ValueError("source material build has no pinned inputs")
+    for item in receipt["inputs"]:
+        verified(item)
+    output = json.loads(verified(receipt["output"]))
+    if output.get("schema") != "lostark.map-materials" or output.get("formatVersion") != 2 or output.get("areaId") != area_id:
+        raise ValueError("source mapmaterials schema/area mismatch")
+    resources = {}
+    for item in receipt["resources"]:
+        asset_id = item["assetId"]
+        if asset_id in resources or sha256(rooted_resource(resources_root, asset_id)).casefold() != item["sha256"].casefold():
+            raise ValueError(f"source material resource duplicate/hash mismatch: {asset_id}")
+        resources[asset_id] = item["sha256"]
+    materials = {}
+    def check_resources(value):
+        if isinstance(value, dict):
+            for field, child in value.items():
+                if field.endswith("Texture") and child and child not in resources:
+                    raise ValueError(f"unverified source material texture: {child}")
+                check_resources(child)
+        elif isinstance(value, list):
+            for child in value:
+                check_resources(child)
+    for row in output["materials"]:
+        key = (row["assetId"], row["materialName"])
+        if key in materials:
+            raise ValueError(f"duplicate source material slot: {key}")
+        check_resources(row)
+        materials[key] = row["sourceMaterial"].casefold()
+    bindings, bound_keys = {}, set()
+    for binding in receipt["bindings"]:
+        asset_id = binding["assetId"]
+        names, sources = binding["materialNames"], binding["sourceMaterials"]
+        if asset_id in bindings or not names or len(names) != len(sources) or len(set(names)) != len(names):
+            raise ValueError(f"invalid source material binding: {asset_id}")
+        for name, source in zip(names, sources):
+            key = (asset_id, name)
+            if materials.get(key) != source.casefold():
+                raise ValueError(f"source material slot/MIC mismatch: {key}")
+            bound_keys.add(key)
+        bindings[asset_id] = binding
+    if bound_keys != set(materials):
+        raise ValueError("source material output has unbound slots")
+    # Replay the same compiler from its pinned manifest. A receipt edit cannot
+    # claim that an unknown scalar/flag was consumed by the source mapper.
+    from build_source_map_materials import compile_materials
+    source_manifest = Path(receipt["inputs"][0]["path"])
+    if not source_manifest.is_absolute():
+        source_manifest = path.parent / source_manifest
+    regenerated_output, regenerated_receipt = compile_materials(source_manifest, resources_root)
+    if output != regenerated_output or {key: value for key, value in receipt.items() if key != "output"} != regenerated_receipt:
+        raise ValueError("source material build receipt/output does not match pinned compiler inputs")
+    return {"receipt": receipt, "document": output, "bindings": bindings, "sha256": sha256(path)}
+
+
+def source_material_covers_runtime(runtime: dict[str, Any], binding: dict[str, Any]) -> bool:
+    slots = runtime.get("materials")
+    if not isinstance(slots, list) or not slots:
+        raise ValueError(f"runtime manifest lacks exact material slots: {runtime['assetId']}")
+    expected = list(zip(binding["materialNames"], [value.casefold() for value in binding["sourceMaterials"]]))
+    actual = []
+    for index, slot in enumerate(slots):
+        if slot.get("slot") != index or not slot.get("objectPath") or slot.get("sourceOnlyReason"):
+            raise ValueError(f"runtime source material is unresolved: {runtime['assetId']}/{index}")
+        actual.append((slot["runtimeName"], slot["objectPath"].casefold()))
+    if expected != actual:
+        raise ValueError(f"source material/runtime slot identity mismatch: {runtime['assetId']}")
+    coverage = binding.get("materialCoverage")
+    if not isinstance(coverage, list) or len(coverage) != len(slots):
+        raise ValueError(f"source material receipt lacks exact field coverage: {runtime['assetId']}")
+    for index, row in enumerate(coverage):
+        if (row.get("materialName") != expected[index][0]
+                or str(row.get("sourceMaterial", "")).casefold() != expected[index][1]
+                or not isinstance(row.get("coveredSourceOnly"), list)
+                or any(not isinstance(value, str) for value in row["coveredSourceOnly"])):
+            raise ValueError(f"source material field coverage slot/MIC mismatch: {runtime['assetId']}/{index}")
+    for row in runtime["sourceOnlyUnsupported"]:
+        if not isinstance(row, dict) or type(row.get("slot")) is not int or not 0 <= row["slot"] < len(slots) or not isinstance(row.get("fields"), list):
+            return False
+        for field in row["fields"]:
+            if not isinstance(field, str) or field not in coverage[row["slot"]]["coveredSourceOnly"] or field.startswith("material:"):
+                return False
+    return True
+
+
+def validate_source_material_geometry(model_path: Path, material_rows: Sequence[dict[str, Any]]) -> dict[str, Any]:
+    """Read required channels from WModel bytes, never from a cook receipt."""
+    required: set[str] = set()
+    for row in material_rows:
+        if row.get("bakedLighting"):
+            required.add("TEXCOORD1")
+        if row.get("family") == "bg_base_opa_overlay":
+            flags = row.get("sourceOverlayFlags", 263)  # MODEL_SURFACE_DESC default.
+            if type(flags) is not int or not 0 <= flags <= 2047:
+                raise ValueError("invalid source overlay geometry flags")
+            if flags & 4:
+                required.add("COLOR0")
+    if not required:
+        return {"requiredChannels": [], "validation": "no-extra-channel-required"}
+    payload = model_path.read_bytes()
+    try:
+        actual = geometry.parse_geometry_wmodel(payload)
+    except (ValueError, KeyError, IndexError) as error:
+        raise ValueError(f"source material geometry channels cannot be verified: {model_path}; {error}") from error
+    available = {"TEXCOORD1": actual["hasTexcoord1"], "COLOR0": actual["hasColor0"]}
+    missing = sorted(channel for channel in required if available[channel] is not True)
+    if missing:
+        raise ValueError(f"source material geometry channels missing: {model_path}; {missing}")
+    return {"requiredChannels": sorted(required), "validation": "actual-wmodel-bytes",
+            "modelSha256": hashlib.sha256(payload).hexdigest(),
+            "hasTexcoord1": actual["hasTexcoord1"], "hasColor0": actual["hasColor0"],
+            "vertexStride": actual["vertexStride"], "submeshCount": len(actual["submeshes"])}
 
 
 def finite_vector(
@@ -282,7 +496,7 @@ def placement_material_signature(
         return EMPTY_MATERIAL_SIGNATURE
     material_overrides = placement.get("materialOverrides")
     if not isinstance(material_overrides, dict):
-        raise ValueError("schema v2 placement is missing materialOverrides")
+        raise ValueError("schema v2/v3 placement is missing materialOverrides")
     if not isinstance(material_overrides.get("propertyPresent"), bool):
         raise ValueError("invalid materialOverrides.propertyPresent")
     slots = material_overrides.get("slots")
@@ -317,7 +531,7 @@ def iter_placements(paths: Iterable[Path]) -> Iterable[dict[str, Any]]:
         document = load_json(path)
         schema_version = document.get("schemaVersion")
         if (
-            schema_version not in (1, 2)
+            schema_version not in (1, 2, 3)
             or document.get("propertyErrors")
             or document.get("unresolvedPlacements")
         ):
@@ -329,6 +543,7 @@ def iter_placements(paths: Iterable[Path]) -> Iterable[dict[str, Any]]:
             result["_materialSignatureSha256"] = placement_material_signature(
                 placement, schema_version
             )
+            result["_sourceVisibility"] = placement_source_visibility(placement, schema_version)
             yield result
 
 
@@ -398,6 +613,13 @@ def render_profile_text(profile: dict[str, Any] | None) -> str:
 
 def compile_scene(args: argparse.Namespace) -> dict[str, Any]:
     area_id = token(args.area_id, "areaId")
+    source_material_path = getattr(args, "source_materials_receipt", None)
+    materials_output = getattr(args, "materials_output", None)
+    if bool(source_material_path) != bool(materials_output):
+        raise ValueError("--source-materials-receipt and --materials-output must be supplied together")
+    if source_material_path and args.runtime_asset_root is None:
+        raise ValueError("--runtime-asset-root is required for source materials")
+    source_material_build = load_source_material_build(source_material_path, args.runtime_asset_root, area_id) if source_material_path else None
     placement_directories = normalize_placement_directories(args.placements_dir)
     placement_sources = collect_placement_sources(placement_directories)
     placement_paths = [path for _, path in placement_sources]
@@ -439,8 +661,10 @@ def compile_scene(args: argparse.Namespace) -> dict[str, Any]:
     )
     if not isinstance(visibility_overrides, list):
         raise ValueError("visibilityOverrides must be an array")
+    if any(not isinstance(row, dict) or type(row.get("visible")) is not bool for row in visibility_overrides):
+        raise ValueError("visibilityOverrides.visible must be boolean")
     visibility_by_source = {
-        str(row["sourcePlacementId"]): bool(row["visible"])
+        str(row["sourcePlacementId"]): row["visible"]
         for row in visibility_overrides
     }
     if len(visibility_by_source) != len(visibility_overrides):
@@ -468,6 +692,7 @@ def compile_scene(args: argparse.Namespace) -> dict[str, Any]:
         asset_id = token(str(asset["assetId"]), "assetId")
         runtime = runtime_by_id[asset_id]
         model_relative = Path(str(runtime["model"]))
+        rooted_resource(args.runtime_root, str(runtime["model"]))
         model_path = (Path("Map") / area_id / model_relative).as_posix()
         source_group = token(str(asset["sourceCategory"]).lower(), "groupId")
         evidence = "UE3 ImportTable exact: " + str(asset["fullPath"])
@@ -541,6 +766,8 @@ def compile_scene(args: argparse.Namespace) -> dict[str, Any]:
     hidden_helper_count = 0
     hidden_category_counts: dict[str, int] = {}
     source_level_counts: dict[str, int] = {}
+    visibility_basis_counts: dict[str, int] = {}
+    name_hint_counts: dict[str, int] = {}
     central_result: dict[str, Any] | None = None
     applied_visibility_overrides: set[str] = set()
     for placement in iter_placements(placement_paths):
@@ -560,11 +787,21 @@ def compile_scene(args: argparse.Namespace) -> dict[str, Any]:
             raise ValueError(
                 f"asset variant join missing: {object_path} / {material_signature}"
             )
-        hidden_category = classify_non_visual_asset(asset)
-        visible = hidden_category is None
+        source_visibility = placement["_sourceVisibility"]
+        basis = source_visibility["basis"]
+        visibility_basis_counts[basis] = visibility_basis_counts.get(basis, 0) + 1
+        name_hint = classify_asset_name_hint(asset)
+        if name_hint is not None:
+            name_hint_counts[name_hint] = name_hint_counts.get(name_hint, 0) + 1
+        visible = source_visibility["visible"]
+        if visible is None:
+            if not getattr(args, "allow_legacy_visibility", False) and source_id not in visibility_by_source:
+                raise ValueError(f"source visibility was not extracted: {source_id}; re-extract schema v3 or explicitly use --allow-legacy-visibility")
+            visible = True
+        hidden_category = None if visible else "source-hidden"
         if source_id in visibility_by_source:
             visible = visibility_by_source[source_id]
-            hidden_category = None if visible else (hidden_category or "runtime-profile-hidden")
+            hidden_category = None if visible else "runtime-profile-hidden"
             applied_visibility_overrides.add(source_id)
         hidden_helper_count += int(hidden_category == "nav-helper")
         if hidden_category is not None:
@@ -645,7 +882,9 @@ def compile_scene(args: argparse.Namespace) -> dict[str, Any]:
         if any(abs(component) < 1.0e-6 for component in scale):
             raise ValueError(f"overlay placement has a zero scale axis: {source_id}")
         any_negative, reflected = scale_flags(scale)
-        visible = bool(placement.get("visible", True))
+        visible = placement.get("visible", True)
+        if type(visible) is not bool:
+            raise ValueError("overlay visible must be boolean")
         values = (*position, *rotation, *scale)
         overlay_rows.append(
             {
@@ -762,8 +1001,26 @@ def compile_scene(args: argparse.Namespace) -> dict[str, Any]:
         output_exact_asset_ids = set(exact_catalog_rows)
 
     catalog_rows: list[str] = []
+    material_admission: dict[str, Any] = {}
     for asset_id in sorted(output_exact_asset_ids):
         runtime = runtime_by_id[asset_id]
+        source_binding = source_material_build["bindings"].get(asset_id) if source_material_build else None
+        if "runtimeCoverage" not in runtime:
+            if source_binding is not None:
+                raise ValueError(f"source material admission needs runtime coverage and exact slots: {asset_id}")
+            if not getattr(args, "allow_legacy_material_coverage", False):
+                raise ValueError(f"runtime material coverage missing: {asset_id}; use verified cook manifest or explicit --allow-legacy-material-coverage")
+            material_admission[asset_id] = {"mode": "legacy-unverified", "originalVisualFidelityVerified": False}
+        else:
+            _, _, complete = validate_runtime_material_coverage(runtime["runtimeCoverage"], runtime.get("sourceOnlyUnsupported"), asset_id)
+            source_complete = source_binding is not None and source_material_covers_runtime(runtime, source_binding)
+            if not complete and not source_complete and not getattr(args, "allow_partial_material_preview", False):
+                raise ValueError(f"runtime material input coverage incomplete: {asset_id}; sourceOnlyUnsupported={runtime.get('sourceOnlyUnsupported')}; --allow-partial-material-preview is for geometry preview only")
+            material_admission[asset_id] = {
+                "mode": "source-material-inputs-complete" if source_complete else "converter-inputs-complete" if complete else "geometry-preview-partial-material",
+                "sourceOnlyUnsupported": runtime["sourceOnlyUnsupported"],
+                "originalVisualFidelityVerified": False,
+            }
         model_absolute = args.runtime_root / Path(str(runtime["model"]))
         if not model_absolute.is_file():
             raise ValueError(f"runtime model is missing: {model_absolute}")
@@ -771,6 +1028,16 @@ def compile_scene(args: argparse.Namespace) -> dict[str, Any]:
             model_magic = model_stream.read(4)
         if model_magic not in (b"WINT", b"WMOD"):
             raise ValueError(f"invalid runtime model: {model_absolute}")
+        if source_binding is not None:
+            material_admission[asset_id]["geometryChannels"] = validate_source_material_geometry(
+                model_absolute, [row for row in source_material_build["document"]["materials"] if row["assetId"] == asset_id]
+            )
+        if "files" in runtime:
+            if not any(row.get("path") == runtime["model"] for row in runtime["files"]):
+                raise ValueError(f"runtime model missing from hashed closure: {asset_id}")
+            for output in runtime["files"]:
+                if sha256(rooted_resource(args.runtime_root, output["path"])).casefold() != output["sha256"].casefold():
+                    raise ValueError(f"runtime model/texture hash mismatch: {asset_id}/{output['path']}")
         catalog_rows.append(exact_catalog_rows[asset_id])
     catalog_rows.extend(overlay_catalog_rows)
 
@@ -808,8 +1075,23 @@ def compile_scene(args: argparse.Namespace) -> dict[str, Any]:
         f"LOSTARK_MAP_PLACEMENTS 2 {quoted(area_id)} {len(selected_rows)}\n"
         + "\n".join(str(row["text"]) for row in selected_rows) + "\n"
     )
-    atomic_write_text(args.catalog_output, catalog_text)
-    atomic_write_text(args.placement_output, placement_text)
+    material_text = None
+    if source_material_build:
+        output_asset_ids = output_exact_asset_ids | {str(row["assetId"]) for row in overlay_assets}
+        output_source_ids = {str(row["sourcePlacementId"]) for row in selected_rows}
+        output_source_assets = {str(row["sourcePlacementId"]): str(row["assetId"]) for row in selected_rows}
+        source_document = source_material_build["document"]
+        for instance in source_document.get("placementLighting", []):
+            if instance["assetId"] not in source_material_build["bindings"]:
+                raise ValueError("placement lighting references an unbound source material")
+            if instance["sourcePlacementId"] in output_source_assets and output_source_assets[instance["sourcePlacementId"]] != instance["assetId"]:
+                raise ValueError("placement lighting asset/source instance mismatch")
+        material_text = json.dumps({
+            **source_document,
+            "materials": [row for row in source_document["materials"] if row["assetId"] in output_asset_ids],
+            "placementLighting": [row for row in source_document.get("placementLighting", [])
+                                  if row["assetId"] in output_asset_ids and row["sourcePlacementId"] in output_source_ids],
+        }, ensure_ascii=False, indent=2, allow_nan=False) + "\n"
     receipt = {
         "schemaVersion": 1,
         "areaId": area_id,
@@ -822,6 +1104,17 @@ def compile_scene(args: argparse.Namespace) -> dict[str, Any]:
         "overlayPlacementCount": len(overlay_rows),
         "renderProfileCount": len(profiles_by_id),
         "visibilityOverrideCount": len(applied_visibility_overrides),
+        "sourceVisibilityBasisCounts": dict(sorted(visibility_basis_counts.items())),
+        "assetNameHintsDiagnosticOnly": dict(sorted(name_hint_counts.items())),
+        "legacyVisibilityAllowed": bool(getattr(args, "allow_legacy_visibility", False)),
+        "runtimeMaterialAdmission": material_admission,
+        "sourceMaterialBuild": None if source_material_build is None else {
+            "receiptSha256": source_material_build["sha256"],
+            "verifiedInputCount": len(source_material_build["receipt"]["inputs"]),
+            "originalVisualFidelityVerified": False,
+            "unresolvedRuntimeInputs": source_material_build["receipt"].get("unresolvedRuntimeInputs", []),
+            "projectApproximations": source_material_build["receipt"].get("projectApproximations", []),
+        },
         "placementCount": len(selected_rows),
         "sourceAnyNegativeScaleCount": any_negative_scale_count,
         "sourceReflectedCount": reflected_count,
@@ -859,11 +1152,31 @@ def compile_scene(args: argparse.Namespace) -> dict[str, Any]:
             ),
         },
         "outputs": {
-            "catalog": sha256(args.catalog_output),
-            "placements": sha256(args.placement_output),
+            "catalog": hashlib.sha256(catalog_text.encode("utf-8")).hexdigest(),
+            "placements": hashlib.sha256(placement_text.encode("utf-8")).hexdigest(),
+            **({"materials": hashlib.sha256(material_text.encode("utf-8")).hexdigest()} if material_text is not None else {}),
         },
     }
-    atomic_write_text(args.receipt_output, json.dumps(receipt, ensure_ascii=False, indent=2) + "\n")
+    outputs = [(args.catalog_output, catalog_text), (args.placement_output, placement_text)]
+    if material_text is not None:
+        outputs.append((materials_output, material_text))
+    outputs.append((args.receipt_output, json.dumps(receipt, ensure_ascii=False, indent=2) + "\n"))
+    input_paths = {path.resolve() for path in placement_paths}
+    input_paths.update(path.resolve() for path in (args.asset_manifest, args.runtime_manifest, args.overlay_manifest, args.render_profile_manifest, source_material_path) if path)
+    if source_material_build:
+        for item in [source_material_build["receipt"]["output"], *source_material_build["receipt"]["inputs"]]:
+            source_path = Path(item["path"])
+            if not source_path.is_absolute():
+                source_path = source_material_path.parent / source_path
+            input_paths.add(source_path.resolve())
+        input_paths.update(rooted_resource(args.runtime_asset_root, item["assetId"]) for item in source_material_build["receipt"]["resources"])
+    for asset_id in output_exact_asset_ids:
+        runtime = runtime_by_id[asset_id]
+        input_paths.add(rooted_resource(args.runtime_root, runtime["model"]))
+        input_paths.update(rooted_resource(args.runtime_root, item["path"]) for item in runtime.get("files", []))
+    if any(path.resolve() in input_paths for path, _ in outputs):
+        raise ValueError("scene outputs must not overwrite source inputs")
+    atomic_write_scene(outputs)
     return receipt
 
 
@@ -876,6 +1189,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--runtime-asset-root", type=Path)
     parser.add_argument("--overlay-manifest", type=Path)
     parser.add_argument("--render-profile-manifest", type=Path)
+    parser.add_argument("--source-materials-receipt", type=Path)
+    parser.add_argument("--materials-output", type=Path)
+    parser.add_argument("--allow-legacy-visibility", action="store_true", help="Explicitly assume visible for schema v1/v2 inputs without source flags; names never hide placements")
+    parser.add_argument("--allow-legacy-material-coverage", action="store_true", help="Admit old cook manifests without material coverage as unverified")
+    parser.add_argument("--allow-partial-material-preview", action="store_true", help="Explicit geometry preview with reported unsupported source material inputs")
     parser.add_argument("--placements-dir", type=Path, action="append", required=True)
     parser.add_argument("--catalog-output", type=Path, required=True)
     parser.add_argument("--placement-output", type=Path, required=True)

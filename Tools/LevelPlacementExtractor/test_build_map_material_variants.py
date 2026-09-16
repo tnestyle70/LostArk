@@ -32,6 +32,30 @@ class MapMaterialInventoryTests(unittest.TestCase):
             },
         }
 
+    def test_schema3_validates_visibility_without_dropping_hidden_mesh_inventory(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            placements = root / "placements"
+            hidden = self.placement("hidden", "LV_TEST_A", "MeshA")
+            hidden["materialOverrides"] = {"propertyPresent": False, "slots": [], "signatureSha256": scene.EMPTY_MATERIAL_SIGNATURE}
+            actor = [{"objectPath": "Actor", "physicalPackage": "source.upk", "packageSha256": "a" * 64,
+                      "exportIndex": 280, "serializedFlags": {"bHidden": True}}]
+            component = [{"objectPath": "Actor.Component", "physicalPackage": "source.upk", "packageSha256": "a" * 64,
+                          "exportIndex": 488, "serializedFlags": {}}]
+            hidden["sourceVisibility"] = scene.source_visibility_from_chains(actor, component)
+            path = placements / "LV_TEST_A.placements.json"
+            self.write_json(path, {"schemaVersion": 3, "placements": [hidden]})
+            kwargs = dict(area_id="LV_TEST", level_prefix="LV_TEST_", expect_packages=1,
+                          expect_source_meshes=1, expect_variants=1, expect_placements=1, expect_override_placements=0)
+            result = tool.build_inventory([placements], **kwargs)
+            self.assertEqual(result["summary"]["sourceHiddenPlacements"], 1)
+            self.assertEqual(result["sourceMeshCount"], 1)
+            self.assertFalse(result["summary"]["visibilityFiltersAssetInventory"])
+            hidden["sourceVisibility"]["visible"] = True
+            self.write_json(path, {"schemaVersion": 3, "placements": [hidden]})
+            with self.assertRaisesRegex(tool.VariantError, "visible mismatch"):
+                tool.build_inventory([placements], **kwargs)
+
     def test_v1_is_base_variant_and_v2_ordered_override_is_distinct(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -526,7 +550,9 @@ class SlotUniqueCookTests(unittest.TestCase):
                 output.write_bytes(b"WMOD-test")
                 return subprocess.CompletedProcess(command, 0, "cooked", "")
 
-            with patch.object(tool.base, "run", side_effect=fake_run):
+            with patch.object(tool.base, "run", side_effect=fake_run), patch.object(
+                tool.base, "preserve_cooked_geometry", return_value={"geometry": {"uvChannels": 3}}
+            ) as preserve_geometry:
                 receipt = tool.cook_variant(
                     asset,
                     source_root=source_root,
@@ -542,6 +568,10 @@ class SlotUniqueCookTests(unittest.TestCase):
                     timeout=1.0,
                     force=False,
                 )
+            preserve_geometry.assert_called_once()
+            self.assertEqual(preserve_geometry.call_args.kwargs["source_object"], full_path)
+            self.assertEqual(receipt["geometry"], {"uvChannels": 3})
+            self.assertFalse(receipt["runtimeProductAdmission"])
 
             cook_command = commands[0]
             self.assertIn("SLOT_000_Shared=", " ".join(cook_command))
