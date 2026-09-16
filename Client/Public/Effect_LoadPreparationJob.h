@@ -157,8 +157,10 @@ struct EFFECT_LOAD_PROGRESS_SNAPSHOT final
    result channel is full.  Cancel, rebase and close all wake that producer.
    The main thread never waits: it only calls Try_Pop_Result.  Commands travel
    in the opposite direction through a latest-value single-slot mailbox.  A
-   TARGET_STAGED producer must not advance to its next target until the owner
-   posts the matching TARGET_COMMIT_ACK (or a terminal/rebase command). */
+   TARGET_STAGED producer must not publish its next target until the owner
+   posts the matching TARGET_COMMIT_ACK (or a terminal/rebase command). Private
+   staging may prepare a bounded window ahead; only the producer publishes
+   its results in FIFO order after all child work has joined. */
 class CEffectLoadPreparationJob final
 {
 public:

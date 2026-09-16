@@ -155,10 +155,9 @@ HRESULT CLevel_Loading::Initialize(
 	if (nullptr == m_pLoader)
 		return E_FAIL;
 
-	/* The target class/encounter is already fixed at this point and the loader
-	   worker is live. Register its priority Product targets now; the command is
-	   consumed after target-level resources finish, while the main frame keeps
-	   pumping the Loading Level and displaying the worker's real progress. */
+	/* The target class/encounter is fixed and both Loader producers are live.
+	   Capture immutable Product requests on this owner and post them now, so
+	   Effect staging overlaps level resources while this frame owns commits. */
 	if (bUsesEffectLoadJob)
 	{
 		Advance_TargetEffectPreparation();
@@ -248,7 +247,9 @@ void CLevel_Loading::Update(const f32_t fTimeDelta)
 		SetDeterminateProgress(
 			iSettledCount, m_iEffectPreparationTargetCount);
 	}
-	else if (!bLoaderFinished && LoaderProgress.bDeterminate)
+	// An Effect lane can finish while map/character preparation still runs.
+	// A terminal Effect fraction must not hide the remaining level fraction.
+	if (!bProgressDeterminate && !bLoaderFinished && LoaderProgress.bDeterminate)
 	{
 		SetDeterminateProgress(
 			LoaderProgress.iCompleted, LoaderProgress.iTotal);

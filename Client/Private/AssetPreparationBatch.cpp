@@ -1,9 +1,136 @@
 #include "AssetPreparationBatch.h"
 
 #include <algorithm>
+#include <chrono>
+#include <condition_variable>
+#include <deque>
 #include <exception>
 #include <objbase.h>
 #include <process.h>
+
+namespace
+{
+	struct PREPARATION_BUDGET final
+	{
+		std::mutex mutex;
+		std::condition_variable changed;
+		std::deque<const void*> waiting;
+		size_t active = 0u;
+		size_t children = 0u;
+		bool exclusive = false;
+	};
+
+	PREPARATION_BUDGET g_PreparationBudget;
+	thread_local uint32_t g_PreparationDepth = 0u;
+	thread_local bool g_PreparationExclusive = false;
+
+	size_t PreparationLimit() noexcept
+	{
+		static const size_t limit = []
+		{
+			const DWORD processors = GetActiveProcessorCount(ALL_PROCESSOR_GROUPS);
+			return (std::min)(size_t{ 4u }, processors > 2u ? size_t{ processors - 2u } : size_t{ 1u });
+		}();
+		return limit;
+	}
+
+	// Only executing preparation callbacks hold a permit. In particular an
+	// Effect producer releases it before waiting for the main-thread commit ACK.
+	class CPreparationPermit final
+	{
+	public:
+		CPreparationPermit(const bool exclusive, const std::atomic_bool* cancellation,
+			const std::atomic<HRESULT>& result)
+		{
+			const auto stopped = [&]
+			{
+				return FAILED(result.load(std::memory_order_acquire)) ||
+					(cancellation && cancellation->load(std::memory_order_acquire));
+			};
+			if (stopped())
+				return;
+			if (g_PreparationDepth != 0u)
+			{
+				++g_PreparationDepth;
+				m_Entered = true;
+				return;
+			}
+			auto& budget = g_PreparationBudget;
+			std::unique_lock lock(budget.mutex);
+			budget.waiting.push_back(this);
+			try
+			{
+				for (;;)
+				{
+					if (stopped())
+					{
+						budget.waiting.erase(std::find(budget.waiting.begin(), budget.waiting.end(), this));
+						budget.changed.notify_all();
+						return;
+					}
+					if (budget.waiting.front() == this && !budget.exclusive &&
+						(exclusive ? budget.active == 0u : budget.active < PreparationLimit()))
+					{
+						budget.waiting.pop_front();
+						++budget.active;
+						budget.exclusive = exclusive;
+						g_PreparationDepth = 1u;
+						g_PreparationExclusive = exclusive;
+						m_Entered = true;
+						m_OwnsPermit = true;
+						budget.changed.notify_all();
+						return;
+					}
+					budget.changed.wait_for(lock, std::chrono::milliseconds(10));
+				}
+			}
+			catch (...)
+			{
+				budget.waiting.erase(std::find(budget.waiting.begin(), budget.waiting.end(), this));
+				budget.changed.notify_all();
+				throw;
+			}
+		}
+
+		~CPreparationPermit()
+		{
+			if (!m_Entered)
+				return;
+			--g_PreparationDepth;
+			if (!m_OwnsPermit)
+				return;
+			g_PreparationExclusive = false;
+			auto& budget = g_PreparationBudget;
+			std::scoped_lock lock(budget.mutex);
+			--budget.active;
+			budget.exclusive = false;
+			budget.changed.notify_all();
+		}
+
+		explicit operator bool() const noexcept { return m_Entered; }
+		CPreparationPermit(const CPreparationPermit&) = delete;
+		CPreparationPermit& operator=(const CPreparationPermit&) = delete;
+
+	private:
+		bool m_Entered = false;
+		bool m_OwnsPermit = false;
+	};
+
+	bool ReserveChild()
+	{
+		std::scoped_lock lock(g_PreparationBudget.mutex);
+		if (g_PreparationBudget.children >= PreparationLimit() - 1u)
+			return false;
+		++g_PreparationBudget.children;
+		return true;
+	}
+
+	void ReleaseChild() noexcept
+	{
+		std::scoped_lock lock(g_PreparationBudget.mutex);
+		--g_PreparationBudget.children;
+	}
+}
 
 struct Client::CAssetPreparationBatch::RUN_STATE final
 {
@@ -11,6 +138,7 @@ struct Client::CAssetPreparationBatch::RUN_STATE final
 	const size_t taskCount;
 	const std::atomic_bool* cancellation;
 	const std::function<HRESULT(size_t)>& prepare;
+	const bool exclusive;
 	std::atomic_size_t next{ 0u };
 	std::atomic<HRESULT> result{ S_OK };
 	std::atomic_size_t failedTask{ (std::numeric_limits<size_t>::max)() };
@@ -44,6 +172,9 @@ struct Client::CAssetPreparationBatch::RUN_STATE final
 				index = next.fetch_add(1u, std::memory_order_relaxed);
 				if (index >= taskCount)
 					return;
+				CPreparationPermit permit(exclusive, cancellation, result);
+				if (!permit)
+					return;
 				const HRESULT prepared = prepare(index);
 				if (FAILED(prepared))
 				{
@@ -58,6 +189,10 @@ struct Client::CAssetPreparationBatch::RUN_STATE final
 
 	static unsigned __stdcall ThreadMain(void* parameter)
 	{
+		struct CHILD_COMPLETION final
+		{
+			~CHILD_COMPLETION() { ReleaseChild(); }
+		} completion;
 		auto& state = *static_cast<RUN_STATE*>(parameter);
 		const HRESULT apartment = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
 		if (SUCCEEDED(apartment))
@@ -99,27 +234,38 @@ Client::CAssetPreparationBatch::RESULT Client::CAssetPreparationBatch::Run(
 			owner.m_Running = false;
 		}
 	} completion{ *this };
-	RUN_STATE state{ *this, taskCount, cancellation, prepare };
+	const bool exclusive = (device->GetCreationFlags() & D3D11_CREATE_DEVICE_SINGLETHREADED) != 0u;
+	// Upgrading a normal parent's permit would either overlap another caller
+	// or deadlock waiting for that parent. Reject this incompatible nesting.
+	if (exclusive && g_PreparationDepth != 0u && !g_PreparationExclusive)
+	{
+		output.result = E_INVALIDARG;
+		return output;
+	}
+	RUN_STATE state{ *this, taskCount, cancellation, prepare, exclusive };
 	try
 	{
 		if (taskCount != 0u && !state.Cancelled())
 		{
-			const DWORD processors = GetActiveProcessorCount(ALL_PROCESSOR_GROUPS);
-			const size_t available = processors > 2u ? processors - 2u : 1u;
-			const size_t limit = (device->GetCreationFlags() & D3D11_CREATE_DEVICE_SINGLETHREADED) ?
-				1u : (std::min)({ size_t{ 4u }, available, taskCount });
+			// A nested batch borrows this thread's callback permit and executes
+			// serially, so nesting cannot wait on permits held by its own parents.
+			const size_t limit = exclusive || g_PreparationDepth != 0u ?
+				1u : (std::min)(PreparationLimit(), taskCount);
 			output.workerCount = 1u;
 			{
 				std::scoped_lock lock(m_WorkerMutex);
 				m_Workers.reserve(limit - 1u);
 				for (size_t index = 1u; index < limit; ++index)
 				{
-					if (state.Cancelled())
+					if (state.Cancelled() || !ReserveChild())
 						break;
 					const HANDLE worker = reinterpret_cast<HANDLE>(_beginthreadex(
 						nullptr, 0u, &RUN_STATE::ThreadMain, &state, 0u, nullptr));
 					if (!worker)
+					{
+						ReleaseChild();
 						break; // The owner and existing children drain the remaining queue.
+					}
 					m_Workers.push_back(worker);
 					++output.workerCount;
 				}

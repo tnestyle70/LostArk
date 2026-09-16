@@ -1285,6 +1285,9 @@ extern ID3D11Device* g_pPreparedDevice;
 extern uint64_t g_iPreparedCatalogRevision;
 
 extern uint64_t g_iPreparedCatalogGeneration;
+// Additive target commits may be rebased; replacement/clear must invalidate candidates.
+extern uint64_t g_iPreparedCatalogReplacementGeneration;
+extern uint64_t g_iPreparedCatalogAdoptionGeneration;
 
 extern Client::EFFECT_RENDER_PREWARM_PROBE g_EffectRenderPrewarmProbe;
 
@@ -1503,6 +1506,7 @@ struct Client::CEffectDocumentRenderer::PRODUCT_TARGET_STAGE final
 		std::shared_ptr<const PREPARED_DOCUMENT>> CandidateDocumentsByIdentity;
 	std::shared_ptr<PRODUCT_PREWARM_SESSION> pCandidateSession;
 	uint64_t iStagedFromGeneration = 0u;
+	uint64_t iStagedFromReplacementGeneration = 0u;
 	ID3D11Device* pStagedFromDevice = nullptr;
 	uint64_t iStagedFromRevision = 0u;
 	uint32_t iResolvedElementCount = 0u;

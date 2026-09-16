@@ -296,6 +296,11 @@ public:
 		const EFFECT_RENDER_PREWARM_TARGET& Target,
 		std::shared_ptr<PRODUCT_TARGET_STAGE>& OutStage,
 		std::string& strOutError);
+	// Worker-only: merge an independently prepared target after earlier FIFO ACKs.
+	// Owner Commit still requires an exact generation match and swaps only.
+	static bool_t Rebase_VisualProgramTargetStage(
+		const std::shared_ptr<PRODUCT_TARGET_STAGE>& pStage,
+		std::string& strOutError);
 	static bool_t Commit_VisualProgramTargetStage(
 		const std::shared_ptr<PRODUCT_TARGET_STAGE>& pStage,
 		std::string& strOutError);

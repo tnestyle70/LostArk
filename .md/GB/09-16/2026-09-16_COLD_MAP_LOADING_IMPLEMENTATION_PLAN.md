@@ -49,3 +49,13 @@ Client/Public/Loader.h와 Client/Private/Loader.cpp에서 required entries를 ph
 각 기능의 실제 source/설치 데이터로 수치 및 실패 경계를 검사한다. 정상 모델 내용·count/order·mesh sharing이 같고, 실패/취소/중복 batch에서 부분 등록이 없음을 확인한다. 공통 실행기는 단 한 번 실행·worker 상한·single-thread device·예외·취소·중복 Run·재사용 경계를 headless로 확인한다. Debug Product Build로 Engine/Shared/Server/Client, SDK/CSO/DLL 배포를 확인한다. 변경 XML parse와 git diff --check를 수행한다. 새 제품 H/CPP만 기존 project/filter에 추가하고 기존 항목을 재배치하지 않는다.
 
 현재 dirty worktree의 타 세션 변경을 보존하며 자동 stage/commit하지 않는다. Client/UI를 실행하거나 캡처하지 않는다. 사용자 실제 네 맵 최초 진입·재진입·종료와 화면 확인은 별도이며, headless 결과를 제품 전체 진입 시간이나 visual PASS로 기록하지 않는다.
+
+## G07. 이펙트와 모델 준비의 중첩
+
+후속 기준 HEAD는 `37cd95c4b`다. Effect stage request는 Loading owner가 immutable 입력으로 캡처하므로 level model 완료를 기다리지 않고 별도 producer가 준비를 시작할 수 있다. Prototype registry를 수정하는 map/character commit은 기존 owner 순서를 유지한다. Effect 준비도 공통 bounded 작업 예산 안에서 여러 target을 준비하되 FIFO push/owner commit/ACK와 epoch rebase, 개별 실패 격리를 보존한다. 전체 target 수만큼 thread나 GPU 후보를 만들지 않고 작은 window만 유지한다.
+
+현재 renderer target stage는 전체 prepared catalog snapshot과 generation에 결합되어 동시에 준비한 후보 중 첫 commit 뒤 나머지가 stale이 된다. `Effect_DocumentRenderer_Catalog.cpp`와 내부 stage 구조에서 독립 준비와 최종 catalog merge를 분리한다. worker가 FIFO 등록 직전에 현재 catalog와 자신의 준비 결과를 합치고, main의 기존 generation 검사·transactional commit은 유지한다. clear/replace/catalog revision 교체는 별도 무효화 기준으로 거부한다. 큰 후보 복사와 해제는 worker에 남긴다. 새로운 runtime 경로나 Resources 변경은 없다.
+
+## G08. Bern 시작 위치 프레임 비용
+
+사용자 `profiler_20260916_224858_837_frame46_70436_0.json`은 46 CPU frame/drop 0, 유효 GPU 42개다. 평균 interval 45.633ms(21.91fps), CPU 44.883ms이며 NonBlend 17.220ms와 Client.Update 16.348ms가 주요 구간이다. 부모/자식 inclusive 시간은 더하지 않는다. 맵 50,017 placements/16,421 batches/905 visible 및 effect update/draw의 실제 호출을 조사해 반복 계산·제출을 줄인다. 화면 품질·배치·Server simulation 주기 축소를 성능 개선의 기본 수단으로 사용하지 않는다. 사용자 캡처를 baseline으로 보존하고 코드/수치 검증과 실제 후속 FPS를 분리한다.

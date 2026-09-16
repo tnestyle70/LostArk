@@ -383,21 +383,33 @@ bool_t CMapAssetRenderUtils::Capture_CameraCullSnapshot(
 	MAP_CAMERA_CULL_SNAPSHOT& outSnapshot,
 	std::string* outFailureReason)
 {
+	const auto* snapshot = Capture_CameraCullSnapshotView(outFailureReason);
+	if (!snapshot)
+		return false;
+	outSnapshot = *snapshot;
+	return true;
+}
+
+const MAP_CAMERA_CULL_SNAPSHOT* CMapAssetRenderUtils::Capture_CameraCullSnapshotView(
+	std::string* outFailureReason)
+{
 	if (nullptr != outFailureReason)
 		outFailureReason->clear();
 	const float4x4_t* view = CGameInstance::Get().Get_Transform(D3DTS::VIEW);
 	const float4x4_t* projection = CGameInstance::Get().Get_Transform(D3DTS::PROJ);
 	if (nullptr == view || nullptr == projection)
-		return ReportCullFailure(outFailureReason, "camera matrix unavailable");
+	{
+		ReportCullFailure(outFailureReason, "camera matrix unavailable");
+		return nullptr;
+	}
 
-	const float4x4_t stagedView = *view;
-	const float4x4_t stagedProjection = *projection;
+	const float4x4_t& stagedView = *view;
+	const float4x4_t& stagedProjection = *projection;
 	if (g_HasCameraMatrices &&
 		0 == std::memcmp(&g_LastView, &stagedView, sizeof(float4x4_t)) &&
 		0 == std::memcmp(&g_LastProjection, &stagedProjection, sizeof(float4x4_t)))
 	{
-		outSnapshot = g_LastCameraSnapshot;
-		return true;
+		return &g_LastCameraSnapshot;
 	}
 	const uint64_t nextRevision =
 		(std::numeric_limits<uint64_t>::max)() == g_CameraMatrixRevision ?
@@ -406,15 +418,14 @@ bool_t CMapAssetRenderUtils::Capture_CameraCullSnapshot(
 	if (!Build_CameraCullSnapshot(stagedView, stagedProjection, nextRevision,
 		candidate, outFailureReason))
 	{
-		return false;
+		return nullptr;
 	}
 	g_LastView = candidate.view;
 	g_LastProjection = candidate.projection;
 	g_CameraMatrixRevision = candidate.revision;
 	g_LastCameraSnapshot = candidate;
 	g_HasCameraMatrices = true;
-	outSnapshot = candidate;
-	return true;
+	return &g_LastCameraSnapshot;
 }
 
 bool_t CMapAssetRenderUtils::Build_ShadowCullSnapshot(

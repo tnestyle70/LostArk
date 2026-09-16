@@ -40,3 +40,34 @@ Warlord 실제 17개 모델의 직렬/공통 helper 병렬 결과는 bone 이름
 사용자가 22:34 KST 직접 Server/Client를 실행했다. 사용자 실측을 방해하지 않도록 추가 headless 부하 측정을 중단했다. 에이전트는 Client/UI를 실행·조작·캡처하지 않았다. 실제 네 맵 최초 진입·재진입·종료, class 변경 결과와 화면 판정은 아직 사용자 확인 전이다. 캐릭터의 30초가 얼마나 줄었는지, 최종 공통 helper의 모든 맵 전체 준비 시간 및 6개 class 성능은 미확정이다. 전체 진입 개선과 visual PASS로 기록하지 않는다.
 
 기존 dirty worktree의 타 기능 변경은 보존했다. 이번 작업을 자동 stage/commit/push하지 않았다.
+
+## G04. 이펙트 동시 준비 후속 소스 반영
+
+후속 작업은 기존 변경이 저장된 `37cd95c4b`에서 시작했다. Loader가 level/model 준비와 Effect producer를 함께 시작하도록 연결했다. ActorCatalog의 lazy 초기화와 선택 캐릭터 입력 캡처는 owner에서 마친다. prototype registry를 쓰는 map/character 등록을 서로 다른 worker에서 동시에 실행하지 않는다. 두 producer가 종료한 뒤에만 Loader 성공을 알리며, 기존 5+5초 종료 제한 안에서 두 owner와 child I/O 취소를 처리한다.
+
+공통 AssetPreparationBatch는 모든 instance의 실행 중 callback 합계를 최대 4개, 추가 child를 최대 3개로 제한한다. FIFO permit 대기, 취소, nested serial과 SINGLETHREADED device 독점을 적용한다. ACK 대기는 callback permit을 잡지 않는다. Engine CModel 내부의 기존 skinned-material threadpool(추가 최대 3개)은 이 Client helper 예산과 별개이므로 프로세스의 모든 thread 수가 4라는 뜻은 아니다.
+
+Effect_LoadPreparationJob의 결과/ACK protocol은 유지한다. Effect_PresentationService가 최대 3개 target을 병렬 stage하고, 원래 FIFO 순서로 renderer candidate rebase → 결과 게시 → main commit → ACK를 처리한다. 최대 3개 미등록 후보와 1개 미ACK 결과만 유지한다. 완료 후보와 이전 자원 해제는 producer에서 수행한다. runtime lazy class도 정렬된 set 대신 실제 queue 앞 최대 3개를 캡처한다. 개별 target 실패는 격리하고 structural failure는 남은 owned FIFO를 순서대로 terminal 정산한다.
+
+Effect_DocumentRenderer는 다른 target의 additive commit 뒤 worker가 현재 maps/session과 자기 후보를 다시 합칠 수 있게 했다. main commit의 정확한 generation 검사는 유지한다. full catalog 교체·authoring replacement·clear는 별도 replacement generation으로 후보를 무효화한다. 새 device/revision session의 최초 additive admission만 해당 window의 sibling이 따라갈 수 있게 구분하며, A→B→A로 돌아왔다는 이유로 옛 A 후보를 되살리지 않는다. Resources 데이터나 별도 모델 런타임을 추가하지 않았다.
+
+## G05. Bern 사용자 시작 캡처와 반영 범위
+
+기준은 `Client/Bin/ProfilerCaptures/profiler_20260916_224858_837_frame46_70436_0.json`이다. SHA256은 `ff2db109169d372c50eef5468e788b847a297cb0d464f9a95ea1f8a02b1a0569`이고, 46 CPU frame/drop 0과 42개 유효 GPU frame을 기록했다. 평균 interval 45.633ms(21.91fps), CPU 44.883ms, GPU interval 45.610ms다. NonBlend CPU 17.220ms/유효 GPU 27.158ms, Client.Update 16.348ms이며 부모·자식 inclusive 값은 더하지 않는다. GPU timestamp에도 CPU 공급 공백이 포함될 수 있다.
+
+MapStaticBatchObject가 매 Render마다 232-byte 검증된 camera snapshot과 view/projection을 복사하던 경로를 즉시 소비하는 const view로 바꿨다. 기존 copy API, 실패 시 이전 출력 보존, 실제 camera 변경과 culling 입력은 유지한다. 화면에 그릴 객체·배치·재질·광원·Server tick은 줄이지 않았다. Particles/GeometryHelpers 두 TU는 캡처의 Sprite.InstanceBuild 2.719ms와 Particle.Render self 1.889ms에 연결된 Debug CPU 경로이므로 기존 hot-TU 정책의 `/O2 /Zi`, JMC/RTC/PCH 해제를 적용했다. `/MDd`, `_DEBUG`, `/fp:precise`와 Release 설정은 유지한다.
+
+GPU NonBlend의 주 비용이 제거됐다는 증거는 없다. 기존 source BG pass는 opaque/masked가 같은 PS의 clip을 소비하므로 early-depth를 일괄 적용하지 않았다. 새 opaque 전용 shader/pass와 실제 occlusion/MRT parity 검사는 이번 변경에 포함하지 않았다. 실제 개선 FPS는 후속 사용자 캡처가 필요하다.
+
+## G06. 후속 검증과 EXE 미반영 경계
+
+- `out/ConcurrentPreparation20260916`: Loader/helper/Loading 실제 3TU 격리 컴파일, actual helper의 두 batch 합계 active 4/child 3, FIFO 대기, 중첩, single-thread exclusive, 대기 취소, 두 owner 실패/join 및 기존 실행기 경계 PASS.
+- `out/EffectParallelPreparation20260916`: 실제 Effect 서비스/queue/job/helper 격리 컴파일과 3-slot window, 7-target FIFO/단일 ACK, producer 자원 해제, 개별 실패, stage·ACK 중 epoch 교체, 취소/예외/잘못된 ACK/structural failure 및 queue 우선순위·정산 PASS. resource stage와 renderer rebase는 이 protocol 검사에서 stub이므로 실제 이펙트 로딩/성능 증거는 아니다.
+- `out/EffectParallel20260916`: 실제 renderer Catalog/CacheHelpers TU 격리 컴파일 PASS.
+- `out/Bern2248Analysis20260916`: 실제 camera 함수 13조건, 정지/이동의 draw 순서 일치와 MapAssetRenderUtils/MapStaticBatchObject 격리 컴파일 PASS. renderer Rebase/Commit 실제 함수 기반 계약 검사에서 FIFO 병합과 기존 document/identity/resource 보존, stale 거부를 확인했다. 메모리 실패는 초기 throwable allocation 4지점만 확인했으며 모든 allocation 실패를 검증한 것은 아니다.
+- 같은 RebaseContract의 최종 검사에는 새 revision에서 3개 병렬 후보를 순서대로 반영하고 replacement marker가 한 번만 바뀌는 조건, full catalog/개별 target 교체 거부, device/revision A→B→A의 옛 후보 거부도 포함한다.
+- `out/EffectParticleMath20260916`: Particles/GeometryHelpers 실제 2TU `/O2` 격리 컴파일 PASS. 실제 helper와 header/native table의 `/Od`↔`/O2` 동일 process 비교에서 sprite 4,035건/clip 8,130건의 반환값·비유한값 분류와 수치 비교 PASS, 최대 절대차 `1.1921e-7`이었다. 7회 순서 교대 중앙값은 sprite 2,955개 `1.186725→0.541475ms`, clip 4,096개 `0.461158→0.088108ms`다. 이는 함수 CPU 표본이며 Bern FPS로 환산하지 않는다.
+
+최초 RebaseContract 검사 프로그램의 전역 메모리 실패 주입에서 CRT 종료 팝업이 발생했다. 사용자가 본 `Bern…RebaseContract` 경로는 이 검사 프로그램과 일치하며, 당시 Client는 계속 실행 중이었다. 새 effect 병렬화는 제품에 배포되지 않았다. 이후 검사에는 CRT report/abort/Windows error UI 차단을 적용해 로그만 남겼다. 이를 Bern 프레임 드랍이나 실행 중 Client의 새 effect 병렬화 실패로 기록하지 않는다.
+
+사용자가 Client를 계속 실행하며 **소스 검증만 마무리**하도록 명시했다. 따라서 G04 이후 Product 통합 빌드와 EXE/DLL 배포는 수행하지 않는다. 현재 `Client/Bin/Debug/Client.exe`는 22:33:45, Engine.dll은 22:32:25 빌드이며 이 후속 변경을 포함하지 않는다. 개별 컴파일 성공과 실행 중 EXE 적용을 구분한다. 사용자·다른 작업이 변경한 RenderingProfiles와 Kouku composition은 그대로 보존한다.

@@ -2,6 +2,7 @@
 
 #include "Client_Defines.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <deque>
 #include <map>
@@ -124,6 +125,8 @@ public:
 		std::string& strOutStatus);
 	EFFECT_PRODUCT_PREWARM_STEP_RESULT Begin_Frame(
 		std::string& strOutEffectAssetId);
+	// Main-thread read-only snapshot; preserves the current unowned FIFO prefix.
+	std::vector<std::string> Collect_PendingFrontTargets(size_t iMaximumCount) const;
 	EFFECT_PRODUCT_PREWARM_STEP_RESULT Begin_LoadingFrame(
 		uint64_t iJobEpoch,
 		std::string& strOutEffectAssetId);
