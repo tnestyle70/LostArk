@@ -54,6 +54,7 @@ class CCombatAnalysisFrameView;
 class CCharacterInfoWindowView;
 class CAvatarBookWindowView;
 class CVehicleWindowView;
+class CHonorTitleWindowView;
 class CQuickSlotDragView;
 class CPlayerController;
 class CChatWindowView;
@@ -750,6 +751,8 @@ private:
 	every other runtime window while open. */
 	unique_ptr<CVehicleWindowView> m_pVehicleWindowView = { nullptr };
 	bool_t m_bVehicleWindowKeyDown = false;
+	/* Opened from the character info window's change-title button; drawn over the windows above. */
+	unique_ptr<CHonorTitleWindowView> m_pHonorTitleWindowView = { nullptr };
 	/* Click-to-carry icon for the quick slots, constructed last of all runtime UI so it rides
 	over every window. Item_1..4 (1/2/3/4) take inventory items, SpecialSkill_1..6 (5/6/7/8/9/0)
 	take vehicles; both bindings are Client-local like m_strItemQuickSlot. */

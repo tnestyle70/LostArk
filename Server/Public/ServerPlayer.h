@@ -150,10 +150,14 @@ namespace LostArk::Server
 		LostArk::Shared::S2C_MARIO_RETURN_RESULT LastMarioReturnResult;
 		LostArk::Shared::S2C_DEBUG_SET_MADNESS_FORM_RESULT LastDebugMadnessFormResult;
 		LostArk::Shared::S2C_SET_VEHICLE_RIDING_RESULT LastVehicleRidingResult;
+		LostArk::Shared::S2C_SET_HONOR_TITLE_RESULT LastHonorTitleResult;
 		/* The ridden vehicle or INVALID_VEHICLE_ID on foot. Only riding worlds
 		admit it, and Enforce_VehicleRidingState clears it before the snapshot
 		whenever the player can no longer ride. */
 		LostArk::Shared::VEHICLE_ID iVehicleId = LostArk::Shared::INVALID_VEHICLE_ID;
+		/* Worn honor title (cosmetic); admitted from the honor title bootstrap only and
+		carried through world transfers. */
+		LostArk::Shared::HONOR_TITLE_ID iHonorTitleId = LostArk::Shared::INVALID_HONOR_TITLE_ID;
 		std::uint8_t iMarioStage = 0u;
 		std::uint8_t iMarioLayoutVariant = 0u;
 		LostArk::Shared::PLAYER_MADNESS_FORM ePreMarioForm =

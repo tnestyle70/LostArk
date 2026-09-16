@@ -70,6 +70,7 @@ void LostArk::Server::CGameRoom::Handle_ReturnToBern(
 	transfer.eTargetWorldId = WORLD_ID::BERN;
 	transfer.eCharacterClass = player.eCharacterClass;
 	transfer.strNickName = player.strNickName;
+	transfer.iHonorTitleId = player.iHonorTitleId;
 	transfer.iPartyRequestSequence = request.iRequestSequence;
 	transfer.strSpawnPlacementOverrideId = BERN_RETURN_PLACEMENT_ID;
 	// Carries Valtan clear rewards (and anything else still held) across the
@@ -587,6 +588,7 @@ bool LostArk::Server::CGameRoom::Stage_PartyWorldTransfer(
 	transfer.eTargetWorldId = targetWorldId;
 	transfer.eCharacterClass = leader.eCharacterClass;
 	transfer.strNickName = leader.strNickName;
+	transfer.iHonorTitleId = leader.iHonorTitleId;
 	transfer.iPartyRequestSequence = requestSequence;
 	for (const PLAYER_ID memberId : batchMemberIds)
 	{

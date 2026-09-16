@@ -6,6 +6,7 @@
 #include "WorldBootstrap.h"
 #include "GameplayCatalog.h"
 #include "ItemCatalog.h"
+#include "HonorTitleCatalog.h"
 #include "VehicleCatalog.h"
 #include "ValtanClearRewards.h"
 #include "PlayerSkillSystem.h"
@@ -279,7 +280,9 @@ namespace LostArk::Server
 			LostArk::Shared::SESSION_DIAGNOSTIC_REASON& outReason, std::string& status,
 			const std::string& spawnPlacementOverrideId = {},
 			const std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT>&
-				carriedInventory = {});
+				carriedInventory = {},
+			LostArk::Shared::HONOR_TITLE_ID carriedHonorTitleId =
+				LostArk::Shared::INVALID_HONOR_TITLE_ID);
 		bool Build_PlayerEntryFrames(STAGED_PLAYER_ENTRY& entry,
 			std::span<const STAGED_PLAYER_ENTRY> batch, std::string& status);
 		void Commit_PlayerEntry(const STAGED_PLAYER_ENTRY& entry);
@@ -290,7 +293,9 @@ namespace LostArk::Server
 			const LostArk::Shared::C2S_ENTER_WORLD& enterWorld,
 			const std::string& spawnPlacementOverrideId = {},
 			const std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT>&
-				carriedInventory = {});
+				carriedInventory = {},
+			LostArk::Shared::HONOR_TITLE_ID carriedHonorTitleId =
+				LostArk::Shared::INVALID_HONOR_TITLE_ID);
 		void Leave(
 			SESSION_ID sessionId,
 			LostArk::Shared::PLAYER_DESPAWN_REASON reason, bool publishDeparture = true);
@@ -408,6 +413,14 @@ namespace LostArk::Server
 			const LostArk::Shared::C2S_SET_VEHICLE_RIDING& request);
 		/* True while nothing the player is doing forbids a vehicle underneath. */
 		bool Can_RideVehicle(const SERVER_PLAYER& player) const;
+		/* Title window change for this session's player. The verdict is sent back; the
+		worn title itself rides the world snapshot. */
+		void Handle_SetHonorTitle(
+			SESSION_ID sessionId,
+			const LostArk::Shared::C2S_SET_HONOR_TITLE& request);
+		LostArk::Shared::S2C_SET_HONOR_TITLE_RESULT Apply_SetHonorTitle(
+			SERVER_PLAYER& player,
+			const LostArk::Shared::C2S_SET_HONOR_TITLE& request);
 		/* Metres per second the player walks at: the ridden vehicle's speed, or
 		the class speed scaled by its held stance. */
 		float Resolve_PlayerMoveSpeed(const SERVER_PLAYER& player) const;
@@ -1477,6 +1490,7 @@ namespace LostArk::Server
 		CGameplayCatalogGenerations m_GameplayCatalog;
 		CItemCatalog m_ItemCatalog;
 		CVehicleCatalog m_VehicleCatalog;
+		CHonorTitleCatalog m_HonorTitleCatalog;
 		CValtanClearRewards m_ValtanClearRewards;
 		CServerNavigation m_ServerNavigation;
 		CServerCollisionSystem m_ServerCollisionSystem;

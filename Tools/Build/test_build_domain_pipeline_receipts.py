@@ -201,6 +201,8 @@ class BuildDomainManifestContractTests(unittest.TestCase):
                 "world.destruction",
                 "gameplay.balance",
                 "items.catalog",
+                "vehicles.profiles",
+                "honortitles.catalog",
                 "valtan.rewards",
             },
         )
@@ -336,7 +338,8 @@ class BuildDomainManifestContractTests(unittest.TestCase):
             "KoukuSaydon": ["koukusaydon.product", "map.kakulsaydon", "world.gameplay", "gameplay.balance"],
             "Server": [
                 "koukusaydon.product", "world.gameplay", "navigation",
-                "world.destruction", "gameplay.balance", "items.catalog", "valtan.rewards",
+                "world.destruction", "gameplay.balance", "items.catalog", "vehicles.profiles",
+                "honortitles.catalog", "valtan.rewards",
             ],
         }
         for owner_name, domain_ids in expected.items():

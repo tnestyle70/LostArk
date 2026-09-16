@@ -1709,6 +1709,9 @@ void Client::CClientReplication::Collect_PlayerViews(
 		target.iNetEntityId = source.Record.iNetEntityId;
 		target.eCharacterClass = source.Record.eCharacterClass;
 		target.strNickname = source.Record.strNickName;
+		if (const auto title = m_HonorTitleByNetEntityId.find(source.Record.iNetEntityId);
+			m_HonorTitleByNetEntityId.end() != title)
+			target.iHonorTitleId = title->second;
 		target.isLocal = nullptr != localCharacter &&
 			source.pCharacter == localCharacter;
 		target.pCharacter = source.pCharacter;
@@ -4127,6 +4130,7 @@ void Client::CClientReplication::Reset_World()
 	m_hasPendingRaidEntryVote = false;
 	m_PendingRaidEntryVote = {};
 	m_ChatBubblesByNetEntityId.clear();
+	m_HonorTitleByNetEntityId.clear();
 	++m_iWorldDestructionPresentationGeneration;
 	if (0u == m_iWorldDestructionPresentationGeneration)
 		++m_iWorldDestructionPresentationGeneration;
@@ -4141,6 +4145,8 @@ bool Client::CClientReplication::Apply_PlayerSnapshot(
 {
 	using namespace LostArk::Shared;
 	bool allSucceeded = true;
+	/* Cosmetic, so it is kept even while the body is still being staged. */
+	m_HonorTitleByNetEntityId[player.iNetEntityId] = player.iHonorTitleId;
 	if (m_PendingPlayerSpawns.contains(player.iNetEntityId))
 	{
 		Stage_PlayerPresentation(player, serverTick, entities);

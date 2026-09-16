@@ -37,4 +37,13 @@ namespace LostArk::Shared
 
 	inline constexpr VEHICLE_ID
 		INVALID_VEHICLE_ID = 0;
+
+	// EFTable_HonorTitle primary key (project titles use 100001+). The Server
+	// admits only ids its published honor title bootstrap carries; zero means
+	// no title is worn.
+	using HONOR_TITLE_ID =
+		std::uint32_t;
+
+	inline constexpr HONOR_TITLE_ID
+		INVALID_HONOR_TITLE_ID = 0;
 }

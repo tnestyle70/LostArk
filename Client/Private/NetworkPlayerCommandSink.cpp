@@ -107,6 +107,19 @@ bool Client::CNetworkPlayerCommandSink::Consume_VehicleRidingResult(
 	return CNetworkManager::Get().Try_Consume_VehicleRidingResult(result);
 }
 
+bool Client::CNetworkPlayerCommandSink::Request_SetHonorTitle(
+	const std::uint32_t requestSequence,
+	const LostArk::Shared::HONOR_TITLE_ID titleId)
+{
+	return CNetworkManager::Get().Send_SetHonorTitle(requestSequence, titleId);
+}
+
+bool Client::CNetworkPlayerCommandSink::Consume_HonorTitleResult(
+	LostArk::Shared::S2C_SET_HONOR_TITLE_RESULT& result)
+{
+	return CNetworkManager::Get().Try_Consume_HonorTitleResult(result);
+}
+
 bool Client::CNetworkPlayerCommandSink::Request_InteractionSlot(
  std::uint32_t sequence, LostArk::Shared::INTERACTION_SLOT slot)
 {

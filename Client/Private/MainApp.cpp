@@ -55,6 +55,8 @@
 #include "CharacterInfoWindowView.h"
 #include "VehicleWindowView.h"
 #include "CombatAnalysisFrameView.h"
+#include "HonorTitleCatalog.h"
+#include "HonorTitleWindowView.h"
 #include "InventoryView.h"
 #include "QuickSlotDragView.h"
 #include "SkillWindowView.h"
@@ -825,6 +827,12 @@ HRESULT CMainApp::Initialize()
 			"[MainApp] Item Catalog initialization failed: " + itemCatalogStatus + "\n";
 		OutputDebugStringA(diagnostic.c_str());
 	}
+	/* Same policy: without it nameplates show bare names and the title window is empty. */
+	std::string honorTitleStatus;
+	if (!Client::CHonorTitleCatalog::Load(honorTitleStatus))
+	{
+		OutputDebugStringA(("[MainApp] Honor title catalog initialization failed: " + honorTitleStatus + "\n").c_str());
+	}
 
 	/* Not fatal, same reasoning as CItemCatalog above -- a missing/broken sound catalog just
 	means CCharacter::Update_SoundCues() finds no variants for every cue and silently plays
@@ -911,6 +919,8 @@ HRESULT CMainApp::Initialize()
 	m_pAvatarBookView = std::make_unique<CAvatarBookWindowView>(m_pDevice, m_pContext);
 	/* Vehicle window (N): a separate panel on the right, drawn over the windows above. */
 	m_pVehicleWindowView = std::make_unique<CVehicleWindowView>(m_pDevice, m_pContext);
+	/* Honor title window: opened from the character info window, drawn over it. */
+	m_pHonorTitleWindowView = std::make_unique<CHonorTitleWindowView>(m_pDevice, m_pContext);
 	/* Last of all: the carried quick-slot icon must ride over every window above. */
 	m_pQuickSlotDragView = std::make_unique<CQuickSlotDragView>(m_pDevice, m_pContext);
 
@@ -2929,6 +2939,8 @@ HRESULT CMainApp::Render()
 		m_pAvatarBookView->Render_Text();
 	if (nullptr != m_pVehicleWindowView)
 		m_pVehicleWindowView->Render_Text();
+	if (nullptr != m_pHonorTitleWindowView)
+		m_pHonorTitleWindowView->Render_Text();
 
 	/* Every CUIInputRouter-based screen's click-edge check has run by this point (both this
 	function's own render pass and the Update() pass earlier this same frame) -- rolls the
@@ -3000,6 +3012,8 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 			m_pAvatarBookView->Hide();
 		if (nullptr != m_pVehicleWindowView)
 			m_pVehicleWindowView->Hide();
+		if (nullptr != m_pHonorTitleWindowView)
+			m_pHonorTitleWindowView->Hide();
 		if (nullptr != m_pQuickSlotDragView)
 		{
 			m_pQuickSlotDragView->Cancel();
@@ -3418,6 +3432,23 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 				CPlayerController* pController = Find_ActivePlayerController();
 				if (nullptr == pController || !pController->Request_VehicleRiding(iVehicleId))
 					OutputDebugStringA("[Client][VehicleWindow] Riding request not sent (no controller, or one is still pending).\n");
+			}
+		}
+		if (nullptr != m_pHonorTitleWindowView)
+		{
+			/* The info window's title row button toggles the title window; the window closes
+			with the info window. The Server round trip is the controller's, as for vehicles. */
+			if (m_pCharacterInfoView->Take_HonorTitleWindowRequest())
+				m_pHonorTitleWindowView->Toggle();
+			if (!m_pCharacterInfoView->Is_Open())
+				m_pHonorTitleWindowView->Close();
+			m_pHonorTitleWindowView->Update(fTimeDelta, player);
+			uint32_t iTitleId = 0u;
+			if (m_pHonorTitleWindowView->Take_TitleRequest(iTitleId))
+			{
+				CPlayerController* pController = Find_ActivePlayerController();
+				if (nullptr == pController || !pController->Request_HonorTitle(iTitleId))
+					OutputDebugStringA("[Client][HonorTitleWindow] Title request not sent (no controller, or one is still pending).\n");
 			}
 		}
 	}

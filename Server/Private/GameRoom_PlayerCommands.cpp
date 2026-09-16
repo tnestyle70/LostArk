@@ -503,6 +503,7 @@ void LostArk::Server::CGameRoom::Handle_DebugEnterKakulSaydonArena(
 	transfer.eTargetWorldId = WORLD_ID::KAKULSAYDON_ARENA;
 	transfer.eCharacterClass = player.eCharacterClass;
 	transfer.strNickName = player.strNickName;
+	transfer.iHonorTitleId = player.iHonorTitleId;
 	transfer.iPartyRequestSequence = request.iRequestSequence;
 	transfer.CarriedInventory = player.Inventory;
 	m_PendingWorldTransfers.push_back(std::move(transfer));

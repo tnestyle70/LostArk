@@ -43,6 +43,11 @@ public:
 		LostArk::Shared::VEHICLE_ID vehicleId) override;
 	bool Consume_VehicleRidingResult(
 		LostArk::Shared::S2C_SET_VEHICLE_RIDING_RESULT& result) override;
+	bool Request_SetHonorTitle(
+		std::uint32_t requestSequence,
+		LostArk::Shared::HONOR_TITLE_ID titleId) override;
+	bool Consume_HonorTitleResult(
+		LostArk::Shared::S2C_SET_HONOR_TITLE_RESULT& result) override;
 
 	bool Request_InteractionSlot(std::uint32_t sequence,
 		LostArk::Shared::INTERACTION_SLOT slot) override;

@@ -40,7 +40,8 @@ bool LostArk::Server::CGameRoom::Stage_PlayerEntry(
 	STAGED_PLAYER_ENTRY& staged,
 	LostArk::Shared::SESSION_DIAGNOSTIC_REASON& outReason, std::string& status,
 	const std::string& spawnPlacementOverrideId,
-	const std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT>& carriedInventory)
+	const std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT>& carriedInventory,
+	const LostArk::Shared::HONOR_TITLE_ID carriedHonorTitleId)
 {
 	using namespace LostArk::Shared;
 	outReason = SESSION_DIAGNOSTIC_REASON::SERVER_JOIN_VALIDATION_FAILED;
@@ -104,6 +105,10 @@ bool LostArk::Server::CGameRoom::Stage_PlayerEntry(
 	player.iNetEntityId = m_iNextNetEntityId + static_cast<NET_ENTITY_ID>(offset);
 	player.eCharacterClass = enterWorld.eCharacterClass;
 	player.strNickName = enterWorld.strNickName;
+	/* A transfer keeps the title it wore; the target room's own bootstrap still has the
+	last word, so an id it does not list arrives bare. */
+	player.iHonorTitleId = m_HonorTitleCatalog.Has_Title(carriedHonorTitleId) ?
+		carriedHonorTitleId : INVALID_HONOR_TITLE_ID;
 	player.strSpawnPlacementId = spawn->strPlacementId;
 	player.fPositionY = spawn->fPositionY;
 	if (!spawnPlacementOverrideId.empty())
@@ -347,7 +352,8 @@ bool LostArk::Server::CGameRoom::Join(
 	const SESSION_ID sessionId,
 	const LostArk::Shared::C2S_ENTER_WORLD& enterWorld,
 	const std::string& spawnPlacementOverrideId,
-	const std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT>& carriedInventory)
+	const std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT>& carriedInventory,
+	const LostArk::Shared::HONOR_TITLE_ID carriedHonorTitleId)
 {
 	using namespace LostArk::Shared;
 
@@ -464,7 +470,7 @@ bool LostArk::Server::CGameRoom::Join(
 	SESSION_DIAGNOSTIC_REASON reason{};
 	std::string status;
 	if (!Stage_PlayerEntry(session, enterWorld, {}, entry, reason, status,
-			spawnPlacementOverrideId, carriedInventory))
+			spawnPlacementOverrideId, carriedInventory, carriedHonorTitleId))
 	{
 		session->Request_Close(reason, WSAEINVAL, status);
 		return false;

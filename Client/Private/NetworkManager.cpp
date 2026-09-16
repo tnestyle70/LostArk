@@ -1517,6 +1517,26 @@ bool CNetworkManager::Send_SetVehicleRiding(
 		writer.Get_Buffer(), frame) && Send_All(frame);
 }
 
+bool CNetworkManager::Send_SetHonorTitle(
+	const std::uint32_t requestSequence,
+	const LostArk::Shared::HONOR_TITLE_ID titleId)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected() || !Is_Known_World_Id(m_eWorldId) ||
+		INVALID_PLAYER_ID == m_iLocalPlayerId)
+		return false;
+	C2S_SET_HONOR_TITLE message{};
+	message.iRequestSequence = requestSequence;
+	message.eWorldId = m_eWorldId;
+	message.iHonorTitleId = titleId;
+	CPacketWriter writer;
+	if (!Write_Message(writer, message))
+		return false;
+	std::vector<std::uint8_t> frame;
+	return Build_Packet_Frame(PACKET_TYPE::C2S_SET_HONOR_TITLE,
+		writer.Get_Buffer(), frame) && Send_All(frame);
+}
+
 bool CNetworkManager::Send_InteractionSlot(std::uint32_t sequence,
  LostArk::Shared::INTERACTION_SLOT slot)
 {
@@ -1620,6 +1640,16 @@ bool CNetworkManager::Try_Consume_VehicleRidingResult(
 		return false;
 	result = m_VehicleRidingResults.front();
 	m_VehicleRidingResults.pop_front();
+	return true;
+}
+
+bool CNetworkManager::Try_Consume_HonorTitleResult(
+	LostArk::Shared::S2C_SET_HONOR_TITLE_RESULT& result)
+{
+	if (m_HonorTitleResults.empty())
+		return false;
+	result = m_HonorTitleResults.front();
+	m_HonorTitleResults.pop_front();
 	return true;
 }
 
@@ -2412,6 +2442,7 @@ void CNetworkManager::Reset_WorldInboundState()
 	m_DebugWorldPlaybackResults.clear();
 	m_DebugMadnessFormResults.clear();
 	m_VehicleRidingResults.clear();
+	m_HonorTitleResults.clear();
 	m_DebugKoukuHudModeResults.clear();
 	m_WorldEntitySpawnResults.clear();
 	// ENTER_ACCEPTED follows the old-room command/reply barrier on this socket.
@@ -3696,6 +3727,24 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 			return;
 		}
 		m_VehicleRidingResults.push_back(result);
+		break;
+	}
+	case PACKET_TYPE::S2C_SET_HONOR_TITLE_RESULT:
+	{
+		S2C_SET_HONOR_TITLE_RESULT result{};
+		if (!Read_Message(reader, result) || 0u != reader.Get_RemainingSize())
+		{
+			m_iLastErrorCode.store(WSAEINVAL);
+			return;
+		}
+		if (result.eWorldId != m_eWorldId)
+			break;
+		if (m_HonorTitleResults.size() >= MAX_REVISION_CONTROL_QUEUE)
+		{
+			Fail_Protocol(WSAENOBUFS);
+			return;
+		}
+		m_HonorTitleResults.push_back(result);
 		break;
 	}
 	case PACKET_TYPE::S2C_WORLD_ENTITY_SPAWN_RESULT:
