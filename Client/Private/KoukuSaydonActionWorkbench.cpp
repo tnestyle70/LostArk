@@ -57,6 +57,25 @@ namespace
 				shot->CameraTrack.iDurationMs : shot->iBlendInMs + shot->iDefaultHoldMs;
 		return resource.iDurationMs;
 	}
+	// Every owner that plays one stable shot: Composition boxes plus the Area AUTO trigger.
+	std::vector<std::string> Camera_Consumers(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
+		const CLevel_KakulSaydonArena::KAKUL_CAMERA_SHOT& shot)
+	{
+		std::vector<std::string> consumers;
+		const auto collect = [&](const std::string& owner, const std::vector<KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE>& rows) {
+			for (const auto& row : rows)
+				for (const auto& resource : document.PresentationResources)
+					if (resource.strResourceId == row.strResourceId && resource.eKind == KOUKU_SAYDON_PRESENTATION_KIND::CAMERA &&
+						resource.strAssetId == shot.strShotId)
+						consumers.push_back(owner + " / " + row.strOccurrenceId + " @ " + std::to_string(row.iStartMs) + " ms");
+		};
+		for (const auto& pattern : document.Patterns) collect(pattern.strDisplayName, pattern.PresentationOccurrences);
+		for (const auto& bundle : document.Bundles) collect(bundle.strDisplayName, bundle.PresentationOccurrences);
+		if (!shot.bPatternOnly)
+			consumers.push_back(shot.strSequenceInstanceId.empty() ? std::string("Area AUTO camera box") :
+				"Area AUTO with " + shot.strSequenceInstanceId);
+		return consumers;
+	}
 
 
 	bool_t Resolve_PresentationBossSpawnPosition(const std::string& areaId,
@@ -10037,17 +10056,27 @@ void Client::CKoukuSaydonActionWorkbench::Queue_PresentationPreview(
 	m_strStatus = std::string(Presentation_Label(resource.eKind)) + " preview requested: " + resource.strDisplayName;
 }
 
-void Client::CKoukuSaydonActionWorkbench::Render_CameraAuthoring(const std::string_view shotId)
+void Client::CKoukuSaydonActionWorkbench::Render_CameraAuthoring(const std::string_view shotId,
+	const std::string_view patternId, const std::string_view occurrenceId)
 {
 	if (ImGui::Button("Open Composition Camera"))
-	{ m_strCameraWindowShotId = std::string(shotId); m_strCameraKeyId.clear(); m_bCameraWindowOpen = true; }
+	{
+		m_strCameraWindowShotId = std::string(shotId); m_strCameraKeyId.clear(); m_bCameraWindowOpen = true;
+		// A Sequence box opens the window with its clock; a Resource row opens the shot alone.
+		m_strCameraWindowPatternId = std::string(patternId); m_strCameraWindowOccurrenceId = std::string(occurrenceId);
+	}
 	auto* level = CLevel_KakulSaydonArena::Get_Active();
 	const auto* selected = Find_AuthoringCamera(shotId);
 	if (!level || !selected) { ImGui::TextDisabled("Enter KoukuSaydon to edit this Area Camera shot."); return; }
 	auto shot = *selected;
+	const auto consumers = Camera_Consumers(m_Draft, shot);
+	const bool locked = consumers.size() > 1u && m_strCameraSharedEditShotId != shot.strShotId;
 	ImGui::PushID(shot.strShotId.c_str());
 	ImGui::SeparatorText("Camera Shot / Area source");
 	ImGui::TextDisabled("%s | %s", shot.strShotId.c_str(), shot.bPatternOnly ? "PATTERN_ONLY" : "AUTO (existing Area trigger)");
+	if (locked)
+		ImGui::TextWrapped("Shared by %zu consumers. Open Composition Camera to review them, then allow shared edits or make a dedicated shot for this box.", consumers.size());
+	ImGui::BeginDisabled(locked);
 	char name[129]{}; (void)Copy_Text(name, std::size(name), shot.strDisplayName);
 	bool changed = ImGui::InputText("Camera name", name, std::size(name));
 	if (changed) shot.strDisplayName = name;
@@ -10059,18 +10088,37 @@ void Client::CKoukuSaydonActionWorkbench::Render_CameraAuthoring(const std::stri
 	if (ImGui::Combo("Transition", &easing, "LINEAR\0SMOOTHSTEP\0"))
 	{ shot.eTransitionEasing = easing == 0 ? VALTAN_CINEMATIC_CAMERA_EASING::LINEAR : VALTAN_CINEMATIC_CAMERA_EASING::SMOOTHSTEP; changed = true; }
 	int anchor = shot.followsPlayer ? 1 : 0;
+	// PLAYER framing drops the track, so a tracked shot keeps WORLD here.
+	ImGui::BeginDisabled(shot.hasCameraTrack && !shot.followsPlayer);
 	if (ImGui::Combo("Shot anchor", &anchor, "WORLD\0PLAYER\0"))
 	{
 		shot.followsPlayer = anchor == 1;
 		if (shot.followsPlayer) { shot.hasCameraTrack = false; shot.vFollowEyeOffset = shot.vEye; shot.vFollowLookAtOffset = shot.vLookAt; }
 		changed = true;
 	}
+	ImGui::EndDisabled();
 	if (changed) (void)level->Update_CameraShot(shot, m_strStatus);
+	ImGui::EndDisabled();
 	ImGui::Text("Eye (%.3f, %.3f, %.3f)", shot.vEye.x, shot.vEye.y, shot.vEye.z);
 	ImGui::Text("Look at (%.3f, %.3f, %.3f), FOV %.2f", shot.vLookAt.x, shot.vLookAt.y, shot.vLookAt.z, shot.fFovYDegrees);
-	if (shot.hasCameraTrack) ImGui::TextWrapped("This shot has a camera track. Set Camera Pos explicitly replaces that track with the captured static pose.");
-	if (ImGui::Button("Set Camera Pos / Capture view"))
+	ImGui::BeginDisabled(locked);
+	if (shot.hasCameraTrack)
+	{
+		ImGui::TextWrapped("This shot has a camera track. Edit one position in Composition Camera; replacing the whole track is a separate confirmed action.");
+		if (ImGui::Button("Replace whole track with current view...")) ImGui::OpenPopup("Replace Camera Track##CameraAuthoring");
+		if (ImGui::BeginPopupModal("Replace Camera Track##CameraAuthoring", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+		{
+			ImGui::TextWrapped("Every position of %s becomes one static pose captured from the current view.", shot.strShotId.c_str());
+			if (ImGui::Button("Replace whole track"))
+			{ (void)level->Capture_CameraShot(shot.strShotId, m_strStatus); ImGui::CloseCurrentPopup(); }
+			ImGui::SameLine();
+			if (ImGui::Button("Cancel")) ImGui::CloseCurrentPopup();
+			ImGui::EndPopup();
+		}
+	}
+	else if (ImGui::Button("Set Camera Pos / Capture view"))
 		(void)level->Capture_CameraShot(shot.strShotId, m_strStatus);
+	ImGui::EndDisabled();
 	ImGui::SameLine();
 	if (ImGui::Button("Save Camera"))
 	{
@@ -10112,6 +10160,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_CameraWindow()
 			if (level->Create_CameraShot(m_NewCameraActionName, id, m_strStatus))
 			{
 				m_strCameraWindowShotId = id; m_strCameraKeyId.clear(); m_iCameraCaptureMs = 1000;
+				m_strCameraWindowPatternId.clear(); m_strCameraWindowOccurrenceId.clear();
 				m_strSelectedPresentationSourceId = std::to_string(static_cast<int>(KOUKU_SAYDON_PRESENTATION_KIND::CAMERA)) + "::" + id;
 				m_NewCameraActionName[0] = '\0'; m_bPresentationResourceRefreshRequested = true;
 				ImGui::CloseCurrentPopup();
@@ -10131,7 +10180,10 @@ void Client::CKoukuSaydonActionWorkbench::Render_CameraWindow()
 	{
 		for (const auto& item : shots)
 			if (ImGui::Selectable((item.strDisplayName + "###" + item.strShotId).c_str(), item.strShotId == m_strCameraWindowShotId))
-			{ m_strCameraWindowShotId = item.strShotId; m_strCameraKeyId.clear(); }
+			{
+				m_strCameraWindowShotId = item.strShotId; m_strCameraKeyId.clear();
+				m_strCameraWindowPatternId.clear(); m_strCameraWindowOccurrenceId.clear();
+			}
 		ImGui::EndCombo();
 	}
 	selected = Find_AuthoringCamera(m_strCameraWindowShotId);
@@ -10140,9 +10192,38 @@ void Client::CKoukuSaydonActionWorkbench::Render_CameraWindow()
 	auto cue = CLevel_KakulSaydonArena::CameraShot_ToCue(shot);
 	ImGui::PushID(shot.strShotId.c_str());
 	ImGui::TextDisabled("%s | %zu positions | %u ms", shot.strShotId.c_str(), cue.Keyframes.size(), cue.iDurationMs);
+	// Every edit below writes this stable shot, so name everything that plays it first.
+	const auto consumers = Camera_Consumers(m_Draft, shot);
+	const bool sharedShot = consumers.size() > 1u;
+	const bool locked = sharedShot && m_strCameraSharedEditShotId != shot.strShotId;
+	const auto* contextPattern = Find_Pattern(m_Draft, m_strCameraWindowPatternId);
+	const auto* contextBox = contextPattern ? Find_PresentationBox(*contextPattern, m_strCameraWindowOccurrenceId) : nullptr;
+	const auto* contextResource = contextBox ? Find_PresentationResource(m_Draft, contextBox->strResourceId) : nullptr;
+	const bool boxContext = contextResource && contextResource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::CAMERA &&
+		contextResource->strAssetId == shot.strShotId;
+	ImGui::Text("Played by %zu", consumers.size());
+	for (const auto& consumer : consumers) ImGui::BulletText("%s", consumer.c_str());
+	if (sharedShot)
+	{
+		bool allowShared = !locked;
+		if (ImGui::Checkbox("Edit this shared shot for every consumer above", &allowShared))
+			m_strCameraSharedEditShotId = allowShared ? shot.strShotId : std::string();
+		if (boxContext && ImGui::Button("Make dedicated shot for this box") &&
+			Make_DedicatedCameraShot(contextPattern->strPatternId, contextBox->strOccurrenceId, m_strStatus))
+		{ ImGui::TextWrapped("%s", m_strStatus.c_str()); ImGui::PopID(); ImGui::End(); return; }
+	}
+	if (boxContext)
+		ImGui::TextWrapped("Sequence box %s / %s starts at %u ms for %u ms. Shot time T plays at Sequence time %u + T ms.",
+			contextPattern->strDisplayName.c_str(), contextBox->strOccurrenceId.c_str(), contextBox->iStartMs,
+			contextBox->iDurationMs, contextBox->iStartMs);
+	else ImGui::TextDisabled("Open from a Sequence CAMERA box to map shot time to Sequence time.");
+	if (boxContext && m_PreviewState.bPlaying && m_PreviewState.strPatternId == contextPattern->strPatternId)
+		ImGui::Text("Sequence preview %u ms%s = shot %lld ms", m_PreviewState.iClockMs, m_PreviewState.bPaused ? " (paused)" : "",
+			static_cast<long long>(m_PreviewState.iClockMs) - static_cast<long long>(contextBox->iStartMs));
 	if (shot.followsPlayer)
 	{
 		ImGui::TextWrapped("This action follows PLAYER. Capture a world path explicitly to replace that follow framing.");
+		ImGui::BeginDisabled(locked);
 		if (ImGui::Button("Convert to world camera path"))
 		{
 			VALTAN_CINEMATIC_CAMERA_POSE pose;
@@ -10156,9 +10237,11 @@ void Client::CKoukuSaydonActionWorkbench::Render_CameraWindow()
 			}
 			else m_strStatus = "Current camera pose is unavailable; the action was preserved.";
 		}
+		ImGui::EndDisabled();
 		ImGui::TextWrapped("%s", m_strStatus.c_str()); ImGui::PopID(); ImGui::End(); return;
 	}
 	bool changed = false;
+	ImGui::BeginDisabled(locked);
 	char name[129]{}; (void)Copy_Text(name, std::size(name), shot.strDisplayName);
 	if (ImGui::InputText("Action name", name, std::size(name))) { shot.strDisplayName = name; changed = true; }
 	int entry = static_cast<int>(shot.iBlendInMs), exit = static_cast<int>(shot.iBlendOutMs);
@@ -10200,6 +10283,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_CameraWindow()
 			}
 		}
 	}
+	ImGui::EndDisabled();
 	ImGui::SameLine();
 	if (ImGui::Button("Stop camera preview")) { m_bPresentationPreviewRequestPending = false; level->Stop_CompositionCamera(true); }
 	if (ImGui::BeginListBox("Positions", { -1.f, 150.f }))
@@ -10213,6 +10297,23 @@ void Client::CKoukuSaydonActionWorkbench::Render_CameraWindow()
 	}
 	auto key = std::find_if(cue.Keyframes.begin(), cue.Keyframes.end(), [&](const auto& item) { return item.strSceneId == m_strCameraKeyId; });
 	if (key == cue.Keyframes.end() && !cue.Keyframes.empty()) { key = cue.Keyframes.begin(); m_strCameraKeyId = key->strSceneId; }
+	if (boxContext && key != cue.Keyframes.end())
+	{
+		const auto sequenceMs = (std::min)(contextBox->iStartMs + key->iTimeMs, Pattern_DurationMs(*contextPattern));
+		ImGui::Text("Selected position %u ms = Sequence %u ms", key->iTimeMs, contextBox->iStartMs + key->iTimeMs);
+		// PAUSE seeks the running Sequence first; otherwise open that Sequence paused at the key.
+		if (ImGui::Button("Pause Sequence at this position"))
+		{
+			if (m_PreviewState.bPlaying && m_PreviewState.strPatternId == contextPattern->strPatternId)
+			{
+				m_strCursorPatternId = contextPattern->strPatternId; m_iCursorMs = sequenceMs;
+				m_iPendingSeekMs = sequenceMs; m_ePendingTransport = KOUKU_PREVIEW_TRANSPORT::PAUSE;
+				m_strStatus = "Sequence paused at " + std::to_string(sequenceMs) + " ms; camera edits re-evaluate at this time.";
+			}
+			else (void)Request_PatternPreview(contextPattern->strPatternId, sequenceMs, m_strStatus, true);
+		}
+	}
+	ImGui::BeginDisabled(locked);
 	if (key != cue.Keyframes.end())
 	{
 		int time = static_cast<int>(key->iTimeMs);
@@ -10258,6 +10359,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_CameraWindow()
 		int duration = static_cast<int>(cue.iDurationMs);
 		if (ImGui::InputInt("Static duration ms", &duration)) { cue.iDurationMs = std::clamp(duration, 1, 120000); changed = true; }
 	}
+	ImGui::EndDisabled();
 	if (changed)
 	{
 		std::stable_sort(cue.Keyframes.begin(), cue.Keyframes.end(), [](const auto& left, const auto& right) { return left.iTimeMs < right.iTimeMs; });
@@ -10277,14 +10379,60 @@ void Client::CKoukuSaydonActionWorkbench::Render_CameraWindow()
 		resource.strAssetId = committed->strShotId; resource.strDisplayName = committed->strDisplayName;
 		resource.iDurationMs = Camera_DefaultDuration(resource);
 		if (ImGui::Button("Play Camera")) Queue_PresentationPreview(resource);
+		if (ImGui::IsItemHovered()) ImGui::SetTooltip("Camera only: World boxes of the Sequence do not play. Use Pause Sequence at this position for the full scene.");
 		ImGui::SameLine();
 		ImGui::BeginDisabled(!m_bHasDraft);
 		if (ImGui::Button("Append Camera at Cursor")) { std::string status; (void)Append_PresentationSource(resource, status); }
 		ImGui::EndDisabled();
 	}
 	ImGui::TextWrapped("F6 Free camera: place the view, then capture. Times set travel speed; rotation includes roll. Save Camera writes the Area source. Append and Composition Save keep the stable shot reference for Sequencer Play.");
+	ImGui::TextWrapped("Save Camera writes Data/Maps/Authoring/<Area>/<Area>.camerashots.json. Sequence Save writes the CAMERA box start, length and shot reference in the Composition.");
 	ImGui::TextWrapped("%s", m_strStatus.c_str());
 	ImGui::PopID(); ImGui::End();
+}
+
+bool_t Client::CKoukuSaydonActionWorkbench::Make_DedicatedCameraShot(
+	const std::string_view patternIdView, const std::string_view occurrenceIdView, std::string& outStatus)
+{
+	// The views may point into m_Draft, which Commit_Candidate replaces.
+	const std::string patternId(patternIdView), occurrenceId(occurrenceIdView);
+	auto* level = CLevel_KakulSaydonArena::Get_Active();
+	if (!level || !m_bHasDraft)
+	{ outStatus = m_strStatus = "Enter KoukuSaydon with a loaded Composition to split a Camera shot."; return false; }
+	auto candidate = m_Draft;
+	auto* pattern = Find_Pattern(candidate, patternId);
+	if (!pattern || !pattern->strLoadError.empty())
+	{ outStatus = m_strStatus = "The CAMERA box Pattern is unavailable; the Composition was preserved."; return false; }
+	const auto box = std::find_if(pattern->PresentationOccurrences.begin(), pattern->PresentationOccurrences.end(),
+		[&](const auto& row) { return row.strOccurrenceId == occurrenceId; });
+	const auto* resource = box == pattern->PresentationOccurrences.end() ? nullptr : Find_PresentationResource(candidate, box->strResourceId);
+	if (!resource || resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::CAMERA)
+	{ outStatus = m_strStatus = "Select an existing CAMERA box before splitting its shot."; return false; }
+	if (candidate.iNextPresentationResourceOrdinal >= 1000000u)
+	{ outStatus = m_strStatus = "Presentation resource IDs are exhausted."; return false; }
+	auto dedicated = *resource;
+	dedicated.strDisplayName = resource->strDisplayName + " / " + occurrenceId;
+	std::string shotId;
+	if (!level->Duplicate_CameraShot(resource->strAssetId, dedicated.strDisplayName, shotId, outStatus))
+	{ m_strStatus = outStatus; return false; }
+	if (dedicated.strDisplayName.size() > 255u) dedicated.strDisplayName = shotId;
+	dedicated.strResourceId = "kakulsaydon.g1.presentation." + std::to_string(candidate.iNextPresentationResourceOrdinal++);
+	dedicated.strAssetId = shotId;
+	// Only this occurrence moves; every other box keeps the shared resource.
+	box->strResourceId = dedicated.strResourceId;
+	const auto resourceId = dedicated.strResourceId;
+	candidate.PresentationResources.push_back(std::move(dedicated));
+	Mark_Draft(candidate, *pattern);
+	if (!Commit_Candidate(std::move(candidate), "CAMERA box now uses a dedicated shot. Save Camera, then Sequence Save.", outStatus))
+	{
+		std::string ignored;
+		(void)level->Discard_UnsavedCameraShot(shotId, ignored);
+		return false;
+	}
+	if (m_PresentationBoxEdit.strOccurrenceId == occurrenceId) m_PresentationBoxEdit.strResourceId = resourceId;
+	m_strCameraWindowShotId = shotId; m_strCameraKeyId.clear(); m_strCameraSharedEditShotId.clear();
+	m_bPresentationResourceRefreshRequested = true;
+	return true;
 }
 
 void Client::CKoukuSaydonActionWorkbench::Render_PresentationResources(const KOUKU_SAYDON_PRESENTATION_KIND kind)
@@ -10951,7 +11099,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_PresentationBoxDetails(
 	const auto occurrenceId = box->strOccurrenceId;
 	ImGui::SeparatorText(Presentation_Label(definition.eKind));
 	const bool cameraBox = definition.eKind == KOUKU_SAYDON_PRESENTATION_KIND::CAMERA;
-	if (cameraBox) Render_CameraAuthoring(definition.strAssetId);
+	if (cameraBox) Render_CameraAuthoring(definition.strAssetId, patternId, occurrenceId);
 	if (cameraBox)
 		if (const auto* shot = Find_AuthoringCamera(definition.strAssetId))
 			ImGui::Text("Entry %u ms | hold %u ms | return ends %u ms", shot->iBlendInMs,

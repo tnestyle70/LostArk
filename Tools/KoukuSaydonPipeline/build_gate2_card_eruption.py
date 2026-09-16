@@ -77,12 +77,14 @@ def build():
             joint=len(tracks)
             for material,attributes,indices in mesh:
                 materials.setdefault(material,len(materials))
-                stream=streams.setdefault(material,dict(position=[],normal=[],uv=[],joint=[],weight=[],index=[],count=0))
+                stream=streams.setdefault(material,dict(position=[],normal=[],uv=[],color=[],joint=[],weight=[],index=[],count=0))
                 positions=attributes['POSITION']*100
                 normals=attributes['NORMAL']
                 texcoords=attributes['TEXCOORD_0']
                 n=len(positions)
                 stream['position'].append(positions);stream['normal'].append(normals);stream['uv'].append(texcoords)
+                # FIX: per-card identity for the importer's identical-vertex join (not stored in WModel).
+                stream['color'].append(np.tile(np.array([[(joint+1)/256.,0.,0.,1.]],dtype='<f4'),(n,1)))
                 js=np.zeros((n,4),dtype='<u2');js[:,0]=joint
                 ws=np.zeros((n,4),dtype='<f4');ws[:,0]=1
                 stream['joint'].append(js);stream['weight'].append(ws)
@@ -132,7 +134,7 @@ def build():
     for material,stream in streams.items():
         attributes={key:put(np.concatenate(stream[field]),kind,component)for key,field,kind,component in [
             ('POSITION','position','VEC3',5126),('NORMAL','normal','VEC3',5126),('TEXCOORD_0','uv','VEC2',5126),
-            ('JOINTS_0','joint','VEC4',5123),('WEIGHTS_0','weight','VEC4',5126)]}
+            ('COLOR_0','color','VEC4',5126),('JOINTS_0','joint','VEC4',5123),('WEIGHTS_0','weight','VEC4',5126)]}
         document['meshes'][0]['primitives'].append(dict(attributes=attributes,
             indices=put(np.concatenate(stream['index']),'SCALAR',5125),material=materials[material]))
     document['skins'][0]['inverseBindMatrices']=put(np.tile(np.eye(4).reshape(1,16),(len(tracks),1)),'MAT4')

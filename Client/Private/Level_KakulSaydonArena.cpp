@@ -3219,6 +3219,50 @@ bool_t Client::CLevel_KakulSaydonArena::Capture_CameraShot(const std::string_vie
 	return Update_CameraShot(shot, outStatus);
 }
 
+bool_t Client::CLevel_KakulSaydonArena::Duplicate_CameraShot(const std::string_view sourceShotId,
+	const std::string_view name, std::string& outShotId, std::string& outStatus)
+{
+	if (!Ensure_CameraShotAuthoring(outStatus)) return false;
+	const auto source = std::find_if(m_AuthoringCameraShots.begin(), m_AuthoringCameraShots.end(),
+		[&](const auto& value) { return value.strShotId == sourceShotId; });
+	if (source == m_AuthoringCameraShots.end()) { outStatus = "Camera shot was not found."; return false; }
+	if (m_AuthoringCameraShots.size() >= CAMERA_SHOT_MAX_COUNT) { outStatus = "Camera shot limit is 128."; return false; }
+	auto shot = *source;
+	for (uint32_t ordinal = 1u; ordinal <= CAMERA_SHOT_MAX_COUNT + 1u; ++ordinal)
+	{
+		shot.strShotId = "camera.kouku.pattern." + std::to_string(ordinal);
+		if (std::none_of(m_AuthoringCameraShots.begin(), m_AuthoringCameraShots.end(),
+			[&](const auto& item) { return item.strShotId == shot.strShotId; })) break;
+	}
+	// The copy belongs to one Sequence box; the Area trigger keeps playing the source shot.
+	shot.strDisplayName = std::string(name);
+	shot.bPatternOnly = true;
+	shot.strSequenceInstanceId.clear();
+	if (shot.hasCameraTrack) shot.CameraTrack.strCueId = shot.strShotId;
+	DATA_JSON_VALUE root; std::string ignored;
+	(void)CDataJson::Parse(Camera_EmptyDocument(), root, ignored);
+	auto fields = root.Get_Object(); fields["shots"] = DATA_JSON_VALUE::Array({ Camera_ShotJson(shot, nullptr) });
+	std::vector<KAKUL_CAMERA_SHOT> validated;
+	if (!Parse_CameraShots(Camera_JsonText(DATA_JSON_VALUE::Object(std::move(fields))), validated, outStatus)) return false;
+	outShotId = shot.strShotId;
+	m_DirtyCameraShotIds.insert(shot.strShotId);
+	m_AuthoringCameraShots.push_back(std::move(shot));
+	outStatus = "Dedicated Camera shot created in the draft. Save Camera writes it to the Area source.";
+	return true;
+}
+
+bool_t Client::CLevel_KakulSaydonArena::Discard_UnsavedCameraShot(const std::string_view shotId, std::string& outStatus)
+{
+	std::vector<KAKUL_CAMERA_SHOT> saved;
+	if (!Parse_CameraShots(m_strCameraAuthoringBaseline.empty() ? Camera_EmptyDocument() : m_strCameraAuthoringBaseline,
+		saved, outStatus)) return false;
+	if (std::any_of(saved.begin(), saved.end(), [&](const auto& shot) { return shot.strShotId == shotId; }))
+	{ outStatus = "A saved Camera shot is never discarded here."; return false; }
+	std::erase_if(m_AuthoringCameraShots, [&](const auto& shot) { return shot.strShotId == shotId; });
+	m_DirtyCameraShotIds.erase(std::string(shotId));
+	return true;
+}
+
 bool_t Client::CLevel_KakulSaydonArena::Save_CameraShots(std::string& outStatus)
 {
 	if (!Ensure_CameraShotAuthoring(outStatus)) return false;

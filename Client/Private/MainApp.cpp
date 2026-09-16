@@ -1070,7 +1070,7 @@ namespace
     if (instance->anchorKind == "WORLD")
     {
      float3_t baseline, position;
-     if (!arena->Try_GetWorldSequencePlacementBaseline(*instance, baseline))
+     if (!arena->Try_GetWorldSequencePlacementBaseline(*instance, baseline, &sequences))
      { status = "Resource preview cannot resolve its saved placement group."; return false; }
      if (!arena->Try_Get_AuthoringForwardPlacement(position, status)) return false;
      offset = {position.x - baseline.x, position.y - baseline.y, position.z - baseline.z};

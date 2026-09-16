@@ -52271,7 +52271,7 @@
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0.0,
         "emitterDurationSeconds": 1.0,
-        "emitterLoopCount": 1,
+        "emitterLoopCount": 0,
         "bursts": [],
         "modules": [
           {
@@ -54001,7 +54001,7 @@
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0.0,
         "emitterDurationSeconds": 1.0,
-        "emitterLoopCount": 1,
+        "emitterLoopCount": 0,
         "bursts": [],
         "modules": [
           {
@@ -55684,7 +55684,7 @@
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0.0,
         "emitterDurationSeconds": 1.0,
-        "emitterLoopCount": 1,
+        "emitterLoopCount": 0,
         "bursts": [],
         "modules": [
           {
@@ -57425,7 +57425,7 @@
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0.0,
         "emitterDurationSeconds": 1.0,
-        "emitterLoopCount": 1,
+        "emitterLoopCount": 0,
         "bursts": [],
         "modules": [
           {
@@ -58963,7 +58963,7 @@
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0.0,
         "emitterDurationSeconds": 1.0,
-        "emitterLoopCount": 1,
+        "emitterLoopCount": 0,
         "bursts": [],
         "modules": [
           {
@@ -60817,7 +60817,7 @@
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0.0,
         "emitterDurationSeconds": 1.0,
-        "emitterLoopCount": 1,
+        "emitterLoopCount": 0,
         "bursts": [],
         "modules": [
           {
@@ -62859,7 +62859,7 @@
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0.0,
         "emitterDurationSeconds": 1.0,
-        "emitterLoopCount": 1,
+        "emitterLoopCount": 0,
         "bursts": [],
         "modules": [
           {
@@ -64589,7 +64589,7 @@
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0.0,
         "emitterDurationSeconds": 1.0,
-        "emitterLoopCount": 1,
+        "emitterLoopCount": 0,
         "bursts": [],
         "modules": [
           {
@@ -66272,7 +66272,7 @@
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0.0,
         "emitterDurationSeconds": 1.0,
-        "emitterLoopCount": 1,
+        "emitterLoopCount": 0,
         "bursts": [],
         "modules": [
           {
@@ -68013,7 +68013,7 @@
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0.0,
         "emitterDurationSeconds": 1.0,
-        "emitterLoopCount": 1,
+        "emitterLoopCount": 0,
         "bursts": [],
         "modules": [
           {
@@ -69551,7 +69551,7 @@
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0.0,
         "emitterDurationSeconds": 1.0,
-        "emitterLoopCount": 1,
+        "emitterLoopCount": 0,
         "bursts": [],
         "modules": [
           {
@@ -71405,7 +71405,7 @@
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0.0,
         "emitterDurationSeconds": 1.0,
-        "emitterLoopCount": 1,
+        "emitterLoopCount": 0,
         "bursts": [],
         "modules": [
           {

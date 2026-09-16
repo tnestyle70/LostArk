@@ -262,3 +262,33 @@ WorldSequences 전용 publisher의 Validate → Publish → Check가 모두 exit
 작업 도중 보인 별도 SHADOW Composition 생성물3개(`Valtan.bosscomposition.json`, `Composition.publish.receipt.json`, `KoukuSaydonArena.sequencer.json`)의 변경은 이번 배경 데이터 추가와 분리해 커밋에 넣지 않고 작업 파일에 보존했다.
 
 선택 반영과 원문 보존 근거: `out/Gate2BackdropRestore20260914/restore.py`, `receipt.json`, 두 authoring `.before` 사본. runtime 문서는 WorldSequences 전용 publisher로 게시한다.
+
+## G15-R2. 2관문 진입 소품 Preview at Character 위치 수정 (2026-09-14 Claude)
+
+사용자 보고: Object 탭에서 `2관문 진입 / Table`을 Preview at Character로 재생하면 시간은 흐르고 "1 visible"인데 런타임 화면 어디에도 보이지 않았다.
+
+원인(코드·데이터 확인):
+- `CLevel_KakulSaydonArena::Try_GetWorldSequencePlacementBaseline`은 Object Resource 기준점으로 `instance.position`만 썼다.
+- 컷신 도구가 만든 인스턴스 49개(2관문 진입 31, 1관문 full 13, 2관문 clear·maze 4, 3관문 intro 1)는 `position`이 [0,0,0]이고 맵 좌표가 키에 절대값으로 들어 있다. 그래서 캐릭터 앞 좌표 전체가 한 번 더 더해졌다.
+- 사용자 화면 좌표 (-300.38, -98.58, 772.01) = 테이블 키 (-297.72, -102.09, 447.03) + 캐릭터 앞 (-2.66, 3.51, 324.98). 이 위치는 캐릭터에서 약 550m 떨어져 있고, 반경 150m 안에 맵 배치가 0개다.
+
+적용:
+
+| 파일 | 변경 |
+|---|---|
+| `Client/Public/Level_KakulSaydonArena.h` | `Try_GetWorldSequencePlacementBaseline`에 선택 인자 `const CWorldSequenceDocument* document = nullptr` 추가 |
+| `Client/Private/Level_KakulSaydonArena_WorldObjects.cpp` | 문서가 주어지고, `position`이 [0,0,0]이고, authored emissions가 없으면 Object Resource 바인딩 기준점을 해당 slot 트랙의 첫 키 위치로 쓴다. `Debug_BeginWorldObjectPreview`의 캐릭터 기준 호출이 문서를 넘긴다 |
+| `Client/Private/MainApp.cpp` | Composition Resources의 World 캐릭터 기준 미리보기(`Begin_KoukuWorldPreview`)도 문서를 넘긴다 |
+
+영향 범위:
+- 기준점이 바뀌는 인스턴스는 53개다. 절대 좌표 49개와 마리오 공 4개(0~0.34m)다.
+- 문서 인자가 없는 호출(Resources 목록의 배치 X/Z 표시, map alias 확인)과 저장 위치 재생(Preview at Character 끔)은 그대로다.
+- `position`에 맵 좌표가 있는 일반 객체(빙고 망치 등)와 emissions 객체(3관문 훅)는 바뀌지 않는다.
+
+계산 확인:
+- 캐릭터 앞 (-2.66, 3.51, 324.98) 기준 0초 위치: 테이블·의자1은 캐릭터 앞과 0.0m, 받침 판 묶음의 첫 조각은 4.45m.
+- 원본 키가 소품을 잠시 멀리 치우는 구간은 그대로 보인다. 테이블 2.3~15.6초 최대 39m, 의자 11.4~17.3초 위로 187m, 책·촛대 14.4~15.6초 196m.
+
+자동 검사: 수정한 cpp 2개 격리 구문 검사(`cl /Zs /std:c++20 /DUNICODE`) 오류 0이다. 경고 C4828은 검사 명령이 강제한 `/utf-8`과 Engine 헤더 인코딩에서 나온 것이다. CRLF·BOM 보존과 `git diff --check`도 통과했다. 제품 빌드·링크와 Client 화면 확인은 하지 않았다.
+
+미해결: Sequencer Benchmark의 `2관문_진입컷씬` Play가 0ms에 머무는 현상은 이 수정과 별개이며 원인 미확인이다.
