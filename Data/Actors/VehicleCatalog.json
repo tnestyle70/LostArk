@@ -1,6 +1,6 @@
 {
   "schema": "lostark.vehicle-catalog",
-  "formatVersion": 3,
+  "formatVersion": 4,
   "vehicles": [
     {
       "vehicleId": 6705,
@@ -251,7 +251,12 @@
           ]
         }
       ],
-      "runtimeStatus": "supported"
+      "runtimeStatus": "supported",
+      "locomotionSoundCues": [
+        { "clip": "npc_run_normal_1", "startMs": 14, "event": "Horse_FootStep_Foley1" },
+        { "clip": "npc_run_normal_1", "startMs": 36, "event": "Horse_FootStep" },
+        { "clip": "npc_run_normal_1", "startMs": 502, "event": "Horse_FootStep" }
+      ]
     },
     {
       "vehicleId": 9370,
@@ -684,7 +689,11 @@
           ]
         }
       ],
-      "runtimeStatus": "supported"
+      "runtimeStatus": "supported",
+      "locomotionSoundCues": [
+        { "clip": "npc_run_normal_1", "startMs": 180, "event": "S_Vehicle_HeavyWalkerBM_FootStep" },
+        { "clip": "npc_run_normal_1", "startMs": 690, "event": "S_Vehicle_HeavyWalkerBM_FootStep" }
+      ]
     },
     {
       "vehicleId": 8906,
@@ -1229,7 +1238,11 @@
           ]
         }
       ],
-      "runtimeStatus": "supported"
+      "runtimeStatus": "supported",
+      "locomotionSoundCues": [
+        { "clip": "npc_run_normal_1", "startMs": 80, "event": "S_Vehicle_AncientDragon1_FootStep1" },
+        { "clip": "npc_run_normal_1", "startMs": 540, "event": "S_Vehicle_AncientDragon1_FootStep1" }
+      ]
     }
   ]
 }

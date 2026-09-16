@@ -966,6 +966,31 @@ namespace
 		return true;
 	}
 
+	/* formatVersion 4's locomotion cues are optional per vehicle: only the ones
+	whose run clip has a ground contact carry the array. A malformed cue is
+	dropped on its own so the vehicle keeps its clips and its other cues. */
+	bool_t ParseVehicleLocomotionCues(const DATA_JSON_VALUE& value, VEHICLE_ACTOR_ENTRY& entry)
+	{
+		const DATA_JSON_VALUE* pCues = value.Find("locomotionSoundCues");
+		if (nullptr == pCues)
+			return true;
+		if (!pCues->Is_Array() || pCues->Get_Array().size() > 16u)
+			return false;
+		for (const DATA_JSON_VALUE& cueValue : pCues->Get_Array())
+		{
+			VEHICLE_LOCOMOTION_SOUND_CUE cue;
+			if (!cueValue.Is_Object() || 3u != cueValue.Get_Object().size() ||
+				!ReadRequiredString(cueValue, "clip", cue.clip) || cue.clip.empty() ||
+				!ReadRequiredU32(cueValue, "startMs", cue.startMs) ||
+				!ReadRequiredString(cueValue, "event", cue.event) || cue.event.empty())
+			{
+				continue;
+			}
+			entry.locomotionSoundCues.push_back(std::move(cue));
+		}
+		return true;
+	}
+
 	bool_t ParseVehicles(const DATA_JSON_VALUE& root)
 	{
 		const DATA_JSON_VALUE* pSchema = root.Find("schema");
@@ -975,12 +1000,14 @@ namespace
 			nullptr == pSchema || !pSchema->Is_String() ||
 			pSchema->Get_String() != "lostark.vehicle-catalog" ||
 			nullptr == pVersion || !pVersion->Is_Number() ||
-			(pVersion->Get_Number() != 2.0 && pVersion->Get_Number() != 3.0) ||
+			(pVersion->Get_Number() != 2.0 && pVersion->Get_Number() != 3.0 &&
+				pVersion->Get_Number() != 4.0) ||
 			nullptr == pEntries || !pEntries->Is_Array())
 		{
 			return false;
 		}
-		const bool_t hasSkillCues = pVersion->Get_Number() == 3.0;
+		const bool_t hasSkillCues = pVersion->Get_Number() >= 3.0;
+		const bool_t hasLocomotionCues = pVersion->Get_Number() >= 4.0;
 
 		const auto readClips = [](const DATA_JSON_VALUE* pClips, std::vector<std::string>& outClips)
 		{
@@ -1002,9 +1029,12 @@ namespace
 		ModelMaterials stagedMaterials;
 		for (const DATA_JSON_VALUE& value : pEntries->Get_Array())
 		{
-			if (!value.Is_Object() || 11u != value.Get_Object().size())
+			const std::size_t keyCount = value.Is_Object() ? value.Get_Object().size() : 0u;
+			if (11u != keyCount && !(hasLocomotionCues && 12u == keyCount))
 				return false;
 			VEHICLE_ACTOR_ENTRY entry;
+			if (hasLocomotionCues && !ParseVehicleLocomotionCues(value, entry))
+				return false;
 			const DATA_JSON_VALUE* pRiders = value.Find("riders");
 			const DATA_JSON_VALUE* pSkills = value.Find("skills");
 			if (!ReadRequiredU32(value, "vehicleId", entry.vehicleId) || 0u == entry.vehicleId ||

@@ -818,6 +818,50 @@ void CCharacter::Update_VehicleSkillCues(
 	}
 }
 
+void CCharacter::Update_VehicleLocomotionSoundCues()
+{
+	std::string clip;
+	f32_t seconds = 0.f;
+	f32_t duration = 0.f;
+	const VEHICLE_ACTOR_ENTRY* pVehicle = 0u == m_iVehicleId ? nullptr :
+		CActorCatalog::Find_Vehicle(m_iVehicleId);
+	if (nullptr == pVehicle || nullptr == m_pVehiclePart ||
+		!m_pVehiclePart->Try_Get_LocomotionClipTime(clip, seconds, duration))
+	{
+		m_fPreviousVehicleLocomotionSeconds = -1.f;
+		return;
+	}
+	/* Only a bracket within one continuous pass of the same clip can say a
+	contact just happened; the first frame after a switch only opens one. */
+	const f32_t previous = m_strVehicleLocomotionClip == clip ?
+		m_fPreviousVehicleLocomotionSeconds : -1.f;
+	m_strVehicleLocomotionClip = clip;
+	m_fPreviousVehicleLocomotionSeconds = seconds;
+	if (previous < 0.f)
+		return;
+
+	for (const VEHICLE_LOCOMOTION_SOUND_CUE& cue : pVehicle->locomotionSoundCues)
+	{
+		if (cue.clip != clip)
+			continue;
+		const f32_t at = static_cast<f32_t>(cue.startMs) * 0.001f;
+		if (at > duration)
+			continue;
+		const bool_t crossed = previous <= seconds ?
+			(at > previous && at <= seconds) : (at > previous || at <= seconds);
+		if (!crossed)
+			continue;
+		const std::vector<std::string>& variants =
+			CSoundCueCatalog::Find_Variants("Vehicle", cue.event);
+		if (variants.empty())
+			continue;
+		const std::size_t variant = variants.size() == 1u ? 0u :
+			(static_cast<std::size_t>(std::rand()) % variants.size());
+		CGameInstance::Get().Play_Sound(
+			CRuntimeAssetRoot::Resolve(variants[variant]).wstring(), 1.f);
+	}
+}
+
 void CCharacter::Queue_VehicleSkillEffects(const VEHICLE_ACTOR_ENTRY& vehicle) const
 {
 	std::vector<std::string> targets;
@@ -2821,6 +2865,7 @@ void CCharacter::Update(f32_t fTimeDelta)
 			m_pTransformCom->Get_WorldMatrixPtr()));
 	Update_EffectCues();
 	Update_SoundCues();
+	Update_VehicleLocomotionSoundCues();
 	Update_CameraShakeCues();
 }
 

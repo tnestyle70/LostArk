@@ -241,6 +241,16 @@ struct VEHICLE_SKILL_SOUND_CUE final
 
 /* One vehicle skill's presentation: the quick slot it sits on and the clip chains
 the vehicle and each rider class play back to back while the Server runs it. */
+/* One ground contact inside the vehicle's looping run clip. The source marks
+these with a floor-material notify on the frame a foot lands, so startMs is an
+offset into that clip rather than into a skill action. */
+struct VEHICLE_LOCOMOTION_SOUND_CUE final
+{
+	std::string clip;
+	std::uint32_t startMs = 0u;
+	std::string event;
+};
+
 struct VEHICLE_SKILL_ENTRY final
 {
 	std::uint32_t skillId = 0u;
@@ -273,6 +283,7 @@ struct VEHICLE_ACTOR_ENTRY final
 	std::string vehicleRunClip;
 	std::vector<VEHICLE_RIDER_ENTRY> riders;
 	std::vector<VEHICLE_SKILL_ENTRY> skills;
+	std::vector<VEHICLE_LOCOMOTION_SOUND_CUE> locomotionSoundCues;
 	std::string runtimeStatus;
 
 	const VEHICLE_RIDER_ENTRY* Find_Rider(

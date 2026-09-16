@@ -13,7 +13,7 @@
 | G04 프로젝션·설치 | 완료. 문서 24개·요소 368개 설치, 탈것 문서 검사·리소스 closure PASS. 저장소 전체 validator는 기존 쿠크/차원술사 문서 때문에 원래 실패 |
 | G05 카탈로그 v3 | 완료. effectCues 24·soundCues 30 기록, Client 파서 v2/v3 수용, `ActorCatalog.cpp` 단일 컴파일 PASS. 전체 빌드는 G06과 함께 |
 | G06 런타임 연결 | 구현 완료, Debug Product 빌드 PASS. 탈것 6종 중 아우프슈텐 홀로그램 인형까지 사용자 화면 확인 |
-| G07 사운드 | 미착수. 이 PC에 `D:\로아 리소스` 추출본이 없다. 게임의 `SOUND_VEHICLE`/`_2026`/`_2026_NONSTREAM` `.pck`는 AKPK가 아니라 `3E CE A6 74` 공통 헤더로 암호화돼 있어 뱅크 해석 도구가 필요하다 |
+| G07 사운드 | 완료(2026-09-16). 컨테이너 암호를 깨고 `Tools/SoundPipeline`을 새로 만들어 스킬 이벤트 30개 중 27개, 이어서 주행 접지 이벤트 4개를 wav 106개로 추출·게시했다. 사용자가 스킬음과 발소리 모두 청취 확인 |
 | G08 문서 | 이 RESULT 갱신 |
 
 ## G01. 원본 closure
@@ -372,6 +372,154 @@ Space(96030)만 이펙트가 통째로 생략됐다. 세 겹이었고 앞의 하
 - trail 축소는 절대 채워지지 않던 여유 용량을 없앤 것이라 화면 변화가 없어야 하고, 사용자가 신화·모코보드 포함 확인했다.
 - Debug Product 빌드 PASS(KillLength CPP, 92초, OBJ 68·CSO 0). trail·루트 이동은 데이터만 바뀌어 Client 재시작으로 반영했다.
 - 실패한 Product target은 같은 catalog revision 동안 fail-closed로 캐시되므로 리소스·문서를 고친 뒤에는 Client를 재시작해야 다시 준비를 시도한다.
+
+## G07. 사운드 (2026-09-16)
+
+### Wwise 컨테이너 해독
+
+`WwiseAudioPackage`의 `*.pck`와 낱개 `*.wem`은 앞 4바이트가 `3E CE A6 74` 마커이고 그 뒤 전체가
+**모든 파일이 공유하는 하나의 XOR 키스트림**으로 암호화돼 있다. 마커는 스트림에 포함되지 않는다.
+`LOSTARK.exe`/`EFEngine.dll`은 WinLicense(`.winlice`/`.vm_sec`/`.boot`)로 싸여 있고 마커 바이트가
+바이너리 어디에도 없어서 클라이언트 루틴을 읽을 수 없었다. 대신 배포 데이터에서 키스트림을 복구했다.
+
+| 단계 | 방법 | 결과 |
+|---|---|---|
+| 주기 | 4개 pck에서 24바이트 중복 구간을 찾아 거리들의 gcd. 같은 암호문 = 같은 평문 + 거리가 주기의 배수 | 거리 40종이 전부 배수, gcd **435,540** |
+| 시드 | 64바이트 pck 6개가 바이트 동일 → 빈 AKPK 평문 재구성(헤더52·version1·언어맵20·빈 LUT 3개) | 앞 60바이트 확보. 언어 문자열은 `SFX`가 아니라 소문자 `sfx`였다 |
+| 본체 | pck 104 + wem 1,188(20GB)을 주기로 접어 열별 최빈 바이트 = 평문 0 가정. 각 파일 자기 헤더(블록 0)는 제외 | 열당 샘플 4.7만, **최소 마진 35σ** |
+
+검증 두 가지를 통과했다. 생성 방법과 무관한 독립 증거다.
+
+| 검사 | 결과 |
+|---|---|
+| 재구성한 시드 60바이트 ↔ 복구 테이블 | 일치 |
+| 설치된 pck 134개 전 LUT 항목의 `languageID` 필드 | **209,675 샘플 불일치 0** (단일 언어 pck는 값 0 비트 일치, Korean/ 다국어 pck는 선언된 언어 id인지 검사) |
+| 임의 wem 복호 | `RIFF`/`fmt (66)`/`data` 청크가 파일 길이와 정확히 일치 |
+
+복호하면 pck는 표준 AKPK, 페이로드는 표준 `.bnk`(BKHD/HIRC, bank version 134)와 Wwise RIFF `.wem`이다.
+
+### 이름 해석
+
+Wwise는 오브젝트 이름을 싣지 않는다. Event 오브젝트 ID가 **소문자 이름의 FNV-1 32비트 해시**라서
+`S_Vehicle_TrisionHorse_Dash1` 같은 저작 이름이 그대로 HIRC 오브젝트로 연결된다.
+
+거기서 **Play action(`AkActionType` 상위 바이트 `0x04`)만** 따라간다. Stop(`0x01`)·Pause·Resume이
+같은 컨테이너를 가리키고 있어서 이걸 같이 따라가면 그 이벤트가 시작하지도 않는 오디오까지 끌려온다
+(처음엔 `S_Vehicle_UniconTube_Dash`가 40개, `..._Stop1`이 21개로 나왔다). Play 대상을
+Random/Sequence·Switch·Layer·ActorMixer 컨테이너로 내려가 Sound 오브젝트의 `AkBankSourceData`에서
+`.wem` 미디어 ID를 얻는다. 컨테이너의 자식 목록 위치는 NodeBaseParams 길이가 가변이라 계산하지 않고
+"개수 + 그만큼의 서로 다른 실제 오브젝트 ID" 최장 구간으로 찾는다(뒤따르는 짧은 playlist와 구분).
+
+### 신규 도구
+
+| 파일 | 내용 |
+|---|---|
+| `Tools/SoundPipeline/wwise_audio_package.py` | 복호, AKPK/BNK 파싱, 이벤트 해석, `.wem` 추출. import·CLI 양쪽 |
+| `Tools/SoundPipeline/recover_wwise_keystream.py` | 키스트림 재생성·검증(`--verify-only`). numpy 필요 → Blender 번들 인터프리터 |
+| `Tools/SoundPipeline/wwise_keystream.dat` | 435,540바이트 테이블. 기존 `.gitattributes`의 `*.dat` LFS 규칙에 걸린다 |
+| `Tools/SoundPipeline/README.md` | 컨테이너·해석·디코딩·사용법 |
+| `Tools/VehiclePipeline/build_vehicle_sound_catalog.py` | G07 빌더 |
+
+디코딩은 이 PC에 이미 있던 vgmstream을 쓴다
+(`Downloads/DSAS_4.9.9_HOTFIX_b/Res/vgmstream/vgmstream_cmd.exe`, 다크소울 모딩툴 번들).
+`.wem`이 setup 패킷이 잘린 Wwise Vorbis라 자체 디코더는 만들지 않았다. `--vgmstream`으로 교체 가능하다.
+기존 `Sound/Character` wav의 `ISFT` 태그는 `Lavf62.12.102`라 그쪽은 ffmpeg로 만든 것이고, 이번 것과 도구가 다르다.
+
+### 결과
+
+`Data/Actors/VehicleCatalog.json`의 soundCue 이벤트 30개 중 **27개 해석, wav 78개**를
+`Client/Bin/Resources/Sound/Vehicle/<이벤트>__<미디어ID>.wav`(63MB)에 설치하고
+`Data/Sound/CharacterSoundCatalog.json`에 `Vehicle` 클래스를 추가했다. 기존 9개 클래스는 그대로다.
+
+나머지 3개는 도구 결함이 아니라 원본 데이터가 그렇다.
+
+| 이벤트 | 이유 |
+|---|---|
+| `S_Vehicle_AncientDragon1_Run1` | Stop action만 있다. 재생할 대상이 없다 |
+| `S_Vehicle_AncientDragon1_Stop1` | 〃 |
+| `S_Vehicle_Starlight1_Skill4` | Play action의 대상 오브젝트 `0x1b277d1e`가 설치된 전 pck 뱅크에 없다 |
+
+C++ 변경은 없다. G06에서 `CCharacter::Update_VehicleSkillCues`가 이미
+`CSoundCueCatalog::Find_Variants("Vehicle", cue.event)`로 조회하고 `CRuntimeAssetRoot::Resolve`로
+재생하므로, 카탈로그와 물리 wav만 채우면 연결된다.
+
+| 검사 | 결과 |
+|---|---|
+| 키스트림 시드·languageID 검증 | PASS (위 표) |
+| 이벤트 30개 해석, vgmstream 변환 | 27 해석 / 78 변환, 변환 실패 0 |
+| 카탈로그 78개 asset ID의 파일 실재와 무음 검사 | 전부 실재, 무음 0 |
+| `CharacterSoundCatalog.json` parse, 기존 클래스 보존 | PASS (diff 135줄 추가, 기존 항목 변경 없음) |
+| `git diff --check` | PASS |
+| 사용자 청취 확인 | PASS. "탈 것 사운드 전체적으로 잘 나와. 스페이스바나 qwer 이런 사운드는 완벽" |
+
+## G09. 주행 접지 발소리 (2026-09-16)
+
+사용자 관찰: 스킬음은 완벽한데 테르페이온·아우프슈텐·고대의 신화처럼 발이 땅에 닿는 탈것의
+접지음이 없다. G07은 `skills[].soundCues`만 다뤘고 발소리는 스킬이 아니라 주행 클립에 있다.
+
+### 원본 근거
+
+G01 추출은 탈것마다 스킬 4개(`sourceActionIndex` 10~13)만 걸렀다. 같은 `.loa`를 필터 없이 다시 뽑아
+(`out/VehicleLocomotionSound20260916/actions`) MOVE 액션(actionId 1)의 `Run_Normal_1` 스테이지를 읽었다.
+카탈로그의 `vehicleRunClip`이 이 클립이라 노티파이 시각이 그대로 런타임 클립 시각이다.
+
+| 탈것 | 이벤트 | 클립 내 시각 | 비고 |
+|---|---|---|---|
+| 테르페이온 | `Horse_FootStep` | 36ms, 502ms | 공용 말 뱅크. 자기 `S_Vehicle_TrisionHorse_*` 접두사에는 없다 |
+| 〃 | `Horse_FootStep_Foley1` | 14ms | 접지와 같은 클립의 가죽·마구 foley |
+| 아우프슈텐-R | `S_Vehicle_HeavyWalkerBM_FootStep` | 180ms, 690ms | |
+| 고대의 신화 | `S_Vehicle_AncientDragon1_FootStep1` | 80ms, 540ms | |
+
+접지 노티파이 종류는 `AkEventSwitchFloorMaterial`이다. 별빛의 가호(`Starlight1_Run1`),
+모코보드(`HoverBoard_Run1_Start`), 유니콘 튜브(`UniconTube_FootStep` 0.01s 1회)는 이 노티파이가 없고
+주행 루프 사운드라 제외했다. 추측으로 넣지 않는다.
+
+선별 규칙은 "그 클립에 `AkEventSwitchFloorMaterial`이 있을 때만, 그 노티파이 + 같은 클립의
+이름에 FootStep이 든 `AKEvent`"다. 루프 이벤트(Run1/Stop1/IdleN1)는 걸리지 않는다.
+
+### 바닥 재질 Switch
+
+`AkEventSwitchFloorMaterial`의 Play 대상은 Switch 컨테이너이고 9분기가 바닥 재질이다.
+Switch 컨테이너의 자식 목록 바로 뒤에 있는 switch→node 맵을 파싱해 분기를 골랐다.
+분기 id도 FNV-1 해시라 이름을 해시해 대조했고 `dirt/carpet/grass/mud/snow/stone/wood_floor` 등이 맞았다.
+우리 쪽에는 바닥 재질 질의가 없으므로 사용자 결정에 따라 `stone` 한 분기를 구워 넣었다(`--floor`).
+
+전체 9분기를 무작위로 돌리면 돌바닥에서 물소리가 난다. 그래서 분기 선택은 기본값이 아니라 계약이다.
+
+| 이벤트 | 전 분기 | stone 분기 |
+|---|---|---|
+| `S_Vehicle_AncientDragon1_FootStep1` | 84 | 14 (공통 RanSeq 4 + stone 10) |
+| `S_Vehicle_HeavyWalkerBM_FootStep` | 32 | 4 |
+| `Horse_FootStep` | 40 | 5 |
+
+### 변경
+
+| 파일 | 내용 |
+|---|---|
+| `Tools/SoundPipeline/wwise_audio_package.py` | `switch_branches()`와 `collect_sound_sources`/`resolve_event`의 `switch_value`, CLI `--switch` |
+| `Tools/VehiclePipeline/build_vehicle_sound_catalog.py` | 액션 증거에서 접지 큐를 읽어 카탈로그에 쓰고, 스킬·접지 이벤트를 한 번에 추출·변환·게시 |
+| `Tools/VehiclePipeline/build_vehicle_skills.py` | `write_catalog`에 `locomotionSoundCues` 줄 단위 출력 |
+| `Data/Actors/VehicleCatalog.json` | formatVersion 4. 탈것별 optional `locomotionSoundCues` |
+| `Client/Public/ActorCatalog.h`, `Client/Private/ActorCatalog.cpp` | `VEHICLE_LOCOMOTION_SOUND_CUE`, v2/v3/v4 수용, 키 11개 또는 12개, 깨진 큐 하나만 버림 |
+| `Client/Public/Part_Vehicle.h`, `Client/Private/Part_Vehicle.cpp` | `Try_Get_LocomotionClipTime`. 스킬 체인 소유 중이거나 전환 블렌드로 트랙이 아직 새 클립이 아니면 실패를 반환 |
+| `Client/Public/Character.h`, `Client/Private/Character.cpp` | `Update_VehicleLocomotionSoundCues`를 `Update()`에 연결 |
+
+판정은 이전 프레임 클립 위치와 현재 위치 사이를 큐가 지나갔는지로 한다. 클립이 한 바퀴 돈
+프레임(previous > seconds)은 `(at > previous || at <= seconds)`로 처리하고, 클립이 바뀐 직후
+첫 프레임은 구간을 열기만 하고 재생하지 않는다(이중 재생 방지).
+
+### 검증
+
+| 검사 | 결과 |
+|---|---|
+| Debug Product 빌드 | Engine/Shared/Server/Client PASS. Client 90.4s, OBJ 85·CSO 0·binary 1 (`out/BuildPipeline/runs/20260916T114258235Z-debug-product.json`) |
+| 카탈로그 재기록 | VehicleCatalog 기존 서식 유지, diff 21줄 |
+| wav 106개 실재·무음 검사 | 전부 실재, 무음 0 |
+| `git diff --check` | PASS |
+| 사용자 청취 확인 | PASS. "발소리 잘 들려" |
+
+Resources는 팀장 Drive 관리 물리 폴더라 Git에 올라가지 않는다. 다른 PC에서 들으려면
+`Client/Bin/Resources/Sound/Vehicle/` 106개 파일(65MB)을 같은 상대 경로로 전달해야 한다.
 
 ### 하지 않은 확인
 

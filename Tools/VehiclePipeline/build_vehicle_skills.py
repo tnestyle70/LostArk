@@ -257,6 +257,13 @@ def write_catalog(catalog):
                         lines.append('          ]' + cue_comma)
                     lines.append('        }' + (',' if si + 1 < len(value) else ''))
                 lines.append('      ]' + comma)
+            elif key == 'locomotionSoundCues':
+                if not value:
+                    lines.append('      "locomotionSoundCues": []' + comma)
+                    continue
+                lines.append('      "locomotionSoundCues": [')
+                lines += [f'        {inline(r)}' + (',' if i + 1 < len(value) else '') for i, r in enumerate(value)]
+                lines.append('      ]' + comma)
             elif key == 'modelMaterialOverrides':
                 lines.append('      "modelMaterialOverrides": [')
                 for oi, row in enumerate(value):

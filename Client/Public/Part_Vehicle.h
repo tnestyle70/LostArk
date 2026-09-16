@@ -41,6 +41,10 @@ public:
 	/* Start and length of one chain clip on the same clock Seek_SkillChain uses. */
 	bool_t Try_Get_SkillClipWindow(const std::vector<std::string>& clips, std::size_t clipIndex,
 		f32_t& outStartSeconds, f32_t& outDurationSeconds) const;
+	/* Where the looping idle/run clip currently sits. Fails while a skill chain
+	owns the model, so locomotion cues stop at the action edge. */
+	bool_t Try_Get_LocomotionClipTime(std::string& outClip,
+		f32_t& outSeconds, f32_t& outDurationSeconds) const;
 	shared_ptr<CModel> Get_Model() const { return m_pModelCom; }
 	const float4x4_t& Get_CombinedWorldMatrix() const { return m_CombinedWorldMatrix; }
 

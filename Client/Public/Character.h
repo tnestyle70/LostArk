@@ -398,6 +398,10 @@ private:
 	std::uint32_t m_iVehicleId = 0u;
 	std::uint32_t m_iRejectedVehicleId = 0u;
 	shared_ptr<class CPart_Vehicle> m_pVehiclePart;
+	/* Where the looping vehicle locomotion clip sat last frame, so a ground
+	contact fires once as the clip crosses it. Negative means "no bracket yet". */
+	std::string m_strVehicleLocomotionClip;
+	f32_t m_fPreviousVehicleLocomotionSeconds = { -1.f };
 	// Vehicle part parent: the ground transform without the seat lift or class scale.
 	float4x4_t m_VehicleRootMatrix = {};
 	// World-space lift from the ground transform to the vehicle seat bone.
@@ -612,6 +616,7 @@ private:
 	void Update_CameraShakeCues();
 	void Update_VehicleSkillCues(const VEHICLE_SKILL_ENTRY& skill,
 		std::uint32_t actionStartTick, f32_t actionAgeSeconds);
+	void Update_VehicleLocomotionSoundCues();
 	void Queue_VehicleSkillEffects(const VEHICLE_ACTOR_ENTRY& vehicle) const;
 	void Spawn_FallbackEffect(LostArk::Shared::SKILL_ID iSkillId);
 	f32_t Get_EffectPlaybackRate() const;
