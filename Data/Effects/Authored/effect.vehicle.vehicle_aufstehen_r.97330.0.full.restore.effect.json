@@ -7256,8 +7256,8 @@
           "burstCount": 0,
           "randomSeed": 3,
           "lifeTimeSeconds": [
-            10.0,
-            10.0
+            2.667,
+            2.667
           ],
           "initialPositionMin": [
             0.0,
@@ -7635,10 +7635,10 @@
                   0.0
                 ],
                 "lookupTable": [
-                  10.0,
-                  10.0,
-                  10.0,
-                  10.0
+                  2.667,
+                  2.667,
+                  2.667,
+                  2.667
                 ],
                 "keys": []
               }
@@ -8501,8 +8501,8 @@
           "burstCount": 0,
           "randomSeed": 4,
           "lifeTimeSeconds": [
-            10.0,
-            10.0
+            2.667,
+            2.667
           ],
           "initialPositionMin": [
             0.0,
@@ -8885,10 +8885,10 @@
                   0.0
                 ],
                 "lookupTable": [
-                  10.0,
-                  10.0,
-                  10.0,
-                  10.0
+                  2.667,
+                  2.667,
+                  2.667,
+                  2.667
                 ],
                 "keys": []
               }
@@ -9645,8 +9645,8 @@
           "burstCount": 0,
           "randomSeed": 5,
           "lifeTimeSeconds": [
-            10.0,
-            10.0
+            2.517,
+            2.517
           ],
           "initialPositionMin": [
             0.0,
@@ -10029,10 +10029,10 @@
                   0.0
                 ],
                 "lookupTable": [
-                  10.0,
-                  10.0,
-                  10.0,
-                  10.0
+                  2.667,
+                  2.667,
+                  2.667,
+                  2.667
                 ],
                 "keys": []
               }
@@ -10931,8 +10931,8 @@
           "burstCount": 0,
           "randomSeed": 6,
           "lifeTimeSeconds": [
-            10.0,
-            10.0
+            2.667,
+            2.667
           ],
           "initialPositionMin": [
             0.0,
@@ -11320,10 +11320,10 @@
                   0.0
                 ],
                 "lookupTable": [
-                  10.0,
-                  10.0,
-                  10.0,
-                  10.0
+                  2.667,
+                  2.667,
+                  2.667,
+                  2.667
                 ],
                 "keys": []
               }
@@ -12227,8 +12227,8 @@
           "burstCount": 0,
           "randomSeed": 7,
           "lifeTimeSeconds": [
-            10.0,
-            10.0
+            2.667,
+            2.667
           ],
           "initialPositionMin": [
             0.0,
@@ -12616,10 +12616,10 @@
                   0.0
                 ],
                 "lookupTable": [
-                  10.0,
-                  10.0,
-                  10.0,
-                  10.0
+                  2.667,
+                  2.667,
+                  2.667,
+                  2.667
                 ],
                 "keys": []
               }
@@ -13523,8 +13523,8 @@
           "burstCount": 0,
           "randomSeed": 8,
           "lifeTimeSeconds": [
-            10.0,
-            10.0
+            2.667,
+            2.667
           ],
           "initialPositionMin": [
             0.0,
@@ -13912,10 +13912,10 @@
                   0.0
                 ],
                 "lookupTable": [
-                  10.0,
-                  10.0,
-                  10.0,
-                  10.0
+                  2.667,
+                  2.667,
+                  2.667,
+                  2.667
                 ],
                 "keys": []
               }
@@ -17403,8 +17403,8 @@
           "burstCount": 0,
           "randomSeed": 11,
           "lifeTimeSeconds": [
-            10.0,
-            10.0
+            2.667,
+            2.667
           ],
           "initialPositionMin": [
             0.0,
@@ -17782,10 +17782,10 @@
                   0.0
                 ],
                 "lookupTable": [
-                  10.0,
-                  10.0,
-                  10.0,
-                  10.0
+                  2.667,
+                  2.667,
+                  2.667,
+                  2.667
                 ],
                 "keys": []
               }
@@ -72291,7 +72291,7 @@
         },
         "timing": {
           "startDelaySeconds": 0.20000000298023224,
-          "lifeTimeSeconds": 5.0,
+          "lifeTimeSeconds": 2.467,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -72362,8 +72362,8 @@
           "burstCount": 0,
           "randomSeed": 1,
           "lifeTimeSeconds": [
-            5.0,
-            5.0
+            2.467,
+            2.467
           ],
           "initialPositionMin": [
             0.01,
@@ -73403,7 +73403,7 @@
         },
         "timing": {
           "startDelaySeconds": 1.2000000029802322,
-          "lifeTimeSeconds": 5.0,
+          "lifeTimeSeconds": 1.467,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -73474,8 +73474,8 @@
           "burstCount": 0,
           "randomSeed": 1,
           "lifeTimeSeconds": [
-            5.0,
-            5.0
+            1.467,
+            1.467
           ],
           "initialPositionMin": [
             0.01,
@@ -74514,7 +74514,7 @@
         },
         "timing": {
           "startDelaySeconds": 0.9557219743728638,
-          "lifeTimeSeconds": 1.0,
+          "lifeTimeSeconds": 0.701,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -74585,8 +74585,8 @@
           "burstCount": 0,
           "randomSeed": 1,
           "lifeTimeSeconds": [
-            1.0,
-            1.0
+            0.701,
+            0.701
           ],
           "initialPositionMin": [
             0.01,
