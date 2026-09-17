@@ -131,6 +131,31 @@ def load_clip(path: Path, clip: str):
     return bones, info, keys
 
 
+def read_donor_scales(data, content, donor):
+    """Frame-0 scale of every donor channel, keyed by bone name hash.
+
+    The cooked body clips do not leave scale at one: the armature bone (`flm`,
+    `wgl`, ...) carries a constant 100 in all 224 shipped clips, which is the
+    cm -> m the rest of the rig is authored in. Writing 1 there shrinks the
+    whole character to a hundredth of its size for as long as the clip plays --
+    it reads on screen as the character vanishing. Everything else is 1 to float
+    jitter, so sampling the donor reproduces both cases without a special case.
+    """
+    at = content + donor[2] + FILE_HEADER.size
+    head = ANIMATION_HEADER.unpack_from(data, at)
+    channel_at = at + ANIMATION_HEADER.size
+    key_at = channel_at + head[1] * ANIMATION_CHANNEL.size
+
+    out = {}
+    for i in range(head[1]):
+        row = ANIMATION_CHANNEL.unpack_from(
+            data, channel_at + i * ANIMATION_CHANNEL.size)
+        if row[0] in out or 0 == row[5]:
+            continue
+        out[row[0]] = VECTOR_KEY.unpack_from(data, key_at + row[6])[1:]
+    return out
+
+
 def read_constant_channels(data, content, donor, psa_bone_names, name_by_hash):
     """Donor channels for bones the PSA does not animate: (hash, position, rotation).
 
@@ -170,22 +195,31 @@ def main() -> int:
     parser.add_argument("--psa", type=Path, required=True)
     parser.add_argument("--clip", required=True)
     parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument("--name", help="section name written into the set (default: the PSA clip "
+                                       "name); the body cooks name clips <armature>_<action>")
     parser.add_argument("--scale", type=float, default=1.0,
                         help="applied to PSA translations; the shipped sets are "
                              "already in the cooked unit, so default is 1")
     args = parser.parse_args()
+    section_name = args.name or args.clip
 
     data = bytearray(args.wmodel.read_bytes())
     content = FILE_HEADER.size
+    # The outer header's version is the geometry format version, and the decoder
+    # rejects the file when it stops matching the WMSH section's own version
+    # ("WMOD and WMSH geometry format versions do not match"). Body cooks are
+    # 1.3 (skinned extra UV), so it has to be carried through, not rewritten.
+    source_header = FILE_HEADER.unpack_from(data, 0)
+    version_major, version_minor, header_flags = source_header[1:4]
     model = list(MODEL_HEADER.unpack_from(data, content))
     table = content + MODEL_HEADER.size
     section_count = model[1]
     sections = [list(SECTION_DESC.unpack_from(data, table + i * SECTION_DESC.size))
                 for i in range(section_count)]
 
-    if any(s[4].split(b"\0")[0].decode("utf-8", "ignore") == args.clip
+    if any(s[4].split(b"\0")[0].decode("utf-8", "ignore") == section_name
            for s in sections):
-        raise SystemExit("%s already contains %s" % (args.wmodel.name, args.clip))
+        raise SystemExit("%s already contains %s" % (args.wmodel.name, section_name))
 
     # Bone name -> hash, from the skeleton the clips are authored against.
     skeleton = next(s for s in sections if s[0] == 3)
@@ -207,6 +241,7 @@ def main() -> int:
     trailer = bytes(data[content + donor[2] + donor[3] - 8:content + donor[2] + donor[3]])
 
     carried = read_constant_channels(data, content, donor, set(bones), name_by_hash)
+    scale_by_hash = read_donor_scales(data, content, donor)
 
     channels, key_blob = bytearray(), bytearray()
     matched = 0
@@ -231,8 +266,9 @@ def main() -> int:
             else:
                 key_blob += QUATERNION_KEY.pack(float(frame), qx, qy, -qz, qw)
         scl_at = len(key_blob)
+        scale = scale_by_hash.get(name_hash, (1.0, 1.0, 1.0))
         for frame in range(info["frames"]):
-            key_blob += VECTOR_KEY.pack(float(frame), 1.0, 1.0, 1.0)
+            key_blob += VECTOR_KEY.pack(float(frame), *scale)
 
         channels += ANIMATION_CHANNEL.pack(
             name_hash, info["frames"], pos_at, info["frames"], rot_at,
@@ -249,8 +285,9 @@ def main() -> int:
         for frame in range(info["frames"]):
             key_blob += QUATERNION_KEY.pack(float(frame), *rotation)
         scl_at = len(key_blob)
+        scale = scale_by_hash.get(name_hash, (1.0, 1.0, 1.0))
         for frame in range(info["frames"]):
-            key_blob += VECTOR_KEY.pack(float(frame), 1.0, 1.0, 1.0)
+            key_blob += VECTOR_KEY.pack(float(frame), *scale)
         channels += ANIMATION_CHANNEL.pack(
             name_hash, info["frames"], pos_at, info["frames"], rot_at,
             info["frames"], scl_at, -1, 0)
@@ -263,7 +300,9 @@ def main() -> int:
     payload += channels
     payload += key_blob
     payload += trailer
-    section = FILE_HEADER.pack(b"WINT", 1, 0, 0, len(payload)) + bytes(payload)
+    donor_wrapper = FILE_HEADER.unpack_from(data, content + donor[2])
+    section = FILE_HEADER.pack(b"WINT", donor_wrapper[1], donor_wrapper[2],
+                               donor_wrapper[3], len(payload)) + bytes(payload)
 
     # One more descriptor row pushes every existing section forward by its size.
     # Section offsets are measured from the start of the content block (the
@@ -276,7 +315,8 @@ def main() -> int:
                   + len(body))
 
     rebuilt = bytearray()
-    rebuilt += FILE_HEADER.pack(b"WINT", 1, 0, 0, 0)          # size patched below
+    rebuilt += FILE_HEADER.pack(b"WINT", version_major, version_minor,
+                                header_flags, 0)              # size patched below
     model[1] = section_count + 1
     model[2] = model[2] + 1
     rebuilt += MODEL_HEADER.pack(*model)
@@ -284,7 +324,7 @@ def main() -> int:
         rebuilt += SECTION_DESC.pack(s[0], s[1], s[2] + shift, s[3], s[4])
     animation_index = max(s[1] for s in sections if s[0] == 4) + 1
     rebuilt += SECTION_DESC.pack(4, animation_index, new_offset, len(section),
-                                 args.clip.encode("utf-8")[:39].ljust(40, b"\0"))
+                                 section_name.encode("utf-8")[:39].ljust(40, b"\0"))
     rebuilt += body
     rebuilt += section
     struct.pack_into("<I", rebuilt, 12, len(rebuilt) - FILE_HEADER.size)
@@ -293,7 +333,7 @@ def main() -> int:
     args.out.write_bytes(bytes(rebuilt))
     print("%s: +%s  %d frames @ %.2f fps, %d/%d PSA bones + %d carried "
           "= %d channels, file %d -> %d"
-          % (args.out.name, args.clip, info["frames"], info["rate"], matched,
+          % (args.out.name, section_name, info["frames"], info["rate"], matched,
              len(bones), len(carried), channel_count, len(data), len(rebuilt)))
     return 0
 

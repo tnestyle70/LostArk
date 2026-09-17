@@ -180,6 +180,9 @@ const CHARACTER_SPEC Spec_Artist =
 		/* Attached CustomizingAnimSet clip; the retail character-creation pose. */
 		"idle_charactercustomizing_1",
 		"sdm_abn_fear_1",
+		/* Square-hole song: the family PSA act_music_loop_1 appended to the body cook
+		(append_psa_clip_to_wmodel.py --name), named like the other body clips. */
+		"sdm_act_music_loop_1",
 	},
 
 	&Create_Logic,

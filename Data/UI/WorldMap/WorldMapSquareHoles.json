@@ -1,0 +1,64 @@
+{
+  "schema": "lostark.worldmap-squareholes",
+  "formatVersion": 1,
+  "source": "positions read off the retail Bern world map capture through the label fit (REF_FIT); replace with authored placements when the map owner adds square holes",
+  "symbol": "UI/WorldMap/Symbols/Minimap_Symbol_73.png",
+  "levels": [
+    {
+      "level": "BERN",
+      "holes": [
+        {
+          "id": 1,
+          "name": "조화의 광장",
+          "worldCm": [
+            14565.4,
+            14990.0
+          ],
+          "clientM": [
+            145.65,
+            -149.9
+          ],
+          "capturePx": [
+            852,
+            294
+          ],
+          "fareShilling": 38
+        },
+        {
+          "id": 2,
+          "name": "상업 지구",
+          "worldCm": [
+            22472.4,
+            5692.4
+          ],
+          "clientM": [
+            224.72,
+            -56.92
+          ],
+          "capturePx": [
+            465,
+            313
+          ],
+          "fareShilling": 38
+        },
+        {
+          "id": 3,
+          "name": "제작 지구",
+          "worldCm": [
+            5225.2,
+            8555.1
+          ],
+          "clientM": [
+            52.25,
+            -85.55
+          ],
+          "capturePx": [
+            906,
+            650
+          ],
+          "fareShilling": 38
+        }
+      ]
+    }
+  ]
+}

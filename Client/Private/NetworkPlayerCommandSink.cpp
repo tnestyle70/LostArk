@@ -242,6 +242,13 @@ bool Client::CNetworkPlayerCommandSink::Request_EstherSkill(
 		clientSequence, slotIndex, aimX, aimZ);
 }
 
+bool Client::CNetworkPlayerCommandSink::Request_UseSquareHole(
+	const std::uint32_t clientSequence,
+	const std::uint16_t holeId)
+{
+	return CNetworkManager::Get().Send_UseSquareHole(clientSequence, holeId);
+}
+
 bool Client::CNetworkPlayerCommandSink::Request_ChangeCharacterClass(
 	const std::uint32_t clientSequence,
 	const LostArk::Shared::CHARACTER_CLASS_ID characterClass)

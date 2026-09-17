@@ -109,6 +109,7 @@ const CHARACTER_SPEC Spec_Slayer =
 		nullptr,
 		nullptr, // CUSTOMIZING_IDLE
 		"wbk_abn_fear_1",
+		nullptr, // SQUAREHOLE_SONG
 	},
 
 	&Create_Logic,

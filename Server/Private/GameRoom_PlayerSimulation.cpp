@@ -709,6 +709,11 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 			LostArk::Shared::PLAYER_ACTION_STATE::ESTHER_CAST == player.eAction &&
 			static_cast<std::int32_t>(updateTick -
 				(player.iActionStartTick + ESTHER_CAST_TICKS)) >= 0;
+		/* The square-hole song is the same kind of fixed-length lock (no teleport yet). */
+		const bool squareHoleSongElapsed =
+			LostArk::Shared::PLAYER_ACTION_STATE::SQUAREHOLE_SONG == player.eAction &&
+			static_cast<std::int32_t>(updateTick -
+				(player.iActionStartTick + SQUAREHOLE_SONG_TICKS)) >= 0;
 		/* An escape teleport borrows the same INTERACTION lock and start tick,
 		so a swing is judged only for a real hammer press. */
 		const bool mazeHammerPress =
@@ -744,7 +749,7 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 			LostArk::Shared::PLAYER_ACTION_STATE::INTERACTION == player.eAction &&
 			static_cast<std::int32_t>(updateTick -
 				(player.iActionStartTick + interactionTicks)) >= 0;
-		if (estherCastElapsed || interactionElapsed)
+		if (estherCastElapsed || squareHoleSongElapsed || interactionElapsed)
 		{
 			player.eAction = LostArk::Shared::PLAYER_ACTION_STATE::NONE;
 			player.iCurrentSkillId = LostArk::Shared::INVALID_SKILL_ID;

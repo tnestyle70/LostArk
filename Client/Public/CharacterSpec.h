@@ -24,6 +24,9 @@ enum class CHARACTER_ANIM {
 	to the class's own idle. */
 	CUSTOMIZING_IDLE,
 	FEAR,
+	/* The square-hole song (<armature>_act_music_loop_1), a body clip like IDLE/RUN; a class
+	without it keeps nullptr and holds its current pose. */
+	SQUAREHOLE_SONG,
 	END
 };
 

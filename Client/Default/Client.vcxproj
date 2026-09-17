@@ -165,6 +165,8 @@
     <ClInclude Include="..\Public\PartyInteractionView.h" />
     <ClInclude Include="..\Public\CombatAnalysisFrameView.h" />
     <ClInclude Include="..\Public\VehicleWindowView.h" />
+    <ClInclude Include="..\Public\WorldMapWindowView.h" />
+    <ClInclude Include="..\Public\SongCastGaugeView.h" />
     <ClInclude Include="..\Public\HonorTitleWindowView.h" />
     <ClInclude Include="..\Public\RaidEntryPreviewView.h" />
     <ClInclude Include="..\Public\UITextureCache.h" />
@@ -418,6 +420,8 @@
     <ClCompile Include="..\Private\PartyInteractionView.cpp" />
     <ClCompile Include="..\Private\CombatAnalysisFrameView.cpp" />
     <ClCompile Include="..\Private\VehicleWindowView.cpp" />
+    <ClCompile Include="..\Private\WorldMapWindowView.cpp" />
+    <ClCompile Include="..\Private\SongCastGaugeView.cpp" />
     <ClCompile Include="..\Private\HonorTitleWindowView.cpp" />
     <ClCompile Include="..\Private\RaidEntryPreviewView.cpp" />
     <ClCompile Include="..\Private\UITextureCache.cpp" />

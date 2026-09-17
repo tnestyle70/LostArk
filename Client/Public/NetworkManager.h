@@ -189,6 +189,9 @@ public:
 		std::uint8_t slotIndex,
 		float aimX,
 		float aimZ);
+	bool Send_UseSquareHole(
+		std::uint32_t clientSequence,
+		std::uint16_t holeId);
 	bool Send_ChangeCharacterClass(
 		std::uint32_t clientSequence,
 		LostArk::Shared::CHARACTER_CLASS_ID characterClass);
