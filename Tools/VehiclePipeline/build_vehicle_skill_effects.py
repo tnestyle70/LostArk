@@ -498,12 +498,8 @@ def native_materials(evidence, first, last):
     occurrences = []
     for occurrence in source.read(evidence / 'source_occurrences.json'):
         if not occurrence['sourceMaterial'] and occurrence['rendererShape'] != 'mesh':
-            # No material means no native program, but the emitter still simulates:
-            # a seed emitter routes events to the receivers that do draw. Projection
-            # keeps it as a simulationOnly element instead of dropping it.
             excluded.append(dict(elementId=occurrence['elementId'], sourceEmitter=occurrence['sourceEmitter'],
-                rendererShape=occurrence['rendererShape'], reason='SOURCE_NULL_MATERIAL_NON_MESH_EMITTER',
-                simulationOnly=True))
+                rendererShape=occurrence['rendererShape'], reason='SOURCE_NULL_MATERIAL_NON_MESH_EMITTER'))
             continue
         occurrences.append(occurrence)
     source.write(root / 'source_occurrences.json', occurrences)
@@ -1131,9 +1127,7 @@ def project_documents(evidence, install):
             reused[identity] = dict(material=match[0], sourceDocument=match[1], deferredReason=deferred.pop(identity)['reason'])
     source.write(projection / 'reused_installed_native_materials.json',
         {k: dict(v, runtimeShaderProfileId=v['material']['sourceProfile']['runtimeShaderProfileId']) for k, v in reused.items()})
-    exclusions = source.read(evidence / 'material' / 'native_input_exclusions.json')
-    simulation_only = {row['elementId'] for row in exclusions if row.get('simulationOnly')}
-    deferred.update({row['elementId']: row for row in exclusions if not row.get('simulationOnly')})
+    deferred.update({row['elementId']: row for row in source.read(evidence / 'material' / 'native_input_exclusions.json')})
     usable = [o for o in occurrences if o['elementId'] not in deferred]
     patch = library.patch_simulation_providers(projection, reviewed / 'native_material_patch.json', index, usable)
     natives = {key: program['material'] for program in source.read(patch)['programs'] for key in program['occurrences']}
@@ -1160,12 +1154,6 @@ def project_documents(evidence, install):
                 document = source.read(projection / 'raw' / f'effect.kouku.gate1.{identity}.full.restore.effect.json')
                 for element in document['elements']:
                     base_id = element['id'].split('.')[0] + '.' + element['id'].split('.')[1] + '.' + element['id'].split('.')[2]
-                    if base_id in simulation_only:
-                        element['material'] = dict(templateId='effect.standard',
-                            sourceMaterialPath='enginematerials.defaultparticle',
-                            renderProfile='alpha_two_sided_depth_read', sourceProfile=dict(enabled=False))
-                        element['sourceRecipe']['simulationOnly'] = True
-                        continue
                     native = natives.get(base_id)
                     assert native is not None, ('missing native material occurrence', element['id'])
                     element['material'] = copy.deepcopy(native)
