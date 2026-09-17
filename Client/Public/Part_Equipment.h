@@ -68,6 +68,7 @@ public:
 	virtual void Update(f32_t fTimeDelta) override;
 	virtual void Late_Update(f32_t fTimeDelta) override;
 	virtual HRESULT Render() override;
+	virtual HRESULT Render_Group(RENDERGROUP group) override;
 	virtual HRESULT Render_Shadow() override;
 	/* Same draw as Render() through explicit technique passes -- skinned pieces use the body
 	shader, socketed (weapon) pieces the static-mesh shader, whose pass tables differ. */
@@ -91,11 +92,13 @@ private:
 	const float4x4_t* m_pSocketRootMatrix = { nullptr };
 	string m_strMaterialProfileId;
 	const DEFERRED_EMISSIVE_OVERRIDE* m_pEmissiveOverride = { nullptr };
+	bool_t m_hasTranslucentMeshes = { false };
 
 private:
 	HRESULT Ready_Components(const PART_EQUIPMENT_DESC* pDesc);
 	HRESULT Bind_ShaderResources();
 	HRESULT Bind_ShadowShaderResources();
+	HRESULT Render_Translucent();
 
 public:
 	static unique_ptr<CPart_Equipment> Create(ComPtr<ID3D11Device> pDevice,

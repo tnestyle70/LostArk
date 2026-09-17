@@ -3,6 +3,23 @@
 
 #include "DeferredMaterialRenderUtils.h"
 #include "GameInstance.h"
+#include "MapAssetRenderUtils.h"
+
+namespace
+{
+	constexpr uint32_t SOURCE_TRANSLUCENT_TWO_SIDED_PASS = 9u;
+
+	/* Program 18 is the source two-sided translucent hair. The deferred
+	two-sided pass resolves its coverage as a dither, so it reads as stipple
+	dots; the forward pass blends it after scene lighting instead. */
+	uint32_t Resolve_TranslucentSourcePass(const Engine::MODEL_SURFACE_PARAMETERS* surface)
+	{
+		if (nullptr == surface || surface->family != Engine::MODEL_SURFACE_FAMILY::SOURCE_CHARACTER)
+			return 0u;
+		return 18u == surface->sourceCharacter.program ?
+			SOURCE_TRANSLUCENT_TWO_SIDED_PASS : 0u;
+	}
+}
 
 CPart_Equipment::CPart_Equipment(ComPtr<ID3D11Device> pDevice,
 	ComPtr<ID3D11DeviceContext> pContext)
@@ -66,6 +83,14 @@ HRESULT CPart_Equipment::Initialize(void* pArg)
 		}
 	}
 
+	/* A socketed piece draws through the static-mesh shader, whose pass table has
+	no forward translucent slot, so only skinned pieces take that route. */
+	if (m_strSocketBoneName.empty())
+	{
+		for (uint32_t i = 0; i < m_pModelCom->Get_NumMeshes(); ++i)
+			m_hasTranslucentMeshes |= 0u != Resolve_TranslucentSourcePass(m_pModelCom->Get_MaterialSurface(i));
+	}
+
 	return S_OK;
 }
 
@@ -105,6 +130,12 @@ void CPart_Equipment::Late_Update(f32_t fTimeDelta)
 	CGameInstance::Get().Add_RenderObject(
 		RENDERGROUP::NONBLEND,
 		static_pointer_cast<CGameObject>(shared_from_this()));
+	if (m_hasTranslucentMeshes)
+	{
+		CGameInstance::Get().Add_RenderObject(
+			RENDERGROUP::BLEND,
+			static_pointer_cast<CGameObject>(shared_from_this()));
+	}
 	if (CGameInstance::Get().Is_ShadowLightEnabled())
 	{
 		CGameInstance::Get().Add_RenderObject(
@@ -116,6 +147,52 @@ void CPart_Equipment::Late_Update(f32_t fTimeDelta)
 HRESULT CPart_Equipment::Render()
 {
 	return Render_Pass(0u, 0u);
+}
+
+HRESULT CPart_Equipment::Render_Group(RENDERGROUP group)
+{
+	return RENDERGROUP::BLEND == group ? Render_Translucent() : Render();
+}
+
+HRESULT CPart_Equipment::Render_Translucent()
+{
+	if (!m_isVisible || !m_strSocketBoneName.empty())
+		return S_OK;
+	if (FAILED(Bind_ShaderResources()) ||
+		FAILED(CMapAssetRenderUtils::Bind_SourceCharacterForwardLights(m_pShaderCom)))
+		return E_FAIL;
+
+	if (!m_hasOwnBones &&
+		FAILED(m_pSkeletonModelCom->Bind_BoneMatrices(
+			m_pShaderCom, "g_BoneMatrices", 0)))
+		return E_FAIL;
+	if (m_hasOwnBones)
+		m_pModelCom->Pose_BonesFrom(*m_pSkeletonModelCom);
+
+	for (uint32_t i = 0; i < m_pModelCom->Get_NumMeshes(); ++i)
+	{
+		if (0 != (m_iHiddenMeshMask & (1u << i)))
+			continue;
+		const uint32_t pass = Resolve_TranslucentSourcePass(m_pModelCom->Get_MaterialSurface(i));
+		if (0u == pass)
+			continue;
+		if (m_hasOwnBones &&
+			FAILED(m_pModelCom->Bind_BoneMatrices(m_pShaderCom, "g_BoneMatrices", i)))
+			return E_FAIL;
+
+		const DEFERRED_MATERIAL_PROFILE Profile =
+			Resolve_DeferredMaterialProfile(
+				m_strMaterialProfileId,
+				m_pModelCom->Get_MaterialName(i));
+		if (FAILED(Bind_DeferredMaterialInputs(
+				*m_pModelCom, m_pShaderCom, i, Profile,
+				m_pEmissiveOverride)) ||
+			FAILED(m_pModelCom->Bind_SourceCharacterForwardLight(m_pShaderCom, i)) ||
+			FAILED(m_pShaderCom->Begin(pass)) ||
+			FAILED(m_pModelCom->Render(i)))
+			return E_FAIL;
+	}
+	return S_OK;
 }
 
 HRESULT CPart_Equipment::Render_Pass(
@@ -150,10 +227,14 @@ HRESULT CPart_Equipment::Render_Pass(
 
 		uint32_t materialPass = iPassIndex;
 		const auto* surface = m_pModelCom->Get_MaterialSurface(i);
+		/* The BLEND group draws these forward; the portrait's explicit passes
+		still take every mesh so the second draw keeps its own look. */
+		if (isSkinned && iPassIndex == 0u && 0u != Resolve_TranslucentSourcePass(surface))
+			continue;
 		if (m_strSocketBoneName.empty() && iPassIndex == 0u && surface &&
 			surface->family == Engine::MODEL_SURFACE_FAMILY::SOURCE_CHARACTER &&
 			(surface->sourceCharacter.program == 6u || surface->sourceCharacter.program == 7u ||
-             surface->sourceCharacter.program == 18u || surface->sourceCharacter.program == 19u ||
+             surface->sourceCharacter.program == 19u ||
              surface->sourceCharacter.program == 20u))
 		{
 			materialPass = 6u;

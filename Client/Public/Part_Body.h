@@ -55,6 +55,7 @@ public:
 	virtual void Update(f32_t fTimeDelta) override;
 	virtual void Late_Update(f32_t fTimeDelta) override;
 	virtual HRESULT Render() override;
+	virtual HRESULT Render_Group(RENDERGROUP group) override;
 	virtual HRESULT Render_Shadow() override;
 	/* Same draw as Render() through an explicit technique pass -- the character info window
 	portrait renders the live parts a second time with the forward ScreenCutin pass. */
@@ -66,11 +67,13 @@ private:
 	uint32_t m_iHiddenMeshMask = {};
 	std::weak_ptr<CModel> m_WeaponReplacementBody;
 	const DEFERRED_EMISSIVE_OVERRIDE* m_pEmissiveOverride = { nullptr };
+	bool_t m_hasTranslucentMeshes = { false };
 
 private:
 	HRESULT Ready_Components(const PART_BODY_DESC* pDesc);
 	HRESULT Bind_ShaderResources();
 	HRESULT Bind_ShadowShaderResources();
+	HRESULT Render_Translucent();
 
 public:
 	static unique_ptr<CPart_Body> Create(ComPtr<ID3D11Device> pDevice,
