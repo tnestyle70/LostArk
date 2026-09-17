@@ -27,6 +27,22 @@ namespace
 		default: return 0u;
 		}
 	}
+
+	bool_t Try_Get_NormalizedRotation(const matrix_t& Source, matrix_t& Out)
+	{
+		matrix_t staged = Source;
+		staged.r[3] = XMVectorSet(0.f, 0.f, 0.f, 1.f);
+		for (int32_t axis = 0; axis < 3; ++axis)
+		{
+			const f32_t length = XMVectorGetX(XMVector3Length(staged.r[axis]));
+			if (!std::isfinite(length) || length <= 1.0e-6f)
+				return false;
+			staged.r[axis] = XMVectorScale(staged.r[axis], 1.f / length);
+			staged.r[axis] = XMVectorSetW(staged.r[axis], 0.f);
+		}
+		Out = staged;
+		return true;
+	}
 }
 
 CPart_Vehicle::CPart_Vehicle(ComPtr<ID3D11Device> pDevice,
@@ -64,7 +80,37 @@ HRESULT CPart_Vehicle::Initialize(void* pArg)
 		m_hasTranslucentMeshes |= 0u != Resolve_TranslucentSourcePass(m_pModelCom->Get_MaterialSurface(i));
 	if (m_pModelCom->Has_Bone(ROOT_MOTION_BONE))
 		(void)m_pModelCom->Enable_RootMotionSuppression(ROOT_MOTION_BONE, ROOT_MOTION_VERTICAL_AXIS);
+	matrix_t restRotation{};
+	if (Try_Get_NormalizedRotation(
+		m_pModelCom->Get_BoneMatrix(m_strSeatBone.c_str()), restRotation))
+	{
+		XMStoreFloat4x4(&m_RestSeatRotationInverse, XMMatrixTranspose(restRotation));
+		m_hasRestSeatRotation = true;
+	}
 	return S_OK;
+}
+
+bool_t CPart_Vehicle::Try_Get_SeatRotationDelta(float4x4_t& outRotation) const
+{
+	matrix_t current{};
+	if (nullptr == m_pModelCom || !m_hasRestSeatRotation ||
+		!m_pModelCom->Has_Bone(m_strSeatBone.c_str()) ||
+		!Try_Get_NormalizedRotation(
+			m_pModelCom->Get_BoneMatrix(m_strSeatBone.c_str()), current))
+	{
+		return false;
+	}
+	float4x4_t staged{};
+	XMStoreFloat4x4(&staged, XMLoadFloat4x4(&m_RestSeatRotationInverse) * current);
+	for (const f32_t value : { staged._11, staged._12, staged._13,
+		staged._21, staged._22, staged._23,
+		staged._31, staged._32, staged._33 })
+	{
+		if (!std::isfinite(value))
+			return false;
+	}
+	outRotation = staged;
+	return true;
 }
 
 bool_t CPart_Vehicle::Set_Moving(const bool_t isMoving)

@@ -1631,6 +1631,7 @@ bool_t CCharacter::Try_Get_PresentationRootMatrix(float4x4_t* pOut) const
 		return false;
 	XMStoreFloat4x4(pOut,
 		XMMatrixScaling(Get_PresentationScale(), Get_PresentationScale(), Get_PresentationScale()) *
+		XMLoadFloat4x4(&m_VehicleSeatRotation) *
 		XMLoadFloat4x4(m_pTransformCom->Get_WorldMatrixPtr()) *
 		XMMatrixTranslation(m_vVehicleSeatOffset.x, m_vVehicleSeatOffset.y, m_vVehicleSeatOffset.z));
 	return true;
@@ -1639,6 +1640,7 @@ bool_t CCharacter::Try_Get_PresentationRootMatrix(float4x4_t* pOut) const
 void CCharacter::Update_PresentationRootMatrix()
 {
 	m_vVehicleSeatOffset = {};
+	XMStoreFloat4x4(&m_VehicleSeatRotation, XMMatrixIdentity());
 	if (nullptr != m_pTransformCom)
 	{
 		m_VehicleRootMatrix = *m_pTransformCom->Get_WorldMatrixPtr();
@@ -1649,6 +1651,15 @@ void CCharacter::Update_PresentationRootMatrix()
 				seat.x - m_VehicleRootMatrix._41,
 				seat.y - m_VehicleRootMatrix._42,
 				seat.z - m_VehicleRootMatrix._43);
+		}
+		const VEHICLE_ACTOR_ENTRY* pVehicle = 0u == m_iVehicleId ? nullptr :
+			CActorCatalog::Find_Vehicle(m_iVehicleId);
+		float4x4_t seatRotation{};
+		if (nullptr != pVehicle && pVehicle->seatBoneRotatesRider &&
+			nullptr != m_pVehiclePart &&
+			m_pVehiclePart->Try_Get_SeatRotationDelta(seatRotation))
+		{
+			m_VehicleSeatRotation = seatRotation;
 		}
 	}
 	Try_Get_PresentationRootMatrix(&m_PresentationRootMatrix);

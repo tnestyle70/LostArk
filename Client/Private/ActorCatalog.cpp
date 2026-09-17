@@ -1039,9 +1039,19 @@ namespace
 		for (const DATA_JSON_VALUE& value : pEntries->Get_Array())
 		{
 			const std::size_t keyCount = value.Is_Object() ? value.Get_Object().size() : 0u;
-			if (11u != keyCount && !(hasLocomotionCues && 12u == keyCount))
+			/* Optional "seatBoneRotatesRider": a vehicle whose clip spins its own
+			body turns the rider with the seat bone instead of only moving them. */
+			const DATA_JSON_VALUE* pSeatRotation = value.Is_Object() ?
+				value.Find("seatBoneRotatesRider") : nullptr;
+			const std::size_t baseKeyCount = nullptr == pSeatRotation ? 11u : 12u;
+			if (baseKeyCount != keyCount &&
+				!(hasLocomotionCues && baseKeyCount + 1u == keyCount))
+				return false;
+			if (nullptr != pSeatRotation && !pSeatRotation->Is_Boolean())
 				return false;
 			VEHICLE_ACTOR_ENTRY entry;
+			entry.seatBoneRotatesRider =
+				nullptr != pSeatRotation && pSeatRotation->Get_Boolean();
 			if (hasLocomotionCues && !ParseVehicleLocomotionCues(value, entry))
 				return false;
 			const DATA_JSON_VALUE* pRiders = value.Find("riders");

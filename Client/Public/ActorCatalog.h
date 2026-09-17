@@ -289,6 +289,7 @@ struct VEHICLE_ACTOR_ENTRY final
 	std::vector<VEHICLE_SKILL_ENTRY> skills;
 	std::vector<VEHICLE_LOCOMOTION_SOUND_CUE> locomotionSoundCues;
 	std::string runtimeStatus;
+	bool_t seatBoneRotatesRider = false;
 
 	const VEHICLE_RIDER_ENTRY* Find_Rider(
 		const LostArk::Shared::CHARACTER_CLASS_ID characterClass) const

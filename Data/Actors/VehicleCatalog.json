@@ -698,6 +698,7 @@
     {
       "vehicleId": 8906,
       "archetypeId": "VEHICLE_UNICORN_TUBE_SEA",
+      "seatBoneRotatesRider": true,
       "modelAssetId": "Character/Vehicle/SeaUnicornTube/SeaUnicornTube.wmodel",
       "modelPreScale": 0.0001,
       "seatBone": "b_cockpit",
