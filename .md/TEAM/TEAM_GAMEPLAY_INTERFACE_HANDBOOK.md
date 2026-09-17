@@ -1090,17 +1090,31 @@ TRS는 visual mapping이 소유한다. 새 damage나 Client player pose 입력�
 
 TRIGGER `ALBION_AIRBORNE`는 `airbornePhase`, `airborneHeightM`,
 `airborneDurationMs`, `teleportPosition`을 함께 저장한다. phase는
-`SELECT_PLAYER/JUMP/APPEAR_PLAYER/DISAPPEAR/CENTER/SLAM`이다. JUMP만 양수 높이와
-상승 시간을 사용하고 APPEAR_PLAYER는 양수 등장 높이를 사용한다. 나머지 높이·시간은0이며
+`SELECT_PLAYER/JUMP/APPEAR_PLAYER/DISAPPEAR/CENTER/SLAM`이다. JUMP는 양수 높이와
+0~600000 ms 상승 시간을 사용하며, 0 ms는 첫 tick부터 해당 높이로 시작한다. 양수 시간의
+기존 상승 보간은 유지한다. APPEAR_PLAYER는 양수 등장 높이를 사용한다. 나머지 높이·시간은0이며
 CENTER만 절대 목적지 XYZ를 가진다. 기존25열 mechanic 부모 뒤에 같은 occurrence의7열
 `PATTERNALBIONAIRBORNE`를 게시한다. Server가 살아 있는 플레이어 ID를 선택하고 등장할
 때 그 플레이어의 현재 XZ와 navigation·body collision을 검증한다. 같은 시각이면 선택부터
 처리한다. 기존 stage root 이동 경로가 phase의 높이를 소비하고 순간이동 때 root 원점도
-갱신한다. SLAM은 trigger 이후 원본 하강의 누적 최저값으로 착지하며 원본의 작은 반등으로
-다시 뜨지 않는다. 실패 시 기존 pose를 유지한다. 새 packet이나 Client gameplay 이동은 없다.
+갱신한다. SLAM은 시작 시점의 XZ를 고정하고 trigger 이후 원본 하강의 누적 최저값으로 착지하며 원본의 작은 반등으로
+다시 뜨지 않는다. 이 착지 보정은 source Stage에 한정하며 다음 Stage부터 기존 native root 이동을
+재개한다. 따라서 후속 상승 clip을 지면에 고정하지 않는다. 실패 시 기존 pose를 유지한다. 새 packet이나 Client gameplay 이동은 없다.
 일반 Play는 복제된 플레이어 ID와 등장 시점의 위치를 preview 실행에 고정해 seek에서도
 같은 결과를 사용한다. `Complete Play (Server)`가 실제 Server 권위 재생이며,
 `resetBossToSpawn`이 참이면 기존 Gate별 spawn에서 시작한다.
+
+SELECT_PLAYER의 optional `airborneTargetPositionPolicy`는 기본 `APPEAR`이며 위 기존 동작을 유지한다.
+`SELECT`이면 선택 시점 플레이어의 navigation ground XYZ를 한 번 저장하고 이후 이동·사망·퇴장에도
+APPEAR_PLAYER가 같은 좌표를 사용한다. 목적지 navigation·body 검증은 유지하며 실패 시 기존 pose를 보존한다.
+optional `selectedEffectGroupId`는 이 SELECT 정책에만 허용하며 같은 Pattern의 두 개 이상 MAP/nonfollow
+Effect occurrence를 참조한다. 첫 멤버의 MAP XYZ를 공통 원점으로 빼고 각 시작 시각에서 SELECT 시각을 빼서
+기존 `combatobject.kouku.showtime.fixed` visual 하나에 투영한다. 원래 일반 Effect lane에서는 해당 멤버를 제외한다.
+Server는 ground capture와 presentation-only combat object를 한 transaction으로 확정한다. 새 Shared packet은 없다.
+선택 정책이 있는 supplement만 기존7열 뒤에 `SELECT`, visual ID, lifetime ms를 붙인10열을 사용한다.
+visual/lifetime 쌍은 optional이며 capture만 있으면 빈 ID/0이다. visual이 있으면 lifetime1~600000ms이고
+SELECT 시작 시각+수명이 Pattern 끝을 넘을 수 없다. Client 일반 Play의0ms SELECT는 비동기 Effect 준비보다 먼저
+실제 player ground를 고정하며 동일 rewind에서는 같은 점을 재사용한다. 기존 APPEAR 정책은 변경하지 않는다.
 
 DURATION `BOSS_TRACK_TARGET`은 추가 field 없이 지정된 Server pattern target을 향해 몸만
 회전한다. occurrence의 start/duration이 회전 구간이며, 현재 yaw에서 목표 yaw까지 최단 각도를
@@ -1202,6 +1216,15 @@ target 필드가 비어 있는 기존 메시지는 WORLD 생성 요청이다. Re
 target/Motion 쌍에 한 번만 송신한다. `OBJECT_OVERLAP`은 player 입력과 무관하게 source Collider와
 고정 target 원의 겹침을 Server fixed tick에서 확인한다. target 반경은 저작 값이며 모델의 bone
 변형을 추적하지 않는다. 기존 player 영역 판정은 계속 별도 Logic 종류로 유지한다.
+
+시각용 model-less World 그룹은 `motionInstanceIds`의 enabled member들을 하나의 Composition
+World box로 재생할 수 있다. 이때 `objectResourceId`와 `sequenceInstanceId`는 같은 group
+objectId이며, 목록과 Append는 member의 전체 presentation tail을 포함한 길이를 사용한다.
+Server는 그룹을 여러 cue로 분해하지 않고 기존 한 owned WORLD cue의 ID·clock·placement를
+전달한다. Client는 같은 전용 `CWorldSequencePlayer`에 member들을 준비하고 생성 원점과
+재생·탐색·중지를 공유한다. 모든 member가 꺼져 있거나 참조가 잘못되면 거절한다. 이 시각용
+그룹의 member collider/combatBody/walkable은 지원하지 않으며 publisher와 Client admission이
+거부한다. 그룹 생성으로 피해·충돌 판정을 Client에 추가하지 않는다.
 칼날처럼 시각적으로 X축 자전하는 WORLD의 중심 CIRCLE은 local offset=0, bone 없음과
 uniform XYZ scale 조건에서 모델 회전과 분리된 수평 원형 판정을 사용한다. 이동은 기존
 Transform keys의 translation/visibility를 사용하며 물리 velocity·가속·공전·무작위 분산을
@@ -1664,3 +1687,13 @@ Effect Tool에서 Effect를 열면 저장된 SourceModelPreview를 기본 애니
 ### Kouku Pattern 삭제
 
 Patterns 창의 Delete Selected Pattern 또는 Pattern 우클릭 Delete는 같은 확인창을 연다. Flow·Bundle·Parent timeline/Pattern box·Logic의 후속/분신/방향/랜덤 후보·Summon 참조가 있으면 owner와 stable ID를 표시하고 삭제를 차단한다. 해당 owner에서 연결을 먼저 제거한다. Delete from Draft는 candidate 검증 후 draft만 바꾸며 Save와 Publish All Patterns가 각각 저장과 제품 반영을 소유한다. 공용 Animation/Effect/Logic 원본은 삭제하지 않는다. 오래된 확인창·외부 수정·게시 중·검증 실패는 기존 draft를 보존한다.
+
+### Kouku 추적·회전 카드의 생성과 접촉
+
+Composition DURATION의 `PURSUIT_PROJECTILES`는 `visualIds` 1~4개와 `contactVisualId`로 저장된 V1_EFFECT resource를 참조한다. `speedMps`는 .01~100m/s, `contactRadiusM`은 .01~10m, `spawnRadiusM`은 0~100m다. `spawnIntervalMs=0`은 한번 생성, `countPerWave` 생략은 문양 개수만큼 생성한다. 명시 개수는 1~16이다. `maxDistanceM`은 선택 필드이며0~1000m다. 생략/0이면 이동 거리는 기존 수명·접촉으로 제한하고, 양수이면 생성 위치부터 누적 이동 거리를 제한한다. `homing=true`와 한번 생성, 거리 제한0일 때만 `lifetimeMs=0`을 허용한다. 0보다 큰 수명과 발사 간격은 최대600000ms다. Logic occurrence duration은 생성 창이며 무한 객체의 자연 종료 시각이 아니다.
+
+Server가 대상 선택·이동·Shared XZ swept circle 접촉과 객체 종료를 소유한다. 접촉 반경에는 대상 player body radius를 더한다. 무한 객체는 접촉 전 시간으로 만료하지 않으며 명시 Stop·owner/target 소멸에서 정리한다. 유한 직선 객체는 접촉·수명·양수 최대 거리 중 먼저 도달한 종료 조건에서 같은 폭발 event를 한 번 보낸다. 기존18열 bootstrap은 그대로 읽고, 양수 최대 거리는 선택적인19번째 열로 전달한다. 이 Logic은 damage나 RESULT 판정을 임의로 추가하지 않는다.
+
+publisher는 실제 Effect 참조를 `targetedCombatVisuals`로 고정한다. Client는 서버 snapshot의 위치·yaw와 독립된 표시 반복 시계를 사용한다. 접촉 event의 stable ID는 고정한 `contactVisualId`와 일치해야 하며 폭발은 카드 despawn 뒤에도 자기 위치·리소스를 보존한다. 새 socket 호출·Client local 추적 권위·중복 모델 runtime은 없다. 편집은 Logic Detail의 카드·폭발 선택과 속도·최대 거리·반경·수명·간격 입력, Apply → Save → Publish All Patterns로 반영한다.
+
+Kouku Product의 게시 가능한 pattern 개수 상한은 Shared `MAX_VALTAN_PATTERN_FLOW_SLOTS`와 같은255다. projector·Gameplay bootstrap·Boss Tool은 동일 한계를 적용한다. 저장된 미완성 Pattern은 ready inventory에서 별도 unavailable로 남으며 정상 Pattern을 게시하기 위해 원본을 삭제하지 않는다.

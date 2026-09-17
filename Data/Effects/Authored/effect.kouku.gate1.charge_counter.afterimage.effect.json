@@ -1,0 +1,162 @@
+{
+  "schema": "lostark.effect-authoring",
+  "version": 13,
+  "effectAssetId": "effect.kouku.gate1.charge_counter.afterimage",
+  "displayName": "세이튼 / 돌진 카운터 | 흰 잔상",
+  "particleSystem": {
+    "uniformScaleMultiplier": 1,
+    "yawOffsetDegrees": 0,
+    "directionYawDegrees": 0,
+    "initialSpeedMultiplier": 1
+  },
+  "modelCues": [
+    {
+      "cueId": "saydon.charge.windup",
+      "modelAssetId": "Character/KoukuSaton/MN_RPCT_05/MN_RPCT_05.wmodel",
+      "clipName": "rpct00_att_battle_22_01",
+      "startDelaySeconds": 0,
+      "durationSeconds": 1,
+      "alphaMode": "TRANSLUCENT",
+      "opacity": 1,
+      "colorMultiply": [
+        1.8,
+        1.8,
+        1.8,
+        0.38
+      ],
+      "holdLastFrame": false,
+      "loop": false,
+      "visible": true,
+      "suppressHorizontalRootMotionBone": "b_root",
+      "rootMotionVerticalAxis": 2,
+      "rootMotionVerticalScale": 0,
+      "localTransform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotationDegrees": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "assetPreTransform": {
+        "scale": [
+          0.017,
+          0.017,
+          0.017
+        ],
+        "rotationDegrees": [
+          0,
+          0,
+          0
+        ]
+      },
+      "afterimage": {
+        "emissionStartSeconds": 0.2090039998292923,
+        "emissionEndSeconds": 1,
+        "sampleIntervalSeconds": 0.05,
+        "sampleLifetimeSeconds": 0.25,
+        "maxSamples": 6,
+        "appearanceBasis": "PROJECT_AUTHORED"
+      }
+    },
+    {
+      "cueId": "saydon.charge.dash",
+      "modelAssetId": "Character/KoukuSaton/MN_RPCT_05/MN_RPCT_05.wmodel",
+      "clipName": "rpct00_att_battle_22_04",
+      "startDelaySeconds": 1,
+      "durationSeconds": 1.8333330154418945,
+      "alphaMode": "TRANSLUCENT",
+      "opacity": 1,
+      "colorMultiply": [
+        1.8,
+        1.8,
+        1.8,
+        0.38
+      ],
+      "holdLastFrame": false,
+      "loop": false,
+      "visible": true,
+      "suppressHorizontalRootMotionBone": "b_root",
+      "rootMotionVerticalAxis": 2,
+      "rootMotionVerticalScale": 0,
+      "localTransform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotationDegrees": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "assetPreTransform": {
+        "scale": [
+          0.017,
+          0.017,
+          0.017
+        ],
+        "rotationDegrees": [
+          0,
+          0,
+          0
+        ]
+      },
+      "afterimage": {
+        "emissionStartSeconds": 0.19805499911308289,
+        "emissionEndSeconds": 1.8333330154418945,
+        "sampleIntervalSeconds": 0.05,
+        "sampleLifetimeSeconds": 0.25,
+        "maxSamples": 6,
+        "appearanceBasis": "PROJECT_AUTHORED"
+      }
+    }
+  ],
+  "elements": [],
+  "sourceModelPreview": {
+    "gateId": "GATE1",
+    "actorProfileId": "MN_RPCT_05",
+    "targetBossPlacementId": "boss.kakulsaydon.g1.saydon",
+    "animations": [
+      {
+        "runtimeClip": "rpct00_att_battle_22_01",
+        "startOffsetMs": 0,
+        "sourceStartMs": 0,
+        "playMs": 1000,
+        "playRate": 1,
+        "endPolicy": "EXACT"
+      },
+      {
+        "runtimeClip": "rpct00_att_battle_22_04",
+        "startOffsetMs": 1000,
+        "sourceStartMs": 0,
+        "playMs": 1833,
+        "playRate": 1,
+        "endPolicy": "EXACT"
+      },
+      {
+        "runtimeClip": "rpct00_att_battle_34_05",
+        "startOffsetMs": 2833,
+        "sourceStartMs": 0,
+        "playMs": 1533,
+        "playRate": 1,
+        "endPolicy": "EXACT"
+      }
+    ]
+  }
+}

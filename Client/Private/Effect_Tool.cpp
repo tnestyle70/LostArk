@@ -1312,7 +1312,7 @@ void Client::CEffect_Tool::Recalculate_PreviewDuration(
         {
             fEffectDurationSeconds = (std::max)(
                 fEffectDurationSeconds,
-                Cue.fStartDelaySeconds + Cue.fDurationSeconds);
+                Effect_ModelCueEndSeconds(Cue));
         }
     }
     m_fPreviewDurationSeconds = fEffectDurationSeconds;

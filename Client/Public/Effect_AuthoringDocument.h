@@ -4,6 +4,7 @@
 #include "Engine_Defines.h"
 #include "Effect_Distribution.h"
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstdint>
@@ -1903,13 +1904,30 @@ enum class EFFECT_MODEL_CUE_ALPHA_MODE : uint8_t
 	END
 };
 
+struct EFFECT_MODEL_CUE_AFTERIMAGE_DESC final
+{
+    f32_t fEmissionStartSeconds = 0.f;
+    f32_t fEmissionEndSeconds = 1.f;
+    f32_t fSampleIntervalSeconds = .05f;
+    f32_t fSampleLifetimeSeconds = .25f;
+    uint32_t iMaxSamples = 6u;
+    // Only source notify timing is recovered; appearance remains authored.
+    std::string strAppearanceBasis = "PROJECT_AUTHORED";
+};
+
 struct EFFECT_MODEL_CUE_DESC final
 {
 	std::string strCueId;
 	std::string strModelAssetId;
+    // Optional same-skeleton animation donor, attached through CModel.
+    std::string strAnimationSetAssetId;
 	std::string strClipName;
-	// Optional source bone: suppress X/Z translation and keep its animated Y jump.
+	// Optional source bone: suppress horizontal translation in the declared source basis.
 	std::string strSuppressHorizontalRootMotionBone;
+    uint32_t iRootMotionVerticalAxis = 1u;
+    f32_t fRootMotionVerticalScale = 1.f;
+    // Present draws history only; the source model preview owns the live body.
+    std::optional<EFFECT_MODEL_CUE_AFTERIMAGE_DESC> Afterimage;
 	f32_t fStartDelaySeconds = 0.f;
 	f32_t fDurationSeconds = 1.f;
 	EFFECT_TRANSFORM_DESC LocalTransform;
@@ -1928,6 +1946,13 @@ struct EFFECT_MODEL_CUE_DESC final
 	// Native material parameter curves sampled at cue-local time; requires Material.
 	std::vector<EFFECT_SOURCE_MATERIAL_PARAMETER_TRACK> MaterialParameterTracks;
 };
+
+inline f32_t Effect_ModelCueEndSeconds(const EFFECT_MODEL_CUE_DESC& cue)
+{
+    return cue.fStartDelaySeconds + (cue.Afterimage ?
+        (std::max)(cue.fDurationSeconds, cue.Afterimage->fEmissionEndSeconds +
+            cue.Afterimage->fSampleLifetimeSeconds) : cue.fDurationSeconds);
+}
 
 struct EFFECT_PARTICLE_SYSTEM_DESC final
 {

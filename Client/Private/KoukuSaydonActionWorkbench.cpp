@@ -204,7 +204,7 @@ namespace
 			for (const auto& cue : document->ModelCues)
 				if (cue.bVisible)
 					durationMs = (std::max)(durationMs, static_cast<std::uint32_t>(std::clamp(
-						std::ceil(1000.0 * (cue.fStartDelaySeconds + cue.fDurationSeconds)),
+						std::ceil(1000.0 * Effect_ModelCueEndSeconds(cue)),
 						1.0, static_cast<double>(MAX_EDITOR_TIME_MS))));
 		resource.iDurationMs = durationMs;
 		return true;
@@ -9119,7 +9119,7 @@ bool_t Client::CKoukuSaydonActionWorkbench::Set_LogicDefinitionValues(
 				if (box.strLogicId == logicId && found->strTriggerKind != "ENTER_AREA") box.strHoldLogicOccurrenceId.clear();
 				if (const auto* hold = Find_LogicBox(pattern, box.strHoldLogicOccurrenceId);
 					hold && hold->strLogicId == logicId && found->strJudgementKind != "ATTACHMENT_HOLD") box.strHoldLogicOccurrenceId.clear();
-				if (box.strLogicId == logicId && (found->strJudgementKind == "ATTACHMENT_HOLD" || found->strJudgementKind == "SHOWTIME_PLAYER_TARGETS" || found->strJudgementKind == "BOSS_TRACK_TARGET" || found->strJudgementKind == "CROSS_DIRECTION_CLONES"))
+				if (box.strLogicId == logicId && (found->strJudgementKind == "ATTACHMENT_HOLD" || found->strJudgementKind == "SHOWTIME_PLAYER_TARGETS" || found->strJudgementKind == "BOSS_TRACK_TARGET" || found->strJudgementKind == "CROSS_DIRECTION_CLONES" || found->strJudgementKind == "PURSUIT_PROJECTILES"))
 				{
 					box.OnSuccessLogicIds.clear(); box.OnFailLogicIds.clear(); box.OnTimeoutLogicIds.clear();
 					for (auto& collider : pattern.PresentationOccurrences)
@@ -9739,16 +9739,18 @@ bool_t Client::CKoukuSaydonActionWorkbench::Append_WorldResource(
 	box.strOccurrenceId = pattern->strPatternId + ".world." + std::to_string(pattern->iNextWorldOccurrenceOrdinal++);
 	box.strWorldId = world->strWorldId;
 	box.iStartMs = (std::min)(m_iCursorMs, Pattern_DurationMs(*pattern));
-	box.iDurationMs = asObject ? (std::max)(1u, Pattern_DurationMs(*pattern) - box.iStartMs) :
+	box.iDurationMs = asObject && !source->bMotionGroup ? (std::max)(1u, Pattern_DurationMs(*pattern) - box.iStartMs) :
 		(std::max)(1u, source->iDurationMs);
 	if (!Stage_NewWorldPlacement(instanceId, box.Placement, outStatus))
 	{ m_strStatus = outStatus; return false; }
 	const std::string worldId = box.strWorldId;
 	const std::string occurrenceId = box.strOccurrenceId;
 	pattern->WorldOccurrences.push_back(box);
+	if (source->bMotionGroup && !Extend_PatternLifetimeForAuthoredLanes(*pattern, outStatus))
+	{ m_strStatus = outStatus; return false; }
 	if (!Append_WorldCompanionEffect(*pattern, *world, box, outStatus))
 	{ m_strStatus = outStatus; return false; }
-	if (!asObject) Mark_Draft(candidate, *pattern);
+	if (!asObject || source->bMotionGroup) Mark_Draft(candidate, *pattern);
 	if (!Commit_Candidate(std::move(candidate), asObject ? "Appended Object with its default animation. Adjust this box's Transform, then Save." :
 		"Appended saved World Object state at the cursor. Tune lifetime in Box Detail.", outStatus)) return false;
 	m_strSelectedWorldId = worldId;
@@ -12535,7 +12537,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_WorldBoxDetails(
 			ImGui::TextWrapped("Initial Motion: %s | Objects: %u", initial->strDisplayName.c_str(), initial->iEmissionCount);
 			if (initial->bUntilDestroyed)
 				ImGui::TextWrapped("HP: %u | Server lifetime: until destroyed", initial->iMaximumHp);
-			if (!objectId.empty() && ImGui::Button("Edit This Motion##WorldBox"))
+			if (!objectId.empty() && !initial->bMotionGroup && ImGui::Button("Edit This Motion##WorldBox"))
 				m_PendingWorldObjectEditRequest = {objectId, initial->strInstanceId};
 		}
 		if (!objectId.empty())
@@ -12548,7 +12550,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_WorldBoxDetails(
 		{
 			for (const auto& motion : m_WorldSequenceResources)
 			{
-				if (motion.strObjectResourceId != objectId || motion.strInstanceId.empty()) continue;
+				if (motion.strObjectResourceId != objectId || motion.strInstanceId.empty() || motion.bMotionGroup) continue;
 				ImGui::PushID(motion.strInstanceId.c_str());
 				ImGui::BulletText("%s%s | Objects: %u", motion.strDisplayName.c_str(), motion.bEnabled ? "" : " (disabled)", motion.iEmissionCount);
 				ImGui::SameLine();
@@ -12820,6 +12822,8 @@ void Client::CKoukuSaydonActionWorkbench::Render_LogicDefinitionValues(
 						draft.iSpawnIntervalMs = 2000u;
 						draft.fFollowSpeedScale = .5;
 					}
+                    else if ("PURSUIT_PROJECTILES" == draft.strJudgementKind)
+                    { draft.fPursuitSpeedMps = 3.0; draft.fContactRadiusM = .4; draft.fSpawnRadiusM = 2.0; draft.bPursuitHoming = true; }
 					else if ("CROSS_DIRECTION_CLONES" == draft.strJudgementKind)
                     { draft.DirectionPatternIds.resize(4u); draft.strCloneEndStageId = "STAGE_1"; }
 					else if ("PATTERN_COMPLETION_COUNT" == draft.strJudgementKind) draft.iCompletionCount = 1u;
@@ -12893,6 +12897,49 @@ void Client::CKoukuSaydonActionWorkbench::Render_LogicDefinitionValues(
 			ImGui::Checkbox("End Pattern on counter success", &draft.bEndsPatternOnSuccess);
 			ImGui::TextWrapped("A Server-approved counter hit during this window runs Success. Connect a FOLLOWUP_PATTERN Result to play groggy; without a counter the window runs Timeout.");
 		}
+        else if ("PURSUIT_PROJECTILES" == draft.strJudgementKind)
+        {
+            const auto choose = [&](const char* label, std::string& id) {
+                const auto* selected = Find_PresentationResource(m_Draft, id);
+                if (ImGui::BeginCombo(label, selected ? selected->strDisplayName.c_str() : "(choose Effect)"))
+                {
+                    for (const auto& resource : m_Draft.PresentationResources)
+                        if (resource.eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT && resource.strResourceKind == "V1_EFFECT" &&
+                            ImGui::Selectable((resource.strDisplayName + "##" + resource.strResourceId).c_str(), resource.strResourceId == id))
+                            id = resource.strResourceId;
+                    ImGui::EndCombo();
+                }
+            };
+            for (std::size_t i = 0; i < draft.PursuitVisualIds.size();)
+            {
+                ImGui::PushID(static_cast<int>(i));
+                choose("Card Effect", draft.PursuitVisualIds[i]);
+                ImGui::SameLine();
+                const bool remove = ImGui::SmallButton("Remove");
+                ImGui::PopID();
+                if (remove) draft.PursuitVisualIds.erase(draft.PursuitVisualIds.begin() + i);
+                else ++i;
+            }
+            if (draft.PursuitVisualIds.size() < 4u && ImGui::Button("Add card Effect")) draft.PursuitVisualIds.emplace_back();
+            choose("Contact explosion", draft.strContactVisualId);
+            ImGui::Checkbox("Follow selected player", &draft.bPursuitHoming);
+            const auto number = [](const char* label, double& value, float low, float high) {
+                float edit = static_cast<float>(value);
+                if (ImGui::InputFloat(label, &edit, .1f, 1.f)) value = std::clamp(edit, low, high);
+            };
+            number("Travel speed (m/s)", draft.fPursuitSpeedMps, .01f, 100.f);
+            number("Travel limit (m, 0 = none)", draft.fPursuitMaxDistanceM, 0.f, 1000.f);
+            number("Contact radius (m)", draft.fContactRadiusM, .01f, 10.f);
+            number("Spawn radius (m)", draft.fSpawnRadiusM, 0.f, 100.f);
+            const auto integer = [](const char* label, std::uint32_t& value, int maximum) {
+                int edit = static_cast<int>(value);
+                if (ImGui::InputInt(label, &edit)) value = static_cast<std::uint32_t>(std::clamp(edit, 0, maximum));
+            };
+            integer("Lifetime (ms, 0 = until contact)", draft.iPursuitLifetimeMs, 600000);
+            integer("Spawn interval (ms, 0 = once)", draft.iSpawnIntervalMs, 600000);
+            integer("Cards per wave (0 = all types)", draft.iCountPerWave, 16);
+            ImGui::TextWrapped("The Server selects targets, moves cards and detects contact. Card animation loops until the object ends. Zero lifetime requires one homing volley without a travel limit; Stop clears it.");
+        }
 		else if ("SHOWTIME_PLAYER_TARGETS" == draft.strJudgementKind)
 		{
 			const auto* pattern = Find_Pattern(m_Draft, colliderPatternId.empty() ? m_strSelectedPatternId : colliderPatternId);
@@ -13536,15 +13583,47 @@ void Client::CKoukuSaydonActionWorkbench::Render_LogicDefinitionValues(
 			{
 				for (const char* phase : { "SELECT_PLAYER", "JUMP", "APPEAR_PLAYER", "DISAPPEAR", "CENTER", "SLAM" })
 					if (ImGui::Selectable(phase, draft.strAirbornePhase == phase) && draft.strAirbornePhase != phase)
-					{ draft.strAirbornePhase = phase; draft.fAirborneHeightM = 0.0; draft.iAirborneDurationMs = 0u; draft.TeleportPosition = {}; }
+					{ draft.strAirbornePhase = phase; draft.fAirborneHeightM = 0.0; draft.iAirborneDurationMs = 0u; draft.TeleportPosition = {};
+					  draft.strAirborneTargetPositionPolicy = "APPEAR"; draft.strSelectedEffectGroupId.clear(); }
 				ImGui::EndCombo();
+			}
+			if (draft.strAirbornePhase == "SELECT_PLAYER")
+			{
+				if (ImGui::BeginCombo("Capture target position", draft.strAirborneTargetPositionPolicy == "SELECT" ? "On selection" : "On appearance"))
+				{
+					if (ImGui::Selectable("On appearance", draft.strAirborneTargetPositionPolicy == "APPEAR"))
+					{ draft.strAirborneTargetPositionPolicy = "APPEAR"; draft.strSelectedEffectGroupId.clear(); }
+					if (ImGui::Selectable("On selection", draft.strAirborneTargetPositionPolicy == "SELECT"))
+						draft.strAirborneTargetPositionPolicy = "SELECT";
+					ImGui::EndCombo();
+				}
+				if (draft.strAirborneTargetPositionPolicy == "SELECT")
+				{
+					const auto* pattern = Find_Pattern(m_Draft, colliderPatternId.empty() ? m_strSelectedPatternId : colliderPatternId);
+					if (ImGui::BeginCombo("Effect group at selected point", draft.strSelectedEffectGroupId.empty() ? "(none)" : draft.strSelectedEffectGroupId.c_str()))
+					{
+						if (ImGui::Selectable("(none)", draft.strSelectedEffectGroupId.empty())) draft.strSelectedEffectGroupId.clear();
+						std::unordered_set<std::string> shown;
+						if (pattern) for (const auto& box : pattern->PresentationOccurrences)
+						{
+							const auto* resource = Find_PresentationResource(m_Draft, box.strResourceId);
+							if (!resource || resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT || box.strAnchorKind != "MAP" ||
+								box.bFollowBoss || box.strSelectionGroupId.empty() || !shown.insert(box.strSelectionGroupId).second) continue;
+							const std::string label = resource->strDisplayName + "##selected-ground:" + box.strSelectionGroupId;
+							if (ImGui::Selectable(label.c_str(), draft.strSelectedEffectGroupId == box.strSelectionGroupId))
+								draft.strSelectedEffectGroupId = box.strSelectionGroupId;
+						}
+						ImGui::EndCombo();
+					}
+					ImGui::TextWrapped("The selected ground point stays fixed for landing and the Effect group, even after the player moves.");
+				}
 			}
 			if (draft.strAirbornePhase == "JUMP" || draft.strAirbornePhase == "APPEAR_PLAYER")
 				ImGui::InputDouble("Airborne height (m)", &draft.fAirborneHeightM, .1, 1.0, "%.6f");
 			if (draft.strAirbornePhase == "JUMP")
 			{
 				int duration = int(draft.iAirborneDurationMs);
-				if (ImGui::InputInt("Rise time (ms)", &duration)) draft.iAirborneDurationMs = uint32_t(std::clamp(duration, 1, 600000));
+				if (ImGui::InputInt("Rise time (ms, 0 = start high)", &duration)) draft.iAirborneDurationMs = uint32_t(std::clamp(duration, 0, 600000));
 			}
 			if (draft.strAirbornePhase == "CENTER")
 				ImGui::InputScalarN("Center destination XYZ (m)", ImGuiDataType_Double, draft.TeleportPosition.data(), 3, nullptr, nullptr, "%.3f");

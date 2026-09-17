@@ -2660,14 +2660,15 @@ HRESULT Client::CEffectDocumentRenderer::Stage_ModelCueResource(
 			XMConvertToRadians(Cue.vAssetPreRotationDegrees.x),
 			XMConvertToRadians(Cue.vAssetPreRotationDegrees.y),
 			XMConvertToRadians(Cue.vAssetPreRotationDegrees.z));
-	const std::string CacheKey = Cue.strModelAssetId + "\n" +
+	const std::string CacheKey = Cue.strModelAssetId + "\n" + Cue.strAnimationSetAssetId + "\n" +
 		Cue.strClipName + "\n" + std::to_string(Cue.vAssetPreScale.x) +
 		"\n" + std::to_string(Cue.vAssetPreScale.y) + "\n" +
 		std::to_string(Cue.vAssetPreScale.z) + "\n" +
 		std::to_string(Cue.vAssetPreRotationDegrees.x) + "\n" +
 		std::to_string(Cue.vAssetPreRotationDegrees.y) + "\n" +
 		std::to_string(Cue.vAssetPreRotationDegrees.z) + "\n" +
-		Cue.strSuppressHorizontalRootMotionBone;
+		Cue.strSuppressHorizontalRootMotionBone + "\n" + std::to_string(Cue.iRootMotionVerticalAxis) +
+        "\n" + std::to_string(Cue.fRootMotionVerticalScale);
 	shared_ptr<Engine::CModel> Model;
 	if (nullptr != pSharedAssets)
 	{
@@ -2689,10 +2690,23 @@ HRESULT Client::CEffectDocumentRenderer::Stage_ModelCueResource(
 			m_pDevice, m_pContext, MODEL::ANIM, ModelLoad, PreTransform);
 		if (nullptr != Loaded)
 		{
+            if (!Cue.strAnimationSetAssetId.empty())
+            {
+                const auto path = CRuntimeAssetRoot::Resolve(Cue.strAnimationSetAssetId);
+                const auto donor = path.empty() ? nullptr : Engine::CModel::Create(
+                    m_pDevice, m_pContext, MODEL::ANIM, path.string().c_str(), PreTransform);
+                if (!donor || !donor->Has_Animations() || FAILED(Loaded->Attach_AnimationSet(*donor)))
+                {
+                    strOutError = "Animated Model Cue donor does not match its body: " + Cue.strAnimationSetAssetId;
+                    return E_FAIL;
+                }
+            }
 			// Set the suppression baseline on the unposed prototype. Clones retain
 			// this setting, while their animation clocks remain independent.
 			if (!Cue.strSuppressHorizontalRootMotionBone.empty() &&
-				!Loaded->Enable_RootMotionSuppression(Cue.strSuppressHorizontalRootMotionBone.c_str(), 1))
+				(!Loaded->Enable_RootMotionSuppression(Cue.strSuppressHorizontalRootMotionBone.c_str(),
+                    static_cast<int32_t>(Cue.iRootMotionVerticalAxis)) ||
+                 !Loaded->Set_RootMotionVerticalScale(Cue.fRootMotionVerticalScale)))
 			{
 				strOutError = "Animated Model Cue root-motion bone is missing: " +
 					Cue.strCueId + " / " + Cue.strSuppressHorizontalRootMotionBone;

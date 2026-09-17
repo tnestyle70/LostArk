@@ -767,7 +767,10 @@ bool_t Client::CEffect_Tool::Stage_WorldPreview(
         } scope{m_pAuthoringRefreshDocument, m_pAuthoringRefreshDocument};
         m_pAuthoringRefreshDocument = &Document;
         const EFFECT_RESOURCE_KEY key{EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT, Document.strEffectAssetId};
-        const bool refreshed = m_pAuthoringSequencer->Refresh_Effects(&key);
+        std::vector<std::string> availableElementIds;
+        availableElementIds.reserve(Document.Elements.size());
+        for (const auto& element : Document.Elements) availableElementIds.push_back(element.strElementId);
+        const bool refreshed = m_pAuthoringSequencer->Refresh_Effects(&key, &availableElementIds);
         m_strPreviewStatus = m_pAuthoringSequencer->Status();
         return refreshed;
     }

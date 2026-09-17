@@ -10188,6 +10188,41 @@ void CMainApp::RefreshWorldObjectResources()
 			row.strObjectResourceId = object.objectId;
 			row.strObjectDisplayName = object.displayName; row.strDisplayName = object.displayName;
 			row.strAnchorKind = object.anchorKind; row.bEnabled = false;
+			if (!object.motionInstanceIds.empty())
+			{
+				row.strInstanceId = object.objectId;
+				row.bMotionGroup = true;
+				row.bDefaultMotion = true;
+				row.bEnabled = true;
+				row.bSupportsPlacement = object.anchorKind == "WORLD";
+				row.iEmissionCount = 0u;
+				for (const auto& memberId : object.motionInstanceIds)
+				{
+					const auto member = std::find_if(resources.begin(), resources.end(),
+						[&](const auto& value) { return value.strInstanceId == memberId && !value.bMotionGroup; });
+					const auto* instance = document->Find_Instance(memberId);
+					const auto* sequence = instance ? document->Find_Template(instance->templateId) : nullptr;
+					const auto* model = instance && instance->bindings.size() == 1u ?
+						document->Find_ObjectResource(instance->bindings.front().targetId) : nullptr;
+					if (member == resources.end() || !sequence || !model || model->modelAssetId.empty() ||
+						!model->motionInstanceIds.empty() || model->combatBody || instance->walkableSurface ||
+						!sequence->colliderTracks.empty() || instance->anchorKind != "WORLD" ||
+						instance->bindings.front().targetKind != WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE ||
+						(instance->motionEnd != WORLD_SEQUENCE_MOTION_END::STOP && instance->motionEnd != WORLD_SEQUENCE_MOTION_END::LOOP))
+					{ row.bEnabled = false; row.bSupportsPlacement = false; continue; }
+					if (!member->bEnabled) continue;
+					row.bSupportsPlacement = row.bSupportsPlacement && member->bSupportsPlacement &&
+						member->strAnchorKind == object.anchorKind;
+					const double span = instance->startDelayMs +
+						static_cast<double>(sequence->PresentationSpanMs()) / instance->playbackSpeed;
+					row.iDurationMs = (std::max)(row.iDurationMs, static_cast<uint32_t>(
+						(std::clamp)(std::ceil(span), 1.0, static_cast<double>(UINT32_MAX))));
+					row.iEmissionCount += member->iEmissionCount;
+					row.AnimationClips.insert(row.AnimationClips.end(),
+						member->AnimationClips.begin(), member->AnimationClips.end());
+				}
+				row.bEnabled = row.bEnabled && row.iEmissionCount > 0u;
+			}
 			row.bUntilDestroyed = object.combatBody && object.combatBody->lifetimePolicy == "UNTIL_DESTROYED";
 			row.iMaximumHp = object.combatBody ? object.combatBody->maxHp : 0u;
 			resources.push_back(std::move(row));

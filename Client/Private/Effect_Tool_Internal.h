@@ -23,8 +23,12 @@ namespace EffectToolDetail
         bool rotationEditable = false;
         bool editable = false;
         bool rootLocal = false;
+        bool anchorEditable = false;
+        float3_t anchorPosition{}, anchorRotationDegrees{};
     };
     std::vector<ATTACHMENT_ELEMENT_GROUP> Build_AttachmentElementGroups(const Client::EFFECT_DOCUMENT_DESC& document);
+    bool Set_AttachmentGroupAnchor(Client::EFFECT_DOCUMENT_DESC& document,
+        const std::string& groupKey, const float3_t& position, const float3_t& rotationDegrees, std::string& error);
     bool Translate_AttachmentElementGroup(Client::EFFECT_DOCUMENT_DESC& document,
         const std::string& groupKey, const float3_t& delta, std::string& error);
     bool Rotate_AttachmentElementGroup(Client::EFFECT_DOCUMENT_DESC& document,

@@ -21,6 +21,17 @@ const LOGIC* Find_BlueCircleLogic(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& docum
         found->strTriggerKind == "ALBION_BLUE_CIRCLE" ? &*found : nullptr;
 }
 
+const LOGIC* Find_SelectedAirborneLogic(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
+    const KOUKU_SAYDON_COMPOSITION_LOGIC_OCCURRENCE& occurrence)
+{
+    if (!occurrence.bEnabled) return nullptr;
+    const auto found = std::find_if(document.Logics.begin(), document.Logics.end(),
+        [&](const auto& logic) { return logic.strLogicId == occurrence.strLogicId; });
+    return found != document.Logics.end() && found->strLogicType == "TRIGGER" &&
+        found->strTriggerKind == "ALBION_AIRBORNE" && found->strAirbornePhase == "SELECT_PLAYER" &&
+        found->strAirborneTargetPositionPolicy == "SELECT" && !found->strSelectedEffectGroupId.empty() ? &*found : nullptr;
+}
+
 bool Supports_PlayerCenteredCircle(const LOGIC& logic)
 {
     return logic.iCountPerPlayer == 1u && logic.fPlayerEffectRadiusM == 0.0 &&
@@ -47,12 +58,94 @@ bool Is_EligiblePlayer(const KOUKU_CARD_PRESENTATION_VIEW& player)
 }
 }
 
+bool Client::CKoukuSaydonPresentationPlayer::Is_SelectedAirborneGroupMember(
+    const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
+    const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern,
+    const KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE& occurrence)
+{
+    if (occurrence.strSelectionGroupId.empty()) return false;
+    return std::any_of(pattern.LogicOccurrences.begin(), pattern.LogicOccurrences.end(), [&](const auto& box) {
+        const auto* logic = Find_SelectedAirborneLogic(document, box);
+        return logic && logic->strSelectedEffectGroupId == occurrence.strSelectionGroupId;
+    });
+}
+
+bool Client::CKoukuSaydonPresentationPlayer::Build_SelectedAirbornePresentation(
+    const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
+    const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern, const LOGIC& logic,
+    const KOUKU_SAYDON_COMPOSITION_LOGIC_OCCURRENCE& occurrence,
+    PRODUCT_PATTERN& output, std::string& error)
+{
+    PRODUCT_PATTERN staged;
+    staged.pattern.strPatternId = pattern.strPatternId + ".selected-effect";
+    const auto first = std::find_if(pattern.PresentationOccurrences.begin(), pattern.PresentationOccurrences.end(),
+        [&](const auto& row) { return row.strSelectionGroupId == logic.strSelectedEffectGroupId; });
+    if (first == pattern.PresentationOccurrences.end())
+    { error = "Selected airborne Effect group is absent: " + logic.strSelectedEffectGroupId; return false; }
+    const auto origin = first->PositionOffset;
+    std::set<std::string> resources;
+    for (const auto& source : pattern.PresentationOccurrences)
+    {
+        if (source.strSelectionGroupId != logic.strSelectedEffectGroupId) continue;
+        const auto resource = std::find_if(document.PresentationResources.begin(), document.PresentationResources.end(),
+            [&](const auto& row) { return row.strResourceId == source.strResourceId; });
+        const auto endMs = std::uint64_t(source.iStartMs) + source.iDurationMs;
+        if (resource == document.PresentationResources.end() || resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT ||
+            source.strAnchorKind != "MAP" || source.bFollowBoss || !source.strBone.empty() ||
+            !source.strWorldId.empty() || source.iStartMs < occurrence.iStartMs || endMs > 600000u)
+        { error = "Selected airborne group needs finite MAP Effects after SELECT: " + source.strOccurrenceId; return false; }
+        if (resources.insert(resource->strResourceId).second) staged.document.PresentationResources.push_back(*resource);
+        auto row = source;
+        row.iStartMs -= occurrence.iStartMs;
+        for (size_t axis = 0u; axis < row.PositionOffset.size(); ++axis) row.PositionOffset[axis] -= origin[axis];
+        row.strAnchorKind = "BOSS";
+        row.strSelectionGroupId.clear();
+        staged.durationMs = (std::max)(staged.durationMs, uint32_t(endMs - occurrence.iStartMs));
+        staged.pattern.PresentationOccurrences.push_back(std::move(row));
+    }
+    if (staged.pattern.PresentationOccurrences.size() < 2u)
+    { error = "Selected airborne Effect group requires at least two members."; return false; }
+    staged.pattern.iDurationMs = staged.durationMs;
+    output = std::move(staged);
+    error.clear();
+    return true;
+}
+
 bool Client::CKoukuSaydonPresentationPlayer::Collect_LogicPreviewEffects(
     const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
     const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern, std::set<std::string>& targets)
 {
     for (const auto& occurrence : pattern.LogicOccurrences)
     {
+        if (const auto* selected = Find_SelectedAirborneLogic(document, occurrence))
+        {
+            PRODUCT_PATTERN group;
+            if (!Build_SelectedAirbornePresentation(document, pattern, *selected, occurrence, group, m_strStatus)) return false;
+            for (const auto& resource : group.document.PresentationResources)
+                if (resource.strResourceKind == "V1_EFFECT" || resource.strResourceKind == "V1_ELEMENT")
+                    targets.insert(resource.strAssetId);
+            continue;
+        }
+        if (occurrence.bEnabled)
+        {
+            const auto pursuit = std::find_if(document.Logics.begin(), document.Logics.end(),
+                [&](const auto& row) { return row.strLogicId == occurrence.strLogicId &&
+                    row.strJudgementKind == "PURSUIT_PROJECTILES"; });
+            if (pursuit != document.Logics.end())
+            {
+                auto ids = pursuit->PursuitVisualIds;
+                ids.push_back(pursuit->strContactVisualId);
+                for (const auto& id : ids)
+                {
+                    const auto resource = std::find_if(document.PresentationResources.begin(), document.PresentationResources.end(),
+                        [&](const auto& row) { return row.strResourceId == id && row.eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT; });
+                    if (resource == document.PresentationResources.end())
+                    { m_strStatus = "Pursuit preparation requires its saved Effect resource: " + id; return false; }
+                    targets.insert(resource->strAssetId);
+                }
+                continue;
+            }
+        }
         const auto* logic = Find_BlueCircleLogic(document, occurrence);
         if (!logic || !Supports_PlayerCenteredCircle(*logic)) continue;
         const auto* visual = Find_BlueCircleVisual(pattern);
@@ -80,6 +173,38 @@ void Client::CKoukuSaydonPresentationPlayer::Sample_LogicPreview(SESSION& owner,
     if (!previewOwner) return;
     for (const auto& occurrence : pattern.LogicOccurrences)
     {
+        if (const auto* selected = Find_SelectedAirborneLogic(document, occurrence))
+        {
+            auto& trigger = m_LogicPreviewTriggers[owner.key][occurrence.strOccurrenceId];
+            const double startMs = std::ceil(double(occurrence.iStartMs) * .03) * (1000.0 / 30.0);
+            const double ageMs = double(clockMs) - startMs;
+            if (ageMs < 0.0)
+            { for (auto& spawn : trigger.spawns) Stop_Session(spawn.session); continue; }
+            if (!trigger.captured)
+            {
+                const auto member = std::find_if(m_BundlePreviewMembers.begin(), m_BundlePreviewMembers.end(),
+                    [&](const auto& row) { return &row.session == &owner; });
+                if (member == m_BundlePreviewMembers.end())
+                { m_strStatus = "Selected airborne group requires the same actor preview selection owner."; continue; }
+                const auto capture = member->airborneSelections.find(occurrence.strOccurrenceId);
+                if (capture == member->airborneSelections.end())
+                { m_strStatus = "Selected airborne group has no captured ground point."; continue; }
+                PRODUCT_PATTERN presentation;
+                if (!Build_SelectedAirbornePresentation(document, pattern, *selected, occurrence, presentation, m_strStatus)) continue;
+                LOGIC_PREVIEW_SPAWN spawn;
+                spawn.session.key = owner.key + ":selected:" + occurrence.strOccurrenceId;
+                const auto& position = capture->second.second;
+                DirectX::XMStoreFloat4x4(&spawn.pivot, DirectX::XMMatrixTranslation(position.x, position.y, position.z));
+                trigger.presentation = std::move(presentation);
+                trigger.spawns.push_back(std::move(spawn));
+                trigger.captured = true;
+            }
+            for (auto& spawn : trigger.spawns)
+                if (ageMs >= trigger.presentation.durationMs) Stop_Session(spawn.session);
+                else Sample(spawn.session, trigger.presentation.document, trigger.presentation.pattern,
+                    float(ageMs), paused, spawn.pivot, nullptr);
+            continue;
+        }
         const auto* logic = Find_BlueCircleLogic(document, occurrence);
         if (!logic || !Supports_PlayerCenteredCircle(*logic)) continue;
         auto& trigger = m_LogicPreviewTriggers[owner.key][occurrence.strOccurrenceId];

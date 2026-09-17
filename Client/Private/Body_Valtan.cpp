@@ -42,6 +42,7 @@ HRESULT CBody_Valtan::Initialize(void* pArg)
 	if (m_strModelPrototypeTag.empty())
 		return E_INVALIDARG;
 	m_pEmissiveOverride = pDesc->pEmissiveOverride;
+    m_pChargeAfterimageEnabled = pDesc->pChargeAfterimageEnabled;
 	if (FAILED(__super::Initialize(pArg)) || FAILED(Ready_Components()))
 		return E_FAIL;
 
@@ -72,10 +73,12 @@ void CBody_Valtan::Update(f32_t fTimeDelta)
 
 void CBody_Valtan::Late_Update(f32_t fTimeDelta)
 {
+    m_ChargeAfterimage.Update(fTimeDelta, m_pChargeAfterimageEnabled && *m_pChargeAfterimageEnabled,
+        m_pModelCom, m_CombinedWorldMatrix);
 	CGameInstance::Get().Add_RenderObject(
 		RENDERGROUP::NONBLEND,
 		static_pointer_cast<CGameObject>(shared_from_this()));
-	if (m_hasTranslucentMeshes)
+	if (m_hasTranslucentMeshes || m_ChargeAfterimage.Has_Samples())
 	{
 		CGameInstance::Get().Add_RenderObject(
 			RENDERGROUP::BLEND,
@@ -116,7 +119,9 @@ HRESULT CBody_Valtan::Render()
 
 HRESULT CBody_Valtan::Render_Group(RENDERGROUP group)
 {
-	return RENDERGROUP::BLEND == group ? Render_Translucent() : Render();
+    if (RENDERGROUP::BLEND != group) return Render();
+    m_ChargeAfterimage.Render(m_pModelCom, m_pShaderCom, m_CombinedWorldMatrix);
+    return m_hasTranslucentMeshes ? Render_Translucent() : S_OK;
 }
 
 HRESULT CBody_Valtan::Render_Translucent()

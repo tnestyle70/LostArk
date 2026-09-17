@@ -1,6 +1,7 @@
 #include "KoukuSaydonPreviewRootMotion.h"
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 using namespace Client;
 
@@ -215,6 +216,8 @@ bool CKoukuSaydonPreviewRootMotion::Prepare_Airborne(
         event.occurrenceId = box.strOccurrenceId;
         event.phase = logic->strTriggerKind == "BOSS_TELEPORT_XZ" ? "TELEPORT_XZ" : logic->strAirbornePhase;
         event.clockMs = box.iStartMs; event.durationMs = logic->iAirborneDurationMs;
+        event.targetPositionPolicy = logic->strAirborneTargetPositionPolicy;
+        event.selectedEffectGroupId = logic->strSelectedEffectGroupId;
         event.heightM = logic->fAirborneHeightM;
         event.destination = {float(logic->TeleportPosition[0]), float(logic->TeleportPosition[1]), float(logic->TeleportPosition[2])};
         staged.push_back(std::move(event));
@@ -240,10 +243,9 @@ bool CKoukuSaydonPreviewRootMotion::Prepare_Airborne(
         if (event.phase != "APPEAR_PLAYER" && event.phase != "SLAM") continue;
         for (size_t i = 0u; i < m_Windows.size(); ++i)
             if (m_Windows[i].row.iPoseStartMs <= event.clockMs) event.windowIndex = i;
-        if (event.windowIndex == SIZE_MAX || m_Windows[event.windowIndex].row.strRuntimeClip !=
-            (event.phase == "SLAM" ? "rpct00_att_battle_24_05" : "rpct00_att_battle_24_04") ||
+        if (event.windowIndex == SIZE_MAX ||
             !Sample_AirborneUp(event.windowIndex, event.clockMs, event.sourceUp))
-        { status = "Albion phase needs its original _04 appearance or _05 landing pose owner."; return false; }
+        { status = "Airborne phase needs a valid native animation pose owner."; return false; }
         event.remainingMinimumUp = event.sourceUp;
         event.landingPrefixUp.emplace_back(event.clockMs, event.sourceUp);
         const auto& window = m_Windows[event.windowIndex];
@@ -283,6 +285,8 @@ bool CKoukuSaydonPreviewRootMotion::Sample_AirbornePosition(const double clockMs
     float3_t position{initial.x + displacement.x, initial.y + displacement.y, initial.z + displacement.z};
     float3_t selected = initial;
     double floor = initial.y, fullHeight = 0.0, phaseStartY = initial.y, offsetX = 0.0, offsetZ = 0.0;
+    float3_t landingAnchor = initial, landingResumeDisplacement{};
+    double landingResumeClock = (std::numeric_limits<double>::infinity)();
     const AIRBORNE_EVENT* active = nullptr;
     const auto heightAt = [&](const double clock, double& y) {
         if (!active)
@@ -293,10 +297,18 @@ bool CKoukuSaydonPreviewRootMotion::Sample_AirbornePosition(const double clockMs
         }
         const auto& phase = active->phase;
         if (phase == "JUMP")
-            y = phaseStartY + (floor + fullHeight - phaseStartY) *
+            y = active->durationMs == 0u ? floor + fullHeight :
+                phaseStartY + (floor + fullHeight - phaseStartY) *
                 (std::clamp)((clock - active->clockMs) / double(active->durationMs), 0.0, 1.0);
         else if (phase == "APPEAR_PLAYER" || phase == "SLAM")
         {
+            if (phase == "SLAM" && clock >= landingResumeClock)
+            {
+                float3_t delta;
+                if (!Sample_Displacement(clock, rowYawDegrees, delta)) return false;
+                y = floor + delta.y - landingResumeDisplacement.y;
+                return std::isfinite(y);
+            }
             double up = 0.0;
             if (!Sample_AirborneUp(active->windowIndex, clock, up)) return false;
             if (phase == "APPEAR_PLAYER") y = floor + (std::max)(0.0, active->heightM + up);
@@ -332,6 +344,14 @@ bool CKoukuSaydonPreviewRootMotion::Sample_AirbornePosition(const double clockMs
             continue;
         }
         if (!heightAt(event.clockMs, phaseStartY)) return false;
+        if (active && active->phase == "SLAM")
+        {
+            float3_t atEvent;
+            if (!Sample_Displacement(event.clockMs, rowYawDegrees, atEvent)) return false;
+            const auto& baseline = event.clockMs >= landingResumeClock ? landingResumeDisplacement : atEvent;
+            offsetX = landingAnchor.x - initial.x - baseline.x;
+            offsetZ = landingAnchor.z - initial.z - baseline.z;
+        }
         if (event.phase == "JUMP") fullHeight = event.heightM;
         if (event.phase == "APPEAR_PLAYER") selected = selections[i];
         if (event.phase == "APPEAR_PLAYER" || event.phase == "CENTER")
@@ -343,11 +363,26 @@ bool CKoukuSaydonPreviewRootMotion::Sample_AirbornePosition(const double clockMs
             offsetZ = destination.z - initial.z - atEvent.z;
             floor = destination.y;
         }
+        if (event.phase == "SLAM")
+        {
+            float3_t atEvent;
+            if (!Sample_Displacement(event.clockMs, rowYawDegrees, atEvent)) return false;
+            landingAnchor = {initial.x + atEvent.x + float(offsetX), 0.f, initial.z + atEvent.z + float(offsetZ)};
+            landingResumeClock = event.windowIndex + 1u < m_Windows.size() ?
+                double(m_Windows[event.windowIndex + 1u].row.iPoseStartMs) : (std::numeric_limits<double>::infinity)();
+            if (std::isfinite(landingResumeClock) && !Sample_Displacement(landingResumeClock, rowYawDegrees, landingResumeDisplacement)) return false;
+        }
         active = &event;
     }
     double height = position.y;
     if (!heightAt(clockMs, height)) return false;
     position.x += float(offsetX); position.z += float(offsetZ); position.y = float(height);
+    if (active && active->phase == "SLAM")
+    {
+        position.x = landingAnchor.x; position.z = landingAnchor.z;
+        if (clockMs >= landingResumeClock)
+        { position.x += displacement.x - landingResumeDisplacement.x; position.z += displacement.z - landingResumeDisplacement.z; }
+    }
     if (!std::isfinite(position.x) || !std::isfinite(position.y) || !std::isfinite(position.z)) return false;
     output = position;
     return true;

@@ -117,6 +117,10 @@ EFFECT_PS_OUT PS_MAIN(VS_OUT input)
     return output;
 }
 
+// Identical entry/profile/arguments compile once; pass states and indices stay unchanged.
+VertexShader EffectTrailVS = compile vs_5_0 VS_MAIN();
+PixelShader EffectTrailPS = compile ps_5_0 PS_MAIN();
+
 technique11 DefaultTechnique
 {
     pass OpaqueBackDepthWrite
@@ -124,44 +128,44 @@ technique11 DefaultTechnique
         SetRasterizerState(RS_Cull_None);
         SetDepthStencilState(DSS_Default, 0);
         SetBlendState(BS_EffectOpaque, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = EffectTrailVS;
         GeometryShader = NULL;
-        PixelShader = compile ps_5_0 PS_MAIN();
+        PixelShader = EffectTrailPS;
     }
     pass AlphaTwoSidedDepthRead
     {
         SetRasterizerState(RS_Cull_None);
         SetDepthStencilState(DSS_ReadOnly, 0);
         SetBlendState(BS_EffectAlpha, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = EffectTrailVS;
         GeometryShader = NULL;
-        PixelShader = compile ps_5_0 PS_MAIN();
+        PixelShader = EffectTrailPS;
     }
     pass AdditiveTwoSidedDepthRead
     {
         SetRasterizerState(RS_Cull_None);
         SetDepthStencilState(DSS_ReadOnly, 0);
         SetBlendState(BS_EffectAdditive, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = EffectTrailVS;
         GeometryShader = NULL;
-        PixelShader = compile ps_5_0 PS_MAIN();
+        PixelShader = EffectTrailPS;
     }
     pass AlphaOneSidedDepthRead
     {
         SetRasterizerState(RS_Default);
         SetDepthStencilState(DSS_ReadOnly, 0);
         SetBlendState(BS_EffectAlpha, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = EffectTrailVS;
         GeometryShader = NULL;
-        PixelShader = compile ps_5_0 PS_MAIN();
+        PixelShader = EffectTrailPS;
     }
     pass AdditiveOneSidedDepthRead
     {
         SetRasterizerState(RS_Default);
         SetDepthStencilState(DSS_ReadOnly, 0);
         SetBlendState(BS_EffectAdditive, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = EffectTrailVS;
         GeometryShader = NULL;
-        PixelShader = compile ps_5_0 PS_MAIN();
+        PixelShader = EffectTrailPS;
     }
 }

@@ -91,6 +91,10 @@ PS_EFFECT_OUT PS_MAIN_MULTIPLY(VS_OUT input)
 	return Decal_Shade(input, true);
 }
 
+// Identical entry/profile/arguments compile once; pass states and indices stay unchanged.
+VertexShader EffectDecalV2VS = compile vs_5_0 VS_MAIN();
+PixelShader EffectDecalV2PS = compile ps_5_0 PS_MAIN();
+
 technique11 DefaultTechnique
 {
 	pass Alpha
@@ -98,25 +102,25 @@ technique11 DefaultTechnique
 		SetRasterizerState(RS_EffectV2);
 		SetDepthStencilState(DSS_ZNone, 0);
 		SetBlendState(BS_EffectV2Alpha, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-		VertexShader = compile vs_5_0 VS_MAIN();
+		VertexShader = EffectDecalV2VS;
 		GeometryShader = NULL;
-		PixelShader = compile ps_5_0 PS_MAIN();
+		PixelShader = EffectDecalV2PS;
 	}
 	pass Additive
 	{
 		SetRasterizerState(RS_EffectV2);
 		SetDepthStencilState(DSS_ZNone, 0);
 		SetBlendState(BS_EffectV2Additive, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-		VertexShader = compile vs_5_0 VS_MAIN();
+		VertexShader = EffectDecalV2VS;
 		GeometryShader = NULL;
-		PixelShader = compile ps_5_0 PS_MAIN();
+		PixelShader = EffectDecalV2PS;
 	}
 	pass Multiply
 	{
 		SetRasterizerState(RS_EffectV2);
 		SetDepthStencilState(DSS_ZNone, 0);
 		SetBlendState(BS_EffectV2Multiply, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-		VertexShader = compile vs_5_0 VS_MAIN();
+		VertexShader = EffectDecalV2VS;
 		GeometryShader = NULL;
 		PixelShader = compile ps_5_0 PS_MAIN_MULTIPLY();
 	}

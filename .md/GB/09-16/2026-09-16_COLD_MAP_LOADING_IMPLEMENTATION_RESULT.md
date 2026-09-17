@@ -71,3 +71,13 @@ GPU NonBlend의 주 비용이 제거됐다는 증거는 없다. 기존 source BG
 최초 RebaseContract 검사 프로그램의 전역 메모리 실패 주입에서 CRT 종료 팝업이 발생했다. 사용자가 본 `Bern…RebaseContract` 경로는 이 검사 프로그램과 일치하며, 당시 Client는 계속 실행 중이었다. 새 effect 병렬화는 제품에 배포되지 않았다. 이후 검사에는 CRT report/abort/Windows error UI 차단을 적용해 로그만 남겼다. 이를 Bern 프레임 드랍이나 실행 중 Client의 새 effect 병렬화 실패로 기록하지 않는다.
 
 사용자가 Client를 계속 실행하며 **소스 검증만 마무리**하도록 명시했다. 따라서 G04 이후 Product 통합 빌드와 EXE/DLL 배포는 수행하지 않는다. 현재 `Client/Bin/Debug/Client.exe`는 22:33:45, Engine.dll은 22:32:25 빌드이며 이 후속 변경을 포함하지 않는다. 개별 컴파일 성공과 실행 중 EXE 적용을 구분한다. 사용자·다른 작업이 변경한 RenderingProfiles와 Kouku composition은 그대로 보존한다.
+
+## G07. main 동기화 후 제품 빌드 — 2026-09-17
+
+사용자가 전체 빌드를 새로 요청해 G06의 소스 검증 제한을 해제했다. PR #399가 병합된 `origin/main`의 `bddacace2296c1c38e016146a13fcd767cdf82da`를 작업 브랜치에 fast-forward pull했다. 원격 충돌 해결본에서 빠진 `f32_t fEffectLane = 0.f;` 선언을 로컬에서 보완하고 main의 두 진행률 합산과 양쪽 준비 완료 조건을 유지했다. 별도 컴파일 2TU, 병합 JSON 38개/XML 4개 parse와 diff check를 통과했다.
+
+`Invoke-BuildAndRegression.ps1 -Configuration Debug -Profile Product -BuildLogDirectory out/MainSyncProduct20260916`은 PASS, 전체 2,290,594ms였다. Engine/Shared/Server/Client 모두 성공했고 Client 단계는 2,249,173ms, OBJ 220개·CSO 109개·binary 1개를 갱신했다. `out/BuildPipeline/runs/20260916T152656461Z-debug-product.json`이 근거다. shader 경고와 외부 DirectXTK PDB 경고는 남으며 컴파일·링크 오류는 없다.
+
+`Client/Bin/Debug/Client.exe`는 2026-09-17 00:26:54 KST, Server.exe는 2026-09-16 23:49:24 KST 출력이다. 이제 G04~G05의 이펙트 병렬 준비와 Bern 소스 변경이 제품 EXE에 포함된다. 새 main의 필수 HonorTitles bootstrap이 없어 기존 publisher의 Publish로 23개 칭호를 생성했다. 기존 Vehicle bootstrap은 원본과 27개 행이 일치해 재생성하지 않았다. Client/Server/UI는 실행하지 않았다.
+
+이후 사용자는 현재 빌드 성공 뒤 전체 shader 컴파일 구조 최적화를 요청했다. 해당 후속 변경과 측정은 `../09-14/2026-09-14_SHADER_PROGRAM_COMPILE_ISOLATION_IMPLEMENTATION_PLAN.md` 및 대응 RESULT에서 계속 기록한다. 이 절의 시간은 최적화 전 main 동기화 빌드다.

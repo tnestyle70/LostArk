@@ -129,6 +129,10 @@ namespace LostArk::Server
 		LostArk::Shared::GameplayDataRevision PinnedDefinitionRevision{};
 		bool bReplicated = false;
 		bool bTrackLockedTargetUntilFirstPulse = false;
+		// The room stages these only for its typed pursuit occurrence. No damage is implied.
+		bool bPersistentLifetime = false, bHoming = false;
+		float fContactPresentationRadiusM = 0.f;
+		std::string strContactPresentationId;
 		/* A radial volley tracks the same locked player without collapsing every
 		ordinal back onto that player's centre before the first pulse. */
 		float fLockedTargetOffsetX = 0.f;

@@ -3203,7 +3203,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 		}
 		else if (!fields.empty() && "PATTERNALBIONAIRBORNE" == fields[0])
 		{
-			if (fields.size() != 7u || !IsStableId(fields[1]) || !IsStableId(fields[2]) || !IsStableId(fields[3]))
+			if ((fields.size() != 7u && fields.size() != 10u) || !IsStableId(fields[1]) || !IsStableId(fields[2]) || !IsStableId(fields[3]))
 			{ m_strStatus = "Albion airborne supplemental identity is invalid"; return false; }
 			const auto encounter = m_BossPatterns.find(std::string(fields[1]));
 			if (encounter == m_BossPatterns.end()) { m_strStatus = "Albion airborne encounter is missing"; return false; }
@@ -3221,6 +3221,45 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			else if (fields[4] == "CENTER") trigger->eAirbornePhase = ALBION_AIRBORNE_PHASE::CENTER;
 			else if (fields[4] == "SLAM") trigger->eAirbornePhase = ALBION_AIRBORNE_PHASE::SLAM;
 			else { m_strStatus = "Albion airborne phase is unknown"; return false; }
+			if (fields.size() == 10u)
+			{
+				if (trigger->eAirbornePhase != ALBION_AIRBORNE_PHASE::SELECT_PLAYER || fields[7] != "SELECT" ||
+					(!fields[8].empty() && !IsStableId(fields[8])) || !ParseNumber(fields[9], trigger->iSelectedEffectLifetimeMs) ||
+					fields[8].empty() != (trigger->iSelectedEffectLifetimeMs == 0u))
+				{ m_strStatus = "Selected airborne position or Effect fields are invalid"; return false; }
+				trigger->bCaptureAirborneTargetPosition = true;
+				trigger->strSelectedEffectVisualId = fields[8];
+			}
+		}
+		else if (!fields.empty() && "PATTERNPURSUITPROJECTILES" == fields[0])
+		{
+			BOSS_PATTERN_MECHANIC_TRIGGER trigger{};
+			trigger.eKind = BOSS_PATTERN_MECHANIC_TRIGGER_KIND::PURSUIT_PROJECTILES;
+			std::uint32_t homing = 0u;
+			if ((fields.size() != 18u && fields.size() != 19u) || !IsStableId(fields[1]) || !IsStableId(fields[2]) || !IsStableId(fields[3]) ||
+				!ParseNumber(fields[4], trigger.iStartMs) || !ParseNumber(fields[5], trigger.iDurationMs) ||
+				trigger.iDurationMs == 0u || trigger.iDurationMs > 600000u || !IsStableId(fields[10]) ||
+				!ParseNumber(fields[11], trigger.fProjectileSpeedMps) || !ParseNumber(fields[12], trigger.fProjectileContactRadiusM) ||
+				!ParseNumber(fields[13], trigger.fProjectileSpawnRadiusM) || !ParseNumber(fields[14], trigger.iProjectileLifetimeMs) ||
+				!ParseNumber(fields[15], trigger.iSpawnIntervalMs) || !ParseNumber(fields[16], homing) || homing > 1u ||
+				!ParseNumber(fields[17], trigger.iProjectileCountPerWave) ||
+				(fields.size() == 19u && !ParseNumber(fields[18], trigger.fProjectileMaxDistanceM)))
+			{ m_strStatus = "Pursuit projectile row is invalid"; return false; }
+			bool ended = false;
+			for (std::size_t index = 6u; index < 10u; ++index)
+			{
+				if (fields[index] == "-") { ended = true; continue; }
+				if (ended || !IsStableId(fields[index])) { m_strStatus = "Pursuit visual pool is invalid"; return false; }
+				trigger.ProjectileVisualIds.emplace_back(fields[index]);
+			}
+			trigger.strTriggerId = fields[3]; trigger.strContactVisualId = fields[10]; trigger.bProjectileHoming = homing != 0u;
+			const auto owners = m_BossPatterns.find(std::string(fields[1]));
+			if (owners == m_BossPatterns.end()) { m_strStatus = "Pursuit encounter is missing"; return false; }
+			const auto owner = std::find_if(owners->second.begin(), owners->second.end(), [&](const auto& pattern) { return pattern.strPatternId == fields[2]; });
+			if (owner == owners->second.end() || owner->MechanicTriggers.size() >= 64u ||
+				std::any_of(owner->MechanicTriggers.begin(), owner->MechanicTriggers.end(), [&](const auto& row) { return row.strTriggerId == fields[3]; }))
+			{ m_strStatus = "Pursuit occurrence owner is invalid"; return false; }
+			owner->MechanicTriggers.push_back(std::move(trigger));
 		}
 		else if (!fields.empty() && "PATTERNSHOWTIMETARGETS" == fields[0])
 		{
@@ -5646,7 +5685,8 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 		for (const BOSS_PATTERN_DEFINITION& pattern : foundPatterns->second)
 		{
 			const bool hasAirborne = std::any_of(pattern.MechanicTriggers.begin(), pattern.MechanicTriggers.end(),
-				[](const auto& trigger) { return trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::ALBION_AIRBORNE; });
+				[](const auto& trigger) { return trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::ALBION_AIRBORNE ||
+                    trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::PURSUIT_PROJECTILES; });
             const bool hasPhysicalHook = std::any_of(pattern.LogicWindows.begin(), pattern.LogicWindows.end(), [](const auto& window) {
                 return std::any_of(window.CardRegions.begin(), window.CardRegions.end(), [](const auto& region) {
                     return std::any_of(region.WorldTrack.Keys.begin(), region.WorldTrack.Keys.end(), [](const auto& key) { return key.bHasGripPosition; }); }); });

@@ -1082,7 +1082,7 @@ bool_t Client::CEffect_Tool::Try_PlayRecoveryEffect()
     for (const auto& element : preview.Elements)
         if (element.bVisible) durationSeconds = (std::max)(durationSeconds, Element_PreviewEndSeconds(element));
     for (const auto& cue : preview.ModelCues)
-        if (cue.bVisible) durationSeconds = (std::max)(durationSeconds, cue.fStartDelaySeconds + cue.fDurationSeconds);
+        if (cue.bVisible) durationSeconds = (std::max)(durationSeconds, Effect_ModelCueEndSeconds(cue));
     const uint32_t duration = static_cast<uint32_t>(
         (std::clamp)(std::ceil(durationSeconds * 1000.f), 1.f, 600000.f));
     if (!Prepare_RecoveryPreviewTarget()) return false;

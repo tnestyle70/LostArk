@@ -770,6 +770,7 @@ void Client::CEffectObject::Set_SampleTime(const f32_t fSampleTimeSeconds)
 		return;
 	m_bPlaying = false;
 	m_Playback.Seek(fSampleTimeSeconds, m_RootWorld);
+    if (m_pRenderer) m_pRenderer->Reset_ModelCueAfterimages();
 	if (nullptr != m_pScreenOverlayPresentation)
 		(void)m_pScreenOverlayPresentation->Seek(fSampleTimeSeconds);
 }
@@ -820,6 +821,7 @@ bool_t Client::CEffectObject::Set_SampleTimeWithTransformHistory(
 		return false;
 	}
 	m_RootWorld = m_Playback.Get_Frame().RootWorld;
+    if (m_pRenderer) m_pRenderer->Reset_ModelCueAfterimages();
 	m_bPlaying = false;
 	if (nullptr != m_pScreenOverlayPresentation)
 		(void)m_pScreenOverlayPresentation->Seek(fSampleTimeSeconds);
@@ -879,6 +881,7 @@ void Client::CEffectObject::Set_Visible(const bool_t bVisible)
 	if (m_bRenderFailureIsolated && bVisible)
 		return;
 	m_bVisible = bVisible;
+    if (!bVisible && m_pRenderer) m_pRenderer->Reset_ModelCueAfterimages();
 	if (!bVisible && nullptr != m_pScreenOverlayPresentation)
 		m_pScreenOverlayPresentation->Cancel();
 }
@@ -888,6 +891,7 @@ void Client::CEffectObject::Reset()
 	if (m_bReconstructedDiagnosticActive)
 		return;
 	m_Playback.Seek(0.f, m_RootWorld);
+    if (m_pRenderer) m_pRenderer->Reset_ModelCueAfterimages();
 	if (nullptr != m_pScreenOverlayPresentation)
 		(void)m_pScreenOverlayPresentation->Seek(0.f);
 }

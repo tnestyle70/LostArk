@@ -847,6 +847,74 @@ void LostArk::Server::CGameRoom::Update_KoukuRandomVolley(
 	advanceDeadline();
 }
 
+void LostArk::Server::CGameRoom::Update_KoukuPursuitProjectiles(
+	SERVER_WORLD_ENTITY& boss, const BOSS_PATTERN_MECHANIC_TRIGGER& trigger,
+	KOUKUSAYDON_PLAYER_TARGET_WINDOW_STATE& window, const CGameplayCatalog& catalog,
+	const std::uint32_t serverTick)
+{
+	using namespace LostArk::Shared;
+	using Clock = CKoukuSaydonLogicRuntime;
+	if ((trigger.iSpawnIntervalMs == 0u && window.iRandomWaveOrdinal != 0u) ||
+		!Clock::Has_ReachedTick(serverTick, window.iNextFixedTick)) return;
+	if (trigger.ProjectileVisualIds.empty() || trigger.ProjectileVisualIds.size() > 4u ||
+		!trigger.iProjectileCountPerWave || trigger.iProjectileCountPerWave > 16u) return;
+	SERVER_PLAYER* target = nullptr;
+	for (auto& [id, player] : m_Players)
+		if (player.iNetEntityId == boss.iPatternTargetEntityId && player.isCombatReady && player.iCurrentHp &&
+			player.eAction != PLAYER_ACTION_STATE::DEAD && player.eAction != PLAYER_ACTION_STATE::FALLING &&
+			player.eAction != PLAYER_ACTION_STATE::GRABBED) { target = &player; break; }
+	if (!target) target = Select_BossRandomAliveTarget(boss, trigger.strTriggerId, "pursuit.target", serverTick);
+	if (!target) return;
+	const auto sample = [&](std::uint32_t ordinal) {
+		std::uint32_t value = boss.iPatternSequence * 747796405u ^ boss.iNetEntityId ^
+			(window.iRandomWaveOrdinal * 2891336453u) ^ (ordinal * 277803737u);
+		for (const unsigned char ch : trigger.strTriggerId) value = (value ^ ch) * 16777619u;
+		value ^= value >> 16u; value *= 2246822519u; value ^= value >> 13u;
+		return float(value & 0x00ffffffu) / 16777216.f;
+	};
+	auto transaction = m_CombatObjectRuntime.Begin_Transaction();
+	std::string status;
+	for (std::uint32_t ordinal = 0u; ordinal < trigger.iProjectileCountPerWave; ++ordinal)
+	{
+		BOSS_COMBAT_OBJECT_DEFINITION definition;
+		definition.strEncounterId = boss.strEncounterId;
+		definition.strOwnerPatternId = boss.strPatternId;
+		definition.strOwnerStageActionId = trigger.strTriggerId;
+		definition.strCombatObjectArchetypeId = "combatobject.kouku.pursuit";
+		definition.strClientVisualId = trigger.ProjectileVisualIds[(window.iRandomWaveOrdinal * trigger.iProjectileCountPerWave + ordinal) % trigger.ProjectileVisualIds.size()];
+		definition.iLifeMs = trigger.iProjectileLifetimeMs ? trigger.iProjectileLifetimeMs : 600000u;
+		definition.PresentationPulses.push_back({ "combatpresentation.kouku.pursuit.started", 0u });
+		if (!m_CombatObjectRuntime.Stage_BossCombatObject(transaction, boss, nullptr, definition, nullptr, catalog, 1u, serverTick, status))
+		{ m_strStatus = "Pursuit volley preserved existing objects: " + status; return; }
+		auto& object = transaction.Objects.back();
+		object.iLockedTargetNetEntityId = target->iNetEntityId;
+		object.bPersistentLifetime = trigger.iProjectileLifetimeMs == 0u;
+		object.bHoming = trigger.bProjectileHoming;
+		object.bExpireOnDistanceEnd = trigger.fProjectileMaxDistanceM > 0.f;
+		object.fRemainingDistanceM = trigger.fProjectileSpeedMps * definition.iLifeMs / 1000.f;
+		if (object.bExpireOnDistanceEnd)
+			object.fRemainingDistanceM = (std::min)(object.fRemainingDistanceM, trigger.fProjectileMaxDistanceM);
+		object.fSpeedMps = trigger.fProjectileSpeedMps;
+		object.fContactPresentationRadiusM = trigger.fProjectileContactRadiusM;
+		object.strContactPresentationId = trigger.strContactVisualId;
+		const float angle = trigger.bProjectileHoming ? (boss.fYawDegrees + 360.f * ordinal / trigger.iProjectileCountPerWave) : sample(ordinal) * 360.f;
+		const float radians = angle * .0174532925f;
+		auto& pose = object.LiveState.CurrentPose;
+		pose.fDirectionX = std::sin(radians); pose.fDirectionZ = std::cos(radians); pose.fYawDegrees = angle;
+		pose.fPositionX += pose.fDirectionX * trigger.fProjectileSpawnRadiusM;
+		pose.fPositionZ += pose.fDirectionZ * trigger.fProjectileSpawnRadiusM;
+		object.LiveState.PreviousPose = pose;
+		auto& message = transaction.Spawned.back();
+		message.fPositionX = pose.fPositionX; message.fPositionZ = pose.fPositionZ; message.fYawDegrees = pose.fYawDegrees;
+	}
+	if (!m_CombatObjectRuntime.Commit(std::move(transaction)))
+	{ m_strStatus = "Pursuit volley preserved existing objects: transaction changed"; return; }
+	++window.iRandomWaveOrdinal;
+	if (trigger.iSpawnIntervalMs)
+		do { window.iNextFixedTick = Clock::Add_Ticks(window.iNextFixedTick, Clock::Ticks_FromMs(trigger.iSpawnIntervalMs)); }
+		while (Clock::Has_ReachedTick(serverTick, window.iNextFixedTick));
+}
+
 void LostArk::Server::CGameRoom::Update_KoukuPlayerTargets(
 	SERVER_WORLD_ENTITY& boss, const BOSS_PATTERN_DEFINITION& pattern,
 	KOUKUSAYDON_LOGIC_LEDGER& ledger, const CGameplayCatalog& catalog, const std::uint32_t serverTick)
@@ -871,6 +939,11 @@ void LostArk::Server::CGameRoom::Update_KoukuPlayerTargets(
 			for (const auto& [playerId, objectId] : window.TrackingObjects)
 				m_CombatObjectRuntime.Cancel_OwnedVisualObject(objectId, boss.iNetEntityId, ledger.iPatternSequence);
 			window.TrackingObjects.clear(); window.bClosed = true;
+			continue;
+		}
+		if (trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::PURSUIT_PROJECTILES)
+		{
+			Update_KoukuPursuitProjectiles(boss, trigger, window, catalog, serverTick);
 			continue;
 		}
 		const bool rotateOnly = trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_TRACK_TARGET;
@@ -1036,6 +1109,40 @@ bool LostArk::Server::CGameRoom::Commit_KoukuAlbionAirborne(
 	 auto* selected = Select_BossRandomAliveTarget(boss, trigger.strTriggerId, "albion.airborne.player", serverTick);
 	 if (!selected) return reject("no living selectable player");
 	 state.iSelectedPlayer = selected->iNetEntityId;
+	 state.bHasSelectedGround = false;
+	 if (trigger.bCaptureAirborneTargetPosition)
+	 {
+	  if (!m_ServerNavigation.Is_Loaded() || !m_ServerNavigation.Is_PointWalkableExact(selected->fPositionX, selected->fPositionZ) ||
+	   !m_ServerNavigation.Sample_Position(selected->fPositionX, selected->fPositionZ, state.SelectedGround) ||
+	   !std::isfinite(state.SelectedGround.y)) return reject("selected navigation ground is unavailable");
+	  state.SelectedGround.x = selected->fPositionX; state.SelectedGround.z = selected->fPositionZ;
+	  state.bHasSelectedGround = true;
+	  if (!trigger.strSelectedEffectVisualId.empty())
+	  {
+	   const auto* catalog = Resolve_KoukuProductCatalog();
+	   if (!catalog) return reject("selected Effect catalog is unavailable");
+	   SERVER_COMBAT_OBJECT_LOCKED_TARGET target;
+	   target.iNetEntityId = selected->iNetEntityId;
+	   target.fPositionX = state.SelectedGround.x; target.fPositionY = state.SelectedGround.y; target.fPositionZ = state.SelectedGround.z;
+	   BOSS_COMBAT_OBJECT_DEFINITION definition;
+	   definition.strEncounterId = boss.strEncounterId; definition.strOwnerPatternId = pattern.strPatternId;
+	   definition.strOwnerStageActionId = trigger.strTriggerId;
+	   definition.strCombatObjectArchetypeId = "combatobject.kouku.showtime.fixed";
+	   definition.strClientVisualId = trigger.strSelectedEffectVisualId;
+	   definition.eOriginPolicy = BOSS_COMBAT_OBJECT_ORIGIN_POLICY::LOCKED_TARGET_PER_ALIVE_PLAYER;
+	   definition.iLifeMs = trigger.iSelectedEffectLifetimeMs;
+	   definition.PresentationPulses.push_back({ "combatpresentation.kouku.showtime.started", 0u });
+	   auto transaction = m_CombatObjectRuntime.Begin_Transaction(); std::string status;
+	   if (!m_CombatObjectRuntime.Stage_BossCombatObject(transaction, boss, &target, definition, nullptr, *catalog, 1u, serverTick, status))
+	   { m_strStatus = "Selected airborne Effect preserved capture: " + status; return false; }
+	   auto& object = transaction.Objects.back();
+	   object.LiveState.CurrentPose.fYawDegrees = 0.f;
+	   object.LiveState.CurrentPose.fDirectionX = 0.f; object.LiveState.CurrentPose.fDirectionZ = 1.f;
+	   object.LiveState.PreviousPose = object.LiveState.CurrentPose;
+	   transaction.Spawned.back().fYawDegrees = 0.f;
+	   if (!m_CombatObjectRuntime.Commit(std::move(transaction))) return reject("selected Effect transaction changed");
+	  }
+	 }
 	 boss.AlbionAirborne = state; boss.iTargetEntityId = boss.iPatternTargetEntityId = selected->iNetEntityId;
 	 return true;
 	}
@@ -1052,7 +1159,7 @@ bool LostArk::Server::CGameRoom::Commit_KoukuAlbionAirborne(
 	if (state.ePhase == Phase::JUMP)
 	{
 	 if (!std::isfinite(trigger.fAirborneHeightM) || trigger.fAirborneHeightM <= 0.f || trigger.fAirborneHeightM > 100000.f ||
-	  !trigger.iAirborneDurationMs || trigger.iAirborneDurationMs > 600000u) return reject("jump height or duration is invalid");
+	  trigger.iAirborneDurationMs > 600000u) return reject("jump height or duration is invalid");
 	 state.fJumpHeightM = trigger.fAirborneHeightM;
 	 // Reuse the actual navigation/body sweep. The same source clock still owns XZ.
 	 staged->iPatternStageRootLastTick = 0u;
@@ -1065,11 +1172,16 @@ bool LostArk::Server::CGameRoom::Commit_KoukuAlbionAirborne(
 	 if (!std::isfinite(state.fJumpHeightM) || state.fJumpHeightM <= 0.f) return reject("initial jump has not committed");
 	 if (state.ePhase == Phase::APPEAR_PLAYER)
 	 {
-	  auto* selected = selectedPlayer();
-	  if (!selected) selected = Select_BossRandomAliveTarget(boss,trigger.strTriggerId,"albion.airborne.player",serverTick);
-	  if (!selected) return reject("selected player is unavailable and no replacement is alive");
 	  if (state.fPhaseHeightM <= 0.f || !std::isfinite(state.fPhaseHeightM)) return reject("appearance height is invalid");
-	  state.iSelectedPlayer = selected->iNetEntityId; x = selected->fPositionX; z = selected->fPositionZ;
+	  if (state.bHasSelectedGround)
+	  { x = state.SelectedGround.x; z = state.SelectedGround.z; }
+	  else
+	  {
+	   auto* selected = selectedPlayer();
+	   if (!selected) selected = Select_BossRandomAliveTarget(boss,trigger.strTriggerId,"albion.airborne.player",serverTick);
+	   if (!selected) return reject("selected player is unavailable and no replacement is alive");
+	   state.iSelectedPlayer = selected->iNetEntityId; x = selected->fPositionX; z = selected->fPositionZ;
+	  }
 	 }
 	 else if (state.ePhase == Phase::CENTER) { x = trigger.fTeleportX; z = trigger.fTeleportZ; }
 	 else if (state.ePhase == Phase::SLAM)
@@ -1100,6 +1212,8 @@ bool LostArk::Server::CGameRoom::Commit_KoukuAlbionAirborne(
 	 float height = 0.f;
 	 if (!CKoukuSaydonBrain::Sample_AlbionAirborneHeight(state,patternMs,boss.iPatternStageIndex,sourceUp,height))
 	  return reject("phase height is invalid");
+	 // A captured ground point owns the complete anchor, including terrain height.
+	 if (state.ePhase == Phase::APPEAR_PLAYER && state.bHasSelectedGround) newGround.y = state.SelectedGround.y;
 	 const float y = newGround.y + height;
 	 if (!std::isfinite(y) || !m_ServerCollisionSystem.Is_CirclePositionClear(x,y,z,boss.fCollisionRadius,
 	  boss.fCollisionRadius,boss.fCollisionRadius,boss.iNetEntityId)) return reject("destination body overlap is invalid");

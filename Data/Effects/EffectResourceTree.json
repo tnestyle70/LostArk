@@ -187,7 +187,13 @@
     {"id": "kouku.category.04ceab6684ca96fe8e7f", "parentId": "kouku.category.e8d63dc07f59a4959a51", "kind": "CATEGORY", "displayName": "십자 전기 폭발"},
     {"id": "kouku.category.515f8695f406565bda9c", "parentId": "kouku.category.e8d63dc07f59a4959a51", "kind": "CATEGORY", "displayName": "전방 3갈레 전기 폭발"},
     {"id": "kouku.category.6e1564c2bba2d33cd8c9", "parentId": "kouku.category.e8d63dc07f59a4959a51", "kind": "CATEGORY", "displayName": "소멸 이펙트"},
-    {"id": "kouku.category.mario.pattern", "parentId": "kouku.category.394c65517271abf468a9", "kind": "CATEGORY", "displayName": "마리오 패턴"}
+    {"id": "kouku.category.mario.pattern", "parentId": "kouku.category.394c65517271abf468a9", "kind": "CATEGORY", "displayName": "마리오 패턴"},
+    {"id": "kouku.category.202f8db593933bdfffb9", "parentId": "kouku.category.d9def6e601e406cf41f1", "kind": "CATEGORY", "displayName": "카드 짝 맞추기"},
+    {"id": "kouku.category.6c3f93cbe21a76f3f3f0", "parentId": "kouku.category.d9def6e601e406cf41f1", "kind": "CATEGORY", "displayName": "트럼펫장판소환"},
+    {"id": "kouku.category.saydon.charge_counter.afterimage", "parentId": "kouku.category.d9def6e601e406cf41f1", "kind": "CATEGORY", "displayName": "돌진 카운터"},
+    {"id": "valtan.category.afterimage", "parentId": "root.v1", "kind": "CATEGORY", "displayName": "Valtan"},
+    {"id": "valtan.category.dash_charge.afterimage", "parentId": "valtan.category.afterimage", "kind": "CATEGORY", "displayName": "3연 구르기 후 돌진"},
+    {"id": "kouku.category.e91d6c39c6bb77d4489c", "parentId": "kouku.category.d9def6e601e406cf41f1", "kind": "CATEGORY", "displayName": "세이튼_카운터"}
   ],
   "references": [
     {"kind": "V1", "assetId": "effect.kouku.gate3.showtime.sector.warning.shot", "displayName": "부채꼴 예고·사격 (저작 조합)", "parentId": "kouku.category.d767402008919487db6b"},
@@ -976,6 +982,31 @@
     {"kind": "V1", "assetId": "effect.kouku.mario.blade.normal.full.restore", "displayName": "일반칼날이펙트", "parentId": "kouku.category.mario.pattern"},
     {"kind": "V1", "assetId": "effect.kouku.mario.blade.instant-death.full.restore", "displayName": "즉사칼날이펙트", "parentId": "kouku.category.mario.pattern"},
     {"kind": "V1", "assetId": "effect.kouku.gate3.doll.flame.shared", "displayName": "괴기스러운 인형_회전 화염 뿜기_세이튼 공통 불뿜기", "parentId": "kouku.category.f204b0c871d711d0dee9"},
-    {"kind": "V1", "assetId": "effect.kouku.gate3.mario.circus.ball.aura", "displayName": "서커스 공_무지개와 붉은 기운", "parentId": "kouku.category.f204b0c871d711d0dee9"}
+    {"kind": "V1", "assetId": "effect.kouku.gate3.mario.circus.ball.aura", "displayName": "서커스 공_무지개와 붉은 기운", "parentId": "kouku.category.f204b0c871d711d0dee9"},
+    {"kind": "V1", "assetId": "effect.kouku.card.match.dice.diamond.explosion", "displayName": "주사위 다이아 폭발", "parentId": "kouku.category.202f8db593933bdfffb9"},
+    {"kind": "V1", "assetId": "effect.kouku.card.match.heart", "displayName": "하트", "parentId": "kouku.category.202f8db593933bdfffb9"},
+    {"kind": "V1", "assetId": "effect.kouku.card.match.clover", "displayName": "클로버", "parentId": "kouku.category.202f8db593933bdfffb9"},
+    {"kind": "V1", "assetId": "effect.kouku.card.match.diamond", "displayName": "다이아", "parentId": "kouku.category.202f8db593933bdfffb9"},
+    {"kind": "V1", "assetId": "effect.kouku.card.match.spade", "displayName": "스페이드", "parentId": "kouku.category.202f8db593933bdfffb9"},
+    {"kind": "V1", "assetId": "effect.kouku.card.match.explosion", "displayName": "카드폭발", "parentId": "kouku.category.202f8db593933bdfffb9"},
+    {"kind": "V1", "assetId": "effect.kouku.card.match.emit", "displayName": "카드출력 이펙트", "parentId": "kouku.category.202f8db593933bdfffb9"},
+    {"kind": "V1", "assetId": "effect.kouku.card.spinning.heart", "displayName": "회전 카드_하트", "parentId": "kouku.category.173df37e77c188aee068"},
+    {"kind": "V1", "assetId": "effect.kouku.card.spinning.clover", "displayName": "회전 카드_클로버", "parentId": "kouku.category.173df37e77c188aee068"},
+    {"kind": "V1", "assetId": "effect.kouku.card.spinning.diamond", "displayName": "회전 카드_다이아", "parentId": "kouku.category.173df37e77c188aee068"},
+    {"kind": "V1", "assetId": "effect.kouku.card.spinning.spade", "displayName": "회전 카드_스페이드", "parentId": "kouku.category.173df37e77c188aee068"},
+    {"kind": "V1", "assetId": "effect.kouku.common.trumpet.card.floor", "displayName": "트럼펫_카드장판", "parentId": "kouku.category.6c3f93cbe21a76f3f3f0"},
+    {"kind": "V1", "assetId": "effect.kouku.gate3.doll.flame.object-sustain15", "displayName": "3관문_인형_불뿜기 15초", "parentId": "kouku.category.0ba3fc38dc4849a3729a"},
+    {"kind": "V1", "assetId": "effect.kouku.magic.paper.dove.group", "displayName": "종이비둘기 4마리 원형 비행 · 폭발", "parentId": "kouku.category.27ccf3e79096dc8b4a6b"},
+    {"kind": "V1", "assetId": "effect.kouku.pizza.explosion.group", "displayName": "피자 바닥 무지개 · 검정 빨강 경계 폭발", "parentId": "kouku.category.a15eb53fae812aac91a5"},
+    {"kind": "V1", "assetId": "effect.kouku.common.counter.ring", "displayName": "카운터 이펙트", "parentId": "kouku.category.e91d6c39c6bb77d4489c"},
+    {"kind": "V1", "assetId": "effect.kouku.gate1.charge_counter.group", "displayName": "돌진 카운터 · 잔상과 돌진 이펙트", "parentId": "kouku.category.saydon.charge_counter.afterimage"},
+    {"kind": "V1", "assetId": "effect.kouku.gate1.charge_counter.fx", "displayName": "돌진 카운터 · 원본 먼지와 양팔 궤적", "parentId": "kouku.category.saydon.charge_counter.afterimage"},
+    {"kind": "V1", "assetId": "effect.kouku.card.spinning.emitter", "displayName": "회전 카드 발사", "parentId": "kouku.category.173df37e77c188aee068"},
+    {"kind": "V1", "assetId": "effect.kouku.gate1.charge_counter.afterimage", "displayName": "흰 잔상", "parentId": "kouku.category.saydon.charge_counter.afterimage"},
+    {"kind": "V1", "assetId": "effect.valtan.action.420604.stage003.full.restore", "displayName": "흰 잔상", "parentId": "valtan.category.dash_charge.afterimage"},
+    {"kind": "V1", "assetId": "effect.kouku.gate1.circus.rainbow.drop", "displayName": "세이튼 / 쓰리투원투하 | 공 낙하·상단 무지개·도넛 폭발", "parentId": "kouku.category.867ede1a948dc387a93d"},
+    {"kind": "V1", "assetId": "effect.kouku.gate1.circus.rainbow.impact", "displayName": "세이튼 / 쓰리투원투하 | 무지개 도넛 폭발", "parentId": "kouku.category.867ede1a948dc387a93d"},
+    {"kind": "V1", "assetId": "effect.kouku.gate1.circus.ball.upper", "displayName": "세이튼 / 쓰리투원투하 | 공 상단 무지개", "parentId": "kouku.category.867ede1a948dc387a93d"},
+    {"kind": "V1", "assetId": "effect.kouku.gate1.circus.gun.muzzle", "displayName": "세이튼 / 쓰리투원투하 | 공 발사·쇼타임 총구", "parentId": "kouku.category.867ede1a948dc387a93d"}
   ]
 }

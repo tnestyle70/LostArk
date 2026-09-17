@@ -156,6 +156,9 @@ EFFECT_PS_OUT PS_SCENE_COLLAPSE(VS_OUT input)
     output.BloomContribution.rgb = g_CapturedSceneBloom.SampleLevel(LinearClampUVSampler, uv, 0.f).rgb;
     return output;
 }
+// Identical entry/profile/arguments compile once; pass states and indices stay unchanged.
+VertexShader NativeScreenPostVS = compile vs_5_0 VS_MAIN();
+
 technique11 DefaultTechnique
 {
     pass NativeScreenPost
@@ -163,7 +166,7 @@ technique11 DefaultTechnique
         SetRasterizerState(RS_Cull_None);
         SetDepthStencilState(DSS_ZNone, 0);
         SetBlendState(BS_EffectOpaque, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = NativeScreenPostVS;
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_MAIN();
     }
@@ -172,7 +175,7 @@ technique11 DefaultTechnique
         SetRasterizerState(RS_Cull_None);
         SetDepthStencilState(DSS_ZNone, 0);
         SetBlendState(BS_EffectOpaque, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = NativeScreenPostVS;
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_SCENE_COLLAPSE();
     }

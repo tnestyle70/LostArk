@@ -803,9 +803,26 @@ void LostArk::Server::CCombatObjectRuntime::Update(
 		}
 		const float previousElapsedMilliseconds = object.fElapsedMilliseconds;
 		object.fElapsedMilliseconds += deltaMilliseconds;
-		object.fRemainingMilliseconds -= deltaMilliseconds;
+		if (!object.bPersistentLifetime) object.fRemainingMilliseconds -= deltaMilliseconds;
+		float homingDistance = -1.f;
+		if (object.bHoming)
+		{
+			auto* target = FindPlayerByEntityId(players, object.iLockedTargetNetEntityId);
+			if (!target || !IsDamageable(*target)) { Despawn_At(objectIndex); continue; }
+			const float dx = target->fPositionX - object.LiveState.CurrentPose.fPositionX;
+			const float dz = target->fPositionZ - object.LiveState.CurrentPose.fPositionZ;
+			homingDistance = std::hypot(dx, dz);
+			if (!std::isfinite(homingDistance)) { Despawn_At(objectIndex); continue; }
+			if (homingDistance > .000001f)
+			{
+				object.LiveState.CurrentPose.fDirectionX = dx / homingDistance;
+				object.LiveState.CurrentPose.fDirectionZ = dz / homingDistance;
+				object.LiveState.CurrentPose.fYawDegrees = std::atan2(dx, dz) * RADIANS_TO_DEGREES;
+			}
+			object.LiveState.CurrentPose.fPositionY = target->fPositionY;
+		}
 		float movementStep = 0.f;
-		if (object.fSpeedMps > 0.f && object.fRemainingDistanceM > 0.f)
+		if (object.fSpeedMps > 0.f && (object.fRemainingDistanceM > 0.f || object.bPersistentLifetime))
 		{
 			const float movementStartMilliseconds =
 				static_cast<float>(object.iMovementStartDelayMs);
@@ -814,7 +831,8 @@ void LostArk::Server::CCombatObjectRuntime::Update(
 				(std::max)(0.f, previousElapsedMilliseconds - movementStartMilliseconds);
 			float step = object.fSpeedMps * activeMilliseconds /
 				SECONDS_TO_MILLISECONDS;
-			if (object.fRemainingDistanceM >= 0.f)
+			if (homingDistance >= 0.f) step = (std::min)(step, homingDistance);
+			if (!object.bPersistentLifetime && object.fRemainingDistanceM >= 0.f)
 			{
 				step = (std::min)(step, object.fRemainingDistanceM);
 				object.fRemainingDistanceM -= step;
@@ -825,7 +843,7 @@ void LostArk::Server::CCombatObjectRuntime::Update(
 			object.LiveState.CurrentPose.fPositionZ +=
 				object.LiveState.CurrentPose.fDirectionZ * step;
 		}
-		const bool lifetimeExpired = object.fRemainingMilliseconds <= 0.f;
+		const bool lifetimeExpired = !object.bPersistentLifetime && object.fRemainingMilliseconds <= 0.f;
 		const bool expired = lifetimeExpired ||
 			(object.bExpireOnDistanceEnd && object.fSpeedMps > 0.f &&
 			 object.fRemainingDistanceM <= 0.f);
@@ -868,6 +886,36 @@ void LostArk::Server::CCombatObjectRuntime::Update(
 				if (0u == m_iNextPresentationEventSequence)
 					m_iNextPresentationEventSequence = 1u;
 			};
+
+		if (!object.strContactPresentationId.empty() && contactMotionActive)
+		{
+			SERVER_COMBAT_OBJECT_HIT_RUNTIME contact;
+			contact.eContactSampling = SERVER_COMBAT_OBJECT_CONTACT_SAMPLING::SWEPT;
+			contact.Shape.eKind = SERVER_COMBAT_SHAPE_KIND::CIRCLE;
+			contact.Shape.fOuterRadius = object.fContactPresentationRadiusM;
+			bool contacted = false;
+			for (const auto& [id, player] : players)
+			{
+				if (!IsDamageable(player) || (object.bHoming && player.iNetEntityId != object.iLockedTargetNetEntityId) ||
+					!ContactOverlaps(object, contact, BodyOf(player))) continue;
+				// A swept hit can cross the whole body in one tick. Anchor its contact
+				// burst on the hit player's authoritative pose, never the overshot endpoint.
+				object.LiveState.CurrentPose.fPositionX = player.fPositionX;
+				object.LiveState.CurrentPose.fPositionY = player.fPositionY;
+				object.LiveState.CurrentPose.fPositionZ = player.fPositionZ;
+				QueuePresentationPulse(object.strContactPresentationId, 0u);
+				contacted = true;
+				break;
+			}
+			if (contacted) { Despawn_At(objectIndex); continue; }
+		}
+
+		if (expired && !object.strContactPresentationId.empty())
+		{
+			QueuePresentationPulse(object.strContactPresentationId, 0u);
+			Despawn_At(objectIndex);
+			continue;
+		}
 
 		for (SERVER_COMBAT_OBJECT_PRESENTATION_PULSE_RUNTIME& pulse :
 			object.PresentationPulses)

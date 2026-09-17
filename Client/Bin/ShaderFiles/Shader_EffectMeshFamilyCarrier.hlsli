@@ -1,5 +1,8 @@
 #define EFFECT_NATIVE_MESH_CARRIER 1
+#ifndef EFFECT_NATIVE_CARRIER_COMMON_INCLUDED
 #include "Shader_EffectCommon.hlsli"
+#define EFFECT_NATIVE_CARRIER_COMMON_INCLUDED 1
+#endif
 #include "Shader_EffectSceneDepthInput.hlsli"
 #include "Shader_EffectSceneColorInput.hlsli"
 #if EFFECT_SHADER_FAMILY == 0
@@ -141,6 +144,9 @@ VS_OUT Build_EffectMeshVertex(VS_IN input, float4x4 world, float4x4 normalMatrix
     output.sourceLightBasisY=float3(dot(input.tangent,localLightY),dot(input.binormal,localLightY),dot(input.normal,localLightY));
     output.sourceLightBasisZ=float3(dot(input.tangent,localLightZ),dot(input.binormal,localLightZ),dot(input.normal,localLightZ));
 #endif
+#if EFFECT_SHADER_FAMILY == 7
+    if (Has_EffectArtistNativeProfile(g_SourceMaterialProfile))
+#else
     if (((g_SourceMaterialProfile >= 400u && g_SourceMaterialProfile <= 459u) || (g_SourceMaterialProfile >= 660u && g_SourceMaterialProfile <= 719u) || (g_SourceMaterialProfile >= 1000u && g_SourceMaterialProfile <= 1199u) || (g_SourceMaterialProfile >= 2000u && g_SourceMaterialProfile <= 2008u)) || ((g_SourceMaterialProfile >= 462u && g_SourceMaterialProfile <= 559u) || (g_SourceMaterialProfile >= 820u && g_SourceMaterialProfile <= 939u) || (g_SourceMaterialProfile >= 1600u && g_SourceMaterialProfile <= 1694u) || (g_SourceMaterialProfile >= 2304u && g_SourceMaterialProfile <= 3967u)) || ((g_SourceMaterialProfile >= 560u && g_SourceMaterialProfile <= 659u) || (g_SourceMaterialProfile >= 720u && g_SourceMaterialProfile <= 819u) || (g_SourceMaterialProfile >= 1200u && g_SourceMaterialProfile <= 1355u)) || 42u == g_SourceMaterialProfile || 50u == g_SourceMaterialProfile ||
         60u == g_SourceMaterialProfile || 66u == g_SourceMaterialProfile || 70u == g_SourceMaterialProfile ||
         84u == g_SourceMaterialProfile ||
@@ -174,6 +180,7 @@ VS_OUT Build_EffectMeshVertex(VS_IN input, float4x4 world, float4x4 normalMatrix
         362u == g_SourceMaterialProfile || 365u == g_SourceMaterialProfile ||
         366u == g_SourceMaterialProfile || 391u == g_SourceMaterialProfile ||
         392u == g_SourceMaterialProfile || 394u == g_SourceMaterialProfile)
+#endif
     {
         // Native VS transforms camera-to-vertex into object space before the
         // tangent dot products. Preserve that order under nonuniform scale.
@@ -410,7 +417,7 @@ EFFECT_PS_OUT PS_MATERIAL(VS_OUT input, bool frontFace : SV_IsFrontFace)
     }
 #endif
 #if EFFECT_SHADER_FAMILY == 7
-    if (((g_SourceMaterialProfile >= 462u && g_SourceMaterialProfile <= 559u) || (g_SourceMaterialProfile >= 820u && g_SourceMaterialProfile <= 939u) || (g_SourceMaterialProfile >= 1600u && g_SourceMaterialProfile <= 1694u) || (g_SourceMaterialProfile >= 2304u && g_SourceMaterialProfile <= 3967u)))
+    if (Has_EffectArtistNativeProfile(g_SourceMaterialProfile))
     {
         ARTIST_NATIVE_INPUT nativeInput = (ARTIST_NATIVE_INPUT)0;
         nativeInput.uv = input.carrierUV;

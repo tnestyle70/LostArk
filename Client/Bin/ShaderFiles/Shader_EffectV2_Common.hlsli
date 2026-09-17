@@ -370,67 +370,73 @@ PS_EFFECT_OUT PS_OUTLINE_V2(PS_EFFECT_IN input)
 
 #define EFFECT_V2_OUTLINE_PASS(VS_OUTLINE_FUNC) 	pass Outline 	{ 		SetRasterizerState(RS_EffectV2_Hull); 		SetDepthStencilState(DSS_EffectV2_OutlineTest, 1); 		SetBlendState(BS_EffectV2Alpha, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff); 		VertexShader = compile vs_5_0 VS_OUTLINE_FUNC(); 		GeometryShader = NULL; 		PixelShader = compile ps_5_0 PS_OUTLINE_V2(); 	}
 
+// Declare after the carrier VS, before its technique; do not compile unused decal programs.
+#define EFFECT_V2_PROGRAMS(VS_FUNC) \
+	VertexShader EffectV2BodyVS_##VS_FUNC = compile vs_5_0 VS_FUNC(); \
+	PixelShader EffectV2BodyPS = compile ps_5_0 PS_EFFECT_V2(); \
+	PixelShader EffectV2MultiplyPS = compile ps_5_0 PS_EFFECT_V2_MULTIPLY();
+
 #define EFFECT_V2_PASSES(VS_FUNC) \
 	pass AlphaDepth \
 	{ \
 		SetRasterizerState(RS_EffectV2); \
 		SetDepthStencilState(DSS_EffectV2_ReadOnlyStamp, 1); \
 		SetBlendState(BS_EffectV2Alpha, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff); \
-		VertexShader = compile vs_5_0 VS_FUNC(); \
+		VertexShader = EffectV2BodyVS_##VS_FUNC; \
 		GeometryShader = NULL; \
-		PixelShader = compile ps_5_0 PS_EFFECT_V2(); \
+		PixelShader = EffectV2BodyPS; \
 	} \
 	pass AdditiveDepth \
 	{ \
 		SetRasterizerState(RS_EffectV2); \
 		SetDepthStencilState(DSS_EffectV2_ReadOnlyStamp, 1); \
 		SetBlendState(BS_EffectV2Additive, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff); \
-		VertexShader = compile vs_5_0 VS_FUNC(); \
+		VertexShader = EffectV2BodyVS_##VS_FUNC; \
 		GeometryShader = NULL; \
-		PixelShader = compile ps_5_0 PS_EFFECT_V2(); \
+		PixelShader = EffectV2BodyPS; \
 	} \
 	pass AlphaNoDepth \
 	{ \
 		SetRasterizerState(RS_EffectV2); \
 		SetDepthStencilState(DSS_EffectV2_NoDepthStamp, 1); \
 		SetBlendState(BS_EffectV2Alpha, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff); \
-		VertexShader = compile vs_5_0 VS_FUNC(); \
+		VertexShader = EffectV2BodyVS_##VS_FUNC; \
 		GeometryShader = NULL; \
-		PixelShader = compile ps_5_0 PS_EFFECT_V2(); \
+		PixelShader = EffectV2BodyPS; \
 	} \
 	pass AdditiveNoDepth \
 	{ \
 		SetRasterizerState(RS_EffectV2); \
 		SetDepthStencilState(DSS_EffectV2_NoDepthStamp, 1); \
 		SetBlendState(BS_EffectV2Additive, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff); \
-		VertexShader = compile vs_5_0 VS_FUNC(); \
+		VertexShader = EffectV2BodyVS_##VS_FUNC; \
 		GeometryShader = NULL; \
-		PixelShader = compile ps_5_0 PS_EFFECT_V2(); \
+		PixelShader = EffectV2BodyPS; \
 	} \
 	pass Opaque \
 	{ \
 		SetRasterizerState(RS_Default); \
 		SetDepthStencilState(DSS_EffectV2_DefaultStamp, 1); \
 		SetBlendState(BS_EffectV2Opaque, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff); \
-		VertexShader = compile vs_5_0 VS_FUNC(); \
+		VertexShader = EffectV2BodyVS_##VS_FUNC; \
 		GeometryShader = NULL; \
-		PixelShader = compile ps_5_0 PS_EFFECT_V2(); \
+		PixelShader = EffectV2BodyPS; \
 	} \
 	pass MultiplyDepth \
 	{ \
 		SetRasterizerState(RS_EffectV2); \
 		SetDepthStencilState(DSS_EffectV2_ReadOnlyStamp, 1); \
 		SetBlendState(BS_EffectV2Multiply, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff); \
-		VertexShader = compile vs_5_0 VS_FUNC(); \
+		VertexShader = EffectV2BodyVS_##VS_FUNC; \
 		GeometryShader = NULL; \
-		PixelShader = compile ps_5_0 PS_EFFECT_V2_MULTIPLY(); \
+		PixelShader = EffectV2MultiplyPS; \
 	} \
 	pass MultiplyNoDepth \
 	{ \
 		SetRasterizerState(RS_EffectV2); \
 		SetDepthStencilState(DSS_EffectV2_NoDepthStamp, 1); \
 		SetBlendState(BS_EffectV2Multiply, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff); \
-		VertexShader = compile vs_5_0 VS_FUNC(); \
+		VertexShader = EffectV2BodyVS_##VS_FUNC; \
 		GeometryShader = NULL; \
-		PixelShader = compile ps_5_0 PS_EFFECT_V2_MULTIPLY(); \
+		PixelShader = EffectV2MultiplyPS; \
 	}

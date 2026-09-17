@@ -1,6 +1,7 @@
 from pathlib import Path
 import argparse,json,hashlib,re,shutil
 from native_material_tables import read_material_source, write_material_source
+from native_shader_dispatch import write_artist_runtime_source
 R=Path(__file__).resolve().parents[2]
 parser=argparse.ArgumentParser(description='Generate Artist material contracts and descriptors from the native runtime source receipt.')
 parser.add_argument('--source-dir',type=Path,default=R/'out/ArtistCoreRestore20260909')
@@ -69,7 +70,8 @@ if arguments.extend_existing:
     final=existing[:start]+new_arrays+f'inline constexpr std::array<ARTIST_PROGRAM_DESC,{count}> ARTIST_PROGRAMS = {{{{\n'+entries+'}};'+existing[end:]
 else:
     final=head+tail
-    shutil.copy2(O/'Shader_EffectArtistNative.hlsli',R/'Client/Bin/ShaderFiles/Shader_EffectArtistNative.hlsli')
+    write_artist_runtime_source(R/'Client/Bin/ShaderFiles/Shader_EffectArtistNative.hlsli',
+        (O/'Shader_EffectArtistNative.hlsli').read_text(encoding='utf8'))
 write_material_source(header_path,final,expected_source=original_header)
 (O/'native_material_patch.json').write_text(json.dumps(dict(programs=materials),indent=2),encoding='utf8')
 (O/'native_header_contract.json').write_text(json.dumps(rows,indent=2))

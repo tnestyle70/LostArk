@@ -1779,6 +1779,11 @@ PS_OUT_LIGHT PS_SOURCE_LIGHT_INSTANCE_POINT(LIGHT_PS_IN input) { return PS_LIGHT
 [earlydepthstencil]
 PS_OUT_LIGHT PS_SOURCE_LIGHT_INSTANCE_SPOT(LIGHT_PS_IN input) { return PS_LIGHT_INSTANCE_SPOT(input); }
 
+// Identical entry/profile/arguments compile once; pass states and indices stay unchanged.
+VertexShader DeferredVS = compile vs_5_0 VS_MAIN();
+VertexShader DeferredLightInstanceVS = compile vs_5_0 VS_LIGHT_INSTANCE();
+VertexShader DeferredSourceLutBakeVS = compile vs_5_0 VS_SOURCE_LUT_BAKE();
+
 technique11 DefaultTechnique
 {
     pass Debug
@@ -1786,7 +1791,7 @@ technique11 DefaultTechnique
         SetRasterizerState(RS_Default);
         SetDepthStencilState(DSS_ZNone, 0);
         SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();        
+        VertexShader = DeferredVS;
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_MAIN_DEBUG();
     }   
@@ -1796,7 +1801,7 @@ technique11 DefaultTechnique
         SetRasterizerState(RS_Default);
         SetDepthStencilState(DSS_ZNone, 0);
         SetBlendState(BS_Blend, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = DeferredVS;
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_MAIN_DIRECTIONAL();
     }
@@ -1806,7 +1811,7 @@ technique11 DefaultTechnique
         SetRasterizerState(RS_Default);
         SetDepthStencilState(DSS_ZNone, 0);
         SetBlendState(BS_Blend, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = DeferredVS;
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_MAIN_POINT();
     }
@@ -1816,7 +1821,7 @@ technique11 DefaultTechnique
         SetRasterizerState(RS_Default);
         SetDepthStencilState(DSS_ZNone, 0);
         SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = DeferredVS;
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_MAIN_COMBINED();
     }
@@ -1827,7 +1832,7 @@ technique11 DefaultTechnique
         SetRasterizerState(RS_Default);
         SetDepthStencilState(DSS_ZNone, 0);
         SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = DeferredVS;
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_MAIN_FINAL();
     }
@@ -1838,7 +1843,7 @@ technique11 DefaultTechnique
         SetRasterizerState(RS_Default);
         SetDepthStencilState(DSS_ZNone, 0);
         SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = DeferredVS;
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_MAIN_BLOOM_EXTRACT();
     }
@@ -1848,7 +1853,7 @@ technique11 DefaultTechnique
         SetRasterizerState(RS_Default);
         SetDepthStencilState(DSS_ZNone, 0);
         SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = DeferredVS;
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_MAIN_BLOOM_BLUR_H();
     }
@@ -1858,7 +1863,7 @@ technique11 DefaultTechnique
         SetRasterizerState(RS_Default);
         SetDepthStencilState(DSS_ZNone, 0);
         SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = DeferredVS;
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_MAIN_BLOOM_BLUR_V();
     }
@@ -1868,7 +1873,7 @@ technique11 DefaultTechnique
         SetRasterizerState(RS_Default);
         SetDepthStencilState(DSS_ZNone, 0);
         SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = DeferredVS;
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_MAIN_SCENE_RESOLVE();
     }
@@ -1878,7 +1883,7 @@ technique11 DefaultTechnique
         SetRasterizerState(RS_Default);
         SetDepthStencilState(DSS_ZNone, 0);
         SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = DeferredVS;
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_MAIN_RGB_NOISE();
     }
@@ -1888,7 +1893,7 @@ technique11 DefaultTechnique
         SetRasterizerState(RS_Default);
         SetDepthStencilState(DSS_ZNone, 0);
         SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = DeferredVS;
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_MAIN_ZOOM_BLUR();
     }
@@ -1898,7 +1903,7 @@ technique11 DefaultTechnique
         SetRasterizerState(RS_Default);
         SetDepthStencilState(DSS_ZNone, 0);
         SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = DeferredVS;
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_MAIN_FILM_NOISE();
     }
@@ -1908,7 +1913,7 @@ technique11 DefaultTechnique
         SetRasterizerState(RS_Default);
         SetDepthStencilState(DSS_ZNone, 0);
         SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = DeferredVS;
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_MAIN_SSAO_RAW();
     }
@@ -1918,7 +1923,7 @@ technique11 DefaultTechnique
         SetRasterizerState(RS_Default);
         SetDepthStencilState(DSS_ZNone, 0);
         SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = DeferredVS;
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_MAIN_SSAO_BLUR();
     }
@@ -1928,7 +1933,7 @@ technique11 DefaultTechnique
         SetRasterizerState(RS_Default);
         SetDepthStencilState(DSS_ZNone, 0);
         SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = DeferredVS;
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_MAIN_TEXTURED_OVERLAY();
     }
@@ -1938,7 +1943,7 @@ technique11 DefaultTechnique
         SetRasterizerState(RS_Default);
         SetDepthStencilState(DSS_ZNone, 0);
         SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = DeferredVS;
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_MAIN_CHROMATIC_ABERRATION();
     }
@@ -1948,7 +1953,7 @@ technique11 DefaultTechnique
         SetRasterizerState(RS_Default);
         SetDepthStencilState(DSS_ZNone, 0);
         SetBlendState(BS_Blend, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = DeferredVS;
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_MAIN_SPOT();
     }
@@ -1958,7 +1963,7 @@ technique11 DefaultTechnique
         SetRasterizerState(RS_Default);
         SetDepthStencilState(DSS_ZNone, 0);
         SetBlendState(BS_AlphaBlend, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = DeferredVS;
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_MAIN_DISPLAY_OVERLAY();
     }
@@ -1969,7 +1974,7 @@ technique11 DefaultTechnique
         SetRasterizerState(RS_Default);
         SetDepthStencilState(DSS_SourceLightMaskWrite, 1);
         SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = DeferredVS;
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_MAIN_SOURCE_LIGHT_MASK();
     }
@@ -1979,7 +1984,7 @@ technique11 DefaultTechnique
         SetRasterizerState(RS_Default);
         SetDepthStencilState(DSS_SourceLightMaskRead, 1);
         SetBlendState(BS_Blend, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = DeferredVS;
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_MAIN_SOURCE_DIRECTIONAL();
     }
@@ -1989,7 +1994,7 @@ technique11 DefaultTechnique
         SetRasterizerState(RS_Default);
         SetDepthStencilState(DSS_SourceLightMaskRead, 1);
         SetBlendState(BS_Blend, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = DeferredVS;
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_MAIN_SOURCE_POINT();
     }
@@ -1999,7 +2004,7 @@ technique11 DefaultTechnique
         SetRasterizerState(RS_Default);
         SetDepthStencilState(DSS_SourceLightMaskRead, 1);
         SetBlendState(BS_Blend, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = DeferredVS;
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_MAIN_SOURCE_SPOT();
     }
@@ -2010,7 +2015,7 @@ technique11 DefaultTechnique
         SetRasterizerState(RS_Default);
         SetDepthStencilState(DSS_ZNone, 0);
         SetBlendState(BS_Blend, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_LIGHT_INSTANCE();
+        VertexShader = DeferredLightInstanceVS;
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_LIGHT_INSTANCE_DIRECTIONAL();
     }
@@ -2020,7 +2025,7 @@ technique11 DefaultTechnique
         SetRasterizerState(RS_Default);
         SetDepthStencilState(DSS_ZNone, 0);
         SetBlendState(BS_Blend, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_LIGHT_INSTANCE();
+        VertexShader = DeferredLightInstanceVS;
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_LIGHT_INSTANCE_POINT();
     }
@@ -2030,7 +2035,7 @@ technique11 DefaultTechnique
         SetRasterizerState(RS_Default);
         SetDepthStencilState(DSS_ZNone, 0);
         SetBlendState(BS_Blend, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_LIGHT_INSTANCE();
+        VertexShader = DeferredLightInstanceVS;
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_LIGHT_INSTANCE_SPOT();
     }
@@ -2040,7 +2045,7 @@ technique11 DefaultTechnique
         SetRasterizerState(RS_Default);
         SetDepthStencilState(DSS_SourceLightMaskRead, 1);
         SetBlendState(BS_Blend, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_LIGHT_INSTANCE();
+        VertexShader = DeferredLightInstanceVS;
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_SOURCE_LIGHT_INSTANCE_DIRECTIONAL();
     }
@@ -2050,7 +2055,7 @@ technique11 DefaultTechnique
         SetRasterizerState(RS_Default);
         SetDepthStencilState(DSS_SourceLightMaskRead, 1);
         SetBlendState(BS_Blend, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_LIGHT_INSTANCE();
+        VertexShader = DeferredLightInstanceVS;
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_SOURCE_LIGHT_INSTANCE_POINT();
     }
@@ -2060,7 +2065,7 @@ technique11 DefaultTechnique
         SetRasterizerState(RS_Default);
         SetDepthStencilState(DSS_SourceLightMaskRead, 1);
         SetBlendState(BS_Blend, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_LIGHT_INSTANCE();
+        VertexShader = DeferredLightInstanceVS;
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_SOURCE_LIGHT_INSTANCE_SPOT();
     }
@@ -2071,7 +2076,7 @@ technique11 DefaultTechnique
         SetRasterizerState(RS_Default);
         SetDepthStencilState(DSS_ZNone, 0);
         SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_SOURCE_LUT_BAKE();
+        VertexShader = DeferredSourceLutBakeVS;
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_SOURCE_LUT_BAKE();
     }
@@ -2081,7 +2086,7 @@ technique11 DefaultTechnique
         SetRasterizerState(RS_Default);
         SetDepthStencilState(DSS_ZNone, 0);
         SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_SOURCE_LUT_BAKE();
+        VertexShader = DeferredSourceLutBakeVS;
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_SOURCE_LUT_BAKE_NEUTRAL();
     }

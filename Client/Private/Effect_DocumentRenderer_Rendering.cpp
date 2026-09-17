@@ -31,10 +31,19 @@ namespace
 	{
 		// CModel surface passes write the GBuffer before scene lighting. Explicit
 		// Effect material programs and translucent cues keep their forward pass.
-		return !Cue.Material &&
+		return !Cue.Afterimage && !Cue.Material &&
 			(Cue.eAlphaMode == Client::EFFECT_MODEL_CUE_ALPHA_MODE::OPAQUE_SURFACE ||
 			 Cue.eAlphaMode == Client::EFFECT_MODEL_CUE_ALPHA_MODE::MASKED_SURFACE);
 	}
+}
+
+void Client::CEffectDocumentRenderer::Reset_ModelCueAfterimages()
+{
+    for (auto& [id, resource] : m_ModelCueResources)
+    {
+        resource.Afterimage.Reset();
+        resource.fAfterimageSampleTime = -1.f;
+    }
 }
 
 bool_t Client::CEffectDocumentRenderer::Has_NonBlendModelCues() const
@@ -471,6 +480,46 @@ HRESULT Client::CEffectDocumentRenderer::Render_ModelCues(
 			continue;
 		const f32_t fLocalTime =
 			Frame.fSampleTimeSeconds - Cue.fStartDelaySeconds;
+        if (Cue.Afterimage)
+        {
+            auto found = m_ModelCueResources.find(Cue.strCueId);
+            if (found == m_ModelCueResources.end() || !found->second.pModel)
+                return Fail_RenderOperation("Afterimage Model Cue resource is unavailable.", E_FAIL, true);
+            auto& resource = found->second;
+            if (!Cue.bVisible || fLocalTime < 0.f || Frame.fSampleTimeSeconds > Effect_ModelCueEndSeconds(Cue))
+            {
+                resource.Afterimage.Reset(); resource.fAfterimageSampleTime = -1.f;
+                continue;
+            }
+            const auto& history = *Cue.Afterimage;
+            CSkeletalAfterimage::SETTINGS settings;
+            settings.sampleIntervalSeconds = history.fSampleIntervalSeconds;
+            settings.sampleLifetimeSeconds = history.fSampleLifetimeSeconds;
+            settings.maxSamples = history.iMaxSamples;
+            settings.color = Cue.vColorMultiply;
+            settings.color.w *= Cue.fOpacity;
+            settings.capturePoseChanges = true;
+            if (!resource.Afterimage.Configure(settings))
+                return Fail_RenderOperation("Afterimage Model Cue settings are invalid.", E_INVALIDARG, true);
+            float4x4_t world{};
+            std::string error;
+            if (!Sample_ModelCuePose(Cue, resource, Frame.fSampleTimeSeconds, Frame.RootWorld, world, error))
+                return Fail_RenderOperation(std::move(error), E_FAIL, true);
+            const float delta = resource.fAfterimageSampleTime < 0.f ? 0.f :
+                Frame.fSampleTimeSeconds - resource.fAfterimageSampleTime;
+            if (delta < 0.f) resource.Afterimage.Reset();
+            resource.fAfterimageSampleTime = Frame.fSampleTimeSeconds;
+            resource.Afterimage.Update((std::max)(0.f, delta),
+                fLocalTime >= history.fEmissionStartSeconds && fLocalTime < history.fEmissionEndSeconds,
+                resource.pModel, world);
+            HRESULT result = Bind_BloomInputs(m_pAnimatedModelShader);
+            if (SUCCEEDED(result)) result = resource.Afterimage.Render(resource.pModel, m_pAnimatedModelShader, world);
+            const f32_t defaultBloom = -1.f;
+            const HRESULT reset = m_pAnimatedModelShader->Bind_RawValue("g_fEffectBloomIntensity", &defaultBloom, sizeof(defaultBloom));
+            if (FAILED(result) || FAILED(reset))
+                return Fail_RenderOperation("Afterimage Model Cue rendering failed.", FAILED(result) ? result : reset, true);
+            continue;
+        }
 		if (!Cue.bVisible || fLocalTime < 0.f ||
 			fLocalTime > Cue.fDurationSeconds)
 		{

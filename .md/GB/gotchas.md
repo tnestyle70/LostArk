@@ -1,5 +1,20 @@
 # LostArk merge 회귀 방지 정본
 
+### Orbit event 위치와 피자 layer 경계
+
+- Orbit으로 이동한 입자의 종료 폭발은 frame과 동일한 offset 평가 및 root 변환을 사용한다. 원래 emitter 위치 또는 offset을 두 번 적용한 위치로 발사하지 않는다. 회전된 root에서도 실제 마지막 입자 위치와 event 위치를 대조한다.
+- sector mesh가 만든 빈 각도를 전체 이펙트의 공통 mask로 해석하지 않는다. halfcylinder·sprite·출생 영역 제한과 material opacity/flow mask를 각각 확인한다. 일부 mesh의 빈 각도만 측정해 모든 layer에 정확90도 안전 영역이 적용됐다고 기록하지 않는다.
+
+### 공중 착지의 stage 소유권과 native 시각
+
+- 공중 높이 제어를 다른 보스 clip에 재사용할 때 stage 시작과 animation startOffsetMs를 합친 실제 창을 확인한다. source clip 이름 대신 설치 모델의 남은 하강량으로 admission한다. 타깃 착지는 XZ를 고정해 native lateral root sway가 선택 위치를 바꾸지 않게 하되, 착지 source Stage가 끝나면 다음 Stage의 native root를 재개하여 후속 상승까지 지면에 고정하지 않는다.
+
+### Effect V1 carrier admission과 삭제 시 재생 선택 정합
+
+- CASCADE_BEAM_V1은 기존 Playback의 직접 native 경로다. runtimeCarrier가 존재한다는 이유만으로 Ribbon/baked 전용 projection을 강제하지 않는다. 혼합 문서는 Beam을 보존하며 변환이 필요한 carrier만 projection한다. codec Parse만 성공한 것을 Catalog/Play All 성공으로 기록하지 않는다.
+- 선택 요소 삭제는 문서·legacy isolation·Sequencer transient previewElementIds를 하나의 staged 변경으로 맞춘다. 삭제 전 ID로 새 문서를 preview하는 오류를 missing ID 검증 완화로 숨기지 않는다. stage 실패는 선택과 문서까지 보존한다.
+- 부착 그룹의 전체 방향은 공유 socket 원점에서 수정한다. Element 평균 중심 회전과 혼동하지 않는다. native recipe/localSpace/각 요소 offset은 보존하고 같은 runtime slot의 서로 다른 socket 정의를 만들지 않는다.
+
 ### 발탄 복원본은 실제 source clip과 함께 재생한다
 
 - `.restore` suffix는 player skill identity가 아니다. 발탄 Full Restore는 원본 action/stage의
@@ -1367,6 +1382,9 @@ Client 배포 DLL의 유효 크기/PE 형식·일치 여부도 확인한다. 실
 - 생성 native material의 큰 표는 Private owner에서 한 번 컴파일한다. public inline 함수가 사용하는 작은 상수까지 Private로 이동하지 않는다. generator는 native_material_tables.py를 통해 읽기·저장을 하고 같은 bytes는 다시 쓰지 않는다.
 - CPP를 분리하면 기존 source 검사도 등록된 same-owner CPP와 Private _Internal.h를 읽어야 한다. 다음 함수의 물리 순서를 기준으로 현재 함수 범위를 추정하지 않는다. cpp_source_domains.py와 Tools/Build/README.md의 소비 경계를 사용한다.
 - 무변경 빌드의 OBJ/PCH/CSO 쓰기 0은 증분 처리 확인이다. 공통 셰이더의 큰 최적화 작업이나 cache 없는 빌드까지 해결한 증거로 쓰지 않는다. 세부 구조와 측정은 09-12/2026-09-12_PROJECT_BUILD_ISOLATION_IMPLEMENTATION_RESULT.md에 있다.
+- native leaf를 나눠도 모든 wrapper가 가변 설치 목록을 include하거나 공용 carrier의 최대 ID를 계속 수정하면 무관한 FX가 다시 컴파일된다. Artist Mesh/Particle은 자기 SelectedGroup과 실제 guarded dispatch ID를 사용하고 installer는 facade·공통 helper를 그대로 유지한다. 새 program의 body/case, 선택 include, runtime 등록을 함께 검사한다.
+- SourceCharacter selector는 이전 draw의 값이 남을 수 있다. native ModelCue의 그룹 컴파일을 빼려면 pass annotation과 CShader의 기본 FX 선택을 함께 연결해야 한다. 입력 변수·기본값·pass/input-layout ABI는 유지하고, 해당 native pass를 SourceGroup에서 직접 호출하면 실패시킨다. 조건 없이 native PS만 제거하면 기존 cue가 보이지 않을 수 있다.
+- 같은 profile·entry·argument의 compile 식만 전역 shader 객체로 공유한다. V2 macro의 VS 선언은 실제 VS 함수 뒤에 두고, 같은 common include를 읽는 Decal까지 사용하지 않는 프로그램을 컴파일하지 않는다. pass 상태·전처리 조건 보존과 실제 CSO 검증은 별도로 확인한다.
 
 ### 맵 연출의 원점·렌더 예산·실제 배우를 구분한다
 
@@ -2088,3 +2106,34 @@ GPU timestamp의 Shadow elapsed에는 CPU 명령 공급 공백이 포함될 수 
 서로 다른 모델·이펙트의 immutable 입력 준비는 제한된 공통 작업 예산으로 중첩할 수 있지만 Prototype registry와 Effect queue의 main commit까지 병렬화하지 않는다. Effect 후보는 먼저 끝난 순서가 아니라 원래 FIFO로 등록하고, 앞 target의 ACK 뒤 worker에서 현재 prepared catalog와 병합한다. main의 generation 검사를 제거하지 않는다. 새 session 최초 admission과 full replacement/clear를 구분해 병렬 sibling은 보존하고 A→B→A의 오래된 후보는 거부한다. 후보 개수와 미ACK 결과도 제한하며 큰 교체 자원은 worker가 해제한다.
 
 실행 중 EXE와 수정된 소스는 별개다. 개별 compile을 Product 배포나 실제 FPS 개선으로 보고하지 않는다. headless 실패 주입 검사는 CRT assertion/abort와 Windows 오류 대화상자를 로그로 돌린 뒤 실행한다. 검사 프로그램의 실패 창을 실행 중 Client 결함으로 오인하지 않도록 process 경로·시각을 함께 확인한다. 구현과 검증 경계는 [Cold loading 결과 G04~G06](09-16/2026-09-16_COLD_MAP_LOADING_IMPLEMENTATION_RESULT.md)에 둔다.
+
+### 추적 카드의 수명·문양·접촉 폭발
+
+지속 객체의 Server 수명과 Effect 표시 반복 주기를 분리한다. 무한 추적 카드를 긴 유한 lifetime으로 흉내 내거나 native emitter의 emission 창과 particle tail 합계를 표시 반복 길이로 쓰지 않는다. source SubUV random은 같은 seed의 단일 입자에서 같은 문양을 반복할 수 있으므로 네 문양을 독립 Effect로 저작할 때는 원본 atlas 칸을 명시하고 실제 CPU particle의 subimage 값을 확인한다. 카드 삭제와 접촉 event가 같은 batch에 도착해도 폭발은 고정된 event 위치·정의로 독립 재생해야 한다.
+
+### 몸체 잔상과 Trail, 진단 실행 파일의 ABI
+
+몸체 윤곽은 source TrailGhost notify와 실제 골격 palette를 먼저 조사한다. centerline Trail의 폭이나 수명만 늘려 골격 잔상을 대신하지 않는다. 과거 pose는 불변 복사하며 live palette를 복원하고 숨김·모델 교체·순간이동에서 이력을 해제한다. 원본 notify 확인과 원작 shader/fade 복원은 별도다.
+
+Effect 구조체가 바뀐 뒤 서로 다른 시점의 codec·DetailIo·Playback OBJ를 섞은 probe는 잘못된 필드값을 읽을 수 있다. 실제 JSON에 없는 Two Sided 등의 오류가 나오면 데이터 수정보다 현재 헤더로 종속 TU를 다시 컴파일해 재현한다. 개별 원인·검증은 [세이튼 카드·트럼펫 결과](09-17/2026-09-17_SAYDON_CARD_TRUMPET_CHARGE_IMPLEMENTATION_RESULT.md)에 남긴다.
+
+### 원작 particle 수명과 패턴 유지 구간, FXC include
+
+Effect timing의 표시 duration만 늘려도 native source particle 수명은 늘지 않는다. sourceRecipe의 원본 lifetime과 `detail.particle.sourceScale.lifeTime`, 실제 CPU 생존 입자와 절대 alpha cutoff를 함께 확인한다. 원작 값은 보존하고 사용자 유지 구간 override만 별도 기록한다. Effect 자체 tail과 Pattern owner의 종료도 다르므로 standalone 성공으로 제품 tail 전체가 재생된다고 판단하지 않는다.
+
+FXC가 `#include`의 문자열 macro를 확장하지 못해 X1500을 내면 이후 profile 함수 미정의는 연쇄 오류일 수 있다. native 프로그램 내용을 바꾸기 전에 wrapper의 literal selected include와 common 입력 순서를 확인한다. 새 cohort 추가 시 기존 facade/cohort가 변하지 않는 분리 계약은 테스트를 약화해서 우회하지 않는다.
+
+### 공용 모델 shader에 pass를 추가하면 파생 FX admission도 확인한다
+
+`ProgramVariantPass`가 기본 FX에서 BASE(1)이면 모든 source group의 같은 pass는 UNAVAILABLE(2)여야 한다. 기본·파생 양쪽에 BASE를 쓰면 FXC와 Product Build가 성공해도 `CShader::Stage_ProgramVariants`가 실제 생성에서 거부하며 Level 입장의 character rendering 단계가 실패한다. 공용 pass 추가 시 기존 정책 macro를 사용하고 파생의 사용 불가 PS는 NULL로 유지한다. pass 수·이름·입력 signature·변수 ABI 검증을 약화하지 않는다.
+
+컴파일 성공과 실제 `CShader::Create` 성공은 별개다. 설치 base와 여섯 group의 동일 빌드 CSO로 기존 WARP probe를 실행하여 admission, base-owned pass 선택, stale source selector 아래의 상수·bone 보존과 파생 직접 호출 거절을 확인한다. headless 검사는 실제 Client 입장·GPU 화면 판정과 구분한다. 원인과 증거는 [세이튼 입장 실패 수정 결과](09-17/2026-09-17_SAYDON_CARD_TRUMPET_CHARGE_IMPLEMENTATION_RESULT.md)의 G06에 둔다.
+
+
+### 원본 Effect Tree만 등록하고 Catalog metadata를 빠뜨리지 않기
+
+Effect Tool이 직접 읽는 Authored 파일과 Pattern이 CEffectCatalog로 읽는 경로는 등록 계약이 다르다. Tree에 V1을 공개할 때 exact DIRECT_AUTHORED_DOCUMENT metadata도 함께 stage하고 lazy payload validation은 유지한다. metadata 등록 성공과 payload/화면 성공을 구분한다. sync_kouku_effect_tree.py는 두 catalog의 기준 bytes와 Authored SHA를 확인하며 편집 중 등록을 강행하지 않는다.
+
+### 선택한 플레이어 위치에 고정한 Effect 그룹과 airborne의 원점
+
+`selectionGroupId` 자체는 재생 pivot이 아니다. Play 시점 고정 요청은 SELECT 시점 navigation ground XYZ를 저장하고 APPEAR와 fixed targeted visual이 같은 점을 소비해야 한다. MAP 멤버의 공통 원점은 XZ뿐 아니라 Y도 빼야 떠 있는 오프셋이 중복되지 않는다. 멤버의 원래 absolute 시작 시각은 유지하고 일반 Effect lane 중복 재생은 제외한다. 기존 Albion의 APPEAR 시점 추적은 optional SELECT 정책과 구분한다. transaction 실패는 이전 선택·좌표·시각 객체를 함께 보존한다.

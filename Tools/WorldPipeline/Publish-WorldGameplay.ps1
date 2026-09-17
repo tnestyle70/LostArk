@@ -277,6 +277,10 @@ function Get-EncounterProfiles {
 				$patternProperties += 'verticalOffsetM'
 			}
 			if ($isKoukuSaydon) { $patternProperties += @('logicWindows','worldSequences','sceneProfiles','mechanicTriggers','resetBossToSpawn') }
+			if ($isKoukuSaydon -and $null -ne $pattern.PSObject.Properties['pursuitProjectiles']) {
+				$patternProperties += 'pursuitProjectiles'
+				if ($pattern.pursuitProjectiles -isnot [Array] -or @($pattern.pursuitProjectiles).Count -gt 64) { throw 'Kouku pursuitProjectiles must be a bounded array.' }
+			}
 			if ($isKoukuSaydon -and $null -ne $pattern.PSObject.Properties['showtimeTargets']) {
 				# Gameplay publication owns the strict target/template join and Server rows.
 				# World placement admission preserves this bounded optional Product lane.

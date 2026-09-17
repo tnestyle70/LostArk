@@ -98,6 +98,14 @@ Debug와 Release 바이너리는 서로 덮어쓰지 않도록 구성별 폴더�
 `PrepareEngineSdk`는 `FxExport;FxCompile;ClCompile` 전에 실행되어 공유 HLSLI도 Client 셰이더 컴파일보다 먼저 갱신한다.
 `UpdateLib.bat`은 수동 호환용 보조 명령일 뿐 정본 자동화 단계가 아니다.
 
+Artist native 셰이더는 입력 선언·공통 helper·설치 program 목록을 분리한다. Mesh/Particle wrapper는
+`Shader_EffectArtistNativeSelectedGroup<ID>.hlsli`를 선택하고 생성기는
+`Tools/EffectPipeline/native_shader_dispatch.py`의 expand/write 경로로 필요한 파일만 갱신한다.
+Native ModelCue는 AnimMeshBinary 기본 FX가 소유한다. pass의 `ProgramVariantPass` annotation은
+0=일반 variant, 1=기본 FX, 2=해당 variant에서 사용 불가이며, CShader가 이 계약을 검사한다.
+SourceGroup은 native 입력 ABI만 유지하고 무관한 ModelCue 계산을 컴파일하지 않는다.
+SourceCharacter의 표면·광원 program과 pass 번호, 변수 타입·input signature 검사는 유지한다.
+
 - `Engine\Public\*.*` → `EngineSDK\inc\`
 - `Engine\Bin\<Configuration>\*.lib` → `EngineSDK\lib\<Configuration>\`
 - `Engine\ThirdPartyLib\*.lib` → `EngineSDK\lib\`
