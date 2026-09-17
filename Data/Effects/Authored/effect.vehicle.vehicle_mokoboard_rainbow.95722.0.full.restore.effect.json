@@ -5,7 +5,7 @@
   "displayName": "VEHICLE_MOKOBOARD_RAINBOW SPACE sk_feelsgoodspeeding",
   "particleSystem": {
     "uniformScaleMultiplier": 1,
-    "yawOffsetDegrees": 0,
+    "yawOffsetDegrees": 180,
     "directionYawDegrees": 0,
     "initialSpeedMultiplier": 1
   },
