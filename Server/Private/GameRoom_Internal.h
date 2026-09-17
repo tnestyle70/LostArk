@@ -43,6 +43,10 @@ constexpr float DEGREES_TO_RADIANS = 0.01745329251994329577f;
 
 constexpr float PLAYER_TURN_DEGREES_PER_SECOND = 540.f;
 
+/* A mounted player turns the vehicle body with it, so the on-foot rate reads
+as a pivot in place. */
+constexpr float VEHICLE_TURN_DEGREES_PER_SECOND = 300.f;
+
 constexpr float DIRECT_BEARING_DISTANCE = 1.5f;
 
 /* How far a re-sent goal may move before a player already routing around an

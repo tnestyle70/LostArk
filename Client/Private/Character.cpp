@@ -57,6 +57,9 @@ namespace
 	/* Fast enough that a deliberate turn onto a skill's aim still lands inside a
 	quarter second, slow enough to swallow the per-cell steps of a grid path. */
 	constexpr f32_t TURN_DEGREES_PER_SECOND = 720.f;
+	/* A vehicle body is long and turns around itself, so the on-foot rate reads
+	as an instant pivot while mounted. */
+	constexpr f32_t VEHICLE_TURN_DEGREES_PER_SECOND = 300.f;
 	constexpr f32_t NETWORK_MOVE_HANDOFF_SECONDS = 0.12f;
 	/* On since the 08-10 solver rewrite. The old off-by-default spawn-frame
 	crash never reproduced after the solve moved to Late_Update; if it returns,
@@ -1298,7 +1301,8 @@ void CCharacter::Update_PresentationYaw(const f32_t targetYawDegrees, const f32_
 		!std::isfinite(fTimeDelta) || fTimeDelta < 0.f)
 		return;
 	const f32_t difference = std::remainder(targetYawDegrees - m_fPresentationYawDegrees, 360.f);
-	const f32_t step = TURN_DEGREES_PER_SECOND * fTimeDelta;
+	const f32_t step = (0u != m_iVehicleId ?
+		VEHICLE_TURN_DEGREES_PER_SECOND : TURN_DEGREES_PER_SECOND) * fTimeDelta;
 	m_fPresentationYawDegrees = std::remainder(m_fPresentationYawDegrees +
 		(std::max)(-step, (std::min)(step, difference)), 360.f);
 	m_pTransformCom->Rotation(0.f,
