@@ -228,6 +228,10 @@ struct VEHICLE_SKILL_EFFECT_CUE final
 	std::string effectAssetId;
 	std::uint32_t startMs = 0u;
 	bool_t bStopAtCueEnd = false;
+	/* Optional "followPolicy": "SNAPSHOT" keeps the cue root where the skill
+	started, so a clip that moves the vehicle does not drag the cue with it.
+	Source-bone attachments inside the document still track their bone. */
+	bool_t bSnapshotRoot = false;
 };
 
 /* An original AKEvent of one vehicle skill clip, played from the Vehicle sound

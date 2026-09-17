@@ -786,7 +786,8 @@ void CCharacter::Update_VehicleSkillCues(
 		desc.strEffectAssetId = cue.effectAssetId;
 		desc.pOwner = owner;
 		desc.strAnchorSlotId = "root";
-		desc.eFollowPolicy = EFFECT_FOLLOW_POLICY::FOLLOW;
+		desc.eFollowPolicy = cue.bSnapshotRoot ?
+			EFFECT_FOLLOW_POLICY::SNAPSHOT : EFFECT_FOLLOW_POLICY::FOLLOW;
 		desc.eOrientationPolicy = EFFECT_ORIENTATION_POLICY::ANCHOR;
 		desc.eStopPolicy = cue.bStopAtCueEnd ? EFFECT_STOP_POLICY::CUE_END : EFFECT_STOP_POLICY::NATURAL;
 		desc.iCueDurationMs = cue.bStopAtCueEnd ? static_cast<uint32_t>(cueSeconds * 1000.f) : 0u;

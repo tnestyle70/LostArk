@@ -939,16 +939,25 @@ namespace
 		{
 			VEHICLE_SKILL_EFFECT_CUE cue;
 			std::string stopPolicy;
-			if (!value.Is_Object() || 4u != value.Get_Object().size() ||
+			const DATA_JSON_VALUE* pFollowPolicy = value.Is_Object() ?
+				value.Find("followPolicy") : nullptr;
+			if (!value.Is_Object() ||
+				(nullptr == pFollowPolicy ? 4u : 5u) != value.Get_Object().size() ||
 				!ReadRequiredU32(value, "clipIndex", cue.clipIndex) || cue.clipIndex >= clipCount ||
 				!ReadRequiredString(value, "effectAssetId", cue.effectAssetId) || !IsEffectAssetId(cue.effectAssetId) ||
 				!ReadRequiredU32(value, "startMs", cue.startMs) ||
 				!ReadRequiredString(value, "stopPolicy", stopPolicy) ||
-				(stopPolicy != "NATURAL" && stopPolicy != "CUE_END"))
+				(stopPolicy != "NATURAL" && stopPolicy != "CUE_END") ||
+				(nullptr != pFollowPolicy &&
+					(!pFollowPolicy->Is_String() ||
+					 (pFollowPolicy->Get_String() != "FOLLOW" &&
+					  pFollowPolicy->Get_String() != "SNAPSHOT"))))
 			{
 				continue;
 			}
 			cue.bStopAtCueEnd = stopPolicy == "CUE_END";
+			cue.bSnapshotRoot = nullptr != pFollowPolicy &&
+				pFollowPolicy->Get_String() == "SNAPSHOT";
 			skill.effectCues.push_back(std::move(cue));
 		}
 		for (const DATA_JSON_VALUE& value : pSounds->Get_Array())

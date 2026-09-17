@@ -584,7 +584,7 @@
             { "characterClass": "DIMENSIONMASTER", "clips": ["pc_sp_m_00_sk_ride_heavywalker_bm9_sk_h"] }
           ],
           "effectCues": [
-            { "clipIndex": 0, "effectAssetId": "effect.vehicle.vehicle_aufstehen_r.97310.0.full.restore", "startMs": 0, "stopPolicy": "NATURAL" }
+            { "clipIndex": 0, "effectAssetId": "effect.vehicle.vehicle_aufstehen_r.97310.0.full.restore", "startMs": 0, "stopPolicy": "NATURAL", "followPolicy": "SNAPSHOT" }
           ],
           "soundCues": [
             { "clipIndex": 0, "event": "S_Vehicle_HeavyWalkerBM_Skill1", "startMs": 100 }
@@ -601,7 +601,7 @@
             { "characterClass": "DIMENSIONMASTER", "clips": ["pc_sp_m_00_sk_ride_heavywalker_bm9_sk_s"] }
           ],
           "effectCues": [
-            { "clipIndex": 0, "effectAssetId": "effect.vehicle.vehicle_aufstehen_r.97320.0.full.restore", "startMs": 0, "stopPolicy": "NATURAL" }
+            { "clipIndex": 0, "effectAssetId": "effect.vehicle.vehicle_aufstehen_r.97320.0.full.restore", "startMs": 0, "stopPolicy": "NATURAL", "followPolicy": "SNAPSHOT" }
           ],
           "soundCues": [
             { "clipIndex": 0, "event": "S_Vehicle_HeavyWalkerBM_Skill2", "startMs": 100 }
@@ -618,7 +618,7 @@
             { "characterClass": "DIMENSIONMASTER", "clips": ["pc_sp_m_00_sk_ride_heavywalker_bm9_sk_c"] }
           ],
           "effectCues": [
-            { "clipIndex": 0, "effectAssetId": "effect.vehicle.vehicle_aufstehen_r.97330.0.full.restore", "startMs": 0, "stopPolicy": "NATURAL" }
+            { "clipIndex": 0, "effectAssetId": "effect.vehicle.vehicle_aufstehen_r.97330.0.full.restore", "startMs": 0, "stopPolicy": "NATURAL", "followPolicy": "SNAPSHOT" }
           ],
           "soundCues": [
             { "clipIndex": 0, "event": "S_Vehicle_HeavyWalkerBM_Skill3", "startMs": 100 }
