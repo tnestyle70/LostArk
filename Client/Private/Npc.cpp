@@ -685,7 +685,24 @@ void CNpc::Set_DebugPresentationYawOffset(const f32_t fYawOffsetDegrees)
 
 void CNpc::Late_Update(f32_t fTimeDelta)
 {
-    if (!m_bPresentationVisible) return;
+    if (!m_bPresentationVisible)
+    {
+        m_BodyAfterimage.Reset(); m_WeaponAfterimage.Reset();
+        return;
+    }
+    if (m_bNativeBinaryBasePass)
+    {
+        m_BodyAfterimage.Update(fTimeDelta, m_ChargeAfterimageEnabled,
+            m_pModelCom, *m_pTransformCom->Get_WorldMatrixPtr());
+        ANIMATION_MODEL_TARGET_VIEW weaponView;
+        if (m_pWeaponModelCom && !CNpcPresentationAssetService::Is_SaydonHammerSuppressed(m_pModelCom) &&
+            Try_GetAnimationModelTarget(ANIMATION_BONE_TARGET::WEAPON, weaponView))
+            m_WeaponAfterimage.Update(fTimeDelta, m_ChargeAfterimageEnabled, m_pWeaponModelCom, weaponView.BoneRoot);
+        else m_WeaponAfterimage.Reset();
+        if (m_BodyAfterimage.Has_Samples() || m_WeaponAfterimage.Has_Samples())
+            CGameInstance::Get().Add_RenderObject(RENDERGROUP::BLEND,
+                static_pointer_cast<CGameObject>(shared_from_this()));
+    }
 	CGameInstance::Get().Add_RenderObject(
 		RENDERGROUP::NONBLEND,
 		static_pointer_cast<CGameObject>(shared_from_this()));
@@ -693,6 +710,17 @@ void CNpc::Late_Update(f32_t fTimeDelta)
 	if (m_isCombatColliderDebugVisible && nullptr != m_pColliderCom)
 		CGameInstance::Get().Add_DebugComponent(m_pColliderCom);
 #endif
+}
+
+HRESULT CNpc::Render_Group(const RENDERGROUP group)
+{
+    if (group != RENDERGROUP::BLEND) return Render();
+    if (!m_bPresentationVisible) return S_OK;
+    m_BodyAfterimage.Render(m_pModelCom, m_pShaderCom, *m_pTransformCom->Get_WorldMatrixPtr());
+    ANIMATION_MODEL_TARGET_VIEW weaponView;
+    if (m_pWeaponModelCom && Try_GetAnimationModelTarget(ANIMATION_BONE_TARGET::WEAPON, weaponView))
+        m_WeaponAfterimage.Render(m_pWeaponModelCom, m_pShaderCom, weaponView.BoneRoot);
+    return S_OK; // A failed auxiliary history never suppresses the live actor.
 }
 
 HRESULT CNpc::Render()

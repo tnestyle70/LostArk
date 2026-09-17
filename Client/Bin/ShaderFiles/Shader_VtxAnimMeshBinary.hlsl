@@ -84,6 +84,10 @@ Texture2D g_SourceTexture9;
 SamplerState LinearClampUSampler { Filter=MIN_MAG_MIP_LINEAR; AddressU=Clamp; AddressV=Wrap; };
 SamplerState LinearClampVSampler { Filter=MIN_MAG_MIP_LINEAR; AddressU=Wrap; AddressV=Clamp; };
 SamplerState LinearClampUVSampler { Filter=MIN_MAG_MIP_LINEAR; AddressU=Clamp; AddressV=Clamp; };
+// Program shards retain the FX variable ABI without compiling unrelated model cues.
+#if SOURCE_CHARACTER_PROGRAM_GROUP != 0
+#define EFFECT_NATIVE_DECLARATIONS_ONLY
+#endif
 #define ARTIST_NATIVE_MODEL_ONLY
 #include "Shader_EffectArtistNative.hlsli"
 #undef ARTIST_NATIVE_MODEL_ONLY
@@ -101,6 +105,9 @@ SamplerState EffectSliceDepthSampler
 #define ALTV_NATIVE_CAPTURE_ONLY
 #include "Shader_EffectDimensionMasterALTVNative.hlsli"
 #undef ALTV_NATIVE_CAPTURE_ONLY
+#if SOURCE_CHARACTER_PROGRAM_GROUP != 0
+#undef EFFECT_NATIVE_DECLARATIONS_ONLY
+#endif
 
 struct VS_IN
 {
@@ -438,6 +445,7 @@ float3 SourceCharacterForwardAmbient(float3 worldPosition, float3 normal)
     return ambient;
 }
 
+#if SOURCE_CHARACTER_PROGRAM_GROUP == 0
 float4 Evaluate_EffectModelCueNative(VS_OUT input, bool frontFace : SV_IsFrontFace)
 {
     ARTIST_NATIVE_INPUT nativeInput = (ARTIST_NATIVE_INPUT)0;
@@ -577,6 +585,8 @@ SCENE_COLOR_BLOOM_OUT PS_MAIN_EFFECT_MODEL_CUE_NATIVE(VS_OUT input, bool frontFa
         Write_SceneBloom(emission).rgb, color.a);
     return output;
 }
+
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP == 0
 
 // Source BLEND_Translucent surfaces drawn after scene lighting. The same native base
 // and light programs as the deferred marker-5 path run here per forward light.
@@ -744,12 +754,32 @@ float4 PS_MAIN_SCREEN_CUTIN(VS_OUT input) : SV_TARGET0
     return float4(color, 1.f);
 }
 
+// PROJECT_AUTHORED white pose echo. TrailGhost notify identity/timing is source
+// evidence; this presentation shader is not claimed as its native material ABI.
+float4 g_ChargeAfterimageColor = 0.f;
+SCENE_COLOR_BLOOM_OUT PS_MAIN_CHARGE_AFTERIMAGE(VS_OUT input)
+{
+    const float3 view = normalize(g_vCamPosition.xyz - input.vWorldPos.xyz);
+    const float rim = pow(1.f - saturate(abs(dot(normalize(input.vNormal.xyz), view))), 2.f);
+    return Write_SceneColorAndBloom(float4(g_ChargeAfterimageColor.rgb,
+        g_ChargeAfterimageColor.a * lerp(.3f, 1.f, rim)));
+}
+
 VertexShader EffectSourceModelVS = compile vs_5_0 VS_MAIN();
+#if SOURCE_CHARACTER_PROGRAM_GROUP == 0
 PixelShader EffectSourceModelPS = compile ps_5_0 PS_MAIN_EFFECT_MODEL_CUE_NATIVE();
+PixelShader ChargeAfterimagePS = compile ps_5_0 PS_MAIN_CHARGE_AFTERIMAGE();
+#define BINARY_ANIMATED_NATIVE_PASS_POLICY 1
+#else
+PixelShader EffectSourceModelPS = NULL;
+PixelShader ChargeAfterimagePS = NULL;
+#define BINARY_ANIMATED_NATIVE_PASS_POLICY 2
+#endif
 
 // BEGIN SHARED MODEL PASS PROGRAMS
 // Identical entry/profile/arguments compile once; pass states and indices stay unchanged.
 PixelShader BinaryAnimatedSurfacePS = compile ps_5_0 PS_MAIN();
+PixelShader BinaryAnimatedTranslucentPS = compile ps_5_0 PS_MAIN_SOURCE_CHARACTER_TRANSLUCENT();
 // END SHARED MODEL PASS PROGRAMS
 
 technique11 DefaultTechnique
@@ -833,6 +863,7 @@ technique11 DefaultTechnique
     }
     // Appended index 7: recovered translucent skeletal material, existing skinning input.
     pass EffectModelCueNative
+    < int ProgramVariantPass = BINARY_ANIMATED_NATIVE_PASS_POLICY; >
     {
         SetRasterizerState(RS_Default);
         SetDepthStencilState(DSS_ReadOnly, 0);
@@ -843,6 +874,7 @@ technique11 DefaultTechnique
     }
     // Appended index 8 preserves the source hair material's two-sided rasterizer.
     pass EffectModelCueNativeTwoSided
+    < int ProgramVariantPass = BINARY_ANIMATED_NATIVE_PASS_POLICY; >
     {
         SetRasterizerState(RS_Cull_None);
         SetDepthStencilState(DSS_ReadOnly, 0);
@@ -859,7 +891,7 @@ technique11 DefaultTechnique
         SetBlendState(BS_AlphaBlend, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
         VertexShader = EffectSourceModelVS;
         GeometryShader = NULL;
-        PixelShader = compile ps_5_0 PS_MAIN_SOURCE_CHARACTER_TRANSLUCENT();
+        PixelShader = BinaryAnimatedTranslucentPS;
     }
     // Appended index 10: source translucent one-sided surface, forward lit after scene lighting.
     pass SourceCharacterTranslucentOneSided
@@ -869,7 +901,7 @@ technique11 DefaultTechnique
         SetBlendState(BS_AlphaBlend, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
         VertexShader = EffectSourceModelVS;
         GeometryShader = NULL;
-        PixelShader = compile ps_5_0 PS_MAIN_SOURCE_CHARACTER_TRANSLUCENT();
+        PixelShader = BinaryAnimatedTranslucentPS;
     }
     // Appended index 11: exact T summon, same GBuffer/depth and skinning contract.
     pass EffectModelCueUnlit
@@ -885,6 +917,7 @@ technique11 DefaultTechnique
     // native clip, so the surface writes depth instead of blending a self-overlapping
     // skin against itself in submission order.
     pass EffectModelCueNativeMasked
+    < int ProgramVariantPass = BINARY_ANIMATED_NATIVE_PASS_POLICY; >
     {
         SetRasterizerState(RS_Default);
         SetDepthStencilState(DSS_Default, 0);
@@ -895,6 +928,7 @@ technique11 DefaultTechnique
     }
     // Appended index 13 preserves a masked source material's two-sided rasterizer.
     pass EffectModelCueNativeMaskedTwoSided
+    < int ProgramVariantPass = BINARY_ANIMATED_NATIVE_PASS_POLICY; >
     {
         SetRasterizerState(RS_Cull_None);
         SetDepthStencilState(DSS_Default, 0);
@@ -903,4 +937,16 @@ technique11 DefaultTechnique
         GeometryShader = NULL;
         PixelShader = EffectSourceModelPS;
     }
+    // Appended index14 preserves all source/ModelCue pass indices.
+    pass ChargeAfterimage
+    < int ProgramVariantPass = BINARY_ANIMATED_NATIVE_PASS_POLICY; >
+    {
+        SetRasterizerState(RS_Default);
+        SetDepthStencilState(DSS_ReadOnly, 0);
+        SetBlendState(BS_AlphaBlend, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = EffectSourceModelVS;
+        GeometryShader = NULL;
+        PixelShader = ChargeAfterimagePS;
+    }
+
 }

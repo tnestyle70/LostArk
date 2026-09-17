@@ -3068,6 +3068,15 @@ bool Client::CClientReplication::Apply_CombatObjectPresentationEvent(
 	if (source->second.strArchetypeId.starts_with("BOSS_KAKULSAYDON_"))
 	{
 		const auto* record = m_CombatObjectProjectionRuntime.Find(event.iCombatObjectId);
+        if (event.strCombatObjectArchetypeId == "combatobject.kouku.pursuit")
+        {
+            if (source->second.pNpc.expired() || !record || !m_pTargetedCombatPresentationPlayer ||
+                record->iSourceNetEntityId != event.iSourceNetEntityId ||
+                record->strCombatObjectArchetypeId != event.strCombatObjectArchetypeId ||
+                record->Snapshot.PinnedDefinitionRevision != event.PinnedDefinitionRevision)
+            { m_strPendingPresentationFailure = "Pursuit contact has no matching replicated occurrence."; return false; }
+            return m_pTargetedCombatPresentationPlayer->Play_TargetedCombatContact(event, m_strPendingPresentationFailure);
+        }
 		if (source->second.pNpc.expired() || !record || record->iSourceNetEntityId != event.iSourceNetEntityId ||
 			record->Snapshot.PinnedDefinitionRevision != event.PinnedDefinitionRevision ||
 			event.strCombatObjectArchetypeId != record->strCombatObjectArchetypeId ||

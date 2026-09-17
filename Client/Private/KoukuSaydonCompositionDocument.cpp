@@ -320,7 +320,8 @@ namespace
 		std::string& outStatus)
 	{
 		const bool airborne = logic.strLogicType == "TRIGGER" && logic.strTriggerKind == "ALBION_AIRBORNE";
-		const bool hasAirborneValues = !logic.strAirbornePhase.empty() || logic.fAirborneHeightM != 0.0 || logic.iAirborneDurationMs != 0u;
+		const bool hasAirborneValues = !logic.strAirbornePhase.empty() || logic.fAirborneHeightM != 0.0 || logic.iAirborneDurationMs != 0u ||
+			logic.strAirborneTargetPositionPolicy != "APPEAR" || !logic.strSelectedEffectGroupId.empty();
 		if (hasAirborneValues && !airborne)
 		{ outStatus = "Airborne phase values belong to ALBION_AIRBORNE."; return false; }
 		const bool_t hasRandomVolleys = !logic.RandomVolleyOccurrenceSets.empty();
@@ -343,8 +344,25 @@ namespace
 				{ outStatus = "SHOWTIME random volley has an invalid or duplicate occurrence ID."; return false; }
 			}
 		}
+        const bool pursuit = logic.strLogicType == "DURATION" && logic.strJudgementKind == "PURSUIT_PROJECTILES";
+        const bool hasPursuitValues = !logic.PursuitVisualIds.empty() || !logic.strContactVisualId.empty() ||
+            logic.fPursuitSpeedMps != 0.0 || logic.fPursuitMaxDistanceM != 0.0 || logic.fContactRadiusM != 0.0 || logic.fSpawnRadiusM != 0.0 ||
+            logic.iPursuitLifetimeMs != 0u || logic.iCountPerWave != 0u || logic.bPursuitHoming;
+        std::unordered_set<std::string> pursuitIds;
+        if ((!pursuit && hasPursuitValues) || (pursuit &&
+            (logic.PursuitVisualIds.empty() || logic.PursuitVisualIds.size() > 4u ||
+             !std::all_of(logic.PursuitVisualIds.begin(), logic.PursuitVisualIds.end(),
+                 [&](const auto& id) { return Is_StableId(id) && pursuitIds.insert(id).second; }) ||
+             !Is_StableId(logic.strContactVisualId) ||
+             !std::isfinite(logic.fPursuitSpeedMps) || logic.fPursuitSpeedMps < .01 || logic.fPursuitSpeedMps > 100.0 ||
+             !std::isfinite(logic.fContactRadiusM) || logic.fContactRadiusM < .01 || logic.fContactRadiusM > 10.0 ||
+             !std::isfinite(logic.fSpawnRadiusM) || logic.fSpawnRadiusM < 0.0 || logic.fSpawnRadiusM > 100.0 ||
+             !std::isfinite(logic.fPursuitMaxDistanceM) || logic.fPursuitMaxDistanceM < 0.0 || logic.fPursuitMaxDistanceM > 1000.0 ||
+             logic.iSpawnIntervalMs > MAX_TIME_MS || logic.iPursuitLifetimeMs > MAX_TIME_MS || logic.iCountPerWave > 16u ||
+             (logic.iPursuitLifetimeMs == 0u && (!logic.bPursuitHoming || logic.iSpawnIntervalMs != 0u || logic.fPursuitMaxDistanceM != 0.0)))))
+        { outStatus = "PURSUIT_PROJECTILES requires Effect IDs, finite speed/radii and bounded lifetime; infinite life requires one homing volley."; return false; }
 		const bool_t hasShowtimeValues = hasRandomValues || !logic.strFixedSelectionGroupId.empty() ||
-			!logic.strTrackingPresentationOccurrenceId.empty() || logic.iSpawnIntervalMs != 0u || logic.fFollowSpeedScale != 0.0;
+			!logic.strTrackingPresentationOccurrenceId.empty() || (!pursuit && logic.iSpawnIntervalMs != 0u) || logic.fFollowSpeedScale != 0.0;
 		const bool_t showtime = logic.strLogicType == "DURATION" && logic.strJudgementKind == "SHOWTIME_PLAYER_TARGETS";
 		if ((hasShowtimeValues && !showtime) || (showtime &&
 			((!logic.strFixedSelectionGroupId.empty() && !Is_StableId(logic.strFixedSelectionGroupId)) ||
@@ -359,7 +377,7 @@ namespace
                 [&](const auto& id) { return Is_StableId(id) && directionIds.insert(id).second; }))) ||
             (!cross && (!logic.DirectionPatternIds.empty() || !logic.strCloneEndStageId.empty() || !logic.strSummonOccurrenceId.empty())))
         { outStatus = "Cross direction Logic needs four unique Pattern IDs, a clone end Stage ID and its Summon occurrence."; return false; }
-		const bool_t hasDurationValues = !logic.DirectionPatternIds.empty() || !logic.strCloneEndStageId.empty() || !logic.strSummonOccurrenceId.empty() || hasShowtimeValues || !logic.PatternIds.empty() || logic.iCompletionCount != 0u || !logic.strJudgementKind.empty() ||
+		const bool_t hasDurationValues = hasPursuitValues || !logic.DirectionPatternIds.empty() || !logic.strCloneEndStageId.empty() || !logic.strSummonOccurrenceId.empty() || hasShowtimeValues || !logic.PatternIds.empty() || logic.iCompletionCount != 0u || !logic.strJudgementKind.empty() ||
 			0u != logic.iSectorCount || !logic.SectorSymbols.empty() || !logic.RegionIds.empty() ||
 			0.0 != logic.fCenterX || 0.0 != logic.fCenterZ || 0.0 != logic.fOuterRadiusM ||
 			!logic.strWorldSequenceInstanceId.empty() || 0.0 != logic.fHalfAngleDegrees ||
@@ -595,7 +613,10 @@ namespace
 				 phase != "DISAPPEAR" && phase != "CENTER" && phase != "SLAM") ||
 				!std::isfinite(logic.fAirborneHeightM) || logic.fAirborneHeightM < 0.0 || logic.fAirborneHeightM > 100000.0 ||
 				logic.iAirborneDurationMs > MAX_TIME_MS ||
-				(phase == "JUMP" && (logic.fAirborneHeightM <= 0.0 || logic.iAirborneDurationMs == 0u)) ||
+				(logic.strAirborneTargetPositionPolicy != "APPEAR" && logic.strAirborneTargetPositionPolicy != "SELECT") ||
+				(phase != "SELECT_PLAYER" && (logic.strAirborneTargetPositionPolicy != "APPEAR" || !logic.strSelectedEffectGroupId.empty())) ||
+				(!logic.strSelectedEffectGroupId.empty() && (logic.strAirborneTargetPositionPolicy != "SELECT" || !Is_StableId(logic.strSelectedEffectGroupId))) ||
+				(phase == "JUMP" && logic.fAirborneHeightM <= 0.0) ||
 				(phase == "APPEAR_PLAYER" && logic.fAirborneHeightM <= 0.0) ||
 				(phase != "JUMP" && logic.iAirborneDurationMs != 0u) ||
 				(phase != "JUMP" && phase != "APPEAR_PLAYER" && logic.fAirborneHeightM != 0.0) ||
@@ -1519,6 +1540,18 @@ namespace
 		std::size_t totalOccurrences = 0u;
         for (const auto& logic : document.Logics)
         {
+            if (logic.strJudgementKind == "PURSUIT_PROJECTILES")
+            {
+                auto ids = logic.PursuitVisualIds;
+                ids.push_back(logic.strContactVisualId);
+                for (const auto& id : ids)
+                {
+                    const auto resource = presentationResources.find(id);
+                    if (resource == presentationResources.end() || resource->second->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT ||
+                        resource->second->strResourceKind != "V1_EFFECT")
+                    { outStatus = "PURSUIT_PROJECTILES references a missing Effect resource: " + id; return false; }
+                }
+            }
             if (logic.strOutcomeKind != "FEAR") continue;
             const auto effect = presentationResources.find(logic.strEffectResourceId);
             const auto light = presentationResources.find(logic.strLightResourceId);
@@ -1872,6 +1905,29 @@ namespace
 					return false;
 				}
 				const KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION& owner = *findLogic(box.strLogicId);
+                if (!owner.strSelectedEffectGroupId.empty())
+                {
+                    size_t members = 0u;
+                    for (const auto& row : pattern.PresentationOccurrences)
+                    {
+                        if (row.strSelectionGroupId != owner.strSelectedEffectGroupId) continue;
+                        ++members;
+                        if (presentationResources.at(row.strResourceId)->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT ||
+                            row.strAnchorKind != "MAP" || row.bFollowBoss || !row.strBone.empty() || row.strBoneTarget != "BODY" ||
+                            !row.strWorldId.empty() || !row.strWorldOccurrenceId.empty() || row.iWorldEmissionIndex ||
+                            !row.strLogicOccurrenceId.empty() || row.iStartMs < box.iStartMs)
+                        { outStatus = "Selected Effect group requires fixed MAP Effects after the SELECT capture."; return false; }
+                    }
+                    if (members < 2u) { outStatus = "Selected Effect group is missing or has fewer than two members."; return false; }
+                    for (const auto& other : pattern.LogicOccurrences)
+                    {
+                        if (&other == &box) continue;
+                        const auto* definition = findLogic(other.strLogicId);
+                        if (definition && (definition->strSelectedEffectGroupId == owner.strSelectedEffectGroupId ||
+                            (other.bEnabled && definition->strFixedSelectionGroupId == owner.strSelectedEffectGroupId)))
+                        { outStatus = "Selected Effect group requires one exclusive position owner."; return false; }
+                    }
+                }
 				for (const auto& volley : owner.RandomVolleyOccurrenceSets)
 				{
 					bool hasMap = false;
@@ -2777,11 +2833,12 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 		{
 			if (!Has_Properties(logicValue, { "logicId", "displayName", "logicType" },
 					{ "judgementKind", "fixedSelectionGroupId", "trackingPresentationOccurrenceId", "spawnIntervalMs", "followSpeedScale",
+                      "visualIds", "contactVisualId", "speedMps", "contactRadiusM", "spawnRadiusM", "lifetimeMs", "homing", "countPerWave",
 					  "randomVolleyOccurrenceSets", "randomSpawnIntervalMs", "randomArenaRadiusM", "randomArenaHeightToleranceM", "insideOutcome", "sectorCount", "sectorSymbols", "regionIds", "centerX", "centerZ",
 					  "outerRadiusM", "worldSequenceInstanceId", "halfAngleDegrees",
 					  "maxDistanceM", "poseIndex", "threshold", "shieldArcDegrees",
 					  "endsPatternOnSuccess", "normalYawOffsetDegrees", "faceCenterYawOffsetDegrees", "outcomeKind", "percent", "durationMs", "pushRangeM", "pushMs", "pushDirection", "targetWorldInstanceId", "motionInstanceId", "targetRadiusM",
-					  "directionPatternIds", "cloneEndStageId", "summonOccurrenceId", "airbornePhase", "airborneHeightM", "airborneDurationMs", "patternIds", "completionCount", "followupPatternId", "triggerKind", "countPerPlayer", "radiusM", "effectLifetimeMs",
+					  "directionPatternIds", "cloneEndStageId", "summonOccurrenceId", "airbornePhase", "airborneHeightM", "airborneDurationMs", "airborneTargetPositionPolicy", "selectedEffectGroupId", "patternIds", "completionCount", "followupPatternId", "triggerKind", "countPerPlayer", "radiusM", "effectLifetimeMs",
 					  "arenaRandomCount", "arenaRandomRadiusM", "arenaHeightToleranceM", "arenaMinimumSpacingM", "randomPlayerOnly",
 					  "rearmOnExit", "repeatAfterKnockback", "bossChargeDistanceM", "chargeYawOffsetDegrees", "hudMode", "teleportPosition", "clonePatternId", "clockHours",
 					  "targetWorldOccurrenceIds", "contactGroupId", "contactPriority", "contactMotions", "targetLogicOccurrenceId", "contactTargetWorldOccurrenceId", "sceneProfileId", "effectResourceId", "lightResourceId", "effectDelayMs", "attachmentSlot", "gripLocalOffset" }))
@@ -2845,6 +2902,7 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 					stagedLogic.RandomVolleyOccurrenceSets.push_back(std::move(ids));
 				}
 			}
+            const DATA_JSON_VALUE* const homing = logicValue.Find("homing");
 			const DATA_JSON_VALUE* const endsPattern = logicValue.Find("endsPatternOnSuccess");
 			const DATA_JSON_VALUE* const rearmOnExit = logicValue.Find("rearmOnExit");
 			const DATA_JSON_VALUE* const repeatAfterKnockback = logicValue.Find("repeatAfterKnockback");
@@ -2854,6 +2912,14 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 				!optionalText("trackingPresentationOccurrenceId", stagedLogic.strTrackingPresentationOccurrenceId) ||
 				!optionalUnsigned("spawnIntervalMs", MAX_TIME_MS, stagedLogic.iSpawnIntervalMs) ||
 				!optionalFinite("followSpeedScale", .01, 10.0, stagedLogic.fFollowSpeedScale) ||
+                !Try_ParseTextList(logicValue.Find("visualIds"), 4u, stagedLogic.PursuitVisualIds) ||
+                !optionalText("contactVisualId", stagedLogic.strContactVisualId) ||
+                !optionalFinite("speedMps", .01, 100.0, stagedLogic.fPursuitSpeedMps) ||
+                !optionalFinite("contactRadiusM", .01, 10.0, stagedLogic.fContactRadiusM) ||
+                !optionalFinite("spawnRadiusM", 0.0, 100.0, stagedLogic.fSpawnRadiusM) ||
+                !optionalUnsigned("lifetimeMs", MAX_TIME_MS, stagedLogic.iPursuitLifetimeMs) ||
+                !optionalUnsigned("countPerWave", 16u, stagedLogic.iCountPerWave) ||
+                (homing && !homing->Is_Boolean()) ||
 				!optionalUnsigned("randomSpawnIntervalMs", MAX_TIME_MS, stagedLogic.iRandomSpawnIntervalMs) ||
 				!optionalFinite("randomArenaRadiusM", 0.0, 1000.0, stagedLogic.fRandomArenaRadiusM) ||
 				!optionalFinite("randomArenaHeightToleranceM", 0.0, 10.0, stagedLogic.fRandomArenaHeightToleranceM) ||
@@ -2866,7 +2932,8 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 				!optionalFinite("outerRadiusM", 0.0, 1000.0, stagedLogic.fOuterRadiusM) ||
 				!optionalText("worldSequenceInstanceId", stagedLogic.strWorldSequenceInstanceId) ||
 				!optionalFinite("halfAngleDegrees", 0.0, 180.0, stagedLogic.fHalfAngleDegrees) ||
-				!optionalFinite("maxDistanceM", 0.0, 1000.0, stagedLogic.fMaxDistanceM) ||
+				!optionalFinite("maxDistanceM", 0.0, 1000.0,
+                    stagedLogic.strJudgementKind == "PURSUIT_PROJECTILES" ? stagedLogic.fPursuitMaxDistanceM : stagedLogic.fMaxDistanceM) ||
 				!Try_ParseTextList(logicValue.Find("directionPatternIds"), 4u, stagedLogic.DirectionPatternIds) ||
 				!optionalText("cloneEndStageId", stagedLogic.strCloneEndStageId) ||
                 !optionalText("summonOccurrenceId", stagedLogic.strSummonOccurrenceId) ||
@@ -2897,6 +2964,8 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 				!optionalUnsigned("effectDelayMs", MAX_TIME_MS, stagedLogic.iEffectDelayMs) ||
 				!optionalText("triggerKind", stagedLogic.strTriggerKind) ||
 				!optionalText("airbornePhase", stagedLogic.strAirbornePhase) ||
+				!optionalText("airborneTargetPositionPolicy", stagedLogic.strAirborneTargetPositionPolicy) ||
+				!optionalText("selectedEffectGroupId", stagedLogic.strSelectedEffectGroupId) ||
 				!optionalFinite("airborneHeightM", 0.0, 100000.0, stagedLogic.fAirborneHeightM) ||
 				!optionalUnsigned("airborneDurationMs", MAX_TIME_MS, stagedLogic.iAirborneDurationMs) ||
 				!optionalUnsigned("countPerPlayer", 8u, stagedLogic.iCountPerPlayer) ||
@@ -2920,6 +2989,13 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 				outStatus = "KoukuSaydon Logic definition typed value is invalid: " + stagedLogic.strLogicId;
 				return false;
 			}
+            const bool pursuit = stagedLogic.strLogicType == "DURATION" && stagedLogic.strJudgementKind == "PURSUIT_PROJECTILES";
+            for (const char* key : { "visualIds", "contactVisualId", "speedMps", "contactRadiusM", "spawnRadiusM", "lifetimeMs", "homing" })
+                if (pursuit != (logicValue.Find(key) != nullptr))
+                { outStatus = "PURSUIT_PROJECTILES fields must be supplied together on that judgement kind."; return false; }
+            if (logicValue.Find("countPerWave") && (!pursuit || stagedLogic.iCountPerWave == 0u))
+            { outStatus = "countPerWave requires PURSUIT_PROJECTILES and a count of 1..16."; return false; }
+            if (homing) stagedLogic.bPursuitHoming = homing->Get_Boolean();
             const bool cross = stagedLogic.strLogicType == "DURATION" && stagedLogic.strJudgementKind == "CROSS_DIRECTION_CLONES";
             if ((cross != (logicValue.Find("directionPatternIds") != nullptr)) ||
                 (cross != (logicValue.Find("cloneEndStageId") != nullptr)) ||
@@ -2928,7 +3004,8 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 			const bool airborne = stagedLogic.strLogicType == "TRIGGER" && stagedLogic.strTriggerKind == "ALBION_AIRBORNE";
 			if ((airborne && (!logicValue.Find("airbornePhase") || !logicValue.Find("airborneHeightM") ||
 				!logicValue.Find("airborneDurationMs") || !logicValue.Find("teleportPosition"))) ||
-				(!airborne && (logicValue.Find("airbornePhase") || logicValue.Find("airborneHeightM") || logicValue.Find("airborneDurationMs"))))
+				(!airborne && (logicValue.Find("airbornePhase") || logicValue.Find("airborneHeightM") || logicValue.Find("airborneDurationMs") ||
+				 logicValue.Find("airborneTargetPositionPolicy") || logicValue.Find("selectedEffectGroupId"))))
 			{ outStatus = "ALBION_AIRBORNE requires phase, height, duration and teleportPosition together."; return false; }
 			if (rearmOnExit) stagedLogic.bRearmOnExit = rearmOnExit->Get_Boolean();
 			if (repeatAfterKnockback) stagedLogic.bRepeatAfterKnockback = repeatAfterKnockback->Get_Boolean();
@@ -4101,6 +4178,21 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 						<< ",\n      \"randomArenaHeightToleranceM\": " << logic.fRandomArenaHeightToleranceM;
 				}
 			}
+            else if ("PURSUIT_PROJECTILES" == logic.strJudgementKind)
+            {
+                output << ",\n      \"visualIds\": [";
+                for (std::size_t i = 0; i < logic.PursuitVisualIds.size(); ++i)
+                    output << (i ? ", \"" : "\"") << CDataJson::Escape(logic.PursuitVisualIds[i]) << "\"";
+                output << "],\n      \"contactVisualId\": \"" << CDataJson::Escape(logic.strContactVisualId)
+                    << "\",\n      \"speedMps\": " << logic.fPursuitSpeedMps
+                    << ",\n      \"contactRadiusM\": " << logic.fContactRadiusM
+                    << ",\n      \"spawnRadiusM\": " << logic.fSpawnRadiusM
+                    << ",\n      \"lifetimeMs\": " << logic.iPursuitLifetimeMs
+                    << ",\n      \"spawnIntervalMs\": " << logic.iSpawnIntervalMs
+                    << ",\n      \"homing\": " << (logic.bPursuitHoming ? "true" : "false");
+                if (logic.iCountPerWave) output << ",\n      \"countPerWave\": " << logic.iCountPerWave;
+                if (logic.fPursuitMaxDistanceM > 0.0) output << ",\n      \"maxDistanceM\": " << logic.fPursuitMaxDistanceM;
+            }
 			else if ("CROSS_DIRECTION_CLONES" == logic.strJudgementKind)
             {
                 output << ",\n      \"cloneEndStageId\": \"" << CDataJson::Escape(logic.strCloneEndStageId) << "\",\n";
@@ -4211,6 +4303,10 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 					<< ",\n      \"airborneHeightM\": " << logic.fAirborneHeightM
 					<< ",\n      \"airborneDurationMs\": " << logic.iAirborneDurationMs
 					<< ",\n      \"teleportPosition\": [" << logic.TeleportPosition[0] << ", " << logic.TeleportPosition[1] << ", " << logic.TeleportPosition[2] << "]";
+				if (logic.strAirborneTargetPositionPolicy != "APPEAR")
+					output << ",\n      \"airborneTargetPositionPolicy\": \"" << logic.strAirborneTargetPositionPolicy << "\"";
+				if (!logic.strSelectedEffectGroupId.empty())
+					output << ",\n      \"selectedEffectGroupId\": \"" << CDataJson::Escape(logic.strSelectedEffectGroupId) << "\"";
 			}
 			else if (logic.strTriggerKind == "ALBION_BLUE_CIRCLE")
 			{
@@ -4934,6 +5030,10 @@ bool_t Client::CKoukuSaydonCompositionDocument::Try_ExpandPatternDocument(
             for (const auto& definition : source.Logics)
                 if (definition.strLogicId == box.strLogicId && definition.strJudgementKind == "SHOWTIME_PLAYER_TARGETS" &&
                     !definition.strFixedSelectionGroupId.empty()) groups.insert(definition.strFixedSelectionGroupId);
+        for (const auto& box : pattern.LogicOccurrences)
+            for (const auto& definition : source.Logics)
+                if (definition.strLogicId == box.strLogicId && !definition.strSelectedEffectGroupId.empty())
+                    groups.insert(definition.strSelectedEffectGroupId);
         return groups;
     };
     const auto parentShowtimeGroups = showtimeGroups(result);
@@ -5051,7 +5151,11 @@ bool_t Client::CKoukuSaydonCompositionDocument::Try_ExpandPatternDocument(
                 if (!box.bEnabled) continue;
                 const auto definition = std::find_if(source.Logics.begin(), source.Logics.end(),
                     [&](const auto& row) { return row.strLogicId == box.strLogicId; });
-                if (definition == source.Logics.end() || definition->strJudgementKind != "SHOWTIME_PLAYER_TARGETS") continue;
+                if (definition == source.Logics.end()) continue;
+                if (!definition->strSelectedEffectGroupId.empty())
+                    for (const auto& row : child.PresentationOccurrences)
+                        if (row.strSelectionGroupId == definition->strSelectedEffectGroupId) childShowtimeTemplateIds.insert(row.strOccurrenceId);
+                if (definition->strJudgementKind != "SHOWTIME_PLAYER_TARGETS") continue;
                 for (const auto& volley : definition->RandomVolleyOccurrenceSets)
                     childShowtimeTemplateIds.insert(volley.begin(), volley.end());
                 if (!definition->strTrackingPresentationOccurrenceId.empty())
@@ -5101,7 +5205,8 @@ bool_t Client::CKoukuSaydonCompositionDocument::Try_ExpandPatternDocument(
                     return fail("Child Logic changes the whole Pattern or persistent HUD: " + sourceLogic.strLogicId);
                 auto definition = sourceLogic;
                 remap(definition.strLogicId);
-                if (!remapRequired(definition.strFixedSelectionGroupId) ||
+                if (!remapRequired(definition.strSelectedEffectGroupId) ||
+                    !remapRequired(definition.strFixedSelectionGroupId) ||
                     !remapRequired(definition.strTrackingPresentationOccurrenceId) ||
                     !remapRequired(definition.strSummonOccurrenceId)) return false;
                 for (auto& volley : definition.RandomVolleyOccurrenceSets)

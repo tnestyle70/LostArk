@@ -288,6 +288,7 @@ HRESULT CShader::Initialize_Prototype(const tchar_t* pShaderFilePath, const D3D1
 		InputLayouts.reserve(TechniqueDesc.Passes);
 		Bindings = std::make_shared<EFFECT_BINDINGS>();
 		Bindings->Passes.reserve(TechniqueDesc.Passes);
+		Bindings->PassPolicies.reserve(TechniqueDesc.Passes);
 		size_t VariableCapacity = 2u;
 		while (VariableCapacity < static_cast<size_t>(EffectDesc.GlobalVariables) * 2u)
 			VariableCapacity *= 2u;
@@ -348,6 +349,23 @@ HRESULT CShader::Initialize_Prototype(const tchar_t* pShaderFilePath, const D3D1
 				return Fail(L"pass-desc", Result);
 			if (nullptr == PassDesc.pIAInputSignature || 0u == PassDesc.IAInputSignatureSize)
 				return Fail(L"pass-signature", E_FAIL);
+
+			PROGRAM_PASS_POLICY policy = PROGRAM_PASS_POLICY::VARIANT;
+			auto* annotation = pPass->GetAnnotationByName("ProgramVariantPass");
+			if (annotation && annotation->IsValid())
+			{
+				D3DX11_EFFECT_TYPE_DESC type{};
+				int value = -1;
+				auto* scalar = annotation->AsScalar();
+				if (FAILED(annotation->GetType()->GetDesc(&type)) ||
+					type.Class != D3D_SVC_SCALAR || type.Type != D3D_SVT_INT ||
+					type.Elements != 0u || type.Rows != 1u || type.Columns != 1u ||
+					nullptr == scalar || !scalar->IsValid() || FAILED(scalar->GetInt(&value)) ||
+					value < 0 || value > static_cast<int>(PROGRAM_PASS_POLICY::UNAVAILABLE))
+					return Fail(L"pass-program-policy", E_FAIL);
+				policy = static_cast<PROGRAM_PASS_POLICY>(value);
+			}
+			Bindings->PassPolicies.push_back(policy);
 
 			const auto cached = std::find_if(UniqueInputSignatures.begin(), UniqueInputSignatures.end(),
 				[&PassDesc](const INPUT_SIGNATURE_LAYOUT& signature)
@@ -448,6 +466,12 @@ HRESULT CShader::Stage_ProgramVariants(const tchar_t* pShaderFilePath,
 					nullptr == source.pIAInputSignature || nullptr == destination.pIAInputSignature ||
 					0u == source.IAInputSignatureSize || source.IAInputSignatureSize != destination.IAInputSignatureSize ||
 					0 != std::memcmp(source.pIAInputSignature, destination.pIAInputSignature, source.IAInputSignatureSize))
+					return E_FAIL;
+				const auto sourcePolicy = pBindings->PassPolicies[pass];
+				const auto destinationPolicy = variant.pShader->m_pBindings->PassPolicies[pass];
+				if ((sourcePolicy == PROGRAM_PASS_POLICY::BASE && destinationPolicy != PROGRAM_PASS_POLICY::UNAVAILABLE) ||
+					(sourcePolicy == PROGRAM_PASS_POLICY::VARIANT && destinationPolicy != PROGRAM_PASS_POLICY::VARIANT) ||
+					sourcePolicy == PROGRAM_PASS_POLICY::UNAVAILABLE)
 					return E_FAIL;
 			}
 			variant.Variables.reserve(pBindings->Variables.size() / 2u);
@@ -649,6 +673,11 @@ HRESULT CShader::Begin(uint32_t iPassIndex)
 {
 	if (nullptr == m_pBindings || iPassIndex >= m_iNumPasses)
 		return E_FAIL;
+	const auto passPolicy = m_pBindings->PassPolicies[iPassIndex];
+	// A directly loaded program shard must not report success for a base-owned
+	// pass whose native PS was deliberately omitted from that shard.
+	if (passPolicy == PROGRAM_PASS_POLICY::UNAVAILABLE)
+		return E_FAIL;
 
 	// Every HDR contributor uses the same current extraction curve. The effect
 	// owner alone controls g_fEffectBloomIntensity, so concurrent skills stay independent.
@@ -664,7 +693,7 @@ HRESULT CShader::Begin(uint32_t iPassIndex)
 				&quality.fBloomSoftKnee, sizeof(quality.fBloomSoftKnee))))
 			return E_FAIL;
 	}
-	if (m_pProgramVariants)
+	if (m_pProgramVariants && passPolicy != PROGRAM_PASS_POLICY::BASE)
 	{
 		uint32_t program = 0u;
 		if (FAILED(m_pProgramVariants->pProgram->pVariable->GetRawValue(&program, 0u, sizeof(program)))) return E_FAIL;

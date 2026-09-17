@@ -933,6 +933,44 @@ class WorldSequenceAnimationSourceStartContractTests(unittest.TestCase):
     def validate(self, document: dict) -> set[str]:
         return pipeline._validate_world_sequence_source(document, document["areaId"])
 
+    def test_bounded_template_capacity_matches_map_and_client(self) -> None:
+        import re
+        import subprocess
+
+        header = (ROOT / "Client/Public/WorldSequenceDocument.h").read_bytes()
+        maximum = int(re.search(rb"MAX_TEMPLATE_COUNT = (\d+);", header).group(1))
+        self.assertEqual(512, maximum)
+        self.assertEqual(maximum, pipeline.WORLD_SEQUENCE_MAX_TEMPLATES)
+        publisher = (ROOT / "Tools/MapPipeline/Publish-MapAuthoring.ps1").read_text(encoding="utf-8-sig")
+        functions = [re.search(r"(?ms)^function " + name + r" \{.*?^\}", publisher).group(0)
+                     for name in ("Test-JsonNumber", "Assert-ExactJsonProperties", "Read-WorldSequenceDocument")]
+        with tempfile.TemporaryDirectory() as temporary:
+            folder = Path(temporary)
+            for count in (268, maximum, maximum + 1):
+                candidate = copy.deepcopy(self.document)
+                candidate["templates"] = [
+                    dict(copy.deepcopy(self.document["templates"][0]), sequenceId="sequence.capacity." + str(i))
+                    for i in range(count)
+                ]
+                candidate["instances"][0]["templateId"] = "sequence.capacity.0"
+                before = copy.deepcopy(candidate)
+                with self.subTest(count=count):
+                    if count <= maximum:
+                        self.assertEqual({"instance.source-start"}, self.validate(candidate))
+                    else:
+                        with self.assertRaisesRegex(pipeline.CompositionError, "array limits"):
+                            self.validate(candidate)
+                    self.assertEqual(before, candidate)
+                (folder / (str(count) + ".json")).write_text(json.dumps(candidate), encoding="utf-8")
+            script = "$ErrorActionPreference='Stop'\n$AreaId='LV_LUT_MIDNIGHTC_ED'\n" + "\n".join(functions)
+            script += "\n$results=@(); foreach($file in Get-ChildItem -LiteralPath $PSScriptRoot -Filter '*.json') { try { [void](Read-WorldSequenceDocument $file.FullName); $ok=$true } catch { $ok=$false }; $results += [pscustomobject]@{count=[int]$file.BaseName;valid=$ok} }; ConvertTo-Json -InputObject @($results) -Compress"
+            script_path = folder / "capacity.ps1"
+            script_path.write_text(script, encoding="utf-8-sig")
+            result = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(script_path)], capture_output=True, text=True, timeout=30)
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertEqual({268: True, maximum: True, maximum + 1: False},
+                             {row["count"]: row["valid"] for row in json.loads(result.stdout)})
+
     def test_omitted_zero_and_bounded_source_offsets_preserve_the_document(self) -> None:
         for source_start in (None, 0, 1539, 10559, 600000):
             candidate = copy.deepcopy(self.document)

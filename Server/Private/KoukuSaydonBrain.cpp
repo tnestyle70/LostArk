@@ -269,7 +269,11 @@ bool LostArk::Server::CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
 			if (phase == Air::NONE || phase > Air::SLAM || pattern.BossMotion ||
 				!std::isfinite(trigger.fAirborneHeightM) || trigger.fAirborneHeightM < 0.f || trigger.fAirborneHeightM > 100000.f ||
 				((jump || appear) != (trigger.fAirborneHeightM > 0.f)) ||
-				(jump ? (trigger.iAirborneDurationMs == 0u || trigger.iAirborneDurationMs > 600000u ||
+				(trigger.bCaptureAirborneTargetPosition && phase != Air::SELECT_PLAYER) ||
+				trigger.strSelectedEffectVisualId.empty() != (trigger.iSelectedEffectLifetimeMs == 0u) ||
+				(!trigger.strSelectedEffectVisualId.empty() && !trigger.bCaptureAirborneTargetPosition) ||
+				std::uint64_t(trigger.iStartMs) + trigger.iSelectedEffectLifetimeMs > patternDurationMs ||
+				(jump ? (trigger.iAirborneDurationMs > 600000u ||
 				 std::uint64_t(trigger.iStartMs) + trigger.iAirborneDurationMs > patternDurationMs) : trigger.iAirborneDurationMs != 0u) ||
 				trigger.eHudMode != LostArk::Shared::KOUKU_HUD_MODE::NONE || !trigger.strClonePatternId.empty() || !trigger.ClockHours.empty() ||
 				trigger.fFaceCenterYawOffsetDegrees != 0.f || trigger.iCountPerPlayer || trigger.fPlayerEffectRadiusM != 0.f || trigger.iEffectLifetimeMs ||
@@ -294,8 +298,27 @@ bool LostArk::Server::CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
 				if (up - minimum <= .000001f) { status = "Albion slam has no remaining source descent"; return false; }
 			}
 		}
-		else if (trigger.eAirbornePhase != Air::NONE || trigger.fAirborneHeightM != 0.f || trigger.iAirborneDurationMs != 0u)
+		else if (trigger.eAirbornePhase != Air::NONE || trigger.fAirborneHeightM != 0.f || trigger.iAirborneDurationMs != 0u ||
+			trigger.bCaptureAirborneTargetPosition || !trigger.strSelectedEffectVisualId.empty() || trigger.iSelectedEffectLifetimeMs != 0u)
 		{ status = "Non-Albion trigger carries airborne values"; return false; }
+		if (trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::PURSUIT_PROJECTILES)
+		{
+			const auto count = trigger.ProjectileVisualIds.size();
+			if (!count || count > 4u || trigger.strContactVisualId.empty() ||
+				std::any_of(trigger.ProjectileVisualIds.begin(), trigger.ProjectileVisualIds.end(), [](const auto& id) { return id.empty(); }) ||
+				!std::isfinite(trigger.fProjectileSpeedMps) || trigger.fProjectileSpeedMps < .01f || trigger.fProjectileSpeedMps > 100.f ||
+				!std::isfinite(trigger.fProjectileContactRadiusM) || trigger.fProjectileContactRadiusM < .01f || trigger.fProjectileContactRadiusM > 10.f ||
+				!std::isfinite(trigger.fProjectileSpawnRadiusM) || trigger.fProjectileSpawnRadiusM < 0.f || trigger.fProjectileSpawnRadiusM > 100.f ||
+				!std::isfinite(trigger.fProjectileMaxDistanceM) || trigger.fProjectileMaxDistanceM < 0.f || trigger.fProjectileMaxDistanceM > 1000.f ||
+				trigger.iProjectileLifetimeMs > 600000u || trigger.iSpawnIntervalMs > 600000u ||
+				!trigger.iProjectileCountPerWave || trigger.iProjectileCountPerWave > 16u ||
+				(trigger.iProjectileLifetimeMs == 0u && (!trigger.bProjectileHoming || trigger.iSpawnIntervalMs != 0u || trigger.fProjectileMaxDistanceM != 0.f)))
+			{ status = "Pursuit projectile visual, motion or lifetime contract is invalid"; return false; }
+		}
+		else if (!trigger.ProjectileVisualIds.empty() || !trigger.strContactVisualId.empty() ||
+			trigger.fProjectileSpeedMps != 0.f || trigger.fProjectileMaxDistanceM != 0.f || trigger.fProjectileContactRadiusM != 0.f || trigger.fProjectileSpawnRadiusM != 0.f ||
+			trigger.iProjectileLifetimeMs != 0u || trigger.iProjectileCountPerWave != 0u || trigger.bProjectileHoming)
+		{ status = "Only pursuit projectiles own projectile values"; return false; }
 		const bool hasRandomVolleys = !trigger.RandomVolleys.empty();
 		if (hasRandomVolleys ?
 			(trigger.eKind != BOSS_PATTERN_MECHANIC_TRIGGER_KIND::SHOWTIME_PLAYER_TARGETS || trigger.RandomVolleys.size() > 32u ||
@@ -1007,7 +1030,7 @@ bool LostArk::Server::CKoukuSaydonBrain::Sample_AlbionAirborneHeight(
 	switch (state.ePhase)
 	{
 	case Phase::JUMP:
-	 if (state.iDurationMs == 0u) return false;
+	 if (state.iDurationMs == 0u) { outHeight = state.fJumpHeightM; break; }
 	 outHeight = static_cast<float>(state.fStartHeightM + (state.fJumpHeightM - state.fStartHeightM) *
 	  (std::clamp)((patternMs - state.iStartMs) / state.iDurationMs, 0.0, 1.0));
 	 break;
@@ -1036,7 +1059,9 @@ bool LostArk::Server::CKoukuSaydonBrain::Apply_StageRootMotion(
 {
 	status.clear();
 	const bool airborne = boss.AlbionAirborne.iPatternSequence == boss.iPatternSequence &&
-		boss.AlbionAirborne.ePhase != ALBION_AIRBORNE_PHASE::NONE;
+		boss.AlbionAirborne.ePhase != ALBION_AIRBORNE_PHASE::NONE &&
+		(boss.AlbionAirborne.ePhase != ALBION_AIRBORNE_PHASE::SLAM ||
+		 boss.iPatternStageIndex == boss.AlbionAirborne.iSourceStageIndex);
 	if ((!airborne && boss.PatternStageRootMotion.empty()) || boss.strPatternId.empty() ||
 		boss.iPatternStageRootLastTick == serverTick) return true;
 	if (serverTick == 0u || boss.strPatternId != pattern.strPatternId ||
@@ -1065,6 +1090,9 @@ bool LostArk::Server::CKoukuSaydonBrain::Apply_StageRootMotion(
 		static_cast<float>(boss.fPatternStageOriginX + sample.fLateral * std::cos(yaw) + sample.fForward * std::sin(yaw)),
 		boss.fPatternStageOriginY + sample.fUp,
 		static_cast<float>(boss.fPatternStageOriginZ - sample.fLateral * std::sin(yaw) + sample.fForward * std::cos(yaw)) };
+	// SLAM lands on the committed target/center anchor; native lateral sway is pose-only.
+	if (airborne && boss.AlbionAirborne.ePhase == ALBION_AIRBORNE_PHASE::SLAM)
+	{ destination.x = boss.fPositionX; destination.z = boss.fPositionZ; }
 	if (!std::isfinite(destination.x) || !std::isfinite(destination.y) || !std::isfinite(destination.z))
 	{ status = "KoukuSaydon root motion destination is invalid"; return false; }
 	SERVER_NAV_POINT ground;

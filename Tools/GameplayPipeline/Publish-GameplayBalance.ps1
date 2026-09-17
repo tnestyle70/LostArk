@@ -283,15 +283,23 @@ function Get-KoukuTargetedVisualIndex([object]$Bindings, [uint32]$ExpectedRevisi
     }
     $index = [Collections.Generic.Dictionary[string,object]]::new([StringComparer]::Ordinal)
     foreach ($visual in @($Bindings.targetedCombatVisuals)) {
-        Assert-ExactProperties $visual @('clientVisualId','combatObjectArchetypeId','durationMs','loop','resources','occurrences') 'Kouku targeted visual'
+        $isPursuit = $visual.combatObjectArchetypeId -ceq 'combatobject.kouku.pursuit'
+        $visualKeys = @('clientVisualId','combatObjectArchetypeId','durationMs','loop','resources','occurrences')
+        if ($isPursuit) { $visualKeys += @('contactVisualId','contactEffectAssetId') }
+        Assert-ExactProperties $visual $visualKeys 'Kouku targeted visual'
+        if ($isPursuit) {
+            Assert-StableId $visual.contactVisualId 'Pursuit contact visual'
+            Assert-StableId $visual.contactEffectAssetId 'Pursuit contact effect'
+        }
         Assert-JsonString $visual.clientVisualId 'Kouku targeted clientVisualId'
         Assert-JsonString $visual.combatObjectArchetypeId 'Kouku targeted archetype'
         Assert-JsonInteger $visual.durationMs 'Kouku targeted durationMs' 1 600000
         $role = if ($visual.combatObjectArchetypeId -ceq 'combatobject.kouku.showtime.fixed') { 'fixed' }
-            elseif ($visual.combatObjectArchetypeId -ceq 'combatobject.kouku.showtime.tracking') { 'tracking' } else { '' }
-        if (-not $role -or $visual.clientVisualId -cnotmatch ('^kouku\.showtime\.' + $role + '\.[0-9a-f]{64}$') -or
+            elseif ($visual.combatObjectArchetypeId -ceq 'combatobject.kouku.showtime.tracking') { 'tracking' } elseif ($isPursuit) { 'pursuit' } else { '' }
+        $visualPattern = if ($isPursuit) { '^kouku\.pursuit\.[0-9a-f]{64}$' } else { '^kouku\.showtime\.' + $role + '\.[0-9a-f]{64}$' }
+        if (-not $role -or $visual.clientVisualId -cnotmatch $visualPattern -or
             $index.ContainsKey([string]$visual.clientVisualId) -or $visual.loop -isnot [bool] -or
-            $visual.loop -ne ($role -ceq 'tracking') -or $visual.resources -isnot [Array] -or
+            $visual.loop -ne ($role -cin @('tracking','pursuit')) -or $visual.resources -isnot [Array] -or
             @($visual.resources).Count -lt 1 -or @($visual.resources).Count -gt 1024 -or
             $visual.occurrences -isnot [Array] -or @($visual.occurrences).Count -lt 1 -or @($visual.occurrences).Count -gt 1024) {
             throw 'Kouku targeted visual identity, lifetime or bounded template is invalid.'
@@ -299,6 +307,47 @@ function Get-KoukuTargetedVisualIndex([object]$Bindings, [uint32]$ExpectedRevisi
         $index.Add([string]$visual.clientVisualId, $visual)
     }
     return ,$index
+}
+
+function New-KoukuPursuitProjectileRows([object]$Pattern, [string]$EncounterId,
+    [uint32]$PatternDurationMs, [Collections.Generic.Dictionary[string,object]]$Visuals) {
+    if ($Pattern.pursuitProjectiles -isnot [Array] -or @($Pattern.pursuitProjectiles).Count -gt 64) { throw 'Pursuit requires a bounded array.' }
+    $ids = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    foreach ($target in @($Pattern.pursuitProjectiles)) {
+        $hasDistance = $null -ne $target.PSObject.Properties['maxDistanceM']
+        Assert-ExactProperties $target (@('occurrenceId','startMs','durationMs','visualIds','contactVisualId','speedMps',
+            'contactRadiusM','spawnRadiusM','lifetimeMs','spawnIntervalMs','homing','countPerWave') + $(if ($hasDistance) { @('maxDistanceM') } else { @() })) 'Pursuit projectile'
+        $distance = if ($hasDistance) { $target.maxDistanceM } else { 0 }
+        Assert-JsonNumber $distance 'Pursuit maxDistanceM'
+        Assert-StableId $target.occurrenceId 'Pursuit occurrence'
+        Assert-StableId $target.contactVisualId 'Pursuit contact visual'
+        Assert-JsonInteger $target.startMs 'Pursuit startMs' 0 600000
+        Assert-JsonInteger $target.durationMs 'Pursuit durationMs' 1 600000
+        Assert-JsonInteger $target.lifetimeMs 'Pursuit lifetimeMs' 0 600000
+        Assert-JsonInteger $target.spawnIntervalMs 'Pursuit spawnIntervalMs' 0 600000
+        Assert-JsonInteger $target.countPerWave 'Pursuit countPerWave' 1 16
+        foreach ($field in @('speedMps','contactRadiusM','spawnRadiusM')) { Assert-JsonNumber $target.$field "Pursuit $field" }
+        if (-not $ids.Add($target.occurrenceId) -or ($target.startMs + $target.durationMs) -gt $PatternDurationMs -or
+            @($Pattern.logicWindows | Where-Object { $_.windowId -ceq $target.occurrenceId }).Count -ne 0 -or
+            $target.visualIds -isnot [Array] -or @($target.visualIds).Count -lt 1 -or @($target.visualIds).Count -gt 4 -or
+            $target.homing -isnot [bool] -or $target.speedMps -lt .01 -or $target.speedMps -gt 100 -or
+            $distance -lt 0 -or $distance -gt 1000 -or
+            $target.contactRadiusM -lt .01 -or $target.contactRadiusM -gt 10 -or $target.spawnRadiusM -lt 0 -or $target.spawnRadiusM -gt 100 -or
+            ($target.lifetimeMs -eq 0 -and (-not $target.homing -or $target.spawnIntervalMs -ne 0 -or $distance -ne 0))) { throw 'Pursuit motion or lifetime is invalid.' }
+        $pool = @($target.visualIds)
+        foreach ($visualId in $pool) {
+            Assert-StableId $visualId 'Pursuit visual'
+            if (-not $Visuals.ContainsKey($visualId) -or $Visuals[$visualId].combatObjectArchetypeId -cne 'combatobject.kouku.pursuit' -or
+                $Visuals[$visualId].contactVisualId -cne $target.contactVisualId) { throw 'Pursuit visual does not join its pinned Client template.' }
+        }
+        while ($pool.Count -lt 4) { $pool += '-' }
+        $homing = if ($target.homing) { '1' } else { '0' }
+        (@('PATTERNPURSUITPROJECTILES',$EncounterId,$Pattern.patternId,$target.occurrenceId,$target.startMs,$target.durationMs) + $pool +
+            @($target.contactVisualId,(Format-InvariantFloat $target.speedMps 'Pursuit speed'),
+              (Format-InvariantFloat $target.contactRadiusM 'Pursuit contact radius'),(Format-InvariantFloat $target.spawnRadiusM 'Pursuit spawn radius'),
+              $target.lifetimeMs,$target.spawnIntervalMs,$homing,$target.countPerWave) +
+            $(if ($distance -gt 0) { @((Format-InvariantFloat $distance 'Pursuit maximum distance')) } else { @() })) -join "`t"
+    }
 }
 
 function New-KoukuShowtimeTargetRows([object]$Pattern, [string]$EncounterId,
@@ -380,8 +429,10 @@ function New-KoukuShowtimeTargetRows([object]$Pattern, [string]$EncounterId,
 function New-KoukuAlbionAirborneRow([object]$Trigger,[string]$EncounterId,[string]$PatternId,[uint32]$PatternDurationMs) {
     $fields = @('airbornePhase','airborneHeightM','airborneDurationMs')
     $present = @($fields | Where-Object { $null -ne $Trigger.PSObject.Properties[$_] }).Count
+    $selectionFields = @('airborneTargetPositionPolicy','selectedEffectVisualId','selectedEffectLifetimeMs')
+    $selectionPresent = @($selectionFields | Where-Object { $null -ne $Trigger.PSObject.Properties[$_] }).Count
     if ($Trigger.kind -cne 'ALBION_AIRBORNE') {
-        if ($present) { throw 'Only ALBION_AIRBORNE owns airborne phase values.' }
+        if ($present -or $selectionPresent) { throw 'Only ALBION_AIRBORNE owns airborne phase values.' }
         return
     }
     if ($present -ne 3) { throw 'ALBION_AIRBORNE requires its three phase values together.' }
@@ -393,15 +444,29 @@ function New-KoukuAlbionAirborneRow([object]$Trigger,[string]$EncounterId,[strin
     $duration = [uint32]$Trigger.airborneDurationMs
     if ($phase -cnotin @('JUMP','SELECT_PLAYER','APPEAR_PLAYER','DISAPPEAR','CENTER','SLAM') -or
         $height -lt 0 -or $height -gt 100000 -or (($phase -cin @('JUMP','APPEAR_PLAYER')) -ne ($height -gt 0)) -or
-        ($phase -ceq 'JUMP' -and ($duration -eq 0 -or ([uint64]$Trigger.startMs + $duration) -gt $PatternDurationMs)) -or
+        ($phase -ceq 'JUMP' -and ([uint64]$Trigger.startMs + $duration) -gt $PatternDurationMs) -or
         ($phase -cne 'JUMP' -and $duration -ne 0) -or $Trigger.hudMode -cne 'NONE' -or
         $Trigger.faceCenterYawOffsetDegrees -ne 0 -or
         @($Trigger.teleportPosition | Where-Object { [Math]::Abs([double]$_) -gt 100000 }).Count -ne 0 -or
         ($phase -cne 'CENTER' -and @($Trigger.teleportPosition | Where-Object { $_ -ne 0 }).Count -ne 0)) {
         throw 'Albion airborne phase, height, duration or coordinate ownership is invalid.'
     }
-    return (@('PATTERNALBIONAIRBORNE',$EncounterId,$PatternId,$Trigger.triggerId,$phase,
-        (Format-InvariantFloat $height 'Albion airborne height'),$duration) -join "`t")
+    $row = @('PATTERNALBIONAIRBORNE',$EncounterId,$PatternId,$Trigger.triggerId,$phase,
+        (Format-InvariantFloat $height 'Albion airborne height'),$duration)
+    if ($selectionPresent) {
+        if ($phase -cne 'SELECT_PLAYER' -or $Trigger.airborneTargetPositionPolicy -cne 'SELECT') {
+            throw 'Selected position fields require SELECT_PLAYER and SELECT policy.'
+        }
+        $visualId = ''; $lifetime = 0
+        if ($null -ne $Trigger.PSObject.Properties['selectedEffectVisualId'] -or $null -ne $Trigger.PSObject.Properties['selectedEffectLifetimeMs']) {
+            Assert-StableId $Trigger.selectedEffectVisualId 'Selected airborne Effect visual ID'
+            Assert-JsonInteger $Trigger.selectedEffectLifetimeMs 'Selected airborne Effect lifetime' 1 600000
+            $visualId = [string]$Trigger.selectedEffectVisualId; $lifetime = [uint32]$Trigger.selectedEffectLifetimeMs
+            if (([uint64]$Trigger.startMs + $lifetime) -gt $PatternDurationMs) { throw 'Selected Effect exceeds Pattern lifetime.' }
+        }
+        $row += @('SELECT',$visualId,$lifetime)
+    }
+    return ($row -join "`t")
 }
 
 function Assert-BossDefaultParticles([object]$Boss) {
@@ -3332,7 +3397,7 @@ if ([string]$koukuEncounterDocument.schema -cne 'lostark.encounter-profile' -or
 	-not $bossIds.Contains([string]$koukuEncounterDocument.bossArchetypeId) -or
 	$koukuEncounterDocument.patterns -isnot [Array] -or
 	@($koukuEncounterDocument.patterns).Count -lt 1 -or
-	@($koukuEncounterDocument.patterns).Count -gt 64 -or
+	@($koukuEncounterDocument.patterns).Count -gt 255 -or
 	$koukuEncounterDocument.playAllPatternIds -isnot [Array]) {
 	throw 'KoukuSaydon encounter Product header is invalid.'
 }
@@ -3376,7 +3441,7 @@ $koukuGateTargets = @{
 }
 $koukuFollowupTargets = [Collections.Generic.List[string]]::new()
 $koukuTargetedVisuals = [Collections.Generic.Dictionary[string,object]]::new([StringComparer]::Ordinal)
-if (@($koukuEncounterDocument.patterns | Where-Object { $null -ne $_.PSObject.Properties['showtimeTargets'] }).Count -gt 0) {
+if (@($koukuEncounterDocument.patterns | Where-Object { $null -ne $_.PSObject.Properties['showtimeTargets'] -or $null -ne $_.PSObject.Properties['pursuitProjectiles'] }).Count -gt 0) {
     $koukuTargetBindings = Read-JsonDocument 'Data/Animation/Authored/KoukuSaydon/KoukuSaydon.patternbindings.json'
     $koukuTargetedVisuals = Get-KoukuTargetedVisualIndex $koukuTargetBindings $koukuEncounterDocument.sourceRevision
 }
@@ -3387,6 +3452,7 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 	if ($null -ne $koukuPattern.PSObject.Properties['folderId']) { $koukuOptionalProperties += 'folderId' }
 	if ($null -ne $koukuPattern.PSObject.Properties['fixedTimeline']) { $koukuOptionalProperties += 'fixedTimeline' }
 	if ($null -ne $koukuPattern.PSObject.Properties['showtimeTargets']) { $koukuOptionalProperties += 'showtimeTargets' }
+	if ($null -ne $koukuPattern.PSObject.Properties['pursuitProjectiles']) { $koukuOptionalProperties += 'pursuitProjectiles' }
 	Assert-ExactProperties $koukuPattern (@(
 		'patternId','category','minimumPhase','maximumPhase','targetPolicy',
 		'aimPolicy','displayName','actionId','sourceActionIds','selectionMode',
@@ -4186,6 +4252,9 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 	}
 	# Forward Hold references resolve only after every PATTERNLOGIC row exists.
 	foreach ($holdRow in $koukuHoldRows) { $patternRows.Add($holdRow) }
+	if ($null -ne $koukuPattern.PSObject.Properties['pursuitProjectiles']) {
+		foreach ($targetRow in @(New-KoukuPursuitProjectileRows $koukuPattern $koukuEncounterDocument.encounterId $koukuPatternDurationMs $koukuTargetedVisuals)) { $patternRows.Add($targetRow) }
+	}
 	if ($null -ne $koukuPattern.PSObject.Properties['showtimeTargets']) {
 		foreach ($targetRow in @(New-KoukuShowtimeTargetRows $koukuPattern $koukuEncounterDocument.encounterId $koukuPatternDurationMs $koukuTargetedVisuals)) {
 			$patternRows.Add($targetRow)
@@ -4241,7 +4310,7 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 		}
 		$triggerOptionalProperties = @()
 		if ($null -ne $trigger.PSObject.Properties['patternSpawns']) { $triggerOptionalProperties += 'patternSpawns' }
-		foreach ($field in @('airbornePhase','airborneHeightM','airborneDurationMs')) {
+		foreach ($field in @('airbornePhase','airborneHeightM','airborneDurationMs','airborneTargetPositionPolicy','selectedEffectVisualId','selectedEffectLifetimeMs')) {
 			if ($null -ne $trigger.PSObject.Properties[$field]) { $triggerOptionalProperties += $field }
 		}
 		Assert-ExactProperties $trigger (@('triggerId','kind','startMs','durationMs',

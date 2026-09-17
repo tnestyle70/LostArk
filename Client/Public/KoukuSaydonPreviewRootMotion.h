@@ -26,6 +26,7 @@ public:
     struct AIRBORNE_EVENT final
     {
         std::string occurrenceId, phase;
+        std::string targetPositionPolicy = "APPEAR", selectedEffectGroupId;
         uint32_t clockMs = 0u, durationMs = 0u;
         double heightM = 0.0;
         float3_t destination{};
@@ -38,7 +39,7 @@ public:
         const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern, std::string& status);
     const std::vector<AIRBORNE_EVENT>& Airborne_Events() const { return m_AirborneEvents; }
     // Target positions are pinned by the presentation owner in event order;
-    // APPEAR_PLAYER samples the selected player at its own first appearance clock.
+    // APPEAR policy samples on appearance; SELECT policy reuses its captured ground point.
     bool Sample_AirbornePosition(double clockMs, std::span<const float> rowYawDegrees,
         const float3_t& initialPosition, std::span<const float3_t> selectionPositions,
         float3_t& output) const;

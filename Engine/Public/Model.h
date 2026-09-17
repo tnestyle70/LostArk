@@ -250,6 +250,8 @@ public:
 		uint32_t iNumInstances, uint32_t iInstanceByteOffset = 0u);
 	bool_t Play_Animation(f32_t fTimeDelta);
 	HRESULT Bind_BoneMatrices(shared_ptr<class CShader> pShader, const char_t* pConstantName, uint32_t iMeshIndex);
+	// Copy the actual mesh skin palette without changing this clone's pose or clock.
+	bool_t Capture_BoneMatrices(uint32_t iMeshIndex, vector<float4x4_t>& outMatrices) const;
 	HRESULT Bind_Material(shared_ptr<class CShader> pShader, const char_t* pConstantName, uint32_t iMeshIndex, aiTextureType eType, uint32_t iTextureIndex = 0);
 	/* Repaints one texture slot of every material whose name contains pMaterialNameFragment,
 	for the character-creation choices that change a face's look without changing its mesh.

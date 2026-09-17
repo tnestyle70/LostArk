@@ -117,6 +117,9 @@ PS_OUT_SHADOW PS_MAIN_SHADOW(PS_IN In)
 }
 
 
+// Identical entry/profile/arguments compile once; pass states and indices stay unchanged.
+VertexShader AnimMeshVS = compile vs_5_0 VS_MAIN();
+
 technique11 DefaultTechnique
 {
     pass DefaultPass
@@ -124,7 +127,7 @@ technique11 DefaultTechnique
         SetRasterizerState(RS_Default);
         SetDepthStencilState(DSS_Default, 0);
         SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = AnimMeshVS;
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_MAIN();
     }    
@@ -134,7 +137,7 @@ technique11 DefaultTechnique
         SetRasterizerState(RS_Default);
         SetDepthStencilState(DSS_Default, 0);
         SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = AnimMeshVS;
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_MAIN_SHADOW();
     }

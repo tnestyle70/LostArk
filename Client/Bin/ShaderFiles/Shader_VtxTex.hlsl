@@ -170,6 +170,10 @@ PS_OUT PS_MAIN_SOFTEFFECT(PS_IN In)
     return Out;
 }
 
+// Identical entry/profile/arguments compile once; pass states and indices stay unchanged.
+VertexShader TextureVS = compile vs_5_0 VS_MAIN();
+PixelShader TextureUiPS = compile ps_5_0 PS_MAIN_UI();
+
 technique11 DefaultTechnique
 {
     pass DefaultPass
@@ -177,7 +181,7 @@ technique11 DefaultTechnique
         SetRasterizerState(RS_Default);
         SetDepthStencilState(DSS_Default, 0);
         SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = TextureVS;
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_MAIN();
     }    
@@ -187,7 +191,7 @@ technique11 DefaultTechnique
         SetRasterizerState(RS_Default);
         SetDepthStencilState(DSS_Default, 0);
         SetBlendState(BS_AlphaBlend, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = TextureVS;
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_MAIN_SOFTEFFECT();
     }
@@ -199,9 +203,9 @@ technique11 DefaultTechnique
         SetRasterizerState(RS_Default);
         SetDepthStencilState(DSS_Default, 0);
         SetBlendState(BS_AlphaBlend, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = TextureVS;
         GeometryShader = NULL;
-        PixelShader = compile ps_5_0 PS_MAIN_UI();
+        PixelShader = TextureUiPS;
     }
 
     /* Same as UIBlend but additive -- for a UI sprite authored with a Scaleform additive
@@ -212,9 +216,9 @@ technique11 DefaultTechnique
         SetRasterizerState(RS_Default);
         SetDepthStencilState(DSS_Default, 0);
         SetBlendState(BS_Additive, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = TextureVS;
         GeometryShader = NULL;
-        PixelShader = compile ps_5_0 PS_MAIN_UI();
+        PixelShader = TextureUiPS;
     }
 }
 

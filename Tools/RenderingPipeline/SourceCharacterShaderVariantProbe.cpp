@@ -101,6 +101,8 @@ int wmain(int argc, wchar_t** argv)
             {L"Shader_Deferred", VTXTEX::Elements, VTXTEX::iNumElements, 19u, true, false}
         };
         uint32_t programsChecked = 0u, clonesChecked = 0u, failureCases = 0u, lightPassesChecked = 0u;
+        uint32_t nativePassesChecked = 0u, unavailablePassesChecked = 0u;
+        uint32_t afterimagePassesChecked = 0u;
         for (const auto& fixture : fixtures)
         {
             const std::wstring logical = std::wstring(fixture.name) + L".hlsl";
@@ -167,6 +169,74 @@ int wmain(int argc, wchar_t** argv)
                 auto directA = CShader::Create(device, context, L"Shader_VtxAnimMeshBinary_SourceGroup001.hlsl", fixture.elements, fixture.count);
                 auto directB = CShader::Create(device, context, L"Shader_VtxAnimMeshBinary_SourceGroup009.hlsl", fixture.elements, fixture.count);
                 Require(directA && directB, "direct cohort benchmark creation failed");
+
+                // Source groups have no base-owned native cue or afterimage PS. Direct callers must fail
+                // before applying an invisible pass, while the owning base FX
+                // must select its native PS despite a stale surface program.
+                for (uint32_t pass : {7u, 8u, 12u, 13u, 14u})
+                {
+                    Require(FAILED(directA->Begin(pass)) && FAILED(directB->Begin(pass)),
+                        "direct source group accepted a base-owned native cue pass");
+                    unavailablePassesChecked += 2u;
+                }
+                std::array<float, 128> nativeConstants{};
+                for (size_t i = 0; i < nativeConstants.size(); ++i)
+                    nativeConstants[i] = 30000.25f + static_cast<float>(i);
+                Require(SUCCEEDED(first->Bind_RawValue("g_ArtistSourceMaterialParameters",
+                    nativeConstants.data(), sizeof(nativeConstants))) &&
+                    SUCCEEDED(first->Bind_Texture("g_SourceTexture0", view)), "native cue fixture binding failed");
+                for (uint32_t nativeProfile : {178u, 460u, 461u, 772u, 1360u, 3828u, 3831u, 3832u, 3833u})
+                {
+                    Require(SUCCEEDED(first->Bind_RawValue("g_ArtistModelCueProfile",
+                        &nativeProfile, sizeof(nativeProfile))), "native cue profile bind failed");
+                    uint32_t surfaceProgram = 0u;
+                    Require(SUCCEEDED(first->Bind_RawValue("g_SourceCharacterProgram", &surfaceProgram,
+                        sizeof(surfaceProgram))) && SUCCEEDED(first->Begin(7u)), "base native cue pass failed");
+                    ComPtr<ID3D11PixelShader> expectedNative;
+                    context->PSGetShader(&expectedNative, nullptr, nullptr);
+                    Require(expectedNative != nullptr, "base native cue PS missing");
+                    for (uint32_t staleProgram : {1u, 9u, 18u, 88u})
+                    {
+                        Require(SUCCEEDED(first->Bind_RawValue("g_SourceCharacterProgram", &staleProgram,
+                            sizeof(staleProgram))), "stale source program fixture bind failed");
+                        for (uint32_t pass : {7u, 8u, 12u, 13u})
+                        {
+                            Require(SUCCEEDED(second->Begin(pass)), "shared clone native cue pass failed");
+                            ComPtr<ID3D11PixelShader> actualNative;
+                            context->PSGetShader(&actualNative, nullptr, nullptr);
+                            Require(actualNative == expectedNative, "native cue selected a source-group PS");
+                            Require(ConstantsBound(device.Get(), context.Get(), false, nativeConstants.data(),
+                                sizeof(nativeConstants)) && TextureBound(context.Get(), view.Get()),
+                                "native cue lost base-owned constants or textures");
+                            Require(ConstantsBound(device.Get(), context.Get(), true, bones.data(),
+                                sizeof(float4x4_t) * bones.size()), "native cue lost base-owned bone matrices");
+                            ++nativePassesChecked;
+                        }
+                    }
+                }
+                const std::array<float, 4> afterimageColor{1.8125f, 1.6875f, 1.5625f, .3125f};
+                uint32_t surfaceProgram = 0u;
+                Require(SUCCEEDED(first->Bind_RawValue("g_ChargeAfterimageColor", afterimageColor.data(),
+                    sizeof(afterimageColor))) && SUCCEEDED(first->Bind_RawValue("g_SourceCharacterProgram",
+                    &surfaceProgram, sizeof(surfaceProgram))) && SUCCEEDED(first->Begin(14u)),
+                    "base afterimage pass failed");
+                ComPtr<ID3D11PixelShader> expectedAfterimage;
+                context->PSGetShader(&expectedAfterimage, nullptr, nullptr);
+                Require(expectedAfterimage != nullptr, "base afterimage PS missing");
+                for (uint32_t staleProgram : {1u, 9u, 18u, 88u})
+                {
+                    Require(SUCCEEDED(first->Bind_RawValue("g_SourceCharacterProgram", &staleProgram,
+                        sizeof(staleProgram))) && SUCCEEDED(second->Begin(14u)),
+                        "shared clone afterimage pass failed with a stale source program");
+                    ComPtr<ID3D11PixelShader> actualAfterimage;
+                    context->PSGetShader(&actualAfterimage, nullptr, nullptr);
+                    Require(actualAfterimage == expectedAfterimage, "afterimage selected a source-group PS");
+                    Require(ConstantsBound(device.Get(), context.Get(), false, afterimageColor.data(),
+                        sizeof(afterimageColor)), "afterimage lost base-owned color/fade constants");
+                    Require(ConstantsBound(device.Get(), context.Get(), true, bones.data(),
+                        sizeof(float4x4_t) * bones.size()), "afterimage lost base-owned bone matrices");
+                    ++afterimagePassesChecked;
+                }
                 for (bool updates : {false, true}) for (bool switching : {false, true})
                 {
                     const auto execute = [&](CShader& shader, uint32_t i)
@@ -208,7 +278,7 @@ int wmain(int argc, wchar_t** argv)
             failureCases += 2u;
             std::printf("checked source shader %ls\n", fixture.name);
         }
-        std::printf("{\"programsChecked\":%u,\"clonesChecked\":%u,\"failureCases\":%u,\"lightPassesChecked\":%u,\"windowsCreated\":0,\"draws\":0}\n", programsChecked, clonesChecked, failureCases, lightPassesChecked);
+        std::printf("{\"programsChecked\":%u,\"clonesChecked\":%u,\"failureCases\":%u,\"lightPassesChecked\":%u,\"nativePassesChecked\":%u,\"afterimagePassesChecked\":%u,\"unavailablePassesChecked\":%u,\"windowsCreated\":0,\"draws\":0}\n", programsChecked, clonesChecked, failureCases, lightPassesChecked, nativePassesChecked, afterimagePassesChecked, unavailablePassesChecked);
         context->ClearState();
         return 0;
     }

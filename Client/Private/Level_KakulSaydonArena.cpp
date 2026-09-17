@@ -67,6 +67,104 @@ namespace
 			{play.fWorldScaleX, play.fWorldScaleY, play.fWorldScaleZ}};
 	}
 
+	// A Composition cue keeps one owner/clock while the existing World group
+	// expands into the same independent motions used by the World Object tool.
+	std::vector<std::string> CompositionWorldMotions(const CWorldSequenceDocument& document, const std::string& id)
+	{
+		const auto* group = document.Find_ObjectResource(id);
+		if (!group || group->motionInstanceIds.empty()) return {id};
+		std::vector<std::string> result;
+		for (const auto& member : group->motionInstanceIds)
+		{
+			const auto* motion = document.Find_Instance(member);
+			const auto* sequence = motion ? document.Find_Template(motion->templateId) : nullptr;
+			const auto* model = motion && motion->bindings.size() == 1u ?
+				document.Find_ObjectResource(motion->bindings.front().targetId) : nullptr;
+			if (!motion || !sequence || motion->anchorKind != "WORLD" || motion->walkableSurface ||
+				!sequence->colliderTracks.empty() || !model || model->modelAssetId.empty() || model->combatBody ||
+				!model->motionInstanceIds.empty() || motion->bindings.front().targetKind != WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE ||
+				(motion->motionEnd != WORLD_SEQUENCE_MOTION_END::STOP && motion->motionEnd != WORLD_SEQUENCE_MOTION_END::LOOP))
+				return {}; // A visual group cannot create unreplicated gameplay objects.
+			if (motion->enabled) result.push_back(member);
+		}
+		return result;
+	}
+
+	void BindCompositionGroupOrigin(const CWorldSequenceDocument& document, const std::string& id,
+		CWorldSequencePlayer::TARGET_SET& targets)
+	{
+		const auto* group = document.Find_ObjectResource(id);
+		if (!group || group->motionInstanceIds.empty() || !targets.objectEmissionAnchor) return;
+		const auto source = targets.objectEmissionAnchor;
+		const auto captured = std::make_shared<std::optional<float4x4_t>>();
+		// Child offsets are authored from their parent's endpoint. All member
+		// providers share the first successful birth sample; a pending anchor retries.
+		targets.objectEmissionAnchor = [source, captured](float, float4x4_t& world)
+		{
+			if (!*captured)
+			{
+				float4x4_t first;
+				if (!source(0.f, first)) return false;
+				*captured = first;
+			}
+			world = **captured;
+			return true;
+		};
+	}
+
+	f32_t CompositionWorldSpan(const CWorldSequencePlayer& player, const std::string& id,
+		const f32_t speed, const uint32_t duration)
+	{
+		f32_t span = 0.f;
+		for (const auto& member : CompositionWorldMotions(player.Get_Document(), id))
+			span = (std::max)(span, player.Get_InstanceElapsedSpanMs(member, speed, duration));
+		return span;
+	}
+
+	bool_t PrepareCompositionWorld(CWorldSequencePlayer& player, const std::string& id,
+		const CWorldSequencePlayer::TARGET_SET& targets,
+		const std::optional<CWorldSequencePlayer::OBJECT_PLACEMENT>& placement, std::string& status)
+	{
+		const auto members = CompositionWorldMotions(player.Get_Document(), id);
+		if (members.empty()) { status = "WORLD group has no enabled motions: " + id; return false; }
+		for (const auto& member : members)
+			if (!player.Prepare_InstanceResources(member, targets) ||
+				!player.Validate_ObjectPlacement(member, placement, status))
+			{ if (status.empty()) status = player.Get_Status(); return false; }
+		return true;
+	}
+
+	bool_t PlayCompositionWorld(CWorldSequencePlayer& player, const std::string& id,
+		const CWorldSequencePlayer::TARGET_SET& targets, const f32_t speed,
+		const float3_t& offset, const uint32_t duration,
+		const std::optional<CWorldSequencePlayer::OBJECT_PLACEMENT>& placement)
+	{
+		const auto members = CompositionWorldMotions(player.Get_Document(), id);
+		if (members.empty()) return false;
+		for (const auto& member : members)
+			if (!player.Is_Playing(member) && !player.Play(member, targets, speed, offset, duration, placement))
+			{ player.Stop_All(targets, true); return false; }
+		return true;
+	}
+
+	bool_t CompositionWorldPivot(const CWorldSequencePlayer& player, const std::string& id,
+		float4x4_t& out, const uint32_t emissionIndex = 0u)
+	{
+		const auto* group = player.Get_Document().Find_ObjectResource(id);
+		if (!group || group->motionInstanceIds.empty()) return player.Try_GetSequencePivot(id, out, emissionIndex);
+		bool_t found = false;
+		for (const auto& member : CompositionWorldMotions(player.Get_Document(), id))
+		{
+			float4x4_t visible;
+			if (!player.Try_GetObjectPivot(member, visible)) continue;
+			float4x4_t pivot;
+			if (!player.Try_GetSequencePivot(member, pivot, emissionIndex)) continue;
+			if (found) return false; // Parallel visible motions have no unique effect anchor.
+			out = pivot; found = true;
+		}
+		return found;
+	}
+
 	// Each arena remembers its own chosen speed for this process session.
 	f32_t g_KakulSaydonFreeCameraSpeed = CCamera_Free::DEFAULT_ARENA_MOVE_SPEED;
 	constexpr std::string_view KAKULSAYDON_AREA_ID =
@@ -724,10 +822,12 @@ bool_t Client::CLevel_KakulSaydonArena::Debug_BeginCompositionWorldPreview(
 	bool previewsPopupBook = false;
 	for (const auto& cue : cues)
 	{
-		const auto* instance = document.Find_Instance(cue.instanceId);
+		const auto members = CompositionWorldMotions(document, cue.instanceId);
 		const char* rejection = nullptr;
-		if (nullptr == instance) rejection = "instance is missing from the loaded Area document";
-		else if (!instance->enabled) rejection = "instance is disabled";
+		if (members.empty()) rejection = "group has no enabled motions";
+		else if (std::any_of(members.begin(), members.end(), [&](const auto& id) {
+			const auto* motion = document.Find_Instance(id); return !motion || !motion->enabled; }))
+			rejection = "instance is missing or disabled";
 		else if (0u == cue.durationMs) rejection = "duration is zero";
 		else if (!std::isfinite(cue.playbackSpeed) || cue.playbackSpeed <= 0.f)
 			rejection = "playback speed must be finite and positive";
@@ -741,33 +841,41 @@ bool_t Client::CLevel_KakulSaydonArena::Debug_BeginCompositionWorldPreview(
 			return false;
 		}
 		if (!Can_StartCompositionWorld(cue.instanceId, status, &document)) return false;
-		previewsPopupBook |= Is_PopupBookHoldInstance(*instance);
-		for (const auto& binding : instance->bindings)
+		for (const auto& member : members)
 		{
-			if (binding.targetKind == WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE &&
-				binding.targetId == "world.object.kouku.popup.book") previewsResourceBook = true;
-			if (binding.targetKind != WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE &&
-				!placementBindings.emplace(binding.targetKind, binding.targetId).second)
+			const auto* instance = document.Find_Instance(member);
+			previewsPopupBook |= Is_PopupBookHoldInstance(*instance);
+			for (const auto& binding : instance->bindings)
 			{
-				status = "WORLD preview occurrences share a mutable map/deploy target: " + cue.occurrenceId;
-				return false;
+				if (binding.targetKind == WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE &&
+					binding.targetId == "world.object.kouku.popup.book") previewsResourceBook = true;
+				if (binding.targetKind != WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE &&
+					!placementBindings.emplace(binding.targetKind, binding.targetId).second)
+				{
+					status = "WORLD preview occurrences share a mutable map/deploy target: " + cue.occurrenceId;
+					return false;
+				}
 			}
 		}
 		auto player = make_unique<CWorldSequencePlayer>();
 		stagedPlayers.push_back(player.get());
-		staged.emplace(cue.occurrenceId, COMPOSITION_WORLD_PREVIEW_PLAYBACK{cue, std::move(player)});
+		auto stagedCue = cue;
+		auto groupTargets = targets;
+		groupTargets.objectEmissionAnchor = cue.emissionAnchor;
+		BindCompositionGroupOrigin(document, cue.instanceId, groupTargets);
+		stagedCue.emissionAnchor = std::move(groupTargets.objectEmissionAnchor);
+		staged.emplace(cue.occurrenceId, COMPOSITION_WORLD_PREVIEW_PLAYBACK{std::move(stagedCue), std::move(player)});
 	}
 	if (!CWorldSequencePlayer::Set_DocumentBatch(document, targets, stagedPlayers, status)) return false;
 	for (auto& [id, playback] : staged)
 	{
 		auto& player = *playback.player;
 		const auto& cue = playback.cue;
-		if (!player.Prepare_InstanceResources(cue.instanceId, targets))
+		if (!PrepareCompositionWorld(player, cue.instanceId, targets, cue.placement, status))
 		{
 			status = "WORLD preview " + cue.occurrenceId + ": " + player.Get_Status();
 			return false;
 		}
-		if (!player.Validate_ObjectPlacement(cue.instanceId, cue.placement, status)) return false;
 	}
 	std::shared_ptr<CMapLightPresentationRuntime> stagedMapLights;
 	std::optional<CMapLightDocument> stagedLightSource;
@@ -874,8 +982,10 @@ bool_t Client::CLevel_KakulSaydonArena::Debug_HasVisibleCompositionWorldBox(cons
 {
     const auto found = m_CompositionWorldPreviewCues.find(std::string(occurrenceId));
     float4x4_t pivot;
-    return found != m_CompositionWorldPreviewCues.end() &&
-        found->second.player->Try_GetObjectPivot(found->second.cue.instanceId, pivot);
+    if (found == m_CompositionWorldPreviewCues.end()) return false;
+    for (const auto& member : CompositionWorldMotions(found->second.player->Get_Document(), found->second.cue.instanceId))
+        if (found->second.player->Try_GetObjectPivot(member, pivot)) return true;
+    return false;
 }
 
 bool_t Client::CLevel_KakulSaydonArena::Debug_SetCompositionWorldPlacement(
@@ -886,10 +996,23 @@ bool_t Client::CLevel_KakulSaydonArena::Debug_SetCompositionWorldPlacement(
 	if (found == m_CompositionWorldPreviewCues.end())
 	{ status = "WORLD preview occurrence is unavailable: " + occurrenceId; return false; }
 	auto& playback = found->second;
-	if (!playback.player->Validate_ObjectPlacement(playback.cue.instanceId, placement, status)) return false;
-	if (playback.player->Is_Playing(playback.cue.instanceId) &&
-		!playback.player->Set_ObjectPlacement(playback.cue.instanceId, placement, Make_WorldSequenceTargets()))
-	{ status = playback.player->Get_Status(); return false; }
+	const auto members = CompositionWorldMotions(playback.player->Get_Document(), playback.cue.instanceId);
+	for (const auto& member : members)
+		if (!playback.player->Validate_ObjectPlacement(member, placement, status)) return false;
+	const auto targets = Make_WorldSequenceTargets();
+	std::vector<std::string> applied;
+	for (const auto& member : members)
+		if (playback.player->Is_Playing(member))
+		{
+			if (!playback.player->Set_ObjectPlacement(member, placement, targets))
+			{
+				status = playback.player->Get_Status();
+				for (const auto& prior : applied)
+					(void)playback.player->Set_ObjectPlacement(prior, playback.cue.placement, targets);
+				return false;
+			}
+			applied.push_back(member);
+		}
 	playback.cue.placement = placement;
 	return true;
 }
@@ -977,7 +1100,7 @@ bool_t Client::CLevel_KakulSaydonArena::Debug_SampleCompositionWorldPreview(
 		{
 			const auto& cue = playback.cue;
 			const auto* instance = playback.player->Get_Document().Find_Instance(cue.instanceId);
-			const auto span = playback.player->Get_InstanceElapsedSpanMs(cue.instanceId, cue.playbackSpeed, cue.durationMs);
+			const auto span = CompositionWorldSpan(*playback.player, cue.instanceId, cue.playbackSpeed, cue.durationMs);
 			if (!instance || (clockMs >= cue.startMs && clockMs - cue.startMs >= span)) continue;
 			for (const auto& binding : instance->bindings)
 			{
@@ -1020,7 +1143,7 @@ bool_t Client::CLevel_KakulSaydonArena::Debug_SampleCompositionWorldPreview(
 			bossAnchorPending |= !resolved;
 			return resolved;
 		};
-		const auto span = player.Get_InstanceElapsedSpanMs(cue.instanceId, cue.playbackSpeed, cue.durationMs);
+		const auto span = CompositionWorldSpan(player, cue.instanceId, cue.playbackSpeed, cue.durationMs);
 		const auto* instance = player.Get_Document().Find_Instance(cue.instanceId);
 		if (instance && Is_PopupBookHoldInstance(*instance) &&
 			clockMs >= cue.startMs && clockMs - cue.startMs < span) popupBookActive = true;
@@ -1039,16 +1162,14 @@ bool_t Client::CLevel_KakulSaydonArena::Debug_SampleCompositionWorldPreview(
 			player.Stop_All(targets, true);
 			continue;
 		}
-		if (!player.Is_Playing(cue.instanceId) &&
-			!player.Play(cue.instanceId, targets, cue.playbackSpeed, cue.positionOffset, cue.durationMs, cue.placement))
+		if (!PlayCompositionWorld(player, cue.instanceId, targets, cue.playbackSpeed, cue.positionOffset, cue.durationMs, cue.placement))
 		{
 			status = "WORLD preview failed: " + cue.occurrenceId + ": " + player.Get_Status();
 			OutputDebugStringA(("[KoukuWorldPreview] " + status + "\n").c_str());
 			Debug_StopCompositionWorldPreview();
 			return false;
 		}
-		if (!player.Seek_InstanceToMs(cue.instanceId,
-			static_cast<f32_t>(clockMs - cue.startMs), targets))
+		if (!player.Seek_AllToMs(static_cast<f32_t>(clockMs - cue.startMs), targets))
 		{
 			status = "WORLD preview failed: " + cue.occurrenceId + ": " + player.Get_Status();
 			OutputDebugStringA(("[KoukuWorldPreview] " + status + "\n").c_str());
@@ -1662,7 +1783,7 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 		else value.clockMs += fTimeDelta * 1000.f;
 		auto cueTargets = targets;
 		cueTargets.objectEmissionAnchor = value.emissionAnchor;
-		(void)value.player->Seek_InstanceToMs(value.sequenceId, value.clockMs, cueTargets);
+		(void)value.player->Seek_AllToMs(value.clockMs, cueTargets);
 		value.player->Update(0.f, cueTargets);
 		if (!value.player->Has_ActiveInstances()) cue = m_OwnedWorldCues.erase(cue);
 		else ++cue;
@@ -3890,12 +4011,12 @@ bool_t Client::CLevel_KakulSaydonArena::Try_GetCompositionWorldPivot(
   const CWorldSequencePlayer* selected = nullptr;
   for (const auto& [id, playback] : m_CompositionWorldPreviewCues)
    if ((occurrenceId.empty() || id == occurrenceId) && playback.cue.instanceId == instanceId &&
-    playback.player->Is_Playing(playback.cue.instanceId))
+    playback.player->Has_ActiveInstances())
    {
     if (selected) return false;
     selected = playback.player.get();
    }
-  return selected && selected->Try_GetSequencePivot(std::string(instanceId), out, emissionIndex);
+  return selected && CompositionWorldPivot(*selected, std::string(instanceId), out, emissionIndex);
  }
 #endif
  return m_SequencePlayer.Try_GetSequencePivot(std::string(instanceId), out, emissionIndex);
@@ -4459,7 +4580,7 @@ void Client::CLevel_KakulSaydonArena::Consume_OwnedWorldCue(
     if (!CActionPresentationTimeline::Try_ResolveActionAgeSeconds(tick, play.iStartTick, 30.f, seconds)) return;
     const float ageMs = seconds * 1000.f;
     if (!play.strTargetSequenceInstanceId.empty() && play.iDurationMs && ageMs >= play.iDurationMs) return;
-    if (!play.bUntilDestroyed && play.strTargetSequenceInstanceId.empty() && ageMs >= m_SequencePlayer.Get_InstanceElapsedSpanMs(
+    if (!play.bUntilDestroyed && play.strTargetSequenceInstanceId.empty() && ageMs >= CompositionWorldSpan(m_SequencePlayer,
         play.strSequenceInstanceId, play.fPlaybackSpeed, play.iDurationMs)) return;
     if (!play.strTargetSequenceInstanceId.empty())
     {
@@ -4512,13 +4633,14 @@ void Client::CLevel_KakulSaydonArena::Consume_OwnedWorldCue(
         else if (!pending) OutputDebugStringA("[KoukuWORLD] Pending presentation cue capacity exceeded.\n");
         return;
     }
+    BindCompositionGroupOrigin(m_SequencePlayer.Get_Document(), play.strSequenceInstanceId, cueTargets);
     auto player = std::make_shared<CWorldSequencePlayer>();
     const auto placement = WorldPlacementFromCue(play);
     if (!player->Set_Document(m_SequencePlayer.Get_Document(), targets, status) ||
-        !player->Prepare_InstanceResources(play.strSequenceInstanceId, targets) ||
-        !player->Play(play.strSequenceInstanceId, cueTargets, play.fPlaybackSpeed,
+        !PrepareCompositionWorld(*player, play.strSequenceInstanceId, targets, placement, status) ||
+        !PlayCompositionWorld(*player, play.strSequenceInstanceId, cueTargets, play.fPlaybackSpeed,
             float3_t(play.fPositionOffsetX, play.fPositionOffsetY, play.fPositionOffsetZ), play.iDurationMs, placement) ||
-        !player->Seek_InstanceToMs(play.strSequenceInstanceId, ageMs, cueTargets))
+        !player->Seek_AllToMs(ageMs, cueTargets))
     {
         player->Stop_All(targets, true);
         OutputDebugStringA(("[KoukuWORLD] " + (status.empty() ? player->Get_Status() : status) + "\n").c_str());
@@ -4546,7 +4668,7 @@ bool_t Client::CLevel_KakulSaydonArena::Try_GetOwnedCompositionWorldPivot(
             if (found) return false;
             found = &cue;
         }
-    return found && found->player->Try_GetSequencePivot(sequenceId, out, emissionIndex);
+    return found && CompositionWorldPivot(*found->player, sequenceId, out, emissionIndex);
 }
 
 
@@ -4554,12 +4676,17 @@ bool_t Client::CLevel_KakulSaydonArena::Can_StartCompositionWorld(
     const std::string& instanceId, std::string& status, const CWorldSequenceDocument* sourceDocument) const
 {
     const auto& document = sourceDocument ? *sourceDocument : m_SequencePlayer.Get_Document();
-    const auto* source = document.Find_Instance(instanceId);
-    if (!source) { status = "WORLD instance is unavailable: " + instanceId; return false; }
+    const auto members = CompositionWorldMotions(document, instanceId);
+    if (members.empty()) { status = "WORLD group has no enabled motions: " + instanceId; return false; }
     std::set<std::pair<WORLD_SEQUENCE_TARGET_KIND, std::string>> sharedTargets;
-    for (const auto& binding : source->bindings)
-        if (binding.targetKind != WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE)
-            sharedTargets.emplace(binding.targetKind, binding.targetId);
+    for (const auto& member : members)
+    {
+        const auto* source = document.Find_Instance(member);
+        if (!source || !source->enabled) { status = "WORLD instance is unavailable: " + member; return false; }
+        for (const auto& binding : source->bindings)
+            if (binding.targetKind != WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE)
+                sharedTargets.emplace(binding.targetKind, binding.targetId);
+    }
     if (sharedTargets.empty()) return true;
     const auto conflicts = [&](const CWorldSequencePlayer& player)
     {

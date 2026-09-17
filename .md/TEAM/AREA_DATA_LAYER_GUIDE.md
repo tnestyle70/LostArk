@@ -244,6 +244,11 @@ mode처럼 카메라가 transform을 소유하는 placement는 sequence target�
 baseline이 Save 직전과 다르면 stale editor 저장을 거부한다. sequence JSON은 parse 전에 16 MiB
 한도를 적용하며 저장 후에는 단순 유효성뿐 아니라 의도한 map/sequence 내용과 같은지도 비교한다.
 
+WorldSequence 문서의 template 상한은 512개, instance 상한은 2048개다. C++ codec과
+World Tool, Effect Composition resolver, Map publisher와 Composition validator가 같은
+상한을 소비한다. template당 track 32개, track당 key 256개와 문서 16 MiB 제한은 별도로
+유지한다. JSON array와 stable ID 계약은 그대로이며 template 수를 늘려도 wire 형식은 바뀌지 않는다.
+
 WorldSequence JSON의 저장 버전은 `formatVersion: 3`이며 `CWorldSequenceDocument`는 기존 v1/v2도
 읽는다. v3의 `objectResources`는 stable `objectId`, `displayName`, Resources-relative `.wmodel`
 `modelAssetId`, optional `diffuseTextureAssetId`, `modelPreScale`(기본 0.01), `animated`, `scale`을

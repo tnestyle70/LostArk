@@ -798,9 +798,8 @@ def install_model_cue_programs(evidence, cue):
     if text != original:
         WING_SHADER.write_text(text, encoding='utf-8', newline='\n')
     main = ROOT / 'Client/Bin/ShaderFiles/Shader_EffectArtistNative.hlsli'
-    raw = main.read_bytes()
-    newline = '\r\n' if b'\r\n' in raw else '\n'
-    main_text = raw.decode('utf-8').replace('\r\n', '\n')
+    from native_shader_dispatch import expand_dispatch_includes, write_partitioned_dispatch
+    main_text = expand_dispatch_includes(main.read_text(encoding='utf8'), main.parent)
     anchor = '    case 3828u: return ArtistNative3828(input);\n'
     assert main_text.count(anchor) == 1
     for program in sorted(programs):
@@ -808,9 +807,7 @@ def install_model_cue_programs(evidence, cue):
         if case not in main_text:
             main_text = main_text.replace(anchor, anchor + case, 1)
         anchor = case
-    updated = main_text.replace('\n', newline).encode('utf-8')
-    if updated != raw:
-        main.write_bytes(updated)
+    write_partitioned_dispatch(main, main_text)
     print('Installed model cue programs', sorted(programs), 'light dispatch', light_programs)
 
 

@@ -1687,7 +1687,8 @@ bool CEffectAuthoringSequencer::Set_BloomIntensity(
     return true;
 }
 
-bool CEffectAuthoringSequencer::Refresh_Effects(const EFFECT_RESOURCE_KEY* key)
+bool CEffectAuthoringSequencer::Refresh_Effects(const EFFECT_RESOURCE_KEY* key,
+    const std::vector<std::string>* availableElementIds)
 {
     Preserve_ClockDuringAuthoring();
     if (key && !Uses_Resource(*key)) return true;
@@ -1696,6 +1697,16 @@ bool CEffectAuthoringSequencer::Refresh_Effects(const EFFECT_RESOURCE_KEY* key)
     if (m_Transient)
     {
         auto staged = *m_Transient; staged.v1.reset(); staged.v2 = 0u; staged.sampledAge = -1.f; staged.snapshot.reset(); staged.anchorHistory.reset();
+        // Reconcile only the staged transient during an explicit document edit.
+        // A failed refresh keeps the old selection and playback untouched.
+        if (availableElementIds && key && staged.key == *key)
+        {
+            std::erase_if(staged.previewElementIds, [&](const auto& id)
+                { return std::find(availableElementIds->begin(), availableElementIds->end(), id) == availableElementIds->end(); });
+            if (staged.previewElementIds.empty())
+            { staged.previewStartMs = 0u; staged.previewElementLabel.clear(); }
+            else staged.previewElementLabel = std::to_string(staged.previewElementIds.size()) + " selected elements";
+        }
         staged.bloomIntensityOverride.reset(); // Reload/Revert use the newly staged document value.
         if (staged.history) staged.history = std::make_shared<EFFECT_V2_PIVOT_HISTORY>(*staged.history);
         if (!Stage_Row(staged, root)) { Release_Row(staged); return false; }

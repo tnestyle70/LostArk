@@ -758,7 +758,8 @@ namespace LostArk::Server
 		BOSS_TELEPORT_XZ,
 		BOSS_TRACK_TARGET,
 		ALBION_AIRBORNE,
-		CROSS_DIRECTION_CLONES
+		CROSS_DIRECTION_CLONES,
+		PURSUIT_PROJECTILES
 	};
 
 	enum class ALBION_AIRBORNE_PHASE : std::uint8_t
@@ -813,9 +814,18 @@ namespace LostArk::Server
 		ALBION_AIRBORNE_PHASE eAirbornePhase = ALBION_AIRBORNE_PHASE::NONE;
 		float fAirborneHeightM = 0.f;
 		std::uint32_t iAirborneDurationMs = 0u;
+		bool bCaptureAirborneTargetPosition = false;
+		std::string strSelectedEffectVisualId;
+		std::uint32_t iSelectedEffectLifetimeMs = 0u;
 		std::vector<BOSS_PATTERN_SUMMON_PATTERN_SPAWN> PatternSpawns;
 		std::vector<std::string> DirectionPatternIds;
 		std::string strCloneEndStageId;
+		std::vector<std::string> ProjectileVisualIds;
+		std::string strContactVisualId;
+		float fProjectileMaxDistanceM = 0.f; // Zero keeps the lifetime-only travel bound.
+		float fProjectileSpeedMps = 0.f, fProjectileContactRadiusM = 0.f, fProjectileSpawnRadiusM = 0.f;
+		std::uint32_t iProjectileLifetimeMs = 0u, iProjectileCountPerWave = 0u;
+		bool bProjectileHoming = false;
 	};
 
 	/* Presentation cues the pattern clock fires. The Server only knows the

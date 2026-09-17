@@ -569,6 +569,7 @@ private:
     void Render_ActiveAuthoredElementRow(const EFFECT_ELEMENT_DESC& element, size_t ordinal);
     void Render_CurrentEffectAttachmentGroups();
     bool_t Try_TranslateAttachmentGroup(const std::string& groupKey, const float3_t& delta);
+    bool_t Try_SetAttachmentGroupAnchor(const std::string& groupKey, const float3_t& position, const float3_t& rotationDegrees);
     bool_t Try_RotateAttachmentGroup(const std::string& groupKey, const float3_t& rotationDegrees);
     void Render_ProjectileDestinationControls();
     void Render_LoadedEffectContents();

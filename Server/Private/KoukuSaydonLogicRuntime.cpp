@@ -158,7 +158,8 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Build(
 	{
 		const auto& trigger = pattern.MechanicTriggers[index];
 		if (trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::SHOWTIME_PLAYER_TARGETS ||
-			trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_TRACK_TARGET)
+			trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_TRACK_TARGET ||
+			trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::PURSUIT_PROJECTILES)
 		{
 			KOUKUSAYDON_PLAYER_TARGET_WINDOW_STATE state;
 			state.iTriggerIndex = static_cast<std::uint32_t>(index);

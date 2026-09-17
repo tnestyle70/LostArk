@@ -107,6 +107,10 @@ namespace EffectToolDetail
                 ATTACHMENT_ELEMENT_GROUP group;
                 group.key = groupKey; group.label = std::move(label);
                 group.rootLocal = !attachment.bEnabled;
+                group.anchorEditable = !document.bSourceContract && attachment.bEnabled && attachment.bFollow &&
+                    !attachment.strRuntimeBoneName.empty() && attachment.eOrientation != EFFECT_ATTACHMENT_ORIENTATION::CAMERA_VIEW;
+                group.anchorPosition = attachment.SocketLocalTransform.vPosition;
+                group.anchorRotationDegrees = attachment.SocketLocalTransform.vRotationDegrees;
                 group.editable = !document.bSourceContract && (group.rootLocal || (attachment.bFollow &&
                     !attachment.strRuntimeBoneName.empty() && attachment.eOrientation != EFFECT_ATTACHMENT_ORIENTATION::CAMERA_VIEW));
                 if (!group.editable) group.editReason = document.bSourceContract ? "SourceContract documents are read-only." :
@@ -161,6 +165,40 @@ namespace EffectToolDetail
             }
         }
         return groups;
+    }
+
+    bool Set_AttachmentGroupAnchor(Client::EFFECT_DOCUMENT_DESC& document,
+        const std::string& groupKey, const float3_t& position, const float3_t& rotationDegrees, std::string& error)
+    {
+        const auto valid = [](const float3_t& value, const float limit) {
+            return std::isfinite(value.x) && std::isfinite(value.y) && std::isfinite(value.z) &&
+                std::abs(value.x) <= limit && std::abs(value.y) <= limit && std::abs(value.z) <= limit;
+        };
+        if (!valid(position, 100000.f) || !valid(rotationDegrees, 36000.f))
+        { error = "Anchor position/rotation must be finite and within the authored range."; return false; }
+        const auto groups = Build_AttachmentElementGroups(document);
+        const auto group = std::find_if(groups.begin(), groups.end(), [&](const auto& item) { return item.key == groupKey; });
+        if (group == groups.end() || !group->anchorEditable)
+        { error = "Select an editable following bone anchor group."; return false; }
+        std::set<std::string> slots;
+        for (const auto& element : document.Elements)
+            if (std::find(group->elementIds.begin(), group->elementIds.end(), element.strElementId) != group->elementIds.end())
+                slots.insert(element.ActionCueAttachment.strRuntimeAnchorSlotId);
+        // A runtime slot owns exactly one socket transform; never create two
+        // conflicting definitions by changing only one of its member groups.
+        for (const auto& element : document.Elements)
+            if (element.ActionCueAttachment.bEnabled && slots.contains(element.ActionCueAttachment.strRuntimeAnchorSlotId) &&
+                std::find(group->elementIds.begin(), group->elementIds.end(), element.strElementId) == group->elementIds.end())
+            { error = "This runtime anchor is shared by another group; keep its socket transform consistent before editing."; return false; }
+        for (auto& element : document.Elements)
+            if (std::find(group->elementIds.begin(), group->elementIds.end(), element.strElementId) != group->elementIds.end())
+            {
+                auto& socket = element.ActionCueAttachment.SocketLocalTransform;
+                socket.vPosition = position;
+                socket.vRotationDegrees = rotationDegrees;
+            }
+        error.clear();
+        return true;
     }
 
     bool Translate_AttachmentElementGroup(Client::EFFECT_DOCUMENT_DESC& document,

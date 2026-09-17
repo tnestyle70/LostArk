@@ -236,8 +236,8 @@ void CLevel_Loading::Update(const f32_t fTimeDelta)
 			static_cast<f32_t>(LoaderProgress.iPhaseCount);
 	}
 
+	f32_t fEffectLane = 0.f;
 	if (bHasEffectProgress)
-
 	{
 		switch (EffectProgress.ePhase)
 		{

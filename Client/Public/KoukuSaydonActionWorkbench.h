@@ -68,6 +68,8 @@ namespace Client
 		std::string strObjectDisplayName;
 		std::string strAnchorKind = "WORLD";
 		bool_t bDefaultMotion = false;
+		// Model-less Object: strInstanceId identifies its saved motion group.
+		bool_t bMotionGroup = false;
 		std::vector<std::string> AnimationClips;
 		// Authored emission rows of this Motion (1 for seeded emitters); Box Detail offers the row index.
 		std::uint32_t iEmissionCount = 1u;

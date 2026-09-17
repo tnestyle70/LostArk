@@ -1722,6 +1722,42 @@ namespace
 		return Result;
 	}
 
+	// Events and drawing must consume the same terminal Orbit position, including
+	// linked phases. A raw orbit offset has not yet had its source rotation applied.
+	template<class ParticleType>
+	float3_t Evaluate_SourceOrbitOffset(const ParticleType& Particle)
+	{
+		const float3_t SourceOrbitRotation = Add3(
+			Particle.vSourceOrbitRotationDegrees,
+			Scale3(Particle.vSourceOrbitRotationRateDegreesPerSecond,
+				Particle.fAgeSeconds));
+		float3_t OrbitOffset = Transform_Normal(Particle.vOrbitOffset,
+			UE3_EulerDegreesToClientRotation(SourceOrbitRotation));
+		if (Particle.SourceOrbitPhases.size() > 1u)
+		{
+			float3_t ChainOffset{}, ChainRotation{}, ChainRate{};
+			OrbitOffset = {};
+			const auto Flush = [&]()
+			{
+				const auto Rotation = Add3(ChainRotation,
+					Scale3(ChainRate, Particle.fAgeSeconds));
+				const auto Rotated = Transform_Normal(ChainOffset,
+					UE3_EulerDegreesToClientRotation(Rotation));
+				OrbitOffset = Add3(OrbitOffset, Rotated);
+				ChainOffset = {}; ChainRotation = {}; ChainRate = {};
+			};
+			for (const auto& Phase : Particle.SourceOrbitPhases)
+			{
+				if (Phase.bLink) Flush();
+				ChainOffset = Add3(ChainOffset, Phase.vOffset);
+				ChainRotation = Add3(ChainRotation, Phase.vRotationDegrees);
+				ChainRate = Add3(ChainRate, Phase.vRotationRateDegreesPerSecond);
+			}
+			Flush();
+		}
+		return OrbitOffset;
+	}
+
 	std::shared_ptr<const SOURCE_VECTOR_FIELD> Load_VectorFieldFromDisk(
 		const std::string_view AssetId)
 	{
@@ -3501,7 +3537,7 @@ bool_t Client::CEffectPlayback::Stage_PrevalidatedDocumentInternal(
 		if (Cue.bVisible)
 		{
 			fStagedDuration = (std::max)(fStagedDuration,
-				Cue.fStartDelaySeconds + Cue.fDurationSeconds);
+				Effect_ModelCueEndSeconds(Cue));
 		}
 	}
 
@@ -4969,7 +5005,7 @@ void Client::CEffectPlayback::Queue_ParticleEvents(
 				ElementWorld : Particle.SpawnRootWorld;
 			float3_t EventPosition = Particle.vPosition;
 			if (SourceBool(Module, Prefix + "buseorbitoffset", false))
-				EventPosition = Add3(EventPosition, Particle.vOrbitOffset);
+				EventPosition = Add3(EventPosition, Evaluate_SourceOrbitOffset(Particle));
 			SOURCE_PARTICLE_EVENT Event;
 			Event.strType = std::string(Type);
 			Event.strName = std::string(SourceString(
@@ -8319,38 +8355,7 @@ void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld,
 			const float3_t WorldScale = bSourceVisualDecalParticle ?
 				float3_t(Size.x, Element.Detail.Decal.fDepth, Size.y) :
 				float3_t(Size.x, Size.y, fDepthScale);
-			const float3_t SourceOrbitRotation = Add3(
-				Particle.vSourceOrbitRotationDegrees,
-				Scale3(Particle.vSourceOrbitRotationRateDegreesPerSecond,
-					Particle.fAgeSeconds));
-			float3_t OrbitOffset{};
-			XMStoreFloat3(&OrbitOffset, XMVector3TransformNormal(
-				XMLoadFloat3(&Particle.vOrbitOffset),
-				(SourceOrbitRotation.x == 0.f && SourceOrbitRotation.y == 0.f &&
-				 SourceOrbitRotation.z == 0.f) ? XMMatrixIdentity() :
-					UE3_EulerDegreesToClientRotation(SourceOrbitRotation)));
-            if (Particle.SourceOrbitPhases.size() > 1u)
-            {
-                float3_t ChainOffset{}, ChainRotation{}, ChainRate{};
-                OrbitOffset = {};
-                const auto Flush = [&]()
-                {
-                    const auto Rotation = Add3(ChainRotation,
-                        Scale3(ChainRate, Particle.fAgeSeconds));
-                    const auto Rotated = Transform_Normal(ChainOffset,
-                        UE3_EulerDegreesToClientRotation(Rotation));
-                    OrbitOffset = Add3(OrbitOffset, Rotated);
-                    ChainOffset = {}; ChainRotation = {}; ChainRate = {};
-                };
-                for (const auto& Phase : Particle.SourceOrbitPhases)
-                {
-                    if (Phase.bLink) Flush();
-                    ChainOffset = Add3(ChainOffset, Phase.vOffset);
-                    ChainRotation = Add3(ChainRotation, Phase.vRotationDegrees);
-                    ChainRate = Add3(ChainRate, Phase.vRotationRateDegreesPerSecond);
-                }
-                Flush();
-            }
+			const float3_t OrbitOffset = Evaluate_SourceOrbitOffset(Particle);
 			const float3_t Position = Add3(
 				Particle.vPosition, OrbitOffset);
 			const matrix_t ParticleRotation = bMeshParticle ?

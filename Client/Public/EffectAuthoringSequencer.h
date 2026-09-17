@@ -81,7 +81,8 @@ public:
     bool Play(bool paused = false);
     void Preserve_ClockDuringAuthoring() { if (m_Active) m_SkipNextPlaybackDelta = true; }
     bool Uses_Resource(const EFFECT_RESOURCE_KEY& key) const;
-    bool Refresh_Effects(const EFFECT_RESOURCE_KEY* key = nullptr);
+    bool Refresh_Effects(const EFFECT_RESOURCE_KEY* key = nullptr,
+        const std::vector<std::string>* availableElementIds = nullptr);
     bool Set_BloomIntensity(const EFFECT_RESOURCE_KEY& key, float value, std::string& error);
     bool Seek(std::uint32_t clockMs);
     void Pause(bool paused);

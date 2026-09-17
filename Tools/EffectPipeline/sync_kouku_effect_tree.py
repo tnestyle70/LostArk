@@ -1,7 +1,8 @@
-"""Add missing Kouku authored effects to the existing saved-resource tree.
+"""Stage Kouku authored library references and their direct-runtime metadata.
 
-This is library organization, not Product admission or gameplay authoring.
 Existing classifications and all effect/Composition documents remain intact.
+The tree and catalog are published together; payloads still load lazily through
+the ordinary runtime codec. No gameplay timelines are authored by this tool.
 """
 from __future__ import annotations
 
@@ -9,12 +10,15 @@ import argparse
 import collections
 import hashlib
 import json
+import re
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 from install_kouku_effect_library import replace_root_value
 
 ROOT = Path(__file__).resolve().parents[2]
 TREE = ROOT / 'Data/Effects/EffectResourceTree.json'
+CATALOG = ROOT / 'Data/Effects/EffectCatalog.json'
 COMPOSITIONS = (
     ROOT / 'Data/KoukuSaydon/Gate1/KoukuSaydonComposition.json',
     ROOT / 'Data/Compositions/Sequences/KoukuSaydonSequenceComposition.json',
@@ -33,6 +37,108 @@ def gate_name(gate):
 
 def bounded_name(name):
     return name.encode('utf8')[:256].decode('utf8', errors='ignore')
+
+
+def stage_catalog(original, references):
+    catalog = json.loads(original)
+    assert list(catalog) == ['formatVersion', 'effects'] and catalog['formatVersion'] == 1
+    by_id = {row['effectAssetId']: row for row in catalog['effects']}
+    assert len(by_id) == len(catalog['effects']), 'Duplicate Catalog identity'
+    additions, inputs = [], {}
+    for asset in sorted({row['assetId'] for row in references
+                         if row['kind'] == 'V1' and row['assetId'].startswith('effect.kouku.')}):
+        assert re.fullmatch(r'[a-z0-9_.-]+', asset), ('Invalid Effect asset ID', asset)
+        relative = f'Effects/Authored/{asset}.effect.json'
+        path = ROOT / 'Data' / relative
+        assert path.resolve().parent == (ROOT / 'Data/Effects/Authored').resolve(), ('Escaped Authored root', asset)
+        data = path.read_bytes()
+        document = json.loads(data)
+        assert document.get('schema') == 'lostark.effect-authoring', ('Invalid schema', asset)
+        assert document.get('version') in (13, 15), ('Unsupported runtime version', asset)
+        assert document.get('effectAssetId') == asset, ('Authored identity mismatch', asset)
+        assert not document.get('sourceContract'), ('Source-contract document is not direct authored', asset)
+        assert document.get('elements') or document.get('modelCues'), ('Empty authored document', asset)
+        expected = dict(effectAssetId=asset, payloadKind='DIRECT_AUTHORED_DOCUMENT', authoringPath=relative)
+        if asset in by_id:
+            existing = by_id[asset]
+            assert all(existing.get(key) == value for key, value in expected.items()), ('Catalog registration conflict', asset)
+        else:
+            additions.append(expected)
+        inputs[path] = hashlib.sha256(data).hexdigest()
+    candidate = replace_root_value(original, 'effects', catalog['effects'] + additions, rows=True) if additions else original
+    return candidate, additions, inputs
+
+
+def commit_library(writes, inputs):
+    """Publish catalog before tree, with exact-input guards and owned rollback."""
+    def verify_inputs():
+        for path, expected in inputs.items():
+            if hashlib.sha256(path.read_bytes()).hexdigest() != expected:
+                raise RuntimeError(f'Authored input changed; regenerate candidates: {path}')
+
+    pending, committed = {}, []
+    try:
+        verify_inputs()
+        for path, before, after in writes:
+            if path.read_bytes() != before:
+                raise RuntimeError(f'Library changed; preserve current authoring: {path}')
+            if before == after:
+                continue
+            temporary = path.with_name(path.name + '.kouku-sync.tmp')
+            # Exclusive creation never overwrites another pending transaction.
+            with temporary.open('xb') as stream:
+                pending[path] = temporary
+                stream.write(after)
+        verify_inputs()
+        for path, before, after in writes:
+            if path.read_bytes() != before:
+                raise RuntimeError(f'Library changed before commit: {path}')
+        for path, before, after in writes:
+            if path not in pending:
+                continue
+            if path.read_bytes() != before:
+                raise RuntimeError(f'Library changed during commit: {path}')
+            pending[path].replace(path)
+            committed.append((path, before, after))
+    except Exception:
+        for path, before, after in reversed(committed):
+            # An editor save after our write belongs to the user, never rollback it.
+            if path.read_bytes() == after:
+                rollback = pending[path]
+                with rollback.open('xb') as stream:
+                    stream.write(before)
+                rollback.replace(path)
+        raise
+    finally:
+        for temporary in pending.values():
+            if temporary.exists():
+                temporary.unlink()
+
+
+def stage_project_metadata(inputs):
+    staged = []
+    namespace = '{http://schemas.microsoft.com/developer/msbuild/2003}'
+    for suffix in ('', '.filters'):
+        path = ROOT / ('Client/Default/Client.vcxproj' + suffix)
+        before = path.read_bytes()
+        text = before.decode('utf8')
+        existing = {row.attrib['Include'].replace('\\', '/').lower()
+                    for row in ET.fromstring(text).iter(namespace + 'None') if 'Include' in row.attrib}
+        newline = '\r\n' if '\r\n' in text else '\n'
+        rows = []
+        for source in inputs:
+            include = '..\\..\\' + str(source.relative_to(ROOT)).replace('/', '\\')
+            if include.replace('\\', '/').lower() in existing:
+                continue
+            rows.append('    <None Include="' + include + '">' +
+                        ('<Filter>96.DataFiles</Filter>' if suffix else '') + '</None>')
+        if rows:
+            prefix, closing, tail = text.rpartition('</Project>')
+            assert closing and not tail.strip(), 'Invalid project XML ending'
+            text = prefix + '  <ItemGroup>' + newline + newline.join(rows) + newline + '  </ItemGroup>' + newline + closing + tail
+            ET.fromstring(text)
+        staged.append((path, before, text.encode('utf8')))
+    return staged
 
 
 def composition_uses():
@@ -104,6 +210,7 @@ def classify(asset, document, sources, actions, asset_uses, action_uses):
 
 def sync(organization, output, install=False):
     original = TREE.read_bytes()
+    catalog_original = CATALOG.read_bytes()
     tree = json.loads(original)
     prior = read(organization)
     sources = {row['sourceSystem']: row for row in prior['particleSystems']}
@@ -148,24 +255,32 @@ def sync(organization, output, install=False):
     assert parsed['references'][:len(before_refs)] == before_refs
     assert all(('V1', path.name.removesuffix('.effect.json')) in references for path in paths)
     assert len(nodes) <= 4096 and len(references) <= 16384
+    catalog_candidate, catalog_additions, catalog_inputs = stage_catalog(catalog_original, parsed['references'])
+    project_writes = stage_project_metadata(catalog_inputs)
     assert TREE.read_bytes() == original, 'Tree changed during organization; preserve current authoring.'
+    assert CATALOG.read_bytes() == catalog_original, 'Catalog changed during organization; preserve current authoring.'
     output.mkdir(parents=True, exist_ok=True)
     (output / 'EffectResourceTree.before.json').write_bytes(original)
     (output / 'EffectResourceTree.candidate.json').write_bytes(candidate)
-    if install and candidate != original:
-        pending = TREE.with_name(TREE.name + '.kouku-sync.tmp')
-        assert not pending.exists(), 'Previous pending tree must be inspected first.'
-        pending.write_bytes(candidate)
-        if TREE.read_bytes() != original:
-            pending.unlink()
-            raise RuntimeError('Tree changed before commit; previous file preserved.')
-        pending.replace(TREE)
+    (output / 'EffectCatalog.before.json').write_bytes(catalog_original)
+    (output / 'EffectCatalog.candidate.json').write_bytes(catalog_candidate)
+    (output / 'EffectCatalog.entries.json').write_text(json.dumps(catalog_additions, indent=2) + '\n', encoding='utf8')
+    for path, before, after in project_writes:
+        assert path.read_bytes() == before, 'Project metadata changed during organization.'
+        (output / (path.name + '.before')).write_bytes(before)
+        (output / (path.name + '.candidate')).write_bytes(after)
+    if install:
+        commit_library(project_writes + [(CATALOG, catalog_original, catalog_candidate), (TREE, original, candidate)], catalog_inputs)
     report = dict(installed=install, authoredCount=len(paths), addedReferences=len(additions),
+                  addedCatalogEntries=len(catalog_additions), registeredKoukuReferences=len(catalog_inputs),
+                  projectMetadataChanged=[path.relative_to(ROOT).as_posix() for path, before, after in project_writes if before != after],
                   nodeCount=len(nodes), referenceCount=len(references), previousRowsPreserved=True,
                   classifications=dict(collections.Counter(row['basis'] for row in additions)),
-                  added=additions, inputs=inputs)
+                  added=additions, inputs=inputs,
+                  runtimeInputs=[dict(path=path.relative_to(ROOT).as_posix(), sha256=digest)
+                                 for path, digest in catalog_inputs.items()])
     (output / 'organization-result.json').write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n', encoding='utf8')
-    print(json.dumps({key: value for key, value in report.items() if key not in ('added', 'inputs')}))
+    print(json.dumps({key: value for key, value in report.items() if key not in ('added', 'inputs', 'runtimeInputs')}))
 
 
 if __name__ == '__main__':

@@ -780,6 +780,19 @@ void PS_SHADOW_SIMPLE(VS_SHADOW_SIMPLE_OUT input)
         discard;
 }
 
+// Identical entry/profile/arguments compile once; pass states and indices stay unchanged.
+VertexShader MapInstanceVS = compile vs_5_0 VS_MAIN();
+PixelShader MapInstancePS = compile ps_5_0 PS_MAIN();
+PixelShader MapInstanceAlphaPS = compile ps_5_0 PS_MAIN_ALPHA();
+VertexShader MapInstanceSkyVS = compile vs_5_0 VS_MAIN_SKY();
+PixelShader MapInstanceSkyPS = compile ps_5_0 PS_MAIN_SKY();
+PixelShader MapInstanceShadowPS = compile ps_5_0 PS_MAIN_SHADOW();
+PixelShader MapInstanceWaterPS = compile ps_5_0 PS_MAIN_WATER();
+VertexShader MapInstanceShadowSimpleVS = compile vs_5_0 VS_SHADOW_SIMPLE();
+PixelShader MapInstanceShadowSimplePS = compile ps_5_0 PS_SHADOW_SIMPLE();
+VertexShader MapInstanceShadowOpaqueVS = compile vs_5_0 VS_SHADOW_OPAQUE();
+PixelShader MapInstanceSourceBgPS = compile ps_5_0 PS_MAIN_SOURCE_BG();
+
 technique11 DefaultTechnique
 {
     pass DefaultPass
@@ -791,9 +804,9 @@ technique11 DefaultTechnique
 			float4(0.f, 0.f, 0.f, 0.f),
 			0xffffffff);
 
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = MapInstanceVS;
         GeometryShader = NULL;
-        PixelShader = compile ps_5_0 PS_MAIN();
+        PixelShader = MapInstancePS;
     }
 
     pass MirroredPass
@@ -805,9 +818,9 @@ technique11 DefaultTechnique
 			float4(0.f, 0.f, 0.f, 0.f),
 			0xffffffff);
 
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = MapInstanceVS;
         GeometryShader = NULL;
-        PixelShader = compile ps_5_0 PS_MAIN();
+        PixelShader = MapInstancePS;
     }
 
     pass TwoSidedOpaquePass
@@ -819,9 +832,9 @@ technique11 DefaultTechnique
 			float4(0.f, 0.f, 0.f, 0.f),
 			0xffffffff);
 
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = MapInstanceVS;
         GeometryShader = NULL;
-        PixelShader = compile ps_5_0 PS_MAIN();
+        PixelShader = MapInstancePS;
     }
 
     pass AlphaBackPass
@@ -833,9 +846,9 @@ technique11 DefaultTechnique
 			float4(0.f, 0.f, 0.f, 0.f),
 			0xffffffff);
 
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = MapInstanceVS;
         GeometryShader = NULL;
-        PixelShader = compile ps_5_0 PS_MAIN_ALPHA();
+        PixelShader = MapInstanceAlphaPS;
     }
 
     pass AlphaFrontPass
@@ -847,9 +860,9 @@ technique11 DefaultTechnique
 			float4(0.f, 0.f, 0.f, 0.f),
 			0xffffffff);
 
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = MapInstanceVS;
         GeometryShader = NULL;
-        PixelShader = compile ps_5_0 PS_MAIN_ALPHA();
+        PixelShader = MapInstanceAlphaPS;
     }
 
     pass AlphaTwoSidedPass
@@ -861,9 +874,9 @@ technique11 DefaultTechnique
 			float4(0.f, 0.f, 0.f, 0.f),
 			0xffffffff);
 
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = MapInstanceVS;
         GeometryShader = NULL;
-        PixelShader = compile ps_5_0 PS_MAIN_ALPHA();
+        PixelShader = MapInstanceAlphaPS;
     }
 
     pass SkyBackPass
@@ -875,9 +888,9 @@ technique11 DefaultTechnique
 			float4(0.f, 0.f, 0.f, 0.f),
 			0xffffffff);
 
-        VertexShader = compile vs_5_0 VS_MAIN_SKY();
+        VertexShader = MapInstanceSkyVS;
         GeometryShader = NULL;
-        PixelShader = compile ps_5_0 PS_MAIN_SKY();
+        PixelShader = MapInstanceSkyPS;
     }
 
     pass SkyFrontPass
@@ -889,9 +902,9 @@ technique11 DefaultTechnique
 			float4(0.f, 0.f, 0.f, 0.f),
 			0xffffffff);
 
-        VertexShader = compile vs_5_0 VS_MAIN_SKY();
+        VertexShader = MapInstanceSkyVS;
         GeometryShader = NULL;
-        PixelShader = compile ps_5_0 PS_MAIN_SKY();
+        PixelShader = MapInstanceSkyPS;
     }
 
     pass SkyTwoSidedPass
@@ -903,9 +916,9 @@ technique11 DefaultTechnique
 			float4(0.f, 0.f, 0.f, 0.f),
 			0xffffffff);
 
-        VertexShader = compile vs_5_0 VS_MAIN_SKY();
+        VertexShader = MapInstanceSkyVS;
         GeometryShader = NULL;
-        PixelShader = compile ps_5_0 PS_MAIN_SKY();
+        PixelShader = MapInstanceSkyPS;
     }
 
     pass AdditiveBackPass
@@ -917,9 +930,9 @@ technique11 DefaultTechnique
 			float4(0.f, 0.f, 0.f, 0.f),
 			0xffffffff);
 
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = MapInstanceVS;
         GeometryShader = NULL;
-        PixelShader = compile ps_5_0 PS_MAIN_ALPHA();
+        PixelShader = MapInstanceAlphaPS;
     }
 
     pass AdditiveFrontPass
@@ -931,9 +944,9 @@ technique11 DefaultTechnique
 			float4(0.f, 0.f, 0.f, 0.f),
 			0xffffffff);
 
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = MapInstanceVS;
         GeometryShader = NULL;
-        PixelShader = compile ps_5_0 PS_MAIN_ALPHA();
+        PixelShader = MapInstanceAlphaPS;
     }
 
     pass AdditiveTwoSidedPass
@@ -945,9 +958,9 @@ technique11 DefaultTechnique
 			float4(0.f, 0.f, 0.f, 0.f),
 			0xffffffff);
 
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = MapInstanceVS;
         GeometryShader = NULL;
-        PixelShader = compile ps_5_0 PS_MAIN_ALPHA();
+        PixelShader = MapInstanceAlphaPS;
     }
 
     pass ShadowBackPass
@@ -959,9 +972,9 @@ technique11 DefaultTechnique
 			float4(0.f, 0.f, 0.f, 0.f),
 			0xffffffff);
 
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = MapInstanceVS;
         GeometryShader = NULL;
-        PixelShader = compile ps_5_0 PS_MAIN_SHADOW();
+        PixelShader = MapInstanceShadowPS;
     }
 
     pass ShadowFrontPass
@@ -973,9 +986,9 @@ technique11 DefaultTechnique
 			float4(0.f, 0.f, 0.f, 0.f),
 			0xffffffff);
 
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = MapInstanceVS;
         GeometryShader = NULL;
-        PixelShader = compile ps_5_0 PS_MAIN_SHADOW();
+        PixelShader = MapInstanceShadowPS;
     }
 
     pass ShadowTwoSidedPass
@@ -987,9 +1000,9 @@ technique11 DefaultTechnique
 			float4(0.f, 0.f, 0.f, 0.f),
 			0xffffffff);
 
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = MapInstanceVS;
         GeometryShader = NULL;
-        PixelShader = compile ps_5_0 PS_MAIN_SHADOW();
+        PixelShader = MapInstanceShadowPS;
     }
 
 	/* Water is appended after the shadow passes so every existing pass index
@@ -1005,9 +1018,9 @@ technique11 DefaultTechnique
 			float4(0.f, 0.f, 0.f, 0.f),
 			0xffffffff);
 
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = MapInstanceVS;
         GeometryShader = NULL;
-        PixelShader = compile ps_5_0 PS_MAIN_WATER();
+        PixelShader = MapInstanceWaterPS;
     }
 
     pass WaterFrontPass
@@ -1019,9 +1032,9 @@ technique11 DefaultTechnique
 			float4(0.f, 0.f, 0.f, 0.f),
 			0xffffffff);
 
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = MapInstanceVS;
         GeometryShader = NULL;
-        PixelShader = compile ps_5_0 PS_MAIN_WATER();
+        PixelShader = MapInstanceWaterPS;
     }
 
     pass WaterTwoSidedPass
@@ -1033,9 +1046,9 @@ technique11 DefaultTechnique
 			float4(0.f, 0.f, 0.f, 0.f),
 			0xffffffff);
 
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = MapInstanceVS;
         GeometryShader = NULL;
-        PixelShader = compile ps_5_0 PS_MAIN_WATER();
+        PixelShader = MapInstanceWaterPS;
     }
 
     // Appended: preserve all existing map/water pass indices.
@@ -1044,9 +1057,9 @@ technique11 DefaultTechnique
         SetRasterizerState(RS_Default);
         SetDepthStencilState(DSS_Default, 0);
         SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_SHADOW_SIMPLE();
+        VertexShader = MapInstanceShadowSimpleVS;
         GeometryShader = NULL;
-        PixelShader = compile ps_5_0 PS_SHADOW_SIMPLE();
+        PixelShader = MapInstanceShadowSimplePS;
     }
 
     pass SimpleShadowFrontPass
@@ -1054,9 +1067,9 @@ technique11 DefaultTechnique
         SetRasterizerState(RS_Cull_CW);
         SetDepthStencilState(DSS_Default, 0);
         SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_SHADOW_SIMPLE();
+        VertexShader = MapInstanceShadowSimpleVS;
         GeometryShader = NULL;
-        PixelShader = compile ps_5_0 PS_SHADOW_SIMPLE();
+        PixelShader = MapInstanceShadowSimplePS;
     }
 
     pass SimpleShadowTwoSidedPass
@@ -1064,9 +1077,9 @@ technique11 DefaultTechnique
         SetRasterizerState(RS_Cull_None);
         SetDepthStencilState(DSS_Default, 0);
         SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_SHADOW_SIMPLE();
+        VertexShader = MapInstanceShadowSimpleVS;
         GeometryShader = NULL;
-        PixelShader = compile ps_5_0 PS_SHADOW_SIMPLE();
+        PixelShader = MapInstanceShadowSimplePS;
     }
 
     pass OpaqueShadowBackPass
@@ -1074,7 +1087,7 @@ technique11 DefaultTechnique
         SetRasterizerState(RS_Default);
         SetDepthStencilState(DSS_Default, 0);
         SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_SHADOW_OPAQUE();
+        VertexShader = MapInstanceShadowOpaqueVS;
         GeometryShader = NULL;
         PixelShader = NULL;
     }
@@ -1084,7 +1097,7 @@ technique11 DefaultTechnique
         SetRasterizerState(RS_Cull_CW);
         SetDepthStencilState(DSS_Default, 0);
         SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_SHADOW_OPAQUE();
+        VertexShader = MapInstanceShadowOpaqueVS;
         GeometryShader = NULL;
         PixelShader = NULL;
     }
@@ -1094,7 +1107,7 @@ technique11 DefaultTechnique
         SetRasterizerState(RS_Cull_None);
         SetDepthStencilState(DSS_Default, 0);
         SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_SHADOW_OPAQUE();
+        VertexShader = MapInstanceShadowOpaqueVS;
         GeometryShader = NULL;
         PixelShader = NULL;
     }
@@ -1105,9 +1118,9 @@ technique11 DefaultTechnique
         SetRasterizerState(RS_Default);
         SetDepthStencilState(DSS_Default, 0);
         SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = MapInstanceVS;
         GeometryShader = NULL;
-        PixelShader = compile ps_5_0 PS_MAIN_SOURCE_BG();
+        PixelShader = MapInstanceSourceBgPS;
     }
 
     pass SourceBGFrontPass
@@ -1115,9 +1128,9 @@ technique11 DefaultTechnique
         SetRasterizerState(RS_Cull_CW);
         SetDepthStencilState(DSS_Default, 0);
         SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = MapInstanceVS;
         GeometryShader = NULL;
-        PixelShader = compile ps_5_0 PS_MAIN_SOURCE_BG();
+        PixelShader = MapInstanceSourceBgPS;
     }
 
     pass SourceBGTwoSidedPass
@@ -1125,9 +1138,9 @@ technique11 DefaultTechnique
         SetRasterizerState(RS_Cull_None);
         SetDepthStencilState(DSS_Default, 0);
         SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = MapInstanceVS;
         GeometryShader = NULL;
-        PixelShader = compile ps_5_0 PS_MAIN_SOURCE_BG();
+        PixelShader = MapInstanceSourceBgPS;
     }
 
 }

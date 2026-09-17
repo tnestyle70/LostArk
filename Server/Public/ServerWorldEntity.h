@@ -20,6 +20,8 @@ namespace LostArk::Server
 		ALBION_AIRBORNE_PHASE ePhase = ALBION_AIRBORNE_PHASE::NONE;
 		std::uint32_t iPatternSequence = 0u, iStartMs = 0u, iDurationMs = 0u, iSourceStageIndex = 0u;
 		LostArk::Shared::NET_ENTITY_ID iSelectedPlayer = LostArk::Shared::INVALID_NET_ENTITY_ID;
+		bool bHasSelectedGround = false;
+		SERVER_NAV_POINT SelectedGround{};
 		float fJumpHeightM = 0.f, fPhaseHeightM = 0.f, fStartHeightM = 0.f;
 		float fSourceUpAtStart = 0.f, fSourceUpMinimum = 0.f, fLandingProgress = 0.f;
 	};

@@ -317,6 +317,9 @@ PS_OUT PS_OUTLINE(VS_OUT input)
     return output;
 }
 
+// Identical entry/profile/arguments compile once; pass states and indices stay unchanged.
+VertexShader EstherNpcVS = compile vs_5_0 VS_MAIN();
+
 technique11 DefaultTechnique
 {
     pass DefaultPass
@@ -324,7 +327,7 @@ technique11 DefaultTechnique
         SetRasterizerState(RS_Default);
         SetDepthStencilState(DSS_EstherBodyStamp, 1);
         SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = EstherNpcVS;
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_MAIN();
     }
@@ -334,7 +337,7 @@ technique11 DefaultTechnique
         SetRasterizerState(RS_Default);
         SetDepthStencilState(DSS_Default, 0);
         SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = EstherNpcVS;
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_MAIN_SHADOW();
     }
@@ -344,7 +347,7 @@ technique11 DefaultTechnique
         SetRasterizerState(RS_Default);
         SetDepthStencilState(DSS_Default, 0);
         SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = EstherNpcVS;
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_MAIN_SCREEN_CUTIN();
     }

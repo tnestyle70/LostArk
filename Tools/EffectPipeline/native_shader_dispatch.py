@@ -37,6 +37,7 @@ def write_if_changed(path, text):
 
 def expand_dispatch_includes(text, shader_dir):
     """Read generated native leaves while keeping section markers inline."""
+    text = expand_artist_runtime_source(text, shader_dir)
     def read_include(match):
         return (Path(shader_dir) / match[1]).read_text(encoding='utf8')
     text = _WARLORD_BASE_INCLUDE.sub(read_include, text)
@@ -197,9 +198,207 @@ def write_partitioned_dispatch(path, text=None):
     if text is None:
         text = path.read_text(encoding='utf8')
     result, files = partition_dispatch_source(text, path)
+    if path.name == 'Shader_EffectArtistNative.hlsli':
+        result, runtime_files = partition_artist_runtime_source(result, path.parent, files)
+        files.update(runtime_files)
     for name, body in files.items():
         write_if_changed(path.parent / name, body)
     write_if_changed(path, result)
+    if path.name == 'Shader_EffectArtistNative.hlsli':
+        select_artist_wrapper_inputs(path.parent)
+    return tuple(files)
+
+
+_ARTIST_RUNTIME_BEGIN = '// BEGIN ISOLATED ARTIST RUNTIME\n'
+_ARTIST_RUNTIME_END = '// END ISOLATED ARTIST RUNTIME\n'
+_ARTIST_RUNTIME_PARTS = ('Inputs', 'Common', 'Programs')
+_ARTIST_EXTERNAL_PROGRAMS_MACRO = 'EFFECT_ARTIST_NATIVE_PROGRAMS_EXTERNAL'
+
+
+def expand_artist_runtime_source(text, shader_dir):
+    """Expose the original authoring text to every existing installer."""
+    if _ARTIST_RUNTIME_BEGIN not in text:
+        return text
+    begin = text.index(_ARTIST_RUNTIME_BEGIN)
+    end = text.index(_ARTIST_RUNTIME_END, begin) + len(_ARTIST_RUNTIME_END)
+    body = ''.join((Path(shader_dir) / f'Shader_EffectArtistNative{part}.hlsli')
+                   .read_text(encoding='utf8') for part in _ARTIST_RUNTIME_PARTS)
+    return text[:begin] + body + text[end:]
+
+
+def artist_program_selection_name(group):
+    return f'Shader_EffectArtistNativeSelectedGroup{group}.hlsli'
+
+
+def artist_wrapper_source(carrier, group):
+    # FXC requires a literal include name. Preload the same inputs in the same
+    # order as the carrier, then select this cohort before its entry points.
+    # Each wrapper still consumes only its own selected-program file.
+    if carrier not in ('Mesh', 'Particle'):
+        raise ValueError(f'Unsupported Artist carrier: {carrier}')
+    scene_inputs = ('Depth', 'Color') if carrier == 'Mesh' else ('Color', 'Depth')
+    return (f'#define EFFECT_SHADER_FAMILY 7\n#define EFFECT_NATIVE_PROFILE_GROUP {group}\n'
+            f'#define EFFECT_NATIVE_{carrier.upper()}_CARRIER 1\n'
+            '#include "Shader_EffectCommon.hlsli"\n'
+            '#define EFFECT_NATIVE_CARRIER_COMMON_INCLUDED 1\n'
+            + ''.join(f'#include "Shader_EffectScene{kind}Input.hlsli"\n' for kind in scene_inputs)
+            + f'#define {_ARTIST_EXTERNAL_PROGRAMS_MACRO} 1\n'
+            '#include "Shader_EffectArtistNative.hlsli"\n'
+            '#ifndef EFFECT_NATIVE_DECLARATIONS_ONLY\n'
+            f'#include "{artist_program_selection_name(group)}"\n'
+            '#endif\n'
+            f'#include "Shader_Effect{carrier}FamilyCarrier.hlsli"\n')
+
+
+def select_artist_wrapper_inputs(shader_dir):
+    """A new cohort does not edit any existing cohort's compile-time input list."""
+    for path in Path(shader_dir).glob('Shader_VtxEffect*.hlsl'):
+        text = path.read_text(encoding='utf8')
+        if not re.search(r'^#define EFFECT_SHADER_FAMILY 7$', text, re.M):
+            continue
+        group = re.search(r'^#define EFFECT_NATIVE_PROFILE_GROUP (\d+)$', text, re.M)
+        carrier = re.search(r'#include "Shader_Effect(Mesh|Particle)FamilyCarrier.hlsli"', text)
+        if group and carrier:
+            write_if_changed(path, artist_wrapper_source(carrier[1], int(group[1])))
+
+
+def _artist_selected_programs(text, group):
+    """Resolve only the group selector; retain every original carrier guard."""
+    output, stack = [], []
+    active = True
+    for line in text.splitlines(keepends=True):
+        stripped = line.strip()
+        if stripped.startswith(('#if ', '#ifdef ', '#ifndef ')):
+            selected = 'EFFECT_NATIVE_PROFILE_GROUP' in stripped
+            keep = True
+            if selected:
+                expression = stripped.removeprefix('#if ')
+                expression = re.sub(r'defined\((EFFECT_NATIVE_PROFILE_GROUP|ARTIST_NATIVE_MODEL_ONLY|EFFECT_NATIVE_DECAL_CARRIER|EFFECT_NATIVE_TRAIL_CARRIER)\)',
+                    lambda m: 'True' if m[1] == 'EFFECT_NATIVE_PROFILE_GROUP' else 'False', expression)
+                expression = re.sub(r'\bEFFECT_NATIVE_PROFILE_GROUP\b', str(group), expression)
+                expression = expression.replace('&&', ' and ').replace('||', ' or ')
+                expression = re.sub(r'!(?!=)', ' not ', expression).strip()
+                if re.search(r'[^\d\s()=!<>]|\b[A-Za-z_]\w*\b', re.sub(r'\b(?:True|False|and|or|not)\b', '', expression)):
+                    raise ValueError(f'Unsupported Artist group selector: {stripped}')
+                keep = bool(eval(expression, {'__builtins__': {}}, {}))
+            stack.append((active, selected))
+            if active and not selected:
+                output.append(line)
+            active = active and keep
+        elif stripped == '#endif' or stripped.startswith('#endif //'):
+            if not stack:
+                raise ValueError('Unbalanced Artist program guard')
+            parent, selected = stack.pop()
+            if parent and not selected:
+                output.append(line)
+            active = parent
+        elif stripped.startswith(('#else', '#elif')):
+            # Native source currently has no alternate compile-time branches.
+            # Reject a future unsupported selector before changing installed files.
+            raise ValueError('Alternate Artist program guard needs explicit selection')
+        elif active:
+            output.append(line)
+    if stack:
+        raise ValueError('Unclosed Artist program guard')
+    return ''.join(output)
+
+
+def _artist_profile_predicate(programs, shader_dir, staged):
+    include = re.compile(r'#include "(Shader_EffectArtistNativeDispatch\w+\.hlsli)"\n')
+    def read(match):
+        return staged.get(match[1]) if match[1] in staged else (Path(shader_dir) / match[1]).read_text(encoding='utf8')
+    expanded = include.sub(read, programs)
+    matches = list(_DISPATCH.finditer(expanded))
+    if len(matches) != 1:
+        raise ValueError('Artist selection must contain one effect dispatcher')
+    guards, cases, seen = [], [], set()
+    for line in matches[0][2].splitlines():
+        stripped = line.strip()
+        if stripped.startswith(('#if ', '#ifdef ', '#ifndef ')):
+            guards.append(stripped)
+        elif stripped == '#endif':
+            guards.pop()
+        elif stripped.startswith(('#else', '#elif')):
+            raise ValueError('Alternate Artist case guard needs explicit selection')
+        else:
+            match = re.match(r'case (\d+)u:', stripped)
+            if not match:
+                continue
+            identifier = int(match[1])
+            if identifier in seen:
+                raise ValueError(f'Duplicate Artist profile {identifier}')
+            seen.add(identifier)
+            cases.extend(guard + '\n' for guard in guards)
+            cases.append(f'    case {identifier}u: return true;\n')
+            cases.extend('#endif\n' for _ in guards)
+    if guards:
+        raise ValueError('Unclosed Artist case guard')
+    return ('\nbool Has_EffectArtistNativeProfile(uint profile)\n{\n    switch (profile)\n    {\n'
+            + ''.join(cases) + '    default: return false;\n    }\n}\n')
+
+
+def partition_artist_runtime_source(text, shader_dir, staged=None):
+    """Split only ownership: authored helpers, functions and cases are unchanged.
+
+    Also accepts the old ungrouped full-reset generator output. In that mode each
+    existing wrapper sees the same full corpus it consumed before this split.
+    """
+    staged = staged or {}
+    expanded = expand_artist_runtime_source(text, shader_dir)
+    header = '#define EFFECT_ARTIST_NATIVE_HLSLI\n'
+    start = expanded.index(header) + len(header)
+    common = expanded.index('float4 ArtistNativeAppend(', start)
+    samples = list(re.finditer(r'float4 ArtistNativeSample\d+\(', expanded[common:]))
+    if not samples:
+        raise ValueError('Artist native sampling ABI is missing')
+    sample = common + samples[-1].start()
+    brace = expanded.index('{', sample)
+    depth, end = 1, brace + 1
+    while depth and end < len(expanded):
+        depth += (expanded[end] == '{') - (expanded[end] == '}')
+        end += 1
+    if depth:
+        raise ValueError('Artist native sampling helper is incomplete')
+    end += len(expanded[end:]) - len(expanded[end:].lstrip('\n'))
+    footer = re.search(r'#endif\s*\Z', expanded)
+    if not footer or footer.start() < end:
+        raise ValueError('Artist native header guard is incomplete')
+    files = {
+        'Shader_EffectArtistNativeInputs.hlsli': expanded[start:common],
+        'Shader_EffectArtistNativeCommon.hlsli': expanded[common:end],
+        'Shader_EffectArtistNativePrograms.hlsli': expanded[end:footer.start()],
+    }
+    facade = (expanded[:start] + _ARTIST_RUNTIME_BEGIN
+              + '#include "Shader_EffectArtistNativeInputs.hlsli"\n'
+              + '#ifndef EFFECT_NATIVE_DECLARATIONS_ONLY\n'
+              + '#include "Shader_EffectArtistNativeCommon.hlsli"\n'
+              + f'#ifndef {_ARTIST_EXTERNAL_PROGRAMS_MACRO}\n'
+              + '#include "Shader_EffectArtistNativePrograms.hlsli"\n#endif\n#endif\n'
+              + _ARTIST_RUNTIME_END + expanded[footer.start():])
+    if (expanded[:start] + ''.join(files[f'Shader_EffectArtistNative{part}.hlsli']
+                                  for part in _ARTIST_RUNTIME_PARTS) + expanded[footer.start():]) != expanded:
+        raise ValueError('Artist runtime partition changed authored source')
+    groups = {int(group) for group in re.findall(r'EFFECT_NATIVE_PROFILE_GROUP == (\d+)', expanded)}
+    # Legacy full replacement does not emit group guards. Preserve its wrapper
+    # behavior instead of leaving a stale selected corpus installed beside it.
+    for path in Path(shader_dir).glob('Shader_VtxEffect*.hlsl'):
+        source = path.read_text(encoding='utf8')
+        if re.search(r'^#define EFFECT_SHADER_FAMILY 7$', source, re.M):
+            groups.update(map(int, re.findall(r'^#define EFFECT_NATIVE_PROFILE_GROUP (\d+)$', source, re.M)))
+    for group in sorted(groups):
+        selected = _artist_selected_programs(files['Shader_EffectArtistNativePrograms.hlsli'], group)
+        files[artist_program_selection_name(group)] = selected + _artist_profile_predicate(selected, shader_dir, staged)
+    return facade, files
+
+
+def write_artist_runtime_source(path, text):
+    """Install legacy ungrouped full source while retaining the runtime split."""
+    path = Path(path)
+    facade, files = partition_artist_runtime_source(text, path.parent)
+    for name, body in files.items():
+        write_if_changed(path.parent / name, body)
+    write_if_changed(path, facade)
+    select_artist_wrapper_inputs(path.parent)
     return tuple(files)
 
 

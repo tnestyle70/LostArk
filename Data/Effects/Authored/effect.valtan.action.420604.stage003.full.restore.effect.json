@@ -1,0 +1,74 @@
+{
+  "schema": "lostark.effect-authoring",
+  "version": 13,
+  "effectAssetId": "effect.valtan.action.420604.stage003.full.restore",
+  "displayName": "발탄 / 3연 구르기 후 돌진 | 흰 잔상",
+  "particleSystem": {
+    "uniformScaleMultiplier": 1,
+    "yawOffsetDegrees": 0,
+    "directionYawDegrees": 0,
+    "initialSpeedMultiplier": 1
+  },
+  "modelCues": [
+    {
+      "cueId": "valtan.charge.afterimage",
+      "modelAssetId": "Character/Valtan/MN_RPBF_01.wmodel",
+      "clipName": "mesh_att_battle_4_01",
+      "startDelaySeconds": 0,
+      "durationSeconds": 4.733333110809326,
+      "alphaMode": "TRANSLUCENT",
+      "opacity": 1,
+      "colorMultiply": [
+        1.8,
+        1.8,
+        1.8,
+        0.38
+      ],
+      "holdLastFrame": false,
+      "loop": false,
+      "visible": true,
+      "suppressHorizontalRootMotionBone": "b_root",
+      "rootMotionVerticalAxis": 2,
+      "rootMotionVerticalScale": 1,
+      "localTransform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotationDegrees": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "assetPreTransform": {
+        "scale": [
+          0.0001,
+          0.0001,
+          0.0001
+        ],
+        "rotationDegrees": [
+          0,
+          0,
+          0
+        ]
+      },
+      "afterimage": {
+        "emissionStartSeconds": 2.461735963821411,
+        "emissionEndSeconds": 4.733333110809326,
+        "sampleIntervalSeconds": 0.05,
+        "sampleLifetimeSeconds": 0.25,
+        "maxSamples": 6,
+        "appearanceBasis": "PROJECT_AUTHORED"
+      },
+      "animationSetAssetId": "Character/Valtan/AnimSets/MN_RPBF_01_AnimSet.wmodel"
+    }
+  ],
+  "elements": []
+}

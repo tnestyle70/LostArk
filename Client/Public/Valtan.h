@@ -487,6 +487,7 @@ private:
 	uint32_t m_iServerPatternSequence = 0u;
 	uint32_t m_iServerPatternStageIndex = 0u;
 	f32_t m_fServerActionAgeSeconds = 0.f;
+    bool m_ChargeAfterimageEnabled = false;
 	// Authoritative facing captured once per occurrence, never the interpolated visual yaw.
 	f32_t m_fServerPatternFacingYawDegrees = 0.f;
 	// Latest accepted authoritative boss yaw. Dynamic arena roots consume this
