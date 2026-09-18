@@ -10,14 +10,16 @@ namespace
 {
 	constexpr uint32_t SOURCE_TRANSLUCENT_TWO_SIDED_PASS = 9u;
 
-	/* Program 18 is the source two-sided translucent hair. The deferred
-	two-sided pass resolves its coverage as a dither, so it reads as stipple
-	dots; the forward pass blends it after scene lighting instead. */
+	/* Programs 7 and 18 are the source two-sided translucent hair and program 6
+	the eyelash/eye-AO shell. The deferred two-sided pass resolves their coverage
+	as a dither, so they read as stipple dots; the forward pass blends them after
+	scene lighting instead. */
 	uint32_t Resolve_TranslucentSourcePass(const Engine::MODEL_SURFACE_PARAMETERS* surface)
 	{
 		if (nullptr == surface || surface->family != Engine::MODEL_SURFACE_FAMILY::SOURCE_CHARACTER)
 			return 0u;
-		return 18u == surface->sourceCharacter.program ?
+		const uint32_t program = surface->sourceCharacter.program;
+		return 6u == program || 7u == program || 18u == program ?
 			SOURCE_TRANSLUCENT_TWO_SIDED_PASS : 0u;
 	}
 }
@@ -168,8 +170,7 @@ HRESULT CPart_Body::Render_Pass(uint32_t iPassIndex)
             continue;
         if (iPassIndex == 0u && surface &&
             surface->family == Engine::MODEL_SURFACE_FAMILY::SOURCE_CHARACTER &&
-            (surface->sourceCharacter.program == 6u || surface->sourceCharacter.program == 7u ||
-             surface->sourceCharacter.program == 19u ||
+            (surface->sourceCharacter.program == 19u ||
              surface->sourceCharacter.program == 20u))
             materialPass = 6u;
 		if (FAILED(Bind_DeferredMaterialInputs(

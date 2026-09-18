@@ -632,7 +632,8 @@ SOURCE_CHARACTER_NATIVE_INPUT MakeSourceCharacterForwardLightInput(VS_OUT input,
 
 SCENE_COLOR_BLOOM_OUT PS_MAIN_SOURCE_CHARACTER_TRANSLUCENT(VS_OUT input, bool frontFace : SV_IsFrontFace)
 {
-    if (18u != g_SourceCharacterProgram && 84u != g_SourceCharacterProgram &&
+    if (6u != g_SourceCharacterProgram && 7u != g_SourceCharacterProgram &&
+        18u != g_SourceCharacterProgram && 84u != g_SourceCharacterProgram &&
         88u != g_SourceCharacterProgram) discard;
     const float3 camera = -mul((float3x3)g_ViewMatrix, g_ViewMatrix[3].xyz);
     float3 ambient = 0.f;
@@ -667,6 +668,12 @@ SCENE_COLOR_BLOOM_OUT PS_MAIN_SOURCE_CHARACTER_TRANSLUCENT(VS_OUT input, bool fr
             MakeSourceCharacterForwardLightInput(input, camera, direction, colorExponent.rgb);
         SOURCE_CHARACTER_NATIVE_OUTPUT lit = (SOURCE_CHARACTER_NATIVE_OUTPUT)0;
         lit.discarded = true;
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 1
+        if (6u == g_SourceCharacterProgram)
+            lit = SourceCharacterLight6(lightInput);
+        else if (7u == g_SourceCharacterProgram)
+            lit = SourceCharacterLight7(lightInput);
+#endif
 #if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 17
         if (18u == g_SourceCharacterProgram)
             lit = SourceCharacterLight18(lightInput);
