@@ -2332,6 +2332,18 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 				m_Desc.iPrototypeLevelIndex,
 				spawned.strArchetypeId)))
 		{
+			/* A silent return hid every failed NPC: the placement never
+			appeared and no status named it. Report the placement, archetype
+			and the failing step so a missing NPC is diagnosable. */
+			OutputDebugStringA(("[NpcPresentation] placement " +
+				spawned.strPlacementId + " archetype " +
+				spawned.strArchetypeId + " is unavailable (" +
+				(nullptr == actor ?
+					"no catalog entry: " + CActorCatalog::Get_Status() :
+					modelTag.empty() ?
+						std::string("no model prototype tag") :
+						std::string("model prototype preparation failed")) +
+				").\n").c_str());
 			return false;
 		}
 

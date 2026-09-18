@@ -2,7 +2,7 @@
   "schema": "lostark.world-gameplay",
   "formatVersion": 6,
   "areaId": "LV_BER_BERNCASTLE",
-  "revision": 548,
+  "revision": 552,
   "placements": [
     {
       "placementId": "collision.bern.editor-proof",
@@ -743,6 +743,215 @@
       "events": [
         { "type": "changeLevel", "targetWorldId": "VALTAN_ARENA" }
       ]
+    },
+    {
+      "placementId": "npc.bern.src.669",
+      "kind": "npc",
+      "archetypeId": "NPC_25255",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": null,
+      "position": [75.201, 34.61, -36.04],
+      "yawDegrees": 231.86,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.bern.src.29",
+      "kind": "npc",
+      "archetypeId": "NPC_25007",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": null,
+      "position": [243.157, 44.29, -66.308],
+      "yawDegrees": 178.88,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.bern.src.64",
+      "kind": "npc",
+      "archetypeId": "NPC_25072",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": null,
+      "position": [70.882, 42.26, -73.277],
+      "yawDegrees": 185.8,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.bern.src.63",
+      "kind": "npc",
+      "archetypeId": "NPC_25030",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": null,
+      "position": [64.182, 42.282, -75.476],
+      "yawDegrees": 355.43,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.bern.src.74",
+      "kind": "npc",
+      "archetypeId": "NPC_25025",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": null,
+      "position": [189.816, 49.11, -146.669],
+      "yawDegrees": 276.86,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.bern.src.700",
+      "kind": "npc",
+      "archetypeId": "NPC_25044",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": null,
+      "position": [62.119, 42.262, -93.138],
+      "yawDegrees": 265.43,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.bern.src.48",
+      "kind": "npc",
+      "archetypeId": "NPC_25012",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": null,
+      "position": [195.033, 49.11, -146.608],
+      "yawDegrees": 303.75,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.bern.src.72",
+      "kind": "npc",
+      "archetypeId": "NPC_25057",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": null,
+      "position": [195.066, 38.46, -40.897],
+      "yawDegrees": 46.54,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.bern.src.38",
+      "kind": "npc",
+      "archetypeId": "NPC_25019",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": null,
+      "position": [194.53, 47.619, -118.836],
+      "yawDegrees": 343.5,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.bern.src.701",
+      "kind": "npc",
+      "archetypeId": "NPC_25306",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": null,
+      "position": [58.682, 42.26, -93.661],
+      "yawDegrees": 234.67,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.bern.src.61",
+      "kind": "npc",
+      "archetypeId": "NPC_25045",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": null,
+      "position": [61.428, 45.462, -119.082],
+      "yawDegrees": 243.28,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.bern.src.46",
+      "kind": "npc",
+      "archetypeId": "NPC_25024",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": null,
+      "position": [178.519, 47.621, -147.132],
+      "yawDegrees": 226.05,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.bern.src.722",
+      "kind": "npc",
+      "archetypeId": "NPC_80025",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": null,
+      "position": [188.425, 49.117, -144.637],
+      "yawDegrees": 289.09,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.bern.src.33",
+      "kind": "npc",
+      "archetypeId": "NPC_25006",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": null,
+      "position": [236.697, 43.51, -44.421],
+      "yawDegrees": 181.76,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.bern.src.31",
+      "kind": "npc",
+      "archetypeId": "NPC_25182",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": null,
+      "position": [227.15, 43.51, -70.168],
+      "yawDegrees": 223.07,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.bern.src.713",
+      "kind": "npc",
+      "archetypeId": "NPC_80023",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": null,
+      "position": [237.425, 43.515, -47.568],
+      "yawDegrees": 161.02,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.bern.src.34",
+      "kind": "npc",
+      "archetypeId": "NPC_SRC_25008",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": null,
+      "position": [212.86, 39.58, -43.274],
+      "yawDegrees": 189.32,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.bern.src.698",
+      "kind": "npc",
+      "archetypeId": "NPC_25005",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": null,
+      "position": [245.638, 44.385, -51.388],
+      "yawDegrees": 185.27,
+      "enabled": true
+    },
+    {
+      "placementId": "npc.bern.src.42",
+      "kind": "npc",
+      "archetypeId": "NPC_SRC_25016",
+      "encounterId": null,
+      "idleClip": null,
+      "behavior": null,
+      "position": [239.741, 37.144, 275.647],
+      "yawDegrees": 182.64,
+      "enabled": true
     }
   ]
 }
