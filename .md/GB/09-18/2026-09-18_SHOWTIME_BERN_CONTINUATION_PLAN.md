@@ -1,3 +1,1728 @@
+# 쇼타임 카메라·베른 보행 바닥 인수 수정
+
+## G01. 실제 작업 경계
+
+실행 저장소는 `C:/Users/USER/source/졸업팀폴/LostArk`다. 별도 Codex worktree의 오래된 C++를 이 저장소에 덮어쓰지 않는다. 기존 dirty 변경을 보존한다. 조명, NPC, 발탄, 전투 패턴과 보스 크기는 변경 대상이 아니다.
+
+## G02. 쇼타임 카메라
+
+`KAKULSAYDON_G1_PATTERN_76`의 네 CAMERA 참조와 `kouku.gate3.showtime.camera.1`~`.4`의 키를 추적한다. 원본 배우 drawscale 1.2000000476837158과 현재 BossCatalog bodyModelPreScale 0.017의 차이는 카메라의 배우 상대 거리에도 적용해야 한다. 원본 키 시각·FOV·roll·컷 경계는 보존하고 eye/lookAt만 같은 기준점에서 등비 변환한다. 기존 미완료 배우 변경은 카메라 변경과 구분한다.
+
+카메라만 게시하는 범위를 기존 Map publisher의 검증·transaction에 추가해 조명 등 다른 문서의 동반 게시를 방지한다. 게시 전후 비대상 파일의 바이트 동일성을 확인한다. 숫자 검증은 사용자 화면 판정을 대체하지 않는다.
+
+## G03. 베른
+
+기존 coverage2.py는 submesh-local index에 vertexOffset을 반영하지 않아 복수 submesh의 삼각형을 잘못 해석한다. 기존 커버리지 비율과 missing_clusters를 삭제·복구 목록으로 사용하지 않는다. 실제 WMeshReader 계약대로 읽어 원본과 설치 모델을 다시 대조한다.
+
+실제 보행로의 바닥·계단을 확인한 뒤 해당 배치만 복구한다. 수면, 충돌 전용 박스, 장식 상면과 원래 낭떠러지는 보행 바닥으로 승격하지 않는다. 바닥 복구 후 서버 navigation의 높이·연결·기존 차단 영역을 검사한다. 미니맵은 위치 대조 자료이지 지오메트리 증거가 아니다.
+
+## G04. 검증과 실행
+
+수정 블록과 재현 가능한 검증 코드는 적용 전에 이 문서에 추가한다. 데이터 변경은 관련 publisher Validate/Check와 비대상 보존 검사를 수행한다. Client는 에이전트가 실행하지 않는다. 최종 화면과 실제 이동 확인은 사용자에게 정확한 실행 경로를 전달한다.
+
+## G05. 쇼타임 중복 배우·바닥 관통 수정 코드 정본
+
+2026-09-18 사용자 1548ms 재현에 대한 적용 코드다. CNpc 표시 억제는 서버 상태가 아닌 렌더만 제어하며 commit 이후 획득하고 Stop/실패/교체에서 해제한다. 카메라 2번은 실제 바닥 교차 측정에 따라 Y만 0.4m 올린다. 나머지 프레이밍 보정과 원본 시간은 유지한다. 신규 C++ 파일과 project/filter 변경은 없다. 검증 명령·실측·사용자 확인 경계는 같은 제목 RESULT G03~G05에 기록한다.
+
+### Client/Public/Npc.h
+
+```cpp
+#pragma once
+
+#include "Client_Defines.h"
+#include "DeferredMaterialRenderUtils.h"
+#include "GameObject.h"
+#include "PlayerHandGripTransform.h"
+#include "KoukuSaydonCompositionDocument.h"
+
+#include <algorithm>
+#include <cstddef>
+#include <cstdint>
+#include <cmath>
+#include <string>
+#include <optional>
+
+NS_BEGIN(Engine)
+class CShader;
+class CModel;
+class CCollider;
+NS_END
+
+NS_BEGIN(Client)
+
+enum class ANIMATION_BONE_TARGET : uint8_t;
+struct ANIMATION_MODEL_TARGET_VIEW;
+
+struct NPC_NETWORK_TRANSFORM_FRAME final
+{
+	float3_t vPosition = {};
+	f32_t fYawDegrees = 0.f;
+};
+
+/* Pure fixed-tick sample buffer used directly by CNpc and by the focused
+client harness. It owns interpolation delay and shortest-arc yaw smoothing;
+the GameObject owns only applying the resulting frame to CTransform. */
+class CNpcNetworkTransformInterpolator final
+{
+private:
+	struct SAMPLE final
+	{
+		std::uint32_t iServerTick = 0u;
+		float3_t vPosition = {};
+		f32_t fYawDegrees = 0.f;
+	};
+
+	static constexpr size_t SAMPLE_CAPACITY = 8u;
+	static constexpr f32_t SERVER_TICK_HZ = 30.f;
+	static constexpr f32_t INTERPOLATION_DELAY_TICKS = 2.f;
+	static constexpr f32_t PLAYBACK_SNAP_TICKS = 6.f;
+	static constexpr f32_t PLAYBACK_DRIFT_GAIN = 4.f;
+	static constexpr f32_t TELEPORT_DISTANCE_SQ = 100.f;
+	static constexpr f32_t TURN_DEGREES_PER_SECOND = 720.f;
+
+public:
+	void Reset()
+	{
+		m_iSampleCount = 0u;
+		m_fPlaybackServerTick = 0.f;
+		m_fPresentationYawDegrees = 0.f;
+		m_hasState = false;
+	}
+
+	bool_t Push(
+		const float3_t& position,
+		const f32_t yawDegrees,
+		const std::uint32_t iServerTick)
+	{
+		if (0u == iServerTick || !std::isfinite(position.x) ||
+			!std::isfinite(position.y) || !std::isfinite(position.z) ||
+			!std::isfinite(yawDegrees))
+		{
+			return false;
+		}
+
+		bool_t reset = !m_hasState;
+		if (!reset && m_iSampleCount > 0u)
+		{
+			const SAMPLE& newest = m_Samples[m_iSampleCount - 1u];
+			const f32_t dx = position.x - newest.vPosition.x;
+			const f32_t dy = position.y - newest.vPosition.y;
+			const f32_t dz = position.z - newest.vPosition.z;
+			reset = dx * dx + dy * dy + dz * dz > TELEPORT_DISTANCE_SQ;
+		}
+		if (reset)
+		{
+			m_iSampleCount = 0u;
+			m_fPresentationYawDegrees = yawDegrees;
+			m_fPlaybackServerTick = static_cast<f32_t>(iServerTick) -
+				INTERPOLATION_DELAY_TICKS;
+		}
+
+		if (m_iSampleCount > 0u &&
+			m_Samples[m_iSampleCount - 1u].iServerTick >= iServerTick)
+		{
+			SAMPLE& newest = m_Samples[m_iSampleCount - 1u];
+			newest.vPosition = position;
+			newest.fYawDegrees = yawDegrees;
+		}
+		else
+		{
+			if (SAMPLE_CAPACITY == m_iSampleCount)
+			{
+				for (size_t i = 1u; i < SAMPLE_CAPACITY; ++i)
+					m_Samples[i - 1u] = m_Samples[i];
+				--m_iSampleCount;
+			}
+			SAMPLE& sample = m_Samples[m_iSampleCount++];
+			sample.iServerTick = iServerTick;
+			sample.vPosition = position;
+			sample.fYawDegrees = yawDegrees;
+		}
+		m_hasState = true;
+		return true;
+	}
+
+	bool_t Advance(
+		const f32_t fTimeDelta,
+		NPC_NETWORK_TRANSFORM_FRAME& outFrame)
+	{
+		if (!m_hasState || 0u == m_iSampleCount ||
+			!std::isfinite(fTimeDelta) || fTimeDelta < 0.f)
+		{
+			return false;
+		}
+
+		const f32_t oldestTick = static_cast<f32_t>(
+			m_Samples[0u].iServerTick);
+		const f32_t newestTick = static_cast<f32_t>(
+			m_Samples[m_iSampleCount - 1u].iServerTick);
+		m_fPlaybackServerTick += fTimeDelta * SERVER_TICK_HZ;
+		const f32_t targetTick = newestTick - INTERPOLATION_DELAY_TICKS;
+		const f32_t drift = targetTick - m_fPlaybackServerTick;
+		if (std::fabs(drift) > PLAYBACK_SNAP_TICKS)
+			m_fPlaybackServerTick = targetTick;
+		else
+		{
+			m_fPlaybackServerTick += drift * (std::min)(
+				1.f, PLAYBACK_DRIFT_GAIN * fTimeDelta);
+		}
+		m_fPlaybackServerTick = (std::max)(oldestTick,
+			(std::min)(newestTick, m_fPlaybackServerTick));
+
+		size_t older = m_iSampleCount - 1u;
+		for (size_t i = 0u; i + 1u < m_iSampleCount; ++i)
+		{
+			if (m_fPlaybackServerTick <= static_cast<f32_t>(
+					m_Samples[i + 1u].iServerTick))
+			{
+				older = i;
+				break;
+			}
+		}
+		const SAMPLE& from = m_Samples[older];
+		const SAMPLE& to = m_Samples[
+			(std::min)(older + 1u, m_iSampleCount - 1u)];
+		outFrame.vPosition = to.vPosition;
+		f32_t targetYawDegrees = to.fYawDegrees;
+		if (to.iServerTick > from.iServerTick)
+		{
+			const f32_t ratio =
+				(m_fPlaybackServerTick -
+					static_cast<f32_t>(from.iServerTick)) /
+				static_cast<f32_t>(to.iServerTick - from.iServerTick);
+			outFrame.vPosition.x = from.vPosition.x +
+				(to.vPosition.x - from.vPosition.x) * ratio;
+			outFrame.vPosition.y = from.vPosition.y +
+				(to.vPosition.y - from.vPosition.y) * ratio;
+			outFrame.vPosition.z = from.vPosition.z +
+				(to.vPosition.z - from.vPosition.z) * ratio;
+			f32_t yawSpan = to.fYawDegrees - from.fYawDegrees;
+			while (yawSpan > 180.f)
+				yawSpan -= 360.f;
+			while (yawSpan < -180.f)
+				yawSpan += 360.f;
+			targetYawDegrees = from.fYawDegrees + yawSpan * ratio;
+		}
+
+		f32_t yawDifference =
+			targetYawDegrees - m_fPresentationYawDegrees;
+		while (yawDifference > 180.f)
+			yawDifference -= 360.f;
+		while (yawDifference < -180.f)
+			yawDifference += 360.f;
+		const f32_t yawStep = TURN_DEGREES_PER_SECOND * fTimeDelta;
+		if (std::fabs(yawDifference) <= yawStep)
+			m_fPresentationYawDegrees = targetYawDegrees;
+		else
+		{
+			m_fPresentationYawDegrees +=
+				yawDifference > 0.f ? yawStep : -yawStep;
+		}
+		outFrame.fYawDegrees = m_fPresentationYawDegrees;
+		return true;
+	}
+
+private:
+	SAMPLE m_Samples[SAMPLE_CAPACITY] = {};
+	size_t m_iSampleCount = 0u;
+	f32_t m_fPlaybackServerTick = 0.f;
+	f32_t m_fPresentationYawDegrees = 0.f;
+	bool_t m_hasState = false;
+};
+
+/* A town NPC: one skinned model that presents a Server-owned transform and
+semantic action as a model clip.
+
+Deliberately not a CCharacter. That type assembles equipment parts, weapon
+sockets and a class logic from a CHARACTER_SPEC, none of which an NPC has -- the
+cook already merges an NPC's body and head into a single mesh, so there is one
+model and nothing to assemble.
+
+Everything an instance starts with is in NPC_DESC, so the placement tool can
+spawn the same prototype many times; product movement and later action edges are
+then supplied by Client replication. */
+class CNpc final : public CGameObject, public IPlayerHandGripSocketSource
+{
+public:
+	typedef struct tagNpcDesc : public CGameObject::GAMEOBJECT_DESC
+	{
+		uint32_t iPrototypeLevelIndex = {};
+		wstring_t strModelTag;
+		wstring_t strShaderTag;
+		// Optional stable binding owner for a catalog boss using the NPC renderer.
+		std::string strEffectV2BindingOwner;
+
+		/* Clip to stand in. Every NPC is cooked under the same "npc" armature
+		name, so the clip names all carry that prefix -- "npc_idle_normal_1",
+		"npc_sc_talk_1" -- and one name works across every NPC that shares an
+		archetype. An unknown name falls back to the model's first clip. */
+		const char_t* pIdleClip = { nullptr };
+		bool_t isLoop = { true };
+
+		float3_t vPosition = {};
+		/* Degrees about Y. Town NPCs face doors and counters, not always north. */
+		f32_t fYawDegree = {};
+		/* Zero for non-combat NPCs; Server-replicated radius for monsters. */
+		f32_t fCollisionRadius = {};
+		/* Product town behavior and MapTool previews are transform-authoritative
+		outside the model. Esther summons leave this false because their authored
+		action chains intentionally carry root motion. */
+		bool_t bSuppressRootMotion = false;
+		/* Independent from root-motion policy. Server-owned town NPCs and
+		monsters interpolate snapshot transforms; local previews and Esther keep
+		their existing immediate-transform behavior. */
+		bool_t bInterpolateNetworkTransform = false;
+		/* Inverted-hull outline in world metres; 0 disables. Only shaders that
+		expose an Outline pass (esther) honour it. */
+		f32_t fOutlineWidth = {};
+		float4_t vOutlineColor = { 1.f, 1.f, 1.f, 1.f };
+		/* Optional socketed weapon: a second animated CModel prototype drawn in
+		its rest pose from one bone of the body skeleton. Both fields are set
+		together or neither is; a socket the body lacks fails the clone instead
+		of drawing the weapon at the origin. Unit conversion is baked into the
+		weapon prototype's pre-transform, so no scale travels here. */
+		wstring_t strWeaponModelTag;
+		const char_t* pWeaponSocketBone = { nullptr };
+	} NPC_DESC;
+
+	/* Esther summons (Sillian / Wei / Bahuntur) draw with a white silhouette
+	like the original. Width is world metres along the skinned normal. */
+	static constexpr f32_t ESTHER_OUTLINE_WIDTH = 0.04f;
+
+private:
+	CNpc(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext);
+public:
+	virtual ~CNpc();
+
+public:
+	shared_ptr<Engine::CModel> Get_Model() const {
+		return m_pModelCom;
+	}
+	shared_ptr<Engine::CTransform> Get_Transform() const {
+		return m_pTransformCom;
+	}
+	const wstring_t& Get_ModelTag() const {
+		return m_strModelTag;
+	}
+	const std::string& Get_EffectV2BindingOwner() const { return m_strEffectV2BindingOwner; }
+	bool_t Try_GetAnimationModelTarget(ANIMATION_BONE_TARGET target, ANIMATION_MODEL_TARGET_VIEW& outView) const;
+	bool_t Set_PlayerHandGripLocalOffset(const PLAYER_HAND_GRIP_LOCAL_OFFSET& offset);
+	void Clear_PlayerHandGripLocalOffset() { m_PlayerHandGripLocalOffset.reset(); }
+	bool_t Try_Get_PlayerHandGripSocketView(LostArk::Shared::PLAYER_ATTACHMENT_SLOT slot,
+		PLAYER_HAND_GRIP_SOCKET_VIEW& outView) const override;
+	bool_t Try_Get_PlayerHandGripLocalOffset(LostArk::Shared::PLAYER_ATTACHMENT_SLOT slot,
+		PLAYER_HAND_GRIP_LOCAL_OFFSET& outOffset) const override;
+	void Synchronize_WeaponPose();
+	bool_t Set_Animation(const char_t* pClipName, bool_t isLoop);
+	/* Restarts the selected clip even when the previous action used the same
+	clip. The network action edge owns restart timing; the model only owns how
+	the authored clip is blended and played. */
+	// Stage age owns the delay; the hold deadline starts at animation time zero.
+	// A zero hold deadline preserves the existing whole-stage action lifetime.
+	bool_t Set_NetworkAnimationWindow(f32_t ageSeconds, f32_t holdSeconds,
+		f32_t startOffsetSeconds = 0.f, uint32_t sourceStartMs = 0u, uint32_t sourceEndMs = 0u);
+	bool_t Set_NetworkAnimationBlendWindows(
+        const std::vector<KOUKU_SAYDON_ANIMATION_BLEND_WINDOW>& windows,
+        std::string_view semanticOccurrenceId, f32_t patternAgeSeconds);
+	bool_t Apply_NetworkAnimationTransition(const char_t* sourceClip, f32_t sourceMs,
+		f32_t durationMs, f32_t ageSeconds, f32_t playRate);
+	bool_t Play_NetworkAction(
+		const char_t* pClipName,
+		bool_t isLoop,
+		f32_t fPlaybackRate,
+		f32_t fBlendSeconds,
+		f32_t fRootVerticalScale = 1.f);
+	bool_t Play_TransientNetworkAction(
+		const char_t* pClipName,
+		f32_t fPlaybackRate,
+		f32_t fDurationSeconds,
+		const char_t* pReturnClip,
+		bool_t isReturnLoop,
+		f32_t fReturnPlaybackRate = 1.f,
+		f32_t fBlendSeconds = 0.05f);
+	bool_t Play_DefaultIdle(f32_t fBlendSeconds = 0.12f);
+	bool_t Apply_NetworkState(
+		const float3_t& position,
+		f32_t yawDegrees,
+		std::uint32_t iServerTick = 0u,
+		bool_t snapToSnapshot = false);
+	void Trigger_HitFlash();
+    void Set_PresentationVisible(bool visible) { m_bPresentationVisible = visible; }
+    // Preview owns only a render suppression; network state and base visibility keep updating.
+    void Acquire_CompositionPreviewSuppression() { ++m_iCompositionPreviewSuppressions; }
+    void Release_CompositionPreviewSuppression() { if (m_iCompositionPreviewSuppressions) --m_iCompositionPreviewSuppressions; }
+    bool Is_PresentationVisible() const { return m_bPresentationVisible && m_iCompositionPreviewSuppressions == 0u; }
+#ifdef _DEBUG
+	void Set_CombatColliderDebugVisible(bool_t isVisible) {
+		m_isCombatColliderDebugVisible = isVisible;
+	}
+	/* F1 tuning only. The scale multiplies the drawn body transform, the
+	offset shifts the drawn body from its replicated position, and the weapon
+	multiplier scales the socketed weapon. None of them reaches the Server or
+	the collider authority; they exist so a catalog value can be chosen by eye
+	before it is saved. */
+	void Set_DebugPresentationScale(f32_t fScale);
+	void Set_DebugPresentationOffset(const float3_t& vOffset);
+	/* Added to the replicated yaw of every drawn pose; the collider keeps the
+	Server yaw. Lets a placement yawDegrees be chosen by eye before saving. */
+	void Set_DebugPresentationYawOffset(f32_t fYawOffsetDegrees);
+	void Set_DebugWeaponScale(f32_t fScale);
+	/* Match the saved Euler rotation despite the catalog rotation already
+	baked into this Client's weapon prototype. */
+	void Set_DebugWeaponRotation(
+		const float3_t& vCatalogDegrees, const float3_t& vTargetDegrees);
+	f32_t Get_DebugPresentationScale() const { return m_fDebugPresentationScale; }
+	const float3_t& Get_DebugPresentationOffset() const { return m_vDebugPresentationOffset; }
+	const float3_t& Get_DebugUnadjustedPosition() const { return m_vDebugUnadjustedPosition; }
+	f32_t Get_DebugUnadjustedYawDegrees() const { return m_fDebugUnadjustedYawDegrees; }
+	f32_t Get_DebugPresentationYawOffset() const { return m_fDebugPresentationYawOffset; }
+	f32_t Get_DebugWeaponScale() const { return m_fDebugWeaponScale; }
+	const float4x4_t& Get_DebugWeaponRotation() const { return m_DebugWeaponRotation; }
+#endif
+
+public:
+	virtual HRESULT Initialize_Prototype() override;
+	virtual HRESULT Initialize(void* pArg) override;
+	virtual void Priority_Update(f32_t fTimeDelta) override;
+	virtual void Update(f32_t fTimeDelta) override;
+	virtual void Late_Update(f32_t fTimeDelta) override;
+	virtual HRESULT Render() override;
+
+private:
+	shared_ptr<Engine::CShader> m_pShaderCom = { nullptr };
+	bool_t m_bNativeBinaryBasePass = false;
+	shared_ptr<Engine::CModel> m_pModelCom = { nullptr };
+	wstring_t m_strModelTag;
+	std::string m_strEffectV2BindingOwner;
+	/* Socketed weapon with body-clock pose synchronization; null when the
+	desc declared none. It never starts a clip of its own. */
+	shared_ptr<Engine::CModel> m_pWeaponModelCom = { nullptr };
+	std::vector<float4x4_t> m_WeaponRestPose;
+	std::string m_strWeaponSocketBone;
+	shared_ptr<Engine::CCollider> m_pColliderCom = { nullptr };
+	DEFERRED_EMISSIVE_OVERRIDE m_HitFlash;
+	f32_t m_fHitFlashRemainingSeconds = { 0.f };
+	std::string m_strDefaultIdleClip;
+	std::optional<PLAYER_HAND_GRIP_LOCAL_OFFSET> m_PlayerHandGripLocalOffset;
+	bool_t Try_SampleNetworkAnimationTicks(f32_t animationAgeSeconds, uint32_t clip,
+		f32_t playRate, f32_t& outTicks) const;
+	// CModel's blended target may precede the actual Server action edge.
+    // Preserve the semantic action clip independently from the displayed pose.
+    uint32_t m_iNetworkSemanticClip = UINT32_MAX;
+    uint32_t m_iNetworkSemanticAbsoluteStartMs = UINT32_MAX;
+    std::vector<KOUKU_SAYDON_ANIMATION_BLEND_WINDOW> m_NetworkAnimationBlendWindows;
+    double m_fNetworkPatternAgeSeconds = 0.0;
+	bool_t m_bNetworkAnimationWindow = false;
+	bool_t m_bNetworkAnimationTransition = false;
+	bool_t m_isNetworkAnimationLoop = false;
+	f32_t m_fNetworkAnimationAgeSeconds = 0.f, m_fNetworkAnimationHoldSeconds = 0.f;
+	f32_t m_fNetworkAnimationStartOffsetSeconds = 0.f;
+	uint32_t m_iNetworkAnimationSourceStartMs = 0u, m_iNetworkAnimationSourceEndMs = 0u;
+	f32_t m_fNetworkAnimationPlayRate = 1.f;
+	uint32_t m_iTransitionSourceIndex = UINT32_MAX;
+	f32_t m_fTransitionSourceTicks = 0.f, m_fTransitionDurationSeconds = 0.f;
+	f32_t m_fTransitionAgeSeconds = 0.f, m_fTransitionPlayRate = 1.f;
+	CNpcNetworkTransformInterpolator m_NetworkTransformInterpolator;
+	bool_t m_bSuppressRootMotion = false;
+    bool m_bPresentationVisible = true;
+    std::uint32_t m_iCompositionPreviewSuppressions = 0u;
+	bool_t m_bInterpolateNetworkTransform = false;
+	f32_t m_fTransientActionRemainingSeconds = 0.f;
+	std::string m_strTransientReturnClip;
+	f32_t m_fTransientReturnPlaybackRate = 1.f;
+	bool_t m_isTransientReturnLoop = true;
+	f32_t m_fOutlineWidth = { 0.f };
+	float4_t m_vOutlineColor = { 1.f, 1.f, 1.f, 1.f };
+#ifdef _DEBUG
+	bool_t m_isCombatColliderDebugVisible = { false };
+	f32_t m_fDebugPresentationScale = 1.f;
+	float3_t m_vDebugPresentationOffset = {};
+	float3_t m_vDebugUnadjustedPosition = {};
+	f32_t m_fDebugPresentationYawOffset = 0.f;
+	f32_t m_fDebugUnadjustedYawDegrees = 0.f;
+	f32_t m_fDebugWeaponScale = 1.f;
+	float4x4_t m_DebugWeaponRotation = {
+		1.f, 0.f, 0.f, 0.f,
+		0.f, 1.f, 0.f, 0.f,
+		0.f, 0.f, 1.f, 0.f,
+		0.f, 0.f, 0.f, 1.f };
+#endif
+
+private:
+	HRESULT Ready_Components(const NPC_DESC* pDesc);
+	HRESULT Bind_ShaderResources();
+	void Apply_ImmediateTransform(
+		const float3_t& position,
+		f32_t yawDegrees);
+	void Update_NetworkTransform(f32_t fTimeDelta);
+	void Update_CombatCollider();
+
+public:
+	static unique_ptr<CNpc> Create(ComPtr<ID3D11Device> pDevice,
+		ComPtr<ID3D11DeviceContext> pContext);
+	virtual shared_ptr<CPrototype> Clone(void* pArg) override;
+};
+
+NS_END
+```
+
+### Client/Private/Npc.cpp
+
+```cpp
+#include "Npc.h"
+#include "KoukuSaydonAnimationBlend.h"
+#include "KoukuSaydonCompositionDocument.h"
+#include "EffectV2_Runtime.h"
+#include "AnimationTargetService.h"
+#include "NpcPresentationAssetService.h"
+
+#include "Collider.h"
+#include "DeferredMaterialRenderUtils.h"
+#include "GameInstance.h"
+#include "Model.h"
+#include "Shader.h"
+#include "Transform.h"
+
+#include <algorithm>
+#include <cmath>
+
+namespace
+{
+	constexpr f32_t HIT_FLASH_DURATION_SECONDS = 0.12f;
+	constexpr f32_t HIT_FLASH_PEAK_INTENSITY = 4.f;
+	constexpr const char_t* ROOT_MOTION_BONE = "b_root";
+	constexpr int32_t ROOT_MOTION_VERTICAL_AXIS = 2;
+	constexpr const char_t* PLAYER_LEFT_HAND_BONE = "bip001-l-hand";
+}
+
+CNpc::CNpc(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext)
+	: CGameObject{ pDevice, pContext }
+{
+}
+
+CNpc::~CNpc()
+{
+}
+
+HRESULT CNpc::Initialize_Prototype()
+{
+	return S_OK;
+}
+
+HRESULT CNpc::Initialize(void* pArg)
+{
+	if (nullptr == pArg)
+		return E_FAIL;
+
+	const NPC_DESC* pDesc = static_cast<const NPC_DESC*>(pArg);
+	if (!std::isfinite(pDesc->fCollisionRadius) ||
+		pDesc->fCollisionRadius < 0.f)
+	{
+		return E_INVALIDARG;
+	}
+
+	if (FAILED(__super::Initialize(pArg)))
+		return E_FAIL;
+
+	if (FAILED(Ready_Components(pDesc)))
+		return E_FAIL;
+
+	Apply_ImmediateTransform(pDesc->vPosition, pDesc->fYawDegree);
+
+	m_fOutlineWidth = pDesc->fOutlineWidth;
+	m_vOutlineColor = pDesc->vOutlineColor;
+	m_bSuppressRootMotion = pDesc->bSuppressRootMotion;
+	m_bInterpolateNetworkTransform = pDesc->bInterpolateNetworkTransform;
+
+	/* With no animation set the bone palette is never filled, so every vertex
+	collapses onto the origin and the NPC simply vanishes -- a wrong clip name
+	looks exactly like a failed load. Fall back to the model's first clip so a
+	bad name is visible as a wrong pose instead of nothing at all. */
+	if (nullptr == pDesc->pIdleClip ||
+		!m_pModelCom->Set_Animation(pDesc->pIdleClip, pDesc->isLoop))
+	{
+		if (0 == m_pModelCom->Get_NumAnimations())
+			return E_FAIL;
+		m_pModelCom->Set_Animation(0u, pDesc->isLoop);
+	}
+	const char_t* pResolvedIdle = m_pModelCom->Get_AnimationName(
+		m_pModelCom->Get_CurrentAnimIndex());
+	if (nullptr == pResolvedIdle || '\0' == pResolvedIdle[0])
+		return E_FAIL;
+	m_strDefaultIdleClip = pResolvedIdle;
+	m_pModelCom->Set_AnimationSpeed(1.f);
+	/* Authored town placements are Server-transform authoritative. Their clips
+	may pose translated root keys but must not move presentation away from the
+	replicated transform. Esther leaves suppression disabled because its existing
+	action chains intentionally use authored root motion. */
+	if (m_bSuppressRootMotion)
+	{
+		m_pModelCom->Enable_RootMotionSuppression(
+			ROOT_MOTION_BONE, ROOT_MOTION_VERTICAL_AXIS);
+	}
+
+	return S_OK;
+}
+
+void CNpc::Synchronize_WeaponPose()
+{
+	CNpcPresentationAssetService::Synchronize_SaydonHammerPose(m_pModelCom, m_pWeaponModelCom, m_WeaponRestPose);
+}
+
+bool_t CNpc::Try_GetAnimationModelTarget(const ANIMATION_BONE_TARGET target,
+	ANIMATION_MODEL_TARGET_VIEW& outView) const
+{
+	if (!m_pModelCom || !m_pTransformCom) return false;
+	ANIMATION_MODEL_TARGET_VIEW staged;
+	staged.TargetRoot = *m_pTransformCom->Get_WorldMatrixPtr();
+	if (target == ANIMATION_BONE_TARGET::BODY)
+	{
+		staged.Model = m_pModelCom;
+		staged.BoneRoot = staged.TargetRoot;
+	}
+	else if (target == ANIMATION_BONE_TARGET::WEAPON)
+	{
+		if (!m_pWeaponModelCom || !m_pModelCom->Has_Bone(m_strWeaponSocketBone.c_str())) return false;
+		matrix_t weaponLocal = XMMatrixIdentity();
+#ifdef _DEBUG
+		weaponLocal = XMLoadFloat4x4(&m_DebugWeaponRotation) * XMMatrixScaling(m_fDebugWeaponScale, m_fDebugWeaponScale, m_fDebugWeaponScale);
+#endif
+		staged.Model = m_pWeaponModelCom;
+		XMStoreFloat4x4(&staged.BoneRoot, weaponLocal *
+			m_pModelCom->Get_BoneMatrix(m_strWeaponSocketBone.c_str()) * XMLoadFloat4x4(&staged.TargetRoot));
+	}
+	else return false;
+	outView = std::move(staged);
+	return true;
+}
+
+bool_t CNpc::Set_PlayerHandGripLocalOffset(const PLAYER_HAND_GRIP_LOCAL_OFFSET& offset)
+{
+    if (!m_pModelCom || !m_pModelCom->Has_Bone(PLAYER_LEFT_HAND_BONE) ||
+        !CPlayerHandGripTransform::Is_ValidGripLocalOffset(offset)) return false;
+    m_PlayerHandGripLocalOffset = offset;
+    return true;
+}
+
+bool_t CNpc::Try_Get_PlayerHandGripLocalOffset(const LostArk::Shared::PLAYER_ATTACHMENT_SLOT slot,
+    PLAYER_HAND_GRIP_LOCAL_OFFSET& outOffset) const
+{
+    if (slot != LostArk::Shared::PLAYER_ATTACHMENT_SLOT::BOSS_LEFT_HAND ||
+        !m_PlayerHandGripLocalOffset ||
+        !CPlayerHandGripTransform::Is_ValidGripLocalOffset(*m_PlayerHandGripLocalOffset)) return false;
+    outOffset = *m_PlayerHandGripLocalOffset;
+    return true;
+}
+
+bool_t CNpc::Try_Get_PlayerHandGripSocketView(const LostArk::Shared::PLAYER_ATTACHMENT_SLOT slot,
+    PLAYER_HAND_GRIP_SOCKET_VIEW& outView) const
+{
+    if (slot != LostArk::Shared::PLAYER_ATTACHMENT_SLOT::BOSS_LEFT_HAND ||
+        !m_PlayerHandGripLocalOffset || !m_pModelCom || !m_pTransformCom ||
+        !m_pModelCom->Has_Bone(PLAYER_LEFT_HAND_BONE)) return false;
+    PLAYER_HAND_GRIP_SOCKET_VIEW staged{};
+    const auto* root = m_pTransformCom->Get_WorldMatrixPtr();
+    XMStoreFloat4x4(&staged.SocketWorld,
+        m_pModelCom->Get_BoneMatrix(PLAYER_LEFT_HAND_BONE) * XMLoadFloat4x4(root));
+    staged.OwnerYawBasis = *root;
+    // The same composition validates matrices and metre offsets for every owner.
+    float3_t position{};
+    if (!CPlayerHandGripTransform::Compose_WorldPosition(staged, *m_PlayerHandGripLocalOffset, position)) return false;
+    outView = staged;
+    return true;
+}
+
+bool_t CNpc::Set_Animation(const char_t* pClipName, bool_t isLoop)
+{
+	if (nullptr == pClipName || nullptr == m_pModelCom)
+		return false;
+	m_bNetworkAnimationWindow = false;
+	m_bNetworkAnimationTransition = false;
+    m_NetworkAnimationBlendWindows.clear();
+    m_iNetworkSemanticClip = UINT32_MAX;
+    m_iNetworkSemanticAbsoluteStartMs = UINT32_MAX;
+    m_fNetworkPatternAgeSeconds = 0.0;
+	m_iNetworkAnimationSourceStartMs = m_iNetworkAnimationSourceEndMs = 0u;
+	m_fNetworkAnimationHoldSeconds = 0.f;
+	m_fNetworkAnimationAgeSeconds = 0.f;
+	m_isNetworkAnimationLoop = isLoop;
+	m_fNetworkAnimationStartOffsetSeconds = 0.f;
+	m_pModelCom->Set_AnimationSpeed(1.f);
+	if (!m_pModelCom->Set_Animation(pClipName, isLoop))
+		return false;
+	CEffectV2Runtime::Notify_Clip(
+		EFFECT_V2_TARGET::From_Npc(static_pointer_cast<CNpc>(shared_from_this())),
+		pClipName);
+	return true;
+}
+
+bool_t CNpc::Try_SampleNetworkAnimationTicks(const f32_t animationAgeSeconds,
+    const uint32_t clip, const f32_t playRate, f32_t& outTicks) const
+{
+    if (!m_pModelCom || !std::isfinite(animationAgeSeconds) || animationAgeSeconds < 0.f) return false;
+    float cursor = 0.f, duration = 0.f;
+    const float ticksPerSecond = m_pModelCom->Get_AnimationTickPerSecond(clip);
+    if (!m_pModelCom->Get_AnimationProgress(clip, cursor, duration) ||
+        !std::isfinite(ticksPerSecond) || ticksPerSecond <= 0.f) return false;
+    const float sampleAge = m_fNetworkAnimationHoldSeconds > 0.f ?
+        (std::min)(animationAgeSeconds, m_fNetworkAnimationHoldSeconds) : animationAgeSeconds;
+    double sourceMs = 0.0;
+    if (!Client::CKoukuSaydonCompositionDocument::Try_SampleAnimationSourceMs(
+        m_iNetworkAnimationSourceStartMs, m_iNetworkAnimationSourceEndMs,
+        double(sampleAge) * 1000.0, playRate, double(duration) * 1000.0 / ticksPerSecond,
+        m_isNetworkAnimationLoop, sourceMs)) return false;
+    outTicks = (std::min)(duration, float(sourceMs * .001 * ticksPerSecond));
+    return true;
+}
+
+bool_t CNpc::Set_NetworkAnimationWindow(const f32_t ageSeconds, const f32_t holdSeconds,
+    const f32_t startOffsetSeconds, const uint32_t sourceStartMs, const uint32_t sourceEndMs)
+{
+    if (!m_pModelCom || !std::isfinite(ageSeconds) || ageSeconds < 0.f ||
+        !std::isfinite(holdSeconds) || holdSeconds < 0.f || holdSeconds > 600.f ||
+        !std::isfinite(startOffsetSeconds) || startOffsetSeconds < 0.f || startOffsetSeconds > 600.f) return false;
+    const auto clip = m_pModelCom->Get_CurrentAnimIndex();
+    float cursor = 0.f, duration = 0.f;
+    const float ticksPerSecond = m_pModelCom->Get_AnimationTickPerSecond(clip);
+    if (!m_pModelCom->Get_AnimationProgress(clip, cursor, duration) ||
+        !std::isfinite(ticksPerSecond) || ticksPerSecond <= 0.f) return false;
+    const float animationAge = (std::max)(0.f, ageSeconds - startOffsetSeconds);
+    const float sampleAge = holdSeconds > 0.f ? (std::min)(animationAge, holdSeconds) : animationAge;
+    double sourceMs = 0.0;
+    if (!Client::CKoukuSaydonCompositionDocument::Try_SampleAnimationSourceMs(
+        sourceStartMs, sourceEndMs, double(sampleAge) * 1000.0, m_fNetworkAnimationPlayRate,
+        double(duration) * 1000.0 / ticksPerSecond, m_isNetworkAnimationLoop, sourceMs)) return false;
+    const float ticks = (std::min)(duration, float(sourceMs * .001 * ticksPerSecond));
+    // The source window owns wrapping. Disable the model's full-clip loop so
+    // its endpoint cannot wrap behind the cropped-range sampler.
+    if (!m_pModelCom->Start_Animation(clip, false) ||
+        !m_pModelCom->Set_AnimTrackPosition(clip, ticks)) return false;
+    m_fNetworkAnimationAgeSeconds = ageSeconds;
+    m_fNetworkAnimationHoldSeconds = holdSeconds;
+    m_fNetworkAnimationStartOffsetSeconds = startOffsetSeconds;
+    m_iNetworkAnimationSourceStartMs = sourceStartMs;
+    m_iNetworkAnimationSourceEndMs = sourceEndMs;
+    m_bNetworkAnimationWindow = true;
+    m_iNetworkSemanticClip = clip;
+    m_pModelCom->Skip_Blend();
+    m_pModelCom->Set_AnimPaused(true);
+    m_pModelCom->Update_Animation(0.f);
+    Synchronize_WeaponPose();
+    return true;
+}
+
+bool_t CNpc::Set_NetworkAnimationBlendWindows(
+    const std::vector<KOUKU_SAYDON_ANIMATION_BLEND_WINDOW>& windows,
+    const std::string_view semanticOccurrenceId, const f32_t patternAgeSeconds)
+{
+    if (!m_pModelCom || !m_bNetworkAnimationWindow || !std::isfinite(patternAgeSeconds) || patternAgeSeconds < 0.f)
+        return false;
+    std::string status;
+    if (!CKoukuSaydonAnimationBlend::Validate_ModelWindows(*m_pModelCom, windows, status)) return false;
+    const KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE* semantic = nullptr;
+    for (const auto& window : windows)
+        for (const auto* row : {&window.Source, &window.Target})
+            if (row->strOccurrenceId == semanticOccurrenceId)
+            {
+                if (semantic && *semantic != *row) return false;
+                semantic = row;
+            }
+    const char* clipName = m_pModelCom->Get_AnimationName(m_iNetworkSemanticClip);
+    if (!semantic || !clipName || semantic->strRuntimeClip != clipName) return false;
+    CModel::ANIMATION_TRANSITION_POSE pose;
+    bool active = false;
+    if (!CKoukuSaydonAnimationBlend::Sample_Pose(*m_pModelCom, windows, double(patternAgeSeconds) * 1000.0,
+        pose, active, status) || (active && !m_pModelCom->Set_AnimationTransitionPose(pose))) return false;
+    const float semanticAge = (std::max)(0.f, patternAgeSeconds - semantic->iStartOffsetMs * .001f);
+    if (!active)
+    {
+        float ticks = 0.f;
+        if (!Try_SampleNetworkAnimationTicks(semanticAge, m_iNetworkSemanticClip, m_fNetworkAnimationPlayRate, ticks)) return false;
+        if (m_bNetworkAnimationTransition)
+        {
+            pose.sourceIndex = m_iTransitionSourceIndex; pose.sourceTicks = m_fTransitionSourceTicks;
+            pose.targetIndex = m_iNetworkSemanticClip; pose.targetTicks = ticks;
+            pose.durationSeconds = m_fTransitionDurationSeconds; pose.elapsedSeconds = semanticAge;
+            pose.playRate = m_fTransitionPlayRate;
+            if (!m_pModelCom->Set_AnimationTransitionPose(pose)) return false;
+        }
+        else
+        {
+            m_pModelCom->Clear_AnimationTransitionPose();
+            m_pModelCom->Set_Animation(m_iNetworkSemanticClip, false, 0.f);
+            if (!m_pModelCom->Set_AnimTrackPosition(m_iNetworkSemanticClip, ticks)) return false;
+            m_pModelCom->Skip_Blend();
+            m_pModelCom->Update_Animation(0.f);
+        }
+    }
+    m_NetworkAnimationBlendWindows = windows;
+    m_iNetworkSemanticAbsoluteStartMs = semantic->iStartOffsetMs;
+    m_fNetworkPatternAgeSeconds = patternAgeSeconds;
+    m_pModelCom->Set_AnimPaused(true);
+    Synchronize_WeaponPose();
+    return true;
+}
+
+bool_t CNpc::Apply_NetworkAnimationTransition(const char_t* sourceClip, const f32_t sourceMs,
+    const f32_t durationMs, const f32_t ageSeconds, const f32_t playRate)
+{
+    if (!m_pModelCom || !m_bNetworkAnimationWindow || !sourceClip ||
+        !std::isfinite(sourceMs) || sourceMs < 0.f ||
+        !std::isfinite(durationMs) || durationMs <= 0.f || durationMs > 1000.f ||
+        !std::isfinite(ageSeconds) || ageSeconds < 0.f || !std::isfinite(playRate) || playRate <= 0.f) return false;
+    uint32_t sourceIndex = UINT32_MAX;
+    for (uint32_t i = 0; i < m_pModelCom->Get_NumAnimations(); ++i)
+    {
+        const char_t* name = m_pModelCom->Get_AnimationName(i);
+        if (name && std::string_view(sourceClip) == name) { sourceIndex = i; break; }
+    }
+    if (sourceIndex == UINT32_MAX) return false;
+    const uint32_t targetIndex = m_pModelCom->Get_CurrentAnimIndex();
+    float cursor = 0.f, sourceEnd = 0.f;
+    const float sourceTicksPerSecond = m_pModelCom->Get_AnimationTickPerSecond(sourceIndex);
+    if (!m_pModelCom->Get_AnimationProgress(sourceIndex, cursor, sourceEnd) ||
+        !std::isfinite(sourceTicksPerSecond) || sourceTicksPerSecond <= 0.f ||
+        !std::isfinite(sourceEnd) || sourceEnd <= 0.f) return false;
+    CModel::ANIMATION_TRANSITION_POSE pose;
+    pose.sourceIndex = sourceIndex; pose.targetIndex = targetIndex;
+    pose.sourceTicks = (std::min)(sourceEnd, sourceMs * .001f * sourceTicksPerSecond);
+    if (!Try_SampleNetworkAnimationTicks(ageSeconds, targetIndex, playRate, pose.targetTicks)) return false;
+    pose.durationSeconds = durationMs * .001f; pose.elapsedSeconds = ageSeconds; pose.playRate = playRate;
+    const bool waitingForAnimation = m_fNetworkAnimationAgeSeconds < m_fNetworkAnimationStartOffsetSeconds;
+    if (!waitingForAnimation && !m_pModelCom->Set_AnimationTransitionPose(pose)) return false;
+    m_iTransitionSourceIndex = sourceIndex; m_fTransitionSourceTicks = pose.sourceTicks;
+    m_fTransitionDurationSeconds = pose.durationSeconds; m_fTransitionAgeSeconds = ageSeconds;
+    m_fTransitionPlayRate = playRate; m_bNetworkAnimationTransition = true;
+    m_pModelCom->Set_AnimPaused(true);
+    Synchronize_WeaponPose();
+    return true;
+}
+
+bool_t CNpc::Play_NetworkAction(
+	const char_t* pClipName,
+	const bool_t isLoop,
+	const f32_t fPlaybackRate,
+	const f32_t fBlendSeconds,
+	const f32_t fRootVerticalScale)
+{
+	m_bNetworkAnimationWindow = false;
+	m_bNetworkAnimationTransition = false;
+    m_NetworkAnimationBlendWindows.clear();
+    m_iNetworkSemanticClip = UINT32_MAX;
+    m_iNetworkSemanticAbsoluteStartMs = UINT32_MAX;
+    m_fNetworkPatternAgeSeconds = 0.0;
+	m_iNetworkAnimationSourceStartMs = m_iNetworkAnimationSourceEndMs = 0u;
+	m_fNetworkAnimationHoldSeconds = 0.f;
+	m_fNetworkAnimationAgeSeconds = 0.f;
+	m_isNetworkAnimationLoop = isLoop;
+	m_fNetworkAnimationStartOffsetSeconds = 0.f;
+	m_fTransientActionRemainingSeconds = 0.f;
+	m_strTransientReturnClip.clear();
+	if (nullptr == pClipName || '\0' == pClipName[0] ||
+		nullptr == m_pModelCom || !std::isfinite(fPlaybackRate) ||
+		fPlaybackRate < 0.1f || fPlaybackRate > 4.f ||
+		!std::isfinite(fBlendSeconds) ||
+		fBlendSeconds < 0.f || fBlendSeconds > 2.f ||
+		!std::isfinite(fRootVerticalScale) || fRootVerticalScale < 0.f || fRootVerticalScale > 1.f ||
+		(fRootVerticalScale != 1.f && !m_bSuppressRootMotion) ||
+		!m_pModelCom->Set_Animation(pClipName, isLoop, fBlendSeconds))
+	{
+		return false;
+	}
+	if (!m_pModelCom->Set_RootMotionVerticalScale(fRootVerticalScale)) return false;
+	m_pModelCom->Set_AnimationSpeed(fPlaybackRate);
+	m_fNetworkAnimationPlayRate = fPlaybackRate;
+	if (!m_pModelCom->Start_Animation(
+			m_pModelCom->Get_CurrentAnimIndex(), isLoop))
+	{
+		return false;
+	}
+	/* Keep the existing NPC effect/cutin hook on every semantic action edge,
+	including a restart that resolves to the same clip name. */
+	CEffectV2Runtime::Notify_Clip(
+		EFFECT_V2_TARGET::From_Npc(static_pointer_cast<CNpc>(shared_from_this())),
+		pClipName);
+	return true;
+}
+
+bool_t CNpc::Play_TransientNetworkAction(
+	const char_t* pClipName,
+	const f32_t fPlaybackRate,
+	const f32_t fDurationSeconds,
+	const char_t* pReturnClip,
+	const bool_t isReturnLoop,
+	const f32_t fReturnPlaybackRate,
+	const f32_t fBlendSeconds)
+{
+	if (nullptr == pReturnClip || '\0' == pReturnClip[0] ||
+		!std::isfinite(fDurationSeconds) || fDurationSeconds <= 0.f ||
+		fDurationSeconds > 5.f || !std::isfinite(fReturnPlaybackRate) ||
+		fReturnPlaybackRate < 0.1f || fReturnPlaybackRate > 4.f ||
+		!Play_NetworkAction(
+			pClipName, false, fPlaybackRate, fBlendSeconds))
+	{
+		return false;
+	}
+	m_fTransientActionRemainingSeconds = fDurationSeconds;
+	m_strTransientReturnClip = pReturnClip;
+	m_fTransientReturnPlaybackRate = fReturnPlaybackRate;
+	m_isTransientReturnLoop = isReturnLoop;
+	return true;
+}
+
+bool_t CNpc::Play_DefaultIdle(const f32_t fBlendSeconds)
+{
+	return !m_strDefaultIdleClip.empty() && Play_NetworkAction(
+		m_strDefaultIdleClip.c_str(), true, 1.f, fBlendSeconds);
+}
+
+bool_t CNpc::Apply_NetworkState(
+	const float3_t& position,
+	const f32_t yawDegrees,
+	const std::uint32_t iServerTick,
+	const bool_t snapToSnapshot)
+{
+	if (nullptr == m_pTransformCom ||
+		!std::isfinite(position.x) ||
+		!std::isfinite(position.y) ||
+		!std::isfinite(position.z) ||
+		!std::isfinite(yawDegrees))
+	{
+		return false;
+	}
+	if (!m_bInterpolateNetworkTransform)
+	{
+		Apply_ImmediateTransform(position, yawDegrees);
+		return true;
+	}
+	/* Spawn messages carry no simulation tick. They place the object exactly;
+	interpolation begins with the first world snapshot that has a tick. */
+	if (0u == iServerTick)
+	{
+		m_NetworkTransformInterpolator.Reset();
+		Apply_ImmediateTransform(position, yawDegrees);
+		return true;
+	}
+	// A new Server pattern can commit a discontinuous position and facing.
+	// Seed both the rendered root and interpolation history before its first cue.
+	if (snapToSnapshot)
+		m_NetworkTransformInterpolator.Reset();
+	if (!m_NetworkTransformInterpolator.Push(position, yawDegrees, iServerTick))
+		return false;
+	if (snapToSnapshot)
+		Apply_ImmediateTransform(position, yawDegrees);
+	return true;
+}
+
+void CNpc::Trigger_HitFlash()
+{
+	m_fHitFlashRemainingSeconds = HIT_FLASH_DURATION_SECONDS;
+	m_HitFlash.isEnabled = true;
+	m_HitFlash.vColor = float4_t(1.f, 1.f, 1.f, 1.f);
+	m_HitFlash.fIntensity = HIT_FLASH_PEAK_INTENSITY;
+	m_HitFlash.usesSurfaceDetailMask = true;
+}
+
+void CNpc::Priority_Update(f32_t fTimeDelta)
+{
+}
+
+void CNpc::Update(f32_t fTimeDelta)
+{
+	if (m_bInterpolateNetworkTransform)
+		Update_NetworkTransform(fTimeDelta);
+	if (m_fTransientActionRemainingSeconds > 0.f)
+	{
+		m_fTransientActionRemainingSeconds -= fTimeDelta;
+		if (m_fTransientActionRemainingSeconds <= 0.f)
+		{
+			const std::string returnClip = m_strTransientReturnClip;
+			const f32_t returnRate = m_fTransientReturnPlaybackRate;
+			const bool_t returnLoop = m_isTransientReturnLoop;
+			m_fTransientActionRemainingSeconds = 0.f;
+			m_strTransientReturnClip.clear();
+			if (!returnClip.empty())
+			{
+				(void)Play_NetworkAction(
+					returnClip.c_str(), returnLoop, returnRate, 0.05f);
+			}
+		}
+	}
+    const float frameDelta = (std::max)(0.f, fTimeDelta);
+    m_fNetworkAnimationAgeSeconds += frameDelta;
+    m_fNetworkPatternAgeSeconds += frameDelta;
+    const float animationAge = m_bNetworkAnimationWindow && m_iNetworkSemanticAbsoluteStartMs != UINT32_MAX ?
+        float((std::max)(0.0, m_fNetworkPatternAgeSeconds - double(m_iNetworkSemanticAbsoluteStartMs) * .001)) :
+        (std::max)(0.f, m_fNetworkAnimationAgeSeconds - m_fNetworkAnimationStartOffsetSeconds);
+    if (m_bNetworkAnimationWindow)
+    {
+        const auto clip = m_iNetworkSemanticClip;
+        float ticks = 0.f;
+        bool sampled = Try_SampleNetworkAnimationTicks(animationAge, clip,
+            m_fNetworkAnimationPlayRate, ticks);
+        CModel::ANIMATION_TRANSITION_POSE logicPose;
+        bool logicActive = false;
+        std::string blendStatus;
+        if (sampled) sampled = CKoukuSaydonAnimationBlend::Sample_Pose(*m_pModelCom,
+            m_NetworkAnimationBlendWindows, m_fNetworkPatternAgeSeconds * 1000.0, logicPose, logicActive, blendStatus);
+        if (sampled && logicActive) sampled = m_pModelCom->Set_AnimationTransitionPose(logicPose);
+        else if (sampled && m_bNetworkAnimationTransition &&
+            m_fNetworkAnimationAgeSeconds >= m_fNetworkAnimationStartOffsetSeconds)
+        {
+            CModel::ANIMATION_TRANSITION_POSE pose;
+            pose.sourceIndex = m_iTransitionSourceIndex; pose.sourceTicks = m_fTransitionSourceTicks;
+            pose.targetIndex = clip; pose.targetTicks = ticks;
+            pose.durationSeconds = m_fTransitionDurationSeconds; pose.elapsedSeconds = animationAge;
+            pose.playRate = m_fTransitionPlayRate;
+            sampled = m_pModelCom->Set_AnimationTransitionPose(pose);
+            m_fTransitionAgeSeconds = animationAge;
+        }
+        else if (sampled)
+        {
+            m_pModelCom->Clear_AnimationTransitionPose();
+            m_pModelCom->Set_Animation(clip, false, 0.f);
+            sampled = m_pModelCom->Set_AnimTrackPosition(clip, ticks);
+            if (sampled) { m_pModelCom->Skip_Blend(); m_pModelCom->Update_Animation(0.f); }
+        }
+        if (!sampled)
+        {
+            // A failed source sample must hold the last valid palette rather
+            // than silently resume the uncropped full clip.
+            m_pModelCom->Set_AnimPaused(true);
+            m_bNetworkAnimationWindow = false; m_bNetworkAnimationTransition = false;
+            OutputDebugStringA("[Npc] Network animation source window could not be sampled.\n");
+        }
+    }
+    else if (m_bSuppressRootMotion)
+    {
+        m_pModelCom->Update_Animation(frameDelta);
+    }
+    else
+    {
+        m_pModelCom->Play_Animation(frameDelta);
+    }
+	Synchronize_WeaponPose();
+	Update_CombatCollider();
+	CEffectV2Runtime::Tick(
+		EFFECT_V2_TARGET::From_Npc(static_pointer_cast<CNpc>(shared_from_this())),
+		m_pDevice, m_pContext);
+	if (m_fHitFlashRemainingSeconds > 0.f)
+	{
+		m_fHitFlashRemainingSeconds -= fTimeDelta;
+		if (m_fHitFlashRemainingSeconds <= 0.f)
+		{
+			m_fHitFlashRemainingSeconds = 0.f;
+			m_HitFlash = {};
+		}
+		else
+		{
+			m_HitFlash.fIntensity = HIT_FLASH_PEAK_INTENSITY *
+				(m_fHitFlashRemainingSeconds / HIT_FLASH_DURATION_SECONDS);
+		}
+	}
+}
+
+void CNpc::Apply_ImmediateTransform(
+	const float3_t& position,
+	const f32_t yawDegrees)
+{
+	float3_t drawn = position;
+	f32_t drawnYaw = yawDegrees;
+#ifdef _DEBUG
+	m_vDebugUnadjustedPosition = position;
+	m_fDebugUnadjustedYawDegrees = yawDegrees;
+	drawn.x += m_vDebugPresentationOffset.x;
+	drawn.y += m_vDebugPresentationOffset.y;
+	drawn.z += m_vDebugPresentationOffset.z;
+	drawnYaw += m_fDebugPresentationYawOffset;
+#endif
+	m_pTransformCom->Set_State(STATE::POSITION,
+		XMVectorSet(drawn.x, drawn.y, drawn.z, 1.f));
+	// Rotation keeps the transform's current scale, so a Debug scale set once
+	// through Set_DebugPresentationScale survives every replicated pose.
+	m_pTransformCom->Rotation(0.f, drawnYaw, 0.f);
+	Update_CombatCollider();
+}
+
+void CNpc::Update_NetworkTransform(const f32_t fTimeDelta)
+{
+	if (nullptr == m_pTransformCom)
+		return;
+	NPC_NETWORK_TRANSFORM_FRAME frame{};
+	if (!m_NetworkTransformInterpolator.Advance(fTimeDelta, frame))
+		return;
+	float3_t drawn = frame.vPosition;
+	f32_t drawnYaw = frame.fYawDegrees;
+#ifdef _DEBUG
+	m_vDebugUnadjustedPosition = frame.vPosition;
+	m_fDebugUnadjustedYawDegrees = frame.fYawDegrees;
+	drawn.x += m_vDebugPresentationOffset.x;
+	drawn.y += m_vDebugPresentationOffset.y;
+	drawn.z += m_vDebugPresentationOffset.z;
+	drawnYaw += m_fDebugPresentationYawOffset;
+#endif
+	m_pTransformCom->Set_State(STATE::POSITION, XMVectorSet(
+		drawn.x,
+		drawn.y,
+		drawn.z,
+		1.f));
+	m_pTransformCom->Rotation(0.f, drawnYaw, 0.f);
+}
+
+void CNpc::Update_CombatCollider()
+{
+	if (nullptr == m_pColliderCom || nullptr == m_pTransformCom)
+		return;
+	matrix_t world = XMLoadFloat4x4(m_pTransformCom->Get_WorldMatrixPtr());
+#ifdef _DEBUG
+	// Presentation tuning must not move or resize the Server-radius mirror.
+	if (m_fDebugPresentationScale != 1.f ||
+		m_vDebugPresentationOffset.x != 0.f || m_vDebugPresentationOffset.y != 0.f ||
+		m_vDebugPresentationOffset.z != 0.f)
+	{
+		for (size_t axis = 0u; axis < 3u; ++axis)
+			world.r[axis] = XMVector3Normalize(world.r[axis]);
+		world.r[3] = XMVectorSet(m_vDebugUnadjustedPosition.x,
+			m_vDebugUnadjustedPosition.y, m_vDebugUnadjustedPosition.z, 1.f);
+	}
+#endif
+	m_pColliderCom->Update(world);
+}
+
+#ifdef _DEBUG
+void CNpc::Set_DebugWeaponScale(const f32_t fScale)
+{
+	if (std::isfinite(fScale) && fScale > 0.f && fScale <= 10000.f)
+		m_fDebugWeaponScale = fScale;
+}
+
+void CNpc::Set_DebugWeaponRotation(
+	const float3_t& vCatalogDegrees, const float3_t& vTargetDegrees)
+{
+	if (!std::isfinite(vCatalogDegrees.x) || !std::isfinite(vCatalogDegrees.y) ||
+		!std::isfinite(vCatalogDegrees.z) || !std::isfinite(vTargetDegrees.x) ||
+		!std::isfinite(vTargetDegrees.y) || !std::isfinite(vTargetDegrees.z))
+	{
+		return;
+	}
+	const matrix_t catalogRotation = XMMatrixRotationRollPitchYaw(
+		XMConvertToRadians(vCatalogDegrees.x), XMConvertToRadians(vCatalogDegrees.y),
+		XMConvertToRadians(vCatalogDegrees.z));
+	const matrix_t targetRotation = XMMatrixRotationRollPitchYaw(
+		XMConvertToRadians(vTargetDegrees.x), XMConvertToRadians(vTargetDegrees.y),
+		XMConvertToRadians(vTargetDegrees.z));
+	// A pure rotation's transpose is its inverse. R(catalog) * delta then
+	// equals R(saved Euler), including mixed axes and Save/Reload in one run.
+	XMStoreFloat4x4(&m_DebugWeaponRotation,
+		XMMatrixTranspose(catalogRotation) * targetRotation);
+}
+
+void CNpc::Set_DebugPresentationScale(const f32_t fScale)
+{
+	if (!std::isfinite(fScale) || fScale <= 0.f || nullptr == m_pTransformCom)
+		return;
+	m_fDebugPresentationScale = fScale;
+	m_pTransformCom->Scale(fScale, fScale, fScale);
+}
+
+void CNpc::Set_DebugPresentationOffset(const float3_t& vOffset)
+{
+	if (!std::isfinite(vOffset.x) || !std::isfinite(vOffset.y) ||
+		!std::isfinite(vOffset.z))
+	{
+		return;
+	}
+	m_vDebugPresentationOffset = vOffset;
+	if (nullptr != m_pTransformCom)
+		m_pTransformCom->Set_State(STATE::POSITION, XMVectorSet(
+			m_vDebugUnadjustedPosition.x + vOffset.x,
+			m_vDebugUnadjustedPosition.y + vOffset.y,
+			m_vDebugUnadjustedPosition.z + vOffset.z, 1.f));
+	Update_CombatCollider();
+}
+
+void CNpc::Set_DebugPresentationYawOffset(const f32_t fYawOffsetDegrees)
+{
+	if (!std::isfinite(fYawOffsetDegrees))
+		return;
+	m_fDebugPresentationYawOffset = fYawOffsetDegrees;
+	// Rotation keeps the current scale; the collider re-reads the Server yaw.
+	if (nullptr != m_pTransformCom)
+		m_pTransformCom->Rotation(0.f,
+			m_fDebugUnadjustedYawDegrees + fYawOffsetDegrees, 0.f);
+	Update_CombatCollider();
+}
+#endif
+
+void CNpc::Late_Update(f32_t fTimeDelta)
+{
+    if (!Is_PresentationVisible()) return;
+	CGameInstance::Get().Add_RenderObject(
+		RENDERGROUP::NONBLEND,
+		static_pointer_cast<CGameObject>(shared_from_this()));
+#ifdef _DEBUG
+	if (m_isCombatColliderDebugVisible && nullptr != m_pColliderCom)
+		CGameInstance::Get().Add_DebugComponent(m_pColliderCom);
+#endif
+}
+
+HRESULT CNpc::Render()
+{
+    if (!Is_PresentationVisible()) return S_OK;
+	if (FAILED(Bind_ShaderResources()))
+		return E_FAIL;
+
+	const uint32_t iNumMeshes = m_pModelCom->Get_NumMeshes();
+	for (uint32_t i = 0; i < iNumMeshes; ++i)
+	{
+		if (FAILED(Bind_DeferredMaterialInputs(
+				*m_pModelCom, m_pShaderCom, i, {}, &m_HitFlash,
+				nullptr, m_bNativeBinaryBasePass)) ||
+			FAILED(m_pModelCom->Bind_BoneMatrices(
+				m_pShaderCom, "g_BoneMatrices", i)) ||
+			FAILED(m_pShaderCom->Begin(0)) ||
+			FAILED(m_pModelCom->Render(i)))
+			return E_FAIL;
+	}
+	if (nullptr != m_pWeaponModelCom && !CNpcPresentationAssetService::Is_SaydonHammerSuppressed(m_pModelCom))
+	{
+		ANIMATION_MODEL_TARGET_VIEW weaponView;
+		if (!Try_GetAnimationModelTarget(ANIMATION_BONE_TARGET::WEAPON, weaponView) ||
+			FAILED(m_pShaderCom->Bind_Matrix("g_WorldMatrix", &weaponView.BoneRoot)))
+			return E_FAIL;
+		const uint32_t iNumWeaponMeshes = m_pWeaponModelCom->Get_NumMeshes();
+		for (uint32_t i = 0; i < iNumWeaponMeshes; ++i)
+		{
+			if (FAILED(Bind_DeferredMaterialInputs(
+					*m_pWeaponModelCom, m_pShaderCom, i, {}, &m_HitFlash,
+					nullptr, m_bNativeBinaryBasePass)) ||
+				FAILED(m_pWeaponModelCom->Bind_BoneMatrices(
+					m_pShaderCom, "g_BoneMatrices", i)) ||
+				FAILED(m_pShaderCom->Begin(0)) ||
+				FAILED(m_pWeaponModelCom->Render(i)))
+				return E_FAIL;
+		}
+		if (FAILED(m_pTransformCom->Bind_ShaderResource(m_pShaderCom, "g_WorldMatrix")))
+			return E_FAIL;
+	}
+	if (m_fOutlineWidth > 0.f)
+	{
+		/* Pass 3 of the esther shader: front-culled hull pushed along the
+		skinned normal, stencil-tested against the body drawn just above. */
+		if (FAILED(m_pShaderCom->Bind_RawValue(
+				"g_OutlineWidth", &m_fOutlineWidth, sizeof(m_fOutlineWidth))) ||
+			FAILED(m_pShaderCom->Bind_RawValue(
+				"g_OutlineColor", &m_vOutlineColor, sizeof(m_vOutlineColor))))
+			return E_FAIL;
+		for (uint32_t i = 0; i < iNumMeshes; ++i)
+		{
+			if (FAILED(Bind_DeferredMaterialInputs(
+					*m_pModelCom, m_pShaderCom, i, {}, &m_HitFlash)) ||
+				FAILED(m_pModelCom->Bind_BoneMatrices(
+					m_pShaderCom, "g_BoneMatrices", i)) ||
+				FAILED(m_pShaderCom->Begin(3)) ||
+				FAILED(m_pModelCom->Render(i)))
+				return E_FAIL;
+		}
+	}
+	return S_OK;
+}
+
+HRESULT CNpc::Ready_Components(const NPC_DESC* pDesc)
+{
+	if (FAILED(__super::Add_Component(
+		pDesc->iPrototypeLevelIndex,
+		pDesc->strShaderTag,
+		TEXT("Com_Shader"),
+		m_pShaderCom)))
+		return E_FAIL;
+	m_bNativeBinaryBasePass =
+		pDesc->strShaderTag == TEXT("Prototype_Component_Shader_VtxAnimMeshBinary");
+
+	if (FAILED(__super::Add_Component(
+		pDesc->iPrototypeLevelIndex,
+		pDesc->strModelTag,
+		TEXT("Com_Model"),
+		m_pModelCom)))
+		return E_FAIL;
+	m_strModelTag = pDesc->strModelTag;
+	m_strEffectV2BindingOwner = pDesc->strEffectV2BindingOwner;
+
+	if (!pDesc->strWeaponModelTag.empty() || nullptr != pDesc->pWeaponSocketBone)
+	{
+		if (pDesc->strWeaponModelTag.empty() ||
+			nullptr == pDesc->pWeaponSocketBone ||
+			'\0' == pDesc->pWeaponSocketBone[0] ||
+			!m_pModelCom->Has_Bone(pDesc->pWeaponSocketBone))
+		{
+			return E_INVALIDARG;
+		}
+		if (FAILED(__super::Add_Component(
+			pDesc->iPrototypeLevelIndex,
+			pDesc->strWeaponModelTag,
+			TEXT("Com_WeaponModel"),
+			m_pWeaponModelCom)))
+			return E_FAIL;
+		m_strWeaponSocketBone = pDesc->pWeaponSocketBone;
+		// Keep the actual loaded rest pose for body clips without a hammer counterpart.
+		matrix_t local;
+		for (uint32_t i = 0u; m_pWeaponModelCom->Get_BoneRestLocalMatrix(i, local); ++i)
+		{
+			float4x4_t stored;
+			XMStoreFloat4x4(&stored, local);
+			m_WeaponRestPose.push_back(stored);
+		}
+		m_pWeaponModelCom->Set_AnimPaused(true);
+		m_pWeaponModelCom->Refresh_BoneCombinedMatrices();
+	}
+
+	if (pDesc->fCollisionRadius > 0.f)
+	{
+		Engine::CBounding_Sphere::BOUNDING_SPHERE_DESC colliderDesc{};
+		colliderDesc.vCenter = float3_t(
+			0.f, pDesc->fCollisionRadius, 0.f);
+		colliderDesc.fRadius = pDesc->fCollisionRadius;
+		if (FAILED(__super::Add_Component(
+			pDesc->iPrototypeLevelIndex,
+			TEXT("Prototype_Component_Collider_WorldEntity"),
+			TEXT("Com_CombatCollider"),
+			m_pColliderCom,
+			&colliderDesc)))
+		{
+			return E_FAIL;
+		}
+	}
+
+	return S_OK;
+}
+
+HRESULT CNpc::Bind_ShaderResources()
+{
+	if (FAILED(m_pTransformCom->Bind_ShaderResource(m_pShaderCom, "g_WorldMatrix")) ||
+		FAILED(CGameInstance::Get().Bind_Transform(
+			m_pShaderCom, "g_ViewMatrix", D3DTS::VIEW)) ||
+		FAILED(CGameInstance::Get().Bind_Transform(
+			m_pShaderCom, "g_ProjMatrix", D3DTS::PROJ)))
+		return E_FAIL;
+	return S_OK;
+}
+
+unique_ptr<CNpc> CNpc::Create(ComPtr<ID3D11Device> pDevice,
+	ComPtr<ID3D11DeviceContext> pContext)
+{
+	auto pInstance = unique_ptr<CNpc>(new CNpc(pDevice, pContext));
+
+	if (FAILED(pInstance->Initialize_Prototype()))
+		MSG_BOX("Failed to Created : CNpc");
+
+	return move(pInstance);
+}
+
+shared_ptr<CPrototype> CNpc::Clone(void* pArg)
+{
+	auto pInstance = shared_ptr<CNpc>(new CNpc(*this));
+
+	if (FAILED(pInstance->Initialize(pArg)))
+		MSG_BOX("Failed to Cloned : CNpc");
+
+	return pInstance;
+}
+```
+
+### Client/Public/KoukuSaydonPresentationPlayer.h
+
+```cpp
+#pragma once
+
+#include "Client_Defines.h"
+#include "CardMazeVisualPolicy.h"
+#include "KoukuSaydonCompositionDocument.h"
+#include "KoukuSaydonPreviewRootMotion.h"
+#include "Network/PacketMessages.h"
+#include "HitAreaWire.h"
+#include <array>
+#include <functional>
+#include <map>
+#include <memory>
+#include <set>
+#include <unordered_map>
+#include <vector>
+
+namespace Engine { class CModel; }
+namespace Client
+{
+class CNpc;
+class CWorldSequencePlayer;
+class CWorldSequenceDocument;
+class CCharacter;
+class CRenderingProfileService;
+class CLightResourceCatalog;
+class EFFECT_V2_CATALOG_SNAPSHOT;
+class EFFECT_V2_PIVOT_HISTORY;
+struct EFFECT_V2_TARGET;
+struct EFFECT_V2_TARGET_VIEW;
+struct ANIMATION_MODEL_TARGET_VIEW;
+struct EFFECT_DOCUMENT_DESC;
+struct EFFECT_SOURCE_MODEL_PREVIEW;
+class DATA_JSON_VALUE;
+
+struct KOUKU_BOSS_PRESENTATION_VIEW final
+{
+    std::weak_ptr<CNpc> pNpc;
+    LostArk::Shared::WORLD_ENTITY_SNAPSHOT Snapshot;
+    std::uint32_t iServerTick = 0;
+    LostArk::Shared::NET_ENTITY_ID iOwnerBossNetEntityId = LostArk::Shared::INVALID_NET_ENTITY_ID;
+    std::string strArchetypeId;
+};
+struct KOUKU_CARD_PRESENTATION_VIEW final
+{
+    std::weak_ptr<CCharacter> pCharacter;
+    LostArk::Shared::PLAYER_SNAPSHOT Snapshot;
+};
+struct KOUKU_MAZE_TARGET_VIEW final
+{
+    std::weak_ptr<CNpc> npc;
+    std::uint32_t entityId = 0u;
+    std::string archetypeId;
+};
+
+// The Server supplies identity and time. This owner only samples presentation
+// resources and releases its own effects, audio and temporary scene/camera state.
+class CKoukuSaydonPresentationPlayer final
+{
+public:
+    CKoukuSaydonPresentationPlayer(ComPtr<ID3D11Device> device,
+        ComPtr<ID3D11DeviceContext> context, CRenderingProfileService& profiles);
+    ~CKoukuSaydonPresentationPlayer();
+    bool Reload_Product(std::string& status, std::uint32_t expectedSourceRevision = 0u);
+    static bool Is_TargetedCombatObjectArchetype(std::string_view archetypeId) noexcept;
+    bool Start_TargetedCombatVisual(const LostArk::Shared::S2C_COMBAT_OBJECT_SPAWNED& spawn,
+        std::string& status);
+    bool Update_TargetedCombatVisual(const LostArk::Shared::COMBAT_OBJECT_SNAPSHOT& snapshot,
+        std::uint32_t serverTick, std::string& status);
+    void Stop_TargetedCombatVisual(LostArk::Shared::COMBAT_OBJECT_ID objectId);
+    using WORLD_EMISSION_ANCHOR = std::function<bool_t(f32_t, float4x4_t&)>;
+    static WORLD_EMISSION_ANCHOR Make_WorldEmissionAnchor(
+        const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern,
+        const KOUKU_SAYDON_COMPOSITION_WORLD_DEFINITION& world,
+        const KOUKU_SAYDON_COMPOSITION_WORLD_OCCURRENCE& occurrence);
+    bool Resolve_ProductWorldEmissionAnchor(std::uint32_t sourceRevision, std::string_view patternId,
+        std::string_view occurrenceId, WORLD_EMISSION_ANCHOR& out) const;
+    void Set_LightResources(const CLightResourceCatalog* catalog) { m_pLightResources = catalog; }
+    std::size_t Light_SkippedByBudget() const;
+    void Update(float dt, const std::vector<KOUKU_BOSS_PRESENTATION_VIEW>& bosses,
+        const std::vector<KOUKU_CARD_PRESENTATION_VIEW>& players);
+    bool Begin_Preview(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
+        const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern, bool ownClock,
+        std::uint32_t clockMs, bool paused, std::string& status);
+    bool Begin_BundlePreview(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
+        const std::string& bundleId, std::uint32_t clockMs, bool paused, std::string& status,
+        const CWorldSequenceDocument* sourceDocument = nullptr, bool automaticRootMotion = true,
+        bool externalWorldPreview = false);
+    // Optional Effect Workbench reference: existing actors and model sampler,
+    // with Pattern presentation disabled and an external master clock. Only an
+    // explicit source document enables validated actor-bound WORLD props.
+    bool Begin_ModelReferencePreview(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
+        const std::string& selectionId, bool bundle, std::uint32_t clockMs, bool paused, std::string& status,
+        const CWorldSequenceDocument* propSequences = nullptr);
+    void Sample_ModelReferencePreview(std::uint32_t clockMs, bool paused);
+    bool Place_ModelReferenceRoot(const float4x4_t& root);
+    bool Resolve_ModelReferenceWorldPivot(const std::string& memberId,
+        const std::string& occurrenceId, float4x4_t& out) const;
+    bool Resolve_ModelReferenceTarget(const std::string& memberId,
+        EFFECT_V2_TARGET& target, EFFECT_V2_TARGET_VIEW& view) const;
+    // Source sockets use the same CNpc/CModel as the selected animation target.
+    static bool Resolve_SourceAnchorWorlds(const EFFECT_DOCUMENT_DESC& document,
+        const EFFECT_V2_TARGET_VIEW& view, const float4x4_t& root,
+        std::unordered_map<std::string, float4x4_t>& anchors, std::string& error);
+    static bool Sample_SourceAnchorWorlds(const EFFECT_DOCUMENT_DESC& document,
+        const EFFECT_V2_TARGET_VIEW& view, const float4x4_t& root, float seconds,
+        std::unordered_map<std::string, float4x4_t>& anchors, std::string& error,
+        const EFFECT_SOURCE_MODEL_PREVIEW* sourceOverride = nullptr);
+    using V1_SOURCE_ANCHOR_SAMPLER = std::function<bool(float, const float4x4_t&,
+        std::unordered_map<std::string, float4x4_t>&, std::string&)>;
+    bool Preview_IsModelReference() const { return m_bModelReferencePreview; }
+    std::uint64_t Preview_Generation() const { return m_iPreviewGeneration; }
+    bool Preview_IsBundle() const { return !m_PreviewBundleId.empty(); }
+    // MainApp resolves this before WORLD/model sampling, for either clock owner.
+    bool Resolve_PreviewCaptureClock(std::uint32_t requestedMs, std::uint32_t& effectiveMs);
+    void Sample_Preview(std::uint32_t clockMs, bool playing, bool paused,
+        const float4x4_t& pivot, const std::shared_ptr<Engine::CModel>& model);
+    void Set_PreviewPivot(const float4x4_t& pivot,
+        const std::shared_ptr<Engine::CModel>& model);
+    void Pause_Preview(bool paused);
+    void Seek_Preview(std::uint32_t clockMs);
+    void Stop_Preview();
+    void Reset();
+    // Called after ImGui NewFrame; sampling never draws from a loader/update thread.
+    void Render_Debug() const;
+    void Refresh_ColliderAuthoring(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document, std::uint64_t generation);
+    // Only the selected Collider/Effect placement changes; clocks and unrelated cues remain live.
+    bool Preview_PresentationGeometry(const std::string& patternId,
+        const KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE& occurrence);
+    bool Consume_CompletedPreview(std::string& patternId);
+    // Terminal WORLD failure is separate from natural completion and consumed once.
+    bool Consume_FailedPreview(std::string& patternId, std::string& status);
+    bool Preview_OwnsClock() const { return m_bOwnPreviewClock; }
+    bool Preview_IsColliderResource() const { return m_bColliderResourcePreview; }
+    bool Preview_Playing() const { return m_bPreviewPlaying; }
+    bool Preview_HasActiveWorldBox(std::string_view occurrenceId) const;
+    bool Preview_Paused() const { return m_bPreviewPaused; }
+    std::uint32_t Preview_ClockMs() const { return static_cast<std::uint32_t>(m_fPreviewClockMs); }
+    std::uint32_t Preview_DurationMs() const { return m_iPreviewDurationMs; }
+    const std::string& Preview_PatternId() const { return m_PreviewPattern.strPatternId; }
+    const std::string& Status() const { return m_strStatus; }
+private:
+    struct PLAYING_ROW final
+    {
+        KOUKU_SAYDON_PRESENTATION_KIND kind = KOUKU_SAYDON_PRESENTATION_KIND::EFFECT;
+        std::uint32_t effectHandle = 0;
+        std::uint64_t v1EffectHandle = 0;
+        std::shared_ptr<EFFECT_V2_PIVOT_HISTORY> effectPivotHistory;
+        V1_SOURCE_ANCHOR_SAMPLER sourceAnchorSampler;
+        std::uint64_t soundHandle = 0;
+        float lastAge = -1.f;
+        float startMs = 0.f;
+        std::uint32_t cameraDurationMs = 0u;
+        float4x4_t pivot{};
+        std::string assetId;
+        float3_t cameraOffset{};
+        HIT_AREA_SHAPE wire{};
+        float4x4_t placementAnchor{};
+        std::array<double, 3u> placementAnchorScale{1.0, 1.0, 1.0};
+        bool hasPlacementAnchor = false;
+        KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE lightBox;
+        float lightWeight = 1.f;
+        bool failed = false;
+        std::string failureStatus;
+        bool waitingForAnchor = false;
+        bool debugRender = true;
+    };
+    struct EFFECT_ANCHOR_HISTORY final
+    {
+        std::shared_ptr<EFFECT_V2_PIVOT_HISTORY> samples;
+        float recordedSeconds = -1.f;
+        float4x4_t recordedPivot{};
+        bool missingSinceSample = false;
+    };
+    struct SESSION final
+    {
+        std::string key;
+        float lastClockMs = -1.f;
+        std::map<std::string, PLAYING_ROW> rows;
+        std::uint32_t runEpoch = 0;
+        std::string memberId;
+        std::shared_ptr<EFFECT_V2_PIVOT_HISTORY> rootHistory;
+        float rootRecordedSeconds = -1.f;
+        float4x4_t rootRecordedPivot{};
+        // Pattern time, recorded before each following bone/WORLD cue starts.
+        std::map<std::string, EFFECT_ANCHOR_HISTORY> effectAnchorHistories;
+        std::map<std::string, std::shared_ptr<CWorldSequencePlayer>> previewWorlds;
+    };
+    struct PRODUCT_PATTERN final
+    {
+        KOUKU_SAYDON_COMPOSITION_DOCUMENT document;
+        KOUKU_SAYDON_COMPOSITION_PATTERN pattern;
+        std::uint32_t durationMs = 0;
+        std::map<std::string, WORLD_EMISSION_ANCHOR> worldEmissionAnchors;
+    };
+    struct LOGIC_PREVIEW_SPAWN final
+    {
+        SESSION session;
+        float4x4_t pivot{};
+    };
+    struct LOGIC_PREVIEW_TRIGGER final
+    {
+        PRODUCT_PATTERN presentation;
+        std::vector<LOGIC_PREVIEW_SPAWN> spawns;
+        bool captured = false;
+    };
+    std::map<std::string, std::map<std::string, LOGIC_PREVIEW_TRIGGER>> m_LogicPreviewTriggers;
+    std::vector<KOUKU_CARD_PRESENTATION_VIEW> m_LogicPreviewPlayers;
+    void Sample_LogicPreview(SESSION& session, const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
+        const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern, float clockMs, bool paused);
+    void Clear_LogicPreview();
+    bool Collect_LogicPreviewEffects(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
+        const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern, std::set<std::string>& targets);
+    struct PRODUCT_BUNDLE final
+    {
+        PRODUCT_PATTERN common;
+        std::vector<std::string> patternIds;
+    };
+    struct TARGETED_COMBAT_VISUAL final
+    {
+        PRODUCT_PATTERN presentation;
+        PRODUCT_PATTERN sourceBossPresentation;
+        std::string archetypeId;
+        bool loop = false;
+    };
+    struct TARGETED_COMBAT_SESSION final
+    {
+        std::shared_ptr<const TARGETED_COMBAT_VISUAL> definition;
+        SESSION playback;
+        SESSION sourceBossPlayback;
+        LostArk::Shared::NET_ENTITY_ID sourceId = LostArk::Shared::INVALID_NET_ENTITY_ID;
+        LostArk::Shared::GameplayDataRevision pinnedRevision{};
+        std::uint32_t spawnTick = 0u, serverTick = 0u;
+        double elapsedMs = 0.0;
+        std::uint64_t cycle = 0u;
+        float4x4_t root{};
+        bool finished = false;
+        std::string failure;
+    };
+    using TARGETED_COMBAT_VISUALS = std::map<std::string, std::shared_ptr<const TARGETED_COMBAT_VISUAL>>;
+    static TARGETED_COMBAT_VISUALS Read_TargetedCombatVisuals(const DATA_JSON_VALUE& root);
+    bool Sample_TargetedCombatVisual(TARGETED_COMBAT_SESSION& session,
+        const KOUKU_BOSS_PRESENTATION_VIEW* sourceBoss = nullptr);
+    void Update_TargetedCombatVisuals(float dt,
+        const std::vector<KOUKU_BOSS_PRESENTATION_VIEW>& bosses);
+    struct BUNDLE_PREVIEW_MEMBER final
+    {
+        std::string memberId;
+        std::uint32_t offsetTicks = 0, durationMs = 0;
+        KOUKU_SAYDON_COMPOSITION_PATTERN pattern;
+        std::shared_ptr<CNpc> actor;
+        std::string sourceArchetypeId;
+        std::weak_ptr<CNpc> suppressedSourceActor;
+        SESSION session;
+        std::vector<KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE> animations;
+        std::vector<KOUKU_SAYDON_COMPOSITION_STAGE> facingStages;
+        bool finiteActorLifetime = false;
+        bool spatialLogicPreview = false;
+        std::map<std::string, std::pair<uint32_t, uint32_t>> cloneAnimationWindows;
+        std::map<std::string, float3_t> worldOffsets;
+        std::uint32_t initialAnimation = 0;
+        float initialTicks = 0.f;
+        float initialYawDegrees = 0.f;
+        float3_t initialPosition{};
+        std::unique_ptr<CKoukuSaydonPreviewRootMotion> rootMotion;
+        struct TARGET_TRACKING_WINDOW final
+        {
+            std::string occurrenceId;
+            uint32_t startMs = 0u, durationMs = 0u, targetEntityId = 0u;
+            bool immediate = false;
+            // Each first-visited fixed tick pins the then-current replicated target
+            // position. Replaying those inputs reproduces facing on any later seek.
+            std::map<uint32_t, std::optional<float3_t>> targetSamples;
+        };
+        std::vector<TARGET_TRACKING_WINDOW> targetTracking;
+        std::map<std::string, float> stageFacingYawDegrees;
+        std::map<std::string, std::pair<uint32_t, float3_t>> airborneSelections;
+        std::map<std::string, float3_t> airborneAppearancePositions;
+        uint32_t airborneSelectionSeed = 0u;
+    };
+    bool Prepare_CloneSplitPreview(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
+        std::vector<BUNDLE_PREVIEW_MEMBER>& members, std::string& status);
+    static const KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE* Resolve_PreviewAnimation(
+        const BUNDLE_PREVIEW_MEMBER& member, double localMs,
+        const KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE*& previous);
+    void Sample_BundlePreview();
+    void Sync_PreviewSourceVisibility();
+    bool Prepare_PreviewEffects();
+    void Fail_Preview(std::string status);
+    bool Sample_BundlePreviewFacing(BUNDLE_PREVIEW_MEMBER& member, double localMs);
+    bool Sample_BundlePreviewPose(BUNDLE_PREVIEW_MEMBER& member, double localMs,
+        float3_t& position, float& yaw, bool recordTargets);
+    void Refresh_WorldPlacementAuthoring(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document);
+    void Release_BundlePreviewMembers(std::vector<BUNDLE_PREVIEW_MEMBER>& members);
+    struct CARD final
+    {
+        std::string assetId;
+        std::uint32_t handle = 0;
+        // Used only by the eight cardmaze mark/exit groups.
+        CARD_MAZE_MARK_RETRY mazeRetry;
+    };
+    void Sync_MazeMark(CARD& mark, const std::string& asset, const float4x4_t& pivot);
+    void Update_FearPresentation(float dt, const std::vector<KOUKU_CARD_PRESENTATION_VIEW>& players);
+    void Update_MazeMarks(const std::vector<KOUKU_CARD_PRESENTATION_VIEW>& players);
+    void Sample(SESSION& session, const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
+        const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern, float clockMs, bool paused,
+        const float4x4_t& pivot, const std::shared_ptr<Engine::CModel>& model,
+        const ANIMATION_MODEL_TARGET_VIEW* weaponView = nullptr);
+    void Stop_Session(SESSION& session);
+    bool Ensure_EffectResource(const std::string& kind, const std::string& asset,
+        std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT>& snapshot);
+    void Restore_Scene();
+    void Refresh_SharedPresentation();
+    void Collect_FrameLights();
+    struct FRAME_LIGHT_PROVIDER;
+    std::shared_ptr<FRAME_LIGHT_PROVIDER> m_LightProvider;
+    const CLightResourceCatalog* m_pLightResources = nullptr;
+    std::vector<float4x4_t> m_LightPlayerPivots;
+    struct LIGHT_BOSS_FOLLOWER final
+    {
+        std::uint32_t entityId = 0u;
+        std::weak_ptr<CNpc> npc;
+    };
+    std::map<std::uint32_t, std::vector<LIGHT_BOSS_FOLLOWER>> m_LightBossFollowers;
+    ComPtr<ID3D11Device> m_Device;
+    ComPtr<ID3D11DeviceContext> m_Context;
+    CRenderingProfileService& m_Profiles;
+    std::map<std::string, std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT>> m_EffectResources;
+    std::map<std::string, std::string> m_EffectResourceFailures;
+    std::uint64_t m_iEffectCacheGeneration = 0u;
+    std::set<std::string> m_QueuedV1Effects;
+    std::uint64_t m_iV1CatalogRevision = 0u;
+    TARGETED_COMBAT_VISUALS m_TargetedCombatVisuals;
+    std::map<LostArk::Shared::COMBAT_OBJECT_ID, TARGETED_COMBAT_SESSION> m_TargetedCombatSessions;
+    std::map<std::string, PRODUCT_PATTERN> m_FearPresentations;
+    SESSION m_FearSession;
+    std::string m_strCompletedFearKey;
+    std::map<std::string, PRODUCT_PATTERN> m_Product;
+    std::map<std::string, PRODUCT_BUNDLE> m_ProductBundles;
+    SESSION m_ProductBundleSession;
+    std::uint32_t m_iProductSourceRevision = 0u;
+    std::uint32_t m_iProductReloadRunEpoch = 0u;
+    std::set<std::string> m_MissingProductPatterns;
+    std::map<std::uint32_t, SESSION> m_BossSessions;
+    std::map<std::uint32_t, SESSION> m_ChildBossSessions;
+    std::map<std::uint32_t, SESSION> m_MarioEntrySessions;
+    std::map<std::uint32_t, CARD> m_Cards;
+    std::map<std::uint32_t, CARD> m_MazeExits;
+    std::map<std::uint32_t, CARD> m_MazePlayerMarks;
+    std::map<std::uint32_t, CARD> m_MazeTargetMarks;
+    /* One floor decal per painted bingo cell, keyed by cell index. */
+    std::map<std::int32_t, CARD> m_BingoMarks;
+    /* Keyed by the Server's bomb slot, so a mark turning into a planted
+    bomb replaces the same entry instead of leaving two on screen. */
+    std::map<std::int32_t, CARD> m_BingoBombs;
+    std::map<std::string, bool> m_ColliderDebugOverrides;
+    std::uint64_t m_iColliderAuthoringGeneration = UINT64_MAX;
+    bool m_bProductLoaded = false, m_bProductAttempted = false;
+    std::string m_strScenePrevious, m_strSceneOwner, m_strSceneApplied;
+    bool m_bSceneUsed = false, m_bCameraUsed = false;
+    SESSION m_PreviewSession;
+    std::string m_PreviewBundleId;
+    std::vector<BUNDLE_PREVIEW_MEMBER> m_BundlePreviewMembers;
+    KOUKU_SAYDON_COMPOSITION_DOCUMENT m_PreviewDocument;
+    KOUKU_SAYDON_COMPOSITION_PATTERN m_PreviewPattern;
+    float4x4_t m_PreviewPivot{};
+    std::weak_ptr<Engine::CModel> m_PreviewModel;
+    std::string m_strCompletedPreviewPatternId;
+    std::string m_strFailedPreviewPatternId, m_strFailedPreviewStatus;
+    bool m_bOwnPreviewClock = false, m_bPreviewPlaying = false, m_bPreviewPaused = false;
+    bool m_bPreviewClockAwaitingFirstUpdate = false;
+    bool m_bPreviewPreparationQueued = false;
+    std::vector<std::string> m_PreviewPreparationTargets;
+    bool m_bPreviewCaptureClockHeld = false;
+    bool m_bPreviewCaptureBoundarySampled = false, m_bPreviewCaptureAllowed = true;
+    std::uint32_t m_iPreviewCaptureResumeMs = 0u, m_iPreviewCaptureBoundaryMs = 0u;
+    std::uint32_t m_iPreviewCaptureWaitFrames = 0u;
+    bool m_bPreviewPivotReady = false;
+    bool m_bColliderResourcePreview = false;
+    bool m_bModelReferencePreview = false;
+    bool m_bBundleWorldExternal = false;
+    std::uint64_t m_iPreviewGeneration = 0u;
+    double m_fPreviewClockMs = 0;
+    std::uint32_t m_iPreviewDurationMs = 0;
+    std::string m_strStatus;
+};
+}
+```
+
+### Client/Private/KoukuSaydonPresentationPlayer.cpp
+
+```cpp
 #include <WinSock2.h>
 #include "imgui.h"
 #include "Engine_RenderTypes.h"
@@ -4496,3 +6221,309 @@ void Client::CKoukuSaydonPresentationPlayer::Render_Debug() const
     for (const auto& member : m_BundlePreviewMembers) draw(member.session, true);
 #endif
 }
+```
+
+### Tools/KoukuSaydonPipeline/retarget_showtime_camera_scale.py
+
+```python
+"""Rescale the four saved Showtime shots around the source actor, not world zero.
+
+Only camera eye/lookAt and the PATTERN_ONLY selection box center change.
+The source camera remains in an exclusive backup. No runtime file is written;
+Publish-MapAuthoring -Scope CameraShots performs validation and publication.
+"""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import math
+import os
+from pathlib import Path
+import re
+import tempfile
+
+SHOTS = tuple(f"kouku.gate3.showtime.camera.{i}" for i in range(1, 5))
+REL = Path("Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.camerashots.json")
+# SCENE02B matinee_15, group 68, move track 119; UE centimetres -> client metres.
+SOURCE_ACTOR = (4.459576606750488 / 100, 130.58836364746094 / 100, 94191.4921875 / 100)
+SOURCE_DRAW_SCALE = 1.2000000476837158
+SHOT2_FLOOR_LIFT = 0.4
+
+
+def transform(vector, ratio):
+    if len(vector) != 3 or not all(math.isfinite(v) for v in vector):
+        raise ValueError("Camera vector must contain three finite numbers")
+    return [s + ratio * (v - s) for s, v in zip(SOURCE_ACTOR, vector)]
+
+
+def rewrite(text, ratio, *, floor_clearance=False):
+    before = json.loads(text)
+    decoder = json.JSONDecoder()
+    edits = []
+    counts = {}
+    for shot_id in SHOTS:
+        marker = '"shotId": ' + json.dumps(shot_id)
+        if text.count(marker) != 1:
+            raise ValueError(f"Shot must exist exactly once: {shot_id}")
+        begin = text.rfind("{", 0, text.index(marker))
+        shot, size = decoder.raw_decode(text[begin:])
+        if shot.get("activation") != "PATTERN_ONLY" or shot.get("sequenceInstanceId"):
+            raise ValueError("Do not alter an automatic or World Sequence-bound camera")
+        block = text[begin:begin + size]
+        count = 0
+
+        def replace(match):
+            nonlocal count
+            raw = match.group(2)
+            values = json.loads(raw)
+            vector = transform(values, ratio)
+            if floor_clearance and shot_id == SHOTS[1]:
+                vector[1] += SHOT2_FLOOR_LIFT
+            changed = iter(vector)
+            count += 1
+            # Preserve array whitespace, indentation and line endings.
+            numbers = r"-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?"
+            return match.group(1) + re.sub(numbers, lambda _: format(next(changed), ".17g"), raw)
+
+        block = re.sub(r'("(?:eye|lookAt|center)"\s*:\s*)(\[[^\]]+\])', replace, block)
+        expected = 3 + 2 * len(shot["cameraTrack"]["keyframes"])
+        if count != expected:
+            raise ValueError(f"Unexpected vector count in {shot_id}: {count}/{expected}")
+        counts[shot_id] = len(shot["cameraTrack"]["keyframes"])
+        edits.append((begin, begin + size, block))
+    for begin, end, block in sorted(edits, reverse=True):
+        text = text[:begin] + block + text[end:]
+    after = json.loads(text)
+    b = {s["shotId"]: s for s in before["shots"]}
+    for shot in after["shots"]:
+        original = b[shot["shotId"]]
+        if shot["shotId"] not in SHOTS:
+            assert shot == original, "Unrelated shot changed"
+            continue
+        # Undo the permitted fields in the comparison document; all other
+        # fields, including FOV, roll, interpolation and cut timing must match.
+        shot["eye"], shot["lookAt"] = original["eye"], original["lookAt"]
+        shot["box"]["center"] = original["box"]["center"]
+        for key, old in zip(shot["cameraTrack"]["keyframes"], original["cameraTrack"]["keyframes"]):
+            key["eye"], key["lookAt"] = old["eye"], old["lookAt"]
+    assert before == after, "Non-camera-vector data changed"
+    header = re.compile(r'("revision"\s*:\s*)' + str(before["revision"]) + r'(?=\s*,)')
+    text, changed = header.subn(lambda m: m.group(1) + str(before["revision"] + (2 if floor_clearance else 1)), text, count=1)
+    assert changed == 1
+    return text, counts
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[2])
+    parser.add_argument("--apply", action="store_true")
+    args = parser.parse_args()
+    root = args.root.resolve()
+    path = root / REL
+    original = path.read_bytes()
+    if original.startswith(b"\xef\xbb\xbf"):
+        raise ValueError("Unexpected BOM; inspect source encoding before editing")
+    catalog = json.loads((root / "Data/Actors/BossCatalog.json").read_text(encoding="utf-8-sig"))
+    boss, = [b for b in catalog["bosses"] if b["archetypeId"] == "BOSS_KAKULSAYDON_G3_SAYDON"]
+    if boss.get("presentationScale") != 1 or boss.get("bodyModelPreScale") != .017:
+        raise ValueError("Boss scale changed; recalculate against the original actor")
+    ratio = boss["bodyModelPreScale"] / (.01 * SOURCE_DRAW_SCALE)
+    backup = root / "out/ShowtimeBernContinuation20260918/camerashots.before-scale.json"
+    # Re-running must never apply a second multiplication.
+    if backup.exists():
+        source = backup.read_bytes().decode("utf-8")
+        candidate, counts = rewrite(source, ratio, floor_clearance=True)
+        if original == candidate.encode("utf-8"):
+            print("Already applied; no changes")
+            return
+        previous, _ = rewrite(source, ratio)
+        if original not in (backup.read_bytes(), previous.encode("utf-8")):
+            raise ValueError("Camera changed after backup; manual rebase required")
+    else:
+        candidate, counts = rewrite(original.decode("utf-8"), ratio, floor_clearance=True)
+    result = candidate.encode("utf-8")
+    assert original.count(b"\r\n") == result.count(b"\r\n")
+    print(json.dumps(dict(ratio=ratio, keys=counts, beforeSha256=hashlib.sha256(original).hexdigest(),
+                         afterSha256=hashlib.sha256(result).hexdigest(), apply=args.apply)))
+    if args.apply:
+        backup.parent.mkdir(parents=True, exist_ok=True)
+        if not backup.exists():
+            with backup.open("xb") as stream:
+                stream.write(original)
+        if path.read_bytes() != original:
+            raise ValueError("Camera source changed during preparation")
+        staged = None
+        try:
+            with tempfile.NamedTemporaryFile(dir=path.parent, prefix=".showtime-camera-", delete=False) as stream:
+                staged = Path(stream.name)
+                stream.write(result)
+                stream.flush()
+                os.fsync(stream.fileno())
+            if path.read_bytes() != original:
+                raise ValueError("Camera source changed before commit")
+            os.replace(staged, path)
+        finally:
+            if staged is not None and staged.exists():
+                staged.unlink()
+
+
+if __name__ == "__main__":
+    main()
+```
+
+### Tools/KoukuSaydonPipeline/test_showtime_camera_clearance.py
+
+```python
+"""Numeric regression for the saved Showtime camera, not a visual acceptance test."""
+import json
+import math
+from pathlib import Path
+import unittest
+
+import retarget_showtime_camera_scale as fix
+
+ROOT = Path(__file__).resolve().parents[2]
+FLOOR_Y = 1.317626  # Installed SL05:export:342, floor08a upper triangles.
+OFFSET = (-.1146, .0141, .4151)
+
+
+def normalized(v):
+    size = math.sqrt(sum(x*x for x in v))
+    return [x / size for x in v]
+
+
+def cross(a, b):
+    return [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]]
+
+
+class CameraClearance(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.source = (ROOT/'out/ShowtimeBernContinuation20260918/camerashots.before-scale.json').read_bytes().decode('utf8')
+        ratio = .017/(.01*fix.SOURCE_DRAW_SCALE)
+        cls.old = json.loads(fix.rewrite(cls.source, ratio)[0])
+        cls.result, _ = fix.rewrite(cls.source, ratio, floor_clearance=True)
+        cls.new = json.loads(cls.result)
+
+    def test_only_second_shot_height_and_revision_change(self):
+        old = {s['shotId']: s for s in self.old['shots']}
+        for shot in self.new['shots']:
+            before = old[shot['shotId']]
+            if shot['shotId'] != fix.SHOTS[1]:
+                self.assertEqual(shot, before)
+                continue
+            pairs = [(shot['eye'], before['eye']), (shot['lookAt'], before['lookAt']),
+                     (shot['box']['center'], before['box']['center'])]
+            pairs += [(k[f], p[f]) for k,p in zip(shot['cameraTrack']['keyframes'],before['cameraTrack']['keyframes']) for f in ('eye','lookAt')]
+            for actual, previous in pairs:
+                self.assertEqual(actual[0], previous[0])
+                self.assertEqual(actual[2], previous[2])
+                self.assertAlmostEqual(actual[1]-previous[1], .4)
+            for k,p in zip(shot['cameraTrack']['keyframes'],before['cameraTrack']['keyframes']):
+                self.assertEqual({x:v for x,v in k.items() if x not in ('eye','lookAt')},
+                                 {x:v for x,v in p.items() if x not in ('eye','lookAt')})
+        self.assertEqual(self.new['revision'], self.old['revision']+1)
+
+    def test_eye_and_near_plane_clear_floor_every_millisecond(self):
+        minimum = float('inf')
+        for shot in self.new['shots']:
+            if shot['shotId'] not in fix.SHOTS: continue
+            keys=shot['cameraTrack']['keyframes']
+            for a,b in zip(keys,keys[1:]):
+                for ms in range(a['timeMs'], b['timeMs']+1):
+                    t=(ms-a['timeMs'])/(b['timeMs']-a['timeMs'])
+                    eye=[x+(y-x)*t for x,y in zip(a['eye'],b['eye'])]
+                    look=[x+(y-x)*t for x,y in zip(a['lookAt'],b['lookAt'])]
+                    up=[x+(y-x)*t for x,y in zip(a['up'],b['up'])]
+                    forward=normalized([y-x for x,y in zip(eye,look)])
+                    right=normalized(cross(up,forward)); up=cross(forward,right)
+                    fov=a['fovYDegrees']+(b['fovYDegrees']-a['fovYDegrees'])*t
+                    half=.1*math.tan(math.radians(fov)/2)
+                    for aspect in (4/3,16/9,21/9):
+                        bottom=eye[1]+OFFSET[1]+.1*forward[1]-half*(abs(up[1])+aspect*abs(right[1]))
+                        minimum=min(minimum,bottom-FLOOR_Y)
+                        self.assertGreater(bottom-FLOOR_Y, .1, (shot['shotId'],ms,aspect))
+        print('Minimum near-plane floor clearance (metres):',minimum)
+
+    def test_installed_authoring_is_expected_correction(self):
+        self.assertEqual((ROOT/fix.REL).read_bytes(),self.result.encode('utf8'))
+
+
+if __name__ == '__main__':
+    unittest.main()
+```
+
+### Tools/KoukuSaydonPipeline/test_preview_source_visibility.py
+
+```python
+"""Compile the production NPC visibility methods; check preview lifecycle wiring separately."""
+import os
+from pathlib import Path
+import re
+import subprocess
+import tempfile
+import unittest
+
+ROOT=Path(__file__).resolve().parents[2]
+
+
+class PreviewSourceVisibility(unittest.TestCase):
+    def test_native_visibility_counter(self):
+        text=(ROOT/'Client/Public/Npc.h').read_text(encoding='utf8')
+        names=('Set_PresentationVisible','Acquire_CompositionPreviewSuppression',
+               'Release_CompositionPreviewSuppression','Is_PresentationVisible')
+        methods=[]
+        for name in names:
+            matches=re.findall(r'^\s*(?:void|bool) '+name+r'\([^\n]*$',text,re.M)
+            self.assertEqual(len(matches),1,name)
+            methods.append(matches[0].strip())
+        fixture='struct Visibility { bool m_bPresentationVisible=true; unsigned m_iCompositionPreviewSuppressions=0;\n'+'\n'.join(methods)+'\n};\n'
+        fixture+='''int main() {
+          Visibility v;
+          if (!v.Is_PresentationVisible()) return 1;
+          v.Acquire_CompositionPreviewSuppression();
+          if (v.Is_PresentationVisible()) return 2;
+          v.Acquire_CompositionPreviewSuppression();
+          v.Release_CompositionPreviewSuppression();
+          if (v.Is_PresentationVisible()) return 3;
+          v.Set_PresentationVisible(false);
+          v.Release_CompositionPreviewSuppression();
+          if (v.Is_PresentationVisible()) return 4;
+          v.Set_PresentationVisible(true);
+          if (!v.Is_PresentationVisible()) return 5;
+          v.Release_CompositionPreviewSuppression();
+          if (!v.Is_PresentationVisible()) return 6;
+          for (unsigned i=0;i<10000;++i) {
+            v.Acquire_CompositionPreviewSuppression();
+            v.Release_CompositionPreviewSuppression();
+          }
+          return v.Is_PresentationVisible() ? 0 : 7;
+        }'''
+        vs=Path(os.environ.get('VSINSTALLDIR','C:/Program Files/Microsoft Visual Studio/2022/Community'))
+        with tempfile.TemporaryDirectory(prefix='showtime-visibility-') as temp:
+            source=Path(temp)/'visibility.cpp'
+            source.write_text(fixture,encoding='ascii')
+            setup=vs/'Common7/Tools/VsDevCmd.bat'
+            command=f'call "{setup}" -arch=x64 -host_arch=x64 >nul && cl /nologo /EHsc visibility.cpp /Fe:visibility.exe && visibility.exe'
+            result=subprocess.run(command,shell=True,cwd=temp,capture_output=True)
+            self.assertEqual(result.returncode,0,result.stdout.decode(errors='replace')+result.stderr.decode(errors='replace'))
+
+    def test_production_lifecycle_wiring(self):
+        text=(ROOT/'Client/Private/KoukuSaydonPresentationPlayer.cpp').read_text(encoding='utf8')
+        release=text[text.index('void Client::CKoukuSaydonPresentationPlayer::Release_BundlePreviewMembers('):text.index('bool Client::CKoukuSaydonPresentationPlayer::Prepare_CloneSplitPreview(')]
+        self.assertIn('source->Release_CompositionPreviewSuppression();',release)
+        begin=text[text.index('bool Client::CKoukuSaydonPresentationPlayer::Begin_BundlePreview('):text.index('bool Client::CKoukuSaydonPresentationPlayer::Begin_ModelReferencePreview(')]
+        self.assertLess(begin.index('Stop_Preview();'),begin.index('Sync_PreviewSourceVisibility();'))
+        self.assertLess(begin.index('m_bPreviewPlaying ='),begin.index('Sync_PreviewSourceVisibility();'))
+        self.assertLess(begin.index('Sync_PreviewSourceVisibility();'),begin.index('if (!externalWorldPreview) Sample_BundlePreview();'))
+        sync=text[text.index('void Client::CKoukuSaydonPresentationPlayer::Sync_PreviewSourceVisibility()'):text.index('void Client::CKoukuSaydonPresentationPlayer::Sample_BundlePreview()')]
+        for guard in ('!member.finiteActorLifetime','!boss.iOwnerBossNetEntityId','boss.strArchetypeId == member.sourceArchetypeId','previous == replacement'):
+            self.assertIn(guard,sync)
+        npc=(ROOT/'Client/Private/Npc.cpp').read_text(encoding='utf8')
+        self.assertIn('if (!Is_PresentationVisible()) return;',npc)
+        self.assertIn('if (!Is_PresentationVisible()) return S_OK;',npc)
+
+
+if __name__=='__main__': unittest.main()
+```

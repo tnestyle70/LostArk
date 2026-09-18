@@ -685,7 +685,7 @@ void CNpc::Set_DebugPresentationYawOffset(const f32_t fYawOffsetDegrees)
 
 void CNpc::Late_Update(f32_t fTimeDelta)
 {
-    if (!m_bPresentationVisible) return;
+    if (!Is_PresentationVisible()) return;
 	CGameInstance::Get().Add_RenderObject(
 		RENDERGROUP::NONBLEND,
 		static_pointer_cast<CGameObject>(shared_from_this()));
@@ -697,7 +697,7 @@ void CNpc::Late_Update(f32_t fTimeDelta)
 
 HRESULT CNpc::Render()
 {
-    if (!m_bPresentationVisible) return S_OK;
+    if (!Is_PresentationVisible()) return S_OK;
 	if (FAILED(Bind_ShaderResources()))
 		return E_FAIL;
 

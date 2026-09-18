@@ -319,6 +319,10 @@ public:
 		bool_t snapToSnapshot = false);
 	void Trigger_HitFlash();
     void Set_PresentationVisible(bool visible) { m_bPresentationVisible = visible; }
+    // Preview owns only a render suppression; network state and base visibility keep updating.
+    void Acquire_CompositionPreviewSuppression() { ++m_iCompositionPreviewSuppressions; }
+    void Release_CompositionPreviewSuppression() { if (m_iCompositionPreviewSuppressions) --m_iCompositionPreviewSuppressions; }
+    bool Is_PresentationVisible() const { return m_bPresentationVisible && m_iCompositionPreviewSuppressions == 0u; }
 #ifdef _DEBUG
 	void Set_CombatColliderDebugVisible(bool_t isVisible) {
 		m_isCombatColliderDebugVisible = isVisible;
@@ -392,6 +396,7 @@ private:
 	CNpcNetworkTransformInterpolator m_NetworkTransformInterpolator;
 	bool_t m_bSuppressRootMotion = false;
     bool m_bPresentationVisible = true;
+    std::uint32_t m_iCompositionPreviewSuppressions = 0u;
 	bool_t m_bInterpolateNetworkTransform = false;
 	f32_t m_fTransientActionRemainingSeconds = 0.f;
 	std::string m_strTransientReturnClip;

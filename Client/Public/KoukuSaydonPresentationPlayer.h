@@ -248,6 +248,8 @@ private:
         std::uint32_t offsetTicks = 0, durationMs = 0;
         KOUKU_SAYDON_COMPOSITION_PATTERN pattern;
         std::shared_ptr<CNpc> actor;
+        std::string sourceArchetypeId;
+        std::weak_ptr<CNpc> suppressedSourceActor;
         SESSION session;
         std::vector<KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE> animations;
         std::vector<KOUKU_SAYDON_COMPOSITION_STAGE> facingStages;
@@ -281,6 +283,7 @@ private:
         const BUNDLE_PREVIEW_MEMBER& member, double localMs,
         const KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE*& previous);
     void Sample_BundlePreview();
+    void Sync_PreviewSourceVisibility();
     bool Prepare_PreviewEffects();
     void Fail_Preview(std::string status);
     bool Sample_BundlePreviewFacing(BUNDLE_PREVIEW_MEMBER& member, double localMs);
