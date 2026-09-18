@@ -447,6 +447,20 @@ namespace Client
 			return m_PartyRoster;
 		}
 		const CReplicatedPlayerHealth& Get_PlayerHealth() const { return m_PlayerHealth; }
+		/* Primary (not boss-owned) boss entities still replicated. A DEAD despawn removes
+		   the entity, so this reaching zero after Get_BossDeadRaw() is the gate's clear:
+		   a two-boss gate clears on its last boss, not its first. */
+		size_t Count_PrimaryBossesAlive() const
+		{
+			size_t iAlive = 0;
+			for (const auto& [iNetEntityId, entity] : m_WorldEntities)
+			{
+				if (LostArk::Shared::WORLD_ENTITY_KIND::BOSS == entity.eKind &&
+					LostArk::Shared::INVALID_NET_ENTITY_ID == entity.iOwnerBossNetEntityId)
+					++iAlive;
+			}
+			return iAlive;
+		}
 		/* Server-decided world sequence starts, in arrival order. The caller
 		   takes them so one start is never played twice. */
 		const LostArk::Shared::S2C_KOUKUSAYDON_BUNDLE_STATE& Get_KoukuBundleState() const { return m_KoukuBundleState; }

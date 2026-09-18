@@ -128,7 +128,10 @@ namespace
 	bool_t Is_MvpResultPageOpen()
 	{
 		const CLevel_KakulSaydonArena* pArena = CLevel_KakulSaydonArena::Get_Active();
-		return nullptr != pArena && pArena->Debug_Is_MvpResultVisible();
+		if (nullptr != pArena && pArena->Debug_Is_MvpResultVisible())
+			return true;
+		const CLevel_ValtanArena* pValtan = CLevel_ValtanArena::Get_Active();
+		return nullptr != pValtan && pValtan->Is_MvpResultVisible();
 	}
 
 	/* Product-path wall clock (seconds since first call) -- replaces ImGui::GetTime() in every
@@ -2533,6 +2536,10 @@ HRESULT CMainApp::Render()
 		nullptr != pArena &&
 		CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::KAKULSAYDON_ARENA))
 		pArena->Render_MvpPortraits();
+	if (auto* pValtan = CLevel_ValtanArena::Get_Active();
+		nullptr != pValtan &&
+		CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::VALTAN_ARENA))
+		pValtan->Render_MvpPortraits();
 	}
 
 	// Composition WORLD/Seek/Stop has committed this frame before choosing the map-light owner.

@@ -16,6 +16,8 @@ below is a real Release-build feature, so the include is no longer guarded. */
 #include "CombatHUDViewModel.h"
 #include "GameInstance.h"
 #include "HUDRuntimeView.h"
+#include "MvpAwardCatalog.h"
+#include "MvpResultView.h"
 #include "UILayoutRuntime.h"
 #include "UIInputRouter.h"
 #include "ItemCatalog.h"
@@ -398,6 +400,10 @@ HRESULT CLevel_ValtanArena::Initialize()
 	m_pRaidClearView->Set_SlotVisible("RaidClear_TitleTextBox", false);
 	m_pRaidClearView->Set_SlotVisible("RaidClear_ReturnButton", false);
 
+	/* Built hidden; Update_RaidClear shows it the instant the clear mark ends. */
+	m_pMvpResultView = std::make_unique<CMvpResultView>(
+		m_pDevice, m_pContext, ETOUI(LEVEL::VALTAN_ARENA));
+
 	/* First screen migrated off the ImGui interim UI rendering (see
 	.md/TJ/08-31/2026-08-31_ImGui_런타임UI_전환_PLAN.md) -- real CUI_Sprite GameObjects on this
 	Level's own new "Layer_UI" instead of CHUDRuntimeView's ImGui foreground-drawlist draws.
@@ -606,6 +612,15 @@ void CLevel_ValtanArena::Update(f32_t fTimeDelta)
 	   lower-priority product interaction so its click cannot also become an
 	   attack, movement command, revive, or party action in this frame. */
 	Update_RaidClear(fTimeDelta);
+	if (nullptr != m_pMvpResultView)
+	{
+		/* The award page has no characters of its own; until a raid roster exists the
+		   local character fills every panel, as on KoukuSaydon. */
+		const shared_ptr<CCharacter> pStaged = m_Replication.Get_LocalCharacter();
+		for (size_t iStageSlot = 0; iStageSlot < 4u; ++iStageSlot)
+			m_pMvpResultView->Set_StageCharacter(iStageSlot, pStaged);
+		m_pMvpResultView->Update(fTimeDelta);
+	}
 	const bool_t isRaidClearActive = m_fRaidClearElapsedSeconds >= 0.f;
 	if (!isRaidClearActive && m_PartyInteraction.Update(
 		m_Replication, m_pPlayerCommandSink, m_NameplatePlayers,
@@ -1693,12 +1708,27 @@ HRESULT CLevel_ValtanArena::Render()
 	m_PlayerNameplateView.Render(m_NameplatePlayers);
 	m_ChatBubbleView.Render(m_Replication, m_NameplatePlayers);
 	m_PartyInteraction.Render(m_pPlayerCommandSink);
+	/* Award page labels over everything else this Level draws; its image layers are
+	   CUI_Sprite objects on Layer_UI and need no call. */
+	if (nullptr != m_pMvpResultView)
+		m_pMvpResultView->Render();
 
 #ifdef _DEBUG
 	CMainApp::Update_DebugWindowTitleWithFps(TEXT("Valtan Arena Map"));
 #endif
 
 	return S_OK;
+}
+
+void CLevel_ValtanArena::Render_MvpPortraits()
+{
+	if (nullptr != m_pMvpResultView)
+		m_pMvpResultView->Render_Portraits();
+}
+
+bool_t CLevel_ValtanArena::Is_MvpResultVisible() const
+{
+	return nullptr != m_pMvpResultView && m_pMvpResultView->Is_Visible();
 }
 
 void CLevel_ValtanArena::Update_DeadScene(
@@ -1852,8 +1882,20 @@ void CLevel_ValtanArena::Update_RaidClear(f32_t fTimeDelta)
 			"[Level_ValtanArena] Raid Clear Release test mode enabled.\n");
 	}
 
+	const f32_t fPreviousElapsedSeconds = m_fRaidClearElapsedSeconds;
 	if (m_fRaidClearElapsedSeconds >= 0.f)
 		m_fRaidClearElapsedSeconds += fTimeDelta;
+	/* The award page starts the instant the clear mark cuts, as on KoukuSaydon. A
+	   crossing, not a latch: the test-mode jump above lands past the end and skips it. */
+	if (nullptr != m_pMvpResultView &&
+		fPreviousElapsedSeconds >= 0.f && fPreviousElapsedSeconds < RAIDCLEAR_TOTAL_SECONDS &&
+		m_fRaidClearElapsedSeconds >= RAIDCLEAR_TOTAL_SECONDS)
+	{
+		/* EFTable_ZoneEpicGate.GroupId 101 = Valtan, gate 1, normal; an eight-player raid
+		   takes the eight-player cutoffs. */
+		m_pMvpResultView->Show(CMvpAwardCatalog::Get().Build_PreviewPage(101, 1, "normal", 8));
+	}
+	const bool_t isMvpVisible = nullptr != m_pMvpResultView && m_pMvpResultView->Is_Visible();
 
 	/* Real cue name confirmed in the extracted sound resource pool
 	(Sound/UI/System/sys_raid_success1__457395004.wav) -- epicgatecommonclear.gfx itself
@@ -1895,7 +1937,8 @@ void CLevel_ValtanArena::Update_RaidClear(f32_t fTimeDelta)
 	/* Authoring-only placeholder, same split as DeadScene_TitleTextMarker --
 	RenderRaidClearText() (CMainApp, after EndFrame()) draws the real text. */
 	m_pRaidClearView->Set_SlotVisible("RaidClear_TitleTextBox", false);
-	m_pRaidClearView->Set_SlotVisible("RaidClear_ReturnButton", isAfterRaidClear);
+	/* The return button waits under the award page until that page is closed. */
+	m_pRaidClearView->Set_SlotVisible("RaidClear_ReturnButton", isAfterRaidClear && !isMvpVisible);
 	if (isShowing)
 	{
 		const f32_t fRevealAlpha = (m_fRaidClearElapsedSeconds < RAIDCLEAR_REVEAL_SECONDS) ?
@@ -1913,7 +1956,7 @@ void CLevel_ValtanArena::Update_RaidClear(f32_t fTimeDelta)
 	one-shot Request_* submission as before. No local hide-on-click --
 	CLevelTransitionService's real BERN switch (once the Server accepts the
 	transfer) tears this whole Level down anyway. */
-	if (isAfterRaidClear && nullptr != m_pPlayerCommandSink)
+	if (isAfterRaidClear && !isMvpVisible && nullptr != m_pPlayerCommandSink)
 	{
 		f32_t fButtonX = 0.f, fButtonY = 0.f, fButtonWidth = 0.f, fButtonHeight = 0.f;
 		if (m_pRaidClearView->Get_SlotRect("RaidClear_ReturnButton",
