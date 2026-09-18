@@ -120,18 +120,20 @@ namespace EffectDocumentRendererDetail
 			XMLoadFloat4x4(&Source) * XMMatrixTranslationFromVector(
 				XMVectorScale(CameraWorldWithTranslation.r[2],
 					Particle.fCameraOffset)));
+		// Billboard orientation is rebuilt below; no source quaternion is consumed.
+		// Local particle rotation under a non-uniform emitter legitimately shears
+		// this affine matrix. TRS decomposition rejects that valid source and used
+		// to isolate the entire effect. Retain axis magnitudes and the real origin.
+		for (const auto& Row : Source.m)
+			for (const f32_t Value : Row)
+				if (!std::isfinite(Value)) return false;
+		const matrix_t SourceMatrix = XMLoadFloat4x4(&Source);
 		vector_t Scale;
-		vector_t Rotation;
-		vector_t Translation;
-		if (!XMMatrixDecompose(&Scale, &Rotation, &Translation,
-			XMLoadFloat4x4(&Source)))
-		{
-			return false;
-		}
+		const vector_t Translation = SourceMatrix.r[3];
 		const float3_t DecomposedMagnitude = {
-			std::abs(XMVectorGetX(Scale)),
-			std::abs(XMVectorGetY(Scale)),
-			std::abs(XMVectorGetZ(Scale))
+			XMVectorGetX(XMVector3Length(SourceMatrix.r[0])),
+			XMVectorGetX(XMVector3Length(SourceMatrix.r[1])),
+			XMVectorGetX(XMVector3Length(SourceMatrix.r[2]))
 		};
 		Client::EFFECT_PARTICLE_SPRITE_SCALE_DESC ResolvedScale;
 		if (!Client::CEffectDocumentRenderer::Resolve_ParticleSpriteScale(

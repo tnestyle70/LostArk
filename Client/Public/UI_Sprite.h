@@ -72,6 +72,8 @@ public:
 	animation's per-layer pool). Tint/texture/transform state is kept, so showing again restores
 	exactly what was on screen before. */
 	void Set_Visible(bool_t bVisible);
+	// Authored cinematic fades may cover the scene while product HUD/windows are suppressed.
+	void Set_CinematicOverlay(bool_t overlay) { m_bCinematicOverlay = overlay; }
 	/* Takes an already-resolved SRV (the caller owns loading/caching -- CUI_Sprite stays a thin
 	render primitive, not a second texture cache) and takes over from the prototype-tag texture
 	bound at construction for as long as it's set. Pass nullptr to fall back to that original
@@ -97,6 +99,7 @@ private:
 	f32_t							m_fUVAspect = 1.f;
 	f32_t							m_fRotationDeg = 0.f;
 	bool_t							m_bVisible = true;
+	bool_t m_bCinematicOverlay = false;
 	ComPtr<ID3D11ShaderResourceView>	m_pOverrideTextureSRV;
 
 private:

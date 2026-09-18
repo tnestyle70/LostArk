@@ -122,9 +122,19 @@ namespace LostArk::Server
 		std::string m_strStatus;
 	};
 
+	// The last completed outer room-loop iteration, shared by all rooms on the next tick.
+	struct SERVER_ROOM_SCHEDULER_METRICS final
+	{
+		std::uint64_t iSampleUnixMilliseconds = 0u;
+		std::uint64_t iPreviousLoopLatenessMicroseconds = 0u;
+		std::uint64_t iMaximumLoopLatenessMicroseconds = 0u;
+		std::uint64_t iScheduleResetCount = 0u;
+	};
+
 	struct SERVER_ROOM_PERFORMANCE_METRICS final
 	{
 		SERVER_NAVIGATION_PERFORMANCE_METRICS Navigation;
+		SERVER_ROOM_SCHEDULER_METRICS Scheduler;
 		std::uint64_t iTickCount = 0;
 		std::uint64_t iLastTickMicroseconds = 0;
 		std::uint64_t iMaximumTickMicroseconds = 0;
@@ -208,7 +218,10 @@ namespace LostArk::Server
 			ROOM_COMMAND_ENQUEUE_RESULT result) const;
 		[[nodiscard]] bool Try_GetRuntimeFailure(
 			SERVER_ROOM_RUNTIME_FAILURE& outFailure) const;
-		void Tick(float fixedDeltaSeconds);
+		void Tick(float fixedDeltaSeconds,
+			const SERVER_ROOM_SCHEDULER_METRICS& schedulerMetrics = {});
+		// Room-thread only. At most one sampled line is retained until ServerApp writes it.
+		[[nodiscard]] std::string Take_PerformanceDiagnostic();
 		bool Try_DequeueWorldTransfer(
 			SERVER_WORLD_TRANSFER_REQUEST& outTransfer);
 
@@ -1511,6 +1524,7 @@ namespace LostArk::Server
 		std::unordered_set<SESSION_ID> m_QueuedCleanupSessionIds;
 		SERVER_ROOM_PERFORMANCE_METRICS m_PerformanceMetrics;
 		SERVER_ROOM_PERFORMANCE_METRICS m_LastRoomPerfLogSample;
+		std::string m_strPendingPerformanceDiagnostic;
 		std::uint64_t m_iLastRoomPerfSnapshotDroppedCount = 0;
 		std::uint64_t m_iLastRoomPerfReliableRejectedCount = 0;
 		std::uint64_t m_iLastRoomPerfWireSendFailureCount = 0;

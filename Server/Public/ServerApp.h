@@ -133,7 +133,8 @@ namespace LostArk::Server
 			SESSION_ID sessionId,
 			ROOM_COMMAND command,
 			std::string& outContext);
-		void Tick_GameplaySimulations(float fixedDeltaSeconds);
+		void Tick_GameplaySimulations(float fixedDeltaSeconds,
+			const SERVER_ROOM_SCHEDULER_METRICS& schedulerMetrics = {});
 		void Advance_ServerControlTransactions();
 		void Process_ValtanDecisionTraceQuery(
 			SESSION_ID sessionId,
@@ -338,6 +339,7 @@ namespace LostArk::Server
 		//thread
 		std::thread m_AcceptThread;
 		std::thread m_RoomThread;
+		bool m_bRoomPerformanceLogWarningReported = false;
 
 		//session owner map - sessionid의 유일한 장기 강한 owner
 		//gameroom은 같은 session을 weak_ptr로만 참조

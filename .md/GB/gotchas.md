@@ -1,5 +1,29 @@
 # LostArk merge 회귀 방지 정본
 
+### 쿠크 이펙트 상한·컷씬 UI·배경 진단
+
+- V1 scene/owner reservation과 V2 GROUP의 Mesh/Decal/Engine provider cap은 다른 경로다.
+  occurrence 종류를 확인하고 queue overflow, spawn 거절, draw 실패, Server timeout을 구분한다.
+- Release Renderer 실패 기록을 Debug guard 안에 두지 않는다. 파일은 bounded 기록하고
+  같은 시각의 Client session과 Server RoomPerf를 비교한다. 상한 확대는 실제 도달 증거 뒤에 한다.
+- 컷씬 UI 숨김은 widget visible/open을 덮어쓰지 않고 공통 렌더/입력 억제로 처리한다.
+  연출 자체의 fade는 보존하고 종료·실패·Level 이탈 때 억제를 해제한다. normal combat
+  follow/static 카메라를 컷씬으로 분류하지 않는다. 숨긴 damage event는 이후 재생하지 않는다.
+- 배경만 검고 배우·이펙트가 보이면 전체화면 fade로 단정하지 않는다. 컷씬 경계의
+  map visibility, scene profile, light/camera owner를 기록해 재현 근거를 확보한다.
+
+
+### Release 쿠크 레이드의 lifecycle 소비와 Lobby 복구 문구
+
+- 제품 쿠크 레이드도 기존 audition result/lifecycle packet을 사용한다. packet 이름의
+  DEBUG 접두사나 저작 UI의 Debug 경계로 제품 수신 소비자까지 감싸지 않는다.
+  MainApp은 NetworkManager dispatch 다음에 Kouku audition service를 모든 구성에서
+  갱신한다. 소비되지 않은 bounded lifecycle 큐를 용량 확장으로 숨기지 않는다.
+- Lobby의 `Server entry failed.`는 복구 공통 문구다. 같은 PID의 session diagnostic에서
+  reason·WSA 오류·recovery source를 읽고 Server의 같은 시각 종료와 대조한다.
+  WSA10055와 Release 소비 누락은 확인해도 packet별 증거 없이 특정 패턴의 admission
+  실패로 단정하지 않는다. 근거는 쿠크 통합 RESULT의 2026-09-19 Flow 재설정 항목이다.
+
 ### 차원술사 탑승 AnimationSet의 import 배율
 
 - AnimationSet은 skeleton hash·이름·부모가 같아도 armature의 import 배율이 다를 수 있다.
@@ -2499,3 +2523,16 @@ lease에 연결한다. 저장된 DURATION은 timing 존재와 PRODUCT 의미의 
 - `Sample_ObjectWorld`의 key quaternion과 angularVelocity는 메시를 세우고 자전시킨다. 바닥 Collider는 이를 제외하므로 동반 Effect도 `inheritObjectRotation=false`일 때 같은 no-spin basis를 써야 한다. 이동 위치·scale·emission yaw·WORLD placement는 함께 유지하고, 기본 true로 다른 Object와 본 부착의 기존 표현을 보존한다.
 - Effect의 `followObject`를 끄면 위치 갱신까지 멈춘다. 자전만 분리하려고 이 값을 끄거나 모든 Effect root에서 회전을 제거하지 않는다. WorldSequence native codec·Object Tool·Map publisher·Composition owner validator의 optional bool 지원을 함께 연결한다.
 - 새 8개 칼날 group을 기존 LOOP 그대로 추가하면 P33의 일반 칼날24·갈고리30·즉사24가 기존64-window 한도를 초과한다. 원본 library는 보존하고, P33 전용 즉사8개를11초 한 번 재생하면 기존STAGGER1까지63개다. 개수·간격 축소나 parser 한도 확대로 우회하지 않는다.
+
+- **4인 쿠크 이펙트 누락과 접속 종료를 분리한다.** Effect budget rejection은 Client
+  presentation이며 같은 시각의 session terminal/Server queue·tick 근거 없이 서버 부하로
+  단정하지 않는다. Release 소비자는 Debug guard 밖에서 매 프레임 알림을 drain한다.
+  cap은 정상 액션 cooldown/표현 tail·동시 플레이어 수·카드 수명으로 검증하고 다른 Level의
+  영구 조명과 provider 제출 순서까지 계산한다. 09-18 통합 RESULT G12에 현재 수치가 있다.
+- **미로 entry도 대기다.** P28 전송 후 망원경 claim 전에는 role/runtime가 아직 NONE/INACTIVE다.
+  권위 area HUD MAZE를 포함해 복귀 clear까지 Flow를 기다린다. 표시된 WAIT_MINIGAME만
+  보고 이미 시작된 후속 audition timer까지 pause된 것으로 해석하지 않는다.
+- **Sequence 무대 말단과 billboard affine basis를 확인한다.** 카메라/scene profile보다
+  먼저 끝나는 WORLD lifetime은 배우만 남는 검은 공백을 만든다. 반면 비균일 parent 아래
+  local 회전이 만드는 shear는 유효하다. quaternion을 쓰지 않는 billboard에서 TRS
+  decomposition 성공을 강제하지 않고 축 길이/원점을 사용하며 finite 검사를 보존한다.

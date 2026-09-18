@@ -420,7 +420,14 @@ void LostArk::Server::CGameRoom::Update_KoukuRaid(const std::uint32_t tick)
         if (std::none_of(m_WorldEntities.begin(), m_WorldEntities.end(), [&](const auto& boss) { return boss.iNetEntityId == run.iPrimaryBossId; }))
         { Stop_KoukuRaid("Gate boss was removed without a death event"); return; }
         const bool mazeActive = m_KoukuCardMaze.Get_Phase() != CKoukuCardMazeRuntime::PHASE::INACTIVE ||
-            std::any_of(m_Players.begin(), m_Players.end(), [](const auto& pair) { return pair.second.eCardMazeRole != CARD_MAZE_ROLE::NONE; });
+            std::any_of(m_Players.begin(), m_Players.end(), [](const auto& pair) {
+                const auto& player = pair.second;
+                // P28 commits maze entry before the telescope assigns roles or starts HUNTING.
+                // The area owner is cleared only after the return transfer (or player death).
+                return player.eCardMazeRole != CARD_MAZE_ROLE::NONE ||
+                    (player.iCurrentHp && player.eAction != PLAYER_ACTION_STATE::DEAD &&
+                        player.eKoukuAreaHudMode == KOUKU_HUD_MODE::MAZE);
+            });
         const auto desired = mazeActive ? KOUKUSAYDON_RAID_PHASE::WAIT_MINIGAME : KOUKUSAYDON_RAID_PHASE::COMBAT;
         if (run.State.ePhase != desired) { run.State.ePhase = desired; run.State.iServerTick = tick; Broadcast_KoukuRaidState(); }
         if (run.bEntryRunning && m_KoukuSaydonPatternAudition.ePhase == KOUKUSAYDON_PATTERN_AUDITION_PHASE::INACTIVE)

@@ -27,6 +27,7 @@
 #include "Effect_PresentationService.h"
 #include "EffectV2_Runtime.h"
 #include "EffectV2_Catalog.h"
+#include "KoukuSaydonPatternAuditionService.h"
 #include "KoukuSaydonPresentationPlayer.h"
 #include "Valtan.h"
 #include "KoukuSaydonCompositionDocument.h"
@@ -81,7 +82,6 @@
 #include "Character.h"
 #include "KoukuSaydonActionWorkbench.h"
 #include "KoukuSaydonBossTool.h"
-#include "KoukuSaydonPatternAuditionService.h"
 #include "ValtanActionWorkbench.h"
 #include "BalanceTool.h"
 #include "ValtanBossTool.h"
@@ -1319,6 +1319,7 @@ void CMainApp::UpdateKoukuGateCompletePlay()
     const std::string key = std::to_string(state.iRunEpoch) + ":" + state.strSequenceCompositionId + ":" + state.strSequencePatternId + ":" + std::to_string(state.iStartTick);
     if (key == m_strKoukuRaidFailedKey)
     {
+        arena->Debug_SetSequenceCombatPending(false);
         std::string restore;
         if (!arena->End_ServerRaidCinematicPresentation(true, restore))
             m_strKoukuCompletePlayStatus = "Previous gate restore failed: " + restore;
@@ -1328,6 +1329,10 @@ void CMainApp::UpdateKoukuGateCompletePlay()
     std::string status;
     const auto fail = [&](const std::string& reason) {
         m_strKoukuRaidFailedKey = key;
+        if (m_pKoukuPresentationPlayer->Preview_IsServerClock()) m_pKoukuPresentationPlayer->Stop_Preview();
+        arena->Debug_SetSequenceCombatPending(false);
+        arena->Debug_ReturnToPlayerCamera();
+        CNetworkManager::Get().Record_SessionEvent("kouku.cinematic.failed", key + " / " + reason);
         std::string restore;
         m_strKoukuCompletePlayStatus = "Server cinematic presentation failed: " + reason;
         if (!arena->End_ServerRaidCinematicPresentation(true, restore)) m_strKoukuCompletePlayStatus += " / " + restore;
@@ -1370,6 +1375,30 @@ void CMainApp::UpdateKoukuGateCompletePlay()
 }
 
 
+void CMainApp::Sync_KoukuCinematicUI()
+{
+	const auto* arena = CLevel_KakulSaydonArena::Get_Active();
+	const bool_t suppressed = arena &&
+		CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::KAKULSAYDON_ARENA) &&
+		arena->Is_CinematicPresentationActive();
+	auto& router = CUIInputRouter::Get();
+	if (suppressed && !router.Is_CinematicSuppressed())
+	{
+		// Release may arrive while updates are hidden; no gesture may commit after the cutscene.
+		if (m_pInventoryView) m_pInventoryView->Cancel_Interaction();
+		if (m_pCharacterInfoView) m_pCharacterInfoView->Cancel_Interaction();
+		if (m_pAvatarBookView) m_pAvatarBookView->Cancel_Interaction();
+		if (m_pVehicleWindowView) m_pVehicleWindowView->Cancel_Interaction();
+		if (m_pHonorTitleWindowView) m_pHonorTitleWindowView->Cancel_Interaction();
+		if (m_pWorldMapWindowView) m_pWorldMapWindowView->Cancel_Interaction();
+		if (m_pSystemOptionView) m_pSystemOptionView->Cancel_Interaction();
+		if (m_pChatWindowView) m_pChatWindowView->Cancel_Interaction();
+		if (m_pPartyWindowView) m_pPartyWindowView->Cancel_Interaction();
+		if (m_pQuickSlotDragView) m_pQuickSlotDragView->Cancel();
+	}
+	router.Set_CinematicSuppressed(suppressed);
+}
+
 void CMainApp::Update(const f32_t fTimeDelta)
 {
 	{
@@ -1380,6 +1409,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	CUIInputRouter -- resets its click-edge tracking. End_Frame() (this function's very end)
 	applies the gameplay-mouse block for anything that claimed the mouse this frame. */
 	CUIInputRouter::Get().Begin_Frame();
+	Sync_KoukuCinematicUI();
 
 #ifdef _DEBUG
 	// Complete export even when F1 or the profiler window is hidden.
@@ -1388,6 +1418,17 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	UpdateDebugToolShortcut();
 #endif
 
+	/* System option rows read every frame: the cursor lock follows focus and window moves,
+	the FPS readout is a smoothed frame rate. */
+	CUserSettings::Get().Update_CursorLock(IsWindowOwnedByCurrentProcess(GetForegroundWindow()));
+	if (fTimeDelta > 0.f)
+	{
+		const f32_t fInstantFps = 1.f / fTimeDelta;
+		m_fSmoothedFps = m_fSmoothedFps <= 0.f ? fInstantFps : m_fSmoothedFps + (fInstantFps - m_fSmoothedFps) * 0.1f;
+	}
+
+	if (!CUIInputRouter::Get().Is_CinematicSuppressed())
+	{
 	/* I is a normal gameplay keybind (the inventory), not an F1/F6 tool-switch key.
 	Is_TextInputActive is the runtime UI's own WantTextInput (the ImGui-free nickname field) --
 	both must gate every keybind below the same way. */
@@ -1471,14 +1512,6 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		m_bWorldMapKeyDown = keyDown;
 	}
 
-	/* System option rows read every frame: the cursor lock follows focus and window moves,
-	the FPS readout is a smoothed frame rate. */
-	CUserSettings::Get().Update_CursorLock(IsWindowOwnedByCurrentProcess(GetForegroundWindow()));
-	if (fTimeDelta > 0.f)
-	{
-		const f32_t fInstantFps = 1.f / fTimeDelta;
-		m_fSmoothedFps = m_fSmoothedFps <= 0.f ? fInstantFps : m_fSmoothedFps + (fInstantFps - m_fSmoothedFps) * 0.1f;
-	}
 	Update_SystemOptionWindow(fTimeDelta);
 	Update_LobbyButtons(fTimeDelta);
 	Update_CharacterSelectWindow(fTimeDelta);
@@ -1578,6 +1611,20 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		m_bEscapeDown = escapeDown;
 	}
 
+	}
+	else
+	{
+		// Keep the real key edges current without changing any hidden window's state.
+		const bool_t focused = IsWindowOwnedByCurrentProcess(GetForegroundWindow());
+		const auto down = [focused](int key) { return focused && 0 != (GetAsyncKeyState(key) & 0x8000); };
+		m_bIDown = down(0x49); m_bCharacterInfoKeyDown = down(0x50);
+		m_bVehicleWindowKeyDown = down(0x4e); m_bWorldMapKeyDown = down(0x4d);
+		m_bSystemOptionKeyDown = m_bEscapeDown = down(VK_ESCAPE); m_bEnterDown = down(VK_RETURN);
+		for (int i = 0; i < 4; ++i) m_bItemKeyDown[i] = down(0x31 + i);
+		const int keys[] = {0x35, 0x36, 0x37, 0x38, 0x39, 0x30};
+		for (int i = 0; i < 6; ++i) m_bSpecialKeyDown[i] = down(keys[i]);
+	}
+
 	if (nullptr != m_pImGuiLayer)
 		m_pImGuiLayer->BeginFrame();
 
@@ -1610,7 +1657,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	ImGui InputText's WantsCaptureKeyboard does -- WASD/skill keys must not fire mid-typing. */
 	const bool_t keyboardCaptured = (nullptr != m_pImGuiLayer &&
 		(m_pImGuiLayer->WantsCaptureKeyboard() || externalToolFocused)) ||
-		CUIInputRouter::Get().Is_TextInputActive();
+		CUIInputRouter::Get().Is_TextInputActive() || CUIInputRouter::Get().Is_CinematicSuppressed();
 	/* A runtime UI window (inventory, character info, party, chat) that has the cursor claims
 	the mouse through CUIInputRouter; without folding that in here this call would re-open the
 	gameplay mouse for CPlayerController's tick right after End_Frame() closed it, so a left
@@ -1631,6 +1678,8 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Network.DrainAndDispatch");
 		CNetworkManager::Get().Update();
 	}
+	// Release raids also emit owner lifecycle events; drain the shared queues every frame.
+	CKoukuSaydonPatternAuditionService::Get().Update();
 #ifdef _DEBUG
 	/* PLAY_PATTERN_ID has one process-wide verdict/lifecycle queue shared by
 	   Balance, Effect, and Valtan Boss Tools. Drain it once per frame here, independent
@@ -1638,7 +1687,6 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	CValtanPatternAuditionService::Get().Update();
 	CValtanPatternFlowService::Get().Update();
 	CValtanTuningCommandService::Get().Update();
-	CKoukuSaydonPatternAuditionService::Get().Update();
 	if (m_pKoukuSaydonBossTool)
 	{
 		const bool preparing = m_pKoukuSaydonBossTool->Is_PlayPreparationPending();
@@ -2849,7 +2897,8 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	/* Every open runtime window now clips the text drawn under it for the rest of this frame
 	(Level nameplates, HUD captions, chat bubbles) -- the sprites already cover it, the text
 	has to be told. The text pass re-sets this per window before the windows' own labels. */
-	Add_OpenWindowTextClipOuts();
+	Sync_KoukuCinematicUI();
+	if (!CUIInputRouter::Get().Is_CinematicSuppressed()) Add_OpenWindowTextClipOuts();
 }
 
 void CMainApp::Add_OpenWindowTextClipOuts()
@@ -2873,6 +2922,7 @@ void CMainApp::Add_OpenWindowTextClipOuts()
 
 HRESULT CMainApp::Render()
 {
+	Sync_KoukuCinematicUI();
 	float4_t clearColor = { 0.008f, 0.012f, 0.025f, 1.f };
 	HRESULT hBeginResult;
 	{
@@ -2889,6 +2939,7 @@ HRESULT CMainApp::Render()
 
 	/* The character info window's live portrait draws into its own target here, before the
 	world/UI pass whose CI_Preview sprite samples it. */
+	if (!CUIInputRouter::Get().Is_CinematicSuppressed())
 	{
 		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Render.Portraits");
 		Engine::CProfilerGpuScope gpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Render.Portraits");
@@ -2911,6 +2962,7 @@ HRESULT CMainApp::Render()
 		CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::KAKULSAYDON_ARENA))
 	{
 		arena->Submit_MapLightFrame();
+		arena->Trace_CinematicPresentation(m_RenderingProfiles.Get_ActiveProfileId());
 		arena->Submit_EntranceTriggerMarkers();
 	}
 	HRESULT hWorldResult;
@@ -2956,7 +3008,7 @@ HRESULT CMainApp::Render()
 			(ETOUI(LEVEL::CHARACTER_SELECT) == hudLevel &&
 				nullptr != CLevel_CharacterSelect::Get_Active() &&
 				CLevel_CharacterSelect::Get_Active()->Is_CustomizingOpen());
-		if (nullptr != m_pHUDLayoutTool && hudPlayer.isValid &&
+		if (!CUIInputRouter::Get().Is_CinematicSuppressed() && nullptr != m_pHUDLayoutTool && hudPlayer.isValid &&
 			supportsAuthoredHUD && !skillWindowOpenForPreview &&
 			!isCharSelectOverlayOpen)
 		{
@@ -2975,6 +3027,8 @@ HRESULT CMainApp::Render()
 		   (Update_BossHealthBar's own CUI_Sprite slots render through the normal
 		   engine pipeline instead, so they're not part of this particular
 		   ordering concern anymore.) */
+		if (!CUIInputRouter::Get().Is_CinematicSuppressed())
+		{
 		if (ETOUI(LEVEL::BERN) == CGameInstance::Get().Get_CurrentLevelID())
 		{
 			if (CLevel_Bern* pBern = CLevel_Bern::Get_Active())
@@ -3052,6 +3106,7 @@ HRESULT CMainApp::Render()
 					m_pPartyWindowView->Render();
 				}
 			}
+		}
 		}
 #ifdef _DEBUG
 		if (!m_pLevelNavigationDebug)
@@ -3306,11 +3361,13 @@ HRESULT CMainApp::Render()
 	{
 		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Render.BossShowcase");
 		Engine::CProfilerGpuScope gpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Render.BossShowcase");
-	CRaidBossShowcaseService::Render(m_pDevice, m_pContext);
+	if (!CUIInputRouter::Get().Is_CinematicSuppressed()) CRaidBossShowcaseService::Render(m_pDevice, m_pContext);
 	}
 	{
 		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Render.UIText");
 		Engine::CProfilerGpuScope gpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Render.UIText");
+	if (!CUIInputRouter::Get().Is_CinematicSuppressed())
+	{
 	/* Same reasoning as the old combat-HUD/boss-bar/charge-gauge
 	   image gate above (isCharSelectDebugPreviewOpen there) -- these are that
 	   HUD's own text counterparts (HP/MP numbers, boss HP text, gauge percent),
@@ -3465,6 +3522,9 @@ HRESULT CMainApp::Render()
 	if (nullptr != m_pSongCastGaugeView)
 		m_pSongCastGaugeView->Render_Text();
 
+	}
+	// Advance the event cursor even while cinematic UI is hidden; never replay old hits.
+	if (CUIInputRouter::Get().Is_CinematicSuppressed()) RenderDamageNumbers();
 	/* Every CUIInputRouter-based screen's click-edge check has run by this point (both this
 	function's own render pass and the Update() pass earlier this same frame) -- rolls the
 	left-button edge state forward for next frame and applies SetInputBlocked for anything
@@ -7582,6 +7642,13 @@ void CMainApp::RenderDamageNumbers()
 		currentLevel != ETOUI(LEVEL::CHARACTER_SELECT) &&
 		currentLevel != ETOUI(LEVEL::KAKULSAYDON_ARENA))
 	{
+		return;
+	}
+	if (CUIInputRouter::Get().Is_CinematicSuppressed())
+	{
+		for (const auto& event : CCombatHUDViewModel::Get().Get_DamageEvents())
+			m_iLastRenderedDamageServerTick = (std::max)(m_iLastRenderedDamageServerTick, event.iServerTick);
+		m_FloatingDamageNumbers.clear();
 		return;
 	}
 	if (nullptr != m_pSkillWindowView && m_pSkillWindowView->Is_Open())

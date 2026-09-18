@@ -1,4 +1,5 @@
 #include "EffectV2_Object.h"
+#include "EffectFailureDiagnostic.h"
 #include "Engine_VertexTypes.h"
 #include "BinaryAsset/ModelDecoderRegistry.h"
 #include "GameInstance.h"
@@ -1820,13 +1821,28 @@ HRESULT Client::CEffectV2Object::Render_Decal(const uint32_t iPass)
 
 HRESULT Client::CEffectV2Object::Render()
 {
+	const auto Fail = [this](const char* reason)
+	{
+		m_strStatus = reason;
+		try
+		{
+			Write_EffectFailureDiagnostic("V2.render",
+				"effect=" + m_CreationDesc.strDiagnosticEffectId +
+				" group=" + m_CreationDesc.strDiagnosticGroupId +
+				" mesh=" + m_CreationDesc.strMeshAssetId +
+				" base=" + m_CreationDesc.TextureAssetIds[static_cast<size_t>(TEXTURE_INPUT::BASE)] +
+				" shape=" + std::to_string(static_cast<unsigned int>(m_eShape)) +
+				" hr=0x80004005 reason=" + reason);
+		}
+		catch (...) { }
+		return E_FAIL;
+	};
 	// Transport can finish an object after Late_Update queued its shared pointer.
 	if (m_bFinished || m_bHidden || SHAPE::SCREEN_POST == m_eShape || nullptr == m_pShader)
 		return S_OK;
 	if (FAILED(Bind_Common(m_pShader)))
 	{
-		m_strStatus = "Shader bind failed.";
-		return E_FAIL;
+		return Fail("Shader bind failed.");
 	}
 	const uint32_t iPass = BLEND_MODE::SOLID == m_Params.eBlend ? 4u :
 		BLEND_MODE::MULTIPLY == m_Params.eBlend ? (m_Params.bDepthTest ? 5u : 6u) :
@@ -1846,19 +1862,16 @@ HRESULT Client::CEffectV2Object::Render()
 			if (FAILED(m_pShader->Bind_RawValue("g_HasBase", &iHasBase, sizeof(iHasBase))) ||
 				(0u != iHasBase && FAILED(m_pShader->Bind_Texture("g_BaseTexture", pBase))))
 			{
-				m_strStatus = "Part base bind failed.";
-				return E_FAIL;
+				return Fail("Part base bind failed.");
 			}
 			if (m_bSkinned && FAILED(m_pModel->Bind_BoneMatrices(
 				m_pShader, "g_BoneMatrices", iMesh)))
 			{
-				m_strStatus = "Bone matrix bind failed.";
-				return E_FAIL;
+				return Fail("Bone matrix bind failed.");
 			}
 			if (FAILED(m_pShader->Begin(iPass)) || FAILED(m_pModel->Render(iMesh)))
 			{
-				m_strStatus = "Mesh draw failed.";
-				return E_FAIL;
+				return Fail("Mesh draw failed.");
 			}
 		}
 		if (m_Params.fOutlineWidth > 0.f && m_Params.vOutlineColor.w > 0.f)
@@ -1868,8 +1881,7 @@ HRESULT Client::CEffectV2Object::Render()
 				FAILED(m_pShader->Bind_RawValue("g_OutlineColor",
 					&m_Params.vOutlineColor, sizeof(m_Params.vOutlineColor))))
 			{
-				m_strStatus = "Outline bind failed.";
-				return E_FAIL;
+				return Fail("Outline bind failed.");
 			}
 			for (uint32_t iMesh = 0u; iMesh < m_pModel->Get_NumMeshes(); ++iMesh)
 			{
@@ -1878,13 +1890,11 @@ HRESULT Client::CEffectV2Object::Render()
 				if (m_bSkinned && FAILED(m_pModel->Bind_BoneMatrices(
 					m_pShader, "g_BoneMatrices", iMesh)))
 				{
-					m_strStatus = "Bone matrix bind failed.";
-					return E_FAIL;
+					return Fail("Bone matrix bind failed.");
 				}
 				if (FAILED(m_pShader->Begin(7u)) || FAILED(m_pModel->Render(iMesh)))
 				{
-					m_strStatus = "Outline draw failed.";
-					return E_FAIL;
+					return Fail("Outline draw failed.");
 				}
 			}
 		}
@@ -1894,16 +1904,14 @@ HRESULT Client::CEffectV2Object::Render()
 			FAILED(m_pRect->Bind_Resources()) ||
 			FAILED(m_pRect->Render()))
 		{
-			m_strStatus = "Sprite draw failed.";
-			return E_FAIL;
+			return Fail("Sprite draw failed.");
 		}
 		return S_OK;
 	case SHAPE::PARTICLE:
 	{
 		if (FAILED(Build_ParticleInstances()))
 		{
-			m_strStatus = "Particle instance upload failed.";
-			return E_FAIL;
+			return Fail("Particle instance upload failed.");
 		}
 		if (Is_MeshParticle())
 		{
@@ -1917,8 +1925,7 @@ HRESULT Client::CEffectV2Object::Render()
 					FAILED(m_pModel->Render_Instanced(iMesh, m_pMeshInstanceBuffer.Get(),
 						sizeof(Engine::VTXEFFECT_PARTICLE), iCount)))
 				{
-					m_strStatus = "Mesh particle draw failed.";
-					return E_FAIL;
+					return Fail("Mesh particle draw failed.");
 				}
 			}
 			return S_OK;
@@ -1927,8 +1934,7 @@ HRESULT Client::CEffectV2Object::Render()
 			return S_OK;
 		if (FAILED(m_pShader->Begin(iPass)) || FAILED(m_pParticleBuffer->Render()))
 		{
-			m_strStatus = "Particle draw failed.";
-			return E_FAIL;
+			return Fail("Particle draw failed.");
 		}
 		return S_OK;
 	}
@@ -1937,8 +1943,7 @@ HRESULT Client::CEffectV2Object::Render()
 		const HRESULT hGeometry = Build_TrailGeometry();
 		if (FAILED(hGeometry))
 		{
-			m_strStatus = "Trail geometry upload failed.";
-			return E_FAIL;
+			return Fail("Trail geometry upload failed.");
 		}
 		if (S_FALSE == hGeometry)
 			return S_OK;
@@ -1946,22 +1951,20 @@ HRESULT Client::CEffectV2Object::Render()
 			FAILED(m_pTrailBuffer->Bind_Resources()) ||
 			FAILED(m_pTrailBuffer->Render()))
 		{
-			m_strStatus = "Trail draw failed.";
-			return E_FAIL;
+			return Fail("Trail draw failed.");
 		}
 		return S_OK;
 	}
 	case SHAPE::DECAL:
 		if (FAILED(Render_Decal(iPass)))
 		{
-			m_strStatus = "Decal draw failed.";
-			return E_FAIL;
+			return Fail("Decal draw failed.");
 		}
 		return S_OK;
 	case SHAPE::SCREEN_POST:
 		return S_OK;
 	default:
-		return E_FAIL;
+		return Fail("Unknown Effect V2 render shape.");
 	}
 }
 

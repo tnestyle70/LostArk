@@ -41,6 +41,10 @@ namespace Client
 		std::size_t iRawQueueHighWatermark = 0u;
 		std::size_t iEventQueueDepth = 0u;
 		std::size_t iEventQueueHighWatermark = 0u;
+		std::uint64_t iLastMainPumpUnixMs = 0u;
+		std::uint64_t iMaxMainPumpGapMs = 0u;
+		std::uint64_t iMainPumpStallCount = 0u;
+		std::uint64_t iRawSnapshotsCoalesced = 0u;
 		std::string strDetail;
 		std::string strCapturePath;
 		std::string strCaptureIoStatus;
@@ -75,6 +79,8 @@ namespace Client
 			LostArk::Shared::PACKET_TYPE packetType,
 			std::size_t rawQueueDepth);
 		void Record_RawQueueDepth(std::size_t rawQueueDepth);
+		void Record_MainPump();
+		void Record_RawSnapshotCoalesced();
 		void Record_EventQueueDepth(std::size_t eventQueueDepth);
 		void Record_ServerTick(std::uint32_t serverTick);
 		bool Record_Terminal(
@@ -101,5 +107,7 @@ namespace Client
 		std::filesystem::path m_CapturePath;
 		std::string m_CaptureIoStatus;
 		bool m_hasAttemptedCapturePath = false;
+		std::uint64_t m_LastMainPumpTickMs = 0u;
+		std::uint64_t m_LastPumpRecordTickMs = 0u;
 	};
 }

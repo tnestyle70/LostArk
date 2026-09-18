@@ -1,7 +1,7 @@
 {
   "schema": "lostark.kouku-saydon-composition",
   "formatVersion": 3,
-  "revision": 1750,
+  "revision": 1753,
   "compositionId": "boss.composition.kakulsaydon.gate1",
   "encounterId": "ENCOUNTER_KAKULSAYDON_G1",
   "bossArchetypeId": "BOSS_KAKULSAYDON_G1_KOUKU",
@@ -73777,7 +73777,8 @@
           "anchorKind": "WORLD",
           "followBoss": false
         }
-      ]
+      ],
+      "durationMs": 27000
     },
     {
       "patternId": "KAKULSAYDON_G1_PATTERN_74",
@@ -74659,7 +74660,8 @@
           "anchorKind": "WORLD",
           "followBoss": false
         }
-      ]
+      ],
+      "durationMs": 35368
     },
     {
       "patternId": "KAKULSAYDON_G1_PATTERN_75",
@@ -75167,7 +75169,8 @@
           "anchorKind": "WORLD",
           "followBoss": false
         }
-      ]
+      ],
+      "durationMs": 49083
     },
     {
       "patternId": "KAKULSAYDON_G1_PATTERN_76",
@@ -75178,7 +75181,7 @@
       "displayName": "쇼타임_연출",
       "authoringStatus": "DRAFT",
       "category": "MECHANIC",
-      "nextStageOrdinal": 2,
+      "nextStageOrdinal": 3,
       "nextAnimationOrdinal": 3,
       "nextLogicOccurrenceOrdinal": 1,
       "nextSummonOccurrenceOrdinal": 1,
@@ -75189,7 +75192,7 @@
           "stageId": "STAGE_1",
           "actionId": "KAKULSAYDON_G1_PATTERN_76.stage.1",
           "stageKind": "ACTIVE",
-          "durationMs": 5000,
+          "durationMs": 4430,
           "animationOccurrences": [
             {
               "occurrenceId": "KAKULSAYDON_G1_PATTERN_76.animation.1",
@@ -75204,7 +75207,15 @@
               "playMs": 4430,
               "playRate": 1,
               "endPolicy": "EXACT"
-            },
+            }
+          ]
+        },
+        {
+          "stageId": "STAGE_2",
+          "actionId": "KAKULSAYDON_G1_PATTERN_76.stage.2",
+          "stageKind": "ACTIVE",
+          "durationMs": 570,
+          "animationOccurrences": [
             {
               "occurrenceId": "KAKULSAYDON_G1_PATTERN_76.animation.2",
               "profileId": "MN_RPCT_05",
@@ -75213,7 +75224,7 @@
               "sourceSlotId": "rpct00_att_battle_28_05_start",
               "referenceRevision": "",
               "runtimeClip": "rpct00_att_battle_28_05_start",
-              "startOffsetMs": 4430,
+              "startOffsetMs": 0,
               "sourceStartMs": 0,
               "playMs": 570,
               "blendInMs": 570,
@@ -75700,7 +75711,8 @@
           "anchorKind": "WORLD",
           "followBoss": false
         }
-      ]
+      ],
+      "durationMs": 11950
     },
     {
       "patternId": "KAKULSAYDON_G1_PATTERN_78",
@@ -85271,18 +85283,6 @@
           "waitAfterMs": 1000
         },
         {
-          "entryId": "kakulsaydon.flow.gate1.entry.5",
-          "kind": "PATTERN",
-          "targetId": "KAKULSAYDON_G1_PATTERN_29",
-          "waitAfterMs": 1000
-        },
-        {
-          "entryId": "kakulsaydon.flow.gate1.entry.6",
-          "kind": "PATTERN",
-          "targetId": "KAKULSAYDON_G1_PATTERN_30",
-          "waitAfterMs": 0
-        },
-        {
           "entryId": "kakulsaydon.flow.gate1.raid.7",
           "kind": "PATTERN",
           "targetId": "KAKULSAYDON_G1_PATTERN_47",
@@ -85380,22 +85380,22 @@
           "waitAfterMs": 1000
         },
         {
-          "entryId": "kakulsaydon.flow.gate2.entry.8",
-          "kind": "BUNDLE",
-          "targetId": "kakulsaydon.bundle.9",
-          "waitAfterMs": 1000
-        },
-        {
           "entryId": "kakulsaydon.flow.gate2.entry.9",
           "kind": "BUNDLE",
           "targetId": "kakulsaydon.bundle.10",
           "waitAfterMs": 1000
         },
         {
+          "entryId": "kakulsaydon.flow.gate2.entry.8",
+          "kind": "BUNDLE",
+          "targetId": "kakulsaydon.bundle.9",
+          "waitAfterMs": 1000
+        },
+        {
           "entryId": "kakulsaydon.flow.gate2.entry.11",
           "kind": "PATTERN",
           "targetId": "KAKULSAYDON_G1_PATTERN_27",
-          "waitAfterMs": 0
+          "waitAfterMs": 1000
         },
         {
           "entryId": "kakulsaydon.flow.gate2.raid.10",
@@ -85435,72 +85435,6 @@
       "displayName": "GATE3 Pattern Flow",
       "entries": [
         {
-          "entryId": "kakulsaydon.flow.gate3.raid.1",
-          "kind": "PATTERN",
-          "targetId": "KAKULSAYDON_G1_PATTERN_38",
-          "waitAfterMs": 1000
-        },
-        {
-          "entryId": "kakulsaydon.flow.gate3.raid.2",
-          "kind": "PATTERN",
-          "targetId": "KAKULSAYDON_G1_PATTERN_39",
-          "waitAfterMs": 1000
-        },
-        {
-          "entryId": "kakulsaydon.flow.gate3.raid.3",
-          "kind": "PATTERN",
-          "targetId": "KAKULSAYDON_G1_PATTERN_40",
-          "waitAfterMs": 1000
-        },
-        {
-          "entryId": "kakulsaydon.flow.gate3.raid.4",
-          "kind": "PATTERN",
-          "targetId": "KAKULSAYDON_G1_PATTERN_41",
-          "waitAfterMs": 1000
-        },
-        {
-          "entryId": "kakulsaydon.flow.gate3.raid.5",
-          "kind": "PATTERN",
-          "targetId": "KAKULSAYDON_G1_PATTERN_43",
-          "waitAfterMs": 1000
-        },
-        {
-          "entryId": "kakulsaydon.flow.gate3.raid.6",
-          "kind": "PATTERN",
-          "targetId": "KAKULSAYDON_G1_PATTERN_46",
-          "waitAfterMs": 1000
-        },
-        {
-          "entryId": "kakulsaydon.flow.gate3.raid.7",
-          "kind": "PATTERN",
-          "targetId": "KAKULSAYDON_G1_PATTERN_49",
-          "waitAfterMs": 1000
-        },
-        {
-          "entryId": "kakulsaydon.flow.gate3.raid.8",
-          "kind": "PATTERN",
-          "targetId": "KAKULSAYDON_G1_PATTERN_59",
-          "waitAfterMs": 1000
-        },
-        {
-          "entryId": "kakulsaydon.flow.gate3.raid.9",
-          "kind": "PATTERN",
-          "targetId": "KAKULSAYDON_G1_PATTERN_52",
-          "waitAfterMs": 1000
-        },
-        {
-          "entryId": "kakulsaydon.flow.gate3.raid.10",
-          "kind": "PATTERN",
-          "targetId": "KAKULSAYDON_G1_PATTERN_65",
-          "waitAfterMs": 1000
-        },
-        {
-          "entryId": "kakulsaydon.flow.gate3.raid.11",
-          "kind": "PATTERN",
-          "targetId": "KAKULSAYDON_G1_PATTERN_66",
-          "waitAfterMs": 1000
-        },
-        {
           "entryId": "kakulsaydon.flow.gate3.raid.12",
           "kind": "PATTERN",
           "targetId": "KAKULSAYDON_G1_PATTERN_88",
@@ -85513,12 +85447,6 @@
           "waitAfterMs": 1000
         },
         {
-          "entryId": "kakulsaydon.flow.gate3.entry.3",
-          "kind": "PATTERN",
-          "targetId": "KAKULSAYDON_G1_PATTERN_35",
-          "waitAfterMs": 1000
-        },
-        {
           "entryId": "kakulsaydon.flow.gate3.raid.15",
           "kind": "PATTERN",
           "targetId": "KAKULSAYDON_G1_PATTERN_92",
@@ -85528,6 +85456,36 @@
           "entryId": "kakulsaydon.flow.gate3.raid.16",
           "kind": "PATTERN",
           "targetId": "KAKULSAYDON_G1_PATTERN_93",
+          "waitAfterMs": 1000
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate3.raid.9",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_52",
+          "waitAfterMs": 1000
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate3.raid.6",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_46",
+          "waitAfterMs": 1000
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate3.raid.11",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_66",
+          "waitAfterMs": 1000
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate3.entry.20260919.showtime-intro",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_76",
+          "waitAfterMs": 0
+        },
+        {
+          "entryId": "kakulsaydon.flow.gate3.entry.3",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_35",
           "waitAfterMs": 0
         }
       ]

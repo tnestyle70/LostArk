@@ -1,4 +1,5 @@
 #include <WinSock2.h>
+#include "EffectFailureDiagnostic.h"
 #include "imgui.h"
 #include "Engine_RenderTypes.h"
 #include "KoukuSaydonPresentationPlayer.h"
@@ -2003,8 +2004,22 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
         {
             PLAYING_ROW& row;
             const std::string& status;
-            ~ROW_FAILURE_GUARD() { if (row.failed && row.failureStatus.empty()) row.failureStatus = status; }
-        } failureGuard{row, m_strStatus};
+            const std::string& occurrence;
+            const std::string& asset;
+            ~ROW_FAILURE_GUARD()
+            {
+                if (row.failed && row.failureStatus.empty())
+                {
+                    row.failureStatus = status;
+                    try
+                    {
+                        Write_EffectFailureDiagnostic("Kouku.occurrence", "occurrence=" + occurrence +
+                            " asset=" + asset + " reason=" + status);
+                    }
+                    catch (...) { }
+                }
+            }
+        } failureGuard{row, m_strStatus, box.strOccurrenceId, resource.strAssetId};
         const float age = (clockMs - box.iStartMs) / 1000.f;
         const float effectRate = Effect_SourceClockRate(resource, box);
         float effectCycleStart = Effect_SourceCycleStartSeconds(age, row.v1FiniteLoopSeconds);

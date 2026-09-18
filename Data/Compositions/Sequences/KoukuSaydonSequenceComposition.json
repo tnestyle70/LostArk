@@ -1,7 +1,7 @@
 {
   "schema": "lostark.kouku-saydon-composition",
   "formatVersion": 3,
-  "revision": 64,
+  "revision": 65,
   "compositionId": "boss.composition.kakulsaydon.sequencer",
   "encounterId": "ENCOUNTER_KAKULSAYDON_G1",
   "bossArchetypeId": "BOSS_KAKULSAYDON_G1_KOUKU",
@@ -14118,42 +14118,42 @@
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_1.world.1",
           "worldId": "kakulsaydon.g1.world.7",
           "startMs": 0,
-          "durationMs": 37800,
+          "durationMs": 40652,
           "playbackSpeed": 1
         },
         {
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_1.world.2",
           "worldId": "kakulsaydon.g1.world.8",
           "startMs": 0,
-          "durationMs": 37800,
+          "durationMs": 40652,
           "playbackSpeed": 1
         },
         {
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_1.world.3",
           "worldId": "kakulsaydon.g1.world.9",
           "startMs": 0,
-          "durationMs": 37800,
+          "durationMs": 40652,
           "playbackSpeed": 1
         },
         {
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_1.world.4",
           "worldId": "kakulsaydon.g1.world.10",
           "startMs": 0,
-          "durationMs": 37800,
+          "durationMs": 40652,
           "playbackSpeed": 1
         },
         {
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_1.world.5",
           "worldId": "kakulsaydon.g1.world.11",
           "startMs": 0,
-          "durationMs": 37800,
+          "durationMs": 40652,
           "playbackSpeed": 1
         },
         {
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_1.world.6",
           "worldId": "kakulsaydon.g1.world.33",
           "startMs": 0,
-          "durationMs": 37800,
+          "durationMs": 40652,
           "playbackSpeed": 1
         }
       ],
@@ -15143,42 +15143,42 @@
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_4.world.15",
           "worldId": "kakulsaydon.g1.world.7",
           "startMs": 19959,
-          "durationMs": 38851,
+          "durationMs": 41703,
           "playbackSpeed": 1
         },
         {
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_4.world.16",
           "worldId": "kakulsaydon.g1.world.8",
           "startMs": 19959,
-          "durationMs": 38851,
+          "durationMs": 41703,
           "playbackSpeed": 1
         },
         {
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_4.world.17",
           "worldId": "kakulsaydon.g1.world.9",
           "startMs": 19959,
-          "durationMs": 38851,
+          "durationMs": 41703,
           "playbackSpeed": 1
         },
         {
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_4.world.18",
           "worldId": "kakulsaydon.g1.world.10",
           "startMs": 19959,
-          "durationMs": 38851,
+          "durationMs": 41703,
           "playbackSpeed": 1
         },
         {
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_4.world.19",
           "worldId": "kakulsaydon.g1.world.11",
           "startMs": 19959,
-          "durationMs": 38851,
+          "durationMs": 41703,
           "playbackSpeed": 1
         },
         {
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_4.world.20",
           "worldId": "kakulsaydon.g1.world.33",
           "startMs": 19959,
-          "durationMs": 38851,
+          "durationMs": 41703,
           "playbackSpeed": 1
         }
       ],

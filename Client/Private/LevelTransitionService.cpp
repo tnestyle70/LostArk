@@ -107,7 +107,9 @@ void Client::CLevelTransitionService::Report_Recovery(
 		network.Get_SessionDiagnosticSnapshot();
 	// The process trace keeps every typed recovery edge even when the Lobby UI
 	// already owns an earlier first-recovery snapshot for this generation.
-	network.Record_SessionRecovery(reason, source, detail);
+	network.Record_SessionRecovery(reason, source,
+		"hresult=" + std::to_string(static_cast<std::uint32_t>(result)) +
+		" detail=" + std::string(detail));
 
 	{
 		std::scoped_lock lock{ g_TransitionMutex };

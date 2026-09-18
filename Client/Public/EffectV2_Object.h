@@ -322,6 +322,9 @@ public:
 
 	struct DESC final : public GAMEOBJECT_DESC
 	{
+		// Process-local failure identity; not part of the authored document schema.
+		std::string strDiagnosticEffectId;
+		std::string strDiagnosticGroupId;
 		SHAPE eShape = SHAPE::SPRITE;
 		std::string strMeshAssetId;
 		std::array<std::string, static_cast<size_t>(TEXTURE_INPUT::END)> TextureAssetIds;

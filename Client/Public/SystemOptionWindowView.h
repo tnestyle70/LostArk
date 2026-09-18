@@ -36,6 +36,8 @@ defaults of the screen / of everything. */
 class CSystemOptionWindowView final
 {
 public:
+	/* Cancel transient gestures without closing or moving the window. */
+	void Cancel_Interaction() { m_Drag.Reset(); m_bDragging = m_bScrollDragging = false; m_iSliderDragKey = 0; }
 	CSystemOptionWindowView(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext);
 	~CSystemOptionWindowView();
 

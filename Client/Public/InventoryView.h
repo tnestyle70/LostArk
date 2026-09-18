@@ -35,6 +35,13 @@ positioned off the same Get_SlotRect rects as everything else here. */
 class CInventoryView final
 {
 public:
+	/* Cancel transient gestures without closing or moving the window. */
+	void Cancel_Interaction()
+	{
+		m_iDragFromSlot = -1; m_bDraggingPanel = false;
+		m_bHasPendingItemDrop = m_bHasPendingItemPick = false;
+		m_strPendingDropItemId.clear(); m_strPendingPickItemId.clear(); m_strPendingPickIconPath.clear();
+	}
 	CInventoryView(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext);
 	~CInventoryView();
 

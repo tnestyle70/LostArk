@@ -1395,6 +1395,7 @@ HRESULT Client::CLevel_KakulSaydonArena::Initialize()
 			m_pDevice, m_pContext, ETOUI(LEVEL::KAKULSAYDON_ARENA), TEXT("Layer_UI"),
 			L"UI/KakulFade/KakulFadeUI.json");
 		m_pTriggerMoveFadeView->Set_SlotVisible("KakulFade_Screen", false);
+		m_pTriggerMoveFadeView->Set_SlotCinematicOverlay("KakulFade_Screen", true);
 		m_pMadnessGaugeView = std::make_unique<CKoukuMadnessGaugeView>(
 			m_pDevice, m_pContext, ETOUI(LEVEL::KAKULSAYDON_ARENA));
 
@@ -2127,6 +2128,7 @@ HRESULT Client::CLevel_KakulSaydonArena::Render()
 	const HRESULT drawn = __super::Render();
 	if (FAILED(drawn))
 		return drawn;
+	if (Is_CinematicPresentationActive()) return drawn;
 	/* The award page is a full-screen modal: no world text at all while it is up. Otherwise
 	   the gate prompt clips it, like CMainApp's windows do. */
 	if (nullptr == m_pMvpResultView || !m_pMvpResultView->Is_Visible())
@@ -3071,10 +3073,11 @@ Client::CLevel_KakulSaydonArena::Get_DebugGates()
 
 void Client::CLevel_KakulSaydonArena::Debug_ReturnToPlayerCamera()
 {
-	const auto character = m_Replication.Get_LocalCharacter();
-	if (!m_pCamera || !character || !character->Get_Transform()) return;
+	// Release presentation ownership even if the replicated player disappeared.
 	Stop_CompositionCamera(true);
 	Release_CameraShot();
+	const auto character = m_Replication.Get_LocalCharacter();
+	if (!m_pCamera || !character || !character->Get_Transform()) return;
 	m_pCamera->Set_FollowTarget(character->Get_Transform());
 	m_pCamera->Set_FollowEnabled(true);
 	(void)m_pCamera->Set_FollowPose(m_FollowCameraProfile.positionOffset,
@@ -4233,6 +4236,55 @@ bool_t Client::CLevel_KakulSaydonArena::Try_GetCompositionWorldPivot(
  return m_SequencePlayer.Try_GetSequencePivot(std::string(instanceId), out, emissionIndex);
 }
 
+bool_t Client::CLevel_KakulSaydonArena::Is_CinematicPresentationActive() const
+{
+	if (m_bSequenceCombatPending) return true;
+	if (!m_pCamera) return false;
+	// Static/follow combat framing is not a cutscene. Only an owned timed track is.
+	if (m_CompositionCamera.cinematicTrack && !m_CompositionCamera.ownerKey.empty() &&
+		m_pCamera->Is_PresentationOverrideOwnedBy(0x4b4f554b55434f4dull)) return true;
+	if (!m_bCameraShotHeld || !m_pCamera->Is_PresentationOverrideOwnedBy(KAKULSAYDON_CAMERA_SHOT_OWNER_ID)) return false;
+	const auto shot = std::find_if(m_CameraShots.begin(), m_CameraShots.end(), [this](const auto& value) {
+		return value.strShotId == m_strActiveCameraShotId;
+	});
+	return shot != m_CameraShots.end() && shot->hasCameraTrack && !shot->followsPlayer &&
+		!shot->strSequenceInstanceId.empty() && m_SequencePlayer.Is_Playing(shot->strSequenceInstanceId);
+}
+
+void Client::CLevel_KakulSaydonArena::Trace_CinematicPresentation(const std::string_view renderingProfile)
+{
+	const auto& raid = m_Replication.Get_KoukuRaidState();
+	const std::string key = std::to_string(Is_CinematicPresentationActive()) + ":" +
+		std::to_string(raid.iRunEpoch) + ":" + std::to_string(static_cast<int>(raid.ePhase)) + ":" +
+		raid.strGateId + ":" + raid.strSequencePatternId + ":" + m_CompositionCamera.ownerKey + ":" +
+		m_strActiveCameraShotId + ":" + std::string(renderingProfile) + ":" + m_strGatePresentationProfileId;
+	if (key == m_strCinematicDiagnosticKey) return;
+	m_strCinematicDiagnosticKey = key;
+	std::size_t visible = 0u, unknown = 0u;
+	for (const auto& entry : m_MapRuntime.Get_Placements())
+	{
+		bool_t shown = false;
+		if (!CMapPlacementRuntime::Try_GetRuntimeVisible(entry, shown)) ++unknown;
+		else if (shown) ++visible;
+	}
+	std::ostringstream detail;
+	detail << "cinematic=" << Is_CinematicPresentationActive() << " pending=" << m_bSequenceCombatPending
+		<< " raidEpoch=" << raid.iRunEpoch << " phase=" << static_cast<int>(raid.ePhase)
+		<< " gate=" << raid.strGateId << " sequence=" << raid.strSequencePatternId
+		<< " scene=" << renderingProfile << " gateScene=" << m_strGatePresentationProfileId
+		<< " mapVisible=" << visible << " mapTotal=" << m_MapRuntime.Get_Placements().size() << " mapUnknown=" << unknown
+		<< " lightsBase=" << (m_pMapLightPresentation ? m_pMapLightPresentation->Get_Document().Get_Lights().size() : 0u)
+		<< " lightsGate=" << (m_pGateMapLightPresentation ? m_pGateMapLightPresentation->Get_Document().Get_Lights().size() : 0u)
+		<< " lightGateIndex=" << m_iGateLightingIndex << " lightAuthoring=" << bool(m_pMapLightAuthoringOverride)
+		<< " cameraOwner=" << m_CompositionCamera.ownerKey << " cameraShot=" << m_CompositionCamera.shotId
+		<< " areaShot=" << m_strActiveCameraShotId << " cameraReturning=" << m_CompositionCamera.returning
+		<< " fade=" << m_fTriggerMoveFadeAlpha << " fadeHeld=" << m_bSequenceCombatFadeHeld;
+#ifdef _DEBUG
+	detail << " lightComposition=" << m_bCompositionMapLightPreviewActive;
+#endif
+	CNetworkManager::Get().Record_SessionEvent("kouku.cinematic.transition", detail.str());
+}
+
 bool_t Client::CLevel_KakulSaydonArena::Is_CompositionCameraEnabled() const
 {
 	return m_pCamera && m_pCamera->Is_FollowEnabled();
@@ -4260,6 +4312,8 @@ bool_t Client::CLevel_KakulSaydonArena::Sample_CompositionCamera(
 		// Taking over an Area shot keeps the displayed pose but drops its stale owner state.
 		Release_CameraShot();
 		transition.ownerKey = std::string(ownerKey);
+		transition.shotId = std::string(shotId);
+		transition.cinematicTrack = found->hasCameraTrack && !found->followsPlayer;
 		transition.cancelledOwnerKey.clear();
 		transition.fromPose = current;
 		transition.entryPose = current;
@@ -4276,12 +4330,14 @@ bool_t Client::CLevel_KakulSaydonArena::Sample_CompositionCamera(
 	VALTAN_CINEMATIC_CAMERA_POSE target{ found->vEye, found->vLookAt, found->fFovYDegrees };
 	if (found->hasCameraTrack)
 	{
-		if (!CValtanCinematicCameraController::Sample_Cue(found->CameraTrack, seconds, target)) return false;
+		if (!CValtanCinematicCameraController::Sample_Cue(found->CameraTrack, seconds, target))
+		{ Stop_CompositionCamera(true); return false; }
 	}
 	else if (found->followsPlayer)
 	{
 		const auto character = m_Replication.Get_LocalCharacter();
-		if (!character || !character->Get_Transform()) return false;
+		if (!character || !character->Get_Transform())
+		{ Stop_CompositionCamera(true); return false; }
 		float3_t player; XMStoreFloat3(&player, character->Get_Transform()->Get_State(STATE::POSITION));
 		target.vEye = float3_t(player.x + found->vFollowEyeOffset.x, player.y + found->vFollowEyeOffset.y, player.z + found->vFollowEyeOffset.z);
 		target.vLookAt = float3_t(player.x + found->vFollowLookAtOffset.x, player.y + found->vFollowLookAtOffset.y, player.z + found->vFollowLookAtOffset.z);
@@ -4290,9 +4346,11 @@ bool_t Client::CLevel_KakulSaydonArena::Sample_CompositionCamera(
 	target.vLookAt.x += offset.x; target.vLookAt.y += offset.y; target.vLookAt.z += offset.z;
 	VALTAN_CINEMATIC_CAMERA_POSE applied = target;
 	if (found->iBlendInMs && !CValtanCinematicCameraController::Sample_BoundedTransition(
-		transition.fromPose, target, found->iBlendInMs, seconds, applied, found->eTransitionEasing)) return false;
+		transition.fromPose, target, found->iBlendInMs, seconds, applied, found->eTransitionEasing))
+	{ Stop_CompositionCamera(true); return false; }
 	if (!(applied.hasUp ? m_pCamera->Apply_PresentationPoseWithUp(owner, applied.vEye, applied.vLookAt, applied.vUp, applied.fFovYDegrees) :
-		m_pCamera->Apply_PresentationPose(owner, applied.vEye, applied.vLookAt, applied.fFovYDegrees))) return false;
+		m_pCamera->Apply_PresentationPose(owner, applied.vEye, applied.vLookAt, applied.fFovYDegrees)))
+	{ Stop_CompositionCamera(true); return false; }
 	transition.appliedPose = applied;
 	transition.lastSeconds = seconds;
 	return true;

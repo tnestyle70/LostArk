@@ -25,6 +25,7 @@ bool_t Client::CUIInputRouter::Is_Hovered(
 	f32_t fX, f32_t fY, f32_t fWidth, f32_t fHeight,
 	f32_t fRefWidth, f32_t fRefHeight) const
 {
+	if (m_bCinematicSuppressed) return false;
 	/* Same GetCursorPos + ScreenToClient pattern CPlayerController::Try_PickWorldRay already
 	uses for its own world-ray picking, not ImGui::GetMousePos -- the whole point of this router
 	is for the runtime UI path not to depend on ImGui. */
@@ -62,22 +63,23 @@ bool_t Client::CUIInputRouter::Is_Clicked(
 
 	Claim_Mouse_This_Frame();
 
-	return m_bLeftDownThisFrame && !m_bLeftDownLastFrame;
+	return Is_LeftClickEdge();
 }
 
 bool_t Client::CUIInputRouter::Is_LeftClickEdge() const
 {
-	return m_bLeftDownThisFrame && !m_bLeftDownLastFrame;
+	return !m_bCinematicSuppressed && !m_bLeftAwaitRelease && m_bLeftDownThisFrame && !m_bLeftDownLastFrame;
 }
 
 bool_t Client::CUIInputRouter::Is_RightClickEdge() const
 {
-	return m_bRightDownThisFrame && !m_bRightDownLastFrame;
+	return !m_bCinematicSuppressed && m_bRightDownThisFrame && !m_bRightDownLastFrame;
 }
 
 bool_t Client::CUIInputRouter::Get_MousePosition(
 	f32_t fRefWidth, f32_t fRefHeight, f32_t& outX, f32_t& outY) const
 {
+	if (m_bCinematicSuppressed) return false;
 	::POINT cursor{};
 	if (!GetCursorPos(&cursor) || !ScreenToClient(g_hWnd, &cursor))
 		return false;
@@ -96,6 +98,7 @@ bool_t Client::CUIInputRouter::Get_MousePosition(
 
 bool_t Client::CUIInputRouter::Get_ClientCursorPosition(f32_t& outX, f32_t& outY) const
 {
+	if (m_bCinematicSuppressed) return false;
 	::POINT cursor{};
 	if (!GetCursorPos(&cursor) || !ScreenToClient(g_hWnd, &cursor))
 		return false;
@@ -144,7 +147,7 @@ void Client::CUIInputRouter::Stop_TextInput()
 
 void Client::CUIInputRouter::On_Char(wchar_t ch)
 {
-	if (!m_bTextInputActive)
+	if (!m_bTextInputActive || m_bCinematicSuppressed)
 		return;
 	/* Bounded so a frame stall can't grow the queue without limit -- a normal frame drains it. */
 	if (m_TypedChars.size() < 256)
@@ -165,12 +168,15 @@ wstring_t Client::CUIInputRouter::Take_TypedChars()
 
 void Client::CUIInputRouter::End_Frame()
 {
-	if (m_bMouseClaimedThisFrame)
+	if (m_bCinematicSuppressed)
+		CGameInstance::Get().SetInputBlocked(true, true);
+	else if (m_bLeftAwaitRelease || m_bMouseClaimedThisFrame)
 		CGameInstance::Get().SetInputBlocked(false, true);
 
 	m_bMouseClaimedLastFrame = m_bMouseClaimedThisFrame;
 	m_bHasTopWindow = false;
 	CGameInstance::Get().Clear_TextClipOutRect();
+	if (!m_bLeftDownThisFrame) m_bLeftAwaitRelease = false;
 	m_bLeftDownLastFrame = m_bLeftDownThisFrame;
 	m_bRightDownLastFrame = m_bRightDownThisFrame;
 }

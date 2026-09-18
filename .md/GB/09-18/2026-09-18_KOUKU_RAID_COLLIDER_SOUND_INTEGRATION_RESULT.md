@@ -237,3 +237,258 @@ Data JSON 1,188개, 실행기·설치기·안내다. 최종 ZIP의 hash·크기�
 실행 ZIP에 넣지 않고 같은 전달 폴더의 `Resources-Drive-Update`에 준비했다. 이 PC의 교정과
 다른 PC의 Drive 동기화는 별개다. 받는 PC는 새 Client뿐 아니라 공유 Server도 갱신하고,
 차원술사 수정 Resources도 적용한 뒤 사용자가 실제 입장·탑승 화면을 확인한다.
+
+## 4인 검증 Flow 재설정·쇼타임 연출·Release lifecycle (2026-09-19)
+
+### 실제 변경
+
+사용자가 P29 내려치기의 크래시를 확인하고 Flow 교체·게시·새 ZIP을 요청했다.
+조사 시 저장본·Encounter·Server bootstrap은 모두1750으로 일치했으므로 기존 Flow의
+게시 누락은 아니었다. 현재 저장본을 백업하고 hash 재확인 뒤 필요한 필드만 원자 교체했다.
+revision1751에서 Flow, 1752에서 P76 연출을 반영했고, 최신 GATE3와 나머지 컷씬까지
+반영한 최종 revision은1753이다.
+
+- GATE1: P1→P2→P6→P7→P47→P48→P58→P78→P79→P80→P81→P82→P83.
+- GATE2: B1→B2→B3→B6→B7→P21→B10→B9→P27→P85→P86→P87→B4→P25.
+- GATE3: P88→P91→P92→P93→P52→P46→P66→P76→P35.
+
+기존 entry ID를 재사용하고 새 P76에는 고유 ID를 발급했다. 각 행 뒤1초,
+마지막 행과 P76→P35는0초다. P29·P30의 정의와 다른 패턴 저작값은 보존했다.
+마지막 Flow 이후 재시작 분기는 없고, 종료된 boss pattern은 기존 Brain의 Idle로 대기한다.
+실제 보스 처치 후 클리어·전원 투표로 다음 관문을 진행하는 기존 계약을 유지했다.
+
+P76이 미게시였던 원인은 단일5000ms stage에 animation2개가 있던 것이다. 원래 clip과
+절대 재생 시각을 유지한4430ms/570ms stage로 분리했다. occurrence ID,570ms blend와
+4개 카메라의 시간·위치 등 presentation 전체는 동일하다. 후보의 실제
+validate_document/validate_publishable/projected_outputs를 통과했다. 근거는
+`out/KoukuShowtimeFlow20260919/validation.json`이다.
+
+### Server entry failed 조사와 수정
+
+Client46764의03:15:15.604 KST terminal은 CLIENT_INVALID_SERVER_RESPONSE/WSA10055이며,
+복구 source는 level-kakul-saydon.network-connection-lost다. 같은 시각 Server40796
+session2는 SERVER_PEER_CLOSED이고 sendFailures0이었다. Lobby 문구는 공통 복구 표시다.
+로그만으로 정확히 어떤 큐의65번째 패킷이 B2에서 실패했는지는 확정하지 않는다.
+
+MainApp의 Kouku audition service include와 Update가 Debug guard 안에 있어 Release가
+제품 레이드 owner에게 오는 result/lifecycle을 소비하지 않는 결함을 확인했다. 기존 Update를
+NetworkManager dispatch 직후 공통 경로로 이동했다. 저작 UI guard, 실제 service의
+request/revision/lifecycle 검증은 유지하고 네트워크 큐 용량을 늘리지 않았다.
+
+### 수행한 검증
+
+- 실제 service와 MainApp의 변경 전후 frame fragment를 사용하는 Release 콘솔 검사7/7 PASS.
+  이전 fragment는64개 적체 후65번째 수신 불가, 수정 fragment는256개 소비를 확인했다.
+  두 큐 소비, 요청 없는 제품 알림이 local Flow를 시작하지 않음, 기존 ACTIVE→COMPLETED도
+  확인했다. 전송 boundary만 대역이며 Client/UI/Engine을 실행하지 않았다.
+  증거: `out/KoukuReleaseLifecycle20260919/validation.receipt.json`, `run.log`.
+- 정상 Release Product PASS,41.039초. MainApp OBJ1과 Client EXE1 갱신,
+  PCH/CSO 재생성0. 기존 코드 페이지와 DirectXTK PDB 경고가 남았고 컴파일·링크 오류0.
+  `out/BuildPipeline/runs/20260918T182442969Z-release-product.json`.
+- 최초 빌드는 실행 중 Client/Server의 출력 점유 guard에서 중단됐다. 사용자가 둘 다
+  종료했다고 알린 뒤 정상 빌드를 재실행했다. 실패했던 preflight를 빌드 PASS로 세지 않는다.
+- 저장 Flow 구조·stable ID·관문 참조 검증과 P76 presentation 보존 확인 PASS.
+
+공식 KoukuSaydon owner1753 및 Client owner 게시 PASS. 최종 통합 빌드와 ZIP 검증도 아래 증거로 완료했다.
+실제4인 B2, 쇼타임 카메라·전투 연결 및 마지막 Idle·처치·투표 화면은 사용자 확인 대상이다.
+P29의 내부 크래시 수정은 하지 않았고 요청대로 Flow에서 제외했다. IP는10.16.127.103을 유지했다.
+
+
+## 컷씬 전체 게시·UI 억제·이펙트 상한과 종료 진단 (2026-09-19)
+
+### 게시와 최신 흐름
+
+P73/P74/P75/P77에 기존 저장 occurrence를 포함하는 durationMs 27000/35368/49083/11950만
+추가했다. 기존 World·camera·sound·actor 입력은 그대로다. P75는 현재 저장된 카메라12개와
+음향2개이며 배우 occurrence가 없어 새 배우 동작을 복원했다고 주장하지 않는다.
+저장93개 중 게시85개/8bundle/461stage이고 조사한 컷씬 P36/P73/P74/P75/P76/P77은 모두 게시됐다.
+source category는93개 모두 MECHANIC이므로 category enum으로 컷씬을 선별하지 않았다.
+미게시 비컷씬8개(P3/P16/P20/P26/P32/P37/P45/P51)는 빈 단계 등을 강제 게시하지 않았다.
+
+1753 source hash는90611844a94c821edc8c414977e2fcc8f894e6c64315e4d3d8103cc946e5525d다.
+공식 KoukuSaydon owner의 product/map/world/gameplay와 Client owner의
+composition.presentation/world/navigation을 게시·재사용했다. source, Encounter, bindings,
+Server bootstrap revision과 Flow를 대조해 전체 목록을 갱신했다. 근거:
+`out/KoukuPatternFlowReview20260919/publish1753.log`, `publish-client1753.log`,
+`CURRENT_PATTERN_FLOW.md`.
+
+각 Mario Parent의 MARIO_ENTER stage1~4는 기존 P33 후속을 시작하고 성공 시 P42로 이어진다.
+solo는 실제 복귀를 기다리고 2~4인은 입장 직후 후속을 진행한다. Flow는 해당 체인의 완료를
+기다리며 Mario 참가자 복귀까지 별도 동기화하지 않는다. 이번 요청에 독립 P33 행을 더해
+같은 2페이즈가 중복 실행되는 구성은 만들지 않았다.
+
+### 컷씬 UI와 배경
+
+실제 cinematic pending 또는 소유 중인 시간트랙에 따라 제품 sprite·text·nameplate·
+chat bubble·damage number·입력을 공통 억제한다. 기존 visible/open 상태와 연출 fade를
+보존하며 종료·실패·Level 이탈 시 복원한다. 일반 combat follow/static 카메라는 제외한다.
+숨은 damage event는 cursor를 진행해 종료 후 과거 숫자가 다시 나오지 않도록 했다.
+실패 시 pending/카메라 owner가 남던 cleanup도 보정했다.
+
+배경만 검고 배우·이펙트는 보인다는 사용자 증상은 원인 미확정이다. 조명·배경 visibility를
+일괄 바꾸지 않고 `kouku.cinematic.transition`에 mapVisible/Total/Unknown, scene/gateScene,
+light/camera owner, fade와 raid phase를 남긴다. 컷씬 실패는 `kouku.cinematic.failed`에 기록한다.
+실제 UI router/header, sprite Render, cinematic predicate를 플랫폼 stub과 컴파일한 native
+검사에서 hidden input, fade 유지, visibility 복원, held-click 재발생 방지, combat camera 제외가
+통과했다. 증거 `out/KoukuCinematicUI20260919/probe.result.log`. 실제 화면 검증은 아니다.
+
+### 이펙트 및 네트워크 원인 구분
+
+B2 P10의 이펙트 occurrence는0개, P11은 V2 GROUP7개이며 blue3/red1의 Mesh/Decal8개와
+laser 최대 Mesh30개다. leaf 모델·텍스처는 현재 PC에 모두 존재한다. P29는 V1 하나, 문서
+16요소이며 conservative reservation particle141/mesh3/trail44/draw18이다. 이 데이터만으로
+V1 scene128/particle16384 등의 상한 초과를 확정할 수 없고, B2에는 그 V1 budget이 직접
+적용되지 않는다. 전체 상한/격리/종료 분기는 별도 audit와 pattern_effects.json에 기록했다.
+
+로컬 .103/03:15:15의 Client10055와 Server orderly close는 동일 사건이며 Server sendFailures0,
+maxSend956us였다. 원격 .181/03:07:43의10060 timeout/maxSend255115us/coalesced6은 별도
+사건이다. reliable queue cap 도달 기록은 없고, 원격 수신 정체를 GPU 과부하로 단정할 수 없다.
+
+NetworkManager의15개 결과/알림 큐는 기존64상한을 유지하고 overflow detail에 queue/depth/limit
+및 실제 packet type을 기록한다. Kouku result/lifecycle decode failure도 별도 detail로 구분한다.
+Release에 없던 Renderer 실패 파일 기록을 활성화하고 V1 admission/preparation, V2 group/asset/
+mesh/texture/draw 경로와50ms 이상 prepare/spawn을 bounded EffectFailure 로그로 남긴다.
+동일 실패는 반복 수를 남기며 로그로 렌더링·실패 정책을 바꾸지 않는다.
+
+Server 기존 RoomPerf에 UnixMs, gate/flow/member pattern IDs, combat object live/replicated 수,
+이전 loop lateness/reset을 추가하고 session과 같은 Diagnostics에4MiB×2 파일로 보존한다.
+실제 Server CPP2개 Release 최소 컴파일 및 실제 writer native9/9 PASS.
+`out/KoukuServerDiagnostics20260919/validation.receipt.json`. timeout/cap은 늘리지 않았다.
+
+검은 배경과 특정 GPU 실패의 원인 수정 완료는 아직 아니다. 이번 배포에는 확인된 Release
+lifecycle 결함 수정과 컷씬 UI 동작 수정, 다음4인 재현에서 구분 가능한 로그를 포함한다.
+
+
+### 최종 통합 검증과 배포 완료
+
+- 최종 Debug Product PASS, 29.540초. `out/BuildPipeline/runs/20260918T185333963Z-debug-product.json`.
+- 최종 Release Product PASS, 115.380초. `out/BuildPipeline/runs/20260918T185529591Z-release-product.json`.
+  Engine/Shared/Server/Client 정본 빌드·배포를 순차 완료했다. 기존 코드 페이지와 PDB 경고는
+  유지됐고 컴파일·링크 오류는 없었다. 최종 Debug endpoint도10.16.127.103:7777이다.
+- UI router는 컷씬에 걸쳐 누른 왼쪽 버튼의 물리 release까지 입력을 억제한다. 진입 때
+  기존 Inventory/창/슬라이더/지도/quick-slot gesture를 취소하고 창 열림·위치를 보존한다.
+  cursor lock의 포커스 해제 처리는 억제 밖에서 계속 실행한다. 실제 Inventory press/release
+  block 검증은 옛 gesture의 swap/drop 방지와 새 drag의 정상 동작을 확인했다.
+  `out/KoukuCinematicUI20260919/drag_probe.result.log`, `probe.result.log`.
+- V1 object-local/global 렌더 실패도 Effect_Object.cpp의 기존 격리 분기에서 안전하게 파일에
+  기록한다. logger 문자열 조립까지 예외를 격리해 기존 실패 반환을 보존했다. 상세 조사:
+  `out/KoukuEffectCapAudit20260919/EFFECT_CAP_AND_FAILURE_AUDIT.md`.
+- 변경 JSON/XML parse,1753 source/product/bindings/bootstrap·Flow 일치, stable ID·최종0ms,
+  명시 컷씬6개의 게시 상태 및 git diff --check PASS. 실제 source category93개는 모두
+  MECHANIC이므로 비어 있는 CUTSCENE filter의 통과를 게시 검증으로 사용하지 않았다.
+
+최종 ZIP은 `C:/Users/user/Desktop/LostArk-Release-20260919-Flow-v3/LostArk-Release-20260919-Flow-v3-10.16.127.103.zip`이다.
+99,158,817bytes, SHA256 `2217cd2b3ed299ee0e09d9c2f22271025ac9bf70ee535ecf39be9eb2231b56e8`.
+Release runtime458개(Client DataFiles150, Server DataFiles159 포함), 직접 소비 Data JSON1190개,
+EffectCatalog 참조1167개를 포함한다. action1753/sequence64/protocol93. Resources는 기존 팀
+공유본을 쓰며 ZIP에 넣지 않았다. 전체 Flow목록·상한조사·한국어 진단안내를 함께 넣었다.
+
+공식 runtime packager, 설치기 WhatIf 및 내부/외부 ZIP의 CRC·SHA256·현재 파일 일치 검사 PASS.
+P76 camera4개 및 필수 Kouku 직접 소비 Data5종 포함을 확인했다. 설치기 검증은 현재 PC에서
+실제 교체·backup·바로가기·Client 실행을 하지 않았다. `out/KoukuFlowDelivery20260919/`의
+`delivery-result.json`, `final-package.log`, `final-install-check.txt`가 증거다.
+
+사용자는 ZIP을 풀고 LostArk.exe에서 최신 Resources가 있는 기존 LostArk 폴더를 선택한다.
+공유 Server도 최신 파일로 재시작해야 메모리에 적용된다. 실제4인 B2/쇼타임/Idle·투표 및
+컷씬 배경·이펙트 GPU 표시는 사용자 확인으로 남는다. 검은 배경 원인·P29 내부 크래시가
+수정됐다고 주장하지 않으며, P29는 요청대로 Flow에서 제외했다.
+
+
+## G12. Release 4인 실측 수정과 UI #413 통합 (2026-09-19)
+
+### 확인한 원인과 구현
+
+- 현재4인 PID20876/43668/52564/54892, Server25564 로그8개를 stable SHA와 함께
+  `out/KoukuSequenceRestore20260919/evidence/`에 보존했다. 이 실행의 terminal/recovery는0,
+  send failure/reliable rejection/drop은0, world5 최대 tick은4ms다. 종료는 각 Client의
+  close-requested와 Server orderly peer close가 일치한다. 이펙트 거부와 네트워크 종료를
+  동일 원인으로 단정하지 않는다. 이전03:15 Client10055와 Release 미소비 큐 결함은 별건이다.
+- 미로 P28은 실제 전원을 전송하고 area HUD MAZE를 설정하지만 망원경을 잡기 전에는
+  runtime INACTIVE/role NONE이다. 기존 Flow 판정은 이 구간을 놓쳤다. 이번 로그에서
+  미로 camera 진입04:29:31 뒤04:29:57에 P25가 시작되고04:29:58에야 WAIT_MINIGAME가
+  됐다. 살아 있는 플레이어의 권위 area HUD MAZE도 대기에 포함해 정상복귀 state clear까지
+  P25를 시작하지 않도록 수정했다. 이미 실행한 timer를 임의 pause하는 우회는 추가하지 않았다.
+- Sequence P1/P4의 book/stage WORLD 각6개가 camera/scene보다2,852ms 일찍 종료됐다.
+  P1 duration37,800→40,652, P4 duration38,851→41,703으로12필드만 고쳤다. Sequence65이며
+  다른7개 Sequence에는 같은 gap이 없었다. 이 수정은 확인된 무대 말단 공백을 해결하며
+  종료 뒤 장시간 검은 배경이 유지되는 모든 상황까지 실전 확인한 것은 아니다.
+- 실제 거부는 gate2 intro의 보수 예약 light34>기존32, 창술사34630 동시·반복 사용,
+  P48 카드24개×trail500이 기존12,288에 닿는 상황이다. 카드 정상최대는42개다.
+  Kouku level 전용 hard/remote/owner budget을 적용하고 로드 준비는 최대지원치를 사용한다.
+  무제한 생성은 하지 않으며 Bern 등 다른 Level의 기존 admission 수치는 유지한다.
+- Bern 폭포 mist sprite의 local roll과 비균일 배치 scale1.275/.85/.85가 만드는 유효한
+  shear를 XMMatrixDecompose가 거부해 전체 효과를 격리했다. billboard는 source quaternion을
+  쓰지 않으므로 유한한 축 길이와 origin을 직접 사용한다. source NaN/Inf는 계속 거부한다.
+- UI PR [#413](https://github.com/tnestyle70/LostArk/pull/413)를 브랜치에 fast-forward했다.
+  MainApp 등의 기존 미커밋 수정은 보존했고 Kouku Render의 단일 충돌은 cinematic early return
+  뒤 MVP/nameplate clipping을 유지해 합쳤다. 추가 G 키캡1772bytes를 이번 ZIP에 명시 포함한다.
+  native 파일/도움말 메뉴는 창 생성에서 제거했고 AdjustWindowRect도 메뉴 없는 상태로 맞췄다.
+
+### 예산과 회귀 근거
+
+축 순서는 effects/particles/mesh/trail/afterimage/light/post/overlay/draw다.
+
+| 범위 | 적용값 |
+|---|---|
+| Kouku hard |128 /49152 /4096 /32768 /2048 /160 /16 /64 /8192|
+| Kouku remote |96 /40960 /4096 /24576 /1536 /144 /12 /24 /7168|
+| Kouku owner |32 /8192 /2048 /4096 /1024 /32 /16 /32 /3072|
+
+정상4인×34630 2회 잔상 중첩 + 카드42개 + intro34light + 관측환경18개의 보수 합은
+69/35472/3228/21000/0/122/8/0/5998이다. 실제 admission 함수125회 검사에서 local/remote
+모두 통과하고 각9축 초과, uint overflow, owner, pending 및 다른 Level 제한은 유지된다.
+맵 복제조명을 포함한154 + 효과160 + 직접조명5 =319<Engine384, provider envelope220<256이다.
+이 수치는 해당 재현 workload와 현재 authoring 기준이며 모든 미래 조합의 GPU 성능 보장은 아니다.
+`out/KoukuEffectCapAudit20260919/REPRO_0431/scoped_budget_result.json`.
+
+billboard는 실제 함수 수치230개 PASS: source와 같은 shear4건이 기존false→현재finite true,
+기존TRS72건(음수scale/roll/pivot/cameraoffset 포함)은 행렬차0, NaN/Inf 거부.
+`out/KoukuSequenceRestore20260919/billboard/run.log`. 화면/GPU 검증이 아니다.
+
+### 3관문 실제 연결
+
+P88(stage1)→P33→무력화성공P42→P91(stage2)→P33→성공P42→P92(stage3)→P33→성공P42→
+P93(stage4)→P33→성공P42→P52→P46→P66→P76쇼타임연출→P35쇼타임→Idle다.
+P33은24.326초/threshold1000의 무력화이며 실패·시간초과는 기존 전멸 조건이다.
+각 P42 완료 뒤 다음 Flow를 시작한다. 4인은 Mario 입장 직후 남은 파티의 P33을 진행하고,
+solo만 실제 Mario 복귀까지 먼저 기다리는 기존 권위를 유지한다.
+
+### Release 진단과 빌드
+
+Client의 `Release/Diagnostics/client-session-<pid>.jsonl`에 buildConfig, 최초 terminalReason/
+terminalDetail/isTerminal, main-pump age/최대gap/1초이상stall count, coalesced count,
+process private/working-set bytes와 사용 가능한 물리메모리를 추가했다. 60초 heartbeat와
+최초·최대5초간격 stall event를 남기며8MiB rotation은 `.previous`를 보존한다.
+실제 `Server entry failed.` 표시에서 `lobby.recovery.presented`를 기록하고 원래 recovery
+source/HRESULT와 최초 terminal을 함께 보존한다. 실제 diagnostic class Release probe의
+JSON/first terminal/회전/새 generation/메모리·tick·큐 보존8항목 PASS.
+`out/KoukuSequenceRestore20260919/diagnostic_probe.receipt.json`.
+Server session JSON에 PID/buildConfig/connection.closed, send실패에는 stack buffer로
+partial/total frame byte를 추가했다. 기존 RoomPerf와 timestamp로 대조한다.
+
+통합 Release Product126.316초 PASS, 최종 Server 진단 stack 보정 후 증분11.264초 PASS.
+각 receipt `out/BuildPipeline/runs/20260918T195216445Z-release-product.json`,
+`20260918T195254472Z-release-product.json`. Compile/link 오류0, 기존C4819/LNK4099 경고는 남았다.
+최신 Debug 전체 빌드는 이 G12에서 실행하지 않았다. Endpoint는192.168.0.14:7777이며
+Client fallback/Debug·Release VCX debugger/.user와 Server bind0.0.0.0을 확인했다.
+
+추가 완료 검증: 실제 Release CGameRoom 회귀에서 수정 전 미로 조기 피자 시작6건을 재현했고,
+수정 후27/27 PASS였다. 4인 Begin_CardMaze→return18/36tick 대기→37tick ownership clear→
+실제 published P25 admission을 검증했다. Release solo의 최소2인 정책은 변경하지 않았다.
+`out/KoukuSequenceRestore20260919/flow-trace-validation.json`.
+
+공식 KoukuSaydon/Client owner 게시 모두 exit0 PASS, Server Gameplay.bootstrap의 RAIDGATE
+3행 sequenceRevision65 일치. 첫 시도의 Encounter 일시 잠금 실패는 기존 파일 hash 보존을
+확인한 뒤 공식 재시도로 해결했다. 실패 backup도 유지했다. 게시 parity receipt는
+`out/KoukuSequenceTail20260919/final-publish.receipt.json`이다. Client/Server 화면 실행은
+하지 않았으며 새 EXE·게시 Data의 적용은 사용자의 새 실행으로 확인한다.
+
+최종 v4 ZIP 완료: `C:/Users/user/Desktop/LostArk-Release-20260919-Flow-v4/LostArk-Release-20260919-Flow-v4-192.168.0.14.zip`.
+99175950bytes, SHA256 `51cbc99f7ad4849c7eccd209268fb38a8e71e8ea590284744c54936f416cf1d0`.
+Release runtime458개, 직접 Data JSON1193개, UI G 키캡1장을 포함한다. 기존 Resources를
+가진 LostArk 폴더를 선택하는 실행기를 사용하며 endpoint192.168.0.14:7777이다.
+내외부 ZIP CRC/SHA, manifest 및 현재 파일 일치, 설치 WhatIf, 래퍼 재컴파일 PASS.
+최종 Client/Server EXE SHA를 빌드영수증과 별도로 교차 대조했다. 로컬로그 수집 스크립트도
+포함했고 프로그램 실행·종료·업로드 없이 사본 ZIP 생성만 검증했다.
+`out/KoukuFlowDelivery20260919v4/delivery-result.json`, `package-build.log`.
+실제4인 화면·GPU 이펙트와 재현되지 않은 접속 종료까지 해결됐다는 주장은 하지 않는다.

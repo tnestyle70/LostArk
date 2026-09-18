@@ -24,6 +24,8 @@ relay is what CWorldPlayerChatBubbleView reads to show a bubble above senders' h
 class CChatWindowView final
 {
 public:
+	/* Cancel transient gestures without closing or moving the window. */
+	void Cancel_Interaction() { m_Drag.Reset(); }
 	/* Real CUI_Sprite GameObjects on LEVEL::STATIC's own "Layer_UI" (Data/UI/Chat/
 	   ChatWindow_Layout.json); the log lines, channel label, typed text and IME composition
 	   preview draw in the LOA-font text pass. Nothing here uses ImGui. */

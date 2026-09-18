@@ -292,6 +292,8 @@ public:
 	{ m_Replication.Collect_KoukuMazeTargets(targets); }
 	bool_t Sample_CompositionCamera(std::string_view shotId, float seconds, const float3_t& offset, std::string_view ownerKey, uint32_t durationMs, bool_t preview);
 	bool_t Is_CompositionCameraEnabled() const;
+	bool_t Is_CinematicPresentationActive() const;
+	void Trace_CinematicPresentation(std::string_view renderingProfile);
 	void Stop_CompositionCamera(bool_t force = false);
 	bool_t Try_GetCompositionWorldPivot(std::string_view instanceId, float4x4_t& out,
 		std::string_view occurrenceId = {}, std::uint32_t emissionIndex = 0u) const;
@@ -571,6 +573,8 @@ private:
 	struct COMPOSITION_CAMERA_TRANSITION final
 	{
 		std::string ownerKey;
+		std::string shotId;
+		bool_t cinematicTrack = false;
 		std::string cancelledOwnerKey;
 		VALTAN_CINEMATIC_CAMERA_POSE fromPose;
 		VALTAN_CINEMATIC_CAMERA_POSE entryPose;
@@ -583,6 +587,7 @@ private:
 		bool_t followAtStart = true;
 	} m_CompositionCamera;
 	std::string m_strActiveCameraShotId;
+	std::string m_strCinematicDiagnosticKey;
 	/* The pose written last frame. A hand-over starts from this, so entering,
 	   swapping and leaving all begin at what the player already sees. */
 	float3_t m_vCameraEyeApplied = {};

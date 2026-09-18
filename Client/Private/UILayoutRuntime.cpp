@@ -499,6 +499,17 @@ void Client::CUILayoutRuntime::Set_SlotVisible(const string& strId, bool_t bVisi
 	}
 }
 
+void Client::CUILayoutRuntime::Set_SlotCinematicOverlay(const string& strId, const bool_t overlay)
+{
+	RUNTIME_SLOT* slot = Find_Slot(strId);
+	if (!slot) return;
+	if (slot->pSprite) slot->pSprite->Set_CinematicOverlay(overlay);
+	for (const auto& sprite : slot->ExtraLayerSprites)
+		if (sprite) sprite->Set_CinematicOverlay(overlay);
+	for (const auto& sprite : slot->KeyframeSprites)
+		if (sprite) sprite->Set_CinematicOverlay(overlay);
+}
+
 void Client::CUILayoutRuntime::Set_ActiveOwnerClass(const string& strOwnerClass)
 {
 	for (RUNTIME_SLOT& Slot : m_Slots)
