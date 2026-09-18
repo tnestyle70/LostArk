@@ -436,16 +436,19 @@ void Client::CSystemOptionWindowView::Update(const f32_t fTimeDelta)
 	Update_Chrome();
 	/* An open drop list eats every click of its frame -- the one on a row, the one that
 	closes it, the one on the combo's own arrow -- so nothing underneath (the same combo,
-	another row, a button) can act on that click as well. */
+	another row, a button) can act on that click as well. The list itself is updated first:
+	its row hit test goes through the same Is_Clicked wrapper, so the flag must not be up yet
+	when the list looks at the click. */
 	m_bPopupAteClick = false;
 	if (0 != m_iComboOpenKey)
 	{
-		if (CUIInputRouter::Get().Is_LeftClickEdge())
+		const bool_t bClickEdge = CUIInputRouter::Get().Is_LeftClickEdge();
+		Update_ComboPopup();
+		if (bClickEdge)
 		{
 			CUIInputRouter::Get().Claim_Mouse_This_Frame();
 			m_bPopupAteClick = true;
 		}
-		Update_ComboPopup();
 	}
 	Update_TabColumn();
 	Update_Scroll();
