@@ -131,10 +131,8 @@ HRESULT Client::CMapLightPresentationRuntime::Submit_Presentation()
 		};
 		return distance(a)<distance(b);
 	});
-	const size_t used=presentation.Get_TransientLights().size();
-	constexpr size_t mapCapacity = CPresentation_Manager::TRANSIENT_LIGHT_CAPACITY - 8u;
-	const size_t budget=used<mapCapacity?mapCapacity-used:0u;
-	const size_t count=(std::min)(lights.size(),budget);
+	// Valid visible lights are rendered in bounded GPU batches without truncating the frame.
+	const size_t count = lights.size();
 	presentation.Register_ProviderSubmissionExpectation(count,count,0u,0u);
 	for(size_t i=0;i<count;++i)
 	{
@@ -147,7 +145,7 @@ HRESULT Client::CMapLightPresentationRuntime::Submit_Presentation()
 		}
 	}
 	m_Status = "Map light presentation submitted: " +
-		std::to_string(count) + " lights; outside frustum: "+std::to_string(outsideFrustum)+"; skipped by budget: "+std::to_string(lights.size()-count);
+		std::to_string(count) + " lights; outside frustum: "+std::to_string(outsideFrustum);
 	return S_OK;
 }
 

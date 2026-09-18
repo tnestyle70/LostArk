@@ -95,9 +95,8 @@ HRESULT CLight_Manager::Render_Lights(
     if (!pShader || !pVIBuffer || (ePassReceiver != LIGHT_RECEIVER::ALL &&
         ePassReceiver != LIGHT_RECEIVER::SOURCE_CHARACTER)) return E_INVALIDARG;
 
-    // Scene admission permits 16 and Presentation_Manager permits 384 transient lights.
-    // Keep the bounded GPU record array and CPU staging contract together.
-    constexpr uint32_t maximumLightInstances = 16u + CPresentation_Manager::TRANSIENT_LIGHT_CAPACITY;
+    // Upload bounded shader records repeatedly; the frame has no light-count cap.
+    constexpr uint32_t maximumLightInstances = CPresentation_Manager::LIGHT_RENDER_BATCH_SIZE;
     struct LightInstance
     {
         float4_t direction, position, diffuse, ambient, specular, attenuation;
@@ -109,11 +108,34 @@ HRESULT CLight_Manager::Render_Lights(
     uint32_t count = 0u;
     bool_t directionalShadowConsumed = false;
     bool_t staticShadowConsumed = false;
+    const bool_t sourceMask = bSourceLightMask && ePassReceiver == LIGHT_RECEIVER::SOURCE_CHARACTER;
+    const auto flush = [&]() -> HRESULT
+    {
+        if (count == 0u) return S_OK;
+        if (FAILED(pShader->Bind_RawValue("g_LightInstances", instances.data(),
+            sizeof(LightInstance) * count))) return E_FAIL;
+        // Preserve source order and type runs, including across batch boundaries.
+        for (uint32_t first = 0u; first < count;)
+        {
+            uint32_t end = first + 1u;
+            while (end < count && types[end] == types[first]) ++end;
+            const uint32_t typePass = types[first] == LIGHT::DIRECTIONAL ? 0u :
+                types[first] == LIGHT::POINT ? 1u : 2u;
+            const uint32_t pass = 22u + typePass + (sourceMask ? 3u : 0u);
+            if (FAILED(pShader->Bind_RawValue("g_LightInstanceOffset", &first, sizeof(first))) ||
+                FAILED(pShader->Begin(pass)) ||
+                FAILED(pVIBuffer->Render_Instanced(end - first))) return E_FAIL;
+            first = end;
+        }
+        count = 0u;
+        return S_OK;
+    };
     const auto stage = [&](const LIGHT_DESC& light, bool_t scene) -> HRESULT
     {
         if (light.eReceiver == LIGHT_RECEIVER::SOURCE_CHARACTER &&
             ePassReceiver == LIGHT_RECEIVER::ALL) return S_OK;
-        if (!CLight::Is_ValidDesc(light) || count >= maximumLightInstances) return E_INVALIDARG;
+        if (!CLight::Is_ValidDesc(light)) return E_INVALIDARG;
+        if (count == maximumLightInstances && FAILED(flush())) return E_FAIL;
         const bool_t directional = light.eType == LIGHT::DIRECTIONAL;
         const bool_t shadow = scene && directional && bEnableSceneDirectionalShadow && !directionalShadowConsumed;
         const bool_t staticShadow = scene && directional && !staticShadowConsumed;
@@ -138,26 +160,7 @@ HRESULT CLight_Manager::Render_Lights(
         if (FAILED(stage(light, true))) return E_FAIL;
     for (const auto& light : CPresentation_Manager::Get().Get_TransientLights())
         if (FAILED(stage(light, false))) return E_FAIL;
-    if (count == 0u) return S_OK;
-    if (FAILED(pShader->Bind_RawValue("g_LightInstances", instances.data(),
-        sizeof(LightInstance) * count))) return E_FAIL;
-
-    const bool_t sourceMask = bSourceLightMask && ePassReceiver == LIGHT_RECEIVER::SOURCE_CHARACTER;
-    // Append-only shader pass contract: old 0–21, instance directional/point/spot 22–24,
-    // source-stencil variants 25–27. Never reorder types or combine their FP16 sums.
-    for (uint32_t first = 0u; first < count;)
-    {
-        uint32_t end = first + 1u;
-        while (end < count && types[end] == types[first]) ++end;
-        const uint32_t typePass = types[first] == LIGHT::DIRECTIONAL ? 0u :
-            types[first] == LIGHT::POINT ? 1u : 2u;
-        const uint32_t pass = 22u + typePass + (sourceMask ? 3u : 0u);
-        if (FAILED(pShader->Bind_RawValue("g_LightInstanceOffset", &first, sizeof(first))) ||
-            FAILED(pShader->Begin(pass)) ||
-            FAILED(pVIBuffer->Render_Instanced(end - first))) return E_FAIL;
-        first = end;
-    }
-    return S_OK;
+    return flush();
 }
 
 unique_ptr<CLight_Manager> CLight_Manager::Create()

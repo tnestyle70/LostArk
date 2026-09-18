@@ -210,3 +210,70 @@ Lobby 실패 문구 표시 edge를 추가한다. Server closure는 PID/build/eve
 남긴다. 로그를 위해 timeout이나 protocol 실패 정책을 임의 완화하지 않는다.
 최종 Release Product 빌드와 focused 비시각 검증 후 새 v4 ZIP을 만든다. 화면과 실전4인
 성공 여부는 사용자가 판정하며 모든 종료 원인이 제거됐다고 확대해서 기록하지 않는다.
+
+## G13. Bern LAN 송신 지연과 Alt+V 누락의 실측 후속 수정 (2026-09-19)
+
+v4 실행 중 Server PID53060의 Bern session 4/6/8/10/12가 05:08~05:16 KST에
+WSA10060으로 종료됐다. 각 마지막 송신은 약250ms이고 reliable rejection과 snapshot
+drop은0이다. 마지막 .43 연결은6,143개 frame을 보낸 뒤 끊겼으므로 최초 접속 주소나
+입장 승인 실패로 분류하지 않는다. 호스트의 EXE와 설치 Data는 v4 manifest와 일치한다.
+원격 PC의 수신 정체와 무선망 지연 중 어느 쪽인지는 Client 로그와 대조한다.
+
+`Server/Public/ClientSession.h`, `Server/Private/ClientSession.cpp`의 session socket을
+nonblocking으로 설정한다. `Send_All`은 성공한 바이트만 offset에 반영하고
+WSAEWOULDBLOCK에서는100ms 단위 readiness 대기를 수행한다. 사용자가 명시적으로
+요청한 대로 송신 대기 시간만으로 연결을 종료하지 않는다. 실제 socket 오류와 FIN,
+명시적인 Stop의 처리와 bounded join은 유지한다. 동일 socket을 사용하는 `Receive_Frame`도
+read readiness 대기를 소비한다. 송신 stall/recovered 이벤트는 offset·frame 크기·peer·session·
+마지막 수신 시각·대기 시간을 남기고 bounded 파일과 중복 제한을 사용한다.
+메모리 상한과 reliable 순서, snapshot coalescing을 보존하며 무제한 queue나 reliable drop으로
+가리지 않는다. 기존 SessionTransport 검증에 일시 수신 중단 후 정확한 재개와 Stop을 추가한다.
+
+Alt+V는 접속 종료와 별도로 수정한다. Client508의 차원술사2050540은 자연 종료가 남은
+반복 사용분으로 owner mesh/draw 한도를 넘었고, 원격 도화가31930은 Bern의 scene 한도로
+거절됐다. 또31930의 local-only visibility가 현재 document에 없는 source element를 지목해
+예산을 통과한 재생도 rollback됐다. 사용자가 전체 이펙트에 동일한 처리를 요청했으므로
+Level/owner/local/remote에 따른 whole-effect admission 상한과 prewarm의 같은 임의 ceiling을
+제거한다. 비용은 진단으로 유지하고 uint overflow, 문서·리소스 유효성, prepared clone 계약은
+보존한다. 전체1167개 catalog의 실제 연결된 visibility sidecar를 검사하고 존재하지 않는
+Artist9개와 Lance clip1 6개 참조만 정리한다. 효과 요소나 원본 수명은 삭제하지 않는다.
+
+Engine `Presentation_Manager`의 provider256/light384/post64/overlay64는 초기 reserve로만
+사용하고 유효한 제출을 개수로 거절하지 않는다. `Light_Manager`는 기존 shader의400개
+constant-buffer ABI를 유지하며 CPU 배열400개를 채워 순서대로 여러 batch를 그린다.
+scene directional shadow·static channel·source receiver와 type run 순서를 batch 사이에도
+보존한다. Map/Kouku/Debug preview의 선행 light truncation도 제거한다. 임의 개수 초과가
+전역 frame failure가 되는 경로를 없애며 실제 GPU/device 오류를 성공으로 위장하지 않는다.
+Renderer 로그에 UTC를, Client session 로그에 실패 stage/HRESULT/deviceRemovedReason을
+남겨 네트워크 종료와 실제 렌더러 실패를 분리한다.
+
+실행 중 사용자가 추가로 보고한 '카드·일부 장판만 보이고 일반 보스 효과가 누락되지만
+데미지는 들어오는' 현상은 독립적으로 추적한다. Server collider와 Client 표시 경로가
+분리되어 있으므로 정상 데미지를 정상 표시의 증거로 쓰지 않는다. 실제 published Product
+reader와 V1/V2 분기, pattern revision·clock·occurrence를 대조한다. 공용 Effect의 외부
+transform history와 follow owner/model/bone/root 실패 중 Debug 출력만 하던 제거 경로는
+기존 Release 파일 진단에 asset·occurrence·handle·level·시각·원인으로 기록한다.
+정상 lifetime·Level 전환·Stop은 실패로 기록하지 않으며 fault 인스턴스마다 한 번만 남긴다.
+
+전체 Product staging의 실제 재현에서 P73 CAMERA 행의 빈 worldSequenceInstanceId가
+예외를 발생시켰다. named World Object에만 sequence identity를 연결하고 CAMERA/SOUND의
+고정 WORLD 좌표가 사용하지 않는 필드로85개 패턴 전체를 거부하지 않게 한다.
+실제 WORLD 소비자의 필수 ID와 named World의 sequence 검사는 유지한다. 쇼타임 총구의 independent source-boss
+패턴은 animation 목록이 없지만 원본 Effect에는 SourceModelPreview가 있다. 이 경우 기존
+source-preview sampler에 Effect-local clock을 전달하고 정상 일반 pattern timeline은 유지한다.
+
+`Tools/Network/Collect-RuntimeDiagnostics.ps1`은 각 PC의 최신 session·effect·renderer 로그와
+실행 파일 hash, 실행 중 프로세스 경로/시작 시각, endpoint 및 설치 영수증을 로컬 ZIP으로
+모은다. 기존 로그와 프로세스를 변경하거나 업로드하지 않는다. C++ 신규 TU가 없으므로
+프로젝트·filters 등록은 바꾸지 않는다. 실제 socket 및 effect 경계 검증, 최소 컴파일,
+JSON/PowerShell parse와 diff check 후 RESULT에 빌드와 사용자 화면 검증을 구분한다.
+
+### G13 배포 경계 정정
+
+사용자는 Resources를 팀에서 별도로 관리하므로 PNG를 포함해 한 파일도 새 ZIP에 넣지
+말라고 명시했다. 새 배포본은 기존 source 폴더를 변경하는 설치기를 제거하고 EXE/DLL/CSO,
+`Client/Bin/DataFiles`, `Server/Bin/DataFiles`, 실제 직접 소비하는 `Data`를 정식 상대 경로에
+둔다. ChangedData 폴더나 중첩 runtime ZIP을 만들지 않는다. 최상위 실행기는 압축 해제한
+배포본의 EXE와 Data를 사용하고, 사용자가 고른 기존 LostArk 폴더에서는 Resources 경로만
+읽는다. Server도 배포본의 실행 파일과 DataFiles를 사용한다. 압축 파일 내 경로·manifest와
+실제 빌드 hash, no-launch 사전검증을 대조하며 Resources나 사용자 저장소를 설치·덮어쓰지 않는다.

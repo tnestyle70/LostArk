@@ -492,3 +492,119 @@ Release runtime458개, 직접 Data JSON1193개, UI G 키캡1장을 포함한다.
 포함했고 프로그램 실행·종료·업로드 없이 사본 ZIP 생성만 검증했다.
 `out/KoukuFlowDelivery20260919v4/delivery-result.json`, `package-build.log`.
 실제4인 화면·GPU 이펙트와 재현되지 않은 접속 종료까지 해결됐다는 주장은 하지 않는다.
+
+## G13. Bern 송신 정체와 전체 Effect admission 후속 수정 (2026-09-19)
+
+이 절은 G12의 Level별 예산 유지와 Resources 일부 포함 배포 정책을 대체한다.
+현재 실행 중인 v4와 이번 소스 수정·새 빌드의 적용 상태를 구분한다.
+
+### 확인한 원인과 수정
+
+Server PID53060의 Bern session4/6/8/10/12가 모두 약250ms 송신 정체 뒤 WSA10060으로
+종료됐다. 마지막 session12는6,143 frame을 이미 보낸 연결이며 실패 당시 큐는
+6,383-byte snapshot 한 개, reliable rejection과 snapshot drop은0이었다.
+원본과 SHA는 `out/BernDisconnect20260919/server-0517-snapshot/`에 보존했다.
+사용자가 제공한 Client28492 generation6의05:20:37 heartbeat는 이후 새 연결이며,
+그 정상 수신을 앞선05:16:55 종료의 반증으로 사용하지 않는다.
+
+ClientSession의 SO_SNDTIMEO250ms를 제거하고 nonblocking socket의 WSAEWOULDBLOCK은
+100ms readiness 대기 뒤 동일 frame의 남은 위치부터 보낸다. 정체 시간만으로 종료하지
+않으며 같은 socket의 recv도 readiness를 기다린다. FIN·실제 native 오류·명시 Stop은
+구분한다. 큐128 frame/512KiB와 snapshot coalescing은 유지되며 reliable queue 포화까지
+무조건 유지한다고 주장하지 않는다. 관측된5건은 그 포화 경로가 아니었다.
+
+전체 Level·owner·local/remote Effect admission과 prewarm의 임의 개수 ceiling을 제거했다.
+비용 telemetry, uint overflow와 유효한 문서·리소스 검사는 유지한다. Artist31930의
+local-only sidecar에는 없는 요소9개, Lance34630 clip1에는6개가 있어 원격 재생 전체를
+rollback했다. 해당 참조만 제거하고 효과 요소와 수명은 보존했다. 전체 catalog1167개를
+대조했고 현재 연결된 local-only 참조206개가 모두 실제 요소를 가리킨다.
+
+Engine presentation의 provider256/light384/post64/overlay64는 초기 reserve로만 사용한다.
+Map·Kouku·Debug preview의 light truncation도 제거했다. Light_Manager는 shader의400개
+배열 ABI를 유지하면서 유효한 조명을 여러 draw batch로 전부 전달한다. 임의 frame 개수
+초과로 전역 Render가 실패하던 경로를 제거했으며 실제 GPU 오류는 그대로 실패로 남긴다.
+기존 persistent scene light16개 계약과 문서 parser의 개별 유효성 범위는 별개다.
+
+송신 정체·회복은 `Diagnostics/server-send-progress-<pid>.jsonl`에 peer/session/packet,
+sent/total bytes, 정체 시간과 마지막 수신 경과를 기록한다.2MiB 회전과 반복 제한을 사용한다.
+Renderer 실패에는 UTC, Client session의 `render.failed`에는 stage/HRESULT/deviceRemovedReason을
+남긴다. `Collect-RuntimeDiagnostics.ps1`은 실행 경로·EXE/DLL hash와 최신 로그의 사본을
+모으며 Resources를 읽거나 앱을 실행·종료·업로드하지 않는다.
+
+공용 Effect의 외부 transform history, Artist history/clock, follow owner/model/bone/root
+실패가 Release 파일 진단 없이 객체만 제거하던 사각도 보강했다. `V1.update.*`와
+`V1.follow.*`에 asset/occurrence/handle/level/elapsed/sample/anchor/action tick/reason을
+인스턴스당 한 번 남긴다. 정상 Level 퇴장·자연 종료·Stop은 제외하고 기존 재생 동작은
+변경하지 않았다. 이 최종 Effect_PresentationService.cpp Release TU도 컴파일 PASS이며
+`effect-runtime-diagnostics/RECEIPT.md`에 소스 hash와 컴파일 로그를 보존했다.
+
+### 완료한 비시각 검증
+
+- 실제 ClientSession과 SessionTransport TU Release 컴파일 및 native socket11/11 PASS.
+  750ms 수신 중단 후16MiB byte 일치, FIFO, snapshot coalescing, 명시 취소와 reset 격리 확인.
+  양수 partial-write offset은 플랫폼에서 강제 재현되지 않았고 관측 stall offset은0이다.
+- 실제 Effect accounting 함수3,405 검사 PASS, 수정 당시 실제 Effect_PresentationService
+  Release TU 컴파일 PASS. 원격·로컬,8개 Level, 정상 재사용 꼬리 중첩과 overflow를 확인했다.
+- 실제 Presentation_Manager/Light_Manager CPU 구현50/50 PASS.600 provider,
+  1,200 light,600 post,600 overlay,399/400/401/800/801 경계, receiver/shadow8조합,
+  두 번째 batch 실패와 invalid provider rollback을 확인했다. Shader/VIBuffer는 mock이다.
+- 진단 수집 ZIP17파일/오류0, payload hash/CRC 확인. 실행기 path probe10/10 PASS는
+  실제 runtime path 함수를 사용했고 UI/Client는 실행하지 않았다.
+
+세부 근거는 `out/BernDisconnect20260919/SERVER_RECEIPT.md`, `ENGINE_RENDER_RECEIPT.md`,
+`effects/EFFECT_RESULT_CANDIDATE.md`와 각 source receipt에 있다.
+
+### 보스 전체 표시 누락과 쇼타임의 별도 원인
+
+실제 Product 전체 staging을 실행해 수정 전 `Invalid presentation string: worldSequenceInstanceId`
+실패를 재현했다. 최초 행은 P73.presentation.1 CAMERA이며 P73~77의 CAMERA/SOUND57행이
+고정 WORLD 좌표를 사용해 worldId와 worldSequenceInstanceId가 비어 있다. publisher와
+재생기는 이를 정식으로 지원하지만 Reload_Product는 모든 WORLD 행에 World Object의
+sequence ID를 강제했다. 한 행의 예외가85개 패턴 전체 commit을 막아 일반 이펙트가 빠졌다.
+Server collider·damage와 독립된 카드/targeted 표시가 남는 사용자 증상을 설명하는 코드 결함이다.
+
+WORLD이면서 worldId가 있는 행만 sequence identity를 연결하도록 수정했다. WORLD
+EFFECT/LIGHT/COLLIDER는 앞선 Read_Occurrence의 필수 worldId 검사, 모든 named World는
+필수 sequence 검사를 그대로 통과해야 한다. 빈 ID를 임의 sequence로 대체하지 않는다.
+전체 staging 후보는 published camera114개와 실제 blendOutMs 적용 및 camera 비활성 두 경우
+모두85patterns/8bundles/2fear/14targeted/407animations/5blendwindows를 통과했고 isolated0이었다.
+WORLD Effect의 빈worldId, named WORLD Effect/Camera의 빈sequence는 계속 거부했다.
+최종 실제 수정 소스에서 재추출한 전체 staging도 같은 결과였다.
+`out/BernDisconnect20260919/kouku/full/RECEIPT.md`에 before/after와 최종 SHA를 보존했다.
+
+05:47 실시간 로그의 showtime.presentation.1은 별도로 'Kouku source attachment has no
+animation at its requested time' 실패가 반복됐다. 독립 source-boss pattern에는 animation
+목록이 없는데 원본 muzzle에는 명시 SourceModelPreview가 있었다. 기존 sampler가 원본을
+사용하지 않아 본 부착 실패로 총구와 함께 묶인 장판까지 중단했다. 빈 pattern animation과
+명시 SourceModelPreview 조합은 기존 Sample_SourceAnchorWorlds를 Effect-local clock으로
+사용하도록 수정했다. 일반 pattern의 authored animation lane은 계속 우선한다.
+같은 muzzle를 사용하는 targeted definition3개가 해당되며, 일반612 V1 행 중 같은 조합으로
+실패하는 bone attachment 행은0이었다. 임의 현재 pose나 identity matrix로 실패를 숨기지 않는다.
+
+최종 실제 Make_SourceAnchorSampler의 before/after native17검사 PASS다. 독립 evaluator는
+test double로 분기·effect-local clock·fit rate·cycle·기존 pattern 우선·invalid 입력을 확인했다.
+별도로 실제 설치 MN_RPCT_05.wmodel의 rpct00_att_battle_28_05_loop_a(3.166667초)와
+bip002-r-hand(bone140)를 확인했고 source1.097~3.166667초6개 pose가 유한했다.
+최종 KoukuPlayer Release TU 컴파일도 PASS다. 근거는 `kouku/source_sampler_probe.log`,
+`kouku/installed_muzzle_model_probe.json`, `kouku/compile.log`이며 GPU 표시 판정은 아니다.
+
+Product 로드 성공은 기존 Client session JSONL의 `kouku.product.loaded`에 revision과
+pattern count, 실패는 EffectFailure.user.log의 `Kouku.product.load`에 원인을 기록한다.
+실시간 원본은 `out/DiagnosticBundles/20260919-054835-8b545350.zip`에 보존했다.
+
+### 적용과 화면 경계
+
+최종 Product Release 빌드는104.830초 PASS다. receipt는
+`out/BuildPipeline/runs/20260918T205656146Z-release-product.json`이며 compile/link 오류0,
+기존 C4819/C4244/LNK4099 경고는 남았다. Debug 전체 빌드는 이 후속 변경에서 실행하지 않았다.
+최종 Client SHA256은 `57b2448498ab39c21fb192360d485ab8ce717058f5a0c94bc6708fec1f50ff0a`,
+Server는 `42b114fe1f174fbc5b16a3ff0a1a82cfacd71d45bc2304515bf5315ddb15f5ee`다.
+v5 ZIP은 `C:/Users/user/Desktop/LostArk/Release/LostArk-Release-20260919-v5-192.168.0.14.zip`이다.
+101,394,117bytes, SHA256 `b6e956b7c106843e34313efcb9ee61780133b68f7439c44c332f9e5b24d04f36`.
+runtime458개와 직접 소비 Data1727개(1721JSON/6animevents), 실행 도구4개를 manifest에
+기록했다. V2 전체324개와 UI·Rendering·Animation 등의 직접 소비 경로를 포함하고,
+Resources/PNG/ChangedData는0개다. 선택한 기존 LostArk에서는 Resources만 읽고 새 ZIP의
+EXE/DLL/CSO/Data/DataFiles를 사용한다. 이전 v4의 changed-data 목록은 독립 실행본의 전체
+필요 데이터 목록이 아니므로 재사용하지 않았다. `portable-data-closure.receipt.json`과
+`root-zip-verification.json`에 참조·최종 binary SHA·ZIP 검증을 보존했다.
+실제4인 GPU 표시와 종료 재현의 성공 판정은 사용자 실행 후 기록한다.

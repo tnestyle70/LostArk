@@ -8,6 +8,8 @@
 #include <chrono>
 #include <cstdint>
 #include <cstdio>
+#include <filesystem>
+#include <fstream>
 #include <span>
 #include <utility>
 #include <vector>
@@ -28,6 +30,18 @@ namespace
 			std::chrono::duration_cast<std::chrono::milliseconds>(
 				std::chrono::system_clock::now().time_since_epoch()).count());
 	}
+	int Wait_SocketReady(const SOCKET socket, const bool writing,
+		const std::uint32_t waitMilliseconds)
+	{
+		fd_set ready;
+		FD_ZERO(&ready);
+		FD_SET(socket, &ready);
+		const timeval timeout{static_cast<long>(waitMilliseconds / 1000u),
+			static_cast<long>((waitMilliseconds % 1000u) * 1000u)};
+		return ::select(0, writing ? nullptr : &ready,
+			writing ? &ready : nullptr, nullptr, &timeout);
+	}
+
 }
 
 struct LostArk::Server::CClientSession::RELIABLE_BATCH_TRANSACTION::LOCKED_QUEUE
@@ -194,6 +208,7 @@ bool LostArk::Server::CClientSession::Start()
 		m_iQueuedOutboundBytes = 0u;
 		m_OutboundMetrics = {};
 		m_hasSenderExited = false;
+		m_iSendStallOrdinal = 0u;
 	}
 
 	try
@@ -448,7 +463,7 @@ void LostArk::Server::CClientSession::Sender_Loop()
 		}
 
 		const auto sendStart = std::chrono::steady_clock::now();
-		const bool sent = Send_All(frame.Bytes);
+		const bool sent = Send_All(frame.Bytes, frame.ePacketType);
 		const std::uint64_t sendMicroseconds = To_Microseconds(
 			std::chrono::steady_clock::now() - sendStart);
 		const bool sendFailedWhileRunning =
@@ -592,20 +607,17 @@ bool LostArk::Server::CClientSession::Configure_TransportOptions()
 			errorCode, "failed to disable TCP movement batching");
 		return false;
 	}
-	const DWORD timeoutMilliseconds = SEND_TIMEOUT_MILLISECONDS;
-	if (SOCKET_ERROR == ::setsockopt(
-		clientSocket,
-		SOL_SOCKET,
-		SO_SNDTIMEO,
-		reinterpret_cast<const char*>(&timeoutMilliseconds),
-		static_cast<int>(sizeof(timeoutMilliseconds))))
+	// A blocking SO_SNDTIMEO expiry leaves the stream indeterminate. Use
+	// nonblocking send/recv and readiness waits so only WSAEWOULDBLOCK retries.
+	u_long nonblocking = 1u;
+	if (SOCKET_ERROR == ::ioctlsocket(clientSocket, FIONBIO, &nonblocking))
 	{
 		const int errorCode = ::WSAGetLastError();
 		m_iLastErrorCode.store(errorCode);
 		Record_TerminalDiagnostic(
 			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::SERVER_SESSION_START_FAILED,
 			errorCode,
-			"failed to configure bounded send timeout");
+			"failed to configure nonblocking session transport");
 		return false;
 	}
 	return true;
@@ -627,6 +639,7 @@ bool LostArk::Server::CClientSession::Receive_Frame(
 
 	for (;;)
 	{
+		if (!m_isReceiveRunning.load()) return false;
 		const PACKET_PARSE_RESULT parseResult =
 			m_StreamParser.Try_Pop(frame);
 
@@ -669,7 +682,14 @@ bool LostArk::Server::CClientSession::Receive_Frame(
 
 		if (SOCKET_ERROR == receivedByteCount)
 		{
-			const int errorCode = ::WSAGetLastError();
+			int errorCode = ::WSAGetLastError();
+			if (WSAEWOULDBLOCK == errorCode)
+			{
+				if (!m_isReceiveRunning.load()) return false;
+				if (SOCKET_ERROR != Wait_SocketReady(clientSocket, false,
+					TRANSPORT_POLL_MILLISECONDS)) continue;
+				errorCode = ::WSAGetLastError();
+			}
 
 			if (m_isReceiveRunning.load())
 			{
@@ -702,61 +722,113 @@ bool LostArk::Server::CClientSession::Receive_Frame(
 }
 
 bool LostArk::Server::CClientSession::Send_All(
-	std::span<const std::uint8_t> bytes)
+	std::span<const std::uint8_t> bytes,
+	const LostArk::Shared::PACKET_TYPE packetType)
 {
 	std::size_t sentByteCount = 0;
-
+	auto lastProgress = std::chrono::steady_clock::now();
+	bool stalled = false;
+	bool reportStall = false;
+	const auto fail = [&](const int errorCode, const char* reason)
+	{
+		if (m_isSendRunning.load())
+		{
+			m_iLastErrorCode.store(errorCode);
+			const auto noProgressMs = To_Microseconds(
+				std::chrono::steady_clock::now() - lastProgress) / 1000u;
+			char context[256]{};
+			std::snprintf(context, sizeof(context),
+				"%s; sentFrameBytes=%zu; totalFrameBytes=%zu; noProgressMs=%llu",
+				reason, sentByteCount, bytes.size(),
+				static_cast<unsigned long long>(noProgressMs));
+			Record_SendProgressDiagnostic("send.terminal", packetType,
+				sentByteCount, bytes.size(), noProgressMs);
+			Record_TerminalDiagnostic(
+				LostArk::Shared::SESSION_DIAGNOSTIC_REASON::SERVER_SEND_ERROR_OR_TIMEOUT,
+				errorCode, context);
+		}
+		return false;
+	};
 	while (sentByteCount < bytes.size())
 	{
-		if (!m_isSendRunning.load())
-			return false;
-
+		if (!m_isSendRunning.load()) return false;
 		const SOCKET clientSocket = m_hClientSocket.load();
-		if (INVALID_SOCKET == clientSocket)
-			return false;
-
-		const int result = ::send(
-			clientSocket,
-			reinterpret_cast<const char*>(
-				bytes.data() + sentByteCount),
-			static_cast<int>(
-				bytes.size() - sentByteCount),
-			0);
-
+		if (INVALID_SOCKET == clientSocket) return false;
+		const int result = ::send(clientSocket,
+			reinterpret_cast<const char*>(bytes.data() + sentByteCount),
+			static_cast<int>(bytes.size() - sentByteCount), 0);
 		if (SOCKET_ERROR == result)
 		{
-			if (m_isSendRunning.load())
+			const int errorCode = ::WSAGetLastError();
+			if (WSAEWOULDBLOCK != errorCode)
+				return fail(errorCode, "nonblocking send failed while session was active");
+			const auto noProgressMs = To_Microseconds(
+				std::chrono::steady_clock::now() - lastProgress) / 1000u;
+			if (!stalled && noProgressMs >= SEND_STALL_REPORT_MILLISECONDS)
 			{
-				const int errorCode = ::WSAGetLastError();
-				m_iLastErrorCode.store(errorCode);
-				char context[192]{};
-				std::snprintf(context, sizeof(context), "%s; sentFrameBytes=%zu; totalFrameBytes=%zu",
-					errorCode == WSAETIMEDOUT ? "send timed out while peer was not draining" :
-						"send failed while session was active", sentByteCount, bytes.size());
-				Record_TerminalDiagnostic(
-					LostArk::Shared::SESSION_DIAGNOSTIC_REASON::SERVER_SEND_ERROR_OR_TIMEOUT,
-					errorCode, context);
+				stalled = true;
+				++m_iSendStallOrdinal;
+				reportStall = (m_iSendStallOrdinal & (m_iSendStallOrdinal - 1u)) == 0u;
+				if (reportStall) Record_SendProgressDiagnostic("send.stalled", packetType,
+					sentByteCount, bytes.size(), noProgressMs);
 			}
-			return false;
+			if (SOCKET_ERROR == Wait_SocketReady(clientSocket, true, TRANSPORT_POLL_MILLISECONDS))
+				return fail(::WSAGetLastError(), "send readiness wait failed");
+			continue;
 		}
-
-		if (0 == result)
-		{
-			if (m_isSendRunning.load())
-			{
-				m_iLastErrorCode.store(WSAECONNRESET);
-				Record_TerminalDiagnostic(
-					LostArk::Shared::SESSION_DIAGNOSTIC_REASON::SERVER_SEND_ERROR_OR_TIMEOUT,
-					WSAECONNRESET,
-					"send returned zero bytes");
-			}
-			return false;
-		}
-
+		if (0 == result) return fail(WSAECONNRESET, "send returned zero bytes");
 		sentByteCount += static_cast<std::size_t>(result);
+		if (stalled && reportStall) Record_SendProgressDiagnostic("send.recovered", packetType,
+			sentByteCount, bytes.size(), To_Microseconds(std::chrono::steady_clock::now() - lastProgress) / 1000u);
+		lastProgress = std::chrono::steady_clock::now();
+		stalled = false;
+		reportStall = false;
 	}
-
 	return true;
+}
+
+void LostArk::Server::CClientSession::Record_SendProgressDiagnostic(
+	const char* eventName, const LostArk::Shared::PACKET_TYPE packetType,
+	const std::size_t sentBytes, const std::size_t totalBytes,
+	const std::uint64_t noProgressMilliseconds) noexcept
+{
+	try
+	{
+		static std::mutex fileMutex;
+		std::scoped_lock lock{fileMutex};
+		wchar_t modulePath[32768]{};
+		const auto length = GetModuleFileNameW(nullptr, modulePath, 32768u);
+		if (!length || length >= 32768u) return;
+		const auto directory = std::filesystem::path(modulePath).parent_path() / L"Diagnostics";
+		std::error_code error;
+		std::filesystem::create_directories(directory, error);
+		if (error) return;
+		const auto path = directory / (L"server-send-progress-" +
+			std::to_wstring(GetCurrentProcessId()) + L".jsonl");
+		const auto size = std::filesystem::file_size(path, error);
+		if (!error && size >= 2u * 1024u * 1024u)
+		{
+			const auto previous = path.wstring() + L".previous";
+			std::filesystem::remove(previous, error);
+			if (error) return;
+			std::filesystem::rename(path, previous, error);
+			if (error) return;
+		}
+		std::ofstream log{path, std::ios::binary | std::ios::app};
+		if (!log) return;
+		const auto now = Current_UnixMilliseconds();
+		const auto inbound = m_iLastInboundUnixMilliseconds.load();
+		log << "{\"schema\":\"lostark.server-send-progress\",\"formatVersion\":1"
+			<< ",\"unixMs\":" << now << ",\"processId\":" << GetCurrentProcessId()
+			<< ",\"sessionId\":" << m_iSessionId << ",\"peerAddress\":\"" << m_PeerEndpoint.strAddress
+			<< "\",\"peerPort\":" << m_PeerEndpoint.iPort << ",\"event\":\"" << eventName
+			<< "\",\"packetType\":" << static_cast<unsigned>(packetType)
+			<< ",\"stallOrdinal\":" << m_iSendStallOrdinal << ",\"sentFrameBytes\":" << sentBytes
+			<< ",\"totalFrameBytes\":" << totalBytes << ",\"noProgressMs\":" << noProgressMilliseconds
+			<< ",\"closeOnBackpressure\":false"
+			<< ",\"lastInboundAgeMs\":" << (inbound && now >= inbound ? now - inbound : 0u) << "}\n";
+	}
+	catch (...) { } // Diagnostic failures cannot change stream progress or closure.
 }
 
 void LostArk::Server::CClientSession::Record_InboundPacket(

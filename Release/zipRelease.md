@@ -1,90 +1,103 @@
 # LostArk Release ZIP 안내
 
-2026-09-19 v4 기준. 쿠크 1~3관문을 Release 4인 환경에서 검증하기 위한 배포본이다.
-빌드된 Client/Server와 게시 데이터를 기존 LostArk 폴더에 설치한다.
+2026-09-19 v5 배포 기준. **최종 Release 빌드와 v5 ZIP 생성·파일 검증을 완료했다.**
+실제 4인 화면·음향·접속 안정성은 이 배포본으로 사용자 재검증한다.
 
-## 1. 배포 파일
+v5는 압축을 푼 폴더의 EXE·DLL·컴파일된 shader와 Data/DataFiles를 사용한다.
+선택한 기존 LostArk 폴더에서는 **Resources만 읽는다.** 기존 저장소에 설치하거나 파일을 덮어쓰지 않는다.
+
+## 1. 배포 상태와 구성
 
 | 항목 | 값 |
 |---|---|
-| ZIP | `LostArk-Release-20260919-Flow-v4-192.168.0.14.zip` |
-| 위치 | `C:\Users\user\Desktop\LostArk\Release` |
-| 크기 | 99,175,950 bytes, 약 99.2 MB |
+| ZIP | `LostArk-Release-20260919-v5-192.168.0.14.zip` |
+| 위치 | 저장소의 `Release` 폴더 |
+| 상태 | 최종 Release 제품 빌드·바이너리 확인·ZIP CRC/전체 파일 hash·사전검사 PASS |
+| ZIP 크기 | **101,394,117 bytes** (약 101.4 MB) |
+| ZIP SHA256 | `b6e956b7c106843e34313efcb9ee61780133b68f7439c44c332f9e5b24d04f36` |
 | 구성 | Release x64 |
 | 서버 접속 주소 | `192.168.0.14:7777` |
 | 서버 bind | `0.0.0.0:7777` |
-| 데이터 | Action revision **1753**, Sequence revision **65**, protocol **93** |
-| UI 통합 | PR **#413** 포함 |
+| 현재 게시 데이터 기준 | Action revision **1753**, Sequence revision **65**, protocol **93** |
 
-[ZIP 열기](C:/Users/user/Desktop/LostArk/Release/LostArk-Release-20260919-Flow-v4-192.168.0.14.zip)
+[v5 ZIP 열기](C:/Users/user/Desktop/LostArk/Release/LostArk-Release-20260919-v5-192.168.0.14.zip)
 
-SHA256:
+배포 입력은 runtime 458개와 직접 소비 Data 1,727개(JSON 1,721개·애니메이션 이벤트 6개)이며,
+압축 전 약 1.18 GB다. V2 JSON 324개와 제품 UI·카메라·조명·클래스 입력도 포함한다.
+기존 v4 변경분 목록만으로 독립 실행 데이터를 대신하지 않는다.
+최종 빌드 receipt와 Client/Server/Engine hash가 일치하고, Client/Server는 기존 v4 바이너리와 다른 것을 확인했다.
+
+폴더 구조는 다음과 같다. 빈 `Client/Default`, `Server/Default`도 작업 폴더로 유지한다.
 
 ```text
-51cbc99f7ad4849c7eccd209268fb38a8e71e8ea590284744c54936f416cf1d0
+LostArk.exe
+ServerHost.cmd
+Collect-RuntimeDiagnostics.ps1
+README_실행방법.md
+bundle-manifest.json
+Client/Bin/Release/        Client.exe, Engine.dll, 의존 DLL, 컴파일된 .cso
+Client/Bin/DataFiles/     게시된 Client 런타임 데이터
+Client/Default/           Client 작업 폴더·로그
+Server/Bin/Release/       Server.exe
+Server/Bin/DataFiles/     게시된 Server 런타임 데이터
+Server/Default/           Server 작업 폴더
+Data/                    직접 소비 JSON·애니메이션 이벤트와 참조 문서
 ```
 
-파일 확인 명령:
+**모든 Resources와 PNG를 제외한다. `Key_G.png`도 포함하지 않는다.**
+모델·텍스처·폰트·음원·UI 이미지는 팀 Drive의 Resources를 별도로 준비한다.
+`ChangedData` 폴더, 중첩 Runtime ZIP, 기존 저장소를 변경하는 설치기는 v5에 넣지 않는다.
+HLSL 원본 대신 런타임이 읽는 컴파일된 `.cso`를 실행 파일 옆에 둔다.
 
-```powershell
-Get-FileHash -Algorithm SHA256 -LiteralPath "C:\Users\user\Desktop\LostArk\Release\LostArk-Release-20260919-Flow-v4-192.168.0.14.zip"
-```
+## 2. 실행 전 준비
 
-## 2. 설치 전 준비
+- ZIP 전체를 새 폴더에 압축 해제한다. EXE 한 개만 복사하거나 압축 파일 안에서 실행하지 않는다.
+- 최신 Resources가 있는 기존 LostArk 폴더 또는 Resources 폴더 자체를 준비한다.
+- Resources에는 `Fonts`, `Character`, `Deploy`, `Effect`, `Map`, `Sound`, `UI`가 있어야 한다.
+- v5 폴더에 `Framework.sln`, Git checkout, Visual Studio 빌드는 필요하지 않다.
+- 공유 서버 PC도 같은 v5의 새 Server와 게시 데이터를 사용해야 한다.
 
-- `Framework.sln`이 있는 기존 LostArk 폴더가 필요하다. 현재 PC는 `C:\Users\user\Desktop\LostArk`다.
-- 팀 Drive의 최신 리소스를 `Client\Bin\Resources`에 준비한다. 모델·텍스처·사운드 전체는 이 ZIP에 포함되지 않는다.
-- 이번 ZIP에 추가로 포함한 리소스는 `UI/Interact/Key_G.png` 한 장이다.
-- 새 사운드 18개의 상대 경로는 ZIP의 `NEW_SOUND_PATHS.txt`에서 확인한다.
-- 편집 내용을 저장하고, 설치할 폴더의 Client와 Server를 종료한 뒤 설치한다. 설치기는 해당 실행 파일과 Data/DataFiles를 배포본으로 교체한다.
+실행기의 사전검사는 패키지 파일의 크기·SHA256과 Resources의 필수 폴더 존재를 확인한다.
+외부 Resources의 모든 미디어 내용이 최신인지, 실제 화면·음향이 정상인지는 이 검사만으로 보장하지 않는다.
 
-설치 전에 각 PC의 코드 빌드를 요구하지 않는다. ZIP을 받은 것만으로 Visual Studio의 다음 빌드까지 생략되는 것은 아니다.
+## 3. v5 실행 방법
 
-## 3. 설치와 실행
+1. 압축을 푼 v5 폴더의 `LostArk.exe`를 실행한다.
+2. Resources가 있는 기존 LostArk 폴더를 선택한다. `Client/Bin/Resources`를 자동으로 찾으며, Resources 폴더 자체를 선택해도 된다.
+3. 패키지 검증이 끝나면 **v5 폴더 안의 `Client/Bin/Release/Client.exe`**가 시작된다.
+4. 서버 PC에서는 기존 Server를 종료한 뒤 v5 폴더의 `ServerHost.cmd`를 한 번 실행한다. 다른 PC에서는 Client만 실행한다.
 
-### 일반 실행
+선택한 기존 폴더의 EXE·DLL·Data는 사용하거나 교체하지 않는다.
+반복 검증도 v5의 `LostArk.exe`로 실행한다. v4의 설치 바로가기는 기존 저장소 바이너리를 실행하므로 v5 실행 방법과 구분한다.
+서버 메모리의 데이터는 파일 게시만으로 갱신되지 않으므로 새 Server로 시작해야 한다.
 
-1. ZIP 전체를 압축 해제한다. 압축 파일 안에서 EXE만 직접 실행하지 않는다.
-2. 압축을 푼 폴더의 `LostArk.exe`를 실행한다.
-3. 설치 대상으로 `Framework.sln`이 있는 기존 LostArk 폴더를 선택한다.
-4. 실행 파일과 데이터 검증·백업·설치를 마치면 Release Client가 시작된다. 설치 과정에서 빌드는 하지 않는다.
-5. 서버 PC도 같은 배포본을 설치하고 새 Server를 실행한다. 다른 PC는 Client만 실행한다.
-
-설치 전용 `Install-Runtime.cmd` 또는 아래 PowerShell 설치 명령을 사용하면
-압축을 푼 폴더의 `Runtime` 안에 다음 바로가기를 만든다.
-`LostArk.exe` 방식은 바로가기 생성을 생략하고 설치 후 Client를 직접 실행한다.
-
-| 바로가기 | 용도 |
+| 대상 | 사용 경로·설정 |
 |---|---|
-| `Client (no build).lnk` | 설치된 Release Client 실행. 추가 빌드와 재설치를 하지 않는다. |
-| `Server (host PC only).lnk` | 호스트 PC의 Release Server 실행. 작업 폴더는 `Server/Default`, 인자는 `--bind-address 0.0.0.0`이다. |
+| Client EXE / 작업 폴더 | v5의 `Client/Bin/Release/Client.exe` / `Client/Default` |
+| 직접 소비 Data | `LOSTARK_PROJECT_DATA_ROOT` = v5의 `Data` |
+| 외부 Resources | `LOSTARK_RESOURCE_ROOT` = 선택한 Resources |
+| Client 서버 주소 | `LOSTARK_SERVER_HOST` = `192.168.0.14` |
+| Server EXE / 작업 폴더 | v5의 `Server/Bin/Release/Server.exe` / `Server/Default` |
+| Server 인자 | `--bind-address 0.0.0.0` |
 
-반복 테스트에는 위 바로가기를 사용한다. `LostArk.exe`는 설치 절차도 수행하므로 이후 로컬에서 수정·빌드한 파일을 다시 배포본으로 교체할 수 있다.
-Visual Studio의 F5/Ctrl+F5는 설정에 따라 빌드를 수행한다.
+같은 PC에서 4인 검증을 할 때는 서버 PC에서 `ServerHost.cmd`를 한 번,
+`LostArk.exe`를 네 번 실행한다. 같은 PC도 `192.168.0.14`를 사용한다.
+실행기는 시스템 환경 변수를 영구 변경하지 않고 자식 프로세스에 필요한 경로를 전달한다.
 
-### 같은 PC에서 Server 1개 + Client 4개 검증
-
-앱 자동 실행 없이 먼저 설치만 하려면 다음 순서를 사용한다.
-아래 예시는 ZIP을 `C:\Users\user\Desktop\LostArk\Release\Flow-v4`에 풀었다는 기준이다.
+Client/Server를 시작하지 않고 경로와 파일만 확인하려면, v5를 푼 폴더에서 다음을 실행한다.
+외부 LostArk 경로는 해당 PC의 실제 경로로 바꾼다.
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File "C:\Users\user\Desktop\LostArk\Release\Flow-v4\Runtime\Install-Runtime.ps1" -RepositoryRoot "C:\Users\user\Desktop\LostArk"
+Start-Process -FilePath .\LostArk.exe -ArgumentList '--check "C:\Users\user\Desktop\LostArk" "preflight.json"' -WindowStyle Hidden -Wait -PassThru
+Get-Content -LiteralPath .\preflight.json
 ```
 
-1. 설치 확인창에서 대상 폴더와 변경 내용을 확인한다.
-2. `Runtime\Server (host PC only).lnk`를 한 번 실행한다.
-3. `Runtime\Client (no build).lnk`를 네 번 실행한다.
-4. 네 Client로 같은 파티를 구성해 관문을 검증한다.
+`status=PASS`, `clientStarted=false`, `serverStarted=false`와 실제 EXE·Data·Resources 경로를 확인한다.
+검사 receipt는 지정한 파일에만 기록한다.
 
-같은 PC에서도 이번 패키지의 접속 주소 `192.168.0.14`를 그대로 사용한다.
-서버 메모리의 데이터는 파일 교체만으로 갱신되지 않으므로 설치 후 새 Server로 시작해야 한다.
+## 4. 현재 게시된 Pattern Flow
 
-설치 변경 파일의 백업은 기존 LostArk의 `out\RuntimeDeliveryBackups`에 저장된다.
-설치 중 파일 변경이나 실패를 감지하면 작업을 중단하고, 이번에 교체한 파일을 복구한다. 동시 편집된 파일은 보존한다.
-
-## 4. 적용된 Pattern Flow
-
-`P`는 패턴, `B`는 여러 패턴을 묶은 번들이다. 전체 정의·게시 목록은 ZIP의 `PATTERN_FLOW_전체목록.md`를 확인한다.
+`P`는 패턴, `B`는 여러 패턴을 묶은 번들이다. v5에 포함된 현재 게시 데이터 기준이다.
 
 | 관문 | 순서 |
 |---|---|
@@ -103,73 +116,70 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "C:\Users\user\Desktop\LostA
 일반 행 사이 대기는 1초이고, P76→P35와 관문 마지막 행은 0초다.
 Flow 종료만으로 보스를 처치하지 않는다. 사용자가 보스를 처치한 뒤 기존 클리어·전원 투표로 다음 관문을 진행한다.
 
-## 5. 이번 ZIP에 반영한 수정
+## 5. 오류 발생 시 로그 수집
 
-- Release에서 누락됐던 쿠크 lifecycle 알림 소비를 연결해 메시지 큐가 계속 쌓이는 결함을 수정했다.
-- 미로 입장 직후 대기 상태를 놓쳐 피자가 먼저 소모되던 서버 Flow 판정을 수정했다.
-- 팝업북 Sequence P1/P4의 무대가 카메라보다 2.852초 먼저 사라지는 12개 duration 필드를 수정·게시했다.
-- 컷씬 중 제품 UI/HUD와 입력을 숨기고 종료·취소·실패 시 기존 창 표시 상태를 복원한다.
-- 쿠크의 정상 4인 스킬 중첩·회전 카드·진입 조명을 수용하도록 이펙트 예산을 수정했다.
-- 베른 폭포 이펙트에서 비균일 배치 크기와 회전의 조합을 잘못된 행렬로 처리하던 오류를 수정했다.
-- 창 위쪽의 흰색 `파일 / 도움말` 메뉴바를 제거했다.
-- UI PR #413의 이름표·팝업·ESC·파티 광기 게이지·쿠크 에스더·G 키캡 변경을 통합했다.
-- Release 연결 실패, Lobby 복귀, 이펙트 실패, 서버 처리 지연의 진단 기록을 보강했다.
-
-이펙트 예산은 무제한으로 풀지 않았다. 쿠크 아레나의 particles/trail/light hard 한도는 각각 **49,152 / 32,768 / 160**이다.
-4인 × 동일 스킬 2회 잔상 중첩, 카드 42개, 도입 조명을 포함한 조합으로 검사했으며 다른 Level의 기존 한도는 유지했다.
-전체 축과 현재 검증 근거는 `EFFECT_BUDGET_현재검증.md`, 이전 한도 기록은 `EFFECT_BUDGET_변경전전체조사.md`에 있다.
-
-## 6. 오류 발생 시 로그 수집
-
-문제가 발생한 시각, 관문·패턴, 문제가 난 Client를 기록하고 아래 수집기를 실행한다.
-실행 중인 Client/Server를 자동 종료하거나 로그를 업로드하지 않고, 해당 PC의 로그 사본만 ZIP으로 만든다.
+문제가 발생한 시각, 관문·패턴, 문제가 난 Client를 기록한다.
+문제가 난 Client PC와 Server PC 각각에서 **실제로 실행한 v5 폴더**를 대상으로 수집한다.
+아래 명령은 v5를 푼 폴더에서 실행한다.
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File "C:\Users\user\Desktop\LostArk\Release\Flow-v4\Collect-Diagnostics.ps1" -RepositoryRoot "C:\Users\user\Desktop\LostArk"
+powershell -NoProfile -ExecutionPolicy Bypass -File .\Collect-RuntimeDiagnostics.ps1 -RuntimeRoot .
 ```
 
-결과는 `C:\Users\user\Desktop\LostArk\out\DiagnosticBundles`에 생성된다.
-여러 PC라면 문제가 난 Client PC와 Server PC에서 각각 수집한다.
-수집기는 Client session, Server session, Server room-perf 종류별 최신 4개 파일과 회전본을 포함한다.
+결과는 해당 v5 폴더의 `out/DiagnosticBundles/<시각>-<ID>.zip`과 같은 이름의 폴더에 생성된다.
+`-RuntimeRoot`를 생략하면 수집기 파일이 있는 폴더를 사용한다. 기본 구성은 Release다.
+수집기만 다른 PC에 복사해도 실행할 수 있으며, 기존 저장소를 대상으로 할 때는 다음처럼 지정한다.
 
-아래 경로는 설치한 LostArk 폴더 기준이다.
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\Collect-RuntimeDiagnostics.ps1 -RepositoryRoot "C:\Users\user\Desktop\LostArk" -Configuration Release
+```
 
-| 로그 | 확인 내용 |
+수집기는 Client/Server를 조작하거나 파일을 업로드하지 않고 다음 기록의 로컬 사본을 만든다.
+
+| 항목 | 수집 내용 |
 |---|---|
-| `Client/Bin/Release/Diagnostics/client-session-<PID>.jsonl` | 연결·입장·최초 terminal 원인, 큐 깊이, 서버 tick, 메인 처리 지연, 메모리, 컷씬 상태 |
-| 같은 파일의 `.previous` | 8MiB 순환 전 기록. 현재 파일과 함께 확인 |
-| `Client/Default/EffectFailure.user.log` | 이펙트 ID·발생 위치, 준비/생성/렌더 실패, 요청량과 예산 |
-| `Client/Default/RendererExit.user.log` | 렌더러 실패 |
-| `Client/Default/ClientStartup.user.log`, `ClientExit.user.log` | 초기화·종료 실패 |
-| `Server/Bin/Release/Diagnostics/server-session-<PID>.jsonl` | 연결 종료 사유, 소켓 오류, 송신 큐·부분 송신 정보 |
-| `Server/Bin/Release/Diagnostics/server-room-perf-<PID>.log` 및 `.previous` | 서버 tick 지연, 관문·Flow·패턴, 객체 수, 송신 상태 |
+| Client session | `Client/Bin/Release/Diagnostics/client-session-*.jsonl` 최신 4개와 `.previous` |
+| Server session | `Server/Bin/Release/Diagnostics/server-session-*.jsonl` 최신 4개와 `.previous` |
+| Server send progress | `Server/Bin/Release/Diagnostics/server-send-progress-*.jsonl` 최신 4개와 `.previous` |
+| Server room perf | `Server/Bin/Release/Diagnostics/server-room-perf-*.log` 최신 4개와 `.previous` |
+| Client 일반 로그 | `Client/Default`의 Startup·Exit·EffectFailure·RendererExit 로그와 존재하는 `.previous` |
+| 실행 식별 | Client.exe·Engine.dll·Server.exe의 경로·크기·SHA256, Client/Server PID·실행 경로·시작 시각 |
+| 배포 식별 | 존재하는 `bundle-manifest.json`, TeamLanEndpoint, 기존 설치 receipt·manifest |
 
-`Server entry failed.`는 공통 복귀 문구다. `lobby.recovery.presented`와 `recovery.reported`를 찾고,
+`identity.json`의 hash는 디스크 파일 기준이며 실행 중 메모리 이미지의 hash가 아니다.
+`collection.json`에는 수집 파일 hash와 수집 실패가 기록된다. Resources·자격 증명·환경 변수 전체는 수집하지 않는다.
+
+`Server entry failed.`는 공통 복귀 문구다. `lobby.recovery.presented`와 `recovery.reported`,
 `terminalReason/terminalDetail`, `source`, `HRESULT`, `wsaError`, 시각·PID를 함께 확인한다.
-뒤에 발생한 정리 오류가 최초 terminal 원인을 덮어쓰지 않도록 기록한다.
-`connection.heartbeat`는 연결 중 60초마다 기록하고, `main-pump.stall`은 1초 이상의 처리 공백을 기록한다.
-컷씬 배경 문제는 `kouku.cinematic.transition`과 `kouku.cinematic.failed`를 같은 시각으로 대조한다.
+Client와 Server 로그를 같은 시각으로 비교해야 원격 PC의 연결 종료 원인을 구분할 수 있다.
+컷씬 배경은 `kouku.cinematic.transition`과 `kouku.cinematic.failed`를 함께 확인한다.
+v5 실행기 자체의 실패는 오류창 또는 `--check` receipt에 표시하며 별도 LauncherLogs 파일은 만들지 않는다.
 
-실행기 자체가 실패하면 `%LOCALAPPDATA%\LostArk\LauncherLogs`도 별도로 확인한다. 이 폴더는 위 수집기의 수집 범위에 포함되지 않는다.
+## 6. 검증 상태와 이전 배포본
 
-## 7. 검증 상태와 남은 확인
+최종 Release Product 빌드와 Client/Server/Engine hash 일치, ZIP CRC·전체 manifest 파일 hash,
+Resources/PNG/ChangedData 0개, V2 JSON 324개와 초기 필수 UI JSON 포함 검증을 통과했다.
+완성된 v5 폴더의 `--check`도 실제 외부 Resources 경로와 bundle EXE·Data·작업 폴더를 확인했다.
+Client/Server는 이 검증 중 실행하지 않았다.
 
-| 확인 항목 | 상태 |
+별도 사전검사에서는 한글·공백 경로, `Framework.sln` 없는 폴더, 독립 진단 수집기와 실제
+Client 경로 해석 코드를 확인했다. 실제 화면·음향·4인 재현과 장시간 접속 안정성은 사용자 검증이 남아 있다.
+
+| 근거 | 파일 |
 |---|---|
-| UI PR #413 통합 후 최종 Release 제품 빌드 | PASS, 컴파일·링크 오류 없음 |
-| Sequence 65 게시와 Server bootstrap 3관문 revision 일치 | PASS |
-| 실제 서버 함수의 미로 대기·복귀 후 P25 시작 | 27/27 PASS |
-| 실제 이펙트 예산 admission·경계값 | 125개 PASS |
-| Billboard 행렬 및 기존 TRS 결과 보존 | 230개 PASS |
-| Release JSON 진단·최초 원인 보존·파일 순환 | PASS |
-| ZIP CRC/SHA256, 최종 Client/Server EXE hash, 설치 사전검증 | PASS |
-| 실제 4인 화면·음향·이펙트와 장시간 접속 안정성 | 사용자 재검증 필요 |
+| 최종 Release 빌드 | `out/BuildPipeline/runs/20260918T205656146Z-release-product.json` |
+| 최종 EXE/DLL pin | `out/BernDisconnect20260919/release-ready.receipt.json` |
+| ZIP 생성 결과 | `out/BernDisconnect20260919/portable-delivery.receipt.json` |
+| 독립 ZIP 재검증 | `out/BernDisconnect20260919/portable-final-verification.receipt.json` |
+| 실제 bundle 사전검사 | `out/BernDisconnect20260919/v5-portable.preflight.json` |
 
-이번 v4 수정 이후의 Debug 전체 빌드는 수행하지 않았다. 이 문서와 ZIP은 Release 기준이다.
-확인한 배경 무대 공백을 수정했지만, 모든 검은 화면이나 모든 연결 종료를 해결했다고 판정한 것은 아니다.
-이전 로컬 4Client 로그에서는 이펙트 예산 거부가 확인됐고 같은 실행의 서버 송신 실패는 0이었다.
-와이파이나 클라우드 위치가 원인이라고 단정하지 않고 새 진단 로그로 재현 시점을 구분한다.
+기존 v4는 저장소에 설치하는 별도 배포본으로 보존한다. v4에는 G 키캡 PNG 1개가 포함됐으나 v5는 모든 PNG를 제외한다.
+v4에서 완료한 Release 빌드·Sequence 65 게시·미로 대기·이펙트 예산·Billboard·진단 검증을 v5 최종 검증으로 대신 기록하지 않는다.
 
-배포 구성은 runtime 458개, 직접 소비 Data JSON 1,193개, G 키캡 이미지 1개다.
-EffectCatalog 참조 JSON 1,167개는 직접 소비 Data 수에 포함된다.
-이 문서는 ZIP 옆의 안내 파일이며 ZIP 자체의 내용과 SHA256은 변경하지 않았다.
+| 기존 파일 | 값 |
+|---|---|
+| v4 ZIP | `LostArk-Release-20260919-Flow-v4-192.168.0.14.zip` |
+| 크기 | 99,175,950 bytes |
+| SHA256 | `51cbc99f7ad4849c7eccd209268fb38a8e71e8ea590284744c54936f416cf1d0` |
+
+이 문서 갱신은 기존 v4 ZIP 내용과 SHA256을 변경하지 않는다.

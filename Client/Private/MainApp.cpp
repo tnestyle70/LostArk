@@ -2922,6 +2922,18 @@ void CMainApp::Add_OpenWindowTextClipOuts()
 
 HRESULT CMainApp::Render()
 {
+    const auto recordRenderFailure = [this](const char* stage, HRESULT result) noexcept
+    {
+        try
+        {
+            CNetworkManager::Get().Record_SessionEvent("render.failed",
+                std::string("stage=") + stage + "; hresult=" +
+                std::to_string(static_cast<unsigned long>(result)) +
+                "; deviceRemovedReason=" + std::to_string(static_cast<unsigned long>(
+                    m_pDevice ? m_pDevice->GetDeviceRemovedReason() : E_POINTER)));
+        }
+        catch (...) { } // Preserve the original rendering failure and transport state.
+    };
 	Sync_KoukuCinematicUI();
 	float4_t clearColor = { 0.008f, 0.012f, 0.025f, 1.f };
 	HRESULT hBeginResult;
@@ -2932,6 +2944,7 @@ HRESULT CMainApp::Render()
 	}
 	if (FAILED(hBeginResult))
 	{
+        recordRenderFailure("begin-frame", hBeginResult);
 		if (nullptr != m_pImGuiLayer)
 			m_pImGuiLayer->CancelFrame();
 		return hBeginResult;
@@ -2972,6 +2985,7 @@ HRESULT CMainApp::Render()
 	}
 	if (FAILED(hWorldResult))
 	{
+        recordRenderFailure("world", hWorldResult);
 		if (nullptr != m_pImGuiLayer)
 			m_pImGuiLayer->CancelFrame();
 		return hWorldResult;

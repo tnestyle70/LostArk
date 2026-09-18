@@ -2527,8 +2527,10 @@ lease에 연결한다. 저장된 DURATION은 timing 존재와 PRODUCT 의미의 
 - **4인 쿠크 이펙트 누락과 접속 종료를 분리한다.** Effect budget rejection은 Client
   presentation이며 같은 시각의 session terminal/Server queue·tick 근거 없이 서버 부하로
   단정하지 않는다. Release 소비자는 Debug guard 밖에서 매 프레임 알림을 drain한다.
-  cap은 정상 액션 cooldown/표현 tail·동시 플레이어 수·카드 수명으로 검증하고 다른 Level의
-  영구 조명과 provider 제출 순서까지 계산한다. 09-18 통합 RESULT G12에 현재 수치가 있다.
+  정상 액션 cooldown/표현 tail·동시 플레이어 수·카드 수명으로 누락을 검증한다.
+  G13부터 Level/owner/remote whole-effect 개수 admission은 제거됐으며 G12 수치는 과거 값이다.
+  유효성 검사와 실제 GPU 배열 크기를 임의 scene 예산과 혼동하지 않는다.400-light shader
+  배열은 순서 보존 batch로 소비하며 provider/post/overlay 합계도 개수만으로 거절하지 않는다.
 - **미로 entry도 대기다.** P28 전송 후 망원경 claim 전에는 role/runtime가 아직 NONE/INACTIVE다.
   권위 area HUD MAZE를 포함해 복귀 clear까지 Flow를 기다린다. 표시된 WAIT_MINIGAME만
   보고 이미 시작된 후속 audition timer까지 pause된 것으로 해석하지 않는다.
@@ -2536,3 +2538,18 @@ lease에 연결한다. 저장된 DURATION은 timing 존재와 PRODUCT 의미의 
   먼저 끝나는 WORLD lifetime은 배우만 남는 검은 공백을 만든다. 반면 비균일 parent 아래
   local 회전이 만드는 shear는 유효하다. quaternion을 쓰지 않는 billboard에서 TRS
   decomposition 성공을 강제하지 않고 축 길이/원점을 사용하며 finite 검사를 보존한다.
+
+- **TCP 정체는 전송 실패가 아니다.** nonblocking WSAEWOULDBLOCK은 마지막 성공 byte부터
+  readiness 후 재개한다.250ms 같은 경과 시간으로 session을 종료하거나 다음 frame을 먼저
+  보내지 않는다. blocking SO_SNDTIMEO가 이미 낸 WSAETIMEDOUT을 안전한 would-block으로
+  재해석하지 않는다. 실제 FIN/reset, reliable overflow와 명시 Stop은 별도 원인이다.
+- **원격 local-only sidecar도 전체 효과 생성을 막을 수 있다.** stable element ID가 authored
+  문서에서 사라졌는데 sidecar에 남으면 준비된 effect도 spawn rollback된다. catalog 전체의
+  실제 연결을 검사하고 없는 참조만 정리한다. 예산 증가나 renderer 실패 무시로 가리지 않는다.
+- **WORLD 좌표와 named World Object를 구분한다.** CAMERA/SOUND의 고정 WORLD 좌표는
+  worldId가 없어도 정상이다. 이를 sequence identity join에 넣으면 컷씬 한 행 때문에 모든
+  boss Product staging이 실패한다. 실제 named World만 sequence를 연결하고 EFFECT/LIGHT/
+  COLLIDER의 필수 worldId 검사는 유지한다. 개별 row parse만으로 전체 staging을 대신하지 않는다.
+- **독립 보스 효과의 명시 원본 애니메이션을 소비한다.** targeted source-boss에는 일반
+  pattern animation lane이 없을 수 있다. 그때 문서의 SourceModelPreview를 기존 sampler로
+  Effect-local clock에서 읽는다. 정상 pattern lane을 바꾸거나 현재 pose로 오류를 덮지 않는다.

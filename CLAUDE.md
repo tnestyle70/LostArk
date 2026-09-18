@@ -30,9 +30,12 @@ Set-Location LostArk
 git lfs pull
 ```
 
-팀장이 전달한 runtime 리소스를 `Client/Bin/Resources/{Fonts,Character,Deploy,Effect,Map,Sound,UI}` 물리 폴더에 둔다. 이 물리 트리는 Git이 추적하지 않는다. 빌드된 EXE/DataFiles를 다른 PC에 전달할 때는 `.md/TEAM/RUNTIME_BUILD_DELIVERY_GUIDE.md`의 runtime ZIP 설치기를 사용하며, Resource pack 자체를 ZIP manifest나 Git 정본으로 승격하지 않는다.
+팀장이 전달한 runtime 리소스를 `Client/Bin/Resources/{Fonts,Character,Deploy,Effect,Map,Sound,UI}` 물리 폴더에 둔다. 이 물리 트리는 Git이 추적하지 않는다. 빌드된 EXE/DataFiles를 다른 PC에 전달하는 portable 배포본과 기존 저장소용 runtime 설치기는 `.md/TEAM/RUNTIME_BUILD_DELIVERY_GUIDE.md`에서 구분한다. Resource pack 자체를 ZIP manifest나 Git 정본으로 승격하지 않는다.
 
 배포 ZIP을 설치하고 그 배포본을 실행만 할 때는 설치 안내의 `Client (no build)` 바로가기를 사용한다.
+Portable ZIP은 전체 압축 해제 후 최상위 `LostArk.exe`를 사용한다. 선택한 기존 폴더에서는
+Resources만 읽고, EXE/DLL/CSO와 Data/DataFiles는 압축 해제한 배포본을 사용한다.
+Portable에는 Resources·PNG나 기존 저장소를 덮어쓰는 설치기를 포함하지 않는다.
 ZIP의 EXE/DLL/CSO는 실행용이며 다른 PC의 OBJ/PCH/증분 추적 기록을 제공하지 않는다.
 소스를 수정해 개발할 때는 아래 Debug 제품 빌드를 실행한다. 최초 실행 데이터가 없으면 아래 명시 publisher 명령으로 준비한다.
 

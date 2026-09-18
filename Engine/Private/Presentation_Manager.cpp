@@ -5,10 +5,11 @@
 
 namespace
 {
-	constexpr size_t MAX_PRESENTATION_PROVIDERS = 256u;
-	constexpr size_t MAX_TRANSIENT_LIGHTS = CPresentation_Manager::TRANSIENT_LIGHT_CAPACITY;
-	constexpr size_t MAX_SCREEN_POSTS = 64u;
-	constexpr size_t MAX_SCREEN_OVERLAYS = 64u;
+	// Initial reservations avoid common allocations; they are not admission caps.
+	constexpr size_t INITIAL_PRESENTATION_PROVIDERS = 256u;
+	constexpr size_t INITIAL_TRANSIENT_LIGHTS = 384u;
+	constexpr size_t INITIAL_SCREEN_POSTS = 64u;
+	constexpr size_t INITIAL_SCREEN_OVERLAYS = 64u;
 
 	bool IsFinite4(const float4_t& Value)
 	{
@@ -187,10 +188,10 @@ namespace
 
 CPresentation_Manager::CPresentation_Manager()
 {
-	m_FrameProviders.reserve(MAX_PRESENTATION_PROVIDERS);
-	m_TransientLights.reserve(MAX_TRANSIENT_LIGHTS);
-	m_ScreenPosts.reserve(MAX_SCREEN_POSTS);
-	m_ScreenOverlays.reserve(MAX_SCREEN_OVERLAYS);
+	m_FrameProviders.reserve(INITIAL_PRESENTATION_PROVIDERS);
+	m_TransientLights.reserve(INITIAL_TRANSIENT_LIGHTS);
+	m_ScreenPosts.reserve(INITIAL_SCREEN_POSTS);
+	m_ScreenOverlays.reserve(INITIAL_SCREEN_OVERLAYS);
 }
 
 CPresentation_Manager& CPresentation_Manager::Get()
@@ -202,8 +203,7 @@ CPresentation_Manager& CPresentation_Manager::Get()
 HRESULT CPresentation_Manager::Add_FrameProvider(
 	shared_ptr<IPresentationProvider> pProvider)
 {
-	if (nullptr == pProvider ||
-		m_FrameProviders.size() >= MAX_PRESENTATION_PROVIDERS)
+	if (nullptr == pProvider)
 	{
 		m_hPendingProviderFailure = E_FAIL;
 		m_eLastFailureScope = PRESENTATION_FAILURE_SCOPE::GLOBAL_RUNTIME;
@@ -367,11 +367,6 @@ HRESULT CPresentation_Manager::Add_TransientLight(
 		m_eLastFailureScope =
 			PRESENTATION_FAILURE_SCOPE::LOCAL_PROVIDER_CONTRACT;
 	}
-	else if (m_TransientLights.size() >= MAX_TRANSIENT_LIGHTS)
-	{
-		hResult = E_FAIL;
-		m_eLastFailureScope = PRESENTATION_FAILURE_SCOPE::GLOBAL_RUNTIME;
-	}
 	else
 	{
 		m_TransientLights.push_back(LightDesc);
@@ -408,11 +403,6 @@ HRESULT CPresentation_Manager::Add_ScreenPost(
 		m_eLastFailureScope =
 			PRESENTATION_FAILURE_SCOPE::LOCAL_PROVIDER_CONTRACT;
 	}
-	else if (m_ScreenPosts.size() >= MAX_SCREEN_POSTS)
-	{
-		hResult = E_FAIL;
-		m_eLastFailureScope = PRESENTATION_FAILURE_SCOPE::GLOBAL_RUNTIME;
-	}
 	else
 	{
 		m_ScreenPosts.push_back(ScreenPostDesc);
@@ -436,11 +426,6 @@ HRESULT CPresentation_Manager::Add_ScreenOverlay(
 		hResult = E_FAIL;
 		m_eLastFailureScope =
 			PRESENTATION_FAILURE_SCOPE::LOCAL_PROVIDER_CONTRACT;
-	}
-	else if (m_ScreenOverlays.size() >= MAX_SCREEN_OVERLAYS)
-	{
-		hResult = E_FAIL;
-		m_eLastFailureScope = PRESENTATION_FAILURE_SCOPE::GLOBAL_RUNTIME;
 	}
 	else
 	{
