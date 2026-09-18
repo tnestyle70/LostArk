@@ -893,6 +893,14 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 			Handle_RaidEntryRespond(
 				command.iSessionId, command.RaidEntryRespond);
 			break;
+		case ROOM_COMMAND_TYPE::GATE_PROGRESS_PROPOSE:
+			Handle_GateProgressPropose(
+				command.iSessionId, command.GateProgressPropose);
+			break;
+		case ROOM_COMMAND_TYPE::GATE_PROGRESS_RESPOND:
+			Handle_GateProgressRespond(
+				command.iSessionId, command.GateProgressRespond);
+			break;
 		case ROOM_COMMAND_TYPE::CHAT:
 			Handle_Chat(command.iSessionId, command.Chat);
 			break;
@@ -1090,6 +1098,7 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 	Enforce_VehicleRidingState();
 	m_iServerTick = updateTick;
 	Expire_RaidEntryProposals();
+	Expire_GateProgressVote();
 	if (!m_Players.empty())
 		Broadcast_WorldSnapshot();
 	std::vector<LostArk::Shared::GameplayDataRevision> liveGenerationPins;

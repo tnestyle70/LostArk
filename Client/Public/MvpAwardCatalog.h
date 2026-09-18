@@ -193,6 +193,12 @@ public:
 		int32_t iRaidGroupId, int32_t iGate, const char* szDifficultyId,
 		int32_t iPartySize) const;
 
+	/* Single pieces of the headline for the gate progress panel: the raid's name by
+	   EFTable_ZoneEpicGate.GroupId and the difficulty's bracketed text. Empty when the
+	   catalog has no such row. */
+	wstring_t Find_RaidName(int32_t iRaidGroupId) const;
+	wstring_t Find_DifficultyText(const char* szDifficultyId) const;
+
 private:
 	/* One piece of the headline: its text and, when GameMsg gave the piece its
 	   own <FONT COLOR>, that colour. Without one the piece takes the field's

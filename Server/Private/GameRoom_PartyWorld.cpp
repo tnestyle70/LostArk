@@ -35,9 +35,19 @@ void LostArk::Server::CGameRoom::Handle_ReturnToBern(
 	// the same target), this just needs to be a real BERN placement id.
 	constexpr const char* BERN_RETURN_PLACEMENT_ID = "npc.bern.beda.guide";
 
-	if (WORLD_ID::VALTAN_ARENA != m_eWorldId)
-		return;
-	if (!m_bValtanRaidCleared && !Is_RaidClearTestModeEnabled())
+	/* Valtan after its clear; KoukuSaydon after its last gate cleared (the gate progress
+	   widget's exit button). */
+	if (WORLD_ID::VALTAN_ARENA == m_eWorldId)
+	{
+		if (!m_bValtanRaidCleared && !Is_RaidClearTestModeEnabled())
+			return;
+	}
+	else if (WORLD_ID::KAKULSAYDON_ARENA == m_eWorldId)
+	{
+		if (0u == Gate_Count() || 0u == (m_GateProgress.iClearedMask & (1u << (Gate_Count() - 1u))))
+			return;
+	}
+	else
 		return;
 
 	const auto sessionIter = m_PlayerIdBySessionId.find(sessionId);
@@ -1250,6 +1260,7 @@ void LostArk::Server::CGameRoom::Handle_SpawnWorldEntity(
 	if (auto player = m_Players.find(m_PlayerIdBySessionId.at(sessionId)); player != m_Players.end())
 		Apply_KoukuGateEntryCard(player->second, m_WorldEntities.back());
 	Broadcast_WorldEntitySpawned(m_WorldEntities.back());
+	Note_GatePlacementRaised(m_WorldEntities.back().strPlacementId);
 	if (!Send_WorldEntitySpawnResult(
 		session,
 		request.strPlacementId,

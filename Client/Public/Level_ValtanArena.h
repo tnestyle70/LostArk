@@ -11,6 +11,7 @@
 #include "MapLightPresentationRuntime.h"
 #include "PartyInteractionView.h"
 #include "PlayerController.h"
+#include "RaidGateProgressView.h"
 #include "WorldPlayerChatBubbleView.h"
 #include "ValtanCinematicCameraController.h"
 #include "ValtanCinematicCameraDocument.h"
@@ -296,6 +297,9 @@ private:
 	unique_ptr<CUILayoutRuntime> m_pDeadSceneView;
 	unique_ptr<CUILayoutRuntime> m_pRaidClearView;
 	unique_ptr<CMvpResultView> m_pMvpResultView;
+	/* Gate progress panel: Valtan is one gate here, checked once the clear mark starts. */
+	CRaidGateProgressView m_GateProgressView;
+	bool_t m_bRaidClearReturnAvailable = false;
 	/* Edge-detect for the boss's replicated eAction (see Update_RaidClear) and the elapsed time
 	since that edge -- negative means the overlay is not currently showing. */
 	bool_t m_bRaidClearWasBossDead = false;

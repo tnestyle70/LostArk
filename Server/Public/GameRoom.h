@@ -996,6 +996,43 @@ namespace LostArk::Server
 		   속한다(propose가 그 불변식을 검사). iProposalId는 이 방에서 발급하는 단조 증가
 		   식별자로 pointer/index가 아니다. Voters는 발의 시점 멤버 스냅샷(솔로는 1명),
 		   Accepted는 그 부분집합. m_iServerTick이 iDeadlineTick을 넘으면 TIMEOUT으로 닫는다. */
+		/* Commander raid gate progress (KoukuSaydon gates). The room marks a gate cleared
+		   when its last primary boss dies (Notify_GateBossDeath from the world update),
+		   the leader / solo player proposes to move on, members answer, and on
+		   ALL_ACCEPTED Advance_Gate despawns the arena, raises the next gate's disabled
+		   placements and moves every player to the gate position -- the product path of
+		   what the Debug gate buttons do by hand. Implemented in GameRoom_GateProgress.cpp. */
+		struct GATE_PROGRESS_STATE
+		{
+			std::uint8_t iCurrentGate = 0u;     // 1-based, 0 = no gate raised yet
+			std::uint8_t iClearedMask = 0u;
+			std::uint32_t iProposalId = 0u;     // 0 = no vote open
+			LostArk::Shared::GATE_PROGRESS_KIND eKind = LostArk::Shared::GATE_PROGRESS_KIND::ADVANCE;
+			std::uint32_t iRequestSequence = 0u;
+			LostArk::Shared::PLAYER_ID iProposerId = LostArk::Shared::INVALID_PLAYER_ID;
+			std::vector<LostArk::Shared::PLAYER_ID> Voters;
+			std::vector<LostArk::Shared::PLAYER_ID> Accepted;
+			std::uint32_t iDeadlineTick = 0u;
+		};
+		void Handle_GateProgressPropose(
+			SESSION_ID sessionId,
+			const LostArk::Shared::C2S_GATE_PROGRESS_PROPOSE& request);
+		void Handle_GateProgressRespond(
+			SESSION_ID sessionId,
+			const LostArk::Shared::C2S_GATE_PROGRESS_RESPOND& request);
+		void Close_GateProgressVote(LostArk::Shared::GATE_PROGRESS_VOTE_RESULT result);
+		void Expire_GateProgressVote();
+		// A primary boss is about to be removed DEAD: clears its gate when it was the last one.
+		void Notify_GateBossDeath(const SERVER_WORLD_ENTITY& deadBoss);
+		// A gate placement came up (Debug button or Advance_Gate): that gate is now current.
+		void Note_GatePlacementRaised(const std::string& placementId);
+		bool Advance_Gate(std::uint8_t nextGate);
+		bool Spawn_GatePlacement(const std::string& placementId);
+		void Broadcast_GateProgressState(
+			bool bClosed, LostArk::Shared::GATE_PROGRESS_VOTE_RESULT result);
+		std::uint8_t Gate_Count() const;
+		int Gate_IndexOfPlacement(const std::string& placementId) const;
+
 		struct RAID_ENTRY_PROPOSAL
 		{
 			std::uint32_t iProposalId = 0u;
@@ -1489,6 +1526,8 @@ namespace LostArk::Server
 		// 파티 레이드 입장 투표 상태. struct RAID_ENTRY_PROPOSAL은 위 메서드 선언부에 정의한다.
 		std::vector<RAID_ENTRY_PROPOSAL> m_RaidEntryProposals;
 		std::uint32_t m_iNextRaidEntryProposalId = 1u;
+		GATE_PROGRESS_STATE m_GateProgress;
+		std::uint32_t m_iNextGateProposalId = 1u;
 
 		LostArk::Shared::WORLD_ID m_eWorldId = LostArk::Shared::WORLD_ID::END;
 		CWorldBootstrap m_WorldBootstrap;

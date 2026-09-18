@@ -2863,6 +2863,69 @@ namespace LostArk::Shared
 	bool Write_Message(CPacketWriter& writer, const S2C_RAID_ENTRY_VOTE& message);
 	bool Read_Message(CPacketReader& reader, S2C_RAID_ENTRY_VOTE& message);
 
+	/* Commander raid gate progress (KoukuSaydon gates 1..3). The Server marks a gate
+	   cleared when its last primary boss dies, the leader / solo player proposes to
+	   move on, every party member answers, and on ALL_ACCEPTED the Server despawns the
+	   gate, raises the next gate's placements and moves the players. Same shape as
+	   the party raid entry vote; NONE means no vote is open. */
+	enum class GATE_PROGRESS_VOTE_RESULT : std::uint8_t
+	{
+		NONE = 0,
+		ALL_ACCEPTED,
+		DECLINED,
+		TIMEOUT,
+		CANCELLED,
+		END
+	};
+
+	/* What the vote is for: ADVANCE raises the next gate after a clear, RESTART raises the
+	   current gate again (the widget's restart button, retail's "restart vote"). */
+	enum class GATE_PROGRESS_KIND : std::uint8_t
+	{
+		ADVANCE = 0,
+		RESTART,
+		END
+	};
+
+	struct C2S_GATE_PROGRESS_PROPOSE
+	{
+		std::uint32_t iRequestSequence = 0u;
+		WORLD_ID eWorldId = WORLD_ID::END;
+		GATE_PROGRESS_KIND eKind = GATE_PROGRESS_KIND::ADVANCE;
+	};
+	bool Write_Message(CPacketWriter& writer, const C2S_GATE_PROGRESS_PROPOSE& message);
+	bool Read_Message(CPacketReader& reader, C2S_GATE_PROGRESS_PROPOSE& message);
+
+	struct C2S_GATE_PROGRESS_RESPOND
+	{
+		std::uint32_t iRequestSequence = 0u;
+		std::uint32_t iProposalId = 0u;
+		bool bAccepted = false;
+	};
+	bool Write_Message(CPacketWriter& writer, const C2S_GATE_PROGRESS_RESPOND& message);
+	bool Read_Message(CPacketReader& reader, C2S_GATE_PROGRESS_RESPOND& message);
+
+	// Sent to every player in the room whenever any of it changes. iCurrentGate is
+	// 1-based (0 = no gate raised yet); bit (gate - 1) of iClearedMask is that gate's
+	// clear. iProposalId 0 = no vote; bClosed with eResult is the vote's verdict, and
+	// ALL_ACCEPTED arrives together with the new iCurrentGate.
+	struct S2C_GATE_PROGRESS_STATE
+	{
+		WORLD_ID eWorldId = WORLD_ID::END;
+		std::uint8_t iGateCount = 0u;
+		std::uint8_t iCurrentGate = 0u;
+		std::uint8_t iClearedMask = 0u;
+		std::uint32_t iProposalId = 0u;
+		GATE_PROGRESS_KIND eKind = GATE_PROGRESS_KIND::ADVANCE;
+		NET_ENTITY_ID iProposerNetEntityId = INVALID_NET_ENTITY_ID;
+		std::uint8_t iAccepted = 0u;
+		std::uint8_t iTotal = 0u;
+		bool bClosed = false;
+		GATE_PROGRESS_VOTE_RESULT eResult = GATE_PROGRESS_VOTE_RESULT::NONE;
+	};
+	bool Write_Message(CPacketWriter& writer, const S2C_GATE_PROGRESS_STATE& message);
+	bool Read_Message(CPacketReader& reader, S2C_GATE_PROGRESS_STATE& message);
+
 	// One authored world sequence instance started. The Server owns the trigger
 	// entry that decided when; the Client resolves the stable instance ID
 	// against the Area document it already loaded and plays only presentation.

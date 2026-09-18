@@ -11,6 +11,7 @@
 #include "MapLightPresentationRuntime.h"
 #include "PlayerController.h"
 #include "StatusEffectTextView.h"
+#include "RaidGateProgressView.h"
 #include "ValtanCinematicCameraDocument.h"
 #include "ValtanCinematicCameraController.h"
 #include "WorldPlayerChatBubbleView.h"
@@ -627,11 +628,25 @@ private:
 	/* Negative until a clear starts. */
 	f32_t m_fRaidClearElapsedSeconds = -1.f;
 	void Update_RaidClear(f32_t fTimeDelta);
-	/* Per gate: arms while a primary boss is up (and re-arms the HUD death latch for it),
-	   fires the clear when the latch is set and no primary boss is left -- so a two-boss
-	   gate clears on its last boss. */
-	bool_t m_bRaidClearArmed = false;
-	void Update_RaidClearTrigger();
+	/* Commander raid gate progress. The Server owns the cleared mask, the vote and the gate
+	   switch (S2C_GATE_PROGRESS_STATE); this Level shows the panel, starts the clear mark
+	   when a gate clears, offers the proceed / vote prompt after the award page, and applies
+	   the presentation of whichever gate the Server raised. */
+	CRaidGateProgressView m_GateProgressView;
+	LostArk::Shared::S2C_GATE_PROGRESS_STATE m_GateProgress{};
+	bool_t m_bGateProgressKnown = false;
+	bool_t m_bGateVoteAnswered = false;
+	bool_t m_bMvpWasVisible = false;
+	std::uint32_t m_iNextGateRequestSequence = 1u;
+	void Update_GateProgress(f32_t fTimeDelta);
+	void Apply_GateProgressState(const LostArk::Shared::S2C_GATE_PROGRESS_STATE& State);
+	/* HUD focus, combat-analysis reset and (Debug) the gate objects / lighting for a gate the
+	   Server raised on its own -- the presentation half of the F1 gate button. */
+	void Apply_ServerGate(size_t gateIndex);
+	bool_t Is_LocalRaidLeader() const;
+	bool_t Is_GateVotePromptOpen() const;
+	static CRaidGateProgressView::PROMPT Gate_VotePrompt(LostArk::Shared::GATE_PROGRESS_KIND eKind);
+	wstring_t Find_PlayerNickname(LostArk::Shared::NET_ENTITY_ID iNetEntityId) const;
 	/* 1-based gate for the award headline. The debug gate index is 0-based and
 	   NO_ACTIVE_DEBUG_GATE means none was entered, which reads as gate 1. */
 	int32_t Current_GateNumber() const;
