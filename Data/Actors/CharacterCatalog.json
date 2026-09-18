@@ -943,7 +943,7 @@
               0.0,
               0.0
             ],
-            "var_headbase_overlaynormalintensity_ui": 1.0,
+            "var_headbase_overlaynormalintensity_ui": 0.0,
             "var_headdeco_decalcolor_ui": [
               1.0,
               1.0,
@@ -1442,7 +1442,7 @@
             },
             {
               "expressionIndex": 4,
-              "assetId": "Character/SourceMaterials/efmaster_material_prologue/diffuse.dds",
+              "assetId": "Character/LanceMaster/textures/pc_ft_00_eyeiris_d.dds",
               "colorSpace": "srgb"
             },
             {
