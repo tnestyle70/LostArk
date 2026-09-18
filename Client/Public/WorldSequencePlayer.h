@@ -109,6 +109,11 @@ public:
 	// CPU snapshot admitted by the Loader; lookup performs no IO or GPU work.
 	std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT> Find_PreparedLeafSnapshot(const std::string& leafId) const;
 	bool_t Set_Document(const CWorldSequenceDocument& document, const TARGET_SET& targets, std::string& status);
+	// Editor draft preview: same validation and stop as Set_Document, but a
+	// prepared model whose resource still asks for the same inputs is kept, so
+	// a key or clip edit does not reload a 40 MB body and its animation set.
+	bool_t Replace_DocumentKeepingModels(const CWorldSequenceDocument& document,
+		const TARGET_SET& targets, std::string& status);
 	// A single request may stage several independent clocks against one document.
 	// Validate/read targets once; prepare every copy before replacing any player.
 	static bool_t Set_DocumentBatch(const CWorldSequenceDocument& document, const TARGET_SET& targets,
@@ -269,6 +274,8 @@ private:
 		ID3D11Device* deviceIdentity = nullptr;
 		ID3D11DeviceContext* contextIdentity = nullptr;
 		const CMapAssetCatalog* catalogIdentity = nullptr;
+		// Product boss presentation drawn with this body (empty = single model).
+		std::string presentationBossArchetypeId;
 	};
 	struct ACTIVE_INSTANCE final
 	{
@@ -327,6 +334,8 @@ private:
 	void Release_Objects(ACTIVE_INSTANCE& active);
 	void Clear_PreparedObjects();
 	static bool_t Same_ObjectModelInputs(const WORLD_SEQUENCE_OBJECT_RESOURCE& left, const WORLD_SEQUENCE_OBJECT_RESOURCE& right);
+	bool_t Admit_PresentationBossModel(const WORLD_SEQUENCE_OBJECT_RESOURCE& resource,
+		const TARGET_SET& targets, OBJECT_MODEL& out);
 	const OBJECT_MODEL* Find_PreparedObjectModel(const WORLD_SEQUENCE_OBJECT_RESOURCE& resource, const TARGET_SET& targets) const;
 	const OBJECT_MODEL* Find_SharedObjectModel(const WORLD_SEQUENCE_OBJECT_RESOURCE& resource, const TARGET_SET& targets) const;
 	void Remember_SharedObjectModel(const WORLD_SEQUENCE_OBJECT_RESOURCE& resource, const OBJECT_MODEL& model, const TARGET_SET& targets) const;

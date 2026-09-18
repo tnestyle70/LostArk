@@ -464,6 +464,9 @@ private:
 	void RenderServerArenaActiveControls();
 	void UpdateDebugToolShortcut();
 	void RefreshWorldObjectResources();
+	/* The integrated cutscene view previews unsaved Motion edits; every other
+	   route keeps the saved document it already consumed. */
+	const CWorldSequenceDocument* CompositionPreviewWorldSource() const;
 	std::string GetWorldLevelAreaId() const;
 	bool FocusWorldLevelPosition(const float3_t& position, float radius, std::string& status);
 	bool UpdateMapEffectPlacementInput();

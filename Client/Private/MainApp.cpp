@@ -1881,7 +1881,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		{
 			if (m_pKoukuPresentationPlayer && m_pKoukuPresentationPlayer->Begin_BundlePreview(
 				workbench->Get_PatternPreviewDocument(), bundlePreviewId, bundleClockMs, bundlePaused, previewRouteStatus,
-				m_pWorldObjectTool ? m_pWorldObjectTool->Get_SavedDocument() : nullptr))
+				CompositionPreviewWorldSource()))
 			{
 				if (m_pAnimationTool) { std::string stoppedAnimationStatus; (void)m_pAnimationTool->Stop_KoukuCompositionPreview(stoppedAnimationStatus); }
 				if (auto* arena = CLevel_KakulSaydonArena::Get_Active()) arena->Debug_StopCompositionWorldPreview();
@@ -1941,13 +1941,13 @@ void CMainApp::Update(const f32_t fTimeDelta)
     document.Bundles.push_back(std::move(single));
     if (m_pKoukuPresentationPlayer && m_pKoukuPresentationPlayer->Begin_BundlePreview(
       document, pattern.strPatternId, startClockMs, startPaused, previewRouteStatus,
-      m_pWorldObjectTool ? m_pWorldObjectTool->Get_SavedDocument() : nullptr, true, true))
+      CompositionPreviewWorldSource(), true, true))
     {
      if (m_pAnimationTool) { std::string stoppedAnimationStatus; (void)m_pAnimationTool->Stop_KoukuCompositionPreview(stoppedAnimationStatus); }
 
      ClaimCompositionPreviewOwner(route.owner);
      previewAccepted = Begin_KoukuWorldPreview(document, pattern, previewRouteStatus,
-      m_pWorldObjectTool ? m_pWorldObjectTool->Get_SavedDocument() : nullptr);
+      CompositionPreviewWorldSource());
      if (!previewAccepted) StopCompositionPreview(route.owner);
 					m_eDebugInputOwner = route.owner;
     }
@@ -1972,7 +1972,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
      ClaimCompositionPreviewOwner(route.owner);
      m_eDebugInputOwner = route.owner;
      previewAccepted = Begin_KoukuWorldPreview(document, pattern, previewRouteStatus,
-      m_pWorldObjectTool ? m_pWorldObjectTool->Get_SavedDocument() : nullptr);
+      CompositionPreviewWorldSource());
      if (!previewAccepted)
      {
       workbench->Notify_SequencePreviewAdmission(false, previewRouteStatus);
@@ -2093,7 +2093,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
       resourcePattern.WorldOccurrences.push_back(worldBox);
      }
     }
-    const auto* worldSource = m_pWorldObjectTool ? m_pWorldObjectTool->Get_SavedDocument() : nullptr;
+    const auto* worldSource = CompositionPreviewWorldSource();
     bool worldRequiresActor = false;
     bool contextReady = true;
     if (resourcePreview.Resource.eKind == KOUKU_SAYDON_PRESENTATION_KIND::WORLD)
@@ -2668,6 +2668,54 @@ HRESULT CMainApp::Render()
 					Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.Map.Build");
 					m_pMapTool->Render();
 				}
+			}
+			/* Report the authoring dirty state the integrated Save button shows,
+			   and run the ask it raised. Source only: no publisher here. */
+			if (nullptr != m_pMapTool && m_pMapTool->Is_IntegratedCutsceneViewOpen())
+			{
+				/* The integrated Save owns the KoukuSaydon composition only.
+				   Valtan keeps its own split-source save in its workbench, so
+				   claim nothing here while that Area is hosted. */
+				const bool_t koukuHosted = m_pMapTool->Get_HostedCompositionSession() ==
+					static_cast<ICompositionWorkbenchSession*>(m_pSequenceActionWorkbench.get());
+				const bool_t sequenceDirty = koukuHosted &&
+					m_pSequenceActionWorkbench &&
+					m_pSequenceActionWorkbench->Is_Dirty();
+				/* WorldObjectTool edits the Kouku Area only (its AREA_ID is
+				   fixed), so its draft is saved here only while Kouku is hosted.
+				   A Valtan Save must never write the Kouku object document. */
+				const bool_t objectDirty = koukuHosted && m_pWorldObjectTool &&
+					m_pWorldObjectTool->Is_Dirty();
+				std::string integratedStatus;
+				if (m_pMapTool->Consume_IntegratedSaveRequest())
+				{
+					bool_t saved = true;
+					if (sequenceDirty && m_pSequenceActionWorkbench)
+						saved = m_pSequenceActionWorkbench->Save(integratedStatus) && saved;
+					if (objectDirty && m_pWorldObjectTool)
+					{
+						/* false: authoring sources only. The Area publisher and the
+						   linked battle pattern publish stay explicit actions. */
+						saved = m_pWorldObjectTool->Save_Source(false) && saved;
+					}
+					if (integratedStatus.empty())
+						integratedStatus = saved ?
+							"Saved authoring sources. Runtime data was not published." :
+							"Save failed; the existing authoring edits are preserved.";
+				}
+				m_pMapTool->Set_IntegratedSaveState(sequenceDirty, objectDirty,
+					std::move(integratedStatus));
+			}
+			/* Map Tool renders first, so the shell learns here whether the
+			   Sequence session frame was already opened this frame. */
+			if (nullptr != m_pSequencerTool)
+			{
+				/* Suppress the session the Map Tool actually opened, which
+				   follows the Area it is editing, not a fixed one. */
+				m_pSequencerTool->Suppress_SessionFrameThisFrame(
+					nullptr != m_pMapTool ?
+					m_pMapTool->Get_HostedCompositionSession() : nullptr,
+					nullptr != m_pMapTool ? m_pMapTool->Get_HostedObjectSession() : nullptr);
 			}
 			if (IsDebugToolVisible(DEBUG_TOOL::SEQUENCER) && nullptr != m_pSequencerTool)
 			{
@@ -8059,6 +8107,17 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 				m_pValtanActionWorkbench.get(), m_pKoukuSaydonActionWorkbench.get());
 			m_pSequencerTool->Set_ActionSessions(m_pCharacterActionWorkbench.get(),
 				m_pWorldObjectTool.get(), m_pSequenceActionWorkbench.get());
+			/* The Map Tool hosts the same Sequence session for its integrated
+			   cutscene view. One owner and one draft, borrowed per frame. */
+			if (m_pMapTool)
+			{
+				m_pMapTool->Set_SequenceCompositionSession(m_pSequenceActionWorkbench.get());
+				/* Valtan's Area hosts its own workbench: the Sequence session
+				   reads the KoukuSaydon composition and has no Valtan data. */
+				m_pMapTool->Set_ValtanCompositionSession(m_pValtanActionWorkbench.get());
+			}
+			if (m_pMapTool)
+				m_pMapTool->Set_ObjectCompositionSession(m_pWorldObjectTool.get());
 			m_pSequencerTool->Set_TargetChangedCallback([this](COMPOSITION_WORKBENCH_TARGET target) {
 				StopCompositionPreview(m_eCompositionPreviewOwner);
 				if (m_pValtanActionWorkbench) m_pValtanActionWorkbench->Set_PreviewOwnerActive(false);
@@ -10126,6 +10185,24 @@ void CMainApp::RenderServerArenaActiveControls()
 	}
 
 	ImGui::EndTabBar();
+}
+
+const CWorldSequenceDocument* CMainApp::CompositionPreviewWorldSource() const
+{
+	if (nullptr == m_pWorldObjectTool)
+		return nullptr;
+	/* Only the Map Tool view that edits Motion, camera and timeline on one
+	   screen consumes the draft. Publishing and product playback are
+	   unaffected because they never reach this helper. */
+	if (nullptr != m_pMapTool && m_pMapTool->Is_IntegratedCutsceneViewOpen())
+	{
+		if (const CWorldSequenceDocument* draft =
+			m_pWorldObjectTool->Get_AuthoringDraftDocument())
+		{
+			return draft;
+		}
+	}
+	return m_pWorldObjectTool->Get_SavedDocument();
 }
 
 void CMainApp::RefreshWorldObjectResources()

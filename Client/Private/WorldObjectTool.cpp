@@ -598,7 +598,7 @@ bool CWorldObjectTool::Matches_SourceBaseline()
     return true;
 }
 
-bool CWorldObjectTool::Save_Source()
+bool CWorldObjectTool::Save_Source(const bool publishRuntime)
 {
     if (!m_Ready || m_PublishProcess || !Matches_SourceBaseline()) return false;
     auto stagedPath = m_SourcePath;
@@ -670,8 +670,15 @@ bool CWorldObjectTool::Save_Source()
     m_SavedDocument = m_Document; m_Dirty = false; ++m_SavedGeneration;
     m_EmissionOrigins.clear(); m_EditedMotionIds.clear();
     m_PristinePatternId.clear();
-    m_LinkedSavePending = m_LinkedSavePending || linked;
-    m_PublishLinkedPatterns = m_PublishLinkedPatterns || publishPatterns;
+    m_LinkedSavePending = m_LinkedSavePending || (linked && publishRuntime);
+    m_PublishLinkedPatterns = m_PublishLinkedPatterns || (publishPatterns && publishRuntime);
+    if (!publishRuntime)
+    {
+        /* Source-only: the authoring documents are on disk and the runtime
+           keeps whatever the last explicit publish produced. */
+        m_Status = "Saved Object authoring sources. Runtime data was not published.";
+        return true;
+    }
     m_Status = "Saved Object and linked Collider/Logic rows; applying World Object runtime data.";
     Start_Publish();
     return true;

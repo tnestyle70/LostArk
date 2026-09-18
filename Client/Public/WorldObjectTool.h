@@ -39,11 +39,20 @@ public:
     { m_CanSaveLinked = std::move(canSave); m_ApplyLinkedSave = std::move(apply); }
     // Only a saved document may become a Workbench resource inventory.
     const CWorldSequenceDocument* Get_SavedDocument() const { return m_Ready ? &m_SavedDocument : nullptr; }
+    /* The in-edit document the tool already previews with. Only the integrated
+       authoring preview consumes it; product playback and publish keep the
+       saved document above. */
+    const CWorldSequenceDocument* Get_AuthoringDraftDocument() const
+    { return m_Ready ? &Preview_Document() : nullptr; }
     uint64_t Get_SavedGeneration() const { return m_SavedGeneration; }
+    /* publishRuntime=false saves the authoring sources and stops there, so the
+       integrated cutscene Save cannot also run the Area publisher or the
+       linked battle pattern publish. The default keeps the standalone Save. */
+    bool Save_Source(bool publishRuntime = true);
+    [[nodiscard]] bool Is_Dirty() const noexcept { return m_Dirty; }
 
 private:
     bool Load_Source();
-    bool Save_Source();
     bool Render_SaveButton();
     void Render_SaveStatus() const;
     void Render_ColliderPreview();

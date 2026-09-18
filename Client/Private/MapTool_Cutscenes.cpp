@@ -29,10 +29,494 @@
 
 
 
+bool_t Client::CMapTool::Build_CutsceneTargets(
+	CWorldSequencePlayer::TARGET_SET& outTargets)
+{
+	if (!m_Catalog.Is_Ready())
+		return false;
+	outTargets.levelIndex = m_iAuthoringLevelIndex;
+	outTargets.pCatalog = &m_Catalog;
+	outTargets.pPlacements = &Authoring_Placements();
+	outTargets.pDeployRuntime = &Authoring_Deploy();
+	/* Object-resource actors build their own models, which the existing
+	   Kouku callers could skip because their props were already placed.
+	   Leaving these null makes every such actor fail to prepare. */
+	outTargets.device = m_pDevice;
+	outTargets.context = m_pContext;
+	outTargets.objectPreparationOwner = &m_ArenaRisePlayer;
+	return outTargets.Is_Complete();
+}
+
+bool_t Client::CMapTool::Ensure_WorldObjectPrototype()
+{
+	if (m_bWorldObjectPrototypeReady)
+		return true;
+	const std::string levelText = std::to_string(m_iAuthoringLevelIndex);
+	/* Level_KakulSaydonArena adds this prototype under its own index, so the
+	   tool never registers a second copy there. Every other Level this tool
+	   can author - the isolated editor shell and the Valtan arena it attaches
+	   to - registers nothing, and without this no actor is ever created. */
+	if (ETOUI(LEVEL::KAKULSAYDON_ARENA) == m_iAuthoringLevelIndex)
+	{
+		m_bWorldObjectPrototypeReady = true;
+		m_strWorldObjectPrototypeStatus =
+			"World Object prototype is owned by the Kouku arena Level " +
+			levelText + ".";
+		return true;
+	}
+	if (ETOUI(LEVEL::END) <= m_iAuthoringLevelIndex)
+	{
+		m_strWorldObjectPrototypeStatus =
+			"World Object prototype: no authoring Level is bound (index " +
+			levelText + ").";
+		return false;
+	}
+	/* A null prototype is a failure of its own - device, context or the
+	   shader it binds - and is reported before Add_Prototype can fold it into
+	   the same E_FAIL as a duplicate. */
+	unique_ptr<CWorldSequenceObject> prototype =
+		CWorldSequenceObject::Create(m_pDevice, m_pContext);
+	if (nullptr == prototype)
+	{
+		m_strWorldObjectPrototypeStatus =
+			"World Object prototype could not be created on Level " + levelText +
+			" (device, context or shader initialisation failed).";
+		return false;
+	}
+	if (SUCCEEDED(CGameInstance::Get().Add_Prototype(m_iAuthoringLevelIndex,
+		CWorldSequenceObject::PROTOTYPE_TAG, std::move(prototype))))
+	{
+		m_bWorldObjectPrototypeReady = true;
+		m_strWorldObjectPrototypeStatus =
+			"World Object prototype registered by Map Tool on Level " +
+			levelText + ".";
+		return true;
+	}
+	/* Add_Prototype rejects exactly four inputs (Prototype_Manager.cpp): an
+	   uninitialised manager, a Level index at or past the count the engine was
+	   started with, a null prototype, or a tag already present on that Level.
+	   The engine is running with LEVEL::END levels (MainApp engineDesc), the
+	   index was checked against that above and the prototype is not null, so
+	   the one remaining cause is this tag already sitting on this Level from
+	   an earlier registration - the tool left and re-entered the Level without
+	   a Change_Level to clear it. That prototype is the same class and usable. */
+	m_bWorldObjectPrototypeReady = true;
+	m_strWorldObjectPrototypeStatus =
+		"World Object prototype was already registered on Level " + levelText +
+		"; reused.";
+	return true;
+}
+
+const Client::CMapTool::EDITOR_CUTSCENE* Client::CMapTool::Find_EditorCutscene(
+	const std::string& cutsceneId) const
+{
+	const auto found = std::find_if(m_Cutscenes.begin(), m_Cutscenes.end(),
+		[&cutsceneId](const EDITOR_CUTSCENE& cutscene)
+		{ return cutscene.cutsceneId == cutsceneId; });
+	return m_Cutscenes.end() == found ? nullptr : &*found;
+}
+
+const Client::CMapTool::EDITOR_CAMERA_SHOT* Client::CMapTool::Find_CameraShot(
+	const std::string& shotId) const
+{
+	const auto found = std::find_if(m_CameraShots.begin(), m_CameraShots.end(),
+		[&shotId](const EDITOR_CAMERA_SHOT& shot)
+		{ return shot.shotId == shotId; });
+	return m_CameraShots.end() == found ? nullptr : &*found;
+}
+
+const Client::CMapTool::EDITOR_CUTSCENE_CUT* Client::CMapTool::Find_CutsceneCutAt(
+	const EDITOR_CUTSCENE& cutscene,
+	const f32_t timeMs,
+	f32_t& outLocalMs) const
+{
+	/* Cuts are stored in start order and the loader rejects overlap, so the
+	   first cut whose half-open span [start, end) holds T owns it: at a shared
+	   boundary the next cut's first key takes over, with no blend. The single
+	   exception is the end instant of the last cut, which still shows its
+	   final pose instead of handing the camera back one instant early. */
+	const EDITOR_CUTSCENE_CUT* lastCut = cutscene.cameraCuts.empty() ?
+		nullptr : &cutscene.cameraCuts.back();
+	for (const EDITOR_CUTSCENE_CUT& cut : cutscene.cameraCuts)
+	{
+		const EDITOR_CAMERA_SHOT* shot = Find_CameraShot(cut.shotId);
+		if (nullptr == shot)
+			continue;
+		const f32_t startMs = static_cast<f32_t>(cut.startMs);
+		const f32_t endMs = startMs +
+			static_cast<f32_t>((std::max)(0, shot->trackDurationMs));
+		if (timeMs < startMs)
+			break;
+		if (timeMs < endMs || (&cut == lastCut && timeMs <= endMs))
+		{
+			outLocalMs = timeMs - startMs;
+			return &cut;
+		}
+	}
+	outLocalMs = 0.f;
+	return nullptr;
+}
+
+bool_t Client::CMapTool::Prepare_EditorCutsceneWorld(
+	const EDITOR_CUTSCENE& cutscene)
+{
+	m_CutsceneSessionInstanceIds.clear();
+	/* Camera-only is a first-class case: a cutscene that names no World
+	   instance must still play, so this reports success without touching the
+	   World player at all. */
+	if (cutscene.worldInstanceIds.empty())
+	{
+		m_CutsceneWorldSource = "World 배우 없음 (카메라만 재생)";
+		return true;
+	}
+	m_CutsceneWorldSource.clear();
+	const EDITOR_AREA_DESCRIPTOR* descriptor = Get_ActiveEditorArea();
+	if (nullptr == descriptor)
+	{
+		m_CutsceneStatus = "No active Area for the World actors.";
+		return false;
+	}
+	CWorldSequencePlayer::TARGET_SET targets{};
+	if (!Build_CutsceneTargets(targets))
+	{
+		m_CutsceneStatus = "World actors need a loaded Area.";
+		return false;
+	}
+	if (!Ensure_WorldObjectPrototype())
+	{
+		m_CutsceneStatus = m_strWorldObjectPrototypeStatus;
+		return false;
+	}
+	/* The editor judges the draft it is editing, so the World Sequence
+	   document the panel holds for this Area is admitted, unsaved edits
+	   included. The published runtime file is used only when that draft is
+	   not loaded, and the section says which one is on screen. */
+	std::string admission;
+	const bool_t hasDraft = nullptr != m_pWorldSequenceToolPanel &&
+		m_pWorldSequenceToolPanel->Is_Ready() &&
+		m_pWorldSequenceToolPanel->Get_Document().Get_AreaId() ==
+			descriptor->areaId;
+	if (hasDraft)
+	{
+		if (!m_ArenaRisePlayer.Replace_DocumentKeepingModels(
+			m_pWorldSequenceToolPanel->Get_Document(), targets, admission))
+		{
+			m_CutsceneStatus = "World draft could not be admitted: " + admission;
+			return false;
+		}
+		m_CutsceneWorldSource = m_pWorldSequenceToolPanel->Is_Dirty() ?
+			"저작 draft (미저장 변경 포함)" :
+			"저작본 (Data/Maps/Authoring, 저장된 상태)";
+	}
+	else
+	{
+		if (!m_ArenaRisePlayer.Load_Area(descriptor->areaId, targets))
+		{
+			m_CutsceneStatus = "World Sequence load failed: " +
+				m_ArenaRisePlayer.Get_Status();
+			return false;
+		}
+		m_CutsceneWorldSource =
+			"게시본 (Client/Bin/DataFiles/Map) - 이 Area 의 저작 draft 없음";
+	}
+	m_bArenaRiseAreaLoaded = true;
+	m_strArenaRiseLoadedArea = descriptor->areaId;
+	/* Start every instance this cutscene owns, then pause so the session
+	   clock is the only thing that advances them. Every started ID is
+	   recorded before the next one runs, so a failure part way through
+	   releases the whole cast instead of leaving half of it on stage. */
+	for (const std::string& instanceId : cutscene.worldInstanceIds)
+	{
+		if (!m_ArenaRisePlayer.Play(instanceId, targets))
+		{
+			const std::string reason = m_ArenaRisePlayer.Get_Status();
+			Release_EditorCutsceneWorld(true);
+			m_CutsceneStatus = "World instance could not start: " +
+				instanceId + " - " + reason;
+			return false;
+		}
+		m_CutsceneSessionInstanceIds.push_back(instanceId);
+	}
+	m_ArenaRisePlayer.Set_Paused(true);
+	return true;
+}
+
+void Client::CMapTool::Release_EditorCutsceneWorld(
+	const bool_t restorePlacements)
+{
+	if (m_CutsceneSessionInstanceIds.empty())
+		return;
+	CWorldSequencePlayer::TARGET_SET targets{};
+	const bool_t hasTargets = Build_CutsceneTargets(targets);
+	/* Without live targets nothing can be restored, but the actors are still
+	   released: Stop_Instance then only hides and removes its own clones. */
+	for (const std::string& instanceId : m_CutsceneSessionInstanceIds)
+	{
+		m_ArenaRisePlayer.Stop_Instance(instanceId,
+			hasTargets ? targets : CWorldSequencePlayer::TARGET_SET{},
+			restorePlacements && hasTargets);
+	}
+	m_CutsceneSessionInstanceIds.clear();
+	m_bCutsceneWorldPrepared = false;
+}
+
+void Client::CMapTool::Abandon_EditorCutscene(const std::string& reason)
+{
+	if (EDITOR_CUTSCENE_STATE::STOPPED == m_eCutsceneState &&
+		m_strCutsceneSessionId.empty() && m_CutsceneSessionInstanceIds.empty())
+	{
+		return;
+	}
+	/* The Level these actors lived in is already gone, and the targets that
+	   would restore placements belong to it. Only the tool's own clones and
+	   its camera claim are dropped. */
+	for (const std::string& instanceId : m_CutsceneSessionInstanceIds)
+	{
+		m_ArenaRisePlayer.Stop_Instance(instanceId,
+			CWorldSequencePlayer::TARGET_SET{}, false);
+	}
+	m_CutsceneSessionInstanceIds.clear();
+	End_CutsceneCameraTrack();
+	m_bCutsceneCameraHeld = false;
+	m_bCutsceneWorldPrepared = false;
+	m_bCutsceneWorldFailed = false;
+	m_bCutsceneWorldPreviewStale = false;
+	m_eCutsceneState = EDITOR_CUTSCENE_STATE::STOPPED;
+	m_strCutsceneSessionId.clear();
+	m_strCutsceneSessionArea.clear();
+	m_strCutsceneActiveCutId.clear();
+	m_fCutsceneSessionMs = 0.f;
+	m_CutsceneStatus = reason;
+}
+
+bool_t Client::CMapTool::Refresh_EditorCutsceneWorldDraft()
+{
+	m_bCutsceneWorldPreviewStale = false;
+	if (EDITOR_CUTSCENE_STATE::STOPPED == m_eCutsceneState)
+		return true;
+	const EDITOR_CUTSCENE* cutscene = Find_EditorCutscene(m_strCutsceneSessionId);
+	if (nullptr == cutscene)
+		return false;
+	/* The edited draft replaces the running cast in place; the session clock
+	   keeps its time so the change is judged at the same instant. */
+	Release_EditorCutsceneWorld(true);
+	m_bCutsceneWorldFailed = false;
+	if (!Prepare_EditorCutsceneWorld(*cutscene))
+	{
+		m_bCutsceneWorldFailed = !cutscene->worldInstanceIds.empty();
+		m_eCutsceneState = EDITOR_CUTSCENE_STATE::PAUSED;
+		return false;
+	}
+	m_bCutsceneWorldPrepared = !m_CutsceneSessionInstanceIds.empty();
+	return true;
+}
+
+void Client::CMapTool::Seek_EditorCutsceneWorld()
+{
+	if (!m_bCutsceneWorldPrepared || m_CutsceneSessionInstanceIds.empty())
+		return;
+	CWorldSequencePlayer::TARGET_SET targets{};
+	if (!Build_CutsceneTargets(targets))
+	{
+		Release_EditorCutsceneWorld(false);
+		m_bCutsceneWorldFailed = true;
+		m_eCutsceneState = EDITOR_CUTSCENE_STATE::PAUSED;
+		m_CutsceneStatus = "World actors lost the Area they were staged in; "
+			"all were released and the preview paused.";
+		return;
+	}
+	/* One absolute seek per frame, and only for this session's instances.
+	   Calling Update as well would advance them a second time and drift them
+	   away from the camera. */
+	m_ArenaRisePlayer.Set_Paused(true);
+	for (const std::string& instanceId : m_CutsceneSessionInstanceIds)
+	{
+		if (m_ArenaRisePlayer.Seek_InstanceToMs(
+			instanceId, m_fCutsceneSessionMs, targets))
+		{
+			continue;
+		}
+		/* One actor that cannot be applied fails the whole cast: the player
+		   has already stopped that one, and the survivors are released here
+		   too, so a failure never reads as a partial success on screen. The
+		   camera can go on only after the editor presses Resume. */
+		const std::string reason = m_ArenaRisePlayer.Get_Status();
+		Release_EditorCutsceneWorld(true);
+		m_bCutsceneWorldFailed = true;
+		m_eCutsceneState = EDITOR_CUTSCENE_STATE::PAUSED;
+		m_CutsceneStatus = "World actor failed at " +
+			std::to_string(static_cast<int32_t>(m_fCutsceneSessionMs)) +
+			" ms: " + instanceId + " - " + reason +
+			". Every actor was released; Resume continues camera-only.";
+		return;
+	}
+}
+
+bool_t Client::CMapTool::Play_EditorCutscene(const std::string& cutsceneId)
+{
+	const EDITOR_CUTSCENE* cutscene = Find_EditorCutscene(cutsceneId);
+	if (nullptr == cutscene)
+	{
+		m_CutsceneStatus = "Unknown cutscene: " + cutsceneId;
+		return false;
+	}
+	const EDITOR_AREA_DESCRIPTOR* descriptor = Get_ActiveEditorArea();
+	if (nullptr == descriptor)
+	{
+		m_CutsceneStatus = "No active Area.";
+		return false;
+	}
+	/* Whatever the previous session owned is handed back before the new one
+	   takes anything, so two cutscenes never drive the camera together. */
+	Stop_EditorCutscene();
+	m_bCutsceneWorldFailed = false;
+	m_bCutsceneWorldPreviewStale = false;
+	if (!Prepare_EditorCutsceneWorld(*cutscene))
+		return false;
+	m_bCutsceneWorldPrepared = !m_CutsceneSessionInstanceIds.empty();
+	m_strCutsceneSessionId = cutscene->cutsceneId;
+	m_strCutsceneSessionArea = descriptor->areaId;
+	m_fCutsceneSessionMs = 0.f;
+	m_strCutsceneActiveCutId.clear();
+	m_eCutsceneState = EDITOR_CUTSCENE_STATE::PLAYING;
+	m_CutsceneStatus = "Playing " + cutscene->displayName;
+	return true;
+}
+
+void Client::CMapTool::Stop_EditorCutscene()
+{
+	if (EDITOR_CUTSCENE_STATE::STOPPED == m_eCutsceneState &&
+		m_strCutsceneSessionId.empty() && m_CutsceneSessionInstanceIds.empty())
+	{
+		return;
+	}
+	/* Release by the IDs this session started, not by the prepared flag or by
+	   the cutscene row: a failed seek clears the flag, and a Reload can
+	   replace the row, but neither may leave an actor on stage. */
+	Release_EditorCutsceneWorld(true);
+	m_bCutsceneWorldFailed = false;
+	m_bCutsceneWorldPreviewStale = false;
+	End_CutsceneCameraTrack();
+	m_eCutsceneState = EDITOR_CUTSCENE_STATE::STOPPED;
+	m_strCutsceneSessionId.clear();
+	m_strCutsceneSessionArea.clear();
+	m_strCutsceneActiveCutId.clear();
+	m_fCutsceneSessionMs = 0.f;
+}
+
+void Client::CMapTool::Update_EditorCutscene(const f32_t fTimeDelta)
+{
+	if (EDITOR_CUTSCENE_STATE::STOPPED == m_eCutsceneState)
+		return;
+	const EDITOR_AREA_DESCRIPTOR* descriptor = Get_ActiveEditorArea();
+	/* Changing Area mid-preview would drive another map's actors, so the
+	   session ends with its own Area rather than following along. */
+	if (nullptr == descriptor || descriptor->areaId != m_strCutsceneSessionArea)
+	{
+		Stop_EditorCutscene();
+		m_CutsceneStatus = "Cutscene preview stopped: the Area changed.";
+		return;
+	}
+	const EDITOR_CUTSCENE* cutscene = Find_EditorCutscene(m_strCutsceneSessionId);
+	if (nullptr == cutscene)
+	{
+		Stop_EditorCutscene();
+		return;
+	}
+	if (EDITOR_CUTSCENE_STATE::PLAYING == m_eCutsceneState)
+	{
+		/* Showing a hidden actor for the first time clones its model, so the
+		   starting frame is long. Advancing by that whole frame would skip
+		   most of the authored motion. */
+		m_fCutsceneSessionMs += (std::min)(fTimeDelta,
+			KAKUL_CUTSCENE_MAX_STEP_SECONDS) * 1000.f;
+		if (m_fCutsceneSessionMs >= static_cast<f32_t>(cutscene->durationMs))
+		{
+			/* Hold the last instant instead of restarting: the editor judges
+			   the ending pose, and a silent loop hides where it ends. */
+			m_fCutsceneSessionMs = static_cast<f32_t>(cutscene->durationMs);
+			m_eCutsceneState = EDITOR_CUTSCENE_STATE::PAUSED;
+			m_CutsceneStatus = cutscene->displayName + " reached its end.";
+		}
+	}
+	/* An edit to the World draft is shown at the time it was made, not after
+	   the next Play, so the cast is re-admitted before this frame's seek. */
+	if (m_bCutsceneWorldPreviewStale)
+		(void)Refresh_EditorCutsceneWorldDraft();
+	Seek_EditorCutsceneWorld();
+	(void)Apply_EditorCutsceneCamera();
+}
+
+bool_t Client::CMapTool::Apply_EditorCutsceneCamera()
+{
+	const shared_ptr<CCamera_Free> camera = m_pAssetTestCamera.lock();
+	if (nullptr == camera)
+		return false;
+	const EDITOR_CUTSCENE* cutscene = Find_EditorCutscene(m_strCutsceneSessionId);
+	if (nullptr == cutscene)
+		return false;
+	f32_t localMs = 0.f;
+	const EDITOR_CUTSCENE_CUT* cut =
+		Find_CutsceneCutAt(*cutscene, m_fCutsceneSessionMs, localMs);
+	if (nullptr == cut)
+	{
+		/* An authored gap, or the tail after the last cut. The original hands
+		   the camera back there while the actors keep going, so do the same
+		   instead of freezing on the last frame. */
+		if (!m_strCutsceneActiveCutId.empty())
+		{
+			End_CutsceneCameraTrack();
+			m_strCutsceneActiveCutId.clear();
+		}
+		return false;
+	}
+	const EDITOR_CAMERA_SHOT* shot = Find_CameraShot(cut->shotId);
+	if (nullptr == shot)
+		return false;
+	VALTAN_CINEMATIC_CAMERA_POSE pose{};
+	if (!Sample_ShotCameraTrack(*shot, localMs, pose))
+		return false;
+	/* A cut boundary is a hard cut in the source: every director cut here has
+	   transitiontime 0. Dropping the held blend state on the change keeps the
+	   next cut from gliding in from the previous framing. */
+	if (m_strCutsceneActiveCutId != cut->cutId)
+	{
+		if (!m_strCutsceneActiveCutId.empty())
+			End_CutsceneCameraTrack();
+		m_strCutsceneActiveCutId = cut->cutId;
+	}
+	if (!m_bCutsceneCameraHeld)
+	{
+		if (!camera->Begin_PresentationOverride(
+			CAMERA_SHOT_PREVIEW_OWNER_ID,
+			CCamera::PRESENTATION_PRIORITY::AUTHORING_PREVIEW))
+		{
+			m_CutsceneStatus = "Another preview holds the camera.";
+			return false;
+		}
+		m_bCutsceneCameraHeld = true;
+	}
+	/* No blend in or out. The cut list is the only thing that decides which
+	   pose is on screen, so the editor sees the source cut, not a glide. */
+	if (!(pose.hasUp ?
+		camera->Apply_PresentationPoseWithUp(CAMERA_SHOT_PREVIEW_OWNER_ID,
+			pose.vEye, pose.vLookAt, pose.vUp, pose.fFovYDegrees) :
+		camera->Apply_PresentationPose(CAMERA_SHOT_PREVIEW_OWNER_ID,
+			pose.vEye, pose.vLookAt, pose.fFovYDegrees)))
+	{
+		return false;
+	}
+	return true;
+}
+
 void Client::CMapTool::Apply_CutsceneCameraTrack(const f32_t timeDelta)
 {
 	const shared_ptr<CCamera_Free> camera = m_pAssetTestCamera.lock();
 	if (nullptr == camera)
+		return;
+	/* An editor cutscene session owns the camera outright while it runs, so
+	   the per-shot clock path below never competes with it. */
+	if (EDITOR_CUTSCENE_STATE::STOPPED != m_eCutsceneState)
 		return;
 	const EDITOR_CAMERA_SHOT* bound = nullptr;
 	f32_t elapsedMs = 0.f;
@@ -329,6 +813,8 @@ void Client::CMapTool::Update_CutsceneArenaRise(
 	else if (m_bCutsceneOriginalRunning || 0.f <= m_fCutsceneScrubMs ||
 		m_bMarioIntroRunning)
 	{
+		/* The editor cutscene session is advanced from CMapTool::Update
+		   before this function, so only the per-shot path runs here. */
 		Apply_CutsceneCameraTrack(fTimeDelta);
 	}
 
@@ -533,24 +1019,30 @@ bool_t Client::CMapTool::Ensure_ShotCutsceneClock(
 		return Play_CutsceneOriginalRise();
 	}
 	CWorldSequencePlayer::TARGET_SET targets{};
-	targets.levelIndex = m_iAuthoringLevelIndex;
-	targets.pCatalog = &m_Catalog;
-	targets.pPlacements = &Authoring_Placements();
-	targets.pDeployRuntime = &Authoring_Deploy();
-	if (!targets.Is_Complete())
+	if (!Build_CutsceneTargets(targets))
 	{
 		m_CameraShotStatus = "Camera track needs a loaded Area";
 		return false;
 	}
-	if (!m_bArenaRiseAreaLoaded)
+	/* The sequence document belongs to the Area being edited. Loading Kouku's
+	   here would look up this shot's instance in another map's document. */
+	const EDITOR_AREA_DESCRIPTOR* descriptor = Get_ActiveEditorArea();
+	if (nullptr == descriptor)
 	{
-		if (!m_ArenaRisePlayer.Load_Area(KAKUL_AREA_ID, targets))
+		m_CameraShotStatus = "Camera track needs a loaded Area";
+		return false;
+	}
+	if (!m_bArenaRiseAreaLoaded ||
+		m_strArenaRiseLoadedArea != descriptor->areaId)
+	{
+		if (!m_ArenaRisePlayer.Load_Area(descriptor->areaId, targets))
 		{
 			m_CameraShotStatus = "Sequence document load failed: " +
 				m_ArenaRisePlayer.Get_Status();
 			return false;
 		}
 		m_bArenaRiseAreaLoaded = true;
+		m_strArenaRiseLoadedArea = descriptor->areaId;
 	}
 	/* Only this shot's own sequence starts. Stopping the others would
 	   throw away whatever preview the editor already has running. */
@@ -949,19 +1441,11 @@ bool_t Client::CMapTool::Play_CardMiroMarch()
 			"Card maze march needs a loaded Area with its world sequences";
 		return false;
 	}
-	/* The arena Level registers this prototype for itself; the editor
-	   Level does not, so without it the clone fails and nothing appears. */
-	if (!m_bWorldObjectPrototypeReady && !m_bRuntimeAuthoring)
+	if (!Ensure_WorldObjectPrototype())
 	{
-		if (FAILED(CGameInstance::Get().Add_Prototype(
-			m_iAuthoringLevelIndex, CWorldSequenceObject::PROTOTYPE_TAG,
-			CWorldSequenceObject::Create(m_pDevice, m_pContext))))
-		{
-			m_CardMiroMarchStatus =
-				"World object prototype registration failed";
-			return false;
-		}
-		m_bWorldObjectPrototypeReady = true;
+		m_CardMiroMarchStatus =
+			"World object prototype registration failed";
+		return false;
 	}
 	/* Admit the edited document rather than the file, so a march can be
 	   checked before Save. */

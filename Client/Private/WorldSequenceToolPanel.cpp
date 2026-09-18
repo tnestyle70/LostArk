@@ -486,6 +486,66 @@ bool_t Client::CWorldSequenceToolPanel::Save(
 	return true;
 }
 
+bool_t Client::CWorldSequenceToolPanel::Matches_SequenceBaseline(
+	std::string& outStatus) const
+{
+	bool_t exists = false;
+	std::string bytes;
+	if (!ReadBoundedAuthoringBytes(m_Path, 16u * 1024u * 1024u,
+		true, exists, bytes, outStatus))
+	{
+		return false;
+	}
+	if (exists != m_bSequenceBaselineExists || bytes != m_SequenceBaselineBytes)
+	{
+		outStatus = "World sequence source changed on disk after it was loaded";
+		return false;
+	}
+	outStatus = "World sequence source still matches the loaded baseline";
+	return true;
+}
+
+bool_t Client::CWorldSequenceToolPanel::Save_SequenceChecked(
+	const CMapAssetCatalog& catalog,
+	const std::vector<MAP_RUNTIME_PLACED_ENTRY>& placements,
+	const CDeployPropRuntime& deployRuntime,
+	std::string& outStatus)
+{
+	if (!Is_Ready())
+	{
+		outStatus = "World sequence document is not ready";
+		return false;
+	}
+	if (!Matches_SequenceBaseline(outStatus))
+		return false;
+	if (!m_Document.Save(m_Path,
+		Collect_Placements(catalog, placements),
+		Collect_DeployPlacements(deployRuntime), outStatus))
+	{
+		m_Status = outStatus;
+		return false;
+	}
+	/* The next save compares against what this call wrote, not against the
+	   bytes the Area was entered with. */
+	bool_t exists = false;
+	std::string bytes;
+	std::string readStatus;
+	if (!ReadBoundedAuthoringBytes(m_Path, 16u * 1024u * 1024u,
+		false, exists, bytes, readStatus))
+	{
+		outStatus = "World sequence saved but could not be read back: " +
+			readStatus;
+		m_Status = outStatus;
+		return false;
+	}
+	m_bSequenceBaselineExists = exists;
+	m_SequenceBaselineBytes = std::move(bytes);
+	m_bDirty = false;
+	m_bSaveAllRequested = false;
+	m_Status = outStatus;
+	return true;
+}
+
 bool_t Client::CWorldSequenceToolPanel::Validate(
 	const CMapAssetCatalog& catalog,
 	const std::vector<MAP_RUNTIME_PLACED_ENTRY>& placements,

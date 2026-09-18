@@ -87,6 +87,34 @@ public:
 	/* Stable instance IDs an authored trigger may start, in document order. */
 	std::vector<std::string> Get_InstanceIds() const;
 	const CWorldSequenceDocument& Get_Document() const { return m_Document; }
+	/* The Map Tool cutscene editor edits this same draft, so an Area has one
+	   World document and one dirty flag no matter which panel changed it. */
+	CWorldSequenceDocument& Get_MutableDocument() noexcept { return m_Document; }
+	void Mark_ExternalEdit() { Mark_Dirty(); }
+	const std::filesystem::path& Get_Path() const noexcept { return m_Path; }
+	/* Sequence-only save for a caller that owns a paired transaction. The file
+	   must still hold the bytes loaded or last saved here, and the baseline
+	   follows the bytes this call wrote. */
+	bool_t Matches_SequenceBaseline(std::string& outStatus) const;
+	bool_t Save_SequenceChecked(
+		const CMapAssetCatalog& catalog,
+		const std::vector<MAP_RUNTIME_PLACED_ENTRY>& placements,
+		const CDeployPropRuntime& deployRuntime,
+		std::string& outStatus);
+	/* A paired save that restored the file bytes hands the old baseline and
+	   dirty state back, so the draft is not reported as saved. */
+	void Get_SequenceBaseline(bool_t& outExists, std::string& outBytes) const
+	{
+		outExists = m_bSequenceBaselineExists;
+		outBytes = m_SequenceBaselineBytes;
+	}
+	void Restore_SequenceBaseline(bool_t exists, std::string bytes,
+		bool_t dirty)
+	{
+		m_bSequenceBaselineExists = exists;
+		m_SequenceBaselineBytes = std::move(bytes);
+		m_bDirty = dirty;
+	}
 	bool_t Select_Instance(const std::string& id)
 	{
 		const auto* instance = m_Document.Find_Instance(id);

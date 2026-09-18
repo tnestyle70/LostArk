@@ -1,0 +1,6786 @@
+{
+  "schema": "lostark.camera-shots",
+  "formatVersion": 1,
+  "areaId": "LV_LUT_HEARTRB_ED",
+  "revision": 2,
+  "shots": [
+    {
+      "shotId": "source.gate1-entrance.cut01",
+      "displayName": "원본 1관문 입장 (0.0~13.0초)",
+      "defaultHoldMs": 13000,
+      "transitionEasing": "SMOOTHSTEP",
+      "activation": "PATTERN_ONLY",
+      "sequenceInstanceId": "world.sequence.instance.valtan.source-preview.gate1-entrance",
+      "box": {
+        "center": [
+          41.4676,
+          21.4537,
+          -72.3813
+        ],
+        "halfExtents": [
+          0.25,
+          0.25,
+          0.25
+        ],
+        "yawDegrees": 0
+      },
+      "eye": [
+        41.4676,
+        21.4537,
+        -72.3813
+      ],
+      "lookAt": [
+        48.9676,
+        10.8471,
+        -79.8813
+      ],
+      "fovYDegrees": 29.395,
+      "blendInMs": 0,
+      "blendOutMs": 0,
+      "priority": 0,
+      "cameraTrack": {
+        "durationMs": 13000,
+        "interpolation": "CATMULL_ROM",
+        "easing": "LINEAR",
+        "keyframes": [
+          {
+            "sceneId": "source.gate1-entrance.cut01.k01",
+            "timeMs": 0,
+            "eye": [
+              41.4676,
+              21.4537,
+              -72.3813
+            ],
+            "lookAt": [
+              48.9676,
+              10.8471,
+              -79.8813
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.gate1-entrance.cut01.r01",
+            "timeMs": 206,
+            "eye": [
+              41.4676,
+              21.4537,
+              -72.3813
+            ],
+            "lookAt": [
+              48.9676,
+              10.8471,
+              -79.8813
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.gate1-entrance.cut01.r02",
+            "timeMs": 413,
+            "eye": [
+              41.4676,
+              21.4537,
+              -72.3813
+            ],
+            "lookAt": [
+              48.9676,
+              10.8471,
+              -79.8813
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.gate1-entrance.cut01.r03",
+            "timeMs": 619,
+            "eye": [
+              41.4676,
+              21.4537,
+              -72.3813
+            ],
+            "lookAt": [
+              48.9676,
+              10.8471,
+              -79.8813
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.gate1-entrance.cut01.r04",
+            "timeMs": 825,
+            "eye": [
+              41.4676,
+              21.4537,
+              -72.3813
+            ],
+            "lookAt": [
+              48.9676,
+              10.8471,
+              -79.8813
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.gate1-entrance.cut01.r05",
+            "timeMs": 1032,
+            "eye": [
+              41.5289,
+              21.4537,
+              -72.5191
+            ],
+            "lookAt": [
+              49.0289,
+              10.8471,
+              -80.0191
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.gate1-entrance.cut01.r06",
+            "timeMs": 1238,
+            "eye": [
+              41.7095,
+              21.4537,
+              -72.9256
+            ],
+            "lookAt": [
+              49.2095,
+              10.8471,
+              -80.4256
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.gate1-entrance.cut01.r07",
+            "timeMs": 1444,
+            "eye": [
+              41.9907,
+              21.4537,
+              -73.5585
+            ],
+            "lookAt": [
+              49.4907,
+              10.8471,
+              -81.0585
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.gate1-entrance.cut01.r08",
+            "timeMs": 1651,
+            "eye": [
+              42.3554,
+              21.4537,
+              -74.3795
+            ],
+            "lookAt": [
+              49.8554,
+              10.8471,
+              -81.8795
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.gate1-entrance.cut01.r09",
+            "timeMs": 1857,
+            "eye": [
+              42.7812,
+              21.4537,
+              -75.3379
+            ],
+            "lookAt": [
+              50.2812,
+              10.8471,
+              -82.8379
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.gate1-entrance.cut01.r10",
+            "timeMs": 2063,
+            "eye": [
+              43.2508,
+              21.4537,
+              -76.3948
+            ],
+            "lookAt": [
+              50.7508,
+              10.8471,
+              -83.8948
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.gate1-entrance.cut01.r11",
+            "timeMs": 2270,
+            "eye": [
+              43.7476,
+              21.4537,
+              -77.513
+            ],
+            "lookAt": [
+              51.2476,
+              10.8471,
+              -85.013
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.gate1-entrance.cut01.r12",
+            "timeMs": 2476,
+            "eye": [
+              44.2479,
+              21.4537,
+              -78.639
+            ],
+            "lookAt": [
+              51.7479,
+              10.8471,
+              -86.139
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.gate1-entrance.cut01.r13",
+            "timeMs": 2683,
+            "eye": [
+              44.7374,
+              21.4537,
+              -79.7407
+            ],
+            "lookAt": [
+              52.2374,
+              10.8471,
+              -87.2407
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.gate1-entrance.cut01.r14",
+            "timeMs": 2889,
+            "eye": [
+              45.1923,
+              21.4537,
+              -80.7648
+            ],
+            "lookAt": [
+              52.6923,
+              10.8471,
+              -88.2648
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.gate1-entrance.cut01.r15",
+            "timeMs": 3095,
+            "eye": [
+              45.5963,
+              21.4537,
+              -81.6739
+            ],
+            "lookAt": [
+              53.0963,
+              10.8471,
+              -89.1739
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.gate1-entrance.cut01.r16",
+            "timeMs": 3302,
+            "eye": [
+              45.9317,
+              21.4537,
+              -82.4289
+            ],
+            "lookAt": [
+              53.4317,
+              10.8471,
+              -89.9289
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.gate1-entrance.cut01.r17",
+            "timeMs": 3508,
+            "eye": [
+              46.1764,
+              21.4537,
+              -82.9797
+            ],
+            "lookAt": [
+              53.6764,
+              10.8471,
+              -90.4797
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.gate1-entrance.cut01.r18",
+            "timeMs": 3714,
+            "eye": [
+              46.3132,
+              21.4537,
+              -83.2876
+            ],
+            "lookAt": [
+              53.8132,
+              10.8471,
+              -90.7876
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.gate1-entrance.cut01.r19",
+            "timeMs": 3921,
+            "eye": [
+              46.2029,
+              21.4537,
+              -82.922
+            ],
+            "lookAt": [
+              53.7029,
+              10.8471,
+              -90.422
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.gate1-entrance.cut01.r20",
+            "timeMs": 4127,
+            "eye": [
+              45.5897,
+              21.4537,
+              -81.001
+            ],
+            "lookAt": [
+              53.0897,
+              10.8471,
+              -88.501
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.gate1-entrance.cut01.r21",
+            "timeMs": 4333,
+            "eye": [
+              45.5593,
+              21.4537,
+              -80.9059
+            ],
+            "lookAt": [
+              53.0593,
+              10.8471,
+              -88.4059
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.gate1-entrance.cut01.r22",
+            "timeMs": 4540,
+            "eye": [
+              45.5593,
+              21.4537,
+              -80.9059
+            ],
+            "lookAt": [
+              53.0593,
+              10.8471,
+              -88.4059
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.gate1-entrance.cut01.r23",
+            "timeMs": 4746,
+            "eye": [
+              45.6406,
+              21.4537,
+              -81.0801
+            ],
+            "lookAt": [
+              53.1406,
+              10.8471,
+              -88.5801
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.gate1-entrance.cut01.r24",
+            "timeMs": 4952,
+            "eye": [
+              46.0146,
+              21.4537,
+              -81.8822
+            ],
+            "lookAt": [
+              53.5146,
+              10.8471,
+              -89.3822
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.gate1-entrance.cut01.r25",
+            "timeMs": 5159,
+            "eye": [
+              46.2655,
+              21.4537,
+              -82.4201
+            ],
+            "lookAt": [
+              53.7655,
+              10.8471,
+              -89.9201
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.gate1-entrance.cut01.r26",
+            "timeMs": 5365,
+            "eye": [
+              46.2659,
+              21.4537,
+              -82.421
+            ],
+            "lookAt": [
+              53.7659,
+              10.8471,
+              -89.921
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.gate1-entrance.cut01.r27",
+            "timeMs": 5571,
+            "eye": [
+              46.2659,
+              21.4537,
+              -82.421
+            ],
+            "lookAt": [
+              53.7659,
+              10.8471,
+              -89.921
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.gate1-entrance.cut01.r28",
+            "timeMs": 5778,
+            "eye": [
+              46.0966,
+              21.6931,
+              -82.2518
+            ],
+            "lookAt": [
+              53.5966,
+              11.0865,
+              -89.7518
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.gate1-entrance.cut01.r29",
+            "timeMs": 5984,
+            "eye": [
+              45.2148,
+              22.9402,
+              -81.3699
+            ],
+            "lookAt": [
+              52.7148,
+              12.3336,
+              -88.8699
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.gate1-entrance.cut01.r30",
+            "timeMs": 6190,
+            "eye": [
+              44.2891,
+              24.2493,
+              -80.4443
+            ],
+            "lookAt": [
+              51.7891,
+              13.6427,
+              -87.9443
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.gate1-entrance.cut01.r31",
+            "timeMs": 6397,
+            "eye": [
+              43.995,
+              24.6653,
+              -80.1502
+            ],
+            "lookAt": [
+              51.495,
+              14.0587,
+              -87.6502
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.gate1-entrance.cut01.r32",
+            "timeMs": 6603,
+            "eye": [
+              43.8672,
+              24.846,
+              -80.0224
+            ],
+            "lookAt": [
+              51.3672,
+              14.2394,
+              -87.5224
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.gate1-entrance.cut01.r33",
+            "timeMs": 6810,
+            "eye": [
+              43.7537,
+              25.0065,
+              -79.9088
+            ],
+            "lookAt": [
+              51.2537,
+              14.3999,
+              -87.4088
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.gate1-entrance.cut01.r34",
+            "timeMs": 7016,
+            "eye": [
+              43.6546,
+              25.1466,
+              -79.8098
+            ],
+            "lookAt": [
+              51.1546,
+              14.54,
+              -87.3098
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.gate1-entrance.cut01.r35",
+            "timeMs": 7222,
+            "eye": [
+              43.5686,
+              25.2683,
+              -79.7237
+            ],
+            "lookAt": [
+              51.0686,
+              14.6617,
+              -87.2237
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.gate1-entrance.cut01.r36",
+            "timeMs": 7429,
+            "eye": [
+              43.4943,
+              25.3734,
+              -79.6494
+            ],
+            "lookAt": [
+              50.9943,
+              14.7668,
+              -87.1494
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.gate1-entrance.cut01.r37",
+            "timeMs": 7635,
+            "eye": [
+              43.4316,
+              25.462,
+              -79.5867
+            ],
+            "lookAt": [
+              50.9316,
+              14.8554,
+              -87.0867
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.gate1-entrance.cut01.r38",
+            "timeMs": 7841,
+            "eye": [
+              43.3792,
+              25.5361,
+              -79.5344
+            ],
+            "lookAt": [
+              50.8792,
+              14.9295,
+              -87.0344
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.gate1-entrance.cut01.r39",
+            "timeMs": 8048,
+            "eye": [
+              43.4842,
+              25.5971,
+              -79.7278
+            ],
+            "lookAt": [
+              50.9842,
+              14.9905,
+              -87.2278
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.gate1-entrance.cut01.r40",
+            "timeMs": 8254,
+            "eye": [
+              44.1744,
+              25.6456,
+              -80.8507
+            ],
+            "lookAt": [
+              51.6744,
+              15.039,
+              -88.3507
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.gate1-entrance.cut01.r41",
+            "timeMs": 8460,
+            "eye": [
+              44.8586,
+              25.6834,
+              -81.9593
+            ],
+            "lookAt": [
+              52.3586,
+              15.0768,
+              -89.4593
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.gate1-entrance.cut01.r42",
+            "timeMs": 8667,
+            "eye": [
+              44.9679,
+              25.7117,
+              -82.146
+            ],
+            "lookAt": [
+              52.4679,
+              15.1051,
+              -89.646
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.gate1-entrance.cut01.r43",
+            "timeMs": 8873,
+            "eye": [
+              44.9539,
+              25.7315,
+              -82.132
+            ],
+            "lookAt": [
+              52.4539,
+              15.1249,
+              -89.632
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.gate1-entrance.cut01.r44",
+            "timeMs": 9079,
+            "eye": [
+              44.9449,
+              25.7443,
+              -82.1229
+            ],
+            "lookAt": [
+              52.4449,
+              15.1377,
+              -89.6229
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.gate1-entrance.cut01.r45",
+            "timeMs": 9286,
+            "eye": [
+              44.9399,
+              25.7513,
+              -82.1179
+            ],
+            "lookAt": [
+              52.4399,
+              15.1447,
+              -89.6179
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.gate1-entrance.cut01.r46",
+            "timeMs": 9492,
+            "eye": [
+              44.9381,
+              25.7538,
+              -82.1162
+            ],
+            "lookAt": [
+              52.4381,
+              15.1472,
+              -89.6162
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.gate1-entrance.cut01.r47",
+            "timeMs": 9698,
+            "eye": [
+              45.0441,
+              25.5644,
+              -82.2017
+            ],
+            "lookAt": [
+              52.5441,
+              14.9578,
+              -89.7017
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.gate1-entrance.cut01.r48",
+            "timeMs": 9905,
+            "eye": [
+              45.4156,
+              24.9004,
+              -82.5015
+            ],
+            "lookAt": [
+              52.9156,
+              14.2938,
+              -90.0015
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.gate1-entrance.cut01.r49",
+            "timeMs": 10111,
+            "eye": [
+              45.941,
+              23.9612,
+              -82.9255
+            ],
+            "lookAt": [
+              53.441,
+              13.3546,
+              -90.4255
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.gate1-entrance.cut01.r50",
+            "timeMs": 10317,
+            "eye": [
+              46.5067,
+              22.9499,
+              -83.3821
+            ],
+            "lookAt": [
+              54.0067,
+              12.3433,
+              -90.8821
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.gate1-entrance.cut01.r51",
+            "timeMs": 10524,
+            "eye": [
+              47.0,
+              22.0683,
+              -83.7801
+            ],
+            "lookAt": [
+              54.5,
+              11.4617,
+              -91.2801
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.gate1-entrance.cut01.r52",
+            "timeMs": 10730,
+            "eye": [
+              47.3006,
+              21.5309,
+              -84.0228
+            ],
+            "lookAt": [
+              54.8006,
+              10.9243,
+              -91.5228
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.gate1-entrance.cut01.r53",
+            "timeMs": 10937,
+            "eye": [
+              47.3438,
+              21.4537,
+              -84.0576
+            ],
+            "lookAt": [
+              54.8438,
+              10.8471,
+              -91.5576
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.gate1-entrance.cut01.r54",
+            "timeMs": 11143,
+            "eye": [
+              47.3438,
+              21.4538,
+              -84.0576
+            ],
+            "lookAt": [
+              54.8438,
+              10.8472,
+              -91.5576
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.gate1-entrance.cut01.r55",
+            "timeMs": 11349,
+            "eye": [
+              47.3204,
+              21.4868,
+              -84.0342
+            ],
+            "lookAt": [
+              54.8204,
+              10.8802,
+              -91.5342
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.gate1-entrance.cut01.r56",
+            "timeMs": 11556,
+            "eye": [
+              47.2619,
+              21.5696,
+              -83.9757
+            ],
+            "lookAt": [
+              54.7619,
+              10.963,
+              -91.4757
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.gate1-entrance.cut01.r57",
+            "timeMs": 11762,
+            "eye": [
+              47.1801,
+              21.6852,
+              -83.894
+            ],
+            "lookAt": [
+              54.6801,
+              11.0786,
+              -91.394
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.gate1-entrance.cut01.r58",
+            "timeMs": 11968,
+            "eye": [
+              47.0862,
+              21.818,
+              -83.8001
+            ],
+            "lookAt": [
+              54.5862,
+              11.2113,
+              -91.3001
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.gate1-entrance.cut01.r59",
+            "timeMs": 12175,
+            "eye": [
+              46.9911,
+              21.9526,
+              -83.7049
+            ],
+            "lookAt": [
+              54.4911,
+              11.346,
+              -91.2049
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.gate1-entrance.cut01.r60",
+            "timeMs": 12381,
+            "eye": [
+              46.9069,
+              22.0716,
+              -83.6207
+            ],
+            "lookAt": [
+              54.4069,
+              11.465,
+              -91.1207
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.gate1-entrance.cut01.r61",
+            "timeMs": 12587,
+            "eye": [
+              46.8445,
+              22.1598,
+              -83.5583
+            ],
+            "lookAt": [
+              54.3445,
+              11.5532,
+              -91.0583
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.gate1-entrance.cut01.r62",
+            "timeMs": 12794,
+            "eye": [
+              46.8152,
+              22.2013,
+              -83.529
+            ],
+            "lookAt": [
+              54.3152,
+              11.5947,
+              -91.029
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.gate1-entrance.cut01.k08",
+            "timeMs": 13000,
+            "eye": [
+              46.8144,
+              22.2024,
+              -83.5282
+            ],
+            "lookAt": [
+              54.3144,
+              11.5958,
+              -91.0282
+            ],
+            "fovYDegrees": 29.395
+          }
+        ]
+      }
+    },
+    {
+      "shotId": "source.entrance.cut01",
+      "displayName": "원본 발탄 등장 1/3 (0.0~13.1초)",
+      "defaultHoldMs": 13059,
+      "transitionEasing": "SMOOTHSTEP",
+      "activation": "PATTERN_ONLY",
+      "sequenceInstanceId": "world.sequence.instance.valtan.source-preview.entrance",
+      "box": {
+        "center": [
+          132.8127,
+          25.8957,
+          -98.3276
+        ],
+        "halfExtents": [
+          0.25,
+          0.25,
+          0.25
+        ],
+        "yawDegrees": 0
+      },
+      "eye": [
+        132.8127,
+        25.8957,
+        -98.3276
+      ],
+      "lookAt": [
+        143.4047,
+        25.108,
+        -108.9196
+      ],
+      "fovYDegrees": 29.395,
+      "blendInMs": 0,
+      "blendOutMs": 0,
+      "priority": 0,
+      "cameraTrack": {
+        "durationMs": 13059,
+        "interpolation": "CATMULL_ROM",
+        "easing": "LINEAR",
+        "keyframes": [
+          {
+            "sceneId": "source.entrance.cut01.k01",
+            "timeMs": 0,
+            "eye": [
+              132.8127,
+              25.8957,
+              -98.3276
+            ],
+            "lookAt": [
+              143.4047,
+              25.108,
+              -108.9196
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.entrance.cut01.r01",
+            "timeMs": 568,
+            "eye": [
+              133.1634,
+              25.8992,
+              -98.6902
+            ],
+            "lookAt": [
+              143.7521,
+              25.1114,
+              -109.2854
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.entrance.cut01.r02",
+            "timeMs": 1136,
+            "eye": [
+              134.116,
+              25.909,
+              -99.674
+            ],
+            "lookAt": [
+              144.6958,
+              25.1212,
+              -110.2781
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.entrance.cut01.r03",
+            "timeMs": 1703,
+            "eye": [
+              135.5188,
+              25.9244,
+              -101.1203
+            ],
+            "lookAt": [
+              146.0855,
+              25.1367,
+              -111.7375
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.entrance.cut01.r04",
+            "timeMs": 2271,
+            "eye": [
+              137.2279,
+              25.9448,
+              -102.8788
+            ],
+            "lookAt": [
+              147.7787,
+              25.1571,
+              -113.5117
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.entrance.cut01.r05",
+            "timeMs": 2839,
+            "eye": [
+              139.0922,
+              25.9695,
+              -104.7913
+            ],
+            "lookAt": [
+              149.6257,
+              25.1818,
+              -115.4415
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.entrance.cut01.r06",
+            "timeMs": 3407,
+            "eye": [
+              140.9628,
+              25.9977,
+              -106.702
+            ],
+            "lookAt": [
+              151.4788,
+              25.21,
+              -117.3694
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.entrance.cut01.r07",
+            "timeMs": 3974,
+            "eye": [
+              142.6877,
+              26.0287,
+              -108.4524
+            ],
+            "lookAt": [
+              153.1877,
+              25.241,
+              -119.1355
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.entrance.cut01.r08",
+            "timeMs": 4542,
+            "eye": [
+              144.1242,
+              26.0619,
+              -109.893
+            ],
+            "lookAt": [
+              154.611,
+              25.2741,
+              -120.589
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.entrance.cut01.r09",
+            "timeMs": 5110,
+            "eye": [
+              145.1202,
+              26.0964,
+              -110.8646
+            ],
+            "lookAt": [
+              155.598,
+              25.3087,
+              -121.5695
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.entrance.cut01.r10",
+            "timeMs": 5678,
+            "eye": [
+              145.7064,
+              26.1342,
+              -111.4145
+            ],
+            "lookAt": [
+              156.1791,
+              25.3465,
+              -122.1245
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.entrance.cut01.r11",
+            "timeMs": 6246,
+            "eye": [
+              146.1005,
+              26.1784,
+              -111.7798
+            ],
+            "lookAt": [
+              156.5698,
+              25.3907,
+              -122.493
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.entrance.cut01.r12",
+            "timeMs": 6813,
+            "eye": [
+              146.4062,
+              26.2299,
+              -112.0567
+            ],
+            "lookAt": [
+              156.8729,
+              25.4422,
+              -122.7724
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.entrance.cut01.r13",
+            "timeMs": 7381,
+            "eye": [
+              146.7282,
+              26.2898,
+              -112.3426
+            ],
+            "lookAt": [
+              157.1923,
+              25.5021,
+              -123.061
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.entrance.cut01.r14",
+            "timeMs": 7949,
+            "eye": [
+              147.17,
+              26.3591,
+              -112.7338
+            ],
+            "lookAt": [
+              157.6304,
+              25.5714,
+              -123.4557
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.entrance.cut01.r15",
+            "timeMs": 8517,
+            "eye": [
+              147.9059,
+              26.4486,
+              -113.4024
+            ],
+            "lookAt": [
+              158.3599,
+              25.6609,
+              -124.1306
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.entrance.cut01.r16",
+            "timeMs": 9085,
+            "eye": [
+              149.4054,
+              26.6188,
+              -114.8519
+            ],
+            "lookAt": [
+              159.8459,
+              25.8311,
+              -125.5932
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.entrance.cut01.r17",
+            "timeMs": 9652,
+            "eye": [
+              150.7785,
+              26.758,
+              -116.1478
+            ],
+            "lookAt": [
+              161.2079,
+              25.9703,
+              -126.8999
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.entrance.cut01.r18",
+            "timeMs": 10220,
+            "eye": [
+              151.1715,
+              26.7695,
+              -116.6137
+            ],
+            "lookAt": [
+              161.7832,
+              25.9949,
+              -127.1869
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.entrance.cut01.r19",
+            "timeMs": 10788,
+            "eye": [
+              151.1683,
+              26.7573,
+              -117.4303
+            ],
+            "lookAt": [
+              162.6271,
+              26.0466,
+              -127.0838
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.entrance.cut01.r20",
+            "timeMs": 11356,
+            "eye": [
+              151.0679,
+              26.7345,
+              -118.5249
+            ],
+            "lookAt": [
+              163.6987,
+              26.1246,
+              -126.5929
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.entrance.cut01.r21",
+            "timeMs": 11923,
+            "eye": [
+              151.0353,
+              26.7008,
+              -119.6886
+            ],
+            "lookAt": [
+              164.769,
+              26.2104,
+              -125.7007
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.entrance.cut01.r22",
+            "timeMs": 12491,
+            "eye": [
+              151.1212,
+              26.656,
+              -120.7406
+            ],
+            "lookAt": [
+              165.6284,
+              26.2859,
+              -124.536
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.entrance.cut01.k05",
+            "timeMs": 13059,
+            "eye": [
+              151.2784,
+              26.6001,
+              -121.5441
+            ],
+            "lookAt": [
+              166.1641,
+              26.3328,
+              -123.3727
+            ],
+            "fovYDegrees": 29.395
+          }
+        ]
+      }
+    },
+    {
+      "shotId": "source.entrance.cut02",
+      "displayName": "원본 발탄 등장 2/3 (13.1~19.0초)",
+      "defaultHoldMs": 5907,
+      "transitionEasing": "SMOOTHSTEP",
+      "activation": "PATTERN_ONLY",
+      "sequenceInstanceId": "world.sequence.instance.valtan.source-preview.entrance",
+      "box": {
+        "center": [
+          156.8008,
+          26.734,
+          -126.0691
+        ],
+        "halfExtents": [
+          0.25,
+          0.25,
+          0.25
+        ],
+        "yawDegrees": 0
+      },
+      "eye": [
+        156.8008,
+        26.734,
+        -126.0691
+      ],
+      "lookAt": [
+        154.5367,
+        26.0619,
+        -111.2562
+      ],
+      "fovYDegrees": 17.1424,
+      "blendInMs": 0,
+      "blendOutMs": 0,
+      "priority": 0,
+      "cameraTrack": {
+        "durationMs": 5907,
+        "interpolation": "CATMULL_ROM",
+        "easing": "LINEAR",
+        "keyframes": [
+          {
+            "sceneId": "source.entrance.cut02.k01",
+            "timeMs": 0,
+            "eye": [
+              156.8008,
+              26.734,
+              -126.0691
+            ],
+            "lookAt": [
+              154.5367,
+              26.0619,
+              -111.2562
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.entrance.cut02.r01",
+            "timeMs": 542,
+            "eye": [
+              157.5835,
+              26.7599,
+              -126.09
+            ],
+            "lookAt": [
+              153.0673,
+              26.1196,
+              -111.8004
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.entrance.cut02.k02",
+            "timeMs": 2021,
+            "eye": [
+              159.4782,
+              26.7971,
+              -126.1325
+            ],
+            "lookAt": [
+              150.0029,
+              26.13,
+              -114.5234
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.entrance.cut02.r02",
+            "timeMs": 2225,
+            "eye": [
+              159.5533,
+              26.7516,
+              -126.1246
+            ],
+            "lookAt": [
+              149.7736,
+              25.8074,
+              -114.7903
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.entrance.cut02.k03",
+            "timeMs": 2393,
+            "eye": [
+              159.5353,
+              26.6248,
+              -126.078
+            ],
+            "lookAt": [
+              149.6047,
+              25.2461,
+              -114.9208
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.entrance.cut02.k04",
+            "timeMs": 2531,
+            "eye": [
+              158.0392,
+              26.2343,
+              -124.9735
+            ],
+            "lookAt": [
+              147.9879,
+              24.2156,
+              -114.0237
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.entrance.cut02.k05",
+            "timeMs": 2646,
+            "eye": [
+              158.2337,
+              26.8156,
+              -124.8288
+            ],
+            "lookAt": [
+              147.7626,
+              24.3987,
+              -114.3638
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.entrance.cut02.k06",
+            "timeMs": 2720,
+            "eye": [
+              157.3248,
+              27.1364,
+              -123.5143
+            ],
+            "lookAt": [
+              147.5486,
+              22.4475,
+              -113.149
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.entrance.cut02.r03",
+            "timeMs": 2762,
+            "eye": [
+              156.8577,
+              27.3607,
+              -123.0549
+            ],
+            "lookAt": [
+              147.9164,
+              18.8001,
+              -114.5832
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.entrance.cut02.r04",
+            "timeMs": 2779,
+            "eye": [
+              156.7498,
+              27.4877,
+              -122.9659
+            ],
+            "lookAt": [
+              148.3513,
+              17.6533,
+              -115.3666
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.entrance.cut02.r05",
+            "timeMs": 2783,
+            "eye": [
+              156.7399,
+              27.5236,
+              -122.958
+            ],
+            "lookAt": [
+              148.4455,
+              17.5012,
+              -115.491
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.entrance.cut02.k07",
+            "timeMs": 2786,
+            "eye": [
+              156.737,
+              27.5573,
+              -122.9557
+            ],
+            "lookAt": [
+              148.518,
+              17.4127,
+              -115.5708
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.entrance.cut02.r06",
+            "timeMs": 2838,
+            "eye": [
+              157.1343,
+              28.7935,
+              -123.3152
+            ],
+            "lookAt": [
+              149.9023,
+              17.3438,
+              -116.8652
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.entrance.cut02.r07",
+            "timeMs": 2879,
+            "eye": [
+              157.8989,
+              30.6015,
+              -124.0106
+            ],
+            "lookAt": [
+              151.4016,
+              18.3771,
+              -118.2357
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.entrance.cut02.r08",
+            "timeMs": 2929,
+            "eye": [
+              159.147,
+              33.4035,
+              -125.1551
+            ],
+            "lookAt": [
+              153.3821,
+              20.5342,
+              -120.0416
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.entrance.cut02.r09",
+            "timeMs": 2950,
+            "eye": [
+              159.7175,
+              34.6753,
+              -125.6829
+            ],
+            "lookAt": [
+              154.1823,
+              21.6264,
+              -120.7751
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.entrance.cut02.r10",
+            "timeMs": 2962,
+            "eye": [
+              160.0445,
+              35.4074,
+              -125.9872
+            ],
+            "lookAt": [
+              154.6157,
+              22.2787,
+              -121.1742
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.entrance.cut02.r11",
+            "timeMs": 2979,
+            "eye": [
+              160.5007,
+              36.4364,
+              -126.4142
+            ],
+            "lookAt": [
+              155.1884,
+              23.2227,
+              -121.7049
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.entrance.cut02.r12",
+            "timeMs": 2983,
+            "eye": [
+              160.6059,
+              36.6754,
+              -126.5131
+            ],
+            "lookAt": [
+              155.3149,
+              23.4464,
+              -121.8228
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.entrance.cut02.r13",
+            "timeMs": 2996,
+            "eye": [
+              160.9394,
+              37.4397,
+              -126.8285
+            ],
+            "lookAt": [
+              155.7008,
+              24.1735,
+              -122.1847
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.entrance.cut02.k08",
+            "timeMs": 3014,
+            "eye": [
+              161.3846,
+              38.4802,
+              -127.254
+            ],
+            "lookAt": [
+              156.1742,
+              25.1942,
+              -122.6352
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.entrance.cut02.r14",
+            "timeMs": 3017,
+            "eye": [
+              161.4429,
+              38.6187,
+              -127.3102
+            ],
+            "lookAt": [
+              156.2325,
+              25.3327,
+              -122.6914
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.entrance.cut02.r15",
+            "timeMs": 3029,
+            "eye": [
+              161.7284,
+              39.297,
+              -127.5861
+            ],
+            "lookAt": [
+              156.5176,
+              26.0116,
+              -122.966
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.entrance.cut02.r16",
+            "timeMs": 3062,
+            "eye": [
+              162.5766,
+              41.3196,
+              -128.4119
+            ],
+            "lookAt": [
+              157.3625,
+              28.0396,
+              -123.78
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.entrance.cut02.r17",
+            "timeMs": 3112,
+            "eye": [
+              163.9996,
+              44.7277,
+              -129.8109
+            ],
+            "lookAt": [
+              158.7748,
+              31.4652,
+              -125.1408
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.entrance.cut02.r18",
+            "timeMs": 3125,
+            "eye": [
+              164.3891,
+              45.6625,
+              -130.196
+            ],
+            "lookAt": [
+              159.1607,
+              32.4062,
+              -125.5126
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.entrance.cut02.r19",
+            "timeMs": 3138,
+            "eye": [
+              164.7841,
+              46.6113,
+              -130.5873
+            ],
+            "lookAt": [
+              159.5518,
+              33.3617,
+              -125.8894
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.entrance.cut02.r20",
+            "timeMs": 3154,
+            "eye": [
+              165.276,
+              47.7934,
+              -131.0754
+            ],
+            "lookAt": [
+              160.0385,
+              34.5527,
+              -126.3583
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.entrance.cut02.r21",
+            "timeMs": 3171,
+            "eye": [
+              165.803,
+              49.0605,
+              -131.5996
+            ],
+            "lookAt": [
+              160.5596,
+              35.83,
+              -126.8604
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.entrance.cut02.r22",
+            "timeMs": 3179,
+            "eye": [
+              166.0518,
+              49.6587,
+              -131.8473
+            ],
+            "lookAt": [
+              160.8054,
+              36.4333,
+              -127.0973
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.entrance.cut02.r23",
+            "timeMs": 3192,
+            "eye": [
+              166.456,
+              50.6311,
+              -132.2504
+            ],
+            "lookAt": [
+              161.2049,
+              37.4141,
+              -127.4822
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.entrance.cut02.r24",
+            "timeMs": 3212,
+            "eye": [
+              167.0753,
+              52.121,
+              -132.8689
+            ],
+            "lookAt": [
+              161.8166,
+              38.9176,
+              -128.0715
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.entrance.cut02.r25",
+            "timeMs": 3233,
+            "eye": [
+              167.7176,
+              53.6662,
+              -133.5118
+            ],
+            "lookAt": [
+              162.4507,
+              40.4777,
+              -128.6825
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.entrance.cut02.r26",
+            "timeMs": 3242,
+            "eye": [
+              167.9891,
+              54.3192,
+              -133.7838
+            ],
+            "lookAt": [
+              162.7186,
+              41.1371,
+              -128.9407
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.entrance.cut02.r27",
+            "timeMs": 3258,
+            "eye": [
+              168.4642,
+              55.4617,
+              -134.2605
+            ],
+            "lookAt": [
+              163.1875,
+              42.2914,
+              -129.3924
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.entrance.cut02.r28",
+            "timeMs": 3262,
+            "eye": [
+              168.5812,
+              55.7432,
+              -134.3781
+            ],
+            "lookAt": [
+              163.303,
+              42.5757,
+              -129.5037
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.entrance.cut02.r29",
+            "timeMs": 3271,
+            "eye": [
+              168.8418,
+              56.3695,
+              -134.6399
+            ],
+            "lookAt": [
+              163.5601,
+              43.2086,
+              -129.7515
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.entrance.cut02.r30",
+            "timeMs": 3296,
+            "eye": [
+              169.5417,
+              58.0507,
+              -135.3442
+            ],
+            "lookAt": [
+              164.2505,
+              44.9082,
+              -130.4169
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.entrance.cut02.r31",
+            "timeMs": 3325,
+            "eye": [
+              170.3,
+              59.8693,
+              -136.1092
+            ],
+            "lookAt": [
+              164.9983,
+              46.7476,
+              -131.1379
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.entrance.cut02.r32",
+            "timeMs": 3342,
+            "eye": [
+              170.7124,
+              60.8563,
+              -136.5261
+            ],
+            "lookAt": [
+              165.4049,
+              47.7463,
+              -131.5301
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.entrance.cut02.r33",
+            "timeMs": 3388,
+            "eye": [
+              171.6828,
+              63.1692,
+              -137.5106
+            ],
+            "lookAt": [
+              166.3613,
+              50.0881,
+              -132.4542
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.entrance.cut02.r34",
+            "timeMs": 3433,
+            "eye": [
+              172.3835,
+              64.8191,
+              -138.2267
+            ],
+            "lookAt": [
+              167.0512,
+              51.7604,
+              -133.1239
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.entrance.cut02.k09",
+            "timeMs": 3472,
+            "eye": [
+              172.7491,
+              65.6535,
+              -138.6061
+            ],
+            "lookAt": [
+              167.4102,
+              52.6078,
+              -133.4769
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.entrance.cut02.r35",
+            "timeMs": 3646,
+            "eye": [
+              173.6511,
+              67.5984,
+              -139.5766
+            ],
+            "lookAt": [
+              168.2943,
+              54.5899,
+              -134.3725
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.entrance.cut02.r36",
+            "timeMs": 3767,
+            "eye": [
+              174.0782,
+              68.4784,
+              -140.0588
+            ],
+            "lookAt": [
+              168.7135,
+              55.4901,
+              -134.8124
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.entrance.cut02.r37",
+            "timeMs": 4012,
+            "eye": [
+              174.5312,
+              69.2718,
+              -140.6357
+            ],
+            "lookAt": [
+              169.1571,
+              56.3149,
+              -135.3216
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.entrance.cut02.r38",
+            "timeMs": 4492,
+            "eye": [
+              174.3629,
+              68.1717,
+              -140.7219
+            ],
+            "lookAt": [
+              168.9678,
+              55.2673,
+              -135.3024
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.entrance.cut02.k10",
+            "timeMs": 5002,
+            "eye": [
+              173.8008,
+              65.6535,
+              -140.3691
+            ],
+            "lookAt": [
+              168.3243,
+              52.8535,
+              -134.7862
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.entrance.cut02.r39",
+            "timeMs": 5104,
+            "eye": [
+              173.6892,
+              64.856,
+              -140.2658
+            ],
+            "lookAt": [
+              168.1663,
+              52.1038,
+              -134.6198
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.entrance.cut02.r40",
+            "timeMs": 5254,
+            "eye": [
+              173.2234,
+              62.4606,
+              -139.755
+            ],
+            "lookAt": [
+              167.5768,
+              49.8258,
+              -133.969
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.entrance.cut02.r41",
+            "timeMs": 5350,
+            "eye": [
+              172.6486,
+              60.2524,
+              -139.1316
+            ],
+            "lookAt": [
+              166.9028,
+              47.7106,
+              -133.2419
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.entrance.cut02.r42",
+            "timeMs": 5396,
+            "eye": [
+              172.2762,
+              59.028,
+              -138.7342
+            ],
+            "lookAt": [
+              166.4805,
+              46.5329,
+              -132.7943
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.entrance.cut02.k11",
+            "timeMs": 5460,
+            "eye": [
+              171.6391,
+              57.164,
+              -138.0633
+            ],
+            "lookAt": [
+              165.7741,
+              44.7337,
+              -132.0559
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.entrance.cut02.r43",
+            "timeMs": 5500,
+            "eye": [
+              171.0894,
+              55.7122,
+              -137.4896
+            ],
+            "lookAt": [
+              165.1753,
+              43.3273,
+              -131.4368
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.entrance.cut02.r44",
+            "timeMs": 5554,
+            "eye": [
+              170.0816,
+              53.1781,
+              -136.44
+            ],
+            "lookAt": [
+              164.0865,
+              40.8677,
+              -130.3154
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.entrance.cut02.r45",
+            "timeMs": 5600,
+            "eye": [
+              169.0591,
+              50.6731,
+              -135.3763
+            ],
+            "lookAt": [
+              162.9864,
+              38.4342,
+              -129.1851
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.entrance.cut02.r46",
+            "timeMs": 5629,
+            "eye": [
+              168.371,
+              49.0076,
+              -134.6609
+            ],
+            "lookAt": [
+              162.2476,
+              36.8157,
+              -128.4269
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.entrance.cut02.r47",
+            "timeMs": 5667,
+            "eye": [
+              167.4534,
+              46.8038,
+              -133.7071
+            ],
+            "lookAt": [
+              161.2637,
+              34.6739,
+              -127.4179
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.entrance.cut02.r48",
+            "timeMs": 5696,
+            "eye": [
+              166.7635,
+              45.157,
+              -132.9902
+            ],
+            "lookAt": [
+              160.5248,
+              33.0734,
+              -126.6606
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.entrance.cut02.r49",
+            "timeMs": 5721,
+            "eye": [
+              166.1912,
+              43.7962,
+              -132.3955
+            ],
+            "lookAt": [
+              159.9122,
+              31.7507,
+              -126.0331
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.entrance.cut02.r50",
+            "timeMs": 5758,
+            "eye": [
+              165.4074,
+              41.9397,
+              -131.5813
+            ],
+            "lookAt": [
+              159.0739,
+              29.9463,
+              -125.1747
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.entrance.cut02.r51",
+            "timeMs": 5783,
+            "eye": [
+              164.9369,
+              40.829,
+              -131.0926
+            ],
+            "lookAt": [
+              158.571,
+              28.8667,
+              -124.66
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.entrance.cut02.r52",
+            "timeMs": 5838,
+            "eye": [
+              164.1323,
+              38.9356,
+              -130.257
+            ],
+            "lookAt": [
+              157.7114,
+              27.0265,
+              -123.7807
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.entrance.cut02.k12",
+            "timeMs": 5907,
+            "eye": [
+              163.7257,
+              37.9823,
+              -129.8348
+            ],
+            "lookAt": [
+              157.2773,
+              26.0999,
+              -123.3367
+            ],
+            "fovYDegrees": 17.1424
+          }
+        ]
+      }
+    },
+    {
+      "shotId": "source.entrance.cut03",
+      "displayName": "원본 발탄 등장 3/3 (19.0~23.4초)",
+      "defaultHoldMs": 4420,
+      "transitionEasing": "SMOOTHSTEP",
+      "activation": "PATTERN_ONLY",
+      "sequenceInstanceId": "world.sequence.instance.valtan.source-preview.entrance",
+      "box": {
+        "center": [
+          151.581,
+          25.8742,
+          -117.1233
+        ],
+        "halfExtents": [
+          0.25,
+          0.25,
+          0.25
+        ],
+        "yawDegrees": 0
+      },
+      "eye": [
+        151.581,
+        25.8742,
+        -117.1233
+      ],
+      "lookAt": [
+        161.966,
+        24.9104,
+        -127.904
+      ],
+      "fovYDegrees": 29.395,
+      "blendInMs": 0,
+      "blendOutMs": 0,
+      "priority": 0,
+      "cameraTrack": {
+        "durationMs": 4420,
+        "interpolation": "CATMULL_ROM",
+        "easing": "LINEAR",
+        "keyframes": [
+          {
+            "sceneId": "source.entrance.cut03.k01",
+            "timeMs": 0,
+            "eye": [
+              151.581,
+              25.8742,
+              -117.1233
+            ],
+            "lookAt": [
+              161.966,
+              24.9104,
+              -127.904
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.entrance.cut03.r01",
+            "timeMs": 884,
+            "eye": [
+              151.3212,
+              25.8984,
+              -116.8536
+            ],
+            "lookAt": [
+              161.7062,
+              24.9345,
+              -127.6342
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.entrance.cut03.r02",
+            "timeMs": 1768,
+            "eye": [
+              150.7017,
+              25.9559,
+              -116.2106
+            ],
+            "lookAt": [
+              161.0868,
+              24.992,
+              -126.9912
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.entrance.cut03.r03",
+            "timeMs": 2652,
+            "eye": [
+              149.9623,
+              26.0245,
+              -115.4431
+            ],
+            "lookAt": [
+              160.3474,
+              25.0606,
+              -126.2237
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.entrance.cut03.r04",
+            "timeMs": 3536,
+            "eye": [
+              149.3429,
+              26.082,
+              -114.8001
+            ],
+            "lookAt": [
+              159.728,
+              25.1181,
+              -125.5807
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.entrance.cut03.k02",
+            "timeMs": 4420,
+            "eye": [
+              149.0833,
+              26.1061,
+              -114.5305
+            ],
+            "lookAt": [
+              159.4684,
+              25.1422,
+              -125.3111
+            ],
+            "fovYDegrees": 29.395
+          }
+        ]
+      }
+    },
+    {
+      "shotId": "source.finale.cut01",
+      "displayName": "원본 발탄 최후 1/4 (0.0~3.6초)",
+      "defaultHoldMs": 3650,
+      "transitionEasing": "SMOOTHSTEP",
+      "activation": "PATTERN_ONLY",
+      "sequenceInstanceId": "world.sequence.instance.valtan.source-preview.finale",
+      "box": {
+        "center": [
+          143.3739,
+          27.852,
+          -111.3782
+        ],
+        "halfExtents": [
+          0.25,
+          0.25,
+          0.25
+        ],
+        "yawDegrees": 0
+      },
+      "eye": [
+        143.3739,
+        27.852,
+        -111.3782
+      ],
+      "lookAt": [
+        154.4239,
+        24.3316,
+        -120.8916
+      ],
+      "fovYDegrees": 54.5364,
+      "blendInMs": 0,
+      "blendOutMs": 0,
+      "priority": 0,
+      "cameraTrack": {
+        "durationMs": 3650,
+        "interpolation": "CATMULL_ROM",
+        "easing": "LINEAR",
+        "keyframes": [
+          {
+            "sceneId": "source.finale.cut01.k01",
+            "timeMs": 0,
+            "eye": [
+              143.3739,
+              27.852,
+              -111.3782
+            ],
+            "lookAt": [
+              154.4239,
+              24.3316,
+              -120.8916
+            ],
+            "fovYDegrees": 54.5364
+          },
+          {
+            "sceneId": "source.finale.cut01.r01",
+            "timeMs": 730,
+            "eye": [
+              143.6943,
+              27.774,
+              -111.663
+            ],
+            "lookAt": [
+              154.8006,
+              24.2536,
+              -121.1106
+            ],
+            "fovYDegrees": 54.5364
+          },
+          {
+            "sceneId": "source.finale.cut01.r02",
+            "timeMs": 1460,
+            "eye": [
+              144.4987,
+              27.5781,
+              -112.3777
+            ],
+            "lookAt": [
+              155.7444,
+              24.0577,
+              -121.6589
+            ],
+            "fovYDegrees": 54.5364
+          },
+          {
+            "sceneId": "source.finale.cut01.r03",
+            "timeMs": 2190,
+            "eye": [
+              145.5515,
+              27.3217,
+              -113.3131
+            ],
+            "lookAt": [
+              156.9759,
+              23.8013,
+              -122.3735
+            ],
+            "fovYDegrees": 54.5364
+          },
+          {
+            "sceneId": "source.finale.cut01.r04",
+            "timeMs": 2920,
+            "eye": [
+              146.6172,
+              27.0621,
+              -114.2599
+            ],
+            "lookAt": [
+              158.218,
+              23.5417,
+              -123.0933
+            ],
+            "fovYDegrees": 54.5364
+          },
+          {
+            "sceneId": "source.finale.cut01.k02",
+            "timeMs": 3650,
+            "eye": [
+              147.4603,
+              26.8568,
+              -115.009
+            ],
+            "lookAt": [
+              159.1975,
+              23.3364,
+              -123.6603
+            ],
+            "fovYDegrees": 54.5364
+          }
+        ]
+      }
+    },
+    {
+      "shotId": "source.finale.cut02",
+      "displayName": "원본 발탄 최후 2/4 (3.6~7.8초)",
+      "defaultHoldMs": 4130,
+      "transitionEasing": "SMOOTHSTEP",
+      "activation": "PATTERN_ONLY",
+      "sequenceInstanceId": "world.sequence.instance.valtan.source-preview.finale",
+      "box": {
+        "center": [
+          153.7712,
+          24.9246,
+          -121.2377
+        ],
+        "halfExtents": [
+          0.25,
+          0.25,
+          0.25
+        ],
+        "yawDegrees": 0
+      },
+      "eye": [
+        153.7712,
+        24.9246,
+        -121.2377
+      ],
+      "lookAt": [
+        167.6791,
+        19.3115,
+        -120.9831
+      ],
+      "fovYDegrees": 42.9957,
+      "blendInMs": 0,
+      "blendOutMs": 0,
+      "priority": 0,
+      "cameraTrack": {
+        "durationMs": 4130,
+        "interpolation": "CATMULL_ROM",
+        "easing": "LINEAR",
+        "keyframes": [
+          {
+            "sceneId": "source.finale.cut02.k01",
+            "timeMs": 0,
+            "eye": [
+              153.7712,
+              24.9246,
+              -121.2377
+            ],
+            "lookAt": [
+              167.6791,
+              19.3115,
+              -120.9831
+            ],
+            "fovYDegrees": 42.9957
+          },
+          {
+            "sceneId": "source.finale.cut02.r01",
+            "timeMs": 344,
+            "eye": [
+              153.719,
+              25.0951,
+              -121.3096
+            ],
+            "lookAt": [
+              167.5883,
+              19.3948,
+              -120.9211
+            ],
+            "fovYDegrees": 42.9957
+          },
+          {
+            "sceneId": "source.finale.cut02.r02",
+            "timeMs": 688,
+            "eye": [
+              153.6614,
+              25.2635,
+              -121.3877
+            ],
+            "lookAt": [
+              167.4903,
+              19.4774,
+              -120.8569
+            ],
+            "fovYDegrees": 42.9957
+          },
+          {
+            "sceneId": "source.finale.cut02.r03",
+            "timeMs": 1032,
+            "eye": [
+              153.6005,
+              25.4164,
+              -121.4686
+            ],
+            "lookAt": [
+              167.3904,
+              19.5525,
+              -120.7939
+            ],
+            "fovYDegrees": 42.9957
+          },
+          {
+            "sceneId": "source.finale.cut02.r04",
+            "timeMs": 1377,
+            "eye": [
+              153.5383,
+              25.5403,
+              -121.5493
+            ],
+            "lookAt": [
+              167.2937,
+              19.6135,
+              -120.7355
+            ],
+            "fovYDegrees": 42.9957
+          },
+          {
+            "sceneId": "source.finale.cut02.r05",
+            "timeMs": 1721,
+            "eye": [
+              153.4771,
+              25.6207,
+              -121.6261
+            ],
+            "lookAt": [
+              167.2068,
+              19.6532,
+              -120.6852
+            ],
+            "fovYDegrees": 42.9957
+          },
+          {
+            "sceneId": "source.finale.cut02.r06",
+            "timeMs": 2065,
+            "eye": [
+              153.4183,
+              25.6418,
+              -121.6964
+            ],
+            "lookAt": [
+              167.1462,
+              19.6888,
+              -120.645
+            ],
+            "fovYDegrees": 42.9957
+          },
+          {
+            "sceneId": "source.finale.cut02.r07",
+            "timeMs": 2409,
+            "eye": [
+              153.3308,
+              25.4362,
+              -121.791
+            ],
+            "lookAt": [
+              167.6473,
+              21.1296,
+              -120.5702
+            ],
+            "fovYDegrees": 42.9957
+          },
+          {
+            "sceneId": "source.finale.cut02.r08",
+            "timeMs": 2753,
+            "eye": [
+              153.2233,
+              25.0395,
+              -121.8981
+            ],
+            "lookAt": [
+              168.1056,
+              23.7887,
+              -120.5004
+            ],
+            "fovYDegrees": 42.9957
+          },
+          {
+            "sceneId": "source.finale.cut02.r09",
+            "timeMs": 3098,
+            "eye": [
+              153.1342,
+              24.631,
+              -121.9752
+            ],
+            "lookAt": [
+              168.0007,
+              25.9684,
+              -120.4917
+            ],
+            "fovYDegrees": 42.9957
+          },
+          {
+            "sceneId": "source.finale.cut02.r10",
+            "timeMs": 3442,
+            "eye": [
+              153.0954,
+              24.3654,
+              -121.9424
+            ],
+            "lookAt": [
+              167.9262,
+              26.2212,
+              -120.6753
+            ],
+            "fovYDegrees": 42.9957
+          },
+          {
+            "sceneId": "source.finale.cut02.r11",
+            "timeMs": 3786,
+            "eye": [
+              153.0759,
+              24.1625,
+              -121.6199
+            ],
+            "lookAt": [
+              167.9551,
+              26.0393,
+              -121.9178
+            ],
+            "fovYDegrees": 42.9957
+          },
+          {
+            "sceneId": "source.finale.cut02.k04",
+            "timeMs": 4130,
+            "eye": [
+              153.0663,
+              24.0396,
+              -121.2985
+            ],
+            "lookAt": [
+              167.8314,
+              25.9249,
+              -123.1524
+            ],
+            "fovYDegrees": 42.9957
+          }
+        ]
+      }
+    },
+    {
+      "shotId": "source.finale.cut03",
+      "displayName": "원본 발탄 최후 3/4 (7.8~15.4초)",
+      "defaultHoldMs": 7630,
+      "transitionEasing": "SMOOTHSTEP",
+      "activation": "PATTERN_ONLY",
+      "sequenceInstanceId": "world.sequence.instance.valtan.source-preview.finale",
+      "box": {
+        "center": [
+          146.7638,
+          25.9116,
+          -117.8872
+        ],
+        "halfExtents": [
+          0.25,
+          0.25,
+          0.25
+        ],
+        "yawDegrees": 0
+      },
+      "eye": [
+        146.7638,
+        25.9116,
+        -117.8872
+      ],
+      "lookAt": [
+        160.1832,
+        22.3452,
+        -123.5617
+      ],
+      "fovYDegrees": 58.7155,
+      "blendInMs": 0,
+      "blendOutMs": 0,
+      "priority": 0,
+      "cameraTrack": {
+        "durationMs": 7630,
+        "interpolation": "CATMULL_ROM",
+        "easing": "LINEAR",
+        "keyframes": [
+          {
+            "sceneId": "source.finale.cut03.k01",
+            "timeMs": 0,
+            "eye": [
+              146.7638,
+              25.9116,
+              -117.8872
+            ],
+            "lookAt": [
+              160.1832,
+              22.3452,
+              -123.5617
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.finale.cut03.r01",
+            "timeMs": 58,
+            "eye": [
+              146.958,
+              25.8916,
+              -117.8776
+            ],
+            "lookAt": [
+              160.3557,
+              22.4261,
+              -123.6648
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.finale.cut03.r02",
+            "timeMs": 108,
+            "eye": [
+              147.1263,
+              25.8742,
+              -117.8695
+            ],
+            "lookAt": [
+              160.5037,
+              22.4963,
+              -123.7546
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.finale.cut03.r03",
+            "timeMs": 200,
+            "eye": [
+              147.437,
+              25.8421,
+              -117.855
+            ],
+            "lookAt": [
+              160.7733,
+              22.6265,
+              -123.9214
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.finale.cut03.r04",
+            "timeMs": 358,
+            "eye": [
+              147.9687,
+              25.787,
+              -117.832
+            ],
+            "lookAt": [
+              161.2236,
+              22.8507,
+              -124.2106
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.finale.cut03.r05",
+            "timeMs": 654,
+            "eye": [
+              148.9302,
+              25.6868,
+              -117.7977
+            ],
+            "lookAt": [
+              161.9989,
+              23.2606,
+              -124.7492
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.finale.cut03.r06",
+            "timeMs": 900,
+            "eye": [
+              149.6577,
+              25.6103,
+              -117.7812
+            ],
+            "lookAt": [
+              162.5473,
+              23.5753,
+              -125.1783
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.finale.cut03.r07",
+            "timeMs": 1012,
+            "eye": [
+              149.957,
+              25.5786,
+              -117.7782
+            ],
+            "lookAt": [
+              162.7611,
+              23.7063,
+              -125.3644
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.finale.cut03.r08",
+            "timeMs": 1046,
+            "eye": [
+              150.0432,
+              25.5694,
+              -117.7779
+            ],
+            "lookAt": [
+              162.8211,
+              23.7441,
+              -125.4194
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.finale.cut03.r09",
+            "timeMs": 1054,
+            "eye": [
+              150.0631,
+              25.5672,
+              -117.7779
+            ],
+            "lookAt": [
+              162.8349,
+              23.7529,
+              -125.4323
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.finale.cut03.r10",
+            "timeMs": 1058,
+            "eye": [
+              150.073,
+              25.5662,
+              -117.7779
+            ],
+            "lookAt": [
+              162.8417,
+              23.7573,
+              -125.4387
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.finale.cut03.k02",
+            "timeMs": 1060,
+            "eye": [
+              150.078,
+              25.5657,
+              -117.7779
+            ],
+            "lookAt": [
+              162.8451,
+              23.7595,
+              -125.4419
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.finale.cut03.r11",
+            "timeMs": 1188,
+            "eye": [
+              150.3956,
+              25.5359,
+              -117.7887
+            ],
+            "lookAt": [
+              163.0615,
+              23.8895,
+              -125.6541
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.finale.cut03.r12",
+            "timeMs": 1258,
+            "eye": [
+              150.5699,
+              25.522,
+              -117.8027
+            ],
+            "lookAt": [
+              163.1765,
+              23.9549,
+              -125.7787
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.finale.cut03.r13",
+            "timeMs": 1279,
+            "eye": [
+              150.6221,
+              25.518,
+              -117.8078
+            ],
+            "lookAt": [
+              163.2102,
+              23.974,
+              -125.8176
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.finale.cut03.r14",
+            "timeMs": 1288,
+            "eye": [
+              150.6445,
+              25.5163,
+              -117.8101
+            ],
+            "lookAt": [
+              163.2245,
+              23.9822,
+              -125.8345
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.finale.cut03.r15",
+            "timeMs": 1292,
+            "eye": [
+              150.6544,
+              25.5156,
+              -117.8112
+            ],
+            "lookAt": [
+              163.2308,
+              23.9858,
+              -125.8421
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.finale.cut03.r16",
+            "timeMs": 1388,
+            "eye": [
+              150.8924,
+              25.4978,
+              -117.8404
+            ],
+            "lookAt": [
+              163.3763,
+              24.0725,
+              -126.0331
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.finale.cut03.r17",
+            "timeMs": 1467,
+            "eye": [
+              151.0867,
+              25.4825,
+              -117.8691
+            ],
+            "lookAt": [
+              163.4847,
+              24.1454,
+              -126.2059
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.finale.cut03.r18",
+            "timeMs": 1600,
+            "eye": [
+              151.4085,
+              25.4525,
+              -117.9233
+            ],
+            "lookAt": [
+              163.6342,
+              24.2784,
+              -126.5345
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.finale.cut03.k03",
+            "timeMs": 1910,
+            "eye": [
+              152.1157,
+              25.3368,
+              -118.0512
+            ],
+            "lookAt": [
+              163.7295,
+              24.6984,
+              -127.5229
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.finale.cut03.r19",
+            "timeMs": 2250,
+            "eye": [
+              152.789,
+              24.9998,
+              -118.2158
+            ],
+            "lookAt": [
+              162.9817,
+              25.3683,
+              -129.2145
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.finale.cut03.r20",
+            "timeMs": 2475,
+            "eye": [
+              153.2012,
+              24.6841,
+              -118.3273
+            ],
+            "lookAt": [
+              162.0299,
+              25.8745,
+              -130.3952
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.finale.cut03.k04",
+            "timeMs": 2770,
+            "eye": [
+              153.758,
+              24.3085,
+              -118.3974
+            ],
+            "lookAt": [
+              160.7806,
+              26.555,
+              -131.4603
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.finale.cut03.r21",
+            "timeMs": 2771,
+            "eye": [
+              153.76,
+              24.3075,
+              -118.3974
+            ],
+            "lookAt": [
+              160.7771,
+              26.5573,
+              -131.4626
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.finale.cut03.r22",
+            "timeMs": 2775,
+            "eye": [
+              153.7681,
+              24.3034,
+              -118.3973
+            ],
+            "lookAt": [
+              160.7636,
+              26.5669,
+              -131.4717
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.finale.cut03.r23",
+            "timeMs": 2788,
+            "eye": [
+              153.7954,
+              24.2902,
+              -118.3959
+            ],
+            "lookAt": [
+              160.7198,
+              26.6022,
+              -131.4996
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.finale.cut03.r24",
+            "timeMs": 2821,
+            "eye": [
+              153.8714,
+              24.2577,
+              -118.386
+            ],
+            "lookAt": [
+              160.6133,
+              26.7092,
+              -131.5593
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.finale.cut03.k05",
+            "timeMs": 2920,
+            "eye": [
+              154.1208,
+              24.1663,
+              -118.3317
+            ],
+            "lookAt": [
+              160.3816,
+              26.9035,
+              -131.685
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.finale.cut03.k06",
+            "timeMs": 2990,
+            "eye": [
+              154.2972,
+              24.1103,
+              -118.2785
+            ],
+            "lookAt": [
+              160.3893,
+              26.3525,
+              -131.801
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.finale.cut03.k07",
+            "timeMs": 3030,
+            "eye": [
+              154.4177,
+              24.0747,
+              -118.2339
+            ],
+            "lookAt": [
+              160.1256,
+              26.5413,
+              -131.8844
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.finale.cut03.k08",
+            "timeMs": 3080,
+            "eye": [
+              154.5563,
+              24.0345,
+              -118.1748
+            ],
+            "lookAt": [
+              159.6881,
+              27.3757,
+              -131.8679
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.finale.cut03.k09",
+            "timeMs": 3300,
+            "eye": [
+              155.1719,
+              23.8531,
+              -117.8825
+            ],
+            "lookAt": [
+              160.0119,
+              27.4838,
+              -131.6081
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.finale.cut03.k10",
+            "timeMs": 3380,
+            "eye": [
+              155.3449,
+              23.7873,
+              -117.7884
+            ],
+            "lookAt": [
+              160.5457,
+              26.7926,
+              -131.5332
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.finale.cut03.k11",
+            "timeMs": 3450,
+            "eye": [
+              155.4701,
+              23.7372,
+              -117.7171
+            ],
+            "lookAt": [
+              160.1295,
+              27.1611,
+              -131.5578
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.finale.cut03.k12",
+            "timeMs": 3510,
+            "eye": [
+              155.5749,
+              23.6953,
+              -117.6568
+            ],
+            "lookAt": [
+              160.4511,
+              26.5017,
+              -131.5618
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.finale.cut03.k13",
+            "timeMs": 3600,
+            "eye": [
+              155.7545,
+              23.6217,
+              -117.5534
+            ],
+            "lookAt": [
+              161.5739,
+              26.8169,
+              -131.0042
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.finale.cut03.k14",
+            "timeMs": 3670,
+            "eye": [
+              155.8735,
+              23.5518,
+              -117.4832
+            ],
+            "lookAt": [
+              161.2226,
+              26.1403,
+              -131.2558
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.finale.cut03.k15",
+            "timeMs": 3770,
+            "eye": [
+              156.0678,
+              23.5315,
+              -117.3816
+            ],
+            "lookAt": [
+              160.6836,
+              26.3082,
+              -131.381
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.finale.cut03.k16",
+            "timeMs": 3940,
+            "eye": [
+              156.3155,
+              23.531,
+              -117.2747
+            ],
+            "lookAt": [
+              161.4497,
+              25.7234,
+              -131.1971
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.finale.cut03.k17",
+            "timeMs": 4050,
+            "eye": [
+              156.3895,
+              23.5303,
+              -117.239
+            ],
+            "lookAt": [
+              161.3623,
+              25.845,
+              -131.2001
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.finale.cut03.k18",
+            "timeMs": 4150,
+            "eye": [
+              156.4097,
+              23.5359,
+              -117.2195
+            ],
+            "lookAt": [
+              161.3014,
+              24.9976,
+              -131.324
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.finale.cut03.k19",
+            "timeMs": 4210,
+            "eye": [
+              156.4181,
+              23.5418,
+              -117.2093
+            ],
+            "lookAt": [
+              162.1139,
+              23.9372,
+              -131.0803
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.finale.cut03.k20",
+            "timeMs": 4310,
+            "eye": [
+              156.4317,
+              23.558,
+              -117.1916
+            ],
+            "lookAt": [
+              162.0106,
+              22.9714,
+              -131.1032
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.finale.cut03.k21",
+            "timeMs": 4650,
+            "eye": [
+              156.484,
+              23.6349,
+              -117.1304
+            ],
+            "lookAt": [
+              162.3703,
+              22.4697,
+              -130.8779
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.finale.cut03.k22",
+            "timeMs": 5490,
+            "eye": [
+              156.6668,
+              23.7205,
+              -117.0259
+            ],
+            "lookAt": [
+              162.1835,
+              21.7588,
+              -130.836
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.finale.cut03.r25",
+            "timeMs": 6912,
+            "eye": [
+              156.9277,
+              23.8583,
+              -116.8623
+            ],
+            "lookAt": [
+              161.1467,
+              21.7215,
+              -131.0972
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.finale.cut03.k23",
+            "timeMs": 7630,
+            "eye": [
+              157.0561,
+              23.9285,
+              -116.7801
+            ],
+            "lookAt": [
+              160.3067,
+              21.7385,
+              -131.259
+            ],
+            "fovYDegrees": 58.7155
+          }
+        ]
+      }
+    },
+    {
+      "shotId": "source.finale.cut04",
+      "displayName": "원본 발탄 최후 4/4 (15.4~23.0초)",
+      "defaultHoldMs": 7590,
+      "transitionEasing": "SMOOTHSTEP",
+      "activation": "PATTERN_ONLY",
+      "sequenceInstanceId": "world.sequence.instance.valtan.source-preview.finale",
+      "box": {
+        "center": [
+          135.5705,
+          35.9572,
+          -101.9797
+        ],
+        "halfExtents": [
+          0.25,
+          0.25,
+          0.25
+        ],
+        "yawDegrees": 0
+      },
+      "eye": [
+        135.5705,
+        35.9572,
+        -101.9797
+      ],
+      "lookAt": [
+        145.4922,
+        29.7906,
+        -111.3888
+      ],
+      "fovYDegrees": 58.7155,
+      "blendInMs": 0,
+      "blendOutMs": 0,
+      "priority": 0,
+      "cameraTrack": {
+        "durationMs": 7590,
+        "interpolation": "CATMULL_ROM",
+        "easing": "LINEAR",
+        "keyframes": [
+          {
+            "sceneId": "source.finale.cut04.k01",
+            "timeMs": 0,
+            "eye": [
+              135.5705,
+              35.9572,
+              -101.9797
+            ],
+            "lookAt": [
+              145.4922,
+              29.7906,
+              -111.3888
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.finale.cut04.r01",
+            "timeMs": 171,
+            "eye": [
+              135.4318,
+              36.089,
+              -101.8286
+            ],
+            "lookAt": [
+              145.3372,
+              29.8947,
+              -111.2367
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.finale.cut04.r02",
+            "timeMs": 438,
+            "eye": [
+              135.2182,
+              36.2922,
+              -101.5959
+            ],
+            "lookAt": [
+              145.0986,
+              30.0555,
+              -111.0024
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.finale.cut04.r03",
+            "timeMs": 1029,
+            "eye": [
+              134.76,
+              36.7309,
+              -101.0949
+            ],
+            "lookAt": [
+              144.5855,
+              30.4036,
+              -110.4983
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.finale.cut04.r04",
+            "timeMs": 1588,
+            "eye": [
+              134.3459,
+              37.1299,
+              -100.6405
+            ],
+            "lookAt": [
+              144.1211,
+              30.7216,
+              -110.0415
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.finale.cut04.r05",
+            "timeMs": 2100,
+            "eye": [
+              133.9843,
+              37.4805,
+              -100.2425
+            ],
+            "lookAt": [
+              143.7149,
+              31.0018,
+              -109.6415
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.finale.cut04.r06",
+            "timeMs": 2712,
+            "eye": [
+              133.5758,
+              37.8789,
+              -99.7914
+            ],
+            "lookAt": [
+              143.2553,
+              31.3215,
+              -109.1886
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.finale.cut04.r07",
+            "timeMs": 3188,
+            "eye": [
+              133.277,
+              38.1719,
+              -99.4605
+            ],
+            "lookAt": [
+              142.9187,
+              31.5573,
+              -108.8565
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.finale.cut04.r08",
+            "timeMs": 3558,
+            "eye": [
+              133.0568,
+              38.3887,
+              -99.2161
+            ],
+            "lookAt": [
+              142.6703,
+              31.7322,
+              -108.6114
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.finale.cut04.r09",
+            "timeMs": 4400,
+            "eye": [
+              132.5974,
+              38.8437,
+              -98.7045
+            ],
+            "lookAt": [
+              142.1514,
+              32.1003,
+              -108.0985
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.finale.cut04.r10",
+            "timeMs": 5417,
+            "eye": [
+              132.1249,
+              39.3154,
+              -98.1762
+            ],
+            "lookAt": [
+              141.6167,
+              32.4835,
+              -107.5694
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.finale.cut04.r11",
+            "timeMs": 6054,
+            "eye": [
+              131.8784,
+              39.5631,
+              -97.8996
+            ],
+            "lookAt": [
+              141.3373,
+              32.6855,
+              -107.2926
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.finale.cut04.k02",
+            "timeMs": 7590,
+            "eye": [
+              131.4547,
+              39.9923,
+              -97.422
+            ],
+            "lookAt": [
+              140.8561,
+              33.0368,
+              -106.8153
+            ],
+            "fovYDegrees": 58.7155
+          }
+        ]
+      }
+    },
+    {
+      "shotId": "source.trash.cut01",
+      "displayName": "원본 버러지 1/2 (0.0~1.1초)",
+      "defaultHoldMs": 1073,
+      "transitionEasing": "SMOOTHSTEP",
+      "activation": "PATTERN_ONLY",
+      "sequenceInstanceId": "world.sequence.instance.valtan.source-preview.trash",
+      "box": {
+        "center": [
+          151.4191,
+          23.1105,
+          -115.7797
+        ],
+        "halfExtents": [
+          0.25,
+          0.25,
+          0.25
+        ],
+        "yawDegrees": 0
+      },
+      "eye": [
+        151.4191,
+        23.1105,
+        -115.7797
+      ],
+      "lookAt": [
+        159.773,
+        26.6665,
+        -127.7199
+      ],
+      "fovYDegrees": 11.3286,
+      "blendInMs": 0,
+      "blendOutMs": 0,
+      "priority": 0,
+      "cameraTrack": {
+        "durationMs": 1073,
+        "interpolation": "CATMULL_ROM",
+        "easing": "LINEAR",
+        "keyframes": [
+          {
+            "sceneId": "source.trash.cut01.k01",
+            "timeMs": 0,
+            "eye": [
+              151.4191,
+              23.1105,
+              -115.7797
+            ],
+            "lookAt": [
+              159.773,
+              26.6665,
+              -127.7199
+            ],
+            "fovYDegrees": 11.3286
+          },
+          {
+            "sceneId": "source.trash.cut01.k02",
+            "timeMs": 1,
+            "eye": [
+              151.4191,
+              23.1105,
+              -115.7797
+            ],
+            "lookAt": [
+              159.773,
+              26.6665,
+              -127.7199
+            ],
+            "fovYDegrees": 11.3286
+          },
+          {
+            "sceneId": "source.trash.cut01.r01",
+            "timeMs": 154,
+            "eye": [
+              151.4448,
+              23.1442,
+              -115.7536
+            ],
+            "lookAt": [
+              159.6883,
+              27.0622,
+              -127.6572
+            ],
+            "fovYDegrees": 11.3286
+          },
+          {
+            "sceneId": "source.trash.cut01.r02",
+            "timeMs": 346,
+            "eye": [
+              151.5302,
+              23.245,
+              -115.6756
+            ],
+            "lookAt": [
+              159.3877,
+              28.3416,
+              -127.3925
+            ],
+            "fovYDegrees": 11.3286
+          },
+          {
+            "sceneId": "source.trash.cut01.k03",
+            "timeMs": 702,
+            "eye": [
+              151.7269,
+              23.3855,
+              -115.5667
+            ],
+            "lookAt": [
+              158.6233,
+              31.0427,
+              -126.4666
+            ],
+            "fovYDegrees": 11.3286
+          },
+          {
+            "sceneId": "source.trash.cut01.r03",
+            "timeMs": 704,
+            "eye": [
+              151.728,
+              23.3849,
+              -115.5667
+            ],
+            "lookAt": [
+              158.6193,
+              31.0555,
+              -126.4605
+            ],
+            "fovYDegrees": 11.3286
+          },
+          {
+            "sceneId": "source.trash.cut01.r04",
+            "timeMs": 712,
+            "eye": [
+              151.7314,
+              23.3753,
+              -115.5668
+            ],
+            "lookAt": [
+              158.6046,
+              31.0929,
+              -126.4387
+            ],
+            "fovYDegrees": 11.3286
+          },
+          {
+            "sceneId": "source.trash.cut01.r05",
+            "timeMs": 733,
+            "eye": [
+              151.7401,
+              23.3055,
+              -115.5668
+            ],
+            "lookAt": [
+              158.5613,
+              31.1567,
+              -126.3755
+            ],
+            "fovYDegrees": 11.3286
+          },
+          {
+            "sceneId": "source.trash.cut01.k04",
+            "timeMs": 797,
+            "eye": [
+              151.7821,
+              23.0106,
+              -115.5674
+            ],
+            "lookAt": [
+              158.4359,
+              31.3058,
+              -126.1464
+            ],
+            "fovYDegrees": 11.3286
+          },
+          {
+            "sceneId": "source.trash.cut01.k05",
+            "timeMs": 931,
+            "eye": [
+              152.112,
+              22.8514,
+              -116.0551
+            ],
+            "lookAt": [
+              158.4786,
+              32.0663,
+              -126.0327
+            ],
+            "fovYDegrees": 11.3286
+          },
+          {
+            "sceneId": "source.trash.cut01.r06",
+            "timeMs": 1021,
+            "eye": [
+              152.4381,
+              22.9471,
+              -116.5619
+            ],
+            "lookAt": [
+              158.6439,
+              32.6835,
+              -126.1373
+            ],
+            "fovYDegrees": 11.3286
+          },
+          {
+            "sceneId": "source.trash.cut01.k06",
+            "timeMs": 1073,
+            "eye": [
+              152.6468,
+              23.0503,
+              -116.8902
+            ],
+            "lookAt": [
+              158.7585,
+              33.0758,
+              -126.2249
+            ],
+            "fovYDegrees": 11.3286
+          }
+        ]
+      }
+    },
+    {
+      "shotId": "source.trash.cut02",
+      "displayName": "원본 버러지 2/2 (1.1~5.7초)",
+      "defaultHoldMs": 4663,
+      "transitionEasing": "SMOOTHSTEP",
+      "activation": "PATTERN_ONLY",
+      "sequenceInstanceId": "world.sequence.instance.valtan.source-preview.trash",
+      "box": {
+        "center": [
+          150.7201,
+          23.2549,
+          -122.8851
+        ],
+        "halfExtents": [
+          0.25,
+          0.25,
+          0.25
+        ],
+        "yawDegrees": 0
+      },
+      "eye": [
+        150.7201,
+        23.2549,
+        -122.8851
+      ],
+      "lookAt": [
+        161.2672,
+        31.3961,
+        -115.9946
+      ],
+      "fovYDegrees": 29.395,
+      "blendInMs": 0,
+      "blendOutMs": 0,
+      "priority": 0,
+      "cameraTrack": {
+        "durationMs": 4663,
+        "interpolation": "CATMULL_ROM",
+        "easing": "LINEAR",
+        "keyframes": [
+          {
+            "sceneId": "source.trash.cut02.k01",
+            "timeMs": 0,
+            "eye": [
+              150.7201,
+              23.2549,
+              -122.8851
+            ],
+            "lookAt": [
+              161.2672,
+              31.3961,
+              -115.9946
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.trash.cut02.r01",
+            "timeMs": 408,
+            "eye": [
+              150.9507,
+              23.2564,
+              -123.2449
+            ],
+            "lookAt": [
+              161.4978,
+              31.3977,
+              -116.3544
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.trash.cut02.k02",
+            "timeMs": 1145,
+            "eye": [
+              151.2178,
+              23.263,
+              -123.6593
+            ],
+            "lookAt": [
+              161.7649,
+              31.4043,
+              -116.7688
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.trash.cut02.r02",
+            "timeMs": 1246,
+            "eye": [
+              151.2336,
+              23.2648,
+              -123.679
+            ],
+            "lookAt": [
+              161.7807,
+              31.406,
+              -116.7886
+            ],
+            "fovYDegrees": 28.4946
+          },
+          {
+            "sceneId": "source.trash.cut02.k03",
+            "timeMs": 1365,
+            "eye": [
+              151.2442,
+              23.2672,
+              -123.6874
+            ],
+            "lookAt": [
+              161.7913,
+              31.4084,
+              -116.7969
+            ],
+            "fovYDegrees": 25.7883
+          },
+          {
+            "sceneId": "source.trash.cut02.r03",
+            "timeMs": 1433,
+            "eye": [
+              151.2472,
+              23.2701,
+              -123.5732
+            ],
+            "lookAt": [
+              162.0661,
+              31.2173,
+              -116.8803
+            ],
+            "fovYDegrees": 23.8427
+          },
+          {
+            "sceneId": "source.trash.cut02.r04",
+            "timeMs": 1492,
+            "eye": [
+              151.2493,
+              23.2749,
+              -123.3318
+            ],
+            "lookAt": [
+              162.659,
+              30.8227,
+              -117.1795
+            ],
+            "fovYDegrees": 22.1177
+          },
+          {
+            "sceneId": "source.trash.cut02.r05",
+            "timeMs": 1575,
+            "eye": [
+              151.252,
+              23.2844,
+              -122.8782
+            ],
+            "lookAt": [
+              163.7647,
+              30.1267,
+              -118.2291
+            ],
+            "fovYDegrees": 19.8731
+          },
+          {
+            "sceneId": "source.trash.cut02.k04",
+            "timeMs": 1617,
+            "eye": [
+              151.2533,
+              23.2902,
+              -122.6422
+            ],
+            "lookAt": [
+              164.298,
+              29.8061,
+              -119.1236
+            ],
+            "fovYDegrees": 18.9152
+          },
+          {
+            "sceneId": "source.trash.cut02.r06",
+            "timeMs": 1633,
+            "eye": [
+              151.2539,
+              23.2927,
+              -122.5477
+            ],
+            "lookAt": [
+              164.5048,
+              29.6908,
+              -119.6361
+            ],
+            "fovYDegrees": 18.585
+          },
+          {
+            "sceneId": "source.trash.cut02.r07",
+            "timeMs": 1662,
+            "eye": [
+              151.2547,
+              23.2974,
+              -122.3557
+            ],
+            "lookAt": [
+              164.8573,
+              29.4743,
+              -121.0089
+            ],
+            "fovYDegrees": 18.0671
+          },
+          {
+            "sceneId": "source.trash.cut02.r08",
+            "timeMs": 1700,
+            "eye": [
+              151.2557,
+              23.305,
+              -122.0664
+            ],
+            "lookAt": [
+              165.0013,
+              29.1776,
+              -123.32
+            ],
+            "fovYDegrees": 17.5447
+          },
+          {
+            "sceneId": "source.trash.cut02.r09",
+            "timeMs": 1725,
+            "eye": [
+              151.2564,
+              23.3115,
+              -121.8584
+            ],
+            "lookAt": [
+              164.8167,
+              28.9805,
+              -124.8556
+            ],
+            "fovYDegrees": 17.3111
+          },
+          {
+            "sceneId": "source.trash.cut02.k05",
+            "timeMs": 1770,
+            "eye": [
+              151.2583,
+              23.3268,
+              -121.4689
+            ],
+            "lookAt": [
+              164.1821,
+              28.6419,
+              -126.9211
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.trash.cut02.r10",
+            "timeMs": 1796,
+            "eye": [
+              151.2597,
+              23.3379,
+              -121.2258
+            ],
+            "lookAt": [
+              163.8113,
+              28.4538,
+              -127.6512
+            ],
+            "fovYDegrees": 17.7597
+          },
+          {
+            "sceneId": "source.trash.cut02.r11",
+            "timeMs": 1821,
+            "eye": [
+              151.2609,
+              23.349,
+              -120.9942
+            ],
+            "lookAt": [
+              163.4881,
+              28.2909,
+              -128.1408
+            ],
+            "fovYDegrees": 19.2474
+          },
+          {
+            "sceneId": "source.trash.cut02.r12",
+            "timeMs": 1858,
+            "eye": [
+              151.2631,
+              23.3697,
+              -120.635
+            ],
+            "lookAt": [
+              163.0558,
+              28.0552,
+              -128.6336
+            ],
+            "fovYDegrees": 22.4671
+          },
+          {
+            "sceneId": "source.trash.cut02.r13",
+            "timeMs": 1908,
+            "eye": [
+              151.2679,
+              23.4115,
+              -120.0995
+            ],
+            "lookAt": [
+              162.4827,
+              27.706,
+              -129.0877
+            ],
+            "fovYDegrees": 27.2749
+          },
+          {
+            "sceneId": "source.trash.cut02.r14",
+            "timeMs": 1929,
+            "eye": [
+              151.271,
+              23.4359,
+              -119.8514
+            ],
+            "lookAt": [
+              162.2003,
+              27.5349,
+              -129.2721
+            ],
+            "fovYDegrees": 28.925
+          },
+          {
+            "sceneId": "source.trash.cut02.r15",
+            "timeMs": 1933,
+            "eye": [
+              151.2716,
+              23.4411,
+              -119.8023
+            ],
+            "lookAt": [
+              162.1408,
+              27.5,
+              -129.3094
+            ],
+            "fovYDegrees": 29.1883
+          },
+          {
+            "sceneId": "source.trash.cut02.k06",
+            "timeMs": 1937,
+            "eye": [
+              151.2722,
+              23.4457,
+              -119.7604
+            ],
+            "lookAt": [
+              162.089,
+              27.4699,
+              -129.3417
+            ],
+            "fovYDegrees": 29.3949
+          },
+          {
+            "sceneId": "source.trash.cut02.r16",
+            "timeMs": 1954,
+            "eye": [
+              151.2877,
+              23.4835,
+              -119.5323
+            ],
+            "lookAt": [
+              161.8035,
+              27.3052,
+              -129.5229
+            ],
+            "fovYDegrees": 30.4692
+          },
+          {
+            "sceneId": "source.trash.cut02.r17",
+            "timeMs": 1967,
+            "eye": [
+              151.3138,
+              23.5276,
+              -119.3547
+            ],
+            "lookAt": [
+              161.5787,
+              27.1771,
+              -129.6655
+            ],
+            "fovYDegrees": 31.2971
+          },
+          {
+            "sceneId": "source.trash.cut02.r18",
+            "timeMs": 1971,
+            "eye": [
+              151.3241,
+              23.5437,
+              -119.2986
+            ],
+            "lookAt": [
+              161.507,
+              27.1368,
+              -129.7101
+            ],
+            "fovYDegrees": 31.5568
+          },
+          {
+            "sceneId": "source.trash.cut02.r19",
+            "timeMs": 1992,
+            "eye": [
+              151.3934,
+              23.6447,
+              -118.995
+            ],
+            "lookAt": [
+              161.1106,
+              26.9194,
+              -129.9427
+            ],
+            "fovYDegrees": 32.9485
+          },
+          {
+            "sceneId": "source.trash.cut02.r20",
+            "timeMs": 2042,
+            "eye": [
+              151.6337,
+              23.9663,
+              -118.23
+            ],
+            "lookAt": [
+              160.0544,
+              26.3891,
+              -130.4046
+            ],
+            "fovYDegrees": 36.3159
+          },
+          {
+            "sceneId": "source.trash.cut02.r21",
+            "timeMs": 2108,
+            "eye": [
+              152.0023,
+              24.4395,
+              -117.2122
+            ],
+            "lookAt": [
+              158.6321,
+              25.7668,
+              -130.6019
+            ],
+            "fovYDegrees": 40.2837
+          },
+          {
+            "sceneId": "source.trash.cut02.r22",
+            "timeMs": 2158,
+            "eye": [
+              152.2187,
+              24.7188,
+              -116.5108
+            ],
+            "lookAt": [
+              157.8378,
+              25.4562,
+              -130.399
+            ],
+            "fovYDegrees": 42.3256
+          },
+          {
+            "sceneId": "source.trash.cut02.k07",
+            "timeMs": 2203,
+            "eye": [
+              152.2945,
+              24.8288,
+              -115.9878
+            ],
+            "lookAt": [
+              157.5699,
+              25.3679,
+              -130.0191
+            ],
+            "fovYDegrees": 42.9957
+          },
+          {
+            "sceneId": "source.trash.cut02.r23",
+            "timeMs": 2254,
+            "eye": [
+              152.2805,
+              24.846,
+              -115.4932
+            ],
+            "lookAt": [
+              158.0724,
+              25.6482,
+              -129.3066
+            ],
+            "fovYDegrees": 42.4159
+          },
+          {
+            "sceneId": "source.trash.cut02.r24",
+            "timeMs": 2296,
+            "eye": [
+              152.2548,
+              24.853,
+              -115.1411
+            ],
+            "lookAt": [
+              158.9655,
+              26.1372,
+              -128.4947
+            ],
+            "fovYDegrees": 41.2205
+          },
+          {
+            "sceneId": "source.trash.cut02.r25",
+            "timeMs": 2358,
+            "eye": [
+              152.2118,
+              24.8595,
+              -114.7278
+            ],
+            "lookAt": [
+              160.3622,
+              26.9489,
+              -127.1457
+            ],
+            "fovYDegrees": 38.6734
+          },
+          {
+            "sceneId": "source.trash.cut02.k08",
+            "timeMs": 2432,
+            "eye": [
+              152.185,
+              24.8757,
+              -114.435
+            ],
+            "lookAt": [
+              161.1573,
+              27.4642,
+              -126.1737
+            ],
+            "fovYDegrees": 35.108
+          },
+          {
+            "sceneId": "source.trash.cut02.r26",
+            "timeMs": 2517,
+            "eye": [
+              152.2396,
+              24.9253,
+              -114.2613
+            ],
+            "lookAt": [
+              161.0899,
+              27.4554,
+              -126.1049
+            ],
+            "fovYDegrees": 31.338
+          },
+          {
+            "sceneId": "source.trash.cut02.k09",
+            "timeMs": 2582,
+            "eye": [
+              152.3397,
+              24.9884,
+              -114.1572
+            ],
+            "lookAt": [
+              160.9595,
+              27.3974,
+              -126.1945
+            ],
+            "fovYDegrees": 29.395
+          },
+          {
+            "sceneId": "source.trash.cut02.r27",
+            "timeMs": 2792,
+            "eye": [
+              152.8195,
+              25.3598,
+              -113.9561
+            ],
+            "lookAt": [
+              160.1838,
+              26.913,
+              -126.9313
+            ],
+            "fovYDegrees": 24.9078
+          },
+          {
+            "sceneId": "source.trash.cut02.k10",
+            "timeMs": 2962,
+            "eye": [
+              153.0973,
+              25.8557,
+              -113.9153
+            ],
+            "lookAt": [
+              159.4216,
+              26.2166,
+              -127.5121
+            ],
+            "fovYDegrees": 21.6204
+          },
+          {
+            "sceneId": "source.trash.cut02.r28",
+            "timeMs": 3092,
+            "eye": [
+              153.1692,
+              26.4975,
+              -114.0047
+            ],
+            "lookAt": [
+              158.8606,
+              25.0734,
+              -127.8098
+            ],
+            "fovYDegrees": 19.5373
+          },
+          {
+            "sceneId": "source.trash.cut02.r29",
+            "timeMs": 3200,
+            "eye": [
+              153.205,
+              27.2336,
+              -114.1849
+            ],
+            "lookAt": [
+              158.3111,
+              23.6892,
+              -127.8364
+            ],
+            "fovYDegrees": 18.2321
+          },
+          {
+            "sceneId": "source.trash.cut02.r30",
+            "timeMs": 3296,
+            "eye": [
+              153.2312,
+              27.9574,
+              -114.3946
+            ],
+            "lookAt": [
+              157.7646,
+              22.4969,
+              -127.6095
+            ],
+            "fovYDegrees": 17.4692
+          },
+          {
+            "sceneId": "source.trash.cut02.r31",
+            "timeMs": 3338,
+            "eye": [
+              153.2437,
+              28.2758,
+              -114.4942
+            ],
+            "lookAt": [
+              157.5238,
+              22.0613,
+              -127.4581
+            ],
+            "fovYDegrees": 17.2705
+          },
+          {
+            "sceneId": "source.trash.cut02.r32",
+            "timeMs": 3342,
+            "eye": [
+              153.245,
+              28.3058,
+              -114.5039
+            ],
+            "lookAt": [
+              157.5012,
+              22.0238,
+              -127.443
+            ],
+            "fovYDegrees": 17.2562
+          },
+          {
+            "sceneId": "source.trash.cut02.r33",
+            "timeMs": 3346,
+            "eye": [
+              153.2463,
+              28.3358,
+              -114.5135
+            ],
+            "lookAt": [
+              157.4787,
+              21.9869,
+              -127.4278
+            ],
+            "fovYDegrees": 17.2427
+          },
+          {
+            "sceneId": "source.trash.cut02.r34",
+            "timeMs": 3358,
+            "eye": [
+              153.2502,
+              28.4252,
+              -114.5424
+            ],
+            "lookAt": [
+              157.4118,
+              21.881,
+              -127.382
+            ],
+            "fovYDegrees": 17.2072
+          },
+          {
+            "sceneId": "source.trash.cut02.r35",
+            "timeMs": 3388,
+            "eye": [
+              153.261,
+              28.6449,
+              -114.615
+            ],
+            "lookAt": [
+              157.2496,
+              21.6481,
+              -127.2695
+            ],
+            "fovYDegrees": 17.1519
+          },
+          {
+            "sceneId": "source.trash.cut02.r36",
+            "timeMs": 3400,
+            "eye": [
+              153.2657,
+              28.7308,
+              -114.644
+            ],
+            "lookAt": [
+              157.1872,
+              21.5686,
+              -127.2267
+            ],
+            "fovYDegrees": 17.1436
+          },
+          {
+            "sceneId": "source.trash.cut02.r37",
+            "timeMs": 3404,
+            "eye": [
+              153.2673,
+              28.7592,
+              -114.6536
+            ],
+            "lookAt": [
+              157.1667,
+              21.5439,
+              -127.2128
+            ],
+            "fovYDegrees": 17.1425
+          },
+          {
+            "sceneId": "source.trash.cut02.k11",
+            "timeMs": 3407,
+            "eye": [
+              153.2684,
+              28.7769,
+              -114.6596
+            ],
+            "lookAt": [
+              157.154,
+              21.529,
+              -127.2043
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.trash.cut02.r38",
+            "timeMs": 3462,
+            "eye": [
+              153.2939,
+              29.2123,
+              -114.8027
+            ],
+            "lookAt": [
+              156.859,
+              21.2263,
+              -126.9893
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.trash.cut02.r39",
+            "timeMs": 3488,
+            "eye": [
+              153.3073,
+              29.4417,
+              -114.8757
+            ],
+            "lookAt": [
+              156.7139,
+              21.1034,
+              -126.8702
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.trash.cut02.r40",
+            "timeMs": 3496,
+            "eye": [
+              153.3116,
+              29.5148,
+              -114.8988
+            ],
+            "lookAt": [
+              156.6687,
+              21.0681,
+              -126.8313
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.trash.cut02.r41",
+            "timeMs": 3500,
+            "eye": [
+              153.3137,
+              29.5517,
+              -114.9105
+            ],
+            "lookAt": [
+              156.6461,
+              21.051,
+              -126.8115
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.trash.cut02.r42",
+            "timeMs": 3538,
+            "eye": [
+              153.3349,
+              29.9136,
+              -115.0249
+            ],
+            "lookAt": [
+              156.4304,
+              20.9042,
+              -126.6114
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.trash.cut02.r43",
+            "timeMs": 3567,
+            "eye": [
+              153.3516,
+              30.1989,
+              -115.1158
+            ],
+            "lookAt": [
+              156.2673,
+              20.8121,
+              -126.4466
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.trash.cut02.r44",
+            "timeMs": 3600,
+            "eye": [
+              153.3708,
+              30.5273,
+              -115.2222
+            ],
+            "lookAt": [
+              156.0864,
+              20.7284,
+              -126.2498
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.trash.cut02.r45",
+            "timeMs": 3621,
+            "eye": [
+              153.383,
+              30.7356,
+              -115.2913
+            ],
+            "lookAt": [
+              155.9753,
+              20.6866,
+              -126.1217
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.trash.cut02.r46",
+            "timeMs": 3738,
+            "eye": [
+              153.4457,
+              31.8056,
+              -115.6842
+            ],
+            "lookAt": [
+              155.4476,
+              20.5933,
+              -125.4453
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.trash.cut02.r47",
+            "timeMs": 3821,
+            "eye": [
+              153.4784,
+              32.3648,
+              -115.9572
+            ],
+            "lookAt": [
+              155.2009,
+              20.6193,
+              -125.1264
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.trash.cut02.k12",
+            "timeMs": 3927,
+            "eye": [
+              153.4957,
+              32.6593,
+              -116.2741
+            ],
+            "lookAt": [
+              155.0797,
+              20.6533,
+              -125.1255
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.trash.cut02.r48",
+            "timeMs": 4100,
+            "eye": [
+              153.2347,
+              32.3814,
+              -116.8154
+            ],
+            "lookAt": [
+              155.6296,
+              20.5577,
+              -125.7297
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.trash.cut02.r49",
+            "timeMs": 4242,
+            "eye": [
+              152.7641,
+              31.8803,
+              -117.2906
+            ],
+            "lookAt": [
+              156.6676,
+              20.3973,
+              -126.1169
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.trash.cut02.r50",
+            "timeMs": 4446,
+            "eye": [
+              152.0248,
+              31.0932,
+              -117.8694
+            ],
+            "lookAt": [
+              158.3168,
+              20.1753,
+              -126.0064
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.trash.cut02.r51",
+            "timeMs": 4567,
+            "eye": [
+              151.7223,
+              30.7711,
+              -118.0774
+            ],
+            "lookAt": [
+              158.9594,
+              20.0946,
+              -125.7349
+            ],
+            "fovYDegrees": 17.1424
+          },
+          {
+            "sceneId": "source.trash.cut02.k13",
+            "timeMs": 4663,
+            "eye": [
+              151.6361,
+              30.6793,
+              -118.1337
+            ],
+            "lookAt": [
+              159.1361,
+              20.0727,
+              -125.6337
+            ],
+            "fovYDegrees": 17.1424
+          }
+        ]
+      }
+    },
+    {
+      "shotId": "source.roar.cut01",
+      "displayName": "원본 발탄 포효 1/3 (0.0~1.5초)",
+      "defaultHoldMs": 1461,
+      "transitionEasing": "SMOOTHSTEP",
+      "activation": "PATTERN_ONLY",
+      "sequenceInstanceId": "world.sequence.instance.valtan.source-preview.roar",
+      "box": {
+        "center": [
+          160.0883,
+          23.832,
+          -118.8946
+        ],
+        "halfExtents": [
+          0.25,
+          0.25,
+          0.25
+        ],
+        "yawDegrees": 0
+      },
+      "eye": [
+        160.0883,
+        23.832,
+        -118.8946
+      ],
+      "lookAt": [
+        147.2146,
+        24.0789,
+        -126.5892
+      ],
+      "fovYDegrees": 32.6421,
+      "blendInMs": 0,
+      "blendOutMs": 0,
+      "priority": 0,
+      "cameraTrack": {
+        "durationMs": 1461,
+        "interpolation": "CATMULL_ROM",
+        "easing": "LINEAR",
+        "keyframes": [
+          {
+            "sceneId": "source.roar.cut01.k01",
+            "timeMs": 0,
+            "eye": [
+              160.0883,
+              23.832,
+              -118.8946
+            ],
+            "lookAt": [
+              147.2146,
+              24.0789,
+              -126.5892
+            ],
+            "fovYDegrees": 32.6421
+          },
+          {
+            "sceneId": "source.roar.cut01.r01",
+            "timeMs": 17,
+            "eye": [
+              159.869,
+              23.7868,
+              -118.788
+            ],
+            "lookAt": [
+              147.2793,
+              24.0832,
+              -126.9372
+            ],
+            "fovYDegrees": 32.6421
+          },
+          {
+            "sceneId": "source.roar.cut01.r02",
+            "timeMs": 54,
+            "eye": [
+              159.4008,
+              23.6937,
+              -118.5996
+            ],
+            "lookAt": [
+              147.4781,
+              24.0952,
+              -127.6929
+            ],
+            "fovYDegrees": 32.6421
+          },
+          {
+            "sceneId": "source.roar.cut01.r03",
+            "timeMs": 100,
+            "eye": [
+              158.8575,
+              23.6016,
+              -118.439
+            ],
+            "lookAt": [
+              147.8488,
+              24.116,
+              -128.6147
+            ],
+            "fovYDegrees": 32.6421
+          },
+          {
+            "sceneId": "source.roar.cut01.k02",
+            "timeMs": 156,
+            "eye": [
+              158.291,
+              23.5539,
+              -118.3237
+            ],
+            "lookAt": [
+              148.5105,
+              24.152,
+              -129.6808
+            ],
+            "fovYDegrees": 32.6421
+          },
+          {
+            "sceneId": "source.roar.cut01.r04",
+            "timeMs": 217,
+            "eye": [
+              157.798,
+              23.5853,
+              -118.2557
+            ],
+            "lookAt": [
+              149.4424,
+              24.2251,
+              -130.6966
+            ],
+            "fovYDegrees": 32.6421
+          },
+          {
+            "sceneId": "source.roar.cut01.r05",
+            "timeMs": 258,
+            "eye": [
+              157.5084,
+              23.6384,
+              -118.2296
+            ],
+            "lookAt": [
+              150.1616,
+              24.3022,
+              -131.2904
+            ],
+            "fovYDegrees": 32.6421
+          },
+          {
+            "sceneId": "source.roar.cut01.r06",
+            "timeMs": 300,
+            "eye": [
+              157.2433,
+              23.7147,
+              -118.2119
+            ],
+            "lookAt": [
+              150.9555,
+              24.4,
+              -131.8131
+            ],
+            "fovYDegrees": 32.6421
+          },
+          {
+            "sceneId": "source.roar.cut01.r07",
+            "timeMs": 329,
+            "eye": [
+              157.0763,
+              23.7782,
+              -118.2026
+            ],
+            "lookAt": [
+              151.5294,
+              24.4766,
+              -132.1218
+            ],
+            "fovYDegrees": 32.6421
+          },
+          {
+            "sceneId": "source.roar.cut01.r08",
+            "timeMs": 342,
+            "eye": [
+              157.0052,
+              23.8091,
+              -118.1989
+            ],
+            "lookAt": [
+              151.7918,
+              24.513,
+              -132.2461
+            ],
+            "fovYDegrees": 32.6421
+          },
+          {
+            "sceneId": "source.roar.cut01.r09",
+            "timeMs": 362,
+            "eye": [
+              156.8997,
+              23.8592,
+              -118.1934
+            ],
+            "lookAt": [
+              152.2006,
+              24.5711,
+              -132.4205
+            ],
+            "fovYDegrees": 32.6421
+          },
+          {
+            "sceneId": "source.roar.cut01.r10",
+            "timeMs": 379,
+            "eye": [
+              156.8135,
+              23.9039,
+              -118.1889
+            ],
+            "lookAt": [
+              152.5517,
+              24.6221,
+              -132.5528
+            ],
+            "fovYDegrees": 32.6421
+          },
+          {
+            "sceneId": "source.roar.cut01.r11",
+            "timeMs": 408,
+            "eye": [
+              156.6729,
+              23.984,
+              -118.1815
+            ],
+            "lookAt": [
+              153.1556,
+              24.7122,
+              -132.7451
+            ],
+            "fovYDegrees": 32.6421
+          },
+          {
+            "sceneId": "source.roar.cut01.r12",
+            "timeMs": 475,
+            "eye": [
+              156.3715,
+              24.1805,
+              -118.1656
+            ],
+            "lookAt": [
+              154.5538,
+              24.9282,
+              -133.0363
+            ],
+            "fovYDegrees": 32.6421
+          },
+          {
+            "sceneId": "source.roar.cut01.r13",
+            "timeMs": 567,
+            "eye": [
+              155.9894,
+              24.4508,
+              -118.1573
+            ],
+            "lookAt": [
+              156.4113,
+              25.2192,
+              -133.1316
+            ],
+            "fovYDegrees": 32.6421
+          },
+          {
+            "sceneId": "source.roar.cut01.r14",
+            "timeMs": 633,
+            "eye": [
+              155.7268,
+              24.6232,
+              -118.1768
+            ],
+            "lookAt": [
+              157.6546,
+              25.4039,
+              -133.0319
+            ],
+            "fovYDegrees": 32.6421
+          },
+          {
+            "sceneId": "source.roar.cut01.r15",
+            "timeMs": 688,
+            "eye": [
+              155.5136,
+              24.74,
+              -118.2218
+            ],
+            "lookAt": [
+              158.6165,
+              25.5303,
+              -132.876
+            ],
+            "fovYDegrees": 32.6421
+          },
+          {
+            "sceneId": "source.roar.cut01.k03",
+            "timeMs": 798,
+            "eye": [
+              155.1137,
+              24.8617,
+              -118.4318
+            ],
+            "lookAt": [
+              160.3219,
+              25.6724,
+              -132.4751
+            ],
+            "fovYDegrees": 32.6421
+          },
+          {
+            "sceneId": "source.roar.cut01.r16",
+            "timeMs": 879,
+            "eye": [
+              154.9732,
+              24.8753,
+              -118.6905
+            ],
+            "lookAt": [
+              161.4963,
+              25.6976,
+              -132.1728
+            ],
+            "fovYDegrees": 32.6421
+          },
+          {
+            "sceneId": "source.roar.cut01.r17",
+            "timeMs": 979,
+            "eye": [
+              155.0299,
+              24.8819,
+              -119.0038
+            ],
+            "lookAt": [
+              162.9094,
+              25.7122,
+              -131.7405
+            ],
+            "fovYDegrees": 32.6421
+          },
+          {
+            "sceneId": "source.roar.cut01.k04",
+            "timeMs": 1130,
+            "eye": [
+              155.015,
+              24.9055,
+              -119.3059
+            ],
+            "lookAt": [
+              164.4195,
+              25.7621,
+              -130.9601
+            ],
+            "fovYDegrees": 32.6421
+          },
+          {
+            "sceneId": "source.roar.cut01.r18",
+            "timeMs": 1188,
+            "eye": [
+              154.6561,
+              24.9962,
+              -119.4163
+            ],
+            "lookAt": [
+              164.8998,
+              25.9093,
+              -130.3356
+            ],
+            "fovYDegrees": 32.6421
+          },
+          {
+            "sceneId": "source.roar.cut01.r19",
+            "timeMs": 1254,
+            "eye": [
+              153.8656,
+              25.2261,
+              -119.6255
+            ],
+            "lookAt": [
+              165.5536,
+              26.2698,
+              -128.969
+            ],
+            "fovYDegrees": 32.6421
+          },
+          {
+            "sceneId": "source.roar.cut01.r20",
+            "timeMs": 1288,
+            "eye": [
+              153.3907,
+              25.369,
+              -119.7567
+            ],
+            "lookAt": [
+              165.8107,
+              26.4924,
+              -128.0923
+            ],
+            "fovYDegrees": 32.6421
+          },
+          {
+            "sceneId": "source.roar.cut01.r21",
+            "timeMs": 1312,
+            "eye": [
+              153.0563,
+              25.4709,
+              -119.8521
+            ],
+            "lookAt": [
+              165.936,
+              26.6506,
+              -127.4497
+            ],
+            "fovYDegrees": 32.6421
+          },
+          {
+            "sceneId": "source.roar.cut01.r22",
+            "timeMs": 1371,
+            "eye": [
+              152.3298,
+              25.6947,
+              -120.0665
+            ],
+            "lookAt": [
+              166.0487,
+              26.9977,
+              -125.9906
+            ],
+            "fovYDegrees": 32.6421
+          },
+          {
+            "sceneId": "source.roar.cut01.r23",
+            "timeMs": 1412,
+            "eye": [
+              151.9866,
+              25.8015,
+              -120.1701
+            ],
+            "lookAt": [
+              166.0249,
+              27.1629,
+              -125.2764
+            ],
+            "fovYDegrees": 32.6421
+          },
+          {
+            "sceneId": "source.roar.cut01.k05",
+            "timeMs": 1454,
+            "eye": [
+              151.8523,
+              25.8434,
+              -120.2107
+            ],
+            "lookAt": [
+              166.0018,
+              27.2278,
+              -124.9936
+            ],
+            "fovYDegrees": 32.6421
+          },
+          {
+            "sceneId": "source.roar.cut01.k06",
+            "timeMs": 1461,
+            "eye": [
+              151.8661,
+              25.8434,
+              -120.1955
+            ],
+            "lookAt": [
+              165.9962,
+              27.2235,
+              -125.0366
+            ],
+            "fovYDegrees": 32.6421
+          }
+        ]
+      }
+    },
+    {
+      "shotId": "source.roar.cut02",
+      "displayName": "원본 발탄 포효 2/3 (1.5~3.6초)",
+      "defaultHoldMs": 2160,
+      "transitionEasing": "SMOOTHSTEP",
+      "activation": "PATTERN_ONLY",
+      "sequenceInstanceId": "world.sequence.instance.valtan.source-preview.roar",
+      "box": {
+        "center": [
+          129.0956,
+          44.2331,
+          -122.2598
+        ],
+        "halfExtents": [
+          0.25,
+          0.25,
+          0.25
+        ],
+        "yawDegrees": 0
+      },
+      "eye": [
+        129.0956,
+        44.2331,
+        -122.2598
+      ],
+      "lookAt": [
+        141.2302,
+        35.419,
+        -122.011
+      ],
+      "fovYDegrees": 24.5855,
+      "blendInMs": 0,
+      "blendOutMs": 0,
+      "priority": 0,
+      "cameraTrack": {
+        "durationMs": 2160,
+        "interpolation": "CATMULL_ROM",
+        "easing": "LINEAR",
+        "keyframes": [
+          {
+            "sceneId": "source.roar.cut02.k01",
+            "timeMs": 0,
+            "eye": [
+              129.0956,
+              44.2331,
+              -122.2598
+            ],
+            "lookAt": [
+              141.2302,
+              35.419,
+              -122.011
+            ],
+            "fovYDegrees": 24.5855
+          },
+          {
+            "sceneId": "source.roar.cut02.r01",
+            "timeMs": 17,
+            "eye": [
+              129.1549,
+              44.2317,
+              -122.0752
+            ],
+            "lookAt": [
+              141.2733,
+              35.3934,
+              -121.9017
+            ],
+            "fovYDegrees": 26.1898
+          },
+          {
+            "sceneId": "source.roar.cut02.r02",
+            "timeMs": 25,
+            "eye": [
+              129.1842,
+              44.231,
+              -121.9849
+            ],
+            "lookAt": [
+              141.2944,
+              35.3809,
+              -121.8483
+            ],
+            "fovYDegrees": 26.9663
+          },
+          {
+            "sceneId": "source.roar.cut02.r03",
+            "timeMs": 29,
+            "eye": [
+              129.1989,
+              44.2306,
+              -121.9396
+            ],
+            "lookAt": [
+              141.305,
+              35.3746,
+              -121.8216
+            ],
+            "fovYDegrees": 27.354
+          },
+          {
+            "sceneId": "source.roar.cut02.r04",
+            "timeMs": 50,
+            "eye": [
+              129.2777,
+              44.2287,
+              -121.7
+            ],
+            "lookAt": [
+              141.3614,
+              35.3415,
+              -121.6801
+            ],
+            "fovYDegrees": 29.3776
+          },
+          {
+            "sceneId": "source.roar.cut02.r05",
+            "timeMs": 100,
+            "eye": [
+              129.4722,
+              44.2242,
+              -121.1258
+            ],
+            "lookAt": [
+              141.4989,
+              35.2625,
+              -121.3425
+            ],
+            "fovYDegrees": 33.9989
+          },
+          {
+            "sceneId": "source.roar.cut02.r06",
+            "timeMs": 162,
+            "eye": [
+              129.7213,
+              44.2185,
+              -120.4323
+            ],
+            "lookAt": [
+              141.6723,
+              35.1678,
+              -120.9386
+            ],
+            "fovYDegrees": 38.8996
+          },
+          {
+            "sceneId": "source.roar.cut02.r07",
+            "timeMs": 200,
+            "eye": [
+              129.8746,
+              44.2151,
+              -120.0332
+            ],
+            "lookAt": [
+              141.7787,
+              35.1137,
+              -120.7095
+            ],
+            "fovYDegrees": 41.1389
+          },
+          {
+            "sceneId": "source.roar.cut02.r08",
+            "timeMs": 238,
+            "eye": [
+              130.0261,
+              44.2118,
+              -119.6647
+            ],
+            "lookAt": [
+              141.8843,
+              35.0641,
+              -120.5017
+            ],
+            "fovYDegrees": 42.5643
+          },
+          {
+            "sceneId": "source.roar.cut02.r09",
+            "timeMs": 258,
+            "eye": [
+              130.1044,
+              44.2102,
+              -119.4862
+            ],
+            "lookAt": [
+              141.9395,
+              35.0402,
+              -120.4029
+            ],
+            "fovYDegrees": 42.9233
+          },
+          {
+            "sceneId": "source.roar.cut02.r10",
+            "timeMs": 267,
+            "eye": [
+              130.1391,
+              44.2095,
+              -119.4098
+            ],
+            "lookAt": [
+              141.9642,
+              35.03,
+              -120.3612
+            ],
+            "fovYDegrees": 42.9874
+          },
+          {
+            "sceneId": "source.roar.cut02.k02",
+            "timeMs": 271,
+            "eye": [
+              130.1567,
+              44.2091,
+              -119.3719
+            ],
+            "lookAt": [
+              141.9767,
+              35.0249,
+              -120.3407
+            ],
+            "fovYDegrees": 42.9957
+          },
+          {
+            "sceneId": "source.roar.cut02.r11",
+            "timeMs": 304,
+            "eye": [
+              130.2868,
+              44.2064,
+              -119.106
+            ],
+            "lookAt": [
+              142.0694,
+              34.9882,
+              -120.1986
+            ],
+            "fovYDegrees": 42.9957
+          },
+          {
+            "sceneId": "source.roar.cut02.r12",
+            "timeMs": 371,
+            "eye": [
+              130.5886,
+              44.2,
+              -118.5559
+            ],
+            "lookAt": [
+              142.2833,
+              34.9053,
+              -119.9135
+            ],
+            "fovYDegrees": 42.9957
+          },
+          {
+            "sceneId": "source.roar.cut02.r13",
+            "timeMs": 462,
+            "eye": [
+              131.0494,
+              44.1901,
+              -117.8118
+            ],
+            "lookAt": [
+              142.6057,
+              34.7846,
+              -119.5409
+            ],
+            "fovYDegrees": 42.9957
+          },
+          {
+            "sceneId": "source.roar.cut02.r14",
+            "timeMs": 608,
+            "eye": [
+              131.8332,
+              44.1738,
+              -116.64
+            ],
+            "lookAt": [
+              143.1415,
+              34.597,
+              -118.9652
+            ],
+            "fovYDegrees": 42.9957
+          },
+          {
+            "sceneId": "source.roar.cut02.r15",
+            "timeMs": 729,
+            "eye": [
+              132.4388,
+              44.1626,
+              -115.7062
+            ],
+            "lookAt": [
+              143.5445,
+              34.4746,
+              -118.5
+            ],
+            "fovYDegrees": 42.9957
+          },
+          {
+            "sceneId": "source.roar.cut02.r16",
+            "timeMs": 829,
+            "eye": [
+              132.8494,
+              44.1571,
+              -114.9718
+            ],
+            "lookAt": [
+              143.8115,
+              34.4148,
+              -118.1214
+            ],
+            "fovYDegrees": 42.9957
+          },
+          {
+            "sceneId": "source.roar.cut02.r17",
+            "timeMs": 871,
+            "eye": [
+              132.9859,
+              44.1561,
+              -114.6757
+            ],
+            "lookAt": [
+              143.8989,
+              34.4045,
+              -117.964
+            ],
+            "fovYDegrees": 42.9957
+          },
+          {
+            "sceneId": "source.roar.cut02.r18",
+            "timeMs": 883,
+            "eye": [
+              133.0203,
+              44.156,
+              -114.5926
+            ],
+            "lookAt": [
+              143.9207,
+              34.4034,
+              -117.9193
+            ],
+            "fovYDegrees": 42.9957
+          },
+          {
+            "sceneId": "source.roar.cut02.r19",
+            "timeMs": 888,
+            "eye": [
+              133.034,
+              44.156,
+              -114.5581
+            ],
+            "lookAt": [
+              143.9294,
+              34.4032,
+              -117.9007
+            ],
+            "fovYDegrees": 42.9957
+          },
+          {
+            "sceneId": "source.roar.cut02.k03",
+            "timeMs": 892,
+            "eye": [
+              133.0456,
+              44.156,
+              -114.528
+            ],
+            "lookAt": [
+              143.9368,
+              34.4031,
+              -117.8844
+            ],
+            "fovYDegrees": 42.9957
+          },
+          {
+            "sceneId": "source.roar.cut02.r20",
+            "timeMs": 1000,
+            "eye": [
+              133.3289,
+              44.1571,
+              -113.7503
+            ],
+            "lookAt": [
+              144.1136,
+              34.4145,
+              -117.4613
+            ],
+            "fovYDegrees": 42.9957
+          },
+          {
+            "sceneId": "source.roar.cut02.r21",
+            "timeMs": 1004,
+            "eye": [
+              133.3395,
+              44.1571,
+              -113.7199
+            ],
+            "lookAt": [
+              144.1201,
+              34.4153,
+              -117.4448
+            ],
+            "fovYDegrees": 42.9957
+          },
+          {
+            "sceneId": "source.roar.cut02.r22",
+            "timeMs": 1012,
+            "eye": [
+              133.3605,
+              44.1573,
+              -113.659
+            ],
+            "lookAt": [
+              144.133,
+              34.4171,
+              -117.4115
+            ],
+            "fovYDegrees": 42.9957
+          },
+          {
+            "sceneId": "source.roar.cut02.r23",
+            "timeMs": 1033,
+            "eye": [
+              133.4157,
+              44.1578,
+              -113.4973
+            ],
+            "lookAt": [
+              144.1665,
+              34.4222,
+              -117.3233
+            ],
+            "fovYDegrees": 42.9957
+          },
+          {
+            "sceneId": "source.roar.cut02.r24",
+            "timeMs": 1038,
+            "eye": [
+              133.4289,
+              44.1579,
+              -113.4585
+            ],
+            "lookAt": [
+              144.1745,
+              34.4235,
+              -117.3021
+            ],
+            "fovYDegrees": 42.9957
+          },
+          {
+            "sceneId": "source.roar.cut02.r25",
+            "timeMs": 1050,
+            "eye": [
+              133.4603,
+              44.1582,
+              -113.3648
+            ],
+            "lookAt": [
+              144.1934,
+              34.4269,
+              -117.2509
+            ],
+            "fovYDegrees": 42.9957
+          },
+          {
+            "sceneId": "source.roar.cut02.r26",
+            "timeMs": 1075,
+            "eye": [
+              133.5259,
+              44.1589,
+              -113.1672
+            ],
+            "lookAt": [
+              144.2325,
+              34.4347,
+              -117.143
+            ],
+            "fovYDegrees": 42.9957
+          },
+          {
+            "sceneId": "source.roar.cut02.r27",
+            "timeMs": 1083,
+            "eye": [
+              133.5468,
+              44.1592,
+              -113.1034
+            ],
+            "lookAt": [
+              144.2449,
+              34.4374,
+              -117.108
+            ],
+            "fovYDegrees": 42.9957
+          },
+          {
+            "sceneId": "source.roar.cut02.r28",
+            "timeMs": 1100,
+            "eye": [
+              133.5912,
+              44.1597,
+              -112.9668
+            ],
+            "lookAt": [
+              144.2709,
+              34.4434,
+              -117.0333
+            ],
+            "fovYDegrees": 42.9957
+          },
+          {
+            "sceneId": "source.roar.cut02.r29",
+            "timeMs": 1133,
+            "eye": [
+              133.6771,
+              44.161,
+              -112.6982
+            ],
+            "lookAt": [
+              144.3205,
+              34.4564,
+              -116.8862
+            ],
+            "fovYDegrees": 42.9957
+          },
+          {
+            "sceneId": "source.roar.cut02.r30",
+            "timeMs": 1142,
+            "eye": [
+              133.7004,
+              44.1613,
+              -112.6242
+            ],
+            "lookAt": [
+              144.3338,
+              34.4602,
+              -116.8457
+            ],
+            "fovYDegrees": 42.9957
+          },
+          {
+            "sceneId": "source.roar.cut02.r31",
+            "timeMs": 1162,
+            "eye": [
+              133.7522,
+              44.1621,
+              -112.4589
+            ],
+            "lookAt": [
+              144.3629,
+              34.4691,
+              -116.755
+            ],
+            "fovYDegrees": 42.9957
+          },
+          {
+            "sceneId": "source.roar.cut02.r32",
+            "timeMs": 1208,
+            "eye": [
+              133.8703,
+              44.1642,
+              -112.0738
+            ],
+            "lookAt": [
+              144.4277,
+              34.4914,
+              -116.5436
+            ],
+            "fovYDegrees": 42.9957
+          },
+          {
+            "sceneId": "source.roar.cut02.r33",
+            "timeMs": 1212,
+            "eye": [
+              133.8806,
+              44.1644,
+              -112.0401
+            ],
+            "lookAt": [
+              144.4332,
+              34.4935,
+              -116.5251
+            ],
+            "fovYDegrees": 42.9957
+          },
+          {
+            "sceneId": "source.roar.cut02.r34",
+            "timeMs": 1225,
+            "eye": [
+              133.9137,
+              44.165,
+              -111.9301
+            ],
+            "lookAt": [
+              144.4509,
+              34.5004,
+              -116.4646
+            ],
+            "fovYDegrees": 42.9957
+          },
+          {
+            "sceneId": "source.roar.cut02.r35",
+            "timeMs": 1262,
+            "eye": [
+              134.0074,
+              44.1669,
+              -111.6152
+            ],
+            "lookAt": [
+              144.4997,
+              34.521,
+              -116.2914
+            ],
+            "fovYDegrees": 42.9957
+          },
+          {
+            "sceneId": "source.roar.cut02.r36",
+            "timeMs": 1346,
+            "eye": [
+              134.2159,
+              44.1717,
+              -110.8935
+            ],
+            "lookAt": [
+              144.6018,
+              34.573,
+              -115.8933
+            ],
+            "fovYDegrees": 42.9957
+          },
+          {
+            "sceneId": "source.roar.cut02.r37",
+            "timeMs": 1404,
+            "eye": [
+              134.356,
+              44.1754,
+              -110.3934
+            ],
+            "lookAt": [
+              144.6647,
+              34.6126,
+              -115.6168
+            ],
+            "fovYDegrees": 42.9957
+          },
+          {
+            "sceneId": "source.roar.cut02.r38",
+            "timeMs": 1432,
+            "eye": [
+              134.4223,
+              44.1772,
+              -110.1526
+            ],
+            "lookAt": [
+              144.6927,
+              34.6325,
+              -115.4834
+            ],
+            "fovYDegrees": 42.9957
+          },
+          {
+            "sceneId": "source.roar.cut02.r39",
+            "timeMs": 1433,
+            "eye": [
+              134.4246,
+              44.1773,
+              -110.144
+            ],
+            "lookAt": [
+              144.6937,
+              34.6333,
+              -115.4786
+            ],
+            "fovYDegrees": 42.9957
+          },
+          {
+            "sceneId": "source.roar.cut02.r40",
+            "timeMs": 1434,
+            "eye": [
+              134.427,
+              44.1773,
+              -110.1354
+            ],
+            "lookAt": [
+              144.6947,
+              34.634,
+              -115.4738
+            ],
+            "fovYDegrees": 42.9957
+          },
+          {
+            "sceneId": "source.roar.cut02.k04",
+            "timeMs": 1437,
+            "eye": [
+              134.4343,
+              44.1775,
+              -110.1087
+            ],
+            "lookAt": [
+              144.6977,
+              34.6362,
+              -115.459
+            ],
+            "fovYDegrees": 9.6107
+          },
+          {
+            "sceneId": "source.roar.cut02.r41",
+            "timeMs": 1438,
+            "eye": [
+              134.4364,
+              44.1776,
+              -110.1011
+            ],
+            "lookAt": [
+              144.6985,
+              34.6369,
+              -115.4548
+            ],
+            "fovYDegrees": 9.6107
+          },
+          {
+            "sceneId": "source.roar.cut02.r42",
+            "timeMs": 1479,
+            "eye": [
+              134.5314,
+              44.1804,
+              -109.7505
+            ],
+            "lookAt": [
+              144.7364,
+              34.6671,
+              -115.2602
+            ],
+            "fovYDegrees": 9.6107
+          },
+          {
+            "sceneId": "source.roar.cut02.r43",
+            "timeMs": 1542,
+            "eye": [
+              134.6731,
+              44.1848,
+              -109.2183
+            ],
+            "lookAt": [
+              144.788,
+              34.7151,
+              -114.964
+            ],
+            "fovYDegrees": 9.6107
+          },
+          {
+            "sceneId": "source.roar.cut02.r44",
+            "timeMs": 1592,
+            "eye": [
+              134.7814,
+              44.1883,
+              -108.8037
+            ],
+            "lookAt": [
+              144.8235,
+              34.7542,
+              -114.7327
+            ],
+            "fovYDegrees": 9.6107
+          },
+          {
+            "sceneId": "source.roar.cut02.r45",
+            "timeMs": 1675,
+            "eye": [
+              134.9521,
+              44.1943,
+              -108.1369
+            ],
+            "lookAt": [
+              144.872,
+              34.8199,
+              -114.3592
+            ],
+            "fovYDegrees": 9.6107
+          },
+          {
+            "sceneId": "source.roar.cut02.r46",
+            "timeMs": 1825,
+            "eye": [
+              135.2281,
+              44.2049,
+              -107.0252
+            ],
+            "lookAt": [
+              144.9292,
+              34.9368,
+              -113.7327
+            ],
+            "fovYDegrees": 9.6107
+          },
+          {
+            "sceneId": "source.roar.cut02.r47",
+            "timeMs": 1921,
+            "eye": [
+              135.3793,
+              44.2112,
+              -106.3977
+            ],
+            "lookAt": [
+              144.9487,
+              35.0067,
+              -113.3765
+            ],
+            "fovYDegrees": 9.6107
+          },
+          {
+            "sceneId": "source.roar.cut02.r48",
+            "timeMs": 1983,
+            "eye": [
+              135.4652,
+              44.2149,
+              -106.0352
+            ],
+            "lookAt": [
+              144.9557,
+              35.0483,
+              -113.17
+            ],
+            "fovYDegrees": 9.6107
+          },
+          {
+            "sceneId": "source.roar.cut02.k05",
+            "timeMs": 2160,
+            "eye": [
+              135.6537,
+              44.2236,
+              -105.2221
+            ],
+            "lookAt": [
+              144.9599,
+              35.1453,
+              -112.7041
+            ],
+            "fovYDegrees": 9.6107
+          }
+        ]
+      }
+    },
+    {
+      "shotId": "source.roar.cut03",
+      "displayName": "원본 발탄 포효 3/3 (3.6~5.0초)",
+      "defaultHoldMs": 1379,
+      "transitionEasing": "SMOOTHSTEP",
+      "activation": "PATTERN_ONLY",
+      "sequenceInstanceId": "world.sequence.instance.valtan.source-preview.roar",
+      "box": {
+        "center": [
+          152.0452,
+          23.3056,
+          -117.9462
+        ],
+        "halfExtents": [
+          0.25,
+          0.25,
+          0.25
+        ],
+        "yawDegrees": 0
+      },
+      "eye": [
+        152.0452,
+        23.3056,
+        -117.9462
+      ],
+      "lookAt": [
+        162.3962,
+        27.4392,
+        -127.9847
+      ],
+      "fovYDegrees": 58.7155,
+      "blendInMs": 0,
+      "blendOutMs": 0,
+      "priority": 0,
+      "cameraTrack": {
+        "durationMs": 1379,
+        "interpolation": "CATMULL_ROM",
+        "easing": "LINEAR",
+        "keyframes": [
+          {
+            "sceneId": "source.roar.cut03.k01",
+            "timeMs": 0,
+            "eye": [
+              152.0452,
+              23.3056,
+              -117.9462
+            ],
+            "lookAt": [
+              162.3962,
+              27.4392,
+              -127.9847
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.roar.cut03.r01",
+            "timeMs": 8,
+            "eye": [
+              152.0519,
+              23.3134,
+              -117.9301
+            ],
+            "lookAt": [
+              162.2881,
+              27.8525,
+              -127.911
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.roar.cut03.r02",
+            "timeMs": 21,
+            "eye": [
+              152.0488,
+              23.3534,
+              -117.8967
+            ],
+            "lookAt": [
+              161.7252,
+              29.7914,
+              -127.3793
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.roar.cut03.r03",
+            "timeMs": 29,
+            "eye": [
+              152.0412,
+              23.3865,
+              -117.8756
+            ],
+            "lookAt": [
+              161.1387,
+              31.2967,
+              -126.8011
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.roar.cut03.r04",
+            "timeMs": 33,
+            "eye": [
+              152.0366,
+              23.4036,
+              -117.8657
+            ],
+            "lookAt": [
+              160.7958,
+              32.0292,
+              -126.4607
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.roar.cut03.r05",
+            "timeMs": 38,
+            "eye": [
+              152.0306,
+              23.4239,
+              -117.8543
+            ],
+            "lookAt": [
+              160.349,
+              32.8674,
+              -126.0166
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.roar.cut03.r06",
+            "timeMs": 46,
+            "eye": [
+              152.0216,
+              23.4514,
+              -117.8397
+            ],
+            "lookAt": [
+              159.6862,
+              33.927,
+              -125.3573
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.roar.cut03.r07",
+            "timeMs": 54,
+            "eye": [
+              152.0153,
+              23.4681,
+              -117.8313
+            ],
+            "lookAt": [
+              159.2527,
+              34.526,
+              -124.9266
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.roar.cut03.k02",
+            "timeMs": 57,
+            "eye": [
+              152.0139,
+              23.4707,
+              -117.8301
+            ],
+            "lookAt": [
+              159.1832,
+              34.6158,
+              -124.8578
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.roar.cut03.r08",
+            "timeMs": 112,
+            "eye": [
+              152.001,
+              23.4827,
+              -117.8259
+            ],
+            "lookAt": [
+              158.857,
+              35.0115,
+              -124.5402
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.roar.cut03.r09",
+            "timeMs": 242,
+            "eye": [
+              151.9691,
+              23.5093,
+              -117.8167
+            ],
+            "lookAt": [
+              158.1015,
+              35.8168,
+              -123.8101
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.roar.cut03.r10",
+            "timeMs": 362,
+            "eye": [
+              151.939,
+              23.5312,
+              -117.8094
+            ],
+            "lookAt": [
+              157.4489,
+              36.4052,
+              -123.1854
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.roar.cut03.r11",
+            "timeMs": 608,
+            "eye": [
+              151.8788,
+              23.5682,
+              -117.7974
+            ],
+            "lookAt": [
+              156.2965,
+              37.2432,
+              -122.0961
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.roar.cut03.r12",
+            "timeMs": 938,
+            "eye": [
+              151.8114,
+              23.6015,
+              -117.7873
+            ],
+            "lookAt": [
+              155.225,
+              37.827,
+              -121.1013
+            ],
+            "fovYDegrees": 58.7155
+          },
+          {
+            "sceneId": "source.roar.cut03.k03",
+            "timeMs": 1379,
+            "eye": [
+              151.7713,
+              23.6175,
+              -117.7829
+            ],
+            "lookAt": [
+              154.7069,
+              38.0493,
+              -120.6298
+            ],
+            "fovYDegrees": 58.7155
+          }
+        ]
+      }
+    }
+  ],
+  "cutscenes": [
+    {
+      "cutsceneId": "editor.cutscene.valtan.gate1-entrance",
+      "displayName": "1관문 입장(늑대)",
+      "durationMs": 13000,
+      "cameraCuts": [
+        { "cutId": "cut01", "shotId": "source.gate1-entrance.cut01", "startMs": 0 }
+      ],
+      "worldInstanceIds": [
+        "world.sequence.instance.valtan.source-preview.gate1-entrance",
+        "world.sequence.instance.valtan.source-preview.gate1-entrance.black-wolf"
+      ]
+    },
+    {
+      "cutsceneId": "editor.cutscene.valtan.entrance",
+      "displayName": "발탄 등장(부활)",
+      "durationMs": 24708,
+      "cameraCuts": [
+        { "cutId": "cut01", "shotId": "source.entrance.cut01", "startMs": 0 },
+        { "cutId": "cut02", "shotId": "source.entrance.cut02", "startMs": 13059 },
+        { "cutId": "cut03", "shotId": "source.entrance.cut03", "startMs": 18966 }
+      ],
+      "worldInstanceIds": [
+        "world.sequence.instance.valtan.source-preview.entrance",
+        "world.sequence.instance.valtan.source-preview.entrance.colorless"
+      ]
+    },
+    {
+      "cutsceneId": "editor.cutscene.valtan.finale",
+      "displayName": "발탄 최후",
+      "durationMs": 23000,
+      "cameraCuts": [
+        { "cutId": "cut01", "shotId": "source.finale.cut01", "startMs": 0 },
+        { "cutId": "cut02", "shotId": "source.finale.cut02", "startMs": 3650 },
+        { "cutId": "cut03", "shotId": "source.finale.cut03", "startMs": 7780 },
+        { "cutId": "cut04", "shotId": "source.finale.cut04", "startMs": 15410 }
+      ],
+      "worldInstanceIds": [
+        "world.sequence.instance.valtan.source-preview.finale"
+      ]
+    },
+    {
+      "cutsceneId": "editor.cutscene.valtan.trash",
+      "displayName": "발탄 스킬 연출(버러지)",
+      "durationMs": 6374,
+      "cameraCuts": [
+        { "cutId": "cut01", "shotId": "source.trash.cut01", "startMs": 0 },
+        { "cutId": "cut02", "shotId": "source.trash.cut02", "startMs": 1073 }
+      ],
+      "worldInstanceIds": [
+        "world.sequence.instance.valtan.source-preview.trash"
+      ]
+    },
+    {
+      "cutsceneId": "editor.cutscene.valtan.roar",
+      "displayName": "발탄 포효",
+      "durationMs": 7003,
+      "cameraCuts": [
+        { "cutId": "cut01", "shotId": "source.roar.cut01", "startMs": 0 },
+        { "cutId": "cut02", "shotId": "source.roar.cut02", "startMs": 1461 },
+        { "cutId": "cut03", "shotId": "source.roar.cut03", "startMs": 3621 }
+      ],
+      "worldInstanceIds": [
+        "world.sequence.instance.valtan.source-preview.roar"
+      ]
+    }
+  ]
+}

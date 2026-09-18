@@ -86,6 +86,15 @@ struct WORLD_SEQUENCE_OBJECT_RESOURCE
 	std::string objectId;
 	std::string displayName;
 	std::string modelAssetId;
+	/* Optional clip donor for a skinned body whose clips ship in a separate
+	   AnimSet WModel (the Valtan bodies). Attached once at model admission;
+	   empty keeps the clips embedded in modelAssetId. */
+	std::string animationSetAssetId;
+	/* Optional boss catalog archetype whose product presentation draws this
+	   skinned body: the admitted body prototype plus its armour plates and
+	   socketed weapon. The body fields above must match that catalog row;
+	   empty keeps a single model. */
+	std::string presentationBossArchetypeId;
 	// Resource category and default anchor for its authored states.
 	std::string anchorKind = "WORLD";
 	// BOSS states follow this replicated actor and BODY bone (empty = root).

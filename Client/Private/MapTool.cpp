@@ -7,7 +7,6 @@
 #include "LevelTransitionService.h"
 #include "MainApp.h"
 #include "MapEditorWorkspaceService.h"
-#include "Level_KakulSaydonArena.h"
 #include "MapStaticBatchObject.h"
 #include "MapAssetPreview.h"
 #include "MapAssetObject.h"
@@ -95,6 +94,9 @@ void Client::CMapTool::SetOpen(const bool_t isOpen)
 		m_iAuthoringLevelIndex = ETOUI(LEVEL::END);
 	if (m_bOpen && !isOpen)
 	{
+		/* Closing the tool hands the camera and every cutscene actor back
+		   while the Level that owns them is still alive. */
+		Stop_EditorCutscene();
 		Restore_DestructionPreview();
 		Refresh_DestructionHighlight();
 		m_bDestructionTimelinePlaying = false;
@@ -116,9 +118,8 @@ void Client::CMapTool::SetOpen(const bool_t isOpen)
 #ifdef _DEBUG
 	if (m_bRuntimeAuthoring && Runtime_AuthoringTargets().pPlacements)
 	{
-		auto* arena = CLevel_KakulSaydonArena::Get_Active();
-		arena->Rebase_MapAuthoringSelfMotions(m_RuntimePlacementDraft);
-		arena->Set_MapAuthoringActive(m_bOpen);
+		Rebase_RuntimeMotions();
+		Apply_RuntimeAuthoringActive(m_bOpen);
 	}
 #endif
 	if (!m_bOpen)
@@ -135,7 +136,7 @@ void Client::CMapTool::Update(
 	Handle_LevelTransition(currentLevelIndex, isMapAuthoringLevel);
 #ifdef _DEBUG
 	if (Runtime_AuthoringTargets().pPlacements)
-		CLevel_KakulSaydonArena::Get_Active()->Set_MapAuthoringActive(m_bOpen && m_bRuntimeAuthoring && bAllowWorldInput);
+		Apply_RuntimeAuthoringActive(m_bOpen && m_bRuntimeAuthoring && bAllowWorldInput);
 #endif
 	Update_EditorAreaPreload();
 	/* The editor is where this content is checked, so the same idle motion
@@ -188,6 +189,11 @@ void Client::CMapTool::Update(
 		OutputDebugStringA(("[MapTool][MapLight] " +
 			m_pMapLightPresentation->Get_Status() + "\n").c_str());
 	}
+	/* The editor cutscene session owns its own clock and returns at once
+	   when nothing is playing. It must not sit behind the KoukuSaydon
+	   cutscene flags below: a Valtan cutscene sets none of them, so the
+	   clock would never advance after Play. */
+	Update_EditorCutscene(fTimeDelta);
 	Update_CutsceneArenaRise(fTimeDelta, isMapAuthoringLevel);
 	if (isMapAuthoringLevel && !m_bRuntimeAuthoring)
 		Update_MarioIntro();
@@ -413,7 +419,7 @@ void Client::CMapTool::Render_WorkspaceBar(const bool_t isAssetTest)
 		"Data authoring only; Client/Server runtime publish is separate");
 	if (Runtime_AuthoringTargets().pPlacements)
 	{
-		ImGui::TextWrapped("Editing the current Kouku runtime map. Save changes authoring files, not Server collision or gameplay.");
+		ImGui::TextWrapped("Editing the current level's runtime map. Save changes authoring files, not Server collision or gameplay.");
 		if (!m_bRuntimeAuthoring && ImGui::Button("Retry runtime map binding"))
 			m_iAuthoringLevelIndex = ETOUI(LEVEL::END);
 	}
@@ -774,8 +780,15 @@ void Client::CMapTool::Render_WorldSequencePanel(const bool_t isAssetTest)
 	{
 		Render_AnimatedPropsAuthoring();
 		ImGui::Separator();
-		Render_CutsceneArenaPreview();
-		ImGui::Separator();
+		/* The arena rise, pop-up book and Mario previews address
+		   KoukuSaydon placements by stable ID, so they only belong to that
+		   Area. Other arenas keep their own World Sequence document. */
+		const EDITOR_AREA_DESCRIPTOR* cutsceneArea = Get_ActiveEditorArea();
+		if (nullptr != cutsceneArea && cutsceneArea->areaId == KAKUL_AREA_ID)
+		{
+			Render_CutsceneArenaPreview();
+			ImGui::Separator();
+		}
 	}
 	m_pWorldSequenceToolPanel->Render(
 		isAssetTest,

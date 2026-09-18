@@ -37,6 +37,11 @@ public:
     void Set_ActionSessions(ICompositionWorkbenchSession* character,
         ICompositionWorkbenchSession* object, ICompositionWorkbenchSession* sequence);
     void Set_TargetChangedCallback(std::function<void(COMPOSITION_WORKBENCH_TARGET)> callback);
+    /* Another tool may host the selected session for one frame. The shell
+       still draws its windows but must not open a second session frame. */
+    void Suppress_SessionFrameThisFrame(ICompositionWorkbenchSession* hosted,
+        ICompositionWorkbenchSession* alsoHosted = nullptr) noexcept
+    { m_pExternallyHostedSession = hosted; m_pExternallyHostedSessionAlt = alsoHosted; }
     void Open(COMPOSITION_WORKBENCH_TARGET target);
     void Open(COMPOSITION_WORKBENCH_TARGET target, COMPOSITION_WORKBENCH_BOSS boss);
     void Deactivate();
@@ -90,6 +95,8 @@ private:
     bool m_bTargetChangePending = false;
     ICompositionWorkbenchSession* m_pValtanSession = nullptr;
     ICompositionWorkbenchSession* m_pKoukuSaydonSession = nullptr;
+    ICompositionWorkbenchSession* m_pExternallyHostedSession = nullptr;
+    ICompositionWorkbenchSession* m_pExternallyHostedSessionAlt = nullptr;
     COMPOSITION_WORKBENCH_BOSS m_eSelectedBoss = COMPOSITION_WORKBENCH_BOSS::VALTAN;
     COMPOSITION_WORKBENCH_BOSS m_eSequenceBoss = COMPOSITION_WORKBENCH_BOSS::KOUKU_SAYDON;
     const bool m_bSequenceWorkspace;
