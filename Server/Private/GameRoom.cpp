@@ -770,6 +770,9 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 		case ROOM_COMMAND_TYPE::USE_ESTHER_SKILL:
 			Handle_UseEstherSkill(command.iSessionId, command.UseEstherSkill);
 			break;
+		case ROOM_COMMAND_TYPE::USE_SQUAREHOLE:
+			Handle_UseSquareHole(command.iSessionId, command.UseSquareHole);
+			break;
 		case ROOM_COMMAND_TYPE::REVIVE_PLAYER:
 			Handle_RevivePlayer(command.iSessionId, command.RevivePlayer);
 			break;

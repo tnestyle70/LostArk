@@ -1,0 +1,351 @@
+{
+ "schema": "lostark.worldmap-labels",
+ "formatVersion": 1,
+ "source": "EFTable_MapString UsableDepth 3 (zone stage) + GameMsg tip.name.area_*; worldCm derived from the 1440x768 zone canvas through WorldmapScaleFactor/Shift and the MinimapAreas bounds (calibrate in game)",
+ "levels": [
+  {
+   "level": "BERN",
+   "zoneId": 11102,
+   "worldmapScaleFactor": 1.4,
+   "worldmapShiftFactor": [
+    3.0,
+    -9.0
+   ],
+   "mapRotationDegrees": 45.0,
+   "canvasToOverview": {
+    "texelsPerCanvasPx": 1.3457,
+    "canvasCenter": [
+     710.4,
+     397.5
+    ]
+   },
+   "labels": [
+    {
+     "id": 1,
+     "name": "도서관",
+     "stringKey": "tip.name.area_11102_0_01",
+     "canvasPx": [
+      953,
+      319
+     ],
+     "worldCm": [
+      9067.0,
+      19432.8
+     ]
+    },
+    {
+     "id": 2,
+     "name": "마법학회",
+     "stringKey": "tip.name.area_11102_0_02",
+     "canvasPx": [
+      880,
+      303
+     ],
+     "worldCm": [
+      11889.9,
+      17624.8
+     ]
+    },
+    {
+     "id": 3,
+     "name": "여왕의 성",
+     "stringKey": "tip.name.area_11102_0_03",
+     "canvasPx": [
+      906,
+      212
+     ],
+     "worldCm": [
+      13951.6,
+      21335.9
+     ]
+    },
+    {
+     "id": 4,
+     "name": "근위대",
+     "stringKey": "tip.name.area_11102_0_04",
+     "canvasPx": [
+      765,
+      207
+     ],
+     "worldCm": [
+      18582.5,
+      17022.2
+     ]
+    },
+    {
+     "id": 6,
+     "name": "베른 출입국 관리소",
+     "stringKey": "tip.name.area_11102_0_06",
+     "canvasPx": [
+      435,
+      322
+     ],
+     "worldCm": [
+      25402.0,
+      2907.5
+     ]
+    },
+    {
+     "id": 7,
+     "name": "최고급 요리 식당",
+     "stringKey": "tip.name.area_11102_0_07",
+     "canvasPx": [
+      627,
+      310
+     ],
+     "worldCm": [
+      19692.7,
+      9378.0
+     ]
+    },
+    {
+     "id": 8,
+     "name": "네리아 주점",
+     "stringKey": "tip.name.area_11102_0_08",
+     "canvasPx": [
+      663,
+      342
+     ],
+     "worldCm": [
+      17535.8,
+      9504.9
+     ]
+    },
+    {
+     "id": 9,
+     "name": "원로원",
+     "stringKey": "tip.name.area_11102_0_09",
+     "canvasPx": [
+      640,
+      532
+     ],
+     "worldCm": [
+      12238.8,
+      2748.9
+     ]
+    },
+    {
+     "id": 10,
+     "name": "마법 특산물 상점",
+     "stringKey": "tip.name.area_11102_0_10",
+     "canvasPx": [
+      745,
+      516
+     ],
+     "worldCm": [
+      9415.9,
+      6586.8
+     ]
+    },
+    {
+     "id": 12,
+     "name": "크로나 항구",
+     "stringKey": "tip.name.area_portcrona",
+     "canvasPx": [
+      578,
+      529
+     ],
+     "worldCm": [
+      14300.5,
+      877.5
+     ],
+     "color": "#73D1FF"
+    },
+    {
+     "id": 13,
+     "name": "군사 지구",
+     "stringKey": "tip.name.area_11102_0_12",
+     "canvasPx": [
+      712,
+      161
+     ],
+     "worldCm": [
+      21722.7,
+      16800.2
+     ]
+    },
+    {
+     "id": 14,
+     "name": "다민족 지구",
+     "stringKey": "tip.name.area_11102_0_13",
+     "canvasPx": [
+      472,
+      282
+     ],
+     "worldCm": [
+      25497.2,
+      5349.8
+     ]
+    },
+    {
+     "id": 15,
+     "name": "상업 지구",
+     "stringKey": "tip.name.area_11102_0_14",
+     "canvasPx": [
+      495,
+      412
+     ],
+     "worldCm": [
+      20644.2,
+      1955.9
+     ]
+    },
+    {
+     "id": 16,
+     "name": "조화의 광장",
+     "stringKey": "tip.name.area_11102_0_15",
+     "canvasPx": [
+      796,
+      345
+     ],
+     "worldCm": [
+      13222.1,
+      13628.3
+     ]
+    },
+    {
+     "id": 17,
+     "name": "학술 지구",
+     "stringKey": "tip.name.area_11102_0_16",
+     "canvasPx": [
+      955,
+      420
+     ],
+     "worldCm": [
+      5800.0,
+      16292.7
+     ]
+    },
+    {
+     "id": 18,
+     "name": "창조의 가도",
+     "stringKey": "tip.name.area_11102_0_17",
+     "canvasPx": [
+      738,
+      426
+     ],
+     "worldCm": [
+      12492.6,
+      9219.5
+     ]
+    },
+    {
+     "id": 19,
+     "name": "제작 지구",
+     "stringKey": "tip.name.area_11102_0_18",
+     "canvasPx": [
+      845,
+      567
+     ],
+     "worldCm": [
+      4626.4,
+      8141.0
+     ]
+    },
+    {
+     "id": 20,
+     "name": "귀족 지구",
+     "stringKey": "tip.name.area_11102_0_19",
+     "canvasPx": [
+      641,
+      597
+     ],
+     "worldCm": [
+      10145.4,
+      718.9
+     ]
+    },
+    {
+     "id": 21,
+     "name": "모험가 쉼터",
+     "stringKey": "tip.name.area_11102_0_20",
+     "canvasPx": [
+      884,
+      440
+     ],
+     "worldCm": [
+      7417.6,
+      13406.3
+     ]
+    },
+    {
+     "id": 22,
+     "name": "칸다리아 영지",
+     "stringKey": "tip.name.area_kandad",
+     "canvasPx": [
+      517,
+      230
+     ],
+     "worldCm": [
+      25719.2,
+      8426.5
+     ],
+     "color": "#73D1FF"
+    }
+   ]
+  },
+  {
+   "level": "VALTAN_ARENA",
+   "zoneId": 37051,
+   "worldmapScaleFactor": 1.0,
+   "worldmapShiftFactor": [
+    0.0,
+    0.0
+   ],
+   "mapRotationDegrees": 45.0,
+   "canvasToOverview": {
+    "texelsPerCanvasPx": 0.9612142857142857,
+    "canvasCenter": [
+     720.0,
+     384.0
+    ]
+   },
+   "labels": [
+    {
+     "id": 1,
+     "name": "드높은 긍지의 성역",
+     "stringKey": "tip.name.area_37051_01",
+     "canvasPx": [
+      685,
+      510
+     ],
+     "worldCm": [
+      7281.6,
+      5488.4
+     ]
+    },
+    {
+     "id": 2,
+     "name": "무너진 하늘의 보루",
+     "stringKey": "tip.name.area_37051_02",
+     "canvasPx": [
+      768,
+      265
+     ],
+     "worldCm": [
+      10217.9,
+      9947.1
+     ]
+    }
+   ]
+  },
+  {
+   "level": "KAKULSAYDON_ARENA",
+   "zoneId": 37081,
+   "worldmapScaleFactor": 1.0,
+   "worldmapShiftFactor": [
+    0.0,
+    0.0
+   ],
+   "mapRotationDegrees": 45.0,
+   "canvasToOverview": {
+    "texelsPerCanvasPx": 0.9612142857142857,
+    "canvasCenter": [
+     720.0,
+     384.0
+    ]
+   },
+   "labels": []
+  }
+ ]
+}

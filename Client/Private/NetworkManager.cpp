@@ -1314,6 +1314,26 @@ bool CNetworkManager::Send_EstherSkill(
 		frameBytes) && Send_All(frameBytes);
 }
 
+bool CNetworkManager::Send_UseSquareHole(
+	const std::uint32_t clientSequence,
+	const std::uint16_t holeId)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+	C2S_USE_SQUAREHOLE message{};
+	message.iClientSequence = clientSequence;
+	message.iSquareHoleId = holeId;
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_USE_SQUAREHOLE,
+		payloadWriter.Get_Buffer(),
+		frameBytes) && Send_All(frameBytes);
+}
+
 bool CNetworkManager::Send_RevivePlayer(
 	const std::uint32_t clientSequence)
 {

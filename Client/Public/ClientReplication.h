@@ -376,6 +376,15 @@ namespace Client
 			f32_t fLocalYawDegrees = 0.f;
 			std::vector<MINIMAP_MARKER> Players;
 			std::vector<MINIMAP_MARKER> Bosses;
+			/* Live NPC entities with their placement id, for the world map's function
+			symbols (Data/UI/WorldMap/WorldMapNpcSymbols.json keys placement ids). */
+			struct NPC_MARKER
+			{
+				f32_t fX = 0.f;
+				f32_t fZ = 0.f;
+				std::string strPlacementId;
+			};
+			std::vector<NPC_MARKER> Npcs;
 		};
 		void Collect_MinimapMarkers(MINIMAP_MARKER_SNAPSHOT& outSnapshot) const;
 		const VALTAN_PRESENTATION_STATE& Get_ValtanPresentationState() const

@@ -20,6 +20,12 @@ namespace
 	constexpr int32_t ZOOM_LEVEL_DEFAULT = 2;
 	constexpr size_t PARTY_MARKER_COUNT = 4;
 	constexpr size_t BOSS_MARKER_COUNT = 2;
+	/* Retail draws every map picture with the camera's forward direction up. All four product
+	cameras (Data/Camera/*.camera.json) yaw 135 deg = client (+X, -Z), the image's up-right
+	diagonal, so the picture turns 45 deg counter-clockwise on screen (verified against a retail
+	world map capture: -43 deg, scale 1.40 = WorldmapScaleFactor). Positive = the clockwise
+	turn CUI_Sprite::Set_UVRotation samples with; screen offsets use the inverse. */
+	constexpr f32_t MAP_ROTATION_DEG = 45.f;
 	constexpr f32_t REF_WIDTH = 1280.f;
 	constexpr f32_t REF_HEIGHT = 720.f;
 
@@ -221,6 +227,16 @@ void Client::CMinimapView::Update(const f32_t fTimeDelta, LEVEL eLevel,
 	ToUV(pSnapshot->fLocalX, pSnapshot->fLocalZ, fLocalU, fLocalV);
 	m_pView->Set_SlotUVWindow("Minimap_Map",
 		fLocalU - fScaleU * 0.5f, fLocalV - fScaleV * 0.5f, fScaleU, fScaleV);
+	m_pView->Set_SlotUVRotation("Minimap_Map", XMConvertToRadians(MAP_ROTATION_DEG), fWorldU / fWorldV);
+	/* Texture-space uv delta -> screen uv delta: world units, turned by -MAP_ROTATION_DEG. */
+	const f32_t fRotSin = std::sin(XMConvertToRadians(-MAP_ROTATION_DEG));
+	const f32_t fRotCos = std::cos(XMConvertToRadians(-MAP_ROTATION_DEG));
+	const auto ToScreenDelta = [&](f32_t fDU, f32_t fDV, f32_t& outDU, f32_t& outDV)
+	{
+		const f32_t fWX = fDU * fWorldU, fWY = fDV * fWorldV;
+		outDU = (fRotCos * fWX - fRotSin * fWY) / fWorldU;
+		outDV = (fRotSin * fWX + fRotCos * fWY) / fWorldV;
+	};
 	m_pView->Set_SlotVisible("Minimap_Map", m_bMapVisible);
 
 	/* --- markers: reference-resolution screen position from the UV delta to the local
@@ -240,8 +256,10 @@ void Client::CMinimapView::Update(const f32_t fTimeDelta, LEVEL eLevel,
 		}
 		f32_t fU = 0.f, fV = 0.f;
 		ToUV(pMarker->fX, pMarker->fZ, fU, fV);
-		const f32_t fDX = (fU - fLocalU) / fScaleU * fViewW;
-		const f32_t fDY = (fV - fLocalV) / fScaleV * fViewH;
+		f32_t fDU = 0.f, fDV = 0.f;
+		ToScreenDelta(fU - fLocalU, fV - fLocalV, fDU, fDV);
+		const f32_t fDX = fDU / fScaleU * fViewW;
+		const f32_t fDY = fDV / fScaleV * fViewH;
 		const bool_t bInside = std::fabs(fDX) <= fViewW * 0.5f - fW * 0.35f &&
 			std::fabs(fDY) <= fViewH * 0.5f - fH * 0.35f;
 		m_pView->Set_SlotVisible(pSlotId, bInside);
@@ -261,14 +279,15 @@ void Client::CMinimapView::Update(const f32_t fTimeDelta, LEVEL eLevel,
 		PlaceMarker(BOSS_SLOTS[i], i < pSnapshot->Bosses.size() ? &pSnapshot->Bosses[i] : nullptr);
 
 	/* Local arrow: centered, rotated to the character's facing. Character yaw is measured from
-	+Z (yaw 0 = +Z, 90 = +X); on this map +X is screen up and +Z is screen left, so the
-	clockwise screen rotation is yaw - 90. */
+	+Z (yaw 0 = +Z, 90 = +X); on the unturned image +X is up and +Z is left (yaw - 90), and the
+	picture itself is turned MAP_ROTATION_DEG counter-clockwise. */
 	{
 		f32_t fX = 0.f, fY = 0.f, fW = 0.f, fH = 0.f;
 		if (m_pView->Get_SlotRect("Minimap_Player", fX, fY, fW, fH))
 		{
 			m_pView->Set_SlotPosition("Minimap_Player", fCenterX - fW * 0.5f, fCenterY - fH * 0.5f);
-			m_pView->Set_SlotRotation("Minimap_Player", pSnapshot->fLocalYawDegrees - 90.f);
+			m_pView->Set_SlotRotation("Minimap_Player",
+				pSnapshot->fLocalYawDegrees - 90.f - MAP_ROTATION_DEG);
 			m_pView->Set_SlotVisible("Minimap_Player", m_bMapVisible);
 		}
 	}

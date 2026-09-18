@@ -57,6 +57,8 @@
 #include "CombatAnalysisFrameView.h"
 #include "HonorTitleCatalog.h"
 #include "HonorTitleWindowView.h"
+#include "WorldMapWindowView.h"
+#include "SongCastGaugeView.h"
 #include "InventoryView.h"
 #include "QuickSlotDragView.h"
 #include "SkillWindowView.h"
@@ -922,6 +924,9 @@ HRESULT CMainApp::Initialize()
 	m_pVehicleWindowView = std::make_unique<CVehicleWindowView>(m_pDevice, m_pContext);
 	/* Honor title window: opened from the character info window, drawn over it. */
 	m_pHonorTitleWindowView = std::make_unique<CHonorTitleWindowView>(m_pDevice, m_pContext);
+	/* World map window (M): a large centred panel, drawn over the windows above. */
+	m_pWorldMapWindowView = std::make_unique<CWorldMapWindowView>(m_pDevice, m_pContext);
+	m_pSongCastGaugeView = std::make_unique<CSongCastGaugeView>(m_pDevice, m_pContext);
 	/* Last of all: the carried quick-slot icon must ride over every window above. */
 	m_pQuickSlotDragView = std::make_unique<CQuickSlotDragView>(m_pDevice, m_pContext);
 
@@ -1204,6 +1209,27 @@ void CMainApp::Update(const f32_t fTimeDelta)
 			CGameInstance::Get().Play_Sound(soundPath.wstring(), 1.f);
 		}
 		m_bVehicleWindowKeyDown = keyDown;
+	}
+
+	/* M is the retail world map keybind (same gating as I / P / N above). The window itself
+	stays hidden on levels without a minimap area (see Update_Minimap). */
+	if (nullptr != m_pWorldMapWindowView && !ImGui::GetIO().WantTextInput &&
+		!CUIInputRouter::Get().Is_TextInputActive())
+	{
+		const bool_t windowFocused =
+			IsWindowOwnedByCurrentProcess(GetForegroundWindow());
+		const bool_t keyDown = windowFocused &&
+			0 != (GetAsyncKeyState(0x4D /* VK_M */) & 0x8000);
+		if (keyDown && !m_bWorldMapKeyDown)
+		{
+			m_pWorldMapWindowView->Toggle();
+			const filesystem::path soundPath = CRuntimeAssetRoot::Resolve(
+				m_pWorldMapWindowView->Is_Open() ?
+				L"Sound/UI/Select/ui_inventory_show1__669750910.wav" :
+				L"Sound/UI/Select/ui_inventory_hide1__7273537.wav");
+			CGameInstance::Get().Play_Sound(soundPath.wstring(), 1.f);
+		}
+		m_bWorldMapKeyDown = keyDown;
 	}
 
 	Update_LobbyButtons(fTimeDelta);
@@ -2942,6 +2968,10 @@ HRESULT CMainApp::Render()
 		m_pVehicleWindowView->Render_Text();
 	if (nullptr != m_pHonorTitleWindowView)
 		m_pHonorTitleWindowView->Render_Text();
+	if (nullptr != m_pWorldMapWindowView)
+		m_pWorldMapWindowView->Render_Text();
+	if (nullptr != m_pSongCastGaugeView)
+		m_pSongCastGaugeView->Render_Text();
 
 	/* Every CUIInputRouter-based screen's click-edge check has run by this point (both this
 	function's own render pass and the Update() pass earlier this same frame) -- rolls the
@@ -4418,6 +4448,22 @@ void CMainApp::Update_Minimap(const f32_t fTimeDelta)
 	if (Is_MvpResultPageOpen())
 		bHasSnapshot = false;
 	m_pMinimapView->Update(fTimeDelta, eLevel, bHasSnapshot ? &Snapshot : nullptr);
+	/* The world map window reads the same marker snapshot; it hides itself without one. */
+	if (nullptr != m_pWorldMapWindowView)
+	{
+		m_pWorldMapWindowView->Update(fTimeDelta, eLevel, bHasSnapshot ? &Snapshot : nullptr);
+		/* A square-hole click: the level's controller owns the Server round trip, as for
+		vehicles and titles; the Server's SQUAREHOLE_SONG action drives the gauge below. */
+		uint16_t iHoleId = 0u;
+		if (m_pWorldMapWindowView->Take_SquareHoleRequest(iHoleId))
+		{
+			CPlayerController* pController = Find_ActivePlayerController();
+			if (nullptr == pController || !pController->Request_UseSquareHole(iHoleId))
+				OutputDebugStringA("[Client][WorldMapWindow] Square hole request not sent (no controller, or the player is busy).\n");
+		}
+	}
+	if (nullptr != m_pSongCastGaugeView)
+		m_pSongCastGaugeView->Update(fTimeDelta, CCombatHUDViewModel::Get().Get_Player());
 }
 
 void CMainApp::RenderMinimapText()

@@ -1,0 +1,333 @@
+{
+  "schema": "lostark.worldmap-panels",
+  "formatVersion": 1,
+  "strings": {
+    "windowTitle": "월드맵",
+    "legendTitle": "범례",
+    "squareHoleTitle": "스퀘어홀",
+    "searchHint": "지역 / 구조물 / NPC 이름 또는 직업",
+    "linerButton": "정기선 승선",
+    "oceanButton": "출항 준비",
+    "memoButton": "개인 메모",
+    "dialogTitle": "스퀘어홀",
+    "confirmFormat": "{0}로 이동하시겠습니까?",
+    "confirmOk": "확인",
+    "confirmCancel": "취소",
+    "songCasting": "스퀘어홀의 노래를 연주하는 중"
+  },
+  "legend": [
+    {
+      "key": "quest",
+      "name": "퀘스트",
+      "icon": "UI/WorldMap/Symbols/Minimap_Symbol_12.png"
+    },
+    {
+      "key": "background",
+      "name": "지역/구조물",
+      "icon": "UI/WorldMap/Symbols/Minimap_Symbol_3.png"
+    },
+    {
+      "key": "entrance",
+      "name": "콘텐츠입장",
+      "icon": "UI/WorldMap/Symbols/Minimap_Symbol_5.png"
+    },
+    {
+      "key": "npc",
+      "name": "NPC",
+      "icon": "UI/WorldMap/Symbols/Minimap_Symbol_175.png"
+    },
+    {
+      "key": "item",
+      "name": "장비성장",
+      "icon": "UI/WorldMap/Symbols/Minimap_Symbol_1_207.png"
+    },
+    {
+      "key": "life",
+      "name": "생활레벨",
+      "icon": "UI/WorldMap/Symbols/Minimap_Symbol_21.png"
+    },
+    {
+      "key": "etc",
+      "name": "기타",
+      "icon": "UI/WorldMap/Symbols/Minimap_Symbol_1_121.png"
+    },
+    {
+      "key": "character",
+      "name": "캐릭터",
+      "icon": "UI/WorldMap/Symbols/Minimap_Symbol_1_564.png"
+    }
+  ],
+  "zones": {
+    "BERN": {
+      "continent": "BER",
+      "continentName": "베른 북부",
+      "currentZoneId": 11102,
+      "rows": [
+        {
+          "zoneId": 11111,
+          "name": "크로나 항구",
+          "isPort": true
+        },
+        {
+          "zoneId": 11102,
+          "name": "베른 성",
+          "isPort": false
+        },
+        {
+          "zoneId": 11101,
+          "name": "라니아 마을",
+          "isPort": false
+        },
+        {
+          "zoneId": 11112,
+          "name": "파르나 숲",
+          "isPort": false
+        },
+        {
+          "zoneId": 11113,
+          "name": "페스나르 고원",
+          "isPort": false
+        },
+        {
+          "zoneId": 11114,
+          "name": "베르닐 삼림",
+          "isPort": false
+        },
+        {
+          "zoneId": 11115,
+          "name": "발란카르 산맥",
+          "isPort": false
+        },
+        {
+          "zoneId": 11611,
+          "name": "칸다리아 영지",
+          "isPort": false
+        },
+        {
+          "zoneId": 11612,
+          "name": "벨리온 유적지",
+          "isPort": true
+        },
+        {
+          "zoneId": 11614,
+          "name": "벨리오나르 승전지",
+          "isPort": false
+        }
+      ]
+    },
+    "VALTAN_ARENA": {
+      "continent": "LUT",
+      "continentName": "",
+      "currentZoneId": 37051,
+      "rows": [
+        {
+          "zoneId": 10811,
+          "name": "자고라스 산",
+          "isPort": false
+        },
+        {
+          "zoneId": 18902,
+          "name": "혼돈의 자고라스 산",
+          "isPort": false
+        },
+        {
+          "zoneId": 18903,
+          "name": "혼돈의 자고라스 산",
+          "isPort": false
+        },
+        {
+          "zoneId": 18904,
+          "name": "혼돈의 자고라스 산",
+          "isPort": false
+        },
+        {
+          "zoneId": 18905,
+          "name": "혼돈의 자고라스 산",
+          "isPort": false
+        },
+        {
+          "zoneId": 18906,
+          "name": "혼돈의 자고라스 산",
+          "isPort": false
+        },
+        {
+          "zoneId": 18907,
+          "name": "혼돈의 자고라스 산",
+          "isPort": false
+        },
+        {
+          "zoneId": 10812,
+          "name": "레이크바",
+          "isPort": false
+        },
+        {
+          "zoneId": 10813,
+          "name": "메드리닉 수도원",
+          "isPort": false
+        },
+        {
+          "zoneId": 10814,
+          "name": "빌브린숲",
+          "isPort": false
+        },
+        {
+          "zoneId": 10815,
+          "name": "격전의 평야",
+          "isPort": false
+        },
+        {
+          "zoneId": 10801,
+          "name": "루테란 성",
+          "isPort": false
+        },
+        {
+          "zoneId": 10816,
+          "name": "디오리카 평원",
+          "isPort": false
+        },
+        {
+          "zoneId": 10817,
+          "name": "해무리 언덕",
+          "isPort": false
+        },
+        {
+          "zoneId": 10818,
+          "name": "배꽃나무 자생지",
+          "isPort": false
+        },
+        {
+          "zoneId": 10819,
+          "name": "흑장미 교회당",
+          "isPort": false
+        },
+        {
+          "zoneId": 10820,
+          "name": "라이아 단구",
+          "isPort": false
+        },
+        {
+          "zoneId": 10821,
+          "name": "보레아 영지",
+          "isPort": false
+        },
+        {
+          "zoneId": 10804,
+          "name": "갈기파도 항구",
+          "isPort": true
+        },
+        {
+          "zoneId": 10823,
+          "name": "크로커니스 해변",
+          "isPort": false
+        }
+      ]
+    },
+    "KAKULSAYDON_ARENA": {
+      "continent": "LUT",
+      "continentName": "",
+      "currentZoneId": 37081,
+      "rows": [
+        {
+          "zoneId": 10811,
+          "name": "자고라스 산",
+          "isPort": false
+        },
+        {
+          "zoneId": 18902,
+          "name": "혼돈의 자고라스 산",
+          "isPort": false
+        },
+        {
+          "zoneId": 18903,
+          "name": "혼돈의 자고라스 산",
+          "isPort": false
+        },
+        {
+          "zoneId": 18904,
+          "name": "혼돈의 자고라스 산",
+          "isPort": false
+        },
+        {
+          "zoneId": 18905,
+          "name": "혼돈의 자고라스 산",
+          "isPort": false
+        },
+        {
+          "zoneId": 18906,
+          "name": "혼돈의 자고라스 산",
+          "isPort": false
+        },
+        {
+          "zoneId": 18907,
+          "name": "혼돈의 자고라스 산",
+          "isPort": false
+        },
+        {
+          "zoneId": 10812,
+          "name": "레이크바",
+          "isPort": false
+        },
+        {
+          "zoneId": 10813,
+          "name": "메드리닉 수도원",
+          "isPort": false
+        },
+        {
+          "zoneId": 10814,
+          "name": "빌브린숲",
+          "isPort": false
+        },
+        {
+          "zoneId": 10815,
+          "name": "격전의 평야",
+          "isPort": false
+        },
+        {
+          "zoneId": 10801,
+          "name": "루테란 성",
+          "isPort": false
+        },
+        {
+          "zoneId": 10816,
+          "name": "디오리카 평원",
+          "isPort": false
+        },
+        {
+          "zoneId": 10817,
+          "name": "해무리 언덕",
+          "isPort": false
+        },
+        {
+          "zoneId": 10818,
+          "name": "배꽃나무 자생지",
+          "isPort": false
+        },
+        {
+          "zoneId": 10819,
+          "name": "흑장미 교회당",
+          "isPort": false
+        },
+        {
+          "zoneId": 10820,
+          "name": "라이아 단구",
+          "isPort": false
+        },
+        {
+          "zoneId": 10821,
+          "name": "보레아 영지",
+          "isPort": false
+        },
+        {
+          "zoneId": 10804,
+          "name": "갈기파도 항구",
+          "isPort": true
+        },
+        {
+          "zoneId": 10823,
+          "name": "크로커니스 해변",
+          "isPort": false
+        }
+      ]
+    }
+  }
+}

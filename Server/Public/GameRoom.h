@@ -324,6 +324,9 @@ namespace LostArk::Server
 		void Handle_UseEstherSkill(
 			SESSION_ID sessionId,
 			const LostArk::Shared::C2S_USE_ESTHER_SKILL& useEstherSkill);
+		void Handle_UseSquareHole(
+			SESSION_ID sessionId,
+			const LostArk::Shared::C2S_USE_SQUAREHOLE& useSquareHole);
 		bool Spawn_EstherSummon(
 			const ESTHER_ROSTER_ENTRY& rosterEntry,
 			float positionX,
