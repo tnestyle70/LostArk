@@ -1034,12 +1034,20 @@ def model_cues(evidence, stage, identity):
         tracks = model_cue_material_tracks(notifies, mesh_index)
         duration = notify['durationSeconds']
         loop = duration <= 0
+        hold = False
         if loop:
             # Open-ended mesh: it lives until its last material event (the dead fade) ends.
             # The notify carries no window, so the clip repeats for that lifetime instead of
             # ending with its own length. The payload int after the play rate is the source
             # loop count (Q 2, W 3, E 1), and clip x count covers the fade window in each case.
             duration = max(key['timeSeconds'] for track in tracks for key in track['keys'])
+        else:
+            # A windowed mesh still has to outlive its own dead fade, which the source
+            # places after the animation ends. Cutting there drops the fade-out. The cue
+            # may not outrun its clip, so the extra tail holds the clip's last pose.
+            extended = max([duration] + [key['timeSeconds'] for track in tracks for key in track['keys']])
+            hold = extended > duration + 1e-6
+            duration = extended
         raw = base64.b64decode(notify['serializedPayload']['data'])
         tail = raw.index(animation[0].encode('ascii') + b'\0') + len(animation[0]) + 1
         local = dict(position=[0, 0, 0], rotationDegrees=[0, 0, 0], revolutionDegreesPerSecond=[0, 0, 0],
@@ -1058,7 +1066,7 @@ def model_cues(evidence, stage, identity):
         for part in row.get('parts', [dict(cueId=row['cueId'], model=row['model'], material=next(iter(patch)))]):
             cue = dict(cueId=part['cueId'], modelAssetId=part['model'], clipName=clip,
                 startDelaySeconds=notify['localTimeSeconds'], durationSeconds=duration,
-                opacity=1, colorMultiply=[1, 1, 1, 1], holdLastFrame=False, loop=loop,
+                opacity=1, colorMultiply=[1, 1, 1, 1], holdLastFrame=hold, loop=loop,
                 alphaMode='TRANSLUCENT', visible=True,
                 localTransform=copy.deepcopy(local),
                 assetPreTransform=dict(scale=[0.0001] * 3, rotationDegrees=[0, -90, 0]),

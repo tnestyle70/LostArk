@@ -1210,16 +1210,6 @@ namespace Client::EffectDocumentCodecDetail
 				return false;
 			}
 		}
-		for (const auto& [strRoute, TargetElements] : Receivers)
-		{
-			(void)TargetElements;
-			if (!Generators.contains(strRoute))
-			{
-				strOutError =
-					"Portable authored particle event receiver has no same-document generator.";
-				return false;
-			}
-		}
 
 		std::unordered_map<std::string, std::vector<std::string>> Adjacency;
 		for (const auto& [strRoute, SourceElements] : Generators)

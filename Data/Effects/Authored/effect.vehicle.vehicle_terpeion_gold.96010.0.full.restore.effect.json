@@ -15,7 +15,7 @@
       "modelAssetId": "Effect/Vehicle/Terpeion/TerpeionWing/TerpeionWing.wmodel",
       "clipName": "npc_sk_relaxation",
       "startDelaySeconds": 0.0,
-      "durationSeconds": 6.3333330154418945,
+      "durationSeconds": 6.426982022821903,
       "opacity": 1,
       "colorMultiply": [
         1,
@@ -23,7 +23,7 @@
         1,
         1
       ],
-      "holdLastFrame": false,
+      "holdLastFrame": true,
       "loop": false,
       "alphaMode": "TRANSLUCENT",
       "visible": true,

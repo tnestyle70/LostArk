@@ -34,6 +34,10 @@ public:
 public:
 	bool_t Set_Moving(bool_t isMoving);
 	bool_t Try_Get_SeatWorldPosition(float3_t& outPosition) const;
+	/* How far the seat bone has turned from the pose it had when the vehicle was
+	attached. A clip that spins the vehicle body can then turn the rider with it
+	without the model's own import basis reaching the character. */
+	bool_t Try_Get_SeatRotationDelta(float4x4_t& outRotation) const;
 	/* Poses the vehicle on its skill chain at the Server action age, clips back to
 	back and the last one held. Locomotion switches are ignored until Resume. */
 	bool_t Seek_SkillChain(const std::vector<std::string>& clips, f32_t actionAgeSeconds);
@@ -67,6 +71,8 @@ private:
 	bool_t m_isMoving = { false };
 	bool_t m_isPlayingSkill = { false };
 	bool_t m_hasTranslucentMeshes = { false };
+	bool_t m_hasRestSeatRotation = { false };
+	float4x4_t m_RestSeatRotationInverse = {};
 
 private:
 	HRESULT Ready_Components(const PART_VEHICLE_DESC* pDesc);

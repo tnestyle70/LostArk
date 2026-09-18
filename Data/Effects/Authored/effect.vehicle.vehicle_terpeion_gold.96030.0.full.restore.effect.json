@@ -15,7 +15,7 @@
       "modelAssetId": "Effect/Vehicle/Terpeion/TerpeionWing/TerpeionWing.wmodel",
       "clipName": "npc_sk_dash",
       "startDelaySeconds": 0.0,
-      "durationSeconds": 2.066667079925537,
+      "durationSeconds": 2.070000022649765,
       "opacity": 1,
       "colorMultiply": [
         1,
@@ -23,7 +23,7 @@
         1,
         1
       ],
-      "holdLastFrame": false,
+      "holdLastFrame": true,
       "loop": false,
       "alphaMode": "TRANSLUCENT",
       "visible": true,
