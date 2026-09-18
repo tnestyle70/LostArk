@@ -1,13 +1,14 @@
 """Build one native sprite emitter and shared death bursts, without live writes."""
 from __future__ import annotations
 
+import argparse
 import copy
 import hashlib
 import struct
 from pathlib import Path
 
 from build_saydon_card_pattern_groups import (AUTHORED, ROOT, current_preview,
-    leaf, read, renamed, write)
+    leaf, read, renamed, scale_spinning_card_geometry, follow_local_card_axes, write)
 
 OUTPUT = ROOT / 'out/EffectV1Review20260917/candidate'
 ASSET = 'effect.kouku.card.spinning.emitter'
@@ -93,7 +94,9 @@ def source_schedule():
         sourceModelPreview=preview, fullShotSchedule=shots)
 
 
-def build():
+def build(count_multiplier=2, output=OUTPUT):
+    if count_multiplier not in (1, 2):
+        raise ValueError('Card count multiplier must be 1 (source) or 2 (requested).')
     preview, shots, proof = source_schedule()
     original = leaf('13_1_loc_int')
     assert len(original['elements']) == 6
@@ -111,6 +114,9 @@ def build():
     symbol['groupId'] = ASSET + '.flight'
     symbol['detail']['particle']['maxParticles'] = len(shots)
     symbol['detail']['particle'].setdefault('sourceScale', {})['lifeTime'] = shots[0]['flightSeconds']
+    # Keep the source three-shot bursts intact. The existing authored count
+    # scale expands both births and the main emitter capacity exactly once.
+    symbol['detail']['particle']['sourceScale']['count'] = count_multiplier
     event = ASSET + '.death'
     symbol['sourceRecipe']['modules'] += [module('velocity', 'particlemodulevelocitycone',
         {'bspawnmodule': True, 'binworldspace': False,
@@ -126,6 +132,9 @@ def build():
         assert count > 0
         element['groupId'] = ASSET + '.impact'
         emission(element, 0, shots[-1]['startSeconds'] + shots[-1]['flightSeconds'] + .1, [])
+        # Each additional card already sends its own death event. Keep the
+        # existing capacity: it covers both authored counts' simultaneous bursts
+        # without increasing the source explosion's particles per event.
         element['detail']['particle']['maxParticles'] *= len(shots)
         element['detail']['particle']['burstCount'] = 0
         inherit_velocity = constant('inheritvelocityscale', 0)
@@ -137,20 +146,34 @@ def build():
                 'busepsyslocation': False, 'binheritvelocity': False},
             [inherit_velocity, constant('spawncount', count)]))
         document['elements'].append(element)
+    scaled_cards = scale_spinning_card_geometry(document)
+    follow_local_card_axes(document)
     proof.update(assetId=ASSET, installed=False, status='NATIVE_SPRITE_EMITTER_CPU_VALIDATION_PENDING',
         catalogEntry=dict(effectAssetId=ASSET, payloadKind='DIRECT_AUTHORED_DOCUMENT',
             authoringPath=f'Effects/Authored/{ASSET}.effect.json'),
         treeReference=dict(kind='V1', assetId=ASSET, displayName='회전 카드 발사',
             parentId='kouku.category.173df37e77c188aee068'),
         uiPath='KoukuSaydon / 1관문 / 패턴 / 세이튼 / 세이튼_회전하며 카드 날리기 / 회전 카드 발사',
-        fullShotCount=len(shots), sourceUserLeafSha256=digest(AUTHORED / 'effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_13_1_loc_int.effect.json'),
+        fullShotCount=len(shots) * count_multiplier, sourceExtendedShotCount=len(shots),
+        sourceExtendedShotSchedule=shots,
+        fullShotSchedule=[dict(shot, index=index * count_multiplier + copy_index,
+            sourceShotIndex=index) for index, shot in enumerate(shots)
+            for copy_index in range(count_multiplier)],
+        authoredCountMultiplier=count_multiplier, authoredSizeMultiplier=1.5,
+        sizeAdjustedElementIds=scaled_cards,
+        sourceUserLeafSha256=digest(AUTHORED / 'effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_13_1_loc_int.effect.json'),
         requiredRuntime='Existing source sprite, velocity cone, random SubUV, death generator and receiver; no new runtime or duplicated shot groups.',
         preserved='Saved symbol local transform, native material, original random atlas and rotation modules. Source shared explosion materials/modules retained with death-only emission.',
         manualVisualValidation='USER_PENDING')
-    write(OUTPUT / (ASSET + '.effect.json'), document)
-    write(OUTPUT / 'spinning-emitter-schedule.json', proof)
-    print(f'elements={len(document["elements"])} waves={len(bursts)} shots={len(shots)} revision={proof["compositionRevision"]}')
+    write(output / (ASSET + '.effect.json'), document)
+    write(output / 'spinning-emitter-schedule.json', proof)
+    print(f'elements={len(document["elements"])} waves={len(bursts)} shots={len(shots) * count_multiplier} revision={proof["compositionRevision"]}')
 
 
 if __name__ == '__main__':
-    build()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--count-multiplier', type=int, choices=(1, 2), default=2,
+        help='Authored card count override; native bursts remain three shots.')
+    parser.add_argument('--output', type=Path, default=OUTPUT)
+    args = parser.parse_args()
+    build(args.count_multiplier, args.output)

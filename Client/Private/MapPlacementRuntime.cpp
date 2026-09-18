@@ -931,14 +931,14 @@ bool_t CMapPlacementRuntime::Is_BatchEligible(
             });
 }
 
-HRESULT CMapPlacementRuntime::Build_StaticInstance(
+bool_t CMapPlacementRuntime::Compute_PlacementWorld(
 	const MAP_ASSET_ENTRY& asset,
 	const shared_ptr<Engine::CModel>& model,
 	const MAP_PLACEMENT_RECORD& record,
-	FMapStaticInstance& outInstance)
+	float4x4_t& outWorld)
 {
 	if (nullptr == model || !model->Has_LocalBounds())
-		return E_FAIL;
+		return false;
 
 	const float3_t& minimum = model->Get_LocalBoundsMin();
 	const float3_t& maximum = model->Get_LocalBoundsMax();
@@ -946,20 +946,8 @@ HRESULT CMapPlacementRuntime::Build_StaticInstance(
 		minimum.x > maximum.x || minimum.y > maximum.y ||
 		minimum.z > maximum.z)
 	{
-		return E_FAIL;
+		return false;
 	}
-
-	const float3_t localCenter(
-		(minimum.x + maximum.x) * 0.5f,
-		(minimum.y + maximum.y) * 0.5f,
-		(minimum.z + maximum.z) * 0.5f);
-	const vector_t halfExtents = XMVectorSet(
-		(maximum.x - minimum.x) * 0.5f,
-		(maximum.y - minimum.y) * 0.5f,
-		(maximum.z - minimum.z) * 0.5f,
-		0.f);
-	f32_t localRadius = XMVectorGetX(XMVector3Length(halfExtents));
-	localRadius = localRadius > 0.05f ? localRadius : 0.05f;
 
 	vector_t rotation = XMQuaternionNormalize(
 		XMLoadFloat4(&record.rotationQuaternion));
@@ -975,7 +963,8 @@ HRESULT CMapPlacementRuntime::Build_StaticInstance(
 	if (MAP_ASSET_ANCHOR::BOTTOM_CENTER == asset.anchor)
 	{
 		const vector_t localAnchor = XMVectorSet(
-			localCenter.x, minimum.y, localCenter.z, 1.f);
+			(minimum.x + maximum.x) * 0.5f, minimum.y,
+			(minimum.z + maximum.z) * 0.5f, 1.f);
 		float3_t anchorOffset{};
 		XMStoreFloat3(&anchorOffset,
 			XMVector3TransformCoord(localAnchor, world));
@@ -986,7 +975,276 @@ HRESULT CMapPlacementRuntime::Build_StaticInstance(
 
 	world.r[3] = XMVectorSet(
 		worldOrigin.x, worldOrigin.y, worldOrigin.z, 1.f);
+	XMStoreFloat4x4(&outWorld, world);
+	return true;
+}
 
+bool_t CMapPlacementRuntime::Try_Get_PlacementWorldBounds(
+	const MAP_ASSET_ENTRY& asset,
+	const shared_ptr<Engine::CModel>& model,
+	const MAP_PLACEMENT_RECORD& record,
+	float3_t& outMinimum,
+	float3_t& outMaximum)
+{
+	float4x4_t placementWorld{};
+	if (!Compute_PlacementWorld(asset, model, record, placementWorld))
+		return false;
+
+	const matrix_t world = XMLoadFloat4x4(&placementWorld);
+	const float3_t& minimum = model->Get_LocalBoundsMin();
+	const float3_t& maximum = model->Get_LocalBoundsMax();
+	float3_t worldMinimum{};
+	float3_t worldMaximum{};
+	for (uint32_t corner = 0u; corner < 8u; ++corner)
+	{
+		const vector_t local = XMVectorSet(
+			0u == (corner & 1u) ? minimum.x : maximum.x,
+			0u == (corner & 2u) ? minimum.y : maximum.y,
+			0u == (corner & 4u) ? minimum.z : maximum.z,
+			1.f);
+		float3_t transformed{};
+		XMStoreFloat3(&transformed, XMVector3TransformCoord(local, world));
+		if (!IsFinite(transformed))
+			return false;
+		if (0u == corner)
+		{
+			worldMinimum = transformed;
+			worldMaximum = transformed;
+			continue;
+		}
+		worldMinimum.x = (std::min)(worldMinimum.x, transformed.x);
+		worldMinimum.y = (std::min)(worldMinimum.y, transformed.y);
+		worldMinimum.z = (std::min)(worldMinimum.z, transformed.z);
+		worldMaximum.x = (std::max)(worldMaximum.x, transformed.x);
+		worldMaximum.y = (std::max)(worldMaximum.y, transformed.y);
+		worldMaximum.z = (std::max)(worldMaximum.z, transformed.z);
+	}
+	outMinimum = worldMinimum;
+	outMaximum = worldMaximum;
+	return true;
+}
+
+shared_ptr<Engine::CModel> CMapPlacementRuntime::Find_PlacementModel(
+	const uint32_t levelIndex,
+	const CMapAssetCatalog& catalog,
+	const std::string& assetId,
+	std::unordered_map<std::string, shared_ptr<Engine::CModel>>& modelCache)
+{
+	const auto cached = modelCache.find(assetId);
+	if (cached != modelCache.end())
+		return cached->second;
+	const MAP_ASSET_ENTRY* asset = catalog.Find(assetId);
+	if (nullptr == asset)
+		return nullptr;
+	shared_ptr<Engine::CModel> model = dynamic_pointer_cast<Engine::CModel>(
+		CGameInstance::Get().Clone_Prototype(levelIndex, asset->prototypeTag));
+	modelCache.emplace(assetId, model);
+	return model;
+}
+
+bool_t CMapPlacementRuntime::Try_Resolve_PickedPlacement(
+	const uint32_t levelIndex,
+	const CMapAssetCatalog& catalog,
+	const std::vector<MAP_RUNTIME_PLACED_ENTRY>& placements,
+	std::unordered_map<std::string, shared_ptr<Engine::CModel>>& modelCache,
+	const float3_t& worldPoint,
+	uint64_t& outPlacementId,
+	size_t& outContainingCount)
+{
+	if (!IsFinite(worldPoint))
+		return false;
+
+	/* The picked pixel lies on a drawn surface, so the owner's bounds contain
+	   it up to rasterization error; this is that tolerance in metres. */
+	constexpr f32_t PICK_EPSILON = 0.05f;
+	const vector_t point = XMLoadFloat3(&worldPoint);
+	uint64_t containedId = 0u;
+	f32_t containedVolume = std::numeric_limits<f32_t>::infinity();
+	size_t containedCount = 0u;
+	uint64_t sphereId = 0u;
+	f32_t sphereDistance = std::numeric_limits<f32_t>::infinity();
+	for (const MAP_RUNTIME_PLACED_ENTRY& entry : placements)
+	{
+		const MAP_ASSET_ENTRY* asset = catalog.Find(entry.record.assetId);
+		bool_t visible = false;
+		/* A backdrop encloses the whole stage and a hidden entry is not what
+		   the pixel shows, so neither can be the picked object. */
+		if (nullptr == asset ||
+			MAP_ASSET_RENDER_MODE::BACKGROUND == asset->renderProfile.renderMode ||
+			!Try_GetRuntimeVisible(entry, visible) || !visible)
+		{
+			continue;
+		}
+		const shared_ptr<Engine::CModel> model = Find_PlacementModel(
+			levelIndex, catalog, entry.record.assetId, modelCache);
+		float4x4_t placementWorld{};
+		if (nullptr == model ||
+			!Compute_PlacementWorld(*asset, model, entry.record, placementWorld))
+		{
+			continue;
+		}
+		const matrix_t world = XMLoadFloat4x4(&placementWorld);
+		vector_t determinant{};
+		const matrix_t inverse = XMMatrixInverse(&determinant, world);
+		const f32_t determinantValue = XMVectorGetX(determinant);
+		if (!std::isfinite(determinantValue) ||
+			std::abs(determinantValue) < 0.000001f)
+		{
+			continue;
+		}
+		float3_t local{};
+		XMStoreFloat3(&local, XMVector3TransformCoord(point, inverse));
+		if (!IsFinite(local))
+			continue;
+
+		const float3_t& minimum = model->Get_LocalBoundsMin();
+		const float3_t& maximum = model->Get_LocalBoundsMax();
+		const float3_t& scale = entry.record.signedScale;
+		const float3_t epsilon(
+			PICK_EPSILON / (std::max)(std::abs(scale.x), 0.000001f),
+			PICK_EPSILON / (std::max)(std::abs(scale.y), 0.000001f),
+			PICK_EPSILON / (std::max)(std::abs(scale.z), 0.000001f));
+		if (local.x >= minimum.x - epsilon.x && local.x <= maximum.x + epsilon.x &&
+			local.y >= minimum.y - epsilon.y && local.y <= maximum.y + epsilon.y &&
+			local.z >= minimum.z - epsilon.z && local.z <= maximum.z + epsilon.z)
+		{
+			++containedCount;
+			const f32_t volume = (maximum.x - minimum.x) *
+				(maximum.y - minimum.y) * (maximum.z - minimum.z) *
+				std::abs(scale.x * scale.y * scale.z);
+			if (volume < containedVolume)
+			{
+				containedVolume = volume;
+				containedId = entry.record.placementId;
+			}
+			continue;
+		}
+		if (0u != containedCount)
+			continue;
+
+		/* No containing box so far: remember the nearest bounding sphere. */
+		FMapStaticInstance instance{};
+		if (FAILED(Build_StaticInstance(*asset, model, entry.record, instance)))
+			continue;
+		const f32_t distance = XMVectorGetX(XMVector3Length(XMVectorSubtract(
+			point, XMLoadFloat3(&instance.WorldBoundsCenter))));
+		if (std::isfinite(distance) && distance <= instance.WorldBoundsRadius &&
+			distance < sphereDistance)
+		{
+			sphereDistance = distance;
+			sphereId = entry.record.placementId;
+		}
+	}
+	if (0u != containedCount)
+	{
+		outPlacementId = containedId;
+		outContainingCount = containedCount;
+		return true;
+	}
+	if (0u != sphereId)
+	{
+		outPlacementId = sphereId;
+		outContainingCount = 0u;
+		return true;
+	}
+	return false;
+}
+
+CMapPlacementRuntime::PLACEMENT_TRANSFORM_RESULT
+CMapPlacementRuntime::Apply_PlacementTransform(
+	const uint32_t levelIndex,
+	const CMapAssetCatalog& catalog,
+	std::unordered_map<std::string, shared_ptr<Engine::CModel>>& modelCache,
+	MAP_RUNTIME_PLACED_ENTRY& entry,
+	const MAP_PLACEMENT_RECORD& staged,
+	std::string& outStatus)
+{
+	const MAP_ASSET_ENTRY* asset = catalog.Find(staged.assetId);
+	if (nullptr == asset || staged.placementId != entry.record.placementId ||
+		!CMapPlacementDocument::Is_Valid(staged, catalog))
+	{
+		outStatus = "Transform edit rejected by placement validation";
+		return PLACEMENT_TRANSFORM_RESULT::REJECTED;
+	}
+
+	if (nullptr != entry.object)
+	{
+		entry.object->Set_PlacementTransform(
+			staged.position, staged.rotationQuaternion, staged.signedScale);
+		entry.record = staged;
+		return PLACEMENT_TRANSFORM_RESULT::APPLIED;
+	}
+	if (nullptr != entry.batch)
+	{
+		const bool_t oldMirrored = entry.record.signedScale.x *
+			entry.record.signedScale.y * entry.record.signedScale.z < 0.f;
+		const bool_t newMirrored = staged.signedScale.x *
+			staged.signedScale.y * staged.signedScale.z < 0.f;
+		if (oldMirrored == newMirrored)
+		{
+			const shared_ptr<Engine::CModel> model = Find_PlacementModel(
+				levelIndex, catalog, staged.assetId, modelCache);
+			FMapStaticInstance instance{};
+			if (nullptr != model &&
+				SUCCEEDED(Build_StaticInstance(*asset, model, staged, instance)) &&
+				SUCCEEDED(entry.batch->Update_Instance(
+					staged.placementId, instance)))
+			{
+				entry.record = staged;
+				return PLACEMENT_TRANSFORM_RESULT::APPLIED;
+			}
+		}
+		else
+		{
+			/* A mirror parity flip changes the batch pass, so the entry moves
+			   to a standalone object; the next Reload rebatches it. */
+			MAP_RUNTIME_PLACED_ENTRY migrated{};
+			if (Create_Placement(levelIndex, catalog, staged, migrated))
+			{
+				if (SUCCEEDED(entry.batch->Set_InstanceVisible(
+					staged.placementId, false)))
+				{
+					entry.layerTag = std::move(migrated.layerTag);
+					entry.object = std::move(migrated.object);
+					entry.batch.reset();
+					entry.record = staged;
+					return PLACEMENT_TRANSFORM_RESULT::APPLIED;
+				}
+				CGameInstance::Get().Remove_GameObject_from_Layer(
+					levelIndex, migrated.layerTag,
+					static_pointer_cast<CGameObject>(migrated.object));
+			}
+		}
+	}
+	outStatus = "Transform edit failed; previous state preserved";
+	return PLACEMENT_TRANSFORM_RESULT::FAILED;
+}
+
+HRESULT CMapPlacementRuntime::Build_StaticInstance(
+	const MAP_ASSET_ENTRY& asset,
+	const shared_ptr<Engine::CModel>& model,
+	const MAP_PLACEMENT_RECORD& record,
+	FMapStaticInstance& outInstance)
+{
+	float4x4_t placementWorld{};
+	if (!Compute_PlacementWorld(asset, model, record, placementWorld))
+		return E_FAIL;
+
+	const float3_t& minimum = model->Get_LocalBoundsMin();
+	const float3_t& maximum = model->Get_LocalBoundsMax();
+	const float3_t localCenter(
+		(minimum.x + maximum.x) * 0.5f,
+		(minimum.y + maximum.y) * 0.5f,
+		(minimum.z + maximum.z) * 0.5f);
+	const vector_t halfExtents = XMVectorSet(
+		(maximum.x - minimum.x) * 0.5f,
+		(maximum.y - minimum.y) * 0.5f,
+		(maximum.z - minimum.z) * 0.5f,
+		0.f);
+	f32_t localRadius = XMVectorGetX(XMVector3Length(halfExtents));
+	localRadius = localRadius > 0.05f ? localRadius : 0.05f;
+
+	const matrix_t world = XMLoadFloat4x4(&placementWorld);
 	matrix_t linearWorld = world;
 	linearWorld.r[3] = XMVectorSet(0.f, 0.f, 0.f, 1.f);
 	const f32_t determinant = XMVectorGetX(

@@ -795,8 +795,9 @@ bool_t Client::CEffect_Tool::Stage_WorldPreview(
 			FreshnessStatus;
 		return false;
 	}
+    std::vector<std::string> drawElementIds;
 	const EFFECT_DOCUMENT_DESC PreviewDocument =
-		Build_PreviewDocument(Document);
+		Build_PreviewDocument(Document, &drawElementIds);
 	const bool_t bOwnerYawAttachment = Has_RequiredSourceFollowAttachments(PreviewDocument);
 	if (bOwnerYawAttachment)
 	{
@@ -854,6 +855,8 @@ bool_t Client::CEffect_Tool::Stage_WorldPreview(
         m_strPreviewStatus = "Document is editable but not drawable yet: " + Error;
         return false;
     }
+    if (!drawElementIds.empty() && !pObject->Set_SubmissionElementSet(std::move(drawElementIds), Error))
+    { m_strPreviewStatus = "Selected Element visibility rejected: " + Error; return false; }
 	// Follow/seek must consume exactly the filtered, draft-applied document
 	// that was staged, rather than anchors belonging to excluded siblings.
 	m_WorldPreviewDocument = PreviewDocument;
@@ -987,47 +990,66 @@ bool Client::CEffect_Tool::Build_ElementsPreviewDocument(const EFFECT_DOCUMENT_D
         { error = ElementPreviewAdmissionReason(*selected); return false; }
         hasDrawable = hasDrawable || !Is_EffectSimulationOnlyParticle(*selected);
         included.insert(elementId);
-        for (const auto& module : selected->SourceRecipe.Modules)
+    }
+    // Keep the full simulation dependency closure, including Direct providers.
+    // Visibility is restricted separately at submission; disabling a provider
+    // here would also stop its particles from supplying positions.
+    std::vector<std::string> pending(included.begin(), included.end());
+    for (size_t next = 0; next < pending.size(); ++next)
+    {
+        const auto found = std::find_if(document.Elements.begin(), document.Elements.end(),
+            [&](const auto& element) { return element.strElementId == pending[next]; });
+        if (found == document.Elements.end())
+        { error = "Selected Element dependency is missing: " + pending[next]; return false; }
+        const auto include = [&](const std::string& id)
+        { if (!id.empty() && included.insert(id).second) pending.push_back(id); };
+        if (found->TransformInheritance.bEnabled)
+            include(found->TransformInheritance.strMasterElementId);
+        for (const auto& module : found->SourceRecipe.Modules)
         {
             if (module.strClassName != "particlemodulelocationemitter" &&
-                module.strClassName != "efparticlemodulelocationemitter") continue;
+                module.strClassName != "efparticlemodulelocationemitter" &&
+                module.strClassName != "particlemodulelocationemitterdirect" &&
+                module.strClassName != "efparticlemodulelocationemitterdirect") continue;
+            if (std::any_of(module.Literals.begin(), module.Literals.end(), [](const auto& literal)
+                { return literal.strPropertyPath == "benabled" &&
+                    literal.eKind == EFFECT_SOURCE_LITERAL_KIND::BOOLEAN && !literal.bBoolean; })) continue;
             for (const auto& literal : module.Literals)
-                if (literal.strPropertyPath == "runtime.providerelementid" && !literal.strString.empty())
-                    included.insert(literal.strString);
+                if (literal.strPropertyPath == "runtime.providerelementid") include(literal.strString);
         }
     }
     if (!hasDrawable)
     { error = "Source providers only simulate positions. Select a dependent drawable element for preview."; return false; }
-    preview = document;
-    std::erase_if(preview.Elements, [&included](const auto& element)
+    EFFECT_DOCUMENT_DESC staged = document;
+    std::erase_if(staged.Elements, [&included](const auto& element)
         { return !included.contains(element.strElementId); });
-    std::erase_if(preview.ModelCues, [&preview](const auto& cue)
-        { return std::none_of(preview.Elements.begin(), preview.Elements.end(),
+    std::erase_if(staged.ModelCues, [&staged](const auto& cue)
+        { return std::none_of(staged.Elements.begin(), staged.Elements.end(),
             [&cue](const auto& element) { return element.ActionCueAttachment.strModelCueId == cue.strCueId; }); });
     // Dependencies keep their original order and clock; hidden model cues
     // supply anchors without adding unrelated summon pixels to the selection.
-    for (auto& cue : preview.ModelCues) cue.bVisible = false;
+    for (auto& cue : staged.ModelCues) cue.bVisible = false;
+    if (!CEffectPlayback::Validate_SourceParticleProviders(staged, error)) return false;
+    preview = std::move(staged);
     return true;
 }
 
 Client::EFFECT_DOCUMENT_DESC
 Client::CEffect_Tool::Build_PreviewDocument(
-	const EFFECT_DOCUMENT_DESC& Document) const
+	const EFFECT_DOCUMENT_DESC& Document, std::vector<std::string>* drawElementIds) const
 {
     EFFECT_DOCUMENT_DESC Preview = Document;
-	const auto PreserveModelCueAnchors = [&Preview]()
-	{
-		std::erase_if(Preview.ModelCues,
-			[&Preview](const EFFECT_MODEL_CUE_DESC& Cue)
-			{
-				return std::none_of(Preview.Elements.begin(), Preview.Elements.end(),
-					[&Cue](const EFFECT_ELEMENT_DESC& Element)
-					{ return Element.ActionCueAttachment.strModelCueId == Cue.strCueId; });
-			});
-		// Hidden model cues still supply their animated bones to child Elements.
-		for (EFFECT_MODEL_CUE_DESC& Cue : Preview.ModelCues)
-			Cue.bVisible = false;
-	};
+    if (drawElementIds) drawElementIds->clear();
+    const auto PreserveDependencies = [&]()
+    {
+        std::vector<std::string> selectedIds;
+        for (const auto& element : Preview.Elements) selectedIds.push_back(element.strElementId);
+        EFFECT_DOCUMENT_DESC selected;
+        std::string error;
+        if (!selectedIds.empty() && Build_ElementsPreviewDocument(Document, selectedIds, selected, error))
+            Preview = std::move(selected);
+        if (drawElementIds) *drawElementIds = std::move(selectedIds);
+    };
 	if (!m_bPreviewScreenPostEnabled)
 	{
 		std::erase_if(Preview.Elements,
@@ -1061,7 +1083,7 @@ Client::CEffect_Tool::Build_PreviewDocument(
 				return Resolve_AuthoringFamily(Element) !=
 					m_ePreviewIsolationAuthoringFamily;
 			});
-		PreserveModelCueAnchors();
+		PreserveDependencies();
 		return Preview;
 	}
     if (EFFECT_PREVIEW_FILTER::SOLO_PARTICLE_SYSTEM == m_ePreviewFilter)
@@ -1071,7 +1093,7 @@ Client::CEffect_Tool::Build_PreviewDocument(
             {
                 return EFFECT_ELEMENT_KIND::PARTICLE != Element.eKind;
             });
-        PreserveModelCueAnchors();
+        PreserveDependencies();
         return Preview;
     }
 	if (EFFECT_PREVIEW_FILTER::SOLO_STANDALONE_MESHES == m_ePreviewFilter ||
@@ -1085,7 +1107,7 @@ Client::CEffect_Tool::Build_PreviewDocument(
 			{
 				return Element.eKind != eRequired;
 			});
-		PreserveModelCueAnchors();
+		PreserveDependencies();
 		return Preview;
 	}
 	if (EFFECT_PREVIEW_FILTER::SOLO_MESH_EMITTERS == m_ePreviewFilter ||
@@ -1101,7 +1123,7 @@ Client::CEffect_Tool::Build_PreviewDocument(
 				return EFFECT_ELEMENT_KIND::PARTICLE != Element.eKind ||
 					Resolve_CascadeRendererKind(Element) != eRequired;
 			});
-		PreserveModelCueAnchors();
+		PreserveDependencies();
 		return Preview;
 	}
     if (EFFECT_PREVIEW_FILTER::SOLO_SELECTED_GROUP == m_ePreviewFilter ||
@@ -1114,7 +1136,10 @@ Client::CEffect_Tool::Build_PreviewDocument(
                 EFFECT_DOCUMENT_DESC Selected;
                 std::string Error;
                 if (Build_ElementsPreviewDocument(Preview, m_PreviewIsolationElementIds, Selected, Error))
+                {
+                    if (drawElementIds) *drawElementIds = m_PreviewIsolationElementIds;
                     return Selected;
+                }
                 // A stale selection must never expose the complete Effect.
                 Preview.Elements.clear();
                 Preview.ModelCues.clear();
@@ -1134,7 +1159,11 @@ Client::CEffect_Tool::Build_PreviewDocument(
 				return Element.strGroupId == m_strPreviewIsolationGroupId;
             });
         if (!bGroupExists)
+        {
+            if (EFFECT_PREVIEW_FILTER::SOLO_SELECTED_GROUP == m_ePreviewFilter)
+            { Preview.Elements.clear(); Preview.ModelCues.clear(); }
             return Preview;
+        }
         std::erase_if(Preview.Elements,
             [this](const EFFECT_ELEMENT_DESC& Element)
             {
@@ -1144,7 +1173,7 @@ Client::CEffect_Tool::Build_PreviewDocument(
                     m_ePreviewFilter ? !bSelectedGroup : bSelectedGroup;
             });
         if (EFFECT_PREVIEW_FILTER::SOLO_SELECTED_GROUP == m_ePreviewFilter)
-            PreserveModelCueAnchors();
+            PreserveDependencies();
         return Preview;
     }
     if (EFFECT_PREVIEW_FILTER::COMPLETE == m_ePreviewFilter ||
@@ -1157,7 +1186,11 @@ Client::CEffect_Tool::Build_PreviewDocument(
 			return Element.strElementId == m_strPreviewIsolationElementId;
         });
     if (!bSelectionExists)
+    {
+        if (EFFECT_PREVIEW_FILTER::SOLO_SELECTED == m_ePreviewFilter)
+        { Preview.Elements.clear(); Preview.ModelCues.clear(); }
         return Preview;
+    }
     std::erase_if(Preview.Elements,
         [this](const EFFECT_ELEMENT_DESC& Element)
         {
@@ -1167,7 +1200,7 @@ Client::CEffect_Tool::Build_PreviewDocument(
                 !bSelected : bSelected;
         });
     if (EFFECT_PREVIEW_FILTER::SOLO_SELECTED == m_ePreviewFilter)
-        PreserveModelCueAnchors();
+        PreserveDependencies();
     return Preview;
 }
 

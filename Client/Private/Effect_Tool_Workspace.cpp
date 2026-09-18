@@ -461,7 +461,7 @@ bool CEffect_Tool::Create_AuthoringOccurrence(const EFFECT_RESOURCE_KEY& key, co
     const bool isStaged = staged && (projection ?
         staged->Stage_PrevalidatedVisualProgramDocument(projection, prepared, error) :
         staged->Stage_Document(*immutableDocument, error));
-    if (!isStaged)
+    if (!isStaged || (!elementIds.empty() && !staged->Set_SubmissionElementSet(elementIds, error)))
     {
         CGameInstance::Get().Remove_GameObject_from_Layer(level, AUTHORING_LAYER, clone);
         return false;

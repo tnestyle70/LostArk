@@ -94,3 +94,46 @@ World Tool과 Effect Composition resolver는 같은 C++ 상수를 사용한다.
 전체 268개 문서의 실제 codec Load/Validate/Save/재Load 동등성과 기존 행 보존을 검사한다.
 추가로 512개 허용, 513개 거절 및 거절 시 이전 문서 보존을 실제 codec과 publisher 함수로
 검사한다. source 변경은 기존 H와 Python/PowerShell 파일에 한정하며 새 제품 TU는 없다.
+
+## G06. 단일 g0 선택과 낙하 FX 원점·시계 정렬
+
+최신 Composition1232의 P83.world.7은 동일 표시명의 내부 model donor(world32,
+`world.object.kouku.saydon.circus.split.model`)를 선택하여 g0만 재생한다. 기존 group30은
+six motion/63공을 이미 소유한다. MainApp의 일시 목록에서 기본 motion이 정확히 하나의
+model-less group에 속한 donor에 group Append alias를 연결하고, Objects 목록에서는
+실제 group 한 행만 선택하도록 한다. 개별 motion의 Logic/편집 목록은 유지한다.
+Workbench Append는 해당 alias를 기존 group Append 경로로 보내 전체 수명을 사용한다.
+P83의 기존 start/placement/anchor를 보존한 world30 연결과11500ms 수명, 필요한 Pattern
+duration 연장만 guarded patch로 생성한다. 현재 P83의16045ms 수명은 충분하므로 그대로 둔다. 실제 clip의 시작/길이/재생속도는 보존한다.
+
+V1 `rainbow.drop`의 현재 저장된 emitter30 위치[-.41,5.18,.66]와 공 mesh5의 위치0,
+원작 LocationDirect 및0.8초 particle 수명을 실제 CPU playback으로 비교한다. 설치 모델의
+pivot·scale로 공 중심과 상단을 측정하고 상단광의 상대 위치와 이동 시계를 공과 일치시킨다.
+World의 `ball.upper`는 자체 DirectLocation을 뺀 기존 followObject provider를 계속 사용하며,
+fitEffectToDuration에 의해 원본 짧은 particle이 motion보다 먼저 끝나는지 같이 검증한다.
+원작 색·재질과 사용자 삭제한 요소·그 외 편집값은 유지한다. Engine 이동 runtime을 만들지 않는다.
+
+변경 소유는 기존 MainApp.cpp, KoukuSaydonActionWorkbench H/CPP, builder와 필요한 WorldSequence
+소비자다. 새 C++ TU는 없다. 현재 저장본 bytes/hash가 유지되는 out 후보만 만들고 root가
+최종 등록한다. 실제 목록/Append 본문 집중 검사, 기존 World codec/샘플러, V1 particle 시간·위치
+검사와 최소 TU compile을 수행한다. Client/UI 실행·캡처 및 제품 화면 판정은 하지 않는다.
+
+## G07. 현재 저장본의 상단 무지개 재생과 표시 기준점 재확인
+
+사용자가 수정한 최신 rainbow.drop과 ball.upper, World2036, Composition의 bytes/hash를
+out/CardDiceScale20260917/ball에 보관한다. 공 mesh5와 환경 무지개 sprite30의 실제
+EmitterDirect provider, 입자 출생·수명·위치와 원작 CameraOffset·PSA_Velocity·size curve를
+함께 비교한다. 이전 G06과 같은 clock이라는 이유로 표시 문제를 해결됐다고 판단하지 않는다.
+반대로 시각적 차이만으로 이미 같은 궤적에 별도 속도 보정을 추가하지 않는다.
+
+기존 actual Codec/Playback 검사에 paired world 위치, SourceEmitterWorld, evaluated velocity,
+normalized life 로그를 추가한다. 모든 probe는 CRT assertion/abort, Windows 및 Engine 오류
+대화상자를 먼저 차단하고 첫 오류에서 중단한다. 제품 Client/UI 조작 없이 root가 허용한
+1회 실행으로 검증한다. 위치와 clock이 이미 일치하면 native2843 material/quad의 실제 표시
+소비자를 조사한 뒤 근거가 있는 최소 변경만 후보로 만든다. live 등록은 root가 담당한다.
+
+G07의 최소 후보는 derived sprite30의 원작 위쪽 velocity를 다시 켜 PSA_Velocity의 수직축을
+복구하고, 사용자 상단 부착을 위해 offsetcentery를0→1로 명시적으로 조정한다. 원본 binary의
+signed-size CPU packing을 확정한 것이 아니므로 pivot 변경을 원작 복원으로 설명하지 않는다.
+World split.g1..g5의 upper track만 제거하여 자식62공에는 환경 무지개를 반복하지 않는다.
+첫 공 g0의 upper와 shot 전체, 모든 공·분열·충돌·폭발의 시각과 배치는 유지한다.

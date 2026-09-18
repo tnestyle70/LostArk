@@ -322,6 +322,9 @@ public:
     void Set_PresentationVisible(bool visible) { m_bPresentationVisible = visible; }
     // Presentation owner gates this using the approved Server pattern clock.
     void Set_ChargeAfterimageEnabled(bool enabled) { m_ChargeAfterimageEnabled = enabled; }
+    // A nonnegative clock belongs to Tool Preview; product uses its received state.
+    void Set_CounterAfterimageEnabled(bool enabled, float previewClockSeconds = -1.f);
+    void Reset_AfterimageHistory();
 #ifdef _DEBUG
 	void Set_CombatColliderDebugVisible(bool_t isVisible) {
 		m_isCombatColliderDebugVisible = isVisible;
@@ -365,7 +368,12 @@ private:
     bool m_ChargeAfterimageEnabled = false;
     CSkeletalAfterimage m_BodyAfterimage;
     CSkeletalAfterimage m_WeaponAfterimage;
+    CSkeletalAfterimage m_HatAfterimage;
+    bool m_CounterAfterimageEnabled = false;
+    bool m_CounterAfterimageExternalClock = false;
+    float m_CounterAfterimageClockSeconds = 0.f;
 	shared_ptr<Engine::CModel> m_pModelCom = { nullptr };
+	shared_ptr<Engine::CModel> m_pSaydonHatModel;
 	wstring_t m_strModelTag;
 	std::string m_strEffectV2BindingOwner;
 	/* Socketed weapon with body-clock pose synchronization; null when the

@@ -5,7 +5,9 @@
 #include "DataJson.h"
 #include "DeployPropCatalog.h"
 #include "MapAssetCatalog.h"
+#include "MapAuthoringHost.h"
 #include "MapPlacementDocument.h"
+#include "MapPlacementEditSession.h"
 #include "ProjectDataRoot.h"
 #include <algorithm>
 #include <cfloat>
@@ -14,6 +16,7 @@
 #include <fstream>
 #include <iterator>
 #include <map>
+#include <unordered_map>
 #include <unordered_set>
 #include <utility>
 
@@ -83,6 +86,36 @@ std::string Lower(std::string text)
 }
 float3_t Position(const std::array<double, 3u>& value)
 { return {static_cast<float>(value[0]), static_cast<float>(value[1]), static_cast<float>(value[2])}; }
+/* Degrees are friendlier than a raw quaternion; both edit the same pose. The
+   Map Tool keeps an identical pair for its own inspector, so a placement
+   edited in either tool reads back the same angles. */
+float3_t PlacementQuaternionToEulerDegrees(const float4_t& value)
+{
+    /* Exact inverse of XMQuaternionRotationRollPitchYaw (M = Mz*Mx*My,
+       row-vector). Yaw and roll use atan2 so Y keeps the full +-180 range;
+       only pitch stays asin-limited to +-90. */
+    constexpr float radiansToDegrees = 180.f / DirectX::XM_PI;
+    float4x4_t rotation{};
+    XMStoreFloat4x4(&rotation, XMMatrixRotationQuaternion(XMLoadFloat4(&value)));
+    const float sinPitch = (std::max)(-1.f, (std::min)(1.f, -rotation._32));
+    const float pitch = std::asin(sinPitch);
+    float yaw = 0.f, roll = 0.f;
+    if (std::abs(sinPitch) < 0.99999f)
+    { yaw = std::atan2(rotation._31, rotation._33); roll = std::atan2(rotation._12, rotation._22); }
+    else yaw = std::atan2(-rotation._13, rotation._11);
+    return float3_t(pitch * radiansToDegrees, yaw * radiansToDegrees, roll * radiansToDegrees);
+}
+float4_t PlacementEulerDegreesToQuaternion(const float3_t& value)
+{
+    constexpr float degreesToRadians = DirectX::XM_PI / 180.f;
+    vector_t quaternion = XMQuaternionRotationRollPitchYaw(
+        value.x * degreesToRadians, value.y * degreesToRadians, value.z * degreesToRadians);
+    quaternion = XMQuaternionNormalize(quaternion);
+    if (XMVectorGetW(quaternion) < 0.f) quaternion = XMVectorNegate(quaternion);
+    float4_t result{};
+    XMStoreFloat4(&result, quaternion);
+    return result;
+}
 const char* PresentationName(KOUKU_SAYDON_PRESENTATION_KIND kind)
 {
     switch (kind)
@@ -95,6 +128,15 @@ const char* PresentationName(KOUKU_SAYDON_PRESENTATION_KIND kind)
     default: return "Presentation";
     }
 }
+}
+
+CWorldLevelTool::CWorldLevelTool() = default;
+CWorldLevelTool::~CWorldLevelTool() = default;
+
+CMapPlacementEditSession& CWorldLevelTool::Session()
+{
+    if (!m_pSession) m_pSession = std::make_unique<CMapPlacementEditSession>();
+    return *m_pSession;
 }
 
 void CWorldLevelTool::Open(const std::string& activeAreaId)
@@ -190,7 +232,7 @@ bool CWorldLevelTool::Refresh()
         row.target.areaId = area.id;
         row.target.placementId = placement.placementId;
         row.target.position = placement.position;
-        row.status = placement.sourcePlacementId;
+        row.status = placement.sourcePlacementId + " | source level " + placement.sourceLevel;
         mapPositions.emplace(std::to_string(placement.placementId), placement.position);
         staged.push_back(std::move(row));
     }
@@ -411,9 +453,77 @@ void CWorldLevelTool::Rebuild_Rows()
         const auto& source = useLive ? live : m_SavedCompositions[i];
         if (source) Append_CompositionRows(*source, static_cast<WORLD_LEVEL_COMPOSITION_OWNER>(i), useLive);
     }
+    Apply_SessionRows();
     m_RowsDirty = false;
     m_FilterDirty = true;
 }
+
+void CWorldLevelTool::Apply_SessionRows()
+{
+    if (!m_pSession || !m_pSession->Is_Bound() || m_pSession->Get_AreaId() != m_SelectedAreaId) return;
+    const auto& catalog = m_pSession->Get_Catalog();
+    const auto& draft = m_pSession->Get_Draft();
+    std::unordered_map<uint64_t, size_t> existing;
+    for (size_t i = 0u; i < m_Rows.size(); ++i)
+        if (m_Rows[i].kind == "Map") existing.emplace(m_Rows[i].target.placementId, i);
+    std::unordered_set<uint64_t> present;
+    present.reserve(draft.size());
+    for (const auto& record : draft)
+    {
+        present.insert(record.placementId);
+        const auto found = existing.find(record.placementId);
+        if (found == existing.end()) continue;
+        ROW& row = m_Rows[found->second];
+        row.target.position = record.position;
+        row.visible = record.visible;
+        row.status = record.sourcePlacementId + " | source level " + record.sourceLevel;
+    }
+    for (const auto& record : draft)
+    {
+        if (existing.contains(record.placementId)) continue;
+        ROW row;
+        row.key = "map:" + std::to_string(record.placementId);
+        row.kind = "Map";
+        const auto* asset = catalog.Find(record.assetId);
+        row.name = asset ? asset->label : record.assetId;
+        row.assetId = record.assetId;
+        row.anchor = "MAP";
+        row.hasPosition = true;
+        row.visible = record.visible;
+        row.target.areaId = m_SelectedAreaId;
+        row.target.placementId = record.placementId;
+        row.target.position = record.position;
+        row.status = record.sourcePlacementId + " | source level " + record.sourceLevel +
+            " (created in this editing session)";
+        m_Rows.push_back(std::move(row));
+    }
+    std::erase_if(m_Rows, [&](const ROW& row)
+        { return row.kind == "Map" && !present.contains(row.target.placementId); });
+}
+
+void CWorldLevelTool::Update(const bool visible)
+{
+    if (!m_pSession) return;
+    m_pSession->Update(visible && m_Open);
+    if (m_pSession->Consume_RowsDirty()) m_RowsDirty = true;
+    const uint64_t selected = m_pSession->Get_SelectedPlacementId();
+    if (selected == m_SessionSelectionMirror) return;
+    m_SessionSelectionMirror = selected;
+    if (0u != selected && m_pSession->Get_AreaId() == m_SelectedAreaId)
+        m_SelectedKey = "map:" + std::to_string(selected);
+}
+
+bool CWorldLevelTool::Is_PlacementPickArmed() const
+{ return m_pSession && m_pSession->Is_PickArmed(); }
+const std::string& CWorldLevelTool::Get_PlacementPickAreaId() const
+{
+    static const std::string empty;
+    return m_pSession ? m_pSession->Get_AreaId() : empty;
+}
+void CWorldLevelTool::Cancel_PlacementPick(std::string reason)
+{ if (m_pSession) m_pSession->Cancel_Pick(std::move(reason)); }
+void CWorldLevelTool::Complete_PlacementPick(const float3_t& worldPoint)
+{ if (m_pSession) m_pSession->Complete_Pick(worldPoint); }
 void CWorldLevelTool::Request_Edit(const ROW& row)
 {
     if (!row.canEdit) return;
@@ -445,6 +555,10 @@ void CWorldLevelTool::Render()
     const bool focused = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
     if (focused && (ImGui::IsMouseClicked(ImGuiMouseButton_Left) || ImGui::IsMouseClicked(ImGuiMouseButton_Right))) m_InteractionRequested = true;
     ImGui::Text("Active level: %s", m_ActiveAreaId.empty() ? "No world loaded" : m_ActiveAreaId.c_str());
+    /* Browsing another Area while placements are bound would show a document
+       the draft does not describe, so the inventory stays on the edited Area. */
+    const bool sessionBound = m_pSession && m_pSession->Is_Bound();
+    ImGui::BeginDisabled(sessionBound);
     ImGui::SetNextItemWidth(240.f);
     if (ImGui::BeginCombo("Area inventory", m_SelectedAreaId.c_str()))
     {
@@ -459,6 +573,10 @@ void CWorldLevelTool::Render()
     }
     ImGui::SameLine();
     if (ImGui::Button("Refresh Saved Inventory")) Refresh();
+    ImGui::EndDisabled();
+    if (sessionBound)
+        ImGui::TextWrapped("Map placements of %s are bound for editing; End editing to browse another Area.",
+            m_pSession->Get_AreaId().c_str());
     ImGui::TextWrapped("Map/deploy/world inventory reads saved authoring data. Open Composition owners contribute their current drafts after Apply. Editing and creation use each existing owner and its Save/Publish controls.");
     if (m_SelectedAreaId != m_ActiveAreaId)
         ImGui::TextWrapped("Browsing another Area. Camera focus is available after that Area is loaded; choosing an inventory does not change levels.");
@@ -516,7 +634,15 @@ void CWorldLevelTool::Render()
             ImGui::PushID(row.key.c_str());
             ImGui::TableNextRow(); ImGui::TableNextColumn();
             const auto label = row.name + (row.visible ? "" : " [disabled/hidden]");
-            if (ImGui::Selectable(label.c_str(), m_SelectedKey == row.key, ImGuiSelectableFlags_SpanAllColumns)) m_SelectedKey = row.key;
+            if (ImGui::Selectable(label.c_str(), m_SelectedKey == row.key, ImGuiSelectableFlags_SpanAllColumns))
+            {
+                m_SelectedKey = row.key;
+                if (sessionBound && row.kind == "Map" && row.target.areaId == m_pSession->Get_AreaId())
+                {
+                    m_pSession->Select_Placement(row.target.placementId);
+                    m_SessionSelectionMirror = row.target.placementId;
+                }
+            }
             if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) Request_Edit(row);
             ImGui::TableNextColumn(); ImGui::TextUnformatted(row.kind.c_str());
             ImGui::TableNextColumn(); ImGui::TextUnformatted(row.anchor.c_str());
@@ -548,8 +674,142 @@ void CWorldLevelTool::Render()
             !io.KeyCtrl && !io.KeyAlt && !io.KeyShift && !io.KeySuper &&
             ImGui::IsKeyPressed(ImGuiKey_F, false)) Request_Focus(row);
     }
+    Render_MapEditing();
     ImGui::TextWrapped("%s", m_Status.c_str());
     ImGui::End();
+}
+
+void CWorldLevelTool::Render_MapEditing()
+{
+    const auto area = std::find_if(m_Areas.begin(), m_Areas.end(),
+        [&](const AREA& entry) { return entry.id == m_SelectedAreaId; });
+    if (area == m_Areas.end()) return;
+    if (!ImGui::CollapsingHeader("Map placements", ImGuiTreeNodeFlags_DefaultOpen)) return;
+
+    CMapPlacementEditSession& session = Session();
+    const IMapAuthoringHost* host = Find_ActiveMapAuthoringHost();
+    const bool ownsArea = nullptr != host &&
+        host->Get_MapAuthoringCatalog().Get_AreaId() == m_SelectedAreaId;
+    if (!session.Is_Bound())
+    {
+        ImGui::BeginDisabled(!ownsArea);
+        if (ImGui::Button("Edit placements in this Level"))
+        {
+            CMapPlacementEditSession::BIND_DESC desc;
+            desc.areaId = area->id;
+            desc.sourceCatalog = area->catalog;
+            desc.sourcePlacements = area->placements;
+            desc.sourceMaterials = area->materials;
+            desc.declaresLights = !area->lights.empty();
+            std::string status;
+            if (!session.Bind(desc, status)) session.Set_Status(status);
+            m_SessionSelectionMirror = 0u;
+            m_RowsDirty = true;
+        }
+        ImGui::EndDisabled();
+        if (!ownsArea)
+            ImGui::TextWrapped("%s is listed read-only: the current Level does not own it. Enter Character Select or the KoukuSaydon arena that owns this Area, then press Edit placements.",
+                m_SelectedAreaId.c_str());
+        ImGui::TextWrapped("%s", session.Get_Status().c_str());
+        return;
+    }
+
+    ImGui::Text("Editing %s%s%s", session.Get_AreaId().c_str(),
+        session.Is_Dirty() ? " | unsaved draft" : "",
+        session.Is_Publishing() ? " | publishing" : "");
+    if (session.Is_ReadOnly())
+        ImGui::TextWrapped("Read-only: %s", session.Get_ReadOnlyReason().c_str());
+    if (ImGui::Button("End editing"))
+    {
+        session.End();
+        m_SessionSelectionMirror = 0u;
+        m_RowsDirty = true;
+        session.Set_Status("Editing ended. The draft is kept in memory until the tool is closed.");
+        return;
+    }
+    ImGui::SameLine();
+    ImGui::BeginDisabled(session.Is_ReadOnly() || session.Is_PickArmed());
+    if (ImGui::Button("Pick World Object"))
+    {
+        session.Arm_Pick();
+        WORLD_LEVEL_TOOL_REQUEST request;
+        request.kind = WORLD_LEVEL_REQUEST_KIND::PICK_PLACEMENT;
+        request.areaId = session.Get_AreaId();
+        m_Request = std::move(request);
+        m_InteractionRequested = true;
+    }
+    ImGui::EndDisabled();
+    if (session.Is_PickArmed())
+    {
+        ImGui::SameLine();
+        if (ImGui::Button("Cancel pick"))
+            session.Cancel_Pick("Pick cancelled; the selection was preserved.");
+    }
+
+    const uint64_t selected = session.Get_SelectedPlacementId();
+    const MAP_PLACEMENT_RECORD* draft = session.Find_Draft(selected);
+    if (nullptr == draft)
+        ImGui::TextDisabled("No placement selected. Pick one in the viewport, or select a Map row above.");
+    else
+    {
+        ImGui::Text("Placement #%llu", static_cast<unsigned long long>(draft->placementId));
+        ImGui::TextWrapped("Asset: %s | Source: %s | Level: %s | Transform: %s",
+            draft->assetId.c_str(), draft->sourcePlacementId.c_str(),
+            draft->sourceLevel.c_str(), draft->transformSource.c_str());
+        const std::string blocked = session.Describe_EditBlock(selected);
+        if (!blocked.empty()) ImGui::TextWrapped("%s", blocked.c_str());
+        float3_t position = draft->position;
+        float4_t quaternion = draft->rotationQuaternion;
+        float3_t scale = draft->signedScale;
+        ImGui::BeginDisabled(!blocked.empty());
+        const bool positionChanged = ImGui::DragFloat3("Position", &position.x, 0.1f);
+        float3_t eulerDegrees = PlacementQuaternionToEulerDegrees(quaternion);
+        const bool eulerChanged = ImGui::DragFloat3("Rotation (deg pitch/yaw/roll)", &eulerDegrees.x, 0.5f);
+        if (eulerChanged) quaternion = PlacementEulerDegreesToQuaternion(eulerDegrees);
+        const bool scaleChanged = ImGui::DragFloat3("Signed scale", &scale.x, 0.01f, -1000.f, 1000.f);
+        ImGui::EndDisabled();
+        ImGui::Text("Rotation quaternion: %.4f, %.4f, %.4f, %.4f",
+            quaternion.x, quaternion.y, quaternion.z, quaternion.w);
+        if (blocked.empty() && (positionChanged || eulerChanged || scaleChanged))
+        {
+            const vector_t rawQuaternion = XMLoadFloat4(&quaternion);
+            const float quaternionLength = XMVectorGetX(XMVector4Length(rawQuaternion));
+            const bool scaleIsValid = std::abs(scale.x) >= 0.000001f &&
+                std::abs(scale.y) >= 0.000001f && std::abs(scale.z) >= 0.000001f;
+            if (!std::isfinite(position.x) || !std::isfinite(position.y) || !std::isfinite(position.z) ||
+                !std::isfinite(quaternionLength) || quaternionLength < 0.000001f || !scaleIsValid)
+                session.Set_Status("Transform edit rejected: non-finite value or zero quaternion/scale axis.");
+            else
+            {
+                vector_t normalized = XMQuaternionNormalize(rawQuaternion);
+                if (XMVectorGetW(normalized) < 0.f) normalized = XMVectorNegate(normalized);
+                XMStoreFloat4(&quaternion, normalized);
+                MAP_PLACEMENT_RECORD staged = *draft;
+                staged.position = position;
+                staged.rotationQuaternion = quaternion;
+                staged.signedScale = scale;
+                if (session.Apply_Transform(selected, staged))
+                {
+                    const std::string key = "map:" + std::to_string(selected);
+                    for (ROW& row : m_Rows) if (row.key == key) { row.target.position = staged.position; break; }
+                    session.Set_Status("Transform applied to placement #" + std::to_string(selected) +
+                        "; Save writes it to the authoring document.");
+                }
+            }
+        }
+        ImGui::BeginDisabled(session.Is_ReadOnly());
+        if (ImGui::Button("Duplicate")) { if (session.Duplicate_Selected()) m_RowsDirty = true; }
+        ImGui::EndDisabled();
+        ImGui::SameLine();
+        ImGui::BeginDisabled(session.Is_ReadOnly() || !session.Is_SessionCreated(selected));
+        if (ImGui::Button("Delete duplicate")) { if (session.Delete_Selected()) m_RowsDirty = true; }
+        ImGui::EndDisabled();
+        ImGui::SameLine();
+    }
+    ImGui::BeginDisabled(session.Is_ReadOnly() || !session.Is_Dirty() || session.Is_Publishing());
+    if (ImGui::Button("Save")) (void)session.Save();
+    ImGui::EndDisabled();
+    ImGui::TextWrapped("%s", session.Get_Status().c_str());
 }
 }
 #endif

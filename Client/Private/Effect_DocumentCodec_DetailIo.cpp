@@ -169,6 +169,27 @@ namespace Client::EffectDocumentCodecDetail
 	}
 
 
+	bool_t Read_OwnerRadialMask(
+		const Client::DATA_JSON_VALUE& Sprite,
+		Client::EFFECT_OWNER_RADIAL_MASK_DESC& Out,
+		std::string& strOutError)
+	{
+		const auto* Mask = Sprite.Find("ownerRadialMask");
+		if (!Mask) return true;
+		if (!Mask->Is_Object())
+		{
+			strOutError = "Effect sprite ownerRadialMask must be an object.";
+			return false;
+		}
+		return Validate_ExactFields(*Mask, { "enabled", "centerXZ", "radius", "feather" },
+				"Effect sprite ownerRadialMask", strOutError) &&
+			Read_Bool(*Mask, "enabled", Out.bEnabled, strOutError) &&
+			Read_Array(*Mask, "centerXZ", &Out.vCenterXZ.x, 2u, strOutError) &&
+			Read_Float(*Mask, "radius", Out.fRadius, strOutError) &&
+			Read_Float(*Mask, "feather", Out.fFeather, strOutError);
+	}
+
+
 	bool_t Read_LinearReveal(
 		const Client::DATA_JSON_VALUE& Sprite,
 		Client::EFFECT_LINEAR_REVEAL_DESC& Out,
@@ -448,6 +469,7 @@ namespace Client::EffectDocumentCodecDetail
 			Read_OptionalFloat(*pSprite, "billboardRollDegreesPerSecond",
 				Out.Sprite.fBillboardRollDegreesPerSecond, strOutError) &&
 			Read_LinearReveal(*pSprite, Out.Sprite.LinearReveal, strOutError) &&
+			Read_OwnerRadialMask(*pSprite, Out.Sprite.OwnerRadialMask, strOutError) &&
 			Read_Array(*pDecal, "size", &Out.Decal.vSize.x, 2u, strOutError) &&
 			Read_Float(*pDecal, "depth", Out.Decal.fDepth, strOutError) &&
 			Read_DecalReceiver(*pDecal, Out.Decal, strOutError);
@@ -807,6 +829,14 @@ namespace Client::EffectDocumentCodecDetail
 			Output << ", \"followEmitterAxisRotation\": true";
 		if (Detail.Sprite.bTwoSided)
 			Output << ", \"twoSided\": true";
+		if (Detail.Sprite.OwnerRadialMask.bEnabled)
+		{
+			const auto& Mask = Detail.Sprite.OwnerRadialMask;
+			Output << ", \"ownerRadialMask\": { \"enabled\": true, \"centerXZ\": ";
+			Write_Float2(Output, Mask.vCenterXZ);
+			Output << ", \"radius\": " << Mask.fRadius
+				<< ", \"feather\": " << Mask.fFeather << " }";
+		}
 		if (Detail.Sprite.LinearReveal.bEnabled)
 		{
 			Output << ", \"linearReveal\": { \"enabled\": true, \"axis\": \""

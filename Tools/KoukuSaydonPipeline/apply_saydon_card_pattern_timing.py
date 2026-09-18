@@ -69,10 +69,102 @@ def resource_id(asset):
     return 'kakulsaydon.effect.' + hashlib.sha256(asset.encode()).hexdigest()[:20]
 
 
+def stage_p78_card_playback(output):
+    """Stage the saved four Effect boxes as typed one-shot pursuit windows.
+
+    This deliberately cannot install: the caller must merge against the latest
+    saved revision. Already migrated documents fail before any scale is applied.
+    """
+    before = PATH.read_bytes()
+    text = before.decode('utf-8-sig')
+    document = json.loads(text)
+    pattern_id = 'KAKULSAYDON_G1_PATTERN_78'
+    pattern = next(p for p in document['patterns'] if p['patternId'] == pattern_id)
+    old_logic = next(l for l in document['logics'] if l['logicId'] == 'kakulsaydon.g1.logic.73')
+    resources = {r['resourceId']: r for r in document['presentationResources']}
+    boxes = []
+    for ordinal, suit in zip((9, 10, 11, 12), ('diamond', 'spade', 'clover', 'heart')):
+        identity = f'{pattern_id}.presentation.{ordinal}'
+        box = next((b for b in pattern['presentationOccurrences'] if b['occurrenceId'] == identity), None)
+        assert box is not None, 'P78 already migrated or saved Effect box is absent: ' + identity
+        assert resources[box['resourceId']]['assetId'] == 'effect.kouku.card.match.' + suit
+        assert box['durationMs'] == 4500
+        for key, expected in dict(positionOffset=[0, 0, 0], rotationDegrees=[0, 0, 0], scale=[1, 1, 1],
+                                  anchorKind='BOSS', followBoss=True, bone='', worldId='', logicOccurrenceId='').items():
+            assert box.get(key) == expected, f'Preserve edited {identity}.{key}: typed pursuit has no equivalent'
+        boxes.append((suit, box))
+    old_occurrence = next(b for b in pattern['logicOccurrences'] if b['occurrenceId'] == pattern_id + '.logic.1')
+    assert old_occurrence['logicId'] == old_logic['logicId']
+    assert old_logic['judgementKind'] == 'PURSUIT_PROJECTILES'
+    logic_ordinal = document['nextLogicOrdinal']
+    occurrence_ordinal = pattern['nextLogicOccurrenceOrdinal']
+    occurrences, definitions, mapping = [], [], []
+    for index, (suit, box) in enumerate(boxes):
+        logic_id = 'kakulsaydon.g1.logic.' + str(logic_ordinal + index)
+        assert not any(row['logicId'] == logic_id for row in document['logics'])
+        definition = dict(old_logic, logicId=logic_id, displayName='세이튼_카드맞추기_' + suit + '_추적',
+            visualIds=[box['resourceId']], countPerWave=1, spawnIntervalMs=0, lifetimeMs=box['durationMs'],
+            contactRadiusM=old_logic['contactRadiusM'] * 2.5)
+        occurrence_id = old_occurrence['occurrenceId'] if index == 0 else pattern_id + '.logic.' + str(occurrence_ordinal + index - 1)
+        occurrence = dict(old_occurrence, occurrenceId=occurrence_id, logicId=logic_id,
+                          startMs=box['startMs'], durationMs=box['durationMs'], enabled=True)
+        occurrences.append(occurrence)
+        definitions.append(definition)
+        mapping.append(dict(sourcePresentationId=box['occurrenceId'], logicOccurrenceId=occurrence_id,
+                            logicId=logic_id, suit=suit, startMs=box['startMs'], durationMs=box['durationMs']))
+    removed = {box['occurrenceId'] for _, box in boxes}
+    replacement = [b for b in pattern['logicOccurrences'] if b['occurrenceId'] != old_occurrence['occurrenceId']] + occurrences
+    fields = dict(logicOccurrences=replacement,
+        nextLogicOccurrenceOrdinal=occurrence_ordinal + 3,
+        presentationOccurrences=[b for b in pattern['presentationOccurrences'] if b['occurrenceId'] not in removed])
+    for definition in definitions:
+        text = append_row(text, 'logics', definition)
+    text = replace_row_fields(text, 'patterns', 'patternId', pattern_id, fields)
+    text = replace_field(text, 'nextLogicOrdinal', logic_ordinal + 4, 2)
+    text = replace_field(text, 'revision', document['revision'] + 1, 2)
+    after = json.loads(text)
+    assert next(l for l in after['logics'] if l['logicId'] == old_logic['logicId']) == old_logic
+    assert after['logics'] == document['logics'] + definitions
+    for old, new in zip(document['patterns'], after['patterns']):
+        assert new == (dict(old, **fields) if old['patternId'] == pattern_id else old)
+    assert max(b['startMs'] + b['durationMs'] for b in occurrences) <= sum(s['durationMs'] for s in pattern['stages'])
+    staged = [(PATH, before, text.encode('utf-8'), ['patterns.' + pattern_id, 'logics', 'nextLogicOrdinal', 'revision'])]
+    for suit, _ in boxes:
+        path = ROOT / 'Data/Effects/Authored' / ('effect.kouku.card.match.' + suit + '.effect.json')
+        data = path.read_bytes()
+        asset = json.loads(data.decode('utf-8-sig'))
+        scale = asset['particleSystem']['uniformScaleMultiplier']
+        assert 0 < scale <= 40, 'Card scale would exceed the authoring multiplier range'
+        original = copy.deepcopy(asset)
+        asset['particleSystem']['uniformScaleMultiplier'] = scale * 2.5
+        assert asset['elements'] == original['elements']
+        staged.append((path, data, (json.dumps(asset, ensure_ascii=False, indent=2, allow_nan=False) + '\n').encode('utf-8'),
+                       ['particleSystem.uniformScaleMultiplier']))
+    output = Path(output)
+    (output / 'before').mkdir(parents=True, exist_ok=True)
+    (output / 'candidate').mkdir(parents=True, exist_ok=True)
+    entries = []
+    for path, baseline, candidate, changed in staged:
+        assert path.read_bytes() == baseline, 'Concurrent saved input change: ' + str(path)
+        (output / 'before' / path.name).write_bytes(baseline)
+        (output / 'candidate' / path.name).write_bytes(candidate)
+        entries.append(dict(path=path.relative_to(ROOT).as_posix(), candidate='candidate/' + path.name,
+            beforeSha256=hashlib.sha256(baseline).hexdigest(), afterSha256=hashlib.sha256(candidate).hexdigest(), changedFields=changed))
+    receipt = dict(installed=False, sourceRevision=document['revision'], candidateRevision=after['revision'],
+        classification='PROJECT_AUTHORED', mapping=mapping, documents=entries,
+        scaleFactor=2.5, contactRadiusM=definitions[0]['contactRadiusM'], lifetimeMs=4500,
+        duplicatePolicy='Replace ordinary four Effect boxes and old simultaneous four-shot occurrence; preserve logic.73 definition',
+        manualVisualValidation='USER_PENDING')
+    (output / 'stage.json').write_text(json.dumps(receipt, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+    print(encode(receipt))
+
+
 def apply(install=False):
     before = PATH.read_bytes()
     text = before.decode('utf-8-sig')
     document = json.loads(text)
+    assert not any(l.get('displayName', '').startswith('세이튼_카드맞추기_') and l.get('countPerWave') == 1
+                   for l in document['logics']), 'P78 typed windows are saved; legacy bootstrap must not reset them'
     patterns = {p['patternId']: copy.deepcopy(p) for p in document['patterns']}
     resources = {r['assetId']: r for r in document['presentationResources'] if r['kind'] == 'EFFECT'}
     prefix = 'effect.kouku.card.match.'
@@ -174,4 +266,11 @@ def apply(install=False):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(__doc__)
     parser.add_argument('--install', action='store_true')
-    apply(parser.parse_args().install)
+    parser.add_argument('--p78-card-playback-only', action='store_true')
+    parser.add_argument('--output', type=Path, default=ROOT / 'out/CounterDoveCard20260917/p78')
+    args = parser.parse_args()
+    if args.p78_card_playback_only:
+        assert not args.install, 'P78 mode stages candidates only; install through the current saved-document merge'
+        stage_p78_card_playback(args.output)
+    else:
+        apply(args.install)

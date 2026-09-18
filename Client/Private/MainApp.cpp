@@ -89,6 +89,7 @@
 #include "HUDLayoutTool.h"
 #include "MapAssetRenderUtils.h"
 #include "MapEditorWorkspaceService.h"
+#include "LevelNavigationDebug.h"
 #include "MapTool.h"
 #include "NetworkPlayerCommandSink.h"
 #include "ProfilerCaptureIO.h"
@@ -1320,7 +1321,10 @@ void CMainApp::Update(const f32_t fTimeDelta)
 			IsDebugToolVisible(DEBUG_TOOL::EFFECT) && m_eDebugInputOwner == DEBUG_TOOL::EFFECT)) |
 		(nullptr != m_pEffectToolV2 && m_pEffectToolV2->Update_AuthoringPlacementInput(m_bDeveloperToolsVisible &&
 			IsDebugToolVisible(DEBUG_TOOL::EFFECT_V2) && m_eDebugInputOwner == DEBUG_TOOL::EFFECT_V2));
-	const bool_t mapEffectPlacementConsumed = UpdateMapEffectPlacementInput() || authoredEffectPlacementConsumed;
+	/* Evaluated before the OR so every armed picker still runs its own frame. */
+	const bool_t worldLevelPickConsumed = UpdateWorldLevelPlacementPickInput();
+	const bool_t mapEffectPlacementConsumed = UpdateMapEffectPlacementInput() ||
+		authoredEffectPlacementConsumed || worldLevelPickConsumed;
 	const bool_t worldLeftMouseConsumed = mapEffectPlacementConsumed ||
 		(nullptr != m_pMapTool && m_pMapTool->ConsumesWorldLeftMouse());
 #else
@@ -2643,6 +2647,12 @@ HRESULT CMainApp::Render()
 			}
 		}
 #ifdef _DEBUG
+		if (!m_pLevelNavigationDebug)
+			m_pLevelNavigationDebug = std::make_unique<CLevelNavigationDebug>();
+		// MapTool owns its selected Area inside the Development editor workspace.
+		m_pLevelNavigationDebug->Sync_Level(CMapEditorWorkspaceService::Is_Active() ?
+			LEVEL::END : static_cast<LEVEL>(CGameInstance::Get().Get_CurrentLevelID()));
+		m_pLevelNavigationDebug->Render_Overlay();
 		if (m_pKoukuPresentationPlayer) m_pKoukuPresentationPlayer->Render_Debug();
 		if (nullptr != m_pRenderingBenchmark)
 			m_pRenderingBenchmark->Update(CGameInstance::Get().Get_Profiler());
@@ -8324,6 +8334,7 @@ void CMainApp::RenderArenaCameraAndPlayerControls()
 	{
 		if (LEVEL::BERN == level)
 			RenderArenaFollowCameraSettings();
+		if (m_pLevelNavigationDebug) m_pLevelNavigationDebug->Render_Controls();
 		return;
 	}
 	const auto setSpeed = [valtan, kouku, characterSelect, camera](const f32_t speed)
@@ -8373,6 +8384,7 @@ void CMainApp::RenderArenaCameraAndPlayerControls()
 		if (nullptr != characterSelect)
 			ImGui::TextDisabled("Move Player is available in Valtan and KoukuSaydon arenas.");
 	}
+	if (m_pLevelNavigationDebug) m_pLevelNavigationDebug->Render_Controls();
 	if (nullptr != characterSelect)
 		RenderCharacterSelectFloorSwapControls();
 	RenderArenaFollowCameraSettings();
@@ -10226,6 +10238,22 @@ void CMainApp::RefreshWorldObjectResources()
 			row.bUntilDestroyed = object.combatBody && object.combatBody->lifetimePolicy == "UNTIL_DESTROYED";
 			row.iMaximumHp = object.combatBody ? object.combatBody->maxHp : 0u;
 			resources.push_back(std::move(row));
+		}
+		// Keep donor motions available to Logic/editing, but Object Append must
+		// select their unique complete group instead of a same-named g0 default.
+		for (auto& donor : resources)
+		{
+			if (!donor.bDefaultMotion || donor.bMotionGroup) continue;
+			std::string ownerId; bool ambiguous = false;
+			for (const auto& group : resources)
+			{
+				if (!group.bMotionGroup || !group.bEnabled) continue;
+				const auto* object = document->Find_ObjectResource(group.strObjectResourceId);
+				if (!object || std::find(object->motionInstanceIds.begin(), object->motionInstanceIds.end(), donor.strInstanceId) == object->motionInstanceIds.end()) continue;
+				if (!ownerId.empty()) { ambiguous = true; break; }
+				ownerId = group.strObjectResourceId;
+			}
+			if (!ambiguous) donor.strAppendGroupObjectId = std::move(ownerId);
 		}
 	}
 	const std::string status = document ?

@@ -1,11 +1,13 @@
 # 세이튼 카드·트럼펫·공과 돌진 잔상 구현 결과
 
-## 현재 상태 — 최종 저장본 등록 및 Publish 완료
+## 현재 상태 — 후속 수정 등록 및 Publish 완료
 
-사용자가 모든 편집을 저장하고 Client를 종료했다고 확인한 뒤, 최신 Composition1223을 기준으로
-19개 파일을 병합·설치했다. 현재 Composition1224, WorldSequence2035이며 정식 KoukuSaydon
-owner Publish의 네 domain이 모두 통과했다. G07~G16의 등록 대기는 당시 기록이고, 최종 등록 증거와
-남은 범위는 G17을 따른다. 최신 Client·Server 제품 빌드와 사용자 화면 확인은 수행하지 않았다.
+최초19파일 등록1224 이후 사용자가 저장한 최신1232를 기준으로 후속12파일을 병합·설치했다.
+현재 Composition1233, WorldSequence2036이며 정식 KoukuSaydon owner Publish의 네 domain이
+모두 통과했다. 카드 출력의 축 회전, 주사위 크기·연속 궤적, 낙하 공·상단광, 서버 추적 카드,
+전체 공 분열 그룹과 오른손 지팡이 트레일을 반영했다. 피자는 추가 원형을 제거했으나 사용자
+이미지의 내부 세 공백 해소는 확정하지 않았다. 후속 검증·등록 증거는 G18~G21을 따른다.
+G07~G16의 등록 대기는 당시 기록이다. Client·Server 제품 빌드와 사용자 화면 확인은 수행하지 않았다.
 
 ## 이전 재검토 경위 — 사용자 V1 오류 후 정정
 
@@ -403,3 +405,736 @@ flow/opacity/alpha/noise/dissolve mask는 무늬·투명도용이다. 모든 요
 최신 Client·Server 빌드와 아레나/Effect V1 실제 화면 확인은 사용자 담당으로 남는다. 당시 확인한
 로컬 Client·Server process는 모두 없으며 에이전트가 실행하지 않았다. 사용자 요청으로 중단했던
 영문 원본 payload28개 추가 복구와 shader build 최적화도 이번 등록 완료에 포함하지 않는다.
+
+## G20. 피자 source 분리 후보와 오른손 지팡이 끝 트레일
+
+사용자 첨부 피자 화면의 검정·무지개 내부 공백을 열람했다. 기존 그룹은 원본 exp02의 원형
+충격파8개와 exp03의 피자16개를 동시에 재생했다. 원본 Action4219774는 stage4의
+1.162550초에 exp01/02를 호출하고 다음 stage5의0초부터 exp03을 호출한다. 새 피자 후보는
+사용자 허용대로 exp02만 제외하고 현재 저장된 exp03의16개 ID·모듈·재질·TRS를 전부 보존한다.
+후보 asset ID는 기존 `effect.kouku.pizza.explosion.group`이며 라이브 문서를 덮어쓰지 않았다.
+
+피자 메시를 개수 부족으로 판정하지 않았다. 설치 WModel의 실제63/63/49정점,
+80/80/60삼각형과 실제 CEffectPlayback0.2초 행렬을 대조했다. 원본 rotation .45/.88/.65turn과
+120/120/90도 mesh는 반경0.3/1/3/5/6m에서 모두 한 구간 약85.1도만 기하학적으로 비어 있다.
+원본 native3241의 UV noise·opacity·dissolve와 보조 sprite를 임의 수정하지 않았다. 따라서
+이 후보는 잘못 합친 원형 pulse의 제거까지 완료이며, 사용자 이미지의 내부3공백이 원본처럼
+보이게 해결됐다는 판단은 미완료다. geometry coverage를 최종 pixel coverage로 대신하지 않는다.
+
+새 비교 asset은 `effect.kouku.gate3.ritual.staff.tip.trail.full.restore`, 표시 이름은
+`저주의식 | 오른손 지팡이 끝 트레일`이다. 기존 왼손 문서는 byte 보존한다. 원본4219911/001의
+startcontrol→b_wp_1, X75cm와 실제 WP_MN_RPCT_05의 +X끝70.236702cm를 사용했다.
+socket은 실제 끝보다4.763298cm 바깥이며 설치 actor배율1.7에서 약0.081m다. 측정된
+socket Rx(-90)와 body preScale.017을 적용한다. white ribbon의 원본 +100cm 추가 offset을
+0으로, clip-source-segment를 false로 둔 것은 요청한 tip 연결용 USER_REQUESTED 조정이다.
+원본 source leaf와 기존 왼손의 현재100cm 편집값은 변경하지 않는다.
+
+현재 source-anchor helper를 소스에서 추출해 out에 격리 컴파일·링크하고 실제 CModel27_01
+clip으로676개 anchor표본,2개 ribbon+sprite, finite속성, 되감기 동일성을 통과했다. Ribbon
+최대 point30/20, alpha1, 폭0.339592/1.36m를 관찰했다. 두 후보 모두 실제 Codec Load,
+Validate_Drawable, Serialize/Parse, Stage/15초 Update 종료를 통과했다. 피자 duration2.4초,
+지팡이4.174864초이며 source preview clip4667ms는 별도 애니메이션 문맥이다. Python compile과
+관련 diff check도 통과했다. 제품 빌드·Client/UI실행·GPU시각 검사는 하지 않았다.
+
+피자 후보·입력hash·요소별 제거조건은 `out/EffectV1PizzaFan20260917/installation.json`,
+source notify는 `original-stage-notifies.json`, 삼각형은 `triangle-coverage.json`, 공통 CPU
+검증은 `codec-playback.log`다. 지팡이 Catalog/Tree entry와 Data None 경로는
+`out/KoukuStaffTipTrail20260917/installation.json`, 실제 모델 검증은 `cpu/result.json`이다.
+수정한 소스는 기존 두 Python builder뿐이고 새 H/CPP/project 소스 등록은 없다. 실제 등록은
+최신 사용자 저장본과 manifest guard를 확인한 별도 transaction에 남아 있다.
+
+## G18. 주사위 크기·비행 연속성 후보
+
+사용자가 확인한 손/비행/착지 주사위 크기 차이와 정지·순간 이동을 실제 설치 CModel로 재현했다.
+원본 상승·낙하 LocationDirect의 ScaleFactor에는 Distribution=None만 저장되어 있고, Engine CDO는
+단위 배율1을 가진다. 기존 leaf의 빈 cooked table은 이를0으로 평가해 위치 곡선을 소거했다.
+손·상승은 본 basis1.7을 받아 mesh basis12.75이고 낙하·착지는7.5였다. CDO1만 복구하면 상승은
+기울어진 손 birth basis를 따라가 다음 root 기준 낙하와 끊긴다. 미해독 proprietary notify 방향
+플래그를 복원했다고 주장하지 않고 이 부분은 `PROJECT_AUTHORED_CONTINUITY`로 구분했다.
+
+`build_saydon_card_pattern_groups.py --dice-only`는 최신 주사위 문서를 읽어53요소 중5개만 바꾼다.
+손 mesh 크기를 설치 본 basis로 정규화하고, 원본 상승7개·낙하5개 곡선 표본을 notify 창에
+재시각화한다. 실제 손 해제점에서 원본 apex(40,0,600)cm를 거쳐 착지(240,0,35)cm로 이어지며,
+원본 낙하 끝50cm와 착지35cm의 차이도 끝에서 해소한다. 기존 SourceTransformTrack의 absolute
+alpha cutoff로 다음 carrier가 시작될 때 이전 carrier를 끈다. 원본 native 재질·mesh·회전 속도와
+다이아·폭발 요소는 보존했고, 원본 입력 전체는 receipt에 남겼다. 공용 runtime/ABI 변경은 없다.
+
+실제 CModel(preScale.017), 설치 dice mesh(preScale.01), 원본11_02 clip과 Playback으로 검사했다.
+네 carrier의 world basis는7.5(최대오차.000137), mesh 축별 치수는 약.989×.871×1.067m다.
+해제2.433333초/낙하3.9초/착지4.166667초의 같은 frame 중심 오차는 최대1.2e-7m이며,
+root yaw37도 공변 오차는1.9e-7m다. 상승·하강은 각각 단조이고 보이는 주사위는 매frame1개다.
+Codec/Drawable/roundtrip/Stage와15초 유한 재생, builder py_compile, 관련 diff-check가 통과했다.
+G19 최신 Playback OBJ로 재링크한409개 frame 행도 이전 수치와 byte 단위로 동일했다.
+
+후보와 검증은 `out/EffectV1Dice20260917/candidate/`, `verified.json`, `dice-continuity.patch.json`,
+`dice_probe.cpp/.cmd/.link.rsp`, `candidate.csv`, `rotated.csv`, `final.csv`, `mesh-bounds.txt`다.
+후보SHA256은 `7919c8d46ca94acb3335198ef03e654ca8bb45ad011f854ee6ba51c68ebfa917`이며
+baseline `6257aa644baea2382f59d0aca17204c7c53643584df3d5782980245d2dccec6a`의 bytes는 불변이다.
+71개 필드별 expected/proposed와 전체 baseline hash를 함께 guard한다. live 설치·제품 빌드·화면
+판정은 아직 하지 않았다. 수치상 연속성과 원본 엔진의 미해독 부착 정책·시각 일치는 별개다.
+
+## G19. 카드 출력 회전축과 추적 카드 표시 정리
+
+원본 카드 출력5개 sprite의 EPAL_Rotate_Z는 Client ROTATE_Y로 변환되지만 기존 renderer는
+ROTATE_X/Y를 일반 camera billboard로 처리했다. Particle Billboard를 끄면 source facing과
+pivot 경로도 건너뛰기 때문에 raw 단면 quad가 사라져 보일 수 있다. Local Space는 birth/current
+root 선택이며 이 방향 결함을 해결하는 옵션이 아니다.
+
+GeometryHelpers는 sourceRecipe와 followEmitterAxisRotation이 모두 켜진 ROTATE_X/Y/Z에만
+변환된 emitter 축을 적용한다. 카메라 방향을 축의 수직 평면에 투영해 rect front normal을 카메라로
+유지하고, view가 축과 평행하거나 camera와 입자가 겹쳐도 finite한 대체 basis를 사용한다.
+opt-off의 기존 X/Y camera billboard와 Z 계산은 그대로다. Playback은 local-space 현재 root와
+world-space 출생 root를 전달한다. MaterialDetail의 기존 Axis lock follows emitter rotation 옵션을
+회전축에도 노출하고 활성화할 때 particle billboard를 켠다. public field·shader ABI는 추가하지 않았다.
+
+카드출력 후보는 사용자 TRS·revolution·source 모듈·재질·타이밍·숨긴 spark를 보존하면서
+6개 particle billboard/localSpace와5개 axis-follow의15개 필드만 수정한다. 실제 GeometryHelpers,
+MaterialHelpers, 현재 Playback과 Codec을 링크한 sprite_axis_probe에서888검사/36축·카메라
+조합을 통과했다. 180도 반전, 기울기, pivot·크기, 평행/겹친 camera, local/current 및 world/birth,
+실제 저작5개 sprite의30frame을 검사했다. 변경3TU 격리 컴파일과 독립 코드검토도 통과했다.
+증거는 out/EffectV1Corrections20260917/sprite-axis-result.log와card-emission.patch.json이다.
+
+P78 logic73은6114ms에 서로 다른4종 Card Effect를 생성하며 속도3m/s·contactRadius0.5m·
+lifeTime0·homing을 실제 Server combat object에 전달한다. root의 일반 Effect lane에 별도로
+놓여 있던 카드4행과 고정 폭발1행은 gameplay 추적 카드와 다른 표시이므로 이5개 occurrence만
+제거하는 guarded patch를 만들었다. 원본5개 행은 patch와before 백업에 보존하며 effect 정의와
+logic73, 주사위 및 카드출력 occurrence는 유지한다. 실제 projector에서 ordinary2개와Server card
+visual4개, loop=true 및 공통contact explosion 연결을 확인했다.
+
+현재 Server focused harness162검사/0실패:601초 무한 생존, 현재 target로 방향 전환, 자연 완료
+뒤 생존, target 사망 정리, swept contact의1회 폭발·despawn, source 취소 정리를 확인했다.
+무한 추적 요구에 따라 자연 패턴 완료로 카드를 제거하지 않는다. 단, UI Stop/restart는 활성 run
+중에만 수락되며 자연 완료 뒤에는 stale run으로 거절된다. 이때 카드는 접촉 또는 target/boss
+무효화로 종료된다. 증거는 pursuit-server-verification/server-result.log와verified.json을 따른다.
+
+이 절의 CPU 검사와 격리 컴파일은 사용자 제품 빌드·화면 확인을 대신하지 않는다. 실제 데이터
+설치와 정식 Publish 결과는 후속 통합 등록 절에 별도로 기록한다.
+
+### G20 후속 — 원본 native3241 투명 영역 대조
+
+원본 cooked pixel shader `8989ff46dbefa54a848aa35f3480555c.dxbc`와 설치된
+`Shader_VtxEffectMeshKouku3200.cso`의 native3241을 headless WARP에서 비교했다.
+실제 Playback의 .05/.1/.2/.4/.7초 Color·DynamicParameter, 원본 material parameter와
+DDS 네 장을 동일하게 공급했다. 원본 PS의 register별 입력과 texture/sampler binding을
+맞춘 UV0 64×64 사각형에서 blending을 끈 RT0 alpha를 수치로 읽었다. Client·장면 실행이나
+화면 캡처는 하지 않았고 shader source와 제품 CSO도 변경하지 않았다.
+
+총20,480표본의 alpha=0 mask와 abs(alpha)>1e-5 mask는 원본/설치 간 차이0이다.
+시각별 nonzero alpha 표본은1629/2202/2878/3215/3153으로 각각 일치했다. 최대 alpha
+절대 오차는0.001629미만, 시각별 평균 오차는8.43e-6미만이다. 실제 carrier는 UV0와
+ParticleColor·DynamicParameter4개를 전달하며 원본도 이 경로를 소비한다. 이 입력 범위에서
+native3241 번역 또는 입력 누락이 추가 투명 공백을 만든다는 가설은 재현되지 않았다.
+원본 PS 자체도 같은 UV 영역을 투명하게 만든다는 근거이지, 사용자 이미지의 모든3공백이
+원본 의도라는 증명은 아니다. 원본 화면의 정확한 시각·장면 합성과 보조 sprite의 결과는 이
+검사 범위에 포함되지 않는다. 추가 mesh 복제나 원본 alpha 변조를 정당화할 근거는 없다.
+
+증거는 `out/EffectV1PizzaFan20260917/native-comparison-summary.json`,
+`native-installed.json`, `native-original.json`, `native_inputs.txt`,
+`cpu/material-samples.csv`, `native_compare_probe.cpp`와 `compile_compare.log`에 있다.
+요약 JSON에 원본 DXBC와 설치 CSO의 SHA256을 고정했다. exp02 분리 후보 이후 추가
+source/Data 수정은 없으며 root의 설치 transaction과 이 원인 조사를 구분한다.
+
+오른손 지팡이 검증도 G19 최신 `out/EffectV1Corrections20260917/Effect_Playback.obj`로
+재링크하여 실제 CModel676표본과2개 ribbon·sprite 검사를 다시 통과했다. 증거는
+`out/KoukuStaffTipTrail20260917/cpu/result.latest-playback.json`이다. 최종 Catalog용
+duration은 실제 Effect 문서4.174864초를 올림한4175ms이며, source preview clip4667ms와
+구분한다. manifest의4175ms는 변경할 필요가 없다.
+
+## G21. 최신 저장본1232에 후속 수정 실제 등록·발행
+
+앞선 전체 등록 승인을 유지한 상태에서 이번 최신 수정 중에도 Client/Server 프로세스가 없음을
+재확인했다. 새 보존 질문에는 답이 오지 않았으며 이를 새 확인으로 간주하지 않았다. 실제 저장된
+Composition1232/World2035와 여섯 Effect의 bytes를 기준으로 후보를 작성하고, commit 직전에도
+Client 종료 상태와 모든 대상·후보·참조 입력 해시를 다시 검사했다. 미저장 editor를 종료하거나
+사용자 draft를 덮어쓰는 작업은 하지 않았다.
+
+12개 파일을 백업·설치했다. Composition1233, WorldSequence2036이며 기존 user occurrence의
+배치·속도·TRS와 관련 없는 모든 logics/world/resource는 보존했다. 변경 목록은 다음과 같다.
+
+- 카드 출력15개 설정 필드: source billboard/localSpace 유지와5개 emitter axis-follow 활성화.
+- 주사위71개 guarded 필드: CDO 이동 기본값 및 실제 손 basis를 반영한 크기·연속 궤적 보정.
+- 낙하 공/상단광2개 Effect와World12개 template: 같은 공 중심·상단 offset·시간을 소비하고 별도 낙하 drift 제거.
+- P78: 서버 카드와 중복되던 ordinary 카드4행·고정 폭발1행만 제거. logic73·6.114초 발생·4종 무한 추적 유지.
+- P83: world.7을 내부 g0 모델에서 전체 group world30으로 교체하고7479→11500ms. 배치·시작 시각 보존.
+- 피자: 추가 exp02 원형8개 제거, 기존 exp03 16개 완전 보존. 사용자 이미지의 내부3공백 해소는 확정하지 않음.
+- 오른손 지팡이 트레일 신규1개: Catalog/Tree/Composition4175ms/프로젝트None·filter 등록. 기존 왼손 bytes 보존.
+
+독립 검토에서12파일과20개 참조 입력의 해시 및 before에서 재구성한 전체 JSON 동등성을 확인했다.
+World456 objects/324 instances와Composition의전체logics/worlds를 보존했으며 split/shot 양쪽 모두
+6개 motion,1+2+4+8+16+32=63개,최종FX종료11500ms다. MainApp/Workbench Append는 내부 donor를
+고유한 전체 group으로 해석하고 중복 목록을 제외한다. 여러 owner가 있는 경우 임의 선택하지 않는다.
+
+실제 Catalog first-use 검사에서 변경·추가6개 전부 Find/Drawable/Stage/duration을 통과했다.
+결과 duration은 카드출력20.15초,주사위11.661초,낙하3.31667초,World상단2.5초,
+피자2.4초,오른손지팡이4.17486초다. 관련6개 TU 격리 컴파일, Server162검사, sprite888검사,
+공FX891검사,World18494검사,실제CModel지팡이676표본 및 주사위 연속성 검사를 통과했다.
+
+정식 Invoke-BuildDomainOwner -Owner KoukuSaydon -ExpectedKoukuSaydonSourceRevision 1233의
+koukusaydon.product / map.kakulsaydon / world.gameplay / gameplay.balance 네 domain이 통과했다.
+발행본을 다시 읽어 sourceRevision1233,World2036동등,P78ordinary2개/loop카드4종/contact폭발,
+P83전체group11500ms와사용자배치,지팡이등록1개를 확인했다. 이전에 사용가능하던
+P15/47/48/78/79/80/81/83/84도 사용가능 상태다.
+
+백업은 out/EffectV1Corrections20260917/before,실제 설치 증거는 installed-registration.json,
+최종 연결·Publish 증거는 final-publication-verification.json과publish-owner.log다.
+기존 회전 카드 emitter는 패턴의Logic 소유이며 V1통합 `effect.kouku.card.spinning.emitter`도 유지한다.
+이번 작업에서 제품 셰이더 전체 빌드·Client/Server 제품 빌드·실행·화면 캡처는 하지 않았다.
+현재 프로세스가 없는 상태이며 최신 제품 빌드와 Server 시작 및 Client의Effect V1/패턴 Play
+화면 판정은 사용자가 수행한다. 셰이더 빌드 최적화와 기존source28개 미지원 범위는 중단 상태를 유지한다.
+
+### G20 후속 — 검정 sprite 원본과 원통 반원 제한
+
+추가 저장본은19요소이며 SHA256은 `4074dd36418efaa3a2b6648186c8bf06c067b6ac75db49653bb50b750d42f116`이다.
+사용자가 복제·배치한 4~8번 dark-aura와9/10번 flow-mask를 포함하여 문서 byte 전체를
+`out/PizzaBlackLayer20260917/live-before.effect.json`에 보관했다. 이 작업은 live Data,
+Catalog, Tree와 사용자 복제본의 위치·회전·크기를 변경하지 않았다.
+
+원본 자료는 존재한다. exp03 dark-aura emitter19/33(native3171)는 EPAL_Z와 pivot(.5,1),
+StartSize(800,800,900)cm 및 수명 배율(3,2,1.021421)을 갖는다. 실제0.2초의 rect는
+13.858187×10.929092m다. 원본 PS `c32c8cb20b653f4194a5f1f195a26bdc`의 alpha는
+UV falloff·ParticleAlpha 수식이며 두 noise texture는 RGB 경로에 사용된다. 이 개별 검정
+레이어는 원형 world mask가 아니다. flow-mask emitter1/31(native3280)는 signed 크기
+(-200,-650,1)/(200,-700,1)cm와 PSA_Velocity, pivot(.5,.8)을 사용한다. fx_d_noise_002는
+flow 입력이고, 실제 경계는 UV의 radial-distance fade와 fx_m_ring_001_cl opacity texture가
+함께 만든다. world-offset emitter0(native3281)는 단일 StartSizeX1200cm를 가진 EPAL_Z
+sprite이며 실제0.2초 rect12.733333×12.733333m로 양 축이 같다. 이를 색깔별 공통 원형
+mask 하나로 설명하거나 개별 sprite의 타원을 곧바로 복원 오류로 판단하지 않는다.
+
+flow emitter1의 원본 FX_MN_RPCZ_00_U export4974에는 negative_x=false, radius80~90cm,
+surfaceOnly와 radialVelocity가 명시돼 있다. emitter31의 export144는 halfMode=true와
+CDO splitCircleCount6을 사용하고, sparse Distribution=None 아래의 CDO radius는1cm다.
+원본 burst는 각각4/10개다. 현재 사용자 문서에는 원본 emitter1 행이 없고 두 flow 행 모두
+emitter31 복제본이므로 원본16요소와 별도 저작 구성이다. 이 사실을 사용자 편집 삭제·복구의
+근거로 사용하지 않았다. `source-reference.effect.json`은 기존 원본16요소와 이미 검증한
+CDO 값을 보관한 비교용 out 문서이며 설치 후보로 승인하거나 live에 덮지 않는다.
+
+실제 코드 결함은 `Effect_Playback.cpp`의 LOCATION_PRIMITIVE_CYLINDER가 source의
+positive/negative XYZ 제한을 읽지 않던 부분이다. 원본 emitter1의 첫4입자 중2개가 금지된
+음수X(-0.610443/-0.748921m)에 생기는 것을 현재 Playback으로 재현했다. 해당 분기에만
+17줄을 추가해 height-axis 배치 뒤 source 좌표의 부호 제한을 적용하고, 기존 난수 소비와
+제한 없는 동작을 유지했다. 새 shader나 source size·alpha 수식은 추가하지 않았다.
+
+원본4입자의 반원 위반은2→0이며, height축3×제한축3×부호조합4의36조건을 실제 Playback으로
+검사한9,216행에서 제한 위반은4,608→0이다. 제한 없는2,304행과 다른 검정 레이어156행은
+수정 전후 byte 동일하다. Playback·GeometryHelpers와 전용 CPU probe 격리 컴파일/링크,
+JSON parse와 diff-check를 통과했고 C++ UTF-8/noBOM/CRLF를 유지했다. 다른 에이전트의
+Step/SpawnPerUnit 변경과 기존 axis 변경을 보존했다. 이 수정은 현재 두 emitter31 복제본의
+타원을 직접 원형으로 바꾸는 수정이 아니며, 최종 합성 외곽의 화면 일치는 아직 미확인이다.
+
+원본 module export·CDO·native PS/VS와 수치 근거는 같은 out의 `evidence.json`,
+`raw-source-exports.json`, `raw-class-defaults.json`, `native-material-evidence.json`,
+`layer-before.csv`, `layer-after.csv`, `cylinder-verification.json`에 있다. 검증36조건은
+`cylinder-axis-fixture.effect.json`과 `cylinder-axis-cases.json`으로 재현한다. 원본 EFGame
+CircleSurface의 각도 선택 native 구현을 새로 확정한 것은 아니므로 그 분기는 수정하지 않았다.
+
+### G18 후속 — 주사위·상단 다이아 현재 크기의 1.5배 후보
+
+최신 주사위 문서 SHA256 `7919c8d46ca94acb3335198ef03e654ca8bb45ad011f854ee6ba51c68ebfa917`을
+out/CardDiceScale20260917/dice/before.effect.json에 byte 보관했다. 53요소 중 손·상승·하강·착지의
+`fm_l_dice_01_sm.wmodel` mesh 4개와 상단 symbol_109 sprite 3개(emitter23/24/25)의
+`detail.particle.sourceScale.size`만 현재값의 1.5배로 만든 후보를 준비했다. 손 항목은
+0.5882353782620658→0.8823530673930988이고 나머지6개는1→1.5다. 별도 modelCue는0개다.
+상단 다이아는 native2987 alpha sprite2개와 native2988 additive sprite1개의 합성이며,
+함께 사용하는 symbol_109 mask의 크기를 일관되게 늘렸다. 다른46요소와 보스 preview,
+본 부착, 사용자 TRS, source 궤적·회전·타이밍·alpha는 변경하지 않았다.
+
+실제 CModel MN_RPCT_05와 rpct00_att_battle_11_02, bip001-l-hand 및 주사위 WModel을 로드한
+headless WARP/Playback에서 yaw0/180 각각916개, 총1,832개 표본을 비교했다. 모든 입자 중심,
+alpha와 손 본 위치·배율 witness가 전후 정확히 같고, mesh XYZ 및 sprite XY 표시 크기는
+1.5배다(최대 비율 오차1.91e-7). sprite의 단위 법선 Z는 그대로다. 주사위 월드 행렬 축 배율은
+약7.5→11.25이며 상단 다이아 첫 표본은1.21→1.815m,1.1→1.65m다. 기존 손→비행→착지의
+좌표 표본과 출생·소멸 시각을 그대로 보존했다. Codec Load/Drawable/Serialize/Parse/Stage와
+전용 probe 컴파일·링크 및 JSON/diff 검사를 통과했다. 픽셀·화면 검증은 수행하지 않았다.
+
+후보 SHA256은 `c617fdcbab90e174ff444f1bcf263677caca452245d76888fd14b6398180767e`다.
+같은 out의 installation.json에 현재값/제안값7개와 baseline guard를, verification.json에
+검증 결과를 기록했다. 실제 Data, Catalog/Tree와 builder는 수정하지 않았다. 사용자 편집과
+live hash는 보존했고 실제 설치는 root의 등록 단계, 화면 판정은 사용자 단계로 남겨 두었다.
+
+### G23 후속 — 비둘기 일렬 비행·반원 선회 후보와 Python 검증
+
+현재 V1의 이동은 속도8m/s 직선 중심에 반경1m/주기3초/위상0·90·180·270도의 Orbit를
+더한 형태다. 네 마리가 같은 경로를 뒤따르는 사용자 정정과 달라, 기존 native2893 mesh의
+local-space와 sourceTransformTrack으로 후보를 만들었다. 각 새의 synthetic velocity/orbit
+두 모듈만 제거하고 위치·접선 yaw 키를 추가했다. 날갯짓 SizeLife와 재질, 사용자 TRS/크기,
+bloom,3초 수명·출생과 기존19개 폭발 요소 및 death event를 보존했다.
+
+원본 Action4219802의 실제 바이너리와 SkillEffect DB,Projectile421980201~211을 읽었다.
+stage2의1.1초4개/1.6초4개/2.1초7개 발사와 Missile의초기800cm/s·최대1500cm/s·거리1500cm,
+수명3/3.5/5초를 구분했다. 독립4마리·3초의 반원 경로를 원본 전체 Action과 같다고 하지
+않는다. 간격0.8m,선두0.7초 직진+2초 반원+0.3초 복귀 직진,후속0.1초씩 지연은
+USER_REQUESTED/PROJECT_AUTHORED다. 반경은16/pi=5.092958m이며 네 마리 모두3초까지
+180도 선회를 마친다. 기존 독립 effect와 같은8m/s×3초=24m를 유지하므로 원본15m cap을
+복원한 projectile simulation으로 분류하지 않는다.
+
+`build_kouku_dove_pizza_candidates.py`에 track/helper와 --dove-only를 추가했다. 최신 saved
+문서를 먼저 읽어 다른 필드를 유지하며, 별도로 편집한 track/수명/불완전한 이동 모듈은
+덮지 않고 거부한다. 같은 후보 재입력은 idempotent다. 현재 baseline SHA02137ef4fc3a4…와
+후보 SHA9363c39c8b181… 및7필드 주사위 후보는 별도 유지한다. 원본 조사, 후보,변경명세는
+out/CardDiceScale20260917/dove의 DESIGN.md,installation.json,source-action4219802.json,
+source-skill-effects.json에 있다. live Data/Catalog/Tree는 이 작업에서 수정하지 않았다.
+
+Python 검사에서23요소/19폭발의 보존,실제27리소스 존재,새 builder 결과의 JSON 완전 동등성,
+재입력과3종 거부 시 입력 보존을 확인했다. 60Hz×181키×4새를 yaw0/90/180으로 평가한
+2,172개 위치는 finite하며,같은 경로를0.1초 지연 추적하는 최대 오차는3.98e-15m다.
+반원 선형 키 보간의 원곡선 최대 오차는0.437mm다. 끝위치(yaw0)는 각x3.2/4/4.8/5.6m,
+y1.79999995m,z-10.18591636m이며3초 이후 키 clamp에도 변하지 않는다.
+
+실제 C++의 Update_Particles는 현재 sample의 ElementWorld를 평가하고 terminal death를
+제거 전에 queue한다. local-space event는 그 행렬로 world 위치를 만들며,폭발 receiver는
+event의 world 위치를 자기 emitter의 inverse 행렬로 변환한다. 기존 receiver19개는
+busepsyslocation=false,binheritvelocity=false이고3초에 활성 상태라 동일 event4개/기대
+216birth 계약을 유지한다. 이는 코드 읽기와 Python 수치 검증이며 실제 C++ 실행 증거가 아니다.
+사용자의 abort 창 보고 후 모든 새 probe EXE·Client/UI·제품 빌드를 실행하지 않았다.
+actual Codec/Playback 재실행과 사용자 화면 판정은 미수행이다. Python syntax/JSON과
+변경 source diff-check만 통과했다.
+
+이후 root가 Windows/CRT/Engine 비대화형 오류 처리와 catch/terminate 경로를 읽고 승인한
+단일 실제 C++ 검사를 수행했다. out의 dove_path_probe.cpp를 격리 컴파일·링크하고,
+CREATE_NO_WINDOW/30초 제한으로 PID2124를16:40:16.787~16:40:18.464 KST에 한 번 실행했다.
+종료코드는0이고 재시도하지 않았다. Codec Load/Drawable/Serialize/Parse/Stage,
+실제 Particle.World 메시 접선 및 SourceEmitterWorld,위치,37도 회전+이동 root 공변성,
+Seek/Reset/자연 종료를 포함한22,853 checks를 통과했다. 최대 위치 오차1.71926e-6m,
+실제 메시·emitter 접선 오차2.98023e-7,root 오차2.24924e-6m다.
+
+원본19개 폭발 수신기가 실제216입자를 생성했다. 별도 out 전용1:1 event marker4개도
+3.03333초에 각 terminal 위치에서 생성됐고 최대 오차는4.76837e-7m다. marker 문서는
+제품 effect에 추가하지 않았다. stderr에는 CRT 종료 시 memory-leak dump가 남았으며
+assert/abort/exception은 없고 정상 종료했다. 누수 원인은 이번 검사로 확정하지 않았다.
+실행 영수증과 증거는 같은 out의 actual-execution.json,actual-probe.log,
+actual-probe.stderr.log,actual-verification.json에 있다. Live 설치,제품 빌드와 화면 검증은
+수행하지 않았고 후보 SHA9363c39c8b181…를 유지한다.
+
+### G22 추가 — 회전 카드 방출 수 2배 후보와 실제 소비 검증
+
+Composition1237의 P48은 Logic74가 3533~7633ms 구간에서300ms마다3장씩14회, 총42장을
+생성한다. countPerWave만3→6으로 변경한 후보는 같은14회에84장을 생성한다. source 초기
+속도8m/s, 최대 거리15m, 수명5초, 비추적 정책, 문양4개와 접촉 폭발, 현재 클립6회 및 모든
+ordinary presentation은 유지했다. 1236→1237 사용자 저장 차이는 P82 presentation 추가였고
+P48/74에 영향이 없음을 확인한 뒤 최신1237 해시를 기준으로 후보를 다시 만들었다.
+
+독립 `effect.kouku.card.spinning.emitter`는 주 심볼의 sourceScale.count만1→2로 변경한다.
+원본3발 burst와 발사 시각, sourceRecipe·sourceModelPreview·생존 시간은 바꾸지 않았고,
+폭발 receiver7개는 전체 행이 기존과 같다. 추가 카드가 각자의 death event를 발행하므로
+폭발당 입자 수나 receiver 용량을 다시2배 하지 않는다. 두 데이터의 guarded patch는
+`out/CardDiceScale20260917/count/semantic-patch.json`의2필드다. 공통224요소 연출의 방출
+개수는 변경하지 않았다. standalone을 P48에 별도 추가하지 않아 같은 방출 경로를 중복하지 않는다.
+
+`build_saydon_spinning_emitter_preview.py`는 명시적 `--count-multiplier {1,2}`(기본2)와
+`--output`을 받으며 원작확장42발과 사용자84발 schedule을 분리 기록한다. 생성 마지막에
+공통 카드 크기 helper를1회 호출해1.5배 조정도 유지한다. 실제 publisher projection에서
+4개 visual template은 전후 동일하고 count3→6만 바뀌었다. C++·Shared 계약 변경은 없다.
+
+root가 비대화형 오류 처리를 검토한 뒤 실행한 실제 Codec Load/Drawable/roundtrip/Stage와
+Playback 검사는303,829 checks/0 failures, exit0이다. baseline42→후보84, 재생성84이며
+최대 동시 카드는21→42다. 폭발7개 emitter의 총 출생 수는 각각 정확히2배이고 최대 동시
+폭발 입자는360개로 기존 최대 용량1134를 넘지 않는다. 세 문서 모두10.208초 자연 종료와
+빈 최종 frame, 같은14개 발사 시각·8m/s를 확인했다. CPU의 고정 root count 검증이며 실제
+보스 부착·GPU 표현·시각 품질 검증으로 확대하지 않는다. Debug CRT의 종료 시 static
+할당 dump가 남으므로 이 검사를 메모리 누수 없음의 증거로 사용하지 않는다.
+
+최초 out 후보에서 불필요하게 receiver 용량1134→2268을 적용해 Codec 상한2048을 넘겼다.
+이 Load 실패 뒤 기존 진단기가 계속 실행해 map.at 예외가 처리되지 않으면서 abort 창을
+발생시켰다. 이는 제품 Client 오류가 아니라 후보·검사 프로그램의 결함이다. receiver 변경을
+모두 제거했고 진단기는 첫 실패 즉시 중단하며 CRT assertion/abort, Windows 오류 및 Engine
+오류를 비대화형 로그로 처리하도록 수정했다. root의 통제 이전에는 검사를 중단했고, 수정판
+실행은 root가 수행했다. Client/Server 프로세스와 live Data는 이 하위 작업에서 변경하지 않았다.
+
+입력 bytes/hash, 후보, 재생성 proof, publisher-projection.json과 guarded-count-final.log는
+같은 count 폴더에 있으며 최종 상태는 verified.json에 있다. 실제 설치·publish는 root의
+전체 등록 단계에서 별도로 수행한다. 사용자 화면 판정은 미실시다.
+
+## G24. 상단 무지개 Solo 공급원 유지 — 소스 반영
+
+Build_ElementsPreviewDocument가 particlemodulelocationemitterdirect 및 EF alias를 수집하지
+않아 선택 sprite의 공 위치 공급원을 제거했다. 네 class의 활성 참조와 transform master를
+재귀 수집하고 기존 provider validation을 전후 유지했다. 공급원은 simulation하며 기존
+Set_SubmissionElementSet으로 선택한 sprite만 제출한다. Sequencer factory와 일반
+Solo/Family/Group이 같은 함수를 사용한다. stale single/named group도 전체 재생으로 바뀌지 않는다.
+
+Effect_Tool_Playback.cpp/Effect_Tool_Workspace.cpp 격리 컴파일 PASS. exact production 함수와
+실제 Codec/Playback 및 renderer setter/predicate를 사용하는879검사0실패. actual rainbow
+49프레임 Solo/full World·clock 일치, recursive6요소 closure와 disabled/stale/rollback 검사 통과.
+진단은 Windows/CRT/Engine 비대화형 가드 후1회 종료0, Client/UI 실행 없음. 검증 정본은
+out/CardDiceScale20260917/solo/verified.json이다. 제품 exe 교체와 사용자 visual 판정은 미실시.
+
+## G25. 알비온 출현 시 대상 선택 — 소스 반영·현재 P79 검사 통과
+
+현재 저장본 r1245의 P79는 JUMP(logic75,7148ms), APPEAR_PLAYER(logic76,8883ms),
+SLAM(logic70,8883ms)을 갖고 SELECT_PLAYER는 없다. 새 사라지기 presentation.10은 순수
+V1 Effect이며 airborne 수집기는 LogicOccurrences만 읽으므로 이펙트가 다른 패턴의 Logic을
+상속한 것은 아니다. 실제 Server는 APPEAR에서 이전 선택이 없으면 살아 있는 대상을 고른다.
+미리보기만 SELECT 선행을 강제해 같은 저장본을 거절한 것이 확인된 차이다.
+
+PreviewRootMotion의 SELECT 필수 조건을 제거하고 JUMP 선행·native pose·남은 하강 검증은
+보존했다. PresentationPlayer는 첫 APPEAR의 occurrence ID로 대상 identity를 기록하고 다음
+APPEAR에서 현 위치를 읽으며, 대상이 사라졌을 때만 재선택한다. 되감기와 read-only sampling은
+이미 기록한 위치를 유지한다. SELECT_PLAYER의 SELECT 정책만 기존 navigation ground를
+고정한다. 삭제된 Logic, 사라지기 위치·크기·시각과 기타 live Data는 수정하지 않았다.
+
+두 변경 TU와 최신 CompositionDocument 및 probe의 격리 컴파일·링크는 exit0이다.
+Windows/CRT/Engine 오류창 차단과 catch/terminate를 root가 검토한 후1회 실행했으며
+PID21056,16:56:00~16:56:02 KST,exit0,301검사를 통과했다. 실제 설치 MN_RPCT_05 CModel과
+17_* clip은 현재3단계를 승인하고 목표(10,14.6788,10)에서 지면(10,1,10)으로 착지한다.
+production 선택 블록의 noSELECT·기존 APPEAR·SELECT ground·이탈·재선택·되감기·빈 대상과
+JUMP 누락/하강 없는 입력 거절 및 이전 phase 보존을 확인했다. 지면 sampler만 stub이고
+모델·animation/height sampling은 실제 구현이다. stderr에는 CRT 종료 memory-leak dump가
+남았으며 원인은 이번 범위에서 조사하지 않았다. assertion·abort·예외는 없었다.
+
+근거·입력 hash·frozen Composition·컴파일/실행 로그와 검증 정본은
+out/CardDiceScale20260917/albion/verification.json에 있다. 제품 빌드·Client/UI 실행·라이브
+Data 등록과 사용자 화면 판정은 이 하위 작업에서 수행하지 않았다.
+
+## G22~G25 통합 후보 상태 — Client 최종 저장·종료 확인 대기
+
+카드/주사위 크기·42→84발의8문서, 비둘기1문서, 상단광1문서, 분열 child upper 제외
+World1문서로 총11파일103변경 후보를 준비했다. 최신 Composition1245를 보존한1246,
+World2036→2037 후보이며 live Data 쓰기는0회다. 카드 수 검증 당시1237과1245의 P48·Logic74가
+동일한 것을 재확인해 unrelated P79 사용자 편집을 보존했다. source크기·수 후보, 비둘기actual
+22,853검사, Solo879검사, 상단광1,283검사, Albion301검사와 변경TU 최소 컴파일을 통과했다.
+전체World C++ Codec의268templates/456objects/324instances 및 실제 publisher reader를 검증했고,
+정식 per-row publication closure의 P48/P78/P83은 ready다. 기존 P32는 stage없는 보관 패턴으로
+격리되는 기존 정책 그대로이며 raw validate_document 전체 호출 실패를 제품 전체 실패로 간주하지 않았다.
+
+동시에 추가된 builder의 별도 카드 조정/상승공 helper는 보존했다. 현재 helper로11후보를
+다시 구성했을 때 기존 검증 후보의 모든 byte hash가 같음을 확인하고 source guard를 최신으로
+고정했다. out/CardDiceScale20260917/registration-transaction.json은 readyForCommit=false,
+installed=false다. 사용자 미저장 편집 보호에 필요한 마지막 Save+Client 종료 답변이 아직
+없으므로 등록 script와 publisher는 실행하지 않았다. 제품 Client/Server 빌드·재시작 및
+최종 화면 판정은 사용자 단계다. 서버 카드미로 목표1개 코드는 별도로 반영·최소 컴파일했다.
+
+
+## G26. 카드 짝 맞추기 네 무늬 정렬·반복과 회전 카드 잔상 조정
+
+### 원본 근거와 수정 범위
+
+대상은 `effect.kouku.card.match.{heart,clover,diamond,spade}`, 회전 카드 네 무늬,
+`effect.kouku.card.spinning.emitter`, `effect.kouku.common.spinning.card.throw`의 10문서다.
+`Tools/EffectPipeline/build_saydon_card_pattern_groups.py`의 현재 저장 문서 patch 경로로
+후보를 만들었다. 사용자가 지운 회전 카드 mesh·emitter를 원본 leaf 재생성으로 되살리지 않았다.
+변경은 loop count 40개, 앞면 RGB 세기 4개, 고정축 owner 회전 flag 25개,
+다이아 mesh 위치 성분 1개, 원본 잔상 occurrence visible 24개로 총 94필드다.
+
+다이아의 mesh detail 위치 Y는 2.37016678, symbol_050은 0.680166662로 1.69m 차이가
+있었다. 원본 StartLocation은 둘 다 UE (10, 0, 0)cm이므로 네 무늬 각각의 현재 앞면 배치를
+기준으로 mesh 중심을 맞췄다. 나머지 세 무늬는 원래 같은 detail 위치였다. 네 무늬에 공통인
+회전 불일치는 별도 원인이다. sourceTransformTrack이 없는 local-space EPAL_Z sprite가
+owner 회전을 소비하지 않아 mesh만 회전했다. 기존 `followEmitterAxisRotation` 경로를
+symbol_050·holomatrix·symbol_109 세 장에 연결했다. 회전 카드 파생 문서에도 같은 원리로
+sk13_1의 해당 sprite만 연결했으며 독립 emitter의 폭발 레이어에는 전파하지 않았다.
+
+원본 Required의 emitterloops는 무늬마다 12요소 중 2요소에만 1이 명시돼 있고 나머지
+10요소에는 없다. Required→ParticleModule→Object까지 확인한 native 생략값 0을 복구해
+네 무늬의 40개만 1→0으로 바꾸고 명시적인 1은 8개 모두 유지했다. 원본 mesh·050의
+입자 수명 1초와 symbol_109의 2초는 그대로다. 기존 tracking occurrence의
+`loopEffectToDuration`은 `CEffectPlayback::Set_SourceLoopEndSeconds`를 호출하므로
+실제 반복 recipe가 있어야 admission과 지정 구간 반복이 성립한다. 입자 수명을 모두 늘리거나
+whole-effect 무한 재생을 추가한 것이 아니다.
+
+회색 앞면은 원본 native2967의 shader 식과 현재 경로가 일치하고 원본 DDS 자체에도 회색
+영역이 있어, shader 누락만으로 원인을 확정할 근거가 없다. 이번 앞면 emissiveIntensity
+1→4는 `PROJECT_AUTHORED_RGB_EXPOSURE_4`로 분류한 요청 범위의 RGB 보정이다.
+원본 texture·native shader·masked alpha threshold는 유지했다. 원작의 최종 노출·후처리까지
+완전히 복원했다거나 화면의 흰색이 원작과 일치한다고 판정하지 않는다.
+
+회전 카드 원본에는 실제 world-space `sk_13_1_loc_int.particlespriteemitter_0`이 있으며
+native2999/symbol_45, 수명 0.15초, SpawnPerUnit 30cm 간격의 잔상 방출이다.
+사용자 요청에 따라 common 투척 문서의 이 occurrence 24개만 visible=false로 억제했다.
+원본에 잔상이 없었다고 기록하지 않으며 smoke·ribbon은 보존했다. 이미 해당 emitter를 지운
+사용자 저장 leaf와 네 무늬 문서에는 emitter를 다시 추가하지 않았다.
+
+### 후보 자동 검증과 독립 수치 검증
+
+`out/CardMatchFix20260917/static-verification.json`은 10문서/94필드 변경,
+재적용 idempotent, 검증 시점 live 기준본 미변경을 기록한다. 실제 DocumentCodec의
+Load→Validate_Drawable→Serialize→Parse→동일 재직렬화와 CEffectPlayback 및
+Make_ParticleSpriteWorld CPU 경로를 연결한 비대화형 probe는 10문서 10,509,062검사,
+failures=0이다. 최종 standalone은 sk13_1만 보정한 `spinning-emitter-final` 입력이다.
+실행 증거는 `runtime-verification.json`, 개별 `*.execution.json`, stdout/stderr에 둔다.
+
+창과 GPU draw 없이 root identity, Y축 90도 회전+이동, 복합 기울기+이동의 세 조건에서
+두 번씩 Seek(0) 후 전체 구간을 재생했다. match는 실제 bounded loop API에 4.5초를 주고
+1/120초 update를 입력했다. 이는 static root에서 기존 60Hz simulation의 transform·수명
+검증이며 움직이는 owner의 화면·GPU·게임 전투 재현은 아니다. stderr의 CRT 종료 시
+static allocation dump는 보존했고 leak-free 판정으로 바꾸지 않았다.
+
+독립 분석은 설치 WModel의 실제 164정점과 CSV의 m00~m33를 사용했다. 이 mesh의
+실제 카드 평면은 XZ, 법선은 local Y, 장축은 local Z다. 일반 quad용 normal 출력값을
+mesh의 법선으로 오인하지 않았다. 근거와 입력 SHA는 `geometry-verification.json`에
+보존했으며 status=NUMERICAL_PASS, failures=[]다.
+
+| 검증 항목 | 실측 결과 |
+|---|---|
+| 다이아 mesh/050 particle anchor 거리 | 수정 전 1.68999978~1.69000012m, 수정 후 네 무늬 모두 0m |
+| 실제 mesh geometry 중심과 050 draw 중심 | 수정 전 1.68844~1.68872m, 수정 후 17.9664~17.9668mm |
+| 수정 후 평면·장축 동행 | 세 root/두 회차에서 `1-abs(dot)` 최대 각각 8.993e-15, 2.565e-14 |
+| 원본 050 pivot 차이 | 18mm 편심 유지, 예상 pivot vector 대비 최대 오차 0.342μm |
+| 원본 symbol_109 상대 위치 | (0.03, 0.02, 0)m 유지, 최대 오차 1.08μm |
+| 원본 camera offset | 20mm 계층 차이 유지, sprite 계산 오차 최대 0.445μm |
+| 회전 카드 네 무늬 | 각 366개 중복 제거 sample, root 회전에 따른 축 변환 최대 오차 3.159e-7 |
+| common 카드 잔상 | source occurrence 24/24 숨김, CSV 38,040행 중 해당 emitter 방출 0행 |
+
+mesh CSV에는 camera offset을 더하지 않은 Particle.World가 기록되므로 위 geometry 중심
+수치는 그 범위를 명시한다. 별도로 native mesh -20mm camera offset을 해석적으로 더한
+mesh/050 draw 중심 거리는 12.75~27.41mm다. 이 값은 원본 pivot과 layer offset의 결과이며
+중심을 무조건 0으로 만들기 위한 보정 대상이 아니다.
+
+mesh+050+symbol_109 세 장의 필수 5요소는 각 root·회차의 0<t<4.5초 구간에서
+269개 fixed-step 시각 모두 존재했다. 1초·2초 경계 이후를 포함해 누락 시각은 0개다.
+CSV가 같은 simulation frame을 두 번 기록하는 중복은 제거했다. 다만 원본 loop의 수명
+경계에는 구입자와 새 입자가 1~2 fixed tick 공존하며 요소당 count 1 또는 2를 관측했다.
+무늬마다 세 root·두 회차 합계 36개 경계 sample에 중첩이 있으므로 단일 입자 유지나
+화면 무중첩을 통과한 것으로 기록하지 않는다. holomatrix는 이 필수 5요소 CSV 선택에
+포함되지 않았으며 해당 요소의 연속성 수치로 확대하지 않는다.
+
+### 저장 기준본 반영과 남은 경계
+
+위 검증은 처음에 live Data 미설치 후보로 완료했으며 미저장 draft 보호를 위해 외부 등록을
+보류했다. 이후 사용자가 “오케이 지금 기준으로 반영해도 돼”라고 현재 저장 기준본 적용을
+승인했다. 최신 baseline SHA를 재확인한 뒤 카드 10문서와 별도 공 1문서·등록 5문서의
+16파일 설치가 완료됐고 기존 15파일은 백업했다. Composition은 1246→1247이다.
+현재 설치 증거는 `out/CardMatchFix20260917/installation.json`의 installed=true이며,
+기존 `stage.json`의 installed=false는 후보 생성 당시 상태다. 이 절의 검증 범위는 카드
+10문서이고 별도 공·등록·제품 publisher의 완료 증거는 담당 후속 기록과 구분한다.
+
+제품 publisher 실행·Client의 현재 draft reload·최종 화면 확인을 이 수치 검증으로
+대체하지 않는다. Client/UI 자율 실행·캡처와 visual PASS는 없으며 네 무늬의 흰 앞면,
+정렬, 1초·2초 경계, 회전 투척의 잔상 여부는 사용자가 최종 판정한다.
+
+## G27. 쓰리투원투하 공 발사 설치와 검증
+
+사용자 첨부 화면의 상승 공과 하단 무지개·별을 기준으로
+`effect.kouku.gate1.circus.ball.launch`를 설치했다. 표시 이름은
+`세이튼 / 쓰리투원투하 | 공 발사`이며 V1 트리의
+`KoukuSaydon / 1관문 / 패턴 / 세이튼 / 쓰리투원투하`에 등록했다.
+Catalog·Tree·Composition resource와 Client 프로젝트의 `96.DataFiles` None을 연결했다.
+기존 패턴에 임의 occurrence를 추가하지 않았으며 현재 saved pattern·World 배치는 보존했다.
+
+기존 `rainbow.drop`의 저장된 ball_04 네 요소만 사용했다. 공 mesh5, 무지개30,
+별 mesh33·sprite34의 기존 native 재질·texture·입자 수명·사용자 sourceScale.size=0.7을
+보존했다. 사용자가 삭제한 sprite35와 낙하 도넛 폭발은 추가하지 않았다. 설치 공 메시의
+290정점과 geometryPreScale을 적용한 지름은 약0.659127m로 기존 낙하 공과 같다.
+원본 LocationDirect의 UE cm `[0,0,1000] → [0,0,-50]`을 뒤집어0.8초에10.5m 상승시킨다.
+시작 공 하단은 effect root 높이이며 이 역궤적은 사용자 요청의 PROJECT_AUTHORED 변형이다.
+
+무지개는 같은 공의 LocationEmitterDirect를 유지하고 공 하단 -0.329563318m의 Orbit
+offset과 Required.offsetcentery=0을 사용해 아래로 뻗는다. 기존 +Y velocity는 방향 입력이고
+공 위치는 Direct provider가 소유한다. 두 별은 같은 mesh stable ID에서 공 하단 위치로
+spawn한 뒤 원본 world-space 운동·중력·fade를 유지한다. 잔여 별 수명을 포함한 등록 길이는
+2200ms다. 원래 낙하 문서의 SHA256은 후보 생성 전후와 설치 후 모두 동일하다.
+
+`Tools/EffectPipeline/build_saydon_circus_world.py --launch-only`에 별도 out 후보 생성을
+추가했다. 실제 Codec/Drawable/typed roundtrip/Playback/Geometry 검사20,297개가 failures=0으로
+끝났다. 공·무지개98개 시간 표본에서10.5m 상승, sourceScale0.7, 동시 생존·종료를 확인했고
+하단 부착 오차는0.298μm, 실제 quad 상단 오차는0.477μm 이하다. 두 별 carrier의 최대 활성
+입자는34/39이며4초 검사 종료 시 모든 입자가 정리됐다. 창·GPU draw·Client 실행은0회다.
+독립 검토도 설치본과 검사 후보 SHA, provider3개, 실제 리소스14개와 등록 중복 없음에 일치했다.
+
+증거는 `out/CardMatchFix20260917/ball-launch/launch.execution.json`, `launch.stdout.log`,
+`launch.csv`, `candidate.receipt.json`, `registration-stage.json`, `installation.json`이다.
+후보 receipt의 pending/installed=false는 생성 시점 상태이며 현재 설치 상태는 마지막
+installation receipt를 따른다. 임의 재질·리소스 신규 제작이나 제품 C++·shader 수정은 없다.
+최종 무지개 색·별 모양·발사 화면의 일치는 사용자 육안 확인 전이다.
+
+사용자 확인 경로는 F1 → `Effect Tool V1` → `Refresh Resources` → 위 분류의
+`세이튼 / 쓰리투원투하 | 공 발사`다. 이미 열려 있는 카드는 `Load Saved`로 설치본을 다시
+읽는다. Action Workbench에서는 Boss `KoukuSaydon`의 `Reload`와 `Refresh Resources`로
+Composition1247의 등록을 읽는다. 현재 Client31396·Server34628은 계속 실행 중이며
+에이전트가 종료·재시작·화면 조작하지 않았다. 이번 데이터 변경만을 위한 제품 재빌드는 없다.
+
+### G26·G27 최종 반영 확인
+
+사용자 승인 후 `Invoke-BuildDomainOwner.ps1 -Owner KoukuSaydon
+-ExpectedKoukuSaydonSourceRevision 1247`이 exit0으로 끝났다. `koukusaydon.product`,
+`world.gameplay`, `gameplay.balance`는 PASS, `map.kakulsaydon`은 기존 산출물 REUSED다.
+설치16파일의 SHA는 publisher 종료 뒤에도 검증한 후보와 모두 일치했다. 설치 JSON/XML16개,
+생성 Encounter·patternbindings JSON, 생성기4개의 Python AST와 변경 범위 `git diff --check`를
+확인했다. 제품 revision1247의 생성 결과는 saved84/product71패턴·product413stage이며,
+이는 기존 보관 패턴 격리 정책을 포함하는 publisher 결과다.
+
+최종 증거는 `out/CardMatchFix20260917/installation.json`의
+`installed=true`, `runtimePublication=PASS`, `liveCandidateHashesVerifiedAfterPublish=true`와
+`publish.log`다. 현재 실행 중인 Server의 다음 패턴 admission·Client의 문서 Reload·사용자
+최종 화면 판정은 실행하지 않았다. 원본 카드의 정확한 최종 노출값은 미확정이며 앞면의4배
+RGB 보정과 원본 카드 잔상 억제는 계속 사용자 요청의 PROJECT_AUTHORED 변경으로 구분한다.
+
+## G28. 최신 저장본 병합 설치와 실행 중 데이터 반영 절차 교정
+
+사용자는 다른 세션 종료 후 데이터 반영을 승인했고 다시 교체를 명시했다. 이전에 요구한
+Client 종료는 데이터 파일 교체의 필수 조건이 아니었다. out 설치기의 프로세스 실행 여부
+차단을 제거하고 명시적 적용 승인, 최신 입력 hash·백업 일치, 경로 범위, JSON parse,
+교체 직전 동시 저장 검사와 파일별 원자적 교체·자기 변경 rollback을 유지했다. 이전 절의
+종료 대기 기록은 당시 상태이며 현재 절차·설치 상태는 이 절을 따른다. AGENTS를 정본으로
+CLAUDE·팀 사용서·gotchas·복원 문서·진행 PLAN도 같은 경계로 교정했다.
+
+최신 Composition1247을 기준으로 11개 저장 문서의 103개 변경만 병합해 실제 설치했다.
+Composition은1248, WorldSequence는2037이다. 다른 세션의 카드 local 축 회전·무한 반복,
+앞면 밝기, 숨긴 원본 잔상24개, 공 발사 등록과 presentationResources260개를 보존했다.
+역방향 차이 비교로 나머지 필드가 현재 저장본과 동일함을 확인했다.
+
+- 회전 카드의 본체·잔상 크기1.5배와 P48 방출42→84발, standalone emitter 동시 반영.
+  다른 세션에서 숨긴 잔상은 크기만 변경하고 숨김을 유지한다.
+- 주사위 네 단계와 위 다이아 세 요소 크기1.5배.
+- 종이 비둘기 네 마리는 같은 직선→반원 경로를 간격을 두고 따르며 기존 종료 폭발19요소 유지.
+  반경·간격은 사용자 요청의 저작 궤적이며 원본 확정값으로 간주하지 않는다.
+- 낙하 공 상단 무지개의 velocity-facing 입력과 상단 표시 pivot 반영.
+- 공 분열g1~g5의 상단 무지개만 제거하고 g0·shot과 전체 공 운동·충돌 폭발을 보존.
+
+최종 합성 문서의 실제 Playback count 검사는182,319개·실패0·exit0이다. P48/P78/P79/P83은
+정식 saved inventory와 dependency closure를 거친 publication 검사에 모두 통과했다.
+이는 GPU 화면 판정이 아니다. 근거는 `out/CardDiceScale20260917/merge/verification.json`,
+`merge/count-final-verification.json`, `ball/world-validation/selected-publication-readiness.json`,
+`installed-registration.json`이다. 최신 receipt의 installed=true가 현재 설치 상태이며,
+이전 후보의 installed=false를 설치 미완료로 해석하지 않는다.
+
+기존 Albion preview·Solo provider·카드미로1개 수정은 소스와 격리 컴파일 검증 상태를 유지한다.
+이번 데이터 설치를 위해 추가 C++·shader 빌드나 Client 종료·재시작·UI 조작을 수행하지 않았다.
+실행 중 도구의 draft Reload와 Server가 소비한 상태, 최종 화면 확인은 설치와 구분한다.
+
+
+G28 runtime publish 완료: `Invoke-BuildDomainOwner.ps1 -Owner KoukuSaydon
+-ExpectedKoukuSaydonSourceRevision 1248`은 exit0이며 product/map/world/balance 네 domain이
+모두 PASS다. 생성 Encounter·patternbindings의 sourceRevision1248 및 런타임 WorldSequence
+revision2037을 읽어 확인했고, 설치11문서의 SHA는 게시 후에도 후보와 일치한다. 설치 JSON
+parse와 `git diff --check`도 통과했다. 최종 receipt의 runtimePublication=PASS를 따른다.
+
+피자 추가 확인: 원본 exp03 문서는16요소, 현재 통합본은 사용자 편집19요소이며 기존 G20
+보존 SHA4074dd36…과 동일하다. 이번11파일 교체에 피자는 포함되지 않았다. 검정 위치·회전
+보정이 완료됐다는 뜻이 아니며 기존 사용자 배치를 보존한 상태다. 원본 바닥 축 잠금에는
+추가90도 회전 근거가 없고, fixed-axis sprite의 일반 Transform 회전과 실제 quad 회전은
+followEmitterAxisRotation/roll 소비에 따라 구분해야 한다.
+
+
+피자 연결 상태 추가 확인: Composition1248의 새 통합 피자 resource
+`kakulsaydon.effect.8c73c44bdddbf9001b0a`는 등록돼 있지만 presentation occurrence 참조는0개다.
+P25의 현재 타임라인은 기존 `boss.kouku.pizza.*` 리소스를 사용한다. 따라서 새 통합 피자의
+등록 존재, 사용자19요소 편집 보존, 실제 패턴 연결과 검정 배치 보정 완료를 구분한다.
+원본16요소를 현재19요소 위에 덮거나 검증 없이 기존 패턴 연결을 교체하지 않았다.
+
+## G29. 피자 원본 조합 복원본과 저작 원형 경계
+
+### 원본 재질과 검정 외곽의 원인
+
+새 후보는 `effect.kouku.pizza.explosion.group.source-restored`, 표시 이름은
+`쿠크_피자 | 피자 부채꼴 - 원본 검정 무지개 경계 폭발 2`다. 기존 사용자19요소 문서와
+원본 exp03 leaf는 수정하지 않고 원본16요소의 별도 문서를 만들었다. 원본의 두 native3171
+dark-aura, 서로 다른 두 flow emitter, 원본 native MIC·DDS·색상·TRS를 사용한다. 이미 원본
+바이너리/CDO로 확인한 빈 Cylinder radius·velocity distribution 보완만 함께 적용했다.
+
+원본3171 PS의 alpha는 UV analytic falloff와 ParticleColor.a로 결정된다. 두 noise texture는
+RGB에 참여하고 전체 효과의 원형 world clip을 만들지 않는다. 원본 sparse ColorScale의
+생략값0에 따른 검정색도 유지했다. source3280의 ring opacity와 radial UV fade는 해당 flow의
+재질 경계이며 별도3171 sprite 전체를 잘라 주는 stencil 또는 공통 mask가 아니다.
+
+설치 sphere002/003의 실제 WModel 정점, geometryPreScale .01, .2초 Playback 행렬로 측정한
+무지개 외곽 반경은6.599988~6.600002m다. `dark-world-coverage.json`은 기존 실제 Playback·
+sprite draw 행렬과 원본3171 alpha식을 결합한 측정이다. 원본 두 dark layer로 돌아가도 .2초
+alpha>=.1 영역의 최대반경은8.501m이고 해당 sample의24.31%가 반경6.6m 밖이다. .4초의
+최대반경은10.033m다. 사용자 다섯 복제본은 .2초 최대반경13.359m, 바깥 비율50.65%다.
+따라서 원본16요소를 다시 복사하는 것만으로 요청된 원형 경계를 충족한다고 처리하지 않았다.
+
+### Document에서 기존 particle shader까지 연결한 범위
+
+추가 원형 제한은 원본에서 회수한 shader 기능이 아니라 요청된 `PROJECT_AUTHORED`
+coverage다. 새 복원본의 두3171 요소 `saydon.eae7033888f6af67ecba53ca`,
+`saydon.f6bff2e4b02def707b4fce98`에만 반경6.6m와 안쪽 feather .05m를 저장했다.
+source leaf와 기존 사용자 문서는 이 옵션을 가지지 않는다.
+
+| 파일 | 실제 변경 책임 |
+|---|---|
+| `Effect_AuthoringDocument.h` | sprite의 `OwnerRadialMask` 값과 기본값·범위·지원 carrier 계약 |
+| `Effect_DocumentCodec_DetailIo.cpp`, `Effect_DocumentCodec_Validation.cpp` | optional JSON 읽기·저장과 잘못된 값·미지원 carrier 거부 |
+| `Effect_Tool_MaterialDetail.cpp` | 지원 source3171 sprite의 원형 경계 편집과 비활성화 시 기본값 복원 |
+| `Effect_DocumentRenderer_Particles.cpp` | Effect origin 역행렬 생성·검증 및 매 draw의 enabled·역행렬·반경 바인딩 |
+| `Shader_EffectParticleFamilyCarrier.hlsli` | 기존 group3136의 opt-in coverage를 원본 PS 뒤, bloom 출력 전에 적용 |
+| `build_kouku_dove_pizza_candidates.py` | `--pizza-source-restored`의 독립16요소 후보·근거 receipt 생성 |
+
+JSON은 `detail.sprite.ownerRadialMask`다. disabled/default인 기존 문서는 이 필드를 저장하지
+않는다. 반경은 유한한0초과10000이하, feather는0이상반경이하, centerXZ는 finite여야 한다.
+지원 범위는 source recipe를 가진 native3171 sprite particle의 기존 alpha/depth-read carrier다.
+다른 재질·mesh·trail·compiled material adapter로 활성화하는 문서는 validation이 거부한다.
+새 C++ 파일·family·runtime은 추가하지 않았으므로 프로젝트 소스 등록 추가는 없다.
+
+`OwnerRadialMask`의 좌표는 개별 sprite 중심이 아닌 Effect origin XZ다. mask-to-world는
+ParticleSystem uniform scale·yaw 뒤에 Frame.RootWorld를 곱한 행렬이다. owner/cue root scale과
+전역 particle scale은 각각 한 번 소비하고 StartSize·개별 element scale은 공통 경계를 키우지
+않는다. 비가역·non-finite transform은 실패로 분리한다. 원본3171 PS 자체는 보존하고 결과의
+alpha·distortion에 coverage를 적용한다. RT0 RGB는 straight alpha 그대로이며 RT2 bloom도
+coverage 적용 후 alpha를 받는다. 기본 비활성 경로는 기존 출력과 같다.
+
+### 실행한 자동 검증
+
+후보 JSON parse, 생성기 Python compile, 변경 범위 `git diff --check`를 통과했다. 새 struct의
+ABI를 사용하는 Codec·Playback·geometry helper closure36개 TU와 변경 particle renderer·
+MaterialDetail·probe를 현재 header로 다시 컴파일했다. production group3136 HLSL의 fxc
+compile도 성공했다. 기존 native dispatch의 X4000 경고는 compile log에 보존했으며 경고가
+없었다고 기록하지 않는다. 산출물과 source SHA는 `out/PizzaMaskRestoration20260917`에 둔다.
+
+root가 검토한 `Run-GuardedMaskProbe.ps1`로 CPU와 GPU를 각각 한 번 실행했다. 최종 runId는
+`3d55489c-61b9-482b-9e2c-1bc7f78b8482`이며 둘 다 exit0, timeout=false다. CPU는881ms,
+GPU는120ms였다. 45초 제한, 숨김·no-window 실행, parent/child error dialog 억제,
+명시적 Data/Resources root, 입력 SHA 전후 일치와 단일 실행 receipt를 확인했다. CPU50개,
+GPU19개 입력 hash가 실행 전후 일치했다.
+
+| 검증 경로 | 실제 결과 |
+|---|---|
+| 실제 Codec Load→Drawable 검증→직렬화→재파싱 | 후보16요소·mask2개 유지, 재직렬화 일치, 기존 문서의 disabled mask 생략 |
+| 실패 입력 | 반경0·음수·NaN·상한초과, 잘못된 feather, 미지원 carrier, disabled 비기본값 거부 |
+| Effect origin 역변환 | identity·이동·XYZ회전·비등방·음수 축 root와 전역 scale .125/1/3의15조합, 최대 복원 오차3.41197e-05m |
+| 실제 Playback와 sprite draw transform | .05/.2/.4초의 원본 dark particle6개, 바깥54,143 sample의 최종 alpha 모두0 |
+| CPU 종합 | checks=226, maskParticles=6, outsideAlpha=0 |
+| WARP offscreen8조건 | 비활성·중심·안쪽·feather·경계·바깥·scale/이동 조건 통과, alpha 최대 오차6.55651093e-06 |
+| GPU MRT | RT0와 RT2의 경계·바깥 alpha 정확히0, feather alpha1.1419524, 중심2.28390479, RT1은 원본3171의0 유지 |
+
+GPU probe는 실제 두 source DDS와 native3171 PS, production `PS_COVERED_MATERIAL`,
+`PS_MAIN`, bloom 함수의 추출 코드를 사용했다. 1×1 offscreen MRT의 raw shader 출력을 읽었고
+비활성·중심 출력 byte 일치도 확인했다. 이것은 실제 Client의 draw batching·blend·depth·scene
+후처리 전체나 카메라 시각 일치 검증이 아니다. raw alpha가1을 넘는 것은 원본 particle alpha
+입력 결과이며 최종 scene alpha 또는 화면 밝기로 해석하지 않는다.
+
+첫 runId `07b38993-9f7a-4cdb-b032-6acfcef21d6d`의 두 실행은 native main 전에
+STATUS_ENTRYPOINT_NOT_FOUND(-1073741511)로 끝났다. EXE가 import한
+`Set_NonInteractiveErrorMode`가 구형 `Client/Bin/Engine.dll`에는 없고 Debug DLL에는 있음을
+dumpbin으로 확인했다. PATH의 Debug 우선순위와 실제 Engine·직접 dependency DLL SHA를
+수정해 새 runId로 검증했으며 이전 실패 receipt·manifest를 보존했다. 이 첫 실패는 데이터나
+mask 검사 실패로 분류하지 않는다. 최종 두 stderr의 CRT 종료 allocation dump도 보존했고
+leak-free 판정은 하지 않았다.
+
+### 후보 보존과 남은 확인
+
+위 검증 시점의 후보 SHA는 `284565965e92dba11c467da2179538ed197f9c8110f7867b759feb339bec98bd`다.
+기존 사용자19요소 SHA4074dd36…와 source leaf SHA2cf2a74d…는 검증 전후 유지됐다.
+이 절은 후보·코드·자동 수치 검증의 완료 증거이며 최종 등록·설치·domain publish는 후속
+반영 기록으로 구분한다. 기존 패턴 occurrence를 자동 교체하지 않았고 취소된 비둘기 추가
+요청은 이번 후보 범위에 포함하지 않았다. Client/UI 실행·캡처·자동 Reload는 수행하지 않았으며
+실제 원형 검정 경계와 원작 화면의 최종 시각 판정은 사용자가 직접 확인한다.
+
+### G29 최종 저장본 반영·게시
+
+2026-09-17 19:15:42 KST에 최종 디스크 Composition revision1304를 다시 읽어, 새 피자
+resource와 모자 WORLD를 병합한 revision1306을 설치했다. WorldSequence는2051이다.
+사용자가 작업 중 저장한 앞선 revision을 덮어쓰지 않았으며, 사용자19요소 피자는 원래
+SHA4074dd36… 그대로다. 최종 반영 뒤 설치7파일 SHA가 후보와 같고 독립 검토에서도
+기존 항목 보존을 확인했다. Catalog·Tree·Composition resource·Client project/filter에는
+새 복원본만 추가했다. 기존 피자 패턴 occurrence의 자동 교체는 하지 않았다.
+
+후보 검증은 실제 P83 publisher의 source/product admission과 두 projection, 실제 전체
+WORLD reader를 사용했다. PS5의 41,922 key 검증이60초를 넘긴 첫 시도는 timeout이며,
+조건을 바꾸지 않고180초 제한에서 통과했다. 이후 Composition만 바뀐 경우에는 같은
+World bytes·원본 검증4함수·실제 외부입력의 fingerprint를 대조해 그 PASS를 재사용하고,
+P83 검증은 새 저장본마다 다시 실행했다. cache의 초기 근거는 완료된 실제 PASS와 동일
+World/함수, reader 준비 전 외부입력 mtime 및 두 post-run fingerprint다. 이를 소급한
+pre-start content hash라고 기록하지 않는다.
+
+`Invoke-BuildDomainOwner.ps1 -Owner KoukuSaydon -ExpectedKoukuSaydonSourceRevision 1306`
+은 exit0으로 끝났고 product/map/world.gameplay/gameplay.balance 네 domain이 모두 PASS다.
+실제 게시 P83와 검증 후보가 같고, runtime World의 모자 resource/template/instance도
+후보와 일치한다. WORLD cue는 patternbindings의 일반 presentationOccurrences가 아니라
+Encounter의 patterns[].worldSequences에서 소비된다는 계약에 따라 최종 검증했다.
+기록은 `out/PizzaTrailHatIntegration20260917/{installation,installed-verification}.json`과
+`publish-1306.log`다.
+
+Client.exe·Engine.dll·설치 Trail CSO의 시작/종료 SHA는 같다. 격리 컴파일·수치 검증과
+저장/게시 완료를 제품 전체 빌드 또는 실행 중 메모리 갱신으로 취급하지 않는다. Client와
+Server 종료·재시작·Reload·화면 조작은 하지 않았다. 새 C++와 셰이더는 다음 제품 빌드,
+게시된 Server 데이터는 다음 Server 재시작 뒤 소비한다.

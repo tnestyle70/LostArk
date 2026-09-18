@@ -18,6 +18,25 @@ namespace
 	constexpr double DEGREES_PER_RADIAN = 57.295779513082320876;
 	constexpr float DEFAULT_CLOWN_HOLD_MS = 15000.f;
 
+	bool Try_CounterLanding(const LostArk::Server::SERVER_WORLD_ENTITY& boss,
+		const LostArk::Server::CServerNavigation* navigation,
+		const LostArk::Server::CServerCollisionSystem* collision, float& landingY)
+	{
+		using namespace LostArk::Server;
+		SERVER_NAV_POINT ground{}, spawnGround{};
+		if (!navigation || !collision || !std::isfinite(boss.fPositionY) ||
+			!std::isfinite(boss.fSpawnPositionY) ||
+			!navigation->Is_PointWalkableExact(boss.fPositionX, boss.fPositionZ) ||
+			!navigation->Sample_Position(boss.fPositionX, boss.fPositionZ, ground) ||
+			!navigation->Sample_Position(boss.fSpawnPositionX, boss.fSpawnPositionZ, spawnGround)) return false;
+		// Restore the placement's ground-relative height, not an airborne clip's last up.
+		// This preserves intentionally raised boss placements in other gates.
+		landingY = ground.y + (boss.fSpawnPositionY - spawnGround.y);
+		return std::isfinite(landingY) && collision->Is_CirclePositionClear(
+			boss.fPositionX, landingY, boss.fPositionZ, boss.fCollisionRadius,
+			boss.fCollisionRadius, boss.fCollisionRadius, boss.iNetEntityId);
+	}
+
 	/* Stable server-owned card selection for one encounter admission. */
 	std::uint64_t Mix(std::uint64_t value) noexcept
 	{
@@ -1293,6 +1312,27 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Update(
             });
             if (counter != signals.end())
             {
+                float landingY = boss.fPositionY;
+                if (window.bEndsPatternOnSuccess && !Try_CounterLanding(boss, navigation, collision, landingY))
+                {
+                    // The hit was already applied once by combat. Keep only its signal
+                    // pending; retrying the landing must never reapply damage or stagger.
+                    if (reachedEnd)
+                    {
+                        signals.erase(counter);
+                        Close_Window(boss, window, state, players);
+                        Apply_Results(window.OnTimeout, state, nullptr, players, boss, catalog,
+                            pMadnessPolicy, serverTick, outDamageEvents, outOutput);
+                    }
+                    outOutput.strStatus = reachedEnd ? "counter window timed out: landing rejected by navigation or collision" :
+                        "counter landing rejected by navigation or collision";
+                    break;
+                }
+                if (window.bEndsPatternOnSuccess)
+                {
+                    boss.fPositionY = landingY;
+                    outOutput.bCounterSuccessLanded = true;
+                }
                 signals.erase(counter);
                 Close_Window(boss, window, state, players);
                 Apply_Results(window.OnSuccess, state, nullptr, players, boss, catalog,
@@ -1305,6 +1345,7 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Update(
                 Close_Window(boss, window, state, players);
                 Apply_Results(window.OnTimeout, state, nullptr, players, boss, catalog,
                     pMadnessPolicy, serverTick, outDamageEvents, outOutput);
+                outOutput.strStatus = "counter window timed out";
             }
             break;
         }

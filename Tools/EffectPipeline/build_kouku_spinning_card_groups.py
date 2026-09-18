@@ -21,6 +21,8 @@ import build_kouku_gate1_full_restore as source
 from build_kouku_effect_organization import effect_payload_id
 from build_kouku_backstep_flame_groups import remap, project_mesh_rotation
 from extract_action_effect_notifies import scan_length_prefixed_strings
+from build_saydon_card_pattern_groups import (
+    scale_spinning_card_geometry, follow_local_card_axes, hide_spinning_card_afterimages)
 
 ROOT = source.ROOT
 AUTHORED = ROOT / 'Data/Effects/Authored'
@@ -291,6 +293,9 @@ def build(evidence):
             original = native_stage(stage['stageIndex'], inputs)
             append_elements(document, original, f'kouku.spin.action.{stage["stageIndex"]}', stage['startSeconds'])
     flights = [append_flight(document, library, launch, contract['missileFields']) for launch in contract['launches']]
+    scale_spinning_card_geometry(document)
+    follow_local_card_axes(document)
+    hide_spinning_card_afterimages(document)
     validation = validate(document)
     candidate = evidence / 'candidate' / (ASSET + '.effect.json')
     source.write(candidate, document)

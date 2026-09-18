@@ -49,6 +49,23 @@ using OCCURRENCE = KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE;
 using KIND = KOUKU_SAYDON_PRESENTATION_KIND;
 constexpr std::uint32_t MAX_TIMELINE_MS = 600000u;
 
+float Counter_AfterimageAgeSeconds(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
+    const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern, const double clockMs)
+{
+    if (!std::isfinite(clockMs)) return -1.f;
+    for (const auto& box : pattern.LogicOccurrences)
+    {
+        if (!box.bEnabled || !box.iDurationMs || clockMs < box.iStartMs ||
+            clockMs >= double(box.iStartMs) + box.iDurationMs) continue;
+        const auto logic = std::find_if(document.Logics.begin(), document.Logics.end(),
+            [&](const auto& value) { return value.strLogicId == box.strLogicId; });
+        if (logic != document.Logics.end() && logic->strLogicType == "DURATION" &&
+            logic->strJudgementKind == "COUNTER_WINDOW")
+            return float((clockMs - box.iStartMs) * .001);
+    }
+    return -1.f;
+}
+
 bool Charge_AfterimageActive(const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern, const float clockMs)
 {
     if (pattern.strActorProfileId != "MN_RPCT_05" || !std::isfinite(clockMs)) return false;
@@ -2423,8 +2440,27 @@ void Client::CKoukuSaydonPresentationPlayer::Update(float dt,
             m_LightPlayerPivots.push_back(*character->Get_Transform()->Get_WorldMatrixPtr());
     }
     if (!m_bProductAttempted) { std::string status; (void)Reload_Product(status); }
+    for (auto owner = m_CounterAfterimageOwners.begin(); owner != m_CounterAfterimageOwners.end();)
+    {
+        const auto npc = owner->second.lock();
+        const bool live = npc && std::any_of(bosses.begin(), bosses.end(), [&](const auto& view) {
+            return view.Snapshot.iNetEntityId == owner->first && view.pNpc.lock() == npc; });
+        if (live) { ++owner; continue; }
+        if (npc) npc->Set_CounterAfterimageEnabled(false);
+        owner = m_CounterAfterimageOwners.erase(owner);
+    }
     for (const auto& view : bosses)
-        if (const auto npc = view.pNpc.lock()) npc->Set_ChargeAfterimageEnabled(false);
+        if (const auto npc = view.pNpc.lock())
+        {
+            npc->Set_ChargeAfterimageEnabled(false);
+            using FLAG = LostArk::Shared::BOSS_COMBAT_STATE_FLAG;
+            const auto flags = view.Snapshot.BossCombat.iFlags;
+            npc->Set_CounterAfterimageEnabled(view.Snapshot.iCurrentHp && view.Snapshot.hasBossCombatState &&
+                LostArk::Shared::Has_BossCombatFlag(flags, FLAG::COUNTERABLE) &&
+                !LostArk::Shared::Has_BossCombatFlag(flags, FLAG::GROGGY) &&
+                !LostArk::Shared::Has_BossCombatFlag(flags, FLAG::GHOST_HIDDEN));
+            m_CounterAfterimageOwners[view.Snapshot.iNetEntityId] = npc;
+        }
     Update_TargetedCombatVisuals(dt, bosses);
     Update_ContactCombatEffects(dt);
     const auto* arena = CLevel_KakulSaydonArena::Get_Active();
@@ -2803,6 +2839,11 @@ void Client::CKoukuSaydonPresentationPlayer::Release_BundlePreviewMembers(
     auto* level = CLevel_KakulSaydonArena::Get_Active();
     for (auto& member : members)
     {
+        if (member.actor)
+        {
+            member.actor->Set_CounterAfterimageEnabled(false);
+            member.actor->Reset_AfterimageHistory();
+        }
         if (member.rootMotion)
         {
             member.rootMotion.reset();
@@ -3228,6 +3269,10 @@ bool Client::CKoukuSaydonPresentationPlayer::Begin_ModelReferencePreview(
     KOUKU_SAYDON_COMPOSITION_DOCUMENT reference;
     reference.iRevision = document.iRevision;
     reference.strAreaId = document.strAreaId;
+    // Counter appearance is a read-only actor cue; model reference never executes outcomes.
+    for (const auto& logic : document.Logics)
+        if (logic.strLogicType == "DURATION" && logic.strJudgementKind == "COUNTER_WINDOW")
+            reference.Logics.push_back(logic);
     KOUKU_SAYDON_COMPOSITION_BUNDLE bundle;
     if (isBundle)
     {
@@ -3265,7 +3310,13 @@ bool Client::CKoukuSaydonPresentationPlayer::Begin_ModelReferencePreview(
         pattern.BossMotion.reset();
         pattern.fAnimationRootVerticalScale = 1.0;
         for (auto& stage : pattern.Stages) stage.bRetargetOnEnter = false;
-        pattern.LogicOccurrences.clear();
+        std::erase_if(pattern.LogicOccurrences, [&](const auto& box) {
+            return std::none_of(reference.Logics.begin(), reference.Logics.end(),
+                [&](const auto& logic) { return logic.strLogicId == box.strLogicId; }); });
+        for (auto& box : pattern.LogicOccurrences)
+        {
+            box.OnSuccessLogicIds.clear(); box.OnFailLogicIds.clear(); box.OnTimeoutLogicIds.clear();
+        }
         pattern.SummonOccurrences.clear();
         if (!propSequences) pattern.WorldOccurrences.clear();
         else
@@ -3423,11 +3474,16 @@ bool Client::CKoukuSaydonPresentationPlayer::Sample_BundlePreviewPose(
                 if (!member.airborneSelections.contains(event.occurrenceId) &&
                     !pin(event.occurrenceId, event.targetPositionPolicy == "SELECT")) return false;
             }
-            else if (event.phase == "APPEAR_PLAYER" && !member.airborneAppearancePositions.contains(event.occurrenceId))
+            else if (event.phase == "APPEAR_PLAYER")
             {
-                if (!recordTargets || selection == SIZE_MAX) return false;
+                // Like the Server, select at appearance when no explicit selection preceded it.
+                // Retain that identity for later appearances, including after a backward seek.
+                if (selection == SIZE_MAX) selection = i;
+                if (member.airborneAppearancePositions.contains(event.occurrenceId)) continue;
+                if (!recordTargets) return false;
                 const auto& id = events[selection].occurrenceId;
-                if (events[selection].targetPositionPolicy == "SELECT")
+                if (!member.airborneSelections.contains(id) && !pin(id, false)) return false;
+                if (events[selection].phase == "SELECT_PLAYER" && events[selection].targetPositionPolicy == "SELECT")
                 {
                     // Selection owns this ground point even if the player moves or leaves.
                     member.airborneAppearancePositions[event.occurrenceId] = member.airborneSelections.at(id).second;
@@ -3749,6 +3805,9 @@ void Client::CKoukuSaydonPresentationPlayer::Sample_BundlePreview()
             }
         }
         member.actor->Synchronize_WeaponPose();
+        const float counterAge = localMs >= 0.0 && localMs < member.durationMs ?
+            Counter_AfterimageAgeSeconds(m_PreviewDocument, member.pattern, localMs) : -1.f;
+        member.actor->Set_CounterAfterimageEnabled(counterAge >= 0.f, counterAge);
 #ifdef _DEBUG
         if (m_bBundleWorldExternal && !member.finiteActorLifetime)
         {
@@ -3974,7 +4033,11 @@ void Client::CKoukuSaydonPresentationPlayer::Seek_Preview(std::uint32_t clockMs)
         }
     };
     prepare(m_PreviewSession);
-    for (auto& member : m_BundlePreviewMembers) prepare(member.session);
+    for (auto& member : m_BundlePreviewMembers)
+    {
+        prepare(member.session);
+        if (member.actor) member.actor->Reset_AfterimageHistory();
+    }
     if (Preview_IsBundle()) Sample_BundlePreview();
     // MainApp samples single-pattern WORLD at the new clock before recreating these cue handles.
     Refresh_SharedPresentation();
@@ -4277,6 +4340,9 @@ void Client::CKoukuSaydonPresentationPlayer::Update_MazeMarks(
 
 void Client::CKoukuSaydonPresentationPlayer::Reset()
 {
+    for (const auto& [id, owner] : m_CounterAfterimageOwners)
+        if (const auto npc = owner.lock()) npc->Set_CounterAfterimageEnabled(false);
+    m_CounterAfterimageOwners.clear();
     m_LightPlayerPivots.clear();
     m_LightBossFollowers.clear();
     m_iProductReloadRunEpoch = 0u;

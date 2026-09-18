@@ -26181,28 +26181,6 @@
       "assetId": "MAP_EB1DC1086BB5_BG_VOL_COMMON_ARCH01A_SM_FEIYI_OVR_145D4AFC46B8_FR_033E2398F588"
     },
     {
-      "sourcePlacementId": "editor:LV_LOBBY_CLASSSELECT_SL00:1",
-      "coordinateScale": [
-        0.15625,
-        0.15625
-      ],
-      "coordinateBias": [
-        0.015625,
-        0.703125
-      ],
-      "averageScale": [
-        1.0000001192092896,
-        1.0000001192092896,
-        1.0000001192092896
-      ],
-      "directionalScale": [
-        7.872079849243164,
-        5.539783954620361,
-        7.116785526275635
-      ],
-      "assetId": "MAP_EB1DC1086BB5_BG_VOL_COMMON_ARCH01A_SM_FEIYI_OVR_145D4AFC46B8_FR_033E2398F588"
-    },
-    {
       "sourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:1042",
       "coordinateScale": [
         0.15625,

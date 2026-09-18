@@ -225,6 +225,67 @@ public:
 		const MAP_PLACEMENT_RECORD& record,
 		FMapStaticInstance& outInstance);
 
+	/* World matrix of one placement -- S*R*T with the BOTTOM_CENTER anchor
+	   offset -- shared by the batch instance, the viewport pick and the
+	   selection outline so no consumer can drift from what is drawn. The
+	   model must carry local bounds. */
+	static bool_t Compute_PlacementWorld(
+		const MAP_ASSET_ENTRY& asset,
+		const shared_ptr<Engine::CModel>& model,
+		const MAP_PLACEMENT_RECORD& record,
+		float4x4_t& outWorld);
+	/* World-space AABB of the rotated local bounds. */
+	static bool_t Try_Get_PlacementWorldBounds(
+		const MAP_ASSET_ENTRY& asset,
+		const shared_ptr<Engine::CModel>& model,
+		const MAP_PLACEMENT_RECORD& record,
+		float3_t& outMinimum,
+		float3_t& outMaximum);
+	/* One model clone per asset for bounds queries, kept by the caller for
+	   as long as its level lives. A failed clone is remembered as null. */
+	static shared_ptr<Engine::CModel> Find_PlacementModel(
+		uint32_t levelIndex,
+		const CMapAssetCatalog& catalog,
+		const std::string& assetId,
+		std::unordered_map<std::string, shared_ptr<Engine::CModel>>& modelCache);
+	/* Resolves a picked world point to the visible, non-backdrop placement
+	   whose rotated local bounds contain it, choosing the smallest volume
+	   among nested boxes; outContainingCount reports how many did. With no
+	   containing box the nearest bounding sphere wins and the count is 0. */
+	static bool_t Try_Resolve_PickedPlacement(
+		uint32_t levelIndex,
+		const CMapAssetCatalog& catalog,
+		const std::vector<MAP_RUNTIME_PLACED_ENTRY>& placements,
+		std::unordered_map<std::string, shared_ptr<Engine::CModel>>& modelCache,
+		const float3_t& worldPoint,
+		uint64_t& outPlacementId,
+		size_t& outContainingCount);
+
+	enum class PLACEMENT_TRANSFORM_RESULT
+	{
+		APPLIED,
+		/* The staged record failed validation; nothing changed. */
+		REJECTED,
+		/* The runtime could not take the pose; the entry keeps its state. */
+		FAILED,
+	};
+	/* Writes the staged pose onto the live entry: a standalone object takes
+	   it directly, a batched instance is rebuilt in place, and a mirror parity
+	   flip migrates the entry to a standalone object because the batch pass
+	   changes. On APPLIED entry.record becomes the staged record. */
+	static PLACEMENT_TRANSFORM_RESULT Apply_PlacementTransform(
+		uint32_t levelIndex,
+		const CMapAssetCatalog& catalog,
+		std::unordered_map<std::string, shared_ptr<Engine::CModel>>& modelCache,
+		MAP_RUNTIME_PLACED_ENTRY& entry,
+		const MAP_PLACEMENT_RECORD& staged,
+		std::string& outStatus);
+#ifdef _DEBUG
+	/* True while a Debug preview (Character Select floor swap) adds and hides
+	   placements; editing tools stay read-only until it is cleared. */
+	bool_t Has_DebugPlacementPreview() const { return !m_DebugPreviewIds.empty(); }
+#endif
+
 	static std::wstring Make_LayerTag(const std::string& sourceLevel);
 
 private:

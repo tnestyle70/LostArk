@@ -75,10 +75,16 @@ Product: Engine → Shared → Server → Client (SDK·shader·runtime DLL 배�
 
 | 이번에 변경한 입력 | 필요한 처리 | 결과 확인 |
 |---|---|---|
-| 위치·개수·offset 등 JSON 저작 데이터 | Save, 해당 domain에 필요한 Publish/Reload 또는 재시작 | 변경 데이터를 읽는 기존 실행 파일 사용; C++/FX 컴파일 불필요 |
+| 위치·개수·offset 등 JSON 저작 데이터 | 최신 저장본 기준 병합·검증 후 해당 domain Publish; 실행 중 데이터 로드는 별도 단계 | Client 종료·C++/FX 컴파일은 데이터 파일 반영의 조건이 아님 |
 | CPP 또는 헤더 | 같은 설정의 Product `Build`로 필요한 OBJ 재컴파일·링크 | 변경·누락이 없는 셰이더와 유효한 tracking은 재사용 |
 | HLSL/HLSLI·FX 옵션·shader project 등록 | Product `Build`가 실제 include/command 의존성에 따라 CSO 갱신 | 공통 include 변경은 여러 FX에 영향을 줄 수 있음 |
 | 받은 runtime ZIP을 실행만 함 | 설치 후 실제 target을 확인한 no-build 바로가기 실행 | 최초 VS Build가 생략된다는 보장은 아님 |
+
+외부 데이터 반영은 [AGENTS.md](AGENTS.md)의 편집 보존·적용 승인 정책을 따른다. 준비·검증 후
+최종 저장본 기준의 적용 승인은 한 번만 확인하며, 이미 받은 승인을 다시 묻지 않는다.
+최신 저장본의 필드 병합과 hash/freshness 검사는 유지한다. 파일 반영은 실행 중 도구의 draft나
+캐시를 자동 reload하지 않는다. 필요한 Reload·재접속·Server 재시작은 해당 소비 계약에 따라
+안내하며, 데이터 파일 반영을 위해 Client 종료를 요구하지 않는다.
 
 `F5`와 `Ctrl+F5`는 모두 VS의 최신 여부 확인과 Build를 유발할 수 있다. 이미 Product 빌드가
 끝난 결과만 확인할 때는 `Client/Bin/<Configuration>/Client.exe`를 가리키는 no-build 바로가기를
@@ -196,7 +202,8 @@ Composition과 Arena Sequencer source graph를 검증하고, resolved Client rea
 `LNK2019`가 발생하면 broad clean보다 먼저 선택한 `Configuration|Platform`의 evaluated `IntDir/OutDir`와 provider
 `.obj`의 정의 심볼을 확인하고, 해당 translation unit만 강제 재컴파일한다. `LNK1104`, `MSB3021`, `MSB3027`의
 대상이 EXE/DLL이면 실행 중 출력물 잠금이므로 compile 성공과 최종 link 실패, 실행 중인 이전 바이너리를 분리해
-보고한다. Client 최종 link는 실행 중인 `Client.exe`를 사용자가 종료한 뒤 한 번만 수행한다.
+보고한다. 실제 EXE/DLL 링크·교체가 실행 중 해당 출력물의 점유로 막힐 때만 그 프로세스 종료가
+필요하다. 이 파일 잠금 조건을 데이터 병합·Publish의 Client 종료 조건으로 확대하지 않는다.
 
 Loader worker에서 호출되는 shader/model/navigation/camera/character/part/Valtan factory는 modal dialog를 띄우지 않고 실패를 반환한다. 종료 시 cooperative cancellation과 `CancelSynchronousIo`를 순서대로 시도한다. 그래도 10초를 넘기면 `TerminateThread`로 손상된 process를 계속 실행하지 않고 `ERROR_TIMEOUT`으로 process fail-fast한다. smoke harness는 조기 종료나 report 누락을 실패로 판정한다.
 
@@ -382,6 +389,12 @@ F6 자유 카메라에서 `Move Player`를 누르면 mouse-look을 끄고 지면
 Esc/우클릭/follow 복귀는 미제출 선택을 취소하고 Tab으로 mouse-look을 다시 켠다.
 이 명시적 Debug 저작 명령은 Server의 navigation 높이·walkability·collision 검증과 typed 응답을 거치며
 일반 gameplay 입력을 다시 활성화하지 않는다. Server/Client는 같은 protocol로 빌드·재시작해야 한다.
+F1의 `Arena Camera / Player` 바로 아래 `Show Navigation`은 현재 제품 Level의 게시 navgrid를
+읽는 Debug 오버레이다. 녹색은 이동 가능, 주황은 바닥이 있는 막힌 셀, 자홍은 베이크에서 바닥을
+찾지 못한 셀이다. 원본/paint와 게시본이 다르면 막힘 원인을 추정하지 않고 빨간색으로 표시한다.
+`Reload Navigation`으로 디스크 표시본을 다시 읽고 `Camera range (m)`로 표시 범위를 조절한다.
+F1을 닫아도 표시되며 Level 전환 시 꺼진다. 실제 Server 메모리·동적 blocker 상태나 베이크를
+변경하지 않는다. Development의 Map Editor는 기존 MapTool Navigation 표시를 사용한다.
 Client 메인 루프는 대기 중 Windows 메시지를 처리한 뒤 실제 frame delta로 Update/Render를 실행하며,
 60fps 소프트웨어 제한을 두지 않는다. `Timer_60`은 기존 UI 소비자를 위한 이름만 유지한 frame clock이다.
 Server fixed tick은 Client FPS와 독립이며, Profiler CPU frame time과 실제 프레임 간격은 구분한다.

@@ -70,6 +70,8 @@ namespace Client
 		bool_t bDefaultMotion = false;
 		// Model-less Object: strInstanceId identifies its saved motion group.
 		bool_t bMotionGroup = false;
+		// A unique saved group owns this donor default; Object Append uses that group.
+		std::string strAppendGroupObjectId;
 		std::vector<std::string> AnimationClips;
 		// Authored emission rows of this Motion (1 for seeded emitters); Box Detail offers the row index.
 		std::uint32_t iEmissionCount = 1u;

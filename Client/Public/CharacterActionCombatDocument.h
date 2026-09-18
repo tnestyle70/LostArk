@@ -29,6 +29,13 @@ namespace Client
     {
     public:
         bool Reload(std::string_view animationAssetId, std::string& outStatus);
+        // Workbench-owned v4 mutations.  They only stage the created or retired
+        // identity in this owner; Save_Atomic stays the single file writer and
+        // still refuses any identity change the Workbench did not ask for here.
+        bool Insert_CasterHit(std::uint32_t skillId, std::uint32_t stageIndex,
+            const CHARACTER_ACTION_COMBAT_ROW& prototypeOrDefaults,
+            std::string& outCreatedColliderId, std::string& outError);
+        bool Remove_CasterHit(const std::string& colliderId, std::string& outError);
         bool Save_Atomic(const std::vector<CHARACTER_ACTION_COMBAT_ROW>& rows,
             std::string& outStatus);
         const std::vector<CHARACTER_ACTION_COMBAT_ROW>& Get_Rows() const { return m_Rows; }

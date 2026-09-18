@@ -7,6 +7,7 @@
 #include <cmath>
 #include <fstream>
 #include <iomanip>
+#include <map>
 #include <sstream>
 #include <stdexcept>
 #include <unordered_map>
@@ -193,6 +194,148 @@ namespace
         else for (auto& [name, item] : fields) item = ReplaceRows(item, rows);
         return Json::Object(std::move(fields), value.Get_ObjectInsertionOrder());
     }
+    bool Carries_Projectiles(const Json& owner)
+    {
+        const auto* projectiles = owner.Find("projectiles");
+        return projectiles && projectiles->Is_Array() && !projectiles->Get_Array().empty();
+    }
+    // Which collider identities the file on disk already carries. Everything the
+    // draft holds beyond this set was created by Insert_CasterHit.
+    void Collect_ColliderIds(const Json& value, std::unordered_set<std::string>& ids)
+    {
+        if (value.Is_Array()) { for (const auto& item : value.Get_Array()) Collect_ColliderIds(item, ids); return; }
+        if (!value.Is_Object()) return;
+        if (value.Find("colliderId") && value.Find("result")) { ids.insert(Text(value, "colliderId")); return; }
+        for (const auto& [name, item] : value.Get_Object()) Collect_ColliderIds(item, ids);
+    }
+    // Exactly the v4 caster hit field set the existing publisher asserts.
+    Json New_CasterHit(const Row& row)
+    {
+        Json::OBJECT logic{{"logicId", Json::String(row.strLogicId)}, {"logicType", Json::String("DURATION")},
+            {"judgementKind", Json::String("AREA_OVERLAP")}, {"colliderId", Json::String(row.strColliderId)},
+            {"resultId", Json::String(row.strResultId)}};
+        Json::OBJECT result{{"resultId", Json::String(row.strResultId)}, {"logicType", Json::String("RESULT")},
+            {"resultKind", Json::String(row.strResultKind)}};
+        Json::OBJECT hit{{"timeMs", Json::Number(row.iTimeMs)}, {"repeatCount", Json::Number(row.iRepeatCount)},
+            {"repeatMs", Json::Number(row.iRepeatMs)}, {"areaType", Json::Number(row.iAreaType)},
+            {"range", Json::Number(row.fRange)}, {"angle", Json::Number(row.fAngleDegrees)},
+            {"width", Json::Number(row.fWidth)}, {"height", Json::Number(row.fHeight)},
+            {"offset", Json::Number(row.fOffset)}, {"inner", Json::Number(row.fInner)},
+            {"maxTargets", Json::Number(row.iMaxTargets)}, {"pushMs", Json::Number(row.iPushMs)},
+            {"pushRange", Json::Number(row.fPushRange)}, {"colliderId", Json::String(row.strColliderId)},
+            {"logic", Json::Object(std::move(logic), {"logicId", "logicType", "judgementKind", "colliderId", "resultId"})},
+            {"result", Json::Object(std::move(result), {"resultId", "logicType", "resultKind"})}};
+        return Json::Object(std::move(hit), {"timeMs", "repeatCount", "repeatMs", "areaType", "range", "angle",
+            "width", "height", "offset", "inner", "maxTargets", "pushMs", "pushRange", "colliderId", "logic", "result"});
+    }
+    using PENDING_HITS = std::map<std::pair<std::uint32_t, std::uint32_t>, std::vector<const Row*>>;
+    Json::ARRAY Rebuild_Hits(const Json& owner, const std::unordered_map<std::string, const Row*>& rows,
+        PENDING_HITS& pending, const std::uint32_t skillId, const std::uint32_t stageIndex)
+    {
+        Json::ARRAY hits;
+        for (const auto& hit : Array(owner, "hits"))
+            if (rows.contains(Text(hit, "colliderId"))) hits.push_back(hit);
+        const auto created = pending.find({skillId, stageIndex});
+        if (created == pending.end()) return hits;
+        for (const auto* row : created->second) hits.push_back(New_CasterHit(*row));
+        pending.erase(created);
+        return hits;
+    }
+    // Adds the caster hits Insert_CasterHit created and drops the ones
+    // Remove_CasterHit retired. Every other field, projectiles included, is
+    // carried verbatim; ReplaceRows then rewrites the numbers and re-sorts.
+    Json Restructure(const Json& root, const std::unordered_map<std::string, const Row*>& rows,
+        const std::unordered_set<std::string>& carried,
+        const std::unordered_map<std::uint32_t, std::size_t>& comboStages)
+    {
+        PENDING_HITS pending;
+        for (const auto& [id, row] : rows)
+        {
+            if (carried.contains(id)) continue;
+            if (row->iProjectileIndex != UINT32_MAX)
+                throw std::runtime_error("Only caster hits can be created here: " + id);
+            pending[{row->iSkillId, row->iStageIndex}].push_back(row);
+        }
+        for (auto& [owner, created] : pending)
+            std::stable_sort(created.begin(), created.end(),
+                [](const Row* left, const Row* right) { return left->strColliderId < right->strColliderId; });
+        Json::ARRAY skills;
+        for (const auto& skill : Array(root, "skills"))
+        {
+            const auto skillId = Integer(skill, "skillId");
+            auto fields = skill.Get_Object();
+            if (const auto* stages = skill.Find("stages"))
+            {
+                if (!stages->Is_Array()) throw std::runtime_error("Invalid combat stages");
+                Json::ARRAY rebuilt;
+                for (const auto& stage : stages->Get_Array())
+                {
+                    const auto stageIndex = Integer(stage, "stageIndex");
+                    auto stageFields = stage.Get_Object();
+                    auto hits = Rebuild_Hits(stage, rows, pending, skillId, stageIndex);
+                    if (hits.empty() && !Carries_Projectiles(stage))
+                        throw std::runtime_error("A combat stage keeps at least one hit or projectile");
+                    stageFields.insert_or_assign("hits", Json::Array(std::move(hits)));
+                    rebuilt.push_back(Json::Object(std::move(stageFields), stage.Get_ObjectInsertionOrder()));
+                }
+                for (auto item = pending.begin(); item != pending.end(); )
+                {
+                    if (item->first.first != skillId) { ++item; continue; }
+                    Json::ARRAY hits;
+                    for (const auto* row : item->second) hits.push_back(New_CasterHit(*row));
+                    Json::OBJECT stage{{"stageIndex", Json::Number(item->first.second)},
+                        {"hits", Json::Array(std::move(hits))}};
+                    rebuilt.push_back(Json::Object(std::move(stage), {"stageIndex", "hits"}));
+                    item = pending.erase(item);
+                }
+                fields.insert_or_assign("stages", Json::Array(std::move(rebuilt)));
+            }
+            else
+            {
+                auto hits = Rebuild_Hits(skill, rows, pending, skillId, 0u);
+                if (hits.empty() && !Carries_Projectiles(skill))
+                    throw std::runtime_error("A combat skill keeps at least one hit or projectile");
+                for (const auto& [owner, created] : pending)
+                    if (owner.first == skillId)
+                        throw std::runtime_error("Skill " + std::to_string(skillId) + " stores one combat stage; stage " +
+                            std::to_string(owner.second) + " has no HitShapes owner yet");
+                fields.insert_or_assign("hits", Json::Array(std::move(hits)));
+            }
+            skills.push_back(Json::Object(std::move(fields), skill.Get_ObjectInsertionOrder()));
+        }
+        // Skills the document does not carry yet. A combo skill owns stages; any
+        // other skill owns the single flat hits array the publisher expects.
+        while (!pending.empty())
+        {
+            const auto skillId = pending.begin()->first.first;
+            const auto staged = comboStages.find(skillId);
+            if (staged == comboStages.end()) throw std::runtime_error("Unknown combat skill ID");
+            Json::OBJECT fields{{"skillId", Json::Number(skillId)}};
+            Json::ARRAY stages, flat;
+            for (auto item = pending.begin(); item != pending.end(); )
+            {
+                if (item->first.first != skillId) { ++item; continue; }
+                Json::ARRAY hits;
+                for (const auto* row : item->second) hits.push_back(New_CasterHit(*row));
+                if (staged->second != 0u)
+                {
+                    Json::OBJECT stage{{"stageIndex", Json::Number(item->first.second)},
+                        {"hits", Json::Array(std::move(hits))}};
+                    stages.push_back(Json::Object(std::move(stage), {"stageIndex", "hits"}));
+                }
+                else if (item->first.second != 0u) throw std::runtime_error("Unknown combat stage");
+                else flat = std::move(hits);
+                item = pending.erase(item);
+            }
+            if (staged->second != 0u) fields.emplace("stages", Json::Array(std::move(stages)));
+            else fields.emplace("hits", Json::Array(std::move(flat)));
+            skills.push_back(Json::Object(std::move(fields),
+                {"skillId", staged->second != 0u ? "stages" : "hits"}));
+        }
+        auto rootFields = root.Get_Object();
+        rootFields.insert_or_assign("skills", Json::Array(std::move(skills)));
+        return Json::Object(std::move(rootFields), root.Get_ObjectInsertionOrder());
+    }
     void Serialize(const Json& value, std::ostringstream& output, int indent = 0)
     {
         if (value.Is_Object())
@@ -241,6 +384,68 @@ bool Client::CCharacterActionCombatDocument::Reload(std::string_view asset, std:
     catch (const std::exception& error) { status = error.what(); return false; }
 }
 
+bool Client::CCharacterActionCombatDocument::Insert_CasterHit(const std::uint32_t skillId,
+    const std::uint32_t stageIndex, const Row& prototype, std::string& createdColliderId, std::string& error)
+{
+    try
+    {
+        if (m_Path.empty()) throw std::runtime_error("Load a Character combat document before adding a collider");
+        if (skillId == 0u || stageIndex > 15u) throw std::runtime_error("Invalid combat skill or stage for a new collider");
+        // The prototype supplies shape and schedule only; the caster owner and a
+        // fresh unused identity belong to this owner.
+        Row row = prototype;
+        row.iSkillId = skillId; row.iStageIndex = stageIndex;
+        row.iProjectileIndex = UINT32_MAX; row.iProjectileStartMs = 0u; row.bContact = false;
+        if (row.strResultKind != "STAGGER" && row.strResultKind != "COUNTER") row.strResultKind = "DAMAGE";
+        if (row.iRepeatCount == 0u) row.iRepeatCount = 1u;
+        const char* const kind = row.strResultKind == "STAGGER" ? "stagger" :
+            row.strResultKind == "COUNTER" ? "counter" : "damage";
+        std::unordered_set<std::string> used;
+        for (const auto& existing : m_Rows)
+        {
+            used.insert(existing.strColliderId); used.insert(existing.strLogicId); used.insert(existing.strResultId);
+        }
+        const std::string prefix = "skill" + std::to_string(skillId) + ".stage" + std::to_string(stageIndex) + ".caster.hit";
+        row.strColliderId.clear(); row.strLogicId.clear(); row.strResultId.clear();
+        for (std::uint32_t ordinal = 1u; ordinal <= 192u; ++ordinal)
+        {
+            const std::string base = prefix + std::to_string(ordinal) + "." + kind + ".";
+            if (used.contains(base + "collider") || used.contains(base + "logic") || used.contains(base + "result")) continue;
+            row.strColliderId = base + "collider"; row.strLogicId = base + "logic"; row.strResultId = base + "result";
+            break;
+        }
+        if (row.strColliderId.empty()) throw std::runtime_error("No free caster hit ordinal remains for this skill stage");
+        Validate(row);
+        m_Rows.push_back(row);
+        createdColliderId = row.strColliderId;
+        error = "Added " + row.strColliderId + "; Save Combat writes it to the HitShapes owner.";
+        return true;
+    }
+    catch (const std::exception& failure) { error = failure.what(); return false; }
+}
+
+bool Client::CCharacterActionCombatDocument::Remove_CasterHit(const std::string& colliderId, std::string& error)
+{
+    const auto found = std::find_if(m_Rows.begin(), m_Rows.end(),
+        [&](const Row& row) { return row.strColliderId == colliderId; });
+    if (found == m_Rows.end()) { error = "Unknown collider ID: " + colliderId; return false; }
+    if (found->iProjectileIndex != UINT32_MAX)
+    { error = "Projectile hits are owned by the projectile intake, not this editor: " + colliderId; return false; }
+    // Publish-GameplayBalance refuses a skill or stage that ends with neither
+    // hits nor projectiles, so the last caster hit of a stage stays.
+    std::size_t casterHits = 0u, projectiles = 0u;
+    for (const auto& row : m_Rows)
+    {
+        if (row.iSkillId != found->iSkillId || row.iStageIndex != found->iStageIndex) continue;
+        if (row.iProjectileIndex == UINT32_MAX) ++casterHits; else ++projectiles;
+    }
+    if (casterHits <= 1u && projectiles == 0u)
+    { error = "This is the last hit of the stage; the publisher rejects a stage with neither hits nor projectiles."; return false; }
+    m_Rows.erase(found);
+    error = "Removed " + colliderId + "; Save Combat rewrites the HitShapes owner.";
+    return true;
+}
+
 bool Client::CCharacterActionCombatDocument::Save_Atomic(const std::vector<Row>& rows, std::string& status)
 {
     std::filesystem::path temporary;
@@ -249,30 +454,46 @@ bool Client::CCharacterActionCombatDocument::Save_Atomic(const std::vector<Row>&
         std::string bytes;
         if (m_Path.empty() || !Read(m_Path, bytes) || bytes != m_Baseline)
             throw std::runtime_error("Combat file changed outside this draft; preserve the draft and reload explicitly");
-        if (rows.size() != m_Rows.size()) throw std::runtime_error("Combat rows must retain their imported identities");
         std::unordered_map<std::string, const Row*> changes;
         for (const auto& row : rows)
         {
             Validate(row);
             if (!changes.emplace(row.strColliderId, &row).second) throw std::runtime_error("Duplicate collider ID");
         }
+        // Rows are added and retired only through Insert_CasterHit /
+        // Remove_CasterHit, so the identity rule compares IDs, not counts: every
+        // row this owner still holds must come back with the same identity.
         for (const auto& baseline : m_Rows)
         {
-            Row identity = *changes.at(baseline.strColliderId);
+            const auto staged = changes.find(baseline.strColliderId);
+            if (staged == changes.end())
+                throw std::runtime_error("Combat rows must retain their imported identities: " + baseline.strColliderId);
+            Row identity = *staged->second;
             identity.iTimeMs = baseline.iTimeMs; identity.iRepeatCount = baseline.iRepeatCount; identity.iRepeatMs = baseline.iRepeatMs;
             identity.iAreaType = baseline.iAreaType; identity.iMaxTargets = baseline.iMaxTargets; identity.iPushMs = baseline.iPushMs;
             identity.fRange = baseline.fRange; identity.fAngleDegrees = baseline.fAngleDegrees; identity.fWidth = baseline.fWidth;
             identity.fHeight = baseline.fHeight; identity.fOffset = baseline.fOffset; identity.fInner = baseline.fInner; identity.fPushRange = baseline.fPushRange;
             if (identity != baseline) throw std::runtime_error("Collider / Logic / Result owner cannot be reassigned");
         }
+        if (changes.size() != m_Rows.size())
+            throw std::runtime_error("Unknown collider in the combat draft; create it with Add Collider first");
         Json root;
         if (!CDataJson::Parse(bytes, root, status)) throw std::runtime_error(status);
-        auto candidate = ReplaceRows(root, changes);
-        auto admitted = Decode(candidate);
         // The existing balance owner supplies action/stage duration and combo cutoffs.
         std::string skillBytes; Json skills;
         if (!Read(CProjectDataRoot::Resolve("Balance/PlayerSkills.json"), skillBytes) || !CDataJson::Parse(skillBytes, skills, status))
             throw std::runtime_error("Cannot validate combat schedules against PlayerSkills");
+        std::unordered_map<std::uint32_t, std::size_t> comboStages;
+        for (const auto& skill : Array(skills, "skills"))
+        {
+            const auto* stages = skill.Find("comboStages");
+            comboStages.emplace(Integer(skill, "skillId"),
+                stages && stages->Is_Array() ? stages->Get_Array().size() : std::size_t{0u});
+        }
+        std::unordered_set<std::string> carried;
+        Collect_ColliderIds(root, carried);
+        auto candidate = ReplaceRows(Restructure(root, changes, carried, comboStages), changes);
+        auto admitted = Decode(candidate);
         for (const auto& row : admitted)
         {
             const Json* owner = nullptr;
@@ -284,6 +505,14 @@ bool Client::CCharacterActionCombatDocument::Save_Atomic(const std::vector<Row>&
             {
                 if (row.iStageIndex >= stages.size()) throw std::runtime_error("Unknown combat stage");
                 timing = &stages[row.iStageIndex];
+            }
+            else if (row.iStageIndex != 0u) throw std::runtime_error("Unknown combat stage");
+            if (!carried.contains(row.strColliderId))
+            {
+                // The publisher refuses HitShapes on a skill with no Server damage profile.
+                const auto* damage = owner->Find("serverDamageProfileId");
+                if (!damage || !damage->Is_String() || damage->Get_String().empty())
+                    throw std::runtime_error("A new collider needs a Server damage profile on its skill: " + row.strColliderId);
             }
             const auto limit = Integer(*timing, "actionDurationMs");
             const auto finalTime = static_cast<std::uint64_t>(row.iTimeMs) + static_cast<std::uint64_t>(row.iRepeatCount - 1u) * row.iRepeatMs;

@@ -1028,7 +1028,7 @@ private:
 	bool_t Stage_WorldPreview(const EFFECT_DOCUMENT_DESC& Document,
 		bool_t bAllowReadOnlySourceProjection);
     EFFECT_DOCUMENT_DESC Build_PreviewDocument(
-		const EFFECT_DOCUMENT_DESC& Document) const;
+		const EFFECT_DOCUMENT_DESC& Document, std::vector<std::string>* drawElementIds = nullptr) const;
     bool Build_ElementsPreviewDocument(const EFFECT_DOCUMENT_DESC& document,
         const std::vector<std::string>& elementIds, EFFECT_DOCUMENT_DESC& preview, std::string& error) const;
     bool Resolve_ElementsPreviewWindow(const EFFECT_DOCUMENT_DESC& document,

@@ -4410,8 +4410,13 @@ bool_t Client::CEffectPlayback::Step(
 						State.iSourceLoopIndex = iLoopIndex;
 						State.iNextSourceBurst = 0u;
 						State.fSpawnAccumulator = 0.f;
-						State.fSourceSpawnPerUnitAccumulator = 0.f;
-						State.bSourceSpawnPerUnitOriginInitialized = false;
+						// A looping ribbon remains one connected distance stream. Clearing
+						// its residual here discards travel at every emitter-loop boundary.
+						if (!Is_PortableAuthoredRibbonCarrier(Element))
+						{
+							State.fSourceSpawnPerUnitAccumulator = 0.f;
+							State.bSourceSpawnPerUnitOriginInitialized = false;
+						}
 						Reset_LoopingModuleRandomStates(State);
 					}
 					while (State.iNextSourceBurst < Recipe.Bursts.size() &&
@@ -4461,10 +4466,35 @@ bool_t Client::CEffectPlayback::Step(
 					State.fSpawnAccumulator -=
 						static_cast<f32_t>(iSpawnCount);
 					Spawn_Particles(Element, State, iSpawnCount, RootWorld);
+					const float3_t PreviousDistanceOrigin = State.vSourceSpawnPerUnitPreviousOrigin;
+					const f32_t fPreviousDistanceFraction = State.fSourceSpawnPerUnitAccumulator;
+					f64_t fDistanceSpawnContribution = 0.0;
 					const uint32_t iSpawnPerUnitCount = Consume_SourceSpawnPerUnit(
-						Element, State, fEmitterTime, RootWorld);
-					Spawn_Particles(
-						Element, State, iSpawnPerUnitCount, RootWorld);
+						Element, State, fEmitterTime, RootWorld, &fDistanceSpawnContribution);
+					if (Is_PortableAuthoredRibbonCarrier(Element) && !Element.Detail.Particle.bLocalSpace &&
+						iSpawnPerUnitCount > 0u && fDistanceSpawnContribution > 0.0)
+					{
+						// SpawnPerUnit counts crossings along the actual fixed-step bone
+						// motion; placing them all at its endpoint makes duplicate knots
+						// and long holes. Reuse source spawning at each distance crossing.
+						float4x4_t SpawnWorld = Evaluate_ElementWorld(
+							Element, m_fSampleTimeSeconds, RootWorld);
+						const float3_t DistanceDelta = Subtract3(
+							State.vSourceSpawnPerUnitPreviousOrigin, PreviousDistanceOrigin);
+						for (uint32_t iBirth = 0u; iBirth < iSpawnPerUnitCount; ++iBirth)
+						{
+							const f32_t fRatio = static_cast<f32_t>(std::clamp(
+								(1.0 - fPreviousDistanceFraction + iBirth) /
+								fDistanceSpawnContribution, 0.0, 1.0));
+							const float3_t Origin = Add3(PreviousDistanceOrigin, Scale3(DistanceDelta, fRatio));
+							SpawnWorld._41 = Origin.x;
+							SpawnWorld._42 = Origin.y;
+							SpawnWorld._43 = Origin.z;
+							Spawn_Particles(Element, State, 1u, RootWorld, nullptr, false, &SpawnWorld);
+						}
+					}
+					else
+						Spawn_Particles(Element, State, iSpawnPerUnitCount, RootWorld);
 				}
 			}
 			else
@@ -4595,8 +4625,10 @@ uint32_t Client::CEffectPlayback::Consume_SourceSpawnPerUnit(
 	const EFFECT_ELEMENT_DESC& Element,
 	ELEMENT_STATE& State,
 	const f32_t fEmitterTimeSeconds,
-	const float4x4_t& RootWorld)
+	const float4x4_t& RootWorld,
+	f64_t* pOutSpawnContribution)
 {
+	if (pOutSpawnContribution) *pOutSpawnContribution = 0.0;
 	if (!Is_SourceVisualProgramElementAdmitted(Element) &&
 		!Is_PortableAuthoredEmitterCarrier(Element))
 		return 0u;
@@ -4677,6 +4709,7 @@ uint32_t Client::CEffectPlayback::Consume_SourceSpawnPerUnit(
 		std::floor(Accumulated));
 	State.fSourceSpawnPerUnitAccumulator = static_cast<f32_t>(
 		Accumulated - static_cast<double>(iWholeParticles));
+	if (pOutSpawnContribution) *pOutSpawnContribution = SpawnContribution;
 	return (std::min)(iWholeParticles, Element.Detail.Particle.iMaxParticles);
 }
 
@@ -5690,6 +5723,23 @@ void Client::CEffectPlayback::Apply_SourceSpawnModules(
 				Offset = float3_t(Offset.z, Offset.x, Offset.y);
 			else if (Axis.ends_with("_y"))
 				Offset = float3_t(Offset.x, Offset.z, Offset.y);
+			// The primitive flags constrain source-space axes after choosing the
+			// cylinder height axis. Preserve the existing random stream and the
+			// unrestricted surface, but do not spawn into disabled half-spaces.
+			const auto RestrictAxis = [](const f32_t Value,
+				const bool_t bPositive, const bool_t bNegative) noexcept
+				{
+					if (bPositive && bNegative) return Value;
+					if (bPositive) return std::abs(Value);
+					if (bNegative) return -std::abs(Value);
+					return 0.f;
+				};
+			Offset.x = RestrictAxis(Offset.x, SourceBool(Module, "positive_x", true),
+				SourceBool(Module, "negative_x", true));
+			Offset.y = RestrictAxis(Offset.y, SourceBool(Module, "positive_y", true),
+				SourceBool(Module, "negative_y", true));
+			Offset.z = RestrictAxis(Offset.z, SourceBool(Module, "positive_z", true),
+				SourceBool(Module, "negative_z", true));
 			const float3_t Start = Evaluate_ModuleVector(
 				State, Module, "startlocation", fEmitterTimeSeconds,
 				float3_t{});
@@ -8388,7 +8438,7 @@ void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld,
 					XMLoadFloat4x4(&ParticleElementWorld) :
 					Element.Detail.Sprite.bFollowEmitterAxisRotation && Element.SourceRecipe.bEnabled &&
 						eSpriteAlignment >= EFFECT_PARTICLE_SPRITE_ALIGNMENT::AXIS_POSITIVE_X &&
-						eSpriteAlignment <= EFFECT_PARTICLE_SPRITE_ALIGNMENT::AXIS_NEGATIVE_Z ?
+						eSpriteAlignment <= EFFECT_PARTICLE_SPRITE_ALIGNMENT::ROTATE_Z ?
 						XMLoadFloat4x4(&ParticleRoot) : XMMatrixIdentity());
 			const float4_t ElementColor =
 				Evaluate_Color(Element, ParticleT).vColorMultiply;

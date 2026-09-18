@@ -4,8 +4,7 @@
   "areaId": "LV_LOBBY_CLASSSELECT_SL00",
   "targetFloorSourcePlacementId": "LV_LOBBY_CLASSSELECT_SL00:export:336",
   "hiddenSourcePlacementIds": [
-    "LV_LOBBY_CLASSSELECT_SL00:export:336",
-    "editor:LV_LOBBY_CLASSSELECT_SL00:1"
+    "LV_LOBBY_CLASSSELECT_SL00:export:336"
   ],
   "previewFloorPlacementId": "9000001",
   "previewStarPlacementId": "9000002",
