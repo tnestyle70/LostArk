@@ -3,7 +3,7 @@
   "formatVersion": 1,
   "sequencerId": "arena.sequencer.kakulsaydon",
   "sourceRevision": 2,
-  "compositionRevision": "8a410a8cd719a64b41c09b46739ab2011dfe855fd277b4ce40c84c0cf4d710a4",
+  "compositionRevision": "5928c5028a5b38fe91d4046bc816ac0b5e5ea29a30bf42ffcc86fbc773d071ca",
   "status": "SHADOW",
   "runtimeEligible": false,
   "displayName": "KoukuSaydon Arena Sequencer",
@@ -13,7 +13,7 @@
   "sourceManifest": {
     "schema": "lostark.composition-source-manifest",
     "formatVersion": 1,
-    "sourceManifestId": "8a410a8cd719a64b41c09b46739ab2011dfe855fd277b4ce40c84c0cf4d710a4",
+    "sourceManifestId": "5928c5028a5b38fe91d4046bc816ac0b5e5ea29a30bf42ffcc86fbc773d071ca",
     "files": [
       {
         "path": "Data/Compositions/Bosses/KoukuSaydonGate1.bosscomposition.json",
@@ -27,18 +27,18 @@
       },
       {
         "path": "Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.camerashots.json",
-        "sha256": "d3b0056e23fa77500561468e32d54e2f4aec0f3043c60e7ec977309965a646c0",
-        "bytes": 1652277
+        "sha256": "393c2f78b6d943bfe97f704dc9b25291fcacd40984d841c5145a2c0925d236e4",
+        "bytes": 1754011
       },
       {
         "path": "Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.worldsequences.json",
-        "sha256": "8fe04a942f689825bfea10bcff11c45d3a04d7bfb2cc458c95d2cee014f1eed1",
-        "bytes": 13208275
+        "sha256": "9f6b3ac6f8a6f500a2eaeb01e73815935f352b191a2841784ac871c7c404ba07",
+        "bytes": 8075438
       },
       {
         "path": "Data/Rendering/Authored/RenderingProfiles.json",
-        "sha256": "e92633b0c2f13d4287a06a254ae4c6b557fb9da45e3bbb3de806d0a9ac556ee3",
-        "bytes": 34943
+        "sha256": "c2ddf6b86eff12db15eafc753a425f1368f2901c2650d1466afb4d7624f0db4e",
+        "bytes": 100185
       }
     ]
   },

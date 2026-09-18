@@ -3,7 +3,7 @@
   "formatVersion": 1,
   "compositionId": "boss.composition.valtan",
   "sourceRevision": 1,
-  "compositionRevision": "b8383e85441cb74d0b1ec61c08a3bc3dae4458c1b979ee4fb6f50024a3992950",
+  "compositionRevision": "2be73b9e314781870e82c2e930e40d3f913f18ffef9499951b96db87250f0c28",
   "status": "SHADOW",
   "runtimeEligible": false,
   "displayName": "Valtan Boss Composition",
@@ -13,7 +13,7 @@
   "sourceManifest": {
     "schema": "lostark.composition-source-manifest",
     "formatVersion": 1,
-    "sourceManifestId": "b8383e85441cb74d0b1ec61c08a3bc3dae4458c1b979ee4fb6f50024a3992950",
+    "sourceManifestId": "2be73b9e314781870e82c2e930e40d3f913f18ffef9499951b96db87250f0c28",
     "files": [
       {
         "path": "Data/Animation/Authored/Valtan/Valtan.combatobjectsoundcues.json",
@@ -22,13 +22,13 @@
       },
       {
         "path": "Data/Animation/Authored/Valtan/Valtan.patternbindings.json",
-        "sha256": "a9937d1b3a270e1389853c6d87ccf962bfc2316850c9293f2ee7dc80eaf87408",
-        "bytes": 127622
+        "sha256": "a1a7b4164692b0b5e527c950d179cc87442ab802f5b32c86e4b01c47f1d866a9",
+        "bytes": 136378
       },
       {
         "path": "Data/Animation/Authored/Valtan/Valtan.patterneffectcues.json",
-        "sha256": "e11327d07b4d023ee42a53d79241dde8aa88e5f9049df0249cb79f8366a3c178",
-        "bytes": 73044
+        "sha256": "b100ae5e9a6358f06288df470e9e68306fc434bebcc806bf11c05bb3680801b3",
+        "bytes": 73028
       },
       {
         "path": "Data/Animation/Authored/Valtan/Valtan.patterneffectv1aliases.json",
@@ -49,6 +49,16 @@
         "path": "Data/Compositions/Bosses/Valtan.bosscomposition.json",
         "sha256": "2c435774e2148c58d1d14e504892678356141c54a718dab1ead26084a8cbd0ec",
         "bytes": 4341
+      },
+      {
+        "path": "Data/Effects/Authored/effect.valtan.action.420609.stage008.full.restore.effect.json",
+        "sha256": "9a777c4c5a019ef52c1eb2ddb88c1bcc8759e0c2c60e94307293bccdabb407fc",
+        "bytes": 3656636
+      },
+      {
+        "path": "Data/Effects/Authored/effect.valtan.action.420609.stage009.full.restore.effect.json",
+        "sha256": "1a1a746776694b17a9b331fbd199f532ecd7d69e4c669247ad7cb9dfdad498b1",
+        "bytes": 2829510
       },
       {
         "path": "Data/Effects/Authored/effect.valtan.carrier-v1.attack.backstep.windup.clip-01.effect.json",
@@ -84,16 +94,6 @@
         "path": "Data/Effects/Authored/effect.valtan.carrier-v1.attack.earthquake-smash.impact.clip-01.effect.json",
         "sha256": "c3c458d3ebee32b04fe9fbec0e79c5a0f675a2379760a40154f1295c0937f61c",
         "bytes": 1133652
-      },
-      {
-        "path": "Data/Effects/Authored/effect.valtan.carrier-v1.attack.four-slash.active.clip-01.effect.json",
-        "sha256": "909bf732ed25b6f6089d8d7625bfc7a4177e03dcc63cbe02839746b946005e02",
-        "bytes": 45099
-      },
-      {
-        "path": "Data/Effects/Authored/effect.valtan.carrier-v1.attack.four-slash.active.clip-02.effect.json",
-        "sha256": "7045c3640adcdcf6c0326d7f64a02f857c81d388645253d250c07cc2535aff35",
-        "bytes": 22584
       },
       {
         "path": "Data/Effects/Authored/effect.valtan.carrier-v1.attack.front-back-front.active.clip-01.effect.json",
@@ -277,8 +277,8 @@
       },
       {
         "path": "Data/Effects/Authored/effect.valtan.pattern.420633.active.effect.json",
-        "sha256": "2fd59e30c6418f06fe921c41093eea60b5140928febfbd914f79420faf234a21",
-        "bytes": 555413
+        "sha256": "54eb1d658bfec288a85aaaeaabb849931a7c08de3b7fe69fe547cff597ea33b8",
+        "bytes": 560665
       },
       {
         "path": "Data/Effects/Authored/effect.valtan.pattern.420633.active.v1.unified.effect.json",
@@ -382,8 +382,8 @@
       },
       {
         "path": "Data/Effects/EffectCatalog.json",
-        "sha256": "2e7acd780caccdbd0be7d412624e47617b430bd06e230057bfef989854824001",
-        "bytes": 91188
+        "sha256": "1a90c37cb6c8e443601eb79d887142d21f1d5dc34234cdb02f01eb1052db2029",
+        "bytes": 296078
       },
       {
         "path": "Data/Effects/V2/Authored/bingo.bomb.mark_1.effectv2.json",
@@ -1657,8 +1657,8 @@
       },
       {
         "path": "Data/Effects/V2/Bindings/BOSS_VALTAN.effectv2bindings.json",
-        "sha256": "b6801ae891302c5354a63cabc6a6ce31599cf16af670faf00ddfc8c6174c1d3b",
-        "bytes": 88972
+        "sha256": "d844806c775321743501583da8472630b30236c7ef5dcc27997c639bf1d23bc5",
+        "bytes": 106366
       },
       {
         "path": "Data/Effects/V2/Groups/bingo.bomb.effectv2group.json",
@@ -1972,8 +1972,8 @@
       },
       {
         "path": "Data/Sound/CharacterSoundCatalog.json",
-        "sha256": "0876d1dcb1701b52913b72153ced56b07d1603cb340222aab3e9f9fdf20a2f97",
-        "bytes": 322727
+        "sha256": "47ded4109def2cb316005c5708998a0aaab24ea3fe934ab481bc280232943140",
+        "bytes": 642737
       },
       {
         "path": "Data/Valtan/Valtan.combatobjects.json",
@@ -1982,7 +1982,7 @@
       },
       {
         "path": "Data/Valtan/Valtan.gameplay.json",
-        "sha256": "ce5462eb268d8667b3120d79f7bd01c38a2061bc0e1c19160766031327c3381c",
+        "sha256": "b2f59b920fce9369f9ad2f43890a4fe4b148e8a53ebd5cb7e8ec95324064d751",
         "bytes": 221147
       },
       {
@@ -1992,13 +1992,13 @@
       },
       {
         "path": "Data/Valtan/Valtan.presentation.json",
-        "sha256": "e1225077391c166c1bc2a232cf95e428e0780d7a09865db7c8c02fd064886b83",
-        "bytes": 226813
+        "sha256": "43dcc64908e407a2e431e842f54db3e491bac5776cb25abbedf0fec1c96dbe6a",
+        "bytes": 226797
       },
       {
         "path": "Data/Valtan/Valtan.worldeventsets.json",
-        "sha256": "1dbb4e41111f0260b97e0b1bd85cec15811c7c5999dcdba62a779d38505428b9",
-        "bytes": 43561
+        "sha256": "4077b6459f68a0b25dc4168ece310f92faec27b000f796aa93fc67fe6fe5c626",
+        "bytes": 42283
       }
     ]
   },
@@ -3675,7 +3675,7 @@
                     ]
                   },
                   "occurrenceId": "cue.valtan.carrier-v1.attack.four-slash.active.clip-01.occurrence.01",
-                  "effectAssetId": "effect.valtan.carrier-v1.attack.four-slash.active.clip-01",
+                  "effectAssetId": "effect.valtan.action.420609.stage008.full.restore",
                   "clipOccurrenceId": "valtan.attack.four-slash.active.clip.01",
                   "sourceStartMs": 0,
                   "sourceEndMs": null,
@@ -3760,7 +3760,7 @@
                     ]
                   },
                   "occurrenceId": "cue.valtan.carrier-v1.attack.four-slash.active.clip-02.occurrence.01",
-                  "effectAssetId": "effect.valtan.carrier-v1.attack.four-slash.active.clip-02",
+                  "effectAssetId": "effect.valtan.action.420609.stage009.full.restore",
                   "clipOccurrenceId": "valtan.attack.four-slash.active.clip.02",
                   "sourceStartMs": 0,
                   "sourceEndMs": null,
@@ -20250,7 +20250,7 @@
                       1.5
                     ]
                   },
-                  "effectAssetId": "effect.valtan.carrier-v1.attack.four-slash.active.clip-01",
+                  "effectAssetId": "effect.valtan.action.420609.stage008.full.restore",
                   "mappingBasis": "ANIMATION_PR_127",
                   "sourceClock": {
                     "basis": "CLIP_OCCURRENCE",
@@ -20997,7 +20997,7 @@
                       1.5
                     ]
                   },
-                  "effectAssetId": "effect.valtan.carrier-v1.attack.four-slash.active.clip-02",
+                  "effectAssetId": "effect.valtan.action.420609.stage009.full.restore",
                   "mappingBasis": "ANIMATION_PR_127",
                   "sourceClock": {
                     "basis": "CLIP_OCCURRENCE",
@@ -99691,7 +99691,7 @@
           "stageId": "SLASHES",
           "actionId": "valtan.attack.triple-slash.active",
           "clipOccurrenceId": "valtan.attack.four-slash.active.clip.01",
-          "effectAssetId": "effect.valtan.carrier-v1.attack.four-slash.active.clip-01",
+          "effectAssetId": "effect.valtan.action.420609.stage008.full.restore",
           "anchorSlotId": "root",
           "followPolicy": "follow",
           "stopPolicy": "natural",
@@ -99731,7 +99731,7 @@
           "stageId": "SPIN",
           "actionId": "valtan.attack.rotation-slash.active",
           "clipOccurrenceId": "valtan.attack.four-slash.active.clip.02",
-          "effectAssetId": "effect.valtan.carrier-v1.attack.four-slash.active.clip-02",
+          "effectAssetId": "effect.valtan.action.420609.stage009.full.restore",
           "anchorSlotId": "root",
           "followPolicy": "follow",
           "stopPolicy": "natural",
@@ -100840,46 +100840,6 @@
           "repeatPolicy": "once",
           "sourceStartMs": 559,
           "sourceEndMs": 2364,
-          "localTransform": {
-            "position": [
-              0,
-              0,
-              0
-            ],
-            "rotationDegrees": [
-              0,
-              0,
-              0
-            ],
-            "scale": [
-              1,
-              1,
-              1
-            ]
-          },
-          "scalePolicy": {
-            "kind": "GAMEPLAY_FOOTPRINT",
-            "worldScale": [
-              1.5,
-              1.5,
-              1.5
-            ]
-          }
-        },
-        {
-          "bindingId": "cue.valtan.whirlwind.active",
-          "occurrenceId": "cue.valtan.whirlwind.active.occurrence.01",
-          "patternId": "VALTAN_WHIRLWIND",
-          "stageId": "SPIN",
-          "actionId": "valtan.attack.whirlwind.active",
-          "clipOccurrenceId": "valtan.attack.whirlwind.active.clip.01",
-          "effectAssetId": "effect.valtan.pattern.420633.active",
-          "anchorSlotId": "root",
-          "followPolicy": "follow",
-          "stopPolicy": "natural",
-          "repeatPolicy": "once",
-          "sourceStartMs": 0,
-          "sourceEndMs": null,
           "localTransform": {
             "position": [
               0,
@@ -102149,6 +102109,46 @@
           },
           "scalePolicy": {
             "kind": "OWNER_RELATIVE"
+          }
+        },
+        {
+          "bindingId": "cue.valtan.whirlwind.active",
+          "occurrenceId": "cue.valtan.whirlwind.active.occurrence.01",
+          "patternId": "VALTAN_WHIRLWIND",
+          "stageId": "SPIN",
+          "actionId": "valtan.attack.whirlwind.active",
+          "clipOccurrenceId": "valtan.attack.whirlwind.active.clip.01",
+          "effectAssetId": "effect.valtan.pattern.420633.active",
+          "anchorSlotId": "root",
+          "followPolicy": "follow",
+          "stopPolicy": "natural",
+          "repeatPolicy": "once",
+          "sourceStartMs": 0,
+          "sourceEndMs": null,
+          "localTransform": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotationDegrees": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "scalePolicy": {
+            "kind": "GAMEPLAY_FOOTPRINT",
+            "worldScale": [
+              1.5,
+              1.5,
+              1.5
+            ]
           }
         }
       ]

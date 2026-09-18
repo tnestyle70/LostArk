@@ -87,3 +87,23 @@ Release EXE/DLL/CSO와 양쪽 게시 DataFiles, Client가 직접 읽는 이번 �
 기존 LostArk 폴더 선택 wrapper, 설치 전 검증·기존 파일 백업과 no-build Client 바로가기를
 재사용하고 새 배포 체계를 확장하지 않는다. 최종 빌드·게시 파일의 hash manifest를
 검증한 뒤 ZIP을 전달하며 Client를 에이전트가 자동 실행하지 않는다.
+
+### G07 추가 반영: DataFiles 포함 배포 복구
+
+2026-09-19 후속 요청으로 EXE 전용 ZIP을 전체 실행 배포본에서 제외한다. 최신 main과
+실제 저장본의 일치를 확인하고 Client/Server owner를 순차 게시한 뒤, 양쪽 DataFiles와
+같은 protocol의 Release 실행 파일을 함께 포장한다. Bern·Character Select 지역 Navigation과
+발탄 blocker의 Client/Server 일치를 확인한다. 기존 얇은 배포의 직접 소비 Data 보충분과
+폴더 선택 설치 흐름을 재사용하며 배포 파일 목록·설치 설명·RESULT를 최종 ZIP에 맞춘다.
+
+## G08. ESC 커서 선택과 Composition 게시 계약 보정
+
+ESC 옵션의 열린 콤보가 클릭 소비 플래그를 먼저 세워 자기 항목 선택까지 차단하는 순서를
+`SystemOptionWindowView.cpp`에서 바로잡는다. 팝업이 선택 입력을 처리한 뒤 같은 프레임의
+하위 UI 클릭을 차단한다. 커서뿐 아니라 같은 콤보 경로를 쓰는 옵션의 선택도 보존한다.
+Release Product를 정상 증분 빌드하고 새 Client EXE를 배포본에 포함한다.
+
+WorldSequence v3의 기존 `colliderTracks`와 `loopFullPresentation` 계약이 Map publisher와
+Client에만 연결되고 Composition publisher 검증에서 누락된 부분을 맞춘다. 필드를 삭제하거나
+unknown-field 거부를 풀지 않고, 기존 shape·시간·결합 제한을 검사한 뒤 원본을 게시한다.
+실제 저장본 전체 검증과 잘못된 collider/loop 입력의 거부를 확인한다.

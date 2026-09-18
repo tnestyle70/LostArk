@@ -1009,6 +1009,132 @@ class WorldSequenceAnimationSourceStartContractTests(unittest.TestCase):
             self.validate(self.document)
 
 
+class WorldSequenceColliderContractTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.document = pipeline.read_json(
+            ROOT / pipeline.KOUKU_SAYDON_ARENA_SOURCE_DOCUMENTS["WORLD_SEQUENCES"]
+        )
+        template = next(row for row in self.document["templates"] if row.get("colliderTracks"))
+        self.document["templates"] = [template]
+        self.document["instances"] = [
+            row for row in self.document["instances"] if row["templateId"] == template["sequenceId"]
+        ]
+
+    def validate(self, document: dict) -> set[str]:
+        before = copy.deepcopy(document)
+        try:
+            return pipeline._validate_world_sequence_source(document, document["areaId"])
+        finally:
+            self.assertEqual(before, document)
+
+    def test_current_world_owner_with_colliders_and_full_loops_preserves_source(self) -> None:
+        document = pipeline.read_json(
+            ROOT / pipeline.KOUKU_SAYDON_ARENA_SOURCE_DOCUMENTS["WORLD_SEQUENCES"]
+        )
+        self.assertTrue(any(row.get("colliderTracks") for row in document["templates"]))
+        self.assertTrue(any(row.get("loopFullPresentation") for row in document["instances"]))
+        self.assertEqual({row["instanceId"] for row in document["instances"]}, self.validate(document))
+
+    def test_all_supported_collider_behaviors_and_optional_bone(self) -> None:
+        for behavior in ("DAMAGE", "INSTANT_DEATH", "HOOK_CAPTURE"):
+            candidate = copy.deepcopy(self.document)
+            row = candidate["templates"][0]["colliderTracks"][0]
+            row.update(behavior=behavior, damagePercent=10 if behavior == "DAMAGE" else 0,
+                       gripLocalOffset=[0, 0, 0])
+            row.pop("attachmentBone", None)
+            with self.subTest(behavior=behavior):
+                self.validate(candidate)
+        for bone in ("", "a" * 256, "뼈" * 85):
+            self.document["templates"][0]["colliderTracks"][0]["attachmentBone"] = bone
+            self.validate(self.document)
+
+    def test_invalid_collider_payloads_remain_rejected(self) -> None:
+        cases = [
+            {"unknown": 0}, {"colliderTrackId": "bad id"}, {"slotId": "missing"},
+            {"behavior": "UNKNOWN"}, {"startMs": -1}, {"startMs": True},
+            {"durationMs": 0}, {"durationMs": 600001}, {"damagePercent": 0.5},
+            {"damagePercent": True}, {"damagePercent": 1},
+            {"behavior": "DAMAGE", "damagePercent": 0},
+            {"behavior": "DAMAGE", "damagePercent": 101},
+            {"behavior": "INSTANT_DEATH"},
+            {"halfExtents": [0.001, 1, 1]}, {"halfExtents": [1001, 1, 1]},
+            {"halfExtents": [1, 1]}, {"positionOffset": [100001, 0, 0]},
+            {"gripLocalOffset": [0, float("inf"), 0]},
+            {"yawDegrees": 36001}, {"yawDegrees": True},
+            {"attachmentBone": None}, {"attachmentBone": "a" * 257},
+            {"attachmentBone": "bad\nbone"}, {"attachmentBone": "\ud800"},
+        ]
+        for fields in cases:
+            candidate = copy.deepcopy(self.document)
+            candidate["templates"][0]["colliderTracks"][0].update(fields)
+            with self.subTest(fields=fields), self.assertRaises(pipeline.CompositionError):
+                self.validate(candidate)
+        for missing in ("halfExtents", "gripLocalOffset", "damagePercent"):
+            candidate = copy.deepcopy(self.document)
+            del candidate["templates"][0]["colliderTracks"][0][missing]
+            with self.subTest(missing=missing), self.assertRaises(pipeline.CompositionError):
+                self.validate(candidate)
+
+    def test_collider_collections_identity_version_and_combined_limit(self) -> None:
+        for invalid in (None, {}, [None]):
+            candidate = copy.deepcopy(self.document)
+            candidate["templates"][0]["colliderTracks"] = invalid
+            with self.subTest(invalid=invalid), self.assertRaises(pipeline.CompositionError):
+                self.validate(candidate)
+        duplicate = copy.deepcopy(self.document)
+        duplicate["templates"][0]["colliderTracks"] *= 2
+        with self.assertRaisesRegex(pipeline.CompositionError, "duplicate"):
+            self.validate(duplicate)
+        legacy = copy.deepcopy(self.document)
+        legacy["formatVersion"] = 2
+        with self.assertRaisesRegex(pipeline.CompositionError, "colliderTracks"):
+            self.validate(legacy)
+        template = self.document["templates"][0]
+        other_count = sum(len(template.get(key, [])) for key in ("tracks", "animationTracks", "effectTracks"))
+        original = template["colliderTracks"][0]
+        template["colliderTracks"] = [dict(original, colliderTrackId=f"collider.{i}")
+                                     for i in range(pipeline.WORLD_SEQUENCE_MAX_TRACKS - other_count)]
+        self.validate(self.document)
+        template["colliderTracks"].append(dict(original, colliderTrackId="collider.overflow"))
+        with self.assertRaisesRegex(pipeline.CompositionError, "bounded array"):
+            self.validate(self.document)
+
+    def test_colliders_require_deterministic_emission_and_world_object_binding(self) -> None:
+        for fields in ({"spreadDegrees": 1}, {"spreadDegrees": True},
+                       {"spawnHalfExtents": [0, 0.1, 0]}, {"spawnHalfExtents": "zero"}):
+            candidate = copy.deepcopy(self.document)
+            candidate["templates"][0]["objectMotion"].update(fields)
+            with self.subTest(fields=fields), self.assertRaises(pipeline.CompositionError):
+                self.validate(candidate)
+        for anchor in ("PLAYER", "BOSS"):
+            candidate = copy.deepcopy(self.document)
+            candidate["instances"][0]["anchorKind"] = anchor
+            with self.subTest(anchor=anchor), self.assertRaisesRegex(pipeline.CompositionError, "WORLD Object"):
+                self.validate(candidate)
+        candidate = copy.deepcopy(self.document)
+        candidate["instances"][0]["bindings"][0].update(targetKind="DEPLOY_PLACEMENT", targetId="1")
+        with self.assertRaisesRegex(pipeline.CompositionError, "WORLD Object"):
+            self.validate(candidate)
+
+    def test_full_presentation_loop_has_the_existing_typed_owner_restrictions(self) -> None:
+        instance = self.document["instances"][0]
+        instance.update(motionEnd="LOOP", loopFullPresentation=True)
+        self.validate(self.document)
+        instance.update(motionEnd="STOP", loopFullPresentation=False)
+        self.validate(self.document)
+        for invalid in (True, 1, "true", None):
+            candidate = copy.deepcopy(self.document)
+            candidate["instances"][0]["loopFullPresentation"] = invalid
+            with self.subTest(invalid=invalid), self.assertRaises(pipeline.CompositionError):
+                self.validate(candidate)
+        candidate = copy.deepcopy(self.document)
+        candidate["templates"][0].pop("colliderTracks")
+        candidate["instances"][0].update(motionEnd="LOOP", loopFullPresentation=True)
+        candidate["instances"][0]["bindings"][0].update(targetKind="DEPLOY_PLACEMENT", targetId="1")
+        with self.assertRaisesRegex(pipeline.CompositionError, "looping Object Resource"):
+            self.validate(candidate)
+
+
 class WorldSequenceEffectContractTests(unittest.TestCase):
     def setUp(self) -> None:
         self.document = pipeline.read_json(
@@ -1082,8 +1208,8 @@ class WorldSequenceEffectContractTests(unittest.TestCase):
         cases = (
             {"effectTrackId": "../effect"}, {"resourceId": "../effect"},
             {"slotId": "unresolved"}, {"resourceKind": "WORLD"}, {"timing": "FINISH"},
-            {"startMs": True}, {"startMs": 1}, {"durationMs": 0},
-            {"durationMs": 600000}, {"durationMs": 1.5},
+            {"startMs": True}, {"timing": "MOTION_END", "startMs": 1}, {"durationMs": 0},
+            {"durationMs": 600001}, {"durationMs": 1.5},
             {"timing": "TIME", "startMs": 600001},
             {"positionOffset": [0, float("nan"), 0]},
             {"rotationDegrees": [0, 0, 100001]}, {"scale": [1, 0.0000001, 1]},
@@ -1116,9 +1242,11 @@ class WorldSequenceEffectContractTests(unittest.TestCase):
         candidates.append(wrong_binding)
         too_many = copy.deepcopy(self.document)
         template = too_many["templates"][0]
+        other_tracks = sum(len(template.get(key, []))
+                           for key in ("tracks", "animationTracks", "colliderTracks"))
         template["effectTracks"] = [
             dict(template["effectTracks"][0], effectTrackId=f"effect.{index}")
-            for index in range(pipeline.WORLD_SEQUENCE_MAX_TRACKS)
+            for index in range(pipeline.WORLD_SEQUENCE_MAX_TRACKS - other_tracks + 1)
         ]
         candidates.append(copy.deepcopy(too_many))
         template["effectTracks"].pop()

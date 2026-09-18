@@ -45,14 +45,50 @@
 
 쇼타임 Profiler 평균1913.148ms 중 HistoryUpdate1739.255ms(90.91%)가 반복 루트 pose 재계산에 쓰였다. checkpoint/pose cache 수정 후 실제 CModel 함수 반복조회는44299ms에서20.7249→0.001721ms,55637ms에서85.336→0.0016825ms다. 이는 전체 effect seek/GPU/FPS 측정값이 아니다. 사용자의 최종 화면·청취와 실제4개 Client 동시 플레이는 미실행이다.
 
-## 배포 및 확인 경계
+## 배포 재수정: DataFiles·Navigation·ESC 커서 (2026-09-19)
 
-최종 사용자 정정에 따라 배포본은 `C:/Users/user/Desktop/LostArk-Release-20260919-EXE.zip` (17,649,962 bytes, 약16.8MiB)이다. 최상위 `LostArk.exe`를 실행해 기존 LostArk 폴더를 선택하면 Client Release 모듈7개와 셰이더141개를 해당 프로젝트에 적용하고 Client를 시작한다. 기존 파일은 `out/RuntimeDeliveryBackups`에 백업하며 동일 파일은 교체하지 않는다. ZIP에 ChangedData, Data, DataFiles, Resources, 사운드 미디어는 하나도 넣지 않았다. 선택 프로젝트의 기존 데이터와 리소스를 사용하며, 신규18WAV는 경로 목록만 제공한다. Server.exe는 서버 담당자용 별도 파일로 포함하며 자동 설치·실행하지 않는다. 이전 `LostArk-Release-20260919.zip`은 EXE가 없고 ChangedData가 포함된 이전 형식이므로 이번 전달본이 아니다.
+기존 `LostArk-Release-20260919-EXE.zip`은 Client 모듈7개와 CSO141개만 설치하고
+Data/DataFiles를 제외한 배포본이었다. 이번 요청에서는 그 ZIP을 전체 실행 배포본으로
+사용하지 않는다. Git 동기화와 publish 성공, ZIP의 실제 전달 범위를 각각 확인한다.
 
-WinForms launcher만 별도 컴파일했으며 Client 전체 재빌드는 하지 않았다. 격리 폴더에서148개 파일SHA일치, 기존 Client 백업, Data/DataFiles/Resources 보존, 재실행 시 교체0개, 잘못된 루트 거부를 확인했다. 실제 프로젝트는 read-only 실행 경로 점검만 했다. 압축153개 파일CRC·SHA 검증을 완료했고 Client/UI 실행은0이다.
+### 확인한 원인과 실제 수정
 
-빌드/파일 설치/게시가 실행 중인 Server 메모리나 도구 draft를 자동 갱신한 것은 아니다. 기존 Client/Server를 에이전트가 종료하거나 자동 실행하지 않았다. 새 protocol93 실행 파일로 Server와 Client를 함께 재시작해야 한다.
+- 8f15a3c35(PR409)에 다른 세션의 쿠크·쇼타임 변경이 통합됐다. Action1750,
+  Sequence64, World8797, WorldSequence2129, protocol93을 한 묶음으로 사용한다.
+- Navigation은 Bern·Character Select 지역파일12개와 Server manifest2개가 빠졌고,
+  발탄 Server blocker는104개로 정본/Client101개와 달랐다. Server owner로 전체 게시한
+  뒤 Client/Server 각각36개, SHA36쌍 동일, manifest 참조 누락0을 확인했다.
+- Composition publisher의 WorldSequence v3 strict validator에서 기존 `colliderTracks`와
+  `loopFullPresentation`이 빠져 있었다. Map publisher/Client와 같은 시간·shape·damage·
+  binding·loop 제한을 연결했다. authoring 필드 삭제나 unknown-field 완화는 하지 않았다.
+- ESC 옵션 팝업은 클릭을 먼저 소비하여 `Is_Clicked`가 자기 항목 선택을 거부했다.
+  `SystemOptionWindowView.cpp`에서 popup 선택 후 하위 UI를 차단하도록 순서를 고쳤다.
+  커서 지원125개와 SystemOption 이미지59개는 로컬에 있어 자산 누락은 원인이 아니었다.
 
-증거 정본: `out/KoukuRaidIntegration20260918/{install-receipt.json,installed-files-verification.json,live-publish-verification.json,server-integration93.receipt.json,PATTERN_FLOW.md,NEW_SOUND_PATHS.txt}` 및 해당 하위 작업 receipt.
+### 실행한 검증
 
-최종 ZIP SHA256: `7656ef5d81931d2c9039d0258563dffb6f71bd5ee15c82bcc3b21c4bcc22e861`. 배포/설치 증거는 `out/KoukuRuntimeDelivery20260919/{launcher-delivery-result.json,launcher-test-result.json}`이다.
+- Composition unittest49개 PASS, 실제 전체 source graph validate PASS. 현재
+  WorldSequence326개 instance 원본 보존 및 collider/loop 실패 입력 거부를 확인했다.
+- 실제 옵션 입력 함수 본문을 사용한 CPU probe는 이전 코드에서 선택 관련3건 FAIL,
+  수정 후 선택·동일항목·외부클릭·hover·held 입력6건 PASS. 하위UI click 누수0.
+  OS 커서 적용/렌더는 stub이며 실제 화면 판정은 수행하지 않았다.
+- Release Product PASS(36.9초): Client OBJ1/EXE1, Engine/Shared/Server 재컴파일0,
+  CSO/PCH 재생성0. 기존 C4819와 DirectXTK PDB LNK4099 경고는 남아 있다.
+  증거 `out/BuildPipeline/runs/20260918T161133688Z-release-product.json`.
+- Server owner: Kouku/World/Navigation/파괴/Gameplay/아이템/탈것/칭호/발탄보상 PASS 또는
+  현재 입력·출력 hash와 일치하는 REUSED. Client owner 최종 재시도도 전체 PASS/REUSED.
+- publisher 및 build 로그는 `out/RuntimeRepublish20260919/`, 옵션 probe는
+  `out/CursorOptionClick20260919/`에 있다. `git diff --check` PASS.
+- 새 설치 wrapper fixture: Data/runtime 백업, 최초/재설치, SHA/경로/중복 거부,
+  잠긴 Server 파일에 의한 실패 시 Data/runtime 복구 PASS. Client/UI 실행0.
+
+### 최종 ZIP 전 진행 경계
+
+사용자의 추가 요청으로 PR410을 포함한 최신 main417b2b126을 먼저 통합하고,
+이번 수정도 PR merge한 최종 main에서 publish·Release Build·ZIP 검증을 다시 확인한다.
+현재 이 절의 빌드 기록은 8f15a3c35 기반 수정본이며 PR410 포함 최종 빌드 기록이 아니다.
+기존 EXE 전용 ZIP을 덮어쓰지 않으며 새 배포는 DataFiles 양쪽과 직접 소비 Data 보충분을
+포함한다. Resources/신규18WAV는 팀 Drive 경계를 유지한다.
+
+실제 화면·음향·4인 Client 동시 플레이는 사용자 확인 대상이다. 게시와 설치는 실행 중
+Server 메모리나 도구 draft를 자동 갱신하지 않는다. Client/UI를 자율 실행하지 않았다.

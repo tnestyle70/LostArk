@@ -265,7 +265,36 @@ Drive 전용 전환 뒤에는 `Client/Bin/Resources`가 ignore 대상이다. 이
 
 ## 보내는 PC
 
-먼저 같은 commit에서 필요한 Product/Core 빌드를 통과시킨다. 그 뒤 다음처럼 ZIP을 만든다.
+Git 동기화, runtime 데이터 게시, 제품 빌드, ZIP 생성은 각각 별도 단계다.
+`New-LostArkRuntimeDelivery.ps1`은 이미 있는 파일을 포장하며 publisher나 빌드를 실행하지 않는다.
+EXE/DLL/CSO만 전달하고 `DataFiles`를 제외한 ZIP은 전체 실행 배포본으로 사용하지 않는다.
+
+먼저 전달할 commit과 디스크 저장본을 확정하고 아래 두 owner를 순서대로 실행한다.
+다른 세션이 같은 정본을 저장 중이면 그 저장이 끝난 최신 revision으로 게시한다.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildDomainOwner.ps1 -Owner Client
+if ($LASTEXITCODE -ne 0) { throw 'Client runtime publish failed.' }
+powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildDomainOwner.ps1 -Owner Server
+if ($LASTEXITCODE -ne 0) { throw 'Server runtime publish failed.' }
+```
+
+Client owner는 쿠크 projection, 쿠크 맵, Composition, World, Navigation을 게시한다.
+Server owner는 World/Navigation, 파괴, Gameplay, 아이템, 탈것, 칭호, 발탄 보상을 준비한다.
+`-Owner KoukuSaydon`은 Navigation과 Composition 게시를 포함하지 않으므로 이것만 실행하고
+전체 데이터 게시 완료로 판단하지 않는다. 다른 Area의 맵·조명 정본을 바꿨다면 해당 publisher도
+별도로 실행한다. Client와 Server의 Navigation은 같은 transaction에서 생성한 파일을 전달한다.
+
+CPP/HLSL 변경이 있으면 같은 저장본에서 정상 증분 Product 빌드를 통과시킨다.
+데이터만 다시 게시하는 경우에는 기존 Product 성공 증거와 바이너리 일치를 확인해 재사용할 수 있다.
+실행 중인 Client/Server 종료는 EXE 교체·링크 단계에 필요하며 데이터 publish의 선행 조건은 아니다.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.ps1 -Configuration Release
+if ($LASTEXITCODE -ne 0) { throw 'Release Product build failed.' }
+```
+
+그 뒤 다음처럼 같은 구성의 ZIP을 만든다.
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File Tools/ResourceDelivery/New-LostArkRuntimeDelivery.ps1 `
@@ -278,11 +307,29 @@ powershell -ExecutionPolicy Bypass -File Tools/ResourceDelivery/New-LostArkRunti
 ZIP에는 `Client/Bin/Resources`가 0개여야 한다. manifest의 per-file hash는 전송 중 손상과
 경로 변조를 설치 전에 거부하기 위한 것이며, Resource pack version/lock 계약이 아니다.
 
+최종 ZIP에서 다음 항목의 존재와 원본 SHA-256 일치를 확인한다.
+
+- 선택한 구성의 Client/Server EXE, 필요한 DLL과 Client CSO.
+- `Client/Bin/DataFiles`와 `Server/Bin/DataFiles`의 게시본. Navigation의 region manifest가
+  참조하는 지역 grid/policy/blocker까지 포함한다.
+- Gameplay bootstrap, World bootstrap, 맵·연출·Composition 등 이번 변경의 실제 소비 파일.
+
+제품은 일부 catalog·패턴·Effect·Sound JSON을 저장소 `Data`에서 직접 읽는다.
+정식 runtime ZIP에는 `Data`가 없으므로 받는 PC가 같은 commit의 `Data`를 준비해야 한다.
+Git 반영 전 변경분까지 전달해야 하거나 실행용 패키지에 필요한 JSON을 동봉할 때는
+검증된 경로 목록과 hash를 가진 별도 `ChangedData/Data` 보충분을 설치 wrapper로 함께 적용한다.
+전체 `Data`와 Resources를 무조건 복사하지 않으며, 수신 측의 변경 파일은 백업하고
+동시 저장을 발견하면 덮어쓰지 않는다. 새 sound/image/model 실물은 기존 Drive 경계로 전달한다.
+
 ## 받는 PC
 
 1. Git에서 보내는 PC와 같은 commit을 checkout한다.
 2. 팀장 Drive의 `Client/Bin/Resources`를 원래 상대 경로에 둔다.
 3. 아래 설치 스크립트에 ZIP과 실제 LostArk 물리 폴더를 전달한다.
+
+설치 시에는 편집 내용을 저장한 뒤 해당 폴더의 Client/Server를 종료한다. 수신 ZIP에
+`LostArk.exe`와 설치 안내가 함께 있으면 그 wrapper가 지정하는 전체 패키지를 사용하고,
+내부 Client.exe만 따로 복사하지 않는다. Client/Server는 같은 protocol과 게시 데이터를 사용해야 한다.
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File Tools/ResourceDelivery/Install-LostArkRuntimeDelivery.ps1 `
