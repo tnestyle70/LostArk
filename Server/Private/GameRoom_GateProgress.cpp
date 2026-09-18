@@ -102,13 +102,14 @@ void LostArk::Server::CGameRoom::Handle_GateProgressPropose(
 	const auto playerIter = m_Players.find(proposerId);
 	if (playerIter == m_Players.end() || playerIter->second.iSessionId != sessionId)
 		return;
-	/* One vote at a time on a raised gate. ADVANCE needs the current gate cleared and a next
-	   gate to exist; RESTART re-raises the current gate whether it fell or not. */
+	/* One vote at a time. ADVANCE needs a raised gate that is cleared and a next gate to
+	   exist; RESTART re-raises the current gate whether it fell or not, and with no gate
+	   raised yet (fresh room) it raises the first one. */
 	const std::uint8_t iCurrent = m_GateProgress.iCurrentGate;
-	if (0u == iCurrent || 0u != m_GateProgress.iProposalId || request.eKind >= GATE_PROGRESS_KIND::END)
+	if (0u != m_GateProgress.iProposalId || request.eKind >= GATE_PROGRESS_KIND::END)
 		return;
 	if (GATE_PROGRESS_KIND::ADVANCE == request.eKind &&
-		(iCurrent >= Gate_Count() || 0u == (m_GateProgress.iClearedMask & (1u << (iCurrent - 1u)))))
+		(0u == iCurrent || iCurrent >= Gate_Count() || 0u == (m_GateProgress.iClearedMask & (1u << (iCurrent - 1u)))))
 		return;
 
 	std::vector<PLAYER_ID> voters{ proposerId };
@@ -185,7 +186,8 @@ void LostArk::Server::CGameRoom::Close_GateProgressVote(
 	if (GATE_PROGRESS_VOTE_RESULT::ALL_ACCEPTED == result)
 	{
 		const std::uint8_t iTarget = GATE_PROGRESS_KIND::RESTART == m_GateProgress.eKind ?
-			m_GateProgress.iCurrentGate : static_cast<std::uint8_t>(m_GateProgress.iCurrentGate + 1u);
+			(std::max<std::uint8_t>)(m_GateProgress.iCurrentGate, 1u) :
+			static_cast<std::uint8_t>(m_GateProgress.iCurrentGate + 1u);
 		if (!Advance_Gate(iTarget))
 			finalResult = GATE_PROGRESS_VOTE_RESULT::CANCELLED;
 	}

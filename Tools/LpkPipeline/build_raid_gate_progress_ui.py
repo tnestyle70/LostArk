@@ -51,14 +51,16 @@ SHARED_CROPS = [
     ("GateProgress_Btn_Over",   "shareimagev2_i46", 328, 988, 103, 36),
 ]
 
-# Placement measured on the retail 1080p capture of the live widget (frame top-left at the
-# screen's (0,48)): title centre (151,32), difficulty (151,56), the button (60,126) 182x37,
-# the three gate icons (47,205) (113,205) (180,205) 59x65 on a 62 px pitch. All frame-local
-# retail px, scaled by 2/3 onto the 1280x720 reference with the frame at (4,32).
+# Placement: the frame's own sprite 172 geometry, checked against the retail 1080p capture of
+# the live widget (frame top-left at the screen's (0,52)): dungeonName 18 px centred at (141,28),
+# "[difficulty]" at (141,52), gateIcon0..2 at (59,74) (121,74) (183,74) 59x65 (62 px pitch,
+# inside the frame under the difficulty line), and the V2 button stretched to (56,128) 176x37
+# at the frame's bottom. The party frame sits below the widget and is not part of it. All
+# frame-local retail px, scaled by 2/3 onto the 1280x720 reference with the frame at (4,32).
 STAGE_TO_REF = 2.0 / 3.0
 WIDGET_X, WIDGET_Y = 4.0, 32.0
-BUTTON_LOCAL = (60.0, 126.0, 182.0, 37.0)
-ICON_LOCAL = [(47.0, 205.0), (113.0, 205.0), (180.0, 205.0)]
+BUTTON_LOCAL = (56.0, 128.0, 176.0, 37.0)
+ICON_LOCAL = [(59.0, 74.0), (121.0, 74.0), (183.0, 74.0)]
 ICON_W, ICON_H = 59.0, 65.0
 
 

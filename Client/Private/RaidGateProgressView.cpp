@@ -18,13 +18,14 @@ namespace
 	/* Retail stage px -> this project's 1280x720 reference, the scale every runtime UI uses. */
 	constexpr f32_t STAGE_TO_REF = 2.f / 3.f;
 	/* Measured on the retail 1080p capture of the live frame (frame top-left at the screen's
-	   (0,48)): dungeonName 18 px centred at (141,32), the yellow "[difficulty]" line at (141,56),
-	   the button label 16 px centred in the button. Frame-local retail px scaled below. */
-	constexpr f32_t NAME_PX = 18.f * STAGE_TO_REF;
+	   (0,52)): dungeonName centred at (141,28) with 15 px cap height (a 16 px LOA font here),
+	   the yellow "[difficulty]" line at (141,52), the button label 16 px centred in the button.
+	   Frame-local retail px scaled below. */
+	constexpr f32_t NAME_PX = 16.f * STAGE_TO_REF;
 	constexpr f32_t NAME_X = 141.f * STAGE_TO_REF;
-	constexpr f32_t NAME_Y = 32.f * STAGE_TO_REF;
+	constexpr f32_t NAME_Y = 28.f * STAGE_TO_REF;
 	constexpr f32_t DIFFICULTY_PX = 13.f * STAGE_TO_REF;
-	constexpr f32_t DIFFICULTY_Y = 56.f * STAGE_TO_REF;
+	constexpr f32_t DIFFICULTY_Y = 52.f * STAGE_TO_REF;
 	constexpr f32_t BUTTON_PX = 16.f * STAGE_TO_REF;
 	/* The active-gate glow is 92x88 art drawn centred on the 59x65 icon rect. */
 	constexpr f32_t ICON_W = 59.f * STAGE_TO_REF;
@@ -111,7 +112,8 @@ void Client::CRaidGateProgressView::Set_Raid(
 	const wstring_t& strName, const wstring_t& strDifficulty, const uint8_t iGateCount)
 {
 	m_strName = strName;
-	m_strDifficulty = strDifficulty.empty() ? wstring_t() : L"[" + strDifficulty + L"]";
+	/* The catalog's difficulty text already carries its brackets ("[normal]"). */
+	m_strDifficulty = strDifficulty;
 	m_iGateCount = (std::min<uint8_t>)(iGateCount, 3u);
 	Set_Progress(m_iCurrentGate, m_iClearedMask);
 }

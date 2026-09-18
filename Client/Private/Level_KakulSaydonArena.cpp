@@ -57,6 +57,9 @@
 
 namespace
 {
+	/* The commander raid this arena is: three gates (the Server's Gate_Count for KAKULSAYDON). */
+	constexpr uint8_t KOUKU_GATE_COUNT = 3u;
+
 	std::optional<CWorldSequencePlayer::OBJECT_PLACEMENT> WorldPlacementFromCue(
 		const LostArk::Shared::S2C_WORLD_SEQUENCE_PLAY& play)
 	{
@@ -1425,7 +1428,8 @@ HRESULT Client::CLevel_KakulSaydonArena::Initialize()
 	/* GameMsg tip.name.scene_group_index_name_contents_commanderraid_37081_1: the commander
 	   name, not the zone name the award page uses. */
 	m_GateProgressView.Set_Raid(L"\xAD11\xAE30\xAD70\xB2E8\xC7A5 \xCFE0\xD06C\xC138\xC774\xD2BC",
-		CMvpAwardCatalog::Get().Find_DifficultyText("normal"), 3u);
+		CMvpAwardCatalog::Get().Find_DifficultyText("normal"), KOUKU_GATE_COUNT);
+	m_GateProgressView.Set_Progress(1u, 0u);
 
 	replicationDesc.pDevice = m_pDevice;
 	replicationDesc.pContext = m_pContext;
@@ -2514,19 +2518,16 @@ void Client::CLevel_KakulSaydonArena::Update_GateProgress(const f32_t fTimeDelta
 	/* The panel button follows the raid: restart while a gate is up, dungeon progress once a
 	   gate short of the last is cleared, exit once the last one is. Only the leader can press
 	   it, and not while a vote is running or the award page is up. */
-	CRaidGateProgressView::BUTTON eButton = CRaidGateProgressView::BUTTON::NONE;
-	if (m_bGateProgressKnown && 0u != m_GateProgress.iCurrentGate)
-	{
-		const bool_t bCleared = 0u != (m_GateProgress.iClearedMask & (1u << (m_GateProgress.iCurrentGate - 1u)));
-		if (!bCleared)
-			eButton = CRaidGateProgressView::BUTTON::RESTART;
-		else if (m_GateProgress.iCurrentGate < m_GateProgress.iGateCount)
-			eButton = CRaidGateProgressView::BUTTON::PROGRESS;
-		else
-			eButton = CRaidGateProgressView::BUTTON::EXIT;
-	}
+	/* Before any gate is raised (fresh room, or before the F1 button) the panel treats gate 1
+	   as current: the restart button then raises it, as the Server's RESTART rule does. */
+	const uint8_t iShownGate = (std::max<uint8_t>)(m_GateProgress.iCurrentGate, 1u);
+	const uint8_t iShownCount = (std::max<uint8_t>)(m_GateProgress.iGateCount, KOUKU_GATE_COUNT);
+	const bool_t bCleared = 0u != (m_GateProgress.iClearedMask & (1u << (iShownGate - 1u)));
+	CRaidGateProgressView::BUTTON eButton = CRaidGateProgressView::BUTTON::RESTART;
+	if (bCleared)
+		eButton = iShownGate < iShownCount ? CRaidGateProgressView::BUTTON::PROGRESS : CRaidGateProgressView::BUTTON::EXIT;
 	m_GateProgressView.Set_Button(eButton, Is_LocalRaidLeader() && !bVoteOpen && !bMvpVisible);
-	m_GateProgressView.Set_Progress(m_GateProgress.iCurrentGate, m_GateProgress.iClearedMask);
+	m_GateProgressView.Set_Progress(iShownGate, m_GateProgress.iClearedMask);
 	const CRaidGateProgressView::INTENT eIntent = m_GateProgressView.Update(fTimeDelta);
 	if (nullptr == m_pPlayerCommandSink)
 		return;
