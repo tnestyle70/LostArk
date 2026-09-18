@@ -1,11 +1,26 @@
 # LostArk merge 회귀 방지 정본
 
+### 차원술사 탑승 AnimationSet의 import 배율
+
+- AnimationSet은 skeleton hash·이름·부모가 같아도 armature의 import 배율이 다를 수 있다.
+  `Attach_AnimationSet`은 animation만 복사하므로 target body의 rest·기존 clip과 donor의
+  root key를 함께 실측한다. 차원술사 body 1 / Ride 100은 지정한 6개 donor의 root scale만
+  100으로 나눠 교정하며 전역 Character·차량 역배율로 우회하지 않는다.
+- 실제 body의 mesh·inverse bind로 skin bounds를 검사하고, 교정하지 않는 필드의 byte 보존과
+  재실행 무변경을 확인한다. Resources는 기존 Drive 경계로 별도 전달하며 실행 중 Client의
+  메모리까지 갱신됐다고 표현하지 않는다. 근거는 [탈것 결과 G09](../JS/09-14/2026-09-14_VEHICLE_ADDITIONS_RESULT.md)를 따른다.
+
 ### 실행 ZIP의 DataFiles와 옵션 팝업 클릭 소비
 
 - Git pull과 Product Build는 runtime publish를 대신하지 않는다. 특히 KoukuSaydon owner에는
   Navigation/Composition이 없으므로 전체 실행 배포 전 Client/Server owner의 결과를 확인한다.
   EXE/DLL/CSO와 양쪽 Bin/DataFiles를 함께 포장하고 region manifest가 참조하는 파일까지
   검증한다. 직접 읽는 Data JSON은 같은 commit 또는 검증된 보충분으로 전달한다.
+- `EffectCatalog.json`을 보충할 때는 모든 direct-authored `authoringPath` JSON도 함께 검증·
+  전달한다. Client 초기화는 변경된 effect뿐 아니라 catalog 전체의 참조 파일 존재를 검사한다.
+  catalog 전체와 일부 authored JSON만 전달하면 이전 Data를 가진 PC에서 흰 창 뒤 종료될 수 있다.
+  실제 실패 원인은 같은 PID의 `ClientStartup.user.log`/`ClientExit.user.log`로 확인하며,
+  설치기 headless PASS를 Client 시작 성공으로 기록하지 않는다.
 - WorldSequence에 기존 runtime 필드를 추가할 때 Map publisher·Client codec뿐 아니라
   Composition의 엄격한 source validator도 같은 계약을 소비해야 한다. `colliderTracks`와
   `loopFullPresentation`을 unknown으로 거절하는 경우 필드를 제거하지 않고 타입·시간·shape·

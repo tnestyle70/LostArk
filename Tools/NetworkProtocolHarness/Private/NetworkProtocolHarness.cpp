@@ -3441,34 +3441,49 @@ namespace
 			CPacketWriter oldWriter;
 			testRunner.Require(!Write_Message(oldWriter, oldPeer),
 				"Reject Both Independently Shipped Protocol 40 Peers");
-			S2C_PARTY_TRANSFER_RESULT failure{};
-			failure.iRequestSequence = 12u;
-			failure.eTargetWorldId = WORLD_ID::VALTAN_ARENA;
-			failure.eResult = PARTY_TRANSFER_RESULT::REJECTED_ROOM_FULL;
-			CPacketWriter writer;
-			const bool encoded = Write_Message(writer, failure);
-			CPacketReader reader{ writer.Get_Buffer() };
-			S2C_PARTY_TRANSFER_RESULT decoded{};
-			testRunner.Require(encoded && Read_Message(reader, decoded) &&
-				12u == decoded.iRequestSequence &&
-				PARTY_TRANSFER_RESULT::REJECTED_ROOM_FULL == decoded.eResult &&
-				0u == reader.Get_RemainingSize(), "Party Transfer Failure Round Trip");
-			for (std::size_t size = 0; size < writer.Get_Buffer().size(); ++size)
+			for (const auto targetWorld : { WORLD_ID::VALTAN_ARENA, WORLD_ID::KAKULSAYDON_ARENA })
 			{
-				CPacketReader truncated{ std::span<const std::uint8_t>{ writer.Get_Buffer().data(), size } };
-				S2C_PARTY_TRANSFER_RESULT unchanged = failure;
-				testRunner.Require(!Read_Message(truncated, unchanged) &&
-					unchanged.iRequestSequence == failure.iRequestSequence &&
-					unchanged.eResult == failure.eResult,
-					"Reject Truncated Party Failure Without Mutation");
+				S2C_PARTY_TRANSFER_RESULT failure{};
+				failure.iRequestSequence = 12u;
+				failure.eTargetWorldId = targetWorld;
+				failure.eResult = PARTY_TRANSFER_RESULT::REJECTED_ROOM_FULL;
+				CPacketWriter writer;
+				const bool encoded = Write_Message(writer, failure);
+				CPacketReader reader{ writer.Get_Buffer() };
+				S2C_PARTY_TRANSFER_RESULT decoded{};
+				testRunner.Require(encoded && Read_Message(reader, decoded) &&
+					12u == decoded.iRequestSequence && decoded.eTargetWorldId == targetWorld &&
+					PARTY_TRANSFER_RESULT::REJECTED_ROOM_FULL == decoded.eResult &&
+					0u == reader.Get_RemainingSize(), "Party Transfer Failure Round Trip");
+				for (std::size_t size = 0; size < writer.Get_Buffer().size(); ++size)
+				{
+					CPacketReader truncated{ std::span<const std::uint8_t>{ writer.Get_Buffer().data(), size } };
+					S2C_PARTY_TRANSFER_RESULT unchanged = failure;
+					testRunner.Require(!Read_Message(truncated, unchanged) &&
+						unchanged.iRequestSequence == failure.iRequestSequence &&
+						unchanged.eResult == failure.eResult,
+						"Reject Truncated Party Failure Without Mutation");
+				}
+				CPacketWriter unknown;
+				unknown.Write_U32(12u);
+				unknown.Write_U16(static_cast<std::uint16_t>(WORLD_ID::VALTAN_ARENA));
+				unknown.Write_U8(255u);
+				CPacketReader unknownReader{ unknown.Get_Buffer() };
+				testRunner.Require(!Read_Message(unknownReader, decoded),
+					"Reject Unknown Party Transfer Failure Result");
 			}
-			CPacketWriter unknown;
-			unknown.Write_U32(12u);
-			unknown.Write_U16(static_cast<std::uint16_t>(WORLD_ID::VALTAN_ARENA));
-			unknown.Write_U8(255u);
-			CPacketReader unknownReader{ unknown.Get_Buffer() };
-			testRunner.Require(!Read_Message(unknownReader, decoded),
-				"Reject Unknown Party Transfer Failure Result");
+			S2C_PARTY_TRANSFER_RESULT invalidTarget{ 12u, WORLD_ID::BERN, PARTY_TRANSFER_RESULT::REJECTED_ROOM_FULL };
+			CPacketWriter invalidWriter;
+			testRunner.Require(!Write_Message(invalidWriter, invalidTarget),
+				"Reject unsupported party-transfer failure destination");
+			CPacketWriter invalidWire;
+			invalidWire.Write_U32(12u);
+			invalidWire.Write_U16(static_cast<std::uint16_t>(WORLD_ID::BERN));
+			invalidWire.Write_U8(static_cast<std::uint8_t>(PARTY_TRANSFER_RESULT::REJECTED_ROOM_FULL));
+			CPacketReader invalidReader{ invalidWire.Get_Buffer() };
+			testRunner.Require(!Read_Message(invalidReader, invalidTarget),
+				"Reject unsupported party-transfer failure destination on read");
+
 		}
 		{
 			C2S_PARTY_INVITE source{};

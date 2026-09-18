@@ -1,0 +1,205 @@
+{
+  "schema": "lostark.dimensionmaster-rider-scale-repair",
+  "formatVersion": 1,
+  "bodyResource": "Character/DimensionMaster/DimensionMaster_Character.wmodel",
+  "bodySha256": "6fd2097636915ef94dc9495090e5c8df273fb6f09d8ad81196d2a08c8ad28d82",
+  "bodyArmatureScale": [
+    1,
+    1,
+    1
+  ],
+  "bodyRootScaleKeys": 6244,
+  "armatureBone": "pc_sp_m_00_sk",
+  "sourceScale": [
+    100.0,
+    99.99999237060547,
+    99.99999237060547
+  ],
+  "targetScale": [
+    1.0,
+    0.9999999403953552,
+    0.9999999403953552
+  ],
+  "scaleDivisor": 100,
+  "preserved": [
+    "mesh",
+    "materials",
+    "skeleton",
+    "otherBoneChannels",
+    "translation",
+    "rotation",
+    "keyTimes",
+    "clipMetadata"
+  ],
+  "installed": true,
+  "clientUiExecuted": false,
+  "files": [
+    {
+      "resource": "Character/DimensionMaster/AnimSets/DimensionMaster_RideDragon2AnimSet.wmodel",
+      "bytes": 8044754,
+      "beforeSha256": "c06187e921a90914499ee20b69fc9c4d470f8587ae6b7c03231d7de692265370",
+      "afterSha256": "85adf5784e6d93872a5bab0d69920a74ee17b9dd902cde483d290903c18515e7",
+      "clips": 7,
+      "scaleKeys": 680,
+      "alreadyRepaired": false
+    },
+    {
+      "resource": "Character/DimensionMaster/AnimSets/DimensionMaster_RideHeavywalkerBm9AnimSet.wmodel",
+      "bytes": 6226738,
+      "beforeSha256": "723d6cfdbecd083648a2a7825ce9c3a6111270bdff87667357794e213a023d0e",
+      "afterSha256": "8304c189adc16dbd654de3c14578f73dce10236f6e8112dc3f30fea92a7e8028",
+      "clips": 6,
+      "scaleKeys": 524,
+      "alreadyRepaired": false
+    },
+    {
+      "resource": "Character/DimensionMaster/AnimSets/DimensionMaster_RideHorseAnimSet.wmodel",
+      "bytes": 5948434,
+      "beforeSha256": "094091b57f696f2c01a5143d8054045fb25f250b62a975a525515b67377e9fd0",
+      "afterSha256": "5488ced669e6814332bbe8cf9faee7c98894bbd87ee9cd9e57bb0402645d54f3",
+      "clips": 6,
+      "scaleKeys": 500,
+      "alreadyRepaired": false
+    },
+    {
+      "resource": "Character/DimensionMaster/AnimSets/DimensionMaster_RideHoverboardAnimSet.wmodel",
+      "bytes": 1769946,
+      "beforeSha256": "da3c2c3d91127fea131ab18d1b3af08f816482f501d0cab256e4b70c5acdfca6",
+      "afterSha256": "3c6cf4b9873f232f1ce97a082f84c3e83a70eeeca03aaf54380e8c9bcd2767a6",
+      "clips": 3,
+      "scaleKeys": 142,
+      "alreadyRepaired": false
+    },
+    {
+      "resource": "Character/DimensionMaster/AnimSets/DimensionMaster_RideSwingAnimSet.wmodel",
+      "bytes": 10686086,
+      "beforeSha256": "8238dcd03581415c81ddfcd5146d9d0c3ecef2251269731dd6c1748e93df987c",
+      "afterSha256": "5573fc763cc92b91163b54d6d07bf5868d4a26233bc2b884f119c9ed7745a769",
+      "clips": 8,
+      "scaleKeys": 907,
+      "alreadyRepaired": false
+    },
+    {
+      "resource": "Character/DimensionMaster/AnimSets/DimensionMaster_RideTubeAnimSet.wmodel",
+      "bytes": 7123558,
+      "beforeSha256": "2cdb3d2694185670344d0072c0d7ee31e0afae22c1aedeb09b5d37cca016cbe9",
+      "afterSha256": "91d1ff98831832e7b5be5b9cde19bd1e7fef84dcb377380349efc400e774fa43",
+      "clips": 9,
+      "scaleKeys": 599,
+      "alreadyRepaired": false
+    }
+  ],
+  "attachedBodyWitness": {
+    "schema": "lostark.dimensionmaster-rider-attached-body-witness",
+    "bodySha256": "6fd2097636915ef94dc9495090e5c8df273fb6f09d8ad81196d2a08c8ad28d82",
+    "method": "actual body vertices + inverse-bind + body skeleton + donor idle at tick 0",
+    "worldScale": 0.015,
+    "modelYawDegrees": -90,
+    "boundsAxisConvention": "model axes; common yaw only permutes X/Z extents",
+    "legacyBodyClipNameCollisions": [
+      "WModel contains duplicate animation name: pc_sp_m_00_sk_evt1_sk_dimensionalleap_0",
+      "WModel contains duplicate animation name: pc_sp_m_00_sk_fx_sk_tearingsword_custom",
+      "WModel contains duplicate animation name: pc_sp_m_00_sk_fx_sk_telekinesisthrust_c",
+      "WModel contains duplicate animation name: pc_sp_m_00_sk_sk_dimensionalleap_custom",
+      "WModel contains duplicate animation name: pc_sp_m_00_sk_sk_gravitypoint_custom_5_",
+      "WModel contains duplicate animation name: pc_sp_m_00_sk_sk_gravitypoint_custom_6_",
+      "WModel contains duplicate animation name: pc_sp_m_00_sk_sk_phantomthrust_custom_1",
+      "WModel contains duplicate animation name: pc_sp_m_00_sk_sk_tearingsword_custom_4_",
+      "WModel contains duplicate animation name: pc_sp_m_00_sk_sk_tearingsword_custom_5_",
+      "WModel contains duplicate animation name: pc_sp_m_00_sk_sk_telekinesisthrust_cust"
+    ],
+    "clientUiExecuted": false,
+    "files": [
+      {
+        "resource": "Character/DimensionMaster/AnimSets/DimensionMaster_RideDragon2AnimSet.wmodel",
+        "clip": "pc_sp_m_00_sk_ride_dragon_2_idle_normal",
+        "beforeSizeMeters": [
+          77.37312697499999,
+          101.64003773999998,
+          78.35269736999999
+        ],
+        "afterSizeMeters": [
+          0.773731275,
+          1.01640039,
+          0.78352698
+        ],
+        "diagonalRatioBeforeOverAfter": 99.99999828834247
+      },
+      {
+        "resource": "Character/DimensionMaster/AnimSets/DimensionMaster_RideHeavywalkerBm9AnimSet.wmodel",
+        "clip": "pc_sp_m_00_sk_ride_heavywalker_bm9_idle",
+        "beforeSizeMeters": [
+          53.654580974999995,
+          119.45428157999999,
+          77.67409805999999
+        ],
+        "afterSizeMeters": [
+          0.5365458150000001,
+          1.194542835,
+          0.7767409949999999
+        ],
+        "diagonalRatioBeforeOverAfter": 99.99999813798499
+      },
+      {
+        "resource": "Character/DimensionMaster/AnimSets/DimensionMaster_RideHorseAnimSet.wmodel",
+        "clip": "pc_sp_m_00_sk_ride_horse_idle_normal_1",
+        "beforeSizeMeters": [
+          59.46653798999999,
+          140.40812412,
+          98.31438648
+        ],
+        "afterSizeMeters": [
+          0.594665385,
+          1.40408127,
+          0.9831438899999999
+        ],
+        "diagonalRatioBeforeOverAfter": 99.99999859449039
+      },
+      {
+        "resource": "Character/DimensionMaster/AnimSets/DimensionMaster_RideHoverboardAnimSet.wmodel",
+        "clip": "pc_sp_m_00_sk_ride_hoverboard_idle_norm",
+        "beforeSizeMeters": [
+          82.070574015,
+          153.90785499,
+          55.499248785
+        ],
+        "afterSizeMeters": [
+          0.8207057400000001,
+          1.53907857,
+          0.5549924999999999
+        ],
+        "diagonalRatioBeforeOverAfter": 99.99999880353545
+      },
+      {
+        "resource": "Character/DimensionMaster/AnimSets/DimensionMaster_RideSwingAnimSet.wmodel",
+        "clip": "pc_sp_m_00_sk_ride_swing_idle_normal_1",
+        "beforeSizeMeters": [
+          66.02049894,
+          139.320938175,
+          91.98160102499999
+        ],
+        "afterSizeMeters": [
+          0.66020499,
+          1.393209405,
+          0.91981602
+        ],
+        "diagonalRatioBeforeOverAfter": 99.99999836235577
+      },
+      {
+        "resource": "Character/DimensionMaster/AnimSets/DimensionMaster_RideTubeAnimSet.wmodel",
+        "clip": "pc_sp_m_00_sk_ride_tube_idle_normal_1",
+        "beforeSizeMeters": [
+          164.606449185,
+          57.953684325,
+          111.252027165
+        ],
+        "afterSizeMeters": [
+          1.646064495,
+          0.57953685,
+          1.1125203
+        ],
+        "diagonalRatioBeforeOverAfter": 99.99999968109216
+      }
+    ]
+  }
+}

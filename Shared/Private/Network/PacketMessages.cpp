@@ -5846,7 +5846,8 @@ bool LostArk::Shared::Write_Message(
 {
 	const auto result = static_cast<std::uint8_t>(message.eResult);
 	if (0u == message.iRequestSequence ||
-		WORLD_ID::VALTAN_ARENA != message.eTargetWorldId || result < 1u || result > 5u)
+		(WORLD_ID::VALTAN_ARENA != message.eTargetWorldId &&
+		 WORLD_ID::KAKULSAYDON_ARENA != message.eTargetWorldId) || result < 1u || result > 5u)
 		return false;
 	writer.Write_U32(message.iRequestSequence);
 	writer.Write_U16(static_cast<std::uint16_t>(message.eTargetWorldId));
@@ -5862,7 +5863,8 @@ bool LostArk::Shared::Read_Message(
 	std::uint8_t result = 0u;
 	if (!reader.Read_U32(decoded.iRequestSequence) || !reader.Read_U16(world) ||
 		!reader.Read_U8(result) || 0u == decoded.iRequestSequence ||
-		static_cast<std::uint16_t>(WORLD_ID::VALTAN_ARENA) != world ||
+		(static_cast<std::uint16_t>(WORLD_ID::VALTAN_ARENA) != world &&
+		 static_cast<std::uint16_t>(WORLD_ID::KAKULSAYDON_ARENA) != world) ||
 		result < 1u || result > 5u)
 		return false;
 	decoded.eTargetWorldId = static_cast<WORLD_ID>(world);

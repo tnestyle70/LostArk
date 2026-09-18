@@ -321,6 +321,13 @@ Git 반영 전 변경분까지 전달해야 하거나 실행용 패키지에 필
 전체 `Data`와 Resources를 무조건 복사하지 않으며, 수신 측의 변경 파일은 백업하고
 동시 저장을 발견하면 덮어쓰지 않는다. 새 sound/image/model 실물은 기존 Drive 경계로 전달한다.
 
+`EffectCatalog.json`을 보충분에 넣으면 변경된 Effect JSON만 모으지 않는다.
+Client 초기화는 catalog의 모든 `DIRECT_AUTHORED_DOCUMENT.authoringPath`가 실제로 존재하는지
+확인하므로 그 참조 JSON 전체를 같은 보충분에 포함하고 manifest의 경로·hash로 검증한다.
+`screenOverlayPresentationPath`가 있으면 그 Data 문서도 포함한다. 해당 문서가 참조하는
+Resources 미디어는 계속 Drive 소유다. 최신 main checkout 조건과 물리 Resources 준비 조건은
+파일 일부를 보충했다는 이유로 생략하지 않는다.
+
 ## 받는 PC
 
 1. Git에서 보내는 PC와 같은 commit을 checkout한다.
@@ -347,6 +354,17 @@ python Tools/ResourceDelivery/validate_resource_delivery_policy.py --require-loc
 ```
 
 ## 실행 확인
+
+흰 창이 나타난 뒤 바로 종료되면 설치 성공만으로 Client 시작 성공을 판단하지 않는다.
+Release도 `Client/Default/ClientStartup.user.log`에 초기화 단계·HRESULT·상세 오류를,
+`ClientExit.user.log`에 종료 사유·PID를 기록한다. 기록은 실행 파일의 위치에서 경로를 찾는다.
+로그의 해당 실행 PID와 마지막 실패 단계를 확인하며, 창 색상만으로 Resources·네트워크·
+GPU 중 하나를 원인으로 확정하지 않는다. 로그 파일을 쓸 수 없는 경우에도 기존 실패 처리는 유지한다.
+
+시작 감시를 포함한 `LostArk.exe` wrapper는 Client가 10초 이내에 실패 종료하면
+해당 실행의 진단과 오류 창을 표시한다. 실행기 로그는
+`%LOCALAPPDATA%/LostArk/LauncherLogs`에 보존한다. 10초 동안 살아 있다는 사실은 Lobby 진입
+또는 이후 게임플레이 성공의 증거가 아니다. Client/UI의 최종 화면 확인은 사용자가 수행한다.
 
 Debug 저작 기능은 Server + Client profile에서 사용자가 직접 확인한다. Release에서는 F1/Workbench가
 노출되지 않으므로 제품 Lobby/Level 진입만 확인한다. 화면과 음향 fidelity는 자동 설치 결과가 아니라

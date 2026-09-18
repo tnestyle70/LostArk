@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <string>
 
 namespace
 {
@@ -203,6 +204,14 @@ namespace
 		},
 	};
 	constexpr int32_t RAID_COUNT = static_cast<int32_t>(sizeof(RAID_DEFS) / sizeof(RAID_DEFS[0]));
+	const RAID_DEF* Find_RaidDefinition(const LostArk::Shared::RAID_ENTRY_TARGET target)
+	{
+		for (const RAID_DEF& raid : RAID_DEFS)
+			if (raid.eTarget == target)
+				return &raid;
+		return nullptr;
+	}
+
 	/* Tabs the document draws. Five, not the movie's six: the sixth commander has no content
 	   here, so its slot was removed from the document. */
 	constexpr int32_t TAB_COUNT = 5;
@@ -480,6 +489,7 @@ bool_t CRaidEntryPreviewView::Render()
 	{
 		m_isConfirmStepOpen = false;
 		m_isOpen = false;
+		m_eVoteTarget = LostArk::Shared::RAID_ENTRY_TARGET::END;
 		Hide_AllSlots();
 		Hide_ConfirmSlots();
 		return false;
@@ -934,6 +944,7 @@ bool_t CRaidEntryPreviewView::Render_ConfirmStep()
 		m_isConfirmStepOpen = false;
 		m_isOpen = false;
 		m_iVoteProposalId = 0u;
+		m_eVoteTarget = LostArk::Shared::RAID_ENTRY_TARGET::END;
 		Hide_ConfirmSlots();
 		return confirmClicked;
 	}
@@ -951,9 +962,10 @@ void CRaidEntryPreviewView::Open_VoteConfirm(
 	const std::uint32_t iProposalId,
 	const LostArk::Shared::RAID_ENTRY_TARGET target)
 {
-	// target은 표시용 문구 확장 여지로만 받는다 -- 응답에는 필요 없다.
-	(void)target;
+	if (nullptr == Find_RaidDefinition(target))
+		return;
 	m_iVoteProposalId = iProposalId;
+	m_eVoteTarget = target;
 	m_isOpen = true;
 	m_isConfirmStepOpen = true;
 	m_hasJustOpened = true;
@@ -964,6 +976,7 @@ void CRaidEntryPreviewView::Close_VoteConfirm()
 	m_isConfirmStepOpen = false;
 	m_isOpen = false;
 	m_iVoteProposalId = 0u;
+	m_eVoteTarget = LostArk::Shared::RAID_ENTRY_TARGET::END;
 	m_Intent = RAID_ENTRY_INTENT{};
 	Hide_ConfirmSlots();
 	Hide_AllSlots();
@@ -971,7 +984,8 @@ void CRaidEntryPreviewView::Close_VoteConfirm()
 
 void CRaidEntryPreviewView::RenderText_ConfirmStep()
 {
-	if (nullptr == m_pConfirmView)
+	const RAID_DEF* pRaid = Find_RaidDefinition(m_eVoteTarget);
+	if (nullptr == m_pConfirmView || nullptr == pRaid)
 		return;
 
 	const float2_t vViewportSize = CGameInstance::Get().Get_ViewportSize();
@@ -1004,11 +1018,10 @@ void CRaidEntryPreviewView::RenderText_ConfirmStep()
 	if (m_pConfirmView->Get_SlotRect(
 		"ValtanEntry_DescTextBox", fDescX, fDescY, fDescW, fDescH))
 	{
-		// "부활한 마수의 심장으로 이동하시겠습니까?"
+		const std::wstring description = std::wstring(pRaid->pRaidName) +
+			L"\xC5D0 \xC785\xC7A5\xD558\xC2DC\xACA0\xC2B5\xB2C8\xAE4C?";
 		Fn_DrawCentered(fDescX + fDescW * 0.5f, fDescY + fDescH * 0.5f,
-			L"\xBD80\xD65C\xD55C \xB9C8\xC218\xC758 \xC2EC\xC7A5\xC73C\xB85C "
-			L"\xC774\xB3D9\xD558\xC2DC\xACA0\xC2B5\xB2C8\xAE4C?",
-			18.f, Colors::White);
+			description.c_str(), 18.f, Colors::White);
 	}
 
 	struct CONFIRM_LABEL

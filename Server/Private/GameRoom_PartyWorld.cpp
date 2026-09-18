@@ -892,7 +892,8 @@ bool LostArk::Server::CGameRoom::Transfer_PartyTo(
 		return false;
 	};
 	if (!m_isReady || !target.m_isReady || WORLD_ID::BERN != m_eWorldId ||
-		WORLD_ID::VALTAN_ARENA != target.m_eWorldId ||
+		(WORLD_ID::VALTAN_ARENA != target.m_eWorldId &&
+		 WORLD_ID::KAKULSAYDON_ARENA != target.m_eWorldId) ||
 		leaderFirstSessionIds.size() < 2u || leaderFirstSessionIds.size() > MAX_PARTY_MEMBERS)
 		return reject(PARTY_TRANSFER_RESULT::REJECTED_ADMISSION_FAILED, "invalid party transfer world/batch");
 	const auto leader = m_PlayerIdBySessionId.find(leaderFirstSessionIds.front());

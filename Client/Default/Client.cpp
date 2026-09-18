@@ -15,6 +15,7 @@
 
 #include <cstdlib>
 #include <fstream>
+#include <filesystem>
 #include <iomanip>
 
 #define MAX_LOADSTRING 100
@@ -35,10 +36,15 @@ namespace
 {
     void WriteExitDiagnostic(const char* reason, const HRESULT result = S_OK)
     {
-#ifdef _DEBUG
-        std::ofstream output(
-            "ClientExit.user.log",
-            std::ios::binary | std::ios::app);
+        // Exit reporting must also work before Engine initialization succeeds.
+        wchar_t modulePath[32768]{};
+        const DWORD pathLength = GetModuleFileNameW(nullptr, modulePath,
+            static_cast<DWORD>(std::size(modulePath)));
+        std::filesystem::path logPath = "ClientExit.user.log";
+        if (pathLength > 0 && pathLength < std::size(modulePath))
+            logPath = std::filesystem::path(modulePath).parent_path().parent_path().parent_path() /
+                L"Default" / L"ClientExit.user.log";
+        std::ofstream output(logPath, std::ios::binary | std::ios::app);
         if (!output)
             return;
 
@@ -55,12 +61,8 @@ namespace
             << " hr=0x" << std::hex << std::uppercase
             << static_cast<unsigned long>(result)
             << std::dec
-            << " level=" << CGameInstance::Get().Get_CurrentLevelID()
+            << " pid=" << GetCurrentProcessId()
             << '\n';
-#else
-        UNREFERENCED_PARAMETER(reason);
-        UNREFERENCED_PARAMETER(result);
-#endif
     }
 }
 
