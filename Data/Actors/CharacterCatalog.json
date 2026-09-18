@@ -13,8 +13,6 @@
         "Character/LanceMaster/LanceMaster_Arm.wmodel",
         "Character/LanceMaster/LanceMaster_Shoulder.wmodel",
         "Character/LanceMaster/LanceMaster_Helmet.wmodel",
-        "Character/LanceMaster/LanceMaster_Helmet_Mokoko.wmodel",
-        "Character/LanceMaster/LanceMaster_Upper_Mokoko.wmodel",
         "Character/LanceMaster/Equipment/pc_ft_00_hair/head.wmodel"
       ],
       "weaponModels": [
@@ -34,474 +32,6 @@
       "animationSetId": "ANIM_LANCE_MASTER",
       "runtimeStatus": "supported",
       "modelMaterialOverrides": [
-        {
-          "modelAssetId": "Character/LanceMaster/LanceMaster_Helmet_Mokoko.wmodel",
-          "materialName": "pc_wr_av_036-1_head_mi",
-          "family": "source.character.classic-skin.v1",
-          "sourceMaterial": "pc_wr_av_036.mat.pc_wr_av_036-1_head_mi",
-          "parameters": {
-            "1.use_dyeing_sp": 0.0,
-            "beckmannspecular_constant_max": 3.35,
-            "buffcolor": [
-              0.0,
-              0.0,
-              0.0,
-              1.0
-            ],
-            "diffusecolor": [
-              1.0,
-              1.0,
-              1.0,
-              1.0
-            ],
-            "fresnel_radius": 0.95,
-            "fresnel_rimlightintensity": 0.5,
-            "fx_color_desaturation_actiontool": 0.0,
-            "fx_color_desaturation_buffsettool": 0.0,
-            "fx_color_intensity_actiontool": [
-              0.0,
-              0.0,
-              0.0,
-              1.0
-            ],
-            "fx_color_intensity_buffsettool": [
-              0.0,
-              0.0,
-              0.0,
-              1.0
-            ],
-            "half_lambert_skin": [
-              0.533708,
-              0.247428,
-              0.179902,
-              1.0
-            ],
-            "hit_color": [
-              0.0,
-              0.0,
-              0.0,
-              0.0
-            ],
-            "ibl_color_bottom": [
-              1.0,
-              1.0,
-              1.0,
-              1.0
-            ],
-            "ibl_color_top": [
-              1.0,
-              1.0,
-              1.0,
-              1.0
-            ],
-            "ibl_exposer": 5.0,
-            "ibl_intensity": 1.0,
-            "ibl_normal_smooth": 0.7,
-            "ibl_reflect_lodbias": 80.0,
-            "ibl_skinlodscale": 0.800000011920929,
-            "metalicness_power": 0.5,
-            "normaltex_intensity": 1.0,
-            "orennayar": 1.0,
-            "orennayar_brightness": 1.0,
-            "pbr_specular_intensity": 10.0,
-            "pbr_specular_power": 6.0,
-            "roughness_power": 3.0,
-            "selectioncolor": [
-              0.0,
-              0.0,
-              0.0,
-              1.0
-            ],
-            "shadowfactor": 0.5,
-            "skin_metalicness_power": 5.0,
-            "skin_normal_intensity": 1.0,
-            "skin_roughness_power": 2.0,
-            "skin_specular_intensity": 0.15,
-            "skin_specular_intensity_min": 0.0,
-            "skin_specular_power": 15.0,
-            "skin_specular_power_min": 5.0,
-            "specular_power_limit": 0.9200000166893005,
-            "state": [
-              0.0,
-              0.0,
-              0.0,
-              0.0
-            ],
-            "state_noise": [
-              1.0,
-              0.0,
-              0.0,
-              1.0
-            ],
-            "trans_rim_hard": 1.0,
-            "trans_rim_inradius": 0.0,
-            "transcolor": [
-              0.0,
-              0.0,
-              0.0,
-              1.0
-            ],
-            "transcolor_rimlight ": 1.0,
-            "var_base_skincolor_ui": [
-              1.0,
-              1.0,
-              1.0,
-              1.0
-            ],
-            "var_base_skinnormalintensity_ui": 1.0,
-            "var_base_skinspecularintensity_ui": 0.5,
-            "var_base_skinspecularpower_ui": 0.20000000298023224
-          },
-          "textures": [
-            {
-              "expressionIndex": 0,
-              "assetId": "Character/SourceMaterials/pc_wr_av_036/pc_wr_av_036-1_head_n.tga",
-              "colorSpace": "linear"
-            },
-            {
-              "expressionIndex": 1,
-              "assetId": "Character/SourceMaterials/efmaster_material_prologue/flat_black.tga",
-              "colorSpace": "srgb"
-            },
-            {
-              "expressionIndex": 2,
-              "assetId": "Character/LanceMaster/textures/pc_wr_av_036-1_head_s.tga",
-              "colorSpace": "srgb"
-            },
-            {
-              "expressionIndex": 3,
-              "assetId": "Character/LanceMaster/textures/pc_wr_av_036-1_head_d.tga",
-              "colorSpace": "srgb"
-            },
-            {
-              "expressionIndex": 4,
-              "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
-              "colorSpace": "srgb"
-            },
-            {
-              "expressionIndex": 5,
-              "assetId": "Character/SourceMaterials/efmaster_material_prologue/statefx_default.tga",
-              "colorSpace": "srgb"
-            },
-            {
-              "expressionIndex": 6,
-              "assetId": "Character/LanceMaster/textures/brdf_beckmann_spec.tga",
-              "colorSpace": "linear"
-            }
-          ]
-        },
-        {
-          "modelAssetId": "Character/LanceMaster/LanceMaster_Upper_Mokoko.wmodel",
-          "materialName": "pc_ft_av_036-1_dress_mi",
-          "family": "source.character.classic-skin.v1",
-          "sourceMaterial": "pc_ft_av_036.mat.pc_ft_av_036-1_dress_mi",
-          "parameters": {
-            "1.use_dyeing_sp": 0.0,
-            "beckmannspecular_constant_max": 3.35,
-            "buffcolor": [
-              0.0,
-              0.0,
-              0.0,
-              1.0
-            ],
-            "diffusecolor": [
-              1.0,
-              1.0,
-              1.0,
-              1.0
-            ],
-            "fresnel_radius": 0.95,
-            "fresnel_rimlightintensity": 0.5,
-            "fx_color_desaturation_actiontool": 0.0,
-            "fx_color_desaturation_buffsettool": 0.0,
-            "fx_color_intensity_actiontool": [
-              0.0,
-              0.0,
-              0.0,
-              1.0
-            ],
-            "fx_color_intensity_buffsettool": [
-              0.0,
-              0.0,
-              0.0,
-              1.0
-            ],
-            "half_lambert_skin": [
-              1.0,
-              0.45908,
-              0.334458,
-              1.0
-            ],
-            "hit_color": [
-              0.0,
-              0.0,
-              0.0,
-              0.0
-            ],
-            "ibl_color_bottom": [
-              1.0,
-              1.0,
-              1.0,
-              1.0
-            ],
-            "ibl_color_top": [
-              1.0,
-              1.0,
-              1.0,
-              1.0
-            ],
-            "ibl_exposer": 5.0,
-            "ibl_intensity": 1.0,
-            "ibl_normal_smooth": 0.7,
-            "ibl_reflect_lodbias": 80.0,
-            "ibl_skinlodscale": 0.800000011920929,
-            "metalicness_power": 0.5,
-            "normaltex_intensity": 1.0,
-            "orennayar": 1.0,
-            "orennayar_brightness": 1.0,
-            "pbr_specular_intensity": 10.0,
-            "pbr_specular_power": 6.0,
-            "roughness_power": 3.0,
-            "selectioncolor": [
-              0.0,
-              0.0,
-              0.0,
-              1.0
-            ],
-            "shadowfactor": 0.5,
-            "skin_metalicness_power": 0.5,
-            "skin_normal_intensity": 1.0,
-            "skin_roughness_power": 1.0,
-            "skin_specular_intensity": 0.44,
-            "skin_specular_intensity_min": 0.0,
-            "skin_specular_power": 16.0,
-            "skin_specular_power_min": 5.0,
-            "specular_power_limit": 0.9200000166893005,
-            "state": [
-              0.0,
-              0.0,
-              0.0,
-              0.0
-            ],
-            "state_noise": [
-              1.0,
-              0.0,
-              0.0,
-              1.0
-            ],
-            "trans_rim_hard": 1.0,
-            "trans_rim_inradius": 0.0,
-            "transcolor": [
-              0.0,
-              0.0,
-              0.0,
-              1.0
-            ],
-            "transcolor_rimlight ": 1.0,
-            "var_base_skincolor_ui": [
-              1.0,
-              1.0,
-              1.0,
-              1.0
-            ],
-            "var_base_skinnormalintensity_ui": 1.0,
-            "var_base_skinspecularintensity_ui": 0.4,
-            "var_base_skinspecularpower_ui": 0.8
-          },
-          "textures": [
-            {
-              "expressionIndex": 0,
-              "assetId": "Character/SourceMaterials/pc_ft_av_036/pc_ft_av_036-1_dress_n.tga",
-              "colorSpace": "linear"
-            },
-            {
-              "expressionIndex": 1,
-              "assetId": "Character/SourceMaterials/pc_ft_av_036/pc_ft_av_036-1_dress_cm.tga",
-              "colorSpace": "srgb"
-            },
-            {
-              "expressionIndex": 2,
-              "assetId": "Character/LanceMaster/textures/pc_ft_av_036-1_dress_s.tga",
-              "colorSpace": "srgb"
-            },
-            {
-              "expressionIndex": 3,
-              "assetId": "Character/LanceMaster/textures/pc_ft_av_036-1_dress_d.tga",
-              "colorSpace": "srgb"
-            },
-            {
-              "expressionIndex": 4,
-              "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
-              "colorSpace": "srgb"
-            },
-            {
-              "expressionIndex": 5,
-              "assetId": "Character/SourceMaterials/efmaster_material_prologue/statefx_default.tga",
-              "colorSpace": "srgb"
-            },
-            {
-              "expressionIndex": 6,
-              "assetId": "Character/LanceMaster/textures/brdf_beckmann_spec.tga",
-              "colorSpace": "linear"
-            }
-          ]
-        },
-        {
-          "modelAssetId": "Character/LanceMaster/LanceMaster_Upper_Mokoko.wmodel",
-          "materialName": "pc_wr_av_036-1_dress2_mi",
-          "family": "source.character.classic-skin.v1",
-          "sourceMaterial": "pc_wr_av_036.mat.pc_wr_av_036-1_dress2_mi",
-          "parameters": {
-            "1.use_dyeing_sp": 0.0,
-            "beckmannspecular_constant_max": 3.35,
-            "buffcolor": [
-              0.0,
-              0.0,
-              0.0,
-              1.0
-            ],
-            "diffusecolor": [
-              1.0,
-              1.0,
-              1.0,
-              1.0
-            ],
-            "fresnel_radius": 0.95,
-            "fresnel_rimlightintensity": 0.5,
-            "fx_color_desaturation_actiontool": 0.0,
-            "fx_color_desaturation_buffsettool": 0.0,
-            "fx_color_intensity_actiontool": [
-              0.0,
-              0.0,
-              0.0,
-              1.0
-            ],
-            "fx_color_intensity_buffsettool": [
-              0.0,
-              0.0,
-              0.0,
-              1.0
-            ],
-            "half_lambert_skin": [
-              0.533708,
-              0.247428,
-              0.179902,
-              1.0
-            ],
-            "hit_color": [
-              0.0,
-              0.0,
-              0.0,
-              0.0
-            ],
-            "ibl_color_bottom": [
-              1.0,
-              1.0,
-              1.0,
-              1.0
-            ],
-            "ibl_color_top": [
-              1.0,
-              1.0,
-              1.0,
-              1.0
-            ],
-            "ibl_exposer": 5.0,
-            "ibl_intensity": 1.0,
-            "ibl_normal_smooth": 0.7,
-            "ibl_reflect_lodbias": 80.0,
-            "ibl_skinlodscale": 0.800000011920929,
-            "metalicness_power": 0.5,
-            "normaltex_intensity": 1.0,
-            "orennayar": 1.0,
-            "orennayar_brightness": 1.0,
-            "pbr_specular_intensity": 10.0,
-            "pbr_specular_power": 6.0,
-            "roughness_power": 3.0,
-            "selectioncolor": [
-              0.0,
-              0.0,
-              0.0,
-              1.0
-            ],
-            "shadowfactor": 0.5,
-            "skin_metalicness_power": 5.0,
-            "skin_normal_intensity": 1.0,
-            "skin_roughness_power": 2.0,
-            "skin_specular_intensity": 0.15,
-            "skin_specular_intensity_min": 0.0,
-            "skin_specular_power": 15.0,
-            "skin_specular_power_min": 5.0,
-            "specular_power_limit": 0.9200000166893005,
-            "state": [
-              0.0,
-              0.0,
-              0.0,
-              0.0
-            ],
-            "state_noise": [
-              1.0,
-              0.0,
-              0.0,
-              1.0
-            ],
-            "trans_rim_hard": 1.0,
-            "trans_rim_inradius": 0.0,
-            "transcolor": [
-              0.0,
-              0.0,
-              0.0,
-              1.0
-            ],
-            "transcolor_rimlight ": 1.0,
-            "var_base_skincolor_ui": [
-              1.0,
-              1.0,
-              1.0,
-              1.0
-            ],
-            "var_base_skinnormalintensity_ui": 1.0,
-            "var_base_skinspecularintensity_ui": 0.5,
-            "var_base_skinspecularpower_ui": 0.20000000298023224
-          },
-          "textures": [
-            {
-              "expressionIndex": 0,
-              "assetId": "Character/SourceMaterials/pc_wr_av_036/pc_wr_av_036-1_dress2_n.tga",
-              "colorSpace": "linear"
-            },
-            {
-              "expressionIndex": 1,
-              "assetId": "Character/SourceMaterials/efmaster_material_prologue/flat_black.tga",
-              "colorSpace": "srgb"
-            },
-            {
-              "expressionIndex": 2,
-              "assetId": "Character/LanceMaster/textures/pc_wr_av_036-1_dress2_s.tga",
-              "colorSpace": "srgb"
-            },
-            {
-              "expressionIndex": 3,
-              "assetId": "Character/LanceMaster/textures/pc_wr_av_036-1_dress2_d.tga",
-              "colorSpace": "srgb"
-            },
-            {
-              "expressionIndex": 4,
-              "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
-              "colorSpace": "srgb"
-            },
-            {
-              "expressionIndex": 5,
-              "assetId": "Character/SourceMaterials/efmaster_material_prologue/statefx_default.tga",
-              "colorSpace": "srgb"
-            },
-            {
-              "expressionIndex": 6,
-              "assetId": "Character/LanceMaster/textures/brdf_beckmann_spec.tga",
-              "colorSpace": "linear"
-            }
-          ]
-        },
         {
           "modelAssetId": "Character/WP_WFLM_00L/WP_WFLM_00L.wmodel",
           "materialName": "wp_wflm_00_mi",
@@ -943,7 +473,7 @@
               0.0,
               0.0
             ],
-            "var_headbase_overlaynormalintensity_ui": 1.0,
+            "var_headbase_overlaynormalintensity_ui": 0.0,
             "var_headdeco_decalcolor_ui": [
               1.0,
               1.0,
@@ -1442,7 +972,7 @@
             },
             {
               "expressionIndex": 4,
-              "assetId": "Character/SourceMaterials/efmaster_material_prologue/diffuse.dds",
+              "assetId": "Character/LanceMaster/textures/pc_ft_00_eyeiris_d.dds",
               "colorSpace": "srgb"
             },
             {
@@ -1477,6 +1007,1526 @@
               "expressionIndex": 0,
               "assetId": "Character/LanceMaster/textures/pc_ft_eyelashes_d.tga",
               "colorSpace": "srgb"
+            }
+          ]
+        },
+        {
+          "modelAssetId": "Character/LanceMaster/LanceMaster_Upper.wmodel",
+          "materialName": "pc_flm_00_upper_mi",
+          "sourceMaterial": "pc_flm_00.mat.pc_flm_00-1_upper_mi",
+          "family": "source.character.classic-armor-skin.v1",
+          "parameters": {
+            "1.use_dyeing_sp": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "beckmannspecular_constant_max": [
+              3.3499999046325684,
+              3.3499999046325684,
+              3.3499999046325684,
+              3.3499999046325684
+            ],
+            "buffcolor": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "diffusecolor": [
+              0.9627243876457214,
+              0.8618835210800171,
+              1.0,
+              1.0
+            ],
+            "diffusecolor_a": [
+              0.3425288200378418,
+              0.06813738495111465,
+              0.1374688595533371,
+              1.0
+            ],
+            "diffusecolor_b": [
+              0.7513535618782043,
+              0.15071482956409454,
+              0.41471120715141296,
+              1.0
+            ],
+            "fresnel_radius": [
+              0.949999988079071,
+              0.949999988079071,
+              0.949999988079071,
+              0.949999988079071
+            ],
+            "fresnel_rimlightintensity": [
+              0.5,
+              0.5,
+              0.5,
+              0.5
+            ],
+            "fx_color_desaturation_actiontool": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fx_color_desaturation_buffsettool": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fx_color_intensity_actiontool": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "fx_color_intensity_buffsettool": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "half_lambert_skin": [
+              1.0,
+              0.4590800106525421,
+              0.33445799350738525,
+              1.0
+            ],
+            "hit_color": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "ibl_color_bottom": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "ibl_color_top": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "ibl_exposer": [
+              5.0,
+              5.0,
+              5.0,
+              5.0
+            ],
+            "ibl_intensity": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "ibl_normal_smooth": [
+              0.699999988079071,
+              0.699999988079071,
+              0.699999988079071,
+              0.699999988079071
+            ],
+            "ibl_reflect_lodbias": [
+              80.0,
+              80.0,
+              80.0,
+              80.0
+            ],
+            "ibl_skinlodscale": [
+              0.800000011920929,
+              0.800000011920929,
+              0.800000011920929,
+              0.800000011920929
+            ],
+            "metalicness_power": [
+              0.5,
+              0.5,
+              0.5,
+              0.5
+            ],
+            "normaltex_intensity": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "orennayar": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "orennayar_brightness": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "pbr_specular_intensity": [
+              10.0,
+              10.0,
+              10.0,
+              10.0
+            ],
+            "pbr_specular_power": [
+              6.0,
+              6.0,
+              6.0,
+              6.0
+            ],
+            "roughness_power": [
+              5.0,
+              5.0,
+              5.0,
+              5.0
+            ],
+            "selectioncolor": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "shadowfactor": [
+              0.5,
+              0.5,
+              0.5,
+              0.5
+            ],
+            "skin_metalicness_power": [
+              0.5,
+              0.5,
+              0.5,
+              0.5
+            ],
+            "skin_normal_intensity": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "skin_roughness_power": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "skin_specular_intensity": [
+              0.4399999976158142,
+              0.4399999976158142,
+              0.4399999976158142,
+              0.4399999976158142
+            ],
+            "skin_specular_intensity_min": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "skin_specular_power": [
+              16.0,
+              16.0,
+              16.0,
+              16.0
+            ],
+            "skin_specular_power_min": [
+              5.0,
+              5.0,
+              5.0,
+              5.0
+            ],
+            "specular_power_limit": [
+              0.9200000166893005,
+              0.9200000166893005,
+              0.9200000166893005,
+              0.9200000166893005
+            ],
+            "state": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "state_noise": [
+              1.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "trans_rim_hard": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "trans_rim_inradius": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "transcolor": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "transcolor_rimlight ": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "var_base_skincolor_ui": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "var_base_skinnormalintensity_ui": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "var_base_skinspecularintensity_ui": [
+              0.4000000059604645,
+              0.4000000059604645,
+              0.4000000059604645,
+              0.4000000059604645
+            ],
+            "var_base_skinspecularpower_ui": [
+              0.800000011920929,
+              0.800000011920929,
+              0.800000011920929,
+              0.800000011920929
+            ]
+          },
+          "textures": [
+            {
+              "expressionIndex": 0,
+              "assetId": "Character/LanceMaster/textures/pc_flm_00_upper_n_loc_int.tga",
+              "colorSpace": "linear"
+            },
+            {
+              "expressionIndex": 1,
+              "assetId": "Character/LanceMaster/textures/pc_flm_00_upper_cm_loc_int.tga",
+              "colorSpace": "linear"
+            },
+            {
+              "expressionIndex": 2,
+              "assetId": "Character/LanceMaster/textures/pc_flm_00_upper_s_loc_int.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 3,
+              "assetId": "Character/LanceMaster/textures/pc_flm_00_upper_d_1_loc_int.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 4,
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 5,
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/statefx_default.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 6,
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+              "colorSpace": "linear"
+            }
+          ]
+        },
+        {
+          "modelAssetId": "Character/LanceMaster/LanceMaster_Lower.wmodel",
+          "materialName": "pc_flm_00_lower_mi",
+          "sourceMaterial": "pc_flm_00.mat.pc_flm_00-1_lower_mi",
+          "family": "source.character.classic-armor-skin.v1",
+          "parameters": {
+            "1.use_dyeing_sp": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "beckmannspecular_constant_max": [
+              3.3499999046325684,
+              3.3499999046325684,
+              3.3499999046325684,
+              3.3499999046325684
+            ],
+            "buffcolor": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "diffusecolor": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "diffusecolor_a": [
+              0.17016834020614624,
+              0.16006430983543396,
+              0.20993702113628387,
+              1.0
+            ],
+            "diffusecolor_b": [
+              0.744530200958252,
+              0.14799802005290985,
+              0.40982574224472046,
+              1.0
+            ],
+            "fresnel_radius": [
+              0.949999988079071,
+              0.949999988079071,
+              0.949999988079071,
+              0.949999988079071
+            ],
+            "fresnel_rimlightintensity": [
+              0.5,
+              0.5,
+              0.5,
+              0.5
+            ],
+            "fx_color_desaturation_actiontool": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fx_color_desaturation_buffsettool": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fx_color_intensity_actiontool": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "fx_color_intensity_buffsettool": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "half_lambert_skin": [
+              1.0,
+              0.4590800106525421,
+              0.33445799350738525,
+              1.0
+            ],
+            "hit_color": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "ibl_color_bottom": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "ibl_color_top": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "ibl_exposer": [
+              5.0,
+              5.0,
+              5.0,
+              5.0
+            ],
+            "ibl_intensity": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "ibl_normal_smooth": [
+              0.699999988079071,
+              0.699999988079071,
+              0.699999988079071,
+              0.699999988079071
+            ],
+            "ibl_reflect_lodbias": [
+              80.0,
+              80.0,
+              80.0,
+              80.0
+            ],
+            "ibl_skinlodscale": [
+              0.800000011920929,
+              0.800000011920929,
+              0.800000011920929,
+              0.800000011920929
+            ],
+            "metalicness_power": [
+              0.5,
+              0.5,
+              0.5,
+              0.5
+            ],
+            "normaltex_intensity": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "orennayar": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "orennayar_brightness": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "pbr_specular_intensity": [
+              10.0,
+              10.0,
+              10.0,
+              10.0
+            ],
+            "pbr_specular_power": [
+              6.0,
+              6.0,
+              6.0,
+              6.0
+            ],
+            "roughness_power": [
+              5.0,
+              5.0,
+              5.0,
+              5.0
+            ],
+            "selectioncolor": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "shadowfactor": [
+              0.5,
+              0.5,
+              0.5,
+              0.5
+            ],
+            "skin_metalicness_power": [
+              0.5,
+              0.5,
+              0.5,
+              0.5
+            ],
+            "skin_normal_intensity": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "skin_roughness_power": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "skin_specular_intensity": [
+              0.4399999976158142,
+              0.4399999976158142,
+              0.4399999976158142,
+              0.4399999976158142
+            ],
+            "skin_specular_intensity_min": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "skin_specular_power": [
+              16.0,
+              16.0,
+              16.0,
+              16.0
+            ],
+            "skin_specular_power_min": [
+              5.0,
+              5.0,
+              5.0,
+              5.0
+            ],
+            "specular_power_limit": [
+              0.9200000166893005,
+              0.9200000166893005,
+              0.9200000166893005,
+              0.9200000166893005
+            ],
+            "state": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "state_noise": [
+              1.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "trans_rim_hard": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "trans_rim_inradius": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "transcolor": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "transcolor_rimlight ": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "var_base_skincolor_ui": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "var_base_skinnormalintensity_ui": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "var_base_skinspecularintensity_ui": [
+              0.4000000059604645,
+              0.4000000059604645,
+              0.4000000059604645,
+              0.4000000059604645
+            ],
+            "var_base_skinspecularpower_ui": [
+              0.800000011920929,
+              0.800000011920929,
+              0.800000011920929,
+              0.800000011920929
+            ]
+          },
+          "textures": [
+            {
+              "expressionIndex": 0,
+              "assetId": "Character/LanceMaster/textures/pc_flm_00_lower_n_loc_int.tga",
+              "colorSpace": "linear"
+            },
+            {
+              "expressionIndex": 1,
+              "assetId": "Character/LanceMaster/textures/pc_flm_00_lower_cm.tga",
+              "colorSpace": "linear"
+            },
+            {
+              "expressionIndex": 2,
+              "assetId": "Character/LanceMaster/textures/pc_flm_00_lower_s_loc_int.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 3,
+              "assetId": "Character/LanceMaster/textures/pc_flm_00_lower_d_1_loc_int.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 4,
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 5,
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/statefx_default.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 6,
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+              "colorSpace": "linear"
+            }
+          ]
+        },
+        {
+          "modelAssetId": "Character/LanceMaster/LanceMaster_Arm.wmodel",
+          "materialName": "pc_flm_00_arm_mi",
+          "sourceMaterial": "pc_flm_00.mat.pc_flm_00_arm_mi",
+          "family": "source.character.classic-armor-skin.v1",
+          "parameters": {
+            "1.use_dyeing_sp": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "beckmannspecular_constant_max": [
+              3.3499999046325684,
+              3.3499999046325684,
+              3.3499999046325684,
+              3.3499999046325684
+            ],
+            "buffcolor": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "diffusecolor": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "diffusecolor_a": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "diffusecolor_b": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "fresnel_radius": [
+              0.949999988079071,
+              0.949999988079071,
+              0.949999988079071,
+              0.949999988079071
+            ],
+            "fresnel_rimlightintensity": [
+              0.5,
+              0.5,
+              0.5,
+              0.5
+            ],
+            "fx_color_desaturation_actiontool": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fx_color_desaturation_buffsettool": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fx_color_intensity_actiontool": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "fx_color_intensity_buffsettool": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "half_lambert_skin": [
+              1.0,
+              0.4590800106525421,
+              0.33445799350738525,
+              1.0
+            ],
+            "hit_color": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "ibl_color_bottom": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "ibl_color_top": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "ibl_exposer": [
+              5.0,
+              5.0,
+              5.0,
+              5.0
+            ],
+            "ibl_intensity": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "ibl_normal_smooth": [
+              0.699999988079071,
+              0.699999988079071,
+              0.699999988079071,
+              0.699999988079071
+            ],
+            "ibl_reflect_lodbias": [
+              80.0,
+              80.0,
+              80.0,
+              80.0
+            ],
+            "ibl_skinlodscale": [
+              0.800000011920929,
+              0.800000011920929,
+              0.800000011920929,
+              0.800000011920929
+            ],
+            "metalicness_power": [
+              0.5,
+              0.5,
+              0.5,
+              0.5
+            ],
+            "normaltex_intensity": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "orennayar": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "orennayar_brightness": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "pbr_specular_intensity": [
+              10.0,
+              10.0,
+              10.0,
+              10.0
+            ],
+            "pbr_specular_power": [
+              6.0,
+              6.0,
+              6.0,
+              6.0
+            ],
+            "roughness_power": [
+              5.0,
+              5.0,
+              5.0,
+              5.0
+            ],
+            "selectioncolor": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "shadowfactor": [
+              0.5,
+              0.5,
+              0.5,
+              0.5
+            ],
+            "skin_metalicness_power": [
+              0.5,
+              0.5,
+              0.5,
+              0.5
+            ],
+            "skin_normal_intensity": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "skin_roughness_power": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "skin_specular_intensity": [
+              0.4399999976158142,
+              0.4399999976158142,
+              0.4399999976158142,
+              0.4399999976158142
+            ],
+            "skin_specular_intensity_min": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "skin_specular_power": [
+              16.0,
+              16.0,
+              16.0,
+              16.0
+            ],
+            "skin_specular_power_min": [
+              5.0,
+              5.0,
+              5.0,
+              5.0
+            ],
+            "specular_power_limit": [
+              0.9200000166893005,
+              0.9200000166893005,
+              0.9200000166893005,
+              0.9200000166893005
+            ],
+            "state": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "state_noise": [
+              1.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "trans_rim_hard": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "trans_rim_inradius": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "transcolor": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "transcolor_rimlight ": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "var_base_skincolor_ui": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "var_base_skinnormalintensity_ui": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "var_base_skinspecularintensity_ui": [
+              0.4000000059604645,
+              0.4000000059604645,
+              0.4000000059604645,
+              0.4000000059604645
+            ],
+            "var_base_skinspecularpower_ui": [
+              0.800000011920929,
+              0.800000011920929,
+              0.800000011920929,
+              0.800000011920929
+            ]
+          },
+          "textures": [
+            {
+              "expressionIndex": 0,
+              "assetId": "Character/LanceMaster/textures/pc_flm_00_arm_n.tga",
+              "colorSpace": "linear"
+            },
+            {
+              "expressionIndex": 1,
+              "assetId": "Character/LanceMaster/textures/pc_flm_00_arm_cm.tga",
+              "colorSpace": "linear"
+            },
+            {
+              "expressionIndex": 2,
+              "assetId": "Character/LanceMaster/textures/pc_flm_00_arm_s.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 3,
+              "assetId": "Character/LanceMaster/textures/pc_flm_00_arm_d.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 4,
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 5,
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/statefx_default.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 6,
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+              "colorSpace": "linear"
+            }
+          ]
+        },
+        {
+          "modelAssetId": "Character/LanceMaster/LanceMaster_Shoulder.wmodel",
+          "materialName": "pc_flm_00_shoulder_mi",
+          "sourceMaterial": "pc_flm_00.mat.pc_flm_00_shoulder_mi",
+          "family": "source.character.classic-armor-plain.v1",
+          "parameters": {
+            "1.use_dyeing_sp": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "beckmannspecular_constant_max": [
+              3.3499999046325684,
+              3.3499999046325684,
+              3.3499999046325684,
+              3.3499999046325684
+            ],
+            "buffcolor": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "diffusecolor": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "diffusecolor_a": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "diffusecolor_b": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "fresnel_radius": [
+              0.949999988079071,
+              0.949999988079071,
+              0.949999988079071,
+              0.949999988079071
+            ],
+            "fresnel_rimlightintensity": [
+              0.5,
+              0.5,
+              0.5,
+              0.5
+            ],
+            "fx_color_desaturation_actiontool": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fx_color_desaturation_buffsettool": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fx_color_intensity_actiontool": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "fx_color_intensity_buffsettool": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "hit_color": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "ibl_color_bottom": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "ibl_color_top": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "ibl_exposer": [
+              5.0,
+              5.0,
+              5.0,
+              5.0
+            ],
+            "ibl_intensity": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "ibl_normal_smooth": [
+              0.699999988079071,
+              0.699999988079071,
+              0.699999988079071,
+              0.699999988079071
+            ],
+            "ibl_reflect_lodbias": [
+              80.0,
+              80.0,
+              80.0,
+              80.0
+            ],
+            "metalicness_power": [
+              0.5,
+              0.5,
+              0.5,
+              0.5
+            ],
+            "normaltex_intensity": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "orennayar": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "orennayar_brightness": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "pbr_specular_intensity": [
+              10.0,
+              10.0,
+              10.0,
+              10.0
+            ],
+            "pbr_specular_power": [
+              6.0,
+              6.0,
+              6.0,
+              6.0
+            ],
+            "roughness_power": [
+              5.0,
+              5.0,
+              5.0,
+              5.0
+            ],
+            "selectioncolor": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "shadowfactor": [
+              0.5,
+              0.5,
+              0.5,
+              0.5
+            ],
+            "specular_power_limit": [
+              0.9200000166893005,
+              0.9200000166893005,
+              0.9200000166893005,
+              0.9200000166893005
+            ],
+            "state": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "state_noise": [
+              1.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "trans_rim_hard": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "trans_rim_inradius": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "transcolor": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "transcolor_rimlight ": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ]
+          },
+          "textures": [
+            {
+              "expressionIndex": 0,
+              "assetId": "Character/LanceMaster/textures/pc_flm_00_shoulder_n.tga",
+              "colorSpace": "linear"
+            },
+            {
+              "expressionIndex": 1,
+              "assetId": "Character/LanceMaster/textures/pc_flm_00_shoulder_cm.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 2,
+              "assetId": "Character/LanceMaster/textures/pc_flm_00_shoulder_d.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 3,
+              "assetId": "Character/LanceMaster/textures/pc_flm_00_shoulder_s.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 4,
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 5,
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/statefx_default.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 6,
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+              "colorSpace": "linear"
+            }
+          ]
+        },
+        {
+          "modelAssetId": "Character/LanceMaster/LanceMaster_Helmet.wmodel",
+          "materialName": "pc_flm_00_helmet_mi",
+          "sourceMaterial": "pc_flm_00.mat.pc_flm_00_helmet_mi",
+          "family": "source.character.classic-variation.v1",
+          "parameters": {
+            "1.use_dyeing_sp": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "beckmannspecular_constant_max": [
+              3.3499999046325684,
+              3.3499999046325684,
+              3.3499999046325684,
+              3.3499999046325684
+            ],
+            "buffcolor": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "diffusecolor": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "diffusecolor_a": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "diffusecolor_b": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "fresnel_radius": [
+              0.949999988079071,
+              0.949999988079071,
+              0.949999988079071,
+              0.949999988079071
+            ],
+            "fresnel_rimlightintensity": [
+              0.5,
+              0.5,
+              0.5,
+              0.5
+            ],
+            "fx_color_desaturation_actiontool": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fx_color_desaturation_buffsettool": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fx_color_intensity_actiontool": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "fx_color_intensity_buffsettool": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "hit_color": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "ibl_color_bottom": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "ibl_color_top": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "ibl_exposer": [
+              5.0,
+              5.0,
+              5.0,
+              5.0
+            ],
+            "ibl_intensity": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "ibl_normal_smooth": [
+              0.699999988079071,
+              0.699999988079071,
+              0.699999988079071,
+              0.699999988079071
+            ],
+            "ibl_reflect_lodbias": [
+              80.0,
+              80.0,
+              80.0,
+              80.0
+            ],
+            "mask_variation_visible": [
+              0.0,
+              0.0,
+              1.0,
+              1.0
+            ],
+            "metalicness_power": [
+              0.5,
+              0.5,
+              0.5,
+              0.5
+            ],
+            "normaltex_intensity": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "orennayar": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "orennayar_brightness": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "pbr_specular_intensity": [
+              10.0,
+              10.0,
+              10.0,
+              10.0
+            ],
+            "pbr_specular_power": [
+              6.0,
+              6.0,
+              6.0,
+              6.0
+            ],
+            "roughness_power": [
+              5.0,
+              5.0,
+              5.0,
+              5.0
+            ],
+            "selectioncolor": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "shadowfactor": [
+              0.5,
+              0.5,
+              0.5,
+              0.5
+            ],
+            "specular_power_limit": [
+              0.9200000166893005,
+              0.9200000166893005,
+              0.9200000166893005,
+              0.9200000166893005
+            ],
+            "state": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "state_noise": [
+              1.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "trans_rim_hard": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "trans_rim_inradius": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "transcolor": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "transcolor_rimlight ": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ]
+          },
+          "textures": [
+            {
+              "expressionIndex": 0,
+              "assetId": "Character/LanceMaster/textures/pc_flm_00_helmet_n.tga",
+              "colorSpace": "linear"
+            },
+            {
+              "expressionIndex": 1,
+              "assetId": "Character/LanceMaster/textures/pc_flm_00_helmet_cm.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 2,
+              "assetId": "Character/LanceMaster/textures/pc_flm_00_helmet_d.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 3,
+              "assetId": "Character/LanceMaster/textures/pc_flm_00_helmet_s.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 4,
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 5,
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/statefx_default.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 6,
+              "assetId": "Character/LanceMaster/textures/pc_flm_00_helmet_m.tga",
+              "colorSpace": "linear"
+            },
+            {
+              "expressionIndex": 7,
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+              "colorSpace": "linear"
             }
           ]
         }

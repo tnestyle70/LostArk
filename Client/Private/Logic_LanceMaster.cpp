@@ -39,27 +39,25 @@ namespace
 		{ TEXT("Part_10_Equip_Hair"),     TEXT("Prototype_Component_Model_LanceMaster_Hair"),
 		  0u, false, EQUIPMENT_SLOT_KIND::DEFAULT,
 		  EQUIPMENT_PRESENTATION_SLOT::HEAD },
-
-		/* Mokoko avatar test slots: presence hides the base parts they cover,
-		see CCharacter::Ready_PartObjects. */
-		{ TEXT("Part_15_Avatar_Head"),    TEXT("Prototype_Component_Model_LanceMaster_Helmet_Mokoko"),
-		  0u, false, EQUIPMENT_SLOT_KIND::AVATAR_HEAD,
-		  EQUIPMENT_PRESENTATION_SLOT::HEAD },
-		{ TEXT("Part_15_Avatar_Armor"),   TEXT("Prototype_Component_Model_LanceMaster_Upper_Mokoko"),
-		  0u, false, EQUIPMENT_SLOT_KIND::AVATAR_ARMOR,
-		  EQUIPMENT_PRESENTATION_SLOT::UPPER },
 	};
 
 	/* The armour carries its own exposed skin, so the bare arm, torso and legs
 	underneath must not be drawn. Submesh order comes from the cook:
-	0 arm / 1 upper / 2 lower / 3 face / 4 eyelashes / 5 eye / 6 hair.
+	0 arm / 1 upper / 2 lower / 3 face / 4 eyelashes / 5 eye / 6 scalp cap / 7 hair.
 	Re-cooking the body with different content invalidates these bits. */
 	constexpr uint32_t COVERED_BY_ARMOUR = (1u << 0) | (1u << 1) | (1u << 2);
 
+	/* The cook merged a head-wide cap rigged to bip001-head and the bangs into the eye
+	submesh because the source section shares the eye material. Its extra UVs are a single
+	constant, so source program 5 sampled one texel and drew it as a flat eye-coloured
+	shell over the head. split_constant_uv_submesh_tail.py gave it submesh 6 of its own so
+	this bit can take it without hiding the eyeballs with it. */
+	constexpr uint32_t EYE_SUBMESH_SCALP_CAP = (1u << 6);
+
 	/* The hair this cooked body draws by itself. A worn hairstyle replaces it, so it is
 	hidden only while a HEAD set is on -- the in-world look keeps it. Submesh index read
-	off the cooked model's material order, like the mask above. 6 is pc_ft_08_hair. */
-	constexpr uint32_t BAKED_HAIR = (1u << 6);
+	off the cooked model's material order, like the mask above. 7 is pc_ft_08_hair. */
+	constexpr uint32_t BAKED_HAIR = (1u << 7);
 
 	/* The rig keys only each chain's first bone and the original game solves
 	the rest at runtime -- the same contract as the Warlord chains. The two
@@ -161,7 +159,7 @@ const CHARACTER_SPEC Spec_LanceMaster =
 
 	TEXT("Prototype_Component_Model_LanceMaster"),
 	TEXT("Prototype_Component_Shader_VtxAnimMeshBinary"),
-	COVERED_BY_ARMOUR,
+	COVERED_BY_ARMOUR | EYE_SUBMESH_SCALP_CAP,
 	BAKED_HAIR,
 
 	TEXT("Prototype_Component_Shader_VtxMeshBinary"),

@@ -262,9 +262,11 @@ private:
 	unmodified mesh give). */
 	int32_t m_iSelectedFacePreset = -1;
 	std::string m_strIconClassAssetId;
-	/* Which of the five try-on costumes the left column has picked. The screen owns the
-	choice; applying it to the model belongs to the equipment presentation service. */
-	int32_t m_iSelectedCostume = 0;
+	/* Which of the five try-on costumes the left column has picked, or COSTUME_NONE while
+	the model still wears its class default equipment. The screen owns the choice; applying
+	it to the model belongs to the equipment presentation service. */
+	static constexpr int32_t COSTUME_NONE = -1;
+	int32_t m_iSelectedCostume = COSTUME_NONE;
 	bool_t m_bCostumeChanged = false;
 	int32_t m_iSelectedHair = 0;
 	int32_t m_iFacePresetScrollRow = 0;

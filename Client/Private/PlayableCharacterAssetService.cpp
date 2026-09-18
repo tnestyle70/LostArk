@@ -55,11 +55,9 @@ namespace
 				TEXT("Prototype_Component_Model_LanceMaster_Arm"),
 				TEXT("Prototype_Component_Model_LanceMaster_Shoulder"),
 				TEXT("Prototype_Component_Model_LanceMaster_Helmet"),
-				TEXT("Prototype_Component_Model_LanceMaster_Helmet_Mokoko"),
-				TEXT("Prototype_Component_Model_LanceMaster_Upper_Mokoko"),
 				TEXT("Prototype_Component_Model_LanceMaster_Hair")
 			},
-			8u,
+			6u,
 			{ TEXT("Prototype_Component_Model_LanceMaster_Weapon"),
 			  TEXT("Prototype_Component_Model_LanceMaster_Weapon_Short") },
 			2u

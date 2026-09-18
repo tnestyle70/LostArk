@@ -27,8 +27,12 @@ namespace
 		{ TEXT("Part_10_Equip_Arm"),      TEXT("Prototype_Component_Model_Artist_Arm"),
 		  0u, false, EQUIPMENT_SLOT_KIND::DEFAULT,
 		  EQUIPMENT_PRESENTATION_SLOT::HANDS },
+		/* Hidden so the hairstyle below owns the head: nothing makes two DEFAULT
+		pieces in one presentation slot exclusive, and the hat drawn over the loose
+		hairstyle let the hair through it. The part stays created for a later
+		helmet toggle, the way Warlord keeps its hair. */
 		{ TEXT("Part_10_Equip_Helmet"),   TEXT("Prototype_Component_Model_Artist_Helmet"),
-		  HELMET_HAIR, false, EQUIPMENT_SLOT_KIND::DEFAULT,
+		  HELMET_HAIR, true, EQUIPMENT_SLOT_KIND::DEFAULT,
 		  EQUIPMENT_PRESENTATION_SLOT::HEAD },
 		{ TEXT("Part_10_Equip_Lower"),    TEXT("Prototype_Component_Model_Artist_Lower"),
 		  0u, false, EQUIPMENT_SLOT_KIND::DEFAULT,

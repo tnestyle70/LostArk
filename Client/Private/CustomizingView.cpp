@@ -434,10 +434,11 @@ void Client::CCustomizingView::Open()
 	the selected style up front puts a real hairstyle on every class, and it is the same
 	apply the grid uses, so nothing about it is a second path. */
 	m_bHairChanged = true;
-	/* Same for the outfit. The class default equipment is its starting armour, not the
-	plain outfit the creation screen shows, and entry 0 of the try-on list is that
-	outfit -- so the screen opens on it rather than on a suit of armour. */
-	m_bCostumeChanged = true;
+	/* The outfit is the opposite case: the screen opens on the class's own default
+	equipment and a try-on set goes on only when its row is clicked. Starting outside the
+	list lets the first click on any row, entry 0 included, register as a change. */
+	m_iSelectedCostume = COSTUME_NONE;
+	m_bCostumeChanged = false;
 }
 
 void Client::CCustomizingView::Close()
@@ -1045,7 +1046,8 @@ bool_t Client::CCustomizingView::Load_Slot(
 		m_iSelectedHair = iHair;
 		m_bHairChanged = true;
 	}
-	const int32_t iCostume = static_cast<int32_t>(ReadNumber(root.Find("costume"), 0.f));
+	const int32_t iCostume = static_cast<int32_t>(
+		ReadNumber(root.Find("costume"), static_cast<f32_t>(COSTUME_NONE)));
 	if (iCostume != m_iSelectedCostume)
 	{
 		m_iSelectedCostume = iCostume;
@@ -1188,9 +1190,9 @@ void Client::CCustomizingView::Reset_All(const shared_ptr<CCharacter>& pCharacte
 		m_iSelectedHair = 0;
 		m_bHairChanged = true;
 	}
-	if (0 != m_iSelectedCostume)
+	if (COSTUME_NONE != m_iSelectedCostume)
 	{
-		m_iSelectedCostume = 0;
+		m_iSelectedCostume = COSTUME_NONE;
 		m_bCostumeChanged = true;
 	}
 	if (0 != m_iSelectedAction)

@@ -3,7 +3,26 @@
 
 #include "DeferredMaterialRenderUtils.h"
 #include "GameInstance.h"
+#include "MapAssetRenderUtils.h"
 #include "NpcPresentationAssetService.h"
+
+namespace
+{
+	constexpr uint32_t SOURCE_TRANSLUCENT_TWO_SIDED_PASS = 9u;
+
+	/* Programs 7 and 18 are the source two-sided translucent hair and program 6
+	the eyelash/eye-AO shell. The deferred two-sided pass resolves their coverage
+	as a dither, so they read as stipple dots; the forward pass blends them after
+	scene lighting instead. */
+	uint32_t Resolve_TranslucentSourcePass(const Engine::MODEL_SURFACE_PARAMETERS* surface)
+	{
+		if (nullptr == surface || surface->family != Engine::MODEL_SURFACE_FAMILY::SOURCE_CHARACTER)
+			return 0u;
+		const uint32_t program = surface->sourceCharacter.program;
+		return 6u == program || 7u == program || 18u == program ?
+			SOURCE_TRANSLUCENT_TWO_SIDED_PASS : 0u;
+	}
+}
 
 CPart_Body::CPart_Body(ComPtr<ID3D11Device> pDevice,
 	ComPtr<ID3D11DeviceContext> pContext)
@@ -39,6 +58,9 @@ HRESULT CPart_Body::Initialize(void* pArg)
 	if (nullptr == pDesc->pInitialAnimation ||
 		!m_pModelCom->Set_Animation(pDesc->pInitialAnimation, true))
 		m_pModelCom->Set_Animation(0u, true);
+
+	for (uint32_t i = 0; i < m_pModelCom->Get_NumMeshes(); ++i)
+		m_hasTranslucentMeshes |= 0u != Resolve_TranslucentSourcePass(m_pModelCom->Get_MaterialSurface(i));
 
 	return S_OK;
 }
@@ -78,6 +100,12 @@ void CPart_Body::Late_Update(f32_t fTimeDelta)
 	CGameInstance::Get().Add_RenderObject(
 		RENDERGROUP::NONBLEND,
 		static_pointer_cast<CGameObject>(shared_from_this()));
+	if (m_hasTranslucentMeshes)
+	{
+		CGameInstance::Get().Add_RenderObject(
+			RENDERGROUP::BLEND,
+			static_pointer_cast<CGameObject>(shared_from_this()));
+	}
 	if (CGameInstance::Get().Is_ShadowLightEnabled())
 	{
 		CGameInstance::Get().Add_RenderObject(
@@ -89,6 +117,38 @@ void CPart_Body::Late_Update(f32_t fTimeDelta)
 HRESULT CPart_Body::Render()
 {
 	return Render_Pass(0u);
+}
+
+HRESULT CPart_Body::Render_Group(RENDERGROUP group)
+{
+	return RENDERGROUP::BLEND == group ? Render_Translucent() : Render();
+}
+
+HRESULT CPart_Body::Render_Translucent()
+{
+	if (Client::CNpcPresentationAssetService::Is_SaydonHammerSuppressed(m_WeaponReplacementBody.lock())) return S_OK;
+	if (FAILED(Bind_ShaderResources()) ||
+		FAILED(CMapAssetRenderUtils::Bind_SourceCharacterForwardLights(m_pShaderCom)))
+		return E_FAIL;
+
+	for (uint32_t i = 0; i < m_pModelCom->Get_NumMeshes(); ++i)
+	{
+		if (0 != (m_iHiddenMeshMask & (1u << i)))
+			continue;
+		const uint32_t pass = Resolve_TranslucentSourcePass(m_pModelCom->Get_MaterialSurface(i));
+		if (0u == pass)
+			continue;
+		if (FAILED(Bind_DeferredMaterialInputs(
+				*m_pModelCom, m_pShaderCom, i, {},
+				m_pEmissiveOverride)) ||
+			FAILED(m_pModelCom->Bind_SourceCharacterForwardLight(m_pShaderCom, i)) ||
+			FAILED(m_pModelCom->Bind_BoneMatrices(
+				m_pShaderCom, "g_BoneMatrices", i)) ||
+			FAILED(m_pShaderCom->Begin(pass)) ||
+			FAILED(m_pModelCom->Render(i)))
+			return E_FAIL;
+	}
+	return S_OK;
 }
 
 HRESULT CPart_Body::Render_Pass(uint32_t iPassIndex)
@@ -104,10 +164,13 @@ HRESULT CPart_Body::Render_Pass(uint32_t iPassIndex)
 
         uint32_t materialPass = iPassIndex;
         const auto* surface = m_pModelCom->Get_MaterialSurface(i);
+        /* The BLEND group draws these forward; the portrait's explicit passes
+        still take every mesh so the second draw keeps its own look. */
+        if (iPassIndex == 0u && 0u != Resolve_TranslucentSourcePass(surface))
+            continue;
         if (iPassIndex == 0u && surface &&
             surface->family == Engine::MODEL_SURFACE_FAMILY::SOURCE_CHARACTER &&
-            (surface->sourceCharacter.program == 6u || surface->sourceCharacter.program == 7u ||
-             surface->sourceCharacter.program == 18u || surface->sourceCharacter.program == 19u ||
+            (surface->sourceCharacter.program == 19u ||
              surface->sourceCharacter.program == 20u))
             materialPass = 6u;
 		if (FAILED(Bind_DeferredMaterialInputs(
