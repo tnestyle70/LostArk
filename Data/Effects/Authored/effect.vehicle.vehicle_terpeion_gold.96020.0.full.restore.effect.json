@@ -5,7 +5,7 @@
   "displayName": "VEHICLE_TERPEION_GOLD E sk_backkick",
   "particleSystem": {
     "uniformScaleMultiplier": 1,
-    "yawOffsetDegrees": 0,
+    "yawOffsetDegrees": 90,
     "directionYawDegrees": 0,
     "initialSpeedMultiplier": 1
   },

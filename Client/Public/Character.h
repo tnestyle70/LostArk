@@ -406,6 +406,10 @@ private:
 	float4x4_t m_VehicleRootMatrix = {};
 	// World-space lift from the ground transform to the vehicle seat bone.
 	float3_t m_vVehicleSeatOffset = {};
+	/* Seat bone turn since the vehicle was attached, identity unless the catalog
+	asks this vehicle to rotate its rider. */
+	float4x4_t m_VehicleSeatRotation = { 1.f, 0.f, 0.f, 0.f, 0.f, 1.f, 0.f, 0.f,
+		0.f, 0.f, 1.f, 0.f, 0.f, 0.f, 0.f, 1.f };
 
 #ifdef _DEBUG
 	bool_t m_isNavigationDebugVisible = { false };

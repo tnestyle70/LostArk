@@ -939,16 +939,25 @@ namespace
 		{
 			VEHICLE_SKILL_EFFECT_CUE cue;
 			std::string stopPolicy;
-			if (!value.Is_Object() || 4u != value.Get_Object().size() ||
+			const DATA_JSON_VALUE* pFollowPolicy = value.Is_Object() ?
+				value.Find("followPolicy") : nullptr;
+			if (!value.Is_Object() ||
+				(nullptr == pFollowPolicy ? 4u : 5u) != value.Get_Object().size() ||
 				!ReadRequiredU32(value, "clipIndex", cue.clipIndex) || cue.clipIndex >= clipCount ||
 				!ReadRequiredString(value, "effectAssetId", cue.effectAssetId) || !IsEffectAssetId(cue.effectAssetId) ||
 				!ReadRequiredU32(value, "startMs", cue.startMs) ||
 				!ReadRequiredString(value, "stopPolicy", stopPolicy) ||
-				(stopPolicy != "NATURAL" && stopPolicy != "CUE_END"))
+				(stopPolicy != "NATURAL" && stopPolicy != "CUE_END") ||
+				(nullptr != pFollowPolicy &&
+					(!pFollowPolicy->Is_String() ||
+					 (pFollowPolicy->Get_String() != "FOLLOW" &&
+					  pFollowPolicy->Get_String() != "SNAPSHOT"))))
 			{
 				continue;
 			}
 			cue.bStopAtCueEnd = stopPolicy == "CUE_END";
+			cue.bSnapshotRoot = nullptr != pFollowPolicy &&
+				pFollowPolicy->Get_String() == "SNAPSHOT";
 			skill.effectCues.push_back(std::move(cue));
 		}
 		for (const DATA_JSON_VALUE& value : pSounds->Get_Array())
@@ -1030,9 +1039,19 @@ namespace
 		for (const DATA_JSON_VALUE& value : pEntries->Get_Array())
 		{
 			const std::size_t keyCount = value.Is_Object() ? value.Get_Object().size() : 0u;
-			if (11u != keyCount && !(hasLocomotionCues && 12u == keyCount))
+			/* Optional "seatBoneRotatesRider": a vehicle whose clip spins its own
+			body turns the rider with the seat bone instead of only moving them. */
+			const DATA_JSON_VALUE* pSeatRotation = value.Is_Object() ?
+				value.Find("seatBoneRotatesRider") : nullptr;
+			const std::size_t baseKeyCount = nullptr == pSeatRotation ? 11u : 12u;
+			if (baseKeyCount != keyCount &&
+				!(hasLocomotionCues && baseKeyCount + 1u == keyCount))
+				return false;
+			if (nullptr != pSeatRotation && !pSeatRotation->Is_Boolean())
 				return false;
 			VEHICLE_ACTOR_ENTRY entry;
+			entry.seatBoneRotatesRider =
+				nullptr != pSeatRotation && pSeatRotation->Get_Boolean();
 			if (hasLocomotionCues && !ParseVehicleLocomotionCues(value, entry))
 				return false;
 			const DATA_JSON_VALUE* pRiders = value.Find("riders");

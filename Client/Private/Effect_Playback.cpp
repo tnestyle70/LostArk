@@ -1565,16 +1565,6 @@ namespace
 				return false;
 			}
 		}
-		for (const auto& [Route, Elements] : Receivers)
-		{
-			UNREFERENCED_PARAMETER(Elements);
-			if (!Generators.contains(Route))
-			{
-				strOutError =
-					"Portable source event receiver has no same-document generator.";
-				return false;
-			}
-		}
 
 		std::unordered_map<std::string, std::vector<std::string>> Edges;
 		for (const auto& [Route, SourceElements] : Generators)

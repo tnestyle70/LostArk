@@ -824,7 +824,9 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 			const float yawDifference =
 				Wrap_Degrees(desiredYaw - player.fYawDegrees);
 			const float maxYawStep =
-				PLAYER_TURN_DEGREES_PER_SECOND * fixedDeltaSeconds;
+				(LostArk::Shared::INVALID_VEHICLE_ID != player.iVehicleId ?
+					VEHICLE_TURN_DEGREES_PER_SECOND :
+					PLAYER_TURN_DEGREES_PER_SECOND) * fixedDeltaSeconds;
 			/* Close to the destination the turn radius no longer fits, so facing
 			snaps rather than orbiting the point. A corner is not a destination:
 			snapping there made every path bend read as an instant pivot. */

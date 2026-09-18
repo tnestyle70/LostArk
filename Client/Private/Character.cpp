@@ -58,6 +58,9 @@ namespace
 	/* Fast enough that a deliberate turn onto a skill's aim still lands inside a
 	quarter second, slow enough to swallow the per-cell steps of a grid path. */
 	constexpr f32_t TURN_DEGREES_PER_SECOND = 720.f;
+	/* A vehicle body is long and turns around itself, so the on-foot rate reads
+	as an instant pivot while mounted. */
+	constexpr f32_t VEHICLE_TURN_DEGREES_PER_SECOND = 300.f;
 	constexpr f32_t NETWORK_MOVE_HANDOFF_SECONDS = 0.12f;
 	/* On since the 08-10 solver rewrite. The old off-by-default spawn-frame
 	crash never reproduced after the solve moved to Late_Update; if it returns,
@@ -784,7 +787,8 @@ void CCharacter::Update_VehicleSkillCues(
 		desc.strEffectAssetId = cue.effectAssetId;
 		desc.pOwner = owner;
 		desc.strAnchorSlotId = "root";
-		desc.eFollowPolicy = EFFECT_FOLLOW_POLICY::FOLLOW;
+		desc.eFollowPolicy = cue.bSnapshotRoot ?
+			EFFECT_FOLLOW_POLICY::SNAPSHOT : EFFECT_FOLLOW_POLICY::FOLLOW;
 		desc.eOrientationPolicy = EFFECT_ORIENTATION_POLICY::ANCHOR;
 		desc.eStopPolicy = cue.bStopAtCueEnd ? EFFECT_STOP_POLICY::CUE_END : EFFECT_STOP_POLICY::NATURAL;
 		desc.iCueDurationMs = cue.bStopAtCueEnd ? static_cast<uint32_t>(cueSeconds * 1000.f) : 0u;
@@ -1301,7 +1305,8 @@ void CCharacter::Update_PresentationYaw(const f32_t targetYawDegrees, const f32_
 		!std::isfinite(fTimeDelta) || fTimeDelta < 0.f)
 		return;
 	const f32_t difference = std::remainder(targetYawDegrees - m_fPresentationYawDegrees, 360.f);
-	const f32_t step = TURN_DEGREES_PER_SECOND * fTimeDelta;
+	const f32_t step = (0u != m_iVehicleId ?
+		VEHICLE_TURN_DEGREES_PER_SECOND : TURN_DEGREES_PER_SECOND) * fTimeDelta;
 	m_fPresentationYawDegrees = std::remainder(m_fPresentationYawDegrees +
 		(std::max)(-step, (std::min)(step, difference)), 360.f);
 	m_pTransformCom->Rotation(0.f,
@@ -1629,6 +1634,7 @@ bool_t CCharacter::Try_Get_PresentationRootMatrix(float4x4_t* pOut) const
 		return false;
 	XMStoreFloat4x4(pOut,
 		XMMatrixScaling(Get_PresentationScale(), Get_PresentationScale(), Get_PresentationScale()) *
+		XMLoadFloat4x4(&m_VehicleSeatRotation) *
 		XMLoadFloat4x4(m_pTransformCom->Get_WorldMatrixPtr()) *
 		XMMatrixTranslation(m_vVehicleSeatOffset.x, m_vVehicleSeatOffset.y, m_vVehicleSeatOffset.z));
 	return true;
@@ -1637,6 +1643,7 @@ bool_t CCharacter::Try_Get_PresentationRootMatrix(float4x4_t* pOut) const
 void CCharacter::Update_PresentationRootMatrix()
 {
 	m_vVehicleSeatOffset = {};
+	XMStoreFloat4x4(&m_VehicleSeatRotation, XMMatrixIdentity());
 	if (nullptr != m_pTransformCom)
 	{
 		m_VehicleRootMatrix = *m_pTransformCom->Get_WorldMatrixPtr();
@@ -1647,6 +1654,15 @@ void CCharacter::Update_PresentationRootMatrix()
 				seat.x - m_VehicleRootMatrix._41,
 				seat.y - m_VehicleRootMatrix._42,
 				seat.z - m_VehicleRootMatrix._43);
+		}
+		const VEHICLE_ACTOR_ENTRY* pVehicle = 0u == m_iVehicleId ? nullptr :
+			CActorCatalog::Find_Vehicle(m_iVehicleId);
+		float4x4_t seatRotation{};
+		if (nullptr != pVehicle && pVehicle->seatBoneRotatesRider &&
+			nullptr != m_pVehiclePart &&
+			m_pVehiclePart->Try_Get_SeatRotationDelta(seatRotation))
+		{
+			m_VehicleSeatRotation = seatRotation;
 		}
 	}
 	Try_Get_PresentationRootMatrix(&m_PresentationRootMatrix);
