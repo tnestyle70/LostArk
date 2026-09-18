@@ -59,6 +59,10 @@ public:
 	instead of the whole image, so one sprite scrolls/zooms across a large map texture (the
 	minimap). (0,0)/(1,1) (default) is the whole texture. */
 	void Set_UVWindow(const float2_t& vOffset, const float2_t& vScale);
+	/* Turns the UV window about its own center: fRadians clockwise on screen, fAspect = world
+	width / world height of the whole texture (the turn is done on square world units, so
+	non-square texels do not shear). 0 / 1 (default) samples exactly as before. */
+	void Set_UVRotation(f32_t fRadians, f32_t fAspect);
 	/* Degrees, clockwise on screen, about the sprite's own rect center -- same convention as
 	HUD_Layout.json's authored "rotation" and the HUD Layout Tool's preview. 0 (default) keeps
 	the axis-aligned quad every existing caller expects. */
@@ -89,6 +93,8 @@ private:
 	f32_t							m_fArcRatio = 1.f;
 	float2_t						m_vUVOffset = float2_t(0.f, 0.f);
 	float2_t						m_vUVScale = float2_t(1.f, 1.f);
+	f32_t							m_fUVRotation = 0.f;
+	f32_t							m_fUVAspect = 1.f;
 	f32_t							m_fRotationDeg = 0.f;
 	bool_t							m_bVisible = true;
 	ComPtr<ID3D11ShaderResourceView>	m_pOverrideTextureSRV;

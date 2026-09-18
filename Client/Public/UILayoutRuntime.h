@@ -84,6 +84,9 @@ public:
 	minimap's map slot scrolls/zooms across its area image this way. */
 	void Set_SlotUVWindow(const string& strId, f32_t fOffsetU, f32_t fOffsetV,
 		f32_t fScaleU, f32_t fScaleV);
+	/* Turn of that window about its center (CUI_Sprite::Set_UVRotation): the map views draw the
+	area image with the camera's forward direction up, as retail does. */
+	void Set_SlotUVRotation(const string& strId, f32_t fRadians, f32_t fAspect);
 	/* Overrides a slot's authored "rotation" (screen-space clockwise degrees about its own rect
 	center) at runtime -- for continuous data-driven rotation (DimensionMaster's clock hands and
 	gear ornaments). Applies to every layer sprite of the slot. */

@@ -227,7 +227,7 @@ bool CKoukuSaydonPreviewRootMotion::Prepare_Airborne(
         if ((a.phase == "SELECT_PLAYER") != (b.phase == "SELECT_PLAYER")) return a.phase == "SELECT_PLAYER";
         return false; // Equal-clock triggers retain authored order, as on the Server.
     });
-    bool jump = false, selection = false;
+    bool jump = false;
     for (auto& event : staged)
     {
         if (event.phase == "TELEPORT_XZ")
@@ -236,10 +236,10 @@ bool CKoukuSaydonPreviewRootMotion::Prepare_Airborne(
             { status = "Teleport preview requires finite destination XZ."; return false; }
             continue;
         }
-        if (event.phase == "SELECT_PLAYER") selection = true;
-        else if (event.phase == "JUMP") jump = true;
-        else if (!jump || (event.phase == "APPEAR_PLAYER" && !selection))
-        { status = "Albion preview requires JUMP before height phases and SELECT_PLAYER before APPEAR_PLAYER."; return false; }
+        if (event.phase == "SELECT_PLAYER") continue;
+        if (event.phase == "JUMP") jump = true;
+        else if (!jump)
+        { status = "Albion preview requires JUMP before height phases."; return false; }
         if (event.phase != "APPEAR_PLAYER" && event.phase != "SLAM") continue;
         for (size_t i = 0u; i < m_Windows.size(); ++i)
             if (m_Windows[i].row.iPoseStartMs <= event.clockMs) event.windowIndex = i;

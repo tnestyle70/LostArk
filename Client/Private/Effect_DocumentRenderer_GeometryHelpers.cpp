@@ -250,28 +250,63 @@ namespace EffectDocumentRendererDetail
 		case Client::EFFECT_PARTICLE_SPRITE_ALIGNMENT::AXIS_POSITIVE_Z:
 			Orientation = XMMatrixRotationZ(fRoll);
 			break;
+		case Client::EFFECT_PARTICLE_SPRITE_ALIGNMENT::ROTATE_X:
+		case Client::EFFECT_PARTICLE_SPRITE_ALIGNMENT::ROTATE_Y:
 		case Client::EFFECT_PARTICLE_SPRITE_ALIGNMENT::ROTATE_Z:
 		{
-			const vector_t CameraPosition = CameraWorldWithTranslation.r[3];
-			const vector_t Up = XMVectorSet(0.f, 0.f, 1.f, 0.f);
-			vector_t Facing = XMVectorSubtract(CameraPosition, Translation);
-			Facing = XMVectorSubtract(Facing,
-				XMVectorScale(Up, XMVectorGetX(XMVector3Dot(Facing, Up))));
-			if (XMVectorGetX(XMVector3LengthSq(Facing)) > 1.e-8f)
+			const uint32_t Axis = static_cast<uint32_t>(Particle.eSpriteAlignment) -
+				static_cast<uint32_t>(Client::EFFECT_PARTICLE_SPRITE_ALIGNMENT::ROTATE_X);
+			vector_t Up = XMVectorSet(Axis == 0u ? 1.f : 0.f,
+				Axis == 1u ? 1.f : 0.f, Axis == 2u ? 1.f : 0.f, 0.f);
+			const auto* Element = Particle.pElement;
+			const bool_t bEmitterAxis = Element && Element->SourceRecipe.bEnabled &&
+				Element->Detail.Sprite.bFollowEmitterAxisRotation;
+			if (!bEmitterAxis)
 			{
-				Facing = XMVector3Normalize(Facing);
-				const vector_t Right = XMVector3Normalize(
-					XMVector3Cross(Up, Facing));
-				Orientation = XMMatrixIdentity();
-				Orientation.r[0] = Right;
-				Orientation.r[1] = Up;
-				Orientation.r[2] = Facing;
+				// Existing assets retain their prior facing until the author opts
+				// into emitter-axis rotation. Do not rotate unrelated source layers.
+				if (Particle.eSpriteAlignment == Client::EFFECT_PARTICLE_SPRITE_ALIGNMENT::ROTATE_Z)
+				{
+					const vector_t LegacyUp = XMVectorSet(0.f, 0.f, 1.f, 0.f);
+					vector_t LegacyFacing = CameraWorldWithTranslation.r[3] - Translation;
+					LegacyFacing -= LegacyUp * XMVector3Dot(LegacyFacing, LegacyUp);
+					if (XMVectorGetX(XMVector3LengthSq(LegacyFacing)) > 1.e-8f)
+					{
+						LegacyFacing = XMVector3Normalize(LegacyFacing);
+						Orientation = XMMatrixIdentity();
+						Orientation.r[0] = XMVector3Normalize(XMVector3Cross(LegacyUp, LegacyFacing));
+						Orientation.r[1] = LegacyUp;
+						Orientation.r[2] = LegacyFacing;
+					}
+				}
+				Orientation = XMMatrixRotationZ(fRoll) * Orientation;
+				break;
 			}
+			if (!Normalize_Safe(XMVector3TransformNormal(Up,
+				XMLoadFloat4x4(&Particle.SourceEmitterWorld)), Up))
+				return false;
+			const auto ProjectOffAxis = [Up](const vector_t Value) {
+				return Value - Up * XMVector3Dot(Value, Up);
+			};
+			vector_t Facing;
+			// Rect front is -Z. Keep +Z away from the camera so the native
+			// one-sided material remains visible when the locked axis is flipped.
+			if (!Normalize_Safe(ProjectOffAxis(Translation - CameraWorldWithTranslation.r[3]), Facing) &&
+				!Normalize_Safe(ProjectOffAxis(CameraWorld.r[2]), Facing))
+			{
+				const vector_t Fallback = std::abs(XMVectorGetX(Up)) < .5f ?
+					XMVectorSet(1.f, 0.f, 0.f, 0.f) : XMVectorSet(0.f, 0.f, 1.f, 0.f);
+				if (!Normalize_Safe(ProjectOffAxis(Fallback), Facing)) return false;
+			}
+			vector_t Right;
+			if (!Normalize_Safe(XMVector3Cross(Up, Facing), Right)) return false;
+			Orientation = XMMatrixIdentity();
+			Orientation.r[0] = Right;
+			Orientation.r[1] = Up;
+			Orientation.r[2] = Facing;
 			Orientation = XMMatrixRotationZ(fRoll) * Orientation;
 			break;
 		}
-		case Client::EFFECT_PARTICLE_SPRITE_ALIGNMENT::ROTATE_X:
-		case Client::EFFECT_PARTICLE_SPRITE_ALIGNMENT::ROTATE_Y:
 		case Client::EFFECT_PARTICLE_SPRITE_ALIGNMENT::CAMERA_RECTANGLE:
 		case Client::EFFECT_PARTICLE_SPRITE_ALIGNMENT::END:
 		default:

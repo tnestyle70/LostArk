@@ -1648,7 +1648,8 @@
         "sprite": {
           "billboard": true,
           "billboardRollDegrees": 0,
-          "billboardRollDegreesPerSecond": 0
+          "billboardRollDegreesPerSecond": 0,
+          "followEmitterAxisRotation": true
         },
         "decal": {
           "size": [
@@ -1749,7 +1750,7 @@
           ],
           "localSpace": true,
           "billboard": true
-        },
+        , "sourceScale": {"size": 1.5}},
         "trail": {
           "maxPoints": 64,
           "pointLifeTimeSeconds": 0.349999994,

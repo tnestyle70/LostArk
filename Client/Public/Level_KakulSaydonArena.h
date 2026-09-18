@@ -6,6 +6,7 @@
 #include "DeployPropRuntime.h"
 #include "Effect_PresentationService.h"
 #include "Level.h"
+#include "MapAuthoringHost.h"
 #include "MapPlacementRuntime.h"
 #include "MapLightPresentationRuntime.h"
 #include "PlayerController.h"
@@ -43,6 +44,9 @@ class CKoukuMadnessGaugeView;
 class CMvpResultView;
 
 class CLevel_KakulSaydonArena final : public CLevel
+#ifdef _DEBUG
+	, public IMapAuthoringHost
+#endif
 {
 public:
 	void Set_MapLightAuthoringOverride(std::shared_ptr<CMapLightPresentationRuntime> lights);
@@ -136,11 +140,30 @@ public:
 	}
 
 #ifdef _DEBUG
-	std::vector<MAP_RUNTIME_STATIC_BATCH_ENTRY>& Get_MapAuthoringBatches()
+	/* IMapAuthoringHost: the Debug Map Tool edits this arena's live map in
+	   place through these; the arena keeps owning every runtime container. */
+	uint32_t Get_MapAuthoringLevelIndex() const override
+	{ return ETOUI(LEVEL::KAKULSAYDON_ARENA); }
+	const char_t* Get_MapAuthoringLabel() const override { return "Kouku"; }
+	const CMapAssetCatalog& Get_MapAuthoringCatalog() const override
+	{ return m_MapRuntime.Get_Catalog(); }
+	std::vector<MAP_RUNTIME_PLACED_ENTRY>& Get_MapAuthoringPlacements() override
+	{ return m_MapRuntime.Get_MutablePlacements(); }
+	std::vector<MAP_RUNTIME_STATIC_BATCH_ENTRY>& Get_MapAuthoringBatches() override
 	{ return m_MapRuntime.Get_AuthoringBatches(); }
-	void Set_MapAuthoringActive(bool_t active) { m_bMapAuthoringActive = active; }
-	void Rebase_MapAuthoringSelfMotions(const std::vector<MAP_PLACEMENT_RECORD>& records)
+	CDeployPropRuntime* Get_MapAuthoringDeployRuntime() override { return &m_DeployRuntime; }
+	void Set_MapAuthoringActive(bool_t active) override { m_bMapAuthoringActive = active; }
+	void Rebase_MapAuthoringSelfMotions(const std::vector<MAP_PLACEMENT_RECORD>& records) override
 	{ m_MapRuntime.Rebase_AuthoringSelfMotions(records); }
+	CWorldSequencePlayer::TARGET_SET Make_MapAuthoringTargets() override
+	{ return Make_WorldSequenceTargets(); }
+	bool_t Can_ChangeMapAuthoringStructure(std::string& outReason) const override
+	{
+		if (Can_ReplaceMapAuthoringTargets())
+			return true;
+		outReason = "Stop active arena/Object/Composition playback before adding, deleting or reloading map objects.";
+		return false;
+	}
 	bool_t Can_ReplaceMapAuthoringTargets() const
 	{
 		return !m_SequencePlayer.Has_ActiveInstances() &&

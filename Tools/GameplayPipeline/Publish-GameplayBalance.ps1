@@ -24,6 +24,15 @@ if ($Mode -ne 'Publish' -and ($ExternalCanonicalWriterPid -gt 0 -or
     -not [string]::IsNullOrWhiteSpace($ExternalCanonicalWriterNonce))) {
     throw 'External canonical writer admission is valid only for Publish.'
 }
+# This independent validator must finish before acquiring the Valtan writer.
+# It does not snapshot or publish Valtan inputs. Keep the canonical snapshot,
+# presentation generation and bootstrap promotion under the admission below.
+$koukuProjector = Join-Path $repoRoot `
+	'Tools\KoukuSaydonPipeline\project_kouku_saydon_composition.py'
+& python -B $koukuProjector --repository-root $repoRoot --mode validate
+if ($LASTEXITCODE -ne 0) {
+	throw 'KoukuSaydon composition Product validation failed.'
+}
 $canonicalWriterAdmission = $null
 if ($Mode -eq 'Publish') {
     $canonicalWriterAdmission = Enter-ValtanCanonicalWriterAdmission `
@@ -50,12 +59,6 @@ if (-not $hasExplicitOverlay -and -not $SkipValtanSplitProjection) {
     if ($LASTEXITCODE -ne 0) {
         throw 'Valtan split Product validation failed.'
 	}
-}
-$koukuProjector = Join-Path $repoRoot `
-	'Tools\KoukuSaydonPipeline\project_kouku_saydon_composition.py'
-& python -B $koukuProjector --repository-root $repoRoot --mode validate
-if ($LASTEXITCODE -ne 0) {
-	throw 'KoukuSaydon composition Product validation failed.'
 }
 $stableIdPattern = '^[A-Za-z0-9_.-]{1,128}$'
 $maximumValtanPatternFlowSlots = 255

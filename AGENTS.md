@@ -88,9 +88,26 @@ CModel preScale·socket offset·particle 단위를 함께 실측한다. syntheti
 - 새로 확인한 원인·적용 범위·재발 방지 절차는 같은 변경에서 `gotchas.md`와
   `렌더링이펙트복원V2.md`에 반영한다. 공통 작업 절차가 바뀌면 이 항목도 갱신하고,
   개별 asset ID·측정값·검증 로그는 대응 RESULT에 남긴다.
-- 실행 중 저작 도구가 읽은 Composition에 외부 리소스를 등록할 때는 미저장 draft와 저장
-  기준본 충돌을 함께 확인한다. Reload·종료·재빌드 전에 사용자 편집의 보존을 확인하며,
-  저장 거절을 freshness 검사 제거 또는 파일 전체 덮어쓰기로 우회하지 않는다.
+- 실행 중 저작 도구의 외부 데이터 반영은 아래 `편집 중 데이터 반영` 절차를 따른다.
+  Client 실행 여부만으로 반영을 보류하거나 종료를 요구하지 않는다.
+
+### 편집 중 데이터 반영
+
+- 사용자가 편집하는 동안 코드와 데이터 후보를 준비하고 필요한 컴파일·구조·소비자 검증을
+  먼저 끝낸다. 검토 가능한 후보가 완성된 최종 교체 시점에만 저장 여부와 반영 승인을 한 번
+  확인한다. 이미 현재 저장본 기준 반영을 명시적으로 승인했다면 다시 묻지 않는다.
+- 승인 후 최신 디스크 저장본을 다시 읽어 stable ID와 변경 필드 기준으로 병합한다. 사용자와
+  다른 세션의 무관한 변경을 보존하고 오래된 문서 전체를 덮어쓰지 않는다. 같은 필드의 실제
+  충돌만 보존한 채 보고하며, 일반적인 실행 중 상태를 충돌로 간주하지 않는다.
+- 미저장 메모리 draft는 디스크 병합에 포함되지 않는다. 사용자의 저장 완료 또는 현재 디스크
+  저장본 기준 반영 의사를 적용 기준으로 삼는다. 저장 거절을 freshness 검사 제거로 우회하지
+  않으며, 교체 직전 hash/revision 재확인·백업·원자적 파일 교체·실패 시 자기 변경 rollback을
+  유지한다. 동시 저장으로 변경된 파일은 재확인 없이 덮어쓰지 않는다.
+- 데이터 교체와 domain publish에는 Client 종료를 선행 조건으로 두지 않는다. 설치된 파일,
+  게시된 런타임 데이터, 실행 중 도구의 Reload와 최종 화면 확인을 구분해 보고한다. 파일 반영을
+  메모리 draft나 실행 중 Server까지 자동 갱신된 것으로 설명하지 않는다.
+- 사용자 편집을 버리는 Reload·종료를 자동 수행하지 않는다. 실제 점유된 EXE/DLL의 링크나
+  확인된 파일 잠금 해제에 필요한 경우에만 해당 프로세스 종료를 별도로 안내한다.
 
 ## 계획서 규칙
 
@@ -266,5 +283,6 @@ Product 빌드: Engine → Shared → Server → Client (SDK·shader·runtime DL
 - runtime 데이터는 변경한 domain의 publisher 또는 `Tools/Build/Invoke-BuildDomainOwner.ps1 -Owner <Client|Server|KoukuSaydon>`으로 명시 생성한다. VS pre-build publish가 필요한 경우에만 `LostArkPublishRuntimeData=true`를 설정한다. 생성물 누락은 목록 편집을 막지 않으며 실제 Server 실행 전 준비한다. 수동 smoke의 Client 작업 디렉터리는 `Client/Default`다.
 
 - Engine public header를 바꿨다면 Product 빌드로 Engine SDK 반영과 Client 컴파일까지 확인한다.
-- 실행 중인 `Client.exe`가 출력물을 점유하면 종료한 뒤 다시 링크한다.
+- 실행 중인 `Client.exe`가 EXE/DLL 출력물을 점유해 링크를 막으면 사용자가 종료한 뒤 다시
+  링크한다. 이 조건을 JSON 등 데이터 교체·publish에 일괄 적용하지 않는다.
 - 에디터 기능은 변경한 입력·저장·재로드와 실패 시 기존 항목 보존을 확인한다. 아레나의 재생 결과가 예상과 다르면 사용자의 실제 관찰을 기준으로 animation benchmark와 해당 family를 조정한다. Client 실행과 육안 확인은 사용자가 직접 한다.

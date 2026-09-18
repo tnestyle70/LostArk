@@ -9,11 +9,14 @@
 #include "Animation_Tool.h"
 #include "CharacterPreviewPanel.h"
 #include "CompositionTimeline.h"
+#include "DataJson.h"
 #include "EffectAuthoringResourceTree.h"
 #include "EffectAuthoringSequencer.h"
 #include "EffectEditingSession.h"
+#include "GameInstance.h"
 #include "Model.h"
 #include "PlayerSkillCatalog.h"
+#include "ProjectDataRoot.h"
 
 #include <algorithm>
 #include <array>
@@ -22,6 +25,8 @@
 #include <fstream>
 #include <iterator>
 #include <set>
+#include <string_view>
+#include <unordered_map>
 
 namespace Client
 {
@@ -37,6 +42,12 @@ constexpr std::array<CLASS_ENTRY, 6> CLASSES{{
     {CLASS::DIMENSIONMASTER, "DimensionMaster", "Dimension Master"},
     {CLASS::WARLORD, "Warlord", "Warlord"}
 }};
+// Same category order as the Boss workbench, minus the boss-only families.
+constexpr std::array<const char*, 7> RESOURCE_CATEGORIES{{"Animation", "Logic", "Effect", "Collider", "Sound", "Camera", "Pattern"}};
+constexpr std::array<const char*, 7> LANE_LABELS{{"Stage", "Animation", "Logic", "Effect", "Collider", "Sound", "Camera"}};
+constexpr std::uint32_t HIT_TICK_MS = 34u;
+constexpr std::uint32_t MAX_EDITOR_TIME_MS = 600000u;
+constexpr ImVec4 WARNING_TEXT{1.f, .6f, .45f, 1.f};
 
 bool Read_Source(const std::filesystem::path& path, std::string& text)
 {
@@ -68,6 +79,57 @@ bool Edit_Double(const char* label, double& value, float minimum, float maximum)
     if (!std::isfinite(edit)) return false;
     value = (std::clamp)(edit, minimum, maximum);
     return true;
+}
+
+bool Read_U32Field(const DATA_JSON_VALUE& owner, const char* name, std::uint32_t& value)
+{
+    const auto* found = owner.Find(name);
+    if (!found || !found->Is_Number() || !std::isfinite(found->Get_Number())) return false;
+    const double number = found->Get_Number();
+    if (number < 0.0 || number > 4294967295.0 || std::floor(number) != number) return false;
+    value = static_cast<std::uint32_t>(number);
+    return true;
+}
+
+const char* Skill_KindLabel(const LostArk::Shared::PLAYER_SKILL_KIND kind)
+{
+    switch (kind)
+    {
+    case LostArk::Shared::PLAYER_SKILL_KIND::ACTIVE: return "ACTIVE";
+    case LostArk::Shared::PLAYER_SKILL_KIND::COMBO: return "COMBO";
+    case LostArk::Shared::PLAYER_SKILL_KIND::HOLD: return "HOLD";
+    case LostArk::Shared::PLAYER_SKILL_KIND::COUNTER: return "COUNTER";
+    case LostArk::Shared::PLAYER_SKILL_KIND::STANDUP: return "STANDUP";
+    default: return "UNKNOWN";
+    }
+}
+
+// Overlapping boxes inside one lane get extra display rows. Rows are display
+// only; they never create or reorder saved tracks (same rule as the Boss lanes).
+struct LANE_INTERVAL final
+{
+    std::string id;
+    std::uint64_t startMs = 0u, endMs = 0u;
+};
+std::size_t Allocate_TimelineDisplayRows(std::vector<LANE_INTERVAL> intervals,
+    std::unordered_map<std::string, std::size_t>& rows)
+{
+    std::stable_sort(intervals.begin(), intervals.end(), [](const auto& a, const auto& b) { return a.startMs < b.startMs; });
+    std::vector<std::uint64_t> rowEnds;
+    for (const auto& interval : intervals)
+    {
+        std::size_t row = 0u;
+        while (row < rowEnds.size() && rowEnds[row] > interval.startMs) ++row;
+        if (row == rowEnds.size()) rowEnds.push_back(interval.endMs); else rowEnds[row] = interval.endMs;
+        rows.emplace(interval.id, row);
+    }
+    return (std::max)(std::size_t{1u}, rowEnds.size());
+}
+
+void Help_Marker(const char* text)
+{
+    ImGui::SameLine(); ImGui::TextDisabled("(?)");
+    if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", text);
 }
 }
 
@@ -105,6 +167,7 @@ void CCharacterActionWorkbench::On_WorkbenchDeactivated()
         if (!m_PreviewDirty || m_Sequencer->Is_Active()) m_PreviewClock = m_Sequencer->ClockMs();
         m_Sequencer->Stop();
     }
+    Stop_SoundPreview();
     m_CueEditorClip.clear();
     m_PreviewDirty = true;
 }
@@ -147,11 +210,15 @@ bool CCharacterActionWorkbench::Has_Draft() const
 void CCharacterActionWorkbench::Begin_WorkbenchFrame()
 {
     if (!m_CatalogLoaded) m_CatalogLoaded = CPlayerSkillCatalog::Load(m_Status);
+    // One read per session; Reload re-reads it. A failed read leaves timing rows out with a status.
+    if (m_CatalogLoaded && !m_TimingsLoaded) { m_TimingsLoaded = true; Load_SkillTimings(); }
     if (m_Panel) m_Panel->Refresh_Level();
     if (m_RowsDirty && Target_IsCurrent()) Rebuild_Rows();
 }
 void CCharacterActionWorkbench::End_WorkbenchFrame()
 {
+    if (m_AddCollider) { m_AddCollider = false; Add_Collider(); }
+    if (!m_RemoveCollider.empty()) { const auto retired = m_RemoveCollider; m_RemoveCollider.clear(); Remove_Collider(retired); }
     if (m_SaveBindings) { m_SaveBindings = false; Save_Bindings(); }
     if (m_SaveCombat) { m_SaveCombat = false; Save_Combat(); }
     if (m_Reload) { m_Reload = false; Reload_Selected(); }
@@ -241,6 +308,55 @@ ANIMATION_SKILL_CLIP* CCharacterActionWorkbench::Find_Clip(const std::string& id
                 if (clip.strClipOccurrenceId == id) return &clip;
     return nullptr;
 }
+bool CCharacterActionWorkbench::Load_SkillTimings()
+{
+    // The same balance document the combat owner re-reads at Save. It stays
+    // Server truth: this Workbench only mirrors action, hit and combo windows.
+    std::string bytes, status;
+    DATA_JSON_VALUE root;
+    if (!Read_Source(CProjectDataRoot::Resolve("Balance/PlayerSkills.json"), bytes) || !CDataJson::Parse(bytes, root, status))
+    { m_Status = "Cannot read PlayerSkills.json for Server timing: " + status; return false; }
+    const auto* skills = root.Find("skills");
+    if (!skills || !skills->Is_Array()) { m_Status = "PlayerSkills.json has no skills array; Server timing rows are unavailable."; return false; }
+    std::unordered_map<std::uint32_t, std::vector<STAGE_TIMING>> timings;
+    for (const auto& skill : skills->Get_Array())
+    {
+        std::uint32_t skillId = 0u;
+        STAGE_TIMING base;
+        if (!Read_U32Field(skill, "skillId", skillId) || !Read_U32Field(skill, "actionDurationMs", base.actionDurationMs) ||
+            !Read_U32Field(skill, "hitTimeMs", base.hitTimeMs)) continue; // The catalog loader already reports malformed rows.
+        const auto* kind = skill.Find("skillKind");
+        base.combo = kind && kind->Is_String() && kind->Get_String() == "COMBO";
+        std::vector<STAGE_TIMING> stages;
+        if (const auto* combo = skill.Find("comboStages"); combo && combo->Is_Array())
+            for (const auto& stage : combo->Get_Array())
+            {
+                STAGE_TIMING timing = base;
+                if (!Read_U32Field(stage, "actionDurationMs", timing.actionDurationMs) || !Read_U32Field(stage, "hitTimeMs", timing.hitTimeMs) ||
+                    !Read_U32Field(stage, "comboAdvanceMs", timing.comboAdvanceMs) || !Read_U32Field(stage, "inputOpenMs", timing.inputOpenMs) ||
+                    !Read_U32Field(stage, "inputCloseMs", timing.inputCloseMs))
+                { stages.clear(); break; }
+                stages.push_back(timing);
+            }
+        if (stages.empty()) stages.push_back(base);
+        timings[skillId] = std::move(stages);
+    }
+    m_SkillTimings = std::move(timings);
+    return true;
+}
+const CCharacterActionWorkbench::STAGE_TIMING* CCharacterActionWorkbench::Stage_Timing(const std::uint32_t stage) const
+{
+    const auto found = m_SkillTimings.find(m_SkillId);
+    if (found == m_SkillTimings.end() || stage >= found->second.size()) return nullptr;
+    return &found->second[stage];
+}
+std::uint32_t CCharacterActionWorkbench::Collider_LimitMs(const std::uint32_t stage) const
+{
+    // Save_Atomic rejects caster hits past actionDurationMs, and past comboAdvanceMs on COMBO stages.
+    const auto* timing = Stage_Timing(stage);
+    if (!timing) return MAX_EDITOR_TIME_MS;
+    return timing->combo ? (std::min)(timing->actionDurationMs, timing->comboAdvanceMs) : timing->actionDurationMs;
+}
 bool CCharacterActionWorkbench::Load_Class(const int classIndex)
 {
     if (classIndex < 0 || classIndex >= static_cast<int>(CLASSES.size()) || !m_Panel) return false;
@@ -280,6 +396,14 @@ bool CCharacterActionWorkbench::Load_Class(const int classIndex)
     if (!CAnimationEffectCueDocument::Load(entry.asset, names, cues, m_Status)) return false;
     CCharacterActionCombatDocument combat;
     if (!combat.Reload(entry.asset, m_Status)) return false;
+    // The sound class snapshot is display data; a missing class row keeps the
+    // action usable and the Sound tab reports the catalog status instead.
+    CSoundCueCatalog::EVENT_VARIANTS soundEvents;
+    std::string soundStatus;
+    if (!CSoundCueCatalog::Load_ClassSnapshot(entry.asset, soundEvents, soundStatus)) soundEvents.clear();
+    std::vector<std::string> soundNames;
+    for (const auto& [eventName, variants] : soundEvents) soundNames.push_back(eventName);
+    std::sort(soundNames.begin(), soundNames.end());
     // All file/owner/source-window checks precede replacing the shared preview.
     // CharacterPreviewPanel stages geometry/equipment before committing its target.
     if (!m_Panel->Select_TargetAsset(entry.asset)) { m_Status = m_Panel->Get_Status(); return false; }
@@ -290,8 +414,9 @@ bool CCharacterActionWorkbench::Load_Class(const int classIndex)
     On_WorkbenchDeactivated();
     m_Bindings = std::move(bindings); m_Cues = std::move(cues); m_Combat = std::move(combat);
     m_CombatRows = m_Combat.Get_Rows(); m_ClipNames = std::move(names); m_Baseline = std::move(baseline);
+    m_SoundEvents = std::move(soundEvents); m_SoundEventNames = std::move(soundNames); m_SoundStatus = std::move(soundStatus);
     m_Asset = entry.asset; m_ClassIndex = classIndex; m_Generation = CAnimationTargetService::Resolve_TargetGeneration();
-    m_BindingsDirty = m_CombatDirty = false; m_PreviewDirty = true; m_SelectedRow.clear();
+    m_BindingsDirty = m_CombatDirty = m_CombatPublishPending = false; m_PreviewDirty = true; m_SelectedRow.clear();
     m_Status = "Loaded Product bindings, cues and independent Collider / Logic / Result rows.";
     return true;
 }
@@ -312,6 +437,7 @@ bool CCharacterActionWorkbench::Reload_Selected()
     if (Has_Draft()) { m_Status = "Reload preserved the unsaved draft. Save its owner first."; return false; }
     if (m_ClassIndex < 0) return false;
     const auto skillId = m_SkillId; const auto stage = m_Stage;
+    (void)Load_SkillTimings();
     return Load_Class(m_ClassIndex) && Select_Action(m_ClassIndex, skillId, stage);
 }
 
@@ -338,19 +464,27 @@ bool CCharacterActionWorkbench::Rebuild_Rows()
 {
     const auto* binding = Selected_Binding();
     if (!binding) return false;
+    const auto* skill = CPlayerSkillCatalog::Find_ById(m_SkillId);
     std::vector<ROW> rows;
-    std::uint32_t clock = 0u, end = 1u;
+    std::vector<STAGE_SUMMARY> summaries(binding->Stages.size());
+    // The clock advances by clip wall time only, exactly like the preview
+    // sequencer, so boxes stay aligned with Play/Seek. Server stage locks that
+    // outlast the clips are drawn as Stage / Post-delay boxes on that same clock.
+    std::uint32_t clock = 0u, end = 1u, canvas = 1u, lastActionEnd = 0u, lastStage = 0u;
+    bool timingMissing = false;
     for (std::size_t stage = 0u; stage < binding->Stages.size(); ++stage)
     {
         if (m_Stage && *m_Stage != stage) continue;
+        const auto stageId = static_cast<std::uint32_t>(stage);
         const std::uint32_t stageStart = clock;
         for (const auto& clip : binding->Stages[stage].Clips)
         {
             std::uint32_t duration = 0u;
             if (!Clip_Duration(clip, duration)) { m_Status = "Invalid source window or missing clip: " + clip.strClipName; return false; }
-            const auto stageId = static_cast<std::uint32_t>(stage);
-            rows.push_back({ROW_KIND::ANIMATION, clip.strClipOccurrenceId, "Animation | " + clip.strClipName,
-                clip.strClipName, {}, "skillbindings.json", clock, duration, stageId});
+            ROW animation{ROW_KIND::ANIMATION, clip.strClipOccurrenceId, "Animation | " + clip.strClipName,
+                clip.strClipName, {}, "skillbindings.json", clock, duration, stageId, LANE::ANIMATION};
+            animation.editable = true;
+            rows.push_back(std::move(animation));
             const std::uint32_t sourceEnd = clip.iSourceStartMs + static_cast<std::uint32_t>(std::ceil(duration * clip.fPlayRate));
             const auto within = [&](std::uint32_t time) { return time >= clip.iSourceStartMs && time < sourceEnd; };
             const auto local = [&](std::uint32_t time) { return static_cast<std::uint32_t>((time - clip.iSourceStartMs) / clip.fPlayRate); };
@@ -358,36 +492,109 @@ bool CCharacterActionWorkbench::Rebuild_Rows()
             {
                 if (cue.strClipName != clip.strClipName || !within(cue.iStartMs)) continue;
                 const auto length = cue.iEndMs > cue.iStartMs ? static_cast<std::uint32_t>((cue.iEndMs - cue.iStartMs) / clip.fPlayRate) : 100u;
-                rows.push_back({ROW_KIND::EFFECT, clip.strClipOccurrenceId + ".effect." + cue.strEffectAssetId + "." + std::to_string(cue.iStartMs),
+                ROW row{ROW_KIND::EFFECT, clip.strClipOccurrenceId + ".effect." + cue.strEffectAssetId + "." + std::to_string(cue.iStartMs),
                     "Effect | " + cue.strEffectAssetId, clip.strClipName, cue.strEffectAssetId, "Cue owner: .animevents; anchor: " + cue.strAnchorSlotId,
-                    clock + local(cue.iStartMs), (std::max)(1u, length), stageId});
+                    clock + local(cue.iStartMs), (std::max)(1u, length), stageId, LANE::EFFECT};
+                row.source = cue.iStartMs;
+                rows.push_back(std::move(row));
             }
             for (const auto& cue : m_Cues.Sounds)
-                if (cue.strClipName == clip.strClipName && within(cue.iStartMs))
-                    rows.push_back({ROW_KIND::SOUND, clip.strClipOccurrenceId + ".sound." + cue.strEventName + "." + std::to_string(cue.iStartMs),
-                        "Sound | " + cue.strEventName, clip.strClipName, {}, "Cue owner: .animevents / variants: CharacterSoundCatalog.json",
-                        clock + local(cue.iStartMs), 80u, stageId});
+            {
+                if (cue.strClipName != clip.strClipName || !within(cue.iStartMs)) continue;
+                ROW row{ROW_KIND::SOUND, clip.strClipOccurrenceId + ".sound." + cue.strEventName + "." + std::to_string(cue.iStartMs),
+                    "Sound | " + cue.strEventName, clip.strClipName, cue.strEventName, "Cue owner: .animevents / variants: CharacterSoundCatalog.json",
+                    clock + local(cue.iStartMs), 80u, stageId, LANE::SOUND};
+                row.source = cue.iStartMs;
+                // Dragging writes the same .animevents SOUND row through CAnimation_Tool.
+                row.editable = true;
+                rows.push_back(std::move(row));
+            }
             for (const auto& cue : m_Cues.Shakes)
-                if (cue.strClipName == clip.strClipName && within(cue.iStartMs))
-                    rows.push_back({ROW_KIND::SHAKE, clip.strClipOccurrenceId + ".shake." + std::to_string(cue.iStartMs),
-                        "Camera Shake", clip.strClipName, {}, "Cue owner: .animevents", clock + local(cue.iStartMs), 80u, stageId});
+            {
+                if (cue.strClipName != clip.strClipName || !within(cue.iStartMs)) continue;
+                const auto shakeMs = static_cast<std::uint32_t>((std::max)(0.f, cue.Spec.fDurationSeconds) * 1000.f / clip.fPlayRate);
+                ROW row{ROW_KIND::SHAKE, clip.strClipOccurrenceId + ".shake." + std::to_string(cue.iStartMs),
+                    "Camera Shake", clip.strClipName, {}, "Cue owner: .animevents (SHAKE payload)", clock + local(cue.iStartMs),
+                    (std::max)(80u, shakeMs), stageId, LANE::CAMERA};
+                row.source = cue.iStartMs;
+                rows.push_back(std::move(row));
+            }
             clock += duration;
+        }
+        const std::uint32_t clipWall = clock - stageStart;
+        const auto* timing = Stage_Timing(stageId);
+        if (!timing) timingMissing = true;
+        const std::uint32_t actionMs = timing ? timing->actionDurationMs : 0u;
+        const std::uint32_t stageDuration = (std::max)(1u, (std::max)(clipWall, actionMs));
+        summaries[stage] = {stageStart, clipWall, actionMs, timing != nullptr};
+        lastActionEnd = stageStart + stageDuration; lastStage = stageId;
+        {
+            char label[160]{};
+            if (timing) std::snprintf(label, sizeof(label), "Stage %u | clips %u ms | Server %u ms", stageId + 1u, clipWall, actionMs);
+            else std::snprintf(label, sizeof(label), "Stage %u | clips %u ms | Server timing unavailable", stageId + 1u, clipWall);
+            ROW row{ROW_KIND::STAGE, "character.stage." + std::to_string(stage), label, {}, {},
+                "Server stage lock = PlayerSkills.json actionDurationMs (Balance Tool + Publish-GameplayBalance.ps1). Clips are presentation only.",
+                stageStart, stageDuration, stageId, LANE::STAGE};
+            row.warning = timing && clipWall > actionMs;
+            rows.push_back(std::move(row));
+        }
+        if (timing && actionMs > clipWall)
+        {
+            ROW row{ROW_KIND::GAP, "character.gap." + std::to_string(stage), "Post-delay | " + std::to_string(actionMs - clipWall) + " ms", {}, {},
+                "The character holds its last pose until the Server action lock ends (actionDurationMs - clip wall end).",
+                stageStart + clipWall, actionMs - clipWall, stageId, LANE::ANIMATION};
+            rows.push_back(std::move(row));
+        }
+        if (timing)
+        {
+            const auto timingRow = [&](const char* kind, const std::uint32_t start, const std::uint32_t duration, std::string detail)
+            {
+                ROW row{ROW_KIND::TIMING, "character.timing." + std::to_string(stage) + "." + kind, std::string("Timing | ") + kind, {}, {},
+                    std::move(detail), start, (std::max)(1u, duration), stageId, LANE::LOGIC};
+                rows.push_back(std::move(row));
+            };
+            timingRow("ACTION_LOCK", stageStart, actionMs, "PlayerSkills actionDurationMs: the Server refuses other actions during this window.");
+            timingRow("HIT", stageStart + timing->hitTimeMs, HIT_TICK_MS, "PlayerSkills hitTimeMs: the Server hit tick for skills without HitShapes rows.");
+            if (timing->combo)
+            {
+                if (timing->inputCloseMs > timing->inputOpenMs)
+                    timingRow("COMBO_INPUT", stageStart + timing->inputOpenMs, timing->inputCloseMs - timing->inputOpenMs,
+                        "PlayerSkills inputOpenMs..inputCloseMs: the next combo press is accepted inside this window.");
+                timingRow("COMBO_ADVANCE", stageStart + timing->comboAdvanceMs, HIT_TICK_MS,
+                    "PlayerSkills comboAdvanceMs: the earliest Server advance to the next stage; caster hits must end before it.");
+            }
         }
         for (const auto& collider : m_CombatRows)
         {
             if (collider.iSkillId != m_SkillId || collider.iStageIndex != stage) continue;
             const auto start = stageStart + collider.iProjectileStartMs + collider.iTimeMs;
-            const auto duration = (std::max)(34u, collider.iRepeatMs * (collider.iRepeatCount > 0u ? collider.iRepeatCount - 1u : 0u) + 34u);
+            const auto duration = (std::max)(HIT_TICK_MS, collider.iRepeatMs * (collider.iRepeatCount > 0u ? collider.iRepeatCount - 1u : 0u) + HIT_TICK_MS);
             const auto owner = collider.iProjectileIndex == UINT32_MAX ? "Caster" : "Projectile " + std::to_string(collider.iProjectileIndex + 1u);
             const auto detail = owner + (collider.bContact ? " | CONTACT: dynamic overlap" : " | TIMED") + " | " +
                 collider.strColliderId + " -> " + collider.strLogicId + " -> " + collider.strResultId;
-            rows.push_back({ROW_KIND::COLLIDER, collider.strColliderId, "Collider | " + collider.strResultKind, {}, {}, detail, start, duration, static_cast<std::uint32_t>(stage)});
-            rows.push_back({ROW_KIND::LOGIC, collider.strLogicId, "Logic | AREA_OVERLAP", {}, {}, detail, start, duration, static_cast<std::uint32_t>(stage)});
-            rows.push_back({ROW_KIND::RESULT, collider.strResultId, "Result | " + collider.strResultKind, {}, {}, detail, start, duration, static_cast<std::uint32_t>(stage)});
+            ROW colliderRow{ROW_KIND::COLLIDER, collider.strColliderId, "Collider | " + collider.strResultKind, {}, {}, detail, start, duration, stageId, LANE::COLLIDER};
+            colliderRow.editable = !collider.bContact;
+            rows.push_back(std::move(colliderRow));
+            rows.push_back({ROW_KIND::LOGIC, collider.strLogicId, "Logic | AREA_OVERLAP", {}, {}, detail, start, duration, stageId, LANE::LOGIC});
+            rows.push_back({ROW_KIND::RESULT, collider.strResultId, "Result | " + collider.strResultKind, {}, {}, detail, start, duration, stageId, LANE::LOGIC});
         }
     }
-    for (const auto& row : rows) end = (std::max)(end, row.start + row.duration);
-    m_Rows = std::move(rows); m_Duration = end; m_RowsDirty = false;
+    if (skill && skill->iCooldownMs > 0u && lastActionEnd > 0u)
+    {
+        ROW row{ROW_KIND::TIMING, "character.timing.cooldown", "Timing | COOLDOWN " + std::to_string(skill->iCooldownMs) + " ms", {}, {},
+            "PlayerSkills cooldownMs after the action lock ends. The Server replicates the cooldown end tick to the HUD.",
+            lastActionEnd, skill->iCooldownMs, lastStage, LANE::LOGIC};
+        rows.push_back(std::move(row));
+    }
+    for (const auto& row : rows)
+    {
+        canvas = (std::max)(canvas, row.start + row.duration);
+        // The cooldown box widens the canvas but not the seekable preview range.
+        if (row.id != "character.timing.cooldown") end = (std::max)(end, row.start + row.duration);
+    }
+    m_Rows = std::move(rows); m_StageSummaries = std::move(summaries);
+    m_Duration = end; m_CanvasMs = canvas; m_RowsDirty = false;
+    if (timingMissing) m_Status = "PlayerSkills.json timing is unavailable for this action; Stage lock, Post-delay and Timing boxes are omitted.";
     return true;
 }
 
@@ -433,11 +640,12 @@ void CCharacterActionWorkbench::Render_Transport()
     if (ImGui::Button("Save Combat")) m_SaveCombat = true;
     ImGui::EndDisabled();
     if (m_BindingsDirty || m_CombatDirty) { ImGui::SameLine(); ImGui::TextDisabled("Draft"); }
+    else if (m_CombatPublishPending) { ImGui::SameLine(); ImGui::TextColored(WARNING_TEXT, "Combat saved: publish + Server restart pending"); }
 }
 
 void CCharacterActionWorkbench::Render_Timeline()
 {
-    if (!Selected_Binding()) { ImGui::TextWrapped("Select a Character action or its Parent to see Animation, Effect, Sound and Collider / Logic / Result rows."); return; }
+    if (!Selected_Binding()) { ImGui::TextWrapped("Select a Character action or its Parent to see the Stage, Animation, Logic, Effect, Collider, Sound and Camera lanes."); return; }
     Render_Transport();
     if (m_Sequencer && !m_PreviewDirty) m_Duration = (std::max)(m_Duration, m_Sequencer->Preview_DurationMs());
     int clock = static_cast<int>(m_PreviewDirty ? m_PreviewClock : m_Sequencer ? m_Sequencer->ClockMs() : 0u);
@@ -445,44 +653,75 @@ void CCharacterActionWorkbench::Render_Timeline()
     if (ImGui::SliderInt("Time##Character", &clock, 0, static_cast<int>(m_Duration), "%d ms") && Prepare_Preview())
         m_Sequencer->Seek(static_cast<std::uint32_t>(clock));
     ImGui::SameLine(); ImGui::SetNextItemWidth(150.f); ImGui::SliderFloat("Zoom##Character", &m_Zoom, 20.f, 400.f, "%.0f px/s");
-    ImGui::TextDisabled("Animation boxes: reorder by dragging; edges trim source. Collider boxes move their own judgement time.");
+    ImGui::TextDisabled("Animation: drag reorders, edges trim source. Collider: drag moves the hit time, right edge stretches the repeat run. Sound: drag moves the .animevents cue. Stage / Post-delay / Timing mirror PlayerSkills (read-only).");
     if (ImGui::BeginChild("CharacterActionTimeline", {0.f, 0.f}, ImGuiChildFlags_Borders, ImGuiWindowFlags_HorizontalScrollbar))
     {
-        constexpr float labelWidth = 300.f, rowHeight = 28.f;
+        constexpr float labelWidth = 120.f, rowHeight = 26.f, rulerHeight = 26.f;
+        constexpr std::size_t laneCount = static_cast<std::size_t>(LANE::COUNT);
+        const float scale = m_Zoom * .001f;
+        const std::uint32_t canvasMs = (std::max)(m_Duration, m_CanvasMs);
         const ImVec2 origin = ImGui::GetCursorScreenPos();
-        const float width = (std::max)(ImGui::GetContentRegionAvail().x, labelWidth + m_Duration * m_Zoom * .001f + 80.f);
+        const float width = (std::max)(ImGui::GetContentRegionAvail().x, labelWidth + canvasMs * scale + 80.f);
+        // Lane layout: fixed Boss lane order, one extra display row per overlap.
+        std::array<std::vector<LANE_INTERVAL>, laneCount> intervals;
+        const auto minimumMs = static_cast<std::uint64_t>(std::ceil(8.f / scale));
+        for (const auto& row : m_Rows)
+            intervals[static_cast<std::size_t>(row.lane)].push_back({row.id, row.start,
+                row.start + (std::max)(static_cast<std::uint64_t>(row.duration), minimumMs)});
+        std::array<std::size_t, laneCount> laneFirstRow{};
+        std::unordered_map<std::string, std::size_t> displayRows;
+        std::size_t totalRows = 0u;
+        for (std::size_t lane = 0u; lane < laneCount; ++lane)
+        {
+            laneFirstRow[lane] = totalRows;
+            totalRows += Allocate_TimelineDisplayRows(std::move(intervals[lane]), displayRows);
+        }
         auto* draw = ImGui::GetWindowDrawList();
-        CompositionTimeline::DrawRuler(draw, {origin.x + labelWidth, origin.y}, {origin.x + width, origin.y + rowHeight}, m_Duration, m_Zoom);
-        ImGui::Dummy({width, rowHeight});
+        const float height = rulerHeight + rowHeight * static_cast<float>(totalRows);
+        ImGui::Dummy({width, height});
+        CompositionTimeline::DrawRuler(draw, {origin.x + labelWidth, origin.y}, {origin.x + width, origin.y + rulerHeight}, canvasMs, m_Zoom);
+        for (std::size_t lane = 0u; lane < laneCount; ++lane)
+        {
+            const float y = origin.y + rulerHeight + rowHeight * static_cast<float>(laneFirstRow[lane]);
+            draw->AddLine({origin.x, y}, {origin.x + width, y}, IM_COL32(60, 64, 72, 255));
+            draw->AddText({origin.x + 4.f, y + 5.f}, IM_COL32(200, 204, 212, 255), LANE_LABELS[lane]);
+        }
+        const bool windowHovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows);
+        const ImVec2 mouse = ImGui::GetMousePos();
+        constexpr ImU32 colors[] = {IM_COL32(69,126,203,255), IM_COL32(70,166,111,255), IM_COL32(175,127,60,255), IM_COL32(167,102,174,255),
+            IM_COL32(200,96,76,255), IM_COL32(122,121,175,255), IM_COL32(170,102,77,255), IM_COL32(96,96,112,255), IM_COL32(74,84,100,255), IM_COL32(196,118,64,255)};
+        static_assert(sizeof(colors) / sizeof(colors[0]) == static_cast<std::size_t>(ROW_KIND::TIMING) + 1u);
         for (const auto& row : m_Rows)
         {
-            ImGui::PushID(row.id.c_str());
-            const ImVec2 p = ImGui::GetCursorScreenPos();
+            const auto displayRow = displayRows.find(row.id);
+            if (displayRow == displayRows.end()) continue;
+            const float y = origin.y + rulerHeight + rowHeight * static_cast<float>(laneFirstRow[static_cast<std::size_t>(row.lane)] + displayRow->second);
+            const float startX = origin.x + labelWidth + row.start * scale;
+            const float endX = startX + (std::max)(8.f, row.duration * scale);
             const bool selected = m_SelectedRow == row.id;
-            if (ImGui::Selectable(row.label.c_str(), selected, 0, {labelWidth - 8.f, rowHeight - 3.f}))
-            { m_SelectedRow = row.id; if (m_Sequencer) m_Sequencer->Pause(true); }
-            if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s\n%s", row.id.c_str(), row.detail.c_str());
-            const float startX = p.x + labelWidth + row.start * m_Zoom * .001f;
-            const float endX = startX + (std::max)(8.f, row.duration * m_Zoom * .001f);
-            const bool editable = row.kind == ROW_KIND::ANIMATION || row.kind == ROW_KIND::COLLIDER;
-            const ImU32 colors[] = {IM_COL32(69,126,203,255), IM_COL32(70,166,111,255), IM_COL32(175,127,60,255), IM_COL32(167,102,174,255), IM_COL32(200,96,76,255), IM_COL32(122,121,175,255), IM_COL32(170,102,77,255)};
-            CompositionTimeline::DrawBox(draw, {startX, p.y + 1.f}, {endX, p.y + rowHeight - 4.f},
-                colors[static_cast<std::size_t>(row.kind)], selected, row.label.c_str(), row.kind == ROW_KIND::ANIMATION, row.kind == ROW_KIND::ANIMATION);
-            const ImVec2 mouse = ImGui::GetMousePos();
-            const bool hover = mouse.x >= startX && mouse.x <= endX && mouse.y >= p.y && mouse.y <= p.y + rowHeight;
-            if (hover && ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows) && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+            const bool animation = row.kind == ROW_KIND::ANIMATION;
+            const bool colliderEdge = row.kind == ROW_KIND::COLLIDER && row.editable;
+            const ImU32 fill = row.warning ? IM_COL32(150, 82, 82, 255) : colors[static_cast<std::size_t>(row.kind)];
+            CompositionTimeline::DrawBox(draw, {startX, y + 1.f}, {endX, y + rowHeight - 3.f}, fill, selected, row.label.c_str(), animation, animation || colliderEdge);
+            const bool hover = windowHovered && mouse.x >= startX && mouse.x <= endX && mouse.y >= y && mouse.y <= y + rowHeight;
+            if (!hover) continue;
+            ImGui::SetTooltip("%s\n%s", row.id.c_str(), row.detail.c_str());
+            if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
             {
                 m_SelectedRow = row.id;
                 if (m_Sequencer) m_Sequencer->Pause(true);
-                if (editable)
+                if (row.editable)
                 {
                     m_DragId = row.id; m_DragKind = row.kind; m_DragX = mouse.x;
-                    m_DragGesture = static_cast<int>(CompositionTimeline::HitBoxGesture(mouse.x, startX, endX, 5.f,
-                        row.kind == ROW_KIND::ANIMATION, row.kind == ROW_KIND::ANIMATION));
+                    m_DragGesture = static_cast<int>(CompositionTimeline::HitBoxGesture(mouse.x, startX, endX, 5.f, animation, animation || colliderEdge));
                 }
             }
-            ImGui::SetCursorScreenPos({p.x, p.y + rowHeight});
-            ImGui::PopID();
+        }
+        if (clock >= 0 && static_cast<std::uint32_t>(clock) <= canvasMs)
+        {
+            const float playheadX = origin.x + labelWidth + static_cast<float>(clock) * scale;
+            draw->AddLine({playheadX, origin.y}, {playheadX, origin.y + height},
+                m_Sequencer && m_Sequencer->Is_Active() ? IM_COL32(255, 220, 72, 230) : IM_COL32(200, 200, 200, 140), 1.5f);
         }
         if (!m_DragId.empty() && ImGui::IsMouseReleased(ImGuiMouseButton_Left))
         {
@@ -501,8 +740,45 @@ void CCharacterActionWorkbench::Apply_BoxGesture(const std::string& id, const RO
     {
         const auto found = std::find_if(m_CombatRows.begin(), m_CombatRows.end(), [&](const auto& row) { return row.strColliderId == id; });
         if (found == m_CombatRows.end() || found->bContact) return;
-        found->iTimeMs = static_cast<std::uint32_t>((std::clamp)(static_cast<int>(found->iTimeMs) + deltaMs, 0, 600000));
+        auto candidate = *found;
+        if (gesture == static_cast<int>(CompositionTimeline::BoxGesture::TRIM_END))
+        {
+            // The right edge stretches the repeat run. An authored interval keeps
+            // its spacing and only the count follows; a single hit grows into two.
+            const std::int64_t previous = static_cast<std::int64_t>(candidate.iRepeatMs) * (candidate.iRepeatCount > 0u ? candidate.iRepeatCount - 1u : 0u);
+            const std::int64_t span = (std::max)(std::int64_t{0}, previous + deltaMs);
+            if (candidate.iRepeatCount <= 1u || candidate.iRepeatMs == 0u)
+            {
+                if (span < static_cast<std::int64_t>(HIT_TICK_MS)) candidate.iRepeatCount = 1u;
+                else { candidate.iRepeatCount = 2u; candidate.iRepeatMs = static_cast<std::uint32_t>((std::min)(span, std::int64_t{100000})); }
+            }
+            else
+            {
+                const long long count = std::llround(static_cast<double>(span) / candidate.iRepeatMs) + 1ll;
+                candidate.iRepeatCount = static_cast<std::uint32_t>((std::clamp)(count, 1ll, 64ll));
+            }
+        }
+        else candidate.iTimeMs = static_cast<std::uint32_t>((std::clamp)(static_cast<int>(candidate.iTimeMs) + deltaMs, 0, static_cast<int>(MAX_EDITOR_TIME_MS)));
+        // Repeat count 0 is a rejected Save value; treat it as one hit here so the limit check does not underflow.
+        const std::uint64_t finalMs = candidate.iTimeMs + static_cast<std::uint64_t>(candidate.iRepeatCount > 0u ? candidate.iRepeatCount - 1u : 0u) * candidate.iRepeatMs;
+        const auto limit = Collider_LimitMs(candidate.iStageIndex);
+        if (candidate.iProjectileIndex == UINT32_MAX && finalMs > limit)
+        { m_Status = "Collider edit rejected: its last hit would pass the Server action/stage limit of " + std::to_string(limit) + " ms."; return; }
+        if (candidate == *found) return;
+        *found = std::move(candidate);
         m_CombatDirty = m_RowsDirty = m_PreviewDirty = true;
+        return;
+    }
+    if (kind == ROW_KIND::SOUND)
+    {
+        const auto found = std::find_if(m_Rows.begin(), m_Rows.end(), [&](const auto& value) { return value.id == id; });
+        if (found == m_Rows.end()) return;
+        // The lanes run on the action clock; the cue owner stores clip source ms.
+        const ROW moved = *found;
+        std::uint32_t source = 0u;
+        if (!Sound_SourceMs(moved, deltaMs, source))
+        { m_Status = "The Sound cue's source clip is no longer part of this action."; return; }
+        Apply_SoundEdit(moved, source, moved.asset);
         return;
     }
     auto* clip = Find_Clip(id);
@@ -539,27 +815,31 @@ void CCharacterActionWorkbench::Move_Clip(const std::string& id, const int direc
 void CCharacterActionWorkbench::Render_Details()
 {
     const auto found = std::find_if(m_Rows.begin(), m_Rows.end(), [&](const auto& row) { return row.id == m_SelectedRow; });
-    if (found == m_Rows.end()) { ImGui::TextDisabled("Select an Animation, Effect, Collider, Logic or Result box."); return; }
+    if (found == m_Rows.end()) { ImGui::TextDisabled("Select a Stage, Animation, Timing, Effect, Collider, Logic, Result, Sound or Camera box."); return; }
     const ROW row = *found;
     ImGui::TextWrapped("%s", row.label.c_str());
     ImGui::TextWrapped("%s", row.id.c_str());
     ImGui::Text("Stage %u | %u + %u ms", row.stage + 1u, row.start, row.duration);
     ImGui::TextWrapped("%s", row.detail.c_str());
-    if (row.kind == ROW_KIND::ANIMATION) Render_AnimationDetail(row);
-    else if (row.kind == ROW_KIND::COLLIDER || row.kind == ROW_KIND::LOGIC || row.kind == ROW_KIND::RESULT) Render_CombatDetail(row);
-    else
+    switch (row.kind)
     {
+    case ROW_KIND::ANIMATION: Render_AnimationDetail(row); break;
+    case ROW_KIND::COLLIDER: case ROW_KIND::LOGIC: case ROW_KIND::RESULT: Render_CombatDetail(row); break;
+    case ROW_KIND::STAGE: case ROW_KIND::GAP: case ROW_KIND::TIMING: Render_StageDetail(row); break;
+    case ROW_KIND::SOUND: Render_SoundDetail(row); break;
+    default:
         if (!row.asset.empty() && m_OpenEffect && ImGui::Button("Edit Effect resource")) m_OpenEffect(row.asset);
-        ImGui::SeparatorText("Animation cue owner");
-        ImGui::TextWrapped("Edit source cue timing, anchor and transform below; Save writes the same Product .animevents owner. Refresh action cues after saving.");
-        if (ImGui::Button("Refresh saved cues"))
-        {
-            ANIMATION_EFFECT_CUE_DOCUMENT staged;
-            if (CAnimationEffectCueDocument::Load(m_Asset, m_ClipNames, staged, m_Status))
-            { m_Cues = std::move(staged); m_RowsDirty = m_PreviewDirty = true; }
-        }
-        Render_CueEditor(row);
+        Render_CueOwnerSection(row);
+        break;
     }
+}
+void CCharacterActionWorkbench::Render_CueOwnerSection(const ROW& row)
+{
+    ImGui::SeparatorText("Animation cue owner");
+    ImGui::TextWrapped("Edit source cue timing, anchor and transform below; Save writes the same Product .animevents owner. Refresh action cues after saving.");
+    if (ImGui::Button("Refresh saved cues") && Refresh_Cues())
+        m_Status = "Reloaded the saved Animation cue rows.";
+    Render_CueEditor(row);
 }
 
 void CCharacterActionWorkbench::Render_AnimationDetail(const ROW& row)
@@ -575,6 +855,12 @@ void CCharacterActionWorkbench::Render_AnimationDetail(const ROW& row)
         std::uint32_t duration;
         if (Clip_Duration(candidate, duration)) { *clip = candidate; m_BindingsDirty = m_RowsDirty = m_PreviewDirty = true; }
         else m_Status = "The requested source window exceeds this model clip; the prior values were kept.";
+    }
+    if (std::uint32_t wall = 0u; Clip_Duration(*clip, wall))
+    {
+        // Derived like Rebuild_Rows' source window; playMs == 0 resolves to the clip remainder.
+        const auto sourceOut = clip->iSourceStartMs + static_cast<std::uint32_t>(std::ceil(wall * clip->fPlayRate));
+        ImGui::Text("Source out: %u ms (derived) | wall length: %u ms", sourceOut, wall);
     }
     ImGui::TextWrapped("The source length is divided by playback rate. Server action duration and judgement timing remain separately authored.");
     if (ImGui::Button("Earlier")) Move_Clip(row.id, -1);
@@ -606,6 +892,72 @@ void CCharacterActionWorkbench::Render_AnimationDetail(const ROW& row)
     }
     if (ImGui::Button("Save Animation##Detail")) m_SaveBindings = true;
     if (ImGui::CollapsingHeader("Edit this clip's cues")) Render_CueEditor(row);
+}
+
+void CCharacterActionWorkbench::Render_StageDetail(const ROW& row)
+{
+    ImGui::SeparatorText(row.kind == ROW_KIND::TIMING ? "Server timing (read-only)" : "Server stage (read-only)");
+    const STAGE_SUMMARY* summary = row.stage < m_StageSummaries.size() ? &m_StageSummaries[row.stage] : nullptr;
+    if (summary)
+    {
+        ImGui::Text("Clip wall end: %u ms", summary->clipEndMs);
+        if (!summary->hasTiming) ImGui::TextDisabled("PlayerSkills.json timing is unavailable for this stage.");
+        else
+        {
+            ImGui::Text("Server actionDurationMs: %u ms", summary->actionDurationMs);
+            if (summary->actionDurationMs >= summary->clipEndMs)
+                ImGui::Text("Post-delay: %u ms", summary->actionDurationMs - summary->clipEndMs);
+            else
+                ImGui::TextColored(WARNING_TEXT, "Clips overrun the Server action by %u ms; the publisher clamps hit times to actionDurationMs.",
+                    summary->clipEndMs - summary->actionDurationMs);
+        }
+    }
+    if (const auto* timing = Stage_Timing(row.stage))
+    {
+        ImGui::Text("hitTimeMs: %u", timing->hitTimeMs);
+        if (timing->combo) ImGui::Text("comboAdvanceMs: %u | input window: %u .. %u ms", timing->comboAdvanceMs, timing->inputOpenMs, timing->inputCloseMs);
+        ImGui::Text("Caster hit limit for Save Combat: %u ms", Collider_LimitMs(row.stage));
+    }
+    if (const auto* skill = CPlayerSkillCatalog::Find_ById(m_SkillId)) ImGui::Text("cooldownMs: %u", skill->iCooldownMs);
+    ImGui::TextWrapped("actionDurationMs and the other timing fields are Server truth in Data/Balance/PlayerSkills.json. Edit them in the F1 Balance Tool, run Publish-GameplayBalance.ps1 and restart Server; this Workbench never writes PlayerSkills.json. Save Animation changes only the presentation clips.");
+}
+
+void CCharacterActionWorkbench::Render_SoundDetail(const ROW& row)
+{
+    ImGui::SeparatorText("Sound cue (.animevents SOUND)");
+    ImGui::Text("Event: %s", row.asset.c_str());
+    ImGui::Text("Action clock: %u ms | source clip %s at %u ms", row.start, row.clip.c_str(), row.source);
+    const auto found = m_SoundEvents.find(row.asset);
+    if (found == m_SoundEvents.end()) ImGui::TextColored(WARNING_TEXT, "CharacterSoundCatalog.json has no event row for this class: %s", m_SoundStatus.c_str());
+    else if (found->second.empty()) ImGui::TextColored(WARNING_TEXT, "Unresolved: the catalog row has no wav variants yet, so runtime skips this cue.");
+    else
+    {
+        ImGui::Text("%zu equally weighted variant(s):", found->second.size());
+        for (const auto& variant : found->second) ImGui::BulletText("%s", variant.c_str());
+        if (ImGui::Button("Preview##Sound")) Preview_Sound(row.asset);
+        ImGui::SameLine();
+        ImGui::BeginDisabled(m_SoundPreviewHandle == 0u);
+        if (ImGui::Button("Stop preview##Sound")) Stop_SoundPreview();
+        ImGui::EndDisabled();
+    }
+    // One owner: CAnimation_Tool validates and replaces the .animevents document
+    // atomically, and refuses while its own cue draft is unsaved.
+    if (m_SoundEditRow != row.id) { m_SoundEditRow = row.id; m_SoundEditEvent = row.asset; m_SoundEditStartMs = row.source; }
+    if (ImGui::BeginCombo("Event##SoundEdit", m_SoundEditEvent.c_str()))
+    {
+        for (const auto& name : m_SoundEventNames)
+            if (ImGui::Selectable(name.c_str(), name == m_SoundEditEvent)) m_SoundEditEvent = name;
+        ImGui::EndCombo();
+    }
+    if (m_SoundEventNames.empty()) ImGui::TextDisabled("The class sound catalog is unavailable, so only the start time can be changed here.");
+    Edit_U32("Source start (ms)##SoundEdit", m_SoundEditStartMs, 60000);
+    ImGui::BeginDisabled(!m_AnimationTool || !Target_IsCurrent());
+    if (ImGui::Button("Apply##SoundEdit")) Apply_SoundEdit(row, m_SoundEditStartMs, m_SoundEditEvent);
+    ImGui::SameLine();
+    if (ImGui::Button("Remove##SoundEdit")) Remove_Sound(row);
+    ImGui::EndDisabled();
+    ImGui::TextWrapped("Dragging the Sound box moves the same row. Apply and Remove rewrite the Product .animevents owner immediately and the rows below rebuild from the saved file; Server gameplay is unaffected.");
+    Render_CueOwnerSection(row);
 }
 
 void CCharacterActionWorkbench::Render_CueEditor(const ROW& row)
@@ -652,10 +1004,17 @@ void CCharacterActionWorkbench::Render_CombatDetail(const ROW& row)
         ImGui::Text("Owner: Projectile %u | starts at %u ms", value.iProjectileIndex + 1u, value.iProjectileStartMs);
         ImGui::TextWrapped("The wire shows the authored shape at the caster root. Projectile travel and spatial contact are evaluated by the Server.");
     }
-    else ImGui::TextUnformatted("Owner: Caster");
+    else
+    {
+        ImGui::TextUnformatted("Owner: Caster");
+        const auto limit = Collider_LimitMs(value.iStageIndex);
+        const std::uint64_t finalMs = value.iTimeMs + static_cast<std::uint64_t>(value.iRepeatCount > 0u ? value.iRepeatCount - 1u : 0u) * value.iRepeatMs;
+        if (finalMs > limit) ImGui::TextColored(WARNING_TEXT, "Last hit at %llu ms passes the Server limit of %u ms; Save Combat will reject it.", static_cast<unsigned long long>(finalMs), limit);
+        else ImGui::Text("Last hit at %llu ms | Server limit %u ms", static_cast<unsigned long long>(finalMs), limit);
+    }
     if (value.bContact) ImGui::TextWrapped("CONTACT has no fixed hit time. Its box marks the projectile start; the Server triggers the result when contact occurs.");
-    changed |= Edit_U32("Repeat count", value.iRepeatCount, 256);
-    changed |= Edit_U32("Repeat interval (ms)", value.iRepeatMs);
+    changed |= Edit_U32("Repeat count", value.iRepeatCount, 64);
+    changed |= Edit_U32("Repeat interval (ms)", value.iRepeatMs, 100000);
     changed |= Edit_Double("Range (m)", value.fRange, .001f, 1000.f);
     changed |= Edit_Double("Width (m)", value.fWidth, 0.f, 1000.f);
     changed |= Edit_Double("Height (m)", value.fHeight, 0.f, 1000.f);
@@ -666,57 +1025,199 @@ void CCharacterActionWorkbench::Render_CombatDetail(const ROW& row)
     if (ImGui::Combo("Shape", &shape, "Circle / Ring\0Box\0Fan\0")) { value.iAreaType = static_cast<std::uint32_t>(shape + 1); changed = true; }
     if (changed) m_CombatDirty = m_RowsDirty = m_PreviewDirty = true;
     if (ImGui::Button("Save Combat##Detail")) m_SaveCombat = true;
-    ImGui::TextWrapped("Save updates HitShapes authoring. Publish gameplay and restart Server to activate the saved judgement changes.");
+    ImGui::SameLine();
+    ImGui::BeginDisabled(value.iProjectileIndex != UINT32_MAX);
+    if (ImGui::Button("Remove Collider")) m_RemoveCollider = value.strColliderId;
+    ImGui::EndDisabled();
+    Help_Marker("Retires this Collider / Logic / Result triplet in the HitShapes owner. The last hit of a stage without projectiles stays, because the publisher rejects an empty stage. Save Combat writes the change.");
+    ImGui::TextWrapped("Save updates HitShapes authoring only.");
+    if (m_CombatPublishPending)
+        ImGui::TextColored(WARNING_TEXT, "Saved HitShapes await Tools/GameplayPipeline/Publish-GameplayBalance.ps1 -Mode Publish and a Server restart.");
+    else ImGui::TextWrapped("Runtime needs Publish-GameplayBalance.ps1 -Mode Publish and a Server restart after Save.");
 }
 
 void CCharacterActionWorkbench::Render_Resources()
 {
-    const char* tabs[] = {"Animation", "Effect", "Collider / Result"};
-    for (int i = 0; i < 3; ++i)
-    { if (i) ImGui::SameLine(); if (ImGui::Selectable(tabs[i], m_ResourceKind == i, 0, {140.f, 0.f})) m_ResourceKind = i; }
-    ImGui::Separator();
-    if (m_ResourceKind == 0)
+    if (!ImGui::BeginTabBar("##CharacterResourceCategories")) return;
+    for (const char* category : RESOURCE_CATEGORIES)
     {
-        ImGui::Text("%s | %zu actual model clips", m_Asset.c_str(), m_ClipNames.size());
-        for (const auto& name : m_ClipNames)
-        {
-            if (ImGui::Selectable(name.c_str(), m_SelectedResource == name)) m_SelectedResource = name;
-            if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
-            {
-                COMPOSITION_ANIMATION_RESOURCE resource; resource.strTargetAssetName = m_Asset; resource.strRuntimeClip = name;
-                Append_CompositionAnimationResource(resource, false, m_Status);
-            }
-        }
-        return;
+        if (!ImGui::BeginTabItem(category)) continue;
+        const std::string_view name = category;
+        if (name == "Animation") Render_AnimationResources();
+        else if (name == "Logic") Render_LogicResources();
+        else if (name == "Effect") Render_EffectResources();
+        else if (name == "Collider") Render_ColliderResources();
+        else if (name == "Sound") Render_SoundResources();
+        else if (name == "Camera") Render_CameraResources();
+        else Render_PatternResources();
+        ImGui::EndTabItem();
     }
-    if (m_ResourceKind == 1)
+    ImGui::EndTabBar();
+}
+void CCharacterActionWorkbench::Render_AnimationResources()
+{
+    ImGui::Text("%s | %zu actual model clips", m_Asset.c_str(), m_ClipNames.size());
+    for (const auto& name : m_ClipNames)
     {
-        if (!m_EffectInventoryLoaded || ImGui::Button("Refresh Effect resources"))
+        if (ImGui::Selectable(name.c_str(), m_SelectedResource == name)) m_SelectedResource = name;
+        if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
         {
-            std::vector<CEffectAuthoringResourceTree::RESOURCE> resources;
-            if (CEffectAuthoringResourceTree::Read_V1Inventory(resources, m_Status))
-            {
-                std::vector<std::string> ids;
-                for (const auto& resource : resources) ids.push_back(resource.strAssetId);
-                m_EffectIds = std::move(ids); m_EffectInventoryLoaded = true;
-            }
+            COMPOSITION_ANIMATION_RESOURCE resource; resource.strTargetAssetName = m_Asset; resource.strRuntimeClip = name;
+            Append_CompositionAnimationResource(resource, false, m_Status);
         }
-        std::set<std::string> linked;
-        for (const auto& row : m_Rows) if (row.kind == ROW_KIND::EFFECT) linked.insert(row.asset);
-        for (const auto& id : m_EffectIds)
-        {
-            const std::string label = (linked.contains(id) ? "[Linked] " : "") + id;
-            if (ImGui::Selectable(label.c_str(), m_SelectedResource == id)) m_SelectedResource = id;
-            if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && m_OpenEffect) m_OpenEffect(id);
-        }
-        return;
     }
+}
+void CCharacterActionWorkbench::Render_LogicResources()
+{
+    const auto* skill = CPlayerSkillCatalog::Find_ById(m_SkillId);
+    if (!skill || !Selected_Binding()) { ImGui::TextDisabled("Select an action to list its Server timing and hit logic."); return; }
+    ImGui::SeparatorText("Server timing (PlayerSkills.json, read-only)");
+    ImGui::Text("cooldownMs: %u", skill->iCooldownMs);
+    const auto found = m_SkillTimings.find(m_SkillId);
+    if (found == m_SkillTimings.end()) ImGui::TextDisabled("Timing rows are unavailable; fix PlayerSkills.json and Reload.");
+    else if (ImGui::BeginTable("##CharacterTiming", 6, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp))
+    {
+        ImGui::TableSetupColumn("Stage"); ImGui::TableSetupColumn("actionDurationMs"); ImGui::TableSetupColumn("hitTimeMs");
+        ImGui::TableSetupColumn("comboAdvanceMs"); ImGui::TableSetupColumn("inputOpenMs"); ImGui::TableSetupColumn("inputCloseMs");
+        ImGui::TableHeadersRow();
+        for (std::size_t i = 0u; i < found->second.size(); ++i)
+        {
+            const auto& timing = found->second[i];
+            ImGui::TableNextRow();
+            ImGui::TableNextColumn(); ImGui::Text("%zu", i + 1u);
+            ImGui::TableNextColumn(); ImGui::Text("%u", timing.actionDurationMs);
+            ImGui::TableNextColumn(); ImGui::Text("%u", timing.hitTimeMs);
+            if (timing.combo)
+            {
+                ImGui::TableNextColumn(); ImGui::Text("%u", timing.comboAdvanceMs);
+                ImGui::TableNextColumn(); ImGui::Text("%u", timing.inputOpenMs);
+                ImGui::TableNextColumn(); ImGui::Text("%u", timing.inputCloseMs);
+            }
+            else for (int column = 0; column < 3; ++column) { ImGui::TableNextColumn(); ImGui::TextDisabled("-"); }
+        }
+        ImGui::EndTable();
+    }
+    ImGui::TextWrapped("Edit these in the F1 Balance Tool; Publish-GameplayBalance.ps1 and a Server restart apply them. The timeline Logic lane mirrors them as Timing boxes.");
+    ImGui::SeparatorText("Hit logic (HitShapes, DURATION / AREA_OVERLAP)");
+    std::size_t count = 0u;
     for (const auto& value : m_CombatRows)
-        if (value.iSkillId == m_SkillId)
+    {
+        if (value.iSkillId != m_SkillId) continue;
+        ++count;
+        const std::string label = value.strLogicId + " -> " + value.strResultKind;
+        if (ImGui::Selectable(label.c_str(), m_SelectedRow == value.strLogicId)) m_SelectedRow = value.strLogicId;
+    }
+    if (!count) ImGui::TextDisabled("This skill has no HitShapes rows; the Server uses hitTimeMs and maximumRange.");
+}
+void CCharacterActionWorkbench::Render_EffectResources()
+{
+    if (!m_EffectInventoryLoaded || ImGui::Button("Refresh Effect resources"))
+    {
+        std::vector<CEffectAuthoringResourceTree::RESOURCE> resources;
+        if (CEffectAuthoringResourceTree::Read_V1Inventory(resources, m_Status))
         {
-            const std::string label = value.strResultKind + " | " + value.strColliderId;
-            if (ImGui::Selectable(label.c_str(), m_SelectedRow == value.strColliderId)) m_SelectedRow = value.strColliderId;
+            std::vector<std::string> ids;
+            for (const auto& resource : resources) ids.push_back(resource.strAssetId);
+            m_EffectIds = std::move(ids); m_EffectInventoryLoaded = true;
         }
+    }
+    std::set<std::string> linked;
+    for (const auto& row : m_Rows) if (row.kind == ROW_KIND::EFFECT) linked.insert(row.asset);
+    for (const auto& id : m_EffectIds)
+    {
+        const std::string label = (linked.contains(id) ? "[Linked] " : "") + id;
+        if (ImGui::Selectable(label.c_str(), m_SelectedResource == id)) m_SelectedResource = id;
+        if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && m_OpenEffect) m_OpenEffect(id);
+    }
+}
+void CCharacterActionWorkbench::Render_ColliderResources()
+{
+    std::size_t count = 0u;
+    for (const auto& value : m_CombatRows)
+    {
+        if (value.iSkillId != m_SkillId) continue;
+        ++count;
+        const std::string label = value.strResultKind + " | " + value.strColliderId;
+        if (ImGui::Selectable(label.c_str(), m_SelectedRow == value.strColliderId)) m_SelectedRow = value.strColliderId;
+    }
+    if (!count) ImGui::TextDisabled("This skill has no HitShapes colliders.");
+    ImGui::Separator();
+    ImGui::BeginDisabled(!Selected_Binding());
+    if (ImGui::Button("Add Collider")) m_AddCollider = true;
+    ImGui::EndDisabled();
+    Help_Marker("Creates skill<id>.stage<n>.caster.hit<k>.<result> in the HitShapes owner at the playhead of the selected stage. A selected collider is copied as the shape prototype; otherwise the row defaults are used. Save Combat writes it.");
+}
+void CCharacterActionWorkbench::Render_SoundResources()
+{
+    ImGui::Text("%s | %zu catalog events", m_Asset.c_str(), m_SoundEventNames.size());
+    if (m_SoundEventNames.empty()) ImGui::TextWrapped("%s", m_SoundStatus.c_str());
+    std::set<std::string> linked;
+    for (const auto& row : m_Rows) if (row.kind == ROW_KIND::SOUND) linked.insert(row.asset);
+    for (const auto& name : m_SoundEventNames)
+    {
+        const auto variants = m_SoundEvents.find(name);
+        const std::size_t variantCount = variants == m_SoundEvents.end() ? 0u : variants->second.size();
+        const std::string label = (linked.contains(name) ? "[Linked] " : "") + name +
+            (variantCount ? " (" + std::to_string(variantCount) + ")" : " (unresolved)");
+        if (ImGui::Selectable(label.c_str(), m_SelectedResource == name)) m_SelectedResource = name;
+        if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) Preview_Sound(name);
+    }
+    ImGui::Separator();
+    ImGui::BeginDisabled(m_SelectedResource.empty() || !m_AnimationTool || !Target_IsCurrent());
+    if (ImGui::Button("Add Sound at playhead")) Add_SoundAtPlayhead(m_SelectedResource);
+    ImGui::EndDisabled();
+    Help_Marker("The selected catalog event becomes a SOUND row on the Animation box under the playhead, at that box's own source time. CAnimation_Tool writes the .animevents owner atomically.");
+    ImGui::TextWrapped("Double-click previews the first wav variant. Select an event and Add Sound at playhead, then move or retire it from the Sound box in Box Detail.");
+}
+void CCharacterActionWorkbench::Render_CameraResources()
+{
+    ImGui::SeparatorText("Camera shake cues (.animevents SHAKE, read-only)");
+    std::size_t count = 0u;
+    for (const auto& row : m_Rows)
+    {
+        if (row.kind != ROW_KIND::SHAKE) continue;
+        const auto cue = std::find_if(m_Cues.Shakes.begin(), m_Cues.Shakes.end(),
+            [&](const auto& value) { return value.strClipName == row.clip && value.iStartMs == row.source; });
+        if (cue == m_Cues.Shakes.end()) continue;
+        ++count;
+        char label[256]{};
+        std::snprintf(label, sizeof(label), "%s @ %u ms | %.2fs (in %.2f / out %.2f) | fwd %.2f right %.2f up %.2f fov %.2f",
+            row.clip.c_str(), row.source, cue->Spec.fDurationSeconds, cue->Spec.fBlendInSeconds, cue->Spec.fBlendOutSeconds,
+            cue->Spec.Forward.fAmplitude, cue->Spec.Right.fAmplitude, cue->Spec.Up.fAmplitude, cue->Spec.Fov.fAmplitude);
+        if (ImGui::Selectable(label, m_SelectedRow == row.id)) m_SelectedRow = row.id;
+    }
+    if (!count) ImGui::TextDisabled("The selected action has no SHAKE rows inside its clip source windows.");
+    ImGui::TextWrapped("Camera shakes are Character presentation only; the payload is authored on the SHAKE row of the source cue editor.");
+}
+void CCharacterActionWorkbench::Render_PatternResources()
+{
+    const auto* skill = CPlayerSkillCatalog::Find_ById(m_SkillId);
+    if (!skill || m_ClassIndex < 0 || !Selected_Binding()) { ImGui::TextDisabled("Select an action in Composition Actions."); return; }
+    ImGui::Text("Class: %s (%s)", CLASSES[m_ClassIndex].label, m_Asset.c_str());
+    ImGui::Text("Action: %s | %s", skill->strActionId.c_str(), skill->strDisplayName.c_str());
+    ImGui::Text("Skill %u | slot %s | %s | %zu Server stage(s)", skill->iSkillId, skill->strInputSlot.c_str(),
+        Skill_KindLabel(skill->eSkillKind), Selected_Binding()->Stages.size());
+    if (m_Stage) ImGui::Text("Selected stage: %u", *m_Stage + 1u); else ImGui::TextUnformatted("All stages");
+    ImGui::TextWrapped("A player skill is the Character pattern unit. Its id, slot and stage count come from PlayerSkills.json and cannot be created or renamed here.");
+}
+
+bool CCharacterActionWorkbench::Preview_Sound(const std::string& eventName)
+{
+    Stop_SoundPreview();
+    const auto found = m_SoundEvents.find(eventName);
+    if (found == m_SoundEvents.end() || found->second.empty()) { m_Status = "No wav variant is resolved for " + eventName; return false; }
+    const auto path = CRuntimeAssetRoot::Resolve(found->second.front());
+    if (path.empty()) { m_Status = "Cannot resolve sound asset: " + found->second.front(); return false; }
+    m_SoundPreviewHandle = CGameInstance::Get().Play_SoundCue(path.wstring(), 1.f);
+    if (!m_SoundPreviewHandle) { m_Status = "Sound preview failed to start: " + found->second.front(); return false; }
+    m_Status = "Previewing " + found->second.front();
+    return true;
+}
+void CCharacterActionWorkbench::Stop_SoundPreview()
+{
+    if (!m_SoundPreviewHandle) return;
+    CGameInstance::Get().Stop_SoundCue(m_SoundPreviewHandle);
+    m_SoundPreviewHandle = 0u;
 }
 
 bool CCharacterActionWorkbench::Can_AppendCompositionAnimationResource(const COMPOSITION_ANIMATION_RESOURCE& resource,
@@ -761,6 +1262,112 @@ bool CCharacterActionWorkbench::Append_CompositionAnimationResource(const COMPOS
     return true;
 }
 
+std::uint32_t CCharacterActionWorkbench::Playhead_Ms() const
+{
+    return m_Sequencer && !m_PreviewDirty ? m_Sequencer->ClockMs() : m_PreviewClock;
+}
+bool CCharacterActionWorkbench::Add_Collider()
+{
+    const auto* binding = Selected_Binding();
+    if (!binding || m_ClassIndex < 0) { m_Status = "Select a Character action before adding a collider."; return false; }
+    if (!m_Stage && binding->Stages.size() > 1u)
+    { m_Status = "Select one Server stage before adding a collider; the stage count is fixed by PlayerSkills."; return false; }
+    const std::uint32_t stage = m_Stage.value_or(0u);
+    // A selected collider is the shape prototype; otherwise the row defaults apply.
+    CHARACTER_ACTION_COMBAT_ROW prototype;
+    const auto selected = std::find_if(m_CombatRows.begin(), m_CombatRows.end(), [&](const auto& value) {
+        return value.strColliderId == m_SelectedRow || value.strLogicId == m_SelectedRow || value.strResultId == m_SelectedRow; });
+    if (selected != m_CombatRows.end() && selected->iSkillId == m_SkillId) prototype = *selected;
+    const std::uint32_t stageStart = stage < m_StageSummaries.size() ? m_StageSummaries[stage].startMs : 0u;
+    const std::uint32_t clock = Playhead_Ms();
+    prototype.iTimeMs = clock > stageStart ? (std::min)(clock - stageStart, Collider_LimitMs(stage)) : 0u;
+    std::string created;
+    if (!m_Combat.Insert_CasterHit(m_SkillId, stage, prototype, created, m_Status)) return false;
+    const auto& rows = m_Combat.Get_Rows();
+    const auto row = std::find_if(rows.begin(), rows.end(), [&](const auto& value) { return value.strColliderId == created; });
+    if (row == rows.end()) { m_Status = "The combat owner did not return the created collider."; return false; }
+    m_CombatRows.push_back(*row);
+    m_SelectedRow = created;
+    m_CombatDirty = m_RowsDirty = m_PreviewDirty = true;
+    return true;
+}
+bool CCharacterActionWorkbench::Remove_Collider(const std::string& colliderId)
+{
+    if (!m_Combat.Remove_CasterHit(colliderId, m_Status)) return false;
+    const auto found = std::find_if(m_CombatRows.begin(), m_CombatRows.end(),
+        [&](const auto& value) { return value.strColliderId == colliderId; });
+    if (found != m_CombatRows.end())
+    {
+        if (m_SelectedRow == found->strColliderId || m_SelectedRow == found->strLogicId || m_SelectedRow == found->strResultId)
+            m_SelectedRow.clear();
+        m_CombatRows.erase(found);
+    }
+    m_CombatDirty = m_RowsDirty = m_PreviewDirty = true;
+    return true;
+}
+bool CCharacterActionWorkbench::Refresh_Cues()
+{
+    ANIMATION_EFFECT_CUE_DOCUMENT staged;
+    std::string status;
+    if (!CAnimationEffectCueDocument::Load(m_Asset, m_ClipNames, staged, status))
+    { m_Status += " The saved cue document could not be re-read: " + status; return false; }
+    m_Cues = std::move(staged); m_RowsDirty = m_PreviewDirty = true;
+    return true;
+}
+bool CCharacterActionWorkbench::Sound_SourceMs(const ROW& row, const int deltaMs, std::uint32_t& sourceMs) const
+{
+    const auto* binding = Selected_Binding();
+    if (!binding || row.stage >= binding->Stages.size()) return false;
+    float rate = 0.f;
+    for (const auto& clip : binding->Stages[row.stage].Clips)
+        if (clip.strClipName == row.clip) { rate = clip.fPlayRate; break; }
+    if (!std::isfinite(rate) || rate <= 0.f) return false;
+    const int moved = static_cast<int>(row.source) + static_cast<int>(std::lround(deltaMs * rate));
+    sourceMs = static_cast<std::uint32_t>((std::max)(0, moved));
+    return true;
+}
+bool CCharacterActionWorkbench::Apply_SoundEdit(const ROW& row, const std::uint32_t startMs, const std::string& eventName)
+{
+    if (!m_AnimationTool) { m_Status = "The Animation cue owner is unavailable."; return false; }
+    if (!Target_IsCurrent()) { m_Status = "Restore the selected Character model before editing its Sound cues."; return false; }
+    if (!m_AnimationTool->Apply_CharacterActionSoundEdit(m_Asset, row.clip, row.source, startMs, eventName, m_Status)) return false;
+    Refresh_Cues();
+    // The saved row identity carries the event and its source time, so follow it.
+    const auto owner = row.id.find(".sound.");
+    m_SelectedRow = owner == std::string::npos ? std::string{} :
+        row.id.substr(0u, owner) + ".sound." + eventName + "." + std::to_string(startMs);
+    m_SoundEditRow.clear();
+    return true;
+}
+bool CCharacterActionWorkbench::Remove_Sound(const ROW& row)
+{
+    if (!m_AnimationTool) { m_Status = "The Animation cue owner is unavailable."; return false; }
+    if (!Target_IsCurrent()) { m_Status = "Restore the selected Character model before editing its Sound cues."; return false; }
+    if (!m_AnimationTool->Remove_CharacterActionSoundEvent(m_Asset, row.clip, row.source, row.asset, m_Status)) return false;
+    Refresh_Cues();
+    m_SelectedRow.clear(); m_SoundEditRow.clear();
+    return true;
+}
+bool CCharacterActionWorkbench::Add_SoundAtPlayhead(const std::string& eventName)
+{
+    if (eventName.empty()) { m_Status = "Select a catalog sound event first."; return false; }
+    if (!m_AnimationTool) { m_Status = "The Animation cue owner is unavailable."; return false; }
+    if (!Target_IsCurrent()) { m_Status = "Restore the selected Character model before adding a Sound cue."; return false; }
+    const std::uint32_t clock = Playhead_Ms();
+    for (const auto& row : m_Rows)
+    {
+        if (row.kind != ROW_KIND::ANIMATION || clock < row.start || clock >= row.start + row.duration) continue;
+        const auto* clip = Find_Clip(row.id);
+        if (!clip || !std::isfinite(clip->fPlayRate) || clip->fPlayRate <= 0.f) break;
+        const auto source = clip->iSourceStartMs +
+            static_cast<std::uint32_t>(std::lround((clock - row.start) * clip->fPlayRate));
+        if (!m_AnimationTool->Add_CharacterActionSoundEvent(m_Asset, row.clip, source, eventName, m_Status)) return false;
+        Refresh_Cues();
+        return true;
+    }
+    m_Status = "Move the playhead onto an Animation box before adding a Sound cue.";
+    return false;
+}
 bool CCharacterActionWorkbench::Save_Bindings()
 {
     if (!Target_IsCurrent()) { m_Status = "Restore the selected Character model before saving source windows."; return false; }
@@ -781,8 +1388,8 @@ bool CCharacterActionWorkbench::Save_Bindings()
 bool CCharacterActionWorkbench::Save_Combat()
 {
     if (!m_Combat.Save_Atomic(m_CombatRows, m_Status)) return false;
-    m_CombatDirty = false;
-    m_Status += " Publish gameplay and restart Server to apply.";
+    m_CombatDirty = false; m_CombatPublishPending = true;
+    m_Status += " Run Tools/GameplayPipeline/Publish-GameplayBalance.ps1 -Mode Publish and restart Server to apply.";
     return true;
 }
 }

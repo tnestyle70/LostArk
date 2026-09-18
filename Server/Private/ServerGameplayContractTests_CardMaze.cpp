@@ -206,20 +206,20 @@ int LostArk::Server::Run_ServerCardMazeContractTests()
 	maze.Commit(solo);
 	tests.Require(maze.Is_SoloHunter(1u) && solo[1u].eCardMazeRole == CARD_MAZE_ROLE::HUNTER &&
 		solo[1u].eCardMazeSuit == soloSpawn.eSuit && soloSpawn.eSuit != MECHANIC_CARD_SYMBOL::NONE &&
-		solo[1u].iCardMazeKillTarget == 3u && (solo[1u].CardMaze.flags & 1u),
+		solo[1u].iCardMazeKillTarget == 1u && (solo[1u].CardMaze.flags & 1u),
 		"Solo receives floor-mark hunter suit and initial telescope overhead together");
 	tests.Require(navigation.Is_PointWalkableExact(soloSpawn.fPositionX, soloSpawn.fPositionZ) &&
 		!Maze::In_SafeZone(soloSpawn.fPositionX, soloSpawn.fPositionZ), "Solo target is on a corridor outside central immunity");
 	tests.Require(maze.Toggle_Telescope(solo[1u]) && !(solo[1u].CardMaze.flags & 1u) &&
 		maze.Toggle_Telescope(solo[1u]), "Solo may toggle telescope without losing the hunter role");
-	for (unsigned kill = 0u; kill < 3u; ++kill)
+	for (unsigned kill = 0u; kill < Maze::KILL_TARGET; ++kill)
 	{
 		SERVER_WORLD_ENTITY target{}; target.iNetEntityId = 900u + kill;
 		maze.Register_Target(target.iNetEntityId, soloSpawn.eSuit);
 		tests.Require(maze.Can_Hit(solo[1u], target.iNetEntityId), "Solo may strike its own matching target");
 		const auto outcome = maze.On_TargetHit(solo[1u], target, true);
 		tests.Require(outcome.bStartMarch == (kill == 0u) && outcome.bKillCounted &&
-			outcome.bHunterComplete == (kill == 2u), "Solo first hit alone starts Seto march, third kill unlocks exit");
+			outcome.bHunterComplete == (kill + 1u == Maze::KILL_TARGET), "Solo first matching kill starts Seto march and unlocks its exit");
 		maze.Retire_Target(target.iNetEntityId);
 	}
 	tests.Require(!maze.All_LivingCentral(solo), "Solo still must take an exit before completion");
@@ -251,7 +251,7 @@ int LostArk::Server::Run_ServerCardMazeContractTests()
 	for (PLAYER_ID id = 2u; id <= 4u; ++id) suits.insert(players[id].eCardMazeSuit);
 	tests.Require(suits.size() == 3u && !suits.contains(MECHANIC_CARD_SYMBOL::NONE), "Assigned hunter suits are distinct and valid");
 	for (PLAYER_ID id = 2u; id <= 4u; ++id)
-	for (unsigned kill = 0u; kill < 3u; ++kill)
+	for (unsigned kill = 0u; kill < Maze::KILL_TARGET; ++kill)
 	{
 		SERVER_WORLD_ENTITY target{}; target.iNetEntityId = 1000u + id * 10u + kill;
 		target.eKind = WORLD_BOOTSTRAP_KIND::MONSTER; target.strSpawnGroupId = Maze::SPAWN_GROUP_TAG;
@@ -270,7 +270,7 @@ int LostArk::Server::Run_ServerCardMazeContractTests()
 		maze.Retire_Target(target.iNetEntityId);
 	}
 	tests.Require(maze.Get_Phase() == Maze::PHASE::HUNTING && !maze.All_LivingCentral(players),
-		"Three stacks alone never complete the maze even when everyone stands centrally");
+		"The kill target alone never completes the maze before taking an exit");
 	players[2u].CardMaze.flags |= 4u; players[2u].CardMaze.exitX = 10.f;
 	maze.Reset_Progress(players[2u]);
 	tests.Require(players[2u].iCardMazeKills == 0u && !(players[2u].CardMaze.flags & 4u) && players[2u].CardMaze.exitX == 0.f,

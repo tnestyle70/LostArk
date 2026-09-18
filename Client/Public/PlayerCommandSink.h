@@ -130,6 +130,11 @@ public:
 		std::uint8_t slotIndex,
 		float aimX,
 		float aimZ) = 0;
+	// World map square hole click. holeId is the 1-based row of the zone's square-hole
+	// document; the Server owns the song lock and (later) the teleport.
+	virtual bool Request_UseSquareHole(
+		std::uint32_t clientSequence,
+		std::uint16_t holeId) = 0;
 	virtual bool Request_ChangeCharacterClass(
 		std::uint32_t clientSequence,
 		LostArk::Shared::CHARACTER_CLASS_ID characterClass) = 0;

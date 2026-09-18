@@ -1660,6 +1660,19 @@ void Client::CClientReplication::Collect_MinimapMarkers(
 		if (ReadGroundXZ(pTransform, marker.fX, marker.fZ))
 			outSnapshot.Bosses.push_back(marker);
 	}
+
+	for (const auto& [entityId, presentation] : m_WorldEntities)
+	{
+		(void)entityId;
+		if (LostArk::Shared::WORLD_ENTITY_KIND::NPC != presentation.eKind)
+			continue;
+		const std::shared_ptr<CNpc> pNpc = presentation.pNpc.lock();
+		MINIMAP_MARKER_SNAPSHOT::NPC_MARKER marker{};
+		if (nullptr == pNpc || !ReadGroundXZ(pNpc->Get_Transform(), marker.fX, marker.fZ))
+			continue;
+		marker.strPlacementId = presentation.strPlacementId;
+		outSnapshot.Npcs.push_back(std::move(marker));
+	}
 }
 
 void Client::CClientReplication::Collect_KoukuPresentationViews(

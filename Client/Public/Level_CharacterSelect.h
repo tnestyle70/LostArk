@@ -10,6 +10,7 @@
 #include "EquipmentPresentationCatalog.h"
 #include "EquipmentPresentationService.h"
 #include "MapPlacementRuntime.h"
+#include "MapAuthoringHost.h"
 #include "Network/SessionDiagnostic.h"
 #include "Network/PacketType.h"
 #include "PlayerController.h"
@@ -58,6 +59,9 @@ struct CHARACTER_SELECT_FLOOR_SWAP_SETTINGS
 #endif
 
 class CLevel_CharacterSelect final : public CLevel
+#ifdef _DEBUG
+	, public IMapAuthoringHost
+#endif
 {
 private:
 	enum class MODE
@@ -221,6 +225,10 @@ public:
 	bool_t Is_DebugRaidEntryPreviewOpen() const;
 #endif
 	static CLevel_CharacterSelect* Get_Active() { return s_pActiveInstance; }
+	/* The live map this Level staged from LV_LOBBY_CLASSSELECT_SL00. Debug
+	   tools edit its entries in place; the Level keeps owning them. */
+	CMapPlacementRuntime& Get_MapRuntime() { return m_MapRuntime; }
+	const CMapPlacementRuntime& Get_MapRuntime() const { return m_MapRuntime; }
 	/* The replicated local player (nullptr until the entry snapshot spawned it) -- read-only
 	   presentation access for the character info window's live portrait. */
 	shared_ptr<CCharacter> Get_LocalCharacter() const
@@ -252,6 +260,48 @@ public:
 	shared_ptr<CCamera_Free> Get_DebugCamera() const { return m_pCamera; }
 	CPlayerController& Get_DebugPlayerController() { return m_PlayerController; }
 	const string& Debug_GetNavigationStatus() const { return m_strStatus; }
+
+	/* IMapAuthoringHost: the Debug Map Tool edits this Level's live map in
+	   place. Character Select owns no Deploy props and plays no map
+	   self-motion, so the Deploy runtime is null and the active flag has
+	   nothing to pause. */
+	uint32_t Get_MapAuthoringLevelIndex() const override
+	{ return ETOUI(LEVEL::CHARACTER_SELECT); }
+	const char_t* Get_MapAuthoringLabel() const override { return "Character Select"; }
+	const CMapAssetCatalog& Get_MapAuthoringCatalog() const override
+	{ return Get_MapRuntime().Get_Catalog(); }
+	std::vector<MAP_RUNTIME_PLACED_ENTRY>& Get_MapAuthoringPlacements() override
+	{ return Get_MapRuntime().Get_MutablePlacements(); }
+	std::vector<MAP_RUNTIME_STATIC_BATCH_ENTRY>& Get_MapAuthoringBatches() override
+	{ return Get_MapRuntime().Get_AuthoringBatches(); }
+	CDeployPropRuntime* Get_MapAuthoringDeployRuntime() override { return nullptr; }
+	bool_t Can_ChangeMapAuthoringStructure(std::string& outReason) const override
+	{
+		if (Is_CustomizingOpen() || m_isCustomizingStageHidden)
+		{
+			outReason = "Close character customization before editing map objects; the stage is hidden while it is open.";
+			return false;
+		}
+		if (m_MapRuntime.Has_DebugPlacementPreview())
+		{
+			outReason = "Restore the original central floor (F1 Floor Swap) before editing map objects.";
+			return false;
+		}
+		return true;
+	}
+	void Rebase_MapAuthoringSelfMotions(const std::vector<MAP_PLACEMENT_RECORD>& records) override
+	{ Get_MapRuntime().Rebase_AuthoringSelfMotions(records); }
+	void Set_MapAuthoringActive(bool_t) override {}
+	CWorldSequencePlayer::TARGET_SET Make_MapAuthoringTargets() override
+	{
+		CWorldSequencePlayer::TARGET_SET targets;
+		targets.levelIndex = ETOUI(LEVEL::CHARACTER_SELECT);
+		targets.pCatalog = &m_MapRuntime.Get_Catalog();
+		targets.pPlacements = &m_MapRuntime.Get_MutablePlacements();
+		targets.device = m_pDevice;
+		targets.context = m_pContext;
+		return targets;
+	}
 #endif
 
 private:

@@ -39,7 +39,7 @@
 
 namespace
 {
-	bool Has_SourceFixedAxisSprite(const Client::EFFECT_ELEMENT_DESC& Element)
+	bool Has_SourceLockedAxisSprite(const Client::EFFECT_ELEMENT_DESC& Element)
 	{
 		if (!Element.SourceRecipe.bEnabled || Element.SourceRecipe.strRendererShape != "sprite")
 			return false;
@@ -63,8 +63,8 @@ namespace
 			if (Value == Module.Literals.end() || Value->eKind != Client::EFFECT_SOURCE_LITERAL_KIND::STRING)
 				continue;
 			const std::string_view Alignment = Value->strString;
-			// Preserve runtime module order: later Required or rotate-axis
-			// modules can replace an earlier fixed-axis orientation.
+			// Preserve runtime module order: later Required modules can replace
+			// an earlier fixed or rotating axis orientation.
 			if (bRequired)
 			{
 				if (Alignment.ends_with("psa_rectangle") || Alignment.ends_with("psa_velocity") ||
@@ -75,7 +75,7 @@ namespace
 				Alignment.ends_with("epal_negative_y") || Alignment.ends_with("epal_negative_z"))
 				bFixedAxis = true;
 			else if (Alignment.ends_with("epal_rotate_x") || Alignment.ends_with("epal_rotate_y") ||
-				Alignment.ends_with("epal_rotate_z")) bFixedAxis = false;
+				Alignment.ends_with("epal_rotate_z")) bFixedAxis = true;
 		}
 		return bFixedAxis;
 	}
@@ -1416,13 +1416,36 @@ void Client::CEffect_Tool::Render_KindDetail(
 		}
 		if (!bMeshParticle)
 		{
-			const bool bSourceFixedAxis = Has_SourceFixedAxisSprite(Element);
+			if (Is_EffectOwnerRadialMaskCarrier(Element))
+			{
+				auto& Mask = Detail.Sprite.OwnerRadialMask;
+				if (ImGui::Checkbox("Effect origin radial mask", &Mask.bEnabled))
+				{
+					if (!Mask.bEnabled) Mask = {};
+					bChanged = true;
+				}
+				if (Mask.bEnabled)
+				{
+					bChanged |= ImGui::DragFloat2("Mask Center XZ", &Mask.vCenterXZ.x, 0.05f);
+					bChanged |= ImGui::DragFloat("Mask Radius", &Mask.fRadius, 0.05f,
+						0.001f, 10000.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+					Mask.fFeather = (std::min)(Mask.fFeather, Mask.fRadius);
+					bChanged |= ImGui::DragFloat("Mask Feather", &Mask.fFeather, 0.01f,
+						0.f, Mask.fRadius, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+					ImGui::TextDisabled("PROJECT_AUTHORED coverage in Effect-origin XZ units. Global effect scale applies once; particle size does not resize the mask.");
+				}
+			}
+			const bool bSourceFixedAxis = Has_SourceLockedAxisSprite(Element);
 			if (bSourceFixedAxis)
 			{
-				bChanged |= ImGui::Checkbox("Axis lock follows emitter rotation",
-					&Detail.Sprite.bFollowEmitterAxisRotation);
+				if (ImGui::Checkbox("Axis lock follows emitter rotation",
+					&Detail.Sprite.bFollowEmitterAxisRotation))
+				{
+					if (Detail.Sprite.bFollowEmitterAxisRotation) Detail.Particle.bBillboard = true;
+					bChanged = true;
+				}
 				ImGui::TextDisabled(
-					"Apply Element and Group XYZ rotation to the locked plane. Local Space follows the current emitter; world space keeps its birth rotation.");
+					"Apply Element and Group XYZ rotation to the source axis. Rotate-axis sprites still face the camera around that axis. Local Space follows the current emitter; world space keeps its birth rotation.");
 				if (Element.SourceTransformTrack && Detail.Particle.bLocalSpace &&
 					!Detail.Sprite.bFollowEmitterAxisRotation)
 					ImGui::TextDisabled(
@@ -1434,6 +1457,8 @@ void Client::CEffect_Tool::Render_KindDetail(
 				&Detail.Particle.bBillboard);
 			if (bOrientationLocksParticleBasis)
 				ImGui::EndDisabled();
+			if (Element.SourceRecipe.bEnabled && ImGui::IsItemHovered())
+				ImGui::SetTooltip("Source sprites use this for their camera/axis facing and pivot. Disabling it uses a fixed raw quad; it does not make the source axis follow rotation.");
 			if (Detail.Particle.bBillboard)
 			{
 				// Roll spins within the resolved camera-facing or source-axis plane.

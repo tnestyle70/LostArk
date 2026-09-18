@@ -129,6 +129,8 @@ namespace LostArk::Server
 		std::vector<std::string> FollowupPatternIds;
         std::vector<KOUKUSAYDON_LOGIC_CAPTURE_REQUEST> CaptureRequests;
 		bool bEndPatternEarly = false;
+		// Set only after an ending counter hit has committed its validated landing.
+		bool bCounterSuccessLanded = false;
 		std::string strStatus;
 	};
 
@@ -366,7 +368,7 @@ namespace LostArk::Server
 			bool bAllComplete = false;
 		};
 
-		static constexpr std::uint8_t KILL_TARGET = 3u;
+		static constexpr std::uint8_t KILL_TARGET = 1u;
 		static constexpr std::uint32_t TARGETS_PER_SUIT = 1u;
 		/* Where in the hammer press the head lands, in 30 Hz ticks. Measured on
 		rpcz00p_project_tuned_hammer (75 ticks): the head is still winding up

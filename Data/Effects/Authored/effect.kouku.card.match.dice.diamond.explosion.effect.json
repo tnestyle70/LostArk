@@ -22006,7 +22006,7 @@
           "authoringApproximate": false,
           "sourceScale": {
             "count": 1,
-            "size": 1,
+            "size": 0.8823530673930988,
             "lifeTime": 1,
             "speed": 1,
             "rotation": 1,
@@ -23187,6 +23187,78 @@
         "sourceOccurrenceIndex": 0,
         "sourceTimeSeconds": 0.8999999761581421,
         "parameters": []
+      },
+      "sourceTransformTrack": {
+        "sourceOccurrenceId": "saydon.55663eee2afb0c51f93b78fe",
+        "sourceTimeOriginSeconds": 0,
+        "previewOriginUE3Cm": [
+          0,
+          0,
+          0
+        ],
+        "nodes": [
+          {
+            "sourceObjectPath": "saydon.55663eee2afb0c51f93b78fe",
+            "frame": "WORLD",
+            "initialPositionUE3Cm": [
+              0,
+              0,
+              0
+            ],
+            "initialEulerDegrees": [
+              0,
+              0,
+              0
+            ],
+            "scaleUE3": [
+              1,
+              1,
+              1
+            ],
+            "positionKeys": [],
+            "eulerKeys": []
+          }
+        ],
+        "alphaScaleKeys": [
+          {
+            "timeSeconds": 0,
+            "value": [
+              1,
+              1,
+              1
+            ],
+            "arriveTangent": [
+              0,
+              0,
+              0
+            ],
+            "leaveTangent": [
+              0,
+              0,
+              0
+            ],
+            "interpolation": "constant"
+          },
+          {
+            "timeSeconds": 2.423504114151001,
+            "value": [
+              0,
+              0,
+              0
+            ],
+            "arriveTangent": [
+              0,
+              0,
+              0
+            ],
+            "leaveTangent": [
+              0,
+              0,
+              0
+            ],
+            "interpolation": "constant"
+          }
+        ]
       }
     },
     {
@@ -23353,10 +23425,10 @@
       },
       "actionCueAttachment": {
         "enabled": true,
-        "follow": true,
-        "sourceAnchorSlotId": "Bip001-L-Hand",
-        "runtimeAnchorSlotId": "Bip001-L-Hand",
-        "runtimeBoneName": "bip001-l-hand",
+        "follow": false,
+        "sourceAnchorSlotId": "root",
+        "runtimeAnchorSlotId": "root",
+        "runtimeBoneName": "",
         "socketLocalTransform": {
           "position": [
             0.0,
@@ -23373,7 +23445,8 @@
             1.0,
             1.0
           ]
-        }
+        },
+        "snapshotRootSourceBasisYawDegrees": -90
       },
       "transformInheritance": {
         "enabled": false,
@@ -23382,9 +23455,9 @@
       "detail": {
         "transform": {
           "position": [
-            0.0,
-            0.0,
-            0.3
+            0,
+            0,
+            0
           ],
           "rotationDegrees": [
             0.0,
@@ -23528,8 +23601,8 @@
           "burstCount": 0,
           "randomSeed": 1,
           "lifeTimeSeconds": [
-            1.0,
-            1.0
+            1.4833333333333334,
+            1.4833333333333334
           ],
           "initialPositionMin": [
             0.0,
@@ -23569,7 +23642,7 @@
           "authoringApproximate": false,
           "sourceScale": {
             "count": 1,
-            "size": 1,
+            "size": 1.5,
             "lifeTime": 1,
             "speed": 1,
             "rotation": 1,
@@ -23897,10 +23970,10 @@
                   0.0
                 ],
                 "lookupTable": [
-                  1.0,
-                  1.0,
-                  1.0,
-                  1.0
+                  1.4833333333333334,
+                  1.4833333333333334,
+                  1.4833333333333334,
+                  1.4833333333333334
                 ],
                 "keys": []
               }
@@ -24146,7 +24219,7 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 1,
                 "lookupTableNumElements": 1,
-                "lookupTableTimeScale": 1.0,
+                "lookupTableTimeScale": 0.0,
                 "lookupTableStartTime": 0.0,
                 "defaultMinimum": [
                   0.0,
@@ -24161,10 +24234,10 @@
                   0.0
                 ],
                 "lookupTable": [
-                  0.0,
                   1.0,
                   1.0,
-                  0.0
+                  1.0,
+                  1.0
                 ],
                 "keys": []
               },
@@ -24634,7 +24707,7 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 3,
                 "lookupTableNumElements": 1,
-                "lookupTableTimeScale": 20.0,
+                "lookupTableTimeScale": 6.068181818181818,
                 "lookupTableStartTime": 0.0,
                 "defaultMinimum": [
                   0.0,
@@ -24650,25 +24723,25 @@
                 ],
                 "lookupTable": [
                   0.0,
-                  600.0000610351562,
-                  0.0,
-                  0.0,
-                  0.0,
-                  2.9629623889923096,
-                  0.0,
-                  169.27154541015625,
-                  10.370368957519531,
-                  0.0,
-                  315.334228515625,
-                  20.0,
-                  0.0,
-                  434.81329345703125,
-                  29.629627227783203,
-                  0.0,
-                  524.333740234375,
-                  37.03704071044922,
-                  0.0,
-                  580.52099609375,
+                  600.0,
+                  50.68887967104987,
+                  88.06812688601929,
+                  301.09852551545646,
+                  39.35153373166207,
+                  63.22241365372893,
+                  385.42438303441156,
+                  34.41935068624963,
+                  41.78330213865418,
+                  458.18830194673365,
+                  33.95521515202262,
+                  24.246139719516343,
+                  517.7090830817684,
+                  36.02202378848015,
+                  11.10630961004926,
+                  562.3054056455403,
+                  38.68265551897558,
+                  2.859132312714813,
+                  590.2961616848861,
                   40.0,
                   0.0,
                   600.0
@@ -24708,8 +24781,8 @@
                 "componentCount": 3,
                 "operation": 1,
                 "randomLockAxes": 0,
-                "lookupTableChunkSize": 0,
-                "lookupTableNumElements": 0,
+                "lookupTableChunkSize": 3,
+                "lookupTableNumElements": 1,
                 "lookupTableTimeScale": 0.0,
                 "lookupTableStartTime": 0.0,
                 "defaultMinimum": [
@@ -24724,7 +24797,16 @@
                   0.0,
                   0.0
                 ],
-                "lookupTable": [],
+                "lookupTable": [
+                  1.0,
+                  1.0,
+                  1.0,
+                  1.0,
+                  1.0,
+                  1.0,
+                  1.0,
+                  1.0
+                ],
                 "keys": []
               }
             ]
@@ -25003,6 +25085,78 @@
         "sourceOccurrenceIndex": 0,
         "sourceTimeSeconds": 2.423504114151001,
         "parameters": []
+      },
+      "sourceTransformTrack": {
+        "sourceOccurrenceId": "saydon.2b8093799afcc25f59ce1e91",
+        "sourceTimeOriginSeconds": 0,
+        "previewOriginUE3Cm": [
+          0,
+          0,
+          0
+        ],
+        "nodes": [
+          {
+            "sourceObjectPath": "saydon.2b8093799afcc25f59ce1e91",
+            "frame": "WORLD",
+            "initialPositionUE3Cm": [
+              0,
+              0,
+              0
+            ],
+            "initialEulerDegrees": [
+              0,
+              0,
+              0
+            ],
+            "scaleUE3": [
+              1,
+              1,
+              1
+            ],
+            "positionKeys": [],
+            "eulerKeys": []
+          }
+        ],
+        "alphaScaleKeys": [
+          {
+            "timeSeconds": 0,
+            "value": [
+              1,
+              1,
+              1
+            ],
+            "arriveTangent": [
+              0,
+              0,
+              0
+            ],
+            "leaveTangent": [
+              0,
+              0,
+              0
+            ],
+            "interpolation": "constant"
+          },
+          {
+            "timeSeconds": 3.9000000953674316,
+            "value": [
+              0,
+              0,
+              0
+            ],
+            "arriveTangent": [
+              0,
+              0,
+              0
+            ],
+            "leaveTangent": [
+              0,
+              0,
+              0
+            ],
+            "interpolation": "constant"
+          }
+        ]
       }
     },
     {
@@ -25166,10 +25320,10 @@
       },
       "actionCueAttachment": {
         "enabled": true,
-        "follow": true,
-        "sourceAnchorSlotId": "Bip001-L-Hand",
-        "runtimeAnchorSlotId": "Bip001-L-Hand",
-        "runtimeBoneName": "bip001-l-hand",
+        "follow": false,
+        "sourceAnchorSlotId": "root",
+        "runtimeAnchorSlotId": "root",
+        "runtimeBoneName": "",
         "socketLocalTransform": {
           "position": [
             0.0,
@@ -25186,7 +25340,8 @@
             1.0,
             1.0
           ]
-        }
+        },
+        "snapshotRootSourceBasisYawDegrees": -90
       },
       "transformInheritance": {
         "enabled": false,
@@ -25195,9 +25350,9 @@
       "detail": {
         "transform": {
           "position": [
-            0.0,
-            0.0,
-            0.3
+            0,
+            0,
+            0
           ],
           "rotationDegrees": [
             0.0,
@@ -27450,10 +27605,10 @@
       },
       "actionCueAttachment": {
         "enabled": true,
-        "follow": true,
-        "sourceAnchorSlotId": "Bip001-L-Hand",
-        "runtimeAnchorSlotId": "Bip001-L-Hand",
-        "runtimeBoneName": "bip001-l-hand",
+        "follow": false,
+        "sourceAnchorSlotId": "root",
+        "runtimeAnchorSlotId": "root",
+        "runtimeBoneName": "",
         "socketLocalTransform": {
           "position": [
             0.0,
@@ -27470,7 +27625,8 @@
             1.0,
             1.0
           ]
-        }
+        },
+        "snapshotRootSourceBasisYawDegrees": -90
       },
       "transformInheritance": {
         "enabled": false,
@@ -27479,9 +27635,9 @@
       "detail": {
         "transform": {
           "position": [
-            0.0,
-            0.0,
-            0.3
+            0,
+            0,
+            0
           ],
           "rotationDegrees": [
             0.0,
@@ -29927,8 +30083,8 @@
           "burstCount": 0,
           "randomSeed": 1,
           "lifeTimeSeconds": [
-            1.0,
-            1.0
+            0.2833333333333337,
+            0.2833333333333337
           ],
           "initialPositionMin": [
             0.0,
@@ -29968,7 +30124,7 @@
           "authoringApproximate": false,
           "sourceScale": {
             "count": 1,
-            "size": 1,
+            "size": 1.5,
             "lifeTime": 1,
             "speed": 1,
             "rotation": 1,
@@ -30301,10 +30457,10 @@
                   0.0
                 ],
                 "lookupTable": [
-                  1.0,
-                  1.0,
-                  1.0,
-                  1.0
+                  0.2833333333333337,
+                  0.2833333333333337,
+                  0.2833333333333337,
+                  0.2833333333333337
                 ],
                 "keys": []
               }
@@ -30550,7 +30706,7 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 1,
                 "lookupTableNumElements": 1,
-                "lookupTableTimeScale": 2.857142925262451,
+                "lookupTableTimeScale": 0.0,
                 "lookupTableStartTime": 0.0,
                 "defaultMinimum": [
                   0.0,
@@ -30565,10 +30721,10 @@
                   0.0
                 ],
                 "lookupTable": [
-                  0.0,
                   1.0,
                   1.0,
-                  0.0
+                  1.0,
+                  1.0
                 ],
                 "keys": []
               },
@@ -31038,7 +31194,7 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 3,
                 "lookupTableNumElements": 1,
-                "lookupTableTimeScale": 20.0,
+                "lookupTableTimeScale": 4.25,
                 "lookupTableStartTime": 0.0,
                 "defaultMinimum": [
                   0.0,
@@ -31060,16 +31216,16 @@
                   600.0,
                   107.15870666503906,
                   0.0,
-                  551.2481689453125,
+                  547.4981689453125,
                   171.91885375976562,
                   0.0,
-                  424.1617736816406,
+                  416.6617736816406,
                   220.71957397460938,
                   0.0,
-                  247.4945068359375,
+                  236.2445068359375,
                   240.0,
                   0.0,
-                  50.0
+                  35.0
                 ],
                 "keys": []
               },
@@ -31106,8 +31262,8 @@
                 "componentCount": 3,
                 "operation": 1,
                 "randomLockAxes": 0,
-                "lookupTableChunkSize": 0,
-                "lookupTableNumElements": 0,
+                "lookupTableChunkSize": 3,
+                "lookupTableNumElements": 1,
                 "lookupTableTimeScale": 0.0,
                 "lookupTableStartTime": 0.0,
                 "defaultMinimum": [
@@ -31122,7 +31278,16 @@
                   0.0,
                   0.0
                 ],
-                "lookupTable": [],
+                "lookupTable": [
+                  1.0,
+                  1.0,
+                  1.0,
+                  1.0,
+                  1.0,
+                  1.0,
+                  1.0,
+                  1.0
+                ],
                 "keys": []
               }
             ]
@@ -31401,6 +31566,78 @@
         "sourceOccurrenceIndex": 0,
         "sourceTimeSeconds": 3.9000000953674316,
         "parameters": []
+      },
+      "sourceTransformTrack": {
+        "sourceOccurrenceId": "saydon.1a7e1041fed6b8f943e8e84f",
+        "sourceTimeOriginSeconds": 0,
+        "previewOriginUE3Cm": [
+          0,
+          0,
+          0
+        ],
+        "nodes": [
+          {
+            "sourceObjectPath": "saydon.1a7e1041fed6b8f943e8e84f",
+            "frame": "WORLD",
+            "initialPositionUE3Cm": [
+              0,
+              0,
+              0
+            ],
+            "initialEulerDegrees": [
+              0,
+              0,
+              0
+            ],
+            "scaleUE3": [
+              1,
+              1,
+              1
+            ],
+            "positionKeys": [],
+            "eulerKeys": []
+          }
+        ],
+        "alphaScaleKeys": [
+          {
+            "timeSeconds": 0,
+            "value": [
+              1,
+              1,
+              1
+            ],
+            "arriveTangent": [
+              0,
+              0,
+              0
+            ],
+            "leaveTangent": [
+              0,
+              0,
+              0
+            ],
+            "interpolation": "constant"
+          },
+          {
+            "timeSeconds": 4.161036968231201,
+            "value": [
+              0,
+              0,
+              0
+            ],
+            "arriveTangent": [
+              0,
+              0,
+              0
+            ],
+            "leaveTangent": [
+              0,
+              0,
+              0
+            ],
+            "interpolation": "constant"
+          }
+        ]
       }
     },
     {
@@ -53328,7 +53565,7 @@
           "authoringApproximate": false,
           "sourceScale": {
             "count": 1,
-            "size": 1,
+            "size": 1.5,
             "lifeTime": 1,
             "speed": 1,
             "rotation": 1,
@@ -66734,7 +66971,7 @@
           "authoringApproximate": false,
           "sourceScale": {
             "count": 1,
-            "size": 1,
+            "size": 1.5,
             "lifeTime": 1,
             "speed": 1,
             "rotation": 1,
@@ -68379,7 +68616,7 @@
           "authoringApproximate": false,
           "sourceScale": {
             "count": 1,
-            "size": 1,
+            "size": 1.5,
             "lifeTime": 1,
             "speed": 1,
             "rotation": 1,
@@ -69986,7 +70223,7 @@
           "authoringApproximate": false,
           "sourceScale": {
             "count": 1,
-            "size": 1,
+            "size": 1.5,
             "lifeTime": 1,
             "speed": 1,
             "rotation": 1,

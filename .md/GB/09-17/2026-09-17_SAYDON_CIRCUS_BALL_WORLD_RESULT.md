@@ -112,3 +112,116 @@ object 456, instance 324다. 별도로 512개 Validate 허용, 513개 Validate�
 함수의 268/512 허용 및 513 거절을 확인했다. isolated compile/link exit 0, focused test PASS,
 git diff --check PASS다. 로그와 왕복 출력은 `out/EffectV1Final20260917/world-codec/`에 있다.
 Live source/설치 문서를 이 probe로 쓰거나 Client/UI를 실행하지 않았다.
+
+## G06. 실제 선택한 g0와 낙하 상단광 정렬
+
+사용자가 저장한 Composition1232의 P83.world.7은 model-less group(world30)이 아니라 동일
+표시명의 내부 donor(world32, split.model/default g0)를 참조했다. 따라서 기존 group 확장
+소비자까지 도달하지 않아 한 공만 재생됐다. 여섯 motion과63공 정의는 모두 존재했다.
+MainApp의 일시 World 목록에 고유한 owning group의 Append alias를 기록하고 donor 행은
+Objects 목록에서 제외했다. 개별 motion은 Logic/편집에 남긴다. Workbench에서 이전 donor
+선택으로 Append해도 동일 group 경로로 들어가며11500ms 전체 수명을 사용한다. 두 group이
+같은 default를 소유하면 임의로 하나를 고르지 않는다. 기존 Level/Server 그룹 재생 경로는 유지한다.
+
+현재 P83의 start0, position[1.9827895164,1.3078061342,727.0396728516], rotation/scale/anchor를
+보존하고 world32→world30, duration7479→11500만 바꾼 guarded 후보를 작성했다. Pattern의
+16045ms 수명과 모든 clip/다른 lane은 충분하므로 유지했다. Source/Server 데이터 projection은
+한 WORLD cue의 stable group ID와11500ms를 소비하는 것을 실제 projector로 확인했다.
+
+V1 rainbow.drop의 사용자 저장 상단광30은 offset[-.41,5.18,.66]과 독립0.1m/s 속도를 가졌고,
+공 mesh5는0.8초 동안10→-.5m의 DirectLocation을 소비했다. native FX 모델은 중심0 pivot이고,
+동일한 크기의 Mario World 모델은 중심Y.46933609m pivot이므로 두 geometry를 별도로 측정했다.
+크기.7 native 공의 바닥이 지면에 닿도록 model root에+.72956332m를 적용했다. 상단광은 기존
+EmitterDirectLoc으로 mesh5의 실제 live position을 받아 고정 top offset.32956332m만 더한다.
+source 공급자를 먼저 평가하도록 두 element 순서를 정렬했다. 기존 material/색/size 및 사용자가
+삭제한35는 그대로다. 독립 velocity/LocationDirect만 끄고 새로운 이동 runtime을 만들지 않았다.
+
+도넛은 실제 fixed-step birth를 포함한0.816667초 착지 시각과 공 XZ에 맞췄다. 원작0.8초
+particle lifetime을 바꾸지 않았으며 emitter delay 보정은 PROJECT_AUTHORED다. World upper는
+1.5초 motion 전체에서 살아 있고 자체 위치/속도 없이 existing followObject provider만 따른다.
+12개 upper track은 실제 Mario 모델 상단을 anchor로 사용하고 fitEffectToDuration=false로
+자연 emitter tail에 의한 조기 수명 축소를 제거했다. upper resource metadata는2500ms이다.
+
+실제 Effect Codec/Playback891검사에서 upper 최대 위치편차2.98e-7m, 공과 속도차2.86e-5m/s,
+공 바닥 오차1.73e-6m, 착지·폭발 동시0.816667초를 확인했다. 실제 World codec과 production
+sampling 본문18,494검사에서 두 group각63공, 부모/자식 원점, 실제 model top, 배속/seek/cleanup을
+검증했다. MainApp actual collector 추출 검사는 unique alias, 목록 두 행, disabled member와
+ambiguous group 보존을 통과했다. MainApp/Workbench/MainApp_WorldLevel 세 TU isolated compile도 통과했다.
+
+전체 World268template/456object/324instance 후보의 실제 Load/Validate/Save/재Load 동등성,
+Composition1233 후보의 실제 Codec3검사와 P83 publisher projection이 통과했다. World full 후보는
+compact JSON8.03MB로 기존16MiB 경계를 유지한다. 정본 설치 입력은 전체 후보 덮어쓰기가 아니라
+`out/SaydonCircusWorld20260917/follow/candidate/repair.patch.json`의 guarded record 교체다.
+source1232/World2035 hash와 Effect2개별 hash를 포함하며 Composition operation2개, World template
+operation12개다. 재생성은 `python Tools/EffectPipeline/build_saydon_circus_world.py --repair-follow`이다.
+검증 manifest와 로그는 같은 follow 폴더의 verified.json/result.log/world_result.log/full_result.log에 있다.
+live Data 설치·제품 빌드·Client/UI 실행·화면 판정은 이 작업에서 하지 않았다. root가 최종 등록을 소유한다.
+
+## G07. 상단 무지개의 실제 quad 부착과 분열 공 반복 제거 후보
+
+최신 저장본 rainbow.drop의 mesh5→sprite30 emitter-direct 연결과0.8초 입자 시계는 이미
+같았다. 사용자 position[1.87,6.05999994,1.20000005]는 provider world→target inverse에서
+상쇄되어 실제 중심 위치를 바꾸지 않는다. root가 허용한 보호된1회 actual Codec/Playback
+검사891 checks/0 failures에서 공 상단 거리.329563m, 위치편차4.17e-7m, 속도차2.86e-5m/s,
+같은0.816667초 착지/폭발을 확인했다. 중심 검사만으로 화면의 긴 무지개를 올바르게 붙였다고
+판단하면 안 되는 경우였다.
+
+sprite30은 원작 boffsetcenter=true/offsetcentery0, StartSizeY=-300cm, SizeLifeY.2→2를
+사용한다. 현재 GeometryHelpers의 abs 크기+UV flip 경로에서0 pivot은 전체 quad가 anchor
+아래로 확장되므로 길이가.6→6m로 커질 때 표시 중심이 추가로 아래로 이동한다. 이전 G06은
+source velocity(+10cm/s, 위쪽)를 꺼서 PSA_Velocity의 표시축도 world-up 대신 zero-motion
+camera-plane fallback이 되게 했다. source2843 PS와 native VS의 독립 읽기 검토에는 별도
+시간 낙하나 WPO가 없었다. 원본 VS의 signed-size 입력과 UE CPU packing 전체를 확정한
+것은 아니므로 공용 signed-pivot renderer를 바꾸지는 않았다.
+
+최소 후보는 현재 sprite30 source velocity의 benabled를false→true로 복구하고, 파생 Effect의
+상단 배치 저작값 offsetcentery를0→1로 변경한다. 원본 module·binary의 pivot 복원이라고
+주장하지 않는다. 기존 emitter-direct가 매 tick 최종 위치를 계속 소유하므로 별도 이동을
+더하지 않는다. 사용자 element position, 모든 source curve·크기·색·재질·시각과 삭제한35는
+그대로 유지했다. 공·무지개 중심을98개 paired row에서 비교한 CSV는 수정 전후 정확히 같다.
+
+후보 actual Codec/Drawable/roundtrip/Stage/Playback과 실제 Make_ParticleSpriteWorld는
+root가 허용한 추가1회에서1,283 checks/0 failures, exit0을 기록했다. 35도 기울인 camera
+조건에서도 표시 up축은 world+Y(오차0)이며 quad 하단은 공 상단+보존한 원작20cm camera
+offset에 붙는다(최대 오차9.54e-7m). 중심·속도·착지·폭발 시각은 전후 동일하다. 실제 GPU
+표시나 사용자 눈 판정은 하지 않았다. stderr의 static teardown CRT dump를 보관했으며
+이 검사는 메모리 누수 검사가 아니다. 모든 검사에 Windows/CRT/Engine 오류 창 차단과
+45초 timeout, 첫 실패 중단을 적용했고 자동 재실행은 하지 않았다.
+
+별도 사용자 요청으로 World2036의 split.g1..g5 upper effectTrack 다섯 개만 제거한 후보를
+만들었다. 상단 무지개 총 방출은63→1로 줄고, 자식62공에서는 제거하며 g0 첫 공의 upper는 남는다.
+shot mode의6개 upper,63공과 모든 world model·motion key·emission·impact·first bounce,
+전체11500ms 수명 및 나머지263개 template 내용은 그대로다. 전체 문서의 다른 행은 exact
+비교로 보존을 확인했다. World 전체 실제 codec도 아래 최종 병합 검사에서 통과했다.
+
+기존 build_saydon_circus_world.py에 같은 facing/명시적 pivot과 split child upper 제외를
+반영했다. out 재생성에서도 split63공/upper1track, shot63공/upper6tracks를 확인했다.
+이전에 검증한 손상 없는 라이브 데이터는 덮어쓰지 않았다. 입력 bytes/hash, 의미 Effect2값,
+World5track-list guarded patch와 후보 및 로그는 out/CardDiceScale20260917/ball에 있으며
+정리 파일은 verified.json, 설치 입력은 semantic-patch.json이다. 최신 Effect hash는
+19baa96cb44c4c33f43d552fbe17b393fdb16da1f041d4c8d2b6dd674cb0d8c7이고 World baseline은2036이다.
+실제 등록·publish는 root의 통합 단계가 담당한다.
+
+G07 최종 병합 검증: out/CardDiceScale20260917/stage.py는 11파일/103개 의미 변경만
+staged하고 readyForCommit=false를 유지한다. World revision2036→2037와 split.g1..g5의
+upper 삭제 다섯 배열만 허용하는 exact expected/proposed 제한 및 오허용 거부9검사를 통과했다.
+Composition1246의 P48/P78/P83은 실제 publisher의 저장 inventory/의존 closure/검증/투영
+경로에서 모두 ready이고, 기존 P32 미완성은 같은 원인으로 격리된다. 실제 PowerShell
+Read-WorldSequenceDocument의 전체 staged 문서 읽기와 Python의 6 motion group/placement
+검사도 통과했다. 최초 추출 검사의 누락된 전역 재질 경로는 out 검사 설정만 보완했다.
+승인된 전체 C++ codec1회는 exit0,268templates/456objects/324instances의 Load/Validate/
+Save(out)/reload/Is_Equivalent를 통과했다. context 원본 mapplacements/deployassets/
+deployplacements3개 SHA는 생성 당시와 동일하고, map scale3369행도 일치했다.
+증거는 ball/world-validation/{verified.json,context-and-codec.json,full-codec-result.log,
+publisher-result.log,selected-publication-readiness.json}이다. Data/제품 배포와 UI 실행은 없다.
+
+
+### G07 실제 저장본 반영
+
+사용자의 최종 교체 승인으로 공 상단 무지개와 분열 자식 upper 제외 후보를 실제 설치했다.
+WorldSequence는2036→2037이며 상단 무지개 문서와 나머지 사용자 편집을 최신 기준으로
+병합했다. Client 프로세스 실행 여부를 설치 선행 조건으로 두던 out gate는 제거했다.
+명시적 승인·최신 hash·필드 충돌 검사와 백업·원자적 교체는 유지한다. 통합11파일 설치와
+후속 publisher 증거의 정본은 같은 날짜 세이튼 카드 RESULT G28 및
+`out/CardDiceScale20260917/installed-registration.json`이다. 이전 절의 후보/미설치 문구는
+검증 당시 상태이며 현재 상태를 대체하지 않는다. 도구 Reload와 화면 확인은 사용자가 한다.

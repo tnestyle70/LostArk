@@ -106,6 +106,7 @@ const CHARACTER_SPEC Spec_GunSlinger =
 		nullptr,
 		nullptr, // CUSTOMIZING_IDLE
 		"gdh_abn_fear_1",
+		nullptr, // SQUAREHOLE_SONG
 	},
 
 	&Create_Logic,

@@ -952,6 +952,9 @@ bool_t Client::CEffectDocumentCodec::Validate(
 			RingFill.fFeather <= 0.5f &&
 			(RingFill.bEnabled || RingFill.Is_Default()) &&
 			(!RingFill.bEnabled || bGenericMeshRingFillCarrier);
+		const auto& OwnerRadialMask = D.Sprite.OwnerRadialMask;
+		const bool_t bOwnerRadialMaskValid = OwnerRadialMask.Is_Valid() &&
+			(!OwnerRadialMask.bEnabled || Is_EffectOwnerRadialMaskCarrier(Element));
 		const EFFECT_LINEAR_REVEAL_DESC& LinearReveal = D.Sprite.LinearReveal;
 		const bool_t bFixedParticleRevealClock = !bManualParticle ||
 			(std::fabs(D.Particle.vLifeTimeSeconds.x -
@@ -1009,7 +1012,7 @@ bool_t Client::CEffectDocumentCodec::Validate(
 			!bFixedCenterSpacingValid || !bSpawnShapeValid ||
 			!bInitialOrientationValid ||
 			!bInitialVelocityValid || !bRingFillValid ||
-			!bLinearRevealValid ||
+			!bLinearRevealValid || !bOwnerRadialMaskValid ||
 			!bTargetAttractorValid ||
 			!bSourceScaleValid ||
 			!bTrailValid || !bAfterImageValid || !bLightValid ||

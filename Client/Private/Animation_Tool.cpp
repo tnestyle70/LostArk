@@ -1641,6 +1641,131 @@ bool_t Client::CAnimation_Tool::Render_CharacterActionCueEditor(const std::strin
     return true;
 }
 
+namespace
+{
+    // A clip-local cue time: far past any authored clip and inside int32_t.
+    constexpr uint32_t CHARACTER_ACTION_SOUND_LIMIT_MS = 3600000u;
+}
+
+bool_t Client::CAnimation_Tool::Prepare_CharacterActionSoundOwner(const std::string& assetId,
+    shared_ptr<Engine::CModel>& outModel, std::string& status)
+{
+    const auto model = CAnimationTargetService::Resolve_Model();
+    if (!model || assetId.empty() || assetId != CAnimationTargetService::Resolve_AssetName())
+    { status = "Restore this action's admitted preview model before editing its Sound cues."; return false; }
+    // Exactly one owner. An unsaved draft anywhere would be committed by this
+    // Save, so the caller is told to settle it instead of losing or writing it.
+    if (Is_AnyDocumentDirty())
+    { status = "Save or reload the Animation Tool draft before editing this Sound cue."; return false; }
+    if (m_AssetName != assetId)
+    {
+        // Validate with the candidate owner before retiring the previous clean state.
+        const auto priorAsset = m_AssetName;
+        m_AssetName = assetId;
+        std::vector<ANIM_EVENT> staged;
+        int32_t version = 0;
+        const bool_t loaded = Load_EventsFromPath(Get_EventFilePath(), model, staged, version, status) &&
+            Validate_Events(model, staged, status);
+        m_AssetName = priorAsset;
+        if (!loaded) return false;
+        Adopt_AssetName(assetId);
+    }
+    if (!m_bEventSourceBaselineKnown && !Load_Events(model)) { status = m_Status; return false; }
+    outModel = model;
+    return true;
+}
+
+bool_t Client::CAnimation_Tool::Commit_CharacterActionSoundEvents(
+    const shared_ptr<Engine::CModel>& pModel, std::vector<ANIM_EVENT> candidate, std::string& status)
+{
+    if (!Validate_Events(pModel, candidate, status)) return false;
+    auto previous = m_Events;
+    m_Events = std::move(candidate);
+    m_iSelectedEvent = -1;
+    m_PayloadEdit[0] = '\0';
+    m_bDirty = true;
+    if (Save_Events(pModel)) { status = m_Status; return true; }
+    // Prepare refused a dirty document, so the previous rows are the saved ones.
+    m_Events = std::move(previous);
+    m_bDirty = false;
+    status = m_Status;
+    return false;
+}
+
+bool_t Client::CAnimation_Tool::Apply_CharacterActionSoundEdit(const std::string& assetId,
+    const std::string& clipName, const uint32_t oldStartMs, const uint32_t newStartMs,
+    const std::string& eventName, std::string& status)
+{
+    if (eventName.empty()) { status = "A SOUND cue needs a catalog event name."; return false; }
+    if (newStartMs > CHARACTER_ACTION_SOUND_LIMIT_MS)
+    { status = "The requested Sound cue time is outside the authored clip range."; return false; }
+    shared_ptr<Engine::CModel> model;
+    if (!Prepare_CharacterActionSoundOwner(assetId, model, status)) return false;
+    auto candidate = m_Events;
+    std::size_t selected = candidate.size();
+    std::size_t matches = 0u;
+    for (std::size_t index = 0u; index < candidate.size(); ++index)
+    {
+        const ANIM_EVENT& row = candidate[index];
+        if (EVENT_KIND::SOUND != row.eKind || row.clipName != clipName ||
+            row.iStartMs != static_cast<int32_t>(oldStartMs)) continue;
+        ++matches;
+        if (selected == candidate.size() || row.sPayload == eventName) selected = index;
+    }
+    if (0u == matches)
+    { status = "No SOUND cue exists on " + clipName + " at " + std::to_string(oldStartMs) + " ms."; return false; }
+    if (matches > 1u && candidate[selected].sPayload != eventName)
+    { status = "Several SOUND cues share that clip time; give one a distinct event before moving it."; return false; }
+    candidate[selected].iStartMs = candidate[selected].iEndMs = static_cast<int32_t>(newStartMs);
+    candidate[selected].sPayload = eventName;
+    // An edited row is authored here, so Import_Notifies no longer owns it.
+    candidate[selected].bImported = false;
+    if (!Commit_CharacterActionSoundEvents(model, std::move(candidate), status)) return false;
+    status = "Saved SOUND " + eventName + " on " + clipName + " at " + std::to_string(newStartMs) + " ms.";
+    return true;
+}
+
+bool_t Client::CAnimation_Tool::Add_CharacterActionSoundEvent(const std::string& assetId,
+    const std::string& clipName, const uint32_t startMs, const std::string& eventName, std::string& status)
+{
+    if (eventName.empty()) { status = "A SOUND cue needs a catalog event name."; return false; }
+    if (startMs > CHARACTER_ACTION_SOUND_LIMIT_MS)
+    { status = "The requested Sound cue time is outside the authored clip range."; return false; }
+    shared_ptr<Engine::CModel> model;
+    if (!Prepare_CharacterActionSoundOwner(assetId, model, status)) return false;
+    auto candidate = m_Events;
+    for (const ANIM_EVENT& row : candidate)
+        if (EVENT_KIND::SOUND == row.eKind && row.clipName == clipName &&
+            row.iStartMs == static_cast<int32_t>(startMs) && row.sPayload == eventName)
+        { status = "That SOUND cue already exists on " + clipName + " at " + std::to_string(startMs) + " ms."; return false; }
+    ANIM_EVENT added{};
+    added.clipName = clipName;
+    added.eKind = EVENT_KIND::SOUND;
+    added.iStartMs = added.iEndMs = static_cast<int32_t>(startMs);
+    added.sPayload = eventName;
+    candidate.push_back(std::move(added));
+    if (!Commit_CharacterActionSoundEvents(model, std::move(candidate), status)) return false;
+    status = "Added SOUND " + eventName + " on " + clipName + " at " + std::to_string(startMs) + " ms.";
+    return true;
+}
+
+bool_t Client::CAnimation_Tool::Remove_CharacterActionSoundEvent(const std::string& assetId,
+    const std::string& clipName, const uint32_t startMs, const std::string& eventName, std::string& status)
+{
+    shared_ptr<Engine::CModel> model;
+    if (!Prepare_CharacterActionSoundOwner(assetId, model, status)) return false;
+    auto candidate = m_Events;
+    const auto found = std::find_if(candidate.begin(), candidate.end(), [&](const ANIM_EVENT& row) {
+        return EVENT_KIND::SOUND == row.eKind && row.clipName == clipName &&
+            row.iStartMs == static_cast<int32_t>(startMs) && row.sPayload == eventName; });
+    if (found == candidate.end())
+    { status = "No SOUND cue " + eventName + " exists on " + clipName + " at " + std::to_string(startMs) + " ms."; return false; }
+    candidate.erase(found);
+    if (!Commit_CharacterActionSoundEvents(model, std::move(candidate), status)) return false;
+    status = "Removed SOUND " + eventName + " from " + clipName + " at " + std::to_string(startMs) + " ms.";
+    return true;
+}
+
 void Client::CAnimation_Tool::Render_HitEvents(const shared_ptr<Engine::CModel>& pModel)
 {
 	ImGui::SeparatorText("Events");

@@ -354,24 +354,24 @@
             0.800000011920929
           ],
           "initialPositionMin": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "initialPositionMax": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "initialVelocityMin": [
-            0.0,
-            0.1,
-            -0.0
+            0,
+            0,
+            0
           ],
           "initialVelocityMax": [
-            0.0,
-            0.1,
-            -0.0
+            0,
+            0,
+            0
           ],
           "acceleration": [
             0.0,
@@ -392,7 +392,7 @@
           "sourceScale": {
             "count": 1,
             "size": 1,
-            "lifeTime": 1,
+            "lifeTime": 1.8749999720603232,
             "speed": 1,
             "rotation": 1,
             "alpha": 1,
@@ -1258,7 +1258,7 @@
               {
                 "propertyPath": "benabled",
                 "kind": "boolean",
-                "value": true
+                "value": false
               },
               {
                 "propertyPath": "bspawnmodule",
@@ -1433,7 +1433,7 @@
               {
                 "propertyPath": "benabled",
                 "kind": "boolean",
-                "value": true
+                "value": false
               },
               {
                 "propertyPath": "bspawnmodule",
@@ -1982,24 +1982,24 @@
             0.800000011920929
           ],
           "initialPositionMin": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "initialPositionMax": [
-            0.0,
-            0.0,
-            0.0
+            0,
+            0,
+            0
           ],
           "initialVelocityMin": [
-            0.0,
-            0.1,
-            -0.0
+            0,
+            0,
+            0
           ],
           "initialVelocityMax": [
-            0.0,
-            0.1,
-            -0.0
+            0,
+            0,
+            0
           ],
           "acceleration": [
             0.0,
@@ -2020,7 +2020,7 @@
           "sourceScale": {
             "count": 1,
             "size": 1,
-            "lifeTime": 1,
+            "lifeTime": 1.8749999720603232,
             "speed": 1,
             "rotation": 1,
             "alpha": 1,
@@ -2886,7 +2886,7 @@
               {
                 "propertyPath": "benabled",
                 "kind": "boolean",
-                "value": true
+                "value": false
               },
               {
                 "propertyPath": "bspawnmodule",
@@ -3061,7 +3061,7 @@
               {
                 "propertyPath": "benabled",
                 "kind": "boolean",
-                "value": true
+                "value": false
               },
               {
                 "propertyPath": "bspawnmodule",

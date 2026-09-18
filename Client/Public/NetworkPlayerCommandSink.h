@@ -96,6 +96,9 @@ public:
 		std::uint8_t slotIndex,
 		float aimX,
 		float aimZ) override;
+	bool Request_UseSquareHole(
+		std::uint32_t clientSequence,
+		std::uint16_t holeId) override;
 	bool Request_ChangeCharacterClass(
 		std::uint32_t clientSequence,
 		LostArk::Shared::CHARACTER_CLASS_ID characterClass) override;

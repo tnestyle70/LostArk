@@ -314,7 +314,8 @@ def project_trail(index, source_occurrences, notify, profile, asset, evidence, n
         element['sourceRecipe'].update(enabled=False, rendererShape='animationTrail')
         element['detail']['transform']['scale'] = [scale] * 3
         element['detail']['trail'].update(maxPoints=len(samples), pointLifeTimeSeconds=max(element['detail']['particle']['lifeTimeSeconds']),
-            sampleIntervalSeconds=min(b['relativeTimeSeconds'] - a['relativeTimeSeconds'] for a,b in zip(samples,samples[1:])), minimumDistance=0, faceCamera=False)
+            sampleIntervalSeconds=min(b['relativeTimeSeconds'] - a['relativeTimeSeconds'] for a,b in zip(samples,samples[1:])), minimumDistance=0, faceCamera=False,
+            tilingDistanceWorldUnits=source.baked_trail_tiling_world_units(element['sourceRecipe']))
         element['sourcePresentation'].update(enabled=True, profileId='kouku.animation-trail-baked-edge-history.v1', status='reconstructed')
     return document['elements'], [history]
 

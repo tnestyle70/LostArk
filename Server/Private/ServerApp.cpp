@@ -2829,6 +2829,18 @@ void LostArk::Server::CServerApp::On_SessionFrame(
 		command.eType = ROOM_COMMAND_TYPE::USE_ESTHER_SKILL;
 		command.UseEstherSkill = useEstherSkill;
 	}
+	else if (frame.ePacketType == PACKET_TYPE::C2S_USE_SQUAREHOLE)
+	{
+		C2S_USE_SQUAREHOLE useSquareHole{};
+		if (!Read_Message(reader, useSquareHole) ||
+			0u != reader.Get_RemainingSize())
+		{
+			closeMalformedPayload("C2S_USE_SQUAREHOLE");
+			return;
+		}
+		command.eType = ROOM_COMMAND_TYPE::USE_SQUAREHOLE;
+		command.UseSquareHole = useSquareHole;
+	}
 	else if (frame.ePacketType == PACKET_TYPE::C2S_REVIVE_PLAYER)
 	{
 		C2S_REVIVE_PLAYER revivePlayer{};

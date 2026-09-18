@@ -326,6 +326,32 @@ HRESULT Client::CEffectDocumentRenderer::Try_RenderNativeMeshParticles(
     return bSubmitted ? S_OK : S_FALSE;
 }
 
+namespace
+{
+// Effect origin, not each sprite centre. SourceEmitterWorld is identity for
+// world-space sprites and therefore cannot represent this authored mask frame.
+bool Build_EffectOwnerRadialMaskInverse(const float4x4_t& RootWorld,
+	const Client::EFFECT_PARTICLE_SYSTEM_DESC& ParticleSystem, float4x4_t& Inverse)
+{
+	const auto Finite = [](const float4x4_t& Value) {
+		const f32_t* Data = &Value._11;
+		return std::all_of(Data, Data + 16u, [](f32_t V) { return std::isfinite(V); });
+	};
+	if (!Finite(RootWorld) || !std::isfinite(ParticleSystem.fUniformScaleMultiplier) ||
+		ParticleSystem.fUniformScaleMultiplier <= 0.f || !std::isfinite(ParticleSystem.fYawOffsetDegrees) ||
+		RootWorld._14 != 0.f || RootWorld._24 != 0.f || RootWorld._34 != 0.f || RootWorld._44 != 1.f)
+		return false;
+	const f32_t Scale = ParticleSystem.fUniformScaleMultiplier;
+	const matrix_t MaskWorld = XMMatrixScaling(Scale, Scale, Scale) *
+		XMMatrixRotationY(XMConvertToRadians(ParticleSystem.fYawOffsetDegrees)) *
+		XMLoadFloat4x4(&RootWorld);
+	const f32_t Determinant = XMVectorGetX(XMMatrixDeterminant(MaskWorld));
+	if (!std::isfinite(Determinant) || Determinant == 0.f) return false;
+	XMStoreFloat4x4(&Inverse, XMMatrixInverse(nullptr, MaskWorld));
+	return Finite(Inverse);
+}
+}
+
 HRESULT Client::CEffectDocumentRenderer::Render_Particles(
 	const EFFECT_EVALUATED_FRAME& Frame,
 	const std::span<const EFFECT_EVALUATED_PARTICLE> Particles)
@@ -671,6 +697,31 @@ HRESULT Client::CEffectDocumentRenderer::Render_Particles(
 	if (FAILED(hResult))
 		return Fail_RenderOperation(
 			"Particle common/material shader bind failed.", hResult);
+	// Only this already-existing native particle shader group admits the mask.
+	// Reset on every draw in the group so an unmasked neighbour cannot inherit it.
+	const bool_t bOwnerMaskShader = pShaderProgram &&
+		pShaderProgram->eFamily == EFFECT_SHADER_FAMILY::ARTIST &&
+		pShaderProgram->eCarrier == EFFECT_SHADER_CARRIER::PARTICLE &&
+		pShaderProgram->iFirstProfile == 3136u;
+	const auto& OwnerMask = Source.Detail.Sprite.OwnerRadialMask;
+	if (OwnerMask.bEnabled && (!bOwnerMaskShader || !OwnerMask.Is_Valid() ||
+		!Is_EffectOwnerRadialMaskCarrier(Source)))
+		return Fail_RenderOperation("Particle radial mask carrier is invalid.", E_INVALIDARG, true);
+	if (bOwnerMaskShader)
+	{
+		const uint32_t Enabled = OwnerMask.bEnabled ? 1u : 0u;
+		float4x4_t WorldToMask{};
+		XMStoreFloat4x4(&WorldToMask, XMMatrixIdentity());
+		if (Enabled && !Build_EffectOwnerRadialMaskInverse(Frame.RootWorld,
+			Get_StagedDocument().ParticleSystem, WorldToMask))
+			return Fail_RenderOperation("Particle radial mask transform is invalid.", E_INVALIDARG, true);
+		const float4_t Mask = { OwnerMask.vCenterXZ.x, OwnerMask.vCenterXZ.y,
+			OwnerMask.fRadius, OwnerMask.fFeather };
+		if (FAILED(pDrawShader->Bind_RawValue("g_EffectOwnerRadialMaskEnabled", &Enabled, sizeof(Enabled))) ||
+			FAILED(pDrawShader->Bind_Matrix("g_EffectWorldToOwnerMask", &WorldToMask)) ||
+			FAILED(pDrawShader->Bind_RawValue("g_EffectOwnerRadialMask", &Mask, sizeof(Mask))))
+			return Fail_RenderOperation("Particle radial mask binding failed.", E_FAIL, true);
+	}
 	ComPtr<ID3D11ShaderResourceView> SourceSceneDepth;
 	if (pResource->bSourceRequiresSceneDepth ||
 		(pResource->iSourceMaterialProfile >= 320u && pResource->iSourceMaterialProfile <= 323u) ||
@@ -1365,6 +1416,26 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 			std::span<const Engine::VTXEFFECT_TRAIL>(
 				Vertices.data(), Vertices.size()));
 #endif
+        // Build separate finite coverage and distance-detail coordinates from
+        // the final uploaded strip. Explicit zero tiling keeps the legacy ABI.
+        // Bind every draw so a different material cannot inherit this contract.
+        float4_t SourceUVTransform{1.f, 0.f, 0.f, 0.f};
+        const uint32_t sourceProfile = pResource->iSourceMaterialProfile;
+        if (fTilingDistance > 0.f && (sourceProfile == 2346u ||
+            sourceProfile == 2379u || sourceProfile == 2410u ||
+            sourceProfile == 2836u || sourceProfile == 3007u))
+        {
+            const f32_t firstU = Vertices.front().vTexcoord.x;
+            const f32_t spanU = Vertices.back().vTexcoord.x - firstU;
+            if (!std::isfinite(firstU) || !std::isfinite(spanU) || spanU < 0.f)
+                return Fail_RenderOperation("Source Trail UV span is invalid.", E_INVALIDARG, true);
+            const f32_t inverseSpan = spanU > 1.e-6f ? 1.f / spanU : 0.f;
+            SourceUVTransform = {inverseSpan, -firstU * inverseSpan, 1.f, 0.f};
+        }
+        hResult = m_pTrailShader->Bind_RawValue("g_TrailSourceUVTransform",
+            &SourceUVTransform, sizeof(SourceUVTransform));
+        if (FAILED(hResult))
+            return Fail_RenderOperation("Trail source UV shader binding failed.", hResult);
 		const f32_t LocalTime = (std::max)(0.f,
 			Frame.fSampleTimeSeconds -
 			Trail.pElement->Detail.Timing.fStartDelaySeconds);

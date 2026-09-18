@@ -199,10 +199,25 @@ private:
         SESSION session;
         float4x4_t pivot{};
     };
+    struct PURSUIT_PREVIEW_PROJECTILE final
+    {
+        PRODUCT_PATTERN presentation;
+        SESSION flight, contact;
+        LostArk::Shared::NET_ENTITY_ID targetId = LostArk::Shared::INVALID_NET_ENTITY_ID;
+        // One pose per 30 Hz tick, including birth. Retained across paused seek.
+        std::vector<float4x4_t> poses;
+        float traveledM = 0.f;
+        std::uint32_t terminalTick = UINT32_MAX;
+        bool contactBurst = false;
+    };
     struct LOGIC_PREVIEW_TRIGGER final
     {
         PRODUCT_PATTERN presentation;
         std::vector<LOGIC_PREVIEW_SPAWN> spawns;
+        PRODUCT_PATTERN contactPresentation;
+        std::vector<PURSUIT_PREVIEW_PROJECTILE> projectiles;
+        double pursuitBirthMs = -1.0;
+        bool awaitingPlayer = false;
         bool captured = false;
     };
     std::map<std::string, std::map<std::string, LOGIC_PREVIEW_TRIGGER>> m_LogicPreviewTriggers;
@@ -210,6 +225,10 @@ private:
     void Sample_LogicPreview(SESSION& session, const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
         const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern, float clockMs, bool paused);
     void Clear_LogicPreview();
+    void Sample_PursuitPreview(SESSION& owner, const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
+        const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern,
+        const KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION& logic,
+        const KOUKU_SAYDON_COMPOSITION_LOGIC_OCCURRENCE& occurrence, float clockMs, bool paused);
     bool Collect_LogicPreviewEffects(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
         const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern, std::set<std::string>& targets);
     static bool Is_SelectedAirborneGroupMember(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
@@ -358,6 +377,7 @@ private:
     std::uint32_t m_iProductSourceRevision = 0u;
     std::uint32_t m_iProductReloadRunEpoch = 0u;
     std::set<std::string> m_MissingProductPatterns;
+    std::map<std::uint32_t, std::weak_ptr<CNpc>> m_CounterAfterimageOwners;
     std::map<std::uint32_t, SESSION> m_BossSessions;
     std::map<std::uint32_t, SESSION> m_ChildBossSessions;
     std::map<std::uint32_t, SESSION> m_MarioEntrySessions;

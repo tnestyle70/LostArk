@@ -2002,6 +2002,32 @@ bool LostArk::Shared::Write_Message(
 
 bool LostArk::Shared::Write_Message(
 	CPacketWriter& writer,
+	const C2S_USE_SQUAREHOLE& message)
+{
+	if (0 == message.iClientSequence || 0 == message.iSquareHoleId)
+		return false;
+	writer.Write_U32(message.iClientSequence);
+	writer.Write_U16(message.iSquareHoleId);
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader,
+	C2S_USE_SQUAREHOLE& message)
+{
+	C2S_USE_SQUAREHOLE decoded{};
+	if (!reader.Read_U32(decoded.iClientSequence) ||
+		!reader.Read_U16(decoded.iSquareHoleId) ||
+		0 == decoded.iClientSequence || 0 == decoded.iSquareHoleId)
+	{
+		return false;
+	}
+	message = decoded;
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer,
 	const C2S_REVIVE_PLAYER& message)
 {
 	if (0u == message.iClientSequence)

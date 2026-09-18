@@ -966,6 +966,24 @@ void Client::CPlayerController::Update_HonorTitle()
 	}
 }
 
+bool_t Client::CPlayerController::Request_UseSquareHole(const std::uint16_t holeId)
+{
+	if (nullptr == m_pCommandSink || 0u == holeId)
+		return false;
+	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
+	if (!player.isValid || player.isPreview ||
+		LostArk::Shared::PLAYER_ACTION_STATE::NONE != player.eAction ||
+		nullptr == m_pLocalCharacter.lock())
+	{
+		return false;
+	}
+	if (!m_pCommandSink->Request_UseSquareHole(m_nextSquareHoleSequence, holeId))
+		return false;
+	if (0u == ++m_nextSquareHoleSequence)
+		m_nextSquareHoleSequence = 1u;
+	return true;
+}
+
 bool_t Client::CPlayerController::Request_HonorTitle(const std::uint32_t titleId)
 {
 	if (nullptr == m_pCommandSink || 0u != m_pendingHonorTitleSequence)

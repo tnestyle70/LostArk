@@ -668,7 +668,7 @@
         },
         "timing": {
           "startDelaySeconds": 0.0,
-          "lifeTimeSeconds": 1.0,
+          "lifeTimeSeconds": 17.333,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -740,8 +740,8 @@
           "burstCount": 0,
           "randomSeed": 1,
           "lifeTimeSeconds": [
-            1.0,
-            1.0
+            17.333,
+            17.333
           ],
           "initialPositionMin": [
             0.0,
@@ -843,7 +843,7 @@
         "enabled": true,
         "rendererShape": "mesh",
         "emitterDelaySeconds": 0.0,
-        "emitterDurationSeconds": 1.0,
+        "emitterDurationSeconds": 17.333,
         "emitterLoopCount": 1,
         "bursts": [
           {
@@ -921,7 +921,7 @@
               {
                 "propertyPath": "emitterduration",
                 "kind": "number",
-                "value": 1.0
+                "value": 17.333
               },
               {
                 "propertyPath": "farculldistance",
@@ -1114,10 +1114,10 @@
                   0.0
                 ],
                 "lookupTable": [
-                  1.0,
-                  1.0,
-                  1.0,
-                  1.0
+                  17.333,
+                  17.333,
+                  17.333,
+                  17.333
                 ],
                 "keys": []
               }
@@ -1258,8 +1258,8 @@
                 "randomLockAxes": 0,
                 "lookupTableChunkSize": 1,
                 "lookupTableNumElements": 1,
-                "lookupTableTimeScale": 1.0,
-                "lookupTableStartTime": 0.0,
+                "lookupTableTimeScale": 17.333,
+                "lookupTableStartTime": 0.9423066,
                 "defaultMinimum": [
                   0.0,
                   0.0,
@@ -2053,7 +2053,7 @@
         },
         "timing": {
           "startDelaySeconds": 0.0,
-          "lifeTimeSeconds": 1.0,
+          "lifeTimeSeconds": 17.333,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -2125,8 +2125,8 @@
           "burstCount": 0,
           "randomSeed": 2,
           "lifeTimeSeconds": [
-            1.0,
-            1.0
+            17.333,
+            17.333
           ],
           "initialPositionMin": [
             0.0,
@@ -2228,7 +2228,7 @@
         "enabled": true,
         "rendererShape": "mesh",
         "emitterDelaySeconds": 0.0,
-        "emitterDurationSeconds": 1.0,
+        "emitterDurationSeconds": 17.333,
         "emitterLoopCount": 1,
         "bursts": [
           {
@@ -2296,7 +2296,7 @@
               {
                 "propertyPath": "emitterduration",
                 "kind": "number",
-                "value": 1.0
+                "value": 17.333
               },
               {
                 "propertyPath": "farculldistance",
@@ -2489,10 +2489,10 @@
                   0.0
                 ],
                 "lookupTable": [
-                  1.0,
-                  1.0,
-                  1.0,
-                  1.0
+                  17.333,
+                  17.333,
+                  17.333,
+                  17.333
                 ],
                 "keys": []
               }
@@ -3895,7 +3895,7 @@
         },
         "timing": {
           "startDelaySeconds": 0.0,
-          "lifeTimeSeconds": 1.0,
+          "lifeTimeSeconds": 17.333,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -3967,8 +3967,8 @@
           "burstCount": 0,
           "randomSeed": 3,
           "lifeTimeSeconds": [
-            1.0,
-            1.0
+            17.333,
+            17.333
           ],
           "initialPositionMin": [
             0.0,
@@ -4070,7 +4070,7 @@
         "enabled": true,
         "rendererShape": "mesh",
         "emitterDelaySeconds": 0.0,
-        "emitterDurationSeconds": 1.0,
+        "emitterDurationSeconds": 17.333,
         "emitterLoopCount": 1,
         "bursts": [
           {
@@ -4138,7 +4138,7 @@
               {
                 "propertyPath": "emitterduration",
                 "kind": "number",
-                "value": 1.0
+                "value": 17.333
               },
               {
                 "propertyPath": "farculldistance",
@@ -4331,10 +4331,10 @@
                   0.0
                 ],
                 "lookupTable": [
-                  1.0,
-                  1.0,
-                  1.0,
-                  1.0
+                  17.333,
+                  17.333,
+                  17.333,
+                  17.333
                 ],
                 "keys": []
               }
@@ -5488,7 +5488,7 @@
         },
         "timing": {
           "startDelaySeconds": 0.0,
-          "lifeTimeSeconds": 1.0,
+          "lifeTimeSeconds": 17.333,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -5662,7 +5662,7 @@
         "enabled": true,
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0.0,
-        "emitterDurationSeconds": 1.0,
+        "emitterDurationSeconds": 17.333,
         "emitterLoopCount": 1,
         "bursts": [
           {
@@ -5730,7 +5730,7 @@
               {
                 "propertyPath": "emitterduration",
                 "kind": "number",
-                "value": 1.0
+                "value": 17.333
               },
               {
                 "propertyPath": "farculldistance",
@@ -6867,7 +6867,7 @@
         },
         "timing": {
           "startDelaySeconds": 0.0,
-          "lifeTimeSeconds": 1.0,
+          "lifeTimeSeconds": 17.333,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -7041,7 +7041,7 @@
         "enabled": true,
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0.0,
-        "emitterDurationSeconds": 1.0,
+        "emitterDurationSeconds": 17.333,
         "emitterLoopCount": 1,
         "bursts": [],
         "modules": [
@@ -7098,7 +7098,7 @@
               {
                 "propertyPath": "emitterduration",
                 "kind": "number",
-                "value": 1.0
+                "value": 17.333
               },
               {
                 "propertyPath": "farculldistance",
@@ -8665,7 +8665,7 @@
         },
         "timing": {
           "startDelaySeconds": 0.0,
-          "lifeTimeSeconds": 1.0,
+          "lifeTimeSeconds": 17.333,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -8839,7 +8839,7 @@
         "enabled": true,
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0.0,
-        "emitterDurationSeconds": 1.0,
+        "emitterDurationSeconds": 17.333,
         "emitterLoopCount": 1,
         "bursts": [],
         "modules": [
@@ -8896,7 +8896,7 @@
               {
                 "propertyPath": "emitterduration",
                 "kind": "number",
-                "value": 1.0
+                "value": 17.333
               },
               {
                 "propertyPath": "farculldistance",
@@ -10711,7 +10711,7 @@
         },
         "timing": {
           "startDelaySeconds": 0.0,
-          "lifeTimeSeconds": 1.0,
+          "lifeTimeSeconds": 17.333,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -10885,7 +10885,7 @@
         "enabled": true,
         "rendererShape": "sprite",
         "emitterDelaySeconds": 0.0,
-        "emitterDurationSeconds": 1.0,
+        "emitterDurationSeconds": 17.333,
         "emitterLoopCount": 1,
         "bursts": [],
         "modules": [
@@ -10947,7 +10947,7 @@
               {
                 "propertyPath": "emitterduration",
                 "kind": "number",
-                "value": 1.0
+                "value": 17.333
               },
               {
                 "propertyPath": "farculldistance",

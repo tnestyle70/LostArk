@@ -481,6 +481,25 @@ namespace LostArk::Shared
 		CPacketReader& reader,
 		C2S_USE_ESTHER_SKILL& message);
 
+	/* World map square hole use. iSquareHoleId is the 1-based row of the zone's
+	square-hole document the Client clicked; the Server only uses it to admit the
+	request (non-zero) because the teleport itself is not implemented yet. The
+	song lock length is shared so the Client gauge and the Server release agree. */
+	inline constexpr std::uint32_t SQUAREHOLE_SONG_DURATION_MS = 3000u;
+	struct C2S_USE_SQUAREHOLE
+	{
+		std::uint32_t iClientSequence = 0;
+		std::uint16_t iSquareHoleId = 0;
+	};
+
+	bool Write_Message(
+		CPacketWriter& writer,
+		const C2S_USE_SQUAREHOLE& message);
+
+	bool Read_Message(
+		CPacketReader& reader,
+		C2S_USE_SQUAREHOLE& message);
+
 	bool Write_Message(
 		CPacketWriter& writer,
 		const C2S_REVIVE_PLAYER& message);
@@ -1365,6 +1384,11 @@ namespace LostArk::Shared
 		skill the Server admitted for the ridden vehicle and iActionStartTick its
 		start; the room owns the length and any authored root motion. */
 		VEHICLE_SKILL,
+		/* The player stands and plays the square-hole song (world map square hole
+		use). The room owns the fixed length SQUAREHOLE_SONG_DURATION_MS and returns
+		the player to NONE in place; no teleport follows yet. Appended last, same
+		wire rule as FALLING. */
+		SQUAREHOLE_SONG,
 		END
 	};
 

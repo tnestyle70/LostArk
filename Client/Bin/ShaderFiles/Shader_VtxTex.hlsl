@@ -29,6 +29,12 @@ draw the whole texture, so every existing caller is unaffected. Texels that land
 discarded -- the map's edge shows nothing rather than a clamped/wrapped smear. */
 float2 g_UVOffset = float2(0.f, 0.f);
 float2 g_UVScale = float2(1.f, 1.f);
+/* CUI_Sprite::Set_UVRotation: the UV window turns about its own center by g_UVRotation radians
+(clockwise on screen). g_UVAspect = world width / world height covered by the whole texture, so
+the turn happens on square world units even when the texels are not square. 0 / 1 (default)
+leaves every existing sprite's sampling unchanged. */
+float g_UVRotation = 0.f;
+float g_UVAspect = 1.f;
 
 /* LinearSampler's AddressU/V = WRAP is correct for tiled 3D world textures but wrong here:
 this shader only backs CUI_Sprite's screen-space UI quads, whose texcoords span exactly
@@ -135,7 +141,19 @@ PS_OUT PS_MAIN_UI(PS_IN In)
         clip(g_ArcRatio * 6.28318530f - fAngle);
     }
 
-    float2 vSampleTexcoord = g_UVOffset + vTexcoord * g_UVScale;
+    /* offset + t * scale, written about the window center so the optional turn stays centered. */
+    float2 vWindowCenter = g_UVOffset + g_UVScale * 0.5f;
+    float2 vFromCenter = (vTexcoord - 0.5f) * g_UVScale;
+    if (0.f != g_UVRotation)
+    {
+        vFromCenter.x *= g_UVAspect;
+        float fSin, fCos;
+        sincos(g_UVRotation, fSin, fCos);
+        vFromCenter = float2(fCos * vFromCenter.x - fSin * vFromCenter.y,
+            fSin * vFromCenter.x + fCos * vFromCenter.y);
+        vFromCenter.x /= g_UVAspect;
+    }
+    float2 vSampleTexcoord = vWindowCenter + vFromCenter;
     if (any(vSampleTexcoord < 0.f) || any(vSampleTexcoord > 1.f))
         discard;
 

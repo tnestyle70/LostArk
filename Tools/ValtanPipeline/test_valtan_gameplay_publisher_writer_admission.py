@@ -1,5 +1,6 @@
 import msvcrt
 import os
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -19,6 +20,58 @@ def powershell() -> str:
 
 
 class GameplayPublisherWriterAdmissionTests(unittest.TestCase):
+    def test_kouku_validation_precedes_writer_and_failure_never_acquires_it(self) -> None:
+        publisher = PUBLISHER.read_text(encoding="utf-8-sig")
+        preamble = publisher[:publisher.index("$stableIdPattern =")]
+        for validation_exit_code in (0, 17):
+            with self.subTest(validation_exit_code=validation_exit_code), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                gameplay = root / "Tools/GameplayPipeline"
+                valtan = root / "Tools/ValtanPipeline"
+                gameplay.mkdir(parents=True)
+                valtan.mkdir(parents=True)
+                shutil.copyfile(MODULE, valtan / MODULE.name)
+                (gameplay / "Publish-FileTransaction.ps1").write_text("", encoding="utf-8")
+                script = gameplay / "Publish-GameplayBalance.ps1"
+                # Execute the real publisher preamble and real admission module;
+                # only the independent, expensive Python validator is stubbed.
+                validator = """
+function python {
+    $lock = Join-Path $repoRoot 'out/ValtanPatternTransactions/create-pattern.lock'
+    if ([IO.File]::Exists($lock)) { throw 'Kouku validation ran after writer creation.' }
+    Write-Output 'KOUKU_VALIDATED_BEFORE_WRITER'
+    $global:LASTEXITCODE = VALIDATION_EXIT_CODE
+}
+""".replace("VALIDATION_EXIT_CODE", str(validation_exit_code))
+                insert = preamble.index("$koukuProjector =")
+                instrumented = preamble[:insert] + validator + preamble[insert:]
+                instrumented += """
+if ($null -eq $canonicalWriterAdmission -or -not $canonicalWriterAdmission.OwnsLock) {
+    throw 'Valtan snapshot did not retain its writer admission.'
+}
+Write-Output 'VALTAN_SNAPSHOT_WRITER_HELD'
+}
+finally { Exit-ValtanCanonicalWriterAdmission $canonicalWriterAdmission }
+"""
+                script.write_text(instrumented, encoding="utf-8")
+                completed = subprocess.run(
+                    [powershell(), "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(script),
+                     "-Mode", "Publish", "-SkipValtanSplitProjection"],
+                    cwd=root, capture_output=True, text=True, timeout=20, check=False,
+                )
+                combined = completed.stdout + completed.stderr
+                self.assertIn("KOUKU_VALIDATED_BEFORE_WRITER", combined)
+                lock = root / "out/ValtanPatternTransactions/create-pattern.lock"
+                if validation_exit_code:
+                    self.assertNotEqual(0, completed.returncode, combined)
+                    self.assertIn("composition Product validation failed", combined)
+                    self.assertNotIn("VALTAN_SNAPSHOT_WRITER_HELD", combined)
+                    self.assertFalse(lock.exists())
+                else:
+                    self.assertEqual(0, completed.returncode, combined)
+                    self.assertIn("VALTAN_SNAPSHOT_WRITER_HELD", combined)
+                    self.assertEqual(b"\0", lock.read_bytes())
+
     def test_external_child_requires_exact_held_parent_marker(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -110,10 +163,12 @@ class GameplayPublisherWriterAdmissionTests(unittest.TestCase):
     def test_shared_publisher_holds_admission_from_snapshot_through_commit(self) -> None:
         publisher = PUBLISHER.read_text(encoding="utf-8-sig")
         acquire = publisher.index("Enter-ValtanCanonicalWriterAdmission")
+        kouku_validate = publisher.index("& python -B $koukuProjector")
         first_snapshot = publisher.index("$resolvedInputOverlayRoot")
         generation = publisher.index("$presentationGenerationText")
         bootstrap_commit = publisher.index("Gameplay balance bootstrap promotion")
         release = publisher.rindex("Exit-ValtanCanonicalWriterAdmission")
+        self.assertLess(kouku_validate, acquire)
         self.assertLess(acquire, first_snapshot)
         self.assertLess(first_snapshot, generation)
         self.assertLess(generation, bootstrap_commit)

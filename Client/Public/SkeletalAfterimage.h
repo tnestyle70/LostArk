@@ -26,6 +26,9 @@ public:
     bool Configure(const SETTINGS& settings);
     void Update(float deltaSeconds, bool emitting,
         const std::shared_ptr<Engine::CModel>& model, const float4x4_t& world);
+    // Presentation-clock pulse: one full pose per period, then a fully hidden gap.
+    void Sample_Pulse(float elapsedSeconds, const std::shared_ptr<Engine::CModel>& model,
+        const float4x4_t& world);
     void Reset();
     bool Has_Samples() const { return !m_Samples.empty(); }
     HRESULT Render(const std::shared_ptr<Engine::CModel>& model,
@@ -43,6 +46,10 @@ private:
     std::weak_ptr<Engine::CModel> m_Model;
     float m_Accumulator = 0.f;
     bool m_SuppressedUntilDisabled = false;
+    float m_PulseClockSeconds = -1.f;
+    float m_PulseBirthSeconds = -1.f;
+    bool Capture_Sample(const std::shared_ptr<Engine::CModel>& model,
+        const float4x4_t& world, SAMPLE& sample);
     void Suppress_FailedPresentation();
 };
 }

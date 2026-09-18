@@ -25,6 +25,60 @@
 using namespace Client::EffectDocumentCodecDetail;
 
 
+namespace
+{
+    bool_t Restore_RetainedAnimationTrailTiling(
+        const Client::DATA_JSON_VALUE& ElementValue,
+        Client::EFFECT_ELEMENT_DESC& Element,
+        std::string& strOutError)
+    {
+        using namespace Client;
+        if (Element.RuntimeCarrier.eKind !=
+            EFFECT_AUTHORED_RUNTIME_CARRIER_KIND::ANIMATION_TRAIL_BAKED_EDGE_V1)
+            return true;
+        const auto* pDetail = ElementValue.Find("detail");
+        const auto* pTrail = pDetail ? pDetail->Find("trail") : nullptr;
+        // An explicit authored value (including zero) always takes precedence.
+        if (pTrail && pTrail->Find("tilingDistanceWorldUnits"))
+            return true;
+        const EFFECT_SOURCE_MODULE_DESC* pTypeData = nullptr;
+        for (const auto& Module : Element.SourceRecipe.Modules)
+        {
+            if (Module.strClassName != "particlemoduletypedataanimtrail")
+                continue;
+            if (pTypeData)
+            {
+                strOutError = "Effect baked trail source TypeData is ambiguous.";
+                return false;
+            }
+            pTypeData = &Module;
+        }
+        if (!pTypeData)
+            return true;
+        const EFFECT_SOURCE_LITERAL_DESC* pTiling = nullptr;
+        for (const auto& Literal : pTypeData->Literals)
+        {
+            if (Literal.strPropertyPath != "tilingdistance")
+                continue;
+            if (pTiling || Literal.eKind != EFFECT_SOURCE_LITERAL_KIND::NUMBER ||
+                !std::isfinite(Literal.fNumber) || Literal.fNumber < 0.0 ||
+                Literal.fNumber * 0.01 > std::numeric_limits<f32_t>::max())
+            {
+                strOutError = "Effect baked trail source tiling distance is invalid or ambiguous.";
+                return false;
+            }
+            pTiling = &Literal;
+        }
+        // Disabled recipes still retain source TypeData for baked edge carriers.
+        // Read cm once; the renderer already consumes world-distance tiling.
+        if (pTiling)
+            Element.Detail.Trail.fTilingDistanceWorldUnits =
+                static_cast<f32_t>(pTiling->fNumber * 0.01);
+        return true;
+    }
+}
+
+
 bool_t Client::CEffectDocumentCodec::Requires_DocumentOwnedRuntimeProjection(
 	const EFFECT_DOCUMENT_DESC& Document)
 {
@@ -677,6 +731,8 @@ bool_t Client::CEffectDocumentCodec::Parse_Value(
 				return false;
 			}
 		}
+		if (!Restore_RetainedAnimationTrailTiling(ElementValue, Element, strOutError))
+			return false;
 		if (iSourceVersion >= 12u)
 		{
 			const DATA_JSON_VALUE* pSourcePresentation =

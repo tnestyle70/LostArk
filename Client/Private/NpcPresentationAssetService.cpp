@@ -7,6 +7,8 @@
 #include "Npc.h"
 #include "RuntimeAssetRoot.h"
 #include "WorldSequenceObject.h"
+#include "DeferredMaterialRenderUtils.h"
+#include "Shader.h"
 
 #include <filesystem>
 #include <algorithm>
@@ -26,6 +28,11 @@ struct SAYDON_WEAPON_REPLACEMENT
 	std::weak_ptr<Engine::CModel> body;
 	std::weak_ptr<CWorldSequenceObject> object;
 };
+struct SAYDON_HAT_REPLACEMENT
+{
+	std::weak_ptr<Engine::CModel> body;
+	std::weak_ptr<CWorldSequenceObject> object;
+};
 }
 
 namespace
@@ -36,6 +43,7 @@ namespace
 	std::unordered_set<uint32_t> g_NpcObjectReadyLevels;
 	// WORLD sampling and weapon rendering both run on the presentation thread.
 	std::vector<std::weak_ptr<const Client::SAYDON_WEAPON_REPLACEMENT>> g_SaydonWeaponReplacements;
+	std::vector<std::weak_ptr<const Client::SAYDON_HAT_REPLACEMENT>> g_SaydonHatReplacements;
 
     std::string Resolve_SaydonWeaponClip(const std::string_view bodyClip)
     {
@@ -66,6 +74,92 @@ namespace
 		return Engine::wstring_t(TEXT("Prototype_Component_Model_AnimSet_")) +
 			stem;
 	}
+}
+
+HRESULT Client::CNpcPresentationAssetService::Prepare_SaydonHat(
+	ComPtr<ID3D11Device> device, ComPtr<ID3D11DeviceContext> context,
+	const std::shared_ptr<Engine::CModel>& body, std::shared_ptr<Engine::CModel>& outHat)
+{
+	if (!body) return E_INVALIDARG;
+	bool saydonMaterial = false;
+	for (uint32_t mesh = 0; mesh < body->Get_NumMeshes(); ++mesh)
+		saydonMaterial |= body->Get_MaterialName(mesh) == "mn_rpct_05_mi";
+	if (!saydonMaterial || !body->Has_Bone("bip001-head") ||
+		!body->Has_Bone("b_wp_1") || !body->Has_Bone("b_wp_2")) return S_FALSE;
+	Engine::MODEL_ASSET_LOAD_DESC load;
+	std::string status;
+	if (!CActorCatalog::Build_ModelLoadDescription(
+		"Character/KoukuSaton/WP_MN_RPCT_08/wp_mn_rpct_08_1_sk.wmodel", load, status))
+	{
+		OutputDebugStringA(("[SaydonHat] Native material preparation failed: " + status + "\n").c_str());
+		return E_FAIL;
+	}
+	// This head-specific mesh includes the source wp_3_1 placement. Its WModel
+	// import basis is 100; .01 removes that once, before the owner's 1.7 basis.
+	auto prototype = Engine::CModel::Create(device, context, MODEL::ANIM, load,
+		XMMatrixScaling(.01f, .01f, .01f));
+	if (!prototype || prototype->Get_NumMeshes() != 1u) return E_FAIL;
+	auto staged = std::dynamic_pointer_cast<Engine::CModel>(prototype->Clone(nullptr));
+	if (!staged) return E_FAIL;
+	staged->Set_AnimPaused(true);
+	staged->Refresh_BoneCombinedMatrices();
+	outHat = std::move(staged);
+	return S_OK;
+}
+
+void Client::CNpcPresentationAssetService::Track_SaydonHatReplacement(
+	std::shared_ptr<const SAYDON_HAT_REPLACEMENT>& registration,
+	const std::shared_ptr<Engine::CModel>& body, const std::shared_ptr<CWorldSequenceObject>& object)
+{
+	if (!body || !object) { registration.reset(); return; }
+	if (registration && registration->body.lock() == body && registration->object.lock() == object) return;
+	registration.reset();
+	std::erase_if(g_SaydonHatReplacements, [](const auto& value) { return value.expired(); });
+	auto staged = std::make_shared<const SAYDON_HAT_REPLACEMENT>(SAYDON_HAT_REPLACEMENT{body, object});
+	g_SaydonHatReplacements.push_back(staged);
+	registration = std::move(staged);
+}
+
+bool_t Client::CNpcPresentationAssetService::Is_SaydonHatSuppressed(
+	const std::shared_ptr<Engine::CModel>& body)
+{
+	std::erase_if(g_SaydonHatReplacements, [](const auto& value) { return value.expired(); });
+	if (!body) return false;
+	for (const auto& value : g_SaydonHatReplacements)
+		if (const auto replacement = value.lock(); replacement && replacement->body.lock() == body)
+			if (const auto object = replacement->object.lock(); object && object->Is_Visible()) return true;
+	return false;
+}
+
+bool_t Client::CNpcPresentationAssetService::Try_GetSaydonHatWorld(
+	const std::shared_ptr<Engine::CModel>& body, const float4x4_t& bodyWorld, float4x4_t& outWorld)
+{
+	if (!body || !body->Has_Bone("bip001-head") || Is_SaydonHatSuppressed(body)) return false;
+	XMStoreFloat4x4(&outWorld, body->Get_BoneMatrix("bip001-head") * XMLoadFloat4x4(&bodyWorld));
+	return true;
+}
+
+HRESULT Client::CNpcPresentationAssetService::Render_SaydonHat(
+	const std::shared_ptr<Engine::CModel>& body, const std::shared_ptr<Engine::CModel>& hat,
+	const std::shared_ptr<Engine::CShader>& shader, const float4x4_t& bodyWorld,
+	const uint32_t pass, const bool_t nativeBinaryBasePass, const bool_t shadow)
+{
+	if (!hat || Is_SaydonHatSuppressed(body)) return S_OK;
+	if (!shader) return E_FAIL;
+	float4x4_t world;
+	if (!Try_GetSaydonHatWorld(body, bodyWorld, world)) return E_FAIL;
+	if (FAILED(shader->Bind_Matrix("g_WorldMatrix", &world))) return E_FAIL;
+	HRESULT result = S_OK;
+	for (uint32_t mesh = 0; mesh < hat->Get_NumMeshes(); ++mesh)
+	{
+		const HRESULT material = shadow ? hat->Bind_Material(shader, "g_DiffuseTexture", mesh, aiTextureType_DIFFUSE, 0) :
+			Bind_DeferredMaterialInputs(*hat, shader, mesh, {}, nullptr, nullptr, nativeBinaryBasePass);
+		if (FAILED(material) || FAILED(hat->Bind_BoneMatrices(shader, "g_BoneMatrices", mesh)) ||
+			FAILED(shader->Begin(pass)) || FAILED(hat->Render(mesh))) { result = E_FAIL; break; }
+	}
+	// A following weapon/outline/part must still receive the body root.
+	const HRESULT restored = shader->Bind_Matrix("g_WorldMatrix", &bodyWorld);
+	return FAILED(result) ? result : restored;
 }
 
 void Client::CNpcPresentationAssetService::Track_SaydonWeaponReplacement(
