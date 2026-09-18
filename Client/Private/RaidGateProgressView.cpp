@@ -279,6 +279,19 @@ Client::CRaidGateProgressView::INTENT Client::CRaidGateProgressView::Update_Butt
 	}
 }
 
+void Client::CRaidGateProgressView::Add_TextClipOuts() const
+{
+	if (PROMPT::NONE == m_ePrompt || nullptr == m_pPrompt)
+		return;
+	f32_t fX = 0.f, fY = 0.f, fW = 0.f, fH = 0.f;
+	if (!m_pPrompt->Get_SlotRect("RGV_Panel", fX, fY, fW, fH))
+		return;
+	const float2_t vViewport = CGameInstance::Get().Get_ViewportSize();
+	const f32_t fScaleX = vViewport.x / m_pPrompt->Get_ResolutionWidth();
+	const f32_t fScaleY = vViewport.y / m_pPrompt->Get_ResolutionHeight();
+	CGameInstance::Get().Add_TextClipOutRect(fX * fScaleX, fY * fScaleY, fW * fScaleX, fH * fScaleY);
+}
+
 void Client::CRaidGateProgressView::Render_Text() const
 {
 	if (nullptr != m_pWidget)

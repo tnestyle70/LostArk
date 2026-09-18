@@ -764,6 +764,24 @@ HRESULT CLoader::Ready_For_KakulSaydonArena()
 		return E_FAIL;
 	}
 
+	/* Same Esther roster as Valtan (the Server enables the gauge in this raid too); the
+	   summons spawn mid-fight, so their models are prototypes before the arena opens. */
+	Set_Status(TEXT("KoukuSaydon: esther summon presentation"));
+	for (const char* pEstherArchetypeId :
+		{ "NPC_59030", "NPC_58700", "NPC_59060" })
+	{
+		if (FAILED(CNpcPresentationAssetService::Ensure_Prototypes(
+			m_pDevice,
+			m_pContext,
+			ETOUI(LEVEL::KAKULSAYDON_ARENA),
+			pEstherArchetypeId)))
+		{
+			OutputDebugStringA(
+				(std::string("[Loader][NpcPresentation] KOUKUSAYDON esther summon "
+					"presentation is unavailable (") + pEstherArchetypeId +
+					"); the arena loads without it.\n").c_str());
+		}
+	}
 	Set_Status(TEXT("KoukuSaydon: deploy environment prototypes"));
 	if (FAILED(Ready_DeployPropArea(
 		ETOUI(LEVEL::KAKULSAYDON_ARENA),

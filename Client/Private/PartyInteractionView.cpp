@@ -3,6 +3,7 @@
 #undef new
 #include <DirectXColors.h>
 #pragma pop_macro("new")
+#include <algorithm>
 
 #include "Character.h"
 #include "GameInstance.h"
@@ -121,12 +122,13 @@ bool_t Client::CPartyInteractionView::Update(
 		CGameInstance::Get().Play_Sound(soundPath.wstring(), 1.f);
 	}
 
-	(void)Update_ContextMenuTrigger(OtherPlayers, worldInteractionAllowed);
+	(void)Update_ContextMenuTrigger(OtherPlayers, Replication.Get_PartyRoster(), worldInteractionAllowed);
 	return m_hasContextMenuTarget || m_isInvitePopupOpen;
 }
 
 bool_t Client::CPartyInteractionView::Update_ContextMenuTrigger(
 	const std::vector<REPLICATED_PLAYER_VIEW>& OtherPlayers,
+	const LostArk::Shared::S2C_PARTY_ROSTER& Roster,
 	const bool_t worldInteractionAllowed)
 {
 	const bool_t isRightMouseDown =
@@ -155,6 +157,13 @@ bool_t Client::CPartyInteractionView::Update_ContextMenuTrigger(
 	for (const REPLICATED_PLAYER_VIEW& player : OtherPlayers)
 	{
 		if (player.isLocal)
+			continue;
+		/* The menu's only item is the invite: someone already in this party has nothing to
+		   be offered, so the right-click falls through as if it hit no one. */
+		const bool_t bAlreadyMember = std::any_of(Roster.Members.begin(), Roster.Members.end(),
+			[&player](const LostArk::Shared::PARTY_ROSTER_MEMBER& Member)
+			{ return Member.iNetEntityId == player.iNetEntityId; });
+		if (bAlreadyMember)
 			continue;
 		const std::shared_ptr<CCharacter> pCharacter = player.pCharacter.lock();
 		if (nullptr == pCharacter)
@@ -222,6 +231,25 @@ bool_t Client::CPartyInteractionView::Update_ContextMenuTrigger(
 	m_hasContextMenuTarget = true;
 	m_hasContextMenuJustOpened = true;
 	return true;
+}
+
+void Client::CPartyInteractionView::Add_TextClipOuts() const
+{
+	const float2_t vViewport = CGameInstance::Get().Get_ViewportSize();
+	const auto Fn_Add = [&vViewport](const CUILayoutRuntime* pView, const char* pSlot)
+	{
+		f32_t fX = 0.f, fY = 0.f, fW = 0.f, fH = 0.f;
+		if (nullptr == pView || !pView->Get_SlotRect(pSlot, fX, fY, fW, fH) ||
+			pView->Get_ResolutionWidth() <= 0.f || pView->Get_ResolutionHeight() <= 0.f)
+			return;
+		const f32_t fScaleX = vViewport.x / pView->Get_ResolutionWidth();
+		const f32_t fScaleY = vViewport.y / pView->Get_ResolutionHeight();
+		CGameInstance::Get().Add_TextClipOutRect(fX * fScaleX, fY * fScaleY, fW * fScaleX, fH * fScaleY);
+	};
+	if (m_hasContextMenuTarget)
+		Fn_Add(m_pContextMenuView.get(), "PartyContextMenu_Panel");
+	if (m_isInvitePopupOpen)
+		Fn_Add(m_pInviteView.get(), "PartyInvite_Panel");
 }
 
 void Client::CPartyInteractionView::Render(
@@ -429,12 +457,14 @@ void Client::CPartyInteractionView::Render_InvitePopupText()
 	const f32_t textScaleY = vViewportSize.y / 720.f;
 	const f32_t textUiScale = (std::min)(textScaleX, textScaleY);
 	const auto Fn_DrawCentered = [&](f32_t fCenterX, f32_t fCenterY,
-		const wchar_t* pLabel, f32_t fTargetHeight, const fvector_t& vColor)
+		const wchar_t* pLabel, f32_t fTargetHeight, const fvector_t& vColor, f32_t fMaxWidth = 0.f)
 	{
 		const float2_t vMeasured =
 			CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), pLabel);
-		const f32_t fScale = (vMeasured.y > 0.f) ?
+		f32_t fScale = (vMeasured.y > 0.f) ?
 			(fTargetHeight / vMeasured.y) : 1.f;
+		if (fMaxWidth > 0.f && vMeasured.x > 0.f && vMeasured.x * fScale > fMaxWidth)
+			fScale = fMaxWidth / vMeasured.x;
 		CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), pLabel,
 			float2_t(fCenterX * textScaleX, fCenterY * textScaleY),
 			vColor, 0.f, float2_t(0.5f, 0.5f), fScale * textUiScale);
@@ -456,7 +486,7 @@ void Client::CPartyInteractionView::Render_InvitePopupText()
 		// "161기의 마지막 여정을 함께 하시겠습니까?"
 		Fn_DrawCentered(fDescX + fDescW * 0.5f, fDescY + fDescH * 0.5f,
 			L"161\xAE30\xC758 \xB9C8\xC9C0\xB9C9 \xC5EC\xC815\xC744 \xD568\xAED8 "
-			L"\xD558\xC2DC\xACA0\xC2B5\xB2C8\xAE4C?", 12.6f, Colors::White);
+			L"\xD558\xC2DC\xACA0\xC2B5\xB2C8\xAE4C?", 12.6f, Colors::White, fDescW);
 	}
 
 	struct MODAL_BUTTON_LABEL
@@ -518,7 +548,11 @@ void Client::CPartyInteractionView::Render_ContextMenuText()
 	{
 		const float2_t vMeasured =
 			CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strNickname.c_str());
-		const f32_t fScale = (vMeasured.y > 0.f) ? (fPanelH * 0.5f / vMeasured.y) : 1.f;
+		f32_t fScale = (vMeasured.y > 0.f) ? (fPanelH * 0.5f / vMeasured.y) : 1.f;
+		/* A long nickname shrinks to the name box instead of running out of it. */
+		const f32_t fMaxWidth = fPanelW - 12.f;
+		if (vMeasured.x > 0.f && vMeasured.x * fScale > fMaxWidth)
+			fScale = fMaxWidth / vMeasured.x;
 		// Same IM_COL32(255,255,0,255) yellow the old ImGui draw used.
 		CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), strNickname.c_str(),
 			float2_t((fPanelX + fPanelW * 0.5f) * textScaleX,

@@ -49,10 +49,14 @@ public:
 	/* Context menu's own nickname + "파티초대" label, same post-EndFrame() text-pass reasoning
 	   as Render_InvitePopupText -- called from the same call site, right alongside it. */
 	void Render_ContextMenuText();
+	/* Screen rects of whichever popup is up (context menu, invite modal), added to the text
+	   clip-out list so nameplates and other world text stop under them for this frame. */
+	void Add_TextClipOuts() const;
 
 private:
 	bool_t Update_ContextMenuTrigger(
 		const std::vector<REPLICATED_PLAYER_VIEW>& OtherPlayers,
+		const LostArk::Shared::S2C_PARTY_ROSTER& Roster,
 		bool_t worldInteractionAllowed);
 	void Render_ContextMenu(
 		const std::shared_ptr<IPlayerCommandSink>& pCommandSink);

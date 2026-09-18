@@ -13,11 +13,21 @@ struct REPLICATED_PLAYER_HEALTH final
 	bool hasSnapshot = false;
 	std::uint32_t iCurrentHp = 0u;
 	std::uint32_t iMaximumHp = 0u;
+	/* KoukuSaydon madness, same per-player snapshot truth; a maximum of 0 means the room
+	   has no madness gauge (every other world). */
+	std::uint32_t iCurrentMadness = 0u;
+	std::uint32_t iMaximumMadness = 0u;
 
 	float Get_Ratio() const
 	{
 		return hasSnapshot && iMaximumHp > 0 ?
 			static_cast<float>(iCurrentHp) / static_cast<float>(iMaximumHp) : 0.f;
+	}
+	bool Has_Madness() const { return hasSnapshot && iMaximumMadness > 0u; }
+	float Get_MadnessRatio() const
+	{
+		return Has_Madness() ?
+			static_cast<float>(iCurrentMadness) / static_cast<float>(iMaximumMadness) : 0.f;
 	}
 };
 
@@ -39,7 +49,8 @@ public:
 				0u == player.iMaximumHp ||
 				player.iCurrentHp > player.iMaximumHp ||
 				!staged.emplace(player.iNetEntityId, REPLICATED_PLAYER_HEALTH{
-					true, player.iCurrentHp, player.iMaximumHp }).second)
+					true, player.iCurrentHp, player.iMaximumHp,
+					player.iCurrentMadness, player.iMaximumMadness }).second)
 			{
 				return false;
 			}

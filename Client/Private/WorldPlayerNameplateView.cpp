@@ -39,7 +39,10 @@ namespace
 	not in the extracted data. */
 	const fvector_t COLOR_TITLE = XMVectorSet(58.f / 255.f, 175.f / 255.f, 255.f / 255.f, 1.f);   // #3AAFFF
 	const fvector_t COLOR_NAME = XMVectorSet(235.f / 255.f, 232.f / 255.f, 200.f / 255.f, 1.f);   // #EBE8C8
-	const fvector_t COLOR_SHADOW = XMVectorSet(0.f, 0.f, 0.f, 0.75f);
+	/* An outline, not a single drop shadow: over the arena's bright floors and the book
+	   pages a 1 px shadow left the pale name almost unreadable. Eight strokes of near-black
+	   around the glyphs at one screen pixel (two at 1440p and up). */
+	const fvector_t COLOR_OUTLINE = XMVectorSet(0.f, 0.f, 0.f, 0.9f);
 
 	bool_t Is_Finite(const float2_t& value)
 	{
@@ -53,11 +56,19 @@ namespace
 			std::isfinite(value.z);
 	}
 
-	void Draw_Shadowed(CGameInstance& gameInstance, const wstring_t& strFont, const wstring& strText,
-		const float2_t& vPosition, const fvector_t vColor, const f32_t fScale)
+	void Draw_Outlined(CGameInstance& gameInstance, const wstring_t& strFont, const wstring& strText,
+		const float2_t& vPosition, const fvector_t vColor, const f32_t fScale, const f32_t fRefToScreen)
 	{
-		gameInstance.Draw_Text(strFont, strText.c_str(),
-			float2_t(vPosition.x + 1.f, vPosition.y + 1.f), COLOR_SHADOW, 0.f, float2_t(0.f, 0.f), fScale);
+		const f32_t fStroke = fRefToScreen >= 1.8f ? 2.f : 1.f;
+		static constexpr f32_t OFFSETS[8][2] = {
+			{ -1.f, 0.f }, { 1.f, 0.f }, { 0.f, -1.f }, { 0.f, 1.f },
+			{ -1.f, -1.f }, { 1.f, -1.f }, { -1.f, 1.f }, { 1.f, 1.f } };
+		for (const auto& Offset : OFFSETS)
+		{
+			gameInstance.Draw_Text(strFont, strText.c_str(),
+				float2_t(vPosition.x + Offset[0] * fStroke, vPosition.y + Offset[1] * fStroke),
+				COLOR_OUTLINE, 0.f, float2_t(0.f, 0.f), fScale);
+		}
 		gameInstance.Draw_Text(strFont, strText.c_str(), vPosition, vColor, 0.f, float2_t(0.f, 0.f), fScale);
 	}
 }
@@ -274,8 +285,8 @@ void Client::CWorldPlayerNameplateView::Render(
 			std::round(vScreenPosition.x - fTotalWidth * 0.5f),
 			std::round(vScreenPosition.y - NAME_BOTTOM_GAP * fRefToScreen - vNameSize.y * fScale));
 		if (!titleWithSpace.empty())
-			Draw_Shadowed(gameInstance, strFont, titleWithSpace, vPosition, COLOR_TITLE, fScale);
-		Draw_Shadowed(gameInstance, strFont, nickname,
-			float2_t(std::round(vPosition.x + fTitleWidth), vPosition.y), COLOR_NAME, fScale);
+			Draw_Outlined(gameInstance, strFont, titleWithSpace, vPosition, COLOR_TITLE, fScale, fRefToScreen);
+		Draw_Outlined(gameInstance, strFont, nickname,
+			float2_t(std::round(vPosition.x + fTitleWidth), vPosition.y), COLOR_NAME, fScale, fRefToScreen);
 	}
 }

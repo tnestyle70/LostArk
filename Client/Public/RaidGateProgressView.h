@@ -50,6 +50,9 @@ public:
 	INTENT Update(f32_t fTimeDelta);
 	/* LOA-font text pass; call from the Level's Render after its own sprites. */
 	void Render_Text() const;
+	/* The open prompt's screen rect on the text clip-out list, so world text (nameplates,
+	   chat bubbles) stops under the panel. */
+	void Add_TextClipOuts() const;
 
 private:
 	void Set_PromptVisible(bool_t bVisible);

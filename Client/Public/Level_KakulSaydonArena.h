@@ -12,6 +12,7 @@
 #include "PlayerController.h"
 #include "StatusEffectTextView.h"
 #include "RaidGateProgressView.h"
+#include "InteractKeyPromptView.h"
 #include "ValtanCinematicCameraDocument.h"
 #include "ValtanCinematicCameraController.h"
 #include "WorldPlayerChatBubbleView.h"
@@ -138,6 +139,15 @@ public:
 	shared_ptr<CCharacter> Get_LocalCharacter() const
 	{
 		return m_Replication.Get_LocalCharacter();
+	}
+	/* Party roster window (CMainApp): the Server roster and the per-player HP / madness join. */
+	const LostArk::Shared::S2C_PARTY_ROSTER& Get_PartyRoster() const
+	{
+		return m_Replication.Get_PartyRoster();
+	}
+	const CReplicatedPlayerHealth& Get_PlayerHealth() const
+	{
+		return m_Replication.Get_PlayerHealth();
 	}
 
 	/* One F1 "KoukuSaydon Arena" gate button. The Server raises the named
@@ -646,6 +656,8 @@ private:
 	   when a gate clears, offers the proceed / vote prompt after the award page, and applies
 	   the presentation of whichever gate the Server raised. */
 	CRaidGateProgressView m_GateProgressView;
+	/* Retail "G" keycap over the interact-gated trigger box the player walks up to. */
+	CInteractKeyPromptView m_InteractKeyPrompt;
 	LostArk::Shared::S2C_GATE_PROGRESS_STATE m_GateProgress{};
 	bool_t m_bGateProgressKnown = false;
 	bool_t m_bGateVoteAnswered = false;

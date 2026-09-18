@@ -403,11 +403,13 @@ void Client::CHonorTitleWindowView::Render_Text()
 			break;
 		const HONOR_TITLE_ENTRY& Entry = Titles[static_cast<size_t>(iTitle)];
 		const f32_t fRowY = ROW_Y0 + ROW_H * static_cast<f32_t>(iRow);
-		Draw_Label(FONT_YG760, Entry.strName, ROW_X + ROW_TEXT_X, fRowY + ROW_TEXT_Y,
+		/* Yoon family, not the retail $YG760: that face is a non-square design whose short
+		   syllables sit above the baseline, which in a list reads as the wrong glyph size. */
+		Draw_Label(FONT_YOON, Entry.strName, ROW_X + ROW_TEXT_X, fRowY + ROW_TEXT_Y,
 			ROW_FONT_PX, COLOR_ROW, vTopLeft);
 		if (0u != m_iWornTitleId && Entry.iTitleId == m_iWornTitleId)
 		{
-			Draw_Label(FONT_YG760, Strings.strUsing, ROW_X + BADGE_X + BADGE_W * 0.5f,
+			Draw_Label(FONT_YOON, Strings.strUsing, ROW_X + BADGE_X + BADGE_W * 0.5f,
 				fRowY + BADGE_Y + BADGE_H * 0.5f, ROW_FONT_PX, COLOR_USING, vCenter);
 		}
 	}

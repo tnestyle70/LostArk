@@ -1428,6 +1428,8 @@ HRESULT Client::CLevel_KakulSaydonArena::Initialize()
 	m_GateProgressView.Set_Raid(L"\xAD11\xAE30\xAD70\xB2E8\xC7A5 \xCFE0\xD06C\xC138\xC774\xD2BC",
 		CMvpAwardCatalog::Get().Find_DifficultyText("normal"), KOUKU_GATE_COUNT);
 	m_GateProgressView.Set_Progress(1u, 0u);
+	m_InteractKeyPrompt.Initialize(m_pDevice, m_pContext, ETOUI(LEVEL::KAKULSAYDON_ARENA),
+		"LV_LUT_MIDNIGHTC_ED");
 
 	replicationDesc.pDevice = m_pDevice;
 	replicationDesc.pContext = m_pContext;
@@ -1494,6 +1496,8 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 			"[Level_KakulSaydonArena] Failed to apply replication event.\n");
 	}
 	m_Replication.Collect_PlayerViews(m_NameplatePlayers);
+	m_InteractKeyPrompt.Update(m_Replication.Get_LocalCharacter(),
+		nullptr == m_pMvpResultView || !m_pMvpResultView->Is_Visible());
 	if (m_Replication.Has_PendingConnectionLoss())
 	{
 		CLevelTransitionService::Report_NetworkRecovery(
@@ -2123,8 +2127,14 @@ HRESULT Client::CLevel_KakulSaydonArena::Render()
 	const HRESULT drawn = __super::Render();
 	if (FAILED(drawn))
 		return drawn;
-	m_PlayerNameplateView.Render(m_NameplatePlayers, &m_Replication.Get_PartyRoster());
-	m_ChatBubbleView.Render(m_Replication, m_NameplatePlayers);
+	/* The award page is a full-screen modal: no world text at all while it is up. Otherwise
+	   the gate prompt clips it, like CMainApp's windows do. */
+	if (nullptr == m_pMvpResultView || !m_pMvpResultView->Is_Visible())
+	{
+		m_GateProgressView.Add_TextClipOuts();
+		m_PlayerNameplateView.Render(m_NameplatePlayers, &m_Replication.Get_PartyRoster());
+		m_ChatBubbleView.Render(m_Replication, m_NameplatePlayers);
+	}
 #ifdef _DEBUG
 	CMainApp::Update_DebugWindowTitleWithFps(
 		TEXT("KoukuSaydon arena loading complete"));

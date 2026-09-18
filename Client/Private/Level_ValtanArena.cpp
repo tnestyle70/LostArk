@@ -1736,8 +1736,15 @@ HRESULT CLevel_ValtanArena::Render()
 	if (FAILED(__super::Render()))
 		return E_FAIL;
 
-	m_PlayerNameplateView.Render(m_NameplatePlayers, &m_Replication.Get_PartyRoster());
-	m_ChatBubbleView.Render(m_Replication, m_NameplatePlayers);
+	/* The award page is a full-screen modal: no world text at all while it is up. Otherwise
+	   this level's own popups clip it, like CMainApp's windows do. */
+	if (!Is_MvpResultVisible())
+	{
+		m_PartyInteraction.Add_TextClipOuts();
+		m_GateProgressView.Add_TextClipOuts();
+		m_PlayerNameplateView.Render(m_NameplatePlayers, &m_Replication.Get_PartyRoster());
+		m_ChatBubbleView.Render(m_Replication, m_NameplatePlayers);
+	}
 	m_PartyInteraction.Render(m_pPlayerCommandSink);
 	/* Award page labels over everything else this Level draws; its image layers are
 	   CUI_Sprite objects on Layer_UI and need no call. */
@@ -1761,6 +1768,12 @@ void CLevel_ValtanArena::Render_MvpPortraits()
 bool_t CLevel_ValtanArena::Is_MvpResultVisible() const
 {
 	return nullptr != m_pMvpResultView && m_pMvpResultView->Is_Visible();
+}
+
+void CLevel_ValtanArena::Hide_MvpResult()
+{
+	if (nullptr != m_pMvpResultView)
+		m_pMvpResultView->Hide();
 }
 
 void CLevel_ValtanArena::Update_DeadScene(
