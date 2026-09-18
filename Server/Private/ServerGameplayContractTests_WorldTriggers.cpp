@@ -959,12 +959,13 @@ void LostArk::Server::CServerGameplayContractRunner::Run_WorldTriggers(TESTS& te
 	}
 
 	{
-		/* Stage_1 is the stage whose wave is being built, so it runs its real
-		activateSpawnGroup action in Debug as well. The later stages keep the
-		shortcut, which is what still carries boss work to Valtan without
-		clearing the corridor. Stage_MiniBoss stands in for those here. */
+		/* Stage_1 builds its wave and Stage_MiniBoss authors the Lugaru
+		entrance move, so both run their real actions in Debug as well. The
+		stages after them keep the shortcut, which is what still carries boss
+		work to Valtan without clearing the corridor. Stage_2 stands in for
+		those here. */
 		WORLD_BOOTSTRAP_PLACEMENT trigger{};
-		trigger.strPlacementId = "Stage_MiniBoss";
+		trigger.strPlacementId = "Stage_2";
 		trigger.eKind = WORLD_BOOTSTRAP_KIND::TRIGGER_BOX;
 		trigger.isEnabled = true;
 		trigger.fHalfExtentX = 2.f;
@@ -973,7 +974,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_WorldTriggers(TESTS& te
 		trigger.isTriggerOnce = true;
 		WORLD_TRIGGER_ACTION activate{};
 		activate.eKind = WORLD_TRIGGER_ACTION_KIND::ACTIVATE_SPAWN_GROUP;
-		activate.strTargetId = "spawn.valtan.stage02.miniboss";
+		activate.strTargetId = "spawn.valtan.stage03";
 		trigger.TriggerActions.push_back(activate);
 
 		CServerTriggerSystem triggerSystem;
@@ -1004,14 +1005,14 @@ void LostArk::Server::CServerGameplayContractRunner::Run_WorldTriggers(TESTS& te
 			0u == activationCount &&
 			PLAYER_ACTION_STATE::TRIGGER_MOVE == moving.eAction &&
 			moving.TriggerMove.isActive &&
-			std::abs(moving.TriggerMove.fTargetX - 86.110f) < 0.001f &&
-			std::abs(moving.TriggerMove.fTargetZ + 93.033f) < 0.001f,
+			std::abs(moving.TriggerMove.fTargetX - 94.762f) < 0.001f &&
+			std::abs(moving.TriggerMove.fTargetZ + 90.633f) < 0.001f,
 			"Bypass a later Valtan stage group and move toward the next trigger in Debug");
 		triggerSystem.Update_PlayerMotion(players.begin()->second, 1.f);
 		tests.Require(
 			PLAYER_ACTION_STATE::NONE == players.begin()->second.eAction &&
-			std::abs(players.begin()->second.fPositionX - 86.110f) < 0.001f &&
-			std::abs(players.begin()->second.fPositionZ + 93.033f) < 0.001f,
+			std::abs(players.begin()->second.fPositionX - 94.762f) < 0.001f &&
+			std::abs(players.begin()->second.fPositionZ + 90.633f) < 0.001f,
 			"Complete the Debug stage bypass at the authored next-stage approach point");
 #else
 		tests.Require(
