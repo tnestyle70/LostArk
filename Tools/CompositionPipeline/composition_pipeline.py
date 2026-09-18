@@ -2648,8 +2648,9 @@ def _validate_world_sequence_collider_tracks(
         behavior = collider["behavior"]
         if behavior not in ("DAMAGE", "INSTANT_DEATH", "HOOK_CAPTURE"):
             raise CompositionError(f"{row_context}.behavior is invalid")
-        damage = _require_nonnegative_int(collider["damagePercent"], f"{row_context}.damagePercent")
-        if (behavior == "DAMAGE" and not 1 <= damage <= 100) or (behavior != "DAMAGE" and damage != 0):
+        damage = _require_finite_number(collider["damagePercent"], f"{row_context}.damagePercent",
+                                        minimum=0, maximum=100)
+        if not damage.is_integer() or (behavior == "DAMAGE" and damage < 1) or (behavior != "DAMAGE" and damage != 0):
             raise CompositionError(f"{row_context}.damagePercent does not match behavior")
         _require_finite_number(collider["yawDegrees"], f"{row_context}.yawDegrees",
                                minimum=-36000, maximum=36000)

@@ -82,13 +82,24 @@ Data/DataFiles를 제외한 배포본이었다. 이번 요청에서는 그 ZIP�
 - 새 설치 wrapper fixture: Data/runtime 백업, 최초/재설치, SHA/경로/중복 거부,
   잠긴 Server 파일에 의한 실패 시 Data/runtime 복구 PASS. Client/UI 실행0.
 
-### 최종 ZIP 전 진행 경계
+### 최신 main 통합과 최종 배포 기준
 
-사용자의 추가 요청으로 PR410을 포함한 최신 main417b2b126을 먼저 통합하고,
-이번 수정도 PR merge한 최종 main에서 publish·Release Build·ZIP 검증을 다시 확인한다.
-현재 이 절의 빌드 기록은 8f15a3c35 기반 수정본이며 PR410 포함 최종 빌드 기록이 아니다.
-기존 EXE 전용 ZIP을 덮어쓰지 않으며 새 배포는 DataFiles 양쪽과 직접 소비 Data 보충분을
-포함한다. Resources/신규18WAV는 팀 Drive 경계를 유지한다.
+PR410의 main417b2b126을 충돌 없이 통합했다. VehicleCatalog와 탈것 Effect8개의
+직접 소비 JSON9개가 추가되며 새 Resources 참조는 없다. 기존 쿠크34개와 ESC 옵션3개를
+합쳐 Data 보충분46개를 배포한다. Resources/신규18WAV는 기존 Drive 경계를 유지한다.
+
+통합 Release Product도 PASS(94.1초): Server OBJ20/EXE1, Client OBJ85/EXE1,
+Engine/Shared/CSO/PCH 재생성0. 최종 코드 build 증거는
+`out/BuildPipeline/runs/20260918T161822826Z-release-product.json`이다.
+Client/Server owner도 통합 후 다시 실행해 전체 PASS/REUSED를 확인했다.
+
+리뷰에서 collider damagePercent의 정수값 실수(0.0/10.0) 허용도 기존 소비자와 맞췄다.
+finite·범위·정수값 검증은 유지하며 bool/fraction/NaN/Inf를 거부한다. 관련7개 test PASS.
+시간 필드는 기존 gameplay projector와 같은 int-only를 유지한다.
+
+우리 수정 PR411을 main에 병합한 뒤 `LostArk-Release-20260919-Full.zip`으로 확정한다.
+최종 ZIP의 SHA·파일수·실제 설치 검증은 `out/RuntimeRepublish20260919/delivery-result.json`과
+패키지의 `README_사용방법.md`를 따른다. 이전 EXE 전용 ZIP을 전체 실행 배포본으로 쓰지 않는다.
 
 실제 화면·음향·4인 Client 동시 플레이는 사용자 확인 대상이다. 게시와 설치는 실행 중
 Server 메모리나 도구 draft를 자동 갱신하지 않는다. Client/UI를 자율 실행하지 않았다.

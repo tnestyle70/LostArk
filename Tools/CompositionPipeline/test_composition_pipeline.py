@@ -1075,6 +1075,26 @@ class WorldSequenceColliderContractTests(unittest.TestCase):
             with self.subTest(missing=missing), self.assertRaises(pipeline.CompositionError):
                 self.validate(candidate)
 
+    def test_collider_damage_accepts_integral_numbers_and_timing_stays_integer_only(self) -> None:
+        row = self.document["templates"][0]["colliderTracks"][0]
+        row["damagePercent"] = 0.0
+        self.validate(self.document)
+        damage = copy.deepcopy(self.document)
+        damage["templates"][0]["colliderTracks"][0].update(
+            behavior="DAMAGE", damagePercent=10.0, gripLocalOffset=[0, 0, 0], attachmentBone=""
+        )
+        self.validate(damage)
+        for invalid in (True, 0.5, -1.0, float("inf"), 101.0, "0"):
+            candidate = copy.deepcopy(self.document)
+            candidate["templates"][0]["colliderTracks"][0]["damagePercent"] = invalid
+            with self.subTest(invalid=invalid), self.assertRaises(pipeline.CompositionError):
+                self.validate(candidate)
+        for field in ("startMs", "durationMs"):
+            candidate = copy.deepcopy(self.document)
+            candidate["templates"][0]["colliderTracks"][0][field] = float(row[field])
+            with self.subTest(field=field), self.assertRaises(pipeline.CompositionError):
+                self.validate(candidate)
+
     def test_collider_collections_identity_version_and_combined_limit(self) -> None:
         for invalid in (None, {}, [None]):
             candidate = copy.deepcopy(self.document)
