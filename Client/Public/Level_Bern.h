@@ -3,6 +3,7 @@
 #include "Client_Defines.h"
 #include "ArenaCameraProfile.h"
 #include "ClientReplication.h"
+#include "DeployPropRuntime.h"
 #include "Level.h"
 #include "MapPlacementRuntime.h"
 #include "ValtanCinematicCameraDocument.h"
@@ -72,6 +73,13 @@ public:
 		std::string& outStatus);
 #ifdef _DEBUG
 	shared_ptr<CCamera_Free> Get_DebugCamera() const { return m_pCamera; }
+	/* Map Tool borrows this level's live map the same way the Kouku and Valtan
+	   arenas lend theirs. The level keeps ownership; the tool only edits the
+	   placements in place. */
+	CMapPlacementRuntime& Get_MapAuthoringRuntime() { return m_MapRuntime; }
+	CDeployPropRuntime& Get_MapAuthoringDeploy() { return m_MapAuthoringDeploy; }
+	const ComPtr<ID3D11Device>& Get_MapAuthoringDevice() const { return m_pDevice; }
+	const ComPtr<ID3D11DeviceContext>& Get_MapAuthoringContext() const { return m_pContext; }
 #endif
 	const LostArk::Shared::S2C_PARTY_ROSTER& Get_PartyRoster() const
 	{
@@ -182,6 +190,12 @@ private:
 	/*베른성 맵 객체들의 생성과 제거는 기존 Map Runtime이 담당한다.
 	Network Player 수명과 섞지 않는다.*/
 	CMapPlacementRuntime m_MapRuntime;
+#ifdef _DEBUG
+	/* Stays empty: LV_BER_BERNCASTLE declares no DeployProp source pair, so
+	   Stage_DeployProps returns before touching it. Map Tool's runtime attach
+	   still needs a real owner because TARGET_SET::Is_Complete() requires one. */
+	CDeployPropRuntime m_MapAuthoringDeploy;
+#endif
 	shared_ptr<CMapLightPresentationRuntime> m_pMapLightPresentation;
 	shared_ptr<CMapEffectPresentationRuntime> m_pMapEffectPresentation;
 	bool_t m_bMapLightSubmissionFailureReported = false;

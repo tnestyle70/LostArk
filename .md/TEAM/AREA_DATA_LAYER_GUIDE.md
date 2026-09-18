@@ -184,7 +184,17 @@ ID·asset 집합이 일치하지 않으면 연결하지 않고 오류를 표시�
 재생 중 배치 변경·재로드는 먼저 Stop/Restore해야 한다. Save는 원본 배치값을
 저장하며 재생 중 샘플링된 좌표는 저장하지 않는다. 재로드는 현재 런타임의 숨김·Deploy
 표현 상태를 보존한다. 이는 Debug 로컬 저작 기능이며 Server collision/navigation/전투
-상태를 바꾸지 않는다. 다른 제품 Level과 Release에는 이 편집 경로를 열지 않는다.
+상태를 바꾸지 않는다.
+
+같은 런타임 연결을 `LEVEL::VALTAN_ARENA`, `LEVEL::BERN`,
+`LEVEL::CHARACTER_SELECT`도 사용한다. 네 Level 모두 자신이 로드한 Area 하나만
+연결하며 Area 콤보로 다른 Area를 바꾸지 않는다. `LV_BER_BERNCASTLE`와
+`LV_LOBBY_CLASSSELECT_SL00`은 catalog에 DeployProp pair를 선언하지 않으므로
+연결에 쓰는 Deploy runtime은 비어 있고 animated prop 저작은 그 Area에서 열리지
+않는다. Bern과 Character Select는 arena가 아니어서 정지시킬 World Sequence나
+Composition 재생이 없고, 맵 self motion도 쿠크만 가진다. 세 제품 Level의 연결은
+Debug 전용이며 Release에는 열리지 않는다. Server collision/navigation/전투 상태와
+Server gameplay는 이 경로로 바뀌지 않는다.
 
 MapTool의 저장 대상은 Data 원본뿐이다.
 
@@ -428,8 +438,9 @@ Shared 상태 계약을 별도로 연결해야 한다.
 
 Bern은 `Place Nav Bounds`로 실제 렌더 바닥을 고른 뒤 Bottom Y와 Height from Bottom으로 세로 범위를
 제한해 bake한다. 제품 runtime은 이미 활성화되어 있으므로 source/paint/policy가 누락되거나 손상되면
-Server room admission이 실패한다. publisher는 실제 bake 결과, player spawn/trigger 연결성, cell
-통계와 Area별 step policy를 함께 검증한다.
+Server room admission이 실패한다. publisher는 bake 결과와 cell 통계, Area별 step policy, enabled
+playerSpawn/boss 칸의 walkable·높이(0.25m 이내)를 검증하고 `-RequireSingleComponent`를 선언한 Area만
+단일 연결 성분을 강제한다. trigger·NPC 접근 경로의 연결성은 publisher가 검사하지 않는다.
 
 Navigation `Walkability` 브러시는 `Block`, `Force Walkable`, `Reset`을 제공한다.
 `Force Walkable`은 선택한 grid 범위 안의 실제 렌더 표면을 피킹해, bake가 놓친 빈 셀에도
@@ -437,7 +448,9 @@ Navigation `Walkability` 브러시는 `Block`, `Force Walkable`, `Reset`을 제�
 `Use Picked Height`를 명시적으로 켜면 기존 셀도 클릭한 표면 높이로 교체한다. 브러시 범위에 같은
 높이가 적용되므로 겹친 층이나 경사진 곳은 Brush 0부터 확인한다. 피킹 실패/선택 grid 밖/잘못된
 높이는 상태 문구로 알리고 셀을 바꾸지 않는다. Walkability에서는 live 셀을 표시하고 미저장 Bake
-Preview는 Bake 모드에서만 표시한다. Client 제품 아레나는 열람용이며 편집은 Lobby → Test에서 한다.
+Preview는 Bake 모드에서만 표시한다. Debug 제품 Level(KoukuSaydon·Valtan·Bern·Character Select)에
+런타임 연결된 Map Tool도 Test 워크스페이스와 같은 `Data/Navigation` 저작 파일을 로드·저장하며 live
+플레이어 Navigation은 바꾸지 않는다. 제품 반영에는 아래 publisher 실행과 Server 재시작이 필요하다.
 
 수동 override는 bake보다 우선하며 `Reset`은 walkability와 명시적 높이를 원래 bake 상태로 되돌린다.
 `.navpaint` version 3은 `x z BLOCKED|WALKABLE [height]` 또는 `x z HEIGHT height`를 저장한다.

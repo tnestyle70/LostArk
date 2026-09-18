@@ -48,6 +48,14 @@ public:
 	virtual HRESULT Render() override;
 
 	static CLevel_ValtanArena* Get_Active() { return s_pActiveInstance; }
+#ifdef _DEBUG
+	/* Map Tool borrows this arena's live map the same way the Kouku arena lends
+	   it. The level keeps ownership; the tool only edits placements in place. */
+	CMapPlacementRuntime& Get_MapAuthoringRuntime() { return m_MapRuntime; }
+	CDeployPropRuntime& Get_MapAuthoringDeploy() { return m_DeployRuntime; }
+	const ComPtr<ID3D11Device>& Get_MapAuthoringDevice() const { return m_pDevice; }
+	const ComPtr<ID3D11DeviceContext>& Get_MapAuthoringContext() const { return m_pContext; }
+#endif
 	const ARENA_CAMERA_PROFILE& Get_FollowCameraProfile() const
 	{ return m_FollowCameraProfile; }
 	const std::string& Get_FollowCameraProfileStatus() const

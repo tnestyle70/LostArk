@@ -30,7 +30,7 @@ void Client::CMapTool::Render_NavigationRegionControls()
 {
 	ImGui::SeparatorText("Grid");
 	const EDITOR_AREA_DESCRIPTOR* activeArea =
-		CMapEditorWorkspaceService::Is_Active() ?
+		(CMapEditorWorkspaceService::Is_Active() || m_bRuntimeAuthoring) ?
 		Get_ActiveEditorArea() : nullptr;
 	const std::string& areaId = nullptr != activeArea ?
 		activeArea->areaId : m_Catalog.Get_AreaId();
