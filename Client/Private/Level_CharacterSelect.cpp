@@ -1812,14 +1812,53 @@ void CLevel_CharacterSelect::Apply_CustomizingCostume()
 
 	const std::vector<std::string>* const pSetIds =
 		m_CostumeDocument.Find(pSpec->pAssetName);
+	if (nullptr == pSetIds)
+		return;
 	const int32_t iSelected = m_pCustomizingView->Get_SelectedCostume();
-	if (nullptr == pSetIds || iSelected < 0 ||
-		static_cast<size_t>(iSelected) >= pSetIds->size())
+	/* No row picked: the model wears its class default equipment, so take off whichever
+	try-on set this class's list put on and leave everything else -- the hair included --
+	exactly as it is. */
+	if (iSelected < 0)
 	{
+		Remove_CustomizingCostume(*pSetIds);
 		return;
 	}
+	if (static_cast<size_t>(iSelected) >= pSetIds->size())
+		return;
 
 	Wear_CustomizingSet((*pSetIds)[iSelected], "Costume");
+}
+
+void CLevel_CharacterSelect::Remove_CustomizingCostume(
+	const std::vector<std::string>& SetIds)
+{
+	if (!Ensure_EquipmentPresentation())
+		return;
+
+	std::array<std::string, ETOI(EQUIPMENT_SLOT_ID::END)> selected = m_CustomizingOutfit;
+	bool_t isRemoved = false;
+	for (std::string& worn : selected)
+	{
+		if (worn.empty() ||
+			SetIds.end() == std::find(SetIds.begin(), SetIds.end(), worn))
+			continue;
+		worn.clear();
+		isRemoved = true;
+	}
+	if (!isRemoved)
+		return;
+
+	std::string error;
+	if (!m_pEquipmentPresentation->Apply_Preview(
+		*m_pActiveCharacter, m_EquipmentCatalog, selected, error))
+	{
+		m_strStatus = "Costume removal: " + error;
+		OutputDebugStringA(
+			("[Level_CharacterSelect][Customizing] " + error + "\n").c_str());
+		return;
+	}
+	m_CustomizingOutfit = std::move(selected);
+	m_strStatus = "Costume removed";
 }
 
 void CLevel_CharacterSelect::Wear_CustomizingSet(

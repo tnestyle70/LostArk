@@ -156,6 +156,7 @@ private:
 	/* Puts strSetId in its own slot of m_CustomizingOutfit, drops whatever it collides
 	with, and re-applies the whole outfit. */
 	void Wear_CustomizingSet(const std::string& strSetId, const char_t* pWhat);
+	void Remove_CustomizingCostume(const std::vector<std::string>& SetIds);
 	/* Loads the costume document and the equipment catalog once. */
 	bool_t Ensure_EquipmentPresentation();
 	bool_t Enter_Stage(LOBBY_STAGE eStage);

@@ -39,15 +39,6 @@ namespace
 		{ TEXT("Part_10_Equip_Hair"),     TEXT("Prototype_Component_Model_LanceMaster_Hair"),
 		  0u, false, EQUIPMENT_SLOT_KIND::DEFAULT,
 		  EQUIPMENT_PRESENTATION_SLOT::HEAD },
-
-		/* Mokoko avatar test slots: presence hides the base parts they cover,
-		see CCharacter::Ready_PartObjects. */
-		{ TEXT("Part_15_Avatar_Head"),    TEXT("Prototype_Component_Model_LanceMaster_Helmet_Mokoko"),
-		  0u, false, EQUIPMENT_SLOT_KIND::AVATAR_HEAD,
-		  EQUIPMENT_PRESENTATION_SLOT::HEAD },
-		{ TEXT("Part_15_Avatar_Armor"),   TEXT("Prototype_Component_Model_LanceMaster_Upper_Mokoko"),
-		  0u, false, EQUIPMENT_SLOT_KIND::AVATAR_ARMOR,
-		  EQUIPMENT_PRESENTATION_SLOT::UPPER },
 	};
 
 	/* The armour carries its own exposed skin, so the bare arm, torso and legs
