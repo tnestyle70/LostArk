@@ -7,6 +7,7 @@
 #include "Gameplay/WorldCollisionContract.h"
 #include "Network/PacketReader.h"
 #include "Network/PacketWriter.h"
+#include "ServerApp.h"
 #include "ServerNavigation.h"
 #include "WorldBootstrap.h"
 #include "WorldDestructionBootstrapContractTests.h"
@@ -114,6 +115,24 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuMarioEntryContact(
             tests.Require(!CKoukuSaydonLogicRuntime::Is_InsideMarioEntry(root, anchor, rejected, contactTick),
                 "Mario entry preserves death, fall, attachment, binding and existing-transfer ownership");
         }
+        // A non-chain entry honours the window end; a chain root (honorWindowEnd false) stays open past it.
+        {
+            auto ended = root; ended.LogicWindows.front().iDurationMs = 1000u;
+            const auto afterEnd = CKoukuSaydonLogicRuntime::Ticks_FromMs(entry.iStartMs + 1000u);
+            tests.Require(CKoukuSaydonLogicRuntime::Is_InsideMarioEntry(ended, anchor, player, afterEnd) &&
+                !CKoukuSaydonLogicRuntime::Is_InsideMarioEntry(ended, anchor, player, afterEnd, true) &&
+                CKoukuSaydonLogicRuntime::Is_InsideMarioEntry(ended, anchor, player, afterEnd - 1u, true),
+                "Only a non-chain Mario entry closes with its ENTER_AREA window end");
+        }
+    }
+    {
+        BOSS_PATTERN_DEFINITION chainOnly{}, none{};
+        BOSS_PATTERN_LOGIC_WINDOW chain{}; chain.eKind = BOSS_PATTERN_LOGIC_KIND::PATTERN_COMPLETION_COUNT;
+        chainOnly.LogicWindows.push_back(chain);
+        tests.Require(CKoukuSaydonLogicRuntime::Find_MarioEntryResult(root) == &root.LogicWindows.front().OnSuccess.front() &&
+            CKoukuSaydonLogicRuntime::Has_MarioEntry(root) && CKoukuSaydonLogicRuntime::Has_MarioEntry(chainOnly) &&
+            !CKoukuSaydonLogicRuntime::Find_MarioEntryResult(chainOnly) && !CKoukuSaydonLogicRuntime::Has_MarioEntry(none),
+            "A Mario entry pattern is a chain root or an ENTER_AREA window whose sole Success is MARIO_ENTER with regions");
     }
     const auto seedOwnedObject = [&](CGameRoom& room, const SERVER_PLAYER& player) {
         auto transaction = room.m_CombatObjectRuntime.Begin_Transaction();
@@ -476,6 +495,197 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuProduct(TESTS& tes
     (void)marioScenario(MARIO_SCENARIO::DEATH);
     (void)marioScenario(MARIO_SCENARIO::DISCONNECT);
     (void)marioScenario(MARIO_SCENARIO::LAST_TICK_ENTRY);
+    // The Parent P88 (KAKULSAYDON_G1_PATTERN_88) owns ENTER_AREA -> MARIO_ENTER without a completion chain;
+    // its portal is the pattern's own window and it must not publish a Client hold.
+    // LAST_TICK ends P88 early through a stagger success on the very tick the entrant is judged inside the
+    // Mario window, so the queued entry and the pattern completion race within one boss update.
+    enum class PARENT_ENTRY { AUTHORED_STAGE, LIVE_COUNTER, REQUEST_STAGE, AFTER_WINDOW, LAST_TICK, LAST_TICK_SINGLE, MULTI_WINDOW };
+    const auto parentMarioEntry = [&](const PARENT_ENTRY scenario) {
+        const std::string parentId = "KAKULSAYDON_G1_PATTERN_88";
+        auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+        const auto* placement = room->Find_Placement("boss.kakulsaydon.g3.saydon");
+        SERVER_WORLD_ENTITY boss{};
+        if (!room->Is_Ready() || !placement || !room->Build_WorldEntity(*placement, room->m_iNextNetEntityId++, boss)) {
+            tests.Require(false, "Load parent Mario entry scenario from the published Gate 3 placement"); return;
+        }
+        const std::uint8_t authoredStage = scenario == PARENT_ENTRY::LIVE_COUNTER ? 0u : 1u;
+        const std::uint8_t expectedStage = scenario == PARENT_ENTRY::LIVE_COUNTER ? 3u : scenario == PARENT_ENTRY::REQUEST_STAGE ? 2u : scenario == PARENT_ENTRY::MULTI_WINDOW ? 4u : 1u;
+        const bool finalTick = scenario == PARENT_ENTRY::LAST_TICK || scenario == PARENT_ENTRY::LAST_TICK_SINGLE;
+        auto generation = std::make_shared<CGameplayCatalog>(room->m_GameplayCatalog.Active());
+        auto* definitions = const_cast<std::vector<BOSS_PATTERN_DEFINITION>*>(generation->Find_BossPatterns("ENCOUNTER_KAKULSAYDON_G1"));
+        BOSS_LOGIC_REGION region{}; std::uint32_t windowStartMs = 0u, windowEndMs = 0u; bool authored = false, chainFree = false;
+        if (definitions) for (auto& definition : *definitions) if (definition.strPatternId == parentId) {
+            chainFree = std::none_of(definition.LogicWindows.begin(), definition.LogicWindows.end(),
+                [](const auto& window) { return window.eKind == BOSS_PATTERN_LOGIC_KIND::PATTERN_COMPLETION_COUNT; });
+            for (auto& window : definition.LogicWindows) if (window.strWindowId == parentId + ".logic.1" &&
+                window.eKind == BOSS_PATTERN_LOGIC_KIND::ENTER_AREA && !window.CardRegions.empty()) {
+                BOSS_PATTERN_LOGIC_RESULT entry{};
+                entry.eKind = BOSS_PATTERN_LOGIC_RESULT_KIND::MARIO_ENTER; entry.iMarioEntryStage = authoredStage;
+                window.OnSuccess = {entry}; region = window.CardRegions.front();
+                windowStartMs = window.iStartMs; windowEndMs = window.iStartMs + window.iDurationMs; authored = true;
+            }
+            if (scenario == PARENT_ENTRY::MULTI_WINDOW && authored) {
+                const auto first = std::find_if(definition.LogicWindows.begin(), definition.LogicWindows.end(),
+                    [&](const auto& window) { return window.strWindowId == parentId + ".logic.1"; });
+                auto second = *first; second.strWindowId = parentId + ".logic.second-entry";
+                second.OnSuccess.front().iMarioEntryStage = 4u;
+                for (auto& firstRegion : first->CardRegions) firstRegion.fCenterX += 50.f;
+                definition.LogicWindows.push_back(std::move(second));
+            }
+            if (finalTick && authored) {
+                BOSS_PATTERN_LOGIC_WINDOW stagger{};
+                stagger.strWindowId = parentId + ".logic.lasttick"; stagger.eKind = BOSS_PATTERN_LOGIC_KIND::STAGGER_WINDOW;
+                stagger.iStartMs = windowStartMs; stagger.iDurationMs = windowEndMs - windowStartMs;
+                stagger.iThreshold = 1000u; stagger.bEndsPatternOnSuccess = true;
+                definition.LogicWindows.push_back(stagger);
+            }
+        }
+        std::string status;
+        const auto* parent = CKoukuSaydonBrain::Find_AnimationOnlyPattern(*generation, parentId, status);
+        tests.Require(authored && chainFree && parent && CKoukuSaydonLogicRuntime::Has_MarioEntry(*parent) &&
+            CKoukuSaydonLogicRuntime::Find_MarioEntryResult(*parent) && CKoukuSaydonLogicRuntime::Find_MarioEntryResult(*parent)->iMarioEntryStage == authoredStage,
+            "The published Parent P88 owns a chain-free ENTER_AREA window that can carry the authored Mario entry");
+        if (!authored) return;
+        room->m_pKoukuPublishedProductGeneration = std::move(generation);
+        room->m_WorldEntities.push_back(boss);
+        SERVER_PLAYER player{};
+        player.iPlayerId = 940u; player.iNetEntityId = 941u; player.iSessionId = 942u;
+        player.iCurrentHp = player.iMaximumHp = 100000u; player.isCombatReady = true;
+        player.fPositionX = boss.fPositionX + 25.f; player.fPositionY = boss.fPositionY; player.fPositionZ = boss.fPositionZ;
+        room->m_Players.emplace(player.iPlayerId, player);
+        if (scenario == PARENT_ENTRY::LIVE_COUNTER) room->m_iNextMarioEntryStage = 3u;
+        C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST request{};
+        request.iRequestSequence = 1u;
+        request.eOperation = KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_SELECTED;
+        request.Scope.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+        request.Scope.strGateId = "GATE3"; request.Scope.strEncounterId = "ENCOUNTER_KAKULSAYDON_G1";
+        request.Scope.strBossPlacementId = "boss.kakulsaydon.g3.saydon";
+        request.Scope.strBossArchetypeId = "BOSS_KAKULSAYDON_G3_SAYDON";
+        request.Scope.ExpectedGameplayRevision = room->m_GameplayCatalog.Get_ActiveRevision();
+        request.Scope.iExpectedSourceRevision = CKoukuSaydonBrain::Resolve_ProductSourceRevision(room->m_GameplayCatalog.Active());
+        request.strPatternId = parentId;
+        if (scenario == PARENT_ENTRY::REQUEST_STAGE) { request.iMarioTestStartStage = 2u; request.iMarioTestSeed = 7u; }
+        S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT result{};
+        const bool queued = KOUKUSAYDON_PATTERN_AUDITION_RESULT::QUEUED == room->Evaluate_KoukuSaydonPatternAudition(player.iSessionId, request, result);
+        if (!queued) std::cerr << "Parent Mario admission: " << result.strReason << '\n';
+        tests.Require(queued, "Admit a chain-free Gate 3 Parent as a Mario entry pattern, including the request's test stage");
+        if (!queued) return;
+        const std::uint32_t enterMs = scenario == PARENT_ENTRY::AFTER_WINDOW ? windowEndMs + 1000u : windowStartMs + 500u;
+        bool bounded = true, spliced = false, moved = false, stageOk = false, wire = false, anchorCleared = false, pendingClear = false, secondReached = false;
+        bool singleCompletionQueued = false;
+        std::uint32_t memberStart = 0u, entryTick = 0u, completionTick = 0u;
+        for (std::uint32_t tick = 1u; tick < 6000u; ++tick) {
+            room->m_iServerTick = tick;
+            room->Prepare_KoukuAuditionTick(tick);
+            auto* live = room->Find_KoukuSaydonArenaBoss(request.Scope.strBossPlacementId, request.Scope.strBossArchetypeId);
+            if (room->m_KoukuSaydonPatternAudition.Members.empty()) { bounded = false; break; }
+            if (!live || !room->Update_KoukuSaydonBoss(*live, tick)) { bounded = false; break; }
+            if (room->m_KoukuSaydonPatternAudition.Members.empty()) { bounded = false; break; }
+            if (scenario == PARENT_ENTRY::LAST_TICK_SINGLE && room->m_KoukuSaydonPatternAudition.Members.front().bCompleted) {
+                singleCompletionQueued = room->m_KoukuSaydonPatternAudition.Members.size() == 1u &&
+                    room->m_PendingKoukuMarioEntries.size() == 1u && room->m_KoukuSaydonPatternAudition.Members.front().MarioEntryAnchor.has_value();
+                completionTick = tick;
+            }
+            room->Commit_KoukuMarioEntries();
+            if (room->m_KoukuSaydonPatternAudition.Members.empty()) {
+                if (scenario == PARENT_ENTRY::LAST_TICK_SINGLE && singleCompletionQueued) {
+                    entryTick = room->m_Players.at(player.iPlayerId).iMarioStage ? tick : 0u;
+                    secondReached = true; anchorCleared = true; pendingClear = room->m_PendingKoukuMarioEntries.empty();
+                }
+                else bounded = false;
+                break;
+            }
+            auto& member = room->m_KoukuSaydonPatternAudition.Members.front();
+            if (!spliced && member.MarioEntryAnchor && member.ePhase == CGameRoom::KOUKUSAYDON_PATTERN_AUDITION_PHASE::ACTIVE) {
+                // The single-member regression deliberately ends the whole run on the entry tick.
+                if (scenario != PARENT_ENTRY::LAST_TICK_SINGLE) {
+                    member.PatternIds.push_back("KAKULSAYDON_G1_PATTERN_38");
+                    member.TransitionTicks.resize(member.PatternIds.size() - 1u, 1u);
+                }
+                spliced = true; memberStart = member.iMarioEntryStartTick;
+                stageOk = member.iMarioEntryStage == (scenario == PARENT_ENTRY::MULTI_WINDOW ? authoredStage : expectedStage) && member.strMarioEntryPatternId == parentId && !member.bMarioEntryConsumed;
+                S2C_KOUKUSAYDON_BUNDLE_STATE state{}, decoded{}; CPacketWriter writer;
+                wire = room->Build_KoukuBundleState(state) && Write_Message(writer, state);
+                if (wire) { CPacketReader reader(writer.Get_Buffer()); wire = Read_Message(reader, decoded) && !decoded.Members.empty() &&
+                    decoded.Members.front().strMarioEntryPatternId.empty() && decoded.Members.front().iMarioEntryHoldMs == 0u; }
+            }
+            if (spliced && !moved && tick - memberStart >= CKoukuSaydonLogicRuntime::Ticks_FromMs(enterMs)) {
+                auto& entrant = room->m_Players.at(player.iPlayerId);
+                entrant.fPositionX = region.fCenterX; entrant.fPositionY = region.fCenterY; entrant.fPositionZ = region.fCenterZ;
+                // The stagger threshold is crossed on the same next tick that judges the entrant inside the region.
+                if (finalTick) live->iCurrentHp -= 1000u;
+                moved = true;
+            }
+            if (member.bMarioEntryConsumed && !entryTick) entryTick = tick;
+            if (member.iPatternIndex == 1u) {
+                secondReached = true; completionTick = tick;
+                anchorCleared = !member.MarioEntryAnchor.has_value(); pendingClear = room->m_PendingKoukuMarioEntries.empty();
+                room->Clear_KoukuSaydonPatternAudition(false, "Parent Mario entry contract end");
+                break;
+            }
+        }
+        const auto& entrant = room->m_Players.at(player.iPlayerId);
+        tests.Require(bounded && spliced && stageOk && wire && secondReached && anchorCleared && pendingClear,
+            "A chain-free entry Parent pins its own anchor without a Client hold and drops the portal when the pattern completes");
+        if (scenario == PARENT_ENTRY::AFTER_WINDOW)
+            tests.Require(moved && !entryTick && entrant.iMarioStage == 0u && room->m_iNextMarioEntryStage == 1u,
+                "A chain-free Mario entry closes when its ENTER_AREA window ends");
+        else if (finalTick)
+            tests.Require(moved && entryTick && entryTick == completionTick &&
+                (scenario != PARENT_ENTRY::LAST_TICK_SINGLE || singleCompletionQueued) &&
+                entrant.iMarioStage == expectedStage && room->m_iNextMarioEntryStage == static_cast<std::uint8_t>(expectedStage + 1u),
+                "An entry queued on the pattern's final tick still commits before the portal closes");
+        else
+            tests.Require(moved && entryTick && entryTick - memberStart >= CKoukuSaydonLogicRuntime::Ticks_FromMs(windowStartMs) &&
+                entrant.iMarioStage == expectedStage && room->m_iNextMarioEntryStage == static_cast<std::uint8_t>(expectedStage + 1u),
+                "Authored stage, live counter and request test stage each enter the expected Mario stage and advance the counter once");
+    };
+    parentMarioEntry(PARENT_ENTRY::AUTHORED_STAGE);
+    parentMarioEntry(PARENT_ENTRY::LIVE_COUNTER);
+    parentMarioEntry(PARENT_ENTRY::REQUEST_STAGE);
+    parentMarioEntry(PARENT_ENTRY::AFTER_WINDOW);
+    parentMarioEntry(PARENT_ENTRY::LAST_TICK);
+    parentMarioEntry(PARENT_ENTRY::LAST_TICK_SINGLE);
+    parentMarioEntry(PARENT_ENTRY::MULTI_WINDOW);
+    {
+        // PATTERNLOGICOUTCOME: an 11th field on MARIO_ENTER is the authored stage 1..4; other kinds keep the fear-only rule.
+        namespace fs = std::filesystem;
+        std::vector<wchar_t> buffer(32768u); fs::path dataRoot;
+        const DWORD configured = GetEnvironmentVariableW(L"LOSTARK_SERVER_DATA_ROOT", buffer.data(), static_cast<DWORD>(buffer.size()));
+        if (configured && configured < buffer.size()) dataRoot = buffer.data();
+        else { GetModuleFileNameW(nullptr, buffer.data(), static_cast<DWORD>(buffer.size())); dataRoot = fs::path(buffer.data()).parent_path().parent_path() / L"DataFiles"; }
+        std::ifstream input(dataRoot / L"Gameplay" / L"Gameplay.bootstrap", std::ios::binary);
+        std::string bytes((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
+        if (!bytes.empty() && bytes.back() != '\n') bytes += '\n';
+        const std::string row = "PATTERNLOGICOUTCOME\tENCOUNTER_KAKULSAYDON_G1\tKAKULSAYDON_G1_PATTERN_88\tKAKULSAYDON_G1_PATTERN_88.logic.1\tSUCCESS\t0\t";
+        unsigned fixture = 0u;
+        const auto load = [&](const std::string& extra, std::uint8_t& outStage) {
+            std::string copy = bytes + extra;
+            const auto headerEnd = copy.find('\n');
+            const auto headerCount = copy.rfind('\t', headerEnd);
+            copy.replace(headerCount + 1u, headerEnd - headerCount - 1u, std::to_string(std::count(copy.begin(), copy.end(), '\n') - 1u));
+            const fs::path directory = fs::temp_directory_path() / (L"LostArkMarioStageContract-" + std::to_wstring(GetCurrentProcessId()) + L"-" + std::to_wstring(++fixture));
+            std::error_code error; fs::create_directories(directory, error); const fs::path path = directory / L"Gameplay.bootstrap";
+            { std::ofstream output(path, std::ios::binary | std::ios::trunc); output.write(copy.data(), static_cast<std::streamsize>(copy.size())); }
+            GameplayDataRevision revision; std::string status; CGameplayCatalog generation;
+            const bool loaded = !error && CServerApp::Hash_GameplayFileForAdmission(path, revision, status) && generation.Load_FromBootstrap(fs::canonical(path), revision, revision);
+            outStage = 255u;
+            const auto* pattern = loaded ? CKoukuSaydonBrain::Find_AnimationOnlyPattern(generation, "KAKULSAYDON_G1_PATTERN_88", status) : nullptr;
+            const auto* entry = pattern ? CKoukuSaydonLogicRuntime::Find_MarioEntryResult(*pattern) : nullptr;
+            if (entry) outStage = entry->iMarioEntryStage;
+            if (!loaded) std::cout << "[STATUS] Mario stage fixture " << fixture << ": " << generation.Get_Status() << '\n';
+            fs::remove_all(directory, error);
+            return loaded;
+        };
+        std::uint8_t stage = 255u;
+        tests.Require(!bytes.empty() && load(row + "MARIO_ENTER\t0\t0\t-\t2\n", stage) && stage == 2u,
+            "An 11-field MARIO_ENTER outcome row carries the authored Mario stage");
+        tests.Require(load(row + "MARIO_ENTER\t0\t0\t-\n", stage) && stage == 0u,
+            "A 10-field MARIO_ENTER outcome row keeps the live room counter");
+        tests.Require(!load(row + "MARIO_ENTER\t0\t0\t-\t5\n", stage) && !load(row + "MARIO_ENTER\t0\t0\t-\t0\n", stage) &&
+            !load(row + "INSTANT_DEATH\t0\t0\t-\t2\n", stage),
+            "Mario stages outside 1..4 and an 11th field on a non-fear, non-Mario outcome are rejected");
+    }
     for (std::uint8_t stage = 1u; stage <= 4u; ++stage) {
         auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
         SERVER_PLAYER player{}; player.iPlayerId = 930u; player.iNetEntityId = 931u;

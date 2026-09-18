@@ -18,9 +18,9 @@ class ObjectColliderTests(unittest.TestCase):
         boxes=[{"occurrenceId":"world.occurrence","worldId":"world.test","startMs":0,"durationMs":3000,"playbackSpeed":1}]
         return sequences,worlds,boxes
 
-    def bake(self, fixture):
+    def bake(self, fixture, **kwargs):
         def no_model(*args): raise AssertionError("Unattached collider should not load a model")
-        return subject.bake_windows(*fixture,no_model)
+        return subject.bake_windows(*fixture,no_model,**kwargs)
 
     def test_linear_blade_and_no_collider_compatibility(self):
         f=self.fixture();rows=self.bake(f)
@@ -79,8 +79,8 @@ class ObjectColliderTests(unittest.TestCase):
             with self.subTest(change=change),self.assertRaises(subject.ColliderBakeError):self.bake(f)
 
     def test_window_budget_is_bounded(self):
-        f=self.fixture();f[0]["templates"][0]["objectMotion"].update(count=65)
-        with self.assertRaisesRegex(subject.ColliderBakeError,"64-window"):self.bake(f)
+        f=self.fixture();f[0]["templates"][0]["objectMotion"].update(count=129)
+        with self.assertRaisesRegex(subject.ColliderBakeError,"128-window"):self.bake(f)
 
     def test_non_tick_aligned_birth_samples_actual_server_time(self):
         f=self.fixture();f[0]["templates"][0]["colliderTracks"][0]["startMs"]=80
@@ -101,6 +101,22 @@ class ObjectColliderTests(unittest.TestCase):
             f=self.fixture();s=f[0]["templates"][0];s["effectTracks"]=[{}];s["colliderTracks"][0]["durationMs"]=1000
             f[0]["instances"][0]["motionEnd"]=end;f[2][0]["durationMs"]=500
             with self.subTest(end=end):self.assertEqual(self.bake(f)[0]["durationMs"],1000)
+
+    def test_pattern_end_closes_effect_tail_damage_and_hook_carry(self):
+        for behavior in ("DAMAGE", "HOOK_CAPTURE"):
+            for end in ("STOP", "HOLD", "LOOP"):
+                with self.subTest(behavior=behavior, end=end):
+                    f=self.fixture(behavior);s=f[0]["templates"][0]
+                    s["effectTracks"]=[{}];s["colliderTracks"][0]["durationMs"]=1000
+                    f[0]["instances"][0]["motionEnd"]=end
+                    f[2][0].update(startMs=200,durationMs=500)
+                    rows=self.bake(f,pattern_end_ms=800)
+                    self.assertEqual([(r["startMs"],r["durationMs"]) for r in rows],[(200,600)])
+                    track=rows[0]["region"]["worldTrack"]
+                    self.assertEqual(track["durationMs"],600)
+                    self.assertEqual(track["keys"][-1]["timeMs"],600)
+                    self.assertFalse(track["keys"][-1]["visible"])
+                    self.assertEqual(self.bake(f,pattern_end_ms=200),[])
 
     def test_hook_empty_bone_uses_full_visual_root_basis(self):
         f=self.fixture("HOOK_CAPTURE");s=f[0]["templates"][0];s["colliderTracks"][0]["gripLocalOffset"]=[1,0,0]

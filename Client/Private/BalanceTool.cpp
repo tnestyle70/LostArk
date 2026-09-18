@@ -1651,7 +1651,7 @@ namespace
 		std::vector<const VALTAN_STAGE_ACTION_VIEW*> rows;
 		for (const VALTAN_STAGE_ACTION_VIEW& action : stage.Actions)
 		{
-			if (!IsValtanCounterOwnedAction(action))
+			if (!IsValtanCounterOwnedAction(action) && action.strKind != "SPAWN_COMBAT_OBJECT" && action.strKind != "SPAWN_COMBAT_OBJECT_VOLLEY")
 				rows.push_back(&action);
 		}
 		return rows;
@@ -2164,6 +2164,205 @@ bool Client::CBalanceTool::Require_ValtanAuthoringAdmission(
 		"A stale-preserved graph is display-only; reload an exact validated "
 		"source revision before editing.";
 	return false;
+}
+
+bool Client::CBalanceTool::Get_ValtanAuthoringView(
+	VALTAN_PATTERN_TREE_VIEW& view, std::string& status) const
+{
+	if (m_valtanPatternTree.Get_PatternCount() == 0u || m_valtanSourceRevision.empty())
+	{
+		status = "Valtan source inventory is unavailable.";
+		return false;
+	}
+	view = m_valtanPatternTree;
+	status = "Valtan source inventory; Product readiness is checked on Publish.";
+	return true;
+}
+
+bool Client::CBalanceTool::Upsert_ValtanStageActionDraft(
+	const std::string& patternId, const std::string& stageId,
+	const VALTAN_STAGE_ACTION_VIEW& value, std::string& status)
+{
+	if (!Require_ValtanAuthoringAdmission("Valtan StageAction edit", status)) return false;
+	auto* pattern = FindValtanPattern(m_valtanPatternTree, patternId);
+	auto* stage = nullptr == pattern ? nullptr : FindValtanStage(*pattern, stageId);
+	if (nullptr == stage || !pattern->bAuthoringMasterManaged) { status = "The authoring Stage is unavailable."; return false; }
+
+	const std::array<const char*, 12> supported = { "SET_BOSS_FLAG", "SET_STAGGER_GAUGE", "SET_PLAYER_BIND", "SET_PLAYER_SILENCE", "SET_GAMEPLAY_PHASE", "RETARGET_RANDOM_ALIVE", "RETURN_TO_ARENA_CENTER", "SUPPRESS_INTER_STEP_PURSUIT", "DAMAGE_GRABBED_PLAYERS", "EXECUTE_GRABBED_PLAYERS", "RELEASE_GRABBED_PLAYERS", "TRIGGER_WORLD_EVENT_SET" };
+	if (std::find(supported.begin(), supported.end(), value.strKind) == supported.end() ||
+		(value.strTrigger != "ENTER" && value.strTrigger != "EXIT") || !IsValtanStableAuthoringId(value.strTargetId) ||
+		!std::isfinite(value.fValue) || !std::isfinite(value.fSpeedMps) || !std::isfinite(value.fYawOffsetDegrees) || value.iDurationMs > 600000u)
+	{ status = "This action has an unsupported kind, identity or typed value."; return false; }
+	if (value.strKind == "SET_BOSS_FLAG" && value.strTargetId == "boss.flag.counterable")
+	{ status = "Counter actions are owned by the Counter window editor."; return false; }
+	const bool enter = value.strTrigger == "ENTER";
+	bool typed = true;
+	if (value.strKind == "SET_BOSS_FLAG") typed = (value.fValue == 0.f || value.fValue == 1.f) && value.iDurationMs == 0u;
+	else if (value.strKind == "SET_STAGGER_GAUGE") typed = value.strTargetId == "boss.gauge.stagger" && std::floor(value.fValue) == value.fValue && value.fValue >= 0.f && value.fValue <= 100000.f && enter == (value.fValue > 0.f) && value.iDurationMs == 0u;
+	else if (value.strKind == "SET_PLAYER_BIND") typed = value.strTargetId == "player.status.bind" && (enter ? value.fValue == 5000.f && value.iDurationMs == stage->iDurationMs && value.iDurationMs >= 100u && value.iDurationMs <= 120000u : value.fValue == 0.f && value.iDurationMs == 0u);
+	else if (value.strKind == "SET_PLAYER_SILENCE") typed = value.strTargetId == "player.status.silence" && enter && value.fValue == 1.f && value.iDurationMs >= stage->iDurationMs && value.iDurationMs >= 100u && value.iDurationMs <= 120000u;
+	else if (value.strKind == "SET_GAMEPLAY_PHASE") typed = value.strTargetId == "boss.phase.gameplay" && enter && value.iDurationMs == 0u && ((patternId == "VALTAN_ARENA_BREAK_109" && stageId == "IMPACT" && value.fValue == 2.f) || (patternId == "VALTAN_GHOST_RESPAWN_AUDITION" && stageId == "STEP_01" && value.fValue == 3.f));
+	else if (value.strKind == "RETARGET_RANDOM_ALIVE" || value.strKind == "RETURN_TO_ARENA_CENTER") typed = enter && value.iDurationMs == 0u && value.fValue == 1.f && value.strTargetId == (value.strKind == "RETURN_TO_ARENA_CENTER" ? "boss.arena.center" : "boss.target.pattern");
+	else if (value.strKind == "SUPPRESS_INTER_STEP_PURSUIT") typed = !enter && patternId == "VALTAN_GHOST_DEATH_AUDITION" && stageId == "STEP_01" && value.strTargetId == "boss.sequence.inter-step-pursuit" && value.fValue == 0.f && value.iDurationMs == 0u;
+	else if (value.strKind == "DAMAGE_GRABBED_PLAYERS") typed = enter && value.strTargetId.starts_with("damage.") && value.fValue == 0.f && value.iDurationMs == 0u;
+	else if (value.strKind == "EXECUTE_GRABBED_PLAYERS") typed = enter && value.strTargetId == "boss.attachment.left-hand" && value.fValue == 0.f && value.iDurationMs == 0u;
+	else if (value.strKind == "RELEASE_GRABBED_PLAYERS") typed = value.strTargetId == "boss.attachment.left-hand" && ((value.strReleaseMode == "HOLD" && value.fSpeedMps == 0.f && value.iDurationMs == 0u && value.fYawOffsetDegrees == 0.f) || ((value.strReleaseMode == "OPPOSITE_KNOCKBACK" || value.strReleaseMode == "ARENA_EJECTION") && value.fSpeedMps > 0.f && value.fSpeedMps <= 50.f && value.iDurationMs > 0u && value.iDurationMs <= 5000u && std::abs(value.fYawOffsetDegrees) <= 180.f && (value.strReleaseMode == "ARENA_EJECTION" || value.fYawOffsetDegrees == 0.f)));
+	else if (value.strKind == "TRIGGER_WORLD_EVENT_SET")
+	{
+		typed = false;
+		for (const auto* group : { &m_loadedValtanPatternTree.Gimmicks, &m_loadedValtanPatternTree.Rotation })
+			for (const auto& owner : *group) for (const auto& sourceStage : owner.Stages) for (const auto& row : sourceStage.Actions)
+				typed = typed || (row.strKind == value.strKind && row.strTargetId == value.strTargetId);
+		typed = typed && enter && value.iDurationMs == 0u;
+	}
+	if (!typed) { status = "Action values do not satisfy their existing Server kind/owner contract."; return false; }
+
+	auto found = std::find_if(stage->Actions.begin(), stage->Actions.end(), [&value](const auto& row) { return row.strTrigger == value.strTrigger && row.strKind == value.strKind && row.strTargetId == value.strTargetId; });
+	if (found == stage->Actions.end()) stage->Actions.push_back(value); else *found = value;
+	MarkDirty(true); status.clear(); return true;
+}
+
+bool Client::CBalanceTool::Remove_ValtanStageActionDraft(
+	const std::string& patternId, const std::string& stageId,
+	const VALTAN_STAGE_ACTION_VIEW& value, std::string& status)
+{
+	if (!Require_ValtanAuthoringAdmission("Valtan StageAction edit", status)) return false;
+	auto* pattern = FindValtanPattern(m_valtanPatternTree, patternId);
+	auto* stage = nullptr == pattern ? nullptr : FindValtanStage(*pattern, stageId);
+	if (nullptr == stage || !pattern->bAuthoringMasterManaged) { status = "The authoring Stage is unavailable."; return false; }
+
+	if (value.strKind == "SET_BOSS_FLAG" && value.strTargetId == "boss.flag.counterable")
+	{ status = "Counter actions are owned by the Counter window editor."; return false; }
+	auto found = std::find_if(stage->Actions.begin(), stage->Actions.end(), [&value](const auto& row) { return row.strTrigger == value.strTrigger && row.strKind == value.strKind && row.strTargetId == value.strTargetId; });
+	if (found == stage->Actions.end()) { status = "The selected occurrence no longer exists."; return false; }
+	stage->Actions.erase(found);
+	MarkDirty(true); status.clear(); return true;
+}
+
+bool Client::CBalanceTool::Upsert_ValtanCameraInvocationDraft(
+	const std::string& patternId, const std::string& stageId,
+	const VALTAN_CAMERA_INVOCATION_VIEW& value, std::string& status)
+{
+	if (!Require_ValtanAuthoringAdmission("Valtan CameraInvocation edit", status)) return false;
+	auto* pattern = FindValtanPattern(m_valtanPatternTree, patternId);
+	auto* stage = nullptr == pattern ? nullptr : FindValtanStage(*pattern, stageId);
+	if (nullptr == stage || !pattern->bAuthoringMasterManaged) { status = "The authoring Stage is unavailable."; return false; }
+
+	if (!IsValtanStableAuthoringId(value.strCameraInvocationId) || !IsValtanStableAuthoringId(value.strCameraCueId) ||
+		value.strTrigger != "ENTER" || value.strDurationPolicy != "EXPLICIT" || value.iDurationMs == 0u ||
+		static_cast<std::uint64_t>(value.iStartOffsetMs) + value.iDurationMs > stage->iDurationMs)
+	{ status = "Camera invocation must fit inside the Stage with stable cue/invocation IDs."; return false; }
+
+	auto found = std::find_if(stage->CameraInvocations.begin(), stage->CameraInvocations.end(), [&value](const auto& row) { return row.strCameraInvocationId == value.strCameraInvocationId; });
+	if (found == stage->CameraInvocations.end()) stage->CameraInvocations.push_back(value); else *found = value;
+	MarkDirty(true); status.clear(); return true;
+}
+
+bool Client::CBalanceTool::Remove_ValtanCameraInvocationDraft(
+	const std::string& patternId, const std::string& stageId,
+	const VALTAN_CAMERA_INVOCATION_VIEW& value, std::string& status)
+{
+	if (!Require_ValtanAuthoringAdmission("Valtan CameraInvocation edit", status)) return false;
+	auto* pattern = FindValtanPattern(m_valtanPatternTree, patternId);
+	auto* stage = nullptr == pattern ? nullptr : FindValtanStage(*pattern, stageId);
+	if (nullptr == stage || !pattern->bAuthoringMasterManaged) { status = "The authoring Stage is unavailable."; return false; }
+
+	auto found = std::find_if(stage->CameraInvocations.begin(), stage->CameraInvocations.end(), [&value](const auto& row) { return row.strCameraInvocationId == value.strCameraInvocationId; });
+	if (found == stage->CameraInvocations.end()) { status = "The selected occurrence no longer exists."; return false; }
+	stage->CameraInvocations.erase(found);
+	MarkDirty(true); status.clear(); return true;
+}
+
+bool Client::CBalanceTool::Set_ValtanStageSceneProfileOccurrences(
+	const std::string& patternId, const std::string& stageId,
+	const std::vector<BOSS_STAGE_SCENE_PROFILE_OCCURRENCE>& occurrences, std::string& status)
+{
+	if (!Require_ValtanAuthoringAdmission("Valtan SceneProfile edit", status)) return false;
+	auto* pattern = FindValtanPattern(m_valtanPatternTree, patternId);
+	auto* stage = nullptr == pattern ? nullptr : FindValtanStage(*pattern, stageId);
+	if (nullptr == stage || !pattern->bAuthoringMasterManaged) { status = "The authoring Stage is unavailable."; return false; }
+	DATA_JSON_VALUE parsed;
+	std::vector<BOSS_STAGE_SCENE_PROFILE_OCCURRENCE> scenes;
+	std::vector<BOSS_STAGE_LIGHT_OCCURRENCE> lights;
+	if (!CDataJson::Parse(Serialize_BossStageEnvironment(occurrences, stage->LightOccurrences), parsed, status) ||
+		!Parse_BossStageEnvironment(parsed, scenes, lights, status, stage->iDurationMs)) return false;
+	stage->SceneProfileOccurrences = std::move(scenes);
+	stage->LightOccurrences = std::move(lights);
+	MarkDirty(true); status.clear(); return true;
+}
+
+bool Client::CBalanceTool::Set_ValtanStageLightOccurrences(
+	const std::string& patternId, const std::string& stageId,
+	const std::vector<BOSS_STAGE_LIGHT_OCCURRENCE>& occurrences, std::string& status)
+{
+	if (!Require_ValtanAuthoringAdmission("Valtan Light edit", status)) return false;
+	auto* pattern = FindValtanPattern(m_valtanPatternTree, patternId);
+	auto* stage = nullptr == pattern ? nullptr : FindValtanStage(*pattern, stageId);
+	if (nullptr == stage || !pattern->bAuthoringMasterManaged) { status = "The authoring Stage is unavailable."; return false; }
+	DATA_JSON_VALUE parsed;
+	std::vector<BOSS_STAGE_SCENE_PROFILE_OCCURRENCE> scenes;
+	std::vector<BOSS_STAGE_LIGHT_OCCURRENCE> lights;
+	if (!CDataJson::Parse(Serialize_BossStageEnvironment(stage->SceneProfileOccurrences, occurrences), parsed, status) ||
+		!Parse_BossStageEnvironment(parsed, scenes, lights, status, stage->iDurationMs)) return false;
+	stage->SceneProfileOccurrences = std::move(scenes);
+	stage->LightOccurrences = std::move(lights);
+	MarkDirty(true); status.clear(); return true;
+}
+
+bool Client::CBalanceTool::Upsert_ValtanSummonDraft(
+	const std::string& patternId, const std::string& stageId,
+	const VALTAN_COMBAT_OBJECT_EFFECT_VIEW& value, std::string& status)
+{
+	if (!Require_ValtanAuthoringAdmission("Valtan Summon edit", status)) return false;
+	auto* pattern = FindValtanPattern(m_valtanPatternTree, patternId);
+	auto* stage = nullptr == pattern ? nullptr : FindValtanStage(*pattern, stageId);
+	if (nullptr == stage || !pattern->bAuthoringMasterManaged) { status = "The authoring Stage is unavailable."; return false; }
+	auto found = std::find_if(stage->CombatObjectEffects.begin(), stage->CombatObjectEffects.end(), [&value](const auto& row) { return row.strCombatObjectArchetypeId == value.strCombatObjectArchetypeId && row.strTrigger == value.strTrigger; });
+	if (!IsValtanStableAuthoringId(value.strCombatObjectArchetypeId) || value.strTrigger != "ENTER" ||
+		value.iSpawnValue == 0u || value.iSpawnValue > 64u || value.iLifetimeMs == 0u || value.iLifetimeMs > 600000u ||
+		value.iSpawnScheduleCount > 8u || (value.iSpawnScheduleCount > 1u && value.iSpawnIntervalMs == 0u) ||
+		static_cast<std::uint64_t>(value.iFirstSpawnOffsetMs) + (value.iSpawnScheduleCount > 0u ? value.iSpawnScheduleCount - 1u : 0u) * static_cast<std::uint64_t>(value.iSpawnIntervalMs) >= stage->iDurationMs)
+	{ status = "Summon count, spawn clock or shared lifetime is invalid."; return false; }
+	bool known = false;
+	for (const auto* group : { &m_loadedValtanPatternTree.Gimmicks, &m_loadedValtanPatternTree.Rotation })
+		for (const auto& owner : *group) for (const auto& sourceStage : owner.Stages) for (const auto& row : sourceStage.CombatObjectEffects)
+			known = known || row.strCombatObjectArchetypeId == value.strCombatObjectArchetypeId;
+	if (!known) { status = "Summon must reference an existing admitted combat-object resource."; return false; }
+	if (found == stage->CombatObjectEffects.end()) stage->CombatObjectEffects.push_back(value); else *found = value;
+	// Lifetime belongs to the shared archetype definition; show the same value at every occurrence.
+	for (auto* group : { &m_valtanPatternTree.Gimmicks, &m_valtanPatternTree.Rotation })
+		for (auto& owner : *group) for (auto& sourceStage : owner.Stages) for (auto& row : sourceStage.CombatObjectEffects)
+			if (row.strCombatObjectArchetypeId == value.strCombatObjectArchetypeId) row.iLifetimeMs = value.iLifetimeMs;
+	MarkDirty(true); status.clear(); return true;
+}
+
+bool Client::CBalanceTool::Remove_ValtanSummonDraft(
+	const std::string& patternId, const std::string& stageId,
+	const VALTAN_COMBAT_OBJECT_EFFECT_VIEW& value, std::string& status)
+{
+	if (!Require_ValtanAuthoringAdmission("Valtan Summon edit", status)) return false;
+	auto* pattern = FindValtanPattern(m_valtanPatternTree, patternId);
+	auto* stage = nullptr == pattern ? nullptr : FindValtanStage(*pattern, stageId);
+	if (nullptr == stage || !pattern->bAuthoringMasterManaged) { status = "The authoring Stage is unavailable."; return false; }
+	auto found = std::find_if(stage->CombatObjectEffects.begin(), stage->CombatObjectEffects.end(), [&value](const auto& row) { return row.strCombatObjectArchetypeId == value.strCombatObjectArchetypeId && row.strTrigger == value.strTrigger; });
+	if (found == stage->CombatObjectEffects.end()) { status = "Summon occurrence no longer exists."; return false; }
+	stage->CombatObjectEffects.erase(found);
+	MarkDirty(true); status.clear(); return true;
+}
+
+bool Client::CBalanceTool::Apply_ValtanCompositionDraftTransaction(
+	const std::function<bool(std::string&)>& edit, std::string& status)
+{
+	if (!Require_ValtanAuthoringAdmission("Valtan composition transaction", status)) return false;
+	const auto tree = m_valtanPatternTree;
+	const auto generation = m_valtanDraftGeneration;
+	const bool dirty = m_dirty, validated = m_valtanDraftValidated;
+	const auto revision = m_valtanCandidateRevision, applyClass = m_valtanCandidateApplyClass;
+	const auto rollback = [&]() { m_valtanPatternTree = tree; m_valtanDraftGeneration = generation; m_dirty = dirty; m_valtanDraftValidated = validated; m_valtanCandidateRevision = revision; m_valtanCandidateApplyClass = applyClass; };
+	try { if (!edit(status)) { rollback(); return false; } }
+	catch (...) { rollback(); throw; }
+	if (m_valtanDraftGeneration != generation) m_valtanDraftGeneration = generation + 1u;
+	return true;
 }
 
 bool Client::CBalanceTool::Reload_ValtanSource(std::string& status)
@@ -5393,7 +5592,7 @@ bool Client::CBalanceTool::Begin_ValtanCompositionSave(
 	std::uint64_t& jobId, std::string& status)
 {
 	return Begin_ValtanSaveJob(
-		true, publishAfterSave, &ownerDrafts, jobId, status);
+		true, publishAfterSave, &ownerDrafts, jobId, status, true);
 }
 
 bool Client::CBalanceTool::Begin_ValtanProductPublishRetry(
@@ -5414,7 +5613,7 @@ bool Client::CBalanceTool::Begin_ValtanSaveJob(
 	const bool commitCanonical,
 	const bool publishAfterSave,
 	const VALTAN_COMPOSITION_OWNER_DRAFTS* const ownerDrafts,
-	std::uint64_t& jobId, std::string& status)
+	std::uint64_t& jobId, std::string& status, const bool sourceOnly)
 {
 	jobId = 0u;
 	if (VALTAN_SAVE_JOB_STATE::IDLE != m_valtanSaveJobState)
@@ -5473,6 +5672,7 @@ bool Client::CBalanceTool::Begin_ValtanSaveJob(
 	m_valtanSaveJobCanonicalCommitted = !commitCanonical &&
 		!m_valtanCommittedRevisionPendingReopen.empty();
 	m_valtanSaveJobPublishAfterSave = publishAfterSave;
+	m_valtanSaveJobSourceOnly = sourceOnly;
 	m_valtanSaveJobDraftGeneration = m_valtanDraftGeneration;
 	m_valtanSaveJobOutputPaths.clear();
 	m_valtanSaveJobWarned = false;
@@ -5526,6 +5726,19 @@ bool Client::CBalanceTool::Launch_ValtanSaveCommand(
 		L" -ResultPath \"" + m_valtanSaveJobResultPath.wstring() + L"\"";
 	if (!m_valtanSaveJobPublishAfterSave)
 		arguments += L" -CommitOnly";
+	if (commitCanonical && m_valtanSaveJobSourceOnly)
+	{
+		const std::filesystem::path baselineRoot = m_valtanSaveJobDirectory / L"source-baselines";
+		for (const auto& owner : m_valtanSourceOwnerBaselines)
+		{
+			const auto target = baselineRoot / std::filesystem::path(owner.first);
+			std::error_code error;
+			std::filesystem::create_directories(target.parent_path(), error);
+			if (error || !DurableWrite(target, owner.second, status))
+			{ status = "Could not stage the source Reload baseline: " + status; return false; }
+		}
+		arguments += L" -SourceOnly -SourceBaselineRoot \"" + baselineRoot.wstring() + L"\"";
+	}
 	if (commitCanonical)
 	{
 		std::string patchText;
@@ -5964,6 +6177,7 @@ void Client::CBalanceTool::Reset_ValtanSaveJob()
 	m_valtanSaveJobCommitCanonicalRequested = false;
 	m_valtanSaveJobCanonicalCommitted = false;
 	m_valtanSaveJobPublishAfterSave = true;
+	m_valtanSaveJobSourceOnly = false;
 	m_valtanSaveJobExpectedSourceRevision.clear();
 	m_valtanSaveJobCommittedSourceRevision.clear();
 	m_valtanSaveJobCandidateRevision.clear();
@@ -6853,6 +7067,15 @@ bool Client::CBalanceTool::Reload()
 			status;
 		return false;
 	}
+	std::unordered_map<std::string, std::string> sourceBaselines;
+	for (const char* relative : { "Data/Valtan/Valtan.gameplay.json", "Data/Valtan/Valtan.presentation.json",
+		"Data/Valtan/Valtan.combatobjects.json", "Data/Actors/BossCatalog.json" })
+	{
+		const auto path = CProjectDataRoot::Get().parent_path() / relative;
+		const std::string bytes = ReadTextFile(path);
+		if (bytes.empty()) { m_status = "Source Reload baseline is missing: " + std::string(relative); return false; }
+		sourceBaselines.emplace(relative, bytes);
+	}
 	if (!CanonicalAdmission.Validate_StillCurrent(CanonicalDiagnostic))
 	{
 		m_status =
@@ -6880,6 +7103,7 @@ bool Client::CBalanceTool::Reload()
 	m_loadedDamageProfiles = m_damageProfiles;
 	m_loadedBosses = m_bosses;
 	m_loadedValtanPatternTree = m_valtanPatternTree;
+	m_valtanSourceOwnerBaselines = std::move(sourceBaselines);
 	m_loadedValtanAxeVolley = m_valtanAxeVolley;
 	m_selectedPlayer = (std::min)(m_selectedPlayer,
 		m_players.empty() ? 0u : m_players.size() - 1u);
@@ -6945,10 +7169,13 @@ bool Client::CBalanceTool::ReloadValtanPatternAuthoring(
 {
 	VALTAN_PATTERN_TREE_VIEW stagedTree;
 	std::string treeStatus;
-	if (!CValtanPatternTree::Load_WhileAdmitted(
+	// Product enrichment is optional. Source edits remain available when the
+	// previously published animation/effect generation has not been rebuilt.
+	(void)CValtanPatternTree::Load_WhileAdmitted(canonicalAdmission, stagedTree, treeStatus);
+	if (!CValtanPatternTree::Load_Authoring_WhileAdmitted(
 			canonicalAdmission, stagedTree, treeStatus))
 	{
-		status = "Valtan split-source pattern-tree admission failed: " + treeStatus;
+		status = "Valtan source inventory failed: " + treeStatus;
 		return false;
 	}
 
@@ -10823,49 +11050,50 @@ bool Client::CBalanceTool::BuildValtanDraftPatch(
 					CollectValtanNonCounterActions(stage);
 				const std::vector<const VALTAN_STAGE_ACTION_VIEW*> loadedActions =
 					CollectValtanNonCounterActions(*loadedStage);
-				if (actions.size() != loadedActions.size())
+				const auto actionKey = [](const VALTAN_STAGE_ACTION_VIEW& row) { return row.strTrigger + "/" + row.strKind + "/" + row.strTargetId; };
+				const auto serializeAction = [&](const VALTAN_STAGE_ACTION_VIEW& row) {
+					std::ostringstream json;
+					json << "{ \"trigger\": " << Quote(row.strTrigger) << ", \"kind\": " << Quote(row.strKind)
+						<< ", \"targetId\": " << Quote(row.strTargetId) << ", \"value\": " << FormatJsonNumber(row.fValue)
+						<< ", \"durationMs\": " << row.iDurationMs << ", \"releaseMode\": " << Quote(row.strReleaseMode)
+						<< ", \"speedMps\": " << FormatJsonNumber(row.fSpeedMps) << ", \"yawOffsetDegrees\": " << FormatJsonNumber(row.fYawOffsetDegrees) << " }";
+					return json.str();
+				};
+				for (const auto* saved : loadedActions)
 				{
-					status = "Loaded non-Counter stage action inventory changed: " +
-						pattern.strPatternId + "/" + stage.strStageId + ".";
-					return false;
+					if (std::none_of(actions.begin(), actions.end(), [&](const auto* row) { return actionKey(*row) == actionKey(*saved); }))
+					{ std::ostringstream op; op << "    { \"op\": \"REMOVE_STAGE_ACTION\", \"patternId\": " << Quote(pattern.strPatternId) << ", \"stageId\": " << Quote(stage.strStageId) << ", \"action\": " << serializeAction(*saved) << " }"; append(op); }
 				}
-				for (std::size_t actionIndex = 0u;
-					actionIndex < actions.size(); ++actionIndex)
+				for (const auto* row : actions)
 				{
-					const VALTAN_STAGE_ACTION_VIEW& action =
-						*actions[actionIndex];
-					const VALTAN_STAGE_ACTION_VIEW& loadedAction =
-						*loadedActions[actionIndex];
-					if (!EqualValtanActionStableFields(action, loadedAction))
-					{
-						status = "Loaded stage action stable identity changed: " +
-							pattern.strPatternId + "/" + stage.strStageId + ".";
-						return false;
-					}
-					const bool releaseChanged =
-						action.strReleaseMode != loadedAction.strReleaseMode ||
-						action.fSpeedMps != loadedAction.fSpeedMps ||
-						action.iDurationMs != loadedAction.iDurationMs ||
-						action.fYawOffsetDegrees !=
-							loadedAction.fYawOffsetDegrees;
-					if (!releaseChanged)
-						continue;
-					if ("RELEASE_GRABBED_PLAYERS" != action.strKind)
-					{
-						status = "Only grabbed-player release fields may differ in a stage action draft.";
-						return false;
-					}
-					std::ostringstream operation;
-					operation << "    { \"op\": \"SET_STAGE_GRABBED_RELEASE\", "
-						"\"patternId\": " << Quote(pattern.strPatternId)
-						<< ", \"stageId\": " << Quote(stage.strStageId)
-						<< ", \"releaseMode\": " << Quote(action.strReleaseMode)
-						<< ", \"speedMps\": " << FormatJsonNumber(action.fSpeedMps)
-						<< ", \"durationMs\": " << action.iDurationMs
-						<< ", \"yawOffsetDegrees\": "
-						<< FormatJsonNumber(action.fYawOffsetDegrees) << " }";
-					append(operation);
+					const auto saved = std::find_if(loadedActions.begin(), loadedActions.end(), [&](const auto* previous) { return actionKey(*row) == actionKey(*previous); });
+					if (saved == loadedActions.end() || serializeAction(*row) != serializeAction(**saved))
+					{ std::ostringstream op; op << "    { \"op\": \"UPSERT_STAGE_ACTION\", \"patternId\": " << Quote(pattern.strPatternId) << ", \"stageId\": " << Quote(stage.strStageId) << ", \"action\": " << serializeAction(*row) << " }"; append(op); }
 				}
+				const auto serializeCameras = [&](const std::vector<VALTAN_CAMERA_INVOCATION_VIEW>& rows) {
+					std::ostringstream json; json << "[";
+					for (std::size_t i = 0; i < rows.size(); ++i) { const auto& row = rows[i]; if (i) json << ",";
+						json << "{\"cameraInvocationId\":" << Quote(row.strCameraInvocationId) << ",\"cameraCueId\":" << Quote(row.strCameraCueId)
+						<< ",\"trigger\":" << Quote(row.strTrigger) << ",\"startOffsetMs\":" << row.iStartOffsetMs << ",\"durationPolicy\":" << Quote(row.strDurationPolicy) << ",\"durationMs\":" << row.iDurationMs << "}"; }
+					json << "]"; return json.str();
+				};
+				if (serializeCameras(stage.CameraInvocations) != serializeCameras(loadedStage->CameraInvocations))
+				{ std::ostringstream op; op << "    { \"op\": \"SET_STAGE_CAMERAS\", \"patternId\": " << Quote(pattern.strPatternId) << ", \"stageId\": " << Quote(stage.strStageId) << ", \"invocations\": " << serializeCameras(stage.CameraInvocations) << " }"; append(op); }
+				const auto appendEnvironment = [&](const char* operation, const char* field, const std::string& json) {
+					const std::string scenePrefix = "{\"sceneProfileOccurrences\":";
+					const std::string lightPrefix = ",\"lightOccurrences\":";
+					const auto split = json.find(lightPrefix);
+					const std::string rows = std::string(field) == "sceneProfileOccurrences" ?
+						json.substr(scenePrefix.size(), split - scenePrefix.size()) :
+						json.substr(split + lightPrefix.size(), json.size() - split - lightPrefix.size() - 1u);
+					std::ostringstream op; op << "    { \"op\": " << Quote(operation) << ", \"patternId\": " << Quote(pattern.strPatternId) << ", \"stageId\": " << Quote(stage.strStageId) << ", \"occurrences\": " << rows << " }"; append(op);
+				};
+				const std::vector<BOSS_STAGE_SCENE_PROFILE_OCCURRENCE> noScenes;
+				const std::vector<BOSS_STAGE_LIGHT_OCCURRENCE> noLights;
+				const auto sceneJson = Serialize_BossStageEnvironment(stage.SceneProfileOccurrences, noLights);
+				const auto lightJson = Serialize_BossStageEnvironment(noScenes, stage.LightOccurrences);
+				if (sceneJson != Serialize_BossStageEnvironment(loadedStage->SceneProfileOccurrences, noLights)) appendEnvironment("SET_STAGE_SCENE_PROFILES", "sceneProfileOccurrences", sceneJson);
+				if (lightJson != Serialize_BossStageEnvironment(noScenes, loadedStage->LightOccurrences)) appendEnvironment("SET_STAGE_LIGHTS", "lightOccurrences", lightJson);
 				if (!EqualValtanStageMotion(stage.Motion, loadedStage->Motion))
 				{
 					const bool typedPortalRush =
@@ -11032,40 +11260,35 @@ bool Client::CBalanceTool::BuildValtanDraftPatch(
 				/* Combat-object geometry belongs to Valtan.combatobjects.json, but its
 				   Pattern/Stage ownership is joined here.  Preserve every other object
 				   field and emit only exact stable-ID RING radius edits. */
-				if (stage.CombatObjectEffects.size() !=
-					loadedStage->CombatObjectEffects.size())
+				const auto serializeSummons = [&](const std::vector<VALTAN_COMBAT_OBJECT_EFFECT_VIEW>& rows) {
+					std::ostringstream json; json << "[";
+					for (std::size_t i = 0; i < rows.size(); ++i) { const auto& row = rows[i]; if (i) json << ",";
+						json << "{\"combatObjectArchetypeId\":" << Quote(row.strCombatObjectArchetypeId) << ",\"trigger\":" << Quote(row.strTrigger)
+						<< ",\"count\":" << row.iSpawnValue << ",\"volleyPolicy\":" << Quote(row.strVolleyPolicy) << ",\"volleyLayout\":" << Quote(row.strVolleyLayout)
+						<< ",\"radiusM\":" << FormatJsonNumber(row.fVolleyRadiusM) << ",\"startAngleDegrees\":" << FormatJsonNumber(row.fVolleyStartAngleDegrees)
+						<< ",\"angleStepDegrees\":" << FormatJsonNumber(row.fVolleyAngleStepDegrees) << ",\"maximumTotalObjects\":" << row.iVolleyMaximumTotalObjects
+						<< ",\"spawnCount\":" << row.iSpawnScheduleCount << ",\"firstSpawnOffsetMs\":" << row.iFirstSpawnOffsetMs << ",\"spawnIntervalMs\":" << row.iSpawnIntervalMs
+						<< ",\"lifetimeMs\":" << row.iLifetimeMs << "}"; }
+					json << "]"; return json.str();
+				};
+				if (serializeSummons(stage.CombatObjectEffects) != serializeSummons(loadedStage->CombatObjectEffects))
+				{ std::ostringstream op; op << "    { \"op\": \"SET_STAGE_SUMMONS\", \"patternId\": " << Quote(pattern.strPatternId) << ", \"stageId\": " << Quote(stage.strStageId) << ", \"summons\": " << serializeSummons(stage.CombatObjectEffects) << " }"; append(op); }
+				for (const auto& object : stage.CombatObjectEffects)
 				{
-					status = "Combat-object inventory changed outside its typed owner: " +
-						pattern.strPatternId + "/" + stage.strStageId + ".";
-					return false;
-				}
-				for (std::size_t objectIndex = 0u;
-					objectIndex < stage.CombatObjectEffects.size(); ++objectIndex)
-				{
-					const VALTAN_COMBAT_OBJECT_EFFECT_VIEW& object =
-						stage.CombatObjectEffects[objectIndex];
-					const VALTAN_COMBAT_OBJECT_EFFECT_VIEW& loadedObject =
-						loadedStage->CombatObjectEffects[objectIndex];
+					const auto foundObject = std::find_if(loadedStage->CombatObjectEffects.begin(), loadedStage->CombatObjectEffects.end(), [&](const auto& saved) { return saved.strCombatObjectArchetypeId == object.strCombatObjectArchetypeId && saved.strTrigger == object.strTrigger; });
+					if (foundObject == loadedStage->CombatObjectEffects.end()) continue;
+					const auto& loadedObject = *foundObject;
 					const bool objectIdentityChanged =
 						object.strCombatObjectArchetypeId !=
 							loadedObject.strCombatObjectArchetypeId ||
 						object.strClientVisualId != loadedObject.strClientVisualId ||
 						object.strEffectAssetId != loadedObject.strEffectAssetId ||
 						object.strTrigger != loadedObject.strTrigger ||
-						object.iSpawnValue != loadedObject.iSpawnValue ||
-						object.strVolleyPolicy != loadedObject.strVolleyPolicy ||
-						object.strVolleyLayout != loadedObject.strVolleyLayout ||
-						object.fVolleyRadiusM != loadedObject.fVolleyRadiusM ||
-						object.fVolleyStartAngleDegrees !=
-							loadedObject.fVolleyStartAngleDegrees ||
-						object.fVolleyAngleStepDegrees !=
-							loadedObject.fVolleyAngleStepDegrees ||
 						object.strKind != loadedObject.strKind ||
 						object.strOriginPolicy != loadedObject.strOriginPolicy ||
 						object.strDirectionPolicy != loadedObject.strDirectionPolicy ||
 						object.fSpeedMps != loadedObject.fSpeedMps ||
 						object.fMaximumDistanceM != loadedObject.fMaximumDistanceM ||
-						object.iLifetimeMs != loadedObject.iLifetimeMs ||
 						object.HitIds != loadedObject.HitIds ||
 						object.HitOffsetsMs != loadedObject.HitOffsetsMs ||
 						object.Hits.size() != loadedObject.Hits.size() ||

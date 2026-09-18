@@ -1,6 +1,115 @@
 # 발탄 Composition 저작 흐름 조사·계획 결과
 
-작성일: 2026-09-09. 상태: **현재 코드·데이터 조사와 구현 계획 작성 완료 / 발탄 구현 전**.
+작성일: 2026-09-09. 갱신: 2026-09-18. 현재 구현 상태는 아래 재개 결과를 따른다.
+
+## 2026-09-18 구현 및 실행 반영
+
+이번 재개는 발탄의 실제 source 애니메이션 transport, 공통 Composition 편집 화면,
+Source Save와 Product 분리, 4연속 공격의 Full Restore 연결을 구현했다.
+아래 2026-09-09 내용은 조사 당시 기록이다. 당시 계획의 모든 G가 완료됐다는 뜻은 아니다.
+
+### G08. Play·Pause·Seek와 Effect Solo·Group
+
+- Valtan source sequence는 CModel을 pause 상태로 두고 하나의 커서로 pose를 sample한다.
+  Play/Pause, Reset, 역방향 seek, clip 경계와 종료 pose, Loop가 같은 clock을 소비한다.
+- 공통 Resources transport, Sequencer ruler, 별도 Preview 창이 source/master 소유자를 구분한다.
+  source preview는 Pattern ID가 비어 있으므로 Pattern ID 비교보다 source owner를 먼저 처리한다.
+- Effect Tool의 `420609 stage008/009 Full Restore` Play All, Solo, Play Group은 실제 원본
+  clip occurrence와 source anchor history를 EffectAuthoringSequencer에 전달한다.
+  기존 root scale 1과 Valtan bone owner scale 1.4를 구분한다.
+- root 이외 세션·창으로 이동하면 이전 preview와 Camera lease를 종료하고, 오래된 PLAYING UI 상태를 남기지 않는다.
+
+### G09. 공통 Resources·Sequencer와 실제 편집 경로
+
+- Saydon과 Valtan이 같은 `COMPOSITION_RESOURCE_CATEGORIES`와 `CompositionTimeline`의
+  행 높이 24, 라벨 폭 180, 최소 box 폭 8을 사용한다. Resource tab은 Animation, Logic,
+  Summon, World, Scene Profile, Effect, Collider, Sound, Camera, Light, Pattern이다.
+- Stage 다음 Animation·Logic·Summon·World·Scene Profile과 Effect·Sound·Camera·Collider·Light
+  트랙이 이어진다. Resources의 추가, Box Detail의 수정·삭제, timeline drag를 같은 typed owner에 연결했다.
+- Stage body 이동은 앞 Stage 길이를 바꿔 뒤 clock을 함께 이동한다. 첫 Stage의 시작은 0이다.
+  Animation은 기존 source clip 순서·구간을, Collider는 실제 hit schedule을 편집한다.
+- Camera·Scene Profile·Light는 시간 이동·양끝 trim과 Stage 간 이동을 지원한다.
+  실패한 Stage 간 변경은 draft와 dirty generation을 함께 rollback한다.
+- Summon은 기존 combat-object resource, spawn count/wave/interval과 공유 archetype lifetime을 편집한다.
+  공유 lifetime 변경은 같은 resource의 모든 occurrence에 적용됨을 UI에 표시한다.
+- Logic과 World는 Server의 ENTER/EXIT 계약을 유지해 가까운 Stage 경계로 snap한다.
+  Counter/Groggy topology와 phase 전환 등 전용 계약은 해당 typed 편집기를 사용한다.
+  기존 World set은 단일 invocation 계약 때문에 Resource에서 `Move to Stage`로 이동한다.
+- Sound는 시점 이벤트다. 참조·자동 파생 행과 길이가 없는 이벤트에 임의의 duration을 저장하지 않는다.
+  새 Scene/Light/Camera 끝과 Summon 마지막 spawn을 넘겨 Stage를 줄이면 변경 전 거부한다.
+
+### G10. Source Save와 Product 소비
+
+- Save는 owner별 최신 baseline/CAS, 구조 parse, atomic writer·rollback을 유지하면서
+  전체 Product projection 검증을 일반 Source 저장과 분리한다. Product reopen 실패를
+  이미 성공한 Source 저장 실패로 보고하지 않는다.
+- Workbench와 Balance가 source inventory를 직접 읽고, 명시적 draft preview는 해당 draft를 소비한다.
+  제품은 strict Publish로 만든 snapshot을 계속 사용한다.
+- V2와 Sound의 게시된 문서는 `Data/Valtan/Published/` 아래 생성물로 분리한다.
+  Source Save만으로 실행 중 또는 재실행한 제품에 미완성 binding이 활성화되지 않는다.
+  local V2 preview에는 기존 명시적 authoring snapshot 주입을 유지한다.
+- Scene Profile·Light는 stage별 저장, product patternbindings v5와 실제 CValtan stage clock까지 연결했다.
+  기존 공통 presentation sampler, rendering profile lease와 frame light provider를 사용한다.
+- Camera occurrence도 v5 binding을 소비한다. 제품의 기존 cinematic controller와 local CameraTool이
+  같은 stage offset/duration을 사용하며 새 camera renderer는 만들지 않았다.
+
+### G11. 4연속 공격의 Full Restore
+
+- `VALTAN_FOUR_SLASH`의 SLASHES와 SPIN에 `effect.valtan.action.420609.stage008.full.restore`,
+  `effect.valtan.action.420609.stage009.full.restore`를 연결했다.
+- 기존 stable occurrence ID, timing, source window와 사용자의 scale 1.5를 유지했다.
+- source presentation과 generated pattern effect cues를 기존 writer lock/CAS 경로로 함께 반영했다.
+  이어 Camera v5와 새 published V2/Sound snapshot을 strict Publish로 생성했다.
+- 검격의 sprite 복원·empty alpha key 수정은
+  [09-18 검격 복원 결과](../09-18/2026-09-18_VALTAN_FOUR_SLASH_SPRITE_RESTORE_RESULT.md)를 함께 따른다.
+
+### 검증과 사용자 확인 경계
+
+- Effect/Animation transport 변경 TU, Workbench/MainApp, environment/Camera와 Save owner의 최소 컴파일을 수행했다.
+- 실제 C++ source transport 함수를 이용한 CPU 검사는 14건을 통과했다.
+- 실제 auxiliary drag 함수를 이용한 CPU 검사는 Stage ripple, Camera/환경 Stage 간 이동,
+  상태쌍·World 경계, Summon clock과 rollback을 검사했다. 최종 건수는 해당 실행 로그를 따른다.
+- strict source/product projection은 42 managed / 25 legacy / 9 combat object / 97 world member로 통과했다.
+- 검증 파일: `out/ValtanSequencerTransport20260918/`, `out/ValtanUnifiedSequencer20260918/`.
+- Debug Product build는 14:19와 14:21 증분 빌드 모두 PASS. 마지막 증분은 native generation admission의
+  게시된 V2/Sound 경로를 포함한다. 증거: `out/BuildPipeline/runs/20260918T052152203Z-debug-product.json`.
+- 그 뒤 독립 검토에서 Camera의 지연을 잘못된 trigger로 저장하던 두 UI 지점을 `ENTER + startOffsetMs`로,
+  Summon Add가 오래된 prototype lifetime으로 미저장 공유 값을 되돌리던 경로를 최신 typed draft 조회로 고쳤다.
+  마지막 Workbench/MainApp/Kouku TU 컴파일은 exit 0이다. 이후 사용자가 직접 빌드하기로 했으므로
+  에이전트의 추가 제품 빌드는 수행하지 않았다. 14:25 EXE 갱신과 Server/Client 실행은 읽기 전용으로 확인했다.
+- Source 저장 4검사(CAS, 무변경/다른 owner 보존, 미해결 Sound의 Save 허용·Publish 거부,
+  두 sidecar 중간 실패의 바이트 단위 rollback)와 실제 PowerShell 비동기 Save wrapper 1검사 PASS.
+  Windows PowerShell 5.1의 null backup `File.Replace`가 최종 receipt 쓰기를 실패시키던 문제도
+  job 소유 backup 경로를 사용해 고쳤다. 저장됐는데 UI가 실패로 남을 수 있던 실제 경로다.
+- generation 검사 3건 PASS. 미완성 source V2/Sound 변경은 제품 generation을 바꾸지 않고,
+  게시된 V2/Sound 변경은 generation을 바꾼다.
+- auxiliary drag CPU 검사 최종 15건 PASS. native source-only inventory는 42 patterns / 194 stages /
+  8 Summon occurrences / 3 World triggers이며 Product/effect reader 호출을 abort sentinel로 차단해 확인했다.
+  환경 typed patch 왕복, 8개 잘못된 입력 거부, v5 parser 실패 보존과 Camera offset/duration도 PASS.
+- 변경 JSON 22개와 project/filter XML 2개 parse, 새 TU 단일 등록, `git diff --check` PASS.
+- 최신 쿠크 저장본 revision 1556에서 generated Encounter/PatternBindings가 stale임을 확인해 공식 projector로
+  generated 두 파일만 다시 게시했다. 사용자 authoring 파일은 변경하지 않았다.
+- `Publish-GameplayBalance.ps1 -Mode Publish` PASS, `Gameplay.bootstrap`은 14:30:57 갱신됐다.
+  145개 presentation artifact로 재계산한 generation
+  `9a858a90804166b8fd1bc959078c6d056ab65c084463428930f575867c102b04`가 실제 bootstrap 행과 일치한다.
+  게시 로그는 `out/ValtanUnifiedSequencer20260918/gameplay-publish.log`, 재계산은 `generation-final.json`이다.
+- 실행 중인 14:25 Server/Client는 게시보다 먼저 시작됐다. 새 제품 데이터 적용은 사용자가 두 프로그램을
+  다시 시작한 후 확인한다. 에이전트가 Reload·프로세스 종료를 수행하지 않았다.
+- Client/UI를 실행하거나 화면 판정을 대신하지 않았다. 사용자는 새 EXE에서 Valtan Sequencer의
+  Play/Pause/Reset/seek, Full Restore Solo/Group, resource 추가·drag·Save 후 다시 열기를 확인한다.
+  실행 중 도구의 미저장 draft는 외부 파일 변경으로 자동 교체하지 않는다.
+
+### 이번 재개와 구별할 과거 계획
+
+09-09의 빈 formatVersion 2 Draft Pattern 및 저자가 지속 저장하는 자유 row ID 도입은 이번 변경에
+포함되지 않았다. 현재 source schema와 Server의 실제 Stage/액션 계약을 유지한 편집 기능을 구현했다.
+Source 저장 성공, strict Publish, EXE 빌드와 사용자 화면 판정은 서로 별개의 완료 단계다.
+
+---
+
+## 2026-09-09 조사 당시 기록
+
+
 
 후속 실행 준비에서도 새 저작 기능은 미구현이다. Source Save Python 초안은 UI 소비자와 Product snapshot 분리가
 완료되지 않아 `out/ValtanCompositionParity20260909/unfinished_source_save/`에 파일·patch·보존 기록으로 남겼다.

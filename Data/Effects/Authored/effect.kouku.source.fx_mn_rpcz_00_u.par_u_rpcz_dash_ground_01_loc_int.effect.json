@@ -389,7 +389,7 @@
           "useModelMaterial": true
         },
         "sprite": {
-          "billboard": true
+          "billboard": true, "followEmitterAxisRotation": true
         },
         "decal": {
           "size": [
@@ -2328,7 +2328,7 @@
           "useModelMaterial": true
         },
         "sprite": {
-          "billboard": true
+          "billboard": true, "followEmitterAxisRotation": true
         },
         "decal": {
           "size": [
@@ -4080,7 +4080,7 @@
           "useModelMaterial": true
         },
         "sprite": {
-          "billboard": true
+          "billboard": true, "followEmitterAxisRotation": true
         },
         "decal": {
           "size": [
@@ -5868,7 +5868,7 @@
           "useModelMaterial": true
         },
         "sprite": {
-          "billboard": true
+          "billboard": true, "followEmitterAxisRotation": true
         },
         "decal": {
           "size": [
@@ -7735,7 +7735,7 @@
           "useModelMaterial": true
         },
         "sprite": {
-          "billboard": true
+          "billboard": true, "followEmitterAxisRotation": true
         },
         "decal": {
           "size": [

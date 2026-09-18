@@ -332,3 +332,6 @@ bool Client::CNetworkPlayerCommandSink::Request_SendChat(
 {
 	return CNetworkManager::Get().Send_Chat(text);
 }
+
+bool Client::CNetworkPlayerCommandSink::Request_KoukuRaid(const LostArk::Shared::C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST& request)
+{ return CNetworkManager::Get().Send_KoukuRaid(request); }

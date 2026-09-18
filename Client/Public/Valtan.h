@@ -702,6 +702,14 @@ private:
 	void Set_ArmorPartVisible(uint32_t iStateMask, bool_t isVisible);
 	void Refresh_ArmorPartVisibility();
 	HRESULT Ready_Components(f32_t collisionRadius);
+public:
+    static void Collect_StageEnvironmentSamples(std::vector<BOSS_STAGE_ENVIRONMENT_SAMPLE>& samples);
+    static bool_t Get_ActiveStageCameraInvocations(std::string_view actionId, std::vector<BOSS_STAGE_CAMERA_SAMPLE>& cameras);
+private:
+    std::unordered_map<std::string, BOSS_STAGE_ENVIRONMENT_SAMPLE> m_StageEnvironments;
+    std::unordered_map<std::string, BOSS_STAGE_ENVIRONMENT_SAMPLE> m_LocalStageEnvironments;
+    f32_t m_fLocalStageEnvironmentClockMs = 0.f;
+    void Register_StageEnvironmentOwner();
 	void Load_PatternBindings();
 	bool_t Reload_PatternBindings_WhileAdmitted(std::string& strOutStatus);
 	bool_t Reload_PlayerHandGripLocalOffset_WhileAdmitted(

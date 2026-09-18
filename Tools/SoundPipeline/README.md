@@ -145,3 +145,44 @@ from the empty AKPK packages, and every LUT `languageID` field in every
 installed package (209,675 samples). Both must come back with no mismatch.
 
 Consumers: `Tools/VehiclePipeline/build_vehicle_sound_catalog.py`.
+
+## KoukuSaydon source sound candidates
+
+`build_kouku_sound_candidates.py` reads the extracted Action LOA AKEvent notifies,
+the currently saved animation occurrence source windows and the original Matinee
+AkEvent tracks. It writes candidates only under `out/`; it never replaces the
+user's authoring document or installed Resources.
+
+```powershell
+python -B Tools/SoundPipeline/build_kouku_sound_candidates.py
+python -B Tools/SoundPipeline/build_kouku_sound_candidates.py `
+  --composition Data/Compositions/Sequences/KoukuSaydonSequenceComposition.json `
+  --out out/KoukuSoundRestore20260918/sequence
+python -B -m unittest discover -s Tools/SoundPipeline -p test_kouku_sound_candidates.py
+```
+
+Unlike the simple media resolver above, a boss event can contain several
+simultaneous Layer voices, sequential audio, or nested weighted Random nodes.
+The importer verifies decoded source WAV hashes, reads version-134 HIRC playlist
+weights, reuses unmodified media, and renders qualified finite TXTP variants with
+the existing offline vgmstream CLI (`--vgmstream` overrides its path). It does not
+open an audio device. Weighted repeated entries in the `KoukuSaydon` character
+sound bucket preserve the original probabilities; exactly one complete event
+variant is selected per occurrence. Switch/state choices without source evidence
+are held out. A source loop is admitted only when its first decoded cycle fully
+covers every existing finite Matinee owner window; persistent BGM ownership is
+not inferred from a one-shot cue.
+
+Existing SOUND presentation resources optionally name `soundEvent`; existing
+SOUND occurrences optionally carry `soundSourceStartMs` for a sliced cutscene.
+The player loads a catalog snapshot at explicit Product/Preview admission, keeps
+the chosen variant stable across scrubbing, and starts a paused seek paused.
+No sampling frame reloads JSON and no second audio runtime is introduced.
+
+`manifest.json` distinguishes reused media, generated event renders, source
+provenance, exact joins and holdouts. Copy only the files named in
+`renderedVariants` / `copiedMedia`, not an entire old candidate directory.
+`additions.json` plus the in-memory `merge_additions` helper support a final
+stable-ID merge preserving unrelated edits. The final installer must recheck
+the latest saved timing, verify hashes before replacement, keep backups, and
+replace atomically. A changed animation window requires rebuilding the candidate.

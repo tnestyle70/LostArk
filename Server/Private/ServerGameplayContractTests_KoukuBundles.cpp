@@ -419,8 +419,25 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuBundles(TESTS& tes
 					blocked.iPatternStageRootLastTick = 0u;
 					const bool held = CKoukuSaydonBrain::Apply_StageRootMotion(blocked, *root, 120u,
 						rootRoom->m_ServerNavigation, rootRoom->m_ServerCollisionSystem, status);
-					tests.Require(held && blocked.fPositionX == moving->fPositionX && blocked.fPositionY == moving->fPositionY &&
-						blocked.fPositionZ == moving->fPositionZ, "Navigation rejects an off-grid root destination without a partial XYZ commit");
+					// Yaw 90 sends the terminal 100 km forward sample along +X. The boss must stop
+					// flush at the last navigable point of that segment (within 1 mm of the first
+					// height step) with Y from the sample plus the ground delta, not hold one tick short.
+					SERVER_NAV_POINT originGround{}, clampGround{}, beyondGround{};
+					const float clampRatio = (blocked.fPositionX - moving->fPositionX) / (origin[0] + 100000.f - moving->fPositionX);
+					tests.Require(held && blocked.fPositionX > moving->fPositionX + .01f &&
+						std::abs(blocked.fPositionZ - (moving->fPositionZ + (origin[2] - moving->fPositionZ) * clampRatio)) < .002f &&
+						rootRoom->m_ServerNavigation.Is_PointWalkableExact(blocked.fPositionX, blocked.fPositionZ) &&
+						!rootRoom->m_ServerNavigation.Resolve_TraversalStep(blocked.fPositionX, blocked.fPositionZ, blocked.fPositionX + .002f, blocked.fPositionZ, beyondGround) &&
+						rootRoom->m_ServerNavigation.Sample_Position(origin[0], origin[2], originGround) &&
+						rootRoom->m_ServerNavigation.Sample_Position(blocked.fPositionX, blocked.fPositionZ, clampGround) &&
+						close(blocked.fPositionY, origin[1] + clampGround.y - originGround.y) && blocked.iPatternStageRootLastTick == 120u,
+						"Navigation clamps an off-grid root destination to the last navigable point on the segment");
+					const auto clampedPose = blocked;
+					const bool heldAgain = CKoukuSaydonBrain::Apply_StageRootMotion(blocked, *root, 121u,
+						rootRoom->m_ServerNavigation, rootRoom->m_ServerCollisionSystem, status);
+					tests.Require(heldAgain && blocked.fPositionX == clampedPose.fPositionX && blocked.fPositionY == clampedPose.fPositionY &&
+						blocked.fPositionZ == clampedPose.fPositionZ && blocked.iPatternStageRootLastTick == 121u,
+						"A root segment blocked within 1 mm of the pose preserves the exact previous XYZ");
 					auto failed = *moving; failed.fCollisionRadius = 0.f; failed.iPatternStageRootLastTick = 0u;
 					const bool rejected = !CKoukuSaydonBrain::Apply_StageRootMotion(failed, *root, 46u,
 						rootRoom->m_ServerNavigation, rootRoom->m_ServerCollisionSystem, status);

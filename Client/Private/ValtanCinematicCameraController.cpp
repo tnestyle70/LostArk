@@ -500,10 +500,16 @@ bool_t Client::CValtanCinematicCameraController::Update(
 		return false;
 	}
 
-	const VALTAN_CINEMATIC_CAMERA_CUE* cue = input.isBossDead ?
-		m_pDocument->Find_DeathCue() :
-		m_pDocument->Find_Cue(
-			input.strPatternId, input.iStageIndex, input.strStageActionId);
+    const VALTAN_CINEMATIC_CAMERA_CUE* cue = nullptr;
+    if (input.isBossDead) cue = m_pDocument->Find_DeathCue();
+    else if (input.hasStageCameraInvocations)
+    {
+        const auto& cues = m_pDocument->Get_Cues();
+        const auto found = std::find_if(cues.begin(), cues.end(),
+            [&](const auto& row) { return row.strCueId == input.strInvokedCameraCueId; });
+        if (found != cues.end()) cue = &*found;
+    }
+    else cue = m_pDocument->Find_Cue(input.strPatternId, input.iStageIndex, input.strStageActionId);
 	if (nullptr == cue || (!input.isBossDead && !input.strStageId.empty() &&
 		cue->strStageId != input.strStageId))
 	{
@@ -542,7 +548,8 @@ bool_t Client::CValtanCinematicCameraController::Update(
 		m_iPatternSequence != input.iPatternSequence ||
 		m_iStageIndex != input.iStageIndex ||
 		m_iActionStartTick != input.iActionStartTick ||
-		m_strCueId != cue->strCueId;
+		m_strCueId != cue->strCueId ||
+        (!input.isBossDead && input.hasStageCameraInvocations && m_iCameraInvocationStartMs != input.iCameraStartOffsetMs);
 	if (!cueChanged && m_isCueFinished)
 		return false;
 	/* Cross-frame continuity is valid only for the next stage of the same
@@ -574,6 +581,8 @@ bool_t Client::CValtanCinematicCameraController::Update(
 		m_isTransitionActive = false;
 		return false;
 	}
+    if (!input.isBossDead && input.hasStageCameraInvocations)
+        authoritativeAge = (std::max)(0.f, authoritativeAge - input.iCameraStartOffsetMs * .001f);
 	if (cueChanged)
 	{
 		/* The first observed frame and every Server-owned stage edge must start
@@ -621,9 +630,11 @@ bool_t Client::CValtanCinematicCameraController::Update(
 	m_iStageIndex = input.iStageIndex;
 	m_iActionStartTick = input.iActionStartTick;
 	m_strCueId = cue->strCueId;
+    m_iCameraInvocationStartMs = input.iCameraStartOffsetMs;
 	m_hasCueKey = true;
 	m_isCueFinished = false;
-	if (m_fElapsedSeconds * 1000.f >= static_cast<f32_t>(cue->iDurationMs))
+	if (m_fElapsedSeconds * 1000.f >= static_cast<f32_t>(
+        !input.isBossDead && input.hasStageCameraInvocations ? input.iCameraDurationMs : cue->iDurationMs))
 	{
 		Begin_ExitTransition(*cue);
 		m_pActiveCue = nullptr;

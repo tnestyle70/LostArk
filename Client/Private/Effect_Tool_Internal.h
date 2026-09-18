@@ -32,7 +32,8 @@ namespace EffectToolDetail
     bool Translate_AttachmentElementGroup(Client::EFFECT_DOCUMENT_DESC& document,
         const std::string& groupKey, const float3_t& delta, std::string& error);
     bool Rotate_AttachmentElementGroup(Client::EFFECT_DOCUMENT_DESC& document,
-        const std::string& groupKey, const float3_t& rotationDegrees, std::string& error);
+        const std::string& groupKey, const float3_t& rotationDegrees, std::string& error,
+        const float3_t* pivot = nullptr, const std::string& elementId = {});
 
     bool Resolve_ElectricPreviewDestinations(const Client::EFFECT_DOCUMENT_DESC& document,
         std::array<float3_t, 3>& destinationsCm, std::string& error);

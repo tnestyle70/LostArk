@@ -2652,7 +2652,6 @@ bool LostArk::Server::CGameRoom::Build_RequiredPinnedGameplayRevisions(
 			return false;
 		}
 	}
-#ifdef _DEBUG
 	if (KOUKUSAYDON_PATTERN_AUDITION_PHASE::INACTIVE !=
 			m_KoukuSaydonPatternAudition.ePhase &&
 		!append(m_KoukuSaydonPatternAudition.PinnedGameplayRevision))
@@ -2660,6 +2659,7 @@ bool LostArk::Server::CGameRoom::Build_RequiredPinnedGameplayRevisions(
 		outRevisions.clear();
 		return false;
 	}
+#ifdef _DEBUG
 	if (Is_ValtanPatternFlowRunning() &&
 		!append(m_ValtanPatternFlowAudition.PinnedDefinitionRevision))
 	{

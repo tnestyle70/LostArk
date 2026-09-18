@@ -210,7 +210,7 @@ def sample_object(sequence, instance, resource, box, world, emitter, age, row, l
     return center,grip,scale,yaw+row["yawDegrees"],key.get("visible",True)
 
 
-def bake_windows(sequences, worlds, boxes, load_model):
+def bake_windows(sequences, worlds, boxes, load_model, *, pattern_end_ms=None):
     """Return generated ENTER_AREA descriptors, preserving finite Motion cycles."""
     load_model._collider_pose_cache = {}
     templates = {r["sequenceId"]:r for r in sequences["templates"]}
@@ -243,6 +243,9 @@ def bake_windows(sequences, worlds, boxes, load_model):
             for cycle in range(repeats):
                 origin = begin+cycle*span/rate
                 cycle_end = (origin+span/rate if sequence.get("effectTracks") else min(box["durationMs"],origin+span/rate)) if end_policy != "HOLD" else (max(box["durationMs"],origin+span/rate) if sequence.get("effectTracks") else box["durationMs"])
+                # Birth deadlines allow existing visual tails; gameplay ownership ends with the Pattern.
+                if pattern_end_ms is not None:
+                    cycle_end = min(cycle_end, pattern_end_ms - box["startMs"])
                 for emitter,delay in enumerate(delays):
                     if origin+delay/rate >= box["durationMs"]: continue
                     for row in rows:
@@ -317,7 +320,7 @@ def bake_windows(sequences, worlds, boxes, load_model):
                                                   "baselinePosition":[0,0,0],"baselineYawDegrees":0.,"baselineScale":[1,1,1],"keys":keys}}
                             result.append({"occurrenceId":"object.collider.window."+identity,"startMs":start_ms,"durationMs":stop_ms-start_ms,
                                            "region":region,"behavior":row["behavior"],"damagePercent":int(row["damagePercent"])})
-                            if len(result)>64: raise ColliderBakeError("Object colliders exceed the existing 64-window pattern budget")
+                            if len(result)>128: raise ColliderBakeError("Object colliders exceed the 128-window pattern budget")
             if end_policy != "NEXT": break
             cursor=begin+span/rate; depth+=1
             if depth>=32 or instance.get("nextMotionId") not in instances: raise ColliderBakeError("Object Motion NEXT chain is unresolved or exceeds 32")

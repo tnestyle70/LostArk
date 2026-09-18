@@ -986,7 +986,9 @@ bool_t Client::CEffect_Tool::Try_PlayUnifiedEffect(
 		}
 	}
 	if (m_ActiveDocument && !m_ProductPreview &&
-		(Is_SequencerRecoveryEffectAssetId(m_ActiveDocument->strEffectAssetId) ||
+		((m_ActiveDocument->strEffectAssetId.starts_with("effect.valtan.action.") &&
+		  m_ActiveDocument->strEffectAssetId.ends_with(".full.restore")) ||
+		 Is_SequencerRecoveryEffectAssetId(m_ActiveDocument->strEffectAssetId) ||
 		 Is_SceneAnchoredEffectAssetId(m_ActiveDocument->strEffectAssetId)))
 		return Try_PlayRecoveryEffect();
 	if (!Try_SetPreviewFilter(EFFECT_PREVIEW_FILTER::COMPLETE))
@@ -1001,6 +1003,18 @@ bool_t Client::CEffect_Tool::Prepare_RecoveryPreviewTarget()
     if (!m_ActiveDocument || !m_pAuthoringSequencer)
     { m_strPreviewStatus = "Load the recovery Effect and its authoring workspace first."; return false; }
     const std::string assetId = m_ActiveDocument->strEffectAssetId;
+    if (assetId.starts_with("effect.valtan.action.") && assetId.ends_with(".full.restore"))
+    {
+        const auto source = m_ValtanFullRestoreSourceClips.find(assetId);
+        const auto* clips = source != m_ValtanFullRestoreSourceClips.end() ? &source->second :
+            (m_ValtanProductPreview && m_ValtanProductPreview->bEditorSourceClip &&
+             m_ValtanProductPreview->Cue.strEffectAssetId == assetId ? &m_ValtanProductPreview->TimelineClips : nullptr);
+        if (!clips || clips->empty())
+        { m_strPreviewStatus = "Reopen this Full Restore to load its exact saved source animation."; return false; }
+        const bool selected = m_pAuthoringSequencer->Select_ValtanEffect(assetId, *clips);
+        m_strPreviewStatus = m_pAuthoringSequencer->Status();
+        return selected;
+    }
     if (Is_WorldEffectAssetId(assetId))
     {
         const bool selected = m_pAuthoringSequencer->Select_WorldEffect(assetId);
@@ -1136,7 +1150,10 @@ bool_t Client::CEffect_Tool::Try_PreviewElementsTimeline(
     uint32_t focus = 0u, duration = 0u;
     std::string label;
     if (!Resolve_ElementsPreviewWindow(preview, elementIds, focus, duration, label, m_strPreviewStatus)) return false;
-    if (preview.strEffectAssetId.starts_with("effect.valtan."))
+    const bool valtanSource = preview.strEffectAssetId.starts_with("effect.valtan.action.") &&
+        preview.strEffectAssetId.ends_with(".full.restore");
+    if (valtanSource && !Prepare_RecoveryPreviewTarget()) return false;
+    if (preview.strEffectAssetId.starts_with("effect.valtan.") && !valtanSource)
     {
         // Boss groups keep the same clip/source clock as Complete and Solo.
         // Attachment groups and marked selections can span authored group IDs.
@@ -1275,7 +1292,9 @@ bool_t Client::CEffect_Tool::Try_PlayActiveUnifiedEffect()
 		return false;
 	}
 	if (m_ActiveDocument && !m_ProductPreview &&
-		(Is_SequencerRecoveryEffectAssetId(m_ActiveDocument->strEffectAssetId) ||
+		((m_ActiveDocument->strEffectAssetId.starts_with("effect.valtan.action.") &&
+		  m_ActiveDocument->strEffectAssetId.ends_with(".full.restore")) ||
+		 Is_SequencerRecoveryEffectAssetId(m_ActiveDocument->strEffectAssetId) ||
 		 Is_SceneAnchoredEffectAssetId(m_ActiveDocument->strEffectAssetId)))
 		return Try_PlayRecoveryEffect();
 	if (!Try_SetPreviewFilter(EFFECT_PREVIEW_FILTER::COMPLETE))

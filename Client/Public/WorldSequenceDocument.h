@@ -209,7 +209,11 @@ struct WORLD_SEQUENCE_EFFECT_TRACK
 	std::string resourceId;
 	// V1_EFFECT uses the same authored catalog as the Effect and Sequence tools.
 	bool_t followObject = false;
+	// Keep emission/placement facing while excluding the model key rotation and self-spin.
+	bool_t inheritObjectRotation = true;
 	bool_t fitEffectToDuration = false;
+	// Repeat finite V1 sources at their native speed, or bound native infinite emitters.
+	bool_t loopEffectToDuration = false;
 	std::string bone;
 	std::string timing = "MOTION_END";
 	uint32_t startMs = 0;

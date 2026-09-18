@@ -809,4 +809,6 @@ Object Tool은 Collider 행의 생성·시간·형태·결과·복제·삭제를
 
 Object Tool의 `Loop Animation + Effects`는 instance의 optional `loopFullPresentation=true`와 `motionEnd=LOOP`를 저장한다. 반복 길이는 저장된 Motion/Effect 창의 최대값이며, 원본 Effect의 보수적 particle tail 추정값으로 늘리지 않는다. 생략은 기존 반복 동작이다. V1 Effect track의 optional `fitEffectToDuration=true`는 원본 Effect 시계만 박스 길이에 맞추며 움직이는 모델·본의 시계는 그대로 둔다. Zoom 슬라이더·Ctrl+wheel·Fit, Stage 끝 드래그·Stage Duration·Fit Stage to Animation을 제공한다. Stage 변경은 기존 clip/Effect/Collider 시점을 이동시키지 않으며 내용을 자르는 축소를 거절한다. MOTION_END Effect는 이전 시작을 보존하도록 TIME으로 바꾸고 이를 상태 메시지에 알린다.
 
+V1 World Effect track의 optional `loopEffectToDuration=true`는 원본 속도로 박스 끝까지 재생하며 `fitEffectToDuration`과 함께 켤 수 없다. native `EmitterLoops=0`가 있는 source는 기존 bounded emission end를 전달한다. 전부 finite인 source는 prepared Effect의 전체 수명(입자 tail 포함)마다 새 occurrence로 반복하며, Object follow 시계에는 각 반복의 시작 나이를 더한다. 따라서 Effect 반복 때 Object 위치가 처음으로 되돌아가지 않는다. 원본 Effect JSON, emitter loop count와 prepared document는 바꾸지 않으며 박스 끝에서 handle을 정리한다. Composition V1 occurrence도 finite/native 분기를 사용하며, finite 반복 중 root/bone/source-anchor는 전체 occurrence 시계를 유지한다.
+
 Pattern의 WORLD 박스는 생존 Object의 생성 시점·배치를 소유한다. Server Play에서 박스/Pattern 정상 종료는 생성된 개체를 제거하지 않으며 HP0·명시 취소·새 run·보스 제거/사망·session 퇴장·room reset이 정확한 cue를 종료한다. 현재 wire는 protocol88이고 Client와 Server를 함께 빌드·재시작해야 한다. Object Tool의 로컬 Preview는 저작 재생이며 Server HP 판정이 아니다.

@@ -62,7 +62,7 @@ namespace LostArk::Server
 			std::string& status);
 		[[nodiscard]] static bool Validate_SummonedPattern(
 			const BOSS_PATTERN_DEFINITION& owner, const BOSS_PATTERN_DEFINITION& child,
-			std::string& status);
+			std::string& status, bool allowActorLocalAirborne = false);
 		[[nodiscard]] static bool Select_CrossDirection(
 			const SERVER_WORLD_ENTITY& boss, const BOSS_PATTERN_DEFINITION& parent,
 			const BOSS_PATTERN_MECHANIC_TRIGGER& trigger, const CGameplayCatalog& catalog,

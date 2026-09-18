@@ -1,4 +1,5 @@
 #include "EffectV2_Catalog.h"
+#include "ProjectDataRoot.h"
 #include "EffectV2_Runtime.h"
 #include "DataJson.h"
 
@@ -1133,8 +1134,40 @@ bool_t Client::CEffectV2Catalog::Load_ResourceSnapshot(
 	return Create_ResourceSnapshot(Documents, Groups, pOutSnapshot, strOutError);
 }
 
+bool_t Client::CEffectV2Catalog::Reload_BossValtanRuntime(std::string& strOutError)
+{
+	std::vector<EFFECT_V2_DOCUMENT> documents;
+	std::vector<EFFECT_V2_GROUP> groups;
+	std::vector<EFFECT_V2_BINDING> bindings;
+	std::vector<std::string> diagnostics;
+	std::string text;
+	if (!Stage_Documents(documents, diagnostics, strOutError) ||
+		!Stage_Groups(groups, diagnostics, strOutError) ||
+		!Read_TextFile(CProjectDataRoot::Resolve(L"Valtan/Published/BOSS_VALTAN.effectv2bindings.json"), text, strOutError) ||
+		!CEffectV2Document::Parse_Bindings(text, BOSS_VALTAN_ARCHETYPE_ID, bindings, strOutError) ||
+		!Cross_Validate(documents, groups, bindings, strOutError) ||
+		!Validate_NoLeafGroupClockOverlap(groups, bindings, strOutError)) return false;
+	auto staged = std::make_shared<EFFECT_V2_CATALOG_SNAPSHOT>();
+	staged->m_Documents = std::move(documents);
+	staged->m_Groups = std::move(groups);
+	staged->m_BossValtanBindings = std::move(bindings);
+	staged->m_Diagnostics = std::move(diagnostics);
+	const std::lock_guard lock(m_SnapshotMutex);
+	staged->m_iRevision = m_pRuntimeSnapshot ? m_pRuntimeSnapshot->Get_Revision() + 1u : 1u;
+	m_pRuntimeSnapshot = std::move(staged);
+	return true;
+}
+
+std::shared_ptr<const Client::EFFECT_V2_CATALOG_SNAPSHOT> Client::CEffectV2Catalog::Get_RuntimeSnapshot() const
+{
+	const std::lock_guard lock(m_SnapshotMutex);
+	return m_pRuntimeSnapshot;
+}
+
 bool_t Client::CEffectV2Catalog::Reload_BossValtan(std::string& strOutError)
 {
+	std::string runtimeStatus;
+	(void)Reload_BossValtanRuntime(runtimeStatus);
 	try
 	{
 		{

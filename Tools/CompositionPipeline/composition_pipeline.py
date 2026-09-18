@@ -2535,11 +2535,18 @@ def _validate_world_sequence_effect_tracks(
                 "effectTrackId", "slotId", "resourceKind", "resourceId", "timing",
                 "startMs", "durationMs", "positionOffset", "rotationDegrees", "scale",
             ),
-            ("followObject", "bone"),
+            ("followObject", "inheritObjectRotation", "bone", "fitEffectToDuration", "loopEffectToDuration"),
             effect_context,
         )
         if not isinstance(effect.get("followObject", False), bool):
             raise CompositionError(f"{effect_context}.followObject must be boolean")
+        for field in ("inheritObjectRotation", "fitEffectToDuration", "loopEffectToDuration"):
+            if field in effect and not isinstance(effect[field], bool):
+                raise CompositionError(f"{effect_context}.{field} must be boolean")
+        if effect.get("fitEffectToDuration", False) and effect.get("loopEffectToDuration", False):
+            raise CompositionError(f"{effect_context} Effect fit and loop are mutually exclusive")
+        if (effect.get("fitEffectToDuration", False) or effect.get("loopEffectToDuration", False)) and effect.get("resourceKind") != "V1_EFFECT":
+            raise CompositionError(f"{effect_context} Effect fit and loop require V1_EFFECT")
         bone = _require_string(
             effect.get("bone", ""), f"{effect_context}.bone", allow_empty=True
         )

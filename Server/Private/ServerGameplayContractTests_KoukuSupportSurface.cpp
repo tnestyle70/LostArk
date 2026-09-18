@@ -174,8 +174,9 @@ REGION "blocked" "closed" 0 1
 	tests.Require(room->m_WorldEntities[2].fPositionY == 8.63f && room->m_WorldEntities[3].fPositionY == 8.63f,
 		"Removing the WORLD floor preserves both scripted airborne motion authorities");
 
+	for (const bool withFollowup : { false, true })
 	{
-		// Counter success must close the rolling-ball WORLD owner before groggy starts.
+		// Counter success closes the WORLD owner with or without a followup outcome.
 		auto& counterBoss = room->m_WorldEntities.front();
 		const auto counterBossBefore = std::make_unique<SERVER_WORLD_ENTITY>(counterBoss);
 		const auto counterTickBefore = room->m_iServerTick;
@@ -202,7 +203,8 @@ REGION "blocked" "closed" 0 1
 		BOSS_PATTERN_LOGIC_WINDOW counterWindow; counterWindow.strWindowId = "counter.window";
 		counterWindow.eKind = BOSS_PATTERN_LOGIC_KIND::COUNTER_WINDOW; counterWindow.iDurationMs = 2837u;
 		counterWindow.bEndsPatternOnSuccess = true;
-		counterWindow.OnSuccess.push_back({BOSS_PATTERN_LOGIC_RESULT_KIND::FOLLOWUP_PATTERN, 0u, 0u, "KAKULSAYDON_G1_PATTERN_4"});
+		if (withFollowup)
+			counterWindow.OnSuccess.push_back({BOSS_PATTERN_LOGIC_RESULT_KIND::FOLLOWUP_PATTERN, 0u, 0u, "KAKULSAYDON_G1_PATTERN_4"});
 		counterPattern.LogicWindows = {counterWindow};
 		auto& counterLedger = room->m_KoukuSaydonPatternAudition.Members.front().LogicLedger;
 		KOUKUSAYDON_LOGIC_OUTPUT counterOutput; std::vector<DAMAGE_EVENT> counterDamage;
@@ -217,9 +219,11 @@ REGION "blocked" "closed" 0 1
 		const auto& committed = room->m_KoukuSaydonPatternAudition.Members.front();
 		tests.Require(completed && counterOutput.bCounterSuccessLanded && std::abs(counterBoss.fPositionY - 1.25f) < .0001f &&
 			counterBoss.strPatternId.empty() && counterBoss.PatternStageRootMotion.empty() && !counterBoss.bPatternStageRootOriginCaptured &&
-			committed.PatternIds.size() == 2u && committed.PatternIds.back() == "KAKULSAYDON_G1_PATTERN_4" &&
-			committed.TransitionTicks == std::vector<std::uint32_t>{1u},
-			"Actual counter verdict lands, clears source root motion and schedules existing groggy one tick later");
+			(withFollowup ? (committed.PatternIds.size() == 2u && committed.PatternIds.back() == "KAKULSAYDON_G1_PATTERN_4" &&
+				committed.TransitionTicks == std::vector<std::uint32_t>{1u}) :
+				(committed.PatternIds.size() == 1u && committed.TransitionTicks.empty())),
+			withFollowup ? "Actual counter verdict lands, clears source root motion and schedules existing groggy one tick later" :
+				"A counter with no outcomes lands and ends the Pattern without inventing a followup");
 		tests.Require(room->m_KoukuSaydonPatternAudition.WorldPlays.size() == 1u &&
 			room->m_KoukuSaydonPatternAudition.WorldPlays.front().strMemberId == "other.member" &&
 			committed.WorldCueByInstance.empty() && committed.WorldCueByOccurrence.empty() &&
@@ -735,12 +739,12 @@ REGION "blocked" "closed" 0 1
 		updateTargets(5000u);
 		tests.Require(room->m_CombatObjectRuntime.Get_LiveObjects().empty() && showtimeLedger.MechanicTriggers.empty() &&
 			showtimeLedger.PlayerTargetWindows.size() == 1u, "Rotate-only duration uses the actual clock without visual templates or spawned objects");
-		tests.Require(nearYaw(albionOwner.fYawDegrees, 3.f), "The first of 30 duration ticks rotates three degrees instead of snapping ninety degrees");
+		tests.Require(nearYaw(albionOwner.fYawDegrees, 30.f), "Rotate-only tracking reacts on the first tick with ten times the previous three-degree step");
 		updateTargets(5000u); updateTargets(4999u);
-		tests.Require(nearYaw(albionOwner.fYawDegrees, 3.f), "Duplicate and older ticks do not rotate the target twice");
+		tests.Require(nearYaw(albionOwner.fYawDegrees, 30.f), "Duplicate and older ticks do not rotate the target twice");
 		for (std::uint32_t tick = 5001u; tick <= 5014u; ++tick) updateTargets(tick);
 		const float singleTickHalfYaw = albionOwner.fYawDegrees;
-		tests.Require(nearYaw(singleTickHalfYaw, 45.f), "Half of a fixed-target duration traverses half the shortest arc");
+		tests.Require(nearYaw(singleTickHalfYaw, 89.9910045f), "The accelerated response reaches the fixed target early without overshooting");
 		beginFacing(0.f, 1000u); updateTargets(5000u); updateTargets(5014u);
 		tests.Require(nearYaw(albionOwner.fYawDegrees, singleTickHalfYaw), "The same elapsed ticks give the same yaw when updates are grouped");
 		updateTargets(5029u);
@@ -748,16 +752,51 @@ REGION "blocked" "closed" 0 1
 		setDirection(-90.f); updateTargets(5030u);
 		tests.Require(nearYaw(albionOwner.fYawDegrees, 90.f), "The exclusive duration end cannot turn toward a changed target");
 		setDirection(90.f); beginFacing(0.f, 2000u); updateTargets(5000u);
-		tests.Require(nearYaw(albionOwner.fYawDegrees, 1.5f), "Doubling the authored duration halves the initial angular speed");
+		tests.Require(nearYaw(albionOwner.fYawDegrees, 15.f), "A two-second window retains ten times the previous 1.5-degree first step");
 		setDirection(-179.f); beginFacing(179.f, 1000u); updateTargets(5014u);
-		tests.Require(nearYaw(albionOwner.fYawDegrees, 180.f), "Crossing positive 180 degrees uses the short two-degree arc");
+		tests.Require(nearYaw(albionOwner.fYawDegrees, -179.0001999f), "Crossing positive 180 degrees uses the short two-degree arc");
 		setDirection(179.f); beginFacing(-179.f, 1000u); updateTargets(5014u);
-		tests.Require(nearYaw(albionOwner.fYawDegrees, -180.f), "Crossing negative 180 degrees uses the short reverse arc");
+		tests.Require(nearYaw(albionOwner.fYawDegrees, 179.0001999f), "Crossing negative 180 degrees uses the short reverse arc");
 		setDirection(90.f); beginFacing(0.f, 1000u); updateTargets(5014u); setDirection(-90.f); updateTargets(5015u);
-		tests.Require(nearYaw(albionOwner.fYawDegrees, 36.f) && albionOwner.iPatternTargetEntityId == 101u,
+		tests.Require(nearYaw(albionOwner.fYawDegrees, -30.0029985f) && albionOwner.iPatternTargetEntityId == 101u,
 			"A moving selected target is followed from the current yaw using the remaining duration");
 		setDirection(90.f); beginFacing(-90.f, 1000u); albionOwner.strArchetypeId = "BOSS_KAKULSAYDON_G2_BIG_SAYDON"; updateTargets(5014u);
-		tests.Require(nearYaw(albionOwner.fYawDegrees, -45.f), "Big Saydon keeps its existing minus-ninety-degree model forward basis during interpolation");
+		tests.Require(nearYaw(albionOwner.fYawDegrees, -0.0089955f), "Big Saydon keeps its existing minus-ninety-degree model forward basis during interpolation");
+		// Movement-enabled tracking still commits the body yaw before its root/navigation step.
+		beginFacing(0.f, 8582u); setDirection(90.f);
+		showtime.MechanicTriggers.front().fFollowSpeedScale = 1.f;
+		albionOwner.strArchetypeId = "BOSS_KAKULSAYDON_G1_SAYDON"; albionOwner.fYawDegrees = -90.f;
+		albionOwner.fPositionY = 1.f; albionOwner.fCollisionRadius = .1f;
+		albionOwner.iPatternStartTick = 5000u; albionOwner.iPatternStageIndex = 0u;
+		albionOwner.iPatternStageFirstEvaluationTick = 5000u;
+		albionOwner.bPatternStageRootOriginCaptured = false; albionOwner.iPatternStageRootLastTick = 0u;
+		albionOwner.AlbionAirborne = {};
+		albionOwner.PatternStageRootMotion = {{0u,0.f,0.f,0.f},{10000u,0.f,0.f,0.f}};
+		auto trackingPattern = showtime; trackingPattern.Stages.resize(1u); trackingPattern.Stages[0].iDurationMs = 10000u;
+		room->m_ServerNavigation.Set_RuntimeSupportSurfaces({}, status);
+		room->m_ServerCollisionSystem.Initialize({}, status); room->m_ServerCollisionSystem.Set_BlockingBodies({});
+		bool trackingRootValid = true;
+		for (std::uint32_t tick = 5000u; tick < 5030u; ++tick)
+		{
+			trackingRootValid = CKoukuSaydonBrain::Apply_StageRootMotion(albionOwner, trackingPattern, tick,
+				room->m_ServerNavigation, room->m_ServerCollisionSystem, status) && trackingRootValid;
+			target.fPositionX = albionOwner.fPositionX + 100.f; target.fPositionZ = albionOwner.fPositionZ;
+			updateTargets(tick);
+			if (tick == 5000u) tests.Require(nearYaw(albionOwner.fYawDegrees, -84.f), "Pursuit turns six degrees on its first 30 Hz tick regardless of the 8582 ms lifetime");
+			if (tick == 5014u) tests.Require(nearYaw(albionOwner.fYawDegrees, 0.f), "Moving pursuit turns ninety degrees within half a second");
+		}
+		const float trackingYaw = albionOwner.fYawDegrees;
+		tests.Require(trackingRootValid && nearYaw(trackingYaw, 0.f) && albionOwner.fPositionX > 8.f,
+			"Moving Saydon tracks with a changing body yaw through thirty real root/navigation ticks");
+		tests.Require(CKoukuSaydonBrain::Apply_StageRootMotion(albionOwner, trackingPattern, 5030u,
+			room->m_ServerNavigation, room->m_ServerCollisionSystem, status) && albionOwner.fYawDegrees == trackingYaw,
+			"The next absolute root-motion sample preserves the committed tracking yaw");
+		beginFacing(0.f, 20000u); setDirection(90.f); showtime.MechanicTriggers.front().fFollowSpeedScale = 1.f; updateTargets(5000u);
+		tests.Require(nearYaw(albionOwner.fYawDegrees, 6.f), "A longer pursuit lifetime does not slow its first turn");
+		target.fPositionX = albionOwner.fPositionX + 100.f; target.fPositionZ = albionOwner.fPositionZ; updateTargets(5014u);
+		tests.Require(nearYaw(albionOwner.fYawDegrees, 90.f), "Grouped pursuit ticks consume the same bounded angular time");
+		beginFacing(179.f, 8582u); setDirection(-179.f); showtime.MechanicTriggers.front().fFollowSpeedScale = 1.f; updateTargets(5000u);
+		tests.Require(nearYaw(albionOwner.fYawDegrees, -179.f), "Moving pursuit crosses the yaw seam along the shortest arc");
 		room->m_CombatObjectRuntime.Reset(); room->m_Players = savedPlayers; albionOwner = *savedOwner;
 	}
 
@@ -779,8 +818,8 @@ REGION "blocked" "closed" 0 1
 			albionOwner.fPositionZ = albionOwner.fSpawnPositionZ = 8.f;
 			showtime.MechanicTriggers = {targets}; auto& definition = showtime.MechanicTriggers.front();
 			definition.iDurationMs = duration;
-			definition.RandomVolleys = { {"test.random.a", 5000u}, {"test.random.a", 5000u},
-				{"test.random.b", 5000u}, {"test.random.b", 5000u}, {"test.random.c", 5000u}, {"test.random.c", 5000u} };
+			definition.RandomVolleys = { { {}, "test.random.a", 5000u}, { {}, "test.random.a", 5000u},
+				{ {}, "test.random.b", 5000u}, { {}, "test.random.b", 5000u}, { {}, "test.random.c", 5000u}, { {}, "test.random.c", 5000u} };
 			definition.iRandomSpawnIntervalMs = 500u; definition.fRandomArenaRadiusM = 2.f; definition.fRandomArenaHeightToleranceM = .2f;
 			CKoukuSaydonLogicRuntime::Build(showtime, albionOwner, start, showtimeLedger);
 		};
@@ -874,6 +913,26 @@ REGION "blocked" "closed" 0 1
 			std::abs(albionOwner.fPositionY-6.59553915f)<.00001f && rootAt(12060u) && albionOwner.fPositionY==1.f &&
 			albionOwner.fPositionX==6.f && albionOwner.fPositionZ==6.f,
 			"Same-tick high initialization and native descent preserve full height, midpoint and grounded endpoint");
+		{
+			auto clone = std::make_unique<SERVER_WORLD_ENTITY>(*beforeInstant);
+			clone->bKoukuSummonClone = true; clone->iNetEntityId = 790u;
+			clone->PatternStageRootMotion = {{0u,0.f,0.f,0.f},{1000u,0.f,0.f,-5.59553915f},{2000u,0.f,0.f,-11.1910783f}};
+			auto clonePattern = pattern;
+			auto jump = phase; jump.strTriggerId = "clone.jump"; jump.eAirbornePhase = Phase::JUMP; jump.fAirborneHeightM = 11.1910783f;
+			auto slam = phase; slam.strTriggerId = "clone.slam";
+			clonePattern.MechanicTriggers = {slam, jump}; // Deliberately reverse same-clock authored order.
+			tests.Require(room->Update_KoukuSummonTriggers(*clone, clonePattern, 12000u) &&
+				clone->KoukuSummonStartedTriggers.size() == 2u && std::abs(clone->fPositionY - 12.1910783f) < .00001f,
+				"A summoned actor commits initial JUMP before SLAM even when equal-clock rows are reversed");
+			tests.Require(CKoukuSaydonBrain::Apply_StageRootMotion(*clone, clonePattern, 12030u,
+				room->m_ServerNavigation, room->m_ServerCollisionSystem, status) &&
+				room->Update_KoukuSummonTriggers(*clone, clonePattern, 12030u) &&
+				std::abs(clone->fPositionY - 6.59553915f) < .00001f && clone->KoukuSummonStartedTriggers.size() == 2u,
+				"Repeated clone ticks do not reapply initial height and preserve native midpoint descent");
+			tests.Require(CKoukuSaydonBrain::Apply_StageRootMotion(*clone, clonePattern, 12060u,
+				room->m_ServerNavigation, room->m_ServerCollisionSystem, status) && clone->fPositionY == 1.f,
+				"The summoned actor lands on the same authoritative navigation floor");
+		}
 		pattern.Stages.emplace_back(); pattern.Stages.back().iDurationMs=1000u;
 		albionOwner.iPatternStageIndex=1u; albionOwner.iPatternStageFirstEvaluationTick=12240u;
 		albionOwner.PatternStageRootMotion={{0u,0.f,0.f,0.f},{1000u,0.f,2.f,4.f}};
@@ -1053,6 +1112,7 @@ REGION "blocked" "closed" 0 1
 			SetEnvironmentVariableW(L"LOSTARK_SERVER_DATA_ROOT", fixture.c_str());
 			const bool loadedTargets = parsedTargets.Load();
 			SetEnvironmentVariableW(L"LOSTARK_SERVER_DATA_ROOT", dataRootBuffer.data());
+			if (!loadedTargets && row.find("PATTERNSUMMONSPAWN") != std::string::npos) std::cout << "Summon admission: " << parsedTargets.Get_Status() << std::endl;
 			return loadedTargets;
 		};
 		const auto loadTargetRow = [&](const std::string& fields) {
@@ -1187,6 +1247,78 @@ REGION "blocked" "closed" 0 1
 			tests.Require(groupOutput.WorldSequencePlays.empty(),"Later fixed ticks do not replay or duplicate the group volley");
 		}
 
+		// The actual dependent-boss spawn transaction consumes the optional MAP pose and all ten rows.
+		{
+			const std::string childId = "KAKULSAYDON_G1_SUMMON_CONTRACT_CHILD";
+			const auto start = baseline.find("PATTERN\t" + encounter + "\t" + patternId + "\t");
+			std::string childRows = baseline.substr(start);
+			for (std::size_t pos = 0u; (pos = childRows.find(patternId, pos)) != std::string::npos; pos += childId.size())
+				childRows.replace(pos, patternId.size(), childId);
+			const auto category = childRows.find("\tNORMAL\t");
+			childRows.replace(category, 8u, "\tMECHANIC\t");
+			const std::string triggerRow = "PATTERNMECHANICTRIGGER\t" + encounter + "\t" + patternId +
+				"\ttest.summon\tSUMMON_PATTERNS\t0\t5000\t0\t0\t0\t0\t-\t0\t0\t0\t1\t0\t0\t0\t0\t0\t0\t0\t0\t0\n";
+			const auto spawnRows = [&](const unsigned count, const std::string& anchor) {
+				std::string result = childRows + triggerRow;
+				for (unsigned index = 0u; index < count; ++index)
+					result += "PATTERNSUMMONSPAWN\t" + encounter + "\t" + patternId + "\ttest.summon\ttest.spawn." +
+						std::to_string(index) + "\t" + childId + "\t" + (index < 5u ? "4" : "12") + "\t1\t" +
+						std::to_string(4u + 2u * (index % 5u)) + "\t45" + anchor + "\n";
+				if (!result.empty() && result.back() == '\n') result.pop_back();
+				return result;
+			};
+			tests.Require(loadSupplement(spawnRows(16u, "\tMAP")), "Catalog admits sixteen bounded MAP Pattern spawn rows");
+			const auto beforeInvalidSummon = parsedTargets.Get_ActiveRevision();
+			tests.Require(!loadSupplement(spawnRows(17u, "\tMAP")) && parsedTargets.Get_ActiveRevision() == beforeInvalidSummon,
+				"A seventeenth Summon spawn preserves the admitted catalog");
+			tests.Require(!loadSupplement(spawnRows(10u, "\tBAD")) && parsedTargets.Get_ActiveRevision() == beforeInvalidSummon,
+				"An invalid spawn anchor preserves the admitted catalog");
+			tests.Require(loadSupplement(spawnRows(10u, "")), "Legacy ten-field summon rows retain the BOSS anchor default");
+			tests.Require(loadSupplement(spawnRows(10u, "\tMAP")), "Catalog admits ten independently placed MAP actors");
+			auto summonRoom = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+			summonRoom->m_WorldEntities.clear(); summonRoom->m_ServerNavigation = nav;
+			summonRoom->m_ServerCollisionSystem.Initialize({}, status); summonRoom->m_ServerCollisionSystem.Set_BlockingBodies({});
+			auto& run = summonRoom->m_KoukuSaydonPatternAudition;
+			run.ePhase = CGameRoom::KOUKUSAYDON_PATTERN_AUDITION_PHASE::ACTIVE;
+			run.PinnedGameplayRevision = summonRoom->m_GameplayCatalog.Get_ActiveRevision();
+			run.pProductGeneration = std::make_shared<CGameplayCatalog>(parsedTargets);
+			run.iPinnedSourceRevision = CKoukuSaydonBrain::Resolve_ProductSourceRevision(parsedTargets);
+			const auto* parent = CKoukuSaydonBrain::Find_AnimationOnlyPattern(parsedTargets, patternId, status);
+			WORLD_BOOTSTRAP_PLACEMENT placement;
+			placement.eKind = WORLD_BOOTSTRAP_KIND::BOSS; placement.strPlacementId = "boss.kakulsaydon.g3.saydon";
+			placement.strArchetypeId = "BOSS_KAKULSAYDON_G3_SAYDON"; placement.strEncounterId = encounter;
+			placement.fPositionX = placement.fPositionZ = 8.f; placement.fPositionY = 1.f; placement.fYawDegrees = 120.f;
+			SERVER_WORLD_ENTITY primary;
+			const bool ready = parent && !parent->MechanicTriggers.empty() && summonRoom->Build_WorldEntity(placement, 900u, primary) &&
+				summonRoom->m_KoukuSaydonBrain.Begin_Pattern(primary, *parent, run.PinnedGameplayRevision, 13000u, status);
+			tests.Require(ready, "The real primary boss admits the Summon parent in its pinned Product");
+			if (ready)
+			{
+				summonRoom->m_WorldEntities.push_back(primary); summonRoom->m_iNextNetEntityId = 1000u;
+				auto trigger = parent->MechanicTriggers.front();
+				const auto submit = [&](const BOSS_PATTERN_MECHANIC_TRIGGER& value) {
+					summonRoom->m_PendingKoukuMechanicTriggers.push_back({900u,primary.iPatternSequence,value});
+					summonRoom->Commit_KoukuMechanicTriggers(13000u);
+				};
+				auto bad = trigger; bad.PatternSpawns.back().PositionOffset = {6.f,1.f,2.f}; submit(bad);
+				tests.Require(summonRoom->m_WorldEntities.size() == 1u && summonRoom->m_iNextNetEntityId == 1000u,
+					"An invalid tenth navigation point rolls back all ten staged summon actors and IDs");
+				bad = trigger; bad.PatternSpawns.back().PositionOffset[1] = 10.f; submit(bad);
+				tests.Require(summonRoom->m_WorldEntities.size() == 1u && summonRoom->m_iNextNetEntityId == 1000u,
+					"A MAP point on the wrong navigation floor rolls back the entire formation");
+				submit(trigger);
+				bool poses = summonRoom->m_WorldEntities.size() == 11u;
+				for (const auto& actor : summonRoom->m_WorldEntities) if (actor.bKoukuSummonClone)
+					poses = poses && actor.iOwnerBossNetEntityId == 900u && actor.strPatternId == childId && actor.fYawDegrees == 45.f &&
+						(actor.fPositionX == 4.f || actor.fPositionX == 12.f) && actor.fPositionY == 1.f && actor.KoukuSummonStartedTriggers.empty();
+				tests.Require(poses && summonRoom->m_iNextNetEntityId == 1010u,
+					"Ten MAP actors commit independent Patterns and absolute poses despite the primary yaw");
+				summonRoom->Update_KoukuGazeClones(13001u);
+				tests.Require(summonRoom->m_WorldEntities.size() == 11u, "The next clone simulation tick preserves all ten active children");
+				summonRoom->m_WorldEntities.front().strPatternId.clear(); summonRoom->Update_KoukuGazeClones(13002u);
+				tests.Require(summonRoom->m_WorldEntities.size() == 1u, "Stopping the parent removes all ten owned actors together");
+			}
+		}
 	}
 	else tests.Require(false, "Showtime catalog admission requires the configured isolated Server data root");
 #endif

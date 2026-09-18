@@ -676,10 +676,8 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 			if (0u != player.iMarioStage && !player.TriggerMove.isActive && !authoredMoveSource.empty())
 				(void)Configure_MarioRail(player, authoredMoveSource);
 			Update_MarioControlState(player);
-#ifdef _DEBUG
 			if (!player.TriggerMove.isActive && !authoredMoveSource.empty())
 				Complete_KoukuMarioReturn(player, authoredMoveSource, updateTick);
-#endif
 			continue;
 		}
 		const bool wasKnockbackActive =

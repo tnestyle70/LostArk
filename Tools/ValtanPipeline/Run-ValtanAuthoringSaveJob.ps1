@@ -6,6 +6,8 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$ResultPath,
     [string]$DraftPatchPath = '',
+    [switch]$SourceOnly,
+    [string]$SourceBaselineRoot = '',
     [string]$PatternSoundBaselinePath = '',
     [string]$PatternSoundCandidatePath = '',
     [string]$EffectV2BaselinePath = '',
@@ -82,7 +84,10 @@ function Write-JobResult([bool]$Ok, [string]$Diagnostic) {
         ($document | ConvertTo-Json -Depth 8 -Compress) + "`n",
         $utf8)
     if ([IO.File]::Exists($resultFullPath)) {
-        [IO.File]::Replace($temporary, $resultFullPath, $null, $true)
+        # Windows PowerShell 5.1 can bind $null to an empty backup path for
+        # File.Replace. Keep the previous receipt beside the durable job log.
+        $receiptBackup = $resultFullPath + '.previous.' + [string]$PID
+        [IO.File]::Replace($temporary, $resultFullPath, $receiptBackup, $true)
     }
     else {
         [IO.File]::Move($temporary, $resultFullPath)
@@ -104,6 +109,9 @@ try {
             $LockTimeoutSeconds.ToString(
                 [Globalization.CultureInfo]::InvariantCulture)
         )
+        if ($SourceOnly) {
+            $commitArguments += @('-SourceOnly', '-SourceBaselineRoot', $SourceBaselineRoot)
+        }
         $effectV2Presence = @(
             -not [string]::IsNullOrWhiteSpace($EffectV2BaselinePath),
             -not [string]::IsNullOrWhiteSpace($EffectV2CandidatePath),

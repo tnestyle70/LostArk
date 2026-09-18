@@ -1857,7 +1857,7 @@ function Read-WorldSequenceDocument {
             }
             foreach ($effect in $template.effectTracks) {
                 $effectProperties = @('effectTrackId','slotId','resourceKind','resourceId','timing','startMs','durationMs','positionOffset','rotationDegrees','scale')
-                foreach ($optional in @('followObject','bone','fitEffectToDuration')) {
+                foreach ($optional in @('followObject','inheritObjectRotation','bone','fitEffectToDuration','loopEffectToDuration')) {
                     if ($null -ne $effect.PSObject.Properties[$optional]) { $effectProperties += $optional }
                 }
                 Assert-ExactJsonProperties $effect $effectProperties 'World Object effect track'
@@ -1866,7 +1866,17 @@ function Read-WorldSequenceDocument {
                     ($effect.fitEffectToDuration -and $effect.resourceKind -cne 'V1_EFFECT'))) {
                     throw 'World Object Effect fit must be boolean and true requires V1_EFFECT'
                 }
+                if ($null -ne $effect.PSObject.Properties['loopEffectToDuration'] -and
+                    ($effect.loopEffectToDuration -isnot [bool] -or
+                    ($effect.loopEffectToDuration -and $effect.resourceKind -cne 'V1_EFFECT'))) {
+                    throw 'World Object Effect loop must be boolean and true requires V1_EFFECT'
+                }
+                if ($null -ne $effect.PSObject.Properties['fitEffectToDuration'] -and $effect.fitEffectToDuration -and
+                    $null -ne $effect.PSObject.Properties['loopEffectToDuration'] -and $effect.loopEffectToDuration) {
+                    throw 'World Object Effect fit and loop are mutually exclusive'
+                }
                 if (($null -ne $effect.PSObject.Properties['followObject'] -and $effect.followObject -isnot [bool]) -or
+                    ($null -ne $effect.PSObject.Properties['inheritObjectRotation'] -and $effect.inheritObjectRotation -isnot [bool]) -or
                     ($null -ne $effect.PSObject.Properties['bone'] -and ($effect.bone -isnot [string] -or
                     [Text.Encoding]::UTF8.GetByteCount([string]$effect.bone) -gt 256 -or $effect.bone -match '[\x00-\x1f\x7f]'))) {
                     throw 'Invalid World Object effect followObject or bone'

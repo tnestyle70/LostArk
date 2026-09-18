@@ -2,6 +2,7 @@
 
 #include "CompositionAnimationResource.h"
 
+#include <array>
 #include <cstdint>
 #include <string>
 
@@ -24,6 +25,17 @@ enum class COMPOSITION_WORKBENCH_TARGET : std::uint8_t
 {
     BOSS, CHARACTER, OBJECT, SEQUENCE
 };
+
+// Shared resource ordering is independent from each document's typed owner.
+enum class COMPOSITION_RESOURCE_DOMAIN : std::uint8_t
+{
+    ANIMATION, LOGIC, SUMMON, WORLD, SCENE_PROFILE, EFFECT, COLLIDER,
+    SOUND, CAMERA, LIGHT, PATTERN, COUNT
+};
+inline constexpr std::array<const char*, static_cast<std::size_t>(COMPOSITION_RESOURCE_DOMAIN::COUNT)>
+    COMPOSITION_RESOURCE_CATEGORIES = {
+        "Animation", "Logic", "Summon", "World", "Scene Profile", "Effect", "Collider",
+        "Sound", "Camera", "Light", "Pattern" };
 
 enum class COMPOSITION_WORKBENCH_PANE : std::uint8_t
 {

@@ -1374,7 +1374,7 @@ void Client::CAnimation_Tool::Render_ValtanPatternPreview(
 	if (ImGui::Button(m_bValtanPatternPreviewPaused ? "Resume" : "Pause Sequence"))
 	{
 		m_bValtanPatternPreviewPaused = !m_bValtanPatternPreviewPaused;
-		pModel->Set_AnimPaused(m_bValtanPatternPreviewPaused);
+		pModel->Set_AnimPaused(true); // Source sequence pose is sampled by its wall clock.
 	}
 	ImGui::SameLine();
 	if (ImGui::Button("Replay Step"))
@@ -1547,7 +1547,7 @@ void Client::CAnimation_Tool::Render_ValtanPatternReferenceWindow(
 			m_bValtanPatternPreviewPaused ? "Resume" : "Pause"))
 		{
 			m_bValtanPatternPreviewPaused = !m_bValtanPatternPreviewPaused;
-			pModel->Set_AnimPaused(m_bValtanPatternPreviewPaused);
+			pModel->Set_AnimPaused(true); // Source sequence pose is sampled by its wall clock.
 		}
 		ImGui::SameLine();
 		if (ImGui::Button("Replay"))

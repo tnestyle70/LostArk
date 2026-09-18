@@ -29,6 +29,7 @@ struct EFFECT_DOCUMENT_DESC;
 struct ANIMATION_SKILL_BINDING;
 struct ANIMATION_EFFECT_CUE_DOCUMENT;
 struct CHARACTER_ACTION_COMBAT_ROW;
+struct VALTAN_CLIP_OCCURRENCE_VIEW;
 
 // One editor clock. The resource owners retain their codecs and prepare each
 // independent occurrence; this adapter owns only its lifetime and sampling.
@@ -72,6 +73,8 @@ public:
         std::optional<std::uint32_t> previewDurationMs = std::nullopt, std::uint32_t modelStartMs = 0u,
         bool loopEffectToDuration = false);
     bool Select_WorldEffect(const std::string& assetId, bool reusePlayerAnchor = false);
+    bool Select_ValtanEffect(const std::string& assetId,
+        const std::vector<VALTAN_CLIP_OCCURRENCE_VIEW>& clips);
     bool Preview(const EFFECT_RESOURCE_KEY& key, std::uint32_t durationMs = 3000u);
     bool Preview_Element(const EFFECT_RESOURCE_KEY& key, const std::string& elementId,
         const std::string& label, std::uint32_t durationMs, std::uint32_t focusMs);
@@ -91,6 +94,8 @@ public:
     bool Is_ElementPreview() const { return m_Transient && !m_Transient->previewElementIds.empty(); }
     bool Owns_ModelClock() const { return m_Active && Has_ModelSequence(); }
     bool Is_Paused() const { return m_Paused; }
+    bool Is_ValtanSourcePreview(const std::string& assetId) const
+    { return m_ValtanEffectPreview && m_ValtanEffectPreview->assetId == assetId; }
     bool Consume_InteractionRequest();
     const std::string& Status() const { return m_Status; }
     std::uint32_t ClockMs() const { return static_cast<std::uint32_t>(m_ClockMs); }
@@ -146,6 +151,7 @@ private:
         std::shared_ptr<V1_ANCHOR_HISTORY> anchorHistory;
         float recordedAge = -1.f;
         float sampledAge = -1.f;
+        float finiteLoopSeconds = 0.f, sampledCycleStart = -1.f;
         float4x4_t recordedRoot{};
     };
     using CAMERA_ROW = EFFECT_CAMERA_ROW;
@@ -224,9 +230,9 @@ private:
     bool Uses_TransientLoop() const
     { return m_Transient && (Is_ElementPreview() || (m_KoukuEffectPreview && m_KoukuEffectPreview->loopPolicy.has_value())); }
     bool Uses_KoukuSourceModel() const
-    { return m_KoukuEffectPreview ? m_KoukuEffectPreview->model.has_value() : m_UseKouku; }
+    { return !m_ValtanEffectPreview && (m_KoukuEffectPreview ? m_KoukuEffectPreview->model.has_value() : m_UseKouku); }
     bool Has_ModelSequence() const
-    { return m_KoukuEffectPreview ? m_KoukuEffectPreview->model.has_value() : (m_UseKouku || m_CustomAnimation || !m_SelectedSequence.empty()); }
+    { return m_ValtanEffectPreview || !m_TransientAnimationRows.empty() || (m_KoukuEffectPreview ? m_KoukuEffectPreview->model.has_value() : (m_UseKouku || m_CustomAnimation || !m_SelectedSequence.empty())); }
     bool Begin_Model();
     bool Sample_Model(std::uint32_t clockMs);
     bool Resolve_Root(float4x4_t& root);
@@ -279,6 +285,14 @@ private:
     std::vector<CLIP> m_AnimationRows;
     // Recovery Preview owns its clip-local animation without changing the saved arrangement.
     std::vector<CLIP> m_TransientAnimationRows;
+    struct VALTAN_EFFECT_PREVIEW_TARGET final
+    {
+        std::string assetId;
+        std::vector<CLIP> clips;
+        std::uint64_t modelGeneration = 0u;
+    };
+    // Source animation belongs to this transient Effect, never the saved arrangement.
+    std::optional<VALTAN_EFFECT_PREVIEW_TARGET> m_ValtanEffectPreview;
     bool m_CustomAnimation = false;
     std::vector<SOUND_ROW> m_Sounds;
     std::vector<COLLIDER_ROW> m_Colliders;

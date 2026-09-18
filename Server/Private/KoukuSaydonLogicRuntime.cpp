@@ -321,6 +321,8 @@ namespace
 		if (!region.bSector && !region.bCircle)
 			return std::fabs(localX) <= halfX && std::fabs(localZ) <= halfZ;
 		const float distanceSq = dx * dx + dz * dz;
+		const float inner = region.fInnerRadiusM * radius / region.fRadiusM;
+		if (inner > 0.f && distanceSq < inner * inner) return false;
 		if (region.bCircle) return distanceSq <= radius * radius;
 		const float nx = localX / radiusX, nz = localZ / radiusZ;
 		if (nx * nx + nz * nz > 1.f) return false;
@@ -343,7 +345,7 @@ namespace
 	{
 		using namespace LostArk::Server;
 		using namespace LostArk::Shared::CombatCollision;
-		if (!region.bCircle || !region.WorldTrack.bEnabled || region.fCenterX != 0.f || region.fCenterZ != 0.f ||
+		if (!region.bCircle || region.fInnerRadiusM > 0.f || !region.WorldTrack.bEnabled || region.fCenterX != 0.f || region.fCenterZ != 0.f ||
 			region.eAnchor == BOSS_LOGIC_REGION_ANCHOR::BOSS_CURRENT || elapsedTicks <= windowStartTicks ||
 			!std::isfinite(player.fPositionX) || !std::isfinite(player.fPositionZ)) return false;
 		const auto& track = region.WorldTrack;
@@ -436,9 +438,14 @@ namespace
 		LOGIC_REGION_TRANSFORM transform;
 		if (!Resolve_LogicRegionTransform(region, boss, patternElapsedTicks, transform)) return false;
 		const auto [centerX, centerZ, yaw, halfX, halfZ, radius, radiusX, radiusZ, centerY, halfY, hasGrip, grip] = transform;
+		const float inner = region.fInnerRadiusM * radius / region.fRadiusM;
+		if (inner > 0.f && !Circle_IntersectsRing(target, centerX, centerZ, inner, radius)) return false;
 		if (region.bCircle) return Circles_Overlap(CIRCLE_XZ{ centerX, centerZ, radius }, target);
 		const float radians = yaw * 0.017453292519943295f;
 		const float forwardX = std::sin(radians), forwardZ = std::cos(radians);
+		if (region.bSector && inner > 0.f)
+			return region.fHalfAngleDegrees >= 180.f || Circle_IntersectsCone(target, centerX, centerZ,
+				forwardX, forwardZ, radius, region.fHalfAngleDegrees * 2.f);
 		if (region.bSector)
 			return Circle_IntersectsEllipticSector(target, centerX, centerZ, forwardX, forwardZ,
 				radiusX, radiusZ, region.fHalfAngleDegrees * 2.f, region.bReverseSector);
@@ -572,6 +579,19 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Discard(
         (void)CBossCombatRuntime::Set_Flag(pBoss->BossCombat, SERVER_BOSS_COMBAT_FLAG::COUNTERABLE, false);
         CBossCombatRuntime::Clear_PatternOutcomes(*pBoss);
 	}
+	for (const auto& state : ledger.Windows)
+		for (const auto& [id, entityId] : state.BoundPlayers)
+		{
+			const auto found = players.find(id);
+			if (found != players.end() && found->second.iNetEntityId == entityId && pBoss &&
+				found->second.iPatternBindOwnerNetEntityId == pBoss->iNetEntityId &&
+				found->second.iPatternBindSequence == ledger.iPatternSequence)
+				found->second.Clear_PatternBindStatus();
+		}
+	if (pBoss)
+		for (auto& [id, player] : players)
+			if (player.bPatternBound && player.iPatternBindOwnerNetEntityId == pBoss->iNetEntityId &&
+				player.iPatternBindSequence == ledger.iPatternSequence) player.Clear_PatternBindStatus();
 	ledger = {};
 }
 
@@ -664,6 +684,50 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Open_Window(
 	state.iBossHpAtOpen = boss.iCurrentHp;
 	switch (window.eKind)
 	{
+	case BOSS_PATTERN_LOGIC_KIND::CARD_DICE_BIND:
+	{
+		std::vector<SERVER_PLAYER*> eligible;
+		for (auto& [id, player] : players)
+			if (Is_Judgeable(player) && !player.bPatternBound && !player.iMarioStage &&
+				!player.TriggerMove.isActive && player.eCardMazeRole == CARD_MAZE_ROLE::NONE)
+				eligible.push_back(&player);
+		if (eligible.empty()) break;
+		auto* freePlayer = eligible[Mix((static_cast<std::uint64_t>(boss.iPatternSequence) << 32u) ^
+			boss.iNetEntityId ^ state.iStartTick) % eligible.size()];
+		state.iFreePlayerNetEntityId = freePlayer->iNetEntityId;
+		boss.iTargetEntityId = boss.iPatternTargetEntityId = freePlayer->iNetEntityId;
+		for (auto* player : eligible)
+		{
+			if (player == freePlayer) continue;
+			player->fPatternBindRestoreX = player->fPositionX;
+			player->fPatternBindRestoreY = player->fPositionY;
+			player->fPatternBindRestoreZ = player->fPositionZ;
+			player->fPatternBindRestoreYawDegrees = player->fYawDegrees;
+			player->bPatternBindRestoreCombatReady = player->isCombatReady;
+			player->bPatternBound = true;
+			player->iPatternBindOwnerNetEntityId = boss.iNetEntityId;
+			player->iPatternBindSequence = boss.iPatternSequence;
+			player->iPatternBindEndTick = state.iEndTick;
+			player->eAction = PLAYER_ACTION_STATE::NONE;
+			player->iCurrentSkillId = INVALID_SKILL_ID;
+			player->iActionStartTick = 0u;
+			player->fActionElapsedSeconds = 0.f;
+			player->Clear_SkillTarget();
+			player->iComboStage = 0u;
+			player->hasBufferedComboInput = false;
+			player->hasReleasedHold = false;
+			player->PendingCommand.Clear();
+			player->hasMoveGoal = false;
+			player->MovePath.clear();
+			player->iMovePathIndex = 0u;
+			player->iFearEndTick = 0u;
+			player->strFearPresentationId.clear();
+			player->iKnockdownEndTick = 0u;
+			player->fKnockbackRemainingSeconds = 0.f;
+			state.BoundPlayers.emplace(player->iPlayerId, player->iNetEntityId);
+		}
+		break;
+	}
 	case BOSS_PATTERN_LOGIC_KIND::ROULETTE_CARD_MATCH:
 		for (auto& [playerId, player] : players)
 			if (Is_Judgeable(player))
@@ -706,6 +770,15 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Close_Window(
 	state.bClosed = true;
     if (window.eKind == BOSS_PATTERN_LOGIC_KIND::COUNTER_WINDOW)
         (void)CBossCombatRuntime::Set_Flag(boss.BossCombat, SERVER_BOSS_COMBAT_FLAG::COUNTERABLE, false);
+	for (const auto& [id, entityId] : state.BoundPlayers)
+	{
+		const auto found = players.find(id);
+		if (found != players.end() && found->second.iNetEntityId == entityId &&
+			found->second.iPatternBindOwnerNetEntityId == boss.iNetEntityId &&
+			found->second.iPatternBindSequence == boss.iPatternSequence)
+			found->second.Clear_PatternBindStatus();
+	}
+	state.BoundPlayers.clear();
 	(void)players;
 	if (BOSS_PATTERN_LOGIC_KIND::STAGGER_WINDOW == window.eKind)
 	{
@@ -962,9 +1035,27 @@ bool LostArk::Server::CKoukuSaydonLogicRuntime::Can_EnterMarioEntry(
 		player.iAttachmentOwnerNetEntityId == LostArk::Shared::INVALID_NET_ENTITY_ID;
 }
 
+const LostArk::Server::BOSS_PATTERN_LOGIC_RESULT* LostArk::Server::CKoukuSaydonLogicRuntime::Find_MarioEntryResult(
+	const BOSS_PATTERN_DEFINITION& pattern) noexcept
+{
+	for (const auto& window : pattern.LogicWindows)
+		if (window.eKind == BOSS_PATTERN_LOGIC_KIND::ENTER_AREA && !window.CardRegions.empty() &&
+			window.OnSuccess.size() == 1u && window.OnSuccess.front().eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::MARIO_ENTER)
+			return &window.OnSuccess.front();
+	return nullptr;
+}
+
+bool LostArk::Server::CKoukuSaydonLogicRuntime::Has_MarioEntry(
+	const BOSS_PATTERN_DEFINITION& pattern) noexcept
+{
+	return Find_MarioEntryResult(pattern) != nullptr ||
+		std::any_of(pattern.LogicWindows.begin(), pattern.LogicWindows.end(),
+			[](const auto& window) { return window.eKind == BOSS_PATTERN_LOGIC_KIND::PATTERN_COMPLETION_COUNT; });
+}
+
 bool LostArk::Server::CKoukuSaydonLogicRuntime::Is_InsideMarioEntry(
 	const BOSS_PATTERN_DEFINITION& root, const SERVER_WORLD_ENTITY& anchor,
-	const SERVER_PLAYER& player, const std::uint32_t elapsedTicks)
+	const SERVER_PLAYER& player, const std::uint32_t elapsedTicks, const bool honorWindowEnd, std::uint8_t* const matchedStage)
 {
 	using namespace LostArk::Shared::WorldCollision;
 	if (!Can_EnterMarioEntry(player)) return false;
@@ -975,6 +1066,7 @@ bool LostArk::Server::CKoukuSaydonLogicRuntime::Is_InsideMarioEntry(
 	for (const auto& window : root.LogicWindows)
 	{
 		if (window.eKind != BOSS_PATTERN_LOGIC_KIND::ENTER_AREA || elapsedTicks < Ticks_FromMs(window.iStartMs) ||
+			(honorWindowEnd && elapsedTicks >= Ticks_FromMs(window.iStartMs + window.iDurationMs)) ||
 			window.OnSuccess.size() != 1u || window.OnSuccess.front().eKind != BOSS_PATTERN_LOGIC_RESULT_KIND::MARIO_ENTER) continue;
 		for (const auto& region : window.CardRegions)
 		{
@@ -982,7 +1074,11 @@ bool LostArk::Server::CKoukuSaydonLogicRuntime::Is_InsideMarioEntry(
 			if (!Resolve_LogicRegionTransform(region, anchor, elapsedTicks, transform) ||
 				(transform.hasGrip && std::abs(player.fPositionY + PLAYER_CENTER_OFFSET_Y - transform.centerY) >
 					transform.halfY + PLAYER_HALF_EXTENT_Y + CONTACT_MARGIN)) continue;
-			if (Intersects_LogicRegion(region, anchor, body, elapsedTicks)) return true;
+			if (Intersects_LogicRegion(region, anchor, body, elapsedTicks))
+			{
+				if (matchedStage) *matchedStage = window.OnSuccess.front().iMarioEntryStage;
+				return true;
+			}
 		}
 	}
 	return false;
@@ -1300,6 +1396,10 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Update(
 				outOutput.strStatus = "external signal window timed out";
 			}
 			break;
+		case BOSS_PATTERN_LOGIC_KIND::CARD_DICE_BIND:
+			if (reachedEnd) Close_Window(boss, window, state, players);
+			else boss.iTargetEntityId = boss.iPatternTargetEntityId = state.iFreePlayerNetEntityId;
+			break;
         case BOSS_PATTERN_LOGIC_KIND::COUNTER_WINDOW:
         {
             auto& signals = boss.BossCombat.PendingOutcomes;
@@ -1433,6 +1533,14 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Update(
 		case BOSS_PATTERN_LOGIC_KIND::ENTER_AREA:
 		{
 			const bool enter = BOSS_PATTERN_LOGIC_KIND::ENTER_AREA == window.eKind;
+			// Mario admission and its party-wide failure are committed by the room.
+			// Other participants must not time out merely because one player entered.
+			if (enter && window.OnSuccess.size() == 1u &&
+				window.OnSuccess.front().eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::MARIO_ENTER)
+			{
+				if (reachedEnd) Close_Window(boss, window, state, players);
+				break;
+			}
 			if (!enter && !reachedEnd) break;
 			for (auto& [playerId, player] : players)
 			{
@@ -2112,6 +2220,11 @@ LostArk::Server::CKoukuCardMazeRuntime::On_TargetHit(
 		if (KILL_TARGET == participant->second.iKills)
 		{
 			outcome.bHunterComplete = true;
+			// The defeated suit is the personal portal, not a second random destination.
+			hunter.CardMaze.exitX = target.fPositionX;
+			hunter.CardMaze.exitY = target.fPositionY;
+			hunter.CardMaze.exitZ = target.fPositionZ;
+			hunter.CardMaze.flags |= 4u;
 			bool allComplete = true;
 			for (const auto& [playerId, other] : m_Participants)
 			{
@@ -2122,7 +2235,7 @@ LostArk::Server::CKoukuCardMazeRuntime::On_TargetHit(
 					break;
 				}
 			}
-			// Three kills only unlock a personal exit; central arrival completes the run.
+			// The matching kill unlocks a personal exit; central arrival completes the run.
 			(void)allComplete;
 		}
 		Apply_ToPlayer(participant->second, hunter);
@@ -2226,9 +2339,8 @@ void LostArk::Server::CKoukuCardMazeRuntime::Reset_Progress(SERVER_PLAYER& playe
 bool LostArk::Server::CKoukuCardMazeRuntime::Toggle_Telescope(SERVER_PLAYER& player)
 {
 	const auto p = m_Participants.find(player.iPlayerId);
-	if (p == m_Participants.end() || !In_SafeZone(player.fPositionX, player.fPositionZ) ||
-		(p->second.eRole != LostArk::Shared::CARD_MAZE_ROLE::TELESCOPE && !p->second.escaped &&
-			!Is_SoloHunter(player.iPlayerId))) return false;
+	if (p == m_Participants.end() || player.iPlayerId != m_iTelescopeOwner ||
+		!In_SafeZone(player.fPositionX, player.fPositionZ)) return false;
 	player.CardMaze.flags ^= 1u;
 	player.hasMoveGoal = false;
 	player.MovePath.clear();

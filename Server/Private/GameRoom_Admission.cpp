@@ -285,7 +285,11 @@ bool LostArk::Server::CGameRoom::Build_PlayerEntryFrames(
 			frames.push_back({ PACKET_TYPE::S2C_WORLD_ENTITY_SPAWNED, std::move(payload) });
 		}
 	}
-#ifdef _DEBUG
+	S2C_KOUKUSAYDON_RAID_STATE raidState;
+	if (Build_KoukuRaidState(raidState) && !append(PACKET_TYPE::S2C_KOUKUSAYDON_RAID_STATE, raidState)) return false;
+	S2C_GATE_PROGRESS_STATE gateState;
+	if (Build_GateProgressState(gateState, false, GATE_PROGRESS_VOTE_RESULT::NONE) &&
+		!append(PACKET_TYPE::S2C_GATE_PROGRESS_STATE, gateState)) return false;
 	S2C_KOUKUSAYDON_BUNDLE_STATE bundleState;
 	if (Build_KoukuBundleState(bundleState))
 	{
@@ -307,7 +311,6 @@ bool LostArk::Server::CGameRoom::Build_PlayerEntryFrames(
 		auto play = cue.Play; play.iServerTick = m_iServerTick;
 		if (!append(PACKET_TYPE::S2C_WORLD_SEQUENCE_PLAY, play)) return false;
 	}
-#endif
 	std::vector<S2C_COMBAT_OBJECT_SPAWNED> combatObjects;
 	m_CombatObjectRuntime.Build_LiveSpawnMessages(0u == m_iServerTick ? 1u : m_iServerTick, combatObjects);
 	for (const auto& object : combatObjects)
@@ -503,6 +506,13 @@ void LostArk::Server::CGameRoom::Leave(
 {
 	using namespace LostArk::Shared;
 
+	if (Is_KoukuRaidRunning())
+	{
+		const auto departing = m_PlayerIdBySessionId.find(sessionId);
+		if (departing != m_PlayerIdBySessionId.end() && std::find(m_KoukuRaid.PlayerIds.begin(), m_KoukuRaid.PlayerIds.end(), departing->second) != m_KoukuRaid.PlayerIds.end())
+			Stop_KoukuRaid("A raid participant left the room");
+	}
+	m_KoukuRaidReceipts.erase(sessionId);
 #ifdef _DEBUG
 	if (sessionId == m_ValtanPatternIdAudition.iOwnerSessionId)
 	{
@@ -539,6 +549,7 @@ void LostArk::Server::CGameRoom::Leave(
 	{
 		Stop_ValtanTimelineRow();
 	}
+#endif
 	Cancel_KoukuWorldBodies({}, sessionId);
 	const bool koukuOwnerLeft = sessionId == m_KoukuSaydonPatternAudition.iOwnerSessionId;
 	const auto soloMarioDeparture = std::find_if(
@@ -565,7 +576,6 @@ void LostArk::Server::CGameRoom::Leave(
 			return edge.iSessionId == sessionId;
 		});
 	m_KoukuSaydonPatternAuditionReceiptBySessionId.erase(sessionId);
-#endif
 	m_ValtanAuditionSequenceBySessionId.erase(sessionId);
 	m_WorldPlaybackRequestSequences.erase(sessionId);
 	m_RoomPlayerArrivalRuns.erase(sessionId);

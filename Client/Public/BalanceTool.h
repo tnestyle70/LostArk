@@ -8,6 +8,7 @@
 
 #include <cstdint>
 #include <filesystem>
+#include <functional>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -161,6 +162,18 @@ public:
 	   transaction (for example Create New Pattern) commits it. Dirty Balance
 	   drafts are never discarded implicitly. */
 	bool Reload_ValtanSource(std::string& status);
+	bool Get_ValtanAuthoringView(VALTAN_PATTERN_TREE_VIEW& view, std::string& status) const;
+	bool Apply_ValtanCompositionDraftTransaction(const std::function<bool(std::string&)>& edit, std::string& status);
+	bool Upsert_ValtanSummonDraft(const std::string& patternId, const std::string& stageId, const VALTAN_COMBAT_OBJECT_EFFECT_VIEW& summon, std::string& status);
+	bool Remove_ValtanSummonDraft(const std::string& patternId, const std::string& stageId, const VALTAN_COMBAT_OBJECT_EFFECT_VIEW& summon, std::string& status);
+
+	bool Set_ValtanStageLightOccurrences(const std::string& patternId, const std::string& stageId, const std::vector<BOSS_STAGE_LIGHT_OCCURRENCE>& occurrences, std::string& status);
+	bool Set_ValtanStageSceneProfileOccurrences(const std::string& patternId, const std::string& stageId, const std::vector<BOSS_STAGE_SCENE_PROFILE_OCCURRENCE>& occurrences, std::string& status);
+	bool Upsert_ValtanStageActionDraft(const std::string& patternId, const std::string& stageId, const VALTAN_STAGE_ACTION_VIEW& action, std::string& status);
+	bool Remove_ValtanStageActionDraft(const std::string& patternId, const std::string& stageId, const VALTAN_STAGE_ACTION_VIEW& action, std::string& status);
+	bool Upsert_ValtanCameraInvocationDraft(const std::string& patternId, const std::string& stageId, const VALTAN_CAMERA_INVOCATION_VIEW& invocation, std::string& status);
+	bool Remove_ValtanCameraInvocationDraft(const std::string& patternId, const std::string& stageId, const VALTAN_CAMERA_INVOCATION_VIEW& invocation, std::string& status);
+
 	/* Explicit Workbench navigation boundary.  This is the only reload entry
 	   that may replace an unsaved Balance-owned Valtan composition draft, and
 	   its underlying Reload stages every physical owner before commit. */
@@ -783,7 +796,7 @@ private:
 	};
 	bool Begin_ValtanSaveJob(bool commitCanonical, bool publishAfterSave,
 		const VALTAN_COMPOSITION_OWNER_DRAFTS* ownerDrafts,
-		std::uint64_t& jobId, std::string& status);
+		std::uint64_t& jobId, std::string& status, bool sourceOnly = false);
 	bool Launch_ValtanSaveCommand(bool commitCanonical,
 		const VALTAN_COMPOSITION_OWNER_DRAFTS* ownerDrafts,
 		std::string& status);
@@ -806,6 +819,7 @@ private:
 	bool m_valtanSaveJobCommitCanonicalRequested = false;
 	bool m_valtanSaveJobCanonicalCommitted = false;
 	bool m_valtanSaveJobPublishAfterSave = true;
+	bool m_valtanSaveJobSourceOnly = false;
 	std::string m_valtanSaveJobExpectedSourceRevision;
 	std::string m_valtanSaveJobCommittedSourceRevision;
 	std::string m_valtanSaveJobCandidateRevision;
@@ -881,6 +895,7 @@ private:
 	std::vector<LEGACY_PATTERN_SUMMARY> m_legacyPatterns;
 	std::string m_valtanPatternStatus;
 	std::string m_valtanSourceRevision;
+	std::unordered_map<std::string, std::string> m_valtanSourceOwnerBaselines;
 	std::string m_valtanAuthoringRevision;
 	std::string m_valtanCandidateRevision;
 	std::string m_valtanCandidateApplyClass;

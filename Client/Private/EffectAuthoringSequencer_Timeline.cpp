@@ -297,7 +297,7 @@ void CEffectAuthoringSequencer::Render_Sequencer(const char* title, const bool i
         auto add = [&](TRACK_KIND kind, const std::string& id, const std::string& label,
             std::uint32_t start, std::uint32_t duration, bool muted, bool editable = true)
         { lanes[static_cast<std::size_t>(kind)].push_back({kind, id, label, start, duration, muted, editable}); };
-        if (m_UseKouku)
+        if (m_UseKouku && !m_ValtanEffectPreview)
             for (const auto& clip : m_Kouku.Rows())
                 add(TRACK_KIND::ANIMATION, clip.memberId + "." + clip.occurrenceId, clip.runtimeClip,
                     clip.startMs, clip.durationMs, false, false);

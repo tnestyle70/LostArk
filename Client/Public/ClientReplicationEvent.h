@@ -34,6 +34,7 @@ namespace Client
 		CHAT_RECEIVED,
 		WORLD_SEQUENCE_PLAY,
 		KOUKUSAYDON_BUNDLE_STATE,
+		KOUKUSAYDON_RAID_STATE,
 		INTERACT_PROMPT
 	};
 
@@ -86,6 +87,7 @@ namespace Client
 		LostArk::Shared::S2C_CHAT ChatReceived;
 		LostArk::Shared::S2C_WORLD_SEQUENCE_PLAY WorldSequencePlay;
 		LostArk::Shared::S2C_KOUKUSAYDON_BUNDLE_STATE KoukuBundleState;
+		LostArk::Shared::S2C_KOUKUSAYDON_RAID_STATE KoukuRaidState;
 		LostArk::Shared::S2C_INTERACT_PROMPT InteractPrompt;
 	};
 }

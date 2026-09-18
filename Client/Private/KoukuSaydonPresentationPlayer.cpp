@@ -4,6 +4,7 @@
 #include "KoukuSaydonPresentationPlayer.h"
 #include <random>
 #include "KoukuSaydonAnimationBlend.h"
+#include "Gameplay/KoukuTargetTracking.h"
 
 #include "ActionPresentationTimeline.h"
 #include "AnimationTargetService.h"
@@ -29,6 +30,7 @@
 #include "ProjectDataRoot.h"
 #include "RenderingProfileService.h"
 #include "RuntimeAssetRoot.h"
+#include "SoundCueCatalog.h"
 #include "Transform.h"
 
 #include <algorithm>
@@ -104,6 +106,9 @@ bool Validate_EffectAnchor(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
         (box.strBoneTarget != "BODY" && box.strBoneTarget != "WEAPON") ||
         (!box.strBone.empty() && !stableId(box.strBone)) || box.iWorldEmissionIndex > 127u)
         return reject("Invalid Effect anchor, bone or World emission index");
+    if (box.strBoneRotation != "TARGET_YAW" && (box.strBoneRotation != "BONE" ||
+        box.strAnchorKind != "BOSS" || box.strBone.empty()))
+        return reject("Bone rotation requires a boss anchor with an explicit bone");
     if (box.strAnchorKind == "MAP" && (box.bFollowBoss || !box.strBone.empty() ||
         box.strBoneTarget != "BODY" || !box.strWorldId.empty() || !box.strWorldOccurrenceId.empty()))
         return reject("MAP Effect requires a fixed position without a bone or World dependency");
@@ -240,12 +245,17 @@ RESOURCE Read_Resource(const DATA_JSON_VALUE& row)
     resource.strDisplayName = resource.strResourceId;
     resource.eKind = Read_Kind(Text(row, "kind"));
     resource.strAssetId = Text(row, "assetId", resource.eKind == KIND::COLLIDER);
+    if (row.Find("soundEvent")) resource.strSoundEvent = Text(row, "soundEvent", true);
     resource.strResourceKind = Text(row, "resourceKind", resource.eKind != KIND::EFFECT);
     if (row.Find("elementId")) resource.strElementId = Text(row, "elementId", true);
     resource.iDurationMs = UInt(row, "resourceDurationMs", 1u, MAX_TIMELINE_MS);
     resource.strShape = Text(row, "shape");
     resource.HalfExtents = Vector(row, "halfExtents", 0.001, 100000.0);
     resource.fRadiusM = Number(row, "radiusM", 0.001, 100000.0);
+    if (row.Find("innerRadiusM")) resource.fInnerRadiusM = Number(row, "innerRadiusM", 0.0, resource.fRadiusM);
+    if (resource.fInnerRadiusM >= resource.fRadiusM || (resource.fInnerRadiusM > 0.0 &&
+        (resource.eKind != KIND::COLLIDER || (resource.strShape != "CIRCLE" && resource.strShape != "SECTOR"))))
+        throw std::runtime_error("Invalid Collider inner radius");
     resource.fHalfAngleDegrees = Number(row, "halfAngleDegrees", resource.strShape == "REVERSE_SECTOR" ? 0.0 : 0.001, 180.0);
     const bool v1 = resource.strResourceKind == "V1_EFFECT" || resource.strResourceKind == "V1_ELEMENT";
     if ((resource.eKind == KIND::EFFECT && resource.strResourceKind != "GROUP" && resource.strResourceKind != "LEAF" && !v1) ||
@@ -267,6 +277,9 @@ RESOURCE Read_Resource(const DATA_JSON_VALUE& row)
     if (resource.eKind == KIND::LIGHT && (!resource.strResourceKind.empty() ||
         !stableLightId(resource.strAssetId)))
         throw std::runtime_error("Invalid Light resource identity: " + resource.strAssetId);
+    if (!resource.strSoundEvent.empty() &&
+        (resource.eKind != KIND::SOUND || !stableLightId(resource.strSoundEvent)))
+        throw std::runtime_error("Invalid Sound event identity: " + resource.strSoundEvent);
     if (resource.eKind == KIND::SOUND &&
         (resource.strAssetId.rfind("Sound/", 0u) != 0u ||
          CRuntimeAssetRoot::Resolve(resource.strAssetId).empty()))
@@ -302,6 +315,8 @@ OCCURRENCE Read_Occurrence(const DATA_JSON_VALUE& row, std::uint32_t durationMs,
     if (box.fDissolveStart > box.fDissolveEnd)
         throw std::runtime_error("Presentation dissolve interval is reversed.");
     box.fVolume = Number(row, "volume", 0.0, 1.0);
+    if (row.Find("soundSourceStartMs")) box.iSoundSourceStartMs = UInt(row, "soundSourceStartMs", 0u, MAX_TIMELINE_MS);
+    if (box.iSoundSourceStartMs && kind != KIND::SOUND) throw std::runtime_error("Sound Source In requires SOUND.");
     if (row.Find("brightnessMultiplier")) box.fBrightnessMultiplier = Number(row, "brightnessMultiplier", 0.0, 16.0);
     const auto& follow = Field(row, "followBoss");
     if (!follow.Is_Boolean()) throw std::runtime_error("followBoss must be Boolean.");
@@ -355,6 +370,10 @@ OCCURRENCE Read_Occurrence(const DATA_JSON_VALUE& row, std::uint32_t durationMs,
         throw std::runtime_error("World Object anchor needs a worldId; fixed world coordinates use MAP: " + box.strOccurrenceId);
     if (box.strBoneTarget == "WEAPON" && ((kind != KIND::COLLIDER && kind != KIND::EFFECT) || box.strAnchorKind != "BOSS" || box.strBone.empty()))
         throw std::runtime_error("WEAPON bone target needs a Boss Collider/Effect and a named weapon bone.");
+    if (row.Find("boneRotation")) box.strBoneRotation = Text(row, "boneRotation");
+    if (box.strBoneRotation != "TARGET_YAW" && (box.strBoneRotation != "BONE" || kind != KIND::EFFECT ||
+        box.strAnchorKind != "BOSS" || box.strBone.empty()))
+        throw std::runtime_error("Bone rotation needs a Boss Effect and a named bone: " + box.strOccurrenceId);
     return box;
 }
 
@@ -441,6 +460,7 @@ bool Make_Pivot(const OCCURRENCE& box, const float4x4_t& root,
         else return false;
         if (!view.pModel || !view.pModel->Has_Bone(box.strBone.c_str())) return false;
         if (!CEffectV2Object::Resolve_TargetPivot(view, box.strBone,
+            box.strBoneRotation == "BONE" ? CEffectV2Object::PIVOT_ROTATION::BONE :
             CEffectV2Object::PIVOT_ROTATION::TARGET_YAW, anchor)) return false;
     }
     matrix_t basis = XMLoadFloat4x4(&anchor);
@@ -745,18 +765,26 @@ float Effect_SourceClockRate(const RESOURCE& resource, const OCCURRENCE& box)
     return box.bFitEffectToDuration ? float(resource.iDurationMs) / float(box.iDurationMs) : 1.f;
 }
 
+float Effect_SourceCycleStartSeconds(const float ageSeconds, const float finiteCycleSeconds)
+{
+    return finiteCycleSeconds > 0.f ? static_cast<float>(
+        std::floor(static_cast<double>(ageSeconds) / finiteCycleSeconds) * finiteCycleSeconds) : 0.f;
+}
+
 EFFECT_FIXED_STEP_TRANSFORM_PROVIDER Effect_V1TransformProvider(const OCCURRENCE& box,
     const float4x4_t& frozenPivot, const std::shared_ptr<EFFECT_V2_PIVOT_HISTORY>& rootHistory,
     const std::shared_ptr<EFFECT_V2_PIVOT_HISTORY>& anchorHistory,
     CKoukuSaydonPresentationPlayer::V1_SOURCE_ANCHOR_SAMPLER sourceAnchors,
-    float sourceSecondsPerBoxSecond = 1.f, CEffectV2Object::PIVOT_SAMPLER exactRoot = {})
+    float sourceSecondsPerBoxSecond = 1.f, CEffectV2Object::PIVOT_SAMPLER exactRoot = {},
+    float sourceCycleStartSeconds = 0.f)
 {
     return [sampler = Effect_PivotSampler(box, rootHistory, anchorHistory, std::move(exactRoot)), frozenPivot,
-        sourceAnchors = std::move(sourceAnchors), sourceSecondsPerBoxSecond]
+        sourceAnchors = std::move(sourceAnchors), sourceSecondsPerBoxSecond, sourceCycleStartSeconds]
         (float seconds, EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& output, std::string& error)
     {
-        // Source particles keep their own clock; owner/bone history keeps the box clock.
-        seconds /= sourceSecondsPerBoxSecond;
+        // A finite source cycle restarts particles only. Root, bone and source
+        // attachment history continue at the full occurrence age.
+        seconds = sourceCycleStartSeconds + seconds / sourceSecondsPerBoxSecond;
         output.RootWorld = frozenPivot;
         output.SourceAnchorWorlds.clear();
         if (sampler && !sampler(seconds, output.RootWorld, error)) return false;
@@ -810,7 +838,8 @@ HIT_AREA_SHAPE Collider_Wire(const RESOURCE& resource, const OCCURRENCE& box)
         shape.iAreaRange = static_cast<int32_t>((std::min)(
             resource.fRadiusM * (std::max)(box.Scale[0], box.Scale[2]) * 100.0, 1000000000.0));
         shape.iAreaAngle = static_cast<int32_t>(resource.fHalfAngleDegrees * 2.0);
-        if (shape.iAreaType == 3)
+        shape.iAreaInner = static_cast<int32_t>(resource.fInnerRadiusM * box.Scale[0] * 100.0);
+        if (shape.iAreaType == 3 && resource.fInnerRadiusM == 0.0)
         {
             shape.fSectorRadiusXM = static_cast<float>(resource.fRadiusM * box.Scale[0]);
             shape.fSectorRadiusZM = static_cast<float>(resource.fRadiusM * box.Scale[2]);
@@ -989,6 +1018,7 @@ void Client::CKoukuSaydonPresentationPlayer::Collect_FrameLights()
     for (const auto& [id, session] : m_MarioEntrySessions) collect(session, false, id);
     if (m_bPreviewPlaying) collect(m_PreviewSession, true);
     for (const auto& member : m_BundlePreviewMembers) collect(member.session, true);
+    for (const auto& [id, stage] : m_ExternalStageEnvironments) collect(stage.session, stage.preview);
     collect(m_FearSession, false);
     if (!m_LightProvider->lights.empty())
         if (FAILED(CPresentation_Manager::Get().Add_FrameProvider(m_LightProvider)))
@@ -1448,6 +1478,8 @@ bool Client::CKoukuSaydonPresentationPlayer::Reload_Product(
     if (expectedSourceRevision && m_bProductLoaded && expectedSourceRevision == m_iProductSourceRevision)
     { status = "KoukuSaydon presentation already matches the admitted source revision."; return true; }
     m_bProductAttempted = true;
+    std::string soundStatus;
+    CSoundCueCatalog::Load_ClassSnapshot("KoukuSaydon", m_SoundEventVariants, soundStatus);
     try
     {
         const auto root = Read_ProductPresentationRoot();
@@ -1545,6 +1577,8 @@ bool Client::CKoukuSaydonPresentationPlayer::Reload_Product(
                 {
                 RESOURCE resource = Read_Resource(box);
                 OCCURRENCE occurrence = Read_Occurrence(box, item.durationMs, resource.eKind);
+                if (resource.fInnerRadiusM > 0.0 && std::abs(occurrence.Scale[0] - occurrence.Scale[2]) > .0001)
+                    throw std::runtime_error("Hollow Collider requires equal X/Z scale.");
                 if (occurrence.strAnchorKind == "WORLD")
                 {
                     // The Product pins the published sequence identity; it never
@@ -1836,7 +1870,9 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
     if (!std::isfinite(clockMs) || clockMs < 0.f) return;
     const bool previewSession = &session == &m_PreviewSession || std::any_of(
         m_BundlePreviewMembers.begin(), m_BundlePreviewMembers.end(),
-        [&](const auto& member) { return &session == &member.session; });
+        [&](const auto& member) { return &session == &member.session; }) || std::any_of(
+        m_ExternalStageEnvironments.begin(), m_ExternalStageEnvironments.end(),
+        [&](const auto& pair) { return pair.second.preview && &session == &pair.second.session; });
     CEffectV2Object::PIVOT_SAMPLER exactRoot;
     const auto previewMember = std::find_if(m_BundlePreviewMembers.begin(), m_BundlePreviewMembers.end(),
         [&](const auto& member) { return &session == &member.session && member.spatialLogicPreview; });
@@ -1971,7 +2007,13 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
         } failureGuard{row, m_strStatus};
         const float age = (clockMs - box.iStartMs) / 1000.f;
         const float effectRate = Effect_SourceClockRate(resource, box);
-        const float effectAge = age * effectRate;
+        float effectCycleStart = Effect_SourceCycleStartSeconds(age, row.v1FiniteLoopSeconds);
+        float effectAge = (std::max)(0.f, age - effectCycleStart) * effectRate;
+        if (row.v1EffectHandle && effectCycleStart != row.v1CycleStartSeconds)
+        {
+            CEffectPresentationService::Stop_WorldRoot({row.v1EffectHandle});
+            row.v1EffectHandle = 0u;
+        }
         row.kind = resource.eKind;
         row.debugRender = box.bDebugRender;
         row.startMs = float(box.iStartMs);
@@ -2073,6 +2115,24 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
                         break;
                     }
                     if (!preparation.bCatalogRevisionCurrent || !preparation.bSettled) break;
+                    bool nativeInfiniteLoop = false;
+                    if (box.bLoopEffectToDuration)
+                    {
+                        const auto sourceDocument = CEffectCatalog::Find_Loaded(resource.strAssetId);
+                        if (!sourceDocument)
+                        { row.failed = true; m_strStatus = "Prepared looping V1 source is unavailable: " + resource.strAssetId; break; }
+                        nativeInfiniteLoop = std::any_of(sourceDocument->Elements.begin(), sourceDocument->Elements.end(),
+                            [&](const auto& element) { return
+                                (resource.strElementId.empty() || element.strElementId == resource.strElementId) &&
+                                element.SourceRecipe.bEnabled && element.SourceRecipe.iEmitterLoopCount == 0u; });
+                        if (!nativeInfiniteLoop &&
+                            (!CEffectPresentationService::Try_Get_PreparedProductDurationSeconds(resource.strAssetId, row.v1FiniteLoopSeconds) ||
+                             !std::isfinite(row.v1FiniteLoopSeconds) || row.v1FiniteLoopSeconds <= 0.f))
+                        { row.failed = true; m_strStatus = "Finite V1 loop needs a prepared source duration: " + resource.strAssetId; break; }
+                    }
+                    if (!box.bLoopEffectToDuration || nativeInfiniteLoop) row.v1FiniteLoopSeconds = 0.f;
+                    effectCycleStart = Effect_SourceCycleStartSeconds(age, row.v1FiniteLoopSeconds);
+                    effectAge = (std::max)(0.f, age - effectCycleStart) * effectRate;
                     row.sourceAnchorSampler = Make_SourceAnchorSampler(resource, pattern, model, pivot, box.iStartMs, exactRoot);
                     EFFECT_LEVEL_PLACEMENT_SPAWN_DESC spawn;
                     spawn.iLevelIndex = CGameInstance::Get().Get_CurrentLevelID();
@@ -2082,14 +2142,16 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
                     spawn.RootWorld = row.pivot;
                     spawn.fInitialSampleTimeSeconds = effectAge;
                     spawn.bExternallySampled = true;
-                    spawn.fSourceLoopEndSeconds = box.bLoopEffectToDuration ? box.iDurationMs / 1000.f : 0.f;
+                    // EmitterLoops=0 uses bounded source emission. Finite sources
+                    // repeat their prepared lifetime without mutating the shared asset.
+                    spawn.fSourceLoopEndSeconds = nativeInfiniteLoop ? box.iDurationMs / 1000.f : 0.f;
                     EFFECT_WORLD_ROOT_HANDLE handle;
                     if (!CEffectPresentationService::Spawn_LevelPlacement(spawn, handle, m_strStatus))
                     {
                         m_strStatus = "V1 Effect spawn rejected: " + resource.strAssetId + " | " + box.strOccurrenceId + "; " + m_strStatus;
                         row.failed = true;
                     }
-                    else row.v1EffectHandle = handle.iValue;
+                    else { row.v1EffectHandle = handle.iValue; row.v1CycleStartSeconds = effectCycleStart; }
                     break;
                 }
                 std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT> effects;
@@ -2142,9 +2204,33 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
             }
             case KIND::SOUND:
             {
-                const auto path = CRuntimeAssetRoot::Resolve(resource.strAssetId);
+                std::string asset = resource.strAssetId;
+                if (!resource.strSoundEvent.empty())
+                {
+                    const auto found = m_SoundEventVariants.find(resource.strSoundEvent);
+                    if (found == m_SoundEventVariants.end() || found->second.empty())
+                    {
+                        row.failed = true;
+                        m_strStatus = "Sound event has no admitted assets: " + resource.strSoundEvent;
+                        break;
+                    }
+                    const auto& variants = found->second;
+                    // One choice per occurrence remains stable when scrubbing the same cue.
+                    // Source Layer/Sequence trees are already rendered into each event variant.
+                    std::uint64_t selection = 14695981039346656037ull;
+                    for (const unsigned char c : box.strOccurrenceId)
+                        selection = (selection ^ c) * 1099511628211ull;
+                    asset = variants[selection % variants.size()];
+                }
+                const auto path = CRuntimeAssetRoot::Resolve(asset);
+                const auto ageMs = box.iSoundSourceStartMs + static_cast<std::uint32_t>((std::max)(0.f, age) * 1000.f);
+                std::uint32_t mediaDurationMs = 0u;
+                // A shorter variant may already have completed inside the common cue window.
+                // It is a completed one-shot, not a failed cue and never restarts at zero.
+                if (!path.empty() && CGameInstance::Get().Get_SoundDurationMs(path.wstring(), mediaDurationMs) &&
+                    ageMs >= mediaDurationMs) break;
                 if (!path.empty()) row.soundHandle = CGameInstance::Get().Play_SoundCue(
-                    path.wstring(), float(box.fVolume), static_cast<std::uint32_t>(age * 1000.f));
+                    path.wstring(), float(box.fVolume), ageMs, paused);
                 if (!row.soundHandle)
                 {
                     row.failed = true;
@@ -2177,8 +2263,10 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
             // it before render without replaying every active particle from birth.
             if (!CEffectPresentationService::Update_WorldRoot({row.v1EffectHandle}, row.pivot) ||
                 !CEffectPresentationService::Seek_WorldRoot({row.v1EffectHandle}, effectAge,
-                    Effect_V1TransformProvider(box, row.pivot, session.rootHistory, row.effectPivotHistory, row.sourceAnchorSampler, effectRate, exactRoot),
-                    false, static_cast<float>(box.iDurationMs) * effectRate / 1000.f) || (captureSample && FAILED(
+                    Effect_V1TransformProvider(box, row.pivot, session.rootHistory, row.effectPivotHistory,
+                        row.sourceAnchorSampler, effectRate, exactRoot, effectCycleStart),
+                    false, ((std::min)(box.iDurationMs / 1000.f - effectCycleStart,
+                        row.v1FiniteLoopSeconds > 0.f ? row.v1FiniteLoopSeconds : box.iDurationMs / 1000.f)) * effectRate) || (captureSample && FAILED(
                         CEffectPresentationService::Commit_WorldRootCaptureSample({row.v1EffectHandle}))))
             {
                 CEffectPresentationService::Stop_WorldRoot({row.v1EffectHandle});
@@ -2321,6 +2409,7 @@ void Client::CKoukuSaydonPresentationPlayer::Refresh_SharedPresentation()
     for (const auto& member : m_BundlePreviewMembers) choose(member.session, false);
     if (m_bPreviewPlaying) choose(m_PreviewSession, false);
     // A local player's temporary fear owns the scene until its replicated end.
+    for (const auto& [id, stage] : m_ExternalStageEnvironments) choose(stage.session, !stage.preview);
     choose(m_FearSession, false);
     if (!scene) Restore_Scene();
     else if (m_strSceneOwner != sceneOwner || m_strSceneApplied != scene->assetId)
@@ -2695,9 +2784,9 @@ void Client::CKoukuSaydonPresentationPlayer::Update(float dt,
         { m_bPreviewClockAwaitingFirstUpdate = true; Refresh_SharedPresentation(); return; }
         const bool advanceClock = !m_bPreviewClockAwaitingFirstUpdate;
         m_bPreviewClockAwaitingFirstUpdate = false;
-        if (advanceClock && !m_bPreviewPaused && !m_bModelReferencePreview && !m_bPreviewCaptureClockHeld)
+        if (advanceClock && !m_bServerSequenceClock && !m_bPreviewPaused && !m_bModelReferencePreview && !m_bPreviewCaptureClockHeld)
             m_fPreviewClockMs += double(dt) * 1000.0;
-        if (!m_bPreviewPaused && !m_bModelReferencePreview && m_fPreviewClockMs >= m_iPreviewDurationMs)
+        if (!m_bServerSequenceClock && !m_bPreviewPaused && !m_bModelReferencePreview && m_fPreviewClockMs >= m_iPreviewDurationMs)
         {
             if (m_bColliderResourcePreview)
             {
@@ -2713,7 +2802,7 @@ void Client::CKoukuSaydonPresentationPlayer::Update(float dt,
             }
         }
         // Bundle members own their independent WORLD players, sampled before effects.
-        if (Preview_IsBundle() && m_strCompletedPreviewPatternId.empty()) Sample_BundlePreview();
+        if (Preview_IsBundle() && !m_bServerSequenceClock && m_strCompletedPreviewPatternId.empty()) Sample_BundlePreview();
         // MainApp samples single-pattern WORLD first, then its presentation.
     }
     Refresh_SharedPresentation();
@@ -2724,6 +2813,8 @@ bool Client::CKoukuSaydonPresentationPlayer::Begin_Preview(
     const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern, bool ownClock,
     std::uint32_t clockMs, bool paused, std::string& status)
 {
+    std::string soundStatus;
+    CSoundCueCatalog::Load_ClassSnapshot("KoukuSaydon", m_SoundEventVariants, soundStatus);
     const auto duration = Pattern_Duration(pattern);
     if (!pattern.strLoadError.empty() || !duration)
     {
@@ -2909,6 +3000,9 @@ bool Client::CKoukuSaydonPresentationPlayer::Prepare_CloneSplitPreview(
         auto& clone = clones.back();
         clone.memberId = id; clone.offsetTicks = startTicks; clone.durationMs = duration;
         clone.pattern = source; clone.facingStages = source.Stages; clone.finiteActorLifetime = true;
+        clone.session.key = "summon-preview:" + id;
+        clone.spatialLogicPreview = std::any_of(source.LogicOccurrences.begin(), source.LogicOccurrences.end(),
+            [](const auto& box) { return box.bEnabled; });
         clone.animations = flatten(source);
         if (!level || !duration || clone.animations.empty() ||
             !level->Create_CompositionPreviewActor(source, clone.actor, status)) return false;
@@ -2921,7 +3015,7 @@ bool Client::CKoukuSaydonPresentationPlayer::Prepare_CloneSplitPreview(
         model->Get_AnimationProgress(clone.initialAnimation, clone.initialTicks, ignored);
         clone.rootMotion = std::make_unique<CKoukuSaydonPreviewRootMotion>();
         return clone.rootMotion->Prepare(model, clone.animations, float(source.fAnimationRootVerticalScale), status) &&
-            clone.rootMotion->Begin_Suppression();
+            clone.rootMotion->Prepare_Airborne(document, source, status) && clone.rootMotion->Begin_Suppression();
     };
     for (auto& member : members)
     {
@@ -3025,11 +3119,13 @@ bool Client::CKoukuSaydonPresentationPlayer::Prepare_CloneSplitPreview(
                 float3_t offset;
                 XMStoreFloat3(&offset, XMVector3TransformNormal(XMVectorSet(float(spawn.PositionOffset[0]),
                     float(spawn.PositionOffset[1]), float(spawn.PositionOffset[2]), 0.f), rotation));
-                const float3_t position{root._41 + offset.x, root._42 + offset.y, root._43 + offset.z};
+                const bool fixed = spawn.strAnchorKind == "MAP";
+                const float3_t position = fixed ? float3_t{float(spawn.PositionOffset[0]), float(spawn.PositionOffset[1]), float(spawn.PositionOffset[2])} :
+                    float3_t{root._41 + offset.x, root._42 + offset.y, root._43 + offset.z};
                 const uint32_t startTicks = (uint64_t(summon.iStartMs) * 30u + 999u) / 1000u;
                 if (!prepareClone(*candidate, member.memberId + ":" + summon.strOccurrenceId + ":" + spawn.strSpawnId,
-                    member.offsetTicks + startTicks, (std::min)(summon.iDurationMs, Pattern_Duration(*candidate)),
-                    position, yaw + float(spawn.fYawOffsetDegrees))) return fail(status);
+                    member.offsetTicks + startTicks, summon.iDurationMs,
+                    position, (fixed ? 0.f : yaw) + float(spawn.fYawOffsetDegrees))) return fail(status);
             }
         }
         (void)member.actor->Apply_NetworkState(member.initialPosition, member.initialYawDegrees);
@@ -3042,6 +3138,8 @@ bool Client::CKoukuSaydonPresentationPlayer::Begin_BundlePreview(
     std::uint32_t clockMs, bool paused, std::string& status, const CWorldSequenceDocument* sourceDocument,
     const bool automaticRootMotion, bool externalWorldPreview)
 {
+    std::string soundStatus;
+    CSoundCueCatalog::Load_ClassSnapshot("KoukuSaydon", m_SoundEventVariants, soundStatus);
     const auto bundle = std::find_if(document.Bundles.begin(), document.Bundles.end(),
         [&](const auto& value) { return value.strBundleId == bundleId; });
     auto* level = CLevel_KakulSaydonArena::Get_Active();
@@ -3168,6 +3266,8 @@ bool Client::CKoukuSaydonPresentationPlayer::Begin_BundlePreview(
                 tracking.occurrenceId = box.strOccurrenceId;
                 tracking.startMs = box.iStartMs; tracking.durationMs = box.iDurationMs;
                 tracking.immediate = definition->strJudgementKind == "SHOWTIME_PLAYER_TARGETS";
+                if (definition->strJudgementKind == "BOSS_TRACK_TARGET")
+                    tracking.followSpeedScale = definition->fFollowSpeedScale;
                 spatialLogic = true;
             }
         }
@@ -3381,6 +3481,8 @@ bool Client::CKoukuSaydonPresentationPlayer::Place_ModelReferenceRoot(const floa
     // explicit preview placement, so resampling props cannot restore spawn yaw.
     member.initialPosition = position;
     member.initialYawDegrees = yaw;
+    member.facingCheckpoints.clear();
+    member.spatialPoseSamples.clear();
     if (!member.session.previewWorlds.empty()) Sample_BundlePreview();
     return m_bPreviewPlaying;
 }
@@ -3423,6 +3525,29 @@ bool Client::CKoukuSaydonPresentationPlayer::Resolve_ModelReferenceTarget(
     return true;
 }
 
+bool Client::CKoukuSaydonPresentationPlayer::Resolve_PatternModelTarget(
+    const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern, const ANIMATION_BONE_TARGET target,
+    ANIMATION_MODEL_TARGET_VIEW& view) const
+{
+    // The preview owns complete CNpcs and never binds the global Animation Tool target.
+    if (m_bPreviewPlaying && !m_bModelReferencePreview)
+        for (const auto& member : m_BundlePreviewMembers)
+            if (!member.finiteActorLifetime && member.pattern.strPatternId == pattern.strPatternId &&
+                member.pattern.strActorProfileId == pattern.strActorProfileId && member.actor &&
+                member.actor->Try_GetAnimationModelTarget(target, view)) return true;
+    auto* level = CLevel_KakulSaydonArena::Get_Active();
+    const auto archetype = CKoukuSaydonCompositionDocument::Resolve_BossArchetypeId(pattern.strTargetBossPlacementId);
+    if (!level || archetype.empty() || CKoukuSaydonCompositionDocument::Resolve_ActorProfileForPlacement(
+        pattern.strTargetBossPlacementId) != pattern.strActorProfileId) return false;
+    std::vector<KOUKU_BOSS_PRESENTATION_VIEW> bosses;
+    std::vector<KOUKU_CARD_PRESENTATION_VIEW> players;
+    level->Collect_KoukuPresentationViews(bosses, players);
+    for (const auto& boss : bosses)
+        if (boss.strArchetypeId == archetype && boss.iOwnerBossNetEntityId == LostArk::Shared::INVALID_NET_ENTITY_ID)
+            if (const auto actor = boss.pNpc.lock(); actor && actor->Try_GetAnimationModelTarget(target, view)) return true;
+    return false;
+}
+
 bool Client::CKoukuSaydonPresentationPlayer::Sample_BundlePreviewFacing(
     BUNDLE_PREVIEW_MEMBER& member, const double localMs)
 {
@@ -3436,11 +3561,19 @@ bool Client::CKoukuSaydonPresentationPlayer::Sample_BundlePreviewPose(
     BUNDLE_PREVIEW_MEMBER& member, const double localMs, float3_t& position, float& yaw,
     const bool recordTargets)
 {
+    if (!std::isfinite(localMs)) return false;
+    const auto cached = member.spatialPoseSamples.find(localMs);
+    if (cached != member.spatialPoseSamples.end())
+    {
+        position = cached->second.first;
+        yaw = cached->second.second;
+        return true;
+    }
     auto* level = CLevel_KakulSaydonArena::Get_Active();
     const auto player = level ? level->Get_LocalCharacter() : nullptr;
     std::vector<KOUKU_BOSS_PRESENTATION_VIEW> bosses;
     std::vector<KOUKU_CARD_PRESENTATION_VIEW> players;
-    if (level && (!member.targetTracking.empty() ||
+    if (recordTargets && level && (!member.targetTracking.empty() ||
         (member.rootMotion && !member.rootMotion->Airborne_Events().empty())))
         level->Collect_KoukuPresentationViews(bosses, players);
     players.erase(std::remove_if(players.begin(), players.end(), [](const auto& view) {
@@ -3520,17 +3653,34 @@ bool Client::CKoukuSaydonPresentationPlayer::Sample_BundlePreviewPose(
     }
     yaw = member.initialYawDegrees;
     std::vector<float> rowYaws(member.animations.size(), yaw);
+    /* Tracked follow is a walk the Server owns, not source root motion. The
+       accumulated XZ carried here is added after the authored clock is sampled. */
+    float3_t followOffset{};
+    double completedClock = -1.0;
+    const auto upper = member.facingCheckpoints.upper_bound(localMs);
+    if (upper != member.facingCheckpoints.begin())
+    {
+        const auto& [clock, checkpoint] = *std::prev(upper);
+        completedClock = clock;
+        yaw = checkpoint.yawDegrees;
+        rowYaws = checkpoint.animationYaws;
+        followOffset = checkpoint.followOffset;
+    }
     const auto positionAt = [&](double clock, float3_t& position) {
+        const auto carryFollow = [&](const bool sampled) {
+            if (sampled) { position.x += followOffset.x; position.z += followOffset.z; }
+            return sampled;
+        };
         position = member.initialPosition;
-        if (!member.rootMotion) return true;
+        if (!member.rootMotion) return carryFollow(true);
         if (!selectionPositions.empty())
-            return member.rootMotion->Sample_AirbornePosition(clock, rowYaws,
-                member.initialPosition, selectionPositions, position);
+            return carryFollow(member.rootMotion->Sample_AirbornePosition(clock, rowYaws,
+                member.initialPosition, selectionPositions, position));
         float3_t displacement;
         if (!member.rootMotion->Sample_Displacement(clock, rowYaws, displacement)) return false;
         position = {member.initialPosition.x + displacement.x,
             member.initialPosition.y + displacement.y, member.initialPosition.z + displacement.z};
-        return true;
+        return carryFollow(true);
     };
     const auto targetYawAt = [&](const float3_t& origin, const float3_t& target, float& targetYaw) {
         const float dx = target.x - origin.x, dz = target.z - origin.z;
@@ -3551,23 +3701,36 @@ bool Client::CKoukuSaydonPresentationPlayer::Sample_BundlePreviewPose(
     uint32_t stageStartMs = 0u;
     for (const auto& stage : member.facingStages)
     {
-        if (stageStartMs <= localMs) facingEvents.push_back({double(stageStartMs), &stage});
+        if (stageStartMs > completedClock && stageStartMs <= localMs) facingEvents.push_back({double(stageStartMs), &stage});
         stageStartMs += stage.iDurationMs;
     }
     for (auto& window : member.targetTracking)
     {
         const auto begin = (uint64_t(window.startMs) * 30u + 999u) / 1000u;
         const auto end = ((uint64_t(window.startMs) + window.durationMs) * 30u + 999u) / 1000u;
-        for (auto tick = begin; tick < end && double(tick) * 1000.0 / 30.0 <= localMs; ++tick)
-            facingEvents.push_back({double(tick) * 1000.0 / 30.0, nullptr, &window,
+        const auto first = (std::max)(begin, completedClock < 0.0 ? uint64_t(0u) :
+            static_cast<uint64_t>(std::floor(completedClock * 30.0 / 1000.0)));
+        for (auto tick = first; tick < end && double(tick) * 1000.0 / 30.0 <= localMs; ++tick)
+            if (double(tick) * 1000.0 / 30.0 > completedClock) facingEvents.push_back({double(tick) * 1000.0 / 30.0, nullptr, &window,
                 uint32_t(tick), uint32_t(end - tick)});
     }
     std::stable_sort(facingEvents.begin(), facingEvents.end(), [](const auto& a, const auto& b) {
         if (a.clock != b.clock) return a.clock < b.clock;
         return a.stage != nullptr && b.stage == nullptr;
     });
+    double pendingClock = -1.0;
+    const auto commitCheckpoint = [&] {
+        if (pendingClock >= 0.0)
+            member.facingCheckpoints.insert_or_assign(pendingClock,
+                BUNDLE_PREVIEW_MEMBER::FACING_CHECKPOINT{yaw, rowYaws, followOffset});
+    };
     for (const auto& event : facingEvents)
     {
+        if (pendingClock != event.clock)
+        {
+            commitCheckpoint();
+            pendingClock = event.clock;
+        }
         float3_t origin;
         if (!positionAt(event.clock, origin)) return false;
         if (event.stage)
@@ -3617,14 +3780,55 @@ bool Client::CKoukuSaydonPresentationPlayer::Sample_BundlePreviewPose(
             }
             const auto& s = target->Snapshot;
             sample->second = float3_t{s.fPositionX, s.fPositionY, s.fPositionZ};
+            window.targetMoveSpeeds[event.tick] = std::isfinite(s.fMoveSpeed) ? s.fMoveSpeed : 0.f;
         }
         float targetYaw = yaw;
         if (!sample->second || !targetYawAt(origin, *sample->second, targetYaw)) continue;
+        const auto movingArchetype = CKoukuSaydonCompositionDocument::Resolve_BossArchetypeId(
+            member.pattern.strTargetBossPlacementId);
+        const bool movingSaydon = window.followSpeedScale > 0.0 &&
+            (movingArchetype == "BOSS_KAKULSAYDON_G1_SAYDON" ||
+             movingArchetype == "BOSS_KAKULSAYDON_G3_SAYDON" ||
+             movingArchetype == "BOSS_KAKULSAYDON_BINGO_SAYDON" ||
+             movingArchetype == "BOSS_KAKULSAYDON_G2_BIG_SAYDON");
+        // Both installed Saydon skeletons face local +X; targetYawAt already
+        // applies this basis correction to BIG_SAYDON's existing turn contract.
+        if (movingSaydon && movingArchetype != "BOSS_KAKULSAYDON_G2_BIG_SAYDON")
+            targetYaw = float(std::remainder(double(targetYaw) - 90.0, 360.0));
         if (window.immediate) yaw = targetYaw;
-        else yaw = float(std::remainder(double(yaw) +
-            std::remainder(double(targetYaw) - yaw, 360.0) / event.remainingTicks, 360.0));
+        else
+        {
+            const double turn = std::remainder(double(targetYaw) - yaw, 360.0);
+            // Movement must keep steering when its lifetime is extended. Match the
+            // Server's 180 degrees/second turn and shared rotate-only response.
+            const double step = window.followSpeedScale > 0.0 ?
+                (std::clamp)(turn, -6.0, 6.0) :
+                turn * LostArk::Shared::KoukuTargetTracking::RotateOnlyFraction(1u, event.remainingTicks);
+            yaw = float(std::remainder(double(yaw) + step, 360.0));
+        }
+        if (window.followSpeedScale > 0.0)
+        {
+            /* Mirrors the Server step: rotate first, then walk one fixed tick along the
+               new facing. The preview keeps the authored height; the Server resolves
+               terrain, navigation and body collision for the committed pose. */
+            const auto pinned = window.targetMoveSpeeds.find(event.tick);
+            const float step = pinned == window.targetMoveSpeeds.end() ? 0.f :
+                pinned->second * float(window.followSpeedScale) / 30.f;
+            if (std::isfinite(step) && step > 0.f)
+            {
+                const float radians = XMConvertToRadians(yaw + (movingSaydon ? 90.f : 0.f));
+                followOffset.x += std::sin(radians) * step;
+                followOffset.z += std::cos(radians) * step;
+            }
+        }
     }
     if (!positionAt((std::clamp)(localMs, 0.0, double(member.durationMs)), position)) return false;
+    commitCheckpoint();
+    // A long edit session may visit arbitrary fractional clocks. Bound memoized
+    // final poses; evicted clocks can still resume from fixed-event checkpoints.
+    if (member.spatialPoseSamples.size() >= 16384u)
+        member.spatialPoseSamples.erase(member.spatialPoseSamples.begin());
+    member.spatialPoseSamples.emplace(localMs, std::make_pair(position, yaw));
     return true;
 }
 
@@ -4107,6 +4311,7 @@ bool Client::CKoukuSaydonPresentationPlayer::Consume_CompletedPreview(std::strin
 
 void Client::CKoukuSaydonPresentationPlayer::Stop_Preview()
 {
+    m_bServerSequenceClock = false;
     Clear_LogicPreview();
 #ifdef _DEBUG
     if (m_bBundleWorldExternal)
@@ -4375,6 +4580,8 @@ void Client::CKoukuSaydonPresentationPlayer::Update_MazeMarks(
 
 void Client::CKoukuSaydonPresentationPlayer::Reset()
 {
+    for (auto& [id, stage] : m_ExternalStageEnvironments) Stop_Session(stage.session);
+    m_ExternalStageEnvironments.clear();
     for (const auto& [id, owner] : m_CounterAfterimageOwners)
         if (const auto npc = owner.lock()) npc->Set_CounterAfterimageEnabled(false);
     m_CounterAfterimageOwners.clear();
@@ -4559,6 +4766,80 @@ void Client::CKoukuSaydonPresentationPlayer::Refresh_ColliderAuthoring(
     }
 }
 
+bool Client::CKoukuSaydonPresentationPlayer::Preview_SummonPlacement(
+    const std::string& patternId, const KOUKU_SAYDON_COMPOSITION_SUMMON_OCCURRENCE& occurrence)
+{
+    if (!m_bPreviewPlaying || m_bModelReferencePreview || occurrence.PatternSpawns.empty()) return false;
+    struct PLACEMENT final
+    {
+        BUNDLE_PREVIEW_MEMBER* member = nullptr;
+        float3_t position{};
+        float yaw = 0.f;
+    };
+    std::vector<PLACEMENT> staged;
+    std::vector<KOUKU_SAYDON_COMPOSITION_SUMMON_OCCURRENCE*> owners;
+    for (auto& owner : m_BundlePreviewMembers)
+    {
+        if (owner.finiteActorLifetime || owner.pattern.strPatternId != patternId) continue;
+        const auto box = std::find_if(owner.pattern.SummonOccurrences.begin(), owner.pattern.SummonOccurrences.end(),
+            [&](const auto& row) { return row.strOccurrenceId == occurrence.strOccurrenceId; });
+        if (box == owner.pattern.SummonOccurrences.end() || box->iStartMs != occurrence.iStartMs ||
+            box->iDurationMs != occurrence.iDurationMs || box->PatternSpawns.size() != occurrence.PatternSpawns.size()) return false;
+        float3_t ownerPosition{};
+        float ownerYaw = 0.f;
+        const bool needsOwner = std::any_of(occurrence.PatternSpawns.begin(), occurrence.PatternSpawns.end(),
+            [](const auto& row) { return row.strAnchorKind == "BOSS"; });
+        if (needsOwner && !Sample_BundlePreviewPose(owner, occurrence.iStartMs, ownerPosition, ownerYaw, false)) return false;
+        for (const auto& spawn : occurrence.PatternSpawns)
+        {
+            const auto original = std::find_if(box->PatternSpawns.begin(), box->PatternSpawns.end(),
+                [&](const auto& row) { return row.strSpawnId == spawn.strSpawnId && row.strPatternId == spawn.strPatternId; });
+            if (original == box->PatternSpawns.end() || (spawn.strAnchorKind != "MAP" && spawn.strAnchorKind != "BOSS") ||
+                !std::isfinite(spawn.fYawOffsetDegrees) || std::abs(spawn.fYawOffsetDegrees) > 360.0 ||
+                !std::all_of(spawn.PositionOffset.begin(), spawn.PositionOffset.end(), [](const double value) {
+                    return std::isfinite(value) && std::abs(value) <= 100000.0;
+                })) return false;
+            if (original->strAnchorKind == spawn.strAnchorKind && original->PositionOffset == spawn.PositionOffset &&
+                original->fYawOffsetDegrees == spawn.fYawOffsetDegrees) continue;
+            const auto memberId = owner.memberId + ":" + occurrence.strOccurrenceId + ":" + spawn.strSpawnId;
+            const auto clone = std::find_if(m_BundlePreviewMembers.begin(), m_BundlePreviewMembers.end(),
+                [&](const auto& row) { return row.finiteActorLifetime && row.memberId == memberId && row.actor; });
+            if (clone == m_BundlePreviewMembers.end()) return false;
+            float3_t position{float(spawn.PositionOffset[0]), float(spawn.PositionOffset[1]), float(spawn.PositionOffset[2])};
+            float yaw = float(spawn.fYawOffsetDegrees);
+            if (spawn.strAnchorKind == "BOSS")
+            {
+                const auto rotated = DirectX::XMVector3TransformNormal(DirectX::XMLoadFloat3(&position),
+                    DirectX::XMMatrixRotationY(DirectX::XMConvertToRadians(ownerYaw)));
+                DirectX::XMStoreFloat3(&position, rotated);
+                position.x += ownerPosition.x; position.y += ownerPosition.y; position.z += ownerPosition.z;
+                yaw += ownerYaw;
+            }
+            staged.push_back({&*clone, position, yaw});
+        }
+        owners.push_back(&*box);
+    }
+    if (owners.empty()) return false;
+    // Validate all identities first. A placement edit retains the actor/model and
+    // clock, invalidating only this actor's old pivot history and captured yaw.
+    for (auto& change : staged)
+    {
+        auto& member = *change.member;
+        member.initialPosition = change.position; member.initialYawDegrees = change.yaw;
+        member.stageFacingYawDegrees.clear();
+        member.airborneSelections.clear(); member.airborneAppearancePositions.clear();
+        member.facingCheckpoints.clear();
+        member.spatialPoseSamples.clear();
+        Stop_Session(member.session);
+    }
+    for (auto* box : owners) box->PatternSpawns = occurrence.PatternSpawns;
+    for (auto& pattern : m_PreviewDocument.Patterns)
+        if (pattern.strPatternId == patternId)
+            for (auto& box : pattern.SummonOccurrences)
+                if (box.strOccurrenceId == occurrence.strOccurrenceId) box.PatternSpawns = occurrence.PatternSpawns;
+    return true;
+}
+
 bool Client::CKoukuSaydonPresentationPlayer::Preview_PresentationGeometry(
     const std::string& patternId, const OCCURRENCE& occurrence)
 {
@@ -4601,12 +4882,14 @@ bool Client::CKoukuSaydonPresentationPlayer::Preview_PresentationGeometry(
             edited.bFollowBoss = occurrence.bFollowBoss;
             edited.strBone = occurrence.strBone;
             edited.strBoneTarget = occurrence.strBoneTarget;
+            edited.strBoneRotation = occurrence.strBoneRotation;
             edited.strWorldId = occurrence.strWorldId;
             edited.strWorldOccurrenceId = occurrence.strWorldOccurrenceId;
             edited.iWorldEmissionIndex = occurrence.iWorldEmissionIndex;
             if (!Validate_EffectAnchor(m_PreviewDocument, pattern, edited, m_strStatus)) return false;
             anchorChanged = edited.strAnchorKind != box->strAnchorKind || edited.bFollowBoss != box->bFollowBoss ||
                 edited.strBone != box->strBone || edited.strBoneTarget != box->strBoneTarget ||
+                edited.strBoneRotation != box->strBoneRotation ||
                 edited.strWorldId != box->strWorldId || edited.strWorldOccurrenceId != box->strWorldOccurrenceId ||
                 edited.iWorldEmissionIndex != box->iWorldEmissionIndex;
         }
@@ -4650,9 +4933,12 @@ bool Client::CKoukuSaydonPresentationPlayer::Preview_PresentationGeometry(
             if (resource->eKind == KIND::EFFECT && active->second.v1EffectHandle &&
                 (!CEffectPresentationService::Update_WorldRoot({active->second.v1EffectHandle}, pivot) ||
                  !CEffectPresentationService::Seek_WorldRoot({active->second.v1EffectHandle},
-                    (std::max)(0.f, active->second.lastAge), Effect_V1TransformProvider(edited, pivot,
-                        session.rootHistory, active->second.effectPivotHistory, active->second.sourceAnchorSampler), true,
-                    static_cast<float>(edited.iDurationMs) / 1000.f)))
+                    (std::max)(0.f, active->second.lastAge - active->second.v1CycleStartSeconds) * Effect_SourceClockRate(*resource, edited),
+                    Effect_V1TransformProvider(edited, pivot, session.rootHistory, active->second.effectPivotHistory,
+                        active->second.sourceAnchorSampler, Effect_SourceClockRate(*resource, edited), {}, active->second.v1CycleStartSeconds), true,
+                    ((std::min)(edited.iDurationMs / 1000.f - active->second.v1CycleStartSeconds,
+                        active->second.v1FiniteLoopSeconds > 0.f ? active->second.v1FiniteLoopSeconds : edited.iDurationMs / 1000.f)) *
+                        Effect_SourceClockRate(*resource, edited))))
             {
                 m_strStatus = "V1 Effect geometry preview lost its active handle: " +
                     CEffectPresentationService::Get_Status();
@@ -4715,4 +5001,86 @@ void Client::CKoukuSaydonPresentationPlayer::Render_Debug() const
     if (m_bPreviewPlaying) draw(m_PreviewSession, true);
     for (const auto& member : m_BundlePreviewMembers) draw(member.session, true);
 #endif
+}
+
+void Client::CKoukuSaydonPresentationPlayer::Update_BossStageEnvironments(
+    const std::vector<BOSS_STAGE_ENVIRONMENT_SAMPLE>& samples)
+{
+    std::set<std::string> live;
+    for (const auto& sample : samples)
+    {
+        if (sample.strOwnerKey.empty() || sample.strActionId.empty() ||
+            !std::isfinite(sample.fClockMs) || sample.fClockMs < 0.f) continue;
+        live.insert(sample.strOwnerKey);
+        auto& external = m_ExternalStageEnvironments[sample.strOwnerKey];
+        const auto signature = Serialize_BossStageEnvironment(sample.SceneProfileOccurrences, sample.LightOccurrences);
+        if (external.actionId != sample.strActionId || external.signature != signature ||
+            external.preview != sample.bPreview || sample.fClockMs + .5f < external.session.lastClockMs)
+        {
+            Stop_Session(external.session);
+            external.actionId = sample.strActionId;
+            external.signature = signature;
+            external.preview = sample.bPreview;
+            external.document = {};
+            external.pattern = {};
+            external.pattern.strPatternId = sample.strActionId;
+            external.session.key = "boss-stage:" + sample.strOwnerKey + ":" + sample.strActionId;
+            for (const auto& source : sample.SceneProfileOccurrences)
+            {
+                KOUKU_SAYDON_COMPOSITION_SCENE_PROFILE_DEFINITION definition;
+                definition.strSceneProfileId = source.strProfileId;
+                definition.strRenderingProfileId = source.strProfileId;
+                external.document.SceneProfiles.push_back(std::move(definition));
+                KOUKU_SAYDON_COMPOSITION_SCENE_PROFILE_OCCURRENCE box;
+                box.strOccurrenceId = source.strOccurrenceId;
+                box.strSceneProfileId = source.strProfileId;
+                box.iStartMs = source.iStartMs;
+                box.iDurationMs = source.iDurationMs;
+                external.pattern.SceneProfileOccurrences.push_back(std::move(box));
+            }
+            for (const auto& source : sample.LightOccurrences)
+            {
+                RESOURCE definition;
+                definition.eKind = KIND::LIGHT;
+                definition.strResourceId = source.strOccurrenceId;
+                definition.strAssetId = source.strLightResourceId;
+                external.document.PresentationResources.push_back(std::move(definition));
+                OCCURRENCE box;
+                box.strOccurrenceId = source.strOccurrenceId;
+                box.strResourceId = source.strOccurrenceId;
+                box.iStartMs = source.iStartMs;
+                box.iDurationMs = source.iDurationMs;
+                box.strAnchorKind = source.strAnchorKind;
+                box.bFollowBoss = source.bFollowBoss;
+                box.bDebugRender = sample.bPreview;
+                box.fBrightnessMultiplier = source.fBrightnessMultiplier;
+                box.iFadeInMs = source.iFadeInMs;
+                box.iFadeOutMs = source.iFadeOutMs;
+                for (size_t axis = 0; axis < 3u; ++axis)
+                {
+                    box.PositionOffset[axis] = source.Position[axis];
+                    box.RotationDegrees[axis] = source.RotationDegrees[axis];
+                }
+                external.pattern.PresentationOccurrences.push_back(std::move(box));
+            }
+        }
+        Sample(external.session, external.document, external.pattern, sample.fClockMs,
+            sample.bPreview, sample.Root, nullptr);
+    }
+    for (auto it = m_ExternalStageEnvironments.begin(); it != m_ExternalStageEnvironments.end();)
+    {
+        if (live.contains(it->first)) { ++it; continue; }
+        Stop_Session(it->second.session);
+        it = m_ExternalStageEnvironments.erase(it);
+    }
+    Refresh_SharedPresentation();
+}
+
+void Client::CKoukuSaydonPresentationPlayer::Sample_ServerSequence(const std::uint32_t clockMs)
+{
+    if (!m_bPreviewPlaying || !Preview_IsBundle()) return;
+    m_bServerSequenceClock = true; m_bPreviewPaused = false;
+    m_fPreviewClockMs = (std::min)(clockMs, m_iPreviewDurationMs);
+    m_strCompletedPreviewPatternId.clear();
+    Sample_BundlePreview();
 }

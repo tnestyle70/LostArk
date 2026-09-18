@@ -1041,7 +1041,7 @@ class WorldSequenceEffectContractTests(unittest.TestCase):
             for bone in ("", "Bip001 Head", "a" * 256, "뼈" * 85):
                 candidate = copy.deepcopy(self.document)
                 candidate["templates"][0]["effectTracks"][0].update(
-                    resourceKind="V1_EFFECT", followObject=follow, bone=bone
+                    resourceKind="V1_EFFECT", followObject=follow, inheritObjectRotation=False, bone=bone
                 )
                 before = copy.deepcopy(candidate)
                 with self.subTest(follow=follow, bone=bone):
@@ -1056,6 +1056,7 @@ class WorldSequenceEffectContractTests(unittest.TestCase):
 
     def test_effect_object_follow_and_bone_reject_invalid_types_and_utf8(self) -> None:
         cases = [dict(followObject=value) for value in (0, 1, "true", None)]
+        cases += [dict(inheritObjectRotation=value) for value in (0, 1, "true", None)]
         cases += [dict(bone=value) for value in (
             True, 0, None, "a" * 257, "뼈" * 86, "head\x00", "head\n", "head\x7f", "\ud800"
         )]

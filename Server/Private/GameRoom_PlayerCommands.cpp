@@ -29,6 +29,7 @@ void LostArk::Server::CGameRoom::Handle_Move(
 	const SESSION_ID sessionId,
 	const LostArk::Shared::C2S_MOVE& move)
 {
+	if (Is_KoukuRaidCinematic()) return;
 	const auto sessionIter = m_PlayerIdBySessionId.find(sessionId);
 	if (sessionIter == m_PlayerIdBySessionId.end())
 	{
@@ -258,6 +259,7 @@ void LostArk::Server::CGameRoom::Handle_UseSkill(
 	const SESSION_ID sessionId,
 	const LostArk::Shared::C2S_USE_SKILL& useSkill)
 {
+	if (Is_KoukuRaidCinematic()) return;
 	const auto sessionIter = m_PlayerIdBySessionId.find(sessionId);
 	if (sessionIter == m_PlayerIdBySessionId.end())
 	{
@@ -410,10 +412,8 @@ void LostArk::Server::CGameRoom::Handle_RevivePlayer(
 	player.iMaximumMadness = SERVER_PLAYER::MADNESS_GAUGE_MAXIMUM;
 	player.eMadnessForm = PLAYER_MADNESS_FORM::NORMAL;
 	player.Clear_KoukuInteractionState();
-#ifdef _DEBUG
 	if (nullptr != Active_KoukuPlayerLedger())
 		player.iKoukuSuppressedPatternSequence = Active_KoukuPlayerLedger()->iPatternSequence;
-#endif
 	player.eAction = PLAYER_ACTION_STATE::NONE;
 	player.eStance = profile->eDefaultStance;
 	player.iCurrentSkillId = INVALID_SKILL_ID;

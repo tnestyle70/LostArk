@@ -532,6 +532,7 @@ bool LostArk::Server::CGameRoom::Commit_DueWorldDestruction(
 bool LostArk::Server::CGameRoom::Activate_Encounter(
 	const std::string& placementId)
 {
+	if (Is_KoukuRaidCinematic()) return false;
 	const WORLD_BOOTSTRAP_PLACEMENT* placement = Find_Placement(placementId);
 	if (nullptr == placement ||
 		placement->isEnabled ||

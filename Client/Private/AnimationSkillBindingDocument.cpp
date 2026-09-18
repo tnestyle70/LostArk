@@ -292,7 +292,7 @@ namespace
 			std::numeric_limits<f32_t>::max_digits10);
 		output << "{\n"
 			<< "  \"schema\": \"lostark.valtan-pattern-bindings\",\n"
-			<< "  \"formatVersion\": 4,\n"
+			<< "  \"formatVersion\": 5,\n"
 			<< "  \"bossArchetypeId\": \""
 			<< CDataJson::Escape(document.strBossArchetypeId) << "\",\n"
 			<< "  \"bindings\": [\n";
@@ -312,6 +312,25 @@ namespace
 					<< binding.iBodyHiddenFromMs << ", \"hiddenToMs\": "
 					<< binding.iBodyHiddenToMs << " },\n";
 			}
+            if (!binding.SceneProfileOccurrences.empty() || !binding.LightOccurrences.empty())
+            {
+                const auto environment = Serialize_BossStageEnvironment(binding.SceneProfileOccurrences, binding.LightOccurrences);
+                output << "      " << environment.substr(1u, environment.size() - 2u) << ",\n";
+            }
+            if (binding.bHasCameraInvocations)
+            {
+                output << "      \"cameraInvocations\": [";
+                for (size_t i = 0; i < binding.CameraInvocations.size(); ++i)
+                {
+                    const auto& row = binding.CameraInvocations[i];
+                    if (i) output << ',';
+                    output << "{\"cameraInvocationId\":\"" << CDataJson::Escape(row.strOccurrenceId)
+                        << "\",\"cameraCueId\":\"" << CDataJson::Escape(row.strCueId)
+                        << "\",\"trigger\":\"ENTER\",\"durationPolicy\":\"EXPLICIT\",\"startOffsetMs\":"
+                        << row.iStartMs << ",\"durationMs\":" << row.iDurationMs << '}';
+                }
+                output << "],\n";
+            }
 			output << "      \"clips\": [\n";
 			for (std::size_t clipIndex = 0u;
 				clipIndex < binding.Clips.size(); ++clipIndex)
@@ -1315,7 +1334,7 @@ bool_t Client::CValtanPatternAnimationBindingDocument::Parse_Text(
 		const double number = version->Get_Number();
 		if (std::isfinite(number) && std::floor(number) == number &&
 				(number == 1.0 || number == 2.0 || number == 3.0 ||
-				 number == 4.0))
+				 number == 4.0 || number == 5.0))
 		{
 			formatVersion = static_cast<uint32_t>(number);
 		}
@@ -1343,26 +1362,18 @@ bool_t Client::CValtanPatternAnimationBindingDocument::Parse_Text(
 			nullptr != value.Find("playbackMode");
 		const bool hasBodyVisibility =
 			nullptr != value.Find("bodyVisibility");
-		if ((isLegacy &&
-			!Has_ExactProperties(value, { "actionId", "clip" })) ||
-			(!isLegacy &&
-			 ((!supportsPlaybackMode && hasPlaybackMode) ||
-			  (!supportsBodyVisibility && hasBodyVisibility) ||
-			  (!hasPlaybackMode && !hasBodyVisibility &&
-			   !Has_ExactProperties(value, { "actionId", "clips" })) ||
-			  (hasPlaybackMode && !hasBodyVisibility &&
-			   !Has_ExactProperties(value,
-				   { "actionId", "playbackMode", "clips" })) ||
-			  (!hasPlaybackMode && hasBodyVisibility &&
-			   !Has_ExactProperties(value,
-				   { "actionId", "bodyVisibility", "clips" })) ||
-			  (hasPlaybackMode && hasBodyVisibility &&
-			   !Has_ExactProperties(value,
-				   { "actionId", "playbackMode", "bodyVisibility", "clips" })))))
-		{
-			outStatus = "Boss pattern binding row has an unexpected field set.";
-			return false;
-		}
+        bool fieldsValid = value.Is_Object();
+        if (fieldsValid) for (const auto& [name, field] : value.Get_Object())
+        {
+            const bool allowed = name == "actionId" || (isLegacy ? name == "clip" : name == "clips") ||
+                (supportsPlaybackMode && name == "playbackMode") ||
+                (supportsBodyVisibility && name == "bodyVisibility") ||
+                (formatVersion >= 5u && (name == "sceneProfileOccurrences" || name == "lightOccurrences" || name == "cameraInvocations"));
+            if (!allowed) fieldsValid = false;
+        }
+        if (!fieldsValid || !value.Find("actionId") || !value.Find(isLegacy ? "clip" : "clips"))
+        { outStatus = "Boss pattern binding row has an unexpected field set."; return false; }
+
 		const DATA_JSON_VALUE* actionId = Required(
 			value, "actionId", DATA_JSON_TYPE::STRING);
 		if (nullptr == actionId || !Is_StableToken(actionId->Get_String()))
@@ -1373,6 +1384,33 @@ bool_t Client::CValtanPatternAnimationBindingDocument::Parse_Text(
 
 		BOSS_PATTERN_ANIMATION_BINDING stagedBinding;
 		stagedBinding.strActionId = actionId->Get_String();
+        if (!Parse_BossStageEnvironment(value, stagedBinding.SceneProfileOccurrences,
+                stagedBinding.LightOccurrences, outStatus)) return false;
+        if (const auto* cameras = value.Find("cameraInvocations"))
+        {
+            if (!cameras->Is_Array() || cameras->Get_Array().size() > 128u)
+            { outStatus = "Camera invocation list is invalid."; return false; }
+            stagedBinding.bHasCameraInvocations = true;
+            std::unordered_set<std::string> ids;
+            for (const auto& camera : cameras->Get_Array())
+            {
+                BOSS_STAGE_CAMERA_SAMPLE row;
+                const auto* id = Required(camera, "cameraInvocationId", DATA_JSON_TYPE::STRING);
+                const auto* cue = Required(camera, "cameraCueId", DATA_JSON_TYPE::STRING);
+                const auto* trigger = Required(camera, "trigger", DATA_JSON_TYPE::STRING);
+                const auto* policy = Required(camera, "durationPolicy", DATA_JSON_TYPE::STRING);
+                const auto* start = Required(camera, "startOffsetMs", DATA_JSON_TYPE::NUMBER);
+                const auto* duration = Required(camera, "durationMs", DATA_JSON_TYPE::NUMBER);
+                if (!Has_ExactProperties(camera, {"cameraInvocationId", "cameraCueId", "trigger", "durationPolicy", "startOffsetMs", "durationMs"}) ||
+                    !id || !cue || !trigger || !policy || !start || !duration ||
+                    !Is_StableToken(id->Get_String()) || !Is_StableToken(cue->Get_String()) ||
+                    !ids.insert(id->Get_String()).second || trigger->Get_String() != "ENTER" || policy->Get_String() != "EXPLICIT" ||
+                    !Try_ParseSourceMs(*start, row.iStartMs) || !Try_ParseSourceMs(*duration, row.iDurationMs) || !row.iDurationMs)
+                { outStatus = "Camera invocation is invalid."; return false; }
+                row.strOccurrenceId = id->Get_String(); row.strCueId = cue->Get_String();
+                stagedBinding.CameraInvocations.push_back(std::move(row));
+            }
+        }
 		if (hasBodyVisibility)
 		{
 			const DATA_JSON_VALUE* bodyVisibility = value.Find("bodyVisibility");
@@ -1537,7 +1575,7 @@ bool_t Client::CValtanPatternAnimationBindingDocument::Validate(
 	if (!Is_StableToken(expectedBossArchetypeId) ||
 		document.strBossArchetypeId != expectedBossArchetypeId ||
 		(document.iFormatVersion != 1u && document.iFormatVersion != 2u &&
-		 document.iFormatVersion != 3u && document.iFormatVersion != 4u) ||
+		 document.iFormatVersion != 3u && document.iFormatVersion != 4u && document.iFormatVersion != 5u) ||
 		document.Bindings.empty() || document.Bindings.size() > 512u)
 	{
 		outStatus = "Boss pattern binding owner does not match the target boss.";
@@ -2019,4 +2057,123 @@ bool_t Client::CValtanPatternEffectBindingDocument::Stage_ValtanPatternTree(
 	outStatus = "Staged " + std::to_string(outStage.Rows.size()) +
 		" Valtan Boss Pattern Effect(s).";
 	return true;
+}
+
+bool Client::Parse_BossStageEnvironment(const DATA_JSON_VALUE& value,
+    std::vector<BOSS_STAGE_SCENE_PROFILE_OCCURRENCE>& scenes,
+    std::vector<BOSS_STAGE_LIGHT_OCCURRENCE>& lights, std::string& status, uint32_t durationMs)
+{
+    std::vector<BOSS_STAGE_SCENE_PROFILE_OCCURRENCE> stagedScenes;
+    std::vector<BOSS_STAGE_LIGHT_OCCURRENCE> stagedLights;
+    std::unordered_set<std::string> identities;
+    const auto stringField = [](const DATA_JSON_VALUE& row, const char* key, std::string& out)
+    {
+        const auto* field = Required(row, key, DATA_JSON_TYPE::STRING);
+        if (!field || !Is_StableToken(field->Get_String())) return false;
+        out = field->Get_String(); return true;
+    };
+    const auto integerField = [](const DATA_JSON_VALUE& row, const char* key, uint32_t& out)
+    {
+        const auto* field = Required(row, key, DATA_JSON_TYPE::NUMBER);
+        if (!field || !std::isfinite(field->Get_Number()) || field->Get_Number() < 0.0 ||
+            field->Get_Number() > 3600000.0 || std::floor(field->Get_Number()) != field->Get_Number()) return false;
+        out = static_cast<uint32_t>(field->Get_Number()); return true;
+    };
+    const auto clock = [&](const DATA_JSON_VALUE& row, auto& out)
+    {
+        return stringField(row, "occurrenceId", out.strOccurrenceId) &&
+            identities.insert(out.strOccurrenceId).second && integerField(row, "startMs", out.iStartMs) &&
+            integerField(row, "durationMs", out.iDurationMs) && out.iDurationMs > 0u &&
+            uint64_t(out.iStartMs) + out.iDurationMs <= durationMs;
+    };
+    const auto vectorField = [](const DATA_JSON_VALUE& row, const char* key, auto& out)
+    {
+        const auto* field = Required(row, key, DATA_JSON_TYPE::ARRAY);
+        if (!field || field->Get_Array().size() != 3u) return false;
+        for (size_t axis = 0; axis < 3u; ++axis)
+        {
+            const auto& component = field->Get_Array()[axis];
+            if (!component.Is_Number() || !std::isfinite(component.Get_Number()) ||
+                std::abs(component.Get_Number()) > 100000.0) return false;
+            out[axis] = static_cast<float>(component.Get_Number());
+        }
+        return true;
+    };
+    for (const char* key : {"sceneProfileOccurrences", "lightOccurrences"})
+    {
+        const auto* rows = value.Find(key);
+        if (!rows) continue;
+        if (!rows->Is_Array() || rows->Get_Array().size() > 128u)
+        { status = "Stage environment occurrence list is invalid."; return false; }
+        for (const auto& row : rows->Get_Array())
+        {
+            if (std::string_view(key) == "sceneProfileOccurrences")
+            {
+                BOSS_STAGE_SCENE_PROFILE_OCCURRENCE scene;
+                if (!Has_ExactProperties(row, {"occurrenceId", "profileId", "startMs", "durationMs"}) ||
+                    !clock(row, scene) || !stringField(row, "profileId", scene.strProfileId))
+                { status = "Stage Scene Profile occurrence is invalid."; return false; }
+                for (const auto& previous : stagedScenes)
+                    if (scene.iStartMs < previous.iStartMs + previous.iDurationMs &&
+                        previous.iStartMs < scene.iStartMs + scene.iDurationMs)
+                    { status = "Stage Scene Profile occurrences overlap."; return false; }
+                stagedScenes.push_back(std::move(scene));
+            }
+            else
+            {
+                BOSS_STAGE_LIGHT_OCCURRENCE light;
+                const auto* brightness = Required(row, "brightnessMultiplier", DATA_JSON_TYPE::NUMBER);
+                const auto* follow = Required(row, "followBoss", DATA_JSON_TYPE::BOOLEAN);
+                if (!Has_ExactProperties(row, {"occurrenceId", "lightResourceId", "startMs", "durationMs",
+                        "anchorKind", "followBoss", "position", "rotationDegrees", "brightnessMultiplier", "fadeInMs", "fadeOutMs"}) ||
+                    !clock(row, light) || !stringField(row, "lightResourceId", light.strLightResourceId) ||
+                    !stringField(row, "anchorKind", light.strAnchorKind) || !follow ||
+                    (light.strAnchorKind != "BOSS" && light.strAnchorKind != "MAP") ||
+                    (light.strAnchorKind == "MAP" && follow->Get_Boolean()) ||
+                    !integerField(row, "fadeInMs", light.iFadeInMs) || !integerField(row, "fadeOutMs", light.iFadeOutMs) ||
+                    uint64_t(light.iFadeInMs) + light.iFadeOutMs > light.iDurationMs ||
+                    !vectorField(row, "position", light.Position) || !vectorField(row, "rotationDegrees", light.RotationDegrees) ||
+                    !brightness || !std::isfinite(brightness->Get_Number()) ||
+                    brightness->Get_Number() < 0.0 || brightness->Get_Number() > 1000.0)
+                { status = "Stage Light occurrence is invalid."; return false; }
+                light.bFollowBoss = follow->Get_Boolean();
+                light.fBrightnessMultiplier = static_cast<float>(brightness->Get_Number());
+                stagedLights.push_back(std::move(light));
+            }
+        }
+    }
+    scenes = std::move(stagedScenes); lights = std::move(stagedLights);
+    return true;
+}
+
+std::string Client::Serialize_BossStageEnvironment(
+    const std::vector<BOSS_STAGE_SCENE_PROFILE_OCCURRENCE>& scenes,
+    const std::vector<BOSS_STAGE_LIGHT_OCCURRENCE>& lights)
+{
+    std::ostringstream out;
+    out << std::setprecision(std::numeric_limits<f32_t>::max_digits10);
+    const auto quote = [](const std::string& text) { return "\"" + CDataJson::Escape(text) + "\""; };
+    out << "{\"sceneProfileOccurrences\":[";
+    for (size_t i = 0; i < scenes.size(); ++i)
+    {
+        const auto& row = scenes[i];
+        if (i) out << ',';
+        out << "{\"occurrenceId\":" << quote(row.strOccurrenceId) << ",\"profileId\":" << quote(row.strProfileId)
+            << ",\"startMs\":" << row.iStartMs << ",\"durationMs\":" << row.iDurationMs << '}';
+    }
+    out << "],\"lightOccurrences\":[";
+    for (size_t i = 0; i < lights.size(); ++i)
+    {
+        const auto& row = lights[i];
+        if (i) out << ',';
+        out << "{\"occurrenceId\":" << quote(row.strOccurrenceId) << ",\"lightResourceId\":" << quote(row.strLightResourceId)
+            << ",\"startMs\":" << row.iStartMs << ",\"durationMs\":" << row.iDurationMs
+            << ",\"anchorKind\":" << quote(row.strAnchorKind) << ",\"followBoss\":" << (row.bFollowBoss ? "true" : "false")
+            << ",\"position\":[" << row.Position[0] << ',' << row.Position[1] << ',' << row.Position[2]
+            << "],\"rotationDegrees\":[" << row.RotationDegrees[0] << ',' << row.RotationDegrees[1] << ',' << row.RotationDegrees[2]
+            << "],\"brightnessMultiplier\":" << row.fBrightnessMultiplier
+            << ",\"fadeInMs\":" << row.iFadeInMs << ",\"fadeOutMs\":" << row.iFadeOutMs << '}';
+    }
+    out << "]}";
+    return out.str();
 }

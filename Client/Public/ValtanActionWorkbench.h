@@ -45,30 +45,27 @@ public:
 		CAMERA,
 		WORLD,
 		COMBAT_OBJECT,
+		SCENE_PROFILE,
+		LIGHT,
 	};
 
 	enum class TIMELINE_LANE : uint8_t
 	{
 		STAGE,
 		ANIMATION,
-		EFFECT,
-		SOUND,
 		LOGIC,
-		COLLIDER,
-		CAMERA,
+		SUMMON,
 		WORLD,
+		SCENE_PROFILE,
+		EFFECT,
+		COLLIDER,
+		SOUND,
+		CAMERA,
+		LIGHT,
 		COUNT,
 	};
 
-	enum class RESOURCE_DOMAIN : uint8_t
-	{
-		ANIMATION,
-		EFFECT,
-		SOUND,
-		CAMERA,
-		LOGIC,
-		WORLD,
-	};
+	using RESOURCE_DOMAIN = COMPOSITION_RESOURCE_DOMAIN;
 
 	enum class EFFECT_RESOURCE_KIND : uint8_t
 	{
@@ -141,6 +138,11 @@ public:
 		CValtanBossTool* pValtanBossTool);
 
 	bool_t Open_Valtan();
+	void Set_EnvironmentResources(std::vector<std::string> profiles, std::vector<std::string> lights)
+	{
+		m_SceneProfileResourceIds = std::move(profiles);
+		m_LightResourceIds = std::move(lights);
+	}
 	/* Sibling-view API for the Sequencer: the same canonical load, selection,
 	   draft and timeline cache without requiring the Workbench windows to be
 	   visible. Selection changes are refused while any owner draft is dirty so
@@ -327,6 +329,8 @@ private:
 		const VALTAN_PATTERN_VIEW* pEffectiveSelectedPattern);
 	void Render_ProductFallbackBrowser();
 	void Render_WorldObjectResources();
+	void Render_SupplementalResources(RESOURCE_DOMAIN domain,
+		const VALTAN_PATTERN_VIEW* pattern, const VALTAN_STAGE_VIEW* stage, bool editable);
 	bool_t Validate_EffectV2BindingClock(
 		const VALTAN_STAGE_VIEW& Stage,
 		const EFFECT_V2_BINDING& Binding,
@@ -411,6 +415,13 @@ private:
 		const VALTAN_PATTERN_VIEW& Pattern,
 		const VALTAN_STAGE_VIEW& Stage,
 		bool_t bMutationAdmitted);
+	bool_t Apply_StageDurationDraft(const VALTAN_PATTERN_VIEW& pattern,
+		const std::string& stageId, uint32_t requestedDurationMs, std::string& status);
+	bool_t Apply_AuxiliaryTimelineTiming(const VALTAN_PATTERN_VIEW& pattern,
+		const TIMELINE_ITEM& item, uint32_t newStartMs, uint32_t newEndMs,
+		bool trim, std::string& status);
+	bool_t Render_AuxiliaryDetails(const VALTAN_PATTERN_VIEW& pattern,
+		const VALTAN_STAGE_VIEW& stage, bool editable);
 	void Render_Timeline(
 		const VALTAN_PATTERN_VIEW* pPattern,
 		bool_t bLocalPreviewAdmitted,
@@ -578,6 +589,8 @@ private:
 	/* After a fully reloaded Save: publish the candidate/apply it to the live
 	   Server (Valtan Boss Tool Flow Save path) and refresh the on-disk runtime set. */
 	bool_t m_bAutoPublishAfterSave = false;
+	bool_t m_bProductSourceReady = false;
+	std::string m_strProductReadiness;
 	bool_t m_bOpenAnimationToolRequested = false;
 	bool_t m_bEffectToolOpenRequested = false;
 	bool_t m_bCameraToolOpenRequested = false;
@@ -738,6 +751,8 @@ private:
 	uint64_t m_iEffectV2BindingEditRevision = 0u;
 	std::array<char_t, 160u> m_EffectV2AnchorSlot{};
 	std::array<char_t, 160u> m_WorldObjectSearch{};
+	std::vector<std::string> m_SceneProfileResourceIds;
+	std::vector<std::string> m_LightResourceIds;
 	std::string m_strEffectEditIdentity;
 	VALTAN_PRODUCT_EFFECT_CUE_VIEW m_EffectCueEditDraft;
 	std::vector<std::size_t> m_FilteredSoundEventIndices;

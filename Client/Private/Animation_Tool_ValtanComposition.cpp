@@ -156,12 +156,8 @@ bool_t Client::CAnimation_Tool::Play_ValtanCompositionDraftPattern(
 	}
 	if (!Stage_ValtanCompositionPreview(strOutStatus))
 		return false;
-	if (!Can_MutateValtanView(m_eValtanPatternMasterAdmission) &&
-		!Reload_ValtanPatternMaster())
-	{
-		strOutStatus = m_strValtanPatternMasterStatus;
-		return false;
-	}
+	// The selected authoring draft is validated against the actual model below;
+	// stale generated Product data must not reject this local editor preview.
 	const shared_ptr<Engine::CModel> pModel = Resolve_Model();
 	if (nullptr == pModel)
 	{
@@ -220,6 +216,16 @@ bool_t Client::CAnimation_Tool::Seek_ValtanCompositionPattern(
 	return true;
 }
 
+bool_t Client::CAnimation_Tool::Seek_ValtanCompositionSourceSequence(
+    const uint32_t iPositionMs, const bool_t bPause, std::string& strOutStatus)
+{
+    if (!Seek_ValtanPatternPreview(m_ValtanPatternPreviewModel.lock(), iPositionMs * .001f, bPause))
+    { strOutStatus = "The Valtan source sequence is no longer active; select a source sequence first."; return false; }
+    strOutStatus = m_strValtanPatternPreviewStatus = m_bValtanPatternPreviewPaused ?
+        "Valtan source sequence paused at the cursor." : "Valtan source sequence playing from the cursor.";
+    return true;
+}
+
 void Client::CAnimation_Tool::Stop_ValtanCompositionPattern(
 	std::string& strOutStatus)
 {
@@ -273,6 +279,9 @@ Client::CAnimation_Tool::Get_ValtanCompositionPreviewState() const
 	State.bPlaying = m_bValtanPatternMasterPlaying;
 	State.bPaused = m_bValtanPatternMasterPaused;
 	State.bSourceSequencePlaying = m_bValtanPatternPreviewPlaying;
+	State.bSourceSequencePaused = m_bValtanPatternPreviewPaused;
+	State.iSourceSequencePositionMs = static_cast<uint32_t>(std::llround(m_fValtanPatternPreviewTimelineSeconds * 1000.0));
+	State.iSourceSequenceDurationMs = static_cast<uint32_t>(std::ceil(m_fValtanPatternPreviewDurationSeconds * 1000.0));
 	State.iDurationMs = m_iValtanPatternMasterDurationMs;
 	if (!m_ValtanPatternMasterPlaylist.empty())
 		State.strPatternId = m_ValtanPatternMasterPlaylist.front().strPatternId;
@@ -306,6 +315,12 @@ Client::CAnimation_Tool::Get_ValtanCompositionPreviewState() const
 			std::to_string(Item.iStepNumber) + "/" +
 			std::to_string(Item.iStepCount) +
 			" | Server Valtan=UNCHANGED.";
+	}
+	if (State.bSourceSequencePlaying && !State.bPlaying)
+	{
+		State.bPlaying = true; State.bPaused = State.bSourceSequencePaused;
+		State.iPositionMs = State.iSourceSequencePositionMs; State.iDurationMs = State.iSourceSequenceDurationMs;
+		State.strPatternId.clear(); State.strStatus = State.strSourceSequenceStatus;
 	}
 	return State;
 }

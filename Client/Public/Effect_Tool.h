@@ -570,7 +570,8 @@ private:
     void Render_CurrentEffectAttachmentGroups();
     bool_t Try_TranslateAttachmentGroup(const std::string& groupKey, const float3_t& delta);
     bool_t Try_SetAttachmentGroupAnchor(const std::string& groupKey, const float3_t& position, const float3_t& rotationDegrees);
-    bool_t Try_RotateAttachmentGroup(const std::string& groupKey, const float3_t& rotationDegrees);
+    bool_t Try_RotateAttachmentGroup(const std::string& groupKey, const float3_t& rotationDegrees,
+        const float3_t& pivot, const std::string& elementId);
     void Render_ProjectileDestinationControls();
     void Render_LoadedEffectContents();
     bool_t Render_ManualElementGroups(
@@ -1326,6 +1327,14 @@ private:
     string m_strSelectedElementId;
 	// Editor-only stable IDs for Play Group, Delete and Duplicate. Row marks
 	// preserve the current Detail selection and are never saved in the document.
+    // Editor-session pivot selection; only the resulting Element TRS is saved.
+    struct GROUP_ROTATION_EDIT_STATE
+    {
+        int pivotMode = 0; // Group center, anchor origin, custom local point.
+        float3_t customPivot{};
+        std::string elementId; // Empty rotates the complete attachment group.
+    };
+    std::unordered_map<std::string, GROUP_ROTATION_EDIT_STATE> m_GroupRotationEdits;
 	std::set<string, std::less<>> m_MarkedElementIds;
 	// Document replacement invalidates marks; row marking never changes IDs.
 	bool_t m_bMarkedElementIdsNeedPrune = false;

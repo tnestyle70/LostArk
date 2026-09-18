@@ -61,7 +61,7 @@ void LostArk::Server::CGameRoom::Note_GatePlacementRaised(const std::string& pla
 	if (iGate < 0)
 		return;
 	const std::uint8_t iRaised = static_cast<std::uint8_t>(iGate + 1);
-	if (m_GateProgress.iCurrentGate == iRaised)
+	if (m_GateProgress.iCurrentGate == iRaised && !(m_GateProgress.iClearedMask & (1u << iGate)))
 		return;
 	/* A gate raised again (Debug button after a clear) fights again. */
 	m_GateProgress.iCurrentGate = iRaised;
@@ -71,6 +71,8 @@ void LostArk::Server::CGameRoom::Note_GatePlacementRaised(const std::string& pla
 
 void LostArk::Server::CGameRoom::Notify_GateBossDeath(const SERVER_WORLD_ENTITY& deadBoss)
 {
+    // A pinned raid defines its primary boss; Gate 2's supporting actor cannot delay or trigger its clear.
+    if (Is_KoukuRaidRunning() && m_KoukuRaid.State.ePhase != LostArk::Shared::KOUKUSAYDON_RAID_PHASE::PREPARING) return;
 	const int iGate = Gate_IndexOfPlacement(deadBoss.strPlacementId);
 	if (iGate < 0)
 		return;
@@ -112,9 +114,14 @@ void LostArk::Server::CGameRoom::Handle_GateProgressPropose(
 		(0u == iCurrent || iCurrent >= Gate_Count() || 0u == (m_GateProgress.iClearedMask & (1u << (iCurrent - 1u)))))
 		return;
 
-	std::vector<PLAYER_ID> voters{ proposerId };
+    const bool raid = Is_KoukuRaidRunning();
+    if (raid && (proposerId != m_KoukuRaid.State.iOwnerPlayerId ||
+        m_KoukuRaid.State.ePhase == KOUKUSAYDON_RAID_PHASE::PREPARING ||
+        m_KoukuRaid.State.ePhase == KOUKUSAYDON_RAID_PHASE::CINEMATIC ||
+        (request.eKind == GATE_PROGRESS_KIND::ADVANCE && m_KoukuRaid.State.ePhase != KOUKUSAYDON_RAID_PHASE::WAIT_GATE))) return;
+	std::vector<PLAYER_ID> voters = raid ? m_KoukuRaid.PlayerIds : std::vector<PLAYER_ID>{proposerId};
 	const auto partyIdIter = m_PartyIdByPlayerId.find(proposerId);
-	if (partyIdIter != m_PartyIdByPlayerId.end())
+	if (!raid && partyIdIter != m_PartyIdByPlayerId.end())
 	{
 		const auto membersIter = m_PartyMembersByPartyId.find(partyIdIter->second);
 		if (membersIter != m_PartyMembersByPartyId.end() && membersIter->second.size() > 1u)
@@ -126,6 +133,7 @@ void LostArk::Server::CGameRoom::Handle_GateProgressPropose(
 			voters = membersIter->second;
 		}
 	}
+    if (raid && std::any_of(voters.begin(), voters.end(), [&](const auto id) { return !m_Players.contains(id); })) return;
 	/* Only voters still in this room count. */
 	voters.erase(std::remove_if(voters.begin(), voters.end(),
 		[this](const PLAYER_ID id) { return !m_Players.contains(id); }), voters.end());
@@ -135,6 +143,7 @@ void LostArk::Server::CGameRoom::Handle_GateProgressPropose(
 	m_GateProgress.iProposalId = m_iNextGateProposalId++;
 	if (0u == m_iNextGateProposalId)
 		m_iNextGateProposalId = 1u;
+	m_GateProgress.iRaidEpoch = raid ? m_KoukuRaid.State.iRunEpoch : 0u;
 	m_GateProgress.eKind = request.eKind;
 	m_GateProgress.iRequestSequence = request.iRequestSequence;
 	m_GateProgress.iProposerId = proposerId;
@@ -188,12 +197,13 @@ void LostArk::Server::CGameRoom::Close_GateProgressVote(
 		const std::uint8_t iTarget = GATE_PROGRESS_KIND::RESTART == m_GateProgress.eKind ?
 			(std::max<std::uint8_t>)(m_GateProgress.iCurrentGate, 1u) :
 			static_cast<std::uint8_t>(m_GateProgress.iCurrentGate + 1u);
-		if (!Advance_Gate(iTarget))
+		if ((m_GateProgress.iRaidEpoch && (!Is_KoukuRaidRunning() || m_GateProgress.iRaidEpoch != m_KoukuRaid.State.iRunEpoch)) || !Advance_Gate(iTarget))
 			finalResult = GATE_PROGRESS_VOTE_RESULT::CANCELLED;
 	}
 	/* The closing message still names the proposal, then the vote is gone. */
 	Broadcast_GateProgressState(true, finalResult);
 	m_GateProgress.iProposalId = 0u;
+	m_GateProgress.iRaidEpoch = 0u;
 	m_GateProgress.eKind = GATE_PROGRESS_KIND::ADVANCE;
 	m_GateProgress.iRequestSequence = 0u;
 	m_GateProgress.iProposerId = INVALID_PLAYER_ID;
@@ -236,6 +246,8 @@ bool LostArk::Server::CGameRoom::Advance_Gate(const std::uint8_t nextGate)
 	using namespace LostArk::Shared;
 	if (0u == nextGate || nextGate > Gate_Count())
 		return false;
+    if (Is_KoukuRaidRunning())
+        return Advance_KoukuRaidGate(nextGate, m_GateProgress.eKind == GATE_PROGRESS_KIND::RESTART);
 	const KOUKU_GATE& gate = KOUKU_GATES[nextGate - 1u];
 
 	/* Same order as the Debug gate button: clear the arena, raise the placements, move
@@ -277,13 +289,14 @@ bool LostArk::Server::CGameRoom::Advance_Gate(const std::uint8_t nextGate)
 	return true;
 }
 
-void LostArk::Server::CGameRoom::Broadcast_GateProgressState(
-	const bool bClosed, const LostArk::Shared::GATE_PROGRESS_VOTE_RESULT result)
+bool LostArk::Server::CGameRoom::Build_GateProgressState(
+	LostArk::Shared::S2C_GATE_PROGRESS_STATE& message, const bool bClosed,
+	const LostArk::Shared::GATE_PROGRESS_VOTE_RESULT result) const
 {
 	using namespace LostArk::Shared;
 	if (0u == Gate_Count())
-		return;
-	S2C_GATE_PROGRESS_STATE message{};
+		return false;
+	message = {};
 	message.eWorldId = m_eWorldId;
 	message.iGateCount = Gate_Count();
 	message.iCurrentGate = m_GateProgress.iCurrentGate;
@@ -296,6 +309,16 @@ void LostArk::Server::CGameRoom::Broadcast_GateProgressState(
 	message.iTotal = static_cast<std::uint8_t>((std::min)(m_GateProgress.Voters.size(), std::size_t(255)));
 	message.bClosed = bClosed;
 	message.eResult = bClosed ? result : GATE_PROGRESS_VOTE_RESULT::NONE;
+	return true;
+}
+
+void LostArk::Server::CGameRoom::Broadcast_GateProgressState(
+	const bool bClosed, const LostArk::Shared::GATE_PROGRESS_VOTE_RESULT result)
+{
+	using namespace LostArk::Shared;
+	S2C_GATE_PROGRESS_STATE message{};
+	if (!Build_GateProgressState(message, bClosed, result))
+		return;
 	CPacketWriter writer;
 	if (!Write_Message(writer, message))
 		return;

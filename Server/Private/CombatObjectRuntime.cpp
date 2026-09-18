@@ -151,31 +151,57 @@ namespace
 		};
 	}
 
+	LostArk::Server::SERVER_COMBAT_OBJECT_POSE AttackPose(
+		LostArk::Server::SERVER_COMBAT_OBJECT_POSE pose,
+		const LostArk::Server::SERVER_COMBAT_OBJECT_HIT_RUNTIME& hit)
+	{
+		pose.fPositionX += pose.fDirectionX * hit.fOffsetForwardM + pose.fDirectionZ * hit.fOffsetRightM;
+		pose.fPositionZ += pose.fDirectionZ * hit.fOffsetForwardM - pose.fDirectionX * hit.fOffsetRightM;
+		pose.fYawDegrees += hit.fYawOffsetDegrees;
+		const float angle = pose.fYawDegrees * DEGREES_TO_RADIANS;
+		pose.fDirectionX = std::sin(angle); pose.fDirectionZ = std::cos(angle);
+		return pose;
+	}
+
+	std::uint32_t AttackDamage(const LostArk::Server::SERVER_COMBAT_OBJECT_HIT_RUNTIME& hit,
+		const LostArk::Server::SERVER_PLAYER& target, const std::uint32_t raw)
+	{
+		if (hit.bInstantDeath) return (std::max)(1u, target.iCurrentHp);
+		if (hit.iDamagePercent) return (std::max)(1u, static_cast<std::uint32_t>(
+			std::uint64_t(target.iMaximumHp) * hit.iDamagePercent / 100u));
+		return raw;
+	}
+
 	bool ContactOverlaps(
 		const LostArk::Server::SERVER_COMBAT_OBJECT& object,
 		const LostArk::Server::SERVER_COMBAT_OBJECT_HIT_RUNTIME& hit,
 		const LostArk::Shared::CombatCollision::BODY_CIRCLE_XZ& target)
 	{
 		using namespace LostArk::Server;
-		if (CServerCombatGeometry::Overlaps_Pose(
-			hit.Shape,
-			object.LiveState.CurrentPose.fPositionX,
-			object.LiveState.CurrentPose.fPositionZ,
-			object.LiveState.CurrentPose.fDirectionX,
-			object.LiveState.CurrentPose.fDirectionZ,
-			target))
+		if (object.fElapsedMilliseconds < float(hit.iAtMs) ||
+			(hit.iEndMs && object.fPreviousElapsedMilliseconds >= float(hit.iEndMs))) return false;
+		auto start = object.LiveState.PreviousPose, end = object.LiveState.CurrentPose;
+		const float delta = object.fElapsedMilliseconds - object.fPreviousElapsedMilliseconds;
+		if (delta > 0.f)
 		{
-			return true;
+			const auto at = [&](float time) {
+				const float alpha = (std::clamp)((time - object.fPreviousElapsedMilliseconds) / delta, 0.f, 1.f);
+				auto pose = end;
+				pose.fPositionX = start.fPositionX + (end.fPositionX - start.fPositionX) * alpha;
+				pose.fPositionZ = start.fPositionZ + (end.fPositionZ - start.fPositionZ) * alpha;
+				return pose;
+			};
+			const auto clippedStart = at(float(hit.iAtMs));
+			if (hit.iEndMs) end = at(float(hit.iEndMs));
+			start = clippedStart;
 		}
-		return SERVER_COMBAT_OBJECT_CONTACT_SAMPLING::SWEPT ==
-			hit.eContactSampling &&
+		start = AttackPose(start, hit); end = AttackPose(end, hit);
+		if (CServerCombatGeometry::Overlaps_Pose(hit.Shape, end.fPositionX, end.fPositionZ,
+			end.fDirectionX, end.fDirectionZ, target)) return true;
+		return SERVER_COMBAT_OBJECT_CONTACT_SAMPLING::SWEPT == hit.eContactSampling &&
 			SERVER_COMBAT_SHAPE_KIND::CIRCLE == hit.Shape.eKind &&
-			CServerCombatGeometry::SweptCircle_Overlaps(
-				object.LiveState.PreviousPose.fPositionX,
-				object.LiveState.PreviousPose.fPositionZ,
-				object.LiveState.CurrentPose.fPositionX,
-				object.LiveState.CurrentPose.fPositionZ,
-				hit.Shape.fOuterRadius, target);
+			CServerCombatGeometry::SweptCircle_Overlaps(start.fPositionX, start.fPositionZ,
+				end.fPositionX, end.fPositionZ, hit.Shape.fOuterRadius, target);
 	}
 
 	LostArk::Server::SERVER_COMBAT_OBJECT_CONTACT_MARK* FindContactMark(
@@ -372,7 +398,7 @@ bool LostArk::Server::CCombatObjectRuntime::Stage_BossCombatObject(
 	std::string& status) const
 {
 	if (0u == count ||
-		(definition.Hits.empty() && definition.PresentationPulses.empty()) ||
+		(definition.Hits.empty() && definition.AttackTemplates.empty() && definition.PresentationPulses.empty()) ||
 		0u == definition.iLifeMs ||
 		!std::isfinite(definition.fCoverRadiusM) ||
 		definition.fCoverRadiusM < 0.f || definition.fCoverRadiusM > 100.f ||
@@ -394,6 +420,8 @@ bool LostArk::Server::CCombatObjectRuntime::Stage_BossCombatObject(
 		status = "Boss combat object spawn is invalid";
 		return false;
 	}
+	if (!LostArk::Shared::Validate_AttackHitTemplates(definition.AttackTemplates, definition.iLifeMs))
+	{ status = "Boss attack templates exceed their bounded shape, damage or lifetime contract"; return false; }
 	if (nullptr != volley)
 	{
 		const bool radial = BOSS_COMBAT_OBJECT_LAYOUT_KIND::RADIAL ==
@@ -671,6 +699,33 @@ bool LostArk::Server::CCombatObjectRuntime::Stage_BossCombatObject(
 			}
 			object.Hits.push_back(std::move(hit));
 		}
+		for (const auto& authored : definition.AttackTemplates)
+		{
+			SERVER_COMBAT_OBJECT_HIT_RUNTIME hit;
+			hit.strHitId = authored.strHitId;
+			hit.eTrigger = authored.strTrigger == "CONTACT" ? SERVER_COMBAT_OBJECT_HIT_TRIGGER::CONTACT : SERVER_COMBAT_OBJECT_HIT_TRIGGER::TIMED;
+			hit.eContactSampling = SERVER_COMBAT_OBJECT_CONTACT_SAMPLING::SWEPT;
+			hit.iAtMs = authored.iAtMs; hit.iEndMs = authored.iEndMs;
+			hit.iRepeatIntervalMs = authored.iRepeatIntervalMs;
+			hit.fOffsetForwardM = float(authored.fOffsetForwardM); hit.fOffsetRightM = float(authored.fOffsetRightM);
+			hit.fYawOffsetDegrees = float(authored.fYawOffsetDegrees);
+			hit.Shape.eKind = authored.strShape == "CIRCLE" ? SERVER_COMBAT_SHAPE_KIND::CIRCLE :
+				authored.strShape == "RING" ? SERVER_COMBAT_SHAPE_KIND::RING :
+				authored.strShape == "BOX" ? SERVER_COMBAT_SHAPE_KIND::FORWARD_BOX : SERVER_COMBAT_SHAPE_KIND::CONE;
+			hit.Shape.fOuterRadius = float(authored.fRadiusM); hit.Shape.fInnerRadius = float(authored.fInnerRadiusM);
+			hit.Shape.fLength = float(authored.fLengthM); hit.Shape.fHalfWidth = float(authored.fHalfWidthM);
+			hit.Shape.fAngleDegrees = float(authored.fAngleDegrees);
+			hit.bInstantDeath = authored.strDamageKind == "INSTANT_DEATH";
+			hit.bIgnoreDefense = authored.strDamageKind != "PROFILE";
+			hit.iDamagePercent = authored.iDamagePercent;
+			const auto rate = authored.strDamageKind == "PROFILE" ? catalog.Find_DamageRatePercent(authored.strDamageProfileId) : 1u;
+			if (!rate || !CServerCombatGeometry::Is_Valid(hit.Shape))
+			{ status = "Boss attack damage profile or primitive is unresolved"; return false; }
+			const auto raw = authored.strDamageKind == "PROFILE" ? CGameplayCatalog::Resolve_Damage(boss.iAttackPower, rate) : 1u;
+			if (!raw) { status = "Boss attack resolves to zero damage"; return false; }
+			hit.RepeatRawDamage.assign(authored.iRepeatCount, raw);
+			object.Hits.push_back(std::move(hit));
+		}
 		for (const BOSS_COMBAT_OBJECT_PRESENTATION_PULSE& authored :
 			definition.PresentationPulses)
 		{
@@ -784,7 +839,8 @@ void LostArk::Server::CCombatObjectRuntime::Update(
 			continue;
 		}
 
-		object.LiveState.PreviousPose = object.LiveState.CurrentPose;
+		if (!object.bHasExternalPoseStep) object.LiveState.PreviousPose = object.LiveState.CurrentPose;
+		object.bHasExternalPoseStep = false;
 		if (object.bTrackLockedTargetUntilFirstPulse)
 		{
 			if (SERVER_PLAYER* target = FindPlayerByEntityId(
@@ -802,6 +858,7 @@ void LostArk::Server::CCombatObjectRuntime::Update(
 			}
 		}
 		const float previousElapsedMilliseconds = object.fElapsedMilliseconds;
+		object.fPreviousElapsedMilliseconds = previousElapsedMilliseconds;
 		object.fElapsedMilliseconds += deltaMilliseconds;
 		if (!object.bPersistentLifetime) object.fRemainingMilliseconds -= deltaMilliseconds;
 		float homingDistance = -1.f;
@@ -887,6 +944,7 @@ void LostArk::Server::CCombatObjectRuntime::Update(
 					m_iNextPresentationEventSequence = 1u;
 			};
 
+		bool contactTermination = false;
 		if (!object.strContactPresentationId.empty() && contactMotionActive)
 		{
 			SERVER_COMBAT_OBJECT_HIT_RUNTIME contact;
@@ -907,14 +965,13 @@ void LostArk::Server::CCombatObjectRuntime::Update(
 				contacted = true;
 				break;
 			}
-			if (contacted) { Despawn_At(objectIndex); continue; }
+			contactTermination = contacted;
 		}
 
-		if (expired && !object.strContactPresentationId.empty())
+		if (expired && !contactTermination && !object.strContactPresentationId.empty())
 		{
 			QueuePresentationPulse(object.strContactPresentationId, 0u);
-			Despawn_At(objectIndex);
-			continue;
+			contactTermination = true;
 		}
 
 		for (SERVER_COMBAT_OBJECT_PRESENTATION_PULSE_RUNTIME& pulse :
@@ -933,6 +990,7 @@ void LostArk::Server::CCombatObjectRuntime::Update(
 		for (std::size_t hitIndex = 0u; hitIndex < object.Hits.size(); ++hitIndex)
 		{
 			SERVER_COMBAT_OBJECT_HIT_RUNTIME& hit = object.Hits[hitIndex];
+			const auto attackPose = AttackPose(object.LiveState.CurrentPose, hit);
 			if (SERVER_COMBAT_OBJECT_HIT_TRIGGER::CONTACT == hit.eTrigger)
 			{
 				if (!contactMotionActive)
@@ -989,8 +1047,10 @@ void LostArk::Server::CCombatObjectRuntime::Update(
 							object.fElapsedMilliseconds < mark->fNextMilliseconds)
 							continue;
 						SERVER_WORLD_TO_PLAYER_HIT incoming{};
+						incoming.bIgnoreDefense = hit.bIgnoreDefense;
+						incoming.bIgnoreCounter = hit.bIgnoreDefense;
 						incoming.iRawDamage =
-							hit.RepeatRawDamage[mark->iAppliedCount];
+							AttackDamage(hit, target, hit.RepeatRawDamage[mark->iAppliedCount]);
 						incoming.fSourceX =
 							object.LiveState.CurrentPose.fPositionX;
 						incoming.fSourceZ =
@@ -1029,10 +1089,10 @@ void LostArk::Server::CCombatObjectRuntime::Update(
 						if (!IsDamageable(target) ||
 							!CServerCombatGeometry::Overlaps_Pose(
 								hit.Shape,
-								object.LiveState.CurrentPose.fPositionX,
-								object.LiveState.CurrentPose.fPositionZ,
-								object.LiveState.CurrentPose.fDirectionX,
-								object.LiveState.CurrentPose.fDirectionZ,
+								attackPose.fPositionX,
+								attackPose.fPositionZ,
+								attackPose.fDirectionX,
+								attackPose.fDirectionZ,
 								BodyOf(target)))
 							continue;
 						const float dx = target.fPositionX -
@@ -1084,14 +1144,16 @@ void LostArk::Server::CCombatObjectRuntime::Update(
 						if (!IsDamageable(target) ||
 							!CServerCombatGeometry::Overlaps_Pose(
 								hit.Shape,
-								object.LiveState.CurrentPose.fPositionX,
-								object.LiveState.CurrentPose.fPositionZ,
-								object.LiveState.CurrentPose.fDirectionX,
-								object.LiveState.CurrentPose.fDirectionZ,
+								attackPose.fPositionX,
+								attackPose.fPositionZ,
+								attackPose.fDirectionX,
+								attackPose.fDirectionZ,
 								BodyOf(target)))
 							continue;
 						SERVER_WORLD_TO_PLAYER_HIT incoming{};
-						incoming.iRawDamage = rawDamage;
+						incoming.bIgnoreDefense = hit.bIgnoreDefense;
+						incoming.bIgnoreCounter = hit.bIgnoreDefense;
+						incoming.iRawDamage = AttackDamage(hit, target, rawDamage);
 						incoming.fSourceX =
 							object.LiveState.CurrentPose.fPositionX;
 						incoming.fSourceZ =
@@ -1110,7 +1172,7 @@ void LostArk::Server::CCombatObjectRuntime::Update(
 		}
 		if (firedFirstTimedPulse)
 			object.bTrackLockedTargetUntilFirstPulse = false;
-		if (expired)
+		if (expired || contactTermination)
 			Despawn_At(objectIndex);
 		else
 			++objectIndex;
@@ -1139,8 +1201,9 @@ bool LostArk::Server::CCombatObjectRuntime::Set_OwnedVisualPosition(
 	{
 		if (object.iCombatObjectId != objectId) continue;
 		if (object.iSourceNetEntityId != sourceId || object.LiveState.iOwnerPatternSequence != patternSequence ||
-			!object.Hits.empty() || object.fSpeedMps != 0.f || object.bTrackLockedTargetUntilFirstPulse) return false;
-		object.LiveState.PreviousPose = object.LiveState.CurrentPose;
+			(!object.Hits.empty() && !object.bRoomOwnedTracking) || object.fSpeedMps != 0.f || object.bTrackLockedTargetUntilFirstPulse) return false;
+		if (!object.bHasExternalPoseStep) object.LiveState.PreviousPose = object.LiveState.CurrentPose;
+		object.bHasExternalPoseStep = true;
 		auto& pose = object.LiveState.CurrentPose;
 		pose.fPositionX = x; pose.fPositionY = y; pose.fPositionZ = z;
 		++m_iRevision;
@@ -1159,7 +1222,7 @@ bool LostArk::Server::CCombatObjectRuntime::Cancel_OwnedVisualObject(
 		const auto& object = m_Objects[index];
 		if (object.iCombatObjectId != objectId) continue;
 		if (object.iSourceNetEntityId != sourceId || object.LiveState.iOwnerPatternSequence != patternSequence ||
-			!object.Hits.empty()) return false;
+			(!object.Hits.empty() && !object.bRoomOwnedTracking)) return false;
 		Despawn_At(index);
 		return true;
 	}

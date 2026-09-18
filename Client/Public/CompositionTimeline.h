@@ -11,6 +11,10 @@
 namespace Client::CompositionTimeline
 {
 
+inline constexpr float LaneHeight = 24.f;
+inline constexpr float LabelWidth = 180.f;
+inline constexpr float MinimumBoxWidth = 8.f;
+
 enum class BoxGesture : std::uint8_t
 {
 	MOVE,

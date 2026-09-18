@@ -39,6 +39,25 @@ caster 시간은 action/stage 기준이고 projectile 시간은 생성 이후 �
 구현과 실행한 검사, 남은 사용자 화면 확인은
 `../GB/09-13/2026-09-13_ACTION_WORKBENCH_UNIFIED_ACTIONS_RESULT.md`에서 구분한다.
 
+## Valtan Composition source Save와 Product Publish
+
+Valtan Composition의 Save는 기존 `Data/Valtan` gameplay/presentation/combat-object와 BossCatalog의 변경분,
+Pattern Sound와 Effect V2 binding의 dirty owner만 저장한다. Reload에서 캡처한 owner별 원본 바이트를
+공용 writer lock 안에서 다시 비교하고 원자 교체한다. 같은 owner의 외부 변경 또는 구조 오류는 기존 파일과
+초안을 보존하며, 미완성 리소스 참조의 실행 준비 여부는 Publish에서 검증한다. 저장 성공은 Server 적용 성공이 아니다.
+
+Source inventory는 생성된 Product와의 동등성 없이 다시 열 수 있다. 기존 source formatVersion 1의 ID·형식·범위와
+내부 Stage/branch 계약은 유지한다. 임의의 손상 JSON을 정상 source로 간주하거나 Publish validator를 해제하지 않는다.
+
+`Project-ValtanPatternMaster.ps1 -Mode PublishV2`는 엄격한 전체 검증 뒤 기존 Product와 함께
+`Data/Valtan/Published/BOSS_VALTAN.effectv2bindings.json` 및 `Valtan.patternsoundcues.json`을 게시한다.
+제품 Valtan은 이 생성된 binding/cue 문서를 읽고, 편집기와 명시적 local preview는 기존 source draft를 사용한다.
+두 Published 문서는 직접 편집하지 않는다. Publish 실패는 이전 Product와 저장된 source를 모두 보존한다.
+
+Logic의 ENTER/EXIT와 phase·counter·world의 기존 Server 권위를 유지한다. World event set은 전체 source에서
+한 번만 호출되므로 Resource 이동은 기존 호출을 옮기는 트랜잭션이다. Summon은 기존 combat-object 정의의
+spawn을 배치하며 lifetime 수정은 같은 archetype의 모든 호출에 적용되는 공유 정의 변경이다.
+
 ## World Level 목록과 MAP Effect 배치
 
 F1의 `Open World Level Tool`은 Area별 Map/Deploy/World Sequence/Gameplay/Light와 열린
@@ -1494,9 +1513,9 @@ Effect Resources의 World 배치는 Use Mouse Pos의 한 번 맵 피킹 또는 U
 
 ### Effect Tool의 본별 Element 위치·회전 편집
 
-Current Effect의 `Group by anchor`는 같은 본 부착 좌표계를 쓰는 Element 또는 부착 없는 Effect root의 Element를 묶어 표시한다. 그룹 행 클릭은 전체 멤버를 선택하고 `Play Group`은 그 멤버만 기존 임시 미리보기로 재생한다. `Group Center (bone-local m)` 또는 root의 `Group Center (effect-local m)`는 멤버 위치의 평균이며 입력값을 바꾸면 기존 상대 위치를 유지한 채 해당 그룹의 모든 멤버가 함께 이동한다. 회전·크기·방출 후 local/world 입자 정책은 유지한다. `Save Changes`가 기존 Effect JSON에 각 Element 위치를 저장하므로 새 runtime 그룹이나 저장 필드는 없다. 미적용 개별 Detail은 Apply/Revert 후 그룹을 편집한다.
+Current Effect의 `Group by anchor`는 같은 본 부착·captured root 좌표계를 쓰는 Element 또는 부착 없는 Effect root의 Element를 묶어 표시한다. 그룹 행 클릭은 전체 멤버를 선택하고 `Play Group`은 그 멤버만 기존 임시 미리보기로 재생한다. `Group Center (anchor-local m)` 또는 root의 `Group Center (effect-local m)`는 멤버 위치의 평균이며 입력값을 바꾸면 기존 상대 위치를 유지한 채 해당 그룹의 모든 멤버가 함께 이동한다. 회전·크기·방출 후 local/world 입자 정책은 유지한다. `Save Changes`가 기존 Effect JSON에 각 Element 위치를 저장하므로 새 runtime 그룹이나 저장 필드는 없다. 미적용 개별 Detail은 Apply/Revert 후 그룹을 편집한다.
 
-`Group Center`와 `Group Rotation (deg)`는 드래그 즉시 기존 미리보기의 현재 커서에 반영된다. 회전은 첫 Element의 저장된 orientation을 기준으로 입력하며, 모든 멤버의 위치·방향을 그룹 중심 주위에서 같은 quaternion delta로 바꾼다. 선형 위치·속도 끝점도 같이 변환하고 시간·크기·본 부착은 유지한다. `Save Changes`가 각 Element의 Transform을 저장한다. Euler 회전 animation 또는 revolution을 가진 그룹은 회전 입력의 제한 이유를 표시하며 위치 편집은 기존 조건을 따른다. 미적용 Detail이나 문서/preview 준비 실패 시 기존 편집 상태를 유지한다.
+`Group Center`와 `Rotation about pivot (deg)`는 드래그 즉시 기존 미리보기의 현재 커서에 반영된다. `Rotation target`은 Whole group 또는 멤버 하나를 고르고 `Rotation pivot`은 Group center, Anchor origin, Custom point(local m)를 고른다. 전체 그룹은 첫 Element, 단일 멤버는 그 Element의 저장된 orientation을 기준으로 입력하며, 선택된 멤버의 위치·방향을 지정 pivot 주위에서 같은 quaternion delta로 바꾼다. Pivot/target 선택은 도구 세션 상태이며 저장되는 값은 결과 Element TRS다. 선형 위치·속도 끝점도 같이 변환하고 시간·크기·본 부착은 유지한다. `Save Changes`가 각 Element의 Transform을 저장한다. Euler 회전 animation 또는 revolution을 가진 그룹은 회전 입력의 제한 이유를 표시하며 위치 편집은 기존 조건을 따른다. 미적용 Detail이나 문서/preview 준비 실패 시 기존 편집 상태를 유지한다.
 
 SourceContract, source transform track, master inheritance와 별도 runtime carrier는 공통 위치를 실제로 소유하지 않을 수 있으므로 그룹 위치 입력이 제한되고 이유가 표시된다. 원본 쇼타임 양손 발사 섬광은 왼손 b_wp_2 11개, 오른손 b_wp_1 11개다. 이 위치는 본 기준이며 총 WORLD에 붙인 한 손 리소스의 총구 local 좌표와 혼용하지 않는다.
 
@@ -1506,3 +1525,11 @@ WORLD 기본값을 가진 V1 리소스는 특정 Object ID가 정해진 것은 �
 
 
 고정 축 Source Sprite의 면까지 Element/Group 회전에 맞추려면 Particle Detail의 `Axis lock follows emitter rotation`을 사용한다. 카메라 방향 Sprite의 회전은 기존 Billboard Roll을 사용한다. 이 옵션은 `detail.sprite.followEmitterAxisRotation`으로 저장되며 Local Space는 현재 emitter 회전을 따르고 World Space는 생성 시점 회전을 유지한다.
+
+### 쿠크 Summon 배치와 World 배우의 Animation 표시
+
+Action Workbench의 Summon Box Detail에서 `World Preview`를 누르면 해당 소환창 안의 커서 또는 최초 생성 tick을 정지 미리보기로 연다. Spawned Patterns의 Pos/Yaw 변경은 기존 preview 배우에 즉시 반영하고 Save는 기존 patternSpawns에 저장한다. 배치를 바꾼 배우의 과거 자세/이펙트 이력만 비우며 다른 배우를 전부 다시 만들지 않는다. Server playback 중에는 draft만 변경하고 로컬 Preview 전환은 Server playback을 멈춘 뒤 한다.
+
+World sequence가 animation을 소유한 연출은 Animation lane에 `World: <clip>` 읽기전용 행으로 표시한다. 클릭하면 World Box Detail의 clip, model, 시각 구간, source in, speed를 확인하며 `Edit This Motion`에서 기존 World animation 저작에 진입한다. 별도 Composition Animation을 복제하지 않으므로 같은 배우가 중복 생성되지 않는다. 저장 catalog의 metadata cache를 쓰며 타임라인 draw마다 파일을 읽지 않는다.
+
+단독 Effect Preview의 `loopEffectToDuration`은 Product/Composition과 같은 정책으로 동작한다. 원본 무한 emitter는 지정 수명까지 방출을 연장하고 finite source는 자연 주기를 반복한다. 반복 시 particle source 나이만 되감으며 본/owner 시계는 occurrence 나이를 유지한다. 한 공통 불뿜기를 서로 다른 occurrence 수명으로 재사용하므로 수명만 다른 asset 복제는 필요 없다.

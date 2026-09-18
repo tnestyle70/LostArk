@@ -43,6 +43,8 @@ struct CAMERA_TOOL_ACTOR_PREVIEW_CONTEXT final
 /* Debug authoring session for the exact product cinematic-camera document.
    It owns draft/UI/preview state, but never owns encounter gameplay or a
    second camera playback format. */
+struct BOSS_STAGE_ENVIRONMENT_SAMPLE;
+
 class CCameraTool final
 {
 public:
@@ -57,6 +59,8 @@ public:
 	void Render();
 	void Deactivate();
 	void On_LevelChanged();
+    bool_t Sample_CompositionPreview(const BOSS_STAGE_ENVIRONMENT_SAMPLE& sample, std::string& status);
+    void Stop_CompositionPreview();
 	static void Publish_ActorPreviewContext(
 		const CAMERA_TOOL_ACTOR_PREVIEW_CONTEXT& context);
 	static void Clear_ActorPreviewContext(uint32_t levelIndex);
@@ -137,6 +141,10 @@ private:
 
 private:
 	static constexpr uint64_t PREVIEW_OWNER_ID = 0x43414D455241544Cull;
+    static constexpr uint64_t COMPOSITION_OWNER_ID = 0x56414C54434F4D50ull;
+    std::weak_ptr<CCamera_Free> m_pCompositionCamera;
+    std::string m_strCompositionOwner;
+    CValtanCinematicCameraDocument m_CompositionDocument;
 
 	CEncounterPatternReference m_Encounter;
 	CValtanCinematicCameraDocument m_LoadedDocument;

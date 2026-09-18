@@ -679,10 +679,25 @@ LostArk::Server::CGameRoom::Begin_MarioTriggerMove(
 	if (player.TriggerMove.isActive && player.TriggerMove.strSourcePlacementId == trigger.strPlacementId)
 		return Result::STARTED;
 
+	WORLD_TRIGGER_ACTION action = trigger.TriggerActions.front();
+	const bool terminal = trigger.strPlacementId == lane->exit &&
+		std::none_of(MARIO_LANES.begin(), MARIO_LANES.end(), [&](const auto& next) {
+			return next.stage == lane->stage && std::string_view(next.arrival) == lane->exit;
+		});
+	if (terminal)
+	{
+		SERVER_NAV_POINT ground{};
+		if (!Resolve_MarioReturnDestination(player, ground)) return Result::RETRY_WHILE_INSIDE;
+		Refresh_PlayerBlockingBodies();
+		if (!m_ServerCollisionSystem.Is_PlayerPositionClear(ground.x, ground.y, ground.z, player.iNetEntityId))
+			return Result::RETRY_WHILE_INSIDE;
+		action.fTargetX = ground.x; action.fTargetY = ground.y; action.fTargetZ = ground.z;
+	}
 	SERVER_PLAYER candidate = player;
 	Reset_MarioContactAction(candidate);
-	if (!CServerTriggerSystem::Begin_MovePlayer(candidate, trigger.TriggerActions.front(), actionStartTick))
+	if (!CServerTriggerSystem::Begin_MovePlayer(candidate, action, actionStartTick))
 		return Result::RETRY_WHILE_INSIDE;
+	candidate.TriggerMove.strSourcePlacementId = trigger.strPlacementId;
 	// Only a committed Mario contact cancels the previous action's delayed hits.
 	m_CombatObjectRuntime.Cancel_Source(player.iNetEntityId);
 	player = std::move(candidate);
@@ -849,6 +864,9 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 				command.iSessionId,
 				command.ValtanPatternFlowStopAfterCurrent);
 			break;
+		case ROOM_COMMAND_TYPE::KOUKUSAYDON_RAID:
+			Handle_KoukuRaidRequest(command.iSessionId, command.KoukuSaydonRaid);
+			break;
 		case ROOM_COMMAND_TYPE::KOUKUSAYDON_PATTERN_AUDITION:
 			Handle_KoukuSaydonPatternAudition(
 				command.iSessionId, command.KoukuSaydonPatternAudition);
@@ -922,12 +940,10 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 	const std::uint32_t updateTick =
 		(std::numeric_limits<std::uint32_t>::max)() == m_iServerTick ?
 		1u : m_iServerTick + 1u;
-#ifdef _DEBUG
 	// WORLD supports and their first pattern tick must exist before any walking query.
 	Prepare_KoukuAuditionTick(updateTick);
 	Update_KoukuWorldBodies(updateTick);
 	if (!Refresh_KoukuSupportSurfaces(updateTick)) { recordTickDuration(); return; }
-#endif
 	Refresh_PlayerBlockingBodies();
 	for (const auto& [id, player] : m_Players)
 		if (player.eCardMazeRole != LostArk::Shared::CARD_MAZE_ROLE::NONE)
@@ -1035,12 +1051,11 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 		});
 	m_EstherSkillSystem.Update(fixedDeltaSeconds, !m_Players.empty());
 	Update_WorldEntities(fixedDeltaSeconds);
-#ifdef _DEBUG
 	Update_KoukuWorldBodies(updateTick);
 	// An owner may have completed or aborted during the boss update this tick.
 	if (!Refresh_KoukuSupportSurfaces(updateTick)) { recordTickDuration(); return; }
-#endif
 	Update_KoukuPlayerModes(updateTick);
+	Update_KoukuRaid(updateTick);
 	if (!m_isReady)
 	{
 		recordTickDuration();
@@ -1063,7 +1078,6 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 		return;
 	}
 	Drain_BossCombatEvents();
-#ifdef _DEBUG
 	if (!Flush_KoukuSaydonPatternAuditionLifecycle())
 	{
 		m_strStatus = "KoukuSaydon pattern audition lifecycle serialization failed";
@@ -1071,6 +1085,7 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 		recordTickDuration();
 		return;
 	}
+#ifdef _DEBUG
 	// Current completion and Next promotion observe the final committed tick.
 	// A promoted ID cannot reach BeginPattern until the next world update.
 	(void)Refresh_ValtanPatternIdAuditionState();

@@ -58,7 +58,8 @@ bool_t Client::CEffect_Tool::Try_TranslateAttachmentGroup(const std::string& gro
     return true;
 }
 
-bool_t Client::CEffect_Tool::Try_RotateAttachmentGroup(const std::string& groupKey, const float3_t& rotationDegrees)
+bool_t Client::CEffect_Tool::Try_RotateAttachmentGroup(const std::string& groupKey, const float3_t& rotationDegrees,
+    const float3_t& pivot, const std::string& elementId)
 {
     if (!m_ActiveDocument || (m_eActiveDocumentSource != EFFECT_DOCUMENT_SOURCE::AUTHORED &&
         m_eActiveDocumentSource != EFFECT_DOCUMENT_SOURCE::NEW_DOCUMENT))
@@ -66,12 +67,12 @@ bool_t Client::CEffect_Tool::Try_RotateAttachmentGroup(const std::string& groupK
     if (Has_UnappliedDetailDraft())
     { m_strElementStatus = "Apply or Revert the open Detail draft before rotating an anchor group; its edits are preserved."; return false; }
     auto staged = *m_ActiveDocument;
-    if (!Rotate_AttachmentElementGroup(staged, groupKey, rotationDegrees, m_strElementStatus)) return false;
+    if (!Rotate_AttachmentElementGroup(staged, groupKey, rotationDegrees, m_strElementStatus, &pivot, elementId)) return false;
     // The existing commit refreshes paused/playing previews at their current
     // cursor and preserves the old document and preview when staging fails.
     if (!Try_CommitDocument(std::move(staged))) return false;
     Reset_DetailDraft();
-    m_strElementStatus = m_strDocumentStatus = "Rotated the group around its center in Current Effect memory. Save Changes keeps the rotation.";
+    m_strElementStatus = m_strDocumentStatus = "Rotated the selected Elements around the chosen pivot. Save Changes persists their transforms; the pivot choice belongs to this editor session.";
     return true;
 }
 
@@ -94,8 +95,8 @@ bool_t Client::CEffect_Tool::Try_SetAttachmentGroupAnchor(const std::string& gro
 void Client::CEffect_Tool::Render_CurrentEffectAttachmentGroups()
 {
     const auto groups = Build_AttachmentElementGroups(*m_ActiveDocument);
-    std::string movedGroup, rotatedGroup, editedAnchor;
-    float3_t translation{}, rotationDegrees{}, anchorPosition{}, anchorRotation{};
+    std::string movedGroup, rotatedGroup, editedAnchor, rotatedElement;
+    float3_t translation{}, rotationDegrees{}, anchorPosition{}, anchorRotation{}, rotationPivot{};
     for (const auto& group : groups)
     {
         // Socket values change while dragging; keep the widget identity stable.
@@ -125,7 +126,7 @@ void Client::CEffect_Tool::Render_CurrentEffectAttachmentGroups()
             }
             ImGui::BeginDisabled(!group.editable || Has_UnappliedDetailDraft());
             auto center = group.center;
-            if (ImGui::DragFloat3(group.rootLocal ? "Group Center (effect-local m)" : "Group Center (bone-local m)",
+            if (ImGui::DragFloat3(group.rootLocal ? "Group Center (effect-local m)" : "Group Center (anchor-local m)",
                 &center.x, .01f, -100000.f, 100000.f, "%.3f"))
             {
                 movedGroup = group.key;
@@ -133,18 +134,41 @@ void Client::CEffect_Tool::Render_CurrentEffectAttachmentGroups()
             }
             ImGui::EndDisabled();
             ImGui::BeginDisabled(!group.rotationEditable || Has_UnappliedDetailDraft());
+            auto& edit = m_GroupRotationEdits[m_ActiveDocument->strEffectAssetId + ":" + group.elementIds.front()];
+            if (!edit.elementId.empty() && std::find(group.elementIds.begin(), group.elementIds.end(), edit.elementId) == group.elementIds.end())
+                edit.elementId.clear();
+            if (ImGui::BeginCombo("Rotation target", edit.elementId.empty() ? "Whole group" : edit.elementId.c_str()))
+            {
+                if (ImGui::Selectable("Whole group", edit.elementId.empty())) edit.elementId.clear();
+                for (const auto& id : group.elementIds)
+                    if (ImGui::Selectable(id.c_str(), edit.elementId == id)) edit.elementId = id;
+                ImGui::EndCombo();
+            }
+            ImGui::Combo("Rotation pivot", &edit.pivotMode, "Group center\0Anchor origin\0Custom point\0");
+            if (edit.pivotMode == 2)
+                ImGui::InputFloat3("Pivot (anchor-local m)", &edit.customPivot.x, "%.3f");
+            const float3_t pivot = edit.pivotMode == 0 ? group.center :
+                edit.pivotMode == 1 ? float3_t{} : edit.customPivot;
             auto angles = group.rotationDegrees;
-            if (ImGui::DragFloat3("Element Group Rotation (about center)", &angles.x, .25f, -36000.f, 36000.f, "%.2f"))
+            if (!edit.elementId.empty())
+            {
+                const auto target = std::find_if(m_ActiveDocument->Elements.begin(), m_ActiveDocument->Elements.end(),
+                    [&](const auto& element) { return element.strElementId == edit.elementId; });
+                angles = target->Detail.Transform.vRotationDegrees;
+            }
+            if (ImGui::DragFloat3("Rotation about pivot (deg)", &angles.x, .25f, -36000.f, 36000.f, "%.2f"))
             {
                 rotatedGroup = group.key;
+                rotatedElement = edit.elementId;
                 rotationDegrees = angles;
+                rotationPivot = pivot;
             }
             ImGui::EndDisabled();
             if (!group.editable) ImGui::TextWrapped("%s", group.editReason.c_str());
             else if (Has_UnappliedDetailDraft()) ImGui::TextDisabled("Apply or Revert the open Detail draft first; its edits are preserved.");
             else
             {
-                ImGui::TextWrapped("Drag the center or rotation to update the preview at its current cursor. Rotation uses the first Element's orientation and turns every member around the center. Save Changes persists it.");
+                ImGui::TextWrapped("Anchor origin keeps the emission end fixed. Custom point rotates around an exact local coordinate. Whole group uses its first Element as the angle reference. Save Changes persists the resulting Element transforms, not the editor pivot choice.");
                 if (!group.rotationEditable) ImGui::TextWrapped("%s", group.rotationEditReason.c_str());
             }
             for (size_t i = 0; i < group.elementIds.size(); ++i)
@@ -160,7 +184,7 @@ void Client::CEffect_Tool::Render_CurrentEffectAttachmentGroups()
     // Commit only after the complete view releases every pointer into the old document.
     if (!editedAnchor.empty()) (void)Try_SetAttachmentGroupAnchor(editedAnchor, anchorPosition, anchorRotation);
     else if (!movedGroup.empty()) (void)Try_TranslateAttachmentGroup(movedGroup, translation);
-    else if (!rotatedGroup.empty()) (void)Try_RotateAttachmentGroup(rotatedGroup, rotationDegrees);
+    else if (!rotatedGroup.empty()) (void)Try_RotateAttachmentGroup(rotatedGroup, rotationDegrees, rotationPivot, rotatedElement);
 }
 
 void Client::CEffect_Tool::Render_ProjectileDestinationControls()

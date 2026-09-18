@@ -294,6 +294,7 @@
   <ItemGroup>
 	<ClCompile Include="..\Private\ValtanActionWorkbench.cpp" />
 	<ClCompile Include="..\Private\ValtanActionWorkbench_Blueprint.cpp" />
+	<ClCompile Include="..\Private\ValtanActionWorkbench_Timeline.cpp" />
 	<ClCompile Include="..\Private\ActionCompositionGraphModel.cpp" />
 	<ClCompile Include="..\Private\CompositionResourceTree.cpp" />
 	<ClCompile Include="..\Private\BossLogicFlowViewModel.cpp" />
@@ -679,6 +680,8 @@
     <None Include="..\..\Data\Animation\Authored\Slayer\Slayer.skillbindings.json" />
     <None Include="..\..\Data\Animation\Authored\Valtan\Valtan.patterneffectcues.json" />
 	<None Include="..\..\Data\Animation\Authored\Valtan\Valtan.patternsoundcues.json" />
+	<None Include="..\..\Data\Valtan\Published\BOSS_VALTAN.effectv2bindings.json" />
+	<None Include="..\..\Data\Valtan\Published\Valtan.patternsoundcues.json" />
 	<None Include="..\..\Data\Animation\Authored\Valtan\Valtan.combatobjectsoundcues.json" />
 	<None Include="..\..\Data\Animation\Authored\Valtan\Valtan.patterneffectv1aliases.json" />
 	<None Include="..\..\Data\Animation\Authored\Valtan\Valtan.patternpreview.json" />
@@ -3286,5 +3289,8 @@
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.stagger.boundary.group.effect.json"></None>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.stagger.star.boundary.group.effect.json"></None>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.stagger.laser.group.effect.json"></None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate2.bigsaydon.circle.warning.effect.json"></None>
   </ItemGroup>
 </Project>

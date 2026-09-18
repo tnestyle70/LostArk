@@ -13,6 +13,7 @@
 #include "EffectEditingSession.h"
 #include "Effect_Object.h"
 #include "Effect_DocumentCodec.h"
+#include "Effect_PresentationService.h"
 #include "GameInstance.h"
 #include "Model.h"
 #include "KoukuSaydonPresentationPlayer.h"
@@ -153,6 +154,13 @@ const CEffectAuthoringSequencer::MODEL_SEQUENCE* CEffectAuthoringSequencer::Sele
 std::uint32_t CEffectAuthoringSequencer::DurationMs() const
 {
     if (Is_ElementPreview()) return (std::clamp)(m_Transient->durationMs, 1u, MAX_MS);
+    if (m_ValtanEffectPreview)
+    {
+        std::uint32_t end = 1u;
+        for (const auto& row : m_ValtanEffectPreview->clips) end = (std::max)(end, row.startMs + row.durationMs);
+        if (m_Transient) end = (std::max)(end, m_Transient->startMs + m_Transient->durationMs);
+        return (std::clamp)(end, 1u, MAX_MS);
+    }
     std::uint32_t result = !m_KoukuEffectPreview && m_UseKouku ? m_Kouku.DurationMs() : 0u;
     if (const auto* sequence = Selected_Sequence(); !m_KoukuEffectPreview && !m_UseKouku && !m_CustomAnimation && sequence) result = sequence->durationMs;
     if (!m_KoukuEffectPreview && m_CustomAnimation) for (const auto& row : m_AnimationRows) result = (std::max)(result, row.startMs + row.durationMs);
@@ -605,6 +613,53 @@ bool CEffectAuthoringSequencer::Select_KoukuEffect(const std::string& assetId, c
         previewDurationMs, sourceDocument, modelStartMs, loopEffectToDuration);
 }
 
+bool CEffectAuthoringSequencer::Select_ValtanEffect(const std::string& assetId,
+    const std::vector<VALTAN_CLIP_OCCURRENCE_VIEW>& clips)
+{
+    if (!assetId.starts_with("effect.valtan.") || clips.empty() || clips.size() > MAX_EFFECTS || !m_Panel)
+    { m_Status = "Valtan Effect has no exact saved source animation."; return false; }
+    if ((!m_Panel->Is_PreviewActive() || CAnimationTargetService::Resolve_AssetName() != "Valtan") &&
+        !m_Panel->Select_TargetAsset("Valtan"))
+    { m_Status = m_Panel->Get_Status(); return false; }
+    const auto model = CAnimationTargetService::Resolve_Model();
+    VALTAN_EFFECT_PREVIEW_TARGET target;
+    target.assetId = assetId;
+    target.modelGeneration = CAnimationTargetService::Resolve_TargetGeneration();
+    std::uint32_t startMs = 0u;
+    for (const auto& source : clips)
+    {
+        std::uint32_t index = 0u; float native = 0.f, tickRate = 0.f;
+        if (source.strClipOccurrenceId.empty() ||
+            !Clip_Metadata(model, source.strClipName, index, native, tickRate))
+        { m_Status = "Valtan source clip is unavailable: " + source.strClipName; return false; }
+        const ACTION_PRESENTATION_CLIP_TIMING timing{native / tickRate, source.iPlayMs,
+            source.fPlayRate, source.bLoop, source.iSourceStartMs * .001f};
+        float sourceDuration = 0.f, wallDuration = 0.f;
+        if (!CActionPresentationTimeline::Resolve_ClipDuration(timing, sourceDuration, wallDuration))
+        { m_Status = "Valtan source animation window is invalid."; return false; }
+        const auto duration = source.iAuthoringWallMs ? source.iAuthoringWallMs :
+            static_cast<std::uint32_t>(std::ceil(wallDuration * 1000.f));
+        if (!duration || duration > MAX_MS || startMs > MAX_MS - duration)
+        { m_Status = "Valtan source animation exceeds the preview duration limit."; return false; }
+        CLIP clip;
+        clip.id = source.strClipOccurrenceId; clip.label = source.strClipName;
+        clip.clipName = source.strClipName; clip.startMs = startMs; clip.durationMs = duration;
+        clip.sourceStartMs = source.iSourceStartMs; clip.sourcePlayMs = source.iPlayMs;
+        clip.playRate = source.fPlayRate; clip.loop = source.bLoop;
+        target.clips.push_back(std::move(clip)); startMs += duration;
+    }
+    if (target.modelGeneration != CAnimationTargetService::Resolve_TargetGeneration())
+    { m_Status = "Valtan model changed during source preparation."; return false; }
+    Stop();
+    // The model never free-runs alongside the sequencer, including before Play
+    // and after Stop. Sample_Model advances its pose only from the cursor.
+    model->Set_AnimPaused(true);
+    m_ValtanEffectPreview = std::move(target);
+    m_ClockMs = 0.0;
+    m_Status = "Valtan source animation follows the Effect sequencer cursor.";
+    return true;
+}
+
 bool CEffectAuthoringSequencer::Select_WorldEffect(const std::string& assetId, const bool reusePlayerAnchor)
 {
     if (!assetId.starts_with("effect.world."))
@@ -749,6 +804,23 @@ bool CEffectAuthoringSequencer::Select_Kouku(const std::string& id, const bool b
 }
 bool CEffectAuthoringSequencer::Begin_Model()
 {
+    if (m_ValtanEffectPreview)
+    {
+        const auto model = CAnimationTargetService::Resolve_Model();
+        if (!model || CAnimationTargetService::Resolve_AssetName() != "Valtan" ||
+            m_ValtanEffectPreview->modelGeneration != CAnimationTargetService::Resolve_TargetGeneration())
+        { m_Status = "Valtan source preview model was replaced."; return false; }
+        if (g_ModelClockOwner && g_ModelClockOwner != this) g_ModelClockOwner->Stop();
+        g_ModelClockOwner = this;
+        if (m_Model.expired())
+        {
+            m_Model = model; m_ModelGeneration = m_ValtanEffectPreview->modelGeneration;
+            m_PreviousClip = model->Get_CurrentAnimIndex(); m_PreviousLoop = model->Is_AnimLoop();
+            m_PreviousPaused = true;
+            float duration = 0.f; model->Get_AnimationProgress(m_PreviousClip, m_PreviousPosition, duration);
+        }
+        return Sample_Model(ClockMs());
+    }
     if (m_KoukuEffectPreview && !m_KoukuEffectPreview->model) return true;
     if (m_KoukuEffectPreview)
     {
@@ -790,7 +862,7 @@ bool CEffectAuthoringSequencer::Sample_Model(const std::uint32_t clockMs)
         { m_Status = "Kouku source animation preview owner changed."; return false; }
         return true;
     }
-    if (m_UseKouku)
+    if (!m_ValtanEffectPreview && m_UseKouku)
     {
         const auto effect = std::find_if(m_Effects.begin(), m_Effects.end(), [&](const auto& row)
             { return row.key.strStableId == m_SourceModelEffectId; });
@@ -805,13 +877,14 @@ bool CEffectAuthoringSequencer::Sample_Model(const std::uint32_t clockMs)
         return true;
     }
     const auto* sequence = Selected_Sequence();
-    if (m_TransientAnimationRows.empty() && !m_CustomAnimation && (!sequence || m_SelectedSequence.empty())) return true;
+    if (!m_ValtanEffectPreview && m_TransientAnimationRows.empty() && !m_CustomAnimation && (!sequence || m_SelectedSequence.empty())) return true;
     const auto model = m_Model.lock();
     if (!model || model != CAnimationTargetService::Resolve_Model() || m_ModelGeneration != CAnimationTargetService::Resolve_TargetGeneration())
     { m_Status = "Preview model target was replaced."; return false; }
     const CLIP* selected = nullptr;
     const bool recoveryAnimation = !m_TransientAnimationRows.empty();
-    const auto& clips = recoveryAnimation ? m_TransientAnimationRows : (m_CustomAnimation ? m_AnimationRows : sequence->clips);
+    const auto& clips = m_ValtanEffectPreview ? m_ValtanEffectPreview->clips :
+        (recoveryAnimation ? m_TransientAnimationRows : (m_CustomAnimation ? m_AnimationRows : sequence->clips));
     for (const auto& clip : clips)
     {
         if (clip.muted || clip.startMs > clockMs) continue;
@@ -844,6 +917,13 @@ bool CEffectAuthoringSequencer::Sample_Model(const std::uint32_t clockMs)
 }
 bool CEffectAuthoringSequencer::Resolve_Root(float4x4_t& root)
 {
+    if (m_ValtanEffectPreview)
+    {
+        float4x4_t owner;
+        return CAnimationTargetService::Resolve_RootTransform(&owner) &&
+            CEffectPresentationService::Build_CueScalePolicyAnchor(
+                VALTAN_PATTERN_EFFECT_SCALE_POLICY::ARENA_ABSOLUTE, {1.f, 1.f, 1.f}, owner, root);
+    }
     if (m_KoukuEffectPreview)
     {
         if (!m_KoukuEffectPreview->worldOccurrenceId.empty())
@@ -984,6 +1064,7 @@ void CEffectAuthoringSequencer::Release_Row(EFFECT_ROW& row)
     if (row.v2) CEffectV2Runtime::Stop_Group(row.v2);
     row.v2 = 0u;
     row.sampledAge = -1.f;
+    row.finiteLoopSeconds = 0.f; row.sampledCycleStart = -1.f;
     if (row.v1) { row.v1->Set_Playing(false); row.v1->Set_Visible(false); if (m_V1Release) m_V1Release(row.v1); row.v1.reset(); }
 }
 bool CEffectAuthoringSequencer::Stage_Row(EFFECT_ROW& row, const float4x4_t& root)
@@ -1018,9 +1099,22 @@ bool CEffectAuthoringSequencer::Stage_Row(EFFECT_ROW& row, const float4x4_t& roo
             m_KoukuEffectPreview->previewDurationMs)
         {
             row.durationMs = *m_KoukuEffectPreview->previewDurationMs;
-            if (m_KoukuEffectPreview->loopEffectToDuration &&
-                !row.v1->Set_SourceLoopEndSeconds(static_cast<float>(row.durationMs) * .001f, m_Status))
-            { Release_Row(row); return false; }
+            if (m_KoukuEffectPreview->loopEffectToDuration)
+            {
+                if (row.v1->Has_InfiniteSourceEmitters())
+                {
+                    if (!row.v1->Set_SourceLoopEndSeconds(static_cast<float>(row.durationMs) * .001f, m_Status))
+                    { Release_Row(row); return false; }
+                }
+                else
+                {
+                    // Match Composition playback: finite sources repeat at their
+                    // natural speed while the owner/bone clock keeps advancing.
+                    row.finiteLoopSeconds = row.v1->Get_PreviewDurationSeconds();
+                    if (!std::isfinite(row.finiteLoopSeconds) || row.finiteLoopSeconds <= 0.f)
+                    { m_Status = "Finite Effect loop needs a valid source duration."; Release_Row(row); return false; }
+                }
+            }
         }
         if (!row.previewElementIds.empty() &&
             (!row.durationMs || row.durationMs > MAX_MS || row.previewStartMs >= row.durationMs))
@@ -1098,8 +1192,12 @@ bool CEffectAuthoringSequencer::Sample_Row(EFFECT_ROW& row, const float4x4_t& ro
         if (!Record_V1Anchors(row, sourceOwner, age)) return false;
         row.v1->Set_Playing(false);
         const auto anchors = row.anchorHistory;
-        const auto provider = [history, anchors](float seconds, EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& sample, std::string& error)
+        const float cycleStart = row.finiteLoopSeconds > 0.f ? static_cast<float>(
+            std::floor(static_cast<double>(age) / row.finiteLoopSeconds) * row.finiteLoopSeconds) : 0.f;
+        const float sourceAge = (std::max)(0.f, age - cycleStart);
+        const auto provider = [history, anchors, cycleStart](float seconds, EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& sample, std::string& error)
         {
+            seconds += cycleStart;
             if (!history->Sample(seconds, sample.RootWorld, error)) return false;
             sample.SourceAnchorWorlds.clear();
             if (anchors)
@@ -1111,11 +1209,11 @@ bool CEffectAuthoringSequencer::Sample_Row(EFFECT_ROW& row, const float4x4_t& ro
                 }
             return true;
         };
-        const bool sampled = row.sampledAge < 0.f || age < row.sampledAge ?
-            row.v1->Set_SampleTimeWithTransformHistory(age, provider, m_Status) :
+        const bool sampled = row.sampledAge < 0.f || age < row.sampledAge || cycleStart != row.sampledCycleStart ?
+            row.v1->Set_SampleTimeWithTransformHistory(sourceAge, provider, m_Status) :
             row.v1->Advance_PreviewWithTransformHistory(age - row.sampledAge, provider, m_Status);
         if (!sampled) return false;
-        row.sampledAge = age;
+        row.sampledAge = age; row.sampledCycleStart = cycleStart;
         row.v1->Set_Visible(true);
         if (row.v1->Is_RenderFailureIsolated()) { m_Status = row.v1->Get_Status(); return false; }
         return true;
@@ -1382,6 +1480,12 @@ bool CEffectAuthoringSequencer::Append(const EFFECT_RESOURCE_KEY& key, const std
 }
 bool CEffectAuthoringSequencer::Preview(const EFFECT_RESOURCE_KEY& key, const std::uint32_t durationMs)
 {
+    if (m_ValtanEffectPreview && m_ValtanEffectPreview->assetId != key.strStableId)
+    {
+        auto pending = std::move(m_PendingKoukuEffectPreview);
+        Stop();
+        m_PendingKoukuEffectPreview = std::move(pending);
+    }
     // A V2 independent preview has no source-character clock to displace.
     if (key.eOwnerKind != EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT &&
         (m_ScenePreviewWorldRoot || (m_KoukuEffectPreview &&
@@ -1393,6 +1497,9 @@ bool CEffectAuthoringSequencer::Preview(const EFFECT_RESOURCE_KEY& key, const st
         !Select_WorldEffect(key.strStableId)) return false;
     std::vector<CAMERA_ROW> cameras; std::vector<CLIP> animations;
     if (!Read_RecoveryCameras(key, cameras, animations)) return false;
+    if (m_ValtanEffectPreview && m_ValtanEffectPreview->assetId != key.strStableId)
+    { m_Status = "The selected Valtan animation belongs to another Effect."; return false; }
+    if (m_ValtanEffectPreview) animations = m_ValtanEffectPreview->clips;
     const bool cameraOnlyV4 = m_Status.starts_with("Recovery camera preview uses");
     const bool replaceTarget = m_PendingKoukuEffectPreview.has_value() ||
         (m_KoukuEffectPreview && m_KoukuEffectPreview->assetId != key.strStableId);
@@ -1408,7 +1515,7 @@ bool CEffectAuthoringSequencer::Preview(const EFFECT_RESOURCE_KEY& key, const st
     const bool wasActive = m_Active;
     const double previousClock = m_ClockMs;
     auto previousAnimations = std::move(m_TransientAnimationRows);
-    if (m_KoukuEffectPreview) m_ClockMs = 0.0;
+    if (m_KoukuEffectPreview || m_ValtanEffectPreview) m_ClockMs = 0.0;
     const auto rollback = [&]()
     {
         const auto failure = m_Status;
@@ -1441,7 +1548,7 @@ bool CEffectAuthoringSequencer::Preview(const EFFECT_RESOURCE_KEY& key, const st
     }
     EFFECT_ROW staged; staged.id = "effect.preview"; staged.key = key; staged.startMs = ClockMs(); staged.durationMs = durationMs;
     staged.previewLoop = m_KoukuEffectPreview ? m_KoukuEffectPreview->loopPolicy.value_or(m_Loop) : m_Loop;
-    staged.anchorSlotId = m_KoukuEffectPreview ? "root" : m_DefaultAnchorSlotId;
+    staged.anchorSlotId = m_KoukuEffectPreview || m_ValtanEffectPreview ? "root" : m_DefaultAnchorSlotId;
     m_TransientAnimationRows = std::move(animations);
     if (!Begin_Model()) { rollback(); return false; }
     float4x4_t root;
@@ -1489,6 +1596,12 @@ bool CEffectAuthoringSequencer::Preview_Elements(const EFFECT_RESOURCE_KEY& key,
     const std::uint32_t durationMs, const std::uint32_t focusMs, const bool loop)
 {
     Preserve_ClockDuringAuthoring();
+    if (m_ValtanEffectPreview && m_ValtanEffectPreview->assetId != key.strStableId)
+    {
+        auto pending = std::move(m_PendingKoukuEffectPreview);
+        Stop();
+        m_PendingKoukuEffectPreview = std::move(pending);
+    }
     if (key.eOwnerKind != EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT || elementIds.empty() ||
         std::any_of(elementIds.begin(), elementIds.end(), [](const auto& id) { return id.empty(); }) ||
         !durationMs || durationMs > MAX_MS || focusMs >= durationMs)
@@ -1518,7 +1631,7 @@ bool CEffectAuthoringSequencer::Preview_Elements(const EFFECT_RESOURCE_KEY& key,
     staged.previewLoop = m_KoukuEffectPreview ? m_KoukuEffectPreview->loopPolicy.value_or(loop) : loop;
     staged.startMs = 0u; staged.durationMs = m_KoukuEffectPreview ?
         m_KoukuEffectPreview->previewDurationMs.value_or(durationMs) : durationMs;
-    staged.anchorSlotId = m_KoukuEffectPreview ? "root" : m_DefaultAnchorSlotId;
+    staged.anchorSlotId = m_KoukuEffectPreview || m_ValtanEffectPreview ? "root" : m_DefaultAnchorSlotId;
     float4x4_t root;
     // A first Kouku Solo needs its typed model before the root can resolve.
     // Existing character targets and an active Kouku preview keep their order.
@@ -1549,7 +1662,7 @@ bool CEffectAuthoringSequencer::Preview_Elements(const EFFECT_RESOURCE_KEY& key,
     const bool previousInteraction = m_Interaction;
     const std::vector<CAMERA_ROW> cameras;
     auto previousAnimations = std::move(m_TransientAnimationRows);
-    m_TransientAnimationRows.clear();
+    m_TransientAnimationRows = m_ValtanEffectPreview ? m_ValtanEffectPreview->clips : std::vector<CLIP>{};
     m_ClockMs = focusMs;
     // The row retains the document's time origin, including its native start delay.
     // Recovery camera rows belong to whole-document Preview, not element Solo.
@@ -1627,7 +1740,7 @@ void CEffectAuthoringSequencer::Stop()
         model->Set_Animation(m_PreviousClip, m_PreviousLoop); model->Skip_Blend();
         model->Set_AnimTrackPosition(m_PreviousClip, m_PreviousPosition); model->Play_Animation(0.f); model->Set_AnimPaused(m_PreviousPaused);
     }
-    m_Model.reset(); m_ModelGeneration = 0u; m_Active = false; m_Paused = false;
+    m_Model.reset(); m_ValtanEffectPreview.reset(); m_ModelGeneration = 0u; m_Active = false; m_Paused = false;
     m_SkipNextPlaybackDelta = false;
 }
 void CEffectAuthoringSequencer::Update(const float dt, const bool active)

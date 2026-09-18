@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Gameplay/AttackHitTemplate.h"
+
 #include "Network/PacketMessages.h"
 
 #include <array>
@@ -332,6 +334,7 @@ namespace LostArk::Server
 		std::uint32_t iLifeMs = 0;
 		std::uint32_t iExpectedEventCount = 0;
 		std::vector<BOSS_COMBAT_OBJECT_HIT> Hits;
+		std::vector<LostArk::Shared::ATTACK_HIT_TEMPLATE> AttackTemplates;
 		std::vector<BOSS_COMBAT_OBJECT_PRESENTATION_PULSE> PresentationPulses;
 	};
 
@@ -594,6 +597,7 @@ namespace LostArk::Server
 	(Success/Fail on the first answer, Timeout without one). */
 	enum class BOSS_PATTERN_LOGIC_KIND : std::uint8_t
 	{
+		CARD_DICE_BIND,
 		ROULETTE_CARD_MATCH,
 		GAZE_REAL_BOSS,
 		POSE_INPUT,
@@ -648,6 +652,7 @@ namespace LostArk::Server
 		std::string strTargetLogicOccurrenceId;
 		std::string strContactTargetWorldOccurrenceId;
 		std::string strFearPresentationId;
+		std::uint8_t iMarioEntryStage = 0u; // MARIO_ENTER only: authored 1..4, 0 = live room counter
         LostArk::Shared::PLAYER_ATTACHMENT_SLOT eAttachmentSlot = LostArk::Shared::PLAYER_ATTACHMENT_SLOT::NONE;
         std::array<float, 3u> GripLocalOffset{}; // forwardM, upM, rightM; presentation only.
 		float fPushRangeM = 0.f;
@@ -691,7 +696,7 @@ namespace LostArk::Server
 		float fCenterX = 0.f, fCenterY = 0.f, fCenterZ = 0.f;
 		float fYawDegrees = 0.f;
 		float fHalfX = 1.f, fHalfY = 1.f, fHalfZ = 1.f;
-		float fRadiusM = 1.f, fHalfAngleDegrees = 45.f;
+		float fRadiusM = 1.f, fInnerRadiusM = 0.f, fHalfAngleDegrees = 45.f;
 		float fRadiusXM = 0.f, fRadiusZM = 0.f; // Optional sector axes; zero retains legacy radius.
 		LostArk::Shared::MECHANIC_CARD_SYMBOL eCardSymbol = LostArk::Shared::MECHANIC_CARD_SYMBOL::NONE;
 		LostArk::Shared::MECHANIC_CARD_COLOR eCardColor = LostArk::Shared::MECHANIC_CARD_COLOR::NONE;
@@ -756,6 +761,8 @@ namespace LostArk::Server
 		SUMMON_PATTERNS,
 		SHOWTIME_PLAYER_TARGETS,
 		BOSS_TELEPORT_XZ,
+		BOSS_TELEPORT_FACE_CENTER,
+		MARIO_PHASE2_PLAYERS,
 		BOSS_TRACK_TARGET,
 		ALBION_AIRBORNE,
 		CROSS_DIRECTION_CLONES,
@@ -767,16 +774,22 @@ namespace LostArk::Server
 		NONE, JUMP, SELECT_PLAYER, APPEAR_PLAYER, DISAPPEAR, CENTER, SLAM
 	};
 
+	inline constexpr std::size_t KOUKU_SUMMON_MAX_PATTERN_SPAWNS = 16u;
+	enum class BOSS_PATTERN_SUMMON_ANCHOR_KIND : std::uint8_t { BOSS, MAP };
+
 	struct BOSS_PATTERN_SUMMON_PATTERN_SPAWN final
 	{
 		std::string strSpawnId;
 		std::string strPatternId;
+		BOSS_PATTERN_SUMMON_ANCHOR_KIND eAnchorKind = BOSS_PATTERN_SUMMON_ANCHOR_KIND::BOSS;
+		// MAP stores an absolute world pose; BOSS preserves the owner-relative pose.
 		std::array<float, 3u> PositionOffset{};
 		float fYawOffsetDegrees = 0.f;
 	};
 
 	struct BOSS_SHOWTIME_RANDOM_VOLLEY final
 	{
+		std::vector<LostArk::Shared::ATTACK_HIT_TEMPLATE> Hits;
 		std::string strClientVisualId;
 		std::uint32_t iLifetimeMs = 0u;
 	};
@@ -809,6 +822,7 @@ namespace LostArk::Server
 		std::uint32_t iSpawnIntervalMs = 0u;
 		float fFollowSpeedScale = 0.f;
 		std::vector<BOSS_SHOWTIME_RANDOM_VOLLEY> RandomVolleys;
+		std::vector<LostArk::Shared::ATTACK_HIT_TEMPLATE> FixedHits, TrackingHits, ProjectileHits;
 		std::uint32_t iRandomSpawnIntervalMs = 0u;
 		float fRandomArenaRadiusM = 0.f, fRandomArenaHeightToleranceM = 0.f;
 		ALBION_AIRBORNE_PHASE eAirbornePhase = ALBION_AIRBORNE_PHASE::NONE;
@@ -1119,6 +1133,30 @@ namespace LostArk::Server
 		std::vector<BOSS_PATTERN_BUNDLE_MEMBER> Members;
 	};
 
+
+	struct KOUKU_RAID_FLOW_ENTRY final
+	{
+		std::string strEntryId, strTargetId;
+		bool bBundle = false;
+		std::uint32_t iWaitAfterMs = 0u;
+	};
+	struct KOUKU_RAID_ARRIVAL final
+	{
+		std::string strOccurrenceId;
+		bool bClear = false;
+		std::uint32_t iSlot = 0u, iStartMs = 0u;
+		std::array<float, 3u> Position{};
+	};
+	struct KOUKU_RAID_GATE_DEFINITION final
+	{
+		std::string strEncounterId, strGateId, strFlowId, strSequenceCompositionId;
+		std::string strIntroPatternId, strClearPatternId, strPrimaryBossPlacementId;
+		std::string strEntrySequenceInstanceId;
+		std::uint32_t iSequenceRevision = 0u, iIntroDurationMs = 0u, iClearDurationMs = 0u, iExpectedEntryCount = 0u;
+		std::vector<KOUKU_RAID_FLOW_ENTRY> Entries;
+		std::vector<KOUKU_RAID_ARRIVAL> Arrivals;
+	};
+
 	struct BOSS_PATTERN_BOSS_MOTION
 	{
 		std::uint32_t iStartMs = 0u;
@@ -1340,6 +1378,7 @@ namespace LostArk::Server
 		consumes it instead of intro/health-bar/rotation selection. */
 		const BOSS_PATTERN_SEQUENCE_DEFINITION* Find_BossPatternSequence(
 			const std::string& encounterId) const;
+		const KOUKU_RAID_GATE_DEFINITION* Find_KoukuRaidGate(const std::string& gateId) const;
 		const BOSS_PATTERN_BUNDLE_DEFINITION* Find_BossPatternBundle(const std::string& bundleId) const;
 		/* The authored composition counter is intentionally separate from the
 		   bootstrap content hash. Only the KoukuSaydon Product owns this row. */
@@ -1439,6 +1478,7 @@ namespace LostArk::Server
 		std::unordered_map<std::string, BOSS_PATTERN_SEQUENCE_DEFINITION>
 			m_BossPatternSequences;
 		std::unordered_map<std::string, BOSS_PATTERN_BUNDLE_DEFINITION> m_BossPatternBundles;
+		std::unordered_map<std::string, KOUKU_RAID_GATE_DEFINITION> m_KoukuRaidGates;
 		std::uint32_t m_iKoukuSaydonProductSourceRevision = 0u;
 		std::unordered_map<std::string, BOSS_ENCOUNTER_MADNESS_POLICY>
 			m_KoukuMadnessPolicies;

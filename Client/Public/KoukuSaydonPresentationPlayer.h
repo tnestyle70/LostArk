@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Client_Defines.h"
+#include "AnimationSkillBindingDocument.h"
 #include "CardMazeVisualPolicy.h"
 #include "KoukuSaydonCompositionDocument.h"
 #include "KoukuSaydonPreviewRootMotion.h"
@@ -28,6 +29,7 @@ class EFFECT_V2_PIVOT_HISTORY;
 struct EFFECT_V2_TARGET;
 struct EFFECT_V2_TARGET_VIEW;
 struct ANIMATION_MODEL_TARGET_VIEW;
+enum class ANIMATION_BONE_TARGET : uint8_t;
 struct EFFECT_DOCUMENT_DESC;
 struct EFFECT_SOURCE_MODEL_PREVIEW;
 class DATA_JSON_VALUE;
@@ -76,6 +78,7 @@ public:
         const KOUKU_SAYDON_COMPOSITION_WORLD_OCCURRENCE& occurrence);
     bool Resolve_ProductWorldEmissionAnchor(std::uint32_t sourceRevision, std::string_view patternId,
         std::string_view occurrenceId, WORLD_EMISSION_ANCHOR& out) const;
+    void Update_BossStageEnvironments(const std::vector<BOSS_STAGE_ENVIRONMENT_SAMPLE>& samples);
     void Set_LightResources(const CLightResourceCatalog* catalog) { m_pLightResources = catalog; }
     std::size_t Light_SkippedByBudget() const;
     void Update(float dt, const std::vector<KOUKU_BOSS_PRESENTATION_VIEW>& bosses,
@@ -99,6 +102,8 @@ public:
         const std::string& occurrenceId, float4x4_t& out) const;
     bool Resolve_ModelReferenceTarget(const std::string& memberId,
         EFFECT_V2_TARGET& target, EFFECT_V2_TARGET_VIEW& view) const;
+    bool Resolve_PatternModelTarget(const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern,
+        ANIMATION_BONE_TARGET target, ANIMATION_MODEL_TARGET_VIEW& view) const;
     // Source sockets use the same CNpc/CModel as the selected animation target.
     static bool Resolve_SourceAnchorWorlds(const EFFECT_DOCUMENT_DESC& document,
         const EFFECT_V2_TARGET_VIEW& view, const float4x4_t& root,
@@ -120,6 +125,8 @@ public:
         const std::shared_ptr<Engine::CModel>& model);
     void Pause_Preview(bool paused);
     void Seek_Preview(std::uint32_t clockMs);
+    void Sample_ServerSequence(std::uint32_t clockMs);
+    bool Preview_IsServerClock() const { return m_bServerSequenceClock; }
     void Stop_Preview();
     void Reset();
     // Called after ImGui NewFrame; sampling never draws from a loader/update thread.
@@ -128,6 +135,9 @@ public:
     // Only the selected Collider/Effect placement changes; clocks and unrelated cues remain live.
     bool Preview_PresentationGeometry(const std::string& patternId,
         const KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE& occurrence);
+    // Repositions existing Summon actors without rebuilding models or unrelated sessions.
+    bool Preview_SummonPlacement(const std::string& patternId,
+        const KOUKU_SAYDON_COMPOSITION_SUMMON_OCCURRENCE& occurrence);
     bool Consume_CompletedPreview(std::string& patternId);
     // Terminal WORLD failure is separate from natural completion and consumed once.
     bool Consume_FailedPreview(std::string& patternId, std::string& status);
@@ -141,11 +151,14 @@ public:
     const std::string& Preview_PatternId() const { return m_PreviewPattern.strPatternId; }
     const std::string& Status() const { return m_strStatus; }
 private:
+    std::unordered_map<std::string, std::vector<std::string>> m_SoundEventVariants;
     struct PLAYING_ROW final
     {
         KOUKU_SAYDON_PRESENTATION_KIND kind = KOUKU_SAYDON_PRESENTATION_KIND::EFFECT;
         std::uint32_t effectHandle = 0;
         std::uint64_t v1EffectHandle = 0;
+        float v1FiniteLoopSeconds = 0.f;
+        float v1CycleStartSeconds = 0.f;
         std::shared_ptr<EFFECT_V2_PIVOT_HISTORY> effectPivotHistory;
         V1_SOURCE_ANCHOR_SAMPLER sourceAnchorSampler;
         std::uint64_t soundHandle = 0;
@@ -187,6 +200,15 @@ private:
         std::map<std::string, EFFECT_ANCHOR_HISTORY> effectAnchorHistories;
         std::map<std::string, std::shared_ptr<CWorldSequencePlayer>> previewWorlds;
     };
+    struct EXTERNAL_STAGE_ENVIRONMENT final
+    {
+        SESSION session;
+        std::string actionId, signature;
+        bool preview = false;
+        KOUKU_SAYDON_COMPOSITION_DOCUMENT document;
+        KOUKU_SAYDON_COMPOSITION_PATTERN pattern;
+    };
+    std::map<std::string, EXTERNAL_STAGE_ENVIRONMENT> m_ExternalStageEnvironments;
     struct PRODUCT_PATTERN final
     {
         KOUKU_SAYDON_COMPOSITION_DOCUMENT document;
@@ -208,6 +230,9 @@ private:
         std::vector<float4x4_t> poses;
         float traveledM = 0.f;
         std::uint32_t terminalTick = UINT32_MAX;
+        // Ticks from the trigger birth to this projectile's own wave. Zero for a
+        // single-volley Logic; wave index times the authored interval otherwise.
+        std::uint32_t birthTickOffset = 0u;
         bool contactBurst = false;
     };
     struct LOGIC_PREVIEW_TRIGGER final
@@ -310,8 +335,22 @@ private:
             // Each first-visited fixed tick pins the then-current replicated target
             // position. Replaying those inputs reproduces facing on any later seek.
             std::map<uint32_t, std::optional<float3_t>> targetSamples;
+            // Zero rotates only. Above zero the body also walks along its current
+            // facing at this multiple of the tracked player's own replicated speed.
+            double followSpeedScale = 0.0;
+            std::map<uint32_t, float> targetMoveSpeeds;
         };
         std::vector<TARGET_TRACKING_WINDOW> targetTracking;
+        struct FACING_CHECKPOINT final
+        {
+            float yawDegrees = 0.f;
+            std::vector<float> animationYaws;
+            float3_t followOffset{};
+        };
+        // Only complete same-clock event groups are cached. Pinned inputs stay
+        // immutable until this preview member is replaced or explicitly moved.
+        std::map<double, FACING_CHECKPOINT> facingCheckpoints;
+        std::map<double, std::pair<float3_t, float>> spatialPoseSamples;
         std::map<std::string, float> stageFacingYawDegrees;
         std::map<std::string, std::pair<uint32_t, float3_t>> airborneSelections;
         std::map<std::string, float3_t> airborneAppearancePositions;
@@ -421,6 +460,7 @@ private:
     bool m_bBundleWorldExternal = false;
     std::uint64_t m_iPreviewGeneration = 0u;
     double m_fPreviewClockMs = 0;
+    bool m_bServerSequenceClock = false;
     std::uint32_t m_iPreviewDurationMs = 0;
     std::string m_strStatus;
 };

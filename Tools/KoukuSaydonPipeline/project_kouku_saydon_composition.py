@@ -35,6 +35,7 @@ from Tools.RenderingPipeline.light_resources_pipeline import (
     validate_map_lights_v2,
 )
 from Tools.ModelAssetConverter import verify_dimensionmaster_summon_bind_pose as wmodel_pose
+from Tools.KoukuSaydonPipeline.combat_hit_templates import validate_hits, validate_logic_hits
 from Tools.KoukuSaydonPipeline.world_object_collider import bake_windows as bake_object_collider_windows, ColliderBakeError
 
 SOURCE_PATH = Path("Data/KoukuSaydon/Gate1/KoukuSaydonComposition.json")
@@ -148,23 +149,24 @@ LOGIC_KIND_VALUE_KEYS = {
     },
     "GAZE_REAL_BOSS": {"halfAngleDegrees", "maxDistanceM", "insideOutcome"},
     "POSE_INPUT": {"poseIndex"},
+    "CARD_DICE_BIND": set(),
     "STAGGER_WINDOW": {"threshold", "shieldArcDegrees", "endsPatternOnSuccess", "normalYawOffsetDegrees"},
     "AREA_OVERLAP": {"insideOutcome"},
     "OBJECT_OVERLAP": {"targetWorldInstanceId", "targetRadiusM", "insideOutcome"},
     "EXTERNAL_SIGNAL": {"endsPatternOnSuccess"},
     "COUNTER_WINDOW": {"endsPatternOnSuccess"},
     "ATTACHMENT_HOLD": set(),
-    "BOSS_TRACK_TARGET": set(),
-    "PURSUIT_PROJECTILES": {"visualIds", "contactVisualId", "speedMps", "contactRadiusM", "spawnRadiusM", "lifetimeMs", "spawnIntervalMs", "homing", "countPerWave", "maxDistanceM"},
+    "BOSS_TRACK_TARGET": {"followSpeedScale"},
+    "PURSUIT_PROJECTILES": {"projectileHits", "visualIds", "contactVisualId", "speedMps", "contactRadiusM", "spawnRadiusM", "lifetimeMs", "spawnIntervalMs", "homing", "countPerWave", "maxDistanceM"},
     "CROSS_DIRECTION_CLONES": {"directionPatternIds", "cloneEndStageId", "summonOccurrenceId"},
     "PATTERN_COMPLETION_COUNT": {"patternIds", "completionCount"},
-    "SHOWTIME_PLAYER_TARGETS": {"fixedSelectionGroupId", "trackingPresentationOccurrenceId", "spawnIntervalMs", "followSpeedScale",
+    "SHOWTIME_PLAYER_TARGETS": {"fixedHits", "trackingHits", "randomVolleyHits", "fixedSelectionGroupId", "trackingPresentationOccurrenceId", "spawnIntervalMs", "followSpeedScale",
                                "randomVolleyOccurrenceSets", "randomSpawnIntervalMs", "randomArenaRadiusM", "randomArenaHeightToleranceM"},
 }
 LOGIC_DURATION_VALUE_KEYS = {"judgementKind"} | set().union(*LOGIC_KIND_VALUE_KEYS.values())
 LOGIC_RESULT_VALUE_KEYS = {"outcomeKind", "percent", "durationMs", "followupPatternId", "targetWorldInstanceId", "motionInstanceId",
-                           "contactMotions", "targetLogicOccurrenceId", "contactTargetWorldOccurrenceId", "sceneProfileId", "effectResourceId", "lightResourceId", "effectDelayMs", "attachmentSlot", "gripLocalOffset", "pushRangeM", "pushMs", "pushDirection"}
-LOGIC_TRIGGER_VALUE_KEYS = {"countPerPlayer", "radiusM", "effectLifetimeMs", "arenaRandomCount", "arenaRandomRadiusM", "arenaHeightToleranceM", "arenaMinimumSpacingM", "randomPlayerOnly", "triggerKind", "hudMode", "teleportPosition", "clonePatternId", "clockHours", "faceCenterYawOffsetDegrees",
+                           "contactMotions", "targetLogicOccurrenceId", "contactTargetWorldOccurrenceId", "sceneProfileId", "effectResourceId", "lightResourceId", "effectDelayMs", "attachmentSlot", "gripLocalOffset", "pushRangeM", "pushMs", "pushDirection", "marioStage"}
+LOGIC_TRIGGER_VALUE_KEYS = {"fixedHits", "countPerPlayer", "radiusM", "effectLifetimeMs", "arenaRandomCount", "arenaRandomRadiusM", "arenaHeightToleranceM", "arenaMinimumSpacingM", "randomPlayerOnly", "triggerKind", "hudMode", "teleportPosition", "clonePatternId", "clockHours", "faceCenterYawOffsetDegrees",
                             "targetWorldOccurrenceIds", "targetRadiusM", "contactGroupId", "contactPriority", "bossChargeDistanceM", "chargeYawOffsetDegrees", "rearmOnExit", "repeatAfterKnockback",
                             "airbornePhase", "airborneHeightM", "airborneDurationMs", "airborneTargetPositionPolicy", "selectedEffectGroupId"}
 LOGIC_OPTIONAL_KEYS = LOGIC_DURATION_VALUE_KEYS | LOGIC_RESULT_VALUE_KEYS | LOGIC_TRIGGER_VALUE_KEYS
@@ -200,6 +202,7 @@ SUMMON_OCCURRENCE_KEYS = {"occurrenceId", "summonId", "startMs", "durationMs"}
 GENERATED_SUMMON_RE = re.compile(r"^kakulsaydon\.g1\.summon\.([1-9][0-9]*)$")
 MAX_SUMMONS = 4096
 MAX_SUMMON_OCCURRENCES_PER_PATTERN = 1024
+MAX_SUMMON_PATTERN_SPAWNS = 16
 # A World names one authored world sequence instance of the Area; its box
 # plays that instance on the pattern clock at the box speed.
 WORLD_KEYS = {"worldId", "displayName", "sequenceInstanceId"}
@@ -248,7 +251,7 @@ MAX_PRODUCT_STAGES = 64
 MAX_OCCURRENCES = 4096
 MAX_LOGICS = 4096
 MAX_LOGIC_OCCURRENCES_PER_PATTERN = 1024
-MAX_PRODUCT_LOGIC_WINDOWS = 64
+MAX_PRODUCT_LOGIC_WINDOWS = 128
 
 
 class CompositionError(ValueError):
@@ -514,6 +517,10 @@ def _validate_logic_definition(
     logic: dict[str, Any], context: str, next_logic: int
 ) -> tuple[str, dict[str, Any]]:
     _keys(logic, LOGIC_KEYS, LOGIC_OPTIONAL_KEYS, context)
+    try:
+        validate_logic_hits(logic)
+    except ValueError as error:
+        raise CompositionError(str(error)) from error
     logic_id = _stable_id(logic["logicId"], f"{context} logicId")
     generated_logic = GENERATED_LOGIC_RE.fullmatch(logic_id)
     derived_logic = re.fullmatch(r"[A-Za-z0-9_.-]+\.pattern\.[1-9][0-9]*\.r[0-9]+\.definition\.[1-9][0-9]*", logic_id)
@@ -551,6 +558,11 @@ def _validate_logic_definition(
             definition["directionPatternIds"] = [_stable_id(item, f"{context} directionPatternId") for item in candidates]
             definition["cloneEndStageId"] = _stable_id(logic.get("cloneEndStageId", ""), f"{context} cloneEndStageId")
             definition["summonOccurrenceId"] = _stable_id(logic.get("summonOccurrenceId", ""), f"{context} summonOccurrenceId")
+        elif kind == "BOSS_TRACK_TARGET" and "followSpeedScale" in logic:
+            # Absent keeps the saved rotate-only window. A present scale multiplies the
+            # tracked player's own move speed into the forward step the Server owns.
+            definition["followSpeedScale"] = _number(
+                logic["followSpeedScale"], f"{context} followSpeedScale", .01, 10.0)
         elif kind == "PURSUIT_PROJECTILES":
             definition.update(_pursuit_fields(logic, context))
         elif kind == "SHOWTIME_PLAYER_TARGETS":
@@ -664,7 +676,7 @@ def _validate_logic_definition(
         elif kind == "ALBION_BLUE_CIRCLE":
             required = {"triggerKind", "countPerPlayer", "radiusM", "effectLifetimeMs"}
             arena_keys = {"arenaRandomCount", "arenaRandomRadiusM", "arenaHeightToleranceM", "arenaMinimumSpacingM", "randomPlayerOnly"}
-            if not required <= extra or extra - required - arena_keys:
+            if not required <= extra or extra - required - arena_keys - {"fixedHits"}:
                 raise CompositionError(f"{context} Albion needs countPerPlayer, radiusM and effectLifetimeMs")
             count = _integer(logic["countPerPlayer"], f"{context} countPerPlayer", 1, 8)
             radius = _number(logic["radiusM"], f"{context} radiusM", 0, 20)
@@ -687,7 +699,7 @@ def _validate_logic_definition(
         elif kind == "CARD_MAZE_HIDE_NEXT":
             if extra != {"triggerKind"}:
                 raise CompositionError(f"{context} CARD_MAZE_HIDE_NEXT carries unrelated values")
-        elif kind in {"CARD_MAZE_ENTER", "BOSS_TELEPORT_XZ"}:
+        elif kind in {"CARD_MAZE_ENTER", "BOSS_TELEPORT_XZ", "BOSS_TELEPORT_FACE_CENTER", "MARIO_PHASE2_PLAYERS"}:
             if extra != {"triggerKind", "teleportPosition"}:
                 raise CompositionError(f"{context} {kind} requires only teleportPosition")
             position = logic["teleportPosition"]
@@ -797,13 +809,19 @@ def _validate_logic_definition(
                 _number(grip[axis], f"{context} gripLocalOffset.{axis}", -10, 10)
         elif extra & {"attachmentSlot", "gripLocalOffset"}:
             raise CompositionError(f"{context} only CAPTURE_PLAYER owns attachment values")
-        if (kind == "FOLLOWUP_PATTERN") != bool(followup):
+        if kind != "MARIO_ENTER" and (kind == "FOLLOWUP_PATTERN") != bool(followup):
             raise CompositionError(f"{context} FOLLOWUP_PATTERN requires exactly a followupPatternId")
         if followup:
             _stable_id(followup, f"{context} followupPatternId")
         definition["percent"] = percent
         definition["durationMs"] = duration_ms
         definition["followupPatternId"] = followup
+        # 0 keeps the Server's live room counter; 1..4 enters that authored stage.
+        stage = _integer(logic.get("marioStage", 0), f"{context} marioStage", 0, 4)
+        if stage and kind != "MARIO_ENTER":
+            raise CompositionError(f"{context} only MARIO_ENTER owns a marioStage")
+        if kind == "MARIO_ENTER":
+            definition["marioStage"] = stage
         target = logic.get("targetWorldInstanceId", "")
         motion = logic.get("motionInstanceId", "")
         if not isinstance(target, str) or not isinstance(motion, str):
@@ -965,12 +983,15 @@ def _pattern_duration(pattern: dict[str, Any]) -> int:
 
 def _validate_summon_pattern_spawns(document, owner):
     patterns = {row["patternId"]: row for row in document["patterns"]}
+    logics = {row["logicId"]: row for row in document.get("logics", [])}
+    resources = {row["resourceId"]: row for row in document.get("presentationResources", [])}
     for box in owner.get("summonOccurrences", []):
         seen = set()
         if box.get("patternSpawns") and box["startMs"] + box["durationMs"] > _pattern_duration(owner):
             raise CompositionError("Summon spawn lifetime must remain inside its owner Pattern")
-        for spawn in _array(box.get("patternSpawns", []), "Summon patternSpawns", 4):
-            _exact_keys(spawn, {"spawnId", "patternId", "positionOffset", "yawOffsetDegrees"}, "Summon Pattern spawn")
+        for spawn in _array(box.get("patternSpawns", []), "Summon patternSpawns", MAX_SUMMON_PATTERN_SPAWNS):
+            _keys(spawn, {"spawnId", "patternId", "positionOffset", "yawOffsetDegrees"},
+                  {"anchorKind"}, "Summon Pattern spawn")
             identity = _stable_id(spawn["spawnId"], "Summon spawnId")
             target_id = _stable_id(spawn["patternId"], "Summon patternId")
             if identity in seen:
@@ -979,19 +1000,38 @@ def _validate_summon_pattern_spawns(document, owner):
             offset = spawn["positionOffset"]
             if not isinstance(offset, list) or len(offset) != 3:
                 raise CompositionError("Summon positionOffset needs X/Y/Z")
+            anchor = spawn.get("anchorKind", "BOSS")
+            if anchor not in {"BOSS", "MAP"}:
+                raise CompositionError("Summon anchorKind must be BOSS or MAP")
+            limit = 100000 if anchor == "MAP" else 1000
             for value in offset:
-                _number(value, "Summon positionOffset", -1000, 1000)
+                _number(value, "Summon positionOffset", -limit, limit)
             _number(spawn["yawOffsetDegrees"], "Summon yawOffsetDegrees", -360, 360)
             child = patterns.get(target_id)
             if child is None or child is owner or target_id == owner["patternId"] or (
                     _pattern_target_metadata(child) != _pattern_target_metadata(owner)):
                 raise CompositionError("Summon Pattern must be another same-Gate, same-actor Pattern")
             if child["category"] != "MECHANIC" or not child["stages"] or any(
-                    child.get(key) for key in ("patternOccurrences", "logicOccurrences", "summonOccurrences",
-                        "worldOccurrences", "sceneProfileOccurrences", "presentationOccurrences", "bossMotion", "resetBossToSpawn",
+                    child.get(key) for key in ("patternOccurrences", "summonOccurrences",
+                        "worldOccurrences", "sceneProfileOccurrences", "bossMotion", "resetBossToSpawn",
                         "enterCombatOnFinish")) or "resetBossYawDegrees" in child or any(
-                            stage.get("retargetOnEnter", False) for stage in child["stages"]):
-                raise CompositionError("Summon Pattern currently requires animation-only MECHANIC stages")
+                            stage.get("retargetOnEnter", False) for stage in child["stages"]) or any(
+                                folder.get("timelinePatternId") == target_id for folder in document.get("folders", [])):
+                raise CompositionError("Summon Pattern requires a self-contained actor MECHANIC timeline")
+            for logic_box in child.get("logicOccurrences", []):
+                logic = logics.get(logic_box["logicId"], {})
+                if (logic.get("logicType") != "TRIGGER" or logic.get("triggerKind") != "ALBION_AIRBORNE" or
+                        logic.get("airbornePhase") not in {"JUMP", "SLAM"} or
+                        logic.get("airborneTargetPositionPolicy", "APPEAR") != "APPEAR" or
+                        logic.get("selectedEffectGroupId") or
+                        any(outcome_logic_ids(logic_box, slot) for slot in OUTCOME_SLOTS)):
+                    raise CompositionError("Summon child Logic supports only actor-local JUMP/SLAM without outcomes")
+            for cue in child.get("presentationOccurrences", []):
+                resource = resources.get(cue["resourceId"], {})
+                if (resource.get("kind") not in {"EFFECT", "SOUND"} or
+                        cue.get("anchorKind", resource.get("defaultAnchorKind", "BOSS")) != "BOSS" or
+                        cue.get("logicOccurrenceId") or cue.get("worldOccurrenceId") or cue.get("worldId")):
+                    raise CompositionError("Summon child presentation supports only actor-anchored Effect/Sound")
             if _pattern_duration(child) > box["durationMs"]:
                 raise CompositionError("Summon lifetime must contain its child Pattern duration")
 
@@ -1078,8 +1118,14 @@ def _validate_cross_direction(document, owner):
                     "bossMotion", "resetBossToSpawn", "enterCombatOnFinish")) or "resetBossYawDegrees" in child or any(
                     stage.get("retargetOnEnter", False) for stage in child["stages"]):
                 raise CompositionError("Cross direction children require leaf Animation/Effect Patterns")
-            if any(resources[row["resourceId"]]["kind"] != "EFFECT" for row in child.get("presentationOccurrences", [])):
-                raise CompositionError("Cross direction child presentation supports only Effects")
+            for cue in child.get("presentationOccurrences", []):
+                resource = resources[cue["resourceId"]]
+                if resource["kind"] not in {"EFFECT", "SOUND"}:
+                    raise CompositionError("Cross direction child presentation supports only Effect/Sound")
+                if resource["kind"] == "SOUND" and (
+                        cue.get("anchorKind", resource.get("defaultAnchorKind", "BOSS")) != "BOSS" or
+                        cue.get("logicOccurrenceId") or cue.get("worldOccurrenceId") or cue.get("worldId")):
+                    raise CompositionError("Cross direction child Sound must use its actor clock and anchor")
             cutoff = next((i for i, stage in enumerate(child["stages"]) if stage["stageId"] == definition["cloneEndStageId"]), None)
             if not child.get("durationMs") or cutoff is None or cutoff == len(child["stages"]) - 1 or _pattern_duration(child) > box["durationMs"]:
                 raise CompositionError("Cross direction child needs its clone end Stage before the full ending and must fit the owning window duration")
@@ -1976,6 +2022,8 @@ def validate_document(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
                                 f"{box_context} FOLLOWUP_PATTERN is only valid on a STAGGER_WINDOW, COUNTER_WINDOW or EXTERNAL_SIGNAL box"
                             )
                         followup_targets.append((box_id, logic_defs[target]["followupPatternId"]))
+                    elif result_kind == "MARIO_ENTER" and logic_defs[target]["followupPatternId"]:
+                        followup_targets.append((box_id, logic_defs[target]["followupPatternId"]))
             logic_start_ms = _integer(
                 box["startMs"], f"{box_context} startMs", 0, MAX_TIMELINE_MS
             )
@@ -2286,8 +2334,8 @@ def validate_document(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
         for box in boxes:
             for slot in OUTCOME_SLOTS:
                 for target in outcome_logic_ids(box, slot):
-                    if logic_defs[target].get("kind") == "MARIO_ENTER" and (len(chains) != 1 or pattern.get("gateId") != "GATE3"):
-                        raise CompositionError("Mario entry requires one owning Gate 3 completion chain")
+                    if logic_defs[target].get("kind") == "MARIO_ENTER" and pattern.get("gateId") != "GATE3":
+                        raise CompositionError("Mario entry requires a Gate 3 pattern")
         for chain in chains:
             for candidate_id in logic_defs[chain["logicId"]]["patternIds"]:
                 candidate = by_pattern[candidate_id]
@@ -2452,7 +2500,7 @@ def _pattern_dependencies(source: dict[str, Any], pattern: dict[str, Any]) -> se
         definition = summons.get(box.get("summonId"), {})
         if definition.get("summonKind") == "CROSS_DIRECTION_CLONES":
             result.update(definition["directionPatternIds"])
-        for spawn in _array(box.get("patternSpawns", []), "Summon patternSpawns", 4):
+        for spawn in _array(box.get("patternSpawns", []), "Summon patternSpawns", MAX_SUMMON_PATTERN_SPAWNS):
             if not isinstance(spawn, dict): raise CompositionError("Summon Pattern spawn must be an object")
             result.add(_stable_id(spawn.get("patternId"), "Summon patternId"))
     for box in _array(pattern.get("patternOccurrences", []), "Pattern occurrences", 128):
@@ -2529,6 +2577,11 @@ def _prepare_publication(source: dict[str, Any], root: Path) -> tuple[dict[str, 
         except CompositionError as error:
             row["unavailableReason"] = str(error)
     product = _publication_candidate(source, ready, ready_bundles)
+    # Publish a raid gate only when its whole saved flow is admitted. Incomplete
+    # authoring remains visible in inventory without poisoning other patterns.
+    product["patternFlows"] = [copy.deepcopy(flow) for flow in source.get("patternFlows", [])
+        if flow["entries"] and all(entry["targetId"] in
+            (ready if entry["kind"] == "PATTERN" else ready_bundles) for entry in flow["entries"])]
     validate_document(product, root)
     validate_publishable(product, root)
     projected_outputs(product, root)
@@ -4086,6 +4139,8 @@ def _project_collider_regions(document, pattern, logic_box, logic, sequences, ro
         if row["rotationDegrees"][0] != 0 or row["rotationDegrees"][2] != 0:
             raise CompositionError("XZ gameplay Collider supports only Y rotation")
         position, yaw, scale = list(row["positionOffset"]), row["rotationDegrees"][1], list(row["scale"])
+        if resource["innerRadiusM"] and abs(scale[0] - scale[2]) > .0001:
+            raise CompositionError("Annular Collider needs equal X/Z scale; hollow ellipses are unsupported")
         anchor = "WORLD" if row["anchorKind"] == "MAP" else "BOSS_CURRENT"
         world_track = None
         if kind == "OBJECT_CONTACT" and row["bone"]:
@@ -4123,6 +4178,8 @@ def _project_collider_regions(document, pattern, logic_box, logic, sequences, ro
                        "radiusM":resource["radiusM"]*(max(scale[0],scale[2]) if resource["shape"] == "CIRCLE" else scale[0]),"halfAngleDegrees":resource["halfAngleDegrees"],
                        "cardSymbol":row["cardSymbol"] if kind == "ROULETTE_CARD_MATCH" else "NONE",
                        "cardColor":row["cardColor"] if kind == "ROULETTE_CARD_MATCH" else "NONE"})
+        if resource["innerRadiusM"]:
+            result[-1]["innerRadiusM"] = resource["innerRadiusM"] * scale[0]
         if resource["shape"] in {"SECTOR", "REVERSE_SECTOR"}:
             result[-1]["radiusXM"] = resource["radiusM"] * scale[0]
             result[-1]["radiusZM"] = resource["radiusM"] * scale[2]
@@ -4159,6 +4216,9 @@ def _project_outcomes(logics: dict[str, dict[str, Any]], targets: list[str]) -> 
         elif logic["outcomeKind"] == "COMPLETE_LOGIC_WINDOW":
             projected[-1]["targetLogicOccurrenceId"] = logic["targetLogicOccurrenceId"]
             projected[-1]["contactTargetWorldOccurrenceId"] = logic.get("contactTargetWorldOccurrenceId", "")
+        elif logic["outcomeKind"] == "MARIO_ENTER" and int(logic.get("marioStage", 0)):
+            # Omitted at 0 so existing product rows stay byte-identical.
+            projected[-1]["marioStage"] = int(logic["marioStage"])
     return projected
 
 
@@ -4287,8 +4347,9 @@ def project_encounter(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
             try:
                 collider_boxes = [box for box in world_boxes
                                   if _world_group_instances(worlds[box["worldId"]], world_sequences) is None]
-                generated = _publication_memo("object-colliders", (str(root.resolve()), hashlib.sha256(serialize_json([world_sequences, worlds, world_boxes])).digest()),
-                    lambda: bake_object_collider_windows(world_sequences, worlds, collider_boxes, load_collider_model))
+                pattern_end_ms = _pattern_duration(source)
+                generated = _publication_memo("object-colliders", (str(root.resolve()), pattern_end_ms, hashlib.sha256(serialize_json([world_sequences, worlds, world_boxes])).digest()),
+                    lambda: bake_object_collider_windows(world_sequences, worlds, collider_boxes, load_collider_model, pattern_end_ms=pattern_end_ms))
             except (ColliderBakeError, OSError, ValueError, KeyError, IndexError) as error:
                 raise CompositionError(f"Cannot bake Object Collider: {error}") from error
             for generated_row in generated:
@@ -4297,8 +4358,8 @@ def project_encounter(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
                 window["onSuccess"] = [{"kind": {"DAMAGE": "MAX_HP_PERCENT_DAMAGE", "INSTANT_DEATH": "INSTANT_DEATH", "HOOK_CAPTURE": "GRAB_TO_WORLD_OBJECT"}[generated_row["behavior"]],
                     "percent": generated_row["damagePercent"], "durationMs": 0, "patternId": ""}]
                 logic_windows.append(window)
-            if len(logic_windows) > 64:
-                raise CompositionError("Authored and Object Collider windows exceed the existing 64-window pattern budget")
+            if len(logic_windows) > MAX_PRODUCT_LOGIC_WINDOWS:
+                raise CompositionError("Authored and Object Collider windows exceed the 128-window pattern budget")
         mechanic_triggers = []
         for box in source.get("logicOccurrences", []):
             if not box.get("enabled", True):
@@ -4323,11 +4384,15 @@ def project_encounter(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
                 "countPerPlayer": logic.get("countPerPlayer", 0),
                 "radiusM": float(logic.get("radiusM", 0.0)),
                 "effectLifetimeMs": logic.get("effectLifetimeMs", 0),
+                **({"fixedHits": validate_hits(logic["fixedHits"], logic["effectLifetimeMs"])}
+                   if kind == "ALBION_BLUE_CIRCLE" and logic.get("fixedHits") else {}),
                 "arenaRandomCount": logic.get("arenaRandomCount", 0),
                 "arenaRandomRadiusM": float(logic.get("arenaRandomRadiusM", 0.0)),
                 "arenaHeightToleranceM": float(logic.get("arenaHeightToleranceM", 0.0)),
                 "arenaMinimumSpacingM": float(logic.get("arenaMinimumSpacingM", 0.0)),
                 "randomPlayerOnly": logic.get("randomPlayerOnly", False),
+                **({"followSpeedScale": float(logic["followSpeedScale"])}
+                   if kind == "BOSS_TRACK_TARGET" and "followSpeedScale" in logic else {}),
                 **({"airbornePhase": logic["airbornePhase"],
                     "airborneHeightM": float(logic["airborneHeightM"]),
                     "airborneDurationMs": logic["airborneDurationMs"],
@@ -4453,8 +4518,8 @@ def project_encounter(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
 PRESENTATION_RESOURCE_REQUIRED = {"resourceId", "displayName", "kind", "assetId"}
 PRESENTATION_RESOURCE_DEFAULTS = {
     "resourceKind": "GROUP", "elementId": "", "durationMs": 1000, "shape": "BOX", "colliderKind": "GEOMETRY",
-    "halfExtents": [1.0, 1.0, 1.0], "radiusM": 3.0, "halfAngleDegrees": 45.0,
-    "defaultAnchorKind": "BOSS",
+    "halfExtents": [1.0, 1.0, 1.0], "radiusM": 3.0, "innerRadiusM": 0.0, "halfAngleDegrees": 45.0,
+    "defaultAnchorKind": "BOSS", "soundEvent": "",
 }
 PRESENTATION_OCCURRENCE_REQUIRED = {"occurrenceId", "resourceId", "startMs", "durationMs"}
 PRESENTATION_OCCURRENCE_EDITOR_KEYS = {"selectionGroupId"}
@@ -4462,10 +4527,10 @@ PRESENTATION_OCCURRENCE_DEFAULTS = {
     "positionOffset": [0.0, 0.0, 0.0], "rotationDegrees": [0.0, 0.0, 0.0], "scale": [1.0, 1.0, 1.0],
     "fadeInMs": 0, "fadeOutMs": 0, "dissolveStart": 0.85, "dissolveEnd": 1.0,
     "fitEffectToDuration": False, "loopEffectToDuration": False,
-    "volume": 1.0, "followBoss": True, "bone": "", "boneTarget": "BODY", "brightnessMultiplier": 1.0,
+    "volume": 1.0, "soundSourceStartMs": 0, "followBoss": True, "bone": "", "boneTarget": "BODY", "brightnessMultiplier": 1.0,
     "regionId": "", "cardSymbol": "NONE", "cardColor": "NONE",
     "anchorKind": "BOSS", "worldId": "", "logicOccurrenceId": "", "debugRender": True, "worldOccurrenceId": "",
-    "worldEmissionIndex": 0,
+    "worldEmissionIndex": 0, "boneRotation": "TARGET_YAW",
 }
 
 
@@ -4493,6 +4558,10 @@ def _validate_presentation_resources(document: dict[str, Any]) -> dict[str, dict
         kind = normalized["kind"]
         if kind not in {"EFFECT", "SOUND", "CAMERA", "COLLIDER", "LIGHT"}:
             raise CompositionError("presentation resource kind is unsupported")
+        if normalized["soundEvent"] != "":
+            if kind != "SOUND":
+                raise CompositionError("soundEvent belongs only to SOUND resources")
+            _stable_id(normalized["soundEvent"], "Sound catalog event")
         asset = normalized["assetId"]
         if kind == "COLLIDER":
             if asset != "":
@@ -4522,6 +4591,9 @@ def _validate_presentation_resources(document: dict[str, Any]) -> dict[str, dict
         _integer(normalized["durationMs"], "presentation durationMs", 1, MAX_TIMELINE_MS)
         _vector3(normalized["halfExtents"], "collider halfExtents", 0.001, 100000)
         _number(normalized["radiusM"], "collider radiusM", 0.001, 100000)
+        inner = _number(normalized["innerRadiusM"], "collider innerRadiusM", 0, 100000)
+        if inner >= normalized["radiusM"] or (inner and (kind != "COLLIDER" or normalized["shape"] not in {"CIRCLE", "SECTOR"})):
+            raise CompositionError("innerRadiusM requires a circular Collider ring or annular sector")
         _number(normalized["halfAngleDegrees"], "collider halfAngleDegrees", 0 if normalized["shape"] == "REVERSE_SECTOR" else 0.001, 180)
         result[resource_id] = normalized
     return result
@@ -4580,6 +4652,9 @@ def _validate_presentation_occurrences(pattern: dict[str, Any], resources: dict[
         if box["resourceId"] not in resources:
             raise CompositionError("presentation occurrence names an unknown resourceId")
         normalized = {**PRESENTATION_OCCURRENCE_DEFAULTS, **box}
+        _integer(normalized["soundSourceStartMs"], "Sound Source In", 0, MAX_TIMELINE_MS)
+        if normalized["soundSourceStartMs"] and resources[box["resourceId"]]["kind"] != "SOUND":
+            raise CompositionError("Sound Source In belongs only to SOUND occurrences")
         needs_world_object = resources[box["resourceId"]]["kind"] in {"EFFECT", "LIGHT", "COLLIDER"}
         if normalized["anchorKind"] == "WORLD" and (
                 not isinstance(normalized["worldId"], str) or
@@ -4666,6 +4741,11 @@ def _validate_presentation_occurrences(pattern: dict[str, Any], resources: dict[
         if normalized["boneTarget"] == "WEAPON" and (resources[box["resourceId"]]["kind"] not in {"COLLIDER", "EFFECT"} or
                 normalized["anchorKind"] != "BOSS" or not normalized["bone"] or not normalized["followBoss"]):
             raise CompositionError("WEAPON boneTarget requires a following BOSS Collider/Effect and a named bone")
+        if not isinstance(normalized["boneRotation"], str) or normalized["boneRotation"] not in {"TARGET_YAW", "BONE"}:
+            raise CompositionError("presentation boneRotation must be TARGET_YAW or BONE")
+        if normalized["boneRotation"] == "BONE" and (resources[box["resourceId"]]["kind"] != "EFFECT" or
+                normalized["anchorKind"] != "BOSS" or not normalized["bone"]):
+            raise CompositionError("BONE boneRotation requires a BOSS Effect and a named bone")
     _validate_presentation_selection_groups(pattern, resources)
 
 
@@ -4723,6 +4803,9 @@ def _project_pursuit_projectiles(document: dict[str, Any], pattern: dict[str, An
             templates[client_id] = {"clientVisualId": client_id, **payload}
             client_ids.append(client_id)
         rows.append({"occurrenceId": box["occurrenceId"], "startMs": box["startMs"], "durationMs": box["durationMs"], **fields, "visualIds": client_ids})
+        if logic.get("projectileHits"):
+            try: rows[-1]["projectileHits"] = validate_hits(logic["projectileHits"], fields["lifetimeMs"] or 600000)
+            except ValueError as error: raise CompositionError(str(error)) from error
     rows.sort(key=lambda row: (row["startMs"], row["occurrenceId"]))
     return rows, templates
 
@@ -4781,14 +4864,14 @@ def _showtime_template_occurrence_ids(document: dict[str, Any], pattern: dict[st
 
 def _project_presentation_resource(resource: dict[str, Any]) -> dict[str, Any]:
     normalized = {**PRESENTATION_RESOURCE_DEFAULTS, **resource}
-    return {**{key: value for key, value in normalized.items() if key not in {"displayName", "durationMs", "defaultAnchorKind"}},
+    return {**{key: value for key, value in normalized.items() if key not in {"displayName", "durationMs", "defaultAnchorKind"} and (key != "innerRadiusM" or value > 0)},
             "resourceDurationMs": normalized["durationMs"]}
 
 
 def _project_presentation_occurrence(document: dict[str, Any], pattern: dict[str, Any], box: dict[str, Any], resource: dict[str, Any]) -> dict[str, Any]:
     return {
         **_project_presentation_resource(resource),
-        **{key: value for key, value in PRESENTATION_OCCURRENCE_DEFAULTS.items() if key not in {"brightnessMultiplier", "boneTarget", "fitEffectToDuration", "loopEffectToDuration"}},
+        **{key: value for key, value in PRESENTATION_OCCURRENCE_DEFAULTS.items() if key not in {"brightnessMultiplier", "boneTarget", "fitEffectToDuration", "loopEffectToDuration", "boneRotation"}},
         **{key: value for key, value in box.items() if key not in PRESENTATION_OCCURRENCE_EDITOR_KEYS},
         **({"brightnessMultiplier": box.get("brightnessMultiplier", 1.0)} if resource["kind"] == "LIGHT" else {}),
         "worldSequenceInstanceId": next((w["sequenceInstanceId"] for w in document.get("worlds", []) if w["worldId"] == box.get("worldId", "")), ""),
@@ -4911,6 +4994,9 @@ def _project_showtime_targets(document: dict[str, Any], pattern: dict[str, Any])
             row[role + "VisualId"] = template["clientVisualId"]
             if role == "fixed":
                 row["fixedLifetimeMs"] = template["durationMs"]
+            if logic.get(role + "Hits"):
+                try: row[role + "Hits"] = validate_hits(logic[role + "Hits"], template["durationMs"] if role == "fixed" else box["durationMs"])
+                except ValueError as error: raise CompositionError(str(error)) from error
             controlled.update(member["occurrenceId"] for member in members)
         if random_fields:
             row["randomVolleys"] = []
@@ -4921,6 +5007,9 @@ def _project_showtime_targets(document: dict[str, Any], pattern: dict[str, Any])
                 template = _showtime_visual_template(document, pattern, members, "fixed", random_mixed=True)
                 templates[template["clientVisualId"]] = template
                 row["randomVolleys"].append({"clientVisualId": template["clientVisualId"], "lifetimeMs": template["durationMs"]})
+                if logic.get("randomVolleyHits"):
+                    try: row["randomVolleys"][-1]["hits"] = validate_hits(logic["randomVolleyHits"][len(row["randomVolleys"]) - 1], template["durationMs"])
+                    except ValueError as error: raise CompositionError(str(error)) from error
                 controlled.update(identities)
             for field in ("randomSpawnIntervalMs", "randomArenaRadiusM", "randomArenaHeightToleranceM"):
                 row[field] = random_fields[field]
@@ -4942,7 +5031,7 @@ def _project_pattern_presentation(document: dict[str, Any], pattern: dict[str, A
     for box in pattern.get("sceneProfileOccurrences", []):
         occurrences.append({
             **{key: value for key, value in PRESENTATION_RESOURCE_DEFAULTS.items() if key not in {"durationMs", "defaultAnchorKind"}},
-            **{key: value for key, value in PRESENTATION_OCCURRENCE_DEFAULTS.items() if key not in {"brightnessMultiplier", "boneTarget", "fitEffectToDuration", "loopEffectToDuration"}},
+            **{key: value for key, value in PRESENTATION_OCCURRENCE_DEFAULTS.items() if key not in {"brightnessMultiplier", "boneTarget", "fitEffectToDuration", "loopEffectToDuration", "boneRotation"}},
             "occurrenceId": box["occurrenceId"], "resourceId": box["sceneProfileId"],
             "kind": "SCENE_PROFILE", "worldSequenceInstanceId": "", "assetId": profiles[box["sceneProfileId"]]["renderingProfileId"],
             "resourceDurationMs": box["durationMs"], "startMs": box["startMs"], "durationMs": box["durationMs"],
@@ -5176,6 +5265,13 @@ def projected_outputs(document: dict[str, Any], root: Path = REPOSITORY_ROOT,
         lambda: (project_encounter(document, root), project_presentation(document, root)))
     if pattern_inventory is not None:
         encounter = {**encounter, "patternInventory": pattern_inventory}
+    sequence_path = root / "Data/Compositions/Sequences/KoukuSaydonSequenceComposition.json"
+    if sequence_path.exists():
+        from raid_flow_projection import project_raid_gates
+        try:
+            encounter = {**encounter, "raidGates": project_raid_gates(document, load_json(sequence_path))}
+        except (ValueError, KeyError, TypeError) as error:
+            raise CompositionError(f"Complete Play raid plan: {error}") from error
     encounter_bytes = serialize_json(encounter)
     _validate_encounter_admission(encounter, encounter_bytes)
     return {

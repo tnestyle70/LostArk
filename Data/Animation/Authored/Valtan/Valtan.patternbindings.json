@@ -1,6 +1,6 @@
 {
   "schema": "lostark.valtan-pattern-bindings",
-  "formatVersion": 4,
+  "formatVersion": 5,
   "bossArchetypeId": "BOSS_VALTAN",
   "bindings": [
     {
@@ -168,7 +168,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.attack.dash-charge.active",
@@ -182,7 +183,8 @@
           "playRate": 0.6,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.attack.dash-charge.groggy",
@@ -210,7 +212,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.attack.dash-charge.recovery",
@@ -260,7 +263,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.attack.earthquake-smash.windup",
@@ -442,7 +446,8 @@
           "playRate": 1.0,
           "loop": true
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.attack.triple-slash.active",
@@ -456,7 +461,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.attack.rotation-slash.active",
@@ -470,7 +476,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.attack.four-slash.recovery",
@@ -484,7 +491,8 @@
           "playRate": 1.0,
           "loop": true
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.attack.high-jump.takeoff",
@@ -498,7 +506,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.attack.high-jump.airborne",
@@ -512,7 +521,8 @@
           "playRate": 1.0,
           "loop": true
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.attack.high-jump.land",
@@ -526,7 +536,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.attack.high-jump.recovery",
@@ -540,7 +551,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.attack.stomp.windup",
@@ -949,7 +961,8 @@
           "playRate": 1.0,
           "loop": true
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.attack.whirlwind.active",
@@ -963,7 +976,8 @@
           "playRate": 0.4441666667,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.attack.whirlwind.recovery",
@@ -977,7 +991,8 @@
           "playRate": 1.0,
           "loop": true
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.attack.backstep.windup",
@@ -1113,7 +1128,8 @@
     {
       "actionId": "valtan.attack.fist-in-out.inner",
       "playbackMode": "NONE",
-      "clips": []
+      "clips": [],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.attack.fist-in-out.outer",
@@ -1188,7 +1204,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.reactive.triple-counter.first-fail",
@@ -1202,7 +1219,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.reactive.triple-counter.second",
@@ -1225,7 +1243,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.reactive.triple-counter.second-fail",
@@ -1239,7 +1258,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.reactive.triple-counter.third",
@@ -1262,7 +1282,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.reactive.triple-counter.third-fail",
@@ -1276,7 +1297,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.reactive.triple-counter.recovery",
@@ -1351,7 +1373,8 @@
           "playRate": 1.0,
           "loop": true
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.mechanic.floor-wipe-130.first-smash",
@@ -1365,7 +1388,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.mechanic.floor-wipe-130.interval",
@@ -1388,7 +1412,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.mechanic.floor-wipe-130.second-smash",
@@ -1402,7 +1427,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.mechanic.floor-wipe-130.recovery",
@@ -1416,7 +1442,8 @@
           "playRate": 1.0,
           "loop": true
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.mechanic.four-pillars-105.takeoff",
@@ -1528,6 +1555,16 @@
           "playRate": 1.0,
           "loop": false
         }
+      ],
+      "cameraInvocations": [
+        {
+          "cameraInvocationId": "camera.valtan.arena-break-109.takeoff.invocation",
+          "cameraCueId": "camera.valtan.arena-break-109.takeoff",
+          "trigger": "ENTER",
+          "startOffsetMs": 0,
+          "durationPolicy": "EXPLICIT",
+          "durationMs": 900
+        }
       ]
     },
     {
@@ -1551,6 +1588,16 @@
           "playRate": 1.0,
           "loop": false
         }
+      ],
+      "cameraInvocations": [
+        {
+          "cameraInvocationId": "camera.valtan.arena-break-109.drop.invocation",
+          "cameraCueId": "camera.valtan.arena-break-109.drop",
+          "trigger": "ENTER",
+          "startOffsetMs": 0,
+          "durationPolicy": "EXPLICIT",
+          "durationMs": 700
+        }
       ]
     },
     {
@@ -1564,6 +1611,16 @@
           "playMs": 400,
           "playRate": 1.0,
           "loop": false
+        }
+      ],
+      "cameraInvocations": [
+        {
+          "cameraInvocationId": "camera.valtan.arena-break-109.impact.invocation",
+          "cameraCueId": "camera.valtan.arena-break-109.impact",
+          "trigger": "ENTER",
+          "startOffsetMs": 0,
+          "durationPolicy": "EXPLICIT",
+          "durationMs": 400
         }
       ]
     },
@@ -1587,6 +1644,16 @@
           "playMs": 900,
           "playRate": 1.0,
           "loop": false
+        }
+      ],
+      "cameraInvocations": [
+        {
+          "cameraInvocationId": "camera.valtan.arena-break-109.impact-hold.invocation",
+          "cameraCueId": "camera.valtan.arena-break-109.impact-hold",
+          "trigger": "ENTER",
+          "startOffsetMs": 0,
+          "durationPolicy": "EXPLICIT",
+          "durationMs": 1100
         }
       ]
     },
@@ -1620,6 +1687,16 @@
           "playRate": 1.0,
           "loop": false
         }
+      ],
+      "cameraInvocations": [
+        {
+          "cameraInvocationId": "camera.valtan.arena-break-109.wide-reveal.invocation",
+          "cameraCueId": "camera.valtan.arena-break-109.wide-reveal",
+          "trigger": "ENTER",
+          "startOffsetMs": 0,
+          "durationPolicy": "EXPLICIT",
+          "durationMs": 2300
+        }
       ]
     },
     {
@@ -1633,6 +1710,16 @@
           "playMs": 0,
           "playRate": 1.0,
           "loop": true
+        }
+      ],
+      "cameraInvocations": [
+        {
+          "cameraInvocationId": "camera.valtan.arena-break-109.recovery.invocation",
+          "cameraCueId": "camera.valtan.arena-break-109.recovery",
+          "trigger": "ENTER",
+          "startOffsetMs": 0,
+          "durationPolicy": "EXPLICIT",
+          "durationMs": 870
         }
       ]
     },
@@ -1984,7 +2071,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.center-six-pizza-charge.step-02",
@@ -1998,7 +2086,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.center-six-pizza-charge.step-03",
@@ -2012,7 +2101,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.center-six-pizza-charge.step-04",
@@ -2026,7 +2116,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.center-six-pizza-charge.step-05",
@@ -2040,7 +2131,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.center-six-pizza-charge.step-06",
@@ -2054,7 +2146,8 @@
           "playRate": 1.0,
           "loop": true
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.center-six-pizza-charge.step-07",
@@ -2068,7 +2161,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.center-six-pizza-charge.step-08",
@@ -2082,7 +2176,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.center-six-pizza-charge.step-09",
@@ -2096,7 +2191,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.center-six-pizza-charge.step-10",
@@ -2110,7 +2206,8 @@
           "playRate": 1.0,
           "loop": true
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.center-six-pizza-charge.step-11",
@@ -2124,7 +2221,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.attack-whirlwind.step-01",
@@ -2138,7 +2236,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.attack-whirlwind.step-02",
@@ -2152,7 +2251,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.attack-whirlwind.step-03",
@@ -2166,7 +2266,8 @@
           "playRate": 1.0,
           "loop": true
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.attack-whirlwind.step-04",
@@ -2180,7 +2281,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.charge.step-01",
@@ -2194,7 +2296,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.charge.step-02",
@@ -2208,7 +2311,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.charge.step-03",
@@ -2222,7 +2326,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.four.step-01",
@@ -2236,7 +2341,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.four.step-02",
@@ -2255,7 +2361,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.roar-charge.step-02",
@@ -2269,7 +2376,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.roar-charge.step-03",
@@ -2283,7 +2391,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.roar-charge.step-04",
@@ -2297,7 +2406,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.roar-charge.step-05",
@@ -2311,7 +2421,8 @@
           "playRate": 1.0,
           "loop": true
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.roar-charge.step-06",
@@ -2325,7 +2436,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.rush.step-01",
@@ -2339,7 +2451,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.rush.step-02",
@@ -2353,7 +2466,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.rush.step-03",
@@ -2367,7 +2481,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.three.step-01",
@@ -2381,7 +2496,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.three.step-02",
@@ -2395,7 +2511,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.three.step-03",
@@ -2409,7 +2526,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.jump-whirlwind-roar-roar-charge.step-01",
@@ -2423,7 +2541,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.jump-whirlwind-roar-roar-charge.step-02",
@@ -2437,7 +2556,8 @@
           "playRate": 1.0,
           "loop": true
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.jump-whirlwind-roar-roar-charge.step-03",
@@ -2451,7 +2571,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.jump-whirlwind-roar-roar-charge.step-04",
@@ -2465,7 +2586,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.jump-whirlwind-roar-roar-charge.step-05",
@@ -2479,7 +2601,8 @@
           "playRate": 1.0,
           "loop": true
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.jump-whirlwind-roar-roar-charge.step-06",
@@ -2493,7 +2616,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.jump-whirlwind-roar-roar-charge.step-07",
@@ -2507,7 +2631,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.jump-whirlwind-roar-roar-charge.step-08",
@@ -2521,7 +2646,8 @@
           "playRate": 1.0,
           "loop": true
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.jump-whirlwind-roar-roar-charge.step-09",
@@ -2535,7 +2661,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.jump-whirlwind-roar-roar-charge.step-10",
@@ -2549,7 +2676,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.jump-whirlwind-roar-roar-charge.step-11",
@@ -2563,7 +2691,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.jump-whirlwind-roar-roar-charge.step-12",
@@ -2577,7 +2706,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.jump-whirlwind-roar-roar-charge.step-13",
@@ -2591,7 +2721,8 @@
           "playRate": 1.0,
           "loop": true
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.jump-whirlwind-roar-roar-charge.step-14",
@@ -2605,7 +2736,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.front-back-front.step-01",
@@ -2629,7 +2761,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.warp.step-02",
@@ -2647,7 +2780,8 @@
       "bodyVisibility": {
         "hiddenFromMs": 0,
         "hiddenToMs": 300
-      }
+      },
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.warp.step-03",
@@ -2665,7 +2799,8 @@
       "bodyVisibility": {
         "hiddenFromMs": 0,
         "hiddenToMs": 600
-      }
+      },
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.warp.step-04",
@@ -2683,7 +2818,8 @@
       "bodyVisibility": {
         "hiddenFromMs": 0,
         "hiddenToMs": 600
-      }
+      },
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.warp.step-05",
@@ -2701,7 +2837,8 @@
       "bodyVisibility": {
         "hiddenFromMs": 0,
         "hiddenToMs": 600
-      }
+      },
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.warp.step-06",
@@ -2719,7 +2856,8 @@
       "bodyVisibility": {
         "hiddenFromMs": 0,
         "hiddenToMs": 600
-      }
+      },
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.warp.step-07",
@@ -2737,7 +2875,8 @@
       "bodyVisibility": {
         "hiddenFromMs": 0,
         "hiddenToMs": 600
-      }
+      },
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.warp.step-08",
@@ -2755,7 +2894,8 @@
       "bodyVisibility": {
         "hiddenFromMs": 0,
         "hiddenToMs": 600
-      }
+      },
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.warp.step-09",
@@ -2773,7 +2913,8 @@
       "bodyVisibility": {
         "hiddenFromMs": 0,
         "hiddenToMs": 600
-      }
+      },
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.warp.step-10",
@@ -2791,7 +2932,8 @@
       "bodyVisibility": {
         "hiddenFromMs": 0,
         "hiddenToMs": 300
-      }
+      },
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.twohand.step-01",
@@ -2805,7 +2947,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.twohand.step-02",
@@ -2819,7 +2962,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.whirlwind.step-01",
@@ -2833,7 +2977,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.whirlwind.step-02",
@@ -2847,7 +2992,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.whirlwind.step-03",
@@ -2861,7 +3007,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.center-trash-rush-if.step-01",
@@ -2875,7 +3022,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.center-trash-rush-if.step-02",
@@ -2889,7 +3037,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.center-trash-rush-if.step-03",
@@ -2903,7 +3052,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.center-trash-rush-if.step-04",
@@ -2917,7 +3067,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.center-trash-rush-if.step-05",
@@ -2931,7 +3082,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.center-trash-rush-if.step-06",
@@ -2945,7 +3097,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.center-trash-rush-if.step-07",
@@ -2959,7 +3112,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.center-trash-rush-if.step-08",
@@ -2973,7 +3127,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.rush-success.step-01",
@@ -3012,7 +3167,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.catch-breath.step-02",
@@ -3026,7 +3182,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.catch-breath.step-03",
@@ -3040,7 +3197,8 @@
           "playRate": 1.0,
           "loop": true
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.catch-breath.step-04",
@@ -3054,7 +3212,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.counter.step-01",
@@ -3068,7 +3227,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.counter.step-02",
@@ -3091,7 +3251,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.counter.step-03",
@@ -3105,7 +3266,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.counter.step-04",
@@ -3124,7 +3286,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.charge2.step-02",
@@ -3138,7 +3301,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.charge2.step-03",
@@ -3152,7 +3316,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-01",
@@ -3166,7 +3331,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-02",
@@ -3180,7 +3346,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-03",
@@ -3194,7 +3361,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-04",
@@ -3208,7 +3376,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-05",
@@ -3222,7 +3391,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06",
@@ -3236,7 +3406,8 @@
           "playRate": 1.0,
           "loop": true
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-07",
@@ -3250,7 +3421,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-08",
@@ -3264,7 +3436,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-09",
@@ -3278,7 +3451,8 @@
           "playRate": 1.0,
           "loop": true
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-10",
@@ -3292,7 +3466,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-11",
@@ -3306,7 +3481,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-12",
@@ -3320,7 +3496,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.mechanic.terrain-destruction-3.takeoff",
@@ -3334,7 +3511,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.mechanic.terrain-destruction-3.airborne",
@@ -3348,7 +3526,8 @@
           "playRate": 1.0,
           "loop": true
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.mechanic.terrain-destruction-3.landing",
@@ -3362,7 +3541,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.mechanic.terrain-destruction-3.impact",
@@ -3376,7 +3556,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.mechanic.terrain-destruction-9.takeoff",
@@ -3390,7 +3571,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.mechanic.terrain-destruction-9.airborne",
@@ -3404,7 +3586,8 @@
           "playRate": 1.0,
           "loop": true
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.mechanic.terrain-destruction-9.landing",
@@ -3418,7 +3601,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.mechanic.terrain-destruction-9.impact",
@@ -3432,7 +3616,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.cinematic.entrance.establish",
@@ -3445,6 +3630,16 @@
           "playMs": 0,
           "playRate": 1.0,
           "loop": true
+        }
+      ],
+      "cameraInvocations": [
+        {
+          "cameraInvocationId": "camera.valtan.entrance.establish.invocation",
+          "cameraCueId": "camera.valtan.entrance.establish",
+          "trigger": "ENTER",
+          "startOffsetMs": 0,
+          "durationPolicy": "EXPLICIT",
+          "durationMs": 8600
         }
       ]
     },
@@ -3460,6 +3655,16 @@
           "playRate": 1.0,
           "loop": true
         }
+      ],
+      "cameraInvocations": [
+        {
+          "cameraInvocationId": "camera.valtan.entrance.arena-reveal.invocation",
+          "cameraCueId": "camera.valtan.entrance.arena-reveal",
+          "trigger": "ENTER",
+          "startOffsetMs": 0,
+          "durationPolicy": "EXPLICIT",
+          "durationMs": 5800
+        }
       ]
     },
     {
@@ -3473,6 +3678,16 @@
           "playMs": 0,
           "playRate": 1.0,
           "loop": true
+        }
+      ],
+      "cameraInvocations": [
+        {
+          "cameraInvocationId": "camera.valtan.entrance.hero-handoff.invocation",
+          "cameraCueId": "camera.valtan.entrance.hero-handoff",
+          "trigger": "ENTER",
+          "startOffsetMs": 0,
+          "durationPolicy": "EXPLICIT",
+          "durationMs": 4467
         }
       ]
     },
@@ -3488,7 +3703,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.center-trash-rush-if.catch-pre-impact",
@@ -3502,7 +3718,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.center-trash-rush-if.catch-slam",
@@ -3516,7 +3733,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.center-trash-rush-if.execute-tail",
@@ -3530,7 +3748,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.center-trash-rush-if.rush-miss",
@@ -3544,7 +3763,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.center-trash-rush-if.groggy",
@@ -3576,7 +3796,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.cross.step-01",
@@ -3590,7 +3811,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.rush-success.catch-counter",
@@ -3604,7 +3826,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.rush-success.catch-pre-impact",
@@ -3618,7 +3841,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.rush-success.catch-slam",
@@ -3632,7 +3856,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.rush-success.execute-tail",
@@ -3646,7 +3871,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.rush-fail.rush-miss",
@@ -3660,7 +3886,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.rush-if.step-07",
@@ -3674,7 +3901,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.rush-if.step-08",
@@ -3688,7 +3916,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.rush-if.catch-counter",
@@ -3702,7 +3931,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.rush-if.catch-pre-impact",
@@ -3716,7 +3946,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.rush-if.catch-slam",
@@ -3730,7 +3961,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.rush-if.execute-tail",
@@ -3744,7 +3976,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.rush-if.rush-miss",
@@ -3758,7 +3991,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.rush-if.groggy",
@@ -3790,7 +4024,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.ghost-finale.step-01",
@@ -3804,7 +4039,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.ghost-finale.step-02",
@@ -3818,7 +4054,8 @@
           "playRate": 1.0,
           "loop": true
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.ghost-finale.step-03",
@@ -3832,7 +4069,8 @@
           "playRate": 1.0,
           "loop": true
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.ghost-finale.step-04",
@@ -3846,7 +4084,8 @@
           "playRate": 1.0,
           "loop": true
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.ghost-finale.step-05",
@@ -3860,7 +4099,8 @@
           "playRate": 1.0,
           "loop": true
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.ghost-finale.step-06",
@@ -3874,7 +4114,8 @@
           "playRate": 1.0,
           "loop": true
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.ghost-finale.step-07",
@@ -3888,7 +4129,8 @@
           "playRate": 1.0,
           "loop": true
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.ghost-finale.step-08",
@@ -3902,7 +4144,8 @@
           "playRate": 1.0,
           "loop": true
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.ghost-finale.step-09",
@@ -3916,7 +4159,8 @@
           "playRate": 1.0,
           "loop": true
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.ghost-finale.step-10",
@@ -3930,7 +4174,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.respawn.step-01",
@@ -3944,7 +4189,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.dead.step-01",
@@ -3958,7 +4204,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.sequence.400440.0.step-01",
@@ -3981,7 +4228,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.center-trash-rush-if.recharge-wait-02",
@@ -3995,7 +4243,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.center-trash-rush-if.retry-windup-02",
@@ -4009,7 +4258,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.center-trash-rush-if.retry-rush-02",
@@ -4023,7 +4273,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.center-trash-rush-if.retry-miss-02",
@@ -4037,7 +4288,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.center-trash-rush-if.recharge-wait-03",
@@ -4051,7 +4303,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.center-trash-rush-if.retry-windup-03",
@@ -4065,7 +4318,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.center-trash-rush-if.retry-rush-03",
@@ -4079,7 +4333,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.center-trash-rush-if.retry-exhausted",
@@ -4093,7 +4348,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.rush-if.recharge-wait-02",
@@ -4107,7 +4363,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.rush-if.retry-windup-02",
@@ -4121,7 +4378,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.rush-if.retry-rush-02",
@@ -4135,7 +4393,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.rush-if.retry-miss-02",
@@ -4149,7 +4408,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.rush-if.recharge-wait-03",
@@ -4163,7 +4423,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.rush-if.retry-windup-03",
@@ -4177,7 +4438,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.rush-if.retry-rush-03",
@@ -4191,7 +4453,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.sequence.rush-if.retry-exhausted",
@@ -4205,7 +4468,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.authoring.stagger-slot.step-01",
@@ -4270,7 +4534,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.authoring.silence-slot.step-01",
@@ -4284,7 +4549,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.ghost.portal-once.active",
@@ -4302,7 +4568,8 @@
       "bodyVisibility": {
         "hiddenFromMs": 0,
         "hiddenToMs": 300
-      }
+      },
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.authoring.stagger-slot.channel",
@@ -4325,7 +4592,8 @@
           "playRate": 1.0,
           "loop": true
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.authoring.stagger-slot.final-attack",
@@ -4339,7 +4607,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.followup.groggy.active",
@@ -4389,7 +4658,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.authoring.bind-slot.recovery",
@@ -4403,12 +4673,14 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.authoring.silence-slot.apply",
       "playbackMode": "NONE",
-      "clips": []
+      "clips": [],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.reactive.triple-counter.setup",
@@ -4422,7 +4694,8 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.reaction.part-break.recovery",
@@ -4445,12 +4718,14 @@
           "playRate": 1.0,
           "loop": false
         }
-      ]
+      ],
+      "cameraInvocations": []
     },
     {
       "actionId": "valtan.attack.fist-in-out-large.inner",
       "playbackMode": "NONE",
-      "clips": []
+      "clips": [],
+      "cameraInvocations": []
     }
   ]
 }

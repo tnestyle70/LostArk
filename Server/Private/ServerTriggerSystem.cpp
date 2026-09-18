@@ -153,6 +153,14 @@ bool LostArk::Server::CServerTriggerSystem::Run_Action(
 	return fired;
 }
 
+void LostArk::Server::CServerTriggerSystem::Reset_SequenceActivation(const std::string& instanceId)
+{
+	for (auto& trigger : m_Triggers)
+		if (std::any_of(trigger.Definition.TriggerActions.begin(), trigger.Definition.TriggerActions.end(),
+			[&](const auto& action) { return action.eKind == WORLD_TRIGGER_ACTION_KIND::PLAY_SEQUENCE && action.strTargetId == instanceId; }))
+			trigger.hasFired = false;
+}
+
 bool LostArk::Server::CServerTriggerSystem::Activate_Interact(
 	const LostArk::Shared::PLAYER_ID playerId,
 	const std::string& triggerPlacementId,

@@ -617,7 +617,7 @@
                 ]
               },
               "occurrenceId": "cue.valtan.carrier-v1.attack.four-slash.active.clip-01.occurrence.01",
-              "effectAssetId": "effect.valtan.carrier-v1.attack.four-slash.active.clip-01",
+              "effectAssetId": "effect.valtan.action.420609.stage008.full.restore",
               "clipOccurrenceId": "valtan.attack.four-slash.active.clip.01",
               "sourceStartMs": 0,
               "sourceEndMs": null,
@@ -678,7 +678,7 @@
                 ]
               },
               "occurrenceId": "cue.valtan.carrier-v1.attack.four-slash.active.clip-02.occurrence.01",
-              "effectAssetId": "effect.valtan.carrier-v1.attack.four-slash.active.clip-02",
+              "effectAssetId": "effect.valtan.action.420609.stage009.full.restore",
               "clipOccurrenceId": "valtan.attack.four-slash.active.clip.02",
               "sourceStartMs": 0,
               "sourceEndMs": null,

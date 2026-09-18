@@ -111,10 +111,11 @@ namespace EffectToolDetail
                     !attachment.strRuntimeBoneName.empty() && attachment.eOrientation != EFFECT_ATTACHMENT_ORIENTATION::CAMERA_VIEW;
                 group.anchorPosition = attachment.SocketLocalTransform.vPosition;
                 group.anchorRotationDegrees = attachment.SocketLocalTransform.vRotationDegrees;
-                group.editable = !document.bSourceContract && (group.rootLocal || (attachment.bFollow &&
+                group.editable = !document.bSourceContract && (group.rootLocal || (!attachment.bFollow &&
+                    attachment.eOrientation != EFFECT_ATTACHMENT_ORIENTATION::CAMERA_VIEW) || (attachment.bFollow &&
                     !attachment.strRuntimeBoneName.empty() && attachment.eOrientation != EFFECT_ATTACHMENT_ORIENTATION::CAMERA_VIEW));
                 if (!group.editable) group.editReason = document.bSourceContract ? "SourceContract documents are read-only." :
-                    "Group position editing requires an independent effect root or a following bone attachment.";
+                    "Group position editing requires an effect root, captured root or following bone attachment.";
                 groups.push_back(std::move(group));
             }
             auto& group = groups[found->second];
@@ -239,7 +240,8 @@ namespace EffectToolDetail
     }
 
     bool Rotate_AttachmentElementGroup(Client::EFFECT_DOCUMENT_DESC& document,
-        const std::string& groupKey, const float3_t& rotationDegrees, std::string& error)
+        const std::string& groupKey, const float3_t& rotationDegrees, std::string& error,
+        const float3_t* pivot, const std::string& elementId)
     {
         const auto reject = [&](const std::string& reason) { error = reason; return false; };
         const auto inRange = [](const float3_t& value, float limit) {
@@ -252,6 +254,17 @@ namespace EffectToolDetail
         const auto group = std::find_if(groups.begin(), groups.end(), [&](const auto& item) { return item.key == groupKey; });
         if (group == groups.end()) return reject("The attachment group changed. Select its current anchor group again.");
         if (!group->rotationEditable) return reject(group->rotationEditReason);
+        const float3_t center = pivot ? *pivot : group->center;
+        if (!inRange(center, 100000.f)) return reject("Rotation pivot must be finite and within +/-100000 metres.");
+        float3_t referenceRotation = group->rotationDegrees;
+        if (!elementId.empty())
+        {
+            if (std::find(group->elementIds.begin(), group->elementIds.end(), elementId) == group->elementIds.end())
+                return reject("The rotation target is no longer in this group; all Elements are unchanged.");
+            const auto member = std::find_if(document.Elements.begin(), document.Elements.end(),
+                [&](const auto& element) { return element.strElementId == elementId; });
+            referenceRotation = member->Detail.Transform.vRotationDegrees;
+        }
         const auto quaternion = [](const float3_t& angles) {
             return XMQuaternionRotationRollPitchYaw(XMConvertToRadians(angles.x),
                 XMConvertToRadians(angles.y), XMConvertToRadians(angles.z));
@@ -259,21 +272,22 @@ namespace EffectToolDetail
         // In row-vector order, remove the first member's old orientation then
         // apply its edited orientation after every member's original rotation.
         const auto delta = XMQuaternionNormalize(XMQuaternionMultiply(
-            XMQuaternionInverse(quaternion(group->rotationDegrees)), quaternion(rotationDegrees)));
+            XMQuaternionInverse(quaternion(referenceRotation)), quaternion(rotationDegrees)));
         const auto rotateVector = [&](const float3_t& value) {
             float3_t rotated;
             XMStoreFloat3(&rotated, XMVector3Rotate(XMLoadFloat3(&value), delta));
             return rotated;
         };
         const auto rotatePosition = [&](const float3_t& value) {
-            const auto relative = rotateVector(float3_t(value.x - group->center.x,
-                value.y - group->center.y, value.z - group->center.z));
-            return float3_t(group->center.x + relative.x, group->center.y + relative.y, group->center.z + relative.z);
+            const auto relative = rotateVector(float3_t(value.x - center.x,
+                value.y - center.y, value.z - center.z));
+            return float3_t(center.x + relative.x, center.y + relative.y, center.z + relative.z);
         };
         struct ROTATION_EDIT { size_t index; Client::EFFECT_TRANSFORM_DESC transform; Client::EFFECT_LINEAR_LERP_DESC lerp; };
         std::vector<ROTATION_EDIT> edits;
         for (const auto& id : group->elementIds)
         {
+            if (!elementId.empty() && id != elementId) continue;
             const auto member = std::find_if(document.Elements.begin(), document.Elements.end(),
                 [&](const auto& element) { return element.strElementId == id; });
             if (member == document.Elements.end()) return reject("A group member is unavailable; all Elements are unchanged.");

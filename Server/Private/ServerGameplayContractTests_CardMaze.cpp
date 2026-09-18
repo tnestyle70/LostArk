@@ -278,14 +278,75 @@ int LostArk::Server::Run_ServerCardMazeContractTests()
 	tests.Require(Maze::In_SafeZone(Maze::CENTER_X + 5.f, Maze::CENTER_Z) &&
 		!Maze::In_SafeZone(Maze::CENTER_X + 5.1f, Maze::CENTER_Z), "Central immunity has a bounded five metre radius");
 	for (PLAYER_ID id = 2u; id <= 4u; ++id) maze.Mark_Escaped(players[id]);
-	tests.Require(maze.All_LivingCentral(players) && maze.Toggle_Telescope(players[2u]) && maze.Toggle_Telescope(players[3u]) &&
-		(players[1u].CardMaze.flags & 1u) && (players[2u].CardMaze.flags & 1u) && (players[3u].CardMaze.flags & 1u),
-		"Escaped players share telescope independently and all living central players satisfy completion");
+	tests.Require(maze.All_LivingCentral(players) && !maze.Toggle_Telescope(players[2u]) && !maze.Toggle_Telescope(players[3u]) &&
+		(players[1u].CardMaze.flags & 1u) && !(players[2u].CardMaze.flags & 1u) && !(players[3u].CardMaze.flags & 1u),
+		"Only the telescope claimant keeps overhead after the other hunters escape");
 	players[4u].CardMaze.transferStartTick = 150u;
 	tests.Require(!maze.All_LivingCentral(players), "An unfinished blackout blocks final departure");
 	maze.Reset(players);
 	tests.Require(maze.Get_Targets().empty() && players[1u].eCardMazeRole == CARD_MAZE_ROLE::NONE &&
 		players[4u].CardMaze.transferStartTick == 0u, "Reset removes run state and presentation clocks");
+	// Use the room's actual hammer, portal, blackout and return consumers for 1..4 participants.
+	for (PLAYER_ID count = 1u; count <= 4u; ++count)
+	{
+#ifndef _DEBUG
+		if (count == 1u) continue;
+#endif
+		auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+		for (PLAYER_ID id = 1u; id <= count; ++id)
+		{
+			auto participant = players.at(id);
+			participant.iCurrentHp = participant.iMaximumHp = 50000u;
+			participant.isCombatReady = true;
+			participant.fPositionX = Maze::CENTER_X; participant.fPositionY = -.01f; participant.fPositionZ = Maze::CENTER_Z;
+			room->m_Players.emplace(id, participant);
+		}
+		room->m_iServerTick = 100u;
+		const bool began = room->Begin_CardMaze(1u);
+		const std::size_t expectedHunters = count == 1u ? 1u : count - 1u;
+		tests.Require(began && room->m_KoukuCardMaze.Get_Targets().size() == expectedHunters,
+			"Actual 1..4 player room spawns one matching target per hunter");
+		if (!began) continue;
+		const auto targets = room->m_KoukuCardMaze.Get_Targets();
+		bool portals = true, cameras = true;
+		for (const auto& [targetId, suit] : targets)
+		{
+			const auto target = std::find_if(room->m_WorldEntities.begin(), room->m_WorldEntities.end(),
+				[&](const auto& entity) { return entity.iNetEntityId == targetId; });
+			const auto hunter = std::find_if(room->m_Players.begin(), room->m_Players.end(),
+				[&](const auto& row) { return row.second.eCardMazeSuit == suit; });
+			if (target == room->m_WorldEntities.end() || hunter == room->m_Players.end()) { portals = false; continue; }
+			const std::array position{ target->fPositionX, target->fPositionY, target->fPositionZ };
+			auto& player = hunter->second;
+			player.fPositionX = position[0]; player.fPositionY = position[1]; player.fPositionZ = position[2] - 1.f;
+			player.fYawDegrees = 0.f;
+			room->Resolve_CardMazeHammerHit(player, 101u);
+			portals = portals && player.iCardMazeKills == 1u && (player.CardMaze.flags & 4u) &&
+				player.CardMaze.exitX == position[0] && player.CardMaze.exitY == position[1] && player.CardMaze.exitZ == position[2];
+			player.fPositionX = player.CardMaze.exitX; player.fPositionY = player.CardMaze.exitY; player.fPositionZ = player.CardMaze.exitZ;
+		}
+		for (const auto& [id, player] : room->m_Players)
+			cameras = cameras && ((player.CardMaze.flags & 1u) != 0u) == (id == 1u);
+		tests.Require(portals && cameras, "Each matching kill puts its portal on that suit and only its claimant has telescope view");
+		room->m_iCardMazeMarchStartTick = 0u; // Isolate portal arrival from the independently tested march-contact reset.
+		room->Update_CardMaze(102u);
+		const bool beforeArrival = room->m_KoukuCardMaze.Get_Phase() == Maze::PHASE::HUNTING;
+		for (std::uint32_t tick = 103u; tick <= 180u; ++tick) room->Update_CardMaze(tick);
+		const auto* returnPlacement = room->Find_Placement("cardmaze.return");
+		bool returned = returnPlacement && returnPlacement->TriggerActions.size() == 1u;
+		if (returned)
+		{
+			const auto& destination = returnPlacement->TriggerActions.front();
+			for (const auto& [id, player] : room->m_Players)
+			{
+				(void)id;
+				returned = returned && player.eCardMazeRole == CARD_MAZE_ROLE::NONE && !player.CardMaze.transferStartTick &&
+					std::abs(player.fPositionX - destination.fTargetX) < .05f && std::abs(player.fPositionZ - destination.fTargetZ) < .05f;
+			}
+		}
+		tests.Require(beforeArrival && returned && room->m_KoukuCardMaze.Get_Phase() == Maze::PHASE::INACTIVE,
+			"After every hunter takes the personal portal all 1..4 participants finish the Gate 2 return together");
+	}
 	std::cout << "card maze failures: " << tests.failures << '\n';
 	return tests.failures == 0 ? 0 : 1;
 }

@@ -2113,7 +2113,9 @@ void Client::CEffect_Tool::Start_WorldPreviewFromBeginning()
     // effect's lifetime before its first playback update.
     m_bSkipNextWorldPreviewDelta = true;
     if (m_pAuthoringSequencer && m_ActiveDocument && !m_ProductPreview &&
-        (Is_SequencerRecoveryEffectAssetId(m_ActiveDocument->strEffectAssetId) ||
+        ((m_ActiveDocument->strEffectAssetId.starts_with("effect.valtan.action.") &&
+          m_ActiveDocument->strEffectAssetId.ends_with(".full.restore")) ||
+         Is_SequencerRecoveryEffectAssetId(m_ActiveDocument->strEffectAssetId) ||
          Is_SceneAnchoredEffectAssetId(m_ActiveDocument->strEffectAssetId)) &&
         m_ePreviewFilter == EFFECT_PREVIEW_FILTER::SOLO_SELECTED)
     {
@@ -2121,7 +2123,9 @@ void Client::CEffect_Tool::Start_WorldPreviewFromBeginning()
         return;
     }
     if (m_ActiveDocument && !m_ProductPreview &&
-        (Is_SequencerRecoveryEffectAssetId(m_ActiveDocument->strEffectAssetId) ||
+        ((m_ActiveDocument->strEffectAssetId.starts_with("effect.valtan.action.") &&
+          m_ActiveDocument->strEffectAssetId.ends_with(".full.restore")) ||
+         Is_SequencerRecoveryEffectAssetId(m_ActiveDocument->strEffectAssetId) ||
          Is_SceneAnchoredEffectAssetId(m_ActiveDocument->strEffectAssetId)) &&
         m_ePreviewFilter == EFFECT_PREVIEW_FILTER::COMPLETE)
     {

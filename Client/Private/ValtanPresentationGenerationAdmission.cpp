@@ -31,7 +31,7 @@ namespace
 
 	constexpr std::uint64_t MAX_ARTIFACT_BYTES = 64ull * 1024ull * 1024ull;
 	constexpr std::string_view EFFECT_V2_BINDINGS_RELATIVE =
-		"Data/Effects/V2/Bindings/BOSS_VALTAN.effectv2bindings.json";
+		"Data/Valtan/Published/BOSS_VALTAN.effectv2bindings.json";
 	constexpr std::string_view EFFECT_V2_AUTHORED_ROOT =
 		"Data/Effects/V2/Authored";
 	constexpr std::string_view EFFECT_V2_GROUP_ROOT =
@@ -44,6 +44,7 @@ namespace
 		{ "Data/Animation/Authored/Valtan/Valtan.patterneffectcues.json", "EFFECT" },
 		{ "Data/Animation/Authored/Valtan/Valtan.patterneffectv1aliases.json", "EFFECT" },
 		{ "Data/Animation/Authored/Valtan/Valtan.patternshakecues.json", "CAMERA" },
+		{ "Data/Valtan/Published/Valtan.patternsoundcues.json", "COMBAT_VISUAL" },
 		{ "Data/Animation/Authored/Valtan/Valtan.combatobjectsoundcues.json", "COMBAT_VISUAL" },
 		{ "Data/Sound/CharacterSoundCatalog.json", "COMBAT_VISUAL" },
 		{ "Data/Effects/EffectCatalog.json", "EFFECT" },

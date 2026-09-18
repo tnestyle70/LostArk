@@ -58,6 +58,11 @@ def project(evidence, material_patch):
         assert len(doc['displayName'].encode('utf8')) <= 64
         for element in doc['elements']:
             element['groupId'] = f'kouku.{ACTION_ID}.stage{stage}.full.restore'
+            if (stage == 2 and 'par_u_rpcz_dash_ground_01_loc_int.'
+                    in element['sourceNode']):
+                # EPAL_Z fixes the floor normal, but placement yaw must still
+                # turn the entire quad around its source emission endpoint.
+                element['detail']['sprite']['followEmitterAxisRotation'] = True
             if element['sourceRecipe']['rendererShape'] != 'ribbon':
                 continue
             recipe = element['sourceRecipe']

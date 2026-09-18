@@ -2,7 +2,7 @@
     "schema":  "lostark.world-gameplay",
     "formatVersion":  6,
     "areaId":  "LV_LUT_MIDNIGHTC_ED",
-    "revision":  8796,
+    "revision":  8797,
     "placements":  [
                        {
                            "placementId":  "1Stage_Final",
@@ -2099,7 +2099,7 @@
                                             -62
                                         ],
                            "yawDegrees":  0,
-                           "enabled":  true
+                           "enabled":  false
                        },
                        {
                            "placementId":  "boss.kakulsaydon.g1.saydon",

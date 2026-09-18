@@ -2138,6 +2138,16 @@ bool CNetworkManager::Send_ValtanNextPatternCommand(
 		payloadWriter.Get_Buffer(), frameBytes) && Send_All(frameBytes);
 }
 
+bool CNetworkManager::Send_KoukuRaid(const LostArk::Shared::C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST& request)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected()) return false;
+	CPacketWriter writer;
+	if (!Write_Message(writer, request)) return false;
+	std::vector<std::uint8_t> frame;
+	return Build_Packet_Frame(PACKET_TYPE::C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST, writer.Get_Buffer(), frame) && Send_All(frame);
+}
+
 bool CNetworkManager::Send_KoukuSaydonPatternAudition(
 	const LostArk::Shared::C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST&
 		message)
@@ -4140,6 +4150,14 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 		event.PartyInviteReceived = std::move(received);
 		Enqueue_ReplicationEvent(std::move(event));
 		break;
+	}
+	case PACKET_TYPE::S2C_KOUKUSAYDON_RAID_STATE:
+	{
+		S2C_KOUKUSAYDON_RAID_STATE state{};
+		if (!Read_Message(reader, state) || reader.Get_RemainingSize() != 0u) { m_iLastErrorCode.store(WSAEINVAL); return; }
+		Client::CLIENT_REPLICATION_EVENT event{};
+		event.eType = Client::CLIENT_REPLICATION_EVENT_TYPE::KOUKUSAYDON_RAID_STATE;
+		event.KoukuRaidState = std::move(state); Enqueue_ReplicationEvent(std::move(event)); break;
 	}
 	case PACKET_TYPE::S2C_KOUKUSAYDON_BUNDLE_STATE:
 	{

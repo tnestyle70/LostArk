@@ -163,6 +163,7 @@ namespace LostArk::Server
 		bool bGhostPhasePatternLoopActive = false;
 		bool bKoukuGazeClone = false;
 		bool bKoukuSummonClone = false;
+		std::vector<std::size_t> KoukuSummonStartedTriggers;
 		std::uint32_t iKoukuCloneOwnerSequence = 0u;
 		std::uint32_t iKoukuCloneEndTick = 0u;
 		// Immutable staged child reuses the existing brain/root consumer while

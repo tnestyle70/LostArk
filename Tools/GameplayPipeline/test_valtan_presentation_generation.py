@@ -57,6 +57,35 @@ class ValtanPresentationGenerationTests(unittest.TestCase):
         self.assertIn(generation.CHARACTER_SOUND_CATALOG_REL, paths)
         self.assertIn(generation.EFFECT_V1_ALIASES_REL, paths)
 
+    def test_unpublished_sound_and_effect_binding_drafts_do_not_change_generation(self) -> None:
+        baseline = generation.build_presentation_generation(REPOSITORY_ROOT)
+        for relative in (
+            "Data/Animation/Authored/Valtan/Valtan.patternsoundcues.json",
+            "Data/Effects/V2/Bindings/BOSS_VALTAN.effectv2bindings.json",
+        ):
+            with self.subTest(relative=relative), tempfile.TemporaryDirectory() as temporary:
+                overlay = Path(temporary)
+                destination = overlay / relative
+                destination.parent.mkdir(parents=True)
+                destination.write_bytes(b'{"unfinishedSource":true}')
+                current = generation.build_presentation_generation(REPOSITORY_ROOT, overlay)
+                self.assertEqual(baseline.generation_id, current.generation_id)
+                self.assertEqual(baseline.manifest_bytes, current.manifest_bytes)
+
+    def test_published_sound_and_effect_bindings_belong_to_generation(self) -> None:
+        baseline = generation.build_presentation_generation(REPOSITORY_ROOT)
+        for relative in (
+            "Data/Valtan/Published/Valtan.patternsoundcues.json",
+            "Data/Valtan/Published/BOSS_VALTAN.effectv2bindings.json",
+        ):
+            with self.subTest(relative=relative), tempfile.TemporaryDirectory() as temporary:
+                overlay = Path(temporary)
+                destination = overlay / relative
+                destination.parent.mkdir(parents=True)
+                destination.write_bytes((REPOSITORY_ROOT / relative).read_bytes() + b"\n")
+                current = generation.build_presentation_generation(REPOSITORY_ROOT, overlay)
+                self.assertNotEqual(baseline.generation_id, current.generation_id)
+
     def test_every_exact_runtime_dependency_changes_generation(self) -> None:
         baseline = generation.build_presentation_generation(REPOSITORY_ROOT)
         for relative in (

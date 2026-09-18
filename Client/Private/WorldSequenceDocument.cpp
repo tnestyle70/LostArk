@@ -770,7 +770,7 @@ bool_t Client::CWorldSequenceDocument::Load(
 			{
 				WORLD_SEQUENCE_EFFECT_TRACK effect;
 				if (!Is_ObjectShape(row, { "effectTrackId", "slotId", "resourceKind", "resourceId",
-					"timing", "startMs", "durationMs", "positionOffset", "rotationDegrees", "scale" }, { "followObject", "bone", "fitEffectToDuration" }))
+					"timing", "startMs", "durationMs", "positionOffset", "rotationDegrees", "scale" }, { "followObject", "inheritObjectRotation", "bone", "fitEffectToDuration", "loopEffectToDuration" }))
 				{ outStatus = "World Object effect track shape is invalid"; return false; }
 				for (const char* key : { "effectTrackId", "slotId", "resourceKind", "resourceId", "timing" })
 					if (!row.Find(key)->Is_String())
@@ -785,10 +785,20 @@ bool_t Client::CWorldSequenceDocument::Load(
 					if (!fit->Is_Boolean()) { outStatus = "World Object effect fit must be boolean"; return false; }
 					effect.fitEffectToDuration = fit->Get_Boolean();
 				}
+				if (const auto* loop = row.Find("loopEffectToDuration"))
+				{
+					if (!loop->Is_Boolean()) { outStatus = "World Object effect loop must be boolean"; return false; }
+					effect.loopEffectToDuration = loop->Get_Boolean();
+				}
 				if (const auto* follow = row.Find("followObject"))
 				{
 					if (!follow->Is_Boolean()) { outStatus = "World Object effect followObject must be boolean"; return false; }
 					effect.followObject = follow->Get_Boolean();
+				}
+				if (const auto* inherit = row.Find("inheritObjectRotation"))
+				{
+					if (!inherit->Is_Boolean()) { outStatus = "World Object effect inheritObjectRotation must be boolean"; return false; }
+					effect.inheritObjectRotation = inherit->Get_Boolean();
 				}
 				if (const auto* bone = row.Find("bone"))
 				{
@@ -1188,7 +1198,9 @@ bool_t Client::CWorldSequenceDocument::Save(
 					<< ", \"positionOffset\": [" << effect.positionOffset.x << ", " << effect.positionOffset.y << ", " << effect.positionOffset.z
 					<< "], \"rotationDegrees\": [" << effect.rotationDegrees.x << ", " << effect.rotationDegrees.y << ", " << effect.rotationDegrees.z
 					<< "], \"scale\": [" << effect.scale.x << ", " << effect.scale.y << ", " << effect.scale.z << "]";
+				if (!effect.inheritObjectRotation) output << ", \"inheritObjectRotation\": false";
 				if (effect.fitEffectToDuration) output << ", \"fitEffectToDuration\": true";
+				if (effect.loopEffectToDuration) output << ", \"loopEffectToDuration\": true";
 				output << " }";
 			}
 			output << "\n      ]";
@@ -1417,7 +1429,8 @@ bool_t Client::CWorldSequenceDocument::Validate(
 			if (!Is_ValidStableId(effect.effectTrackId) || !effectIds.insert(effect.effectTrackId).second ||
 				!Is_ValidStableId(effect.slotId) || !slotExists || !Is_ValidStableId(effect.resourceId) ||
 				(effect.resourceKind != "LEAF" && effect.resourceKind != "GROUP" && effect.resourceKind != "V1_EFFECT") ||
-				(effect.fitEffectToDuration && effect.resourceKind != "V1_EFFECT") ||
+				((effect.fitEffectToDuration || effect.loopEffectToDuration) && effect.resourceKind != "V1_EFFECT") ||
+				(effect.fitEffectToDuration && effect.loopEffectToDuration) ||
 				effect.bone.size() > 256u || !Is_ValidUtf8DisplayText(effect.bone) ||
 				(effect.timing != "TIME" && effect.timing != "MOTION_END") ||
 				(effect.timing == "MOTION_END" && effect.startMs != 0u) ||
@@ -1905,7 +1918,7 @@ bool_t Client::CWorldSequenceDocument::Is_Equivalent(
 		{
 			const auto& a = left.effectTracks[index]; const auto& b = right.effectTracks[index];
 			if (a.effectTrackId != b.effectTrackId || a.slotId != b.slotId || a.resourceKind != b.resourceKind ||
-				a.resourceId != b.resourceId || a.fitEffectToDuration != b.fitEffectToDuration || a.followObject != b.followObject || a.bone != b.bone || a.timing != b.timing || a.startMs != b.startMs || a.durationMs != b.durationMs ||
+				a.resourceId != b.resourceId || a.fitEffectToDuration != b.fitEffectToDuration || a.loopEffectToDuration != b.loopEffectToDuration || a.followObject != b.followObject || a.inheritObjectRotation != b.inheritObjectRotation || a.bone != b.bone || a.timing != b.timing || a.startMs != b.startMs || a.durationMs != b.durationMs ||
 				!sameFloat3(a.positionOffset, b.positionOffset) || !sameFloat3(a.rotationDegrees, b.rotationDegrees) ||
 				!sameFloat3(a.scale, b.scale)) return false;
 		}

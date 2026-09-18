@@ -2,7 +2,20 @@
 
 작성일: 2026-09-09
 
-상태: 구현 전. 이 변경은 계획서 작성만 포함한다.
+상태: 2026-09-18 구현 재개. 아래 기존 G의 미구현 범위와 실제 구현 범위는 RESULT에서 구분한다.
+
+## 2026-09-18 재개 범위
+
+현재 요청은 발탄 Composition의 모델 Play/Pause/Seek와 Effect Tool Full Restore의 Solo/Play Group을 연결하고, Saydon과 같은 Resources 분류와 트랙 편집 흐름으로 맞추는 것이다. 같은 `ICompositionWorkbenchSession` shell을 유지하며 발탄의 split gameplay/presentation과 Server 권위는 그대로 소비한다.
+
+- `EffectAuthoringSequencer`와 Effect Tool은 Full Restore가 우회하던 model sampling/anchor clock을 하나로 연결한다.
+- `MainApp`, `Animation_Tool_ValtanComposition`과 `ValtanActionWorkbench`는 선택된 발탄 세션의 transport와 실제 model clock을 연결한다. UI의 선택 상태가 다른 보스의 transport로 제출되지 않도록 한다.
+- `ValtanActionWorkbench`는 Resources와 timeline domain 순서, 선택/추가/Box Detail/drag 입력을 공통 형식으로 맞춘다. 각 box는 기존 typed owner의 clock으로 변경하고 임시 표시값만 저장하지 않는다.
+- `ValtanPatternTree`, `BalanceTool`, 기존 Valtan writer는 source authoring read/save와 strict Product Publish를 분리한다. 변경 owner의 JSON 구조·stable ID·CAS·atomic rollback은 유지한다. 마지막 정상 Product는 source 저장 실패 또는 Publish 실패로 교체하지 않는다.
+- `VALTAN_FOUR_SLASH`의 SLASHES/SPIN은 기존 cue identity와 명시적 사용자 scale을 보존하고 stage008/009 Full Restore로 교체한다. 기존 carrier를 중복 추가하지 않는다.
+- Summon/World/Scene Profile/Camera/Light는 실제 기존 저장 필드와 소비자를 조사한 뒤 연결한다. 탭이나 빈 lane 이름만 추가한 상태를 구현 완료로 기록하지 않는다.
+
+검증은 변경 C++ 최소 컴파일과 정상 증분 Product Build, source 저장/reopen/Publish 실패 보존, 변경 JSON parse 및 domain publisher, `git diff --check`로 한다. Client 실행과 최종 화면 확인은 사용자가 직접 한다.
 
 기준: `591012db`와 2026-09-09 현재 작업 트리. 쿠크와 이펙트 관련 동시 변경은 보존한다.
 

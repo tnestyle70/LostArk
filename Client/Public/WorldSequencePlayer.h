@@ -330,7 +330,8 @@ private:
 		f32_t birthMs, const PLAYER_ANCHOR& baseline, PLAYER_ANCHOR& out);
 	static bool_t Sample_ObjectWorld(const ACTIVE_INSTANCE& active, const WORLD_SEQUENCE_INSTANCE& instance,
 		const WORLD_SEQUENCE_TEMPLATE& sequence, const WORLD_SEQUENCE_OBJECT_RESOURCE& resource,
-		const std::string& slotId, const PLAYER_ANCHOR& anchor, uint32_t emitter, f32_t ageMs, float4x4_t& out, std::string& status);
+		const std::string& slotId, const PLAYER_ANCHOR& anchor, uint32_t emitter, f32_t ageMs, float4x4_t& out, std::string& status,
+		bool_t inheritObjectRotation = true);
 	bool_t Apply_ObjectEffects(ACTIVE_INSTANCE& active, const WORLD_SEQUENCE_INSTANCE& instance,
 		const TARGET_SET& targets);
 	void Release_Objects(ACTIVE_INSTANCE& active);

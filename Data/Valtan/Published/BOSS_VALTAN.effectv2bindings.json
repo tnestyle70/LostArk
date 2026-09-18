@@ -1,0 +1,4189 @@
+{
+  "schema": "lostark.effect-v2-bindings",
+  "formatVersion": 2,
+  "archetypeId": "BOSS_VALTAN",
+  "bindings": [
+    {
+      "bindingId": "binding.valtan.migrated.000.b0793ccdfcf35d3a",
+      "resource": {
+        "kind": "LEAF",
+        "id": "boss.valtan.hand_1"
+      },
+      "scope": {
+        "patternId": "VALTAN_TRASH",
+        "stageId": "STEP_06",
+        "actionId": "valtan.sequence.center-trash-rush-if.step-06"
+      },
+      "clock": {
+        "basis": "STAGE",
+        "clipOccurrenceId": null,
+        "startMs": 0,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "bip001-l-hand",
+        "followPolicy": "FOLLOW_SLOT",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.migrated.001.a175356a91bfd662",
+      "resource": {
+        "kind": "LEAF",
+        "id": "boss.valtan.hand_2"
+      },
+      "scope": {
+        "patternId": "VALTAN_TRASH",
+        "stageId": "STEP_06",
+        "actionId": "valtan.sequence.center-trash-rush-if.step-06"
+      },
+      "clock": {
+        "basis": "STAGE",
+        "clipOccurrenceId": null,
+        "startMs": 0,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "bip001-l-hand",
+        "followPolicy": "FOLLOW_SLOT",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.migrated.002.fce43d61d966b20b",
+      "resource": {
+        "kind": "LEAF",
+        "id": "boss.valtan.hand_3"
+      },
+      "scope": {
+        "patternId": "VALTAN_TRASH_CATCH_SUCCESS",
+        "stageId": "CATCH_COUNTER",
+        "actionId": "valtan.sequence.rush-success.catch-counter"
+      },
+      "clock": {
+        "basis": "STAGE",
+        "clipOccurrenceId": null,
+        "startMs": 0,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "bip001-l-hand",
+        "followPolicy": "FOLLOW_SLOT",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.migrated.003.b6fe68b01451b0ed",
+      "resource": {
+        "kind": "LEAF",
+        "id": "boss.valtan.hand_4"
+      },
+      "scope": {
+        "patternId": "VALTAN_TRASH_CATCH_SUCCESS",
+        "stageId": "CATCH_COUNTER",
+        "actionId": "valtan.sequence.rush-success.catch-counter"
+      },
+      "clock": {
+        "basis": "STAGE",
+        "clipOccurrenceId": null,
+        "startMs": 0,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "bip001-l-hand",
+        "followPolicy": "FOLLOW_SLOT",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.migrated.004.d2cb0e1f0a9ed794",
+      "resource": {
+        "kind": "LEAF",
+        "id": "boss.valtan.hand_5"
+      },
+      "scope": {
+        "patternId": "VALTAN_TRASH_CATCH_IF",
+        "stageId": "CATCH_COUNTER",
+        "actionId": "valtan.sequence.rush-if.catch-counter"
+      },
+      "clock": {
+        "basis": "STAGE",
+        "clipOccurrenceId": null,
+        "startMs": 0,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "bip001-l-hand",
+        "followPolicy": "FOLLOW_SLOT",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.migrated.005.107d3dc4ada1c2b8",
+      "resource": {
+        "kind": "LEAF",
+        "id": "boss.valtan.hand_6"
+      },
+      "scope": {
+        "patternId": "VALTAN_TRASH_CATCH_IF",
+        "stageId": "CATCH_COUNTER",
+        "actionId": "valtan.sequence.rush-if.catch-counter"
+      },
+      "clock": {
+        "basis": "STAGE",
+        "clipOccurrenceId": null,
+        "startMs": 0,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "bip001-l-hand",
+        "followPolicy": "FOLLOW_SLOT",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.migrated.006.2e2690c8712917d8",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.impact"
+      },
+      "scope": {
+        "patternId": "VALTAN_SEQUENCE_FOUR",
+        "stageId": "STEP_01",
+        "actionId": "valtan.sequence.four.step-01"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "valtan.sequence.four.step-01.clip-01",
+        "startMs": 1233,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.migrated.006.990995a462353144",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.impact"
+      },
+      "scope": {
+        "patternId": "VALTAN_STRUGGLING",
+        "stageId": "STEP_04",
+        "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-04"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-04.clip-01",
+        "startMs": 1233,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.migrated.006.c528dcfd46892776",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.impact"
+      },
+      "scope": {
+        "patternId": "VALTAN_FRONT_BACK_FRONT",
+        "stageId": "SMASHES",
+        "actionId": "valtan.attack.front-back-front.active"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "valtan.attack.front-back-front.active.clip.01",
+        "startMs": 1233,
+        "repeatPolicy": "EACH_LOOP"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.migrated.007.568b312042d03131",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.impact"
+      },
+      "scope": {
+        "patternId": "VALTAN_SEQUENCE_FOUR",
+        "stageId": "STEP_01",
+        "actionId": "valtan.sequence.four.step-01"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "valtan.sequence.four.step-01.clip-01",
+        "startMs": 2233,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            175.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.migrated.007.8d01fb677d7f0a8d",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.impact"
+      },
+      "scope": {
+        "patternId": "VALTAN_FRONT_BACK_FRONT",
+        "stageId": "SMASHES",
+        "actionId": "valtan.attack.front-back-front.active"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "valtan.attack.front-back-front.active.clip.01",
+        "startMs": 2233,
+        "repeatPolicy": "EACH_LOOP"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            175.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.migrated.007.b69a7551a24b5358",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.impact"
+      },
+      "scope": {
+        "patternId": "VALTAN_STRUGGLING",
+        "stageId": "STEP_04",
+        "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-04"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-04.clip-01",
+        "startMs": 2233,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            175.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.migrated.008.3facf976afc6656e",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.impact"
+      },
+      "scope": {
+        "patternId": "VALTAN_STRUGGLING",
+        "stageId": "STEP_04",
+        "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-04"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-04.clip-01",
+        "startMs": 3233,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            270.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.migrated.008.d8a7847ad6fe5964",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.impact"
+      },
+      "scope": {
+        "patternId": "VALTAN_FRONT_BACK_FRONT",
+        "stageId": "SMASHES",
+        "actionId": "valtan.attack.front-back-front.active"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "valtan.attack.front-back-front.active.clip.01",
+        "startMs": 3233,
+        "repeatPolicy": "EACH_LOOP"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            270.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.migrated.008.ddcb74bafc706c38",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.impact"
+      },
+      "scope": {
+        "patternId": "VALTAN_SEQUENCE_FOUR",
+        "stageId": "STEP_01",
+        "actionId": "valtan.sequence.four.step-01"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "valtan.sequence.four.step-01.clip-01",
+        "startMs": 3233,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            270.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.migrated.009.240b1c1e169c5c2f",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.impact"
+      },
+      "scope": {
+        "patternId": "VALTAN_FRONT_BACK_FRONT",
+        "stageId": "SMASHES",
+        "actionId": "valtan.attack.front-back-front.active"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "valtan.attack.front-back-front.active.clip.01",
+        "startMs": 4200,
+        "repeatPolicy": "EACH_LOOP"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            90.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.migrated.009.3b37ddc47b7006bc",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.impact"
+      },
+      "scope": {
+        "patternId": "VALTAN_STRUGGLING",
+        "stageId": "STEP_04",
+        "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-04"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-04.clip-01",
+        "startMs": 4200,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            90.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.migrated.009.d52bdb805f95d1e3",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.impact"
+      },
+      "scope": {
+        "patternId": "VALTAN_SEQUENCE_FOUR",
+        "stageId": "STEP_01",
+        "actionId": "valtan.sequence.four.step-01"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "valtan.sequence.four.step-01.clip-01",
+        "startMs": 4200,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            90.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.migrated.010.4a1c39c5cca9505e",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.pounding.chase"
+      },
+      "scope": {
+        "patternId": "VALTAN_STRUGGLING",
+        "stageId": "STEP_05",
+        "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-05"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-05.clip-01",
+        "startMs": 0,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.migrated.010.7197de0da9e844c2",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.pounding.chase"
+      },
+      "scope": {
+        "patternId": "VALTAN_SEQUENCE_TWOHAND",
+        "stageId": "STEP_01",
+        "actionId": "valtan.sequence.twohand.step-01"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "valtan.sequence.twohand.step-01.clip-01",
+        "startMs": 0,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.migrated.011.0dc2ca6adef0334a",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.pounding"
+      },
+      "scope": {
+        "patternId": "VALTAN_STRUGGLING",
+        "stageId": "STEP_06",
+        "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06.clip-01",
+        "startMs": 200,
+        "repeatPolicy": "EACH_LOOP"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.migrated.012.9e51fd02f1be8620",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.pounding"
+      },
+      "scope": {
+        "patternId": "VALTAN_STRUGGLING",
+        "stageId": "STEP_06",
+        "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-06.clip-01",
+        "startMs": 400,
+        "repeatPolicy": "EACH_LOOP"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            -1.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.migrated.013.bd77282dde819f18",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.twohand"
+      },
+      "scope": {
+        "patternId": "VALTAN_STRUGGLING",
+        "stageId": "STEP_07",
+        "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-07"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-07.clip-01",
+        "startMs": 1000,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.migrated.013.bdccad58fae90d72",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.twohand"
+      },
+      "scope": {
+        "patternId": "VALTAN_SEQUENCE_TWOHAND",
+        "stageId": "STEP_02",
+        "actionId": "valtan.sequence.twohand.step-02"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "valtan.sequence.twohand.step-02.clip-01",
+        "startMs": 1000,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.migrated.014.df6a8b28dedb3a80",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.impact"
+      },
+      "scope": {
+        "patternId": "VALTAN_GROUND_ROAR",
+        "stageId": "STEP_01",
+        "actionId": "valtan.sequence.sequence.400440.0.step-01"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "valtan.sequence.sequence.400440.0.step-01.clip-01",
+        "startMs": 600,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.migrated.015.01bc77d834b00cbe",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.shout"
+      },
+      "scope": {
+        "patternId": "VALTAN_BIND_SLOT",
+        "stageId": "STEP_01",
+        "actionId": "valtan.authoring.bind-slot.step-01"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "VALTAN_BIND_SLOT.STEP_01.composition.clip.02",
+        "startMs": 0,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.migrated.015.1fa3e71956d9c28d",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.shout"
+      },
+      "scope": {
+        "patternId": "VALTAN_ROAR_CHARGE",
+        "stageId": "STEP_02",
+        "actionId": "valtan.sequence.roar-charge.step-02"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "valtan.sequence.roar-charge.step-02.clip-01",
+        "startMs": 0,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.migrated.015.93b8528f71d0ce60",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.shout"
+      },
+      "scope": {
+        "patternId": "VALTAN_BIND_SLOT",
+        "stageId": "STEP_01",
+        "actionId": "valtan.authoring.bind-slot.step-01"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "VALTAN_BIND_SLOT.STEP_01.composition.clip.03",
+        "startMs": 0,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.migrated.015.ac407ba8b6d6a072",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.shout"
+      },
+      "scope": {
+        "patternId": "VALTAN_IMPRISON_ROAR",
+        "stageId": "ROAR",
+        "actionId": "valtan.attack.imprison-roar.active"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "valtan.attack.imprison-roar.active.clip.01",
+        "startMs": 0,
+        "repeatPolicy": "EACH_LOOP"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.migrated.015.b01315043ca4c318",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.shout"
+      },
+      "scope": {
+        "patternId": "VALTAN_BIND_SLOT",
+        "stageId": "STEP_01",
+        "actionId": "valtan.authoring.bind-slot.step-01"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "VALTAN_BIND_SLOT.STEP_01.composition.clip.04",
+        "startMs": 0,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.migrated.015.dafe56160828b687",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.shout"
+      },
+      "scope": {
+        "patternId": "VALTAN_STRUGGLING",
+        "stageId": "STEP_09",
+        "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-09"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-09.clip-01",
+        "startMs": 0,
+        "repeatPolicy": "EACH_LOOP"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.migrated.015.ded356fa1b155e06",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.shout"
+      },
+      "scope": {
+        "patternId": "VALTAN_GHOST_TRANSITION_15",
+        "stageId": "FOUR_DIRECTIONS",
+        "actionId": "valtan.mechanic.ghost-transition-15.four-directions"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "valtan.mechanic.ghost-transition-15.four-directions.clip.01",
+        "startMs": 0,
+        "repeatPolicy": "EACH_LOOP"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.migrated.015.eb46cd88d45fceb2",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.shout"
+      },
+      "scope": {
+        "patternId": "VALTAN_TERRAIN_DESTRUCTION",
+        "stageId": "STEP_10",
+        "actionId": "valtan.sequence.jump-whirlwind-roar-roar-charge.step-10"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "valtan.sequence.jump-whirlwind-roar-roar-charge.step-10.clip-01",
+        "startMs": 0,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.migrated.016.37d21bb6553ce6e9",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.shout.burst"
+      },
+      "scope": {
+        "patternId": "VALTAN_BIND_SLOT",
+        "stageId": "STEP_01",
+        "actionId": "valtan.authoring.bind-slot.step-01"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "VALTAN_BIND_SLOT.STEP_01.composition.clip.05",
+        "startMs": 733,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.migrated.016.416afe9ad4c34378",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.shout.burst"
+      },
+      "scope": {
+        "patternId": "VALTAN_BIND_SLOT",
+        "stageId": "RECOVERY",
+        "actionId": "valtan.authoring.bind-slot.recovery"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "VALTAN_BIND_SLOT.RECOVERY.composition.clip.01",
+        "startMs": 733,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.migrated.016.59e9eccbabd0afc4",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.shout.burst"
+      },
+      "scope": {
+        "patternId": "VALTAN_IMPRISON_ROAR",
+        "stageId": "RECOVERY",
+        "actionId": "valtan.attack.imprison-roar.recovery"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "valtan.attack.imprison-roar.recovery.clip.01",
+        "startMs": 733,
+        "repeatPolicy": "EACH_LOOP"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.migrated.016.95448cd699203a5e",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.shout.burst"
+      },
+      "scope": {
+        "patternId": "VALTAN_ROAR_CHARGE",
+        "stageId": "STEP_03",
+        "actionId": "valtan.sequence.roar-charge.step-03"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "valtan.sequence.roar-charge.step-03.clip-01",
+        "startMs": 733,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.migrated.016.954c04c313cbc9a1",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.shout.burst"
+      },
+      "scope": {
+        "patternId": "VALTAN_GROUND_ROAR",
+        "stageId": "STEP_01",
+        "actionId": "valtan.sequence.sequence.400440.0.step-01"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "valtan.sequence.sequence.400440.0.step-01.roar.clip-05",
+        "startMs": 733,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.migrated.016.9f8473febadd8dbc",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.shout.burst"
+      },
+      "scope": {
+        "patternId": "VALTAN_GHOST_TRANSITION_15",
+        "stageId": "TRACKING_EXPLOSIONS",
+        "actionId": "valtan.mechanic.ghost-transition-15.tracking"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "valtan.mechanic.ghost-transition-15.tracking.clip.01",
+        "startMs": 733,
+        "repeatPolicy": "EACH_LOOP"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.migrated.016.a706461783a546b4",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.shout.burst"
+      },
+      "scope": {
+        "patternId": "VALTAN_TERRAIN_DESTRUCTION",
+        "stageId": "STEP_11",
+        "actionId": "valtan.sequence.jump-whirlwind-roar-roar-charge.step-11"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "valtan.sequence.jump-whirlwind-roar-roar-charge.step-11.clip-01",
+        "startMs": 733,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.migrated.016.d8dfe61c14e72ce8",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.shout.burst"
+      },
+      "scope": {
+        "patternId": "VALTAN_STRUGGLING",
+        "stageId": "STEP_10",
+        "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-10"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-10.clip-01",
+        "startMs": 733,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.migrated.017.1f4a28d150fc1e51",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.magicball"
+      },
+      "scope": {
+        "patternId": "VALTAN_STAGGER_SLOT",
+        "stageId": "CHANNEL",
+        "actionId": "valtan.authoring.stagger-slot.channel"
+      },
+      "clock": {
+        "basis": "STAGE",
+        "clipOccurrenceId": null,
+        "startMs": 0,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "FOLLOW_SLOT",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "STAGE_END"
+    },
+    {
+      "bindingId": "binding.valtan.project-tuned.bind-slot.stomp",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.impact"
+      },
+      "scope": {
+        "patternId": "VALTAN_BIND_SLOT",
+        "stageId": "STEP_01",
+        "actionId": "valtan.authoring.bind-slot.step-01"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "VALTAN_BIND_SLOT.STEP_01.composition.clip.01",
+        "startMs": 1200,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.project-tuned.counter-pulse.001",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.project-tuned.sequence.trash.pulse-group"
+      },
+      "scope": {
+        "patternId": "VALTAN_TRASH",
+        "stageId": "STEP_07",
+        "actionId": "valtan.sequence.center-trash-rush-if.step-07"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "valtan.sequence.center-trash-rush-if.step-07.clip-01",
+        "startMs": 0,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "FOLLOW_SLOT",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.project-tuned.counter-pulse.002",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.project-tuned.sequence.trash.pulse-group"
+      },
+      "scope": {
+        "patternId": "VALTAN_TRASH",
+        "stageId": "STEP_07",
+        "actionId": "valtan.sequence.center-trash-rush-if.step-07"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "valtan.sequence.center-trash-rush-if.step-07.clip-01",
+        "startMs": 200,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "FOLLOW_SLOT",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.project-tuned.counter-pulse.003",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.project-tuned.sequence.trash.pulse-group"
+      },
+      "scope": {
+        "patternId": "VALTAN_TRASH",
+        "stageId": "STEP_07",
+        "actionId": "valtan.sequence.center-trash-rush-if.step-07"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "valtan.sequence.center-trash-rush-if.step-07.clip-01",
+        "startMs": 400,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "FOLLOW_SLOT",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.project-tuned.counter-pulse.004",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.project-tuned.sequence.trash.pulse-group"
+      },
+      "scope": {
+        "patternId": "VALTAN_TRASH",
+        "stageId": "RETRY_WINDUP_02",
+        "actionId": "valtan.sequence.center-trash-rush-if.retry-windup-02"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "valtan.sequence.center-trash-rush-if.retry-windup-02.clip-01",
+        "startMs": 0,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "FOLLOW_SLOT",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.project-tuned.counter-pulse.005",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.project-tuned.sequence.trash.pulse-group"
+      },
+      "scope": {
+        "patternId": "VALTAN_TRASH",
+        "stageId": "RETRY_WINDUP_02",
+        "actionId": "valtan.sequence.center-trash-rush-if.retry-windup-02"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "valtan.sequence.center-trash-rush-if.retry-windup-02.clip-01",
+        "startMs": 200,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "FOLLOW_SLOT",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.project-tuned.counter-pulse.006",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.project-tuned.sequence.trash.pulse-group"
+      },
+      "scope": {
+        "patternId": "VALTAN_TRASH",
+        "stageId": "RETRY_WINDUP_02",
+        "actionId": "valtan.sequence.center-trash-rush-if.retry-windup-02"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "valtan.sequence.center-trash-rush-if.retry-windup-02.clip-01",
+        "startMs": 400,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "FOLLOW_SLOT",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.project-tuned.counter-pulse.007",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.project-tuned.sequence.trash.pulse-group"
+      },
+      "scope": {
+        "patternId": "VALTAN_TRASH",
+        "stageId": "RETRY_WINDUP_03",
+        "actionId": "valtan.sequence.center-trash-rush-if.retry-windup-03"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "valtan.sequence.center-trash-rush-if.retry-windup-03.clip-01",
+        "startMs": 0,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "FOLLOW_SLOT",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.project-tuned.counter-pulse.008",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.project-tuned.sequence.trash.pulse-group"
+      },
+      "scope": {
+        "patternId": "VALTAN_TRASH",
+        "stageId": "RETRY_WINDUP_03",
+        "actionId": "valtan.sequence.center-trash-rush-if.retry-windup-03"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "valtan.sequence.center-trash-rush-if.retry-windup-03.clip-01",
+        "startMs": 200,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "FOLLOW_SLOT",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.project-tuned.counter-pulse.009",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.project-tuned.sequence.trash.pulse-group"
+      },
+      "scope": {
+        "patternId": "VALTAN_TRASH",
+        "stageId": "RETRY_WINDUP_03",
+        "actionId": "valtan.sequence.center-trash-rush-if.retry-windup-03"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "valtan.sequence.center-trash-rush-if.retry-windup-03.clip-01",
+        "startMs": 400,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "FOLLOW_SLOT",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.project-tuned.counter-pulse.010",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.project-tuned.sequence.trash.pulse-group"
+      },
+      "scope": {
+        "patternId": "VALTAN_COUNTER",
+        "stageId": "STEP_02",
+        "actionId": "valtan.sequence.counter.step-02"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "valtan.sequence.counter.step-02.clip-01",
+        "startMs": 0,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "FOLLOW_SLOT",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.project-tuned.counter-pulse.011",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.project-tuned.sequence.trash.pulse-group"
+      },
+      "scope": {
+        "patternId": "VALTAN_COUNTER",
+        "stageId": "STEP_02",
+        "actionId": "valtan.sequence.counter.step-02"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "valtan.sequence.counter.step-02.clip-01",
+        "startMs": 600,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "FOLLOW_SLOT",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.project-tuned.counter-pulse.012",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.project-tuned.sequence.trash.pulse-group"
+      },
+      "scope": {
+        "patternId": "VALTAN_COUNTER",
+        "stageId": "STEP_02",
+        "actionId": "valtan.sequence.counter.step-02"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "valtan.sequence.counter.step-02.clip-02",
+        "startMs": 200,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "FOLLOW_SLOT",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.project-tuned.counter-pulse.013",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.project-tuned.sequence.trash.pulse-group"
+      },
+      "scope": {
+        "patternId": "VALTAN_TRIPLE_COUNTER",
+        "stageId": "COUNTER_1",
+        "actionId": "valtan.reactive.triple-counter.first"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "valtan.reactive.triple-counter.first.clip.01",
+        "startMs": 0,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "FOLLOW_SLOT",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.project-tuned.counter-pulse.014",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.project-tuned.sequence.trash.pulse-group"
+      },
+      "scope": {
+        "patternId": "VALTAN_TRIPLE_COUNTER",
+        "stageId": "COUNTER_1",
+        "actionId": "valtan.reactive.triple-counter.first"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "valtan.reactive.triple-counter.first.clip.01",
+        "startMs": 600,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "FOLLOW_SLOT",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.project-tuned.counter-pulse.015",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.project-tuned.sequence.trash.pulse-group"
+      },
+      "scope": {
+        "patternId": "VALTAN_TRIPLE_COUNTER",
+        "stageId": "COUNTER_1",
+        "actionId": "valtan.reactive.triple-counter.first"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "valtan.reactive.triple-counter.first.clip.02",
+        "startMs": 200,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "FOLLOW_SLOT",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.project-tuned.counter-pulse.016",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.project-tuned.sequence.trash.pulse-group"
+      },
+      "scope": {
+        "patternId": "VALTAN_TRIPLE_COUNTER",
+        "stageId": "COUNTER_2",
+        "actionId": "valtan.reactive.triple-counter.second"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "valtan.reactive.triple-counter.second.clip.01",
+        "startMs": 0,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "FOLLOW_SLOT",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.project-tuned.counter-pulse.017",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.project-tuned.sequence.trash.pulse-group"
+      },
+      "scope": {
+        "patternId": "VALTAN_TRIPLE_COUNTER",
+        "stageId": "COUNTER_2",
+        "actionId": "valtan.reactive.triple-counter.second"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "valtan.reactive.triple-counter.second.clip.01",
+        "startMs": 600,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "FOLLOW_SLOT",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.project-tuned.counter-pulse.018",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.project-tuned.sequence.trash.pulse-group"
+      },
+      "scope": {
+        "patternId": "VALTAN_TRIPLE_COUNTER",
+        "stageId": "COUNTER_2",
+        "actionId": "valtan.reactive.triple-counter.second"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "valtan.reactive.triple-counter.second.clip.02",
+        "startMs": 200,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "FOLLOW_SLOT",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.project-tuned.counter-pulse.019",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.project-tuned.sequence.trash.pulse-group"
+      },
+      "scope": {
+        "patternId": "VALTAN_TRIPLE_COUNTER",
+        "stageId": "COUNTER_3",
+        "actionId": "valtan.reactive.triple-counter.third"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "valtan.reactive.triple-counter.third.clip.01",
+        "startMs": 0,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "FOLLOW_SLOT",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.project-tuned.counter-pulse.020",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.project-tuned.sequence.trash.pulse-group"
+      },
+      "scope": {
+        "patternId": "VALTAN_TRIPLE_COUNTER",
+        "stageId": "COUNTER_3",
+        "actionId": "valtan.reactive.triple-counter.third"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "valtan.reactive.triple-counter.third.clip.01",
+        "startMs": 600,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "FOLLOW_SLOT",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.project-tuned.counter-pulse.021",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.project-tuned.sequence.trash.pulse-group"
+      },
+      "scope": {
+        "patternId": "VALTAN_TRIPLE_COUNTER",
+        "stageId": "COUNTER_3",
+        "actionId": "valtan.reactive.triple-counter.third"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "valtan.reactive.triple-counter.third.clip.02",
+        "startMs": 200,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "FOLLOW_SLOT",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.project-tuned.counter.smash",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.twohand"
+      },
+      "scope": {
+        "patternId": "VALTAN_COUNTER",
+        "stageId": "STEP_03",
+        "actionId": "valtan.sequence.counter.step-03"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "valtan.sequence.counter.step-03.clip-01",
+        "startMs": 900,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.project-tuned.ground-roar.stomp-02",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.impact"
+      },
+      "scope": {
+        "patternId": "VALTAN_GROUND_ROAR",
+        "stageId": "STEP_01",
+        "actionId": "valtan.sequence.sequence.400440.0.step-01"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "valtan.sequence.sequence.400440.0.step-01.clip-01",
+        "startMs": 1300,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.project-tuned.roar-charge.stomp",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.impact"
+      },
+      "scope": {
+        "patternId": "VALTAN_ROAR_CHARGE",
+        "stageId": "STEP_01",
+        "actionId": "valtan.sequence.roar-charge.step-01"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "valtan.sequence.roar-charge.step-01.clip-01",
+        "startMs": 1200,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.project-tuned.six-pizza.002.shout-burst",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.shout.burst"
+      },
+      "scope": {
+        "patternId": "VALTAN_SIX_PIZZA_106",
+        "stageId": "STEP_05",
+        "actionId": "valtan.sequence.center-six-pizza-charge.step-05"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "valtan.sequence.center-six-pizza-charge.step-05.clip-01",
+        "startMs": 1300,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.project-tuned.six-pizza.center-landing",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.impact"
+      },
+      "scope": {
+        "patternId": "VALTAN_SIX_PIZZA_106",
+        "stageId": "STEP_03",
+        "actionId": "valtan.sequence.center-six-pizza-charge.step-03"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "valtan.sequence.center-six-pizza-charge.step-03.clip-01",
+        "startMs": 267,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.project-tuned.six-pizza.finisher",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.twohand"
+      },
+      "scope": {
+        "patternId": "VALTAN_SIX_PIZZA_106",
+        "stageId": "STEP_11",
+        "actionId": "valtan.sequence.center-six-pizza-charge.step-11"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "valtan.sequence.center-six-pizza-charge.step-11.clip-01",
+        "startMs": 150,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.project-tuned.six-pizza.landing",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.impact"
+      },
+      "scope": {
+        "patternId": "VALTAN_SIX_PIZZA_106",
+        "stageId": "STEP_07",
+        "actionId": "valtan.sequence.center-six-pizza-charge.step-07"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "valtan.sequence.center-six-pizza-charge.step-07.clip-01",
+        "startMs": 250,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.project-tuned.six-pizza.stomp",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.impact"
+      },
+      "scope": {
+        "patternId": "VALTAN_SIX_PIZZA_106",
+        "stageId": "STEP_04",
+        "actionId": "valtan.sequence.center-six-pizza-charge.step-04"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "valtan.sequence.center-six-pizza-charge.step-04.clip-01",
+        "startMs": 2100,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.project-tuned.stagger-slot.channel.aura",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.magicball.aura"
+      },
+      "scope": {
+        "patternId": "VALTAN_STAGGER_SLOT",
+        "stageId": "CHANNEL",
+        "actionId": "valtan.authoring.stagger-slot.channel"
+      },
+      "clock": {
+        "basis": "STAGE",
+        "clipOccurrenceId": null,
+        "startMs": 0,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "FOLLOW_SLOT",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "STAGE_END"
+    },
+    {
+      "bindingId": "binding.valtan.project-tuned.stagger-slot.final-attack.twohand",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.twohand"
+      },
+      "scope": {
+        "patternId": "VALTAN_STAGGER_SLOT",
+        "stageId": "FINAL_ATTACK",
+        "actionId": "valtan.authoring.stagger-slot.final-attack"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "VALTAN_STAGGER_SLOT.FINAL_ATTACK.composition.clip.01",
+        "startMs": 1000,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.project-tuned.stagger-slot.final-attack.wipe",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.six.sonic"
+      },
+      "scope": {
+        "patternId": "VALTAN_STAGGER_SLOT",
+        "stageId": "FINAL_ATTACK",
+        "actionId": "valtan.authoring.stagger-slot.final-attack"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "VALTAN_STAGGER_SLOT.FINAL_ATTACK.composition.clip.01",
+        "startMs": 1000,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.project-tuned.struggling.stomp",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.impact"
+      },
+      "scope": {
+        "patternId": "VALTAN_STRUGGLING",
+        "stageId": "STEP_08",
+        "actionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-08"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-08.clip-01",
+        "startMs": 1200,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.project-tuned.terrain-destruction-3.impact",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.impact"
+      },
+      "scope": {
+        "patternId": "VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK",
+        "stageId": "IMPACT",
+        "actionId": "valtan.mechanic.terrain-destruction-3.impact"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "valtan.mechanic.terrain-destruction-3.impact.clip-01",
+        "startMs": 267,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.project-tuned.terrain-destruction-9.impact",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.impact"
+      },
+      "scope": {
+        "patternId": "VALTAN_TERRAIN_DESTRUCTION_9_OCLOCK",
+        "stageId": "IMPACT",
+        "actionId": "valtan.mechanic.terrain-destruction-9.impact"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "valtan.mechanic.terrain-destruction-9.impact.clip-01",
+        "startMs": 267,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.project-tuned.terrain-destruction.stomp",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.impact"
+      },
+      "scope": {
+        "patternId": "VALTAN_TERRAIN_DESTRUCTION",
+        "stageId": "STEP_09",
+        "actionId": "valtan.sequence.jump-whirlwind-roar-roar-charge.step-09"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "valtan.sequence.jump-whirlwind-roar-roar-charge.step-09.clip-01",
+        "startMs": 1200,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.project-tuned.three.000.legacy-impact-500",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.impact"
+      },
+      "scope": {
+        "patternId": "VALTAN_THREE",
+        "stageId": "STEP_03",
+        "actionId": "valtan.sequence.three.step-03"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "valtan.sequence.three.step-03.clip-01",
+        "startMs": 500,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.project-tuned.three.001.smash-01",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.twohand"
+      },
+      "scope": {
+        "patternId": "VALTAN_THREE",
+        "stageId": "STEP_01",
+        "actionId": "valtan.sequence.three.step-01"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "valtan.sequence.three.step-01.clip-01",
+        "startMs": 1617,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.project-tuned.three.002.smash-02",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.twohand"
+      },
+      "scope": {
+        "patternId": "VALTAN_THREE",
+        "stageId": "STEP_02",
+        "actionId": "valtan.sequence.three.step-02"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "valtan.sequence.three.step-02.clip-01",
+        "startMs": 963,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.project-tuned.three.003.smash-03",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.twohand"
+      },
+      "scope": {
+        "patternId": "VALTAN_THREE",
+        "stageId": "STEP_03",
+        "actionId": "valtan.sequence.three.step-03"
+      },
+      "clock": {
+        "basis": "CLIP_OCCURRENCE",
+        "clipOccurrenceId": "valtan.sequence.three.step-03.clip-01",
+        "startMs": 1300,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.project-tuned.triple-counter.001.smash-01",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.twohand"
+      },
+      "scope": {
+        "patternId": "VALTAN_TRIPLE_COUNTER",
+        "stageId": "FAIL_1",
+        "actionId": "valtan.reactive.triple-counter.first-fail"
+      },
+      "clock": {
+        "basis": "STAGE",
+        "clipOccurrenceId": null,
+        "startMs": 900,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.project-tuned.triple-counter.002.smash-02",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.twohand"
+      },
+      "scope": {
+        "patternId": "VALTAN_TRIPLE_COUNTER",
+        "stageId": "FAIL_2",
+        "actionId": "valtan.reactive.triple-counter.second-fail"
+      },
+      "clock": {
+        "basis": "STAGE",
+        "clipOccurrenceId": null,
+        "startMs": 900,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.project-tuned.triple-counter.003.smash-03",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.twohand"
+      },
+      "scope": {
+        "patternId": "VALTAN_TRIPLE_COUNTER",
+        "stageId": "FAIL_3",
+        "actionId": "valtan.reactive.triple-counter.third-fail"
+      },
+      "clock": {
+        "basis": "STAGE",
+        "clipOccurrenceId": null,
+        "startMs": 900,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "b_effectroot",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.project-tuned.warp.step-02.portal-0-start",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.portal"
+      },
+      "scope": {
+        "patternId": "VALTAN_WARP",
+        "stageId": "STEP_02",
+        "actionId": "valtan.sequence.warp.step-02"
+      },
+      "clock": {
+        "basis": "STAGE",
+        "clipOccurrenceId": null,
+        "startMs": 0,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "portal.rush.start",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.project-tuned.warp.step-02.portal-1-end",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.portal"
+      },
+      "scope": {
+        "patternId": "VALTAN_WARP",
+        "stageId": "STEP_02",
+        "actionId": "valtan.sequence.warp.step-02"
+      },
+      "clock": {
+        "basis": "STAGE",
+        "clipOccurrenceId": null,
+        "startMs": 0,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "portal.rush.end",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.project-tuned.warp.step-03.portal-0-start",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.portal"
+      },
+      "scope": {
+        "patternId": "VALTAN_WARP",
+        "stageId": "STEP_03",
+        "actionId": "valtan.sequence.warp.step-03"
+      },
+      "clock": {
+        "basis": "STAGE",
+        "clipOccurrenceId": null,
+        "startMs": 300,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "portal.rush.start",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.project-tuned.warp.step-03.portal-1-end",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.portal"
+      },
+      "scope": {
+        "patternId": "VALTAN_WARP",
+        "stageId": "STEP_03",
+        "actionId": "valtan.sequence.warp.step-03"
+      },
+      "clock": {
+        "basis": "STAGE",
+        "clipOccurrenceId": null,
+        "startMs": 300,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "portal.rush.end",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.project-tuned.warp.step-04.portal-0-start",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.portal"
+      },
+      "scope": {
+        "patternId": "VALTAN_WARP",
+        "stageId": "STEP_04",
+        "actionId": "valtan.sequence.warp.step-04"
+      },
+      "clock": {
+        "basis": "STAGE",
+        "clipOccurrenceId": null,
+        "startMs": 300,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "portal.rush.start",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.project-tuned.warp.step-04.portal-1-end",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.portal"
+      },
+      "scope": {
+        "patternId": "VALTAN_WARP",
+        "stageId": "STEP_04",
+        "actionId": "valtan.sequence.warp.step-04"
+      },
+      "clock": {
+        "basis": "STAGE",
+        "clipOccurrenceId": null,
+        "startMs": 300,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "portal.rush.end",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.project-tuned.warp.step-05.portal-0-start",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.portal"
+      },
+      "scope": {
+        "patternId": "VALTAN_WARP",
+        "stageId": "STEP_05",
+        "actionId": "valtan.sequence.warp.step-05"
+      },
+      "clock": {
+        "basis": "STAGE",
+        "clipOccurrenceId": null,
+        "startMs": 300,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "portal.rush.start",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.project-tuned.warp.step-05.portal-1-end",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.portal"
+      },
+      "scope": {
+        "patternId": "VALTAN_WARP",
+        "stageId": "STEP_05",
+        "actionId": "valtan.sequence.warp.step-05"
+      },
+      "clock": {
+        "basis": "STAGE",
+        "clipOccurrenceId": null,
+        "startMs": 300,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "portal.rush.end",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.project-tuned.warp.step-06.portal-0-start",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.portal"
+      },
+      "scope": {
+        "patternId": "VALTAN_WARP",
+        "stageId": "STEP_06",
+        "actionId": "valtan.sequence.warp.step-06"
+      },
+      "clock": {
+        "basis": "STAGE",
+        "clipOccurrenceId": null,
+        "startMs": 300,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "portal.rush.start",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.project-tuned.warp.step-06.portal-1-end",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.portal"
+      },
+      "scope": {
+        "patternId": "VALTAN_WARP",
+        "stageId": "STEP_06",
+        "actionId": "valtan.sequence.warp.step-06"
+      },
+      "clock": {
+        "basis": "STAGE",
+        "clipOccurrenceId": null,
+        "startMs": 300,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "portal.rush.end",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.project-tuned.warp.step-07.portal-0-start",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.portal"
+      },
+      "scope": {
+        "patternId": "VALTAN_WARP",
+        "stageId": "STEP_07",
+        "actionId": "valtan.sequence.warp.step-07"
+      },
+      "clock": {
+        "basis": "STAGE",
+        "clipOccurrenceId": null,
+        "startMs": 300,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "portal.rush.start",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.project-tuned.warp.step-07.portal-1-end",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.portal"
+      },
+      "scope": {
+        "patternId": "VALTAN_WARP",
+        "stageId": "STEP_07",
+        "actionId": "valtan.sequence.warp.step-07"
+      },
+      "clock": {
+        "basis": "STAGE",
+        "clipOccurrenceId": null,
+        "startMs": 300,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "portal.rush.end",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.project-tuned.warp.step-08.portal-0-start",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.portal"
+      },
+      "scope": {
+        "patternId": "VALTAN_WARP",
+        "stageId": "STEP_08",
+        "actionId": "valtan.sequence.warp.step-08"
+      },
+      "clock": {
+        "basis": "STAGE",
+        "clipOccurrenceId": null,
+        "startMs": 300,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "portal.rush.start",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.project-tuned.warp.step-08.portal-1-end",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.portal"
+      },
+      "scope": {
+        "patternId": "VALTAN_WARP",
+        "stageId": "STEP_08",
+        "actionId": "valtan.sequence.warp.step-08"
+      },
+      "clock": {
+        "basis": "STAGE",
+        "clipOccurrenceId": null,
+        "startMs": 300,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "portal.rush.end",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.project-tuned.warp.step-09.portal-0-start",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.portal"
+      },
+      "scope": {
+        "patternId": "VALTAN_WARP",
+        "stageId": "STEP_09",
+        "actionId": "valtan.sequence.warp.step-09"
+      },
+      "clock": {
+        "basis": "STAGE",
+        "clipOccurrenceId": null,
+        "startMs": 300,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "portal.rush.start",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    },
+    {
+      "bindingId": "binding.valtan.project-tuned.warp.step-09.portal-1-end",
+      "resource": {
+        "kind": "GROUP",
+        "id": "boss.valtan.portal"
+      },
+      "scope": {
+        "patternId": "VALTAN_WARP",
+        "stageId": "STEP_09",
+        "actionId": "valtan.sequence.warp.step-09"
+      },
+      "clock": {
+        "basis": "STAGE",
+        "clipOccurrenceId": null,
+        "startMs": 300,
+        "repeatPolicy": "ONCE"
+      },
+      "anchor": {
+        "slotId": "portal.rush.end",
+        "followPolicy": "SNAPSHOT_AT_START",
+        "rotationBasis": "TARGET_YAW",
+        "localTransform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "stopPolicy": "NATURAL"
+    }
+  ]
+}
