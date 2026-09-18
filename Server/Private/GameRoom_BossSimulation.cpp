@@ -6,6 +6,7 @@
 #include "Network/PacketMessages.h"
 #include "Network/PacketWriter.h"
 #include "Gameplay/WorldCollisionContract.h"
+#include "Gameplay/KoukuTargetTracking.h"
 
 #include <algorithm>
 #include <array>
@@ -785,7 +786,6 @@ bool LostArk::Server::CGameRoom::Update_DependentBosses(const std::uint32_t serv
 	return true;
 }
 
-#ifdef _DEBUG
 void LostArk::Server::CGameRoom::Clear_KoukuPlayerTargets(
 	SERVER_WORLD_ENTITY& boss, KOUKUSAYDON_LOGIC_LEDGER& ledger)
 {
@@ -821,6 +821,7 @@ void LostArk::Server::CGameRoom::Update_KoukuRandomVolley(
 	definition.strClientVisualId = selected.strClientVisualId;
 	definition.eOriginPolicy = BOSS_COMBAT_OBJECT_ORIGIN_POLICY::LOCKED_TARGET_PER_ALIVE_PLAYER;
 	definition.iLifeMs = selected.iLifetimeMs;
+	definition.AttackTemplates = selected.Hits;
 	definition.PresentationPulses.push_back({ "combatpresentation.kouku.showtime.started", 0u });
 	BOSS_PATTERN_STAGE_ACTION randomAction;
 	randomAction.strTargetId = trigger.strTriggerId + ".random";
@@ -859,11 +860,17 @@ void LostArk::Server::CGameRoom::Update_KoukuPursuitProjectiles(
 	if (trigger.ProjectileVisualIds.empty() || trigger.ProjectileVisualIds.size() > 4u ||
 		!trigger.iProjectileCountPerWave || trigger.iProjectileCountPerWave > 16u) return;
 	SERVER_PLAYER* target = nullptr;
+	NET_ENTITY_ID requiredTarget = boss.iPatternTargetEntityId;
+	bool diceBinding = false;
+	if (const auto* member = Find_KoukuAuditionMember(boss.iNetEntityId))
+		for (const auto& binding : member->LogicLedger.Windows)
+			if (binding.bOpened && !binding.bClosed && binding.iFreePlayerNetEntityId != INVALID_NET_ENTITY_ID)
+			{ requiredTarget = binding.iFreePlayerNetEntityId; diceBinding = true; break; }
 	for (auto& [id, player] : m_Players)
-		if (player.iNetEntityId == boss.iPatternTargetEntityId && player.isCombatReady && player.iCurrentHp &&
+		if (player.iNetEntityId == requiredTarget && (!diceBinding || !player.bPatternBound) && player.isCombatReady && player.iCurrentHp &&
 			player.eAction != PLAYER_ACTION_STATE::DEAD && player.eAction != PLAYER_ACTION_STATE::FALLING &&
 			player.eAction != PLAYER_ACTION_STATE::GRABBED) { target = &player; break; }
-	if (!target) target = Select_BossRandomAliveTarget(boss, trigger.strTriggerId, "pursuit.target", serverTick);
+	if (!target && !diceBinding) target = Select_BossRandomAliveTarget(boss, trigger.strTriggerId, "pursuit.target", serverTick);
 	if (!target) return;
 	const auto sample = [&](std::uint32_t ordinal) {
 		std::uint32_t value = boss.iPatternSequence * 747796405u ^ boss.iNetEntityId ^
@@ -883,12 +890,14 @@ void LostArk::Server::CGameRoom::Update_KoukuPursuitProjectiles(
 		definition.strCombatObjectArchetypeId = "combatobject.kouku.pursuit";
 		definition.strClientVisualId = trigger.ProjectileVisualIds[(window.iRandomWaveOrdinal * trigger.iProjectileCountPerWave + ordinal) % trigger.ProjectileVisualIds.size()];
 		definition.iLifeMs = trigger.iProjectileLifetimeMs ? trigger.iProjectileLifetimeMs : 600000u;
+		definition.AttackTemplates = trigger.ProjectileHits;
 		definition.PresentationPulses.push_back({ "combatpresentation.kouku.pursuit.started", 0u });
 		if (!m_CombatObjectRuntime.Stage_BossCombatObject(transaction, boss, nullptr, definition, nullptr, catalog, 1u, serverTick, status))
 		{ m_strStatus = "Pursuit volley preserved existing objects: " + status; return; }
 		auto& object = transaction.Objects.back();
 		object.iLockedTargetNetEntityId = target->iNetEntityId;
 		object.bPersistentLifetime = trigger.iProjectileLifetimeMs == 0u;
+		object.bRoomOwnedTracking = true;
 		object.bHoming = trigger.bProjectileHoming;
 		object.bExpireOnDistanceEnd = trigger.fProjectileMaxDistanceM > 0.f;
 		object.fRemainingDistanceM = trigger.fProjectileSpeedMps * definition.iLifeMs / 1000.f;
@@ -897,7 +906,11 @@ void LostArk::Server::CGameRoom::Update_KoukuPursuitProjectiles(
 		object.fSpeedMps = trigger.fProjectileSpeedMps;
 		object.fContactPresentationRadiusM = trigger.fProjectileContactRadiusM;
 		object.strContactPresentationId = trigger.strContactVisualId;
-		const float angle = trigger.bProjectileHoming ? (boss.fYawDegrees + 360.f * ordinal / trigger.iProjectileCountPerWave) : sample(ordinal) * 360.f;
+		/* Slot zero sits at the boss body's visual front, which the Kouku rig carries
+		three quarter turns from the yaw basis. Keep this in step with the Tool preview
+		copy in Client/Private/KoukuSaydonPresentationPlayer_LogicPreview.cpp. */
+		constexpr float PURSUIT_BODY_FRONT_YAW_DEGREES = 270.f;
+		const float angle = trigger.bProjectileHoming ? (boss.fYawDegrees + PURSUIT_BODY_FRONT_YAW_DEGREES + 360.f * ordinal / trigger.iProjectileCountPerWave) : sample(ordinal) * 360.f;
 		const float radians = angle * .0174532925f;
 		auto& pose = object.LiveState.CurrentPose;
 		pose.fDirectionX = std::sin(radians); pose.fDirectionZ = std::cos(radians); pose.fYawDegrees = angle;
@@ -947,6 +960,12 @@ void LostArk::Server::CGameRoom::Update_KoukuPlayerTargets(
 			continue;
 		}
 		const bool rotateOnly = trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_TRACK_TARGET;
+		// The RPCT_05 and RPCT_06 bodies face model +X. Moving pursuit owns a
+		// body yaw, while its navigation heading must point along that visual front.
+		const bool movingSaydon = rotateOnly && trigger.fFollowSpeedScale > 0.f &&
+			(boss.strArchetypeId == "BOSS_KAKULSAYDON_G1_SAYDON" ||
+			 boss.strArchetypeId == "BOSS_KAKULSAYDON_G3_SAYDON" || boss.strArchetypeId == "BOSS_KAKULSAYDON_BINGO_SAYDON");
+		const float forwardYawOffset = movingSaydon || boss.strArchetypeId == "BOSS_KAKULSAYDON_G2_BIG_SAYDON" ? 90.f : 0.f;
 		if (!rotateOnly && (trigger.eKind != BOSS_PATTERN_MECHANIC_TRIGGER_KIND::SHOWTIME_PLAYER_TARGETS ||
 			trigger.iSpawnIntervalMs == 0u || trigger.strFixedVisualId == trigger.strTrackingVisualId ||
 			trigger.strFixedVisualId.empty() != (trigger.iFixedLifetimeMs == 0u) ||
@@ -973,10 +992,10 @@ void LostArk::Server::CGameRoom::Update_KoukuPlayerTargets(
 			if (std::isfinite(dx) && std::isfinite(dz) && dx * dx + dz * dz > .000001f)
 			{
 				float targetYaw = std::atan2(dx, dz) * RADIANS_TO_DEGREES;
-				if (boss.strArchetypeId == "BOSS_KAKULSAYDON_G2_BIG_SAYDON") targetYaw -= 90.f;
-				// Each active fixed tick consumes one slice of the authored duration.
-				// Remaining-time interpolation preserves constant speed for a fixed
-				// target and reaches a moving target on the last tick without a snap at start.
+				targetYaw -= forwardYawOffset;
+				// Both modes consume the same elapsed fixed ticks. Rotate-only windows
+				// use the shared tenfold remaining-arc response; moving pursuit has
+				// an independent 180-degree/second turn speed.
 				const auto totalTicks = Elapsed_ServerTicksSkippingReservedZero(window.iStartTick, window.iEndTick);
 				const auto previousTicks = previousUpdateTick == 0u ? 0u :
 					Elapsed_ServerTicksSkippingReservedZero(window.iStartTick, previousUpdateTick) + 1u;
@@ -984,9 +1003,13 @@ void LostArk::Server::CGameRoom::Update_KoukuPlayerTargets(
 				if (!rotateOnly) boss.fYawDegrees = targetYaw;
 				else if (std::isfinite(boss.fYawDegrees) && totalTicks > previousTicks && currentTicks > previousTicks)
 				{
-					const double ratio = (std::min)(1.0, double(currentTicks - previousTicks) / double(totalTicks - previousTicks));
 					const double turn = std::remainder(double(targetYaw) - boss.fYawDegrees, 360.0);
-					boss.fYawDegrees = static_cast<float>(std::remainder(double(boss.fYawDegrees) + turn * ratio, 360.0));
+					// Moving pursuit has a turn-speed limit independent of the window lifetime.
+					// Rotate-only response is identical for grouped and individual fixed ticks.
+					const double yawStep = trigger.fFollowSpeedScale > 0.f ?
+						(std::clamp)(turn, -6.0 * (currentTicks - previousTicks), 6.0 * (currentTicks - previousTicks)) :
+						turn * KoukuTargetTracking::RotateOnlyFraction(currentTicks - previousTicks, totalTicks - previousTicks);
+					boss.fYawDegrees = static_cast<float>(std::remainder(double(boss.fYawDegrees) + yawStep, 360.0));
 				}
 			}
 		}
@@ -995,7 +1018,53 @@ void LostArk::Server::CGameRoom::Update_KoukuPlayerTargets(
 			boss.iTargetEntityId = boss.iPatternTargetEntityId = INVALID_NET_ENTITY_ID;
 			boss.bHasPatternTargetLastPosition = false;
 		}
-		if (rotateOnly) continue;
+		if (rotateOnly)
+		{
+			/* A positive authored scale walks the body along the yaw this tick just wrote,
+			   at the tracked player's own move speed, so BOSS-anchored Effects travel and
+			   turn with it. Zero preserves the original rotate-only window exactly. */
+			SERVER_NAV_POINT startGround{};
+			const float followStep = facingTarget && trigger.fFollowSpeedScale > 0.f ?
+				Resolve_PlayerMoveSpeed(*facingTarget) * trigger.fFollowSpeedScale / 30.f : 0.f;
+			if (followStep <= 0.f || !std::isfinite(followStep) || !std::isfinite(boss.fYawDegrees)) continue;
+			if (!m_ServerNavigation.Sample_Position(boss.fPositionX, boss.fPositionZ, startGround))
+			{ m_strStatus = "Boss tracking follow lost its current ground"; continue; }
+			// Terrain owns the base; the source clip owns the height above it.
+			const float followHeight = boss.fPositionY - startGround.y;
+			if (!std::isfinite(followHeight)) continue;
+			const float followRadians = (boss.fYawDegrees + forwardYawOffset) * .0174532925f;
+			SERVER_NAV_POINT destination{ boss.fPositionX + std::sin(followRadians) * followStep,
+				boss.fPositionY, boss.fPositionZ + std::cos(followRadians) * followStep };
+			if (!m_ServerNavigation.Resolve_TraversalStep(boss.fPositionX, boss.fPositionZ,
+				destination.x, destination.z, destination))
+			{ m_strStatus = "Boss tracking follow stopped at the navigation boundary"; continue; }
+			destination.y += followHeight;
+			bool followBlocked = false;
+			SERVER_NAV_POINT followGround{};
+			if (!m_ServerCollisionSystem.Resolve_CircleMove(boss.fPositionX, boss.fPositionY, boss.fPositionZ,
+				destination.x, destination.y, destination.z, boss.fCollisionRadius, boss.fCollisionRadius,
+				boss.fCollisionRadius, destination.x, destination.y, destination.z, followBlocked, boss.iNetEntityId, false) ||
+				!m_ServerNavigation.Resolve_TraversalStep(boss.fPositionX, boss.fPositionZ,
+					destination.x, destination.z, followGround))
+			{ m_strStatus = "Boss tracking follow preserved its pose at the collision boundary"; continue; }
+			const float followY = followGround.y + followHeight;
+			if (!std::isfinite(destination.x) || !std::isfinite(followY) || !std::isfinite(destination.z)) continue;
+			/* The stage clock still owns its own baked root motion from a captured origin.
+			   Move that origin and its ground base by the same delta, which keeps
+			   originY - rootGroundY invariant so the next sample continues from here. */
+			if (boss.bPatternStageRootOriginCaptured)
+			{
+				boss.fPatternStageOriginX += destination.x - boss.fPositionX;
+				boss.fPatternStageOriginY += followY - boss.fPositionY;
+				boss.fPatternStageOriginZ += destination.z - boss.fPositionZ;
+				boss.fPatternStageRootGroundY += followGround.y - startGround.y;
+			}
+			boss.fPositionX = destination.x; boss.fPositionY = followY; boss.fPositionZ = destination.z;
+			(void)m_ServerCollisionSystem.Update_BlockingBody(boss.iNetEntityId,
+				boss.fPositionX, boss.fPositionY + boss.fCollisionRadius, boss.fPositionZ);
+			if (followBlocked) m_strStatus = "Boss tracking follow stopped at the collision boundary";
+			continue;
+		}
 		for (auto it = window.TrackingObjects.begin(); it != window.TrackingObjects.end();)
 		{
 			const auto player = m_Players.find(it->first);
@@ -1035,15 +1104,19 @@ void LostArk::Server::CGameRoom::Update_KoukuPlayerTargets(
 			if (!eligible(player)) continue;
 			const bool newTracker = !trigger.strTrackingVisualId.empty() && !window.TrackingObjects.contains(playerId);
 			if (!fixedDue && !newTracker) continue;
-			SERVER_NAV_POINT ground{};
-			if (!m_ServerNavigation.Sample_Position(player.fPositionX, player.fPositionZ, ground) || !std::isfinite(ground.y))
-			{ admitted = false; failure = "a living player's ground is unavailable"; break; }
-			SERVER_COMBAT_OBJECT_LOCKED_TARGET target;
-			target.iNetEntityId = player.iNetEntityId;
-			target.fPositionX = player.fPositionX; target.fPositionY = ground.y; target.fPositionZ = player.fPositionZ;
 			for (const bool tracking : { false, true })
 			{
 				if ((tracking && !newTracker) || (!tracking && !fixedDue)) continue;
+				// Each living player's tracker begins at the authored arena centre,
+				// while its exact locked entity remains the independent pursuit target.
+				const float originX = tracking ? boss.fSpawnPositionX : player.fPositionX;
+				const float originZ = tracking ? boss.fSpawnPositionZ : player.fPositionZ;
+				SERVER_NAV_POINT ground{};
+				if (!m_ServerNavigation.Sample_Position(originX, originZ, ground) || !std::isfinite(ground.y))
+				{ admitted = false; failure = "the selected player or arena-centre ground is unavailable"; break; }
+				SERVER_COMBAT_OBJECT_LOCKED_TARGET target;
+				target.iNetEntityId = player.iNetEntityId;
+				target.fPositionX = originX; target.fPositionY = ground.y; target.fPositionZ = originZ;
 				BOSS_COMBAT_OBJECT_DEFINITION definition;
 				definition.strEncounterId = boss.strEncounterId;
 				definition.strOwnerPatternId = pattern.strPatternId;
@@ -1054,11 +1127,18 @@ void LostArk::Server::CGameRoom::Update_KoukuPlayerTargets(
 				// Exact window cleanup owns tracking; its float lifetime has one spare tick.
 				const auto remainingTicks = static_cast<std::uint32_t>(window.iEndTick - serverTick);
 				definition.iLifeMs = tracking ? static_cast<std::uint32_t>((static_cast<std::uint64_t>(remainingTicks) * 1000u + 29u) / 30u + 34u) : trigger.iFixedLifetimeMs;
+				definition.AttackTemplates = tracking ? trigger.TrackingHits : trigger.FixedHits;
+				if (tracking)
+				{
+					std::erase_if(definition.AttackTemplates, [&](const auto& hit) { return hit.iAtMs >= definition.iLifeMs; });
+					for (auto& hit : definition.AttackTemplates) if (hit.strTrigger == "CONTACT") hit.iEndMs = (std::min)(hit.iEndMs, definition.iLifeMs);
+				}
 				definition.PresentationPulses.push_back({ "combatpresentation.kouku.showtime.started", 0u });
 				if (!m_CombatObjectRuntime.Stage_BossCombatObject(transaction, boss, &target, definition, nullptr, catalog, 1u, serverTick, failure))
 				{ admitted = false; break; }
 				// Group TRS is in map axes; the boss's current facing must not rotate it.
 				auto& object = transaction.Objects.back();
+				object.bRoomOwnedTracking = true;
 				object.LiveState.CurrentPose.fYawDegrees = 0.f;
 				object.LiveState.CurrentPose.fDirectionX = 0.f;
 				object.LiveState.CurrentPose.fDirectionZ = 1.f;
@@ -1263,14 +1343,23 @@ void LostArk::Server::CGameRoom::Commit_KoukuMechanicTriggers(const std::uint32_
 			(void)Commit_KoukuAlbionAirborne(*owner,*pattern,trigger,serverTick);
 			continue;
 		}
-		if (trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_TELEPORT_XZ)
+		if (trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::MARIO_PHASE2_PLAYERS)
+		{
+			(void)Commit_KoukuMarioPhasePlayers(*owner, trigger, serverTick);
+			continue;
+		}
+		if (trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_TELEPORT_XZ ||
+			trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_TELEPORT_FACE_CENTER)
 		{
 			SERVER_NAV_POINT oldGround{}, newGround{};
-			if (!std::isfinite(trigger.fTeleportX) || !std::isfinite(trigger.fTeleportZ) ||
+			const bool faceCenter = trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_TELEPORT_FACE_CENTER;
+			const float destinationY = faceCenter ? trigger.fTeleportY : owner->fPositionY;
+			if (!std::isfinite(destinationY) || !std::isfinite(trigger.fTeleportX) || !std::isfinite(trigger.fTeleportZ) ||
 				!m_ServerNavigation.Is_PointWalkableExact(trigger.fTeleportX, trigger.fTeleportZ) ||
 				!m_ServerNavigation.Sample_Position(owner->fPositionX, owner->fPositionZ, oldGround) ||
 				!m_ServerNavigation.Sample_Position(trigger.fTeleportX, trigger.fTeleportZ, newGround) ||
-				!m_ServerCollisionSystem.Is_CirclePositionClear(trigger.fTeleportX, owner->fPositionY, trigger.fTeleportZ,
+				(faceCenter && std::abs(destinationY - newGround.y) > 1.f) ||
+				!m_ServerCollisionSystem.Is_CirclePositionClear(trigger.fTeleportX, destinationY + owner->fCollisionRadius, trigger.fTeleportZ,
 					owner->fCollisionRadius, owner->fCollisionRadius, owner->fCollisionRadius, owner->iNetEntityId))
 			{ m_strStatus = "Boss XZ teleport preserved its pose: destination navigation or body overlap is invalid"; continue; }
 			const float rootX = owner->fPatternStageOriginX + trigger.fTeleportX - owner->fPositionX;
@@ -1287,6 +1376,18 @@ void LostArk::Server::CGameRoom::Commit_KoukuMechanicTriggers(const std::uint32_
 				owner->fPatternStageRootGroundY = rootGroundY;
 			}
 			owner->fPositionX = trigger.fTeleportX; owner->fPositionZ = trigger.fTeleportZ;
+			if (trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_TELEPORT_FACE_CENTER)
+			{
+				owner->fPositionY = trigger.fTeleportY;
+				const float dx = owner->fSpawnPositionX - owner->fPositionX, dz = owner->fSpawnPositionZ - owner->fPositionZ;
+				if (dx * dx + dz * dz > .000001f)
+					owner->fYawDegrees = std::atan2(dx, dz) * RADIANS_TO_DEGREES -
+						(owner->strArchetypeId == "BOSS_KAKULSAYDON_G1_SAYDON" ||
+						 owner->strArchetypeId == "BOSS_KAKULSAYDON_G3_SAYDON" ||
+						 owner->strArchetypeId == "BOSS_KAKULSAYDON_G2_BIG_SAYDON" ? 90.f : 0.f);
+				owner->fPatternStageOriginYawDegrees = owner->fYawDegrees;
+			}
+
 			m_ServerCollisionSystem.Update_BlockingBody(owner->iNetEntityId, owner->fPositionX,
 				owner->fPositionY + owner->fCollisionRadius, owner->fPositionZ);
 			continue;
@@ -1359,7 +1460,7 @@ void LostArk::Server::CGameRoom::Commit_KoukuMechanicTriggers(const std::uint32_
 			std::string status;
 			const auto* ownerPattern = catalog ? CKoukuSaydonBrain::Find_AnimationOnlyPattern(*catalog, owner->strPatternId, status) : nullptr;
 			if (!ownerPattern || !baseCatalog || owner->iOwnerBossNetEntityId != INVALID_NET_ENTITY_ID ||
-				!m_ServerNavigation.Is_Loaded() || trigger.PatternSpawns.empty() || trigger.PatternSpawns.size() > 4u)
+				!m_ServerNavigation.Is_Loaded() || trigger.PatternSpawns.empty() || trigger.PatternSpawns.size() > KOUKU_SUMMON_MAX_PATTERN_SPAWNS)
 			{ m_strStatus = "Summon Patterns preserved all actors: owner, catalog or spawn list is unavailable: " + status; continue; }
 			const auto authoredTrigger = std::find_if(ownerPattern->MechanicTriggers.begin(), ownerPattern->MechanicTriggers.end(),
 				[&](const auto& row) { return row.strTriggerId == trigger.strTriggerId && row.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::SUMMON_PATTERNS; });
@@ -1372,7 +1473,7 @@ void LostArk::Server::CGameRoom::Commit_KoukuMechanicTriggers(const std::uint32_
 			for (const auto& spawn : trigger.PatternSpawns)
 			{
 				const auto* childPattern = CKoukuSaydonBrain::Find_AnimationOnlyPattern(*catalog, spawn.strPatternId, status);
-				if (!childPattern || !CKoukuSaydonBrain::Validate_SummonedPattern(*ownerPattern, *childPattern, status))
+				if (!childPattern || !CKoukuSaydonBrain::Validate_SummonedPattern(*ownerPattern, *childPattern, status, true))
 				{ admitted = false; break; }
 				std::uint64_t childDurationMs = 0u;
 				for (const auto& stage : childPattern->Stages) childDurationMs += stage.iDurationMs;
@@ -1385,10 +1486,15 @@ void LostArk::Server::CGameRoom::Commit_KoukuMechanicTriggers(const std::uint32_
 				placement.strPlacementId = owner->strPlacementId + ".summon." + std::to_string(owner->iPatternSequence) + "." + trigger.strTriggerId + "." + spawn.strSpawnId;
 				placement.strArchetypeId = owner->strArchetypeId;
 				placement.strEncounterId = owner->strEncounterId;
-				placement.fPositionX = owner->fPositionX + spawn.PositionOffset[0] * std::cos(yaw) + spawn.PositionOffset[2] * std::sin(yaw);
-				placement.fPositionY = owner->fPositionY + spawn.PositionOffset[1];
-				placement.fPositionZ = owner->fPositionZ - spawn.PositionOffset[0] * std::sin(yaw) + spawn.PositionOffset[2] * std::cos(yaw);
-				placement.fYawDegrees = std::remainder(owner->fYawDegrees + spawn.fYawOffsetDegrees, 360.f);
+				const bool mapAnchor = spawn.eAnchorKind == BOSS_PATTERN_SUMMON_ANCHOR_KIND::MAP;
+				placement.fPositionX = mapAnchor ? spawn.PositionOffset[0] : owner->fPositionX + spawn.PositionOffset[0] * std::cos(yaw) + spawn.PositionOffset[2] * std::sin(yaw);
+				placement.fPositionY = mapAnchor ? spawn.PositionOffset[1] : owner->fPositionY + spawn.PositionOffset[1];
+				placement.fPositionZ = mapAnchor ? spawn.PositionOffset[2] : owner->fPositionZ - spawn.PositionOffset[0] * std::sin(yaw) + spawn.PositionOffset[2] * std::cos(yaw);
+				placement.fYawDegrees = std::remainder((mapAnchor ? 0.f : owner->fYawDegrees) + spawn.fYawOffsetDegrees, 360.f);
+				SERVER_NAV_POINT mapGround{};
+				if (mapAnchor && (!m_ServerNavigation.Sample_Position(placement.fPositionX, placement.fPositionZ, mapGround) ||
+					!std::isfinite(mapGround.y) || std::abs(mapGround.y - placement.fPositionY) > 1.f))
+				{ status = "a MAP summon position does not match its navigation floor"; admitted = false; break; }
 				SERVER_WORLD_ENTITY clone{};
 				if (nextId == INVALID_NET_ENTITY_ID || !std::isfinite(placement.fPositionX) || !std::isfinite(placement.fPositionY) ||
 					!std::isfinite(placement.fPositionZ) || !std::isfinite(placement.fYawDegrees) ||
@@ -1405,8 +1511,10 @@ void LostArk::Server::CGameRoom::Commit_KoukuMechanicTriggers(const std::uint32_
 				clone.iKoukuCloneOwnerSequence = owner->iPatternSequence;
 				clone.iKoukuCloneEndTick = CKoukuSaydonLogicRuntime::Add_Ticks(serverTick,
 					CKoukuSaydonLogicRuntime::Ticks_FromMs(trigger.iDurationMs));
-				if (!m_KoukuSaydonBrain.Begin_Pattern(clone, *childPattern, owner->PinnedDefinitionRevision, serverTick, status))
-				{ admitted = false; break; }
+				if (!m_KoukuSaydonBrain.Begin_Pattern(clone, *childPattern, owner->PinnedDefinitionRevision, serverTick, status) ||
+					!CKoukuSaydonBrain::Apply_StageRootMotion(clone, *childPattern, serverTick, m_ServerNavigation, m_ServerCollisionSystem, status) ||
+					!Update_KoukuSummonTriggers(clone, *childPattern, serverTick))
+				{ if (status.empty()) status = m_strStatus; admitted = false; break; }
 				std::vector<std::uint8_t> payload;
 				if (!Build_WorldEntitySpawnedPayload(clone, payload))
 				{ status = "a summoned actor failed spawn wire validation"; admitted = false; break; }
@@ -1449,7 +1557,8 @@ void LostArk::Server::CGameRoom::Commit_KoukuMechanicTriggers(const std::uint32_
 			definition.strClientVisualId = "combatvisual.kouku.albion.bluecircle";
 			definition.eOriginPolicy = BOSS_COMBAT_OBJECT_ORIGIN_POLICY::LOCKED_TARGET_PER_ALIVE_PLAYER;
 			definition.iLifeMs = trigger.iEffectLifetimeMs;
-			// This lifecycle marker has no damage. The authored Effect owns warning/impact timing.
+			// Hit templates share each authoritative circle instance and its warning clock.
+			definition.AttackTemplates = trigger.FixedHits;
 			definition.PresentationPulses.push_back({ "combatpresentation.kouku.albion.started", 0u });
 			BOSS_COMBAT_OBJECT_VOLLEY volley{};
 			volley.ePolicy = BOSS_COMBAT_OBJECT_VOLLEY_POLICY::PER_ALIVE_PLAYER;
@@ -1634,9 +1743,35 @@ void LostArk::Server::CGameRoom::Commit_KoukuMechanicTriggers(const std::uint32_
 	m_PendingKoukuMechanicTriggers.clear();
 	Commit_KoukuMarioEntries();
 }
-#endif
 
-#ifdef _DEBUG
+bool LostArk::Server::CGameRoom::Update_KoukuSummonTriggers(
+	SERVER_WORLD_ENTITY& clone, const BOSS_PATTERN_DEFINITION& pattern, const std::uint32_t serverTick)
+{
+	using Clock = CKoukuSaydonLogicRuntime;
+	std::vector<std::size_t> due;
+	for (std::size_t index = 0u; index < pattern.MechanicTriggers.size(); ++index)
+	{
+		const auto& trigger = pattern.MechanicTriggers[index];
+		if (std::find(clone.KoukuSummonStartedTriggers.begin(), clone.KoukuSummonStartedTriggers.end(), index) == clone.KoukuSummonStartedTriggers.end() &&
+			Clock::Has_ReachedTick(serverTick, Clock::Add_Ticks(clone.iPatternStartTick, Clock::Ticks_FromMs(trigger.iStartMs))))
+			due.push_back(index);
+	}
+	std::stable_sort(due.begin(), due.end(), [&](const auto a, const auto b) {
+		const auto& left = pattern.MechanicTriggers[a]; const auto& right = pattern.MechanicTriggers[b];
+		if (left.iStartMs != right.iStartMs) return left.iStartMs < right.iStartMs;
+		return left.eAirbornePhase == ALBION_AIRBORNE_PHASE::JUMP && right.eAirbornePhase != ALBION_AIRBORNE_PHASE::JUMP;
+	});
+	for (const auto index : due)
+	{
+		const auto& trigger = pattern.MechanicTriggers[index];
+		if (trigger.eKind != BOSS_PATTERN_MECHANIC_TRIGGER_KIND::ALBION_AIRBORNE ||
+			(trigger.eAirbornePhase != ALBION_AIRBORNE_PHASE::JUMP && trigger.eAirbornePhase != ALBION_AIRBORNE_PHASE::SLAM) ||
+			!Commit_KoukuAlbionAirborne(clone, pattern, trigger, serverTick)) return false;
+		clone.KoukuSummonStartedTriggers.push_back(index);
+	}
+	return true;
+}
+
 void LostArk::Server::CGameRoom::Update_KoukuGazeClones(const std::uint32_t serverTick)
 {
 	for (auto clone = m_WorldEntities.begin(); clone != m_WorldEntities.end();)
@@ -1666,6 +1801,12 @@ void LostArk::Server::CGameRoom::Update_KoukuGazeClones(const std::uint32_t serv
 				const auto result = m_KoukuSaydonBrain.Update(*clone, *catalog, serverTick, status);
 				live = KOUKUSAYDON_BRAIN_UPDATE_RESULT::ABORTED_INVALID_DEFINITION != result &&
 					KOUKUSAYDON_BRAIN_UPDATE_RESULT::ABORTED_BOSS_DEAD != result;
+				if (live && clone->bKoukuSummonClone && !clone->strPatternId.empty())
+				{
+					const auto* pattern = CKoukuSaydonBrain::Find_AnimationOnlyPattern(*catalog, clone->strPatternId, status);
+					live = pattern && Update_KoukuSummonTriggers(*clone, *pattern, serverTick);
+					if (!live && status.empty()) status = m_strStatus;
+				}
 			}
 			if (!live) m_strStatus = "KoukuSaydon clone playback failed: " + status;
 		}
@@ -1678,7 +1819,6 @@ void LostArk::Server::CGameRoom::Update_KoukuGazeClones(const std::uint32_t serv
 		clone = m_WorldEntities.erase(clone);
 	}
 }
-#endif
 
 void LostArk::Server::CGameRoom::Update_WorldEntities(
 	const float fixedDeltaSeconds)
@@ -1686,11 +1826,9 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 	const std::uint32_t updateTick =
 		(std::numeric_limits<std::uint32_t>::max)() == m_iServerTick ?
 		1u : m_iServerTick + 1u;
-#ifdef _DEBUG
 	// Idempotent for direct simulation callers; normal ticks already prepared before players.
 	Prepare_KoukuAuditionTick(updateTick);
 	Update_KoukuGazeClones(updateTick);
-#endif
 	if (!Update_DependentBosses(updateTick))
 	{
 		Mark_RuntimeFailure("world-update.dependent-bosses-before-primary");
@@ -1781,14 +1919,10 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 			where it spawned until an audition names it. It never enters the Valtan brain, so the gate
 			button that activated it cannot start a pattern by itself. While an
 			audition owns another arena boss this one only keeps its pin. */
-#ifdef _DEBUG
 			const bool auditionOwnsAnotherBoss =
 				KOUKUSAYDON_PATTERN_AUDITION_PHASE::INACTIVE !=
 					m_KoukuSaydonPatternAudition.ePhase &&
 				nullptr == Find_KoukuAuditionMember(entity.iNetEntityId);
-#else
-			const bool auditionOwnsAnotherBoss = false;
-#endif
 			if (auditionOwnsAnotherBoss)
 			{
 				entity.PinnedDefinitionRevision =
@@ -2643,6 +2777,7 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 		}
 		if (WORLD_BOOTSTRAP_KIND::BOSS == iter->eKind)
 		{
+			Notify_KoukuRaidBossDeath(*iter, updateTick);
 			if (LostArk::Shared::WORLD_ID::VALTAN_ARENA == m_eWorldId &&
 				"ENCOUNTER_VALTAN" == iter->strEncounterId &&
 				"BOSS_VALTAN" == iter->strArchetypeId)
@@ -2667,9 +2802,7 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 			Notify_GateBossDeath(*iter);
 		iter = m_WorldEntities.erase(iter);
 	}
-#ifdef _DEBUG
 	Commit_KoukuMechanicTriggers(updateTick);
-#endif
 	if (!Update_DependentBosses(updateTick))
 		Mark_RuntimeFailure("world-update.dependent-bosses-after-primary");
 }

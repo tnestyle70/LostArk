@@ -1061,11 +1061,7 @@ bool_t Client::CPlayerController::Update_MarioControls(const bool_t gameplayComm
 		!CUIInputRouter::Get().Is_TextInputActive() && !ImGui::IsAnyItemActive() &&
 		!Is_PlayerControlCaptured(player);
 	const bool_t returnSubmitted = Update_MarioReturn(returnInputAllowed);
-#ifdef _DEBUG
 	const bool_t jumpSubmitted = Update_DebugMarioJump(inputAllowed && !returnSubmitted && !m_pendingMarioReturnSequence);
-#else
-	constexpr bool_t jumpSubmitted = false;
-#endif
 	if (returnSubmitted || m_pendingMarioReturnSequence || jumpSubmitted || 0u == player.iCurrentHp || PLAYER_ACTION_STATE::NONE != player.eAction)
 		direction = 0;
 	const auto now = std::chrono::steady_clock::now();
@@ -1170,6 +1166,8 @@ void Client::CPlayerController::Set_CommandSink(
 		m_pendingHonorTitleSequence = 0u;
 		m_pendingMarioReturnSequence = 0u;
 		m_MarioReturnStatus.clear();
+		m_pendingDebugMarioJumpSequence = 0u;
+		m_debugMarioJumpStatus.clear();
 	}
 #ifdef _DEBUG
 	if (m_pCommandSink != commandSink)
@@ -1180,8 +1178,6 @@ void Client::CPlayerController::Set_CommandSink(
 		m_debugPlacementStatus.clear();
 		m_pendingDebugMadnessFormSequence = 0u;
 		m_debugMadnessFormStatus.clear();
-		m_pendingDebugMarioJumpSequence = 0u;
-		m_debugMarioJumpStatus.clear();
 	}
 #endif
 	m_pCommandSink = commandSink;
@@ -1396,6 +1392,8 @@ bool_t Client::CPlayerController::Request_DebugMadnessForm(
 	return true;
 }
 
+#endif
+
 bool_t Client::CPlayerController::Update_DebugMarioJump(const bool_t gameplayCommandsEnabled)
 {
 	using namespace LostArk::Shared;
@@ -1419,9 +1417,9 @@ bool_t Client::CPlayerController::Update_DebugMarioJump(const bool_t gameplayCom
 			case DEBUG_MARIO_JUMP_RESULT::ACCEPTED:
 				m_debugMarioJumpStatus = "Server accepted the jump; release Up before the next jump."; break;
 			case DEBUG_MARIO_JUMP_RESULT::REJECTED_DISABLED:
-				m_debugMarioJumpStatus = "Test jump requires a Debug Server."; break;
+				m_debugMarioJumpStatus = "Jump requires an active raid participant."; break;
 			case DEBUG_MARIO_JUMP_RESULT::REJECTED_WRONG_WORLD:
-				m_debugMarioJumpStatus = "Test jump requires the KoukuSaydon world."; break;
+				m_debugMarioJumpStatus = "Jump requires the KoukuSaydon world."; break;
 			case DEBUG_MARIO_JUMP_RESULT::REJECTED_PLAYER_STATE:
 				m_debugMarioJumpStatus = "Cannot jump while airborne, acting, dead or captured."; break;
 			case DEBUG_MARIO_JUMP_RESULT::REJECTED_STALE_SEQUENCE:
@@ -1443,7 +1441,12 @@ bool_t Client::CPlayerController::Update_DebugMarioJump(const bool_t gameplayCom
 		m_pendingDebugMarioJumpSequence = 0u;
 		m_debugMarioJumpStatus = "No Server jump reply. Check the connection; press Up again to retry.";
 	}
-	if (!upPressed || !m_debugMarioJumpEnabled || !gameplayCommandsEnabled ||
+#ifdef _DEBUG
+	const bool_t jumpEnabled = m_debugMarioJumpEnabled;
+#else
+	constexpr bool_t jumpEnabled = true;
+#endif
+	if (!upPressed || !jumpEnabled || !gameplayCommandsEnabled ||
 		GetForegroundWindow() != g_hWnd || CGameInstance::Get().IsKeyboardInputBlocked() ||
 		ImGui::GetIO().WantTextInput || CUIInputRouter::Get().Is_TextInputActive() ||
 		m_GroundTargeting.Is_Active() || 0u != m_pendingDebugMarioJumpSequence ||
@@ -1482,6 +1485,7 @@ bool_t Client::CPlayerController::Update_DebugMarioJump(const bool_t gameplayCom
 	return true;
 }
 
+#ifdef _DEBUG
 void Client::CPlayerController::Update_DebugPlayerPlacement(const bool_t enabled)
 {
 	using namespace LostArk::Shared;

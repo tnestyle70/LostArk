@@ -6709,3 +6709,68 @@ bool LostArk::Shared::Read_Message(
 	message = decoded;
 	return true;
 }
+
+bool LostArk::Shared::Write_Message(CPacketWriter& writer, const C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST& m)
+{
+	if (!m.iRequestSequence || m.eWorldId != WORLD_ID::KAKULSAYDON_ARENA || m.eOperation >= KOUKUSAYDON_RAID_OPERATION::END ||
+		!m.ExpectedGameplayRevision.Is_Valid() || !m.iActionSourceRevision || !m.iSequenceSourceRevision ||
+		(m.strStartGateId != "GATE1" && m.strStartGateId != "GATE2" && m.strStartGateId != "GATE3") ||
+		(m.eOperation == KOUKUSAYDON_RAID_OPERATION::START ? m.iExpectedRunEpoch != 0u : m.iExpectedRunEpoch == 0u) ||
+		!Is_Valid_BoundedReason(m.strReason, MAX_KOUKUSAYDON_PATTERN_AUDITION_REASON_BYTES, m.eOperation != KOUKUSAYDON_RAID_OPERATION::FAILED) ||
+		(m.eOperation != KOUKUSAYDON_RAID_OPERATION::FAILED && !m.strReason.empty())) return false;
+	writer.Write_U32(m.iRequestSequence); writer.Write_U16(static_cast<std::uint16_t>(m.eWorldId)); writer.Write_U8(static_cast<std::uint8_t>(m.eOperation));
+	if (!Write_GameplayDataRevision(writer, m.ExpectedGameplayRevision) || !writer.Write_String(m.strStartGateId, MAX_STABLE_NETWORK_ID_BYTES)) return false;
+	writer.Write_U32(m.iActionSourceRevision); writer.Write_U32(m.iSequenceSourceRevision); writer.Write_U32(m.iExpectedRunEpoch); return writer.Write_String(m.strReason, MAX_KOUKUSAYDON_PATTERN_AUDITION_REASON_BYTES);
+}
+bool LostArk::Shared::Read_Message(CPacketReader& reader, C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST& message)
+{
+	C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST m; std::uint16_t world{}; std::uint8_t op{};
+	if (!reader.Read_U32(m.iRequestSequence) || !reader.Read_U16(world) || !reader.Read_U8(op) ||
+		!Read_GameplayDataRevision(reader, m.ExpectedGameplayRevision) || !reader.Read_String(m.strStartGateId, MAX_STABLE_NETWORK_ID_BYTES) ||
+		!reader.Read_U32(m.iActionSourceRevision) || !reader.Read_U32(m.iSequenceSourceRevision) || !reader.Read_U32(m.iExpectedRunEpoch) || !reader.Read_String(m.strReason, MAX_KOUKUSAYDON_PATTERN_AUDITION_REASON_BYTES)) return false;
+	m.eWorldId = static_cast<WORLD_ID>(world); m.eOperation = static_cast<KOUKUSAYDON_RAID_OPERATION>(op);
+	CPacketWriter validation; if (!Write_Message(validation, m)) return false; message = std::move(m); return true;
+}
+bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_KOUKUSAYDON_RAID_STATE& m)
+{
+    if (m.ParticipantPlayerIds.size() > 4u || (m.iRunEpoch && m.ParticipantPlayerIds.empty()) ||
+        (!m.iRunEpoch && (!m.ParticipantPlayerIds.empty() || m.iReadyMask)) ||
+        (m.iReadyMask >> m.ParticipantPlayerIds.size()) != 0u) return false;
+    for (std::size_t i = 0; i < m.ParticipantPlayerIds.size(); ++i)
+        if (m.ParticipantPlayerIds[i] == INVALID_PLAYER_ID || std::find(m.ParticipantPlayerIds.begin(), m.ParticipantPlayerIds.begin() + i, m.ParticipantPlayerIds[i]) != m.ParticipantPlayerIds.begin() + i) return false;
+    if (m.iRunEpoch && std::find(m.ParticipantPlayerIds.begin(), m.ParticipantPlayerIds.end(), m.iOwnerPlayerId) == m.ParticipantPlayerIds.end()) return false;
+	if (m.eWorldId != WORLD_ID::KAKULSAYDON_ARENA || !m.iRequestSequence || m.ePhase == KOUKUSAYDON_RAID_PHASE::INACTIVE || m.ePhase >= KOUKUSAYDON_RAID_PHASE::END ||
+        (m.iRunEpoch ? m.iOwnerPlayerId == INVALID_PLAYER_ID : (m.ePhase != KOUKUSAYDON_RAID_PHASE::ABORTED || m.iOwnerPlayerId != INVALID_PLAYER_ID)) ||
+		!m.PinnedGameplayRevision.Is_Valid() || !m.iActionSourceRevision || !m.iSequenceSourceRevision ||
+		(m.strGateId != "GATE1" && m.strGateId != "GATE2" && m.strGateId != "GATE3") ||
+		!Is_Valid_StableId(m.strSequenceCompositionId, true) || !Is_Valid_StableId(m.strSequencePatternId, true) ||
+		!Is_Valid_StableId(m.strFlowEntryId, true) || m.iFlowEntryIndex > 256u ||
+		!Is_Valid_BoundedReason(m.strReason, MAX_KOUKUSAYDON_PATTERN_AUDITION_REASON_BYTES, true) ||
+		(m.ePhase == KOUKUSAYDON_RAID_PHASE::PREPARING && (!m.iRunEpoch || m.iStartTick || !m.iEndTick || m.strSequenceCompositionId.empty() || m.strSequencePatternId.empty())) ||
+		(m.ePhase == KOUKUSAYDON_RAID_PHASE::CINEMATIC && (!m.iRunEpoch || !m.iStartTick || !m.iEndTick || m.strSequenceCompositionId.empty() || m.strSequencePatternId.empty()))) return false;
+	writer.Write_U16(static_cast<std::uint16_t>(m.eWorldId)); writer.Write_U32(m.iRequestSequence); writer.Write_U32(m.iRunEpoch); writer.Write_U8(static_cast<std::uint8_t>(m.ePhase));
+	if (!writer.Write_String(m.strGateId, MAX_STABLE_NETWORK_ID_BYTES) || !writer.Write_String(m.strSequenceCompositionId, MAX_STABLE_NETWORK_ID_BYTES) ||
+		!writer.Write_String(m.strSequencePatternId, MAX_STABLE_NETWORK_ID_BYTES) || !writer.Write_String(m.strFlowEntryId, MAX_STABLE_NETWORK_ID_BYTES) ||
+		!Write_GameplayDataRevision(writer, m.PinnedGameplayRevision) || !writer.Write_String(m.strReason, MAX_KOUKUSAYDON_PATTERN_AUDITION_REASON_BYTES)) return false;
+	writer.Write_U32(m.iSequenceSourceRevision); writer.Write_U32(m.iStartTick); writer.Write_U32(m.iEndTick); writer.Write_U32(m.iServerTick);
+	writer.Write_U32(m.iFlowEntryIndex); writer.Write_U32(m.iActionSourceRevision); writer.Write_U32(m.iOwnerPlayerId);
+	writer.Write_U8(static_cast<std::uint8_t>(m.ParticipantPlayerIds.size()));
+	for (const auto id : m.ParticipantPlayerIds) writer.Write_U32(id);
+	writer.Write_U8(m.iReadyMask); return true;
+}
+bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_KOUKUSAYDON_RAID_STATE& message)
+{
+	S2C_KOUKUSAYDON_RAID_STATE m; std::uint16_t world{}; std::uint8_t phase{};
+	if (!reader.Read_U16(world) || !reader.Read_U32(m.iRequestSequence) || !reader.Read_U32(m.iRunEpoch) || !reader.Read_U8(phase) ||
+		!reader.Read_String(m.strGateId, MAX_STABLE_NETWORK_ID_BYTES) || !reader.Read_String(m.strSequenceCompositionId, MAX_STABLE_NETWORK_ID_BYTES) ||
+		!reader.Read_String(m.strSequencePatternId, MAX_STABLE_NETWORK_ID_BYTES) || !reader.Read_String(m.strFlowEntryId, MAX_STABLE_NETWORK_ID_BYTES) ||
+		!Read_GameplayDataRevision(reader, m.PinnedGameplayRevision) || !reader.Read_String(m.strReason, MAX_KOUKUSAYDON_PATTERN_AUDITION_REASON_BYTES) ||
+		!reader.Read_U32(m.iSequenceSourceRevision) || !reader.Read_U32(m.iStartTick) || !reader.Read_U32(m.iEndTick) || !reader.Read_U32(m.iServerTick) ||
+		!reader.Read_U32(m.iFlowEntryIndex) || !reader.Read_U32(m.iActionSourceRevision) || !reader.Read_U32(m.iOwnerPlayerId)) return false;
+	std::uint8_t count = 0u;
+    if (!reader.Read_U8(count) || count > 4u) return false;
+    for (unsigned i = 0; i < count; ++i) { PLAYER_ID id{}; if (!reader.Read_U32(id)) return false; m.ParticipantPlayerIds.push_back(id); }
+    if (!reader.Read_U8(m.iReadyMask)) return false;
+    m.eWorldId = static_cast<WORLD_ID>(world); m.ePhase = static_cast<KOUKUSAYDON_RAID_PHASE>(phase);
+	CPacketWriter validation; if (!Write_Message(validation, m)) return false; message = std::move(m); return true;
+}

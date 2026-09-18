@@ -439,6 +439,13 @@ public:
 	bool_t Enable_OwnerSustainedSourceLoops(std::string& strOutError);
 	// Per-instance occurrence clock; zero keeps the immutable document lifetime.
 	bool_t Set_SourceLoopEndSeconds(f32_t fEndSeconds, std::string& strOutError);
+	bool_t Has_InfiniteSourceEmitters() const
+	{
+		for (const auto& element : Get_StagedDocument().Elements)
+			if (Is_PlaybackElementAdmitted(element) && element.SourceRecipe.bEnabled &&
+				element.SourceRecipe.iEmitterLoopCount == 0u) return true;
+		return false;
+	}
 	bool_t Is_Finished() const;
 	f32_t Get_DurationSeconds() const
 	{

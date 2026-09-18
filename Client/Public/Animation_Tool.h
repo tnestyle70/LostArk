@@ -50,6 +50,9 @@ public:
 		bool_t bPlaying = false;
 		bool_t bPaused = false;
 		bool_t bSourceSequencePlaying = false;
+		bool_t bSourceSequencePaused = false;
+		uint32_t iSourceSequencePositionMs = 0u;
+		uint32_t iSourceSequenceDurationMs = 0u;
 		uint32_t iPositionMs = 0u;
 		uint32_t iDurationMs = 0u;
 		std::string strPatternId;
@@ -403,6 +406,8 @@ public:
 		uint32_t iPositionMs,
 		bool_t bPause,
 		std::string& strOutStatus);
+	bool_t Seek_ValtanCompositionSourceSequence(uint32_t iPositionMs, bool_t bPause,
+		std::string& strOutStatus);
 	/* Stops this composition's pattern and source-sequence preview owners. */
 	void Stop_ValtanCompositionPattern(std::string& strOutStatus);
 	/* A submitted Server replay retires the local clone without discarding drafts.
@@ -694,6 +699,9 @@ private:
 		uint32_t iLastPattern);
 	bool_t Activate_ValtanPatternPreviewItem(
 		const shared_ptr<Engine::CModel>& pModel);
+	bool_t Seek_ValtanPatternPreview(const shared_ptr<Engine::CModel>& pModel,
+		f32_t fTimelineSeconds, bool_t bPause);
+	bool_t Sample_ValtanPatternPreviewPose(const shared_ptr<Engine::CModel>& pModel);
 	void Advance_ValtanPatternPreview(
 		const shared_ptr<Engine::CModel>& pModel);
 	void Stop_ValtanPatternPreview(
@@ -994,6 +1002,9 @@ private:
 	uint64_t m_iValtanPatternMasterTargetGeneration = 0u;
 	VALTAN_PATTERN_PREVIEW_DOCUMENT m_ValtanPatternPreviewDocument;
 	std::vector<VALTAN_PATTERN_PREVIEW_PLAY_ITEM> m_ValtanPatternPreviewPlaylist;
+	std::vector<f32_t> m_ValtanPatternPreviewDurations;
+	f32_t m_fValtanPatternPreviewTimelineSeconds = 0.f;
+	f32_t m_fValtanPatternPreviewDurationSeconds = 0.f;
 	bool_t m_bValtanPatternPreviewLoadAttempted = false;
 	bool_t m_bValtanPatternPreviewPlaying = false;
 	bool_t m_bValtanPatternPreviewPaused = false;

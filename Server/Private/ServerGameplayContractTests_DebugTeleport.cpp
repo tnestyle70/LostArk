@@ -39,6 +39,7 @@ using namespace LostArk::Shared;
 int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tests)
 {
 	Run_KoukuMarioEntryContact(tests);
+	Run_KoukuRaidIntegration(tests);
 		for (const WORLD_ID world : { WORLD_ID::KAKULSAYDON_ARENA, WORLD_ID::VALTAN_ARENA })
 		{
 			auto room = std::make_unique<CGameRoom>(world);
@@ -160,9 +161,25 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 				auto& peer = room->m_Players[124u]; peer.iPlayerId = 124u; peer.iNetEntityId = 457u;
 				peer.iCurrentHp = peer.iMaximumHp = 100u;
 				peer.fPositionX = start.x + 30.f; peer.fPositionY = start.y; peer.fPositionZ = start.z;
+				// Gate entry cinematics now keep the authoring boss disabled. This cleanup
+				// fixture explicitly enables a copy through the real entity builder.
+				const auto* bossPlacement = room->Find_Placement("boss.kakulsaydon.g1.kouku");
+				if (bossPlacement && std::none_of(room->m_WorldEntities.begin(), room->m_WorldEntities.end(),
+					[&](const auto& entity) { return entity.strPlacementId == bossPlacement->strPlacementId; }))
+				{
+					auto enabledBossPlacement = *bossPlacement;
+					enabledBossPlacement.isEnabled = true;
+					SERVER_WORLD_ENTITY fixtureBoss;
+					if (room->Build_WorldEntity(enabledBossPlacement, room->m_iNextNetEntityId, fixtureBoss))
+					{
+						++room->m_iNextNetEntityId;
+						room->m_WorldEntities.push_back(std::move(fixtureBoss));
+					}
+				}
 				const auto initialBoss = std::find_if(room->m_WorldEntities.begin(), room->m_WorldEntities.end(),
-					[](const auto& entity) { return entity.eKind == WORLD_BOOTSTRAP_KIND::BOSS && !entity.isEstherSummon; });
-				tests.Require(initialBoss != room->m_WorldEntities.end(), "Arena start fixture includes the statically enabled boss");
+					[](const auto& entity) { return entity.strPlacementId == "boss.kakulsaydon.g1.kouku" &&
+						entity.eKind == WORLD_BOOTSTRAP_KIND::BOSS && !entity.isEstherSummon && entity.iCurrentHp != 0u; });
+				tests.Require(initialBoss != room->m_WorldEntities.end(), "Arena start fixture explicitly includes a live enabled boss");
 				const auto ownerId = initialBoss != room->m_WorldEntities.end() ? initialBoss->iNetEntityId : INVALID_NET_ENTITY_ID;
 				SERVER_WORLD_ENTITY dependent{}; dependent.iNetEntityId = 987650u;
 				dependent.eKind = WORLD_BOOTSTRAP_KIND::MONSTER; dependent.iOwnerBossNetEntityId = ownerId;
@@ -334,6 +351,41 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 				tests.Require(room->Apply_MarioReturn(player, request).eResult == MARIO_RETURN_RESULT::REJECTED_PLAYER_STATE &&
 					sameState(player, before), "Dead, acting, bound, attached, inactive or knocked-back player cannot use Return to escape state");
 			}
+			// A pattern-owned Mario return survives its arena member and takes precedence over the static waypoint.
+			SERVER_NAV_POINT pinned{};
+			bool pinnedReady = false;
+			for (const float offset : { -3.f, 3.f, -2.f, 2.f })
+				if (!pinnedReady && room->m_ServerNavigation.Is_PointWalkableExact(landing.x + offset, landing.z) &&
+					room->m_ServerNavigation.Sample_Position(landing.x + offset, landing.z, pinned) &&
+					room->m_ServerCollisionSystem.Is_PlayerPositionClear(pinned.x, pinned.y, pinned.z, player.iNetEntityId))
+					pinnedReady = true;
+			tests.Require(pinnedReady, "Mario return fixture finds a distinct published arena landing");
+			if (pinnedReady)
+			{
+				player = original;
+				player.MarioReturnPosition = std::array<float, 3u>{ pinned.x, pinned.y, pinned.z };
+				request.iClientSequence = 20u;
+				const auto result = room->Apply_MarioReturn(player, request);
+				tests.Require(result.eResult == MARIO_RETURN_RESULT::ACCEPTED && player.MarioReturnPosition &&
+					player.TriggerMove.fTargetX == pinned.x && player.TriggerMove.fTargetY == pinned.y && player.TriggerMove.fTargetZ == pinned.z,
+					"Mario Return uses the entrant's pinned arena point and retains it through terminal move start");
+				player = original;
+				player.MarioReturnPosition = std::array<float, 3u>{ pinned.x, pinned.y, pinned.z };
+				tests.Require(room->Begin_MarioTriggerMove(*terminal, player, 300u) == SERVER_TRIGGER_MOVE_ENTRY_RESULT::STARTED &&
+					player.TriggerMove.fTargetX == pinned.x && player.TriggerMove.fTargetY == pinned.y && player.TriggerMove.fTargetZ == pinned.z,
+					"Natural Mario terminal contact resolves the same pinned destination as the Return command");
+				room->Update_MarioControlState(player);
+				tests.Require(!player.iMarioStage && player.MarioReturnPosition.has_value(), "Terminal form restore keeps the return pin until authoritative landing");
+				player.Clear_MarioControl();
+				tests.Require(!player.MarioReturnPosition, "Explicit Mario control reset clears an old return pin");
+				player = original;
+				player.MarioReturnPosition = std::array<float, 3u>{ 1000000.f, pinned.y, 1000000.f };
+				request.iClientSequence = 21u;
+				tests.Require(room->Apply_MarioReturn(player, request).eResult == MARIO_RETURN_RESULT::REJECTED_DESTINATION &&
+					!player.TriggerMove.isActive && player.iMarioStage == stage && player.fPositionX == original.fPositionX,
+					"Invalid pinned Mario return is rejected without substituting the default landing or changing the entrant");
+			}
+			request.iClientSequence = 22u;
 			player = original;
 			SERVER_WORLD_ENTITY blocker{}; blocker.iNetEntityId = 987650u; blocker.eKind = WORLD_BOOTSTRAP_KIND::NPC;
 			blocker.fPositionX = landing.x; blocker.fPositionY = landing.y; blocker.fPositionZ = landing.z;

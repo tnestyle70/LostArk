@@ -22,6 +22,8 @@
 	<ClInclude Include="..\Public\GameplayDataRevision.h" />
 	<ClInclude Include="..\Public\Gameplay\CombatCollisionContract.h" />
 	<ClInclude Include="..\Public\Gameplay\WorldCollisionContract.h" />
+	<ClInclude Include="..\Public\Gameplay\AttackHitTemplate.h" />
+	<ClInclude Include="..\Public\Gameplay\KoukuTargetTracking.h" />
     <ClInclude Include="..\Public\Network\NetworkIds.h" />
     <ClInclude Include="..\Public\Network\PacketFrame.h" />
     <ClInclude Include="..\Public\Network\PacketMessages.h" />

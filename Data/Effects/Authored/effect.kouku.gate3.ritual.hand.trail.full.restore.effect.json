@@ -3981,14 +3981,14 @@
             0.800000011920929
           ],
           "initialPositionMin": [
-            1.0,
             0.0,
-            -0.0
+            0.0,
+            0.0
           ],
           "initialPositionMax": [
-            1.0,
             0.0,
-            -0.0
+            0.0,
+            0.0
           ],
           "initialVelocityMin": [
             0.0,
@@ -5241,11 +5241,11 @@
                 ],
                 "lookupTable": [
                   0.0,
-                  100.0,
-                  100.0,
                   0.0,
                   0.0,
-                  100.0,
+                  0.0,
+                  0.0,
+                  0.0,
                   0.0,
                   0.0
                 ],
@@ -5266,7 +5266,7 @@
               {
                 "propertyPath": "bclipsourcesegement",
                 "kind": "boolean",
-                "value": true
+                "value": false
               },
               {
                 "propertyPath": "bdeadtrailsondeactivate",

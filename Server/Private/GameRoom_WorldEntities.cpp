@@ -195,12 +195,10 @@ bool LostArk::Server::CGameRoom::Build_WorldEntity(
 				return false;
 			}
 			const auto* ownerPatterns = patterns;
-#ifdef _DEBUG
-			// A live audition can pin a newer Product than the base combat catalog.
+			// A live run can pin a newer Product than the base combat catalog.
 			if (isKoukuClone)
 				if (const auto* product = Resolve_KoukuProductCatalog())
 					ownerPatterns = product->Find_BossPatterns(owner->strEncounterId);
-#endif
 			const bool ownerRunsFinale = ownerPatterns && std::any_of(ownerPatterns->begin(), ownerPatterns->end(),
 				[&owner, &staged, isKoukuClone](const BOSS_PATTERN_DEFINITION& pattern)
 				{
@@ -343,11 +341,9 @@ bool LostArk::Server::CGameRoom::Reset_ReplayableArenaWhenEmpty()
 		WORLD_ID::KAKULSAYDON_ARENA != m_eWorldId) || !m_Players.empty())
 		return true;
 
-#ifdef _DEBUG
 	Clear_KoukuSaydonPatternAudition();
 	Update_KoukuWorldBodies(m_iServerTick);
 	m_iNextMarioEntryStage = 1u;
-#endif
 	std::string resetStatus;
 	if (!m_ServerTriggerSystem.Initialize(
 		m_WorldBootstrap.Get_Placements(), resetStatus))
@@ -375,9 +371,9 @@ bool LostArk::Server::CGameRoom::Reset_ReplayableArenaWhenEmpty()
 	m_ValtanPatternIdAuditionSequenceBySessionId.clear();
 	m_ValtanPatternFlowStartSequenceBySessionId.clear();
 	m_ValtanPatternFlowControlSequenceBySessionId.clear();
-#ifdef _DEBUG
 	m_KoukuSaydonPatternAuditionReceiptBySessionId.clear();
 	m_PendingKoukuSaydonPatternAuditionLifecycle.clear();
+#ifdef _DEBUG
 	Cancel_ValtanPatternIdAudition("room reset after the last player left");
 	m_ValtanNextPatternReceiptBySessionId.clear();
 	m_ValtanPatternFlowAudition = {};

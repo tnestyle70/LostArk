@@ -1619,6 +1619,8 @@ namespace
 		std::vector<Client::VALTAN_PRODUCT_EFFECT_CUE_VIEW> AuthoredCues;
 		std::vector<MASTER_EFFECT_REFERENCE> EffectReferences;
 		std::vector<Client::VALTAN_CAMERA_INVOCATION_VIEW> CameraInvocations;
+        std::vector<Client::BOSS_STAGE_SCENE_PROFILE_OCCURRENCE> SceneProfileOccurrences;
+        std::vector<Client::BOSS_STAGE_LIGHT_OCCURRENCE> LightOccurrences;
 	};
 
 	template <typename TStage>
@@ -2026,7 +2028,7 @@ namespace
 				  "downMs", "motion", "actions", "branches", "animation",
 				  "effectRefs", "cameraInvocations" },
 				{ "partDamagePolicy", "counterProxy", "bossResponse", "hitAnchor",
-				  "hitActivation", "bodyVisibility", "verticalOffsetM" });
+				  "hitActivation", "bodyVisibility", "verticalOffsetM", "sceneProfileOccurrences", "lightOccurrences" });
 		const bool_t bCaptureShape = Has_ExactPropertiesWithOptional(Value,
 				{ "stageId", "sequenceRole", "actionId", "stageKind",
 				  "durationMs", "hitShape", "hitOuterRadius", "hitInnerRadius",
@@ -2038,7 +2040,7 @@ namespace
 				  "actions", "branches", "animation", "effectRefs",
 				  "cameraInvocations" },
 				{ "partDamagePolicy", "counterProxy", "bossResponse", "hitAnchor",
-				  "hitActivation", "bodyVisibility", "verticalOffsetM" });
+				  "hitActivation", "bodyVisibility", "verticalOffsetM", "sceneProfileOccurrences", "lightOccurrences" });
 		if (!bBaseShape && !bCaptureShape)
 		{
 			strOutError = "master stage has unexpected properties";
@@ -2194,7 +2196,9 @@ namespace
 				Out.iHitActivationLifetimeMs) ||
 			!Read_MasterCameraInvocations(
 				Value.Find("cameraInvocations"), Out.iDurationMs,
-				Out.CameraInvocations))
+				Out.CameraInvocations) ||
+            !Client::Parse_BossStageEnvironment(Value, Out.SceneProfileOccurrences,
+                Out.LightOccurrences, strOutError, Out.iDurationMs))
 		{
 			strOutError = "master stage gameplay values are invalid";
 			return false;
@@ -5612,7 +5616,7 @@ namespace
 					!Has_ExactPropertiesWithOptional(PresentationStage,
 						{ "stageId", "actionId", "sequenceRole", "animation",
 						  "effectCues", "cameraInvocations" },
-						{ "bodyVisibility" }))
+						{ "bodyVisibility", "sceneProfileOccurrences", "lightOccurrences" }))
 				{
 					strOutError = "split authoring stage has unexpected properties: " +
 						strPatternId;
@@ -5978,6 +5982,8 @@ namespace
 						DATA_JSON_VALUE::Object(std::move(Reference)));
 				}
 				LegacyStage.emplace("animation", *PresentationStage.Find("animation"));
+                for (const char* field : {"sceneProfileOccurrences", "lightOccurrences"})
+                    if (const auto* rows = PresentationStage.Find(field)) LegacyStage.emplace(field, *rows);
 				if (bHasBodyHiddenWindow)
 				{
 					LegacyStage.emplace(
@@ -6729,6 +6735,8 @@ namespace
 				Stage.iBodyHiddenFromMs = MasterStage.iBodyHiddenFromMs;
 				Stage.iBodyHiddenToMs = MasterStage.iBodyHiddenToMs;
 				Stage.CameraInvocations = MasterStage.CameraInvocations;
+                Stage.SceneProfileOccurrences = MasterStage.SceneProfileOccurrences;
+                Stage.LightOccurrences = MasterStage.LightOccurrences;
 				if (!Assign_MasterWallBudgets(Stage, strOutError))
 					return false;
 
@@ -8085,6 +8093,288 @@ bool_t Client::CValtanPatternTree::Load_WhileAdmitted(
 	OutView = std::move(StagedView);
 	OutDiagnostic.Clear();
 	OutDiagnostic.strStatus = std::move(LoadStatus);
+	return true;
+}
+
+
+bool_t Client::CValtanPatternTree::Load_Authoring_WhileAdmitted(
+	const CValtanCanonicalProductReadAdmission& Admission,
+	VALTAN_PATTERN_TREE_VIEW& OutView, std::string& strOutStatus)
+{
+	if (!Admission.Is_Acquired() || !Admission.Validate_StillCurrent(strOutStatus))
+		return false;
+	DATA_JSON_VALUE Gameplay, Presentation;
+	MASTER_DOCUMENT Master;
+	if (!Parse_Document(std::filesystem::path(L"Valtan") / L"Valtan.gameplay.json",
+			Gameplay, strOutStatus) ||
+		!Parse_Document(std::filesystem::path(L"Valtan") / L"Valtan.presentation.json",
+			Presentation, strOutStatus) ||
+		!Parse_SplitMasterDocument(Gameplay, Presentation, Master, strOutStatus))
+		return false;
+    DATA_JSON_VALUE CombatAuthoring, BossCatalog;
+    if (!Parse_Document(std::filesystem::path(L"Valtan") / L"Valtan.combatobjects.json", CombatAuthoring, strOutStatus) ||
+        !Parse_Document(std::filesystem::path(L"Actors") / L"BossCatalog.json", BossCatalog, strOutStatus)) return false;
+    std::map<std::string, const DATA_JSON_VALUE*> SourceObjects, SourceVisuals, SourceStageEvents;
+    const auto* objects = Required(CombatAuthoring, "objects", DATA_JSON_TYPE::ARRAY);
+    const auto* bosses = Required(BossCatalog, "bosses", DATA_JSON_TYPE::ARRAY);
+    const auto* sourcePatterns = Required(Gameplay, "patterns", DATA_JSON_TYPE::ARRAY);
+    if (!objects || !bosses || !sourcePatterns) { strOutStatus = "Source Summon owner arrays missing."; return false; }
+    for (const auto& object : objects->Get_Array())
+        SourceObjects.emplace(Read_String(object, "combatObjectArchetypeId"), &object);
+    for (const auto& boss : bosses->Get_Array())
+        if (Read_String(boss, "archetypeId") == "BOSS_VALTAN")
+            if (const auto* visuals = Required(boss, "combatObjectVisuals", DATA_JSON_TYPE::ARRAY))
+                for (const auto& visual : visuals->Get_Array())
+                    SourceVisuals.emplace(Read_String(visual, "combatObjectArchetypeId"), &visual);
+    for (const auto& pattern : sourcePatterns->Get_Array())
+        if (const auto* stages = Required(pattern, "stages", DATA_JSON_TYPE::ARRAY))
+            for (const auto& stage : stages->Get_Array())
+                SourceStageEvents.emplace(Read_String(pattern, "patternId") + "/" + Read_String(stage, "stageId"), stage.Find("events"));
+    const auto fillSourceInventory = [&](VALTAN_PATTERN_VIEW& pattern) -> bool
+    {
+        for (auto& stage : pattern.Stages)
+        {
+            stage.CombatObjectEffects.clear();
+            const auto found = SourceStageEvents.find(pattern.strPatternId + "/" + stage.strStageId);
+            if (found == SourceStageEvents.end() || !found->second || !found->second->Is_Array())
+            { strOutStatus = "Source Summon Stage events missing."; return false; }
+            for (const auto& event : found->second->Get_Array())
+            {
+                const auto kind = Read_String(event, "kind");
+                if (kind == "TRIGGER_WORLD_EVENT_SET")
+                {
+                    VALTAN_STAGE_ACTION_VIEW action;
+                    action.strKind = kind; action.strTrigger = Read_String(event, "trigger");
+                    action.strTargetId = Read_String(event, "worldEventSetId"); action.fValue = 1.f;
+                    stage.Actions.push_back(std::move(action));
+                    continue;
+                }
+                if (kind != "SPAWN_COMBAT_OBJECT" && kind != "SPAWN_COMBAT_OBJECT_VOLLEY") continue;
+                const auto id = Read_String(event, "combatObjectArchetypeId");
+                const auto object = SourceObjects.find(id), visual = SourceVisuals.find(id);
+                if (object == SourceObjects.end() || visual == SourceVisuals.end())
+                { strOutStatus = "Source Summon definition/visual unavailable: " + id; return false; }
+                const auto& definition = *object->second;
+                VALTAN_COMBAT_OBJECT_EFFECT_VIEW row;
+                row.strCombatObjectArchetypeId = id;
+                row.strClientVisualId = Read_String(*visual->second, "clientVisualId");
+                row.strEffectAssetId = Read_String(*visual->second, "effectAssetId");
+                if (const auto* group = visual->second->Find("effectV2Group")) row.strEffectV2GroupId = Read_String(*group, "groupId");
+                row.strTrigger = Read_String(event, "trigger");
+                row.iSpawnValue = static_cast<uint32_t>(Read_Number(event, kind == "SPAWN_COMBAT_OBJECT" ? "count" : "countPerResolvedTarget"));
+                row.strKind = Read_String(definition, "kind");
+                row.iLifetimeMs = definition.Find("lifetimeMs") ? static_cast<uint32_t>(Read_Number(definition, "lifetimeMs")) : stage.iDurationMs;
+                if (const auto* spawn = definition.Find("spawn"))
+                {
+                    if (const auto* origin = spawn->Find("origin")) row.strOriginPolicy = Read_String(*origin, "kind");
+                    if (row.strOriginPolicy == "RESOLVED_VOLLEY_POSITION") row.strOriginPolicy = "LOCKED_TARGET_PER_ALIVE_PLAYER";
+                    if (const auto* direction = spawn->Find("direction")) row.strDirectionPolicy = Read_String(*direction, "kind");
+                }
+                if (const auto* movement = definition.Find("movement"))
+                { row.fSpeedMps = static_cast<float>(Read_Number(*movement, "speedMps")); row.fMaximumDistanceM = static_cast<float>(Read_Number(*movement, "maximumDistanceM")); }
+                if (const auto* hits = Required(definition, "hits", DATA_JSON_TYPE::ARRAY))
+                    for (const auto& hit : hits->Get_Array())
+                    {
+                        const auto hitId = Read_String(hit, "hitId");
+                        row.HitIds.push_back(hitId);
+                        if (const auto* trigger = hit.Find("trigger")) row.HitOffsetsMs.push_back(static_cast<uint32_t>(Read_Number(*trigger, "atMs")));
+                        VALTAN_COMBAT_OBJECT_HIT_VIEW view; view.strHitId = hitId;
+                        if (const auto* shape = hit.Find("shape"))
+                        { view.strHitShape = Read_String(*shape, "kind"); view.fInnerRadiusM = static_cast<float>(Read_Number(*shape, "innerRadiusM")); view.fOuterRadiusM = static_cast<float>(Read_Number(*shape, "outerRadiusM")); }
+                        row.Hits.push_back(std::move(view));
+                    }
+                if (const auto* presentations = Required(definition, "presentationEvents", DATA_JSON_TYPE::ARRAY))
+                    for (const auto& presentation : presentations->Get_Array())
+                    {
+                        VALTAN_COMBAT_OBJECT_PRESENTATION_EVENT_VIEW view;
+                        view.strPresentationEventId = Read_String(presentation, "presentationEventId");
+                        if (const auto* trigger = presentation.Find("trigger")) view.iAtMs = static_cast<uint32_t>(Read_Number(*trigger, "atMs"));
+                        row.PresentationEvents.push_back(std::move(view));
+                    }
+                if (kind == "SPAWN_COMBAT_OBJECT_VOLLEY")
+                {
+                    row.strVolleyPolicy = Read_String(event, "volleyPolicy");
+                    row.iVolleyMaximumTotalObjects = static_cast<uint32_t>(Read_Number(event, "maximumTotalObjects"));
+                    if (const auto* overlap = event.Find("allowOverlap")) row.bVolleyAllowOverlap = overlap->Get_Boolean();
+                    if (const auto* layout = event.Find("layout"))
+                    {
+                        row.strVolleyLayout = Read_String(*layout, "kind") == "TARGET_CENTER" ? "SINGLE" : "RADIAL";
+                        row.fVolleyRadiusM = static_cast<float>(Read_Number(*layout, "radiusM"));
+                        row.fVolleyStartAngleDegrees = static_cast<float>(Read_Number(*layout, "startAngleDegrees"));
+                        row.fVolleyAngleStepDegrees = static_cast<float>(Read_Number(*layout, "angleStepDegrees"));
+                    }
+                    if (const auto* schedule = event.Find("spawnSchedule"))
+                    {
+                        row.iSpawnScheduleCount = static_cast<uint32_t>(Read_Number(*schedule, "count"));
+                        row.iFirstSpawnOffsetMs = static_cast<uint32_t>(Read_Number(*schedule, "firstOffsetMs"));
+                        row.iSpawnIntervalMs = static_cast<uint32_t>(Read_Number(*schedule, "intervalMs"));
+                    }
+                    if (const auto* random = event.Find("arenaRandom"))
+                    {
+                        row.strArenaRandomKind = Read_String(*random, "kind"); row.strArenaAnchor = Read_String(*random, "anchor");
+                        row.iArenaRandomCount = static_cast<uint32_t>(Read_Number(*random, "count"));
+                        row.fArenaRandomRadiusM = static_cast<float>(Read_Number(*random, "radiusM"));
+                        row.fArenaHeightToleranceM = static_cast<float>(Read_Number(*random, "heightToleranceM"));
+                    }
+                }
+                stage.CombatObjectEffects.push_back(std::move(row));
+            }
+        }
+        return true;
+    };
+
+	VALTAN_PATTERN_TREE_VIEW Staged;
+	Staged.strScriptedSequenceId = Master.ScriptedSequence.strSequenceId;
+	Staged.strScriptedSequenceMode = Master.ScriptedSequence.strMode;
+	Staged.iScriptedSequenceInterStepPursuitMs = Master.ScriptedSequence.iInterStepPursuitMs;
+	Staged.ScriptedSequencePatternIds = Master.ScriptedSequence.PatternIds;
+	Staged.ScriptedSequenceTransitionPursuitMs = Master.ScriptedSequence.TransitionPursuitMs;
+	Staged.SelectionSets = Master.SelectionSets;
+	Staged.SelectionWindows = Master.SelectionWindows;
+	Staged.Mechanics = Master.Mechanics;
+	Staged.ManualAuditions = Master.ManualAuditions;
+	Staged.NormalSelection = Master.NormalSelection;
+	Staged.IndependentEffects = Master.IndependentEffects;
+	Staged.CounterReactionLayers = Master.CounterReactionLayers;
+	for (const MASTER_PATTERN& Source : Master.Patterns)
+	{
+		VALTAN_PATTERN_VIEW Pattern;
+		Pattern.strPatternId = Source.strPatternId;
+		Pattern.strActionId = Source.strActionId;
+		Pattern.SourceActionIds = Source.SourceActionIds;
+		Pattern.strSelectionMode = Source.strSelectionMode;
+		Pattern.bAuthoringMasterManaged = true;
+		Pattern.iSourceSequenceIndex = Source.iSourceSequenceIndex;
+		Pattern.PresentationSources = Source.PresentationSources;
+		Pattern.Reactions = Source.Reactions;
+		Pattern.CameraCueIds = Source.CameraCueIds;
+		Pattern.WorldEventTriggerRefs = Source.WorldEventTriggerRefs;
+		Pattern.bManualServerAudition = Source.bManualServerAudition;
+		Pattern.strSourceAnimationChainId = Source.strSourceAnimationChainId;
+		Pattern.iAuthoringPhase = Source.iAuthoringPhase;
+		Pattern.strAdmissionState = Source.strAdmissionState;
+		Pattern.strEntryActionId = Source.Stages.empty() ? std::string{} : Source.Stages.front().strActionId;
+		const VALTAN_PATTERN_VIEW* Previous = Find_Pattern(OutView, Source.strPatternId);
+		for (const MASTER_STAGE& Row : Source.Stages)
+		{
+			VALTAN_STAGE_VIEW Stage;
+			Stage.strStageId = Row.strStageId;
+			Stage.strActionId = Row.strActionId;
+			Stage.strSequenceRole = Row.strSequenceRole;
+			Stage.iAuthoringRepeatCount = Row.iRepeatCount;
+			Stage.strAnimationEndPolicy = Row.strAnimationEndPolicy;
+			Stage.bSuppressAnimation = Row.bSuppressAnimation;
+			Stage.ClipOccurrences = Row.Occurrences;
+			Stage.ProductCues = Row.AuthoredCues;
+			Stage.CameraInvocations = Row.CameraInvocations;
+            Stage.SceneProfileOccurrences = Row.SceneProfileOccurrences;
+            Stage.LightOccurrences = Row.LightOccurrences;
+			if (nullptr != Previous)
+			{
+				const auto OldStage = std::find_if(Previous->Stages.begin(), Previous->Stages.end(),
+					[&Row](const auto& Value) { return Value.strStageId == Row.strStageId; });
+				if (OldStage != Previous->Stages.end())
+					Stage.CombatObjectEffects = OldStage->CombatObjectEffects;
+			}
+			for (auto& Clip : Stage.ClipOccurrences)
+			{
+				Stage.RuntimeClipNames.push_back(Clip.strClipName);
+				Clip.ProductCues.clear();
+				for (const auto& Cue : Stage.ProductCues)
+					if (Cue.strClipOccurrenceId == Clip.strClipOccurrenceId)
+						Clip.ProductCues.push_back(Cue);
+			}
+			if (!Stage.RuntimeClipNames.empty()) Stage.strRuntimeClipName = Stage.RuntimeClipNames.front();
+			if (!Stage.ProductCues.empty()) Stage.ProductCue = Stage.ProductCues.front();
+			for (const auto& Cue : Stage.ProductCues)
+			{
+				VALTAN_STAGE_EFFECT_VIEW Effect;
+				Effect.strEffectAssetId = Cue.strEffectAssetId;
+				Effect.DocumentPath = CProjectDataRoot::Resolve(std::filesystem::path(L"Effects") /
+					L"Authored" / std::filesystem::path(Cue.strEffectAssetId + ".effect.json"));
+				Effect.eOrigin = VALTAN_STAGE_EFFECT_ORIGIN::PRODUCT_CUE;
+				Stage.Effects.push_back(std::move(Effect));
+			}
+			for (const auto& Reference : Row.EffectReferences)
+				if (Reference.strType != "CUE_BINDING") Stage.IndependentEffectIds.push_back(Reference.strId);
+			Pattern.Stages.push_back(std::move(Stage));
+		}
+		Overlay_MasterGameplay(Source, Pattern);
+        if (!fillSourceInventory(Pattern)) return false;
+		for (auto& Stage : Pattern.Stages)
+			if (!Assign_MasterWallBudgets(Stage, strOutStatus)) return false;
+		if (Pattern.Is_Gimmick()) Staged.Gimmicks.push_back(std::move(Pattern));
+		else Staged.Rotation.push_back(std::move(Pattern));
+	}
+	/* Gimmicks read as a timeline down the health bar, so order them the way
+	   the fight actually presents them. */
+	std::sort(Staged.Gimmicks.begin(), Staged.Gimmicks.end(),
+		[](const VALTAN_PATTERN_VIEW& Left, const VALTAN_PATTERN_VIEW& Right)
+		{
+			return Left.iTriggerHealthBar > Right.iTriggerHealthBar;
+		});
+
+	/* A phase is the band of health bars that ends when its gimmick fires.
+	   The encounter document has no phase field, so this band is derived from
+	   triggerHealthBar and used only as a display grouping. */
+	int32_t iTopHealthBar = 0;
+	const auto RaiseTop = [&iTopHealthBar](
+		const std::vector<VALTAN_PATTERN_VIEW>& Group)
+	{
+		for (const VALTAN_PATTERN_VIEW& Pattern : Group)
+		{
+			iTopHealthBar = (std::max)(iTopHealthBar,
+				(std::max)(Pattern.iMaximumHealthBar, Pattern.iTriggerHealthBar));
+		}
+	};
+	RaiseTop(Staged.Gimmicks);
+	RaiseTop(Staged.Rotation);
+
+	uint32_t iPhaseNumber = 0u;
+	int32_t iBandTop = iTopHealthBar;
+	for (size_t iGimmick = 0u; iGimmick < Staged.Gimmicks.size(); ++iGimmick)
+	{
+		const VALTAN_PATTERN_VIEW& Gimmick = Staged.Gimmicks[iGimmick];
+		VALTAN_PHASE_VIEW Phase;
+		Phase.iPhaseNumber = ++iPhaseNumber;
+		Phase.iBandTopHealthBar = (std::max)(iBandTop, Gimmick.iTriggerHealthBar);
+		Phase.iBandBottomHealthBar = Gimmick.iTriggerHealthBar;
+		Phase.strGatePatternId = Gimmick.strPatternId;
+		Phase.iGateTriggerHealthBar = Gimmick.iTriggerHealthBar;
+		Phase.GimmickIndices.push_back(iGimmick);
+		Staged.Phases.push_back(std::move(Phase));
+		iBandTop = Gimmick.iTriggerHealthBar - 1;
+	}
+	if (iBandTop >= 1)
+	{
+		VALTAN_PHASE_VIEW Phase;
+		Phase.iPhaseNumber = ++iPhaseNumber;
+		Phase.iBandTopHealthBar = iBandTop;
+		Phase.iBandBottomHealthBar = 1;
+		Staged.Phases.push_back(std::move(Phase));
+	}
+
+	/* A rotation pattern belongs to every band its own bar range overlaps.
+	   Most are 1-160 and therefore appear in all of them; two are narrower
+	   and that is exactly the information the band grouping exposes. */
+	for (VALTAN_PHASE_VIEW& Phase : Staged.Phases)
+	{
+		for (size_t iRotation = 0u; iRotation < Staged.Rotation.size();
+			++iRotation)
+		{
+			const VALTAN_PATTERN_VIEW& Rotation = Staged.Rotation[iRotation];
+			if (Rotation.iMinimumHealthBar > Phase.iBandTopHealthBar ||
+				Rotation.iMaximumHealthBar < Phase.iBandBottomHealthBar)
+			{
+				continue;
+			}
+			Phase.RotationIndices.push_back(iRotation);
+		}
+	}
+
+	if (!Admission.Validate_StillCurrent(strOutStatus)) return false;
+	OutView = std::move(Staged);
+	strOutStatus = "Loaded Valtan authoring source; Product publication is independent.";
 	return true;
 }
 

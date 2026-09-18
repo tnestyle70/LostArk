@@ -608,7 +608,9 @@ if ($Mode -eq 'PublishV2') {
             'Data/Encounters/Valtan/ValtanWorldEvents.json',
             'Data/Animation/Authored/Valtan/Valtan.patternbindings.json',
             'Data/Animation/Authored/Valtan/Valtan.patterneffectcues.json',
-            'Data/Balance/Reference/Official/2026-08-05.balance-provenance.receipt.json'
+            'Data/Balance/Reference/Official/2026-08-05.balance-provenance.receipt.json',
+            'Data/Valtan/Published/BOSS_VALTAN.effectv2bindings.json',
+            'Data/Valtan/Published/Valtan.patternsoundcues.json'
         )
         [string[]]$actualRelativePaths = @(
             $projectResult.payload.files | ForEach-Object { [string]$_.path })

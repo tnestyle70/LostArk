@@ -1,6 +1,7 @@
 #include "imgui.h"
 
 #include "CameraTool.h"
+#include "AnimationSkillBindingDocument.h"
 
 #include "Camera_Free.h"
 #include "Bounding_Sphere.h"
@@ -259,6 +260,7 @@ void Client::CCameraTool::Clear_ActorPreviewContext(
 
 Client::CCameraTool::~CCameraTool()
 {
+    Stop_CompositionPreview();
 	Deactivate();
 }
 
@@ -452,6 +454,7 @@ void Client::CCameraTool::Deactivate()
 
 void Client::CCameraTool::On_LevelChanged()
 {
+    Stop_CompositionPreview();
 	Deactivate();
 	m_pPreviewCamera.reset();
 	m_bLookAtDummyEnabled = false;
@@ -2301,4 +2304,65 @@ bool_t Client::CCameraTool::Delete_SelectedPos(
 	}
 	Mark_Dirty("Deleted the selected pos and respaced the path.");
 	return true;
+}
+
+bool_t Client::CCameraTool::Sample_CompositionPreview(
+    const BOSS_STAGE_ENVIRONMENT_SAMPLE& sample, std::string& status)
+{
+    const BOSS_STAGE_CAMERA_SAMPLE* active = nullptr;
+    if (sample.bPreview && std::isfinite(sample.fClockMs) && sample.fClockMs >= 0.f)
+        for (const auto& camera : sample.CameraInvocations)
+            if (camera.iDurationMs && sample.fClockMs >= camera.iStartMs &&
+                sample.fClockMs < static_cast<double>(camera.iStartMs) + camera.iDurationMs &&
+                (!active || camera.iStartMs >= active->iStartMs)) active = &camera;
+    if (!active) { Stop_CompositionPreview(); return true; }
+    const std::string owner = sample.strOwnerKey + ":" + sample.strActionId + ":" + active->strOccurrenceId;
+    if (m_strCompositionOwner != owner)
+    {
+        CEncounterPatternReference encounter;
+        CValtanCinematicCameraDocument document;
+        if (!encounter.Load(CProjectDataRoot::Resolve(L"Encounters/Valtan/ValtanEncounter.json"), status) ||
+            !document.Load(CProjectDataRoot::Resolve(L"Encounters/Valtan/ValtanCinematicCamera.json"), encounter, status))
+        { Stop_CompositionPreview(); return false; }
+        m_CompositionDocument = std::move(document);
+        m_strCompositionOwner = owner;
+    }
+    const auto& cues = m_CompositionDocument.Get_Cues();
+    const auto found = std::find_if(cues.begin(), cues.end(),
+        [&](const auto& cue) { return cue.strCueId == active->strCueId; });
+    if (found == cues.end()) { status = "Composition Camera cue is unavailable: " + active->strCueId; Stop_CompositionPreview(); return false; }
+    VALTAN_CINEMATIC_CAMERA_POSE pose{};
+    const float localSeconds = (sample.fClockMs - active->iStartMs) * .001f;
+    if (!CValtanCinematicCameraController::Sample_Cue(*found, localSeconds, pose))
+    { status = "Composition Camera sample is invalid."; Stop_CompositionPreview(); return false; }
+    VALTAN_CINEMATIC_CAMERA_INPUT tracking;
+    tracking.vBossPosition = {sample.Root._41, sample.Root._42, sample.Root._43};
+    tracking.fBossYawDegrees = XMConvertToDegrees(std::atan2(sample.Root._31, sample.Root._33));
+    if (g_ActorPreviewContext.isValid && g_ActorPreviewContext.iLevelIndex == CGameInstance::Get().Get_CurrentLevelID())
+    {
+        tracking.hasLocalPlayerPosition = g_ActorPreviewContext.hasLocalPlayerPosition;
+        tracking.vLocalPlayerPosition = g_ActorPreviewContext.vLocalPlayerPosition;
+    }
+    if (!CValtanCinematicCameraController::Apply_CueTracking(*found, tracking, pose))
+    { status = "Composition Camera tracking anchor is unavailable."; Stop_CompositionPreview(); return false; }
+    const auto camera = Find_CurrentCamera();
+    const auto previous = m_pCompositionCamera.lock();
+    if (previous && previous != camera) Stop_CompositionPreview();
+    if (!camera || !camera->Begin_PresentationOverride(COMPOSITION_OWNER_ID, CCamera::PRESENTATION_PRIORITY::AUTHORING_PREVIEW))
+    { status = "Composition Camera yielded to the active camera owner."; return false; }
+    m_pCompositionCamera = camera;
+    if (!(pose.hasUp ? camera->Apply_PresentationPoseWithUp(COMPOSITION_OWNER_ID, pose.vEye, pose.vLookAt, pose.vUp, pose.fFovYDegrees) :
+        camera->Apply_PresentationPose(COMPOSITION_OWNER_ID, pose.vEye, pose.vLookAt, pose.fFovYDegrees)))
+    { status = "Composition Camera pose was rejected."; Stop_CompositionPreview(); return false; }
+    status = "Composition Camera sampled on the Stage clock.";
+    return true;
+}
+
+void Client::CCameraTool::Stop_CompositionPreview()
+{
+    const auto camera = m_pCompositionCamera.lock();
+    if (camera && camera->Is_PresentationOverrideOwnedBy(COMPOSITION_OWNER_ID))
+        (void)camera->End_PresentationOverride(COMPOSITION_OWNER_ID);
+    m_pCompositionCamera.reset();
+    m_strCompositionOwner.clear();
 }

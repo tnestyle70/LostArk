@@ -477,6 +477,33 @@ bool LostArk::Server::CGameRoom::Broadcast_WorldSequencePlay(
 {
 	using namespace LostArk::Shared;
 
+	// A published raid entry replaces its first World-only cutscene with the
+	// complete authored Sequence. All other world playback keeps its own path.
+	if (m_eWorldId == WORLD_ID::KAKULSAYDON_ARENA &&
+		(operation == WORLD_SEQUENCE_OPERATION::PLAY || operation == WORLD_SEQUENCE_OPERATION::REPLAY))
+	{
+		const auto* gate = m_GameplayCatalog.Active().Find_KoukuRaidGate("GATE1");
+		if (gate && !gate->strEntrySequenceInstanceId.empty() && gate->strEntrySequenceInstanceId == instanceId)
+		{
+			if (Is_KoukuRaidRunning() || m_Players.empty()) return false;
+			const SESSION_ID owner = m_Players.begin()->second.iSessionId;
+			C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST request;
+			request.eWorldId = m_eWorldId; request.eOperation = KOUKUSAYDON_RAID_OPERATION::START;
+			const auto previous = m_KoukuRaidReceipts.find(owner);
+			const auto priorSequence = previous == m_KoukuRaidReceipts.end() ? 0u : previous->second.first.iRequestSequence;
+			if (priorSequence == (std::numeric_limits<std::uint32_t>::max)()) return false;
+			request.iRequestSequence = priorSequence + 1u;
+			request.strStartGateId = gate->strGateId;
+			request.ExpectedGameplayRevision = m_GameplayCatalog.Get_ActiveRevision();
+			request.iActionSourceRevision = CKoukuSaydonBrain::Resolve_ProductSourceRevision(m_GameplayCatalog.Active());
+			request.iSequenceSourceRevision = gate->iSequenceRevision;
+			std::string reason;
+			if (!Begin_KoukuRaidPreparation(owner, request, reason)) { m_strStatus = reason; return false; }
+			m_KoukuRaid.strEntryTriggerSequenceId = instanceId;
+			return true;
+		}
+	}
+
 	// The authored Pattern owns Saydon. Reject the retired trigger before any
 	// player mutation or broadcast; STOP remains valid for stale-client cleanup.
 	if ((operation == WORLD_SEQUENCE_OPERATION::PLAY || operation == WORLD_SEQUENCE_OPERATION::REPLAY) &&
@@ -1118,6 +1145,11 @@ void LostArk::Server::CGameRoom::Handle_SpawnWorldEntity(
 	teleport they pair with, so a Release Server refuses them the same way.
 	Product worlds never accept a client-chosen spawn. */
 #ifdef _DEBUG
+	if (Is_KoukuRaidRunning())
+	{
+		Send_WorldEntitySpawnResult(session, request.strPlacementId, WORLD_ENTITY_SPAWN_RESULT::REJECTED, INVALID_NET_ENTITY_ID);
+		return;
+	}
 	const bool koukuGateWorld = WORLD_ID::KAKULSAYDON_ARENA == m_eWorldId;
 #else
 	const bool koukuGateWorld = false;

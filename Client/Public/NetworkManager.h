@@ -328,6 +328,7 @@ public:
 	/* KoukuSaydon owns a separate exact-scope playback command. The caller
 	provides the complete Product tuple; this boundary never substitutes Valtan
 	state or reconstructs a missing identity. */
+	bool Send_KoukuRaid(const LostArk::Shared::C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST& request);
 	bool Send_KoukuSaydonPatternAudition(
 		const LostArk::Shared::
 			C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST& message);

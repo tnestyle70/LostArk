@@ -312,6 +312,57 @@ function Get-KoukuTargetedVisualIndex([object]$Bindings, [uint32]$ExpectedRevisi
     return ,$index
 }
 
+function New-KoukuAttackHitRows($Hits, [string]$EncounterId, [string]$PatternId, [string]$OwnerId,
+    [string]$Role, [uint32]$SetIndex, [uint32]$LifetimeMs) {
+    if ($null -eq $Hits) { return }
+    if ($Hits -isnot [Array] -or $Hits.Count -gt 32) { throw 'Attack hits must be a bounded array.' }
+    $ids = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    $ordinal = 0
+    foreach ($hit in $Hits) {
+        Assert-ExactProperties $hit @('hitId','trigger','atMs','endMs','repeatCount','repeatIntervalMs','shape',
+            'radiusM','innerRadiusM','lengthM','halfWidthM','angleDegrees','offsetForwardM','offsetRightM','yawOffsetDegrees',
+            'damageKind','damagePercent','damageProfileId') 'Attack hit'
+        Assert-StableId $hit.hitId 'Attack hit ID'
+        if (-not $ids.Add($hit.hitId)) { throw 'Attack hit ID repeats within its template.' }
+        foreach ($field in @('atMs','endMs','repeatIntervalMs')) { Assert-JsonInteger $hit.$field "Attack $field" 0 600000 }
+        Assert-JsonInteger $hit.repeatCount 'Attack repeatCount' 1 64
+        Assert-JsonInteger $hit.damagePercent 'Attack damagePercent' 0 100
+        foreach ($field in @('radiusM','innerRadiusM','lengthM','halfWidthM','angleDegrees','offsetForwardM','offsetRightM','yawOffsetDegrees')) {
+            Assert-JsonNumber $hit.$field "Attack $field"
+            if ([math]::Abs($hit.$field) -gt 1000) { throw 'Attack dimension exceeds 1000 m.' }
+        }
+        if ($hit.radiusM -lt 0 -or $hit.innerRadiusM -lt 0 -or $hit.lengthM -lt 0 -or $hit.halfWidthM -lt 0 -or
+            $hit.angleDegrees -lt 0 -or $hit.angleDegrees -gt 360 -or [math]::Abs($hit.yawOffsetDegrees) -gt 360 -or
+            ($hit.repeatCount -gt 1 -and $hit.repeatIntervalMs -lt 34)) { throw 'Attack dimensions or tick interval are invalid.' }
+        $last = [uint64]$hit.atMs + [uint64]($hit.repeatCount - 1) * [uint64]$hit.repeatIntervalMs
+        if (($hit.trigger -ceq 'TIMED' -and ($hit.endMs -ne 0 -or $last -gt $LifetimeMs)) -or
+            ($hit.trigger -ceq 'CONTACT' -and ($hit.endMs -le $hit.atMs -or $hit.endMs -gt $LifetimeMs)) -or
+            $hit.trigger -cnotin @('TIMED','CONTACT')) { throw 'Attack window exceeds its owning lifetime.' }
+        $validShape = switch -CaseSensitive ($hit.shape) {
+            'CIRCLE' { $hit.radiusM -gt 0 -and $hit.innerRadiusM -eq 0 }
+            'RING' { $hit.innerRadiusM -gt 0 -and $hit.innerRadiusM -lt $hit.radiusM }
+            'BOX' { $hit.lengthM -gt 0 -and $hit.halfWidthM -gt 0 }
+            'CONE' { $hit.lengthM -gt 0 -and $hit.angleDegrees -gt 0 -and $hit.innerRadiusM -lt $hit.lengthM }
+            default { $false }
+        }
+        if (-not $validShape) { throw 'Attack primitive is invalid.' }
+        $profile = '-'
+        if ($hit.damageKind -ceq 'PROFILE') {
+            Assert-StableId $hit.damageProfileId 'Attack damage profile'
+            if ($hit.damagePercent -ne 0 -or -not $damageIds.Contains($hit.damageProfileId)) { throw 'Attack damage profile is missing.' }
+            $profile = $hit.damageProfileId
+        } elseif ($hit.damageProfileId -cne '' -or
+            -not (($hit.damageKind -ceq 'MAX_HP_PERCENT' -and $hit.damagePercent -gt 0) -or
+                  ($hit.damageKind -ceq 'INSTANT_DEATH' -and $hit.damagePercent -eq 0))) { throw 'Attack damage policy is invalid.' }
+        $numbers = @('radiusM','innerRadiusM','lengthM','halfWidthM','angleDegrees','offsetForwardM','offsetRightM','yawOffsetDegrees') |
+            ForEach-Object { Format-InvariantSignedFloat $hit.$_ "Attack $_" }
+        (@('PATTERNATTACKHIT',$EncounterId,$PatternId,$OwnerId,$Role,$SetIndex,$ordinal,$hit.hitId,$hit.trigger,
+            $hit.atMs,$hit.endMs,$hit.repeatCount,$hit.repeatIntervalMs,$hit.shape) + $numbers +
+            @($hit.damageKind,$hit.damagePercent,$profile)) -join "`t"
+        ++$ordinal
+    }
+}
+
 function New-KoukuPursuitProjectileRows([object]$Pattern, [string]$EncounterId,
     [uint32]$PatternDurationMs, [Collections.Generic.Dictionary[string,object]]$Visuals) {
     if ($Pattern.pursuitProjectiles -isnot [Array] -or @($Pattern.pursuitProjectiles).Count -gt 64) { throw 'Pursuit requires a bounded array.' }
@@ -319,7 +370,7 @@ function New-KoukuPursuitProjectileRows([object]$Pattern, [string]$EncounterId,
     foreach ($target in @($Pattern.pursuitProjectiles)) {
         $hasDistance = $null -ne $target.PSObject.Properties['maxDistanceM']
         Assert-ExactProperties $target (@('occurrenceId','startMs','durationMs','visualIds','contactVisualId','speedMps',
-            'contactRadiusM','spawnRadiusM','lifetimeMs','spawnIntervalMs','homing','countPerWave') + $(if ($hasDistance) { @('maxDistanceM') } else { @() })) 'Pursuit projectile'
+            'contactRadiusM','spawnRadiusM','lifetimeMs','spawnIntervalMs','homing','countPerWave') + $(if ($hasDistance) { @('maxDistanceM') } else { @() }) + $(if ($null -ne $target.PSObject.Properties['projectileHits']) { @('projectileHits') } else { @() })) 'Pursuit projectile'
         $distance = if ($hasDistance) { $target.maxDistanceM } else { 0 }
         Assert-JsonNumber $distance 'Pursuit maxDistanceM'
         Assert-StableId $target.occurrenceId 'Pursuit occurrence'
@@ -350,6 +401,8 @@ function New-KoukuPursuitProjectileRows([object]$Pattern, [string]$EncounterId,
               (Format-InvariantFloat $target.contactRadiusM 'Pursuit contact radius'),(Format-InvariantFloat $target.spawnRadiusM 'Pursuit spawn radius'),
               $target.lifetimeMs,$target.spawnIntervalMs,$homing,$target.countPerWave) +
             $(if ($distance -gt 0) { @((Format-InvariantFloat $distance 'Pursuit maximum distance')) } else { @() })) -join "`t"
+        $hitLife = if ($target.lifetimeMs) { $target.lifetimeMs } else { 600000 }
+        New-KoukuAttackHitRows $target.projectileHits $EncounterId $Pattern.patternId $target.occurrenceId 'PROJECTILE' 0 $hitLife
     }
 }
 
@@ -365,7 +418,7 @@ function New-KoukuShowtimeTargetRows([object]$Pattern, [string]$EncounterId,
         $hasRandom = @($randomKeys | Where-Object { $null -ne $target.PSObject.Properties[$_] }).Count
         if ($hasRandom -ne 0 -and $hasRandom -ne $randomKeys.Count) { throw 'Kouku random volleys require their pool, interval and arena bounds together.' }
         Assert-ExactProperties $target (@('occurrenceId','startMs','durationMs','fixedVisualId','trackingVisualId',
-            'fixedLifetimeMs','spawnIntervalMs','followSpeedScale') + $(if ($hasRandom) { $randomKeys } else { @() })) 'Kouku SHOWTIME target'
+            'fixedLifetimeMs','spawnIntervalMs','followSpeedScale') + $(if ($hasRandom) { $randomKeys } else { @() }) + @(@('fixedHits','trackingHits') | Where-Object { $null -ne $target.PSObject.Properties[$_] })) 'Kouku SHOWTIME target'
         foreach ($field in @('occurrenceId','fixedVisualId','trackingVisualId')) {
             Assert-JsonString $target.$field "Kouku SHOWTIME $field"
         }
@@ -398,6 +451,10 @@ function New-KoukuShowtimeTargetRows([object]$Pattern, [string]$EncounterId,
         $speed = Format-InvariantFloat $target.followSpeedScale 'Kouku SHOWTIME follow speed'
         $rows.Add((@('PATTERNSHOWTIMETARGETS', $EncounterId, $Pattern.patternId, $target.occurrenceId,
             $target.startMs, $target.durationMs, $fixed, $tracking, $target.fixedLifetimeMs, $target.spawnIntervalMs, $speed) -join "`t"))
+        foreach ($role in @('fixed','tracking')) {
+            $life = if ($role -ceq 'fixed') { $target.fixedLifetimeMs } else { $target.durationMs }
+            foreach ($hitRow in @(New-KoukuAttackHitRows $target.($role + 'Hits') $EncounterId $Pattern.patternId $target.occurrenceId $role.ToUpperInvariant() 0 $life)) { $rows.Add($hitRow) }
+        }
         if ($hasRandom) {
             if ($target.randomVolleys -isnot [Array] -or @($target.randomVolleys).Count -lt 1 -or @($target.randomVolleys).Count -gt 32) {
                 throw 'Kouku random volley pool requires 1..32 ordered templates.'
@@ -411,7 +468,7 @@ function New-KoukuShowtimeTargetRows([object]$Pattern, [string]$EncounterId,
             $height = Format-InvariantFloat $target.randomArenaHeightToleranceM 'Kouku random arena height'
             $ordinal = 0
             foreach ($volley in @($target.randomVolleys)) {
-                Assert-ExactProperties $volley @('clientVisualId','lifetimeMs') 'Kouku random volley'
+                Assert-ExactProperties $volley (@('clientVisualId','lifetimeMs') + $(if ($null -ne $volley.PSObject.Properties['hits']) { @('hits') } else { @() })) 'Kouku random volley'
                 Assert-JsonString $volley.clientVisualId 'Kouku random visual ID'
                 Assert-StableId $volley.clientVisualId 'Kouku random visual ID'
                 Assert-JsonInteger $volley.lifetimeMs 'Kouku random lifetime' 1 600000
@@ -422,6 +479,7 @@ function New-KoukuShowtimeTargetRows([object]$Pattern, [string]$EncounterId,
                 }
                 $rows.Add((@('PATTERNSHOWTIMERANDOM',$EncounterId,$Pattern.patternId,$target.occurrenceId,$ordinal,
                     $volley.clientVisualId,$volley.lifetimeMs,$target.randomSpawnIntervalMs,$radius,$height) -join "`t"))
+                foreach ($hitRow in @(New-KoukuAttackHitRows $volley.hits $EncounterId $Pattern.patternId $target.occurrenceId 'RANDOM' $ordinal $volley.lifetimeMs)) { $rows.Add($hitRow) }
                 ++$ordinal
             }
         }
@@ -3363,6 +3421,7 @@ if ($patternRows.Count -eq 0) { throw 'Valtan encounter has no patterns.' }
 $koukuEncounterDocument = Read-JsonDocument `
 	'Data/Encounters/KoukuSaydon/KoukuSaydonEncounter.json'
 $koukuInventoryProperties = @()
+if ($null -ne $koukuEncounterDocument.PSObject.Properties['raidGates']) { $koukuInventoryProperties += 'raidGates' }
 if ($null -ne $koukuEncounterDocument.PSObject.Properties['patternInventory']) {
 	$koukuInventoryProperties += 'patternInventory'
 	Assert-ExactProperties $koukuEncounterDocument.patternInventory @('folders','patterns','bundles') 'KoukuSaydon saved Pattern inventory'
@@ -3745,7 +3804,7 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 		$patternRows.Add(($bossMotionRow -join "`t"))
 	}
 	if ($koukuPattern.logicWindows -isnot [Array] -or
-		@($koukuPattern.logicWindows).Count -gt 64 -or
+		@($koukuPattern.logicWindows).Count -gt 128 -or
 		$koukuPattern.worldSequences -isnot [Array] -or
 		@($koukuPattern.worldSequences).Count -gt 128 -or
 		$koukuPattern.sceneProfiles -isnot [Array] -or
@@ -3814,7 +3873,7 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 		$insideFail = if ($window.insideOutcome -ceq 'FAIL') { 1 } else { 0 }
 		$windowEndMs = [uint64]$window.startMs + [uint64]$window.durationMs
 		if ($windowKind -cnotin @(
-				'ROULETTE_CARD_MATCH','GAZE_REAL_BOSS','POSE_INPUT','STAGGER_WINDOW','COUNTER_WINDOW','AREA_OVERLAP','ENTER_AREA','OBJECT_OVERLAP','OBJECT_CONTACT','EXTERNAL_SIGNAL','ATTACHMENT_HOLD','PATTERN_COMPLETION_COUNT') -or
+				'CARD_DICE_BIND','ROULETTE_CARD_MATCH','GAZE_REAL_BOSS','POSE_INPUT','STAGGER_WINDOW','COUNTER_WINDOW','AREA_OVERLAP','ENTER_AREA','OBJECT_OVERLAP','OBJECT_CONTACT','EXTERNAL_SIGNAL','ATTACHMENT_HOLD','PATTERN_COMPLETION_COUNT') -or
 			-not $koukuWindowIds.Add([string]$window.windowId) -or
 			[uint32]$window.durationMs -eq 0 -or
 			$windowEndMs -gt $koukuPatternDurationMs -or
@@ -4000,6 +4059,8 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 			$hasSectorAxes = $region.PSObject.Properties.Name -contains 'radiusXM'
 			if ($hasSectorAxes -ne ($region.PSObject.Properties.Name -contains 'radiusZM')) { throw 'Sector axes must be supplied together' }
 			if ($hasSectorAxes) { $regionFields += @('radiusXM','radiusZM') }
+			$hasInnerRadius = $region.PSObject.Properties.Name -contains 'innerRadiusM'
+			if ($hasInnerRadius) { $regionFields += 'innerRadiusM' }
 			$hasWorldTrack = $region.PSObject.Properties.Name -contains 'worldTrack'
 			if ($hasWorldTrack) { $regionFields += 'worldTrack' }
 			Assert-ExactProperties $region $regionFields 'KoukuSaydon collider region'
@@ -4028,9 +4089,19 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 				if ($region.shape -cnotin @('SECTOR','REVERSE_SECTOR') -or $region.radiusXM -le 0 -or $region.radiusZM -le 0) { throw 'Sector axes require positive radii' }
 				$axisFields = @((Format-InvariantFloat $region.radiusXM 'Sector radiusXM'), (Format-InvariantFloat $region.radiusZM 'Sector radiusZM'))
 			}
+			$innerFields = @()
+			if ($hasInnerRadius) {
+				Assert-JsonNumber $region.innerRadiusM 'Collider innerRadiusM'
+				if ($region.innerRadiusM -lt 0 -or $region.innerRadiusM -ge $region.radiusM -or
+					($region.innerRadiusM -gt 0 -and ($region.shape -cnotin @('CIRCLE','SECTOR') -or
+					 ($hasSectorAxes -and ([math]::Abs($region.radiusXM-$region.radiusM) -gt .0001 -or [math]::Abs($region.radiusZM-$region.radiusM) -gt .0001))))) {
+					throw 'Collider inner radius requires an exact circular ring or annular sector'
+				}
+				$innerFields = @((Format-InvariantFloat $region.innerRadiusM 'Collider innerRadiusM'))
+			}
 			$formattedRegion = @($regionNumbers | ForEach-Object { Format-InvariantSignedFloat $_ 'KoukuSaydon region geometry' })
 			$patternRows.Add((@('PATTERNLOGICREGION',$koukuEncounterDocument.encounterId,$koukuPattern.patternId,
-				$window.windowId,$regionOrdinal,$region.regionId,$region.anchorKind,$region.shape) + $formattedRegion + @($region.cardSymbol,$region.cardColor) + $axisFields -join "`t"))
+				$window.windowId,$regionOrdinal,$region.regionId,$region.anchorKind,$region.shape) + $formattedRegion + @($region.cardSymbol,$region.cardColor) + $axisFields + $innerFields -join "`t"))
 			if ($hasWorldTrack) {
 				$track = $region.worldTrack
 				Assert-ExactProperties $track @('startMs','startDelayMs','durationMs','playbackSpeed','interpolation','baselinePosition','baselineYawDegrees','baselineScale','keys') 'Collider WORLD track'
@@ -4111,6 +4182,7 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 					if ($null -ne $outcome.PSObject.Properties[$field]) { $outcomeProperties += $field }
 				}
 				if ($outcome.kind -ceq 'FEAR') { $outcomeProperties += 'presentationId' }
+				if ($outcome.kind -ceq 'MARIO_ENTER' -and $null -ne $outcome.PSObject.Properties['marioStage']) { $outcomeProperties += 'marioStage' }
 				if ($outcome.kind -ceq 'CAPTURE_PLAYER') { $outcomeProperties += @('attachmentSlot','gripLocalOffset') }
 				if ($outcome.kind -ceq 'PLAY_WORLD_OBJECT_MOTION') { $outcomeProperties += @('targetWorldInstanceId','motionInstanceId') }
 				if ($outcome.kind -ceq 'PLAY_CONTACT_WORLD_OBJECT_MOTION') { $outcomeProperties += 'contactMotions' }
@@ -4161,7 +4233,7 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 				if ($outcomeKind -cnotin @(
 						'INSTANT_DEATH','MAX_HP_PERCENT_DAMAGE','MADNESS_GAUGE_ADD_PERCENT',
 						'CLOWN_TRANSFORM','FEAR','FOLLOWUP_PATTERN','PLAY_WORLD_OBJECT_MOTION','PLAY_CONTACT_WORLD_OBJECT_MOTION','COMPLETE_LOGIC_WINDOW','CAPTURE_PLAYER','GRAB_TO_WORLD_OBJECT','MARIO_ENTER') -or
-					$isFollowup -ne $hasFollowup -or
+					($outcomeKind -cne 'MARIO_ENTER' -and $isFollowup -ne $hasFollowup) -or
 					($isFollowup -and $windowKind -cnotin @('STAGGER_WINDOW','COUNTER_WINDOW','EXTERNAL_SIGNAL','PATTERN_COMPLETION_COUNT')) -or
 					($outcomeKind -cin @('MAX_HP_PERCENT_DAMAGE','MADNESS_GAUGE_ADD_PERCENT') -and
 						[uint32]$outcome.percent -eq 0)) {
@@ -4190,6 +4262,11 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 						$outcome.percent -ne 0 -or $outcome.durationMs -ne 0) {
 						throw 'A world-object grab only answers an ENTER_AREA success and carries no value'
 					}
+				}
+				if ($outcomeKind -ceq 'MARIO_ENTER' -and $null -ne $outcome.PSObject.Properties['marioStage']) {
+					# Authored stage 1..4 rides as an 11th field; 0 stays a 10-field row so older Server parsers keep reading it.
+					Assert-JsonInteger $outcome.marioStage 'Mario entry stage' 0 4
+					if ([uint32]$outcome.marioStage -gt 0) { $motionIds = @([string][uint32]$outcome.marioStage) }
 				}
 				if ($outcomeKind -ceq 'CAPTURE_PLAYER') {
 					if ($windowKind -cne 'ENTER_AREA' -or $slotName -cne 'SUCCESS' -or $outcomes.Count -ne 1 -or
@@ -4316,6 +4393,19 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 		foreach ($field in @('airbornePhase','airborneHeightM','airborneDurationMs','airborneTargetPositionPolicy','selectedEffectVisualId','selectedEffectLifetimeMs')) {
 			if ($null -ne $trigger.PSObject.Properties[$field]) { $triggerOptionalProperties += $field }
 		}
+		$trackFollowSpeedScale = 0.0
+		if ($null -ne $trigger.PSObject.Properties['followSpeedScale']) {
+			$triggerOptionalProperties += 'followSpeedScale'
+			Assert-JsonNumber $trigger.followSpeedScale 'Kouku boss tracking follow speed'
+			if ($trigger.kind -cne 'BOSS_TRACK_TARGET' -or $trigger.followSpeedScale -lt .01 -or $trigger.followSpeedScale -gt 10) {
+				throw 'Boss tracking follow speed needs BOSS_TRACK_TARGET and a .01..10 player-speed multiple'
+			}
+			$trackFollowSpeedScale = [double]$trigger.followSpeedScale
+		}
+		if ($null -ne $trigger.PSObject.Properties['fixedHits']) {
+			if ($trigger.kind -cne 'ALBION_BLUE_CIRCLE') { throw 'Only Albion circles carry generic fixed hits' }
+			$triggerOptionalProperties += 'fixedHits'
+		}
 		Assert-ExactProperties $trigger (@('triggerId','kind','startMs','durationMs',
 			'hudMode','teleportPosition','clonePatternId','clockHours','faceCenterYawOffsetDegrees','countPerPlayer','radiusM','effectLifetimeMs',
 			'arenaRandomCount','arenaRandomRadiusM','arenaHeightToleranceM','arenaMinimumSpacingM','randomPlayerOnly') + $triggerOptionalProperties) 'KoukuSaydon mechanic trigger'
@@ -4325,7 +4415,7 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 		$modes = @('NONE','POLYMORPH','MARIO','DANCE','MAZE')
 		$triggerHudMode = [Array]::IndexOf($modes, [string]$trigger.hudMode)
 		if (-not $triggerIds.Add([string]$trigger.triggerId) -or $triggerHudMode -lt 0 -or
-			$trigger.kind -cnotin @('REAL_GAZE_TELEPORT','BOSS_TELEPORT_XZ','BOSS_TRACK_TARGET','HUD_ENTER','CARD_MAZE_HIDE_NEXT','CARD_MAZE_ENTER','ALBION_BLUE_CIRCLE','SUMMON_PATTERNS','ALBION_AIRBORNE') -or
+			$trigger.kind -cnotin @('REAL_GAZE_TELEPORT','BOSS_TELEPORT_FACE_CENTER','MARIO_PHASE2_PLAYERS','BOSS_TELEPORT_XZ','BOSS_TRACK_TARGET','HUD_ENTER','CARD_MAZE_HIDE_NEXT','CARD_MAZE_ENTER','ALBION_BLUE_CIRCLE','SUMMON_PATTERNS','ALBION_AIRBORNE') -or
 			([uint64]$trigger.startMs + [uint64]$trigger.durationMs) -gt $koukuPatternDurationMs -or
 			$trigger.teleportPosition -isnot [Array] -or @($trigger.teleportPosition).Count -ne 3 -or
 			$trigger.clockHours -isnot [Array]) {
@@ -4334,7 +4424,7 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 		$position = @($trigger.teleportPosition)
 		foreach ($coordinate in $position) { Assert-JsonNumber $coordinate 'KoukuSaydon teleport coordinate' }
 		if ($trigger.kind -ceq 'BOSS_TELEPORT_XZ' -and @($position | Where-Object { [Math]::Abs([double]$_) -gt 100000 }).Count -ne 0) { throw 'Boss XZ teleport coordinates exceed the world bounds' }
-		if ($trigger.kind -cin @('CARD_MAZE_HIDE_NEXT','CARD_MAZE_ENTER','BOSS_TELEPORT_XZ','BOSS_TRACK_TARGET') -and
+		if ($trigger.kind -cin @('CARD_MAZE_HIDE_NEXT','CARD_MAZE_ENTER','BOSS_TELEPORT_FACE_CENTER','MARIO_PHASE2_PLAYERS','BOSS_TELEPORT_XZ','BOSS_TRACK_TARGET') -and
 			($triggerHudMode -ne 0 -or $trigger.faceCenterYawOffsetDegrees -ne 0 -or
 			 ($trigger.kind -cin @('CARD_MAZE_HIDE_NEXT','BOSS_TRACK_TARGET') -and @($position | Where-Object { $_ -ne 0 }).Count -ne 0))) {
 			throw "KoukuSaydon card maze trigger carries unrelated values"
@@ -4383,13 +4473,21 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 		$spawnRows = [Collections.Generic.List[string]]::new()
 		if ($trigger.kind -ceq 'SUMMON_PATTERNS') {
 			if ($trigger.patternSpawns -isnot [Array] -or @($trigger.patternSpawns).Count -lt 1 -or
-				@($trigger.patternSpawns).Count -gt 4 -or $triggerHudMode -ne 0 -or
+				@($trigger.patternSpawns).Count -gt 16 -or $triggerHudMode -ne 0 -or
 				$trigger.faceCenterYawOffsetDegrees -ne 0 -or @($position | Where-Object { $_ -ne 0 }).Count -ne 0) {
-				throw 'Summon requires one to four Pattern spawns and no owner teleport'
+				throw 'Summon requires one to sixteen Pattern spawns and no owner teleport'
 			}
 			$spawnIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 			foreach ($spawn in @($trigger.patternSpawns)) {
-				Assert-ExactProperties $spawn @('spawnId','patternId','positionOffset','yawOffsetDegrees') 'Summon Pattern spawn'
+				$spawnProperties = @('spawnId','patternId','positionOffset','yawOffsetDegrees')
+				$spawnAnchor = 'BOSS'
+				if ($null -ne $spawn.PSObject.Properties['anchorKind']) {
+					$spawnProperties += 'anchorKind'
+					if ($spawn.anchorKind -cnotin @('BOSS','MAP')) { throw 'Summon anchor must be BOSS or MAP' }
+					$spawnAnchor = [string]$spawn.anchorKind
+				}
+				$spawnPositionLimit = if ($spawnAnchor -ceq 'MAP') { 100000 } else { 1000 }
+				Assert-ExactProperties $spawn $spawnProperties 'Summon Pattern spawn'
 				Assert-StableId $spawn.spawnId 'Summon spawnId'
 				Assert-StableId $spawn.patternId 'Summon patternId'
 				Assert-JsonNumber $spawn.yawOffsetDegrees 'Summon yaw offset'
@@ -4398,7 +4496,7 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 					[math]::Abs([double]$spawn.yawOffsetDegrees) -gt 360) { throw 'Summon Pattern spawn identity or transform is invalid' }
 				foreach ($coordinate in $spawn.positionOffset) {
 					Assert-JsonNumber $coordinate 'Summon position offset'
-					if ([math]::Abs([double]$coordinate) -gt 1000) { throw 'Summon position offset exceeds 1000m' }
+					if ([math]::Abs([double]$coordinate) -gt $spawnPositionLimit) { throw 'Summon position exceeds its anchor range' }
 				}
 				$children = @($koukuEncounterDocument.patterns | Where-Object { $_.patternId -ceq $spawn.patternId })
 				if ($children.Count -ne 1) { throw 'Summon child Pattern is unavailable' }
@@ -4408,18 +4506,24 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 				if ($child.gateId -cne $koukuPattern.gateId -or $child.actorProfileId -cne $koukuPattern.actorProfileId -or
 					$child.targetBossPlacementId -cne $koukuPattern.targetBossPlacementId -or $child.category -cne 'MECHANIC' -or
 					$childDuration -eq 0 -or $childDuration -gt [uint64]$trigger.durationMs -or
-					@($child.logicWindows).Count -ne 0 -or @($child.mechanicTriggers).Count -ne 0 -or
+					@($child.logicWindows).Count -ne 0 -or @($child.mechanicTriggers | Where-Object {
+						$_.kind -cne 'ALBION_AIRBORNE' -or $_.airbornePhase -cnotin @('JUMP','SLAM') -or
+						$null -ne $_.PSObject.Properties['airborneTargetPositionPolicy'] -or
+						$null -ne $_.PSObject.Properties['selectedEffectVisualId']
+					}).Count -ne 0 -or
 					@($child.worldSequences).Count -ne 0 -or @($child.sceneProfiles).Count -ne 0 -or
 					$null -ne $child.PSObject.Properties['bossMotion'] -or $child.resetBossToSpawn) {
-					throw 'Summon child must be an animation-only same-Gate Pattern within the Summon lifetime'
+					throw 'Summon child must be a same-Gate actor-local leaf within the Summon lifetime'
 				}
 				$koukuFollowupTargets.Add([string]$spawn.patternId)
-				$spawnRows.Add((@('PATTERNSUMMONSPAWN', $koukuEncounterDocument.encounterId, $koukuPattern.patternId,
+				$spawnRow = @('PATTERNSUMMONSPAWN', $koukuEncounterDocument.encounterId, $koukuPattern.patternId,
 					$trigger.triggerId, $spawn.spawnId, $spawn.patternId,
 					(Format-InvariantSignedFloat $spawn.positionOffset[0] 'Summon offset X'),
 					(Format-InvariantSignedFloat $spawn.positionOffset[1] 'Summon offset Y'),
 					(Format-InvariantSignedFloat $spawn.positionOffset[2] 'Summon offset Z'),
-					(Format-InvariantSignedFloat $spawn.yawOffsetDegrees 'Summon yaw offset')) -join "`t"))
+					(Format-InvariantSignedFloat $spawn.yawOffsetDegrees 'Summon yaw offset'))
+				if ($spawnAnchor -ceq 'MAP') { $spawnRow += 'MAP' }
+				$spawnRows.Add(($spawnRow -join "`t"))
 			}
 		}
 		elseif ($null -ne $trigger.PSObject.Properties['patternSpawns']) { throw 'Only a Summon trigger can carry patternSpawns' }
@@ -4437,7 +4541,15 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 			(Format-InvariantSignedFloat $trigger.arenaHeightToleranceM 'KoukuSaydon arena height tolerance'),
 			(Format-InvariantSignedFloat $trigger.arenaMinimumSpacingM 'KoukuSaydon arena minimum spacing'), [int]$trigger.randomPlayerOnly) -join "`t"))
 		foreach ($spawnRow in $spawnRows) { $patternRows.Add($spawnRow) }
+		if ($null -ne $trigger.PSObject.Properties['fixedHits']) {
+			foreach ($hitRow in @(New-KoukuAttackHitRows $trigger.fixedHits $koukuEncounterDocument.encounterId $koukuPattern.patternId $trigger.triggerId 'ALBION' 0 $trigger.effectLifetimeMs)) { $patternRows.Add($hitRow) }
+		}
 		if ($airborneRow) { $patternRows.Add($airborneRow) }
+		if ($trackFollowSpeedScale -gt 0) {
+			$patternRows.Add((@('PATTERNTRACKMOVE', $koukuEncounterDocument.encounterId, $koukuPattern.patternId,
+				$trigger.triggerId,
+				(Format-InvariantFloat $trackFollowSpeedScale 'Kouku boss tracking follow speed')) -join "`t"))
+		}
 	}
 	foreach ($worldSequence in @($koukuPattern.worldSequences)) {
 		$worldSequenceProperties = @('sequenceInstanceId','occurrenceId','startMs','durationMs','playbackSpeed','positionOffset','anchorKind','anchorPosition')
@@ -4670,7 +4782,7 @@ foreach ($bundle in @($koukuEncounterDocument.bundles)) {
                 if ($window.kind -cin @('POSE_INPUT','ROULETTE_CARD_MATCH')) { [void]$statefulOwners.Add([string]$member.memberId) }
                 foreach ($outcome in @($window.onSuccess) + @($window.onFail) + @($window.onTimeout)) {
                     if ($outcome.kind -ceq 'CLOWN_TRANSFORM') { [void]$statefulOwners.Add([string]$member.memberId) }
-                    if ($outcome.kind -ceq 'FOLLOWUP_PATTERN') {
+                    if ($outcome.kind -ceq 'FOLLOWUP_PATTERN' -or ($outcome.kind -ceq 'MARIO_ENTER' -and -not [string]::IsNullOrEmpty([string]$outcome.patternId))) {
                         $followupId = [string]$outcome.patternId
                         if ($koukuPatternById.ContainsKey($followupId) -and @($koukuPatternById[$followupId].sceneProfiles).Count -gt 0) {
                             [void]$followupSceneOwners.Add([string]$member.memberId)
@@ -4701,6 +4813,9 @@ foreach ($bundle in @($koukuEncounterDocument.bundles)) {
         }
     }
 }
+
+. (Join-Path $repoRoot 'Tools\KoukuSaydonPipeline\Publish-KoukuRaidRows.ps1')
+Add-KoukuRaidRows $koukuEncounterDocument $patternRows
 
 if (@($koukuEncounterDocument.playAllPatternIds).Count -ne
 	$koukuProductOrder.Count) {
@@ -6691,6 +6806,19 @@ function Get-BootstrapRowSortKey {
 	param([Parameter(Mandatory = $true)][string]$Row)
 
 	$fields = @($Row.Split("`t"))
+    if ($fields[0] -cin @('RAIDGATE','RAIDFLOWSTEP','RAIDARRIVAL')) {
+        # Gate definitions must precede their dense flow steps and arrival slots.
+        $gateKey = if ($fields[0] -ceq 'RAIDGATE') { $fields[2] } else { $fields[1] }
+        $rank = if ($fields[0] -ceq 'RAIDGATE') { 0 } elseif ($fields[0] -ceq 'RAIDFLOWSTEP') { 1 } else { 2 }
+        $Row = (@('RAIDGATE',$gateKey,$rank) + @($fields[2..($fields.Count - 1)])) -join "`t"
+    }
+    if ($fields.Count -ge 5 -and $fields[0] -ceq 'PATTERNATTACKHIT') {
+        $parent = if ($fields[4] -ceq 'PROJECTILE') { 'PATTERNPURSUITPROJECTILES' } elseif ($fields[4] -ceq 'ALBION') { 'PATTERNMECHANICTRIGGER' } else { 'PATTERNSHOWTIMETARGETS' }
+        $Row = (@($parent,$fields[1],$fields[2],$fields[3],2) + @($fields[4..($fields.Count - 1)])) -join "`t"
+    }
+    if ($fields.Count -ge 4 -and $fields[0] -ceq 'PATTERNPURSUITPROJECTILES') {
+        $Row = (@($fields[0],$fields[1],$fields[2],$fields[3],0) + @($fields[4..($fields.Count - 1)])) -join "`t"
+    }
 	if ($fields.Count -ge 4 -and $fields[0] -cin @('PATTERNMECHANICTRIGGER','PATTERNALBIONAIRBORNE')) {
 		# Airborne settings resolve their exact, already loaded mechanic occurrence.
 		$dependencyOrder = if ($fields[0] -ceq 'PATTERNMECHANICTRIGGER') { 0 } else { 1 }

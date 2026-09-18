@@ -5830,6 +5830,11 @@
       "effectAssetId": "effect.kouku.gate1.stagger.laser.group",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
       "authoringPath": "Effects/Authored/effect.kouku.gate1.stagger.laser.group.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate2.bigsaydon.circle.warning",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate2.bigsaydon.circle.warning.effect.json"
     }
   ]
 }

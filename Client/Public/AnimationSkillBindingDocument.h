@@ -4,6 +4,7 @@
 #include "Engine_Defines.h"
 #include "PlayerSkillCatalog.h"
 
+#include <array>
 #include <filesystem>
 #include <string>
 #include <string_view>
@@ -146,10 +147,55 @@ namespace Client
 		bool operator==(const BOSS_PATTERN_ANIMATION_CLIP&) const = default;
 	};
 
+    struct BOSS_STAGE_SCENE_PROFILE_OCCURRENCE final
+    {
+        std::string strOccurrenceId, strProfileId;
+        uint32_t iStartMs = 0u, iDurationMs = 1u;
+        bool operator==(const BOSS_STAGE_SCENE_PROFILE_OCCURRENCE&) const = default;
+    };
+    struct BOSS_STAGE_LIGHT_OCCURRENCE final
+    {
+        std::string strOccurrenceId, strLightResourceId, strAnchorKind = "BOSS";
+        uint32_t iStartMs = 0u, iDurationMs = 1u, iFadeInMs = 0u, iFadeOutMs = 0u;
+        bool_t bFollowBoss = true;
+        std::array<f32_t, 3u> Position{}, RotationDegrees{};
+        f32_t fBrightnessMultiplier = 1.f;
+        bool operator==(const BOSS_STAGE_LIGHT_OCCURRENCE&) const = default;
+    };
+    struct BOSS_STAGE_CAMERA_SAMPLE final
+    {
+        std::string strOccurrenceId, strCueId;
+        uint32_t iStartMs = 0u, iDurationMs = 0u;
+        bool operator==(const BOSS_STAGE_CAMERA_SAMPLE&) const = default;
+    };
+    struct BOSS_STAGE_ENVIRONMENT_SAMPLE final
+    {
+        std::string strOwnerKey, strActionId;
+        std::vector<BOSS_STAGE_SCENE_PROFILE_OCCURRENCE> SceneProfileOccurrences;
+        std::vector<BOSS_STAGE_LIGHT_OCCURRENCE> LightOccurrences;
+        bool_t bHasCameraInvocations = false;
+        std::vector<BOSS_STAGE_CAMERA_SAMPLE> CameraInvocations;
+        float4x4_t Root{};
+        f32_t fClockMs = 0.f;
+        bool_t bPreview = false;
+    };
+    class DATA_JSON_VALUE;
+    bool Parse_BossStageEnvironment(const DATA_JSON_VALUE& value,
+        std::vector<BOSS_STAGE_SCENE_PROFILE_OCCURRENCE>& scenes,
+        std::vector<BOSS_STAGE_LIGHT_OCCURRENCE>& lights, std::string& status,
+        uint32_t durationMs = UINT32_MAX);
+    std::string Serialize_BossStageEnvironment(
+        const std::vector<BOSS_STAGE_SCENE_PROFILE_OCCURRENCE>& scenes,
+        const std::vector<BOSS_STAGE_LIGHT_OCCURRENCE>& lights);
+
 	struct BOSS_PATTERN_ANIMATION_BINDING
 	{
 		std::string strActionId;
 		std::vector<BOSS_PATTERN_ANIMATION_CLIP> Clips;
+        bool_t bHasCameraInvocations = false;
+        std::vector<BOSS_STAGE_CAMERA_SAMPLE> CameraInvocations;
+        std::vector<BOSS_STAGE_SCENE_PROFILE_OCCURRENCE> SceneProfileOccurrences;
+        std::vector<BOSS_STAGE_LIGHT_OCCURRENCE> LightOccurrences;
 		/* Explicit Product admission for a stage that intentionally starts no
 		   model animation.  An empty clip list without this tag remains invalid. */
 		bool_t bSuppressAnimation = false;

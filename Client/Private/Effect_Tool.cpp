@@ -9,6 +9,7 @@
 #include "CombatHUDViewModel.h"
 #include "Effect_Catalog.h"
 #include "Effect_DocumentCodec.h"
+#include "Effect_PresentationService.h"
 #include "EffectResourceCatalog.h"
 #include "Effect_MaterialTemplate.h"
 #include "Effect_Object.h"
@@ -1662,6 +1663,16 @@ bool Client::CEffect_Tool::Resolve_AuthoringSourceAnchors(
     float4x4_t modelRoot;
     if (!CAnimationTargetService::Resolve_RootTransform(&modelRoot))
     { error = "The selected model root is unavailable for source attachments."; return false; }
+    if (m_pAuthoringSequencer && m_pAuthoringSequencer->Is_ValtanSourcePreview(found->second->strEffectAssetId))
+    {
+        // Source bones retain the real owner scale. Only the world/snapshot
+        // Effect root uses the original ARENA_ABSOLUTE unit basis.
+        float4x4_t arenaRoot;
+        if (!CEffectPresentationService::Build_CueScalePolicyAnchor(
+            VALTAN_PATTERN_EFFECT_SCALE_POLICY::ARENA_ABSOLUTE, {1.f, 1.f, 1.f}, modelRoot, arenaRoot))
+        { error = "Valtan source preview root is singular."; return false; }
+        modelRoot = arenaRoot;
+    }
     vector_t determinant;
     const matrix_t inverse = XMMatrixInverse(&determinant, XMLoadFloat4x4(&modelRoot));
     if (!std::isfinite(XMVectorGetX(determinant)) || std::fabs(XMVectorGetX(determinant)) < 1e-12f)

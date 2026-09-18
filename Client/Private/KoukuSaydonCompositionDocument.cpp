@@ -49,7 +49,7 @@ namespace
 	constexpr std::string_view GENERATED_SUMMON_PREFIX = "kakulsaydon.g1.summon.";
 	constexpr std::size_t MAX_SUMMONS = 4096u;
 	constexpr std::size_t MAX_SUMMON_OCCURRENCES_PER_PATTERN = 1024u;
-    constexpr std::size_t MAX_SUMMON_PATTERN_SPAWNS = 4u;
+    constexpr std::size_t MAX_SUMMON_PATTERN_SPAWNS = 16u;
 	constexpr std::string_view GENERATED_WORLD_PREFIX = "kakulsaydon.g1.world.";
 	constexpr std::size_t MAX_WORLDS = 4096u;
 	constexpr std::size_t MAX_WORLD_OCCURRENCES_PER_PATTERN = 128u;
@@ -313,12 +313,86 @@ namespace
 		return true;
 	}
 
+	bool Parse_AttackHits(const DATA_JSON_VALUE* value, std::vector<LostArk::Shared::ATTACK_HIT_TEMPLATE>& hits)
+	{
+		if (!value) return true;
+		if (!value->Is_Array() || value->Get_Array().size() > 32u) return false;
+		for (const auto& row : value->Get_Array())
+		{
+			LostArk::Shared::ATTACK_HIT_TEMPLATE hit;
+			if (!Has_Properties(row, { "hitId" }, { "trigger", "shape", "damageKind", "damageProfileId", "atMs", "endMs", "repeatCount", "repeatIntervalMs", "damagePercent", "radiusM", "innerRadiusM", "lengthM", "halfWidthM", "angleDegrees", "offsetForwardM", "offsetRightM", "yawOffsetDegrees" })) return false;
+			if (const auto* item = row.Find("hitId")) { if (!item->Is_String()) return false; hit.strHitId = item->Get_String(); }
+			if (const auto* item = row.Find("trigger")) { if (!item->Is_String()) return false; hit.strTrigger = item->Get_String(); }
+			if (const auto* item = row.Find("shape")) { if (!item->Is_String()) return false; hit.strShape = item->Get_String(); }
+			if (const auto* item = row.Find("damageKind")) { if (!item->Is_String()) return false; hit.strDamageKind = item->Get_String(); }
+			if (const auto* item = row.Find("damageProfileId")) { if (!item->Is_String()) return false; hit.strDamageProfileId = item->Get_String(); }
+			if (const auto* item = row.Find("atMs")) if (!Try_ParseUnsigned(*item, 600000u, hit.iAtMs)) return false;
+			if (const auto* item = row.Find("endMs")) if (!Try_ParseUnsigned(*item, 600000u, hit.iEndMs)) return false;
+			if (const auto* item = row.Find("repeatCount")) if (!Try_ParseUnsigned(*item, 600000u, hit.iRepeatCount)) return false;
+			if (const auto* item = row.Find("repeatIntervalMs")) if (!Try_ParseUnsigned(*item, 600000u, hit.iRepeatIntervalMs)) return false;
+			if (const auto* item = row.Find("damagePercent")) if (!Try_ParseUnsigned(*item, 600000u, hit.iDamagePercent)) return false;
+			if (const auto* item = row.Find("radiusM")) if (!Try_ParseFinite(*item, -1000., 1000., hit.fRadiusM)) return false;
+			if (const auto* item = row.Find("innerRadiusM")) if (!Try_ParseFinite(*item, -1000., 1000., hit.fInnerRadiusM)) return false;
+			if (const auto* item = row.Find("lengthM")) if (!Try_ParseFinite(*item, -1000., 1000., hit.fLengthM)) return false;
+			if (const auto* item = row.Find("halfWidthM")) if (!Try_ParseFinite(*item, -1000., 1000., hit.fHalfWidthM)) return false;
+			if (const auto* item = row.Find("angleDegrees")) if (!Try_ParseFinite(*item, -1000., 1000., hit.fAngleDegrees)) return false;
+			if (const auto* item = row.Find("offsetForwardM")) if (!Try_ParseFinite(*item, -1000., 1000., hit.fOffsetForwardM)) return false;
+			if (const auto* item = row.Find("offsetRightM")) if (!Try_ParseFinite(*item, -1000., 1000., hit.fOffsetRightM)) return false;
+			if (const auto* item = row.Find("yawOffsetDegrees")) if (!Try_ParseFinite(*item, -1000., 1000., hit.fYawOffsetDegrees)) return false;
+			hits.push_back(std::move(hit));
+		}
+		return LostArk::Shared::Validate_AttackHitTemplates(hits);
+	}
+
+	void Write_AttackHits(std::ostringstream& output, const std::vector<LostArk::Shared::ATTACK_HIT_TEMPLATE>& hits)
+	{
+		output << "[";
+		for (std::size_t index = 0; index < hits.size(); ++index)
+		{
+			const auto& hit = hits[index]; output << (index ? ", {" : "{");
+			output << "\"hitId\": \"" << CDataJson::Escape(hit.strHitId) << "\"";
+			output << ", \"trigger\": \"" << CDataJson::Escape(hit.strTrigger) << "\"";
+			output << ", \"shape\": \"" << CDataJson::Escape(hit.strShape) << "\"";
+			output << ", \"damageKind\": \"" << CDataJson::Escape(hit.strDamageKind) << "\"";
+			output << ", \"damageProfileId\": \"" << CDataJson::Escape(hit.strDamageProfileId) << "\"";
+			output << ", \"atMs\": " << hit.iAtMs;
+			output << ", \"endMs\": " << hit.iEndMs;
+			output << ", \"repeatCount\": " << hit.iRepeatCount;
+			output << ", \"repeatIntervalMs\": " << hit.iRepeatIntervalMs;
+			output << ", \"damagePercent\": " << hit.iDamagePercent;
+			output << ", \"radiusM\": " << hit.fRadiusM;
+			output << ", \"innerRadiusM\": " << hit.fInnerRadiusM;
+			output << ", \"lengthM\": " << hit.fLengthM;
+			output << ", \"halfWidthM\": " << hit.fHalfWidthM;
+			output << ", \"angleDegrees\": " << hit.fAngleDegrees;
+			output << ", \"offsetForwardM\": " << hit.fOffsetForwardM;
+			output << ", \"offsetRightM\": " << hit.fOffsetRightM;
+			output << ", \"yawOffsetDegrees\": " << hit.fYawOffsetDegrees;
+			output << "}";
+		}
+		output << "]";
+	}
+
 	/* The typed values a Logic definition may carry, by type and kind. This is
 	   the same table the projector enforces so a Save is never refused later. */
 	bool_t Validate_LogicDefinitionValues(
 		const KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION& logic,
 		std::string& outStatus)
 	{
+		const bool hitShowtime = logic.strLogicType == "DURATION" && logic.strJudgementKind == "SHOWTIME_PLAYER_TARGETS";
+		const bool hitPursuit = logic.strLogicType == "DURATION" && logic.strJudgementKind == "PURSUIT_PROJECTILES";
+		const bool hitAlbion = logic.strLogicType == "TRIGGER" && logic.strTriggerKind == "ALBION_BLUE_CIRCLE";
+		if ((!hitShowtime && (!logic.TrackingHits.empty() || !logic.RandomVolleyHits.empty())) ||
+			(!hitShowtime && !hitAlbion && !logic.FixedHits.empty()) ||
+			(!hitPursuit && !logic.ProjectileHits.empty()) ||
+			(!hitAlbion && !logic.FixedHits.empty() && logic.strFixedSelectionGroupId.empty()) ||
+			(!logic.TrackingHits.empty() && logic.strTrackingPresentationOccurrenceId.empty()) ||
+			(!logic.RandomVolleyHits.empty() && logic.RandomVolleyHits.size() != logic.RandomVolleyOccurrenceSets.size()) ||
+			!LostArk::Shared::Validate_AttackHitTemplates(logic.FixedHits, hitAlbion ? logic.iEffectLifetimeMs : 600000u) ||
+			!LostArk::Shared::Validate_AttackHitTemplates(logic.TrackingHits) ||
+			!LostArk::Shared::Validate_AttackHitTemplates(logic.ProjectileHits) ||
+			std::any_of(logic.RandomVolleyHits.begin(), logic.RandomVolleyHits.end(), [](const auto& hits) { return !LostArk::Shared::Validate_AttackHitTemplates(hits); }))
+		{ outStatus = "Attack template shape, timing, damage or dynamic owner is invalid."; return false; }
 		const bool airborne = logic.strLogicType == "TRIGGER" && logic.strTriggerKind == "ALBION_AIRBORNE";
 		const bool hasAirborneValues = !logic.strAirbornePhase.empty() || logic.fAirborneHeightM != 0.0 || logic.iAirborneDurationMs != 0u ||
 			logic.strAirborneTargetPositionPolicy != "APPEAR" || !logic.strSelectedEffectGroupId.empty();
@@ -361,8 +435,12 @@ namespace
              logic.iSpawnIntervalMs > MAX_TIME_MS || logic.iPursuitLifetimeMs > MAX_TIME_MS || logic.iCountPerWave > 16u ||
              (logic.iPursuitLifetimeMs == 0u && (!logic.bPursuitHoming || logic.iSpawnIntervalMs != 0u || logic.fPursuitMaxDistanceM != 0.0)))))
         { outStatus = "PURSUIT_PROJECTILES requires Effect IDs, finite speed/radii and bounded lifetime; infinite life requires one homing volley."; return false; }
+		/* BOSS_TRACK_TARGET reuses the SHOWTIME player-speed multiplier to translate the
+		   body it already rotates. Zero keeps every saved rotate-only window unchanged. */
+		const bool_t trackTarget = logic.strLogicType == "DURATION" && logic.strJudgementKind == "BOSS_TRACK_TARGET";
 		const bool_t hasShowtimeValues = hasRandomValues || !logic.strFixedSelectionGroupId.empty() ||
-			!logic.strTrackingPresentationOccurrenceId.empty() || (!pursuit && logic.iSpawnIntervalMs != 0u) || logic.fFollowSpeedScale != 0.0;
+			!logic.strTrackingPresentationOccurrenceId.empty() || (!pursuit && logic.iSpawnIntervalMs != 0u) ||
+			(!trackTarget && logic.fFollowSpeedScale != 0.0);
 		const bool_t showtime = logic.strLogicType == "DURATION" && logic.strJudgementKind == "SHOWTIME_PLAYER_TARGETS";
 		if ((hasShowtimeValues && !showtime) || (showtime &&
 			((!logic.strFixedSelectionGroupId.empty() && !Is_StableId(logic.strFixedSelectionGroupId)) ||
@@ -370,6 +448,9 @@ namespace
 			 logic.iSpawnIntervalMs < 1u || logic.iSpawnIntervalMs > MAX_TIME_MS ||
 			 !std::isfinite(logic.fFollowSpeedScale) || logic.fFollowSpeedScale < .01 || logic.fFollowSpeedScale > 10.0)))
 		{ outStatus = "SHOWTIME_PLAYER_TARGETS requires stable template references, interval 1..600000 ms and speed scale .01..10."; return false; }
+		if (trackTarget && logic.fFollowSpeedScale != 0.0 &&
+			(!std::isfinite(logic.fFollowSpeedScale) || logic.fFollowSpeedScale < .01 || logic.fFollowSpeedScale > 10.0))
+		{ outStatus = "BOSS_TRACK_TARGET follow speed is 0 for rotate-only, or .01..10 of the target player's move speed."; return false; }
 		const bool cross = logic.strLogicType == "DURATION" && logic.strJudgementKind == "CROSS_DIRECTION_CLONES";
         std::unordered_set<std::string> directionIds;
         if ((cross && (logic.DirectionPatternIds.size() != 4u || !Is_StableId(logic.strCloneEndStageId) || !Is_StableId(logic.strSummonOccurrenceId) ||
@@ -391,7 +472,7 @@ namespace
 			(!logic.strTargetWorldInstanceId.empty() && logic.strJudgementKind != "OBJECT_OVERLAP") || !logic.strMotionInstanceId.empty() ||
 			!logic.strSceneProfileId.empty() || !logic.strEffectResourceId.empty() || !logic.strLightResourceId.empty() || logic.iEffectDelayMs != 0u ||
 			!logic.strAttachmentSlot.empty() || logic.GripLocalOffset != std::array<double, 3u>{} ||
-			!logic.ContactMotions.empty() || !logic.strTargetLogicOccurrenceId.empty() || !logic.strContactTargetWorldOccurrenceId.empty();
+			!logic.ContactMotions.empty() || !logic.strTargetLogicOccurrenceId.empty() || !logic.strContactTargetWorldOccurrenceId.empty() || logic.iMarioEntryStage != 0u;
 		const bool_t hasContactValues = !logic.TargetWorldOccurrenceIds.empty() || !logic.strContactGroupId.empty() || logic.iContactPriority != 0u;
 		if (hasContactValues && (logic.strLogicType != "TRIGGER" || logic.strTriggerKind != "OBJECT_CONTACT"))
 		{ outStatus = "Only OBJECT_CONTACT carries target placements and contact priority."; return false; }
@@ -574,6 +655,11 @@ namespace
 				outStatus = "Only clown transform and fear take a duration: " + logic.strLogicId;
 				return false;
 			}
+			if (logic.iMarioEntryStage > 4u || ("MARIO_ENTER" != kind && logic.iMarioEntryStage != 0u))
+			{
+				outStatus = "Only MARIO_ENTER takes a Mario stage of 0..4: " + logic.strLogicId;
+				return false;
+			}
 			if ((kind == "FEAR" && (logic.iDurationMs == 0u || logic.iEffectDelayMs >= logic.iDurationMs ||
                 (!logic.strSceneProfileId.empty() && !Is_StableId(logic.strSceneProfileId)) ||
                 (!logic.strEffectResourceId.empty() && !Is_StableId(logic.strEffectResourceId)) ||
@@ -581,8 +667,8 @@ namespace
                 (logic.strEffectResourceId.empty() && logic.iEffectDelayMs != 0u))) ||
                 (kind != "FEAR" && (!logic.strSceneProfileId.empty() || !logic.strEffectResourceId.empty() || !logic.strLightResourceId.empty() || logic.iEffectDelayMs != 0u)))
             { outStatus = "FEAR requires a duration and valid optional Scene Profile/Effect references and delay."; return false; }
-			if (followup != !logic.strFollowupPatternId.empty() ||
-				(followup && !Is_StableId(logic.strFollowupPatternId)))
+			if ((kind != "MARIO_ENTER" && followup != !logic.strFollowupPatternId.empty()) ||
+				(!logic.strFollowupPatternId.empty() && !Is_StableId(logic.strFollowupPatternId)))
 			{
 				outStatus = "A follow-up outcome names exactly one Pattern: " + logic.strLogicId;
 				return false;
@@ -665,7 +751,7 @@ namespace
 				std::any_of(logic.TeleportPosition.begin(), logic.TeleportPosition.end(), [](double x) { return x != 0.0; }))
 			{ outStatus = "ENTER_AREA geometry belongs to its linked Collider occurrence."; return false; }
 		}
-		else if (logic.strTriggerKind == "CARD_MAZE_HIDE_NEXT" || logic.strTriggerKind == "CARD_MAZE_ENTER" || logic.strTriggerKind == "BOSS_TELEPORT_XZ")
+		else if (logic.strTriggerKind == "CARD_MAZE_HIDE_NEXT" || logic.strTriggerKind == "CARD_MAZE_ENTER" || (logic.strTriggerKind == "BOSS_TELEPORT_XZ" || logic.strTriggerKind == "BOSS_TELEPORT_FACE_CENTER" || logic.strTriggerKind == "MARIO_PHASE2_PLAYERS"))
 		{
 			if (!logic.strHudMode.empty() || !logic.strClonePatternId.empty() || !logic.ClockHours.empty() ||
 				logic.fFaceCenterYawOffsetDegrees != 0.0 ||
@@ -825,13 +911,14 @@ namespace
 		KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE& row)
 	{
 		if (!Has_Properties(value, { "resourceId", "displayName", "kind", "assetId" },
-			{ "resourceKind", "elementId", "durationMs", "shape", "halfExtents", "radiusM", "halfAngleDegrees", "colliderKind", "defaultAnchorKind" }))
+			{ "resourceKind", "elementId", "durationMs", "shape", "halfExtents", "radiusM", "innerRadiusM", "halfAngleDegrees", "colliderKind", "defaultAnchorKind", "soundEvent" }))
 			return false;
 		std::string kind;
 		if (!Read_PresentationText(value, "resourceId", row.strResourceId, true) ||
 			!Read_PresentationText(value, "displayName", row.strDisplayName, true) ||
 			!Read_PresentationText(value, "kind", kind, true) ||
 			!Read_PresentationText(value, "assetId", row.strAssetId, true) ||
+			!Read_PresentationText(value, "soundEvent", row.strSoundEvent) ||
 			!Read_PresentationText(value, "resourceKind", row.strResourceKind) ||
 			!Read_PresentationText(value, "elementId", row.strElementId) ||
 			!Read_PresentationText(value, "defaultAnchorKind", row.strDefaultAnchorKind) ||
@@ -840,6 +927,7 @@ namespace
 			!Read_PresentationTime(value, "durationMs", row.iDurationMs) ||
 			!Read_PresentationVector(value, "halfExtents", row.HalfExtents, 0.001, 10000.0) ||
 			!Read_PresentationNumber(value, "radiusM", row.fRadiusM, 0.001, 10000.0) ||
+			!Read_PresentationNumber(value, "innerRadiusM", row.fInnerRadiusM, 0.0, 10000.0) ||
 			!Read_PresentationNumber(value, "halfAngleDegrees", row.fHalfAngleDegrees, row.strShape == "REVERSE_SECTOR" ? 0.0 : 0.001, 180.0)) return false;
 		for (const auto candidate : { KOUKU_SAYDON_PRESENTATION_KIND::EFFECT,
 			KOUKU_SAYDON_PRESENTATION_KIND::SOUND, KOUKU_SAYDON_PRESENTATION_KIND::CAMERA,
@@ -853,9 +941,10 @@ namespace
 	{
 		if (!Has_Properties(value, { "occurrenceId", "resourceId", "startMs", "durationMs" },
 			{ "positionOffset", "rotationDegrees", "scale", "fadeInMs", "fadeOutMs",
-			  "dissolveStart", "dissolveEnd", "volume", "followBoss", "bone", "boneTarget",
+			  "dissolveStart", "dissolveEnd", "volume", "soundSourceStartMs", "followBoss", "bone", "boneTarget",
 			  "regionId", "cardSymbol", "cardColor", "anchorKind", "worldId", "logicOccurrenceId", "debugRender", "worldOccurrenceId", "brightnessMultiplier",
-			  "worldEmissionIndex", "selectionGroupId", "fitEffectToDuration", "loopEffectToDuration" })) return false;
+			  "worldEmissionIndex", "selectionGroupId", "fitEffectToDuration", "loopEffectToDuration",
+			  "boneRotation" })) return false;
 		if (const auto* fit = value.Find("fitEffectToDuration"))
 		{
 			if (!fit->Is_Boolean()) return false;
@@ -883,6 +972,7 @@ namespace
 			Read_PresentationText(value, "selectionGroupId", row.strSelectionGroupId) &&
 			Read_PresentationText(value, "bone", row.strBone) &&
 			Read_PresentationText(value, "boneTarget", row.strBoneTarget) &&
+			Read_PresentationText(value, "boneRotation", row.strBoneRotation) &&
 			Read_PresentationText(value, "regionId", row.strRegionId) &&
 			Read_PresentationText(value, "cardSymbol", row.strCardSymbol) &&
 			Read_PresentationText(value, "cardColor", row.strCardColor) &&
@@ -901,6 +991,7 @@ namespace
 			Read_PresentationNumber(value, "dissolveStart", row.fDissolveStart, 0.0, 1.0) &&
 			Read_PresentationNumber(value, "dissolveEnd", row.fDissolveEnd, 0.0, 1.0) &&
 			Read_PresentationNumber(value, "volume", row.fVolume, 0.0, 1.0) &&
+			Read_PresentationTime(value, "soundSourceStartMs", row.iSoundSourceStartMs) &&
 			Read_PresentationNumber(value, "brightnessMultiplier", row.fBrightnessMultiplier, 0.0, 16.0);
 	}
 
@@ -1068,8 +1159,13 @@ namespace
                 {
                     const auto resource = std::find_if(document.PresentationResources.begin(), document.PresentationResources.end(),
                         [&](const auto& row) { return row.strResourceId == occurrence.strResourceId; });
-                    if (resource == document.PresentationResources.end() || resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT)
-                        return fail("direction children support Animation and Effect only: " + id);
+                    if (resource == document.PresentationResources.end() ||
+                        (resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT && resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::SOUND))
+                        return fail("direction children support Animation, Effect and Sound only: " + id);
+                    if (resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::SOUND &&
+                        (occurrence.strAnchorKind != "BOSS" || !occurrence.strLogicOccurrenceId.empty() ||
+                            !occurrence.strWorldOccurrenceId.empty() || !occurrence.strWorldId.empty()))
+                        return fail("direction child Sound must use its actor clock and anchor: " + id);
                 }
             }
             for (const auto& row : pattern.PatternOccurrences)
@@ -1324,6 +1420,7 @@ namespace
                 !std::isfinite(row.fDissolveStart) || !std::isfinite(row.fDissolveEnd) ||
                 row.fDissolveStart < 0. || row.fDissolveEnd > 1. || row.fDissolveStart > row.fDissolveEnd ||
                 row.fBrightnessMultiplier != 1. || row.strAnchorKind != "BOSS" || !row.strBone.empty() || row.strBoneTarget != "BODY" ||
+                row.strBoneRotation != "TARGET_YAW" ||
                 !row.strWorldId.empty() || !row.strRegionId.empty() || !row.strLogicOccurrenceId.empty() ||
                 !row.strWorldOccurrenceId.empty() || !row.strSelectionGroupId.empty() || row.strCardSymbol != "NONE" || row.strCardColor != "NONE")
                 return fail("common presentation supports unbound Camera only: " + row.strOccurrenceId);
@@ -1489,6 +1586,9 @@ namespace
 		{ outStatus = "Invalid presentation resource count."; return false; }
 		for (const auto& row : document.PresentationResources)
 		{
+			if (!row.strSoundEvent.empty() &&
+				(row.eKind != KOUKU_SAYDON_PRESENTATION_KIND::SOUND || !Is_StableId(row.strSoundEvent)))
+			{ outStatus = "Sound event requires a SOUND resource and a stable catalog identity."; return false; }
 			bool_t validAsset = false;
 			switch (row.eKind)
 			{
@@ -1523,6 +1623,8 @@ namespace
 				row.iDurationMs == 0u || row.iDurationMs > MAX_TIME_MS ||
 				!Valid_PresentationVector(row.HalfExtents, 0.001, 10000.0) ||
 				!std::isfinite(row.fRadiusM) || row.fRadiusM <= 0.0 || row.fRadiusM > 10000.0 ||
+				!std::isfinite(row.fInnerRadiusM) || row.fInnerRadiusM < 0.0 || row.fInnerRadiusM >= row.fRadiusM ||
+				(row.fInnerRadiusM > 0.0 && (row.eKind != KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER || (row.strShape != "CIRCLE" && row.strShape != "SECTOR"))) ||
 				!std::isfinite(row.fHalfAngleDegrees) || (row.strShape == "REVERSE_SECTOR" ? row.fHalfAngleDegrees < 0.0 : row.fHalfAngleDegrees <= 0.0) || row.fHalfAngleDegrees > 180.0)
 			{ outStatus = "Invalid presentation resource: " + row.strResourceId; return false; }
 		}
@@ -1763,6 +1865,9 @@ namespace
 			for (const auto& row : pattern.PresentationOccurrences)
 			{
 				const std::uint64_t endMs = static_cast<std::uint64_t>(row.iStartMs) + row.iDurationMs;
+				if (row.iSoundSourceStartMs && (row.iSoundSourceStartMs > MAX_TIME_MS ||
+					!presentationResources.contains(row.strResourceId) || presentationResources.at(row.strResourceId)->eKind != KOUKU_SAYDON_PRESENTATION_KIND::SOUND))
+				{ outStatus = "Sound Source In belongs only to SOUND occurrences."; return false; }
 				if (!Is_StableId(row.strOccurrenceId) || (!expandedIds && !Try_ParseGeneratedOrdinal(row.strOccurrenceId,
 					pattern.strPatternId + ".presentation.", pattern.iNextPresentationOccurrenceOrdinal)) ||
 					!occurrenceIds.insert(row.strOccurrenceId).second ||
@@ -1790,6 +1895,8 @@ namespace
 					(row.strAnchorKind != "WORLD" && !row.strWorldId.empty()))
 				{ outStatus = "Invalid region identity, card or anchor: " + row.strOccurrenceId; return false; }
                 const auto* resource = presentationResources.at(row.strResourceId);
+                if (resource->fInnerRadiusM > 0.0 && std::abs(row.Scale[0] - row.Scale[2]) > .0001)
+                { outStatus = "Hollow Collider requires equal X/Z scale: " + row.strOccurrenceId; return false; }
                 // Camera shots own their world coordinates; Sound does not bind an Object.
 				if ((row.bFitEffectToDuration || row.bLoopEffectToDuration) && (resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT ||
 					(resource->strResourceKind != "V1_EFFECT" && resource->strResourceKind != "V1_ELEMENT")))
@@ -1824,6 +1931,10 @@ namespace
 				if (row.strBoneTarget != "BODY" && ((resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER && resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT) ||
 					row.strAnchorKind != "BOSS" || row.strBone.empty()))
 				{ outStatus = "WEAPON Bone anchors require a boss Collider and an explicit weapon bone."; return false; }
+				if (row.strBoneRotation != "TARGET_YAW" && (row.strBoneRotation != "BONE" ||
+					resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT ||
+					row.strAnchorKind != "BOSS" || row.strBone.empty()))
+				{ outStatus = "Bone rotation requires a boss Effect with an explicit bone: " + row.strOccurrenceId; return false; }
 				if ((resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::LIGHT &&
 					(row.strAnchorKind == "PLAYER" || (row.strAnchorKind == "MAP" && resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT && resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER) || row.fBrightnessMultiplier != 1.0)) ||
 					(resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::LIGHT &&
@@ -2106,6 +2217,8 @@ namespace
 							}
 							followupTargets.emplace_back(box.strOccurrenceId, result.strFollowupPatternId);
 						}
+						else if (result.strOutcomeKind == "MARIO_ENTER" && !result.strFollowupPatternId.empty())
+							followupTargets.emplace_back(box.strOccurrenceId, result.strFollowupPatternId);
 						if (product && result.strOutcomeKind.empty())
 						{
 							outStatus = "KoukuSaydon PRODUCT Pattern wires a RESULT Logic without an outcome kind: " +
@@ -2157,11 +2270,14 @@ namespace
                     return false;
                 }
                 if (box.PatternSpawns.size() > MAX_SUMMON_PATTERN_SPAWNS)
-                { outStatus = "A Summon box supports at most four Pattern spawns: " + box.strOccurrenceId; return false; }
+                { outStatus = "A Summon box supports at most sixteen Pattern spawns: " + box.strOccurrenceId; return false; }
                 std::unordered_set<std::string> spawnIds;
                 for (const auto& spawn : box.PatternSpawns)
                     if (!Is_StableId(spawn.strSpawnId) || !spawnIds.insert(spawn.strSpawnId).second ||
-                        !Is_StableId(spawn.strPatternId) || !Valid_PresentationVector(spawn.PositionOffset, -1000.0, 1000.0) ||
+                        !Is_StableId(spawn.strPatternId) || (spawn.strAnchorKind != "BOSS" && spawn.strAnchorKind != "MAP") ||
+                        !Valid_PresentationVector(spawn.PositionOffset,
+                            spawn.strAnchorKind == "MAP" ? -100000.0 : -1000.0,
+                            spawn.strAnchorKind == "MAP" ? 100000.0 : 1000.0) ||
                         !std::isfinite(spawn.fYawOffsetDegrees) || spawn.fYawOffsetDegrees < -360.0 || spawn.fYawOffsetDegrees > 360.0)
                     { outStatus = "Invalid Summon Pattern spawn identity or transform: " + box.strOccurrenceId; return false; }
             }
@@ -2293,10 +2409,11 @@ namespace
                         for (const auto& id : box.Outcomes(slot))
                         {
                             const auto* result = findLogic(id);
+                            // A completion chain is optional: a plain Gate 3 Pattern enters through its own window.
                             if (result && result->strOutcomeKind == "MARIO_ENTER" &&
-                                (chainCount != 1 || pattern.strGateId != "GATE3" || owner->strTriggerKind != "ENTER_AREA" ||
+                                (pattern.strGateId != "GATE3" || owner->strTriggerKind != "ENTER_AREA" ||
                                  slot != KOUKU_SAYDON_OUTCOME_SLOT::SUCCESS || box.OnSuccessLogicIds.size() != 1u))
-                            { outStatus = "Mario entry is the sole ENTER_AREA Success owned by a Gate 3 completion chain."; return false; }
+                            { outStatus = "Mario entry is the sole ENTER_AREA Success of a Gate 3 Pattern."; return false; }
                         }
                 }
             }
@@ -2832,13 +2949,13 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 		for (const DATA_JSON_VALUE& logicValue : logics->Get_Array())
 		{
 			if (!Has_Properties(logicValue, { "logicId", "displayName", "logicType" },
-					{ "judgementKind", "fixedSelectionGroupId", "trackingPresentationOccurrenceId", "spawnIntervalMs", "followSpeedScale",
+					{ "judgementKind", "fixedHits", "trackingHits", "projectileHits", "randomVolleyHits", "fixedSelectionGroupId", "trackingPresentationOccurrenceId", "spawnIntervalMs", "followSpeedScale",
                       "visualIds", "contactVisualId", "speedMps", "contactRadiusM", "spawnRadiusM", "lifetimeMs", "homing", "countPerWave",
 					  "randomVolleyOccurrenceSets", "randomSpawnIntervalMs", "randomArenaRadiusM", "randomArenaHeightToleranceM", "insideOutcome", "sectorCount", "sectorSymbols", "regionIds", "centerX", "centerZ",
 					  "outerRadiusM", "worldSequenceInstanceId", "halfAngleDegrees",
 					  "maxDistanceM", "poseIndex", "threshold", "shieldArcDegrees",
 					  "endsPatternOnSuccess", "normalYawOffsetDegrees", "faceCenterYawOffsetDegrees", "outcomeKind", "percent", "durationMs", "pushRangeM", "pushMs", "pushDirection", "targetWorldInstanceId", "motionInstanceId", "targetRadiusM",
-					  "directionPatternIds", "cloneEndStageId", "summonOccurrenceId", "airbornePhase", "airborneHeightM", "airborneDurationMs", "airborneTargetPositionPolicy", "selectedEffectGroupId", "patternIds", "completionCount", "followupPatternId", "triggerKind", "countPerPlayer", "radiusM", "effectLifetimeMs",
+					  "directionPatternIds", "cloneEndStageId", "summonOccurrenceId", "airbornePhase", "airborneHeightM", "airborneDurationMs", "airborneTargetPositionPolicy", "selectedEffectGroupId", "patternIds", "completionCount", "followupPatternId", "marioStage", "triggerKind", "countPerPlayer", "radiusM", "effectLifetimeMs",
 					  "arenaRandomCount", "arenaRandomRadiusM", "arenaHeightToleranceM", "arenaMinimumSpacingM", "randomPlayerOnly",
 					  "rearmOnExit", "repeatAfterKnockback", "bossChargeDistanceM", "chargeYawOffsetDegrees", "hudMode", "teleportPosition", "clonePatternId", "clockHours",
 					  "targetWorldOccurrenceIds", "contactGroupId", "contactPriority", "contactMotions", "targetLogicOccurrenceId", "contactTargetWorldOccurrenceId", "sceneProfileId", "effectResourceId", "lightResourceId", "effectDelayMs", "attachmentSlot", "gripLocalOffset" }))
@@ -2881,6 +2998,19 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 				const DATA_JSON_VALUE* const value = logicValue.Find(name);
 				return nullptr == value || Try_ParseFinite(*value, minimum, maximum, out);
 			};
+			if (!Parse_AttackHits(logicValue.Find("fixedHits"), stagedLogic.FixedHits) ||
+				!Parse_AttackHits(logicValue.Find("trackingHits"), stagedLogic.TrackingHits) ||
+				!Parse_AttackHits(logicValue.Find("projectileHits"), stagedLogic.ProjectileHits))
+			{ outStatus = "Dynamic attack template is malformed."; return false; }
+			if (const auto* sets = logicValue.Find("randomVolleyHits"))
+			{
+				if (!sets->Is_Array() || sets->Get_Array().size() > 32u) { outStatus = "Random hit sets are not bounded."; return false; }
+				for (const auto& set : sets->Get_Array())
+				{
+					stagedLogic.RandomVolleyHits.emplace_back();
+					if (!Parse_AttackHits(&set, stagedLogic.RandomVolleyHits.back())) { outStatus = "Random hit template is malformed."; return false; }
+				}
+			}
 			const auto* randomSets = logicValue.Find("randomVolleyOccurrenceSets");
 			const bool hasRandomFields = randomSets || logicValue.Find("randomSpawnIntervalMs") ||
 				logicValue.Find("randomArenaRadiusM") || logicValue.Find("randomArenaHeightToleranceM");
@@ -2950,6 +3080,7 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 				!optionalText("targetWorldInstanceId", stagedLogic.strTargetWorldInstanceId) ||
 				!optionalText("motionInstanceId", stagedLogic.strMotionInstanceId) ||
 				!optionalUnsigned("percent", 100u, stagedLogic.iPercent) ||
+				!optionalUnsigned("marioStage", 4u, stagedLogic.iMarioEntryStage) ||
 				!optionalUnsigned("durationMs", MAX_TIME_MS, stagedLogic.iDurationMs) ||
 				!optionalText("pushDirection", stagedLogic.strPushDirection) ||
 				!optionalFinite("pushRangeM", 0.0, 20.0, stagedLogic.fPushRangeM) ||
@@ -3548,16 +3679,20 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
                 if (const auto* spawns = boxValue.Find("patternSpawns"))
                 {
                     if (!spawns->Is_Array() || spawns->Get_Array().size() > MAX_SUMMON_PATTERN_SPAWNS)
-                    { outStatus = "Summon patternSpawns requires at most four rows."; return false; }
+                    { outStatus = "Summon patternSpawns requires at most sixteen rows."; return false; }
                     for (const auto& value : spawns->Get_Array())
                     {
                         KOUKU_SAYDON_COMPOSITION_SUMMON_PATTERN_SPAWN spawn;
                         const auto* id = Required(value, "spawnId", DATA_JSON_TYPE::STRING);
                         const auto* target = Required(value, "patternId", DATA_JSON_TYPE::STRING);
                         const auto* yaw = Required(value, "yawOffsetDegrees", DATA_JSON_TYPE::NUMBER);
-                        if (!Has_ExactProperties(value, { "spawnId", "patternId", "positionOffset", "yawOffsetDegrees" }) ||
+                        const auto* anchor = value.Find("anchorKind");
+                        if (anchor && anchor->Is_String()) spawn.strAnchorKind = anchor->Get_String();
+                        const double positionLimit = spawn.strAnchorKind == "MAP" ? 100000.0 : 1000.0;
+                        if (!Has_Properties(value, { "spawnId", "patternId", "positionOffset", "yawOffsetDegrees" }, { "anchorKind" }) ||
+                            (anchor && !anchor->Is_String()) || (spawn.strAnchorKind != "BOSS" && spawn.strAnchorKind != "MAP") ||
                             !id || !target || !yaw || !value.Find("positionOffset") ||
-                            !Read_PresentationVector(value, "positionOffset", spawn.PositionOffset, -1000.0, 1000.0) ||
+                            !Read_PresentationVector(value, "positionOffset", spawn.PositionOffset, -positionLimit, positionLimit) ||
                             !Try_ParseFinite(*yaw, -360.0, 360.0, spawn.fYawOffsetDegrees))
                         { outStatus = "Summon Pattern spawn fields or transform are invalid."; return false; }
                         spawn.strSpawnId = id->Get_String(); spawn.strPatternId = target->Get_String();
@@ -4079,18 +4214,44 @@ bool_t Client::CKoukuSaydonCompositionDocument::Validate_SummonPatternTarget(
     if (target == document.Patterns.end() || !target->strLoadError.empty())
         return fail("target is missing or invalid.");
     if (target->strPatternId == owner.strPatternId || target->strGateId != owner.strGateId ||
-        target->strActorProfileId != owner.strActorProfileId || target->strCategory != "MECHANIC")
-        return fail("choose another MECHANIC Pattern with the same Gate and actor.");
-    if (!target->PatternOccurrences.empty() || !target->LogicOccurrences.empty() || !target->SummonOccurrences.empty() ||
-        !target->WorldOccurrences.empty() || !target->SceneProfileOccurrences.empty() || !target->PresentationOccurrences.empty() ||
+        target->strActorProfileId != owner.strActorProfileId || target->strCategory != "MECHANIC" ||
+        target->strTargetBossPlacementId != owner.strTargetBossPlacementId)
+        return fail("choose another MECHANIC Pattern with the same Gate, actor and boss target.");
+    if (!target->PatternOccurrences.empty() || !target->SummonOccurrences.empty() ||
+        !target->WorldOccurrences.empty() || !target->SceneProfileOccurrences.empty() ||
         target->BossMotion || target->bEnterCombatOnFinish || target->bResetBossToSpawn || target->ResetBossYawDegrees ||
         std::any_of(document.Folders.begin(), document.Folders.end(), [&](const auto& folder) {
             return folder.strTimelinePatternId == target->strPatternId;
         }) || std::any_of(target->Stages.begin(), target->Stages.end(), [](const auto& stage) { return stage.bRetargetOnEnter; }))
-        return fail("only Animation rows are supported; nested Summon, Parent, Logic, other lanes and boss movement are unavailable.");
+        return fail("nested Summon, Parent, World, Scene and boss movement overrides are unavailable.");
+    for (const auto& box : target->PresentationOccurrences)
+    {
+        const auto resource = std::find_if(document.PresentationResources.begin(), document.PresentationResources.end(),
+            [&](const auto& row) { return row.strResourceId == box.strResourceId; });
+        if (resource == document.PresentationResources.end() ||
+            (resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT && resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::SOUND) ||
+            box.strAnchorKind != "BOSS" || !box.strWorldId.empty() || !box.strWorldOccurrenceId.empty() ||
+            !box.strLogicOccurrenceId.empty())
+            return fail("spawned presentation supports only actor-bound BOSS Effect and Sound rows.");
+    }
+    for (const auto& box : target->LogicOccurrences)
+    {
+        const auto logic = std::find_if(document.Logics.begin(), document.Logics.end(),
+            [&](const auto& row) { return row.strLogicId == box.strLogicId; });
+        if (logic == document.Logics.end() || logic->strLogicType != "TRIGGER" ||
+            logic->strTriggerKind != "ALBION_AIRBORNE" ||
+            (logic->strAirbornePhase != "JUMP" && logic->strAirbornePhase != "SLAM") ||
+            !logic->strSelectedEffectGroupId.empty() || !box.OnSuccessLogicIds.empty() ||
+            !box.OnFailLogicIds.empty() || !box.OnTimeoutLogicIds.empty())
+            return fail("spawned Logic supports only actor-local airborne JUMP and SLAM without outcomes.");
+    }
     if (!Pattern_Lifetime(*target) || std::none_of(target->Stages.begin(), target->Stages.end(),
         [](const auto& stage) { return !stage.AnimationOccurrences.empty(); }))
         return fail("target needs a nonempty Animation timeline.");
+    for (const auto& box : owner.SummonOccurrences)
+        for (const auto& spawn : box.PatternSpawns)
+            if (spawn.strPatternId == targetPatternId && box.iDurationMs < Pattern_Lifetime(*target))
+                return fail("the Summon lifetime must cover the complete child Pattern.");
     outStatus.clear();
     return true;
 }
@@ -4151,6 +4312,16 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 			<< "      \"logicId\": \"" << CDataJson::Escape(logic.strLogicId) << "\",\n"
 			<< "      \"displayName\": \"" << CDataJson::Escape(logic.strDisplayName) << "\",\n"
 			<< "      \"logicType\": \"" << CDataJson::Escape(logic.strLogicType) << "\"";
+		if (!logic.FixedHits.empty()) { output << ",\n      \"fixedHits\": "; Write_AttackHits(output, logic.FixedHits); }
+		if (!logic.TrackingHits.empty()) { output << ",\n      \"trackingHits\": "; Write_AttackHits(output, logic.TrackingHits); }
+		if (!logic.ProjectileHits.empty()) { output << ",\n      \"projectileHits\": "; Write_AttackHits(output, logic.ProjectileHits); }
+		if (!logic.RandomVolleyHits.empty())
+		{
+			output << ",\n      \"randomVolleyHits\": [";
+			for (std::size_t index = 0; index < logic.RandomVolleyHits.size(); ++index)
+			{ if (index) output << ", "; Write_AttackHits(output, logic.RandomVolleyHits[index]); }
+			output << "]";
+		}
 		/* Only the keys of the definition's kind are written, so a typed file
 		   stays exactly what the projector accepts. */
 		if ("DURATION" == logic.strLogicType && !logic.strJudgementKind.empty())
@@ -4177,6 +4348,12 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 						<< ",\n      \"randomArenaRadiusM\": " << logic.fRandomArenaRadiusM
 						<< ",\n      \"randomArenaHeightToleranceM\": " << logic.fRandomArenaHeightToleranceM;
 				}
+			}
+			else if ("BOSS_TRACK_TARGET" == logic.strJudgementKind)
+			{
+				// A rotate-only window stays byte-identical to its saved form.
+				if (logic.fFollowSpeedScale != 0.0)
+					output << ",\n      \"followSpeedScale\": " << logic.fFollowSpeedScale;
 			}
             else if ("PURSUIT_PROJECTILES" == logic.strJudgementKind)
             {
@@ -4254,6 +4431,9 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 				<< ",\n      \"percent\": " << logic.iPercent
 				<< ",\n      \"durationMs\": " << logic.iDurationMs
 				<< ",\n      \"followupPatternId\": \"" << CDataJson::Escape(logic.strFollowupPatternId) << "\"";
+			// Omitted at 0 so existing MARIO_ENTER rows re-save byte-identical.
+			if (logic.strOutcomeKind == "MARIO_ENTER" && logic.iMarioEntryStage != 0u)
+				output << ",\n      \"marioStage\": " << logic.iMarioEntryStage;
 			if (logic.strOutcomeKind == "MAX_HP_PERCENT_DAMAGE" && (logic.fPushRangeM != 0.0 || logic.iPushMs != 0u))
 				output << ",\n      \"pushRangeM\": " << logic.fPushRangeM
 					<< ",\n      \"pushMs\": " << logic.iPushMs;
@@ -4332,7 +4512,7 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 			}
 			else if (logic.strTriggerKind == "HUD_ENTER")
 				output << ",\n      \"hudMode\": \"" << logic.strHudMode << "\"";
-			else if (logic.strTriggerKind == "CARD_MAZE_ENTER" || logic.strTriggerKind == "BOSS_TELEPORT_XZ")
+			else if (logic.strTriggerKind == "CARD_MAZE_ENTER" || (logic.strTriggerKind == "BOSS_TELEPORT_XZ" || logic.strTriggerKind == "BOSS_TELEPORT_FACE_CENTER" || logic.strTriggerKind == "MARIO_PHASE2_PLAYERS"))
 				output << ",\n      \"teleportPosition\": [" << logic.TeleportPosition[0] << ", " << logic.TeleportPosition[1] << ", " << logic.TeleportPosition[2] << "]";
 			else if (logic.strTriggerKind == "REAL_GAZE_TELEPORT")
 			{
@@ -4397,11 +4577,13 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 			<< "\", \"defaultAnchorKind\": \"" << CDataJson::Escape(row.strDefaultAnchorKind)
 			<< "\", \"kind\": \"" << Presentation_KindName(row.eKind)
 			<< "\", \"assetId\": \"" << CDataJson::Escape(row.strAssetId)
+			<< "\", \"soundEvent\": \"" << CDataJson::Escape(row.strSoundEvent)
 			<< "\", \"resourceKind\": \"" << CDataJson::Escape(row.strResourceKind)
 			<< "\", \"elementId\": \"" << CDataJson::Escape(row.strElementId)
 			<< "\", \"durationMs\": " << row.iDurationMs
 			<< ", \"shape\": \"" << CDataJson::Escape(row.strShape) << "\", \"colliderKind\": \"" << CDataJson::Escape(row.strColliderKind) << "\", \"halfExtents\": ";
 		Write_PresentationVector(output, row.HalfExtents);
+		if (row.fInnerRadiusM > 0.0) output << ", \"innerRadiusM\": " << row.fInnerRadiusM;
 		output << ", \"radiusM\": " << row.fRadiusM << ", \"halfAngleDegrees\": " << row.fHalfAngleDegrees
 			<< '}' << (i + 1u < document.PresentationResources.size() ? "," : "") << '\n';
 	}
@@ -4526,6 +4708,7 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
                     output << "\n            { \"spawnId\": \"" << CDataJson::Escape(spawn.strSpawnId)
                         << "\", \"patternId\": \"" << CDataJson::Escape(spawn.strPatternId) << "\", \"positionOffset\": ";
                     Write_PresentationVector(output, spawn.PositionOffset);
+                    if (spawn.strAnchorKind != "BOSS") output << ", \"anchorKind\": \"" << CDataJson::Escape(spawn.strAnchorKind) << "\"";
                     output << ", \"yawOffsetDegrees\": " << spawn.fYawOffsetDegrees << " }";
                 }
                 output << "\n          ]";
@@ -4597,7 +4780,7 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 			output << ", \"fadeInMs\": " << row.iFadeInMs << ", \"fadeOutMs\": " << row.iFadeOutMs
 				<< ", \"dissolveStart\": " << row.fDissolveStart << ", \"dissolveEnd\": " << row.fDissolveEnd
 				<< ", \"brightnessMultiplier\": " << row.fBrightnessMultiplier
-				<< ", \"volume\": " << row.fVolume << ", \"followBoss\": " << (row.bFollowBoss ? "true" : "false")
+				<< ", \"volume\": " << row.fVolume << ", \"soundSourceStartMs\": " << row.iSoundSourceStartMs << ", \"followBoss\": " << (row.bFollowBoss ? "true" : "false")
 				<< ", \"debugRender\": " << (row.bDebugRender ? "true" : "false")
 				<< ", \"bone\": \"" << CDataJson::Escape(row.strBone) << "\", \"boneTarget\": \"" << row.strBoneTarget << "\", \"regionId\": \"" << CDataJson::Escape(row.strRegionId)
 				<< "\", \"cardSymbol\": \"" << CDataJson::Escape(row.strCardSymbol)
@@ -4606,7 +4789,8 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 				<< "\", \"worldId\": \"" << CDataJson::Escape(row.strWorldId) << "\", \"logicOccurrenceId\": \"" << CDataJson::Escape(row.strLogicOccurrenceId)
 				<< "\", \"worldOccurrenceId\": \"" << CDataJson::Escape(row.strWorldOccurrenceId) << "\""
 				<< (0u != row.iWorldEmissionIndex ? ", \"worldEmissionIndex\": " + std::to_string(row.iWorldEmissionIndex) : std::string{})
-				<< (!row.strSelectionGroupId.empty() ? ", \"selectionGroupId\": \"" + CDataJson::Escape(row.strSelectionGroupId) + "\"" : std::string{}) << "}"
+				<< (!row.strSelectionGroupId.empty() ? ", \"selectionGroupId\": \"" + CDataJson::Escape(row.strSelectionGroupId) + "\"" : std::string{})
+				<< (row.strBoneRotation != "TARGET_YAW" ? ", \"boneRotation\": \"" + CDataJson::Escape(row.strBoneRotation) + "\"" : std::string{}) << "}"
 				<< (i + 1u < pattern.PresentationOccurrences.size() ? "," : "") << '\n';
 		}
 		output << "      ]\n    }"
@@ -4671,6 +4855,7 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
                 if (row.bLoopEffectToDuration) output << ", \"loopEffectToDuration\": true";
                 output << ", \"fadeInMs\": " << row.iFadeInMs << ", \"fadeOutMs\": " << row.iFadeOutMs
                     << ", \"dissolveStart\": " << row.fDissolveStart << ", \"dissolveEnd\": " << row.fDissolveEnd
+                    << ", \"soundSourceStartMs\": " << row.iSoundSourceStartMs
                     << ", \"brightnessMultiplier\": " << row.fBrightnessMultiplier << ", \"volume\": " << row.fVolume
                     << ", \"followBoss\": " << (row.bFollowBoss ? "true" : "false") << ", \"debugRender\": " << (row.bDebugRender ? "true" : "false")
                     << ", \"bone\": \"" << CDataJson::Escape(row.strBone) << "\", \"boneTarget\": \"" << row.strBoneTarget << "\", \"regionId\": \"" << CDataJson::Escape(row.strRegionId)
@@ -4678,7 +4863,8 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
                     << "\", \"anchorKind\": \"" << CDataJson::Escape(row.strAnchorKind) << "\", \"worldId\": \"" << CDataJson::Escape(row.strWorldId)
                     << "\", \"logicOccurrenceId\": \"" << CDataJson::Escape(row.strLogicOccurrenceId)
                     << "\", \"worldOccurrenceId\": \"" << CDataJson::Escape(row.strWorldOccurrenceId) << "\""
-                    << (0u != row.iWorldEmissionIndex ? ", \"worldEmissionIndex\": " + std::to_string(row.iWorldEmissionIndex) : std::string{}) << "}"
+                    << (0u != row.iWorldEmissionIndex ? ", \"worldEmissionIndex\": " + std::to_string(row.iWorldEmissionIndex) : std::string{})
+                    << (row.strBoneRotation != "TARGET_YAW" ? ", \"boneRotation\": \"" + CDataJson::Escape(row.strBoneRotation) + "\"" : std::string{}) << "}"
                     << (j + 1 < bundle.PresentationOccurrences.size() ? "," : "") << '\n';
             }
             output << "]}";

@@ -373,6 +373,7 @@ namespace LostArk::Server
 		void Handle_MarioReturn(SESSION_ID sessionId, const LostArk::Shared::C2S_MARIO_RETURN& request);
 		LostArk::Shared::S2C_MARIO_RETURN_RESULT Apply_MarioReturn(
 			SERVER_PLAYER& player, const LostArk::Shared::C2S_MARIO_RETURN& request);
+		bool Resolve_MarioReturnDestination(const SERVER_PLAYER& player, SERVER_NAV_POINT& destination) const;
 		static void Reset_MarioContactAction(SERVER_PLAYER& player);
 		SERVER_TRIGGER_MOVE_ENTRY_RESULT Begin_MarioTriggerMove(
 			const WORLD_BOOTSTRAP_PLACEMENT& trigger, SERVER_PLAYER& player,
@@ -502,6 +503,39 @@ namespace LostArk::Server
 			SESSION_ID sessionId,
 			const LostArk::Shared::
 				C2S_DEBUG_VALTAN_PATTERN_FLOW_STOP_AFTER_CURRENT& request);
+		void Handle_KoukuRaidRequest(SESSION_ID sessionId, const LostArk::Shared::C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST& request);
+		bool Is_KoukuRaidCinematic() const;
+		struct KOUKU_RAID_RUN final
+		{
+			SESSION_ID iOwnerSessionId = INVALID_SESSION_ID;
+			LostArk::Shared::C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST Request;
+			LostArk::Shared::S2C_KOUKUSAYDON_RAID_STATE State;
+			std::shared_ptr<const CGameplayCatalog> pCatalog;
+			std::optional<LostArk::Shared::C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST> PriorAuditionRequest;
+			std::optional<LostArk::Shared::S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT> PriorAuditionResult;
+			std::optional<LostArk::Shared::S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE> PriorAuditionLifecycle;
+			std::vector<LostArk::Shared::PLAYER_ID> PlayerIds;
+			std::string strEntryTriggerSequenceId;
+			std::set<std::string> CompletedArrivals;
+			LostArk::Shared::NET_ENTITY_ID iPrimaryBossId = LostArk::Shared::INVALID_NET_ENTITY_ID;
+			std::uint32_t iAuditionRequestSequence = 0u, iAuditionEpoch = 0u, iNextEntryTick = 0u;
+			bool bClearCinematic = false, bEntryRunning = false;
+		};
+		KOUKU_RAID_RUN m_KoukuRaid;
+		std::uint32_t m_iNextKoukuRaidEpoch = 1u;
+		std::map<SESSION_ID, std::pair<LostArk::Shared::C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST, LostArk::Shared::S2C_KOUKUSAYDON_RAID_STATE>> m_KoukuRaidReceipts;
+		bool Is_KoukuRaidRunning() const;
+		bool Build_KoukuRaidState(LostArk::Shared::S2C_KOUKUSAYDON_RAID_STATE& state) const;
+		void Broadcast_KoukuRaidState();
+		void Update_KoukuRaid(std::uint32_t tick);
+		void Notify_KoukuRaidBossDeath(const SERVER_WORLD_ENTITY& boss, std::uint32_t tick);
+		void Stop_KoukuRaid(std::string reason, bool completed = false);
+		bool Begin_KoukuRaidPreparation(SESSION_ID sessionId, const LostArk::Shared::C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST& request, std::string& reason);
+		bool Apply_KoukuRaidReadiness(SESSION_ID sessionId, const LostArk::Shared::C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST& request, std::string& reason);
+		bool Begin_KoukuRaidCinematic(const std::string& gateId, bool clear, std::uint32_t tick);
+		bool Advance_KoukuRaidGate(std::uint8_t nextGate, bool restart);
+		bool Start_KoukuRaidCombat(std::uint32_t tick);
+		bool Start_KoukuRaidEntry(std::uint32_t tick);
 		void Handle_KoukuSaydonPatternAudition(
 			SESSION_ID sessionId,
 			const LostArk::Shared::
@@ -522,7 +556,6 @@ namespace LostArk::Server
 			const std::string& archetypeId);
 		bool Update_KoukuSaydonBoss(
 			SERVER_WORLD_ENTITY& boss, std::uint32_t serverTick);
-#ifdef _DEBUG
 		/* Broadcasts the cues a Logic tick produced, inserts follow-up patterns
 		after the running audition slot, and returns true when a window asked
 		the running pattern to end now (the brain commits it as COMPLETED). */
@@ -546,6 +579,8 @@ namespace LostArk::Server
 			const BOSS_PATTERN_MECHANIC_TRIGGER& trigger, KOUKUSAYDON_PLAYER_TARGET_WINDOW_STATE& window,
 			const CGameplayCatalog& catalog, std::uint32_t serverTick, bool hasAlivePlayers);
 		void Update_KoukuGazeClones(std::uint32_t serverTick);
+		[[nodiscard]] bool Update_KoukuSummonTriggers(SERVER_WORLD_ENTITY& clone,
+			const BOSS_PATTERN_DEFINITION& pattern, std::uint32_t serverTick);
 		bool Apply_KoukuLogicOutput(
 			const KOUKUSAYDON_LOGIC_OUTPUT& output,
 			SERVER_WORLD_ENTITY& boss,
@@ -625,11 +660,12 @@ namespace LostArk::Server
 			SERVER_WORLD_ENTITY& boss, const BOSS_PATTERN_DEFINITION& pattern, std::uint32_t serverTick);
 		void Update_KoukuMarioEntry(KOUKUSAYDON_PATTERN_AUDITION_MEMBER& member, std::uint32_t serverTick);
 		void Commit_KoukuMarioEntries();
+		bool Commit_KoukuMarioPhasePlayers(SERVER_WORLD_ENTITY& boss, const BOSS_PATTERN_MECHANIC_TRIGGER& trigger, std::uint32_t serverTick);
 		void Complete_KoukuMarioReturn(const SERVER_PLAYER& player,
 			const std::string& sourcePlacementId, std::uint32_t updateTick);
 		void Queue_KoukuCompletionChainSuccess(KOUKUSAYDON_PATTERN_AUDITION_MEMBER& member,
 			std::uint32_t serverTick);
-		struct KOUKU_PENDING_MARIO_ENTRY final { std::string strMemberId; LostArk::Shared::PLAYER_ID iPlayerId; std::uint32_t iRootStartTick; };
+		struct KOUKU_PENDING_MARIO_ENTRY final { std::string strMemberId; LostArk::Shared::PLAYER_ID iPlayerId; std::uint32_t iRootStartTick; std::uint8_t iStage = 0u; };
 		std::vector<KOUKU_PENDING_MARIO_ENTRY> m_PendingKoukuMarioEntries;
 		bool Enter_MarioFromPattern(SERVER_PLAYER& player, std::uint8_t stage);
 		bool Refresh_KoukuSupportSurfaces(std::uint32_t serverTick);
@@ -672,7 +708,6 @@ namespace LostArk::Server
 			std::string reason = {}, LostArk::Shared::NET_ENTITY_ID bossId = LostArk::Shared::INVALID_NET_ENTITY_ID);
 		bool Flush_KoukuSaydonPatternAuditionLifecycle();
 		void Clear_KoukuSaydonPatternAudition(bool completed = false, std::string reason = {});
-#endif
 		SERVER_WORLD_ENTITY* Find_AuditionBoss();
 		SERVER_WORLD_ENTITY* Find_AuditionBoss(
 			const std::string& placementId);
@@ -1007,6 +1042,7 @@ namespace LostArk::Server
 			std::uint8_t iCurrentGate = 0u;     // 1-based, 0 = no gate raised yet
 			std::uint8_t iClearedMask = 0u;
 			std::uint32_t iProposalId = 0u;     // 0 = no vote open
+			std::uint32_t iRaidEpoch = 0u;      // Nonzero pins a vote to its immutable raid run
 			LostArk::Shared::GATE_PROGRESS_KIND eKind = LostArk::Shared::GATE_PROGRESS_KIND::ADVANCE;
 			std::uint32_t iRequestSequence = 0u;
 			LostArk::Shared::PLAYER_ID iProposerId = LostArk::Shared::INVALID_PLAYER_ID;
@@ -1028,6 +1064,8 @@ namespace LostArk::Server
 		void Note_GatePlacementRaised(const std::string& placementId);
 		bool Advance_Gate(std::uint8_t nextGate);
 		bool Spawn_GatePlacement(const std::string& placementId);
+		bool Build_GateProgressState(LostArk::Shared::S2C_GATE_PROGRESS_STATE& message,
+			bool bClosed, LostArk::Shared::GATE_PROGRESS_VOTE_RESULT result) const;
 		void Broadcast_GateProgressState(
 			bool bClosed, LostArk::Shared::GATE_PROGRESS_VOTE_RESULT result);
 		std::uint8_t Gate_Count() const;
@@ -1640,7 +1678,6 @@ namespace LostArk::Server
 			m_ValtanPatternFlowStartSequenceBySessionId;
 		std::unordered_map<SESSION_ID, VALTAN_PATTERN_FLOW_COMMAND_RECEIPT>
 			m_ValtanPatternFlowControlSequenceBySessionId;
-#ifdef _DEBUG
 		struct TARGETED_KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE final
 		{
 			SESSION_ID iSessionId = INVALID_SESSION_ID;
@@ -1654,6 +1691,7 @@ namespace LostArk::Server
 			m_KoukuSaydonPatternAuditionReceiptBySessionId;
 		std::vector<TARGETED_KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE>
 			m_PendingKoukuSaydonPatternAuditionLifecycle;
+#ifdef _DEBUG
 		struct TARGETED_VALTAN_AUDITION_LIFECYCLE final
 		{
 			SESSION_ID iSessionId = INVALID_SESSION_ID;

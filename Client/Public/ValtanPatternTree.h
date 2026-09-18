@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ValtanPatternEffectCueDocument.h"
+#include "AnimationSkillBindingDocument.h"
 #include "Client_Defines.h"
 #include "Engine_Defines.h"
 #include "PlayerHandGripTransform.h"
@@ -311,6 +312,8 @@ struct VALTAN_STAGE_VIEW final
 	std::vector<VALTAN_STAGE_ACTION_VIEW> Actions;
 	std::vector<VALTAN_STAGE_BRANCH_VIEW> Branches;
 	std::vector<VALTAN_CAMERA_INVOCATION_VIEW> CameraInvocations;
+    std::vector<BOSS_STAGE_SCENE_PROFILE_OCCURRENCE> SceneProfileOccurrences;
+    std::vector<BOSS_STAGE_LIGHT_OCCURRENCE> LightOccurrences;
 
 	/* Product authoring uses stable ordered occurrences.  The legacy name
 	   views remain populated for compile-compatible callers while format v1
@@ -753,6 +756,14 @@ private:
 class CValtanPatternTree final
 {
 public:
+	/* Source inventory is independent of generated Product parity. It retains
+	   the existing split schema/type/identity checks; resource and native
+	   readiness belongs to Preview/Publish. Failed reads preserve OutView. */
+	static bool_t Load_Authoring_WhileAdmitted(
+		const CValtanCanonicalProductReadAdmission& Admission,
+		VALTAN_PATTERN_TREE_VIEW& OutView,
+		std::string& strOutStatus);
+
 	static bool_t Load(
 		VALTAN_PATTERN_TREE_VIEW& OutView,
 		std::string& strOutStatus);

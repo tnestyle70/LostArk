@@ -158,6 +158,18 @@ public:
 #endif
 
 private:
+	void UpdateKoukuGateCompletePlay();
+	string m_strKoukuCompletePlayFlowGate;
+	std::unique_ptr<KOUKU_SAYDON_COMPOSITION_DOCUMENT> m_pKoukuRaidSequenceDocument;
+	LostArk::Shared::C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST m_KoukuRaidRequest;
+	std::uint32_t m_iNextKoukuRaidRequest = 1u, m_iKoukuRaidPendingRequest = 0u, m_iKoukuRaidDocumentEpoch = 0u;
+	std::string m_strKoukuRaidPresentationKey, m_strKoukuRaidFailedKey;
+	std::chrono::steady_clock::time_point m_KoukuRaidReplyDeadline{};
+	bool_t m_bKoukuRaidStopAfterAdmission = false;
+	uint64_t m_iKoukuCompletePlayWorldGeneration = 0u;
+	std::uint32_t m_iKoukuRaidAcknowledgedEpoch = 0u;
+	string m_strKoukuCompletePlayStatus =
+		"Load the KoukuSaydon inventory, pick a gate and a saved pattern, then Complete Play.";
 	HRESULT Ready_Fonts();
 	HRESULT Ready_Prototype_For_Static();
 	HRESULT Ready_Prototype_For_LoadingChrome();
@@ -456,7 +468,6 @@ private:
 	bool_t PrepareKoukuGateCompletePlay(std::string_view gateId, std::string& status);
 	bool_t StartKoukuGateCompletePlay(std::string_view gateId, std::string& status);
 	void FinishKoukuGateCompletePlay(std::string_view gateId, std::string& status);
-	void UpdateKoukuGateCompletePlay();
 	void CancelKoukuGateCompletePlay(const std::string& status);
 	bool BeginKoukuSequenceArrivals(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
 		const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern, uint32_t startClockMs, std::string& status);
@@ -918,15 +929,12 @@ private:
 	bool_t m_bKoukuCompletePlayLoadAttempted = false;
 	int32_t m_iKoukuCompletePlayGate = 0;
 	int32_t m_iKoukuCompletePlayCategory = 0;
-	string m_strKoukuCompletePlayFlowGate;
 	uint32_t m_iKoukuCompletePlayFlowRevision = 0u;
-	uint64_t m_iKoukuCompletePlayWorldGeneration = 0u;
 	bool_t m_bKoukuCompletePlayAwaitingGate = false;
 	bool_t m_bKoukuFlowPublishPending = false;
 	int32_t m_iKoukuCompletePlaySelection = 0;
 	string m_strKoukuCompletePlayPatternId;
-	string m_strKoukuCompletePlayStatus =
-		"Load the KoukuSaydon inventory, pick a gate and a saved pattern, then Complete Play.";
+
 	vector<string> m_CompletePlayPatternIds;
 	vector<string> m_CompletePlayPatternLabels;
 	/* Stable identity is the selection authority.  UI indices are derived from

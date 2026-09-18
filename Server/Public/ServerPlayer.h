@@ -7,6 +7,8 @@
 #include "Network/PacketMessages.h"
 #include "ServerNavigation.h"
 
+#include <array>
+#include <optional>
 #include <cstdint>
 #include <bitset>
 #include <string>
@@ -160,6 +162,8 @@ namespace LostArk::Server
 		LostArk::Shared::HONOR_TITLE_ID iHonorTitleId = LostArk::Shared::INVALID_HONOR_TITLE_ID;
 		std::uint8_t iMarioStage = 0u;
 		std::uint8_t iMarioLayoutVariant = 0u;
+		// Pinned by the entry pattern; survives the arena phase and terminal move start.
+		std::optional<std::array<float, 3u>> MarioReturnPosition;
 		LostArk::Shared::PLAYER_MADNESS_FORM ePreMarioForm =
 			LostArk::Shared::PLAYER_MADNESS_FORM::NORMAL;
 		std::uint32_t iLastMarioMoveSequence = 0u;
@@ -172,7 +176,7 @@ namespace LostArk::Server
 		float fMarioRailOriginZ = 0.f;
 		float fMarioRailRightX = 0.f;
 		float fMarioRailRightZ = 0.f;
-		void Clear_MarioControl()
+		void Clear_MarioControl(const bool preserveReturnPosition = false)
 		{
 			if (0u != iMarioStage)
 			{
@@ -185,6 +189,7 @@ namespace LostArk::Server
 				MovePath.clear();
 				iMovePathIndex = 0u;
 			}
+			if (!preserveReturnPosition) MarioReturnPosition.reset();
 			iMarioStage = 0u;
 			iMarioLayoutVariant = 0u;
 			iMarioMoveExpiryTick = 0u;

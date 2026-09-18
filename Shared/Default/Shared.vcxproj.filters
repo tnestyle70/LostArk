@@ -30,6 +30,12 @@
 	<ClInclude Include="..\Public\Gameplay\WorldCollisionContract.h">
 	  <Filter>Public\Gameplay</Filter>
 	</ClInclude>
+	<ClInclude Include="..\Public\Gameplay\AttackHitTemplate.h">
+	  <Filter>Public\Gameplay</Filter>
+	</ClInclude>
+	<ClInclude Include="..\Public\Gameplay\KoukuTargetTracking.h">
+	  <Filter>Public\Gameplay</Filter>
+	</ClInclude>
     <ClInclude Include="..\Public\Network\PacketWriter.h">
       <Filter>Public\Network</Filter>
     </ClInclude>

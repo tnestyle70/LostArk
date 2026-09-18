@@ -415,6 +415,14 @@ bool Client::CClientReplication::Update()
 				m_strInteractPromptTriggerId);
 			break;
 
+		case CLIENT_REPLICATION_EVENT_TYPE::KOUKUSAYDON_RAID_STATE:
+			if (m_Desc.iLayerLevelIndex == ETOUI(LEVEL::KAKULSAYDON_ARENA) && event.KoukuRaidState.eWorldId == LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA)
+			{
+				m_KoukuRaidReply = event.KoukuRaidState;
+				if (event.KoukuRaidState.iRunEpoch && event.KoukuRaidState.iRunEpoch >= m_KoukuRaidState.iRunEpoch)
+					m_KoukuRaidState = event.KoukuRaidState;
+			}
+			break;
 		case CLIENT_REPLICATION_EVENT_TYPE::KOUKUSAYDON_BUNDLE_STATE:
 			if (m_Desc.iLayerLevelIndex == ETOUI(LEVEL::KAKULSAYDON_ARENA) &&
                 event.KoukuBundleState.eWorldId == LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA &&
@@ -4078,6 +4086,7 @@ void Client::CClientReplication::Reset_World()
 	m_FailedPlayerAssetClasses.clear();
 	m_PendingWorldSequencePlays.clear();
 	m_KoukuBundleState = {};
+	m_KoukuRaidState = {}; m_KoukuRaidReply = {};
 	//?묒냽???딄꼈?????꾩옱 registry???댁븘?덈뒗 character瑜?紐⑤몢 layer?먯꽌 ?쒓굅?섍퀬,
 	//registry? local handle??珥덇린?뷀븳??
 	//?뚭눼?먯뿉???몄텧?섏? ?딅뒗 ?댁쑀??留욌떎. ?꾩옱 engine? ?덈꺼 ?꾪솚 ??layer瑜?

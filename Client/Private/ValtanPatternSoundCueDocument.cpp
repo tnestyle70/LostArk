@@ -729,6 +729,32 @@ namespace
 			ClipSourceDurationSecondsByName, strOutStatus);
 	}
 
+	bool_t Parse_StorageText(const std::string_view Text,
+		VALTAN_PATTERN_SOUND_CUE_DOCUMENT& OutDocument, std::string& status)
+	{
+		DATA_JSON_VALUE root;
+		if (!CDataJson::Parse(Text, root, status) || !Is_ExactObject(root, { "schema", "formatVersion", "ownerArchetypeId", "cues" })) return false;
+		const auto* schema = root.Find("schema"); const auto* owner = root.Find("ownerArchetypeId"); const auto* cues = root.Find("cues");
+		uint32_t version = 0u;
+		if (!schema || !schema->Is_String() || schema->Get_String() != SCHEMA || !owner || !owner->Is_String() || owner->Get_String() != OWNER_ARCHETYPE_ID ||
+			!Read_Unsigned(root, "formatVersion", 1u, version) || version != 1u || !cues || !cues->Is_Array() || cues->Get_Array().size() > MAX_CUE_COUNT)
+		{ status = "Pattern Sound storage header is invalid."; return false; }
+		VALTAN_PATTERN_SOUND_CUE_DOCUMENT staged; staged.strOwnerArchetypeId = OWNER_ARCHETYPE_ID;
+		std::unordered_set<std::string> bindingIds, occurrenceIds;
+		for (const auto& value : cues->Get_Array())
+		{
+			VALTAN_PATTERN_SOUND_CUE cue;
+			if (!Is_ExactObject(value, { "bindingId", "occurrenceId", "patternId", "stageId", "actionId", "clipOccurrenceId", "soundBank", "soundEvent", "repeatPolicy", "startMs" }) ||
+				!Read_String(value,"bindingId",cue.strBindingId) || !Read_String(value,"occurrenceId",cue.strOccurrenceId) || !Read_String(value,"patternId",cue.strPatternId) ||
+				!Read_String(value,"stageId",cue.strStageId) || !Read_String(value,"actionId",cue.strActionId) || !Read_String(value,"clipOccurrenceId",cue.strClipOccurrenceId) ||
+				!Read_String(value,"soundBank",cue.strSoundBank) || !Read_String(value,"soundEvent",cue.strSoundEvent) || !Read_RepeatPolicy(value,cue.eRepeatPolicy) ||
+				!Read_Unsigned(value,"startMs",CEncounterPatternReference::MAX_STAGE_DURATION_MS,cue.iStartMs) || !bindingIds.insert(cue.strBindingId).second || !occurrenceIds.insert(cue.strOccurrenceId).second)
+			{ status = "Pattern Sound storage row has an invalid type, range or duplicate identity."; return false; }
+			staged.Cues.push_back(std::move(cue));
+		}
+		OutDocument = std::move(staged); return true;
+	}
+
 	bool_t Parse_AuthoringText(const std::string_view Text,
 		const CEncounterPatternReference& Encounter,
 		const BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT& AnimationBindings,
@@ -1124,7 +1150,7 @@ bool_t Client::CValtanPatternSoundSourceReadAdmission::Acquire(
 	State->OwnsMutex = true;
 
 	const std::filesystem::path Path =
-		CValtanPatternSoundCueDocument::Resolve_Path();
+		CValtanPatternSoundCueDocument::Resolve_PublishedPath();
 	State->File = CreateFileW(
 		Path.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING,
 		FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN, nullptr);
@@ -1177,6 +1203,11 @@ bool_t Client::CValtanPatternSoundSourceReadAdmission::Acquire(
 	strOutStatus =
 		"Locked the exact Valtan Pattern Sound source generation for playback submission.";
 	return true;
+}
+
+std::filesystem::path Client::CValtanPatternSoundCueDocument::Resolve_PublishedPath()
+{
+	return CProjectDataRoot::Resolve(L"Valtan/Published/Valtan.patternsoundcues.json");
 }
 
 std::filesystem::path
@@ -1411,7 +1442,7 @@ bool_t Client::CValtanPatternSoundCueDocument::Load_Source(
 	CEncounterPatternReference Encounter;
 	if (!Load_EncounterReference(Encounter, strOutStatus))
 		return false;
-	const std::filesystem::path Path = Resolve_Path();
+	const std::filesystem::path Path = Resolve_PublishedPath();
 	std::ifstream Input(Path, std::ios::binary);
 	if (Path.empty() || !Input)
 	{
@@ -1448,12 +1479,6 @@ bool_t Client::CValtanPatternSoundCueDocument::Load_ForAuthoring(
 	std::string& InOutBaselineSourceBytes,
 	std::string& strOutStatus)
 {
-	CEncounterPatternReference Encounter;
-	if (!Load_EncounterReference(Encounter, strOutStatus))
-		return false;
-	BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT AnimationBindings;
-	if (!Load_AnimationBindings(AnimationBindings, strOutStatus))
-		return false;
 	std::string Text;
 	const std::filesystem::path Path = Resolve_Path();
 	if (!Read_File(Path, Text))
@@ -1464,8 +1489,7 @@ bool_t Client::CValtanPatternSoundCueDocument::Load_ForAuthoring(
 		return false;
 	}
 	VALTAN_PATTERN_SOUND_CUE_DOCUMENT Staged;
-	if (!Parse_AuthoringText(Text, Encounter, AnimationBindings,
-			Staged, strOutStatus))
+	if (!Parse_StorageText(Text, Staged, strOutStatus))
 	{
 		return false;
 	}
@@ -1473,7 +1497,7 @@ bool_t Client::CValtanPatternSoundCueDocument::Load_ForAuthoring(
 	InOutBaselineSourceBytes = std::move(Text);
 	strOutStatus = "Loaded all " +
 		std::to_string(InOutDocument.Cues.size()) +
-		" strictly joined Valtan pattern Sound cue(s) with an exact authoring baseline.";
+		" typed Valtan Sound source row(s); Publish checks resources and animation joins.";
 	return true;
 }
 
@@ -1665,7 +1689,7 @@ bool_t Client::CValtanPatternSoundCueDocument::Serialize_TransactionCandidate(
 	strOutSerialized.clear();
 	if (1u != Document.iFormatVersion ||
 		"BOSS_VALTAN" != Document.strOwnerArchetypeId ||
-		Document.Cues.empty() || Document.Cues.size() > 1024u)
+		Document.Cues.size() > 1024u)
 	{
 		strOutStatus =
 			"Pattern Sound transaction candidate has an invalid owner header or cue count.";

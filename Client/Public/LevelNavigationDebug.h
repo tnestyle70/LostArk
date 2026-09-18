@@ -47,6 +47,21 @@ private:
 	uint32_t m_DrawnCells = 0;
 	uint32_t m_VisibleOmittedCells = 0;
 	uint32_t m_SupersededCells = 0;
+	// Per-frame diagnostics shown by Render_Controls (values from the last Render_Overlay).
+	struct DRAWN_CELL_SAMPLE final
+	{
+		bool valid = false;
+		int cellX = 0;
+		int cellZ = 0;
+		float worldX = 0.f;
+		float worldZ = 0.f;
+		float height = 0.f;
+		float screenX = 0.f;
+		float screenY = 0.f;
+	};
+	float3_t m_CameraPosition{};
+	uint32_t m_FrustumRejectedCells = 0;
+	DRAWN_CELL_SAMPLE m_FirstDrawnCell;
 };
 
 NS_END

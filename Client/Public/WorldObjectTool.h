@@ -1,6 +1,7 @@
 #pragma once
 
 #include "WorldSequenceDocument.h"
+#include "WorldSequencePlayer.h"
 #include "PhysicalResourceCatalog.h"
 #include "CompositionResourceTree.h"
 #include "EffectV2_Catalog.h"
@@ -24,7 +25,8 @@ public:
     ~CWorldObjectTool();
     void Open();
     // Select stable authoring IDs without reloading or saving an existing draft.
-    bool Open_ObjectMotion(const std::string& objectId, const std::string& instanceId, std::string& status);
+    bool Open_ObjectMotion(const std::string& objectId, const std::string& instanceId, std::string& status,
+        const std::optional<CWorldSequencePlayer::OBJECT_PLACEMENT>& previewPlacement = {});
     void Deactivate();
     void Update(f32_t seconds, bool_t active);
     void Render();
@@ -119,6 +121,9 @@ private:
     bool m_ResetLayoutRequested = false;
     bool m_InteractionRequested = false;
     bool m_PreviewAtCharacter = true;
+    // Read-only context from a Composition box, valid only while this Object is selected.
+    std::optional<CWorldSequencePlayer::OBJECT_PLACEMENT> m_CompositionPreviewPlacement;
+    std::string m_CompositionPreviewObjectId;
     bool m_Ready = false;
     bool m_Dirty = false;
     bool m_PreviewActive = false;

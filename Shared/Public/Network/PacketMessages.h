@@ -3165,4 +3165,45 @@ namespace LostArk::Shared
 	bool Read_Message(
 		CPacketReader& reader,
 		S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE& message);
+	// Complete Play has one room clock; clients only present this state.
+	enum class KOUKUSAYDON_RAID_OPERATION : std::uint8_t { START, STOP, READY, FAILED, END };
+	enum class KOUKUSAYDON_RAID_PHASE : std::uint8_t
+	{ INACTIVE, PREPARING, CINEMATIC, COMBAT, WAIT_GATE, WAIT_MINIGAME, COMPLETE, ABORTED, END };
+	struct C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST final
+	{
+		std::uint32_t iRequestSequence = 0u;
+		WORLD_ID eWorldId = WORLD_ID::END;
+		KOUKUSAYDON_RAID_OPERATION eOperation = KOUKUSAYDON_RAID_OPERATION::START;
+		GameplayDataRevision ExpectedGameplayRevision{};
+		std::uint32_t iActionSourceRevision = 0u;
+		std::uint32_t iSequenceSourceRevision = 0u;
+		std::string strStartGateId;
+		std::uint32_t iExpectedRunEpoch = 0u;
+		std::string strReason; // FAILED only: bounded preparation failure.
+	};
+	struct S2C_KOUKUSAYDON_RAID_STATE final
+	{
+		PLAYER_ID iOwnerPlayerId = INVALID_PLAYER_ID;
+		WORLD_ID eWorldId = WORLD_ID::END;
+		std::uint32_t iRequestSequence = 0u;
+		std::uint32_t iRunEpoch = 0u;
+		KOUKUSAYDON_RAID_PHASE ePhase = KOUKUSAYDON_RAID_PHASE::INACTIVE;
+		std::string strGateId;
+		std::string strSequenceCompositionId;
+		std::string strSequencePatternId;
+		std::uint32_t iSequenceSourceRevision = 0u;
+		std::uint32_t iStartTick = 0u, iEndTick = 0u, iServerTick = 0u;
+		std::string strFlowEntryId;
+		std::uint32_t iFlowEntryIndex = 0u;
+		GameplayDataRevision PinnedGameplayRevision{};
+		std::uint32_t iActionSourceRevision = 0u;
+		std::string strReason;
+		std::vector<PLAYER_ID> ParticipantPlayerIds; // Immutable START roster; late joins observe only.
+		std::uint8_t iReadyMask = 0u;
+	};
+	bool Write_Message(CPacketWriter&, const C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST&);
+	bool Read_Message(CPacketReader&, C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST&);
+	bool Write_Message(CPacketWriter&, const S2C_KOUKUSAYDON_RAID_STATE&);
+	bool Read_Message(CPacketReader&, S2C_KOUKUSAYDON_RAID_STATE&);
+
 }

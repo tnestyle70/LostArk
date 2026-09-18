@@ -39,7 +39,7 @@ COMBAT_OBJECT_SOUND_CUES_REL = (
 CHARACTER_SOUND_CATALOG_REL = "Data/Sound/CharacterSoundCatalog.json"
 EFFECT_CATALOG_REL = "Data/Effects/EffectCatalog.json"
 EFFECT_V2_BINDINGS_REL = (
-    "Data/Effects/V2/Bindings/BOSS_VALTAN.effectv2bindings.json"
+    "Data/Valtan/Published/BOSS_VALTAN.effectv2bindings.json"
 )
 EFFECT_V2_AUTHORED_ROOT_REL = "Data/Effects/V2/Authored"
 EFFECT_V2_GROUP_ROOT_REL = "Data/Effects/V2/Groups"
@@ -56,11 +56,9 @@ FIXED_ARTIFACTS: tuple[tuple[str, str], ...] = (
     ("EFFECT", EFFECT_CUES_REL),
     ("EFFECT", EFFECT_V1_ALIASES_REL),
     ("CAMERA", SHAKE_CUES_REL),
-    # Pattern Sound cues intentionally remain an independently writable typed
-    # source and are pinned by their own S receipt at playback admission.  The
-    # catalog they resolve through and the non-live combat-object cue source
-    # are immutable members of M so an exact CValtan reload cannot mix them
-    # across presentation generations.
+    # Source drafts are independent; this generated Sound Product belongs to
+    # the same admitted Client/Server presentation generation as V2 bindings.
+    ("COMBAT_VISUAL", "Data/Valtan/Published/Valtan.patternsoundcues.json"),
     ("COMBAT_VISUAL", COMBAT_OBJECT_SOUND_CUES_REL),
     ("COMBAT_VISUAL", CHARACTER_SOUND_CATALOG_REL),
     ("EFFECT", EFFECT_CATALOG_REL),

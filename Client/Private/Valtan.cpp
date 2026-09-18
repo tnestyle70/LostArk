@@ -30,6 +30,8 @@
 #include <atomic>
 #include <cmath>
 #include <cstdlib>
+#include <map>
+#include <mutex>
 #include <span>
 #include <tuple>
 #include <vector>
@@ -689,6 +691,59 @@ void CValtan::Clear_PatternHitAreaPreview()
 }
 #endif
 
+namespace
+{
+    std::map<const CValtan*, std::weak_ptr<CValtan>> StageEnvironmentOwners;
+    std::mutex StageEnvironmentOwnersMutex;
+}
+
+void CValtan::Register_StageEnvironmentOwner()
+{
+    const std::lock_guard lock(StageEnvironmentOwnersMutex);
+    StageEnvironmentOwners[this] = std::static_pointer_cast<CValtan>(shared_from_this());
+}
+
+bool_t CValtan::Get_ActiveStageCameraInvocations(std::string_view actionId, std::vector<BOSS_STAGE_CAMERA_SAMPLE>& cameras)
+{
+    const std::lock_guard lock(StageEnvironmentOwnersMutex);
+    for (const auto& [key, weak] : StageEnvironmentOwners)
+        if (const auto actor = weak.lock(); actor && actor->m_isServerAuthoritative &&
+            !actor->m_isReplicationDormant && actor->m_strServerActionId == actionId)
+        {
+            const auto found = actor->m_StageEnvironments.find(std::string(actionId));
+            if (found != actor->m_StageEnvironments.end() && found->second.bHasCameraInvocations)
+            { cameras = found->second.CameraInvocations; return true; }
+        }
+    return false;
+}
+
+void CValtan::Collect_StageEnvironmentSamples(std::vector<BOSS_STAGE_ENVIRONMENT_SAMPLE>& samples)
+{
+    samples.clear();
+    const std::lock_guard lock(StageEnvironmentOwnersMutex);
+    for (auto it = StageEnvironmentOwners.begin(); it != StageEnvironmentOwners.end();)
+    {
+        const auto actor = it->second.lock();
+        if (!actor) { it = StageEnvironmentOwners.erase(it); continue; }
+        ++it;
+        const bool local = !actor->m_isServerAuthoritative && actor->m_bLocalPatternAuthoringPreview;
+        if ((!local && !actor->m_isServerAuthoritative) || actor->m_isReplicationDormant ||
+            actor->m_DeathPresentationClock.Has_Started()) continue;
+        const auto& action = local ? actor->m_strLocalPreviewActionId : actor->m_strServerActionId;
+        const auto& environments = local ? actor->m_LocalStageEnvironments : actor->m_StageEnvironments;
+        const auto found = environments.find(action);
+        if (found == environments.end()) continue;
+        auto sample = found->second;
+        if (sample.SceneProfileOccurrences.empty() && sample.LightOccurrences.empty() && sample.CameraInvocations.empty()) continue;
+        if (!actor->Try_Get_PresentationRootMatrix(&sample.Root)) continue;
+        sample.strOwnerKey = std::to_string(reinterpret_cast<uintptr_t>(actor.get()));
+        sample.strActionId = action;
+        sample.bPreview = local;
+        sample.fClockMs = local ? actor->m_fLocalStageEnvironmentClockMs : actor->m_fServerActionAgeSeconds * 1000.f;
+        samples.push_back(std::move(sample));
+    }
+}
+
 void CValtan::Load_PatternBindings()
 {
 	std::string Status;
@@ -726,11 +781,18 @@ bool_t CValtan::Reload_PatternBindings_WhileAdmitted(
 	}
 	std::unordered_map<std::string,
 		std::vector<Client::BOSS_PATTERN_ANIMATION_CLIP>> staged;
+	std::unordered_map<std::string, BOSS_STAGE_ENVIRONMENT_SAMPLE> stagedEnvironments;
 	std::unordered_map<std::string, PATTERN_BODY_VISIBILITY_WINDOW>
 		stagedBodyVisibility;
 	for (const Client::BOSS_PATTERN_ANIMATION_BINDING& binding :
 		document.Bindings)
 	{
+        BOSS_STAGE_ENVIRONMENT_SAMPLE environment;
+        environment.SceneProfileOccurrences = binding.SceneProfileOccurrences;
+        environment.LightOccurrences = binding.LightOccurrences;
+        environment.CameraInvocations = binding.CameraInvocations;
+        environment.bHasCameraInvocations = binding.bHasCameraInvocations;
+        stagedEnvironments.emplace(binding.strActionId, std::move(environment));
 		if (binding.bSuppressAnimation)
 		{
 			staged.emplace(binding.strActionId,
@@ -764,6 +826,8 @@ bool_t CValtan::Reload_PatternBindings_WhileAdmitted(
 		}
 	}
 	m_PatternClipByActionId = std::move(staged);
+    m_StageEnvironments = std::move(stagedEnvironments);
+    Register_StageEnvironmentOwner();
 	m_PatternBodyVisibilityByActionId = std::move(stagedBodyVisibility);
 	m_iPatternPresentationClipOccurrenceIndex =
 		(std::numeric_limits<std::size_t>::max)();
@@ -894,6 +958,7 @@ bool_t CValtan::Reload_PatternPresentationAuthoring_Impl(
 	}
 
 	const auto PreviousBindings = m_PatternClipByActionId;
+    const auto PreviousEnvironments = m_StageEnvironments;
 	const auto PreviousBodyVisibility =
 		m_PatternBodyVisibilityByActionId;
 	const auto PreviousPlayerHandGrip = m_PlayerHandGripLocalOffset;
@@ -919,7 +984,7 @@ bool_t CValtan::Reload_PatternPresentationAuthoring_Impl(
 		m_PresentationGenerationReceipt;
 
 	const auto RestorePrevious = [this,
-		&PreviousBindings, &PreviousBodyVisibility,
+		&PreviousBindings, &PreviousEnvironments, &PreviousBodyVisibility,
 		&PreviousPlayerHandGrip,
 		&PreviousEffectCues, &PreviousArenaCenters,
 		&PreviousEffectAttempts, PreviousEffectScanValid,
@@ -932,6 +997,7 @@ bool_t CValtan::Reload_PatternPresentationAuthoring_Impl(
 		&PreviousPresentationReceipt]()
 	{
 		m_PatternClipByActionId = PreviousBindings;
+        m_StageEnvironments = PreviousEnvironments;
 		m_PatternBodyVisibilityByActionId = PreviousBodyVisibility;
 		m_PlayerHandGripLocalOffset = PreviousPlayerHandGrip;
 		m_PatternEffectCuesByActionId = PreviousEffectCues;
@@ -975,6 +1041,7 @@ bool_t CValtan::Reload_PatternPresentationAuthoring_Impl(
 	   commit. Thus a late admission failure is byte/logically invisible to
 	   gameplay even though validation reuses the established typed loaders. */
 	auto StagedBindings = std::move(m_PatternClipByActionId);
+    auto StagedEnvironment = std::move(m_StageEnvironments);
 	auto StagedBodyVisibility =
 		std::move(m_PatternBodyVisibilityByActionId);
 	auto StagedPlayerHandGrip = m_PlayerHandGripLocalOffset;
@@ -1005,6 +1072,8 @@ bool_t CValtan::Reload_PatternPresentationAuthoring_Impl(
 	}
 
 	m_PatternClipByActionId = std::move(StagedBindings);
+    m_StageEnvironments = std::move(StagedEnvironment);
+    Register_StageEnvironmentOwner();
 	m_PatternBodyVisibilityByActionId =
 		std::move(StagedBodyVisibility);
 	m_PlayerHandGripLocalOffset = StagedPlayerHandGrip;
@@ -1228,6 +1297,7 @@ bool_t CValtan::Apply_LocalPatternPresentationSample(
 			m_fPatternEffectCueScanAgeSeconds = 0.f;
 		}
 		m_strLocalPreviewActionId.assign(actionId);
+        m_fLocalStageEnvironmentClockMs = fActionAgeSeconds * 1000.f;
 		m_iLocalPreviewStageIndex = LocalStage->second;
 		std::string CombatObjectStatus;
 		if (!Sync_LocalPatternCombatObjectPreview(
@@ -1398,6 +1468,7 @@ bool_t CValtan::Copy_AdmittedPatternPresentationFrom(
 	}
 
 	auto StagedBindings = Source.m_PatternClipByActionId;
+    auto StagedEnvironment = Source.m_StageEnvironments;
 	auto StagedBodyVisibility = Source.m_PatternBodyVisibilityByActionId;
 	auto StagedEffectCues = Source.m_PatternEffectCuesByActionId;
 	auto StagedArenaCenters = Source.m_PatternArenaCenterAnchors;
@@ -1410,6 +1481,8 @@ bool_t CValtan::Copy_AdmittedPatternPresentationFrom(
 #endif
 
 	m_PatternClipByActionId = std::move(StagedBindings);
+    m_StageEnvironments = std::move(StagedEnvironment);
+    Register_StageEnvironmentOwner();
 	m_PatternBodyVisibilityByActionId = std::move(StagedBodyVisibility);
 	m_PlayerHandGripLocalOffset = Source.m_PlayerHandGripLocalOffset;
 	m_PatternEffectCuesByActionId = std::move(StagedEffectCues);
@@ -1714,6 +1787,7 @@ bool_t CValtan::Stage_LocalPatternAuthoringPreview(
 	}
 	std::unordered_map<std::string,
 		std::vector<Client::BOSS_PATTERN_ANIMATION_CLIP>> StagedBindings;
+    std::unordered_map<std::string, BOSS_STAGE_ENVIRONMENT_SAMPLE> StagedEnvironments;
 	std::unordered_map<std::string,
 		std::vector<Client::VALTAN_PATTERN_EFFECT_CUE>> StagedEffectCues;
 	std::unordered_map<std::string, uint32_t> StagedStageIndices;
@@ -1731,6 +1805,13 @@ bool_t CValtan::Stage_LocalPatternAuthoringPreview(
 	for (std::size_t iStage = 0u; iStage < Pattern.Stages.size(); ++iStage)
 	{
 		const Client::VALTAN_STAGE_VIEW& Stage = Pattern.Stages[iStage];
+        BOSS_STAGE_ENVIRONMENT_SAMPLE environment;
+        environment.SceneProfileOccurrences = Stage.SceneProfileOccurrences;
+        environment.LightOccurrences = Stage.LightOccurrences;
+        for (const auto& camera : Stage.CameraInvocations)
+            environment.CameraInvocations.push_back({camera.strCameraInvocationId, camera.strCameraCueId,
+                camera.iStartOffsetMs, camera.iDurationMs});
+        StagedEnvironments.emplace(Stage.strActionId, std::move(environment));
 		if (Stage.strActionId.empty() ||
 			StagedBindings.contains(Stage.strActionId))
 		{
@@ -2063,6 +2144,8 @@ bool_t CValtan::Stage_LocalPatternAuthoringPreview(
 	if (m_bLocalPatternAuthoringPreview)
 		Reset_LocalPatternPreviewTransport();
 	m_LocalPreviewClipByActionId = std::move(StagedBindings);
+    m_LocalStageEnvironments = std::move(StagedEnvironments);
+    Register_StageEnvironmentOwner();
 	m_LocalPreviewEffectCuesByActionId = std::move(StagedEffectCues);
 	m_LocalPreviewStageIndexByActionId = std::move(StagedStageIndices);
 	m_LocalPreviewBodyVisibilityByActionId =
@@ -2113,6 +2196,7 @@ bool_t CValtan::Apply_LocalCombatObjectAuthoringPreviewSample(
 	if (bResetTransport || m_strLocalPreviewActionId != actionId)
 		Reset_LocalPatternPreviewTransport();
 	m_strLocalPreviewActionId.assign(actionId);
+    m_fLocalStageEnvironmentClockMs = fActionAgeSeconds * 1000.f;
 	m_iLocalPreviewStageIndex = Stage->second;
 	return Sync_LocalPatternCombatObjectPreview(
 		actionId, fActionAgeSeconds, strOutStatus);

@@ -150,6 +150,7 @@ class CValtanPatternSoundCueDocument final
 {
 public:
 	static std::filesystem::path Resolve_Path();
+	static std::filesystem::path Resolve_PublishedPath();
 	static bool_t Parse_Text(
 		std::string_view Text,
 		const CEncounterPatternReference& Encounter,

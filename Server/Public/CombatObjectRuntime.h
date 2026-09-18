@@ -43,6 +43,9 @@ namespace LostArk::Server
 		SERVER_COMBAT_OBJECT_CONTACT_SAMPLING eContactSampling =
 			SERVER_COMBAT_OBJECT_CONTACT_SAMPLING::POSE;
 		std::uint32_t iAtMs = 0u;
+		std::uint32_t iEndMs = 0u, iDamagePercent = 0u;
+		bool bInstantDeath = false, bIgnoreDefense = false;
+		float fOffsetForwardM = 0.f, fOffsetRightM = 0.f, fYawOffsetDegrees = 0.f;
 		std::uint32_t iRepeatIntervalMs = 0u;
 		SERVER_COMBAT_SHAPE_XZ Shape;
 		/* One resolved raw amount per repeat. Keeping the split here means a
@@ -129,8 +132,9 @@ namespace LostArk::Server
 		LostArk::Shared::GameplayDataRevision PinnedDefinitionRevision{};
 		bool bReplicated = false;
 		bool bTrackLockedTargetUntilFirstPulse = false;
-		// The room stages these only for its typed pursuit occurrence. No damage is implied.
+		// The room stages movement for its typed pursuit/Showtime occurrence.
 		bool bPersistentLifetime = false, bHoming = false;
+		bool bRoomOwnedTracking = false, bHasExternalPoseStep = false;
 		float fContactPresentationRadiusM = 0.f;
 		std::string strContactPresentationId;
 		/* A radial volley tracks the same locked player without collapsing every
@@ -144,7 +148,7 @@ namespace LostArk::Server
 		bool bExpireOnDistanceEnd = true;
 		float fCoverRadiusM = 0.f;
 		float fRemainingMilliseconds = 0.f;
-		float fElapsedMilliseconds = 0.f;
+		float fElapsedMilliseconds = 0.f, fPreviousElapsedMilliseconds = 0.f;
 		std::vector<SERVER_COMBAT_OBJECT_HIT_RUNTIME> Hits;
 		std::vector<SERVER_COMBAT_OBJECT_PRESENTATION_PULSE_RUNTIME>
 			PresentationPulses;
@@ -208,7 +212,7 @@ namespace LostArk::Server
 			std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents);
 
 		void Cancel_Source(LostArk::Shared::NET_ENTITY_ID sourceNetEntityId);
-		// Room-owned visual tracking updates only its exact damageless occurrence.
+		// Room-owned tracking updates only its exact typed occurrence and shared hit pose.
 		bool Set_OwnedVisualPosition(LostArk::Shared::COMBAT_OBJECT_ID objectId,
 			LostArk::Shared::NET_ENTITY_ID sourceId, std::uint32_t patternSequence,
 			float x, float y, float z);

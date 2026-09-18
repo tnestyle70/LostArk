@@ -2343,3 +2343,129 @@ lease에 연결한다. 저장된 DURATION은 timing 존재와 PRODUCT 의미의 
 - 저장본 전체 `validate_document`는 다른 미완성 draft(P32 세이튼_쇼타임의 stage 없는 presentation)에서 먼저
   실패한다. 후보 검증은 publisher처럼 `_publication_candidate(closure)` 단위로 한다. 적용 스크립트·Server 높이
   시뮬레이션·receipt는 `out/KoukuHoopDescent20260918/`에 있다.
+
+### 발탄 제품 clip과 Full Restore의 Sprite 누락·본 배율을 함께 확인한다 (2026-09-18)
+
+- 같은 action의 Full Restore에 원본 emitter가 있어도 실제 제품 cue가 carrier-v1 clip01/02를
+  참조하면 제품 복원이 아니다. cue→asset ID→sourceNode→native material까지 대조한다.
+- 긴 사전 생성 Sprite와 짧은 스윙 Trails를 시간·source emitter 기준으로 분리한다. 리본
+  UV/색 수정만으로 제품에서 빠진 SpriteParticle이 생기지 않는다.
+- source particle은 이미 m 단위다. Full Restore에서 본 부착 요소를 제품 ID로 옮길 때
+  기존 source-bone scale-normalization helper의 적용 범위를 확인한다. 정상 발탄0.01과
+  유령 발탄1 basis를 혼동해 전체 입자 크기100배를 저작하지 않는다. 기존 cue worldScale과
+  원본 notify scale은 별도다. 두 제품 클립의 StartControl에만 기존 보정을 연결했다.
+- 적용 범위와 실제 수치·검증·제품 빌드 경계는
+  [4연속 Sprite 결과](09-18/2026-09-18_VALTAN_FOUR_SLASH_SPRITE_RESTORE_RESULT.md)를 따른다.
+
+
+### 캡처된 장판 그룹과 Effect 회전 pivot (2026-09-18)
+
+- selectedEffectGroupId는 Preview 전용이 아니다. publisher가 여러 occurrence를 단일
+  selectedEffectVisualId template으로 바꾸므로 Server에 그룹 ID 필드가 없다는 이유로
+  미지원으로 판단하지 않는다. 같은 시각 SELECT 정책과 APPEAR는 캡처 지면을 공유한다.
+- 고정 장판에 BOSS anchor를 쓰면 공중 Y와 행별 시작 포즈가 섞인다. 기존 fixed template과
+  captured ground를 사용하고 preview/ordinary presentation 중복을 제거한 소비 경로를 확인한다.
+- captured root의 Element Transform도 기존 Playback이 소비한다. source track/carrier/inheritance
+  owner는 그대로 제한하고 rotation pivot을 중심/원점/custom으로 지정한다. Pivot UI는 세션 상태,
+  저장 정본은 결과 Element TRS다. source 고정축 sprite는 필요한 요소에만 기존
+  followEmitterAxisRotation을 켜고 최종 quad까지 회전되는지 확인한다.
+- 비둘기 builder의 후보와 실제 live track은 달랐다. 현재 저장 거리부터 측정하고 직선 시간
+  단축으로 같은 속도의 선회/귀환에 시간을 배분한다. 경로 수정에서 저장 밝기를 덮어쓰지 않는다.
+
+### Fixed-axis 장판의 내부 이미지 회전과 quad 회전 불일치
+
+- native 재질이 SourceEmitterWorld 역행렬을 사용해도 fixed-axis sprite quad가 emitter
+  회전을 소비한다는 뜻은 아니다. 실제 quad와 shader 좌표계를 함께 확인한다.
+- 원본 EPAL_Z를 유지한 채 배치 회전이 필요한 해당 요소에만 followEmitterAxisRotation을
+  연결한다. source pivot과 snapshot basis를 보존하고 unrelated sprite에 전파하지 않는다.
+- 외부 authored 수정 뒤 Effect Tool의 Load Saved와 Product 캐시 갱신을 구분한다.
+  Restart Preview/Refresh Resources만으로 새 파일을 읽었다고 판단하지 않는다.
+
+### sourceTransformTrack의 빈 alphaScaleKeys는 기본 alpha1이 아니다
+
+- alphaScaleKeys=[]은 Codec에서 값0인 optional 분포로 생성되어 Playback에서 기존
+  입자 alpha를0으로 곱한다. 위치/회전만 저작하는 track은 alphaScaleKeys를 생략한다.
+- 원본 opaque/fade 곡선을 유지하려고 빈 배열을 넣지 않는다. count/finite/quad 성공만으로
+  표시를 판단하지 않고 실제 Color.w를 검사한다. Full Restore와 제품 carrier 경로를 구분한다.
+- 420609 stage008/009 axe worms36요소의 수정·A/B·설치는09-18 Sprite 복원 RESULT G06에 기록했다.
+
+## 발탄 Composition source clock과 저장 소비자 분리
+
+- source sequence와 master Pattern은 preview owner가 다르다. source는 Pattern ID가 비어 있으므로
+  공통 Play/Pause/Seek를 Pattern ID만으로 분기하지 않는다. CModel의 자유 재생과 authoring clock을
+  동시에 켜지 않고 명시적 sample 한 경로만 pose를 쓴다.
+- Source Save에서 Product 전체 완성을 요구하지 않는다. 반대로 Source Save를 분리하면서
+  제품 V2/Sound reader를 authoring 파일에 남기면 미완성 draft가 재실행 때 활성화된다.
+  게시된 snapshot과 명시적 local preview snapshot을 실제 소비자까지 구분한다.
+- Stage를 줄일 때 기존 Sound/Effect뿐 아니라 Camera/SceneProfile/Light 끝과 마지막 Summon spawn도
+  검사한다. Stage 간 drag는 source 삭제와 target 추가, dirty metadata를 같은 transaction으로 처리한다.
+- 실행 가능한 범위와 결과는 [발탄 Composition 재개 결과](09-09/2026-09-09_VALTAN_COMPOSITION_AUTHORING_PARITY_RESULT.md)를 따른다.
+
+- Windows PowerShell 5.1에서 Save job 결과를 `[IO.File]::Replace`로 교체할 때 null backup 인자는
+  overload 변환으로 경로 오류를 만들 수 있다. 중간 canonicalCommitted receipt 뒤 마지막 receipt도 실제
+  실행해 검사하고, job 소유의 명시적 sibling backup과 원자 교체를 사용한다.
+
+## 쿠크 presentation 박스의 bone anchor는 기본이 위치 전용이다
+
+- `Make_Pivot`이 `Resolve_TargetPivot`에 넘기던 `PIVOT_ROTATION::TARGET_YAW`는 본에서
+  위치만 가져오고 회전 basis를 boss root로 덮는다. bone만 지정하면 이펙트가 그 본을 따라
+  이동하되 함께 회전하지는 않는다. 회전까지 필요하면 occurrence의 `boneRotation`을 `BONE`으로
+  둔다(EFFECT + BOSS anchor + 이름 있는 bone에서만 허용).
+- anchor를 본으로 바꾸면 기존 `positionOffset`/`rotationDegrees`는 못 쓴다. 그 값은 boss root
+  frame에서 잡은 것이라 본 frame에서 다시 잡아야 한다.
+- world space emitter의 이미 방출된 입자는 소급 회전하지 않는다. 새로 나오는 입자만 따라 돈다.
+- EFFECT row의 BODY bone 이름은 projector와 Product parser가 WModel 실재를 검사하지 않는다.
+  오타는 publish를 통과하고 런타임에서 그 박스만 `Presentation bone/pivot is unavailable`로 격리된다.
+- 세이튼 본체 본 이름은 `bip001-head`, `bip001-mouth`다(MN_RPCT_05 168본, MN_RPCT_06 84본).
+
+### World Effect의 finite source는 bounded source loop0와 구분한다 (2026-09-18)
+
+`Set_SourceLoopEndSeconds`는 source EmitterLoops=0 연장이며 모든 emitter가 finite이면 거절한다. World/Composition V1 Effect의 `loopEffectToDuration`은 finite source에 원본 prepared duration 단위 반복을 사용하고 follow provider에 반복 시작 나이를 더한다. 이를 빠뜨리면 Effect만 Object 시작 위치로 돌아간다. fit은 한 번 재생하는 source 시계를 느리게 만들므로 원래 속도 지속 재생 요구와 구분한다. WORLD 박스의 birth deadline 뒤 tail 허용과 부모 Pattern 종료는 별개다. Collider bake는 부모 종료를 명시적으로 받아 그 뒤 hit/track을 만들지 않아야 한다. source JSON을 loop0로 덮어쓰거나 prepared identity 검사를 완화하지 않는다. 근거는 09-18 KOUKU_WORLD_BLADE_REPAIR_RESULT에 기록한다.
+
+### Composition 배우·방출 수명·게시 연결
+
+- 도구의 Bone 목록은 해당 Composition Preview/Server CNpc의 typed model-target view에서 resolve한다. 별도 Animation Tool 전역 선택과 profile을 비교하는 것만으로는 실제 Preview 배우의 본을 찾을 수 없다.
+- 모델의 정면은 Transform +Z라고 가정하지 않는다. 실제 설치 모델의 head/mouth basis와 clip을 측정하고, 목표 body yaw 보정과 그 몸의 전진 방향을 함께 고친다. 추적 수명을 늘리는 것이 회전 속도를 낮추지 않게 이동 추적과 시간 제한 회전의 계약을 구분한다.
+- 외부 Effect/WORLD 박스의 길이만 늘려도 내부 emitter/template hidden key가 자동 연장되는 것은 아니다. source 방출·Object lifetime·occurrence cutoff를 각각 확인한다. finite Effect 반복은 source 원문을 바꾸지 않고 occurrence별 원래 재생속도와 follow 시계를 유지한다.
+- 게시 성공 여부에 더해 요청한 patternId의 unavailableReason, 생성 트리거 및 Server bootstrap 행을 확인한다. 이름만 있는 DURATION/RESULT, 비어 있는 patternSpawns를 실행 가능한 기믹으로 설명하지 않는다.
+
+### Sequencer의 긴 seek는 GPU·타임라인 UI보다 과거 root 재평가를 먼저 본다 (2026-09-18)
+
+- Complete Play는 정상인데 특정 시점에서 정지해도 느리면 Effect.Service.Update/HistoryUpdate와 Animation.Channels.Sample을 함께 비교한다. exactRoot provider마다 0초부터 모든30Hz 회전 사건을 재실행하면, 긴 seek의60Hz Effect history 안에서 같은 과거를 중첩 재계산한다.
+- Preview member별 yaw·animation별 yaw·follow offset checkpoint는 같은 시각의 Stage와 tracking 사건을 모두 처리한 뒤 저장한다. read-only 과거 sampling이 새로운 플레이어 관측을 만들거나 실제 actor pose를 변경해서는 안 된다. 미관측 미래 입력 실패를 유지한다.
+- 위치/yaw 편집과 member 교체 때 checkpoint 및 최종 pose memo를 무효화한다. 최종 pose memo는16384개로 제한하고, 역방향은 가장 가까운 이전 checkpoint에서 재개한다. 정지 프레임의 동일 시점은 이미 계산한 pose를 쓴다.
+- capture의 scope drop이 있으면 최초182초 프레임의 원인을 세부 수치로 꾸미지 않는다. 이번 사용자 capture에는 timeline ms가 없어44299/55637ms의 정확 대응은 사용자 관찰이다. 구현·수치 검증과 사용자 FPS 확인은 대응 KOUKU_PATTERN_RUNTIME_REPAIR_RESULT에서 구분한다.
+
+- 단독 EffectAuthoringSequencer도 loopEffectToDuration의 finite/loop0 구분을 소비해야 한다. Composition만 고치면 공통 불25개 finite emitter가 단독 Preview에서 계속 거절된다. cycle을 되감을 때 provider의 owner/bone 시각에 cycle 시작을 다시 더한다.
+- 컷신의 Animation lane이 비어 있어도 World sequence의 animationTracks와 설치 WModel clip을 먼저 확인한다. 이미 World 배우가 소유한 clip은 정보 행으로 투영하고 같은 보스 Animation을 중복 생성하지 않는다.
+
+### Show Navigation 오버레이는 main viewport background list에 명시적으로 그린다 (2026-09-18)
+
+- `ViewportsEnable` 아래 인자 없는 `ImGui::GetBackgroundDrawList()`는 `CurrentWindow->Viewport`를 쓴다. 모든 tool 창 End 뒤의 current window는 암시적 `Debug##Default` 창이고, `imgui.ini`가 그 창을 자기 viewport(`0x16723995` = CRC32C `ImHashStr("Debug##Default")`)에 고정하면 platform window가 없어 아무도 렌더하지 않는다. `Drawn N`은 CPU 카운트라 정상으로 보인다.
+- 오버레이는 항상 `GetBackgroundDrawList(ImGui::GetMainViewport())`를 넘긴다(`CHitAreaWire`와 같은 방식). Client 창이 화면 (0,0)에 있는 PC에서는 병합돼 재현되지 않으므로 '내 PC에서는 보인다'가 진단을 부정하지 않는다. `MainApp_WorldLevel.cpp:227`의 같은 패턴은 아직 남아 있다.
+- 채움 quad는 near/far 사이이면서 한 side plane 너머 전부인 piece를 제외해야 frustum 거절 카운트와 draw work가 일치한다.
+
+### 쿠크 timeline clipboard는 전체 Pattern snapshot이고 Paste는 Ctrl+D clone engine을 쓴다 (2026-09-18)
+
+- Ctrl+C는 모든 lane의 선택을 ownership closure(hold·summon·group·region·companion·WORLD owner)로 닫고, 참조 정의(Logic/World/Summon/SceneProfile/PresentationResource)와 Pattern 값 전체를 snapshot으로 담는다. 부분 snapshot과 축소 remap을 따로 두면 lane을 늘릴 때마다 두 구현이 갈라진다.
+- Paste는 `Clone_TimelineSelectionInto(PASTE_APPEND)`로 Duplicate와 같은 engine을 쓰되 새 row index와 usedGroupIds를 destination에서 취한다. source 기준으로 취하면 다른 Pattern에 붙일 때 ID가 충돌한다. 빈 placeholder Parent(15000ms, row 없음)는 0ms부터 배치한다.
+- 삭제된 정의는 snapshot에서 복원하고 ordinal을 올리며, 변경된 정의는 `changed; copy again`으로 전체를 거절한다. Ctrl+D는 Box Detail 선택을 timeline 선택으로 유지해야 하며 engine 공유 뒤 Serialize 결과를 편집 전 baseline과 byte 비교한다.
+
+### Mario 입장은 chain 없이도 되지만 네 소비자를 같이 풀고 데이터는 코드 뒤에 설치한다 (2026-09-18)
+
+- ENTER_AREA→`MARIO_ENTER` admission은 projector, Client Save 규칙, Server catalog admission, publisher 네 곳에 있다. 한 곳만 completion chain 요구를 빼면 다른 곳이 P88 같은 부모를 거절한다. Gate 3·Collider region·sole Success 규칙은 유지한다.
+- optional `marioStage` 0..4는 0이면 live counter, 1..4면 저작 단계이며 요청 test stage가 우선한다. 0이 아닐 때만 문서·projection·`PATTERNLOGICOUTCOME` 11번째 field로 실어 기존 행을 byte 동일하게 둔다. Server parser는 11-field 행을 FEAR로 단정하지 말고 kind로 FEAR(presentationId)와 MARIO_ENTER(stage) 를 구분한다.
+- chain 없는 입장은 Client hold를 게시하지 않는다(Shared writer가 hold 0의 pattern ID를 거절하고 Client가 frozen session으로 바꾼다). 창 끝은 chain 없는 입장에서만 `startMs+durationMs`로 닫고, 같은 tick의 조기 완료와 queue된 entry는 Commit이 소비할 때까지 anchor를 유지한다.
+- `marioStage` key가 있는 문서를 코드보다 먼저 설치하면 Workbench `Has_Properties`가 문서 전체를 거절하고 projector가 `unknown=[marioStage]`로 실패한다. 코드 빌드 → 설치 → Save/Publish → Server·Client 함께 재시작 순서를 지킨다.
+
+### 쿠크/세이튼 rig는 model +X가 정면이고 root motion은 navgrid 높이 단차에서 멈춘다 (2026-09-18)
+
+- MN_RPCZ_00·MN_RPCT_05는 model +X를 바라본다(눈/입 +X, 손 ±Z). Client는 scale-only pre-transform이므로 model +X = Transform Right = Server `lateral+`다. projector `lateral` 음수가 이미 시각 뒤 방향이며 부호를 뒤집지 않는다. `forward`는 side 축(model Z)이다.
+- 2관문 쿠크 placement 옆 셀은 10.56/3.54/6.51/2.68m checkerboard이고 navpolicy는 1m 단차만 허용한다. recoil이 약 2m에서 멈추면 arena 가장자리로 단정하지 말고 F1 Show Navigation으로 셀 높이를 먼저 본다. bake 오선택이면 `.navpaint` v3 HEIGHT override, 실제 무대 단차면 데이터 유지.
+- `Apply_StageRootMotion`의 navigation gate는 이제 tick segment를 1mm까지 bisect해 경계에 flush로 멈춘다. origin-relative sampling은 그대로라 곡선이 되돌아오면 origin+sample로 재개한다. 'partial XYZ commit 없음' 계약은 'last navigable point로 clamp'로 바뀌었다.
+
+### World Object 자전과 동반 Effect·바닥 Collider를 분리한다 (2026-09-18)
+
+- `Sample_ObjectWorld`의 key quaternion과 angularVelocity는 메시를 세우고 자전시킨다. 바닥 Collider는 이를 제외하므로 동반 Effect도 `inheritObjectRotation=false`일 때 같은 no-spin basis를 써야 한다. 이동 위치·scale·emission yaw·WORLD placement는 함께 유지하고, 기본 true로 다른 Object와 본 부착의 기존 표현을 보존한다.
+- Effect의 `followObject`를 끄면 위치 갱신까지 멈춘다. 자전만 분리하려고 이 값을 끄거나 모든 Effect root에서 회전을 제거하지 않는다. WorldSequence native codec·Object Tool·Map publisher·Composition owner validator의 optional bool 지원을 함께 연결한다.
+- 새 8개 칼날 group을 기존 LOOP 그대로 추가하면 P33의 일반 칼날24·갈고리30·즉사24가 기존64-window 한도를 초과한다. 원본 library는 보존하고, P33 전용 즉사8개를11초 한 번 재생하면 기존STAGGER1까지63개다. 개수·간격 축소나 parser 한도 확대로 우회하지 않는다.

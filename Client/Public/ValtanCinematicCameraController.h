@@ -33,6 +33,9 @@ struct VALTAN_CINEMATIC_CAMERA_INPUT final
 	/* Death has no pattern to key on, so the clear shot is selected by this flag
 	   and still runs off the authoritative action start tick. */
 	bool_t isBossDead = false;
+    bool_t hasStageCameraInvocations = false;
+    std::string strInvokedCameraCueId;
+    uint32_t iCameraStartOffsetMs = 0u, iCameraDurationMs = 0u;
 };
 
 struct VALTAN_CINEMATIC_CAMERA_POSE final
@@ -124,6 +127,7 @@ private:
 	uint32_t m_iLastServerTick = 0u;
 	f32_t m_fElapsedSeconds = 0.f;
 	std::string m_strCueId;
+    uint32_t m_iCameraInvocationStartMs = 0u;
 	bool_t m_hasCueKey = false;
 	bool_t m_isCueFinished = false;
 	/* Stored after tracking and any active blend, so a coordinate-frame change

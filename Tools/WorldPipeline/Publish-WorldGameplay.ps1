@@ -173,7 +173,7 @@ function Get-EncounterProfiles {
 			$encounterProperties += @('sourceRevision','playAllPatternIds','madnessPolicy')
 			# Gameplay publication owns the Parent/Bundle relationships; world placement
 			# admission accepts their optional Product metadata without inventing another owner.
-			foreach ($field in @('folders','bundles')) {
+			foreach ($field in @('folders','bundles','raidGates')) {
 				if ($null -ne $document.PSObject.Properties[$field]) {
 					$encounterProperties += $field
 					if ($document.$field -isnot [Array]) { throw "KoukuSaydon $field must be an array." }

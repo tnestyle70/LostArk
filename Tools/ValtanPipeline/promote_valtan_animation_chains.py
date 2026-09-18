@@ -1753,15 +1753,8 @@ def _load_v2_pipeline(repo_root: Path) -> Any:
 
 def _product_projection_relatives(repo_root: Path) -> tuple[str, ...]:
     pipeline = _load_v2_pipeline(repo_root)
-    return (
-        pipeline.ENCOUNTER_REL,
-        pipeline.BINDINGS_REL,
-        pipeline.CUES_REL,
-        pipeline.ROTATIONS_REL,
-        pipeline.COMBAT_PRODUCT_REL,
-        pipeline.WORLD_PRODUCT_REL,
-        pipeline.PROVENANCE_REL,
-    )
+    return pipeline.REPOSITORY_PRODUCT_ARTIFACTS
+
 
 
 def _transaction_projection_relatives(repo_root: Path) -> tuple[str, ...]:
@@ -1802,6 +1795,8 @@ def validate_and_project(
     boss_catalog: dict[str, Any] | None = None,
     debug_document: dict[str, Any] | None = None,
     promotion_manifest: dict[str, Any] | None = None,
+    pattern_sound_source_bytes: bytes | None = None,
+    effect_v2_source_bytes: bytes | None = None,
 ) -> dict[str, str]:
     pipeline = _load_v2_pipeline(repo_root)
 
@@ -1809,6 +1804,10 @@ def validate_and_project(
         docs = pipeline.load_pipeline_documents(repo_root)
         docs[pipeline.GAMEPLAY_AUTHORING_REL] = gameplay
         docs[pipeline.PRESENTATION_AUTHORING_REL] = presentation
+        if pattern_sound_source_bytes is not None:
+            docs[pipeline.PATTERN_SOUND_CUES_REL] = pattern_sound_source_bytes
+        if effect_v2_source_bytes is not None:
+            docs[pipeline.EFFECT_V2_BINDINGS_REL] = effect_v2_source_bytes
         if combat_authoring is not None:
             docs[pipeline.COMBAT_AUTHORING_REL] = combat_authoring
         if boss_catalog is not None:
@@ -2020,6 +2019,13 @@ def _validate_pattern_sound_dependencies_against_candidate_products(
             )
         clips_by_action[action_id] = staged_clips
 
+    sound_catalog_path = repo_root / "Data/Sound/CharacterSoundCatalog.json"
+    sound_catalog = _read_json(sound_catalog_path)
+    sound_events = sound_catalog.get("classes", {}).get("Valtan")
+    if sound_catalog.get("formatVersion") != 1 or not isinstance(sound_events, dict):
+        raise PromotionError("Valtan Sound catalog class is missing or invalid")
+    resource_root = Path(os.environ.get("LOSTARK_RESOURCE_ROOT") or os.environ.get("LOSTARK_SHARED_ASSET_ROOT") or repo_root / "Client/Bin/Resources").resolve()
+
     cue_fields = (
         "bindingId",
         "occurrenceId",
@@ -2048,6 +2054,20 @@ def _validate_pattern_sound_dependencies_against_candidate_products(
         )
         _stable(cue["soundBank"], f"{context}.soundBank")
         _stable(cue["soundEvent"], f"{context}.soundEvent")
+        sound_event = cue["soundEvent"]
+        required_bank = "S_Mob_G_Voltan1" if sound_event.startswith("G_Voltan1_") else "S_Mob_G_Voltan2" if sound_event.startswith("G_Voltan2_") else None
+        if required_bank is None or cue["soundBank"] != required_bank or sound_event not in sound_events:
+            raise PromotionError(f"{context}: Sound bank/event does not resolve the Valtan catalog: {sound_event}")
+        variants = sound_events[sound_event]
+        if not isinstance(variants, list): raise PromotionError(f"{context}: Sound variants must be an array")
+        # A declared event with no extracted WAV remains the same isolated no-op
+        # admitted by the native Sound catalog; invented events do not.
+        for asset in variants:
+            if not isinstance(asset,str) or not asset.startswith("Sound/") or not asset.endswith(".wav") or "\\" in asset or ":" in asset or any(part in ("", ".", "..") for part in asset.split("/")):
+                raise PromotionError(f"{context}: Sound asset ID is unsafe: {asset}")
+            path = resource_root / asset
+            if not path.is_file(): raise PromotionError(f"{context}: Sound asset is missing: {asset}")
+
         repeat_policy = cue["repeatPolicy"]
         if not isinstance(repeat_policy, str) or repeat_policy not in {
             "once",
@@ -3284,7 +3304,9 @@ def commit_projected_products(
                 )
             projected_payload = _read_bytes_or_none(projected)
             baseline = _read_bytes_or_none(target)
-            if projected_payload is None or baseline is None:
+            if projected_payload is None or (baseline is None and relative_text not in (
+                "Data/Valtan/Published/BOSS_VALTAN.effectv2bindings.json",
+                "Data/Valtan/Published/Valtan.patternsoundcues.json")) :
                 raise PromotionError(
                     f"Valtan Product projection/target is missing: {relative_text}"
                 )
@@ -3316,6 +3338,133 @@ def commit_projected_products(
         "changedCount": len(targets),
     }
 
+
+
+def _validate_source_sidecar(owner: str, payload: bytes) -> None:
+    """Storage checks only; resource/clock dependency readiness is Publish work."""
+    value = _read_json_bytes(payload, Path(owner))
+    def integer(value: Any, label: str) -> None:
+        if isinstance(value, bool) or not isinstance(value, int) or not 0 <= value <= 0xFFFFFFFF:
+            raise PromotionError(f"{label} must be uint32")
+    def finite_tree(node: Any) -> None:
+        if isinstance(node, float) and not math.isfinite(node):
+            raise PromotionError(f"{owner}: nonfinite source number")
+        if isinstance(node, dict):
+            for child in node.values(): finite_tree(child)
+        if isinstance(node, list):
+            for child in node: finite_tree(child)
+    finite_tree(value)
+    if owner == PATTERN_SOUND_REL:
+        _exact(value, ('schema', 'formatVersion', 'ownerArchetypeId', 'cues'), owner)
+        if value['schema'] != 'lostark.valtan-pattern-sound-cues' or value['formatVersion'] != 1 or value['ownerArchetypeId'] != 'BOSS_VALTAN':
+            raise PromotionError('Pattern Sound source header is invalid')
+        rows=value['cues']; ids=set(); binding_ids=set()
+        if not isinstance(rows,list) or len(rows)>1024: raise PromotionError('Pattern Sound rows invalid')
+        for row in rows:
+            _exact(row, ('bindingId','occurrenceId','patternId','stageId','actionId','clipOccurrenceId','soundBank','soundEvent','repeatPolicy','startMs'), 'Sound row')
+            for key in ('bindingId','occurrenceId','patternId','stageId','actionId','clipOccurrenceId','soundBank','soundEvent'):
+                _stable(row.get(key),f'Sound {key}')
+            if row['occurrenceId'] in ids: raise PromotionError('duplicate Sound occurrenceId')
+            ids.add(row['occurrenceId'])
+            if row['bindingId'] in binding_ids: raise PromotionError('duplicate Sound bindingId')
+            binding_ids.add(row['bindingId'])
+            integer(row.get('startMs'),'Sound startMs')
+            if row['startMs']>60000: raise PromotionError('Sound startMs exceeds storage range')
+            if row.get('repeatPolicy') not in ('once','each_loop'): raise PromotionError('Sound repeatPolicy invalid')
+    else:
+        bp=_load_effect_v2_binding_pipeline(Path(__file__).resolve().parents[2])
+        bp._exact(value,bp.ROOT_FIELDS,owner)
+        if value['schema']!=bp.BINDING_SCHEMA or value['formatVersion']!=2 or value['archetypeId']!='BOSS_VALTAN':
+            raise PromotionError('Effect V2 source header is invalid')
+        rows=value['bindings']; ids=set()
+        if not isinstance(rows,list) or len(rows)>bp.MAX_BINDINGS: raise PromotionError('Effect V2 rows invalid')
+        for raw in rows:
+            row=bp._exact(raw,bp.BINDING_FIELDS,owner)
+            key=bp._stable(row['bindingId'],'bindingId')
+            if key in ids: raise PromotionError('duplicate Effect V2 bindingId')
+            ids.add(key)
+            resource=bp._exact(row['resource'],bp.RESOURCE_FIELDS,key)
+            if resource['kind'] not in bp.RESOURCE_KINDS: raise PromotionError('Effect resource kind invalid')
+            bp._stable(resource['id'],'resource id')
+            scope=bp._exact(row['scope'],bp.SCOPE_FIELDS,key)
+            for field in bp.SCOPE_FIELDS: bp._stable(scope[field],field)
+            clock=bp._exact(row['clock'],bp.CLOCK_FIELDS,key)
+            bp._ms(clock['startMs'],'startMs')
+            if clock['basis'] not in bp.CLOCK_BASES or clock['repeatPolicy'] not in bp.REPEAT_POLICIES: raise PromotionError('Effect clock invalid')
+            if clock['basis']=='STAGE':
+                if clock['clipOccurrenceId'] is not None or clock['repeatPolicy']!='ONCE': raise PromotionError('Stage clock identity invalid')
+            else: bp._stable(clock['clipOccurrenceId'],'clipOccurrenceId')
+            anchor=bp._exact(row['anchor'],bp.ANCHOR_FIELDS,key)
+            bp._stable(anchor['slotId'],'slotId')
+            if anchor['followPolicy'] not in bp.FOLLOW_POLICIES or anchor['rotationBasis'] not in bp.ROTATION_BASES: raise PromotionError('Effect anchor invalid')
+            transform=bp._exact(anchor['localTransform'],bp.TRANSFORM_FIELDS,key)
+            for field in bp.TRANSFORM_FIELDS: bp._vector3(transform[field],field,scale=field=='scale')
+            if row['stopPolicy'] not in bp.STOP_POLICIES: raise PromotionError('Effect stopPolicy invalid')
+
+
+def commit_source_authoring_patch(
+    repo_root: Path, draft_patch_path: Path, *, source_baseline_root: Path,
+    pattern_sound_baseline_path: Path | None = None,
+    pattern_sound_candidate_path: Path | None = None,
+    effect_v2_baseline_path: Path | None = None,
+    effect_v2_candidate_path: Path | None = None,
+    lock_timeout_seconds: float = 0.0,
+    inject_failure_after: int | None = None,
+    **_unused: Any,
+) -> dict[str, Any]:
+    """Commit source owners only; published Products are never target files.
+
+    Typed field/identity/range checks remain in the existing patch evaluator.
+    Physical resources and generated Product parity are deferred to Publish.
+    The four source baselines are captured by the editor at Reload, not Save.
+    """
+    repo_root=repo_root.resolve()
+    pipeline=_load_v2_pipeline(repo_root)
+    patch=_read_json(draft_patch_path)
+    operations=patch.get('operations')
+    if not isinstance(operations,list): raise PromotionError('typed source operations missing')
+    if any(not isinstance(op,dict) or op.get('op') in ('SET_BOSS_BASE_FIELD','SET_DAMAGE_RATE') for op in operations):
+        raise PromotionError('Composition source Save cannot edit balance owners')
+    with _exclusive_transaction_lock(repo_root,timeout_seconds=lock_timeout_seconds,operation='SaveSource'):
+        docs=pipeline.load_pipeline_documents(repo_root)
+        before=pipeline.source_manifest(repo_root)
+        master=pipeline.join_v2_authoring(docs[GAMEPLAY_REL],docs[PRESENTATION_REL],docs[pipeline.WORLD_SET_REL],docs[pipeline.COMBAT_AUTHORING_REL])
+        baselines={}
+        owner_relatives=(GAMEPLAY_REL,PRESENTATION_REL,pipeline.COMBAT_AUTHORING_REL,pipeline.BOSS_CATALOG_REL)
+        for relative in owner_relatives:
+            baseline=_read_bytes_or_none(source_baseline_root/relative)
+            if baseline is None: raise PromotionError(f'source Reload baseline missing: {relative}')
+            baselines[relative]=baseline
+        if operations:
+            for relative in (GAMEPLAY_REL,PRESENTATION_REL):
+                if (repo_root/relative).read_bytes()!=baselines[relative]:
+                    raise PromotionError(f'{relative} changed since Reload; source draft was preserved')
+        result=pipeline.apply_draft_patch(master,docs[pipeline.BOSS_PROFILES_REL],docs[pipeline.DAMAGE_REL],patch,patch['sourceRevision'],docs[pipeline.WORLD_SET_REL],docs[pipeline.COMBAT_AUTHORING_REL],repository_root=repo_root,effect_catalog=docs[pipeline.EFFECT_CATALOG_REL],boss_catalog=docs[pipeline.BOSS_CATALOG_REL],include_combat_authoring=True,include_boss_catalog=True,require_runtime_resources=False)
+        candidate,bosses,damage,combat,boss_catalog,count=result
+        gameplay,presentation=pipeline.split_v2_authoring(candidate,docs[pipeline.WORLD_SET_REL],combat)
+        source_values={GAMEPLAY_REL:gameplay,PRESENTATION_REL:presentation,pipeline.COMBAT_AUTHORING_REL:combat,pipeline.BOSS_CATALOG_REL:boss_catalog}
+        targets={}; expected={}
+        for relative,value in source_values.items():
+            # No-op and unrelated owners keep their exact physical bytes.
+            if value==docs[relative]: continue
+            physical=(repo_root/relative).read_bytes()
+            if physical!=baselines[relative]: raise PromotionError(f'{relative} changed since Reload; source draft was preserved')
+            targets[repo_root/relative]=_json_text(value).encode('utf-8')
+            expected[repo_root/relative]=physical
+        for relative,baseline_path,candidate_path in (
+            (PATTERN_SOUND_REL,pattern_sound_baseline_path,pattern_sound_candidate_path),
+            (EFFECT_V2_BINDINGS_REL,effect_v2_baseline_path,effect_v2_candidate_path)):
+            if (baseline_path is None)!=(candidate_path is None): raise PromotionError(f'{relative} requires baseline and candidate')
+            if baseline_path is None: continue
+            baseline=baseline_path.read_bytes(); payload=candidate_path.read_bytes()
+            if (repo_root/relative).read_bytes()!=baseline: raise PromotionError(f'{relative} changed since Reload; source draft was preserved')
+            _validate_source_sidecar(relative,payload)
+            if payload!=baseline:
+                targets[repo_root/relative]=payload; expected[repo_root/relative]=baseline
+        if targets:
+            _atomic_commit(targets,expected_baselines=expected,repository_root=repo_root,lock_already_held=True,inject_failure_after=inject_failure_after)
+        after=pipeline.source_manifest(repo_root)
+    return {'schema':TYPED_PATCH_COMMIT_RESULT_SCHEMA,'formatVersion':1,'mode':'SaveSource','previousSourceRevision':patch['sourceRevision'],'sourceRevision':after['sourceManifestId'],'operationCount':count,'artifactCount':len(targets),'changedCount':len(targets),'runtimeActivation':'NOT_ACTIVATED','sourceOnly':True}
 
 def commit_typed_authoring_patch(
     repo_root: Path,
@@ -3483,6 +3632,8 @@ def commit_typed_authoring_patch(
                 presentation,
                 combat_authoring=committed_combat,
                 boss_catalog=committed_boss_catalog,
+                pattern_sound_source_bytes=(pattern_sound_candidate_path.read_bytes() if pattern_sound_candidate_path is not None else None),
+                effect_v2_source_bytes=(effect_v2_candidate_path.read_bytes() if effect_v2_candidate_path is not None else None),
             )
             pattern_sound_pair = read_owner_pair(
                 "Pattern Sound",
@@ -3553,6 +3704,10 @@ def commit_typed_authoring_patch(
                 except binding_pipeline.BindingContractError as exc:
                     raise PromotionError(str(exc)) from exc
 
+            # A composed V2 candidate, when supplied, is the Product owner after
+            # the strict checks above; projection initially reads the disk source.
+            outputs["Data/Valtan/Published/BOSS_VALTAN.effectv2bindings.json"] = effect_v2_effective_bytes.decode("utf-8-sig")
+            outputs["Data/Valtan/Published/Valtan.patternsoundcues.json"] = (pattern_sound_pair[1] if pattern_sound_pair is not None else pattern_sound_target.read_bytes()).decode("utf-8-sig")
             target_payloads: dict[Path, bytes] = {
                 repo_root / GAMEPLAY_REL: _json_text(gameplay).encode("utf-8"),
                 repo_root / PRESENTATION_REL: _json_text(presentation).encode("utf-8"),
@@ -3590,7 +3745,7 @@ def commit_typed_authoring_patch(
             expected_baselines = {
                 path: _read_bytes_or_none(path) for path in target_payloads
             }
-            if any(value is None for value in expected_baselines.values()):
+            if any(value is None and path not in (repo_root / "Data/Valtan/Published/BOSS_VALTAN.effectv2bindings.json", repo_root / "Data/Valtan/Published/Valtan.patternsoundcues.json") for path, value in expected_baselines.items()):
                 raise PromotionError(
                     "typed Pattern source/Product closure contains a missing owner"
                 )

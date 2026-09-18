@@ -451,6 +451,8 @@ namespace Client
 		   takes them so one start is never played twice. */
 		const LostArk::Shared::S2C_KOUKUSAYDON_BUNDLE_STATE& Get_KoukuBundleState() const { return m_KoukuBundleState; }
 		std::uint32_t Get_LastServerTick() const { return m_iLastServerTick; }
+		const LostArk::Shared::S2C_KOUKUSAYDON_RAID_STATE& Get_KoukuRaidState() const { return m_KoukuRaidState; }
+		const LostArk::Shared::S2C_KOUKUSAYDON_RAID_STATE& Get_KoukuRaidReply() const { return m_KoukuRaidReply; }
 		std::vector<LostArk::Shared::S2C_WORLD_SEQUENCE_PLAY> Consume_WorldSequencePlays()
 		{
 			auto pending = std::move(m_PendingWorldSequencePlays);
@@ -695,6 +697,7 @@ namespace Client
 		LostArk::Shared::S2C_RAID_ENTRY_VOTE m_PendingRaidEntryVote{};
 		std::vector<LostArk::Shared::S2C_WORLD_SEQUENCE_PLAY> m_PendingWorldSequencePlays;
 		LostArk::Shared::S2C_KOUKUSAYDON_BUNDLE_STATE m_KoukuBundleState;
+		LostArk::Shared::S2C_KOUKUSAYDON_RAID_STATE m_KoukuRaidState, m_KoukuRaidReply;
 		std::string m_strInteractPromptTriggerId;
 
 		struct CHAT_BUBBLE_ENTRY

@@ -140,6 +140,36 @@ public:
 		return m_Replication.Get_LocalCharacter();
 	}
 
+	/* One F1 "KoukuSaydon Arena" gate button. The Server raises the named
+	   disabled boss placements, moves only this player to the fixed position
+	   through the Debug teleport contract, and the HUD follows one archetype.
+	   Positions are Debug authoring values captured from Move Player; the
+	   Server still validates navigation, height and collision. A gate with a
+	   deferred reason has no navigation yet and only reports that reason. */
+	struct KAKUL_DEBUG_GATE final
+	{
+		const char_t* pLabel = nullptr;
+		std::array<const char_t*, 2> BossPlacementIds = { nullptr, nullptr };
+		float3_t vPlayerPosition = {};
+		const char_t* pHudFocusArchetypeId = nullptr;
+		/* Placement of pHudFocusArchetypeId: the boss the Kouku Boss Tool and
+		   Complete Play target after this gate is raised. Null keeps the
+		   Gate 1 Kouku target. */
+		const char_t* pAuditionPlacementId = nullptr;
+		const char_t* pDeferredReason = nullptr;
+	};
+	static constexpr size_t NO_ACTIVE_DEBUG_GATE = static_cast<size_t>(-1);
+	static const std::array<KAKUL_DEBUG_GATE, 9>& Get_DebugGates();
+	// Shared Server-raid presentation; the editor uses this same owner.
+	CPlayerController& Get_DebugPlayerController() { return m_PlayerController; }
+	void Debug_ReturnToPlayerCamera();
+	void Debug_SetSequenceCombatPending(bool_t pending);
+	void Debug_HoldSequenceCombatFade();
+	const string& Get_GatePresentationProfileId() const { return m_strGatePresentationProfileId; }
+	bool_t Apply_ServerRaidGatePresentation(const std::string& gateId, std::uint32_t epoch, std::string& status);
+	bool_t Begin_ServerRaidCinematicPresentation(std::string& status);
+	bool_t End_ServerRaidCinematicPresentation(bool_t restorePrevious, std::string& status);
+
 #ifdef _DEBUG
 	/* IMapAuthoringHost: the Debug Map Tool edits this arena's live map in
 	   place through these; the arena keeps owning every runtime container. */
@@ -175,7 +205,6 @@ public:
 	void Set_DebugGazeView(bool visible, float halfAngleDegrees, float distanceM)
 	{ m_bDebugGazeView = visible; m_fDebugGazeHalfAngle = halfAngleDegrees; m_fDebugGazeDistance = distanceM; }
 	shared_ptr<CCamera_Free> Get_DebugCamera() const { return m_pCamera; }
-	CPlayerController& Get_DebugPlayerController() { return m_PlayerController; }
 	struct COMPOSITION_WORLD_PREVIEW_CUE final
 	{
 		std::string occurrenceId;
@@ -202,43 +231,19 @@ public:
 	// Applies immediately and remembers this arena's value until process exit.
 	bool_t Set_DebugCameraSpeed(f32_t metersPerSecond);
 
-	/* One F1 "KoukuSaydon Arena" gate button. The Server raises the named
-	   disabled boss placements, moves only this player to the fixed position
-	   through the Debug teleport contract, and the HUD follows one archetype.
-	   Positions are Debug authoring values captured from Move Player; the
-	   Server still validates navigation, height and collision. A gate with a
-	   deferred reason has no navigation yet and only reports that reason. */
-	struct KAKUL_DEBUG_GATE final
-	{
-		const char_t* pLabel = nullptr;
-		std::array<const char_t*, 2> BossPlacementIds = { nullptr, nullptr };
-		float3_t vPlayerPosition = {};
-		const char_t* pHudFocusArchetypeId = nullptr;
-		/* Placement of pHudFocusArchetypeId: the boss the Kouku Boss Tool and
-		   Complete Play target after this gate is raised. Null keeps the
-		   Gate 1 Kouku target. */
-		const char_t* pAuditionPlacementId = nullptr;
-		const char_t* pDeferredReason = nullptr;
-	};
-	static constexpr size_t NO_ACTIVE_DEBUG_GATE = static_cast<size_t>(-1);
-	static const std::array<KAKUL_DEBUG_GATE, 9>& Get_DebugGates();
 	/* Despawns the previous gate bosses, requests this gate's placements,
 	   submits the player teleport, points the HUD and the pattern audition at
 	   the gate boss. Every step is a typed Server command; nothing local is
 	   spawned or moved. */
 	bool_t Debug_ActivateGate(size_t gateIndex, std::string& outStatus, bool_t preservePlayerPosition = false);
-	void Debug_ReturnToPlayerCamera();
 	bool_t Debug_DespawnArenaBosses(std::string& outStatus);
 	bool_t Debug_DespawnFireObjects(std::string& outStatus);
 	bool_t Debug_ReturnToStart(std::string& outStatus);
 	bool_t Consume_DebugReturnToStartSucceeded() { return std::exchange(m_bDebugStartSucceeded, false); }
-	void Debug_SetSequenceCombatPending(bool_t pending);
-	void Debug_HoldSequenceCombatFade();
 	void Debug_RetireGateActivation(const std::string& reason);
 	size_t Get_ActiveDebugGate() const { return m_iActiveDebugGate; }
 	// Changes whenever a new gate activation is submitted, including the same gate.
 	std::uint32_t Get_DebugGateGeneration() const { return m_iNextDebugGateRequestSequence; }
-	const string& Get_GatePresentationProfileId() const { return m_strGatePresentationProfileId; }
 	bool_t Is_DebugGatePending() const { return m_bDebugStartPending || NO_ACTIVE_DEBUG_GATE != m_iPendingDebugGate; }
 	const std::string& Get_DebugGateStatus() const { return m_strDebugGateStatus; }
 	/* Debug tuning only: the live body of one arena boss archetype. */
@@ -291,6 +296,8 @@ public:
 	const CWorldSequenceDocument& Get_WorldSequenceDocument() const { return m_SequencePlayer.Get_Document(); }
 	const LostArk::Shared::S2C_KOUKUSAYDON_BUNDLE_STATE& Get_KoukuBundleState() const { return m_Replication.Get_KoukuBundleState(); }
 	std::uint32_t Get_PresentationServerTick() const { return m_Replication.Get_LastServerTick(); }
+	const LostArk::Shared::S2C_KOUKUSAYDON_RAID_STATE& Get_KoukuRaidState() const { return m_Replication.Get_KoukuRaidState(); }
+	const LostArk::Shared::S2C_KOUKUSAYDON_RAID_STATE& Get_KoukuRaidReply() const { return m_Replication.Get_KoukuRaidReply(); }
     bool_t Can_StartCompositionWorld(const std::string& instanceId, std::string& status,
         const CWorldSequenceDocument* sourceDocument = nullptr) const;
 	bool_t Try_GetOwnedCompositionWorldPivot(std::uint32_t runEpoch, const std::string& memberId,
@@ -299,7 +306,8 @@ public:
 	bool_t Reload_WorldObjectRuntime(std::string& status);
 #ifdef _DEBUG
 	bool_t Debug_BeginWorldObjectPreview(const CWorldSequenceDocument&, const std::string& instanceId,
-		std::string& status, bool_t previewAtCharacter = true);
+		std::string& status, bool_t previewAtCharacter = true,
+		const std::optional<CWorldSequencePlayer::OBJECT_PLACEMENT>& placement = {});
 	bool_t Debug_SampleWorldObjectPreview(f32_t clockMs, std::string& status);
 	void Debug_StopWorldObjectPreview();
 	void Debug_DrawWorldObjectColliderPreview() const;
@@ -477,6 +485,7 @@ private:
 	};
 	std::vector<WORLD_OBJECT_PREVIEW_SCREEN_EFFECT> m_WorldObjectPreviewScreenEffects;
 	std::string m_strWorldObjectPreviewNotice;
+#endif
 	struct GATE_OBJECT_PRESENTATION final
 	{
 		size_t gateIndex = NO_ACTIVE_DEBUG_GATE;
@@ -489,8 +498,12 @@ private:
 	};
 	unique_ptr<GATE_OBJECT_PRESENTATION> m_pPendingGateObjects;
 	unique_ptr<GATE_OBJECT_PRESENTATION> m_pGateObjects;
+	// Borrow only the existing G1 owner; no second World playback path is created.
+	GATE_OBJECT_PRESENTATION* m_pServerRaidCinematicBorrowedGateObjects = nullptr;
+#ifdef _DEBUG
 	GATE_OBJECT_PRESENTATION* m_pWorldObjectPreviewBorrowedGateObjects = nullptr;
 	bool_t m_bCompositionWorldPreviewBorrowsGateObjects = false;
+#endif
 	bool_t Debug_PrepareGateObjects(size_t gateIndex, std::string& status);
 	bool_t Debug_CommitGateObjects(size_t gateIndex, std::string& status);
 	void Debug_CancelGateObjects();
@@ -499,7 +512,6 @@ private:
 	bool_t Debug_StartGateObjectPresentation(GATE_OBJECT_PRESENTATION& state, std::string& status);
 	bool_t Debug_ReleaseGateObjectPresentation(GATE_OBJECT_PRESENTATION& state, std::string& status);
 	bool_t Debug_SetGateObjectsSuspended(bool_t suspended, std::string& status);
-#endif
 #ifdef _DEBUG
 	struct COMPOSITION_WORLD_PREVIEW_PLAYBACK final
 	{
@@ -576,6 +588,19 @@ private:
 	f32_t m_fCameraBlendElapsed = 0.f;
 	bool_t m_bCameraShotHeld = false;
 	std::string m_strCameraShotStatus;
+	/* Index into Get_DebugGates() of the gate whose bosses are raised now;
+	   that button stays disabled until another gate or Despawn is chosen. */
+	size_t m_iActiveDebugGate = NO_ACTIVE_DEBUG_GATE;
+	string m_strGatePresentationProfileId;
+    size_t m_iGateLightingIndex = NO_ACTIVE_DEBUG_GATE;
+    std::shared_ptr<CMapLightPresentationRuntime> m_pGateMapLightPresentation;
+    std::uint32_t m_iServerRaidGatePresentationEpoch = 0u;
+    std::optional<CMapLightDocument> m_GateMapLightSource;
+
+	bool_t m_bSequenceCombatPending = false;
+	bool_t m_bSequenceCombatFadeHeld = false;
+	std::string m_strDebugGateStatus =
+		"Choose a gate. The Server raises its bosses and moves only your player.";
 #ifdef _DEBUG
 	/* Debug gate command sequence and the accumulated Server replies shown in
 	   the F1 arena panel. Session state only; never persisted. */
@@ -583,16 +608,8 @@ private:
 	float m_fDebugGazeHalfAngle = 45.f;
 	float m_fDebugGazeDistance = 30.f;
 	std::uint32_t m_iNextDebugGateRequestSequence = 1u;
-	/* Index into Get_DebugGates() of the gate whose bosses are raised now;
-	   that button stays disabled until another gate or Despawn is chosen. */
-	size_t m_iActiveDebugGate = NO_ACTIVE_DEBUG_GATE;
-	string m_strGatePresentationProfileId;
-    size_t m_iGateLightingIndex = NO_ACTIVE_DEBUG_GATE;
-    std::shared_ptr<CMapLightPresentationRuntime> m_pGateMapLightPresentation;
     std::shared_ptr<CMapLightPresentationRuntime> m_pPendingGateMapLights;
-    std::optional<CMapLightDocument> m_GateMapLightSource;
     std::optional<CMapLightDocument> m_PendingGateMapLightSource;
-
 	size_t m_iPendingDebugGate = NO_ACTIVE_DEBUG_GATE;
 	std::map<std::string, std::uint64_t> m_DebugGatePendingPlacements;
 	bool_t m_bDebugGateFailed = false;
@@ -600,10 +617,6 @@ private:
 	bool_t m_bDebugStartPending = false;
 	bool_t m_bDebugStartSucceeded = false;
 	f32_t m_fDebugGatePendingSeconds = 0.f;
-	bool_t m_bSequenceCombatPending = false;
-	bool_t m_bSequenceCombatFadeHeld = false;
-	std::string m_strDebugGateStatus =
-		"Choose a gate. The Server raises its bosses and moves only your player.";
 	/* Last F1 status-word preview serial already turned into a word. */
 	std::uint32_t m_iStatusEffectTextPreviewSerial = 0u;
 #endif
@@ -640,9 +653,13 @@ private:
 	std::uint32_t m_iNextGateRequestSequence = 1u;
 	void Update_GateProgress(f32_t fTimeDelta);
 	void Apply_GateProgressState(const LostArk::Shared::S2C_GATE_PROGRESS_STATE& State);
-	/* HUD focus, combat-analysis reset and (Debug) the gate objects / lighting for a gate the
-	   Server raised on its own -- the presentation half of the F1 gate button. */
+	/* Both Server gate routes share the same object / lighting commit. Active Raid
+	   presentation waits for its cinematic clock before this owner changes. */
 	void Apply_ServerGate(size_t gateIndex);
+	bool_t Commit_GatePresentation(size_t gateIndex, std::string& status);
+	bool_t Is_ServerRaidActive() const;
+	bool_t Is_LocalGateParticipant() const;
+	bool_t Can_InteractGateProgress() const;
 	bool_t Is_LocalRaidLeader() const;
 	bool_t Is_GateVotePromptOpen() const;
 	static CRaidGateProgressView::PROMPT Gate_VotePrompt(LostArk::Shared::GATE_PROGRESS_KIND eKind);

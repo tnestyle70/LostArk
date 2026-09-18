@@ -25,6 +25,7 @@ private:
     static int Run_WorldPlayback(TESTS& tests);
     static int Run_DebugTeleport(TESTS& tests);
     static void Run_KoukuBundles(TESTS& tests);
+    static void Run_KoukuRaidIntegration(TESTS& tests);
     static void Run_KoukuMarioEntryContact(TESTS& tests);
     static void Run_KoukuProduct(TESTS& tests, CGameplayCatalog& catalog);
     static void Run_ValtanLifecycle(TESTS& tests, CGameplayCatalog& catalog);

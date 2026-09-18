@@ -493,6 +493,19 @@ descriptor tuple은 각각 증명해야 한다.
 - [Missing Effect Family ABI 복원 계획](../GB/08-22/2026-08-22_MISSING_EFFECT_FAMILY_ABI_RECOVERY_IMPLEMENTATION_PLAN.md)
 - [Missing Effect Family ABI 복원 결과](../GB/08-22/2026-08-22_MISSING_EFFECT_FAMILY_ABI_RECOVERY_RESULT.md)
 
+### Valtan Effect V2 source와 게시된 binding의 분리
+
+Composition binding 저작 정본은 `Data/Effects/V2/Bindings/BOSS_VALTAN.effectv2bindings.json`이다.
+Source Save는 이 owner의 exact baseline CAS와 storage schema만 확정하며 제품 재생을 활성화하지 않는다.
+엄격한 Valtan Publish가 검증한 같은 형식의 생성물은
+`Data/Valtan/Published/BOSS_VALTAN.effectv2bindings.json`에 둔다. `CEffectV2Catalog`의 authoring snapshot과
+runtime snapshot은 독립이며 제품 `CEffectV2Runtime::Ensure_Bindings`는 게시된 snapshot만 소비한다.
+명시적 local preview가 주입하는 authoring snapshot은 계속 현재 draft를 재생한다.
+
+Sound도 `Data/Valtan/Published/Valtan.patternsoundcues.json`을 제품 입력으로 사용한다.
+Source Reload/Save 또는 dirty snapshot 무효화를 Product admission으로 간주하지 않는다.
+게시 오류·Product parse 오류는 이전 admitted snapshot을 유지하며 생성물을 source로 역복사하지 않는다.
+
 ## 12. Valtan에 적용할 때의 현재 경계
 
 이 가이드의 초기 main 기준선 `61930d4a`에는 Valtan V0 graph와 첫 V1 연구 수직 슬라이스가 함께

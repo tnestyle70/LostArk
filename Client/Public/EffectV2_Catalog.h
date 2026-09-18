@@ -118,6 +118,8 @@ public:
 		std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT>& pOutSnapshot,
 		std::string& strOutError) const;
 	bool_t Reload_BossValtan(std::string& strOutError);
+	bool_t Reload_BossValtanRuntime(std::string& strOutError);
+	[[nodiscard]] std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT> Get_RuntimeSnapshot() const;
 	/* Explicit Workbench navigation boundary.  Unlike ordinary Reload, this
 	   typed command may replace an unsaved BOSS_VALTAN binding draft after the
 	   user chooses Discard; staging failure preserves the previous snapshot. */
@@ -196,6 +198,7 @@ private:
 private:
 	mutable std::mutex m_SnapshotMutex;
 	std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT> m_pSnapshot;
+	std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT> m_pRuntimeSnapshot;
 	std::string m_strBossValtanBindingDraftBaselineBytes;
 	bool_t m_bBossValtanBindingDraftDirty = false;
 };

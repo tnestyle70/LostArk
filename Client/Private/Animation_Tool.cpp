@@ -331,14 +331,12 @@ void Client::CAnimation_Tool::Update(
 
 	if (!std::isfinite(fTimeDelta) || fTimeDelta <= 0.f)
 		return;
-	m_fValtanPatternPreviewElapsedSeconds +=
-		fTimeDelta * m_fValtanPatternPreviewSpeed;
-	if (m_fValtanPatternPreviewElapsedSeconds >=
-		m_fValtanPatternPreviewItemDurationSeconds)
-	{
-		Advance_ValtanPatternPreview(PreviewModel);
-	}
-	Update_ValtanPatternHitAreaPreview();
+	f32_t nextSourceClock = m_fValtanPatternPreviewTimelineSeconds + fTimeDelta * m_fValtanPatternPreviewSpeed;
+	if (m_bValtanCompositionLoop && m_fValtanPatternPreviewDurationSeconds > 0.f &&
+		nextSourceClock >= m_fValtanPatternPreviewDurationSeconds)
+		nextSourceClock = std::fmod(nextSourceClock, m_fValtanPatternPreviewDurationSeconds);
+	if (!Seek_ValtanPatternPreview(PreviewModel, nextSourceClock, false))
+		Stop_ValtanPatternPreview(PreviewModel, "Source sequence sample failed; preview stopped.");
 }
 
 shared_ptr<Engine::CModel> Client::CAnimation_Tool::Resolve_Model() const
@@ -633,6 +631,9 @@ void Client::CAnimation_Tool::Adopt_AssetName(
 	m_iValtanPatternMasterTargetGeneration = 0u;
 	m_ValtanPatternPreviewDocument = {};
 	m_ValtanPatternPreviewPlaylist.clear();
+	m_ValtanPatternPreviewDurations.clear();
+	m_fValtanPatternPreviewTimelineSeconds = 0.f;
+	m_fValtanPatternPreviewDurationSeconds = 0.f;
 	m_bValtanPatternPreviewLoadAttempted = false;
 	m_bValtanPatternPreviewPlaying = false;
 	m_bValtanPatternPreviewPaused = false;

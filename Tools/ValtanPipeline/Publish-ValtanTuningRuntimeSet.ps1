@@ -8,6 +8,8 @@ param(
     [string]$AuthoringRevision = '',
     [string]$SourceManifestPath = '',
     [string]$DraftPatchPath = '',
+    [switch]$SourceOnly,
+    [string]$SourceBaselineRoot = '',
     [string]$PatternSoundBaselinePath = '',
     [string]$PatternSoundCandidatePath = '',
     [string]$EffectV2BaselinePath = '',
@@ -105,6 +107,10 @@ switch ($Mode) {
             $LockTimeoutSeconds.ToString(
                 [Globalization.CultureInfo]::InvariantCulture)
         )
+        if ($SourceOnly) {
+            if ([string]::IsNullOrWhiteSpace($SourceBaselineRoot)) { throw 'SourceOnly requires SourceBaselineRoot.' }
+            $command += @('--source-only', '--source-baseline-root', [IO.Path]::GetFullPath($SourceBaselineRoot))
+        }
         if (-not [string]::IsNullOrWhiteSpace($resolvedPatternSoundBaseline)) {
             $command += @(
                 '--pattern-sound-baseline', $resolvedPatternSoundBaseline,

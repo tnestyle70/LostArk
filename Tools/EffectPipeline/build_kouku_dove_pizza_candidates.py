@@ -59,12 +59,15 @@ def registration(document, source_system):
         treeReference=dict(kind='V1', assetId=asset, displayName=document['displayName'], parentId=parent))
 
 
-def dove_single_file_track(lane, straight_scale=2 / 3):
-    """Keep the saved phase clock; trim only its two straight travel segments."""
+def dove_single_file_track(lane, straight_scale=.5):
+    """Shorten the lead-in, keeping tangent speed continuous through the turn."""
     assert 0 <= lane < 4
     speed, spacing, straight, turn = 8., .8, .7, 2.
-    assert straight_scale in (1., 2 / 3)
-    straight_speed = speed * straight_scale
+    assert straight_scale in (1., 2 / 3, .5)
+    # Retain the two historical tracks only to recognize safe migrations.
+    if straight_scale == .5:
+        straight *= straight_scale
+    straight_speed = speed if straight_scale == .5 else speed * straight_scale
     radius = speed * turn / math.pi
     positions, angles = [], []
     for frame in range(181):
@@ -104,32 +107,28 @@ def apply_dove_single_file_path(document):
         lanes.add(lane)
         track = dove_single_file_track(lane)
         legacy_track = dove_single_file_track(lane, 1.)
+        prior_candidate_track = dove_single_file_track(lane, 2 / 3)
         previous_track = element.get('sourceTransformTrack')
         assert element['detail']['particle']['localSpace']
         assert element['detail']['timing']['startDelaySeconds'] == 0
         assert element['detail']['timing']['lifeTimeSeconds'] == 3
         assert abs(element['detail']['particle']['sourceScale']['lifeTime'] - .3) < 1.e-6
         if 'sourceTransformTrack' in element:
-            assert previous_track in (legacy_track, track), 'Preserve an independently edited bird motion track'
+            assert previous_track in (legacy_track, prior_candidate_track, track), 'Preserve an independently edited bird motion track'
         remove = {DOVE + f'.velocity{lane}', DOVE + f'.orbit{lane}'}
         removed = [m for m in modules if m['stableId'] in remove]
-        assert len(removed) == 2 or (not removed and previous_track in (legacy_track, track))
+        assert len(removed) == 2 or (not removed and previous_track in (legacy_track, prior_candidate_track, track))
         if removed:
             assert {m['className'] for m in removed} == {'particlemodulevelocity', 'particlemoduleorbit'}
         if removed or previous_track != track:
             changes.append(dict(elementId=element['id'], removedModuleIds=sorted(remove),
-                changedField='sourceTransformTrack', straightDistanceMultiplier=2 / 3,
+                changedField='sourceTransformTrack', straightDistanceMultiplier=.5,
                 basis='USER_REQUESTED_PROJECT_AUTHORED'))
         element['sourceRecipe']['modules'] = [m for m in modules if m['stableId'] not in remove]
         assert not any(m['className'] in ('particlemodulevelocity', 'particlemoduleorbit', 'particlemodulelocationdirect')
                        for m in element['sourceRecipe']['modules']), 'Do not compose another movement contribution'
         element['sourceTransformTrack'] = track
         assert element['material']['sourceProfile']['runtimeShaderProfileId'] == 'effect.ue3.kouku-2893-native.v1'
-        exposure = element['detail']['color']['emissiveIntensity']
-        if exposure != 4.0:
-            changes.append(dict(elementId=element['id'], changedField='detail.color.emissiveIntensity',
-                before=exposure, after=4.0, basis='PROJECT_AUTHORED_RGB_EXPOSURE_4'))
-            element['detail']['color']['emissiveIntensity'] = 4.0
     return staged, changes
 
 
@@ -197,15 +196,15 @@ def dove():
         sourceInputs=input_receipts(flight, impact),
         sourceMotion=dict(scale=motion[0], radiusCm=motion[1], heightCm=motion[2],
             speedCmPerSecond=motion[3], maxSpeedCmPerSecond=motion[4], lifetimeSeconds=motion[5], maxDistanceCm=motion[6]),
-        projectRequest=dict(birdCount=4, lifetimeSeconds=3, straightSpacingM=.8 * 2 / 3,
-            curveArcSpacingM=.8, straightSpeedMPerSecond=8 * 2 / 3, curveSpeedMPerSecond=8,
-            straightDistanceMultiplier=2 / 3, leaderForwardDistanceM=5.6 * 2 / 3,
-            leaderReturnDistanceM=2.4 * 2 / 3, whiteBodyBasis='PROJECT_AUTHORED_RGB_EXPOSURE_4',
-            perBirdLagSeconds=.1, leaderStraightSeconds=.7, halfTurnSeconds=2,
+        projectRequest=dict(birdCount=4, lifetimeSeconds=3, straightSpacingM=.8,
+            curveArcSpacingM=.8, straightSpeedMPerSecond=8, curveSpeedMPerSecond=8,
+            straightDistanceMultiplier=.5, leaderForwardDistanceM=2.8,
+            leaderReturnDistanceM=5.2, whiteBodyBasis='PRESERVE_SAVED_EXPOSURE',
+            perBirdLagSeconds=.1, leaderStraightSeconds=.35, halfTurnSeconds=2,
             turnRadiusM=16 / math.pi, turnAngleDegrees=180,
             trajectoryBasis='USER_REQUESTED_PROJECT_AUTHORED',
             direction='Original +X source travel, rotated by each authored occurrence root.',
-            motionPolicy='Saved phase clock and 0.1s follower delay preserved; both straight segments use 2/3 speed, the original authored half-circle stays at 8m/s. This is not the original 15m projectile cap.'),
+            motionPolicy='Saved 3s lifetime and 0.1s follower delay preserved; 0.35s lead-in, 2s half-turn and 0.65s return all use 8m/s. This is not the original 15m projectile cap.'),
         savedInputSha256=sha(saved_path) if saved_path.is_file() else None,
         motionChanges=motion_changes,
         impactBirths=sum(burst_counts)*4, impactElementCount=len(burst_counts),

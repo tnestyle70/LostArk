@@ -393,6 +393,9 @@ F1의 `Arena Camera / Player` 바로 아래 `Show Navigation`은 현재 제품 L
 읽는 Debug 오버레이다. 녹색은 이동 가능, 주황은 바닥이 있는 막힌 셀, 자홍은 베이크에서 바닥을
 찾지 못한 셀이다. 원본/paint와 게시본이 다르면 막힘 원인을 추정하지 않고 빨간색으로 표시한다.
 `Reload Navigation`으로 디스크 표시본을 다시 읽고 `Camera range (m)`로 표시 범위를 조절한다.
+셀은 반투명 채움과 2px 외곽선으로 main viewport background에 직접 그리므로 imgui.ini가 암시적
+Debug 창을 별도 viewport에 고정해도 사라지지 않는다. 패널은 frustum 밖 셀 수, 카메라 위치,
+처음 그린 셀의 world/screen 좌표를 한 프레임 지연된 진단으로 함께 표시한다.
 F1을 닫아도 표시되며 Level 전환 시 꺼진다. 실제 Server 메모리·동적 blocker 상태나 베이크를
 변경하지 않는다. Development의 Map Editor는 기존 MapTool Navigation 표시를 사용한다.
 Client 메인 루프는 대기 중 Windows 메시지를 처리한 뒤 실제 frame delta로 Update/Render를 실행하며,
@@ -493,6 +496,13 @@ F1 `KoukuSaydon Arena`의 `Change to Clown`/`Return to Player`는 Debug typed �
 해제·session reset 시 최신 snapshot으로 돌아간다. 광대 몸체 교체는 원래 class 스킬을 유지하므로
 실제 변신으로 POLYMORPH 스킬 HUD를 켜지 않는다. 광기 게이지에 의한 자동 변신·모드별 스킬과 패턴은 후속이다.
 마리오 1~4 입장은 별도로 Server가 기존 Intro trigger에서 `iMarioStage`를 확정하고 CLOWN으로 자동 전환한다.
+패턴 입장은 Gate 3 Pattern의 ENTER_AREA box가 Collider region을 갖고 sole Success가 `MARIO_ENTER`일 때
+그 box로 들어가며 completion chain은 선택이다. `MARIO_ENTER`의 optional `marioStage` 0..4는 0이면 방의
+live counter, 1..4면 저작 단계이고 요청의 test stage가 우선한다. 0이 아닐 때만 문서·projection·
+`PATTERNLOGICOUTCOME` 11번째 field로 실리므로 기존 행과 bootstrap은 byte 동일하다. chain 없는 입장은
+`startMs+durationMs`와 패턴 완료에서 portal을 닫고 Client hold를 게시하지 않는다. Play Preview와
+Sequencer Play는 chain 또는 Mario 입장 패턴을 Server Play로 보내며 Save와 Publish All Patterns가 먼저다.
+protocol 85는 그대로지만 Gameplay bootstrap 행과 Composition 문서 key가 바뀌므로 Server/Client를 함께 빌드·재시작한다.
 마리오에서는 Server가 정한 구간별 고정 진행선으로만 ←/→ 왕복한다. 카메라와 마우스로 깊이 방향을 조종하지 않는다.
 Debug ↑는 기존 건너가기 또는 같은 진행선 점프다. ↓/Shift 점프/마우스 이동/일반 스킬은 차단한다.
 키 해제 또는 300ms 입력 만료 시 서버 이동이 정지한다. 기존 퇴장·다른 F1 이동·책 컷신 배치는 전용 상태를
@@ -704,7 +714,29 @@ F1의 같은 계층에 재생 불가 사유와 함께 남긴다. Save와 Publish
 쿠크 재승인은 게시된 쿠크 행과 현재 Server의 검증된 나머지 행을 합쳐 기존 parser로 검사한다.
 별도로 게시된 balance가 디스크에 있어도 쿠크 재생을 막거나 현재 balance를 바꾸지 않는다.
 World placement와 다른 gameplay balance 자체를 적용하려면 Server를 재시작한다. 파일 게시 성공만으로
-Server 재생 승인 완료를 표시하지 않는다. box `durationMs`와 optional
+Server 재생 승인 완료를 표시하지 않는다.
+
+Kouku의 `Complete Play - Sequences + Pattern Flow`와 Sequence `Complete Play`는
+`C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST` START/STOP·READY/FAILED와 `S2C_KOUKUSAYDON_RAID_STATE`를 사용한다.
+Release는 게시된 입장 collider의 Sequence ID를 같은 준비 경로로 전달한다. Debug START/STOP 명령과
+제품 진입은 구분하며, READY/FAILED와 Server 시각 presentation 소비는 두 빌드가 공유한다.
+Server는 저장 Action·Sequence revision, 관문 Flow, 시작 1~4인 roster를 고정하고 PREPARING을 전송한다.
+각 참가자는 정확한 revision의 문서를 검증·미리 읽어 READY/FAILED를 회신한다. 전원 READY 이후에만
+공통 30Hz 시작 tick을 확정하고 입장 Sequence·슬롯 도착·기존 audition Flow를 실행한다.
+준비 중에는 위치·보스 상태를 변경하지 않으며, FAILED·10초 timeout·owner STOP은 기존 상태를 보존한다. 입장 종료 전에는 전투 배우를 생성하지 않는다.
+카드미로 완료를 기다려 다음 Flow 항목을 시작한다. 주 보스가 실제 사망하면 기존 클리어·MVP·던전입장
+UI에 결과를 표시하고 `WAIT_GATE`에서 기다린다. 시간 경과로 관문을 전환하지 않는다. 시작 roster 전원의
+관문 입장 승인을 받아야 다음 Sequence를 재생하며, 거절·투표 timeout은 현재 관문을 유지한다.
+재시작 승인도 같은 관문의 입장 Sequence를 거친다. 2관문 승인 뒤에는 클리어 Sequence와 3관문 입장
+Sequence를 차례로 재생한다. 마지막 관문 클리어는 기존 EXIT·재시작 UI를 유지한다.
+Client는 저장 Sequence의 정확한 ID/revision을 유지하며 복제된 시각으로 기존 presentation을 샘플링한다.
+늦은 입장은 현재 시각과 GateProgress의 관문·클리어·진행 중 투표 상태를 초기 동기화로 받는다.
+시작 roster의 도착 슬롯이나 투표 권한에는 추가되지 않으며, 시작 참가자 퇴장은
+실행을 중단한다. protocol 93 계약은 양쪽 실행 파일을 함께 갱신·재시작한다. protocol 92 이하 peer는 입장 시 거절한다. 이후 저장 Action·Sequence만
+재게시하면 다음 START가 새 Product를 검증하며, Client의 Reload와 사용자 화면 확인은 별도 단계다.
+자세한 권위 경계는 팀 인터페이스 사용서의 `입장 Sequence와 열린 아레나 전투 연결`을 따른다.
+
+box `durationMs`와 optional
 placement TRS는 protocol 69 WORLD cue로 전달한다. 정상 완료는 `FINISH_OWNER`로 이미 시작한
 재생의 저작 수명을 보존하고, Stop/실패는 `STOP_OWNER`로 즉시 정리한다. 양쪽 실행 파일 갱신 후 Server와 Client를 재시작한다.
 여러 카드의 접촉은 Composition `TRIGGER / OBJECT_CONTACT`와 `PLAY_CONTACT_WORLD_OBJECT_MOTION` Result로 연결한다. 대상은 저장 Motion ID가 아니라 같은 Pattern의 WORLD occurrence 목록이며 실제 맞은 카드별로 반응한다. 전체 조커찾기 제한시간은 `DURATION / EXTERNAL_SIGNAL`과 접촉 Result의 `COMPLETE_LOGIC_WINDOW`로 분리한다. Collider의 `BOSS → WEAPON → Bone`에서 실제 망치 Bone을 선택하며, Product publish가 기존 WModel에서 서버용 Bone 궤적을 계산한다. 자세한 저작 순서는 `.md/TEAM/ANIMATION_TOOL_OWNER_HANDOFF.md` 17.7을 따른다.

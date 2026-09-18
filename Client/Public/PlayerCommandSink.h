@@ -15,6 +15,7 @@ class IPlayerCommandSink
 {
 public:
 	virtual ~IPlayerCommandSink() = default;
+	virtual bool Request_KoukuRaid(const LostArk::Shared::C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST&) { return false; }
 	virtual bool Request_DebugWorldPlayback(const LostArk::Shared::C2S_DEBUG_WORLD_PLAYBACK&) { return false; }
 	virtual bool Consume_DebugWorldPlaybackResult(LostArk::Shared::S2C_DEBUG_WORLD_PLAYBACK_RESULT&) { return false; }
 
@@ -24,7 +25,7 @@ public:
 	virtual bool Request_DebugReturnToKoukuStart(std::uint32_t) { return false; }
 	virtual bool Consume_DebugTeleportResult(
 		LostArk::Shared::S2C_DEBUG_TELEPORT_TO_POSITION_RESULT& result) = 0;
-	// Unsupported sinks explicitly reject the optional Debug test aid.
+	// Legacy wire naming is retained for the Server-authoritative Mario jump. Unsupported sinks reject it.
 	virtual bool Request_DebugMarioJump(std::uint32_t, LostArk::Shared::MARIO_DIRECTION) { return false; }
 	virtual bool Consume_DebugMarioJumpResult(
 		LostArk::Shared::S2C_DEBUG_MARIO_JUMP_RESULT&) { return false; }

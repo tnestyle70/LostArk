@@ -34,6 +34,73 @@ def copy_repository_inputs(root: Path) -> None:
 
 class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
     @staticmethod
+    def summon_layout_document(count=10):
+        child = dict(patternId="KAKULSAYDON_G1_PATTERN_202", actorProfileId="MN_RPCZ_00",
+            gateId="GATE2", targetBossPlacementId="boss.kakulsaydon.g2.kouku", category="MECHANIC",
+            stages=[dict(durationMs=2000, animationOccurrences=[dict(runtimeClip="rpcz00_att_battle_12_start")])],
+            logicOccurrences=[dict(logicId="jump"), dict(logicId="slam")],
+            presentationOccurrences=[dict(resourceId="hoop", anchorKind="BOSS")])
+        owner = dict(patternId="KAKULSAYDON_G1_PATTERN_201", actorProfileId="MN_RPCZ_00",
+            gateId="GATE2", targetBossPlacementId="boss.kakulsaydon.g2.kouku", category="MECHANIC",
+            stages=[dict(durationMs=4000)], summonOccurrences=[dict(startMs=1000, durationMs=3000,
+                patternSpawns=[dict(spawnId=f"spawn.{i+1}", patternId=child["patternId"], anchorKind="MAP",
+                    positionOffset=[-5 if i < 5 else 5, 10.56, 320 + 2 * (i % 5)], yawOffsetDegrees=90 if i < 5 else -90)
+                    for i in range(count)])])
+        document = dict(patterns=[owner, child], logics=[
+            dict(logicId="jump", logicType="TRIGGER", triggerKind="ALBION_AIRBORNE", airbornePhase="JUMP"),
+            dict(logicId="slam", logicType="TRIGGER", triggerKind="ALBION_AIRBORNE", airbornePhase="SLAM")],
+            presentationResources=[dict(resourceId="hoop", kind="EFFECT", defaultAnchorKind="BOSS")])
+        return document, owner, child
+
+    def test_summon_layout_admits_ten_independent_actor_patterns_and_legacy_offsets(self):
+        for count in (10, 16):
+            document, owner, child = self.summon_layout_document(count)
+            before = copy.deepcopy(document)
+            subject._validate_summon_pattern_spawns(document, owner)
+            self.assertEqual({child["patternId"]}, subject._pattern_dependencies(document, owner))
+            self.assertEqual(before, document)
+        document, owner, child = self.summon_layout_document(1)
+        spawn = owner["summonOccurrences"][0]["patternSpawns"][0]
+        del spawn["anchorKind"]
+        subject._validate_summon_pattern_spawns(document, owner)
+        spawn.update(anchorKind="MAP", positionOffset=[20000, 10, -20000])
+        subject._validate_summon_pattern_spawns(document, owner)
+        spawn["anchorKind"] = "BOSS"
+        with self.assertRaises(subject.CompositionError): subject._validate_summon_pattern_spawns(document, owner)
+
+    def test_summon_layout_rejects_bad_placement_and_short_window_without_mutation(self):
+        for mutation in ("overflow", "duplicate", "anchor", "nan", "outside", "yaw", "child_window", "owner_window"):
+            document, owner, child = self.summon_layout_document(17 if mutation == "overflow" else 10)
+            box = owner["summonOccurrences"][0]
+            spawn = box["patternSpawns"][0]
+            if mutation == "duplicate": box["patternSpawns"][1]["spawnId"] = spawn["spawnId"]
+            if mutation == "anchor": spawn["anchorKind"] = "PLAYER"
+            if mutation == "nan": spawn["positionOffset"][0] = float("nan")
+            if mutation == "outside": spawn["positionOffset"][0] = 100001
+            if mutation == "yaw": spawn["yawOffsetDegrees"] = 361
+            if mutation == "child_window": box["durationMs"] = 1999
+            if mutation == "owner_window": box["startMs"] = 1001
+            before = copy.deepcopy(document)
+            with self.subTest(mutation=mutation), self.assertRaises(subject.CompositionError):
+                subject._validate_summon_pattern_spawns(document, owner)
+            self.assertEqual(before, document)
+
+    def test_summon_layout_rejects_global_child_actions(self):
+        for mutation in ("self", "gate", "nested", "world", "camera", "map_effect", "player_select", "outcome", "parent"):
+            document, owner, child = self.summon_layout_document()
+            if mutation == "self": owner["summonOccurrences"][0]["patternSpawns"][0]["patternId"] = owner["patternId"]
+            if mutation == "gate": child["gateId"] = "GATE3"
+            if mutation == "nested": child["summonOccurrences"] = [{}]
+            if mutation == "world": child["worldOccurrences"] = [{}]
+            if mutation == "camera": document["presentationResources"][0]["kind"] = "CAMERA"
+            if mutation == "map_effect": child["presentationOccurrences"][0]["anchorKind"] = "MAP"
+            if mutation == "player_select": document["logics"][0]["airbornePhase"] = "SELECT_PLAYER"
+            if mutation == "outcome": child["logicOccurrences"][0]["onSuccessLogicIds"] = ["next"]
+            if mutation == "parent": document["folders"] = [dict(timelinePatternId=child["patternId"])]
+            with self.subTest(mutation=mutation), self.assertRaises(subject.CompositionError):
+                subject._validate_summon_pattern_spawns(document, owner)
+
+    @staticmethod
     def world_group_fixture():
         members = [f"test.group.motion.g{i}" for i in range(6)]
         world = dict(worldId="kakulsaydon.g1.world.1", displayName="Group",
@@ -147,6 +214,33 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
         self.assertEqual(definition["directionPatternIds"], projected["mechanicTriggers"][0]["directionPatternIds"])
         self.assertEqual("CROSS_DIRECTION_CLONES", projected["mechanicTriggers"][0]["kind"])
         self.assertEqual(before, document)
+
+    def test_cross_direction_keeps_actor_sound_on_each_child_clock(self):
+        document, parent, definition = self.cross_direction_document()
+        sound = dict(resourceId="sound.kouku.source", displayName="Source Sound", kind="SOUND",
+                     assetId="Sound/KoukuSaton/source.wav", defaultAnchorKind="BOSS",
+                     durationMs=450, soundEvent="source.bank.event")
+        document["presentationResources"] = [sound]
+        for child in document["patterns"][1:]:
+            child["presentationOccurrences"] = [dict(occurrenceId=child["patternId"] + ".presentation.1",
+                resourceId=sound["resourceId"], startMs=125, durationMs=450, soundSourceStartMs=37,
+                anchorKind="BOSS")]
+        before = copy.deepcopy(document)
+        subject._validate_cross_direction(document, parent)
+        with mock.patch.object(subject, "_project_pattern_root_motion", return_value={}):
+            encounter = subject.project_encounter(document)
+        projected = next(row for row in encounter["patterns"] if row["patternId"] == parent["patternId"])
+        self.assertEqual(definition["directionPatternIds"], projected["mechanicTriggers"][0]["directionPatternIds"])
+        self.assertEqual(before, document)
+        for mutation in ("CAMERA", "WORLD", "logic", "world"):
+            broken = copy.deepcopy(document)
+            cue = broken["patterns"][1]["presentationOccurrences"][0]
+            if mutation == "CAMERA": broken["presentationResources"][0]["kind"] = "CAMERA"
+            elif mutation == "WORLD": cue["anchorKind"] = "WORLD"
+            elif mutation == "logic": cue["logicOccurrenceId"] = "external.logic"
+            else: cue["worldOccurrenceId"] = "external.world"
+            with self.subTest(mutation=mutation), self.assertRaises(subject.CompositionError):
+                subject._validate_cross_direction(broken, broken["patterns"][0])
 
     def test_cross_direction_rejects_other_action_owners_invalid_summon_and_incomplete_children(self):
         for mutation in ("summon", "start", "window", "spawns", "pattern", "animation", "cutoff", "duration", "nested", "empty_cutoff", "tracking"):
@@ -1371,6 +1465,73 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
         owner = self.find(document, "KAKULSAYDON_G1_PATTERN_34")
         next(row for row in owner["logicOccurrences"] if row["logicId"] == "kakulsaydon.g1.logic.55")["onSuccessLogicIds"] = ["kakulsaydon.g1.logic.60"]
         subject.validate_document(document)
+
+    def mario_parent_entry_document(self, stage=1, kind="MARIO_ENTER", gate_id=None):
+        # The saved 1마리오 Parent P88 owns an ENTER_AREA box without a completion chain.
+        source = copy.deepcopy(self.hierarchy_document)
+        logic_id = f"kakulsaydon.g1.logic.{source['nextLogicOrdinal']}"
+        source["nextLogicOrdinal"] += 1
+        source["logics"].append(dict(logicId=logic_id, displayName="Mario stage entry", logicType="RESULT",
+                                     outcomeKind=kind, percent=0, durationMs=0, followupPatternId="", marioStage=stage))
+        owner = self.find(source, "KAKULSAYDON_G1_PATTERN_88")
+        box = next(row for row in owner["logicOccurrences"] if row["occurrenceId"] == "KAKULSAYDON_G1_PATTERN_88.logic.1")
+        box["onSuccessLogicIds"] = [logic_id]
+        patterns = {row["patternId"]: row for row in source["patterns"]}
+        closure, pending = set(), [owner["patternId"]]
+        while pending:
+            identity = pending.pop()
+            if identity in closure:
+                continue
+            closure.add(identity)
+            pending.extend(subject._pattern_dependencies(source, patterns[identity]) - closure)
+        if gate_id is not None:
+            # Move the whole closure to a consistent Gate/target so only the Mario rule differs.
+            for identity in closure:
+                patterns[identity]["gateId"] = gate_id
+                patterns[identity]["targetBossPlacementId"] = subject.GATE_TARGETS[(gate_id, patterns[identity]["actorProfileId"])][0]
+            for folder in source["folders"]:
+                if folder.get("timelinePatternId") in closure:
+                    folder["gateId"] = gate_id
+        return subject._publication_candidate(source, closure)
+
+    def test_mario_entry_without_chain_admits_gate3_parent_and_projects_stage(self):
+        document = self.mario_parent_entry_document(stage=1)
+        owner = self.find(document, "KAKULSAYDON_G1_PATTERN_88")
+        logics = {row["logicId"]: row for row in document["logics"]}
+        self.assertFalse(any(logics[row["logicId"]].get("judgementKind") == "PATTERN_COMPLETION_COUNT"
+                             for row in owner["logicOccurrences"]))
+        before = copy.deepcopy(document)
+        subject.validate_document(document)
+        with mock.patch.object(subject, "_project_pattern_root_motion", return_value={}):
+            encounter = subject.project_encounter(document)
+        self.assertEqual(before, document)
+        root = self.find(encounter, "KAKULSAYDON_G1_PATTERN_88")
+        windows = [row for row in root["logicWindows"] if row["kind"] == "ENTER_AREA"]
+        self.assertEqual(1, len(windows))
+        self.assertEqual([dict(kind="MARIO_ENTER", percent=0, durationMs=0, patternId="", marioStage=1)], windows[0]["onSuccess"])
+        self.assertTrue(windows[0]["cardRegions"])
+        # Stage 0 keeps the live room counter and stays byte-identical to the chain row shape.
+        live = self.mario_parent_entry_document(stage=0)
+        subject.validate_document(live)
+        with mock.patch.object(subject, "_project_pattern_root_motion", return_value={}):
+            encounter = subject.project_encounter(live)
+        window = next(row for row in self.find(encounter, "KAKULSAYDON_G1_PATTERN_88")["logicWindows"] if row["kind"] == "ENTER_AREA")
+        self.assertEqual([dict(kind="MARIO_ENTER", percent=0, durationMs=0, patternId="")], window["onSuccess"])
+
+    def test_mario_stage_rejects_out_of_range_non_mario_kind_and_non_gate3(self):
+        for mutation, expected in (("range", "marioStage"), ("kind", "only MARIO_ENTER owns a marioStage"),
+                                   ("gate", "Mario entry requires a Gate 3 pattern")):
+            with self.subTest(mutation=mutation):
+                if mutation == "range":
+                    document = self.mario_parent_entry_document(stage=5)
+                elif mutation == "kind":
+                    document = self.mario_parent_entry_document(stage=1, kind="INSTANT_DEATH")
+                else:
+                    document = self.mario_parent_entry_document(stage=1, gate_id="GATE1")
+                before = copy.deepcopy(document)
+                with self.assertRaisesRegex(subject.CompositionError, expected):
+                    subject.validate_document(document)
+                self.assertEqual(before, document)
 
     def test_mario_completion_rejects_invalid_terminal_outcomes_and_untimed_parent(self):
         for mutation in ("duplicate_success", "wrong_success", "timeout", "untimed_parent", "nested_chain"):
@@ -4213,6 +4374,43 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
         # Omitted policy preserves the legacy finite source clock.
         del row["loopEffectToDuration"]
         validate()
+
+    def test_effect_bone_rotation_requires_a_boss_effect_bone(self):
+        pattern_id = "KAKULSAYDON_G1_PATTERN_27"
+        resource = dict(resourceId="effect.firebreath", kind="EFFECT", resourceKind="V1_EFFECT")
+        row = dict(occurrenceId=pattern_id + ".presentation.2", resourceId="effect.firebreath",
+                   startMs=2366, durationMs=5500)
+        pattern = dict(patternId=pattern_id, nextPresentationOccurrenceOrdinal=3,
+                       presentationOccurrences=[row])
+        def validate():
+            subject._validate_presentation_occurrences(pattern, {"effect.firebreath": resource}, 7866,
+                                                      {"world.stage": {"worldId": "world.stage"}})
+        validate()
+        # An omitted key keeps the boss facing basis and the row's existing Product bytes.
+        self.assertNotIn("boneRotation",
+                         subject._project_presentation_occurrence({"worlds": []}, pattern, row, resource))
+        row["bone"] = "bip001-mouth"
+        row["boneRotation"] = "BONE"
+        validate()
+        self.assertEqual("BONE", subject._project_presentation_occurrence(
+            {"worlds": []}, pattern, row, resource)["boneRotation"])
+        row["bone"] = ""
+        with self.assertRaisesRegex(subject.CompositionError, "BONE boneRotation"):
+            validate()
+        row["bone"] = "bip001-mouth"
+        row["anchorKind"] = "WORLD"
+        row["worldId"] = "world.stage"
+        with self.assertRaisesRegex(subject.CompositionError, "BONE boneRotation"):
+            validate()
+        del row["anchorKind"]
+        del row["worldId"]
+        resource["kind"] = "COLLIDER"
+        with self.assertRaisesRegex(subject.CompositionError, "BONE boneRotation"):
+            validate()
+        resource["kind"] = "EFFECT"
+        row["boneRotation"] = "SLOT"
+        with self.assertRaisesRegex(subject.CompositionError, "TARGET_YAW or BONE"):
+            validate()
 
     def test_linked_map_collider_projects_absolute_world_anchor(self):
         pattern_id = "KAKULSAYDON_G1_PATTERN_34"

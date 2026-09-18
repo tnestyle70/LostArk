@@ -412,7 +412,6 @@ void LostArk::Server::CGameRoom::Handle_InteractionSlot(
 	state.PendingCommand.Clear();
 	m_strStatus = "KoukuSaydon interaction slot started mode skill " +
 		std::to_string(skillIndex);
-#ifdef _DEBUG
 	/* The dance answer is judged only while an authored POSE_INPUT window of
 	the running pattern is open; the Debug dance override plays the pose alone. */
 	if (KOUKU_HUD_MODE::DANCE == state.eKoukuHudMode &&
@@ -433,7 +432,6 @@ void LostArk::Server::CGameRoom::Handle_InteractionSlot(
 			m_strStatus = "KoukuSaydon dance input: " + status;
 		}
 	}
-#endif
 }
 
 void LostArk::Server::CGameRoom::Handle_DebugSetKoukuHudMode(
@@ -544,7 +542,6 @@ void LostArk::Server::CGameRoom::Update_KoukuPlayerModes(
 				std::string(KOUKUSAYDON_G1_ENCOUNTER_ID)) :
 			nullptr;
 	const KOUKUSAYDON_LOGIC_LEDGER* ledger = nullptr;
-#ifdef _DEBUG
 	if (KOUKUSAYDON_PATTERN_AUDITION_PHASE::ACTIVE ==
 		m_KoukuSaydonPatternAudition.ePhase)
 	{
@@ -552,7 +549,6 @@ void LostArk::Server::CGameRoom::Update_KoukuPlayerModes(
 		if (const auto* product = Resolve_KoukuProductCatalog())
 			policy = product->Find_KoukuMadnessPolicy(std::string(KOUKUSAYDON_G1_ENCOUNTER_ID));
 	}
-#endif
 	CKoukuSaydonLogicRuntime::Update_PlayerModes(
 		m_Players, ledger, policy, serverTick);
 
@@ -570,7 +566,6 @@ void LostArk::Server::CGameRoom::Apply_KoukuGateEntryCard(
 		CKoukuSaydonLogicRuntime::Assign_EncounterCard(player, boss.iNetEntityId, m_iServerTick);
 }
 
-#ifdef _DEBUG
 bool LostArk::Server::CGameRoom::Apply_KoukuLogicOutput(
 	const KOUKUSAYDON_LOGIC_OUTPUT& output,
 	SERVER_WORLD_ENTITY& boss,
@@ -665,7 +660,6 @@ bool LostArk::Server::CGameRoom::Apply_KoukuLogicOutput(
 	m_KoukuSaydonBrain.Complete_Pattern(boss, serverTick);
 	return true;
 }
-#endif
 
 LostArk::Shared::S2C_DEBUG_TELEPORT_TO_POSITION_RESULT
 LostArk::Server::CGameRoom::Apply_DebugReturnToKoukuStart(SERVER_PLAYER& player, const std::uint32_t requestSequence)
@@ -991,7 +985,6 @@ void LostArk::Server::CGameRoom::Reset_MarioContactAction(SERVER_PLAYER& player)
 	player.strFearPresentationId.clear();
 }
 
-#ifdef _DEBUG
 bool LostArk::Server::CGameRoom::Enter_MarioFromPattern(SERVER_PLAYER& player, const std::uint8_t stage)
 {
 	using namespace LostArk::Shared;
@@ -1019,7 +1012,6 @@ bool LostArk::Server::CGameRoom::Enter_MarioFromPattern(SERVER_PLAYER& player, c
 	player = std::move(candidate);
 	return true;
 }
-#endif
 
 void LostArk::Server::CGameRoom::Update_MarioControlState(SERVER_PLAYER& player)
 {
@@ -1047,7 +1039,7 @@ void LostArk::Server::CGameRoom::Update_MarioControlState(SERVER_PLAYER& player)
 			std::abs(player.TriggerMove.fTargetY - entrance->fPositionY) < 0.05f &&
 			std::abs(player.TriggerMove.fTargetZ - entrance->fPositionZ) < 0.05f))
 		{
-			player.Clear_MarioControl();
+			player.Clear_MarioControl(true);
 			return;
 		}
 		player.eMadnessForm = PLAYER_MADNESS_FORM::CLOWN;
@@ -1102,6 +1094,23 @@ void LostArk::Server::CGameRoom::Update_MarioControlState(SERVER_PLAYER& player)
 	}
 }
 
+bool LostArk::Server::CGameRoom::Resolve_MarioReturnDestination(
+	const SERVER_PLAYER& player, SERVER_NAV_POINT& outPoint) const
+{
+	std::array<float, 3u> position{};
+	if (player.MarioReturnPosition) position = *player.MarioReturnPosition;
+	else
+	{
+		const auto* gate3 = Find_Placement("stage.kakul.sl05");
+		if (!gate3 || gate3->eKind != WORLD_BOOTSTRAP_KIND::PLAYER_SPAWN) return false;
+		position = { gate3->fPositionX, gate3->fPositionY, gate3->fPositionZ };
+	}
+	return std::all_of(position.begin(), position.end(), [](const float value) { return std::isfinite(value); }) &&
+		m_ServerNavigation.Is_PointWalkableExact(position[0], position[2]) &&
+		m_ServerNavigation.Sample_Position(position[0], position[2], outPoint) &&
+		std::abs(position[1] - outPoint.y) <= .25f;
+}
+
 void LostArk::Server::CGameRoom::Handle_MarioReturn(
 	const SESSION_ID sessionId, const LostArk::Shared::C2S_MARIO_RETURN& request)
 {
@@ -1148,26 +1157,24 @@ LostArk::Shared::S2C_MARIO_RETURN_RESULT LostArk::Server::CGameRoom::Apply_Mario
 			[&candidate](const auto& next) { return next.stage == candidate.stage && std::string_view(next.arrival) == candidate.exit; });
 	});
 	const auto* exit = lane == MARIO_LANES.end() ? nullptr : Find_Placement(lane->exit);
-	const auto* gate3 = Find_Placement("stage.kakul.sl05");
 	if (!exit || !exit->isEnabled || exit->eKind != WORLD_BOOTSTRAP_KIND::TRIGGER_BOX ||
-		exit->TriggerActions.size() != 1u || !gate3 || gate3->eKind != WORLD_BOOTSTRAP_KIND::PLAYER_SPAWN)
+		exit->TriggerActions.size() != 1u)
 		return reject(MARIO_RETURN_RESULT::REJECTED_DESTINATION);
 	const auto& action = exit->TriggerActions.front();
 	SERVER_NAV_POINT ground{};
 	if (action.eKind != WORLD_TRIGGER_ACTION_KIND::MOVE_PLAYER || !std::isfinite(action.fDurationSeconds) ||
 		action.fDurationSeconds <= 0.f || !std::isfinite(action.fArcHeight) ||
 		!std::isfinite(action.fTargetX) || !std::isfinite(action.fTargetY) || !std::isfinite(action.fTargetZ) ||
-		std::abs(action.fTargetX - gate3->fPositionX) > .05f || std::abs(action.fTargetZ - gate3->fPositionZ) > .05f ||
-		!m_ServerNavigation.Is_PointWalkableExact(action.fTargetX, action.fTargetZ) ||
-		!m_ServerNavigation.Sample_Position(action.fTargetX, action.fTargetZ, ground) ||
-		std::abs(action.fTargetY - ground.y) > .25f)
+		!Resolve_MarioReturnDestination(player, ground) ||
+		(!player.MarioReturnPosition && (std::abs(action.fTargetX - ground.x) > .05f ||
+			std::abs(action.fTargetZ - ground.z) > .05f || std::abs(action.fTargetY - ground.y) > .25f)))
 		return reject(MARIO_RETURN_RESULT::REJECTED_DESTINATION);
 	Refresh_PlayerBlockingBodies();
 	if (!m_ServerCollisionSystem.Is_PlayerPositionClear(ground.x, ground.y, ground.z, player.iNetEntityId))
 		return reject(MARIO_RETURN_RESULT::REJECTED_DESTINATION);
 	SERVER_PLAYER candidate = player;
 	WORLD_TRIGGER_ACTION move = action;
-	move.fTargetY = ground.y;
+	move.fTargetX = ground.x; move.fTargetY = ground.y; move.fTargetZ = ground.z;
 	if (!CServerTriggerSystem::Begin_MovePlayer(candidate, move, m_iServerTick ? m_iServerTick : 1u))
 		return reject(MARIO_RETURN_RESULT::REJECTED_PLAYER_STATE);
 	candidate.TriggerMove.strSourcePlacementId = exit->strPlacementId;
@@ -1285,10 +1292,16 @@ LostArk::Server::CGameRoom::Apply_DebugMarioJump(
 	result.iClientSequence = request.iClientSequence;
 	result.eWorldId = m_eWorldId;
 #ifndef _DEBUG
-	(void)player;
-	result.eResult = DEBUG_MARIO_JUMP_RESULT::REJECTED_DISABLED;
-	return result;
-#else
+	// The legacy wire name is retained; Release admits only a live raid roster actor.
+	if (!Is_KoukuRaidRunning() || (m_KoukuRaid.State.ePhase != KOUKUSAYDON_RAID_PHASE::COMBAT &&
+		m_KoukuRaid.State.ePhase != KOUKUSAYDON_RAID_PHASE::WAIT_MINIGAME) ||
+		std::find(m_KoukuRaid.PlayerIds.begin(), m_KoukuRaid.PlayerIds.end(), player.iPlayerId) == m_KoukuRaid.PlayerIds.end() ||
+		!m_PlayerIdBySessionId.contains(player.iSessionId) || m_PlayerIdBySessionId.at(player.iSessionId) != player.iPlayerId)
+	{
+		result.eResult = DEBUG_MARIO_JUMP_RESULT::REJECTED_DISABLED;
+		return result;
+	}
+#endif
 	if (WORLD_ID::KAKULSAYDON_ARENA != m_eWorldId || request.eWorldId != m_eWorldId)
 	{
 		result.eResult = DEBUG_MARIO_JUMP_RESULT::REJECTED_WRONG_WORLD;
@@ -1371,5 +1384,4 @@ LostArk::Server::CGameRoom::Apply_DebugMarioJump(
 		return result;
 	}
 	return reject(DEBUG_MARIO_JUMP_RESULT::REJECTED_NO_LANDING);
-#endif
 }

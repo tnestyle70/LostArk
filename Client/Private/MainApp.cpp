@@ -28,6 +28,9 @@
 #include "EffectV2_Runtime.h"
 #include "EffectV2_Catalog.h"
 #include "KoukuSaydonPresentationPlayer.h"
+#include "Valtan.h"
+#include "KoukuSaydonCompositionDocument.h"
+#include "PlayerCommandSink.h"
 #include "GameInstance.h"
 #include "ImGuiLayer.h"
 #include "ItemCatalog.h"
@@ -77,7 +80,6 @@
 #include "AnimationTargetService.h"
 #include "Character.h"
 #include "KoukuSaydonActionWorkbench.h"
-#include "KoukuSaydonCompositionDocument.h"
 #include "KoukuSaydonBossTool.h"
 #include "KoukuSaydonPatternAuditionService.h"
 #include "ValtanActionWorkbench.h"
@@ -1145,6 +1147,173 @@ namespace
 }
 #endif
 
+void CMainApp::UpdateKoukuGateCompletePlay()
+{
+    using namespace LostArk::Shared;
+    auto* arena = CLevel_KakulSaydonArena::Get_Active();
+    if (!arena)
+    {
+        if (m_pKoukuPresentationPlayer && m_pKoukuPresentationPlayer->Preview_IsServerClock()) m_pKoukuPresentationPlayer->Stop_Preview();
+        m_pKoukuRaidSequenceDocument.reset(); m_iKoukuRaidDocumentEpoch = m_iKoukuRaidAcknowledgedEpoch = 0u;
+        m_strKoukuRaidPresentationKey.clear(); m_strKoukuRaidFailedKey.clear(); m_strKoukuCompletePlayFlowGate.clear();
+        m_iKoukuRaidPendingRequest = 0u; m_bKoukuRaidStopAfterAdmission = false;
+        return;
+    }
+    const auto& reply = arena->Get_KoukuRaidReply();
+    if (m_iKoukuRaidPendingRequest && reply.iRequestSequence == m_iKoukuRaidPendingRequest &&
+        (!reply.iRunEpoch || reply.iOwnerPlayerId == CNetworkManager::Get().Get_LocalPlayerId()))
+    {
+        m_iKoukuRaidPendingRequest = 0u;
+        if (!reply.iRunEpoch) { m_bKoukuRaidStopAfterAdmission = false; m_strKoukuCompletePlayStatus = reply.strReason; return; }
+    }
+    if (m_iKoukuRaidPendingRequest && std::chrono::steady_clock::now() >= m_KoukuRaidReplyDeadline)
+    { m_iKoukuRaidPendingRequest = 0u; m_strKoukuCompletePlayStatus = "Server raid reply timed out; the run status is unconfirmed."; }
+    const auto& state = arena->Get_KoukuRaidState();
+    if (!state.iRunEpoch) return;
+    const bool active = state.ePhase == KOUKUSAYDON_RAID_PHASE::PREPARING || state.ePhase == KOUKUSAYDON_RAID_PHASE::CINEMATIC || state.ePhase == KOUKUSAYDON_RAID_PHASE::COMBAT ||
+        state.ePhase == KOUKUSAYDON_RAID_PHASE::WAIT_GATE || state.ePhase == KOUKUSAYDON_RAID_PHASE::WAIT_MINIGAME;
+    m_iKoukuCompletePlayWorldGeneration = CNetworkManager::Get().Get_WorldInboundGeneration();
+    m_strKoukuCompletePlayFlowGate = active ? state.strGateId : std::string{};
+#ifdef _DEBUG
+    if (m_bKoukuRaidStopAfterAdmission && !m_iKoukuRaidPendingRequest)
+    {
+        m_bKoukuRaidStopAfterAdmission = false;
+        if (active) { CancelKoukuGateCompletePlay("Queued Complete Play stop."); return; }
+    }
+#endif
+    if (state.ePhase == KOUKUSAYDON_RAID_PHASE::PREPARING)
+    {
+        m_strKoukuCompletePlayStatus = "Preparing the shared raid documents; waiting for every participant.";
+        const auto localId = CNetworkManager::Get().Get_LocalPlayerId();
+        if (std::find(state.ParticipantPlayerIds.begin(), state.ParticipantPlayerIds.end(), localId) == state.ParticipantPlayerIds.end() ||
+            m_iKoukuRaidAcknowledgedEpoch == state.iRunEpoch || !arena->Get_PlayerCommandSink()) return;
+        std::string preparationError;
+        CKoukuSaydonCompositionDocument actions;
+        CKoukuSaydonCompositionDocument sequences(CKoukuSaydonCompositionDocument::Resolve_SequencePath());
+        bool ready = actions.Reload(preparationError) && sequences.Reload(preparationError);
+        if (ready && (actions.Get_LastGood().iRevision != state.iActionSourceRevision ||
+            sequences.Get_LastGood().iRevision != state.iSequenceSourceRevision ||
+            sequences.Get_LastGood().strCompositionId != state.strSequenceCompositionId ||
+            CNetworkManager::Get().Get_GameplayRevisionState().ServerActiveRevision != state.PinnedGameplayRevision))
+        { ready = false; preparationError = "Saved Action/Sequence or gameplay revision differs from the Server pin"; }
+        if (ready)
+        {
+            // Preload and validate immutable documents only. No playback, spawn, camera or teleport occurs here.
+            for (const auto& pattern : sequences.Get_LastGood().Patterns)
+            {
+                KOUKU_SAYDON_COMPOSITION_DOCUMENT expanded;
+                if (!CKoukuSaydonCompositionDocument::Try_ExpandPatternDocument(sequences.Get_LastGood(), pattern.strPatternId, expanded, preparationError))
+                { ready = false; break; }
+            }
+        }
+        if (ready)
+        {
+            m_pKoukuRaidSequenceDocument = std::make_unique<KOUKU_SAYDON_COMPOSITION_DOCUMENT>(sequences.Get_LastGood());
+            m_iKoukuRaidDocumentEpoch = state.iRunEpoch;
+        }
+        else if (preparationError.empty()) preparationError = "Raid document preparation failed";
+        if (preparationError.size() > MAX_KOUKUSAYDON_PATTERN_AUDITION_REASON_BYTES)
+        {
+            auto cut = MAX_KOUKUSAYDON_PATTERN_AUDITION_REASON_BYTES;
+            while (cut && (static_cast<unsigned char>(preparationError[cut]) & 0xc0u) == 0x80u) --cut;
+            preparationError.resize(cut);
+        }
+        if (!m_iNextKoukuRaidRequest || state.iRequestSequence == UINT32_MAX)
+        { m_strKoukuCompletePlayStatus = "Raid request sequence is exhausted"; return; }
+        m_iNextKoukuRaidRequest = (std::max)(m_iNextKoukuRaidRequest, state.iRequestSequence + 1u);
+        C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST acknowledgement;
+        acknowledgement.iRequestSequence = m_iNextKoukuRaidRequest++;
+        acknowledgement.eWorldId = state.eWorldId;
+        acknowledgement.eOperation = ready ? KOUKUSAYDON_RAID_OPERATION::READY : KOUKUSAYDON_RAID_OPERATION::FAILED;
+        acknowledgement.iExpectedRunEpoch = state.iRunEpoch;
+        acknowledgement.ExpectedGameplayRevision = state.PinnedGameplayRevision;
+        acknowledgement.iActionSourceRevision = state.iActionSourceRevision;
+        acknowledgement.iSequenceSourceRevision = state.iSequenceSourceRevision;
+        acknowledgement.strStartGateId = state.strGateId;
+        if (!ready) acknowledgement.strReason = preparationError;
+        if (arena->Get_PlayerCommandSink()->Request_KoukuRaid(acknowledgement)) m_iKoukuRaidAcknowledgedEpoch = state.iRunEpoch;
+        m_strKoukuCompletePlayStatus = ready ? "Raid documents prepared; waiting for the shared start tick." : preparationError;
+        return;
+    }
+    const bool cinematic = active && state.ePhase == KOUKUSAYDON_RAID_PHASE::CINEMATIC;
+    arena->Debug_SetSequenceCombatPending(cinematic);
+    if (!cinematic)
+    {
+        if (m_pKoukuPresentationPlayer && m_pKoukuPresentationPlayer->Preview_IsServerClock())
+        { m_pKoukuPresentationPlayer->Stop_Preview(); arena->Debug_ReturnToPlayerCamera(); }
+        // Return the cinematic lease before the ordinary transactional gate commit.
+        // This preserves the original visibility/legacy-book baseline on restart.
+        std::string restorationStatus;
+        if (!arena->End_ServerRaidCinematicPresentation(true, restorationStatus))
+        { m_strKoukuCompletePlayStatus = "Previous gate restore failed: " + restorationStatus; return; }
+        // Late observers also need the completed gate scene during WAIT_GATE.
+        if (active)
+        {
+            std::string gateStatus;
+            if (!arena->Apply_ServerRaidGatePresentation(state.strGateId, state.iRunEpoch, gateStatus))
+            { m_strKoukuCompletePlayStatus = "Server gate presentation failed: " + gateStatus; return; }
+        }
+        m_strKoukuRaidPresentationKey.clear(); m_strKoukuRaidFailedKey.clear();
+        m_strKoukuCompletePlayStatus = state.strReason.empty() ? "Server " + state.strGateId + " | " +
+            (state.ePhase == KOUKUSAYDON_RAID_PHASE::WAIT_GATE ? "boss defeated: waiting for the gate entry vote" : state.ePhase == KOUKUSAYDON_RAID_PHASE::WAIT_MINIGAME ? "waiting for every maze hunter to return" :
+             state.ePhase == KOUKUSAYDON_RAID_PHASE::COMPLETE ? "raid completed" : "saved flow " + state.strFlowEntryId) : state.strReason;
+        if (!active) { m_pKoukuRaidSequenceDocument.reset(); m_iKoukuRaidDocumentEpoch = 0u; }
+        return;
+    }
+    const std::string key = std::to_string(state.iRunEpoch) + ":" + state.strSequenceCompositionId + ":" + state.strSequencePatternId + ":" + std::to_string(state.iStartTick);
+    if (key == m_strKoukuRaidFailedKey)
+    {
+        std::string restore;
+        if (!arena->End_ServerRaidCinematicPresentation(true, restore))
+            m_strKoukuCompletePlayStatus = "Previous gate restore failed: " + restore;
+        return;
+    }
+    if (!m_pKoukuPresentationPlayer) return;
+    std::string status;
+    const auto fail = [&](const std::string& reason) {
+        m_strKoukuRaidFailedKey = key;
+        std::string restore;
+        m_strKoukuCompletePlayStatus = "Server cinematic presentation failed: " + reason;
+        if (!arena->End_ServerRaidCinematicPresentation(true, restore)) m_strKoukuCompletePlayStatus += " / " + restore;
+    };
+    if (m_iKoukuRaidDocumentEpoch != state.iRunEpoch || !m_pKoukuRaidSequenceDocument)
+    {
+        CKoukuSaydonCompositionDocument source(CKoukuSaydonCompositionDocument::Resolve_SequencePath());
+        if (!source.Reload(status)) { fail(status); return; }
+        if (source.Get_LastGood().iRevision != state.iSequenceSourceRevision || source.Get_LastGood().strCompositionId != state.strSequenceCompositionId)
+        { fail("Saved Sequence identity/revision differs from the Server pin. Reload the published source before restarting."); return; }
+        m_pKoukuRaidSequenceDocument = std::make_unique<KOUKU_SAYDON_COMPOSITION_DOCUMENT>(source.Get_LastGood());
+        m_iKoukuRaidDocumentEpoch = state.iRunEpoch;
+    }
+    const auto snapshotTick = arena->Get_PresentationServerTick();
+    const auto serverTick = static_cast<std::int32_t>(snapshotTick - state.iServerTick) >= 0 ? snapshotTick : state.iServerTick;
+    const auto elapsedTicks = static_cast<std::int32_t>(serverTick - state.iStartTick);
+    const std::uint32_t clockMs = elapsedTicks <= 0 ? 0u : static_cast<std::uint32_t>((std::min)(std::uint64_t(elapsedTicks) * 1000u / 30u, std::uint64_t(600000u)));
+    if (m_strKoukuRaidPresentationKey != key)
+    {
+        KOUKU_SAYDON_COMPOSITION_DOCUMENT expanded;
+        if (!CKoukuSaydonCompositionDocument::Try_ExpandPatternDocument(*m_pKoukuRaidSequenceDocument, state.strSequencePatternId, expanded, status))
+        { fail(status); return; }
+        const auto pattern = std::find_if(expanded.Patterns.begin(), expanded.Patterns.end(), [&](const auto& item) { return item.strPatternId == state.strSequencePatternId; });
+        if (pattern == expanded.Patterns.end()) { fail("Pinned Sequence pattern is absent."); return; }
+        KOUKU_SAYDON_COMPOSITION_BUNDLE wrapper;
+        wrapper.strBundleId = "raid.sequence." + std::to_string(state.iRunEpoch); wrapper.strGateId = pattern->strGateId;
+        wrapper.Members.push_back({wrapper.strBundleId + ".member", state.strSequencePatternId, 0u});
+        const auto bundleId = wrapper.strBundleId; expanded.Bundles.push_back(std::move(wrapper));
+#ifdef _DEBUG
+        StopCompositionPreview(m_eCompositionPreviewOwner); ClearKoukuSequenceArrivals();
+#endif
+        if (!arena->Begin_ServerRaidCinematicPresentation(status)) { fail(status); return; }
+        if (!m_pKoukuPresentationPlayer->Begin_BundlePreview(expanded, bundleId, clockMs, false, status, &arena->Get_WorldSequenceDocument(), true, false))
+        { fail(status); return; }
+        m_strKoukuRaidPresentationKey = key;
+    }
+    m_pKoukuPresentationPlayer->Sample_ServerSequence(clockMs);
+    if (!m_pKoukuPresentationPlayer->Preview_Playing()) { fail(m_pKoukuPresentationPlayer->Status()); return; }
+    m_strKoukuCompletePlayStatus = "Server " + state.strGateId + " | " + state.strSequencePatternId + " | " + std::to_string(clockMs) + " ms";
+}
+
+
 void CMainApp::Update(const f32_t fTimeDelta)
 {
 	{
@@ -1435,6 +1604,10 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	}
 	Update_KoukuGateSceneProfile();
 #ifdef _DEBUG
+	// Debug reset handling follows the common raid consumer.
+#endif
+	if (!CLevel_KakulSaydonArena::Get_Active()) UpdateKoukuGateCompletePlay();
+#ifdef _DEBUG
 	// Consume the Server reset before a finished entry preview can queue its next gate.
 	if (auto* startArena = CLevel_KakulSaydonArena::Get_Active(); startArena && startArena->Consume_DebugReturnToStartSucceeded())
 	{
@@ -1444,6 +1617,8 @@ void CMainApp::Update(const f32_t fTimeDelta)
 #endif
 	{
 		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "MainApp.Presentation.Prepare");
+	std::vector<BOSS_STAGE_ENVIRONMENT_SAMPLE> valtanEnvironmentSamples;
+	CValtan::Collect_StageEnvironmentSamples(valtanEnvironmentSamples);
 	if (auto* arena = CLevel_KakulSaydonArena::Get_Active())
 	{
 		if (!m_pKoukuPresentationPlayer)
@@ -1454,6 +1629,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		m_pKoukuPresentationPlayer->Set_LightResources(&m_LightResources);
 		std::vector<KOUKU_CARD_PRESENTATION_VIEW> cards;
 		arena->Collect_KoukuPresentationViews(bosses, cards);
+		UpdateKoukuGateCompletePlay();
 		m_pKoukuPresentationPlayer->Update(fTimeDelta, bosses, cards);
 		arena->Set_CompositionWorldEmissionResolver([this](std::uint32_t sourceRevision, std::string_view patternId, std::string_view occurrenceId,
 			CLevel_KakulSaydonArena::WORLD_EMISSION_ANCHOR& anchor)
@@ -1464,7 +1640,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
         if (m_pEffectToolV2) m_pEffectToolV2->Set_AuthoringPlayer(m_pKoukuPresentationPlayer.get());
 #endif
 	}
-	else if (m_pKoukuPresentationPlayer)
+	else if (m_pKoukuPresentationPlayer && !CLevel_ValtanArena::Get_Active() && valtanEnvironmentSamples.empty())
 	{
 #ifdef _DEBUG
         if (m_pEffectTool) m_pEffectTool->Set_AuthoringPlayer(nullptr);
@@ -1473,6 +1649,14 @@ void CMainApp::Update(const f32_t fTimeDelta)
 #endif
 		m_pKoukuPresentationPlayer->Reset();
 		m_pKoukuPresentationPlayer.reset();
+	}
+	if (!valtanEnvironmentSamples.empty() && !m_pKoukuPresentationPlayer)
+		m_pKoukuPresentationPlayer = std::make_unique<CKoukuSaydonPresentationPlayer>(
+			m_pDevice, m_pContext, m_RenderingProfiles);
+	if (m_pKoukuPresentationPlayer)
+	{
+		m_pKoukuPresentationPlayer->Set_LightResources(&m_LightResources);
+		m_pKoukuPresentationPlayer->Update_BossStageEnvironments(valtanEnvironmentSamples);
 	}
 #ifdef _DEBUG
 	UpdateLightingPreview();
@@ -1539,14 +1723,17 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	}
 	if (nullptr != m_pAnimationTool)
 	{
+		const bool_t bValtanClockActive = m_pAnimationTool->Get_ValtanCompositionPreviewState().bPlaying;
 		const bool_t bAnimationPreviewOwned =
 			(IsDebugToolVisible(DEBUG_TOOL::ANIMATION) &&
 			 DEBUG_TOOL::ANIMATION == m_eDebugInputOwner) ||
-			(IsDebugToolVisible(DEBUG_TOOL::SEQUENCER) && m_pSequencerTool && m_pSequencerTool->Is_BossSelected() &&
-			 DEBUG_TOOL::SEQUENCER == m_eDebugInputOwner) ||
+			(IsDebugToolVisible(DEBUG_TOOL::SEQUENCER) && m_pSequencerTool &&
+			 ((m_pSequencerTool->Is_BossSelected() && DEBUG_TOOL::SEQUENCER == m_eDebugInputOwner) ||
+			  (m_pSequencerTool->Get_SelectedTarget() == COMPOSITION_WORKBENCH_TARGET::SEQUENCE &&
+			   DEBUG_TOOL::SEQUENCER_BENCHMARK == m_eDebugInputOwner))) ||
 			(IsDebugToolVisible(DEBUG_TOOL::SEQUENCER_BENCHMARK) &&
 			 DEBUG_TOOL::SEQUENCER_BENCHMARK == m_eDebugInputOwner) ||
-			m_eCompositionPreviewOwner != DEBUG_TOOL::NONE;
+			(m_eCompositionPreviewOwner != DEBUG_TOOL::NONE && !bValtanClockActive);
 		{
 			Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.Animation.Update");
 			m_pAnimationTool->Update(
@@ -1774,11 +1961,21 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		if (route.shell) shellResourceRefresh |= route.shell->Consume_ResourceRefreshRequest();
 		if (!route.workbench) continue;
 		resourceSessions.push_back(route.workbench);
+		route.workbench->Set_PresentationModelResolver([this](const auto& pattern, auto target, auto& view) {
+			return m_pKoukuPresentationPlayer &&
+				m_pKoukuPresentationPlayer->Resolve_PatternModelTarget(pattern, target, view);
+		});
 		koukuResourceRefresh |= route.workbench->Consume_ResourceRefreshRequest();
 		presentationResourceRefresh |= route.workbench->Consume_PresentationResourceRefreshRequest();
 	}
 	if (presentationResourceRefresh)
 		Refresh_KoukuPresentationResources(resourceSessions, m_RenderingProfiles, m_LightResources);
+	if ((shellResourceRefresh || presentationResourceRefresh) && m_pValtanActionWorkbench)
+	{
+		std::vector<std::string> lights;
+		for (const auto& resource : m_LightResources.Get_Resources()) lights.push_back(resource.strLightResourceId);
+		m_pValtanActionWorkbench->Set_EnvironmentResources(m_RenderingProfiles.Collect_ProfileIds(), std::move(lights));
+	}
 	if (shellResourceRefresh || koukuResourceRefresh)
 	{
 		if (SUCCEEDED(EnsureAnimationPreviewBackend()))
@@ -1841,7 +2038,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	// serial only after selecting the owner, so equal occurrence IDs cannot cross drafts.
 	for (const auto& route : compositionRoutes)
 	{
-		if (!route.workbench || !m_pKoukuPresentationPlayer) continue;
+		if (!m_strKoukuCompletePlayFlowGate.empty() || !route.workbench || !m_pKoukuPresentationPlayer) continue;
 		const bool ownsPreview = route.owner == m_eCompositionPreviewOwner;
 		const bool productDebugAuthoring = m_eCompositionPreviewOwner == DEBUG_TOOL::NONE &&
 			!m_pKoukuPresentationPlayer->Preview_Playing() && route.owner == DEBUG_TOOL::SEQUENCER;
@@ -1859,6 +2056,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	DEBUG_TOOL previewStatusOwner = DEBUG_TOOL::NONE;
 	for (const auto& route : compositionRoutes)
 	{
+    if (!m_strKoukuCompletePlayFlowGate.empty()) continue;
 		auto* workbench = route.workbench;
 		auto* shell = route.shell;
 		if (!workbench) continue;
@@ -2049,6 +2247,13 @@ void CMainApp::Update(const f32_t fTimeDelta)
      CancelKoukuGateCompletePlay(previewRouteStatus);
    }
   }
+
+  KOUKU_SUMMON_PLACEMENT_PREVIEW_REQUEST summonPlacementPreview;
+  if (workbench->Consume_SummonPlacementPreviewRequest(summonPlacementPreview) &&
+   m_pKoukuPresentationPlayer && m_eCompositionPreviewOwner == route.owner)
+   if (!m_pKoukuPresentationPlayer->Preview_SummonPlacement(
+    summonPlacementPreview.strPatternId, summonPlacementPreview.Occurrence))
+    workbench->Notify_WorldObjectEditResult("Summon placement preview is unavailable. Use World Preview to rebuild this box.");
 
   KOUKU_PRESENTATION_GEOMETRY_PREVIEW_REQUEST presentationGeometryPreview;
   while (workbench->Consume_PresentationGeometryPreviewRequest(presentationGeometryPreview))
@@ -2263,7 +2468,30 @@ void CMainApp::Update(const f32_t fTimeDelta)
 			CSequencerTool::ANIMATION_PREVIEW_TRANSPORT::NONE;
 		const bool completeEntryPending = route.owner == DEBUG_TOOL::SEQUENCER_BENCHMARK &&
 			!m_strKoukuCompletePlayFlowGate.empty();
-		if (shell->Consume_AnimationPreviewTransportRequest(transport) &&
+		bool hasTransport = shell->Consume_AnimationPreviewTransportRequest(transport);
+		if (hasTransport && shell->Uses_ValtanSession() && m_pAnimationTool)
+		{
+			const auto valtan = m_pAnimationTool->Get_ValtanCompositionPreviewState();
+			if (valtan.bPlaying)
+			{
+				if (transport == CSequencerTool::ANIMATION_PREVIEW_TRANSPORT::STOP)
+					m_pAnimationTool->Stop_ValtanCompositionPattern(m_strToolStatus);
+				else if (valtan.bSourceSequencePlaying)
+				{
+					const bool pause = transport == CSequencerTool::ANIMATION_PREVIEW_TRANSPORT::PAUSE;
+					const uint32_t position = !pause && valtan.bPaused && valtan.iPositionMs >= valtan.iDurationMs ?
+						0u : valtan.iPositionMs;
+					(void)m_pAnimationTool->Seek_ValtanCompositionSourceSequence(position, pause, m_strToolStatus);
+				}
+				else
+					(void)m_pAnimationTool->Seek_ValtanCompositionPattern(valtan.strPatternId,
+						valtan.iPositionMs, transport == CSequencerTool::ANIMATION_PREVIEW_TRANSPORT::PAUSE,
+						m_strToolStatus);
+				shell->Set_AnimationPreviewStatus(m_strToolStatus);
+				hasTransport = false;
+			}
+		}
+		if (hasTransport &&
 			(m_eCompositionPreviewOwner == route.owner ||
 				(completeEntryPending && transport == CSequencerTool::ANIMATION_PREVIEW_TRANSPORT::STOP)))
 		{
@@ -2309,6 +2537,8 @@ void CMainApp::Update(const f32_t fTimeDelta)
 			{ activePreviewRouteStatus = previewRouteStatus; previewStatusOwner = route.owner; }
 		}
 	}
+	if (!m_pKoukuPresentationPlayer || !m_pKoukuPresentationPlayer->Preview_IsServerClock())
+	{
 	KOUKU_PREVIEW_STATE finalPreview;
 	std::string worldAnchorWaitingStatus;
 	std::string completedPreviewId;
@@ -2488,7 +2718,43 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		route.shell->Set_AnimationPreviewState(std::move(state));
 	}
 
-	UpdateKoukuGateCompletePlay();
+	if (m_pSequencerTool && m_pSequencerTool->Uses_ValtanSession() && m_pAnimationTool)
+	{
+		const auto valtan = m_pAnimationTool->Get_ValtanCompositionPreviewState();
+		// Publish the stopped state too; a direct Workbench preview may never
+		// have claimed the generic resource-preview route above.
+		if (valtan.bPlaying || !finalPreview.bPlaying)
+		{
+			CSequencerTool::ANIMATION_PREVIEW_STATE state;
+			state.strPatternId = valtan.strPatternId;
+			state.strStatus = valtan.strStatus;
+			state.bPlaying = valtan.bPlaying; state.bPaused = valtan.bPaused;
+			state.iClockMs = valtan.iPositionMs; state.iDurationMs = valtan.iDurationMs;
+			m_pSequencerTool->Set_AnimationPreviewState(std::move(state));
+		}
+	}
+	}
+	// Re-sample after this frame's typed Seek/Stop so model, environment and
+	// camera agree before Render. Always retire the camera override on handoff.
+	std::vector<BOSS_STAGE_ENVIRONMENT_SAMPLE> currentValtanSamples;
+	CValtan::Collect_StageEnvironmentSamples(currentValtanSamples);
+	if (m_pKoukuPresentationPlayer)
+		m_pKoukuPresentationPlayer->Update_BossStageEnvironments(currentValtanSamples);
+	if (m_pCameraTool)
+	{
+		const bool activeValtanSession = m_pSequencerTool && m_pSequencerTool->Uses_ValtanSession() &&
+			m_bDeveloperToolsVisible && IsDebugToolVisible(DEBUG_TOOL::SEQUENCER) &&
+			m_pAnimationTool && m_pAnimationTool->Get_ValtanCompositionPreviewState().bPlaying;
+		const auto local = std::find_if(currentValtanSamples.begin(), currentValtanSamples.end(),
+			[](const auto& sample) { return sample.bPreview; });
+		if (activeValtanSession && local != currentValtanSamples.end())
+		{
+			std::string cameraStatus;
+			if (!m_pCameraTool->Sample_CompositionPreview(*local, cameraStatus) && !cameraStatus.empty())
+				m_strToolStatus = std::move(cameraStatus);
+		}
+		else m_pCameraTool->Stop_CompositionPreview();
+	}
     if (m_pCharacterActionWorkbench)
         m_pCharacterActionWorkbench->Update(fTimeDelta, m_bDeveloperToolsVisible &&
             IsDebugToolVisible(DEBUG_TOOL::SEQUENCER) && m_pSequencerTool &&
@@ -2825,7 +3091,19 @@ HRESULT CMainApp::Render()
 				std::string status;
 				if (FAILED(EnsureDebugTool(DEBUG_TOOL::WORLD_OBJECT)) || !m_pWorldObjectTool)
 					status = "Object Tool is unavailable. Existing authoring edits are preserved.";
-				else (void)m_pWorldObjectTool->Open_ObjectMotion(request.strObjectId, request.strMotionInstanceId, status);
+				else
+				{
+					std::optional<CWorldSequencePlayer::OBJECT_PLACEMENT> placement;
+					if (request.PreviewPlacement)
+					{
+						const auto& value = *request.PreviewPlacement;
+						placement = CWorldSequencePlayer::OBJECT_PLACEMENT{
+							{float(value.Position[0]), float(value.Position[1]), float(value.Position[2])},
+							{float(value.RotationDegrees[0]), float(value.RotationDegrees[1]), float(value.RotationDegrees[2])},
+							{float(value.Scale[0]), float(value.Scale[1]), float(value.Scale[2])}};
+					}
+					(void)m_pWorldObjectTool->Open_ObjectMotion(request.strObjectId, request.strMotionInstanceId, status, placement);
+				}
 				workbench->Notify_WorldObjectEditResult(std::move(status));
 			}
 			RenderMapEffectPlacementMarker();
@@ -8103,6 +8381,7 @@ void CMainApp::ClaimCompositionPreviewOwner(const DEBUG_TOOL owner)
 
 void CMainApp::StopCompositionPreview(const DEBUG_TOOL owner)
 {
+    if (m_pKoukuPresentationPlayer && m_pKoukuPresentationPlayer->Preview_IsServerClock()) return;
 	if (owner == DEBUG_TOOL::NONE || m_eCompositionPreviewOwner != owner) return;
 	if (owner == DEBUG_TOOL::SEQUENCER_BENCHMARK) ClearKoukuSequenceArrivals();
 	if (m_pAnimationTool) { std::string stoppedAnimationStatus; (void)m_pAnimationTool->Stop_KoukuCompositionPreview(stoppedAnimationStatus); }
@@ -8335,7 +8614,7 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 		{
 			m_pSequenceActionWorkbench = make_unique<CKoukuSaydonActionWorkbench>(true);
 			m_pSequenceActionWorkbench->Set_CompleteSequenceAdmission(
-				[this](std::string_view gate, std::string& status) { return PrepareKoukuGateCompletePlay(gate, status); });
+				[this](std::string_view gate, std::string& status) { return StartKoukuGateCompletePlay(gate, status); });
 			m_pSequenceActionWorkbench->Set_WorldPlacementResolver(
 				[](KOUKU_SAYDON_WORLD_PLACEMENT& placement, std::string& status)
 				{
@@ -9806,136 +10085,94 @@ void CMainApp::RenderKoukuSaydonArenaControls()
 
 bool_t CMainApp::PrepareKoukuGateCompletePlay(const std::string_view gateId, std::string& status)
 {
-	auto* arena = CLevel_KakulSaydonArena::Get_Active();
-	if (!arena || CKoukuSaydonPatternAuditionService::Get().Get_Snapshot().Is_InFlight() ||
-		CKoukuSaydonPatternAuditionService::Get().Get_FlowSnapshot().bActive ||
-		(m_pKoukuSaydonBossTool && m_pKoukuSaydonBossTool->Is_PlayPreparationPending()))
-	{ status = "Complete Play requires the KoukuSaydon Arena and no active Server playback."; return false; }
-	if (!m_pKoukuSaydonBossTool) m_pKoukuSaydonBossTool = make_unique<CKoukuSaydonBossTool>();
-	if (!m_pKoukuSaydonBossTool->Validate_PatternFlow(gateId, status)) return false;
-	if (m_pKoukuSaydonActionWorkbench && (m_pKoukuSaydonActionWorkbench->Is_Dirty() ||
-		m_pKoukuSaydonActionWorkbench->Is_PublishRunning()))
-	{ status = "Save Composition edits and finish Publish All Patterns before Complete Play."; return false; }
-	const size_t gateIndex = gateId == "GATE1" ? 0u : gateId == "GATE2" ? 1u :
-		gateId == "GATE3" ? 2u : gateId == "BINGO" ? 8u : CLevel_KakulSaydonArena::NO_ACTIVE_DEBUG_GATE;
-	if (gateIndex == CLevel_KakulSaydonArena::NO_ACTIVE_DEBUG_GATE)
-	{ status = "Unknown Gate for Complete Play."; return false; }
-	if (arena->Is_DebugGatePending())
-	{ status = "Wait for the current Gate activation to finish before Complete Play."; return false; }
-	if (!m_strKoukuCompletePlayFlowGate.empty())
-	{ status = "Stop the current entry sequence before starting another Complete Play."; return false; }
-	if (!arena->Debug_DespawnArenaBosses(status)) return false;
-	arena->Debug_SetSequenceCombatPending(true);
-	m_bKoukuCompletePlayAwaitingGate = false;
-	m_bKoukuCompletePreservesArrivalPosition = false;
-	m_strKoukuCompletePlayFlowGate = std::string(gateId);
-	m_iKoukuCompletePlayFlowRevision = m_pKoukuSaydonBossTool->Get_SourceRevision();
-	m_iKoukuCompletePlayWorldGeneration = CNetworkManager::Get().Get_WorldInboundGeneration();
-	return true;
+    auto* arena = CLevel_KakulSaydonArena::Get_Active();
+    if (!arena || !arena->Get_PlayerCommandSink() || !m_strKoukuCompletePlayFlowGate.empty() || m_iKoukuRaidPendingRequest ||
+        CKoukuSaydonPatternAuditionService::Get().Get_Snapshot().Is_InFlight() || CKoukuSaydonPatternAuditionService::Get().Get_FlowSnapshot().bActive)
+    { status = "Complete Play requires an idle Kouku arena with a Server connection."; return false; }
+    if (gateId != "GATE1" && gateId != "GATE2" && gateId != "GATE3")
+    { status = "Complete raid playback starts at Gate 1, 2, or 3."; return false; }
+    if ((m_pKoukuSaydonActionWorkbench && (m_pKoukuSaydonActionWorkbench->Is_Dirty() || m_pKoukuSaydonActionWorkbench->Is_PublishRunning())) ||
+        (m_pSequenceActionWorkbench && m_pSequenceActionWorkbench->Is_Dirty()))
+    { status = "Save the Action and Sequence documents and publish before Complete Play."; return false; }
+    if (!m_pKoukuSaydonBossTool) m_pKoukuSaydonBossTool = make_unique<CKoukuSaydonBossTool>();
+    if (!m_pKoukuSaydonBossTool->Reload(status) || !m_pKoukuSaydonBossTool->Validate_PatternFlow(gateId, status)) return false;
+    CKoukuSaydonCompositionDocument actions;
+    if (!actions.Reload(status)) return false;
+    if (actions.Get_LastGood().iRevision != m_pKoukuSaydonBossTool->Get_SourceRevision())
+    { status = "Saved Actions differ from the published Product. Publish Saved Patterns, then retry."; return false; }
+    return true;
 }
 
 bool_t CMainApp::StartKoukuGateCompletePlay(const std::string_view gateId, std::string& status)
 {
-	if (FAILED(EnsureDebugTool(DEBUG_TOOL::SEQUENCER_BENCHMARK)) || !m_pSequenceActionWorkbench)
-	{ status = "The Sequence workspace could not initialize."; return false; }
-	if (!m_pSequenceActionWorkbench->Has_Composition() && !m_pSequenceActionWorkbench->Reload(status)) return false;
-	return m_pSequenceActionWorkbench->Request_CompleteSequencePlay(status, gateId);
+    using namespace LostArk::Shared;
+    if (!PrepareKoukuGateCompletePlay(gateId, status)) return false;
+    CKoukuSaydonCompositionDocument sequences(CKoukuSaydonCompositionDocument::Resolve_SequencePath());
+    if (!sequences.Reload(status)) return false;
+    if (!m_iNextKoukuRaidRequest) { status = "Raid request sequence is exhausted."; return false; }
+    auto* arena = CLevel_KakulSaydonArena::Get_Active();
+    C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST request;
+    request.iRequestSequence = m_iNextKoukuRaidRequest++; request.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+    request.ExpectedGameplayRevision = CNetworkManager::Get().Get_GameplayRevisionState().ServerActiveRevision;
+    request.iActionSourceRevision = m_pKoukuSaydonBossTool->Get_SourceRevision();
+    request.iSequenceSourceRevision = sequences.Get_LastGood().iRevision; request.strStartGateId = std::string(gateId);
+    if (!arena->Get_PlayerCommandSink()->Request_KoukuRaid(request)) { status = "Complete Play could not be submitted to the Server."; return false; }
+    m_KoukuRaidRequest = request; m_iKoukuRaidPendingRequest = request.iRequestSequence;
+    m_KoukuRaidReplyDeadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+    m_iKoukuCompletePlayWorldGeneration = CNetworkManager::Get().Get_WorldInboundGeneration();
+    status = m_strKoukuCompletePlayStatus = "Waiting for the Server to admit the complete raid and its saved revisions.";
+    return true;
 }
 
-void CMainApp::FinishKoukuGateCompletePlay(const std::string_view gateId, std::string& status)
+void CMainApp::FinishKoukuGateCompletePlay(const std::string_view, std::string& status)
 {
-	auto* arena = CLevel_KakulSaydonArena::Get_Active();
-	const size_t expectedGate = gateId == "GATE1" ? 0u : gateId == "GATE2" ? 1u :
-		gateId == "GATE3" ? 2u : CLevel_KakulSaydonArena::NO_ACTIVE_DEBUG_GATE;
-	if (!arena || !m_pKoukuSaydonBossTool || gateId != m_strKoukuCompletePlayFlowGate ||
-		expectedGate == CLevel_KakulSaydonArena::NO_ACTIVE_DEBUG_GATE ||
-		m_iKoukuCompletePlayWorldGeneration != CNetworkManager::Get().Get_WorldInboundGeneration())
-	{
-		status = "Entry finished, but its Server arena changed. Combat entry was cancelled.";
-		CancelKoukuGateCompletePlay(status);
-		return;
-	}
-	// Use the same Server placements, profiles and spawn positions as the F1 gate.
-	// Defer the player move until the entire cinematic has actually completed.
-	if (!arena->Debug_ActivateGate(expectedGate, status, m_bKoukuCompletePreservesArrivalPosition))
-	{
-		CancelKoukuGateCompletePlay("Entry finished, but Server Gate activation failed: " + status);
-		status = m_strKoukuCompletePlayStatus;
-		return;
-	}
-	arena->Debug_HoldSequenceCombatFade();
-	m_bKoukuCompletePlayAwaitingGate = true;
-	status = m_strKoukuCompletePlayStatus = "Entry finished. Waiting for Server boss spawn and player movement before combat.";
+    status = "The Server owns cinematic completion and the next combat flow.";
 }
 
 void CMainApp::CancelKoukuGateCompletePlay(const std::string& status)
 {
-	// Copy first: callers may pass the current status member.
-	const std::string finalStatus = status;
-	if (m_pSequenceActionWorkbench) m_pSequenceActionWorkbench->Cancel_CompleteSequencePlay();
-	StopCompositionPreview(DEBUG_TOOL::SEQUENCER_BENCHMARK);
-	if (auto* arena = CLevel_KakulSaydonArena::Get_Active())
-	{
-		if (!m_strKoukuCompletePlayFlowGate.empty()) arena->Debug_RetireGateActivation(finalStatus);
-		arena->Debug_SetSequenceCombatPending(false);
-		arena->Stop_CompositionCamera(true);
-	}
-	if (m_eDebugInputOwner == DEBUG_TOOL::SEQUENCER_BENCHMARK) m_eDebugInputOwner = DEBUG_TOOL::NONE;
-	m_strKoukuCompletePlayFlowGate.clear();
-	m_iKoukuCompletePlayFlowRevision = 0u;
-	m_bKoukuCompletePlayAwaitingGate = false;
-	m_strKoukuCompletePlayStatus = finalStatus;
-	if (m_pKoukuSaydonBossTool) m_pKoukuSaydonBossTool->Set_Status(finalStatus);
+    using namespace LostArk::Shared;
+    const std::string reason = status;
+    auto* arena = CLevel_KakulSaydonArena::Get_Active();
+    if (arena && m_iKoukuRaidPendingRequest && m_iKoukuCompletePlayWorldGeneration == CNetworkManager::Get().Get_WorldInboundGeneration())
+    {
+        m_bKoukuRaidStopAfterAdmission = true;
+        m_strKoukuCompletePlayStatus = "Stop is queued until the Server confirms the pending raid request.";
+        return;
+    }
+    if (arena && m_iKoukuCompletePlayWorldGeneration == CNetworkManager::Get().Get_WorldInboundGeneration())
+    {
+        const auto& state = arena->Get_KoukuRaidState();
+        const bool active = state.ePhase == KOUKUSAYDON_RAID_PHASE::PREPARING || state.ePhase == KOUKUSAYDON_RAID_PHASE::CINEMATIC || state.ePhase == KOUKUSAYDON_RAID_PHASE::COMBAT ||
+            state.ePhase == KOUKUSAYDON_RAID_PHASE::WAIT_GATE || state.ePhase == KOUKUSAYDON_RAID_PHASE::WAIT_MINIGAME;
+        if (active && state.iOwnerPlayerId == CNetworkManager::Get().Get_LocalPlayerId() && m_iNextKoukuRaidRequest && arena->Get_PlayerCommandSink())
+        {
+            C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST request;
+            request.eWorldId = WORLD_ID::KAKULSAYDON_ARENA; request.iRequestSequence = m_iNextKoukuRaidRequest++;
+            request.eOperation = KOUKUSAYDON_RAID_OPERATION::STOP; request.iExpectedRunEpoch = state.iRunEpoch;
+            request.ExpectedGameplayRevision = state.PinnedGameplayRevision; request.iActionSourceRevision = state.iActionSourceRevision;
+            request.iSequenceSourceRevision = state.iSequenceSourceRevision; request.strStartGateId = state.strGateId;
+            if (arena->Get_PlayerCommandSink()->Request_KoukuRaid(request))
+            {
+                m_iKoukuRaidPendingRequest = request.iRequestSequence;
+                m_KoukuRaidReplyDeadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+                m_strKoukuCompletePlayStatus = "Waiting for the Server to stop this raid epoch."; return;
+            }
+        }
+        else if (active) { m_strKoukuCompletePlayStatus = "Only the player who started this raid can stop it."; return; }
+    }
+    if (m_pKoukuPresentationPlayer && m_pKoukuPresentationPlayer->Preview_IsServerClock()) m_pKoukuPresentationPlayer->Stop_Preview();
+    if (arena)
+    {
+        arena->Debug_SetSequenceCombatPending(false); arena->Debug_ReturnToPlayerCamera();
+        std::string restore;
+        if (!arena->End_ServerRaidCinematicPresentation(true, restore))
+        { m_strKoukuCompletePlayStatus = "Previous gate restore failed: " + restore; return; }
+    }
+    m_strKoukuRaidPresentationKey.clear(); m_strKoukuRaidFailedKey.clear(); m_pKoukuRaidSequenceDocument.reset(); m_iKoukuRaidDocumentEpoch = 0u;
+    m_strKoukuCompletePlayFlowGate.clear(); m_iKoukuRaidPendingRequest = 0u; m_bKoukuRaidStopAfterAdmission = false; m_strKoukuCompletePlayStatus = reason;
 }
 
-void CMainApp::UpdateKoukuGateCompletePlay()
-{
-	if (m_strKoukuCompletePlayFlowGate.empty()) return;
-	auto* arena = CLevel_KakulSaydonArena::Get_Active();
-	if (!arena || m_iKoukuCompletePlayWorldGeneration != CNetworkManager::Get().Get_WorldInboundGeneration())
-	{
-		CancelKoukuGateCompletePlay("Complete Play cancelled because the Server arena changed.");
-		return;
-	}
-	if (!m_bKoukuCompletePlayAwaitingGate)
-	{
-		if (!m_pSequenceActionWorkbench || !m_pSequenceActionWorkbench->Is_CompleteSequencePlaying())
-			CancelKoukuGateCompletePlay("Combat entry cancelled: " +
-				(m_pSequenceActionWorkbench ? m_pSequenceActionWorkbench->Get_Status() : "Sequence workspace closed."));
-		return;
-	}
-	if (arena->Is_DebugGatePending()) return;
-	const std::string gate = m_strKoukuCompletePlayFlowGate;
-	const size_t expectedGate = gate == "GATE1" ? 0u : gate == "GATE2" ? 1u :
-		gate == "GATE3" ? 2u : CLevel_KakulSaydonArena::NO_ACTIVE_DEBUG_GATE;
-	if (arena->Get_ActiveDebugGate() != expectedGate)
-	{
-		CancelKoukuGateCompletePlay("Server combat entry failed: " + arena->Get_DebugGateStatus());
-		return;
-	}
-	std::string status;
-	if (!m_pKoukuSaydonBossTool || !m_pKoukuSaydonBossTool->Validate_PatternFlow(gate, status))
-	{
-		CancelKoukuGateCompletePlay("Arena entered, but Pattern Flow validation failed: " + status);
-		return;
-	}
-	if (m_iKoukuCompletePlayFlowRevision != m_pKoukuSaydonBossTool->Get_SourceRevision())
-	{
-		CancelKoukuGateCompletePlay("Arena entered, but saved patterns changed during the entry. Start the updated Pattern Flow explicitly.");
-		return;
-	}
-	// Spawn and teleport are confirmed. Release presentation/input before submitting
-	// the existing Server-owned Pattern Flow, which resolves this gate's live boss.
-	arena->Debug_SetSequenceCombatPending(false);
-	arena->Debug_ReturnToPlayerCamera();
-	m_eDebugInputOwner = DEBUG_TOOL::NONE;
-	(void)m_pKoukuSaydonBossTool->Play_PatternFlow(gate, status, m_iKoukuCompletePlayFlowRevision);
-	m_strKoukuCompletePlayFlowGate.clear();
-	m_iKoukuCompletePlayFlowRevision = 0u;
-	m_bKoukuCompletePlayAwaitingGate = false;
-	m_strKoukuCompletePlayStatus = status;
-	m_pKoukuSaydonBossTool->Set_Status(status);
-}
 
 void CMainApp::RenderKoukuSaydonCompletePlayControls()
 {
@@ -9990,7 +10227,7 @@ void CMainApp::RenderKoukuSaydonCompletePlayControls()
 	const bool preparing = m_pKoukuSaydonBossTool->Is_PlayPreparationPending();
 	const bool arena=ETOUI(LEVEL::KAKULSAYDON_ARENA)==CGameInstance::Get().Get_CurrentLevelID();
 	const bool ready=bundleSelected?selectedBundle->strLoadError.empty() && !selectedBundle->Members.empty():pattern && pattern->strGateId==gate && pattern->strLoadError.empty();
-	const bool sequencePlaying = !m_strKoukuCompletePlayFlowGate.empty() ||
+	const bool sequencePlaying = m_iKoukuRaidPendingRequest || !m_strKoukuCompletePlayFlowGate.empty() ||
 		(m_pSequenceActionWorkbench && m_pSequenceActionWorkbench->Is_CompleteSequencePlaying());
 	ImGui::BeginDisabled(!arena || !ready || audition.Is_InFlight() || flow.bActive || sequencePlaying || preparing);
 	const auto prepareSavedProduct = [&]() {
@@ -10036,9 +10273,7 @@ void CMainApp::RenderKoukuSaydonCompletePlayControls()
 			(void)m_pKoukuSaydonBossTool->Cancel_PlayPreparation(m_strKoukuCompletePlayStatus);
 		else if (sequencePlaying)
 		{
-			m_pSequenceActionWorkbench->Cancel_CompleteSequencePlay();
-			StopCompositionPreview(DEBUG_TOOL::SEQUENCER_BENCHMARK);
-			CancelKoukuGateCompletePlay("Complete Play stopped before Pattern Flow.");
+			CancelKoukuGateCompletePlay("Complete Play stop requested.");
 		}
 		else (void)service.Stop(m_strKoukuCompletePlayStatus);
 	}
@@ -10508,6 +10743,7 @@ void CMainApp::RefreshWorldObjectResources()
 			KOUKU_WORLD_SEQUENCE_RESOURCE row;
 			row.strInstanceId = instance.instanceId; row.strDisplayName = sequence->displayName;
 			row.bEnabled = instance.enabled; row.strAnchorKind = instance.anchorKind;
+			row.SavedPosition = {instance.position.x, instance.position.y, instance.position.z};
 			const WORLD_SEQUENCE_OBJECT_RESOURCE* owner = nullptr;
 			if (instance.bindings.size() == 1u &&
 				instance.bindings.front().targetKind == WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE)
@@ -10519,6 +10755,7 @@ void CMainApp::RefreshWorldObjectResources()
 			{
 				row.strObjectResourceId = owner->objectId;
 				row.strObjectDisplayName = owner->displayName;
+				row.strModelAssetId = owner->modelAssetId;
 				row.bDefaultMotion = owner->defaultMotionInstanceId == instance.instanceId;
 				row.bUntilDestroyed = owner->combatBody && owner->combatBody->lifetimePolicy == "UNTIL_DESTROYED";
 				row.iMaximumHp = owner->combatBody ? owner->combatBody->maxHp : 0u;
@@ -10527,7 +10764,21 @@ void CMainApp::RefreshWorldObjectResources()
 					(instance.anchorKind == "WORLD" || instance.anchorKind == "BOSS" || instance.anchorKind == "PLAYER");
 			}
 			for (const auto& animation : sequence->animationTracks)
+			{
 				row.AnimationClips.push_back(animation.clipName);
+				std::uint32_t endMs = sequence->durationMs;
+				for (const auto& next : sequence->animationTracks)
+					if (next.slotId == animation.slotId && next.startMs > animation.startMs)
+						endMs = (std::min)(endMs, next.startMs);
+				KOUKU_WORLD_ANIMATION_INFO info;
+				info.strClipName = animation.clipName; info.strSlotId = animation.slotId;
+				info.fStartMs = instance.startDelayMs + animation.startMs / static_cast<double>(instance.playbackSpeed);
+				info.fEndMs = instance.startDelayMs + endMs / static_cast<double>(instance.playbackSpeed);
+				info.fPlaybackRate = animation.playbackRate * instance.playbackSpeed;
+				info.iSourceStartMs = animation.sourceStartMs;
+				info.bLoop = animation.loop; info.bHoldLastFrame = animation.holdLastFrame;
+				row.AnimationTracks.push_back(std::move(info));
+			}
 			row.iEmissionCount = sequence->objectMotion.EmissionCount();
 			const double span = instance.startDelayMs + static_cast<double>(sequence->durationMs) / instance.playbackSpeed;
 			row.iDurationMs = static_cast<uint32_t>((std::clamp)(span, 1.0, static_cast<double>(UINT32_MAX)));
@@ -10569,6 +10820,8 @@ void CMainApp::RefreshWorldObjectResources()
 						(instance->motionEnd != WORLD_SEQUENCE_MOTION_END::STOP && instance->motionEnd != WORLD_SEQUENCE_MOTION_END::LOOP))
 					{ row.bEnabled = false; row.bSupportsPlacement = false; continue; }
 					if (!member->bEnabled) continue;
+					if (row.iEmissionCount == 0u) row.SavedPosition = member->SavedPosition;
+					else if (row.SavedPosition != member->SavedPosition) row.bSupportsPlacement = false;
 					row.bSupportsPlacement = row.bSupportsPlacement && member->bSupportsPlacement &&
 						member->strAnchorKind == object.anchorKind;
 					const double span = instance->startDelayMs +

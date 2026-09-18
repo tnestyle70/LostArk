@@ -299,16 +299,28 @@ void Client::CKoukuSaydonPresentationPlayer::Sample_PursuitPreview(SESSION& owne
     using namespace DirectX;
     using namespace LostArk::Shared;
     // This is the existing ToolPreview visual sampler, never a combat object or
-    // a command producer. Random/repeated volleys still require Server Play.
-    if (!logic.bPursuitHoming || logic.iSpawnIntervalMs != 0u || logic.PursuitVisualIds.empty() ||
+    // a command producer. Random (non-homing) volleys still require Server Play.
+    if (!logic.bPursuitHoming || logic.PursuitVisualIds.empty() ||
         logic.PursuitVisualIds.size() > 4u || !logic.iCountPerWave || logic.iCountPerWave > 16u)
     {
-        m_strStatus = "Pursuit Preview supports a single homing wave; use Server Play for random/repeated volleys.";
+        m_strStatus = "Pursuit Preview supports homing waves; use Server Play for random volleys.";
         return;
     }
     constexpr double tickMs = 1000.0 / 30.0;
     constexpr std::size_t maxProjectiles = 64u, maxPoses = 65536u;
     constexpr std::uint32_t maxTicks = 18000u;
+    // Server cadence, GameRoom_BossSimulation.cpp:857 and :915: interval zero fires
+    // one wave and never reschedules; otherwise a wave fires every interval while
+    // the Duration window is open. Ticks_FromMs rounds up, as the room clock does.
+    const auto ticksFromMs = [](const std::uint32_t ms) {
+        return static_cast<std::uint32_t>((std::uint64_t(ms) * 30u + 999u) / 1000u);
+    };
+    const std::uint32_t intervalTicks = logic.iSpawnIntervalMs ?
+        (std::max)(1u, ticksFromMs(logic.iSpawnIntervalMs)) : 0u;
+    const std::uint32_t windowTicks = intervalTicks ?
+        ticksFromMs(occurrence.iStartMs + occurrence.iDurationMs) - ticksFromMs(occurrence.iStartMs) : 0u;
+    const std::uint32_t waveCount = intervalTicks ?
+        (std::max)(1u, (windowTicks + intervalTicks - 1u) / intervalTicks) : 1u;
     const double authoredStart = std::ceil(double(occurrence.iStartMs) / tickMs) * tickMs;
     auto& trigger = m_LogicPreviewTriggers[owner.key][occurrence.strOccurrenceId];
     const auto stop = [&]() {
@@ -342,7 +354,8 @@ void Client::CKoukuSaydonPresentationPlayer::Sample_PursuitPreview(SESSION& owne
             m_strStatus = "Pursuit Preview has no eligible player at its observed birth; waiting within this Duration.";
             return;
         }
-        if (projectileCount + logic.iCountPerWave > maxProjectiles || poseCount + logic.iCountPerWave > maxPoses)
+        const std::size_t plannedProjectiles = std::size_t(waveCount) * logic.iCountPerWave;
+        if (projectileCount + plannedProjectiles > maxProjectiles || poseCount + plannedProjectiles > maxPoses)
         { m_strStatus = "Pursuit Preview reached its 64-projectile/65536-pose bound."; return; }
         const auto makePresentation = [&](const std::string& resourceId, const std::string& identity,
                                           const bool flight, PRODUCT_PATTERN& output) {
@@ -379,17 +392,24 @@ void Client::CKoukuSaydonPresentationPlayer::Sample_PursuitPreview(SESSION& owne
         if (!std::isfinite(pivot._41) || !std::isfinite(pivot._42) || !std::isfinite(pivot._43) || !std::isfinite(bossYaw))
         { m_strStatus = "Pursuit Preview requires a finite observed boss root."; return; }
         std::vector<PURSUIT_PREVIEW_PROJECTILE> staged;
+        for (std::uint32_t wave = 0u; wave < waveCount; ++wave)
         for (std::uint32_t ordinal = 0u; ordinal < logic.iCountPerWave; ++ordinal)
         {
             PURSUIT_PREVIEW_PROJECTILE projectile;
-            const auto identity = owner.key + ":pursuit:" + occurrence.strOccurrenceId + ":" + std::to_string(ordinal);
-            if (!makePresentation(logic.PursuitVisualIds[ordinal % logic.PursuitVisualIds.size()],
-                                  occurrence.strOccurrenceId + ".flight." + std::to_string(ordinal), true, projectile.presentation))
+            // Same visual and bearing the room derives, GameRoom_BossSimulation.cpp:884 and :901.
+            const std::uint32_t sequence = wave * logic.iCountPerWave + ordinal;
+            const auto suffix = std::to_string(wave) + "." + std::to_string(ordinal);
+            const auto identity = owner.key + ":pursuit:" + occurrence.strOccurrenceId + ":" + suffix;
+            if (!makePresentation(logic.PursuitVisualIds[sequence % logic.PursuitVisualIds.size()],
+                                  occurrence.strOccurrenceId + ".flight." + suffix, true, projectile.presentation))
             { m_strStatus = "Pursuit Preview cannot resolve a saved flight Effect."; return; }
             projectile.flight.key = identity + ":flight";
             projectile.contact.key = identity + ":contact";
             projectile.targetId = selected->Snapshot.iNetEntityId;
-            const float yaw = bossYaw + XM_2PI * float(ordinal) / float(logic.iCountPerWave);
+            projectile.birthTickOffset = wave * intervalTicks;
+            // Same slot-zero bearing the room uses, GameRoom_BossSimulation.cpp:901.
+            constexpr float bodyFrontYaw = XM_2PI * .75f;
+            const float yaw = bossYaw + bodyFrontYaw + XM_2PI * float(ordinal) / float(logic.iCountPerWave);
             float4x4_t pose;
             XMStoreFloat4x4(&pose, XMMatrixRotationY(yaw) * XMMatrixTranslation(
                 pivot._41 + std::sin(yaw) * float(logic.fSpawnRadiusM), pivot._42,
@@ -413,10 +433,16 @@ void Client::CKoukuSaydonPresentationPlayer::Sample_PursuitPreview(SESSION& owne
         static_cast<std::uint32_t>(std::ceil(double(logic.iPursuitLifetimeMs) / tickMs)) : maxTicks;
     for (auto& projectile : trigger.projectiles)
     {
+        // Each wave runs on its own clock offset from the trigger birth, so a
+        // later wave stays unborn until the authored interval has elapsed.
+        if (requestedTick < projectile.birthTickOffset)
+        { Stop_Session(projectile.flight); Stop_Session(projectile.contact); continue; }
+        const std::uint32_t localTick = requestedTick - projectile.birthTickOffset;
+        const double localAgeMs = ageMs - double(projectile.birthTickOffset) * tickMs;
         // The snapshot is fixed throughout an unobserved seek rebuild. A later
         // live tick observes a new input; paused/rewound stored ticks do not.
         const auto* target = findPlayer(projectile.targetId);
-        while (projectile.terminalTick == UINT32_MAX && projectile.poses.size() <= requestedTick)
+        while (projectile.terminalTick == UINT32_MAX && projectile.poses.size() <= localTick)
         {
             if (poseCount >= maxPoses)
             { stop(); m_strStatus = "Pursuit Preview reached its 65536-pose history bound."; return; }
@@ -457,10 +483,10 @@ void Client::CKoukuSaydonPresentationPlayer::Sample_PursuitPreview(SESSION& owne
             projectile.poses.push_back(next);
             ++poseCount;
         }
-        if (requestedTick >= projectile.terminalTick)
+        if (localTick >= projectile.terminalTick)
         {
             Stop_Session(projectile.flight);
-            const double contactAgeMs = ageMs - double(projectile.terminalTick) * tickMs;
+            const double contactAgeMs = localAgeMs - double(projectile.terminalTick) * tickMs;
             if (!projectile.contactBurst || contactAgeMs >= trigger.contactPresentation.durationMs)
                 Stop_Session(projectile.contact);
             else
@@ -483,7 +509,7 @@ void Client::CKoukuSaydonPresentationPlayer::Sample_PursuitPreview(SESSION& owne
                 projectile.flight.rootRecordedPivot = projectile.poses[tick];
             }
             Sample(projectile.flight, projectile.presentation.document, projectile.presentation.pattern,
-                float(ageMs), paused, projectile.poses[requestedTick], nullptr);
+                float(localAgeMs), paused, projectile.poses[localTick], nullptr);
         }
     }
 }

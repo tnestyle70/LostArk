@@ -509,7 +509,8 @@ void CWorldObjectTool::Open()
 }
 
 bool CWorldObjectTool::Open_ObjectMotion(const std::string& objectId,
-    const std::string& instanceId, std::string& status)
+    const std::string& instanceId, std::string& status,
+    const std::optional<CWorldSequencePlayer::OBJECT_PLACEMENT>& previewPlacement)
 {
     if (!m_Ready && !Load_Source()) { status = m_Status; return false; }
     const auto* resource = m_Document.Find_ObjectResource(objectId);
@@ -524,6 +525,9 @@ bool CWorldObjectTool::Open_ObjectMotion(const std::string& objectId,
     Open();
     Select_Object(objectId);
     if (!instanceId.empty()) Select_State(instanceId);
+    m_CompositionPreviewPlacement = previewPlacement;
+    m_CompositionPreviewObjectId = previewPlacement ? objectId : std::string{};
+    if (previewPlacement) m_PreviewAtCharacter = false;
     status = m_Status = instanceId.empty() ? "Opened Object settings. Save keeps edits." :
         "Opened the selected Motion. Emissions, movement and rotation are shared by every box using this Motion.";
     return true;
@@ -539,6 +543,8 @@ bool CWorldObjectTool::Consume_InteractionRequest()
 void CWorldObjectTool::Deactivate()
 {
     Stop_Preview();
+    m_CompositionPreviewPlacement.reset();
+    m_CompositionPreviewObjectId.clear();
 }
 
 bool CWorldObjectTool::Load_Source()
@@ -882,14 +888,16 @@ bool CWorldObjectTool::Begin_Preview()
             return false;
         }
         if (!Prepare_PreviewEffects(Preview_Document(), group->objectId) ||
-            !level->Debug_BeginWorldObjectPreview(Preview_Document(), group->objectId, m_Status, m_PreviewAtCharacter)) return false;
+            !level->Debug_BeginWorldObjectPreview(Preview_Document(), group->objectId, m_Status, m_PreviewAtCharacter,
+                m_PreviewAtCharacter ? std::nullopt : m_CompositionPreviewPlacement)) return false;
         m_PreviewLevel = level; m_PreviewActive = true; m_PreviewDirty = false;
         return true;
     }
     const auto* instance = Preview_Instance();
     if (!instance) { m_Status = "Choose an enabled Default Motion or select a connected Motion."; return false; }
     if (!Prepare_PreviewEffects(Preview_Document(), instance->instanceId) ||
-        !level->Debug_BeginWorldObjectPreview(Preview_Document(), instance->instanceId, m_Status, m_PreviewAtCharacter)) return false;
+        !level->Debug_BeginWorldObjectPreview(Preview_Document(), instance->instanceId, m_Status, m_PreviewAtCharacter,
+            m_PreviewAtCharacter ? std::nullopt : m_CompositionPreviewPlacement)) return false;
     m_PreviewLevel = level; m_PreviewActive = true; m_PreviewDirty = false;
     return true;
 }
@@ -996,6 +1004,11 @@ std::vector<std::string> CWorldObjectTool::StateIds(const WORLD_SEQUENCE_OBJECT_
 void CWorldObjectTool::Select_Object(const std::string& id)
 {
     Stop_Preview(); m_SelectedObject = id; m_SelectedInstance.clear(); m_ClockMs = 0.f;
+    if (id != m_CompositionPreviewObjectId)
+    {
+        m_CompositionPreviewPlacement.reset();
+        m_CompositionPreviewObjectId.clear();
+    }
     m_SelectedGroup.clear();
     const auto* resource = m_Document.Find_ObjectResource(m_SelectedObject);
     if (resource && !resource->motionInstanceIds.empty())
@@ -1319,6 +1332,19 @@ void CWorldObjectTool::Render_Toolbar()
     ImGui::SameLine(); ImGui::BeginDisabled(!m_Ready || m_PublishProcess);
     if (ImGui::Button(m_Dirty ? "Save *" : "Save")) Save_Source();
     ImGui::EndDisabled();
+    if (m_CompositionPreviewPlacement)
+    {
+        const auto& position = m_CompositionPreviewPlacement->position;
+        ImGui::TextWrapped("World box preview: %.3f, %.3f, %.3f. Position, rotation and scale come from the selected box.",
+            position.x, position.y, position.z);
+        if (ImGui::Button("Use saved Motion position"))
+        {
+            m_CompositionPreviewPlacement.reset();
+            m_CompositionPreviewObjectId.clear();
+            m_PreviewAtCharacter = false;
+            m_PreviewDirty = m_PreviewActive;
+        }
+    }
     if (!m_Status.empty()) ImGui::TextWrapped("%s", m_Status.c_str());
 }
 
@@ -1657,7 +1683,7 @@ bool CWorldObjectTool::Begin_EffectPreview(CWorldSequenceDocument staged, const 
     if (!level) { m_Status = "Effect preview requires the active KoukuSaydon arena."; return false; }
     const auto* group = Preview_Group();
     if (!level->Debug_BeginWorldObjectPreview(staged, group ? group->objectId : instanceId,
-        m_Status, m_PreviewAtCharacter)) return false;
+        m_Status, m_PreviewAtCharacter, m_PreviewAtCharacter ? std::nullopt : m_CompositionPreviewPlacement)) return false;
     m_EffectPreviewDocument = std::move(staged);
     m_PreviewLevel = level;
     m_PreviewActive = true;
@@ -1820,13 +1846,19 @@ void CWorldObjectTool::Render_EffectRows(WORLD_SEQUENCE_TEMPLATE& sequence)
     changed |= EditUInt("Effect Window (ms)", row.durationMs, CWorldSequenceDocument::MAX_DURATION_MS, 1);
     if (row.resourceKind == "V1_EFFECT")
     {
-        changed |= ImGui::Checkbox("Fit Effect lifetime to box", &row.fitEffectToDuration);
+        if (ImGui::Checkbox("Fit Effect lifetime to box", &row.fitEffectToDuration))
+        { if (row.fitEffectToDuration) row.loopEffectToDuration = false; changed = true; }
+        if (ImGui::Checkbox("Loop Effect through window", &row.loopEffectToDuration))
+        { if (row.loopEffectToDuration) row.fitEffectToDuration = false; changed = true; }
         if (row.fitEffectToDuration) ImGui::TextDisabled("Play the source Effect once over this window; its Object and bone keep their Motion clock.");
+        if (row.loopEffectToDuration) ImGui::TextDisabled("Keep the source speed: repeat finite Effects, or sustain native infinite emitters until this window ends.");
     }
     changed |= ImGui::DragFloat3("Effect Offset (m)", &row.positionOffset.x, .01f);
     changed |= ImGui::DragFloat3("Effect Rotation (deg)", &row.rotationDegrees.x, .5f);
     changed |= ImGui::DragFloat3("Effect Scale", &row.scale.x, .01f, .001f, 1000.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
     changed |= ImGui::Checkbox("Follow Object", &row.followObject);
+    changed |= ImGui::Checkbox("Inherit Object Rotation", &row.inheritObjectRotation);
+    if (!row.inheritObjectRotation) ImGui::TextDisabled("Follow position and group facing while the model spins independently.");
     std::array<char, 256> bone{};
     std::snprintf(bone.data(), bone.size(), "%s", row.bone.c_str());
     if (ImGui::InputText("Effect Bone (empty = root)", bone.data(), bone.size()))
@@ -2424,7 +2456,9 @@ void CWorldObjectTool::Render_Detail()
                 if (m_PreviewActive) Seek(m_ClockMs);
             }
             if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Preview at the current character without changing the saved Map position. Clear to preview the authored position.");
+                ImGui::SetTooltip(m_CompositionPreviewPlacement ?
+                    "Preview near the character. Clear to return to the selected World box transform." :
+                    "Preview at the current character without changing the saved Map position. Clear to preview the authored position.");
             if (m_PreviewAtCharacter)
                 ImGui::TextDisabled("Preview at Character is on: the object follows the player, not this Map Position.");
             if (positionEdited)
@@ -3067,7 +3101,9 @@ void CWorldObjectTool::Render_Sequence(WORLD_SEQUENCE_TEMPLATE& sequence)
             if (m_PreviewActive) Seek(m_ClockMs);
         }
         if (ImGui::IsItemHovered())
-            ImGui::SetTooltip("Preview at the current character without changing the saved Map position. Clear to preview the authored position.");
+            ImGui::SetTooltip(m_CompositionPreviewPlacement ?
+                    "Preview near the character. Clear to return to the selected World box transform." :
+                    "Preview at the current character without changing the saved Map position. Clear to preview the authored position.");
     }
     Render_SaveStatus();
     if (selectedInstance) ImGui::TextDisabled("On Complete: %s", MotionEndLabel(selectedInstance->motionEnd));

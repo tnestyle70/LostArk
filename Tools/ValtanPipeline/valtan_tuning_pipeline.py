@@ -130,6 +130,8 @@ REPOSITORY_PRODUCT_ARTIFACTS = (
     BINDINGS_REL,
     CUES_REL,
     PROVENANCE_REL,
+    "Data/Valtan/Published/BOSS_VALTAN.effectv2bindings.json",
+    "Data/Valtan/Published/Valtan.patternsoundcues.json",
 )
 
 LEGACY_AUTHORING_ARTIFACTS = (
@@ -1719,14 +1721,80 @@ def _pattern_stage_fields(stage: Mapping[str, Any], *, joined: bool) -> tuple[st
     ):
         if optional in stage:
             fields += (optional,)
-    if joined and "bodyVisibility" in stage:
-        fields += ("bodyVisibility",)
+    if joined:
+        for optional in ("bodyVisibility", "sceneProfileOccurrences", "lightOccurrences"):
+            if optional in stage:
+                fields += (optional,)
     return fields
 
+
+
+def validate_stage_environment_resources(root: Path, master: Mapping[str, Any]) -> None:
+    scenes = {row["profileId"] for pattern in master["patterns"] for stage in pattern["stages"]
+              for row in stage.get("sceneProfileOccurrences", [])}
+    lights = {row["lightResourceId"] for pattern in master["patterns"] for stage in pattern["stages"]
+              for row in stage.get("lightOccurrences", [])}
+    if scenes:
+        profiles = read_json(root / "Data/Rendering/Authored/RenderingProfiles.json")
+        admitted = {row["profileId"] for row in profiles["profiles"]}
+        if not scenes.issubset(admitted):
+            raise PipelineError(f"Scene Profile resource unavailable: {sorted(scenes - admitted)}")
+    if lights:
+        resources = read_json(root / "Data/Rendering/Authored/LightResources.json")
+        admitted = {row["lightResourceId"] for row in resources["lights"]}
+        if not lights.issubset(admitted):
+            raise PipelineError(f"Light resource unavailable: {sorted(lights - admitted)}")
+
+
+def _validate_stage_environment(stage: Mapping[str, Any], context: str, duration_ms: int | None = None) -> None:
+    """Presentation-only occurrences sampled on the authoritative Stage clock."""
+    identities: set[str] = set()
+    for field in ("sceneProfileOccurrences", "lightOccurrences"):
+        rows = stage.get(field, [])
+        if not isinstance(rows, list) or len(rows) > 128:
+            raise PipelineError(f"{context}.{field} must contain at most 128 occurrences")
+        intervals = []
+        for row in rows:
+            common = ("occurrenceId", "startMs", "durationMs")
+            extra = ("profileId",) if field == "sceneProfileOccurrences" else (
+                "lightResourceId", "anchorKind", "followBoss", "position", "rotationDegrees",
+                "brightnessMultiplier", "fadeInMs", "fadeOutMs")
+            exact(row, (*common, *extra), f"{context}.{field}")
+            identity = stable_id(row["occurrenceId"], f"{context}.occurrenceId")
+            if identity in identities:
+                raise PipelineError(f"{context} duplicate environment occurrenceId: {identity}")
+            identities.add(identity)
+            start = integer(row["startMs"], f"{identity}.startMs", 0, 3600000)
+            duration = integer(row["durationMs"], f"{identity}.durationMs", 1, 3600000)
+            if duration_ms is not None and start + duration > duration_ms:
+                raise PipelineError(f"{identity} escapes its authoritative Stage clock")
+            if field == "sceneProfileOccurrences":
+                stable_id(row["profileId"], f"{identity}.profileId")
+                intervals.append((start, start + duration))
+                continue
+            stable_id(row["lightResourceId"], f"{identity}.lightResourceId")
+            if row["anchorKind"] not in ("BOSS", "MAP") or not isinstance(row["followBoss"], bool):
+                raise PipelineError(f"{identity} requires BOSS/MAP anchor and boolean followBoss")
+            if row["anchorKind"] == "MAP" and row["followBoss"]:
+                raise PipelineError(f"{identity} MAP light cannot follow the boss")
+            for vector in ("position", "rotationDegrees"):
+                if not isinstance(row[vector], list) or len(row[vector]) != 3:
+                    raise PipelineError(f"{identity}.{vector} must be a three-component vector")
+                for value in row[vector]:
+                    number(value, f"{identity}.{vector}", -100000.0, 100000.0)
+            number(row["brightnessMultiplier"], f"{identity}.brightnessMultiplier", 0.0, 1000.0)
+            fade_in = integer(row["fadeInMs"], f"{identity}.fadeInMs", 0, duration)
+            fade_out = integer(row["fadeOutMs"], f"{identity}.fadeOutMs", 0, duration)
+            if fade_in + fade_out > duration:
+                raise PipelineError(f"{identity} light fades exceed its occurrence duration")
+        intervals.sort()
+        if any(a[1] > b[0] for a, b in zip(intervals, intervals[1:])):
+            raise PipelineError(f"{context} Scene Profile occurrences overlap")
 
 def _validate_body_visibility(
     stage: Mapping[str, Any], context: str, duration_ms: int | None = None
 ) -> None:
+    _validate_stage_environment(stage, context, duration_ms)
     body_visibility = stage.get("bodyVisibility")
     if body_visibility is None:
         return
@@ -5288,6 +5356,8 @@ def validate_v2_master(
                 if expected_scale_kind is not None:
                     scale_policy_counts[scale_kind] += 1
                 cue_ids.add(cue_id)
+            camera_ids: set[str] = set()
+            camera_intervals: list[tuple[int, int]] = []
             for invocation in stage["cameraInvocations"]:
                 exact(
                     invocation,
@@ -5296,7 +5366,19 @@ def validate_v2_master(
                 )
                 if invocation["durationPolicy"] != "EXPLICIT":
                     raise PipelineError("initial camera migration uses EXPLICIT duration")
-                integer(invocation["durationMs"], "camera invocation durationMs", 1, duration)
+                camera_id = stable_id(invocation["cameraInvocationId"], "camera invocation identity")
+                stable_id(invocation["cameraCueId"], "camera cue identity")
+                if camera_id in camera_ids or invocation["trigger"] != "ENTER":
+                    raise PipelineError("camera invocation identity/trigger is invalid")
+                camera_ids.add(camera_id)
+                start = integer(invocation["startOffsetMs"], "camera invocation startOffsetMs", 0, duration)
+                length = integer(invocation["durationMs"], "camera invocation durationMs", 1, duration)
+                if start + length > duration:
+                    raise PipelineError("camera invocation escapes its authoritative Stage clock")
+                camera_intervals.append((start, start + length))
+            camera_intervals.sort()
+            if any(a[1] > b[0] for a, b in zip(camera_intervals, camera_intervals[1:])):
+                raise PipelineError("Stage Camera invocations overlap")
         _validate_stage_default_next_invariant(
             pattern, f"pattern {pattern_id}"
         )
@@ -5933,8 +6015,9 @@ def validate_presentation_authoring(document: dict[str, Any]) -> None:
                 "effectCues",
                 "cameraInvocations",
             )
-            if "bodyVisibility" in stage:
-                stage_fields += ("bodyVisibility",)
+            for optional in ("bodyVisibility", "sceneProfileOccurrences", "lightOccurrences"):
+                if optional in stage:
+                    stage_fields += (optional,)
             exact(
                 stage,
                 stage_fields,
@@ -6021,10 +6104,9 @@ def split_v2_authoring(
                         stage["cameraInvocations"]
                     ),
                 }
-            if "bodyVisibility" in stage:
-                presentation_stage["bodyVisibility"] = copy.deepcopy(
-                    stage["bodyVisibility"]
-                )
+            for optional in ("bodyVisibility", "sceneProfileOccurrences", "lightOccurrences"):
+                if optional in stage:
+                    presentation_stage[optional] = copy.deepcopy(stage[optional])
             presentation_stages.append(presentation_stage)
         gameplay_patterns.append(
             {
@@ -6168,10 +6250,9 @@ def join_v2_authoring(
                     presentation_stage["cameraInvocations"]
                 ),
             }
-            if "bodyVisibility" in presentation_stage:
-                joined_stage["bodyVisibility"] = copy.deepcopy(
-                    presentation_stage["bodyVisibility"]
-                )
+            for optional in ("bodyVisibility", "sceneProfileOccurrences", "lightOccurrences"):
+                if optional in presentation_stage:
+                    joined_stage[optional] = copy.deepcopy(presentation_stage[optional])
             for optional in (
                 "partDamagePolicy",
                 "counterProxy",
@@ -6603,8 +6684,10 @@ def compile_binding(stage: dict[str, Any]) -> dict[str, Any]:
                 for occurrence in animation["occurrences"]
             ],
         }
-    if "bodyVisibility" in stage:
-        result["bodyVisibility"] = copy.deepcopy(stage["bodyVisibility"])
+    for optional in ("bodyVisibility", "sceneProfileOccurrences", "lightOccurrences"):
+        if optional in stage:
+            result[optional] = copy.deepcopy(stage[optional])
+    result["cameraInvocations"] = copy.deepcopy(stage["cameraInvocations"])
     return result
 
 
@@ -7177,6 +7260,7 @@ def project_v2_products(
     validate_effect_cue_catalog_contract(
         root, master, docs[EFFECT_CATALOG_REL]
     )
+    validate_stage_environment_resources(root, master)
     validate_combat_object_visual_closure(
         docs[BOSS_CATALOG_REL],
         docs[COMBAT_AUTHORING_REL],
@@ -7248,6 +7332,9 @@ def project_v2_products(
         for pattern in master["patterns"]
         for stage in pattern["stages"]
     }
+    if migration_fixture:
+        for binding in managed_bindings.values():
+            binding.pop("cameraInvocations", None)
     managed_cues = {
         cue["cueId"]: compile_cue(pattern["patternId"], stage, cue)
         for pattern in master["patterns"]
@@ -7386,8 +7473,8 @@ def project_v2_products(
         BINDINGS_REL: replace_root_format_version(
             binding_rows_output,
             "lostark.valtan-pattern-bindings",
-            {2, 3, 4},
-            2 if migration_fixture else 4,
+            {2, 3, 4, 5},
+            2 if migration_fixture else 5,
         ),
         CUES_REL: replace_root_format_version(
             cue_rows_output,
@@ -7475,6 +7562,18 @@ def project_v2_products(
             json.loads(text, object_pairs_hook=_reject_duplicate_pairs)
         except json.JSONDecodeError as exc:
             raise PipelineError(f"projected JSON failed round-trip: {relative}: {exc}") from exc
+    # Generated immutable binding owner: source Save never rewrites this file.
+    # Runtime uses the same formatVersion 2 codec against this admitted Product.
+    if not migration_fixture:
+        from promote_valtan_animation_chains import _validate_effect_v2_bindings_against_candidate_products
+        source_bytes = docs.get(EFFECT_V2_BINDINGS_REL) or repo_path(root, EFFECT_V2_BINDINGS_REL).read_bytes()
+        gameplay, _presentation = split_v2_authoring(master, docs[WORLD_SET_REL], docs[COMBAT_AUTHORING_REL])
+        _validate_effect_v2_bindings_against_candidate_products(root, outputs, source_bytes, gameplay)
+        outputs["Data/Valtan/Published/BOSS_VALTAN.effectv2bindings.json"] = source_bytes.decode("utf-8-sig")
+        from promote_valtan_animation_chains import _validate_pattern_sound_dependencies_against_candidate_products
+        sound_bytes = docs.get(PATTERN_SOUND_CUES_REL) or repo_path(root, PATTERN_SOUND_CUES_REL).read_bytes()
+        _validate_pattern_sound_dependencies_against_candidate_products(root, outputs, sound_source_bytes=sound_bytes)
+        outputs["Data/Valtan/Published/Valtan.patternsoundcues.json"] = sound_bytes.decode("utf-8-sig")
     return outputs
 
 
@@ -7603,6 +7702,7 @@ def source_manifest(root: Path) -> dict[str, Any]:
         DEBUG_PRESENTATION_REL,
         ANIMATION_PROMOTION_MANIFEST_REL,
         PATTERN_SOUND_CUES_REL,
+        "Data/Sound/CharacterSoundCatalog.json",
         EFFECT_V2_BINDINGS_REL,
         COMPOSITION_DESCRIPTOR_REL,
     )
@@ -7729,6 +7829,8 @@ DRAFT_PATCH_OPERATIONS = {
     ),
     "SET_STAGE_KIND": ("op", "patternId", "stageId", "stageKind"),
     "SET_STAGE_DURATION": ("op", "patternId", "stageId", "durationMs"),
+    "SET_STAGE_SCENE_PROFILES": ("op", "patternId", "stageId", "occurrences"),
+    "SET_STAGE_LIGHTS": ("op", "patternId", "stageId", "occurrences"),
     "ADD_PATTERN_SEQUENCE_SOURCE": (
         "op",
         "patternId",
@@ -7803,6 +7905,10 @@ DRAFT_PATCH_OPERATIONS = {
         "rightOffsetM",
         "radiusM",
     ),
+    "UPSERT_STAGE_ACTION": ("op", "patternId", "stageId", "action"),
+    "REMOVE_STAGE_ACTION": ("op", "patternId", "stageId", "action"),
+    "SET_STAGE_SUMMONS": ("op", "patternId", "stageId", "summons"),
+    "SET_STAGE_CAMERAS": ("op", "patternId", "stageId", "invocations"),
     "SET_STAGE_GRABBED_RELEASE": (
         "op",
         "patternId",
@@ -9694,6 +9800,7 @@ def apply_draft_patch(
     boss_catalog: dict[str, Any] | None = None,
     include_combat_authoring: bool = False,
     include_boss_catalog: bool = False,
+    require_runtime_resources: bool = True,
 ) -> (
     tuple[dict[str, Any], dict[str, Any], dict[str, Any], int]
     | tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any], int]
@@ -9776,6 +9883,20 @@ def apply_draft_patch(
             exact(operation, fields, f"operations[{ordinal}]")
         except PipelineError as exc:
             raise _draft_error(str(exc), operation_ordinal=ordinal) from exc
+
+        if kind in {"SET_STAGE_SCENE_PROFILES", "SET_STAGE_LIGHTS"}:
+            pattern = next((row for row in patched_master["patterns"]
+                            if row["patternId"] == operation["patternId"]), None)
+            stage = next((row for row in pattern["stages"]
+                          if row["stageId"] == operation["stageId"]), None) if pattern else None
+            if stage is None:
+                raise _draft_error("environment occurrence Stage is missing", operation_ordinal=ordinal)
+            field = "sceneProfileOccurrences" if kind == "SET_STAGE_SCENE_PROFILES" else "lightOccurrences"
+            stage[field] = copy.deepcopy(operation["occurrences"])
+            _validate_stage_environment(stage, f"{operation['patternId']}/{operation['stageId']}", stage["durationMs"])
+            if not stage[field]:
+                stage.pop(field)
+            continue
 
         if kind == "SET_SCRIPTED_SEQUENCE":
             current_sequence = patched_master["decisionModel"].get(
@@ -11468,6 +11589,113 @@ def apply_draft_patch(
                 "rightOffsetM": right_offset_m,
                 "radiusM": radius_m,
             }
+        elif kind in ("UPSERT_STAGE_ACTION", "REMOVE_STAGE_ACTION"):
+            pattern = _draft_pattern(patched_master, operation["patternId"], ordinal)
+            stage = _draft_stage(pattern, operation["stageId"], ordinal)
+            action = operation["action"]
+            exact(action, ("trigger", "kind", "targetId", "value", "durationMs", "releaseMode", "speedMps", "yawOffsetDegrees"), "stage action")
+            trigger = action["trigger"]
+            action_kind = action["kind"]
+            target_id = stable_id(action["targetId"], "stage action targetId")
+            if trigger not in ("ENTER", "EXIT") or action_kind not in ("SET_BOSS_FLAG", "SET_STAGGER_GAUGE", "SET_PLAYER_BIND", "SET_PLAYER_SILENCE", "SET_GAMEPLAY_PHASE", "RETARGET_RANDOM_ALIVE", "RETURN_TO_ARENA_CENTER", "SUPPRESS_INTER_STEP_PURSUIT", "DAMAGE_GRABBED_PLAYERS", "EXECUTE_GRABBED_PLAYERS", "RELEASE_GRABBED_PLAYERS", "TRIGGER_WORLD_EVENT_SET"):
+                raise PipelineError("unsupported stage action kind or trigger")
+            if action_kind == "SET_BOSS_FLAG" and target_id == "boss.flag.counterable":
+                raise PipelineError("Counter actions require the typed Counter window operation")
+            key = (trigger, action_kind, target_id)
+            matches = []
+            for row in stage["events"]:
+                compiled = ({"trigger":row["trigger"],"kind":row["kind"],"targetId":row["worldEventSetId"]} if row["kind"] == "TRIGGER_WORLD_EVENT_SET" else _compile_event(row, pattern["patternId"], stage["stageId"]))
+                if compiled is not None and (compiled["trigger"], compiled["kind"], compiled["targetId"]) == key:
+                    matches.append(row)
+            if len(matches) > 1: raise PipelineError("stage action identity is ambiguous")
+            if kind == "REMOVE_STAGE_ACTION":
+                if not matches: raise PipelineError("stage action does not exist")
+                stage["events"].remove(matches[0])
+            else:
+                event_id = matches[0]["eventId"] if matches else _event_id(pattern["patternId"],stage["stageId"],action_kind,len(stage["events"]))
+                used = {row["eventId"] for row in stage["events"]}
+                n = len(stage["events"])
+                while not matches and event_id in used:
+                    n += 1; event_id = _event_id(pattern["patternId"],stage["stageId"],action_kind,n)
+                event = {"eventId":event_id,"trigger":trigger,"kind":action_kind}
+                value = number(action["value"],"stage action value",-1000000,1000000)
+                duration = integer(action["durationMs"],"stage action duration",0,600000)
+                if action_kind == "SET_BOSS_FLAG":
+                    if value not in (0,1): raise PipelineError("boss flag value must be zero or one")
+                    event.update(flagId=target_id,enabled=bool(value))
+                elif action_kind == "SET_STAGGER_GAUGE": event["value"] = integer(action["value"],"stagger value",0,1000000)
+                elif action_kind == "SET_PLAYER_BIND": event.update(heightM=value/1000.0,durationMs=duration)
+                elif action_kind == "SET_PLAYER_SILENCE": event["durationMs"] = duration
+                elif action_kind == "SET_GAMEPLAY_PHASE": event["gameplayPhase"] = integer(action["value"],"gameplay phase",0,100)
+                elif action_kind == "TRIGGER_WORLD_EVENT_SET": event["worldEventSetId"] = target_id
+                elif action_kind == "DAMAGE_GRABBED_PLAYERS": event["damageProfileId"] = target_id
+                elif action_kind == "RELEASE_GRABBED_PLAYERS": event.update(releaseMode=action["releaseMode"],speedMps=action["speedMps"],durationMs=duration,yawOffsetDegrees=action["yawOffsetDegrees"])
+                compiled = ({"targetId":event["worldEventSetId"]} if action_kind == "TRIGGER_WORLD_EVENT_SET" else _compile_event(event,pattern["patternId"],stage["stageId"]))
+                if compiled["targetId"] != target_id: raise PipelineError("stage action target does not match its typed owner")
+                if matches: stage["events"][stage["events"].index(matches[0])] = event
+                else: stage["events"].append(event)
+            target = ("STAGE_ACTION", pattern["patternId"], stage["stageId"], *key)
+        elif kind == "SET_STAGE_SUMMONS":
+            pattern = _draft_pattern(patched_master, operation["patternId"], ordinal)
+            stage = _draft_stage(pattern, operation["stageId"], ordinal)
+            rows = operation["summons"]
+            if not isinstance(rows,list) or len(rows)>64: raise PipelineError("Summons must be a bounded array")
+            old = [row for row in stage["events"] if row["kind"] in ("SPAWN_COMBAT_OBJECT","SPAWN_COMBAT_OBJECT_VOLLEY")]
+            ids = set(); events = []
+            for row in rows:
+                exact(row,("combatObjectArchetypeId","trigger","count","volleyPolicy","volleyLayout","radiusM","startAngleDegrees","angleStepDegrees","maximumTotalObjects","spawnCount","firstSpawnOffsetMs","spawnIntervalMs","lifetimeMs"),"summon")
+                archetype = stable_id(row["combatObjectArchetypeId"],"Summon archetype")
+                if archetype in ids or row["trigger"] != "ENTER": raise PipelineError("duplicate Summon identity or invalid trigger")
+                ids.add(archetype)
+                definitions = [item for item in patched_combat["objects"] if item["combatObjectArchetypeId"] == archetype]
+                if len(definitions)!=1: raise PipelineError("Summon requires an existing combat-object definition")
+                definition = definitions[0]
+                lifetime = integer(row["lifetimeMs"],"Summon shared lifetimeMs",1,600000)
+                definition["lifetimeMs"] = lifetime
+                existing = [item for item in old if item["combatObjectArchetypeId"] == archetype]
+                if len(existing)>1: raise PipelineError("ambiguous Summon event identity")
+                if existing:
+                    event = copy.deepcopy(existing[0])
+                else:
+                    templates = [candidate for owner in patched_master["patterns"] for owner_stage in owner["stages"] for candidate in owner_stage["events"] if candidate["kind"] in ("SPAWN_COMBAT_OBJECT","SPAWN_COMBAT_OBJECT_VOLLEY") and candidate["combatObjectArchetypeId"] == archetype]
+                    if not templates: raise PipelineError("Summon resource has no typed spawn template")
+                    event = copy.deepcopy(templates[0])
+                    event["eventId"] = _event_id(pattern["patternId"],stage["stageId"],event["kind"],len(stage["events"])+len(events))
+                count = integer(row["count"],"Summon count",1,8)
+                spawn_count = integer(row["spawnCount"],"Summon spawn count",0,8) or 1
+                start = integer(row["firstSpawnOffsetMs"],"Summon first offset",0,600000)
+                interval = integer(row["spawnIntervalMs"],"Summon interval",0,600000)
+                wants_volley = bool(row["volleyPolicy"]) or spawn_count>1 or start>0 or count>1
+                if wants_volley:
+                    if event["kind"] != "SPAWN_COMBAT_OBJECT_VOLLEY":
+                        raise PipelineError("Delayed/repeated Summon requires an existing volley resource; its spawn origin cannot be changed implicitly")
+                    event["countPerResolvedTarget"] = count
+                    event["spawnSchedule"] = {"kind":"INTERVAL","count":spawn_count,"firstOffsetMs":start,"intervalMs":interval}
+                    _validate_volley_spawn_schedule(event["spawnSchedule"],stage["durationMs"],event["eventId"])
+                    # Existing layout, target policy and random placement remain owned by this exact resource.
+                else:
+                    event = {"eventId":event["eventId"],"trigger":"ENTER","kind":"SPAWN_COMBAT_OBJECT","combatObjectArchetypeId":archetype,"count":count}
+                events.append(event)
+            stage["events"] = [row for row in stage["events"] if row["kind"] not in ("SPAWN_COMBAT_OBJECT","SPAWN_COMBAT_OBJECT_VOLLEY")] + events
+            target = (kind,pattern["patternId"],stage["stageId"])
+        elif kind == "SET_STAGE_CAMERAS":
+            pattern = _draft_pattern(patched_master, operation["patternId"], ordinal)
+            stage = _draft_stage(pattern, operation["stageId"], ordinal)
+            rows = operation["invocations"]
+            if not isinstance(rows,list) or len(rows)>128: raise PipelineError("camera invocations must be a bounded array")
+            ids = set()
+            for row in rows:
+                exact(row,("cameraInvocationId","cameraCueId","trigger","startOffsetMs","durationPolicy","durationMs"),"camera invocation")
+                row_id = stable_id(row["cameraInvocationId"],"camera invocation ID")
+                stable_id(row["cameraCueId"],"camera cue ID")
+                if row_id in ids: raise PipelineError("duplicate camera invocation ID")
+                ids.add(row_id)
+                start = integer(row["startOffsetMs"],"camera startOffsetMs",0,stage["durationMs"])
+                duration = integer(row["durationMs"],"camera durationMs",1,stage["durationMs"])
+                if row["trigger"] != "ENTER" or row["durationPolicy"] != "EXPLICIT" or start+duration>stage["durationMs"]:
+                    raise PipelineError("camera invocation exceeds its Stage clock")
+            stage["cameraInvocations"] = copy.deepcopy(rows)
+            target = (kind,pattern["patternId"],stage["stageId"])
         elif kind == "SET_STAGE_GRABBED_RELEASE":
             pattern = _draft_pattern(patched_master, operation["patternId"], ordinal)
             stage = _draft_stage(pattern, operation["stageId"], ordinal)
@@ -11968,11 +12196,13 @@ def apply_draft_patch(
             patched_combat,
             migration_fixture=migration_fixture,
         )
-        if repository_root is not None and effect_catalog is not None:
+        if require_runtime_resources and repository_root is not None:
+            validate_stage_environment_resources(repository_root, patched_master)
+        if require_runtime_resources and repository_root is not None and effect_catalog is not None:
             validate_effect_cue_catalog_contract(
                 repository_root, patched_master, effect_catalog
             )
-        if patched_boss_catalog is not None:
+        if require_runtime_resources and patched_boss_catalog is not None:
             validate_combat_object_visual_closure(
                 patched_boss_catalog,
                 patched_combat,
@@ -14722,6 +14952,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     canonical_parser = subparsers.add_parser("commit-canonical-draft")
     canonical_parser.add_argument("--authoring-root", type=Path, required=True)
     canonical_parser.add_argument("--draft-patch", type=Path, required=True)
+    canonical_parser.add_argument("--source-only", action="store_true")
+    canonical_parser.add_argument("--source-baseline-root", type=Path)
     canonical_parser.add_argument("--pattern-sound-baseline", type=Path)
     canonical_parser.add_argument("--pattern-sound-candidate", type=Path)
     canonical_parser.add_argument("--effect-v2-baseline", type=Path)
@@ -14877,11 +15109,18 @@ def main(argv: Sequence[str] | None = None) -> int:
             from promote_valtan_animation_chains import (
                 CanonicalTransactionBusyError as PromotionBusyError,
                 commit_typed_authoring_patch,
+                commit_source_authoring_patch,
             )
 
             promotion_busy_error_type = PromotionBusyError
 
-            committed = commit_typed_authoring_patch(
+            source_options = {}
+            if args.source_only:
+                if args.source_baseline_root is None:
+                    raise PipelineError("Source Save requires Reload owner baselines")
+                source_options["source_baseline_root"] = args.source_baseline_root
+            commit = commit_source_authoring_patch if args.source_only else commit_typed_authoring_patch
+            committed = commit(
                 root,
                 args.draft_patch,
                 authoring_root=args.authoring_root,
@@ -14892,6 +15131,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 effect_v2_read_set_path=args.effect_v2_read_set,
                 lock_timeout_seconds=args.lock_timeout_seconds,
                 inject_failure_after=args.inject_failure_after,
+                **source_options,
             )
             source_revision = committed["sourceRevision"]
             payload = {

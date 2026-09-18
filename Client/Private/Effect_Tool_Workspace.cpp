@@ -261,7 +261,9 @@ void CEffect_Tool::Render_AuthoringResourceTree()
             }
         }
         else if (m_pAuthoringSequencer && command.eCommand == CEffectAuthoringResourceTree::COMMAND_KIND::PREVIEW &&
-            key.eOwnerKind == EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT && key.strStableId.starts_with("effect.kouku."))
+            key.eOwnerKind == EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT &&
+            (key.strStableId.starts_with("effect.kouku.") ||
+             (key.strStableId.starts_with("effect.valtan.action.") && key.strStableId.ends_with(".full.restore"))))
         {
             const bool active = m_ActiveDocument && m_eActiveDocumentSource == EFFECT_DOCUMENT_SOURCE::AUTHORED &&
                 m_ActiveDocument->strEffectAssetId == key.strStableId;

@@ -602,8 +602,8 @@ namespace Client
 		void Cancel_GroundTargeting();
 #ifdef _DEBUG
 		void Update_DebugPlayerPlacement(bool_t enabled);
-		bool_t Update_DebugMarioJump(bool_t gameplayCommandsEnabled);
 #endif
+		bool_t Update_DebugMarioJump(bool_t gameplayCommandsEnabled);
 
 	private:
 		weak_ptr<CCharacter> m_pLocalCharacter;
@@ -681,12 +681,12 @@ namespace Client
 		std::uint32_t m_nextDebugMadnessFormSequence = 1u;
 		std::uint32_t m_pendingDebugMadnessFormSequence = 0u;
 		std::string m_debugMadnessFormStatus;
+#endif
 		bool_t m_debugMarioJumpEnabled = false;
 		bool_t m_wasDebugMarioUpDown = false;
 		std::uint32_t m_nextDebugMarioJumpSequence = 1u;
 		std::uint32_t m_pendingDebugMarioJumpSequence = 0u;
 		std::chrono::steady_clock::time_point m_debugMarioJumpSentAt{};
 		std::string m_debugMarioJumpStatus;
-#endif
 	};
 }

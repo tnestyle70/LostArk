@@ -1138,3 +1138,252 @@ Client.exe·Engine.dll·설치 Trail CSO의 시작/종료 SHA는 같다. 격리 
 저장/게시 완료를 제품 전체 빌드 또는 실행 중 메모리 갱신으로 취급하지 않는다. Client와
 Server 종료·재시작·Reload·화면 조작은 하지 않았다. 새 C++와 셰이더는 다음 제품 빌드,
 게시된 Server 데이터는 다음 Server 재시작 뒤 소비한다.
+
+
+## G32. 추적 중심·비둘기 거리·거미 장판 시작점 회전 (2026-09-18)
+
+### 현재 완료 경계
+
+소스 코드 수정, 데이터 후보 생성, 변경 TU 격리 컴파일, 실제 Codec/Playback/quad 수치 검증은
+완료했다. 이 절 작성 시점에는 편집 중인 사용자에게 최종 저장본 반영 승인을 요청한 상태이며
+Authored/Composition 교체·domain publish·Product EXE 링크는 아직 하지 않았다. 최종 설치
+상태는 아래 후속 반영 기록만 기준으로 한다. Client/UI 실행·화면 캡처·육안 판정은 하지 않았다.
+
+시작 브랜치는 codex/shader-build-isolation-20260917, HEAD는
+`a198c9406db46b92f8b8aeaf087a538733f259ea`다. 기존 pursuit Preview/Server, 카드4문양,
+Composition, project/filter와 다른 세션의 발탄 변경을 보존했다. 소유권이 섞인 작업트리라
+자동 stage/commit/push하지 않았다. LAN 스크립트는 server-host/reachable/방화벽 ready였다.
+
+### G32-01. GameRoom_BossSimulation.cpp와 P79 선택 지점
+
+`Commit_KoukuAlbionAirborne`가 플레이어 선택·지면 좌표·보스 Transform을 소유한다.
+APPEAR_PLAYER에서 기존 SelectedGround가 있으면 그 XZ를, 없으면 살아 있는 선택 대상의
+현재 XZ를 읽는다. navigation의 exact walkability와 지면 Y, boss body collision을 검증한다.
+높이는 지면에 airborneHeightM를 더한다. stage root origin과 ground origin도 같은 delta로
+옮겨 다음 root-motion sample이 teleport를 되돌리지 않게 하고 staged boss를 commit한다.
+실패 시 그 호출의 원래 boss pose를 유지한다. Server transform은 snapshot으로 Client에 전달된다.
+
+이전 Claude 설명의 “selectedEffectGroupId는 Preview 전용”은 현재 코드와 다르다.
+`project_kouku_saydon_composition.py::_project_airborne_selected_effects`가 그룹의 네 행을
+하나의 `selectedEffectVisualId` template으로 변환한다. Server의 단일 visual ID는 한 개의
+이펙트가 아니라 네 occurrence 전체를 식별한다. `combatobject.kouku.showtime.fixed`의
+기존 고정 지점 표현을 사용하며, 그 이름이 쇼타임이어도 신규 별도 runtime은 필요하지 않다.
+
+후보는 Logic76의 기존 8883ms 추적 시각에 SELECT_PLAYER 트리거를 하나 추가한다.
+논리 ID와 occurrence ID는 최종 병합 시 최신 next ordinal에서 할당한다. 핵심 저작값은:
+
+```json
+{
+  "logicType": "TRIGGER",
+  "triggerKind": "ALBION_AIRBORNE",
+  "airbornePhase": "SELECT_PLAYER",
+  "airborneHeightM": 0,
+  "airborneDurationMs": 0,
+  "teleportPosition": [0, 0, 0],
+  "airborneTargetPositionPolicy": "SELECT",
+  "selectedEffectGroupId": "KAKULSAYDON_G1_PATTERN_79.effectgroup.11"
+}
+```
+
+Server와 `KoukuSaydonPreviewRootMotion::Prepare_Airborne` 모두 같은 시각의 SELECT를
+APPEAR보다 먼저 처리한다. 따라서 별개의 대상 추정 없이 같은 캡처 지점을 공유한다.
+Server SELECT는 navigation ground를 저장하고 fixed combat object를 생성한다.
+APPEAR는 그 ground 위 높이13.6788133052m에 보스를 배치한다. 장판은 공중 보스 높이를
+사용하지 않고 ground에 남는다. 이후 플레이어·보스의 이동이 장판을 끌고 가지 않는다.
+각 트리거는 별도 transaction이므로 SELECT 성공 뒤 APPEAR의 body 검사만 실패하면
+장판은 생성됐지만 보스 이동은 거절될 수 있다. 한 transaction으로 바꿨다고 주장하지 않는다.
+
+Preview 경로는 `airborneSelections`의 같은 occurrence ID →
+`Sample_LogicPreview` → `Build_SelectedAirbornePresentation` → 기존 `Sample`이다.
+Server Play는 publisher template → Server fixed object spawn →
+`Read_TargetedCombatVisuals` → 같은 `Sample`이다. 원래 MAP 행은 소유된 template으로
+분리되어 일반 presentation에서 중복 재생되지 않는다.
+
+네 행 presentation5/6/7/8의 시간·길이·TRS는 보존한다. 첫 행의 원래 XYZ를 공통 기준으로
+빼고 캡처 ground를 더한다. 현재 네 위치가 같아 상대 위치는 모두 [0,0,0]이며 Logic 대비
+지연은24/1779/2540/3095ms, 전체 template 수명은4083ms다. Server의 실제 시작은30Hz
+tick으로 양자화된다. 단순 BOSS anchor는 각 행의 다른 startMs와 공중 Y를 샘플하므로
+그 대안은 적용하지 않았다.
+
+### G32-02. build_kouku_dove_pizza_candidates.py의 실제 거리
+
+`dove_single_file_track`이 네 local-space 새의 sourceTransformTrack을 만든다.
+`travel_time = time - lane * spacing / speed`로0.1초씩 같은 경로를 뒤따른다.
+source 좌표는 cm, Client 변환은 기존 Track sampler가 한 번 수행한다.
+
+이전 builder는2/3 속도의 후보를 만들지만 실제 Data는 아직8m/s×0.7초=5.6m인 이전
+track이었다. 사용자 최종 표현인 “절반”을 실제 저장본 기준으로 적용했다.
+
+| 선두 구간 | 기존 저장본 | 이번 후보 |
+|---|---:|---:|
+| 초기 직선 | 0.7초,5.6m | 0.35초,2.8m |
+| 반원 선회 | 2초,반경16/πm | 동일 |
+| 선회 뒤 직선 | 0.3초,2.4m | 0.65초,5.2m |
+| 속도·새 수명 | 8m/s,3초 | 동일 |
+
+코드는0.5 정책일 때 `straight *= straight_scale`로 직선 시간을 줄이고
+`straight_speed = speed`를 유지한다. 옛1 및2/3 track은 안전한 migration 인식용으로만
+받는다. 독립 편집한 모르는 track은 거절한다. 과거 builder가 매번 밝기를4로 되돌리던 부분도
+제거해 현재 저장된 밝기1을 유지한다. 경로 요청 때문에 다른 저작값을 다시 적용하지 않는다.
+재질·resource·날갯짓·출생·수명·기존19개 폭발 요소·death event는 바꾸지 않는다.
+
+`CEffectPlayback::Evaluate_ElementWorld`가 Track을 local Transform과 합성한다.
+죽는 순간 기존 death event가 최종 world 위치를 전달하고19개 receiver가 그 위치에서
+폭발한다. 폭발의 별도 고정 위치나 신규 projectile simulation을 만들지 않는다.
+
+### G32-03. Effect_Tool.h / Internal.h / Helpers.cpp / Detail.cpp
+
+사용자가 고른 회전축은 “쿠크 쪽 시작 끝점”이다. 거미 stage2 FullRestore의 바닥은
+notify008의5요소이며 body-follow notify007의4요소와 다른 anchor group이다.
+바닥은 follow=false captured root, snapshotRootSourceBasisYawDegrees=-90을 사용한다.
+주 검은 띠2개(emitters19/25)는 Required offsetCenter=[0.5,1]이어서 시작 끝점이 emitter의
+XZ 원점에 놓인다. source StartLocation의5cm는 지면 위 높이이며 yaw 회전의 XZ 축을 옮기지 않는다.
+
+기존 Group Center는 Detail.Transform.position의 산술평균일 뿐 texture의 시각적 중심이나
+끝점을 계산하지 않는다. 기존 group helper는 captured root를 편집 불가로 두었다.
+또한 원본 EPAL_Z → Client 고정 +Y sprite는 opt-in 없이 emitter 방향을 소비하지 않는다.
+이는 각 sprite의 내부 회전/roll과 effect 배치 방향을 혼동하게 하는 두 가지 별도 원인이다.
+
+추가된 선언·상태는 다음 역할이다.
+
+- `Rotate_AttachmentElementGroup(..., const float3_t* pivot, const std::string& elementId)`:
+  pivot=null이면 기존 그룹 중심, 지정하면 같은 local m 좌표를 축으로 사용한다.
+  elementId가 비었으면 전체 그룹, 있으면 그 멤버 하나만 선택한다.
+- `GROUP_ROTATION_EDIT_STATE`: pivotMode(중심/anchor원점/custom), customPivot(m),
+  elementId를 도구 세션에서 소유한다. `m_GroupRotationEdits`는 effect ID와 stable 첫 멤버 ID로
+  구분한다. runtime 데이터나 별도 누적 rotation owner가 아니다.
+- `Try_RotateAttachmentGroup`: 미적용 Detail draft를 보호하고 복사한 문서를 helper에 전달한 뒤
+  기존 Try_CommitDocument로 한 번 교체한다. 실패하면 기존 문서·preview를 보존한다.
+
+회전 helper의 실질 계산은 `delta = inverse(oldRotation) * newRotation`,
+`p' = pivot + delta(p - pivot)`이다. 멤버의 방향뿐 아니라 위치, velocity,
+position/velocity lerp 끝점도 함께 바꾼다. 전체 batch의 finite/range 검증 후 commit한다.
+단일 멤버일 때는 그 멤버의 기존 orientation을 delta 기준으로 사용한다.
+source track·runtime carrier·transform inheritance 및 animated rotation owner 제한은 유지한다.
+
+바닥5개에만 `detail.sprite.followEmitterAxisRotation=true`를 연결한다. Playback이 local
+입자는 현재 emitter, world 입자는 birth emitter 행렬을 전달하고
+`Effect_DocumentRenderer_GeometryHelpers::Make_ParticleSpriteWorld`가 고정 sprite 축에
+회전을 합성한다. 입자 내부 roll, 원본 pivot, snapshot source basis, body-follow4개는 보존한다.
+Source basis까지 올바로 소비하므로 opt-off였던 바닥의 기본 방향 자체도 기존 결과와 달라질 수 있다.
+이는 전역 -90도 추가 보정이 아니라 원래 누락된 해당5개 carrier의 basis 소비다.
+
+사용 순서는 F1 → Open Effect Tool V1 → 해당 거미 stage2 Current Effect → Group by anchor →
+Captured root 그룹 → Rotation target=Whole group → Rotation pivot=Anchor origin →
+Rotation about pivot의 Y(deg) 편집 → Save Changes다. 같은 입력에서 target을 element ID로
+바꾸면 한 요소만 쿠크 쪽 원점 주위로 돌린다. Custom point는 정확한 local 좌표를 지정할 때 쓴다.
+입자 내부 roll은 전체 배치 회전이 아니므로 이 경로와 구분한다.
+
+Pivot 선택은 세션 상태이며 Save Changes는 결과 Element TRS를 저장한다. 재로드 후 결과 방향은
+유지되지만 편집 pivot 모드는 저장되지 않는다. JSON schema와 공용 Effect ABI는 변경하지 않았다.
+새 파일·vcxproj/filter 등록도 없다. 사용자 각도를 지정받지 않았으므로 임의의90도 회전을
+저장본에 넣지 않고 직접 조절할 기능과 올바른 회전 소비를 연결했다.
+
+### 자동 검증과 재현 경로
+
+- P79 후보의 publisher validate_document/validate_publishable와 실제 template 투영 통과.
+- 기존 selected-group 보존·잘못된 소유자 거절 focused unittest2개 통과.
+- 비둘기 실제 Codec/Playback/종료 receiver:22,853 checks, 원래19폭발216입자 및
+  검사용1:1 marker4개. 위치 최대오차1.43051e-6m, 종료 위치2.38419e-7m.
+- 선두/후속720개의60Hz 구간 속도는7.999~8.001m/s 이내. 모든 non-track 값과19폭발 요소
+  동일, builder 재입력은 변경0이다.
+- 거미 실제 helper/Codec/save/reload/Playback/최종 sprite quad:2,187 checks,
+  원점과 custom pivot에서 각각299개 quad 검사, 최대 행렬오차9.53674e-7.
+  단일 요소 외 항목 보존, 잘못된 pivot/ID 거절 시 문서 보존도 통과.
+- 변경 Effect_Tool_Helpers.cpp와 Effect_Tool_Detail.cpp의 격리 Debug TU 컴파일 통과.
+- probe는 최신 Effect_AuthoringDocument.h ABI 이후의 Product/기존 격리 OBJ와 링크했다.
+  Windows/CRT 오류창을 막고30초 제한의 CREATE_NO_WINDOW로 실행했다. Client/UI/GPU는
+  실행하지 않았다. DirectXTK PDB 부재의 linker warning은 남는다.
+- 로그·백업·최신 필드 병합 도구: `out/KoukuPatternPivots20260918/`.
+  `merge_data.py` 기본 실행은 후보만 만든다. 승인 후에만 --apply로 exact-input 비교,
+  백업, 기존 commit_library의 원자 교체·자기 변경 rollback을 수행한다.
+
+Product 링크·최종 JSON/XML/diff 확인·publish는 최종 반영 기록에서 따로 판정한다.
+실제 Preview Play/Server Play 화면과 거미 장판 시작점의 육안 판정은 사용자 확인 대기다.
+
+
+### G32 최종 보류 상태 — 사용자 편집 계속 / 직접 빌드
+
+사용자는 “아직 편집중이어서 내가 직접 다시 빌드 돌린 다음에 결과 알려줄게”라고 답했다.
+이 답변은 현재 디스크 저장본 교체 승인으로 해석하지 않았다. 이번 작업은 Product 빌드·실행과
+외부 데이터 교체·publish를 보류하고 소스 변경과 검증된 후보를 보존했다.
+
+현재 사용자가 빌드하면 적용되는 것은 Pivot/target UI와 captured-root 편집 기능이다.
+P79 캡처 Logic 추가, 비둘기4개 Track, 거미5개 emitter-axis 옵션은 아직 live에 없다.
+따라서 재빌드만으로 세 데이터 변경까지 확인할 수 있다고 안내하지 않았다. 저장 완료 및
+반영 의사를 받은 다음 최신 stable ID/field 기준 병합과 publish를 이어가야 한다.
+후보의 마지막 dry-run은 Composition1527→1528이며 source는 이후 더 바뀔 수 있으므로
+이 전체 파일을 그대로 덮어쓰지 않는다. merge_data.py가 최신 ordinal/revision을 재할당하고
+P79 대상 행의 실제 충돌은 중단한다. 후보는 out/KoukuPatternPivots20260918/latest-merge다.
+
+마지막 Python syntax, 후보3개 JSON parse, 현재 project/filter XML parse 및 git diff --check는
+통과했다. Product EXE 링크·게시·사용자 시각 확인은 미실행이다. 커밋·푸시는 하지 않았다.
+
+### G32 실제 반영 — 거미 바닥의 quad·native 좌표 회전 일치 (2026-09-18)
+
+사용자가 새 EXE에서 무늬만 회전한다고 재보고하고 재수정·반영을 요청했다. 현재 실행은
+Client PID42028, 12:36:56 시작이며 EXE12:36:55, Tool Detail/Helpers OBJ12:36:45~46이다.
+이전 Pivot UI는 이 빌드에 포함되었지만 G32의 데이터 후보는 계속 미설치였음을 확인했다.
+
+실제 원인은 native2349가 SourceEmitterWorld 역행렬로 내부 noise 좌표를 계산하는 반면,
+followEmitterAxisRotation이 꺼진 fixed-axis quad는 같은 emitter 방향을 무시하는 것이다.
+따라서 내부 이미지만 회전하는 관찰과 일치한다. fx_m_flow_04_n.dds를 사용하는 두 주 요소는
+notify008의 emitter19/25이며, 해당5개 floor 요소를 함께 켜야 같은 방향을 유지한다.
+
+최신 저장본에 다음 두 문서의5개씩, 총10개 followEmitterAxisRotation=true만 반영했다.
+Transform·timing·재질·sourceRecipe·원본 offsetCenter[.5,1]·body-follow는 그대로다.
+
+- effect.kouku.gate2.4219776.stage2.full.restore: 패턴 presentation56의 실제 자산.
+- effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_dash_ground_01_loc_int: Effect Tool 원본 항목.
+
+build_kouku_spider_counter_restore.py도 stage2의 해당 source-system만 같은 옵션을 생성한다.
+추가 shader/C++ 변경은 없다. 기존 opt-in 소비 코드가 현재 EXE에 이미 들어 있다.
+미반영 상태인 P79/비둘기 후보는 이 두 파일 교체에 섞지 않았다.
+
+후보·이전 파일·설치 hash receipt는 out/SpiderRotationApply20260918에 있다. 최신 bytes를
+백업하고 검증된 후보와 교체 직전 일치를 재확인한 뒤 commit_library의 원자 교체와 소유한
+변경만 rollback하는 경로를 사용했다. 설치 뒤 두 파일이 검증 후보와 바이트 동일함을 확인했다.
+
+실제 Codec/Playback/최종 sprite quad 검사는 두 문서 각각4,363 checks를 통과했다.
+각 문서에서 원점/custom pivot, root yaw0/37도+이동된 root의4조합마다299개 quad를
+비교했다. 최대 행렬오차는 stage2 1.43051e-6, leaf1.19209e-6이다. 동일 helper의 선택 요소
+외 항목 보존, save/reload, 잘못된 입력 보존도 통과했다. CPU 프로브는 종료0이며
+CRT의 FBX/라이브러리 정적 할당 leak dump가 stderr에 남아 있어 leak-free 검증으로 기록하지 않는다.
+Python syntax, 변경 JSON parse, 설치 hash, git diff --check도 통과했다.
+
+실행 중 문서 갱신은 별도다. Effect Tool Current Effect → Editing Session → Load Saved가
+디스크를 다시 읽는다. Restart Preview만으로는 외부 변경을 읽지 않는다. Pattern Workbench의
+Refresh Resources도 목록만 갱신한다. Load Saved 후 실제 Rotation 편집을 Save하면
+Reload_SelectedProductEffect가 다음 product spawn을 갱신한다. 또는 사용자가 Client를
+재시작하면 catalog를 새로 준비한다. 이 데이터 반영에 재빌드는 필요하지 않다.
+미저장 draft를 버리는 Load Saved/종료는 자동 실행하지 않았다. 화면 결과는 사용자 검증 대기다.
+
+### G32 실제 반영 — 비둘기 비행 경로 (2026-09-18)
+
+사용자는 비둘기5.6→2.8m/선회 뒤2.4→5.2m도 미반영이라고 재보고하고 반영을 요청했다.
+직전 작업에서는 거미·발탄만 설치했고 이 비둘기 후보는 아직 설치하지 않았음을 재확인했다.
+현재 Composition의 kakulsaydon.effect.285a0dae002c0367563c와 P82.presentation.1,
+제품 patternbindings, EffectCatalog는 모두 effect.kouku.magic.paper.dove.group의 동일
+DIRECT_AUTHORED_DOCUMENT를 참조한다. 별도 복사본이나 Gameplay publish는 필요없다.
+
+최신 Authored 저장본을 읽고 기존4마리의 sourceTransformTrack만 병합했다.
+선두 직선0.7초/5.6m→0.35초/2.8m, 반원2초 유지, 이후 직선0.3초/2.4m→0.65초/5.2m다.
+8m/s,0.8m 후속 간격,3초 수명과 death event, 기존19폭발, 밝기1·재질·Transform·기타
+모든 non-track 값은 유지했다. builder 재입력은 변경0이며 독립 편집 track은 거부한다.
+
+out/DovePathApply20260918에 before/candidate와 설치 SHA receipt를 기록했다.
+후보 검사 후 교체 직전 raw bytes가 같음을 재확인하고 기존 commit_library의 원자 교체와
+자기 변경 rollback으로 실제 Authored에 설치했다. 다른 Composition/P79 후보는 건드리지 않았다.
+설치 뒤 현재 파일을 다시 로드하여 후보와 hash 및 실제 CPU 재생 출력이 동일함을 확인했다.
+
+기존 실제 Codec/Playback/원본 explosion+terminal marker 검사는22,853 checks를 통과했다.
+4마리, 원래19 receiver의216폭발 입자, 기존3초 수명 뒤fixed-step의3.03333초 발동을
+유지한다.720개60Hz 이동 구간 속도는7.9997715~8.0000000m/s였다. 종료 위치 최대오차
+2.38419e-7m, 경로 최대오차1.43051e-6m, 회전/이동 root 합성 최대오차2.38419e-6m다.
+JSON parse·설치 hash·git diff --check를 확인했다. CPU만 실행했고 Client/UI/GPU는 실행하지 않았다.
+
+현재 EXE의 기존 Track/Death event 소비 경로로 적용되므로 재빌드는 필요없다.
+Effect Tool은 해당 비둘기 Current Effect의 Editing Session → Load Saved → Play All로
+새 파일을 읽는다. Pattern Play Preview는 기존 immutable catalog를 잡고 있을 수 있으므로
+Client 재시작 또는 명시적인 Tool Save의 runtime activation 뒤 확인해야 한다.
+사용자의 미저장 편집을 버리는 Reload/종료는 자동 수행하지 않았다. 화면 판정은 사용자 확인 대기다.

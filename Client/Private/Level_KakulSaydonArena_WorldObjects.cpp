@@ -594,6 +594,8 @@ namespace
     }
 }
 
+#endif
+
 bool_t CLevel_KakulSaydonArena::Debug_PrepareGateObjects(const size_t gateIndex, std::string& status)
 {
     auto staged = std::make_unique<GATE_OBJECT_PRESENTATION>();
@@ -740,8 +742,10 @@ bool_t CLevel_KakulSaydonArena::Debug_CommitGateObjects(const size_t gateIndex, 
 {
     if (!m_pPendingGateObjects || m_pPendingGateObjects->gateIndex != gateIndex)
     { status = "Gate Object activation has no matching prepared stage."; return false; }
+#ifdef _DEBUG
     Debug_StopCompositionWorldPreview();
     Debug_StopWorldObjectPreview();
+#endif
     if (m_pGateObjects && !Debug_ReleaseGateObjectPresentation(*m_pGateObjects, status)) return false;
     auto staged = std::move(m_pPendingGateObjects);
     const auto rollback = [&]() {
@@ -773,6 +777,7 @@ void CLevel_KakulSaydonArena::Debug_CancelGateObjects()
     m_pPendingGateObjects.reset();
 }
 
+#ifdef _DEBUG
 bool_t CLevel_KakulSaydonArena::Debug_DespawnFireObjects(std::string& outStatus)
 {
     if (Is_DebugGatePending() || m_PlayerController.Is_DebugPlayerPlacementPending())
@@ -799,15 +804,58 @@ bool_t CLevel_KakulSaydonArena::Debug_DespawnFireObjects(std::string& outStatus)
     return true;
 }
 
+#endif
+
 void CLevel_KakulSaydonArena::Debug_StopGateObjects()
 {
     Debug_CancelGateObjects();
+    m_pServerRaidCinematicBorrowedGateObjects = nullptr;
+#ifdef _DEBUG
     m_bCompositionWorldPreviewBorrowsGateObjects = false;
+#endif
     std::string status;
     if (m_pGateObjects && !Debug_ReleaseGateObjectPresentation(*m_pGateObjects, status))
     { OutputDebugStringA(("[KoukuGateObjects] " + status + "\n").c_str()); return; }
+#ifdef _DEBUG
     m_pWorldObjectPreviewBorrowedGateObjects = nullptr;
+#endif
     m_pGateObjects.reset();
+}
+
+bool_t CLevel_KakulSaydonArena::Begin_ServerRaidCinematicPresentation(std::string& status)
+{
+    if (m_pServerRaidCinematicBorrowedGateObjects)
+    {
+        if (m_pServerRaidCinematicBorrowedGateObjects == m_pGateObjects.get()) return true;
+        m_pServerRaidCinematicBorrowedGateObjects = nullptr;
+    }
+    if (!m_pGateObjects || m_pGateObjects->gateIndex != 0u || m_pGateObjects->suspended) return true;
+    auto* previous = m_pGateObjects.get();
+    if (!Debug_SetGateObjectsSuspended(true, status)) return false;
+    m_pServerRaidCinematicBorrowedGateObjects = previous;
+    // Releasing the G1 owner restores the legacy Deploy baseline. The incoming
+    // authored book replaces it, so keep that legacy copy hidden for this lease.
+    if (const auto book = m_DeployRuntime.Find(7u); book && book->Get_State() != DEPLOY_PROP_STATE::DESPAWNED &&
+        !m_DeployRuntime.Set_State(7u, DEPLOY_PROP_STATE::DESPAWNED))
+    {
+        const auto failure = "Raid cinematic legacy book hide failed: " + m_DeployRuntime.Get_Status();
+        std::string restore;
+        status = End_ServerRaidCinematicPresentation(true, restore) ? failure : failure + " / " + restore;
+        return false;
+    }
+    return true;
+}
+
+bool_t CLevel_KakulSaydonArena::End_ServerRaidCinematicPresentation(
+    const bool_t restorePrevious, std::string& status)
+{
+    if (!m_pServerRaidCinematicBorrowedGateObjects) return true;
+    // A successful gate commit replaced this owner. Never resurrect an old gate
+    // over its successor; failure/abort resumes only the exact borrowed owner.
+    if (restorePrevious && m_pServerRaidCinematicBorrowedGateObjects == m_pGateObjects.get() &&
+        !Debug_SetGateObjectsSuspended(false, status)) return false;
+    m_pServerRaidCinematicBorrowedGateObjects = nullptr;
+    return true;
 }
 
 bool_t CLevel_KakulSaydonArena::Debug_SetGateObjectsSuspended(const bool_t suspended, std::string& status)
@@ -832,9 +880,10 @@ void CLevel_KakulSaydonArena::Debug_UpdateGateObjects(const f32_t delta)
         }
 }
 
+#ifdef _DEBUG
 bool_t CLevel_KakulSaydonArena::Debug_BeginWorldObjectPreview(
     const CWorldSequenceDocument& document, const std::string& instanceId, std::string& status,
-    const bool_t previewAtCharacter)
+    const bool_t previewAtCharacter, const std::optional<CWorldSequencePlayer::OBJECT_PLACEMENT>& placement)
 {
     if (m_SequencePlayer.Has_ActiveInstances() || !m_CompositionWorldPreviewCues.empty())
     { status = "Stop the active pattern/world preview before previewing this object."; return false; }
@@ -873,6 +922,8 @@ bool_t CLevel_KakulSaydonArena::Debug_BeginWorldObjectPreview(
     auto staged = std::make_unique<CWorldSequencePlayer>();
     if (!ids.empty() && !staged->Set_Document(document, targets, status))
     { status = staged->Get_Status(); return false; }
+    for (const auto& id : ids)
+        if (!staged->Validate_ObjectPlacement(id, placement, status)) return false;
     for (const auto& id : ids)
         if (!staged->Prepare_InstanceResources(id, targets))
         { status = staged->Get_Status(); return false; }
@@ -923,7 +974,7 @@ bool_t CLevel_KakulSaydonArena::Debug_BeginWorldObjectPreview(
     }
     if (!isGroup && !isolatedObjects) Debug_StopWorldObjectPreview();
     for (const auto& id : ids)
-        if (!staged->Play(id, targets, 1.f, previewOffset))
+        if (!staged->Play(id, targets, 1.f, previewOffset, 0u, placement))
         { status = staged->Get_Status(); rollback(); return false; }
     if (isolatedObjects)
         for (const auto& id : ids)

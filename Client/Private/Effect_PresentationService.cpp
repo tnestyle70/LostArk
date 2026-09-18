@@ -1552,8 +1552,11 @@ namespace
                         Document.strEffectAssetId,
                         Element.ActionCueAttachment.strRuntimeAnchorSlotId),
 					Element.ActionCueAttachment.eOrientation,
-                    Document.strEffectAssetId.starts_with("effect.valtan.action.") &&
-                        Document.strEffectAssetId.ends_with(".full.restore") });
+                    (Document.strEffectAssetId.starts_with("effect.valtan.action.") &&
+                        Document.strEffectAssetId.ends_with(".full.restore")) ||
+                    ((Document.strEffectAssetId == "effect.valtan.carrier-v1.attack.four-slash.active.clip-01" ||
+                        Document.strEffectAssetId == "effect.valtan.carrier-v1.attack.four-slash.active.clip-02") &&
+                        Element.ActionCueAttachment.strRuntimeAnchorSlotId == "StartControl") });
             }
             for (const Client::EFFECT_SOURCE_MODULE_DESC& Module :
                 Element.SourceRecipe.Modules)
@@ -4092,6 +4095,12 @@ bool_t Client::CEffectPresentationService::Requires_SourceBoneImportScaleNormali
 	// anchor. Leave the other Artist foot and camera attachments unchanged.
 	if (strEffectAssetId == "effect.artist.skill.31930.full.restore" &&
 		strRuntimeAnchorSlotId == "GRABBED_SOCKET_BODY")
+		return true;
+
+	// The product four-slash documents reuse the measured source weapon socket.
+	if ((strEffectAssetId == "effect.valtan.carrier-v1.attack.four-slash.active.clip-01" ||
+		strEffectAssetId == "effect.valtan.carrier-v1.attack.four-slash.active.clip-02") &&
+		strRuntimeAnchorSlotId == "StartControl")
 		return true;
 
 	// Source particles are already meters. These measured Warlord/Lance

@@ -18,6 +18,7 @@ public:
 		const CNetworkPlayerCommandSink&) = delete;
 
 	static std::uint32_t Get_LiveInstanceCount();
+	bool Request_KoukuRaid(const LostArk::Shared::C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST& request) override;
 	bool Request_DebugWorldPlayback(const LostArk::Shared::C2S_DEBUG_WORLD_PLAYBACK& request) override;
 	bool Consume_DebugWorldPlaybackResult(LostArk::Shared::S2C_DEBUG_WORLD_PLAYBACK_RESULT& result) override;
 

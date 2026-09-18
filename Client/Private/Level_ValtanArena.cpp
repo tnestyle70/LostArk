@@ -1547,6 +1547,24 @@ void CLevel_ValtanArena::Update_CinematicCamera(const f32_t fTimeDelta)
 	input.iActionStartTick = boss.iActionStartTick;
 	input.vBossPosition = boss.vPosition;
 	input.fBossYawDegrees = boss.fYawDegrees;
+    std::vector<BOSS_STAGE_CAMERA_SAMPLE> cameraInvocations;
+    input.hasStageCameraInvocations = !input.isBossDead &&
+        CValtan::Get_ActiveStageCameraInvocations(input.strStageActionId, cameraInvocations);
+    if (input.hasStageCameraInvocations)
+    {
+        float age = 0.f;
+        if (CActionPresentationTimeline::Try_ResolveActionAgeSeconds(input.iServerTick,
+                input.iActionStartTick, static_cast<float>(m_ValtanEncounterReference.Get_FixedTickHz()), age))
+            for (const auto& invocation : cameraInvocations)
+                if (age * 1000.f >= invocation.iStartMs &&
+                    age * 1000.f < double(invocation.iStartMs) + invocation.iDurationMs)
+                {
+                    input.strInvokedCameraCueId = invocation.strCueId;
+                    input.iCameraStartOffsetMs = invocation.iStartMs;
+                    input.iCameraDurationMs = invocation.iDurationMs;
+                }
+    }
+
 	const shared_ptr<CCharacter> localCharacter =
 		m_Replication.Get_LocalCharacter();
 	if (nullptr != localCharacter)

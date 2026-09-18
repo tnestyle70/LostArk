@@ -109,10 +109,11 @@ def orbit_track(element_id, start, life):
         t = min(life, i * TRACK_KEY_STEP)
         angle = 2.0 * math.pi * ORBIT_TURNS_PER_SECOND * t
         keys.append(key(start + t, [ORBIT_RADIUS_UE_CM * math.cos(angle), ORBIT_RADIUS_UE_CM * math.sin(angle), 0.0]))
+    # Omit alphaScaleKeys: an explicitly empty curve evaluates to zero, whereas
+    # no alpha track preserves the source particle's own alpha over life.
     return dict(sourceOccurrenceId=element_id, sourceTimeOriginSeconds=0, previewOriginUE3Cm=[0, 0, 0],
                 nodes=[dict(sourceObjectPath=element_id + '/axe-orbit', frame='WORLD', initialPositionUE3Cm=[0.0, 0.0, 0.0],
-                            initialEulerDegrees=[0, 0, 0], scaleUE3=[1, 1, 1], positionKeys=keys, eulerKeys=[])],
-                alphaScaleKeys=[])
+                            initialEulerDegrees=[0, 0, 0], scaleUE3=[1, 1, 1], positionKeys=keys, eulerKeys=[])])
 
 
 def ribbon_element(asset, template, spawn_per_unit, ordinal, start, span, clip_seconds):

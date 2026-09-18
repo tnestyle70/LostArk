@@ -170,7 +170,11 @@ class WorldSequenceAuthoringContractTests(unittest.TestCase):
             resourceKind="V1_EFFECT", resourceId="effect.kouku.gate3.doll.flame.full.restore",
             timing="TIME", startMs=0, followObject=True, bone="b_mouth_f")
         cases.append(("effect_v1_follow_bone", v1_follow, True))
+        no_spin = copy.deepcopy(v1_follow)
+        no_spin["templates"][-1]["effectTracks"][0].update(inheritObjectRotation=False, bone="")
+        cases.append(("effect_v1_no_model_spin", no_spin, True))
         for name, fields in (
+            ("rotation_number", {"inheritObjectRotation": 1}), ("rotation_null", {"inheritObjectRotation": None}),
             ("follow_number", {"followObject": 1}), ("follow_null", {"followObject": None}),
             ("bone_number", {"bone": 7}), ("bone_control", {"bone": "mouth\n"}),
             ("bone_long", {"bone": "a" * 257}), ("kind_lowercase", {"resourceKind": "v1_effect"}),

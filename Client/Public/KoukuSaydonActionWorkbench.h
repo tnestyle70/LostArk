@@ -17,6 +17,8 @@
 
 namespace Client
 {
+	enum class ANIMATION_BONE_TARGET : uint8_t;
+	struct ANIMATION_MODEL_TARGET_VIEW;
 	/* One-shot transport command for the local composition preview. MainApp
 	   consumes it and forwards it to the real-CModel preview owner. */
 	struct KOUKU_COLLIDER_DAMAGE_SETTINGS final
@@ -54,6 +56,13 @@ namespace Client
 	/* One authored world sequence instance of the arena, listed for the WORLD
 	   lane. MainApp reads it from the arena level's loaded document; the first
 	   bound map placement lets a roulette Logic copy its centre. */
+	struct KOUKU_WORLD_ANIMATION_INFO final
+	{
+		std::string strClipName, strSlotId;
+		double fStartMs = 0., fEndMs = 0., fPlaybackRate = 1.;
+		std::uint32_t iSourceStartMs = 0u;
+		bool bLoop = false, bHoldLastFrame = false;
+	};
 	struct KOUKU_WORLD_SEQUENCE_RESOURCE final
 	{
 		std::string strInstanceId;
@@ -65,6 +74,8 @@ namespace Client
 		std::string strObjectResourceId;
 		bool_t bEnabled = true;
 		bool_t bSupportsPlacement = false;
+		// Saved motion origin only; emission spacing and key offsets remain local.
+		std::array<double, 3u> SavedPosition{};
 		std::string strObjectDisplayName;
 		std::string strAnchorKind = "WORLD";
 		bool_t bDefaultMotion = false;
@@ -73,6 +84,8 @@ namespace Client
 		// A unique saved group owns this donor default; Object Append uses that group.
 		std::string strAppendGroupObjectId;
 		std::vector<std::string> AnimationClips;
+		std::string strModelAssetId;
+		std::vector<KOUKU_WORLD_ANIMATION_INFO> AnimationTracks;
 		// Authored emission rows of this Motion (1 for seeded emitters); Box Detail offers the row index.
 		std::uint32_t iEmissionCount = 1u;
 		bool_t bUntilDestroyed = false;
@@ -83,6 +96,8 @@ namespace Client
 	{
 		std::string strObjectId;
 		std::string strMotionInstanceId;
+		// Transient MAP box transform; Object Tool never writes it into the shared Motion.
+		std::optional<KOUKU_SAYDON_WORLD_PLACEMENT> PreviewPlacement;
 	};
 
 	struct KOUKU_PRESENTATION_PREVIEW_REQUEST final
@@ -93,6 +108,12 @@ namespace Client
 		std::vector<KOUKU_SAYDON_COMPOSITION_WORLD_OCCURRENCE> WorldBoxes;
 		// A live edit may retain an existing preview only when this exact box is active.
 		std::string strEditedOccurrenceId;
+	};
+
+	struct KOUKU_SUMMON_PLACEMENT_PREVIEW_REQUEST final
+	{
+		std::string strPatternId;
+		KOUKU_SAYDON_COMPOSITION_SUMMON_OCCURRENCE Occurrence;
 	};
 
 	struct KOUKU_PRESENTATION_GEOMETRY_PREVIEW_REQUEST final
@@ -269,6 +290,7 @@ namespace Client
 		bool_t Request_PresentationGeometryPreview(std::string_view patternId,
 			const KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE& value, std::string& outStatus);
 		bool_t Consume_PresentationGeometryPreviewRequest(KOUKU_PRESENTATION_GEOMETRY_PREVIEW_REQUEST& outRequest);
+		bool_t Consume_SummonPlacementPreviewRequest(KOUKU_SUMMON_PLACEMENT_PREVIEW_REQUEST& outRequest);
 		void Cancel_PresentationGeometryPreview(bool_t discardStagedGeometry = true);
 		bool_t Consume_PatternPreviewRequest(
 			KOUKU_SAYDON_COMPOSITION_PATTERN& outPattern,
@@ -357,7 +379,7 @@ namespace Client
 			const std::vector<std::string>& stageIds,
 			const std::vector<std::string>& occurrenceIds,
 			std::string& outStatus);
-		// Immutable session copy; Paste appends to another Pattern without shifting its existing clocks.
+		// Immutable session copy of any lane selection and its owned links; Paste appends to another Pattern without shifting its existing clocks.
 		bool_t Copy_TimelineSelection(std::string_view patternId,
 			const std::vector<std::string>& stageIds,
 			const std::vector<std::string>& occurrenceIds, std::string& outStatus);
@@ -563,6 +585,10 @@ namespace Client
 
 		/* World catalog: a definition names one authored world sequence instance
 		   of the arena; a box starts it on the pattern clock at a playback speed. */
+		using PRESENTATION_MODEL_RESOLVER = std::function<bool_t(
+			const KOUKU_SAYDON_COMPOSITION_PATTERN&, ANIMATION_BONE_TARGET, ANIMATION_MODEL_TARGET_VIEW&)>;
+		void Set_PresentationModelResolver(PRESENTATION_MODEL_RESOLVER resolver)
+		{ m_PresentationModelResolver = std::move(resolver); }
 		void Set_WorldPlacementResolver(std::function<bool_t(KOUKU_SAYDON_WORLD_PLACEMENT&, std::string&)> resolver)
 		{ m_WorldPlacementResolver = std::move(resolver); }
 		bool_t Append_WorldResource(std::string_view instanceId, std::string& outStatus, bool_t asObject = false);
@@ -669,6 +695,22 @@ namespace Client
 		bool_t Validate_SourceStart(
 			const KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE& occurrence,
 			std::string& outStatus) const;
+		// Ctrl+D and Ctrl+V share one clone engine: closure, stable-ID allocation, region/group/hold/outcome remap and
+		// copy-on-write of Logic definitions. The mode only decides where the copies land and what shifts.
+		enum class TIMELINE_CLONE_MODE : std::uint8_t { DUPLICATE_AFTER, DUPLICATE_SAME_TIME, PASTE_APPEND };
+		struct TIMELINE_CLONE_RESULT final
+		{
+			std::vector<std::string> NewStageIds, NewBoxIds;
+			std::uint32_t iDetachedBoundaryBlends = 0u;
+			// PASTE_APPEND into a Pattern without any row starts at 0 ms instead of its placeholder lifetime.
+			bool_t bPlacedFromZero = false;
+		};
+		bool_t Clone_TimelineSelectionInto(KOUKU_SAYDON_COMPOSITION_DOCUMENT& candidate,
+			const KOUKU_SAYDON_COMPOSITION_PATTERN& source, KOUKU_SAYDON_COMPOSITION_PATTERN& target,
+			const std::vector<std::string>& stageIds, const std::vector<std::string>& occurrenceIds,
+			TIMELINE_CLONE_MODE mode, TIMELINE_CLONE_RESULT& outResult, std::string& outStatus);
+		// Selects the freshly cloned rows in the destination and clears typed single selections (shared by Ctrl+D and Ctrl+V).
+		void Select_ClonedTimelineRows(const std::string& targetId, TIMELINE_CLONE_RESULT result);
 		void Queue_AnimationPreview(
 			const KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE& occurrence);
 		bool_t Normalize_EndPolicyForWindow(
@@ -760,6 +802,7 @@ namespace Client
 			std::string_view resourceId, std::string& outStatus);
 		bool_t Delete_PresentationBox(std::string_view patternId, std::string_view occurrenceId, std::string& outStatus);
 		void Queue_WorldBoxPreview(std::string_view patternId, std::string_view occurrenceId);
+		void Queue_SummonBoxPreview(std::string_view patternId, std::string_view occurrenceId, bool rebuild);
 		void Queue_PresentationPreview(const KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE& resource,
 			const KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE* occurrence = nullptr);
 		void Render_WorldResources();
@@ -826,6 +869,10 @@ namespace Client
 		bool_t m_bNewSummonBoxToPatternEnd = true;
 		int32_t m_iSummonBoxStartMs = 0;
 		int32_t m_iSummonBoxDurationMs = 1000;
+        std::string m_strSummonFormationOwnerId, m_strSummonFormationPatternId;
+        float m_SummonFormationCenter[3]{};
+        float m_fSummonFormationHalfWidth = 5.f, m_fSummonFormationSpacing = 2.f;
+        float m_fSummonFormationYaw = 0.f;
 		struct EFFECT_RESOURCE_CATEGORY_NODE final
 		{
 			std::map<std::string, EFFECT_RESOURCE_CATEGORY_NODE> children;
@@ -902,6 +949,7 @@ namespace Client
 		bool_t m_bColliderDetachDamage = false;
 		bool_t m_bColliderDamageDirty = false;
 
+		std::optional<KOUKU_SUMMON_PLACEMENT_PREVIEW_REQUEST> m_PendingSummonPlacementPreview;
 		std::vector<KOUKU_PRESENTATION_GEOMETRY_PREVIEW_REQUEST> m_PendingPresentationGeometryPreviews;
 		std::vector<KOUKU_PRESENTATION_GEOMETRY_PREVIEW_REQUEST> m_StagedPresentationGeometry;
 		std::string m_strPresentationGeometryPreviewPatternId;
@@ -913,6 +961,7 @@ namespace Client
 		bool_t m_bProductInventoryRefreshRequested = false;
 		// World lane session state: the arena's sequence list and the box being edited.
 		std::vector<KOUKU_WORLD_SEQUENCE_RESOURCE> m_WorldSequenceResources;
+		PRESENTATION_MODEL_RESOLVER m_PresentationModelResolver;
 		std::function<bool_t(KOUKU_SAYDON_WORLD_PLACEMENT&, std::string&)> m_WorldPlacementResolver;
 		bool_t Stage_NewWorldPlacement(std::string_view instanceId,
 			std::optional<KOUKU_SAYDON_WORLD_PLACEMENT>& outPlacement, std::string& outStatus) const;
@@ -957,17 +1006,22 @@ namespace Client
 		bool_t m_bPatternBoxRepeat = false;
 		struct TIMELINE_CLIPBOARD final
 		{
-			std::string strCompositionId, strAreaId, strActorProfileId;
-			std::uint32_t iDurationMs = 0u, iDetachedBoundaryBlends = 0u;
-			std::uint32_t iNextPresentationResourceOrdinal = 1u, iNextWorldOrdinal = 1u, iNextLogicOrdinal = 1u;
-			std::vector<std::string> SelectedStageIds;
-			std::vector<KOUKU_SAYDON_COMPOSITION_STAGE> Stages;
-			std::vector<KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE> Effects;
+			std::string strCompositionId, strAreaId, strActorProfileId, strGateId, strTargetBossPlacementId;
+			// Document counters at Copy time; Paste raises the destination counters so restored definitions keep valid generated ordinals.
+			std::uint32_t iNextPresentationResourceOrdinal = 1u, iNextWorldOrdinal = 1u, iNextLogicOrdinal = 1u, iNextSummonOrdinal = 1u, iNextSceneProfileOrdinal = 1u;
+			std::uint32_t iDetachedBoundaryBlends = 0u;
+			// Immutable copy of the source Pattern with pending placements applied; row clocks stay absolute.
+			KOUKU_SAYDON_COMPOSITION_PATTERN Pattern;
+			// Ownership-closed selection inside Pattern (whole Stage IDs + occurrence IDs of every lane).
+			std::vector<std::string> SelectedStageIds, SelectedOccurrenceIds;
+			// Every definition the selection references, so Paste can restore a deleted one and refuse a changed one.
+			std::vector<KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION> Logics;
+			std::vector<KOUKU_SAYDON_COMPOSITION_WORLD_DEFINITION> Worlds;
+			std::vector<KOUKU_SAYDON_COMPOSITION_SUMMON_DEFINITION> Summons;
+			std::vector<KOUKU_SAYDON_COMPOSITION_SCENE_PROFILE_DEFINITION> SceneProfiles;
 			std::vector<KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE> Resources;
-			std::vector<KOUKU_SAYDON_COMPOSITION_WORLD_OCCURRENCE> Worlds;
-			std::vector<KOUKU_SAYDON_COMPOSITION_WORLD_DEFINITION> WorldDefinitions;
-			std::vector<KOUKU_SAYDON_COMPOSITION_LOGIC_OCCURRENCE> LogicOccurrences;
-			std::vector<KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION> LogicDefinitions;
+			// Copy summary per kind for status text: stages, animations, patterns, logics, summons, worlds, sceneProfiles, effects, colliders, otherPresentation.
+			std::array<std::size_t, 10u> Counts{};
 		};
 		std::optional<TIMELINE_CLIPBOARD> m_TimelineClipboard;
 		KOUKU_SAYDON_COMPOSITION_DOCUMENT m_Draft;

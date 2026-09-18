@@ -241,6 +241,8 @@ public:
 	product input host consumes it once and calls OpenPopup/BeginPopupModal under one stable ImGui
 	ID stack, so Release does not need the visible Character Select diagnostic window. */
 	void Request_CreateCharacterButtonClick() { m_hasCreateCharacterButtonClick = true; }
+	// Product UI and editor commands share the level-owned typed controller.
+	CPlayerController& Get_DebugPlayerController() { return m_PlayerController; }
 #ifdef _DEBUG
 	/* Map Tool borrows this level's live map the same way the Kouku and Valtan
 	   arenas lend theirs. The level keeps ownership; the tool only edits the
@@ -267,7 +269,6 @@ public:
 	}
 	bool_t Debug_Request_KakulSaydonArena();
 	shared_ptr<CCamera_Free> Get_DebugCamera() const { return m_pCamera; }
-	CPlayerController& Get_DebugPlayerController() { return m_PlayerController; }
 	const string& Debug_GetNavigationStatus() const { return m_strStatus; }
 
 	/* IMapAuthoringHost: the Debug Map Tool edits this Level's live map in

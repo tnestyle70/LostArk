@@ -474,3 +474,46 @@ Counter 작업과 공유하는 player header는 한 소유자가 통합한다. �
 발사 간격0/count1이므로 한 번만 생성하고 접촉하면 기존 exact-once event로 먼저 종료한다.
 기존 spinning의 cadence·finite travel·자연 꼬리는 변경하지 않는다. 새로운 projectile
 runtime이나 Shared packet은 만들지 않는다.
+
+
+## G32. 추적 지점 공유·비둘기 경로·거미 장판 Pivot (2026-09-18)
+
+현재 P79 effectgroup.11의 네 MAP 행은 동일 XYZ지만 Logic 소유자가 없다. 기존
+SELECT_PLAYER + SELECT + selectedEffectGroupId 경로는 publisher가 그룹 전체를 하나의
+fixed visual template으로 투영하고 Server의 SelectedGround를 보스 APPEAR와 공유한다.
+추적 Logic76과 같은 8883ms에 별도 SELECT occurrence를 추가하고 기존 시각·TRS를 유지한다.
+Preview도 같은 airborneSelections를 소비한다. 새 Server 또는 Shared 경로는 추가하지 않는다.
+
+비둘기 live 문서는 선두 0.7초×8m/s=5.6m 직선의 이전 track이다. builder만 2/3 후보를
+만들고 있어 설치 결과와 다르다. 현재 저장본 기준 직선을 2.8m/0.35초로 줄이고 8m/s와
+2초 반원을 유지해 귀환 직선을 2.4m→5.2m로 늘린다. 0.8m 간격·3초 수명·19개 폭발과
+death event는 보존한다. 변경 위치는 build_kouku_dove_pizza_candidates.py의
+`dove_single_file_track`, `apply_dove_single_file_path` 및 실제 Authored의 네 track이다.
+
+거미 stage2 notify008 바닥5개는 captured root와 -90도 source basis를 쓰며 EPAL_Z
+sprite의 emitter-axis opt-in이 꺼져 있다. 해당5개에 기존 followEmitterAxisRotation을 켠다.
+Effect_Tool_Helpers의 captured-root 그룹 편집을 허용하고 회전 helper가 명시 Pivot과
+선택 element ID를 받게 한다. Effect_Tool_Internal.h는 helper 선언, Effect_Tool.h는
+Pivot/target의 도구 세션 상태, Effect_Tool_Detail.cpp는 입력·stage/commit을 소유한다.
+Pivot은 로컬 m의 편집 도구 기준점이며 저장 결과는 기존 각 Element TRS다. 별도 runtime
+transform/JSON schema를 만들지 않는다. 기본 중심 회전은 유지하고 Anchor origin/Custom
+Pivot 및 Whole group/단일 Element를 선택한다. source track·carrier·inheritance와 회전
+animation owner 제한, 실패 시 전체 문서 보존을 유지한다. 새 C++ 파일·프로젝트 등록은 없다.
+
+검증은 실제 P79 publisher projection, 비둘기 위치·접선·death-event 소비, 거미 helper의
+Pivot 고정·전체 TRS 및 최종 sprite quad 공변성과 codec roundtrip으로 한정한다.
+변경 TU 컴파일과 Product Build, JSON/XML parse, diff-check를 수행한다. 실행 중 편집
+문서 교체는 검토 가능한 후보 완성 후 저장본 기준 승인을 한 번 받고 최신 필드 병합한다.
+Client/UI 재생·시각 판정은 사용자가 수행한다.
+
+### G32 재개: 실제 저장본의 거미 바닥 회전 연결
+
+2026-09-18 12:36 제품 빌드에는 기존 Pivot UI가 들어갔지만 거미 데이터 후보는 미반영이다.
+사용자의 재수정·반영 요청에 따라 최신 저장본의 stage2 notify008 바닥5개와 동일 원본을
+Effect Tool에서 여는 source-library 문서5개에 followEmitterAxisRotation만 병합한다.
+fx_m_flow_04_n.dds를 사용하는 native2349의 emitters19/25가 주 검은 장판 두 개다.
+사용자가 편집한 Transform·수명·재질·sourceRecipe는 보존한다. 재생성 builder도 stage2의
+같은 source-system에 한해서 옵션을 생성한다. 원본 EPAL_Z와 offsetCenter는 유지한다.
+최신 Product OBJ로 실제 Codec/Playback/최종 quad의 회전과 고정된 시작점을 검증하고,
+저장본 바이트 재확인·백업·원자 교체 뒤 설치본을 다시 검사한다. UI Reload는 자동 수행하지 않는다.
+발탄은 별도 복원 RESULT와 현재 EXE 소비 경로를 재조사하며, 단순 재빌드 누락으로 단정하지 않는다.

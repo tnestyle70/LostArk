@@ -193,7 +193,8 @@
     {"id": "kouku.category.saydon.charge_counter.afterimage", "parentId": "kouku.category.d9def6e601e406cf41f1", "kind": "CATEGORY", "displayName": "돌진 카운터"},
     {"id": "valtan.category.afterimage", "parentId": "root.v1", "kind": "CATEGORY", "displayName": "Valtan"},
     {"id": "valtan.category.dash_charge.afterimage", "parentId": "valtan.category.afterimage", "kind": "CATEGORY", "displayName": "3연 구르기 후 돌진"},
-    {"id": "kouku.category.e91d6c39c6bb77d4489c", "parentId": "kouku.category.d9def6e601e406cf41f1", "kind": "CATEGORY", "displayName": "세이튼_카운터"}
+    {"id": "kouku.category.e91d6c39c6bb77d4489c", "parentId": "kouku.category.d9def6e601e406cf41f1", "kind": "CATEGORY", "displayName": "세이튼_카운터"},
+    {"id": "kouku.category.5f3ba197e012574adc46", "parentId": "kouku.category.21b77063d62ab216089c", "kind": "CATEGORY", "displayName": "대형 세이튼_원형장판"}
   ],
   "references": [
     {"kind": "V1", "assetId": "effect.kouku.gate3.showtime.sector.warning.shot", "displayName": "부채꼴 예고·사격 (저작 조합)", "parentId": "kouku.category.d767402008919487db6b"},
@@ -1014,6 +1015,7 @@
     {"kind": "V1", "assetId": "effect.kouku.gate1.stagger.star.group", "displayName": "세이튼 / 무력화 | 별 그리기·별 폭발", "parentId": "kouku.category.cdef6f5c47c6e9a619ed"},
     {"kind": "V1", "assetId": "effect.kouku.gate1.stagger.boundary.group", "displayName": "세이튼 / 무력화 | 외곽 경계", "parentId": "kouku.category.cdef6f5c47c6e9a619ed"},
     {"kind": "V1", "assetId": "effect.kouku.gate1.stagger.star.boundary.group", "displayName": "세이튼 / 무력화 | 무력화 별과 외곽 경계", "parentId": "kouku.category.cdef6f5c47c6e9a619ed"},
-    {"kind": "V1", "assetId": "effect.kouku.gate1.stagger.laser.group", "displayName": "세이튼 / 무력화 | 레이저 생성·변화", "parentId": "kouku.category.cdef6f5c47c6e9a619ed"}
+    {"kind": "V1", "assetId": "effect.kouku.gate1.stagger.laser.group", "displayName": "세이튼 / 무력화 | 레이저 생성·변화", "parentId": "kouku.category.cdef6f5c47c6e9a619ed"},
+    {"kind": "V1", "assetId": "effect.kouku.gate2.bigsaydon.circle.warning", "displayName": "원형 장판", "parentId": "kouku.category.5f3ba197e012574adc46"}
   ]
 }

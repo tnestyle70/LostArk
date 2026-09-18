@@ -48,6 +48,8 @@ namespace LostArk::Server
 		std::map<LostArk::Shared::PLAYER_ID, KOUKUSAYDON_LOGIC_ANSWER> Answers;
 		std::set<LostArk::Shared::PLAYER_ID> InsidePlayers;
 		std::map<LostArk::Shared::PLAYER_ID, std::uint32_t> NextContactHitTicks;
+		LostArk::Shared::NET_ENTITY_ID iFreePlayerNetEntityId = LostArk::Shared::INVALID_NET_ENTITY_ID;
+		std::map<LostArk::Shared::PLAYER_ID, LostArk::Shared::NET_ENTITY_ID> BoundPlayers;
 	};
 
 	/* One authored presentation cue (world sequence or scene profile) waiting
@@ -146,10 +148,15 @@ namespace LostArk::Server
 			LostArk::Shared::NET_ENTITY_ID encounterOwnerId, std::uint32_t serverTick);
 
 		static bool Can_EnterMarioEntry(const SERVER_PLAYER& player) noexcept;
+		// A chain root or any ENTER_AREA window whose sole Success is MARIO_ENTER with regions.
+		static bool Has_MarioEntry(const BOSS_PATTERN_DEFINITION& pattern) noexcept;
+		// First authored Mario entry result; nullptr when the pattern only enters through a chain root.
+		static const BOSS_PATTERN_LOGIC_RESULT* Find_MarioEntryResult(const BOSS_PATTERN_DEFINITION& pattern) noexcept;
 		// Root geometry stays pinned while its completion-driven child patterns run.
+		// honorWindowEnd closes the portal at startMs + durationMs; chain roots stay open past it.
 		static bool Is_InsideMarioEntry(const BOSS_PATTERN_DEFINITION& root,
 			const SERVER_WORLD_ENTITY& anchor, const SERVER_PLAYER& player,
-			std::uint32_t elapsedTicks);
+			std::uint32_t elapsedTicks, bool honorWindowEnd = false, std::uint8_t* matchedStage = nullptr);
 		static void Build(
 			const BOSS_PATTERN_DEFINITION& pattern,
 			const SERVER_WORLD_ENTITY& boss,

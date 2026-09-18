@@ -264,6 +264,8 @@
     <ClCompile Include="..\Private\GameRoom_BossStageActions.cpp" />
     <ClCompile Include="..\Private\GameRoom_WorldDestruction.cpp" />
     <ClCompile Include="..\Private\GameRoom_KoukuMiniGames.cpp" />
+    <ClCompile Include="..\Private\GameRoom_KoukuRaidFlow.cpp" />
+    <ClCompile Include="..\Private\ServerGameplayContractTests_KoukuRaid.cpp" />
     <ClCompile Include="..\Private\GameRoom_PlayerSimulation.cpp" />
     <ClCompile Include="..\Private\GameRoom_BossSimulation.cpp" />
     <ClCompile Include="..\Private\GameRoom_Helpers.cpp" />

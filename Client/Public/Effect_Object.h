@@ -206,6 +206,7 @@ public:
 	{
 		return m_Playback.Query_ParticleRuntimeProbe(strElementId, OutProbe);
 	}
+	bool_t Has_InfiniteSourceEmitters() const { return m_Playback.Has_InfiniteSourceEmitters(); }
 	f32_t Get_PreviewDurationSeconds() const { return m_Playback.Get_DurationSeconds(); }
 	const std::string& Get_Status() const { return m_strStatus; }
 	const PRESENTATION_SUBMISSION_STATS&

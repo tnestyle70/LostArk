@@ -139,7 +139,8 @@ void Client::CLevelNavigationDebug::Sync_Level(const LEVEL level)
 	m_Grids.clear();
 	m_AreaId.clear();
 	m_Status.clear();
-	m_DrawnCells = m_VisibleOmittedCells = m_SupersededCells = 0;
+	m_DrawnCells = m_VisibleOmittedCells = m_SupersededCells = m_FrustumRejectedCells = 0;
+	m_FirstDrawnCell = {};
 	const auto* descriptor = CLevelRegistry::Find(level);
 	if (descriptor && descriptor->pMapAreaId) m_AreaId = descriptor->pMapAreaId;
 }
@@ -276,6 +277,11 @@ void Client::CLevelNavigationDebug::Render_Controls()
 		ImGui::TextDisabled("X-ray file inspection. Auto draws nearby base and details. Manual selection draws one grid.");
 		ImGui::TextDisabled("Auto clips base outlines at detail bounds. Manual Base shows the complete base grid.");
 		ImGui::Text("Drawn %u | visible omitted %u | superseded %u | range %.1f m", m_DrawnCells, m_VisibleOmittedCells, m_SupersededCells, m_EffectiveRadius);
+		ImGui::Text("Frustum rejected %u | camera (%.1f, %.1f, %.1f)", m_FrustumRejectedCells, m_CameraPosition.x, m_CameraPosition.y, m_CameraPosition.z);
+		if (m_FirstDrawnCell.valid)
+			ImGui::Text("First drawn cell (%d, %d) world (%.1f, %.1f) h %.2f -> screen (%.0f, %.0f)", m_FirstDrawnCell.cellX, m_FirstDrawnCell.cellZ,
+				m_FirstDrawnCell.worldX, m_FirstDrawnCell.worldZ, m_FirstDrawnCell.height, m_FirstDrawnCell.screenX, m_FirstDrawnCell.screenY);
+		else ImGui::TextDisabled("No cell passed the frustum test in the last frame.");
 		if (m_EffectiveRadius < m_Radius || m_VisibleOmittedCells > 0)
 			ImGui::TextColored(ImVec4(1.f, .75f, .2f, 1.f), "Display budget omits cells. Reduce range or move camera; grid data is unchanged.");
 	}
@@ -285,16 +291,29 @@ void Client::CLevelNavigationDebug::Render_Controls()
 
 void Client::CLevelNavigationDebug::Render_Overlay()
 {
-	m_DrawnCells = m_VisibleOmittedCells = m_SupersededCells = 0;
+	m_DrawnCells = m_VisibleOmittedCells = m_SupersededCells = m_FrustumRejectedCells = 0;
+	m_FirstDrawnCell = {};
 	if (!m_Show || m_Grids.empty() || !ImGui::GetCurrentContext()) return;
 	auto& game = Engine::CGameInstance::Get();
 	const auto* camera = game.Get_CamPosition();
 	if (!camera || !std::isfinite(camera->x) || !std::isfinite(camera->z)) return;
+	m_CameraPosition = float3_t(camera->x, camera->y, camera->z);
 	m_EffectiveRadius = m_Radius;
 	const matrix_t viewProjection = XMLoadFloat4x4(game.Get_Transform(D3DTS::VIEW)) * XMLoadFloat4x4(game.Get_Transform(D3DTS::PROJ));
-	const auto* viewport = ImGui::GetMainViewport();
-	ImDrawList* draw = ImGui::GetBackgroundDrawList();
-	const std::array<ImU32, 4> colors = { IM_COL32(60, 255, 90, 170), IM_COL32(255, 155, 40, 205), IM_COL32(255, 60, 255, 155), IM_COL32(255, 50, 50, 205) };
+	// Draw into the main viewport explicitly. With ViewportsEnable the no-argument
+	// overload resolves to GImGui->CurrentWindow->Viewport, and at this call site
+	// the current window is the implicit "Debug##Default" window. imgui.ini can pin
+	// that window to its own viewport, which never gets a platform window and is
+	// never rendered, so everything added to its background list is dropped.
+	ImGuiViewport* viewport = ImGui::GetMainViewport();
+	ImDrawList* draw = ImGui::GetBackgroundDrawList(viewport);
+	const std::array<ImU32, 4> lineColors = { IM_COL32(60, 255, 90, 230), IM_COL32(255, 155, 40, 235), IM_COL32(255, 60, 255, 220), IM_COL32(255, 50, 50, 235) };
+	const std::array<ImU32, 4> fillColors = { IM_COL32(60, 255, 90, 60), IM_COL32(255, 155, 40, 70), IM_COL32(255, 60, 255, 50), IM_COL32(255, 50, 50, 70) };
+	const auto screen = [viewport](const float4_t& point)
+	{
+		return ImVec2(viewport->Pos.x + (.5f + .5f * point.x / point.w) * viewport->Size.x,
+			viewport->Pos.y + (.5f - .5f * point.y / point.w) * viewport->Size.y);
+	};
 	const size_t firstGrid = m_SelectedGrid < 0 ? 0 : static_cast<size_t>(m_SelectedGrid);
 	const size_t endGrid = m_SelectedGrid < 0 ? m_Grids.size() : firstGrid + 1;
 	for (size_t selected = firstGrid; selected < endGrid; ++selected)
@@ -346,21 +365,31 @@ void Client::CLevelNavigationDebug::Render_Overlay()
 						finite = finite && Finite(points[corner]);
 					}
 					if (!finite) continue;
+					const bool budget = m_DrawnCells < MAX_DRAW_CELLS;
+					// Translucent fill only when every corner lies between the near and far
+					// planes and the piece is not wholly beyond one side plane. Such a piece
+					// fails every edge below and is counted as frustum-rejected, so it must
+					// add no draw work; partial side overlap is left to the viewport clip rect.
+					const auto beyondSidePlane = [&points](const int plane)
+						{ return std::all_of(points.begin(), points.end(), [plane](const float4_t& point) { return ClipDistance(point, plane) < 0.f; }); };
+					if (budget && std::all_of(points.begin(), points.end(), [](const float4_t& point)
+						{ return point.w > 0.00001f && point.z >= 0.f && point.z <= point.w; })
+						&& !beyondSidePlane(0) && !beyondSidePlane(1) && !beyondSidePlane(2) && !beyondSidePlane(3))
+						draw->AddQuadFilled(screen(points[0]), screen(points[1]), screen(points[2]), screen(points[3]), fillColors[static_cast<size_t>(kind)]);
 					for (size_t edge = 0; edge < points.size(); ++edge)
 					{
 						auto first = points[edge], second = points[(edge + 1) % points.size()];
 						if (!ClipLine(first, second)) continue;
 						visible = true;
-						if (m_DrawnCells >= MAX_DRAW_CELLS) continue;
-						const auto screen = [viewport](const float4_t& point)
-						{
-							return ImVec2(viewport->Pos.x + (.5f + .5f * point.x / point.w) * viewport->Size.x,
-								viewport->Pos.y + (.5f - .5f * point.y / point.w) * viewport->Size.y);
-						};
-						draw->AddLine(screen(first), screen(second), colors[static_cast<size_t>(kind)], 1.f);
+						if (!budget) continue;
+						const ImVec2 a = screen(first), b = screen(second);
+						draw->AddLine(a, b, lineColors[static_cast<size_t>(kind)], 2.f);
+						if (!m_FirstDrawnCell.valid)
+							m_FirstDrawnCell = { true, x, z, worldX, worldZ, height, a.x, a.y };
 					}
 				}
 				if (visible) { if (m_DrawnCells < MAX_DRAW_CELLS) ++m_DrawnCells; else ++m_VisibleOmittedCells; }
+				else ++m_FrustumRejectedCells;
 			}
 		}
 	}

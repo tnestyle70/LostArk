@@ -183,7 +183,7 @@ namespace
 			BINDING_SET& Set = g_BindingSets[strArchetypeId];
 			Client::CEffectV2Catalog& Catalog = Client::CEffectV2Catalog::Get();
 			std::shared_ptr<const Client::EFFECT_V2_CATALOG_SNAPSHOT> pSnapshot =
-				Catalog.Get_Snapshot();
+				Catalog.Get_RuntimeSnapshot();
 			if (nullptr == pSnapshot || !pSnapshot->Is_Ready())
 			{
 				/* A failed first read is cached until an explicit Load/Save invalidates
@@ -191,7 +191,7 @@ namespace
 				if (Set.bLoaded)
 					return Set;
 				std::string strCatalogStatus;
-				if (!Catalog.Reload_BossValtan(strCatalogStatus))
+				if (!Catalog.Reload_BossValtanRuntime(strCatalogStatus))
 				{
 					Set.bLoaded = true;
 					Set.bFailed = true;
@@ -200,7 +200,7 @@ namespace
 						": " + strCatalogStatus);
 					return Set;
 				}
-				pSnapshot = Catalog.Get_Snapshot();
+				pSnapshot = Catalog.Get_RuntimeSnapshot();
 			}
 
 			if (nullptr != pSnapshot && pSnapshot->Is_Ready())

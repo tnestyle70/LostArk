@@ -50,6 +50,8 @@ public:
 	virtual HRESULT Render() override;
 
 	static CLevel_ValtanArena* Get_Active() { return s_pActiveInstance; }
+	// Product UI and editor commands share the level-owned typed controller.
+	CPlayerController& Get_DebugPlayerController() { return m_PlayerController; }
 
 #ifdef _DEBUG
 	/* Map Tool borrows this arena's live map the same way the Kouku arena lends
@@ -72,7 +74,6 @@ public:
 		std::string& outStatus);
 #ifdef _DEBUG
 	shared_ptr<CCamera_Free> Get_DebugCamera() const { return m_pCamera; }
-	CPlayerController& Get_DebugPlayerController() { return m_PlayerController; }
 	// Applies immediately and remembers this arena's value until process exit.
 	bool_t Set_DebugCameraSpeed(f32_t metersPerSecond);
 #endif
