@@ -6600,3 +6600,99 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_KOUKUSAYDON_BUNDLE
 	CPacketWriter validation; if (!Write_Message(validation, decoded)) return false;
 	message = std::move(decoded); return true;
 }
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer, const C2S_GATE_PROGRESS_PROPOSE& message)
+{
+	if (0u == message.iRequestSequence || !Is_Known_World_Id(message.eWorldId))
+		return false;
+	writer.Write_U32(message.iRequestSequence);
+	writer.Write_U16(static_cast<std::uint16_t>(message.eWorldId));
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader, C2S_GATE_PROGRESS_PROPOSE& message)
+{
+	C2S_GATE_PROGRESS_PROPOSE decoded{};
+	std::uint16_t world = 0u;
+	if (!reader.Read_U32(decoded.iRequestSequence) || !reader.Read_U16(world))
+		return false;
+	decoded.eWorldId = static_cast<WORLD_ID>(world);
+	if (0u == decoded.iRequestSequence || !Is_Known_World_Id(decoded.eWorldId))
+		return false;
+	message = decoded;
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer, const C2S_GATE_PROGRESS_RESPOND& message)
+{
+	if (0u == message.iRequestSequence || 0u == message.iProposalId)
+		return false;
+	writer.Write_U32(message.iRequestSequence);
+	writer.Write_U32(message.iProposalId);
+	writer.Write_U8(message.bAccepted ? 1u : 0u);
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader, C2S_GATE_PROGRESS_RESPOND& message)
+{
+	C2S_GATE_PROGRESS_RESPOND decoded{};
+	std::uint8_t accepted = 0u;
+	if (!reader.Read_U32(decoded.iRequestSequence) || !reader.Read_U32(decoded.iProposalId) ||
+		!reader.Read_U8(accepted) || accepted > 1u)
+		return false;
+	decoded.bAccepted = 1u == accepted;
+	if (0u == decoded.iRequestSequence || 0u == decoded.iProposalId)
+		return false;
+	message = decoded;
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer, const S2C_GATE_PROGRESS_STATE& message)
+{
+	if (!Is_Known_World_Id(message.eWorldId) || message.iGateCount > 8u ||
+		message.iCurrentGate > message.iGateCount ||
+		message.eResult >= GATE_PROGRESS_VOTE_RESULT::END ||
+		message.iAccepted > message.iTotal)
+		return false;
+	writer.Write_U16(static_cast<std::uint16_t>(message.eWorldId));
+	writer.Write_U8(message.iGateCount);
+	writer.Write_U8(message.iCurrentGate);
+	writer.Write_U8(message.iClearedMask);
+	writer.Write_U32(message.iProposalId);
+	writer.Write_U32(message.iProposerNetEntityId);
+	writer.Write_U8(message.iAccepted);
+	writer.Write_U8(message.iTotal);
+	writer.Write_U8(message.bClosed ? 1u : 0u);
+	writer.Write_U8(static_cast<std::uint8_t>(message.eResult));
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader, S2C_GATE_PROGRESS_STATE& message)
+{
+	S2C_GATE_PROGRESS_STATE decoded{};
+	std::uint16_t world = 0u;
+	std::uint8_t closed = 0u;
+	std::uint8_t result = 0u;
+	if (!reader.Read_U16(world) || !reader.Read_U8(decoded.iGateCount) ||
+		!reader.Read_U8(decoded.iCurrentGate) || !reader.Read_U8(decoded.iClearedMask) ||
+		!reader.Read_U32(decoded.iProposalId) || !reader.Read_U32(decoded.iProposerNetEntityId) ||
+		!reader.Read_U8(decoded.iAccepted) || !reader.Read_U8(decoded.iTotal) ||
+		!reader.Read_U8(closed) || !reader.Read_U8(result) || closed > 1u)
+		return false;
+	decoded.eWorldId = static_cast<WORLD_ID>(world);
+	decoded.bClosed = 1u == closed;
+	decoded.eResult = static_cast<GATE_PROGRESS_VOTE_RESULT>(result);
+	if (!Is_Known_World_Id(decoded.eWorldId) || decoded.iGateCount > 8u ||
+		decoded.iCurrentGate > decoded.iGateCount ||
+		decoded.eResult >= GATE_PROGRESS_VOTE_RESULT::END ||
+		decoded.iAccepted > decoded.iTotal)
+		return false;
+	message = decoded;
+	return true;
+}

@@ -1875,6 +1875,50 @@ bool CNetworkManager::Send_RaidEntryRespond(
 		frameBytes) && Send_All(frameBytes);
 }
 
+bool CNetworkManager::Send_GateProgressPropose(const std::uint32_t requestSequence)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected() || !Is_Known_World_Id(m_eWorldId))
+		return false;
+	C2S_GATE_PROGRESS_PROPOSE message{};
+	message.iRequestSequence = requestSequence;
+	message.eWorldId = m_eWorldId;
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(PACKET_TYPE::C2S_GATE_PROGRESS_PROPOSE,
+		payloadWriter.Get_Buffer(), frameBytes) && Send_All(frameBytes);
+}
+
+bool CNetworkManager::Send_GateProgressRespond(
+	const std::uint32_t requestSequence, const std::uint32_t proposalId, const bool accepted)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+	C2S_GATE_PROGRESS_RESPOND message{};
+	message.iRequestSequence = requestSequence;
+	message.iProposalId = proposalId;
+	message.bAccepted = accepted;
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(PACKET_TYPE::C2S_GATE_PROGRESS_RESPOND,
+		payloadWriter.Get_Buffer(), frameBytes) && Send_All(frameBytes);
+}
+
+bool CNetworkManager::Try_Consume_GateProgressState(
+	LostArk::Shared::S2C_GATE_PROGRESS_STATE& outState)
+{
+	if (m_GateProgressStates.empty())
+		return false;
+	outState = m_GateProgressStates.front();
+	m_GateProgressStates.pop_front();
+	return true;
+}
+
 bool CNetworkManager::Send_ReturnToBern(const std::uint32_t requestSequence)
 {
 	using namespace LostArk::Shared;
@@ -2463,6 +2507,7 @@ void CNetworkManager::Reset_WorldInboundState()
 	m_DebugMadnessFormResults.clear();
 	m_VehicleRidingResults.clear();
 	m_HonorTitleResults.clear();
+	m_GateProgressStates.clear();
 	m_DebugKoukuHudModeResults.clear();
 	m_WorldEntitySpawnResults.clear();
 	// ENTER_ACCEPTED follows the old-room command/reply barrier on this socket.
@@ -4183,6 +4228,27 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 		event.eType = Client::CLIENT_REPLICATION_EVENT_TYPE::RAID_ENTRY_PROMPT;
 		event.RaidEntryPrompt = std::move(prompt);
 		Enqueue_ReplicationEvent(std::move(event));
+		break;
+	}
+	case PACKET_TYPE::S2C_GATE_PROGRESS_STATE:
+	{
+		S2C_GATE_PROGRESS_STATE state{};
+		if (!Read_Message(reader, state) || 0u != reader.Get_RemainingSize())
+		{
+			Fail_Protocol(WSAEINVAL,
+				SESSION_DIAGNOSTIC_REASON::CLIENT_MESSAGE_DECODE_FAILED,
+				PACKET_TYPE::S2C_GATE_PROGRESS_STATE,
+				"S2C_GATE_PROGRESS_STATE payload decode or trailing-byte validation failed.");
+			return;
+		}
+		if (state.eWorldId != m_eWorldId)
+			break;
+		if (m_GateProgressStates.size() >= MAX_REVISION_CONTROL_QUEUE)
+		{
+			Fail_Protocol(WSAENOBUFS);
+			return;
+		}
+		m_GateProgressStates.push_back(state);
 		break;
 	}
 	case PACKET_TYPE::S2C_RAID_ENTRY_VOTE:

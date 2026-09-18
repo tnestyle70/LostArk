@@ -82,7 +82,7 @@ namespace LostArk::Shared
 	// 84 adds Server-authorized Mario return intent and typed result.
 	// 86 adds occurrence-scoped room player arrival to debug world playback.
 	// 89 adds the worn honor title to player snapshots and the title change request/verdict.
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 90;
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 91;
 
 	enum class WORLD_ID : std::uint16_t
 	{
@@ -355,7 +355,14 @@ namespace LostArk::Shared
 		// World map square hole use. The Server locks the player into the song
 		// action for a fixed length and releases them in place; the teleport is
 		// not implemented yet, so there is no result message.
-		C2S_USE_SQUAREHOLE
+		C2S_USE_SQUAREHOLE,
+		// Commander raid gate progress: the leader (or a solo player) asks to move
+		// on after a gate clear, every member answers, and the Server owns the
+		// cleared mask, the vote and the gate switch. One state message carries
+		// all of it to every player in the room.
+		C2S_GATE_PROGRESS_PROPOSE,
+		C2S_GATE_PROGRESS_RESPOND,
+		S2C_GATE_PROGRESS_STATE
 	};
 
 	//TCP는 메시지 경계를 보존하지 않기 때문에, payload앞에 header를 둔다.
@@ -462,6 +469,9 @@ namespace LostArk::Shared
 		case PACKET_TYPE::C2S_SET_HONOR_TITLE:
 		case PACKET_TYPE::S2C_SET_HONOR_TITLE_RESULT:
 		case PACKET_TYPE::C2S_USE_SQUAREHOLE:
+		case PACKET_TYPE::C2S_GATE_PROGRESS_PROPOSE:
+		case PACKET_TYPE::C2S_GATE_PROGRESS_RESPOND:
+		case PACKET_TYPE::S2C_GATE_PROGRESS_STATE:
 			return true;
 		default:
 			return  false;

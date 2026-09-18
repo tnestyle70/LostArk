@@ -403,6 +403,10 @@ HRESULT CLevel_ValtanArena::Initialize()
 	/* Built hidden; Update_RaidClear shows it the instant the clear mark ends. */
 	m_pMvpResultView = std::make_unique<CMvpResultView>(
 		m_pDevice, m_pContext, ETOUI(LEVEL::VALTAN_ARENA));
+	m_GateProgressView.Initialize(m_pDevice, m_pContext, ETOUI(LEVEL::VALTAN_ARENA));
+	m_GateProgressView.Set_Raid(
+		CMvpAwardCatalog::Get().Find_RaidName(101), CMvpAwardCatalog::Get().Find_DifficultyText("normal"), 1u);
+	m_GateProgressView.Set_Progress(1u, 0u);
 
 	/* First screen migrated off the ImGui interim UI rendering (see
 	.md/TJ/08-31/2026-08-31_ImGui_런타임UI_전환_PLAN.md) -- real CUI_Sprite GameObjects on this
@@ -621,6 +625,8 @@ void CLevel_ValtanArena::Update(f32_t fTimeDelta)
 			m_pMvpResultView->Set_StageCharacter(iStageSlot, pStaged);
 		m_pMvpResultView->Update(fTimeDelta);
 	}
+	m_GateProgressView.Set_Progress(1u, m_fRaidClearElapsedSeconds >= 0.f ? 1u : 0u);
+	(void)m_GateProgressView.Update(fTimeDelta);
 	const bool_t isRaidClearActive = m_fRaidClearElapsedSeconds >= 0.f;
 	if (!isRaidClearActive && m_PartyInteraction.Update(
 		m_Replication, m_pPlayerCommandSink, m_NameplatePlayers,
@@ -1710,6 +1716,7 @@ HRESULT CLevel_ValtanArena::Render()
 	m_PartyInteraction.Render(m_pPlayerCommandSink);
 	/* Award page labels over everything else this Level draws; its image layers are
 	   CUI_Sprite objects on Layer_UI and need no call. */
+	m_GateProgressView.Render_Text();
 	if (nullptr != m_pMvpResultView)
 		m_pMvpResultView->Render();
 

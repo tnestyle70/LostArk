@@ -1,0 +1,193 @@
+{
+ "schema": "lostark.ui-layout",
+ "formatVersion": 1,
+ "resolution": {
+  "width": 1280,
+  "height": 720
+ },
+ "classes": [
+  "Default"
+ ],
+ "slots": [
+  {
+   "id": "RGP_Bg",
+   "ownerClass": null,
+   "type": 0,
+   "rect": {
+    "x": 8.0,
+    "y": 12.0,
+    "width": 201.33333333333331,
+    "height": 115.33333333333333
+   },
+   "rotation": 0,
+   "stages": {
+    "baseFrom": 0,
+    "shineFrom": 1
+   },
+   "layers": [
+    {
+     "path": "UI/RaidGateProgress/GateProgress_Bg.png",
+     "hoverPath": null,
+     "tint": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "additive": false,
+     "flipX": false
+    }
+   ],
+   "shine": {
+    "texture": null,
+    "additive": false
+   },
+   "animation": {
+    "fps": 10,
+    "scale": 1,
+    "offset": {
+     "x": 0,
+     "y": 0
+    },
+    "frames": [],
+    "loop": true,
+    "additive": false
+   }
+  },
+  {
+   "id": "RGP_Icon0",
+   "ownerClass": null,
+   "type": 0,
+   "rect": {
+    "x": 47.33333333333333,
+    "y": 61.33333333333333,
+    "width": 39.33333333333333,
+    "height": 43.33333333333333
+   },
+   "rotation": 0,
+   "stages": {
+    "baseFrom": 0,
+    "shineFrom": 1
+   },
+   "layers": [
+    {
+     "path": "UI/RaidGateProgress/GateIcon_Inactive.png",
+     "hoverPath": null,
+     "tint": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "additive": false,
+     "flipX": false
+    }
+   ],
+   "shine": {
+    "texture": null,
+    "additive": false
+   },
+   "animation": {
+    "fps": 10,
+    "scale": 1,
+    "offset": {
+     "x": 0,
+     "y": 0
+    },
+    "frames": [],
+    "loop": true,
+    "additive": false
+   }
+  },
+  {
+   "id": "RGP_Icon1",
+   "ownerClass": null,
+   "type": 0,
+   "rect": {
+    "x": 88.66666666666666,
+    "y": 61.33333333333333,
+    "width": 39.33333333333333,
+    "height": 43.33333333333333
+   },
+   "rotation": 0,
+   "stages": {
+    "baseFrom": 0,
+    "shineFrom": 1
+   },
+   "layers": [
+    {
+     "path": "UI/RaidGateProgress/GateIcon_Inactive.png",
+     "hoverPath": null,
+     "tint": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "additive": false,
+     "flipX": false
+    }
+   ],
+   "shine": {
+    "texture": null,
+    "additive": false
+   },
+   "animation": {
+    "fps": 10,
+    "scale": 1,
+    "offset": {
+     "x": 0,
+     "y": 0
+    },
+    "frames": [],
+    "loop": true,
+    "additive": false
+   }
+  },
+  {
+   "id": "RGP_Icon2",
+   "ownerClass": null,
+   "type": 0,
+   "rect": {
+    "x": 130.0,
+    "y": 61.33333333333333,
+    "width": 39.33333333333333,
+    "height": 43.33333333333333
+   },
+   "rotation": 0,
+   "stages": {
+    "baseFrom": 0,
+    "shineFrom": 1
+   },
+   "layers": [
+    {
+     "path": "UI/RaidGateProgress/GateIcon_Inactive.png",
+     "hoverPath": null,
+     "tint": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "additive": false,
+     "flipX": false
+    }
+   ],
+   "shine": {
+    "texture": null,
+    "additive": false
+   },
+   "animation": {
+    "fps": 10,
+    "scale": 1,
+    "offset": {
+     "x": 0,
+     "y": 0
+    },
+    "frames": [],
+    "loop": true,
+    "additive": false
+   }
+  }
+ ]
+}

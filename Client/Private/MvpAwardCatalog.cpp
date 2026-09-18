@@ -737,3 +737,19 @@ Client::MVP_RESULT_DATA Client::CMvpAwardCatalog::Build_PreviewPage(
 		Build_ContentName(iRaidGroupId, iGate, szDifficultyId),
 		Participants, iPartySize);
 }
+
+wstring_t Client::CMvpAwardCatalog::Find_RaidName(const int32_t iRaidGroupId) const
+{
+	const auto it = std::find_if(m_Raids.begin(), m_Raids.end(),
+		[iRaidGroupId](const CONTENT_NAME_PIECE& Piece) { return Piece.iKey == iRaidGroupId; });
+	return m_Raids.end() != it ? it->strText : wstring_t();
+}
+
+wstring_t Client::CMvpAwardCatalog::Find_DifficultyText(const char* const szDifficultyId) const
+{
+	if (nullptr == szDifficultyId)
+		return wstring_t();
+	const auto it = std::find_if(m_Difficulties.begin(), m_Difficulties.end(),
+		[szDifficultyId](const CONTENT_NAME_PIECE& Piece) { return Piece.strId == szDifficultyId; });
+	return m_Difficulties.end() != it ? it->strText : wstring_t();
+}

@@ -2662,6 +2662,9 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 			WORLD_BOOTSTRAP_KIND::BOSS == iter->eKind ?
 				LostArk::Shared::WORLD_ENTITY_DESPAWN_REASON::DEAD :
 				LostArk::Shared::WORLD_ENTITY_DESPAWN_REASON::REMOVED);
+		/* Gate progress: the last primary boss of a gate dying is that gate's clear. */
+		if (WORLD_BOOTSTRAP_KIND::BOSS == iter->eKind)
+			Notify_GateBossDeath(*iter);
 		iter = m_WorldEntities.erase(iter);
 	}
 #ifdef _DEBUG

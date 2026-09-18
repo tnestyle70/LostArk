@@ -266,6 +266,12 @@ public:
 		std::uint32_t requestSequence,
 		std::uint32_t proposalId,
 		bool accepted);
+	/* Commander raid gate progress: the leader / solo player asks to move on after a gate
+	clear, members answer, and every change comes back as one S2C_GATE_PROGRESS_STATE. */
+	bool Send_GateProgressPropose(std::uint32_t requestSequence);
+	bool Send_GateProgressRespond(
+		std::uint32_t requestSequence, std::uint32_t proposalId, bool accepted);
+	bool Try_Consume_GateProgressState(LostArk::Shared::S2C_GATE_PROGRESS_STATE& outState);
 	// Raid Clear screen's "돌아가기" button, Valtan Arena only -- reverse trip
 	// of Send_ConfirmNpcEntry, no NPC target needed.
 	bool Send_ReturnToBern(std::uint32_t requestSequence);
@@ -540,6 +546,7 @@ private:
 		m_DebugMadnessFormResults;
 	std::deque<LostArk::Shared::S2C_SET_VEHICLE_RIDING_RESULT> m_VehicleRidingResults;
 	std::deque<LostArk::Shared::S2C_SET_HONOR_TITLE_RESULT> m_HonorTitleResults;
+	std::deque<LostArk::Shared::S2C_GATE_PROGRESS_STATE> m_GateProgressStates;
 	std::deque<LostArk::Shared::S2C_DEBUG_SET_KOUKU_HUD_MODE_RESULT> m_DebugKoukuHudModeResults;
 	struct WORLD_ENTITY_SPAWN_REQUEST
 	{

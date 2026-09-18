@@ -126,6 +126,7 @@
     <ClCompile Include="..\Private\GameRoom_PlayerCommands.cpp" />
     <ClCompile Include="..\Private\GameRoom_KoukuPlayerCommands.cpp" />
     <ClCompile Include="..\Private\GameRoom_VehicleRiding.cpp" />
+    <ClCompile Include="..\Private\GameRoom_GateProgress.cpp" />
     <ClCompile Include="..\Private\GameRoom_HonorTitle.cpp" />
     <ClCompile Include="..\Private\GameRoom_Inventory.cpp" />
     <ClCompile Include="..\Private\GameRoom_PartyWorld.cpp" />

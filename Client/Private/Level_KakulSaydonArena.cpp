@@ -1420,6 +1420,11 @@ HRESULT Client::CLevel_KakulSaydonArena::Initialize()
 		L"UI/RaidClear/RaidClear_Kouku_Layout.json");
 	m_pRaidClearView->Set_AllSlotsVisible(false);
 
+	/* Gate progress panel (top-left): three gates of the raid this arena is. */
+	m_GateProgressView.Initialize(m_pDevice, m_pContext, ETOUI(LEVEL::KAKULSAYDON_ARENA));
+	m_GateProgressView.Set_Raid(
+		CMvpAwardCatalog::Get().Find_RaidName(103), CMvpAwardCatalog::Get().Find_DifficultyText("normal"), 3u);
+
 	replicationDesc.pDevice = m_pDevice;
 	replicationDesc.pContext = m_pContext;
 	replicationDesc.iPrototypeLevelIndex =
@@ -1523,7 +1528,6 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 	}
 #endif
 	Update_DeadScene(fTimeDelta);
-	Update_RaidClearTrigger();
 	Update_RaidClear(fTimeDelta);
 	if (nullptr != m_pMvpResultView)
 	{
@@ -1537,6 +1541,7 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 			m_pMvpResultView->Set_StageCharacter(iStageSlot, pStaged);
 		m_pMvpResultView->Update(fTimeDelta);
 	}
+	Update_GateProgress(fTimeDelta);
 
 #ifdef _DEBUG
 	/* Gate spawn replies arrive one per requested placement. They are Debug
@@ -2218,6 +2223,8 @@ HRESULT Client::CLevel_KakulSaydonArena::Render()
 	/* Award page labels sit over everything else this Level draws, the status
 	   words included. Its own image layers are CUI_Sprite objects on Layer_UI,
 	   so they need no call. */
+	/* Gate progress panel and prompt text, under the award page's labels. */
+	m_GateProgressView.Render_Text();
 	if (nullptr != m_pMvpResultView)
 		m_pMvpResultView->Render();
 	return drawn;
@@ -2343,28 +2350,192 @@ void Client::CLevel_KakulSaydonArena::Trigger_RaidClear()
 	m_fRaidClearElapsedSeconds = 0.f;
 }
 
-void Client::CLevel_KakulSaydonArena::Update_RaidClearTrigger()
+bool_t Client::CLevel_KakulSaydonArena::Is_LocalRaidLeader() const
 {
-	/* The HUD death latch only ever sets (CClientReplication raises it on the DEAD
-	   despawn of any primary boss), so a gate arms it fresh when its boss comes up and
-	   reads it once every primary boss of the gate is gone. Bosses removed by a gate
-	   switch despawn without DEAD and leave the latch clear. */
-	CCombatHUDViewModel& Hud = CCombatHUDViewModel::Get();
-	if (m_Replication.Count_PrimaryBossesAlive() > 0)
+	/* Solo, or the first roster member (the Server's leader rule for every party vote). */
+	const auto& Roster = m_Replication.Get_PartyRoster();
+	return Roster.Members.empty() ||
+		Roster.Members.front().iNetEntityId == CNetworkManager::Get().Get_LocalEntityId();
+}
+
+wstring_t Client::CLevel_KakulSaydonArena::Find_PlayerNickname(
+	const LostArk::Shared::NET_ENTITY_ID iNetEntityId) const
+{
+	for (const REPLICATED_PLAYER_VIEW& Player : m_NameplatePlayers)
 	{
-		if (!m_bRaidClearArmed)
-		{
-			m_bRaidClearArmed = true;
-			Hud.Clear_BossDeadRaw();
-		}
-		return;
+		if (Player.iNetEntityId != iNetEntityId)
+			continue;
+		std::wstring strWide;
+		if (CWorldPlayerNameplateView::Try_ConvertUtf8(Player.strNickname, strWide))
+			return strWide;
 	}
-	if (!m_bRaidClearArmed || !Hud.Get_BossDeadRaw())
+	return wstring_t();
+}
+
+void Client::CLevel_KakulSaydonArena::Apply_ServerGate(const size_t gateIndex)
+{
+	/* HUD focus and audition target per gate: the same values the F1 gate table carries. */
+	static constexpr const char* FOCUS_ARCHETYPES[3] = {
+		"BOSS_KAKULSAYDON_G1_SAYDON", "BOSS_KAKULSAYDON_G2_KOUKU", "BOSS_KAKULSAYDON_G3_SAYDON" };
+	static constexpr const char* AUDITION_PLACEMENTS[3] = {
+		"boss.kakulsaydon.g1.saydon", "boss.kakulsaydon.g2.kouku", "boss.kakulsaydon.g3.saydon" };
+	if (gateIndex >= 3u)
 		return;
-	m_bRaidClearArmed = false;
-	if (nullptr != m_pMvpResultView)
-		m_pMvpResultView->Hide();
-	Trigger_RaidClear();
+	CCombatHUDViewModel::Get().Set_BossFocusArchetype(FOCUS_ARCHETYPES[gateIndex]);
+	CCombatHUDViewModel::Get().Reset_CombatAnalysis();
+	CCombatHUDViewModel::Get().Set_BossHidden(false);
+#ifdef _DEBUG
+	/* The F1 button drove this gate itself: its own commit already ran (or is in flight). */
+	if (m_iActiveDebugGate == gateIndex || m_iPendingDebugGate == gateIndex)
+		return;
+	CKoukuSaydonPatternAuditionService::Get().Set_TargetBoss(
+		AUDITION_PLACEMENTS[gateIndex], FOCUS_ARCHETYPES[gateIndex]);
+	std::string strStatus;
+	Debug_CancelGateObjects();
+	m_pPendingGateMapLights.reset();
+	m_PendingGateMapLightSource.reset();
+	const auto lightSource = m_pMapLightAuthoringOverride ? m_pMapLightAuthoringOverride : m_pMapLightPresentation;
+	if ((0u == gateIndex || 2u == gateIndex) && lightSource)
+	{
+		if (Prepare_GateMapLights(lightSource->Get_Document(), gateIndex, m_pPendingGateMapLights, strStatus))
+			m_PendingGateMapLightSource = lightSource->Get_Document();
+	}
+	if (Debug_PrepareGateObjects(gateIndex, strStatus) && Debug_CommitGateObjects(gateIndex, strStatus))
+	{
+		m_iGateLightingIndex = gateIndex;
+		m_pGateMapLightPresentation = std::move(m_pPendingGateMapLights);
+		m_GateMapLightSource = std::move(m_PendingGateMapLightSource);
+		m_strGatePresentationProfileId = 0u == gateIndex ? "scene.kakulsaydon.g1.book-open.v1" :
+			2u == gateIndex ? "scene.kakulsaydon.g3.dark.v1" : "";
+	}
+	else
+	{
+		m_strDebugGateStatus += "\nServer gate " + std::to_string(gateIndex + 1u) +
+			" presentation failed: " + strStatus;
+	}
+	m_iActiveDebugGate = gateIndex;
+	m_strDebugGateStatus += "\nGate " + std::to_string(gateIndex + 1u) + " raised by the Server (gate progress).";
+#endif
+}
+
+void Client::CLevel_KakulSaydonArena::Apply_GateProgressState(
+	const LostArk::Shared::S2C_GATE_PROGRESS_STATE& State)
+{
+	using namespace LostArk::Shared;
+	const S2C_GATE_PROGRESS_STATE Previous = m_GateProgress;
+	const bool_t bHadState = m_bGateProgressKnown;
+	m_GateProgress = State;
+	m_bGateProgressKnown = true;
+
+	/* The gate the Server raised changed (advance, or a Debug button): present it. */
+	if (0u != State.iCurrentGate && (!bHadState || Previous.iCurrentGate != State.iCurrentGate))
+	{
+		const bool_t bClearedNow = 0u != (State.iClearedMask & (1u << (State.iCurrentGate - 1u)));
+		if (!bClearedNow)
+		{
+			m_GateProgressView.Close_Prompt();
+			if (nullptr != m_pMvpResultView)
+				m_pMvpResultView->Hide();
+			m_fRaidClearElapsedSeconds = -1.f;
+			if (nullptr != m_pRaidClearView)
+				m_pRaidClearView->Set_AllSlotsVisible(false);
+			m_bGateVoteAnswered = false;
+			Apply_ServerGate(static_cast<size_t>(State.iCurrentGate - 1u));
+		}
+	}
+	/* This gate just cleared: the clear mark, then the award page (Update_RaidClear). */
+	if (0u != State.iCurrentGate)
+	{
+		const uint8_t iBit = static_cast<uint8_t>(1u << (State.iCurrentGate - 1u));
+		const bool_t bWasCleared = bHadState && Previous.iCurrentGate == State.iCurrentGate &&
+			0u != (Previous.iClearedMask & iBit);
+		if (0u != (State.iClearedMask & iBit) && !bWasCleared)
+		{
+			if (nullptr != m_pMvpResultView)
+				m_pMvpResultView->Hide();
+			m_bGateVoteAnswered = false;
+			Trigger_RaidClear();
+		}
+	}
+	/* Vote: a member gets the accept / decline prompt once; the proposer waits. */
+	if (0u != State.iProposalId && !State.bClosed)
+	{
+		const bool_t bMine = State.iProposerNetEntityId == CNetworkManager::Get().Get_LocalEntityId();
+		if (bMine)
+		{
+			if (CRaidGateProgressView::PROMPT::VOTE == m_GateProgressView.Get_Prompt())
+				m_GateProgressView.Close_Prompt();
+		}
+		else if (!m_bGateVoteAnswered && CRaidGateProgressView::PROMPT::VOTE != m_GateProgressView.Get_Prompt() &&
+			(!m_pMvpResultView || !m_pMvpResultView->Is_Visible()))
+		{
+			m_GateProgressView.Open_Prompt(CRaidGateProgressView::PROMPT::VOTE,
+				Find_PlayerNickname(State.iProposerNetEntityId));
+		}
+	}
+	if (State.bClosed)
+	{
+		m_GateProgressView.Close_Prompt();
+		m_bGateVoteAnswered = false;
+		if (GATE_PROGRESS_VOTE_RESULT::ALL_ACCEPTED != State.eResult)
+		{
+			/* sys.commander.progress_vote_fail_dialog_desc */
+			m_GateProgressView.Show_Notice(
+				L"\xD22C\xD45C\xC5D0 \xC751\xB2F5\xD558\xC9C0 \xC54A\xC558\xAC70\xB098 \xAC70\xC808\xD55C \xC778\xC6D0\xC774 \xC788\xC5B4 "
+				L"\xB2E4\xC74C \xAD00\xBB38 \xC785\xC7A5\xC774 \xCDE8\xC18C\xB418\xC5C8\xC2B5\xB2C8\xB2E4.", 4.f);
+		}
+	}
+}
+
+void Client::CLevel_KakulSaydonArena::Update_GateProgress(const f32_t fTimeDelta)
+{
+	using namespace LostArk::Shared;
+	S2C_GATE_PROGRESS_STATE State{};
+	while (nullptr != m_pPlayerCommandSink && m_pPlayerCommandSink->Consume_GateProgressState(State))
+		Apply_GateProgressState(State);
+
+	/* The award page closing after a clear is when the leader decides; a member who
+	   already has a vote waiting sees it now. */
+	const bool_t bMvpVisible = nullptr != m_pMvpResultView && m_pMvpResultView->Is_Visible();
+	if (m_bMvpWasVisible && !bMvpVisible && m_bGateProgressKnown && 0u != m_GateProgress.iCurrentGate)
+	{
+		const bool_t bCleared = 0u != (m_GateProgress.iClearedMask & (1u << (m_GateProgress.iCurrentGate - 1u)));
+		const bool_t bNextExists = m_GateProgress.iCurrentGate < m_GateProgress.iGateCount;
+		if (bCleared && bNextExists && CRaidGateProgressView::PROMPT::NONE == m_GateProgressView.Get_Prompt())
+		{
+			if (0u != m_GateProgress.iProposalId && !m_GateProgress.bClosed && !m_bGateVoteAnswered &&
+				m_GateProgress.iProposerNetEntityId != CNetworkManager::Get().Get_LocalEntityId())
+			{
+				m_GateProgressView.Open_Prompt(CRaidGateProgressView::PROMPT::VOTE,
+					Find_PlayerNickname(m_GateProgress.iProposerNetEntityId));
+			}
+			else if (0u == m_GateProgress.iProposalId && Is_LocalRaidLeader())
+			{
+				m_GateProgressView.Open_Prompt(CRaidGateProgressView::PROMPT::PROPOSE, wstring_t());
+			}
+		}
+	}
+	m_bMvpWasVisible = bMvpVisible;
+
+	m_GateProgressView.Set_Progress(m_GateProgress.iCurrentGate, m_GateProgress.iClearedMask);
+	const CRaidGateProgressView::INTENT eIntent = m_GateProgressView.Update(fTimeDelta);
+	if (nullptr == m_pPlayerCommandSink)
+		return;
+	switch (eIntent)
+	{
+	case CRaidGateProgressView::INTENT::PROPOSE:
+		(void)m_pPlayerCommandSink->Request_GateProgressPropose(m_iNextGateRequestSequence++);
+		break;
+	case CRaidGateProgressView::INTENT::ACCEPT:
+	case CRaidGateProgressView::INTENT::DECLINE:
+		m_bGateVoteAnswered = true;
+		(void)m_pPlayerCommandSink->Request_GateProgressRespond(m_iNextGateRequestSequence++,
+			m_GateProgress.iProposalId, CRaidGateProgressView::INTENT::ACCEPT == eIntent);
+		break;
+	default:
+		/* STOP: retail leaves the dungeon; here the prompt simply closes and the clear stays. */
+		break;
+	}
 }
 
 void Client::CLevel_KakulSaydonArena::Debug_Play_ClearThenMvp()

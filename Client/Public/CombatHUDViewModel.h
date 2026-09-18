@@ -471,8 +471,6 @@ namespace Client
 		stays true only for this replication/world lifetime; Reset_RuntimeState clears
 		it before another Level session can observe it. */
 		void Set_BossDeadRaw(bool isDead) { m_bBossDeadRaw = m_bBossDeadRaw || isDead; }
-		/* A multi-gate Level re-arms the latch when the next gate's boss comes up. */
-		void Clear_BossDeadRaw() { m_bBossDeadRaw = false; }
 		bool Get_BossDeadRaw() const { return m_bBossDeadRaw; }
 		std::uint32_t Get_EstherGauge() const { return m_iEstherGauge; }
 		std::uint32_t Get_EstherGaugeMaximum() const

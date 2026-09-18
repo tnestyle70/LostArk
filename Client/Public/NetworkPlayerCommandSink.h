@@ -113,6 +113,10 @@ public:
 		std::uint32_t clientSequence,
 		std::uint32_t proposalId,
 		bool accepted) override;
+	bool Request_GateProgressPropose(std::uint32_t clientSequence) override;
+	bool Request_GateProgressRespond(
+		std::uint32_t clientSequence, std::uint32_t proposalId, bool accepted) override;
+	bool Consume_GateProgressState(LostArk::Shared::S2C_GATE_PROGRESS_STATE& outState) override;
 	bool Request_ReturnToBern(
 		std::uint32_t clientSequence) override;
 	bool Request_PartyInvite(

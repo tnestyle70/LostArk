@@ -283,6 +283,27 @@ bool Client::CNetworkPlayerCommandSink::Request_RaidEntryRespond(
 		clientSequence, proposalId, accepted);
 }
 
+bool Client::CNetworkPlayerCommandSink::Request_GateProgressPropose(
+	const std::uint32_t clientSequence)
+{
+	return CNetworkManager::Get().Send_GateProgressPropose(clientSequence);
+}
+
+bool Client::CNetworkPlayerCommandSink::Request_GateProgressRespond(
+	const std::uint32_t clientSequence,
+	const std::uint32_t proposalId,
+	const bool accepted)
+{
+	return CNetworkManager::Get().Send_GateProgressRespond(
+		clientSequence, proposalId, accepted);
+}
+
+bool Client::CNetworkPlayerCommandSink::Consume_GateProgressState(
+	LostArk::Shared::S2C_GATE_PROGRESS_STATE& outState)
+{
+	return CNetworkManager::Get().Try_Consume_GateProgressState(outState);
+}
+
 bool Client::CNetworkPlayerCommandSink::Request_ReturnToBern(
 	const std::uint32_t clientSequence)
 {
