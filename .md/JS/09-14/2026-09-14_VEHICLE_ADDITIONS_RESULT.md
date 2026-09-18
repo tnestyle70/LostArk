@@ -118,3 +118,50 @@
 
 - LookInfo 파티클·스폰 이펙트, 탈것 고유 스킬.
 - 별빛의 가호 나머지 7색 등 색 변형, 제품 탈것 선택 UI, Gunslinger/Slayer 탑승자.
+
+
+## G09. 2026-09-19 차원술사 탑승 시 100배 확대 교정
+
+### 실제 원인과 변경 경계
+
+현재 `DimensionMaster_Character.wmodel`의 `pc_sp_m_00_sk` armature rest basis는 1이고, 본체 155개 clip의 6,244개 scale key는 float32 `(1, 0.9999999403953552, 0.9999999403953552)`다. 등록된 Ride donor 6개는 236개 bone 이름·부모 순서는 같지만 armature rest basis 100과 39개 clip의 3,352개 scale key `(100, 99.99999237060547, 99.99999237060547)`를 보존하고 있었다. skeleton hash/개수 일치만으로 단위 일치가 증명되지 않는다.
+
+`PlayableCharacterAssetService`는 현재 차원술사 본체를 preScale 0.01로 준비한다. `CModel::Attach_AnimationSet`은 donor mesh/rest/preScale을 이식하지 않고 animation만 target palette에 붙인다. 따라서 탑승 클립의 import 배율 100이 이미 unit basis인 본체에 그대로 적용됐다. PR410의 좌석 회전 행렬은 정규화된 축을 사용하고, `seatBoneRotatesRider`도 튜브에만 적용되므로 이 공통 확대의 원인이 아니다.
+
+`Tools/VehiclePipeline/repair_dimensionmaster_rider_scale.py`로 기존 6개 파일의 해당 armature scale XYZ만 100으로 나눴다. 결과 key는 현재 본체의 scale과 float32 비트까지 일치한다. donor의 carrier mesh/rest, 다른 bone 채널, 위치·회전·시간·clip metadata·material은 바이트 그대로 보존한다. 교정본은 현재 본체에 attach하는 animation donor이며 donor carrier의 standalone 렌더링을 검증했다고 주장하지 않는다. C++와 캐릭터 presentationScale, 서버 수치·탈것 모델·다른 직업은 변경하지 않았다.
+
+| 기존 AnimSets 파일 | bytes | clip | 교정 key |
+|---|---:|---:|---:|
+| DimensionMaster_RideDragon2AnimSet.wmodel | 8,044,754 | 7 | 680 |
+| DimensionMaster_RideHeavywalkerBm9AnimSet.wmodel | 6,226,738 | 6 | 524 |
+| DimensionMaster_RideHorseAnimSet.wmodel | 5,948,434 | 6 | 500 |
+| DimensionMaster_RideHoverboardAnimSet.wmodel | 1,769,946 | 3 | 142 |
+| DimensionMaster_RideSwingAnimSet.wmodel | 10,686,086 | 8 | 907 |
+| DimensionMaster_RideTubeAnimSet.wmodel | 7,123,558 | 9 | 599 |
+| 합계 | 39,799,516 | 39 | 3,352 |
+
+입력·출력 SHA-256 및 body SHA 정본은 `Tools/VehiclePipeline/DimensionMasterRiderScaleRepair.receipt.json`이다. 원본은 `out/DimensionMasterRiderScale20260919/backup/Character/DimensionMaster/AnimSets`, 후보는 같은 out의 `candidates`에 보존했다. 모두 검증 후 교체 직전 원본 바이트 재확인과 원자적 교체로 기존 Resources 경로에 설치했다. 현재 catalog 미참조 `RideRaptor`는 수정하지 않았다.
+
+### 실행한 검증
+
+- 6개 후보의 WModel section/channel/bone 파싱 성공. 본체와 donor topology 일치, 본체 전체 root scale key 6,244개와 donor key 3,352개 exact contract 검사 성공.
+- scale XYZ 외의 모든 바이트가 원본과 같은지 검사 성공. 변환 뒤 root scale은 본체 key와 비트 일치한다.
+- focused unit 4개 PASS: root XYZ만 변경, key time/다른 bone/trailer 보존, 재실행 무변경, dynamic/미확인/nonfinite scale·미지원 clip·누락 armature 거부.
+- 같은 out 및 백업을 사용한 실제 설치 도구 재실행도 6개 모두 `alreadyRepaired=true`, SHA 무변경. 최초 receipt는 따로 보존하고 재실행 증거는 `idempotent-rerun-receipt.json`에 분리했다.
+- 설치된 실제 본체 vertex·inverse bind·본체 skeleton에 교정 전후의 실제 각 donor idle clip을 tick 0으로 입혔다. preScale 0.01 × presentationScale 1.5를 적용한 모델 축 AABB는 아래와 같다. 공통 Y -90°는 X/Z 축만 교환하므로 대각선 비율에 영향을 주지 않는다.
+- 모든 6개에서 교정 전/후 diagonal ratio는 100이며 float/출력 반올림 최대 오차는 `0.0000018621`이다. 스크립트·수치 증거: `out/DimensionMasterRiderScale20260919/verify_attached_bounds.py`, `attached-body-witness.json`.
+- 본체 geometry reader의 기존 40-byte clip name 잘림 중복 10종은 geometry-only witness에서만 명시적으로 분리했다. geometry/channel 범위 검사는 유지했으며 이 검사를 일반 본체 WModel 전체 validation 성공이라고 기록하지 않는다.
+- `git diff --check` 성공. C++/HLSL 변경이 없어 이 수정에 별도 재컴파일은 필요하지 않다.
+
+| 탑승 자세 | 교정 전 크기 XYZ(m) | 교정 후 크기 XYZ(m) |
+|---|---|---|
+| Horse | 59.466538 / 140.408124 / 98.314386 | 0.594665 / 1.404081 / 0.983144 |
+| Swing | 66.020499 / 139.320938 / 91.981601 | 0.660205 / 1.393209 / 0.919816 |
+| Hoverboard | 82.070574 / 153.907855 / 55.499249 | 0.820706 / 1.539079 / 0.554992 |
+| Heavywalker | 53.654581 / 119.454282 / 77.674098 | 0.536546 / 1.194543 / 0.776741 |
+| Tube | 164.606449 / 57.953684 / 111.252027 | 1.646064 / 0.579537 / 1.112520 |
+| Dragon2 | 77.373127 / 101.640038 / 78.352697 | 0.773731 / 1.016400 / 0.783527 |
+
+### 배포와 사용자 확인 경계
+
+Resources는 Runtime ZIP에 넣지 않는다. 위 6개를 기존 `Character/DimensionMaster/AnimSets` 경로대로 별도 Drive 업데이트로 전달한다. 다른 PC의 파일 교체 및 현재 실행 중인 캐릭터의 메모리 재로딩을 완료했다고 주장하지 않는다. 다음 캐릭터 로드/재시작 후 탑승·이동·탈것 스킬·하차의 실제 화면은 사용자가 확인한다. 이번 검증은 실제 모델 기반 수치 검사이며 Client 실행·UI 조작·GPU 화면 판정은 수행하지 않았다.

@@ -131,6 +131,8 @@ private:
 	RAID_ENTRY_INTENT m_Intent{};
 	/* 열린 투표의 proposalId(프롬프트가 준 값). 수락/거절 응답에 되돌린다. */
 	std::uint32_t m_iVoteProposalId = 0u;
+	LostArk::Shared::RAID_ENTRY_TARGET m_eVoteTarget =
+		LostArk::Shared::RAID_ENTRY_TARGET::END;
 };
 
 NS_END

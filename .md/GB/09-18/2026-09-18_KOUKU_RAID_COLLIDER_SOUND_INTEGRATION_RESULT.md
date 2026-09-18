@@ -103,3 +103,137 @@ finite·범위·정수값 검증은 유지하며 bool/fraction/NaN/Inf를 거부
 
 실제 화면·음향·4인 Client 동시 플레이는 사용자 확인 대상이다. 게시와 설치는 실행 중
 Server 메모리나 도구 draft를 자동 갱신하지 않는다. Client/UI를 자율 실행하지 않았다.
+
+
+## Release 초기 종료 진단과 실행기 실패 판정 (2026-09-19)
+
+### 확인한 범위와 구현
+
+사용자는 다른 PC에서 Full ZIP을 실행했을 때 흰 창이 뜬 뒤 즉시 종료된다고 보고했다.
+그 PC의 실제 종료 코드·startup 로그는 아직 받지 않았으므로 원격 종료 원인은 미확정이다.
+현재 로컬 데이터 검증이나 아래 dummy 성공을 다른 PC의 제품 진입 성공으로 기록하지 않는다.
+
+기존 `Client/Default/Client.cpp`의 `WriteExitDiagnostic`은 `_DEBUG` 안에 있어 Release에서
+`CMainApp::Create()` 실패가 exit 1로 끝나도 파일 기록이 없었다. Debug 전용 조건을 제거하고
+reason·HRESULT·PID를 `Client/Default/ClientExit.user.log`에 기록한다. 초기 Engine 생성 실패에서도
+쓸 수 있도록 `Get_CurrentLevelID()` 호출은 제거했다. 로그 경로는 실행파일의
+`Client/Bin/Release` 위치에서 `Client/Default`를 해석하므로 실행기의 작업 디렉터리에 의존하지 않는다.
+
+`Client/Private/MainApp.cpp`는 `ClientStartup.user.log`에 Engine, Rendering, Network, ImGui,
+Fonts, Static prototypes, Effect Catalog, UI, Lobby의 시작·결과와 HRESULT를 남긴다.
+Rendering·Effect Catalog 실패의 기존 상세 status를 보존하고 Network는 WSA 오류 코드,
+Lobby는 기존 LevelTransitionService 상태를 함께 기록한다. HRESULT를 반환하는 초기화 단계는
+원래 반환값을 기록·전파한다. Client.cpp의 UTF-8 BOM과 MainApp.cpp의 BOM 없음, 두 파일의
+기존 비ASCII 바이트 및 CRLF는 유지했다. 진단 추가는 빠진 리소스를 대체하거나 실패 admission을
+완화하지 않는다.
+
+실행기 `out/RuntimeRepublish20260919/package-tools/LostArkLauncher.cs`는 시작 명령·작업 폴더·
+Data/Resources root·PID와 10초 이내 종료 코드를 로그에 남기고 해당 실행의 Client 로그를
+실패 메시지에 붙인다. 10초 뒤 계속 실행 중이라는 관측은 startup 성공으로 단정하지 않는다.
+검토 중 누적 로그의 과거 `failed` 행과 정상 경로 문자열의 `failed`까지 현재 실패로 처리하는
+결함을 재현했다. 실행 직전 로그 byte 길이를 저장해 이번 실행에서 추가된 내용만 읽고,
+문자열 부분 일치 대신 HRESULT의 실패 bit를 검사하도록 고쳤다. `failed`라는 단어가 없는
+HRESULT 실패도 이제 놓치지 않는다.
+
+### 실행한 검증
+
+- 실제 C++ 두 logger 본문을 가져온 `/O2 /DNDEBUG` 콘솔 probe의 컴파일·실행 PASS.
+  Rendering `0x80004005`, Effect `0x80070057`, 원래 상세 문자열과 종료 reason/PID가
+  실행파일 기준 `Client/Default`에 기록됐다. Engine·Client·UI 생성은 0회다.
+  증거는 `out/ReleaseStartupDiagnostics20260919/logger_probe.compile.log`와 그 하위
+  `Client/Default/ClientStartup.user.log`, `ClientExit.user.log`다.
+- `Prepare-Launcher.ps1`로 WinForms 실행기를 컴파일한 뒤 실제 private `LaunchClient`를
+  reflection으로 호출했다. 대상은 별도 콘솔 dummy이며 제품 Client와 Main/UI는 호출하지 않았다.
+  exit 1·상세 실패·정상 exit 0·이전 실패 로그·새 실패 로그·정상 `failed` 문자열·단어 없는
+  HRESULT 실패의 7개 시나리오는 수정 전 3 FAIL, 수정 후 7 PASS다. Data/Resources 환경 로그와
+  한글·공백이 있는 fixture 경로도 확인했다. 이전 실패 내용은 새 실행 메시지에서 제외됐다.
+- 실행기 검증 근거는 `out/RuntimeRepublish20260919/package-tools/launcher-diagnostic-probe/`
+  의 `before-result.log`, `after-result.log`, 각 fixture의 `launcher.log`다.
+- 변경 C++와 이 RESULT의 `git diff --check` PASS. 이 절의 probe는 제품 Release 빌드나
+  실제 상대 PC 실행을 대신하지 않는다. 새 제품 빌드·최종 ZIP 반영은 배포 root의 결과로 확인한다.
+
+### 아직 확인하지 않은 것
+
+원격 PC의 누락 파일·D3D 장치 생성·font/shader/catalog admission 중 어느 단계에서 종료됐는지는
+확정하지 않았다. 새 배포 실행 후 실제 `ClientStartup.user.log`, `ClientExit.user.log`와 실행기
+로그로 구분해야 한다. Client 자동 실행·UI 조작·화면 캡처·시각 PASS는 수행하지 않았다.
+
+
+## Bern 군단장 레이드의 쿠크 투표 UI 보정 (2026-09-19)
+
+### 확인한 입력·입장 경계
+
+`CRaidEntryPreviewView`의 기본 선택은 쿠크이며 `RAID_DEFS`의 쿠크 탭은
+`RAID_ENTRY_TARGET::KAKULSAYDON`을 제출한다. Bern은 Render 뒤 intent를 한 번 소비하고
+`IPlayerCommandSink::Request_RaidEntryPropose`로 NPC stable ID와 target을 보낸다.
+Server prompt의 proposalId와 target을 받아 수락·거절 창을 열고 응답은 동일 proposalId를
+`Request_RaidEntryRespond`로 돌려준다. `S2C_ENTER_ACCEPTED`가 온 뒤의 Level 전환은
+기존 `CLevelTransitionService::Pump_ServerApprovedWorldTransfer`가 담당한다.
+UI의 Mouse Claim은 gameplay 차단을 위한 것이며 `CUIInputRouter::Is_Clicked` 자체를
+거부하지 않으므로 ESC 콤보와 같은 자기 클릭 차단은 이 입장 버튼에 없었다.
+
+쿠크 투표여도 확인창이 항상 발탄의 “부활한 마수의 심장”을 표시하는 결함을 확인했다.
+`RaidEntryPreviewView.h/.cpp`에 열린 투표의 target을 저장하고 같은 `RAID_DEFS`에서
+레이드명을 찾도록 수정했다. 쿠크는 “한밤중의 서커스에 입장하시겠습니까?”로 표시한다.
+파티원의 로컬 선택 탭이 발탄이어도 Server가 보낸 쿠크 target을 표시하며, 수락·거절·
+취소·ESC 닫기에서 표시 target을 정리한다. 알 수 없는 target은 창을 열지 않는다.
+Shared packet decoder의 기존 target/proposalId 검증과 Server 승인 경계는 유지한다.
+두 C++ 파일의 기존 UTF-8 BOM 없음·CRLF를 유지했고 Data/Resources 계약은 바꾸지 않았다.
+
+이 UI 보정만으로 다인 쿠크 입장 완료를 주장하지 않는다. Server의 기존 party transfer가
+VALTAN_ARENA만 허용하던 별도 결함은 같은 작업의 Server 담당 변경과 검증으로 연결한다.
+Character Select의 Debug O키 레이드 창과 매칭/파티찾기 버튼은 기존 시각 preview 범위다.
+
+### 실행한 검증과 남은 확인
+
+실제 `Render`, `Render_ConfirmStep`, `RenderText_ConfirmStep`, `Consume_Intent`,
+Open/Close 본문과 `CUIInputRouter` 클릭 본문을 추출해 native Release 콘솔 probe를 실행했다.
+입력 hit test에는 현재 두 UI JSON의 실제 버튼 rect를 사용했다. 창·DirectX·제품 Client는
+생성하지 않고 텍스트 제출과 intent 결과를 관측했다.
+
+- 쿠크·발탄 입장 클릭의 typed target, intent 한 번 소비, 눌린 버튼 유지 시 재발의 없음: PASS.
+- 로컬 탭과 다른 Server target을 받은 확인창의 레이드명: 쿠크 수정 전 FAIL, 수정 후 PASS.
+- 수락·거절의 동일 proposalId와 accepted 값, 창 닫기, 마우스 입력 claim: PASS.
+- Server 취소 정리와 알 수 없는 target의 발탄 fallback 차단: PASS.
+- 전체 12개 시나리오: 수정 전 2 FAIL, 수정 후 12 PASS. probe 컴파일 PASS.
+  증거는 `out/RaidEntryVote20260919/before.events.log`, `after.events.log`,
+  `before.compile.log`, `after.compile.log`와 재현 스크립트 `run_probe.py`다.
+- 두 UI JSON parse와 변경 파일 `git diff --check` PASS.
+
+제품 Release 빌드와 새 ZIP 반영은 배포 작업의 최종 결과로 확인한다. 위 검증은 실제
+다인 Server 이동이나 Client 화면 확인을 대신하지 않으며 최종 시각 검증은 사용자 몫이다.
+
+## Full v2 배포와 쿠크 UI 입장 최종 반영 (2026-09-19)
+
+군단장 레이드 UI의 쿠크 투표는 이미 target을 전달했지만 `Transfer_PartyTo`의 마지막
+target 검사에서 Valtan만 허용해 2~4인 쿠크 이동을 거절했다. KAKULSAYDON도 같은 기존
+원자적 transfer에 허용하고, Shared의 `S2C_PARTY_TRANSFER_RESULT` writer/reader도 쿠크
+실패 사유를 전달하도록 맞췄다. packet 크기·ID·protocol 93과 기존 Valtan 경로를 유지한다.
+맵 입장과 레이드 시작은 구분하며 실제 Raid 준비·인트로는 기존 입장 collider가 시작한다.
+Server의 실제 1~4인 수락·거절·이동과 실패 시 source 보존 검증은
+`out/KoukuRaidEntry20260919/focused.run.log`에서 failures 0으로 확인했다.
+
+Release Product 빌드는 `20260918T164956975Z-release-product.json`에 이어 Shared 메시지
+보정을 포함한 `out/BuildPipeline/runs/20260918T165309256Z-release-product.json`까지 PASS다.
+첫 빌드는 Server OBJ 2·Client OBJ 6과 양쪽 EXE, 마지막 빌드는 Shared·Server 변경분과
+Client/Server 재링크를 반영했다. Engine·PCH·CSO 재생성은 없었다. 기존 코드 페이지와
+DirectXTK PDB 경고가 있었고 컴파일·링크 실패는 없었다. 사용자 수동 빌드의 초기화 로그와
+이번 제품 빌드 및 focused 검증을 구분하며 에이전트는 Client/UI를 시작하지 않았다.
+
+첫 Full의 Data 보충분은 46개였고 EffectCatalog의 direct-authored 참조는 1,167개였다.
+그 중 1,140개 참조 JSON이 보충분에 없었다. 수신 PC의 오래된 Data에서 시작 실패를
+일으킬 수 있는 이 조건을 제거하기 위해 v2는 현재 catalog 참조 전체와 RaidEntry UI 2개를
+포함한 Data JSON 1,188개를 준비한다. 전체 Data 디렉터리를 무조건 복사한 구성은 아니다.
+원격 PC가 git pull 후 실행됐다는 사용자 보고는 Data 의존성과 부합하지만 해당 PC의
+실제 실패 로그가 없으므로 어느 파일이 최초 실패했는지는 확정하지 않는다.
+
+실행 ZIP의 구성은 Release runtime 458개(Client DataFiles 150, Server DataFiles 159 포함),
+Data JSON 1,188개, 실행기·설치기·안내다. 최종 ZIP의 hash·크기·main commit과 무결성 결과는
+`out/RuntimeRepublish20260919/delivery-result.json`으로 확인한다. 대상은 바탕화면의
+`LostArk-Release-20260919-v2/LostArk-Release-20260919-Full-v2.zip`이며 이전 배포본을 보존한다.
+
+차원술사 탑승 scale은 별도 [탈것 결과 G09](../../JS/09-14/2026-09-14_VEHICLE_ADDITIONS_RESULT.md)와
+`Tools/VehiclePipeline/DimensionMasterRiderScaleRepair.receipt.json`을 따른다. Resources 6개는
+실행 ZIP에 넣지 않고 같은 전달 폴더의 `Resources-Drive-Update`에 준비했다. 이 PC의 교정과
+다른 PC의 Drive 동기화는 별개다. 받는 PC는 새 Client뿐 아니라 공유 Server도 갱신하고,
+차원술사 수정 Resources도 적용한 뒤 사용자가 실제 입장·탑승 화면을 확인한다.

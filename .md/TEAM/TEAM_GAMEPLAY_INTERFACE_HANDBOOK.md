@@ -192,14 +192,16 @@ Test-NetConnection 192.168.0.14 -Port 7777
 
 `Failed to open TCP listener ... Error=10049`는 `--bind-address`에 적은 주소가 현재 Server PC의 어느 어댑터에도 없다는 뜻이다. Client의 주소나 이전 Wi-Fi 주소를 Server bind 값으로 복사하지 말고 Server는 `0.0.0.0`, Client만 도달 가능한 endpoint를 사용한다.
 
-### 1.2 같은 방 파티와 Bern → Valtan 이동
+### 1.2 같은 방 파티와 Bern → Valtan/KoukuSaydon 이동
 
 Bern/Valtan에서 다른 플레이어를 우클릭해 초대하고 상대가 수락하면 최대 4인의
 Server-owned 파티가 된다. `IPlayerCommandSink`가 typed invite/respond를 제출하고
 `S2C_PARTY_ROSTER`의 배열 첫 member가 leader다. nickname은 표시용이며 초대·roster는
 현재 방의 NetEntityId로 식별한다. 옛 초대 응답은 교체된 새 초대를 소비하지 않는다.
 
-Bern의 발탄 안내 NPC entry는 leader만 전체 파티를 요청할 수 있다. Server는 모든
+Bern의 군단장 레이드 UI는 선택한 Valtan/KoukuSaydon target으로 입장 투표를 요청한다.
+파티가 있으면 leader가 요청하고 전원의 수락 뒤 이동하며, 솔로도 같은 target을 소비한다.
+Client는 서버가 보낸 vote target에 맞는 레이드 이름을 수락창에 표시한다. Server는 모든
 member의 source session/binding, 목적지 자리·profile·navigation 및 초기 reliable
 송신 준비를 검증한 뒤 한 batch로 이동한다. 이 준비 중 실패하면 기존 파티와 위치·HP를
 유지하고 `S2C_PARTY_TRANSFER_RESULT`로 이유를 알린다. 실패를 Lobby admission 거절로

@@ -413,7 +413,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_CharacterAdmission(TEST
 		{
 			std::unique_ptr<CServerApp> App = std::make_unique<CServerApp>();
 			std::shared_ptr<CGameRoom> Source = std::make_shared<CGameRoom>(WORLD_ID::BERN);
-			std::shared_ptr<CGameRoom> Target = std::make_shared<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+			std::shared_ptr<CGameRoom> Target;
 			std::vector<std::shared_ptr<CClientSession>> Sessions;
 			SERVER_WORLD_TRANSFER_REQUEST Request;
 			bool Ready = false;
@@ -448,12 +448,14 @@ void LostArk::Server::CServerGameplayContractRunner::Run_CharacterAdmission(TEST
 				second->m_OutboundFrames.empty() && !status.empty(),
 				"Reject terminal-in-progress admission and release every staged participant unchanged");
 		}
-		const auto makeParty = [&clearOutbound](const std::size_t count, const bool formParty)
+		const auto makeParty = [&clearOutbound](const std::size_t count, const bool formParty,
+			const WORLD_ID targetWorld = WORLD_ID::VALTAN_ARENA)
 		{
 			auto fixture = std::make_unique<PARTY_FIXTURE>();
+			fixture->Target = std::make_shared<CGameRoom>(targetWorld);
 			fixture->Ready = fixture->Source->Is_Ready() && fixture->Target->Is_Ready();
 			fixture->App->m_SharedGameRooms.emplace(WORLD_ID::BERN, fixture->Source);
-			fixture->App->m_SharedGameRooms.emplace(WORLD_ID::VALTAN_ARENA, fixture->Target);
+			fixture->App->m_SharedGameRooms.emplace(targetWorld, fixture->Target);
 			const CHARACTER_CLASS_ID classes[] = { CHARACTER_CLASS_ID::LANCE_MASTER,
 				CHARACTER_CLASS_ID::ARTIST, CHARACTER_CLASS_ID::WARLORD,
 				CHARACTER_CLASS_ID::DIMENSIONMASTER };
@@ -480,7 +482,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_CharacterAdmission(TEST
 			if (!fixture->Ready) return fixture;
 			const auto& leader = fixture->Source->m_Players.at(fixture->Sessions.front()->Get_PlayerId());
 			fixture->Request.iSessionId = leader.iSessionId;
-			fixture->Request.eTargetWorldId = WORLD_ID::VALTAN_ARENA;
+			fixture->Request.eTargetWorldId = targetWorld;
 			fixture->Request.eCharacterClass = leader.eCharacterClass;
 			fixture->Request.strNickName = leader.strNickName;
 			fixture->Request.iPartyRequestSequence = 81u;
@@ -688,33 +690,87 @@ void LostArk::Server::CServerGameplayContractRunner::Run_CharacterAdmission(TEST
 						"Non-leader propose is ignored without opening a vote");
 				}
 			}
-			// 쿠크세이튼 타겟 -> KAKULSAYDON_ARENA 전송
+			// Exercise the actual transfer consumer, including solo admission and every party size.
+			for (const std::size_t count : { 1u, 2u, 3u, 4u })
+			for (const bool accept : { false, true })
 			{
-				auto fixture = makeParty(2u, true);
+				auto fixture = makeParty(count, count > 1u, WORLD_ID::KAKULSAYDON_ARENA);
 				const auto guide = findGuide(*fixture->Source);
-				if (fixture->Ready && guide != fixture->Source->m_WorldEntities.end())
+				tests.Require(fixture->Ready && guide != fixture->Source->m_WorldEntities.end(),
+					"Create one-to-four participant Kouku raid-entry fixture");
+				if (!fixture->Ready || guide == fixture->Source->m_WorldEntities.end()) continue;
+				placeAtGuide(*fixture, guide->fPositionX, guide->fPositionZ);
+				const auto sourcePlayers = fixture->Source->m_Players;
+				const auto sourceParties = fixture->Source->m_PartyMembersByPartyId;
+				C2S_RAID_ENTRY_PROPOSE propose{};
+				propose.iRequestSequence = 84u;
+				propose.strNpcPlacementId = guide->strPlacementId;
+				propose.eTarget = RAID_ENTRY_TARGET::KAKULSAYDON;
+				fixture->Source->Handle_RaidEntryPropose(
+					fixture->Sessions.front()->Get_SessionId(), propose);
+				tests.Require(1u == fixture->Source->m_RaidEntryProposals.size(),
+					"Kouku entry opens the same server-authoritative vote for solo and parties");
+				if (fixture->Source->m_RaidEntryProposals.empty()) continue;
+				const auto proposalId = fixture->Source->m_RaidEntryProposals.front().iProposalId;
+				for (std::size_t index = 0; index < count; ++index)
 				{
-					placeAtGuide(*fixture, guide->fPositionX, guide->fPositionZ);
-					C2S_RAID_ENTRY_PROPOSE propose{};
-					propose.iRequestSequence = 84u;
-					propose.strNpcPlacementId = guide->strPlacementId;
-					propose.eTarget = RAID_ENTRY_TARGET::KAKULSAYDON;
-					fixture->Source->Handle_RaidEntryPropose(
-						fixture->Sessions.front()->Get_SessionId(), propose);
-					const std::uint32_t proposalId =
-						fixture->Source->m_RaidEntryProposals.front().iProposalId;
-					for (const auto& s : fixture->Sessions)
-					{
-						C2S_RAID_ENTRY_RESPOND r{};
-						r.iRequestSequence = 1u; r.iProposalId = proposalId;
-						r.bAccepted = true;
-						fixture->Source->Handle_RaidEntryRespond(s->Get_SessionId(), r);
-					}
-					tests.Require(1u == fixture->Source->m_PendingWorldTransfers.size() &&
-						WORLD_ID::KAKULSAYDON_ARENA ==
-							fixture->Source->m_PendingWorldTransfers.front().eTargetWorldId,
-						"Kukusaton target stages a KakulSaydon batch transfer");
+					C2S_RAID_ENTRY_RESPOND response{};
+					response.iRequestSequence = 1u;
+					response.iProposalId = proposalId;
+					response.bAccepted = accept || index + 1u < count;
+					fixture->Source->Handle_RaidEntryRespond(
+						fixture->Sessions[index]->Get_SessionId(), response);
 				}
+				if (!accept)
+				{
+					bool preserved = fixture->Source->m_RaidEntryProposals.empty() &&
+						fixture->Source->m_PendingWorldTransfers.empty() &&
+						fixture->Source->m_Players.size() == sourcePlayers.size() &&
+						fixture->Source->m_PartyMembersByPartyId == sourceParties && fixture->Target->m_Players.empty();
+					for (const auto& session : fixture->Sessions)
+					{
+						const auto& before = sourcePlayers.at(session->Get_PlayerId());
+						const auto& after = fixture->Source->m_Players.at(session->Get_PlayerId());
+						preserved = preserved && before.iCurrentHp == after.iCurrentHp &&
+							before.fPositionX == after.fPositionX && before.fPositionZ == after.fPositionZ &&
+							fixture->App->m_GameplayBindingBySessionId.at(session->Get_SessionId()).pSimulation == fixture->Source;
+						for (const auto& frame : session->m_OutboundFrames)
+							preserved = preserved && frame.ePacketType != PACKET_TYPE::S2C_ENTER_ACCEPTED;
+					}
+					tests.Require(preserved, "A Kouku entry decline preserves every Bern player, party and binding");
+					continue;
+				}
+				const bool staged = fixture->Source->Try_DequeueWorldTransfer(fixture->Request) &&
+					fixture->Request.eTargetWorldId == WORLD_ID::KAKULSAYDON_ARENA &&
+					fixture->Request.PartyBatchSessionIds.size() == (count > 1u ? count : 0u);
+				CServerApp::SESSION_WORLD_TRANSFER_FAILURE failure{};
+				bool committed = staged && fixture->App->Transfer_SessionWorld(fixture->Source, fixture->Request, failure);
+				// Solo transfer queues the existing REGISTER/ENTER/LEAVE commands; parties commit synchronously.
+				if (committed && 1u == count)
+				{
+					fixture->Source->Tick(1.f / 30.f);
+					fixture->Target->Tick(1.f / 30.f);
+				}
+				committed = committed && fixture->Source->m_Players.empty() &&
+					fixture->Source->m_PartyMembersByPartyId.empty() && count == fixture->Target->m_Players.size() &&
+					fixture->Target->m_PartyMembersByPartyId.size() == (count > 1u ? 1u : 0u) &&
+					!fixture->Target->Is_KoukuRaidRunning();
+				for (const auto& session : fixture->Sessions)
+				{
+					std::size_t accepted = 0u;
+					for (const auto& frame : session->m_OutboundFrames)
+					{
+						if (frame.ePacketType != PACKET_TYPE::S2C_ENTER_ACCEPTED) continue;
+						CPacketReader reader{ std::span<const std::uint8_t>{ frame.Bytes }.subspan(PACKET_HEADER_BYTES) };
+						S2C_ENTER_ACCEPTED message{};
+						committed = Read_Message(reader, message) && message.eWorldId == WORLD_ID::KAKULSAYDON_ARENA && committed;
+						++accepted;
+					}
+					const auto& binding = fixture->App->m_GameplayBindingBySessionId.at(session->Get_SessionId());
+					committed = committed && 1u == accepted && binding.eWorldId == WORLD_ID::KAKULSAYDON_ARENA &&
+						binding.pSimulation == fixture->Target;
+				}
+				tests.Require(committed, "Accepted Kouku vote transfers all participants through ServerApp; entry collider still owns raid START");
 			}
 			// 타임아웃 -> Expire가 TIMEOUT으로 닫고 전송 없음
 			{
@@ -776,9 +832,10 @@ void LostArk::Server::CServerGameplayContractRunner::Run_CharacterAdmission(TEST
 				}
 			}
 		}
+		for (const auto targetWorld : { WORLD_ID::VALTAN_ARENA, WORLD_ID::KAKULSAYDON_ARENA })
 		{
-			auto fixture = makeParty(2u, true);
-			tests.Require(fixture->Ready, "Create party transfer rollback fixture");
+			auto fixture = makeParty(2u, true, targetWorld);
+			tests.Require(fixture->Ready, "Create Valtan/Kouku party transfer rollback fixture");
 			if (fixture->Ready)
 			{
 				for (auto& [id, player] : fixture->Source->m_Players)
@@ -876,15 +933,23 @@ void LostArk::Server::CServerGameplayContractRunner::Run_CharacterAdmission(TEST
 				for (std::size_t index = 0; index < CClientSession::MAX_OUTBOUND_FRAME_COUNT; ++index)
 					(void)fixture->Sessions[0]->Send_Frame(PACKET_TYPE::S2C_CHAT, payload);
 				fixture->Source->Notify_PartyTransferFailure(fixture->Sessions[0]->Get_SessionId(),
-					81u, WORLD_ID::VALTAN_ARENA, PARTY_TRANSFER_RESULT::REJECTED_OUTBOUND_BUSY);
+					81u, targetWorld, PARTY_TRANSFER_RESULT::REJECTED_OUTBOUND_BUSY);
 				const bool pendingNotice = !fixture->Sessions[0]->Is_Closing() &&
 					1u == fixture->Source->m_PendingPartyTransferResults.size();
 				clearOutbound(*fixture->Sessions[0]);
 				fixture->Source->Flush_PartyTransferResults();
-				tests.Require(pendingNotice && fixture->Source->m_PendingPartyTransferResults.empty() &&
+				bool delivered = pendingNotice && fixture->Source->m_PendingPartyTransferResults.empty() &&
 					1u == fixture->Sessions[0]->m_OutboundFrames.size() &&
-					PACKET_TYPE::S2C_PARTY_TRANSFER_RESULT == fixture->Sessions[0]->m_OutboundFrames.front().ePacketType,
-					"Delay a busy-queue failure notice without disconnecting the preserved source party");
+					PACKET_TYPE::S2C_PARTY_TRANSFER_RESULT == fixture->Sessions[0]->m_OutboundFrames.front().ePacketType;
+				if (delivered)
+				{
+					CPacketReader reader{ std::span<const std::uint8_t>{ fixture->Sessions[0]->m_OutboundFrames.front().Bytes }.subspan(PACKET_HEADER_BYTES) };
+					S2C_PARTY_TRANSFER_RESULT notice{};
+					delivered = Read_Message(reader, notice) && notice.eTargetWorldId == targetWorld &&
+						notice.eResult == PARTY_TRANSFER_RESULT::REJECTED_OUTBOUND_BUSY;
+				}
+				tests.Require(delivered,
+					"Delay and decode a busy-queue failure notice for the selected raid without disconnecting the preserved source party");
 			}
 		}
 		{

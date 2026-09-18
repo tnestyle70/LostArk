@@ -81,7 +81,8 @@ Client/Server 최소 컴파일, 실제 catalog parse/project/publish 후보 검�
 
 2026-09-19 최종 추가 요청은 기존 ResourceDelivery 방식의 얇은 실행 ZIP이다.
 Release EXE/DLL/CSO와 양쪽 게시 DataFiles, Client가 직접 읽는 이번 변경의 필수
-작은 Data JSON만 포함한다. 전체 Data 1.1GB와 Resources·사운드 미디어는 넣지 않는다.
+Data JSON과 함께 바뀌는 EffectCatalog가 참조하는 authored JSON 전체를 포함한다.
+전체 Data를 무조건 복사하지 않으며 Resources·사운드 미디어는 넣지 않는다.
 다른 리소스는 이미 팀에서 공유받았다는 사용자 확인을 적용한다. 이번 신규 WAV 18개는
 `NEW_SOUND_PATHS.txt`의 상대 경로만 별도로 전달한다.
 기존 LostArk 폴더 선택 wrapper, 설치 전 검증·기존 파일 백업과 no-build Client 바로가기를
@@ -96,6 +97,15 @@ Release EXE/DLL/CSO와 양쪽 게시 DataFiles, Client가 직접 읽는 이번 �
 발탄 blocker의 Client/Server 일치를 확인한다. 기존 얇은 배포의 직접 소비 Data 보충분과
 폴더 선택 설치 흐름을 재사용하며 배포 파일 목록·설치 설명·RESULT를 최종 ZIP에 맞춘다.
 
+### G07 추가 반영: 흰 창 종료와 catalog 참조 누락
+
+전체 EffectCatalog와 변경된 authored JSON 일부만 전달하는 방식은 수신 PC의 기존
+Data 상태에 의존한다. 현재 loader가 시작 중 검사하는 모든 `authoringPath`와 optional
+`screenOverlayPresentationPath`를 목록에서 수집하고 크기·hash 검증 후 같이 전달한다.
+Release는 초기화 단계·HRESULT·상세 실패와 종료 사유를 기록한다. 기존 폴더 선택 실행기는
+시작 직후 실패를 감지해 해당 실행의 로그를 보여준다. 설치 검증 성공, 프로세스 생존,
+사용자의 실제 Lobby 진입 확인을 구분한다.
+
 ## G08. ESC 커서 선택과 Composition 게시 계약 보정
 
 ESC 옵션의 열린 콤보가 클릭 소비 플래그를 먼저 세워 자기 항목 선택까지 차단하는 순서를
@@ -107,3 +117,15 @@ WorldSequence v3의 기존 `colliderTracks`와 `loopFullPresentation` 계약이 
 Client에만 연결되고 Composition publisher 검증에서 누락된 부분을 맞춘다. 필드를 삭제하거나
 unknown-field 거부를 풀지 않고, 기존 shape·시간·결합 제한을 검사한 뒤 원본을 게시한다.
 실제 저장본 전체 검증과 잘못된 collider/loop 입력의 거부를 확인한다.
+
+
+## G09. Bern 군단장 레이드의 쿠크 입장 투표
+
+2026-09-19 후속 요청은 Bern의 기존 군단장 레이드 UI에서 쿠크를 선택하고 입장하는
+제품 경로를 완성하는 것이다. 기존 PROPOSE → Server 전원 수락 투표 → typed world transfer를
+유지하며 UI가 직접 Level을 전환하거나 Server 승인을 우회하지 않는다.
+`CRaidEntryPreviewView`는 수신한 투표 target을 별도로 보존해 선택 탭과 무관하게
+`RAID_DEFS`의 해당 레이드 이름을 확인창에 표시한다. 알 수 없는 target을 발탄으로
+대체하지 않으며 수락·거절·취소 시 기존 proposal lifecycle과 함께 표시 target을 정리한다.
+실제 함수의 비시각 입력·문구·intent 검증과 Client 최소 컴파일을 수행하고 최종 화면은
+사용자가 확인한다. Server의 파티 target 제한 보정은 같은 입장 수직 슬라이스로 검증한다.

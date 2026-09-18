@@ -123,9 +123,34 @@
 #include <tuple>
 #include <cwchar>
 #include <fstream>
+#include <iomanip>
 
 namespace
 {
+    void WriteStartupDiagnostic(const char* stage, const HRESULT result,
+        const std::string& status)
+    {
+        // Resolve beside the repository launcher, independent of the process cwd.
+        wchar_t modulePath[32768]{};
+        const DWORD pathLength = GetModuleFileNameW(nullptr, modulePath,
+            static_cast<DWORD>(std::size(modulePath)));
+        std::filesystem::path logPath = "ClientStartup.user.log";
+        if (pathLength > 0 && pathLength < std::size(modulePath))
+            logPath = std::filesystem::path(modulePath).parent_path().parent_path().parent_path() /
+                L"Default" / L"ClientStartup.user.log";
+        std::ofstream output(logPath, std::ios::binary | std::ios::app);
+        if (!output)
+            return;
+        SYSTEMTIME time{};
+        GetLocalTime(&time);
+        output << std::setfill('0') << time.wYear << '-'
+            << std::setw(2) << time.wMonth << '-' << std::setw(2) << time.wDay << ' '
+            << std::setw(2) << time.wHour << ':' << std::setw(2) << time.wMinute << ':'
+            << std::setw(2) << time.wSecond << " pid=" << GetCurrentProcessId()
+            << " stage=" << stage << " hr=0x" << std::hex << std::uppercase
+            << static_cast<unsigned long>(result) << std::dec << " status=" << status << '\n';
+    }
+
 	/* The MVP award page is a full-screen modal (retail places it on
 	   sortingLayer "3_topmostHUD" with orderInLayer 2000), so the combat HUD,
 	   the boss bar and their text passes all stop while it is up. */
@@ -746,6 +771,14 @@ void CMainApp::Update_DebugWindowTitleWithFps(const wchar_t* pBaseTitle)
 
 HRESULT CMainApp::Initialize()
 {
+    WriteStartupDiagnostic("Initialize", S_OK, "begin");
+    const auto InitializeStage = [](const char* stage, const auto& initialize)
+    {
+        WriteStartupDiagnostic(stage, S_OK, "begin");
+        const HRESULT result = initialize();
+        WriteStartupDiagnostic(stage, result, FAILED(result) ? "failed" : "ready");
+        return result;
+    };
 	/* CreateWICTextureFromFile (used by the HUD runtime view for non-DDS art) needs COM on the
 	calling thread. The main thread never initializes it otherwise. */
 	CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
@@ -758,22 +791,23 @@ HRESULT CMainApp::Initialize()
 	engineDesc.iWinSizeX = g_iWinSizeX;
 	engineDesc.iWinSizeY = g_iWinSizeY;
 
-	if (FAILED(CGameInstance::Get().Initialize_Engine(
-		engineDesc,
-		m_pDevice,
-		m_pContext)))
-	{
-		return E_FAIL;
-	}
+    HRESULT startupResult = InitializeStage("Engine.Initialize", [&]()
+    {
+        return CGameInstance::Get().Initialize_Engine(engineDesc, m_pDevice, m_pContext);
+    });
+    if (FAILED(startupResult))
+        return startupResult;
 
 	/* Before the first rendering profile resolve: Resolve_EffectiveQuality folds the
 	user's video settings in, and Apply_Audio needs the mixer Initialize_Engine just
 	built. Every run starts from the retail defaults; nothing is read from disk. */
 	CUserSettings::Get().Initialize();
 
+    WriteStartupDiagnostic("Rendering.Load_Runtime", S_OK, "begin");
 	string renderingProfileStatus;
 	if (!m_RenderingProfiles.Load_Runtime(renderingProfileStatus))
 	{
+        WriteStartupDiagnostic("Rendering.Load_Runtime", E_FAIL, renderingProfileStatus);
 		OutputDebugStringA((
 			"[MainApp] Rendering profile initialization failed: " +
 			renderingProfileStatus + "\n").c_str());
@@ -784,30 +818,44 @@ HRESULT CMainApp::Initialize()
 		return E_FAIL;
 	}
 
+    WriteStartupDiagnostic("Rendering.Load_Runtime", S_OK, renderingProfileStatus);
 	std::string lightStatus;
 	if (!m_LightResources.Load_Runtime(lightStatus))
 		OutputDebugStringA(("[MainApp] Light resources unavailable: "+lightStatus+"\n").c_str());
 	if (!m_LightResources.Refresh_MapResources("LV_LUT_MIDNIGHTC_ED", lightStatus))
 		OutputDebugStringA(("[MainApp] Map light resources unavailable: "+lightStatus+"\n").c_str());
-	if (!CNetworkManager::Get().Initialize())
-		return E_FAIL;
-	if (FAILED(ReadyImGuiRuntime()))
-		return E_FAIL;
+    WriteStartupDiagnostic("Network.Initialize", S_OK, "begin");
+    if (!CNetworkManager::Get().Initialize())
+    {
+        const int networkError = CNetworkManager::Get().Get_LastErrorCode();
+        const HRESULT networkResult = networkError ? HRESULT_FROM_WIN32(networkError) : E_FAIL;
+        WriteStartupDiagnostic("Network.Initialize", networkResult,
+            "WSAStartup error=" + std::to_string(networkError));
+        return networkResult;
+    }
+    WriteStartupDiagnostic("Network.Initialize", S_OK, "ready");
+    startupResult = InitializeStage("ImGui.Initialize", [&]() { return ReadyImGuiRuntime(); });
+    if (FAILED(startupResult))
+        return startupResult;
 
 #ifdef _DEBUG
-	if (FAILED(ReadyDebugTools()))
-		return E_FAIL;
+    startupResult = InitializeStage("DebugTools.Initialize", [&]() { return ReadyDebugTools(); });
+    if (FAILED(startupResult))
+        return startupResult;
 #endif
 
-	if (FAILED(Ready_Fonts()) ||
-		FAILED(Ready_Prototype_For_Static()))
-	{
-		return E_FAIL;
-	}
+    startupResult = InitializeStage("Fonts.Initialize", [&]() { return Ready_Fonts(); });
+    if (FAILED(startupResult))
+        return startupResult;
+    startupResult = InitializeStage("StaticPrototypes.Initialize", [&]() { return Ready_Prototype_For_Static(); });
+    if (FAILED(startupResult))
+        return startupResult;
 
+    WriteStartupDiagnostic("EffectCatalog.Load", S_OK, "begin");
 	std::string effectCatalogStatus;
 	if (!CEffectCatalog::Load(effectCatalogStatus))
 	{
+        WriteStartupDiagnostic("EffectCatalog.Load", E_FAIL, effectCatalogStatus);
 		const std::string diagnostic =
 			"[MainApp] Effect Catalog initialization failed: " +
 			effectCatalogStatus + "\n";
@@ -818,6 +866,8 @@ HRESULT CMainApp::Initialize()
 #endif
 		return E_FAIL;
 	}
+
+    WriteStartupDiagnostic("EffectCatalog.Load", S_OK, effectCatalogStatus);
 
 	// The Loader snapshots skill definitions before starting its worker. Release
 	// must not depend on opening an authoring tool to initialize these definitions.
@@ -872,6 +922,7 @@ HRESULT CMainApp::Initialize()
 	/* Created FIRST among the STATIC-level UI documents -- CUI_Sprite draw order follows
 	creation order, and the always-on combat HUD must sit underneath the boss bar, Esther
 	window, Item Upgrade window, and inventory, matching the old ImGui submission order. */
+    WriteStartupDiagnostic("UI.Initialize", S_OK, "begin");
 	m_pHUDRuntimeView = std::make_unique<CUILayoutRuntime>(
 		m_pDevice, m_pContext, ETOUI(LEVEL::STATIC), TEXT("Layer_UI"),
 		L"UI/HUD/HUD_Layout.json");
@@ -946,9 +997,14 @@ HRESULT CMainApp::Initialize()
 	/* Last of all: the carried quick-slot icon must ride over every window above. */
 	m_pQuickSlotDragView = std::make_unique<CQuickSlotDragView>(m_pDevice, m_pContext);
 
-	if (FAILED(Start_Level(LEVEL::LOBBY)))
-		return E_FAIL;
-
+    WriteStartupDiagnostic("UI.Initialize", S_OK, "ready");
+    WriteStartupDiagnostic("Lobby.Start_Level", S_OK, "begin");
+    startupResult = Start_Level(LEVEL::LOBBY);
+    WriteStartupDiagnostic("Lobby.Start_Level", startupResult,
+        FAILED(startupResult) ? CLevelTransitionService::Get_Status() : "ready");
+    if (FAILED(startupResult))
+        return startupResult;
+    WriteStartupDiagnostic("Initialize", S_OK, "ready");
 	return S_OK;
 }
 
