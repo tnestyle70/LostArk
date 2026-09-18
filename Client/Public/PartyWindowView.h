@@ -31,6 +31,9 @@ public:
 		string strClassSymbolPath;
 		f32_t fHpRatio = 0.f;
 		bool_t hasHealthSnapshot = false;
+		/* KoukuSaydon madness under the HP bar; hidden in worlds without the gauge. */
+		f32_t fMadnessRatio = 0.f;
+		bool_t hasMadness = false;
 		bool_t isLeader = false;
 	};
 

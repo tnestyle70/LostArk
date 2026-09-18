@@ -3042,6 +3042,16 @@ HRESULT CMainApp::Render()
 					m_pPartyWindowView->Render();
 				}
 			}
+			else if (ETOUI(LEVEL::KAKULSAYDON_ARENA) == partyLevel)
+			{
+				if (CLevel_KakulSaydonArena* pKoukuArena = CLevel_KakulSaydonArena::Get_Active())
+					m_pPartyWindowView->Sync_From_Roster(
+						pKoukuArena->Get_PartyRoster(), pKoukuArena->Get_PlayerHealth());
+				{
+					Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.Party.Build");
+					m_pPartyWindowView->Render();
+				}
+			}
 		}
 #ifdef _DEBUG
 		if (!m_pLevelNavigationDebug)
@@ -3394,8 +3404,16 @@ HRESULT CMainApp::Render()
 	/* Not level-gated -- both views self-gate internally (open/roster state). */
 	if (nullptr != m_pChatWindowView)
 		m_pChatWindowView->RenderText();
-	if (nullptr != m_pPartyWindowView)
-		m_pPartyWindowView->RenderText();
+	/* The roster sprites only draw in the levels above; the labels follow them, or the
+	   member names of the last room sit over the loading screen and the next level. */
+	{
+		const uint32_t partyTextLevel = CGameInstance::Get().Get_CurrentLevelID();
+		const bool_t bPartyTextLevel = ETOUI(LEVEL::BERN) == partyTextLevel ||
+			ETOUI(LEVEL::VALTAN_ARENA) == partyTextLevel ||
+			ETOUI(LEVEL::KAKULSAYDON_ARENA) == partyTextLevel;
+		if (nullptr != m_pPartyWindowView && bPartyTextLevel)
+			m_pPartyWindowView->RenderText();
+	}
 
 	/* The runtime windows draw their text last, bottom to top in their sprite order (the
 	order CMainApp constructed them). Everything above was clipped out of the top window's
@@ -3905,7 +3923,7 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 		else if (ETOUI(LEVEL::CHARACTER_SELECT) == currentLevel)
 		{
 			if (CLevel_CharacterSelect* pCharacterSelect = CLevel_CharacterSelect::Get_Active())
-				pLocalCharacter = pCharacterSelect->Get_LocalCharacter();
+				pLocalCharacter = pCharacterSelect->Get_CharacterInfoCharacter();
 		}
 		else if (ETOUI(LEVEL::KAKULSAYDON_ARENA) == currentLevel)
 		{
@@ -4849,7 +4867,8 @@ bool_t CMainApp::Is_AnyRuntimeWindowOpen() const
 		(nullptr != m_pWorldMapWindowView && m_pWorldMapWindowView->Is_Open()) ||
 		(nullptr != m_pSkillWindowView && m_pSkillWindowView->Is_Open()) ||
 		(nullptr != m_pChatWindowView && m_pChatWindowView->Is_Open()) ||
-		(nullptr != m_pCharacterSelectWindowView && m_pCharacterSelectWindowView->Is_Open());
+		(nullptr != m_pCharacterSelectWindowView && m_pCharacterSelectWindowView->Is_Open()) ||
+		m_bItemUpgradePreviewVisible || Is_MvpResultPageOpen();
 	return bOpen;
 }
 
@@ -4875,6 +4894,20 @@ void CMainApp::Update_SystemOptionWindow(const f32_t fTimeDelta)
 		{
 			if (m_pSystemOptionView->Is_Open())
 				m_pSystemOptionView->Handle_EscapeEdge();
+			else if (Is_MvpResultPageOpen())
+			{
+				/* The award page is the topmost modal: Escape closes it, and nothing
+				   (least of all this window) opens under it on the same press. */
+				if (CLevel_KakulSaydonArena* pArena = CLevel_KakulSaydonArena::Get_Active())
+					pArena->Debug_Hide_MvpResult();
+				if (CLevel_ValtanArena* pValtan = CLevel_ValtanArena::Get_Active())
+					pValtan->Hide_MvpResult();
+			}
+			else if (m_bItemUpgradePreviewVisible)
+			{
+				m_bItemUpgradePreviewVisible = false;
+				Hide_ItemUpgrade();
+			}
 			else if (!bOtherWindowOpen)
 			{
 				m_pSystemOptionView->Open();

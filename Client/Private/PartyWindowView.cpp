@@ -80,6 +80,8 @@ void Client::CPartyWindowView::Hide_AllRows()
 		m_pView->Set_SlotVisible(Row_SlotId("PartyWindow_Symbol_", iRow), false);
 		m_pView->Set_SlotVisible(Row_SlotId("PartyWindow_HpBg_", iRow), false);
 		m_pView->Set_SlotVisible(Row_SlotId("PartyWindow_HpFill_", iRow), false);
+		m_pView->Set_SlotVisible(Row_SlotId("PartyWindow_MadnessBg_", iRow), false);
+		m_pView->Set_SlotVisible(Row_SlotId("PartyWindow_MadnessFill_", iRow), false);
 		m_pView->Set_SlotVisible(Row_SlotId("PartyWindow_Number_", iRow), false);
 		m_pView->Set_SlotVisible(Row_SlotId("PartyWindow_LeaderMark_", iRow), false);
 	}
@@ -102,6 +104,8 @@ void Client::CPartyWindowView::Sync_From_Roster(
 				string("UI/ClassSelect/") + pFolderName + "/IdentitySymbol.png" : string{},
 			health.Get_Ratio(),
 			health.hasSnapshot,
+			health.Get_MadnessRatio(),
+			health.Has_Madness(),
 			0 == index });
 	}
 }
@@ -170,6 +174,15 @@ void Client::CPartyWindowView::Render()
 		else
 		{
 			m_pView->Set_SlotVisible(strHpFill, false);
+		}
+		/* Madness (KoukuSaydon): a thin bar under the HP bar, only where the room has one. */
+		{
+			const string strMadnessBg = Row_SlotId("PartyWindow_MadnessBg_", iRow);
+			const string strMadnessFill = Row_SlotId("PartyWindow_MadnessFill_", iRow);
+			m_pView->Set_SlotVisible(strMadnessBg, Member.hasMadness);
+			m_pView->Set_SlotVisible(strMadnessFill, Member.hasMadness);
+			if (Member.hasMadness)
+				m_pView->Set_SlotFillRatio(strMadnessFill, std::clamp(Member.fMadnessRatio, 0.f, 1.f));
 		}
 
 		m_pView->Set_SlotVisible(strLeader, Member.isLeader);

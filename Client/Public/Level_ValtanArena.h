@@ -65,6 +65,8 @@ public:
 	   Portraits are host render targets, drawn from CMainApp's portrait pass. */
 	void Render_MvpPortraits();
 	bool_t Is_MvpResultVisible() const;
+	/* Escape on the award page (CMainApp's key edge) closes it like its own button does. */
+	void Hide_MvpResult();
 
 	const ARENA_CAMERA_PROFILE& Get_FollowCameraProfile() const
 	{ return m_FollowCameraProfile; }

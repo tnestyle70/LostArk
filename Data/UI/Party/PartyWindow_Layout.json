@@ -950,6 +950,366 @@
         "loop": true,
         "additive": false
       }
+    },
+    {
+      "id": "PartyWindow_MadnessBg_0",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 56.0,
+        "y": 301.2,
+        "width": 207.0,
+        "height": 7.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Party/Party Hp Bg.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "PartyWindow_MadnessFill_0",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 56.5,
+        "y": 301.7,
+        "width": 206.0,
+        "height": 6.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Party/Party HP.png",
+          "hoverPath": null,
+          "tint": [
+            0.55,
+            0.25,
+            0.95,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "PartyWindow_MadnessBg_1",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 56.0,
+        "y": 340.7,
+        "width": 207.0,
+        "height": 7.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Party/Party Hp Bg.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "PartyWindow_MadnessFill_1",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 56.5,
+        "y": 341.2,
+        "width": 206.0,
+        "height": 6.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Party/Party HP.png",
+          "hoverPath": null,
+          "tint": [
+            0.55,
+            0.25,
+            0.95,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "PartyWindow_MadnessBg_2",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 56.0,
+        "y": 380.2,
+        "width": 207.0,
+        "height": 7.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Party/Party Hp Bg.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "PartyWindow_MadnessFill_2",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 56.5,
+        "y": 380.7,
+        "width": 206.0,
+        "height": 6.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Party/Party HP.png",
+          "hoverPath": null,
+          "tint": [
+            0.55,
+            0.25,
+            0.95,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "PartyWindow_MadnessBg_3",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 56.0,
+        "y": 419.7,
+        "width": 207.0,
+        "height": 7.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Party/Party Hp Bg.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "PartyWindow_MadnessFill_3",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 56.5,
+        "y": 420.2,
+        "width": 206.0,
+        "height": 6.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Party/Party HP.png",
+          "hoverPath": null,
+          "tint": [
+            0.55,
+            0.25,
+            0.95,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
     }
   ]
 }

@@ -237,6 +237,14 @@ public:
 	{
 		return m_Replication.Get_LocalCharacter();
 	}
+	/* What the character info window portrays here: the customizing preview while that scene
+	   is up (its costume and hair choices live on that character only), else the replicated
+	   local player. */
+	shared_ptr<CCharacter> Get_CharacterInfoCharacter() const
+	{
+		return Is_CustomizingOpen() && nullptr != m_pActiveCharacter ?
+			m_pActiveCharacter : m_Replication.Get_LocalCharacter();
+	}
 	/* Authored and Debug Create Character buttons only stage this request. The common hidden
 	product input host consumes it once and calls OpenPopup/BeginPopupModal under one stable ImGui
 	ID stack, so Release does not need the visible Character Select diagnostic window. */
