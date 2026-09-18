@@ -269,15 +269,17 @@ void Client::CSystemOptionWindowView::Update_Rows()
 	for (ROW_LAYOUT& Row : found->second)
 	{
 		const SYSTEM_OPTION_ROW& R = *Row.pRow;
+		/* A header row (the reset button beside the title) neither scrolls nor clips. */
+		const bool_t bHeader = Is_HeaderRow(Row);
 		const f32_t fX = Row.fX;
-		const f32_t fY = Row.fY - fScroll;
+		const f32_t fY = Row.fY - (bHeader ? 0.f : fScroll);
 		const f32_t fValue = Read_Value(R);
-		const bool_t bRowHovered = !bPopup && bMouseInPane &&
+		const bool_t bRowHovered = !bPopup && bMouseInPane && !bHeader &&
 			fMouseY >= fY && fMouseY < fY + Row.fHeight && fMouseX >= fX;
 		/* A click only counts inside the pane; the pane edges clip the widgets themselves. */
 		const auto Hovered = [&](f32_t x, f32_t y, f32_t w, f32_t h)
 			{
-				return !bPopup && bMouseInPane && Is_Hovered(x, y, w, h);
+				return !bPopup && (bHeader || bMouseInPane) && Is_Hovered(x, y, w, h);
 			};
 		const auto Clicked = [&](f32_t x, f32_t y, f32_t w, f32_t h)
 			{
@@ -304,7 +306,7 @@ void Client::CSystemOptionWindowView::Update_Rows()
 		case SYSTEM_OPTION_CONTROL::BUTTON:
 		{
 			const string strBtn = Slot(R, "btn");
-			Place_Slot(strBtn, fX, fY, BUTTON_W, HEIGHT_BUTTON, true);
+			Place_Slot(strBtn, fX, fY, BUTTON_W, HEIGHT_BUTTON, !bHeader);
 			const bool_t bHovered = Hovered(fX, fY, BUTTON_W, HEIGHT_BUTTON);
 			Set_Button(strBtn, ART_BTN_NORMAL, ART_BTN_OVER, ART_BTN_DOWN, ART_BTN_DISABLED,
 				bHovered ? (Router.Is_LeftDown() ? BUTTON_STATE::DOWN : BUTTON_STATE::OVER) : BUTTON_STATE::NORMAL);

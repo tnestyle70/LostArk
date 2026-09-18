@@ -498,9 +498,11 @@ void Client::CSystemOptionWindowView::Update_Scroll()
 	if (0 == m_iComboOpenKey && Is_Hovered(Pane.fX, Pane.fY, Pane.fWidth, Pane.fHeight))
 		fScroll -= static_cast<f32_t>(Router.Get_MouseWheelNotches()) * SCROLL_WHEEL_STEP;
 
-	/* Thumb: proportional to the visible fraction, dragged with the mouse. */
-	const f32_t fTrackY = Pane.fY + SCROLL_ARROW + 1.f;
-	const f32_t fTrackH = Pane.fHeight - (SCROLL_ARROW + 1.f) * 2.f;
+	/* Thumb: proportional to the visible fraction, dragged with the mouse. The bar is the
+	retail one on the whole pane (DefaultScrollBar_V2 at content (845,14)), so the thumb
+	travels between the two arrows of that bar, not inside the row band under the heading. */
+	const f32_t fTrackY = SCROLL_Y + SCROLL_ARROW + 3.f;
+	const f32_t fTrackH = SCROLL_H - (SCROLL_ARROW + 3.f) * 2.f;
 	const f32_t fThumbH = fMaxScroll <= 0.f ? fTrackH :
 		(std::max)(SCROLL_THUMB_MIN, fTrackH * Pane.fHeight / m_fContentHeight);
 	const f32_t fThumbTravel = fTrackH - fThumbH;
@@ -518,8 +520,9 @@ void Client::CSystemOptionWindowView::Update_Scroll()
 	if (m_bScrollDragging && bMouse && fThumbTravel > 0.f)
 		fScroll = ((fMouseY - m_fScrollDragOffset) - fTrackY) / fThumbTravel * fMaxScroll;
 	/* Arrow buttons step a row. */
-	const f32_t fDownY = Pane.fY + Pane.fHeight - SCROLL_ARROW - 2.f;
-	if (0 == m_iComboOpenKey && Is_Clicked(SCROLL_X, Pane.fY + 2.f, SCROLL_ARROW, SCROLL_ARROW))
+	const f32_t fUpY = SCROLL_Y + 2.f;
+	const f32_t fDownY = SCROLL_Y + SCROLL_H - SCROLL_ARROW - 2.f;
+	if (0 == m_iComboOpenKey && Is_Clicked(SCROLL_X, fUpY, SCROLL_ARROW, SCROLL_ARROW))
 		fScroll -= SCROLL_WHEEL_STEP;
 	if (0 == m_iComboOpenKey && Is_Clicked(SCROLL_X, fDownY, SCROLL_ARROW, SCROLL_ARROW))
 		fScroll += SCROLL_WHEEL_STEP;
@@ -529,10 +532,21 @@ void Client::CSystemOptionWindowView::Update_Scroll()
 	Place_Slot("SO_ScrollThumb", SCROLL_X, fPlacedThumbY, SCROLL_W, fThumbH, false);
 	m_pView->Set_SlotTexture("SO_ScrollThumb", m_bScrollDragging ? ART_SCROLL_THUMB_DOWN :
 		(bThumbHovered ? ART_SCROLL_THUMB_OVER : ART_SCROLL_THUMB_NORMAL));
-	m_pView->Set_SlotTexture("SO_ScrollUp", Is_Hovered(SCROLL_X, Pane.fY + 2.f, SCROLL_ARROW, SCROLL_ARROW) ?
+	m_pView->Set_SlotTexture("SO_ScrollUp", Is_Hovered(SCROLL_X, fUpY, SCROLL_ARROW, SCROLL_ARROW) ?
 		ART_SCROLL_UP_OVER : ART_SCROLL_UP_NORMAL);
 	m_pView->Set_SlotTexture("SO_ScrollDown", Is_Hovered(SCROLL_X, fDownY, SCROLL_ARROW, SCROLL_ARROW) ?
 		ART_SCROLL_DOWN_OVER : ART_SCROLL_DOWN_NORMAL);
+	/* Retail shows no bar at all on a screen that fits. */
+	const bool_t bScrollable = fMaxScroll > 0.f;
+	for (const char* pId : { "SO_ScrollTrack", "SO_ScrollUp", "SO_ScrollDown", "SO_ScrollThumb" })
+		m_pView->Set_SlotVisible(pId, bScrollable);
+}
+
+bool_t Client::CSystemOptionWindowView::Is_HeaderRow(const ROW_LAYOUT& Row) const
+{
+	/* The screen's own reset button attaches to the right of the title row: it lives in the
+	heading band above the pane, does not scroll and is not clipped by it. */
+	return Row.fY + Row.fHeight <= Pane_Rect().fY;
 }
 
 void Client::CSystemOptionWindowView::Update_Buttons()
@@ -622,8 +636,15 @@ void Client::CSystemOptionWindowView::Render_Text()
 	const SYSTEM_OPTION_TAB* pTab = m_Document.Find_Tab(m_iActiveTabId);
 	if (nullptr != pTab)
 	{
-		Draw_Label(FONT_YOON, pTab->strTitle, PANE_X + 3.f, TAB_TITLE_Y, TITLE_ROW_PX, COLOR_TITLE, vTopLeft);
+		Draw_Label(FONT_YOON, pTab->strTitle, PANE_X + 3.f, TAB_TITLE_Y, PANE_TITLE_PX, COLOR_TITLE, vTopLeft);
 		const RECT_RETAIL Pane = Pane_Rect();
+		const auto found = m_Screens.find(m_iActiveTabId);
+		/* Header rows (the screen's reset button hangs off the title) sit above the pane:
+		unscrolled and outside its clip. */
+		if (m_Screens.end() != found)
+			for (const ROW_LAYOUT& Row : found->second)
+				if (Is_HeaderRow(Row))
+					Render_RowText(Row, 0.f);
 		const float2_t vViewport = CGameInstance::Get().Get_ViewportSize();
 		const f32_t fScaleX = vViewport.x / m_pView->Get_ResolutionWidth();
 		const f32_t fScaleY = vViewport.y / m_pView->Get_ResolutionHeight();
@@ -641,12 +662,12 @@ void Client::CSystemOptionWindowView::Render_Text()
 				CGameInstance::Get().Add_TextClipOutRect(Ref_X(fPopX) * fScaleX, Ref_Y(fPopY) * fScaleY,
 					fPopWidth * m_fRetailScale * fScaleX, fPopHeight * m_fRetailScale * fScaleY);
 		}
-		const auto found = m_Screens.find(m_iActiveTabId);
 		if (m_Screens.end() != found)
 		{
 			const f32_t fScroll = m_ScrollByTab[m_iActiveTabId];
 			for (const ROW_LAYOUT& Row : found->second)
-				Render_RowText(Row, -fScroll);
+				if (!Is_HeaderRow(Row))
+					Render_RowText(Row, -fScroll);
 		}
 		CGameInstance::Get().Clear_TextClipInRect();
 		/* This window is the topmost runtime window, so the drop-list rect is the only

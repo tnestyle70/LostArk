@@ -133,6 +133,8 @@ private:
 	f32_t Ref_X(f32_t fRetailX) const;
 	f32_t Ref_Y(f32_t fRetailY) const;
 	RECT_RETAIL Pane_Rect() const;
+	/* Rows laid out above the pane's row band (the screen reset button beside the title). */
+	bool_t Is_HeaderRow(const ROW_LAYOUT& Row) const;
 	/* Places a runtime slot at a retail-px rect relative to the window origin, clipping it
 	to the pane when bClipToPane. Hidden entirely when nothing of it remains. */
 	void Place_Slot(const string& strSlotId, f32_t fRetailX, f32_t fRetailY,

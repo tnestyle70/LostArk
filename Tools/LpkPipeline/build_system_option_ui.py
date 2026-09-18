@@ -178,7 +178,10 @@ WINDOW_SCALE = 1.2
 RETAIL_SCALE = 2.0 / 3.0 * WINDOW_SCALE
 WINDOW_W = 876.0
 WINDOW_H = 690.0                          # frame incl. title band and button band
-CONTENT_Y = 0.0                           # SystemOptionWndContent origin == frame origin
+# SystemOptionWndContent (876x655) sits under the frame's title band: 690 - 655 = 35 px
+# below the frame origin. Measured against the retail capture (bookmark button box at
+# window y 48..82, list scroll bar from the pane top at 49).
+CONTENT_Y = 35.0
 TAB_X, TAB_Y, TAB_W, TAB_H = 13.0, 92.0, 224.0, 522.0   # first tree row at y 92, pitch 39
 PANE_X, PANE_Y, PANE_W, PANE_H = 272.0, CONTENT_Y + 14.0, 571.0, 582.0
 SCROLL_X, SCROLL_Y, SCROLL_W, SCROLL_H = 845.0, PANE_Y, 18.0, PANE_H

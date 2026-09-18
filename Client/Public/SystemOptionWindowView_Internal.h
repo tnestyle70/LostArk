@@ -31,18 +31,24 @@ namespace SystemOptionGeometry
 	constexpr f32_t TAB_PITCH = 39.f;
 	constexpr f32_t TAB_TEXT_X = 14.f;
 	constexpr f32_t TAB_CHILD_TEXT_X = 27.f;
-	constexpr f32_t TAB_TEXT_Y = 9.f;
-	constexpr f32_t BOOKMARK_Y = 18.f;
+	constexpr f32_t TAB_TEXT_Y = 6.f;
+	/* SystemOptionWndContent sits CONTENT_Y below the frame top (876x690 frame, 876x655
+	content): every content-relative retail coordinate below carries that offset. */
+	constexpr f32_t CONTENT_Y = 35.f;
+	constexpr f32_t BOOKMARK_Y = CONTENT_Y + 18.f;
 	constexpr f32_t BOOKMARK_W = 248.f;
 	constexpr f32_t BOOKMARK_H = 30.f;
 
-	/* Content pane (SystemOptionWndContent list at (272,14) 571x582) and its scroll bar. */
+	/* Content pane (SystemOptionWndContent list at (272,14) 571x582) and its scroll bar
+	(DefaultScrollBar_V2 at (845,14), the pane's full height). */
 	constexpr f32_t PANE_X = 272.f;
-	constexpr f32_t PANE_Y = 14.f;
+	constexpr f32_t PANE_Y = CONTENT_Y + 14.f;
 	constexpr f32_t PANE_W = 571.f;
 	constexpr f32_t PANE_H = 582.f;
-	constexpr f32_t TAB_TITLE_Y = PANE_Y + 42.f;
+	constexpr f32_t TAB_TITLE_Y = 56.f;
 	constexpr f32_t SCROLL_X = 847.f;
+	constexpr f32_t SCROLL_Y = PANE_Y;
+	constexpr f32_t SCROLL_H = PANE_H;
 	constexpr f32_t SCROLL_W = 14.f;
 	constexpr f32_t SCROLL_ARROW = 14.f;
 	constexpr f32_t SCROLL_THUMB_MIN = 30.f;
@@ -58,8 +64,11 @@ namespace SystemOptionGeometry
 	constexpr f32_t BUTTON_PX = 16.f;
 
 	/* Row text. */
-	constexpr f32_t ROW_FONT_PX = 14.f;
+	/* Measured against the retail capture: row / tab / value glyphs are 16 px of this font,
+	the pane heading 14, group titles 16. */
+	constexpr f32_t ROW_FONT_PX = 16.f;
 	constexpr f32_t TITLE_ROW_PX = 16.f;
+	constexpr f32_t PANE_TITLE_PX = 14.f;
 
 	/* Row heights per control (retail pitch minus the table's own MarginY). */
 	constexpr f32_t HEIGHT_TAB_TITLE = 24.f;
@@ -90,14 +99,15 @@ namespace SystemOptionGeometry
 	constexpr f32_t SLIDER_ICON_DX = 122.f;
 	constexpr f32_t SLIDER_ICON_W = 26.f;
 	constexpr f32_t SLIDER_ICON_H = 20.f;
-	constexpr f32_t SLIDER_DX = 151.f;
-	constexpr f32_t SLIDER_TRACK_W = 105.f;
+	/* Track 466..612 of the label's 314 origin in the retail capture. */
+	constexpr f32_t SLIDER_DX = 154.f;
+	constexpr f32_t SLIDER_TRACK_W = 146.f;
 	constexpr f32_t SLIDER_TRACK_H = 8.f;
 	constexpr f32_t SLIDER_TRACK_DY = 8.f;
 	constexpr f32_t SLIDER_THUMB_W = 17.f;
 	constexpr f32_t SLIDER_THUMB_H = 30.f;
 	constexpr f32_t SLIDER_THUMB_DY = -3.f;
-	constexpr f32_t SLIDER_VALUE_RIGHT = 349.f;
+	constexpr f32_t SLIDER_VALUE_RIGHT = 345.f;
 	constexpr f32_t COMBO_H = 32.f;
 	constexpr f32_t COMBO_ARROW = 28.f;
 	constexpr f32_t COMBO_ARROW_INSET = 30.f;
@@ -114,9 +124,9 @@ namespace SystemOptionGeometry
 	constexpr f32_t SPINNER_STEP = 10.f;       // -/+ click on the FPS limit
 	constexpr f32_t GROUP_STAR_DX = -2.f;
 	constexpr f32_t GROUP_STAR_DY = -1.f;
-	constexpr f32_t GROUP_BULLET_DX = 26.f;
+	constexpr f32_t GROUP_BULLET_DX = 18.f;
 	constexpr f32_t GROUP_BULLET_DY = 4.f;
-	constexpr f32_t GROUP_TEXT_DX = 38.f;
+	constexpr f32_t GROUP_TEXT_DX = 22.f;
 	constexpr f32_t GROUP_TEXT_DY = 2.f;
 	constexpr f32_t SEPARATOR_W = 561.f;
 	constexpr f32_t RADIO_PITCH_X = 85.f;

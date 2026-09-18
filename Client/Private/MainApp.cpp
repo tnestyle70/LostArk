@@ -2521,6 +2521,29 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	Apply_LevelRequest();
 	}
 
+	/* Every open runtime window now clips the text drawn under it for the rest of this frame
+	(Level nameplates, HUD captions, chat bubbles) -- the sprites already cover it, the text
+	has to be told. The text pass re-sets this per window before the windows' own labels. */
+	Add_OpenWindowTextClipOuts();
+}
+
+void CMainApp::Add_OpenWindowTextClipOuts()
+{
+	f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+	if (nullptr != m_pInventoryView && m_pInventoryView->Get_ScreenRect(fX, fY, fWidth, fHeight))
+		CGameInstance::Get().Add_TextClipOutRect(fX, fY, fWidth, fHeight);
+	if (nullptr != m_pCharacterInfoView && m_pCharacterInfoView->Get_ScreenRect(fX, fY, fWidth, fHeight))
+		CGameInstance::Get().Add_TextClipOutRect(fX, fY, fWidth, fHeight);
+	if (nullptr != m_pAvatarBookView && m_pAvatarBookView->Get_ScreenRect(fX, fY, fWidth, fHeight))
+		CGameInstance::Get().Add_TextClipOutRect(fX, fY, fWidth, fHeight);
+	if (nullptr != m_pVehicleWindowView && m_pVehicleWindowView->Get_ScreenRect(fX, fY, fWidth, fHeight))
+		CGameInstance::Get().Add_TextClipOutRect(fX, fY, fWidth, fHeight);
+	if (nullptr != m_pHonorTitleWindowView && m_pHonorTitleWindowView->Get_ScreenRect(fX, fY, fWidth, fHeight))
+		CGameInstance::Get().Add_TextClipOutRect(fX, fY, fWidth, fHeight);
+	if (nullptr != m_pWorldMapWindowView && m_pWorldMapWindowView->Get_ScreenRect(fX, fY, fWidth, fHeight))
+		CGameInstance::Get().Add_TextClipOutRect(fX, fY, fWidth, fHeight);
+	if (nullptr != m_pSystemOptionView && m_pSystemOptionView->Get_ScreenRect(fX, fY, fWidth, fHeight))
+		CGameInstance::Get().Add_TextClipOutRect(fX, fY, fWidth, fHeight);
 }
 
 HRESULT CMainApp::Render()
