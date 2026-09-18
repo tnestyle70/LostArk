@@ -127,17 +127,19 @@ int LostArk::Server::Run_WorldDestructionBootstrapContractTests()
 		publishedRemovedGroundIsFloorOnly,
 		"Declare removed ground on the six floor mutations and nowhere else");
 
+	/* The ring slots 011/025/026 were removed on 2026-09-18 to reopen the
+	walk-in corridor, so the ring now owns twenty-seven slots. */
 	require(
-		105u == publishedBootstrap.Get_DescriptorGraph().Groups.size() &&
-		105u == publishedBootstrap.Get_DescriptorGraph().Mutations.size() &&
-		224u == publishedBootstrap.Get_DescriptorGraph().Bindings.size() &&
-		143u == publishedMemberCount &&
-		30u == publishedOuterGroupCount &&
-		60u == publishedOuterMemberCount &&
+		102u == publishedBootstrap.Get_DescriptorGraph().Groups.size() &&
+		102u == publishedBootstrap.Get_DescriptorGraph().Mutations.size() &&
+		218u == publishedBootstrap.Get_DescriptorGraph().Bindings.size() &&
+		137u == publishedMemberCount &&
+		27u == publishedOuterGroupCount &&
+		54u == publishedOuterMemberCount &&
 		6u == publishedFloorGroupCount &&
 		6u == publishedFloorMemberCount &&
 		publishedBootstrap.Get_CombatRuntimeRevision().size() == 64u,
-		"Load ninety-nine independent walls and six Valtan floor collapse sectors");
+		"Load ninety-six independent walls and six Valtan floor collapse sectors");
 	CWorldDestructionRuntime publishedRuntime;
 	std::string publishedRuntimeStatus;
 	WORLD_DESTRUCTION_TRANSACTION publishedTransaction{};
@@ -153,8 +155,8 @@ int LostArk::Server::Run_WorldDestructionBootstrapContractTests()
 			publishedRuntime.Prepare_StageTrigger(
 				arenaBreakAction, 7001u, 80u, 450u,
 				publishedTransaction, publishedRuntimeStatus) &&
-		97u == publishedTransaction.Transitions.size() &&
-		97u == publishedTransaction.BindingApplications.size() &&
+		94u == publishedTransaction.Transitions.size() &&
+		94u == publishedTransaction.BindingApplications.size() &&
 		std::all_of(
 			publishedTransaction.Transitions.begin(),
 			publishedTransaction.Transitions.end(),
@@ -172,7 +174,7 @@ int LostArk::Server::Run_WorldDestructionBootstrapContractTests()
 					0u == transition.strGroupId.rfind(
 						"destroyable.group.valtan.wall.", 0u));
 			}) &&
-		30u == static_cast<std::size_t>(std::count_if(
+		27u == static_cast<std::size_t>(std::count_if(
 			publishedTransaction.Transitions.begin(),
 			publishedTransaction.Transitions.end(),
 			[](const WORLD_DESTRUCTION_STATE_TRANSITION& transition)
@@ -180,7 +182,7 @@ int LostArk::Server::Run_WorldDestructionBootstrapContractTests()
 				return 0u == transition.strGroupId.rfind(
 					"destroyable.group.valtan.outerwall109.", 0u);
 			})) &&
-		135u == std::accumulate(
+		129u == std::accumulate(
 			publishedTransaction.Transitions.begin(),
 			publishedTransaction.Transitions.end(),
 			std::size_t{ 0u },
@@ -191,7 +193,7 @@ int LostArk::Server::Run_WorldDestructionBootstrapContractTests()
 			}) &&
 		publishedRuntime.Commit(
 			publishedTransaction, publishedRuntimeStatus),
-		"Prepare and commit the thirty outer ring and sixty-seven interior 109-bar groups with one hundred thirty-five placements in one batch");
+		"Prepare and commit the twenty-seven outer ring and sixty-seven interior 109-bar groups with one hundred twenty-nine placements in one batch");
 	require(
 		WORLD_DESTRUCTION_PREPARE_RESULT::DUPLICATE_REQUEST ==
 			publishedRuntime.Prepare_StageTrigger(

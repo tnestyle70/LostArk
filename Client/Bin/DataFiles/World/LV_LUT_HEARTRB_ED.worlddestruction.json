@@ -2,7 +2,7 @@
     "schema":  "lostark.world-destruction-client-projection",
     "formatVersion":  3,
     "areaId":  "LV_LUT_HEARTRB_ED",
-    "combatRuntimeRevision":  "d4c6de9061f579a8cd945002308f5dd5cb21bbc2708be2cd4d54ede1fcc70f4b",
+    "combatRuntimeRevision":  "50e5ee40352acad8d6ef6d4738d6a9eb90d31b851db422a8b6e45bf02bfef8ae",
     "groups":  [
                    {
                        "groupId":  "destroyable.group.valtan.entrance.frontwallA",
@@ -213,18 +213,6 @@
                                               ]
                    },
                    {
-                       "groupId":  "destroyable.group.valtan.outerwall109.1090000000000011",
-                       "mutationId":  "mutation.valtan.outerwall109.1090000000000011.despawn",
-                       "removesGround":  false,
-                       "suppressionAliasPlacementIds":  [
-                                                            "1091000000000011"
-                                                        ],
-                       "memberPlacementIds":  [
-                                                  "1090000000000011",
-                                                  "1091000000000011"
-                                              ]
-                   },
-                   {
                        "groupId":  "destroyable.group.valtan.outerwall109.1090000000000012",
                        "mutationId":  "mutation.valtan.outerwall109.1090000000000012.despawn",
                        "removesGround":  false,
@@ -378,30 +366,6 @@
                        "memberPlacementIds":  [
                                                   "1090000000000024",
                                                   "1091000000000024"
-                                              ]
-                   },
-                   {
-                       "groupId":  "destroyable.group.valtan.outerwall109.1090000000000025",
-                       "mutationId":  "mutation.valtan.outerwall109.1090000000000025.despawn",
-                       "removesGround":  false,
-                       "suppressionAliasPlacementIds":  [
-                                                            "1091000000000025"
-                                                        ],
-                       "memberPlacementIds":  [
-                                                  "1090000000000025",
-                                                  "1091000000000025"
-                                              ]
-                   },
-                   {
-                       "groupId":  "destroyable.group.valtan.outerwall109.1090000000000026",
-                       "mutationId":  "mutation.valtan.outerwall109.1090000000000026.despawn",
-                       "removesGround":  false,
-                       "suppressionAliasPlacementIds":  [
-                                                            "1091000000000026"
-                                                        ],
-                       "memberPlacementIds":  [
-                                                  "1090000000000026",
-                                                  "1091000000000026"
                                               ]
                    },
                    {

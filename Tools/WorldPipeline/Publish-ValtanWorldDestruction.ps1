@@ -41,7 +41,7 @@ $dashImpactPatternId = 'VALTAN_DASH_CHARGE'
 $dashImpactStageId = 'CHARGE'
 $dashImpactActionId = 'valtan.attack.dash-charge.active'
 $dashImpactStageIndex = 1
-$expectedDashImpactGroupCount = 40
+# $expectedDashImpactGroupCount is derived below from the 159 and outer counts.
 # The first-appearance sweep owns two single-wall groups of its own, so it can
 # never share a group, a member or a receiver with the 159 charge wall.
 $entranceGroupIdPrefix = 'destroyable.group.valtan.entrance.'
@@ -55,9 +55,19 @@ $expectedEntranceGroupCount = 2
 # the exact shape of the enabled binding graph rather than a total row count of
 # the source document, so both halves are named and counted separately.
 $outerGroupIdPrefix = 'destroyable.group.valtan.outerwall109.'
-$expectedOuterGroupCount = 30
-$expectedOuterMemberCount = 60
-$expectedOuterEmitterCount = 30
+# The ring keeps its thirty-slot 12-degree layout. On 2026-09-18 the user
+# approved opening the entrance corridor by removing slots 011, 025 and 026
+# (sources, fillers, collisions, blockers, events and debris together). The
+# remaining twenty-seven slots are named exactly, so an unapproved gap or a
+# removed slot coming back still fails the publish.
+$outerRingSlotCount = 30
+$outerRingSlotIdBase = [uint64]1090000000000000
+$approvedRemovedOuterSlotIds = @(
+    '1090000000000011', '1090000000000025', '1090000000000026')
+$expectedOuterGroupCount = $outerRingSlotCount - $approvedRemovedOuterSlotIds.Count
+$expectedOuterMemberCount = 2 * $expectedOuterGroupCount
+$expectedOuterEmitterCount = $expectedOuterGroupCount
+$expectedDashImpactGroupCount = $expectedImpactGroupCount + $expectedOuterGroupCount
 # Interior walls keep the contact bindings that already break them mid-fight.
 # Destruction is one-way, so a wall a body already took down simply answers
 # NO_CHANGE when the 109 stage reaches it, and the rest go with the ring.
@@ -71,7 +81,7 @@ $expectedOuterRingRadiusMeters = 16.1
 $expectedOuterFillerAngleRadians = [Math]::PI / 30.0
 $expectedOuterTransformTolerance = 0.001
 $expectedIndependentContactWallCount = 69
-$expectedProductGroupCount = 99
+$expectedProductGroupCount = $expectedIndependentContactWallCount + $expectedOuterGroupCount
 # The arena floor is the opposite polarity of a wall: it is walkable while it is
 # intact and blocks once it collapses. Stage A drops the northern half of the
 # outer rail at 84 bars; stage B drops its southern half together with the brick
@@ -90,8 +100,8 @@ $floorStageBActionId = 'valtan.mechanic.terrain-destruction-9.impact'
 $floorStageBStageIndex = 3
 $expectedFloorStageAGroupCount = 3
 $expectedFloorStageBGroupCount = 3
-# Each ring source owns one bound visual filler alias. Only the thirty sources
-# emit debris, while all sixty placements follow the same thirty group states.
+# Each ring source owns one bound visual filler alias. Only the ring sources
+# emit debris, while both placements of a slot follow the same group state.
 $expectedFragmentsPerEmitter = 12
 $expectedOuterSuppressionAliasCount = 1
 
@@ -1389,6 +1399,18 @@ function Compile-ValtanWorldDestruction {
         if ($outerMemberIds.Count -ne $expectedOuterMemberCount) {
             throw "The 109 outer ring must own exactly $expectedOuterMemberCount wall placements, not $($outerMemberIds.Count)."
         }
+        for ($outerSlot = 1; $outerSlot -le $outerRingSlotCount; ++$outerSlot) {
+            $outerSlotId = ($outerRingSlotIdBase + [uint64]$outerSlot).ToString(
+                [Globalization.CultureInfo]::InvariantCulture)
+            $outerSlotReached = $outerGroupIds.Contains($outerGroupIdPrefix + $outerSlotId)
+            $outerSlotRemoved = $approvedRemovedOuterSlotIds -contains $outerSlotId
+            if ($outerSlotRemoved -and $outerSlotReached) {
+                throw "An approved-removed 109 outer ring slot came back: $outerSlotId"
+            }
+            if (-not $outerSlotRemoved -and -not $outerSlotReached) {
+                throw "A 109 outer ring slot is missing without approval: $outerSlotId"
+            }
+        }
         $impactGroupIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
         $impactReceiverIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
         foreach ($impactBinding in $impactBindings) {
@@ -2229,7 +2251,8 @@ function Invoke-ContractTests {
         foreach ($entry in (Get-DeployPlacementAssetIds).GetEnumerator()) {
             $injectedAssetIds[$entry.Key] = $entry.Value
         }
-        $injectedAssetIds['1090000000000025'] = 'DEPLOY_ITR_02326'
+        # Any standing ring source works; 025 was removed with the entrance slots.
+        $injectedAssetIds['1090000000000024'] = 'DEPLOY_ITR_02326'
         $script:DeployPlacementAssetIds = $injectedAssetIds
         Assert-Throws {
             Compile-ValtanWorldDestruction $source $encounter $simulation

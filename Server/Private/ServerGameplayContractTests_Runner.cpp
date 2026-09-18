@@ -299,8 +299,9 @@ int LostArk::Server::CServerGameplayContractRunner::Run(
 			world.Get_Placements(), dynamicWorldStatus) &&
 		/* 69 interior wall boxes plus ten independent 159 impact receivers,
 		one box per 109 outer ring slab and one impact receiver twinning each
-		of those thirty, and the two entrance front walls' own receivers. */
-		141u == valtanCollisionSystem.Get_CollisionBoxCount() &&
+		of those twenty-seven (slots 011/025/026 were removed to reopen the
+		entrance), and the two entrance front walls' own receivers. */
+		135u == valtanCollisionSystem.Get_CollisionBoxCount() &&
 		valtanCollisionSystem.Has_CollisionBox(VALTAN_WALL_RECEIVER),
 		"Load the stable Valtan wall impact receiver and player blocker");
 	{

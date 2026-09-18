@@ -19,10 +19,12 @@ from sync_valtan_109_outer_wall_gap_fillers import (
     FILLER_PREFIX,
     FILLER_SCALE,
     GROUP_PREFIX,
+    ACTIVE_SUFFIXES,
+    APPROVED_REMOVED_SLOT_ANGLES,
     OutOfSyncError,
     SOURCE_ASSET_ID,
-    SOURCE_COUNT,
     SOURCE_ID_BASE,
+    SOURCE_SLOT_COUNT,
     SOURCE_PREFIX,
     SyncError,
     SyncPaths,
@@ -57,8 +59,9 @@ def angular_delta(left: float, right: float) -> float:
 class GapFillerFixture:
     newline = "\r\n"
 
-    def __init__(self, root: Path):
+    def __init__(self, root: Path, suffixes: tuple[int, ...] = ACTIVE_SUFFIXES):
         self.root = root
+        self.suffixes = suffixes
         self.paths = SyncPaths(
             deploy_placements=root / "arena.deployplacements",
             world_events=root / "ValtanWorldEvents.json",
@@ -119,7 +122,7 @@ class GapFillerFixture:
                         "navPolarity": "BLOCK_WHILE_INTACT",
                         "initialState": "INTACT",
                     }
-                    for suffix in range(1, SOURCE_COUNT + 1)
+                    for suffix in self.suffixes
                 ],
             ],
             "mutations": [],
@@ -170,7 +173,7 @@ class GapFillerFixture:
                         "previewGroundHalfExtents": [30, 30],
                         "elements": [element(str(SOURCE_ID_BASE + suffix))],
                     }
-                    for suffix in range(1, SOURCE_COUNT + 1)
+                    for suffix in self.suffixes
                 ],
             ],
         }
@@ -178,7 +181,7 @@ class GapFillerFixture:
     def write_all(self) -> None:
         self.root.mkdir(parents=True, exist_ok=True)
         rows = [self.unrelated_row()] + [
-            self.source_row(suffix) for suffix in range(1, SOURCE_COUNT + 1)
+            self.source_row(suffix) for suffix in self.suffixes
         ]
         self.paths.deploy_placements.write_bytes(
             (
@@ -214,11 +217,11 @@ class GapFillerSyncTests(unittest.TestCase):
 
             deploy = parse_deploy_document(fixture.paths.deploy_placements)
             self.assertEqual(deploy.newline, "\r\n")
-            self.assertEqual(len(deploy.rows), 1 + SOURCE_COUNT * 2)
+            self.assertEqual(len(deploy.rows), 1 + len(ACTIVE_SUFFIXES) * 2)
             self.assertEqual(deploy.rows[0].original_line, fixture.unrelated_row())
             by_id = {row.runtime_id: row for row in deploy.rows}
             filler_angles = []
-            for suffix in range(1, SOURCE_COUNT + 1):
+            for suffix in ACTIVE_SUFFIXES:
                 source = by_id[SOURCE_ID_BASE + suffix]
                 filler_id = FILLER_ID_BASE + suffix
                 filler = by_id[filler_id]
@@ -234,9 +237,18 @@ class GapFillerSyncTests(unittest.TestCase):
                 self.assertEqual(filler.asset_id, FILLER_ASSET_ID)
                 self.assertAlmostEqual(filler.uniform_scale, FILLER_SCALE)
                 self.assertEqual(filler.destructible, 1)
+            removed_filler_angles = {
+                int(angle + FILLER_ANGLE_OFFSET_DEGREES)
+                for angle in APPROVED_REMOVED_SLOT_ANGLES.values()
+            }
             self.assertEqual(
                 sorted(filler_angles),
-                [int(FILLER_ANGLE_OFFSET_DEGREES + ANGLE_STEP_DEGREES * index) for index in range(30)],
+                [
+                    int(FILLER_ANGLE_OFFSET_DEGREES + ANGLE_STEP_DEGREES * index)
+                    for index in range(SOURCE_SLOT_COUNT)
+                    if int(FILLER_ANGLE_OFFSET_DEGREES + ANGLE_STEP_DEGREES * index)
+                    not in removed_filler_angles
+                ],
             )
 
             events = json.loads(fixture.paths.world_events.read_text(encoding="utf-8"))
@@ -245,7 +257,7 @@ class GapFillerSyncTests(unittest.TestCase):
                 fixture.paths.destruction_simulation.read_text(encoding="utf-8")
             )
             profiles = {profile["groupId"]: profile for profile in simulation["profiles"]}
-            for suffix in range(1, SOURCE_COUNT + 1):
+            for suffix in ACTIVE_SUFFIXES:
                 primary = str(SOURCE_ID_BASE + suffix)
                 filler = str(FILLER_ID_BASE + suffix)
                 group_id = GROUP_PREFIX + primary
@@ -333,6 +345,96 @@ class GapFillerSyncTests(unittest.TestCase):
                 if path.suffix in (".stage", ".backup")
             ]
             self.assertEqual(leftovers, [])
+
+
+    def test_approved_removed_slots_stay_absent_and_sync_is_idempotent(self):
+        self.assertEqual(sorted(APPROVED_REMOVED_SLOT_ANGLES), [11, 25, 26])
+        self.assertEqual(len(ACTIVE_SUFFIXES), SOURCE_SLOT_COUNT - 3)
+        for suffix, angle in APPROVED_REMOVED_SLOT_ANGLES.items():
+            self.assertEqual(SOURCE_ANGLE_BY_SUFFIX[suffix], angle)
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = GapFillerFixture(Path(temporary))
+            synchronize(fixture.paths)
+            deploy = parse_deploy_document(fixture.paths.deploy_placements)
+            runtime_ids = {row.runtime_id for row in deploy.rows}
+            events = json.loads(fixture.paths.world_events.read_text(encoding="utf-8"))
+            simulation = json.loads(
+                fixture.paths.destruction_simulation.read_text(encoding="utf-8")
+            )
+            group_ids = {group["groupId"] for group in events["groups"]}
+            profile_groups = {profile["groupId"] for profile in simulation["profiles"]}
+            for suffix in APPROVED_REMOVED_SLOT_ANGLES:
+                self.assertNotIn(SOURCE_ID_BASE + suffix, runtime_ids)
+                self.assertNotIn(FILLER_ID_BASE + suffix, runtime_ids)
+                self.assertNotIn(GROUP_PREFIX + str(SOURCE_ID_BASE + suffix), group_ids)
+                self.assertNotIn(GROUP_PREFIX + str(SOURCE_ID_BASE + suffix), profile_groups)
+            synchronized = fixture.output_bytes()
+            for _ in range(2):
+                self.assertEqual(synchronize(fixture.paths), ())
+                self.assertEqual(fixture.output_bytes(), synchronized)
+
+    def test_unapproved_missing_slot_fails_before_any_write(self):
+        remaining = tuple(suffix for suffix in ACTIVE_SUFFIXES if suffix != 12)
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = GapFillerFixture(Path(temporary), remaining)
+            before = fixture.output_bytes()
+            with self.assertRaisesRegex(SyncError, "source placement is missing"):
+                synchronize(fixture.paths)
+            self.assertEqual(fixture.output_bytes(), before)
+
+    def test_approved_removed_slot_reappearing_fails_before_any_write(self):
+        with_removed = tuple(sorted(ACTIVE_SUFFIXES + (25,)))
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = GapFillerFixture(Path(temporary), with_removed)
+            before = fixture.output_bytes()
+            with self.assertRaisesRegex(SyncError, "approved-removed .* reappeared"):
+                synchronize(fixture.paths)
+            self.assertEqual(fixture.output_bytes(), before)
+
+    def test_approved_removed_group_reappearing_in_events_fails(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = GapFillerFixture(Path(temporary))
+            events = fixture.events()
+            events["groups"].append(
+                {
+                    "groupId": GROUP_PREFIX + str(SOURCE_ID_BASE + 26),
+                    "memberPlacementIds": [str(SOURCE_ID_BASE + 26)],
+                    "navigationRegionIds": [],
+                    "navPolarity": "BLOCK_WHILE_INTACT",
+                    "initialState": "INTACT",
+                }
+            )
+            fixture.paths.world_events.write_bytes(
+                fixture.json_text(events).encode("utf-8")
+            )
+            before = fixture.output_bytes()
+            with self.assertRaisesRegex(SyncError, "approved-removed .* reappeared"):
+                synchronize(fixture.paths)
+            self.assertEqual(fixture.output_bytes(), before)
+
+    def test_row_order_change_keeps_the_same_rows_and_settles(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = GapFillerFixture(Path(temporary))
+            synchronize(fixture.paths)
+            deploy = parse_deploy_document(fixture.paths.deploy_placements)
+            expected_rows = sorted(row.original_line for row in deploy.rows)
+            reordered = [row.original_line for row in reversed(deploy.rows)]
+            fixture.paths.deploy_placements.write_bytes(
+                (
+                    f'LOSTARK_DEPLOY_PROP_PLACEMENTS 1 "{AREA_ID}" {len(reordered)}'
+                    + fixture.newline
+                    + fixture.newline.join(reordered)
+                    + fixture.newline
+                ).encode("utf-8")
+            )
+            synchronize(fixture.paths)
+            settled = fixture.output_bytes()
+            resynced = parse_deploy_document(fixture.paths.deploy_placements)
+            self.assertEqual(
+                sorted(row.original_line for row in resynced.rows), expected_rows
+            )
+            self.assertEqual(synchronize(fixture.paths), ())
+            self.assertEqual(fixture.output_bytes(), settled)
 
 
 if __name__ == "__main__":

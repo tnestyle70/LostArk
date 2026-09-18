@@ -2,7 +2,7 @@
     "schema":  "lostark.world-gameplay",
     "formatVersion":  6,
     "areaId":  "LV_LUT_HEARTRB_ED",
-    "revision":  570,
+    "revision":  574,
     "placements":  [
                        {
                            "placementId":  "collision.valtan.wallgroup.3705102.9335938568718910930",
@@ -1347,11 +1347,11 @@
                            "placementId":  "Stage_Boss",
                            "kind":  "triggerBox",
                            "position":  [
-                                            147.25,
+                                            129.649994,
                                             23.0175991,
-                                            -117.25
+                                            -96.8499985
                                         ],
-                           "yawDegrees":  0,
+                           "yawDegrees":  48,
                            "enabled":  true,
                            "halfExtents":  [
                                                2,
@@ -1402,6 +1402,35 @@
                                             49.1497498,
                                             10.0599995,
                                             -64.6090775
+                                        ],
+                           "yawDegrees":  0,
+                           "enabled":  true,
+                           "halfExtents":  [
+                                               2,
+                                               1,
+                                               2
+                                           ],
+                           "triggerOnce":  true,
+                           "events":  [
+                                          {
+                                              "type":  "movePlayer",
+                                              "targetPosition":  [
+                                                                     50.87,
+                                                                     10.14,
+                                                                     -81.02
+                                                                 ],
+                                              "durationSeconds":  0.800000012,
+                                              "arcHeight":  0
+                                          }
+                                      ]
+                       },
+                       {
+                           "placementId":  "Stage_MiniBoss_Spawn",
+                           "kind":  "triggerBox",
+                           "position":  [
+                                            50.87,
+                                            10.14,
+                                            -81.02
                                         ],
                            "yawDegrees":  0,
                            "enabled":  true,
@@ -1466,9 +1495,9 @@
                            "archetypeId":  null,
                            "encounterId":  null,
                            "position":  [
-                                            147.25,
-                                            23.031,
-                                            -117.75
+                                            8.8,
+                                            9.77,
+                                            -20.22
                                         ],
                            "yawDegrees":  120,
                            "enabled":  true
@@ -1479,9 +1508,9 @@
                            "archetypeId":  null,
                            "encounterId":  null,
                            "position":  [
-                                            148.25,
-                                            23.012,
-                                            -116.75
+                                            9.8,
+                                            9.77,
+                                            -19.22
                                         ],
                            "yawDegrees":  120,
                            "enabled":  true
@@ -1492,9 +1521,9 @@
                            "archetypeId":  null,
                            "encounterId":  null,
                            "position":  [
-                                            148.25,
-                                            23.048,
-                                            -118.25
+                                            9.8,
+                                            9.77,
+                                            -21.22
                                         ],
                            "yawDegrees":  120,
                            "enabled":  true
@@ -1505,9 +1534,9 @@
                            "archetypeId":  null,
                            "encounterId":  null,
                            "position":  [
-                                            149.25,
-                                            22.96,
-                                            -117.25
+                                            7.8,
+                                            9.77,
+                                            -19.22
                                         ],
                            "yawDegrees":  120,
                            "enabled":  true
@@ -1518,9 +1547,9 @@
                            "archetypeId":  null,
                            "encounterId":  null,
                            "position":  [
-                                            149.25,
-                                            23.0301952,
-                                            -118.25
+                                            7.8,
+                                            9.77,
+                                            -21.22
                                         ],
                            "yawDegrees":  120,
                            "enabled":  true
@@ -1531,9 +1560,9 @@
                            "archetypeId":  null,
                            "encounterId":  null,
                            "position":  [
-                                            147.25,
-                                            23.0337677,
-                                            -116.75
+                                            8.8,
+                                            9.77,
+                                            -18.82
                                         ],
                            "yawDegrees":  120,
                            "enabled":  true
@@ -1544,9 +1573,9 @@
                            "archetypeId":  null,
                            "encounterId":  null,
                            "position":  [
-                                            148.25,
-                                            23.0273571,
-                                            -119.25
+                                            8.8,
+                                            9.77,
+                                            -21.62
                                         ],
                            "yawDegrees":  120,
                            "enabled":  true
@@ -1557,9 +1586,9 @@
                            "archetypeId":  null,
                            "encounterId":  null,
                            "position":  [
-                                            150.25,
-                                            23.0904732,
-                                            -117.75
+                                            10.6,
+                                            9.77,
+                                            -20.22
                                         ],
                            "yawDegrees":  120,
                            "enabled":  true
@@ -1906,102 +1935,6 @@
                                             -106.608551
                                         ],
                            "yawDegrees":  -18.000000,
-                           "enabled":  true,
-                           "halfExtents":  [
-                                               2.294,
-                                               2.334,
-                                               0.838
-                                           ]
-                       },
-                       {
-                           "placementId":  "collision.valtan.wallgroup.sector03.1090000000000011",
-                           "kind":  "collisionBox",
-                           "position":  [
-                                            148.361283,
-                                            25.374000,
-                                            -107.893393
-                                        ],
-                           "yawDegrees":  -30.000000,
-                           "enabled":  true,
-                           "halfExtents":  [
-                                               2.294,
-                                               2.334,
-                                               0.838
-                                           ]
-                       },
-                       {
-                           "placementId":  "collision.valtan.wallgroup.sector03.1090000000000011.receiver",
-                           "kind":  "collisionBox",
-                           "position":  [
-                                            148.361283,
-                                            25.374000,
-                                            -107.893393
-                                        ],
-                           "yawDegrees":  -30.000000,
-                           "enabled":  true,
-                           "halfExtents":  [
-                                               2.294,
-                                               2.334,
-                                               0.838
-                                           ]
-                       },
-                       {
-                           "placementId":  "collision.valtan.wallgroup.sector03.1090000000000025",
-                           "kind":  "collisionBox",
-                           "position":  [
-                                            145.583460,
-                                            25.374000,
-                                            -109.797383
-                                        ],
-                           "yawDegrees":  -42.000000,
-                           "enabled":  true,
-                           "halfExtents":  [
-                                               2.294,
-                                               2.334,
-                                               0.838
-                                           ]
-                       },
-                       {
-                           "placementId":  "collision.valtan.wallgroup.sector03.1090000000000025.receiver",
-                           "kind":  "collisionBox",
-                           "position":  [
-                                            145.583460,
-                                            25.374000,
-                                            -109.797383
-                                        ],
-                           "yawDegrees":  -42.000000,
-                           "enabled":  true,
-                           "halfExtents":  [
-                                               2.294,
-                                               2.334,
-                                               0.838
-                                           ]
-                       },
-                       {
-                           "placementId":  "collision.valtan.wallgroup.sector03.1090000000000026",
-                           "kind":  "collisionBox",
-                           "position":  [
-                                            143.262200,
-                                            25.374000,
-                                            -112.237309
-                                        ],
-                           "yawDegrees":  -54.000000,
-                           "enabled":  true,
-                           "halfExtents":  [
-                                               2.294,
-                                               2.334,
-                                               0.838
-                                           ]
-                       },
-                       {
-                           "placementId":  "collision.valtan.wallgroup.sector03.1090000000000026.receiver",
-                           "kind":  "collisionBox",
-                           "position":  [
-                                            143.262200,
-                                            25.374000,
-                                            -112.237309
-                                        ],
-                           "yawDegrees":  -54.000000,
                            "enabled":  true,
                            "halfExtents":  [
                                                2.294,

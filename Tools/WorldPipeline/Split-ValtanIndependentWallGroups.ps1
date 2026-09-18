@@ -175,7 +175,9 @@ function Update-IndependentWallNavigation([bool]$CheckOnly) {
     $oldRegions = @{}
     foreach ($region in $nav.Regions) { $oldRegions[$region.RegionId] = $region }
     $wallGroups = @($events.groups | Where-Object { $_.navPolarity -ceq 'BLOCK_WHILE_INTACT' })
-    if ($wallGroups.Count -ne 99) { throw 'Navigation repair requires all 99 independent Valtan walls.' }
+    # 99 walls minus the 109 ring slots 011/025/026 the user approved removing
+    # on 2026-09-18 to open the entrance corridor.
+    if ($wallGroups.Count -ne 96) { throw 'Navigation repair requires all 96 independent Valtan walls.' }
     $wallRegionIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
     $stagedRegions = [Collections.Generic.List[object]]::new()
     $changedGroups = 0
@@ -271,7 +273,7 @@ $alreadySplit = @($events.groups | Where-Object {
 }).Count -eq 10 -and
     @($events.groups | Where-Object {
         ([string]$_.groupId).StartsWith('destroyable.group.valtan.outerwall109.109', [StringComparison]::Ordinal)
-    }).Count -eq 30
+    }).Count -eq 27
 if ($alreadySplit) {
     $repairRegions = [Collections.Generic.List[object]]::new()
     foreach ($group in @($events.groups | Where-Object {
@@ -346,7 +348,7 @@ if ($alreadySplit) {
             throw "The fully split wall graph must own exactly 69 ordinary contact bindings, found $contactBindingCount."
         }
         if (0 -eq $repairRegions.Count -and -not $removedOuterContacts) {
-            Write-Host 'All 99 Valtan source walls are independent; the 30 outer walls remain 109-pattern-only.'
+            Write-Host 'All 96 Valtan source walls are independent; the 27 outer walls remain 109-pattern-only.'
             return
         }
         $stagingRoot = Join-Path ([IO.Path]::GetTempPath()) ('LostArkValtanWallRepair.' + [Guid]::NewGuid().ToString('N'))

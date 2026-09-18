@@ -3,7 +3,10 @@ param(
     [ValidateSet('Validate', 'Publish')]
     [string]$Mode = 'Validate',
     [string]$OutputRoot = 'Server/Bin/DataFiles/World',
-    [ValidateSet('ALL', 'KAKULSAYDON_ARENA')]
+    # Client-side World outputs of the same transaction. Pointing both roots at
+    # a scratch folder stages a publish without touching live outputs.
+    [string]$ClientOutputRoot = 'Client/Bin/DataFiles/World',
+    [ValidateSet('ALL', 'KAKULSAYDON_ARENA', 'VALTAN_ARENA')]
     [string]$WorldId = 'ALL',
 	[ValidateRange(0, 12)]
 	[int]$FailureAfterPromote = 0
@@ -1409,6 +1412,14 @@ if ($WorldId -eq 'KAKULSAYDON_ARENA') {
     $encounterPropDocuments = @((Convert-EncounterPropsDocument -AreaId 'LV_LUT_MIDNIGHTC_ED' -WorldId $WorldId))
     $worlds = @((Convert-WorldDocument -AreaId 'LV_LUT_MIDNIGHTC_ED' -WorldId $WorldId -ActorIds $actorIds -EncounterProfiles $encounterProfiles -SpawnGroupIds $spawnDocuments[0].GroupIds))
 }
+elseif ($WorldId -eq 'VALTAN_ARENA') {
+    # Valtan only: its world, spawn-group and encounter-prop bootstraps plus its
+    # NPC presentation and F1 viewer inventory. Every other world, the Kouku
+    # stage markers and the shared viewer labels keep their published bytes.
+    $spawnDocuments = @((Convert-SpawnGroupsDocument -AreaId 'LV_LUT_HEARTRB_ED' -WorldId $WorldId -ActorIds $actorIds -MonsterProfiles $monsterProfiles))
+    $encounterPropDocuments = @((Convert-EncounterPropsDocument -AreaId 'LV_LUT_HEARTRB_ED' -WorldId $WorldId))
+    $worlds = @((Convert-WorldDocument -AreaId 'LV_LUT_HEARTRB_ED' -WorldId $WorldId -ActorIds $actorIds -EncounterProfiles $encounterProfiles -SpawnGroupIds $spawnDocuments[0].GroupIds))
+}
 else {
 $spawnDocuments = @(
     (Convert-SpawnGroupsDocument -AreaId 'LV_BER_BERNCASTLE' -WorldId 'BERN' -ActorIds $actorIds -MonsterProfiles $monsterProfiles),
@@ -1489,8 +1500,11 @@ if ($Mode -eq 'Publish') {
 				Promoted = $false
 			})
 		}
-		$clientWorldRoot = [IO.Path]::GetFullPath((Join-Path $repoRoot 'Client/Bin/DataFiles/World'))
+		$clientWorldRoot = if ([IO.Path]::IsPathRooted($ClientOutputRoot)) {
+			[IO.Path]::GetFullPath($ClientOutputRoot)
+		} else { [IO.Path]::GetFullPath((Join-Path $repoRoot $ClientOutputRoot)) }
 		[IO.Directory]::CreateDirectory($clientWorldRoot) | Out-Null
+		if ($WorldId -ne 'VALTAN_ARENA') {
 		$stagedKakulMarkers = Join-Path $stagingRoot 'KAKULSAYDON_ARENA.stagemarkers.json'
 		[IO.File]::WriteAllText(
 			$stagedKakulMarkers,
@@ -1504,6 +1518,7 @@ if ($Mode -eq 'Publish') {
 			HadPrevious = $false
 			Promoted = $false
 		})
+		}
 		foreach ($world in $worlds) {
 			$staged = Join-Path $stagingRoot "$($world.WorldId).npcpresentation.json"
 			$jsonLines = [Collections.Generic.List[string]]::new()
@@ -1579,6 +1594,7 @@ if ($Mode -eq 'Publish') {
 				$entry.location -isnot [string] -or
 				-not $labelIds.Add("$($entry.areaId)/$($entry.kind)/$($entry.targetId)")) { throw 'Invalid or duplicated viewer label.' }
 		}
+		if ($WorldId -ne 'VALTAN_ARENA') {
 		$labelsName = 'SequenceViewer.labels.json'
 		$labelsStaged = Join-Path $stagingRoot $labelsName
 		[IO.File]::WriteAllText($labelsStaged, ($labels | ConvertTo-Json -Depth 8), [Text.UTF8Encoding]::new($false))
@@ -1588,6 +1604,7 @@ if ($Mode -eq 'Publish') {
 			Rollback = Join-Path $clientWorldRoot ".$labelsName.rollback.$transactionId"
 			HadPrevious = $false; Promoted = $false
 		})
+		}
 		# Read-only F1 inventory for packaged Debug clients without the authoring checkout.
 		foreach ($world in $worlds) {
 			if ($world.WorldId -notin @('KAKULSAYDON_ARENA', 'VALTAN_ARENA')) { continue }

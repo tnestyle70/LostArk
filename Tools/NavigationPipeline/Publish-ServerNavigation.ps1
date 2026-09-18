@@ -3,6 +3,9 @@ param(
     [ValidateSet('Validate', 'Publish', 'ContractTest')]
     [string]$Mode = 'Validate',
     [string]$OutputRoot = 'Server/Bin/DataFiles/Navigation',
+    # The Client copy is written by the same transaction. Pointing both roots
+    # at a scratch folder stages a publish without touching live outputs.
+    [string]$ClientOutputRoot = 'Client/Bin/DataFiles/Navigation',
     [ValidateSet('', 'LV_LUT_HEARTRB_ED', 'LV_LUT_MIDNIGHTC_ED',
         'LV_DEV_TRAINING_GROUND', 'LV_LOBBY_CLASSSELECT_SL00', 'LV_BER_BERNCASTLE')]
     [string]$AreaId = ''
@@ -1053,10 +1056,14 @@ $validated = foreach ($grid in $grids) {
 }
 
 if ($Mode -eq 'Publish') {
-    $root = [IO.Path]::GetFullPath((Join-Path $repoRoot $OutputRoot))
+    $root = if ([IO.Path]::IsPathRooted($OutputRoot)) {
+        [IO.Path]::GetFullPath($OutputRoot)
+    } else { [IO.Path]::GetFullPath((Join-Path $repoRoot $OutputRoot)) }
     [IO.Directory]::CreateDirectory($root) | Out-Null
+    $clientRoot = if ([IO.Path]::IsPathRooted($ClientOutputRoot)) {
+        [IO.Path]::GetFullPath($ClientOutputRoot)
+    } else { [IO.Path]::GetFullPath((Join-Path $repoRoot $ClientOutputRoot)) }
     foreach ($entry in $validated) {
-        $clientRoot = Join-Path $repoRoot 'Client/Bin/DataFiles/Navigation'
         [IO.Directory]::CreateDirectory($clientRoot) | Out-Null
         $token = [Guid]::NewGuid().ToString('N')
         $targets = [Collections.Generic.List[object]]::new()
@@ -1079,9 +1086,26 @@ if ($Mode -eq 'Publish') {
             $targets.Add(@{ Destination=(Join-Path $root "$($entry.Grid.AreaId).navregions"); Lines=[string[]]$entry.ManifestLines })
             $targets.Add(@{ Destination=(Join-Path $clientRoot "$($entry.Grid.AreaId).navregions"); Lines=[string[]]$entry.ManifestLines })
         }
+        else {
+            # An Area published without regions must not keep the manifest of an
+            # earlier publish, or the loaders would still dispatch into those
+            # region grids. Removing it is part of this transaction and rolls back.
+            foreach ($manifestRoot in @($root, $clientRoot)) {
+                $staleManifest = Join-Path $manifestRoot "$($entry.Grid.AreaId).navregions"
+                if ([IO.File]::Exists($staleManifest)) {
+                    $targets.Add(@{ Destination=$staleManifest; Delete=$true })
+                }
+            }
+        }
         $promotions = [Collections.Generic.List[object]]::new()
         try {
             foreach ($target in $targets) {
+                if ($target.Delete) {
+                    $promotions.Add([pscustomobject]@{
+                        Staged=$null; Destination=$target.Destination; Delete=$true;
+                        Rollback="$($target.Destination).rollback.$token"; HadPrevious=$false; Promoted=$false })
+                    continue
+                }
                 $destinationRoot = [IO.Path]::GetDirectoryName($target.Destination)
                 $staged = Join-Path $destinationRoot ".$([IO.Path]::GetFileName($target.Destination)).staging.$token"
                 if ($null -ne $target.Bytes) {
@@ -1090,7 +1114,7 @@ if ($Mode -eq 'Publish') {
                     [IO.File]::WriteAllLines($staged, [string[]]$target.Lines, [Text.UTF8Encoding]::new($false))
                 }
                 $promotions.Add([pscustomobject]@{
-                    Staged=$staged; Destination=$target.Destination;
+                    Staged=$staged; Destination=$target.Destination; Delete=$false;
                     Rollback="$($target.Destination).rollback.$token"; HadPrevious=$false; Promoted=$false })
             }
             foreach ($promotion in $promotions) {
@@ -1098,8 +1122,13 @@ if ($Mode -eq 'Publish') {
                     [IO.File]::Move($promotion.Destination, $promotion.Rollback)
                     $promotion.HadPrevious = $true
                 }
-                [IO.File]::Move($promotion.Staged, $promotion.Destination)
+                if (-not $promotion.Delete) {
+                    [IO.File]::Move($promotion.Staged, $promotion.Destination)
+                }
                 $promotion.Promoted = $true
+                if ($promotion.Delete) {
+                    Write-Host "Removed stale navigation region manifest: $($promotion.Destination)"
+                }
             }
             foreach ($promotion in $promotions) {
                 if ([IO.File]::Exists($promotion.Rollback)) { [IO.File]::Delete($promotion.Rollback) }
@@ -1114,7 +1143,7 @@ if ($Mode -eq 'Publish') {
                 if ($promotion.HadPrevious -and [IO.File]::Exists($promotion.Rollback)) {
                     [IO.File]::Move($promotion.Rollback, $promotion.Destination)
                 }
-                if ([IO.File]::Exists($promotion.Staged)) { [IO.File]::Delete($promotion.Staged) }
+                if ($null -ne $promotion.Staged -and [IO.File]::Exists($promotion.Staged)) { [IO.File]::Delete($promotion.Staged) }
             }
             throw
         }

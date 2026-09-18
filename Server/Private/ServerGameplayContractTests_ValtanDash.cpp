@@ -444,7 +444,8 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanDash(TESTS& tests
 		}
 		SERVER_COLLISION_STATE_STAGE isolatedReceiverStage{};
 		std::string isolatedReceiverStatus;
-		const bool isolatedBoundReceiver = 30u == outerReceiverChanges.size() &&
+		/* Twenty-seven ring slots remain after the approved entrance opening. */
+		const bool isolatedBoundReceiver = 27u == outerReceiverChanges.size() &&
 			boundRoom.m_ServerCollisionSystem.Prepare_StateChanges(
 				outerReceiverChanges, isolatedReceiverStage,
 				isolatedReceiverStatus);
@@ -592,10 +593,10 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanDash(TESTS& tests
 						WORLD_DESTRUCTION_STATE::INTACT == state.eState;
 				}));
 		const bool ordinaryArenaReady = committedOrdinaryArena &&
-			69u == ordinaryGoneCount && 30u == intactOuterCount;
+			69u == ordinaryGoneCount && 27u == intactOuterCount;
 		tests.Require(
 			ordinaryArenaReady,
-			"Stage the product ORDINARY_WALLS_GONE arena state while keeping all thirty outer-ring walls intact");
+			"Stage the product ORDINARY_WALLS_GONE arena state while keeping all twenty-seven outer-ring walls intact");
 
 		/* The product timeline removes the 69 ordinary walls before this replay;
 		   the canonical centre-to-positive-Z lane then reaches the intact 109
@@ -999,8 +1000,8 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanDash(TESTS& tests
 		tests.Require(
 			partialConsumedStayedDespawned &&
 			1u == partialOuterDespawnedCount &&
-			29u == partialOuterBreakingCount,
-			"Keep one consumed outer wall DESPAWNED and commit only the other twenty-nine to BREAKING");
+			26u == partialOuterBreakingCount,
+			"Keep one consumed outer wall DESPAWNED and commit only the other twenty-six to BREAKING");
 		tests.Require(
 			partialUnrelatedGroupsUnchanged,
 			"Leave every floor sector and entrance wall unchanged across the Release-safe partial 109 batch");
@@ -1019,8 +1020,8 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanDash(TESTS& tests
 						WORLD_DESTRUCTION_STATE::DESPAWNED == state.eState;
 				}));
 		tests.Require(
-			committedPartialArena && 30u == partialFinalDespawnedCount,
-			"Finish the Release-safe partial 109 batch with all thirty outer walls DESPAWNED");
+			committedPartialArena && 27u == partialFinalDespawnedCount,
+			"Finish the Release-safe partial 109 batch with all twenty-seven outer walls DESPAWNED");
 	}
 
 	{
