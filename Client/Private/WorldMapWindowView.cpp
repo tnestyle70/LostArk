@@ -1261,3 +1261,21 @@ void Client::CWorldMapWindowView::Render_Text()
 		}
 	}
 }
+
+bool_t Client::CWorldMapWindowView::Get_ScreenRect(
+	f32_t& fX, f32_t& fY, f32_t& fWidth, f32_t& fHeight) const
+{
+	if (!Is_Open() || nullptr == m_pView)
+		return false;
+	f32_t fRefX = 0.f, fRefY = 0.f, fRefWidth = 0.f, fRefHeight = 0.f;
+	if (!m_pView->Get_SlotRect("WM_Frame", fRefX, fRefY, fRefWidth, fRefHeight))
+		return false;
+	const float2_t vViewport = CGameInstance::Get().Get_ViewportSize();
+	const f32_t fScaleX = vViewport.x / m_pView->Get_ResolutionWidth();
+	const f32_t fScaleY = vViewport.y / m_pView->Get_ResolutionHeight();
+	fX = fRefX * fScaleX;
+	fY = fRefY * fScaleY;
+	fWidth = fRefWidth * fScaleX;
+	fHeight = fRefHeight * fScaleY;
+	return true;
+}

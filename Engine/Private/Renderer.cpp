@@ -178,6 +178,8 @@ namespace
 			IsFiniteInRange(Settings.vBloomTint.z, 0.f, 1.f) &&
 			IsFiniteInRange(Settings.vBloomTint.w, 1.f, 1.f) &&
 			IsFiniteInRange(Settings.fSceneDesaturation, 0.f, 1.f) &&
+			Settings.iColorFilterType >= 0 && Settings.iColorFilterType <= 3 &&
+			IsFiniteInRange(Settings.fColorFilterStrength, 0.f, 1.f) &&
 			IsFiniteInRange(Settings.fSSAORadius, 0.01f, 8.f) &&
 			IsFiniteInRange(Settings.fSSAOBias, 0.f, 1.f) &&
 			IsFiniteInRange(Settings.fSSAOIntensity, 0.f, 4.f) &&
@@ -2016,6 +2018,12 @@ HRESULT CRenderer::Render_Final()
 		FAILED(m_pShader->Bind_RawValue(
 			"g_fSceneDesaturation", &m_RenderQualitySettings.fSceneDesaturation,
 			sizeof(m_RenderQualitySettings.fSceneDesaturation))) ||
+		FAILED(m_pShader->Bind_RawValue(
+			"g_iColorFilterType", &m_RenderQualitySettings.iColorFilterType,
+			sizeof(m_RenderQualitySettings.iColorFilterType))) ||
+		FAILED(m_pShader->Bind_RawValue(
+			"g_fColorFilterStrength", &m_RenderQualitySettings.fColorFilterStrength,
+			sizeof(m_RenderQualitySettings.fColorFilterStrength))) ||
 		FAILED(m_pShader->Bind_RawValue(
 			"g_iFXAAEnabled", &iFXAAEnabled, sizeof(iFXAAEnabled))) ||
 		FAILED(m_pShader->Bind_RawValue(

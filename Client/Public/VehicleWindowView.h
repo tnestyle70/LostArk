@@ -49,6 +49,9 @@ public:
 
 public:
 	bool_t Is_Open() const { return m_bOpen; }
+	/* Screen-pixel rect of the panel while open: CMainApp clips the labels of the windows drawn
+	underneath out of it, so no text ever shows through a window on top. */
+	bool_t Get_ScreenRect(f32_t& fX, f32_t& fY, f32_t& fWidth, f32_t& fHeight) const;
 	void Toggle() { m_bOpen = !m_bOpen; }
 	void Close() { m_bOpen = false; }
 

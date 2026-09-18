@@ -8,9 +8,15 @@ namespace FMOD
 	class System;
 	class Sound;
 	class Channel;
+	class ChannelGroup;
 }
 
 NS_BEGIN(Engine)
+
+/* Mixer buses the system option window turns into user volume. MASTER is FMOD's own
+master group, so it scales the other three; MUSIC is what Play_Music drives, INTERFACE is
+every one-shot whose asset lives under Sound/UI/, and EFFECT is every other playback path. */
+enum class SOUND_CATEGORY : uint32_t { MASTER, MUSIC, EFFECT, INTERFACE, END };
 
 class CSound_Manager final
 {
@@ -40,17 +46,38 @@ public:
 		bool_t bLoop = true);
 	void Stop_Music();
 
+	/* Bus volume in 0..1, applied to every channel already playing on that bus.
+	Muting a category is fVolume 0: focus loss owns the master group's mute flag
+	(see Update_ApplicationFocusMute) and user settings must not fight it. */
+	HRESULT Apply_CategoryVolume(SOUND_CATEGORY eCategory, f32_t fVolume);
+	f32_t Get_CategoryVolume(SOUND_CATEGORY eCategory) const;
+	/* sound-in-background, inverted: true (the default) mutes the master group while
+	another process owns the foreground window; false keeps playing. */
+	void Set_MuteOnFocusLoss(bool_t bMute);
+
 	void Update();
 
 private:
 	HRESULT Initialize();
+	HRESULT Ready_CategoryGroups();
 	bool_t Update_ApplicationFocusMute();
+	FMOD::ChannelGroup* Find_CategoryGroup(SOUND_CATEGORY eCategory) const;
+	/* Bus for a one-shot asset: Sound/UI/... is the interface bus, anything else effects. */
+	FMOD::ChannelGroup* Pick_OneShotGroup(const wstring_t& strSoundFilePath) const;
 	FMOD::Sound* Find_Or_LoadSound(const wstring_t& strSoundFilePath, bool_t bLoop);
 	HRESULT Play_TrackedSound(const wstring_t& strSoundFilePath, f32_t fVolume,
-		bool_t bLoop, CTrackedSoundChannel<FMOD::Channel>& channel);
+		bool_t bLoop, CTrackedSoundChannel<FMOD::Channel>& channel,
+		FMOD::ChannelGroup* pGroup);
 
 private:
 	FMOD::System* m_pSystem = { nullptr };
+	/* Children of FMOD's master group, created once in Initialize. Playback passes the
+	matching group so a later volume change reaches sounds that are already running. */
+	FMOD::ChannelGroup* m_pMusicGroup = { nullptr };
+	FMOD::ChannelGroup* m_pEffectGroup = { nullptr };
+	FMOD::ChannelGroup* m_pInterfaceGroup = { nullptr };
+	f32_t m_CategoryVolumes[ETOUI(SOUND_CATEGORY::END)] = { 1.f, 1.f, 1.f, 1.f };
+	bool_t m_bMuteOnFocusLoss = true;
 	bool_t m_bFocusMuteInitialized = false;
 	bool_t m_bFocusMuted = true;
 	/* FMOD loop mode belongs to the Sound, not the Channel. Keep one cached

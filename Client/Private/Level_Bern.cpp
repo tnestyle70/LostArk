@@ -707,7 +707,7 @@ HRESULT CLevel_Bern::Render()
 	if (FAILED(__super::Render()))
 		return E_FAIL;
 
-	m_PlayerNameplateView.Render(m_NameplatePlayers);
+	m_PlayerNameplateView.Render(m_NameplatePlayers, &m_Replication.Get_PartyRoster());
 	m_ChatBubbleView.Render(m_Replication, m_NameplatePlayers);
 	m_PartyInteraction.Render(m_pPlayerCommandSink);
 

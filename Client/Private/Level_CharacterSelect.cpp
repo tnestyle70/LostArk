@@ -3054,6 +3054,14 @@ void CLevel_CharacterSelect::Render_ArenaSpawnLabels()
 
 	if (!m_isCreateCharacterModalOpen)
 	{
+		/* One caption size for the three buttons: each label's own height / width cap is
+		measured first and the smallest wins, so the longer "monster spawn" caption no longer
+		shrinks on its own below its two neighbours. The width cap (0.75x icon width) still
+		guards against neighbouring labels running into one string; the icons sit ~63 px apart. */
+		struct PLACED_LABEL { const wchar_t* pLabel; f32_t fCenterX; f32_t fBottomY; float2_t vMeasured; };
+		PLACED_LABEL Placed[std::size(LABELS)]{};
+		size_t iPlacedCount = 0;
+		f32_t fSharedScale = 1.f;
 		for (const SPAWN_LABEL& Label : LABELS)
 		{
 			const CHARACTER_SELECT_PRODUCT_SLOT* pSlot =
@@ -3063,31 +3071,25 @@ void CLevel_CharacterSelect::Render_ArenaSpawnLabels()
 			f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
 			Resolve_ProductButtonRect(m_pClassSelectView.get(), *pSlot,
 				hasCompleteAuthoredButtons, fX, fY, fWidth, fHeight);
-
-			const f32_t fLabelCenterX = fX + fWidth * 0.5f;
-
 			const float2_t vMeasured =
 				CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), Label.pLabel);
-			/* "작게" -- small label under a 70px icon, so cap by height too (same lesson as the
-			Lobby button label: height-only scaling on a wide multi-glyph string runs it too big).
-			Width cap tightened from 1.3x to 0.75x icon width -- the icons themselves sit only ~63px
-			apart center-to-center (real extracted rects), so the wider cap let neighboring labels'
-			edges overlap and read as one run-on string. */
-			/* Retail caption size ($YoonGasiIIM 16 at 1080p -> 10.667 here); the width cap
-			only guards against a neighbour overlap. */
 			const f32_t fScaleByHeight = (vMeasured.y > 0.f) ?
 				(fHeight * 0.2f / vMeasured.y) : 1.f;
 			const f32_t fScaleByWidth = (vMeasured.x > 0.f) ?
 				(fWidth * 0.75f / vMeasured.x) : 1.f;
-			const f32_t fScale = (std::min)(fScaleByHeight, fScaleByWidth);
+			fSharedScale = (std::min)(fSharedScale, (std::min)(fScaleByHeight, fScaleByWidth));
+			Placed[iPlacedCount++] = PLACED_LABEL{ Label.pLabel, fX + fWidth * 0.5f, fY + fHeight, vMeasured };
+		}
+		for (size_t i = 0; i < iPlacedCount; ++i)
+		{
 			/* Centered anchor like every other Draw_Text call in this codebase (see
 			RenderQuickSlotKeyLabels), offset down by half the scaled glyph height so the label sits
 			just under the icon instead of straddling its bottom edge. */
 			const f32_t fLabelCenterY =
-				fY + fHeight + 4.f + vMeasured.y * fScale * 0.5f;
-			CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), Label.pLabel,
-				float2_t(fLabelCenterX * textScaleX, fLabelCenterY * textScaleY),
-				Colors::White, 0.f, float2_t(0.5f, 0.5f), fScale * textUiScale);
+				Placed[i].fBottomY + 4.f + Placed[i].vMeasured.y * fSharedScale * 0.5f;
+			CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), Placed[i].pLabel,
+				float2_t(Placed[i].fCenterX * textScaleX, fLabelCenterY * textScaleY),
+				Colors::White, 0.f, float2_t(0.5f, 0.5f), fSharedScale * textUiScale);
 		}
 
 		/* CreateCharacterButton: label centered inside the button itself (Lobby's

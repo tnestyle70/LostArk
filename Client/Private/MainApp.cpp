@@ -49,11 +49,13 @@
 #include "Presentation_Manager.h"
 #include "ProjectDataRoot.h"
 #include "RuntimeAssetRoot.h"
+#include "UserSettingsDocument.h"
 #include "WorldGameplayDocument.h"
 #include "AvatarBookWindowView.h"
 #include "UILabelFont.h"
 #include "CharacterInfoWindowView.h"
 #include "VehicleWindowView.h"
+#include "SystemOptionWindowView.h"
 #include "CombatAnalysisFrameView.h"
 #include "HonorTitleCatalog.h"
 #include "HonorTitleWindowView.h"
@@ -758,6 +760,12 @@ HRESULT CMainApp::Initialize()
 	{
 		return E_FAIL;
 	}
+
+	/* Before the first rendering profile resolve: Resolve_EffectiveQuality folds the
+	user's video settings in, and Apply_Audio needs the mixer Initialize_Engine just
+	built. Every run starts from the retail defaults; nothing is read from disk. */
+	CUserSettings::Get().Initialize();
+
 	string renderingProfileStatus;
 	if (!m_RenderingProfiles.Load_Runtime(renderingProfileStatus))
 	{
@@ -928,6 +936,8 @@ HRESULT CMainApp::Initialize()
 	/* World map window (M): a large centred panel, drawn over the windows above. */
 	m_pWorldMapWindowView = std::make_unique<CWorldMapWindowView>(m_pDevice, m_pContext);
 	m_pSongCastGaugeView = std::make_unique<CSongCastGaugeView>(m_pDevice, m_pContext);
+	/* System option window (Escape): a centred panel over the windows above. */
+	m_pSystemOptionView = std::make_unique<CSystemOptionWindowView>(m_pDevice, m_pContext);
 	/* Last of all: the carried quick-slot icon must ride over every window above. */
 	m_pQuickSlotDragView = std::make_unique<CQuickSlotDragView>(m_pDevice, m_pContext);
 
@@ -1233,6 +1243,15 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		m_bWorldMapKeyDown = keyDown;
 	}
 
+	/* System option rows read every frame: the cursor lock follows focus and window moves,
+	the FPS readout is a smoothed frame rate. */
+	CUserSettings::Get().Update_CursorLock(IsWindowOwnedByCurrentProcess(GetForegroundWindow()));
+	if (fTimeDelta > 0.f)
+	{
+		const f32_t fInstantFps = 1.f / fTimeDelta;
+		m_fSmoothedFps = m_fSmoothedFps <= 0.f ? fInstantFps : m_fSmoothedFps + (fInstantFps - m_fSmoothedFps) * 0.1f;
+	}
+	Update_SystemOptionWindow(fTimeDelta);
 	Update_LobbyButtons(fTimeDelta);
 	Update_CharacterSelectWindow(fTimeDelta);
 	Update_Minimap(fTimeDelta);
@@ -2921,6 +2940,7 @@ HRESULT CMainApp::Render()
 	RenderCharacterSelectWindowText();
 	if (!Is_MvpResultPageOpen())
 		RenderMinimapText();
+	RenderFpsText();
 	RenderItemUpgradeButtonText();
 	RenderItemUpgradeLevelText();
 	RenderItemUpgradeMaterialCounts();
@@ -2965,21 +2985,53 @@ HRESULT CMainApp::Render()
 	if (nullptr != m_pPartyWindowView)
 		m_pPartyWindowView->RenderText();
 
-	/* The topmost runtime windows draw their text last: everything above was clipped out of the
-	top window's rect (CUIInputRouter::Set_TopWindowRect -> CGameInstance::Set_TextClipOutRect),
-	these two draw with the clip cleared -- the info window's own labels skip the avatar book's
-	rect through Set_Covered while the book is open. */
-	CGameInstance::Get().Clear_TextClipOutRect();
-	if (nullptr != m_pCharacterInfoView)
-		m_pCharacterInfoView->Render_Text();
-	if (nullptr != m_pAvatarBookView)
-		m_pAvatarBookView->Render_Text();
-	if (nullptr != m_pVehicleWindowView)
-		m_pVehicleWindowView->Render_Text();
-	if (nullptr != m_pHonorTitleWindowView)
-		m_pHonorTitleWindowView->Render_Text();
-	if (nullptr != m_pWorldMapWindowView)
-		m_pWorldMapWindowView->Render_Text();
+	/* The runtime windows draw their text last, bottom to top in their sprite order (the
+	order CMainApp constructed them). Everything above was clipped out of the top window's
+	rect (CUIInputRouter::Set_TopWindowRect -> CGameInstance::Set_TextClipOutRect); here each
+	window's labels are clipped out of every open window drawn above it, so text never shows
+	through a window on top -- the sprites already stack that way, the text has to be told. */
+	{
+		struct WINDOW_RECT { bool_t bOpen = false; f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f; };
+		WINDOW_RECT rects[6];
+		if (nullptr != m_pCharacterInfoView)
+			rects[0].bOpen = m_pCharacterInfoView->Get_ScreenRect(rects[0].fX, rects[0].fY, rects[0].fWidth, rects[0].fHeight);
+		if (nullptr != m_pAvatarBookView)
+			rects[1].bOpen = m_pAvatarBookView->Get_ScreenRect(rects[1].fX, rects[1].fY, rects[1].fWidth, rects[1].fHeight);
+		if (nullptr != m_pVehicleWindowView)
+			rects[2].bOpen = m_pVehicleWindowView->Get_ScreenRect(rects[2].fX, rects[2].fY, rects[2].fWidth, rects[2].fHeight);
+		if (nullptr != m_pHonorTitleWindowView)
+			rects[3].bOpen = m_pHonorTitleWindowView->Get_ScreenRect(rects[3].fX, rects[3].fY, rects[3].fWidth, rects[3].fHeight);
+		if (nullptr != m_pWorldMapWindowView)
+			rects[4].bOpen = m_pWorldMapWindowView->Get_ScreenRect(rects[4].fX, rects[4].fY, rects[4].fWidth, rects[4].fHeight);
+		if (nullptr != m_pSystemOptionView)
+			rects[5].bOpen = m_pSystemOptionView->Get_ScreenRect(rects[5].fX, rects[5].fY, rects[5].fWidth, rects[5].fHeight);
+		const auto ClipAbove = [&rects](const size_t iWindow)
+			{
+				CGameInstance::Get().Clear_TextClipOutRect();
+				for (size_t i = iWindow + 1; i < std::size(rects); ++i)
+					if (rects[i].bOpen)
+						CGameInstance::Get().Add_TextClipOutRect(rects[i].fX, rects[i].fY, rects[i].fWidth, rects[i].fHeight);
+			};
+		ClipAbove(0);
+		if (nullptr != m_pCharacterInfoView)
+			m_pCharacterInfoView->Render_Text();
+		ClipAbove(1);
+		if (nullptr != m_pAvatarBookView)
+			m_pAvatarBookView->Render_Text();
+		ClipAbove(2);
+		if (nullptr != m_pVehicleWindowView)
+			m_pVehicleWindowView->Render_Text();
+		ClipAbove(3);
+		if (nullptr != m_pHonorTitleWindowView)
+			m_pHonorTitleWindowView->Render_Text();
+		ClipAbove(4);
+		if (nullptr != m_pWorldMapWindowView)
+			m_pWorldMapWindowView->Render_Text();
+		ClipAbove(5);
+		if (nullptr != m_pSystemOptionView)
+			m_pSystemOptionView->Render_Text();
+		CGameInstance::Get().Clear_TextClipOutRect();
+	}
 	if (nullptr != m_pSongCastGaugeView)
 		m_pSongCastGaugeView->Render_Text();
 
@@ -4370,6 +4422,72 @@ void CMainApp::Update_LobbyButtons(const f32_t fTimeDelta)
 
 	/* TitleBackground's looping movie flipbook and the one-shot logo reveal. */
 	m_pLobbyBackgroundView->Update(fTimeDelta);
+}
+
+bool_t CMainApp::Is_AnyRuntimeWindowOpen() const
+{
+	/* Every runtime window that answers Escape with "close me". The system option window
+	itself is deliberately not in this list: Update_SystemOptionWindow owns its Escape edge. */
+	const bool_t bOpen =
+		(nullptr != m_pInventoryView && m_pInventoryView->Is_Open()) ||
+		(nullptr != m_pCharacterInfoView && m_pCharacterInfoView->Is_Open()) ||
+		(nullptr != m_pAvatarBookView && m_pAvatarBookView->Is_Open()) ||
+		(nullptr != m_pVehicleWindowView && m_pVehicleWindowView->Is_Open()) ||
+		(nullptr != m_pHonorTitleWindowView && m_pHonorTitleWindowView->Is_Open()) ||
+		(nullptr != m_pWorldMapWindowView && m_pWorldMapWindowView->Is_Open()) ||
+		(nullptr != m_pSkillWindowView && m_pSkillWindowView->Is_Open()) ||
+		(nullptr != m_pChatWindowView && m_pChatWindowView->Is_Open()) ||
+		(nullptr != m_pCharacterSelectWindowView && m_pCharacterSelectWindowView->Is_Open());
+	return bOpen;
+}
+
+void CMainApp::Update_SystemOptionWindow(const f32_t fTimeDelta)
+{
+	Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(),
+		"UI.Runtime.SystemOptionWindow.Update");
+	if (nullptr == m_pSystemOptionView)
+		return;
+
+	/* Read the other windows before their own Update runs this frame: an Escape that closes
+	one of them must not fall through to opening this. This one Escape edge, read here from
+	the same key source every frame, both opens and closes the window -- the view polling
+	DirectInput on its own lagged a frame behind and closed what this had just opened. */
+	const bool_t bOtherWindowOpen = Is_AnyRuntimeWindowOpen();
+	if (!ImGui::GetIO().WantTextInput && !CUIInputRouter::Get().Is_TextInputActive())
+	{
+		const bool_t bWindowFocused =
+			IsWindowOwnedByCurrentProcess(GetForegroundWindow());
+		const bool_t bKeyDown = bWindowFocused &&
+			0 != (GetAsyncKeyState(VK_ESCAPE) & 0x8000);
+		if (bKeyDown && !m_bSystemOptionKeyDown)
+		{
+			if (m_pSystemOptionView->Is_Open())
+				m_pSystemOptionView->Handle_EscapeEdge();
+			else if (!bOtherWindowOpen)
+			{
+				m_pSystemOptionView->Open();
+				Play_UIButtonClickSound();
+			}
+		}
+		m_bSystemOptionKeyDown = bKeyDown;
+	}
+
+	m_pSystemOptionView->Update(fTimeDelta);
+
+	/* A brightness / post-process edit only reaches the renderer when quality is resolved
+	again, which normally happens on a Level or region change. Re-activating the profile that
+	is already active runs that same path now. */
+	if (m_pSystemOptionView->Take_VideoDirty())
+	{
+		const string strActiveProfileId = m_RenderingProfiles.Get_ActiveProfileId();
+		string strStatus;
+		if (!strActiveProfileId.empty() &&
+			!m_RenderingProfiles.Activate_Profile(strActiveProfileId, strStatus))
+		{
+			OutputDebugStringA(("[MainApp] System option video re-apply failed: " +
+				strStatus + "\n").c_str());
+		}
+	}
 }
 
 void CMainApp::Update_CharacterSelectWindow(const f32_t fTimeDelta)
@@ -7072,7 +7190,15 @@ void CMainApp::RenderDamageNumbers()
 		number.iAmount = damageEvent.Event.iAmount;
 		number.isOutgoing = damageEvent.Event.isOutgoing;
 		number.eCardMazeSuit = damageEvent.Event.eCardMazeSuit;
+		m_dLastDamageSeconds = number.dSpawnSeconds;
 		m_FloatingDamageNumbers.push_back(number);
+	}
+	/* System option "show damage": the events are still consumed above so switching it back
+	on does not replay a backlog. */
+	if (!CUserSettings::Get().Is_DamageNumberShown())
+	{
+		m_FloatingDamageNumbers.clear();
+		return;
 	}
 	if (m_FloatingDamageNumbers.size() > MAX_FLOATING_DAMAGE_NUMBERS)
 	{
@@ -7098,7 +7224,8 @@ void CMainApp::RenderDamageNumbers()
 		return;
 	const matrix_t view = XMLoadFloat4x4(CGameInstance::Get().Get_Transform(D3DTS::VIEW));
 	const matrix_t projection = XMLoadFloat4x4(CGameInstance::Get().Get_Transform(D3DTS::PROJ));
-	const f32_t stageScale = viewportSize.y / 1080.f;
+	/* The system option battle font size (75 .. 300%) scales the whole tween. */
+	const f32_t stageScale = viewportSize.y / 1080.f * CUserSettings::Get().Get_DamageFontScale();
 
 	/* A card maze shard rises where the damage number would: "<suit> jogak x N".
 	   Korean is written with universal character names so this file keeps its
@@ -7173,6 +7300,72 @@ void CMainApp::RenderDamageNumbers()
 			float2_t(XMVectorGetX(vProjected), XMVectorGetY(vProjected) - fRisePx * stageScale),
 			vColor, 0.f, float2_t(0.5f, 0.5f), fScale);
 	}
+}
+
+void CMainApp::RenderFpsText()
+{
+	/* combobox_fps: 0 always, 1 in combat only (a hit within the last few seconds), 2 never.
+	Small YG760 line in the top-left corner; the retail placement was not traced. */
+	const int32_t iMode = CUserSettings::Get().Get_FpsDisplayMode();
+	if (2 == iMode || m_fSmoothedFps <= 0.f)
+		return;
+	if (1 == iMode && Product_Now_Seconds() - m_dLastDamageSeconds > 6.0)
+		return;
+	const float2_t viewportSize = CGameInstance::Get().Get_ViewportSize();
+	if (viewportSize.x <= 0.f || viewportSize.y <= 0.f)
+		return;
+	wchar_t text[32]{};
+	::_snwprintf_s(text, _countof(text), _TRUNCATE, L"FPS %d",
+		static_cast<int32_t>(std::lround(m_fSmoothedFps)));
+	const float2_t measured = CGameInstance::Get().Measure_Text(TEXT("Font_YG760"), text);
+	if (measured.y <= 0.f)
+		return;
+	const f32_t refScale = viewportSize.y / 720.f;
+	CGameInstance::Get().Draw_Text(TEXT("Font_YG760"), text,
+		float2_t(std::round(8.f * refScale), std::round(6.f * refScale)),
+		XMVectorSet(1.f, 0.95f, 0.6f, 1.f), 0.f, float2_t(0.f, 0.f), 13.f * refScale / measured.y);
+}
+
+void CMainApp::Limit_FrameRate()
+{
+	const bool_t bForeground = IsWindowOwnedByCurrentProcess(GetForegroundWindow());
+	const int32_t iLimit = CUserSettings::Get().Get_FrameLimit(bForeground);
+	const std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
+	if (iLimit <= 0)
+	{
+		m_LastFrameEnd = now;
+		return;
+	}
+	const std::chrono::steady_clock::time_point target = m_LastFrameEnd +
+		std::chrono::duration_cast<std::chrono::steady_clock::duration>(
+			std::chrono::duration<f64_t>(1.0 / static_cast<f64_t>(iLimit)));
+	if (now >= target)
+	{
+		/* A slow frame: no catch-up burst, the next period starts now. */
+		m_LastFrameEnd = now;
+		return;
+	}
+	/* Sleep the bulk on a high-resolution timer (1 ms class), spin the last stretch. */
+	static const HANDLE s_hTimer = CreateWaitableTimerExW(nullptr, nullptr,
+		CREATE_WAITABLE_TIMER_HIGH_RESOLUTION, TIMER_ALL_ACCESS);
+	std::chrono::steady_clock::time_point current = now;
+	while (current < target)
+	{
+		const std::chrono::nanoseconds remain = target - current;
+		if (nullptr != s_hTimer && remain > std::chrono::milliseconds(2))
+		{
+			LARGE_INTEGER due{};
+			due.QuadPart = -static_cast<LONGLONG>((remain - std::chrono::milliseconds(1)).count() / 100);
+			if (SetWaitableTimerEx(s_hTimer, &due, 0, nullptr, nullptr, nullptr, 0))
+				WaitForSingleObject(s_hTimer, 20);
+		}
+		else
+		{
+			YieldProcessor();
+		}
+		current = std::chrono::steady_clock::now();
+	}
+	m_LastFrameEnd = target;
 }
 
 HRESULT CMainApp::Ready_Fonts()

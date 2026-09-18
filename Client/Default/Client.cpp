@@ -163,6 +163,9 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         if (nullptr != pProfiler)
             pProfiler->End_Frame();
 
+        // System option frame limit (off by default): outside the profiled frame.
+        pMainApp->Limit_FrameRate();
+
         if (FAILED(hRenderResult))
         {
             WriteExitDiagnostic("Render failed", hRenderResult);

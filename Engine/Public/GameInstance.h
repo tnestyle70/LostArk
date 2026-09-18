@@ -8,6 +8,7 @@
 #include <DirectXColors.h>
 #pragma pop_macro("new")
 #include "Engine_RenderFwd.h"
+#include "Sound/Sound_Manager.h"
 
 NS_BEGIN(Engine)
 
@@ -70,6 +71,12 @@ public: /* For.Sound_Manager */
 	HRESULT Play_Music(const wstring_t& strSoundFilePath, f32_t fVolume,
 		bool_t bLoop = true);
 	void Stop_Music();
+	/* Mixer bus volume the system option window owns; 0..1, applied to sounds that
+	are already playing on that bus. */
+	HRESULT Apply_SoundCategoryVolume(SOUND_CATEGORY eCategory, f32_t fVolume);
+	f32_t Get_SoundCategoryVolume(SOUND_CATEGORY eCategory) const;
+	/* See CSound_Manager::Set_MuteOnFocusLoss (the sound-in-background option, inverted). */
+	void Set_SoundMuteOnFocusLoss(bool_t bMute);
 #endif
 
 
@@ -145,7 +152,12 @@ public: /* For.Font_Manager */
 	float2_t Measure_Text(const wstring& strFontTag, const tchar_t* pText);
 	/* See CFont_Manager::Set_ClipOutRect: screen rect Draw_Text refuses to draw over. */
 	void Set_TextClipOutRect(f32_t fX, f32_t fY, f32_t fWidth, f32_t fHeight);
+	/* One more rect on top of the ones already set (CFont_Manager::Add_ClipOutRect). */
+	void Add_TextClipOutRect(f32_t fX, f32_t fY, f32_t fWidth, f32_t fHeight);
 	void Clear_TextClipOutRect();
+	/* See CFont_Manager::Set_ClipInRect: screen rect text must stay wholly inside. */
+	void Set_TextClipInRect(f32_t fX, f32_t fY, f32_t fWidth, f32_t fHeight);
+	void Clear_TextClipInRect();
 
 public: /* For.Target_Manager */
 	HRESULT Add_RenderTarget(const wstring_t& strTargetTag, uint32_t iWidth, uint32_t iHeight, DXGI_FORMAT ePixelFormat, const float4_t& vClearColor);

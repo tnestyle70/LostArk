@@ -358,6 +358,22 @@ void CGameInstance::Stop_Music()
 {
 	m_pSound_Manager->Stop_Music();
 }
+
+HRESULT CGameInstance::Apply_SoundCategoryVolume(
+	const SOUND_CATEGORY eCategory, const f32_t fVolume)
+{
+	return m_pSound_Manager->Apply_CategoryVolume(eCategory, fVolume);
+}
+
+f32_t CGameInstance::Get_SoundCategoryVolume(const SOUND_CATEGORY eCategory) const
+{
+	return m_pSound_Manager->Get_CategoryVolume(eCategory);
+}
+
+void CGameInstance::Set_SoundMuteOnFocusLoss(const bool_t bMute)
+{
+	m_pSound_Manager->Set_MuteOnFocusLoss(bMute);
+}
 #endif
 
 f32_t CGameInstance::Get_TimeDelta(const wstring_t& strTimerTag)
@@ -597,9 +613,26 @@ void CGameInstance::Set_TextClipOutRect(f32_t fX, f32_t fY, f32_t fWidth, f32_t 
 	m_pFont_Manager->Set_ClipOutRect(fX, fY, fWidth, fHeight);
 }
 
+void CGameInstance::Add_TextClipOutRect(
+	const f32_t fX, const f32_t fY, const f32_t fWidth, const f32_t fHeight)
+{
+	m_pFont_Manager->Add_ClipOutRect(fX, fY, fWidth, fHeight);
+}
+
 void CGameInstance::Clear_TextClipOutRect()
 {
 	m_pFont_Manager->Clear_ClipOutRect();
+}
+
+void CGameInstance::Set_TextClipInRect(
+	const f32_t fX, const f32_t fY, const f32_t fWidth, const f32_t fHeight)
+{
+	m_pFont_Manager->Set_ClipInRect(fX, fY, fWidth, fHeight);
+}
+
+void CGameInstance::Clear_TextClipInRect()
+{
+	m_pFont_Manager->Clear_ClipInRect();
 }
 
 HRESULT CGameInstance::Add_RenderTarget(const wstring_t& strTargetTag, uint32_t iWidth, uint32_t iHeight, DXGI_FORMAT ePixelFormat, const float4_t& vClearColor)

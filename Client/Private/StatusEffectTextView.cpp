@@ -1,6 +1,7 @@
 #include "StatusEffectTextView.h"
 
 #include "Character.h"
+#include "UserSettingsDocument.h"
 #include "GameInstance.h"
 #include "Transform.h"
 #include "WorldPlayerNameplateView.h"
@@ -133,6 +134,9 @@ void Client::CStatusEffectTextView::Submit(const REQUEST& Request)
 {
 	const shared_ptr<CCharacter> pAnchor = Request.pAnchor.lock();
 	if (Request.strWord.empty() || nullptr == pAnchor)
+		return;
+	/* System option "condition message" row: the status word is the one text it governs. */
+	if (!CUserSettings::Get().Is_ConditionMessageShown())
 		return;
 
 	const auto Spawned = m_SpawnedKeyByOwner.find(Request.iOwnerEntityId);

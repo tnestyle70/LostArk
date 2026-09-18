@@ -20,14 +20,24 @@ public:
 	Text has no depth and every text pass runs after the sprites, so the topmost UI window sets
 	this for the other owners' text and clears it before drawing its own. */
 	void Set_ClipOutRect(f32_t fX, f32_t fY, f32_t fWidth, f32_t fHeight);
-	void Clear_ClipOutRect() { m_isClipOutEnabled = false; }
+	/* Several windows can sit on top of the one drawing: every rect added here is honoured
+	until Clear_ClipOutRect. Set_ClipOutRect is clear-then-add. */
+	void Add_ClipOutRect(f32_t fX, f32_t fY, f32_t fWidth, f32_t fHeight);
+	void Clear_ClipOutRect() { m_isClipOutEnabled = false; m_ClipOutRects.clear(); }
+	/* The inverse: a screen-pixel rect text must stay inside. Draw skips a string whose extent
+	is not wholly within it -- a scrolling list whose rows slide under its own frame (the system
+	option pane) keeps half-visible labels from bleeding over the panel above and below. */
+	void Set_ClipInRect(f32_t fX, f32_t fY, f32_t fWidth, f32_t fHeight);
+	void Clear_ClipInRect() { m_isClipInEnabled = false; }
 
 private:
 	ComPtr<ID3D11Device>										m_pDevice = { nullptr };
 	ComPtr<ID3D11DeviceContext>									m_pContext = { nullptr };
 	map<const wstring_t, shared_ptr<class CCustomFont>>			m_Fonts;
 	bool_t														m_isClipOutEnabled = false;
-	float4_t													m_vClipOutRect = {};	/* x, y, width, height */
+	vector<float4_t>											m_ClipOutRects;			/* x, y, width, height */
+	bool_t														m_isClipInEnabled = false;
+	float4_t													m_vClipInRect = {};		/* x, y, width, height */
 
 
 private:
