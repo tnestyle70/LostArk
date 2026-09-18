@@ -184,6 +184,15 @@ public:
 		const vector<MVP_AWARD_PARTICIPANT>& Participants,
 		int32_t iPartySize) const;
 
+	/* The page for a raid clear until the Server hands out real contributions: a
+	   fixed sample of four participants (made-up shares, scores and medal
+	   requests) laid out by Compose_Page under the headline of the raid, gate and
+	   difficulty passed in. Who is the MVP, which titles and medals survive are
+	   still the catalog's decisions, so the page reads right for any raid. */
+	MVP_RESULT_DATA Build_PreviewPage(
+		int32_t iRaidGroupId, int32_t iGate, const char* szDifficultyId,
+		int32_t iPartySize) const;
+
 private:
 	/* One piece of the headline: its text and, when GameMsg gave the piece its
 	   own <FONT COLOR>, that colour. Without one the piece takes the field's

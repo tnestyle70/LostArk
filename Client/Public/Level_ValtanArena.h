@@ -32,6 +32,7 @@ class CCharacter;
 class IPlayerCommandSink;
 class CMapAssetObject;
 class CUILayoutRuntime;
+class CMvpResultView;
 
 class CLevel_ValtanArena final : public CLevel
 {
@@ -48,6 +49,10 @@ public:
 	virtual HRESULT Render() override;
 
 	static CLevel_ValtanArena* Get_Active() { return s_pActiveInstance; }
+	/* Award page that follows the clear mark (same CMvpResultView KoukuSaydon drives).
+	   Portraits are host render targets, drawn from CMainApp's portrait pass. */
+	void Render_MvpPortraits();
+	bool_t Is_MvpResultVisible() const;
 	const ARENA_CAMERA_PROFILE& Get_FollowCameraProfile() const
 	{ return m_FollowCameraProfile; }
 	const std::string& Get_FollowCameraProfileStatus() const
@@ -280,6 +285,7 @@ private:
 	CPlayerController m_PlayerController;
 	unique_ptr<CUILayoutRuntime> m_pDeadSceneView;
 	unique_ptr<CUILayoutRuntime> m_pRaidClearView;
+	unique_ptr<CMvpResultView> m_pMvpResultView;
 	/* Edge-detect for the boss's replicated eAction (see Update_RaidClear) and the elapsed time
 	since that edge -- negative means the overlay is not currently showing. */
 	bool_t m_bRaidClearWasBossDead = false;

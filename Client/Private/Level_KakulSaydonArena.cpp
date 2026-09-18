@@ -1523,6 +1523,7 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 	}
 #endif
 	Update_DeadScene(fTimeDelta);
+	Update_RaidClearTrigger();
 	Update_RaidClear(fTimeDelta);
 	if (nullptr != m_pMvpResultView)
 	{
@@ -2224,14 +2225,6 @@ HRESULT Client::CLevel_KakulSaydonArena::Render()
 
 namespace
 {
-	/* EFTable_Mvp.StatType, for the contributions KoukuSaydon's group tracks. */
-	constexpr int32_t MVP_STAT_DAMAGE = 1;
-	constexpr int32_t MVP_STAT_STAGGER = 3;
-	constexpr int32_t MVP_STAT_HEAL = 4;
-	constexpr int32_t MVP_STAT_BATTLE_ITEM = 9;
-	constexpr int32_t MVP_STAT_COUNTER = 11;
-	constexpr int32_t MVP_STAT_SUPPORT_DAMAGE = 13;
-
 	/* KoukuSaydon is a four-player raid -- the award page seats one MVP and three
 	   party columns -- so the four-player cutoffs apply. */
 	constexpr int32_t MVP_PARTY_SIZE = 4;
@@ -2242,71 +2235,11 @@ namespace
 	constexpr int32_t KOUKU_RAID_GROUP_ID = 103;
 	constexpr const char* KOUKU_DIFFICULTY_ID = "normal";
 
-	/* The reference capture shows no guild line under any of the four names:
-	   MvpResultFrame fills guildNameTF only when the character has a guild, so
-	   the sample leaves it empty instead of printing a stand-in word. */
-	const wstring_t PREVIEW_GUILD;
-
-	Client::MVP_AWARD_PARTICIPANT Make_PreviewParticipant(
-		const wchar_t* const pName,
-		const char* const szNetworkClassId,
-		vector<Client::MVP_AWARD_CONTRIBUTION> Contributions,
-		vector<int32_t> Medals)
-	{
-		Client::MVP_AWARD_PARTICIPANT Participant;
-		Participant.strCharacterName = pName;
-		Participant.strGuildName = PREVIEW_GUILD;
-		Participant.strNetworkClassId = szNetworkClassId;
-		Participant.Contributions = std::move(Contributions);
-		Participant.Medals = std::move(Medals);
-		for (const Client::MVP_AWARD_CONTRIBUTION& Contribution
-			: Participant.Contributions)
-			Participant.fTotalScore += Contribution.fScore;
-		return Participant;
-	}
-
-	/* Sample page for the F1 preview.
-
-	   The shares, scores and medal requests below are made-up sample play. Who
-	   ends up as the MVP, which rows each card gets, which title each row shows
-	   and which medals survive are all decided by CMvpAwardCatalog from
-	   Data/UI/MVP/MvpAwards.json -- nothing here states a title.
-
-	   The sample deliberately gives two of the three columns \uC900 \uD53C\uD574 as their
-	   best contribution so the one-damage-title-per-page rule is visible:
-	   Berserker takes it and Sorceress falls through to \uBC30\uD2C0\uC544\uC774\uD15C. Medal 16 is
-	   requested and dropped, because group 220000 cannot award it. */
+	/* Sample page for a clear until the Server hands out real contributions. */
 	Client::MVP_RESULT_DATA Build_MvpResultPreviewData(const int32_t iGate)
 	{
-		const vector<Client::MVP_AWARD_PARTICIPANT> Participants = {
-			Make_PreviewParticipant(L"Test", "LANCE_MASTER",
-				{ { MVP_STAT_DAMAGE, 4250.f, 42.5f, L"42.5%" },
-				  { MVP_STAT_STAGGER, 1655.f, 33.1f, L"33.1%" },
-				  { MVP_STAT_COUNTER, 248.f, 24.8f, L"11" } },
-				{ 1, 9, 13 }),
-			Make_PreviewParticipant(L"Berserker", "WARLORD",
-				{ { MVP_STAT_DAMAGE, 2830.f, 28.3f, {} },
-				  { MVP_STAT_STAGGER, 1530.f, 30.6f, {} } },
-				{ 2, 9 }),
-			Make_PreviewParticipant(L"Bard", "ARTIST",
-				{ { MVP_STAT_SUPPORT_DAMAGE, 2260.f, 22.6f, {} },
-				  { MVP_STAT_HEAL, 1230.f, 41.0f, {} } },
-				{ 14, 16, 17 }),
-			Make_PreviewParticipant(L"Sorceress", "DIMENSIONMASTER",
-				{ { MVP_STAT_DAMAGE, 1520.f, 15.2f, {} },
-				  { MVP_STAT_BATTLE_ITEM, 210.f, 21.0f, {} } },
-				{ 5 }),
-		};
-
-		/* The headline is not a written-out string any more: the difficulty, the
-		   raid name and the gate come out of MvpContentNames.json with their own
-		   colours, so a different gate or a different raid reads correctly
-		   without touching this. */
-		const Client::CMvpAwardCatalog& Awards = Client::CMvpAwardCatalog::Get();
-		return Awards.Compose_Page(
-			Awards.Build_ContentName(
-				KOUKU_RAID_GROUP_ID, iGate, KOUKU_DIFFICULTY_ID),
-			Participants, MVP_PARTY_SIZE);
+		return Client::CMvpAwardCatalog::Get().Build_PreviewPage(
+			KOUKU_RAID_GROUP_ID, iGate, KOUKU_DIFFICULTY_ID, MVP_PARTY_SIZE);
 	}
 }
 
@@ -2408,6 +2341,30 @@ void Client::CLevel_KakulSaydonArena::Update_RaidClear(const f32_t fTimeDelta)
 void Client::CLevel_KakulSaydonArena::Trigger_RaidClear()
 {
 	m_fRaidClearElapsedSeconds = 0.f;
+}
+
+void Client::CLevel_KakulSaydonArena::Update_RaidClearTrigger()
+{
+	/* The HUD death latch only ever sets (CClientReplication raises it on the DEAD
+	   despawn of any primary boss), so a gate arms it fresh when its boss comes up and
+	   reads it once every primary boss of the gate is gone. Bosses removed by a gate
+	   switch despawn without DEAD and leave the latch clear. */
+	CCombatHUDViewModel& Hud = CCombatHUDViewModel::Get();
+	if (m_Replication.Count_PrimaryBossesAlive() > 0)
+	{
+		if (!m_bRaidClearArmed)
+		{
+			m_bRaidClearArmed = true;
+			Hud.Clear_BossDeadRaw();
+		}
+		return;
+	}
+	if (!m_bRaidClearArmed || !Hud.Get_BossDeadRaw())
+		return;
+	m_bRaidClearArmed = false;
+	if (nullptr != m_pMvpResultView)
+		m_pMvpResultView->Hide();
+	Trigger_RaidClear();
 }
 
 void Client::CLevel_KakulSaydonArena::Debug_Play_ClearThenMvp()
