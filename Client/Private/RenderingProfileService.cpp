@@ -6,6 +6,7 @@
 #include "MapLightPresentationRuntime.h"
 #include "ProjectDataRoot.h"
 #include "RuntimeAssetRoot.h"
+#include "UserSettingsDocument.h"
 
 #include <algorithm>
 #include <cmath>
@@ -1227,6 +1228,10 @@ bool_t CRenderingProfileService::Resolve_EffectiveQuality(
 	OutEffective = base;
 	OutEffective.fExposure = base.fExposure * Profile.fExposureMultiplier;
 	OutEffective.fBloomIntensity = base.fBloomIntensity * Profile.fBloomIntensityMultiplier;
+	/* The system option window's video settings ride on top of the resolved profile, not
+	beside it: every Level and region change comes back through here, so applying them
+	last is what keeps a user brightness from being wiped by the next activation. */
+	CUserSettings::Get().Apply_Video(OutEffective);
 	if (!Validate_GlobalQuality(OutEffective, strOutStatus))
 	{
 		strOutStatus = "Global quality multiplied by the scene profile is out of range.";

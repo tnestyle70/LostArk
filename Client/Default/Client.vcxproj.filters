@@ -492,6 +492,12 @@
     <ClCompile Include="..\Private\ProjectDataRoot.cpp">
       <Filter>96.DataFiles</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\UserSettingsDocument.cpp">
+      <Filter>96.DataFiles</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\SystemOptionRowsDocument.cpp">
+      <Filter>96.DataFiles</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\DataJson.cpp">
       <Filter>96.DataFiles</Filter>
     </ClCompile>
@@ -843,6 +849,12 @@
     <ClCompile Include="..\Private\VehicleWindowView.cpp">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\SystemOptionWindowView.cpp">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\SystemOptionWindowView_Rows.cpp">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\WorldMapWindowView.cpp">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClCompile>
@@ -1163,6 +1175,12 @@
       <Filter>03. Tools\00. Map</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\ProjectDataRoot.h">
+      <Filter>96.DataFiles</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\UserSettingsDocument.h">
+      <Filter>96.DataFiles</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\SystemOptionRowsDocument.h">
       <Filter>96.DataFiles</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\DataJson.h">
@@ -1526,6 +1544,12 @@
       <Filter>02.GameObjects\04. UI</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\VehicleWindowView.h">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\SystemOptionWindowView.h">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\SystemOptionWindowView_Internal.h">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\WorldMapWindowView.h">

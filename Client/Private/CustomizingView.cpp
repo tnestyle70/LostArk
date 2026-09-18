@@ -2673,14 +2673,18 @@ void Client::CCustomizingView::Render_Text()
 			const wchar_t* pLabel;
 			bool_t isCentred;
 			bool_t isSectionHeader;
+			/* Nudge for the few captions retail packs tighter than one rule fits: the hair
+			colour swatch row and the gloss section caption are 27 px apart, so the swatch caption
+			rides the swatch's top and the header lifts less than the usual 12 px. */
+			f32_t fYOffset = 0.f;
 		};
 		constexpr TAB_LABEL TAB_LABELS[] = {
 			{ HAIR_TAB_INDEX,  "CC_HairSubBasic_Bg",       LABEL_HAIR_SUB_BASE,      true  , false },
 			{ HAIR_TAB_INDEX,  "CC_HairSubTwoTone_Bg",     LABEL_HAIR_SUB_TWOTONE,   true  , false },
 			{ HAIR_TAB_INDEX,  "CC_HairDivision",          LABEL_HAIR_DESC,          false , true  },
 			{ HAIR_TAB_INDEX,  "CC_HairShape0_Plate",      LABEL_HAIR_FORM,          false , true  },
-			{ HAIR_TAB_INDEX,  "CC_HairColor",             LABEL_HAIR_COLOR,         false , false },
-			{ HAIR_TAB_INDEX,  "CC_Slider_hair_strength_Track", LABEL_HAIR_GLOSS,    false , true  },
+			{ HAIR_TAB_INDEX,  "CC_HairColor",             LABEL_HAIR_COLOR,         false , false, -5.f },
+			{ HAIR_TAB_INDEX,  "CC_Slider_hair_strength_Track", LABEL_HAIR_GLOSS,    false , true , 3.f },
 			{ HAIR_TAB_INDEX,  "CC_Slider_hair_strength_Track", LABEL_STRENGTH,      false , false },
 			{ HAIR_TAB_INDEX,  "CC_Slider_hair_range_Track",    LABEL_RANGE,         false , false },
 
@@ -2741,14 +2745,14 @@ void Client::CCustomizingView::Render_Text()
 			else if (Entry.isSectionHeader)
 			{
 				/* A section caption sits above its divider line. */
-				Fn_Draw(TEXT("Font_YG760"), RIGHT_LABEL_X, fY - 12.f, 11.f,
+				Fn_Draw(TEXT("Font_YG760"), RIGHT_LABEL_X, fY - 12.f + Entry.fYOffset, 11.f,
 					vDescColor, Entry.pLabel, float2_t(0.f, 0.5f));
 			}
 			else
 			{
 				/* A row caption is left-aligned against the panel edge and vertically
 				centred on the swatch or slider track it names. */
-				Fn_Draw(TEXT("Font_YG760"), RIGHT_LABEL_X, fY + fHeight * 0.5f, 11.f,
+				Fn_Draw(TEXT("Font_YG760"), RIGHT_LABEL_X, fY + fHeight * 0.5f + Entry.fYOffset, 11.f,
 					vDescColor, Entry.pLabel, float2_t(0.f, 0.5f));
 			}
 		}

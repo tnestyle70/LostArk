@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ClientReplication.h"
+#include "UserSettingsDocument.h"
 
 #include <memory>
 #include <string>
@@ -46,8 +47,15 @@ public:
 	/* Reference px (1280x720) the name plate reaches above the head anchor: the next stacked
 	element (the chat bubble) starts there. */
 	static f32_t Stack_Top_RefPx();
+	/* Own / party (by net entity id in the roster) / other. Shared with the chat bubble. */
+	static PLAYER_RELATION Resolve_Relation(
+		const REPLICATED_PLAYER_VIEW& Player,
+		const LostArk::Shared::S2C_PARTY_ROSTER* pPartyRoster);
 
-	void Render(const std::vector<REPLICATED_PLAYER_VIEW>& Players);
+	/* The party roster tells own / party / other apart for the system option nametag rows
+	(name and honor title per relation); without it every non-local player counts as other. */
+	void Render(const std::vector<REPLICATED_PLAYER_VIEW>& Players,
+		const LostArk::Shared::S2C_PARTY_ROSTER* pPartyRoster = nullptr);
 };
 
 NS_END

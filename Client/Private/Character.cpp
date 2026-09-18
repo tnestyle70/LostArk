@@ -15,6 +15,7 @@
 #include <fstream>
 #include <iterator>
 #include "CameraShakeService.h"
+#include "UserSettingsDocument.h"
 #include "Collider.h"
 #include "Effect_Catalog.h"
 #include "Effect_PresentationService.h"
@@ -965,11 +966,13 @@ void CCharacter::Update_CameraShakeCues()
 					continue;
 				}
 				/* The shake runs on the wall clock like the source notify; a
-				late snapshot joins it mid-way instead of restarting it. */
-				CCameraShakeService::Trigger(
-					Cue.Spec,
-					(std::max)(0.f,
-						fCurrentStageWallSeconds - fOccurrenceWallSeconds));
+				late snapshot joins it mid-way instead of restarting it. The
+				system option row (skill camera shake) can switch it off. */
+				if (CUserSettings::Get().Is_SkillCameraShakeOn())
+					CCameraShakeService::Trigger(
+						Cue.Spec,
+						(std::max)(0.f,
+							fCurrentStageWallSeconds - fOccurrenceWallSeconds));
 
 				if (iEpoch == (std::numeric_limits<uint64_t>::max)())
 					break;

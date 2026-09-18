@@ -1,0 +1,17 @@
+{
+ "schema": "lostark.ui-strings",
+ "formatVersion": 1,
+ "strings": {
+  "window.title": "환경설정",
+  "tab.gameplay": "게임 플레이",
+  "tab.community": "커뮤니티",
+  "tab.hotkey": "단축키",
+  "tab.controller": "게임 패드",
+  "button.confirm": "확인",
+  "button.cancel": "취소",
+  "button.apply": "적용",
+  "button.reset": "초기화",
+  "button.resetAll": "전체초기화",
+  "button.bookmark": "환경설정 즐겨찾기"
+ }
+}

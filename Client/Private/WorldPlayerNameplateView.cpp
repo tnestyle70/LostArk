@@ -10,6 +10,7 @@
 #include "Model.h"
 #include "Transform.h"
 #include "UILabelFont.h"
+#include "UserSettingsDocument.h"
 
 #include <Windows.h>
 
@@ -191,8 +192,22 @@ f32_t Client::CWorldPlayerNameplateView::Stack_Top_RefPx()
 	return NAME_STACK_TOP;
 }
 
+Client::PLAYER_RELATION Client::CWorldPlayerNameplateView::Resolve_Relation(
+	const REPLICATED_PLAYER_VIEW& Player,
+	const LostArk::Shared::S2C_PARTY_ROSTER* pPartyRoster)
+{
+	if (Player.isLocal)
+		return PLAYER_RELATION::LOCAL;
+	if (nullptr != pPartyRoster)
+		for (const LostArk::Shared::PARTY_ROSTER_MEMBER& Member : pPartyRoster->Members)
+			if (Member.iNetEntityId == Player.iNetEntityId)
+				return PLAYER_RELATION::PARTY;
+	return PLAYER_RELATION::OTHER;
+}
+
 void Client::CWorldPlayerNameplateView::Render(
-	const std::vector<REPLICATED_PLAYER_VIEW>& Players)
+	const std::vector<REPLICATED_PLAYER_VIEW>& Players,
+	const LostArk::Shared::S2C_PARTY_ROSTER* pPartyRoster)
 {
 	CGameInstance& gameInstance = CGameInstance::Get();
 	const float4x4_t* const pViewMatrix =
@@ -235,14 +250,19 @@ void Client::CWorldPlayerNameplateView::Render(
 			continue;
 		}
 
+		/* System option nametag rows, per relation: no name, no plate at all. */
+		const PLAYER_RELATION eRelation = Resolve_Relation(player, pPartyRoster);
+		if (!CUserSettings::Get().Is_NametagShown(eRelation, false))
+			continue;
 		std::wstring nickname;
 		if (!Try_ConvertUtf8(player.strNickname, nickname))
 			continue;
 		/* BaseHeadStatus.updateTitle: title + " " + name on the one line; the title keeps its
 		own colour, so the two halves are measured together and drawn apart. */
 		std::wstring titleWithSpace;
-		if (const wstring* pTitle = CHonorTitleCatalog::Find_Name(player.iHonorTitleId))
-			titleWithSpace = *pTitle + L" ";
+		if (CUserSettings::Get().Is_NametagShown(eRelation, true))
+			if (const wstring* pTitle = CHonorTitleCatalog::Find_Name(player.iHonorTitleId))
+				titleWithSpace = *pTitle + L" ";
 		f32_t fScale = 1.f;
 		const wstring_t strFont = UILabelFont::Resolve(
 			FONT_YG760, NAME_FONT_PX * fRefToScreen, fScale);

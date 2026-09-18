@@ -59,6 +59,9 @@ float       g_fToneMapWhitePoint;
 float       g_fToneMapGamma;
 float4      g_vSceneBloomTint = float4(1.f, 1.f, 1.f, 1.f);
 float       g_fSceneDesaturation = 0.f;
+// Accessibility colour-vision filter: 0 off, 1 protan, 2 deutan, 3 tritan; strength 0..1.
+int         g_iColorFilterType = 0;
+float       g_fColorFilterStrength = 0.f;
 int         g_iSourcePostProcessEnabled = 0;
 float4      g_vSourceToneCurve = float4(.22f, 1.0275f, .255447f, 1.f);
 float       g_fSourceToneToe = 1.f;
@@ -1401,6 +1404,37 @@ PS_OUT_BACKBUFFER PS_MAIN_DISPLAY_OVERLAY(PS_IN In)
 }
 
 /* Hable(Uncharted 2) 필름 커브. 씬 컬러는 선형이고 1을 넘을 수 있다. */
+// Daltonisation for the accessibility colour filter: simulate the chosen deficiency in LMS
+// space, take the information that would be lost and redistribute it onto the channels the
+// viewer can still separate. Strength blends between the untouched colour and the corrected one.
+float3 Apply_ColorVisionFilter(float3 vColor)
+{
+    const float3x3 RGB_TO_LMS = float3x3(
+        17.8824f, 43.5161f, 4.11935f,
+        3.45565f, 27.1554f, 3.86714f,
+        0.0299566f, 0.184309f, 1.46709f);
+    const float3x3 LMS_TO_RGB = float3x3(
+        0.0809444479f, -0.130504409f, 0.116721066f,
+        -0.0102485335f, 0.0540193266f, -0.113614708f,
+        -0.000365296938f, -0.00412161469f, 0.693511405f);
+    float3x3 simulate;
+    if (g_iColorFilterType == 1)
+        simulate = float3x3(0.f, 2.02344f, -2.52581f, 0.f, 1.f, 0.f, 0.f, 0.f, 1.f);
+    else if (g_iColorFilterType == 2)
+        simulate = float3x3(1.f, 0.f, 0.f, 0.494207f, 0.f, 1.24827f, 0.f, 0.f, 1.f);
+    else
+        simulate = float3x3(1.f, 0.f, 0.f, 0.f, 1.f, 0.f, -0.395913f, 0.801109f, 0.f);
+    float3 lms = mul(RGB_TO_LMS, vColor);
+    float3 simulated = mul(LMS_TO_RGB, mul(simulate, lms));
+    float3 lost = vColor - simulated;
+    const float3x3 SHIFT = float3x3(
+        0.f, 0.f, 0.f,
+        0.7f, 1.f, 0.f,
+        0.7f, 0.f, 1.f);
+    float3 corrected = saturate(vColor + mul(SHIFT, lost));
+    return lerp(vColor, corrected, saturate(g_fColorFilterStrength));
+}
+
 float3 Tonemap_Hable(float3 vColor)
 {
     const float A = 0.15f;
@@ -1501,9 +1535,14 @@ float3 Resolve_FinalLDR(float2 vTexcoord)
         1.f / max(g_fToneMapGamma, 1.f));
     // Display-space adapter, not the original game's packed LUT transform.
     // Keep the old return path exact when optional color adjustment is absent.
-    if (g_fSceneDesaturation <= 0.f) return displayColor;
-    float luminance = dot(displayColor, float3(0.299f, 0.587f, 0.114f));
-    return lerp(displayColor, luminance.xxx, saturate(g_fSceneDesaturation));
+    if (g_fSceneDesaturation > 0.f)
+    {
+        float luminance = dot(displayColor, float3(0.299f, 0.587f, 0.114f));
+        displayColor = lerp(displayColor, luminance.xxx, saturate(g_fSceneDesaturation));
+    }
+    if (g_iColorFilterType > 0 && g_fColorFilterStrength > 0.f)
+        displayColor = Apply_ColorVisionFilter(displayColor);
+    return displayColor;
 }
 
 float Final_Luminance(float3 vColor)

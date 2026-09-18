@@ -2115,7 +2115,7 @@ HRESULT Client::CLevel_KakulSaydonArena::Render()
 	const HRESULT drawn = __super::Render();
 	if (FAILED(drawn))
 		return drawn;
-	m_PlayerNameplateView.Render(m_NameplatePlayers);
+	m_PlayerNameplateView.Render(m_NameplatePlayers, &m_Replication.Get_PartyRoster());
 	m_ChatBubbleView.Render(m_Replication, m_NameplatePlayers);
 #ifdef _DEBUG
 	CMainApp::Update_DebugWindowTitleWithFps(

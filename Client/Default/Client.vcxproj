@@ -165,6 +165,9 @@
     <ClInclude Include="..\Public\PartyInteractionView.h" />
     <ClInclude Include="..\Public\CombatAnalysisFrameView.h" />
     <ClInclude Include="..\Public\VehicleWindowView.h" />
+    <ClInclude Include="..\Public\SystemOptionWindowView.h" />
+    <ClInclude Include="..\Public\SystemOptionWindowView_Internal.h" />
+    <ClInclude Include="..\Public\SystemOptionRowsDocument.h" />
     <ClInclude Include="..\Public\WorldMapWindowView.h" />
     <ClInclude Include="..\Public\SongCastGaugeView.h" />
     <ClInclude Include="..\Public\HonorTitleWindowView.h" />
@@ -279,6 +282,7 @@
     <ClInclude Include="..\Public\NavRuntimeBlockerDocument.h" />
     <ClInclude Include="..\Public\RuntimeAssetRoot.h" />
     <ClInclude Include="..\Public\ProjectDataRoot.h" />
+    <ClInclude Include="..\Public\UserSettingsDocument.h" />
     <ClInclude Include="..\Public\DataJson.h" />
     <ClInclude Include="..\Public\Valtan.h" />
     <ClInclude Include="Client.h" />
@@ -424,6 +428,9 @@
     <ClCompile Include="..\Private\PartyInteractionView.cpp" />
     <ClCompile Include="..\Private\CombatAnalysisFrameView.cpp" />
     <ClCompile Include="..\Private\VehicleWindowView.cpp" />
+    <ClCompile Include="..\Private\SystemOptionWindowView.cpp" />
+    <ClCompile Include="..\Private\SystemOptionWindowView_Rows.cpp" />
+    <ClCompile Include="..\Private\SystemOptionRowsDocument.cpp" />
     <ClCompile Include="..\Private\WorldMapWindowView.cpp" />
     <ClCompile Include="..\Private\SongCastGaugeView.cpp" />
     <ClCompile Include="..\Private\HonorTitleWindowView.cpp" />
@@ -606,6 +613,7 @@
       <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" />
     </ClCompile>
     <ClCompile Include="..\Private\ProjectDataRoot.cpp" />
+    <ClCompile Include="..\Private\UserSettingsDocument.cpp" />
     <ClCompile Include="..\Private\DataJson.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">MaxSpeed</Optimization>
       <BasicRuntimeChecks Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Default</BasicRuntimeChecks>

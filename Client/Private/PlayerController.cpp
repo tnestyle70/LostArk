@@ -14,12 +14,25 @@
 #include "ClickMoveEffect.h"
 #include "Transform.h"
 #include "UIInputRouter.h"
+#include "UserSettingsDocument.h"
 
 #include <cmath>
 #include <cstdio>
 
 namespace
 {
+	/* System option "swap mouse buttons": every gameplay read of the move button and the
+	attack button goes through these two, so the swap is one flag and the UI (which reads the
+	router, not these) keeps its physical left click. */
+	Engine::DIM Move_MouseButton()
+	{
+		return Client::CUserSettings::Get().Is_MouseButtonSwapped() ? Engine::DIM::LB : Engine::DIM::RB;
+	}
+	Engine::DIM Attack_MouseButton()
+	{
+		return Client::CUserSettings::Get().Is_MouseButtonSwapped() ? Engine::DIM::RB : Engine::DIM::LB;
+	}
+
 	/* Which physical key each quick slot sits on. This table is class-agnostic on
 	purpose: the slot name to skill pairing lives in Data/Balance/PlayerSkills.json
 	per class, so adding another class's skills there binds them with no code
@@ -194,9 +207,9 @@ void Client::CPlayerController::Update(
 	const bool_t isControlCaptured = Is_PlayerControlCaptured(
 		CCombatHUDViewModel::Get().Get_Player());
 	const bool_t isLeftMousePhysicallyDown =
-		0 != (CGameInstance::Get().Get_DIMouseStateRaw(DIM::LB) & 0x80);
+		0 != (CGameInstance::Get().Get_DIMouseStateRaw(Attack_MouseButton()) & 0x80);
 	const bool_t isRightMousePhysicallyDown =
-		0 != (CGameInstance::Get().Get_DIMouseStateRaw(DIM::RB) & 0x80);
+		0 != (CGameInstance::Get().Get_DIMouseStateRaw(Move_MouseButton()) & 0x80);
 	// Observe raw presses before any early return; UI/capture release is not a new click.
 	const bool_t isRightMousePressed =
 		isRightMousePhysicallyDown && !m_wasRightMousePhysicallyDown;
@@ -250,7 +263,7 @@ void Client::CPlayerController::Update(
 	const bool_t isRightMouseDown =
 		!m_CaptureInputGate.Is_Blocked(CPLAYER_CAPTURE_INPUT_GATE::RIGHT_MOUSE) &&
 		!CGameInstance::Get().IsMouseInputBlocked() &&
-		0 != (CGameInstance::Get().Get_DIMouseState(DIM::RB) & 0x80);
+		0 != (CGameInstance::Get().Get_DIMouseState(Move_MouseButton()) & 0x80);
 	const bool_t isKeyboardBlocked =
 		CGameInstance::Get().IsKeyboardInputBlocked();
 	const bool_t useRawKeyboard =
@@ -319,7 +332,7 @@ void Client::CPlayerController::Update(
 					!m_wasTargetingRightMouseDown;
 				const bool_t confirmEdge =
 					!CGameInstance::Get().IsMouseInputBlocked() &&
-					0 != (CGameInstance::Get().Get_DIMouseState(DIM::LB) & 0x80) &&
+					0 != (CGameInstance::Get().Get_DIMouseState(Attack_MouseButton()) & 0x80) &&
 					isLeftMousePhysicallyDown &&
 					!m_wasTargetingLeftMouseDown;
 				m_wasTargetingLeftMouseDown = isLeftMousePhysicallyDown;
@@ -486,7 +499,7 @@ void Client::CPlayerController::Update(
 				/* Poll_BasicAttack has already observed this frame.  Suppress only
 				when an explicit skill won while LMB is physically still held. */
 				const bool_t isBasicAttackPhysicallyHeld =
-					0 != (CGameInstance::Get().Get_DIMouseStateRaw(DIM::LB) & 0x80);
+					0 != (CGameInstance::Get().Get_DIMouseStateRaw(Attack_MouseButton()) & 0x80);
 				if (!requestedBasicAttack && isBasicAttackPhysicallyHeld)
 					m_BasicAttackResendGate.Suppress_UntilRelease();
 				++m_iNextActionSequence;
@@ -696,9 +709,9 @@ void Client::CPlayerController::Poll_BasicAttack(
 	const std::chrono::steady_clock::time_point now =
 		std::chrono::steady_clock::now();
 	const bool_t isPhysicallyDown =
-		0 != (CGameInstance::Get().Get_DIMouseStateRaw(DIM::LB) & 0x80);
+		0 != (CGameInstance::Get().Get_DIMouseStateRaw(Attack_MouseButton()) & 0x80);
 	const bool_t isGameplayDown =
-		0 != (CGameInstance::Get().Get_DIMouseState(DIM::LB) & 0x80);
+		0 != (CGameInstance::Get().Get_DIMouseState(Attack_MouseButton()) & 0x80);
 	const bool_t resendSuppressed =
 		m_BasicAttackResendGate.Observe_Button(isPhysicallyDown);
 	if (!isPhysicallyDown)
@@ -1474,7 +1487,7 @@ void Client::CPlayerController::Update_DebugPlayerPlacement(const bool_t enabled
 	using namespace LostArk::Shared;
 	m_debugPlacementEnabled = enabled;
 	const bool_t leftDown =
-		0 != (CGameInstance::Get().Get_DIMouseStateRaw(DIM::LB) & 0x80);
+		0 != (CGameInstance::Get().Get_DIMouseStateRaw(Attack_MouseButton()) & 0x80);
 	const bool_t leftPressed = leftDown && !m_wasDebugPlacementLeftDown;
 	m_wasDebugPlacementLeftDown = leftDown;
 
@@ -1590,7 +1603,7 @@ void Client::CPlayerController::Update_DebugPlayerPlacement(const bool_t enabled
 	if (ImGui::GetIO().WantTextInput || CUIInputRouter::Get().Is_TextInputActive())
 		return;
 	if (CGameInstance::Get().Get_DIKeyPressedRaw(DIK_ESCAPE) ||
-		0 != (CGameInstance::Get().Get_DIMouseStateRaw(DIM::RB) & 0x80))
+		0 != (CGameInstance::Get().Get_DIMouseStateRaw(Move_MouseButton()) & 0x80))
 	{
 		Cancel_DebugPlayerPlacement();
 		return;
@@ -1598,10 +1611,10 @@ void Client::CPlayerController::Update_DebugPlayerPlacement(const bool_t enabled
 	if (!leftPressed || ImGui::GetIO().WantCaptureMouse ||
 		CUIInputRouter::Get().Is_MouseClaimedThisFrame() ||
 		CGameInstance::Get().IsMouseInputBlocked() ||
-		0 == (CGameInstance::Get().Get_DIMouseState(DIM::LB) & 0x80))
+		0 == (CGameInstance::Get().Get_DIMouseState(Attack_MouseButton()) & 0x80))
 		return;
 
-	CGameInstance::Get().SetMouseButtonBlocked(DIM::LB, true);
+	CGameInstance::Get().SetMouseButtonBlocked(Attack_MouseButton(), true);
 	CUIInputRouter::Get().Claim_Mouse_This_Frame();
 	m_BasicAttackResendGate.Suppress_UntilRelease();
 	float4_t picked{};
