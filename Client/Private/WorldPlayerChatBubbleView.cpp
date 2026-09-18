@@ -148,6 +148,10 @@ void Client::CWorldPlayerChatBubbleView::Render(
 		std::string bubbleText;
 		if (!Replication.Try_Get_ActiveChatBubble(player.iNetEntityId, bubbleText))
 			continue;
+		/* System option message balloon rows, per relation. */
+		if (!CUserSettings::Get().Is_ChatBubbleShown(
+			CWorldPlayerNameplateView::Resolve_Relation(player, &Replication.Get_PartyRoster())))
+			continue;
 		const std::shared_ptr<CCharacter> pCharacter = player.pCharacter.lock();
 		if (nullptr == pCharacter)
 			continue;

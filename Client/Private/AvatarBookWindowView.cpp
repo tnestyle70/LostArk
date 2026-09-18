@@ -807,3 +807,21 @@ void Client::CAvatarBookWindowView::Render_Text()
 	Draw_Label(FONT_YG760, TEXT_REVERT, 234.f + 103.f * 1.5145f * 0.5f, 753.f + 18.f, 14.f, COLOR_WHITE, CENTER);
 	Draw_Label(FONT_YG760, TEXT_SAVE, 392.f + 103.f * 1.5145f * 0.5f, 753.f + 18.f, 14.f, COLOR_WHITE, CENTER);
 }
+
+bool_t Client::CAvatarBookWindowView::Get_ScreenRect(
+	f32_t& fX, f32_t& fY, f32_t& fWidth, f32_t& fHeight) const
+{
+	if (!Is_Open() || nullptr == m_pView)
+		return false;
+	f32_t fRefX = 0.f, fRefY = 0.f, fRefWidth = 0.f, fRefHeight = 0.f;
+	if (!m_pView->Get_SlotRect("AB_WinBg", fRefX, fRefY, fRefWidth, fRefHeight))
+		return false;
+	const float2_t vViewport = CGameInstance::Get().Get_ViewportSize();
+	const f32_t fScaleX = vViewport.x / m_pView->Get_ResolutionWidth();
+	const f32_t fScaleY = vViewport.y / m_pView->Get_ResolutionHeight();
+	fX = fRefX * fScaleX;
+	fY = fRefY * fScaleY;
+	fWidth = fRefWidth * fScaleX;
+	fHeight = fRefHeight * fScaleY;
+	return true;
+}

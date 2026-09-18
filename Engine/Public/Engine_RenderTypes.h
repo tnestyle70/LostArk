@@ -109,6 +109,10 @@ namespace Engine
 		// Optional scene color adjustment; identity preserves existing profiles.
 		float4_t vBloomTint = { 1.f, 1.f, 1.f, 1.f };
 		f32_t fSceneDesaturation = 0.f;
+		// Accessibility colour-vision filter on the display colour: 0 off,
+		// 1 protanopia, 2 deuteranopia, 3 tritanopia; strength 0..1.
+		int32_t iColorFilterType = 0;
+		f32_t fColorFilterStrength = 0.f;
 		SOURCE_POST_PROCESS_SETTINGS SourcePostProcess{};
 	}RENDER_QUALITY_SETTINGS;
 

@@ -673,3 +673,67 @@ bool_t Client::CMvpAwardCatalog::Sample_StageReveal(const size_t iSlot,
 	}
 	return false;
 }
+
+namespace
+{
+	/* EFTable_Mvp.StatType, for the contributions the sample page carries. */
+	constexpr int32_t MVP_STAT_DAMAGE = 1;
+	constexpr int32_t MVP_STAT_STAGGER = 3;
+	constexpr int32_t MVP_STAT_HEAL = 4;
+	constexpr int32_t MVP_STAT_BATTLE_ITEM = 9;
+	constexpr int32_t MVP_STAT_COUNTER = 11;
+	constexpr int32_t MVP_STAT_SUPPORT_DAMAGE = 13;
+
+	/* The reference capture shows no guild line under any of the four names:
+	   MvpResultFrame fills guildNameTF only when the character has a guild, so
+	   the sample leaves it empty instead of printing a stand-in word. */
+	Client::MVP_AWARD_PARTICIPANT Make_PreviewParticipant(
+		const wchar_t* const pName,
+		const char* const szNetworkClassId,
+		vector<Client::MVP_AWARD_CONTRIBUTION> Contributions,
+		vector<int32_t> Medals)
+	{
+		Client::MVP_AWARD_PARTICIPANT Participant;
+		Participant.strCharacterName = pName;
+		Participant.strNetworkClassId = szNetworkClassId;
+		Participant.Contributions = std::move(Contributions);
+		Participant.Medals = std::move(Medals);
+		for (const Client::MVP_AWARD_CONTRIBUTION& Contribution
+			: Participant.Contributions)
+			Participant.fTotalScore += Contribution.fScore;
+		return Participant;
+	}
+}
+
+/* The shares, scores and medal requests below are made-up sample play. The
+   sample deliberately gives two of the three columns the damage stat as their
+   best contribution so the one-damage-title-per-page rule is visible: Berserker
+   takes it and Sorceress falls through to the battle-item title. Medal 16 is
+   requested and dropped where the group cannot award it. */
+Client::MVP_RESULT_DATA Client::CMvpAwardCatalog::Build_PreviewPage(
+	const int32_t iRaidGroupId, const int32_t iGate, const char* const szDifficultyId,
+	const int32_t iPartySize) const
+{
+	const vector<MVP_AWARD_PARTICIPANT> Participants = {
+		Make_PreviewParticipant(L"Test", "LANCE_MASTER",
+			{ { MVP_STAT_DAMAGE, 4250.f, 42.5f, L"42.5%" },
+			  { MVP_STAT_STAGGER, 1655.f, 33.1f, L"33.1%" },
+			  { MVP_STAT_COUNTER, 248.f, 24.8f, L"11" } },
+			{ 1, 9, 13 }),
+		Make_PreviewParticipant(L"Berserker", "WARLORD",
+			{ { MVP_STAT_DAMAGE, 2830.f, 28.3f, {} },
+			  { MVP_STAT_STAGGER, 1530.f, 30.6f, {} } },
+			{ 2, 9 }),
+		Make_PreviewParticipant(L"Bard", "ARTIST",
+			{ { MVP_STAT_SUPPORT_DAMAGE, 2260.f, 22.6f, {} },
+			  { MVP_STAT_HEAL, 1230.f, 41.0f, {} } },
+			{ 14, 16, 17 }),
+		Make_PreviewParticipant(L"Sorceress", "DIMENSIONMASTER",
+			{ { MVP_STAT_DAMAGE, 1520.f, 15.2f, {} },
+			  { MVP_STAT_BATTLE_ITEM, 210.f, 21.0f, {} } },
+			{ 5 }),
+	};
+	return Compose_Page(
+		Build_ContentName(iRaidGroupId, iGate, szDifficultyId),
+		Participants, iPartySize);
+}

@@ -946,3 +946,21 @@ void Client::CCharacterInfoWindowView::Render_Text()
 	Draw_Label(FONT_YG760, TEXT_AVATAR, 692.f, 620.f, 14.f, m_bAvatarMode ? COLOR_WHITE : COLOR_DIM, CENTER);
 	Draw_Label(FONT_YG760, TEXT_HONOR + L" " + m_Display.strHonor, 614.f, 663.f, 14.f, COLOR_WHITE, CENTER);
 }
+
+bool_t Client::CCharacterInfoWindowView::Get_ScreenRect(
+	f32_t& fX, f32_t& fY, f32_t& fWidth, f32_t& fHeight) const
+{
+	if (!Is_Open() || nullptr == m_pView)
+		return false;
+	f32_t fRefX = 0.f, fRefY = 0.f, fRefWidth = 0.f, fRefHeight = 0.f;
+	if (!m_pView->Get_SlotRect("CI_WinBg", fRefX, fRefY, fRefWidth, fRefHeight))
+		return false;
+	const float2_t vViewport = CGameInstance::Get().Get_ViewportSize();
+	const f32_t fScaleX = vViewport.x / m_pView->Get_ResolutionWidth();
+	const f32_t fScaleY = vViewport.y / m_pView->Get_ResolutionHeight();
+	fX = fRefX * fScaleX;
+	fY = fRefY * fScaleY;
+	fWidth = fRefWidth * fScaleX;
+	fHeight = fRefHeight * fScaleY;
+	return true;
+}

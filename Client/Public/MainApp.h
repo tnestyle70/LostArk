@@ -57,6 +57,7 @@ class CAvatarBookWindowView;
 class CVehicleWindowView;
 class CHonorTitleWindowView;
 class CWorldMapWindowView;
+class CSystemOptionWindowView;
 class CSongCastGaugeView;
 class CQuickSlotDragView;
 class CPlayerController;
@@ -119,6 +120,9 @@ public:
 	HRESULT Initialize();
 	void Update(f32_t fTimeDelta);
 	HRESULT Render();
+	/* End of the frame loop: waits out the rest of the frame when the system option's
+	foreground / background frame limit is on. Does nothing while both are off. */
+	void Limit_FrameRate();
 
 	/* Shared one-shot click sound for every real UI button (not Debug/Tool authoring
 	widgets) -- single source of truth for the sound asset path so every button's own
@@ -245,6 +249,14 @@ private:
 	LOBBY_STAGE::CHARACTER_SELECT product command the old direct button did, CLOSE returns to
 	the Lobby. Hidden entirely outside LOBBY. */
 	void Update_CharacterSelectWindow(f32_t fTimeDelta);
+	/* Escape opens the system option window only when no other runtime window is open
+	at the top of the frame, so the Escape that closes the inventory cannot also open
+	this one. Also re-activates the scene rendering profile after a video edit. */
+	void Update_SystemOptionWindow(f32_t fTimeDelta);
+	bool_t Is_AnyRuntimeWindowOpen() const;
+	/* End of Update: registers every open runtime window's screen rect as a text clip-out so
+	nothing drawn later in the frame (nameplates, HUD, bubbles) shows through a window. */
+	void Add_OpenWindowTextClipOuts();
 	/* Server-select text: panel title/header, row name/state/count, button captions, copyright,
 	plus the Release product status line. Called after EndFrame() like the other LOA-font text,
 	for the same z-order reason as RenderQuickSlotKeyLabels. */
@@ -398,6 +410,8 @@ private:
 	where the hit landed instead of following the target. Already pure CGameInstance::Draw_Text
 	in the post-EndFrame text pass. */
 	void RenderDamageNumbers();
+	/* System option "FPS display": always / in combat only / never. */
+	void RenderFpsText();
 	/* Resolves each Skill_Q..V slot's live (class, stance) skill icon into the appended
 	Skill_<X>_Icon slots (the authored Skill_<X>_Frame stays on top of it in sprite order). */
 	void Update_SkillIcons();
@@ -796,6 +810,15 @@ private:
 	/* Orange cast gauge while the player plays the square-hole song (SongCastGaugeView.h). */
 	unique_ptr<CSongCastGaugeView> m_pSongCastGaugeView = { nullptr };
 	bool_t m_bWorldMapKeyDown = false;
+	/* Escape with no other runtime window open: the system option window
+	(SystemOptionWindowView.h). It owns audio buses and the video rows the renderer has a
+	runtime path for; every other Escape consumer keeps its own meaning. */
+	unique_ptr<CSystemOptionWindowView> m_pSystemOptionView = { nullptr };
+	bool_t m_bSystemOptionKeyDown = false;
+	/* Frame pacing and the FPS readout the system option rows drive. */
+	f32_t m_fSmoothedFps = 0.f;
+	f64_t m_dLastDamageSeconds = -1000.0;   // "in combat" for the FPS display = a recent hit
+	std::chrono::steady_clock::time_point m_LastFrameEnd{};
 	/* Click-to-carry icon for the quick slots, constructed last of all runtime UI so it rides
 	over every window. Item_1..4 (1/2/3/4) take inventory items, SpecialSkill_1..6 (5/6/7/8/9/0)
 	take vehicles; both bindings are Client-local like m_strItemQuickSlot. */
