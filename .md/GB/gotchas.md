@@ -1,5 +1,20 @@
 # LostArk merge 회귀 방지 정본
 
+### 실행 ZIP의 DataFiles와 옵션 팝업 클릭 소비
+
+- Git pull과 Product Build는 runtime publish를 대신하지 않는다. 특히 KoukuSaydon owner에는
+  Navigation/Composition이 없으므로 전체 실행 배포 전 Client/Server owner의 결과를 확인한다.
+  EXE/DLL/CSO와 양쪽 Bin/DataFiles를 함께 포장하고 region manifest가 참조하는 파일까지
+  검증한다. 직접 읽는 Data JSON은 같은 commit 또는 검증된 보충분으로 전달한다.
+- WorldSequence에 기존 runtime 필드를 추가할 때 Map publisher·Client codec뿐 아니라
+  Composition의 엄격한 source validator도 같은 계약을 소비해야 한다. `colliderTracks`와
+  `loopFullPresentation`을 unknown으로 거절하는 경우 필드를 제거하지 않고 타입·시간·shape·
+  binding 제약을 일치시킨다.
+- 열린 옵션 콤보는 popup 항목이 입력을 먼저 처리한 뒤 하위 UI의 같은 클릭을 차단한다.
+  공용 `Is_Clicked`가 소비 플래그를 검사하는데 popup 처리 전에 그 플래그를 세우면
+  커서 preset을 포함한 모든 combo 선택이 막힌다. popup 선택과 바깥 클릭 차단을 함께 확인한다.
+- 세부 증거는 [쿠크 통합 결과의 배포 재수정](09-18/2026-09-18_KOUKU_RAID_COLLIDER_SOUND_INTEGRATION_RESULT.md)을 따른다.
+
 ### Sprite 축 회전과 source 곡선의 기본값
 
 - Source sprite의 EPAL_Rotate_X/Y/Z는 일반 camera billboard와 다르다. 원본 축 회전을 편집하려면 Billboard를 유지하고 명시적인 axis-follow 옵션으로 emitter 축을 변환한다. 옵션을 끄면 기존 동작을 유지하며 local space는 현재 root, world space는 출생 root를 사용한다. camera와 축이 평행할 때도 finite basis와 실제 quad의 앞면을 검사한다.

@@ -440,12 +440,13 @@ void Client::CSystemOptionWindowView::Update(const f32_t fTimeDelta)
 	m_bPopupAteClick = false;
 	if (0 != m_iComboOpenKey)
 	{
-		if (CUIInputRouter::Get().Is_LeftClickEdge())
+		const bool_t bPopupClick = CUIInputRouter::Get().Is_LeftClickEdge();
+		Update_ComboPopup();
+		if (bPopupClick)
 		{
 			CUIInputRouter::Get().Claim_Mouse_This_Frame();
 			m_bPopupAteClick = true;
 		}
-		Update_ComboPopup();
 	}
 	Update_TabColumn();
 	Update_Scroll();

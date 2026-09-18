@@ -2603,6 +2603,77 @@ def _validate_world_sequence_effect_tracks(
                 raise CompositionError(f"{effect_context}.scale is below runtime epsilon")
 
 
+def _validate_world_sequence_collider_tracks(
+    template: Mapping[str, Any], transform_slots: set[str], context: str
+) -> None:
+    """Keep v3 collider admission aligned with the Map publisher and Client codec."""
+    colliders = template["colliderTracks"]
+    if not colliders:
+        return
+    motion = template.get("objectMotion", {})
+    if not isinstance(motion, dict):
+        raise CompositionError(f"{context}.objectMotion must be an object")
+    _require_finite_number(
+        motion.get("spreadDegrees", 0), f"{context}.objectMotion.spreadDegrees",
+        minimum=0, maximum=0,
+    )
+    _require_float3(
+        motion.get("spawnHalfExtents", [0, 0, 0]),
+        f"{context}.objectMotion.spawnHalfExtents", maximum_magnitude=0,
+    )
+    collider_ids: set[str] = set()
+    for ordinal, collider in enumerate(colliders):
+        row_context = f"{context}.colliderTracks[{ordinal}]"
+        if not isinstance(collider, dict):
+            raise CompositionError(f"{row_context} must be an object")
+        _require_exact_fields(
+            collider,
+            ("colliderTrackId", "slotId", "startMs", "durationMs", "positionOffset",
+             "halfExtents", "yawDegrees", "behavior", "damagePercent", "gripLocalOffset"),
+            ("attachmentBone",), row_context,
+        )
+        collider_id = _require_owner_stable_id(
+            collider["colliderTrackId"], f"{row_context}.colliderTrackId", 128
+        )
+        if collider_id in collider_ids:
+            raise CompositionError(f"{row_context}.colliderTrackId is duplicate")
+        collider_ids.add(collider_id)
+        slot_id = _require_owner_stable_id(collider["slotId"], f"{row_context}.slotId", 128)
+        if slot_id not in transform_slots:
+            raise CompositionError(f"{row_context}.slotId requires a transform track")
+        start_ms = _require_nonnegative_int(collider["startMs"], f"{row_context}.startMs")
+        duration_ms = _require_positive_int(collider["durationMs"], f"{row_context}.durationMs")
+        if start_ms + duration_ms > template["durationMs"]:
+            raise CompositionError(f"{row_context} exceeds its motion span")
+        behavior = collider["behavior"]
+        if behavior not in ("DAMAGE", "INSTANT_DEATH", "HOOK_CAPTURE"):
+            raise CompositionError(f"{row_context}.behavior is invalid")
+        damage = _require_finite_number(collider["damagePercent"], f"{row_context}.damagePercent",
+                                        minimum=0, maximum=100)
+        if not damage.is_integer() or (behavior == "DAMAGE" and damage < 1) or (behavior != "DAMAGE" and damage != 0):
+            raise CompositionError(f"{row_context}.damagePercent does not match behavior")
+        _require_finite_number(collider["yawDegrees"], f"{row_context}.yawDegrees",
+                               minimum=-36000, maximum=36000)
+        _require_float3(collider["positionOffset"], f"{row_context}.positionOffset",
+                        maximum_magnitude=WORLD_SEQUENCE_MAX_COMPONENT)
+        half_extents = _require_float3(collider["halfExtents"], f"{row_context}.halfExtents",
+                                      maximum_magnitude=1000, positive=True)
+        if any(value <= 0.001 for value in half_extents):
+            raise CompositionError(f"{row_context}.halfExtents must exceed 0.001")
+        grip = _require_float3(collider["gripLocalOffset"], f"{row_context}.gripLocalOffset",
+                               maximum_magnitude=WORLD_SEQUENCE_MAX_COMPONENT)
+        bone = _require_string(collider.get("attachmentBone", ""),
+                               f"{row_context}.attachmentBone", allow_empty=True)
+        try:
+            bone_bytes = bone.encode("utf-8")
+        except UnicodeEncodeError as error:
+            raise CompositionError(f"{row_context}.attachmentBone must be valid UTF-8") from error
+        if len(bone_bytes) > 256 or any(ord(c) < 0x20 or ord(c) == 0x7F for c in bone):
+            raise CompositionError(f"{row_context}.attachmentBone must be bounded UTF-8 without controls")
+        if behavior != "HOOK_CAPTURE" and (bone or any(grip)):
+            raise CompositionError(f"{row_context} only hook capture carries a grip or bone")
+
+
 def _validate_world_sequence_source(
     document: Mapping[str, Any], expected_area_id: str
 ) -> set[str]:
@@ -2644,6 +2715,7 @@ def _validate_world_sequence_source(
 
     template_slots: dict[str, dict[str, str]] = {}
     effect_template_ids: set[str] = set()
+    collider_template_ids: set[str] = set()
     for template_ordinal, template in enumerate(templates):
         template_context = f"{context}.templates[{template_ordinal}]"
         if not isinstance(template, dict):
@@ -2659,7 +2731,7 @@ def _validate_world_sequence_source(
                 "tracks",
                 "animationTracks",
             ),
-            (("objectMotion", "effectTracks") if document["formatVersion"] == 3
+            (("objectMotion", "effectTracks", "colliderTracks") if document["formatVersion"] == 3
              else ("objectMotion",)),
             template_context,
         )
@@ -2706,6 +2778,12 @@ def _validate_world_sequence_source(
             or total_tracks + len(effect_tracks) > WORLD_SEQUENCE_MAX_TRACKS
         ):
             raise CompositionError(f"{template_context}.effectTracks must be a bounded array")
+        collider_tracks = template.get("colliderTracks", [])
+        if (
+            not isinstance(collider_tracks, list)
+            or total_tracks + len(effect_tracks) + len(collider_tracks) > WORLD_SEQUENCE_MAX_TRACKS
+        ):
+            raise CompositionError(f"{template_context}.colliderTracks must be a bounded array")
 
         # A slot may carry both a transform track and a clip chain so one
         # binding can walk an animated prop while it plays. Duplicates are a
@@ -2876,6 +2954,10 @@ def _validate_world_sequence_source(
             _validate_world_sequence_effect_tracks(template, slots, template_context)
         if effect_tracks:
             effect_template_ids.add(sequence_id)
+        if "colliderTracks" in template:
+            _validate_world_sequence_collider_tracks(template, transform_slots, template_context)
+        if collider_tracks:
+            collider_template_ids.add(sequence_id)
         template_slots[sequence_id] = slots
 
     instance_ids: set[str] = set()
@@ -2899,7 +2981,7 @@ def _validate_world_sequence_source(
                 "motionEnd",
                 "nextMotionId",
                 "walkableSurface",
-            ),
+            ) + (("loopFullPresentation",) if document["formatVersion"] == 3 else ()),
             instance_context,
         )
         instance_id = _require_owner_stable_id(
@@ -2939,6 +3021,19 @@ def _validate_world_sequence_source(
             raise CompositionError(
                 f"{instance_context}.bindings count does not match its template"
             )
+        single_object = (
+            len(bindings) == 1 and isinstance(bindings[0], dict)
+            and bindings[0].get("targetKind") == "OBJECT_RESOURCE"
+        )
+        if template_id in collider_template_ids and (
+            not single_object or instance.get("anchorKind", "WORLD") != "WORLD"
+        ):
+            raise CompositionError(f"{instance_context} collider tracks require one WORLD Object Resource binding")
+        full_loop = instance.get("loopFullPresentation", False)
+        if not isinstance(full_loop, bool):
+            raise CompositionError(f"{instance_context}.loopFullPresentation must be boolean")
+        if full_loop and (not single_object or instance.get("motionEnd", "STOP") != "LOOP"):
+            raise CompositionError(f"{instance_context} full presentation loop requires one looping Object Resource")
         if template_id in effect_template_ids and (
             len(bindings) != 1
             or not isinstance(bindings[0], dict)
