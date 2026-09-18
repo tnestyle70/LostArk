@@ -114,6 +114,278 @@ def motion_pair(name, object_id, rows, keys, duration, effects):
     return template, instance
 
 
+def set_enabled(module, enabled):
+    row = next((r for r in module['literals'] if r['propertyPath'] == 'benabled'), None)
+    if row: row['value'] = enabled
+    else: module['literals'].append(dict(propertyPath='benabled', kind='boolean', value=enabled))
+
+
+def align_upper_sprite_facing(element):
+    """Keep source velocity facing; author the derived quad above its anchor."""
+    for module in element['sourceRecipe']['modules']:
+        if module['className'] == 'particlemodulevelocity':
+            # DirectLoc owns final position; this is also PSA_Velocity's axis.
+            set_enabled(module, True)
+        if module['className'] == 'particlemodulerequired':
+            pivot = next(row for row in module['literals'] if row['propertyPath'] == 'offsetcentery')
+            # Explicit requested upper attachment, not a native packing claim.
+            pivot['value'] = 1
+
+
+def suppress_split_child_upper(template):
+    if template['sequenceId'] in {SQ_PREFIX + 'split.g' + str(i) for i in range(1, 6)}:
+        template['effectTracks'] = [track for track in template['effectTracks']
+                                   if track['effectTrackId'] != 'upper']
+
+
+def align_drop(document, measured):
+    """Share the existing live mesh particle's position; only its top is offset."""
+    from build_kouku_dove_pizza_candidates import module, vector
+    already_aligned = any('.ballfollow.' in m['objectPath'] for e in document['elements'] for m in e['sourceRecipe']['modules'])
+    mesh = next(e for e in document['elements'] if e['sourceRecipe'].get('emitterName') == 'a'
+                and e['sourceRecipe']['rendererShape'] == 'mesh')
+    size_module = next(m for m in mesh['sourceRecipe']['modules'] if m['className'] == 'particlemodulesize')
+    scale = next(d for d in size_module['distributions'] if d['propertyPath'] == 'startsize')['lookupTable'][2]
+    center, half = measured['centerM'], measured['halfExtentsM']
+    # Native LocationDirect ends at -.5m plus the mesh's +.1m start location.
+    # The native centered FX mesh and the Mario World's bottom pivot differ.
+    mesh['detail']['transform']['position'][1] = .4 - (center[1] - half[1]) * scale
+    for element in document['elements']:
+        if not element['displayName'].endswith(('particlespriteemitter_30', 'particlespriteemitter_35')):
+            continue
+        if not any('vividfracture_ball_04' in m['objectPath'] for m in element['sourceRecipe']['modules']):
+            continue
+        element['detail']['transform']['position'] = [0, 0, 0]
+        for m in element['sourceRecipe']['modules']:
+            if m['className'] == 'particlemodulelocationdirect':
+                set_enabled(m, False)
+        align_upper_sprite_facing(element)
+        element['sourceRecipe']['particleSystemOccurrenceId'] = mesh['sourceRecipe']['particleSystemOccurrenceId']
+        element['sourceRecipe']['emitterName'] = 'attached.upper.' + element['id']
+        element['sourceRecipe']['modules'] = [m for m in element['sourceRecipe']['modules'] if '.ballfollow.' not in m['objectPath']]
+        name = element['id'] + '.ballfollow'
+        element['sourceRecipe']['modules'] += [
+            module(name, 'direct', 'particlemodulelocationemitterdirect',
+                {'bspawnmodule': True, 'bupdatemodule': True, 'emittername': 'a',
+                 'runtime.providerelementid': mesh['id']}),
+            module(name, 'top', 'particlemoduleorbit',
+                {'bspawnmodule': True, 'bupdatemodule': True, 'chainmode': 'eochainmode_add',
+                 'offsetoptions.bprocessduringspawn': True},
+                [vector('offsetamount', [0, 0, (center[1] + half[1]) * scale * 100]),
+                 vector('rotationamount', [0, 0, 0]), vector('rotationrateamount', [0, 0, 0])])]
+    # Burst-only followers must evaluate after their live source on the first tick.
+    followers = [e for e in document['elements'] if any(m['className'] == 'particlemodulelocationemitterdirect'
+                 and '.ballfollow.' in m['objectPath'] for m in e['sourceRecipe']['modules'])]
+    document['elements'] = [e for e in document['elements'] if e not in followers]
+    position = document['elements'].index(mesh) + 1
+    document['elements'][position:position] = followers
+    for element in document['elements']:
+        if not already_aligned and any('vividfracture_exp_' in m['objectPath'] for m in element['sourceRecipe']['modules']):
+            element['detail']['timing']['startDelaySeconds'] -= .2 - 1 / 60
+            element['detail']['transform']['position'][2] -= .2
+            if element.get('sourcePresentation', {}).get('enabled'):
+                element['sourcePresentation']['sourceTimeSeconds'] -= .2 - 1 / 60
+
+
+def align_upper(document):
+    # World already supplies the whole trajectory. Asset duration includes its
+    # emitter tail, so fitting that duration shortens its only live particle.
+    for element in document['elements']:
+        for m in element['sourceRecipe']['modules']:
+            if m['className'] in ('particlemodulelocationdirect', 'particlemodulevelocity'):
+                set_enabled(m, False)
+        particle = element['detail']['particle']
+        particle['initialPositionMin'] = particle['initialPositionMax'] = [0, 0, 0]
+        particle['initialVelocityMin'] = particle['initialVelocityMax'] = [0, 0, 0]
+        life_module = next(m for m in element['sourceRecipe']['modules'] if m['className'] == 'particlemodulelifetime')
+        source_life = next(d for d in life_module['distributions'] if d['propertyPath'] == 'lifetime')['lookupTable'][2]
+        particle.setdefault('sourceScale', {})['lifeTime'] = 1.5 / source_life
+
+
+def repair_follow():
+    """Guarded, out-only correction of the user's latest saved documents."""
+    destination = OUT / 'follow/candidate'
+    composition_path = ROOT / 'Data/KoukuSaydon/Gate1/KoukuSaydonComposition.json'
+    paths = [WORLD, composition_path] + [AUTHORED / (PREFIX + suffix + '.effect.json')
+                                        for suffix in ('rainbow.drop', 'ball.upper')]
+    inputs = {str(p.relative_to(ROOT)): p.read_bytes() for p in paths}
+    baseline = read(WORLD); composition = read(composition_path)
+    measured = geometry('Effect/KoukuSaydon/FullRestore/Meshes/fm_k_ppct_ball_01.wmodel')
+    donor = next(o for o in baseline['objectResources'] if o['objectId'] == WORLD_PREFIX + 'split.model')
+    world_geometry = geometry(donor['modelAssetId'])
+    effects = []
+    for suffix, operation in [('rainbow.drop', lambda d: align_drop(d, measured)), ('ball.upper', align_upper)]:
+        path = AUTHORED / (PREFIX + suffix + '.effect.json')
+        document = read(path); operation(document)
+        target = destination / path.name; write(target, document)
+        effects.append(dict(path=path.relative_to(ROOT).as_posix(), expectedSha256=hashlib.sha256(path.read_bytes()).hexdigest(),
+                            candidate=target.relative_to(ROOT).as_posix()))
+    world_ops = []
+    for original in baseline['templates']:
+        if not original['sequenceId'].startswith(SQ_PREFIX): continue
+        row = copy.deepcopy(original)
+        track = next(t for t in row['effectTracks'] if t['effectTrackId'] == 'upper')
+        track['fitEffectToDuration'] = False
+        track['positionOffset'] = [world_geometry['centerM'][0], world_geometry['centerM'][1] + world_geometry['halfExtentsM'][1], world_geometry['centerM'][2]]
+        world_ops.append(dict(collection='templates', stableId=row['sequenceId'], expected=original, proposed=row))
+    world_candidate = copy.deepcopy(baseline)
+    by_id = {r['sequenceId']: r for r in world_candidate['templates']}
+    for op in world_ops: by_id[op['stableId']].update(op['proposed'])
+    world_candidate['revision'] += 1
+    destination.mkdir(parents=True, exist_ok=True)
+    # Keep the existing 16 MiB whole-document admission; indented key arrays exceed it.
+    (destination / 'WorldSequences.candidate.json').write_text(json.dumps(world_candidate, ensure_ascii=False, separators=(',', ':')) + '\n', encoding='utf-8')
+    pattern = next(p for p in composition['patterns'] if p['patternId'] == 'KAKULSAYDON_G1_PATTERN_83')
+    definitions = {w['worldId']: w for w in composition['worlds']}
+    group = next(w for w in composition['worlds'] if w['sequenceInstanceId'] == WORLD_PREFIX + 'split')
+    changed = copy.deepcopy(pattern['worldOccurrences'])
+    found = 0
+    for row in changed:
+        if definitions[row['worldId']]['sequenceInstanceId'] == MI_PREFIX + 'split.g0':
+            row['worldId'] = group['worldId']; row['durationMs'] = math.ceil(11500 / row['playbackSpeed']); found += 1
+    assert found == 1, 'Expected one saved P83 g0 occurrence; preserve new edits and inspect again.'
+    ops = [dict(collection='patterns', stableId=pattern['patternId'], field='worldOccurrences',
+                expected=pattern['worldOccurrences'], proposed=changed)]
+    duration = max(pattern.get('durationMs', 0), sum(s['durationMs'] for s in pattern['stages']),
+                   max(r['startMs'] + r['durationMs'] for r in changed))
+    if duration > max(pattern.get('durationMs', 0), sum(s['durationMs'] for s in pattern['stages'])):
+        ops.append(dict(collection='patterns', stableId=pattern['patternId'], field='durationMs', expected=pattern.get('durationMs', 0), proposed=duration))
+    for resource in composition['presentationResources']:
+        if resource['assetId'] == PREFIX + 'ball.upper' and resource['durationMs'] < 2500:
+            ops.append(dict(collection='presentationResources', stableId=resource['resourceId'], field='durationMs',
+                            expected=resource['durationMs'], proposed=2500))
+    write(destination / 'repair.patch.json', dict(sourceRevision=composition['revision'], worldSourceRevision=baseline['revision'],
+          sourceSha256=hashlib.sha256(inputs[str(composition_path.relative_to(ROOT))]).hexdigest(),
+          worldSourceSha256=hashlib.sha256(inputs[str(WORLD.relative_to(ROOT))]).hexdigest(),
+          operations=ops, worldOperations=world_ops, effects=effects, geometry=measured, worldGeometry=world_geometry,
+          actualVisualApproval=False, liveWrites=False))
+    for path, data in inputs.items(): assert (ROOT / path).read_bytes() == data, 'Input changed during candidate preparation'
+    print(json.dumps(dict(output=str(destination), sourceRevision=composition['revision'], worldSourceRevision=baseline['revision'],
+                         effects=len(effects), worldOperations=len(world_ops), compositionOperations=len(ops))))
+
+
+def build_launch(output):
+    """Derive an upward ball with a lower rainbow/star wake; never install it."""
+    from build_kouku_dove_pizza_candidates import module, vector, native_references
+    output = output.resolve()
+    assert output.is_relative_to((ROOT / 'out').resolve()), 'Candidates must stay under out'
+    source_path = AUTHORED / (PREFIX + 'rainbow.drop.effect.json')
+    baseline_bytes = source_path.read_bytes()
+    baseline = json.loads(baseline_bytes.decode('utf-8-sig'))
+    asset = PREFIX + 'ball.launch'
+    document = copy.deepcopy(baseline)
+    selected = [e for e in document['elements']
+                if '.par_k_ppct_vividfracture_ball_04.' in e['sourceNode']]
+    by_emitter = {e['sourceNode'].rsplit('_', 1)[-1]: e for e in selected}
+    # Keep the saved four-element ball, including the user's removal of sprite35.
+    assert set(by_emitter) == {'5', '30', '33', '34'}, 'Inspect new saved ball elements before deriving launch'
+    identities = {e['id']: 'circus.launch.' + hashlib.sha256(e['id'].encode()).hexdigest()[:20]
+                  for e in selected}
+    source_system = by_emitter['5']['sourceRecipe']['particleSystemOccurrenceId']
+    identities[source_system] = asset + '.project-authored-upward'
+    document['elements'] = remap(selected, identities)
+    document.update(effectAssetId=asset, displayName='세이튼 / 쓰리투원투하 | 공 발사', modelCues=[])
+    document.pop('sourceModelPreview', None)
+    document.pop('sourceAnchorAnimations', None)
+    for element in document['elements']:
+        element['groupId'] = asset
+        element['actionCueAttachment']['enabled'] = False
+    by_emitter = {e['sourceNode'].rsplit('_', 1)[-1]: e for e in document['elements']}
+    mesh, rainbow = by_emitter['5'], by_emitter['30']
+    mesh_asset = next(r['assetId'] for r in mesh['resources'] if r['slotId'] == 'meshModel')
+    measured = geometry(mesh_asset)
+    size_module = next(m for m in mesh['sourceRecipe']['modules'] if m['className'] == 'particlemodulesize')
+    size = next(d for d in size_module['distributions'] if d['propertyPath'] == 'startsize')
+    assert size['operation'] == 1 and size['lookupTableNumElements'] == 1
+    size_xyz = size['lookupTable'][2:5]
+    assert max(size_xyz) - min(size_xyz) < 1.e-6
+    assert mesh['detail']['transform']['scale'] == [1, 1, 1]
+    size_scale = size_xyz[0] * mesh['detail']['particle'].get('sourceScale', {}).get('size', 1)
+    bottom = (measured['centerM'][1] - measured['halfExtentsM'][1]) * size_scale
+    direct = next(m for m in mesh['sourceRecipe']['modules'] if m['className'] == 'particlemodulelocationdirect')
+    location = next(d for d in direct['distributions'] if d['propertyPath'] == 'location')
+    assert location['operation'] == 1 and location['lookupTableChunkSize'] == 3 and not location['keys']
+    samples = [location['lookupTable'][i:i + 3] for i in range(2, len(location['lookupTable']), 3)]
+    assert samples == [[0, 0, 1000], [0, 0, -50]], 'Expected current 10.5m / 0.8s source drop'
+    reversed_samples = list(reversed(samples))
+    location['lookupTable'] = location['lookupTable'][:2] + [v for row in reversed_samples for v in row]
+    # EmitterDirect owns the same live particle. Velocity only supplies the
+    # source PSA_Velocity facing axis; offsetcentery0 extends the quad below it.
+    rainbow['detail']['transform']['position'] = [0, 0, 0]
+    for item in rainbow['sourceRecipe']['modules']:
+        if item['className'] == 'particlemodulevelocity':
+            set_enabled(item, True)
+        elif item['className'] == 'particlemodulelocationdirect':
+            set_enabled(item, False)
+        elif item['className'] == 'particlemodulerequired':
+            next(v for v in item['literals'] if v['propertyPath'] == 'offsetcentery')['value'] = 0
+    followers = [m for m in rainbow['sourceRecipe']['modules']
+                 if m['className'] == 'particlemodulelocationemitterdirect']
+    assert len(followers) == 1 and any(v['propertyPath'] == 'runtime.providerelementid'
+        and v['value'] == mesh['id'] for v in followers[0]['literals'])
+    orbit = next(m for m in rainbow['sourceRecipe']['modules']
+                 if m['className'] == 'particlemoduleorbit' and '.ballfollow.' in m['objectPath'])
+    offset = next(d for d in orbit['distributions'] if d['propertyPath'] == 'offsetamount')
+    offset.update(vector('offsetamount', [0, 0, bottom * 100]))
+    # Stars are born at the ball underside, then retain their original sphere,
+    # velocity/gravity, color and fade. They are a wake, not a second ball owner.
+    for suffix in ('33', '34'):
+        star = by_emitter[suffix]
+        modules = star['sourceRecipe']['modules']
+        provider = next(m for m in modules if m['className'] == 'efparticlemodulelocationemitter')
+        literal = next((v for v in provider['literals'] if v['propertyPath'] == 'runtime.providerelementid'), None)
+        if literal:
+            literal['value'] = mesh['id']
+        else:
+            provider['literals'].append(dict(propertyPath='runtime.providerelementid', kind='string', value=mesh['id']))
+        modules.insert(modules.index(provider) + 1, module(asset + '.' + suffix, 'underside',
+            'particlemodulelocation', {'bspawnmodule': True}, [vector('startlocation', [0, 0, bottom * 100])]))
+    # Provider first is required for same-tick burst and first star births.
+    document['elements'] = [by_emitter[suffix] for suffix in ('5', '30', '33', '34')]
+    refs = native_references(document)
+    particle_life = mesh['detail']['particle']['lifeTimeSeconds']
+    assert max(abs(v - .8) for v in particle_life) < 1.e-6
+    assert all(not any('vividfracture_exp_' in m['objectPath'] for m in e['sourceRecipe']['modules'])
+               for e in document['elements'])
+    duration_ms = math.ceil(max(e['detail']['timing']['startDelaySeconds'] +
+        e['detail']['timing']['lifeTimeSeconds'] + e['detail']['timing']['afterImageSeconds'] +
+        max(e['detail']['particle']['lifeTimeSeconds']) for e in document['elements']) * 1000)
+    tree = read(ROOT / 'Data/Effects/EffectResourceTree.json')
+    parent = next(r['parentId'] for r in tree['references'] if r.get('assetId') == baseline['effectAssetId'])
+    registration = dict(installed=False, catalogEntry=dict(effectAssetId=asset,
+        payloadKind='DIRECT_AUTHORED_DOCUMENT', authoringPath=f'Effects/Authored/{asset}.effect.json'),
+        treeReference=dict(kind='V1', assetId=asset, displayName=document['displayName'], parentId=parent),
+        compositionResourceProposal=dict(assetId=asset, displayName=document['displayName'], durationMs=duration_ms),
+        projectNoneInclude='..\\..\\Data\\Effects\\Authored\\' + asset + '.effect.json',
+        projectFilter='96.DataFiles', patternOccurrenceAdded=False)
+    # Analytic positions use the retained StartLocation and mesh pivot. Native
+    # Codec/Playback/geometry validation is a separate caller-owned checkpoint.
+    start_location = next(d for m in mesh['sourceRecipe']['modules'] if m['className'] == 'particlemodulelocation'
+                          for d in m['distributions'] if d['propertyPath'] == 'startlocation')['lookupTable'][2:5]
+    ys = [mesh['detail']['transform']['position'][1] + (row[2] + start_location[2]) * .01
+          for row in reversed_samples]
+    receipt = dict(status='OUT_CANDIDATE_PYTHON_CHECKED_NATIVE_PROBE_PENDING',
+        basis='USER_REQUESTED_PROJECT_AUTHORED_REVERSE_SOURCE_DROP', sourcePath=source_path.relative_to(ROOT).as_posix(),
+        sourceSha256=hashlib.sha256(baseline_bytes).hexdigest(), effectAssetId=asset,
+        sourceCurveUE3Cm=samples, authoredCurveUE3Cm=reversed_samples, flightSeconds=particle_life[0],
+        riseMeters=ys[1] - ys[0], centerStartYM=ys[0], centerEndYM=ys[1],
+        startBottomYM=ys[0] + bottom, lowerAttachmentOffsetM=bottom,
+        meshGeometry=measured, sourceSizeMultiplier=size_scale,
+        ballWorldDiameterM=[2 * v * size_scale for v in measured['halfExtentsM']],
+        elementIds={k: e['id'] for k, e in by_emitter.items()}, elementCount=len(document['elements']),
+        durationMs=duration_ms, resources=refs, preserved='Saved ball model/scale and all four native materials, colors, particle lifetimes; source leaves/drop/World/Composition unchanged.',
+        placement='Local +Y rise; the user authors the effect root angle and owner height. Rainbow uses ball underside, retained source +Y velocity facing and explicit lower pivot. Stars retain their native wake motion.',
+        impactIncluded=False, clientRun=False, visualApproval=False, liveWrites=False)
+    output.mkdir(parents=True, exist_ok=True)
+    (output / 'source-drop.before.json').write_bytes(baseline_bytes)
+    write(output / (asset + '.effect.json'), document)
+    write(output / 'registration.entries.json', registration)
+    write(output / 'candidate.receipt.json', receipt)
+    assert source_path.read_bytes() == baseline_bytes, 'Saved drop changed during candidate generation'
+    print(json.dumps(dict(output=str(output), elements=len(document['elements']), riseMeters=ys[1] - ys[0],
+                         durationMs=duration_ms, installed=False), ensure_ascii=False))
+
+
 def build(split_count=5):
     assert 1 <= split_count <= 5
     before = WORLD.read_bytes()
@@ -151,6 +423,8 @@ def build(split_count=5):
         finish = [values[i + 5] - [0, 0, -50][i] for i in range(3)]
         location['lookupTable'] = [min(start + finish), max(start + finish)] + start + finish
     upper = group(PREFIX + 'ball.upper', '세이튼 / 쓰리투원투하 | 공 상단 무지개', [(upper_source, 0)])
+    align_drop(drop, native_measured)
+    align_upper(upper)
     documents = [drop, impact, upper, muzzle]
     contract['sourceInputs'].extend(circus.digest(AUTHORED / (d['effectAssetId'] + '.effect.json'))
         for d in [leaf('ball_04'), *explosions, muzzle_leaf])
@@ -187,7 +461,7 @@ def build(split_count=5):
                 keys.append(dict(timeMs=round(fraction * duration), positionOffset=position,
                     rotationQuaternion=[0, 0, 0, 1], scaleMultiplier=[scale] * 3,
                     visible=index != len(curve) - 1))
-            effects = [effect_track('upper', upper['effectAssetId'], 0, duration, center, follow=True, fit=True),
+            effects = [effect_track('upper', upper['effectAssetId'], 0, duration, [center[0], center[1] + half[1], center[2]], follow=True, fit=False),
                 effect_track('impact', impact['effectAssetId'], duration, 2500,
                     [center[0], center[1] - half[1], center[2]], scale=1 / scale)]
             if generation == 0 and mode == 'split':
@@ -198,6 +472,7 @@ def build(split_count=5):
             name = mode + '.g' + str(generation)
             rows = [dict(row, startDelayMs=generation * duration) for row in origins]
             template, instance = motion_pair(name, object_id, rows, keys, duration, effects)
+            suppress_split_child_upper(template)
             candidate['templates'].append(template)
             candidate['instances'].append(instance)
             following = []
@@ -240,8 +515,8 @@ def build(split_count=5):
             damageAuthority=False, gameplayCollisionAdded=False), sourceDefaultRepairs=defaults,
         rainbowSource=dict(projectileId=421980613, systems=['VividFracture_Ball_04', 'VividFracture_Exp_02',
             'VividFracture_Exp_03', 'VividFracture_Exp_04'],
-            upperPolicy='Original sprites 30/35 position minus original mesh5 position; World supplies motion once.',
-            dropImpactDelaySeconds=1, delayBasis='PROJECT_AUTHORED matching source Ball_04 particle lifetime'),
+            upperPolicy='World g0 and shot sprites follow only the model top for 1.5s without duration fitting; split g1..g5 omit upper emission. Standalone drop retains source velocity for facing and uses an explicit upper-attachment pivot override with emitter-direct position.',
+            dropImpactDelaySeconds=.8 + 1 / 60, delayBasis='PROJECT_AUTHORED matching source Ball_04 0.8s particle lifetime plus existing fixed-step birth tick; mesh ground pivot and live emitter-direct upper attachment'),
         deployment=dict(installed=False, worldBaselineSha256=hashlib.sha256(before).hexdigest(),
             untouchedP83=True, clientRun=False, visualApproval=False), expectedObjects=expected)
     write(OUT / 'source-contract.json', contract)
@@ -253,7 +528,7 @@ def build(split_count=5):
             'World group objectId is both Composition objectResourceId and sequenceInstanceId.',
             'Do not add or alter P83 animation stages or occurrences.',
             'Keep existing Showtime BOSS hand-bound WORLD guns as separately placeable resources.'],
-        durations=dict(rainbowDropMs=3500, rainbowImpactMs=2500, upperMs=1800, muzzleMs=11000,
+        durations=dict(rainbowDropMs=3500, rainbowImpactMs=2500, upperMs=2500, muzzleMs=11000,
             worldSplitMs=(split_count + 1) * 1500 + 2500, worldShotMs=max(11000, (split_count + 1) * 1500 + 2500))))
     assert WORLD.read_bytes() == before, 'Authoring document changed while reading; rebuild candidates.'
     print(json.dumps(dict(output=str(OUT), installed=False, effects=len(documents),
@@ -264,4 +539,14 @@ def build(split_count=5):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--split-count', type=int, default=5, choices=range(1, 6))
-    build(parser.parse_args().split_count)
+    parser.add_argument('--repair-follow', action='store_true', help='Prepare guarded corrections from current saved data; no live writes.')
+    parser.add_argument('--launch-only', action='store_true', help='Derive an upward V1 ball from the saved drop; no live writes.')
+    parser.add_argument('--output', type=Path, default=ROOT / 'out/CardMatchFix20260917/ball-launch')
+    args = parser.parse_args()
+    assert not (args.launch_only and args.repair_follow), 'Choose one candidate mode'
+    if args.launch_only:
+        build_launch(args.output)
+    elif args.repair_follow:
+        repair_follow()
+    else:
+        build(args.split_count)

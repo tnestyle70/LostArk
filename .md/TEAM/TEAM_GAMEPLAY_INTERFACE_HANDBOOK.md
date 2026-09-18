@@ -839,6 +839,10 @@ Kouku Composition과 독립 Sequencer의 Save는 로드 기준본·draft·현재
 행 순서는 경로를 알려 거절하며 draft와 디스크를 보존한다. 좌표 같은 비-ID 배열은 통째로
 한 필드다. 외부 writer는 revision 증가와 writer lock을 유지하며, 저장 성공 후 편집기는 병합된
 LastGood을 소비한다. 구버전 실행 파일의 충돌을 Reload나 파일 전체 덮어쓰기로 우회하지 않는다.
+외부 데이터 반영의 최종 저장본 승인·기승인 유지·편집 보존 정책은 [AGENTS.md](../../AGENTS.md)를
+따른다. Client 종료는 데이터 파일 반영의 조건이 아니며, 최신 저장본의 필드 병합과 hash/freshness
+검사를 유지한다. 파일 교체가 열린 draft나 캐시의 자동 reload를 뜻하지는 않는다. 실제 점유된
+EXE/DLL을 링크·교체하기 위한 종료는 [CLAUDE.md](../../CLAUDE.md)의 빌드 절차로 구분한다.
 Encounter/patternbindings와 Gameplay 게시 중 실패하면 domain owner가 이전 생성물·receipt를 복구한다.
 배포 성공 후 F1 목록을 갱신하며 Complete Play는 최신 Product를 재조회한다. Workbench의 미저장
 변경·배포 진행·source/Product revision 불일치를 거절하고, Server 활성 revision 검사는 유지한다.
@@ -1092,7 +1096,10 @@ TRIGGER `ALBION_AIRBORNE`는 `airbornePhase`, `airborneHeightM`,
 `airborneDurationMs`, `teleportPosition`을 함께 저장한다. phase는
 `SELECT_PLAYER/JUMP/APPEAR_PLAYER/DISAPPEAR/CENTER/SLAM`이다. JUMP는 양수 높이와
 0~600000 ms 상승 시간을 사용하며, 0 ms는 첫 tick부터 해당 높이로 시작한다. 양수 시간의
-기존 상승 보간은 유지한다. APPEAR_PLAYER는 양수 등장 높이를 사용한다. 나머지 높이·시간은0이며
+기존 상승 보간은 유지한다. JUMP는 이후 그 높이를 유지하므로 시작 높이에서 clip의 원본 하강으로
+착지하려면 같은 clock에 SLAM box를 함께 두고, `_start` Stage가 반복되면 각 Stage 시작에
+SLAM을 하나씩 둔다(쿠크 훌라후프 P84: `쿠크_훌라후프_상단시작` JUMP 0 ms +
+`쿠크_훌라후프_하강착지` SLAM). APPEAR_PLAYER는 양수 등장 높이를 사용한다. 나머지 높이·시간은0이며
 CENTER만 절대 목적지 XYZ를 가진다. 기존25열 mechanic 부모 뒤에 같은 occurrence의7열
 `PATTERNALBIONAIRBORNE`를 게시한다. Server가 살아 있는 플레이어 ID를 선택하고 등장할
 때 그 플레이어의 현재 XZ와 navigation·body collision을 검증한다. 같은 시각이면 선택부터
@@ -1609,7 +1616,7 @@ WorldSequence v3 instance의 optional `walkableSurface { radiusM, localHeightM }
 
 ### 카드미로 진행·관전 계약
 
-MAZE 진입 → 30tick 뒤 중앙의 Server 삐에로 상자(`MONSTER_KOUKU_CLOWN_BOX`)를 망치로 파괴 → 망원경 가격 → MAZE 망치 타격 → Server의 자기 문양 한 방 처치 → 3스택 개인 출구 → 암전 중앙 이동 → 생존 참가자 전원 집결 후 2관문 복귀를 사용한다. 문양별 목표는 동시에 1마리이며 3스택 전까지 랜덤 통로로 보충한다. 중앙 반경 5m를 제외한 세토 접촉은 본인 스택·출구를 취소한다. `cardmiro.march.instance.from{3,6,9,12}.lane{1..9}` 36개 경로는 WorldSequence 정본의 선형 키를 WorldGameplay publisher가 worldbootstrap v10에 투영한다. Server 판정과 Client 표현은 protocol 81의 `PLAYER_SNAPSHOT::CardMaze` 행진 시계를 함께 소비한다.
+MAZE 진입 → 30tick 뒤 중앙의 Server 삐에로 상자(`MONSTER_KOUKU_CLOWN_BOX`)를 망치로 파괴 → 망원경 가격 → MAZE 망치 타격 → Server의 자기 문양 한 방 처치 → 1개 처치 개인 출구 → 암전 중앙 이동 → 생존 참가자 전원 집결 후 2관문 복귀를 사용한다. 문양별 목표는 동시에 1마리이며 목표 처치 전 세토 접촉 등으로 진행이 초기화되면 랜덤 통로로 보충한다. 중앙 반경 5m를 제외한 세토 접촉은 본인 스택·출구를 취소한다. `cardmiro.march.instance.from{3,6,9,12}.lane{1..9}` 36개 경로는 WorldSequence 정본의 선형 키를 WorldGameplay publisher가 worldbootstrap v10에 투영한다. Server 판정과 Client 표현은 protocol 81의 `PLAYER_SNAPSHOT::CardMaze` 행진 시계를 함께 소비한다.
 
 카메라는 MapTool Camera의 `cardmaze.follow`/`cardmaze.telescope`에서 조정하고 MapAuthoring을 publish한다. 관전은 역할 이름이 아니라 플레이어별 관전 flag로 켜진다. 최초 담당과 탈출자는 중앙 상자를 망치로 다시 가격하여 각각 토글한다. 이동 암전은 서버 시작 tick 기준 36tick, 위치 commit은 18tick이다. 최종 복귀는 World Gameplay의 disabled `cardmaze.return` movePlayer 목적지를 읽으며 기본은 기존 2관문 (3.38, 10.56, 323.92)이다. 이 행을 활성화하면 밟기 트리거로도 동작하므로 설정 전용으로 disabled를 유지한다. WorldGameplay publish와 서버 재시작이 필요하다.
 

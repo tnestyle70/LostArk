@@ -166,3 +166,12 @@ Q로 때린 직후 우클릭 이동이 바로 들어가는지. 자세 클립이 
 protocol 71이므로 Server와 Client를 다시 함께 빌드해야 한다. 하네스도 재빌드 대상이다.
 화면 확인은 사용자가 한다. 병사를 잡을 때 그 자리에 `다이아 조각 x 1`이 떠오르는지,
 x3까지 올라가는지, Q 스윙이 정상으로 보이고 때린 뒤 우클릭 이동과 다음 Q가 바로 들어가는지다.
+
+## 2026-09-17 사용자 조정 — 문양 1개 처치
+
+Server/Public/KoukuSaydonLogicRuntime.h의 KILL_TARGET만3→1로 변경했다. HUD 목표 복제,
+개인 완료, 추가 타격 차단, GameRoom의 개인 출구 생성은 모두 이 상수를 사용한다. 기존
+개인 출구 진입→중앙 이동→살아 있는 참여자 전원 중앙 집결→cardmaze.return 복귀는 변경하지 않았다.
+계약 검사 안의3회 반복과 고정 기대값은1회 목표로 맞췄다. KoukuSaydonLogicRuntime.cpp,
+GameRoom_KoukuMiniGames.cpp, ServerGameplayContractTests_CardMaze.cpp 격리 컴파일 exit0.
+제품 Server 재빌드·재시작 및 Client 실제 통로/복귀 확인은 사용자가 수행하며 아직 미검증이다.

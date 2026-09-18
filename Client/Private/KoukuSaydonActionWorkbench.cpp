@@ -9689,6 +9689,8 @@ bool_t Client::CKoukuSaydonActionWorkbench::Append_WorldObject(
 	if (objectResourceId.empty() || source == m_WorldSequenceResources.end() ||
 		!source->bEnabled || source->strInstanceId.empty())
 	{ outStatus = m_strStatus = "Set and Save this Object's default animation in Object Tool before Append."; return false; }
+	if (!source->strAppendGroupObjectId.empty())
+		return Append_WorldObject(source->strAppendGroupObjectId, outStatus);
 	return Append_WorldResource(source->strInstanceId, outStatus, true);
 }
 
@@ -9700,6 +9702,8 @@ bool_t Client::CKoukuSaydonActionWorkbench::Append_WorldResource(
 	if (source == m_WorldSequenceResources.end() || source->strInstanceId.empty() || !source->bEnabled ||
 		(asObject && (!source->bDefaultMotion || source->strObjectResourceId.empty())))
 	{ outStatus = m_strStatus = "Select an Object with an enabled saved default animation first."; return false; }
+	if (asObject && !source->strAppendGroupObjectId.empty())
+		return Append_WorldObject(source->strAppendGroupObjectId, outStatus);
 	auto candidate = m_Draft;
 	auto* pattern = Find_Pattern(candidate, m_strSelectedPatternId);
 	if (!m_bHasDraft || !pattern || !pattern->strLoadError.empty() || Pattern_DurationMs(*pattern) == 0u ||
@@ -12385,12 +12389,16 @@ void Client::CKoukuSaydonActionWorkbench::Render_WorldResources()
 	const bool patternEditable = selectedPattern && selectedPattern->strLoadError.empty() &&
 		Pattern_DurationMs(*selectedPattern) > 0u;
 	const KOUKU_WORLD_SEQUENCE_RESOURCE* selected = nullptr;
+	for (const auto& resource : m_WorldSequenceResources)
+		if (resource.strObjectResourceId == m_strNewWorldObjectId && !resource.strAppendGroupObjectId.empty())
+		{ m_strNewWorldObjectId = resource.strAppendGroupObjectId; break; }
 	if (ImGui::BeginChild("##WorldObjects", ImVec2(0.f, 230.f), ImGuiChildFlags_Borders))
 	{
 		std::size_t shown = 0u;
 		for (const auto& resource : m_WorldSequenceResources)
 		{
-			if (resource.strObjectResourceId.empty() || (!resource.bDefaultMotion && !resource.strInstanceId.empty())) continue;
+			if (resource.strObjectResourceId.empty() || !resource.strAppendGroupObjectId.empty() ||
+				(!resource.bDefaultMotion && !resource.strInstanceId.empty())) continue;
 			if (resource.strObjectResourceId == m_strNewWorldObjectId) selected = &resource;
 			if (!ContainsInsensitive(resource.strObjectDisplayName, m_WorldObjectFilter) &&
 				!ContainsInsensitive(resource.strObjectResourceId, m_WorldObjectFilter)) continue;

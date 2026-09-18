@@ -401,7 +401,7 @@
     {"kind": "V1", "assetId": "effect.kouku.gate1.popup.movable-lights", "displayName": "1관문_팝업북_원본 무대 조명", "parentId": "kouku.category.373a61b916022af2f314"},
     {"kind": "V1", "assetId": "effect.kouku.gate1.popup.source-material-carriers", "displayName": "1관문_팝업북_원본 재질·커튼", "parentId": "kouku.category.373a61b916022af2f314"},
     {"kind": "V1", "assetId": "effect.kouku.gate2.4219776.stage1.full.restore", "displayName": "쿠크_거미카운터(rpcz00_att_battle_6_02)_눈빛·먼지_FullRestore", "parentId": "kouku.category.b8dc4587c31f3a259b9e"},
-    {"kind": "V1", "assetId": "effect.kouku.gate2.4219776.stage2.full.restore", "displayName": "쿠크_거미카운터(rpcz00_att_battle_6_03)_검정·빨강 바닥과 돌진_FullRestore", "parentId": "kouku.category.b8dc4587c31f3a259b9e"},
+    {"kind": "V1", "assetId": "effect.kouku.gate2.4219776.stage2.full.restore", "displayName": "쿠크 거미카운터 원본 돌진·바닥", "parentId": "kouku.category.b8dc4587c31f3a259b9e"},
     {"kind": "V1", "assetId": "effect.kouku.gate2.intro.lights", "displayName": "2관문 진입 / 원본 이동 조명", "parentId": "kouku.category.94a13c224d9bc4a65a19"},
     {"kind": "V1", "assetId": "effect.kouku.gate3.rainbow.fire.light.full.restore", "displayName": "Kouku Gate3 Rainbow Fire Light Full Restore", "parentId": "kouku.category.0ba3fc38dc4849a3729a"},
     {"kind": "V1", "assetId": "effect.kouku.gate3.rainbow.fire.warning.full.restore", "displayName": "Kouku Gate3 Rainbow Fire Warning Full Restore", "parentId": "kouku.category.0ba3fc38dc4849a3729a"},
@@ -997,7 +997,7 @@
     {"kind": "V1", "assetId": "effect.kouku.common.trumpet.card.floor", "displayName": "트럼펫_카드장판", "parentId": "kouku.category.6c3f93cbe21a76f3f3f0"},
     {"kind": "V1", "assetId": "effect.kouku.gate3.doll.flame.object-sustain15", "displayName": "3관문_인형_불뿜기 15초", "parentId": "kouku.category.0ba3fc38dc4849a3729a"},
     {"kind": "V1", "assetId": "effect.kouku.magic.paper.dove.group", "displayName": "종이비둘기 4마리 원형 비행 · 폭발", "parentId": "kouku.category.27ccf3e79096dc8b4a6b"},
-    {"kind": "V1", "assetId": "effect.kouku.pizza.explosion.group", "displayName": "피자 바닥 무지개 · 검정 빨강 경계 폭발", "parentId": "kouku.category.a15eb53fae812aac91a5"},
+    {"kind": "V1", "assetId": "effect.kouku.pizza.explosion.group", "displayName": "피자 부채꼴 · 원본 검정 무지개 경계 폭발", "parentId": "kouku.category.a15eb53fae812aac91a5"},
     {"kind": "V1", "assetId": "effect.kouku.common.counter.ring", "displayName": "카운터 이펙트", "parentId": "kouku.category.e91d6c39c6bb77d4489c"},
     {"kind": "V1", "assetId": "effect.kouku.gate1.charge_counter.group", "displayName": "돌진 카운터 · 잔상과 돌진 이펙트", "parentId": "kouku.category.saydon.charge_counter.afterimage"},
     {"kind": "V1", "assetId": "effect.kouku.gate1.charge_counter.fx", "displayName": "돌진 카운터 · 원본 먼지와 양팔 궤적", "parentId": "kouku.category.saydon.charge_counter.afterimage"},
@@ -1007,6 +1007,13 @@
     {"kind": "V1", "assetId": "effect.kouku.gate1.circus.rainbow.drop", "displayName": "세이튼 / 쓰리투원투하 | 공 낙하·상단 무지개·도넛 폭발", "parentId": "kouku.category.867ede1a948dc387a93d"},
     {"kind": "V1", "assetId": "effect.kouku.gate1.circus.rainbow.impact", "displayName": "세이튼 / 쓰리투원투하 | 무지개 도넛 폭발", "parentId": "kouku.category.867ede1a948dc387a93d"},
     {"kind": "V1", "assetId": "effect.kouku.gate1.circus.ball.upper", "displayName": "세이튼 / 쓰리투원투하 | 공 상단 무지개", "parentId": "kouku.category.867ede1a948dc387a93d"},
-    {"kind": "V1", "assetId": "effect.kouku.gate1.circus.gun.muzzle", "displayName": "세이튼 / 쓰리투원투하 | 공 발사·쇼타임 총구", "parentId": "kouku.category.867ede1a948dc387a93d"}
+    {"kind": "V1", "assetId": "effect.kouku.gate1.circus.gun.muzzle", "displayName": "세이튼 / 쓰리투원투하 | 공 발사·쇼타임 총구", "parentId": "kouku.category.867ede1a948dc387a93d"},
+    {"kind": "V1", "assetId": "effect.kouku.gate3.ritual.staff.tip.trail.full.restore", "displayName": "저주의식 | 오른손 지팡이 끝 트레일", "parentId": "kouku.category.fa2cab44f7cefadb55a3"},
+    {"kind": "V1", "assetId": "effect.kouku.gate1.circus.ball.launch", "displayName": "세이튼 / 쓰리투원투하 | 공 발사", "parentId": "kouku.category.867ede1a948dc387a93d"},
+    {"kind": "V1", "assetId": "effect.kouku.pizza.explosion.group.source-restored", "displayName": "쿠크_피자 | 피자 부채꼴 - 원본 검정 무지개 경계 폭발 2", "parentId": "kouku.category.a15eb53fae812aac91a5"},
+    {"kind": "V1", "assetId": "effect.kouku.gate1.stagger.star.group", "displayName": "세이튼 / 무력화 | 별 그리기·별 폭발", "parentId": "kouku.category.cdef6f5c47c6e9a619ed"},
+    {"kind": "V1", "assetId": "effect.kouku.gate1.stagger.boundary.group", "displayName": "세이튼 / 무력화 | 외곽 경계", "parentId": "kouku.category.cdef6f5c47c6e9a619ed"},
+    {"kind": "V1", "assetId": "effect.kouku.gate1.stagger.star.boundary.group", "displayName": "세이튼 / 무력화 | 무력화 별과 외곽 경계", "parentId": "kouku.category.cdef6f5c47c6e9a619ed"},
+    {"kind": "V1", "assetId": "effect.kouku.gate1.stagger.laser.group", "displayName": "세이튼 / 무력화 | 레이저 생성·변화", "parentId": "kouku.category.cdef6f5c47c6e9a619ed"}
   ]
 }

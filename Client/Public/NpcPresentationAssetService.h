@@ -7,12 +7,13 @@
 #include <memory>
 #include <vector>
 
-namespace Engine { class CModel; }
+namespace Engine { class CModel; class CShader; }
 
 NS_BEGIN(Client)
 
 class CWorldSequenceObject;
 struct SAYDON_WEAPON_REPLACEMENT;
+struct SAYDON_HAT_REPLACEMENT;
 
 class CNpcPresentationAssetService final
 {
@@ -43,6 +44,19 @@ public:
 	static void Track_SaydonWeaponReplacement(std::shared_ptr<const SAYDON_WEAPON_REPLACEMENT>& registration,
 		const std::shared_ptr<Engine::CModel>& body, const std::shared_ptr<CWorldSequenceObject>& object);
 	static bool_t Is_SaydonHammerSuppressed(const std::shared_ptr<Engine::CModel>& body);
+	// The source head prop is shared by NPC, Character Preview and Sequence owners.
+	// Unsupported bodies return S_FALSE; a failed hat load preserves the body.
+	static HRESULT Prepare_SaydonHat(ComPtr<ID3D11Device> device, ComPtr<ID3D11DeviceContext> context,
+		const std::shared_ptr<Engine::CModel>& body, std::shared_ptr<Engine::CModel>& outHat);
+	static bool_t Try_GetSaydonHatWorld(const std::shared_ptr<Engine::CModel>& body,
+		const float4x4_t& bodyWorld, float4x4_t& outWorld);
+	static HRESULT Render_SaydonHat(const std::shared_ptr<Engine::CModel>& body,
+		const std::shared_ptr<Engine::CModel>& hat, const std::shared_ptr<Engine::CShader>& shader,
+		const float4x4_t& bodyWorld, uint32_t pass = 0u, bool_t nativeBinaryBasePass = false,
+		bool_t shadow = false);
+	static void Track_SaydonHatReplacement(std::shared_ptr<const SAYDON_HAT_REPLACEMENT>& registration,
+		const std::shared_ptr<Engine::CModel>& body, const std::shared_ptr<CWorldSequenceObject>& object);
+	static bool_t Is_SaydonHatSuppressed(const std::shared_ptr<Engine::CModel>& body);
 };
 
 NS_END

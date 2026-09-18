@@ -43,6 +43,7 @@ public:
 private:
     CWorldSequenceObject(ComPtr<ID3D11Device>, ComPtr<ID3D11DeviceContext>);
     shared_ptr<Engine::CModel> m_Model;
+    shared_ptr<Engine::CModel> m_SaydonHatModel;
     shared_ptr<Engine::CShader> m_Shader;
     ComPtr<ID3D11ShaderResourceView> m_Diffuse;
     float4x4_t m_World{};

@@ -542,7 +542,8 @@ private:
 		const EFFECT_ELEMENT_DESC& Element,
 		ELEMENT_STATE& State,
 		f32_t fEmitterTimeSeconds,
-		const float4x4_t& RootWorld);
+		const float4x4_t& RootWorld,
+		f64_t* pOutSpawnContribution = nullptr);
 	void Update_Particles(
 		const EFFECT_ELEMENT_DESC& Element,
 		ELEMENT_STATE& State,

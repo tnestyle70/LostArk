@@ -4,6 +4,7 @@
 #include "GameInstance.h"
 #include "Model.h"
 #include "Shader.h"
+#include "NpcPresentationAssetService.h"
 #include <algorithm>
 #include <cmath>
 
@@ -32,6 +33,8 @@ HRESULT CWorldSequenceObject::Initialize(void* argument)
     // A newly authored skinned resource may have no animation track yet.
     // Its cloned rest pose still needs the same combined matrices as a sampled clip.
     if (m_Model->Is_Skinned()) m_Model->Refresh_BoneCombinedMatrices();
+    if (FAILED(CNpcPresentationAssetService::Prepare_SaydonHat(m_pDevice, m_pContext, m_Model, m_SaydonHatModel)))
+        OutputDebugStringA("[SaydonHat] Sequence head prop unavailable; body preserved.\n");
     XMStoreFloat4x4(&m_World, XMMatrixIdentity());
     return S_OK;
 }
@@ -159,6 +162,8 @@ HRESULT CWorldSequenceObject::Render()
             return failed("shader pass" + meshLabel);
         if (FAILED(m_Model->Render(mesh))) return failed("mesh submission" + meshLabel);
     }
+    if (FAILED(CNpcPresentationAssetService::Render_SaydonHat(m_Model, m_SaydonHatModel, m_Shader, m_World)))
+        return failed("head prop submission");
     m_RenderStatus.clear();
     return S_OK;
 }

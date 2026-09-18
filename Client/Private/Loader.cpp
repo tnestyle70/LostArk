@@ -1143,6 +1143,7 @@ HRESULT CLoader::Ready_MapAuthoringCore(const uint32_t iLevelIndex)
 #ifdef _DEBUG
 	if ((iLevelIndex == ETOUI(LEVEL::DEVELOPMENT) ||
 		iLevelIndex == ETOUI(LEVEL::BERN) ||
+		iLevelIndex == ETOUI(LEVEL::CHARACTER_SELECT) ||
 		iLevelIndex == ETOUI(LEVEL::KAKULSAYDON_ARENA)) &&
 		FAILED(CGameInstance::Get().Add_Prototype(
 			iLevelIndex,

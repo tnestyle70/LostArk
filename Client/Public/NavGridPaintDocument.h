@@ -93,6 +93,11 @@ public:
 	uint32_t To_Index(int32_t cellX, int32_t cellZ) const;
 	NAVGRID_AUTHORING_CELL_STATE Get_CellState(uint32_t index) const;
 	bool_t Has_ResolvedHeight(uint32_t index) const;
+	// Published-cell comparison must not use the display-only propagated height.
+	f32_t Get_RuntimeCellHeight(uint32_t index) const
+	{
+		return Has_ResolvedHeight(index) ? m_SourceCells[index].height : 0.f;
+	}
 	// MapTool overlay-only height; runtime export uses m_SourceCells directly.
 	f32_t Get_CellHeight(uint32_t index) const;
 	uint32_t Get_CellCount() const;

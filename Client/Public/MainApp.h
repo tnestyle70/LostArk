@@ -21,6 +21,7 @@ NS_END
 NS_BEGIN(Client)
 
 class CMapTool;
+class CLevelNavigationDebug;
 class CEffect_Tool;
 class CEffect_Tool_V2;
 class CAnimation_Tool;
@@ -469,6 +470,7 @@ private:
 	std::string GetWorldLevelAreaId() const;
 	bool FocusWorldLevelPosition(const float3_t& position, float radius, std::string& status);
 	bool UpdateMapEffectPlacementInput();
+	bool UpdateWorldLevelPlacementPickInput();
 	void RenderMapEffectPlacementMarker();
 	void UpdateWorldLevelTool();
 	void RenderWorldLevelTool();
@@ -561,6 +563,7 @@ private:
 	vector<HUD_TIMED_TEXT> m_HudTimedTexts;
 	bool_t m_bHudSpecialSlotShown = false;
 #ifdef _DEBUG
+	unique_ptr<CLevelNavigationDebug> m_pLevelNavigationDebug;
 	std::array<ARENA_CAMERA_PROFILE, 4> m_ArenaCameraDrafts{};
 	std::array<bool, 4> m_ArenaCameraDraftLoaded{};
 	std::array<std::string, 4> m_ArenaCameraDraftStatus{};
@@ -831,6 +834,11 @@ private:
 	unique_ptr<CWorldLevelTool> m_pWorldLevelTool;
 	unique_ptr<WORLD_LEVEL_TOOL_REQUEST> m_pWorldLevelPendingMapRequest;
 	std::chrono::steady_clock::time_point m_WorldLevelMapDeadline{};
+	/* One armed viewport pick for the World Level Tool's map edit session. */
+	bool m_bWorldLevelPickArmed = false;
+	uint32_t m_iWorldLevelPickLevel = UINT32_MAX;
+	bool m_bWorldLevelPickLeftDown = true;
+	bool m_bWorldLevelPickSuppressMouse = false;
 	unique_ptr<KOUKU_MAP_EFFECT_PLACEMENT_REQUEST> m_pMapEffectPlacementRequest;
 	DEBUG_TOOL m_eMapEffectPlacementOwner = DEBUG_TOOL::NONE;
 	uint32_t m_iMapEffectPlacementLevel = UINT32_MAX;

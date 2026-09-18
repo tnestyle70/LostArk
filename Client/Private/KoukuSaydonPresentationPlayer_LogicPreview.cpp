@@ -2,6 +2,9 @@
 #include "KoukuSaydonPresentationPlayer.h"
 #include "ActorCatalog.h"
 #include "Character.h"
+#include "EffectV2_Runtime.h"
+#include "Gameplay/CombatCollisionContract.h"
+#include "Gameplay/WorldCollisionContract.h"
 
 #include <algorithm>
 #include <cmath>
@@ -173,6 +176,17 @@ void Client::CKoukuSaydonPresentationPlayer::Sample_LogicPreview(SESSION& owner,
     if (!previewOwner) return;
     for (const auto& occurrence : pattern.LogicOccurrences)
     {
+        if (occurrence.bEnabled)
+        {
+            const auto pursuit = std::find_if(document.Logics.begin(), document.Logics.end(),
+                [&](const auto& row) { return row.strLogicId == occurrence.strLogicId &&
+                    row.strJudgementKind == "PURSUIT_PROJECTILES"; });
+            if (pursuit != document.Logics.end())
+            {
+                Sample_PursuitPreview(owner, document, pattern, *pursuit, occurrence, clockMs, paused);
+                continue;
+            }
+        }
         if (const auto* selected = Find_SelectedAirborneLogic(document, occurrence))
         {
             auto& trigger = m_LogicPreviewTriggers[owner.key][occurrence.strOccurrenceId];
@@ -277,10 +291,211 @@ void Client::CKoukuSaydonPresentationPlayer::Sample_LogicPreview(SESSION& owner,
     }
 }
 
+void Client::CKoukuSaydonPresentationPlayer::Sample_PursuitPreview(SESSION& owner,
+    const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
+    const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern, const LOGIC& logic,
+    const KOUKU_SAYDON_COMPOSITION_LOGIC_OCCURRENCE& occurrence, const float clockMs, const bool paused)
+{
+    using namespace DirectX;
+    using namespace LostArk::Shared;
+    // This is the existing ToolPreview visual sampler, never a combat object or
+    // a command producer. Random/repeated volleys still require Server Play.
+    if (!logic.bPursuitHoming || logic.iSpawnIntervalMs != 0u || logic.PursuitVisualIds.empty() ||
+        logic.PursuitVisualIds.size() > 4u || !logic.iCountPerWave || logic.iCountPerWave > 16u)
+    {
+        m_strStatus = "Pursuit Preview supports a single homing wave; use Server Play for random/repeated volleys.";
+        return;
+    }
+    constexpr double tickMs = 1000.0 / 30.0;
+    constexpr std::size_t maxProjectiles = 64u, maxPoses = 65536u;
+    constexpr std::uint32_t maxTicks = 18000u;
+    const double authoredStart = std::ceil(double(occurrence.iStartMs) / tickMs) * tickMs;
+    auto& trigger = m_LogicPreviewTriggers[owner.key][occurrence.strOccurrenceId];
+    const auto stop = [&]() {
+        for (auto& projectile : trigger.projectiles)
+        { Stop_Session(projectile.flight); Stop_Session(projectile.contact); }
+    };
+    if (double(clockMs) < authoredStart) { stop(); return; }
+    std::size_t projectileCount = 0u, poseCount = 0u;
+    for (const auto& [key, triggers] : m_LogicPreviewTriggers)
+        for (const auto& [id, row] : triggers)
+            for (const auto& projectile : row.projectiles)
+            { ++projectileCount; poseCount += projectile.poses.size(); }
+    const auto eligible = [](const KOUKU_CARD_PRESENTATION_VIEW& player) {
+        return Is_EligiblePlayer(player) && player.Snapshot.eAction != PLAYER_ACTION_STATE::GRABBED;
+    };
+    const auto findPlayer = [&](NET_ENTITY_ID id) -> const KOUKU_CARD_PRESENTATION_VIEW* {
+        const auto found = std::find_if(m_LogicPreviewPlayers.begin(), m_LogicPreviewPlayers.end(),
+            [&](const auto& player) { return player.Snapshot.iNetEntityId == id && eligible(player); });
+        return found == m_LogicPreviewPlayers.end() ? nullptr : &*found;
+    };
+    if (!trigger.captured)
+    {
+        if (double(clockMs) >= authoredStart + occurrence.iDurationMs) return;
+        const KOUKU_CARD_PRESENTATION_VIEW* selected = nullptr;
+        for (const auto& player : m_LogicPreviewPlayers)
+            if (eligible(player) && (!selected || player.Snapshot.iNetEntityId < selected->Snapshot.iNetEntityId))
+                selected = &player;
+        if (!selected || (trigger.awaitingPlayer && paused))
+        {
+            trigger.awaitingPlayer = true;
+            m_strStatus = "Pursuit Preview has no eligible player at its observed birth; waiting within this Duration.";
+            return;
+        }
+        if (projectileCount + logic.iCountPerWave > maxProjectiles || poseCount + logic.iCountPerWave > maxPoses)
+        { m_strStatus = "Pursuit Preview reached its 64-projectile/65536-pose bound."; return; }
+        const auto makePresentation = [&](const std::string& resourceId, const std::string& identity,
+                                          const bool flight, PRODUCT_PATTERN& output) {
+            const auto resource = std::find_if(document.PresentationResources.begin(), document.PresentationResources.end(),
+                [&](const auto& row) { return row.strResourceId == resourceId && row.eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT; });
+            if (resource == document.PresentationResources.end() || !resource->iDurationMs) return false;
+            PRODUCT_PATTERN staged;
+            staged.durationMs = flight ? (logic.iPursuitLifetimeMs ? logic.iPursuitLifetimeMs : 600000u) : resource->iDurationMs;
+            staged.pattern.strPatternId = pattern.strPatternId + ".pursuit-preview";
+            staged.pattern.iDurationMs = staged.durationMs;
+            staged.document.PresentationResources.push_back(*resource);
+            KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE box;
+            box.strOccurrenceId = identity;
+            box.strResourceId = resourceId;
+            box.iDurationMs = staged.durationMs;
+            box.bFollowBoss = flight;
+            box.bLoopEffectToDuration = flight;
+            staged.pattern.PresentationOccurrences.push_back(std::move(box));
+            output = std::move(staged);
+            return true;
+        };
+        PRODUCT_PATTERN contact;
+        if (!makePresentation(logic.strContactVisualId, occurrence.strOccurrenceId + ".contact", false, contact))
+        { m_strStatus = "Pursuit Preview cannot resolve the saved contact Effect."; return; }
+        const double birthMs = trigger.awaitingPlayer ?
+            std::ceil(double(clockMs) / tickMs) * tickMs : authoredStart;
+        auto pivot = owner.rootRecordedPivot;
+        std::string historyStatus;
+        // A seek beyond observed history starts a visual epoch from the actual
+        // current root and player snapshot. It never invents historical input.
+        const bool knownRoot = owner.rootHistory && owner.rootHistory->Sample(float(birthMs / 1000.0), pivot, historyStatus);
+        if (!knownRoot) pivot = owner.rootRecordedPivot;
+        const float bossYaw = std::atan2(pivot._31, pivot._33);
+        if (!std::isfinite(pivot._41) || !std::isfinite(pivot._42) || !std::isfinite(pivot._43) || !std::isfinite(bossYaw))
+        { m_strStatus = "Pursuit Preview requires a finite observed boss root."; return; }
+        std::vector<PURSUIT_PREVIEW_PROJECTILE> staged;
+        for (std::uint32_t ordinal = 0u; ordinal < logic.iCountPerWave; ++ordinal)
+        {
+            PURSUIT_PREVIEW_PROJECTILE projectile;
+            const auto identity = owner.key + ":pursuit:" + occurrence.strOccurrenceId + ":" + std::to_string(ordinal);
+            if (!makePresentation(logic.PursuitVisualIds[ordinal % logic.PursuitVisualIds.size()],
+                                  occurrence.strOccurrenceId + ".flight." + std::to_string(ordinal), true, projectile.presentation))
+            { m_strStatus = "Pursuit Preview cannot resolve a saved flight Effect."; return; }
+            projectile.flight.key = identity + ":flight";
+            projectile.contact.key = identity + ":contact";
+            projectile.targetId = selected->Snapshot.iNetEntityId;
+            const float yaw = bossYaw + XM_2PI * float(ordinal) / float(logic.iCountPerWave);
+            float4x4_t pose;
+            XMStoreFloat4x4(&pose, XMMatrixRotationY(yaw) * XMMatrixTranslation(
+                pivot._41 + std::sin(yaw) * float(logic.fSpawnRadiusM), pivot._42,
+                pivot._43 + std::cos(yaw) * float(logic.fSpawnRadiusM)));
+            projectile.poses.push_back(pose);
+            staged.push_back(std::move(projectile));
+        }
+        trigger.contactPresentation = std::move(contact);
+        trigger.projectiles = std::move(staged);
+        trigger.pursuitBirthMs = birthMs;
+        trigger.captured = true;
+        poseCount += trigger.projectiles.size();
+        m_strStatus = knownRoot && double(clockMs) - birthMs < tickMs * 2.0 ?
+            "Pursuit visual Preview follows the lowest eligible NetEntityId; Server target selection remains authoritative." :
+            "Pursuit visual seek rebuilt from current observed anchors; this is not recorded Server history.";
+    }
+    const double ageMs = double(clockMs) - trigger.pursuitBirthMs;
+    if (ageMs < 0.0) { stop(); return; }
+    const auto requestedTick = static_cast<std::uint32_t>((std::min)(double(maxTicks), std::floor(ageMs / tickMs + 1.e-5)));
+    const auto lifetimeTick = logic.iPursuitLifetimeMs ?
+        static_cast<std::uint32_t>(std::ceil(double(logic.iPursuitLifetimeMs) / tickMs)) : maxTicks;
+    for (auto& projectile : trigger.projectiles)
+    {
+        // The snapshot is fixed throughout an unobserved seek rebuild. A later
+        // live tick observes a new input; paused/rewound stored ticks do not.
+        const auto* target = findPlayer(projectile.targetId);
+        while (projectile.terminalTick == UINT32_MAX && projectile.poses.size() <= requestedTick)
+        {
+            if (poseCount >= maxPoses)
+            { stop(); m_strStatus = "Pursuit Preview reached its 65536-pose history bound."; return; }
+            const auto tick = static_cast<std::uint32_t>(projectile.poses.size());
+            auto next = projectile.poses.back();
+            const auto previous = next;
+            if (!target)
+            {
+                projectile.terminalTick = tick;
+                projectile.contactBurst = false;
+                m_strStatus = "Pursuit visual target became ineligible; this preview projectile was released.";
+            }
+            else
+            {
+                const auto& snapshot = target->Snapshot;
+                const float dx = snapshot.fPositionX - previous._41, dz = snapshot.fPositionZ - previous._43;
+                const float distance = std::hypot(dx, dz);
+                const float yaw = distance > .000001f ? std::atan2(dx, dz) : std::atan2(previous._31, previous._33);
+                float step = (std::min)(float(logic.fPursuitSpeedMps) / 30.f, distance);
+                if (logic.fPursuitMaxDistanceM > 0.0)
+                    step = (std::min)(step, (std::max)(0.f, float(logic.fPursuitMaxDistanceM) - projectile.traveledM));
+                projectile.traveledM += step;
+                XMStoreFloat4x4(&next, XMMatrixRotationY(yaw) * XMMatrixTranslation(
+                    previous._41 + std::sin(yaw) * step, snapshot.fPositionY, previous._43 + std::cos(yaw) * step));
+                const CombatCollision::CIRCLE_XZ circle{snapshot.fPositionX, snapshot.fPositionZ,
+                    float(logic.fContactRadiusM) + WorldCollision::PLAYER_HALF_EXTENT_X};
+                const bool hit = CombatCollision::Segment_IntersectsCircle(previous._41, previous._43, next._41, next._43, circle);
+                const bool expired = (logic.iPursuitLifetimeMs && tick >= lifetimeTick) ||
+                    (logic.fPursuitMaxDistanceM > 0.0 && projectile.traveledM >= float(logic.fPursuitMaxDistanceM));
+                // Match product ordering: last-tick movement, contact, expiry.
+                if (hit || expired)
+                {
+                    if (hit) { next._41 = snapshot.fPositionX; next._42 = snapshot.fPositionY; next._43 = snapshot.fPositionZ; }
+                    projectile.terminalTick = tick;
+                    projectile.contactBurst = true;
+                }
+            }
+            projectile.poses.push_back(next);
+            ++poseCount;
+        }
+        if (requestedTick >= projectile.terminalTick)
+        {
+            Stop_Session(projectile.flight);
+            const double contactAgeMs = ageMs - double(projectile.terminalTick) * tickMs;
+            if (!projectile.contactBurst || contactAgeMs >= trigger.contactPresentation.durationMs)
+                Stop_Session(projectile.contact);
+            else
+                Sample(projectile.contact, trigger.contactPresentation.document, trigger.contactPresentation.pattern,
+                    float(contactAgeMs), paused, projectile.poses.back(), nullptr);
+        }
+        else
+        {
+            Stop_Session(projectile.contact);
+            if (!projectile.flight.rootHistory)
+                projectile.flight.rootHistory = std::make_shared<EFFECT_V2_PIVOT_HISTORY>();
+            std::string historyStatus;
+            for (std::size_t tick = 0u; tick < projectile.poses.size(); ++tick)
+            {
+                const float seconds = float(double(tick) / 30.0);
+                if (seconds <= projectile.flight.rootRecordedSeconds) continue;
+                if (!projectile.flight.rootHistory->Record(seconds, projectile.poses[tick], false, historyStatus))
+                { m_strStatus = historyStatus; stop(); return; }
+                projectile.flight.rootRecordedSeconds = seconds;
+                projectile.flight.rootRecordedPivot = projectile.poses[tick];
+            }
+            Sample(projectile.flight, projectile.presentation.document, projectile.presentation.pattern,
+                float(ageMs), paused, projectile.poses[requestedTick], nullptr);
+        }
+    }
+}
+
 void Client::CKoukuSaydonPresentationPlayer::Clear_LogicPreview()
 {
     for (auto& [owner, triggers] : m_LogicPreviewTriggers)
         for (auto& [id, trigger] : triggers)
+        {
             for (auto& spawn : trigger.spawns) Stop_Session(spawn.session);
+            for (auto& projectile : trigger.projectiles)
+            { Stop_Session(projectile.flight); Stop_Session(projectile.contact); }
+        }
     m_LogicPreviewTriggers.clear();
 }

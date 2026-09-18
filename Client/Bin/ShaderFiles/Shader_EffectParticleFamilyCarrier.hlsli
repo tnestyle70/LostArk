@@ -42,6 +42,12 @@
 float4x4 g_ViewMatrix;
 float4x4 g_ProjMatrix;
 float4 g_CameraPosition;
+#if EFFECT_SHADER_FAMILY == 7 && defined(EFFECT_NATIVE_PROFILE_GROUP) && EFFECT_NATIVE_PROFILE_GROUP == 3136
+#define EFFECT_OWNER_RADIAL_MASK_CARRIER 1
+uint g_EffectOwnerRadialMaskEnabled = 0u;
+float4x4 g_EffectWorldToOwnerMask;
+float4 g_EffectOwnerRadialMask = float4(0.f, 0.f, 1.f, 0.05f);
+#endif
 
 struct VS_IN
 {
@@ -400,19 +406,40 @@ EFFECT_PS_OUT PS_MATERIAL(VS_OUT input, bool frontFace : SV_IsFrontFace)
 #endif
 }
 
+EFFECT_PS_OUT PS_COVERED_MATERIAL(VS_OUT input, bool frontFace)
+{
+    EFFECT_PS_OUT output = PS_MATERIAL(input, frontFace);
+#if defined(EFFECT_OWNER_RADIAL_MASK_CARRIER)
+    if (g_EffectOwnerRadialMaskEnabled != 0u)
+    {
+        const float2 localXZ = mul(float4(input.worldPosition, 1.f), g_EffectWorldToOwnerMask).xz;
+        const float distance = length(localXZ - g_EffectOwnerRadialMask.xy);
+        const float radius = g_EffectOwnerRadialMask.z;
+        const float feather = g_EffectOwnerRadialMask.w;
+        const float coverage = feather > 0.f ?
+            1.f - smoothstep(radius - feather, radius, distance) : (distance < radius ? 1.f : 0.f);
+        // RT0 is straight alpha; RT2 reuses this alpha in Write_EffectBloom.
+        // Distortion is additive, so it receives its coverage directly.
+        output.SceneColor.a *= coverage;
+        output.Distortion *= coverage;
+    }
+#endif
+    return output;
+}
+
 // The render states differ by pass; the shader programs do not.
 // Compile each program once and share it across these passes.
 EFFECT_PS_OUT PS_MAIN(VS_OUT input, bool frontFace : SV_IsFrontFace)
 {
     g_EffectSceneReadMode = 0u;
     g_EffectSceneSampleUsed = false;
-    EFFECT_PS_OUT output = PS_MATERIAL(input, frontFace);
+    EFFECT_PS_OUT output = PS_COVERED_MATERIAL(input, frontFace);
     if (!g_EffectSceneSampleUsed)
         return Write_EffectBloom(output);
     g_EffectSceneReadMode = 1u;
-    const EFFECT_PS_OUT transported = PS_MATERIAL(input, frontFace);
+    const EFFECT_PS_OUT transported = PS_COVERED_MATERIAL(input, frontFace);
     g_EffectSceneReadMode = 2u;
-    const EFFECT_PS_OUT emission = PS_MATERIAL(input, frontFace);
+    const EFFECT_PS_OUT emission = PS_COVERED_MATERIAL(input, frontFace);
     g_EffectSceneReadMode = 0u;
     output.BloomContribution = float4(transported.SceneColor.rgb - emission.SceneColor.rgb +
         Write_SceneBloom(emission.SceneColor).rgb, output.SceneColor.a);

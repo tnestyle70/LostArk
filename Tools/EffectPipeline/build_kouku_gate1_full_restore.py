@@ -280,6 +280,22 @@ def constant_distribution_value(dist):
     assert all(math.isfinite(v) for v in value)
     return value
 
+def baked_trail_tiling_world_units(recipe):
+    """Preserve the retained TypeDataAnimTrail cm value in authored trail UVs."""
+    modules = [m for m in recipe['modules'] if m['className'] == 'particlemoduletypedataanimtrail']
+    if len(modules) > 1:
+        raise ValueError('Ambiguous baked trail TypeData')
+    literals = [v for m in modules for v in m['literals'] if v['propertyPath'] == 'tilingdistance']
+    if not literals:
+        return 0.0
+    if len(literals) != 1 or literals[0]['kind'] != 'number':
+        raise ValueError('Invalid or ambiguous baked trail tiling distance')
+    value = literals[0]['value']
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or value < 0 or value * .01 > 3.4028234663852886e38:
+        raise ValueError('Invalid baked trail tiling distance')
+    return value * .01
+
+
 def trail_history(evidence):
     package=load_package(source_package('Character','MN_RPCT_05_ANIMNOTIFY_TRAILS'),ue3.LOSTARK_KR_AES_KEY)
     outer=record_from_export(package,'mn_rpct_05_animnotify_trails',find_export(package,'MN_RPCT_05_4219821_0_0_0'))
@@ -513,7 +529,7 @@ def project(evidence,index,notifies,occurrences,records,destination,material_pat
             assert math.isfinite(body_scale) and body_scale>0
             detail['transform']['scale']=[v*body_scale for v in detail['transform']['scale']]
             e['runtimeCarrier']=dict(formatVersion=1,kind='animationTrailBakedEdgeV1',admission='bounded',historyId=history['historyId'])
-            detail['trail'].update(maxPoints=len(history['samples']),pointLifeTimeSeconds=max(detail['particle']['lifeTimeSeconds']),sampleIntervalSeconds=min(b['relativeTimeSeconds']-a['relativeTimeSeconds'] for a,b in zip(history['samples'],history['samples'][1:])),minimumDistance=0,faceCamera=False)
+            detail['trail'].update(maxPoints=len(history['samples']),pointLifeTimeSeconds=max(detail['particle']['lifeTimeSeconds']),sampleIntervalSeconds=min(b['relativeTimeSeconds']-a['relativeTimeSeconds'] for a,b in zip(history['samples'],history['samples'][1:])),minimumDistance=0,faceCamera=False,tilingDistanceWorldUnits=baked_trail_tiling_world_units(recipe))
             e['actionCueAttachment']['enabled']=False
             recipe['enabled']=False
             e['sourcePresentation'].update(enabled=True,profileId='kouku.animation-trail-baked-edge-history.v1',status='reconstructed')

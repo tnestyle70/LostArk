@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import copy
+import argparse
 import hashlib
+import math
 import struct
 
 from build_saydon_card_pattern_groups import AUTHORED, ROOT, leaf, read, renamed, write
@@ -12,6 +14,7 @@ OUTPUT = ROOT / 'out/EffectV1DovePizza20260917/candidate'
 SOURCE = ROOT / 'out/KoukuAllEffects20260912'
 DOVE = 'effect.kouku.magic.paper.dove.group'
 PIZZA = 'effect.kouku.pizza.explosion.group'
+PIZZA_SOURCE_RESTORED = PIZZA + '.source-restored'
 
 
 def sha(path):
@@ -54,6 +57,80 @@ def registration(document, source_system):
     return dict(catalogEntry=dict(effectAssetId=asset, payloadKind='DIRECT_AUTHORED_DOCUMENT',
         authoringPath=f'Effects/Authored/{asset}.effect.json'),
         treeReference=dict(kind='V1', assetId=asset, displayName=document['displayName'], parentId=parent))
+
+
+def dove_single_file_track(lane, straight_scale=2 / 3):
+    """Keep the saved phase clock; trim only its two straight travel segments."""
+    assert 0 <= lane < 4
+    speed, spacing, straight, turn = 8., .8, .7, 2.
+    assert straight_scale in (1., 2 / 3)
+    straight_speed = speed * straight_scale
+    radius = speed * turn / math.pi
+    positions, angles = [], []
+    for frame in range(181):
+        time = frame / 60
+        travel_time = time - lane * spacing / speed
+        if travel_time <= straight:
+            position, yaw = [straight_speed * travel_time, 0., 0.], 0.
+        elif travel_time <= straight + turn:
+            angle = math.pi * (travel_time - straight) / turn
+            position = [straight_speed * straight + radius * math.sin(angle), radius * (1-math.cos(angle)), 0.]
+            yaw = math.degrees(angle)
+        else:
+            position, yaw = [straight_speed * straight - straight_speed * (travel_time - straight - turn), 2*radius, 0.], 180.
+        def key(value):
+            return dict(timeSeconds=time, value=value, arriveTangent=[0, 0, 0],
+                leaveTangent=[0, 0, 0], interpolation='linear')
+        positions.append(key([v * 100 for v in position]))
+        angles.append(key([0, 0, yaw]))
+    return dict(sourceOccurrenceId=DOVE + f'.authored.single-file.bird{lane}', sourceTimeOriginSeconds=0,
+        previewOriginUE3Cm=[0, 0, 0], nodes=[dict(sourceObjectPath=DOVE + f'/project-authored-half-turn/bird{lane}',
+        frame='WORLD', initialPositionUE3Cm=positions[0]['value'], initialEulerDegrees=[0, 0, 0],
+        scaleUE3=[1, 1, 1], positionKeys=positions, eulerKeys=angles)])
+
+
+def apply_dove_single_file_path(document):
+    """Stage motion only; preserve current authoring and reject unknown tracks."""
+    staged = copy.deepcopy(document)
+    birds = [e for e in staged['elements'] if e['groupId'] == DOVE + '.flight']
+    assert len(birds) == 4, 'Expected the existing four-bird flight group'
+    changes, lanes = [], set()
+    for element in birds:
+        modules = element['sourceRecipe']['modules']
+        matching = [lane for lane in range(4) if any(m['stableId'] == DOVE + f'.death{lane}' for m in modules)]
+        assert len(matching) == 1, 'Keep a unique original death-event owner for each bird'
+        lane = matching[0]
+        assert lane not in lanes
+        lanes.add(lane)
+        track = dove_single_file_track(lane)
+        legacy_track = dove_single_file_track(lane, 1.)
+        previous_track = element.get('sourceTransformTrack')
+        assert element['detail']['particle']['localSpace']
+        assert element['detail']['timing']['startDelaySeconds'] == 0
+        assert element['detail']['timing']['lifeTimeSeconds'] == 3
+        assert abs(element['detail']['particle']['sourceScale']['lifeTime'] - .3) < 1.e-6
+        if 'sourceTransformTrack' in element:
+            assert previous_track in (legacy_track, track), 'Preserve an independently edited bird motion track'
+        remove = {DOVE + f'.velocity{lane}', DOVE + f'.orbit{lane}'}
+        removed = [m for m in modules if m['stableId'] in remove]
+        assert len(removed) == 2 or (not removed and previous_track in (legacy_track, track))
+        if removed:
+            assert {m['className'] for m in removed} == {'particlemodulevelocity', 'particlemoduleorbit'}
+        if removed or previous_track != track:
+            changes.append(dict(elementId=element['id'], removedModuleIds=sorted(remove),
+                changedField='sourceTransformTrack', straightDistanceMultiplier=2 / 3,
+                basis='USER_REQUESTED_PROJECT_AUTHORED'))
+        element['sourceRecipe']['modules'] = [m for m in modules if m['stableId'] not in remove]
+        assert not any(m['className'] in ('particlemodulevelocity', 'particlemoduleorbit', 'particlemodulelocationdirect')
+                       for m in element['sourceRecipe']['modules']), 'Do not compose another movement contribution'
+        element['sourceTransformTrack'] = track
+        assert element['material']['sourceProfile']['runtimeShaderProfileId'] == 'effect.ue3.kouku-2893-native.v1'
+        exposure = element['detail']['color']['emissiveIntensity']
+        if exposure != 4.0:
+            changes.append(dict(elementId=element['id'], changedField='detail.color.emissiveIntensity',
+                before=exposure, after=4.0, basis='PROJECT_AUTHORED_RGB_EXPOSURE_4'))
+            element['detail']['color']['emissiveIntensity'] = 4.0
+    return staged, changes
 
 
 def dove():
@@ -108,6 +185,10 @@ def dove():
                 'busepsyslocation': False, 'binheritvelocity': False},
             [vector('inheritvelocityscale', [0, 0, 0]), constant('spawncount', count)]))
         document['elements'].append(element)
+    saved_path = AUTHORED / (DOVE + '.effect.json')
+    if saved_path.is_file():
+        document = read(saved_path)
+    document, motion_changes = apply_dove_single_file_path(document)
     projectile = SOURCE / 'source/Projectile/421980201.loa'
     motion = struct.unpack_from('<fff i i f i', projectile.read_bytes(), 1197)
     assert motion == (1, 50, 30, 800, 1500, 5, 1500), motion
@@ -116,9 +197,17 @@ def dove():
         sourceInputs=input_receipts(flight, impact),
         sourceMotion=dict(scale=motion[0], radiusCm=motion[1], heightCm=motion[2],
             speedCmPerSecond=motion[3], maxSpeedCmPerSecond=motion[4], lifetimeSeconds=motion[5], maxDistanceCm=motion[6]),
-        projectRequest=dict(birdCount=4, lifetimeSeconds=3, orbitRadiusM=1, orbitPeriodSeconds=3,
+        projectRequest=dict(birdCount=4, lifetimeSeconds=3, straightSpacingM=.8 * 2 / 3,
+            curveArcSpacingM=.8, straightSpeedMPerSecond=8 * 2 / 3, curveSpeedMPerSecond=8,
+            straightDistanceMultiplier=2 / 3, leaderForwardDistanceM=5.6 * 2 / 3,
+            leaderReturnDistanceM=2.4 * 2 / 3, whiteBodyBasis='PROJECT_AUTHORED_RGB_EXPOSURE_4',
+            perBirdLagSeconds=.1, leaderStraightSeconds=.7, halfTurnSeconds=2,
+            turnRadiusM=16 / math.pi, turnAngleDegrees=180,
+            trajectoryBasis='USER_REQUESTED_PROJECT_AUTHORED',
             direction='Original +X source travel, rotated by each authored occurrence root.',
-            motionPolicy='Constant original initial speed 8m/s; the requested 3-second preview is not the original 15m projectile cap.'),
+            motionPolicy='Saved phase clock and 0.1s follower delay preserved; both straight segments use 2/3 speed, the original authored half-circle stays at 8m/s. This is not the original 15m projectile cap.'),
+        savedInputSha256=sha(saved_path) if saved_path.is_file() else None,
+        motionChanges=motion_changes,
         impactBirths=sum(burst_counts)*4, impactElementCount=len(burst_counts),
         nativeAssets=native_references(document), manualVisualValidation='USER_PENDING',
         **registration(document, flight['effectAssetId']))
@@ -167,28 +256,104 @@ def repair_geometry_defaults(document):
 def pizza():
     docs = [read(AUTHORED / f'effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_bigarea_exp_{i:02}_loc_int.effect.json')
             for i in (2, 3)]
-    document = renamed(docs[0], PIZZA, '피자 바닥 무지개 · 검정 빨강 경계 폭발')
-    document['elements'] += renamed(docs[1], PIZZA + '.boundary', '원본 피자 경계')['elements']
+    path = AUTHORED / (PIZZA + '.effect.json')
+    # Exp02 is the preceding full-circle pulse, whereas Exp03 is the original
+    # subsequent pizza hit. Preserve the saved Exp03 edits/IDs and remove only
+    # the independently added full-circle stream requested by the user.
+    if path.is_file():
+        document = read(path)
+    else:
+        document = renamed(docs[1], PIZZA + '.boundary', '원본 피자 경계')
+        document['effectAssetId'] = PIZZA
+    prefix = 'fx_mn_rpcz_00_u.par_u_rpcz_bigarea_exp_02_loc_int.'
+    removed = [e for e in document['elements'] if e['sourcePresentation']['sourceObjectPath'].startswith(prefix)]
+    kept = [e for e in document['elements'] if not e['sourcePresentation']['sourceObjectPath'].startswith(prefix)]
+    expected = {e['sourcePresentation']['sourceObjectPath'] for e in docs[1]['elements']}
+    assert len(kept) == len(expected) == 16
+    assert {e['sourcePresentation']['sourceObjectPath'] for e in kept} == expected
+    document['elements'] = kept
+    document['displayName'] = '피자 부채꼴 · 원본 검정 무지개 경계 폭발'
     document.pop('sourceModelPreview', None)
     repairs = repair_geometry_defaults(document)
-    assert repairs
+    mesh_elements = [e for e in kept if any(r['slotId'] == 'meshModel' for r in e['resources'])]
+    assert len(mesh_elements) == 3
+    mesh_evidence = []
+    for e in mesh_elements:
+        rotation = next(m for m in e['sourceRecipe']['modules'] if m['className'] == 'particlemodulemeshrotation_seeded')
+        mesh_evidence.append(dict(sourceEmitter=e['sourcePresentation']['sourceObjectPath'],
+            resources=e['resources'], bursts=e['sourceRecipe']['bursts'],
+            startRotation=rotation['distributions'], material=e['material']['sourceMaterialPath']))
     proof = dict(assetId=PIZZA, installed=False, sourceAssets=[d['effectAssetId'] for d in docs],
         sourceInputs=input_receipts(*docs),
         sourceRepairs=repairs, nativeAssets=native_references(document),
+        savedInputSha256=sha(path) if path.is_file() else None,
+        removedSourceElementIds=[e['id'] for e in removed], preservedSourceElementIds=[e['id'] for e in kept],
+        sourceMeshEmitters=mesh_evidence,
         preserved='Every material, TypeData mesh pre-rotation, source mesh StartRotation, user transform and nonempty distribution.',
-        safeWedge='Original two 120-degree meshes plus one 90-degree mesh preserve a measured approximately 85.2-degree empty union. No global rotation or inferred exact-90 clipping was applied.',
-        issue='Distribution=None instance tags had discarded inherited cooked CDO radial radius/velocity scale. Velocity-facing sprites then received zero velocity.',
+        safeWedge='Original two 120-degree meshes plus one 90-degree mesh and .45/.88/.65-turn source rotations have one geometric empty interval of about 85.2 degrees. Material opacity is time/UV dependent; this geometric fact is not visual approval.',
+        issue='The independent group had mixed the full-circle Exp02 pulse with the subsequent Exp03 pizza hit. This candidate isolates the exact 16-emitter Exp03 stream. The screenshot internal opacity gaps are not proven to be an emission-count failure and are not filled by invented clones.',
         manualVisualValidation='USER_PENDING', **registration(document, docs[0]['effectAssetId']))
     return document, proof
 
 
+def pizza_source_restored():
+    """A separate source-derived document; never reset the edited pizza group."""
+    source = read(AUTHORED / 'effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_bigarea_exp_03_loc_int.effect.json')
+    document = renamed(source, PIZZA_SOURCE_RESTORED,
+                       '쿠크_피자 | 피자 부채꼴 - 원본 검정 무지개 경계 폭발 2')
+    document.pop('sourceModelPreview', None)
+    assert len(document['elements']) == len(source['elements']) == 16
+    repairs = repair_geometry_defaults(document)
+    by_emitter = {e['sourcePresentation']['sourceObjectPath']: e for e in source['elements']}
+    for element in document['elements']:
+        original = by_emitter[element['sourcePresentation']['sourceObjectPath']]
+        assert element['material'] == original['material']
+        assert element['resources'] == original['resources']
+        assert element['detail'] == original['detail']
+    # The recovered shader has no world circle. This requested coverage is an
+    # explicit project-authored layer, applied only to the two source dark sprites.
+    masked = []
+    for element in document['elements']:
+        if element['material']['sourceProfile']['runtimeShaderProfileId'] == 'effect.ue3.kouku-3171-native.v1':
+            element['detail']['sprite']['ownerRadialMask'] = dict(
+                enabled=True, centerXZ=[0.0, 0.0], radius=6.6, feather=0.05)
+            masked.append(element['id'])
+    assert len(masked) == 2
+    live = AUTHORED / (PIZZA + '.effect.json')
+    proof = dict(assetId=PIZZA_SOURCE_RESTORED, installed=False,
+        authoredCoverage=dict(classification='PROJECT_AUTHORED', elementIds=masked,
+            coordinateSpace='Effect-origin XZ before ParticleSystem uniformScale/yaw and Frame.RootWorld',
+            radius=6.6, feather=0.05, centerXZ=[0, 0],
+            radiusEvidence='Installed sphere002/003 WModel preScale .01 and actual .2s Playback transform: 6.599988..6.600002 metres',
+            reason='Original native3171 alpha extends beyond the rainbow geometry; no original global radial clip was recovered.'),
+        sourceAssets=[source['effectAssetId']], sourceInputs=input_receipts(source),
+        sourceRepairs=repairs, nativeAssets=native_references(document),
+        preservedUserDocument=dict(path=str(live.relative_to(ROOT)), sha256=sha(live)),
+        sourceElementMapping=[dict(sourceElementId=before['id'], candidateElementId=after['id'],
+            sourceEmitter=after['sourcePresentation']['sourceObjectPath'])
+            for before, after in zip(source['elements'], document['elements'])],
+        geometryPolicy='Original sixteen Exp03 emitters, two dark-aura sprites, both distinct flow emitters, and original source transforms. Only two native3171 layers opt into an authored Effect-origin circle; no angular crop.',
+        materialPolicy='Original native MIC/PS/texture/alpha inputs retained. PROJECT_AUTHORED radial coverage clips dark-aura after native shading; this additional mask is not claimed as original shader restoration.',
+        manualVisualValidation='USER_PENDING', **registration(document, source['effectAssetId']))
+    return document, proof
+
+
 def main():
-    for build in (dove, pizza):
+    parser = argparse.ArgumentParser(__doc__)
+    selected = parser.add_mutually_exclusive_group()
+    selected.add_argument('--pizza-only', action='store_true')
+    selected.add_argument('--dove-only', action='store_true')
+    selected.add_argument('--pizza-source-restored', action='store_true')
+    parser.add_argument('--output', type=type(OUTPUT), default=OUTPUT)
+    options = parser.parse_args()
+    builders = ((pizza_source_restored,) if options.pizza_source_restored else
+                (pizza,) if options.pizza_only else (dove,) if options.dove_only else (dove, pizza))
+    for build in builders:
         document, proof = build()
         filename = document['effectAssetId'] + '.effect.json'
-        write(OUTPUT / filename, document)
-        proof['candidateSha256'] = sha(OUTPUT / filename)
-        write(OUTPUT / (document['effectAssetId'] + '.receipt.json'), proof)
+        write(options.output / filename, document)
+        proof['candidateSha256'] = sha(options.output / filename)
+        write(options.output / (document['effectAssetId'] + '.receipt.json'), proof)
         print(document['effectAssetId'], len(document['elements']))
 
 

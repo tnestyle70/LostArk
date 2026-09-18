@@ -30,7 +30,7 @@ bool Client::CSkeletalAfterimage::Configure(const SETTINGS& settings)
 {
     if (!std::isfinite(settings.sampleIntervalSeconds) || settings.sampleIntervalSeconds < .005f ||
         settings.sampleIntervalSeconds > .5f || !std::isfinite(settings.sampleLifetimeSeconds) ||
-        settings.sampleLifetimeSeconds < settings.sampleIntervalSeconds || settings.sampleLifetimeSeconds > 2.f ||
+        settings.sampleLifetimeSeconds < .005f || settings.sampleLifetimeSeconds > 2.f ||
         !settings.maxSamples || settings.maxSamples > 16u ||
         !std::isfinite(settings.color.x) || !std::isfinite(settings.color.y) ||
         !std::isfinite(settings.color.z) || !std::isfinite(settings.color.w) ||
@@ -53,6 +53,7 @@ void Client::CSkeletalAfterimage::Reset()
     m_Samples.clear();
     m_Model.reset();
     m_Accumulator = 0.f;
+    m_PulseClockSeconds = m_PulseBirthSeconds = -1.f;
     m_SuppressedUntilDisabled = false;
 }
 
@@ -106,16 +107,7 @@ void Client::CSkeletalAfterimage::Update(const float deltaSeconds, const bool em
     const bool stationary = !m_Samples.empty() && DistanceSquared(m_Samples.back().world, world) < .0016f;
     if (stationary && !m_Settings.capturePoseChanges) return;
     SAMPLE staged;
-    staged.world = world;
-    staged.palettes.resize(model->Get_NumMeshes());
-    for (uint32_t mesh = 0u; mesh < model->Get_NumMeshes(); ++mesh)
-    {
-        if (!model->Capture_BoneMatrices(mesh, staged.palettes[mesh]))
-        {
-            Suppress_FailedPresentation();
-            return;
-        }
-    }
+    if (!Capture_Sample(model, world, staged)) return;
     if (staged.palettes.empty()) return;
     if (stationary && m_Settings.capturePoseChanges)
     {
@@ -135,6 +127,44 @@ void Client::CSkeletalAfterimage::Update(const float deltaSeconds, const bool em
     }
     m_Samples.push_back(std::move(staged));
     while (m_Samples.size() > m_Settings.maxSamples) m_Samples.pop_front();
+}
+
+bool Client::CSkeletalAfterimage::Capture_Sample(const std::shared_ptr<Engine::CModel>& model,
+    const float4x4_t& world, SAMPLE& sample)
+{
+    sample.world = world;
+    sample.palettes.resize(model->Get_NumMeshes());
+    for (uint32_t mesh = 0u; mesh < model->Get_NumMeshes(); ++mesh)
+        if (!model->Capture_BoneMatrices(mesh, sample.palettes[mesh]))
+        { Suppress_FailedPresentation(); return false; }
+    return !sample.palettes.empty();
+}
+
+void Client::CSkeletalAfterimage::Sample_Pulse(const float elapsedSeconds,
+    const std::shared_ptr<Engine::CModel>& model, const float4x4_t& world)
+{
+    if (!model || !model->Is_Skinned() || !Finite(world) ||
+        !std::isfinite(elapsedSeconds) || elapsedSeconds < 0.f)
+    { Reset(); return; }
+    if (m_Model.lock() != model || elapsedSeconds < m_PulseClockSeconds ||
+        (!m_Samples.empty() && DistanceSquared(m_Samples.front().world, world) > 100.f))
+    { Reset(); m_Model = model; }
+    m_PulseClockSeconds = elapsedSeconds;
+    if (m_SuppressedUntilDisabled) return;
+    const float phase = std::fmod(elapsedSeconds, m_Settings.sampleIntervalSeconds);
+    const float birth = elapsedSeconds - phase;
+    if (phase >= m_Settings.sampleLifetimeSeconds)
+    { m_Samples.clear(); return; }
+    if (m_Samples.empty() || std::abs(birth - m_PulseBirthSeconds) > .0001f)
+    {
+        SAMPLE sample;
+        if (!Capture_Sample(model, world, sample)) return;
+        m_Samples.clear();
+        m_Samples.push_back(std::move(sample));
+        m_PulseBirthSeconds = birth;
+    }
+    // Repeated paused samples change neither the captured pose nor the pulse phase.
+    m_Samples.front().ageSeconds = phase;
 }
 
 HRESULT Client::CSkeletalAfterimage::Render(const std::shared_ptr<Engine::CModel>& model,
