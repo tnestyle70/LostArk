@@ -181,7 +181,9 @@ namespace LostArk::Server
 		static constexpr std::size_t RELIABLE_FRAME_RESERVE = 16u;
 		static constexpr std::size_t MAX_OUTBOUND_BYTE_COUNT = 512u * 1024u;
 		static constexpr std::size_t RELIABLE_BYTE_RESERVE = 128u * 1024u;
-		static constexpr std::uint32_t SEND_TIMEOUT_MILLISECONDS = 250u;
+		// Socket calls are nonblocking; temporary pressure is not a broken stream.
+		static constexpr std::uint32_t TRANSPORT_POLL_MILLISECONDS = 100u;
+		static constexpr std::uint32_t SEND_STALL_REPORT_MILLISECONDS = 250u;
 		static constexpr std::uint32_t SENDER_JOIN_TIMEOUT_MILLISECONDS = 2000u;
 
 		void Receive_Loop();
@@ -204,7 +206,11 @@ namespace LostArk::Server
 			SOCKET clientSocket) noexcept;
 
 		// Sender worker only. Room and receive threads never call send directly.
-		bool Send_All(std::span<const std::uint8_t> bytes);
+		bool Send_All(std::span<const std::uint8_t> bytes,
+			LostArk::Shared::PACKET_TYPE packetType = LostArk::Shared::PACKET_TYPE::INVALID);
+		void Record_SendProgressDiagnostic(const char* eventName,
+			LostArk::Shared::PACKET_TYPE packetType, std::size_t sentBytes,
+			std::size_t totalBytes, std::uint64_t noProgressMilliseconds) noexcept;
 
 		void Notify_Closed();
 
@@ -243,6 +249,7 @@ namespace LostArk::Server
 		std::size_t m_iQueuedOutboundBytes = 0u;
 		CLIENT_SESSION_OUTBOUND_METRICS m_OutboundMetrics;
 		bool m_hasSenderExited = true;
+		std::uint64_t m_iSendStallOrdinal = 0u; // Sender worker only.
 
 		FRAME_HANDLER m_OnFrame;
 		CLOSED_HANDLER m_OnClosed;

@@ -237,6 +237,7 @@ namespace
         bool_t bPendingInitialSeek = true;
         bool_t bSupersededRecoveryCue = false;
 		bool_t bFollowAnchorMissing = false;
+		bool_t bRuntimeFailureDiagnosticRecorded = false;
 		std::vector<SOURCE_ANCHOR_REQUEST> SourceAnchorRequests;
 		std::unordered_map<std::string, float4x4_t> SourceAnchorWorldsScratch;
 		ARTIST_31470_TRANSFORM_HISTORY Artist31470TransformHistory;
@@ -250,6 +251,33 @@ namespace
 		std::string strLevelPlacementId;
 		bool_t bVehicleModelAnchors = false;
     };
+
+	void Record_ActiveEffectRuntimeFailure(ACTIVE_EFFECT& Effect,
+		const char* phase, const std::string_view reason) noexcept
+	{
+		// Normal level teardown and scheduled lifetime retirement are not faults.
+		if (Effect.bRuntimeFailureDiagnosticRecorded || Effect.bSupersededRecoveryCue ||
+			Effect.iLevelIndex != CGameInstance::Get().Get_CurrentLevelID() ||
+			(Client::EFFECT_STOP_POLICY::CUE_END == Effect.eStopPolicy &&
+			 Effect.fElapsedCueTimeSeconds * 1000.f >= Effect.iCueDurationMs) ||
+			(!Effect.bExternallySampled && Effect.pObject && Effect.pObject->Is_Finished()))
+			return;
+		Effect.bRuntimeFailureDiagnosticRecorded = true;
+		try
+		{
+			Client::Write_EffectFailureDiagnostic(phase,
+				"asset=" + Effect.strEffectAssetId + " occurrence=" + Effect.strOccurrenceId +
+				" world_root=" + std::to_string(Effect.iWorldRootHandle) +
+				" level=" + std::to_string(Effect.iLevelIndex) +
+				" elapsed_s=" + std::to_string(Effect.fElapsedCueTimeSeconds) +
+				" pending_s=" + std::to_string(Effect.fPendingInitialSampleTimeSeconds) +
+				" anchor=" + Effect.strAnchorSlotId +
+				" action_start_tick=" + std::to_string(Effect.iActionStartTick) +
+				" cue_start_ms=" + std::to_string(Effect.iCueStartMs) +
+				" reason=" + std::string(reason));
+		}
+		catch (...) { } // Diagnostics never change visibility, history or retirement.
+	}
 
 	bool_t Commit_ExternalTransformHistorySample(
 		ACTIVE_EFFECT& Effect, std::string& strOutError)
@@ -997,62 +1025,6 @@ namespace
 				Value.iEstimatedDrawSubmissions);
 	}
 
-	bool_t BudgetWithin(
-		const Client::EFFECT_SCENE_BUDGET_COST& Value,
-		const Client::EFFECT_SCENE_BUDGET_COST& Limit)
-	{
-		return Value.iEffects <= Limit.iEffects &&
-			Value.iParticles <= Limit.iParticles &&
-			Value.iMeshParticles <= Limit.iMeshParticles &&
-			Value.iTrailPoints <= Limit.iTrailPoints &&
-			Value.iAfterImages <= Limit.iAfterImages &&
-			Value.iLights <= Limit.iLights &&
-			Value.iScreenPosts <= Limit.iScreenPosts &&
-			Value.iScreenOverlays <= Limit.iScreenOverlays &&
-			Value.iEstimatedDrawSubmissions <=
-				Limit.iEstimatedDrawSubmissions;
-	}
-
-	const Client::EFFECT_SCENE_BUDGET_COST SCENE_HARD_BUDGET =
-		{ 128u, 16384u, 4096u, 12288u, 2048u, 32u, 16u, 64u, 6144u };
-	/* Remote cosmetics stop before the hard ceiling so a local action and boss
-	   telegraph retain deterministic headroom during a four-player burst. */
-	const Client::EFFECT_SCENE_BUDGET_COST REMOTE_SCENE_SOFT_BUDGET =
-		{ 96u, 12288u, 2814u, 8192u, 1536u, 24u, 4u, 24u, 4096u };
-	const Client::EFFECT_SCENE_BUDGET_COST OWNER_BUDGET =
-		{ 32u, 8192u, 2048u, 4096u, 1024u, 16u, 16u, 32u, 3072u };
-
-	// Kouku admits four players with two normal 34630 tails each, 42 moving
-	// cards and the complete intro light document. Other levels keep their
-	// existing budgets; Bern has substantially more permanent map lights.
-	const Client::EFFECT_SCENE_BUDGET_COST KOUKU_SCENE_HARD_BUDGET =
-		{ 128u, 49152u, 4096u, 32768u, 2048u, 160u, 16u, 64u, 8192u };
-	const Client::EFFECT_SCENE_BUDGET_COST KOUKU_REMOTE_SCENE_SOFT_BUDGET =
-		{ 96u, 40960u, 4096u, 24576u, 1536u, 144u, 12u, 24u, 7168u };
-	const Client::EFFECT_SCENE_BUDGET_COST KOUKU_OWNER_BUDGET =
-		{ 32u, 8192u, 2048u, 4096u, 1024u, 32u, 16u, 32u, 3072u };
-	// Loader preparation is level independent. Admission applies the actual
-	// current level's limit after a successfully prepared candidate is queued.
-	const Client::EFFECT_SCENE_BUDGET_COST& MAX_SUPPORTED_SCENE_BUDGET =
-		KOUKU_SCENE_HARD_BUDGET;
-
-	const Client::EFFECT_SCENE_BUDGET_COST& Scene_BudgetForLevel(
-		const uint32_t iLevelIndex, const bool_t bRemoteCharacter)
-	{
-		if (iLevelIndex == ETOUI(Client::LEVEL::KAKULSAYDON_ARENA))
-			return bRemoteCharacter ? KOUKU_REMOTE_SCENE_SOFT_BUDGET : KOUKU_SCENE_HARD_BUDGET;
-		return bRemoteCharacter ? REMOTE_SCENE_SOFT_BUDGET : SCENE_HARD_BUDGET;
-	}
-
-	const Client::EFFECT_SCENE_BUDGET_COST& Owner_BudgetForLevel(
-		const uint32_t iLevelIndex, const bool_t bLevelOwner)
-	{
-		if (bLevelOwner)
-			return Scene_BudgetForLevel(iLevelIndex, false);
-		return iLevelIndex == ETOUI(Client::LEVEL::KAKULSAYDON_ARENA) ?
-			KOUKU_OWNER_BUDGET : OWNER_BUDGET;
-	}
-
 	Client::EFFECT_SCENE_BUDGET_COST Current_ActiveBudget()
 	{
 		Client::EFFECT_SCENE_BUDGET_COST Result;
@@ -1070,55 +1042,46 @@ namespace
 		return Result;
 	}
 
-	bool_t Can_AdmitBudget(
+	bool_t Validate_BudgetAccounting(
 		const EFFECT_OWNER_VIEW& Owner,
 		const Client::EFFECT_SCENE_BUDGET_COST& Candidate,
 		const bool_t bIncludePending,
 		std::string& strOutStatus)
 	{
-		Client::EFFECT_SCENE_BUDGET_COST Scene = Current_ActiveBudget();
-		if (bIncludePending && !Add_BudgetCost(Scene, Current_PendingBudget()))
-		{
-			strOutStatus = "Effect scene budget accumulation overflowed.";
-			return false;
-		}
+		// Costs are diagnostic reservations, not a reason to hide an entire
+		// effect. All levels and local/remote owners use the same prepared
+		// resource and renderer validation. Reject only corrupt accounting.
+		Client::EFFECT_SCENE_BUDGET_COST Scene;
 		Client::EFFECT_SCENE_BUDGET_COST OwnerTotal;
+		const auto Accumulate = [&](const Client::EFFECT_SCENE_BUDGET_COST& Cost,
+			const EFFECT_OWNER_VIEW& CostOwner)
+		{
+			return Add_BudgetCost(Scene, Cost) &&
+				(!Same_Owner(CostOwner, Owner) || Add_BudgetCost(OwnerTotal, Cost));
+		};
 		for (const ACTIVE_EFFECT& Effect : g_ActiveEffects)
 		{
-			if (!Effect.bSupersededRecoveryCue && Same_Owner(Resolve_Owner(Effect), Owner))
-				Add_BudgetCost(OwnerTotal, Effect.AdmissionCost);
+			if (!Effect.bSupersededRecoveryCue &&
+				!Accumulate(Effect.AdmissionCost, Resolve_Owner(Effect)))
+			{
+				strOutStatus = "Effect cost accounting overflowed.";
+				return false;
+			}
 		}
 		if (bIncludePending)
 		{
 			for (const PENDING_EFFECT_SPAWN& Pending : g_PendingEffectSpawns)
 			{
-				if (Same_Owner(Resolve_Owner(Pending.Desc), Owner))
-					Add_BudgetCost(OwnerTotal, Pending.AdmissionCost);
+				if (!Accumulate(Pending.AdmissionCost, Resolve_Owner(Pending.Desc)))
+				{
+					strOutStatus = "Effect cost accounting overflowed.";
+					return false;
+				}
 			}
 		}
-		if (!Add_BudgetCost(Scene, Candidate) ||
-			!Add_BudgetCost(OwnerTotal, Candidate))
+		if (!Accumulate(Candidate, Owner))
 		{
-			strOutStatus = "Effect scene budget accumulation overflowed.";
-			return false;
-		}
-		const bool_t bRemoteCharacter = nullptr != Owner.pCharacter &&
-			!Owner.pCharacter->Is_LocallyControlled();
-		const uint32_t iCurrentLevel = CGameInstance::Get().Get_CurrentLevelID();
-		const Client::EFFECT_SCENE_BUDGET_COST& SceneLimit =
-			Scene_BudgetForLevel(iCurrentLevel, bRemoteCharacter);
-		// A level owns all map placements, not one character action. Keep its
-		// aggregate within the scene ceiling while retaining per-actor limits.
-		const bool_t bLevelOwner = !Owner.pCharacter && !Owner.pBoss &&
-			Owner.iLevelIndex < ETOUI(Client::LEVEL::END);
-		const Client::EFFECT_SCENE_BUDGET_COST& OwnerLimit =
-			Owner_BudgetForLevel(iCurrentLevel, bLevelOwner);
-		if (!BudgetWithin(Scene, SceneLimit) ||
-			!BudgetWithin(OwnerTotal, OwnerLimit))
-		{
-			strOutStatus = bRemoteCharacter ?
-				"Remote cosmetic Effect suppressed to preserve local/boss frame budget." :
-				"Effect spawn rejected by the scene/owner frame budget.";
+			strOutStatus = "Effect cost accounting overflowed.";
 			return false;
 		}
 		strOutStatus.clear();
@@ -1155,8 +1118,6 @@ namespace
                     if (Same_Owner(Resolve_Owner(pending.Desc), owner))
                         Add_BudgetCost(ownerCost, pending.AdmissionCost);
                 const bool remote = owner.pCharacter && !owner.pCharacter->Is_LocallyControlled();
-                const bool levelOwned = !owner.pCharacter && !owner.pBoss &&
-                    owner.iLevelIndex < ETOUI(Client::LEVEL::END);
                 const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
                 Client::Write_EffectFailureDiagnostic(phase, "asset=" + desc.strEffectAssetId +
                     " occurrence=" + desc.strOccurrenceId + " level=" + std::to_string(desc.iLevelOwnerIndex) +
@@ -1166,8 +1127,8 @@ namespace
                     " owner=" + Budget_Diagnostic(ownerCost) +
                     " requested=" + (request == g_ProductEffectBudgetCosts.end() ?
                         std::string("unprepared") : Budget_Diagnostic(request->second)) +
-                    " scene_limit=" + Budget_Diagnostic(Scene_BudgetForLevel(currentLevel, remote)) +
-                    " owner_limit=" + Budget_Diagnostic(Owner_BudgetForLevel(currentLevel, levelOwned)) +
+                    " remote=" + std::to_string(remote ? 1 : 0) +
+                    " admission_policy=validated_resources" +
                     " units=effects/particles/mesh/trail/afterimage/light/post/overlay/draw reason=" + status);
             }
             catch (...) { }
@@ -1487,11 +1448,8 @@ namespace
 			}
 			if (!Apply_ProductScreenOverlayReceipt(
 					ScreenOverlayTemplate, BudgetCost,
-					fPlaybackDurationSeconds, strOutStatus) ||
-				!BudgetWithin(BudgetCost, MAX_SUPPORTED_SCENE_BUDGET))
+					fPlaybackDurationSeconds, strOutStatus))
 			{
-				if (strOutStatus.empty())
-					strOutStatus = "screen-overlay hard budget exceeded";
 				strOutStatus =
 					"Animation Effect screen-overlay receipt failed for " +
 					EffectId + ": " + strOutStatus;
@@ -1581,23 +1539,29 @@ namespace
     bool Resolve_Anchor(
 		const EFFECT_OWNER_VIEW& Owner,
         const std::string& strAnchorSlotId,
-        float4x4_t& Out)
+        float4x4_t& Out,
+        const char** pFailureReason = nullptr)
     {
-		if (!Owner.Is_Valid() || !Owner.Try_Get_PresentationRoot(Out))
+        const auto fail = [pFailureReason](const char* reason)
+        {
+            if (pFailureReason) *pFailureReason = reason;
             return false;
+        };
+		if (!Owner.Is_Valid()) return fail("owner expired or ownership is ambiguous");
+		if (!Owner.Try_Get_PresentationRoot(Out)) return fail("owner presentation root is unavailable");
 		if ("skill_target" == strAnchorSlotId)
-			return nullptr != Owner.pCharacter &&
-				Owner.pCharacter->Try_Get_SkillTargetRoot(Out);
+			return (nullptr != Owner.pCharacter &&
+				Owner.pCharacter->Try_Get_SkillTargetRoot(Out)) || fail("skill target root is unavailable");
 		/* Character root cues retain world units; bone anchors below follow
 		   the enlarged visual. Boss root cues keep their existing scale policy. */
 		if ("root" == strAnchorSlotId && nullptr != Owner.pCharacter)
-			return Owner.Try_Get_OwnerWorld(Out);
+			return Owner.Try_Get_OwnerWorld(Out) || fail("owner world transform is unavailable");
         if ("root" == strAnchorSlotId)
             return true;
         const std::shared_ptr<Engine::CModel> pModel =
 			Owner.Get_Model();
-        if (nullptr == pModel || !pModel->Has_Bone(strAnchorSlotId.c_str()))
-            return false;
+        if (nullptr == pModel) return fail("owner model is unavailable");
+        if (!pModel->Has_Bone(strAnchorSlotId.c_str())) return fail("anchor bone is missing from owner model");
         XMStoreFloat4x4(&Out,
             pModel->Get_BoneMatrix(strAnchorSlotId.c_str()) *
             XMLoadFloat4x4(&Out));
@@ -2642,13 +2606,10 @@ namespace
 			Result.bPrepared = false;
 		}
 		if (Result.bPrepared &&
-			(!Apply_ProductScreenOverlayReceipt(
+			!Apply_ProductScreenOverlayReceipt(
 				Result.pScreenOverlayTemplate, Result.BudgetCost,
-				Result.fPlaybackDurationSeconds, Result.strStatus) ||
-			 !BudgetWithin(Result.BudgetCost, MAX_SUPPORTED_SCENE_BUDGET)))
+				Result.fPlaybackDurationSeconds, Result.strStatus))
 		{
-			if (Result.strStatus.empty())
-				Result.strStatus = "screen-overlay hard budget exceeded";
 			Result.strStatus =
 				"Product Effect incremental screen-overlay receipt failed for " +
 				EffectId + ": " + Result.strStatus;
@@ -2829,7 +2790,7 @@ namespace
             return;
 
         // A new action may arrive before the previous cue's final service update.
-        // Retire only that action's same camera cue, so its reserved budget cannot reject the replay.
+        // Retire only that action's same camera cue, so a replay does not retain the stale presentation.
         const auto IsPreviousCue = [&Desc, &Owner](const auto& Cue, const EFFECT_OWNER_VIEW& CueOwner)
         {
             return Same_Owner(CueOwner, Owner) &&
@@ -2923,12 +2884,6 @@ bool_t Client::CEffectPresentationService::Estimate_DocumentBudget(
 			++Staged.iScreenPosts;
 			++Staged.iEstimatedDrawSubmissions;
 		}
-	}
-	if (!BudgetWithin(Staged, MAX_SUPPORTED_SCENE_BUDGET))
-	{
-		strOutStatus =
-			"One Effect document exceeds the scene hard budget.";
-		return false;
 	}
 	OutCost = Staged;
 	strOutStatus.clear();
@@ -3096,11 +3051,8 @@ bool_t Client::CEffectPresentationService::Stage_LoadingProductTarget(
 	}
 	if (!Apply_ProductScreenOverlayReceipt(
 			Candidate->pScreenOverlayTemplate, Candidate->BudgetCost,
-			Candidate->fPlaybackDurationSeconds, strOutStatus) ||
-		!BudgetWithin(Candidate->BudgetCost, MAX_SUPPORTED_SCENE_BUDGET))
+			Candidate->fPlaybackDurationSeconds, strOutStatus))
 	{
-		if (strOutStatus.empty())
-			strOutStatus = "screen-overlay hard budget exceeded";
 		strOutStatus =
 			"Loading Product Effect screen-overlay receipt staging failed for " +
 			Request.strEffectAssetId + ": " + strOutStatus;
@@ -4066,11 +4018,8 @@ bool_t Client::CEffectPresentationService::Replace_ProductPreparedTarget(
 	}
 	if (!Apply_ProductScreenOverlayReceipt(
 			CandidateScreenOverlayTemplate, CandidateBudget,
-			fCandidatePlaybackDurationSeconds, strOutStatus) ||
-		!BudgetWithin(CandidateBudget, MAX_SUPPORTED_SCENE_BUDGET))
+			fCandidatePlaybackDurationSeconds, strOutStatus))
 	{
-		if (strOutStatus.empty())
-			strOutStatus = "screen-overlay hard budget exceeded";
 		strOutStatus = "Selected Effect screen-overlay receipt failed for " +
 			strEffectAssetId + ": " + strOutStatus;
 		g_strStatus = strOutStatus;
@@ -4768,7 +4717,7 @@ bool_t Client::CEffectPresentationService::Spawn_ReconstructedArtist31470(
 	const EFFECT_OWNER_VIEW Owner{ pOwner, nullptr };
 	if (nullptr == Cache.pDocument ||
 		!Estimate_DocumentBudget(*Cache.pDocument, AdmissionCost, strOutStatus) ||
-		!Can_AdmitBudget(Owner, AdmissionCost, true, strOutStatus))
+		!Validate_BudgetAccounting(Owner, AdmissionCost, true, strOutStatus))
 	{
 		++g_iSceneBudgetRejectedSpawnCount;
 		g_strStatus = strOutStatus;
@@ -5061,7 +5010,7 @@ bool_t Client::CEffectPresentationService::Spawn(
 	if (Budget != g_ProductEffectBudgetCosts.end())
 		Retire_PreviousRecoveryCueBeforeAdmission(Desc, Owner);
 	if (Budget == g_ProductEffectBudgetCosts.end() ||
-		!Can_AdmitBudget(Owner,
+		!Validate_BudgetAccounting(Owner,
 			Budget == g_ProductEffectBudgetCosts.end() ?
 				EFFECT_SCENE_BUDGET_COST{} : Budget->second,
 			true, strOutStatus))
@@ -5610,7 +5559,7 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
 	if (Budget != g_ProductEffectBudgetCosts.end())
 		Retire_PreviousRecoveryCueBeforeAdmission(Desc, Owner);
 	if (Budget == g_ProductEffectBudgetCosts.end() ||
-		!Can_AdmitBudget(Owner,
+		!Validate_BudgetAccounting(Owner,
 			Budget == g_ProductEffectBudgetCosts.end() ?
 				EFFECT_SCENE_BUDGET_COST{} : Budget->second,
 			false, strOutStatus))
@@ -5918,6 +5867,7 @@ void Client::CEffectPresentationService::Update(const f32_t fTimeDelta)
 					strHistoryError;
 				OutputDebugStringA(("[Client][EffectPresentation] " +
 					g_strStatus + "\n").c_str());
+				Record_ActiveEffectRuntimeFailure(Effect, "V1.update.artist-history", g_strStatus);
 				Remove_At(iEffect);
 				continue;
 			}
@@ -5928,6 +5878,7 @@ void Client::CEffectPresentationService::Update(const f32_t fTimeDelta)
 				Effect.pObject->Set_Visible(false);
 				g_strStatus =
 					"Artist 31470 transform-history clock failed closed.";
+				Record_ActiveEffectRuntimeFailure(Effect, "V1.update.artist-clock", g_strStatus);
 				Remove_At(iEffect);
 				continue;
 			}
@@ -5944,6 +5895,7 @@ void Client::CEffectPresentationService::Update(const f32_t fTimeDelta)
 			{
 				g_strStatus = "External Effect transform-history playback failed: " + strHistoryError;
 				OutputDebugStringA(("[Client][EffectPresentation] " + g_strStatus + "\n").c_str());
+				Record_ActiveEffectRuntimeFailure(Effect, "V1.update.external-history", g_strStatus);
 				Remove_At(iEffect);
 				continue;
 			}
@@ -5989,6 +5941,8 @@ void Client::CEffectPresentationService::Synchronize_FollowAnchors()
         if (!Owner.Is_Valid() || nullptr == Effect.pObject ||
             Effect.iLevelIndex != iCurrentLevel)
         {
+            Record_ActiveEffectRuntimeFailure(Effect, "V1.follow.owner",
+                !Owner.Is_Valid() ? "owner expired or ownership is ambiguous" : "effect object is unavailable");
             Effect.bFollowAnchorMissing = true;
             if (nullptr != Effect.pObject)
                 Effect.pObject->Set_Visible(false);
@@ -6003,6 +5957,11 @@ void Client::CEffectPresentationService::Synchronize_FollowAnchors()
 				!Is_NonDegenerateAffineMatrix(
 					Effect.Artist31470TransformHistory.ActionStartRootWorld))
 			{
+				Record_ActiveEffectRuntimeFailure(Effect, "V1.follow.artist-history",
+					nullptr == Owner.pCharacter ? "Artist history character is unavailable" :
+					nullptr == pHistoryModel ? "Artist history model expired" :
+					Owner.pCharacter->Get_BodyModel() != pHistoryModel ? "Artist history model identity changed" :
+					"Artist action-start root is degenerate or non-finite");
 				Effect.bFollowAnchorMissing = true;
 				Effect.pObject->Set_Visible(false);
 			}
@@ -6026,8 +5985,10 @@ void Client::CEffectPresentationService::Synchronize_FollowAnchors()
             !Effect.bPendingInitialSeek)
             continue;
         float4x4_t Anchor{};
-        if (!Resolve_Anchor(Owner, Effect.strAnchorSlotId, Anchor))
+        const char* anchorFailure = "follow anchor resolution failed";
+        if (!Resolve_Anchor(Owner, Effect.strAnchorSlotId, Anchor, &anchorFailure))
         {
+            Record_ActiveEffectRuntimeFailure(Effect, "V1.follow.anchor", anchorFailure);
             Effect.bFollowAnchorMissing = true;
             Effect.pObject->Set_Visible(false);
             continue;
@@ -6038,6 +5999,8 @@ void Client::CEffectPresentationService::Synchronize_FollowAnchors()
 			Anchor, Effect.eOrientationPolicy,
 			Effect.fActionFacingYawDegrees, Root))
 		{
+			Record_ActiveEffectRuntimeFailure(Effect, "V1.follow.root",
+				"cue root composition rejected local transform, anchor basis, scale or orientation");
 			Effect.bFollowAnchorMissing = true;
 			Effect.pObject->Set_Visible(false);
 			continue;

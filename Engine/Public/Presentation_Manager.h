@@ -32,7 +32,8 @@ private:
 
 public:
 	static CPresentation_Manager& Get();
-	static constexpr uint32_t TRANSIENT_LIGHT_CAPACITY = 384u;
+	// Shader_Deferred g_LightInstances size: a draw batch, not a frame limit.
+	static constexpr uint32_t LIGHT_RENDER_BATCH_SIZE = 400u;
 
 	HRESULT Add_FrameProvider(shared_ptr<IPresentationProvider> pProvider);
 	HRESULT Submit_FrameProviders();

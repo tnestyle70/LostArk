@@ -691,7 +691,8 @@ bool Sample_SourceBones(const std::shared_ptr<CModel>& model,
 CKoukuSaydonPresentationPlayer::V1_SOURCE_ANCHOR_SAMPLER Make_SourceAnchorSampler(
     const RESOURCE& resource, const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern,
     const std::shared_ptr<CModel>& model, const float4x4_t& ownerRoot, uint32_t startMs,
-    CEffectV2Object::PIVOT_SAMPLER exactRoot = {})
+    CEffectV2Object::PIVOT_SAMPLER exactRoot = {},
+    float sourceSecondsPerBoxSecond = 1.f, float sourceCycleStartSeconds = 0.f)
 {
     const auto document = CEffectCatalog::Find_Loaded(resource.strAssetId);
     if (!document) return [](float, const float4x4_t&, SOURCE_BONES&, std::string& error)
@@ -719,6 +720,10 @@ CKoukuSaydonPresentationPlayer::V1_SOURCE_ANCHOR_SAMPLER Make_SourceAnchorSample
         if (attachment.eOrientation != EFFECT_ATTACHMENT_ORIENTATION::CAMERA_VIEW &&
             std::find(names.begin(), names.end(), attachment.strRuntimeBoneName) == names.end())
             names.push_back(attachment.strRuntimeBoneName);
+    // Independent Server combat visuals have no Pattern animation lane. Their
+    // explicitly authored source model owns the Effect-local attachment clock.
+    // A real Pattern lane remains authoritative when present.
+    const auto sourceDocument = animations.empty() && document->SourceModelPreview ? document : nullptr;
     // A resource with no saved model animation previews the selected pose.
     // Product/Pattern timelines still require their authored animation history.
     SOURCE_BONES frozenBones;
@@ -736,7 +741,8 @@ CKoukuSaydonPresentationPlayer::V1_SOURCE_ANCHOR_SAMPLER Make_SourceAnchorSample
         }
     return [attachments = std::move(attachments), animations = std::move(animations), names = std::move(names),
         frozenBones = std::move(frozenBones), frozenError = std::move(frozenError), freezeResourcePose,
-        blendWindows = pattern.AnimationBlendWindows, weakModel = std::weak_ptr<CModel>(model), ownerRoot, startMs, exactRoot = std::move(exactRoot)]
+        blendWindows = pattern.AnimationBlendWindows, weakModel = std::weak_ptr<CModel>(model), ownerRoot, startMs,
+        sourceDocument, sourceSecondsPerBoxSecond, sourceCycleStartSeconds, exactRoot = std::move(exactRoot)]
         (float seconds, const float4x4_t& root, SOURCE_BONES& anchors, std::string& error)
     {
         if (!std::isfinite(seconds) || seconds < 0.f) { error = "Invalid Kouku source anchor sample time."; return false; }
@@ -749,6 +755,12 @@ CKoukuSaydonPresentationPlayer::V1_SOURCE_ANCHOR_SAMPLER Make_SourceAnchorSample
         {
             if (!exactRoot(startMs / 1000.f + seconds, view.BoneRoot, error)) return false;
             view.YawBasis = view.BoneRoot;
+        }
+        if (sourceDocument)
+        {
+            const float sourceSeconds = (std::max)(0.f, seconds - sourceCycleStartSeconds) * sourceSecondsPerBoxSecond;
+            return CKoukuSaydonPresentationPlayer::Sample_SourceAnchorWorlds(
+                *sourceDocument, view, root, sourceSeconds, anchors, error);
         }
         if (freezeResourcePose)
         {
@@ -928,11 +940,8 @@ struct Client::CKoukuSaydonPresentationPlayer::FRAME_LIGHT_PROVIDER final : Engi
     HRESULT Submit_Presentation() override
     {
         auto& presentation = CPresentation_Manager::Get();
-        const auto used = presentation.Get_TransientLights().size();
-        constexpr auto capacity = CPresentation_Manager::TRANSIENT_LIGHT_CAPACITY;
-        const std::size_t remaining = used < capacity ? capacity - used : 0u;
-        const auto count = (std::min)(remaining, lights.size());
-        skippedByBudget = lights.size() - count;
+        const auto count = lights.size();
+        skippedByBudget = 0u;
         // Validation is finished before this provider joins the frame transaction.
         presentation.Register_ProviderSubmissionExpectation(lights.size(), count, 0u, 0u);
         for (std::size_t i = 0u; i < count; ++i)
@@ -1580,7 +1589,9 @@ bool Client::CKoukuSaydonPresentationPlayer::Reload_Product(
                 OCCURRENCE occurrence = Read_Occurrence(box, item.durationMs, resource.eKind);
                 if (resource.fInnerRadiusM > 0.0 && std::abs(occurrence.Scale[0] - occurrence.Scale[2]) > .0001)
                     throw std::runtime_error("Hollow Collider requires equal X/Z scale.");
-                if (occurrence.strAnchorKind == "WORLD")
+                // CAMERA/SOUND may use fixed WORLD coordinates without a World Object.
+                // Named World anchors still require their published sequence identity.
+                if (occurrence.strAnchorKind == "WORLD" && !occurrence.strWorldId.empty())
                 {
                     // The Product pins the published sequence identity; it never
                     // reopens the editable source composition during gameplay.
@@ -1804,12 +1815,16 @@ bool Client::CKoukuSaydonPresentationPlayer::Reload_Product(
         if (isolatedSceneProfiles) status += " Isolated invalid SCENE_PROFILE rows: " +
             std::to_string(isolatedSceneProfiles) + ". " + isolatedSceneStatus;
         m_strStatus = status;
+        try { CNetworkManager::Get().Record_SessionEvent("kouku.product.loaded",
+            "revision=" + std::to_string(m_iProductSourceRevision) + " patterns=" + std::to_string(m_Product.size())); }
+        catch (...) { }
         return true;
     }
     catch (const std::exception& error)
     {
         status = error.what();
         m_strStatus = status;
+        Write_EffectFailureDiagnostic("Kouku.product.load", status);
         OutputDebugStringA(("[KoukuSaydonPresentationPlayer] " + status + "\n").c_str());
         return false;
     }
@@ -2148,7 +2163,8 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
                     if (!box.bLoopEffectToDuration || nativeInfiniteLoop) row.v1FiniteLoopSeconds = 0.f;
                     effectCycleStart = Effect_SourceCycleStartSeconds(age, row.v1FiniteLoopSeconds);
                     effectAge = (std::max)(0.f, age - effectCycleStart) * effectRate;
-                    row.sourceAnchorSampler = Make_SourceAnchorSampler(resource, pattern, model, pivot, box.iStartMs, exactRoot);
+                    row.sourceAnchorSampler = Make_SourceAnchorSampler(resource, pattern, model, pivot, box.iStartMs,
+                        exactRoot, effectRate, effectCycleStart);
                     EFFECT_LEVEL_PLACEMENT_SPAWN_DESC spawn;
                     spawn.iLevelIndex = CGameInstance::Get().Get_CurrentLevelID();
                     spawn.strPlacementId = "kouku:" + session.key + ":" + box.strOccurrenceId;

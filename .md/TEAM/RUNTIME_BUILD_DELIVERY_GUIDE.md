@@ -3,9 +3,55 @@
 ## 경계
 
 팀 Git은 코드와 `Data` 저작 정본을 관리하고, 팀장 Drive는
-`Client/Bin/Resources` 물리 리소스를 관리한다. Runtime ZIP은 이미 빌드·publish된 EXE, DLL,
-CSO와 필요한 `Client/Server Bin/DataFiles`만 전달한다. Resource 전체를 ZIP, manifest 또는 Git
-정본으로 승격하지 않는다.
+`Client/Bin/Resources` 물리 리소스를 관리한다. 실행 배포본은 이미 빌드·publish된 EXE, DLL,
+CSO와 필요한 `Client/Server Bin/DataFiles`를 전달한다. 제품이 직접 읽는 `Data` JSON도 실행 위치에서
+같은 버전으로 준비해야 한다. Resources를 배포 ZIP, manifest 또는 Git 정본으로 승격하지 않는다.
+
+## Portable 실행 배포본
+
+v5 portable은 압축 해제 폴더 안의 Client/Server와 Data/DataFiles를 사용한다.
+기존 LostArk 폴더를 선택하는 이유는 `Client/Bin/Resources`를 읽기 위해서다.
+선택한 저장소에 EXE·DLL·Data를 설치하거나 덮어쓰지 않으며, 그 저장소의 실행 파일도 사용하지 않는다.
+Resources 폴더 자체를 선택할 수도 있다. 받는 PC의 portable 폴더에는 `Framework.sln`이나 Git checkout이 필요하지 않다.
+
+현재 v5는 최종 Release 빌드·ZIP 생성·파일 검증을 완료했다. 파일은
+`LostArk-Release-20260919-v5-192.168.0.14.zip`이며, 크기·SHA256·검증 근거와 실제 실행 명령은
+[Release ZIP 안내](../../Release/zipRelease.md)에서 관리한다. 제품 빌드·ZIP 검증과 사용자의 실제 4인 화면 검증을 구분한다.
+
+| 포함 경로 | 소비 계약 |
+|---|---|
+| `Client/Bin/Release` | Client.exe, Engine.dll, 의존 DLL과 컴파일된 `.cso` |
+| `Server/Bin/Release` | Server.exe |
+| `Client/Bin/DataFiles`, `Server/Bin/DataFiles` | 같은 게시본의 런타임 데이터와 모든 참조 파일 |
+| `Data` | 직접 소비 catalog·pattern·Effect·Sound·UI 등의 JSON, 클래스 `.animevents`와 참조 문서 |
+| `Client/Default`, `Server/Default` | 각 프로세스 작업 폴더. 빈 폴더도 보존 |
+| root 실행 도구 | `LostArk.exe`, `ServerHost.cmd`, 진단 수집기, README, `bundle-manifest.json` |
+
+모든 Resources와 PNG를 제외한다. `Key_G.png`도 예외가 아니다. `ChangedData`, 중첩 Runtime ZIP,
+기존 저장소를 변경하는 설치기는 포함하지 않는다. 직접 소비 JSON은 정상 `Data/...` 경로에 둔다.
+HLSL 원본 대신 제품 runtime이 읽는 `.cso`를 실행 파일 옆에 전달한다.
+
+기존 저장소 설치형의 변경분 manifest만으로 portable의 직접 Data 목록을 만들지 않는다.
+`CProjectDataRoot`가 bundle의 Data를 가리키면 외부 저장소의 누락 문서를 대신 읽지 않는다.
+Effect V1 catalog 참조 외에도 `Effects/V2/Authored`, `Groups`, `Bindings`, 제품 UI·카메라·조명,
+클래스 skillbindings·animevents 등 실제 소비 경로와 JSON 하위 참조를 함께 검사한다.
+전체 Data를 무조건 복사하지 않고 소비 경로별 목록을 사용하며, authoring/reference는 제품이 직접
+읽거나 포함된 descriptor가 참조하는 문서만 전달한다.
+
+`LostArk.exe`는 bundle의 Client를 `Client/Default`에서 시작하고 자식 프로세스에
+`LOSTARK_PROJECT_DATA_ROOT=<bundle>/Data`, `LOSTARK_RESOURCE_ROOT=<선택한 Resources>`,
+`LOSTARK_SERVER_HOST=192.168.0.14`를 지정한다. 시스템 환경 변수는 영구 변경하지 않는다.
+외부 Resources에는 `Fonts, Character, Deploy, Effect, Map, Sound, UI`가 있어야 한다.
+manifest의 크기·hash 및 이 폴더들의 존재 검사와 전체 미디어 내용·화면 검증은 구분한다.
+
+서버 PC의 `ServerHost.cmd`는 bundle의 Server를 `Server/Default`에서
+`--bind-address 0.0.0.0`으로 실행하고 bundle의 Data를 사용한다.
+새 배포본 적용 시 기존 Server를 종료하고 같은 버전의 Server로 시작한다. 다른 PC는 Client만 실행한다.
+Client를 시작하지 않는 `LostArk.exe --check <외부 폴더> <receipt.json>`은
+실제 EXE·작업 폴더·Data·Resources 경로와 검증 결과를 기록한다.
+
+아래의 `New-LostArkRuntimeDelivery.ps1` / `Install-LostArkRuntimeDelivery.ps1`은
+기존 저장소에 runtime을 설치하는 별도 방식이다. portable v5에 이 설치 절차를 적용하지 않는다.
 
 ## PR #264~#266에서 최신 main으로 처음 갱신하는 PC
 
@@ -294,7 +340,7 @@ powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.p
 if ($LASTEXITCODE -ne 0) { throw 'Release Product build failed.' }
 ```
 
-그 뒤 다음처럼 같은 구성의 ZIP을 만든다.
+기존 저장소 설치용 runtime ZIP은 그 뒤 다음처럼 같은 구성으로 만든다.
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File Tools/ResourceDelivery/New-LostArkRuntimeDelivery.ps1 `
@@ -314,29 +360,29 @@ ZIP에는 `Client/Bin/Resources`가 0개여야 한다. manifest의 per-file hash
   참조하는 지역 grid/policy/blocker까지 포함한다.
 - Gameplay bootstrap, World bootstrap, 맵·연출·Composition 등 이번 변경의 실제 소비 파일.
 
-제품은 일부 catalog·패턴·Effect·Sound JSON을 저장소 `Data`에서 직접 읽는다.
-정식 runtime ZIP에는 `Data`가 없으므로 받는 PC가 같은 commit의 `Data`를 준비해야 한다.
-Git 반영 전 변경분까지 전달해야 하거나 실행용 패키지에 필요한 JSON을 동봉할 때는
-검증된 경로 목록과 hash를 가진 별도 `ChangedData/Data` 보충분을 설치 wrapper로 함께 적용한다.
-전체 `Data`와 Resources를 무조건 복사하지 않으며, 수신 측의 변경 파일은 백업하고
-동시 저장을 발견하면 덮어쓰지 않는다. 새 sound/image/model 실물은 기존 Drive 경계로 전달한다.
+제품은 일부 catalog·패턴·Effect·Sound JSON을 `Data`에서 직접 읽는다.
+`New-LostArkRuntimeDelivery.ps1`의 runtime 전용 ZIP에는 `Data`가 없으므로 이 설치 방식을
+쓰는 PC는 같은 commit의 `Data`를 준비해야 한다. 과거 v4의 `ChangedData/Data`는 이 설치형의
+보충 방식이다. portable v5는 필요한 JSON을 정상 `Data/...` 경로에 포함하고 별도 보충분을 만들지 않는다.
+전체 `Data`와 Resources를 무조건 복사하지 않고 실제 직접 소비 경로와 참조 문서 목록을 검증한다.
+새 sound/image/model 실물은 기존 Drive 경계로 전달한다.
 
-`EffectCatalog.json`을 보충분에 넣으면 변경된 Effect JSON만 모으지 않는다.
+`EffectCatalog.json`을 포함할 때는 변경된 Effect JSON만 모으지 않는다.
 Client 초기화는 catalog의 모든 `DIRECT_AUTHORED_DOCUMENT.authoringPath`가 실제로 존재하는지
-확인하므로 그 참조 JSON 전체를 같은 보충분에 포함하고 manifest의 경로·hash로 검증한다.
+확인하므로 그 참조 JSON 전체를 같은 배포본에 포함하고 manifest의 경로·hash로 검증한다.
 `screenOverlayPresentationPath`가 있으면 그 Data 문서도 포함한다. 해당 문서가 참조하는
-Resources 미디어는 계속 Drive 소유다. 최신 main checkout 조건과 물리 Resources 준비 조건은
-파일 일부를 보충했다는 이유로 생략하지 않는다.
+Resources 미디어는 계속 Drive 소유다. 설치형의 같은 commit Data 조건과 두 방식 공통의
+물리 Resources 준비 조건은 파일 일부를 보충했다는 이유로 생략하지 않는다.
 
-## 받는 PC
+## 받는 PC: 기존 저장소 설치용 runtime ZIP
 
 1. Git에서 보내는 PC와 같은 commit을 checkout한다.
 2. 팀장 Drive의 `Client/Bin/Resources`를 원래 상대 경로에 둔다.
 3. 아래 설치 스크립트에 ZIP과 실제 LostArk 물리 폴더를 전달한다.
 
-설치 시에는 편집 내용을 저장한 뒤 해당 폴더의 Client/Server를 종료한다. 수신 ZIP에
-`LostArk.exe`와 설치 안내가 함께 있으면 그 wrapper가 지정하는 전체 패키지를 사용하고,
-내부 Client.exe만 따로 복사하지 않는다. Client/Server는 같은 protocol과 게시 데이터를 사용해야 한다.
+설치 시에는 편집 내용을 저장한 뒤 해당 폴더의 Client/Server를 종료한다. 수신 ZIP의 안내에서
+설치형인지 portable인지 먼저 확인한다. `LostArk.exe`라는 파일명만으로 설치형이라고 판단하지 않는다.
+어느 방식도 내부 Client.exe만 따로 복사하지 않는다. Client/Server는 같은 protocol과 게시 데이터를 사용해야 한다.
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File Tools/ResourceDelivery/Install-LostArkRuntimeDelivery.ps1 `
@@ -361,11 +407,38 @@ Release도 `Client/Default/ClientStartup.user.log`에 초기화 단계·HRESULT�
 로그의 해당 실행 PID와 마지막 실패 단계를 확인하며, 창 색상만으로 Resources·네트워크·
 GPU 중 하나를 원인으로 확정하지 않는다. 로그 파일을 쓸 수 없는 경우에도 기존 실패 처리는 유지한다.
 
-시작 감시를 포함한 `LostArk.exe` wrapper는 Client가 10초 이내에 실패 종료하면
-해당 실행의 진단과 오류 창을 표시한다. 실행기 로그는
-`%LOCALAPPDATA%/LostArk/LauncherLogs`에 보존한다. 10초 동안 살아 있다는 사실은 Lobby 진입
-또는 이후 게임플레이 성공의 증거가 아니다. Client/UI의 최종 화면 확인은 사용자가 수행한다.
+시작 감시를 포함한 `LostArk.exe` wrapper는 Client가 10초 이내에 실패 종료하면 오류 창을 표시한다.
+기존 설치형 wrapper의 실행기 로그는 `%LOCALAPPDATA%/LostArk/LauncherLogs`에 보존한다.
+portable v5 wrapper는 이 로그를 만들지 않으며 오류 창 또는 `--check` receipt와 bundle 안의
+Client 로그를 확인한다. 10초 동안 살아 있다는 사실은 Lobby 진입 또는 이후 게임플레이 성공의
+증거가 아니다. Client/UI의 최종 화면 확인은 사용자가 수행한다.
 
 Debug 저작 기능은 Server + Client profile에서 사용자가 직접 확인한다. Release에서는 F1/Workbench가
 노출되지 않으므로 제품 Lobby/Level 진입만 확인한다. 화면과 음향 fidelity는 자동 설치 결과가 아니라
 사용자의 수동 smoke 판정이다.
+
+## 연결 종료 진단 수집
+
+`Tools/Network/Collect-RuntimeDiagnostics.ps1`은 해당 PC의 로그와 배포 식별 정보를
+`out/DiagnosticBundles`의 시각별 폴더·ZIP으로 복사한다. 스크립트만 다른 PC에 복사해도 실행할 수 있다.
+portable 배포본에는 같은 수집기를 root에 두고 다음처럼 실행한다.
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\Collect-RuntimeDiagnostics.ps1 -RuntimeRoot .
+```
+
+`-RuntimeRoot`는 `-RepositoryRoot`의 별칭이며 생략하면 수집기 폴더를 사용한다.
+`-Configuration Debug|Release`의 기본값은 Release다. root는 `Framework.sln`이 있는 저장소이거나,
+schema `lostark.portable-runtime-bundle`, formatVersion 1, 같은 구성의 manifest와 Client/Server EXE가
+있는 portable 폴더여야 한다. 실제 실행한 폴더를 지정하며 문제가 난 Client PC와 Server PC에서 각각 수집한다.
+
+선택한 구성에서 client-session, server-session, server-send-progress, server-room-perf 종류별
+최신 4개와 `.previous`, Client/Default의 Startup·Exit·EffectFailure·RendererExit 및 존재하는 회전본을 모은다.
+Client.exe·Engine.dll·Server.exe의 크기·SHA256, Client/Server PID·경로·시작 시각은 `identity.json`에 기록한다.
+bundle manifest, TeamLanEndpoint와 기존 설치 receipt·manifest가 있으면 함께 보존한다.
+hash는 디스크 파일 기준이며 실행 중 메모리 이미지의 hash를 증명하지 않는다.
+`collection.json`에는 복사한 파일 hash와 수집 실패를 기록한다.
+
+수집기는 Client/Server를 시작·종료하거나 로그를 업로드하지 않는다.
+Resources, 자격 증명, 환경 변수 전체는 수집하지 않는다. 로그에 없는 원격 PC의 상태를
+로컬 실행 결과로 대신 확정하지 않고 같은 시각의 Client·Server 기록을 대조한다.

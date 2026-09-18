@@ -12,6 +12,7 @@
 
 #include <cmath>
 #include <fstream>
+#include <chrono>
 #include <iomanip>
 #include <typeinfo>
 #include <filesystem>
@@ -37,7 +38,9 @@ namespace
             const bool rotate = !error && bytes >= 1024u * 1024u;
             std::ofstream output(path, std::ios::binary | (rotate ? std::ios::trunc : std::ios::app));
             if (!output) return;
-            output << "pid=" << GetCurrentProcessId() << " tick=" << GetTickCount64()
+            const auto unixMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::system_clock::now().time_since_epoch()).count();
+            output << "utc_ms=" << unixMs << " pid=" << GetCurrentProcessId() << " tick=" << GetTickCount64()
                 << " stage=" << (stage ? stage : "unknown") << " hr=0x" << std::hex
                 << std::uppercase << static_cast<unsigned long>(result) << std::dec;
             if (objectType) output << " object=" << objectType;

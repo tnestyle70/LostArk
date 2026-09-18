@@ -848,79 +848,100 @@ void LostArk::Server::CServerGameplayContractRunner::Run_SessionTransport(TESTS&
 			cleanShutdownWasBounded,
 			"Isolate a slow reader while preserving another session FIFO and bounded shutdown");
 	}
+	// A transient zero-window/backpressure episode must not become a disconnect.
+// Send real frame-sized chunks: one large Winsock send can be buffered in full.
+	for (const bool resumeReader : {false, true})
 	{
 		CWinSockContext winSock;
-		SOCKET sessionSocket = INVALID_SOCKET;
-		SOCKET peerSocket = INVALID_SOCKET;
-		bool socketReady = winSock.Initialize() &&
-			Create_LoopbackSocketPair(sessionSocket, peerSocket);
-		if (socketReady)
+		SOCKET sessionSocket = INVALID_SOCKET, peerSocket = INVALID_SOCKET;
+		bool ready = winSock.Initialize() && Create_LoopbackSocketPair(sessionSocket, peerSocket);
+		if (ready)
 		{
-			const int smallBufferBytes = 1024;
-			socketReady = SOCKET_ERROR != ::setsockopt(
-				sessionSocket, SOL_SOCKET, SO_SNDBUF,
-				reinterpret_cast<const char*>(&smallBufferBytes),
-				static_cast<int>(sizeof(smallBufferBytes))) &&
-				SOCKET_ERROR != ::setsockopt(
-					peerSocket, SOL_SOCKET, SO_RCVBUF,
-					reinterpret_cast<const char*>(&smallBufferBytes),
-					static_cast<int>(sizeof(smallBufferBytes)));
+			const int bufferBytes = 1024;
+			ready = SOCKET_ERROR != ::setsockopt(sessionSocket, SOL_SOCKET, SO_SNDBUF,
+				reinterpret_cast<const char*>(&bufferBytes), sizeof(bufferBytes)) &&
+				SOCKET_ERROR != ::setsockopt(peerSocket, SOL_SOCKET, SO_RCVBUF,
+					reinterpret_cast<const char*>(&bufferBytes), sizeof(bufferBytes));
 		}
 		std::unique_ptr<CClientSession> session;
-		bool sendTimeoutConfigured = false;
-		if (socketReady)
+		if (ready)
 		{
-			session = std::make_unique<CClientSession>(
-				90008u,
-				sessionSocket,
-				CClientSession::FRAME_HANDLER{},
-				CClientSession::CLOSED_HANDLER{});
+			session = std::make_unique<CClientSession>(resumeReader ? 90010u : 90008u,
+				sessionSocket, CClientSession::FRAME_HANDLER{}, CClientSession::CLOSED_HANDLER{});
 			sessionSocket = INVALID_SOCKET;
-			sendTimeoutConfigured = session->Configure_TransportOptions();
+			ready = session->Configure_TransportOptions();
 		}
-
-		bool slowReaderTimedOut = false;
-		bool shutdownWasBounded = false;
-		if (sendTimeoutConfigured)
+		bool remainedOpen = false, completedCorrectly = false, boundedStop = false;
+		if (ready)
 		{
 			session->m_isSendRunning.store(true);
-			std::vector<std::uint8_t> bytes(
-				static_cast<std::size_t>(MAX_PACKET_BYTES), 0x5au);
-			bool sendFailed = false;
-			for (std::uint32_t index = 0u; index < 64u; ++index)
+			std::vector<std::uint8_t> bytes(16u * 1024u * 1024u);
+			for (std::size_t i = 0; i < bytes.size(); ++i) bytes[i] = static_cast<std::uint8_t>(i * 37u);
+			std::atomic_bool finished{false}; bool sent = false;
+			std::thread sender([&] {
+				sent = true;
+				for (std::size_t offset = 0u; sent && offset < bytes.size(); offset += MAX_PACKET_BYTES)
+					sent = session->Send_All(std::span{bytes}.subspan(offset, MAX_PACKET_BYTES), PACKET_TYPE::S2C_CHAT);
+				finished.store(true);
+			});
+			std::this_thread::sleep_for(std::chrono::milliseconds(750));
+			remainedOpen = !finished.load() && session->Is_Open() &&
+				session->Get_CloseDiagnostic().eReason == SESSION_DIAGNOSTIC_REASON::NONE;
+			if (resumeReader)
 			{
-				bytes.front() = static_cast<std::uint8_t>(index);
-				if (!session->Send_All(bytes))
-				{
-					sendFailed = true;
-					break;
-				}
+				const int receiveBytes = 1024 * 1024;
+				(void)::setsockopt(peerSocket, SOL_SOCKET, SO_RCVBUF,
+					reinterpret_cast<const char*>(&receiveBytes), sizeof(receiveBytes));
+				std::vector<std::uint8_t> received(bytes.size());
+				const bool exact = Receive_Exact(peerSocket, received) && received == bytes;
+				const bool completed = Wait_Until(std::chrono::milliseconds(1500), [&] { return finished.load(); });
+				completedCorrectly = exact && completed && sent &&
+					session->Get_CloseDiagnostic().eReason == SESSION_DIAGNOSTIC_REASON::NONE;
 			}
-			const CLIENT_SESSION_CLOSE_DIAGNOSTIC diagnostic =
-				session->Get_CloseDiagnostic();
-			slowReaderTimedOut = sendFailed &&
-				SESSION_DIAGNOSTIC_REASON::SERVER_SEND_ERROR_OR_TIMEOUT ==
-					diagnostic.eReason &&
-				0 != diagnostic.iNativeErrorCode;
-			const auto shutdownStart = std::chrono::steady_clock::now();
+			const auto stopStart = std::chrono::steady_clock::now();
+			session->Request_Close();
+			sender.join();
 			session->Stop();
-			shutdownWasBounded =
-				std::chrono::steady_clock::now() - shutdownStart <
-				std::chrono::milliseconds(3000);
+			boundedStop = std::chrono::steady_clock::now() - stopStart < std::chrono::milliseconds(1500);
+			if (!resumeReader) completedCorrectly = finished.load() && !sent &&
+				session->Get_CloseDiagnostic().eReason == SESSION_DIAGNOSTIC_REASON::SERVER_APPLICATION_CLOSE;
 		}
-		else if (session)
-		{
-			session->Stop();
-		}
-
-		session.reset();
-		Close_TestSocket(sessionSocket);
-		Close_TestSocket(peerSocket);
-		tests.Require(
-			socketReady && sendTimeoutConfigured && slowReaderTimedOut &&
-			shutdownWasBounded,
-			"Classify a non-draining peer as an isolated bounded send timeout");
+		if (session) session->Stop();
+		session.reset(); Close_TestSocket(sessionSocket); Close_TestSocket(peerSocket);
+		tests.Require(ready && remainedOpen && completedCorrectly && boundedStop,
+			resumeReader ? "Resume a 750ms-stalled byte stream without disconnect, missing bytes, or duplicates" :
+				"Keep a non-draining peer connected until explicit cancellation and stop promptly");
 	}
+	{
+		CWinSockContext winSock;
+		SOCKET sessionSocket = INVALID_SOCKET, peerSocket = INVALID_SOCKET;
+		bool ready = winSock.Initialize() && Create_LoopbackSocketPair(sessionSocket, peerSocket);
+		std::atomic_uint32_t received{0u};
+		std::unique_ptr<CClientSession> session;
+		if (ready)
+		{
+			session = std::make_unique<CClientSession>(90011u, sessionSocket,
+				[&](SESSION_ID, const PACKET_FRAME& frame) {
+					if (frame.ePacketType == PACKET_TYPE::C2S_MOVE && frame.Payload == std::vector<std::uint8_t>{0x2au}) ++received;
+				}, CClientSession::CLOSED_HANDLER{});
+			sessionSocket = INVALID_SOCKET; ready = session->Start();
+		}
+		bool idleSurvived = false, receivedAfterIdle = false;
+		if (ready)
+		{
+			std::this_thread::sleep_for(std::chrono::milliseconds(350));
+			idleSurvived = session->Get_CloseDiagnostic().eReason == SESSION_DIAGNOSTIC_REASON::NONE;
+			std::vector<std::uint8_t> frame; const std::array<std::uint8_t,1> payload{0x2au};
+			receivedAfterIdle = Build_Packet_Frame(PACKET_TYPE::C2S_MOVE, payload, frame) &&
+				::send(peerSocket, reinterpret_cast<const char*>(frame.data()), static_cast<int>(frame.size()), 0) == static_cast<int>(frame.size()) &&
+				Wait_Until(std::chrono::milliseconds(1500), [&] { return received.load() == 1u; });
+		}
+		if (session) session->Stop();
+		session.reset(); Close_TestSocket(sessionSocket); Close_TestSocket(peerSocket);
+		tests.Require(ready && idleSurvived && receivedAfterIdle,
+			"Nonblocking receiver survives idle readiness polls and dispatches the next complete frame");
+	}
+
 	{
 		CWinSockContext winSock;
 		SOCKET sessionSocket = INVALID_SOCKET;
