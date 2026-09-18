@@ -1,6 +1,7 @@
 #include "UI_Sprite.h"
 
 #include "GameInstance.h"
+#include "UIInputRouter.h"
 
 Client::CUI_Sprite::CUI_Sprite(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext)
 	: CUIObject { pDevice, pContext }
@@ -40,6 +41,9 @@ void Client::CUI_Sprite::Late_Update(f32_t fTimeDelta)
 
 HRESULT Client::CUI_Sprite::Render()
 {
+	// Render-time gating also covers sprites queued before this frame's cutscene starts.
+	if (!m_bVisible || (!m_bCinematicOverlay && CUIInputRouter::Get().Is_CinematicSuppressed()))
+		return S_OK;
 	if (FAILED(Bind_ShaderResources()))
 		return E_FAIL;
 

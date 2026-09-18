@@ -187,6 +187,7 @@ private:
 	any gate fails -- level outside the combat set, invalid player, skill window, or the Debug
 	O-key raid-entry preview -- since these LEVEL::STATIC sprites keep their last state instead
 	of simply not being drawn the way the old ImGui pass did. */
+	void Sync_KoukuCinematicUI();
 	void Update_CombatHUD(f32_t fTimeDelta);
 	void Hide_CombatHUD();
 	/* HealthBar/ManaBar's own JSON layer (HUD_Layout.json) is the dark empty-state background

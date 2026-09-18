@@ -7,6 +7,7 @@
 #include <array>
 #include <chrono>
 #include <cstdint>
+#include <cstdio>
 #include <span>
 #include <utility>
 #include <vector>
@@ -728,12 +729,13 @@ bool LostArk::Server::CClientSession::Send_All(
 			{
 				const int errorCode = ::WSAGetLastError();
 				m_iLastErrorCode.store(errorCode);
+				char context[192]{};
+				std::snprintf(context, sizeof(context), "%s; sentFrameBytes=%zu; totalFrameBytes=%zu",
+					errorCode == WSAETIMEDOUT ? "send timed out while peer was not draining" :
+						"send failed while session was active", sentByteCount, bytes.size());
 				Record_TerminalDiagnostic(
 					LostArk::Shared::SESSION_DIAGNOSTIC_REASON::SERVER_SEND_ERROR_OR_TIMEOUT,
-					errorCode,
-					errorCode == WSAETIMEDOUT ?
-						"send timed out while peer was not draining" :
-						"send failed while session was active");
+					errorCode, context);
 			}
 			return false;
 		}

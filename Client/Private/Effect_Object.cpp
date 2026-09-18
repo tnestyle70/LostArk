@@ -1,4 +1,5 @@
 #include "Effect_Object.h"
+#include "EffectFailureDiagnostic.h"
 #include "Engine_RenderTypes.h"
 
 #include "Effect_DocumentRenderer.h"
@@ -12,6 +13,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <cstdint>
 
 namespace
 {
@@ -104,6 +106,22 @@ namespace
 			static_cast<unsigned int>(hResult));
 		return Buffer;
 	}
+
+    void Write_V1ObjectFailure(const Client::CEffectObject* object,
+        const HRESULT result, const char* phase, const char* scope,
+        const std::string& status) noexcept
+    {
+        try
+        {
+            const auto program = object->Get_ReconstructedRuntimeProgram();
+            Client::Write_EffectFailureDiagnostic("V1.object",
+                "object=" + std::to_string(reinterpret_cast<std::uintptr_t>(object)) +
+                " asset=" + (program ? program->strRuntimeCatalogAssetId : std::string("unavailable")) +
+                " phase=" + phase + " scope=" + scope + " hr=" + Format_Hresult(result) +
+                " reason=" + status);
+        }
+        catch (...) { }
+    }
 
 }
 
@@ -1319,7 +1337,10 @@ HRESULT Client::CEffectObject::Complete_RenderResult(
 	std::string strFailureContext)
 {
 	if (FAILED(hResult) && !m_pRenderer->Is_LastRenderFailureObjectLocal())
+	{
+		Write_V1ObjectFailure(this, hResult, "render", "GLOBAL_RUNTIME", strFailureContext);
 		return hResult;
+	}
 	return Complete_LocalEffectFailure(hResult, std::move(strFailureContext),
 		"render", false);
 }
@@ -1332,6 +1353,7 @@ HRESULT Client::CEffectObject::Complete_PresentationResult(
 		m_ePresentationFailureScope !=
 			PRESENTATION_FAILURE_SCOPE::LOCAL_PROVIDER_CONTRACT)
 	{
+		Write_V1ObjectFailure(this, hResult, "presentation", "GLOBAL_RUNTIME", strFailureContext);
 		return hResult;
 	}
 	return Complete_LocalEffectFailure(hResult, std::move(strFailureContext),
@@ -1364,6 +1386,7 @@ HRESULT Client::CEffectObject::Complete_LocalEffectFailure(
 		m_strStatus = std::string("Effect ") + pFailureChannel +
 			" failure isolated [" +
 			Format_Hresult(hResult) + "]: " + strFailureContext;
+		Write_V1ObjectFailure(this, hResult, pFailureChannel, "LOCAL_CONTRACT", m_strStatus);
 		OutputDebugStringA(("[Client][Effect] " + m_strStatus + "\n").c_str());
 	}
 	return bPreserveFailedResult ? hResult : S_FALSE;

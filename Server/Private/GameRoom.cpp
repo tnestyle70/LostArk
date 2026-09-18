@@ -15,6 +15,8 @@
 #include <cstdint>
 #include <cstdlib>
 #include <iostream>
+#include <iomanip>
+#include <sstream>
 #include <limits>
 #include <new>
 #include <set>
@@ -338,6 +340,11 @@ LostArk::Server::CGameRoom::Get_PerformanceMetrics() const
 {
 	std::scoped_lock lock{ m_CommandMutex };
 	return m_PerformanceMetrics;
+}
+
+std::string LostArk::Server::CGameRoom::Take_PerformanceDiagnostic()
+{
+	return std::exchange(m_strPendingPerformanceDiagnostic, {});
 }
 
 bool LostArk::Server::CGameRoom::Build_ValtanDecisionTraceResponse(
@@ -704,18 +711,20 @@ LostArk::Server::CGameRoom::Begin_MarioTriggerMove(
 	return Result::STARTED;
 }
 
-void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
+void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds,
+	const SERVER_ROOM_SCHEDULER_METRICS& schedulerMetrics)
 {
 	if (!m_isReady)
 		return;
 	const auto tickStart = std::chrono::steady_clock::now();
-	const auto recordTickDuration = [this, tickStart]()
+	const auto recordTickDuration = [this, tickStart, &schedulerMetrics]()
 		{
 			const std::uint64_t elapsedMicroseconds = To_Microseconds(
 				std::chrono::steady_clock::now() - tickStart);
 			const auto navigationMetrics = m_ServerNavigation.Get_PerformanceMetrics();
 			std::scoped_lock lock{ m_CommandMutex };
 			m_PerformanceMetrics.Navigation = navigationMetrics;
+			m_PerformanceMetrics.Scheduler = schedulerMetrics;
 			++m_PerformanceMetrics.iTickCount;
 			m_PerformanceMetrics.iLastTickMicroseconds = elapsedMicroseconds;
 			m_PerformanceMetrics.iMaximumTickMicroseconds = (std::max)(
@@ -1163,6 +1172,8 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 				sessionMetrics.iMaximumFrameSendMicroseconds);
 		}
 		const bool hasNewFailure =
+			metrics.Scheduler.iScheduleResetCount >
+				m_LastRoomPerfLogSample.Scheduler.iScheduleResetCount ||
 			metrics.iDrainLimitedTickCount >
 				m_LastRoomPerfLogSample.iDrainLimitedTickCount ||
 			metrics.iDroppedBestEffortCommandCount >
@@ -1179,6 +1190,10 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 			reliableRejectedCount > m_iLastRoomPerfReliableRejectedCount ||
 			sendFailureCount > m_iLastRoomPerfWireSendFailureCount;
 		const bool hasCurrentPressure =
+			metrics.Scheduler.iPreviousLoopLatenessMicroseconds >= 33333u ||
+			(metrics.Scheduler.iMaximumLoopLatenessMicroseconds >= 33333u &&
+				metrics.Scheduler.iMaximumLoopLatenessMicroseconds >
+					m_LastRoomPerfLogSample.Scheduler.iMaximumLoopLatenessMicroseconds) ||
 			metrics.iLastTickMicroseconds >= 33333u ||
 			(metrics.iMaximumTickMicroseconds >= 33333u &&
 				metrics.iMaximumTickMicroseconds >
@@ -1199,10 +1214,27 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 		if (!hasNewFailure && !hasCurrentPressure && !isHeartbeat)
 			return;
 
-		std::cout << "[RoomPerf] Kind="
+		const auto unixMilliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(
+			std::chrono::system_clock::now().time_since_epoch()).count();
+		const auto& combatObjects = m_CombatObjectRuntime.Get_LiveObjects();
+		const auto replicatedCombatObjects = std::count_if(combatObjects.begin(), combatObjects.end(),
+			[](const auto& object) { return object.bReplicated; });
+		std::ostringstream diagnostic;
+		diagnostic << "[RoomPerf] UnixMs=" << unixMilliseconds << " Kind="
 			<< (hasNewFailure || hasCurrentPressure ? "anomaly" : "heartbeat")
 			<< " World=" << static_cast<unsigned>(m_eWorldId)
 			<< " Tick=" << m_iServerTick
+			<< " Gate=" << std::quoted(m_KoukuRaid.State.strGateId)
+			<< " FlowIndex=" << m_KoukuRaid.State.iFlowEntryIndex
+			<< " FlowEntry=" << std::quoted(m_KoukuRaid.State.strFlowEntryId)
+			<< " RaidPhase=" << static_cast<unsigned>(m_KoukuRaid.State.ePhase)
+			<< " LiveCombatObjects=" << combatObjects.size()
+			<< " ReplicatedCombatObjects=" << replicatedCombatObjects
+			<< " ReplicatedCombatObjectCap=" << LostArk::Shared::MAX_COMBAT_OBJECTS_PER_SNAPSHOT
+			<< " LoopSampleUnixMs=" << metrics.Scheduler.iSampleUnixMilliseconds
+			<< " PreviousLoopLateUs=" << metrics.Scheduler.iPreviousLoopLatenessMicroseconds
+			<< " LoopMaxLateUs=" << metrics.Scheduler.iMaximumLoopLatenessMicroseconds
+			<< " LoopScheduleResets=" << metrics.Scheduler.iScheduleResetCount
 			<< " TickUs=" << metrics.iLastTickMicroseconds
 			<< " TickMaxUs=" << metrics.iMaximumTickMicroseconds
 			<< " Ingress=" << metrics.iLastIngressDepth
@@ -1240,10 +1272,20 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 			<< " OutboundReliableRejected=" << reliableRejectedCount
 			<< " WireSendMaxUs=" << maximumWireSendMicroseconds
 			<< " WireSendFailures=" << sendFailureCount;
-		const auto writeNavigation = [](const char* name,
+		diagnostic << " PatternIds=";
+		bool hasPattern = false;
+		for (const auto& member : m_KoukuSaydonPatternAudition.Members)
+		{
+			if (member.bCompleted || member.iPatternIndex >= member.PatternIds.size()) continue;
+			if (hasPattern) diagnostic << ',';
+			diagnostic << std::quoted(member.PatternIds[member.iPatternIndex]);
+			hasPattern = true;
+		}
+		if (!hasPattern) diagnostic << "none";
+		const auto writeNavigation = [&diagnostic](const char* name,
 			const SERVER_NAVIGATION_QUERY_METRICS& stage)
 			{
-				std::cout << " Nav" << name << "Calls=" << stage.iCalls
+				diagnostic << " Nav" << name << "Calls=" << stage.iCalls
 					<< " Nav" << name << "TotalUs=" << stage.iTotalNanoseconds / 1000u
 					<< " Nav" << name << "MaxUs=" << stage.iMaximumNanoseconds / 1000u
 					<< " Nav" << name << "Expanded=" << stage.iExpandedNodes
@@ -1255,6 +1297,7 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 		writeNavigation("SmoothPath", metrics.Navigation.SmoothPath);
 		writeNavigation("TraversalStep", metrics.Navigation.TraversalStep);
 		writeNavigation("LineOfSight", metrics.Navigation.LineOfSight);
-		std::cout << '\n';
+		m_strPendingPerformanceDiagnostic = diagnostic.str();
+		std::cout << m_strPendingPerformanceDiagnostic << '\n';
 	}
 }

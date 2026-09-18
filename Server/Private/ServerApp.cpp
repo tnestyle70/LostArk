@@ -92,6 +92,40 @@ namespace
 				L".jsonl");
 	}
 
+	// A process keeps at most two 4 MiB performance files beside its session diagnostics.
+	bool Append_BoundedRoomPerformanceDiagnostic(const std::filesystem::path& path,
+		const std::string_view line) noexcept
+	{
+		constexpr std::uintmax_t MAX_FILE_BYTES = 4u * 1024u * 1024u;
+		try
+		{
+			if (path.empty() || line.size() >= MAX_FILE_BYTES) return false;
+			std::error_code error;
+			const bool exists = std::filesystem::exists(path, error);
+			if (error) return false;
+			const auto currentBytes = exists ? std::filesystem::file_size(path, error) : 0u;
+			if (error) return false;
+			if (currentBytes > MAX_FILE_BYTES - (line.size() + 1u))
+			{
+				auto previousPath = path;
+				previousPath.replace_extension(L".previous.log");
+				std::filesystem::remove(previousPath, error);
+				if (error) return false;
+				std::filesystem::rename(path, previousPath, error);
+				if (error) return false;
+			}
+			std::ofstream log{ path, std::ios::binary | std::ios::app };
+			if (!log) return false;
+			log << line << '\n';
+			log.flush();
+			return static_cast<bool>(log);
+		}
+		catch (...)
+		{
+			return false; // Diagnostic I/O must never fail the simulation.
+		}
+	}
+
 	std::string Build_ServerSessionDiagnosticJson(
 		const LostArk::Server::SESSION_ID sessionId,
 		const LostArk::Server::CLIENT_SESSION_PEER_ENDPOINT& peer,
@@ -109,6 +143,13 @@ namespace
 		std::ostringstream json;
 		json << "{\"schema\":\"lostark.server-session-diagnostic\""
 			<< ",\"formatVersion\":1"
+			<< ",\"event\":\"connection.closed\""
+			<< ",\"processId\":" << ::GetCurrentProcessId()
+#ifdef _DEBUG
+			<< ",\"buildConfig\":\"Debug\""
+#else
+			<< ",\"buildConfig\":\"Release\""
+#endif
 			<< ",\"networkProtocolVersion\":" <<
 				LostArk::Shared::NETWORK_PROTOCOL_VERSION
 			<< ",\"occurredUnixMs\":" << occurredAt
@@ -2653,17 +2694,28 @@ void LostArk::Server::CServerApp::Room_Loop()
 	const steady_clock::duration fixedStep =
 		duration_cast<steady_clock::duration>(FIXED_STEP_SECONDS);
 	steady_clock::time_point nextTick = steady_clock::now();
+	SERVER_ROOM_SCHEDULER_METRICS schedulerMetrics;
 
 	while (m_isRunning.load())
 	{
 		nextTick += fixedStep;
-		Tick_GameplaySimulations(FIXED_DELTA_SECONDS);
+		Tick_GameplaySimulations(FIXED_DELTA_SECONDS, schedulerMetrics);
 		Reap_ClosedSessions();
 		std::this_thread::sleep_until(nextTick);
-		if (steady_clock::now() > nextTick + fixedStep)
+		const auto completedAt = steady_clock::now();
+		schedulerMetrics.iSampleUnixMilliseconds = Current_UnixMilliseconds();
+		schedulerMetrics.iPreviousLoopLatenessMicroseconds = completedAt > nextTick ?
+			static_cast<std::uint64_t>(duration_cast<microseconds>(completedAt - nextTick).count()) : 0u;
+		schedulerMetrics.iMaximumLoopLatenessMicroseconds = (std::max)(
+			schedulerMetrics.iMaximumLoopLatenessMicroseconds,
+			schedulerMetrics.iPreviousLoopLatenessMicroseconds);
+		if (completedAt > nextTick + fixedStep)
+		{
 			nextTick = steady_clock::now();
+			++schedulerMetrics.iScheduleResetCount;
+		}
 	}
-	Tick_GameplaySimulations(FIXED_DELTA_SECONDS);
+	Tick_GameplaySimulations(FIXED_DELTA_SECONDS, schedulerMetrics);
 	Reap_ClosedSessions();
 }
 
@@ -4721,7 +4773,7 @@ void LostArk::Server::CServerApp::Advance_ServerControlTransactions()
 }
 
 void LostArk::Server::CServerApp::Tick_GameplaySimulations(
-	const float fixedDeltaSeconds)
+	const float fixedDeltaSeconds, const SERVER_ROOM_SCHEDULER_METRICS& schedulerMetrics)
 {
 	/* Control transactions commit before any room consumes this fixed step, so
 	   every process room observes one generation on this tick boundary. */
@@ -4748,7 +4800,27 @@ void LostArk::Server::CServerApp::Tick_GameplaySimulations(
 	// The room thread is the only writer of gameplay state. The mutex is
 	// released before Tick so receive and session threads never wait on a tick.
 	for (const std::shared_ptr<CGameRoom>& simulation : simulations)
-		simulation->Tick(fixedDeltaSeconds);
+	{
+		simulation->Tick(fixedDeltaSeconds, schedulerMetrics);
+		const std::string diagnostic = simulation->Take_PerformanceDiagnostic();
+		if (diagnostic.empty()) continue;
+		bool written = false;
+		try
+		{
+			auto path = Resolve_ServerSessionDiagnosticPath();
+			if (!path.empty())
+			{
+				path.replace_filename(L"server-room-perf-" + std::to_wstring(::GetCurrentProcessId()) + L".log");
+				written = Append_BoundedRoomPerformanceDiagnostic(path, diagnostic);
+			}
+		}
+		catch (...) { } // Preserve gameplay when diagnostic path resolution fails.
+		if (!written && !m_bRoomPerformanceLogWarningReported)
+		{
+			m_bRoomPerformanceLogWarningReported = true;
+			std::cerr << "Room performance diagnostic file unavailable; stdout logging continues.\n";
+		}
+	}
 	// Admit transfers only after this tick's already queued entries have run.
 	for (const std::shared_ptr<CGameRoom>& simulation : simulations)
 	{

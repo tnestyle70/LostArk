@@ -87,6 +87,12 @@ void CLevel_Lobby::Update(const f32_t fTimeDelta)
 		/* Keep the structured recovery snapshot for logs/harnesses, but do not
 		   dump protocol, hash, or transport diagnostics into the normal Lobby. */
 		m_strStatus = "Server entry failed.";
+		CNetworkManager::Get().Record_SessionEvent("lobby.recovery.presented",
+			"message=Server entry failed.; recoveryReason=" + std::string(
+				LostArk::Shared::To_SessionDiagnosticReasonName(m_RecoveryDiagnostic.eReason)) +
+			"; source=" + m_RecoveryDiagnostic.strSource +
+			"; hresult=" + std::to_string(static_cast<std::uint32_t>(m_RecoveryDiagnostic.hResult)) +
+			"; detail=" + m_RecoveryDiagnostic.strDetail);
 	}
 
 	LOBBY_COMMAND command{};

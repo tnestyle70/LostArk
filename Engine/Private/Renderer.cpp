@@ -14,33 +14,37 @@
 #include <fstream>
 #include <iomanip>
 #include <typeinfo>
+#include <filesystem>
 
 namespace
 {
 	void WriteRendererFailure(
-		const char* stage,
-		const HRESULT result,
-		const char* objectType = nullptr)
-	{
-#ifdef _DEBUG
-		std::ofstream output(
-			"RendererExit.user.log",
-			std::ios::binary | std::ios::app);
-		if (!output)
-			return;
-
-		output << "stage=" << (nullptr == stage ? "unknown" : stage)
-			<< " hr=0x" << std::hex << std::uppercase
-			<< static_cast<unsigned long>(result) << std::dec;
-		if (nullptr != objectType)
-			output << " object=" << objectType;
-		output << '\n';
-#else
-		UNREFERENCED_PARAMETER(stage);
-		UNREFERENCED_PARAMETER(result);
-		UNREFERENCED_PARAMETER(objectType);
-#endif
-	}
+        const char* stage, const HRESULT result, const char* objectType = nullptr) noexcept
+    {
+        try
+        {
+            static unsigned int records = 0u;
+            if (records >= 256u) return;
+            ++records;
+            wchar_t modulePath[32768]{};
+            const DWORD length = GetModuleFileNameW(nullptr, modulePath, 32768u);
+            std::filesystem::path path = "RendererExit.user.log";
+            if (length > 0u && length < 32768u)
+                path = std::filesystem::path(modulePath).parent_path().parent_path().parent_path() /
+                    L"Default" / L"RendererExit.user.log";
+            std::error_code error;
+            const auto bytes = std::filesystem::file_size(path, error);
+            const bool rotate = !error && bytes >= 1024u * 1024u;
+            std::ofstream output(path, std::ios::binary | (rotate ? std::ios::trunc : std::ios::app));
+            if (!output) return;
+            output << "pid=" << GetCurrentProcessId() << " tick=" << GetTickCount64()
+                << " stage=" << (stage ? stage : "unknown") << " hr=0x" << std::hex
+                << std::uppercase << static_cast<unsigned long>(result) << std::dec;
+            if (objectType) output << " object=" << objectType;
+            output << '\n';
+        }
+        catch (...) { }
+    }
 }
 #include "GameInstance.h"
 #include "Presentation_Manager.h"

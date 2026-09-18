@@ -36,6 +36,8 @@ Collections/favorites/shop/craft/tint/auction have no Server data yet and are pr
 class CAvatarBookWindowView final
 {
 public:
+	/* Cancel transient gestures without closing or moving the window. */
+	void Cancel_Interaction() { m_bDraggingPanel = m_bDraggingPortrait = false; }
 	CAvatarBookWindowView(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext);
 	~CAvatarBookWindowView();
 

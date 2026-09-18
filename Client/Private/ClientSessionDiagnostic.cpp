@@ -1,6 +1,7 @@
 #include "ClientSessionDiagnostic.h"
 
 #include <Windows.h>
+#include <Psapi.h>
 
 #include <algorithm>
 #include <chrono>
@@ -31,6 +32,8 @@ void Client::CClientSessionDiagnostic::Begin_Attempt(
 	next.iProtocolVersion = protocolVersion;
 	next.iConnectStartedUnixMs = Get_UnixMilliseconds();
 	m_Snapshot = std::move(next);
+	m_LastMainPumpTickMs = 0u;
+	m_LastPumpRecordTickMs = GetTickCount64();
 	Ensure_CapturePathLocked();
 	Append_EventLocked(
 		"connect.begin",
@@ -156,6 +159,32 @@ void Client::CClientSessionDiagnostic::Record_RawQueueDepth(
 	m_Snapshot.iRawQueueDepth = rawQueueDepth;
 	m_Snapshot.iRawQueueHighWatermark = (std::max)(
 		m_Snapshot.iRawQueueHighWatermark, rawQueueDepth);
+}
+
+void Client::CClientSessionDiagnostic::Record_MainPump()
+{
+	std::scoped_lock lock{ m_Mutex };
+	if (0u == m_Snapshot.iConnectionGeneration || m_Snapshot.isTerminal)
+		return;
+	const std::uint64_t now = GetTickCount64();
+	const std::uint64_t gap = 0u != m_LastMainPumpTickMs ? now - m_LastMainPumpTickMs : 0u;
+	m_LastMainPumpTickMs = now;
+	m_Snapshot.iLastMainPumpUnixMs = Get_UnixMilliseconds();
+	m_Snapshot.iMaxMainPumpGapMs = (std::max)(m_Snapshot.iMaxMainPumpGapMs, gap);
+	if (gap >= 1000u) ++m_Snapshot.iMainPumpStallCount;
+	const bool stalled = gap >= 1000u &&
+		(1u == m_Snapshot.iMainPumpStallCount || now - m_LastPumpRecordTickMs >= 5000u);
+	if (!stalled && now - m_LastPumpRecordTickMs < 60000u) return;
+	m_LastPumpRecordTickMs = now;
+	Append_EventLocked(stalled ? "main-pump.stall" : "connection.heartbeat",
+		LostArk::Shared::SESSION_DIAGNOSTIC_REASON::NONE,
+		"mainPumpGapMs=" + std::to_string(gap));
+}
+
+void Client::CClientSessionDiagnostic::Record_RawSnapshotCoalesced()
+{
+	std::scoped_lock lock{ m_Mutex };
+	++m_Snapshot.iRawSnapshotsCoalesced;
 }
 
 void Client::CClientSessionDiagnostic::Record_ServerTick(
@@ -285,6 +314,17 @@ void Client::CClientSessionDiagnostic::Append_EventLocked(
 	if (m_CapturePath.empty())
 		return;
 
+	// Keep late failures recordable during long four-client sessions.
+	std::error_code error;
+	const auto bytes = std::filesystem::file_size(m_CapturePath, error);
+	if (!error && bytes >= 8u * 1024u * 1024u)
+	{
+		const auto previous = m_CapturePath.wstring() + L".previous";
+		std::filesystem::remove(previous, error);
+		error.clear();
+		std::filesystem::rename(m_CapturePath, previous, error);
+		if (error) return;
+	}
 	std::ofstream output{
 		m_CapturePath, std::ios::binary | std::ios::out | std::ios::app };
 	if (!output)
@@ -307,10 +347,24 @@ void Client::CClientSessionDiagnostic::Append_EventLocked(
 		0u != m_Snapshot.iLastReceiveUnixMs &&
 		elapsedEnd >= m_Snapshot.iLastReceiveUnixMs ?
 			elapsedEnd - m_Snapshot.iLastReceiveUnixMs : 0u;
+	PROCESS_MEMORY_COUNTERS_EX processMemory{};
+	processMemory.cb = sizeof(processMemory);
+	const bool hasProcessMemory = 0 != K32GetProcessMemoryInfo(GetCurrentProcess(),
+		reinterpret_cast<PROCESS_MEMORY_COUNTERS*>(&processMemory), sizeof(processMemory));
+	MEMORYSTATUSEX systemMemory{};
+	systemMemory.dwLength = sizeof(systemMemory);
+	const bool hasSystemMemory = 0 != GlobalMemoryStatusEx(&systemMemory);
+	const auto mainPumpAgeMs = 0u != m_LastMainPumpTickMs ?
+		GetTickCount64() - m_LastMainPumpTickMs : 0u;
 	output << "{\"schema\":\"" << CLIENT_SESSION_DIAGNOSTIC_SCHEMA << "\""
 		<< ",\"formatVersion\":" << CLIENT_SESSION_DIAGNOSTIC_FORMAT_VERSION
 		<< ",\"unixMs\":" << eventUnixMs
 		<< ",\"processId\":" << GetCurrentProcessId()
+#ifdef _DEBUG
+		<< ",\"buildConfig\":\"Debug\""
+#else
+		<< ",\"buildConfig\":\"Release\""
+#endif
 		<< ",\"generation\":" << m_Snapshot.iConnectionGeneration
 		<< ",\"event\":\"" << Escape_Json(eventName) << "\""
 		<< ",\"source\":\"" << Escape_Json(Clamp_Detail(source)) << "\""
@@ -339,6 +393,20 @@ void Client::CClientSessionDiagnostic::Append_EventLocked(
 		<< ",\"eventQueueDepth\":" << m_Snapshot.iEventQueueDepth
 		<< ",\"eventQueueHighWatermark\":"
 		<< m_Snapshot.iEventQueueHighWatermark
+		<< ",\"isTerminal\":" << (m_Snapshot.isTerminal ? "true" : "false")
+		<< ",\"terminalReason\":\""
+		<< Escape_Json(LostArk::Shared::To_SessionDiagnosticReasonName(m_Snapshot.eReason)) << "\""
+		<< ",\"terminalDetail\":\"" << Escape_Json(m_Snapshot.strDetail) << "\""
+		<< ",\"lastMainPumpUnixMs\":" << m_Snapshot.iLastMainPumpUnixMs
+		<< ",\"mainPumpAgeMs\":" << mainPumpAgeMs
+		<< ",\"maxMainPumpGapMs\":" << m_Snapshot.iMaxMainPumpGapMs
+		<< ",\"mainPumpStallCount\":" << m_Snapshot.iMainPumpStallCount
+		<< ",\"rawSnapshotsCoalesced\":" << m_Snapshot.iRawSnapshotsCoalesced
+		<< ",\"processMemoryAvailable\":" << (hasProcessMemory ? "true" : "false")
+		<< ",\"privateBytes\":" << processMemory.PrivateUsage
+		<< ",\"workingSetBytes\":" << processMemory.WorkingSetSize
+		<< ",\"systemMemoryAvailable\":" << (hasSystemMemory ? "true" : "false")
+		<< ",\"availablePhysicalBytes\":" << systemMemory.ullAvailPhys
 		<< ",\"detail\":\"" << Escape_Json(Clamp_Detail(detail)) << "\"}\n";
 	output.flush();
 	if (!output)

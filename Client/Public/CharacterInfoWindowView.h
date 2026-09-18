@@ -37,6 +37,8 @@ Data/UI/CharacterInfo/CharacterInfoDisplay.json so the numbers are editable data
 class CCharacterInfoWindowView final
 {
 public:
+	/* Cancel transient gestures without closing or moving the window. */
+	void Cancel_Interaction() { m_bDraggingPanel = m_bDraggingPortrait = false; }
 	CCharacterInfoWindowView(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext);
 	~CCharacterInfoWindowView();
 

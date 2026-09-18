@@ -44,6 +44,8 @@ the H key's preferred vehicle. */
 class CVehicleWindowView final
 {
 public:
+	/* Cancel transient gestures without closing or moving the window. */
+	void Cancel_Interaction() { m_Drag.Reset(); m_bIconPicked = false; m_bEscapeDownLastFrame = true; }
 	CVehicleWindowView(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext);
 	~CVehicleWindowView();
 

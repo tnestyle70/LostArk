@@ -24,6 +24,14 @@ public:
 public:
 	/* Call once per frame before any screen checks its own widgets. */
 	void Begin_Frame();
+	/* MainApp supplies actual cinematic ownership. Suppression never changes a
+	   window's open state or its sprites' authored/runtime visibility. */
+	void Set_CinematicSuppressed(bool_t suppressed)
+	{
+		if (!suppressed && m_bCinematicSuppressed) m_bLeftAwaitRelease = m_bLeftDownThisFrame;
+		m_bCinematicSuppressed = suppressed;
+	}
+	bool_t Is_CinematicSuppressed() const { return m_bCinematicSuppressed; }
 	/* rect is in the caller's own document reference-resolution units; converted to real
 	viewport pixels here so callers don't duplicate that scale math. */
 	bool_t Is_Hovered(f32_t fX, f32_t fY, f32_t fWidth, f32_t fHeight,
@@ -42,10 +50,10 @@ public:
 	/* Left button currently held, independent of any rect -- for a multi-frame drag gesture
 	(press on frame N, keep moving through frame N+k, release on frame N+k) that Is_Clicked's
 	single-frame edge can't express by itself. */
-	bool_t Is_LeftDown() const { return m_bLeftDownThisFrame; }
+	bool_t Is_LeftDown() const { return !m_bCinematicSuppressed && !m_bLeftAwaitRelease && m_bLeftDownThisFrame; }
 	/* Real left-click up-edge this frame, independent of any rect -- the drag-release
 	counterpart to Is_LeftClickEdge. */
-	bool_t Is_LeftReleaseEdge() const { return !m_bLeftDownThisFrame && m_bLeftDownLastFrame; }
+	bool_t Is_LeftReleaseEdge() const { return !m_bCinematicSuppressed && !m_bLeftAwaitRelease && !m_bLeftDownThisFrame && m_bLeftDownLastFrame; }
 	/* Current cursor position converted into the caller's own document reference-resolution
 	units (the inverse of the scaling Is_Hovered applies) -- for a drag gesture that needs the
 	real mouse delta/position between frames, not just a hit-test bool. False (position
@@ -61,14 +69,14 @@ public:
 	WM_MOUSEWHEEL (WndProc, Client.cpp) rather than DirectInput: a runtime window that has the
 	cursor claims the mouse, which blocks CGameInstance::Get_DIMouseMove for the very frames a
 	list under that cursor wants to scroll. */
-	int32_t Get_MouseWheelNotches() const { return m_iWheelNotchesThisFrame; }
+	int32_t Get_MouseWheelNotches() const { return m_bCinematicSuppressed ? 0 : m_iWheelNotchesThisFrame; }
 	/* WndProc only. */
 	void On_MouseWheel(int32_t iWheelDelta);
 	/* A modal/full-screen UI screen claims the mouse for the whole frame regardless of which
 	specific widget (if any) is hovered -- its own dim backdrop swallowing clicks, matching
 	BeginPopupModal's own behavior. */
 	void Claim_Mouse_This_Frame();
-	bool_t Is_MouseClaimedThisFrame() const { return m_bMouseClaimedThisFrame; }
+	bool_t Is_MouseClaimedThisFrame() const { return m_bCinematicSuppressed || m_bLeftAwaitRelease || m_bMouseClaimedThisFrame; }
 	/* True if anything claimed the mouse last frame. CMainApp::Update applies its per-frame
 	SetInputBlocked before the windows that only get to hover-claim during Render (party, chat),
 	so a claim made there still blocks the following frame's gameplay mouse commands. */
@@ -103,6 +111,8 @@ private:
 	CUIInputRouter() = default;
 
 private:
+	bool_t	m_bCinematicSuppressed = false;
+	bool_t	m_bLeftAwaitRelease = false;
 	bool_t	m_bMouseClaimedThisFrame = false;
 	bool_t	m_bMouseClaimedLastFrame = false;
 	bool_t	m_bHasTopWindow = false;

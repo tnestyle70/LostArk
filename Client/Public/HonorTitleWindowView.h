@@ -31,6 +31,8 @@ player snapshot (HUD_PLAYER_STATE::iHonorTitleId). */
 class CHonorTitleWindowView final
 {
 public:
+	/* Cancel transient gestures without closing or moving the window. */
+	void Cancel_Interaction() { m_Drag.Reset(); m_bDraggingThumb = false; m_bEscapeDownLastFrame = true; }
 	CHonorTitleWindowView(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext);
 	~CHonorTitleWindowView();
 

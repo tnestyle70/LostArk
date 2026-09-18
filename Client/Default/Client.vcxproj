@@ -112,6 +112,7 @@
     <ClInclude Include="..\Public\SoundCueCatalog.h" />
     <ClInclude Include="..\Public\EstherActionSoundCueDocument.h" />
     <ClInclude Include="..\Public\Effect_PresentationService.h" />
+    <ClInclude Include="..\Public\EffectFailureDiagnostic.h" />
     <ClInclude Include="..\Public\Effect_ProductPrewarmQueue.h" />
 	<ClInclude Include="..\Private\CharacterSelectArenaSpawnGate.h" />
     <ClInclude Include="..\Public\Level_CharacterSelect.h" />

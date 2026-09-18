@@ -1,4 +1,5 @@
 #include "EffectV2_Runtime.h"
+#include "EffectFailureDiagnostic.h"
 #include "ActorCatalog.h"
 #include "EffectV2_Catalog.h"
 #include "EffectV2_Document.h"
@@ -55,6 +56,7 @@ namespace
 	struct PENDING_SPAWN final
 	{
 		Client::EFFECT_V2_BINDING Binding;
+		std::string strDiagnosticGroupId;
 		/* Epoch 0 is the first occurrence. ONCE/free/legacy lanes advance this
 		   to one after their single attempt; EACH_LOOP advances once per source
 		   loop. Spawn failures are attempts too, so they cannot flood every tick. */
@@ -131,6 +133,7 @@ namespace
 	void Report(const std::string& strMessage)
 	{
 		g_strLastError = strMessage;
+		Client::Write_EffectFailureDiagnostic("V2.runtime", strMessage);
 		OutputDebugStringA(("[EffectV2Runtime] " + strMessage + "\n").c_str());
 	}
 
@@ -382,6 +385,7 @@ namespace
 		const Client::EFFECT_V2_GROUP_CHILD& Child = Group.Children[iChildIndex];
 		Pending.iClockStartMs = iBindingStartMs;
 		Pending.iChildStartMs = Child.iStartMs;
+		Pending.strDiagnosticGroupId = Group.strGroupId;
 		Pending.Binding.strGroupId.clear();
 		Pending.Binding.strEffectId = Child.strEffectId;
 		Pending.Binding.iStartMs = iBindingStartMs + Child.iStartMs;
@@ -499,6 +503,8 @@ namespace
 		const f32_t fInitialElapsedSeconds = 0.f,
 		const Client::EFFECT_V2_GROUP_PLAYBACK_DESC* const pPlayback = nullptr)
 	{
+		const Client::EFFECT_SLOW_SCOPE_DIAGNOSTIC slowDiagnostic{
+			"V2.spawn.slow", Pending.Binding.strEffectId, Pending.strDiagnosticGroupId};
 		const auto Reject = [pOutFailure](const std::string& strFailure)
 		{
 			Report(strFailure);
@@ -538,6 +544,8 @@ namespace
 		}
 		CGameInstance& GameInstance = CGameInstance::Get();
 		Client::CEffectV2Object::DESC Desc = pDocument->Desc;
+		Desc.strDiagnosticEffectId = Pending.Binding.strEffectId;
+		Desc.strDiagnosticGroupId = Pending.strDiagnosticGroupId;
 		XMStoreFloat4x4(&Desc.PivotWorld,
 			XMLoadFloat4x4(&Pending.Local) * XMLoadFloat4x4(&Pivot));
 		std::shared_ptr<CGameObject> pGameObject;
@@ -1598,6 +1606,7 @@ uint32_t Client::CEffectV2Runtime::Play_Group(
 	const ComPtr<ID3D11Device>& pDevice,
 	const ComPtr<ID3D11DeviceContext>& pContext)
 {
+	const EFFECT_SLOW_SCOPE_DIAGNOSTIC slowDiagnostic{"V2.group.slow", {}, Group.strGroupId};
 	if (!std::isfinite(Playback.fInitialAgeSeconds) ||
 		Playback.fInitialAgeSeconds < 0.f ||
 		!std::isfinite(Playback.fPlaybackRate) ||

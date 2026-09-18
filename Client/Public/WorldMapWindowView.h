@@ -41,6 +41,8 @@ continent / world stages, memo, live search and voyage of the retail window are 
 class CWorldMapWindowView final
 {
 public:
+	/* Cancel transient gestures without closing or moving the window. */
+	void Cancel_Interaction() { m_Drag.Reset(); m_bPanning = false; m_bEscapeDownLastFrame = true; }
 	CWorldMapWindowView(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext);
 	~CWorldMapWindowView();
 

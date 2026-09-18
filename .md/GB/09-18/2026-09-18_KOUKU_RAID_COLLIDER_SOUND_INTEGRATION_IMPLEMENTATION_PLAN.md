@@ -129,3 +129,84 @@ unknown-field 거부를 풀지 않고, 기존 shape·시간·결합 제한을 �
 대체하지 않으며 수락·거절·취소 시 기존 proposal lifecycle과 함께 표시 target을 정리한다.
 실제 함수의 비시각 입력·문구·intent 검증과 Client 최소 컴파일을 수행하고 최종 화면은
 사용자가 확인한다. Server의 파티 target 제한 보정은 같은 입장 수직 슬라이스로 검증한다.
+
+## G10. 4인 검증용 Flow 재설정과 Release ZIP 갱신 (2026-09-19)
+
+사용자가 P29 내려치기 크래시를 확인하고 현재 디스크 저장본의 Flow 교체와 publish를
+명시 승인했다. 패턴 정의는 보존하며 stable entry ID와 다음 순서만 변경한다.
+
+- GATE1: P1,P2,P6,P7,P47,P48,P58,P78,P79,P80,P81,P82,P83.
+- GATE2: B1(P8+P9),B2(P10+P11),B3(P12+P13),B6(P15),B7(P17),P21,
+  B10(P23),B9(P24),P27,P85,P86,P87,B4(P28),P25.
+- GATE3: P88,P91,P92,P93,P52,P46,P66,P76,P35. 각 Mario Parent의 기존
+  P33 2페이즈 → 성공 P42 후속 연결을 유지한다. 독립 P33 행은 중복 생성하지 않는다.
+
+각 행 완료 뒤 1000ms, 마지막 행은 0ms를 사용한다. 마지막 패턴 완료는 보스 사망으로
+처리하지 않으며 기존 Idle 대기와 사용자의 처치 후 클리어·전원 투표 계약을 유지한다.
+교체 직전 최신 hash를 재확인하고 백업·원자 교체한다. 공식 KoukuSaydon owner로 게시해
+저장본·Encounter raidGates·Server bootstrap의 순서와 revision을 대조한다.
+
+B2 중 Lobby의 Server entry failed 보고는 구조화된 recovery와 실제 소비 경로에서
+원인을 조사한다. 재현된 결함만 수정하고 필요한 Release 최소 컴파일·focused 검증을
+수행한다. 최종 동일 revision의 Data와 runtime을 기존 Full ZIP 설치기로 포장하고
+무결성을 검사한다. IP 10.16.127.103은 유지하며 Client/UI 실행·4인 화면 판정은 사용자가 한다.
+
+추가 승인된 쇼타임 연출 P76은 P66 다음, P35 직전에 두며 중간 대기는 0ms로 한다. 기존 5000ms 연출의 두
+animation을 원래 시작 시각대로 stage로 분리해 게시 규칙을 충족시키며 카메라·음향·
+clip과 blend 시간은 보존한다. 실패 이유를 숨기는 admission 완화는 하지 않는다.
+
+Release의 Kouku lifecycle 소비가 MainApp의 Debug guard 안에 있어 제품 레이드 owner의
+메시지가 누적되는 결함을 수정한다. 기존 service include와 Update만 제품 경로로 옮기고
+저작 UI의 Debug 경계는 유지한다. CLIENT_INVALID_SERVER_RESPONSE/WSA10055 관측과
+해당 누적 결함의 focused 재현을 구분하며, 실제 4인 B2 재생은 사용자 검증으로 남긴다.
+
+
+## G11. 컷씬 게시·UI 복원과 실패 원인 진단 (2026-09-19)
+
+사용자의 최신 지시에 따라 저장된 미게시 CUTSCENE P73/P74/P75/P77에 현재
+occurrence의 종료 시각을 포함하는 parent duration만 추가한다. P75에 없는 배우는
+새로 추정해 생성하지 않는다. G10의 최신 GATE3와 함께 source revision 1753으로
+공식 게시하며, 실제 product available 목록과 Client presentation을 확인한다.
+
+실제 컷씬 시간트랙 소유 또는 Server cinematic pending일 때 제품 UI의 그리기와
+입력을 공통 억제하고 종료 시 기존 visible/open 상태로 복귀한다. 일반 전투 follow/static
+카메라는 컷씬으로 분류하지 않는다. 저작 도구와 연출 자체의 KakulFade overlay는 유지한다.
+배경만 검게 되는 원인은 미확정이므로 scene/light 값을 임의로 바꾸지 않는다. 기존
+Client session JSONL에 컷씬 경계/샷 변경과 map visibility, scene profile, light/camera
+소유, fade alpha를 기록해 다음 사용자 재현의 근거를 확보한다.
+
+Client NetworkManager의 15개 bounded 결과/알림 큐 overflow에 queue 이름, 현재 깊이,
+한도, 실제 packet type을 남긴다. 실패 정책과 cap은 유지한다. V1/V2 이펙트의 준비·
+admission·draw 실패와 Engine frame failure를 Release에서도 bounded 파일에 기록한다.
+신규 header-only `Client/Public/EffectFailureDiagnostic.h`는 Client.vcxproj 및 filters의
+기존 물리 폴더 항목에 등록하며 새 TU는 추가하지 않는다. 기존 C++ 인코딩을 보존한다.
+Server의 기존 RoomPerf에 UTC epoch 시각, 실제 gate/flow/member pattern, combat object
+수, 이전 outer-loop tick 지연/reset을 보강하고 기존 Diagnostics 경로에 bounded 파일로
+보존한다. 서버 timeout과 송신/객체 상한은 근거 없이 늘리지 않는다.
+
+최종 변경의 Debug/Release 제품 최소 컴파일, JSON/XML parse, diff check, 기존 focused
+lifecycle 검증을 적용한다. 이미 통과한 검증은 관련 코드 변경이 없는 한 반복하지 않는다.
+실제 4인 지연·컷씬 배경·효과 GPU 표시는 사용자가 최종 확인한다.
+
+
+## G12. Release 4인 실측 결함 수정과 UI PR 통합 (2026-09-19)
+
+현재 4인 로그의 원본과 SHA를 보존하고 실제 실패를 수정한다. P28 진입 시 이미 설정하는
+Server 권위 MAZE area HUD를 미로 대기 판정에 포함해 미로 복귀 전 P25가 소모되지 않게 한다.
+Sequence P1/P4의 WORLD 6행씩만 카메라·scene 끝까지 연장하고 revision65로 공식 게시한다.
+화면상 영구 검은 배경과 확인된 2,852ms 무대 공백은 구분한다.
+
+Kouku의 4인 동시·정상 재사용 꼬리 중첩과 P48 카드 수명을 실측해 해당 Level의 admission
+예산을 정한다. 다른 Level과 Engine 실제 light/provider 한계는 보존한다. Bern 폭포 sprite는
+회전한 local particle과 비균일 owner가 만드는 shear를 허용하고 billboard에 필요한 축 길이와
+origin만 사용한다. NaN/Inf 거부와 기존 TRS 결과, 실제 source occurrence를 수치 검증한다.
+
+UI PR #413의 원본을 현재 브랜치에 통합한다. 이름표·MVP clip과 cinematic guard를 결합하고
+새 G 키캡 아트와 JSON을 배포에 포함한다. Native Win32 메뉴는 창 생성에서 제외하며 client
+영역 계산도 메뉴 없는 상태로 일치시킨다. endpoint는 사용자 최신 지정192.168.0.14를 유지한다.
+
+기존 Release session JSONL에 최초 terminal reason/detail, 메모리와 main-pump 지연, 실제
+Lobby 실패 문구 표시 edge를 추가한다. Server closure는 PID/build/event와 partial send bytes를
+남긴다. 로그를 위해 timeout이나 protocol 실패 정책을 임의 완화하지 않는다.
+최종 Release Product 빌드와 focused 비시각 검증 후 새 v4 ZIP을 만든다. 화면과 실전4인
+성공 여부는 사용자가 판정하며 모든 종료 원인이 제거됐다고 확대해서 기록하지 않는다.

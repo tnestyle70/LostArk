@@ -1,4 +1,5 @@
 #include "Effect_PresentationService.h"
+#include "EffectFailureDiagnostic.h"
 #include "EffectRecoveryCamera.h"
 #include "Camera_Free.h"
 #include <charconv>
@@ -509,6 +510,12 @@ namespace
 		failure.strEffectAssetId = effectId;
 		failure.iRootCode = FAILED(result) ? result : E_FAIL;
 		failure.strRootMessage = status;
+		try
+		{
+			Client::Write_EffectFailureDiagnostic("V1.prepare", "asset=" + effectId +
+				" hr=" + std::to_string(failure.iRootCode) + " reason=" + status);
+		}
+		catch (...) { }
 		Client::EFFECT_PRODUCT_PREWARM_FRONT_COMMIT_TOKEN token;
 		std::string commitStatus;
 		if (g_ProductPrewarmQueue.Prevalidate_Front(effectId, revision,
@@ -1015,6 +1022,37 @@ namespace
 	const Client::EFFECT_SCENE_BUDGET_COST OWNER_BUDGET =
 		{ 32u, 8192u, 2048u, 4096u, 1024u, 16u, 16u, 32u, 3072u };
 
+	// Kouku admits four players with two normal 34630 tails each, 42 moving
+	// cards and the complete intro light document. Other levels keep their
+	// existing budgets; Bern has substantially more permanent map lights.
+	const Client::EFFECT_SCENE_BUDGET_COST KOUKU_SCENE_HARD_BUDGET =
+		{ 128u, 49152u, 4096u, 32768u, 2048u, 160u, 16u, 64u, 8192u };
+	const Client::EFFECT_SCENE_BUDGET_COST KOUKU_REMOTE_SCENE_SOFT_BUDGET =
+		{ 96u, 40960u, 4096u, 24576u, 1536u, 144u, 12u, 24u, 7168u };
+	const Client::EFFECT_SCENE_BUDGET_COST KOUKU_OWNER_BUDGET =
+		{ 32u, 8192u, 2048u, 4096u, 1024u, 32u, 16u, 32u, 3072u };
+	// Loader preparation is level independent. Admission applies the actual
+	// current level's limit after a successfully prepared candidate is queued.
+	const Client::EFFECT_SCENE_BUDGET_COST& MAX_SUPPORTED_SCENE_BUDGET =
+		KOUKU_SCENE_HARD_BUDGET;
+
+	const Client::EFFECT_SCENE_BUDGET_COST& Scene_BudgetForLevel(
+		const uint32_t iLevelIndex, const bool_t bRemoteCharacter)
+	{
+		if (iLevelIndex == ETOUI(Client::LEVEL::KAKULSAYDON_ARENA))
+			return bRemoteCharacter ? KOUKU_REMOTE_SCENE_SOFT_BUDGET : KOUKU_SCENE_HARD_BUDGET;
+		return bRemoteCharacter ? REMOTE_SCENE_SOFT_BUDGET : SCENE_HARD_BUDGET;
+	}
+
+	const Client::EFFECT_SCENE_BUDGET_COST& Owner_BudgetForLevel(
+		const uint32_t iLevelIndex, const bool_t bLevelOwner)
+	{
+		if (bLevelOwner)
+			return Scene_BudgetForLevel(iLevelIndex, false);
+		return iLevelIndex == ETOUI(Client::LEVEL::KAKULSAYDON_ARENA) ?
+			KOUKU_OWNER_BUDGET : OWNER_BUDGET;
+	}
+
 	Client::EFFECT_SCENE_BUDGET_COST Current_ActiveBudget()
 	{
 		Client::EFFECT_SCENE_BUDGET_COST Result;
@@ -1066,14 +1104,15 @@ namespace
 		}
 		const bool_t bRemoteCharacter = nullptr != Owner.pCharacter &&
 			!Owner.pCharacter->Is_LocallyControlled();
+		const uint32_t iCurrentLevel = CGameInstance::Get().Get_CurrentLevelID();
 		const Client::EFFECT_SCENE_BUDGET_COST& SceneLimit =
-			bRemoteCharacter ? REMOTE_SCENE_SOFT_BUDGET : SCENE_HARD_BUDGET;
+			Scene_BudgetForLevel(iCurrentLevel, bRemoteCharacter);
 		// A level owns all map placements, not one character action. Keep its
 		// aggregate within the scene ceiling while retaining per-actor limits.
 		const bool_t bLevelOwner = !Owner.pCharacter && !Owner.pBoss &&
 			Owner.iLevelIndex < ETOUI(Client::LEVEL::END);
 		const Client::EFFECT_SCENE_BUDGET_COST& OwnerLimit =
-			bLevelOwner ? SCENE_HARD_BUDGET : OWNER_BUDGET;
+			Owner_BudgetForLevel(iCurrentLevel, bLevelOwner);
 		if (!BudgetWithin(Scene, SceneLimit) ||
 			!BudgetWithin(OwnerTotal, OwnerLimit))
 		{
@@ -1085,6 +1124,55 @@ namespace
 		strOutStatus.clear();
 		return true;
 	}
+
+    std::string Budget_Diagnostic(const Client::EFFECT_SCENE_BUDGET_COST& cost)
+    {
+        return std::to_string(cost.iEffects) + "/" + std::to_string(cost.iParticles) + "/" +
+            std::to_string(cost.iMeshParticles) + "/" + std::to_string(cost.iTrailPoints) + "/" +
+            std::to_string(cost.iAfterImages) + "/" + std::to_string(cost.iLights) + "/" +
+            std::to_string(cost.iScreenPosts) + "/" + std::to_string(cost.iScreenOverlays) + "/" +
+            std::to_string(cost.iEstimatedDrawSubmissions);
+    }
+
+    struct EFFECT_SPAWN_FAILURE_DIAGNOSTIC final
+    {
+        const Client::EFFECT_SPAWN_DESC& desc;
+        const std::string& status;
+        const char* phase;
+        bool succeeded = false;
+        ~EFFECT_SPAWN_FAILURE_DIAGNOSTIC() noexcept
+        {
+            if (succeeded) return;
+            try
+            {
+                const auto request = g_ProductEffectBudgetCosts.find(desc.strEffectAssetId);
+                const auto owner = Resolve_Owner(desc);
+                Client::EFFECT_SCENE_BUDGET_COST ownerCost;
+                for (const auto& active : g_ActiveEffects)
+                    if (!active.bSupersededRecoveryCue && Same_Owner(Resolve_Owner(active), owner))
+                        Add_BudgetCost(ownerCost, active.AdmissionCost);
+                for (const auto& pending : g_PendingEffectSpawns)
+                    if (Same_Owner(Resolve_Owner(pending.Desc), owner))
+                        Add_BudgetCost(ownerCost, pending.AdmissionCost);
+                const bool remote = owner.pCharacter && !owner.pCharacter->Is_LocallyControlled();
+                const bool levelOwned = !owner.pCharacter && !owner.pBoss &&
+                    owner.iLevelIndex < ETOUI(Client::LEVEL::END);
+                const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
+                Client::Write_EffectFailureDiagnostic(phase, "asset=" + desc.strEffectAssetId +
+                    " occurrence=" + desc.strOccurrenceId + " level=" + std::to_string(desc.iLevelOwnerIndex) +
+                    " active_level=" + std::to_string(currentLevel) +
+                    " active=" + Budget_Diagnostic(Current_ActiveBudget()) +
+                    " pending=" + Budget_Diagnostic(Current_PendingBudget()) +
+                    " owner=" + Budget_Diagnostic(ownerCost) +
+                    " requested=" + (request == g_ProductEffectBudgetCosts.end() ?
+                        std::string("unprepared") : Budget_Diagnostic(request->second)) +
+                    " scene_limit=" + Budget_Diagnostic(Scene_BudgetForLevel(currentLevel, remote)) +
+                    " owner_limit=" + Budget_Diagnostic(Owner_BudgetForLevel(currentLevel, levelOwned)) +
+                    " units=effects/particles/mesh/trail/afterimage/light/post/overlay/draw reason=" + status);
+            }
+            catch (...) { }
+        }
+    };
 
 	bool_t Is_FiniteMatrix(const float4x4_t& Value)
 	{
@@ -1400,7 +1488,7 @@ namespace
 			if (!Apply_ProductScreenOverlayReceipt(
 					ScreenOverlayTemplate, BudgetCost,
 					fPlaybackDurationSeconds, strOutStatus) ||
-				!BudgetWithin(BudgetCost, SCENE_HARD_BUDGET))
+				!BudgetWithin(BudgetCost, MAX_SUPPORTED_SCENE_BUDGET))
 			{
 				if (strOutStatus.empty())
 					strOutStatus = "screen-overlay hard budget exceeded";
@@ -2557,7 +2645,7 @@ namespace
 			(!Apply_ProductScreenOverlayReceipt(
 				Result.pScreenOverlayTemplate, Result.BudgetCost,
 				Result.fPlaybackDurationSeconds, Result.strStatus) ||
-			 !BudgetWithin(Result.BudgetCost, SCENE_HARD_BUDGET)))
+			 !BudgetWithin(Result.BudgetCost, MAX_SUPPORTED_SCENE_BUDGET)))
 		{
 			if (Result.strStatus.empty())
 				Result.strStatus = "screen-overlay hard budget exceeded";
@@ -2836,7 +2924,7 @@ bool_t Client::CEffectPresentationService::Estimate_DocumentBudget(
 			++Staged.iEstimatedDrawSubmissions;
 		}
 	}
-	if (!BudgetWithin(Staged, SCENE_HARD_BUDGET))
+	if (!BudgetWithin(Staged, MAX_SUPPORTED_SCENE_BUDGET))
 	{
 		strOutStatus =
 			"One Effect document exceeds the scene hard budget.";
@@ -2928,6 +3016,7 @@ bool_t Client::CEffectPresentationService::Stage_LoadingProductTarget(
 	std::shared_ptr<const EFFECT_PRODUCT_LOADING_TARGET_STAGE>& OutStage,
 	std::string& strOutStatus)
 {
+	const EFFECT_SLOW_SCOPE_DIAGNOSTIC slowDiagnostic{"V1.prepare.slow", Request.strEffectAssetId, {}};
 	OutStage.reset();
 	try
 	{
@@ -3008,7 +3097,7 @@ bool_t Client::CEffectPresentationService::Stage_LoadingProductTarget(
 	if (!Apply_ProductScreenOverlayReceipt(
 			Candidate->pScreenOverlayTemplate, Candidate->BudgetCost,
 			Candidate->fPlaybackDurationSeconds, strOutStatus) ||
-		!BudgetWithin(Candidate->BudgetCost, SCENE_HARD_BUDGET))
+		!BudgetWithin(Candidate->BudgetCost, MAX_SUPPORTED_SCENE_BUDGET))
 	{
 		if (strOutStatus.empty())
 			strOutStatus = "screen-overlay hard budget exceeded";
@@ -3308,6 +3397,12 @@ void Client::CEffectPresentationService::Advance_LoadingProductCuePreparation(
 			FailStructural(PrevalidateStatus);
 			return;
 		}
+		try
+		{
+			Write_EffectFailureDiagnostic("V1.loading", "asset=" + EffectId +
+				" hr=" + std::to_string(Failure.iRootCode) + " reason=" + Failure.strRootMessage);
+		}
+		catch (...) { }
 		std::string SettledStatus =
 			"Product Effect Loading preparation failed closed for " +
 			EffectId + ": " + Failure.strRootMessage;
@@ -3972,7 +4067,7 @@ bool_t Client::CEffectPresentationService::Replace_ProductPreparedTarget(
 	if (!Apply_ProductScreenOverlayReceipt(
 			CandidateScreenOverlayTemplate, CandidateBudget,
 			fCandidatePlaybackDurationSeconds, strOutStatus) ||
-		!BudgetWithin(CandidateBudget, SCENE_HARD_BUDGET))
+		!BudgetWithin(CandidateBudget, MAX_SUPPORTED_SCENE_BUDGET))
 	{
 		if (strOutStatus.empty())
 			strOutStatus = "screen-overlay hard budget exceeded";
@@ -4881,6 +4976,7 @@ bool_t Client::CEffectPresentationService::Spawn(
     const EFFECT_SPAWN_DESC& Desc,
     std::string& strOutStatus)
 {
+    EFFECT_SPAWN_FAILURE_DIAGNOSTIC failureDiagnostic{Desc, strOutStatus, "V1.queue"};
 	if (!CEffectReconstructedRuntimeBoundary::Admit_ProductSpawn(
 		Desc.strEffectAssetId, strOutStatus))
 	{
@@ -5009,7 +5105,8 @@ bool_t Client::CEffectPresentationService::Spawn(
 	strOutStatus = "Queued admitted Effect for post-update layer commit: " +
 		Desc.strEffectAssetId;
 	g_strStatus = strOutStatus;
-	return true;
+	failureDiagnostic.succeeded = true;
+    return true;
 }
 
 bool_t Client::CEffectPresentationService::Spawn_WorldRoot(
@@ -5425,6 +5522,8 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
     const EFFECT_SPAWN_DESC& Desc,
     std::string& strOutStatus)
 {
+    EFFECT_SPAWN_FAILURE_DIAGNOSTIC failureDiagnostic{Desc, strOutStatus, "V1.spawn"};
+    const EFFECT_SLOW_SCOPE_DIAGNOSTIC slowDiagnostic{"V1.spawn.slow", Desc.strEffectAssetId, {}};
 	if (!CEffectReconstructedRuntimeBoundary::Admit_ProductSpawn(
 		Desc.strEffectAssetId, strOutStatus))
 	{
@@ -5703,6 +5802,7 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
     g_ActiveEffects.push_back(std::move(Active));
     strOutStatus = "Spawned admitted Effect: " + Desc.strEffectAssetId;
     g_strStatus = strOutStatus;
+    failureDiagnostic.succeeded = true;
     return true;
 }
 

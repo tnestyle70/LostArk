@@ -41,6 +41,7 @@ public:
 	tint/alpha/texture state is untouched, so showing again restores exactly what was set
 	before. For a keyframe slot this gates whether Update() drives its layer sprites at all. */
 	void Set_SlotVisible(const string& strId, bool_t bVisible);
+	void Set_SlotCinematicOverlay(const string& strId, bool_t overlay);
 	/* Runtime tint override (0..1 RGBA) on every authored static layer sprite. */
 	void Set_SlotTint(const string& strId, const float4_t& vTint);
 	/* Multiplies every static and keyframe layer's own tint without replacing authored RGB or

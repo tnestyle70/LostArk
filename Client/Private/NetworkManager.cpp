@@ -847,6 +847,7 @@ void CNetworkManager::Shutdown()
 //�� �����Ӹ��� main thread���� ȣ��
 void CNetworkManager::Update()
 {
+	m_SessionDiagnostic.Record_MainPump();
 	if (m_hasProtocolFailure.load())
 	{
 		if (INVALID_SOCKET != m_hServerSocket)
@@ -3293,6 +3294,7 @@ void CNetworkManager::Receive_Loop(const SOCKET serverSocket)
 						frame.ePacketType))
 				{
 					m_InboundFrames.back() = std::move(frame);
+					m_SessionDiagnostic.Record_RawSnapshotCoalesced();
 					m_SessionDiagnostic.Record_InboundFrame(
 						m_InboundFrames.back().ePacketType,
 						m_InboundFrames.size());
@@ -3706,7 +3708,9 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 			break;
 		if (m_DebugTeleportResults.size() >= MAX_REVISION_CONTROL_QUEUE)
 		{
-			Fail_Protocol(WSAENOBUFS);
+			Fail_Protocol(WSAENOBUFS, SESSION_DIAGNOSTIC_REASON::CLIENT_EVENT_QUEUE_OVERFLOW,
+				frame.ePacketType, "m_DebugTeleportResults depth=" + std::to_string(m_DebugTeleportResults.size()) +
+				" limit=" + std::to_string(MAX_REVISION_CONTROL_QUEUE));
 			return;
 		}
 		m_DebugTeleportResults.push_back(result);
@@ -3724,7 +3728,9 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 			break;
 		if (m_MarioReturnResults.size() >= MAX_REVISION_CONTROL_QUEUE)
 		{
-			Fail_Protocol(WSAENOBUFS);
+			Fail_Protocol(WSAENOBUFS, SESSION_DIAGNOSTIC_REASON::CLIENT_EVENT_QUEUE_OVERFLOW,
+				frame.ePacketType, "m_MarioReturnResults depth=" + std::to_string(m_MarioReturnResults.size()) +
+				" limit=" + std::to_string(MAX_REVISION_CONTROL_QUEUE));
 			return;
 		}
 		m_MarioReturnResults.push_back(result);
@@ -3742,7 +3748,9 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 			break;
 		if (m_DebugMarioJumpResults.size() >= MAX_REVISION_CONTROL_QUEUE)
 		{
-			Fail_Protocol(WSAENOBUFS);
+			Fail_Protocol(WSAENOBUFS, SESSION_DIAGNOSTIC_REASON::CLIENT_EVENT_QUEUE_OVERFLOW,
+				frame.ePacketType, "m_DebugMarioJumpResults depth=" + std::to_string(m_DebugMarioJumpResults.size()) +
+				" limit=" + std::to_string(MAX_REVISION_CONTROL_QUEUE));
 			return;
 		}
 		m_DebugMarioJumpResults.push_back(result);
@@ -3755,7 +3763,12 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 		{ Fail_Protocol(WSAEINVAL); return; }
 		if (result.eWorldId != m_eWorldId) break;
 		if (m_DebugWorldPlaybackResults.size() >= MAX_REVISION_CONTROL_QUEUE)
-		{ Fail_Protocol(WSAENOBUFS); return; }
+		{
+			Fail_Protocol(WSAENOBUFS, SESSION_DIAGNOSTIC_REASON::CLIENT_EVENT_QUEUE_OVERFLOW,
+				frame.ePacketType, "m_DebugWorldPlaybackResults depth=" + std::to_string(m_DebugWorldPlaybackResults.size()) +
+				" limit=" + std::to_string(MAX_REVISION_CONTROL_QUEUE));
+			return;
+		}
 		m_DebugWorldPlaybackResults.push_back(std::move(result));
 		break;
 	}
@@ -3766,7 +3779,12 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 		{ Fail_Protocol(WSAEINVAL); return; }
 		if (result.eWorldId != m_eWorldId) break;
 		if (m_DebugKoukuHudModeResults.size() >= MAX_REVISION_CONTROL_QUEUE)
-		{ Fail_Protocol(WSAENOBUFS); return; }
+		{
+			Fail_Protocol(WSAENOBUFS, SESSION_DIAGNOSTIC_REASON::CLIENT_EVENT_QUEUE_OVERFLOW,
+				frame.ePacketType, "m_DebugKoukuHudModeResults depth=" + std::to_string(m_DebugKoukuHudModeResults.size()) +
+				" limit=" + std::to_string(MAX_REVISION_CONTROL_QUEUE));
+			return;
+		}
 		m_DebugKoukuHudModeResults.push_back(result);
 		break;
 	}
@@ -3782,7 +3800,9 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 			break;
 		if (m_DebugMadnessFormResults.size() >= MAX_REVISION_CONTROL_QUEUE)
 		{
-			Fail_Protocol(WSAENOBUFS);
+			Fail_Protocol(WSAENOBUFS, SESSION_DIAGNOSTIC_REASON::CLIENT_EVENT_QUEUE_OVERFLOW,
+				frame.ePacketType, "m_DebugMadnessFormResults depth=" + std::to_string(m_DebugMadnessFormResults.size()) +
+				" limit=" + std::to_string(MAX_REVISION_CONTROL_QUEUE));
 			return;
 		}
 		m_DebugMadnessFormResults.push_back(result);
@@ -3800,7 +3820,9 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 			break;
 		if (m_VehicleRidingResults.size() >= MAX_REVISION_CONTROL_QUEUE)
 		{
-			Fail_Protocol(WSAENOBUFS);
+			Fail_Protocol(WSAENOBUFS, SESSION_DIAGNOSTIC_REASON::CLIENT_EVENT_QUEUE_OVERFLOW,
+				frame.ePacketType, "m_VehicleRidingResults depth=" + std::to_string(m_VehicleRidingResults.size()) +
+				" limit=" + std::to_string(MAX_REVISION_CONTROL_QUEUE));
 			return;
 		}
 		m_VehicleRidingResults.push_back(result);
@@ -3818,7 +3840,9 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 			break;
 		if (m_HonorTitleResults.size() >= MAX_REVISION_CONTROL_QUEUE)
 		{
-			Fail_Protocol(WSAENOBUFS);
+			Fail_Protocol(WSAENOBUFS, SESSION_DIAGNOSTIC_REASON::CLIENT_EVENT_QUEUE_OVERFLOW,
+				frame.ePacketType, "m_HonorTitleResults depth=" + std::to_string(m_HonorTitleResults.size()) +
+				" limit=" + std::to_string(MAX_REVISION_CONTROL_QUEUE));
 			return;
 		}
 		m_HonorTitleResults.push_back(result);
@@ -3864,7 +3888,9 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 		{
 			if (m_ValtanPatternAuditionByIdResults.size() >= MAX_REVISION_CONTROL_QUEUE)
 			{
-				Fail_Protocol(WSAENOBUFS);
+				Fail_Protocol(WSAENOBUFS, SESSION_DIAGNOSTIC_REASON::CLIENT_EVENT_QUEUE_OVERFLOW,
+				frame.ePacketType, "m_ValtanPatternAuditionByIdResults depth=" + std::to_string(m_ValtanPatternAuditionByIdResults.size()) +
+				" limit=" + std::to_string(MAX_REVISION_CONTROL_QUEUE));
 				return;
 			}
 			m_ValtanPatternAuditionByIdResults.push_back(std::move(result));
@@ -3885,7 +3911,9 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 		if (m_ValtanAuditionLifecycleEvents.size() >=
 			MAX_REVISION_CONTROL_QUEUE)
 		{
-			Fail_Protocol(WSAENOBUFS);
+			Fail_Protocol(WSAENOBUFS, SESSION_DIAGNOSTIC_REASON::CLIENT_EVENT_QUEUE_OVERFLOW,
+				frame.ePacketType, "m_ValtanAuditionLifecycleEvents depth=" + std::to_string(m_ValtanAuditionLifecycleEvents.size()) +
+				" limit=" + std::to_string(MAX_REVISION_CONTROL_QUEUE));
 			return;
 		}
 		m_ValtanAuditionLifecycleEvents.push_back(std::move(lifecycle));
@@ -3896,13 +3924,16 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 		S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT result{};
 		if (!Read_Message(reader, result) || 0u != reader.Get_RemainingSize())
 		{
-			Fail_Protocol(WSAEINVAL);
+			Fail_Protocol(WSAEINVAL, SESSION_DIAGNOSTIC_REASON::CLIENT_INVALID_SERVER_RESPONSE,
+				frame.ePacketType, "S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT payload decode failed or trailing bytes present.");
 			return;
 		}
 		if (m_KoukuSaydonPatternAuditionResults.size() >=
 			MAX_REVISION_CONTROL_QUEUE)
 		{
-			Fail_Protocol(WSAENOBUFS);
+			Fail_Protocol(WSAENOBUFS, SESSION_DIAGNOSTIC_REASON::CLIENT_EVENT_QUEUE_OVERFLOW,
+				frame.ePacketType, "m_KoukuSaydonPatternAuditionResults depth=" + std::to_string(m_KoukuSaydonPatternAuditionResults.size()) +
+				" limit=" + std::to_string(MAX_REVISION_CONTROL_QUEUE));
 			return;
 		}
 		m_KoukuSaydonPatternAuditionResults.push_back(std::move(result));
@@ -3913,13 +3944,16 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 		S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE lifecycle{};
 		if (!Read_Message(reader, lifecycle) || 0u != reader.Get_RemainingSize())
 		{
-			Fail_Protocol(WSAEINVAL);
+			Fail_Protocol(WSAEINVAL, SESSION_DIAGNOSTIC_REASON::CLIENT_INVALID_SERVER_RESPONSE,
+				frame.ePacketType, "S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE payload decode failed or trailing bytes present.");
 			return;
 		}
 		if (m_KoukuSaydonPatternAuditionLifecycleEvents.size() >=
 			MAX_REVISION_CONTROL_QUEUE)
 		{
-			Fail_Protocol(WSAENOBUFS);
+			Fail_Protocol(WSAENOBUFS, SESSION_DIAGNOSTIC_REASON::CLIENT_EVENT_QUEUE_OVERFLOW,
+				frame.ePacketType, "m_KoukuSaydonPatternAuditionLifecycleEvents depth=" + std::to_string(m_KoukuSaydonPatternAuditionLifecycleEvents.size()) +
+				" limit=" + std::to_string(MAX_REVISION_CONTROL_QUEUE));
 			return;
 		}
 		m_KoukuSaydonPatternAuditionLifecycleEvents.push_back(
@@ -3936,7 +3970,9 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 		}
 		if (m_ValtanPatternFlowResults.size() >= MAX_REVISION_CONTROL_QUEUE)
 		{
-			Fail_Protocol(WSAENOBUFS);
+			Fail_Protocol(WSAENOBUFS, SESSION_DIAGNOSTIC_REASON::CLIENT_EVENT_QUEUE_OVERFLOW,
+				frame.ePacketType, "m_ValtanPatternFlowResults depth=" + std::to_string(m_ValtanPatternFlowResults.size()) +
+				" limit=" + std::to_string(MAX_REVISION_CONTROL_QUEUE));
 			return;
 		}
 		m_ValtanPatternFlowResults.push_back(std::move(result));
@@ -3954,7 +3990,9 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 		if (m_ValtanPatternFlowLifecycleEvents.size() >=
 			MAX_REVISION_CONTROL_QUEUE)
 		{
-			Fail_Protocol(WSAENOBUFS);
+			Fail_Protocol(WSAENOBUFS, SESSION_DIAGNOSTIC_REASON::CLIENT_EVENT_QUEUE_OVERFLOW,
+				frame.ePacketType, "m_ValtanPatternFlowLifecycleEvents depth=" + std::to_string(m_ValtanPatternFlowLifecycleEvents.size()) +
+				" limit=" + std::to_string(MAX_REVISION_CONTROL_QUEUE));
 			return;
 		}
 		m_ValtanPatternFlowLifecycleEvents.push_back(std::move(lifecycle));
@@ -4265,7 +4303,9 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 			break;
 		if (m_GateProgressStates.size() >= MAX_REVISION_CONTROL_QUEUE)
 		{
-			Fail_Protocol(WSAENOBUFS);
+			Fail_Protocol(WSAENOBUFS, SESSION_DIAGNOSTIC_REASON::CLIENT_EVENT_QUEUE_OVERFLOW,
+				frame.ePacketType, "m_GateProgressStates depth=" + std::to_string(m_GateProgressStates.size()) +
+				" limit=" + std::to_string(MAX_REVISION_CONTROL_QUEUE));
 			return;
 		}
 		m_GateProgressStates.push_back(state);

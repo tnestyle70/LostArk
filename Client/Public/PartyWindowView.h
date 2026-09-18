@@ -23,6 +23,8 @@ order puts the leader first and is preserved for both the crown and member numbe
 class CPartyWindowView final
 {
 public:
+	/* Cancel transient gestures without closing or moving the window. */
+	void Cancel_Interaction() { m_Drag.Reset(); }
 	struct PARTY_MEMBER
 	{
 		string strNickname;
