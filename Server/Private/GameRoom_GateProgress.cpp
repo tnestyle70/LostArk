@@ -102,11 +102,13 @@ void LostArk::Server::CGameRoom::Handle_GateProgressPropose(
 	const auto playerIter = m_Players.find(proposerId);
 	if (playerIter == m_Players.end() || playerIter->second.iSessionId != sessionId)
 		return;
-	/* Only after the current gate cleared, only while a next gate exists, one vote at a time. */
+	/* One vote at a time on a raised gate. ADVANCE needs the current gate cleared and a next
+	   gate to exist; RESTART re-raises the current gate whether it fell or not. */
 	const std::uint8_t iCurrent = m_GateProgress.iCurrentGate;
-	if (0u == iCurrent || iCurrent >= Gate_Count() ||
-		0u == (m_GateProgress.iClearedMask & (1u << (iCurrent - 1u))) ||
-		0u != m_GateProgress.iProposalId)
+	if (0u == iCurrent || 0u != m_GateProgress.iProposalId || request.eKind >= GATE_PROGRESS_KIND::END)
+		return;
+	if (GATE_PROGRESS_KIND::ADVANCE == request.eKind &&
+		(iCurrent >= Gate_Count() || 0u == (m_GateProgress.iClearedMask & (1u << (iCurrent - 1u)))))
 		return;
 
 	std::vector<PLAYER_ID> voters{ proposerId };
@@ -132,6 +134,7 @@ void LostArk::Server::CGameRoom::Handle_GateProgressPropose(
 	m_GateProgress.iProposalId = m_iNextGateProposalId++;
 	if (0u == m_iNextGateProposalId)
 		m_iNextGateProposalId = 1u;
+	m_GateProgress.eKind = request.eKind;
 	m_GateProgress.iRequestSequence = request.iRequestSequence;
 	m_GateProgress.iProposerId = proposerId;
 	m_GateProgress.Voters = voters;
@@ -179,14 +182,17 @@ void LostArk::Server::CGameRoom::Close_GateProgressVote(
 {
 	using namespace LostArk::Shared;
 	GATE_PROGRESS_VOTE_RESULT finalResult = result;
-	if (GATE_PROGRESS_VOTE_RESULT::ALL_ACCEPTED == result &&
-		!Advance_Gate(static_cast<std::uint8_t>(m_GateProgress.iCurrentGate + 1u)))
+	if (GATE_PROGRESS_VOTE_RESULT::ALL_ACCEPTED == result)
 	{
-		finalResult = GATE_PROGRESS_VOTE_RESULT::CANCELLED;
+		const std::uint8_t iTarget = GATE_PROGRESS_KIND::RESTART == m_GateProgress.eKind ?
+			m_GateProgress.iCurrentGate : static_cast<std::uint8_t>(m_GateProgress.iCurrentGate + 1u);
+		if (!Advance_Gate(iTarget))
+			finalResult = GATE_PROGRESS_VOTE_RESULT::CANCELLED;
 	}
 	/* The closing message still names the proposal, then the vote is gone. */
 	Broadcast_GateProgressState(true, finalResult);
 	m_GateProgress.iProposalId = 0u;
+	m_GateProgress.eKind = GATE_PROGRESS_KIND::ADVANCE;
 	m_GateProgress.iRequestSequence = 0u;
 	m_GateProgress.iProposerId = INVALID_PLAYER_ID;
 	m_GateProgress.Voters.clear();
@@ -263,7 +269,9 @@ bool LostArk::Server::CGameRoom::Advance_Gate(const std::uint8_t nextGate)
 		player.fPositionZ = ground.z;
 		Update_MarioControlState(player);
 	}
+	/* The gate is up again: fought from the start, whether it is the next one or a restart. */
 	m_GateProgress.iCurrentGate = nextGate;
+	m_GateProgress.iClearedMask &= static_cast<std::uint8_t>(~(1u << (nextGate - 1u)));
 	return true;
 }
 
@@ -279,6 +287,7 @@ void LostArk::Server::CGameRoom::Broadcast_GateProgressState(
 	message.iCurrentGate = m_GateProgress.iCurrentGate;
 	message.iClearedMask = m_GateProgress.iClearedMask;
 	message.iProposalId = m_GateProgress.iProposalId;
+	message.eKind = m_GateProgress.eKind;
 	if (const auto proposer = m_Players.find(m_GateProgress.iProposerId); proposer != m_Players.end())
 		message.iProposerNetEntityId = proposer->second.iNetEntityId;
 	message.iAccepted = static_cast<std::uint8_t>((std::min)(m_GateProgress.Accepted.size(), std::size_t(255)));

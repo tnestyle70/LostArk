@@ -11,17 +11,26 @@
 #include "UILayoutRuntime.h"
 
 #include <algorithm>
+#include <cmath>
 
 namespace
 {
 	/* Retail stage px -> this project's 1280x720 reference, the scale every runtime UI uses. */
 	constexpr f32_t STAGE_TO_REF = 2.f / 3.f;
-	/* EpicGateCommanderProgressFrame labels: dungeonName 18 px at (11,7) centred over the frame,
-	   the second line 22 px under it. */
+	/* Measured on the retail 1080p capture of the live frame (frame top-left at the screen's
+	   (0,48)): dungeonName 18 px centred at (141,32), the yellow "[difficulty]" line at (141,56),
+	   the button label 16 px centred in the button. Frame-local retail px scaled below. */
 	constexpr f32_t NAME_PX = 18.f * STAGE_TO_REF;
-	constexpr f32_t NAME_Y = 7.f * STAGE_TO_REF;
-	constexpr f32_t DIFFICULTY_PX = 16.f * STAGE_TO_REF;
-	constexpr f32_t DIFFICULTY_Y = 29.f * STAGE_TO_REF;
+	constexpr f32_t NAME_X = 141.f * STAGE_TO_REF;
+	constexpr f32_t NAME_Y = 32.f * STAGE_TO_REF;
+	constexpr f32_t DIFFICULTY_PX = 13.f * STAGE_TO_REF;
+	constexpr f32_t DIFFICULTY_Y = 56.f * STAGE_TO_REF;
+	constexpr f32_t BUTTON_PX = 16.f * STAGE_TO_REF;
+	/* The active-gate glow is 92x88 art drawn centred on the 59x65 icon rect. */
+	constexpr f32_t ICON_W = 59.f * STAGE_TO_REF;
+	constexpr f32_t ICON_H = 65.f * STAGE_TO_REF;
+	constexpr f32_t GLOW_W = 92.f * STAGE_TO_REF;
+	constexpr f32_t GLOW_H = 88.f * STAGE_TO_REF;
 	constexpr f32_t PROMPT_TITLE_PX = 16.8f;
 	constexpr f32_t PROMPT_DESC_PX = 12.6f;
 	constexpr f32_t PROMPT_BUTTON_PX = 12.f;
@@ -30,21 +39,44 @@ namespace
 	constexpr const char* ART_ICON_CHECK = "UI/RaidGateProgress/GateIcon_Check.png";
 	constexpr const char* ART_ICON_ACTIVE = "UI/RaidGateProgress/GateIcon_Active.png";
 	constexpr const char* ART_ICON_INACTIVE = "UI/RaidGateProgress/GateIcon_Inactive.png";
+	constexpr const char* ART_WIDGET_BUTTON = "UI/RaidGateProgress/GateProgress_Btn_Normal.png";
+	constexpr const char* ART_WIDGET_BUTTON_HOVER = "UI/RaidGateProgress/GateProgress_Btn_Over.png";
 	constexpr const char* ART_BUTTON = "UI/ClassSelect/Common/NormalButton.png";
 	constexpr const char* ART_BUTTON_HOVER = "UI/ClassSelect/Common/NormalButtonHover.png";
+	constexpr const char* SLOT_BUTTON = "RGP_Button";
 	constexpr const char* PROMPT_SLOTS[] = { "RGV_Panel", "RGV_ConfirmButton", "RGV_CancelButton" };
 
 	/* GameMsg sys.commander.progress_vote / progress_vote_dialog_desc / _desc_1,
-	   stop_dungeon_progress; sys.common accept / decline. Wide hex escapes keep this file ASCII. */
+	   sys.common.annihilate_itself_vote_progress_btn (restart) / annihilate_itself_vote_title,
+	   sys.common.exit_btn, confirm / cancel, accept / decline. Wide hex escapes keep this file
+	   ASCII. */
 	constexpr const wchar_t* TEXT_PROGRESS = L"\xB358\xC804 \xC9C4\xD589";
-	constexpr const wchar_t* TEXT_STOP = L"\xC911\xB2E8\xD558\xAE30";
+	constexpr const wchar_t* TEXT_RESTART = L"\xC7AC\xC2DC\xC791";
+	constexpr const wchar_t* TEXT_RESTART_VOTE = L"\xC7AC\xC2DC\xC791 \xD22C\xD45C";
+	constexpr const wchar_t* TEXT_EXIT = L"\xB098\xAC00\xAE30";
+	constexpr const wchar_t* TEXT_CONFIRM = L"\xD655\xC778";
+	constexpr const wchar_t* TEXT_CANCEL = L"\xCDE8\xC18C";
 	constexpr const wchar_t* TEXT_ACCEPT = L"\xC218\xB77D";
 	constexpr const wchar_t* TEXT_DECLINE = L"\xAC70\xC808";
-	constexpr const wchar_t* TEXT_ASK = L"\xB358\xC804\xC744 \xACC4\xC18D \xC9C4\xD589\xD558\xC2DC\xACA0\xC2B5\xB2C8\xAE4C?";
-	constexpr const wchar_t* TEXT_APPLIED = L"\xB2D8\xC774 \xB358\xC804 \xC9C4\xD589\xC744 \xC2E0\xCCAD\xD558\xC600\xC2B5\xB2C8\xB2E4.";
+	constexpr const wchar_t* TEXT_ASK_ADVANCE = L"\xB358\xC804\xC744 \xACC4\xC18D \xC9C4\xD589\xD558\xC2DC\xACA0\xC2B5\xB2C8\xAE4C?";
+	constexpr const wchar_t* TEXT_ASK_RESTART = L"\xB358\xC804\xC744 \xC7AC\xC2DC\xC791\xD558\xC2DC\xACA0\xC2B5\xB2C8\xAE4C?";
+	constexpr const wchar_t* TEXT_APPLIED_ADVANCE = L"\xB2D8\xC774 \xB358\xC804 \xC9C4\xD589\xC744 \xC2E0\xCCAD\xD558\xC600\xC2B5\xB2C8\xB2E4.";
+	constexpr const wchar_t* TEXT_APPLIED_RESTART = L"\xB2D8\xC774 \xC7AC\xC2DC\xC791 \xD22C\xD45C\xB97C \xC2E0\xCCAD\xD558\xC600\xC2B5\xB2C8\xB2E4.";
 
 	const wstring_t FONT_YOON = TEXT("Font_YoonGasiIIM");
 	const fvector_t COLOR_DIFFICULTY = DirectX::XMVectorSet(1.f, 0.82f, 0.f, 1.f);   // #FFD200 like the retail label
+
+	bool_t Is_RestartPrompt(const Client::CRaidGateProgressView::PROMPT ePrompt)
+	{
+		using PROMPT = Client::CRaidGateProgressView::PROMPT;
+		return PROMPT::CONFIRM_RESTART == ePrompt || PROMPT::VOTE_RESTART == ePrompt;
+	}
+
+	bool_t Is_VotePrompt(const Client::CRaidGateProgressView::PROMPT ePrompt)
+	{
+		using PROMPT = Client::CRaidGateProgressView::PROMPT;
+		return PROMPT::VOTE_ADVANCE == ePrompt || PROMPT::VOTE_RESTART == ePrompt;
+	}
 
 	void Draw_Centered(const wstring_t& strFont, const wchar_t* pText, const f32_t fRefX, const f32_t fRefY,
 		const f32_t fRefPx, const fvector_t vColor)
@@ -72,13 +104,14 @@ void Client::CRaidGateProgressView::Initialize(
 		TEXT("Layer_UI"), L"UI/RaidGateProgress/RaidGateVote_Layout.json");
 	Set_PromptVisible(false);
 	Set_Progress(0u, 0u);
+	Set_Button(BUTTON::NONE, false);
 }
 
 void Client::CRaidGateProgressView::Set_Raid(
 	const wstring_t& strName, const wstring_t& strDifficulty, const uint8_t iGateCount)
 {
 	m_strName = strName;
-	m_strDifficulty = strDifficulty;
+	m_strDifficulty = strDifficulty.empty() ? wstring_t() : L"[" + strDifficulty + L"]";
 	m_iGateCount = (std::min<uint8_t>)(iGateCount, 3u);
 	Set_Progress(m_iCurrentGate, m_iClearedMask);
 }
@@ -97,8 +130,43 @@ void Client::CRaidGateProgressView::Set_Progress(const uint8_t iCurrentGate, con
 		if (!bShown)
 			continue;
 		const bool_t bCleared = 0u != (m_iClearedMask & (1u << i));
-		const bool_t bCurrent = m_iCurrentGate == i + 1u;
+		const bool_t bCurrent = !bCleared && m_iCurrentGate == i + 1u;
 		m_pWidget->Set_SlotTexture(strSlot, bCleared ? ART_ICON_CHECK : (bCurrent ? ART_ICON_ACTIVE : ART_ICON_INACTIVE));
+		/* The glow art is larger than the icon: keep the same centre, swap the size. */
+		f32_t fX = 0.f, fY = 0.f, fW = 0.f, fH = 0.f;
+		if (!m_pWidget->Get_SlotRect(strSlot, fX, fY, fW, fH))
+			continue;
+		const f32_t fCenterX = fX + fW * 0.5f;
+		const f32_t fCenterY = fY + fH * 0.5f;
+		const f32_t fNewW = bCurrent ? GLOW_W : ICON_W;
+		const f32_t fNewH = bCurrent ? GLOW_H : ICON_H;
+		if (std::abs(fW - fNewW) > 0.01f || std::abs(fH - fNewH) > 0.01f)
+			m_pWidget->Set_SlotRect(strSlot, fCenterX - fNewW * 0.5f, fCenterY - fNewH * 0.5f, fNewW, fNewH);
+	}
+}
+
+void Client::CRaidGateProgressView::Set_Button(const BUTTON eButton, const bool_t bEnabled)
+{
+	m_eButton = eButton;
+	m_bButtonEnabled = bEnabled;
+	if (nullptr == m_pWidget)
+		return;
+	m_pWidget->Set_SlotVisible(SLOT_BUTTON, BUTTON::NONE != eButton);
+	if (!bEnabled || BUTTON::NONE == eButton)
+	{
+		m_bButtonHovered = false;
+		m_pWidget->Set_SlotTexture(SLOT_BUTTON, ART_WIDGET_BUTTON);
+	}
+}
+
+const wchar_t* Client::CRaidGateProgressView::Button_Text() const
+{
+	switch (m_eButton)
+	{
+	case BUTTON::RESTART: return TEXT_RESTART;
+	case BUTTON::PROGRESS: return TEXT_PROGRESS;
+	case BUTTON::EXIT: return TEXT_EXIT;
+	default: return L"";
 	}
 }
 
@@ -133,15 +201,22 @@ Client::CRaidGateProgressView::INTENT Client::CRaidGateProgressView::Update(cons
 {
 	if (m_fNoticeSeconds > 0.f)
 		m_fNoticeSeconds = (std::max)(0.f, m_fNoticeSeconds - fTimeDelta);
-	if (PROMPT::NONE == m_ePrompt || nullptr == m_pPrompt)
-		return INTENT::NONE;
+	if (PROMPT::NONE != m_ePrompt)
+		return Update_Prompt();
+	return Update_Button();
+}
 
+Client::CRaidGateProgressView::INTENT Client::CRaidGateProgressView::Update_Prompt()
+{
+	if (nullptr == m_pPrompt)
+		return INTENT::NONE;
 	/* A modal: nothing underneath sees the pointer while it is up. */
 	CUIInputRouter& Router = CUIInputRouter::Get();
 	Router.Claim_Mouse_This_Frame();
 	const f32_t fRefWidth = m_pPrompt->Get_ResolutionWidth();
 	const f32_t fRefHeight = m_pPrompt->Get_ResolutionHeight();
 	INTENT eIntent = INTENT::NONE;
+	bool_t bPressed = false;
 	for (const char* pSlot : { "RGV_ConfirmButton", "RGV_CancelButton" })
 	{
 		f32_t fX = 0.f, fY = 0.f, fW = 0.f, fH = 0.f;
@@ -152,15 +227,54 @@ Client::CRaidGateProgressView::INTENT Client::CRaidGateProgressView::Update(cons
 		if (bHovered && Router.Is_Clicked(fX, fY, fW, fH, fRefWidth, fRefHeight))
 		{
 			CMainApp::Play_UIButtonClickSound();
+			bPressed = true;
 			const bool_t bConfirm = 0 == strcmp(pSlot, "RGV_ConfirmButton");
-			eIntent = PROMPT::PROPOSE == m_ePrompt ?
-				(bConfirm ? INTENT::PROPOSE : INTENT::STOP) :
-				(bConfirm ? INTENT::ACCEPT : INTENT::DECLINE);
+			if (Is_VotePrompt(m_ePrompt))
+				eIntent = bConfirm ? INTENT::ACCEPT : INTENT::DECLINE;
+			else if (bConfirm)
+				eIntent = Is_RestartPrompt(m_ePrompt) ? INTENT::PROPOSE_RESTART : INTENT::PROPOSE_ADVANCE;
 		}
 	}
-	if (INTENT::NONE != eIntent)
+	if (bPressed)
 		Close_Prompt();
 	return eIntent;
+}
+
+Client::CRaidGateProgressView::INTENT Client::CRaidGateProgressView::Update_Button()
+{
+	if (nullptr == m_pWidget || BUTTON::NONE == m_eButton || !m_bButtonEnabled)
+		return INTENT::NONE;
+	f32_t fX = 0.f, fY = 0.f, fW = 0.f, fH = 0.f;
+	if (!m_pWidget->Get_SlotRect(SLOT_BUTTON, fX, fY, fW, fH))
+		return INTENT::NONE;
+	CUIInputRouter& Router = CUIInputRouter::Get();
+	const f32_t fRefWidth = m_pWidget->Get_ResolutionWidth();
+	const f32_t fRefHeight = m_pWidget->Get_ResolutionHeight();
+	const bool_t bHovered = Router.Is_Hovered(fX, fY, fW, fH, fRefWidth, fRefHeight);
+	if (bHovered != m_bButtonHovered)
+	{
+		m_bButtonHovered = bHovered;
+		m_pWidget->Set_SlotTexture(SLOT_BUTTON, bHovered ? ART_WIDGET_BUTTON_HOVER : ART_WIDGET_BUTTON);
+	}
+	if (!bHovered)
+		return INTENT::NONE;
+	Router.Claim_Mouse_This_Frame();
+	if (!Router.Is_Clicked(fX, fY, fW, fH, fRefWidth, fRefHeight))
+		return INTENT::NONE;
+	CMainApp::Play_UIButtonClickSound();
+	switch (m_eButton)
+	{
+	case BUTTON::RESTART:
+		Open_Prompt(PROMPT::CONFIRM_RESTART, wstring_t());
+		return INTENT::NONE;
+	case BUTTON::PROGRESS:
+		Open_Prompt(PROMPT::CONFIRM_ADVANCE, wstring_t());
+		return INTENT::NONE;
+	case BUTTON::EXIT:
+		return INTENT::EXIT;
+	default:
+		return INTENT::NONE;
+	}
 }
 
 void Client::CRaidGateProgressView::Render_Text() const
@@ -170,11 +284,12 @@ void Client::CRaidGateProgressView::Render_Text() const
 		f32_t fX = 0.f, fY = 0.f, fW = 0.f, fH = 0.f;
 		if (m_pWidget->Get_SlotRect("RGP_Bg", fX, fY, fW, fH))
 		{
-			const f32_t fCenterX = fX + fW * 0.5f;
-			Draw_Centered(FONT_YOON, m_strName.c_str(), fCenterX, fY + NAME_Y + NAME_PX * 0.5f, NAME_PX, DirectX::Colors::White);
-			Draw_Centered(FONT_YOON, m_strDifficulty.c_str(), fCenterX, fY + DIFFICULTY_Y + DIFFICULTY_PX * 0.5f,
+			Draw_Centered(FONT_YOON, m_strName.c_str(), fX + NAME_X, fY + NAME_Y, NAME_PX, DirectX::Colors::White);
+			Draw_Centered(FONT_YOON, m_strDifficulty.c_str(), fX + NAME_X, fY + DIFFICULTY_Y,
 				DIFFICULTY_PX, COLOR_DIFFICULTY);
 		}
+		if (BUTTON::NONE != m_eButton && m_pWidget->Get_SlotRect(SLOT_BUTTON, fX, fY, fW, fH))
+			Draw_Centered(FONT_YOON, Button_Text(), fX + fW * 0.5f, fY + fH * 0.5f, BUTTON_PX, DirectX::Colors::White);
 	}
 	if (m_fNoticeSeconds > 0.f)
 	{
@@ -183,24 +298,28 @@ void Client::CRaidGateProgressView::Render_Text() const
 	if (PROMPT::NONE == m_ePrompt || nullptr == m_pPrompt)
 		return;
 
+	const bool_t bRestart = Is_RestartPrompt(m_ePrompt);
+	const bool_t bVote = Is_VotePrompt(m_ePrompt);
 	f32_t fX = 0.f, fY = 0.f, fW = 0.f, fH = 0.f;
 	if (m_pPrompt->Get_SlotRect("RGV_Panel", fX, fY, fW, fH))
 	{
 		/* Same title / description bands as the party invite modal on this panel art. */
-		Draw_Centered(FONT_YOON, TEXT_PROGRESS, fX + fW * 0.5f, fY + 23.f, PROMPT_TITLE_PX, DirectX::Colors::White);
-		if (PROMPT::PROPOSE == m_ePrompt)
+		Draw_Centered(FONT_YOON, bRestart ? TEXT_RESTART_VOTE : TEXT_PROGRESS, fX + fW * 0.5f, fY + 23.f,
+			PROMPT_TITLE_PX, DirectX::Colors::White);
+		const wchar_t* pAsk = bRestart ? TEXT_ASK_RESTART : TEXT_ASK_ADVANCE;
+		if (!bVote)
 		{
-			Draw_Centered(FONT_YOON, TEXT_ASK, fX + fW * 0.5f, fY + 66.f, PROMPT_DESC_PX, DirectX::Colors::White);
+			Draw_Centered(FONT_YOON, pAsk, fX + fW * 0.5f, fY + 66.f, PROMPT_DESC_PX, DirectX::Colors::White);
 		}
 		else
 		{
-			const wstring_t strApplied = m_strProposer + TEXT_APPLIED;
+			const wstring_t strApplied = m_strProposer + (bRestart ? TEXT_APPLIED_RESTART : TEXT_APPLIED_ADVANCE);
 			Draw_Centered(FONT_YOON, strApplied.c_str(), fX + fW * 0.5f, fY + 56.f, PROMPT_DESC_PX, DirectX::Colors::White);
-			Draw_Centered(FONT_YOON, TEXT_ASK, fX + fW * 0.5f, fY + 74.f, PROMPT_DESC_PX, DirectX::Colors::White);
+			Draw_Centered(FONT_YOON, pAsk, fX + fW * 0.5f, fY + 74.f, PROMPT_DESC_PX, DirectX::Colors::White);
 		}
 	}
-	const wchar_t* pConfirm = PROMPT::PROPOSE == m_ePrompt ? TEXT_PROGRESS : TEXT_ACCEPT;
-	const wchar_t* pCancel = PROMPT::PROPOSE == m_ePrompt ? TEXT_STOP : TEXT_DECLINE;
+	const wchar_t* pConfirm = bVote ? TEXT_ACCEPT : TEXT_CONFIRM;
+	const wchar_t* pCancel = bVote ? TEXT_DECLINE : TEXT_CANCEL;
 	if (m_pPrompt->Get_SlotRect("RGV_ConfirmButton", fX, fY, fW, fH))
 		Draw_Centered(FONT_YOON, pConfirm, fX + fW * 0.5f, fY + fH * 0.5f, PROMPT_BUTTON_PX, DirectX::Colors::White);
 	if (m_pPrompt->Get_SlotRect("RGV_CancelButton", fX, fY, fW, fH))

@@ -1875,7 +1875,8 @@ bool CNetworkManager::Send_RaidEntryRespond(
 		frameBytes) && Send_All(frameBytes);
 }
 
-bool CNetworkManager::Send_GateProgressPropose(const std::uint32_t requestSequence)
+bool CNetworkManager::Send_GateProgressPropose(
+	const std::uint32_t requestSequence, const LostArk::Shared::GATE_PROGRESS_KIND kind)
 {
 	using namespace LostArk::Shared;
 	if (!Is_Connected() || !Is_Known_World_Id(m_eWorldId))
@@ -1883,6 +1884,7 @@ bool CNetworkManager::Send_GateProgressPropose(const std::uint32_t requestSequen
 	C2S_GATE_PROGRESS_PROPOSE message{};
 	message.iRequestSequence = requestSequence;
 	message.eWorldId = m_eWorldId;
+	message.eKind = kind;
 	CPacketWriter payloadWriter;
 	if (!Write_Message(payloadWriter, message))
 		return false;

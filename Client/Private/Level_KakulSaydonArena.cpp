@@ -1422,8 +1422,10 @@ HRESULT Client::CLevel_KakulSaydonArena::Initialize()
 
 	/* Gate progress panel (top-left): three gates of the raid this arena is. */
 	m_GateProgressView.Initialize(m_pDevice, m_pContext, ETOUI(LEVEL::KAKULSAYDON_ARENA));
-	m_GateProgressView.Set_Raid(
-		CMvpAwardCatalog::Get().Find_RaidName(103), CMvpAwardCatalog::Get().Find_DifficultyText("normal"), 3u);
+	/* GameMsg tip.name.scene_group_index_name_contents_commanderraid_37081_1: the commander
+	   name, not the zone name the award page uses. */
+	m_GateProgressView.Set_Raid(L"\xAD11\xAE30\xAD70\xB2E8\xC7A5 \xCFE0\xD06C\xC138\xC774\xD2BC",
+		CMvpAwardCatalog::Get().Find_DifficultyText("normal"), 3u);
 
 	replicationDesc.pDevice = m_pDevice;
 	replicationDesc.pContext = m_pContext;
@@ -2427,8 +2429,11 @@ void Client::CLevel_KakulSaydonArena::Apply_GateProgressState(
 	m_GateProgress = State;
 	m_bGateProgressKnown = true;
 
-	/* The gate the Server raised changed (advance, or a Debug button): present it. */
-	if (0u != State.iCurrentGate && (!bHadState || Previous.iCurrentGate != State.iCurrentGate))
+	/* The gate the Server raised changed (advance, a Debug button) or a restart vote re-raised
+	   the same gate: present it. */
+	const bool_t bRestarted = State.bClosed && GATE_PROGRESS_VOTE_RESULT::ALL_ACCEPTED == State.eResult &&
+		GATE_PROGRESS_KIND::RESTART == State.eKind;
+	if (0u != State.iCurrentGate && (!bHadState || Previous.iCurrentGate != State.iCurrentGate || bRestarted))
 	{
 		const bool_t bClearedNow = 0u != (State.iClearedMask & (1u << (State.iCurrentGate - 1u)));
 		if (!bClearedNow)
@@ -2463,13 +2468,13 @@ void Client::CLevel_KakulSaydonArena::Apply_GateProgressState(
 		const bool_t bMine = State.iProposerNetEntityId == CNetworkManager::Get().Get_LocalEntityId();
 		if (bMine)
 		{
-			if (CRaidGateProgressView::PROMPT::VOTE == m_GateProgressView.Get_Prompt())
+			if (Is_GateVotePromptOpen())
 				m_GateProgressView.Close_Prompt();
 		}
-		else if (!m_bGateVoteAnswered && CRaidGateProgressView::PROMPT::VOTE != m_GateProgressView.Get_Prompt() &&
+		else if (!m_bGateVoteAnswered && !Is_GateVotePromptOpen() &&
 			(!m_pMvpResultView || !m_pMvpResultView->Is_Visible()))
 		{
-			m_GateProgressView.Open_Prompt(CRaidGateProgressView::PROMPT::VOTE,
+			m_GateProgressView.Open_Prompt(Gate_VotePrompt(State.eKind),
 				Find_PlayerNickname(State.iProposerNetEntityId));
 		}
 	}
@@ -2494,37 +2499,47 @@ void Client::CLevel_KakulSaydonArena::Update_GateProgress(const f32_t fTimeDelta
 	while (nullptr != m_pPlayerCommandSink && m_pPlayerCommandSink->Consume_GateProgressState(State))
 		Apply_GateProgressState(State);
 
-	/* The award page closing after a clear is when the leader decides; a member who
-	   already has a vote waiting sees it now. */
+	/* A member whose vote arrived under the award page sees it once that page closes. */
 	const bool_t bMvpVisible = nullptr != m_pMvpResultView && m_pMvpResultView->Is_Visible();
-	if (m_bMvpWasVisible && !bMvpVisible && m_bGateProgressKnown && 0u != m_GateProgress.iCurrentGate)
+	const bool_t bVoteOpen = 0u != m_GateProgress.iProposalId && !m_GateProgress.bClosed;
+	if (m_bMvpWasVisible && !bMvpVisible && bVoteOpen && !m_bGateVoteAnswered &&
+		CRaidGateProgressView::PROMPT::NONE == m_GateProgressView.Get_Prompt() &&
+		m_GateProgress.iProposerNetEntityId != CNetworkManager::Get().Get_LocalEntityId())
 	{
-		const bool_t bCleared = 0u != (m_GateProgress.iClearedMask & (1u << (m_GateProgress.iCurrentGate - 1u)));
-		const bool_t bNextExists = m_GateProgress.iCurrentGate < m_GateProgress.iGateCount;
-		if (bCleared && bNextExists && CRaidGateProgressView::PROMPT::NONE == m_GateProgressView.Get_Prompt())
-		{
-			if (0u != m_GateProgress.iProposalId && !m_GateProgress.bClosed && !m_bGateVoteAnswered &&
-				m_GateProgress.iProposerNetEntityId != CNetworkManager::Get().Get_LocalEntityId())
-			{
-				m_GateProgressView.Open_Prompt(CRaidGateProgressView::PROMPT::VOTE,
-					Find_PlayerNickname(m_GateProgress.iProposerNetEntityId));
-			}
-			else if (0u == m_GateProgress.iProposalId && Is_LocalRaidLeader())
-			{
-				m_GateProgressView.Open_Prompt(CRaidGateProgressView::PROMPT::PROPOSE, wstring_t());
-			}
-		}
+		m_GateProgressView.Open_Prompt(Gate_VotePrompt(m_GateProgress.eKind),
+			Find_PlayerNickname(m_GateProgress.iProposerNetEntityId));
 	}
 	m_bMvpWasVisible = bMvpVisible;
 
+	/* The panel button follows the raid: restart while a gate is up, dungeon progress once a
+	   gate short of the last is cleared, exit once the last one is. Only the leader can press
+	   it, and not while a vote is running or the award page is up. */
+	CRaidGateProgressView::BUTTON eButton = CRaidGateProgressView::BUTTON::NONE;
+	if (m_bGateProgressKnown && 0u != m_GateProgress.iCurrentGate)
+	{
+		const bool_t bCleared = 0u != (m_GateProgress.iClearedMask & (1u << (m_GateProgress.iCurrentGate - 1u)));
+		if (!bCleared)
+			eButton = CRaidGateProgressView::BUTTON::RESTART;
+		else if (m_GateProgress.iCurrentGate < m_GateProgress.iGateCount)
+			eButton = CRaidGateProgressView::BUTTON::PROGRESS;
+		else
+			eButton = CRaidGateProgressView::BUTTON::EXIT;
+	}
+	m_GateProgressView.Set_Button(eButton, Is_LocalRaidLeader() && !bVoteOpen && !bMvpVisible);
 	m_GateProgressView.Set_Progress(m_GateProgress.iCurrentGate, m_GateProgress.iClearedMask);
 	const CRaidGateProgressView::INTENT eIntent = m_GateProgressView.Update(fTimeDelta);
 	if (nullptr == m_pPlayerCommandSink)
 		return;
 	switch (eIntent)
 	{
-	case CRaidGateProgressView::INTENT::PROPOSE:
-		(void)m_pPlayerCommandSink->Request_GateProgressPropose(m_iNextGateRequestSequence++);
+	case CRaidGateProgressView::INTENT::PROPOSE_ADVANCE:
+		(void)m_pPlayerCommandSink->Request_GateProgressPropose(m_iNextGateRequestSequence++, GATE_PROGRESS_KIND::ADVANCE);
+		break;
+	case CRaidGateProgressView::INTENT::PROPOSE_RESTART:
+		(void)m_pPlayerCommandSink->Request_GateProgressPropose(m_iNextGateRequestSequence++, GATE_PROGRESS_KIND::RESTART);
+		break;
+	case CRaidGateProgressView::INTENT::EXIT:
+		(void)m_pPlayerCommandSink->Request_ReturnToBern(m_iNextGateRequestSequence++);
 		break;
 	case CRaidGateProgressView::INTENT::ACCEPT:
 	case CRaidGateProgressView::INTENT::DECLINE:
@@ -2533,9 +2548,22 @@ void Client::CLevel_KakulSaydonArena::Update_GateProgress(const f32_t fTimeDelta
 			m_GateProgress.iProposalId, CRaidGateProgressView::INTENT::ACCEPT == eIntent);
 		break;
 	default:
-		/* STOP: retail leaves the dungeon; here the prompt simply closes and the clear stays. */
 		break;
 	}
+}
+
+bool_t Client::CLevel_KakulSaydonArena::Is_GateVotePromptOpen() const
+{
+	const CRaidGateProgressView::PROMPT ePrompt = m_GateProgressView.Get_Prompt();
+	return CRaidGateProgressView::PROMPT::VOTE_ADVANCE == ePrompt ||
+		CRaidGateProgressView::PROMPT::VOTE_RESTART == ePrompt;
+}
+
+Client::CRaidGateProgressView::PROMPT Client::CLevel_KakulSaydonArena::Gate_VotePrompt(
+	const LostArk::Shared::GATE_PROGRESS_KIND eKind)
+{
+	return LostArk::Shared::GATE_PROGRESS_KIND::RESTART == eKind ?
+		CRaidGateProgressView::PROMPT::VOTE_RESTART : CRaidGateProgressView::PROMPT::VOTE_ADVANCE;
 }
 
 void Client::CLevel_KakulSaydonArena::Debug_Play_ClearThenMvp()

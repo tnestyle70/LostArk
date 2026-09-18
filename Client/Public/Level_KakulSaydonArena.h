@@ -644,6 +644,8 @@ private:
 	   Server raised on its own -- the presentation half of the F1 gate button. */
 	void Apply_ServerGate(size_t gateIndex);
 	bool_t Is_LocalRaidLeader() const;
+	bool_t Is_GateVotePromptOpen() const;
+	static CRaidGateProgressView::PROMPT Gate_VotePrompt(LostArk::Shared::GATE_PROGRESS_KIND eKind);
 	wstring_t Find_PlayerNickname(LostArk::Shared::NET_ENTITY_ID iNetEntityId) const;
 	/* 1-based gate for the award headline. The debug gate index is 0-based and
 	   NO_ACTIVE_DEBUG_GATE means none was entered, which reads as gate 1. */

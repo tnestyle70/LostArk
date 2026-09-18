@@ -284,9 +284,9 @@ bool Client::CNetworkPlayerCommandSink::Request_RaidEntryRespond(
 }
 
 bool Client::CNetworkPlayerCommandSink::Request_GateProgressPropose(
-	const std::uint32_t clientSequence)
+	const std::uint32_t clientSequence, const LostArk::Shared::GATE_PROGRESS_KIND kind)
 {
-	return CNetworkManager::Get().Send_GateProgressPropose(clientSequence);
+	return CNetworkManager::Get().Send_GateProgressPropose(clientSequence, kind);
 }
 
 bool Client::CNetworkPlayerCommandSink::Request_GateProgressRespond(

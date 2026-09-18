@@ -158,7 +158,7 @@ public:
 	/* Commander raid gate progress after a gate clear: the leader / solo player proposes
 	to move on, members answer the vote, and the Server's state comes back through
 	Consume_GateProgressState. Sinks without a Server reject it. */
-	virtual bool Request_GateProgressPropose(std::uint32_t) { return false; }
+	virtual bool Request_GateProgressPropose(std::uint32_t, LostArk::Shared::GATE_PROGRESS_KIND) { return false; }
 	virtual bool Request_GateProgressRespond(std::uint32_t, std::uint32_t, bool) { return false; }
 	virtual bool Consume_GateProgressState(LostArk::Shared::S2C_GATE_PROGRESS_STATE&) { return false; }
 	// Raid Clear screen's own "돌아가기" (return) button, Valtan Arena only --

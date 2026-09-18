@@ -2878,10 +2878,20 @@ namespace LostArk::Shared
 		END
 	};
 
+	/* What the vote is for: ADVANCE raises the next gate after a clear, RESTART raises the
+	   current gate again (the widget's restart button, retail's "restart vote"). */
+	enum class GATE_PROGRESS_KIND : std::uint8_t
+	{
+		ADVANCE = 0,
+		RESTART,
+		END
+	};
+
 	struct C2S_GATE_PROGRESS_PROPOSE
 	{
 		std::uint32_t iRequestSequence = 0u;
 		WORLD_ID eWorldId = WORLD_ID::END;
+		GATE_PROGRESS_KIND eKind = GATE_PROGRESS_KIND::ADVANCE;
 	};
 	bool Write_Message(CPacketWriter& writer, const C2S_GATE_PROGRESS_PROPOSE& message);
 	bool Read_Message(CPacketReader& reader, C2S_GATE_PROGRESS_PROPOSE& message);
@@ -2906,6 +2916,7 @@ namespace LostArk::Shared
 		std::uint8_t iCurrentGate = 0u;
 		std::uint8_t iClearedMask = 0u;
 		std::uint32_t iProposalId = 0u;
+		GATE_PROGRESS_KIND eKind = GATE_PROGRESS_KIND::ADVANCE;
 		NET_ENTITY_ID iProposerNetEntityId = INVALID_NET_ENTITY_ID;
 		std::uint8_t iAccepted = 0u;
 		std::uint8_t iTotal = 0u;

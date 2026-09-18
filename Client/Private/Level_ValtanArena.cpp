@@ -404,8 +404,9 @@ HRESULT CLevel_ValtanArena::Initialize()
 	m_pMvpResultView = std::make_unique<CMvpResultView>(
 		m_pDevice, m_pContext, ETOUI(LEVEL::VALTAN_ARENA));
 	m_GateProgressView.Initialize(m_pDevice, m_pContext, ETOUI(LEVEL::VALTAN_ARENA));
-	m_GateProgressView.Set_Raid(
-		CMvpAwardCatalog::Get().Find_RaidName(101), CMvpAwardCatalog::Get().Find_DifficultyText("normal"), 1u);
+	/* GameMsg tip.name.scene_group_index_name_contents_commanderraid_37051_1. */
+	m_GateProgressView.Set_Raid(L"\xB9C8\xC218\xAD70\xB2E8\xC7A5 \xBC1C\xD0C4",
+		CMvpAwardCatalog::Get().Find_DifficultyText("normal"), 1u);
 	m_GateProgressView.Set_Progress(1u, 0u);
 
 	/* First screen migrated off the ImGui interim UI rendering (see
@@ -626,7 +627,13 @@ void CLevel_ValtanArena::Update(f32_t fTimeDelta)
 		m_pMvpResultView->Update(fTimeDelta);
 	}
 	m_GateProgressView.Set_Progress(1u, m_fRaidClearElapsedSeconds >= 0.f ? 1u : 0u);
-	(void)m_GateProgressView.Update(fTimeDelta);
+	/* One gate and no Server gate progress here: the only panel button is exit, once the
+	   award page has closed (the same trip as the clear screen's own return button). */
+	m_GateProgressView.Set_Button(
+		m_bRaidClearReturnAvailable ? CRaidGateProgressView::BUTTON::EXIT : CRaidGateProgressView::BUTTON::NONE, true);
+	if (CRaidGateProgressView::INTENT::EXIT == m_GateProgressView.Update(fTimeDelta) &&
+		nullptr != m_pPlayerCommandSink)
+		m_pPlayerCommandSink->Request_ReturnToBern(m_iNextReturnToBernSequence++);
 	const bool_t isRaidClearActive = m_fRaidClearElapsedSeconds >= 0.f;
 	if (!isRaidClearActive && m_PartyInteraction.Update(
 		m_Replication, m_pPlayerCommandSink, m_NameplatePlayers,
@@ -1946,6 +1953,7 @@ void CLevel_ValtanArena::Update_RaidClear(f32_t fTimeDelta)
 	m_pRaidClearView->Set_SlotVisible("RaidClear_TitleTextBox", false);
 	/* The return button waits under the award page until that page is closed. */
 	m_pRaidClearView->Set_SlotVisible("RaidClear_ReturnButton", isAfterRaidClear && !isMvpVisible);
+	m_bRaidClearReturnAvailable = isAfterRaidClear && !isMvpVisible;
 	if (isShowing)
 	{
 		const f32_t fRevealAlpha = (m_fRaidClearElapsedSeconds < RAIDCLEAR_REVEAL_SECONDS) ?

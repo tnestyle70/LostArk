@@ -1007,6 +1007,7 @@ namespace LostArk::Server
 			std::uint8_t iCurrentGate = 0u;     // 1-based, 0 = no gate raised yet
 			std::uint8_t iClearedMask = 0u;
 			std::uint32_t iProposalId = 0u;     // 0 = no vote open
+			LostArk::Shared::GATE_PROGRESS_KIND eKind = LostArk::Shared::GATE_PROGRESS_KIND::ADVANCE;
 			std::uint32_t iRequestSequence = 0u;
 			LostArk::Shared::PLAYER_ID iProposerId = LostArk::Shared::INVALID_PLAYER_ID;
 			std::vector<LostArk::Shared::PLAYER_ID> Voters;

@@ -268,7 +268,8 @@ public:
 		bool accepted);
 	/* Commander raid gate progress: the leader / solo player asks to move on after a gate
 	clear, members answer, and every change comes back as one S2C_GATE_PROGRESS_STATE. */
-	bool Send_GateProgressPropose(std::uint32_t requestSequence);
+	bool Send_GateProgressPropose(
+		std::uint32_t requestSequence, LostArk::Shared::GATE_PROGRESS_KIND kind);
 	bool Send_GateProgressRespond(
 		std::uint32_t requestSequence, std::uint32_t proposalId, bool accepted);
 	bool Try_Consume_GateProgressState(LostArk::Shared::S2C_GATE_PROGRESS_STATE& outState);

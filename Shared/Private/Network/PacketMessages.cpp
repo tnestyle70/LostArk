@@ -6604,10 +6604,12 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_KOUKUSAYDON_BUNDLE
 bool LostArk::Shared::Write_Message(
 	CPacketWriter& writer, const C2S_GATE_PROGRESS_PROPOSE& message)
 {
-	if (0u == message.iRequestSequence || !Is_Known_World_Id(message.eWorldId))
+	if (0u == message.iRequestSequence || !Is_Known_World_Id(message.eWorldId) ||
+		message.eKind >= GATE_PROGRESS_KIND::END)
 		return false;
 	writer.Write_U32(message.iRequestSequence);
 	writer.Write_U16(static_cast<std::uint16_t>(message.eWorldId));
+	writer.Write_U8(static_cast<std::uint8_t>(message.eKind));
 	return true;
 }
 
@@ -6616,10 +6618,14 @@ bool LostArk::Shared::Read_Message(
 {
 	C2S_GATE_PROGRESS_PROPOSE decoded{};
 	std::uint16_t world = 0u;
-	if (!reader.Read_U32(decoded.iRequestSequence) || !reader.Read_U16(world))
+	std::uint8_t kind = 0u;
+	if (!reader.Read_U32(decoded.iRequestSequence) || !reader.Read_U16(world) ||
+		!reader.Read_U8(kind))
 		return false;
 	decoded.eWorldId = static_cast<WORLD_ID>(world);
-	if (0u == decoded.iRequestSequence || !Is_Known_World_Id(decoded.eWorldId))
+	decoded.eKind = static_cast<GATE_PROGRESS_KIND>(kind);
+	if (0u == decoded.iRequestSequence || !Is_Known_World_Id(decoded.eWorldId) ||
+		decoded.eKind >= GATE_PROGRESS_KIND::END)
 		return false;
 	message = decoded;
 	return true;
@@ -6657,6 +6663,7 @@ bool LostArk::Shared::Write_Message(
 	if (!Is_Known_World_Id(message.eWorldId) || message.iGateCount > 8u ||
 		message.iCurrentGate > message.iGateCount ||
 		message.eResult >= GATE_PROGRESS_VOTE_RESULT::END ||
+		message.eKind >= GATE_PROGRESS_KIND::END ||
 		message.iAccepted > message.iTotal)
 		return false;
 	writer.Write_U16(static_cast<std::uint16_t>(message.eWorldId));
@@ -6664,6 +6671,7 @@ bool LostArk::Shared::Write_Message(
 	writer.Write_U8(message.iCurrentGate);
 	writer.Write_U8(message.iClearedMask);
 	writer.Write_U32(message.iProposalId);
+	writer.Write_U8(static_cast<std::uint8_t>(message.eKind));
 	writer.Write_U32(message.iProposerNetEntityId);
 	writer.Write_U8(message.iAccepted);
 	writer.Write_U8(message.iTotal);
@@ -6679,15 +6687,20 @@ bool LostArk::Shared::Read_Message(
 	std::uint16_t world = 0u;
 	std::uint8_t closed = 0u;
 	std::uint8_t result = 0u;
+	std::uint8_t kind = 0u;
 	if (!reader.Read_U16(world) || !reader.Read_U8(decoded.iGateCount) ||
 		!reader.Read_U8(decoded.iCurrentGate) || !reader.Read_U8(decoded.iClearedMask) ||
-		!reader.Read_U32(decoded.iProposalId) || !reader.Read_U32(decoded.iProposerNetEntityId) ||
+		!reader.Read_U32(decoded.iProposalId) || !reader.Read_U8(kind) ||
+		!reader.Read_U32(decoded.iProposerNetEntityId) ||
 		!reader.Read_U8(decoded.iAccepted) || !reader.Read_U8(decoded.iTotal) ||
 		!reader.Read_U8(closed) || !reader.Read_U8(result) || closed > 1u)
 		return false;
 	decoded.eWorldId = static_cast<WORLD_ID>(world);
 	decoded.bClosed = 1u == closed;
 	decoded.eResult = static_cast<GATE_PROGRESS_VOTE_RESULT>(result);
+	decoded.eKind = static_cast<GATE_PROGRESS_KIND>(kind);
+	if (decoded.eKind >= GATE_PROGRESS_KIND::END)
+		return false;
 	if (!Is_Known_World_Id(decoded.eWorldId) || decoded.iGateCount > 8u ||
 		decoded.iCurrentGate > decoded.iGateCount ||
 		decoded.eResult >= GATE_PROGRESS_VOTE_RESULT::END ||
