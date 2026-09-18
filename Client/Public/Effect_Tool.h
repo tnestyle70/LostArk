@@ -569,6 +569,7 @@ private:
     void Render_ActiveAuthoredElementRow(const EFFECT_ELEMENT_DESC& element, size_t ordinal);
     void Render_CurrentEffectAttachmentGroups();
     bool_t Try_TranslateAttachmentGroup(const std::string& groupKey, const float3_t& delta);
+    bool_t Try_SetAttachmentGroupAnchor(const std::string& groupKey, const float3_t& position, const float3_t& rotationDegrees);
     bool_t Try_RotateAttachmentGroup(const std::string& groupKey, const float3_t& rotationDegrees);
     void Render_ProjectileDestinationControls();
     void Render_LoadedEffectContents();
@@ -1027,7 +1028,7 @@ private:
 	bool_t Stage_WorldPreview(const EFFECT_DOCUMENT_DESC& Document,
 		bool_t bAllowReadOnlySourceProjection);
     EFFECT_DOCUMENT_DESC Build_PreviewDocument(
-		const EFFECT_DOCUMENT_DESC& Document) const;
+		const EFFECT_DOCUMENT_DESC& Document, std::vector<std::string>* drawElementIds = nullptr) const;
     bool Build_ElementsPreviewDocument(const EFFECT_DOCUMENT_DESC& document,
         const std::vector<std::string>& elementIds, EFFECT_DOCUMENT_DESC& preview, std::string& error) const;
     bool Resolve_ElementsPreviewWindow(const EFFECT_DOCUMENT_DESC& document,

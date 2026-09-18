@@ -10,6 +10,8 @@
 float4x4 g_WorldMatrix;
 float4x4 g_ViewMatrix;
 float4x4 g_ProjMatrix;
+// Per-draw coverage scale/offset and reviewed positive-tiling adapter enable.
+float4 g_TrailSourceUVTransform;
 
 struct VS_IN
 {
@@ -28,6 +30,7 @@ struct VS_OUT
     float4 dynamicParameter : TEXCOORD2;
     float sourceProjectionW : TEXCOORD3;
     float3 worldPosition : TEXCOORD4;
+    float2 coverageUV : TEXCOORD5;
 };
 
 VS_OUT VS_MAIN(VS_IN input)
@@ -40,9 +43,31 @@ VS_OUT VS_MAIN(VS_IN input)
     output.worldPosition = mul(float4(input.position, 1.f), g_WorldMatrix).xyz;
     output.uv = input.uv * g_UVScale + g_UVOffset;
     output.runtimeUV = input.uv;
+    output.coverageUV = float2(input.uv.x * g_TrailSourceUVTransform.x +
+        g_TrailSourceUVTransform.y, input.uv.y);
     output.color = input.color;
     output.dynamicParameter = input.dynamicParameter;
     return output;
+}
+
+// Packed channels are selected from the recovered pixel-program consumers.
+// They are not a claim about unrecovered UE3 CPU vertex-buffer packing.
+float4 Resolve_NativeTrailUV(float2 distanceUV, float2 coverageUV,
+    uint sourceProfile, float enabled)
+{
+    if (enabled > 0.f)
+    {
+        // AnimationTrail: alpha mask uses xy; detail/noise uses zw.
+        // FlowRib 2410 (Valtan axe ribbon): x is a finite 0..1 length
+        // gradient (2x-1, 1-x); the tiled/panned samples read zw.
+        if (sourceProfile == 2379u || sourceProfile == 2410u)
+            return float4(coverageUV, distanceUV);
+        // WaterRibbon: the mask and finite 0..1 end taper both use zw.
+        if (sourceProfile == 2346u || sourceProfile == 2836u ||
+            sourceProfile == 3007u)
+            return float4(distanceUV, coverageUV);
+    }
+    return float4(distanceUV, distanceUV.yx);
 }
 
 EFFECT_PS_OUT PS_MATERIAL(VS_OUT input)
@@ -73,10 +98,10 @@ EFFECT_PS_OUT PS_MATERIAL(VS_OUT input)
     if (g_SourceMaterialProfile >= 2304u && g_SourceMaterialProfile <= 3967u)
     {
         ARTIST_NATIVE_INPUT nativeInput = (ARTIST_NATIVE_INPUT)0;
-        nativeInput.uv = input.runtimeUV;
-        // Water-ribbon UV1 is transverse width, then tiled path distance.
-        // Native edge coverage reads TEXCOORD0.z, not the first UV pair.
-        nativeInput.uv1 = input.runtimeUV.yx;
+        const float4 packedUV = Resolve_NativeTrailUV(input.runtimeUV,
+            input.coverageUV, g_SourceMaterialProfile, g_TrailSourceUVTransform.z);
+        nativeInput.uv = packedUV.xy;
+        nativeInput.uv1 = packedUV.zw;
         nativeInput.color = input.color * g_ColorMultiply + g_ColorOffset;
         nativeInput.vertexColor = input.color;
         nativeInput.dynamicParameter = input.dynamicParameter;
@@ -117,6 +142,10 @@ EFFECT_PS_OUT PS_MAIN(VS_OUT input)
     return output;
 }
 
+// Identical entry/profile/arguments compile once; pass states and indices stay unchanged.
+VertexShader EffectTrailVS = compile vs_5_0 VS_MAIN();
+PixelShader EffectTrailPS = compile ps_5_0 PS_MAIN();
+
 technique11 DefaultTechnique
 {
     pass OpaqueBackDepthWrite
@@ -124,44 +153,44 @@ technique11 DefaultTechnique
         SetRasterizerState(RS_Cull_None);
         SetDepthStencilState(DSS_Default, 0);
         SetBlendState(BS_EffectOpaque, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = EffectTrailVS;
         GeometryShader = NULL;
-        PixelShader = compile ps_5_0 PS_MAIN();
+        PixelShader = EffectTrailPS;
     }
     pass AlphaTwoSidedDepthRead
     {
         SetRasterizerState(RS_Cull_None);
         SetDepthStencilState(DSS_ReadOnly, 0);
         SetBlendState(BS_EffectAlpha, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = EffectTrailVS;
         GeometryShader = NULL;
-        PixelShader = compile ps_5_0 PS_MAIN();
+        PixelShader = EffectTrailPS;
     }
     pass AdditiveTwoSidedDepthRead
     {
         SetRasterizerState(RS_Cull_None);
         SetDepthStencilState(DSS_ReadOnly, 0);
         SetBlendState(BS_EffectAdditive, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = EffectTrailVS;
         GeometryShader = NULL;
-        PixelShader = compile ps_5_0 PS_MAIN();
+        PixelShader = EffectTrailPS;
     }
     pass AlphaOneSidedDepthRead
     {
         SetRasterizerState(RS_Default);
         SetDepthStencilState(DSS_ReadOnly, 0);
         SetBlendState(BS_EffectAlpha, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = EffectTrailVS;
         GeometryShader = NULL;
-        PixelShader = compile ps_5_0 PS_MAIN();
+        PixelShader = EffectTrailPS;
     }
     pass AdditiveOneSidedDepthRead
     {
         SetRasterizerState(RS_Default);
         SetDepthStencilState(DSS_ReadOnly, 0);
         SetBlendState(BS_EffectAdditive, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_MAIN();
+        VertexShader = EffectTrailVS;
         GeometryShader = NULL;
-        PixelShader = compile ps_5_0 PS_MAIN();
+        PixelShader = EffectTrailPS;
     }
 }

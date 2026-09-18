@@ -2079,6 +2079,41 @@ bool_t CCharacter::Apply_NetworkAction(
 		m_fEffectActionFacingYawDegrees = 0.f;
 		m_iLastNetworkActionStartTick = actionStartTick;
 	}
+	else if (PLAYER_ACTION_STATE::SQUAREHOLE_SONG == action)
+	{
+		if (INVALID_SKILL_ID != skillId || 0u == actionStartTick)
+			return false;
+		if (m_eNetworkAction == action &&
+			m_iLastNetworkActionStartTick == actionStartTick)
+		{
+			return true;
+		}
+		m_pChain = nullptr;
+		m_iChainStage = 0;
+		m_iChainStep = 0;
+		m_eKnockdownStep = KNOCKDOWN_STEP::NONE;
+		m_fActionPresentationSeconds = 0.f;
+		Commit_PendingClipChains();
+		/* The song loop is a body clip that outlasts the Server lock (6.4 s clip, 3 s
+		lock), so it never reaches its last frame before the release edge restores
+		locomotion. A class without the clip keeps its pose. */
+		const char_t* pSongClip =
+			m_pSpec->AnimationClips[ETOUI(CHARACTER_ANIM::SQUAREHOLE_SONG)];
+		CLIP_STEP SongStep{};
+		if (nullptr != pSongClip)
+			SongStep.clip = pSongClip;
+		if (!Start_Clip(SongStep))
+		{
+			Set_Animation(
+				m_isMoving ? CHARACTER_ANIM::RUN : CHARACTER_ANIM::IDLE,
+				true);
+		}
+		m_iCurrentEffectSkillId = INVALID_SKILL_ID;
+		m_iEffectActionStartTick = 0u;
+		m_bHasEffectActionFacingYaw = false;
+		m_fEffectActionFacingYawDegrees = 0.f;
+		m_iLastNetworkActionStartTick = actionStartTick;
+	}
     else if (PLAYER_ACTION_STATE::FEAR == action)
     {
         if (INVALID_SKILL_ID != skillId || 0u == actionStartTick) return false;
@@ -2144,6 +2179,7 @@ bool_t CCharacter::Apply_NetworkAction(
 	else if (PLAYER_ACTION_STATE::INTERACTION == m_eNetworkAction ||
 		PLAYER_ACTION_STATE::SKILL == m_eNetworkAction ||
 		PLAYER_ACTION_STATE::ESTHER_CAST == m_eNetworkAction ||
+		PLAYER_ACTION_STATE::SQUAREHOLE_SONG == m_eNetworkAction ||
 		PLAYER_ACTION_STATE::FEAR == m_eNetworkAction ||
 		PLAYER_ACTION_STATE::GRABBED == m_eNetworkAction ||
 		PLAYER_ACTION_STATE::VEHICLE_SKILL == m_eNetworkAction)
@@ -3712,6 +3748,7 @@ void CCharacter::Commit_Locomotion(bool_t isMoving)
 	if (Is_PlayingSkill() ||
 		LostArk::Shared::PLAYER_ACTION_STATE::INTERACTION == m_eNetworkAction ||
 		LostArk::Shared::PLAYER_ACTION_STATE::ESTHER_CAST == m_eNetworkAction ||
+		LostArk::Shared::PLAYER_ACTION_STATE::SQUAREHOLE_SONG == m_eNetworkAction ||
 		LostArk::Shared::PLAYER_ACTION_STATE::VEHICLE_SKILL == m_eNetworkAction)
 	{
 		return;

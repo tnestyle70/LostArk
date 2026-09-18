@@ -151,6 +151,55 @@ bool CMainApp::UpdateMapEffectPlacementInput()
     return true;
 }
 
+/* The World Level Tool's map edit session arms one viewport click. The loop
+   mirrors UpdateMapEffectPlacementInput so the click keeps exactly one
+   consumer: same foreground / ImGui / UI-router checks, same Esc and
+   right-click cancel, same one-pixel readback. */
+bool CMainApp::UpdateWorldLevelPlacementPickInput()
+{
+    const bool leftDown = (GetAsyncKeyState(VK_LBUTTON) & 0x8000) != 0;
+    const bool rightDown = (GetAsyncKeyState(VK_RBUTTON) & 0x8000) != 0;
+    if (!leftDown && !rightDown) m_bWorldLevelPickSuppressMouse = false;
+    if (!m_bWorldLevelPickArmed) return m_bWorldLevelPickSuppressMouse;
+    const auto currentLevel = CGameInstance::Get().Get_CurrentLevelID();
+    const bool valid = nullptr != m_pWorldLevelTool && m_pWorldLevelTool->Is_PlacementPickArmed() &&
+        m_bDeveloperToolsVisible && IsDebugToolVisible(DEBUG_TOOL::WORLD_LEVEL) &&
+        m_eDebugInputOwner == DEBUG_TOOL::WORLD_LEVEL && currentLevel == m_iWorldLevelPickLevel &&
+        m_pWorldLevelTool->Get_PlacementPickAreaId() == GetWorldLevelAreaId();
+    const HWND foreground = GetForegroundWindow();
+    DWORD foregroundProcess = 0u;
+    if (foreground) GetWindowThreadProcessId(foreground, &foregroundProcess);
+    if (!valid || foregroundProcess != GetCurrentProcessId() || rightDown ||
+        (GetAsyncKeyState(VK_ESCAPE) & 0x8000) != 0)
+    {
+        m_bWorldLevelPickArmed = false;
+        if (nullptr != m_pWorldLevelTool)
+            m_pWorldLevelTool->Cancel_PlacementPick(
+                "Pick cancelled; the previous selection was preserved.");
+        m_bWorldLevelPickSuppressMouse = leftDown || rightDown;
+        return true;
+    }
+    const bool pressed = leftDown && !m_bWorldLevelPickLeftDown;
+    m_bWorldLevelPickLeftDown = leftDown;
+    if (!pressed || foreground != g_hWnd || ImGui::GetIO().WantCaptureMouse || ImGui::GetIO().WantTextInput ||
+        CUIInputRouter::Get().Is_MouseClaimedThisFrame() || CUIInputRouter::Get().Was_MouseClaimedLastFrame())
+        return true;
+    CUIInputRouter::Get().Claim_Mouse_This_Frame();
+    m_bWorldLevelPickSuppressMouse = true;
+    float4_t picked{};
+    if (!CGameInstance::Get().Picking(picked) || !std::isfinite(picked.x) ||
+        !std::isfinite(picked.y) || !std::isfinite(picked.z))
+    {
+        /* No surface under the pixel: stay armed so the next click can hit. */
+        m_pWorldLevelTool->Set_Status(
+            "No visible mesh surface at this pixel. Click a surface again, or Esc to cancel.");
+        return true;
+    }
+    m_bWorldLevelPickArmed = false;
+    m_pWorldLevelTool->Complete_PlacementPick({picked.x, picked.y, picked.z});
+    return true;
+}
+
 void CMainApp::RenderMapEffectPlacementMarker()
 {
     if (!m_bDeveloperToolsVisible) return;
@@ -212,6 +261,9 @@ void CMainApp::UpdateWorldLevelTool()
 {
     if (!m_pWorldLevelTool) return;
     m_pWorldLevelTool->Set_ActiveArea(GetWorldLevelAreaId());
+    /* The map edit session keeps running while the window is closed: a publish
+       still has to report and a Level change still has to end it. */
+    m_pWorldLevelTool->Update(m_bDeveloperToolsVisible && IsDebugToolVisible(DEBUG_TOOL::WORLD_LEVEL));
     for (const auto owner : {WORLD_LEVEL_COMPOSITION_OWNER::ACTION, WORLD_LEVEL_COMPOSITION_OWNER::SEQUENCE})
     {
         auto* workbench = owner == WORLD_LEVEL_COMPOSITION_OWNER::ACTION ?
@@ -256,6 +308,28 @@ void CMainApp::RenderWorldLevelTool()
     {
         if (request.areaId != GetWorldLevelAreaId()) status = "Enter this Area before focusing its world position.";
         else (void)FocusWorldLevelPosition(request.position, 8.f, status);
+    }
+    else if (request.kind == WORLD_LEVEL_REQUEST_KIND::PICK_PLACEMENT)
+    {
+        if (request.areaId.empty() || request.areaId != GetWorldLevelAreaId())
+        {
+            m_bWorldLevelPickArmed = false;
+            m_pWorldLevelTool->Cancel_PlacementPick({});
+            status = "Enter the Level that owns " + request.areaId + " before picking its map objects.";
+        }
+        else
+        {
+            // One viewport click has one authoring consumer, even if Move Player was armed earlier.
+            if (auto* arena = CLevel_KakulSaydonArena::Get_Active())
+                arena->Get_DebugPlayerController().Cancel_DebugPlayerPlacement();
+            if (auto* select = CLevel_CharacterSelect::Get_Active())
+                select->Get_DebugPlayerController().Cancel_DebugPlayerPlacement();
+            m_bWorldLevelPickArmed = true;
+            m_iWorldLevelPickLevel = CGameInstance::Get().Get_CurrentLevelID();
+            m_bWorldLevelPickLeftDown = true;
+            m_eDebugInputOwner = DEBUG_TOOL::WORLD_LEVEL;
+            status = "Click a map object in the viewport once. Esc / right-click cancels.";
+        }
     }
     else if (request.kind == WORLD_LEVEL_REQUEST_KIND::OPEN_LIGHT)
     {

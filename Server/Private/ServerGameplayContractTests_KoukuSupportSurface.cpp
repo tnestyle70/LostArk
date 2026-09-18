@@ -2,6 +2,7 @@
 #include "ServerGameplayContractTests.h"
 #include "GameplayCatalog.h"
 #include "KoukuSaydonBrain.h"
+#include "BossCombatRuntime.h"
 #include "GameRoom.h"
 #include "Network/PacketReader.h"
 #include "Network/PacketWriter.h"
@@ -172,6 +173,62 @@ REGION "blocked" "closed" 0 1
 		"Stop owner restores only the boss previously supported by the removed floor");
 	tests.Require(room->m_WorldEntities[2].fPositionY == 8.63f && room->m_WorldEntities[3].fPositionY == 8.63f,
 		"Removing the WORLD floor preserves both scripted airborne motion authorities");
+
+	{
+		// Counter success must close the rolling-ball WORLD owner before groggy starts.
+		auto& counterBoss = room->m_WorldEntities.front();
+		const auto counterBossBefore = std::make_unique<SERVER_WORLD_ENTITY>(counterBoss);
+		const auto counterTickBefore = room->m_iServerTick;
+		const auto counterStatusBefore = room->m_strStatus;
+		counterBoss.strPatternId = "KAKULSAYDON_COUNTER_LANDING"; counterBoss.strActionId = "counter.action";
+		counterBoss.iPatternSequence = 91u; counterBoss.fPositionY = 3.9f; counterBoss.fCollisionRadius = .5f;
+		counterBoss.fSpawnPositionX = counterBoss.fPositionX; counterBoss.fSpawnPositionZ = counterBoss.fPositionZ;
+		counterBoss.fSpawnPositionY = 1.25f;
+		counterBoss.PatternStageRootMotion = {{0u, 0.f, 0.f, 0.f}, {3000u, 0.f, 0.f, 2.6f}};
+		counterBoss.bPatternStageRootOriginCaptured = true;
+		CGameRoom::KOUKUSAYDON_PATTERN_AUDITION_MEMBER counterMember;
+		counterMember.strMemberId = "counter.member"; counterMember.iBossEntityId = counterBoss.iNetEntityId;
+		counterMember.PatternIds = {counterBoss.strPatternId}; counterMember.iPatternSequence = counterBoss.iPatternSequence;
+		counterMember.WorldCueByInstance["rolling.ball"] = "ball.cue";
+		counterMember.WorldCueByOccurrence["counter.world.1"] = "ball.cue";
+		room->m_KoukuSaydonPatternAudition.Members = {counterMember};
+		S2C_WORLD_SEQUENCE_PLAY ball; ball.iRunEpoch = 1u; ball.strMemberId = counterMember.strMemberId;
+		ball.strCueId = "ball.cue"; ball.strOccurrenceId = "counter.world.1"; ball.strSequenceInstanceId = "rolling.ball";
+		ball.iBossNetEntityId = counterBoss.iNetEntityId; ball.iPatternSequence = counterBoss.iPatternSequence;
+		auto otherBall = ball; otherBall.strMemberId = "other.member"; otherBall.strCueId = "other.cue";
+		room->m_KoukuSaydonPatternAudition.WorldPlays = {ball, otherBall};
+		room->m_PendingKoukuMechanicTriggers = {{counterBoss.iNetEntityId, counterBoss.iPatternSequence, {}}, {701u, 1u, {}}};
+		BOSS_PATTERN_DEFINITION counterPattern; counterPattern.strPatternId = counterBoss.strPatternId;
+		BOSS_PATTERN_LOGIC_WINDOW counterWindow; counterWindow.strWindowId = "counter.window";
+		counterWindow.eKind = BOSS_PATTERN_LOGIC_KIND::COUNTER_WINDOW; counterWindow.iDurationMs = 2837u;
+		counterWindow.bEndsPatternOnSuccess = true;
+		counterWindow.OnSuccess.push_back({BOSS_PATTERN_LOGIC_RESULT_KIND::FOLLOWUP_PATTERN, 0u, 0u, "KAKULSAYDON_G1_PATTERN_4"});
+		counterPattern.LogicWindows = {counterWindow};
+		auto& counterLedger = room->m_KoukuSaydonPatternAudition.Members.front().LogicLedger;
+		KOUKUSAYDON_LOGIC_OUTPUT counterOutput; std::vector<DAMAGE_EVENT> counterDamage;
+		CKoukuSaydonLogicRuntime::Build(counterPattern, counterBoss, 120u, counterLedger);
+		CKoukuSaydonLogicRuntime::Update(counterBoss, counterPattern, counterLedger, room->m_Players,
+			room->m_GameplayCatalog, nullptr, 120u, counterDamage, counterOutput, &room->m_ServerNavigation, &room->m_ServerCollisionSystem);
+		const bool counterHit = CBossCombatRuntime::Try_TriggerCounter(counterBoss, 121u);
+		CKoukuSaydonLogicRuntime::Update(counterBoss, counterPattern, counterLedger, room->m_Players,
+			room->m_GameplayCatalog, nullptr, 121u, counterDamage, counterOutput, &room->m_ServerNavigation, &room->m_ServerCollisionSystem);
+		room->m_iServerTick = 121u;
+		const bool completed = counterHit && room->Apply_KoukuLogicOutput(counterOutput, counterBoss, 121u);
+		const auto& committed = room->m_KoukuSaydonPatternAudition.Members.front();
+		tests.Require(completed && counterOutput.bCounterSuccessLanded && std::abs(counterBoss.fPositionY - 1.25f) < .0001f &&
+			counterBoss.strPatternId.empty() && counterBoss.PatternStageRootMotion.empty() && !counterBoss.bPatternStageRootOriginCaptured &&
+			committed.PatternIds.size() == 2u && committed.PatternIds.back() == "KAKULSAYDON_G1_PATTERN_4" &&
+			committed.TransitionTicks == std::vector<std::uint32_t>{1u},
+			"Actual counter verdict lands, clears source root motion and schedules existing groggy one tick later");
+		tests.Require(room->m_KoukuSaydonPatternAudition.WorldPlays.size() == 1u &&
+			room->m_KoukuSaydonPatternAudition.WorldPlays.front().strMemberId == "other.member" &&
+			committed.WorldCueByInstance.empty() && committed.WorldCueByOccurrence.empty() &&
+			room->m_PendingKoukuMechanicTriggers.size() == 1u && room->m_PendingKoukuMechanicTriggers.front().iBossEntityId == 701u,
+			"Counter interruption stops only its active ball WORLD owner and pending mechanics, preserving another member");
+		room->m_KoukuSaydonPatternAudition.Members.clear(); room->m_KoukuSaydonPatternAudition.WorldPlays.clear();
+		room->m_PendingKoukuMechanicTriggers.clear();
+		counterBoss = *counterBossBefore; room->m_iServerTick = counterTickBefore; room->m_strStatus = counterStatusBefore;
+	}
 
 	// Albion uses this same ground authority and the existing combat-object transaction.
 	room->m_CombatObjectRuntime.Reset();
@@ -368,6 +425,142 @@ REGION "blocked" "closed" 0 1
 	tests.Require(readPoses() == beforeRejectedWave && room->m_CombatObjectRuntime.Begin_Transaction().iNextCombatObjectId == beforeRejectedId,
 		"No eligible arena player preserves the entire previous Albion wave instead of spawning only its random supplement");
 
+	// Pursuit shares the actual room clock and combat-object lifecycle; it owns no damage.
+	{
+		room->m_CombatObjectRuntime.Reset(); room->m_CombatObjectRuntime.Discard_PendingLifecycle();
+		room->m_Players.clear();
+		auto& target = room->m_Players[1u];
+		target.iPlayerId = 1u; target.iNetEntityId = 101u; target.iCurrentHp = target.iMaximumHp = 100u;
+		target.isCombatReady = true; target.fPositionX = 10000.f; target.fPositionZ = 10000.f;
+		albionOwner.iCurrentHp = 100u; albionOwner.eAction = SERVER_ENTITY_ACTION::IDLE;
+		albionOwner.strPatternId = "KAKULSAYDON_TEST_PURSUIT"; albionOwner.iPatternSequence = 70u;
+		albionOwner.iPatternTargetEntityId = target.iNetEntityId;
+		albionOwner.fPositionX = albionOwner.fPositionZ = 0.f;
+		BOSS_PATTERN_MECHANIC_TRIGGER pursuit;
+		pursuit.strTriggerId = "test.pursuit"; pursuit.eKind = BOSS_PATTERN_MECHANIC_TRIGGER_KIND::PURSUIT_PROJECTILES;
+		pursuit.iStartMs = 100u; pursuit.iDurationMs = 901u;
+		pursuit.ProjectileVisualIds = { "test.heart", "test.clover", "test.diamond", "test.spade" };
+		pursuit.strContactVisualId = "test.card.explosion";
+		pursuit.fProjectileSpeedMps = 1.f; pursuit.fProjectileContactRadiusM = .4f;
+		pursuit.fProjectileSpawnRadiusM = 2.f; pursuit.iProjectileCountPerWave = 4u;
+		pursuit.bProjectileHoming = true;
+		BOSS_PATTERN_DEFINITION pattern; pattern.strPatternId = albionOwner.strPatternId; pattern.MechanicTriggers = { pursuit };
+		KOUKUSAYDON_LOGIC_LEDGER ledger;
+		CKoukuSaydonLogicRuntime::Build(pattern, albionOwner, 6000u, ledger);
+		room->Update_KoukuPlayerTargets(albionOwner, pattern, ledger, room->m_GameplayCatalog, 6002u);
+		tests.Require(room->m_CombatObjectRuntime.Get_LiveObjects().empty(), "Pursuit respects the authored spawn start");
+		room->Update_KoukuPlayerTargets(albionOwner, pattern, ledger, room->m_GameplayCatalog, 6003u);
+		room->Update_KoukuPlayerTargets(albionOwner, pattern, ledger, room->m_GameplayCatalog, 6004u);
+		tests.Require(room->m_CombatObjectRuntime.Get_LiveObjects().size() == 4u, "One infinite homing wave creates four distinct visual objects once");
+		std::vector<DAMAGE_EVENT> damage;
+		room->m_CombatObjectRuntime.Update(room->m_Players, room->m_WorldEntities, room->m_GameplayCatalog, 601.f, 6005u, damage);
+		const auto firstPose = room->m_CombatObjectRuntime.Get_LiveObjects().front().LiveState.CurrentPose;
+		target.fPositionX = -10000.f;
+		room->m_CombatObjectRuntime.Update(room->m_Players, room->m_WorldEntities, room->m_GameplayCatalog, 1.f, 6006u, damage);
+		const auto& moving = room->m_CombatObjectRuntime.Get_LiveObjects();
+		tests.Require(moving.size() == 4u && moving.front().LiveState.CurrentPose.fPositionX < firstPose.fPositionX && damage.empty(),
+			"Infinite cards survive the old ten-minute lifetime and turn toward the current authoritative target without damage");
+		room->Clear_KoukuPlayerTargets(albionOwner, ledger);
+		tests.Require(room->m_CombatObjectRuntime.Get_LiveObjects().size() == 4u, "Natural pattern completion leaves persistent cards alive");
+		target.iCurrentHp = 0u;
+		room->m_CombatObjectRuntime.Update(room->m_Players, room->m_WorldEntities, room->m_GameplayCatalog, 1.f / 30.f, 6007u, damage);
+		tests.Require(room->m_CombatObjectRuntime.Get_LiveObjects().empty(), "Target death retires every homing card");
+		target.iCurrentHp = 100u;
+		room->m_CombatObjectRuntime.Discard_PendingLifecycle();
+		pursuit.iStartMs = 0u; pursuit.iProjectileLifetimeMs = 5000u; pursuit.iSpawnIntervalMs = 300u;
+		pursuit.iProjectileCountPerWave = 3u; pursuit.bProjectileHoming = false; pursuit.fProjectileSpeedMps = 15.f;
+		pattern.MechanicTriggers = { pursuit }; CKoukuSaydonLogicRuntime::Build(pattern, albionOwner, 6100u, ledger);
+		for (std::uint32_t tick = 6100u; tick <= 6128u; ++tick)
+			room->Update_KoukuPlayerTargets(albionOwner, pattern, ledger, room->m_GameplayCatalog, tick);
+		tests.Require(room->m_CombatObjectRuntime.Get_LiveObjects().size() == 12u, "Source 300 ms cadence emits three cards in each of four waves");
+		room->m_CombatObjectRuntime.Update(room->m_Players, room->m_WorldEntities, room->m_GameplayCatalog, 5.1f, 6129u, damage);
+		tests.Require(room->m_CombatObjectRuntime.Get_LiveObjects().empty(), "Finite spinning cards retire at their authored five-second lifetime");
+		std::vector<S2C_COMBAT_OBJECT_SPAWNED> expiredSpawns;
+		std::vector<S2C_COMBAT_OBJECT_PRESENTATION_EVENT> expiredEvents;
+		std::vector<S2C_COMBAT_OBJECT_DESPAWNED> expiredObjects;
+		room->m_CombatObjectRuntime.Drain_Lifecycle(expiredSpawns, expiredEvents, expiredObjects);
+		tests.Require(expiredEvents.size() == 12u && expiredObjects.size() == 12u &&
+			std::all_of(expiredEvents.begin(), expiredEvents.end(), [&](const auto& event) { return event.strHitId == pursuit.strContactVisualId; }),
+			"Every finite card emits its shared burst exactly once at lifetime end");
+		room->m_CombatObjectRuntime.Discard_PendingLifecycle();
+		// Source Speed is 8 m/s; MaxDistance is independent of its five-second lifetime.
+		pursuit.iDurationMs = 4100u; pursuit.fProjectileSpeedMps = 8.f; pursuit.fProjectileMaxDistanceM = 15.f;
+		pattern.MechanicTriggers = { pursuit }; CKoukuSaydonLogicRuntime::Build(pattern, albionOwner, 6150u, ledger);
+		for (std::uint32_t tick = 6150u; tick <= 6273u; ++tick)
+			room->Update_KoukuPlayerTargets(albionOwner, pattern, ledger, room->m_GameplayCatalog, tick);
+		tests.Require(room->m_CombatObjectRuntime.Get_LiveObjects().size() == 42u,
+			"Current 4.8-second spin extends source cadence to fourteen three-card waves, with no wave past the window");
+		const auto distanceOrigin = room->m_CombatObjectRuntime.Get_LiveObjects().front().LiveState.CurrentPose;
+		room->m_CombatObjectRuntime.Update(room->m_Players, room->m_WorldEntities, room->m_GameplayCatalog, 1.f, 6274u, damage);
+		const auto& travelling = room->m_CombatObjectRuntime.Get_LiveObjects();
+		tests.Require(travelling.size() == 42u && std::abs(travelling.front().fRemainingDistanceM - 7.f) < .0001f &&
+			std::abs(std::hypot(travelling.front().LiveState.CurrentPose.fPositionX - distanceOrigin.fPositionX,
+				travelling.front().LiveState.CurrentPose.fPositionZ - distanceOrigin.fPositionZ) - 8.f) < .0001f,
+			"Spinning cards move eight metres in one second and retain the remaining seven metres");
+		room->m_CombatObjectRuntime.Update(room->m_Players, room->m_WorldEntities, room->m_GameplayCatalog, 1.f, 6275u, damage);
+		expiredSpawns.clear(); expiredEvents.clear(); expiredObjects.clear();
+		room->m_CombatObjectRuntime.Drain_Lifecycle(expiredSpawns, expiredEvents, expiredObjects);
+		std::erase_if(expiredEvents, [&](const auto& event) { return event.strHitId != pursuit.strContactVisualId; });
+		tests.Require(room->m_CombatObjectRuntime.Get_LiveObjects().empty() && expiredEvents.size() == 42u && expiredObjects.size() == 42u &&
+			std::abs(std::hypot(expiredEvents.front().fPositionX - distanceOrigin.fPositionX,
+				expiredEvents.front().fPositionZ - distanceOrigin.fPositionZ) - 15.f) < .0001f,
+			"Distance-limited cards stop at fifteen metres and burst exactly once before the five-second lifetime");
+		room->m_CombatObjectRuntime.Discard_PendingLifecycle();
+		pursuit.fProjectileMaxDistanceM = 0.f; pursuit.fProjectileSpeedMps = 15.f;
+		pursuit.iSpawnIntervalMs = 0u; pursuit.iProjectileCountPerWave = 1u;
+		pattern.MechanicTriggers = { pursuit }; CKoukuSaydonLogicRuntime::Build(pattern, albionOwner, 6200u, ledger);
+		room->Update_KoukuPlayerTargets(albionOwner, pattern, ledger, room->m_GameplayCatalog, 6200u);
+		const auto contactPose = room->m_CombatObjectRuntime.Get_LiveObjects().front().LiveState.CurrentPose;
+		target.fPositionX = contactPose.fPositionX + contactPose.fDirectionX * 7.5f;
+		target.fPositionZ = contactPose.fPositionZ + contactPose.fDirectionZ * 7.5f;
+		room->m_CombatObjectRuntime.Update(room->m_Players, room->m_WorldEntities, room->m_GameplayCatalog, 1.f, 6201u, damage);
+		std::vector<S2C_COMBAT_OBJECT_SPAWNED> spawned; std::vector<S2C_COMBAT_OBJECT_PRESENTATION_EVENT> events;
+		std::vector<S2C_COMBAT_OBJECT_DESPAWNED> despawned;
+		room->m_CombatObjectRuntime.Drain_Lifecycle(spawned, events, despawned);
+		tests.Require(events.size() == 1u && events.front().strHitId == pursuit.strContactVisualId && despawned.size() == 1u &&
+			events.front().fPositionX == target.fPositionX && events.front().fPositionZ == target.fPositionZ &&
+			room->m_CombatObjectRuntime.Get_LiveObjects().empty() && damage.empty(), "Swept card contact emits one pinned reliable explosion and retires the object");
+		// The new P78 PLAY rows are four independent, finite 4.5-second homing windows.
+		room->m_CombatObjectRuntime.Discard_PendingLifecycle();
+		target.fPositionX = target.fPositionZ = 10000.f;
+		pattern.MechanicTriggers.clear();
+		for (std::uint32_t suit = 0u; suit < 4u; ++suit)
+		{
+			auto card = pursuit; card.strTriggerId = "p78.card." + std::to_string(suit);
+			card.iStartMs = 0u; card.iDurationMs = card.iProjectileLifetimeMs = 4500u;
+			card.ProjectileVisualIds = {pursuit.ProjectileVisualIds[suit]};
+			card.iProjectileCountPerWave = 1u; card.bProjectileHoming = true;
+			card.fProjectileContactRadiusM = 1.25f; card.fProjectileSpeedMps = 1.f;
+			pattern.MechanicTriggers.push_back(card);
+		}
+		CKoukuSaydonLogicRuntime::Build(pattern, albionOwner, 6250u, ledger);
+		room->Update_KoukuPlayerTargets(albionOwner, pattern, ledger, room->m_GameplayCatalog, 6250u);
+		const auto& finiteCards = room->m_CombatObjectRuntime.Get_LiveObjects();
+		tests.Require(finiteCards.size() == 4u && std::all_of(finiteCards.begin(), finiteCards.end(), [](const auto& card) {
+			return card.bHoming && !card.bPersistentLifetime && card.fRemainingMilliseconds == 4500.f &&
+				card.fContactPresentationRadiusM == 1.25f && card.Hits.empty(); }),
+			"Four P78 windows each create one finite 4500ms homing card with 1.25m radius and no damage");
+		room->m_CombatObjectRuntime.Update(room->m_Players, room->m_WorldEntities, room->m_GameplayCatalog, 4.499f, 6384u, damage);
+		tests.Require(room->m_CombatObjectRuntime.Get_LiveObjects().size() == 4u,
+			"P78 cards remain alive immediately before their saved 4.5-second lifetime");
+		room->m_CombatObjectRuntime.Update(room->m_Players, room->m_WorldEntities, room->m_GameplayCatalog, .002f, 6385u, damage);
+		spawned.clear(); events.clear(); despawned.clear();
+		room->m_CombatObjectRuntime.Drain_Lifecycle(spawned, events, despawned);
+		std::erase_if(events, [&](const auto& event) { return event.strHitId != pursuit.strContactVisualId; });
+		tests.Require(events.size() == 4u && despawned.size() == 4u && room->m_CombatObjectRuntime.Get_LiveObjects().empty(),
+			"Each finite P78 card expires with one reliable burst and one despawn at its saved lifetime");
+		room->m_CombatObjectRuntime.Update(room->m_Players, room->m_WorldEntities, room->m_GameplayCatalog, 1.f, 6386u, damage);
+		spawned.clear(); events.clear(); despawned.clear();
+		room->m_CombatObjectRuntime.Drain_Lifecycle(spawned, events, despawned);
+		tests.Require(events.empty() && despawned.empty(), "Retired finite cards cannot emit duplicate terminal events");
+		pattern.MechanicTriggers = {pursuit};
+		pattern.MechanicTriggers.front().bProjectileHoming = true;
+		CKoukuSaydonLogicRuntime::Build(pattern, albionOwner, 6300u, ledger);
+		room->Update_KoukuPlayerTargets(albionOwner, pattern, ledger, room->m_GameplayCatalog, 6300u);
+		room->m_CombatObjectRuntime.Cancel_Source(albionOwner.iNetEntityId);
+		tests.Require(room->m_CombatObjectRuntime.Get_LiveObjects().empty(), "Explicit Stop uses source cancellation for surviving cards");
+		room->m_CombatObjectRuntime.Reset(); room->m_CombatObjectRuntime.Discard_PendingLifecycle(); room->m_Players.clear();
+	}
 	// Showtime duration uses the same room-owned roster, clock, ground and object lifecycle.
 	room->m_CombatObjectRuntime.Reset();
 	room->m_ServerNavigation.Set_RuntimeSupportSurfaces({}, status);
@@ -669,6 +862,26 @@ REGION "blocked" "closed" 0 1
 		BOSS_PATTERN_MECHANIC_TRIGGER phase; phase.strTriggerId="air.jump"; phase.eKind=BOSS_PATTERN_MECHANIC_TRIGGER_KIND::ALBION_AIRBORNE;
 		phase.eAirbornePhase=Phase::JUMP; phase.fAirborneHeightM=13.6788133f; phase.iAirborneDurationMs=200u;
 		const auto rootAt=[&](std::uint32_t tick) { return CKoukuSaydonBrain::Apply_StageRootMotion(albionOwner,pattern,tick,room->m_ServerNavigation,room->m_ServerCollisionSystem,status); };
+		const auto beforeInstant = std::make_unique<SERVER_WORLD_ENTITY>(albionOwner);
+		phase.iAirborneDurationMs=0u; phase.fAirborneHeightM=11.1910783f;
+		tests.Require(room->Commit_KoukuAlbionAirborne(albionOwner,pattern,phase,12000u) &&
+			std::abs(albionOwner.fPositionY-12.1910783f)<.00001f,
+			"Zero-duration JUMP initializes the requested high pose on its first server tick");
+		albionOwner.PatternStageRootMotion={{0u,0.f,0.f,0.f},{1000u,0.f,.5f,-5.59553915f},{2000u,0.f,1.f,-11.1910783f},{8000u,0.f,1.f,-10.7271685f}};
+		phase.eAirbornePhase=Phase::SLAM; phase.fAirborneHeightM=0.f;
+		tests.Require(room->Commit_KoukuAlbionAirborne(albionOwner,pattern,phase,12000u) &&
+			std::abs(albionOwner.fPositionY-12.1910783f)<.00001f && rootAt(12030u) &&
+			std::abs(albionOwner.fPositionY-6.59553915f)<.00001f && rootAt(12060u) && albionOwner.fPositionY==1.f &&
+			albionOwner.fPositionX==6.f && albionOwner.fPositionZ==6.f,
+			"Same-tick high initialization and native descent preserve full height, midpoint and grounded endpoint");
+		pattern.Stages.emplace_back(); pattern.Stages.back().iDurationMs=1000u;
+		albionOwner.iPatternStageIndex=1u; albionOwner.iPatternStageFirstEvaluationTick=12240u;
+		albionOwner.PatternStageRootMotion={{0u,0.f,0.f,0.f},{1000u,0.f,2.f,4.f}};
+		albionOwner.bPatternStageRootOriginCaptured=false; albionOwner.iPatternStageRootLastTick=0u;
+		tests.Require(rootAt(12255u) && std::abs(albionOwner.fPositionY-3.f)<.00001f && std::abs(albionOwner.fPositionX-7.f)<.00001f,
+			"A later stage resumes its own native root rise and lateral movement after the landing owner ends");
+		pattern.Stages.resize(1u);
+		albionOwner=*beforeInstant; phase.eAirbornePhase=Phase::JUMP; phase.fAirborneHeightM=13.6788133f; phase.iAirborneDurationMs=200u;
 		tests.Require(room->Commit_KoukuAlbionAirborne(albionOwner,pattern,phase,12000u) && albionOwner.fPositionY==1.f,
 			"Albion jump begins at the current ground without an instant vertical snap even on an empty source curve");
 		tests.Require(rootAt(12003u) && std::abs(albionOwner.fPositionY-1.f-13.6788133f*.5f)<.00001f,
@@ -718,7 +931,46 @@ REGION "blocked" "closed" 0 1
 		tests.Require(!room->Commit_KoukuAlbionAirborne(albionOwner,pattern,phase,12231u) && albionOwner.fPositionY==beforeFlat->fPositionY &&
 			albionOwner.AlbionAirborne.fSourceUpMinimum==beforeFlat->AlbionAirborne.fSourceUpMinimum,
 			"A source curve without remaining descent rejects the phase without replacing the prior state");
-		room->m_KoukuSaydonBrain.Abort_Pattern(albionOwner,12232u);
+        // SELECT policy captures navigation ground once and shares the reliable fixed object pivot.
+        const auto savedAuditionPhase=room->m_KoukuSaydonPatternAudition.ePhase;
+        const auto savedAuditionRevision=room->m_KoukuSaydonPatternAudition.PinnedGameplayRevision;
+        const auto savedAuditionSource=room->m_KoukuSaydonPatternAudition.iPinnedSourceRevision;
+        room->m_KoukuSaydonPatternAudition.ePhase=CGameRoom::KOUKUSAYDON_PATTERN_AUDITION_PHASE::ACTIVE;
+        room->m_KoukuSaydonPatternAudition.PinnedGameplayRevision=room->m_GameplayCatalog.Get_ActiveRevision();
+        room->m_KoukuSaydonPatternAudition.iPinnedSourceRevision=CKoukuSaydonBrain::Resolve_ProductSourceRevision(room->m_GameplayCatalog);
+        room->m_CombatObjectRuntime.Reset();
+        room->m_Players.clear(); target.iPlayerId=1u; target.iNetEntityId=401u;
+        target.iCurrentHp=100u; target.fPositionX=10.f; target.fPositionY=99.f; target.fPositionZ=10.f;
+        room->m_Players[1u]=target;
+        phase.eAirbornePhase=Phase::SELECT_PLAYER; phase.iStartMs=0u; phase.fAirborneHeightM=0.f;
+        phase.bCaptureAirborneTargetPosition=true; phase.strSelectedEffectVisualId="test.selected.group"; phase.iSelectedEffectLifetimeMs=2000u;
+        tests.Require(room->Commit_KoukuAlbionAirborne(albionOwner,pattern,phase,12231u) &&
+            albionOwner.AlbionAirborne.bHasSelectedGround && albionOwner.AlbionAirborne.SelectedGround.x==10.f &&
+            albionOwner.AlbionAirborne.SelectedGround.y==1.f && albionOwner.AlbionAirborne.SelectedGround.z==10.f,
+            "SELECT policy pins the actual navigation ground rather than the player's transient visual height");
+        const auto& selectedObjects=room->m_CombatObjectRuntime.Get_LiveObjects();
+        tests.Require(selectedObjects.size()==1u && selectedObjects.front().strClientVisualId=="test.selected.group" &&
+            selectedObjects.front().LiveState.CurrentPose.fPositionX==10.f && selectedObjects.front().LiveState.CurrentPose.fPositionY==1.f &&
+            selectedObjects.front().LiveState.CurrentPose.fPositionZ==10.f && selectedObjects.front().LiveState.CurrentPose.fYawDegrees==0.f &&
+            selectedObjects.front().Hits.empty(), "The single reliable fixed Effect object shares the captured XYZ and has no damage or boss yaw");
+        const auto beforeSelectedFailure=albionOwner.AlbionAirborne;
+        phase.iSelectedEffectLifetimeMs=0u;
+        tests.Require(!room->Commit_KoukuAlbionAirborne(albionOwner,pattern,phase,12231u) &&
+            room->m_CombatObjectRuntime.Get_LiveObjects().size()==1u && albionOwner.AlbionAirborne.SelectedGround.x==beforeSelectedFailure.SelectedGround.x,
+            "A rejected fixed-object transaction preserves the previous target anchor and live Effect");
+        phase.strSelectedEffectVisualId.clear(); phase.bCaptureAirborneTargetPosition=false;
+        phase.eAirbornePhase=Phase::APPEAR_PLAYER; phase.fAirborneHeightM=3.2783114f;
+        room->m_Players[1u].fPositionX=12.f; room->m_Players[1u].fPositionZ=12.f; room->m_Players[1u].iCurrentHp=0u;
+        tests.Require(room->Commit_KoukuAlbionAirborne(albionOwner,pattern,phase,12231u) &&
+            albionOwner.AlbionAirborne.iSelectedPlayer==401u && albionOwner.fPositionX==10.f && albionOwner.fPositionZ==10.f &&
+            std::abs(albionOwner.fPositionY-4.2783114f)<.00001f,
+            "SELECT policy appearance reuses its exact ground point after player movement and death without replacement");
+        room->m_CombatObjectRuntime.Cancel_Source(albionOwner.iNetEntityId);
+        room->m_KoukuSaydonPatternAudition.ePhase=savedAuditionPhase;
+        room->m_KoukuSaydonPatternAudition.PinnedGameplayRevision=savedAuditionRevision;
+        room->m_KoukuSaydonPatternAudition.iPinnedSourceRevision=savedAuditionSource;
+        tests.Require(room->m_CombatObjectRuntime.Get_LiveObjects().empty(), "Existing Stop/source cleanup removes the captured group object");
+        room->m_KoukuSaydonBrain.Abort_Pattern(albionOwner,12232u);
 		tests.Require(albionOwner.AlbionAirborne.ePhase==Phase::NONE && albionOwner.AlbionAirborne.iSelectedPlayer==INVALID_NET_ENTITY_ID,
 			"Pattern abort clears the airborne phase and pinned player without a second movement authority");
 		albionOwner=*savedOwner; room->m_Players=savedPlayers;
@@ -821,6 +1073,26 @@ REGION "blocked" "closed" 0 1
 			"test.fixed\ttest.tracking\t4384\t2000\tNaN", "test.fixed\ttest.tracking\t4384\t2000\t11" })
 			rejectedInvalid = !loadTargetRow(fields) && parsedTargets.Get_ActiveRevision() == admittedRevision && rejectedInvalid;
 		tests.Require(rejectedInvalid, "Invalid Showtime identity, lifetime, interval and speed preserve the previous admitted catalog");
+		const std::string pursuitRow = "PATTERNPURSUITPROJECTILES\t" + encounter + "\t" + patternId +
+			"\ttest.pursuit\t0\t901\ttest.heart\ttest.clover\ttest.diamond\ttest.spade\ttest.explosion\t15\t0.4\t2\t5000\t300\t0\t3";
+		const bool parsedPursuit = loadSupplement(pursuitRow);
+		const auto* pursuitPattern = parsedPursuit ? CKoukuSaydonBrain::Find_AnimationOnlyPattern(parsedTargets, patternId, status) : nullptr;
+		tests.Require(pursuitPattern && pursuitPattern->MechanicTriggers.size() == 1u &&
+			pursuitPattern->MechanicTriggers.front().ProjectileVisualIds.size() == 4u &&
+			pursuitPattern->MechanicTriggers.front().iProjectileCountPerWave == 3u,
+			"Eighteen-field pursuit bootstrap reaches the admitted typed mechanic");
+		tests.Require(loadSupplement(pursuitRow + "\t15"), "Nineteen-field pursuit bootstrap accepts an independent distance cap");
+		pursuitPattern = CKoukuSaydonBrain::Find_AnimationOnlyPattern(parsedTargets, patternId, status);
+		tests.Require(pursuitPattern && pursuitPattern->MechanicTriggers.front().fProjectileMaxDistanceM == 15.f,
+			"Pursuit distance cap reaches the admitted Server mechanic");
+		const auto pursuitRevision = parsedTargets.Get_ActiveRevision();
+		for (const std::string distance : { "-1", "1000.1", "NaN", "wrong" })
+			tests.Require(!loadSupplement(pursuitRow + "\t" + distance) && parsedTargets.Get_ActiveRevision() == pursuitRevision,
+				"Invalid pursuit distance preserves the admitted catalog");
+		std::string badPursuit = pursuitRow;
+		badPursuit.replace(badPursuit.find("\t5000\t300"), 9u, "\t0\t300");
+		tests.Require(!loadSupplement(badPursuit) && parsedTargets.Get_ActiveRevision() == pursuitRevision,
+			"Unbounded repeated projectile publication preserves the previous catalog");
 		const std::string randomOwner = "PATTERNSHOWTIMETARGETS	" + encounter + "	" + patternId + "	test.random.owner	0	5000	test.fixed	test.tracking	4384	2000	0.5";
 		const auto randomRow = [&](const std::string& ownerId, const unsigned ordinal, const std::string& settings) {
 			return "PATTERNSHOWTIMERANDOM	" + encounter + "	" + patternId + "	" + ownerId + "	" + std::to_string(ordinal) + "	test.random.a	5000	" + settings;
@@ -857,14 +1129,28 @@ REGION "blocked" "closed" 0 1
 		const std::string airPrefix="PATTERNALBIONAIRBORNE\t"+encounter+"\t"+patternId+"\tair.jump\t";
 		tests.Require(loadSupplement(airBase+"\n"+airPrefix+"JUMP\t13.6788133\t200"),
 			"Full catalog admission resolves the seven-field airborne supplement after its exact base occurrence");
+		tests.Require(loadSupplement(airBase+"\n"+airPrefix+"JUMP\t11.1910783\t0"),
+			"The unchanged airborne bootstrap row admits explicit zero-duration initial height");
 		const auto airRevision=parsedTargets.Get_ActiveRevision();
 		bool badAirRejected=true;
-		for (const std::string fields : {"UNKNOWN\t13\t200","JUMP\t0\t200","JUMP\t13\t0","JUMP\t13\t600001","CENTER\t1\t0","SLAM\t0\t0","APPEAR_PLAYER\t3\t0","JUMP\tNaN\t200"})
+		for (const std::string fields : {"UNKNOWN\t13\t200","JUMP\t0\t200","JUMP\t13\t600001","CENTER\t1\t0","SLAM\t0\t0","APPEAR_PLAYER\t3\t0","JUMP\tNaN\t200"})
 			badAirRejected=!loadSupplement(airBase+"\n"+airPrefix+fields) && parsedTargets.Get_ActiveRevision()==airRevision && badAirRejected;
 		tests.Require(badAirRejected,"Unknown phase, invalid height/duration, missing prior jump and absent source descent reject without replacing the catalog");
 		tests.Require(!loadSupplement(airBase) && !loadSupplement(airPrefix+"JUMP\t13\t200\n"+airBase) &&
 			!loadSupplement(airBase+"\n"+airPrefix+"JUMP\t13\t200\n"+airPrefix+"JUMP\t13\t200") && parsedTargets.Get_ActiveRevision()==airRevision,
 			"Missing, reversed and duplicate airborne supplements preserve the previous catalog generation");
+        const std::string selectedFields="SELECT_PLAYER\t0\t0\tSELECT\ttest.selected.group\t2000";
+        tests.Require(loadSupplement(airBase+"\n"+airPrefix+selectedFields), "Ten-field SELECT supplement admits a captured group while legacy rows stay valid");
+        const auto* selectedPattern=CKoukuSaydonBrain::Find_AnimationOnlyPattern(parsedTargets,patternId,status);
+        tests.Require(selectedPattern && selectedPattern->MechanicTriggers.front().bCaptureAirborneTargetPosition &&
+            selectedPattern->MechanicTriggers.front().strSelectedEffectVisualId=="test.selected.group" &&
+            selectedPattern->MechanicTriggers.front().iSelectedEffectLifetimeMs==2000u, "Selected point policy and visual exact-join the existing occurrence");
+        const auto selectedRevision=parsedTargets.Get_ActiveRevision();
+        bool invalidSelectedRejected=true;
+        for (const std::string fields : {"SELECT_PLAYER\t0\t0\tUNKNOWN\ttest.selected.group\t2000", "JUMP\t13\t200\tSELECT\ttest.selected.group\t2000",
+            "SELECT_PLAYER\t0\t0\tSELECT\ttest.selected.group\t0", "SELECT_PLAYER\t0\t0\tSELECT\t\t2000", "SELECT_PLAYER\t0\t0\tSELECT\ttest.selected.group\t600001"})
+            invalidSelectedRejected=!loadSupplement(airBase+"\n"+airPrefix+fields) && parsedTargets.Get_ActiveRevision()==selectedRevision && invalidSelectedRejected;
+        tests.Require(invalidSelectedRejected, "Malformed selected policies, phase owners and lifetime pairs preserve the admitted catalog");
 		const std::string teleportPrefix = "PATTERNMECHANICTRIGGER\t" + encounter + "\t" + patternId + "\ttest.teleport.xz\tBOSS_TELEPORT_XZ\t0\t1000\t0\t";
 		const std::string teleportSuffix = "\t-\t0\t0\t0\t1\t0\t0\t0\t0\t0\t0\t0\t0\t0";
 		const bool parsedTeleport = loadSupplement(teleportPrefix + "2.57\t1.3\t952.27" + teleportSuffix);
@@ -878,6 +1164,29 @@ REGION "blocked" "closed" 0 1
 		tests.Require(!loadSupplement(teleportPrefix + "100001\t1.3\t952.27" + teleportSuffix) &&
 			parsedTargets.Get_ActiveRevision() == teleportRevision,
 			"Out-of-bounds XZ teleport preserves the previous admitted catalog");
+		const std::string groupId="world.object.kouku.saydon.circus.split", groupCue="test.circus.group.world.1";
+		const std::string groupRow="PATTERNWORLDSEQUENCE\t"+encounter+"\t"+patternId+"\t0\t"+groupId+"\t1\t0\t0\t0\tNONE\t0\t0\t0\t11500\t"+groupCue;
+		const std::string groupPlacement="PATTERNWORLDPLACEMENT\t"+encounter+"\t"+patternId+"\t"+groupCue+"\t2\t1\t3\t0\t40\t0\t1\t1\t1";
+		const bool groupLoaded=loadSupplement(groupRow+"\n"+groupPlacement);
+		const auto* groupPattern=groupLoaded?CKoukuSaydonBrain::Find_AnimationOnlyPattern(parsedTargets,patternId,status):nullptr;
+		tests.Require(groupPattern && groupPattern->WorldSequences.size()==1u && groupPattern->WorldSequences[0].strInstanceId==groupId &&
+			groupPattern->WorldSequences[0].iDurationMs==11500u && groupPattern->WorldSequences[0].Placement.has_value(),
+			"One model-less group retains its stable ID, placement and full 63-ball presentation lifetime through actual catalog admission");
+		if (groupPattern)
+		{
+			auto groupBoss=std::make_unique<SERVER_WORLD_ENTITY>(albionOwner); groupBoss->strPatternId=patternId; groupBoss->iPatternSequence=91u;
+			KOUKUSAYDON_LOGIC_LEDGER groupLedger; KOUKUSAYDON_LOGIC_OUTPUT groupOutput;
+			std::map<PLAYER_ID,SERVER_PLAYER> groupPlayers; std::vector<DAMAGE_EVENT> groupDamage;
+			CKoukuSaydonLogicRuntime::Build(*groupPattern,*groupBoss,13000u,groupLedger);
+			CKoukuSaydonLogicRuntime::Update(*groupBoss,*groupPattern,groupLedger,groupPlayers,parsedTargets,nullptr,13000u,groupDamage,groupOutput);
+			tests.Require(groupOutput.WorldSequencePlays.size()==1u && groupOutput.WorldSequencePlays[0].strInstanceId==groupId &&
+				groupOutput.WorldSequencePlays[0].strOccurrenceId==groupCue && groupOutput.WorldSequencePlays[0].iDurationMs==11500u &&
+				groupOutput.WorldSequencePlays[0].iStartTick==13000u && groupOutput.WorldSequencePlays[0].Placement->fRotationYDegrees==40.f && groupDamage.empty(),
+				"Existing Server Logic emits one owned group play at its authored clock without splitting the world cue or creating damage");
+			groupOutput={}; CKoukuSaydonLogicRuntime::Update(*groupBoss,*groupPattern,groupLedger,groupPlayers,parsedTargets,nullptr,13001u,groupDamage,groupOutput);
+			tests.Require(groupOutput.WorldSequencePlays.empty(),"Later fixed ticks do not replay or duplicate the group volley");
+		}
+
 	}
 	else tests.Require(false, "Showtime catalog admission requires the configured isolated Server data root");
 #endif

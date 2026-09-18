@@ -10,6 +10,7 @@
 float4 g_ALTVSourceMaterialParameters[32];
 float g_ALTVSourceMaterialTime = 0.f;
 
+#ifndef EFFECT_NATIVE_DECLARATIONS_ONLY
 #include "Shader_EffectNativeScreenUV.hlsli"
 
 float4 ALTVNativeAppend(float4 a, float4 b, uint n)
@@ -404,4 +405,5 @@ EFFECT_PS_OUT Shade_EffectDimensionMasterALTVNative(uint profile, ALTV_NATIVE_IN
     return output;
 }
 #endif // ALTV_NATIVE_CAPTURE_ONLY
+#endif // EFFECT_NATIVE_DECLARATIONS_ONLY
 #endif

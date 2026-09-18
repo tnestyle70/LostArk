@@ -1258,6 +1258,21 @@ bool_t CModel::Play_Animation(f32_t fTimeDelta)
     return isFinished;
 }
 
+bool_t CModel::Capture_BoneMatrices(const uint32_t iMeshIndex, vector<float4x4_t>& outMatrices) const
+{
+    if (!Is_Skinned() || iMeshIndex >= m_Meshes.size() || !m_Meshes[iMeshIndex])
+        return false;
+    const CMesh& mesh = *m_Meshes[iMeshIndex];
+    if (mesh.m_iNumBones == 0u || mesh.m_iNumBones > 512u)
+        return false;
+    vector<float4x4_t> staged(mesh.m_iNumBones);
+    mesh.Build_SkinPalette(m_Bones, staged.data());
+    if (!std::all_of(staged.begin(), staged.end(), Is_FiniteMatrix))
+        return false;
+    outMatrices = std::move(staged);
+    return true;
+}
+
 HRESULT CModel::Bind_BoneMatrices(shared_ptr<class CShader> pShader, const char_t* pConstantName, uint32_t iMeshIndex)
 {
     if (nullptr == pShader || iMeshIndex >= m_Meshes.size() || !m_Meshes[iMeshIndex])

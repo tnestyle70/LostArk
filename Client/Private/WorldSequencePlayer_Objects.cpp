@@ -141,7 +141,14 @@ bool Sample_ObjectEffectAttachments(const EFFECT_DOCUMENT_DESC& document,
             if (found == bones.end())
             {
                 float4x4_t bone;
-                if (!Sample_ObjectEffectBone(model, sequence, slotId, attachment.strRuntimeBoneName,
+                // A static prop has no source-character skeleton (b_root, FX_* sockets).
+                // Mirror the owner-anchored product path, which skips a missing bone,
+                // but keep the slot present: transform-history sampling requires every
+                // follow slot, so the attachment rides the object pivot instead.
+                // The explicit effect-track bone (effect.bone) stays strict in the provider.
+                if (model && !model->Has_Bone(attachment.strRuntimeBoneName.c_str()))
+                    XMStoreFloat4x4(&bone, XMMatrixIdentity());
+                else if (!Sample_ObjectEffectBone(model, sequence, slotId, attachment.strRuntimeBoneName,
                     sampleMs, bone, error)) return false;
                 found = bones.emplace(attachment.strRuntimeBoneName, bone).first;
             }
@@ -618,7 +625,14 @@ bool_t CWorldSequencePlayer::Prepare_ObjectResources(
                     if (element.bVisible && attachment.bEnabled && attachment.bFollow &&
                         attachment.eOrientation != EFFECT_ATTACHMENT_ORIENTATION::CAMERA_VIEW &&
                         !model->second.model->Has_Bone(attachment.strRuntimeBoneName.c_str()))
-                    { m_Status = "World Object V1 source bone is unavailable: " + attachment.strRuntimeBoneName; return false; }
+                    {
+                        // Not a rejection: Sample_ObjectEffectAttachments anchors this slot at the
+                        // object pivot, as the owner-anchored product path does for a missing bone.
+                        OutputDebugStringA(("[Client][WorldObject] V1 source bone '" + attachment.strRuntimeBoneName +
+                            "' is absent on " + resource->modelAssetId + "; slot '" + attachment.strRuntimeAnchorSlotId +
+                            "' follows the object pivot (" + effect.resourceId + ")\n").c_str());
+                        break;
+                    }
                 }
             }
         if (sequence)
@@ -747,6 +761,7 @@ void CWorldSequencePlayer::Release_Objects(ACTIVE_INSTANCE& active)
     for (auto& entry : active.objects)
     {
         entry.weaponReplacement.reset();
+        entry.hatReplacement.reset();
         if (entry.object)
         {
             entry.object->Hide();
@@ -1072,6 +1087,10 @@ bool_t CWorldSequencePlayer::Apply_Objects(ACTIVE_INSTANCE& active,
                     CNpcPresentationAssetService::Track_SaydonWeaponReplacement(found->weaponReplacement,
                         anchor.bodyModel, found->object);
                 else found->weaponReplacement.reset();
+                if (anchor.liveBossAnchor && resource->objectId == "world.object.kouku.saydon_hat_right")
+                    CNpcPresentationAssetService::Track_SaydonHatReplacement(found->hatReplacement,
+                        anchor.bodyModel, found->object);
+                else found->hatReplacement.reset();
             }
     }
 #ifdef _DEBUG

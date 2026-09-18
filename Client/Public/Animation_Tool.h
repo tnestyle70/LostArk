@@ -82,6 +82,20 @@ public:
         uint64_t expectedGeneration, const std::string& clip, std::string& status,
         bool_t explicitSourceSelection = false);
     bool_t Has_CharacterActionCueChanges(const std::string& asset) const;
+    /* Atomic .animevents SOUND row authoring for the Character Action
+       Workbench.  This class stays the one owner of the cue document: each
+       call refuses while any Animation Tool draft is dirty, then validates and
+       saves through the existing Validate_Events / Write_EventsToPath path.
+       The caller re-reads its cue document afterwards. */
+    bool_t Apply_CharacterActionSoundEdit(const std::string& assetId,
+        const std::string& clipName, uint32_t oldStartMs, uint32_t newStartMs,
+        const std::string& eventName, std::string& outStatus);
+    bool_t Add_CharacterActionSoundEvent(const std::string& assetId,
+        const std::string& clipName, uint32_t startMs,
+        const std::string& eventName, std::string& outStatus);
+    bool_t Remove_CharacterActionSoundEvent(const std::string& assetId,
+        const std::string& clipName, uint32_t startMs,
+        const std::string& eventName, std::string& outStatus);
 
 private:
 	/* One exact occurrence on the admitted split Valtan gameplay/presentation
@@ -773,6 +787,17 @@ private:
 	std::string Resolve_KoukuSaydonIdleClip() const;
 	void Reset_KoukuSaydonActionDocumentState(bool_t bClearProfile);
 
+	/* Adopts the Character Workbench's cue owner for one SOUND write, and
+	commits the candidate rows through the existing atomic Save.  A rejected
+	commit restores the previous clean document. */
+	bool_t Prepare_CharacterActionSoundOwner(
+		const std::string& assetId,
+		shared_ptr<Engine::CModel>& outModel,
+		std::string& outStatus);
+	bool_t Commit_CharacterActionSoundEvents(
+		const shared_ptr<Engine::CModel>& pModel,
+		std::vector<ANIM_EVENT> candidate,
+		std::string& outStatus);
 	bool_t Save_Events(const shared_ptr<Engine::CModel>& pModel);
 	bool_t Load_Events(const shared_ptr<Engine::CModel>& pModel);
 	bool_t Load_EventsFromPath(

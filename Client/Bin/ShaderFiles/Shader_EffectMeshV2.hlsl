@@ -37,6 +37,8 @@ PS_EFFECT_IN VS_OUTLINE(VS_IN input)
 	return output;
 }
 
+EFFECT_V2_PROGRAMS(VS_MAIN)
+
 technique11 DefaultTechnique
 {
 	EFFECT_V2_PASSES(VS_MAIN)

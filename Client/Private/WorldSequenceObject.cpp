@@ -5,6 +5,7 @@
 #include "Model.h"
 #include "Part_Equipment.h"
 #include "Shader.h"
+#include "NpcPresentationAssetService.h"
 #include <algorithm>
 #include <cmath>
 
@@ -55,6 +56,8 @@ HRESULT CWorldSequenceObject::Initialize(void* argument)
     if (m_Model->Is_Skinned())
         for (uint32_t mesh = 0; mesh < m_Model->Get_NumMeshes(); ++mesh)
             m_HasTranslucentMeshes |= 0u != Resolve_TranslucentSourcePass(m_Model->Get_MaterialSurface(mesh));
+    if (FAILED(CNpcPresentationAssetService::Prepare_SaydonHat(m_pDevice, m_pContext, m_Model, m_SaydonHatModel)))
+        OutputDebugStringA("[SaydonHat] Sequence head prop unavailable; body preserved.\n");
     XMStoreFloat4x4(&m_World, XMMatrixIdentity());
     m_MaterialProfileId = desc.materialProfileId;
     m_Parts.clear();
@@ -214,6 +217,8 @@ HRESULT CWorldSequenceObject::Render()
             return failed("shader pass" + meshLabel);
         if (FAILED(m_Model->Render(mesh))) return failed("mesh submission" + meshLabel);
     }
+    if (FAILED(CNpcPresentationAssetService::Render_SaydonHat(m_Model, m_SaydonHatModel, m_Shader, m_World)))
+        return failed("head prop submission");
     m_RenderStatus.clear();
     return S_OK;
 }

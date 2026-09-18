@@ -460,6 +460,10 @@ namespace Client
 		/* Title window's apply / deselect button (titleId 0 = take it off). False while a
 		request is outstanding or there is no live local player. */
 		bool_t Request_HonorTitle(std::uint32_t titleId);
+		/* World map square hole click (holeId = 1-based row of the zone document). The
+		Server answers through the player snapshot (SQUAREHOLE_SONG action), so there is
+		no pending sequence to track; false while the local player is busy or absent. */
+		bool_t Request_UseSquareHole(std::uint16_t holeId);
 		/* Debug F1 choice of the vehicle H mounts. Zero, or a vehicle without a
 		rider pose for the class, falls back to the first catalog vehicle that has one. */
 		static void Set_PreferredVehicleId(std::uint32_t vehicleId) { s_iPreferredVehicleId = vehicleId; }
@@ -625,6 +629,7 @@ namespace Client
 		std::uint32_t m_pendingVehicleRidingSequence = 0u;
 		std::chrono::steady_clock::time_point m_vehicleRidingSentAt{};
 		std::uint32_t m_nextHonorTitleSequence = 1u;
+		std::uint32_t m_nextSquareHoleSequence = 1u;
 		std::uint32_t m_pendingHonorTitleSequence = 0u;
 		std::chrono::steady_clock::time_point m_honorTitleSentAt{};
 		std::uint32_t m_iNextMoveSequence = 1;

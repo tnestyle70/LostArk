@@ -57,6 +57,8 @@
 #include "CombatAnalysisFrameView.h"
 #include "HonorTitleCatalog.h"
 #include "HonorTitleWindowView.h"
+#include "WorldMapWindowView.h"
+#include "SongCastGaugeView.h"
 #include "InventoryView.h"
 #include "QuickSlotDragView.h"
 #include "SkillWindowView.h"
@@ -89,6 +91,7 @@
 #include "HUDLayoutTool.h"
 #include "MapAssetRenderUtils.h"
 #include "MapEditorWorkspaceService.h"
+#include "LevelNavigationDebug.h"
 #include "MapTool.h"
 #include "NetworkPlayerCommandSink.h"
 #include "ProfilerCaptureIO.h"
@@ -922,6 +925,9 @@ HRESULT CMainApp::Initialize()
 	m_pVehicleWindowView = std::make_unique<CVehicleWindowView>(m_pDevice, m_pContext);
 	/* Honor title window: opened from the character info window, drawn over it. */
 	m_pHonorTitleWindowView = std::make_unique<CHonorTitleWindowView>(m_pDevice, m_pContext);
+	/* World map window (M): a large centred panel, drawn over the windows above. */
+	m_pWorldMapWindowView = std::make_unique<CWorldMapWindowView>(m_pDevice, m_pContext);
+	m_pSongCastGaugeView = std::make_unique<CSongCastGaugeView>(m_pDevice, m_pContext);
 	/* Last of all: the carried quick-slot icon must ride over every window above. */
 	m_pQuickSlotDragView = std::make_unique<CQuickSlotDragView>(m_pDevice, m_pContext);
 
@@ -1206,6 +1212,27 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		m_bVehicleWindowKeyDown = keyDown;
 	}
 
+	/* M is the retail world map keybind (same gating as I / P / N above). The window itself
+	stays hidden on levels without a minimap area (see Update_Minimap). */
+	if (nullptr != m_pWorldMapWindowView && !ImGui::GetIO().WantTextInput &&
+		!CUIInputRouter::Get().Is_TextInputActive())
+	{
+		const bool_t windowFocused =
+			IsWindowOwnedByCurrentProcess(GetForegroundWindow());
+		const bool_t keyDown = windowFocused &&
+			0 != (GetAsyncKeyState(0x4D /* VK_M */) & 0x8000);
+		if (keyDown && !m_bWorldMapKeyDown)
+		{
+			m_pWorldMapWindowView->Toggle();
+			const filesystem::path soundPath = CRuntimeAssetRoot::Resolve(
+				m_pWorldMapWindowView->Is_Open() ?
+				L"Sound/UI/Select/ui_inventory_show1__669750910.wav" :
+				L"Sound/UI/Select/ui_inventory_hide1__7273537.wav");
+			CGameInstance::Get().Play_Sound(soundPath.wstring(), 1.f);
+		}
+		m_bWorldMapKeyDown = keyDown;
+	}
+
 	Update_LobbyButtons(fTimeDelta);
 	Update_CharacterSelectWindow(fTimeDelta);
 	Update_Minimap(fTimeDelta);
@@ -1320,7 +1347,10 @@ void CMainApp::Update(const f32_t fTimeDelta)
 			IsDebugToolVisible(DEBUG_TOOL::EFFECT) && m_eDebugInputOwner == DEBUG_TOOL::EFFECT)) |
 		(nullptr != m_pEffectToolV2 && m_pEffectToolV2->Update_AuthoringPlacementInput(m_bDeveloperToolsVisible &&
 			IsDebugToolVisible(DEBUG_TOOL::EFFECT_V2) && m_eDebugInputOwner == DEBUG_TOOL::EFFECT_V2));
-	const bool_t mapEffectPlacementConsumed = UpdateMapEffectPlacementInput() || authoredEffectPlacementConsumed;
+	/* Evaluated before the OR so every armed picker still runs its own frame. */
+	const bool_t worldLevelPickConsumed = UpdateWorldLevelPlacementPickInput();
+	const bool_t mapEffectPlacementConsumed = UpdateMapEffectPlacementInput() ||
+		authoredEffectPlacementConsumed || worldLevelPickConsumed;
 	const bool_t worldLeftMouseConsumed = mapEffectPlacementConsumed ||
 		(nullptr != m_pMapTool && m_pMapTool->ConsumesWorldLeftMouse());
 #else
@@ -2643,6 +2673,12 @@ HRESULT CMainApp::Render()
 			}
 		}
 #ifdef _DEBUG
+		if (!m_pLevelNavigationDebug)
+			m_pLevelNavigationDebug = std::make_unique<CLevelNavigationDebug>();
+		// MapTool owns its selected Area inside the Development editor workspace.
+		m_pLevelNavigationDebug->Sync_Level(CMapEditorWorkspaceService::Is_Active() ?
+			LEVEL::END : static_cast<LEVEL>(CGameInstance::Get().Get_CurrentLevelID()));
+		m_pLevelNavigationDebug->Render_Overlay();
 		if (m_pKoukuPresentationPlayer) m_pKoukuPresentationPlayer->Render_Debug();
 		if (nullptr != m_pRenderingBenchmark)
 			m_pRenderingBenchmark->Update(CGameInstance::Get().Get_Profiler());
@@ -2990,6 +3026,10 @@ HRESULT CMainApp::Render()
 		m_pVehicleWindowView->Render_Text();
 	if (nullptr != m_pHonorTitleWindowView)
 		m_pHonorTitleWindowView->Render_Text();
+	if (nullptr != m_pWorldMapWindowView)
+		m_pWorldMapWindowView->Render_Text();
+	if (nullptr != m_pSongCastGaugeView)
+		m_pSongCastGaugeView->Render_Text();
 
 	/* Every CUIInputRouter-based screen's click-edge check has run by this point (both this
 	function's own render pass and the Update() pass earlier this same frame) -- rolls the
@@ -4466,6 +4506,22 @@ void CMainApp::Update_Minimap(const f32_t fTimeDelta)
 	if (Is_MvpResultPageOpen())
 		bHasSnapshot = false;
 	m_pMinimapView->Update(fTimeDelta, eLevel, bHasSnapshot ? &Snapshot : nullptr);
+	/* The world map window reads the same marker snapshot; it hides itself without one. */
+	if (nullptr != m_pWorldMapWindowView)
+	{
+		m_pWorldMapWindowView->Update(fTimeDelta, eLevel, bHasSnapshot ? &Snapshot : nullptr);
+		/* A square-hole click: the level's controller owns the Server round trip, as for
+		vehicles and titles; the Server's SQUAREHOLE_SONG action drives the gauge below. */
+		uint16_t iHoleId = 0u;
+		if (m_pWorldMapWindowView->Take_SquareHoleRequest(iHoleId))
+		{
+			CPlayerController* pController = Find_ActivePlayerController();
+			if (nullptr == pController || !pController->Request_UseSquareHole(iHoleId))
+				OutputDebugStringA("[Client][WorldMapWindow] Square hole request not sent (no controller, or the player is busy).\n");
+		}
+	}
+	if (nullptr != m_pSongCastGaugeView)
+		m_pSongCastGaugeView->Update(fTimeDelta, CCombatHUDViewModel::Get().Get_Player());
 }
 
 void CMainApp::RenderMinimapText()
@@ -8383,6 +8439,7 @@ void CMainApp::RenderArenaCameraAndPlayerControls()
 	{
 		if (LEVEL::BERN == level)
 			RenderArenaFollowCameraSettings();
+		if (m_pLevelNavigationDebug) m_pLevelNavigationDebug->Render_Controls();
 		return;
 	}
 	const auto setSpeed = [valtan, kouku, characterSelect, camera](const f32_t speed)
@@ -8432,6 +8489,7 @@ void CMainApp::RenderArenaCameraAndPlayerControls()
 		if (nullptr != characterSelect)
 			ImGui::TextDisabled("Move Player is available in Valtan and KoukuSaydon arenas.");
 	}
+	if (m_pLevelNavigationDebug) m_pLevelNavigationDebug->Render_Controls();
 	if (nullptr != characterSelect)
 		RenderCharacterSelectFloorSwapControls();
 	RenderArenaFollowCameraSettings();
@@ -10265,9 +10323,60 @@ void CMainApp::RefreshWorldObjectResources()
 			row.strObjectResourceId = object.objectId;
 			row.strObjectDisplayName = object.displayName; row.strDisplayName = object.displayName;
 			row.strAnchorKind = object.anchorKind; row.bEnabled = false;
+			if (!object.motionInstanceIds.empty())
+			{
+				row.strInstanceId = object.objectId;
+				row.bMotionGroup = true;
+				row.bDefaultMotion = true;
+				row.bEnabled = true;
+				row.bSupportsPlacement = object.anchorKind == "WORLD";
+				row.iEmissionCount = 0u;
+				for (const auto& memberId : object.motionInstanceIds)
+				{
+					const auto member = std::find_if(resources.begin(), resources.end(),
+						[&](const auto& value) { return value.strInstanceId == memberId && !value.bMotionGroup; });
+					const auto* instance = document->Find_Instance(memberId);
+					const auto* sequence = instance ? document->Find_Template(instance->templateId) : nullptr;
+					const auto* model = instance && instance->bindings.size() == 1u ?
+						document->Find_ObjectResource(instance->bindings.front().targetId) : nullptr;
+					if (member == resources.end() || !sequence || !model || model->modelAssetId.empty() ||
+						!model->motionInstanceIds.empty() || model->combatBody || instance->walkableSurface ||
+						!sequence->colliderTracks.empty() || instance->anchorKind != "WORLD" ||
+						instance->bindings.front().targetKind != WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE ||
+						(instance->motionEnd != WORLD_SEQUENCE_MOTION_END::STOP && instance->motionEnd != WORLD_SEQUENCE_MOTION_END::LOOP))
+					{ row.bEnabled = false; row.bSupportsPlacement = false; continue; }
+					if (!member->bEnabled) continue;
+					row.bSupportsPlacement = row.bSupportsPlacement && member->bSupportsPlacement &&
+						member->strAnchorKind == object.anchorKind;
+					const double span = instance->startDelayMs +
+						static_cast<double>(sequence->PresentationSpanMs()) / instance->playbackSpeed;
+					row.iDurationMs = (std::max)(row.iDurationMs, static_cast<uint32_t>(
+						(std::clamp)(std::ceil(span), 1.0, static_cast<double>(UINT32_MAX))));
+					row.iEmissionCount += member->iEmissionCount;
+					row.AnimationClips.insert(row.AnimationClips.end(),
+						member->AnimationClips.begin(), member->AnimationClips.end());
+				}
+				row.bEnabled = row.bEnabled && row.iEmissionCount > 0u;
+			}
 			row.bUntilDestroyed = object.combatBody && object.combatBody->lifetimePolicy == "UNTIL_DESTROYED";
 			row.iMaximumHp = object.combatBody ? object.combatBody->maxHp : 0u;
 			resources.push_back(std::move(row));
+		}
+		// Keep donor motions available to Logic/editing, but Object Append must
+		// select their unique complete group instead of a same-named g0 default.
+		for (auto& donor : resources)
+		{
+			if (!donor.bDefaultMotion || donor.bMotionGroup) continue;
+			std::string ownerId; bool ambiguous = false;
+			for (const auto& group : resources)
+			{
+				if (!group.bMotionGroup || !group.bEnabled) continue;
+				const auto* object = document->Find_ObjectResource(group.strObjectResourceId);
+				if (!object || std::find(object->motionInstanceIds.begin(), object->motionInstanceIds.end(), donor.strInstanceId) == object->motionInstanceIds.end()) continue;
+				if (!ownerId.empty()) { ambiguous = true; break; }
+				ownerId = group.strObjectResourceId;
+			}
+			if (!ambiguous) donor.strAppendGroupObjectId = std::move(ownerId);
 		}
 	}
 	const std::string status = document ?

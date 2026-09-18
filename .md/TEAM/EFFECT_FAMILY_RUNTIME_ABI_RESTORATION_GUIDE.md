@@ -726,3 +726,32 @@ V1 공통 Opaque/Alpha/Additive의 RT1은 RGBA 전체에 One+One을 적용한다
 Engine SceneResolve가 Depth와 PickPos를 명시적으로 바인딩하고 BA를 소비한다. depth marker0/5의 skinned bit8 또는 marker5의 source skin/equipment program1~24,26~29만 actor로 해석한다. 다른 map marker payload를 actor ID로 읽지 않는다. 현재 픽셀과 RG 적용 전후·BA를 합친 bilinear 샘플의 실제 footprint를 확인해 actor/깊이 불연속을 넘는 BA를 차단한다. 경사면의 NDC 깊이 기울기는 허용하고 HDR와 가중 Bloom은 같은 UV를 쓴다. BA=0이면 기존 RG resolve와 동일하다.
 
 이 계약은 불투명 G-buffer에 기록된 actor와 표면 경계를 보호한다. 동일 native map program을 쓰는 unskinned prop 내부와 G-buffer를 쓰지 않는 투명 객체를 종류별로 완전히 제외하는 계약은 아니다. 설치된 Engine/Client 셰이더와 바인딩 코드는 함께 갱신해야 하며 소스 반영·GPU 수치 검증·제품 빌드·사용자 화면 판정을 구분한다. 개별 검증 근거는 09-14 Sequence Implementation RESULT G50에 둔다.
+
+### Native Trail의 coverage와 거리 UV
+
+연결된 정점·인덱스만으로 재질의 연속성을 판정하지 않는다. 원본 vertex factory의 전달 성분과
+최종 pixel program의 실제 소비 성분을 함께 확인한다. 현재 검토된 positive-tiling adapter는
+최종 업로드한 Trail의 U 시작·끝에서 정규화한 coverage UV와 기존 거리/tiling UV를 구분한다.
+native2379는 xy에 coverage, zw에 거리 UV를 전달한다. native2346/2836/3007은 xy에 거리,
+zw에 coverage를 전달한다. 이 대응은 회수한 pixel program 소비식에 따른 adapter이며,
+회수하지 못한 원본 UE3 CPU의 vertex-buffer packing을 복원했다고 주장하지 않는다.
+
+Engine의 VTXEFFECT_TRAIL 저장 구조는 유지한다. CPU는 매 draw에 g_TrailSourceUVTransform을
+다시 바인딩하며, StandardColor·RuntimeV2·다른 native profile의 UV 의미를 바꾸지 않는다.
+명시 tiling=0의 geometry/VS UV 계약은 유지하지만, native2346의 최종 color/distortion
+consumer가 UV1을 버리던 결함의 수정까지 bit-identical하다는 뜻은 아니다. 오래된 CSO의
+필수 uniform 누락을 무시하지 않으며 C++와 Trail CSO는 같은 빌드에서 갱신해야 한다.
+
+### 명시적으로 저작한 Sprite 공통 원형 마스크
+
+optional detail.sprite.ownerRadialMask는 enabled, centerXZ, radius, feather를 저장한다.
+기본값은 꺼짐이며 생략한다. 현재 허용 범위는 native3171 source-particle Sprite의
+기존 one-sided alpha/depth-read carrier다. 다른 carrier·mesh model·action-cue attachment와
+지원하지 않는 backend는 검증에서 거절한다. 원본 shader 기능으로 분류하지 않는다.
+
+마스크 기준은 각 입자 중심이 아니라 effect 원점 XZ다. ParticleSystem uniform scale,
+yawOffset, Frame.RootWorld를 한 번 합성한 역행렬로 world position을 변환한다. 개별 입자의
+StartSize/detail scale로 공통 원이 커지지 않는다. 비유한·비affine·특이 변환은 거절한다.
+coverage는 native 계산 뒤 RT0 alpha와 RT1에 적용하고, 그 결과로 Bloom을 만든다.
+straight RGB는 유지하며 지원하는 carrier의 매 draw에서 enabled를 초기화한다.
+수치 검증·설치·사용자 화면 판정의 증거는 09-17 세이튼 카드 RESULT G29에 둔다.

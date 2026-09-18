@@ -864,6 +864,9 @@ PixelShader BinaryMeshShadowPS = compile ps_5_0 PS_MAIN_SHADOW();
 PixelShader BinaryMeshWaterPS = compile ps_5_0 PS_MAIN_WATER();
 // END SHARED MODEL PASS PROGRAMS
 
+// Identical entry/profile/arguments compile once; pass states and indices stay unchanged.
+VertexShader BinaryMeshShadowOpaqueVS = compile vs_5_0 VS_SHADOW_OPAQUE();
+
 technique11 DefaultTechnique
 {
     pass DefaultPass
@@ -1057,7 +1060,7 @@ technique11 DefaultTechnique
         SetRasterizerState(RS_Default);
         SetDepthStencilState(DSS_Default, 0);
         SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_SHADOW_OPAQUE();
+        VertexShader = BinaryMeshShadowOpaqueVS;
         GeometryShader = NULL;
         PixelShader = NULL;
     }
@@ -1066,7 +1069,7 @@ technique11 DefaultTechnique
         SetRasterizerState(RS_Cull_CW);
         SetDepthStencilState(DSS_Default, 0);
         SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_SHADOW_OPAQUE();
+        VertexShader = BinaryMeshShadowOpaqueVS;
         GeometryShader = NULL;
         PixelShader = NULL;
     }
@@ -1075,7 +1078,7 @@ technique11 DefaultTechnique
         SetRasterizerState(RS_Cull_None);
         SetDepthStencilState(DSS_Default, 0);
         SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
-        VertexShader = compile vs_5_0 VS_SHADOW_OPAQUE();
+        VertexShader = BinaryMeshShadowOpaqueVS;
         GeometryShader = NULL;
         PixelShader = NULL;
     }

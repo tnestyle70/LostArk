@@ -548,6 +548,7 @@
           "previewWallBasis": "SOURCE_UNCONDITIONAL_STAGE_TRANSITION"
         }
       ]
-    }
+    },
+    {"effectAssetId": "effect.valtan.action.420604.stage003.full.restore", "sourceActionId": 420604, "sourceStageIndex": 3, "animationClips": [{"clipName": "mesh_att_battle_4_01", "playMs": 4733, "loop": false, "previewWallMs": 4733, "previewWallBasis": "SOURCE_ANIMATION_WINDOW"}]}
   ]
 }

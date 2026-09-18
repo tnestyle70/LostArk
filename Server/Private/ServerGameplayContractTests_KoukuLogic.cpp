@@ -6,6 +6,7 @@
 #include "KoukuSaydonBrain.h"
 #include "PlayerSkillSystem.h"
 #include "ServerCombatHitRuntime.h"
+#include "ServerCollisionSystem.h"
 #include "WorldBootstrap.h"
 #include "WorldDestructionBootstrapContractTests.h"
 #include <Windows.h>
@@ -484,6 +485,33 @@ namespace ServerGameplayContractDetail
             invertedGazePlayers.at(6u).eAction == PLAYER_ACTION_STATE::FEAR,
             "Facing-is-fail gaze fears inside and boundary players, including co-location, while outside angle or range stays safe");
 
+        // A real navigation/collision fixture exercises counter landing before verdict commit.
+        const auto counterFixture = std::filesystem::temp_directory_path() /
+            (L"LostArkCounterLanding-" + std::to_wstring(_getpid()));
+        std::filesystem::create_directories(counterFixture / L"Navigation");
+        {
+            std::ofstream grid(counterFixture / L"Navigation/NAV_COUNTER.navgrid", std::ios::binary);
+            const std::uint32_t size = 4u; const float cell = 4.f, origin = -8.f;
+            for (const auto value : {size, size}) grid.write(reinterpret_cast<const char*>(&value), sizeof(value));
+            for (const auto value : {cell, origin, origin}) grid.write(reinterpret_cast<const char*>(&value), sizeof(value));
+            std::array<std::uint8_t, 16u> walkable; walkable.fill(1u);
+            std::array<float, 16u> heights; heights.fill(1.f);
+            grid.write(reinterpret_cast<const char*>(walkable.data()), walkable.size());
+            grid.write(reinterpret_cast<const char*>(heights.data()), heights.size() * sizeof(float));
+            std::ofstream(counterFixture / L"Navigation/NAV_COUNTER.navpolicy") <<
+                "LOSTARK_NAVIGATION_POLICY 1 \"NAV_COUNTER\" 1\n";
+        }
+        std::vector<wchar_t> previousRoot(32768u);
+        const auto previousRootSize = GetEnvironmentVariableW(L"LOSTARK_SERVER_DATA_ROOT", previousRoot.data(), static_cast<DWORD>(previousRoot.size()));
+        SetEnvironmentVariableW(L"LOSTARK_SERVER_DATA_ROOT", counterFixture.c_str());
+        CServerNavigation counterNavigation;
+        const bool counterNavigationLoaded = counterNavigation.Load("NAV_COUNTER");
+        SetEnvironmentVariableW(L"LOSTARK_SERVER_DATA_ROOT", previousRootSize ? previousRoot.data() : nullptr);
+        std::filesystem::remove_all(counterFixture);
+        tests.Require(counterNavigationLoaded, "Load isolated counter landing navigation");
+        CServerCollisionSystem counterCollision;
+        boss->fSpawnPositionY = 1.25f; boss->fPositionY = 3.9f; boss->fCollisionRadius = .5f;
+
         BOSS_PATTERN_LOGIC_WINDOW counter{};
         counter.strWindowId = "counter.1"; counter.eKind = BOSS_PATTERN_LOGIC_KIND::COUNTER_WINDOW;
         counter.iDurationMs = 1000u; counter.bEndsPatternOnSuccess = true;
@@ -501,13 +529,40 @@ namespace ServerGameplayContractDetail
             "Ordinary HP damage cannot succeed a counter window");
         hit.iCounterPower = 1u; hit.iServerTick = 401u;
         (void)CServerCombatHitRuntime::Apply_PlayerToWorld(*boss, hit, events);
+        const auto hitHp = boss->iCurrentHp; const auto hitEventCount = events.size();
         CKoukuSaydonLogicRuntime::Update(*boss, pattern, ledger, players, catalog, nullptr, 401u, events, output);
+        tests.Require(!ledger.Windows.front().bClosed && !output.bEndPatternEarly &&
+            output.FollowupPatternIds.empty() && !boss->BossCombat.PendingOutcomes.empty() && boss->fPositionY == 3.9f,
+            "Missing landing navigation preserves the hit signal, open counter and elevated transform");
+        counterCollision.Set_BlockingBodies({ {0.f, 0.f, 1.f, 1.75f, 1.f, 999u} });
+        CKoukuSaydonLogicRuntime::Update(*boss, pattern, ledger, players, catalog, nullptr, 401u, events, output,
+            &counterNavigation, &counterCollision);
+        tests.Require(!ledger.Windows.front().bClosed && !output.bEndPatternEarly && boss->fPositionY == 3.9f,
+            "Blocked ground cannot commit an airborne groggy transition");
+        counterCollision.Set_BlockingBodies({});
+        CKoukuSaydonLogicRuntime::Update(*boss, pattern, ledger, players, catalog, nullptr, 402u, events, output,
+            &counterNavigation, &counterCollision);
+        tests.Require(output.bCounterSuccessLanded && std::abs(boss->fPositionY - 1.25f) < .0001f &&
+            boss->iCurrentHp == hitHp && events.size() == hitEventCount,
+            "Counter retry lands at ground plus authored offset without reapplying damage or stagger");
         tests.Require(output.bEndPatternEarly && output.FollowupPatternIds == std::vector<std::string>{"groggy.pattern"} &&
             !CBossCombatRuntime::Has_Flag(boss->BossCombat, SERVER_BOSS_COMBAT_FLAG::COUNTERABLE),
             "A counter-power hit consumes the Server counter outcome once, ends spider, and queues groggy");
         output = {};
         CKoukuSaydonLogicRuntime::Update(*boss, pattern, ledger, players, catalog, nullptr, 402u, events, output);
         tests.Require(output.FollowupPatternIds.empty(), "A closed counter window cannot queue groggy twice");
+        CKoukuSaydonLogicRuntime::Build(pattern, *boss, 410u, ledger);
+        output = {};
+        CKoukuSaydonLogicRuntime::Update(*boss, pattern, ledger, players, catalog, nullptr, 410u, events, output);
+        hit.iServerTick = 411u;
+        (void)CServerCombatHitRuntime::Apply_PlayerToWorld(*boss, hit, events);
+        boss->fPositionY = 3.9f;
+        CKoukuSaydonLogicRuntime::Update(*boss, pattern, ledger, players, catalog, nullptr, 440u, events, output);
+        tests.Require(ledger.Windows.front().bClosed && !output.bEndPatternEarly && !output.bCounterSuccessLanded &&
+            output.FollowupPatternIds.empty() && boss->BossCombat.PendingOutcomes.empty() && boss->fPositionY == 3.9f,
+            "Unlandable counter expires at its deadline without a delayed airborne follow-up");
+        boss->fPositionY = boss->fSpawnPositionY = 0.f;
+
 
         // A Parent deadline cancels the child verdict and keeps a longer Parent window alive.
         BOSS_PATTERN_LOGIC_WINDOW parentWindow{};

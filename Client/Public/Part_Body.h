@@ -63,6 +63,7 @@ public:
 private:
 	shared_ptr<CShader> m_pShaderCom = { nullptr };
 	shared_ptr<CModel> m_pModelCom = { nullptr };
+	shared_ptr<CModel> m_pSaydonHatModel;
 	uint32_t m_iHiddenMeshMask = {};
 	std::weak_ptr<CModel> m_WeaponReplacementBody;
 	const DEFERRED_EMISSIVE_OVERRIDE* m_pEmissiveOverride = { nullptr };

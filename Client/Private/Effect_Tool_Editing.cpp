@@ -1251,10 +1251,15 @@ bool_t Client::CEffect_Tool::Try_DeleteSelectedElement()
     const size_t iRemovedCount = static_cast<size_t>(
         std::distance(NewEnd, Staged.Elements.end()));
     Staged.Elements.erase(NewEnd, Staged.Elements.end());
-    if (Targets.contains(m_strSelectedElementId))
-        m_strSelectedElementId.clear();
-    m_MarkedElementIds.clear();
+    // Keep selection and marks until the document/preview transaction succeeds.
+    const auto previousIsolationIds = m_PreviewIsolationElementIds;
+    std::erase_if(m_PreviewIsolationElementIds, [&](const auto& id) { return Targets.contains(id); });
 	const EFFECT_PREVIEW_FILTER ePreviousFilter = m_ePreviewFilter;
+    if (!previousIsolationIds.empty() && m_PreviewIsolationElementIds.empty() &&
+        m_strPreviewIsolationGroupId.empty() &&
+        (m_ePreviewFilter == EFFECT_PREVIEW_FILTER::SOLO_SELECTED_GROUP ||
+         m_ePreviewFilter == EFFECT_PREVIEW_FILTER::MUTE_SELECTED_GROUP))
+        m_ePreviewFilter = EFFECT_PREVIEW_FILTER::COMPLETE;
 	const std::string strPreviousIsolationElement =
 		m_strPreviewIsolationElementId;
 	const std::string strPreviousIsolationGroup =
@@ -1294,8 +1299,10 @@ bool_t Client::CEffect_Tool::Try_DeleteSelectedElement()
 		m_ePreviewFilter = ePreviousFilter;
 		m_strPreviewIsolationElementId = strPreviousIsolationElement;
 		m_strPreviewIsolationGroupId = strPreviousIsolationGroup;
+        m_PreviewIsolationElementIds = previousIsolationIds;
         return false;
 	}
+    m_MarkedElementIds.clear();
     Reset_DetailDraft();
     m_strSelectedElementId.clear();
     m_strSelectedElementGroupId.clear();

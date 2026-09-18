@@ -5,6 +5,7 @@
 #include "GameObject.h"
 #include "PlayerHandGripTransform.h"
 #include "KoukuSaydonCompositionDocument.h"
+#include "SkeletalAfterimage.h"
 
 #include <algorithm>
 #include <cstddef>
@@ -323,6 +324,11 @@ public:
     void Acquire_CompositionPreviewSuppression() { ++m_iCompositionPreviewSuppressions; }
     void Release_CompositionPreviewSuppression() { if (m_iCompositionPreviewSuppressions) --m_iCompositionPreviewSuppressions; }
     bool Is_PresentationVisible() const { return m_bPresentationVisible && m_iCompositionPreviewSuppressions == 0u; }
+    // Presentation owner gates this using the approved Server pattern clock.
+    void Set_ChargeAfterimageEnabled(bool enabled) { m_ChargeAfterimageEnabled = enabled; }
+    // A nonnegative clock belongs to Tool Preview; product uses its received state.
+    void Set_CounterAfterimageEnabled(bool enabled, float previewClockSeconds = -1.f);
+    void Reset_AfterimageHistory();
 #ifdef _DEBUG
 	void Set_CombatColliderDebugVisible(bool_t isVisible) {
 		m_isCombatColliderDebugVisible = isVisible;
@@ -358,11 +364,20 @@ public:
 	virtual void Update(f32_t fTimeDelta) override;
 	virtual void Late_Update(f32_t fTimeDelta) override;
 	virtual HRESULT Render() override;
+	virtual HRESULT Render_Group(RENDERGROUP group) override;
 
 private:
 	shared_ptr<Engine::CShader> m_pShaderCom = { nullptr };
 	bool_t m_bNativeBinaryBasePass = false;
+    bool m_ChargeAfterimageEnabled = false;
+    CSkeletalAfterimage m_BodyAfterimage;
+    CSkeletalAfterimage m_WeaponAfterimage;
+    CSkeletalAfterimage m_HatAfterimage;
+    bool m_CounterAfterimageEnabled = false;
+    bool m_CounterAfterimageExternalClock = false;
+    float m_CounterAfterimageClockSeconds = 0.f;
 	shared_ptr<Engine::CModel> m_pModelCom = { nullptr };
+	shared_ptr<Engine::CModel> m_pSaydonHatModel;
 	wstring_t m_strModelTag;
 	std::string m_strEffectV2BindingOwner;
 	/* Socketed weapon with body-clock pose synchronization; null when the

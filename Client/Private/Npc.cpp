@@ -55,6 +55,8 @@ HRESULT CNpc::Initialize(void* pArg)
 
 	if (FAILED(Ready_Components(pDesc)))
 		return E_FAIL;
+	if (FAILED(CNpcPresentationAssetService::Prepare_SaydonHat(m_pDevice, m_pContext, m_pModelCom, m_pSaydonHatModel)))
+		OutputDebugStringA("[SaydonHat] NPC head prop unavailable; body preserved.\n");
 
 	Apply_ImmediateTransform(pDesc->vPosition, pDesc->fYawDegree);
 
@@ -683,9 +685,74 @@ void CNpc::Set_DebugPresentationYawOffset(const f32_t fYawOffsetDegrees)
 }
 #endif
 
+void CNpc::Reset_AfterimageHistory()
+{
+    m_BodyAfterimage.Reset();
+    m_WeaponAfterimage.Reset();
+    m_HatAfterimage.Reset();
+}
+
+void CNpc::Set_CounterAfterimageEnabled(const bool enabled, const float previewClockSeconds)
+{
+    const bool externalClock = std::isfinite(previewClockSeconds) && previewClockSeconds >= 0.f;
+    if (enabled != m_CounterAfterimageEnabled || externalClock != m_CounterAfterimageExternalClock)
+    {
+        Reset_AfterimageHistory();
+        m_CounterAfterimageClockSeconds = 0.f;
+    }
+    m_CounterAfterimageEnabled = enabled;
+    m_CounterAfterimageExternalClock = externalClock;
+    if (externalClock) m_CounterAfterimageClockSeconds = previewClockSeconds;
+}
+
 void CNpc::Late_Update(f32_t fTimeDelta)
 {
-    if (!Is_PresentationVisible()) return;
+    if (!Is_PresentationVisible())
+    {
+        Reset_AfterimageHistory();
+        return;
+    }
+    if (m_bNativeBinaryBasePass)
+    {
+        CSkeletalAfterimage::SETTINGS settings;
+        if (m_CounterAfterimageEnabled)
+        {
+            // Project-authored counter cue; the live native materials stay intact.
+            settings.sampleIntervalSeconds = .24f;
+            settings.sampleLifetimeSeconds = .16f;
+            settings.maxSamples = 1u;
+            settings.color = { .12f, .7f, 2.4f, .7f };
+        }
+        (void)m_BodyAfterimage.Configure(settings);
+        (void)m_WeaponAfterimage.Configure(settings);
+        const auto& bodyWorld = *m_pTransformCom->Get_WorldMatrixPtr();
+        const auto sample = [&](CSkeletalAfterimage& afterimage,
+            const std::shared_ptr<CModel>& model, const float4x4_t& world) {
+            if (m_CounterAfterimageEnabled)
+                afterimage.Sample_Pulse(m_CounterAfterimageClockSeconds, model, world);
+            else afterimage.Update(fTimeDelta, m_ChargeAfterimageEnabled, model, world);
+        };
+        sample(m_BodyAfterimage, m_pModelCom, bodyWorld);
+        ANIMATION_MODEL_TARGET_VIEW weaponView;
+        if (m_pWeaponModelCom && !CNpcPresentationAssetService::Is_SaydonHammerSuppressed(m_pModelCom) &&
+            Try_GetAnimationModelTarget(ANIMATION_BONE_TARGET::WEAPON, weaponView))
+            sample(m_WeaponAfterimage, m_pWeaponModelCom, weaponView.BoneRoot);
+        else m_WeaponAfterimage.Reset();
+        float4x4_t hatWorld;
+        if (m_CounterAfterimageEnabled && m_pSaydonHatModel &&
+            CNpcPresentationAssetService::Try_GetSaydonHatWorld(m_pModelCom, bodyWorld, hatWorld))
+        {
+            (void)m_HatAfterimage.Configure(settings);
+            sample(m_HatAfterimage, m_pSaydonHatModel, hatWorld);
+        }
+        else m_HatAfterimage.Reset();
+        if (m_CounterAfterimageEnabled && !m_CounterAfterimageExternalClock &&
+            std::isfinite(fTimeDelta) && fTimeDelta > 0.f)
+            m_CounterAfterimageClockSeconds += fTimeDelta;
+        if (m_BodyAfterimage.Has_Samples() || m_WeaponAfterimage.Has_Samples() || m_HatAfterimage.Has_Samples())
+            CGameInstance::Get().Add_RenderObject(RENDERGROUP::BLEND,
+                static_pointer_cast<CGameObject>(shared_from_this()));
+    }
 	CGameInstance::Get().Add_RenderObject(
 		RENDERGROUP::NONBLEND,
 		static_pointer_cast<CGameObject>(shared_from_this()));
@@ -693,6 +760,21 @@ void CNpc::Late_Update(f32_t fTimeDelta)
 	if (m_isCombatColliderDebugVisible && nullptr != m_pColliderCom)
 		CGameInstance::Get().Add_DebugComponent(m_pColliderCom);
 #endif
+}
+
+HRESULT CNpc::Render_Group(const RENDERGROUP group)
+{
+    if (group != RENDERGROUP::BLEND) return Render();
+    if (!Is_PresentationVisible()) return S_OK;
+    m_BodyAfterimage.Render(m_pModelCom, m_pShaderCom, *m_pTransformCom->Get_WorldMatrixPtr());
+    ANIMATION_MODEL_TARGET_VIEW weaponView;
+    if (m_pWeaponModelCom && Try_GetAnimationModelTarget(ANIMATION_BONE_TARGET::WEAPON, weaponView))
+        m_WeaponAfterimage.Render(m_pWeaponModelCom, m_pShaderCom, weaponView.BoneRoot);
+    float4x4_t hatWorld;
+    if (m_pSaydonHatModel && CNpcPresentationAssetService::Try_GetSaydonHatWorld(
+        m_pModelCom, *m_pTransformCom->Get_WorldMatrixPtr(), hatWorld))
+        m_HatAfterimage.Render(m_pSaydonHatModel, m_pShaderCom, hatWorld);
+    return S_OK; // A failed auxiliary history never suppresses the live actor.
 }
 
 HRESULT CNpc::Render()
@@ -713,6 +795,9 @@ HRESULT CNpc::Render()
 			FAILED(m_pModelCom->Render(i)))
 			return E_FAIL;
 	}
+	if (FAILED(CNpcPresentationAssetService::Render_SaydonHat(m_pModelCom, m_pSaydonHatModel,
+		m_pShaderCom, *m_pTransformCom->Get_WorldMatrixPtr(), 0u, m_bNativeBinaryBasePass)))
+		return E_FAIL;
 	if (nullptr != m_pWeaponModelCom && !CNpcPresentationAssetService::Is_SaydonHammerSuppressed(m_pModelCom))
 	{
 		ANIMATION_MODEL_TARGET_VIEW weaponView;

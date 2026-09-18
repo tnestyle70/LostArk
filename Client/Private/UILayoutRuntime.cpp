@@ -682,6 +682,15 @@ void Client::CUILayoutRuntime::Set_SlotUVWindow(const string& strId, f32_t fOffs
 		Slot.pSprite->Set_UVWindow(float2_t(fOffsetU, fOffsetV), float2_t(fScaleU, fScaleV));
 }
 
+void Client::CUILayoutRuntime::Set_SlotUVRotation(const string& strId, f32_t fRadians, f32_t fAspect)
+{
+	RUNTIME_SLOT* pSlot = Find_Slot(strId);
+	if (nullptr == pSlot)
+		return;
+	if (nullptr != pSlot->pSprite)
+		pSlot->pSprite->Set_UVRotation(fRadians, fAspect);
+}
+
 void Client::CUILayoutRuntime::Set_SlotRotation(const string& strId, f32_t fDegrees)
 {
 	RUNTIME_SLOT* pSlot = Find_Slot(strId);

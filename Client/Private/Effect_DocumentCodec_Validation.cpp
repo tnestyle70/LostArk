@@ -223,6 +223,7 @@ bool_t Client::CEffectDocumentCodec::Validate(
 			Cue.strClipName.empty() || Cue.strClipName.size() > 128u ||
 			!Has_VisibleCharacter(Cue.strClipName) ||
 			!Is_SafeModelCueAssetId(Cue.strModelAssetId) ||
+            (!Cue.strAnimationSetAssetId.empty() && !Is_SafeModelCueAssetId(Cue.strAnimationSetAssetId)) ||
 			!std::isfinite(Cue.fStartDelaySeconds) ||
 			Cue.fStartDelaySeconds < 0.f ||
 			!std::isfinite(Cue.fDurationSeconds) ||
@@ -241,6 +242,24 @@ bool_t Client::CEffectDocumentCodec::Validate(
 			strOutError = "Effect Model Cue horizontal root-motion bone is invalid: " + Cue.strCueId;
 			return false;
 		}
+        if (Cue.iRootMotionVerticalAxis > 2u || !std::isfinite(Cue.fRootMotionVerticalScale) ||
+            Cue.fRootMotionVerticalScale < 0.f || Cue.fRootMotionVerticalScale > 1.f)
+        { strOutError = "Model Cue root-motion axis/scale is invalid: " + Cue.strCueId; return false; }
+        if (Cue.Afterimage)
+        {
+            const auto& history = *Cue.Afterimage;
+            if (history.strAppearanceBasis != "PROJECT_AUTHORED" || Cue.Material || !Cue.MaterialParameterTracks.empty() ||
+                !std::isfinite(history.fEmissionStartSeconds) || history.fEmissionStartSeconds < 0.f ||
+                !std::isfinite(history.fEmissionEndSeconds) || history.fEmissionEndSeconds <= history.fEmissionStartSeconds ||
+                history.fEmissionEndSeconds > Cue.fDurationSeconds ||
+                !std::isfinite(history.fSampleIntervalSeconds) || history.fSampleIntervalSeconds < .005f ||
+                history.fSampleIntervalSeconds > .5f || !std::isfinite(history.fSampleLifetimeSeconds) ||
+                history.fSampleLifetimeSeconds < history.fSampleIntervalSeconds || history.fSampleLifetimeSeconds > 2.f ||
+                !history.iMaxSamples || history.iMaxSamples > 16u ||
+                Cue.vColorMultiply.x < 0.f || Cue.vColorMultiply.y < 0.f || Cue.vColorMultiply.z < 0.f ||
+                Cue.vColorMultiply.w < 0.f || Cue.vColorMultiply.w > 1.f)
+            { strOutError = "Model Cue afterimage timing, appearance, or bounds are invalid: " + Cue.strCueId; return false; }
+        }
 		if (Cue.bLoop && Cue.bHoldLastFrame)
 		{
 			strOutError = "Effect Model Cue cannot loop and hold its last frame: " +
@@ -933,6 +952,9 @@ bool_t Client::CEffectDocumentCodec::Validate(
 			RingFill.fFeather <= 0.5f &&
 			(RingFill.bEnabled || RingFill.Is_Default()) &&
 			(!RingFill.bEnabled || bGenericMeshRingFillCarrier);
+		const auto& OwnerRadialMask = D.Sprite.OwnerRadialMask;
+		const bool_t bOwnerRadialMaskValid = OwnerRadialMask.Is_Valid() &&
+			(!OwnerRadialMask.bEnabled || Is_EffectOwnerRadialMaskCarrier(Element));
 		const EFFECT_LINEAR_REVEAL_DESC& LinearReveal = D.Sprite.LinearReveal;
 		const bool_t bFixedParticleRevealClock = !bManualParticle ||
 			(std::fabs(D.Particle.vLifeTimeSeconds.x -
@@ -990,7 +1012,7 @@ bool_t Client::CEffectDocumentCodec::Validate(
 			!bFixedCenterSpacingValid || !bSpawnShapeValid ||
 			!bInitialOrientationValid ||
 			!bInitialVelocityValid || !bRingFillValid ||
-			!bLinearRevealValid ||
+			!bLinearRevealValid || !bOwnerRadialMaskValid ||
 			!bTargetAttractorValid ||
 			!bSourceScaleValid ||
 			!bTrailValid || !bAfterImageValid || !bLightValid ||

@@ -295,7 +295,7 @@ namespace
 			!Parse_U32(*version, PRODUCT_VERSION, parsedVersion) || parsedVersion != PRODUCT_VERSION ||
 			!encounter || encounter->Get_String() != ENCOUNTER_ID || !boss || boss->Get_String() != BOSS_ARCHETYPE_ID ||
 			!revision || !Parse_U32(*revision, UINT32_MAX, parsedRevision) || parsedRevision == 0u ||
-			!patterns || patterns->Get_Array().size() > 64u)
+			!patterns || patterns->Get_Array().size() > LostArk::Shared::MAX_VALTAN_PATTERN_FLOW_SLOTS)
 		{ outStatus = "KoukuSaydon Product header is invalid; previous list retained."; return false; }
 		std::vector<CKoukuSaydonBossTool::PRODUCT_PATTERN> staged;
 		std::unordered_set<std::string> ids;

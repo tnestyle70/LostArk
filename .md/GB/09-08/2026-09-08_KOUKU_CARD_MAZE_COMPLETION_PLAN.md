@@ -94130,3 +94130,11 @@ else {
 ## G10 실행 확인
 
 `Tools/Build/Invoke-BuildAndRegression.ps1 -Configuration Debug -Profile Product` → MapAuthoring/WorldGameplay publish → 사용자 Client 실행 순서다. 서버 계약 검사는 `Server/Bin/Debug/Server.exe --card-maze-contract-test`, 패킷 검사는 `Tools/NetworkProtocolHarness/Bin/Debug/NetworkProtocolHarness.exe --mario-controls-only`로 실행한다. 실제 검증 결과와 남은 사용자 화면 확인은 대응 RESULT가 정본이다.
+
+## 2026-09-17 사용자 조정 — 문양 1개로 개인 출구 활성
+
+Server CKoukuCardMazeRuntime::KILL_TARGET 정본을3에서1로 변경한다. Apply_ToPlayer의 HUD 목표,
+Can_Hit의 추가 처치 차단, On_TargetHit 완료와 GameRoom의 출구 생성은 같은 상수를 이미 소비한다.
+개인 출구 진입→암전 중앙 이동→전원 중앙 집결→cardmaze.return의2관문 복귀는 수정하지 않는다.
+기존 계약 검사의3회 반복/목표 기대값만1회 규칙에 맞추고 소비 TU를 격리 컴파일한다.
+Server 제품 재빌드·재시작과 Client 화면/실제 이동 확인은 사용자가 수행한다. 새 파일 등록은 없다.

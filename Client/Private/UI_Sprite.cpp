@@ -96,6 +96,12 @@ void Client::CUI_Sprite::Set_UVWindow(const float2_t& vOffset, const float2_t& v
 	m_vUVScale = vScale;
 }
 
+void Client::CUI_Sprite::Set_UVRotation(f32_t fRadians, f32_t fAspect)
+{
+	m_fUVRotation = fRadians;
+	m_fUVAspect = fAspect > 0.f ? fAspect : 1.f;
+}
+
 void Client::CUI_Sprite::Set_Rotation(f32_t fDegrees)
 {
 	if (m_fRotationDeg == fDegrees)
@@ -204,6 +210,12 @@ HRESULT Client::CUI_Sprite::Bind_ShaderResources()
 		return E_FAIL;
 
 	if (FAILED(m_pShaderCom->Bind_RawValue("g_UVScale", &m_vUVScale, sizeof(m_vUVScale))))
+		return E_FAIL;
+
+	if (FAILED(m_pShaderCom->Bind_RawValue("g_UVRotation", &m_fUVRotation, sizeof(m_fUVRotation))))
+		return E_FAIL;
+
+	if (FAILED(m_pShaderCom->Bind_RawValue("g_UVAspect", &m_fUVAspect, sizeof(m_fUVAspect))))
 		return E_FAIL;
 
 	return S_OK;

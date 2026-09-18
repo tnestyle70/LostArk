@@ -4,6 +4,7 @@
 #include "Engine_Defines.h"
 #include "Effect_Distribution.h"
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstdint>
@@ -630,6 +631,30 @@ struct EFFECT_MESH_DETAIL_DESC final
 	std::vector<EFFECT_SOURCE_MATERIAL_SLOT_DESC> SourceMaterialSlots;
 };
 
+/* PROJECT_AUTHORED coverage in Effect-origin XZ units. ParticleSystem scale/yaw
+   and Frame.RootWorld place this circle; individual particle size does not. */
+struct EFFECT_OWNER_RADIAL_MASK_DESC final
+{
+	bool_t bEnabled = false;
+	float2_t vCenterXZ = { 0.f, 0.f };
+	f32_t fRadius = 1.f;
+	f32_t fFeather = 0.05f;
+
+	bool_t Is_Default() const
+	{
+		return !bEnabled && vCenterXZ.x == 0.f && vCenterXZ.y == 0.f &&
+			fRadius == 1.f && fFeather == 0.05f;
+	}
+
+	bool_t Is_Valid() const
+	{
+		return std::isfinite(vCenterXZ.x) && std::isfinite(vCenterXZ.y) &&
+			std::isfinite(fRadius) && fRadius > 0.f && fRadius <= 10000.f &&
+			std::isfinite(fFeather) && fFeather >= 0.f && fFeather <= fRadius &&
+			(bEnabled || Is_Default());
+	}
+};
+
 struct EFFECT_SPRITE_DETAIL_DESC final
 {
 	bool_t bBillboard = true;
@@ -642,6 +667,7 @@ struct EFFECT_SPRITE_DETAIL_DESC final
 	// opt into emitter Transform rotation with bFollowEmitterAxisRotation.
 	f32_t fBillboardRollDegreesPerSecond = 0.f;
 	EFFECT_LINEAR_REVEAL_DESC LinearReveal;
+	EFFECT_OWNER_RADIAL_MASK_DESC OwnerRadialMask;
 };
 
 enum class EFFECT_DECAL_RECEIVER_MODE : uint8_t
@@ -1525,6 +1551,21 @@ inline bool_t Is_EffectSourceIdentityOrPortableCopy(
 				std::string(strExpectedElementId));
 }
 
+inline bool_t Is_EffectOwnerRadialMaskCarrier(const EFFECT_ELEMENT_DESC& Element)
+{
+	// The first admitted consumer is the recovered dark-aura source sprite.
+	// A mask never changes the original native material identity or program.
+	return Element.eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
+		Element.SourceRecipe.bEnabled && Element.SourceRecipe.strRendererShape == "sprite" &&
+		Element.Material.SourceMaterial.bEnabled && !Element.Material.Execution.bEnabled &&
+		Element.Material.SourceMaterial.strRuntimeShaderProfileId == "effect.ue3.kouku-3171-native.v1" &&
+		Element.Material.eRenderProfile == EFFECT_RENDER_PROFILE::ALPHA_ONE_SIDED_DEPTH_READ &&
+		!Element.ActionCueAttachment.bEnabled &&
+		std::none_of(Element.ResourceBindings.begin(), Element.ResourceBindings.end(), [](const auto& Binding) {
+			return Binding.strSlotId == "meshModel";
+		});
+}
+
 inline bool_t Is_EffectSceneBackdropCarrier(const EFFECT_ELEMENT_DESC& Element)
 {
     return Element.eKind == EFFECT_ELEMENT_KIND::MESH &&
@@ -1903,13 +1944,30 @@ enum class EFFECT_MODEL_CUE_ALPHA_MODE : uint8_t
 	END
 };
 
+struct EFFECT_MODEL_CUE_AFTERIMAGE_DESC final
+{
+    f32_t fEmissionStartSeconds = 0.f;
+    f32_t fEmissionEndSeconds = 1.f;
+    f32_t fSampleIntervalSeconds = .05f;
+    f32_t fSampleLifetimeSeconds = .25f;
+    uint32_t iMaxSamples = 6u;
+    // Only source notify timing is recovered; appearance remains authored.
+    std::string strAppearanceBasis = "PROJECT_AUTHORED";
+};
+
 struct EFFECT_MODEL_CUE_DESC final
 {
 	std::string strCueId;
 	std::string strModelAssetId;
+    // Optional same-skeleton animation donor, attached through CModel.
+    std::string strAnimationSetAssetId;
 	std::string strClipName;
-	// Optional source bone: suppress X/Z translation and keep its animated Y jump.
+	// Optional source bone: suppress horizontal translation in the declared source basis.
 	std::string strSuppressHorizontalRootMotionBone;
+    uint32_t iRootMotionVerticalAxis = 1u;
+    f32_t fRootMotionVerticalScale = 1.f;
+    // Present draws history only; the source model preview owns the live body.
+    std::optional<EFFECT_MODEL_CUE_AFTERIMAGE_DESC> Afterimage;
 	f32_t fStartDelaySeconds = 0.f;
 	f32_t fDurationSeconds = 1.f;
 	EFFECT_TRANSFORM_DESC LocalTransform;
@@ -1928,6 +1986,13 @@ struct EFFECT_MODEL_CUE_DESC final
 	// Native material parameter curves sampled at cue-local time; requires Material.
 	std::vector<EFFECT_SOURCE_MATERIAL_PARAMETER_TRACK> MaterialParameterTracks;
 };
+
+inline f32_t Effect_ModelCueEndSeconds(const EFFECT_MODEL_CUE_DESC& cue)
+{
+    return cue.fStartDelaySeconds + (cue.Afterimage ?
+        (std::max)(cue.fDurationSeconds, cue.Afterimage->fEmissionEndSeconds +
+            cue.Afterimage->fSampleLifetimeSeconds) : cue.fDurationSeconds);
+}
 
 struct EFFECT_PARTICLE_SYSTEM_DESC final
 {

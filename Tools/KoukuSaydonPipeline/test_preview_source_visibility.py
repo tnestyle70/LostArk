@@ -62,7 +62,11 @@ class PreviewSourceVisibility(unittest.TestCase):
         for guard in ('!member.finiteActorLifetime','!boss.iOwnerBossNetEntityId','boss.strArchetypeId == member.sourceArchetypeId','previous == replacement'):
             self.assertIn(guard,sync)
         npc=(ROOT/'Client/Private/Npc.cpp').read_text(encoding='utf8')
-        self.assertIn('if (!Is_PresentationVisible()) return;',npc)
+        late = npc[npc.index('void CNpc::Late_Update('):npc.index('HRESULT CNpc::Render_Group(')]
+        self.assertIn('if (!Is_PresentationVisible())',late)
+        self.assertIn('Reset_AfterimageHistory();',late)
+        blend = npc[npc.index('HRESULT CNpc::Render_Group('):npc.index('HRESULT CNpc::Render()')]
+        self.assertIn('if (!Is_PresentationVisible()) return S_OK;',blend)
         self.assertIn('if (!Is_PresentationVisible()) return S_OK;',npc)
 
 

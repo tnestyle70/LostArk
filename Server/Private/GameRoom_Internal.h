@@ -67,6 +67,10 @@ constexpr float TWO_PI = 6.28318530717958647692f;
 	constexpr std::uint32_t ESTHER_CAST_TICKS =
 		(ESTHER_CAST_DURATION_MS * 30u + 999u) / 1000u;
 
+// The square-hole song lock (Shared SQUAREHOLE_SONG_DURATION_MS) in fixed 30 Hz room ticks.
+	constexpr std::uint32_t SQUAREHOLE_SONG_TICKS =
+		(LostArk::Shared::SQUAREHOLE_SONG_DURATION_MS * 30u + 999u) / 1000u;
+
 // One KoukuSaydon interaction HUD press converted to fixed 30 Hz room ticks.
 	constexpr std::uint32_t KOUKU_INTERACTION_TICKS =
 		(LostArk::Shared::KOUKU_INTERACTION_ACTION_MS * 30u + 999u) / 1000u;

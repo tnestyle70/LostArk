@@ -1315,6 +1315,11 @@ Create_DocumentOwnedRuntimeProjection(
 		EFFECT_VISUAL_PROGRAM_SUPPLEMENTAL_ELEMENT Supplemental;
 		switch (Carrier.eKind)
 		{
+		case EFFECT_AUTHORED_RUNTIME_CARRIER_KIND::CASCADE_BEAM_V1:
+			// The validated Beam2 remains in the immutable document and uses
+			// ordinary Playback::Sample_Trail, including in mixed documents.
+			continue;
+
 		case EFFECT_AUTHORED_RUNTIME_CARRIER_KIND::CASCADE_RIBBON_V1:
 			if (!Build_SourceOwnedCascadeRibbon(*pDocument, Element,
 					DocumentSha, Supplemental, strOutError))

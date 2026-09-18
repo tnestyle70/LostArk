@@ -23,6 +23,7 @@ class CWorldSequenceObject;
 class EFFECT_V2_CATALOG_SNAPSHOT;
 struct EFFECT_DOCUMENT_DESC;
 struct SAYDON_WEAPON_REPLACEMENT;
+struct SAYDON_HAT_REPLACEMENT;
 
 /* One playback path for authored world sequences. The Map Tool preview and the
    product level both evaluate a sequence here so a sequence can never look one
@@ -266,6 +267,7 @@ private:
 		shared_ptr<CWorldSequenceObject> object;
 		std::shared_ptr<PREPARED_OBJECT_POOL> preparationPool;
 		std::shared_ptr<const SAYDON_WEAPON_REPLACEMENT> weaponReplacement;
+		std::shared_ptr<const SAYDON_HAT_REPLACEMENT> hatReplacement;
 	};
 	struct OBJECT_MODEL
 	{

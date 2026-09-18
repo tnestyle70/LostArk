@@ -19,13 +19,14 @@ object's ID is the FNV-1 32-bit hash of its lowercased name, which is what lets
 a known name such as ``S_Vehicle_TrisionHorse_Dash1`` be resolved to the .wem
 files it plays.
 
-The .wem payloads are Wwise Vorbis with stripped setup packets, so turning one
-into a .wav needs vgmstream (``vgmstream_cmd.exe``); this module only decrypts,
-indexes and extracts.
+The .wem payloads are Wwise Vorbis with stripped setup packets; this module only
+decrypts, indexes and extracts. ``wwise_vorbis_to_ogg`` turns one into playable
+Ogg Vorbis, and ``render_events`` chains the two.
 """
 from __future__ import annotations
 
 import argparse
+import os
 import struct
 import sys
 from pathlib import Path
@@ -38,9 +39,29 @@ CONTAINER_MAGIC = b"\x3e\xce\xa6\x74"
 KEYSTREAM_PATH = Path(__file__).resolve().parent / "wwise_keystream.dat"
 KEYSTREAM_PERIOD = 435540
 
-DEFAULT_PACKAGE_ROOT = Path(
-    "C:/ProgramData/Smilegate/Games/LOSTARK/EFGame/ReleasePC/WwiseAudioPackage"
+# The launcher installs wherever the user pointed it, so the install is searched
+# for rather than assumed. LOSTARK_PACKAGE_ROOT wins when it is set.
+PACKAGE_SUFFIX = Path("EFGame/ReleasePC/WwiseAudioPackage")
+KNOWN_INSTALL_ROOTS = (
+    Path("C:/ProgramData/Smilegate/Games/LOSTARK"),
+    Path("D:/Games/LOSTARK"),
+    Path("C:/Games/LOSTARK"),
+    Path("D:/Smilegate/Games/LOSTARK"),
 )
+
+
+def _default_package_root() -> Path:
+    override = os.environ.get("LOSTARK_PACKAGE_ROOT")
+    if override:
+        return Path(override)
+    for root in KNOWN_INSTALL_ROOTS:
+        candidate = root / PACKAGE_SUFFIX
+        if candidate.is_dir():
+            return candidate
+    return KNOWN_INSTALL_ROOTS[0] / PACKAGE_SUFFIX
+
+
+DEFAULT_PACKAGE_ROOT = _default_package_root()
 
 # AkActionType high byte; only Play reaches the audio an event actually starts.
 ACTION_PLAY = 0x04

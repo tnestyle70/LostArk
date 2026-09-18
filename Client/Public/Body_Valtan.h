@@ -2,6 +2,7 @@
 
 #include "Client_Defines.h"
 #include "PartObject.h"
+#include "SkeletalAfterimage.h"
 
 NS_BEGIN(Engine)
 class CShader;
@@ -21,6 +22,7 @@ public:
 		uint32_t iPrototypeLevelIndex = {};
 		wstring_t strModelPrototypeTag = TEXT("Prototype_Component_Model_Valtan");
 		const DEFERRED_EMISSIVE_OVERRIDE* pEmissiveOverride = { nullptr };
+        const bool* pChargeAfterimageEnabled = nullptr;
 	} BODY_VALTAN_DESC;
 
 private:
@@ -38,11 +40,14 @@ public:
 	virtual HRESULT Render() override;
 	virtual HRESULT Render_Group(RENDERGROUP group) override;
 	virtual HRESULT Render_Shadow() override;
+    void Reset_ChargeAfterimage() { m_ChargeAfterimage.Reset(); }
 
 private:
 	shared_ptr<CShader> m_pShaderCom = { nullptr };
 	shared_ptr<CModel> m_pModelCom = { nullptr };
 	bool_t m_hasTranslucentMeshes = { false };
+    const bool* m_pChargeAfterimageEnabled = nullptr;
+    CSkeletalAfterimage m_ChargeAfterimage;
 	const uint32_t* m_pParentState = { nullptr };
 	uint32_t m_iPrototypeLevelIndex = {};
 	wstring_t m_strModelPrototypeTag;

@@ -25,6 +25,60 @@
 using namespace Client::EffectDocumentCodecDetail;
 
 
+namespace
+{
+    bool_t Restore_RetainedAnimationTrailTiling(
+        const Client::DATA_JSON_VALUE& ElementValue,
+        Client::EFFECT_ELEMENT_DESC& Element,
+        std::string& strOutError)
+    {
+        using namespace Client;
+        if (Element.RuntimeCarrier.eKind !=
+            EFFECT_AUTHORED_RUNTIME_CARRIER_KIND::ANIMATION_TRAIL_BAKED_EDGE_V1)
+            return true;
+        const auto* pDetail = ElementValue.Find("detail");
+        const auto* pTrail = pDetail ? pDetail->Find("trail") : nullptr;
+        // An explicit authored value (including zero) always takes precedence.
+        if (pTrail && pTrail->Find("tilingDistanceWorldUnits"))
+            return true;
+        const EFFECT_SOURCE_MODULE_DESC* pTypeData = nullptr;
+        for (const auto& Module : Element.SourceRecipe.Modules)
+        {
+            if (Module.strClassName != "particlemoduletypedataanimtrail")
+                continue;
+            if (pTypeData)
+            {
+                strOutError = "Effect baked trail source TypeData is ambiguous.";
+                return false;
+            }
+            pTypeData = &Module;
+        }
+        if (!pTypeData)
+            return true;
+        const EFFECT_SOURCE_LITERAL_DESC* pTiling = nullptr;
+        for (const auto& Literal : pTypeData->Literals)
+        {
+            if (Literal.strPropertyPath != "tilingdistance")
+                continue;
+            if (pTiling || Literal.eKind != EFFECT_SOURCE_LITERAL_KIND::NUMBER ||
+                !std::isfinite(Literal.fNumber) || Literal.fNumber < 0.0 ||
+                Literal.fNumber * 0.01 > std::numeric_limits<f32_t>::max())
+            {
+                strOutError = "Effect baked trail source tiling distance is invalid or ambiguous.";
+                return false;
+            }
+            pTiling = &Literal;
+        }
+        // Disabled recipes still retain source TypeData for baked edge carriers.
+        // Read cm once; the renderer already consumes world-distance tiling.
+        if (pTiling)
+            Element.Detail.Trail.fTilingDistanceWorldUnits =
+                static_cast<f32_t>(pTiling->fNumber * 0.01);
+        return true;
+    }
+}
+
+
 bool_t Client::CEffectDocumentCodec::Requires_DocumentOwnedRuntimeProjection(
 	const EFFECT_DOCUMENT_DESC& Document)
 {
@@ -33,7 +87,13 @@ bool_t Client::CEffectDocumentCodec::Requires_DocumentOwnedRuntimeProjection(
 		(!Document.RuntimeExtensions.Is_Empty() ||
 		 std::any_of(Document.Elements.begin(), Document.Elements.end(),
 			 [](const EFFECT_ELEMENT_DESC& Element)
-			 { return !Element.RuntimeCarrier.Is_Empty(); }));
+			 {
+                 // Target Beam2 is sampled directly by Playback::Sample_Trail.
+                 // Only adapter-backed carriers require a projection.
+                 return !Element.RuntimeCarrier.Is_Empty() &&
+                     Element.RuntimeCarrier.eKind !=
+                         EFFECT_AUTHORED_RUNTIME_CARRIER_KIND::CASCADE_BEAM_V1;
+             }));
 }
 
 
@@ -363,10 +423,10 @@ bool_t Client::CEffectDocumentCodec::Parse_Value(
 		{
 			if (!CueValue.Is_Object() ||
 				(bSourceContract && !Validate_ExactFields(CueValue,
-					{ "cueId", "modelAssetId", "clipName",
+					{ "cueId", "modelAssetId", "animationSetAssetId", "clipName",
 						"startDelaySeconds", "durationSeconds", "alphaMode",
 						"opacity", "colorMultiply", "holdLastFrame", "loop", "visible",
-						"suppressHorizontalRootMotionBone",
+						"suppressHorizontalRootMotionBone", "rootMotionVerticalAxis", "rootMotionVerticalScale", "afterimage",
 						"localTransform", "assetPreTransform", "material", "materialParameterTracks" },
 					"Effect source-contract Model Cue", strOutError)))
 			{
@@ -406,6 +466,8 @@ bool_t Client::CEffectDocumentCodec::Parse_Value(
 			}
 			Cue.strCueId = pCueId->Get_String();
 			Cue.strModelAssetId = pModelAssetId->Get_String();
+            if (CueValue.Find("animationSetAssetId") && !Read_String(CueValue, "animationSetAssetId",
+                Cue.strAnimationSetAssetId, strOutError)) return false;
 			Cue.strClipName = pClipName->Get_String();
 			if (nullptr != pAlphaMode &&
 				(!pAlphaMode->Is_String() ||
@@ -430,6 +492,23 @@ bool_t Client::CEffectDocumentCodec::Parse_Value(
 				if (!Read_MaterialParameterTracks(*pTracks, Cue.MaterialParameterTracks, strOutError))
 					return false;
 			}
+            if ((CueValue.Find("rootMotionVerticalAxis") && !Read_UInt(CueValue,
+                    "rootMotionVerticalAxis", Cue.iRootMotionVerticalAxis, strOutError)) ||
+                !Read_OptionalFloat(CueValue, "rootMotionVerticalScale", Cue.fRootMotionVerticalScale, strOutError)) return false;
+            if (const auto* value = CueValue.Find("afterimage"))
+            {
+                EFFECT_MODEL_CUE_AFTERIMAGE_DESC history;
+                if (!value->Is_Object() || !Validate_ExactFields(*value,
+                    {"emissionStartSeconds", "emissionEndSeconds", "sampleIntervalSeconds",
+                     "sampleLifetimeSeconds", "maxSamples", "appearanceBasis"}, "Model Cue afterimage", strOutError) ||
+                    !Read_Float(*value, "emissionStartSeconds", history.fEmissionStartSeconds, strOutError) ||
+                    !Read_Float(*value, "emissionEndSeconds", history.fEmissionEndSeconds, strOutError) ||
+                    !Read_Float(*value, "sampleIntervalSeconds", history.fSampleIntervalSeconds, strOutError) ||
+                    !Read_Float(*value, "sampleLifetimeSeconds", history.fSampleLifetimeSeconds, strOutError) ||
+                    !Read_UInt(*value, "maxSamples", history.iMaxSamples, strOutError) ||
+                    !Read_String(*value, "appearanceBasis", history.strAppearanceBasis, strOutError)) return false;
+                Cue.Afterimage = std::move(history);
+            }
 			Cue.bVisible = pVisible->Get_Boolean();
 			Staged.ModelCues.push_back(std::move(Cue));
 		}
@@ -652,6 +731,8 @@ bool_t Client::CEffectDocumentCodec::Parse_Value(
 				return false;
 			}
 		}
+		if (!Restore_RetainedAnimationTrailTiling(ElementValue, Element, strOutError))
+			return false;
 		if (iSourceVersion >= 12u)
 		{
 			const DATA_JSON_VALUE* pSourcePresentation =
@@ -756,9 +837,25 @@ std::string Client::CEffectDocumentCodec::Serialize(
 			<< ", \"opacity\": " << Cue.fOpacity
 			<< ", \"colorMultiply\": ";
 		Write_Float4(Output, Cue.vColorMultiply);
+        if (!Cue.strAnimationSetAssetId.empty())
+            Output << ", \"animationSetAssetId\": \"" << CDataJson::Escape(Cue.strAnimationSetAssetId) << "\"";
 		if (!Cue.strSuppressHorizontalRootMotionBone.empty())
 			Output << ", \"suppressHorizontalRootMotionBone\": \""
 				<< CDataJson::Escape(Cue.strSuppressHorizontalRootMotionBone) << "\"";
+        if (Cue.iRootMotionVerticalAxis != 1u)
+            Output << ", \"rootMotionVerticalAxis\": " << Cue.iRootMotionVerticalAxis;
+        if (Cue.fRootMotionVerticalScale != 1.f)
+            Output << ", \"rootMotionVerticalScale\": " << Cue.fRootMotionVerticalScale;
+        if (Cue.Afterimage)
+        {
+            const auto& history = *Cue.Afterimage;
+            Output << ", \"afterimage\": { \"emissionStartSeconds\": " << history.fEmissionStartSeconds
+                << ", \"emissionEndSeconds\": " << history.fEmissionEndSeconds
+                << ", \"sampleIntervalSeconds\": " << history.fSampleIntervalSeconds
+                << ", \"sampleLifetimeSeconds\": " << history.fSampleLifetimeSeconds
+                << ", \"maxSamples\": " << history.iMaxSamples
+                << ", \"appearanceBasis\": \"" << CDataJson::Escape(history.strAppearanceBasis) << "\" }";
+        }
 		Output << ", \"holdLastFrame\": "
 			<< (Cue.bHoldLastFrame ? "true" : "false")
 			<< ", \"loop\": " << (Cue.bLoop ? "true" : "false")
@@ -1281,6 +1378,7 @@ void Client::CEffectDocumentCodec::Collect_ResourceAssetIds(
 	for (const EFFECT_MODEL_CUE_DESC& Cue : Document.ModelCues)
 	{
 		Unique.insert(Cue.strModelAssetId);
+        if (!Cue.strAnimationSetAssetId.empty()) Unique.insert(Cue.strAnimationSetAssetId);
 		if (Cue.Material)
 			for (const EFFECT_NAMED_TEXTURE_DESC& Texture : Cue.Material->SourceMaterial.Textures)
 				if (!Texture.strAssetId.empty()) Unique.insert(Texture.strAssetId);

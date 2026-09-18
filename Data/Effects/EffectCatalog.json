@@ -3070,6 +3070,2766 @@
       "effectAssetId": "effect.vehicle.vehicle_ancient_myth.98523.0.full.restore",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
       "authoringPath": "Effects/Authored/effect.vehicle.vehicle_ancient_myth.98523.0.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.card.match.dice.diamond.explosion",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.card.match.dice.diamond.explosion.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.card.match.heart",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.card.match.heart.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.card.match.clover",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.card.match.clover.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.card.match.diamond",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.card.match.diamond.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.card.match.spade",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.card.match.spade.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.card.match.explosion",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.card.match.explosion.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.card.match.emit",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.card.match.emit.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.card.spinning.heart",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.card.spinning.heart.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.card.spinning.clover",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.card.spinning.clover.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.card.spinning.diamond",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.card.spinning.diamond.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.card.spinning.spade",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.card.spinning.spade.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.common.trumpet.card.floor",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.common.trumpet.card.floor.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.bfx_low_00.dust.par_g_boxdust_001",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.bfx_low_00.dust.par_g_boxdust_001.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.bfx_low_01.etc.par_k_drain_big_01_l",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.bfx_low_01.etc.par_k_drain_big_01_l.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.bfx_low_01.explosion.par_q_fireworks_01_loop",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.bfx_low_01.explosion.par_q_fireworks_01_loop.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.bfx_low_02.glow.par_m_glow_001",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.bfx_low_02.glow.par_m_glow_001.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.bfx_low_03.leaf.par_m_paperleaf_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.bfx_low_03.leaf.par_m_paperleaf_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.bfx_low_11.aura.par_g_ghostship_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.bfx_low_11.aura.par_g_ghostship_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.bfx_low_15.smoke.par_q_magicshow_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.bfx_low_15.smoke.par_q_magicshow_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.bfx_low_21.etc.par_q_cutystar_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.bfx_low_21.etc.par_q_cutystar_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_bs_00.hit.par_d_groggyhit_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_bs_00.hit.par_d_groggyhit_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_bs_00.hit.par_k_raidgroggy_hit_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_bs_00.hit.par_k_raidgroggy_hit_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_bs_04.state.par_b_statefaint_001",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_bs_04.state.par_b_statefaint_001.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_bs_04.state.par_b_statefear_001",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_bs_04.state.par_b_statefear_001.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_bs_04.state.par_b_statefear_002",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_bs_04.state.par_b_statefear_002.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_bs_04.state.par_b_statefear_003",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_bs_04.state.par_b_statefear_003.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_bs_04.state.par_c_silence_001",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_bs_04.state.par_c_silence_001.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_bs_04.state.par_d_buff_damageup_01_e_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_bs_04.state.par_d_buff_damageup_01_e_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_bs_04.state.par_d_buff_damageup_01_l_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_bs_04.state.par_d_buff_damageup_01_l_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_bs_04.state.par_d_buff_damageup_01_s_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_bs_04.state.par_d_buff_damageup_01_s_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_bs_04.state.par_d_buff_defence_01_e",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_bs_04.state.par_d_buff_defence_01_e.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_bs_04.state.par_d_buff_defence_01_l",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_bs_04.state.par_d_buff_defence_01_l.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_bs_04.state.par_d_buff_defence_01_s",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_bs_04.state.par_d_buff_defence_01_s.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_bs_04.state.par_d_buff_defence_02_e",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_bs_04.state.par_d_buff_defence_02_e.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_bs_04.state.par_d_buff_powerdown_01_l",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_bs_04.state.par_d_buff_powerdown_01_l.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_bs_04.state.par_e_debuffdark_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_bs_04.state.par_e_debuffdark_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_bs_04.state.par_e_dotfire_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_bs_04.state.par_e_dotfire_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_bs_04.state.par_j_exmove_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_bs_04.state.par_j_exmove_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_bs_04.state.par_l_change_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_bs_04.state.par_l_change_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_bs_08.buff.par_d_confusion_red_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_bs_08.buff.par_d_confusion_red_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_bs_08.buff.par_d_confusion_red_02",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_bs_08.buff.par_d_confusion_red_02.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_bs_08.buff.par_d_timer_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_bs_08.buff.par_d_timer_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_bs_08.buff.par_g_buff_target_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_bs_08.buff.par_g_buff_target_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_bs_08.buff.par_g_rpct_05_auramadness",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_bs_08.buff.par_g_rpct_05_auramadness.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_bs_08.buff.par_g_rpct_05_auramadness_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_bs_08.buff.par_g_rpct_05_auramadness_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_bs_08.buff.par_g_voldaik_pcformnpc_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_bs_08.buff.par_g_voldaik_pcformnpc_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_bs_08.buff.par_g_voldaik_pcformnpc_02",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_bs_08.buff.par_g_voldaik_pcformnpc_02.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_bs_08.buff.par_l_rpct_camblood_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_bs_08.buff.par_l_rpct_camblood_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_bs_10.hit.par_d_beamhit_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_bs_10.hit.par_d_beamhit_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_cm_00.dust.par_c_dust_001",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_cm_00.dust.par_c_dust_001.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_cm_00.dust.par_d_dust_001_1",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_cm_00.dust.par_d_dust_001_1.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_cm_00.dust.par_d_dust_001_pr",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_cm_00.dust.par_d_dust_001_pr.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_cm_00.dust.par_d_dust_002_pr",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_cm_00.dust.par_d_dust_002_pr.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_cm_00.dust.par_d_dust_007_pr",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_cm_00.dust.par_d_dust_007_pr.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_cm_00.dust.par_e_underdust_03_2",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_cm_00.dust.par_e_underdust_03_2.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_cm_00.dust.par_e_underdustloop_02",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_cm_00.dust.par_e_underdustloop_02.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_cm_01.debris.par_d_debris_003",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_cm_01.debris.par_d_debris_003.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_cm_01.decal.par_d_decal_02",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_cm_01.decal.par_d_decal_02.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_cm_01.distortion.par_mp_concavedis_z_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_cm_01.distortion.par_mp_concavedis_z_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_cm_01.distortion.par_mp_concavedis_z_08",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_cm_01.distortion.par_mp_concavedis_z_08.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_cm_02.ice.par_e_shot_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_cm_02.ice.par_e_shot_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_cm_02.ice.par_g_icebomb_01_pr",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_cm_02.ice.par_g_icebomb_01_pr.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_cm_02.light.par_m_light_001",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_cm_02.light.par_m_light_001.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_cm_02.light.par_mp_light_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_cm_02.light.par_mp_light_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_cm_02.light.par_mp_light_01_loop",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_cm_02.light.par_mp_light_01_loop.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_cm_02.light.par_mp_light_01_sine",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_cm_02.light.par_mp_light_01_sine.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_cm_02.light.par_mp_light_04",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_cm_02.light.par_mp_light_04.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_cm_02.light.par_mp_light_05_l",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_cm_02.light.par_mp_light_05_l.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_cm_02.light.par_x_light_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_cm_02.light.par_x_light_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_cm_02.light.par_x_light_02_off",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_cm_02.light.par_x_light_02_off.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_cm_02.light.par_x_light_02_on",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_cm_02.light.par_x_light_02_on.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_cm_03.spawn.par_d_spawn_010",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_cm_03.spawn.par_d_spawn_010.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_cm_03.spreadenergy.par_c_ring_001",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_cm_03.spreadenergy.par_c_ring_001.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_cm_03.swing.par_mp_swing_03",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_cm_03.swing.par_mp_swing_03.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_cm_04.sys.par_t_singlemode_guide_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_cm_04.sys.par_t_singlemode_guide_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_cm_04.sys.par_t_singlemode_guide_01_s",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_cm_04.sys.par_t_singlemode_guide_01_s.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_boeh_00.par_o_boeh_atk_08_dust_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_boeh_00.par_o_boeh_atk_08_dust_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_boss_01.rpct.par_d_rpct_prj01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_boss_01.rpct.par_d_rpct_prj01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_boss_01.rpct.par_d_rpct_prj01_exp2",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_boss_01.rpct.par_d_rpct_prj01_exp2.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_boss_01.rpct.par_d_rpct_sk12_13_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_boss_01.rpct.par_d_rpct_sk12_13_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_cdebz_00.par_v_cdebz_sight_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_cdebz_00.par_v_cdebz_sight_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_cmdgr_03-1.par_y_cmdgr_03-1_spawn_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_cmdgr_03-1.par_y_cmdgr_03-1_spawn_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_cuas_01.par_o_cuas_atk_06_03",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_cuas_01.par_o_cuas_atk_06_03.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_isak_00.par_k_isak_buff_mosedamage_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_isak_00.par_k_isak_buff_mosedamage_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_lrcr_02.par_l_lrcr_02_sk_02_3",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_lrcr_02.par_l_lrcr_02_sk_02_3.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_ppab_00.par_s_ppab_electrocution_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_ppab_00.par_s_ppab_electrocution_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_ppcc_00.par_k_ppcc_ballsblow_exp_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_ppcc_00.par_k_ppcc_ballsblow_exp_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_ppcc_00.par_l_ppcc_sk_02_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_ppcc_00.par_l_ppcc_sk_02_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_ppct_00.par_k_ppct_handswing_trail_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_ppct_00.par_k_ppct_handswing_trail_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_ppct_00.par_k_ppct_throwhoop_prj_03",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_ppct_00.par_k_ppct_throwhoop_prj_03.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_ppct_00.par_k_ppct_vividfracture_ball_04",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_ppct_00.par_k_ppct_vividfracture_ball_04.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_ppct_00.par_k_ppct_vividfracture_exp_02",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_ppct_00.par_k_ppct_vividfracture_exp_02.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_ppct_00.par_k_ppct_vividfracture_exp_03",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_ppct_00.par_k_ppct_vividfracture_exp_03.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_ppct_00.par_k_ppct_vividfracture_exp_04",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_ppct_00.par_k_ppct_vividfracture_exp_04.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_ptck_00.par_o_ptck_atk_04_dust_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_ptck_00.par_o_ptck_atk_04_dust_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rhcn_01.par_x_rhcn_saprkloop_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rhcn_01.par_x_rhcn_saprkloop_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpbf_00_n.par_n_rpbf_wave_03",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpbf_00_n.par_n_rpbf_wave_03.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_03.par_d_rpct03_sk14_02",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_03.par_d_rpct03_sk14_02.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_03.par_d_rpct03_sk14_31",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_03.par_d_rpct03_sk14_31.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_aura_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_aura_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_card_aura_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_card_aura_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_card_deco_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_card_deco_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_card_exp_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_card_exp_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_card_prj_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_card_prj_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_circusball_01_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_circusball_01_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_circusball_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_circusball_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_circusball_02",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_circusball_02.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_circusball_03_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_circusball_03_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_circusball_dead_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_circusball_dead_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_circusball_prj_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_circusball_prj_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_circusball_prj_02",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_circusball_prj_02.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_dance_aura_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_dance_aura_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_dance_aura_02_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_dance_aura_02_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_dance_fingerpoint_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_dance_fingerpoint_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_dance_hand_trail_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_dance_hand_trail_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_dance_light_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_dance_light_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_drug_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_drug_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_fire_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_fire_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_fire_02_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_fire_02_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_fire_decal_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_fire_decal_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_firering_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_firering_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_firering_02_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_firering_02_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_firewave_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_firewave_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_hat",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_hat.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_hit_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_hit_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_mouse_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_mouse_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_mouse_02",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_mouse_02.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_randombox_02_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_randombox_02_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_randombox_exp_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_randombox_exp_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_randombox_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_randombox_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_smoke_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_smoke_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_smoke_02_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_smoke_02_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_wand_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_wand_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_wand_02_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_wand_02_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_wand_decal_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_wand_decal_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_wand_spin_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_05_wand_spin_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_dust_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_g.par_g_rpct_dust_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_eye_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_eye_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_eye_02_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_eye_02_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_shield_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_shield_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_01_1",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_01_1.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_01_2_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_01_2_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_02",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_02.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_02_1_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_02_1_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_02_2_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_02_2_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_02_3_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_02_3_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_02_4",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_02_4.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_02_5_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_02_5_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_02_6",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_02_6.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_04_10_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_04_10_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_04_11_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_04_11_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_04_12",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_04_12.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_04_13",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_04_13.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_04_1_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_04_1_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_04_2_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_04_2_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_04_3_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_04_3_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_04_4_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_04_4_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_04_5_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_04_5_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_04_6_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_04_6_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_04_7_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_04_7_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_04_8_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_04_8_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_04_9_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_04_9_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_04_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_04_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_06_2_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_06_2_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_06_3_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_06_3_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_06_4",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_06_4.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_06_5",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_06_5.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_06_7",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_06_7.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_06_8",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_06_8.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_06_9_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_06_9_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_07_1",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_07_1.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_07_10_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_07_10_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_07_11_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_07_11_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_07_12_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_07_12_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_07_2_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_07_2_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_07_3",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_07_3.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_07_4_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_07_4_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_07_5_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_07_5_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_07_6_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_07_6_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_07_7_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_07_7_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_07_8_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_07_8_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_07_9_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_07_9_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_07_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_07_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_08_10_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_08_10_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_08_11_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_08_11_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_08_1_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_08_1_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_08_2_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_08_2_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_08_3_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_08_3_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_08_4_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_08_4_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_08_5_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_08_5_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_08_6_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_08_6_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_08_7_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_08_7_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_08_8_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_08_8_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_08_9_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_08_9_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_08_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_08_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_09_10_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_09_10_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_09_11_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_09_11_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_09_12_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_09_12_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_09_13_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_09_13_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_09_14_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_09_14_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_09_15_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_09_15_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_09_16_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_09_16_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_09_1_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_09_1_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_09_2_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_09_2_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_09_3_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_09_3_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_09_4_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_09_4_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_09_5_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_09_5_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_09_6_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_09_6_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_09_7_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_09_7_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_09_8_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_09_8_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_09_9",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_09_9.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_09_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_09_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_12_1_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_12_1_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_12_2_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_12_2_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_12_3_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_12_3_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_12_4_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_12_4_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_12_5_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_12_5_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_12_6_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_12_6_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_12_7_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_12_7_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_12_8_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_12_8_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_12_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_12_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_13_1_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_13_1_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_13_2_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_13_2_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_13_3_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_13_3_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_13_4_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_13_4_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_13_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_13_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_timebomb_01_2",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_timebomb_01_2.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_trail_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_trail_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_trail_02_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_trail_02_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_trail_03_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_trail_03_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_trail_04_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_trail_04_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_o_rpct_heart_01_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_o_rpct_heart_01_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_l.par_o_rpct_star_01_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_l.par_o_rpct_star_01_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_x.par_x_rpct_mark_04",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_x.par_x_rpct_mark_04.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_x.par_x_rpct_markoff_04",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_x.par_x_rpct_markoff_04.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_x.par_x_rpct_spotlight_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_x.par_x_rpct_spotlight_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_x.par_x_rpct_spotlight_02_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_x.par_x_rpct_spotlight_02_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_x.par_x_rpct_timebomb_01_02",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_x.par_x_rpct_timebomb_01_02.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_x.par_x_rpct_timebomb_02_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_x.par_x_rpct_timebomb_02_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_05_x.par_x_rpct_timebomb_02_02",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_05_x.par_x_rpct_timebomb_02_02.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_aura_01_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_aura_01_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_cast_02_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_cast_02_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_cast_03_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_cast_03_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_cast_04_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_cast_04_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_cast_05_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_cast_05_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_cast_06_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_cast_06_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_crash_01_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_crash_01_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_crash_02_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_crash_02_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_crash_03_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_crash_03_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_crash_04_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_crash_04_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_crash_05_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_crash_05_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_dust_01_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_dust_01_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_dust_02_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_dust_02_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_dust_03_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_dust_03_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_dust_04_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_dust_04_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_dust_05_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_dust_05_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_dust_05_02",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_dust_05_02.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_eye_01_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_eye_01_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_eye_01_02_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_eye_01_02_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_eye_02_02_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_eye_02_02_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_eye_02_03_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_eye_02_03_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_eye_02_04_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_eye_02_04_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_firebreath_01_02_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_firebreath_01_02_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_firecast_01_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_firecast_01_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_firecast_01_02_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_firecast_01_02_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_firedc_01_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_firedc_01_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_firedc_01_02",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_firedc_01_02.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_hatcast_01_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_hatcast_01_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_hatend_01_02",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_hatend_01_02.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_hit_01_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_hit_01_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_hnadcast_01_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_hnadcast_01_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_hnadcast_02_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_hnadcast_02_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_hnadcast_02_02_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_hnadcast_02_02_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_laseratk_01_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_laseratk_01_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_lightred_01_02_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_lightred_01_02_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_projbird_01_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_projbird_01_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_projexp_01_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_projexp_01_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_screenpp_01_1_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_screenpp_01_1_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_spawn_01_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_spawn_01_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_trail_01_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_trail_01_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_trail_01_02_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_trail_01_02_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_trail_02_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_trail_02_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_trail_03_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_trail_03_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_windbreath_01_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_windbreath_01_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_windbreath_01_02",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_windbreath_01_02.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_windbreath_01_03",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_windbreath_01_03.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_windcast_01_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_windcast_01_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_windember_01_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_windember_01_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_wp_01_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_wp_01_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_wp_01_02_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_wp_01_02_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_d.par_d_rpct07_buff11",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_d.par_d_rpct07_buff11.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_d.par_d_rpct07_buff12",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_d.par_d_rpct07_buff12.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_d.par_d_rpct07_buff13",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_d.par_d_rpct07_buff13.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_d.par_d_rpct07_buff14",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_d.par_d_rpct07_buff14.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_d.par_d_rpct07_buff21",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_d.par_d_rpct07_buff21.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_d.par_d_rpct07_buff22",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_d.par_d_rpct07_buff22.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_d.par_d_rpct07_buff23",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_d.par_d_rpct07_buff23.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_d.par_d_rpct07_buff24",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_d.par_d_rpct07_buff24.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_d.par_d_rpct07_prj01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_d.par_d_rpct07_prj01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_dark_decal_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_dark_decal_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_dark_decal_02_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_dark_decal_02_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_ppct_spot_dance_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_ppct_spot_dance_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_ppct_spot_dance_02",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_ppct_spot_dance_02.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_ppct_spot_dance_blue_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_ppct_spot_dance_blue_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_ppct_spot_dance_green_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_ppct_spot_dance_green_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_ppct_spot_dance_red_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_ppct_spot_dance_red_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_ppct_spot_dance_yellow_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_ppct_spot_dance_yellow_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct07_ball_up_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct07_ball_up_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct07_ray_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct07_ray_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_07_bazooka",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_07_bazooka.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_07_bazooka_end",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_07_bazooka_end.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_07_bazooka_loop",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_07_bazooka_loop.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_airstrike_exp_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_airstrike_exp_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_airstrike_missile_02",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_airstrike_missile_02.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_all_shot_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_all_shot_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_atk_09_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_atk_09_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_atk_09_03_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_atk_09_03_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_atk_exp_02_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_atk_exp_02_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_atk_face_spwn_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_atk_face_spwn_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_back_atk_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_back_atk_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_back_shot_dust_atk_02",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_back_shot_dust_atk_02.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_ball_appear_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_ball_appear_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_ball_big_exp_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_ball_big_exp_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_ballread_ball_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_ballread_ball_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_ballread_ball_02",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_ballread_ball_02.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_ballread_ball_03",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_ballread_ball_03.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_ballread_ball_04",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_ballread_ball_04.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_ballread_exp_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_ballread_exp_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_ballread_exp_03_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_ballread_exp_03_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_bazooka_mesh_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_bazooka_mesh_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_boom_cast_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_boom_cast_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_breath_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_breath_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_cannon_prj_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_cannon_prj_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_coming_shot_cast_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_coming_shot_cast_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_crack_pjt_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_crack_pjt_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_cutting_exp_02_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_cutting_exp_02_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_dance_cast_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_dance_cast_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_dance_shot_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_dance_shot_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_dash_atk_01_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_dash_atk_01_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_dashatk_dash_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_dashatk_dash_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_dountfracture_exp_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_dountfracture_exp_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_elec_prj_02_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_elec_prj_02_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_elecarea_02_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_elecarea_02_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_exp_round_deacl_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_exp_round_deacl_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_eye_atk_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_eye_atk_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_eye_atk_02_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_eye_atk_02_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_eye_shield_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_eye_shield_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_eyecast_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_eyecast_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_fire_bigearthwave_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_fire_bigearthwave_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_fire_decal_t_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_fire_decal_t_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_gas_cast_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_gas_cast_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_gas_cast_02",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_gas_cast_02.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_gas_round_atk_exp_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_gas_round_atk_exp_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_gun_shot_decal_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_gun_shot_decal_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_hand_shot_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_hand_shot_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_handswing_trail_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_handswing_trail_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_handswing_trail_03_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_handswing_trail_03_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_holo_spot_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_holo_spot_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_jump_exp_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_jump_exp_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_light_cast_01_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_light_cast_01_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_line_atk_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_line_atk_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_magic_end_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_magic_end_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_magiccircle_prj_exp_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_magiccircle_prj_exp_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_magiccircle_prj_exp_03_1_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_magiccircle_prj_exp_03_1_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_mbition_body_02_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_mbition_body_02_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_napalm_area_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_napalm_area_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_potal_cast_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_potal_cast_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_potalshot_exp_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_potalshot_exp_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_potalshot_exp_02_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_potalshot_exp_02_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_realtarget_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_realtarget_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_realtarget_02_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_realtarget_02_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_realtarget_end_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_realtarget_end_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_rotate_pjt_trail_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_rotate_pjt_trail_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_round_fire_exp_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_round_fire_exp_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_shot_02_1_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_shot_02_1_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_signalshot_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_signalshot_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_signature_01_1_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_signature_01_1_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_skull_sign_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_skull_sign_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_skullshot_exp_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_skullshot_exp_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_smacing_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_smacing_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_star_cast_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_star_cast_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_star_exp_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_star_exp_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_star_shot_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_star_shot_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_star_sign_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_star_sign_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_thunderstorm_cast_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rpct_thunderstorm_cast_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_rptm_down_lighting_atk_02_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_rptm_down_lighting_atk_02_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpct_07_v.par_v_target_shot_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpct_07_v.par_v_target_shot_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00-1.par_l_rpcz_00-1_sk_02",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00-1.par_l_rpcz_00-1_sk_02.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00-1.par_l_rpcz_00-1_sk_02_1_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00-1.par_l_rpcz_00-1_sk_02_1_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00-1.par_l_rpcz_00-1_sk_04",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00-1.par_l_rpcz_00-1_sk_04.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_bazooka_c_fire_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_bazooka_c_fire_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_bazooka_c_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_bazooka_c_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_bazooka_c_prj01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_bazooka_c_prj01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_bazooka_d_bomb_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_bazooka_d_bomb_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_bazooka_d_bomb_02_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_bazooka_d_bomb_02_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_bazooka_d_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_bazooka_d_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_bazooka_fire_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_bazooka_fire_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_hammer_a_00_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_hammer_a_00_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_hammer_a_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_hammer_a_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_hammer_a_02_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_hammer_a_02_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_hammer_b_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_hammer_b_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_hammer_c_00_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_hammer_c_00_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_hammer_c_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_hammer_c_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_hammer_d_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_hammer_d_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_jump_dust",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_jump_dust.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_jump_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_jump_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_move_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_move_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_prj_exp_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_prj_exp_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_smoke_despawn_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_smoke_despawn_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_trumpet_a_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_trumpet_a_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_trumpet_a_music_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_trumpet_a_music_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_trumpet_b_02_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_trumpet_b_02_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_trumpet_b_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_trumpet_b_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_trumpet_c_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_trumpet_c_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_trumpet_d_02_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_trumpet_d_02_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_trumpet_d_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_trumpet_d_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_trumpet_d_music_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_trumpet_d_music_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_weapon_spawn_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_weapon_spawn_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_wp_bazooka_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_wp_bazooka_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_wp_bazooka_despawn_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_wp_bazooka_despawn_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_wp_hammer_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_wp_hammer_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_wp_hammer_despawn_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_wp_hammer_despawn_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_wp_trumpet_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_wp_trumpet_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_wp_trumpet_despawn_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_wp_trumpet_despawn_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_cast_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_cast_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_ribbon_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_ribbon_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_rope_blue_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_rope_blue_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_safezone_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_safezone_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_safezone_02",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_safezone_02.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_safezone_cast_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_safezone_cast_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_throwhoop_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_throwhoop_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_throwhoop_aura_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_throwhoop_aura_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_trowhoop_a_01_despawn_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_trowhoop_a_01_despawn_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_trowhoop_a_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_trowhoop_a_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_trowhoop_a_hell_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_trowhoop_a_hell_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_trowhoop_b_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_trowhoop_b_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_trowhoop_b_01_despawn",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_trowhoop_b_01_despawn.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_area_cast_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_area_cast_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_ball_appear_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_ball_appear_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_ball_appear_cast_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_ball_appear_cast_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_ballshoot_ball_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_ballshoot_ball_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_ballshoot_ball_02",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_ballshoot_ball_02.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_bazooka_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_bazooka_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_beam_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_beam_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_beam_02_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_beam_02_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_beam_03_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_beam_03_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_beam_cast_dust_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_beam_cast_dust_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_beam_dust_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_beam_dust_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_bigarea_down_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_bigarea_down_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_bigarea_exp_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_bigarea_exp_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_bigarea_exp_02_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_bigarea_exp_02_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_bigarea_exp_03_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_bigarea_exp_03_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_bigexp_clockwise_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_bigexp_clockwise_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_bigexp_counterclockwise_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_bigexp_counterclockwise_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_cast_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_cast_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_cast_02_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_cast_02_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_cast_03_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_cast_03_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_circus_exp_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_circus_exp_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_circus_exp_02_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_circus_exp_02_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_circusbomb_trail_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_circusbomb_trail_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_circusbomb_trail_02_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_circusbomb_trail_02_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_circusprj_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_circusprj_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_circusprj_02_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_circusprj_02_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_cohesion_exp_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_cohesion_exp_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_cohesion_exp_02_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_cohesion_exp_02_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_dash_ground_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_dash_ground_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_dash_trail_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_dash_trail_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_doll_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_doll_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_doll_appear_cast_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_doll_appear_cast_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_doll_cast_exp_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_doll_cast_exp_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_doll_prjexp_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_doll_prjexp_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_energyballoon_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_energyballoon_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_energyballoon_02_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_energyballoon_02_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_energyballoon_03_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_energyballoon_03_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_energyballoon_04_1_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_energyballoon_04_1_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_energyballoon_04_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_energyballoon_04_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_energycast_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_energycast_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_eyelight_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_eyelight_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_gagebuff_cast_02_1_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_gagebuff_cast_02_1_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_gagebuff_cast_02_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_gagebuff_cast_02_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_hand_cast_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_hand_cast_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_jugle_01_1_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_jugle_01_1_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_jugle_02_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_jugle_02_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_jugle_exp_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_jugle_exp_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_jugle_hit_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_jugle_hit_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_koukusaton_critical_curse_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_koukusaton_critical_curse_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_ribbon_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_ribbon_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_rope_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_rope_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_rope_02_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_rope_02_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_safezone_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_safezone_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_safezone_02_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_safezone_02_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_safezone_cast_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_safezone_cast_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_safezone_fog_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_safezone_fog_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_shield_buff_01_e_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_shield_buff_01_e_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_shield_buff_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_shield_buff_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_shield_buff_02_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_shield_buff_02_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_spotlight_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_spotlight_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_sword_cast_01_loc_int",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_sword_cast_01_loc_int.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_tslc_01_l.par_l_tslc_shield_e_02",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_tslc_01_l.par_l_tslc_shield_e_02.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_mn_tslc_01_l.par_l_tslc_shield_s_02",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_mn_tslc_01_l.par_l_tslc_shield_s_02.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_npc_j_00.par_j_rppb_broken_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_npc_j_00.par_j_rppb_broken_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_pc_fbmm_03.par_w_lastde06",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_pc_fbmm_03.par_w_lastde06.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_post.fx_par.par_c_filmnoise_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_post.fx_par.par_c_filmnoise_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_post.fx_par.par_c_filmnoise_03",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_post.fx_par.par_c_filmnoise_03.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_post.fx_par.par_c_zoomblur_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_post.fx_par.par_c_zoomblur_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_post.fx_par.par_c_zoomblur_02",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_post.fx_par.par_c_zoomblur_02.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_post.fx_par.par_c_zoomblur_03",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_post.fx_par.par_c_zoomblur_03.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_post.fx_par.par_x_zoomblur_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_post.fx_par.par_x_zoomblur_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_post.fx_par.par_x_zoomblur_02",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_post.fx_par.par_x_zoomblur_02.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_post.fx_par.par_x_zoomblur_03",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_post.fx_par.par_x_zoomblur_03.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_post.fx_par.par_x_zoomblur_04",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_post.fx_par.par_x_zoomblur_04.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_q_w_01.fx_par.par_q_attackgrass",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_q_w_01.fx_par.par_q_attackgrass.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_q_w_01.fx_par_01.par_q_darkfield_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_q_w_01.fx_par_01.par_q_darkfield_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_q_w_01.fx_par_01.par_q_field_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_q_w_01.fx_par_01.par_q_field_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_q_w_01.fx_par_02.par_q_cardfly_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_q_w_01.fx_par_02.par_q_cardfly_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_q_w_01.fx_par_02.par_q_cardfly_02",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_q_w_01.fx_par_02.par_q_cardfly_02.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_q_w_01.fx_par_02.par_q_chip_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_q_w_01.fx_par_02.par_q_chip_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_q_w_01.fx_par_02.par_q_chip_02",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_q_w_01.fx_par_02.par_q_chip_02.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_q_w_01.fx_par_02.par_q_chip_03",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_q_w_01.fx_par_02.par_q_chip_03.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_q_w_01.fx_par_02.par_q_chip_04",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_q_w_01.fx_par_02.par_q_chip_04.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_q_w_01.fx_par_02.par_q_colorpaper_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_q_w_01.fx_par_02.par_q_colorpaper_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_q_w_01.fx_par_02.par_q_movingtrail_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_q_w_01.fx_par_02.par_q_movingtrail_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_q_w_01.fx_par_02.par_q_paperdust_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_q_w_01.fx_par_02.par_q_paperdust_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_q_w_01.fx_par_02.par_q_rpct_exp_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_q_w_01.fx_par_02.par_q_rpct_exp_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_q_w_01.fx_par_02.par_q_rpct_exp_02",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_q_w_01.fx_par_02.par_q_rpct_exp_02.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_q_w_01.fx_par_02.par_q_rpct_ready_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_q_w_01.fx_par_02.par_q_rpct_ready_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_q_w_01.fx_par_02.par_q_rpctgate_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_q_w_01.fx_par_02.par_q_rpctgate_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_q_w_01.fx_par_02.par_q_trail_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_q_w_01.fx_par_02.par_q_trail_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_q_w_01.fx_par_02.par_q_warpspace_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_q_w_01.fx_par_02.par_q_warpspace_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.fx_u_w_01.notuse.par_u_rpcz_safezone_cast_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.fx_u_w_01.notuse.par_u_rpcz_safezone_cast_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.scene_a.fx.par_g_darkaura_02_cine",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.scene_a.fx.par_g_darkaura_02_cine.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.source.scene_a.fx.par_mp_deathmon_01_cine",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.source.scene_a.fx.par_mp_deathmon_01_cine.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.magic.paper.dove.group",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.magic.paper.dove.group.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.pizza.explosion.group",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.pizza.explosion.group.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.common.counter.ring",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.common.counter.ring.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate1.charge_counter.group",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate1.charge_counter.group.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate1.charge_counter.fx",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate1.charge_counter.fx.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.card.spinning.emitter",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.card.spinning.emitter.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate1.charge_counter.afterimage",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate1.charge_counter.afterimage.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.action.420604.stage003.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.valtan.action.420604.stage003.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate1.circus.rainbow.drop",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate1.circus.rainbow.drop.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate1.circus.rainbow.impact",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate1.circus.rainbow.impact.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate1.circus.ball.upper",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate1.circus.ball.upper.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate1.circus.gun.muzzle",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate1.circus.gun.muzzle.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate3.ritual.staff.tip.trail.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate3.ritual.staff.tip.trail.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate1.circus.ball.launch",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate1.circus.ball.launch.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.pizza.explosion.group.source-restored",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.pizza.explosion.group.source-restored.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate1.stagger.star.group",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate1.stagger.star.group.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate1.stagger.boundary.group",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate1.stagger.boundary.group.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate1.stagger.star.boundary.group",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate1.stagger.star.boundary.group.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate1.stagger.laser.group",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate1.stagger.laser.group.effect.json"
     }
   ]
 }

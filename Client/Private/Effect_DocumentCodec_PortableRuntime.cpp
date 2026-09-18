@@ -677,7 +677,7 @@ namespace Client::EffectDocumentCodecDetail
 					"events[0].usereflectedimpactvector", false,
 					bReflected) || bReflected ||
 				!ReadPortableBoolLiteral(Module, "events[0].buseorbitoffset",
-					false, bOrbit) || bOrbit)
+					false, bOrbit))
 			{
 				strOutError =
 					"Portable authored particle Spawn/Death/Collision-event generator semantics are unsupported.";

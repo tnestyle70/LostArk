@@ -1406,7 +1406,7 @@ function Read-WorldSequenceDocument {
     # WorldSequenceDocument.cpp 의 상한과 동일하게 검사한다.
     $templates = @($document.templates)
     $instances = @($document.instances)
-    if ($templates.Count -gt 256 -or $instances.Count -gt 2048) {
+    if ($templates.Count -gt 512 -or $instances.Count -gt 2048) {
         throw "World sequence document exceeds its limits: $Path"
     }
     $stableId = '^[A-Za-z0-9._-]{1,128}$'

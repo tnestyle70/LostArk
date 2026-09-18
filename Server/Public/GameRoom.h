@@ -324,6 +324,9 @@ namespace LostArk::Server
 		void Handle_UseEstherSkill(
 			SESSION_ID sessionId,
 			const LostArk::Shared::C2S_USE_ESTHER_SKILL& useEstherSkill);
+		void Handle_UseSquareHole(
+			SESSION_ID sessionId,
+			const LostArk::Shared::C2S_USE_SQUAREHOLE& useSquareHole);
 		bool Spawn_EstherSummon(
 			const ESTHER_ROSTER_ENTRY& rosterEntry,
 			float positionX,
@@ -533,6 +536,8 @@ namespace LostArk::Server
 		[[nodiscard]] bool Commit_KoukuAlbionAirborne(SERVER_WORLD_ENTITY& boss,
 			const BOSS_PATTERN_DEFINITION& pattern, const BOSS_PATTERN_MECHANIC_TRIGGER& trigger, std::uint32_t serverTick);
 		void Commit_KoukuMechanicTriggers(std::uint32_t serverTick);
+		void Update_KoukuPursuitProjectiles(SERVER_WORLD_ENTITY& boss, const BOSS_PATTERN_MECHANIC_TRIGGER& trigger,
+			KOUKUSAYDON_PLAYER_TARGET_WINDOW_STATE& window, const CGameplayCatalog& catalog, std::uint32_t serverTick);
 		void Update_KoukuPlayerTargets(SERVER_WORLD_ENTITY& boss,
 			const BOSS_PATTERN_DEFINITION& pattern, KOUKUSAYDON_LOGIC_LEDGER& ledger,
 			const CGameplayCatalog& catalog, std::uint32_t serverTick);

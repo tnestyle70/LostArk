@@ -51,6 +51,8 @@ private:
 		bool bHasLastResource = false;
 		uint64_t iRevision = 1u;
 	};
+	// Pass annotations keep program-independent work in the owning base FX.
+	enum class PROGRAM_PASS_POLICY : uint8_t { VARIANT = 0u, BASE = 1u, UNAVAILABLE = 2u };
 	struct EFFECT_BINDINGS final
 	{
 		// A half-full table avoids Debug STL lookup/iterator work
@@ -58,6 +60,7 @@ private:
 		std::vector<VARIABLE_BINDING> Variables;
 		size_t iVariableMask = 0u;
 		std::vector<ID3DX11EffectPass*> Passes;
+		std::vector<PROGRAM_PASS_POLICY> PassPolicies;
 		uint64_t iRevision = 1u;
 	};
 	struct PROGRAM_VARIANTS;

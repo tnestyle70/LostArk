@@ -11,6 +11,7 @@
 float4 g_LanceVASourceMaterialParameters[32];
 float g_LanceVASourceMaterialTime = 0.f;
 
+#ifndef EFFECT_NATIVE_DECLARATIONS_ONLY
 float4 LanceVANativeAppend(float4 a, float4 b, uint n)
 {
     if (n == 1u) return float4(a.x, b.xyz);
@@ -598,4 +599,5 @@ float4 Shade_LanceVAModelNative(uint profile, LANCE_VA_NATIVE_INPUT input)
     default: clip(-1.f); return 0.f;
     }
 }
+#endif // EFFECT_NATIVE_DECLARATIONS_ONLY
 #endif

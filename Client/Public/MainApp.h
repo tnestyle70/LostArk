@@ -21,6 +21,7 @@ NS_END
 NS_BEGIN(Client)
 
 class CMapTool;
+class CLevelNavigationDebug;
 class CEffect_Tool;
 class CEffect_Tool_V2;
 class CAnimation_Tool;
@@ -55,6 +56,8 @@ class CCharacterInfoWindowView;
 class CAvatarBookWindowView;
 class CVehicleWindowView;
 class CHonorTitleWindowView;
+class CWorldMapWindowView;
+class CSongCastGaugeView;
 class CQuickSlotDragView;
 class CPlayerController;
 class CChatWindowView;
@@ -470,6 +473,7 @@ private:
 	std::string GetWorldLevelAreaId() const;
 	bool FocusWorldLevelPosition(const float3_t& position, float radius, std::string& status);
 	bool UpdateMapEffectPlacementInput();
+	bool UpdateWorldLevelPlacementPickInput();
 	void RenderMapEffectPlacementMarker();
 	void UpdateWorldLevelTool();
 	void RenderWorldLevelTool();
@@ -562,6 +566,7 @@ private:
 	vector<HUD_TIMED_TEXT> m_HudTimedTexts;
 	bool_t m_bHudSpecialSlotShown = false;
 #ifdef _DEBUG
+	unique_ptr<CLevelNavigationDebug> m_pLevelNavigationDebug;
 	std::array<ARENA_CAMERA_PROFILE, 4> m_ArenaCameraDrafts{};
 	std::array<bool, 4> m_ArenaCameraDraftLoaded{};
 	std::array<std::string, 4> m_ArenaCameraDraftStatus{};
@@ -786,6 +791,11 @@ private:
 	bool_t m_bVehicleWindowKeyDown = false;
 	/* Opened from the character info window's change-title button; drawn over the windows above. */
 	unique_ptr<CHonorTitleWindowView> m_pHonorTitleWindowView = { nullptr };
+	/* M key: retail world map window, zone stage (WorldMapWindowView.h). */
+	unique_ptr<CWorldMapWindowView> m_pWorldMapWindowView = { nullptr };
+	/* Orange cast gauge while the player plays the square-hole song (SongCastGaugeView.h). */
+	unique_ptr<CSongCastGaugeView> m_pSongCastGaugeView = { nullptr };
+	bool_t m_bWorldMapKeyDown = false;
 	/* Click-to-carry icon for the quick slots, constructed last of all runtime UI so it rides
 	over every window. Item_1..4 (1/2/3/4) take inventory items, SpecialSkill_1..6 (5/6/7/8/9/0)
 	take vehicles; both bindings are Client-local like m_strItemQuickSlot. */
@@ -827,6 +837,11 @@ private:
 	unique_ptr<CWorldLevelTool> m_pWorldLevelTool;
 	unique_ptr<WORLD_LEVEL_TOOL_REQUEST> m_pWorldLevelPendingMapRequest;
 	std::chrono::steady_clock::time_point m_WorldLevelMapDeadline{};
+	/* One armed viewport pick for the World Level Tool's map edit session. */
+	bool m_bWorldLevelPickArmed = false;
+	uint32_t m_iWorldLevelPickLevel = UINT32_MAX;
+	bool m_bWorldLevelPickLeftDown = true;
+	bool m_bWorldLevelPickSuppressMouse = false;
 	unique_ptr<KOUKU_MAP_EFFECT_PLACEMENT_REQUEST> m_pMapEffectPlacementRequest;
 	DEBUG_TOOL m_eMapEffectPlacementOwner = DEBUG_TOOL::NONE;
 	uint32_t m_iMapEffectPlacementLevel = UINT32_MAX;

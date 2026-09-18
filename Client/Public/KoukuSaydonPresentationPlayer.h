@@ -67,6 +67,8 @@ public:
     bool Update_TargetedCombatVisual(const LostArk::Shared::COMBAT_OBJECT_SNAPSHOT& snapshot,
         std::uint32_t serverTick, std::string& status);
     void Stop_TargetedCombatVisual(LostArk::Shared::COMBAT_OBJECT_ID objectId);
+    bool Play_TargetedCombatContact(const LostArk::Shared::S2C_COMBAT_OBJECT_PRESENTATION_EVENT& event,
+        std::string& status);
     using WORLD_EMISSION_ANCHOR = std::function<bool_t(f32_t, float4x4_t&)>;
     static WORLD_EMISSION_ANCHOR Make_WorldEmissionAnchor(
         const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern,
@@ -197,10 +199,25 @@ private:
         SESSION session;
         float4x4_t pivot{};
     };
+    struct PURSUIT_PREVIEW_PROJECTILE final
+    {
+        PRODUCT_PATTERN presentation;
+        SESSION flight, contact;
+        LostArk::Shared::NET_ENTITY_ID targetId = LostArk::Shared::INVALID_NET_ENTITY_ID;
+        // One pose per 30 Hz tick, including birth. Retained across paused seek.
+        std::vector<float4x4_t> poses;
+        float traveledM = 0.f;
+        std::uint32_t terminalTick = UINT32_MAX;
+        bool contactBurst = false;
+    };
     struct LOGIC_PREVIEW_TRIGGER final
     {
         PRODUCT_PATTERN presentation;
         std::vector<LOGIC_PREVIEW_SPAWN> spawns;
+        PRODUCT_PATTERN contactPresentation;
+        std::vector<PURSUIT_PREVIEW_PROJECTILE> projectiles;
+        double pursuitBirthMs = -1.0;
+        bool awaitingPlayer = false;
         bool captured = false;
     };
     std::map<std::string, std::map<std::string, LOGIC_PREVIEW_TRIGGER>> m_LogicPreviewTriggers;
@@ -208,8 +225,20 @@ private:
     void Sample_LogicPreview(SESSION& session, const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
         const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern, float clockMs, bool paused);
     void Clear_LogicPreview();
+    void Sample_PursuitPreview(SESSION& owner, const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
+        const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern,
+        const KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION& logic,
+        const KOUKU_SAYDON_COMPOSITION_LOGIC_OCCURRENCE& occurrence, float clockMs, bool paused);
     bool Collect_LogicPreviewEffects(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
         const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern, std::set<std::string>& targets);
+    static bool Is_SelectedAirborneGroupMember(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
+        const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern,
+        const KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE& occurrence);
+    static bool Build_SelectedAirbornePresentation(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
+        const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern,
+        const KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION& logic,
+        const KOUKU_SAYDON_COMPOSITION_LOGIC_OCCURRENCE& occurrence,
+        PRODUCT_PATTERN& output, std::string& error);
     struct PRODUCT_BUNDLE final
     {
         PRODUCT_PATTERN common;
@@ -220,6 +249,7 @@ private:
         PRODUCT_PATTERN presentation;
         PRODUCT_PATTERN sourceBossPresentation;
         std::string archetypeId;
+        std::string contactVisualId, contactEffectAssetId;
         bool loop = false;
     };
     struct TARGETED_COMBAT_SESSION final
@@ -234,8 +264,18 @@ private:
         std::uint64_t cycle = 0u;
         float4x4_t root{};
         bool finished = false;
+        bool contactReceived = false;
         std::string failure;
     };
+    struct CONTACT_COMBAT_EFFECT final
+    {
+        LostArk::Shared::S2C_COMBAT_OBJECT_PRESENTATION_EVENT event;
+        std::shared_ptr<const TARGETED_COMBAT_VISUAL> definition;
+        float ageSeconds = 0.f;
+        bool queued = false;
+    };
+    void Update_ContactCombatEffects(float dt);
+    std::map<std::uint64_t, CONTACT_COMBAT_EFFECT> m_ContactCombatEffects;
     using TARGETED_COMBAT_VISUALS = std::map<std::string, std::shared_ptr<const TARGETED_COMBAT_VISUAL>>;
     static TARGETED_COMBAT_VISUALS Read_TargetedCombatVisuals(const DATA_JSON_VALUE& root);
     bool Sample_TargetedCombatVisual(TARGETED_COMBAT_SESSION& session,
@@ -340,6 +380,7 @@ private:
     std::uint32_t m_iProductSourceRevision = 0u;
     std::uint32_t m_iProductReloadRunEpoch = 0u;
     std::set<std::string> m_MissingProductPatterns;
+    std::map<std::uint32_t, std::weak_ptr<CNpc>> m_CounterAfterimageOwners;
     std::map<std::uint32_t, SESSION> m_BossSessions;
     std::map<std::uint32_t, SESSION> m_ChildBossSessions;
     std::map<std::uint32_t, SESSION> m_MarioEntrySessions;

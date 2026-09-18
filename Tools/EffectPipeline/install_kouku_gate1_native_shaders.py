@@ -10,7 +10,7 @@ import uuid
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from native_shader_dispatch import (expand_dispatch_includes, insert_grouped_cases,
-                                    write_partitioned_dispatch)
+                                    write_partitioned_dispatch, artist_wrapper_source)
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -178,8 +178,7 @@ def install_partitioned_groups(shader_text, case_text):
     entries = [(carrier, group) for carrier, buckets in carrier_groups.items()
                if carrier in ('Mesh', 'Particle') for group in sorted(buckets)]
     for carrier, group in entries:
-        content = f'#define EFFECT_SHADER_FAMILY 7\n#define EFFECT_NATIVE_PROFILE_GROUP {group}\n'
-        content += f'#include "Shader_Effect{carrier}FamilyCarrier.hlsli"\n'
+        content = artist_wrapper_source(carrier, group)
         update(shaders / f'Shader_VtxEffect{carrier}Kouku{group}.hlsl', lambda _, content=content: content)
     def table(text):
         text = re.sub(r'^        EFFECT_SHADER_PROGRAM_ROW\((?:MESH|PARTICLE), ARTIST, \d+u, \d+u, "Shader_VtxEffect(?:Mesh|Particle)Kouku\d+\.hlsl"\),\n', '', text, flags=re.M)
@@ -381,7 +380,9 @@ def install(source_dir, append_source_dir=None):
                 assert text.count(marker) == 1
                 text = text.replace(marker, marker + "\n" + declaration, 1)
             return text
-        update(shaders / "Shader_EffectArtistNative.hlsli", bind_macro_uv)
+        artist_path = shaders / 'Shader_EffectArtistNative.hlsli'
+        write_partitioned_dispatch(artist_path, bind_macro_uv(expand_dispatch_includes(
+            artist_path.read_text(encoding='utf8'), shaders)))
     if 2349 in by_program:
         assert by_program[2349].get("enginePrefixAdapter", {}).get("requiresEmitterWorldToLocal")
         def bind_world_to_local(text):
@@ -391,7 +392,9 @@ def install(source_dir, append_source_dir=None):
                 assert text.count(marker) == 1
                 text = text.replace(marker, marker + "\n" + declaration, 1)
             return text
-        update(shaders / "Shader_EffectArtistNative.hlsli", bind_world_to_local)
+        artist_path = shaders / 'Shader_EffectArtistNative.hlsli'
+        write_partitioned_dispatch(artist_path, bind_world_to_local(expand_dispatch_includes(
+            artist_path.read_text(encoding='utf8'), shaders)))
     assert by_program[2310].get("distortionPass"), "Disto05 requires its original accumulation pass."
     extra = ""
     companion_blocks = {}
@@ -439,9 +442,9 @@ def install(source_dir, append_source_dir=None):
 
     # Descriptor admission alone is insufficient: the vertex and pixel carrier
     # dispatch gates must reach every newly installed program as well.
-    for name, expected in (("Shader_EffectMeshFamilyCarrier.hlsli", 2),
-                           ("Shader_EffectParticleFamilyCarrier.hlsli", 2),
-                           ("Shader_VtxEffectDecal.hlsl", 1),
+    # Mesh/Particle select exact guarded profile IDs from their own group. The
+    # broad Decal/Trail consumers retain their existing authored dispatch gate.
+    for name, expected in (("Shader_VtxEffectDecal.hlsl", 1),
                            ("Shader_VtxEffectTrail.hlsl", 1)):
         def extend_dispatch(text):
             pattern = r'g_SourceMaterialProfile >= 2304u && g_SourceMaterialProfile <= \d+u'

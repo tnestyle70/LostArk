@@ -1,0 +1,8 @@
+{
+  "schema": "lostark.worldmap-npc-symbols",
+  "formatVersion": 1,
+  "source": "EFTable_Npc.MapSymbolIndex -> EFTable_MapSymbol -> IconInfo; keyed by Gameplay.world.json placementId",
+  "placements": {
+    "npc.bern.schmidt": "UI/WorldMap/Symbols/Minimap_Symbol_1_207.png"
+  }
+}

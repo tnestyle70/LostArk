@@ -82,7 +82,7 @@ namespace LostArk::Shared
 	// 84 adds Server-authorized Mario return intent and typed result.
 	// 86 adds occurrence-scoped room player arrival to debug world playback.
 	// 89 adds the worn honor title to player snapshots and the title change request/verdict.
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 89;
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 90;
 
 	enum class WORLD_ID : std::uint16_t
 	{
@@ -351,7 +351,11 @@ namespace LostArk::Shared
 		// Honor title change and its typed verdict; the worn title rides the
 		// player snapshot.
 		C2S_SET_HONOR_TITLE,
-		S2C_SET_HONOR_TITLE_RESULT
+		S2C_SET_HONOR_TITLE_RESULT,
+		// World map square hole use. The Server locks the player into the song
+		// action for a fixed length and releases them in place; the teleport is
+		// not implemented yet, so there is no result message.
+		C2S_USE_SQUAREHOLE
 	};
 
 	//TCP는 메시지 경계를 보존하지 않기 때문에, payload앞에 header를 둔다.
@@ -457,6 +461,7 @@ namespace LostArk::Shared
 		case PACKET_TYPE::S2C_MARIO_RETURN_RESULT:
 		case PACKET_TYPE::C2S_SET_HONOR_TITLE:
 		case PACKET_TYPE::S2C_SET_HONOR_TITLE_RESULT:
+		case PACKET_TYPE::C2S_USE_SQUAREHOLE:
 			return true;
 		default:
 			return  false;

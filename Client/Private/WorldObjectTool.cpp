@@ -690,6 +690,11 @@ bool CWorldObjectTool::Render_SaveButton()
     ImGui::BeginDisabled(!m_Ready || m_PublishProcess != nullptr);
     const bool clicked = ImGui::Button(m_Dirty ? "Save *" : "Save");
     ImGui::EndDisabled();
+    if (m_PublishProcess != nullptr)
+    {
+        ImGui::SameLine();
+        ImGui::TextDisabled("Publish in progress; Save again when it finishes.");
+    }
     ImGui::PopID();
     if (clicked) Save_Source();
     // Save replaces m_Document: the caller must return before reading document references.
@@ -1149,9 +1154,27 @@ void CWorldObjectTool::Render_WorkbenchPane(const COMPOSITION_WORKBENCH_PANE pan
         else ImGui::TextWrapped("%s", m_Status.c_str());
         break;
     case COMPOSITION_WORKBENCH_PANE::RESOURCES:
-        if (m_Ready) Render_EffectResources();
-        Render_PhysicalResources();
-        if (m_Ready) Render_AnimationResources();
+        if (ImGui::BeginTabBar("##ObjectResourceCategories"))
+        {
+            if (ImGui::BeginTabItem("Effect"))
+            {
+                if (m_Ready) Render_EffectResources();
+                else ImGui::TextDisabled("Load Object Resources to list Effects.");
+                ImGui::EndTabItem();
+            }
+            if (ImGui::BeginTabItem("Physical"))
+            {
+                Render_PhysicalResources();
+                ImGui::EndTabItem();
+            }
+            if (ImGui::BeginTabItem("Animation"))
+            {
+                if (m_Ready) Render_AnimationResources();
+                else ImGui::TextDisabled("Load Object Resources to list Animations.");
+                ImGui::EndTabItem();
+            }
+            ImGui::EndTabBar();
+        }
         break;
     case COMPOSITION_WORKBENCH_PANE::SEQUENCER:
         Render_SelectedSequence();
@@ -2367,6 +2390,18 @@ void CWorldObjectTool::Render_Detail()
     auto* instance = m_Document.Find_Instance(m_SelectedInstance);
     auto* sequence = instance ? m_Document.Find_Template(instance->templateId) : nullptr;
     if (!sequence) { ImGui::TextWrapped("The selected Motion is unavailable. Select its parent Object to continue."); return; }
+    if (!alias && m_SelectedBoxKind == 2 && m_SelectedEffectRow < sequence->effectTracks.size())
+    {
+        // Effect box selection: show only the Effect editor; rows can be removed, so the index is guarded above.
+        const auto& effectRow = sequence->effectTracks[m_SelectedEffectRow];
+        ImGui::SeparatorText("Effect Box");
+        ImGui::TextDisabled("%s", effectRow.effectTrackId.c_str());
+        ImGui::TextWrapped("Resource: %s (%s)", effectRow.resourceId.c_str(), effectRow.resourceKind.c_str());
+        ImGui::TextDisabled("Slot: %s", effectRow.slotId.c_str());
+        Render_EffectRows(*sequence);
+        if (ImGui::Button("Edit Motion / Transform Keys")) m_SelectedBoxKind = 0;
+        return;
+    }
     if (!alias && Render_TravelEditor(*instance, *sequence)) return;
     ImGui::SeparatorText("Motion");
     changed |= EditText("Motion Name", sequence->displayName);
@@ -2374,8 +2409,32 @@ void CWorldObjectTool::Render_Detail()
     changed |= ImGui::Checkbox("Enabled", &instance->enabled);
     if (!alias)
     {
+        const bool worldAnchor = instance->anchorKind == "WORLD";
         ImGui::TextDisabled("Creation Anchor: %s", instance->anchorKind == "BOSS" ? "Boss / BODY Bone" : instance->anchorKind == "PLAYER" ? "Character" : "Map");
-        changed |= ImGui::DragFloat3(instance->anchorKind == "BOSS" ? "Bone Offset" : instance->anchorKind == "PLAYER" ? "Character Offset" : "Map Position", &instance->position.x, .01f);
+        const bool positionEdited = ImGui::DragFloat3(instance->anchorKind == "BOSS" ? "Bone Offset" : instance->anchorKind == "PLAYER" ? "Character Offset" : "Map Position", &instance->position.x, .01f);
+        // A WORLD edit is committed below through Mark_Dirty/Seek; counting it in
+        // `changed` as well would Mark_Dirty twice and restart the preview twice.
+        if (!worldAnchor) changed |= positionEdited;
+        if (worldAnchor)
+        {
+            // Own line: SameLine after DragFloat3 clips the checkbox in the narrow Detail pane.
+            if (ImGui::Checkbox("Preview at Character", &m_PreviewAtCharacter))
+            {
+                m_PreviewDirty = m_PreviewActive;
+                if (m_PreviewActive) Seek(m_ClockMs);
+            }
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("Preview at the current character without changing the saved Map position. Clear to preview the authored position.");
+            if (m_PreviewAtCharacter)
+                ImGui::TextDisabled("Preview at Character is on: the object follows the player, not this Map Position.");
+            if (positionEdited)
+            {
+                // Same live path as the radius editor: restart the running preview at the edited position.
+                // Mark_Dirty/Seek do not replace m_Document, so instance/sequence stay valid below.
+                Mark_Dirty();
+                Seek(m_ClockMs);
+            }
+        }
         if (ImGui::Button("Use Current Character Position"))
         {
             if (instance->anchorKind == "PLAYER" || instance->anchorKind == "BOSS") { instance->position = {}; changed = true; }
@@ -2904,17 +2963,17 @@ void CWorldObjectTool::Render_GroupSequence(const WORLD_SEQUENCE_OBJECT_RESOURCE
                 const ImVec2 end(timeX(static_cast<float>(sequence->durationMs)), y + 25.f);
                 CompositionTimeline::DrawBox(draw, row, end,
                     instance->enabled ? IM_COL32(61, 107, 141, 255) : IM_COL32(65, 65, 65, 255),
-                    id == m_SelectedInstance && m_SelectedTrack == trackIndex, track.slotId.c_str(), false, false);
+                    id == m_SelectedInstance && m_SelectedBoxKind == 0 && m_SelectedTrack == trackIndex, track.slotId.c_str(), false, false);
                 if (ImGui::IsWindowHovered() && ImGui::IsMouseHoveringRect(row, end) && ImGui::IsMouseClicked(0))
                 {
                     if (m_SelectedInstance != id) Select_State(id);
-                    m_SelectedTrack = trackIndex; m_SelectedKey = 0;
+                    m_SelectedTrack = trackIndex; m_SelectedKey = 0; m_SelectedBoxKind = 0;
                 }
                 for (size_t keyIndex = 0; keyIndex < track.keys.size(); ++keyIndex)
                 {
                     auto& key = track.keys[keyIndex];
                     const float x = timeX(static_cast<float>(key.timeMs)), centreY = y + 12.f;
-                    const bool selected = id == m_SelectedInstance && m_SelectedTrack == trackIndex && m_SelectedKey == keyIndex;
+                    const bool selected = id == m_SelectedInstance && m_SelectedBoxKind == 0 && m_SelectedTrack == trackIndex && m_SelectedKey == keyIndex;
                     draw->AddQuadFilled(ImVec2(x, centreY - 6.f), ImVec2(x + 6.f, centreY),
                         ImVec2(x, centreY + 6.f), ImVec2(x - 6.f, centreY), selected ? IM_COL32(255, 223, 87, 255) : IM_COL32_WHITE);
                     ImGui::PushID(static_cast<int>(keyIndex));
@@ -2923,7 +2982,7 @@ void CWorldObjectTool::Render_GroupSequence(const WORLD_SEQUENCE_OBJECT_RESOURCE
                     if (ImGui::IsItemClicked())
                     {
                         if (m_SelectedInstance != id) Select_State(id);
-                        m_SelectedTrack = trackIndex; m_SelectedKey = keyIndex;
+                        m_SelectedTrack = trackIndex; m_SelectedKey = keyIndex; m_SelectedBoxKind = 0;
                     }
                     if (ImGui::IsItemActive() && ImGui::IsMouseDragging(0) && keyIndex > 0 && keyIndex + 1 < track.keys.size())
                     {
@@ -2958,7 +3017,7 @@ void CWorldObjectTool::Render_GroupSequence(const WORLD_SEQUENCE_OBJECT_RESOURCE
                 const float start = static_cast<float>(sequence->EffectStartMs(effect));
                 const ImVec2 first(timeX(start), y), last(timeX(start + effect.durationMs), y + 25.f);
                 CompositionTimeline::DrawBox(draw, first, last, IM_COL32(167, 95, 51, 255),
-                    id == m_SelectedInstance && m_SelectedEffectRow == index, effect.resourceId.c_str());
+                    id == m_SelectedInstance && m_SelectedBoxKind == 2 && m_SelectedEffectRow == index, effect.resourceId.c_str());
                 if (ImGui::IsWindowHovered() && ImGui::IsMouseHoveringRect(first, last) && ImGui::IsMouseClicked(0))
                 { if (m_SelectedInstance != id) Select_State(id); m_SelectedEffectRow = index; m_SelectedBoxKind = 2; m_DetailOpen = true; }
                 y += 32.f;
@@ -3118,14 +3177,14 @@ void CWorldObjectTool::Render_Sequence(WORLD_SEQUENCE_TEMPLATE& sequence)
             const auto row = ImVec2(origin.x, origin.y + 28.f + rowHeight * (1u + index));
             label("Transform", row.y);
             CompositionTimeline::DrawBox(draw, row, ImVec2(row.x + sequence.durationMs * pixelsPerMs, row.y + 25.f),
-                IM_COL32(61, 107, 141, 255), m_SelectedTrack == index, track.slotId.c_str(), false, false);
+                IM_COL32(61, 107, 141, 255), m_SelectedBoxKind == 0 && m_SelectedTrack == index, track.slotId.c_str(), false, false);
             if (ImGui::IsWindowHovered() && ImGui::IsMouseHoveringRect(row, ImVec2(row.x + width, row.y + 25.f)) && ImGui::IsMouseClicked(0))
             { m_SelectedTrack = index; m_SelectedKey = 0; m_SelectedBoxKind = 0; }
             for (size_t keyIndex = 0; keyIndex < track.keys.size(); ++keyIndex)
             {
                 auto& key = track.keys[keyIndex]; const float x = row.x + key.timeMs * pixelsPerMs;
                 const float y = row.y + 12.f;
-                const ImU32 color = m_SelectedTrack == index && m_SelectedKey == keyIndex ? IM_COL32(255, 223, 87, 255) : IM_COL32_WHITE;
+                const ImU32 color = m_SelectedBoxKind == 0 && m_SelectedTrack == index && m_SelectedKey == keyIndex ? IM_COL32(255, 223, 87, 255) : IM_COL32_WHITE;
                 draw->AddQuadFilled(ImVec2(x, y - 6), ImVec2(x + 6, y), ImVec2(x, y + 6), ImVec2(x - 6, y), color);
                 ImGui::PushID(static_cast<int>(keyIndex)); ImGui::SetCursorScreenPos(ImVec2((std::clamp)(x - 7.f, row.x, row.x + width - 14.f), row.y + 4.f));
                 ImGui::InvisibleButton("Key", ImVec2(14, 18));

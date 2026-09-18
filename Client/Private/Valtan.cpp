@@ -3677,6 +3677,20 @@ void CValtan::Update_DefaultParticles(const f32_t /*fTimeDelta*/)
 
 void CValtan::Late_Update(f32_t fTimeDelta)
 {
+    // Source420604/4_01 TrailGhost starts at2461.7ms; this approved stage
+    // samples2450ms onward at0.6 source speed. Keep gameplay on the Server.
+    m_ChargeAfterimageEnabled = m_isServerAuthoritative && !m_isReplicationDormant &&
+        !m_isGhostPresentationHidden && !m_isPatternBodyHidden &&
+        m_strServerPatternId == "VALTAN_DASH_CHARGE" &&
+        m_strServerActionId == "valtan.attack.dash-charge.active" &&
+        m_fServerActionAgeSeconds >= (2.461735964f - 2.45f) / .6f;
+    if (m_isReplicationDormant || m_isGhostPresentationHidden || m_isPatternBodyHidden)
+    {
+        const auto body = m_PartObjects.find(BODY_PART_TAG);
+        if (body != m_PartObjects.end())
+            if (const auto part = dynamic_pointer_cast<CBody_Valtan>(body->second))
+                part->Reset_ChargeAfterimage();
+    }
 	Update_DefaultParticles(fTimeDelta);
 	if (m_isReplicationDormant)
 		return;
@@ -3807,6 +3821,7 @@ HRESULT CValtan::Ready_PartObjects()
 	bodyDesc.strModelPrototypeTag =
 		CValtanPresentationAssetService::Get_BodyModelPrototypeTag(m_strArchetypeId);
 	bodyDesc.pEmissiveOverride = &m_HitFlash;
+    bodyDesc.pChargeAfterimageEnabled = &m_ChargeAfterimageEnabled;
 
 	if (FAILED(__super::Add_PartObject(
 		m_iPrototypeLevelIndex,
@@ -3918,6 +3933,7 @@ bool_t CValtan::Replace_PresentationPartGroup(
 		CValtanPresentationAssetService::Get_BodyModelPrototypeTag(
 			presentationArchetypeId);
 	bodyDesc.pEmissiveOverride = &m_HitFlash;
+    bodyDesc.pChargeAfterimageEnabled = &m_ChargeAfterimageEnabled;
 	shared_ptr<CPartObject> StagedBodyPart;
 	if (FAILED(__super::Clone_PartObject(
 			m_iPrototypeLevelIndex,

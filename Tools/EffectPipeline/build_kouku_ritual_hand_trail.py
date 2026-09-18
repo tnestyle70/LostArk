@@ -19,6 +19,7 @@ from build_kouku_gold_trails_restore import verify_required_default
 ROOT = source.ROOT
 ACTION = source.SOURCE / 'RemainingCharacterExtraction-20260829/ActionNameSources/MN_RPCT_07.action-effects.json'
 HAND = 'effect.kouku.gate3.ritual.hand.trail.full.restore'
+STAFF_TIP = 'effect.kouku.gate3.ritual.staff.tip.trail.full.restore'
 STAR = 'effect.kouku.gate3.mario.boss.pentagram.full.restore'
 HAND_SYSTEM = 'fx_mn_rpct_07_v.par_v_rpct_handswing_trail_01_loc_int'
 SHOT_SYSTEM = 'fx_mn_rpct_07_v.par_v_rpct_star_shot_01_loc_int'
@@ -337,13 +338,81 @@ def stage_left_hand(evidence):
     print(json.dumps(dict(staged=True, elements=3, bone='bip001-l-hand', socket='fx_l_hand_01')))
 
 
+def stage_right_staff_tip(evidence):
+    """Stage a separate tip comparison; never overwrite the saved left hand."""
+    from build_saydon_card_pattern_groups import renamed
+    evidence = evidence.resolve()
+    path = ROOT / 'Data/Effects/Authored' / (HAND + '.effect.json')
+    before = path.read_bytes()
+    document = renamed(json.loads(before), STAFF_TIP, '저주의식 | 오른손 지팡이 끝 트레일')
+    sockets = parse_socket_contract(SOCKETS)
+    socket = next(s for s in sockets['sockets'] if s['socketName'].casefold() == 'startcontrol')
+    assert socket['boneName'].casefold() == 'b_wp_1'
+    assert socket['sourceTransform'] == dict(positionUeUnits=[75, 0, 0], rotationUnrealUnits=[0, 0, 0], scale=[1, 1, 1])
+    basis_path = ROOT / 'out/KoukuGate3BossAssembly20260912/weapon_basis/weapon_basis_evidence.json'
+    basis = source.read(basis_path)
+    # This source socket was authored just beyond the positive-X weapon tip.
+    # Native white-ribbon StartLocation adds another metre; the requested tip
+    # comparison explicitly places its head at the socket instead.
+    assert abs(basis['sourceWeaponBounds']['max'][0] - 70.23670196533203) < 1.e-6
+    assert basis['currentWeaponToExpectedPointCloudErrorsM']['maximum'] < 1.e-5
+    assert len(document['elements']) == 3
+    changes = []
+    for element in document['elements']:
+        attachment = element['actionCueAttachment']
+        assert attachment['enabled'] and attachment['follow']
+        changes.append(dict(elementId=element['id'], beforeAttachment=copy.deepcopy(attachment)))
+        attachment.update(runtimeAnchorSlotId='startcontrol', runtimeBoneName='b_wp_1')
+        attachment['socketLocalTransform'] = dict(position=[.75, 0, 0], rotationDegrees=[-90, 0, 0], scale=[1, 1, 1])
+        element['groupId'] = STAFF_TIP
+    white = next(e for e in document['elements'] if e['material']['sourceProfile']['runtimeShaderProfileId'] == 'effect.ue3.kouku-3007-native.v1')
+    location = next(m for m in white['sourceRecipe']['modules'] if m['className'] == 'particlemodulelocation')
+    distribution = next(d for d in location['distributions'] if d['propertyPath'] == 'startlocation')
+    previous_location = copy.deepcopy(distribution)
+    assert distribution['operation'] == 1 and distribution['componentCount'] == 3
+    distribution['lookupTable'] = [0.0] * 8
+    white['detail']['particle']['initialPositionMin'] = [0, 0, 0]
+    white['detail']['particle']['initialPositionMax'] = [0, 0, 0]
+    ribbon = next(m for m in white['sourceRecipe']['modules'] if m['stableId'] == white['runtimeCarrier']['typeDataModuleStableId'])
+    clip = next(v for v in ribbon['literals'] if v['propertyPath'] == 'bclipsourcesegement')
+    previous_clip = clip['value']
+    clip['value'] = False
+    candidate = evidence / 'candidate' / (STAFF_TIP + '.effect.json')
+    source.write(candidate, document)
+    tree_path = ROOT / 'Data/Effects/EffectResourceTree.json'
+    parent = next(r['parentId'] for r in source.read(tree_path)['references'] if r.get('assetId') == HAND)
+    target = 'Data/Effects/Authored/' + candidate.name
+    source.write(evidence / 'installation.json', dict(installed=False, documents=[dict(
+        effectAssetId=STAFF_TIP, displayName=document['displayName'], path=target,
+        candidatePath=str(candidate.relative_to(ROOT)).replace('\\', '/'),
+        beforeSha256=None, candidateSha256=hashlib.sha256(candidate.read_bytes()).hexdigest(),
+        durationMs=4175, defaultAnchorKind='BOSS', followBoss=True,
+        catalogEntry=dict(effectAssetId=STAFF_TIP, payloadKind='DIRECT_AUTHORED_DOCUMENT', authoringPath=target.removeprefix('Data/')),
+        treeReference=dict(kind='V1', assetId=STAFF_TIP, displayName=document['displayName'], parentId=parent),
+        projectNone=target)],
+        inputHashes={str(path.relative_to(ROOT)).replace('\\', '/'): hashlib.sha256(before).hexdigest(),
+                     str(basis_path.relative_to(ROOT)).replace('\\', '/'): hashlib.sha256(basis_path.read_bytes()).hexdigest()},
+        sourceSocket=socket, sourceActionId=4219911, sourceNotify='action-4219911/stage-000/notify-001',
+        sourceClip='rpct00_att_battle_27_01', sourceTipCm=basis['sourceWeaponBounds']['max'][0],
+        socketBeyondTipCm=75 - basis['sourceWeaponBounds']['max'][0],
+        authoredAdaptation=dict(basis='USER_REQUESTED_STAFF_TIP_CONNECTED_HEAD',
+            whiteRibbonBeforeLocation=previous_location, whiteRibbonStartLocationCm=[0, 0, 0],
+            beforeClipSourceSegment=previous_clip, clipSourceSegment=False),
+        beforeAttachments=changes, leftHandUnchanged=path.read_bytes() == before,
+        manualVisualValidation='USER_PENDING'))
+    print(json.dumps(dict(staged=True, effectAssetId=STAFF_TIP, elements=3, bone='b_wp_1', socket='startcontrol')))
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(__doc__)
     parser.add_argument('--evidence-root', type=Path, default=ROOT / 'out/KoukuRitualHandTrail20260913')
     parser.add_argument('--left-hand-only', action='store_true', help='Stage the saved ritual with the source left-hand socket; leave pentagram untouched.')
     parser.add_argument('--burst-only', action='store_true', help='Stage only the missing original small-pentagram beam/impact; preserve all saved star elements.')
+    parser.add_argument('--right-staff-tip-only', action='store_true', help='Stage a new right-hand staff-tip comparison, preserving the saved left-hand document.')
     options = parser.parse_args()
-    if options.burst_only:
+    if options.right_staff_tip_only:
+        stage_right_staff_tip(options.evidence_root)
+    elif options.burst_only:
         stage_small_pentagram_impact(options.evidence_root)
     elif options.left_hand_only:
         stage_left_hand(options.evidence_root)

@@ -21,6 +21,8 @@ import build_kouku_gate1_full_restore as source
 from build_kouku_effect_organization import effect_payload_id
 from build_kouku_backstep_flame_groups import remap, project_mesh_rotation
 from extract_action_effect_notifies import scan_length_prefixed_strings
+from build_saydon_card_pattern_groups import (
+    scale_spinning_card_geometry, follow_local_card_axes, hide_spinning_card_afterimages)
 
 ROOT = source.ROOT
 AUTHORED = ROOT / 'Data/Effects/Authored'
@@ -64,12 +66,12 @@ def source_contract():
     fields = dict(scale=struct.unpack_from('<f', raw, 1197)[0],
         radiusCm=struct.unpack_from('<f', raw, 1201)[0],
         heightCm=struct.unpack_from('<f', raw, 1205)[0],
-        minDistanceCm=struct.unpack_from('<i', raw, 1209)[0],
-        maxDistanceCm=struct.unpack_from('<i', raw, 1213)[0],
+        speedCmPerSecond=struct.unpack_from('<i', raw, 1209)[0],
+        maxSpeedCmPerSecond=struct.unpack_from('<i', raw, 1213)[0],
         maxLifeSeconds=struct.unpack_from('<f', raw, 1217)[0],
-        speedCmPerSecond=struct.unpack_from('<i', raw, 1221)[0])
-    assert fields == dict(scale=1, radiusCm=40, heightCm=30, minDistanceCm=800,
-        maxDistanceCm=1500, maxLifeSeconds=5, speedCmPerSecond=1500), fields
+        maxDistanceCm=struct.unpack_from('<i', raw, 1221)[0])
+    assert fields == dict(scale=1, radiusCm=40, heightCm=30, speedCmPerSecond=800,
+        maxSpeedCmPerSecond=1500, maxLifeSeconds=5, maxDistanceCm=1500), fields
     stages, launches, offset = [], [], 0.0
     with sqlite3.connect('file:' + DATABASE.as_posix() + '?mode=ro', uri=True) as database:
         database.row_factory = sqlite3.Row
@@ -118,8 +120,8 @@ def source_contract():
         projectileSkillEffect=table, sourceInputs=[digest(p) for p in (source.ACTION, PROJECTILE, DATABASE, CLIP_REFERENCE)],
         skippedCallbackSystems=[p['value'].split("'")[1].lower() for p in particles[1:]],
         presentationBoundary='Two serialized 12-card volleys; server hit callbacks and target-dependent caster movement are not synthesized.',
-        motionLayoutBasis='.md/JS/08-18/2026-08-18_SKILL_PROJECTILE_HITS_PLAN.md:26; Tools/CharacterAnimationIntake/fill_projectiles.py:144',
-        motionBasis='Source speed15m/s and distance8..15m; standalone radial preview chooses the max15m, with no live target-distance reconstruction.')
+        motionLayoutBasis='EFSequenceSummonsProjectile reflected ResScale/CollisionSize/Height/Speed/MaxSpeed/Lifetime/MaxDistance; build_kouku_backstep_electric_group.py',
+        motionBasis='Initial Speed 8m/s, MaxSpeed 15m/s, Lifetime 5s, MaxDistance 15m. Preview keeps initial speed and stops at 15m; native acceleration is not inferred.')
 
 
 def native_stage(index, inputs):
@@ -291,6 +293,9 @@ def build(evidence):
             original = native_stage(stage['stageIndex'], inputs)
             append_elements(document, original, f'kouku.spin.action.{stage["stageIndex"]}', stage['startSeconds'])
     flights = [append_flight(document, library, launch, contract['missileFields']) for launch in contract['launches']]
+    scale_spinning_card_geometry(document)
+    follow_local_card_axes(document)
+    hide_spinning_card_afterimages(document)
     validation = validate(document)
     candidate = evidence / 'candidate' / (ASSET + '.effect.json')
     source.write(candidate, document)

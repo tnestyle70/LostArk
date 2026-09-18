@@ -1,5 +1,26 @@
 # LostArk merge 회귀 방지 정본
 
+### Sprite 축 회전과 source 곡선의 기본값
+
+- Source sprite의 EPAL_Rotate_X/Y/Z는 일반 camera billboard와 다르다. 원본 축 회전을 편집하려면 Billboard를 유지하고 명시적인 axis-follow 옵션으로 emitter 축을 변환한다. 옵션을 끄면 기존 동작을 유지하며 local space는 현재 root, world space는 출생 root를 사용한다. camera와 축이 평행할 때도 finite basis와 실제 quad의 앞면을 검사한다.
+- 비어 있는 nested RawDistribution을 0으로 단정하지 않는다. 해당 class의 CDO 상속을 확인하고 손 본 basis와 root snapshot의 preScale·크기를 따로 측정한다. 서로 다른 notify의 궤적을 연결할 때 해독하지 못한 원본 방향 설정을 복원 완료로 표현하지 않고 원본 곡선 기반 저작 보정과 구분한다.
+- sector 메시의 실제 삼각형 coverage와 native alpha mask의 최종 pixel coverage는 별도다. 화면에 빈 구간이 보여도 emitter 복제·회전으로 채우기 전에 mesh/UV/material 입력을 확인한다.
+
+### Orbit event 위치와 피자 layer 경계
+
+- Orbit으로 이동한 입자의 종료 폭발은 frame과 동일한 offset 평가 및 root 변환을 사용한다. 원래 emitter 위치 또는 offset을 두 번 적용한 위치로 발사하지 않는다. 회전된 root에서도 실제 마지막 입자 위치와 event 위치를 대조한다.
+- sector mesh가 만든 빈 각도를 전체 이펙트의 공통 mask로 해석하지 않는다. halfcylinder·sprite·출생 영역 제한과 material opacity/flow mask를 각각 확인한다. 일부 mesh의 빈 각도만 측정해 모든 layer에 정확90도 안전 영역이 적용됐다고 기록하지 않는다.
+
+### 공중 착지의 stage 소유권과 native 시각
+
+- 공중 높이 제어를 다른 보스 clip에 재사용할 때 stage 시작과 animation startOffsetMs를 합친 실제 창을 확인한다. source clip 이름 대신 설치 모델의 남은 하강량으로 admission한다. 타깃 착지는 XZ를 고정해 native lateral root sway가 선택 위치를 바꾸지 않게 하되, 착지 source Stage가 끝나면 다음 Stage의 native root를 재개하여 후속 상승까지 지면에 고정하지 않는다.
+
+### Effect V1 carrier admission과 삭제 시 재생 선택 정합
+
+- CASCADE_BEAM_V1은 기존 Playback의 직접 native 경로다. runtimeCarrier가 존재한다는 이유만으로 Ribbon/baked 전용 projection을 강제하지 않는다. 혼합 문서는 Beam을 보존하며 변환이 필요한 carrier만 projection한다. codec Parse만 성공한 것을 Catalog/Play All 성공으로 기록하지 않는다.
+- 선택 요소 삭제는 문서·legacy isolation·Sequencer transient previewElementIds를 하나의 staged 변경으로 맞춘다. 삭제 전 ID로 새 문서를 preview하는 오류를 missing ID 검증 완화로 숨기지 않는다. stage 실패는 선택과 문서까지 보존한다.
+- 부착 그룹의 전체 방향은 공유 socket 원점에서 수정한다. Element 평균 중심 회전과 혼동하지 않는다. native recipe/localSpace/각 요소 offset은 보존하고 같은 runtime slot의 서로 다른 socket 정의를 만들지 않는다.
+
 ### 발탄 복원본은 실제 source clip과 함께 재생한다
 
 - `.restore` suffix는 player skill identity가 아니다. 발탄 Full Restore는 원본 action/stage의
@@ -1367,6 +1388,9 @@ Client 배포 DLL의 유효 크기/PE 형식·일치 여부도 확인한다. 실
 - 생성 native material의 큰 표는 Private owner에서 한 번 컴파일한다. public inline 함수가 사용하는 작은 상수까지 Private로 이동하지 않는다. generator는 native_material_tables.py를 통해 읽기·저장을 하고 같은 bytes는 다시 쓰지 않는다.
 - CPP를 분리하면 기존 source 검사도 등록된 same-owner CPP와 Private _Internal.h를 읽어야 한다. 다음 함수의 물리 순서를 기준으로 현재 함수 범위를 추정하지 않는다. cpp_source_domains.py와 Tools/Build/README.md의 소비 경계를 사용한다.
 - 무변경 빌드의 OBJ/PCH/CSO 쓰기 0은 증분 처리 확인이다. 공통 셰이더의 큰 최적화 작업이나 cache 없는 빌드까지 해결한 증거로 쓰지 않는다. 세부 구조와 측정은 09-12/2026-09-12_PROJECT_BUILD_ISOLATION_IMPLEMENTATION_RESULT.md에 있다.
+- native leaf를 나눠도 모든 wrapper가 가변 설치 목록을 include하거나 공용 carrier의 최대 ID를 계속 수정하면 무관한 FX가 다시 컴파일된다. Artist Mesh/Particle은 자기 SelectedGroup과 실제 guarded dispatch ID를 사용하고 installer는 facade·공통 helper를 그대로 유지한다. 새 program의 body/case, 선택 include, runtime 등록을 함께 검사한다.
+- SourceCharacter selector는 이전 draw의 값이 남을 수 있다. native ModelCue의 그룹 컴파일을 빼려면 pass annotation과 CShader의 기본 FX 선택을 함께 연결해야 한다. 입력 변수·기본값·pass/input-layout ABI는 유지하고, 해당 native pass를 SourceGroup에서 직접 호출하면 실패시킨다. 조건 없이 native PS만 제거하면 기존 cue가 보이지 않을 수 있다.
+- 같은 profile·entry·argument의 compile 식만 전역 shader 객체로 공유한다. V2 macro의 VS 선언은 실제 VS 함수 뒤에 두고, 같은 common include를 읽는 Decal까지 사용하지 않는 프로그램을 컴파일하지 않는다. pass 상태·전처리 조건 보존과 실제 CSO 검증은 별도로 확인한다.
 
 ### 맵 연출의 원점·렌더 예산·실제 배우를 구분한다
 
@@ -2088,3 +2112,234 @@ GPU timestamp의 Shadow elapsed에는 CPU 명령 공급 공백이 포함될 수 
 서로 다른 모델·이펙트의 immutable 입력 준비는 제한된 공통 작업 예산으로 중첩할 수 있지만 Prototype registry와 Effect queue의 main commit까지 병렬화하지 않는다. Effect 후보는 먼저 끝난 순서가 아니라 원래 FIFO로 등록하고, 앞 target의 ACK 뒤 worker에서 현재 prepared catalog와 병합한다. main의 generation 검사를 제거하지 않는다. 새 session 최초 admission과 full replacement/clear를 구분해 병렬 sibling은 보존하고 A→B→A의 오래된 후보는 거부한다. 후보 개수와 미ACK 결과도 제한하며 큰 교체 자원은 worker가 해제한다.
 
 실행 중 EXE와 수정된 소스는 별개다. 개별 compile을 Product 배포나 실제 FPS 개선으로 보고하지 않는다. headless 실패 주입 검사는 CRT assertion/abort와 Windows 오류 대화상자를 로그로 돌린 뒤 실행한다. 검사 프로그램의 실패 창을 실행 중 Client 결함으로 오인하지 않도록 process 경로·시각을 함께 확인한다. 구현과 검증 경계는 [Cold loading 결과 G04~G06](09-16/2026-09-16_COLD_MAP_LOADING_IMPLEMENTATION_RESULT.md)에 둔다.
+
+### 추적 카드의 수명·문양·접촉 폭발
+
+지속 객체의 Server 수명과 Effect 표시 반복 주기를 분리한다. 무한 추적 카드를 긴 유한 lifetime으로 흉내 내거나 native emitter의 emission 창과 particle tail 합계를 표시 반복 길이로 쓰지 않는다. source SubUV random은 같은 seed의 단일 입자에서 같은 문양을 반복할 수 있으므로 네 문양을 독립 Effect로 저작할 때는 원본 atlas 칸을 명시하고 실제 CPU particle의 subimage 값을 확인한다. 카드 삭제와 접촉 event가 같은 batch에 도착해도 폭발은 고정된 event 위치·정의로 독립 재생해야 한다.
+
+### 몸체 잔상과 Trail, 진단 실행 파일의 ABI
+
+몸체 윤곽은 source TrailGhost notify와 실제 골격 palette를 먼저 조사한다. centerline Trail의 폭이나 수명만 늘려 골격 잔상을 대신하지 않는다. 과거 pose는 불변 복사하며 live palette를 복원하고 숨김·모델 교체·순간이동에서 이력을 해제한다. 원본 notify 확인과 원작 shader/fade 복원은 별도다.
+
+Effect 구조체가 바뀐 뒤 서로 다른 시점의 codec·DetailIo·Playback OBJ를 섞은 probe는 잘못된 필드값을 읽을 수 있다. 실제 JSON에 없는 Two Sided 등의 오류가 나오면 데이터 수정보다 현재 헤더로 종속 TU를 다시 컴파일해 재현한다. 개별 원인·검증은 [세이튼 카드·트럼펫 결과](09-17/2026-09-17_SAYDON_CARD_TRUMPET_CHARGE_IMPLEMENTATION_RESULT.md)에 남긴다.
+
+### 원작 particle 수명과 패턴 유지 구간, FXC include
+
+Effect timing의 표시 duration만 늘려도 native source particle 수명은 늘지 않는다. sourceRecipe의 원본 lifetime과 `detail.particle.sourceScale.lifeTime`, 실제 CPU 생존 입자와 절대 alpha cutoff를 함께 확인한다. 원작 값은 보존하고 사용자 유지 구간 override만 별도 기록한다. Effect 자체 tail과 Pattern owner의 종료도 다르므로 standalone 성공으로 제품 tail 전체가 재생된다고 판단하지 않는다.
+
+FXC가 `#include`의 문자열 macro를 확장하지 못해 X1500을 내면 이후 profile 함수 미정의는 연쇄 오류일 수 있다. native 프로그램 내용을 바꾸기 전에 wrapper의 literal selected include와 common 입력 순서를 확인한다. 새 cohort 추가 시 기존 facade/cohort가 변하지 않는 분리 계약은 테스트를 약화해서 우회하지 않는다.
+
+### 공용 모델 shader에 pass를 추가하면 파생 FX admission도 확인한다
+
+`ProgramVariantPass`가 기본 FX에서 BASE(1)이면 모든 source group의 같은 pass는 UNAVAILABLE(2)여야 한다. 기본·파생 양쪽에 BASE를 쓰면 FXC와 Product Build가 성공해도 `CShader::Stage_ProgramVariants`가 실제 생성에서 거부하며 Level 입장의 character rendering 단계가 실패한다. 공용 pass 추가 시 기존 정책 macro를 사용하고 파생의 사용 불가 PS는 NULL로 유지한다. pass 수·이름·입력 signature·변수 ABI 검증을 약화하지 않는다.
+
+컴파일 성공과 실제 `CShader::Create` 성공은 별개다. 설치 base와 여섯 group의 동일 빌드 CSO로 기존 WARP probe를 실행하여 admission, base-owned pass 선택, stale source selector 아래의 상수·bone 보존과 파생 직접 호출 거절을 확인한다. headless 검사는 실제 Client 입장·GPU 화면 판정과 구분한다. 원인과 증거는 [세이튼 입장 실패 수정 결과](09-17/2026-09-17_SAYDON_CARD_TRUMPET_CHARGE_IMPLEMENTATION_RESULT.md)의 G06에 둔다.
+
+
+### 원본 Effect Tree만 등록하고 Catalog metadata를 빠뜨리지 않기
+
+Effect Tool이 직접 읽는 Authored 파일과 Pattern이 CEffectCatalog로 읽는 경로는 등록 계약이 다르다. Tree에 V1을 공개할 때 exact DIRECT_AUTHORED_DOCUMENT metadata도 함께 stage하고 lazy payload validation은 유지한다. metadata 등록 성공과 payload/화면 성공을 구분한다. sync_kouku_effect_tree.py는 두 catalog의 기준 bytes와 Authored SHA를 확인하며 편집 중 등록을 강행하지 않는다.
+
+### 선택한 플레이어 위치에 고정한 Effect 그룹과 airborne의 원점
+
+`selectionGroupId` 자체는 재생 pivot이 아니다. Play 시점 고정 요청은 SELECT 시점 navigation ground XYZ를 저장하고 APPEAR와 fixed targeted visual이 같은 점을 소비해야 한다. MAP 멤버의 공통 원점은 XZ뿐 아니라 Y도 빼야 떠 있는 오프셋이 중복되지 않는다. 멤버의 원래 absolute 시작 시각은 유지하고 일반 Effect lane 중복 재생은 제외한다. 기존 Albion의 APPEAR 시점 추적은 optional SELECT 정책과 구분한다. transaction 실패는 이전 선택·좌표·시각 객체를 함께 보존한다.
+
+### World 그룹 donor와 실제 표시 모델의 pivot을 구분한다
+
+model-less group과 내부 CModel donor에 같은 표시명을 붙이면 default g0를 Append해 전체 그룹처럼 오인할 수 있다. Objects 목록은 고유 owning group을 선택하고 개별 motion 편집과 구분한다. WorldSequence의 group ID를 instance ID로 보내야 기존 여섯 motion 확장이 실행된다. native FX mesh와 재사용 World 모델은 extent가 같아도 pivot은 다를 수 있으므로 실제 정점 중심을 각각 적용한다. 공에 붙는 상단광은 위치의 이동 소유자를 하나로 유지한다. LocationEmitterDirect가 최종 위치를 덮는 입자는 velocity가 PSA_Velocity의 방향 입력일 수 있으므로 일괄 비활성화하지 않는다. fitEffectToDuration의 기준에 emitter tail이 포함돼 live particle이 일찍 끝나는지도 확인한다.
+
+### Trail 반복 무늬·빈 구간과 원본 방출 영역
+
+Trail이 끊기거나 같은 무늬가 크게 반복되면 tick 증가 전에 원본 VS의 UV 전체 성분과
+PS의 소비, TypeData TilingDistance의 cm→m 전달을 확인한다. baked history를 사용해
+sourceRecipe가 꺼져 있어도 retained TypeData는 근거다. 누락된 저작 필드만 복구하며 명시한
+0을 원본 값으로 덮어쓰지 않는다. native 수식 parity와 실제 vertex 축·화면 판정을 구분한다.
+
+SpawnPerUnit은 개수만 세고 같은 tick 끝점에 모두 배치하면 중복점과 긴 공백이 생긴다.
+world-space Ribbon은 실제 이동 구간의 거리 교차점에 생성하고 emitter loop의 나머지 거리를
+보존한다. Reset은 이력을 비운다. 입자 수명·폭·난수·다른 family를 보존하며 이 결함을
+100배 update로 숨기지 않는다.
+
+primitive Cylinder의 positive/negative XYZ는 source height 축 배치 뒤, cm·owner 변환 전에
+소비한다. 텍스처 이름만으로 둥근 검정 영역을 판단하지 않고 StartSize·velocity-facing·pivot·
+alpha 경계 수식과 방출 분포를 함께 읽는다. 구현·검증은 [Trail 결과](09-17/2026-09-17_TRAIL_RIBBON_NATIVE_RESTORATION_IMPLEMENTATION_RESULT.md)와 세이튼 결과 G20에 둔다.
+
+### 공급원 의존 Solo와 상단 sprite의 실제 표시 기준
+
+Solo/Family/Group은 선택 요소의 LocationEmitter 및 LocationEmitterDirect(각 EF alias 포함)
+활성 참조와 transform master를 재귀 보존한다. 공급원 bVisible을 끄면 simulation도 멈추므로
+기존 submission element set으로 선택한 요소만 그린다. 전체/선택의 원본 시각·순서를 유지하며
+실제 missing provider 검증을 제거하지 않는다. stale ID는 전체 Effect 재생으로 확대하지 않는다.
+
+위치 공급원을 따라가는 입자의 World 중심 일치만으로 상단 부착을 완료 처리하지 않는다.
+PSA_Velocity 방향, signed StartSize, image flip, noncentral pivot, lifetime size와 최종 quad
+하단·상단을 함께 검사한다. 원본 CPU packing이 미확정일 때 파생 Effect의 pivot 조정은
+사용자 배치 override로 기록하며 공용 shader의 원본 복원이라고 부르지 않는다.
+
+### Albion preview의 대상 선택 조건은 Server와 일치시킨다
+
+V1 FX 추가와 pattern Logic 상속을 혼동하지 않는다. APPEAR_PLAYER는 Server가 기존 선택이
+없으면 등장 시 살아 있는 대상을 선택하므로 preview도 같은 fallback을 허용한다. 실제
+SELECT_PLAYER의 SELECT 정책만 선택 지면을 고정한다. JUMP 선행과 native 하강 검증은
+그대로 유지하며 오류를 숨기려고 사용자 삭제 Logic을 재삽입하지 않는다. 세이튼 결과 G25 참조.
+
+
+### 카드 mesh와 고정축 sprite는 중심·owner 회전·반복 수명을 따로 확인한다
+
+mesh/sprite 불일치는 detail 위치만 맞춰 끝내지 않는다. 실제 WModel의 평면·장축,
+TypeData pre-rotation, 원본 StartLocation, sprite pivot와 camera offset을 분리해서
+실측한다. sourceTransformTrack이 없는 local-space 고정축 sprite는 기존
+followEmitterAxisRotation 소비 여부를 확인하고 필요한 occurrence에만 연결한다.
+정상 world-space smoke나 같은 문서의 별도 폭발 레이어로 보정을 확장하지 않는다.
+
+Required의 미직렬화 emitterloops는 상속/CDO와 native 기본값을 확인한다. 임시 loopCount=1로
+고정하면 원본의 1초/2초 입자가 tracking duration 중 소멸하고 bounded-loop admission도
+실패할 수 있다. 원본 입자 수명과 명시적인 유한 loop를 보존하며 반복 경계의 누락과
+구입자·새 입자 중첩을 구분해 검증한다. shader 식이 원본과 같을 때 요청한 RGB 밝기 보정은
+project-authored로 기록한다. 원본 world-space 잔상 emitter를 사용자 요청으로 숨겼다면
+원본에 잔상이 없었다고 설명하지 않는다. 실제 수치·적용 상태는
+[세이튼 카드 결과 G26](09-17/2026-09-17_SAYDON_CARD_TRUMPET_CHARGE_IMPLEMENTATION_RESULT.md)에 둔다.
+
+공 낙하를 상승으로 변형할 때는 LocationDirect 위치 곡선과 velocity-facing 입력을 구분한다.
+공 위치의 Direct provider를 유지한 채 꼬리 sprite의 pivot과 실제 공 하단 offset을 측정한다.
+world-space 별은 매 tick 따라가는 direct follower가 아니라 spawn 시점 provider 위치를
+받아야 기존 궤적이 남는다. 효과 복제 시 provider stable ID도 함께 remap하며 삭제된 요소를
+source 전체 재생성으로 되살리지 않는다. 상승공 적용 수치는 같은 RESULT G27을 따른다.
+
+### 실행 중 도구의 데이터 반영과 EXE 점유를 구분한다
+
+Client 프로세스가 있다는 이유만으로 준비된 데이터 설치를 막지 않는다. 검증한 후보를
+최종 반영할 때 한 번 받은 저장본 기준 승인을 사용하고, 최신 파일에 필요한 필드만 병합한다.
+오래된 snapshot 전체 교체와 미저장 draft의 자동 reload는 다른 사용자의 편집을 잃게 할 수
+있으므로 hash/revision·stable ID·freshness 검사는 유지한다. 이미 받은 승인을 종료 확인
+질문으로 반복하지 않는다. 정본 절차는 [AGENTS의 편집 중 데이터 반영](../../AGENTS.md#편집-중-데이터-반영)이다.
+파일 설치·publish 성공을 실행 중 메모리 갱신으로 보고하지 않으며 실제 EXE/DLL 링크 점유만
+종료가 필요한 별도 사유다.
+
+### 발탄 목록 읽기와 publisher 경합
+
+`canonical Product read admission failed`는 상세 failure kind를 먼저 확인한다. WRITER_BUSY는
+Product 손상 판정이 아니며 기존 snapshot을 보존하고 자동 재시도한다. 그동안 catalog·원본
+animation index를 반복 parse하지 않는다. 독립 authored Effect 목록은 pattern Play admission과
+분리한다. publisher의 독립 다른 boss 선검증은 발탄 writer 획득 전에 수행하고, 발탄 source
+snapshot부터 출력 교체까지의 잠금은 유지한다. exact-save revision 재시도를 최신 세대로
+바꾸거나 unpinned Product 읽기로 우회하지 않는다. 적용·검증 범위는
+[발탄 트리 경합 결과](09-17/2026-09-17_VALTAN_EFFECT_TREE_PUBLISH_CONTENTION_RESULT.md)를 따른다.
+
+
+### 전투 기본 spawn과 연출의 절대 이동 시작점을 분리한다
+
+연출을 위해 boss placement를 옮겼다면 이후 BossMotion 연결 시 일반 관문 생성도 그
+placement를 소비하는지 다시 확인한다. 기본 spawn은 해당 관문 중앙을 소유하고, 연출의
+시작·도착·시각은 기존 BossMotion이 소유하도록 분리한다. Parent가 child 이동을 확장할 때
+시각만 이동하고 절대 좌표를 유지하는지 검사하며 이미 정상인 연출 좌표를 spawn과 함께
+덮어쓰지 않는다. World publisher의 디스크 출력과 실행 중 Server가 로드한 bootstrap은
+별도 상태다. 적용·검증은 [Level Navigation·세이튼 spawn 결과 G02](09-17/2026-09-17_LEVEL_NAVIGATION_DEBUG_SAYDON_SPAWN_RESULT.md)에 둔다.
+
+### 게시 네비게이션의 막힘과 바닥 미검출을 구분한다
+
+게시 blocked 값만으로 NO_SURFACE라고 판정하지 않는다. source/paint의 descriptor와
+전체 셀의 walkable·실제 저장 높이가 일치할 때만 원본 원인을 표시한다. authoring의
+주변 셀 기반 표시 높이는 실제 baked 높이가 아니다. Auto 표시에서 detail과 겹치는 base는
+겹친 부분만 빼고, 수동 Base 검사에서는 전체 base를 보존한다. 표시 예산으로 생략된 셀도
+미베이크 구멍으로 설명하지 않는다. 중앙 좌표 몇 개의 성공으로 가장자리 bake를 정상
+판정하지 않으며, 최상단 교차 방식은 넓은 Y 범위의 상부 기하를 포착할 수 있다.
+표시 데이터·실행 중 Server 상태·사용자 화면 확인을 구분한다. 구현과 조사 범위는
+[Level Navigation 결과 G01](09-17/2026-09-17_LEVEL_NAVIGATION_DEBUG_SAYDON_SPAWN_RESULT.md)에 둔다.
+
+### 연결된 Trail 정점과 재질 coverage를 같은 성공으로 세지 않는다
+
+삼각형 띠가 연결되어도 폭 마스크의 V에 길이 좌표를 주면 알파가 진행 방향을 잘라낸다.
+원본 DDS의 실제 채널·축·wrap/clamp와 원본 PS의 소비 성분을 함께 확인한다. float2 하나를
+복사하거나 `.yx`로 뒤집어서 원본 float4 UV 계약을 채웠다고 판단하지 않는다. 전체 길이의
+정규화 좌표와 거리 반복 좌표는 서로 다른 입력이며, 유한 0~1 taper에 무제한 거리값을
+넣으면 띠 중간에서 알파가 다시 0이 될 수 있다.
+
+동일한 임의 입력으로 번역 PS와 원본 DXBC가 일치한 검사는 연산의 일치를 증명한다.
+그 입력을 실제 carrier가 올바르게 만들었다는 증거는 아니다. 원본 CPU vertex packing을
+회수하지 못했다면 VS passthrough, 재질 소비 범위와 추론을 구분한다. 실제 본 궤적 또는
+baked 양쪽 edge를 업로드하고 길이별 alpha와 내부 공백을 검사한다. 자연스러운 끝 fade를
+중간 단절로 세지 않으며 평균 밝기·정점 개수·finite 값만으로 완료 처리하지 않는다.
+
+후처리 없는 raw material 출력에서 결함을 재현한 뒤 MRT blend, scene depth, distortion,
+bloom/tonemap을 따로 조사한다. 한 단계의 반증으로 전체 장면의 가림까지 배제하지 않는다.
+shader family 등록뿐 아니라 마지막 generated material/distortion 소비자에서 UV 성분이
+버려지는지도 확인한다. 구체적인 비평·수정·검증 범위는
+[Trail 결과 G05](09-17/2026-09-17_TRAIL_RIBBON_NATIVE_RESTORATION_IMPLEMENTATION_RESULT.md)를 따른다.
+
+### 복제 Sprite의 외곽과 모자 부착의 기준 좌표
+
+개별 검정 Sprite의 alpha가 원형이어도 복제·비등방 확대된 여러 Sprite의 합성 외곽은
+공통 원이 아니다. 원본 요소 복구와 사용자가 요청한 effect-origin 원형 coverage를 구분하고,
+마스크를 입자 중심이나 StartSize 기준으로 적용하지 않는다. 선택한 carrier만 opt-in하고
+RT0·왜곡·Bloom의 coverage 순서를 함께 확인한다. 새 optional struct가 포함된 probe는
+해당 header를 소비하는 객체를 모두 같은 ABI로 다시 컴파일한다.
+
+장착물은 bone 이름만 맞추지 말고 실제 모델의 material identity와 bone basis를 확인한다.
+WORLD anchor가 basis를 정규화하면 body preScale을 중복 적용하거나 빠뜨리지 않는다.
+기본 머리 모자의 숨김 상태를 전역 bool로 공유하지 않고 실제 owner와 살아 있는 손 모자의
+lease에 연결한다. 저장된 DURATION은 timing 존재와 PRODUCT 의미의 유효성을 별도로
+검사한다. 이번 모자 유지 구간은 기존 ATTACHMENT_HOLD를 사용한다.
+
+### World Object의 정적 모델은 follow 본이 없어도 pivot으로 부착한다 (2026-09-17)
+
+- `공_튀기기`처럼 정적 mesh Object에 보스용 V1 문서(`runtimeBoneName: b_root`, follow)를 붙이면
+  `World Object V1 source bone is unavailable`로 거절됐다. owner 경로는 없는 본을 건너뛰지만
+  transform-history 재생은 follow slot이 반드시 `SourceAnchorWorlds`에 있어야 하므로 slot을 비우면 안 된다.
+  `Sample_ObjectEffectAttachments`가 없는 본을 identity bone으로 채워 object pivot에 붙이고 preflight는
+  debug note만 남긴다. 명시 `effect.bone`과 collider `attachmentBone`은 여전히 엄격하다.
+- V1 effect track의 `positionOffset`은 Object 저작 scale(1.5)이 곱해진 기저에서 적용된다. V2 GROUP의
+  metre 오프셋을 같은 월드 위치로 옮기려면 scale로 나눈다.
+
+### native 재질 table shape와 sprite admission을 먼저 확인한다 (2026-09-17)
+
+- `fx_k_pa_turbpa_06_tr`(native 3008)는 ribbon 요소로 먼저 복원돼 table shape가 `ribbon`이다.
+  같은 MIC를 sprite 요소에 옮기면 `Native Artist requires its recovered material variant…`로 거절된다.
+  원본이 sprite emitter여도 프로그램 table row의 shape가 다르면 admission되지 않으므로, 대체 재질을
+  쓰거나 sprite table row를 새로 설치해야 한다. 별 선 smoke_tail은 strike의 `fx_m_pa_smoke_01_8_tr`(2992)로 대체했다.
+- 후보 문서를 쓸 때 `Path.write_text`는 Windows에서 CRLF를 넣는다. Authored 문서는 LF이므로 bytes로 쓴다.
+  CRLF가 섞이면 diff가 파일 전체가 되고 `git diff --check`가 통과해도 병합 충돌을 만든다.
+
+### 격리 codec/playback probe는 resource root와 헤더 ABI를 맞춰야 한다 (2026-09-17)
+
+- `codec_probe.exe`류는 `LOSTARK_RESOURCE_ROOT`가 없으면 `Is_SafeResourceAssetId`가 DDS 종류를 못 읽어
+  `Effect source Material texture is invalid`로 실패한다. `Client/Bin/Debug`를 PATH에 넣고 resource root를
+  지정한 뒤 실행한다.
+- `Effect_AuthoringDocument.h`가 바뀐 뒤 옛 OBJ와 새 헤더로 링크한 probe는 `xmemory(983) null pointer` assert로
+  CRT 대화상자에 멈춘다. 헤더 변경 시각 이후에 컴파일한 closure(`out/PizzaMaskRestoration20260917/abi`)와만 링크하고,
+  probe에는 `SetErrorMode`·`_set_abort_behavior`·`_CrtSetReportHook`을 넣어 대화상자를 막는다.
+- Python `validate_effect_sources.py`의 v15 baked history 규칙(`playbackClampSeconds < 마지막 표본 시각`)은
+  발탄 420609 stage008/009의 HEAD 문서도 거절하고 `blade-dance.circle.impact`는 carrier가 없어 저장소 전체
+  검증이 먼저 멈춘다. 변경 문서만 같은 module 함수로 검사하고 기존 실패는 RESULT에 구분해 적는다.
+
+### Workbench가 저장 중인 Composition은 외부 publish가 CAS로 계속 실패한다 (2026-09-17)
+
+- `Invoke-BuildDomainOwner -Owner KoukuSaydon`은 validation 전후 입력 hash를 비교해
+  `Publication input changed during validation`으로 중단한다. 사용자가 Action Workbench에서 몇 분 간격으로
+  Save하는 동안(rev 1330→1335) 세 번 모두 실패했다. 외부 세션은 재시도를 반복하지 말고, 저장이 끝난 뒤
+  한 번 실행하거나 사용자가 Workbench의 `Publish All Patterns`로 게시하게 안내한다. 파일 자체의 필드 편집
+  (바이트 보존 splice + revision +1)은 다음 Save에 그대로 유지됐다.
+
+### 배치 제거는 행·baked lighting·참조 문서를 함께 지운다 (2026-09-17)
+
+- 캐릭터 선택 스폰의 별 문양은 09-15에 추가한 editor 배치 `editor:LV_LOBBY_CLASSSELECT_SL00:1`이었다.
+  `.mapplacements` 행과 header count, `.mapmaterials.json placementLighting`의 같은 sourcePlacementId,
+  `CharacterSelectFloorSwap.json hiddenSourcePlacementIds`를 같이 지워야 `Publish-MapAuthoring -Scope Area`의
+  dangling lighting 검사와 Debug Floor Swap 로드가 통과한다. `visible=0`로 숨기지 않는다.
+- Area publish는 대기 중이던 다른 editor 행(editor:2 부조)도 함께 내보낸다. PR에 그 사실을 적는다.
+
+### 사용자 저장 Effect 문서의 부분 필드 복구는 바이트 splice로 한다 (2026-09-17)
+
+- `effect.kouku.common.spinning.card.throw`는 Tool이 CRLF로 저장한 11MB 문서다. 24개 `visible` 값만
+  raw_decode span 안에서 교체하면 -24 bytes의 최소 diff가 되고 builder의 `write()` 재직렬화(LF)는 쓰지 않는다.
+
+### JUMP(0 ms)만으로는 보스가 내려오지 않는다: clip 하강 착지는 SLAM이 소비한다 (2026-09-18)
+
+- `ALBION_AIRBORNE` JUMP는 `airborneDurationMs 0`이어도 높이를 고정할 뿐이며 Stage native root motion의
+  하강을 무시한다. 쿠크 훌라후프 P84에서 사용자가 재저작 중 SLAM box(logic.2)를 지우자 보스가 11 m에 머물렀다.
+- 시작 높이에서 clip 하강으로 착지하려면 같은 clock에 SLAM box를 두고, `_start` Stage가 반복되면 각 Stage
+  시작에 SLAM을 하나씩 둔다. 두 번째 SLAM은 직전 `12_end` 상승 높이(약 15.8 m)에서 정규화 하강한다.
+  JUMP 높이는 실제 설치 clip의 하강량에 맞춘다(`12_start` 10.890836 m, `13_start` 11.191078 m).
+- 저장본 전체 `validate_document`는 다른 미완성 draft(P32 세이튼_쇼타임의 stage 없는 presentation)에서 먼저
+  실패한다. 후보 검증은 publisher처럼 `_publication_candidate(closure)` 단위로 한다. 적용 스크립트·Server 높이
+  시뮬레이션·receipt는 `out/KoukuHoopDescent20260918/`에 있다.

@@ -1660,6 +1660,19 @@ void Client::CClientReplication::Collect_MinimapMarkers(
 		if (ReadGroundXZ(pTransform, marker.fX, marker.fZ))
 			outSnapshot.Bosses.push_back(marker);
 	}
+
+	for (const auto& [entityId, presentation] : m_WorldEntities)
+	{
+		(void)entityId;
+		if (LostArk::Shared::WORLD_ENTITY_KIND::NPC != presentation.eKind)
+			continue;
+		const std::shared_ptr<CNpc> pNpc = presentation.pNpc.lock();
+		MINIMAP_MARKER_SNAPSHOT::NPC_MARKER marker{};
+		if (nullptr == pNpc || !ReadGroundXZ(pNpc->Get_Transform(), marker.fX, marker.fZ))
+			continue;
+		marker.strPlacementId = presentation.strPlacementId;
+		outSnapshot.Npcs.push_back(std::move(marker));
+	}
 }
 
 void Client::CClientReplication::Collect_KoukuPresentationViews(
@@ -3080,6 +3093,15 @@ bool Client::CClientReplication::Apply_CombatObjectPresentationEvent(
 	if (source->second.strArchetypeId.starts_with("BOSS_KAKULSAYDON_"))
 	{
 		const auto* record = m_CombatObjectProjectionRuntime.Find(event.iCombatObjectId);
+        if (event.strCombatObjectArchetypeId == "combatobject.kouku.pursuit")
+        {
+            if (source->second.pNpc.expired() || !record || !m_pTargetedCombatPresentationPlayer ||
+                record->iSourceNetEntityId != event.iSourceNetEntityId ||
+                record->strCombatObjectArchetypeId != event.strCombatObjectArchetypeId ||
+                record->Snapshot.PinnedDefinitionRevision != event.PinnedDefinitionRevision)
+            { m_strPendingPresentationFailure = "Pursuit contact has no matching replicated occurrence."; return false; }
+            return m_pTargetedCombatPresentationPlayer->Play_TargetedCombatContact(event, m_strPendingPresentationFailure);
+        }
 		if (source->second.pNpc.expired() || !record || record->iSourceNetEntityId != event.iSourceNetEntityId ||
 			record->Snapshot.PinnedDefinitionRevision != event.PinnedDefinitionRevision ||
 			event.strCombatObjectArchetypeId != record->strCombatObjectArchetypeId ||

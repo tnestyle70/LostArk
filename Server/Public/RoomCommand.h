@@ -21,6 +21,7 @@ namespace LostArk::Server
 		RELEASE_SKILL,
 		UPDATE_SKILL_AIM,
 		USE_ESTHER_SKILL,
+		USE_SQUAREHOLE,
 		REVIVE_PLAYER,
 		DEBUG_KILL_SELF,
 		DEBUG_ENTER_KAKULSAYDON_ARENA,
@@ -88,6 +89,7 @@ namespace LostArk::Server
 		LostArk::Shared::C2S_RELEASE_SKILL ReleaseSkill;
 		LostArk::Shared::C2S_UPDATE_SKILL_AIM UpdateSkillAim;
 		LostArk::Shared::C2S_USE_ESTHER_SKILL UseEstherSkill;
+		LostArk::Shared::C2S_USE_SQUAREHOLE UseSquareHole;
 		LostArk::Shared::C2S_REVIVE_PLAYER RevivePlayer;
 		LostArk::Shared::C2S_DEBUG_KILL_SELF DebugKillSelf;
 		LostArk::Shared::C2S_DEBUG_ENTER_KAKULSAYDON_ARENA

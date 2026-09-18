@@ -705,14 +705,6 @@ bool_t Client::CEffect_Tool::Refresh_ValtanPatternTree()
 {
 	/* parse -> validate -> stage -> commit. A failed reload keeps whatever the
 	   window is already showing so a transient read error never empties it. */
-	Initialize_CatalogMetadataView();
-	VALTAN_RESTORE_CLIP_INDEX SourceClips;
-	if (Load_ValtanFullRestoreSourceClips(CProjectDataRoot::Resolve(
-		"Effects/ValtanFullRestoreAnimations.json"),
-		SourceClips, m_strValtanFullRestoreSourceStatus))
-		m_ValtanFullRestoreSourceClips = std::move(SourceClips);
-	else
-		m_ValtanFullRestoreSourceClips.clear();
 	m_bValtanPatternTreeLoadAttempted = true;
 	m_bValtanPatternTreeLastRefreshSucceeded = false;
 	m_bValtanPatternTreeReloadRetryPending = false;
@@ -741,8 +733,27 @@ bool_t Client::CEffect_Tool::Refresh_ValtanPatternTree()
 			(m_bValtanProductFallbackReady ?
 				"READ-ONLY PRODUCT FALLBACK STALE_PRESERVED; admission failed, so no unpinned Product files were reopened: " + Diagnostic.strStatus + RetryStatus :
 				"Valtan canonical Product read admission failed; no unpinned fallback read was attempted: " + Diagnostic.strStatus + RetryStatus);
+		if (VALTAN_CANONICAL_READ_FAILURE_KIND::WRITER_BUSY == Diagnostic.eFailure)
+		{
+			m_strValtanPatternTreeStatus =
+				"Waiting for Valtan data publication. " +
+				(m_strActiveValtanGraphRefreshRevision.empty() ?
+					std::string("The Pattern tree will retry automatically; authored Effect browsing remains independent. ") :
+					std::string("The requested Save revision remains pinned; retry that revision after publication. ")) +
+				Diagnostic.strStatus;
+		}
 		return false;
 	}
+	/* A busy publisher is retried without rebuilding the catalog or parsing
+	   the source animation index on every retry. Keep the prior indexes intact. */
+	Initialize_CatalogMetadataView();
+	VALTAN_RESTORE_CLIP_INDEX SourceClips;
+	if (Load_ValtanFullRestoreSourceClips(CProjectDataRoot::Resolve(
+		"Effects/ValtanFullRestoreAnimations.json"),
+		SourceClips, m_strValtanFullRestoreSourceStatus))
+		m_ValtanFullRestoreSourceClips = std::move(SourceClips);
+	else
+		m_ValtanFullRestoreSourceClips.clear();
 	if (!CValtanPatternTree::Load_WhileAdmitted(
 			CanonicalAdmission, Staged, Diagnostic))
 	{

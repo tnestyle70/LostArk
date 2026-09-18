@@ -75,14 +75,31 @@ bool_t Client::CEffect_Tool::Try_RotateAttachmentGroup(const std::string& groupK
     return true;
 }
 
+bool_t Client::CEffect_Tool::Try_SetAttachmentGroupAnchor(const std::string& groupKey,
+    const float3_t& position, const float3_t& rotationDegrees)
+{
+    if (!m_ActiveDocument || (m_eActiveDocumentSource != EFFECT_DOCUMENT_SOURCE::AUTHORED &&
+        m_eActiveDocumentSource != EFFECT_DOCUMENT_SOURCE::NEW_DOCUMENT))
+    { m_strElementStatus = "Open an authored Current Effect before editing its anchor."; return false; }
+    if (Has_UnappliedDetailDraft())
+    { m_strElementStatus = "Apply or Revert the open Detail draft first; its edits are preserved."; return false; }
+    auto staged = *m_ActiveDocument;
+    if (!Set_AttachmentGroupAnchor(staged, groupKey, position, rotationDegrees, m_strElementStatus) ||
+        !Try_CommitDocument(std::move(staged))) return false;
+    Reset_DetailDraft();
+    m_strElementStatus = m_strDocumentStatus = "Updated the shared anchor. All member offsets and native particle motion are preserved. Save Changes persists it.";
+    return true;
+}
+
 void Client::CEffect_Tool::Render_CurrentEffectAttachmentGroups()
 {
     const auto groups = Build_AttachmentElementGroups(*m_ActiveDocument);
-    std::string movedGroup, rotatedGroup;
-    float3_t translation{}, rotationDegrees{};
+    std::string movedGroup, rotatedGroup, editedAnchor;
+    float3_t translation{}, rotationDegrees{}, anchorPosition{}, anchorRotation{};
     for (const auto& group : groups)
     {
-        ImGui::PushID(group.key.c_str());
+        // Socket values change while dragging; keep the widget identity stable.
+        ImGui::PushID(group.elementIds.front().c_str());
         const bool selected = std::all_of(group.elementIds.begin(), group.elementIds.end(),
             [&](const auto& id) { return m_MarkedElementIds.contains(id); });
         const std::string label = group.label + " (" + std::to_string(group.elementIds.size()) + ")";
@@ -96,6 +113,16 @@ void Client::CEffect_Tool::Render_CurrentEffectAttachmentGroups()
         ImGui::EndDisabled();
         if (opened)
         {
+            if (group.anchorEditable)
+            {
+                ImGui::BeginDisabled(Has_UnappliedDetailDraft());
+                auto position = group.anchorPosition, rotation = group.anchorRotationDegrees;
+                const bool moved = ImGui::DragFloat3("Anchor Position (bone-local m)", &position.x, .01f, -100000.f, 100000.f, "%.3f");
+                const bool rotated = ImGui::DragFloat3("Anchor Rotation (deg)", &rotation.x, .25f, -36000.f, 36000.f, "%.2f");
+                if (moved || rotated) { editedAnchor = group.key; anchorPosition = position; anchorRotation = rotation; }
+                ImGui::TextWrapped("Anchor Rotation turns the whole effect at its socket origin, including native particle motion. Element offsets stay unchanged.");
+                ImGui::EndDisabled();
+            }
             ImGui::BeginDisabled(!group.editable || Has_UnappliedDetailDraft());
             auto center = group.center;
             if (ImGui::DragFloat3(group.rootLocal ? "Group Center (effect-local m)" : "Group Center (bone-local m)",
@@ -107,7 +134,7 @@ void Client::CEffect_Tool::Render_CurrentEffectAttachmentGroups()
             ImGui::EndDisabled();
             ImGui::BeginDisabled(!group.rotationEditable || Has_UnappliedDetailDraft());
             auto angles = group.rotationDegrees;
-            if (ImGui::DragFloat3("Group Rotation (deg)", &angles.x, .25f, -36000.f, 36000.f, "%.2f"))
+            if (ImGui::DragFloat3("Element Group Rotation (about center)", &angles.x, .25f, -36000.f, 36000.f, "%.2f"))
             {
                 rotatedGroup = group.key;
                 rotationDegrees = angles;
@@ -131,7 +158,8 @@ void Client::CEffect_Tool::Render_CurrentEffectAttachmentGroups()
         ImGui::PopID();
     }
     // Commit only after the complete view releases every pointer into the old document.
-    if (!movedGroup.empty()) (void)Try_TranslateAttachmentGroup(movedGroup, translation);
+    if (!editedAnchor.empty()) (void)Try_SetAttachmentGroupAnchor(editedAnchor, anchorPosition, anchorRotation);
+    else if (!movedGroup.empty()) (void)Try_TranslateAttachmentGroup(movedGroup, translation);
     else if (!rotatedGroup.empty()) (void)Try_RotateAttachmentGroup(rotatedGroup, rotationDegrees);
 }
 
@@ -415,6 +443,42 @@ void Client::CEffect_Tool::Render_ModelCueDetail()
 		if (Draft.bHoldLastFrame) Draft.bLoop = false;
 		bChanged = true;
 	}
+    std::array<char_t, 257> animationSet{};
+    Copy_Buffer(animationSet.data(), animationSet.size(), Draft.strAnimationSetAssetId);
+    if (ImGui::InputText("Animation Set Asset (Optional)", animationSet.data(), animationSet.size(),
+        ImGuiInputTextFlags_EnterReturnsTrue))
+    { Draft.strAnimationSetAssetId = animationSet.data(); bChanged = true; }
+    bool afterimageOnly = Draft.Afterimage.has_value();
+    if (ImGui::Checkbox("Skeletal Afterimage Only", &afterimageOnly))
+    {
+        if (afterimageOnly)
+        {
+            Draft.Afterimage.emplace();
+            Draft.Afterimage->fEmissionEndSeconds = Draft.fDurationSeconds;
+            Draft.vColorMultiply = {1.8f, 1.8f, 1.8f, .38f};
+        }
+        else Draft.Afterimage.reset();
+        bChanged = true;
+    }
+    if (Draft.Afterimage)
+    {
+        auto& history = *Draft.Afterimage;
+        ImGui::TextDisabled("PROJECT_AUTHORED appearance; source notify controls emission timing.");
+        bChanged |= ImGui::DragFloat("Emission Start (Cue Seconds)", &history.fEmissionStartSeconds, .001f, 0.f, 30.f, "%.4f");
+        bChanged |= ImGui::DragFloat("Emission End (Cue Seconds)", &history.fEmissionEndSeconds, .001f, 0.f, 30.f, "%.4f");
+        bChanged |= ImGui::DragFloat("Sample Interval (Seconds)", &history.fSampleIntervalSeconds, .005f, .005f, .5f, "%.3f");
+        bChanged |= ImGui::DragFloat("Sample Lifetime (Seconds)", &history.fSampleLifetimeSeconds, .01f, .005f, 2.f, "%.3f");
+        int count = static_cast<int>(history.iMaxSamples);
+        if (ImGui::SliderInt("Maximum Afterimages", &count, 1, 16))
+        { history.iMaxSamples = static_cast<uint32_t>(count); bChanged = true; }
+        bChanged |= ImGui::ColorEdit4("Afterimage Color / Alpha", &Draft.vColorMultiply.x,
+            ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float);
+        int axis = static_cast<int>(Draft.iRootMotionVerticalAxis);
+        if (ImGui::SliderInt("Source Root Vertical Axis", &axis, 0, 2))
+        { Draft.iRootMotionVerticalAxis = static_cast<uint32_t>(axis); bChanged = true; }
+        bChanged |= ImGui::SliderFloat("Source Root Vertical Scale", &Draft.fRootMotionVerticalScale, 0.f, 1.f);
+        ImGui::TextDisabled("Seek clears old history. Play records the actual sampled poses again.");
+    }
 	ImGui::TextDisabled("Owner axes: +X right, +Y up, +Z forward. Local position is in meters.");
 	bChanged |= ImGui::DragFloat3("Local Position",
 		&Draft.LocalTransform.vPosition.x, 0.01f);

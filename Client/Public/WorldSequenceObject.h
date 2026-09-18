@@ -57,6 +57,7 @@ private:
     CWorldSequenceObject(ComPtr<ID3D11Device>, ComPtr<ID3D11DeviceContext>);
     HRESULT Render_Translucent();
     shared_ptr<Engine::CModel> m_Model;
+    shared_ptr<Engine::CModel> m_SaydonHatModel;
     shared_ptr<Engine::CShader> m_Shader;
     ComPtr<ID3D11ShaderResourceView> m_Diffuse;
     std::vector<shared_ptr<CPart_Equipment>> m_Parts;

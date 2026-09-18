@@ -353,7 +353,7 @@ def validate_world_rows(result, doc):
         assert len(set(targets)) == len(targets), i['instanceId']  # one resource per instance binding
         assert all(b['targetKind'] == 'OBJECT_RESOURCE' and b['targetId'] in (new_objects | objects) for b in i['bindings'])
         assert i['anchorKind'] == 'WORLD' and i['motionEnd'] == 'STOP' and 0.05 <= i['playbackSpeed'] <= 8 and i['enabled']
-    assert len(doc['templates']) + len(result['templates']) <= 256
+    assert len(doc['templates']) + len(result['templates']) <= 512
     assert len(doc['instances']) + len(result['instances']) <= 2048
     assert len(doc['objectResources']) + len(result['resources']) <= 2048
 

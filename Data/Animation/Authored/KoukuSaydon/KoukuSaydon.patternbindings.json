@@ -3,7 +3,7 @@
   "formatVersion": 1,
   "lightResourceRevision": 10,
   "bossArchetypeId": "BOSS_KAKULSAYDON_G1_KOUKU",
-  "sourceRevision": 1143,
+  "sourceRevision": 1409,
   "bindings": [
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_1.stage.39",
@@ -1408,17 +1408,6 @@
       "animationRootVerticalScale": 0.0
     },
     {
-      "actionId": "KAKULSAYDON_G1_PATTERN_25.stage.1",
-      "occurrenceId": "KAKULSAYDON_G1_PATTERN_25.animation.1",
-      "clip": "rpcz00_idle_battle_1",
-      "startOffsetMs": 0,
-      "sourceStartMs": 0,
-      "playMs": 2000,
-      "playRate": 1,
-      "endPolicy": "EXACT",
-      "animationRootVerticalScale": 0.0
-    },
-    {
       "actionId": "KAKULSAYDON_G1_PATTERN_25.stage.64",
       "occurrenceId": "KAKULSAYDON_G1_PATTERN_25.animation.64",
       "clip": "rpcz00_att_battle_10_01",
@@ -2158,6 +2147,7 @@
       "playMs": 382,
       "playRate": 1,
       "endPolicy": "EXACT",
+      "holdAtWindowEnd": true,
       "animationRootVerticalScale": 0.0
     },
     {
@@ -3653,6 +3643,72 @@
       "animationRootVerticalScale": 0.0
     },
     {
+      "actionId": "KAKULSAYDON_G1_PATTERN_47.stage.37",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_47.animation.37",
+      "clip": "rpct00_att_battle_19_01_loop",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1167,
+      "playRate": 1,
+      "endPolicy": "LOOP_TO_WINDOW",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_47.stage.51",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_47.animation.51",
+      "clip": "rpct00_att_battle_19_01_end",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1033,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_47.stage.70",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_47.animation.69",
+      "clip": "rpct00_att_battle_19_01_start",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1333,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_47.stage.71",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_47.animation.70",
+      "clip": "rpct00_att_battle_19_01_loop",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1167,
+      "playRate": 1,
+      "endPolicy": "LOOP_TO_WINDOW",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_47.stage.72",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_47.animation.71",
+      "clip": "rpct00_att_battle_19_01_loop",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1167,
+      "playRate": 1,
+      "endPolicy": "LOOP_TO_WINDOW",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_47.stage.73",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_47.animation.72",
+      "clip": "rpct00_att_battle_19_01_end",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1033,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
       "actionId": "KAKULSAYDON_G1_PATTERN_47.stage.4",
       "occurrenceId": "KAKULSAYDON_G1_PATTERN_47.animation.4",
       "clip": "rpct00_att_battle_5_01",
@@ -3664,289 +3720,92 @@
       "animationRootVerticalScale": 0.0
     },
     {
-      "actionId": "KAKULSAYDON_G1_PATTERN_47.stage.5",
-      "occurrenceId": "KAKULSAYDON_G1_PATTERN_47.animation.5",
-      "clip": "rpct00_att_battle_5_01",
+      "actionId": "KAKULSAYDON_G1_PATTERN_48.stage.1",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_48.animation.1",
+      "clip": "rpct00_att_battle_4_04",
       "startOffsetMs": 0,
       "sourceStartMs": 0,
-      "playMs": 1533,
+      "playMs": 2833,
       "playRate": 1,
       "endPolicy": "EXACT",
       "animationRootVerticalScale": 0.0
     },
     {
-      "actionId": "KAKULSAYDON_G1_PATTERN_47.stage.6",
-      "occurrenceId": "KAKULSAYDON_G1_PATTERN_47.animation.6",
-      "clip": "rpct00_idle_battle_1",
+      "actionId": "KAKULSAYDON_G1_PATTERN_48.stage.2",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_48.animation.2",
+      "clip": "rpct00_att_battle_4_02",
       "startOffsetMs": 0,
       "sourceStartMs": 0,
-      "playMs": 3000,
+      "playMs": 800,
       "playRate": 1,
       "endPolicy": "EXACT",
       "animationRootVerticalScale": 0.0
     },
     {
-      "actionId": "KAKULSAYDON_G1_PATTERN_47.stage.7",
-      "occurrenceId": "KAKULSAYDON_G1_PATTERN_47.animation.7",
-      "clip": "rpct00_idle_battle_1",
+      "actionId": "KAKULSAYDON_G1_PATTERN_48.stage.7",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_48.animation.7",
+      "clip": "rpct00_att_battle_4_02",
       "startOffsetMs": 0,
       "sourceStartMs": 0,
-      "playMs": 3000,
+      "playMs": 800,
       "playRate": 1,
       "endPolicy": "EXACT",
       "animationRootVerticalScale": 0.0
     },
     {
-      "actionId": "KAKULSAYDON_G1_PATTERN_47.stage.8",
-      "occurrenceId": "KAKULSAYDON_G1_PATTERN_47.animation.8",
-      "clip": "rpct00_att_battle_19_01_end",
+      "actionId": "KAKULSAYDON_G1_PATTERN_48.stage.8",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_48.animation.8",
+      "clip": "rpct00_att_battle_4_02",
       "startOffsetMs": 0,
       "sourceStartMs": 0,
-      "playMs": 1033,
+      "playMs": 800,
       "playRate": 1,
       "endPolicy": "EXACT",
       "animationRootVerticalScale": 0.0
     },
     {
-      "actionId": "KAKULSAYDON_G1_PATTERN_47.stage.9",
-      "occurrenceId": "KAKULSAYDON_G1_PATTERN_47.animation.9",
-      "clip": "rpct00_att_battle_19_01_start",
+      "actionId": "KAKULSAYDON_G1_PATTERN_48.stage.9",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_48.animation.9",
+      "clip": "rpct00_att_battle_4_02",
       "startOffsetMs": 0,
       "sourceStartMs": 0,
-      "playMs": 1333,
+      "playMs": 800,
       "playRate": 1,
       "endPolicy": "EXACT",
       "animationRootVerticalScale": 0.0
     },
     {
-      "actionId": "KAKULSAYDON_G1_PATTERN_47.stage.10",
-      "occurrenceId": "KAKULSAYDON_G1_PATTERN_47.animation.10",
-      "clip": "rpct00_att_battle_19_01_loop",
+      "actionId": "KAKULSAYDON_G1_PATTERN_48.stage.10",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_48.animation.10",
+      "clip": "rpct00_att_battle_4_02",
       "startOffsetMs": 0,
       "sourceStartMs": 0,
-      "playMs": 1167,
+      "playMs": 800,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_48.stage.11",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_48.animation.11",
+      "clip": "rpct00_att_battle_4_02",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 4900,
       "playRate": 1,
       "endPolicy": "LOOP_TO_WINDOW",
       "animationRootVerticalScale": 0.0
     },
     {
-      "actionId": "KAKULSAYDON_G1_PATTERN_47.stage.11",
-      "occurrenceId": "KAKULSAYDON_G1_PATTERN_47.animation.11",
-      "clip": "rpct00_att_battle_19_01_loop",
+      "actionId": "KAKULSAYDON_G1_PATTERN_48.stage.3",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_48.animation.3",
+      "clip": "rpct00_att_battle_4_03",
       "startOffsetMs": 0,
       "sourceStartMs": 0,
-      "playMs": 1167,
-      "playRate": 1,
-      "endPolicy": "LOOP_TO_WINDOW",
-      "animationRootVerticalScale": 0.0
-    },
-    {
-      "actionId": "KAKULSAYDON_G1_PATTERN_47.stage.12",
-      "occurrenceId": "KAKULSAYDON_G1_PATTERN_47.animation.12",
-      "clip": "rpct00_att_battle_19_01_loop",
-      "startOffsetMs": 0,
-      "sourceStartMs": 0,
-      "playMs": 1167,
-      "playRate": 1,
-      "endPolicy": "LOOP_TO_WINDOW",
-      "animationRootVerticalScale": 0.0
-    },
-    {
-      "actionId": "KAKULSAYDON_G1_PATTERN_47.stage.13",
-      "occurrenceId": "KAKULSAYDON_G1_PATTERN_47.animation.13",
-      "clip": "rpct00_att_battle_19_01_end",
-      "startOffsetMs": 0,
-      "sourceStartMs": 0,
-      "playMs": 1033,
+      "playMs": 3500,
       "playRate": 1,
       "endPolicy": "EXACT",
-      "animationRootVerticalScale": 0.0
-    },
-    {
-      "actionId": "KAKULSAYDON_G1_PATTERN_47.stage.14",
-      "occurrenceId": "KAKULSAYDON_G1_PATTERN_47.animation.14",
-      "clip": "rpct00_att_battle_19_01_end",
-      "startOffsetMs": 0,
-      "sourceStartMs": 0,
-      "playMs": 1033,
-      "playRate": 1,
-      "endPolicy": "EXACT",
-      "animationRootVerticalScale": 0.0
-    },
-    {
-      "actionId": "KAKULSAYDON_G1_PATTERN_47.stage.15",
-      "occurrenceId": "KAKULSAYDON_G1_PATTERN_47.animation.15",
-      "clip": "rpct00_att_battle_19_01_end",
-      "startOffsetMs": 0,
-      "sourceStartMs": 0,
-      "playMs": 1033,
-      "playRate": 1,
-      "endPolicy": "EXACT",
-      "animationRootVerticalScale": 0.0
-    },
-    {
-      "actionId": "KAKULSAYDON_G1_PATTERN_47.stage.16",
-      "occurrenceId": "KAKULSAYDON_G1_PATTERN_47.animation.16",
-      "clip": "rpct00_att_battle_19_01_start",
-      "startOffsetMs": 0,
-      "sourceStartMs": 0,
-      "playMs": 1333,
-      "playRate": 1,
-      "endPolicy": "EXACT",
-      "animationRootVerticalScale": 0.0
-    },
-    {
-      "actionId": "KAKULSAYDON_G1_PATTERN_47.stage.17",
-      "occurrenceId": "KAKULSAYDON_G1_PATTERN_47.animation.17",
-      "clip": "rpct00_att_battle_19_01_start",
-      "startOffsetMs": 0,
-      "sourceStartMs": 0,
-      "playMs": 1333,
-      "playRate": 1,
-      "endPolicy": "EXACT",
-      "animationRootVerticalScale": 0.0
-    },
-    {
-      "actionId": "KAKULSAYDON_G1_PATTERN_47.stage.18",
-      "occurrenceId": "KAKULSAYDON_G1_PATTERN_47.animation.18",
-      "clip": "rpct00_att_battle_19_01_start",
-      "startOffsetMs": 0,
-      "sourceStartMs": 0,
-      "playMs": 1333,
-      "playRate": 1,
-      "endPolicy": "EXACT",
-      "animationRootVerticalScale": 0.0
-    },
-    {
-      "actionId": "KAKULSAYDON_G1_PATTERN_47.stage.19",
-      "occurrenceId": "KAKULSAYDON_G1_PATTERN_47.animation.19",
-      "clip": "rpct00_att_battle_5_01",
-      "startOffsetMs": 0,
-      "sourceStartMs": 0,
-      "playMs": 1533,
-      "playRate": 1,
-      "endPolicy": "EXACT",
-      "animationRootVerticalScale": 0.0
-    },
-    {
-      "actionId": "KAKULSAYDON_G1_PATTERN_47.stage.20",
-      "occurrenceId": "KAKULSAYDON_G1_PATTERN_47.animation.20",
-      "clip": "rpct00_att_battle_5_01",
-      "startOffsetMs": 0,
-      "sourceStartMs": 0,
-      "playMs": 1533,
-      "playRate": 1,
-      "endPolicy": "EXACT",
-      "animationRootVerticalScale": 0.0
-    },
-    {
-      "actionId": "KAKULSAYDON_G1_PATTERN_47.stage.21",
-      "occurrenceId": "KAKULSAYDON_G1_PATTERN_47.animation.21",
-      "clip": "rpct00_idle_battle_1",
-      "startOffsetMs": 0,
-      "sourceStartMs": 0,
-      "playMs": 3000,
-      "playRate": 1,
-      "endPolicy": "EXACT",
-      "animationRootVerticalScale": 0.0
-    },
-    {
-      "actionId": "KAKULSAYDON_G1_PATTERN_47.stage.22",
-      "occurrenceId": "KAKULSAYDON_G1_PATTERN_47.animation.22",
-      "clip": "rpct00_idle_battle_1",
-      "startOffsetMs": 0,
-      "sourceStartMs": 0,
-      "playMs": 3000,
-      "playRate": 1,
-      "endPolicy": "EXACT",
-      "animationRootVerticalScale": 0.0
-    },
-    {
-      "actionId": "KAKULSAYDON_G1_PATTERN_47.stage.23",
-      "occurrenceId": "KAKULSAYDON_G1_PATTERN_47.animation.23",
-      "clip": "rpct00_att_battle_19_01_loop",
-      "startOffsetMs": 0,
-      "sourceStartMs": 0,
-      "playMs": 1167,
-      "playRate": 1,
-      "endPolicy": "LOOP_TO_WINDOW",
-      "animationRootVerticalScale": 0.0
-    },
-    {
-      "actionId": "KAKULSAYDON_G1_PATTERN_47.stage.24",
-      "occurrenceId": "KAKULSAYDON_G1_PATTERN_47.animation.24",
-      "clip": "rpct00_att_battle_19_01_loop",
-      "startOffsetMs": 0,
-      "sourceStartMs": 0,
-      "playMs": 1167,
-      "playRate": 1,
-      "endPolicy": "LOOP_TO_WINDOW",
-      "animationRootVerticalScale": 0.0
-    },
-    {
-      "actionId": "KAKULSAYDON_G1_PATTERN_47.stage.25",
-      "occurrenceId": "KAKULSAYDON_G1_PATTERN_47.animation.25",
-      "clip": "rpct00_att_battle_19_01_loop",
-      "startOffsetMs": 0,
-      "sourceStartMs": 0,
-      "playMs": 1167,
-      "playRate": 1,
-      "endPolicy": "LOOP_TO_WINDOW",
-      "animationRootVerticalScale": 0.0
-    },
-    {
-      "actionId": "KAKULSAYDON_G1_PATTERN_47.stage.26",
-      "occurrenceId": "KAKULSAYDON_G1_PATTERN_47.animation.26",
-      "clip": "rpct00_att_battle_19_01_end",
-      "startOffsetMs": 0,
-      "sourceStartMs": 0,
-      "playMs": 1033,
-      "playRate": 1,
-      "endPolicy": "EXACT",
-      "animationRootVerticalScale": 0.0
-    },
-    {
-      "actionId": "KAKULSAYDON_G1_PATTERN_47.stage.27",
-      "occurrenceId": "KAKULSAYDON_G1_PATTERN_47.animation.27",
-      "clip": "rpct00_att_battle_19_01_end",
-      "startOffsetMs": 0,
-      "sourceStartMs": 0,
-      "playMs": 1033,
-      "playRate": 1,
-      "endPolicy": "EXACT",
-      "animationRootVerticalScale": 0.0
-    },
-    {
-      "actionId": "KAKULSAYDON_G1_PATTERN_47.stage.28",
-      "occurrenceId": "KAKULSAYDON_G1_PATTERN_47.animation.28",
-      "clip": "rpct00_att_battle_19_01_end",
-      "startOffsetMs": 0,
-      "sourceStartMs": 0,
-      "playMs": 1033,
-      "playRate": 1,
-      "endPolicy": "EXACT",
-      "animationRootVerticalScale": 0.0
-    },
-    {
-      "actionId": "KAKULSAYDON_G1_PATTERN_47.stage.29",
-      "occurrenceId": "KAKULSAYDON_G1_PATTERN_47.animation.29",
-      "clip": "rpct00_att_battle_19_01_start",
-      "startOffsetMs": 0,
-      "sourceStartMs": 0,
-      "playMs": 1333,
-      "playRate": 1,
-      "endPolicy": "EXACT",
-      "animationRootVerticalScale": 0.0
-    },
-    {
-      "actionId": "KAKULSAYDON_G1_PATTERN_47.stage.30",
-      "occurrenceId": "KAKULSAYDON_G1_PATTERN_47.animation.30",
-      "clip": "rpct00_att_battle_19_01_start",
-      "startOffsetMs": 0,
-      "sourceStartMs": 0,
-      "playMs": 1333,
-      "playRate": 1,
-      "endPolicy": "EXACT",
+      "holdAtWindowEnd": true,
       "animationRootVerticalScale": 0.0
     },
     {
@@ -4655,6 +4514,361 @@
       "endPolicy": "EXACT",
       "holdAtWindowEnd": true,
       "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_78.stage.4",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_78.animation.4",
+      "clip": "rpct00_att_battle_11_02",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 5167,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_78.stage.5",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_78.animation.5",
+      "clip": "rpct00_att_battle_21_01",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1833,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_78.stage.6",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_78.animation.6",
+      "clip": "rpct00_att_battle_21_02",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1333,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_78.stage.76",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_78.animation.76",
+      "clip": "rpct00_att_battle_21_02",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1333,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_78.stage.77",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_78.animation.77",
+      "clip": "rpct00_att_battle_21_02",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1333,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_78.stage.78",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_78.animation.78",
+      "clip": "rpct00_att_battle_21_02",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1333,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_78.stage.79",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_78.animation.79",
+      "clip": "rpct00_att_battle_21_02",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1333,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_78.stage.80",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_78.animation.80",
+      "clip": "rpct00_att_battle_21_02",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1333,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_78.stage.81",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_78.animation.81",
+      "clip": "rpct00_att_battle_21_02",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1333,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_78.stage.82",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_78.animation.82",
+      "clip": "rpct00_att_battle_21_02",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1333,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_78.stage.7",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_78.animation.7",
+      "clip": "rpct00_att_battle_21_03",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 2167,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_79.stage.1",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_79.animation.1",
+      "clip": "rpct00_att_battle_17_01",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 3167,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_79.stage.2",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_79.animation.2",
+      "clip": "rpct00_att_battle_17_06",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1167,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_79.stage.3",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_79.animation.3",
+      "clip": "rpct00_att_battle_17_07",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 2833,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "holdAtWindowEnd": true,
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_79.stage.5",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_79.animation.5",
+      "clip": "rpct00_att_battle_17_05",
+      "startOffsetMs": 3099,
+      "sourceStartMs": 0,
+      "playMs": 2667,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_82.stage.6",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_82.animation.6",
+      "clip": "rpct00_att_battle_15_01",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 2833,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_82.stage.7",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_82.animation.7",
+      "clip": "rpct00_att_battle_15_02",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 33,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_82.stage.8",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_82.animation.8",
+      "clip": "rpct00_att_battle_15_03",
+      "startOffsetMs": 1758,
+      "sourceStartMs": 0,
+      "playMs": 3733,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_82.stage.9",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_82.animation.9",
+      "clip": "rpct00_att_battle_5_01",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1533,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "holdAtWindowEnd": true,
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_83.stage.1",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_83.animation.1",
+      "clip": "rpct00_att_battle_18_01",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 2500,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_83.stage.2",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_83.animation.2",
+      "clip": "rpct00_att_battle_18_02",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1333,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_83.stage.3",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_83.animation.3",
+      "clip": "rpct00_att_battle_18_03",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 4167,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_83.stage.4",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_83.animation.4",
+      "clip": "rpct00_att_battle_29_01",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 4167,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "holdAtWindowEnd": true,
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_84.stage.19",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_84.animation.19",
+      "clip": "rpcz00_att_battle_12_start",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 2000,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_84.stage.20",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_84.animation.20",
+      "clip": "rpcz00_att_battle_12_loop",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 2000,
+      "playRate": 1,
+      "endPolicy": "LOOP_TO_WINDOW",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_84.stage.25",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_84.animation.25",
+      "clip": "rpcz00_att_battle_12_loop",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 2000,
+      "playRate": 1,
+      "endPolicy": "LOOP_TO_WINDOW",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_84.stage.29",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_84.animation.29",
+      "clip": "rpcz00_att_battle_12_loop",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 2000,
+      "playRate": 1,
+      "endPolicy": "LOOP_TO_WINDOW",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_84.stage.26",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_84.animation.26",
+      "clip": "rpcz00_att_battle_12_loop",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 2000,
+      "playRate": 1,
+      "endPolicy": "LOOP_TO_WINDOW",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_84.stage.27",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_84.animation.27",
+      "clip": "rpcz00_att_battle_12_loop",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 2000,
+      "playRate": 1,
+      "endPolicy": "LOOP_TO_WINDOW",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_84.stage.28",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_84.animation.28",
+      "clip": "rpcz00_att_battle_12_loop",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 2000,
+      "playRate": 1,
+      "endPolicy": "LOOP_TO_WINDOW",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_84.stage.21",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_84.animation.21",
+      "clip": "rpcz00_att_battle_12_end",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 1333,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_84.stage.22",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_84.animation.22",
+      "clip": "rpcz00_att_battle_12_start",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 2000,
+      "playRate": 1,
+      "endPolicy": "EXACT",
+      "animationRootVerticalScale": 0.0
     }
   ],
   "fearPresentations": [
@@ -4725,6 +4939,662 @@
     }
   ],
   "targetedCombatVisuals": [
+    {
+      "clientVisualId": "kouku.pursuit.3d5d9327d9c527e131b2c3e3422ed1fb80dd79b8e37a9c3e7d74cce80355b28d",
+      "combatObjectArchetypeId": "combatobject.kouku.pursuit",
+      "durationMs": 4500,
+      "loop": true,
+      "resources": [
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.b8e5fee3398e1a878237",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.card.match.spade",
+          "resourceDurationMs": 4500
+        }
+      ],
+      "occurrences": [
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.b8e5fee3398e1a878237",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.card.match.spade",
+          "resourceDurationMs": 4500,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1.0,
+          "volume": 1.0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "MAP",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "pursuit.presentation.1",
+          "startMs": 0,
+          "durationMs": 4500,
+          "loopEffectToDuration": true,
+          "worldSequenceInstanceId": ""
+        }
+      ],
+      "contactVisualId": "kakulsaydon.effect.2b70261b05fe2d6da94c",
+      "contactEffectAssetId": "effect.kouku.card.match.explosion"
+    },
+    {
+      "clientVisualId": "kouku.pursuit.56ed2d9d6fadda3a1a2ff327d35981a1d7f70ca9f51c9861dd02640f8cc779a0",
+      "combatObjectArchetypeId": "combatobject.kouku.pursuit",
+      "durationMs": 1000,
+      "loop": true,
+      "resources": [
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.422218ee133f71771e45",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.card.spinning.spade",
+          "resourceDurationMs": 1000
+        }
+      ],
+      "occurrences": [
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.422218ee133f71771e45",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.card.spinning.spade",
+          "resourceDurationMs": 1000,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1.0,
+          "volume": 1.0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "MAP",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "pursuit.presentation.1",
+          "startMs": 0,
+          "durationMs": 1000,
+          "loopEffectToDuration": true,
+          "worldSequenceInstanceId": ""
+        }
+      ],
+      "contactVisualId": "kakulsaydon.effect.2b70261b05fe2d6da94c",
+      "contactEffectAssetId": "effect.kouku.card.match.explosion"
+    },
+    {
+      "clientVisualId": "kouku.pursuit.680725bdbf2edf4fd86d2bd7f277fdabaf881373494815978c0e52f79cdbdcf4",
+      "combatObjectArchetypeId": "combatobject.kouku.pursuit",
+      "durationMs": 1000,
+      "loop": true,
+      "resources": [
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.8ac42a2f2f8bd974a321",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.card.spinning.heart",
+          "resourceDurationMs": 1000
+        }
+      ],
+      "occurrences": [
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.8ac42a2f2f8bd974a321",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.card.spinning.heart",
+          "resourceDurationMs": 1000,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1.0,
+          "volume": 1.0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "MAP",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "pursuit.presentation.1",
+          "startMs": 0,
+          "durationMs": 1000,
+          "loopEffectToDuration": true,
+          "worldSequenceInstanceId": ""
+        }
+      ],
+      "contactVisualId": "kakulsaydon.effect.2b70261b05fe2d6da94c",
+      "contactEffectAssetId": "effect.kouku.card.match.explosion"
+    },
+    {
+      "clientVisualId": "kouku.pursuit.696d25acf286c6baa39c86518b9d267365705ac4fdced11f81211c77c322e725",
+      "combatObjectArchetypeId": "combatobject.kouku.pursuit",
+      "durationMs": 1000,
+      "loop": true,
+      "resources": [
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.8b072abf8283a1cb103e",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.card.spinning.diamond",
+          "resourceDurationMs": 1000
+        }
+      ],
+      "occurrences": [
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.8b072abf8283a1cb103e",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.card.spinning.diamond",
+          "resourceDurationMs": 1000,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1.0,
+          "volume": 1.0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "MAP",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "pursuit.presentation.1",
+          "startMs": 0,
+          "durationMs": 1000,
+          "loopEffectToDuration": true,
+          "worldSequenceInstanceId": ""
+        }
+      ],
+      "contactVisualId": "kakulsaydon.effect.2b70261b05fe2d6da94c",
+      "contactEffectAssetId": "effect.kouku.card.match.explosion"
+    },
+    {
+      "clientVisualId": "kouku.pursuit.74f907e3088786f3d7d6e54f8aee08d3c358291e8fb71cd6df2608278992d7e7",
+      "combatObjectArchetypeId": "combatobject.kouku.pursuit",
+      "durationMs": 1000,
+      "loop": true,
+      "resources": [
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.8627754d73ad0bf049b8",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.card.spinning.clover",
+          "resourceDurationMs": 1000
+        }
+      ],
+      "occurrences": [
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.8627754d73ad0bf049b8",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.card.spinning.clover",
+          "resourceDurationMs": 1000,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1.0,
+          "volume": 1.0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "MAP",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "pursuit.presentation.1",
+          "startMs": 0,
+          "durationMs": 1000,
+          "loopEffectToDuration": true,
+          "worldSequenceInstanceId": ""
+        }
+      ],
+      "contactVisualId": "kakulsaydon.effect.2b70261b05fe2d6da94c",
+      "contactEffectAssetId": "effect.kouku.card.match.explosion"
+    },
+    {
+      "clientVisualId": "kouku.pursuit.75f887067c7f595d141d45f537fc4148a0b2c78b3d887c323afca13ca41a1851",
+      "combatObjectArchetypeId": "combatobject.kouku.pursuit",
+      "durationMs": 4500,
+      "loop": true,
+      "resources": [
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.550626bc0730968cd451",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.card.match.diamond",
+          "resourceDurationMs": 4500
+        }
+      ],
+      "occurrences": [
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.550626bc0730968cd451",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.card.match.diamond",
+          "resourceDurationMs": 4500,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1.0,
+          "volume": 1.0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "MAP",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "pursuit.presentation.1",
+          "startMs": 0,
+          "durationMs": 4500,
+          "loopEffectToDuration": true,
+          "worldSequenceInstanceId": ""
+        }
+      ],
+      "contactVisualId": "kakulsaydon.effect.2b70261b05fe2d6da94c",
+      "contactEffectAssetId": "effect.kouku.card.match.explosion"
+    },
+    {
+      "clientVisualId": "kouku.pursuit.83a3f11f0d339648459894f271bc927c9af73ddbbc1e55dad8f5d1e56f69a098",
+      "combatObjectArchetypeId": "combatobject.kouku.pursuit",
+      "durationMs": 4500,
+      "loop": true,
+      "resources": [
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.c8f38f8daa6074e9469b",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.card.match.clover",
+          "resourceDurationMs": 4500
+        }
+      ],
+      "occurrences": [
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.c8f38f8daa6074e9469b",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.card.match.clover",
+          "resourceDurationMs": 4500,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1.0,
+          "volume": 1.0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "MAP",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "pursuit.presentation.1",
+          "startMs": 0,
+          "durationMs": 4500,
+          "loopEffectToDuration": true,
+          "worldSequenceInstanceId": ""
+        }
+      ],
+      "contactVisualId": "kakulsaydon.effect.2b70261b05fe2d6da94c",
+      "contactEffectAssetId": "effect.kouku.card.match.explosion"
+    },
+    {
+      "clientVisualId": "kouku.pursuit.b5a3b2ae5558cb69f873a97739bb7a572a7a449514a081e452fb3371e21480c3",
+      "combatObjectArchetypeId": "combatobject.kouku.pursuit",
+      "durationMs": 4500,
+      "loop": true,
+      "resources": [
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.8050650cdbff1a3253d7",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.card.match.heart",
+          "resourceDurationMs": 4500
+        }
+      ],
+      "occurrences": [
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.8050650cdbff1a3253d7",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.card.match.heart",
+          "resourceDurationMs": 4500,
+          "positionOffset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1.0,
+          "volume": 1.0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "MAP",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "pursuit.presentation.1",
+          "startMs": 0,
+          "durationMs": 4500,
+          "loopEffectToDuration": true,
+          "worldSequenceInstanceId": ""
+        }
+      ],
+      "contactVisualId": "kakulsaydon.effect.2b70261b05fe2d6da94c",
+      "contactEffectAssetId": "effect.kouku.card.match.explosion"
+    },
     {
       "clientVisualId": "kouku.showtime.fixed.0cf0c7ef71f6db4a1d34a3ce5eef3e247c0fdb36cc3b045867071218e10ce676",
       "combatObjectArchetypeId": "combatobject.kouku.showtime.fixed",
@@ -6218,6 +7088,11 @@
       "displayName": "카드미로"
     },
     {
+      "folderId": "kakulsaydon.folder.5",
+      "gateId": "GATE2",
+      "displayName": "쿠크피자"
+    },
+    {
       "folderId": "kakulsaydon.folder.6",
       "gateId": "GATE2",
       "displayName": "쿠크거미카운터"
@@ -6387,7 +7262,7 @@
       "gateId": "GATE2",
       "folderId": "kakulsaydon.folder.3",
       "displayName": "조커찾기_동시",
-      "durationMs": 30353,
+      "durationMs": 32118,
       "members": [
         {
           "memberId": "kakulsaydon.bundle.3.member.1",
@@ -6411,7 +7286,7 @@
       "gateId": "GATE2",
       "folderId": "kakulsaydon.folder.4",
       "displayName": "카드미로_동시",
-      "durationMs": 5349,
+      "durationMs": 7840,
       "members": [
         {
           "memberId": "kakulsaydon.bundle.4.member.1",
@@ -11594,8 +12469,199 @@
       "gateId": "GATE2",
       "targetBossPlacementId": "boss.kakulsaydon.g2.big-saydon",
       "actorProfileId": "MN_RPCT_06",
-      "durationMs": 30353,
+      "durationMs": 32118,
       "animationRootVerticalScale": 0.0,
+      "sourceAnchorAnimations": [
+        {
+          "runtimeClip": "mn_rpct_06_sk.ao_idle_battle_1",
+          "sourceStartMs": 0,
+          "playMs": 2667,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 0,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "mn_rpct_06_sk.ao_idle_battle_1",
+          "sourceStartMs": 0,
+          "playMs": 997,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 2667,
+          "blendInMs": 150
+        },
+        {
+          "runtimeClip": "mn_rpct_06_sk.ao_att_battle_8_01",
+          "sourceStartMs": 0,
+          "playMs": 1000,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 3664,
+          "blendInMs": 150
+        },
+        {
+          "runtimeClip": "mn_rpct_06_sk.ao_att_battle_1_03",
+          "sourceStartMs": 0,
+          "playMs": 1000,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 4664,
+          "blendInMs": 150
+        },
+        {
+          "runtimeClip": "mn_rpct_06_sk.ao_att_battle_1_01",
+          "sourceStartMs": 0,
+          "playMs": 602,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 5664,
+          "blendInMs": 150
+        },
+        {
+          "runtimeClip": "mn_rpct_06_sk.ao_idle_battle_1",
+          "sourceStartMs": 0,
+          "playMs": 2667,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 6266,
+          "blendInMs": 150
+        },
+        {
+          "runtimeClip": "mn_rpct_06_sk.ao_idle_battle_1",
+          "sourceStartMs": 0,
+          "playMs": 997,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 8933,
+          "blendInMs": 150
+        },
+        {
+          "runtimeClip": "mn_rpct_06_sk.ao_att_battle_8_01",
+          "sourceStartMs": 0,
+          "playMs": 1000,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 9930,
+          "blendInMs": 150
+        },
+        {
+          "runtimeClip": "mn_rpct_06_sk.ao_att_battle_1_03",
+          "sourceStartMs": 0,
+          "playMs": 1000,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 10930,
+          "blendInMs": 150
+        },
+        {
+          "runtimeClip": "mn_rpct_06_sk.ao_att_battle_1_01",
+          "sourceStartMs": 0,
+          "playMs": 630,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 11930,
+          "blendInMs": 150
+        },
+        {
+          "runtimeClip": "mn_rpct_06_sk.ao_idle_battle_1",
+          "sourceStartMs": 0,
+          "playMs": 2667,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 12560,
+          "blendInMs": 150
+        },
+        {
+          "runtimeClip": "mn_rpct_06_sk.ao_idle_battle_1",
+          "sourceStartMs": 0,
+          "playMs": 2667,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 15227,
+          "blendInMs": 150
+        },
+        {
+          "runtimeClip": "mn_rpct_06_sk.ao_idle_battle_1",
+          "sourceStartMs": 0,
+          "playMs": 997,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 17894,
+          "blendInMs": 150
+        },
+        {
+          "runtimeClip": "mn_rpct_06_sk.ao_att_battle_8_01",
+          "sourceStartMs": 0,
+          "playMs": 1000,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 18891,
+          "blendInMs": 150
+        },
+        {
+          "runtimeClip": "mn_rpct_06_sk.ao_att_battle_1_03",
+          "sourceStartMs": 0,
+          "playMs": 1000,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 19891,
+          "blendInMs": 150
+        },
+        {
+          "runtimeClip": "mn_rpct_06_sk.ao_att_battle_1_01",
+          "sourceStartMs": 0,
+          "playMs": 630,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 20891,
+          "blendInMs": 150
+        },
+        {
+          "runtimeClip": "mn_rpct_06_sk.ao_idle_battle_1",
+          "sourceStartMs": 0,
+          "playMs": 2667,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 21521,
+          "blendInMs": 150
+        },
+        {
+          "runtimeClip": "mn_rpct_06_sk.ao_idle_battle_1",
+          "sourceStartMs": 0,
+          "playMs": 997,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 24188,
+          "blendInMs": 150
+        },
+        {
+          "runtimeClip": "mn_rpct_06_sk.ao_att_battle_8_01",
+          "sourceStartMs": 0,
+          "playMs": 1000,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 25185,
+          "blendInMs": 150
+        },
+        {
+          "runtimeClip": "mn_rpct_06_sk.ao_att_battle_8_02",
+          "sourceStartMs": 0,
+          "playMs": 1000,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 26185,
+          "blendInMs": 150
+        },
+        {
+          "runtimeClip": "mn_rpct_06_sk.ao_att_battle_8_03",
+          "sourceStartMs": 0,
+          "playMs": 2600,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 27185,
+          "blendInMs": 150
+        }
+      ],
       "presentationOccurrences": [
         {
           "resourceKind": "",
@@ -12239,7 +13305,7 @@
           "worldOccurrenceId": "",
           "worldEmissionIndex": 0,
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_13.presentation.25",
-          "startMs": 29193,
+          "startMs": 29082,
           "durationMs": 1160,
           "brightnessMultiplier": 1,
           "boneTarget": "WEAPON",
@@ -12297,6 +13363,60 @@
           "durationMs": 3000,
           "brightnessMultiplier": 1,
           "boneTarget": "WEAPON",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.g1.presentation.76",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.source.fx_mn_rpbf_00_n.par_n_rpbf_wave_03",
+          "resourceDurationMs": 4200,
+          "positionOffset": [
+            8.100000381469727,
+            1.2000000476837158,
+            0.05000000074505806
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_13.presentation.29",
+          "startMs": 28954,
+          "durationMs": 1910,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
         }
       ]
@@ -12617,8 +13737,8 @@
           "worldSequenceInstanceId": ""
         },
         {
-          "resourceKind": "V1_ELEMENT",
-          "elementId": "requested.20260827.counter.cyan-roar-ring",
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
           "shape": "BOX",
           "colliderKind": "GEOMETRY",
           "halfExtents": [
@@ -12628,13 +13748,13 @@
           ],
           "radiusM": 3,
           "halfAngleDegrees": 45,
-          "resourceId": "kakulsaydon.g1.presentation.42",
+          "resourceId": "kakulsaydon.effect.counter.ring",
           "kind": "EFFECT",
-          "assetId": "effect.valtan.project-tuned.sequence.counter",
-          "resourceDurationMs": 1680,
+          "assetId": "effect.kouku.common.counter.ring",
+          "resourceDurationMs": 617,
           "positionOffset": [
             0,
-            0,
+            -0.6499999761581421,
             0
           ],
           "rotationDegrees": [
@@ -12643,9 +13763,9 @@
             0
           ],
           "scale": [
-            0.2,
-            0.2,
-            0.2
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
@@ -12664,15 +13784,15 @@
           "worldOccurrenceId": "",
           "worldEmissionIndex": 0,
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_15.presentation.4",
-          "startMs": 1600,
-          "durationMs": 1680,
+          "startMs": 2544,
+          "durationMs": 768,
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
         },
         {
-          "resourceKind": "V1_ELEMENT",
-          "elementId": "requested.20260827.counter.cyan-roar-ring",
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
           "shape": "BOX",
           "colliderKind": "GEOMETRY",
           "halfExtents": [
@@ -12682,10 +13802,10 @@
           ],
           "radiusM": 3,
           "halfAngleDegrees": 45,
-          "resourceId": "kakulsaydon.g1.presentation.42",
+          "resourceId": "kakulsaydon.effect.counter.ring",
           "kind": "EFFECT",
-          "assetId": "effect.valtan.project-tuned.sequence.counter",
-          "resourceDurationMs": 1680,
+          "assetId": "effect.kouku.common.counter.ring",
+          "resourceDurationMs": 617,
           "positionOffset": [
             0,
             0,
@@ -12697,9 +13817,9 @@
             0
           ],
           "scale": [
-            0.2,
-            0.2,
-            0.2
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
@@ -12719,60 +13839,6 @@
           "worldEmissionIndex": 0,
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_15.presentation.5",
           "startMs": 8767,
-          "durationMs": 1680,
-          "brightnessMultiplier": 1,
-          "boneTarget": "BODY",
-          "worldSequenceInstanceId": ""
-        },
-        {
-          "resourceKind": "V1_ELEMENT",
-          "elementId": "requested.20260827.counter.cyan-roar-ring",
-          "shape": "BOX",
-          "colliderKind": "GEOMETRY",
-          "halfExtents": [
-            1,
-            1,
-            1
-          ],
-          "radiusM": 3,
-          "halfAngleDegrees": 45,
-          "resourceId": "kakulsaydon.g1.presentation.42",
-          "kind": "EFFECT",
-          "assetId": "effect.valtan.project-tuned.sequence.counter",
-          "resourceDurationMs": 1680,
-          "positionOffset": [
-            0,
-            0,
-            0
-          ],
-          "rotationDegrees": [
-            0,
-            0,
-            0
-          ],
-          "scale": [
-            0.2,
-            0.2,
-            0.2
-          ],
-          "fadeInMs": 0,
-          "fadeOutMs": 0,
-          "dissolveStart": 0.85,
-          "dissolveEnd": 1,
-          "volume": 1,
-          "followBoss": true,
-          "bone": "",
-          "regionId": "",
-          "cardSymbol": "NONE",
-          "cardColor": "NONE",
-          "anchorKind": "BOSS",
-          "worldId": "",
-          "logicOccurrenceId": "",
-          "debugRender": false,
-          "worldOccurrenceId": "",
-          "worldEmissionIndex": 0,
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_15.presentation.6",
-          "startMs": 15934,
           "durationMs": 1680,
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
@@ -12908,9 +13974,9 @@
             0
           ],
           "rotationDegrees": [
-            0,
-            0,
-            0
+            -6.199999809265137,
+            -18.049999237060547,
+            1.2000000476837158
           ],
           "scale": [
             1,
@@ -13263,6 +14329,276 @@
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.counter.ring",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.common.counter.ring",
+          "resourceDurationMs": 617,
+          "positionOffset": [
+            0,
+            -0.6499999761581421,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": false,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_15.presentation.17",
+          "startMs": 3312,
+          "durationMs": 768,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.counter.ring",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.common.counter.ring",
+          "resourceDurationMs": 617,
+          "positionOffset": [
+            0,
+            -0.6499999761581421,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": false,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_15.presentation.19",
+          "startMs": 9789,
+          "durationMs": 768,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.counter.ring",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.common.counter.ring",
+          "resourceDurationMs": 617,
+          "positionOffset": [
+            0,
+            -0.6499999761581421,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": false,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_15.presentation.20",
+          "startMs": 10557,
+          "durationMs": 768,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.counter.ring",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.common.counter.ring",
+          "resourceDurationMs": 617,
+          "positionOffset": [
+            0,
+            -0.6499999761581421,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": false,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_15.presentation.22",
+          "startMs": 17016,
+          "durationMs": 768,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.counter.ring",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.common.counter.ring",
+          "resourceDurationMs": 617,
+          "positionOffset": [
+            0,
+            -0.6499999761581421,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": false,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_15.presentation.23",
+          "startMs": 17784,
+          "durationMs": 768,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
         }
       ]
     },
@@ -13551,8 +14887,145 @@
       "gateId": "GATE2",
       "targetBossPlacementId": "boss.kakulsaydon.g2.kouku",
       "actorProfileId": "MN_RPCZ_00",
-      "durationMs": 20167,
+      "durationMs": 18167,
       "animationRootVerticalScale": 0.0,
+      "sourceAnchorAnimations": [
+        {
+          "runtimeClip": "rpcz00_att_battle_10_01",
+          "sourceStartMs": 0,
+          "playMs": 1500,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 0,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpcz00_att_battle_10_02",
+          "sourceStartMs": 0,
+          "playMs": 2000,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 1500,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpcz00_att_battle_10_03",
+          "sourceStartMs": 0,
+          "playMs": 1000,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 3500,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpcz00_att_battle_10_03",
+          "sourceStartMs": 0,
+          "playMs": 1000,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 4500,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpcz00_att_battle_10_03",
+          "sourceStartMs": 0,
+          "playMs": 1000,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 5500,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpcz00_att_battle_10_03",
+          "sourceStartMs": 0,
+          "playMs": 1000,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 6500,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpcz00_att_battle_10_03",
+          "sourceStartMs": 0,
+          "playMs": 1000,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 7500,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpcz00_att_battle_10_03",
+          "sourceStartMs": 0,
+          "playMs": 1000,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 8500,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpcz00_att_battle_10_03",
+          "sourceStartMs": 0,
+          "playMs": 1000,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 9500,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpcz00_att_battle_10_03",
+          "sourceStartMs": 0,
+          "playMs": 1000,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 10500,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpcz00_att_battle_10_03",
+          "sourceStartMs": 0,
+          "playMs": 1000,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 11500,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpcz00_att_battle_10_03",
+          "sourceStartMs": 0,
+          "playMs": 1000,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 12500,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpcz00_att_battle_10_03",
+          "sourceStartMs": 0,
+          "playMs": 1000,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 13500,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpcz00_att_battle_10_03",
+          "sourceStartMs": 0,
+          "playMs": 1000,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 14500,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpcz00_att_battle_10_04",
+          "sourceStartMs": 0,
+          "playMs": 2667,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 15500,
+          "blendInMs": 0
+        }
+      ],
       "presentationOccurrences": [
         {
           "resourceKind": "GROUP",
@@ -13572,7 +15045,7 @@
           "resourceDurationMs": 3000,
           "positionOffset": [
             0,
-            1.4500000476837158,
+            0.20000000298023224,
             0
           ],
           "rotationDegrees": [
@@ -13602,7 +15075,7 @@
           "worldOccurrenceId": "",
           "worldEmissionIndex": 0,
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_25.presentation.1",
-          "startMs": 5465,
+          "startMs": 3465,
           "durationMs": 12841,
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
@@ -13656,8 +15129,8 @@
           "worldOccurrenceId": "",
           "worldEmissionIndex": 0,
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_25.presentation.2",
-          "startMs": 1985,
-          "durationMs": 472,
+          "startMs": 0,
+          "durationMs": 457,
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
@@ -13710,7 +15183,7 @@
           "worldOccurrenceId": "",
           "worldEmissionIndex": 0,
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_25.presentation.3",
-          "startMs": 3009,
+          "startMs": 1009,
           "durationMs": 398,
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
@@ -13764,7 +15237,7 @@
           "worldOccurrenceId": "",
           "worldEmissionIndex": 0,
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_25.presentation.4",
-          "startMs": 2466,
+          "startMs": 466,
           "durationMs": 534,
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
@@ -13818,7 +15291,7 @@
           "worldOccurrenceId": "",
           "worldEmissionIndex": 0,
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_25.presentation.5",
-          "startMs": 7707,
+          "startMs": 5707,
           "durationMs": 500,
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
@@ -13872,7 +15345,7 @@
           "worldOccurrenceId": "",
           "worldEmissionIndex": 0,
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_25.presentation.6",
-          "startMs": 6758,
+          "startMs": 4758,
           "durationMs": 500,
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
@@ -13926,7 +15399,7 @@
           "worldOccurrenceId": "",
           "worldEmissionIndex": 0,
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_25.presentation.7",
-          "startMs": 5845,
+          "startMs": 3845,
           "durationMs": 472,
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
@@ -13980,7 +15453,7 @@
           "worldOccurrenceId": "",
           "worldEmissionIndex": 0,
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_25.presentation.8",
-          "startMs": 8657,
+          "startMs": 6657,
           "durationMs": 500,
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
@@ -14034,7 +15507,7 @@
           "worldOccurrenceId": "",
           "worldEmissionIndex": 0,
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_25.presentation.9",
-          "startMs": 9684,
+          "startMs": 7684,
           "durationMs": 472,
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
@@ -14088,7 +15561,7 @@
           "worldOccurrenceId": "",
           "worldEmissionIndex": 0,
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_25.presentation.10",
-          "startMs": 10637,
+          "startMs": 8637,
           "durationMs": 500,
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
@@ -14142,7 +15615,7 @@
           "worldOccurrenceId": "",
           "worldEmissionIndex": 0,
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_25.presentation.11",
-          "startMs": 11611,
+          "startMs": 9611,
           "durationMs": 500,
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
@@ -14196,7 +15669,7 @@
           "worldOccurrenceId": "",
           "worldEmissionIndex": 0,
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_25.presentation.12",
-          "startMs": 12610,
+          "startMs": 10610,
           "durationMs": 500,
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
@@ -14250,7 +15723,7 @@
           "worldOccurrenceId": "",
           "worldEmissionIndex": 0,
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_25.presentation.14",
-          "startMs": 13586,
+          "startMs": 11586,
           "durationMs": 472,
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
@@ -14304,7 +15777,7 @@
           "worldOccurrenceId": "",
           "worldEmissionIndex": 0,
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_25.presentation.15",
-          "startMs": 14526,
+          "startMs": 12526,
           "durationMs": 500,
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
@@ -14358,7 +15831,7 @@
           "worldOccurrenceId": "",
           "worldEmissionIndex": 0,
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_25.presentation.16",
-          "startMs": 15495,
+          "startMs": 13495,
           "durationMs": 500,
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
@@ -14412,7 +15885,7 @@
           "worldOccurrenceId": "",
           "worldEmissionIndex": 0,
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_25.presentation.17",
-          "startMs": 16506,
+          "startMs": 14506,
           "durationMs": 500,
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
@@ -14466,8 +15939,872 @@
           "worldOccurrenceId": "",
           "worldEmissionIndex": 0,
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_25.presentation.18",
-          "startMs": 17519,
+          "startMs": 15519,
           "durationMs": 472,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.8c73c44bdddbf9001b0a",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.pizza.explosion.group",
+          "resourceDurationMs": 2401,
+          "positionOffset": [
+            0.949999988079071,
+            -1.25,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            -27.100000381469727,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_25.presentation.19",
+          "startMs": 3850,
+          "durationMs": 1265,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.8c73c44bdddbf9001b0a",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.pizza.explosion.group",
+          "resourceDurationMs": 2401,
+          "positionOffset": [
+            0.949999988079071,
+            -1.25,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            66.19999694824219,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_25.presentation.21",
+          "startMs": 4731,
+          "durationMs": 1265,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.8c73c44bdddbf9001b0a",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.pizza.explosion.group",
+          "resourceDurationMs": 2401,
+          "positionOffset": [
+            0.949999988079071,
+            -1.25,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            -211.1999969482422,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_25.presentation.22",
+          "startMs": 5657,
+          "durationMs": 1265,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.8c73c44bdddbf9001b0a",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.pizza.explosion.group",
+          "resourceDurationMs": 2401,
+          "positionOffset": [
+            0.949999988079071,
+            -1.25,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            -115.44999694824219,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_25.presentation.23",
+          "startMs": 6715,
+          "durationMs": 1265,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.8c73c44bdddbf9001b0a",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.pizza.explosion.group",
+          "resourceDurationMs": 2401,
+          "positionOffset": [
+            0.949999988079071,
+            -1.25,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            -27.100000381469727,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_25.presentation.24",
+          "startMs": 7685,
+          "durationMs": 1265,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.8c73c44bdddbf9001b0a",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.pizza.explosion.group",
+          "resourceDurationMs": 2401,
+          "positionOffset": [
+            0.949999988079071,
+            -1.25,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            -27.100000381469727,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_25.presentation.28",
+          "startMs": 11594,
+          "durationMs": 1265,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.g1.presentation.72",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_spotlight_01_loc_int",
+          "resourceDurationMs": 2500,
+          "positionOffset": [
+            0.10000000149011612,
+            0.75,
+            -0.20000000298023224
+          ],
+          "rotationDegrees": [
+            16.75,
+            242.39999389648438,
+            14.850000381469727
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_25.presentation.33",
+          "startMs": 3112,
+          "durationMs": 12679,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.g1.presentation.72",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_spotlight_01_loc_int",
+          "resourceDurationMs": 2500,
+          "positionOffset": [
+            1.149999976158142,
+            0.75,
+            0
+          ],
+          "rotationDegrees": [
+            16.75,
+            183.5500030517578,
+            14.850000381469727
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_25.presentation.34",
+          "startMs": 3104,
+          "durationMs": 12665,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.g1.presentation.72",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.source.fx_mn_rpcz_00_u.par_u_rpcz_spotlight_01_loc_int",
+          "resourceDurationMs": 2500,
+          "positionOffset": [
+            0.10000000149011612,
+            0.75,
+            -0.20000000298023224
+          ],
+          "rotationDegrees": [
+            16.75,
+            296.75,
+            14.850000381469727
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_25.presentation.35",
+          "startMs": 3075,
+          "durationMs": 12665,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.8c73c44bdddbf9001b0a",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.pizza.explosion.group",
+          "resourceDurationMs": 2401,
+          "positionOffset": [
+            0.949999988079071,
+            -1.25,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            -115.44999694824219,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_25.presentation.44",
+          "startMs": 8585,
+          "durationMs": 1265,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.8c73c44bdddbf9001b0a",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.pizza.explosion.group",
+          "resourceDurationMs": 2401,
+          "positionOffset": [
+            0.949999988079071,
+            -1.25,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            -211.1999969482422,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_25.presentation.45",
+          "startMs": 9504,
+          "durationMs": 1265,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.8c73c44bdddbf9001b0a",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.pizza.explosion.group",
+          "resourceDurationMs": 2401,
+          "positionOffset": [
+            0.949999988079071,
+            -1.25,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            66.19999694824219,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_25.presentation.46",
+          "startMs": 10540,
+          "durationMs": 1265,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.8c73c44bdddbf9001b0a",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.pizza.explosion.group",
+          "resourceDurationMs": 2401,
+          "positionOffset": [
+            0.949999988079071,
+            -1.25,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            66.19999694824219,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_25.presentation.47",
+          "startMs": 12446,
+          "durationMs": 1265,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.8c73c44bdddbf9001b0a",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.pizza.explosion.group",
+          "resourceDurationMs": 2401,
+          "positionOffset": [
+            0.949999988079071,
+            -1.25,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            -211.1999969482422,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_25.presentation.48",
+          "startMs": 13372,
+          "durationMs": 1265,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.8c73c44bdddbf9001b0a",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.pizza.explosion.group",
+          "resourceDurationMs": 2401,
+          "positionOffset": [
+            0.949999988079071,
+            -1.25,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            -115.44999694824219,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_25.presentation.49",
+          "startMs": 14430,
+          "durationMs": 1265,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.8c73c44bdddbf9001b0a",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.pizza.explosion.group",
+          "resourceDurationMs": 2401,
+          "positionOffset": [
+            0.949999988079071,
+            -1.25,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            -27.100000381469727,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_25.presentation.50",
+          "startMs": 15400,
+          "durationMs": 1265,
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
@@ -15103,6 +17440,143 @@
       "targetBossPlacementId": "boss.kakulsaydon.g2.kouku",
       "actorProfileId": "MN_RPCZ_00",
       "durationMs": 8104,
+      "sourceAnchorAnimations": [
+        {
+          "runtimeClip": "rpcz00_att_battle_2_01",
+          "sourceStartMs": 0,
+          "playMs": 2500,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 0,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpcz00_att_battle_2_04",
+          "sourceStartMs": 0,
+          "playMs": 1500,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 2500,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpcz00_att_battle_2_05",
+          "sourceStartMs": 0,
+          "playMs": 267,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 4000,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpcz00_att_battle_2_05",
+          "sourceStartMs": 0,
+          "playMs": 267,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 4267,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpcz00_att_battle_2_05",
+          "sourceStartMs": 0,
+          "playMs": 267,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 4534,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpcz00_att_battle_2_05",
+          "sourceStartMs": 0,
+          "playMs": 267,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 4801,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpcz00_att_battle_2_05",
+          "sourceStartMs": 0,
+          "playMs": 267,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 5068,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpcz00_att_battle_2_05",
+          "sourceStartMs": 0,
+          "playMs": 267,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 5335,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpcz00_att_battle_2_05",
+          "sourceStartMs": 0,
+          "playMs": 267,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 5602,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpcz00_att_battle_2_05",
+          "sourceStartMs": 0,
+          "playMs": 267,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 5869,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpcz00_att_battle_2_05",
+          "sourceStartMs": 0,
+          "playMs": 267,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 6136,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpcz00_att_battle_2_05",
+          "sourceStartMs": 0,
+          "playMs": 267,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 6403,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpcz00_att_battle_2_05",
+          "sourceStartMs": 0,
+          "playMs": 267,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 6670,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpcz00_att_battle_2_05",
+          "sourceStartMs": 0,
+          "playMs": 267,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 6937,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpcz00_att_battle_2_06",
+          "sourceStartMs": 0,
+          "playMs": 900,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 7204,
+          "blendInMs": 0
+        }
+      ],
       "presentationOccurrences": [
         {
           "resourceKind": "",
@@ -15154,6 +17628,60 @@
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_24.presentation.2",
           "startMs": 4000,
           "durationMs": 3204,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.g1.presentation.77",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_00_hammer_b_loc_int",
+          "resourceDurationMs": 5000,
+          "positionOffset": [
+            0,
+            0.25,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_24.presentation.4",
+          "startMs": 4008,
+          "durationMs": 4096,
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
@@ -15245,8 +17773,37 @@
       "gateId": "GATE2",
       "targetBossPlacementId": "boss.kakulsaydon.g2.kouku",
       "actorProfileId": "MN_RPCZ_00",
-      "durationMs": 5349,
+      "durationMs": 7840,
       "animationRootVerticalScale": 0.0,
+      "sourceAnchorAnimations": [
+        {
+          "runtimeClip": "rpcz00_att_battle_3_01",
+          "sourceStartMs": 0,
+          "playMs": 2500,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 0,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpcz00_att_battle_3_05",
+          "sourceStartMs": 0,
+          "playMs": 2467,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 2500,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpcz00_att_battle_3_10",
+          "sourceStartMs": 0,
+          "playMs": 382,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 4967,
+          "blendInMs": 0
+        }
+      ],
       "presentationOccurrences": [
         {
           "resourceKind": "GROUP",
@@ -15460,6 +18017,276 @@
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_28.presentation.7",
           "startMs": 4355,
           "durationMs": 552,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.g1.presentation.66",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.gate3.showtime.saydon.disappear",
+          "resourceDurationMs": 2201,
+          "positionOffset": [
+            4.550000190734863,
+            1.350000023841858,
+            -3.3499999046325684
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_28.presentation.8",
+          "startMs": 4338,
+          "durationMs": 2019,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.g1.presentation.71",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.gate1.intro.portal-suction.centered",
+          "resourceDurationMs": 15511,
+          "positionOffset": [
+            4.9670000076293945,
+            10.90999984741211,
+            322.3789978027344
+          ],
+          "rotationDegrees": [
+            -42.75,
+            232.4499969482422,
+            -88.05000305175781
+          ],
+          "scale": [
+            1.2000000476837158,
+            1.2000000476837158,
+            1.2000000476837158
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "MAP",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_28.presentation.9",
+          "startMs": 0,
+          "durationMs": 4038,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.g1.presentation.66",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.gate3.showtime.saydon.disappear",
+          "resourceDurationMs": 2201,
+          "positionOffset": [
+            4.699999809265137,
+            1.350000023841858,
+            2.200000047683716
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_28.presentation.13",
+          "startMs": 3330,
+          "durationMs": 2019,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.g1.presentation.66",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.gate3.showtime.saydon.disappear",
+          "resourceDurationMs": 2201,
+          "positionOffset": [
+            4.849999904632568,
+            1.350000023841858,
+            0.10000000149011612
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_28.presentation.14",
+          "startMs": 3639,
+          "durationMs": 2019,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.g1.presentation.66",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.gate3.showtime.saydon.disappear",
+          "resourceDurationMs": 2201,
+          "positionOffset": [
+            4.849999904632568,
+            1.350000023841858,
+            -1.600000023841858
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_28.presentation.15",
+          "startMs": 3949,
+          "durationMs": 2019,
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
@@ -38186,7 +41013,7 @@
       "gateId": "GATE1",
       "targetBossPlacementId": "boss.kakulsaydon.g1.saydon",
       "actorProfileId": "MN_RPCT_05",
-      "durationMs": 45863,
+      "durationMs": 13933,
       "animationRootVerticalScale": 0.0,
       "sourceAnchorAnimations": [
         {
@@ -38217,48 +41044,21 @@
           "blendInMs": 0
         },
         {
-          "runtimeClip": "rpct00_att_battle_5_01",
+          "runtimeClip": "rpct00_att_battle_19_01_loop",
           "sourceStartMs": 0,
-          "playMs": 1533,
+          "playMs": 1167,
           "playRate": 1,
-          "endPolicy": "EXACT",
+          "endPolicy": "LOOP_TO_WINDOW",
           "startOffsetMs": 5500,
           "blendInMs": 0
         },
         {
-          "runtimeClip": "rpct00_att_battle_5_01",
-          "sourceStartMs": 0,
-          "playMs": 1533,
-          "playRate": 1,
-          "endPolicy": "EXACT",
-          "startOffsetMs": 7033,
-          "blendInMs": 0
-        },
-        {
-          "runtimeClip": "rpct00_idle_battle_1",
-          "sourceStartMs": 0,
-          "playMs": 3000,
-          "playRate": 1,
-          "endPolicy": "EXACT",
-          "startOffsetMs": 8566,
-          "blendInMs": 0
-        },
-        {
-          "runtimeClip": "rpct00_idle_battle_1",
-          "sourceStartMs": 0,
-          "playMs": 3000,
-          "playRate": 1,
-          "endPolicy": "EXACT",
-          "startOffsetMs": 11566,
-          "blendInMs": 0
-        },
-        {
           "runtimeClip": "rpct00_att_battle_19_01_end",
           "sourceStartMs": 0,
           "playMs": 1033,
           "playRate": 1,
           "endPolicy": "EXACT",
-          "startOffsetMs": 14566,
+          "startOffsetMs": 6667,
           "blendInMs": 0
         },
         {
@@ -38267,7 +41067,7 @@
           "playMs": 1333,
           "playRate": 1,
           "endPolicy": "EXACT",
-          "startOffsetMs": 15599,
+          "startOffsetMs": 7700,
           "blendInMs": 0
         },
         {
@@ -38276,7 +41076,7 @@
           "playMs": 1167,
           "playRate": 1,
           "endPolicy": "LOOP_TO_WINDOW",
-          "startOffsetMs": 16932,
+          "startOffsetMs": 9033,
           "blendInMs": 0
         },
         {
@@ -38285,16 +41085,7 @@
           "playMs": 1167,
           "playRate": 1,
           "endPolicy": "LOOP_TO_WINDOW",
-          "startOffsetMs": 18099,
-          "blendInMs": 0
-        },
-        {
-          "runtimeClip": "rpct00_att_battle_19_01_loop",
-          "sourceStartMs": 0,
-          "playMs": 1167,
-          "playRate": 1,
-          "endPolicy": "LOOP_TO_WINDOW",
-          "startOffsetMs": 19266,
+          "startOffsetMs": 10200,
           "blendInMs": 0
         },
         {
@@ -38303,52 +41094,7 @@
           "playMs": 1033,
           "playRate": 1,
           "endPolicy": "EXACT",
-          "startOffsetMs": 20433,
-          "blendInMs": 0
-        },
-        {
-          "runtimeClip": "rpct00_att_battle_19_01_end",
-          "sourceStartMs": 0,
-          "playMs": 1033,
-          "playRate": 1,
-          "endPolicy": "EXACT",
-          "startOffsetMs": 21466,
-          "blendInMs": 0
-        },
-        {
-          "runtimeClip": "rpct00_att_battle_19_01_end",
-          "sourceStartMs": 0,
-          "playMs": 1033,
-          "playRate": 1,
-          "endPolicy": "EXACT",
-          "startOffsetMs": 22499,
-          "blendInMs": 0
-        },
-        {
-          "runtimeClip": "rpct00_att_battle_19_01_start",
-          "sourceStartMs": 0,
-          "playMs": 1333,
-          "playRate": 1,
-          "endPolicy": "EXACT",
-          "startOffsetMs": 23532,
-          "blendInMs": 0
-        },
-        {
-          "runtimeClip": "rpct00_att_battle_19_01_start",
-          "sourceStartMs": 0,
-          "playMs": 1333,
-          "playRate": 1,
-          "endPolicy": "EXACT",
-          "startOffsetMs": 24865,
-          "blendInMs": 0
-        },
-        {
-          "runtimeClip": "rpct00_att_battle_19_01_start",
-          "sourceStartMs": 0,
-          "playMs": 1333,
-          "playRate": 1,
-          "endPolicy": "EXACT",
-          "startOffsetMs": 26198,
+          "startOffsetMs": 11367,
           "blendInMs": 0
         },
         {
@@ -38357,106 +41103,7 @@
           "playMs": 1533,
           "playRate": 1,
           "endPolicy": "EXACT",
-          "startOffsetMs": 27531,
-          "blendInMs": 0
-        },
-        {
-          "runtimeClip": "rpct00_att_battle_5_01",
-          "sourceStartMs": 0,
-          "playMs": 1533,
-          "playRate": 1,
-          "endPolicy": "EXACT",
-          "startOffsetMs": 29064,
-          "blendInMs": 0
-        },
-        {
-          "runtimeClip": "rpct00_idle_battle_1",
-          "sourceStartMs": 0,
-          "playMs": 3000,
-          "playRate": 1,
-          "endPolicy": "EXACT",
-          "startOffsetMs": 30597,
-          "blendInMs": 0
-        },
-        {
-          "runtimeClip": "rpct00_idle_battle_1",
-          "sourceStartMs": 0,
-          "playMs": 3000,
-          "playRate": 1,
-          "endPolicy": "EXACT",
-          "startOffsetMs": 33597,
-          "blendInMs": 0
-        },
-        {
-          "runtimeClip": "rpct00_att_battle_19_01_loop",
-          "sourceStartMs": 0,
-          "playMs": 1167,
-          "playRate": 1,
-          "endPolicy": "LOOP_TO_WINDOW",
-          "startOffsetMs": 36597,
-          "blendInMs": 0
-        },
-        {
-          "runtimeClip": "rpct00_att_battle_19_01_loop",
-          "sourceStartMs": 0,
-          "playMs": 1167,
-          "playRate": 1,
-          "endPolicy": "LOOP_TO_WINDOW",
-          "startOffsetMs": 37764,
-          "blendInMs": 0
-        },
-        {
-          "runtimeClip": "rpct00_att_battle_19_01_loop",
-          "sourceStartMs": 0,
-          "playMs": 1167,
-          "playRate": 1,
-          "endPolicy": "LOOP_TO_WINDOW",
-          "startOffsetMs": 38931,
-          "blendInMs": 0
-        },
-        {
-          "runtimeClip": "rpct00_att_battle_19_01_end",
-          "sourceStartMs": 0,
-          "playMs": 1033,
-          "playRate": 1,
-          "endPolicy": "EXACT",
-          "startOffsetMs": 40098,
-          "blendInMs": 0
-        },
-        {
-          "runtimeClip": "rpct00_att_battle_19_01_end",
-          "sourceStartMs": 0,
-          "playMs": 1033,
-          "playRate": 1,
-          "endPolicy": "EXACT",
-          "startOffsetMs": 41131,
-          "blendInMs": 0
-        },
-        {
-          "runtimeClip": "rpct00_att_battle_19_01_end",
-          "sourceStartMs": 0,
-          "playMs": 1033,
-          "playRate": 1,
-          "endPolicy": "EXACT",
-          "startOffsetMs": 42164,
-          "blendInMs": 0
-        },
-        {
-          "runtimeClip": "rpct00_att_battle_19_01_start",
-          "sourceStartMs": 0,
-          "playMs": 1333,
-          "playRate": 1,
-          "endPolicy": "EXACT",
-          "startOffsetMs": 43197,
-          "blendInMs": 0
-        },
-        {
-          "runtimeClip": "rpct00_att_battle_19_01_start",
-          "sourceStartMs": 0,
-          "playMs": 1333,
-          "playRate": 1,
-          "endPolicy": "EXACT",
-          "startOffsetMs": 44530,
+          "startOffsetMs": 12400,
           "blendInMs": 0
         }
       ],
@@ -38473,10 +41120,10 @@
           ],
           "radiusM": 3,
           "halfAngleDegrees": 45,
-          "resourceId": "kakulsaydon.effect.ddd33311aa3c04926023",
+          "resourceId": "kakulsaydon.effect.5bf530501adc5d65b751",
           "kind": "EFFECT",
-          "assetId": "effect.kouku.albion.fourfan.impact",
-          "resourceDurationMs": 4010,
+          "assetId": "effect.kouku.common.trumpet.card.floor",
+          "resourceDurationMs": 10637,
           "positionOffset": [
             0,
             0,
@@ -38488,9 +41135,201 @@
             0
           ],
           "scale": [
-            2,
-            2,
-            2
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.95,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_47.presentation.2",
+          "startMs": 0,
+          "durationMs": 9233,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.5bf530501adc5d65b751",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.common.trumpet.card.floor",
+          "resourceDurationMs": 10637,
+          "positionOffset": [
+            0,
+            0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.95,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_47.presentation.3",
+          "startMs": 4547,
+          "durationMs": 8836,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        }
+      ]
+    },
+    {
+      "patternId": "KAKULSAYDON_G1_PATTERN_48",
+      "gateId": "GATE1",
+      "targetBossPlacementId": "boss.kakulsaydon.g1.saydon",
+      "actorProfileId": "MN_RPCT_05",
+      "durationMs": 15833,
+      "animationRootVerticalScale": 0.0,
+      "sourceAnchorAnimations": [
+        {
+          "runtimeClip": "rpct00_att_battle_4_04",
+          "sourceStartMs": 0,
+          "playMs": 2833,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 0,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_4_02",
+          "sourceStartMs": 0,
+          "playMs": 800,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 2833,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_4_02",
+          "sourceStartMs": 0,
+          "playMs": 800,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 3633,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_4_02",
+          "sourceStartMs": 0,
+          "playMs": 800,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 4433,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_4_02",
+          "sourceStartMs": 0,
+          "playMs": 800,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 5233,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_4_02",
+          "sourceStartMs": 0,
+          "playMs": 800,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 6033,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_4_02",
+          "sourceStartMs": 0,
+          "playMs": 4900,
+          "playRate": 1,
+          "endPolicy": "LOOP_TO_WINDOW",
+          "startOffsetMs": 6833,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_4_03",
+          "sourceStartMs": 0,
+          "playMs": 3500,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 11733,
+          "blendInMs": 0
+        }
+      ],
+      "presentationOccurrences": [
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.768b76f253a3b5405471",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.common.spinning.card.throw",
+          "resourceDurationMs": 19990,
+          "positionOffset": [
+            0,
+            0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
           ],
           "fadeInMs": 0,
           "fadeOutMs": 0,
@@ -38508,9 +41347,9 @@
           "debugRender": true,
           "worldOccurrenceId": "",
           "worldEmissionIndex": 0,
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_47.presentation.1",
-          "startMs": 5397,
-          "durationMs": 4010,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_48.presentation.2",
+          "startMs": 0,
+          "durationMs": 11133,
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "worldSequenceInstanceId": ""
@@ -39195,9 +42034,9 @@
           "assetId": "effect.kouku.common.flame.wave.full",
           "resourceDurationMs": 7650,
           "positionOffset": [
+            10.350000381469727,
             0,
-            0,
-            0
+            -13.899999618530273
           ],
           "rotationDegrees": [
             0,
@@ -40702,6 +43541,2408 @@
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_72.presentation.3",
           "startMs": 4713,
           "durationMs": 1862,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        }
+      ]
+    },
+    {
+      "patternId": "KAKULSAYDON_G1_PATTERN_78",
+      "gateId": "GATE1",
+      "targetBossPlacementId": "boss.kakulsaydon.g1.saydon",
+      "actorProfileId": "MN_RPCT_05",
+      "durationMs": 19831,
+      "animationRootVerticalScale": 0.0,
+      "sourceAnchorAnimations": [
+        {
+          "runtimeClip": "rpct00_att_battle_11_02",
+          "sourceStartMs": 0,
+          "playMs": 5167,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 0,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_21_01",
+          "sourceStartMs": 0,
+          "playMs": 1833,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 5167,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_21_02",
+          "sourceStartMs": 0,
+          "playMs": 1333,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 7000,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_21_02",
+          "sourceStartMs": 0,
+          "playMs": 1333,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 8333,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_21_02",
+          "sourceStartMs": 0,
+          "playMs": 1333,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 9666,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_21_02",
+          "sourceStartMs": 0,
+          "playMs": 1333,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 10999,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_21_02",
+          "sourceStartMs": 0,
+          "playMs": 1333,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 12332,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_21_02",
+          "sourceStartMs": 0,
+          "playMs": 1333,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 13665,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_21_02",
+          "sourceStartMs": 0,
+          "playMs": 1333,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 14998,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_21_02",
+          "sourceStartMs": 0,
+          "playMs": 1333,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 16331,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_21_03",
+          "sourceStartMs": 0,
+          "playMs": 2167,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 17664,
+          "blendInMs": 0
+        }
+      ],
+      "presentationOccurrences": [
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.c85ca5bfded9ff97cff1",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.card.match.dice.diamond.explosion",
+          "resourceDurationMs": 11662,
+          "positionOffset": [
+            1.2000000476837158,
+            1.0499999523162842,
+            1.75
+          ],
+          "rotationDegrees": [
+            0,
+            81.9000015258789,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.95,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_78.presentation.1",
+          "startMs": 0,
+          "durationMs": 11662,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.41e6e5694ae12a374bae",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.card.match.emit",
+          "resourceDurationMs": 20150,
+          "positionOffset": [
+            1.5,
+            2.450000047683716,
+            -2.4000000953674316
+          ],
+          "rotationDegrees": [
+            8.199999809265137,
+            91.30000305175781,
+            120.3499984741211
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.95,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_78.presentation.2",
+          "startMs": 6114,
+          "durationMs": 1333,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.550626bc0730968cd451",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.card.match.diamond",
+          "resourceDurationMs": 4500,
+          "positionOffset": [
+            0,
+            0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_78.presentation.9",
+          "startMs": 7355,
+          "durationMs": 4500,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.b8e5fee3398e1a878237",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.card.match.spade",
+          "resourceDurationMs": 4500,
+          "positionOffset": [
+            0,
+            0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_78.presentation.10",
+          "startMs": 9081,
+          "durationMs": 4500,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.c8f38f8daa6074e9469b",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.card.match.clover",
+          "resourceDurationMs": 4500,
+          "positionOffset": [
+            0,
+            0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_78.presentation.11",
+          "startMs": 11417,
+          "durationMs": 4500,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.8050650cdbff1a3253d7",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.card.match.heart",
+          "resourceDurationMs": 4500,
+          "positionOffset": [
+            0,
+            0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_78.presentation.12",
+          "startMs": 13056,
+          "durationMs": 4500,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        }
+      ]
+    },
+    {
+      "patternId": "KAKULSAYDON_G1_PATTERN_79",
+      "gateId": "GATE1",
+      "targetBossPlacementId": "boss.kakulsaydon.g1.saydon",
+      "actorProfileId": "MN_RPCT_05",
+      "durationMs": 12966,
+      "animationRootVerticalScale": 0.0,
+      "sourceAnchorAnimations": [
+        {
+          "runtimeClip": "rpct00_att_battle_17_01",
+          "sourceStartMs": 0,
+          "playMs": 3167,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 0,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_17_06",
+          "sourceStartMs": 0,
+          "playMs": 1167,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 3167,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_17_07",
+          "sourceStartMs": 0,
+          "playMs": 2833,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 4334,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_17_05",
+          "sourceStartMs": 0,
+          "playMs": 2667,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 10299,
+          "stageStartMs": 7200,
+          "blendInMs": 0
+        }
+      ],
+      "presentationOccurrences": [
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.45a4586413706738dca6",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.albion.cross.electric.impact",
+          "resourceDurationMs": 3855,
+          "positionOffset": [
+            0,
+            0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_79.presentation.1",
+          "startMs": 5837,
+          "durationMs": 3855,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.dd949ed76164f3ead234",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.firecross.wand.spin",
+          "resourceDurationMs": 2600,
+          "positionOffset": [
+            1.350000023841858,
+            0,
+            0.20000000298023224
+          ],
+          "rotationDegrees": [
+            5.150000095367432,
+            0,
+            0
+          ],
+          "scale": [
+            2,
+            1,
+            2
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_79.presentation.2",
+          "startMs": 3596,
+          "durationMs": 977,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.g1.presentation.66",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.gate3.showtime.saydon.disappear",
+          "resourceDurationMs": 2201,
+          "positionOffset": [
+            -1,
+            3.3499999046325684,
+            0.44999998807907104
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_79.presentation.4",
+          "startMs": 7109,
+          "durationMs": 2201,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.3752b9539b9a350a1c4a",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.gate1.blade-dance.circle.warning",
+          "resourceDurationMs": 3000,
+          "positionOffset": [
+            6.429999828338623,
+            1.2999999523162842,
+            730
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "MAP",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_79.presentation.5",
+          "startMs": 8907,
+          "durationMs": 3000,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.c8c75f74c80cd581ca2b",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.gate1.blade-dance.circle.impact",
+          "resourceDurationMs": 3000,
+          "positionOffset": [
+            6.429999828338623,
+            1.2999999523162842,
+            730
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "MAP",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_79.presentation.6",
+          "startMs": 10662,
+          "durationMs": 2304,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.993b577e37e0a95714da",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.gate1.blade-dance.innerdonut.impact",
+          "resourceDurationMs": 2500,
+          "positionOffset": [
+            6.429999828338623,
+            1.2999999523162842,
+            730
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "MAP",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_79.presentation.7",
+          "startMs": 11423,
+          "durationMs": 1543,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.dcd7bfcdb9e76febd7b1",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.gate1.blade-dance.outerdonut.impact",
+          "resourceDurationMs": 2500,
+          "positionOffset": [
+            6.429999828338623,
+            1.2999999523162842,
+            730
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "MAP",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_79.presentation.8",
+          "startMs": 11978,
+          "durationMs": 988,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.g1.presentation.66",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.gate3.showtime.saydon.disappear",
+          "resourceDurationMs": 2201,
+          "positionOffset": [
+            1.25,
+            2.75,
+            0.4000000059604645
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            0.5,
+            0.5,
+            0.5
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_79.presentation.10",
+          "startMs": 1488,
+          "durationMs": 2201,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        }
+      ]
+    },
+    {
+      "patternId": "KAKULSAYDON_G1_PATTERN_82",
+      "gateId": "GATE1",
+      "targetBossPlacementId": "boss.kakulsaydon.g1.saydon",
+      "actorProfileId": "MN_RPCT_05",
+      "durationMs": 18904,
+      "animationRootVerticalScale": 0.0,
+      "sourceAnchorAnimations": [
+        {
+          "runtimeClip": "rpct00_att_battle_15_01",
+          "sourceStartMs": 0,
+          "playMs": 2833,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 0,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_15_02",
+          "sourceStartMs": 0,
+          "playMs": 33,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 2833,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_15_03",
+          "sourceStartMs": 0,
+          "playMs": 3733,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 4624,
+          "stageStartMs": 2866,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_5_01",
+          "sourceStartMs": 0,
+          "playMs": 1533,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 8357,
+          "blendInMs": 0
+        }
+      ],
+      "presentationOccurrences": [
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.285a0dae002c0367563c",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.magic.paper.dove.group",
+          "resourceDurationMs": 6000,
+          "positionOffset": [
+            2.25,
+            0.3499999940395355,
+            2.299999952316284
+          ],
+          "rotationDegrees": [
+            0,
+            -85.8499984741211,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_82.presentation.1",
+          "startMs": 5886,
+          "durationMs": 6000,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.g1.presentation.70",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_02_6",
+          "resourceDurationMs": 2500,
+          "positionOffset": [
+            2.8499999046325684,
+            0.20000000298023224,
+            -0.10000000149011612
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            2,
+            2,
+            1.2000000476837158
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_82.presentation.5",
+          "startMs": 5667,
+          "durationMs": 2500,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.g1.presentation.66",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.gate3.showtime.saydon.disappear",
+          "resourceDurationMs": 2201,
+          "positionOffset": [
+            0.25,
+            2.700000047683716,
+            -0.15000000596046448
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            2,
+            2,
+            2
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_82.presentation.6",
+          "startMs": 2746,
+          "durationMs": 2201,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        }
+      ]
+    },
+    {
+      "patternId": "KAKULSAYDON_G1_PATTERN_83",
+      "gateId": "GATE1",
+      "targetBossPlacementId": "boss.kakulsaydon.g1.saydon",
+      "actorProfileId": "MN_RPCT_05",
+      "durationMs": 16045,
+      "animationRootVerticalScale": 0.0,
+      "sourceAnchorAnimations": [
+        {
+          "runtimeClip": "rpct00_att_battle_18_01",
+          "sourceStartMs": 0,
+          "playMs": 2500,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 0,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_18_02",
+          "sourceStartMs": 0,
+          "playMs": 1333,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 2500,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_18_03",
+          "sourceStartMs": 0,
+          "playMs": 4167,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 3833,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpct00_att_battle_29_01",
+          "sourceStartMs": 0,
+          "playMs": 4167,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 8000,
+          "blendInMs": 0
+        }
+      ],
+      "presentationOccurrences": [
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.891f04af3573c4dfa698",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.gate1.circus.rainbow.impact",
+          "resourceDurationMs": 2500,
+          "positionOffset": [
+            -2.6700000762939453,
+            1.2999999523162842,
+            742.8499755859375
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "MAP",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_83.presentation.1",
+          "startMs": 3141,
+          "durationMs": 2500,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.2893c937e2bdd97efa26",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.gate1.circus.rainbow.drop",
+          "resourceDurationMs": 3317,
+          "positionOffset": [
+            -2.6700000762939453,
+            1.2999999523162842,
+            742.8499755859375
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "MAP",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_83.presentation.2",
+          "startMs": 2194,
+          "durationMs": 3317,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.16c91dd859c3e68e21e2",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.common.circus.circle.warning",
+          "resourceDurationMs": 4000,
+          "positionOffset": [
+            -2.6700000762939453,
+            1.2999999523162842,
+            742.8499755859375
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "MAP",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_83.presentation.3",
+          "startMs": 1080,
+          "durationMs": 4000,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.a032691410b82830f5ac",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.common.circus.outerdonut.warning",
+          "resourceDurationMs": 4000,
+          "positionOffset": [
+            -2.6700000762939453,
+            1.2999999523162842,
+            742.8499755859375
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "MAP",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_83.presentation.4",
+          "startMs": 1080,
+          "durationMs": 4000,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.238309267a296b067ae4",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.common.circus.innerdonut.warning",
+          "resourceDurationMs": 4000,
+          "positionOffset": [
+            -2.6700000762939453,
+            1.2999999523162842,
+            742.8499755859375
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "MAP",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_83.presentation.5",
+          "startMs": 1080,
+          "durationMs": 4000,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.891f04af3573c4dfa698",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.gate1.circus.rainbow.impact",
+          "resourceDurationMs": 2500,
+          "positionOffset": [
+            -2.819999933242798,
+            1.2999999523162842,
+            732.5499877929688
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "MAP",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_83.presentation.7",
+          "startMs": 4404,
+          "durationMs": 2500,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.2893c937e2bdd97efa26",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.gate1.circus.rainbow.drop",
+          "resourceDurationMs": 3317,
+          "positionOffset": [
+            -2.819999933242798,
+            1.2999999523162842,
+            732.5499877929688
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "MAP",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_83.presentation.8",
+          "startMs": 3457,
+          "durationMs": 3317,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.16c91dd859c3e68e21e2",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.common.circus.circle.warning",
+          "resourceDurationMs": 4000,
+          "positionOffset": [
+            -2.819999933242798,
+            1.2999999523162842,
+            732.5499877929688
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "MAP",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_83.presentation.9",
+          "startMs": 2343,
+          "durationMs": 4000,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.a032691410b82830f5ac",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.common.circus.outerdonut.warning",
+          "resourceDurationMs": 4000,
+          "positionOffset": [
+            -2.819999933242798,
+            1.2999999523162842,
+            732.5499877929688
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "MAP",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_83.presentation.10",
+          "startMs": 2343,
+          "durationMs": 4000,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.238309267a296b067ae4",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.common.circus.innerdonut.warning",
+          "resourceDurationMs": 4000,
+          "positionOffset": [
+            -2.819999933242798,
+            1.2999999523162842,
+            732.5499877929688
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "MAP",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_83.presentation.11",
+          "startMs": 2343,
+          "durationMs": 4000,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.891f04af3573c4dfa698",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.gate1.circus.rainbow.impact",
+          "resourceDurationMs": 2500,
+          "positionOffset": [
+            5.429999828338623,
+            1.2999999523162842,
+            739.3499755859375
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "MAP",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_83.presentation.13",
+          "startMs": 5941,
+          "durationMs": 2500,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.2893c937e2bdd97efa26",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.gate1.circus.rainbow.drop",
+          "resourceDurationMs": 3317,
+          "positionOffset": [
+            5.429999828338623,
+            1.2999999523162842,
+            739.3499755859375
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "MAP",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_83.presentation.14",
+          "startMs": 4994,
+          "durationMs": 3317,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.16c91dd859c3e68e21e2",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.common.circus.circle.warning",
+          "resourceDurationMs": 4000,
+          "positionOffset": [
+            5.429999828338623,
+            1.2999999523162842,
+            739.3499755859375
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "MAP",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_83.presentation.15",
+          "startMs": 3880,
+          "durationMs": 4000,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.a032691410b82830f5ac",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.common.circus.outerdonut.warning",
+          "resourceDurationMs": 4000,
+          "positionOffset": [
+            5.429999828338623,
+            1.2999999523162842,
+            739.3499755859375
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "MAP",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_83.presentation.16",
+          "startMs": 3880,
+          "durationMs": 4000,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.238309267a296b067ae4",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.common.circus.innerdonut.warning",
+          "resourceDurationMs": 4000,
+          "positionOffset": [
+            5.429999828338623,
+            1.2999999523162842,
+            739.3499755859375
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "MAP",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_83.presentation.17",
+          "startMs": 3880,
+          "durationMs": 4000,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.e461a074881677acb194",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.gate1.circus.ball.launch",
+          "resourceDurationMs": 2201,
+          "positionOffset": [
+            -0.3700000047683716,
+            3.7699999809265137,
+            737.3300170898438
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "MAP",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_83.presentation.19",
+          "startMs": 2629,
+          "durationMs": 2201,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.e461a074881677acb194",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.gate1.circus.ball.launch",
+          "resourceDurationMs": 2201,
+          "positionOffset": [
+            -0.3700000047683716,
+            3.7699999809265137,
+            737.3300170898438
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "MAP",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_83.presentation.20",
+          "startMs": 3163,
+          "durationMs": 2201,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.effect.e461a074881677acb194",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.gate1.circus.ball.launch",
+          "resourceDurationMs": 2201,
+          "positionOffset": [
+            -0.3700000047683716,
+            3.7699999809265137,
+            737.3300170898438
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "MAP",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_83.presentation.21",
+          "startMs": 3709,
+          "durationMs": 2201,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        }
+      ]
+    },
+    {
+      "patternId": "KAKULSAYDON_G1_PATTERN_84",
+      "gateId": "GATE2",
+      "targetBossPlacementId": "boss.kakulsaydon.g2.kouku",
+      "actorProfileId": "MN_RPCZ_00",
+      "durationMs": 17333,
+      "animationRootVerticalScale": 0.0,
+      "sourceAnchorAnimations": [
+        {
+          "runtimeClip": "rpcz00_att_battle_12_start",
+          "sourceStartMs": 0,
+          "playMs": 2000,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 0,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpcz00_att_battle_12_loop",
+          "sourceStartMs": 0,
+          "playMs": 2000,
+          "playRate": 1,
+          "endPolicy": "LOOP_TO_WINDOW",
+          "startOffsetMs": 2000,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpcz00_att_battle_12_loop",
+          "sourceStartMs": 0,
+          "playMs": 2000,
+          "playRate": 1,
+          "endPolicy": "LOOP_TO_WINDOW",
+          "startOffsetMs": 4000,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpcz00_att_battle_12_loop",
+          "sourceStartMs": 0,
+          "playMs": 2000,
+          "playRate": 1,
+          "endPolicy": "LOOP_TO_WINDOW",
+          "startOffsetMs": 6000,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpcz00_att_battle_12_loop",
+          "sourceStartMs": 0,
+          "playMs": 2000,
+          "playRate": 1,
+          "endPolicy": "LOOP_TO_WINDOW",
+          "startOffsetMs": 8000,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpcz00_att_battle_12_loop",
+          "sourceStartMs": 0,
+          "playMs": 2000,
+          "playRate": 1,
+          "endPolicy": "LOOP_TO_WINDOW",
+          "startOffsetMs": 10000,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpcz00_att_battle_12_loop",
+          "sourceStartMs": 0,
+          "playMs": 2000,
+          "playRate": 1,
+          "endPolicy": "LOOP_TO_WINDOW",
+          "startOffsetMs": 12000,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpcz00_att_battle_12_end",
+          "sourceStartMs": 0,
+          "playMs": 1333,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 14000,
+          "blendInMs": 0
+        },
+        {
+          "runtimeClip": "rpcz00_att_battle_12_start",
+          "sourceStartMs": 0,
+          "playMs": 2000,
+          "playRate": 1,
+          "endPolicy": "EXACT",
+          "startOffsetMs": 15333,
+          "blendInMs": 0
+        }
+      ],
+      "presentationOccurrences": [
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.g1.presentation.73",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_trowhoop_a_hell_01_loc_int",
+          "resourceDurationMs": 25000,
+          "positionOffset": [
+            0,
+            0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_84.presentation.1",
+          "startMs": 0,
+          "durationMs": 15333,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.g1.presentation.74",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_throwhoop_aura_01_loc_int",
+          "resourceDurationMs": 2701,
+          "positionOffset": [
+            0.699999988079071,
+            1.149999976158142,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_84.presentation.2",
+          "startMs": 0,
+          "durationMs": 2701,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "V1_EFFECT",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "resourceId": "kakulsaydon.g1.presentation.75",
+          "kind": "EFFECT",
+          "assetId": "effect.kouku.source.fx_mn_rpcz_00_g.par_g_rpcz_throwhoop_01_loc_int",
+          "resourceDurationMs": 2201,
+          "positionOffset": [
+            0.10000000149011612,
+            2.5999999046325684,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "followBoss": true,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "BOSS",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": true,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_84.presentation.3",
+          "startMs": 0,
+          "durationMs": 17333,
           "brightnessMultiplier": 1,
           "boneTarget": "BODY",
           "worldSequenceInstanceId": ""

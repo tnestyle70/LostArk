@@ -652,6 +652,16 @@ bool LostArk::Server::CGameRoom::Apply_KoukuLogicOutput(
 		m_strStatus = "KoukuSaydon logic: " + output.strStatus;
 	if (!output.bEndPatternEarly)
 		return false;
+	if (output.bCounterSuccessLanded)
+	{
+		// A successful counter interrupts this member, including the still-live
+		// rolling ball. Natural completion may keep tails; interruption must not.
+		Stop_KoukuWorldOwner(member->strMemberId);
+		m_CombatObjectRuntime.Cancel_Source(boss.iNetEntityId);
+		std::erase_if(m_PendingKoukuMechanicTriggers, [&](const auto& trigger) {
+			return trigger.iBossEntityId == boss.iNetEntityId && trigger.iPatternSequence == boss.iPatternSequence;
+		});
+	}
 	m_KoukuSaydonBrain.Complete_Pattern(boss, serverTick);
 	return true;
 }

@@ -31,6 +31,8 @@ HRESULT CPart_Body::Initialize(void* pArg)
 
 	if (FAILED(__super::Initialize(pArg)) || FAILED(Ready_Components(pDesc)))
 		return E_FAIL;
+	if (FAILED(CNpcPresentationAssetService::Prepare_SaydonHat(m_pDevice, m_pContext, m_pModelCom, m_pSaydonHatModel)))
+		OutputDebugStringA("[SaydonHat] Preview head prop unavailable; body preserved.\n");
 
 	/* Fall back to the first clip so a class with a mistyped name still animates
 	instead of standing in its bind pose. */
@@ -117,6 +119,10 @@ HRESULT CPart_Body::Render_Pass(uint32_t iPassIndex)
 			FAILED(m_pModelCom->Render(i)))
 			return E_FAIL;
 	}
+	float4x4_t bodyWorld;
+	if (m_pSaydonHatModel && (!Try_Get_PresentationRootMatrix(&bodyWorld) ||
+		FAILED(CNpcPresentationAssetService::Render_SaydonHat(m_pModelCom, m_pSaydonHatModel,
+			m_pShaderCom, bodyWorld, iPassIndex)))) return E_FAIL;
 	return S_OK;
 }
 
@@ -144,6 +150,10 @@ HRESULT CPart_Body::Render_Shadow()
 		}
 	}
 
+	float4x4_t bodyWorld;
+	if (m_pSaydonHatModel && (!Try_Get_PresentationRootMatrix(&bodyWorld) ||
+		FAILED(CNpcPresentationAssetService::Render_SaydonHat(m_pModelCom, m_pSaydonHatModel,
+			m_pShaderCom, bodyWorld, ANIMATED_SHADOW_PASS, false, true)))) return E_FAIL;
 	return S_OK;
 }
 

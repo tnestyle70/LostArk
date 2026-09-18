@@ -6,6 +6,7 @@
 #include "Engine_VertexTypes.h"
 #include "Effect_AuthoringDocument.h"
 #include "Effect_Playback.h"
+#include "SkeletalAfterimage.h"
 
 #include <algorithm>
 #include <array>
@@ -256,6 +257,8 @@ private:
 		uint32_t iSampledAnimationIndex = UINT32_MAX;
 		f32_t fSampledTrackRequest = 0.f;
 		bool_t bHasSampledPose = false;
+        CSkeletalAfterimage Afterimage;
+        f32_t fAfterimageSampleTime = -1.f;
 	};
 
 public:
@@ -602,7 +605,7 @@ public:
 		f32_t fSampleTimeSeconds, const float4x4_t& RootWorld,
 		std::unordered_map<std::string, float4x4_t>& InOutAnchorWorlds,
 		std::string& strOutError);
-	void Set_ModelCueRenderingEnabled(bool_t enabled) { m_bModelCueRenderingEnabled = enabled; }
+	void Set_ModelCueRenderingEnabled(bool_t enabled) { m_bModelCueRenderingEnabled = enabled; if (!enabled) Reset_ModelCueAfterimages(); }
 	bool_t Has_NonBlendModelCues() const;
 	bool_t Has_WorldMarkElements() const;
 	bool_t Has_ActiveSceneBackdrop(const EFFECT_EVALUATED_FRAME& Frame) const;
@@ -629,6 +632,7 @@ public:
 	}
 	bool_t Set_BloomIntensity(f32_t value, std::string& error);
 	f32_t Get_BloomIntensity() const;
+	void Reset_ModelCueAfterimages();
 	void Clear();
 	const std::string& Get_Status() const { return m_strStatus; }
 	bool_t Is_LastRenderFailureObjectLocal() const

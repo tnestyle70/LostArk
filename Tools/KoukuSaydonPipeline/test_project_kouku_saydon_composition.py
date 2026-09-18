@@ -33,6 +33,76 @@ def copy_repository_inputs(root: Path) -> None:
 
 
 class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
+    @staticmethod
+    def world_group_fixture():
+        members = [f"test.group.motion.g{i}" for i in range(6)]
+        world = dict(worldId="kakulsaydon.g1.world.1", displayName="Group",
+                     sequenceInstanceId="test.group", objectResourceId="test.group")
+        sequences = dict(objectResources=[dict(objectId="test.group", modelAssetId="", anchorKind="WORLD", motionInstanceIds=members),
+                         dict(objectId="test.model", modelAssetId="Effect/test.wmodel", anchorKind="WORLD")], templates=[], instances=[])
+        for generation, identity in enumerate(members):
+            sequences["templates"].append(dict(sequenceId=f"test.template.g{generation}", durationMs=1500,
+                objectMotion=dict(count=2 ** generation, intervalMs=0, emissions=[dict(startDelayMs=0) for _ in range(2 ** generation)]),
+                tracks=[], effectTracks=[]))
+            sequences["instances"].append(dict(instanceId=identity, templateId=f"test.template.g{generation}", enabled=True,
+                anchorKind="WORLD", motionEnd="STOP", startDelayMs=generation * 1500, playbackSpeed=1,
+                bindings=[dict(slotId="object", targetKind="OBJECT_RESOURCE", targetId="test.model")]))
+        return world, sequences
+
+    def test_world_group_projects_one_owned_cue_for_all_six_generations(self):
+        world, sequences = self.world_group_fixture()
+        document = subject._publication_candidate(self.hierarchy_document, {"KAKULSAYDON_G1_PATTERN_81"})
+        pattern = document["patterns"][0]
+        pattern["logicOccurrences"] = []
+        document["worlds"] = [world]
+        cue = dict(occurrenceId=pattern["patternId"] + ".world.1", worldId=world["worldId"], startMs=100,
+            durationMs=11500, playbackSpeed=1, placement=dict(position=[2, 1, 3], rotationDegrees=[0, 40, 0], scale=[1, 1, 1]))
+        pattern["worldOccurrences"] = [cue]
+        before = copy.deepcopy((document, sequences))
+        with mock.patch.object(subject, "load_world_sequences", return_value=sequences), \
+             mock.patch.object(subject, "_project_pattern_root_motion", return_value={}):
+            subject._validate_world_object_reference(world, sequences)
+            result = subject.project_encounter(document)["patterns"][0]["worldSequences"]
+        self.assertEqual(1, len(result))
+        self.assertEqual("test.group", result[0]["sequenceInstanceId"])
+        self.assertEqual(cue["occurrenceId"], result[0]["occurrenceId"])
+        self.assertEqual(cue["placement"], result[0]["placement"])
+        self.assertEqual(11500, result[0]["durationMs"])
+        self.assertEqual(63, sum(t["objectMotion"]["count"] for t in sequences["templates"]))
+        self.assertEqual(before, (document, sequences))
+
+    def test_world_group_filters_disabled_members_but_validates_all_structure(self):
+        world, sequences = self.world_group_fixture()
+        sequences["instances"][0]["enabled"] = False
+        enabled = subject._world_group_instances(world, sequences)
+        self.assertEqual(5, len(enabled))
+        self.assertEqual("test.group.motion.g1", enabled[0]["instanceId"])
+        sequences["instances"][0]["templateId"] = "missing"
+        with self.assertRaises(subject.CompositionError): subject._world_group_instances(world, sequences)
+
+    def test_world_group_rejects_invalid_join_and_unsupported_gameplay_owners(self):
+        for mutation in ("identity", "duplicate", "missing", "disabled", "nested", "template", "anchor", "binding", "next", "body", "collider", "surface", "empty", "overflow"):
+            world, sequences = self.world_group_fixture()
+            group, model = sequences["objectResources"]
+            instance = sequences["instances"][0]
+            if mutation == "identity": world["objectResourceId"] = "other"
+            elif mutation == "duplicate": group["motionInstanceIds"].append(group["motionInstanceIds"][0])
+            elif mutation == "missing": group["motionInstanceIds"][0] = "missing"
+            elif mutation == "disabled":
+                for row in sequences["instances"]: row["enabled"] = False
+            elif mutation == "nested": model["motionInstanceIds"] = ["test.group"]
+            elif mutation == "template": instance["templateId"] = "missing"
+            elif mutation == "anchor": instance["anchorKind"] = "PLAYER"
+            elif mutation == "binding": instance["bindings"][0]["targetKind"] = "MAP_PLACEMENT"
+            elif mutation == "next": instance["motionEnd"] = "NEXT"
+            elif mutation == "body": model["combatBody"] = {}
+            elif mutation == "collider": sequences["templates"][0]["colliderTracks"] = [{}]
+            elif mutation == "surface": instance["walkableSurface"] = {}
+            elif mutation == "empty": group["motionInstanceIds"] = []
+            elif mutation == "overflow": group["motionInstanceIds"] *= 6
+            with self.subTest(mutation=mutation), self.assertRaises(subject.CompositionError):
+                subject._world_group_instances(world, sequences)
+
     def cross_direction_document(self):
         document, parent, template = self.parent_fixture()
         parent.update(stages=[], durationMs=5000, patternOccurrences=[], nextLogicOccurrenceOrdinal=2,
@@ -213,6 +283,101 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
         self.assertEqual(set(definition["directionPatternIds"]), subject._pattern_dependencies(expanded, projected))
         subject._validate_cross_direction(expanded, projected)
 
+    def pursuit_document(self):
+        document = self.showtime_document()
+        pattern = document["patterns"][0]
+        pattern["presentationOccurrences"] = []
+        resources = [{"resourceId": f"effect.pursuit.{suit}", "displayName": suit, "kind": "EFFECT",
+                      "assetId": f"effect.kouku.card.match.{suit}", "resourceKind": "V1_EFFECT", "durationMs": 1000}
+                     for suit in ("heart", "clover", "diamond", "spade", "explosion")]
+        document["presentationResources"] = resources
+        document["logics"][0] = {"logicId": "kakulsaydon.g1.logic.1", "displayName": "Pursuit", "logicType": "DURATION",
+            "judgementKind": "PURSUIT_PROJECTILES", "visualIds": [row["resourceId"] for row in resources[:4]],
+            "contactVisualId": resources[4]["resourceId"], "speedMps": 3.5, "contactRadiusM": .4,
+            "spawnRadiusM": 2.0, "lifetimeMs": 0, "spawnIntervalMs": 0, "homing": True}
+        return document
+
+    def test_pursuit_projection_pins_four_looping_templates_and_contact_effect(self):
+        document = self.pursuit_document()
+        before = copy.deepcopy(document)
+        self.validate(document)
+        projected = self.first_product(subject.project_encounter(document))
+        presentation = subject.project_presentation(document)
+        self.assertEqual([], projected["logicWindows"])
+        self.assertEqual(1, len(projected["pursuitProjectiles"]))
+        row = projected["pursuitProjectiles"][0]
+        self.assertEqual((0, 4, True), (row["lifetimeMs"], row["countPerWave"], row["homing"]))
+        templates = {value["clientVisualId"]: value for value in presentation["targetedCombatVisuals"]}
+        self.assertEqual(set(row["visualIds"]), set(templates))
+        for template in templates.values():
+            self.assertTrue(template["loop"])
+            self.assertEqual("combatobject.kouku.pursuit", template["combatObjectArchetypeId"])
+            self.assertEqual("effect.kouku.card.match.explosion", template["contactEffectAssetId"])
+            self.assertEqual("MAP", template["occurrences"][0]["anchorKind"])
+        self.assertEqual(before, document)
+
+    def test_pursuit_invalid_resource_and_unbounded_repeat_preserve_document(self):
+        for field, value in (("visualIds", []), ("visualIds", ["missing.effect"]), ("contactVisualId", "missing.effect"),
+                             ("speedMps", 0), ("contactRadiusM", float("nan")), ("spawnIntervalMs", 100),
+                             ("homing", False), ("countPerWave", 17), ("maxDistanceM", -1), ("maxDistanceM", 1000.1),
+                             ("maxDistanceM", float("nan")), ("maxDistanceM", 15)):
+            document = self.pursuit_document()
+            document["logics"][0][field] = value
+            with self.subTest(field=field), self.assertRaises(subject.CompositionError):
+                self.validate(document)
+        document = self.pursuit_document()
+        document["logics"][0].update(homing=False, lifetimeMs=5000, spawnIntervalMs=300, countPerWave=3)
+        for distance in (0, 15, 1000):
+            document["logics"][0]["maxDistanceM"] = distance
+            self.validate(document)
+            row = self.first_product(subject.project_encounter(document))["pursuitProjectiles"][0]
+            self.assertEqual(distance, row["maxDistanceM"])
+
+    def test_pursuit_bootstrap_exact_joins_contact_and_emits_eighteen_fields(self):
+        document = self.pursuit_document()
+        encounter = self.first_product(subject.project_encounter(document))
+        bindings = subject.project_presentation(document)
+        publisher = (ROOT / "Tools/GameplayPipeline/Publish-GameplayBalance.ps1").read_text(encoding="utf-8-sig")
+        definitions = [re.search(r"(?ms)^function " + name + r"\b.*?^\}", publisher).group(0)
+                       for name in ("Assert-ExactProperties", "Assert-StableId", "Assert-JsonString", "Assert-JsonInteger",
+                                    "Assert-JsonNumber", "Format-InvariantFloat", "Get-KoukuTargetedVisualIndex", "New-KoukuPursuitProjectileRows")]
+        with tempfile.TemporaryDirectory() as temporary:
+            folder = Path(temporary)
+            script = "$ErrorActionPreference='Stop'\n$stableIdPattern='^[A-Za-z0-9_.-]{1,128}$'\n" + "\n".join(definitions)
+            script += "\n$fixture=Get-Content -Raw (Join-Path $PSScriptRoot 'fixture.json') | ConvertFrom-Json\n"
+            script += "$visuals=Get-KoukuTargetedVisualIndex $fixture.bindings $fixture.revision\n"
+            script += "$rows=@(New-KoukuPursuitProjectileRows $fixture.pattern 'ENCOUNTER_KAKULSAYDON_G1' 6000 $visuals)\n"
+            script += "ConvertTo-Json -InputObject @($rows) -Compress\n"
+            path = folder / "validate.ps1"
+            path.write_text(script, encoding="utf-8-sig")
+            def run():
+                (folder / "fixture.json").write_text(json.dumps({"pattern": encounter, "bindings": bindings, "revision": document["revision"]}), encoding="utf-8")
+                return subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(path)], capture_output=True, text=True, timeout=30)
+            result = run()
+            self.assertEqual(0, result.returncode, result.stderr)
+            fields = json.loads(result.stdout)[0].split("\t")
+            self.assertEqual(18, len(fields))
+            self.assertEqual("PATTERNPURSUITPROJECTILES", fields[0])
+            self.assertEqual(["0", "0", "1", "4"], fields[-4:])
+            row = encounter["pursuitProjectiles"][0]
+            row.update(speedMps=8, lifetimeMs=5000, homing=False, maxDistanceM=15)
+            result = run()
+            self.assertEqual(0, result.returncode, result.stderr)
+            fields = json.loads(result.stdout)[0].split("\t")
+            self.assertEqual(19, len(fields))
+            self.assertEqual("15", fields[-1])
+            self.assertEqual("8", fields[11])
+            for invalid in (-1, 1000.1, True):
+                row["maxDistanceM"] = invalid
+                self.assertNotEqual(0, run().returncode)
+            row["maxDistanceM"] = 15
+            row["lifetimeMs"] = 0
+            row["homing"] = True
+            self.assertNotEqual(0, run().returncode)
+            row["lifetimeMs"] = 5000
+            encounter["pursuitProjectiles"][0]["contactVisualId"] = "wrong.contact"
+            self.assertNotEqual(0, run().returncode)
+
     def showtime_document(self):
         document, _, child = self.parent_fixture()
         document.update(patterns=[child], playAllPatternIds=[FIRST_PRODUCT_ID], logics=[], worlds=[],
@@ -252,6 +417,58 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
             teleportPosition=[-.07,1.32,942.33] if phase=="CENTER" else [0,0,0])
         return document
 
+    def test_selected_airborne_group_preserves_clocks_and_all_three_axes(self):
+        document = self.airborne_document("SELECT_PLAYER")
+        document["logics"][0].update(airborneTargetPositionPolicy="SELECT", selectedEffectGroupId="showtime.fixed.group")
+        pattern = self.first_product(document)
+        pattern["logicOccurrences"][0]["startMs"] = 0
+        original = copy.deepcopy(document)
+        self.validate(document)
+        rows, templates, controlled = subject._project_airborne_selected_effects(document, pattern)
+        self.assertEqual(4, len(controlled))
+        self.assertEqual(1, len(templates))
+        visual = next(iter(templates.values()))
+        self.assertEqual((4400, False, "combatobject.kouku.showtime.fixed"),
+                         (visual["durationMs"], visual["loop"], visual["combatObjectArchetypeId"]))
+        self.assertEqual([1000, 2000, 2500, 3000], [r["startMs"] for r in visual["occurrences"]])
+        self.assertEqual([0, 0, 0], visual["occurrences"][0]["positionOffset"])
+        self.assertAlmostEqual(.72, visual["occurrences"][1]["positionOffset"][1])
+        self.assertEqual(2, len(subject._project_pattern_presentation(document, pattern)["presentationOccurrences"]))
+        with mock.patch.object(subject, "_project_pattern_root_motion", return_value={}):
+            encounter = subject.project_encounter(document)
+        trigger = self.first_product(encounter)["mechanicTriggers"][0]
+        self.assertEqual("SELECT", trigger["airborneTargetPositionPolicy"])
+        self.assertEqual(visual["clientVisualId"], trigger["selectedEffectVisualId"])
+        self.assertEqual(4400, trigger["selectedEffectLifetimeMs"])
+        self.assertEqual(original, document)
+        pattern["logicOccurrences"][0]["enabled"] = False
+        self.assertEqual(({}, {}, set()), subject._project_airborne_selected_effects(document, pattern))
+        self.assertEqual(6, len(subject._project_pattern_presentation(document, pattern)["presentationOccurrences"]))
+
+    def test_selected_airborne_group_rejects_incomplete_or_conflicting_ownership(self):
+        document = self.airborne_document("SELECT_PLAYER")
+        document["logics"][0].update(airborneTargetPositionPolicy="SELECT", selectedEffectGroupId="showtime.fixed.group")
+        for field, value in (("airborneTargetPositionPolicy", "UNKNOWN"), ("airborneTargetPositionPolicy", {}),
+                             ("airborneTargetPositionPolicy", "APPEAR"), ("airbornePhase", "DISAPPEAR"),
+                             ("selectedEffectGroupId", "missing.group")):
+            candidate = copy.deepcopy(document)
+            candidate["logics"][0][field] = value
+            with self.subTest(field=field, value=value), self.assertRaises(subject.CompositionError):
+                self.validate(candidate)
+        candidate = copy.deepcopy(document)
+        self.first_product(candidate)["logicOccurrences"][0]["startMs"] = 1100
+        with self.assertRaises(subject.CompositionError): self.validate(candidate)
+        candidate = copy.deepcopy(document)
+        self.first_product(candidate)["presentationOccurrences"][0].update(anchorKind="BOSS", followBoss=True)
+        with self.assertRaises(subject.CompositionError): self.validate(candidate)
+        candidate = copy.deepcopy(document)
+        pattern = self.first_product(candidate)
+        pattern["nextLogicOccurrenceOrdinal"] += 1
+        other = copy.deepcopy(pattern["logicOccurrences"][0])
+        other["occurrenceId"] = FIRST_PRODUCT_ID + ".logic.2"
+        pattern["logicOccurrences"].append(other)
+        with self.assertRaises(subject.CompositionError): self.validate(candidate)
+
     def test_airborne_phases_project_with_source_clock_and_existing_rows_preserved(self):
         for phase in ("SELECT_PLAYER", "JUMP", "APPEAR_PLAYER", "DISAPPEAR", "CENTER", "SLAM"):
             with self.subTest(phase=phase):
@@ -273,7 +490,7 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
             value = copy.deepcopy(valid); del value[key]; candidates.append(value)
         for field,value in (("airbornePhase", "INVALID"), ("airbornePhase", {}),
                 ("airborneHeightM",0), ("airborneHeightM",float("nan")), ("airborneHeightM",True),
-                ("airborneDurationMs",0), ("airborneDurationMs",600001), ("airborneDurationMs",.2),
+                ("airborneDurationMs",600001), ("airborneDurationMs",.2),
                 ("teleportPosition",[1,0,0]), ("teleportPosition",[0,0]), ("radiusM",3)):
             row=copy.deepcopy(valid); row[field]=value; candidates.append(row)
         for phase in ("SELECT_PLAYER","DISAPPEAR","CENTER","SLAM"):
@@ -2455,8 +2672,7 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
             subject.validate_publishable(document)
 
     def test_product_inventory_is_bounded_to_downstream_catalog_capacity(self):
-        document = copy.deepcopy(self.document)
-        seed = self.strip_lanes(copy.deepcopy(self.first_product(document)))
+        document, _, seed = self.parent_fixture()
         document["patterns"] = []
         document["playAllPatternIds"] = []
         for ordinal in range(1, subject.MAX_PRODUCT_PATTERNS + 2):
@@ -2476,8 +2692,50 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
             document["playAllPatternIds"].append(pattern_id)
         document["nextPatternOrdinal"] = subject.MAX_PRODUCT_PATTERNS + 2
 
-        with self.assertRaisesRegex(subject.CompositionError, "64 PRODUCT patterns"):
+        with self.assertRaisesRegex(subject.CompositionError, "255 PRODUCT patterns"):
             self.validate(document)
+
+        document["patterns"].pop()
+        document["playAllPatternIds"].pop()
+        self.validate(document)
+        subject.validate_publishable(document)
+        with mock.patch.object(subject, "_project_pattern_root_motion", return_value={}):
+            projected = subject.project_encounter(document)
+        self.assertEqual(255, len(projected["patterns"]))
+        self.assertEqual(document["playAllPatternIds"], projected["playAllPatternIds"])
+
+        # The legacy 64/65 boundary must no longer isolate otherwise ready rows.
+        for count in (64, 65):
+            with self.subTest(count=count):
+                candidate = copy.deepcopy(document)
+                candidate["patterns"] = candidate["patterns"][:count]
+                candidate["playAllPatternIds"] = candidate["playAllPatternIds"][:count]
+                self.validate(candidate)
+                subject.validate_publishable(candidate)
+
+    def test_product_header_capacity_matches_existing_server_sequence_slots(self):
+        publisher = (ROOT / "Tools/GameplayPipeline/Publish-GameplayBalance.ps1").read_text(encoding="utf-8-sig")
+        header = publisher[publisher.index("if ([string]$koukuEncounterDocument.schema"):
+                           publisher.index("$koukuEncounterBosses =")]
+        fixture = dict(schema="lostark.encounter-profile", encounterId="ENCOUNTER_KAKULSAYDON_G1",
+                       bossArchetypeId="BOSS_KAKULSAYDON_G1_KOUKU", authority="server", fixedTickHz=30,
+                       patterns=[], playAllPatternIds=[])
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "header.ps1"
+            script = "$ErrorActionPreference='Stop'\n$fixture='" + json.dumps(fixture) + "' | ConvertFrom-Json\n"
+            script += "$bossIds=@('BOSS_KAKULSAYDON_G1_KOUKU')\n"
+            for count in (64, 65, 255, 256):
+                script += f"$koukuEncounterDocument=$fixture; $koukuEncounterDocument.patterns=@(1..{count})\n"
+                script += "$accepted=$true; try {\n" + header + "\n} catch { $accepted=$false }\n"
+                script += f"if ($accepted -ne ${str(count <= 255).lower()}) {{ throw 'header boundary {count}' }}\n"
+            path.write_text(script, encoding="utf-8-sig")
+            result = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(path)],
+                                    capture_output=True, text=True, timeout=30)
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        client = (ROOT / "Client/Private/KoukuSaydonBossTool.cpp").read_text(encoding="utf-8-sig")
+        self.assertIn("patterns->Get_Array().size() > LostArk::Shared::MAX_VALTAN_PATTERN_FLOW_SLOTS", client)
+        shared = (ROOT / "Shared/Public/Network/PacketMessages.h").read_text(encoding="utf-8-sig")
+        self.assertIn(f"MAX_VALTAN_PATTERN_FLOW_SLOTS = {subject.MAX_PRODUCT_PATTERNS}u", shared)
 
     def test_product_pattern_ids_cannot_collapse_to_one_runtime_action_id(self):
         document = copy.deepcopy(self.document)

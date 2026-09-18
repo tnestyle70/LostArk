@@ -155,6 +155,7 @@ LOGIC_KIND_VALUE_KEYS = {
     "COUNTER_WINDOW": {"endsPatternOnSuccess"},
     "ATTACHMENT_HOLD": set(),
     "BOSS_TRACK_TARGET": set(),
+    "PURSUIT_PROJECTILES": {"visualIds", "contactVisualId", "speedMps", "contactRadiusM", "spawnRadiusM", "lifetimeMs", "spawnIntervalMs", "homing", "countPerWave", "maxDistanceM"},
     "CROSS_DIRECTION_CLONES": {"directionPatternIds", "cloneEndStageId", "summonOccurrenceId"},
     "PATTERN_COMPLETION_COUNT": {"patternIds", "completionCount"},
     "SHOWTIME_PLAYER_TARGETS": {"fixedSelectionGroupId", "trackingPresentationOccurrenceId", "spawnIntervalMs", "followSpeedScale",
@@ -165,7 +166,7 @@ LOGIC_RESULT_VALUE_KEYS = {"outcomeKind", "percent", "durationMs", "followupPatt
                            "contactMotions", "targetLogicOccurrenceId", "contactTargetWorldOccurrenceId", "sceneProfileId", "effectResourceId", "lightResourceId", "effectDelayMs", "attachmentSlot", "gripLocalOffset", "pushRangeM", "pushMs", "pushDirection"}
 LOGIC_TRIGGER_VALUE_KEYS = {"countPerPlayer", "radiusM", "effectLifetimeMs", "arenaRandomCount", "arenaRandomRadiusM", "arenaHeightToleranceM", "arenaMinimumSpacingM", "randomPlayerOnly", "triggerKind", "hudMode", "teleportPosition", "clonePatternId", "clockHours", "faceCenterYawOffsetDegrees",
                             "targetWorldOccurrenceIds", "targetRadiusM", "contactGroupId", "contactPriority", "bossChargeDistanceM", "chargeYawOffsetDegrees", "rearmOnExit", "repeatAfterKnockback",
-                            "airbornePhase", "airborneHeightM", "airborneDurationMs"}
+                            "airbornePhase", "airborneHeightM", "airborneDurationMs", "airborneTargetPositionPolicy", "selectedEffectGroupId"}
 LOGIC_OPTIONAL_KEYS = LOGIC_DURATION_VALUE_KEYS | LOGIC_RESULT_VALUE_KEYS | LOGIC_TRIGGER_VALUE_KEYS
 JUDGEMENT_KINDS = set(LOGIC_KIND_VALUE_KEYS)
 # End-tick kinds judge once when the window closes: Success or Fail, never
@@ -236,7 +237,8 @@ GENERATED_LOGIC_RE = re.compile(r"^kakulsaydon\.g1\.logic\.([1-9][0-9]*)$")
 MAX_ORDINAL = 1_000_000
 MAX_TIMELINE_MS = 600_000
 MAX_PATTERNS = 4096
-MAX_PRODUCT_PATTERNS = 64
+# Product order becomes PATTERNSEQUENCE: preserve its existing uint8 slot capacity.
+MAX_PRODUCT_PATTERNS = 255
 # Match CKoukuSaydonBossTool admission before publishing any Product.
 MAX_ENCOUNTER_BYTES = 64 * 1024 * 1024
 MAX_ENCOUNTER_VALUES = 4_000_000
@@ -549,6 +551,8 @@ def _validate_logic_definition(
             definition["directionPatternIds"] = [_stable_id(item, f"{context} directionPatternId") for item in candidates]
             definition["cloneEndStageId"] = _stable_id(logic.get("cloneEndStageId", ""), f"{context} cloneEndStageId")
             definition["summonOccurrenceId"] = _stable_id(logic.get("summonOccurrenceId", ""), f"{context} summonOccurrenceId")
+        elif kind == "PURSUIT_PROJECTILES":
+            definition.update(_pursuit_fields(logic, context))
         elif kind == "SHOWTIME_PLAYER_TARGETS":
             for field in ("fixedSelectionGroupId", "trackingPresentationOccurrenceId"):
                 value = logic.get(field, "")
@@ -633,11 +637,20 @@ def _validate_logic_definition(
                 raise CompositionError(f"{context} HUD_ENTER requires a supported hudMode")
         elif kind == "ALBION_AIRBORNE":
             required = {"triggerKind", "airbornePhase", "airborneHeightM", "airborneDurationMs", "teleportPosition"}
-            if extra != required:
-                raise CompositionError(f"{context} Albion airborne requires phase, height, duration and teleportPosition only")
+            if not required <= extra or extra - required - {"airborneTargetPositionPolicy", "selectedEffectGroupId"}:
+                raise CompositionError(f"{context} Albion airborne requires phase, height, duration and teleportPosition")
             phase = _string(logic["airbornePhase"], f"{context} airbornePhase")
             if phase not in {"SELECT_PLAYER", "JUMP", "APPEAR_PLAYER", "DISAPPEAR", "CENTER", "SLAM"}:
                 raise CompositionError(f"{context} airbornePhase is unsupported")
+            policy = _string(logic.get("airborneTargetPositionPolicy", "APPEAR"), f"{context} airborneTargetPositionPolicy")
+            group = logic.get("selectedEffectGroupId", "")
+            if policy not in {"APPEAR", "SELECT"} or (phase != "SELECT_PLAYER" and (policy != "APPEAR" or group)):
+                raise CompositionError(f"{context} target position policy belongs to SELECT_PLAYER")
+            if group:
+                _stable_id(group, f"{context} selectedEffectGroupId")
+                if policy != "SELECT": raise CompositionError(f"{context} selected Effect requires SELECT position policy")
+            elif not isinstance(group, str):
+                raise CompositionError(f"{context} selectedEffectGroupId must be text")
             height = _number(logic["airborneHeightM"], f"{context} airborneHeightM", 0.0, 100000.0)
             duration = _integer(logic["airborneDurationMs"], f"{context} airborneDurationMs", 0, MAX_TIMELINE_MS)
             position = _array(logic["teleportPosition"], f"{context} teleportPosition", 3)
@@ -645,7 +658,7 @@ def _validate_logic_definition(
                 raise CompositionError(f"{context} teleportPosition needs X/Y/Z")
             position = [_number(value, f"{context} teleportPosition", -100000.0, 100000.0) for value in position]
             if ((phase in {"JUMP", "APPEAR_PLAYER"}) != (height > 0.0) or
-                    (phase == "JUMP") != (duration > 0) or
+                    (phase != "JUMP" and duration != 0) or
                     (phase != "CENTER" and any(position))):
                 raise CompositionError(f"{context} airborne phase carries invalid height, duration or destination")
         elif kind == "ALBION_BLUE_CIRCLE":
@@ -2231,8 +2244,10 @@ def validate_document(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
                 if any(identity not in by_presentation for identity in identities):
                     raise CompositionError("SHOWTIME random volley reference is missing or unresolved in this Pattern")
                 _showtime_visual_template(document, pattern, [by_presentation[i] for i in identities], "fixed", random_mixed=True)
+        _project_airborne_selected_effects(document, pattern)
         if status == "PRODUCT":
             _project_showtime_targets(document, pattern)
+            _project_pursuit_projectiles(document, pattern)
         for box in logic_occurrences:
             if box["startMs"] + box["durationMs"] > pattern_duration_ms:
                 raise CompositionError(
@@ -2810,6 +2825,50 @@ def _project_object_overlap_target(document, pattern, box, logic, logics, sequen
     return projected
 
 
+def _world_group_instances(world, sequences):
+    """Resolve one saved model-less group to its enabled presentation motions."""
+    target = world["sequenceInstanceId"]
+    groups = [row for row in sequences.get("objectResources", [])
+              if row.get("objectId") == target and "motionInstanceIds" in row]
+    if not groups:
+        return None
+    if len(groups) != 1 or world.get("objectResourceId") != target:
+        raise CompositionError("WORLD group must preserve its unique Object resource identity")
+    group = groups[0]
+    members = group["motionInstanceIds"]
+    if (not isinstance(members, list) or not 1 <= len(members) <= 32 or
+            group.get("modelAssetId") or group.get("sequenceInstanceId") or group.get("defaultMotionInstanceId") or
+            group.get("anchorKind", "WORLD") != "WORLD" or "combatBody" in group):
+        raise CompositionError("WORLD group needs a model-less WORLD resource with 1..32 motions")
+    seen, enabled = set(), []
+    for identity in members:
+        _stable_id(identity, "WORLD group motion")
+        if identity in seen:
+            raise CompositionError("WORLD group motion identities must be unique")
+        seen.add(identity)
+        matches = [row for row in sequences.get("instances", []) if row.get("instanceId") == identity]
+        if len(matches) != 1:
+            raise CompositionError("WORLD group motion is missing or duplicated")
+        instance = matches[0]
+        templates = [row for row in sequences.get("templates", []) if row.get("sequenceId") == instance.get("templateId")]
+        bindings = instance.get("bindings", [])
+        if (len(templates) != 1 or instance.get("anchorKind", "WORLD") != "WORLD" or
+                instance.get("motionEnd", "STOP") not in {"STOP", "LOOP"} or
+                len(bindings) != 1 or bindings[0].get("targetKind") != "OBJECT_RESOURCE"):
+            raise CompositionError("WORLD group member needs one WORLD model motion ending with STOP or LOOP")
+        models = [row for row in sequences.get("objectResources", []) if row.get("objectId") == bindings[0].get("targetId")]
+        if (len(models) != 1 or not models[0].get("modelAssetId") or models[0].get("motionInstanceIds") or
+                models[0].get("sequenceInstanceId") or models[0].get("anchorKind", "WORLD") != "WORLD"):
+            raise CompositionError("WORLD group member must bind one real WORLD model, not another group or alias")
+        if "walkableSurface" in instance or "combatBody" in models[0] or templates[0].get("colliderTracks"):
+            raise CompositionError("WORLD presentation group does not own walkable surfaces, damageable bodies or collider tracks")
+        if _boolean(instance.get("enabled", True), "WORLD group motion enabled"):
+            enabled.append(instance)
+    if not enabled:
+        raise CompositionError("WORLD group needs at least one enabled motion")
+    return enabled
+
+
 def _validate_world_object_reference(world, sequences):
     """Validate Object identity without rebinding an existing box to a changed default."""
     object_id = _stable_id(world["objectResourceId"], "WORLD objectResourceId")
@@ -2817,6 +2876,10 @@ def _validate_world_object_reference(world, sequences):
     if len(resources) != 1:
         raise CompositionError(f"WORLD objectResourceId is missing or duplicated: {object_id}")
     resource = resources[0]
+    if "motionInstanceIds" in resource:
+        if world["sequenceInstanceId"] != object_id:
+            raise CompositionError("WORLD group initial state must be its saved Object group identity")
+        return _world_group_instances(world, sequences)
     alias = resource.get("sequenceInstanceId", "")
     def state(instance_id, context):
         _stable_id(instance_id, context)
@@ -2849,6 +2912,8 @@ def _validate_world_occurrence_placement(cue, world, sequences):
     _vector3(placement["position"], "WORLD placement position", -100000, 100000)
     _vector3(placement["rotationDegrees"], "WORLD placement rotationDegrees", -36000, 36000)
     _vector3(placement["scale"], "WORLD placement scale", .001, 1000)
+    if _world_group_instances(world, sequences) is not None:
+        return placement
     instance = next((row for row in sequences["instances"] if row["instanceId"] == world["sequenceInstanceId"]), None)
     bindings = instance.get("bindings", []) if instance else []
     if len(bindings) != 1 or bindings[0].get("targetKind") != "OBJECT_RESOURCE":
@@ -4176,6 +4241,8 @@ def project_encounter(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
             templates_by_id = {row["sequenceId"]: row for row in world_sequences.get("templates", [])}
             objects_by_id = {row["objectId"]: row for row in world_sequences.get("objectResources", [])}
             for instance_id in world_by_instance:
+                if _world_group_instances(worlds[world_by_instance[instance_id]["worldId"]], world_sequences) is not None:
+                    continue
                 instance = instances_by_id.get(instance_id)
                 if instance is None or instance.get("templateId") not in templates_by_id:
                     raise CompositionError(f"{source['patternId']} references an unknown saved World Object state: {instance_id}")
@@ -4191,7 +4258,7 @@ def project_encounter(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
                 continue
             logic = logics[box["logicId"]]
             kind = logic.get("judgementKind", logic.get("triggerKind"))
-            if kind in {"SHOWTIME_PLAYER_TARGETS", "BOSS_TRACK_TARGET", "CROSS_DIRECTION_CLONES"}:
+            if kind in {"SHOWTIME_PLAYER_TARGETS", "BOSS_TRACK_TARGET", "CROSS_DIRECTION_CLONES", "PURSUIT_PROJECTILES"}:
                 continue
             if logic["logicType"] != "DURATION" and kind not in {"ENTER_AREA", "OBJECT_CONTACT"}:
                 continue
@@ -4218,8 +4285,10 @@ def project_encounter(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
                     raise CompositionError("Object Collider model must be a Resources-relative WModel")
                 return _load_bake_model(path, model_cache, clips)
             try:
+                collider_boxes = [box for box in world_boxes
+                                  if _world_group_instances(worlds[box["worldId"]], world_sequences) is None]
                 generated = _publication_memo("object-colliders", (str(root.resolve()), hashlib.sha256(serialize_json([world_sequences, worlds, world_boxes])).digest()),
-                    lambda: bake_object_collider_windows(world_sequences, worlds, world_boxes, load_collider_model))
+                    lambda: bake_object_collider_windows(world_sequences, worlds, collider_boxes, load_collider_model))
             except (ColliderBakeError, OSError, ValueError, KeyError, IndexError) as error:
                 raise CompositionError(f"Cannot bake Object Collider: {error}") from error
             for generated_row in generated:
@@ -4261,7 +4330,9 @@ def project_encounter(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
                 "randomPlayerOnly": logic.get("randomPlayerOnly", False),
                 **({"airbornePhase": logic["airbornePhase"],
                     "airborneHeightM": float(logic["airborneHeightM"]),
-                    "airborneDurationMs": logic["airborneDurationMs"]}
+                    "airborneDurationMs": logic["airborneDurationMs"],
+                    **({"airborneTargetPositionPolicy": "SELECT", **_project_airborne_selected_effects(document, source)[0].get(box["occurrenceId"], {})}
+                       if logic.get("airborneTargetPositionPolicy") == "SELECT" else {})}
                    if kind == "ALBION_AIRBORNE" else {}),
             })
         summon_definitions = {row["summonId"]: row for row in document.get("summons", [])}
@@ -4331,6 +4402,8 @@ def project_encounter(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
                    if "resetBossYawDegrees" in source else {}),
                 **({"bossMotion": copy.deepcopy(source["bossMotion"])} if "bossMotion" in source else {}),
                 "logicWindows": logic_windows,
+                **({"pursuitProjectiles": _project_pursuit_projectiles(document, source)[0]}
+                   if _project_pursuit_projectiles(document, source)[0] else {}),
                 **({"showtimeTargets": _project_showtime_targets(document, source)[0]}
                    if _showtime_logic_occurrences(document, source) else {}),
                 "mechanicTriggers": mechanic_triggers,
@@ -4596,6 +4669,64 @@ def _validate_presentation_occurrences(pattern: dict[str, Any], resources: dict[
     _validate_presentation_selection_groups(pattern, resources)
 
 
+def _pursuit_fields(logic: dict[str, Any], context: str) -> dict[str, Any]:
+    visuals = [_stable_id(value, f"{context} visualId")
+               for value in _array(logic.get("visualIds", []), f"{context} visualIds", 4)]
+    if not visuals or len(set(visuals)) != len(visuals):
+        raise CompositionError(f"{context} requires one to four distinct projectile resources")
+    fields = {
+        "visualIds": visuals,
+        "contactVisualId": _stable_id(logic.get("contactVisualId", ""), f"{context} contactVisualId"),
+        "speedMps": _number(logic.get("speedMps", 0), f"{context} speedMps", .01, 100),
+        "maxDistanceM": _number(logic.get("maxDistanceM", 0), f"{context} maxDistanceM", 0, 1000),
+        "contactRadiusM": _number(logic.get("contactRadiusM", 0), f"{context} contactRadiusM", .01, 10),
+        "spawnRadiusM": _number(logic.get("spawnRadiusM", 0), f"{context} spawnRadiusM", 0, 100),
+        "lifetimeMs": _integer(logic.get("lifetimeMs", 0), f"{context} lifetimeMs", 0, MAX_TIMELINE_MS),
+        "spawnIntervalMs": _integer(logic.get("spawnIntervalMs", 0), f"{context} spawnIntervalMs", 0, MAX_TIMELINE_MS),
+        "countPerWave": _integer(logic.get("countPerWave", len(visuals)), f"{context} countPerWave", 1, 16),
+        "homing": logic.get("homing", True),
+    }
+    if not isinstance(fields["homing"], bool) or (fields["lifetimeMs"] == 0 and
+            (not fields["homing"] or fields["spawnIntervalMs"] != 0 or fields["maxDistanceM"] != 0)):
+        raise CompositionError(f"{context} infinite lifetime requires one homing volley without a travel limit")
+    return fields
+
+
+def _project_pursuit_projectiles(document: dict[str, Any], pattern: dict[str, Any]) -> tuple[list[dict[str, Any]], dict[str, dict[str, Any]]]:
+    definitions = {row["logicId"]: row for row in document.get("logics", [])}
+    resources = {row["resourceId"]: row for row in document.get("presentationResources", [])}
+    rows, templates = [], {}
+    for box in pattern.get("logicOccurrences", []):
+        logic = definitions.get(box["logicId"], {})
+        if not box.get("enabled", True) or logic.get("judgementKind") != "PURSUIT_PROJECTILES":
+            continue
+        if any(outcome_logic_ids(box, slot) for slot in OUTCOME_SLOTS) or box.get("holdLogicOccurrenceId"):
+            raise CompositionError("PURSUIT_PROJECTILES cannot carry judgement outcomes or Hold references")
+        fields = _pursuit_fields(logic, "PURSUIT_PROJECTILES")
+        for identity in [*fields["visualIds"], fields["contactVisualId"]]:
+            if identity not in resources or resources[identity]["kind"] != "EFFECT" or resources[identity].get("resourceKind") != "V1_EFFECT":
+                raise CompositionError("PURSUIT_PROJECTILES must resolve authored V1_EFFECT resources")
+        client_ids = []
+        for identity in fields["visualIds"]:
+            resource = resources[identity]
+            duration = resource.get("durationMs", PRESENTATION_RESOURCE_DEFAULTS["durationMs"])
+            occurrence = _project_presentation_occurrence(document, pattern, {
+                "occurrenceId": "pursuit.presentation.1", "resourceId": identity,
+                "startMs": 0, "durationMs": duration, "anchorKind": "MAP", "followBoss": False,
+                "loopEffectToDuration": True,
+            }, resource)
+            payload = {"combatObjectArchetypeId": "combatobject.kouku.pursuit", "durationMs": duration,
+                       "loop": True, "resources": [_project_presentation_resource(resource)], "occurrences": [occurrence],
+                       "contactVisualId": fields["contactVisualId"], "contactEffectAssetId": resources[fields["contactVisualId"]]["assetId"]}
+            digest = hashlib.sha256(json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False).encode("utf-8")).hexdigest()
+            client_id = f"kouku.pursuit.{digest}"
+            templates[client_id] = {"clientVisualId": client_id, **payload}
+            client_ids.append(client_id)
+        rows.append({"occurrenceId": box["occurrenceId"], "startMs": box["startMs"], "durationMs": box["durationMs"], **fields, "visualIds": client_ids})
+    rows.sort(key=lambda row: (row["startMs"], row["occurrenceId"]))
+    return rows, templates
+
+
 def _showtime_logic_occurrences(document: dict[str, Any], pattern: dict[str, Any]) -> list[tuple[dict[str, Any], dict[str, Any]]]:
     definitions = {row["logicId"]: row for row in document.get("logics", [])}
     return [(box, definitions[box["logicId"]]) for box in pattern.get("logicOccurrences", [])
@@ -4633,7 +4764,9 @@ def _showtime_random_volley_fields(logic: dict[str, Any], context: str) -> dict[
 
 def _showtime_selection_groups(document: dict[str, Any], pattern: dict[str, Any]) -> set[str]:
     return {logic["fixedSelectionGroupId"] for _, logic in _showtime_logic_occurrences(document, pattern)
-            if logic.get("fixedSelectionGroupId")}
+            if logic.get("fixedSelectionGroupId")} | {
+                logic["selectedEffectGroupId"] for _, logic in _airborne_selection_occurrences(document, pattern)
+                if logic.get("selectedEffectGroupId")}
 
 
 def _showtime_template_occurrence_ids(document: dict[str, Any], pattern: dict[str, Any]) -> set[str]:
@@ -4664,14 +4797,17 @@ def _project_presentation_occurrence(document: dict[str, Any], pattern: dict[str
     }
 
 
-def _showtime_visual_template(document: dict[str, Any], pattern: dict[str, Any], members: list[dict[str, Any]], role: str, *, random_mixed: bool = False) -> dict[str, Any]:
+def _showtime_visual_template(document: dict[str, Any], pattern: dict[str, Any], members: list[dict[str, Any]], role: str, *, random_mixed: bool = False,
+                             selection_start_ms: int | None = None) -> dict[str, Any]:
     resources = {row["resourceId"]: row for row in document.get("presentationResources", [])}
     anchor_members = [row for row in members if row.get("anchorKind", "BOSS") == "MAP"] if random_mixed else members
     if not anchor_members:
         raise CompositionError("SHOWTIME random volley requires at least one MAP marker")
     anchor = min(anchor_members, key=lambda row: (row["startMs"], row["occurrenceId"]))
     anchor_position = {**PRESENTATION_OCCURRENCE_DEFAULTS, **anchor}["positionOffset"]
-    source_start = min(row["startMs"] for row in members)
+    source_start = min(row["startMs"] for row in members) if selection_start_ms is None else selection_start_ms
+    if any(row["startMs"] < source_start for row in members):
+        raise CompositionError("Selected Effect cannot precede its player-position capture")
     resource_contents: dict[str, dict[str, Any]] = {}
     projected = []
     content_key = lambda row: json.dumps(row, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False)
@@ -4696,7 +4832,8 @@ def _showtime_visual_template(document: dict[str, Any], pattern: dict[str, Any],
         # ground-relative Y; subtracting the warning decal's Y would lift every child.
         if row["anchorKind"] == "MAP":
             row["positionOffset"] = [row["positionOffset"][0] - anchor_position[0],
-                                     row["positionOffset"][1], row["positionOffset"][2] - anchor_position[2]]
+                                     row["positionOffset"][1] - (anchor_position[1] if selection_start_ms is not None else 0.0),
+                                     row["positionOffset"][2] - anchor_position[2]]
         _vector3(row["positionOffset"], "SHOWTIME relative position", -100000, 100000)
         projected.append(row)
     resource_ids = {key: f"showtime.resource.{index}" for index, key in enumerate(sorted(resource_contents), 1)}
@@ -4714,6 +4851,36 @@ def _showtime_visual_template(document: dict[str, Any], pattern: dict[str, Any],
     }
     digest = hashlib.sha256(content_key(payload).encode("utf-8")).hexdigest()
     return {"clientVisualId": f"kouku.showtime.{role}.{digest}", **payload}
+
+
+def _airborne_selection_occurrences(document: dict[str, Any], pattern: dict[str, Any], *, enabled_only: bool = True):
+    definitions = {row["logicId"]: row for row in document.get("logics", [])}
+    return [(box, definitions[box["logicId"]]) for box in pattern.get("logicOccurrences", [])
+            if (box.get("enabled", True) or not enabled_only)
+            and definitions.get(box["logicId"], {}).get("triggerKind") == "ALBION_AIRBORNE"
+            and definitions[box["logicId"]].get("airbornePhase") == "SELECT_PLAYER"]
+
+
+def _project_airborne_selected_effects(document: dict[str, Any], pattern: dict[str, Any]):
+    rows, templates, controlled = {}, {}, set()
+    used_groups = set()
+    showtime_groups = {logic.get("fixedSelectionGroupId") for _, logic in _showtime_logic_occurrences(document, pattern)}
+    for box, logic in _airborne_selection_occurrences(document, pattern, enabled_only=False):
+        group = logic.get("selectedEffectGroupId", "")
+        if not group: continue
+        if logic.get("airborneTargetPositionPolicy", "APPEAR") != "SELECT" or group in used_groups or group in showtime_groups:
+            raise CompositionError("Selected Effect requires one exclusive SELECT position owner")
+        used_groups.add(group)
+        members = [row for row in pattern.get("presentationOccurrences", []) if row.get("selectionGroupId") == group]
+        if len(members) < 2:
+            raise CompositionError("Selected Effect group requires at least two same-pattern Effect occurrences")
+        template = _showtime_visual_template(document, pattern, members, "fixed", selection_start_ms=box["startMs"])
+        if not box.get("enabled", True): continue
+        templates[template["clientVisualId"]] = template
+        rows[box["occurrenceId"]] = {"selectedEffectVisualId": template["clientVisualId"],
+                                      "selectedEffectLifetimeMs": template["durationMs"]}
+        controlled.update(row["occurrenceId"] for row in members)
+    return rows, templates, controlled
 
 
 def _project_showtime_targets(document: dict[str, Any], pattern: dict[str, Any]) -> tuple[list[dict[str, Any]], dict[str, dict[str, Any]], set[str]]:
@@ -4766,6 +4933,7 @@ def _project_pattern_presentation(document: dict[str, Any], pattern: dict[str, A
     blend_windows = resolve_animation_blend_windows(document, pattern)
     resources = {resource["resourceId"]: resource for resource in document.get("presentationResources", [])}
     _, _, controlled = _project_showtime_targets(document, pattern)
+    controlled |= _project_airborne_selected_effects(document, pattern)[2]
     occurrences = []
     for box in pattern.get("presentationOccurrences", []):
         if box["occurrenceId"] not in controlled:
@@ -4929,6 +5097,8 @@ def project_presentation(document: dict[str, Any], root: Path = REPOSITORY_ROOT)
         if pattern["authoringStatus"] != "PRODUCT":
             continue
         targeted_visuals.update(_project_showtime_targets(document, pattern)[1])
+        targeted_visuals.update(_project_airborne_selected_effects(document, pattern)[1])
+        targeted_visuals.update(_project_pursuit_projectiles(document, pattern)[1])
         suppress_root_motion = bool(_project_pattern_root_motion(document, pattern, root, native_actor_cache))
         if suppress_root_motion:
             root_motion_patterns.add(pattern["patternId"])

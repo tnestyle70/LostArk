@@ -611,6 +611,47 @@ void LostArk::Server::CGameRoom::Handle_UpdateSkillAim(
 		m_GameplayCatalog);
 }
 
+void LostArk::Server::CGameRoom::Handle_UseSquareHole(
+	const SESSION_ID sessionId,
+	const LostArk::Shared::C2S_USE_SQUAREHOLE& useSquareHole)
+{
+	const auto sessionIter = m_PlayerIdBySessionId.find(sessionId);
+	if (sessionIter == m_PlayerIdBySessionId.end())
+	{
+		Close_SessionForBindingFailure(
+			sessionId, "C2S_USE_SQUAREHOLE", "missing-player-binding");
+		return;
+	}
+	const auto playerIter = m_Players.find(sessionIter->second);
+	if (playerIter == m_Players.end())
+	{
+		Close_SessionForBindingFailure(
+			sessionId, "C2S_USE_SQUAREHOLE", "missing-player-state");
+		return;
+	}
+	SERVER_PLAYER& player = playerIter->second;
+	(void)useSquareHole;
+	/* The song is a fixed-length lock like the Esther call: only an idle, unmounted
+	player on their feet may start it. Update_Players returns the action to NONE
+	once SQUAREHOLE_SONG_TICKS have elapsed; the teleport itself is not implemented,
+	so the player stays where they played. */
+	if (player.fKnockbackRemainingSeconds > 0.f ||
+		LostArk::Shared::INVALID_VEHICLE_ID != player.iVehicleId ||
+		LostArk::Shared::PLAYER_ACTION_STATE::NONE != player.eAction)
+	{
+		return;
+	}
+	player.eAction = LostArk::Shared::PLAYER_ACTION_STATE::SQUAREHOLE_SONG;
+	player.iCurrentSkillId = LostArk::Shared::INVALID_SKILL_ID;
+	player.iActionStartTick =
+		(std::numeric_limits<std::uint32_t>::max)() == m_iServerTick ?
+		1u : m_iServerTick + 1u;
+	player.fActionElapsedSeconds = 0.f;
+	player.iComboStage = 0u;
+	player.hasBufferedComboInput = false;
+	player.hasMoveGoal = false;
+}
+
 void LostArk::Server::CGameRoom::Handle_UseEstherSkill(
 	const SESSION_ID sessionId,
 	const LostArk::Shared::C2S_USE_ESTHER_SKILL& useEstherSkill)

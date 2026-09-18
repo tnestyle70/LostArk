@@ -615,14 +615,17 @@ for ordinal, selection in enumerate(selections):
             lines += ['    uint viewportWidth, viewportHeight; g_EffectSceneDepthTexture.GetDimensions(viewportWidth,viewportHeight);',
                       '    passValues[6]=float4(max(float2(viewportWidth,viewportHeight),1.f),0.f,0.f);']
         dynamic='dynamicparameter' in selection['sourceVF'];subuv='subuv' in selection['sourceVF']
-        # Water-ribbon PSs consume the second UV pair at TEXCOORD0.zw.
-        # Both original beam/trail VSs pass all four input components through.
-        # Zero-filling zw makes the transverse edge mask zero everywhere.
+        # Reviewed beam/trail VSs pass all four UV components through.
+        # Preserve both pairs; the carrier adapter selects finite coverage and
+        # distance-detail coordinates for each recovered pixel-program consumer.
+        # WaterRibbon zw includes a finite end taper, not a transverse-edge proof.
         ribbon_uv1_vs = {
             '59a22eeec5a51f439595f929dddfe8bf': ('f6b274c2c28e4b45b0c2762be4e095fb', 'mov o2.xyzw, v3.xyzw'),
             'e924ddbcfb7336408af5883ef3ddbf89': ('91ccb94877dac34e988dd1d7bf625e2c', 'mov o1.xyzw, v3.xyzw'),
             '4d739536c182294da40111bf6ba66fd1': ('f6b274c2c28e4b45b0c2762be4e095fb', 'mov o2.xyzw, v3.xyzw'),
-        }.get(sid) if arguments.profile_domain == 'kouku' and selection['rendererShape'] == 'ribbon' else None
+            '34c7dac3b50dcd40b8c18be67bbf7d5a': ('f6b274c2c28e4b45b0c2762be4e095fb', 'mov o2.xyzw, v3.xyzw'),
+            '602579e9d74c2744acfda3bca9b987bb': ('91ccb94877dac34e988dd1d7bf625e2c', 'mov o1.xyzw, v3.xyzw'),
+        }.get(sid) if arguments.profile_domain == 'kouku' and selection['rendererShape'] in ('ribbon', 'animationTrail', 'animTrail') else None
         if ribbon_uv1_vs:
             assert selection['sourceVF'] == 'fparticlebeamtraildynamicparametervertexfactory'
             assert selection['sourceVS'] == ribbon_uv1_vs[0], 'Unreviewed ribbon UV1 vertex shader'
