@@ -5,6 +5,8 @@
 #include "GameInstance.h"
 #include "Model.h"
 #include "NpcPresentationAssetService.h"
+#include "Valtan.h"
+#include "ValtanPresentationAssetService.h"
 #include "BinaryAsset/ModelDecoderRegistry.h"
 #include "DirectXTK/DDSTextureLoader.h"
 #include "RuntimeAssetRoot.h"
@@ -26,6 +28,30 @@ CWorldSequencePlayer::~CWorldSequencePlayer() { Clear(); }
 
 namespace
 {
+/* The product Valtan part group: a static weapon on the body's grip bone and
+   skinned armour plates on its palette, as CValtan builds them. */
+void Fill_PresentationParts(const std::string& archetypeId, CWorldSequenceObject::DESC& desc)
+{
+    desc.presentationParts.clear();
+    desc.materialProfileId.clear();
+    const BOSS_ACTOR_ENTRY* actor = archetypeId.empty() ? nullptr : CActorCatalog::Find_Boss(archetypeId);
+    if (!actor) return;
+    desc.materialProfileId = "material.valtan.monster-base.v1";
+    desc.presentationParts.push_back({ CValtanPresentationAssetService::Get_WeaponModelPrototypeTag(archetypeId),
+        L"Prototype_Component_Shader_VtxMeshBinary", CValtan::WEAPON_SOCKET_BONE });
+    for (const BOSS_ARMOR_PART_ENTRY& armor : actor->armorParts)
+        desc.presentationParts.push_back({ CValtan::Build_ArmorModelPrototypeTag(armor.stateMask, archetypeId),
+            L"Prototype_Component_Shader_VtxAnimMeshBinary", std::string() });
+}
+
+std::string Narrow_PrototypeTag(const wstring_t& tag)
+{
+    std::string text;
+    text.reserve(tag.size());
+    for (const wchar_t character : tag) text.push_back(character < 128 ? static_cast<char>(character) : '?');
+    return text;
+}
+
 #ifdef _DEBUG
 bool Sample_ObjectCollider(const WORLD_SEQUENCE_COLLIDER_TRACK& collider,
     const WORLD_SEQUENCE_OBJECT_RESOURCE& resource, const WORLD_SEQUENCE_TRANSFORM_KEY& key,
@@ -249,13 +275,94 @@ bool_t CWorldSequencePlayer::Set_DocumentBatch(const CWorldSequenceDocument& doc
     return true;
 }
 
+bool_t CWorldSequencePlayer::Replace_DocumentKeepingModels(const CWorldSequenceDocument& document,
+    const TARGET_SET& targets, std::string& status)
+{
+    if (!targets.Is_Complete())
+    {
+        status = "World Object runtime targets are unavailable.";
+        m_Status = status;
+        return false;
+    }
+    WORLD_SEQUENCE_PLACEMENT_MAP placements;
+    WORLD_SEQUENCE_DEPLOY_MAP deploy;
+    Collect_ValidationTargets(targets, placements, deploy);
+    if (!document.Validate(placements, deploy, status))
+    {
+        m_Status = status;
+        return false;
+    }
+    CWorldSequenceDocument staged = document;
+    Stop_All(targets, true);
+    Clear_PreparedObjects();
+    // A kept model must still be what its resource asks for. Anything renamed,
+    // removed or changed in its model inputs is rebuilt on the next Play.
+    size_t kept = 0u;
+    for (auto entry = m_ObjectModels.begin(); entry != m_ObjectModels.end();)
+    {
+        const auto* before = m_Document.Find_ObjectResource(entry->first);
+        const auto* after = staged.Find_ObjectResource(entry->first);
+        if (nullptr == before || nullptr == after || !Same_ObjectModelInputs(*before, *after))
+            entry = m_ObjectModels.erase(entry);
+        else
+        {
+            ++kept;
+            ++entry;
+        }
+    }
+    m_EffectSnapshots.clear();
+    m_Document = std::move(staged);
+    status = "World Object document admitted; kept " + std::to_string(kept) + " prepared model(s).";
+    m_Status = status;
+    return true;
+}
+
 bool_t CWorldSequencePlayer::Same_ObjectModelInputs(
     const WORLD_SEQUENCE_OBJECT_RESOURCE& left, const WORLD_SEQUENCE_OBJECT_RESOURCE& right)
 {
     return left.modelAssetId == right.modelAssetId && left.modelPreScale == right.modelPreScale &&
         left.animated == right.animated && left.diffuseTextureAssetId == right.diffuseTextureAssetId &&
         left.materialSourceModelAssetId == right.materialSourceModelAssetId &&
+        left.animationSetAssetId == right.animationSetAssetId &&
+        left.presentationBossArchetypeId == right.presentationBossArchetypeId &&
         left.materialProfile == right.materialProfile && left.mapMaterialBindings == right.mapMaterialBindings;
+}
+
+bool_t CWorldSequencePlayer::Admit_PresentationBossModel(const WORLD_SEQUENCE_OBJECT_RESOURCE& resource,
+    const TARGET_SET& targets, OBJECT_MODEL& out)
+{
+    /* Reuse the product boss admission instead of decoding the body again: the
+       Level owns the combined body (AnimSet attached), its armour and weapon. */
+    const std::string& archetypeId = resource.presentationBossArchetypeId;
+    const BOSS_ACTOR_ENTRY* actor = CActorCatalog::Find_Boss(archetypeId);
+    if (!actor)
+    { m_Status = "World Object presentation boss is not in the boss catalog: " + archetypeId; return false; }
+    if (actor->bodyModel != resource.modelAssetId || actor->animationSetId != resource.animationSetAssetId ||
+        actor->bodyModelPreScale != resource.modelPreScale)
+    { m_Status = "World Object body fields must match presentation boss " + archetypeId + ": " + resource.objectId; return false; }
+    const wstring_t bodyTag = CValtanPresentationAssetService::Get_BodyModelPrototypeTag(archetypeId);
+    if (bodyTag.empty())
+    { m_Status = "World Object presentation boss has no product assembly: " + archetypeId; return false; }
+    if (FAILED(CValtanPresentationAssetService::Ensure_Prototypes(targets.device, targets.context,
+        targets.levelIndex, archetypeId)))
+    { m_Status = "World Object presentation boss admission failed: " + archetypeId; return false; }
+    out.model = dynamic_pointer_cast<CModel>(CGameInstance::Get().Clone_Prototype(targets.levelIndex, bodyTag));
+    if (!out.model || !out.model->Get_NumMeshes() || !out.model->Has_Animations())
+    { m_Status = "World Object presentation boss body is unavailable: " + Narrow_PrototypeTag(bodyTag); return false; }
+    CWorldSequenceObject::DESC parts;
+    Fill_PresentationParts(archetypeId, parts);
+    for (const auto& part : parts.presentationParts)
+    {
+        if (!CGameInstance::Get().Clone_Prototype(targets.levelIndex, part.modelPrototypeTag))
+        { m_Status = "World Object presentation boss part is unavailable: " + Narrow_PrototypeTag(part.modelPrototypeTag); return false; }
+        if (!part.socketBone.empty() && !out.model->Has_Bone(part.socketBone.c_str()))
+        { m_Status = "World Object presentation boss socket bone is unavailable: " + part.socketBone; return false; }
+    }
+    out.presentationBossArchetypeId = archetypeId;
+    out.deviceIdentity = targets.device.Get();
+    out.contextIdentity = targets.context.Get();
+    out.catalogIdentity = targets.pCatalog;
+    return true;
 }
 
 const CWorldSequencePlayer::OBJECT_MODEL* CWorldSequencePlayer::Find_PreparedObjectModel(
@@ -391,6 +498,12 @@ bool_t CWorldSequencePlayer::Prepare_ObjectResources(
             if (!prepared) prepared = Find_SharedObjectModel(*resource, targets);
             if (prepared) model = m_ObjectModels.emplace(resource->objectId, *prepared).first;
         }
+        if (model == m_ObjectModels.end() && !resource->presentationBossArchetypeId.empty())
+        {
+            OBJECT_MODEL staged;
+            if (!Admit_PresentationBossModel(*resource, targets, staged)) return false;
+            model = m_ObjectModels.emplace(resource->objectId, std::move(staged)).first;
+        }
         if (model == m_ObjectModels.end())
         {
             OBJECT_MODEL staged;
@@ -449,6 +562,21 @@ bool_t CWorldSequencePlayer::Prepare_ObjectResources(
                     else if (report.succeeded) m_Status += " / binary decoded; model setup failed";
                 }
                 return false;
+            }
+            if (!resource->animationSetAssetId.empty())
+            {
+                /* The Valtan bodies ship their clips in a separate AnimSet WModel.
+                   Attach it to the prototype before any clone so every occurrence
+                   samples the same clip table the product boss uses. */
+                const auto animationSetPath = CRuntimeAssetRoot::Resolve(resource->animationSetAssetId);
+                if (animationSetPath.empty())
+                { m_Status = "World Object animation set path is invalid: " + resource->animationSetAssetId; return false; }
+                const unique_ptr<CModel> animationSet = CModel::Create(targets.device, targets.context,
+                    MODEL::ANIM, animationSetPath.string().c_str(),
+                    XMMatrixScaling(resource->modelPreScale, resource->modelPreScale, resource->modelPreScale));
+                if (!animationSet || !animationSet->Has_Animations() ||
+                    FAILED(staged.model->Attach_AnimationSet(*animationSet)))
+                { m_Status = "World Object animation set does not match the body: " + resource->animationSetAssetId; return false; }
             }
             if (!resource->diffuseTextureAssetId.empty())
             {
@@ -577,6 +705,7 @@ bool_t CWorldSequencePlayer::Prewarm_ObjectInstances(const std::string& instance
         desc.levelIndex = targets.levelIndex;
         desc.modelPrototype = model->second.model;
         desc.diffuseTexture = model->second.diffuse;
+        Fill_PresentationParts(model->second.presentationBossArchetypeId, desc);
         shared_ptr<CGameObject> created;
         const HRESULT result = CGameInstance::Get().Add_GameObject_to_Layer(targets.levelIndex,
             CWorldSequenceObject::PROTOTYPE_TAG, targets.levelIndex, CWorldSequenceObject::LAYER_TAG, &desc, &created);
@@ -907,6 +1036,7 @@ bool_t CWorldSequencePlayer::Apply_Objects(ACTIVE_INSTANCE& active,
                         desc.levelIndex = targets.levelIndex;
                         desc.modelPrototype = model->second.model;
                         desc.diffuseTexture = model->second.diffuse;
+                        Fill_PresentationParts(model->second.presentationBossArchetypeId, desc);
                         shared_ptr<CGameObject> staged;
                         if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(targets.levelIndex,
                             CWorldSequenceObject::PROTOTYPE_TAG, targets.levelIndex,

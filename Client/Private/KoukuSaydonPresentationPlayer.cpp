@@ -2419,6 +2419,7 @@ void Client::CKoukuSaydonPresentationPlayer::Update(float dt,
 {
     m_LogicPreviewPlayers = players;
     if (!std::isfinite(dt) || dt < 0.f) return;
+    Sync_PreviewSourceVisibility();
     m_LightPlayerPivots.clear();
     m_LightBossFollowers.clear();
     for (const auto& view : bosses)
@@ -2839,6 +2840,9 @@ void Client::CKoukuSaydonPresentationPlayer::Release_BundlePreviewMembers(
     auto* level = CLevel_KakulSaydonArena::Get_Active();
     for (auto& member : members)
     {
+        if (const auto source = member.suppressedSourceActor.lock())
+            source->Release_CompositionPreviewSuppression();
+        member.suppressedSourceActor.reset();
         if (member.actor)
         {
             member.actor->Set_CounterAfterimageEnabled(false);
@@ -3046,6 +3050,9 @@ bool Client::CKoukuSaydonPresentationPlayer::Begin_BundlePreview(
     { status = "Bundle preview requires an active arena and a valid nonempty bundle."; return false; }
     if (externalWorldPreview && (bundle->Members.size() != 1u || bundle->Members.front().iStartOffsetMs))
     { status = "Level WORLD preview requires one Pattern on the common clock."; return false; }
+    CWorldGameplayDocument previewWorld;
+    if (!previewWorld.Load(CProjectDataRoot::Resolve(std::filesystem::path("Worlds") /
+        document.strAreaId / "Gameplay.world.json"), document.strAreaId, status)) return false;
     std::vector<BUNDLE_PREVIEW_MEMBER> staged;
     std::vector<CWorldSequencePlayer*> stagedWorldPlayers;
     KOUKU_SAYDON_COMPOSITION_PATTERN common;
@@ -3103,6 +3110,10 @@ bool Client::CKoukuSaydonPresentationPlayer::Begin_BundlePreview(
         member.memberId = sourceMember.strMemberId;
         member.offsetTicks = static_cast<std::uint32_t>((std::uint64_t(sourceMember.iStartOffsetMs) * 30u + 999u) / 1000u);
         member.pattern = *source;
+        const auto* sourcePlacement = previewWorld.Find(source->strTargetBossPlacementId);
+        if (!sourcePlacement || sourcePlacement->eKind != WORLD_PLACEMENT_KIND::BOSS)
+            return fail("Preview source boss placement is unavailable: " + source->strTargetBossPlacementId);
+        member.sourceArchetypeId = sourcePlacement->archetypeId;
         member.facingStages = source->Stages;
         if (!CKoukuSaydonCompositionDocument::Try_ResolveAnimationBlendWindows(document, *source,
             member.pattern.AnimationBlendWindows, status)) return fail(status);
@@ -3254,6 +3265,7 @@ bool Client::CKoukuSaydonPresentationPlayer::Begin_BundlePreview(
     m_bPreviewClockAwaitingFirstUpdate = true;
     m_bPreviewPaused = paused;
     XMStoreFloat4x4(&m_PreviewPivot, XMMatrixIdentity());
+    Sync_PreviewSourceVisibility();
     if (!externalWorldPreview) Sample_BundlePreview();
     if (!m_bPreviewPlaying) { status = m_strStatus; return false; }
     Refresh_SharedPresentation();
@@ -3689,9 +3701,32 @@ Client::CKoukuSaydonPresentationPlayer::Resolve_PreviewAnimation(
     return selected;
 }
 
+void Client::CKoukuSaydonPresentationPlayer::Sync_PreviewSourceVisibility()
+{
+    auto* level = CLevel_KakulSaydonArena::Get_Active();
+    std::vector<KOUKU_BOSS_PRESENTATION_VIEW> bosses;
+    std::vector<KOUKU_CARD_PRESENTATION_VIEW> players;
+    if (level) level->Collect_KoukuPresentationViews(bosses, players);
+    for (auto& member : m_BundlePreviewMembers)
+    {
+        std::shared_ptr<CNpc> replacement;
+        // Synthetic split/summon clones do not replace an authoritative boss.
+        if (m_bPreviewPlaying && !member.finiteActorLifetime && !member.sourceArchetypeId.empty())
+            for (const auto& boss : bosses)
+                if (!boss.iOwnerBossNetEntityId && boss.strArchetypeId == member.sourceArchetypeId)
+                { replacement = boss.pNpc.lock(); break; }
+        const auto previous = member.suppressedSourceActor.lock();
+        if (previous == replacement) continue;
+        if (previous) previous->Release_CompositionPreviewSuppression();
+        member.suppressedSourceActor = replacement;
+        if (replacement) replacement->Acquire_CompositionPreviewSuppression();
+    }
+}
+
 void Client::CKoukuSaydonPresentationPlayer::Sample_BundlePreview()
 {
     auto* level = CLevel_KakulSaydonArena::Get_Active();
+    Sync_PreviewSourceVisibility();
     if (!level || !m_bPreviewPlaying || !Prepare_PreviewEffects()) return;
     std::uint32_t effectiveMs = Preview_ClockMs();
     if (!Resolve_PreviewCaptureClock(effectiveMs, effectiveMs))

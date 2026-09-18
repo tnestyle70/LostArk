@@ -1,0 +1,177 @@
+{
+ "note": "원본 DeployData zone 11102 변환 좌표. 베른 navigation 을 마을 전체로 다시 bake 한 뒤 이 값으로 복원한다.",
+ "areaId": "LV_BER_BERNCASTLE",
+ "placements": {
+  "npc.bern.src.669": {
+   "archetypeId": "NPC_25255",
+   "position": [
+    75.201,
+    34.61,
+    -36.04
+   ],
+   "yawDegrees": 231.86
+  },
+  "npc.bern.src.29": {
+   "archetypeId": "NPC_25007",
+   "position": [
+    243.157,
+    44.29,
+    -66.308
+   ],
+   "yawDegrees": 178.88
+  },
+  "npc.bern.src.64": {
+   "archetypeId": "NPC_25072",
+   "position": [
+    70.882,
+    42.26,
+    -73.277
+   ],
+   "yawDegrees": 185.8
+  },
+  "npc.bern.src.63": {
+   "archetypeId": "NPC_25030",
+   "position": [
+    64.182,
+    42.282,
+    -75.476
+   ],
+   "yawDegrees": 355.43
+  },
+  "npc.bern.src.74": {
+   "archetypeId": "NPC_25025",
+   "position": [
+    189.816,
+    49.11,
+    -146.669
+   ],
+   "yawDegrees": 276.86
+  },
+  "npc.bern.src.700": {
+   "archetypeId": "NPC_25044",
+   "position": [
+    62.119,
+    42.262,
+    -93.138
+   ],
+   "yawDegrees": 265.43
+  },
+  "npc.bern.src.48": {
+   "archetypeId": "NPC_25012",
+   "position": [
+    195.033,
+    49.11,
+    -146.608
+   ],
+   "yawDegrees": 303.75
+  },
+  "npc.bern.src.72": {
+   "archetypeId": "NPC_25057",
+   "position": [
+    195.066,
+    38.46,
+    -40.897
+   ],
+   "yawDegrees": 46.54
+  },
+  "npc.bern.src.38": {
+   "archetypeId": "NPC_25019",
+   "position": [
+    194.53,
+    47.619,
+    -118.836
+   ],
+   "yawDegrees": 343.5
+  },
+  "npc.bern.src.701": {
+   "archetypeId": "NPC_25306",
+   "position": [
+    58.682,
+    42.26,
+    -93.661
+   ],
+   "yawDegrees": 234.67
+  },
+  "npc.bern.src.61": {
+   "archetypeId": "NPC_25045",
+   "position": [
+    61.428,
+    45.462,
+    -119.082
+   ],
+   "yawDegrees": 243.28
+  },
+  "npc.bern.src.46": {
+   "archetypeId": "NPC_25024",
+   "position": [
+    178.519,
+    47.621,
+    -147.132
+   ],
+   "yawDegrees": 226.05
+  },
+  "npc.bern.src.722": {
+   "archetypeId": "NPC_80025",
+   "position": [
+    188.425,
+    49.117,
+    -144.637
+   ],
+   "yawDegrees": 289.09
+  },
+  "npc.bern.src.33": {
+   "archetypeId": "NPC_25006",
+   "position": [
+    236.697,
+    43.51,
+    -44.421
+   ],
+   "yawDegrees": 181.76
+  },
+  "npc.bern.src.31": {
+   "archetypeId": "NPC_25182",
+   "position": [
+    227.15,
+    43.51,
+    -70.168
+   ],
+   "yawDegrees": 223.07
+  },
+  "npc.bern.src.713": {
+   "archetypeId": "NPC_80023",
+   "position": [
+    237.425,
+    43.515,
+    -47.568
+   ],
+   "yawDegrees": 161.02
+  },
+  "npc.bern.src.34": {
+   "archetypeId": "NPC_SRC_25008",
+   "position": [
+    212.86,
+    39.58,
+    -43.274
+   ],
+   "yawDegrees": 189.32
+  },
+  "npc.bern.src.698": {
+   "archetypeId": "NPC_25005",
+   "position": [
+    245.638,
+    44.385,
+    -51.388
+   ],
+   "yawDegrees": 185.27
+  },
+  "npc.bern.src.42": {
+   "archetypeId": "NPC_SRC_25016",
+   "position": [
+    239.741,
+    37.144,
+    275.647
+   ],
+   "yawDegrees": 182.64
+  }
+ }
+}

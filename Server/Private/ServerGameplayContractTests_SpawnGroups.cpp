@@ -918,7 +918,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_SpawnGroups(TESTS& test
 				{
 					return WORLD_DESTRUCTION_STATE::BREAKING == state.eState;
 				}));
-		/* The 109 batch is the thirty outer ring walls plus every interior
+		/* The 109 batch is the twenty-seven outer ring walls plus every interior
 		wall still standing, so the cutscene leaves no wall behind. A floor
 		sector or an entrance wall leaving INTACT on this edge would take the
 		arena's footing away a whole health-bar chain too early. */
@@ -945,9 +945,9 @@ void LostArk::Server::CServerGameplayContractRunner::Run_SpawnGroups(TESTS& test
 							"destroyable.group.valtan.wall.", 0u);
 				}));
 		tests.Require(
-			applied && 97u == breakingCount && 67u == interiorBreakingCount &&
+			applied && 94u == breakingCount && 67u == interiorBreakingCount &&
 			0u == outsideBreakingCount &&
-			98u == room.m_iNextWorldDestructionEventSequence,
+			95u == room.m_iNextWorldDestructionEventSequence,
 			"Emit one monotonically sequenced live event for every 109-bar wall");
 
 		const std::uint64_t sequenceAfterFirstEdge =
@@ -986,10 +986,10 @@ void LostArk::Server::CServerGameplayContractRunner::Run_SpawnGroups(TESTS& test
 				transaction, boss, repeatedEvents, status);
 		room.m_WorldDestructionRuntime = std::move(activeRuntime);
 		tests.Require(
-			builtFirst && builtRepeated && 97u == firstEvents.size() &&
+			builtFirst && builtRepeated && 94u == firstEvents.size() &&
 			firstEvents.size() == repeatedEvents.size() &&
 			1u == firstEvents.front().iEventSequence &&
-			97u == firstEvents.back().iEventSequence &&
+			94u == firstEvents.back().iEventSequence &&
 			firstEvents.front().iRandomSeed ==
 				repeatedEvents.front().iRandomSeed &&
 			firstEvents.front().fImpactOriginX == boss.fPositionX &&
@@ -1030,7 +1030,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_SpawnGroups(TESTS& test
 				room.m_iNextWorldDestructionEventSequence,
 			"Commit due FRACTURED states without emitting a second live event");
 
-		/* The real 109 commit clears 97 walls. The two independent entrance
+		/* The real 109 commit clears 94 walls. The two independent entrance
 		impacts must also clear their sibling receivers, not only source leaves. */
 		constexpr const char* FRONT_A = "collision.valtan.wallgroup.frontwallA.receiver";
 		constexpr const char* FRONT_B = "collision.valtan.wallgroup.frontwallB.receiver";

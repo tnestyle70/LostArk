@@ -236,42 +236,6 @@
                        "initialState":  "INTACT"
                    },
                    {
-                       "groupId":  "destroyable.group.valtan.outerwall109.1090000000000011",
-                       "memberPlacementIds":  [
-                                                  "1090000000000011",
-                                                  "1091000000000011"
-                                              ],
-                       "navigationRegionIds":  [
-                                                   "navregion.valtan.outerwall109.1090000000000011"
-                                               ],
-                       "navPolarity":  "BLOCK_WHILE_INTACT",
-                       "initialState":  "INTACT"
-                   },
-                   {
-                       "groupId":  "destroyable.group.valtan.outerwall109.1090000000000025",
-                       "memberPlacementIds":  [
-                                                  "1090000000000025",
-                                                  "1091000000000025"
-                                              ],
-                       "navigationRegionIds":  [
-                                                   "navregion.valtan.outerwall109.1090000000000025"
-                                               ],
-                       "navPolarity":  "BLOCK_WHILE_INTACT",
-                       "initialState":  "INTACT"
-                   },
-                   {
-                       "groupId":  "destroyable.group.valtan.outerwall109.1090000000000026",
-                       "memberPlacementIds":  [
-                                                  "1090000000000026",
-                                                  "1091000000000026"
-                                              ],
-                       "navigationRegionIds":  [
-                                                   "navregion.valtan.outerwall109.1090000000000026"
-                                               ],
-                       "navPolarity":  "BLOCK_WHILE_INTACT",
-                       "initialState":  "INTACT"
-                   },
-                   {
                        "groupId":  "destroyable.group.valtan.outerwall109.1090000000000027",
                        "memberPlacementIds":  [
                                                   "1090000000000027",
@@ -1321,24 +1285,6 @@
                           "breakingDurationMs":  250
                       },
                       {
-                          "mutationId":  "mutation.valtan.outerwall109.1090000000000011.despawn",
-                          "groupId":  "destroyable.group.valtan.outerwall109.1090000000000011",
-                          "targetState":  "DESPAWNED",
-                          "breakingDurationMs":  250
-                      },
-                      {
-                          "mutationId":  "mutation.valtan.outerwall109.1090000000000025.despawn",
-                          "groupId":  "destroyable.group.valtan.outerwall109.1090000000000025",
-                          "targetState":  "DESPAWNED",
-                          "breakingDurationMs":  250
-                      },
-                      {
-                          "mutationId":  "mutation.valtan.outerwall109.1090000000000026.despawn",
-                          "groupId":  "destroyable.group.valtan.outerwall109.1090000000000026",
-                          "targetState":  "DESPAWNED",
-                          "breakingDurationMs":  250
-                      },
-                      {
                           "mutationId":  "mutation.valtan.outerwall109.1090000000000027.despawn",
                           "groupId":  "destroyable.group.valtan.outerwall109.1090000000000027",
                           "targetState":  "DESPAWNED",
@@ -1973,16 +1919,6 @@
                        "enabled": true
                      },
                      {
-                       "bindingId": "binding.valtan.outerwall109.1090000000000011.impact",
-                       "mutationId": "mutation.valtan.outerwall109.1090000000000011.despawn",
-                       "patternId": "VALTAN_ARENA_BREAK_109",
-                       "stageId": "IMPACT",
-                       "triggerKind": "STAGE_ENTER",
-                       "offsetMs": 0,
-                       "receiverCollisionId": "",
-                       "enabled": true
-                     },
-                     {
                        "bindingId": "binding.valtan.outerwall109.1090000000000012.impact",
                        "mutationId": "mutation.valtan.outerwall109.1090000000000012.despawn",
                        "patternId": "VALTAN_ARENA_BREAK_109",
@@ -2105,26 +2041,6 @@
                      {
                        "bindingId": "binding.valtan.outerwall109.1090000000000024.impact",
                        "mutationId": "mutation.valtan.outerwall109.1090000000000024.despawn",
-                       "patternId": "VALTAN_ARENA_BREAK_109",
-                       "stageId": "IMPACT",
-                       "triggerKind": "STAGE_ENTER",
-                       "offsetMs": 0,
-                       "receiverCollisionId": "",
-                       "enabled": true
-                     },
-                     {
-                       "bindingId": "binding.valtan.outerwall109.1090000000000025.impact",
-                       "mutationId": "mutation.valtan.outerwall109.1090000000000025.despawn",
-                       "patternId": "VALTAN_ARENA_BREAK_109",
-                       "stageId": "IMPACT",
-                       "triggerKind": "STAGE_ENTER",
-                       "offsetMs": 0,
-                       "receiverCollisionId": "",
-                       "enabled": true
-                     },
-                     {
-                       "bindingId": "binding.valtan.outerwall109.1090000000000026.impact",
-                       "mutationId": "mutation.valtan.outerwall109.1090000000000026.despawn",
                        "patternId": "VALTAN_ARENA_BREAK_109",
                        "stageId": "IMPACT",
                        "triggerKind": "STAGE_ENTER",
@@ -2673,16 +2589,6 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.outerwall109.1090000000000011.dash-charge-impact",
-                         "mutationId":  "mutation.valtan.outerwall109.1090000000000011.despawn",
-                         "patternId":  "VALTAN_DASH_CHARGE",
-                         "stageId":  "CHARGE",
-                         "triggerKind":  "COLLISION_IMPACT",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "collision.valtan.wallgroup.sector03.1090000000000011.receiver",
-                         "enabled":  true
-                     },
-                     {
                          "bindingId":  "binding.valtan.outerwall109.1090000000000012.dash-charge-impact",
                          "mutationId":  "mutation.valtan.outerwall109.1090000000000012.despawn",
                          "patternId":  "VALTAN_DASH_CHARGE",
@@ -2810,26 +2716,6 @@
                          "triggerKind":  "COLLISION_IMPACT",
                          "offsetMs":  0,
                          "receiverCollisionId":  "collision.valtan.wallgroup.sector07.1090000000000024.receiver",
-                         "enabled":  true
-                     },
-                     {
-                         "bindingId":  "binding.valtan.outerwall109.1090000000000025.dash-charge-impact",
-                         "mutationId":  "mutation.valtan.outerwall109.1090000000000025.despawn",
-                         "patternId":  "VALTAN_DASH_CHARGE",
-                         "stageId":  "CHARGE",
-                         "triggerKind":  "COLLISION_IMPACT",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "collision.valtan.wallgroup.sector03.1090000000000025.receiver",
-                         "enabled":  true
-                     },
-                     {
-                         "bindingId":  "binding.valtan.outerwall109.1090000000000026.dash-charge-impact",
-                         "mutationId":  "mutation.valtan.outerwall109.1090000000000026.despawn",
-                         "patternId":  "VALTAN_DASH_CHARGE",
-                         "stageId":  "CHARGE",
-                         "triggerKind":  "COLLISION_IMPACT",
-                         "offsetMs":  0,
-                         "receiverCollisionId":  "collision.valtan.wallgroup.sector03.1090000000000026.receiver",
                          "enabled":  true
                      },
                      {

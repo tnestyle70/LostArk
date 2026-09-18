@@ -204,7 +204,7 @@ bool_t Client::CMapTool::Reload_DestructionAuthoring()
 	return true;
 }
 
-bool_t Client::CMapTool::Ensure_DestructionDebrisAuthoringPrototypes()
+bool_t Client::CMapTool::Ensure_DestructionDebrisAuthoringPrototypes(const bool_t runtimeAttach)
 {
 	if (m_iAuthoringLevelIndex >= ETOUI(LEVEL::END) ||
 		nullptr == m_pDevice || nullptr == m_pContext)
@@ -255,7 +255,7 @@ bool_t Client::CMapTool::Ensure_DestructionDebrisAuthoringPrototypes()
 		return false;
 	}
 
-	auto admitBatch = [this](
+	auto admitBatch = [this, runtimeAttach](
 		const vector<const DESTRUCTION_SIMULATION_DEBRIS_MODEL_SPEC*>& batch,
 		const bool_t required,
 		const string& label,
@@ -292,6 +292,15 @@ bool_t Client::CMapTool::Ensure_DestructionDebrisAuthoringPrototypes()
 			{
 				const auto fingerprint =
 					m_PrototypeModelPaths.find(spec->prototypeTag);
+				/* While the tool edits a live arena map, the Level already
+				   registered this debris prototype from the same authored
+				   recipe. Adopt that identity instead of reporting a clash. */
+				if ((runtimeAttach || m_bRuntimeAuthoring) &&
+					fingerprint == m_PrototypeModelPaths.end())
+				{
+					m_PrototypeModelPaths.emplace(spec->prototypeTag, modelPath);
+					continue;
+				}
 				if (fingerprint == m_PrototypeModelPaths.end() ||
 					fingerprint->second.lexically_normal() != modelPath)
 				{

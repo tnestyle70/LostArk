@@ -12,7 +12,7 @@ param(
     [ValidateSet('Validate', 'Check', 'Publish')]
     [string]$Mode = 'Publish',
 
-    [ValidateSet('Area', 'WorldSequences', 'Lights')]
+    [ValidateSet('Area', 'WorldSequences', 'Lights', 'Deploy', 'Placements', 'CameraShots')]
     [string]$Scope = 'Area'
 )
 
@@ -1433,7 +1433,7 @@ function Read-WorldSequenceDocument {
         }
         foreach ($resource in $document.objectResources) {
             $fields = @('objectId','displayName','modelAssetId','modelPreScale','animated','scale')
-            foreach ($optional in @('diffuseTextureAssetId','sequenceInstanceId','anchorKind','anchorBossArchetypeId','anchorBone','defaultMotionInstanceId','materialProfile','materialSourceModelAssetId','mapMaterialBindings','motionInstanceIds','combatBody')) {
+            foreach ($optional in @('diffuseTextureAssetId','sequenceInstanceId','anchorKind','anchorBossArchetypeId','anchorBone','defaultMotionInstanceId','materialProfile','materialSourceModelAssetId','mapMaterialBindings','motionInstanceIds','combatBody','animationSetAssetId','presentationBossArchetypeId')) {
                 if ($null -ne $resource.PSObject.Properties[$optional]) { $fields += $optional }
             }
             Assert-ExactJsonProperties $resource $fields 'World object resource'
@@ -1506,6 +1506,8 @@ function Read-WorldSequenceDocument {
                      ($resource.mapMaterialBindings -isnot [System.Array] -or $resource.mapMaterialBindings.Count -ne 0))) {
                     throw 'Object group cannot carry material input'
                 }
+                if ($null -ne $resource.PSObject.Properties['animationSetAssetId']) { throw 'Object group cannot carry an animation set' }
+                if ($null -ne $resource.PSObject.Properties['presentationBossArchetypeId']) { throw 'Object group cannot carry a presentation boss' }
                 $memberIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
                 foreach ($id in $members) {
                     if ($id -isnot [string] -or $id -cnotmatch $stableId -or -not $memberIds.Add($id)) {
@@ -1527,6 +1529,20 @@ function Read-WorldSequenceDocument {
                 if ($null -ne $resource.PSObject.Properties['diffuseTextureAssetId']) {
                     if ($resource.diffuseTextureAssetId -isnot [string]) { throw 'World object diffuse path must be a string' }
                     if ($resource.diffuseTextureAssetId -ne '') { Assert-SequenceAssetPath $resource.diffuseTextureAssetId $false }
+                }
+            }
+            if ($null -ne $resource.PSObject.Properties['animationSetAssetId']) {
+                # A separate AnimSet WModel only makes sense for a skinned body that plays clips.
+                if ($alias -or -not $resource.animated -or $resource.animationSetAssetId -isnot [string] -or $resource.animationSetAssetId -eq '') {
+                    throw "Invalid world object animation set: $($resource.objectId)"
+                }
+                Assert-SequenceAssetPath $resource.animationSetAssetId $true
+            }
+            if ($null -ne $resource.PSObject.Properties['presentationBossArchetypeId']) {
+                # The product boss assembly borrows this skinned body's bone palette.
+                if ($alias -or -not $resource.animated -or $resource.presentationBossArchetypeId -isnot [string] -or
+                    $resource.presentationBossArchetypeId -cnotmatch '^[A-Za-z0-9_.-]{1,128}$') {
+                    throw "Invalid world object presentation boss: $($resource.objectId)"
                 }
             }
             if ($null -ne $resource.PSObject.Properties['materialSourceModelAssetId']) {
@@ -2130,7 +2146,7 @@ function Assert-WorldSequencePlacementTargets {
             [IO.Path]::GetExtension($Name) -cne $Extension) {
             throw "World sequence target filename is invalid: $Name"
         }
-        if ($Scope -eq 'Area') {
+        if ($Scope -in @('Area', 'Placements')) {
             $staged = @($Files | Where-Object { $_.Name -ceq $Name })
             if ($staged.Count -ne 1) { throw "World sequence target file is not staged: $Name" }
             return $staged[0].Lines
@@ -2144,7 +2160,7 @@ function Assert-WorldSequencePlacementTargets {
 
     $placements = [Collections.Generic.Dictionary[uint64,object]]::new()
     if ($mapBindings.Count -gt 0) {
-        $sharded = if ($Scope -eq 'Area') {
+        $sharded = if ($Scope -in @('Area', 'Placements')) {
             @($Files | Where-Object { $_.Name -ceq "$AreaId.mapset" }).Count -eq 1
         } else {
             if ($areaEntry.catalogType -cnotin @('single','shard-set')) {
@@ -2242,8 +2258,56 @@ function Read-CameraShotDocument {
     $text = [IO.File]::ReadAllText($Path, [Text.UTF8Encoding]::new($false, $true))
     try { $document = $text | ConvertFrom-Json }
     catch { throw "Camera shot JSON parse failed: $Path" }
-    Assert-ExactJsonProperties $document `
-        @('schema','formatVersion','areaId','revision','shots') 'Camera shot root'
+    # Cutscenes are the authoring-side timetable that groups shots into one
+    # editable cutscene. They are optional, so a document that never carried
+    # the section still validates exactly as before.
+    $rootProperties = @('schema','formatVersion','areaId','revision','shots')
+    if ($null -ne $document.PSObject.Properties['cutscenes']) {
+        $rootProperties += 'cutscenes'
+    }
+    Assert-ExactJsonProperties $document $rootProperties 'Camera shot root'
+    if ($null -ne $document.PSObject.Properties['cutscenes']) {
+        if ($document.cutscenes -isnot [Array]) { throw 'Camera cutscenes must be an array' }
+        $shotIds = @($document.shots | ForEach-Object { $_.shotId })
+        $cutsceneIds = @{}
+        foreach ($cutscene in $document.cutscenes) {
+            Assert-ExactJsonProperties $cutscene `
+                @('cutsceneId','displayName','durationMs','cameraCuts','worldInstanceIds') 'Camera cutscene'
+            if ([string]::IsNullOrWhiteSpace($cutscene.cutsceneId)) { throw 'Camera cutscene id is empty' }
+            if ($cutsceneIds.ContainsKey($cutscene.cutsceneId)) {
+                throw "Camera cutscene id is duplicate: $($cutscene.cutsceneId)"
+            }
+            $cutsceneIds[$cutscene.cutsceneId] = $true
+            if (-not (Test-JsonNumber $cutscene.durationMs) -or
+                [double]$cutscene.durationMs -lt 1 -or
+                [double]$cutscene.durationMs -gt 600000) {
+                throw "Camera cutscene durationMs is invalid: $($cutscene.cutsceneId)"
+            }
+            if ($cutscene.cameraCuts -isnot [Array]) {
+                throw "Camera cutscene cuts are invalid: $($cutscene.cutsceneId)"
+            }
+            if ($cutscene.worldInstanceIds -isnot [Array]) {
+                throw "Camera cutscene world instances are invalid: $($cutscene.cutsceneId)"
+            }
+            $cutIds = @{}
+            foreach ($cut in $cutscene.cameraCuts) {
+                Assert-ExactJsonProperties $cut @('cutId','shotId','startMs') 'Camera cutscene cut'
+                if ([string]::IsNullOrWhiteSpace($cut.cutId)) { throw 'Camera cutscene cut id is empty' }
+                if ($cutIds.ContainsKey($cut.cutId)) {
+                    throw "Camera cutscene cut id is duplicate: $($cut.cutId)"
+                }
+                $cutIds[$cut.cutId] = $true
+                if ($shotIds -notcontains $cut.shotId) {
+                    throw "Camera cutscene cut names an unknown shot: $($cut.shotId)"
+                }
+                if (-not (Test-JsonNumber $cut.startMs) -or
+                    [double]$cut.startMs -lt 0 -or
+                    [double]$cut.startMs -gt 600000) {
+                    throw "Camera cutscene cut startMs is invalid: $($cut.cutId)"
+                }
+            }
+        }
+    }
     if ($document.schema -ne 'lostark.camera-shots' -or
         -not (Test-JsonNumber $document.formatVersion) -or
         [double]$document.formatVersion -ne 1 -or
@@ -3180,7 +3244,9 @@ elseif ([IO.File]::Exists($authoringLightPath)) {
 
 }
 
-if ($Scope -eq 'Area') {
+# Placements needs the material declaration so published catalogs keep their
+# v5 material reference; it stages no effect, water or material file itself.
+if ($Scope -in @('Area', 'Placements')) {
 $sourceEffectsProperty = $areaEntry.PSObject.Properties['sourceEffects']
 $runtimeEffectsProperty = $areaEntry.PSObject.Properties['effects']
 if (($null -eq $sourceEffectsProperty) -ne ($null -eq $runtimeEffectsProperty)) {
@@ -3265,7 +3331,7 @@ elseif ([IO.File]::Exists($authoringSequencePath)) {
     throw "World sequence source exists without a MapCatalog declaration: $AreaId"
 }
 
-if ($Scope -eq 'Area') {
+if ($Scope -in @('Area', 'CameraShots')) {
 $sourceCameraShotsProperty = $areaEntry.PSObject.Properties['sourceCameraShots']
 $runtimeCameraShotsProperty = $areaEntry.PSObject.Properties['cameraShots']
 if (($null -eq $sourceCameraShotsProperty) -ne ($null -eq $runtimeCameraShotsProperty)) {
@@ -3444,12 +3510,62 @@ if ($Scope -eq 'Lights') {
     return
 }
 
+if ($Scope -eq 'CameraShots') {
+    if (-not $script:cameraShotsDeclared) { throw "Map catalog does not declare camera shots: $AreaId" }
+    $authoringRows = @()
+    $files = [Collections.Generic.List[object]]::new()
+    Add-CameraShotPublishFile $files
+    Complete-MapPublish $files 'camera-shots' $runtimeCameraShotPath
+    return
+}
+
 if ($Scope -eq 'WorldSequences') {
     if (-not $script:worldSequencesDeclared) { throw "Map catalog does not declare World Sequences: $AreaId" }
     $authoringRows = @()
     $files = [Collections.Generic.List[object]]::new()
     Add-WorldSequencePublishFile $files
     Complete-MapPublish $files 'world-sequences' $runtimeSequencePath
+    return
+}
+
+function Assert-PlacementScopeSequenceTargets {
+    # Visual placements only: catalog, placements and (for shard sets) the
+    # mapset. Lights, materials, effects, water, deploy props, camera shots and
+    # World Sequences keep their current runtime bytes. A declared World
+    # Sequence is still joined against the staged placements so this scope
+    # cannot publish a placement set that orphans a sequence target.
+    param([Collections.Generic.List[object]]$Files)
+    if (-not $script:worldSequencesDeclared) { return }
+    if (-not [IO.File]::Exists($authoringSequencePath)) {
+        throw "Declared world sequence authoring source is missing: $authoringSequencePath"
+    }
+    $sequenceLines = @(Read-WorldSequenceDocument $authoringSequencePath)
+    Assert-WorldSequencePlacementTargets ($sequenceLines -join "`n" | ConvertFrom-Json) $Files
+}
+
+if ($Scope -eq 'Deploy') {
+    # Deploy props only: this Area's deploy asset catalog and placements.
+    # Map placements, lights, materials, effects, water, camera shots and World
+    # Sequences keep their current runtime bytes. The catalog rides along only
+    # when its content already matches the runtime (line endings aside), so a
+    # pending catalog change is never published as a side effect of this scope.
+    $authoringRows = @()
+    $files = [Collections.Generic.List[object]]::new()
+    Add-DeployPublishFiles $files
+    if ($files.Count -ne 2) { throw "Area declares no deploy authoring pair: $AreaId" }
+    $deployCatalogName = "$AreaId.deployassets"
+    $stagedCatalog = @($files | Where-Object { $_.Name -ceq $deployCatalogName })
+    if ($stagedCatalog.Count -ne 1) { throw "Deploy scope did not stage its catalog: $AreaId" }
+    $runtimeDeployCatalogPath = Join-Path $runtimeRoot $deployCatalogName
+    if (-not [IO.File]::Exists($runtimeDeployCatalogPath)) {
+        throw "Deploy asset catalog is not published yet; review and publish it with -Scope Area: $runtimeDeployCatalogPath"
+    }
+    $runtimeDeployCatalogText = [string[]]@(
+        [IO.File]::ReadAllLines($runtimeDeployCatalogPath, [Text.Encoding]::UTF8)) -join "`n"
+    if ($runtimeDeployCatalogText -cne ([string[]]$stagedCatalog[0].Lines -join "`n")) {
+        throw "Deploy asset catalog content differs from the runtime; review it and publish with -Scope Area: $runtimeDeployCatalogPath"
+    }
+    Complete-MapPublish $files 'deploy' (Join-Path $runtimeRoot "$AreaId.deployplacements")
     return
 }
 
@@ -3495,6 +3611,11 @@ if (-not [IO.File]::Exists($sourceShardSetPath)) {
         Lines = $lines
     })
 
+    if ($Scope -eq 'Placements') {
+        Assert-PlacementScopeSequenceTargets $files
+        Complete-MapPublish $files 'single' $runtimePath
+        return
+    }
     Add-DeployPublishFiles $files
     Add-MapLightPublishFile $files
     Add-MapEffectPublishFile $files
@@ -3622,6 +3743,11 @@ $files.Add([pscustomobject]@{
     Name = "$AreaId.mapset"
     Lines = $newMapSetLines
 })
+if ($Scope -eq 'Placements') {
+    Assert-PlacementScopeSequenceTargets $files
+    Complete-MapPublish $files 'shard-set' $shardSetPath $shards.Count
+    return
+}
 Add-DeployPublishFiles $files
 Add-MapLightPublishFile $files
 Add-MapEffectPublishFile $files

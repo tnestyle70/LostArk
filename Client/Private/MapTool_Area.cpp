@@ -5,7 +5,10 @@
 #include "DataJson.h"
 #include "GameInstance.h"
 #include "MapEditorWorkspaceService.h"
+#include "Level_Bern.h"
+#include "Level_CharacterSelect.h"
 #include "Level_KakulSaydonArena.h"
+#include "Level_ValtanArena.h"
 #include "MapAssetPreview.h"
 #include "DestructionSimulationController.h"
 #include "Model.h"
@@ -465,9 +468,59 @@ Client::CMapTool::Get_ActiveEditorArea() const
 CWorldSequencePlayer::TARGET_SET Client::CMapTool::Runtime_AuthoringTargets() const
 {
 #ifdef _DEBUG
-	if (CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::KAKULSAYDON_ARENA))
+	const uint32_t levelIndex = CGameInstance::Get().Get_CurrentLevelID();
+	if (levelIndex == ETOUI(LEVEL::KAKULSAYDON_ARENA))
 		if (auto* arena = CLevel_KakulSaydonArena::Get_Active())
 			return arena->Get_CompositionWorldTargets();
+	/* Valtan lends the same map runtime. It has no World Sequence owner, so the
+	   Object preparation and anchor hooks stay empty here. */
+	if (levelIndex == ETOUI(LEVEL::VALTAN_ARENA))
+	{
+		if (auto* arena = CLevel_ValtanArena::Get_Active())
+		{
+			CWorldSequencePlayer::TARGET_SET targets;
+			targets.levelIndex = levelIndex;
+			targets.pCatalog = &arena->Get_MapAuthoringRuntime().Get_Catalog();
+			targets.pPlacements = &arena->Get_MapAuthoringRuntime().Get_MutablePlacements();
+			targets.pDeployRuntime = &arena->Get_MapAuthoringDeploy();
+			targets.device = arena->Get_MapAuthoringDevice();
+			targets.context = arena->Get_MapAuthoringContext();
+			return targets;
+		}
+	}
+	/* Bern and Character Select lend the same live map runtime. Neither Area
+	   declares a DeployProp source pair, so the level-owned deploy runtime they
+	   hand over stays empty; it exists because the attach contract needs a real
+	   owner. Neither level drives map self motions or a World Sequence, so the
+	   Object preparation and anchor hooks stay empty here too. */
+	if (levelIndex == ETOUI(LEVEL::BERN))
+	{
+		if (auto* level = CLevel_Bern::Get_Active())
+		{
+			CWorldSequencePlayer::TARGET_SET targets;
+			targets.levelIndex = levelIndex;
+			targets.pCatalog = &level->Get_MapAuthoringRuntime().Get_Catalog();
+			targets.pPlacements = &level->Get_MapAuthoringRuntime().Get_MutablePlacements();
+			targets.pDeployRuntime = &level->Get_MapAuthoringDeploy();
+			targets.device = level->Get_MapAuthoringDevice();
+			targets.context = level->Get_MapAuthoringContext();
+			return targets;
+		}
+	}
+	if (levelIndex == ETOUI(LEVEL::CHARACTER_SELECT))
+	{
+		if (auto* level = CLevel_CharacterSelect::Get_Active())
+		{
+			CWorldSequencePlayer::TARGET_SET targets;
+			targets.levelIndex = levelIndex;
+			targets.pCatalog = &level->Get_MapAuthoringRuntime().Get_Catalog();
+			targets.pPlacements = &level->Get_MapAuthoringRuntime().Get_MutablePlacements();
+			targets.pDeployRuntime = &level->Get_MapAuthoringDeploy();
+			targets.device = level->Get_MapAuthoringDevice();
+			targets.context = level->Get_MapAuthoringContext();
+			return targets;
+		}
+	}
 #endif
 	return {};
 }
@@ -491,7 +544,20 @@ vector<Client::CMapTool::STATIC_BATCH_ENTRY>& Client::CMapTool::Authoring_Batche
 {
 #ifdef _DEBUG
 	if (m_bRuntimeAuthoring && Runtime_AuthoringTargets().pPlacements)
-		return CLevel_KakulSaydonArena::Get_Active()->Get_MapAuthoringBatches();
+	{
+		if (auto* kouku = CLevel_KakulSaydonArena::Get_Active())
+			if (CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::KAKULSAYDON_ARENA))
+				return kouku->Get_MapAuthoringBatches();
+		if (auto* valtan = CLevel_ValtanArena::Get_Active())
+			if (CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::VALTAN_ARENA))
+				return valtan->Get_MapAuthoringRuntime().Get_AuthoringBatches();
+		if (auto* bern = CLevel_Bern::Get_Active())
+			if (CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::BERN))
+				return bern->Get_MapAuthoringRuntime().Get_AuthoringBatches();
+		if (auto* select = CLevel_CharacterSelect::Get_Active())
+			if (CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::CHARACTER_SELECT))
+				return select->Get_MapAuthoringRuntime().Get_AuthoringBatches();
+	}
 #endif
 	return m_StaticBatches;
 }
@@ -514,17 +580,48 @@ bool_t Client::CMapTool::Can_ChangeRuntimeStructure()
 		return false;
 	}
 #ifdef _DEBUG
-	if (m_bRuntimeAuthoring)
+	if (m_bRuntimeAuthoring && !Can_ReplaceRuntimeAuthoringTargets())
 	{
-		auto* arena = CLevel_KakulSaydonArena::Get_Active();
-		if (!Runtime_AuthoringTargets().pPlacements || !arena || !arena->Can_ReplaceMapAuthoringTargets())
-		{
-			m_Status = "Stop active arena/Object/Composition playback before adding, deleting or reloading map objects.";
-			return false;
-		}
+		m_Status = "Stop active arena/Object/Composition playback before adding, deleting or reloading map objects.";
+		return false;
 	}
 #endif
 	return true;
+}
+
+bool_t Client::CMapTool::Can_ReplaceRuntimeAuthoringTargets() const
+{
+#ifdef _DEBUG
+	if (!Runtime_AuthoringTargets().pPlacements)
+		return false;
+	if (CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::KAKULSAYDON_ARENA))
+	{
+		auto* arena = CLevel_KakulSaydonArena::Get_Active();
+		return nullptr != arena && arena->Can_ReplaceMapAuthoringTargets();
+	}
+	/* Valtan, Bern and Character Select have no level-owned World Sequence or
+	   Composition preview to stop before the tool replaces placements. */
+	const uint32_t levelIndex = CGameInstance::Get().Get_CurrentLevelID();
+	return levelIndex == ETOUI(LEVEL::VALTAN_ARENA) ||
+		levelIndex == ETOUI(LEVEL::BERN) ||
+		levelIndex == ETOUI(LEVEL::CHARACTER_SELECT);
+#else
+	return false;
+#endif
+}
+
+void Client::CMapTool::Apply_RuntimeAuthoringActive(const bool_t active)
+{
+#ifdef _DEBUG
+	/* Only the Kouku arena drives map self motions, so only it has to stop
+	   them while the tool owns the placements. */
+	if (CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::KAKULSAYDON_ARENA))
+		return;
+	if (auto* arena = CLevel_KakulSaydonArena::Get_Active())
+		arena->Set_MapAuthoringActive(active);
+#else
+	(void)active;
+#endif
 }
 
 void Client::CMapTool::Remember_RuntimePlacement(const MAP_PLACEMENT_RECORD& record)
@@ -560,8 +657,10 @@ void Client::CMapTool::Forget_RuntimePlacement(uint64_t placementId)
 void Client::CMapTool::Rebase_RuntimeMotions()
 {
 #ifdef _DEBUG
-	if (m_bRuntimeAuthoring && Runtime_AuthoringTargets().pPlacements)
-		CLevel_KakulSaydonArena::Get_Active()->Rebase_MapAuthoringSelfMotions(m_RuntimePlacementDraft);
+	if (m_bRuntimeAuthoring && Runtime_AuthoringTargets().pPlacements &&
+		CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::KAKULSAYDON_ARENA))
+		if (auto* arena = CLevel_KakulSaydonArena::Get_Active())
+			arena->Rebase_MapAuthoringSelfMotions(m_RuntimePlacementDraft);
 #endif
 }
 
@@ -585,6 +684,9 @@ bool_t Client::CMapTool::Begin_EditorAreaSwitch(const size_t descriptorIndex)
 		m_Status = "Map editor Area switch is unavailable";
 		return false;
 	}
+	/* The preview drives this Area's actors; stop it while its targets are
+	   still the ones it was staged against. */
+	Stop_EditorCutscene();
 	if (nullptr != m_pWorldSequenceToolPanel && m_Catalog.Is_Ready())
 	{
 		m_pWorldSequenceToolPanel->Stop_AndRestore(
@@ -714,6 +816,9 @@ bool_t Client::CMapTool::Switch_EditorArea(const size_t descriptorIndex)
 
 	const EDITOR_AREA_DESCRIPTOR& descriptor =
 		m_EditorAreas[descriptorIndex];
+	/* Whatever this switch replaces, a running cutscene preview must not keep
+	   driving the previous catalog's actors. */
+	Stop_EditorCutscene();
 	const std::filesystem::path worldSequencePath =
 		descriptor.sourcePlacements.parent_path() /
 		std::filesystem::path(descriptor.areaId + ".worldsequences.json");
@@ -776,7 +881,7 @@ bool_t Client::CMapTool::Switch_EditorArea(const size_t descriptorIndex)
 				return found == liveIds.end() || found->second != record.assetId;
 			}))
 		{
-			m_Status = "Runtime/source placement IDs differ. Save in Test, publish and re-enter Kouku before runtime editing.";
+			m_Status = "Runtime/source placement IDs differ. Save in Test, publish and re-enter this level before runtime editing.";
 			return false;
 		}
 	}
@@ -942,7 +1047,7 @@ bool_t Client::CMapTool::Switch_EditorArea(const size_t descriptorIndex)
 		return false;
 	const bool_t stagedDebrisPrototypesReady =
 		!descriptor.destructionSimulationDocument.empty() &&
-		Ensure_DestructionDebrisAuthoringPrototypes();
+		Ensure_DestructionDebrisAuthoringPrototypes(runtimeAttach);
 	const std::string stagedDebrisPrototypeStatus =
 		descriptor.destructionSimulationDocument.empty() ?
 		"PROJECT_AUTHORED debris is not declared for this Area" : m_Status;
@@ -963,6 +1068,8 @@ bool_t Client::CMapTool::Switch_EditorArea(const size_t descriptorIndex)
 	{
 		Remove_PlacementRuntime(stagedPlacements, stagedBatches);
 		m_Catalog = std::move(previousCatalog);
+		if (m_Status.empty())
+			m_Status = "Deploy prop staging failed: " + descriptor.areaId;
 		return false;
 	}
 	if (!stagedWorldSequencePanel->Load_Area(
@@ -1010,6 +1117,8 @@ bool_t Client::CMapTool::Switch_EditorArea(const size_t descriptorIndex)
 		Remove_PlacementRuntime(stagedPlacements, stagedBatches);
 		stagedDeployRuntime.Clear();
 		m_Catalog = std::move(previousCatalog);
+		m_Status = "World trigger box preview staging failed: " + descriptor.areaId +
+			" (" + m_WorldGameplayStatus + ")";
 		return false;
 	}
 	vector<NPC_PREVIEW_ENTRY> stagedNpcPreviews;
@@ -1020,6 +1129,7 @@ bool_t Client::CMapTool::Switch_EditorArea(const size_t descriptorIndex)
 		stagedDeployRuntime.Clear();
 		Remove_WorldTriggerBoxes(stagedTriggerBoxes);
 		m_Catalog = std::move(previousCatalog);
+		m_Status = "World NPC preview staging failed: " + descriptor.areaId;
 		return false;
 	}
 	vector<TRIGGER_BOX_ENTRY> stagedSpawnAnchorBoxes;
@@ -1030,6 +1140,8 @@ bool_t Client::CMapTool::Switch_EditorArea(const size_t descriptorIndex)
 		Remove_WorldTriggerBoxes(stagedTriggerBoxes);
 		Remove_WorldNpcPreviews(stagedNpcPreviews);
 		m_Catalog = std::move(previousCatalog);
+		m_Status = "Spawn anchor box staging failed: " + descriptor.areaId +
+			" (" + m_WorldGameplayStatus + ")";
 		return false;
 	}
 
@@ -1206,6 +1318,9 @@ void Client::CMapTool::Handle_LevelTransition(
 		currentLevelIndex : ETOUI(LEVEL::END);
 	if (targetLevelIndex == m_iAuthoringLevelIndex)
 		return;
+	/* The cutscene session's actors and camera claim belonged to the Level
+	   being left; drop the tool's references before its containers go. */
+	Abandon_EditorCutscene("Cutscene preview stopped: the authoring Level changed.");
 	// Old level ownership is already gone during a Level transition. Never clear borrowed containers.
 	m_bRuntimeAuthoring = false;
 	m_RuntimePlacementDraft.clear();
@@ -1269,6 +1384,7 @@ void Client::CMapTool::Handle_LevelTransition(
 		m_pWorldSequenceToolPanel->Reset();
 	m_Catalog = CMapAssetCatalog{};
 	m_EditorAreas.clear();
+	m_EditorSublevelJumps.clear();
 	m_iActiveEditorArea = SIZE_MAX;
 	m_iPendingEditorArea = SIZE_MAX;
 	m_isEditorAreaSwitchPending = false;

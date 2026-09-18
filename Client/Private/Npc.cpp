@@ -707,7 +707,7 @@ void CNpc::Set_CounterAfterimageEnabled(const bool enabled, const float previewC
 
 void CNpc::Late_Update(f32_t fTimeDelta)
 {
-    if (!m_bPresentationVisible)
+    if (!Is_PresentationVisible())
     {
         Reset_AfterimageHistory();
         return;
@@ -765,7 +765,7 @@ void CNpc::Late_Update(f32_t fTimeDelta)
 HRESULT CNpc::Render_Group(const RENDERGROUP group)
 {
     if (group != RENDERGROUP::BLEND) return Render();
-    if (!m_bPresentationVisible) return S_OK;
+    if (!Is_PresentationVisible()) return S_OK;
     m_BodyAfterimage.Render(m_pModelCom, m_pShaderCom, *m_pTransformCom->Get_WorldMatrixPtr());
     ANIMATION_MODEL_TARGET_VIEW weaponView;
     if (m_pWeaponModelCom && Try_GetAnimationModelTarget(ANIMATION_BONE_TARGET::WEAPON, weaponView))
@@ -779,7 +779,7 @@ HRESULT CNpc::Render_Group(const RENDERGROUP group)
 
 HRESULT CNpc::Render()
 {
-    if (!m_bPresentationVisible) return S_OK;
+    if (!Is_PresentationVisible()) return S_OK;
 	if (FAILED(Bind_ShaderResources()))
 		return E_FAIL;
 

@@ -2,7 +2,7 @@
     "schema":  "lostark.world-destruction-debris-presentation",
     "formatVersion":  1,
     "areaId":  "LV_LUT_HEARTRB_ED",
-    "combatRuntimeRevision":  "d4c6de9061f579a8cd945002308f5dd5cb21bbc2708be2cd4d54ede1fcc70f4b",
+    "combatRuntimeRevision":  "50e5ee40352acad8d6ef6d4738d6a9eb90d31b851db422a8b6e45bf02bfef8ae",
     "profiles":  [
                      {
                          "groupId":  "destroyable.group.valtan.entrance.frontwallA",
@@ -473,32 +473,6 @@
                                       ]
                      },
                      {
-                         "groupId":  "destroyable.group.valtan.outerwall109.1090000000000011",
-                         "mutationId":  "mutation.valtan.outerwall109.1090000000000011.despawn",
-                         "bindingId":  "binding.valtan.outerwall109.1090000000000011.impact",
-                         "emitters":  [
-                                          {
-                                              "sourceRuntimePlacementId":  "1090000000000011",
-                                              "suppressionAliasPlacementIds":  [
-                                                                                   "1091000000000011"
-                                                                               ],
-                                              "spawnOffset":  [
-                                                                  0,
-                                                                  0,
-                                                                  0
-                                                              ],
-                                              "direction":  [
-                                                                -0.4719292,
-                                                                0.3303504,
-                                                                0.8174053
-                                                            ],
-                                              "speedMetersPerSecond":  9,
-                                              "gravityScale":  2,
-                                              "lifetimeSeconds":  4
-                                          }
-                                      ]
-                     },
-                     {
                          "groupId":  "destroyable.group.valtan.outerwall109.1090000000000012",
                          "mutationId":  "mutation.valtan.outerwall109.1090000000000012.despawn",
                          "bindingId":  "binding.valtan.outerwall109.1090000000000012.impact",
@@ -829,58 +803,6 @@
                                                                 0.9232328,
                                                                 0.3303504,
                                                                 -0.1962392
-                                                            ],
-                                              "speedMetersPerSecond":  9,
-                                              "gravityScale":  2,
-                                              "lifetimeSeconds":  4
-                                          }
-                                      ]
-                     },
-                     {
-                         "groupId":  "destroyable.group.valtan.outerwall109.1090000000000025",
-                         "mutationId":  "mutation.valtan.outerwall109.1090000000000025.despawn",
-                         "bindingId":  "binding.valtan.outerwall109.1090000000000025.impact",
-                         "emitters":  [
-                                          {
-                                              "sourceRuntimePlacementId":  "1090000000000025",
-                                              "suppressionAliasPlacementIds":  [
-                                                                                   "1091000000000025"
-                                                                               ],
-                                              "spawnOffset":  [
-                                                                  0,
-                                                                  0,
-                                                                  0
-                                                              ],
-                                              "direction":  [
-                                                                -0.6315645,
-                                                                0.3303504,
-                                                                0.7014235
-                                                            ],
-                                              "speedMetersPerSecond":  9,
-                                              "gravityScale":  2,
-                                              "lifetimeSeconds":  4
-                                          }
-                                      ]
-                     },
-                     {
-                         "groupId":  "destroyable.group.valtan.outerwall109.1090000000000026",
-                         "mutationId":  "mutation.valtan.outerwall109.1090000000000026.despawn",
-                         "bindingId":  "binding.valtan.outerwall109.1090000000000026.impact",
-                         "emitters":  [
-                                          {
-                                              "sourceRuntimePlacementId":  "1090000000000026",
-                                              "suppressionAliasPlacementIds":  [
-                                                                                   "1091000000000026"
-                                                                               ],
-                                              "spawnOffset":  [
-                                                                  0,
-                                                                  0,
-                                                                  0
-                                                              ],
-                                              "direction":  [
-                                                                -0.7635975,
-                                                                0.3303504,
-                                                                0.554786
                                                             ],
                                               "speedMetersPerSecond":  9,
                                               "gravityScale":  2,

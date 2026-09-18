@@ -1,0 +1,2882 @@
+{
+  "schema": "lostark.world-sequences",
+  "formatVersion": 3,
+  "areaId": "LV_LUT_HEARTRB_ED",
+  "revision": 3,
+  "objectResources": [
+    {
+      "objectId": "world.object.valtan.source-preview.body",
+      "displayName": "발탄 본체(원본 컷신 미리보기)",
+      "modelAssetId": "Character/Valtan/MN_RPBF_01.wmodel",
+      "anchorKind": "WORLD",
+      "diffuseTextureAssetId": "",
+      "modelPreScale": 0.0001,
+      "animated": true,
+      "scale": [
+        1.4,
+        1.4,
+        1.4
+      ],
+      "sequenceInstanceId": "",
+      "animationSetAssetId": "Character/Valtan/AnimSets/MN_RPBF_01_AnimSet.wmodel",
+      "presentationBossArchetypeId": "BOSS_VALTAN"
+    },
+    {
+      "objectId": "world.object.valtan.source-preview.ghost",
+      "displayName": "발탄 유령 몸체 MN_RPBF_02(원본 컷신 미리보기)",
+      "modelAssetId": "Character/Valtan/Ghost/MN_RPBF_02.wmodel",
+      "anchorKind": "WORLD",
+      "diffuseTextureAssetId": "",
+      "modelPreScale": 0.01,
+      "animated": true,
+      "scale": [
+        1.4,
+        1.4,
+        1.4
+      ],
+      "sequenceInstanceId": "",
+      "animationSetAssetId": "Character/Valtan/Ghost/MN_RPBF_02_AnimSet.wmodel"
+    },
+    {
+      "objectId": "world.object.valtan.source-preview.lugaru",
+      "displayName": "루가루 MN_RPRS_02(1관문 입장 늑대)",
+      "modelAssetId": "Character/Monster/NPC_480005_MN_RPRS_02/NPC_480005_MN_RPRS_02.wmodel",
+      "anchorKind": "WORLD",
+      "diffuseTextureAssetId": "",
+      "modelPreScale": 0.01,
+      "animated": true,
+      "scale": [
+        1.2,
+        1.2,
+        1.2
+      ],
+      "sequenceInstanceId": ""
+    }
+  ],
+  "templates": [
+    {
+      "sequenceId": "sequence.LV_LUT_HEARTRB_ED.valtan.source-preview.gate1-entrance",
+      "displayName": "1관문 입장 흰늑대",
+      "category": "Cutscene",
+      "durationMs": 13000,
+      "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          0,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          0,
+          0
+        ],
+        "revolutionOffset": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
+      "tracks": [
+        {
+          "slotId": "actor",
+          "keys": [
+            {
+              "timeMs": 0,
+              "positionOffset": [
+                0.0,
+                252.5361,
+                -0.0
+              ],
+              "rotationQuaternion": [
+                0.0,
+                0.966976,
+                0.0,
+                0.254866
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": false
+            },
+            {
+              "timeMs": 3566,
+              "positionOffset": [
+                0.0,
+                252.5361,
+                -0.0
+              ],
+              "rotationQuaternion": [
+                0.0,
+                0.966976,
+                0.0,
+                0.254866
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": false
+            },
+            {
+              "timeMs": 3567,
+              "positionOffset": [
+                -0.0,
+                -0.0,
+                0.0
+              ],
+              "rotationQuaternion": [
+                0.0,
+                0.983662,
+                0.0,
+                0.180023
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 3733,
+              "positionOffset": [
+                -0.0,
+                -0.0,
+                0.0
+              ],
+              "rotationQuaternion": [
+                0.0,
+                0.983662,
+                0.0,
+                0.180023
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 3734,
+              "positionOffset": [
+                -0.0,
+                -0.0,
+                0.0001
+              ],
+              "rotationQuaternion": [
+                0.0,
+                0.983662,
+                0.0,
+                0.180023
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 3747,
+              "positionOffset": [
+                -0.0093,
+                -0.0,
+                0.0246
+              ],
+              "rotationQuaternion": [
+                0.0,
+                0.983662,
+                0.0,
+                0.180023
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 3760,
+              "positionOffset": [
+                -0.0341,
+                -0.0,
+                0.0901
+              ],
+              "rotationQuaternion": [
+                0.0,
+                0.983662,
+                0.0,
+                0.180023
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 3774,
+              "positionOffset": [
+                -0.0761,
+                -0.0,
+                0.2011
+              ],
+              "rotationQuaternion": [
+                0.0,
+                0.983662,
+                0.0,
+                0.180023
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 3789,
+              "positionOffset": [
+                -0.1363,
+                -0.0,
+                0.36
+              ],
+              "rotationQuaternion": [
+                0.0,
+                0.983662,
+                0.0,
+                0.180023
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 3821,
+              "positionOffset": [
+                -0.3044,
+                -0.0,
+                0.8039
+              ],
+              "rotationQuaternion": [
+                0.0,
+                0.983662,
+                0.0,
+                0.180023
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 3867,
+              "positionOffset": [
+                -0.5951,
+                -0.0,
+                1.5717
+              ],
+              "rotationQuaternion": [
+                0.0,
+                0.983662,
+                0.0,
+                0.180023
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 3883,
+              "positionOffset": [
+                -0.7132,
+                -0.0,
+                1.8838
+              ],
+              "rotationQuaternion": [
+                0.0,
+                0.983662,
+                0.0,
+                0.180023
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 3901,
+              "positionOffset": [
+                -0.8741,
+                -0.0,
+                2.3086
+              ],
+              "rotationQuaternion": [
+                0.0,
+                0.983662,
+                0.0,
+                0.180023
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 3963,
+              "positionOffset": [
+                -1.5185,
+                -0.0,
+                4.0104
+              ],
+              "rotationQuaternion": [
+                0.0,
+                0.983662,
+                0.0,
+                0.180023
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 3987,
+              "positionOffset": [
+                -1.7441,
+                -0.0,
+                4.6064
+              ],
+              "rotationQuaternion": [
+                0.0,
+                0.983662,
+                0.0,
+                0.180023
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 4000,
+              "positionOffset": [
+                -1.8473,
+                -0.0,
+                4.8787
+              ],
+              "rotationQuaternion": [
+                0.0,
+                0.983662,
+                0.0,
+                0.180023
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 4012,
+              "positionOffset": [
+                -1.9263,
+                -0.0,
+                5.0874
+              ],
+              "rotationQuaternion": [
+                0.0,
+                0.983662,
+                0.0,
+                0.180023
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 4023,
+              "positionOffset": [
+                -1.9825,
+                -0.0,
+                5.236
+              ],
+              "rotationQuaternion": [
+                0.0,
+                0.983662,
+                0.0,
+                0.180023
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 4034,
+              "positionOffset": [
+                -2.021,
+                -0.0,
+                5.3375
+              ],
+              "rotationQuaternion": [
+                0.0,
+                0.983662,
+                0.0,
+                0.180023
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 4081,
+              "positionOffset": [
+                -2.1299,
+                -0.0,
+                5.6253
+              ],
+              "rotationQuaternion": [
+                0.0,
+                0.983662,
+                0.0,
+                0.180023
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 4130,
+              "positionOffset": [
+                -2.2072,
+                -0.0,
+                5.8293
+              ],
+              "rotationQuaternion": [
+                0.0,
+                0.983662,
+                0.0,
+                0.180023
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 4181,
+              "positionOffset": [
+                -2.2527,
+                -0.0,
+                5.9494
+              ],
+              "rotationQuaternion": [
+                0.0,
+                0.983662,
+                0.0,
+                0.180023
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 4234,
+              "positionOffset": [
+                -2.2673,
+                -0.0,
+                5.9879
+              ],
+              "rotationQuaternion": [
+                0.0,
+                0.983662,
+                0.0,
+                0.180023
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 4500,
+              "positionOffset": [
+                -2.2673,
+                -0.0,
+                5.9879
+              ],
+              "rotationQuaternion": [
+                0.0,
+                0.983662,
+                0.0,
+                0.180023
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 4517,
+              "positionOffset": [
+                -2.2673,
+                -0.0,
+                5.9879
+              ],
+              "rotationQuaternion": [
+                0.0,
+                0.985725,
+                0.0,
+                0.168364
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 4534,
+              "positionOffset": [
+                -2.2673,
+                -0.0,
+                5.9879
+              ],
+              "rotationQuaternion": [
+                0.0,
+                0.990859,
+                0.0,
+                0.134903
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 4552,
+              "positionOffset": [
+                -2.2673,
+                -0.0,
+                5.9879
+              ],
+              "rotationQuaternion": [
+                0.0,
+                0.99694,
+                0.0,
+                0.078176
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 4571,
+              "positionOffset": [
+                -2.2673,
+                -0.0,
+                5.9879
+              ],
+              "rotationQuaternion": [
+                0.0,
+                -0.999997,
+                0.0,
+                0.002427
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 4591,
+              "positionOffset": [
+                -2.2673,
+                -0.0,
+                5.9879
+              ],
+              "rotationQuaternion": [
+                0.0,
+                -0.994358,
+                0.0,
+                0.10608
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 4612,
+              "positionOffset": [
+                -2.2673,
+                -0.0,
+                5.9879
+              ],
+              "rotationQuaternion": [
+                0.0,
+                -0.973248,
+                0.0,
+                0.229759
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 4635,
+              "positionOffset": [
+                -2.2673,
+                -0.0,
+                5.9879
+              ],
+              "rotationQuaternion": [
+                0.0,
+                -0.927457,
+                0.0,
+                0.37393
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 4667,
+              "positionOffset": [
+                -2.2673,
+                -0.0,
+                5.9879
+              ],
+              "rotationQuaternion": [
+                0.0,
+                -0.821509,
+                0.0,
+                0.570196
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 4699,
+              "positionOffset": [
+                -2.2673,
+                -0.0,
+                5.9879
+              ],
+              "rotationQuaternion": [
+                0.0,
+                -0.674823,
+                0.0,
+                0.73798
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 4722,
+              "positionOffset": [
+                -2.2673,
+                -0.0,
+                5.9879
+              ],
+              "rotationQuaternion": [
+                0.0,
+                -0.556071,
+                0.0,
+                0.831135
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 4743,
+              "positionOffset": [
+                -2.2673,
+                -0.0,
+                5.9879
+              ],
+              "rotationQuaternion": [
+                0.0,
+                -0.448036,
+                0.0,
+                0.894015
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 4763,
+              "positionOffset": [
+                -2.2673,
+                -0.0,
+                5.9879
+              ],
+              "rotationQuaternion": [
+                0.0,
+                -0.353489,
+                0.0,
+                0.935439
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 4782,
+              "positionOffset": [
+                -2.2673,
+                -0.0,
+                5.9879
+              ],
+              "rotationQuaternion": [
+                0.0,
+                -0.2776,
+                0.0,
+                0.960697
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 4800,
+              "positionOffset": [
+                -2.2673,
+                -0.0,
+                5.9879
+              ],
+              "rotationQuaternion": [
+                0.0,
+                -0.223099,
+                0.0,
+                0.974796
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 4817,
+              "positionOffset": [
+                -2.2673,
+                -0.0,
+                5.9879
+              ],
+              "rotationQuaternion": [
+                0.0,
+                -0.190778,
+                0.0,
+                0.981633
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 4834,
+              "positionOffset": [
+                -2.2673,
+                -0.0,
+                5.9879
+              ],
+              "rotationQuaternion": [
+                0.0,
+                -0.180023,
+                0.0,
+                0.983662
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 7134,
+              "positionOffset": [
+                -2.2673,
+                -0.0001,
+                5.9879
+              ],
+              "rotationQuaternion": [
+                0.0,
+                -0.180023,
+                0.0,
+                0.983662
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 7166,
+              "positionOffset": [
+                -2.2673,
+                -0.0001,
+                5.9879
+              ],
+              "rotationQuaternion": [
+                0.0,
+                -0.180023,
+                0.0,
+                0.983662
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": false
+            },
+            {
+              "timeMs": 7167,
+              "positionOffset": [
+                -2.2673,
+                -4.6359,
+                5.9879
+              ],
+              "rotationQuaternion": [
+                0.0,
+                -0.180023,
+                0.0,
+                0.983662
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 13000,
+              "positionOffset": [
+                -2.2673,
+                -4.6359,
+                5.9879
+              ],
+              "rotationQuaternion": [
+                0.0,
+                -0.180023,
+                0.0,
+                0.983662
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            }
+          ]
+        }
+      ],
+      "animationTracks": [
+        {
+          "slotId": "actor",
+          "clipName": "mn_rprs_02_sk.ao_idle_battle_1",
+          "displayName": "idle_battle_1@0.000s a",
+          "startMs": 0,
+          "playbackRate": 1.0,
+          "loop": true,
+          "holdLastFrame": true
+        },
+        {
+          "slotId": "actor",
+          "clipName": "mn_rprs_02_sk.ao_att_battle_12_02",
+          "displayName": "att_battle_12_02@3.701s b",
+          "startMs": 3701,
+          "playbackRate": 0.8,
+          "loop": false,
+          "holdLastFrame": true,
+          "sourceStartMs": 107
+        },
+        {
+          "slotId": "actor",
+          "clipName": "mn_rprs_02_sk.ao_att_battle_16_03",
+          "displayName": "att_battle_16_03@4.667s a",
+          "startMs": 4667,
+          "playbackRate": 1.0,
+          "loop": false,
+          "holdLastFrame": true,
+          "sourceStartMs": 167
+        },
+        {
+          "slotId": "actor",
+          "clipName": "mn_rprs_02_sk.ao_att_battle_13_01",
+          "displayName": "att_battle_13_01@5.334s b",
+          "startMs": 5334,
+          "playbackRate": 1.0,
+          "loop": false,
+          "holdLastFrame": true,
+          "sourceStartMs": 567
+        },
+        {
+          "slotId": "actor",
+          "clipName": "mn_rprs_02_sk.ao_att_battle_21_03",
+          "displayName": "att_battle_21_03@6.851s a",
+          "startMs": 6851,
+          "playbackRate": 0.8,
+          "loop": false,
+          "holdLastFrame": true,
+          "sourceStartMs": 201
+        }
+      ]
+    },
+    {
+      "sequenceId": "sequence.LV_LUT_HEARTRB_ED.valtan.source-preview.gate1-entrance.black-wolf",
+      "displayName": "1관문 입장 검늑대",
+      "category": "Cutscene",
+      "durationMs": 13000,
+      "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          0,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          0,
+          0
+        ],
+        "revolutionOffset": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
+      "tracks": [
+        {
+          "slotId": "actor",
+          "keys": [
+            {
+              "timeMs": 0,
+              "positionOffset": [
+                -0.0,
+                102.1241,
+                0.0
+              ],
+              "rotationQuaternion": [
+                0.0,
+                0.958703,
+                0.0,
+                0.284408
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": false
+            },
+            {
+              "timeMs": 7499,
+              "positionOffset": [
+                -0.0,
+                102.1241,
+                0.0
+              ],
+              "rotationQuaternion": [
+                0.0,
+                0.958703,
+                0.0,
+                0.284408
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": false
+            },
+            {
+              "timeMs": 7500,
+              "positionOffset": [
+                -0.0,
+                -0.0,
+                0.0
+              ],
+              "rotationQuaternion": [
+                0.0,
+                0.958703,
+                0.0,
+                0.284408
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 9833,
+              "positionOffset": [
+                -0.0,
+                -0.0,
+                0.0
+              ],
+              "rotationQuaternion": [
+                0.0,
+                0.958703,
+                0.0,
+                0.284408
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 9834,
+              "positionOffset": [
+                -0.0,
+                -0.0,
+                0.0
+              ],
+              "rotationQuaternion": [
+                0.0,
+                0.958703,
+                0.0,
+                0.284408
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 9873,
+              "positionOffset": [
+                0.0272,
+                -0.0,
+                -0.0165
+              ],
+              "rotationQuaternion": [
+                0.0,
+                0.958703,
+                0.0,
+                0.284408
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 9917,
+              "positionOffset": [
+                0.1093,
+                -0.0,
+                -0.0666
+              ],
+              "rotationQuaternion": [
+                0.0,
+                0.958703,
+                0.0,
+                0.284408
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 10096,
+              "positionOffset": [
+                0.6144,
+                -0.0,
+                -0.3741
+              ],
+              "rotationQuaternion": [
+                0.0,
+                0.958703,
+                0.0,
+                0.284408
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 10133,
+              "positionOffset": [
+                0.675,
+                -0.0,
+                -0.411
+              ],
+              "rotationQuaternion": [
+                0.0,
+                0.958703,
+                0.0,
+                0.284408
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 10167,
+              "positionOffset": [
+                0.6948,
+                -0.0,
+                -0.423
+              ],
+              "rotationQuaternion": [
+                0.0,
+                0.958703,
+                0.0,
+                0.284408
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 10266,
+              "positionOffset": [
+                0.6948,
+                -0.0,
+                -0.423
+              ],
+              "rotationQuaternion": [
+                0.0,
+                0.958703,
+                0.0,
+                0.284408
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": false
+            },
+            {
+              "timeMs": 10267,
+              "positionOffset": [
+                -0.0,
+                102.1241,
+                0.0
+              ],
+              "rotationQuaternion": [
+                0.0,
+                0.958703,
+                0.0,
+                0.284408
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": false
+            },
+            {
+              "timeMs": 13000,
+              "positionOffset": [
+                -0.0,
+                102.1241,
+                0.0
+              ],
+              "rotationQuaternion": [
+                0.0,
+                0.958703,
+                0.0,
+                0.284408
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": false
+            }
+          ]
+        }
+      ],
+      "animationTracks": [
+        {
+          "slotId": "actor",
+          "clipName": "mn_rprs_02_sk.ao_att_battle_4_01",
+          "displayName": "att_battle_4_01@0.000s a",
+          "startMs": 0,
+          "playbackRate": 1.0,
+          "loop": false,
+          "holdLastFrame": true
+        },
+        {
+          "slotId": "actor",
+          "clipName": "mn_rprs_02_sk.ao_att_battle_4_01",
+          "displayName": "att_battle_4_01@5.734s a",
+          "startMs": 5734,
+          "playbackRate": 1.0,
+          "loop": false,
+          "holdLastFrame": true,
+          "sourceStartMs": 1
+        },
+        {
+          "slotId": "actor",
+          "clipName": "mn_rprs_02_sk.ao_att_battle_16_03",
+          "displayName": "att_battle_16_03@9.917s b",
+          "startMs": 9917,
+          "playbackRate": 1.0,
+          "loop": false,
+          "holdLastFrame": true,
+          "sourceStartMs": 84
+        }
+      ]
+    },
+    {
+      "sequenceId": "sequence.LV_LUT_HEARTRB_ED.valtan.source-preview.entrance",
+      "displayName": "발탄 등장 본체(13.0s 부터)",
+      "category": "Cutscene",
+      "durationMs": 24708,
+      "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          0,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          0,
+          0
+        ],
+        "revolutionOffset": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
+      "tracks": [
+        {
+          "slotId": "actor",
+          "keys": [
+            {
+              "timeMs": 0,
+              "positionOffset": [
+                0.0,
+                -0.0,
+                0.0
+              ],
+              "rotationQuaternion": [
+                0.0,
+                0.382684,
+                0.0,
+                0.923879
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": false
+            },
+            {
+              "timeMs": 13059,
+              "positionOffset": [
+                0.0,
+                -0.0,
+                0.0
+              ],
+              "rotationQuaternion": [
+                0.0,
+                0.382684,
+                0.0,
+                0.923879
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": false
+            },
+            {
+              "timeMs": 13060,
+              "positionOffset": [
+                0.0,
+                12.0886,
+                0.0
+              ],
+              "rotationQuaternion": [
+                0.0,
+                0.382684,
+                0.0,
+                0.923879
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 18645,
+              "positionOffset": [
+                -0.0,
+                12.0886,
+                -0.0017
+              ],
+              "rotationQuaternion": [
+                0.0,
+                0.382683,
+                0.0,
+                0.92388
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 18760,
+              "positionOffset": [
+                0.0099,
+                12.0886,
+                -0.0116
+              ],
+              "rotationQuaternion": [
+                0.0,
+                0.368686,
+                0.0,
+                0.929554
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 18880,
+              "positionOffset": [
+                0.0397,
+                12.0886,
+                -0.0414
+              ],
+              "rotationQuaternion": [
+                0.0,
+                0.32641,
+                0.0,
+                0.945228
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 19007,
+              "positionOffset": [
+                0.0898,
+                12.0886,
+                -0.0915
+              ],
+              "rotationQuaternion": [
+                0.0,
+                0.253807,
+                0.0,
+                0.967255
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 19143,
+              "positionOffset": [
+                0.1611,
+                12.0886,
+                -0.1628
+              ],
+              "rotationQuaternion": [
+                0.0,
+                0.148064,
+                0.0,
+                0.988978
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 19260,
+              "positionOffset": [
+                0.2341,
+                12.0886,
+                -0.2358
+              ],
+              "rotationQuaternion": [
+                0.0,
+                0.037974,
+                0.0,
+                0.999279
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 19391,
+              "positionOffset": [
+                0.3254,
+                12.0886,
+                -0.3272
+              ],
+              "rotationQuaternion": [
+                0.0,
+                -0.100249,
+                0.0,
+                0.994962
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 19811,
+              "positionOffset": [
+                0.6466,
+                12.0886,
+                -0.6483
+              ],
+              "rotationQuaternion": [
+                0.0,
+                -0.55387,
+                0.0,
+                0.832603
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 19958,
+              "positionOffset": [
+                0.7541,
+                12.0886,
+                -0.7559
+              ],
+              "rotationQuaternion": [
+                0.0,
+                -0.681565,
+                0.0,
+                0.731757
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 20096,
+              "positionOffset": [
+                0.8455,
+                12.0886,
+                -0.8473
+              ],
+              "rotationQuaternion": [
+                0.0,
+                -0.776087,
+                0.0,
+                0.630626
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 20222,
+              "positionOffset": [
+                0.9174,
+                12.0886,
+                -0.9192
+              ],
+              "rotationQuaternion": [
+                0.0,
+                -0.840058,
+                0.0,
+                0.542496
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 20335,
+              "positionOffset": [
+                0.9699,
+                12.0886,
+                -0.9717
+              ],
+              "rotationQuaternion": [
+                0.0,
+                -0.880478,
+                0.0,
+                0.474088
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 20443,
+              "positionOffset": [
+                1.0072,
+                12.0886,
+                -1.0091
+              ],
+              "rotationQuaternion": [
+                0.0,
+                -0.905884,
+                0.0,
+                0.423527
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 20546,
+              "positionOffset": [
+                1.0294,
+                12.0886,
+                -1.0312
+              ],
+              "rotationQuaternion": [
+                0.0,
+                -0.91959,
+                0.0,
+                0.39288
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 20645,
+              "positionOffset": [
+                1.0367,
+                12.0886,
+                -1.0385
+              ],
+              "rotationQuaternion": [
+                0.0,
+                -0.923879,
+                0.0,
+                0.382684
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 24708,
+              "positionOffset": [
+                1.0367,
+                12.0886,
+                -1.0385
+              ],
+              "rotationQuaternion": [
+                0.0,
+                -0.923879,
+                0.0,
+                0.382684
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            }
+          ]
+        }
+      ],
+      "animationTracks": [
+        {
+          "slotId": "actor",
+          "clipName": "mesh_idle_normal_1",
+          "displayName": "idle_normal_1@0.000s a",
+          "startMs": 0,
+          "playbackRate": 1.0,
+          "loop": true,
+          "holdLastFrame": true
+        },
+        {
+          "slotId": "actor",
+          "clipName": "mesh_abn_groggy_1_loop",
+          "displayName": "abn_groggy_1_loop@3.452s b",
+          "startMs": 3452,
+          "playbackRate": 1.0,
+          "loop": true,
+          "holdLastFrame": true,
+          "sourceStartMs": 346
+        },
+        {
+          "slotId": "actor",
+          "clipName": "mesh_abn_groggy_1_loop",
+          "displayName": "abn_groggy_1_loop@4.439s 루프 이어짐",
+          "startMs": 4439,
+          "playbackRate": 1.0,
+          "loop": true,
+          "holdLastFrame": true
+        },
+        {
+          "slotId": "actor",
+          "clipName": "mesh_abn_groggy_1_end",
+          "displayName": "abn_groggy_1_end@5.255s a",
+          "startMs": 5255,
+          "playbackRate": 0.3,
+          "loop": false,
+          "holdLastFrame": true,
+          "sourceStartMs": 105
+        },
+        {
+          "slotId": "actor",
+          "clipName": "mesh_idle_battle_1",
+          "displayName": "idle_battle_1@11.083s b",
+          "startMs": 11083,
+          "playbackRate": 1.0,
+          "loop": true,
+          "holdLastFrame": true,
+          "sourceStartMs": 490
+        },
+        {
+          "slotId": "actor",
+          "clipName": "mesh_idle_normal_1",
+          "displayName": "idle_normal_1@12.698s a",
+          "startMs": 12698,
+          "playbackRate": 1.0,
+          "loop": true,
+          "holdLastFrame": true,
+          "sourceStartMs": 639
+        },
+        {
+          "slotId": "actor",
+          "clipName": "mesh_att_battle_5_01_end",
+          "displayName": "att_battle_5_01_end@15.567s b",
+          "startMs": 15567,
+          "playbackRate": 1.0,
+          "loop": false,
+          "holdLastFrame": true,
+          "sourceStartMs": 508
+        },
+        {
+          "slotId": "actor",
+          "clipName": "mesh_walk_normal_1",
+          "displayName": "walk_normal_1@19.069s a (원본 역재생)",
+          "startMs": 19069,
+          "playbackRate": 1.0,
+          "loop": false,
+          "holdLastFrame": true,
+          "sourceStartMs": 424
+        },
+        {
+          "slotId": "actor",
+          "clipName": "mesh_idle_battle_1",
+          "displayName": "idle_battle_1@20.069s b",
+          "startMs": 20069,
+          "playbackRate": 0.89,
+          "loop": true,
+          "holdLastFrame": true,
+          "sourceStartMs": 513
+        },
+        {
+          "slotId": "actor",
+          "clipName": "mesh_idle_battle_1",
+          "displayName": "idle_battle_1@22.114s 루프 이어짐",
+          "startMs": 22114,
+          "playbackRate": 0.89,
+          "loop": true,
+          "holdLastFrame": true
+        }
+      ]
+    },
+    {
+      "sequenceId": "sequence.LV_LUT_HEARTRB_ED.valtan.source-preview.entrance.colorless",
+      "displayName": "발탄 등장 무채색(유령 몸체 대역, 13.0s 까지)",
+      "category": "Cutscene",
+      "durationMs": 24708,
+      "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          0,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          0,
+          0
+        ],
+        "revolutionOffset": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
+      "tracks": [
+        {
+          "slotId": "actor",
+          "keys": [
+            {
+              "timeMs": 0,
+              "positionOffset": [
+                -0.0,
+                -0.0,
+                -0.0
+              ],
+              "rotationQuaternion": [
+                0.0,
+                0.382684,
+                0.0,
+                0.923879
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 13059,
+              "positionOffset": [
+                -0.0,
+                -0.0,
+                -0.0
+              ],
+              "rotationQuaternion": [
+                0.0,
+                0.382684,
+                0.0,
+                0.923879
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": false
+            },
+            {
+              "timeMs": 13060,
+              "positionOffset": [
+                -0.3464,
+                -0.0,
+                -0.3465
+              ],
+              "rotationQuaternion": [
+                0.0,
+                0.382684,
+                0.0,
+                0.923879
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": false
+            },
+            {
+              "timeMs": 24708,
+              "positionOffset": [
+                -0.3464,
+                -0.0,
+                -0.3465
+              ],
+              "rotationQuaternion": [
+                0.0,
+                0.382684,
+                0.0,
+                0.923879
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": false
+            }
+          ]
+        }
+      ],
+      "animationTracks": [
+        {
+          "slotId": "actor",
+          "clipName": "mesh_idle_normal_1",
+          "displayName": "idle_normal_1@0.000s a",
+          "startMs": 0,
+          "playbackRate": 1.0,
+          "loop": true,
+          "holdLastFrame": true
+        },
+        {
+          "slotId": "actor",
+          "clipName": "mesh_abn_groggy_1_loop",
+          "displayName": "abn_groggy_1_loop@3.452s b",
+          "startMs": 3452,
+          "playbackRate": 1.0,
+          "loop": true,
+          "holdLastFrame": true,
+          "sourceStartMs": 346
+        },
+        {
+          "slotId": "actor",
+          "clipName": "mesh_abn_groggy_1_loop",
+          "displayName": "abn_groggy_1_loop@4.439s 루프 이어짐",
+          "startMs": 4439,
+          "playbackRate": 1.0,
+          "loop": true,
+          "holdLastFrame": true
+        },
+        {
+          "slotId": "actor",
+          "clipName": "mesh_abn_groggy_1_end",
+          "displayName": "abn_groggy_1_end@5.255s a",
+          "startMs": 5255,
+          "playbackRate": 0.3,
+          "loop": false,
+          "holdLastFrame": true,
+          "sourceStartMs": 105
+        },
+        {
+          "slotId": "actor",
+          "clipName": "mesh_idle_battle_1",
+          "displayName": "idle_battle_1@11.083s b",
+          "startMs": 11083,
+          "playbackRate": 1.0,
+          "loop": true,
+          "holdLastFrame": true,
+          "sourceStartMs": 490
+        },
+        {
+          "slotId": "actor",
+          "clipName": "mesh_idle_normal_1",
+          "displayName": "idle_normal_1@12.698s a",
+          "startMs": 12698,
+          "playbackRate": 1.0,
+          "loop": true,
+          "holdLastFrame": true,
+          "sourceStartMs": 639
+        },
+        {
+          "slotId": "actor",
+          "clipName": "mesh_att_battle_5_01_end",
+          "displayName": "att_battle_5_01_end@15.567s b",
+          "startMs": 15567,
+          "playbackRate": 1.0,
+          "loop": false,
+          "holdLastFrame": true,
+          "sourceStartMs": 508
+        },
+        {
+          "slotId": "actor",
+          "clipName": "mesh_walk_normal_1",
+          "displayName": "walk_normal_1@19.069s a (원본 역재생)",
+          "startMs": 19069,
+          "playbackRate": 1.0,
+          "loop": false,
+          "holdLastFrame": true,
+          "sourceStartMs": 424
+        },
+        {
+          "slotId": "actor",
+          "clipName": "mesh_idle_battle_1",
+          "displayName": "idle_battle_1@20.069s b",
+          "startMs": 20069,
+          "playbackRate": 0.89,
+          "loop": true,
+          "holdLastFrame": true,
+          "sourceStartMs": 513
+        },
+        {
+          "slotId": "actor",
+          "clipName": "mesh_idle_battle_1",
+          "displayName": "idle_battle_1@22.114s 루프 이어짐",
+          "startMs": 22114,
+          "playbackRate": 0.89,
+          "loop": true,
+          "holdLastFrame": true
+        }
+      ]
+    },
+    {
+      "sequenceId": "sequence.LV_LUT_HEARTRB_ED.valtan.source-preview.finale",
+      "displayName": "발탄 최후(원본 mn_rpbf_02)",
+      "category": "Cutscene",
+      "durationMs": 23000,
+      "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          0,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          0,
+          0
+        ],
+        "revolutionOffset": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
+      "tracks": [
+        {
+          "slotId": "actor",
+          "keys": [
+            {
+              "timeMs": 0,
+              "positionOffset": [
+                -0.0,
+                -0.0,
+                0.0
+              ],
+              "rotationQuaternion": [
+                0.0,
+                -0.923879,
+                0.0,
+                0.382684
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 23000,
+              "positionOffset": [
+                -0.0,
+                -0.0,
+                0.0
+              ],
+              "rotationQuaternion": [
+                0.0,
+                -0.923879,
+                0.0,
+                0.382684
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            }
+          ]
+        }
+      ],
+      "animationTracks": [
+        {
+          "slotId": "actor",
+          "clipName": "mesh_abn_groggy_1_start",
+          "displayName": "abn_groggy_1_start@0.000s a",
+          "startMs": 0,
+          "playbackRate": 1.0,
+          "loop": false,
+          "holdLastFrame": true
+        },
+        {
+          "slotId": "actor",
+          "clipName": "mesh_abn_groggy_1_loop",
+          "displayName": "abn_groggy_1_loop@1.828s a",
+          "startMs": 1828,
+          "playbackRate": 1.0,
+          "loop": true,
+          "holdLastFrame": true
+        },
+        {
+          "slotId": "actor",
+          "clipName": "mesh_abn_groggy_1_end",
+          "displayName": "abn_groggy_1_end@4.805s up_a",
+          "startMs": 4805,
+          "playbackRate": 0.6,
+          "loop": false,
+          "holdLastFrame": true,
+          "sourceStartMs": 230
+        },
+        {
+          "slotId": "actor",
+          "clipName": "mesh_abn_groggy_1_loop",
+          "displayName": "abn_groggy_1_loop@7.416s a",
+          "startMs": 7416,
+          "playbackRate": 1.0,
+          "loop": true,
+          "holdLastFrame": true,
+          "sourceStartMs": 255
+        },
+        {
+          "slotId": "actor",
+          "clipName": "mesh_evt1_att_battle_5_01_end",
+          "displayName": "evt1_att_battle_5_01_end@7.865s b",
+          "startMs": 7865,
+          "playbackRate": 0.7,
+          "loop": false,
+          "holdLastFrame": true,
+          "sourceStartMs": 272
+        },
+        {
+          "slotId": "actor",
+          "clipName": "mesh_dead_1",
+          "displayName": "dead_1@10.080s a",
+          "startMs": 10080,
+          "playbackRate": 1.0,
+          "loop": false,
+          "holdLastFrame": true,
+          "sourceStartMs": 1471
+        }
+      ]
+    },
+    {
+      "sequenceId": "sequence.LV_LUT_HEARTRB_ED.valtan.source-preview.trash",
+      "displayName": "발탄 버러지",
+      "category": "Cutscene",
+      "durationMs": 6374,
+      "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          0,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          0,
+          0
+        ],
+        "revolutionOffset": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
+      "tracks": [
+        {
+          "slotId": "actor",
+          "keys": [
+            {
+              "timeMs": 0,
+              "positionOffset": [
+                -0.0,
+                0.0,
+                0.0
+              ],
+              "rotationQuaternion": [
+                0.0,
+                -0.92388,
+                0.0,
+                0.382683
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 1,
+              "positionOffset": [
+                -0.0,
+                0.0,
+                0.0
+              ],
+              "rotationQuaternion": [
+                0.0,
+                -0.92388,
+                0.0,
+                0.382683
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 6374,
+              "positionOffset": [
+                -0.0,
+                0.0,
+                0.0
+              ],
+              "rotationQuaternion": [
+                0.0,
+                -0.92388,
+                0.0,
+                0.382683
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            }
+          ]
+        }
+      ],
+      "animationTracks": [
+        {
+          "slotId": "actor",
+          "clipName": "mesh_att_battle_13_02",
+          "displayName": "att_battle_13_02@0.000s a",
+          "startMs": 0,
+          "playbackRate": 1.0,
+          "loop": false,
+          "holdLastFrame": true
+        },
+        {
+          "slotId": "actor",
+          "clipName": "mesh_att_battle_17_loop",
+          "displayName": "att_battle_17_loop@0.596s b",
+          "startMs": 596,
+          "playbackRate": 0.3,
+          "loop": true,
+          "holdLastFrame": true,
+          "sourceStartMs": 179
+        },
+        {
+          "slotId": "actor",
+          "clipName": "mesh_att_battle_13_02-1",
+          "displayName": "att_battle_13_02-1@2.481s a",
+          "startMs": 2481,
+          "playbackRate": 1.0,
+          "loop": false,
+          "holdLastFrame": true,
+          "sourceStartMs": 207
+        }
+      ]
+    },
+    {
+      "sequenceId": "sequence.LV_LUT_HEARTRB_ED.valtan.source-preview.roar",
+      "displayName": "발탄 포효",
+      "category": "Cutscene",
+      "durationMs": 7003,
+      "interpolation": "LINEAR",
+      "objectMotion": {
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "acceleration": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocityDegrees": [
+          0,
+          0,
+          0
+        ],
+        "revolutionDegreesPerSecond": [
+          0,
+          0,
+          0
+        ],
+        "revolutionOffset": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "intervalMs": 0,
+        "spreadDegrees": 0,
+        "seed": 1
+      },
+      "tracks": [
+        {
+          "slotId": "actor",
+          "keys": [
+            {
+              "timeMs": 0,
+              "positionOffset": [
+                -0.0,
+                0.0,
+                -0.0
+              ],
+              "rotationQuaternion": [
+                0.0,
+                -0.92388,
+                0.0,
+                0.382683
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 1,
+              "positionOffset": [
+                -0.0,
+                0.0,
+                -0.0
+              ],
+              "rotationQuaternion": [
+                0.0,
+                -0.92388,
+                0.0,
+                0.382683
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 40,
+              "positionOffset": [
+                -0.0532,
+                0.0,
+                0.0531
+              ],
+              "rotationQuaternion": [
+                0.0,
+                -0.92388,
+                0.0,
+                0.382683
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 124,
+              "positionOffset": [
+                -0.2969,
+                0.0,
+                0.2971
+              ],
+              "rotationQuaternion": [
+                0.0,
+                -0.92388,
+                0.0,
+                0.382683
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 157,
+              "positionOffset": [
+                -0.3343,
+                0.0,
+                0.3345
+              ],
+              "rotationQuaternion": [
+                0.0,
+                -0.92388,
+                0.0,
+                0.382683
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 1159,
+              "positionOffset": [
+                -0.2907,
+                0.0,
+                0.2909
+              ],
+              "rotationQuaternion": [
+                0.0,
+                -0.92388,
+                0.0,
+                0.382683
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 3194,
+              "positionOffset": [
+                -0.0913,
+                0.0,
+                0.0914
+              ],
+              "rotationQuaternion": [
+                0.0,
+                -0.923879,
+                0.0,
+                0.382684
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 3779,
+              "positionOffset": [
+                -0.0531,
+                0.0,
+                0.0531
+              ],
+              "rotationQuaternion": [
+                0.0,
+                -0.923879,
+                0.0,
+                0.382684
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 3780,
+              "positionOffset": [
+                -0.053,
+                0.0284,
+                0.053
+              ],
+              "rotationQuaternion": [
+                0.0,
+                -0.923879,
+                0.0,
+                0.382684
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 5527,
+              "positionOffset": [
+                -0.0004,
+                62.1246,
+                0.0004
+              ],
+              "rotationQuaternion": [
+                0.0,
+                -0.923879,
+                0.0,
+                0.382684
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 6930,
+              "positionOffset": [
+                -0.0004,
+                62.1246,
+                0.0004
+              ],
+              "rotationQuaternion": [
+                0.0,
+                -0.923879,
+                0.0,
+                0.382684
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": false
+            },
+            {
+              "timeMs": 6931,
+              "positionOffset": [
+                -0.7123,
+                0.0814,
+                0.7777
+              ],
+              "rotationQuaternion": [
+                0.0,
+                -0.923879,
+                0.0,
+                0.382684
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            },
+            {
+              "timeMs": 7003,
+              "positionOffset": [
+                -0.7123,
+                0.0814,
+                0.7777
+              ],
+              "rotationQuaternion": [
+                0.0,
+                -0.923879,
+                0.0,
+                0.382684
+              ],
+              "scaleMultiplier": [
+                1,
+                1,
+                1
+              ],
+              "visible": true
+            }
+          ]
+        }
+      ],
+      "animationTracks": [
+        {
+          "slotId": "actor",
+          "clipName": "mesh_att_battle_12_04",
+          "displayName": "att_battle_12_04@0.000s a",
+          "startMs": 0,
+          "playbackRate": 1.0,
+          "loop": false,
+          "holdLastFrame": true,
+          "sourceStartMs": 2644
+        },
+        {
+          "slotId": "actor",
+          "clipName": "mesh_att_battle_12_05",
+          "displayName": "att_battle_12_05@0.079s b",
+          "startMs": 79,
+          "playbackRate": 1.0,
+          "loop": false,
+          "holdLastFrame": true,
+          "sourceStartMs": 78
+        }
+      ]
+    }
+  ],
+  "instances": [
+    {
+      "instanceId": "world.sequence.instance.valtan.source-preview.gate1-entrance",
+      "templateId": "sequence.LV_LUT_HEARTRB_ED.valtan.source-preview.gate1-entrance",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [
+        54.9082,
+        10.2764,
+        -92.5621
+      ],
+      "motionEnd": "HOLD",
+      "nextMotionId": "",
+      "bindings": [
+        {
+          "slotId": "actor",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.valtan.source-preview.lugaru"
+        }
+      ]
+    },
+    {
+      "instanceId": "world.sequence.instance.valtan.source-preview.gate1-entrance.black-wolf",
+      "templateId": "sequence.LV_LUT_HEARTRB_ED.valtan.source-preview.gate1-entrance.black-wolf",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [
+        56.0837,
+        10.2755,
+        -93.1634
+      ],
+      "motionEnd": "HOLD",
+      "nextMotionId": "",
+      "bindings": [
+        {
+          "slotId": "actor",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.valtan.source-preview.lugaru"
+        }
+      ]
+    },
+    {
+      "instanceId": "world.sequence.instance.valtan.source-preview.entrance",
+      "templateId": "sequence.LV_LUT_HEARTRB_ED.valtan.source-preview.entrance",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [
+        156.4652,
+        10.9974,
+        -122.3167
+      ],
+      "motionEnd": "HOLD",
+      "nextMotionId": "",
+      "bindings": [
+        {
+          "slotId": "actor",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.valtan.source-preview.body"
+        }
+      ]
+    },
+    {
+      "instanceId": "world.sequence.instance.valtan.source-preview.entrance.colorless",
+      "templateId": "sequence.LV_LUT_HEARTRB_ED.valtan.source-preview.entrance.colorless",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [
+        156.8116,
+        23.086,
+        -121.9702
+      ],
+      "motionEnd": "HOLD",
+      "nextMotionId": "",
+      "bindings": [
+        {
+          "slotId": "actor",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.valtan.source-preview.body"
+        }
+      ]
+    },
+    {
+      "instanceId": "world.sequence.instance.valtan.source-preview.finale",
+      "templateId": "sequence.LV_LUT_HEARTRB_ED.valtan.source-preview.finale",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [
+        156.5747,
+        23.117,
+        -122.4292
+      ],
+      "motionEnd": "HOLD",
+      "nextMotionId": "",
+      "bindings": [
+        {
+          "slotId": "actor",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.valtan.source-preview.body"
+        }
+      ]
+    },
+    {
+      "instanceId": "world.sequence.instance.valtan.source-preview.trash",
+      "templateId": "sequence.LV_LUT_HEARTRB_ED.valtan.source-preview.trash",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [
+        156.1685,
+        23.0237,
+        -121.8037
+      ],
+      "motionEnd": "HOLD",
+      "nextMotionId": "",
+      "bindings": [
+        {
+          "slotId": "actor",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.valtan.source-preview.body"
+        }
+      ]
+    },
+    {
+      "instanceId": "world.sequence.instance.valtan.source-preview.roar",
+      "templateId": "sequence.LV_LUT_HEARTRB_ED.valtan.source-preview.roar",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "anchorKind": "WORLD",
+      "position": [
+        157.0162,
+        23.0772,
+        -122.796
+      ],
+      "motionEnd": "HOLD",
+      "nextMotionId": "",
+      "bindings": [
+        {
+          "slotId": "actor",
+          "targetKind": "OBJECT_RESOURCE",
+          "targetId": "world.object.valtan.source-preview.body"
+        }
+      ]
+    }
+  ]
+}

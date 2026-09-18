@@ -15,7 +15,18 @@ from typing import Any, Sequence
 
 
 AREA_ID = "LV_LUT_HEARTRB_ED"
-SOURCE_COUNT = 30
+# The ring was laid out as thirty 12-degree slots and that geometry is kept.
+# On 2026-09-18 the user approved opening the entrance corridor by removing
+# slots 11, 25 and 26 (120, 132 and 144 degrees) together with their fillers,
+# collisions, navigation blockers, events and debris. Those slots must stay
+# absent; every other slot must stay present, so an unapproved gap still fails.
+SOURCE_SLOT_COUNT = 30
+APPROVED_REMOVED_SLOT_ANGLES = {11: 120.0, 25: 132.0, 26: 144.0}
+ACTIVE_SUFFIXES = tuple(
+    suffix
+    for suffix in range(1, SOURCE_SLOT_COUNT + 1)
+    if suffix not in APPROVED_REMOVED_SLOT_ANGLES
+)
 SOURCE_ID_BASE = 1_090_000_000_000_000
 FILLER_ID_BASE = 1_091_000_000_000_000
 SOURCE_PREFIX = "Authored:OuterRing109:"
@@ -249,11 +260,21 @@ def _quaternion_matches(
     return abs(abs(dot) - 1.0) <= QUATERNION_EPSILON
 
 
+def _removed_group_ids() -> set[str]:
+    return {GROUP_PREFIX + str(SOURCE_ID_BASE + suffix) for suffix in APPROVED_REMOVED_SLOT_ANGLES}
+
+
 def build_pair_specs(document: DeployDocument) -> tuple[PairSpec, ...]:
     rows_by_id = {row.runtime_id: row for row in document.rows}
+    for suffix in APPROVED_REMOVED_SLOT_ANGLES:
+        for removed_id in (SOURCE_ID_BASE + suffix, FILLER_ID_BASE + suffix):
+            if removed_id in rows_by_id:
+                raise SyncError(
+                    f"approved-removed 109 outer-wall slot reappeared: {removed_id}"
+                )
     source_angles: list[float] = []
     pairs: list[PairSpec] = []
-    for suffix in range(1, SOURCE_COUNT + 1):
+    for suffix in ACTIVE_SUFFIXES:
         source_id = SOURCE_ID_BASE + suffix
         row = rows_by_id.get(source_id)
         if row is None:
@@ -266,7 +287,7 @@ def build_pair_specs(document: DeployDocument) -> tuple[PairSpec, ...]:
         if abs(radius - ARENA_RADIUS) > POSITION_EPSILON or abs(row.position[1] - ARENA_Y) > POSITION_EPSILON:
             raise SyncError(f"109 outer-wall source transform drifted: {source_id}")
         angle = _angle_degrees(row.position[0], row.position[2])
-        grid_index = int(round(angle / ANGLE_STEP_DEGREES)) % SOURCE_COUNT
+        grid_index = int(round(angle / ANGLE_STEP_DEGREES)) % SOURCE_SLOT_COUNT
         grid_angle = grid_index * ANGLE_STEP_DEGREES
         if _angular_distance(angle, grid_angle) > ANGLE_EPSILON_DEGREES:
             raise SyncError(f"109 outer-wall source is off the 12-degree grid: {source_id}")
@@ -290,15 +311,23 @@ def build_pair_specs(document: DeployDocument) -> tuple[PairSpec, ...]:
                 filler_angle_degrees=filler_angle,
             )
         )
-    expected_source_angles = [ANGLE_STEP_DEGREES * index for index in range(SOURCE_COUNT)]
+    removed_angles = set(APPROVED_REMOVED_SLOT_ANGLES.values())
+    expected_source_angles = [
+        ANGLE_STEP_DEGREES * index
+        for index in range(SOURCE_SLOT_COUNT)
+        if ANGLE_STEP_DEGREES * index not in removed_angles
+    ]
     if sorted(source_angles) != expected_source_angles:
-        raise SyncError("109 outer-wall source angles do not cover the complete 0..348 grid")
+        raise SyncError(
+            "109 outer-wall source angles do not cover the 0..348 grid minus the approved entrance slots"
+        )
     expected_filler_angles = [
-        FILLER_ANGLE_OFFSET_DEGREES + ANGLE_STEP_DEGREES * index
-        for index in range(SOURCE_COUNT)
+        FILLER_ANGLE_OFFSET_DEGREES + angle for angle in expected_source_angles
     ]
     if sorted(pair.filler_angle_degrees for pair in pairs) != expected_filler_angles:
-        raise SyncError("109 filler angles do not cover the complete 6..354 grid")
+        raise SyncError(
+            "109 filler angles do not cover the 6..354 grid minus the approved entrance slots"
+        )
     return tuple(pairs)
 
 
@@ -447,6 +476,11 @@ def build_events_output(
             if member in all_members:
                 raise SyncError(f"world events placement belongs to multiple groups: {member}")
             all_members[member] = group_id
+    for removed_group_id in sorted(_removed_group_ids()):
+        if removed_group_id in by_id:
+            raise SyncError(
+                f"approved-removed 109 outer-wall group reappeared: {removed_group_id}"
+            )
 
     expected = copy.deepcopy(document)
     expected_groups = {group["groupId"]: group for group in expected["groups"]}
@@ -524,6 +558,11 @@ def build_simulation_output(
                 if alias in all_alias_owners:
                     raise SyncError(f"duplicate destruction simulation alias: {alias}")
                 all_alias_owners[alias] = group_id
+    for removed_group_id in sorted(_removed_group_ids()):
+        if removed_group_id in by_group:
+            raise SyncError(
+                f"approved-removed 109 destruction profile reappeared: {removed_group_id}"
+            )
 
     expected = copy.deepcopy(document)
     expected_profiles = {profile["groupId"]: profile for profile in expected["profiles"]}

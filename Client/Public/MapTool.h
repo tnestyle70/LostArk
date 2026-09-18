@@ -17,7 +17,14 @@
 #include "WorldGameplayDocument.h"
 #include "SpawnGroupDocument.h"
 
+/* The integrated cutscene view borrows the Composition session the Sequencer
+   shell already owns. Declared, not included, so this header stays light. */
+NS_BEGIN(Client)
+class ICompositionWorkbenchSession;
+NS_END
+
 #include <memory>
+#include <utility>
 #include <cstdint>
 #include <optional>
 #include <string>
@@ -109,6 +116,39 @@ private:
 		int32_t trackDurationMs = 0;
 		int32_t interpolationIndex = 1;
 		int32_t easingIndex = 1;
+	};
+
+	/* One camera occurrence inside a cutscene. The shot owns the framing and
+	   its own key times; this owns only where that shot starts on the whole
+	   cutscene clock, so two cutscenes can reuse one shot at different times. */
+	struct EDITOR_CUTSCENE_CUT final
+	{
+		std::string cutId;
+		std::string shotId;
+		int32_t startMs = 0;
+	};
+
+	/* The authoring-side cutscene: the list the editor picks from. It is not a
+	   combat pattern and never auto-plays; it exists so one Play shows every
+	   camera cut and every World actor on one clock. */
+	struct EDITOR_CUTSCENE final
+	{
+		std::string cutsceneId;
+		std::string displayName;
+		/* The whole cutscene, which outlives the last camera cut when the
+		   original hands the camera back before the actors finish. */
+		int32_t durationMs = 0;
+		std::vector<EDITOR_CUTSCENE_CUT> cameraCuts;
+		/* World Sequence instances this cutscene drives. Empty is valid and
+		   means camera-only, which must still play. */
+		std::vector<std::string> worldInstanceIds;
+	};
+
+	enum class EDITOR_CUTSCENE_STATE
+	{
+		STOPPED,
+		PLAYING,
+		PAUSED,
 	};
 
 	struct EDITOR_AREA_DESCRIPTOR
@@ -234,6 +274,9 @@ private:
 	CDeployPropRuntime& Authoring_Deploy();
 	const CDeployPropRuntime& Authoring_Deploy() const;
 	bool_t Can_ChangeRuntimeStructure();
+	/* The runtime map belongs to whichever arena Level is current. */
+	void Apply_RuntimeAuthoringActive(bool_t active);
+	bool_t Can_ReplaceRuntimeAuthoringTargets() const;
 	void Remember_RuntimePlacement(const MAP_PLACEMENT_RECORD& record);
 	void Reset_RuntimePlacementDraft(const vector<MAP_PLACEMENT_RECORD>& records);
 	void Forget_RuntimePlacement(uint64_t placementId);
@@ -323,6 +366,50 @@ private:
 	bool_t Is_ShotCutsceneClockPlaying(
 		const EDITOR_CAMERA_SHOT& shot) const;
 	bool_t Ensure_ShotCutsceneClock(const EDITOR_CAMERA_SHOT& shot);
+	/* Editor cutscene session. The clock lives here rather than in the World
+	   player so a cutscene with no World actors still plays: the camera is
+	   sampled from absolute session time, and World instances, when the
+	   cutscene names any, are seeked to that same time. */
+	/* The full target set for the Area being edited, including the device and
+	   context the object-resource actors need to build their models. */
+	bool_t Build_CutsceneTargets(CWorldSequencePlayer::TARGET_SET& outTargets);
+	/* Only the Kouku arena Level adds the World Object prototype under its own
+	   index. The isolated editor shell and every other runtime Level need the
+	   tool to register it, or each actor clone fails and the cutscene plays
+	   over an empty stage. */
+	bool_t Ensure_WorldObjectPrototype();
+	const EDITOR_CUTSCENE* Find_EditorCutscene(
+		const std::string& cutsceneId) const;
+	const EDITOR_CAMERA_SHOT* Find_CameraShot(
+		const std::string& shotId) const;
+	/* The cut that owns T, plus the local time inside its shot. Null between
+	   cuts, which is an authored gap and hands the camera back. */
+	const EDITOR_CUTSCENE_CUT* Find_CutsceneCutAt(
+		const EDITOR_CUTSCENE& cutscene,
+		f32_t timeMs,
+		f32_t& outLocalMs) const;
+	bool_t Play_EditorCutscene(const std::string& cutsceneId);
+	void Stop_EditorCutscene();
+	void Update_EditorCutscene(f32_t fTimeDelta);
+	bool_t Apply_EditorCutsceneCamera();
+	bool_t Prepare_EditorCutsceneWorld(const EDITOR_CUTSCENE& cutscene);
+	void Seek_EditorCutsceneWorld();
+	void Render_CutsceneSection();
+	/* Stops every World instance this session started, whether or not it is
+	   still healthy, so a partial failure never leaves survivors behind. */
+	void Release_EditorCutsceneWorld(bool_t restorePlacements);
+	/* A Level transition has already torn the old Level down: only the tool's
+	   own references are dropped, with no placement restore. */
+	void Abandon_EditorCutscene(const std::string& reason);
+	/* Re-admits the World draft and replays the session actors after an edit,
+	   so the next frame shows the unsaved change at the same time. */
+	bool_t Refresh_EditorCutsceneWorldDraft();
+	void Render_CutsceneActorSection(const EDITOR_CUTSCENE& cutscene,
+		bool_t isSession);
+	/* Saves this Area's camera shots and World sequences as one unit: both
+	   drafts are validated first, and a failed second write restores the
+	   first. Nothing is published. */
+	bool_t Save_CutsceneAuthoring();
 	/* Replays every authored Mario sequence for as long as the editor asks,
 	   so a trigger box can be placed against motion that is on screen
 	   instead of against a coordinate. */
@@ -367,6 +454,21 @@ private:
 	void Render_NavigationRegionControls();
 	bool_t Load_CameraShots(const EDITOR_AREA_DESCRIPTOR& descriptor);
 	bool_t Save_CameraShots();
+	/* Writer text for the current draft. The revision is a parameter so a
+	   dirty check can compare drafts without reading the file. */
+	std::string Build_CameraShotDocumentText(const std::string& areaId,
+		uint32_t revision) const;
+	bool_t Is_CameraShotDraftDirty() const;
+	/* Shot IDs unique and non-empty, box extents positive: what the writer
+	   requires before any byte of a camera document is written. */
+	bool_t Validate_CameraShotDraft(std::string& outError) const;
+	/* Parses one camera document without touching the loaded state, so a bad
+	   Reload keeps the draft, the selection and the reason on screen. */
+	static bool_t Parse_CameraShotDocument(const std::string& text,
+		const std::string& areaId, std::vector<EDITOR_CAMERA_SHOT>& outShots,
+		std::vector<EDITOR_CUTSCENE>& outCutscenes, std::string& outError);
+	void Render_IntegratedCutsceneView();
+	void Render_CameraTrackTimeline(EDITOR_CAMERA_SHOT& shot);
 	void Render_CameraShotSection();
 	void End_CameraShotPreview();
 	/* Picks rendered surface height, including cells with no baked floor.
@@ -398,9 +500,49 @@ private:
 	bool_t Admit_AuthoringPrototype(const MAP_ASSET_ENTRY& asset);
 	bool_t Ensure_DeployAuthoringPrototypes(
 		const CDeployPropCatalog& catalog);
-	bool_t Ensure_DestructionDebrisAuthoringPrototypes();
+	/* The arena attach is decided after this runs, so it is passed in. */
+	bool_t Ensure_DestructionDebrisAuthoringPrototypes(bool_t runtimeAttach);
 	bool_t Load_EditorAreaRegistry();
 public:
+	/* MainApp hands over the same session pointer the Sequencer shell uses.
+	   One owner, one draft: this tool never copies the document. */
+	void Set_SequenceCompositionSession(ICompositionWorkbenchSession* session)
+	{ m_pSequenceCompositionSession = session; }
+	/* Valtan edits its own split source, so the integrated view hosts the
+	   Valtan workbench in that Area instead of the KoukuSaydon Sequence
+	   session, which only reads the KoukuSaydon composition. */
+	void Set_ValtanCompositionSession(ICompositionWorkbenchSession* session)
+	{ m_pValtanCompositionSession = session; }
+	/* The Object session owns Motion authoring. The integrated view shows its
+	   detail beneath the timeline so a Motion edit stays on one screen. */
+	void Set_ObjectCompositionSession(ICompositionWorkbenchSession* session)
+	{ m_pObjectCompositionSession = session; }
+	ICompositionWorkbenchSession* Get_HostedObjectSession() const
+	{ return m_bHostingObjectSession ? m_pObjectCompositionSession : nullptr; }
+	/* Stable across the frame order, unlike the per-frame host flag: the
+	   preview route runs before this tool renders. */
+	bool_t Is_IntegratedCutsceneViewOpen() const
+	{ return m_bIntegratedCutsceneView; }
+	/* The concrete owners live in MainApp, so this tool only raises the ask and
+	   displays what MainApp reports back. */
+	void Set_IntegratedSaveState(bool_t sequenceDirty, bool_t objectDirty,
+		std::string status)
+	{
+		m_bIntegratedSequenceDirty = sequenceDirty;
+		m_bIntegratedObjectDirty = objectDirty;
+		if (!status.empty()) m_IntegratedSaveStatus = std::move(status);
+	}
+	bool_t Consume_IntegratedSaveRequest()
+	{ return std::exchange(m_bIntegratedSaveRequested, false); }
+	/* True while this tool owns the session frame for the current frame, so
+	   the Sequencer shell skips its own Begin/End for that session. */
+	bool_t Is_HostingCompositionSession() const
+	{ return m_bHostingCompositionSession; }
+	/* Which session the integrated view actually opened this frame. The shell
+	   suppresses that exact session, so an Area switch cannot leave the other
+	   one drawn twice. */
+	ICompositionWorkbenchSession* Get_HostedCompositionSession() const
+	{ return m_bHostingCompositionSession ? m_pHostedCompositionSession : nullptr; }
 	std::string Debug_GetActiveAreaId() const;
 	shared_ptr<CCamera_Free> Debug_GetCamera() const { return m_pAssetTestCamera.lock(); }
 	int Debug_WorldLevelSelection(const std::string& areaId, uint64_t placementId,
@@ -627,6 +769,10 @@ private:
 	   from what the cutscene will actually do. */
 	CWorldSequencePlayer m_ArenaRisePlayer;
 	bool_t m_bArenaRiseAreaLoaded = false;
+	/* Which Area's World document the player currently holds. Kouku was the
+	   only caller once, so the id was implicit; an Area cutscene has to know
+	   when the loaded document belongs to a different map. */
+	std::string m_strArenaRiseLoadedArea;
 	/* The Mario instances resolved once when the loop starts, so the
 	   document is not walked every frame. Empty means the loop is off. */
 	vector<std::string> m_MarioLoopInstanceIds;
@@ -663,6 +809,9 @@ private:
 	/* The arena Level registers the world object prototype; the editor
 	   Level does not, so the first march here registers it. */
 	bool_t m_bWorldObjectPrototypeReady = false;
+	/* Why the prototype is ready or not: registered here, already present on
+	   the Level, owned by the Kouku Level, or a real creation failure. */
+	std::string m_strWorldObjectPrototypeStatus;
 	uint64_t m_iSelectedPlacementId = {};
 	uint64_t m_iNextPlacementId = 1;
 
@@ -840,9 +989,74 @@ private:
 	weak_ptr<CCamera_Free> m_pAssetTestCamera;
 	std::vector<EDITOR_CAMERA_SHOT> m_CameraShots;
 	std::string m_strCameraShotBaselineText;
+	/* Writer text of the state last loaded or saved. A draft is dirty only
+	   when the editor changed it, not when the source used other number text. */
+	std::string m_strCameraShotLoadedDocumentText;
+	/* Area whose camera document is loaded. A failed Reload of the same Area
+	   keeps the draft; a switch to another Area never keeps a stale one. */
+	std::string m_strCameraShotAreaId;
+	bool_t m_bCameraShotReloadConfirmPending = false;
 	size_t m_iSelectedCameraShot = 0u;
 	std::string m_CameraShotStatus = "No camera shot document for this Area";
 	bool_t m_bCameraShotPreviewActive = false;
+	/* Area cutscenes. Loaded from the same camera document, so a file without
+	   them keeps the previous single-shot editing untouched. */
+	std::vector<EDITOR_CUTSCENE> m_Cutscenes;
+	size_t m_iSelectedCutscene = 0u;
+	/* Session state. Only one cutscene previews at a time; its Area is kept so
+	   switching Area tears the preview down instead of driving the wrong map. */
+	EDITOR_CUTSCENE_STATE m_eCutsceneState = EDITOR_CUTSCENE_STATE::STOPPED;
+	std::string m_strCutsceneSessionId;
+	std::string m_strCutsceneSessionArea;
+	f32_t m_fCutsceneSessionMs = 0.f;
+	/* The cut that owned the camera last frame, so a cut change can restart
+	   the blend and a gap can hand the camera back exactly once. */
+	std::string m_strCutsceneActiveCutId;
+	bool_t m_bCutsceneWorldPrepared = false;
+	std::string m_CutsceneStatus;
+	/* Instances this session started. Kept apart from the prepared flag so a
+	   Stop after a partial failure still releases every survivor. */
+	std::vector<std::string> m_CutsceneSessionInstanceIds;
+	/* Where the session actors came from: the World draft or the published
+	   runtime document, shown so a preview is never mistaken for the other. */
+	std::string m_CutsceneWorldSource;
+	bool_t m_bCutsceneWorldFailed = false;
+	bool_t m_bCutsceneWorldPreviewStale = false;
+	size_t m_iSelectedCutsceneActor = 0u;
+	std::string m_CutsceneSaveStatus;
+	/* Taken when an actor field becomes active and restored if the finished
+	   edit fails document validation, so a bad value never stays in the draft. */
+	std::optional<WORLD_SEQUENCE_INSTANCE> m_CutsceneEditInstanceSnapshot;
+	std::optional<WORLD_SEQUENCE_TEMPLATE> m_CutsceneEditTemplateSnapshot;
+	int32_t m_iCutsceneSelectedActorKey = 0;
+	std::string m_CutsceneActorEditStatus;
+	/* Integrated cutscene view. The session and its documents stay with their
+	   existing owners; only the view state lives here. */
+	ICompositionWorkbenchSession* m_pSequenceCompositionSession = nullptr;
+	ICompositionWorkbenchSession* m_pValtanCompositionSession = nullptr;
+	/* Set for the frame the integrated view opens a session frame. */
+	ICompositionWorkbenchSession* m_pHostedCompositionSession = nullptr;
+	ICompositionWorkbenchSession* m_pObjectCompositionSession = nullptr;
+	bool_t m_bHostingObjectSession = false;
+	bool_t m_bIntegratedSequenceDirty = false;
+	bool_t m_bIntegratedObjectDirty = false;
+	bool_t m_bIntegratedSaveRequested = false;
+	std::string m_IntegratedSaveStatus;
+	bool_t m_bIntegratedCutsceneView = false;
+	bool_t m_bHostingCompositionSession = false;
+	/* Camera track timeline view state. Display only: zoom and drag never
+	   change an authored value on their own. */
+	f32_t m_fCameraTrackZoomPxPerSecond = 120.f;
+	/* Captured once per gesture so an accumulated drag delta is applied to
+	   the value the key had when the drag started, never to itself. */
+	int32_t m_iCameraTrackDragKey = -1;
+	int32_t m_iCameraTrackDragOriginMs = 0;
+	/* Sorted key indices. A group drag captures every origin once so the
+	   accumulated delta is applied to the values the gesture started from. */
+	std::vector<int32_t> m_CameraTrackSelection;
+	std::vector<int32_t> m_CameraTrackDragOriginsMs;
+	bool_t m_bCameraTrackMarqueeActive = false;
+	float2_t m_CameraTrackMarqueeStart = {};
 	std::string m_CameraStatus = "Open ASSET_TEST with F2";
 	/* One camera jump target per authored source sublevel of the active
 	Area, rebuilt from the committed placements. An Area whose placements

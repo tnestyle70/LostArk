@@ -98,15 +98,6 @@
           "enabled": true
         },
         {
-          "memberId": "worldeventmember.valtan.outerwall109.1090000000000011",
-          "bindingId": "binding.valtan.outerwall109.1090000000000011.impact",
-          "groupId": "destroyable.group.valtan.outerwall109.1090000000000011",
-          "mutationId": "mutation.valtan.outerwall109.1090000000000011.despawn",
-          "offsetMs": 0,
-          "receiverCollisionId": "",
-          "enabled": true
-        },
-        {
           "memberId": "worldeventmember.valtan.outerwall109.1090000000000012",
           "bindingId": "binding.valtan.outerwall109.1090000000000012.impact",
           "groupId": "destroyable.group.valtan.outerwall109.1090000000000012",
@@ -219,24 +210,6 @@
           "bindingId": "binding.valtan.outerwall109.1090000000000024.impact",
           "groupId": "destroyable.group.valtan.outerwall109.1090000000000024",
           "mutationId": "mutation.valtan.outerwall109.1090000000000024.despawn",
-          "offsetMs": 0,
-          "receiverCollisionId": "",
-          "enabled": true
-        },
-        {
-          "memberId": "worldeventmember.valtan.outerwall109.1090000000000025",
-          "bindingId": "binding.valtan.outerwall109.1090000000000025.impact",
-          "groupId": "destroyable.group.valtan.outerwall109.1090000000000025",
-          "mutationId": "mutation.valtan.outerwall109.1090000000000025.despawn",
-          "offsetMs": 0,
-          "receiverCollisionId": "",
-          "enabled": true
-        },
-        {
-          "memberId": "worldeventmember.valtan.outerwall109.1090000000000026",
-          "bindingId": "binding.valtan.outerwall109.1090000000000026.impact",
-          "groupId": "destroyable.group.valtan.outerwall109.1090000000000026",
-          "mutationId": "mutation.valtan.outerwall109.1090000000000026.despawn",
           "offsetMs": 0,
           "receiverCollisionId": "",
           "enabled": true

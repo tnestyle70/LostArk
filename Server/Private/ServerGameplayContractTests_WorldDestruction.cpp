@@ -679,11 +679,12 @@ void LostArk::Server::CServerGameplayContractRunner::Run_WorldDestruction(TESTS&
 		CGameRoom& room = *roomStorage;
 		constexpr float ARENA_CENTER_X = 156.03f;
 		constexpr float ARENA_CENTER_Z = -122.06f;
-		/* 131 degrees used to be the mouth of the walk-in corridor, back when
-		the ring was still missing six slabs. The completed ring seals every
-		bearing until the 109 collapse, and Stage_Boss_ArenaEntry now carries
-		the player across it, so this bearing must block like the rest. */
-		const auto sweepAcrossRing = [&](const float bearingDegrees)
+		/* 131 degrees is the mouth of the walk-in corridor. On 2026-09-18 the
+		user approved removing ring slots 011/025/026 (120, 132 and 144 degrees)
+		to open it again, so that bearing must now let a walker through while
+		the 159 gaps and every other bearing stay sealed until the collapse. */
+		const auto sweepAcrossRing = [&](const float bearingDegrees,
+			const bool expectBlocked = true)
 		{
 			const float radians = bearingDegrees * 3.14159265f / 180.f;
 			SERVER_PLAYER walker{};
@@ -700,16 +701,18 @@ void LostArk::Server::CServerGameplayContractRunner::Run_WorldDestruction(TESTS&
 				walker.fPositionY,
 				ARENA_CENTER_Z + std::sin(radians) * 21.f,
 				resolvedX, resolvedY, resolvedZ, blocked);
-			return resolved && blocked;
+			return resolved && expectBlocked == blocked;
 		};
 		tests.Require(
 			room.Is_Ready() && sweepAcrossRing(0.f) && sweepAcrossRing(60.f) &&
 			sweepAcrossRing(216.f),
 			"Block outward movement through the intact 109 outer ring");
 		tests.Require(
-			room.Is_Ready() && sweepAcrossRing(131.f) &&
-			sweepAcrossRing(150.f) && sweepAcrossRing(294.f),
-			"Seal the former entrance and 159 gaps with the completed 109 ring");
+			room.Is_Ready() && sweepAcrossRing(150.f) && sweepAcrossRing(294.f),
+			"Seal the entrance flank and 159 gaps with the 109 ring");
+		tests.Require(
+			room.Is_Ready() && sweepAcrossRing(131.f, false),
+			"Leave the approved entrance corridor open through the 109 ring");
 
 		/* Every wall that stands on authored floor now owns a blocker region,
 		so pathfinding stops at it instead of walking through, and both the

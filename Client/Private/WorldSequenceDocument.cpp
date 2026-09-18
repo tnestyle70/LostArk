@@ -434,7 +434,7 @@ bool_t Client::CWorldSequenceDocument::Load(
 		{
 			WORLD_SEQUENCE_OBJECT_RESOURCE object;
 			if (!Is_ObjectShape(row, { "objectId", "displayName", "modelAssetId", "modelPreScale",
-				"animated", "scale" }, { "diffuseTextureAssetId", "sequenceInstanceId", "anchorKind", "defaultMotionInstanceId", "anchorBossArchetypeId", "anchorBone", "materialProfile", "materialSourceModelAssetId", "mapMaterialBindings", "motionInstanceIds", "combatBody" }) ||
+				"animated", "scale" }, { "diffuseTextureAssetId", "sequenceInstanceId", "anchorKind", "defaultMotionInstanceId", "anchorBossArchetypeId", "anchorBone", "materialProfile", "materialSourceModelAssetId", "mapMaterialBindings", "motionInstanceIds", "combatBody", "animationSetAssetId", "presentationBossArchetypeId" }) ||
 				!row.Find("objectId")->Is_String() || !row.Find("displayName")->Is_String() ||
 				!row.Find("modelAssetId")->Is_String() || !row.Find("animated")->Is_Boolean() ||
 				!Read_FiniteFloat(row.Find("modelPreScale"), object.modelPreScale) ||
@@ -504,6 +504,18 @@ bool_t Client::CWorldSequenceDocument::Load(
                 if (!source->Is_String() || !Is_ResourcePath(source->Get_String(), true))
                 { outStatus = "Invalid world object material source model: " + object.objectId; return false; }
                 object.materialSourceModelAssetId = source->Get_String();
+            }
+            if (const auto* animationSet = row.Find("animationSetAssetId"))
+            {
+                if (!animationSet->Is_String() || !Is_ResourcePath(animationSet->Get_String(), true))
+                { outStatus = "Invalid world object animation set: " + object.objectId; return false; }
+                object.animationSetAssetId = animationSet->Get_String();
+            }
+            if (const auto* presentation = row.Find("presentationBossArchetypeId"))
+            {
+                if (!presentation->Is_String())
+                { outStatus = "Invalid world object presentation boss: " + object.objectId; return false; }
+                object.presentationBossArchetypeId = presentation->Get_String();
             }
             if (const auto* bindings = row.Find("mapMaterialBindings"))
             {
@@ -1022,6 +1034,10 @@ bool_t Client::CWorldSequenceDocument::Save(
         }
         if (!object.materialSourceModelAssetId.empty())
             output << ",\n      \"materialSourceModelAssetId\": \"" << CDataJson::Escape(object.materialSourceModelAssetId) << "\"";
+        if (!object.animationSetAssetId.empty())
+            output << ",\n      \"animationSetAssetId\": \"" << CDataJson::Escape(object.animationSetAssetId) << "\"";
+        if (!object.presentationBossArchetypeId.empty())
+            output << ",\n      \"presentationBossArchetypeId\": \"" << CDataJson::Escape(object.presentationBossArchetypeId) << "\"";
         if (!object.mapMaterialBindings.empty())
         {
             output << ",\n      \"mapMaterialBindings\": [";
@@ -1277,6 +1293,8 @@ bool_t Client::CWorldSequenceDocument::Validate(
 				!object.modelAssetId.empty() || !object.sequenceInstanceId.empty() || !object.defaultMotionInstanceId.empty() ||
 				object.animated || !object.diffuseTextureAssetId.empty() || object.materialProfile || object.combatBody ||
 				!object.materialSourceModelAssetId.empty() || !object.mapMaterialBindings.empty() ||
+				!object.animationSetAssetId.empty() ||
+				!object.presentationBossArchetypeId.empty() ||
 				!object.anchorBossArchetypeId.empty() || !object.anchorBone.empty() ||
 				!std::isfinite(object.modelPreScale) || object.modelPreScale < MIN_SCALE || object.modelPreScale > MAX_COMPONENT ||
 				!Is_BoundedFloat3(object.scale) || object.scale.x != 1.f || object.scale.y != 1.f || object.scale.z != 1.f)
@@ -1328,6 +1346,14 @@ bool_t Client::CWorldSequenceDocument::Validate(
         if ((!object.materialSourceModelAssetId.empty() && (alias || !Is_ResourcePath(object.materialSourceModelAssetId, true))) ||
             object.mapMaterialBindings.size() > 64u || (alias && !object.mapMaterialBindings.empty()))
         { outStatus = "Invalid world object material source: " + object.objectId; return false; }
+        /* A clip donor only makes sense for a skinned body that plays clips. */
+        if (!object.animationSetAssetId.empty() &&
+            (alias || !object.animated || !Is_ResourcePath(object.animationSetAssetId, true)))
+        { outStatus = "Invalid world object animation set: " + object.objectId; return false; }
+        /* The product boss assembly borrows this skinned body's bone palette. */
+        if (!object.presentationBossArchetypeId.empty() &&
+            (alias || !object.animated || !Is_ValidStableId(object.presentationBossArchetypeId)))
+        { outStatus = "Invalid world object presentation boss: " + object.objectId; return false; }
         std::unordered_set<std::string> materialNames;
         if (object.materialProfile) materialNames.insert(object.materialProfile->materialName);
         for (const auto& binding : object.mapMaterialBindings)
@@ -1833,6 +1859,8 @@ bool_t Client::CWorldSequenceDocument::Is_Equivalent(
 			left.modelAssetId != right.modelAssetId || left.diffuseTextureAssetId != right.diffuseTextureAssetId ||
             left.materialProfile != right.materialProfile ||
             left.materialSourceModelAssetId != right.materialSourceModelAssetId || left.mapMaterialBindings != right.mapMaterialBindings ||
+			left.animationSetAssetId != right.animationSetAssetId ||
+			left.presentationBossArchetypeId != right.presentationBossArchetypeId ||
 			left.modelPreScale != right.modelPreScale || left.animated != right.animated ||
 			!sameFloat3(left.scale, right.scale) || left.sequenceInstanceId != right.sequenceInstanceId ||
 			left.motionInstanceIds != right.motionInstanceIds ||

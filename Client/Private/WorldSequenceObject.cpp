@@ -3,6 +3,7 @@
 #include "MapAssetRenderUtils.h"
 #include "GameInstance.h"
 #include "Model.h"
+#include "Part_Equipment.h"
 #include "Shader.h"
 #include "NpcPresentationAssetService.h"
 #include <algorithm>
@@ -10,6 +11,24 @@
 
 using namespace Client;
 using namespace Engine;
+
+namespace
+{
+    // Source translucent programs draw only in the forward BLEND pass, as the product
+    // owners do (CBody_Valtan 84, CPart_Vehicle 18/88). The opaque G-buffer pass
+    // dithers them by native opacity, which leaves scattered fragments.
+    uint32_t Resolve_TranslucentSourcePass(const MODEL_SURFACE_PARAMETERS* surface)
+    {
+        if (!surface || surface->family != MODEL_SURFACE_FAMILY::SOURCE_CHARACTER) return 0u;
+        switch (surface->sourceCharacter.program)
+        {
+        case 18u: return 9u;
+        case 84u:
+        case 88u: return 10u;
+        default: return 0u;
+        }
+    }
+}
 
 CWorldSequenceObject::CWorldSequenceObject(ComPtr<ID3D11Device> device,
     ComPtr<ID3D11DeviceContext> context) : CGameObject(device, context) {}
@@ -33,9 +52,31 @@ HRESULT CWorldSequenceObject::Initialize(void* argument)
     // A newly authored skinned resource may have no animation track yet.
     // Its cloned rest pose still needs the same combined matrices as a sampled clip.
     if (m_Model->Is_Skinned()) m_Model->Refresh_BoneCombinedMatrices();
+    m_HasTranslucentMeshes = false;
+    if (m_Model->Is_Skinned())
+        for (uint32_t mesh = 0; mesh < m_Model->Get_NumMeshes(); ++mesh)
+            m_HasTranslucentMeshes |= 0u != Resolve_TranslucentSourcePass(m_Model->Get_MaterialSurface(mesh));
     if (FAILED(CNpcPresentationAssetService::Prepare_SaydonHat(m_pDevice, m_pContext, m_Model, m_SaydonHatModel)))
         OutputDebugStringA("[SaydonHat] Sequence head prop unavailable; body preserved.\n");
     XMStoreFloat4x4(&m_World, XMMatrixIdentity());
+    m_MaterialProfileId = desc.materialProfileId;
+    m_Parts.clear();
+    for (const auto& part : desc.presentationParts)
+    {
+        // Parts ride m_World directly: the sampled key already carries the model's facing.
+        CPart_Equipment::PART_EQUIPMENT_DESC partDesc{};
+        partDesc.pParentMatrix = &m_World;
+        partDesc.iPrototypeLevelIndex = desc.levelIndex;
+        partDesc.strModelTag = part.modelPrototypeTag;
+        partDesc.strShaderTag = part.shaderPrototypeTag;
+        partDesc.pSkeletonModel = m_Model;
+        partDesc.pSocketBoneName = part.socketBone.empty() ? nullptr : part.socketBone.c_str();
+        partDesc.strMaterialProfileId = m_MaterialProfileId;
+        auto cloned = dynamic_pointer_cast<CPart_Equipment>(CGameInstance::Get().Clone_Prototype(
+            desc.levelIndex, L"Prototype_GameObject_Part_Equipment", &partDesc));
+        if (!cloned) return E_FAIL;
+        m_Parts.push_back(std::move(cloned));
+    }
     return S_OK;
 }
 
@@ -72,6 +113,8 @@ bool_t CWorldSequenceObject::Sample(const float4x4_t& world, const bool_t visibl
     m_SampleTimeSeconds = (std::max)(0.f, localMs) * 0.001f;
     m_World = world;
     m_Visible = visible;
+    // Parts follow this exact pose: the weapon reads its grip bone from the body now.
+    for (const auto& part : m_Parts) part->Update(0.f);
     return true;
 }
 
@@ -106,7 +149,7 @@ bool_t CWorldSequenceObject::Try_GetAttachmentWorld(const std::string& bone, flo
 bool_t CWorldSequenceObject::Reset_ForReuse()
 {
     Hide();
-    if (!m_Model || !m_RenderStatus.empty()) return false;
+    if (!m_Model || !Get_RenderStatus().empty()) return false;
     if (m_Model->Is_Skinned())
     {
         m_Model->Clear_AnimationTransitionPose();
@@ -123,8 +166,17 @@ bool_t CWorldSequenceObject::Reset_ForReuse()
 
 void CWorldSequenceObject::Late_Update(f32_t)
 {
-    if (m_Visible) CGameInstance::Get().Add_RenderObject(RENDERGROUP::NONBLEND,
-        static_pointer_cast<CGameObject>(shared_from_this()));
+    if (!m_Visible) return;
+    const auto self = static_pointer_cast<CGameObject>(shared_from_this());
+    CGameInstance::Get().Add_RenderObject(RENDERGROUP::NONBLEND, self);
+    if (m_HasTranslucentMeshes) CGameInstance::Get().Add_RenderObject(RENDERGROUP::BLEND, self);
+    for (const auto& part : m_Parts)
+        CGameInstance::Get().Add_RenderObject(RENDERGROUP::NONBLEND, static_pointer_cast<CGameObject>(part));
+}
+
+HRESULT CWorldSequenceObject::Render_Group(RENDERGROUP group)
+{
+    return RENDERGROUP::BLEND == group ? Render_Translucent() : Render();
 }
 
 HRESULT CWorldSequenceObject::Render()
@@ -149,8 +201,11 @@ HRESULT CWorldSequenceObject::Render()
     for (uint32_t mesh = 0; mesh < m_Model->Get_NumMeshes(); ++mesh)
     {
         const auto* surface = m_Model->Get_MaterialSurface(mesh);
+        if (animated && 0u != Resolve_TranslucentSourcePass(surface)) continue;
         const bool mapSurface = surface && surface->family == MODEL_SURFACE_FAMILY::SOURCE_BG_OPAQUE_MASKED;
-        const HRESULT material = animated && !mapSurface ? Bind_DeferredMaterialInputs(*m_Model, m_Shader, mesh, {}, nullptr, m_Diffuse) :
+        const DEFERRED_MATERIAL_PROFILE bodyProfile = m_MaterialProfileId.empty() ? DEFERRED_MATERIAL_PROFILE{} :
+            Resolve_DeferredMaterialProfile(m_MaterialProfileId, m_Model->Get_MaterialName(mesh));
+        const HRESULT material = animated && !mapSurface ? Bind_DeferredMaterialInputs(*m_Model, m_Shader, mesh, bodyProfile, nullptr, m_Diffuse) :
             CMapAssetRenderUtils::Bind_Material(m_Model, m_Shader, mesh, profile, m_SampleTimeSeconds, m_Diffuse);
         const auto meshLabel = " (mesh " + std::to_string(mesh) + ")";
         if (FAILED(material)) return failed("material binding" + meshLabel);
@@ -165,5 +220,34 @@ HRESULT CWorldSequenceObject::Render()
     if (FAILED(CNpcPresentationAssetService::Render_SaydonHat(m_Model, m_SaydonHatModel, m_Shader, m_World)))
         return failed("head prop submission");
     m_RenderStatus.clear();
+    return S_OK;
+}
+
+HRESULT CWorldSequenceObject::Render_Translucent()
+{
+    if (!m_Visible) return S_OK;
+    const auto failed = [this](const std::string& stage)
+    { m_TranslucentRenderStatus = "World Object translucent render failed: " + stage; return E_FAIL; };
+    if (FAILED(m_Shader->Bind_Matrix("g_WorldMatrix", &m_World)) ||
+        FAILED(CGameInstance::Get().Bind_Transform(m_Shader, "g_ViewMatrix", D3DTS::VIEW)) ||
+        FAILED(CGameInstance::Get().Bind_Transform(m_Shader, "g_ProjMatrix", D3DTS::PROJ)) ||
+        FAILED(CMapAssetRenderUtils::Bind_SourceCharacterForwardLights(m_Shader)))
+        return failed("world/view/projection/forward light binding");
+    for (uint32_t mesh = 0; mesh < m_Model->Get_NumMeshes(); ++mesh)
+    {
+        const uint32_t pass = Resolve_TranslucentSourcePass(m_Model->Get_MaterialSurface(mesh));
+        if (0u == pass) continue;
+        const auto meshLabel = " (mesh " + std::to_string(mesh) + ")";
+        const DEFERRED_MATERIAL_PROFILE bodyProfile = m_MaterialProfileId.empty() ? DEFERRED_MATERIAL_PROFILE{} :
+            Resolve_DeferredMaterialProfile(m_MaterialProfileId, m_Model->Get_MaterialName(mesh));
+        if (FAILED(Bind_DeferredMaterialInputs(*m_Model, m_Shader, mesh, bodyProfile, nullptr, m_Diffuse)) ||
+            FAILED(m_Model->Bind_SourceCharacterForwardLight(m_Shader, mesh)))
+            return failed("material binding" + meshLabel);
+        if (FAILED(m_Model->Bind_BoneMatrices(m_Shader, "g_BoneMatrices", mesh)))
+            return failed("bone matrix binding" + meshLabel);
+        if (FAILED(m_Shader->Begin(pass))) return failed("shader pass" + meshLabel);
+        if (FAILED(m_Model->Render(mesh))) return failed("mesh submission" + meshLabel);
+    }
+    m_TranslucentRenderStatus.clear();
     return S_OK;
 }

@@ -320,6 +320,10 @@ public:
 		bool_t snapToSnapshot = false);
 	void Trigger_HitFlash();
     void Set_PresentationVisible(bool visible) { m_bPresentationVisible = visible; }
+    // Preview owns only a render suppression; network state and base visibility keep updating.
+    void Acquire_CompositionPreviewSuppression() { ++m_iCompositionPreviewSuppressions; }
+    void Release_CompositionPreviewSuppression() { if (m_iCompositionPreviewSuppressions) --m_iCompositionPreviewSuppressions; }
+    bool Is_PresentationVisible() const { return m_bPresentationVisible && m_iCompositionPreviewSuppressions == 0u; }
     // Presentation owner gates this using the approved Server pattern clock.
     void Set_ChargeAfterimageEnabled(bool enabled) { m_ChargeAfterimageEnabled = enabled; }
     // A nonnegative clock belongs to Tool Preview; product uses its received state.
@@ -407,6 +411,7 @@ private:
 	CNpcNetworkTransformInterpolator m_NetworkTransformInterpolator;
 	bool_t m_bSuppressRootMotion = false;
     bool m_bPresentationVisible = true;
+    std::uint32_t m_iCompositionPreviewSuppressions = 0u;
 	bool_t m_bInterpolateNetworkTransform = false;
 	f32_t m_fTransientActionRemainingSeconds = 0.f;
 	std::string m_strTransientReturnClip;

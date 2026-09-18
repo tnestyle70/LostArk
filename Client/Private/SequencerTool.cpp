@@ -644,6 +644,16 @@ void Client::CSequencerTool::Render()
         ImGui::End();
         return;
     }
+    /* The Map Tool may already own this session frame. Draw nothing that
+       would open a second Begin/End pair for the same owner. */
+    if (m_pExternallyHostedSession == session ||
+        m_pExternallyHostedSessionAlt == session)
+    {
+        if (expanded)
+            ImGui::TextDisabled("Map Tool is editing this Sequence this frame.");
+        ImGui::End();
+        return;
+    }
     m_bInsideFrame = true;
     session->Begin_WorkbenchFrame();
     Apply_ViewRequest(*session);

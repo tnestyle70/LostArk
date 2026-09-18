@@ -3,6 +3,7 @@
 #include "Client_Defines.h"
 #include "ArenaCameraProfile.h"
 #include "ClientReplication.h"
+#include "DeployPropRuntime.h"
 #include "Level.h"
 #include "LobbyCommandService.h"
 #include "MapLightPresentationRuntime.h"
@@ -240,6 +241,13 @@ public:
 	ID stack, so Release does not need the visible Character Select diagnostic window. */
 	void Request_CreateCharacterButtonClick() { m_hasCreateCharacterButtonClick = true; }
 #ifdef _DEBUG
+	/* Map Tool borrows this level's live map the same way the Kouku and Valtan
+	   arenas lend theirs. The level keeps ownership; the tool only edits the
+	   placements in place. */
+	CMapPlacementRuntime& Get_MapAuthoringRuntime() { return m_MapRuntime; }
+	CDeployPropRuntime& Get_MapAuthoringDeploy() { return m_MapAuthoringDeploy; }
+	const ComPtr<ID3D11Device>& Get_MapAuthoringDevice() const { return m_pDevice; }
+	const ComPtr<ID3D11DeviceContext>& Get_MapAuthoringContext() const { return m_pContext; }
 	/* F1 Level Navigation reuses the same typed product routes as this Level's
 	   own buttons.  It never reaches the socket or changes Level directly. */
 	bool_t Debug_ReloadFloorSwapOptions();
@@ -334,6 +342,12 @@ private:
 	std::array<std::string, ETOI(EQUIPMENT_SLOT_ID::END)> m_CustomizingOutfit{};
 
 	CMapPlacementRuntime m_MapRuntime;
+#ifdef _DEBUG
+	/* Stays empty: LV_LOBBY_CLASSSELECT_SL00 declares no DeployProp source
+	   pair, so Stage_DeployProps returns before touching it. Map Tool's runtime
+	   attach still needs a real owner because TARGET_SET::Is_Complete() does. */
+	CDeployPropRuntime m_MapAuthoringDeploy;
+#endif
 #ifdef _DEBUG
 	struct FLOOR_SWAP_SOURCE_PAIR
 	{

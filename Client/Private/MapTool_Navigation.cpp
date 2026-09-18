@@ -236,7 +236,10 @@ bool_t Client::CMapTool::Validate_WorldNpcBehaviorNavigation(
 
 bool_t Client::CMapTool::Load_NavigationDocument()
 {
-	if (CMapEditorWorkspaceService::Is_Active())
+	/* A runtime-attached level edits the same Data authoring files as the
+	   workspace, so it takes the descriptor-owned branch too: the live
+	   runtime Navigation is never mutated and Save writes Data only. */
+	if (CMapEditorWorkspaceService::Is_Active() || m_bRuntimeAuthoring)
 	{
 		const EDITOR_AREA_DESCRIPTOR* active = Get_ActiveEditorArea();
 		if (nullptr == active ||
@@ -638,7 +641,7 @@ bool_t Client::CMapTool::Set_NavigationCondition(
 
 bool_t Client::CMapTool::Save_Navigation()
 {
-	if (CMapEditorWorkspaceService::Is_Active())
+	if (CMapEditorWorkspaceService::Is_Active() || m_bRuntimeAuthoring)
 	{
 		const EDITOR_AREA_DESCRIPTOR* active = Get_ActiveEditorArea();
 		if (nullptr == active ||
@@ -706,7 +709,7 @@ bool_t Client::CMapTool::Save_Navigation()
 	}
 
 	m_NavigationStatus =
-		"Navigation save is only available in the Map Editor workspace";
+		"Navigation save needs the Map Editor workspace or a runtime-attached Area";
 	return false;
 }
 
@@ -719,7 +722,7 @@ bool_t Client::CMapTool::Resolve_SelectedNavigationContract(
 	   through the catalog either. Regions have to resolve from the same
 	   authority or they name a grid that does not exist. */
 	const EDITOR_AREA_DESCRIPTOR* active =
-		CMapEditorWorkspaceService::Is_Active() ?
+		(CMapEditorWorkspaceService::Is_Active() || m_bRuntimeAuthoring) ?
 		Get_ActiveEditorArea() : nullptr;
 	const std::string& areaId = nullptr != active ?
 		active->areaId : m_Catalog.Get_AreaId();

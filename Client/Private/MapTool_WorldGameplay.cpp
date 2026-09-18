@@ -442,7 +442,9 @@ bool_t Client::CMapTool::Stage_SpawnAnchorBoxes(
 						m_iAuthoringLevelIndex, TEXT("Layer_SpawnAnchors"),
 						static_pointer_cast<CGameObject>(entry.object));
 			outEntries.clear();
-			m_WorldGameplayStatus = "Spawn anchor presentation failed: " + anchor.anchorId;
+			m_WorldGameplayStatus = "Spawn anchor presentation failed: " + anchor.anchorId +
+				" could not clone Prototype_GameObject_TriggerBox on Level " +
+				std::to_string(m_iAuthoringLevelIndex);
 			return false;
 		}
 		shared_ptr<CTrigger_Box> triggerBox =
@@ -451,6 +453,8 @@ bool_t Client::CMapTool::Stage_SpawnAnchorBoxes(
 		{
 			CGameInstance::Get().Remove_GameObject_from_Layer(
 				m_iAuthoringLevelIndex, TEXT("Layer_SpawnAnchors"), gameObject);
+			Remove_WorldTriggerBoxes(outEntries);
+			m_WorldGameplayStatus = "Spawn anchor clone type mismatch: " + anchor.anchorId;
 			return false;
 		}
 		triggerBox->Set_Selected(anchor.anchorId == m_SelectedSpawnAnchorId);
