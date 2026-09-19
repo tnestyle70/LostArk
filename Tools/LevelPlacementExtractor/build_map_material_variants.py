@@ -545,9 +545,11 @@ def resolve_material_contracts(
         document = parse_exact_material_document(props_path)
         parent = document.get("parent")
         if parent:
-            if not isinstance(parent, str) or "." not in parent:
+            # UModel writes a package-root parent as its bare object name; the
+            # exactly-one rule in contextual_candidate still decides identity.
+            if not isinstance(parent, str) or not parent.strip():
                 raise VariantError(
-                    f"material parent is not a full canonical objectPath: {parent!r}"
+                    f"material parent is not a valid objectPath: {parent!r}"
                 )
             inherited = visit(parent, None, canonical_object_path)
             contract = {
@@ -765,17 +767,24 @@ def missing_loaded_texture_sources(source_roots: Sequence[Path]) -> list[dict[st
             if not log_path.is_file():
                 continue
             text = log_path.read_text(encoding="utf-8", errors="replace")
-            exported = {
-                row["objectName"].casefold()
-                for row in parse_umodel_export_log(log_path)
-                if row["class"] == "Texture2D"
-            }
+            # A base mesh pack keeps only role textures, so a texture UModel
+            # exported may still be absent from the pack a catalog indexes.
+            texture_directory = pack / "textures"
+            present = (
+                {
+                    path.stem.casefold()
+                    for path in texture_directory.iterdir()
+                    if path.is_file()
+                }
+                if texture_directory.is_dir()
+                else set()
+            )
             for line in text.splitlines():
                 match = UMODEL_LOADED_TEXTURE_PATTERN.match(line.strip())
                 if match is None:
                     continue
                 object_name, physical_package = match.groups()
-                if object_name.casefold() in exported:
+                if object_name.casefold() in present:
                     continue
                 key = (physical_package.casefold(), object_name.casefold())
                 missing.setdefault(
@@ -1675,11 +1684,18 @@ def cook_variant(
                 f"default material/glTF slot count mismatch for {asset['fullPath']}: "
                 f"{0 if defaults is None else len(defaults)} != {len(slot_names)}"
             )
-        overrides = asset.get("materialSlots", [])
-        if len(overrides) > len(defaults):
-            raise VariantError(
-                f"override array exceeds glTF material slots: {asset_id}"
-            )
+        # UE3 asks a component override only for the mesh's own elements, so an
+        # authored entry past the last element never renders. Keep it in the
+        # receipt instead of rejecting the placement.
+        authored_overrides = asset.get("materialSlots", [])
+        ignored_overrides = [
+            dict(slot) for slot in authored_overrides
+            if int(slot["slot"]) >= len(defaults)
+        ]
+        overrides = [
+            slot for slot in authored_overrides
+            if int(slot["slot"]) < len(defaults)
+        ]
 
         effective = [dict(row) for row in defaults]
         for slot in overrides:
@@ -1905,6 +1921,8 @@ def cook_variant(
             },
             "outputs": outputs,
         }
+        if ignored_overrides:
+            receipt["ignoredOutOfRangeOverrides"] = ignored_overrides
         base.atomic_write_json(pack / "runtime.receipt.json", receipt)
         try:
             base.commit_directory(pack, destination, output_root, force)
@@ -2300,6 +2318,8 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     cook.add_argument("--expect-variants", type=int, default=292)
     cook.add_argument("--asset-id", action="append")
     cook.add_argument("--force", action="store_true")
+    cook.add_argument("--package-root", type=Path,
+                      help="Resolve physical packages recorded by older source receipts")
 
     install = commands.add_parser("install")
     install.add_argument("--runtime-manifest", type=Path, required=True)

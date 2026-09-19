@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "areaId": "LV_OCN_EVENTIS_MHP",
+  "checkOnly": false,
+  "baseAssetCount": 382,
+  "basePlacementCount": 3823,
+  "landscapeAssetCount": 16,
+  "landscapePlacementCount": 16,
+  "addedAssetCount": 16,
+  "addedPlacementCount": 16,
+  "outputAssetCount": 398,
+  "outputPlacementCount": 3839,
+  "inputs": {
+    "baseCatalog": "A901B2FC5B65902F9ED5378AFE2EE82022DD9472B8E066687F8A99042DD50C32",
+    "basePlacements": "732F9E9D96DA9C5A56F85FD378667A053EB70B5F648EBD7A296ED1470FD20FF7",
+    "landscapeCatalog": "0A6EAF29D0F5F41D094450BD06DD906A1ADBFA3E50BF6DAF4830E015BD7F2DB8",
+    "landscapePlacements": "1CACB6537C0C665659DFD16EB2B4BDB910FB61752AEC35085EFBBACC7EDD40A0"
+  },
+  "outputs": {
+    "catalog": "8D38065AAC78097EDBFB948C3017B9A80D5188387EE5806EE0824F6DAF4F52E2",
+    "placements": "3D56E5ABB06ADFFC08B7A4C3DCC0081D0A13E7907F92902A82437659044691B2"
+  }
+}
