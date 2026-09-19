@@ -1501,7 +1501,8 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 			"[Level_KakulSaydonArena] Failed to apply replication event.\n");
 	}
 	m_Replication.Collect_PlayerViews(m_NameplatePlayers);
-	m_InteractKeyPrompt.Update(m_Replication.Get_LocalCharacter(),
+	m_InteractKeyPrompt.Update(fTimeDelta, m_Replication.Get_LocalCharacter(),
+		CCombatHUDViewModel::Get().Get_InteractPromptTriggerId(),
 		nullptr == m_pMvpResultView || !m_pMvpResultView->Is_Visible());
 	if (m_Replication.Has_PendingConnectionLoss())
 	{
@@ -2166,14 +2167,17 @@ HRESULT Client::CLevel_KakulSaydonArena::Render()
 	/* Drawn last so it sits over the scene. The text only reports what the
 	   Server is offering -- pressing the shown key submits a command and the Server
 	   decides, so nothing here can move the player by itself. */
+	/* The offered box itself shows the retail key prompt over the player's head
+	   (CInteractKeyPromptView). On the Mario lanes Up answers the same offer too, which the
+	   retail prompt does not say, so that hint stays as text. */
+	m_InteractKeyPrompt.Render_Text();
 	const std::string& offered =
 		CCombatHUDViewModel::Get().Get_InteractPromptTriggerId();
-	if (!offered.empty())
+	if (!offered.empty() && 0u != CCombatHUDViewModel::Get().Get_Player().iMarioStage)
 	{
 		/* ASCII only: this file carries no other non-ASCII byte and has no BOM,
 		   so a UTF-8 Korean literal here is read back in the system codepage. */
-		const tchar_t* const PROMPT = 0u != CCombatHUDViewModel::Get().Get_Player().iMarioStage
-			? TEXT("[ Up ]") : TEXT("[ G ]");
+		const tchar_t* const PROMPT = TEXT("[ Up ]");
 		const float2_t size = CGameInstance::Get().Measure_Text(
 			TEXT("Font_YoonGasiIIM"), PROMPT);
 		CGameInstance::Get().Draw_Text(
