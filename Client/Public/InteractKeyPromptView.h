@@ -10,6 +10,7 @@
 NS_BEGIN(Client)
 
 class CUILayoutRuntime;
+class CCharacter;
 
 /* The retail interaction key prompt (EFUI_MASTERKEY MasterKeyComponent) while the Server is
 offering an interact-gated trigger box: the action icon (iconType_mc, ~52 px), under it the
@@ -17,11 +18,9 @@ action name followed by the G keycap as one centred line (GameMsg
 sys.tip.masterkey_string_combination "{0} {1}"), and the "show" glow on appear.
 
 Placement follows MasterKeyFrame.updatePos: the host passes one screen point and the line's
-bottom sits 50 px above it (PIVOT_TYPE_BOTTOM_LEFT, 0, 50, descriptionTF). In retail the key
-belongs to the interaction object itself (EFTable_Prop rows carry InteractionKeyIcon /
-InteractionKeyString / InteractionRange and the ITR_00280 marker model), so the point is the
-trigger box, not the player. How high above the object the host projects is not in the data;
-the box floor + ANCHOR_HEIGHT matches the retail capture.
+bottom sits 50 px above it (PIVOT_TYPE_BOTTOM_LEFT, 0, 50, descriptionTF). The retail capture
+puts that point at the player's head (the prompt sits right over the nameplate while the
+player stands in the trigger ring), so the local character's head anchor is used.
 
 Which action a box shows is not authored on our trigger boxes; it is read from the box's own
 move: down -> godown, up -> climb, level -> tightrope, no move -> check. Presentation only: the
@@ -32,7 +31,8 @@ public:
 	void Initialize(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext,
 		uint32_t iOwnerLevelIndex, const char* pAreaId);
 	/* strOfferedTriggerId: the box the Server is offering now (empty = none). */
-	void Update(f32_t fTimeDelta, const std::string& strOfferedTriggerId, bool_t bShown);
+	void Update(f32_t fTimeDelta, const std::shared_ptr<CCharacter>& pLocalCharacter,
+		const std::string& strOfferedTriggerId, bool_t bShown);
 	/* Action name line; HUD text layer. Call from the Level's Render. */
 	void Render_Text() const;
 
@@ -42,7 +42,6 @@ private:
 	{
 		std::string strPlacementId;
 		ACTION eAction = ACTION::CHECK;
-		float3_t vAnchor{};		// world point the prompt hangs from
 	};
 	void Hide();
 

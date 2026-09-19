@@ -1501,7 +1501,8 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 			"[Level_KakulSaydonArena] Failed to apply replication event.\n");
 	}
 	m_Replication.Collect_PlayerViews(m_NameplatePlayers);
-	m_InteractKeyPrompt.Update(fTimeDelta, CCombatHUDViewModel::Get().Get_InteractPromptTriggerId(),
+	m_InteractKeyPrompt.Update(fTimeDelta, m_Replication.Get_LocalCharacter(),
+		CCombatHUDViewModel::Get().Get_InteractPromptTriggerId(),
 		nullptr == m_pMvpResultView || !m_pMvpResultView->Is_Visible());
 	if (m_Replication.Has_PendingConnectionLoss())
 	{
