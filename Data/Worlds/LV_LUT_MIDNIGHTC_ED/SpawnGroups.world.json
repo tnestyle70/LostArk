@@ -2,7 +2,7 @@
   "schema": "lostark.world-spawn-groups",
   "formatVersion": 1,
   "areaId": "LV_LUT_MIDNIGHTC_ED",
-  "revision": 195,
+  "revision": 196,
   "anchors": [
     {
       "anchorId": "anchor.valtan.editor",
@@ -381,6 +381,429 @@
         -1423.203125
       ],
       "yawDegrees": 0.0
+    },
+    {
+      "anchorId": "anchor.kouku.book1.source.19",
+      "position": [
+        4.36175,
+        0.111261,
+        -34.341023
+      ],
+      "yawDegrees": 0.0
+    },
+    {
+      "anchorId": "anchor.kouku.book1.source.267",
+      "position": [
+        4.995455,
+        0.072501,
+        -37.000452
+      ],
+      "yawDegrees": 0.0
+    },
+    {
+      "anchorId": "anchor.kouku.book1.source.266",
+      "position": [
+        4.170725,
+        0.033123,
+        -39.621377
+      ],
+      "yawDegrees": 0.0
+    },
+    {
+      "anchorId": "anchor.kouku.book1.source.273",
+      "position": [
+        1.984258,
+        0.030128,
+        -41.907559
+      ],
+      "yawDegrees": 0.0
+    },
+    {
+      "anchorId": "anchor.kouku.book1.source.22",
+      "position": [
+        -7.027886,
+        0.031997,
+        -44.410308
+      ],
+      "yawDegrees": 0.0
+    },
+    {
+      "anchorId": "anchor.kouku.book1.source.23",
+      "position": [
+        -5.076855,
+        0.019073,
+        -44.134897
+      ],
+      "yawDegrees": 0.0
+    },
+    {
+      "anchorId": "anchor.kouku.book1.source.272",
+      "position": [
+        -2.852023,
+        0.018755,
+        -43.942207
+      ],
+      "yawDegrees": 0.0
+    },
+    {
+      "anchorId": "anchor.kouku.book1.source.274",
+      "position": [
+        -0.360342,
+        0.02591,
+        -43.335239
+      ],
+      "yawDegrees": 0.0
+    },
+    {
+      "anchorId": "anchor.kouku.book1.source.15",
+      "position": [
+        1.779026,
+        0.032561,
+        -42.991992
+      ],
+      "yawDegrees": -127.792969
+    },
+    {
+      "anchorId": "anchor.kouku.book1.source.14",
+      "position": [
+        0.701255,
+        0.030563,
+        -44.181299
+      ],
+      "yawDegrees": -72.070312
+    },
+    {
+      "anchorId": "anchor.kouku.book1.source.16",
+      "position": [
+        2.360061,
+        0.032883,
+        -45.253521
+      ],
+      "yawDegrees": -103.710938
+    },
+    {
+      "anchorId": "anchor.kouku.book1.source.271",
+      "position": [
+        3.257232,
+        0.03652,
+        -42.729819
+      ],
+      "yawDegrees": -108.984375
+    },
+    {
+      "anchorId": "anchor.kouku.book1.source.13",
+      "position": [
+        7.839951,
+        0.04,
+        -35.792961
+      ],
+      "yawDegrees": -163.476562
+    },
+    {
+      "anchorId": "anchor.kouku.book1.source.21",
+      "position": [
+        5.906116,
+        0.0686,
+        -31.615027
+      ],
+      "yawDegrees": -165.9375
+    },
+    {
+      "anchorId": "anchor.kouku.book1.source.17",
+      "position": [
+        -3.938651,
+        0.009849,
+        -42.227861
+      ],
+      "yawDegrees": -55.019531
+    },
+    {
+      "anchorId": "anchor.kouku.book1.source.18",
+      "position": [
+        -4.622169,
+        0.014443,
+        -43.690908
+      ],
+      "yawDegrees": -65.742188
+    },
+    {
+      "anchorId": "anchor.kouku.book1.source.269",
+      "position": [
+        7.155859,
+        0.04,
+        -31.551062
+      ],
+      "yawDegrees": -203.203125
+    },
+    {
+      "anchorId": "anchor.kouku.book1.source.20",
+      "position": [
+        6.697717,
+        0.04,
+        -29.852441
+      ],
+      "yawDegrees": -193.535156
+    },
+    {
+      "anchorId": "anchor.kouku.book1.source.268",
+      "position": [
+        7.637363,
+        0.04,
+        -35.714534
+      ],
+      "yawDegrees": -162.773438
+    },
+    {
+      "anchorId": "anchor.kouku.book1.source.270",
+      "position": [
+        -5.507099,
+        0.014762,
+        -42.568013
+      ],
+      "yawDegrees": -41.132812
+    },
+    {
+      "anchorId": "anchor.kouku.book1.source.12",
+      "position": [
+        8.149468,
+        0.04,
+        -29.961379
+      ],
+      "yawDegrees": -204.433594
+    },
+    {
+      "anchorId": "anchor.kouku.book1.source.265",
+      "position": [
+        7.419199,
+        0.045135,
+        -35.589221
+      ],
+      "yawDegrees": -163.476562
+    },
+    {
+      "anchorId": "anchor.kouku.book2.source.47",
+      "position": [
+        3.812866,
+        -0.032812,
+        -60.174243
+      ],
+      "yawDegrees": -129.550781
+    },
+    {
+      "anchorId": "anchor.kouku.book2.source.277",
+      "position": [
+        1.351204,
+        0.026747,
+        -60.715298
+      ],
+      "yawDegrees": -64.863281
+    },
+    {
+      "anchorId": "anchor.kouku.book2.source.282",
+      "position": [
+        6.31914,
+        -0.010517,
+        -57.657192
+      ],
+      "yawDegrees": -137.636719
+    },
+    {
+      "anchorId": "anchor.kouku.book2.source.32",
+      "position": [
+        2.115016,
+        -0.032858,
+        -62.370137
+      ],
+      "yawDegrees": -103.007812
+    },
+    {
+      "anchorId": "anchor.kouku.book2.source.276",
+      "position": [
+        3.595508,
+        -0.04449,
+        -57.795845
+      ],
+      "yawDegrees": -140.273438
+    },
+    {
+      "anchorId": "anchor.kouku.book2.source.33",
+      "position": [
+        6.522332,
+        0.002536,
+        -59.53334
+      ],
+      "yawDegrees": -161.367188
+    },
+    {
+      "anchorId": "anchor.kouku.book2.source.34",
+      "position": [
+        -0.001593,
+        0.038114,
+        -62.556943
+      ],
+      "yawDegrees": -130.429688
+    },
+    {
+      "anchorId": "anchor.kouku.book2.source.287",
+      "position": [
+        5.873021,
+        -0.002336,
+        -61.501543
+      ],
+      "yawDegrees": -142.558594
+    },
+    {
+      "anchorId": "anchor.kouku.book2.source.40",
+      "position": [
+        3.222877,
+        -0.011633,
+        -63.847417
+      ],
+      "yawDegrees": -115.3125
+    },
+    {
+      "anchorId": "anchor.kouku.book2.source.279",
+      "position": [
+        1.767949,
+        0.031635,
+        -59.082739
+      ],
+      "yawDegrees": -137.285156
+    },
+    {
+      "anchorId": "anchor.kouku.book2.source.275",
+      "position": [
+        5.373132,
+        -0.042935,
+        -56.686152
+      ],
+      "yawDegrees": -177.890625
+    },
+    {
+      "anchorId": "anchor.kouku.book2.source.35",
+      "position": [
+        4.372334,
+        -0.007927,
+        -62.788306
+      ],
+      "yawDegrees": -73.828125
+    },
+    {
+      "anchorId": "anchor.kouku.book2.source.31",
+      "position": [
+        0.403862,
+        0.04,
+        -61.289902
+      ],
+      "yawDegrees": -138.164062
+    },
+    {
+      "anchorId": "anchor.kouku.book2.source.41",
+      "position": [
+        6.995563,
+        0.029071,
+        -61.242622
+      ],
+      "yawDegrees": -126.386719
+    },
+    {
+      "anchorId": "anchor.kouku.book2.source.284",
+      "position": [
+        0.765876,
+        0.01532,
+        -63.627227
+      ],
+      "yawDegrees": -73.828125
+    },
+    {
+      "anchorId": "anchor.kouku.book2.source.36",
+      "position": [
+        -6.715983,
+        0.04,
+        -57.757876
+      ],
+      "yawDegrees": -6.679688
+    },
+    {
+      "anchorId": "anchor.kouku.book2.source.278",
+      "position": [
+        -5.147382,
+        0.04,
+        -59.485029
+      ],
+      "yawDegrees": -41.484375
+    },
+    {
+      "anchorId": "anchor.kouku.book2.source.283",
+      "position": [
+        11.508132,
+        0.04,
+        -56.411245
+      ],
+      "yawDegrees": -195.46875
+    },
+    {
+      "anchorId": "anchor.kouku.book2.source.38",
+      "position": [
+        -7.136772,
+        0.04,
+        -59.834688
+      ],
+      "yawDegrees": -20.742188
+    },
+    {
+      "anchorId": "anchor.kouku.book2.source.285",
+      "position": [
+        12.423378,
+        0.034744,
+        -61.930981
+      ],
+      "yawDegrees": -151.523438
+    },
+    {
+      "anchorId": "anchor.kouku.book2.source.39",
+      "position": [
+        11.711835,
+        0.036698,
+        -63.618672
+      ],
+      "yawDegrees": -142.734375
+    },
+    {
+      "anchorId": "anchor.kouku.book2.source.286",
+      "position": [
+        10.311534,
+        0.04,
+        -62.260884
+      ],
+      "yawDegrees": -115.3125
+    },
+    {
+      "anchorId": "anchor.kouku.book2.source.281",
+      "position": [
+        11.847126,
+        0.04,
+        -58.529561
+      ],
+      "yawDegrees": -137.636719
+    },
+    {
+      "anchorId": "anchor.kouku.book2.source.42",
+      "position": [
+        9.787922,
+        0.04,
+        -56.914717
+      ],
+      "yawDegrees": -174.023438
+    },
+    {
+      "anchorId": "anchor.kouku.book2.source.280",
+      "position": [
+        9.574761,
+        0.04,
+        -63.880693
+      ],
+      "yawDegrees": -151.347656
     }
   ],
   "spawnGroups": [
@@ -782,6 +1205,387 @@
               "archetypeId": "MONSTER_MARIO_HEART",
               "count": 1,
               "anchorId": "anchor.mario4.source.669",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "spawnGroupId": "spawn.kouku.book1",
+      "requiredCompletedGroupId": null,
+      "maxAlive": 22,
+      "repeatPolicy": "ONCE",
+      "repeatDelayMs": 0,
+      "completionPolicy": "ALL_WAVES_CLEARED",
+      "waves": [
+        {
+          "waveId": "wave.01",
+          "startDelayMs": 0,
+          "nextWavePolicy": "TIMER",
+          "nextWaveDelayMs": 200,
+          "entries": [
+            {
+              "archetypeId": "MONSTER_KOUKU_CMDUP_02",
+              "count": 1,
+              "anchorId": "anchor.kouku.book1.source.19",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_KOUKU_CMDUP_02",
+              "count": 1,
+              "anchorId": "anchor.kouku.book1.source.267",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_KOUKU_CMDUP_02",
+              "count": 1,
+              "anchorId": "anchor.kouku.book1.source.266",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_KOUKU_CMDUP_02",
+              "count": 1,
+              "anchorId": "anchor.kouku.book1.source.273",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_KOUKU_CMDUP_02",
+              "count": 1,
+              "anchorId": "anchor.kouku.book1.source.22",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_KOUKU_CMDUP_02",
+              "count": 1,
+              "anchorId": "anchor.kouku.book1.source.23",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_KOUKU_CMDUP_02",
+              "count": 1,
+              "anchorId": "anchor.kouku.book1.source.272",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_KOUKU_CMDUP_02",
+              "count": 1,
+              "anchorId": "anchor.kouku.book1.source.274",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_KOUKU_CMDUP_02",
+              "count": 1,
+              "anchorId": "anchor.kouku.book1.source.15",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_KOUKU_RHKP_06",
+              "count": 1,
+              "anchorId": "anchor.kouku.book1.source.14",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_KOUKU_RHKP_06",
+              "count": 1,
+              "anchorId": "anchor.kouku.book1.source.16",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_KOUKU_RHKP_06",
+              "count": 1,
+              "anchorId": "anchor.kouku.book1.source.271",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_KOUKU_CMDUP_02",
+              "count": 1,
+              "anchorId": "anchor.kouku.book1.source.13",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_KOUKU_REUP_04",
+              "count": 1,
+              "anchorId": "anchor.kouku.book1.source.21",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_KOUKU_RHKP_06",
+              "count": 1,
+              "anchorId": "anchor.kouku.book1.source.17",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_KOUKU_REUP_04",
+              "count": 1,
+              "anchorId": "anchor.kouku.book1.source.18",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            }
+          ]
+        },
+        {
+          "waveId": "wave.02",
+          "startDelayMs": 0,
+          "nextWavePolicy": "ALL_DEAD",
+          "nextWaveDelayMs": 0,
+          "entries": [
+            {
+              "archetypeId": "MONSTER_KOUKU_CMDUP_02",
+              "count": 1,
+              "anchorId": "anchor.kouku.book1.source.269",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_KOUKU_CMDUP_02",
+              "count": 1,
+              "anchorId": "anchor.kouku.book1.source.20",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_KOUKU_CMDUP_02",
+              "count": 1,
+              "anchorId": "anchor.kouku.book1.source.268",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_KOUKU_RHKP_06",
+              "count": 1,
+              "anchorId": "anchor.kouku.book1.source.270",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_KOUKU_REUP_04",
+              "count": 1,
+              "anchorId": "anchor.kouku.book1.source.12",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_KOUKU_CMDUP_02",
+              "count": 1,
+              "anchorId": "anchor.kouku.book1.source.265",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "spawnGroupId": "spawn.kouku.book2",
+      "requiredCompletedGroupId": null,
+      "maxAlive": 15,
+      "repeatPolicy": "ONCE",
+      "repeatDelayMs": 0,
+      "completionPolicy": "ALL_WAVES_CLEARED",
+      "waves": [
+        {
+          "waveId": "wave.01",
+          "startDelayMs": 0,
+          "nextWavePolicy": "ALL_DEAD",
+          "nextWaveDelayMs": 0,
+          "entries": [
+            {
+              "archetypeId": "MONSTER_KOUKU_CMDGR_03",
+              "count": 1,
+              "anchorId": "anchor.kouku.book2.source.47",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_KOUKU_CMDUP_02",
+              "count": 1,
+              "anchorId": "anchor.kouku.book2.source.277",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_KOUKU_CMDUP_02",
+              "count": 1,
+              "anchorId": "anchor.kouku.book2.source.282",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_KOUKU_CMDUP_02",
+              "count": 1,
+              "anchorId": "anchor.kouku.book2.source.32",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_KOUKU_CMDUP_02",
+              "count": 1,
+              "anchorId": "anchor.kouku.book2.source.276",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_KOUKU_RHKP_06",
+              "count": 1,
+              "anchorId": "anchor.kouku.book2.source.33",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_KOUKU_CMDUP_02",
+              "count": 1,
+              "anchorId": "anchor.kouku.book2.source.34",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_KOUKU_CMDUP_02",
+              "count": 1,
+              "anchorId": "anchor.kouku.book2.source.287",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_KOUKU_CMDUP_02",
+              "count": 1,
+              "anchorId": "anchor.kouku.book2.source.40",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_KOUKU_CMDUP_02",
+              "count": 1,
+              "anchorId": "anchor.kouku.book2.source.279",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_KOUKU_CMDUP_02",
+              "count": 1,
+              "anchorId": "anchor.kouku.book2.source.275",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_KOUKU_REUP_04",
+              "count": 1,
+              "anchorId": "anchor.kouku.book2.source.35",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_KOUKU_REUP_04",
+              "count": 1,
+              "anchorId": "anchor.kouku.book2.source.31",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_KOUKU_RHKP_06",
+              "count": 1,
+              "anchorId": "anchor.kouku.book2.source.41",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_KOUKU_REUP_04",
+              "count": 1,
+              "anchorId": "anchor.kouku.book2.source.284",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            }
+          ]
+        },
+        {
+          "waveId": "wave.02",
+          "startDelayMs": 0,
+          "nextWavePolicy": "ALL_DEAD",
+          "nextWaveDelayMs": 0,
+          "entries": [
+            {
+              "archetypeId": "MONSTER_KOUKU_CMDUP_02",
+              "count": 1,
+              "anchorId": "anchor.kouku.book2.source.36",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_KOUKU_CMDUP_02",
+              "count": 1,
+              "anchorId": "anchor.kouku.book2.source.278",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_KOUKU_REUP_04",
+              "count": 1,
+              "anchorId": "anchor.kouku.book2.source.283",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_KOUKU_CMDUP_02",
+              "count": 1,
+              "anchorId": "anchor.kouku.book2.source.38",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_KOUKU_CMDUP_02",
+              "count": 1,
+              "anchorId": "anchor.kouku.book2.source.285",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_KOUKU_REUP_04",
+              "count": 1,
+              "anchorId": "anchor.kouku.book2.source.39",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_KOUKU_CMDUP_02",
+              "count": 1,
+              "anchorId": "anchor.kouku.book2.source.286",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_KOUKU_CMDUP_02",
+              "count": 1,
+              "anchorId": "anchor.kouku.book2.source.281",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_KOUKU_CMDUP_02",
+              "count": 1,
+              "anchorId": "anchor.kouku.book2.source.42",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            },
+            {
+              "archetypeId": "MONSTER_KOUKU_RHKP_06",
+              "count": 1,
+              "anchorId": "anchor.kouku.book2.source.280",
               "initialDelayMs": 0,
               "spawnIntervalMs": 0
             }
