@@ -64,6 +64,10 @@ public:
 	/* Award page that follows the clear mark (same CMvpResultView KoukuSaydon drives).
 	   Portraits are host render targets, drawn from CMainApp's portrait pass. */
 	void Render_MvpPortraits();
+	/* Draws the "trigger here" marker over every enabled trigger box, the same
+	   destination Effect KoukuSaydon puts over its own boxes. CMainApp calls this
+	   before the world render, next to the Kouku call. */
+	void Submit_TriggerMarkers();
 	bool_t Is_MvpResultVisible() const;
 	/* Escape on the award page (CMainApp's key edge) closes it like its own button does. */
 	void Hide_MvpResult();
@@ -296,6 +300,21 @@ private:
 	shared_ptr<IPlayerCommandSink> m_pPlayerCommandSink;
 	CPartyInteractionView m_PartyInteraction;
 	CWorldPlayerChatBubbleView m_ChatBubbleView;
+	struct TRIGGER_MARKER final
+	{
+		std::string placementId;
+		EFFECT_WORLD_ROOT_HANDLE handle;
+		float4x4_t rootWorld{};
+		f32_t seconds = 0.f;
+		bool_t started = false;
+		bool_t clockStarted = false;
+		bool_t active = false;
+		bool_t retired = false;
+	};
+	std::vector<TRIGGER_MARKER> m_TriggerMarkers;
+	bool_t Load_TriggerMarkers();
+	void Clear_TriggerMarkers();
+	void Update_TriggerMarkerClocks(f32_t deltaSeconds);
 	CPlayerController m_PlayerController;
 	unique_ptr<CUILayoutRuntime> m_pDeadSceneView;
 	unique_ptr<CUILayoutRuntime> m_pRaidClearView;

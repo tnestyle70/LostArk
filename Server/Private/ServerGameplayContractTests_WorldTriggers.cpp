@@ -689,7 +689,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_WorldTriggers(TESTS& te
 
 	{
 		WORLD_BOOTSTRAP_PLACEMENT trigger{};
-		trigger.strPlacementId = "trigger.contract.jump";
+		trigger.strPlacementId = "movement.contract.arc";
 		trigger.eKind = WORLD_BOOTSTRAP_KIND::TRIGGER_BOX;
 		trigger.isEnabled = true;
 		trigger.fHalfExtentX = 2.f;
@@ -707,6 +707,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_WorldTriggers(TESTS& te
 		trigger.TriggerActions.push_back(move);
 
 		CServerTriggerSystem triggerSystem;
+		triggerSystem.Set_WorldId(WORLD_ID::KAKULSAYDON_ARENA);
 		std::string triggerStatus;
 		tests.Require(
 			triggerSystem.Initialize({ trigger }, triggerStatus) &&
@@ -721,13 +722,20 @@ void LostArk::Server::CServerGameplayContractRunner::Run_WorldTriggers(TESTS& te
 		triggerPlayers.emplace(1, triggerPlayer);
 		std::vector<SERVER_WORLD_TRANSFER_REQUEST> transfers;
 		std::vector<SERVER_INTERACT_PROMPT_EDGE> promptEdges;
-		triggerSystem.Evaluate_Entries(triggerPlayers, 10, transfers, {}, promptEdges);
+		triggerSystem.Evaluate_Entries(triggerPlayers, 9, transfers, {}, promptEdges);
 		tests.Require(
+			PLAYER_ACTION_STATE::NONE == triggerPlayers.begin()->second.eAction &&
+			!triggerPlayers.begin()->second.TriggerMove.isActive &&
+			1u == promptEdges.size() && promptEdges.front().bAvailable &&
+			promptEdges.front().strTriggerPlacementId == trigger.strPlacementId,
+			"A movement box only offers itself when the player steps into its OBB");
+		tests.Require(
+			1u == triggerSystem.Activate_Here(1u, triggerPlayers, 10, transfers, {}) &&
 			PLAYER_ACTION_STATE::TRIGGER_MOVE ==
 				triggerPlayers.begin()->second.eAction &&
 			triggerPlayers.begin()->second.TriggerMove.isActive &&
 			10u == triggerPlayers.begin()->second.iActionStartTick,
-			"Fire trigger on OBB entry");
+			"G inside the OBB fires the movement box");
 		triggerSystem.Update_PlayerMotion(triggerPlayers.begin()->second, 0.5f);
 		tests.Require(
 			std::abs(triggerPlayers.begin()->second.fPositionX - 6.2f) < 0.001f &&
@@ -745,17 +753,20 @@ void LostArk::Server::CServerGameplayContractRunner::Run_WorldTriggers(TESTS& te
 			"Complete movePlayer at exact authored destination");
 		triggerSystem.Evaluate_Entries(triggerPlayers, 11, transfers, {}, promptEdges);
 		triggerPlayers.begin()->second.fPositionX = 0.f;
-		triggerSystem.Evaluate_Entries(triggerPlayers, 12, transfers, {}, promptEdges);
 		tests.Require(
+			0u == triggerSystem.Activate_Here(1u, triggerPlayers, 12, transfers, {}),
+			"A second G press inside the per-player debounce runs nothing");
+		tests.Require(
+			1u == triggerSystem.Activate_Here(1u, triggerPlayers, 20, transfers, {}) &&
 			PLAYER_ACTION_STATE::TRIGGER_MOVE ==
 				triggerPlayers.begin()->second.eAction &&
-			12u == triggerPlayers.begin()->second.iActionStartTick,
-			"Rearm non-once trigger after player exits");
+			20u == triggerPlayers.begin()->second.iActionStartTick,
+			"A non-once movement box fires again for the same player after the debounce");
 	}
 
 	{
 		WORLD_BOOTSTRAP_PLACEMENT trigger{};
-		trigger.strPlacementId = "trigger.contract.room-owned-move";
+		trigger.strPlacementId = "Mario0_Contract_RoomOwned";
 		trigger.eKind = WORLD_BOOTSTRAP_KIND::TRIGGER_BOX;
 		trigger.isEnabled = true;
 		trigger.isTriggerOnce = true;
@@ -767,6 +778,8 @@ void LostArk::Server::CServerGameplayContractRunner::Run_WorldTriggers(TESTS& te
 		move.fArcHeight = 1.5f;
 		trigger.TriggerActions.push_back(move);
 		CServerTriggerSystem triggerSystem;
+		triggerSystem.Set_HonourTriggerOnce(true);
+		triggerSystem.Set_WorldId(WORLD_ID::KAKULSAYDON_ARENA);
 		std::string status;
 		tests.Require(triggerSystem.Initialize({trigger}, status),
 			"Initialize room-owned movement entry fixture");
@@ -792,31 +805,37 @@ void LostArk::Server::CServerGameplayContractRunner::Run_WorldTriggers(TESTS& te
 			target = std::move(candidate);
 			return SERVER_TRIGGER_MOVE_ENTRY_RESULT::STARTED;
 		};
-		triggerSystem.Evaluate_Entries(players, 10u, transfers, {}, prompts, roomEntry);
-		triggerSystem.Evaluate_Entries(players, 11u, transfers, {}, prompts, roomEntry);
+		(void)triggerSystem.Activate_Interact(1u, trigger.strPlacementId, players, 10u,
+			transfers, {}, roomEntry);
+		(void)triggerSystem.Activate_Interact(1u, trigger.strPlacementId, players, 11u,
+			transfers, {}, roomEntry);
 		tests.Require(attempts == 2u && player.eAction == PLAYER_ACTION_STATE::SKILL &&
 			player.iCurrentSkillId == 34090u && !player.TriggerMove.isActive,
 			"Rejected owned move remains eligible while overlapping without changing player action");
 		admit = true;
-		triggerSystem.Evaluate_Entries(players, 12u, transfers, {}, prompts, roomEntry);
+		tests.Require(triggerSystem.Activate_Interact(1u, trigger.strPlacementId, players, 12u,
+				transfers, {}, roomEntry),
+			"A room-admitted G press reports the movement as fired");
 		tests.Require(attempts == 3u && player.eAction == PLAYER_ACTION_STATE::TRIGGER_MOVE &&
 			player.TriggerMove.isActive && player.iActionStartTick == 12u &&
 			player.TriggerMove.strSourcePlacementId == trigger.strPlacementId &&
 			player.iCurrentSkillId == INVALID_SKILL_ID && player.fPositionX == 0.f,
-			"Owned move starts on the first admitted contact without leaving and preserves authored source");
-		triggerSystem.Evaluate_Entries(players, 13u, transfers, {}, prompts, roomEntry);
+			"Owned move starts on the first admitted G press without leaving and preserves authored source");
+		(void)triggerSystem.Activate_Interact(1u, trigger.strPlacementId, players, 13u,
+			transfers, {}, roomEntry);
 		tests.Require(attempts == 3u && player.iActionStartTick == 12u,
-			"Successful owned move does not restart while the same contact remains occupied");
+			"A repeat G press cannot restart a successful owned move");
 		triggerSystem.Update_PlayerMotion(player, move.fDurationSeconds);
-		triggerSystem.Evaluate_Entries(players, 14u, transfers, {}, prompts, roomEntry);
 		player.fPositionX = 0.f;
-		triggerSystem.Evaluate_Entries(players, 15u, transfers, {}, prompts, roomEntry);
+		(void)triggerSystem.Activate_Interact(1u, trigger.strPlacementId, players, 30u,
+			transfers, {}, roomEntry);
 		tests.Require(attempts == 3u && !player.TriggerMove.isActive,
 			"Owned one-shot move commits its latch only after successful admission");
 
 		(void)triggerSystem.Initialize({trigger}, status);
 		player.eAction = PLAYER_ACTION_STATE::SKILL;
-		triggerSystem.Evaluate_Entries(players, 20u, transfers, {}, prompts,
+		(void)triggerSystem.Activate_Interact(1u, trigger.strPlacementId, players, 40u,
+			transfers, {},
 			[](const WORLD_BOOTSTRAP_PLACEMENT&, SERVER_PLAYER&, std::uint32_t)
 			{ return SERVER_TRIGGER_MOVE_ENTRY_RESULT::USE_DEFAULT; });
 		tests.Require(player.eAction == PLAYER_ACTION_STATE::SKILL && !player.TriggerMove.isActive,
@@ -825,7 +844,8 @@ void LostArk::Server::CServerGameplayContractRunner::Run_WorldTriggers(TESTS& te
 		(void)triggerSystem.Initialize({trigger}, status);
 		player.iCurrentHp = 0u;
 		const unsigned beforeDead = attempts;
-		triggerSystem.Evaluate_Entries(players, 21u, transfers, {}, prompts, roomEntry);
+		(void)triggerSystem.Activate_Interact(1u, trigger.strPlacementId, players, 41u,
+			transfers, {}, roomEntry);
 		tests.Require(attempts == beforeDead && !player.TriggerMove.isActive,
 			"Dead players never invoke room-owned movement entry");
 
@@ -840,14 +860,15 @@ void LostArk::Server::CServerGameplayContractRunner::Run_WorldTriggers(TESTS& te
 		trigger.requiresInteract = false;
 		trigger.isTriggerOnce = false;
 		(void)triggerSystem.Initialize({trigger}, status);
-		triggerSystem.Evaluate_Entries(players, 30u, transfers, {}, prompts, roomEntry);
+		(void)triggerSystem.Activate_Interact(1u, trigger.strPlacementId, players, 50u,
+			transfers, {}, roomEntry);
 		triggerSystem.Update_PlayerMotion(player, move.fDurationSeconds);
-		triggerSystem.Evaluate_Entries(players, 31u, transfers, {}, prompts, roomEntry);
 		player.fPositionX = 0.f;
-		triggerSystem.Evaluate_Entries(players, 32u, transfers, {}, prompts, roomEntry);
+		(void)triggerSystem.Activate_Interact(1u, trigger.strPlacementId, players, 60u,
+			transfers, {}, roomEntry);
 		tests.Require(attempts == beforeDead + 2u && player.TriggerMove.isActive &&
-			player.iActionStartTick == 32u && player.TriggerMove.strSourcePlacementId == trigger.strPlacementId,
-			"Repeatable owned move admits a later contact again after departure");
+			player.iActionStartTick == 60u && player.TriggerMove.strSourcePlacementId == trigger.strPlacementId,
+			"Repeatable owned move admits a later G press again after the motion");
 	}
 
 	{
@@ -865,6 +886,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_WorldTriggers(TESTS& te
 		trigger.TriggerActions.push_back(changeLevel);
 
 		CServerTriggerSystem triggerSystem;
+		triggerSystem.Set_HonourTriggerOnce(true);
 		std::string triggerStatus;
 		tests.Require(
 			triggerSystem.Initialize({ trigger }, triggerStatus),
@@ -882,17 +904,26 @@ void LostArk::Server::CServerGameplayContractRunner::Run_WorldTriggers(TESTS& te
 		std::vector<SERVER_INTERACT_PROMPT_EDGE> promptEdges;
 		triggerSystem.Evaluate_Entries(players, 20, transfers, {}, promptEdges);
 		tests.Require(
+			transfers.empty() && 1u == promptEdges.size() &&
+			promptEdges.front().bAvailable &&
+			"trigger.contract.change-level" == promptEdges.front().strTriggerPlacementId,
+			"Stepping into a changeLevel box only offers it; no world transfer is emitted");
+		tests.Require(
+			triggerSystem.Activate_Interact(
+				3, "trigger.contract.change-level", players, 21, transfers, {}) &&
 			1u == transfers.size() &&
 			7u == transfers.front().iSessionId &&
 			WORLD_ID::VALTAN_ARENA == transfers.front().eTargetWorldId &&
 			CHARACTER_CLASS_ID::LANCE_MASTER ==
 				transfers.front().eCharacterClass &&
 			"TriggerTransfer" == transfers.front().strNickName,
-			"Emit one typed Server world transfer request on OBB entry");
-		triggerSystem.Evaluate_Entries(players, 21, transfers, {}, promptEdges);
-			tests.Require(
+			"G inside the offered changeLevel box emits one typed Server world transfer request");
+		transfers.clear();
+		tests.Require(
+			!triggerSystem.Activate_Interact(
+				3, "trigger.contract.change-level", players, 60, transfers, {}) &&
 			transfers.empty(),
-			"Do not repeat a triggerOnce world transfer while occupied");
+			"Do not repeat a triggerOnce world transfer once it is spent");
 	}
 
 	{
@@ -910,6 +941,8 @@ void LostArk::Server::CServerGameplayContractRunner::Run_WorldTriggers(TESTS& te
 		trigger.TriggerActions.push_back(activate);
 
 		CServerTriggerSystem triggerSystem;
+		triggerSystem.Set_HonourTriggerOnce(true);
+		triggerSystem.Set_WorldId(WORLD_ID::VALTAN_ARENA);
 		std::string triggerStatus;
 		tests.Require(
 			triggerSystem.Initialize({ trigger }, triggerStatus),
@@ -959,29 +992,33 @@ void LostArk::Server::CServerGameplayContractRunner::Run_WorldTriggers(TESTS& te
 	}
 
 	{
-		/* Stage_1 builds its wave and Stage_MiniBoss authors the Lugaru
-		entrance move, so both run their real actions in Debug as well. The
-		stages after them keep the shortcut, which is what still carries boss
-		work to Valtan without clearing the corridor. Stage_2 stands in for
-		those here. */
+		/* Stage_1, Stage_2 and Stage_MiniBoss build their waves or author the Lugaru
+		entrance move, and Stage_3 authors the cliff move, so all four run their
+		real actions in Debug as well. Only Stage_Boss keeps the shortcut that still
+		carries boss work to Valtan without clearing the corridor. */
 		WORLD_BOOTSTRAP_PLACEMENT trigger{};
-		trigger.strPlacementId = "Stage_2";
+		trigger.strPlacementId = "Stage_3";
 		trigger.eKind = WORLD_BOOTSTRAP_KIND::TRIGGER_BOX;
 		trigger.isEnabled = true;
 		trigger.fHalfExtentX = 2.f;
 		trigger.fHalfExtentY = 2.f;
 		trigger.fHalfExtentZ = 2.f;
 		trigger.isTriggerOnce = true;
-		WORLD_TRIGGER_ACTION activate{};
-		activate.eKind = WORLD_TRIGGER_ACTION_KIND::ACTIVATE_SPAWN_GROUP;
-		activate.strTargetId = "spawn.valtan.stage03";
-		trigger.TriggerActions.push_back(activate);
+		WORLD_TRIGGER_ACTION authoredMove{};
+		authoredMove.eKind = WORLD_TRIGGER_ACTION_KIND::MOVE_PLAYER;
+		authoredMove.fTargetX = 100.42f;
+		authoredMove.fTargetY = 20.53f;
+		authoredMove.fTargetZ = -86.95f;
+		authoredMove.fDurationSeconds = 0.8f;
+		authoredMove.fArcHeight = 0.f;
+		trigger.TriggerActions.push_back(authoredMove);
 
 		CServerTriggerSystem triggerSystem;
+		triggerSystem.Set_WorldId(WORLD_ID::VALTAN_ARENA);
 		std::string triggerStatus;
 		tests.Require(
 			triggerSystem.Initialize({ trigger }, triggerStatus, true),
-			"Initialize the Debug Valtan stage-route bypass");
+			"Initialize the Debug Valtan stage-route bypass with Stage_3 present");
 		std::map<PLAYER_ID, SERVER_PLAYER> players;
 		SERVER_PLAYER player{};
 		player.iPlayerId = 404u;
@@ -999,27 +1036,33 @@ void LostArk::Server::CServerGameplayContractRunner::Run_WorldTriggers(TESTS& te
 				return true;
 			},
 				promptEdges);
-#ifdef _DEBUG
 		const SERVER_PLAYER& moving = players.begin()->second;
 		tests.Require(
 			0u == activationCount &&
+			PLAYER_ACTION_STATE::NONE == moving.eAction &&
+			!moving.TriggerMove.isActive &&
+			1u == promptEdges.size() && promptEdges.front().bAvailable,
+			"Stepping into Stage_3 only offers its authored move, Debug included; the player stays put");
+		tests.Require(
+			1u == triggerSystem.Activate_Here(404u, players, 42u, transfers,
+				[&activationCount](WORLD_TRIGGER_ACTION_KIND, const std::string&)
+				{
+					++activationCount;
+					return true;
+				}) &&
+			0u == activationCount &&
 			PLAYER_ACTION_STATE::TRIGGER_MOVE == moving.eAction &&
 			moving.TriggerMove.isActive &&
-			std::abs(moving.TriggerMove.fTargetX - 94.762f) < 0.001f &&
-			std::abs(moving.TriggerMove.fTargetZ + 90.633f) < 0.001f,
-			"Bypass a later Valtan stage group and move toward the next trigger in Debug");
+			std::abs(moving.TriggerMove.fTargetX - 100.42f) < 0.001f &&
+			std::abs(moving.TriggerMove.fTargetY - 20.53f) < 0.001f &&
+			std::abs(moving.TriggerMove.fTargetZ + 86.95f) < 0.001f,
+			"G runs the authored Stage_3 cliff move in Debug too, not the boss-approach shortcut hop");
 		triggerSystem.Update_PlayerMotion(players.begin()->second, 1.f);
 		tests.Require(
 			PLAYER_ACTION_STATE::NONE == players.begin()->second.eAction &&
-			std::abs(players.begin()->second.fPositionX - 94.762f) < 0.001f &&
-			std::abs(players.begin()->second.fPositionZ + 90.633f) < 0.001f,
-			"Complete the Debug stage bypass at the authored next-stage approach point");
-#else
-		tests.Require(
-			1u == activationCount &&
-			PLAYER_ACTION_STATE::NONE == players.begin()->second.eAction,
-			"Keep the original Valtan spawn-group trigger unchanged in Release");
-#endif
+			std::abs(players.begin()->second.fPositionX - 100.42f) < 0.001f &&
+			std::abs(players.begin()->second.fPositionZ + 86.95f) < 0.001f,
+			"Complete the authored Stage_3 move at the requested cliff point");
 	}
 
 	{
@@ -1041,6 +1084,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_WorldTriggers(TESTS& te
 		trigger.TriggerActions.push_back(activate);
 
 		CServerTriggerSystem triggerSystem;
+		triggerSystem.Set_WorldId(WORLD_ID::VALTAN_ARENA);
 		std::string triggerStatus;
 		tests.Require(
 			triggerSystem.Initialize({ trigger }, triggerStatus, true),
@@ -1075,6 +1119,249 @@ void LostArk::Server::CServerGameplayContractRunner::Run_WorldTriggers(TESTS& te
 	}
 
 	{
+		/* Stage_2 is a wave as well, so it is exempt from the Debug shortcut like
+		Stage_1: stepping in runs spawn.valtan.stage03 instead of hopping the
+		player toward Stage_3, with the bypass switched on. */
+		WORLD_BOOTSTRAP_PLACEMENT trigger{};
+		trigger.strPlacementId = "Stage_2";
+		trigger.eKind = WORLD_BOOTSTRAP_KIND::TRIGGER_BOX;
+		trigger.isEnabled = true;
+		trigger.fHalfExtentX = 2.f;
+		trigger.fHalfExtentY = 2.f;
+		trigger.fHalfExtentZ = 2.f;
+		trigger.isTriggerOnce = true;
+		WORLD_TRIGGER_ACTION activate{};
+		activate.eKind = WORLD_TRIGGER_ACTION_KIND::ACTIVATE_SPAWN_GROUP;
+		activate.strTargetId = "spawn.valtan.stage03";
+		trigger.TriggerActions.push_back(activate);
+
+		CServerTriggerSystem triggerSystem;
+		triggerSystem.Set_WorldId(WORLD_ID::VALTAN_ARENA);
+		std::string triggerStatus;
+		tests.Require(
+			triggerSystem.Initialize({ trigger }, triggerStatus, true),
+			"Initialize the Debug bypass with Stage_2 present");
+		std::map<PLAYER_ID, SERVER_PLAYER> players;
+		SERVER_PLAYER player{};
+		player.iPlayerId = 406u;
+		player.iCurrentHp = 100u;
+		player.iMaximumHp = 100u;
+		players.emplace(player.iPlayerId, player);
+		std::vector<SERVER_WORLD_TRANSFER_REQUEST> transfers;
+		std::vector<SERVER_INTERACT_PROMPT_EDGE> promptEdges;
+		std::string activatedTargetId;
+		std::size_t activationCount = 0u;
+		triggerSystem.Evaluate_Entries(
+			players, 43u, transfers,
+			[&activationCount, &activatedTargetId](
+				const WORLD_TRIGGER_ACTION_KIND kind, const std::string& targetId)
+			{
+				if (WORLD_TRIGGER_ACTION_KIND::ACTIVATE_SPAWN_GROUP != kind)
+					return false;
+				++activationCount;
+				activatedTargetId = targetId;
+				return true;
+			},
+				promptEdges);
+		tests.Require(
+			1u == activationCount &&
+			"spawn.valtan.stage03" == activatedTargetId &&
+			PLAYER_ACTION_STATE::NONE == players.begin()->second.eAction &&
+			!players.begin()->second.TriggerMove.isActive &&
+			promptEdges.empty(),
+			"Activate the Stage_2 wave instead of bypassing it, Debug included");
+	}
+
+	{
+		/* Stage_Boss starts the boss and sends every player who fires it to the
+		   Stage_Boss_ArenaEntry box centre, landing on the floor the room's navigation
+		   reports there. The start is refused once the boss is up and a later player is
+		   still sent; a busy player is not; a missing entrance box only starts the boss. */
+		const auto makeBox = [](const char* id, const float x, const float y, const float z,
+			const float halfX, const float halfY, const float halfZ)
+		{
+			WORLD_BOOTSTRAP_PLACEMENT box{};
+			box.strPlacementId = id;
+			box.eKind = WORLD_BOOTSTRAP_KIND::TRIGGER_BOX;
+			box.isEnabled = true;
+			box.fPositionX = x;
+			box.fPositionY = y;
+			box.fPositionZ = z;
+			box.fHalfExtentX = halfX;
+			box.fHalfExtentY = halfY;
+			box.fHalfExtentZ = halfZ;
+			box.isTriggerOnce = true;
+			return box;
+		};
+		WORLD_BOOTSTRAP_PLACEMENT bossStart =
+			makeBox("Stage_Boss", 129.65f, 23.02f, -96.85f, 2.f, 1.5f, 2.f);
+		WORLD_TRIGGER_ACTION startAction{};
+		startAction.eKind = WORLD_TRIGGER_ACTION_KIND::ACTIVATE_ENCOUNTER;
+		startAction.strTargetId = "boss.valtan.center";
+		bossStart.TriggerActions.push_back(startAction);
+		WORLD_BOOTSTRAP_PLACEMENT entrance =
+			makeBox("Stage_Boss_ArenaEntry", 141.85f, 25.73f, -107.55f, 2.5f, 1.5f, 2.5f);
+		WORLD_TRIGGER_ACTION inward{};
+		inward.eKind = WORLD_TRIGGER_ACTION_KIND::MOVE_PLAYER;
+		inward.fTargetX = 147.75f;
+		inward.fTargetY = 23.02f;
+		inward.fTargetZ = -117.25f;
+		inward.fDurationSeconds = 0.8f;
+		inward.fArcHeight = 0.f;
+		entrance.TriggerActions.push_back(inward);
+
+		const auto makePlayer = [&bossStart](const PLAYER_ID id)
+		{
+			SERVER_PLAYER player{};
+			player.iPlayerId = id;
+			player.iCurrentHp = 100u;
+			player.iMaximumHp = 100u;
+			player.fPositionX = bossStart.fPositionX;
+			player.fPositionY = bossStart.fPositionY;
+			player.fPositionZ = bossStart.fPositionZ;
+			return player;
+		};
+		const auto sentTo = [](const SERVER_PLAYER& player, const float y)
+		{
+			return PLAYER_ACTION_STATE::TRIGGER_MOVE == player.eAction &&
+				player.TriggerMove.isActive &&
+				std::abs(player.TriggerMove.fTargetX - 141.85f) < 0.001f &&
+				std::abs(player.TriggerMove.fTargetY - y) < 0.001f &&
+				std::abs(player.TriggerMove.fTargetZ + 107.55f) < 0.001f &&
+				"Stage_Boss" == player.TriggerMove.strSourcePlacementId;
+		};
+
+		CServerTriggerSystem triggerSystem;
+		triggerSystem.Set_WorldId(WORLD_ID::VALTAN_ARENA);
+		triggerSystem.Set_GroundSampler(
+			[](const float, const float, float& outY) { outY = 22.836f; return true; });
+		std::string triggerStatus;
+		tests.Require(
+			triggerSystem.Initialize({ bossStart, entrance }, triggerStatus),
+			"Initialize the Valtan boss start beside its arena entrance box");
+		std::map<PLAYER_ID, SERVER_PLAYER> players;
+		players.emplace(501u, makePlayer(501u));
+		players.emplace(502u, makePlayer(502u));
+		SERVER_PLAYER busyPlayer = makePlayer(503u);
+		busyPlayer.eAction = PLAYER_ACTION_STATE::KNOCKDOWN;
+		players.emplace(503u, busyPlayer);
+		std::vector<SERVER_WORLD_TRANSFER_REQUEST> transfers;
+		std::vector<SERVER_INTERACT_PROMPT_EDGE> promptEdges;
+		std::size_t startCount = 0u;
+		triggerSystem.Evaluate_Entries(
+			players, 60u, transfers,
+			[&startCount](const WORLD_TRIGGER_ACTION_KIND kind, const std::string&)
+			{
+				if (WORLD_TRIGGER_ACTION_KIND::ACTIVATE_ENCOUNTER != kind)
+					return false;
+				return 1u == ++startCount;
+			},
+			promptEdges);
+		tests.Require(
+			3u == startCount &&
+			sentTo(players.at(501u), 22.836f) &&
+			sentTo(players.at(502u), 22.836f),
+			"Stepping into Stage_Boss sends each player to the arena entrance box centre on the navigation floor, including one who arrives after the boss is already up");
+		tests.Require(
+			PLAYER_ACTION_STATE::KNOCKDOWN == players.at(503u).eAction &&
+			!players.at(503u).TriggerMove.isActive,
+			"A busy player is not sent to the arena entrance and the boss start is unaffected");
+		triggerSystem.Update_PlayerMotion(players.at(501u), 1.f);
+		tests.Require(
+			PLAYER_ACTION_STATE::NONE == players.at(501u).eAction &&
+			std::abs(players.at(501u).fPositionX - 141.85f) < 0.001f &&
+			std::abs(players.at(501u).fPositionY - 22.836f) < 0.001f &&
+			std::abs(players.at(501u).fPositionZ + 107.55f) < 0.001f,
+			"Complete the Stage_Boss placement at the arena entrance box centre");
+
+		{
+			CServerTriggerSystem withoutGround;
+			withoutGround.Set_WorldId(WORLD_ID::VALTAN_ARENA);
+			std::string status;
+			tests.Require(
+				withoutGround.Initialize({ bossStart, entrance }, status),
+				"Initialize the Valtan boss start without a floor sampler");
+			std::map<PLAYER_ID, SERVER_PLAYER> lone;
+			lone.emplace(511u, makePlayer(511u));
+			std::vector<SERVER_WORLD_TRANSFER_REQUEST> loneTransfers;
+			std::vector<SERVER_INTERACT_PROMPT_EDGE> loneEdges;
+			withoutGround.Evaluate_Entries(
+				lone, 61u, loneTransfers,
+				[](const WORLD_TRIGGER_ACTION_KIND, const std::string&) { return true; },
+				loneEdges);
+			tests.Require(
+				sentTo(lone.at(511u), 25.73f),
+				"Without a floor sampler the Stage_Boss placement uses the entrance box height");
+		}
+
+		{
+			CServerTriggerSystem withoutEntrance;
+			withoutEntrance.Set_WorldId(WORLD_ID::VALTAN_ARENA);
+			std::string status;
+			tests.Require(
+				withoutEntrance.Initialize({ bossStart }, status),
+				"Initialize the Valtan boss start without an arena entrance box");
+			std::map<PLAYER_ID, SERVER_PLAYER> lone;
+			lone.emplace(512u, makePlayer(512u));
+			std::vector<SERVER_WORLD_TRANSFER_REQUEST> loneTransfers;
+			std::vector<SERVER_INTERACT_PROMPT_EDGE> loneEdges;
+			std::size_t loneStarts = 0u;
+			withoutEntrance.Evaluate_Entries(
+				lone, 62u, loneTransfers,
+				[&loneStarts](const WORLD_TRIGGER_ACTION_KIND, const std::string&)
+				{
+					++loneStarts;
+					return true;
+				},
+				loneEdges);
+			tests.Require(
+				1u == loneStarts &&
+				PLAYER_ACTION_STATE::NONE == lone.at(512u).eAction &&
+				!lone.at(512u).TriggerMove.isActive,
+				"Without an arena entrance box Stage_Boss only starts the boss");
+		}
+
+#ifdef _DEBUG
+		{
+			/* Debug makes Stage_Boss wait for G (the corridor shortcut table still lists
+			   it for the pattern audition), and G sends the player to the same entrance
+			   box, not to the old 159-bar bait point. */
+			CServerTriggerSystem debugSystem;
+			debugSystem.Set_WorldId(WORLD_ID::VALTAN_ARENA);
+			debugSystem.Set_GroundSampler(
+				[](const float, const float, float& outY) { outY = 22.836f; return true; });
+			std::string status;
+			tests.Require(
+				debugSystem.Initialize({ bossStart, entrance }, status, true),
+				"Initialize the Debug Valtan bypass with Stage_Boss and its entrance box");
+			std::map<PLAYER_ID, SERVER_PLAYER> lone;
+			lone.emplace(521u, makePlayer(521u));
+			std::vector<SERVER_WORLD_TRANSFER_REQUEST> loneTransfers;
+			std::vector<SERVER_INTERACT_PROMPT_EDGE> loneEdges;
+			std::size_t loneStarts = 0u;
+			const auto countStart =
+				[&loneStarts](const WORLD_TRIGGER_ACTION_KIND, const std::string&)
+				{
+					++loneStarts;
+					return true;
+				};
+			debugSystem.Evaluate_Entries(lone, 63u, loneTransfers, countStart, loneEdges);
+			tests.Require(
+				0u == loneStarts &&
+				PLAYER_ACTION_STATE::NONE == lone.at(521u).eAction &&
+				1u == loneEdges.size() && loneEdges.front().bAvailable,
+				"Debug: stepping into Stage_Boss only offers it and does not start the boss");
+			tests.Require(
+				1u == debugSystem.Activate_Here(
+					521u, lone, 64u, loneTransfers, countStart) &&
+				1u == loneStarts &&
+				sentTo(lone.at(521u), 22.836f),
+				"Debug: G at Stage_Boss starts the boss and sends the player to the arena entrance box, not the audition bait point");
+		}
+#endif
+	}
+
+	{
 		WORLD_BOOTSTRAP_PLACEMENT trigger{};
 		trigger.strPlacementId = "trigger.contract.activate-encounter";
 		trigger.eKind = WORLD_BOOTSTRAP_KIND::TRIGGER_BOX;
@@ -1089,6 +1376,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_WorldTriggers(TESTS& te
 		trigger.TriggerActions.push_back(activate);
 
 		CServerTriggerSystem triggerSystem;
+		triggerSystem.Set_WorldId(WORLD_ID::VALTAN_ARENA);
 		std::string triggerStatus;
 		tests.Require(
 			triggerSystem.Initialize({ trigger }, triggerStatus),
@@ -1122,6 +1410,376 @@ void LostArk::Server::CServerGameplayContractRunner::Run_WorldTriggers(TESTS& te
 		tests.Require(
 			1u == activationCount && transfers.empty(),
 			"Dispatch typed activateEncounter target on OBB entry");
+	}
+
+	{
+		/* triggerOnce stays authored, but the Server no longer turns it into a
+		   room-wide latch: the first player's entry must not spend the box for the
+		   next player, nor for the same player on a return trip. A Valtan corridor
+		   wave is a scripted-flow kind, so it still fires on entry. */
+		WORLD_BOOTSTRAP_PLACEMENT trigger{};
+		trigger.strPlacementId = "trigger.contract.repeat-spawn-group";
+		trigger.eKind = WORLD_BOOTSTRAP_KIND::TRIGGER_BOX;
+		trigger.isEnabled = true;
+		trigger.fHalfExtentX = trigger.fHalfExtentY = trigger.fHalfExtentZ = 2.f;
+		trigger.isTriggerOnce = true;
+		WORLD_TRIGGER_ACTION activate{};
+		activate.eKind = WORLD_TRIGGER_ACTION_KIND::ACTIVATE_SPAWN_GROUP;
+		activate.strTargetId = "spawn.contract.repeat";
+		trigger.TriggerActions.push_back(activate);
+
+		CServerTriggerSystem triggerSystem;
+		triggerSystem.Set_WorldId(WORLD_ID::VALTAN_ARENA);
+		std::string status;
+		tests.Require(triggerSystem.Initialize({ trigger }, status),
+			"Initialize an authored triggerOnce trigger under the repeatable Product policy");
+		std::map<PLAYER_ID, SERVER_PLAYER> players;
+		for (const PLAYER_ID id : { 10u, 11u })
+		{
+			SERVER_PLAYER& entry = players[id];
+			entry.iPlayerId = id;
+			entry.iCurrentHp = entry.iMaximumHp = 100u;
+			entry.fPositionX = 50.f;
+		}
+		std::vector<SERVER_WORLD_TRANSFER_REQUEST> transfers;
+		std::vector<SERVER_INTERACT_PROMPT_EDGE> prompts;
+		std::size_t activations = 0u;
+		const auto count = [&activations](WORLD_TRIGGER_ACTION_KIND kind, const std::string& id)
+		{
+			if (WORLD_TRIGGER_ACTION_KIND::ACTIVATE_SPAWN_GROUP != kind ||
+				"spawn.contract.repeat" != id)
+			{
+				return false;
+			}
+			++activations;
+			return true;
+		};
+		players.at(10u).fPositionX = 0.f;
+		triggerSystem.Evaluate_Entries(players, 50u, transfers, count, prompts);
+		triggerSystem.Evaluate_Entries(players, 51u, transfers, count, prompts);
+		tests.Require(1u == activations,
+			"The first player fires the trigger once and staying inside does not repeat it");
+		players.at(11u).fPositionX = 0.f;
+		triggerSystem.Evaluate_Entries(players, 52u, transfers, count, prompts);
+		tests.Require(2u == activations,
+			"A second player's own entry fires the same trigger again");
+		players.at(10u).fPositionX = 50.f;
+		triggerSystem.Evaluate_Entries(players, 53u, transfers, count, prompts);
+		players.at(10u).fPositionX = 0.f;
+		triggerSystem.Evaluate_Entries(players, 54u, transfers, count, prompts);
+		tests.Require(3u == activations,
+			"The first player fires it again on a return trip");
+	}
+
+	{
+		/* A G press made while a skill or hit reaction owns the player changes
+		nothing and costs no debounce, so the same press works again the moment
+		the action ends (a Kouku Mario crossing is a G box). */
+		WORLD_BOOTSTRAP_PLACEMENT trigger{};
+		trigger.strPlacementId = "Mario0_Contract_BusyRetry";
+		trigger.eKind = WORLD_BOOTSTRAP_KIND::TRIGGER_BOX;
+		trigger.isEnabled = true;
+		trigger.fHalfExtentX = trigger.fHalfExtentY = trigger.fHalfExtentZ = 1.f;
+		WORLD_TRIGGER_ACTION move{};
+		move.eKind = WORLD_TRIGGER_ACTION_KIND::MOVE_PLAYER;
+		move.fTargetX = 8.f;
+		move.fDurationSeconds = 0.6f;
+		trigger.TriggerActions.push_back(move);
+		CServerTriggerSystem triggerSystem;
+		triggerSystem.Set_WorldId(WORLD_ID::KAKULSAYDON_ARENA);
+		std::string status;
+		tests.Require(triggerSystem.Initialize({ trigger }, status),
+			"Initialize the busy-retry movement fixture");
+		std::map<PLAYER_ID, SERVER_PLAYER> players;
+		SERVER_PLAYER& player = players[1u];
+		player.iPlayerId = 1u;
+		player.iCurrentHp = player.iMaximumHp = 100u;
+		player.eAction = PLAYER_ACTION_STATE::SKILL;
+		player.iCurrentSkillId = 34090u;
+		std::vector<SERVER_WORLD_TRANSFER_REQUEST> transfers;
+		std::vector<SERVER_INTERACT_PROMPT_EDGE> prompts;
+		tests.Require(!triggerSystem.Activate_Interact(1u, trigger.strPlacementId, players, 60u,
+				transfers, {}) &&
+			PLAYER_ACTION_STATE::SKILL == player.eAction && !player.TriggerMove.isActive,
+			"A busy player is not interrupted by a movement trigger");
+		player.eAction = PLAYER_ACTION_STATE::NONE;
+		player.iCurrentSkillId = INVALID_SKILL_ID;
+		tests.Require(triggerSystem.Activate_Interact(1u, trigger.strPlacementId, players, 61u,
+				transfers, {}) &&
+			PLAYER_ACTION_STATE::TRIGGER_MOVE == player.eAction &&
+			player.TriggerMove.isActive && 61u == player.iActionStartTick,
+			"The same G press starts the movement once the action ends, without leaving and re-entering");
+	}
+
+	{
+		/* Outside the scripted flows a trigger never fires by stepping in. Entry
+		   only offers it, and G pressed inside the volume fires it, any number of
+		   times, for any player. Bern has no scripted-flow row in AUTO_ENTRY_RULES. */
+		WORLD_BOOTSTRAP_PLACEMENT spawn{};
+		spawn.strPlacementId = "trigger.contract.gonly-spawn";
+		spawn.eKind = WORLD_BOOTSTRAP_KIND::TRIGGER_BOX;
+		spawn.isEnabled = true;
+		spawn.fHalfExtentX = spawn.fHalfExtentY = spawn.fHalfExtentZ = 2.f;
+		WORLD_TRIGGER_ACTION activate{};
+		activate.eKind = WORLD_TRIGGER_ACTION_KIND::ACTIVATE_SPAWN_GROUP;
+		activate.strTargetId = "spawn.contract.gonly";
+		spawn.TriggerActions.push_back(activate);
+		WORLD_BOOTSTRAP_PLACEMENT hop = spawn;
+		hop.strPlacementId = "trigger.contract.gonly-move";
+		hop.fPositionX = 20.f;
+		hop.TriggerActions.front().eKind = WORLD_TRIGGER_ACTION_KIND::MOVE_PLAYER;
+		hop.TriggerActions.front().fTargetX = 30.f;
+		hop.TriggerActions.front().fDurationSeconds = 0.5f;
+		WORLD_BOOTSTRAP_PLACEMENT cutscene = spawn;
+		cutscene.strPlacementId = "trigger.contract.auto-sequence";
+		cutscene.fPositionX = 40.f;
+		cutscene.TriggerActions.front().eKind = WORLD_TRIGGER_ACTION_KIND::PLAY_SEQUENCE;
+		cutscene.TriggerActions.front().strTargetId = "sequence.contract.auto";
+
+		CServerTriggerSystem triggerSystem;
+		triggerSystem.Set_WorldId(WORLD_ID::BERN);
+		std::vector<std::string> fireLog;
+		triggerSystem.Set_FireLog([&fireLog](const std::string& line) { fireLog.push_back(line); });
+		std::string status;
+		tests.Require(triggerSystem.Initialize({ spawn, hop, cutscene }, status),
+			"Initialize a spawn box, a movement box and a scripted sequence box in Bern");
+		std::map<PLAYER_ID, SERVER_PLAYER> players;
+		for (const PLAYER_ID id : { 9u, 10u })
+		{
+			SERVER_PLAYER& entry = players[id];
+			entry.iPlayerId = id;
+			entry.iCurrentHp = entry.iMaximumHp = 100u;
+			entry.fPositionX = 50.f;
+		}
+		std::vector<SERVER_WORLD_TRANSFER_REQUEST> transfers;
+		std::vector<SERVER_INTERACT_PROMPT_EDGE> prompts;
+		std::size_t spawnCount = 0u;
+		std::size_t sequenceCount = 0u;
+		const auto run = [&](WORLD_TRIGGER_ACTION_KIND kind, const std::string& id)
+		{
+			if (WORLD_TRIGGER_ACTION_KIND::ACTIVATE_SPAWN_GROUP == kind &&
+				"spawn.contract.gonly" == id)
+			{
+				++spawnCount;
+				return true;
+			}
+			if (WORLD_TRIGGER_ACTION_KIND::PLAY_SEQUENCE == kind &&
+				"sequence.contract.auto" == id)
+			{
+				++sequenceCount;
+				return true;
+			}
+			return false;
+		};
+		const auto offered = [&prompts](const char* id, const PLAYER_ID player, const bool available)
+		{
+			return std::any_of(prompts.begin(), prompts.end(),
+				[&](const SERVER_INTERACT_PROMPT_EDGE& edge)
+				{
+					return edge.strTriggerPlacementId == id &&
+						edge.iPlayerId == player && edge.bAvailable == available;
+				});
+		};
+		const std::uint32_t debounce = CServerTriggerSystem::KEY_ACTIVATION_DEBOUNCE_TICKS;
+
+		tests.Require(0u == triggerSystem.Activate_Here(9u, players, 100u, transfers, run) &&
+			0u == spawnCount,
+			"G outside every trigger box runs nothing");
+		players.at(9u).fPositionX = 0.f;
+		triggerSystem.Evaluate_Entries(players, 101u, transfers, run, prompts);
+		tests.Require(0u == spawnCount && offered("trigger.contract.gonly-spawn", 9u, true),
+			"Stepping into a box only offers it; the action does not run");
+		triggerSystem.Evaluate_Entries(players, 102u, transfers, run, prompts);
+		tests.Require(0u == spawnCount && prompts.empty(),
+			"The offer is sent once on the entry edge, and standing inside still runs nothing");
+		tests.Require(1u == triggerSystem.Activate_Here(9u, players, 103u, transfers, run) &&
+			1u == spawnCount,
+			"G inside the box runs it");
+		tests.Require(0u == triggerSystem.Activate_Here(9u, players, 105u, transfers, run) &&
+			1u == spawnCount,
+			"A second G inside the per-player debounce is ignored");
+		tests.Require(1u == triggerSystem.Activate_Here(9u, players, 103u + debounce, transfers, run) &&
+			2u == spawnCount,
+			"G fires the same box again once the debounce has elapsed, any number of times");
+		players.at(10u).fPositionX = 0.f;
+		triggerSystem.Evaluate_Entries(players, 120u, transfers, run, prompts);
+		tests.Require(2u == spawnCount && offered("trigger.contract.gonly-spawn", 10u, true),
+			"A second player stepping in is offered the box and fires nothing");
+		tests.Require(1u == triggerSystem.Activate_Here(10u, players, 121u, transfers, run) &&
+			3u == spawnCount,
+			"Another player's G is independent of the first player's debounce");
+
+		players.at(9u).fPositionX = 20.f;
+		triggerSystem.Evaluate_Entries(players, 130u, transfers, run, prompts);
+		tests.Require(!players.at(9u).TriggerMove.isActive &&
+			PLAYER_ACTION_STATE::NONE == players.at(9u).eAction &&
+			offered("trigger.contract.gonly-move", 9u, true) &&
+			offered("trigger.contract.gonly-spawn", 9u, false),
+			"Stepping into a movement box does not move the player; leaving the first box withdraws its offer");
+		tests.Require(triggerSystem.Activate_Interact(9u, "trigger.contract.gonly-move",
+				players, 140u, transfers, run) &&
+			PLAYER_ACTION_STATE::TRIGGER_MOVE == players.at(9u).eAction &&
+			players.at(9u).TriggerMove.isActive && 140u == players.at(9u).iActionStartTick,
+			"G on the offered movement box moves the player");
+
+		players.at(10u).fPositionX = 40.f;
+		triggerSystem.Evaluate_Entries(players, 150u, transfers, run, prompts);
+		tests.Require(1u == sequenceCount,
+			"A scripted sequence box still fires the moment a player steps in");
+		tests.Require(!triggerSystem.Activate_Interact(10u, "trigger.contract.auto-sequence",
+				players, 160u, transfers, run) &&
+			0u == triggerSystem.Activate_Here(10u, players, 160u, transfers, run) &&
+			1u == sequenceCount,
+			"G does not run a box that fires on entry");
+		tests.Require(!triggerSystem.Activate_Interact(9u, "trigger.contract.missing",
+				players, 170u, transfers, run),
+			"A G request naming no such box is rejected");
+		players.at(9u).fPositionX = 0.f;
+		players.at(9u).eAction = PLAYER_ACTION_STATE::NONE;
+		players.at(9u).TriggerMove = {};
+		players.at(9u).iCurrentHp = 0u;
+		tests.Require(0u == triggerSystem.Activate_Here(9u, players, 200u, transfers, run) &&
+			3u == spawnCount,
+			"A dead player cannot fire a trigger with G");
+		tests.Require(0u == triggerSystem.Activate_Here(77u, players, 210u, transfers, run),
+			"G from an unknown player id runs nothing");
+		const auto fromKey = std::count_if(fireLog.begin(), fireLog.end(),
+			[](const std::string& line) { return std::string::npos != line.find("Source=KEY"); });
+		tests.Require(5u == fireLog.size() && 4 == fromKey &&
+			std::string::npos != fireLog.front().find("Trigger=trigger.contract.gonly-spawn") &&
+			std::string::npos != fireLog.front().find("Player=9") &&
+			std::string::npos != fireLog.back().find("Trigger=trigger.contract.auto-sequence") &&
+			std::string::npos != fireLog.back().find("Source=ENTER"),
+			"Every fired trigger is logged once with its id, player and how it fired; G-only boxes log KEY only");
+	}
+
+	{
+		/* AUTO_ENTRY_RULES by world and id: no player-movement box fires on entry, a
+		Mario* id in Kouku included. Crossings, jumps, exits and every changeLevel
+		box wait for G in every world. */
+		for (const WORLD_ID world : { WORLD_ID::KAKULSAYDON_ARENA, WORLD_ID::VALTAN_ARENA, WORLD_ID::BERN })
+		for (const char* const moveId : { "Mario0_Contract_Rule", "jump.contract.rule" })
+		{
+			WORLD_BOOTSTRAP_PLACEMENT move{};
+			move.strPlacementId = moveId;
+			move.eKind = WORLD_BOOTSTRAP_KIND::TRIGGER_BOX;
+			move.isEnabled = true;
+			move.fHalfExtentX = move.fHalfExtentY = move.fHalfExtentZ = 2.f;
+			WORLD_TRIGGER_ACTION hop{};
+			hop.eKind = WORLD_TRIGGER_ACTION_KIND::MOVE_PLAYER;
+			hop.fTargetX = 8.f;
+			hop.fDurationSeconds = 0.6f;
+			move.TriggerActions.push_back(hop);
+			WORLD_BOOTSTRAP_PLACEMENT transfer = move;
+			transfer.strPlacementId = "trigger.contract.rule-transfer";
+			transfer.TriggerActions.front().eKind = WORLD_TRIGGER_ACTION_KIND::CHANGE_LEVEL;
+			transfer.TriggerActions.front().eTargetWorldId = WORLD_ID::VALTAN_ARENA;
+			CServerTriggerSystem triggerSystem;
+			triggerSystem.Set_WorldId(world);
+			std::string status;
+			tests.Require(triggerSystem.Initialize({ move, transfer }, status),
+				"Initialize the entry-rule fixture");
+			std::map<PLAYER_ID, SERVER_PLAYER> players;
+			SERVER_PLAYER& player = players[1u];
+			player.iPlayerId = 1u;
+			player.iSessionId = 5u;
+			player.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+			player.strNickName = "RuleProbe";
+			player.iCurrentHp = player.iMaximumHp = 100u;
+			std::vector<SERVER_WORLD_TRANSFER_REQUEST> transfers;
+			std::vector<SERVER_INTERACT_PROMPT_EDGE> prompts;
+			triggerSystem.Evaluate_Entries(players, 300u, transfers, {}, prompts);
+			tests.Require(!player.TriggerMove.isActive && transfers.empty(),
+				"No movement box fires on entry -- a Mario id in Kouku included -- and a changeLevel box never does");
+			tests.Require(triggerSystem.Activate_Interact(1u, moveId, players, 301u, transfers, {}) &&
+				player.TriggerMove.isActive && transfers.empty(),
+				"G fires that same movement box in every world");
+		}
+	}
+
+	{
+		/* A player-movement box is per player. Two players standing in the same box each
+		move with their own G, in the Kouku Mario world and in the Valtan corridor alike,
+		the first mover does not spend the box for the second, and each can use it again
+		after the motion. A room-owned (Mario) box is admitted per player as well, so one
+		player's rejection never blocks the other. */
+		for (const WORLD_ID world : { WORLD_ID::KAKULSAYDON_ARENA, WORLD_ID::VALTAN_ARENA })
+		{
+			WORLD_BOOTSTRAP_PLACEMENT crossing{};
+			crossing.strPlacementId = WORLD_ID::KAKULSAYDON_ARENA == world ?
+				"Mario0_Contract_Crossing" : "Stage_Contract_Crossing";
+			crossing.eKind = WORLD_BOOTSTRAP_KIND::TRIGGER_BOX;
+			crossing.isEnabled = true;
+			crossing.isTriggerOnce = true;
+			crossing.fHalfExtentX = crossing.fHalfExtentY = crossing.fHalfExtentZ = 2.f;
+			WORLD_TRIGGER_ACTION hop{};
+			hop.eKind = WORLD_TRIGGER_ACTION_KIND::MOVE_PLAYER;
+			hop.fTargetX = 8.f;
+			hop.fDurationSeconds = 0.6f;
+			crossing.TriggerActions.push_back(hop);
+			CServerTriggerSystem triggerSystem;
+			triggerSystem.Set_WorldId(world);
+			std::string status;
+			tests.Require(triggerSystem.Initialize({ crossing }, status),
+				"Initialize the two-player crossing fixture");
+			std::map<PLAYER_ID, SERVER_PLAYER> players;
+			for (const PLAYER_ID id : { 1u, 2u })
+			{
+				SERVER_PLAYER& entry = players[id];
+				entry.iPlayerId = id;
+				entry.iCurrentHp = entry.iMaximumHp = 100u;
+			}
+			std::vector<SERVER_WORLD_TRANSFER_REQUEST> transfers;
+			std::vector<SERVER_INTERACT_PROMPT_EDGE> prompts;
+			triggerSystem.Evaluate_Entries(players, 400u, transfers, {}, prompts);
+			tests.Require(2u == prompts.size() && !players.at(1u).TriggerMove.isActive &&
+				!players.at(2u).TriggerMove.isActive,
+				"Two players standing in a crossing box are both offered it and neither moves by stepping in");
+			tests.Require(
+				triggerSystem.Activate_Interact(1u, crossing.strPlacementId, players, 401u, transfers, {}) &&
+				triggerSystem.Activate_Interact(2u, crossing.strPlacementId, players, 401u, transfers, {}) &&
+				players.at(1u).TriggerMove.isActive && players.at(2u).TriggerMove.isActive,
+				"Each player's own G moves that player; the first mover does not spend the box for the second");
+			for (const PLAYER_ID id : { 1u, 2u })
+			{
+				(void)triggerSystem.Update_PlayerMotion(players.at(id), hop.fDurationSeconds);
+				players.at(id).fPositionX = 0.f;
+			}
+			tests.Require(
+				triggerSystem.Activate_Interact(1u, crossing.strPlacementId, players, 420u, transfers, {}) &&
+				triggerSystem.Activate_Interact(2u, crossing.strPlacementId, players, 420u, transfers, {}),
+				"Both players use the same crossing again after the motion, any number of times");
+
+			if (WORLD_ID::KAKULSAYDON_ARENA != world)
+				continue;
+			const SERVER_TRIGGER_MOVE_ENTRY_HANDLER roomEntry =
+				[](const WORLD_BOOTSTRAP_PLACEMENT& placement, SERVER_PLAYER& target,
+					const std::uint32_t tick)
+			{
+				if (1u == target.iPlayerId)
+					return SERVER_TRIGGER_MOVE_ENTRY_RESULT::RETRY_WHILE_INSIDE;
+				return CServerTriggerSystem::Begin_MovePlayer(
+						target, placement.TriggerActions.front(), tick) ?
+					SERVER_TRIGGER_MOVE_ENTRY_RESULT::STARTED :
+					SERVER_TRIGGER_MOVE_ENTRY_RESULT::RETRY_WHILE_INSIDE;
+			};
+			(void)triggerSystem.Initialize({ crossing }, status);
+			for (const PLAYER_ID id : { 1u, 2u })
+			{
+				players.at(id).TriggerMove = {};
+				players.at(id).eAction = PLAYER_ACTION_STATE::NONE;
+				players.at(id).fPositionX = 0.f;
+			}
+			tests.Require(
+				!triggerSystem.Activate_Interact(1u, crossing.strPlacementId, players, 500u,
+					transfers, {}, roomEntry) &&
+				triggerSystem.Activate_Interact(2u, crossing.strPlacementId, players, 500u,
+					transfers, {}, roomEntry) &&
+				!players.at(1u).TriggerMove.isActive && players.at(2u).TriggerMove.isActive &&
+				players.at(2u).TriggerMove.strSourcePlacementId == crossing.strPlacementId,
+				"A Mario box the room rejects for one player still moves the other player through the room admission");
+		}
+
 	}
 
 	{

@@ -482,10 +482,17 @@ namespace LostArk::Shared
 		C2S_USE_ESTHER_SKILL& message);
 
 	/* World map square hole use. iSquareHoleId is the 1-based row of the zone's
-	square-hole document the Client clicked; the Server only uses it to admit the
-	request (non-zero) because the teleport itself is not implemented yet. The
-	song lock length is shared so the Client gauge and the Server release agree. */
+	square-hole document the Client clicked. The Server resolves it to the world's
+	"squarehole.<id>" placement (a disabled triggerBox row with one movePlayer event
+	in that area's Gameplay.world.json) and refuses the request, playing no song, when
+	the world has none or the landing is not standable. The timeline is Server owned and
+	shared with the Client screen fade: the song runs SQUAREHOLE_SONG_DURATION_MS, the
+	screen finishes fading to black exactly when the song ends (fade length
+	SQUAREHOLE_BLACKOUT_FADE_MS), stays black for SQUAREHOLE_BLACKOUT_HOLD_MS while the
+	Server moves the player and ends the action, and the Client then fades back in. */
 	inline constexpr std::uint32_t SQUAREHOLE_SONG_DURATION_MS = 3000u;
+	inline constexpr std::uint32_t SQUAREHOLE_BLACKOUT_FADE_MS = 600u;
+	inline constexpr std::uint32_t SQUAREHOLE_BLACKOUT_HOLD_MS = 400u;
 	struct C2S_USE_SQUAREHOLE
 	{
 		std::uint32_t iClientSequence = 0;
@@ -2643,6 +2650,13 @@ namespace LostArk::Shared
 	bool Read_Message(
 		CPacketReader& reader,
 		S2C_INTERACT_PROMPT& message);
+
+	// Reserved trigger id for a G press with no box on offer: "run every G-only
+	// trigger box I am standing in". Stable placement ids only use [A-Za-z0-9_.-]
+	// (Publish-WorldGameplay.ps1 stableIdPattern), so this can never name a real
+	// box. Same wire shape as a named request, so the protocol number is
+	// unchanged; a Server that predates it finds no such box and ignores it.
+	inline constexpr const char* INTERACT_TRIGGER_HERE_ID = "@here";
 
 	// The player pressed the offered key. Same shape as C2S_CONFIRM_NPC_ENTRY:
 	// the Server re-tests that this player is still inside that exact box before

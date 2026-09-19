@@ -40,6 +40,102 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 {
 	Run_KoukuMarioEntryContact(tests);
 	Run_KoukuRaidIntegration(tests);
+	{
+		/* Bern square holes: the song lock is the song plus the Client's black hold, and the
+		   Server lands the player on the world's authored squarehole.<id> row inside that hold.
+		   Needs the republished Bern world bootstrap that carries those rows. */
+		auto room = std::make_unique<CGameRoom>(WORLD_ID::BERN);
+		const auto* spawn = room->Find_AvailablePlayerSpawn();
+		SERVER_NAV_POINT start{};
+		const bool ready = room->Is_Ready() && nullptr != spawn &&
+			room->m_ServerNavigation.Sample_Position(spawn->fPositionX, spawn->fPositionZ, start);
+		tests.Require(ready, "Square hole fixture loads Bern and an authored spawn");
+		if (ready)
+		{
+			auto storage = std::make_unique<SERVER_PLAYER>();
+			SERVER_PLAYER& base = *storage;
+			base.iPlayerId = 321u;
+			base.iNetEntityId = 654u;
+			base.iCurrentHp = base.iMaximumHp = 100u;
+			base.fPositionX = start.x;
+			base.fPositionY = start.y;
+			base.fPositionZ = start.z;
+			std::array<SERVER_NAV_POINT, 4u> landing{};
+			for (std::uint16_t holeId = 1u; holeId <= 3u; ++holeId)
+			{
+				const auto* row = room->Find_Placement("squarehole." + std::to_string(holeId));
+				const bool resolved = room->Resolve_SquareHoleDestination(base, holeId, landing[holeId]);
+				tests.Require(nullptr != row && resolved &&
+					std::abs(landing[holeId].x - row->TriggerActions.front().fTargetX) < 0.001f &&
+					std::abs(landing[holeId].z - row->TriggerActions.front().fTargetZ) < 0.001f,
+					"Every Bern square hole resolves to its authored standable landing");
+			}
+			SERVER_NAV_POINT unused{};
+			tests.Require(!room->Resolve_SquareHoleDestination(base, 0u, unused) &&
+				!room->Resolve_SquareHoleDestination(base, 4u, unused),
+				"An unknown square hole id has no destination, so no song starts");
+
+			constexpr std::uint32_t SONG_TICKS = (SQUAREHOLE_SONG_DURATION_MS * 30u + 999u) / 1000u;
+			constexpr std::uint32_t LOCK_TICKS =
+				((SQUAREHOLE_SONG_DURATION_MS + SQUAREHOLE_BLACKOUT_HOLD_MS) * 30u + 999u) / 1000u;
+			tests.Require(LOCK_TICKS > SONG_TICKS &&
+				SQUAREHOLE_BLACKOUT_FADE_MS <= SQUAREHOLE_SONG_DURATION_MS,
+				"The black hold follows the song and the fade fits inside the song");
+
+			constexpr std::uint32_t START_TICK = 100u;
+			SERVER_PLAYER& live = room->m_Players[base.iPlayerId];
+			live = base;
+			live.eAction = PLAYER_ACTION_STATE::SQUAREHOLE_SONG;
+			live.iSquareHoleId = 1u;
+			live.iActionStartTick = START_TICK;
+			room->m_iServerTick = START_TICK + LOCK_TICKS - 2u;
+			room->Update_Players(1.f / 30.f);
+			tests.Require(PLAYER_ACTION_STATE::SQUAREHOLE_SONG == live.eAction &&
+				1u == live.iSquareHoleId && live.fPositionX == start.x && live.fPositionZ == start.z,
+				"The song keeps the player in place until the lock ticks run out");
+			room->m_iServerTick += 1u;
+			room->Update_Players(1.f / 30.f);
+			tests.Require(PLAYER_ACTION_STATE::NONE == live.eAction && 0u == live.iSquareHoleId &&
+				live.fPositionX == landing[1].x && live.fPositionY == landing[1].y &&
+				live.fPositionZ == landing[1].z && !live.hasMoveGoal,
+				"The last lock tick lands the player on the square hole and releases the action");
+
+			live = base;
+			live.eAction = PLAYER_ACTION_STATE::DEAD;
+			live.iCurrentHp = 0u;
+			live.iSquareHoleId = 2u;
+			live.iActionStartTick = START_TICK;
+			room->m_iServerTick = START_TICK + LOCK_TICKS;
+			room->Update_Players(1.f / 30.f);
+			tests.Require(0u == live.iSquareHoleId && live.fPositionX == start.x &&
+				live.fPositionZ == start.z,
+				"A song cut short (death here) never lands the player afterwards");
+
+			live = base;
+			live.eAction = PLAYER_ACTION_STATE::SQUAREHOLE_SONG;
+			live.iSquareHoleId = 3u;
+			live.iActionStartTick = START_TICK;
+			SERVER_WORLD_ENTITY blocker{};
+			blocker.iNetEntityId = 987u;
+			blocker.eKind = WORLD_BOOTSTRAP_KIND::NPC;
+			blocker.fPositionX = landing[3].x;
+			blocker.fPositionY = landing[3].y;
+			blocker.fPositionZ = landing[3].z;
+			room->m_WorldEntities.push_back(blocker);
+			room->Finish_SquareHoleSong(live);
+			tests.Require(0u == live.iSquareHoleId && live.fPositionX == start.x &&
+				live.fPositionZ == start.z &&
+				std::string::npos != room->m_strStatus.find("Square hole landing was refused"),
+				"A landing blocked during the song leaves the player where they stand");
+		}
+		auto koukuRoom = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+		SERVER_NAV_POINT noLanding{};
+		auto koukuStorage = std::make_unique<SERVER_PLAYER>();
+		koukuStorage->iCurrentHp = koukuStorage->iMaximumHp = 100u;
+		tests.Require(koukuRoom->Is_Ready() &&
+			!koukuRoom->Resolve_SquareHoleDestination(*koukuStorage, 1u, noLanding),
+			"A world without square hole rows refuses the request, so no song starts");
+	}
 		for (const WORLD_ID world : { WORLD_ID::KAKULSAYDON_ARENA, WORLD_ID::VALTAN_ARENA })
 		{
 			auto room = std::make_unique<CGameRoom>(world);
@@ -198,6 +294,12 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 				tests.Require(once != placements.end(), "Arena start fixture has an authored once-only sequence trigger");
 				std::vector<SERVER_WORLD_TRANSFER_REQUEST> transfers;
 				const auto acceptSequence = [](WORLD_TRIGGER_ACTION_KIND, const std::string&) { return true; };
+				/* Product rooms fire every trigger again for everyone, so this fixture opts
+				   back into the authored latch to keep verifying that arena start rearms it. */
+				room->m_ServerTriggerSystem.Set_HonourTriggerOnce(true);
+				std::string latchStatus;
+				tests.Require(room->m_ServerTriggerSystem.Initialize(placements, latchStatus),
+					"Arena start fixture reinitializes its triggers with the authored latch");
 				if (once != placements.end())
 				{
 					tests.Require(room->m_ServerTriggerSystem.Debug_Activate(123u, once->strPlacementId, false, room->m_Players, 1u, transfers, acceptSequence) == DEBUG_WORLD_PLAYBACK_RESULT::ACCEPTED,
@@ -989,9 +1091,12 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 							room->m_ServerTriggerSystem.Evaluate_Entries(room->m_Players,
 								room->m_iServerTick + 1u, transfers,
 								[](WORLD_TRIGGER_ACTION_KIND, const std::string&) { return true; }, prompts);
-							tests.Require(initialized && walker.TriggerMove.isActive &&
+							const bool pressedT10 = room->m_ServerTriggerSystem.Activate_Interact(
+								walker.iPlayerId, "Mario3_Trigger_10", room->m_Players, room->m_iServerTick + 2u,
+								transfers, [](WORLD_TRIGGER_ACTION_KIND, const std::string&) { return true; });
+							tests.Require(initialized && pressedT10 && walker.TriggerMove.isActive &&
 								walker.TriggerMove.strSourcePlacementId == "Mario3_Trigger_10",
-								"Mario3 E-floor contact runs the actual published T10 trigger action");
+								"Mario3 E-floor G press runs the actual published T10 trigger action");
 							if (walker.TriggerMove.isActive && exit->TriggerActions.size() == 1u)
 							{
 								const auto& descent = exit->TriggerActions.front();
@@ -1059,6 +1164,11 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 						++room->m_iServerTick;
 						room->m_ServerTriggerSystem.Evaluate_Entries(room->m_Players, room->m_iServerTick,
 							transfers, [](WORLD_TRIGGER_ACTION_KIND, const std::string&) { return true; }, prompts);
+						/* Crossings and the final return are G boxes: the walker reaches the exit and presses G. */
+						if (!walker.TriggerMove.isActive && CServerTriggerSystem::Contains_Placement(*exit, walker))
+							(void)room->m_ServerTriggerSystem.Activate_Interact(walker.iPlayerId, exit->strPlacementId,
+								room->m_Players, room->m_iServerTick, transfers,
+								[](WORLD_TRIGGER_ACTION_KIND, const std::string&) { return true; });
 						exitStarted = exitStarted || (walker.TriggerMove.isActive &&
 							walker.TriggerMove.strSourcePlacementId == "Mario4_Tigger_13");
 						cleared = exitStarted && !walker.TriggerMove.isActive && 0u == walker.iMarioStage;
@@ -1168,9 +1278,12 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 				player.fPositionZ = trigger.fPositionZ; player.eAction = PLAYER_ACTION_STATE::NONE;
 				std::vector<SERVER_WORLD_TRANSFER_REQUEST> transfers;
 				std::vector<SERVER_INTERACT_PROMPT_EDGE> prompts;
-				room->m_ServerTriggerSystem.Evaluate_Entries(room->m_Players, 30u, transfers,
-					[](WORLD_TRIGGER_ACTION_KIND, const std::string&) { return true; }, prompts);
-				tests.Require(player.TriggerMove.isActive && player.TriggerMove.strSourcePlacementId == source,
+				const bool pressedSource = room->m_ServerTriggerSystem.Activate_Interact(
+					123u, source, room->m_Players,
+					std::string(source) == "Mario4_Tigger_2" ? 30u : 60u, transfers,
+					[](WORLD_TRIGGER_ACTION_KIND, const std::string&) { return true; });
+				tests.Require(pressedSource && player.TriggerMove.isActive &&
+					player.TriggerMove.strSourcePlacementId == source,
 					"Authored trigger motion preserves its stable source placement owner");
 				room->Update_Players(trigger.TriggerActions.front().fDurationSeconds);
 				tests.Require(player.bMarioRailReady && player.strMarioRailArrivalId == source &&

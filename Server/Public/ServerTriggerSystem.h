@@ -8,7 +8,9 @@
 #include <functional>
 #include <map>
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 namespace LostArk::Server
@@ -81,9 +83,13 @@ namespace LostArk::Server
 				const std::string&)>& activateTarget,
 			std::vector<SERVER_INTERACT_PROMPT_EDGE>& outPromptEdges,
 			const SERVER_TRIGGER_MOVE_ENTRY_HANDLER& moveEntry = {});
-		/* Runs one interact-gated box for one player. False means the request
-		   named a box that does not exist, is not gated, is spent, or that this
-		   player is no longer standing in -- the caller changes nothing. */
+		/* Runs one G-only box for one player (a box that does not fire on entry,
+		   see Fires_OnEntry). False means the request named a box that does not
+		   exist, fires on entry instead, is spent, that this player is no longer
+		   standing in, or a press inside the per-player debounce -- the caller
+		   changes nothing. moveEntry is the room's own admission for a movement box
+		   (a Kouku Mario lane), the same handler Evaluate_Entries uses, so a G press
+		   cannot bypass it. */
 		bool Activate_Interact(
 			LostArk::Shared::PLAYER_ID playerId,
 			const std::string& triggerPlacementId,
@@ -91,7 +97,46 @@ namespace LostArk::Server
 			std::uint32_t actionStartTick,
 			std::vector<SERVER_WORLD_TRANSFER_REQUEST>& outTransfers,
 			const std::function<bool(WORLD_TRIGGER_ACTION_KIND,
-				const std::string&)>& activateTarget);
+				const std::string&)>& activateTarget,
+			const SERVER_TRIGGER_MOVE_ENTRY_HANDLER& moveEntry = {});
+		/* G pressed with no offer standing: runs every G-only trigger box this
+		   player is inside, checked against the Server's own position. Boxes that
+		   fire on entry are not touched. Returns how many boxes were used. Zero --
+		   nobody inside, dead, or a press inside the per-player debounce -- changes
+		   nothing. */
+		std::uint32_t Activate_Here(
+			LostArk::Shared::PLAYER_ID playerId,
+			std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
+			std::uint32_t actionStartTick,
+			std::vector<SERVER_WORLD_TRANSFER_REQUEST>& outTransfers,
+			const std::function<bool(WORLD_TRIGGER_ACTION_KIND,
+				const std::string&)>& activateTarget,
+			const SERVER_TRIGGER_MOVE_ENTRY_HANDLER& moveEntry = {});
+		/* Which world's rules Fires_OnEntry applies (AUTO_ENTRY_RULES). Set before
+		   Initialize; a system that never learns its world only fires the
+		   world-independent scripted kinds on entry. */
+		void Set_WorldId(const LostArk::Shared::WORLD_ID worldId) { m_eWorldId = worldId; }
+		/* One line per fired trigger: id, player, ENTER or KEY. The room owns
+		   where it goes so the trigger system stays free of I/O. */
+		void Set_FireLog(std::function<void(const std::string&)> sink)
+		{
+			m_FireLog = std::move(sink);
+		}
+		/* Floor height under an XZ point, supplied by the room from its navigation. When
+		   unset, or when it refuses the point, the Valtan boss start lands the player at
+		   the authored entrance box height instead. */
+		void Set_GroundSampler(std::function<bool(float, float, float&)> sampler)
+		{
+			m_GroundSampler = std::move(sampler);
+		}
+		/* Product triggers are always repeatable: Initialize clears the authored
+		   isTriggerOnce so no room-wide latch can spend a box for everyone else.
+		   A test that verifies the latch mechanism itself opts back in, before
+		   Initialize. */
+		void Set_HonourTriggerOnce(const bool honour) { m_bHonourTriggerOnce = honour; }
+		/* Minimum server ticks between two G activations by one player (0.3 s at
+		   30 Hz), so mashing the key cannot flood the room. */
+		static constexpr std::uint32_t KEY_ACTIVATION_DEBOUNCE_TICKS = 9u;
 		void Remove_Player(LostArk::Shared::PLAYER_ID playerId);
 		void Reset_SequenceActivation(const std::string& instanceId);
 		LostArk::Shared::DEBUG_WORLD_PLAYBACK_RESULT Debug_Activate(
@@ -123,6 +168,7 @@ namespace LostArk::Server
 		{
 			WORLD_BOOTSTRAP_PLACEMENT Definition;
 			std::unordered_set<LostArk::Shared::PLAYER_ID> PlayersInside;
+			/* Inert unless Set_HonourTriggerOnce kept isTriggerOnce at load. */
 			bool hasFired = false;
 		};
 
@@ -143,6 +189,42 @@ namespace LostArk::Server
 			std::vector<SERVER_WORLD_TRANSFER_REQUEST>& outTransfers,
 			const std::function<bool(WORLD_TRIGGER_ACTION_KIND,
 				const std::string&)>& activateTarget) const;
+		/* Valtan boss start: sends the player to the centre of the enabled
+		   Stage_Boss_ArenaEntry box (false when there is none or the player is busy). */
+		bool Place_PlayerAtValtanArenaEntry(
+			SERVER_PLAYER& player,
+			std::uint32_t actionStartTick) const;
+		void Log_Fire(
+			const RUNTIME_TRIGGER& trigger,
+			LostArk::Shared::PLAYER_ID playerId,
+			const char* pSource) const;
+		/* True when stepping into this box fires it: an authored gate always says
+		   no, otherwise AUTO_ENTRY_RULES (top of the .cpp) decides by world and
+		   action kind. Every other box only offers itself and waits for G. */
+		bool Fires_OnEntry(const RUNTIME_TRIGGER& trigger) const;
+		/* What a G press runs for one box: the authored action, or in Debug the
+		   Valtan corridor shortcut. Stepping in never reaches this. */
+		bool Run_Trigger(
+			RUNTIME_TRIGGER& trigger,
+			SERVER_PLAYER& player,
+			std::uint32_t actionStartTick,
+			std::vector<SERVER_WORLD_TRANSFER_REQUEST>& outTransfers,
+			const std::function<bool(WORLD_TRIGGER_ACTION_KIND,
+				const std::string&)>& activateTarget) const;
+		/* The G-press wrapper around Run_Trigger: a movement box the room owns (a
+		   Kouku Mario lane) goes through the same admission handler stepping in
+		   would use; every other box runs Run_Trigger unchanged. */
+		bool Run_KeyTrigger(
+			RUNTIME_TRIGGER& trigger,
+			SERVER_PLAYER& player,
+			std::uint32_t actionStartTick,
+			std::vector<SERVER_WORLD_TRANSFER_REQUEST>& outTransfers,
+			const std::function<bool(WORLD_TRIGGER_ACTION_KIND,
+				const std::string&)>& activateTarget,
+			const SERVER_TRIGGER_MOVE_ENTRY_HANDLER& moveEntry) const;
+		bool Is_KeyDebounced(
+			LostArk::Shared::PLAYER_ID playerId,
+			std::uint32_t tick) const;
 		static bool Build_WorldTransfer(
 			const SERVER_PLAYER& player,
 			const WORLD_TRIGGER_ACTION& action,
@@ -151,5 +233,11 @@ namespace LostArk::Server
 	private:
 		std::vector<RUNTIME_TRIGGER> m_Triggers;
 		bool m_bDebugValtanStageBypass = false;
+		bool m_bHonourTriggerOnce = false;
+		LostArk::Shared::WORLD_ID m_eWorldId = LostArk::Shared::WORLD_ID::END;
+		/* Tick of each player's last accepted G activation (debounce). */
+		std::unordered_map<LostArk::Shared::PLAYER_ID, std::uint32_t> m_LastKeyActivationTick;
+		std::function<void(const std::string&)> m_FireLog;
+		std::function<bool(float, float, float&)> m_GroundSampler;
 	};
 }
