@@ -17,6 +17,7 @@
 #include <cmath>
 #include <limits>
 #include <utility>
+#include <algorithm>
 
 namespace
 {
@@ -278,8 +279,17 @@ void Client::CWorldPlayerNameplateView::Render(
 		const wstring_t strFont = UILabelFont::Resolve(
 			FONT_YG760, NAME_FONT_PX * fRefToScreen, fScale);
 		const float2_t vNameSize = gameInstance.Measure_Text(strFont, nickname.c_str());
-		const f32_t fTitleWidth = titleWithSpace.empty() ? 0.f :
-			gameInstance.Measure_Text(strFont, titleWithSpace.c_str()).x * fScale;
+		/* SpriteFont::MeasureString leaves a trailing space out of the width, so "title " measured
+		   as just "title" and the name touched it. The space's own advance is the difference of a
+		   pair with and without it, added back explicitly. */
+		f32_t fTitleWidth = 0.f;
+		if (!titleWithSpace.empty())
+		{
+			const f32_t fSpace = gameInstance.Measure_Text(strFont, L"a a").x -
+				gameInstance.Measure_Text(strFont, L"aa").x;
+			fTitleWidth = (gameInstance.Measure_Text(strFont, titleWithSpace.c_str()).x +
+				(std::max)(fSpace, 0.f)) * fScale;
+		}
 		const f32_t fTotalWidth = fTitleWidth + vNameSize.x * fScale;
 		const float2_t vPosition(
 			std::round(vScreenPosition.x - fTotalWidth * 0.5f),
