@@ -5,7 +5,6 @@
 #include <DirectXColors.h>
 #pragma pop_macro("new")
 
-#include "Character.h"
 #include "GameInstance.h"
 #include "MapAssetCatalog.h"
 #include "UILabelFont.h"
@@ -33,6 +32,9 @@ namespace
 	constexpr int32_t FX_FRAMES = 5;
 	constexpr f32_t REF_WIDTH = 1280.f;
 	constexpr f32_t REF_HEIGHT = 720.f;
+	/* Metres above the trigger box floor the prompt hangs from (not in the retail data; set so
+	   the line sits over a standing player's nameplate as in the retail capture). */
+	constexpr f32_t ANCHOR_HEIGHT = 1.9f;
 
 	const wstring_t FONT_YG760 = TEXT("Font_YG760");
 	const char* const SLOTS[] = { "IKP_Fx", "IKP_Icon", "IKP_Key" };
@@ -90,6 +92,8 @@ void Client::CInteractKeyPromptView::Initialize(
 			continue;
 		TRIGGER Trigger{};
 		Trigger.strPlacementId = Placement.placementId;
+		Trigger.vAnchor = float3_t(Placement.position.x,
+			Placement.position.y - Placement.halfExtents.y + ANCHOR_HEIGHT, Placement.position.z);
 		for (const WORLD_TRIGGER_EVENT& Event : Placement.triggerEvents)
 		{
 			if (WORLD_TRIGGER_EVENT_KIND::MOVE_PLAYER != Event.eKind)
@@ -113,10 +117,9 @@ void Client::CInteractKeyPromptView::Hide()
 }
 
 void Client::CInteractKeyPromptView::Update(const f32_t fTimeDelta,
-	const std::shared_ptr<CCharacter>& pLocalCharacter, const std::string& strOfferedTriggerId,
-	const bool_t bShown)
+	const std::string& strOfferedTriggerId, const bool_t bShown)
 {
-	if (nullptr == m_pView || !bShown || strOfferedTriggerId.empty() || nullptr == pLocalCharacter)
+	if (nullptr == m_pView || !bShown || strOfferedTriggerId.empty())
 	{
 		Hide();
 		return;
@@ -135,11 +138,9 @@ void Client::CInteractKeyPromptView::Update(const f32_t fTimeDelta,
 	const float4x4_t* pView = Instance.Get_Transform(D3DTS::VIEW);
 	const float4x4_t* pProj = Instance.Get_Transform(D3DTS::PROJ);
 	const float2_t vViewport = Instance.Get_ViewportSize();
-	float3_t vHead{};
 	float2_t vPoint{};
 	if (nullptr == pView || nullptr == pProj || vViewport.y <= 0.f ||
-		!CWorldPlayerNameplateView::Try_GetHeadAnchor(*pLocalCharacter, vHead) ||
-		!CWorldPlayerNameplateView::Try_ProjectWorldPosition(vHead, *pView, *pProj, vViewport, vPoint))
+		!CWorldPlayerNameplateView::Try_ProjectWorldPosition(pTrigger->vAnchor, *pView, *pProj, vViewport, vPoint))
 	{
 		Hide();
 		return;
