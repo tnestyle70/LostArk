@@ -14,6 +14,7 @@ enum class LOBBY_STAGE
 	VALTAN,
 	BERN,
 	KOUKU_SAYDON,
+	MAHARAKA,
 	END
 };
 

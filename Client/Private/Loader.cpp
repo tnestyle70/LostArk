@@ -886,6 +886,46 @@ HRESULT CLoader::Ready_For_Development()
 	return S_OK;
 }
 
+HRESULT CLoader::Ready_For_Maharaka()
+{
+	CNpcPresentationAssetService::Begin_LevelLoad(ETOUI(LEVEL::MAHARAKA));
+	CNpcPlacementPresentationService::Begin_LevelLoad(ETOUI(LEVEL::MAHARAKA));
+	if (FAILED(CNpcPlacementPresentationService::Load(
+		ETOUI(LEVEL::MAHARAKA), "MAHARAKA")))
+	{
+		OutputDebugStringA(("[Loader][NpcPresentation] " +
+			CNpcPlacementPresentationService::Get_Status() + "\n").c_str());
+	}
+	CLevelResourceRollbackScope rollback(ETOUI(LEVEL::MAHARAKA));
+	Declare_Phases(6u);
+	Set_Status(TEXT("MAHARAKA: island catalog and placements"));
+
+	const CLIENT_LEVEL_DESCRIPTOR* pEntry =
+		CLevelRegistry::Find(LEVEL::MAHARAKA);
+	if (nullptr == pEntry || nullptr == pEntry->pMapAreaId ||
+		FAILED(Ready_MapArea(
+			ETOUI(LEVEL::MAHARAKA),
+			pEntry->pMapAreaId,
+			pEntry->MapLoadScope)))
+	{
+		return E_FAIL;
+	}
+
+	Set_Status(TEXT("MAHARAKA: session character bundle"));
+	const std::array selectedClass =
+	{
+		m_ePreparedCharacterClass
+	};
+	if (FAILED(Ready_Character_Rendering(
+		ETOUI(LEVEL::MAHARAKA),
+		selectedClass)))
+		return E_FAIL;
+
+	Set_Status(TEXT("Maharaka loading complete"));
+	rollback.Commit();
+	return S_OK;
+}
+
 HRESULT CLoader::Ready_MapArea(
 	const uint32_t iLevelIndex,
 	const std::string& areaId,

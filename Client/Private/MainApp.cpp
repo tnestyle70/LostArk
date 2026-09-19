@@ -2996,6 +2996,9 @@ HRESULT CMainApp::Render()
 		arena->Trace_CinematicPresentation(m_RenderingProfiles.Get_ActiveProfileId());
 		arena->Submit_EntranceTriggerMarkers();
 	}
+	if (auto* pValtanArena = CLevel_ValtanArena::Get_Active(); pValtanArena &&
+		CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::VALTAN_ARENA))
+		pValtanArena->Submit_TriggerMarkers();
 	HRESULT hWorldResult;
 	{
 		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Render.World");

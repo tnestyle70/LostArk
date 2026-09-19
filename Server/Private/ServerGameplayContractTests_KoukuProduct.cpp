@@ -205,6 +205,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuMarioEntryContact(
                 contacting.TriggerMove.fElapsedSeconds == .1f, "The same active Mario trigger cannot restart its transfer");
         }
         CServerTriggerSystem triggers;
+        triggers.Set_WorldId(WORLD_ID::KAKULSAYDON_ARENA);
         // Exercise automatic contact policy independently of the installed interaction flag.
         auto contactTrigger = *trigger;
         contactTrigger.requiresInteract = false;
@@ -215,12 +216,13 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuMarioEntryContact(
         std::vector<SERVER_WORLD_TRANSFER_REQUEST> transfers;
         std::vector<SERVER_INTERACT_PROMPT_EDGE> prompts;
         const auto move = [&](const auto& box, auto& target, auto tick) { return room->Begin_MarioTriggerMove(box, target, tick); };
-        triggers.Evaluate_Entries(players, 102u, transfers, {}, prompts, move);
-        tests.Require(!players.at(player.iPlayerId).TriggerMove.isActive, "An owned Mario contact preserves a temporary authority lock");
+        // Mario crossings and exits are G boxes; the G press goes through the same room-owned admission.
+        (void)triggers.Activate_Interact(player.iPlayerId, contactTrigger.strPlacementId, players, 102u, transfers, {}, move);
+        tests.Require(!players.at(player.iPlayerId).TriggerMove.isActive, "An owned Mario G press preserves a temporary authority lock");
         players.at(player.iPlayerId).bPatternBound = false;
-        triggers.Evaluate_Entries(players, 103u, transfers, {}, prompts, move);
+        (void)triggers.Activate_Interact(player.iPlayerId, contactTrigger.strPlacementId, players, 103u, transfers, {}, move);
         tests.Require(players.at(player.iPlayerId).TriggerMove.isActive,
-            "A rejected Mario contact retries immediately after unlock without requiring exit and re-entry");
+            "A rejected Mario G press succeeds on the next press after unlock without leaving the box");
         auto unrelated = *trigger; unrelated.strPlacementId = "ordinary.movePlayer";
         tests.Require(room->Begin_MarioTriggerMove(unrelated, player, 104u) == SERVER_TRIGGER_MOVE_ENTRY_RESULT::USE_DEFAULT,
             "Mario action interruption does not change unrelated world movePlayer contracts");

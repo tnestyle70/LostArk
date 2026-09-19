@@ -1143,12 +1143,15 @@ void Client::CPlayerController::Submit_InteractIfOffered(
 	{
 		return;
 	}
-	/* Only the box the Server is offering right now can be answered; with
-	   no offer standing the press is simply nothing. */
+	/* Answer the box the Server is offering right now. With no offer standing
+	   the press names no box (INTERACT_TRIGGER_HERE_ID): the Server runs
+	   the G-only trigger boxes this player is inside, and a press outside
+	   every such box is simply nothing. */
 	const std::string& offered =
 		CCombatHUDViewModel::Get().Get_InteractPromptTriggerId();
-	if (!offered.empty() &&
-		commandSink->Request_InteractTrigger(m_iNextActionSequence, offered))
+	const std::string requested = offered.empty() ?
+		std::string(LostArk::Shared::INTERACT_TRIGGER_HERE_ID) : offered;
+	if (commandSink->Request_InteractTrigger(m_iNextActionSequence, requested))
 	{
 		++m_iNextActionSequence;
 		if (0 == m_iNextActionSequence)

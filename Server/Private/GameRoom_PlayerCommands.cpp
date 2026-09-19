@@ -630,18 +630,24 @@ void LostArk::Server::CGameRoom::Handle_UseSquareHole(
 		return;
 	}
 	SERVER_PLAYER& player = playerIter->second;
-	(void)useSquareHole;
 	/* The song is a fixed-length lock like the Esther call: only an idle, unmounted
-	player on their feet may start it. Update_Players returns the action to NONE
-	once SQUAREHOLE_SONG_TICKS have elapsed; the teleport itself is not implemented,
-	so the player stays where they played. */
-	if (player.fKnockbackRemainingSeconds > 0.f ||
+	player on their feet may start it. The landing is resolved before the song starts,
+	so a world without one (or a blocked one) never plays a song that ends nowhere.
+	Update_Players lands the player once SQUAREHOLE_LOCK_TICKS have elapsed
+	(Finish_SquareHoleSong), while the Client screen is fully black. */
+	if (0u == player.iCurrentHp ||
+		player.fKnockbackRemainingSeconds > 0.f ||
+		player.bPatternBound ||
 		LostArk::Shared::INVALID_VEHICLE_ID != player.iVehicleId ||
 		LostArk::Shared::PLAYER_ACTION_STATE::NONE != player.eAction)
 	{
 		return;
 	}
+	SERVER_NAV_POINT landing{};
+	if (!Resolve_SquareHoleDestination(player, useSquareHole.iSquareHoleId, landing))
+		return;
 	player.eAction = LostArk::Shared::PLAYER_ACTION_STATE::SQUAREHOLE_SONG;
+	player.iSquareHoleId = useSquareHole.iSquareHoleId;
 	player.iCurrentSkillId = LostArk::Shared::INVALID_SKILL_ID;
 	player.iActionStartTick =
 		(std::numeric_limits<std::uint32_t>::max)() == m_iServerTick ?
@@ -650,6 +656,66 @@ void LostArk::Server::CGameRoom::Handle_UseSquareHole(
 	player.iComboStage = 0u;
 	player.hasBufferedComboInput = false;
 	player.hasMoveGoal = false;
+}
+
+bool LostArk::Server::CGameRoom::Resolve_SquareHoleDestination(
+	const SERVER_PLAYER& player,
+	const std::uint16_t squareHoleId,
+	SERVER_NAV_POINT& ground)
+{
+	using namespace LostArk::Shared;
+	if (0u == squareHoleId)
+		return false;
+	/* Authored like cardmaze.return: a disabled triggerBox whose single movePlayer
+	target is the landing point, editable in MapTool World Gameplay. */
+	const std::string placementId = "squarehole." + std::to_string(squareHoleId);
+	const WORLD_BOOTSTRAP_PLACEMENT* destination = Find_Placement(placementId);
+	if (nullptr == destination ||
+		WORLD_BOOTSTRAP_KIND::TRIGGER_BOX != destination->eKind ||
+		1u != destination->TriggerActions.size() ||
+		WORLD_TRIGGER_ACTION_KIND::MOVE_PLAYER != destination->TriggerActions.front().eKind)
+	{
+		m_strStatus = "Square hole has no movePlayer placement in this world: " + placementId;
+		return false;
+	}
+	const WORLD_TRIGGER_ACTION& move = destination->TriggerActions.front();
+	C2S_DEBUG_TELEPORT_TO_POSITION target{};
+	target.eWorldId = m_eWorldId;
+	target.fPositionX = move.fTargetX;
+	target.fPositionY = move.fTargetY;
+	target.fPositionZ = move.fTargetZ;
+	/* The same walkable / height / collision admission the gate-progress party move
+	uses: a landing inside a wall or on an NPC is refused, never forced. */
+	const DEBUG_TELEPORT_RESULT verdict =
+		Validate_DebugTeleportDestination(player, target, ground);
+	if (DEBUG_TELEPORT_RESULT::ACCEPTED != verdict)
+	{
+		m_strStatus = "Square hole landing was refused: " + placementId +
+			" result=" + std::to_string(static_cast<int>(verdict));
+		return false;
+	}
+	return true;
+}
+
+void LostArk::Server::CGameRoom::Finish_SquareHoleSong(SERVER_PLAYER& player)
+{
+	const std::uint16_t squareHoleId = player.iSquareHoleId;
+	player.iSquareHoleId = 0u;
+	SERVER_NAV_POINT landing{};
+	/* Checked again now: the landing may have been blocked while the song played.
+	A refused landing leaves the player where they stand and the lock releases as
+	usual. Reset_PlayerForDebugTeleport also drops any move or skill queued during
+	the song, which were aimed from the old position. */
+	if (0u == squareHoleId ||
+		!Resolve_SquareHoleDestination(player, squareHoleId, landing))
+	{
+		return;
+	}
+	Reset_PlayerForDebugTeleport(player);
+	player.fPositionX = landing.x;
+	player.fPositionY = landing.y;
+	player.fPositionZ = landing.z;
+	Update_MarioControlState(player);
 }
 
 void LostArk::Server::CGameRoom::Handle_UseEstherSkill(

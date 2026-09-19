@@ -19,6 +19,11 @@ namespace
 	/* CommonActionTimingBar nameTF: $YG760 13 px on the 1920 stage, centred over the track. */
 	constexpr f32_t CAPTION_PX = 13.f * 2.f / 3.f;
 	const wstring_t FONT_YG760 = TEXT("Font_YG760");
+	/* The authored full-screen black slot of UI/KakulFade/KakulFadeUI.json, reused so the
+	blackout needs no new document. A constant, not a literal, so the per-frame slot calls
+	never build a string. */
+	const string FADE_SLOT = "KakulFade_Screen";
+	constexpr f32_t FADE_IN_SECONDS = 0.5f;
 	constexpr float4_t COLOR_CAPTION{ 1.f, 1.f, 1.f, 1.f };
 	/* Retail plays the instrument of the caster's class family, not one shared clip: the six
 	families each have their own recording of every square-hole song (Wwise events
@@ -73,6 +78,12 @@ Client::CSongCastGaugeView::CSongCastGaugeView(
 {
 	Load_Strings();
 	Hide();
+	/* Created after the gauge so it draws over it, and over the world map window built before. */
+	m_pFadeView = std::make_unique<CUILayoutRuntime>(
+		pDevice, pContext, ETOUI(LEVEL::STATIC), TEXT("Layer_UI"),
+		L"UI/KakulFade/KakulFadeUI.json");
+	m_pFadeView->Set_SlotVisible(FADE_SLOT, false);
+	m_pFadeView->Set_SlotCinematicOverlay(FADE_SLOT, true);
 }
 
 Client::CSongCastGaugeView::~CSongCastGaugeView() = default;
@@ -103,21 +114,23 @@ void Client::CSongCastGaugeView::Hide()
 
 void Client::CSongCastGaugeView::Update(const f32_t fTimeDelta, const HUD_PLAYER_STATE& Player)
 {
-	(void)fTimeDelta;
 	using LostArk::Shared::PLAYER_ACTION_STATE;
-	if (!Player.isValid || Player.isPreview ||
-		PLAYER_ACTION_STATE::SQUAREHOLE_SONG != Player.eAction || 0u == Player.iActionStartTick)
+	const bool_t bInSong = Player.isValid && !Player.isPreview &&
+		PLAYER_ACTION_STATE::SQUAREHOLE_SONG == Player.eAction && 0u != Player.iActionStartTick;
+	const int32_t iAge = bInSong ?
+		static_cast<int32_t>(Player.iServerTick - Player.iActionStartTick) : 0;
+	Update_Fade(fTimeDelta, bInSong, iAge);
+	if (!bInSong)
 	{
 		m_iShownActionStartTick = 0u;
 		Hide();
 		return;
 	}
-	/* Age in Server ticks (30 Hz) over the Shared lock length; the Server releases the action at
-	the same count, so the fill reaches the end as the lock ends. */
+	/* Age in Server ticks (30 Hz) over the Shared song length; the fill reaches the end as the
+	song does, which is also the moment the screen has finished fading to black. */
 	constexpr f32_t TICK_HZ = 30.f;
 	const f32_t fDurationTicks = static_cast<f32_t>(
 		LostArk::Shared::SQUAREHOLE_SONG_DURATION_MS) * TICK_HZ / 1000.f;
-	const int32_t iAge = static_cast<int32_t>(Player.iServerTick - Player.iActionStartTick);
 	m_fFill = std::clamp(static_cast<f32_t>((std::max)(iAge, 0)) / (std::max)(fDurationTicks, 1.f), 0.f, 1.f);
 
 	if (m_iShownActionStartTick != Player.iActionStartTick)
@@ -134,9 +147,45 @@ void Client::CSongCastGaugeView::Update(const f32_t fTimeDelta, const HUD_PLAYER
 	m_pView->Set_SlotFillRatio("SC_Fill", m_fFill);
 }
 
+void Client::CSongCastGaugeView::Update_Fade(
+	const f32_t fTimeDelta, const bool_t bInSong, const int32_t iAgeTicks)
+{
+	/* The Server lifts the song lock SQUAREHOLE_BLACKOUT_HOLD_MS after the song and moves the
+	player inside that hold. The fade-out starts so that it finishes exactly when the song
+	does, then the screen stays black for as long as the Server keeps the song action. It
+	lifts on the first snapshot without that action, which already carries the landing. The
+	ramp runs on frame time once triggered, so a stalled snapshot cannot leave it half dark. */
+	constexpr f32_t TICK_HZ = 30.f;
+	constexpr f32_t FADE_OUT_SECONDS =
+		static_cast<f32_t>(LostArk::Shared::SQUAREHOLE_BLACKOUT_FADE_MS) / 1000.f;
+	constexpr f32_t FADE_START_TICKS =
+		static_cast<f32_t>(LostArk::Shared::SQUAREHOLE_SONG_DURATION_MS -
+			LostArk::Shared::SQUAREHOLE_BLACKOUT_FADE_MS) * TICK_HZ / 1000.f;
+	if (!bInSong)
+		m_bFadingOut = false;
+	else if (static_cast<f32_t>(iAgeTicks) >= FADE_START_TICKS)
+		m_bFadingOut = true;
+	const f32_t fStep = m_bFadingOut ?
+		fTimeDelta / FADE_OUT_SECONDS : -fTimeDelta / FADE_IN_SECONDS;
+	m_fFadeAlpha = std::clamp(m_fFadeAlpha + fStep, 0.f, 1.f);
+	if (nullptr == m_pFadeView)
+		return;
+	const bool_t bShow = m_fFadeAlpha > 0.f;
+	if (bShow != m_bFadeShown)
+	{
+		m_bFadeShown = bShow;
+		m_pFadeView->Set_SlotVisible(FADE_SLOT, bShow);
+	}
+	/* Set_SlotAlpha would rewrite RGB to white, the opposite of a blackout, so the tint
+	is written whole. */
+	if (bShow)
+		m_pFadeView->Set_SlotTint(FADE_SLOT, float4_t(0.f, 0.f, 0.f, m_fFadeAlpha));
+}
+
 void Client::CSongCastGaugeView::Render_Text()
 {
-	if (!m_bVisible || m_strCaption.empty())
+	/* The caption belongs to the bar, so it goes out with the screen. */
+	if (!m_bVisible || m_strCaption.empty() || m_fFadeAlpha >= 0.5f)
 		return;
 	/* The caption sits inside the bar, centred on the fill track (retail nameTF). */
 	f32_t fX = 0.f, fY = 0.f, fW = 0.f, fH = 0.f;

@@ -1,0 +1,1208 @@
+{
+  "schemaVersion": 1,
+  "areaId": "LV_OCN_EVENTIS_MHP",
+  "profiles": [
+    {
+      "assetId": "MAP_0240068CC467_BG_PAP_NIATOWN_ROOF03A_SM_KSR_OVR_2F39CEB1D3C3",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_02CF669C500B_BG_PAP_ETC_FESTIVALFOOD01_SM_ARTREE_OVR_CE15388F52A1",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_0409FB3E2AC5_BG_ATT_COMMON_NEONSIGN02A_SM_HSM_OVR_1483F99C328A",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_046BE0D49EB3_BG_PAP_NIATOWN_MUSICINSTRUMENT01_SM_ARTREE_OVR_6C02A42E3448",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_056E9C6A0431_BG_LUT_MAWPORT_ROBOT02_SM_ARTREE",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_08C93E95B156_BG_SHS_COMMON_DECO05C_SM_OLD",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_08E8B3EC5D12_BG_PAP_ETC_FRUITBASKET04_SM_KHG_LOC_INT_OVR_148A0DA00B47",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_097D8345039A_LV_OCN_PEYTO_HOUSEINFLOOR03_SM_OVR_BFA30D74D6D7",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_0B0FDB6CD136_BG_CHS_DARKS_ROCK02_SM_ARTREE_OVR_1900746F6CDF",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_0B68C8E6DAA2_LV_ATT_STERN_FENCE01_SM_OVR_68CFBCB5D7C2",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_0CE10AAFD0D6_BG_SHS_COMMON_DECO06B_SM_OLD_LOC_INT_OVR_98B81AB0DC5F",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_0E4674B1A207_BG_SHS_HIDEOUTB_DOOR01A_SM_LKJ_OVR_44983557C1CF",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_0EA046FEA05B_LV_OCN_EVENTIS_MHP_POOL03_SM_OVR_95B77F8F84E0",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_128062EA6CA7_PAP_FOLIAGE_DECO05_SM_KSY",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_12CD7B3924ED_BG_BER_RANIAT_PILLAR04_SM_PSY_OVR_6109C9D9F804",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_13E04C244056_BG_PAP_TICAC_FLOWERPOT01A_SM_OVR_05B99085CC62",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_1529A3A2A794_BG_PAP_SCOAST_POLEBIRD01A_SM_NX_OVR_32210A2E40BA",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_19094C4C9792_BG_OCN_ETC_CUPCOCKTAIL_01_SM_KHB",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_19EE6E59CF28_BG_PAP_COMMON_FLOOR09_SM_NX_OVR_2A7A912390BA",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_1AF968D24AD5_BG_OCN_ETC_FLOOR01_SM_LNH_OVR_8EB1D0D03456",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_1E3EBF3ED24E_FM_D_SHIP_PARTS_02_OVR_72F1A0FBE89A",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_1E3EBF3ED24E_FM_D_SHIP_PARTS_02_OVR_8C74A3035C97",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_1ED56B72D40F_BG_ATM_LEONHART_ROADPROP02_SM_OLD",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_1F6246B285DF_BG_PAP_NIATOWN_HOUSE05_SM_MSJ_OVR_CFFB3B607611",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_22B3D72B379D_BG_LUT_MEMONAST_MODULEC_SM_LJD_OVR_7B83806A61B6",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_23815032FE44_BG_EVT_COLLABO_MOMS_FOODTRAY01_SM",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_28AB97250816_BG_PAP_STARSB_ELEVATORSTAIR01A_SM_NX_OVR_E973300C1081",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_2C1F20686418_BG_PAP_ETC_WINEBOTTLE01_SM_KHG_LOC_INT",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_2C367D2553ED_LV_OCN_PEYTO_SHIP19_SM_OVR_EB30095BAA08",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_2DB79B6FF065_BG_PAP_COMMON_TABLE01_SM_NX_OVR_5A4C52AE924D",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_2DEEAE38DE78_BG_SHS_COMMON_BARREL01C_SM_OLD_OVR_64156E6E7E5D",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_2F98C3EE7319_BG_PAP_NIATOWN_FLOOR13_SM_EPIC_OVR_413C566D4257",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_30009FA41391_BG_PAP_NIATOWN_FLOOR01A_SM_OVR_1ED5C262DC39",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_3000CA4A7702_BG_BER_COMMON_BERIVY05B_SM_KSY_OVR_486EA414A683",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_30927434CB6E_LV_OCN_EVENTIS_MHP_POOL04_SM_OVR_6A9878E6E99B",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_30927434CB6E_LV_OCN_EVENTIS_MHP_POOL04_SM_OVR_C92998E89A97",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_30927434CB6E_LV_OCN_EVENTIS_MHP_POOL04_SM_OVR_E01ED32C11B7",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_30E4DC8C4D2A_BG_LUT_MEMONAST_MODULESTAIR01_SM_SUP",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_318B37E9C1C4_BG_PAP_COMMON_FABRICDECO02_SM_KSR_OVR_F3FB84237AEE",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_31B8FACC8990_BG_SHS_COMMON_DECO03A_SM_YSI",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_33257EFAB059_BG_OCN_COMMON_CUP01_SM_LNH",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_3394CA48094A_LV_OCN_EVENTIS_MHP_WATER02_SM_OVR_6A0EFBCC18F9",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_33A0D78FA38F_BG_PAP_ETC_WOODDOORCURTAIN01_SM_ARTREE_OVR_B7F955F1695A",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_343EBBBEA3B5_BG_PAP_ETC_FESTIVALFOOD03_SM_ARTREE_OVR_FEA0C7E4A6A5",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_35BE937223B2_BG_YOR_GREATCASTLE_CUP01A_SM_KHB_LOC_INT",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_36CEF3CA7526_BG_SHS_COMMON_DECO06C_SM_OLD_LOC_INT_OVR_98B81AB0DC5F",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_377C83A545E1_BG_EVT_COLLABO_DECOTONG01_SM",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_3954EA2AC0EC_LV_COMMON_MESH_CUL_BOX_7_OVR_6A0EFBCC18F9",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_3A03E53B79A5_LV_OCN_PEYTO_HOUSEINFLOOR01_SM_OVR_2075B0CF0676",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_3A4C03E6C6F7_BG_PAP_NIATOWN_HOUSE03_SM_MSJ_OVR_4847A14960DB",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_3D74D246EF2F_EHM_PIPE_A13_SM_OVR_08A20656346D",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_3D74D246EF2F_EHM_PIPE_A13_SM_OVR_68CFBCB5D7C2",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_3D74D246EF2F_EHM_PIPE_A13_SM_OVR_F2F31673947B",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_3DAAA1AD951F_BG_LUT_LUCASTLE_TABLE01_SM_ARTREE_OVR_8714007CBC3B",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_4282392965C3_BG_PAP_FOLIAGE_TROPIC01_SM_KSY_OVR_3670351A9E31",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_4282392965C3_BG_PAP_FOLIAGE_TROPIC01_SM_KSY_OVR_FB8C96B490D8",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_4356FAE18D6E_BG_PAP_FOLIAGE_FLOWER01A_SM_KSY",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_43A8B6503530_LV_MODULE_WATER01_1024_OVR_CF8734EEB688",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_45482AB0E41E_BG_PAP_NIATOWN_BRIDGE02C_SM",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_45482AB0E41E_BG_PAP_NIATOWN_BRIDGE02C_SM_OVR_442DB163DD9E",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_45CFCC4B82EE_BG_PAP_NIATOWN_COLUMN01_SM",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_478D090F6B97_BG_ATT_COMMON_NEONSIGN01B_SM_HSM_OVR_11B9257B8871",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_478D090F6B97_BG_ATT_COMMON_NEONSIGN01B_SM_HSM_OVR_3054069CEB27",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_47D92A922518_PAP_FOLIAGE_DECO08_SM_KSY",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_47D92A922518_PAP_FOLIAGE_DECO08_SM_KSY_OVR_90FBA0AC6839",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_48074051B528_BG_PAP_NIATOWN_ROOF01_SM_MSJ_OVR_E9079212D3B5",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_48B933C37925_LV_OCN_PEYTO_SHIP04_SM_OVR_F2F31673947B",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_495DFADFFA5E_BG_ATT_PARCHED_BIGPIPE01F_SM_PSY_OVR_C92998E89A97",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_49A7B1C00E34_BG_PAP_STONE_ROCK01A_SM_OVR_5526942B5C70",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_49C5D591F4CE_LV_RAD_REDSANDDST_PIPE01_SM_OVR_68CFBCB5D7C2",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_49C5D591F4CE_LV_RAD_REDSANDDST_PIPE01_SM_OVR_70318D42B2D4",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_49C5D591F4CE_LV_RAD_REDSANDDST_PIPE01_SM_OVR_C92998E89A97",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_49C5D591F4CE_LV_RAD_REDSANDDST_PIPE01_SM_OVR_E01ED32C11B7",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_49C5D591F4CE_LV_RAD_REDSANDDST_PIPE01_SM_OVR_F2F31673947B",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_49E6C4A63F6D_BG_LUT_LUCASTLE_EASEL01B_SM_KBW",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_4A0114A07358_BG_SHS_COMMON_DECO06H_SM_OLD_OVR_98B81AB0DC5F",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_4C8A5424422D_BG_FAT_STONE_ROCK03_SM_OVR_A4046CD9E836",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_4C8A5424422D_BG_FAT_STONE_ROCK03_SM_OVR_C110A3597830",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_4E3063D31708_BG_ATM_LEONHART_ROADPROP03_SM_OLD",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_4E4455688A70_BG_SHS_COMMON_DECO03C_SM_YSI",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_4E519A1C660E_BG_OCN_STONE_ROCK04_SM_KSR",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_4EDE9E8B1A18_LV_OCN_PEYTO_SHIP09_SM_OVR_F47E2278D694",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_4F20AAD8F47F_BG_ATT_ETC_ROOF01C_SM_YSI_OVR_27681F36C04E",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_4F20AAD8F47F_BG_ATT_ETC_ROOF01C_SM_YSI_OVR_4D8811F024E9",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_4F20AAD8F47F_BG_ATT_ETC_ROOF01C_SM_YSI_OVR_7DEFE0223F7E",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_4F20AAD8F47F_BG_ATT_ETC_ROOF01C_SM_YSI_OVR_80DD47EB72DA",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_4F20AAD8F47F_BG_ATT_ETC_ROOF01C_SM_YSI_OVR_966056023C1F",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_4F20AAD8F47F_BG_ATT_ETC_ROOF01C_SM_YSI_OVR_9FC3B9485E93",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_4F79E47709A7_BG_LUT_MEMONAST_MODULEA_SM_SUP_OVR_7B83806A61B6",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_502CE646D812_BG_LUT_MEMONAST_MODULESTAIR02_SM_SUP",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_505A9E1E12B8_BG_LUT_LUCASTLE_HOUSEINFLOOR01_SM_YSI_OVR_7B83806A61B6",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_5123B432698D_BG_OCN_FOLIAGE_SEAWEED07B_SM_KSY_OVR_E190F88FBD64",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_519C0B190918_BG_OCN_ETC_PEYTOSHIP01E_SM_KBW_OVR_602C24DF6182",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_519C0B190918_BG_OCN_ETC_PEYTOSHIP01E_SM_KBW_OVR_F4A712E509BE",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_52173CD0AD20_BG_TOT_MOVILLAGE_DECOPROP03E_SM_OVR_C966B4FB39D7",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_52EE3ED6DB7B_LV_OCN_PEYTO_SHIP03_SM",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_52EE3ED6DB7B_LV_OCN_PEYTO_SHIP03_SM_OVR_6C795ABE97B3",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_52EE3ED6DB7B_LV_OCN_PEYTO_SHIP03_SM_OVR_BB2DDF172EC8",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_52EE3ED6DB7B_LV_OCN_PEYTO_SHIP03_SM_OVR_F2F31673947B",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_557CAE338ABF_BG_FAT_STONE_ROCK02_SM_OVR_6C70D3A2DC16",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_557CAE338ABF_BG_FAT_STONE_ROCK02_SM_OVR_AFC2E034CFAE",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_55B34B69B52A_BG_ATT_COMMON_NEONSIGN03C_SM_HSM_OVR_11B9257B8871",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_55B34B69B52A_BG_ATT_COMMON_NEONSIGN03C_SM_HSM_OVR_1483F99C328A",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_571CBAD1826F_BG_BER_COMMON_BERIVY05D_SM_KSY_OVR_486EA414A683",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_58E2DC297854_LV_OCN_PEYTO_SHIP22_SM_OVR_9879B5FDE57F",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_591FCB7D8820_BG_PAP_NIATOWN_FLOOR02A_SM_OVR_69D810F82D62",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_59E2F874F4C8_BG_LUT_LUCASTLE_DECOPROP01_SM_CWK_OVR_F3261EC8084C",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_5AC61BE36AD6_BG_PAP_COMMON_FABRICDECO05_SM_KSR_OVR_3DDCFA023133",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_5C49D0E5A7F2_BG_BER_COMMON_BERIVY03A_SM_KSY_OVR_9B908507F27A",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_5CEC06090055_BG_PAP_ETC_FRUITBASKET02_SM_OVR_2E27CDFEFB29",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_5CEC06090055_BG_PAP_ETC_FRUITBASKET02_SM_OVR_8AE4AE58CE78",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_5E0579237879_BG_EVT_CAMPING_FOODBREAD01_SM_CWK",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_5E43190380AE_BG_EVT_COLLABO_EDIYA_FOODTRAY01_SM",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_628FD3A58E65_LV_OCN_PEYTO_SHIP14_SM_OVR_9879B5FDE57F",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_62F70B6529E1_BG_LUT_LUCASTLE_FLOWERPOT01_SM_ARTREE_OVR_73E1FB322FD6",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_6625B092E574_EHM_PIPE_A14_SM_OVR_68CFBCB5D7C2",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_6786A7C70F13_BG_RHD_TREE_MAPLE01A_SM_KSY_OVR_279A738C1671",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_6786A7C70F13_BG_RHD_TREE_MAPLE01A_SM_KSY_OVR_473E9CDA1440",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_6A68310DF9DF_BG_SHS_COMMON_TABLE01B_SM_OLD_OVR_83214FF0D02D",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_6B477803AB39_LV_RAD_REDSANDDST_PIPE02_SM_OVR_2F5EB90C3CDC",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_6B477803AB39_LV_RAD_REDSANDDST_PIPE02_SM_OVR_68CFBCB5D7C2",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_6B477803AB39_LV_RAD_REDSANDDST_PIPE02_SM_OVR_6A3BCB31AAE0",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_6B477803AB39_LV_RAD_REDSANDDST_PIPE02_SM_OVR_6ECA7FBA5F1B",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_6B477803AB39_LV_RAD_REDSANDDST_PIPE02_SM_OVR_70318D42B2D4",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_6B477803AB39_LV_RAD_REDSANDDST_PIPE02_SM_OVR_728AE9E2783A",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_6B477803AB39_LV_RAD_REDSANDDST_PIPE02_SM_OVR_D5E07DCFFC84",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_6B6D1FD7882D_BG_PAP_ETC_FESTIVALFOOD02_SM_ARTREE_OVR_AA24639CBBEF",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_6CD1FC6D6BB1_BG_ANH_FOLIAGE_TE_B49_SM_OLD_OVR_BC68E989CFB7",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_6D52BB749EEE_BG_PAP_NIATOWN_STAIR04_SM_OVR_22BAF8AF9AD1",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_6E0A7C2B407E_BG_ONC_ETC_TABLEPRASOL01B_SM_KSR_OVR_44E426D17011",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_6E630A3BB958_BG_PAP_NIATOWN_FLOOR04A_SM_OVR_36619C66F1BF",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_6E98A91E1316_BG_PAP_NIATOWN_BRIDGE02E_SM_OVR_442DB163DD9E",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_6F24987B28B7_BG_LUT_LUCASTLE_HOUSEINFENCE01B_SM_OVR_E315365ACD83",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_6F681C6D4512_BG_ATT_COMMON_CRANEDECO01C_SM_LDY_OVR_68CFBCB5D7C2",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_6F681C6D4512_BG_ATT_COMMON_CRANEDECO01C_SM_LDY_OVR_F2F31673947B",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_70CF13552525_BG_PAP_COMMON_FLOWERPOT01_SM_NX",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_713DC328BE42_BG_OCN_ETC_DECOSLIDE01C_SM",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_7419F6B1FBE9_BG_PAP_TICAC_CHAIR01_SM_OVR_4D6B707B52D5",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_76C310C86CCA_BG_PAP_NIATOWN_FLOOR07_SM_PSY_OVR_6ACF3DB5F387",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_796340109D96_BG_LUT_TREE_TR_T03_SM_OLD_OVR_E46EF19E69B5",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_7B1E2A895716_LV_OCN_PEYTO_SHIP11_SM_OVR_F47E2278D694",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_7BA4AC84CD3A_LV_MODULE_WATER02_512_OVR_BDD0873DA029",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_7CAE39DE3D54_BG_PAP_FOLIAGE_TROPIC02A_SM_KSY_OVR_893B4E190B34",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_7CC6CE9AB9CA_BG_LUT_LUCASTLE_HOUSEINSTAIR02A_SM_MSJ_OVR_975B41755FA7",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_7D44106493F5_BG_ATT_ETC_DISH_02_SM_KEM",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_7DD0A6F475B4_BG_PAP_COMMON_FLOWERPOT02_SM_NX",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_7E25E8F08BF2_LV_OCN_PEYTO_HOUSEINFLOOR02_SM_OVR_7537891C11AE",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_7E25E8F08BF2_LV_OCN_PEYTO_HOUSEINFLOOR02_SM_OVR_BFA30D74D6D7",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_7E328EAB6CCD_BG_PAP_NIATOWN_FENCE01B_SM",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_7E7F80F5188B_BG_PAP_TIAC_BASKET013_SM_OVR_C757D1B74D71",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_7F765A540A7E_BG_EVT_CAMPING_DISH01A_SM_CWK",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_81CF91C47947_BG_FAT_STONE_SUBURBROCK01A_SM_ARTREE_OVR_4AC1C3F4AEE2",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_81CF91C47947_BG_FAT_STONE_SUBURBROCK01A_SM_ARTREE_OVR_7E56E1E68808",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_81FE10100313_BG_PAP_FOLIAGE_FLOWERPOT04_SM_NX_OVR_9A0AF5EF4F4B",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_8224D1A18AE6_BG_OCN_ETC_GATEDECO05_SM",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_82FB9B0DC5A3_BG_PAP_NIATOWN_ROOF09_SM_OVR_D6347A4859D0",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_847B91543BD5_BG_OCN_COMMON_PARASOL02D_SM_KSR_OVR_D6347A4859D0",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_85552CF7A799_BG_PAP_COMMON_FABRICDECO03_SM_KSR_OVR_3DDCFA023133",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_8595C751D9E5_BG_EVT_COLLABO_CHAIR01_SM",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_8602E9027D95_BG_PAP_NIATOWN_ROOF08A_SM_KSY_OVR_1FDD4777F99D",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_87D87D1E571C_BG_BER_COMMON_BERIVY01E_SM_KSY_OVR_9B908507F27A",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_87EBBDAF1799_BG_RAD_KOUKUSATON_FLOOR14B_SM",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_88C8F32141A4_BG_OCN_ETC_GATEDECO03_SM",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_88C8F32141A4_BG_OCN_ETC_GATEDECO03_SM_OVR_FA09A464F1B4",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_8965326762D0_BG_LUT_LUCASTLE_HOUSEINFENCE01_SM_ARTREE_OVR_E315365ACD83",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_8A106D2A7C84_BG_PAP_STARSB_ELEVATORGEAR01_SM_NX",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_8AC483D425D2_BG_SHS_COMMON_DECO06A_SM_OLD_LOC_INT_OVR_98B81AB0DC5F",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_8AE62127C601_BG_ATT_STONE_ROCK01_SM_KSR_OVR_4403541F673B",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_8B1F771958AF_LV_OCN_PEYTO_SHIP01_SM_OVR_B0D14764BC8A",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_8D4088F485A3_BG_PAP_COMMON_FABRICDECO02D_SM_KSR_OVR_3DDCFA023133",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_8D502E68CBD9_BG_EVT_SEOLLAL_DECO03_SM_LNH",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_8D5665ACCC09_BG_PAP_ETC_SHIP02_SM_NX",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_90883731F260_LV_OCN_PEYTO_SHIP02_SM",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_90F2D0AD7577_BG_SHS_COMMON_DECO06D_SM_OLD_OVR_98B81AB0DC5F",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_91D0B5FBD314_BG_ATT_COMMON_DECOPROP03A_SM_PSK_OVR_BB05F8DD581C",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_92FB35A601C1_BG_PAP_NIATOWN_ROOF04B_SM_PSY_OVR_984CA973F50E",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_930083524F28_BG_PAP_ETC_PARASOL01A_SM_ARTREE_OVR_B8B6FCC90223",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_959DE1ABB4BC_BG_LUT_MEMONAST_MODULE_SM_SUP_OVR_7B83806A61B6",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_95AC1A725E3B_BG_OCN_ETC_PEYTOSHIP01C_SM_KBW_OVR_D3115C89E1C4",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_973323CF9E71_BG_BER_COMMON_BERIVY05A_SM_KSY_OVR_486EA414A683",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_973323CF9E71_BG_BER_COMMON_BERIVY05A_SM_KSY_OVR_DF60CA87B60C",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_98D873592869_BG_ATM_LEONHART_PUBINPROP01_SM_MSJ_OVR_DCB67B8B4F48",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_9943D6D7E724_BG_EVT_COLLABO_EDIYA_COFFEEMACHINE01_SM",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_9A25F5FF8BB2_BG_OCN_ETC_CUPCOCKTAIL_02_SM_KHB",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_9AB191424485_BG_PAP_NIATOWN_FLOOR04_SM_OVR_4BC457834022",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_9FCD663C6265_BG_SHS_COMMON_TABLE01C_SM_OLD_OVR_4E0F51D6991B",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_9FE9F3908F4A_LV_PAP_SCOAST_FLOWERDECO01_SM",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_A0D8DF5ADD24_BG_OCN_ETC_DECOSLIDE01B_SM",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_A2338F5BE0E0_BG_YOR_COMMON_BIGBARREL01_SM_KSY_OVR_CBC12B4E2FE2",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_A2CE56276625_BG_EVT_COLLABO_DECOCHICKEN01_SM_KMH",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_A390996E0F69_LV_OCN_EVENTIS_MHP_TENT01_SM_OVR_D914F9042067",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_A75C97814620_BG_LUT_ETC_SHIP01D_SM_KBW_OVR_9879B5FDE57F",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_A81FDE9736B3_BG_TOT_MOVILLAGE_DECOPROP03A_SM_OVR_C966B4FB39D7",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_A98778E158B2_BG_FAT_STONE_ROCK01_SM_OVR_339597FC6AB2",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_A98778E158B2_BG_FAT_STONE_ROCK01_SM_OVR_BB6EEAF0436A",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_A9BDD79E28FF_BG_OCN_ETC_TABLEBOTTLE01_SM_PJH",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_AB191FBB27AB_BG_PAP_NIATOWN_ROOF04_SM_OVR_3ECD4DC1DB2B",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_AB6F000C51F0_BG_EVT_CAMPING_DISH01_SM_CWK",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_AB857EDE849E_LV_OCN_PEYTO_SHIPFLOOR01_SM_OVR_BFA30D74D6D7",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_ABBFB2924501_LV_OCN_EVENTIS_MHP_POOL02_SM_OVR_DC028D1B4296",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_AE117DE90014_BG_LUT_LUCASTLE_HOUSEINFENCE01A_SM_OVR_E315365ACD83",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_AE53470055D3_LV_OCN_PEYTO_SHIP05_SM_OVR_0E078806BA17",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_AE8B49083B7A_BG_ATT_ROOF05_SM_KSS_OVR_DF60B2481C18",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_AF443EB27795_BG_PAP_NIATOWN_HOUSE04_SM_MSJ_OVR_D27FADAA8509",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_AFC0EBB08947_BG_PAP_NIATOWN_CARPET01_SM_OVR_EA79956DEEE2",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_B18B811D8F3F_PAP_FOLIAGE_DECO06_SM_KSY",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_B2EC01F9B696_BG_PAP_COMMON_FABRICDECO02C_SM_KSR",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_B2EC01F9B696_BG_PAP_COMMON_FABRICDECO02C_SM_KSR_OVR_F7D835BE574A",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_B3C293AD0B60_BG_LUT_TREE_BERRYTREE02_SM_KSY_OVR_8C6F2EC78FA8",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_B5928345B4BD_BG_FAT_FOLIAGE_REDPLANT02A_SM_KSY_OVR_65921EE47411",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_B65E6DB1024B_LV_ATT_STERN_FENCE05_SM_OVR_E01ED32C11B7",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_B80FFE4AC1CF_BG_LUT_LUCASTLE_EASEL01A_SM_KBW",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_B9AF418E138F_BG_PAP_TICAC_TORCH01_SM_OVR_49BC3C7FF4B9",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_BAD8F261EB10_BG_ATT_COMMON_PILLAR06A_SM_LDY_OVR_84C98D7C0BFE",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_BCBDC18DEBE0_BG_OCN_COMMON_PARASOL02_SM_KSR_OVR_A241449E3282",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_BCBDC18DEBE0_BG_OCN_COMMON_PARASOL02_SM_KSR_OVR_D6347A4859D0",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_BD90DA32E828_BG_ATT_COMMON_NEONSIGN01C_SM_HSM_OVR_08A20656346D",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_BD90DA32E828_BG_ATT_COMMON_NEONSIGN01C_SM_HSM_OVR_1483F99C328A",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_BD90DA32E828_BG_ATT_COMMON_NEONSIGN01C_SM_HSM_OVR_3054069CEB27",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_BE2822A814FF_LV_ATT_STERN_FENCE02_SM_OVR_68CFBCB5D7C2",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_BEE787B6FC11_BG_ATT_COMMON_NEONSIGN01A_SM_HSM_OVR_DADEDC1D9DC8",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_BF0498B69331_LV_ATT_STERN_FENCE03_SM_OVR_68CFBCB5D7C2",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_BF164ADACFD0_BG_BER_RANIAT_STAIR01A_SM_PSY_OVR_DB9B33D34BF1",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_BF811027C43C_BG_PAP_NIATOWN_MUSICINSTRUMENT02_SM_ARTREE_OVR_713CC1072019",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_BFC27BBDD967_TST_ADD_04_1_SM_OVR_DD82C7D34557",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_C1B966AD13A1_LV_OCN_EVENTIS_MHP_WATER03_SM_OVR_6A0EFBCC18F9",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_C23627256F62_BG_RHD_TREE_PALMTREE01_SM_KSY_OVR_F52718A2D5E1",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_C273D664619F_BG_PAP_STARSB_ELEVATOR01_SM_NX_OVR_3FE26B5D34BD",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_C2BAEE36E44A_TST_ADD_06_1_SM_OVR_DD82C7D34557",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_C353A6B5AF05_LV_PAP_SCOAST_FLOWERDECO02_SM",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_C46E2C615EBB_LV_OCN_EVENTIS_MHP_POOL01_SM_OVR_95B77F8F84E0",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_C55E4A3DF7FE_BG_PAP_ETC_OCTOPUSFOOD01_SM_NX",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_C77E7A40AD67_BG_PAP_NIATOWN_FLOOR12_SM_EPIC_OVR_413C566D4257",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_C8F3D6429EC4_BG_PAP_ETC_FOODBASTKET01_SM_KHB",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_C93BD95446E6_BG_SHS_COMMON_CHAIR01B_SM_OLD_OVR_96ED9362D633",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_C9A5F8A441C4_LV_OCN_PEYTO_SHIP08_SM_OVR_60C23CFAC89E",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_CC08D8238ACA_BG_PAP_TICAC_CARPET02_SM_OVR_F6A57D9B4FBA",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_CCD78AAFC795_BG_LUT_TREE_TR_T03_SM_OLD_OVR_84C66FC4D250",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_CCD78AAFC795_BG_LUT_TREE_TR_T03_SM_OLD_OVR_BA71693A30FB",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_CE1F80C1ED0E_BG_PAP_NIATOWN_FENCE01A_SM_OVR_554C7E679192",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_CE45DD723E6B_BG_OCN_ETC_CHAIR02_SM_LNH",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_CE47135916EA_LV_OCN_PEYTO_SHIP13_SM_OVR_9879B5FDE57F",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_CF923A90AF6C_BG_LUT_CRSTORM_FLOOR01A_SM_CWK_OVR_6A0EFBCC18F9",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_CFE24318C107_BG_ATT_COMMON_NEONSIGN01D_SM_HSM_OVR_3054069CEB27",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_CFE24318C107_BG_ATT_COMMON_NEONSIGN01D_SM_HSM_OVR_319B5A7390B2",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_CFE24318C107_BG_ATT_COMMON_NEONSIGN01D_SM_HSM_OVR_31A962C73A7C",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_D14D9217F05B_LV_OCN_PEYTO_SHIP15_SM_OVR_159469611338",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_D14D9217F05B_LV_OCN_PEYTO_SHIP15_SM_OVR_FA4A8A1B1D14",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_D1B8FF4EA5B8_FG_TR_B05_SM_OVR_CCEB83DDDAF0",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_D207BC3A79E8_BG_PAP_TREE_COCONUTTREE01_SM_OVR_CD738109BECE",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_D28EA1DFC262_BG_PAP_NIATOWN_FLOOR04E_SM_OVR_132D68D1372B",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_D28EA1DFC262_BG_PAP_NIATOWN_FLOOR04E_SM_OVR_2DF4E4D5B904",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_D32FA224F209_BG_ATT_COMMON_NEONSIGN03B_SM_HSM_OVR_319B5A7390B2",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_D3854720223E_BG_BER_KRONAP_WALL02_SM_ASJ_OVR_3B7A05B486F8",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_D3854720223E_BG_BER_KRONAP_WALL02_SM_ASJ_OVR_D70C5D64A2E5",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_D4E63E546AAA_BG_ONC_ETC_TABLE01_D_HHT_OVR_ADECAA0FD1ED",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_D639BE7BBB72_BG_PAP_NIATOWN_ROOF03_SM_MSJ_OVR_BEAC952514B6",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_D7969112FA86_BG_LUT_LUCASTLE_HOUSEINFLOOR03A_SM_MSJ_OVR_2075B0CF0676",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_D7969112FA86_BG_LUT_LUCASTLE_HOUSEINFLOOR03A_SM_MSJ_OVR_7B83806A61B6",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_D9E5DCA22740_LV_ATT_STERN_FENCE06_SM_OVR_E01ED32C11B7",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_DC3B70CA60C6_BG_OCN_ETC_GATEDECO02_SM",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_DC74F2961B37_BG_ATM_TREE_GARDENTREE01G_SM_YSI_OVR_5BD0909F2C38",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_DF81F0BE39AC_BG_SHS_COMMON_DECO03B_SM_YSI",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_DFE9829F5295_BG_PAP_ETC_BOLLARD01_SM_NX_OVR_5A9F61BFE1AD",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_DFFCA4BCD665_BG_LUT_LUCASTLE_HOUSEINFLOOR02_SM_MSJ_OVR_2075B0CF0676",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_DFFCA4BCD665_BG_LUT_LUCASTLE_HOUSEINFLOOR02_SM_MSJ_OVR_5D54454874A2",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_DFFCA4BCD665_BG_LUT_LUCASTLE_HOUSEINFLOOR02_SM_MSJ_OVR_7B83806A61B6",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_DFFCA4BCD665_BG_LUT_LUCASTLE_HOUSEINFLOOR02_SM_MSJ_OVR_BFA30D74D6D7",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_E0F365FE38F0_BG_EVT_SEOLLAL_DECO03A_SM_LNH",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_E106DA7411C9_LV_ATT_STERN_FENCE04_SM_OVR_68CFBCB5D7C2",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_E7FF69CEF839_LV_OCN_EVENTIS_MHP_FLOOR01_SM_OVR_7761EFC0A346",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_EA9C52CC4464_LV_BER_BERNILF_FLOOR01_SM_OVR_6A0EFBCC18F9",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_EA9C52CC4464_LV_BER_BERNILF_FLOOR01_SM_OVR_7761EFC0A346",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_EA9C52CC4464_LV_BER_BERNILF_FLOOR01_SM_OVR_82C061BF8240",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_EA9C52CC4464_LV_BER_BERNILF_FLOOR01_SM_OVR_CF8734EEB688",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_EB273257A9D9_BG_PAP_ETC_SURFBOARD02_SM_NX",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_EB275526D3D5_LV_OCN_EVENTIS_MHP_FLOOR02_SM_OVR_6A0EFBCC18F9",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_EB9B708DD5F1_BG_RHD_LOA_TREEFLOAAT01B_SM_KSY_OVR_603D3C919FB8",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_EB9B708DD5F1_BG_RHD_LOA_TREEFLOAAT01B_SM_KSY_OVR_C20B584517DD",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_ECC45D676129_BG_EVT_ETC_DECOMENU01_SM",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_ED019EB323EB_BG_EVT_ETC_DECOPOS01_SM",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_EDDEDF2CF6A1_SKY_MIRROR_SM_OVR_E86504010E4E",
+      "renderMode": "Sky",
+      "cullMode": "None"
+    },
+    {
+      "assetId": "MAP_EE5C79D64481_LV_OCN_EVENTIS_MHP_TENT02_SM_OVR_D219561F3E57",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_EE680292E3CE_EHM_FENCE_02_SM",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_EF33044BC6D8_LV_OCN_PEYTO_SHIP16_SM_OVR_BAEBEBA815CA",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_F004059DEAD4_BG_ATM_LOGHILL_CARRIAGE03A_SM_KHB_OVR_EA7360E51FE5",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_F42D17938ED3_LV_OCN_PEYTO_SHIP06_SM_OVR_0E580157E74A",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_F470B0CE46B1_BG_OCN_COMMON_SUNBED_SM_ASJ_OVR_8645A12DEA2E",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_F4D8E1183915_BG_PAP_SCOAST_POLEBIRD01_SM_NX_OVR_32210A2E40BA",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_F584DAD3F7FC_BG_LUT_LUCASTLE_TENT03A_SM_MSJ_OVR_C0EA0DAE2333",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_F7315C395C20_BG_PAP_NIATOWN_FLOORWOOD01_SM_NX_OVR_CB87BF9B71FC",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_F905D1AD8771_BG_OCN_ETC_GATEDECO01_SM",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_F918703D4597_FG_TR_B04_SM_OVR_10B8239F0C4B",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_F9E689278691_BG_PAP_NIATOWN_FLOOR04B_SM_OVR_4BC457834022",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_FAB798C68BB8_BG_LUT_LUCASTLE_HOUSEINSTAIR01_SM_MSJ_OVR_7B83806A61B6",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_FC3334E03E71_BG_PAP_NIATOWN_STAIR05_SM_OVR_22BAF8AF9AD1",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_FDD41DC265B1_LV_ATT_STERN_LAMP03_SM_OVR_08A20656346D",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_FDD41DC265B1_LV_ATT_STERN_LAMP03_SM_OVR_F2F31673947B",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_FE07BF9E2261_BG_PAP_ETC_FRUITBASKET02A_SM_OVR_2E95EFA24642",
+      "emissiveIntensity": 0.0
+    },
+    {
+      "assetId": "MAP_FEC7A85A40AA_BG_PAP_NIATOWN_CARPET02_SM_NX",
+      "emissiveIntensity": 0.0
+    }
+  ],
+  "visibilityOverrides": []
+}

@@ -37,11 +37,12 @@ LevelCatalog scenario
 
 | Area | Visual | Gameplay | Navigation | 추가 데이터 |
 |---|---|---|---|---|
-| `LV_BER_BERNCASTLE` | shard-set, 50,017 placements | 16 placements: class-neutral player spawn 4 + NPC 10 + triggerBox 1 + collisionBox 1 | 50×347 source/paint, Server navgrid + 1m deck-step policy | NPC behavior/trigger/collision authoring, boss 없음 |
+| `LV_BER_BERNCASTLE` | shard-set, 50,017 placements | 16 placements: class-neutral player spawn 4 + NPC 10 + triggerBox 1 + collisionBox 1 | 50×347 source/paint, Server navgrid + 1m deck-step policy | NPC behavior/trigger/collision authoring, boss 없음. M 키 스퀘어홀 착지점은 비활성 triggerBox `squarehole.<1..3>`의 단일 movePlayer 목적지이며 번호는 `WorldMapSquareHoles.json`의 홀 id와 같다(MapTool World Gameplay에서 조정, 없거나 걸을 수 없으면 Server가 요청을 거절) |
 | `LV_LUT_HEARTRB_ED` | shard-set 8개, 3,967 unique assets / 13,184 placements | player spawn 4 + `BOSS_VALTAN` 1 | 392×312, 0.5m cells, `Data/Navigation/LV_LUT_HEARTRB_ED.*` | deploy pair/rail source surfaces, source-exact outer towers, map point light 22, source material 4,511행 / placementLighting 11,076행, BossProfile, ValtanEncounter |
 | `LV_DEV_TRAINING_GROUND` | RCArena 10 assets / 18 placements | class-neutral player spawn 4 | uniform 32×32 | NPC/boss/monster/trigger 없음 |
 | `LV_LOBBY_CLASSSELECT_SL00` | 181 catalog entries / 804 placements | class-neutral player spawn 4 | Server uniform 42×60 + MapTool source/paint bootstrap | Character Select Arena gameplay + monster/Lugaru SpawnGroups |
 | `LV_SHS_RCARENA_D` | 302 assets / 7,856 placements | 없음 | 없음 | 원본 Training Map 편집 대상 |
+| `LV_OCN_EVENTIS_MHP` | single, 398 assets / 3,839 placements (섬 정적 메시 3,823 + 섬 랜드스케이프 16) | class-neutral player spawn 4 (광장 20.48m) | uniform 160×160, 1m, 높이 20.48m | 2021 마하라카 파라다이스 섬. 랜드스케이프 wmodel은 `Map/LV_OCN_EVENTIS_MHP_LAND`, 변형은 `Map/LV_OCN_EVENTIS_MHP`. degenerate tangent 메시 1종(3배치) 제외, 섬 범위는 원본 y > 50000cm |
 
 Character Select의 Loader와 Level placement는 같은 `MakeFullMapScope()`를 소비한다.
 같은 SL00의 원격 원판11개·별11개도 포함한다. 이 로딩 범위는 Server navigation 범위를

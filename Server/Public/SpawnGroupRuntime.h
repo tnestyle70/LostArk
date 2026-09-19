@@ -19,6 +19,12 @@ namespace LostArk::Server
 
 		bool Initialize(const CSpawnGroupBootstrap& bootstrap, std::string& outStatus);
 		bool Activate(const std::string& spawnGroupId);
+		/* Trigger re-fire. A DORMANT group starts as Activate does; a COMPLETED one
+		   restarts once none of its monsters are alive; a RUNNING group, or a
+		   completed one still being fought, is left alone so a second entry can
+		   never stack a wave on top of the first. False means nothing changed. */
+		bool Activate_Repeat(const std::string& spawnGroupId,
+			const ACTIVE_COUNT_QUERY& activeCount);
 		// Caller removes this group's live entities before resetting its schedule.
 		bool Reset_Group(const std::string& spawnGroupId);
 		bool Activate_Immediate(const std::string& spawnGroupId,

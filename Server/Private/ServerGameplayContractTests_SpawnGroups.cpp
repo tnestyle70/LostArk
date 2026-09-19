@@ -44,6 +44,52 @@ using namespace LostArk::Shared;
 void LostArk::Server::CServerGameplayContractRunner::Run_SpawnGroups(TESTS& tests, CGameplayCatalog& catalog)
 {
 
+	{
+		/* A trigger fires again: a dormant group starts, a running group is never
+		   stacked, and a finished group restarts only once its monsters are gone. */
+		CSpawnGroupBootstrap repeatBootstrap;
+		CSpawnGroupRuntime repeatRuntime;
+		std::string repeatStatus;
+		std::uint32_t alive = 0u;
+		std::uint32_t spawned = 0u;
+		const CSpawnGroupRuntime::ACTIVE_COUNT_QUERY aliveNow =
+			[&alive](const std::string&) { return alive; };
+		const CSpawnGroupRuntime::SPAWN_CALLBACK spawnOne =
+			[&](const std::string&, const SPAWN_GROUP_ENTRY&, const SPAWN_GROUP_ANCHOR&,
+				const MONSTER_RUNTIME_PROFILE&, std::uint32_t)
+			{
+				++spawned;
+				++alive;
+				return true;
+			};
+		const std::string groupId = "spawn.character-select.monster";
+		tests.Require(repeatBootstrap.Load(WORLD_ID::CHARACTER_SELECT_ARENA) &&
+			repeatRuntime.Initialize(repeatBootstrap, repeatStatus),
+			"Load a real audition spawn group for the repeat activation contract");
+		tests.Require(repeatRuntime.Activate_Repeat(groupId, aliveNow) &&
+			!repeatRuntime.Activate_Repeat(groupId, aliveNow),
+			"A dormant group starts on a trigger and a running one is not stacked");
+		repeatRuntime.Update(1.f / 30.f, repeatBootstrap, aliveNow, spawnOne);
+		repeatRuntime.Update(1.f / 30.f, repeatBootstrap, aliveNow, spawnOne);
+		tests.Require(1u == spawned && !repeatRuntime.Activate_Repeat(groupId, aliveNow),
+			"A group whose monster is alive ignores a second trigger");
+		alive = 0u;
+		repeatRuntime.Update(1.f / 30.f, repeatBootstrap, aliveNow, spawnOne);
+		tests.Require(repeatRuntime.Is_Completed(groupId),
+			"The group completes once its monster is gone");
+		alive = 1u;
+		tests.Require(!repeatRuntime.Activate_Repeat(groupId, aliveNow) &&
+			repeatRuntime.Is_Completed(groupId),
+			"A completed group is not restarted while one of its monsters still lives");
+		alive = 0u;
+		tests.Require(repeatRuntime.Activate_Repeat(groupId, aliveNow) &&
+			!repeatRuntime.Is_Completed(groupId),
+			"A completed group restarts once its field is clear");
+		repeatRuntime.Update(1.f / 30.f, repeatBootstrap, aliveNow, spawnOne);
+		tests.Require(2u == spawned,
+			"The restarted group spawns its wave again");
+	}
+
 
 	{
 		CSpawnGroupBootstrap spawnBootstrap;
@@ -486,20 +532,34 @@ void LostArk::Server::CServerGameplayContractRunner::Run_SpawnGroups(TESTS& test
 		std::vector<SERVER_WORLD_TRANSFER_REQUEST> transfers;
 		std::vector<SERVER_INTERACT_PROMPT_EDGE> promptEdges;
 		std::uint32_t encounterActivationCount = 0u;
+		const auto activateBossEncounter = [&raidRoom, &encounterActivationCount](
+			const WORLD_TRIGGER_ACTION_KIND kind,
+			const std::string& targetId)
+		{
+			if (WORLD_TRIGGER_ACTION_KIND::ACTIVATE_ENCOUNTER != kind)
+				return false;
+			++encounterActivationCount;
+			return raidRoom.Activate_Encounter(targetId);
+		};
 		raidRoom.m_ServerTriggerSystem.Evaluate_Entries(
 			raidRoom.m_Players,
 			700u,
 			transfers,
-			[&raidRoom, &encounterActivationCount](
-				const WORLD_TRIGGER_ACTION_KIND kind,
-				const std::string& targetId)
-			{
-				if (WORLD_TRIGGER_ACTION_KIND::ACTIVATE_ENCOUNTER != kind)
-					return false;
-				++encounterActivationCount;
-				return raidRoom.Activate_Encounter(targetId);
-			},
-				promptEdges);
+			activateBossEncounter,
+			promptEdges);
+#ifdef _DEBUG
+		/* The Debug Valtan corridor shortcut makes Stage_Boss wait for G; Release
+		   fires the boss start on entry above. */
+		if (!raidRoom.m_Players.empty())
+		{
+			(void)raidRoom.m_ServerTriggerSystem.Activate_Here(
+				raidRoom.m_Players.begin()->first,
+				raidRoom.m_Players,
+				700u,
+				transfers,
+				activateBossEncounter);
+		}
+#endif
 		auto bossBeforeReset = std::find_if(
 			raidRoom.m_WorldEntities.begin(),
 			raidRoom.m_WorldEntities.end(),

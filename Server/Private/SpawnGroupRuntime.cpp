@@ -59,6 +59,29 @@ bool LostArk::Server::CSpawnGroupRuntime::Activate(const std::string& spawnGroup
 	return true;
 }
 
+bool LostArk::Server::CSpawnGroupRuntime::Activate_Repeat(
+	const std::string& spawnGroupId, const ACTIVE_COUNT_QUERY& activeCount)
+{
+	RUNTIME_GROUP* group = Find(spawnGroupId);
+	if (nullptr == group || nullptr == group->pDefinition)
+		return false;
+	if (GROUP_STATE::RUNNING == group->eState)
+		return false;
+	if (GROUP_STATE::DORMANT == group->eState)
+		return Activate(spawnGroupId);
+	/* COMPLETED. The prerequisite Activate checks is tested before any state
+	   changes, so a refused restart leaves the group completed. */
+	if (!activeCount || 0u != activeCount(spawnGroupId))
+		return false;
+	if (!group->pDefinition->strRequiredCompletedGroupId.empty() &&
+		!Is_Completed(group->pDefinition->strRequiredCompletedGroupId))
+		return false;
+	group->eState = GROUP_STATE::RUNNING;
+	group->iWaveIndex = 0;
+	Begin_Wave(*group);
+	return true;
+}
+
 bool LostArk::Server::CSpawnGroupRuntime::Activate_Immediate(
 	const std::string& spawnGroupId,
 	const CSpawnGroupBootstrap& bootstrap,

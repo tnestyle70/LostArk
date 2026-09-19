@@ -1,0 +1,11 @@
+{
+  "schema": "lostark.navigation-grid-authoring",
+  "formatVersion": 1,
+  "areaId": "LV_OCN_EVENTIS_MHP",
+  "width": 160,
+  "height": 160,
+  "cellSize": 1.0,
+  "originX": 0.0,
+  "originZ": -1072.0,
+  "defaultHeight": 20.48
+}

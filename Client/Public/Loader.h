@@ -91,6 +91,7 @@ private:
 	HRESULT Ready_For_ValtanArena();
 	HRESULT Ready_For_KakulSaydonArena();
 	HRESULT Ready_For_Development();
+	HRESULT Ready_For_Maharaka();
 
 	HRESULT Ready_MapArea(
 		uint32_t iLevelIndex,

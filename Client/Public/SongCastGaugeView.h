@@ -17,6 +17,9 @@ while the local player is locked in the square-hole song (PLAYER_ACTION_STATE::S
 The fill is the replicated action age over the Shared SQUAREHOLE_SONG_DURATION_MS; the caption is
 Data/UI/WorldMap/WorldMapPanels.json strings.songCasting. Layout:
 Data/UI/WorldMap/SongCastGauge_Layout.json, written by Tools/LpkPipeline/build_worldmap_ui.py.
+The same song also drives the screen blackout that hides the Server-owned landing: the screen
+finishes fading to black when the song ends (Shared SQUAREHOLE_BLACKOUT_FADE_MS before it),
+stays black while the Server holds the action, and fades back in once the action ends.
 The view decides nothing: it reads CCombatHUDViewModel's player state and draws. */
 class CSongCastGaugeView final
 {
@@ -33,6 +36,7 @@ public:
 
 private:
 	void Load_Strings();
+	void Update_Fade(f32_t fTimeDelta, bool_t bInSong, int32_t iAgeTicks);
 
 private:
 	ComPtr<ID3D11Device>			m_pDevice;
@@ -43,6 +47,11 @@ private:
 	/* Edge state so the song sound plays once per lock, not every frame. */
 	uint32_t						m_iShownActionStartTick = 0u;
 	f32_t							m_fFill = 0.f;
+	/* Full-screen black quad (the same authored slot the Kouku trigger fade uses). */
+	unique_ptr<CUILayoutRuntime>	m_pFadeView;
+	f32_t							m_fFadeAlpha = 0.f;
+	bool_t							m_bFadingOut = false;
+	bool_t							m_bFadeShown = false;
 };
 
 NS_END

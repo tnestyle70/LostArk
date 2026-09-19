@@ -18,7 +18,7 @@ bool_t Client::CClickMoveEffect::Uses_LevelMarkers(const LEVEL level)
 {
 	return LEVEL::CHARACTER_SELECT == level || LEVEL::BERN == level ||
 		LEVEL::VALTAN_ARENA == level || LEVEL::KAKULSAYDON_ARENA == level ||
-		LEVEL::DEVELOPMENT == level;
+		LEVEL::DEVELOPMENT == level || LEVEL::MAHARAKA == level;
 }
 
 std::vector<std::string> Client::CClickMoveEffect::Queue_LevelResources(const LEVEL level)
@@ -29,7 +29,8 @@ std::vector<std::string> Client::CClickMoveEffect::Queue_LevelResources(const LE
 	// neither hide the other nor fail the playable Level's admission.
 	for (const char* id : { CLICK_EFFECT_ID, DESTINATION_EFFECT_ID })
 	{
-		if (id == DESTINATION_EFFECT_ID && LEVEL::KAKULSAYDON_ARENA != level)
+		if (id == DESTINATION_EFFECT_ID &&
+			LEVEL::KAKULSAYDON_ARENA != level && LEVEL::VALTAN_ARENA != level)
 			continue;
 		std::vector<std::string> target;
 		std::string status;

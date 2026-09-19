@@ -25,12 +25,14 @@ below is a real Release-build feature, so the include is no longer guarded. */
 #include "LevelRegistry.h"
 #include "LevelTransitionService.h"
 #include "MainApp.h"
+#include "MapAssetRenderUtils.h"
 #include "NetworkManager.h"
 #include "NetworkPlayerCommandSink.h"
 #include "ProjectDataRoot.h"
 #include "RuntimeAssetRoot.h"
 #include "Transform.h"
 #include "Valtan.h"
+#include "WorldGameplayDocument.h"
 
 #include "DataJson.h"
 #include "DeployPropObject.h"
@@ -179,6 +181,7 @@ CLevel_ValtanArena::~CLevel_ValtanArena()
 	End_ReferenceCamera(false);
 #endif
 	End_CinematicCamera();
+	Clear_TriggerMarkers();
 	m_MapEffectPresentationRuntime.Clear();
 	if (RAID_PRELUDE_BGM_STATE::NONE != m_eRaidPreludeBgmState)
 		CGameInstance::Get().Stop_Music();
@@ -409,6 +412,8 @@ HRESULT CLevel_ValtanArena::Initialize()
 	m_GateProgressView.Set_Raid(L"\xB9C8\xC218\xAD70\xB2E8\xC7A5 \xBC1C\xD0C4",
 		CMvpAwardCatalog::Get().Find_DifficultyText("normal"), 1u);
 	m_GateProgressView.Set_Progress(1u, 0u);
+	/* A missing world document only hides the decoration; the level stays playable. */
+	(void)Load_TriggerMarkers();
 
 	/* First screen migrated off the ImGui interim UI rendering (see
 	.md/TJ/08-31/2026-08-31_ImGui_런타임UI_전환_PLAN.md) -- real CUI_Sprite GameObjects on this
@@ -608,6 +613,7 @@ void CLevel_ValtanArena::Update(f32_t fTimeDelta)
 	frame's replicated player list, so Collect_PlayerViews moves here
 	instead of Render(). */
 	m_Replication.Collect_PlayerViews(m_NameplatePlayers);
+	Update_TriggerMarkerClocks(fTimeDelta);
 	/* worldInteractionAllowed=false: the right-click-a-player invite context menu
 	is Bern-only by design (party formation happens before a Valtan entry, not
 	mid-fight) -- right-click-moving past a teammate during combat kept opening
@@ -1759,6 +1765,152 @@ HRESULT CLevel_ValtanArena::Render()
 #endif
 
 	return S_OK;
+}
+
+bool_t CLevel_ValtanArena::Load_TriggerMarkers()
+{
+	/* Same document the Server publishes from, read the way KoukuSaydon reads its own:
+	   the marker sits on the exact trigger box centre, nothing is copied or guessed. */
+	static constexpr const char* VALTAN_AREA_ID = "LV_LUT_HEARTRB_ED";
+	/* Same ids the Server uses for the boss entry: stepping on Stage_Boss starts the boss
+	   and carries the player to the Stage_Boss_ArenaEntry box, where they land. */
+	static constexpr const char* BOSS_ENTRY_TRIGGER_ID = "Stage_Boss";
+	static constexpr const char* BOSS_ARRIVAL_TRIGGER_ID = "Stage_Boss_ArenaEntry";
+	CWorldGameplayDocument document;
+	std::string status;
+	if (!document.Load(CProjectDataRoot::Resolve(std::filesystem::path("Worlds") /
+		std::string(VALTAN_AREA_ID) / "Gameplay.world.json"),
+		std::string(VALTAN_AREA_ID), status))
+	{
+		OutputDebugStringA(("[ValtanTriggerMarker] " + status + "\n").c_str());
+		return false;
+	}
+	std::vector<TRIGGER_MARKER> staged;
+	for (const WORLD_GAMEPLAY_PLACEMENT& placement : document.Get_Placements())
+	{
+		if (WORLD_PLACEMENT_KIND::TRIGGER_BOX != placement.eKind || !placement.isEnabled)
+			continue;
+		/* The marker sits on the box the player steps on to go somewhere: every player-move
+		   box except an arrival box, plus the boss entry box. Stage_Boss is an
+		   activateEncounter, but firing it also moves the player to Stage_Boss_ArenaEntry,
+		   so Stage_Boss is the departure and ArenaEntry is where they land. Wave
+		   activations and a box authored at a move's landing (Stage_MiniBoss_Spawn sits
+		   exactly on the Stage_MiniBoss destination) are arrivals, so none of those show
+		   the marker. */
+		if (1u != placement.triggerEvents.size())
+			continue;
+		const bool bossEntry = BOSS_ENTRY_TRIGGER_ID == placement.placementId;
+		const bool departureMove =
+			WORLD_TRIGGER_EVENT_KIND::MOVE_PLAYER == placement.triggerEvents.front().eKind &&
+			BOSS_ARRIVAL_TRIGGER_ID != placement.placementId;
+		if (!bossEntry && !departureMove)
+			continue;
+		TRIGGER_MARKER marker;
+		marker.placementId = placement.placementId;
+		XMStoreFloat4x4(&marker.rootWorld, XMMatrixTranslation(
+			placement.position.x, placement.position.y, placement.position.z));
+		staged.push_back(std::move(marker));
+	}
+	Clear_TriggerMarkers();
+	m_TriggerMarkers = std::move(staged);
+	return true;
+}
+
+void CLevel_ValtanArena::Clear_TriggerMarkers()
+{
+	for (auto& marker : m_TriggerMarkers)
+		CEffectPresentationService::Stop_WorldRoot(marker.handle);
+	m_TriggerMarkers.clear();
+}
+
+void CLevel_ValtanArena::Update_TriggerMarkerClocks(const f32_t deltaSeconds)
+{
+	if (!std::isfinite(deltaSeconds) || deltaSeconds < 0.f)
+		return;
+	for (auto& marker : m_TriggerMarkers)
+	{
+		if (marker.retired)
+			continue;
+		if (marker.clockStarted)
+			marker.seconds = std::fmod(marker.seconds + deltaSeconds, 7.f);
+		marker.clockStarted = true;
+	}
+}
+
+void CLevel_ValtanArena::Submit_TriggerMarkers()
+{
+	if (CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::VALTAN_ARENA))
+		return;
+	MAP_CAMERA_CULL_SNAPSHOT camera;
+	const bool_t cameraValid = CMapAssetRenderUtils::Capture_CameraCullSnapshot(camera);
+	for (auto& marker : m_TriggerMarkers)
+	{
+		if (marker.retired)
+			continue;
+		// The fixed move_destination asset fits an 8m sphere, including its
+		// source velocity/lifetime, billboard size, camera offset and mesh.
+		// The outer band retains live history during small camera reversals.
+		MAP_FRUSTUM_CULLING_POLICY policy;
+		policy.baseMargin = marker.active ? 32.f : 16.f;
+		MAP_FRUSTUM_RUNTIME_STATE cullState;
+		MAP_FRUSTUM_CULL_DECISION decision;
+		const float3_t center{ marker.rootWorld._41, marker.rootWorld._42, marker.rootWorld._43 };
+		const bool_t visible = !cameraValid ||
+			!CMapAssetRenderUtils::Evaluate_FrustumVisibility(policy, camera, {}, {},
+				0u, center, 8.f, cullState, decision) || decision.shouldRender;
+		if (!visible)
+		{
+			if (marker.active && marker.handle.Is_Valid())
+				(void)CEffectPresentationService::Submit_LevelPlacementSample(marker.handle, false);
+			marker.active = false;
+			continue;
+		}
+		const bool_t firstSample = !marker.started;
+		if (firstSample)
+		{
+			// Reuse the Loader's prepared target and commit only this marker.
+			EFFECT_LEVEL_PLACEMENT_SPAWN_DESC desc;
+			desc.iLevelIndex = ETOUI(LEVEL::VALTAN_ARENA);
+			desc.strPlacementId = "valtan.trigger." + marker.placementId;
+			desc.strEffectAssetId = "effect.world.move_destination";
+			desc.RootWorld = marker.rootWorld;
+			desc.bExternallySampled = true;
+			std::string status;
+			if (!CEffectPresentationService::Spawn_LevelPlacement(desc, marker.handle, status))
+			{
+				marker.retired = true;
+				OutputDebugStringA(("[ValtanTriggerMarker] " + marker.placementId +
+					": " + status + "\n").c_str());
+				continue;
+			}
+			CEffectPresentationService::Commit_PendingWorldRootSpawns({ marker.handle });
+			marker.started = true;
+		}
+		const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER provider =
+			[root = marker.rootWorld](f32_t, EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& sample,
+				std::string& status)
+			{
+				sample.RootWorld = root;
+				sample.SourceAnchorWorlds.clear();
+				status.clear();
+				return true;
+			};
+		const bool_t sampled = CEffectPresentationService::Seek_WorldRoot(marker.handle,
+			marker.seconds, provider, firstSample || !marker.active);
+		const HRESULT submitted = sampled ?
+			CEffectPresentationService::Submit_LevelPlacementSample(marker.handle, true) : E_FAIL;
+		if (S_OK != submitted)
+		{
+			CEffectPresentationService::Stop_WorldRoot(marker.handle);
+			marker.handle = {};
+			marker.retired = true;
+			marker.active = false;
+			OutputDebugStringA(("[ValtanTriggerMarker] Sample/submission failed: " +
+				marker.placementId + ": " + CEffectPresentationService::Get_Status() + "\n").c_str());
+			continue;
+		}
+		marker.active = true;
+	}
 }
 
 void CLevel_ValtanArena::Render_MvpPortraits()

@@ -2,7 +2,7 @@
   "schema": "lostark.world-gameplay",
   "formatVersion": 6,
   "areaId": "LV_BER_BERNCASTLE",
-  "revision": 552,
+  "revision": 553,
   "placements": [
     {
       "placementId": "collision.bern.editor-proof",
@@ -952,6 +952,42 @@
       "position": [239.741, 37.144, 275.647],
       "yawDegrees": 182.64,
       "enabled": true
+    },
+    {
+      "placementId": "squarehole.1",
+      "kind": "triggerBox",
+      "position": [145.65, 50.13, -149.9],
+      "yawDegrees": 0,
+      "enabled": false,
+      "halfExtents": [1, 1, 1],
+      "triggerOnce": false,
+      "events": [
+        { "type": "movePlayer", "targetPosition": [145.65, 50.13, -149.9], "durationSeconds": 1, "arcHeight": 0 }
+      ]
+    },
+    {
+      "placementId": "squarehole.2",
+      "kind": "triggerBox",
+      "position": [224.72, 43.73, -56.92],
+      "yawDegrees": 0,
+      "enabled": false,
+      "halfExtents": [1, 1, 1],
+      "triggerOnce": false,
+      "events": [
+        { "type": "movePlayer", "targetPosition": [224.72, 43.73, -56.92], "durationSeconds": 1, "arcHeight": 0 }
+      ]
+    },
+    {
+      "placementId": "squarehole.3",
+      "kind": "triggerBox",
+      "position": [52.25, 42.26, -85.55],
+      "yawDegrees": 0,
+      "enabled": false,
+      "halfExtents": [1, 1, 1],
+      "triggerOnce": false,
+      "events": [
+        { "type": "movePlayer", "targetPosition": [52.25, 42.26, -85.55], "durationSeconds": 1, "arcHeight": 0 }
+      ]
     }
   ]
 }
