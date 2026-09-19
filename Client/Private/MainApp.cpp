@@ -48,6 +48,7 @@
 #include "NetworkManager.h"
 #include "Npc.h"
 #include "PartyWindowView.h"
+#include "UITextOcclusion.h"
 #include "PlayerSkillCatalog.h"
 #include "Profiler.h"
 #include "Presentation_Manager.h"
@@ -1409,6 +1410,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	CUIInputRouter -- resets its click-edge tracking. End_Frame() (this function's very end)
 	applies the gameplay-mouse block for anything that claimed the mouse this frame. */
 	CUIInputRouter::Get().Begin_Frame();
+	CUITextOcclusion::Get().Begin_Frame();
 	Sync_KoukuCinematicUI();
 
 #ifdef _DEBUG
@@ -2894,30 +2896,46 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	Apply_LevelRequest();
 	}
 
-	/* Every open runtime window now clips the text drawn under it for the rest of this frame
-	(Level nameplates, HUD captions, chat bubbles) -- the sprites already cover it, the text
-	has to be told. The text pass re-sets this per window before the windows' own labels. */
+	/* Every shown runtime surface now declares where it covers the screen and on which layer,
+	so each text group can be hidden exactly where a surface above it covers it. */
 	Sync_KoukuCinematicUI();
-	if (!CUIInputRouter::Get().Is_CinematicSuppressed()) Add_OpenWindowTextClipOuts();
+	if (!CUIInputRouter::Get().Is_CinematicSuppressed()) Register_UITextOccluders();
 }
 
-void CMainApp::Add_OpenWindowTextClipOuts()
+void CMainApp::Register_UITextOccluders()
 {
+	CUITextOcclusion& Occlusion = CUITextOcclusion::Get();
 	f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+	/* Windows stack in the order CMainApp builds their sprites; each gets its own step. */
 	if (nullptr != m_pInventoryView && m_pInventoryView->Get_ScreenRect(fX, fY, fWidth, fHeight))
-		CGameInstance::Get().Add_TextClipOutRect(fX, fY, fWidth, fHeight);
+		Occlusion.Add_Occluder(UI_TEXT_LAYER::WINDOW + 0, fX, fY, fWidth, fHeight);
 	if (nullptr != m_pCharacterInfoView && m_pCharacterInfoView->Get_ScreenRect(fX, fY, fWidth, fHeight))
-		CGameInstance::Get().Add_TextClipOutRect(fX, fY, fWidth, fHeight);
+		Occlusion.Add_Occluder(UI_TEXT_LAYER::WINDOW + 1, fX, fY, fWidth, fHeight);
 	if (nullptr != m_pAvatarBookView && m_pAvatarBookView->Get_ScreenRect(fX, fY, fWidth, fHeight))
-		CGameInstance::Get().Add_TextClipOutRect(fX, fY, fWidth, fHeight);
+		Occlusion.Add_Occluder(UI_TEXT_LAYER::WINDOW + 2, fX, fY, fWidth, fHeight);
 	if (nullptr != m_pVehicleWindowView && m_pVehicleWindowView->Get_ScreenRect(fX, fY, fWidth, fHeight))
-		CGameInstance::Get().Add_TextClipOutRect(fX, fY, fWidth, fHeight);
+		Occlusion.Add_Occluder(UI_TEXT_LAYER::WINDOW + 3, fX, fY, fWidth, fHeight);
 	if (nullptr != m_pHonorTitleWindowView && m_pHonorTitleWindowView->Get_ScreenRect(fX, fY, fWidth, fHeight))
-		CGameInstance::Get().Add_TextClipOutRect(fX, fY, fWidth, fHeight);
+		Occlusion.Add_Occluder(UI_TEXT_LAYER::WINDOW + 4, fX, fY, fWidth, fHeight);
 	if (nullptr != m_pWorldMapWindowView && m_pWorldMapWindowView->Get_ScreenRect(fX, fY, fWidth, fHeight))
-		CGameInstance::Get().Add_TextClipOutRect(fX, fY, fWidth, fHeight);
+		Occlusion.Add_Occluder(UI_TEXT_LAYER::WINDOW + 5, fX, fY, fWidth, fHeight);
 	if (nullptr != m_pSystemOptionView && m_pSystemOptionView->Get_ScreenRect(fX, fY, fWidth, fHeight))
-		CGameInstance::Get().Add_TextClipOutRect(fX, fY, fWidth, fHeight);
+		Occlusion.Add_Occluder(UI_TEXT_LAYER::WINDOW + 6, fX, fY, fWidth, fHeight);
+	if (m_bItemUpgradePreviewVisible && nullptr != m_pItemUpgradeView)
+		Occlusion.Add_SlotOccluder(UI_TEXT_LAYER::WINDOW + 7, *m_pItemUpgradeView, "ItemUpgrade_PanelBg");
+	/* HUD surfaces in the levels that show them. */
+	const uint32_t iLevel = CGameInstance::Get().Get_CurrentLevelID();
+	if (nullptr != m_pPartyWindowView && (ETOUI(LEVEL::BERN) == iLevel ||
+		ETOUI(LEVEL::VALTAN_ARENA) == iLevel || ETOUI(LEVEL::KAKULSAYDON_ARENA) == iLevel))
+		m_pPartyWindowView->Register_TextOccluders();
+	/* Full-screen surfaces: the award page and the customizing screen (Bern registers its
+	   own raid entry window). */
+	const float2_t vViewport = CGameInstance::Get().Get_ViewportSize();
+	if (Is_MvpResultPageOpen())
+		Occlusion.Add_Occluder(UI_TEXT_LAYER::PAGE, 0.f, 0.f, vViewport.x, vViewport.y);
+	if (ETOUI(LEVEL::CHARACTER_SELECT) == iLevel && nullptr != CLevel_CharacterSelect::Get_Active() &&
+		CLevel_CharacterSelect::Get_Active()->Is_CustomizingOpen())
+		Occlusion.Add_Occluder(UI_TEXT_LAYER::MODAL, 0.f, 0.f, vViewport.x, vViewport.y);
 }
 
 HRESULT CMainApp::Render()
@@ -2981,6 +2999,8 @@ HRESULT CMainApp::Render()
 	HRESULT hWorldResult;
 	{
 		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Render.World");
+		/* Level text (nameplates, chat bubbles) is world text: under every UI surface. */
+		CUITextOcclusion::Get().Apply(UI_TEXT_LAYER::WORLD);
 		hWorldResult = CGameInstance::Get().Render();
 	}
 	if (FAILED(hWorldResult))
@@ -3407,6 +3427,7 @@ HRESULT CMainApp::Render()
 			CLevel_CharacterSelect::Get_Active()->Is_CustomizingOpen());
 	if (!isCharSelectOverlayOpen && !Is_MvpResultPageOpen())
 	{
+		CUITextLayerScope HudText(UI_TEXT_LAYER::HUD);
 		RenderCombatHUDText();
 		RenderBossHealthBarText();
 		if (nullptr != m_pDungeonTimerView)
@@ -3421,27 +3442,45 @@ HRESULT CMainApp::Render()
 		CImGuiLayer::EndFrame(), so it lands on top of every sprite including that popup. */
 		RenderQuickSlotKeyLabels();
 	}
-	RenderDeadSceneText();
-	RenderRaidClearText();
-	RenderItemAnnounceText();
+	{
+		CUITextLayerScope HudText(UI_TEXT_LAYER::HUD);
+		RenderDeadSceneText();
+		RenderRaidClearText();
+		RenderItemAnnounceText();
+	}
 	RenderDamageNumbers();
-	if (nullptr != m_pCombatAnalysisView)
-		m_pCombatAnalysisView->Render_Text();
-	if (nullptr != m_pInventoryView)
-		m_pInventoryView->Render_Text();
-	RenderLobbyButtonText();
-	RenderCharacterSelectWindowText();
-	if (!Is_MvpResultPageOpen())
-		RenderMinimapText();
-	RenderFpsText();
-	RenderItemUpgradeButtonText();
-	RenderItemUpgradeLevelText();
-	RenderItemUpgradeMaterialCounts();
-	RenderItemUpgradeGaugePercentText();
-	RenderItemUpgradeResultWaitText();
-	RenderItemUpgradeSuccessDetailText();
-	RenderItemUpgradeFailDetailText();
-	RenderItemUpgradeListText();
+	{
+		CUITextLayerScope HudText(UI_TEXT_LAYER::HUD);
+		if (nullptr != m_pCombatAnalysisView)
+			m_pCombatAnalysisView->Render_Text();
+	}
+	{
+		CUITextLayerScope WindowText(UI_TEXT_LAYER::WINDOW + 0);
+		if (nullptr != m_pInventoryView)
+			m_pInventoryView->Render_Text();
+	}
+	{
+		CUITextLayerScope HudText(UI_TEXT_LAYER::HUD);
+		RenderLobbyButtonText();
+		RenderCharacterSelectWindowText();
+		if (!Is_MvpResultPageOpen())
+			RenderMinimapText();
+	}
+	{
+		CUITextLayerScope TopText(UI_TEXT_LAYER::PAGE);
+		RenderFpsText();
+	}
+	{
+		CUITextLayerScope WindowText(UI_TEXT_LAYER::WINDOW + 7);
+		RenderItemUpgradeButtonText();
+		RenderItemUpgradeLevelText();
+		RenderItemUpgradeMaterialCounts();
+		RenderItemUpgradeGaugePercentText();
+		RenderItemUpgradeResultWaitText();
+		RenderItemUpgradeSuccessDetailText();
+		RenderItemUpgradeFailDetailText();
+		RenderItemUpgradeListText();
+	}
 	if (ETOUI(LEVEL::CHARACTER_SELECT) == CGameInstance::Get().Get_CurrentLevelID())
 	{
 		if (CLevel_CharacterSelect* pCharacterSelect = CLevel_CharacterSelect::Get_Active())
@@ -3449,9 +3488,13 @@ HRESULT CMainApp::Render()
 			// Same gate as Update_ArenaSpawnButtons's own image draw -- these are
 			// its text labels, drawn from this separate text pass.
 			if (!isCharSelectOverlayOpen)
+			{
+				CUITextLayerScope HudText(UI_TEXT_LAYER::HUD);
 				pCharacterSelect->Render_ArenaSpawnLabels();
+			}
 			/* Outside that gate: the nickname step opens from the customizing screen, so the
 			gate that hides the spawn captions would take every glyph of this modal with it. */
+			CUITextLayerScope ModalText(UI_TEXT_LAYER::MODAL);
 			pCharacterSelect->Render_CreateCharacterModalText();
 			pCharacterSelect->Render_CustomizingText();
 #ifdef _DEBUG
@@ -3463,6 +3506,7 @@ HRESULT CMainApp::Render()
 	{
 		if (CLevel_Bern* pBern = CLevel_Bern::Get_Active())
 		{
+			CUITextLayerScope ModalText(UI_TEXT_LAYER::MODAL);
 			pBern->Render_ValtanEntryModalText();
 			pBern->Render_PartyInviteText();
 		}
@@ -3470,9 +3514,13 @@ HRESULT CMainApp::Render()
 	else if (ETOUI(LEVEL::VALTAN_ARENA) == CGameInstance::Get().Get_CurrentLevelID())
 	{
 		if (CLevel_ValtanArena* pValtanArena = CLevel_ValtanArena::Get_Active())
+		{
+			CUITextLayerScope ModalText(UI_TEXT_LAYER::MODAL);
 			pValtanArena->Render_PartyInviteText();
+		}
 	}
 	/* Not level-gated -- both views self-gate internally (open/roster state). */
+	CUITextLayerScope HudText(UI_TEXT_LAYER::HUD);
 	if (nullptr != m_pChatWindowView)
 		m_pChatWindowView->RenderText();
 	/* The roster sprites only draw in the levels above; the labels follow them, or the
@@ -3486,53 +3534,29 @@ HRESULT CMainApp::Render()
 			m_pPartyWindowView->RenderText();
 	}
 
-	/* The runtime windows draw their text last, bottom to top in their sprite order (the
-	order CMainApp constructed them). Everything above was clipped out of the top window's
-	rect (CUIInputRouter::Set_TopWindowRect -> CGameInstance::Set_TextClipOutRect); here each
-	window's labels are clipped out of every open window drawn above it, so text never shows
-	through a window on top -- the sprites already stack that way, the text has to be told. */
-	{
-		struct WINDOW_RECT { bool_t bOpen = false; f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f; };
-		WINDOW_RECT rects[6];
-		if (nullptr != m_pCharacterInfoView)
-			rects[0].bOpen = m_pCharacterInfoView->Get_ScreenRect(rects[0].fX, rects[0].fY, rects[0].fWidth, rects[0].fHeight);
-		if (nullptr != m_pAvatarBookView)
-			rects[1].bOpen = m_pAvatarBookView->Get_ScreenRect(rects[1].fX, rects[1].fY, rects[1].fWidth, rects[1].fHeight);
-		if (nullptr != m_pVehicleWindowView)
-			rects[2].bOpen = m_pVehicleWindowView->Get_ScreenRect(rects[2].fX, rects[2].fY, rects[2].fWidth, rects[2].fHeight);
-		if (nullptr != m_pHonorTitleWindowView)
-			rects[3].bOpen = m_pHonorTitleWindowView->Get_ScreenRect(rects[3].fX, rects[3].fY, rects[3].fWidth, rects[3].fHeight);
-		if (nullptr != m_pWorldMapWindowView)
-			rects[4].bOpen = m_pWorldMapWindowView->Get_ScreenRect(rects[4].fX, rects[4].fY, rects[4].fWidth, rects[4].fHeight);
-		if (nullptr != m_pSystemOptionView)
-			rects[5].bOpen = m_pSystemOptionView->Get_ScreenRect(rects[5].fX, rects[5].fY, rects[5].fWidth, rects[5].fHeight);
-		const auto ClipAbove = [&rects](const size_t iWindow)
-			{
-				CGameInstance::Get().Clear_TextClipOutRect();
-				for (size_t i = iWindow + 1; i < std::size(rects); ++i)
-					if (rects[i].bOpen)
-						CGameInstance::Get().Add_TextClipOutRect(rects[i].fX, rects[i].fY, rects[i].fWidth, rects[i].fHeight);
-			};
-		ClipAbove(0);
-		if (nullptr != m_pCharacterInfoView)
-			m_pCharacterInfoView->Render_Text();
-		ClipAbove(1);
-		if (nullptr != m_pAvatarBookView)
-			m_pAvatarBookView->Render_Text();
-		ClipAbove(2);
-		if (nullptr != m_pVehicleWindowView)
-			m_pVehicleWindowView->Render_Text();
-		ClipAbove(3);
-		if (nullptr != m_pHonorTitleWindowView)
-			m_pHonorTitleWindowView->Render_Text();
-		ClipAbove(4);
-		if (nullptr != m_pWorldMapWindowView)
-			m_pWorldMapWindowView->Render_Text();
-		ClipAbove(5);
-		if (nullptr != m_pSystemOptionView)
-			m_pSystemOptionView->Render_Text();
-		CGameInstance::Get().Clear_TextClipOutRect();
-	}
+	/* The runtime windows' labels, each on its own window layer (the steps
+	Register_UITextOccluders gave them): a window's text is hidden exactly where a window
+	stacked above it covers it. */
+	CUITextOcclusion& Occlusion = CUITextOcclusion::Get();
+	Occlusion.Apply(UI_TEXT_LAYER::WINDOW + 1);
+	if (nullptr != m_pCharacterInfoView)
+		m_pCharacterInfoView->Render_Text();
+	Occlusion.Apply(UI_TEXT_LAYER::WINDOW + 2);
+	if (nullptr != m_pAvatarBookView)
+		m_pAvatarBookView->Render_Text();
+	Occlusion.Apply(UI_TEXT_LAYER::WINDOW + 3);
+	if (nullptr != m_pVehicleWindowView)
+		m_pVehicleWindowView->Render_Text();
+	Occlusion.Apply(UI_TEXT_LAYER::WINDOW + 4);
+	if (nullptr != m_pHonorTitleWindowView)
+		m_pHonorTitleWindowView->Render_Text();
+	Occlusion.Apply(UI_TEXT_LAYER::WINDOW + 5);
+	if (nullptr != m_pWorldMapWindowView)
+		m_pWorldMapWindowView->Render_Text();
+	Occlusion.Apply(UI_TEXT_LAYER::WINDOW + 6);
+	if (nullptr != m_pSystemOptionView)
+		m_pSystemOptionView->Render_Text();
+	Occlusion.Apply(UI_TEXT_LAYER::HUD);
 	if (nullptr != m_pSongCastGaugeView)
 		m_pSongCastGaugeView->Render_Text();
 
@@ -3970,8 +3994,15 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 	Update_QuickSlotFlash();
 	Update_ItemQuickSlots();
 	Update_SpecialQuickSlots();
+	/* The combat analyser belongs to the raid arenas: in town and the class-select arena it
+	   has nothing to measure. */
 	if (nullptr != m_pCombatAnalysisView)
-		m_pCombatAnalysisView->Update(fTimeDelta, player);
+	{
+		if (ETOUI(LEVEL::VALTAN_ARENA) == currentLevel || ETOUI(LEVEL::KAKULSAYDON_ARENA) == currentLevel)
+			m_pCombatAnalysisView->Update(fTimeDelta, player);
+		else
+			m_pCombatAnalysisView->Hide();
+	}
 	m_HudTimedTexts.clear();
 	Update_KoukuHudMode();
 	Update_VehicleHud();
@@ -7383,6 +7414,7 @@ void CMainApp::Update_EstherGauge(const f32_t fTimeDelta)
 	/* The ready glow is the real 30-frame EpicSkillAbleSlotEffect flipbook; it only
 	advances while the view is updated. */
 	m_pEstherUIView->Update(fTimeDelta);
+	CUITextOcclusion::Get().Add_SlotOccluder(UI_TEXT_LAYER::HUD, *m_pEstherUIView, "Esther_HeaderFrame");
 }
 
 void CMainApp::RenderEstherGaugeText()

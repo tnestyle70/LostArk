@@ -10,14 +10,104 @@
  ],
  "slots": [
   {
+   "id": "IKP_Fx",
+   "ownerClass": null,
+   "type": 0,
+   "rect": {
+    "x": 0,
+    "y": 0,
+    "width": 200.0,
+    "height": 200.0
+   },
+   "rotation": 0,
+   "stages": {
+    "baseFrom": 0,
+    "shineFrom": 1
+   },
+   "layers": [
+    {
+     "path": "UI/Interact/ShowFx_0.png",
+     "hoverPath": null,
+     "tint": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "additive": false,
+     "flipX": false
+    }
+   ],
+   "shine": {
+    "texture": null,
+    "additive": false
+   },
+   "animation": {
+    "fps": 10,
+    "scale": 1,
+    "offset": {
+     "x": 0,
+     "y": 0
+    },
+    "frames": [],
+    "loop": true,
+    "additive": false
+   }
+  },
+  {
+   "id": "IKP_Icon",
+   "ownerClass": null,
+   "type": 0,
+   "rect": {
+    "x": 0,
+    "y": 0,
+    "width": 34.66674866666666,
+    "height": 34.6656506
+   },
+   "rotation": 0,
+   "stages": {
+    "baseFrom": 0,
+    "shineFrom": 1
+   },
+   "layers": [
+    {
+     "path": "UI/Interact/Icon_godown.png",
+     "hoverPath": null,
+     "tint": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "additive": false,
+     "flipX": false
+    }
+   ],
+   "shine": {
+    "texture": null,
+    "additive": false
+   },
+   "animation": {
+    "fps": 10,
+    "scale": 1,
+    "offset": {
+     "x": 0,
+     "y": 0
+    },
+    "frames": [],
+    "loop": true,
+    "additive": false
+   }
+  },
+  {
    "id": "IKP_Key",
    "ownerClass": null,
    "type": 0,
    "rect": {
     "x": 0,
     "y": 0,
-    "width": 22.6667,
-    "height": 23.3333
+    "width": 12.0,
+    "height": 12.352941176470589
    },
    "rotation": 0,
    "stages": {

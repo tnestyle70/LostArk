@@ -1,21 +1,66 @@
 #include "InteractKeyPromptView.h"
 
+#pragma push_macro("new")
+#undef new
+#include <DirectXColors.h>
+#pragma pop_macro("new")
+
 #include "Character.h"
 #include "GameInstance.h"
 #include "MapAssetCatalog.h"
+#include "UILabelFont.h"
 #include "UILayoutRuntime.h"
+#include "UITextOcclusion.h"
 #include "WorldGameplayDocument.h"
+#include "WorldPlayerNameplateView.h"
 
 #include <cmath>
 
 namespace
 {
-	constexpr const char* SLOT_KEY = "IKP_Key";
-	/* The keycap shows once the player is this close (metres, XZ) to a gated box; the
-	   Server's own prompt needs the player inside the box. */
-	constexpr f32_t SHOW_RANGE = 10.f;
-	/* Drawn a little above the box centre so it reads as "over" the spot, not on the floor. */
-	constexpr f32_t LIFT = 1.2f;
+	/* Retail stage px (1920x1080) of MasterKeyComponent. */
+	constexpr f32_t RETAIL_HEIGHT = 1080.f;
+	constexpr f32_t LINE_OFFSET_ABOVE_POINT = 50.f;		// updatePos: pivot bottom-left, (0, 50)
+	constexpr f32_t TEXT_PX = 14.f;						// descriptionTF stringSize
+	constexpr f32_t DESC_TOP_BELOW_ICON_CENTER = 29.f;	// descriptionTF y vs the icon's centre
+	constexpr f32_t ICON_W = 70.f * 0.7428589f;			// iconType_mc 70x69 at (0.7429, 0.7536)
+	constexpr f32_t ICON_H = 69.f * 0.7536011f;
+	constexpr f32_t KEY_H = 18.f;						// inline Shared_GlobalInputDeviceKey_G
+	constexpr f32_t KEY_W = 18.f * 34.f / 35.f;
+	constexpr f32_t KEY_GAP = 4.f;						// the " " between {0} and {1}
+	constexpr f32_t FX_SIZE = 300.f;					// effectMc show shapes, centred
+	constexpr f32_t FX_FPS = 40.f;
+	constexpr int32_t FX_FRAMES = 5;
+	constexpr f32_t REF_WIDTH = 1280.f;
+	constexpr f32_t REF_HEIGHT = 720.f;
+
+	const wstring_t FONT_YG760 = TEXT("Font_YG760");
+	const char* const SLOTS[] = { "IKP_Fx", "IKP_Icon", "IKP_Key" };
+	const char* const FX_FRAME_ART[FX_FRAMES] = {
+		"UI/Interact/ShowFx_0.png", "UI/Interact/ShowFx_1.png", "UI/Interact/ShowFx_2.png",
+		"UI/Interact/ShowFx_3.png", "UI/Interact/ShowFx_4.png" };
+
+	/* GameMsg tip.name.interactionkey_godown / climb / tightrope / check, ASCII-escaped. */
+	const wchar_t* Action_Text(const uint8_t iAction)
+	{
+		switch (iAction)
+		{
+		case 0: return L"\xB0B4\xB824\xAC00\xAE30";
+		case 1: return L"\xC62C\xB77C\xAC00\xAE30";
+		case 2: return L"\xAC74\xB108\xAC00\xAE30";
+		default: return L"\xD655\xC778\xD558\xAE30";
+		}
+	}
+	const char* Action_Icon(const uint8_t iAction)
+	{
+		switch (iAction)
+		{
+		case 0: return "UI/Interact/Icon_godown.png";
+		case 1: return "UI/Interact/Icon_climb.png";
+		case 2: return "UI/Interact/Icon_singleLine.png";
+		default: return "UI/Interact/Icon_check.png";
+		}
+	}
 }
 
 void Client::CInteractKeyPromptView::Initialize(
@@ -24,7 +69,8 @@ void Client::CInteractKeyPromptView::Initialize(
 {
 	m_pView = std::make_unique<CUILayoutRuntime>(pDevice, pContext, iOwnerLevelIndex,
 		TEXT("Layer_UI"), L"UI/Interact/InteractKey_Layout.json");
-	m_pView->Set_SlotVisible(SLOT_KEY, false);
+	for (const char* pSlot : SLOTS)
+		m_pView->Set_SlotVisible(pSlot, false);
 	m_Triggers.clear();
 	if (nullptr == pAreaId)
 		return;
@@ -40,78 +86,134 @@ void Client::CInteractKeyPromptView::Initialize(
 	}
 	for (const WORLD_GAMEPLAY_PLACEMENT& Placement : world.Get_Placements())
 	{
-		if (WORLD_PLACEMENT_KIND::TRIGGER_BOX != Placement.eKind ||
-			!Placement.requiresInteract || !Placement.isEnabled)
+		if (WORLD_PLACEMENT_KIND::TRIGGER_BOX != Placement.eKind || !Placement.requiresInteract)
 			continue;
-		m_Triggers.push_back(TRIGGER{ Placement.placementId, Placement.position });
+		TRIGGER Trigger{};
+		Trigger.strPlacementId = Placement.placementId;
+		for (const WORLD_TRIGGER_EVENT& Event : Placement.triggerEvents)
+		{
+			if (WORLD_TRIGGER_EVENT_KIND::MOVE_PLAYER != Event.eKind)
+				continue;
+			const f32_t fRise = Event.targetPosition.y - Placement.position.y;
+			Trigger.eAction = fRise < -1.f ? ACTION::GODOWN : (fRise > 1.f ? ACTION::CLIMB : ACTION::TIGHTROPE);
+			break;
+		}
+		m_Triggers.push_back(std::move(Trigger));
 	}
 }
 
-void Client::CInteractKeyPromptView::Update(
-	const std::shared_ptr<CCharacter>& pLocalCharacter, const bool_t bShown)
+void Client::CInteractKeyPromptView::Hide()
 {
-	if (nullptr == m_pView)
-		return;
-	const std::shared_ptr<CTransform> pTransform =
-		nullptr != pLocalCharacter ? pLocalCharacter->Get_Transform() : nullptr;
-	if (!bShown || m_Triggers.empty() || nullptr == pTransform)
-	{
-		m_pView->Set_SlotVisible(SLOT_KEY, false);
-		return;
-	}
+	if (m_bVisible && nullptr != m_pView)
+		for (const char* pSlot : SLOTS)
+			m_pView->Set_SlotVisible(pSlot, false);
+	m_bVisible = false;
+	m_strShownTriggerId.clear();
+	m_fShowSeconds = -1.f;
+}
 
-	float3_t vPlayer{};
-	XMStoreFloat3(&vPlayer, pTransform->Get_State(STATE::POSITION));
-	const TRIGGER* pNearest = nullptr;
-	f32_t fNearest = SHOW_RANGE * SHOW_RANGE;
-	for (const TRIGGER& Trigger : m_Triggers)
+void Client::CInteractKeyPromptView::Update(const f32_t fTimeDelta,
+	const std::shared_ptr<CCharacter>& pLocalCharacter, const std::string& strOfferedTriggerId,
+	const bool_t bShown)
+{
+	if (nullptr == m_pView || !bShown || strOfferedTriggerId.empty() || nullptr == pLocalCharacter)
 	{
-		const f32_t fDx = Trigger.vPosition.x - vPlayer.x;
-		const f32_t fDz = Trigger.vPosition.z - vPlayer.z;
-		const f32_t fDistSq = fDx * fDx + fDz * fDz;
-		if (fDistSq < fNearest)
-		{
-			fNearest = fDistSq;
-			pNearest = &Trigger;
-		}
+		Hide();
+		return;
 	}
-	if (nullptr == pNearest)
+	const TRIGGER* pTrigger = nullptr;
+	for (const TRIGGER& Trigger : m_Triggers)
+		if (Trigger.strPlacementId == strOfferedTriggerId)
+			pTrigger = &Trigger;
+	if (nullptr == pTrigger)
 	{
-		m_pView->Set_SlotVisible(SLOT_KEY, false);
+		Hide();
 		return;
 	}
 
 	CGameInstance& Instance = CGameInstance::Get();
 	const float4x4_t* pView = Instance.Get_Transform(D3DTS::VIEW);
 	const float4x4_t* pProj = Instance.Get_Transform(D3DTS::PROJ);
-	const f32_t fRefW = m_pView->Get_ResolutionWidth();
-	const f32_t fRefH = m_pView->Get_ResolutionHeight();
-	if (nullptr == pView || nullptr == pProj || fRefW <= 0.f || fRefH <= 0.f)
+	const float2_t vViewport = Instance.Get_ViewportSize();
+	float3_t vHead{};
+	float2_t vPoint{};
+	if (nullptr == pView || nullptr == pProj || vViewport.y <= 0.f ||
+		!CWorldPlayerNameplateView::Try_GetHeadAnchor(*pLocalCharacter, vHead) ||
+		!CWorldPlayerNameplateView::Try_ProjectWorldPosition(vHead, *pView, *pProj, vViewport, vPoint))
 	{
-		m_pView->Set_SlotVisible(SLOT_KEY, false);
+		Hide();
 		return;
 	}
-	const vector_t vWorld = XMVectorSet(pNearest->vPosition.x, pNearest->vPosition.y + LIFT,
-		pNearest->vPosition.z, 1.f);
-	const vector_t vViewPos = XMVector3TransformCoord(vWorld, XMLoadFloat4x4(pView));
-	if (XMVectorGetZ(vViewPos) <= 0.f)
+
+	if (m_strShownTriggerId != strOfferedTriggerId)
 	{
-		m_pView->Set_SlotVisible(SLOT_KEY, false);
-		return;
+		/* A new offer replays the "show" glow and swaps the action icon. */
+		m_strShownTriggerId = strOfferedTriggerId;
+		m_eAction = pTrigger->eAction;
+		m_fShowSeconds = 0.f;
+		m_pView->Set_SlotTexture("IKP_Icon", Action_Icon(static_cast<uint8_t>(m_eAction)));
 	}
-	float3_t ndc{};
-	XMStoreFloat3(&ndc, XMVector3TransformCoord(vViewPos, XMLoadFloat4x4(pProj)));
-	if (!std::isfinite(ndc.x) || !std::isfinite(ndc.y) ||
-		ndc.x < -1.f || ndc.x > 1.f || ndc.y < -1.f || ndc.y > 1.f)
+	else if (m_fShowSeconds >= 0.f)
 	{
-		m_pView->Set_SlotVisible(SLOT_KEY, false);
-		return;
+		m_fShowSeconds += fTimeDelta;
 	}
-	f32_t fX = 0.f, fY = 0.f, fW = 0.f, fH = 0.f;
-	if (!m_pView->Get_SlotRect(SLOT_KEY, fX, fY, fW, fH))
+
+	/* Retail px -> screen px at this viewport; slots take reference units. */
+	const f32_t fPx = vViewport.y / RETAIL_HEIGHT;
+	const f32_t fToRefX = REF_WIDTH / vViewport.x;
+	const f32_t fToRefY = REF_HEIGHT / vViewport.y;
+	m_fTextPx = TEXT_PX * fPx;
+	const f32_t fLineBottom = vPoint.y - LINE_OFFSET_ABOVE_POINT * fPx;
+	const f32_t fLineTop = fLineBottom - KEY_H * fPx;
+	m_fTextCenterY = (fLineTop + fLineBottom) * 0.5f;
+	const f32_t fIconCenterY = fLineTop - DESC_TOP_BELOW_ICON_CENTER * fPx;
+
+	/* "{0} {1}": the name, a space, the keycap, centred on the point together. */
+	f32_t fScale = 1.f;
+	const wstring_t strFont = UILabelFont::Resolve(FONT_YG760, m_fTextPx, fScale);
+	const f32_t fTextW = Instance.Measure_Text(strFont, Action_Text(static_cast<uint8_t>(m_eAction))).x * fScale;
+	const f32_t fLineW = fTextW + (KEY_GAP + KEY_W) * fPx;
+	m_fTextCenterX = vPoint.x - fLineW * 0.5f + fTextW * 0.5f;
+	const f32_t fKeyX = vPoint.x - fLineW * 0.5f + fTextW + KEY_GAP * fPx;
+
+	m_pView->Set_SlotRect("IKP_Icon", (vPoint.x - ICON_W * 0.5f * fPx) * fToRefX,
+		(fIconCenterY - ICON_H * 0.5f * fPx) * fToRefY, ICON_W * fPx * fToRefX, ICON_H * fPx * fToRefY);
+	m_pView->Set_SlotRect("IKP_Key", fKeyX * fToRefX, fLineTop * fToRefY,
+		KEY_W * fPx * fToRefX, KEY_H * fPx * fToRefY);
+	m_pView->Set_SlotVisible("IKP_Icon", true);
+	m_pView->Set_SlotVisible("IKP_Key", true);
+
+	/* effectMc "show": five 40 fps frames centred on the icon, then gone. */
+	const int32_t iFxFrame = m_fShowSeconds >= 0.f ? static_cast<int32_t>(m_fShowSeconds * FX_FPS) : FX_FRAMES;
+	if (iFxFrame < FX_FRAMES)
+	{
+		m_pView->Set_SlotTexture("IKP_Fx", FX_FRAME_ART[iFxFrame]);
+		m_pView->Set_SlotRect("IKP_Fx", (vPoint.x - FX_SIZE * 0.5f * fPx) * fToRefX,
+			(fIconCenterY - FX_SIZE * 0.5f * fPx) * fToRefY, FX_SIZE * fPx * fToRefX, FX_SIZE * fPx * fToRefY);
+		m_pView->Set_SlotVisible("IKP_Fx", true);
+	}
+	else
+	{
+		m_pView->Set_SlotVisible("IKP_Fx", false);
+		m_fShowSeconds = -1.f;
+	}
+	m_bVisible = true;
+}
+
+void Client::CInteractKeyPromptView::Render_Text() const
+{
+	if (!m_bVisible)
 		return;
-	const f32_t fCenterX = (ndc.x * 0.5f + 0.5f) * fRefW;
-	const f32_t fCenterY = (0.5f - ndc.y * 0.5f) * fRefH;
-	m_pView->Set_SlotRect(SLOT_KEY, std::round(fCenterX - fW * 0.5f), std::round(fCenterY - fH * 0.5f), fW, fH);
-	m_pView->Set_SlotVisible(SLOT_KEY, true);
+	/* YG760 14 px white with the retail black blur (blurSize 2, strength 3) read as an outline. */
+	CUITextLayerScope HudText(UI_TEXT_LAYER::HUD);
+	const wchar_t* pText = Action_Text(static_cast<uint8_t>(m_eAction));
+	const fvector_t vOutline = XMVectorSet(0.f, 0.f, 0.f, 0.85f);
+	static constexpr f32_t OFFSETS[8][2] = {
+		{ -1.f, 0.f }, { 1.f, 0.f }, { 0.f, -1.f }, { 0.f, 1.f },
+		{ -1.f, -1.f }, { 1.f, -1.f }, { -1.f, 1.f }, { 1.f, 1.f } };
+	for (const auto& Offset : OFFSETS)
+		(void)UILabelFont::Draw_Centered(FONT_YG760, pText, m_fTextCenterX + Offset[0],
+			m_fTextCenterY + Offset[1], m_fTextPx, vOutline);
+	(void)UILabelFont::Draw_Centered(FONT_YG760, pText, m_fTextCenterX, m_fTextCenterY, m_fTextPx,
+		DirectX::Colors::White);
 }

@@ -1,6 +1,7 @@
 #include <WinSock2.h>
 #include <dinput.h>
 #include "imgui.h"
+#include "UITextOcclusion.h"
 #pragma push_macro("new")
 #undef new
 #include <DirectXColors.h>
@@ -575,6 +576,13 @@ void CLevel_Bern::Update(f32_t fTimeDelta)
 		CGameInstance::Get().SetMouseButtonBlocked(DIM::RB, true);
 	}
 	m_Replication.Collect_PlayerViews(m_NameplatePlayers);
+	m_PartyInteraction.Register_TextOccluders();
+	/* The raid entry window's dim backdrop covers the whole screen. */
+	if (Is_ValtanEntryModalOpen())
+	{
+		const float2_t vViewport = CGameInstance::Get().Get_ViewportSize();
+		CUITextOcclusion::Get().Add_Occluder(UI_TEXT_LAYER::MODAL, 0.f, 0.f, vViewport.x, vViewport.y);
+	}
 	if (m_PartyInteraction.Update(
 		m_Replication, m_pPlayerCommandSink, m_NameplatePlayers,
 		!Is_ValtanEntryModalOpen() &&
@@ -707,8 +715,6 @@ HRESULT CLevel_Bern::Render()
 	if (FAILED(__super::Render()))
 		return E_FAIL;
 
-	/* World text stops under this level's own popups, like under CMainApp's windows. */
-	m_PartyInteraction.Add_TextClipOuts();
 	m_PlayerNameplateView.Render(m_NameplatePlayers, &m_Replication.Get_PartyRoster());
 	m_ChatBubbleView.Render(m_Replication, m_NameplatePlayers);
 	m_PartyInteraction.Render(m_pPlayerCommandSink);

@@ -25,6 +25,8 @@ class CPartyWindowView final
 public:
 	/* Cancel transient gestures without closing or moving the window. */
 	void Cancel_Interaction() { m_Drag.Reset(); }
+	/* The shown roster (title bar and each member's symbol and bar) as HUD text occluders. */
+	void Register_TextOccluders() const;
 	struct PARTY_MEMBER
 	{
 		string strNickname;
@@ -33,9 +35,6 @@ public:
 		string strClassSymbolPath;
 		f32_t fHpRatio = 0.f;
 		bool_t hasHealthSnapshot = false;
-		/* KoukuSaydon madness under the HP bar; hidden in worlds without the gauge. */
-		f32_t fMadnessRatio = 0.f;
-		bool_t hasMadness = false;
 		bool_t isLeader = false;
 	};
 
