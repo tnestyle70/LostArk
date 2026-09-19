@@ -1,4 +1,5 @@
 ﻿#include "Level_KakulSaydonArena.h"
+#include "UITextOcclusion.h"
 #pragma push_macro("new")
 #undef new
 #include <DirectXColors.h>
@@ -1398,6 +1399,9 @@ HRESULT Client::CLevel_KakulSaydonArena::Initialize()
 		m_pTriggerMoveFadeView->Set_SlotCinematicOverlay("KakulFade_Screen", true);
 		m_pMadnessGaugeView = std::make_unique<CKoukuMadnessGaugeView>(
 			m_pDevice, m_pContext, ETOUI(LEVEL::KAKULSAYDON_ARENA));
+		for (unique_ptr<CKoukuMadnessGaugeView>& pOther : m_OtherMadnessGaugeViews)
+			pOther = std::make_unique<CKoukuMadnessGaugeView>(
+				m_pDevice, m_pContext, ETOUI(LEVEL::KAKULSAYDON_ARENA));
 
 		m_pDeadSceneView = std::make_unique<CUILayoutRuntime>(
 			m_pDevice, m_pContext, ETOUI(LEVEL::KAKULSAYDON_ARENA), TEXT("Layer_UI"),
@@ -1832,6 +1836,26 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 		m_pMadnessGaugeView->Update(fTimeDelta, localCharacter,
 			CCombatHUDViewModel::Get().Get_KoukuGimmick());
 	}
+	/* Teammates: their own madness from the snapshot, drawn the same way over them. */
+	{
+		size_t iOther = 0u;
+		for (const REPLICATED_PLAYER_VIEW& Player : m_NameplatePlayers)
+		{
+			if (Player.isLocal || iOther >= m_OtherMadnessGaugeViews.size())
+				continue;
+			const REPLICATED_PLAYER_HEALTH Health = m_Replication.Get_PlayerHealth().Find(Player.iNetEntityId);
+			HUD_KOUKU_GIMMICK_STATE State{};
+			State.isValid = Health.Has_Madness();
+			State.iMadnessGauge = Health.iCurrentMadness;
+			State.iMadnessMaximum = Health.iMaximumMadness;
+			if (nullptr != m_OtherMadnessGaugeViews[iOther])
+				m_OtherMadnessGaugeViews[iOther]->Update(fTimeDelta, Player.pCharacter.lock(), State);
+			++iOther;
+		}
+		for (; iOther < m_OtherMadnessGaugeViews.size(); ++iOther)
+			if (nullptr != m_OtherMadnessGaugeViews[iOther])
+				m_OtherMadnessGaugeViews[iOther]->Hide();
+	}
 	Update_StatusEffectText(fTimeDelta);
 }
 
@@ -2129,11 +2153,9 @@ HRESULT Client::CLevel_KakulSaydonArena::Render()
 	if (FAILED(drawn))
 		return drawn;
 	if (Is_CinematicPresentationActive()) return drawn;
-	/* The award page is a full-screen modal: no world text at all while it is up. Otherwise
-	   the gate prompt clips it, like CMainApp's windows do. */
+	/* The award page is a full-screen modal: no world text at all while it is up. */
 	if (nullptr == m_pMvpResultView || !m_pMvpResultView->Is_Visible())
 	{
-		m_GateProgressView.Add_TextClipOuts();
 		m_PlayerNameplateView.Render(m_NameplatePlayers, &m_Replication.Get_PartyRoster());
 		m_ChatBubbleView.Render(m_Replication, m_NameplatePlayers);
 	}
@@ -2240,7 +2262,10 @@ HRESULT Client::CLevel_KakulSaydonArena::Render()
 	/* Gate progress panel and prompt text, under the award page's labels. */
 	m_GateProgressView.Render_Text();
 	if (nullptr != m_pMvpResultView)
+	{
+		CUITextLayerScope PageText(UI_TEXT_LAYER::PAGE);
 		m_pMvpResultView->Render();
+	}
 	return drawn;
 }
 

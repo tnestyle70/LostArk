@@ -5,6 +5,7 @@ headers, which is the same order Level_CharacterSelect.cpp uses. Previously
 _DEBUG-only (the audition panel was its only user); the death-screen overlay
 below is a real Release-build feature, so the include is no longer guarded. */
 #include "imgui.h"
+#include "UITextOcclusion.h"
 
 #include "Level_ValtanArena.h"
 
@@ -635,6 +636,7 @@ void CLevel_ValtanArena::Update(f32_t fTimeDelta)
 		nullptr != m_pPlayerCommandSink)
 		m_pPlayerCommandSink->Request_ReturnToBern(m_iNextReturnToBernSequence++);
 	const bool_t isRaidClearActive = m_fRaidClearElapsedSeconds >= 0.f;
+	m_PartyInteraction.Register_TextOccluders();
 	if (!isRaidClearActive && m_PartyInteraction.Update(
 		m_Replication, m_pPlayerCommandSink, m_NameplatePlayers,
 		false))
@@ -1736,12 +1738,9 @@ HRESULT CLevel_ValtanArena::Render()
 	if (FAILED(__super::Render()))
 		return E_FAIL;
 
-	/* The award page is a full-screen modal: no world text at all while it is up. Otherwise
-	   this level's own popups clip it, like CMainApp's windows do. */
+	/* The award page is a full-screen modal: no world text at all while it is up. */
 	if (!Is_MvpResultVisible())
 	{
-		m_PartyInteraction.Add_TextClipOuts();
-		m_GateProgressView.Add_TextClipOuts();
 		m_PlayerNameplateView.Render(m_NameplatePlayers, &m_Replication.Get_PartyRoster());
 		m_ChatBubbleView.Render(m_Replication, m_NameplatePlayers);
 	}
@@ -1750,7 +1749,10 @@ HRESULT CLevel_ValtanArena::Render()
 	   CUI_Sprite objects on Layer_UI and need no call. */
 	m_GateProgressView.Render_Text();
 	if (nullptr != m_pMvpResultView)
+	{
+		CUITextLayerScope PageText(UI_TEXT_LAYER::PAGE);
 		m_pMvpResultView->Render();
+	}
 
 #ifdef _DEBUG
 	CMainApp::Update_DebugWindowTitleWithFps(TEXT("Valtan Arena Map"));
@@ -1982,8 +1984,9 @@ void CLevel_ValtanArena::Update_RaidClear(f32_t fTimeDelta)
 	/* Authoring-only placeholder, same split as DeadScene_TitleTextMarker --
 	RenderRaidClearText() (CMainApp, after EndFrame()) draws the real text. */
 	m_pRaidClearView->Set_SlotVisible("RaidClear_TitleTextBox", false);
-	/* The return button waits under the award page until that page is closed. */
-	m_pRaidClearView->Set_SlotVisible("RaidClear_ReturnButton", isAfterRaidClear && !isMvpVisible);
+	/* The clear screen's own return button is gone: the gate progress panel's exit button
+	   (top left) takes the same trip once the award page has closed. */
+	m_pRaidClearView->Set_SlotVisible("RaidClear_ReturnButton", false);
 	m_bRaidClearReturnAvailable = isAfterRaidClear && !isMvpVisible;
 	if (isShowing)
 	{
@@ -1994,52 +1997,12 @@ void CLevel_ValtanArena::Update_RaidClear(f32_t fTimeDelta)
 	}
 	m_pRaidClearView->Update(fTimeDelta);
 
-	/* "돌아가기" button -- appears once the celebration overlay's own reveal/hold
-	timeline finishes and every fading slot has hidden itself, taking that same
-	screen position rather than sitting on top of the still-playing overlay.
-	Same hover/click hit-test pattern as CLevel_ValtanArena's own DeadScene
-	Revive button (CUIInputRouter::Get() + Get_SlotRect), and the same
-	one-shot Request_* submission as before. No local hide-on-click --
-	CLevelTransitionService's real BERN switch (once the Server accepts the
-	transfer) tears this whole Level down anyway. */
-	if (isAfterRaidClear && !isMvpVisible && nullptr != m_pPlayerCommandSink)
-	{
-		f32_t fButtonX = 0.f, fButtonY = 0.f, fButtonWidth = 0.f, fButtonHeight = 0.f;
-		if (m_pRaidClearView->Get_SlotRect("RaidClear_ReturnButton",
-			fButtonX, fButtonY, fButtonWidth, fButtonHeight))
-		{
-			CUIInputRouter& Router = CUIInputRouter::Get();
-			const f32_t fResolutionWidth = m_pRaidClearView->Get_ResolutionWidth();
-			const f32_t fResolutionHeight = m_pRaidClearView->Get_ResolutionHeight();
-			const bool_t isButtonHovered = Router.Is_Hovered(
-				fButtonX, fButtonY, fButtonWidth, fButtonHeight,
-				fResolutionWidth, fResolutionHeight);
-			m_pRaidClearView->Set_SlotTexture("RaidClear_ReturnButton", isButtonHovered ?
-				"UI/ClassSelect/Common/NormalButtonHover.png" :
-				"UI/ClassSelect/Common/NormalButton.png");
-			if (isButtonHovered)
-			{
-				Router.Claim_Mouse_This_Frame();
-				if (Router.Is_Clicked(fButtonX, fButtonY, fButtonWidth, fButtonHeight,
-					fResolutionWidth, fResolutionHeight))
-				{
-					CMainApp::Play_UIButtonClickSound();
-					m_pPlayerCommandSink->Request_ReturnToBern(
-						m_iNextReturnToBernSequence++);
-				}
-			}
-		}
-	}
-
 	HUD_RAIDCLEAR_TEXT_RECTS textRects;
 	textRects.isValid = isShowing &&
 		m_pRaidClearView->Get_SlotRect("RaidClear_TitleTextBox",
 			textRects.fTitleX, textRects.fTitleY,
 			textRects.fTitleWidth, textRects.fTitleHeight);
-	textRects.isButtonValid = isAfterRaidClear &&
-		m_pRaidClearView->Get_SlotRect("RaidClear_ReturnButton",
-			textRects.fButtonX, textRects.fButtonY,
-			textRects.fButtonWidth, textRects.fButtonHeight);
+	textRects.isButtonValid = false;
 	CCombatHUDViewModel::Get().Set_RaidClearTextRects(textRects);
 }
 

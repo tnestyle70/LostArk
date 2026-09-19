@@ -8,7 +8,7 @@
       "id": "Esther_HeaderFrame",
       "ownerClass": null,
       "type": 0,
-      "rect": { "x": -4.47496223, "y": 439.871864, "width": 218, "height": 134.666672 },
+      "rect": { "x": -4.47496223, "y": 150, "width": 218, "height": 134.666672 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -21,7 +21,7 @@
       "id": "Esther_Slot1_Frame",
       "ownerClass": null,
       "type": 0,
-      "rect": { "x": 7.52503777, "y": 481.2052, "width": 76.6666641, "height": 58 },
+      "rect": { "x": 7.52503777, "y": 191.333336, "width": 76.6666641, "height": 58 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -34,7 +34,7 @@
       "id": "Esther_Slot1_KeyBg",
       "ownerClass": null,
       "type": 0,
-      "rect": { "x": 7.52503777, "y": 517.871864, "width": 71.3333359, "height": 20.6666679 },
+      "rect": { "x": 7.52503777, "y": 228, "width": 71.3333359, "height": 20.6666679 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -47,7 +47,7 @@
       "id": "Esther_Slot1_Icon",
       "ownerClass": null,
       "type": 0,
-      "rect": { "x": 28.8583717, "y": 492.538528, "width": 31.3333321, "height": 31.3333321 },
+      "rect": { "x": 28.8583717, "y": 202.666664, "width": 31.3333321, "height": 31.3333321 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -60,7 +60,7 @@
       "id": "Esther_Slot1_Ready",
       "ownerClass": null,
       "type": 0,
-      "rect": { "x": -3.80829501, "y": 460.538528, "width": 96, "height": 96 },
+      "rect": { "x": -3.80829501, "y": 170.666664, "width": 96, "height": 96 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -73,7 +73,7 @@
       "id": "Esther_Slot2_Frame",
       "ownerClass": null,
       "type": 0,
-      "rect": { "x": 59.5250397, "y": 481.2052, "width": 76.6666641, "height": 58 },
+      "rect": { "x": 59.5250397, "y": 191.333336, "width": 76.6666641, "height": 58 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -86,7 +86,7 @@
       "id": "Esther_Slot2_KeyBg",
       "ownerClass": null,
       "type": 0,
-      "rect": { "x": 59.5250397, "y": 517.871864, "width": 71.3333359, "height": 20.6666679 },
+      "rect": { "x": 59.5250397, "y": 228, "width": 71.3333359, "height": 20.6666679 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -99,7 +99,7 @@
       "id": "Esther_Slot2_Icon",
       "ownerClass": null,
       "type": 0,
-      "rect": { "x": 80.8583679, "y": 492.538528, "width": 31.3333321, "height": 31.3333321 },
+      "rect": { "x": 80.8583679, "y": 202.666664, "width": 31.3333321, "height": 31.3333321 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -112,7 +112,7 @@
       "id": "Esther_Slot2_Ready",
       "ownerClass": null,
       "type": 0,
-      "rect": { "x": 48.1917038, "y": 460.538528, "width": 96, "height": 96 },
+      "rect": { "x": 48.1917038, "y": 170.666664, "width": 96, "height": 96 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -125,7 +125,7 @@
       "id": "Esther_Slot3_Frame",
       "ownerClass": null,
       "type": 0,
-      "rect": { "x": 111.52504, "y": 481.2052, "width": 76.6666641, "height": 58 },
+      "rect": { "x": 111.52504, "y": 191.333336, "width": 76.6666641, "height": 58 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -138,7 +138,7 @@
       "id": "Esther_Slot3_KeyBg",
       "ownerClass": null,
       "type": 0,
-      "rect": { "x": 111.52504, "y": 517.871864, "width": 71.3333359, "height": 20.6666679 },
+      "rect": { "x": 111.52504, "y": 228, "width": 71.3333359, "height": 20.6666679 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -151,7 +151,7 @@
       "id": "Esther_Slot3_Icon",
       "ownerClass": null,
       "type": 0,
-      "rect": { "x": 132.858368, "y": 492.538528, "width": 31.3333321, "height": 31.3333321 },
+      "rect": { "x": 132.858368, "y": 202.666664, "width": 31.3333321, "height": 31.3333321 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -164,7 +164,7 @@
       "id": "Esther_Slot3_Ready",
       "ownerClass": null,
       "type": 0,
-      "rect": { "x": 100.191704, "y": 460.538528, "width": 96, "height": 96 },
+      "rect": { "x": 100.191704, "y": 170.666664, "width": 96, "height": 96 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -177,7 +177,7 @@
       "id": "Esther_GaugeTrack",
       "ownerClass": null,
       "type": 0,
-      "rect": { "x": 10.8583708, "y": 533.2052, "width": 172, "height": 16.6666679 },
+      "rect": { "x": 10.8583708, "y": 243.333336, "width": 172, "height": 16.6666679 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -190,7 +190,7 @@
       "id": "Esther_GaugeFill",
       "ownerClass": null,
       "type": 0,
-      "rect": { "x": 17.5250378, "y": 534.538528, "width": 158, "height": 14.666667 },
+      "rect": { "x": 17.5250378, "y": 244.666664, "width": 158, "height": 14.666667 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [

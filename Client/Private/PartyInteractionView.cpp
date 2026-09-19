@@ -4,6 +4,8 @@
 #include <DirectXColors.h>
 #pragma pop_macro("new")
 #include <algorithm>
+#include "UILabelFont.h"
+#include "UITextOcclusion.h"
 
 #include "Character.h"
 #include "GameInstance.h"
@@ -233,23 +235,12 @@ bool_t Client::CPartyInteractionView::Update_ContextMenuTrigger(
 	return true;
 }
 
-void Client::CPartyInteractionView::Add_TextClipOuts() const
+void Client::CPartyInteractionView::Register_TextOccluders() const
 {
-	const float2_t vViewport = CGameInstance::Get().Get_ViewportSize();
-	const auto Fn_Add = [&vViewport](const CUILayoutRuntime* pView, const char* pSlot)
-	{
-		f32_t fX = 0.f, fY = 0.f, fW = 0.f, fH = 0.f;
-		if (nullptr == pView || !pView->Get_SlotRect(pSlot, fX, fY, fW, fH) ||
-			pView->Get_ResolutionWidth() <= 0.f || pView->Get_ResolutionHeight() <= 0.f)
-			return;
-		const f32_t fScaleX = vViewport.x / pView->Get_ResolutionWidth();
-		const f32_t fScaleY = vViewport.y / pView->Get_ResolutionHeight();
-		CGameInstance::Get().Add_TextClipOutRect(fX * fScaleX, fY * fScaleY, fW * fScaleX, fH * fScaleY);
-	};
-	if (m_hasContextMenuTarget)
-		Fn_Add(m_pContextMenuView.get(), "PartyContextMenu_Panel");
-	if (m_isInvitePopupOpen)
-		Fn_Add(m_pInviteView.get(), "PartyInvite_Panel");
+	if (m_hasContextMenuTarget && nullptr != m_pContextMenuView)
+		CUITextOcclusion::Get().Add_SlotOccluder(UI_TEXT_LAYER::MODAL, *m_pContextMenuView, "PartyContextMenu_Panel");
+	if (m_isInvitePopupOpen && nullptr != m_pInviteView)
+		CUITextOcclusion::Get().Add_SlotOccluder(UI_TEXT_LAYER::MODAL, *m_pInviteView, "PartyInvite_Panel");
 }
 
 void Client::CPartyInteractionView::Render(
@@ -459,15 +450,10 @@ void Client::CPartyInteractionView::Render_InvitePopupText()
 	const auto Fn_DrawCentered = [&](f32_t fCenterX, f32_t fCenterY,
 		const wchar_t* pLabel, f32_t fTargetHeight, const fvector_t& vColor, f32_t fMaxWidth = 0.f)
 	{
-		const float2_t vMeasured =
-			CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), pLabel);
-		f32_t fScale = (vMeasured.y > 0.f) ?
-			(fTargetHeight / vMeasured.y) : 1.f;
-		if (fMaxWidth > 0.f && vMeasured.x > 0.f && vMeasured.x * fScale > fMaxWidth)
-			fScale = fMaxWidth / vMeasured.x;
-		CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), pLabel,
-			float2_t(fCenterX * textScaleX, fCenterY * textScaleY),
-			vColor, 0.f, float2_t(0.5f, 0.5f), fScale * textUiScale);
+		/* Baked size at 1:1 on whole pixels (UILabelFont), shrunk only when it would not fit. */
+		(void)UILabelFont::Draw_Centered(TEXT("Font_YoonGasiIIM"), pLabel,
+			fCenterX * textScaleX, fCenterY * textScaleY, fTargetHeight * textUiScale, vColor,
+			fMaxWidth * textScaleX);
 	};
 
 	f32_t fTitleX = 0.f, fTitleY = 0.f, fTitleW = 0.f, fTitleH = 0.f;
@@ -546,29 +532,17 @@ void Client::CPartyInteractionView::Render_ContextMenuText()
 	std::wstring strNickname;
 	if (Convert_NicknameToWide(m_strContextMenuTargetNickname, strNickname))
 	{
-		const float2_t vMeasured =
-			CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strNickname.c_str());
-		f32_t fScale = (vMeasured.y > 0.f) ? (fPanelH * 0.5f / vMeasured.y) : 1.f;
-		/* A long nickname shrinks to the name box instead of running out of it. */
-		const f32_t fMaxWidth = fPanelW - 12.f;
-		if (vMeasured.x > 0.f && vMeasured.x * fScale > fMaxWidth)
-			fScale = fMaxWidth / vMeasured.x;
-		// Same IM_COL32(255,255,0,255) yellow the old ImGui draw used.
-		CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), strNickname.c_str(),
-			float2_t((fPanelX + fPanelW * 0.5f) * textScaleX,
-				(fPanelY + fPanelH * 0.5f) * textScaleY),
-			XMVectorSet(1.f, 1.f, 0.f, 1.f), 0.f, float2_t(0.5f, 0.5f),
-			fScale * textUiScale);
+		/* A long nickname shrinks to the name box instead of running out of it. Same
+		   IM_COL32(255,255,0,255) yellow the old ImGui draw used. */
+		(void)UILabelFont::Draw_Centered(TEXT("Font_YoonGasiIIM"), strNickname.c_str(),
+			(fPanelX + fPanelW * 0.5f) * textScaleX, (fPanelY + fPanelH * 0.5f) * textScaleY,
+			fPanelH * 0.5f * textUiScale, XMVectorSet(1.f, 1.f, 0.f, 1.f), (fPanelW - 12.f) * textScaleX);
 	}
 
 	// "파티초대"
 	constexpr wchar_t INVITE_LABEL[] =
 		L"\xD30C\xD2F0\xCD08\xB300";
-	const float2_t vLabelMeasured =
-		CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), INVITE_LABEL);
-	const f32_t fLabelScale = (vLabelMeasured.y > 0.f) ? (fButtonH * 0.5f / vLabelMeasured.y) : 1.f;
-	CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), INVITE_LABEL,
-		float2_t((fButtonX + fButtonW * 0.5f) * textScaleX,
-			(fButtonY + fButtonH * 0.5f) * textScaleY),
-		Colors::White, 0.f, float2_t(0.5f, 0.5f), fLabelScale * textUiScale);
+	(void)UILabelFont::Draw_Centered(TEXT("Font_YoonGasiIIM"), INVITE_LABEL,
+		(fButtonX + fButtonW * 0.5f) * textScaleX, (fButtonY + fButtonH * 0.5f) * textScaleY,
+		fButtonH * 0.5f * textUiScale, Colors::White);
 }

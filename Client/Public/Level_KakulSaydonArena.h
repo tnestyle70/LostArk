@@ -642,6 +642,9 @@ private:
 	/* Madness gauge under the local character. Reads CCombatHUDViewModel's
 	   KoukuSaydon gimmick state only; hidden while that state is invalid. */
 	unique_ptr<CKoukuMadnessGaugeView> m_pMadnessGaugeView;
+	/* The same gauge over every other player in the room (a room holds four), fed from the
+	   replicated per-player madness of the world snapshot. */
+	std::array<unique_ptr<CKoukuMadnessGaugeView>, 3> m_OtherMadnessGaugeViews;
 	/* Floating status word over a head (currently the Server FEAR state). Owns no
 	   gameplay truth: Update submits one word per replicated FEAR occurrence and
 	   Render draws whatever is still inside its motion. */
