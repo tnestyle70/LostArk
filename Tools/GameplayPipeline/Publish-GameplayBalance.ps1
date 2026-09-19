@@ -6761,6 +6761,101 @@ foreach ($path in @(Get-ChildItem -LiteralPath (Join-Path $repoRoot 'Data\Animat
     }
 }
 
+# Cancel windows are optional per skill: a skill with none keeps the original
+# behaviour of holding every other input until the action ends.
+function Format-CancelWindows {
+    param(
+        [Parameter(Mandatory = $true)][object[]]$Windows,
+        [Parameter(Mandatory = $true)][string]$SkillId,
+        [Parameter(Mandatory = $true)][uint32]$LimitMs)
+
+    $packed = [Collections.Generic.List[string]]::new()
+    [int64]$previousEndMs = -1
+    foreach ($window in $Windows) {
+        if (@($window).Count -ne 2) {
+            throw "Cancel window must be a start/end pair: $SkillId"
+        }
+        [int64]$startMs = [int64]$window[0]
+        [int64]$endMs = [int64]$window[1]
+        if ($startMs -lt 0 -or $endMs -le $startMs -or $endMs -gt [int64]$LimitMs) {
+            throw "Cancel window is outside the action: $SkillId ($startMs..$endMs > $LimitMs)"
+        }
+        if ($startMs -le $previousEndMs) {
+            throw "Cancel windows overlap or are out of order: $SkillId"
+        }
+        $previousEndMs = $endMs
+        $packed.Add(('{0}:{1}' -f $startMs, $endMs))
+    }
+    return ($packed -join ',')
+}
+
+$cancelWindowSeen = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+$cancelWindowDocumentClasses = [Collections.Generic.HashSet[string]]::new(
+	[StringComparer]::Ordinal)
+foreach ($path in @(Get-ChildItem -LiteralPath (Join-Path $repoRoot 'Data\Animation\CancelWindows') `
+        -Filter '*.cancelwindows.json' -File -ErrorAction SilentlyContinue | Sort-Object Name)) {
+    $document = Read-JsonDocument ('Data/Animation/CancelWindows/' + $path.Name)
+    Assert-ExactProperties $document @(
+        'schema','formatVersion','animationAssetId','characterClass','skills') 'cancel window document'
+    if ($document.schema -ne 'lostark.animation-cancel-windows' -or
+        [uint32]$document.formatVersion -ne 1) {
+        throw "Cancel window header is invalid: $($path.Name)"
+    }
+	$documentClass = [string]$document.characterClass
+	if ($documentClass -notin $supportedPlayerClasses -or
+		-not $cancelWindowDocumentClasses.Add($documentClass)) {
+		throw "Cancel window document class is unknown or duplicated: $documentClass"
+	}
+    foreach ($entry in @($document.skills)) {
+        $id = [string]$entry.skillId
+        if (-not $skillDurationById.ContainsKey($id)) {
+            throw "Cancel windows target an unknown skill: $id"
+        }
+		if ([string]$skillClassById[$id] -cne $documentClass) {
+			throw "Cancel windows target another class's skill: $documentClass/$id"
+		}
+        if (-not $cancelWindowSeen.Add($id)) {
+            throw "Duplicate cancel window entry: $id"
+        }
+        if ($null -ne $entry.stages) {
+            Assert-ExactProperties $entry @('skillId','stages') 'cancel window skill'
+            $stageDurations = @($skillStageDurationsById[$id])
+            if ($stageDurations.Count -lt 1) {
+                throw "Cancel window stages target a skill without combo stages: $id"
+            }
+            $seenStages = [Collections.Generic.HashSet[int]]::new()
+            foreach ($stage in @($entry.stages)) {
+                Assert-ExactProperties $stage @('stageIndex','skillCancel','moveCancel') 'cancel window stage'
+                $stageIndex = [int]$stage.stageIndex
+                if ($stageIndex -lt 0 -or $stageIndex -ge $stageDurations.Count -or
+                    -not $seenStages.Add($stageIndex)) {
+                    throw "Cancel window stage index is invalid or duplicated: $id"
+                }
+                foreach ($kind in @('SKILL','MOVE')) {
+                    $windows = @(if ($kind -ceq 'SKILL') { $stage.skillCancel } else { $stage.moveCancel })
+                    if ($windows.Count -eq 0) { continue }
+                    $packed = Format-CancelWindows -Windows $windows -SkillId $id `
+                        -LimitMs $stageDurations[$stageIndex]
+                    $hitShapeRows.Add((@(
+                        'SKILLSTAGECANCEL', $id, $stageIndex, $kind, $windows.Count, $packed) -join "`t"))
+                }
+            }
+            continue
+        }
+        Assert-ExactProperties $entry @('skillId','skillCancel','moveCancel') 'cancel window skill'
+        if (@($skillStageDurationsById[$id]).Count -ne 0) {
+            throw "A staged skill must carry per-stage cancel windows: $id"
+        }
+        foreach ($kind in @('SKILL','MOVE')) {
+            $windows = @(if ($kind -ceq 'SKILL') { $entry.skillCancel } else { $entry.moveCancel })
+            if ($windows.Count -eq 0) { continue }
+            $packed = Format-CancelWindows -Windows $windows -SkillId $id `
+                -LimitMs $skillDurationById[$id]
+            $hitShapeRows.Add((@('SKILLCANCEL', $id, $kind, $windows.Count, $packed) -join "`t"))
+        }
+    }
+}
+
 # Partial source coverage is admitted intentionally: the Server preserves its
 # existing maximumRange single-target fallback for those skills. A whole class
 # with zero authored coverage is different -- that usually means its document

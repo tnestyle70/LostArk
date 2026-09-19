@@ -321,6 +321,10 @@ namespace LostArk::Server
 			const LostArk::Shared::C2S_MOVE& move);
 		[[nodiscard]] bool Is_BufferableComboAction(
 			const SERVER_PLAYER& player) const;
+		/* A move goal inside the running skill's authored move-cancel window
+		ends the action now instead of waiting out the recovery pose. */
+		[[nodiscard]] bool Is_MoveCancellableAction(
+			const SERVER_PLAYER& player) const;
 		[[nodiscard]] bool Commit_MoveGoal(
 			SERVER_PLAYER& player, float goalX, float goalZ);
 		void Commit_PendingPlayerCommand(

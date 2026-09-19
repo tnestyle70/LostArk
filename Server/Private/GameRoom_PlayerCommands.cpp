@@ -103,11 +103,44 @@ void LostArk::Server::CGameRoom::Handle_Move(
 	{
 		if (0u != player.iCurrentHp &&
 			player.fKnockbackRemainingSeconds <= 0.f &&
+			Is_MoveCancellableAction(player))
+		{
+			/* Leave the action the same way every other release does. A cleared
+			eAction that still carries the old skill id and start tick is a
+			half-ended action to every later reader. */
+			player.eAction = LostArk::Shared::PLAYER_ACTION_STATE::NONE;
+			player.iCurrentSkillId = LostArk::Shared::INVALID_SKILL_ID;
+			player.iActionStartTick = 0u;
+			player.fActionElapsedSeconds = 0.f;
+			player.iComboStage = 0u;
+			player.hasBufferedComboInput = false;
+			player.PendingCommand.Clear();
+			player.Clear_SkillTarget();
+			(void)Commit_MoveGoal(player, move.fGoalX, move.fGoalZ);
+			return;
+		}
+		if (0u != player.iCurrentHp &&
+			player.fKnockbackRemainingSeconds <= 0.f &&
 			Is_BufferableComboAction(player))
 			player.PendingCommand.Set_Move(move);
 		return;
 	}
 	(void)Commit_MoveGoal(player, move.fGoalX, move.fGoalZ);
+}
+
+bool LostArk::Server::CGameRoom::Is_MoveCancellableAction(
+	const SERVER_PLAYER& player) const
+{
+	if (LostArk::Shared::PLAYER_ACTION_STATE::SKILL != player.eAction ||
+		0u == player.iCurrentHp)
+	{
+		return false;
+	}
+	const PLAYER_SKILL_DEFINITION* skill =
+		m_GameplayCatalog.Find_Skill(player.iCurrentSkillId);
+	return nullptr != skill &&
+		Is_InsideCancelWindow(
+			*skill, player.iComboStage, player.fActionElapsedSeconds, true);
 }
 
 bool LostArk::Server::CGameRoom::Is_BufferableComboAction(
