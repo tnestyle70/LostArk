@@ -86,7 +86,7 @@ private:
 		wstring strName;
 		wstring strDescription;
 		/* strDescription cut to the row's text column with a trailing ellipsis, for the
-		viewport width it was measured at (m_fFitViewportWidth). */
+		viewport size it was measured at (m_vFitViewport). */
 		wstring strDescriptionFit;
 		/* Mounted HUD actions (catalog `skills[]`: SPACE dash, Q/W/E). */
 		std::vector<VEHICLE_SKILL_UI> Skills;
@@ -119,7 +119,7 @@ private:
 	/* Retail px -> reference px, read back from the VH_WinBg slot (the layout document owns
 	how large the window is drawn). */
 	f32_t							m_fRetailScale = 2.f / 3.f;
-	f32_t							m_fFitViewportWidth = 0.f;
+	float2_t m_vFitViewport = {0.f, 0.f};
 	/* Title-band drag (the retail window moves by its header). */
 	CUIWindowDrag					m_Drag;
 

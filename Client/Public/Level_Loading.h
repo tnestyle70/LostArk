@@ -98,6 +98,7 @@ private:
 
 	/* Text draw positions only -- color/scale/alignment stay code-owned. Defaults match the
 	authored layout and are overridden by LoadingLayout.json's texture-less marker slots. */
+	float2_t m_vChromeResolution = {1280.f, 720.f};
 	float2_t						m_vTitlePos = { 640.f, 22.f };
 	float2_t						m_vScenarioPos = { 640.f, 600.7f };
 	float2_t						m_vTipPos = { 660.f, 657.1f };

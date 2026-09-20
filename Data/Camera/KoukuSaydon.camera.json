@@ -3,17 +3,18 @@
   "formatVersion": 1,
   "areaId": "LV_LUT_MIDNIGHTC_ED",
   "positionOffset": [
-    -9.5,
-    13.335028842544403,
-    9.5
+    -8.0,
+    11.213708498984762,
+    8.0
   ],
   "rotationDegrees": [
     45,
     135,
     0
   ],
-  "focusDistance": 19,
+  "focusDistance": 16,
   "fovYDegrees": 29.39495760413827,
   "followResponse": 12,
-  "characterSizeMultiplier": 1
+  "characterSizeMultiplier": 1,
+  "useSourceCameraRegions": true
 }

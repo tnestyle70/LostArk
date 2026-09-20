@@ -34,6 +34,9 @@ public:
 public:
 	/* ������ ����� �̿��� �� �ֵ���, �ʿ��� �ʱ�ȭ ������ �����Ѵ�. */
 	HRESULT Initialize_Engine(const ENGINE_DESC& EngineDesc, ComPtr<ID3D11Device>& pOutDevice, ComPtr<ID3D11DeviceContext>& pOutContext);
+	// Physical client pixels; call between frames, before update and rendering.
+	HRESULT Resize_Viewport(uint32_t width, uint32_t height);
+	HRESULT Set_FullscreenMode(bool fullscreen, uint32_t width, uint32_t height);
 	void Update_Engine(f32_t fTimeDelta);
 	HRESULT Render_Begin(const float4_t* pClearColor);
 	HRESULT Render();

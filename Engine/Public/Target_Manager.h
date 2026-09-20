@@ -12,6 +12,19 @@ public:
 	~CTarget_Manager();
 
 public:
+struct RESIZE_REQUEST final
+    {
+        wstring_t TargetTag;
+        uint32_t Width = 0u, Height = 0u;
+    };
+    struct RESIZE_STATE final
+    {
+        vector<pair<shared_ptr<class CRenderTarget>, shared_ptr<class CRenderTarget>>> Targets;
+    };
+    HRESULT Stage_Resize(const vector<RESIZE_REQUEST>& requests, RESIZE_STATE& output) const;
+    void Commit_Resize(RESIZE_STATE& staged, f32_t viewportDeltaX, f32_t viewportDeltaY) noexcept;
+    void Release_OutputReferences() noexcept;
+
 	HRESULT Add_RenderTarget(const wstring_t& strTargetTag, uint32_t iWidth, uint32_t iHeight, DXGI_FORMAT ePixelFormat, const float4_t& vClearColor);
 	HRESULT Add_MRT(const wstring_t& strMRTTag, const wstring_t& strTargetTag);
 	HRESULT Begin_MRT(const wstring_t& strMRTTag, ComPtr<ID3D11DepthStencilView> pDSV = nullptr);

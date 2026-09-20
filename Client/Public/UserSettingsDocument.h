@@ -4,6 +4,8 @@
 #include "Engine_Defines.h"
 #include "Engine_RenderTypes.h"
 
+#include <functional>
+#include <filesystem>
 #include <map>
 #include <string>
 
@@ -18,8 +20,21 @@ them, nothing reads them yet.
 
 Audio maps onto the Engine mixer buses; video is folded onto whatever quality the active scene
 profile resolved to, so a Level change cannot silently drop it. */
+enum class USER_WINDOW_MODE { WINDOWED, BORDERLESS, FULLSCREEN };
+
+struct USER_DISPLAY_SETTINGS final
+{
+	uint32_t width = 1920;
+	uint32_t height = 1080;
+	USER_WINDOW_MODE mode = USER_WINDOW_MODE::WINDOWED;
+	bool operator==(const USER_DISPLAY_SETTINGS& other) const
+		{ return width == other.width && height == other.height && mode == other.mode; }
+	bool operator!=(const USER_DISPLAY_SETTINGS& other) const { return !(*this == other); }
+};
+
 struct USER_SETTINGS final
 {
+	USER_DISPLAY_SETTINGS Display;
 	map<string, f32_t> Values;
 
 	f32_t Get(const string& strRowId, f32_t fFallback) const;
@@ -31,8 +46,7 @@ struct USER_SETTINGS final
 retail splits by relation (own / party / other). */
 enum class PLAYER_RELATION { LOCAL, PARTY, OTHER };
 
-/* Process-wide user preferences for this run. Not persisted: the window edits them, the
-engine consumers read them, and the next launch starts over from the retail defaults. */
+/* Process-wide preferences. Local JSON is loaded before window/Engine creation. */
 class CUserSettings final
 {
 public:
@@ -41,6 +55,15 @@ public:
 
 public:
 	const USER_SETTINGS& Get_Settings() const { return m_Settings; }
+	const USER_DISPLAY_SETTINGS& Get_DisplaySettings() const { return m_Settings.Display; }
+	using DISPLAY_APPLY = std::function<bool_t(const USER_DISPLAY_SETTINGS&, string&)>;
+	void Set_DisplayApplyCallback(DISPLAY_APPLY callback) { m_DisplayApply = std::move(callback); }
+	bool_t Load_Persisted(string& strOutStatus);
+	/* Startup display service may recover an unavailable saved mode without rewriting disk. */
+	void Adopt_AppliedDisplay(const USER_DISPLAY_SETTINGS& applied) { m_Settings.Display = applied; }
+	/* Live non-display preview never writes the file or resizes the window. */
+	bool_t Preview(const USER_SETTINGS& Staged, string& strOutStatus);
+	static filesystem::path Get_SettingsPath();
 
 	/* Retail defaults for the rows the engine acts on, so a missing file and a missing key
 	both mean "what the retail table says". Row ids and defaults come from
@@ -48,11 +71,9 @@ public:
 	seeds them on load, the fallbacks below only cover a run without that document. */
 	void Set_Default(const string& strRowId, f32_t fDefault);
 
-	/* Pushes the defaults into the mixer and the cursor once the Engine exists. Nothing is
-	read from disk: every run starts from the retail table's defaults, on purpose -- keeping a
-	user's settings between runs is a later step. */
+	/* Pushes loaded preferences into consumers once the Engine exists. */
 	void Initialize();
-	/* Commits the staged struct and pushes the audio buses. */
+	/* Stages disk data, applies display, atomically saves, then commits; failure rolls back. */
 	bool_t Commit(const USER_SETTINGS& Staged, string& strOutStatus);
 
 	/* Pushes the bus volumes into the live Engine mixer. */
@@ -85,6 +106,12 @@ public:
 
 private:
 	USER_SETTINGS m_Settings{};
+	DISPLAY_APPLY m_DisplayApply;
+	string m_PersistedBytes;
+	bool_t m_bPersistedExists = false;
+	bool_t m_bPersistenceLoaded = false;
+	bool_t m_bPersistenceValid = true;
+	void Apply_Values(const USER_SETTINGS& Staged);
 	map<string, f32_t> m_Defaults;
 	bool_t m_bCursorClipped = false;
 	/* Windows mouse settings as found before the first pointer-speed change; restored on exit. */
@@ -97,6 +124,8 @@ private:
 /* Row ids the engine acts on (EFTable_SystemOption.CompName). Anything else is display-only. */
 namespace SystemOptionRowId
 {
+	constexpr const char* RESOLUTION = "combobox_resolution";
+	constexpr const char* WINDOW_MODE = "combobox_monitor";
 	constexpr const char* MASTER_VOLUME = "slider_mainsound";
 	constexpr const char* MASTER_ON = "checkbox_mainsound";
 	constexpr const char* UI_VOLUME = "slider_uisound";

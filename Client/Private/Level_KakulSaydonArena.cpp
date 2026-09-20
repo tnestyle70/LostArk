@@ -42,6 +42,7 @@
 #include "ProjectDataRoot.h"
 #include "UILayoutRuntime.h"
 #include "UIInputRouter.h"
+#include "UILabelFont.h"
 #include "MainApp.h"
 #include "HitAreaWire.h"
 #include "Transform.h"
@@ -1714,6 +1715,7 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 		OutputDebugStringA(
 			"[Level_KakulSaydonArena] Failed to bind local character camera.\n");
 	}
+	Update_SourceFollowCamera(fTimeDelta);
 	const shared_ptr<CCharacter> localCharacter =
 		m_Replication.Get_LocalCharacter();
 	// Avatar replacement keeps the same Server player and command sequences.
@@ -2363,6 +2365,17 @@ HRESULT Client::CLevel_KakulSaydonArena::Render()
 	   (CInteractKeyPromptView). On the Mario lanes Up answers the same offer too, which the
 	   retail prompt does not say, so that hint stays as text. */
 	m_InteractKeyPrompt.Render_Text();
+	const float2_t viewport = CGameInstance::Get().Get_ViewportSize();
+	const f32_t promptScale = (std::min)(viewport.x / 1280.f, viewport.y / 720.f);
+	const f32_t promptLineSpacing = CGameInstance::Get().Measure_Text(
+		TEXT("Font_YoonGasiIIM"), L"0").y;
+	const auto drawPrompt = [&](const wchar_t* text, const f32_t heightRatio,
+		const f32_t sizeMultiplier, const vector_t tint)
+	{
+		UILabelFont::Draw_Centered(TEXT("Font_YoonGasiIIM"), text,
+			viewport.x * 0.5f, viewport.y * heightRatio,
+			promptLineSpacing * promptScale * sizeMultiplier, tint);
+	};
 	const std::string& offered =
 		CCombatHUDViewModel::Get().Get_InteractPromptTriggerId();
 	if (!offered.empty() && 0u != CCombatHUDViewModel::Get().Get_Player().iMarioStage)
@@ -2370,12 +2383,7 @@ HRESULT Client::CLevel_KakulSaydonArena::Render()
 		/* ASCII only: this file carries no other non-ASCII byte and has no BOM,
 		   so a UTF-8 Korean literal here is read back in the system codepage. */
 		const tchar_t* const PROMPT = TEXT("[ Up ]");
-		const float2_t size = CGameInstance::Get().Measure_Text(
-			TEXT("Font_YoonGasiIIM"), PROMPT);
-		CGameInstance::Get().Draw_Text(
-			TEXT("Font_YoonGasiIIM"), PROMPT,
-			float2_t(g_iWinSizeX * 0.5f, g_iWinSizeY * 0.62f),
-			Colors::White, 0.f, float2_t(size.x * 0.5f, size.y * 0.5f), 1.f);
+		drawPrompt(PROMPT, 0.62f, 1.f, Colors::White);
 	}
 	/* Card maze: the suit this player hunts and the count, or the telescope
 	   role. ASCII for the same codepage reason as the prompt above. */
@@ -2422,12 +2430,7 @@ HRESULT Client::CLevel_KakulSaydonArena::Render()
 		if (maze.CardMaze.flags & 4u)
 			text += L" EXIT (" + std::to_wstring(static_cast<int>(maze.CardMaze.exitX)) + L", " +
 				std::to_wstring(static_cast<int>(maze.CardMaze.exitZ)) + L")";
-		const float2_t mazeSize = CGameInstance::Get().Measure_Text(
-			TEXT("Font_YoonGasiIIM"), text.c_str());
-		CGameInstance::Get().Draw_Text(
-			TEXT("Font_YoonGasiIIM"), text.c_str(),
-			float2_t(g_iWinSizeX * 0.5f, g_iWinSizeY * 0.68f),
-			Colors::White, 0.f, float2_t(mazeSize.x * 0.5f, mazeSize.y * 0.5f), 1.f);
+		drawPrompt(text.c_str(), 0.68f, 1.f, Colors::White);
 	}
 	/* Mario: a colour's curse lifts when its last source ball pops. Korean by
 	   universal character names for the same codepage reason as above. */
@@ -2442,12 +2445,7 @@ HRESULT Client::CLevel_KakulSaydonArena::Render()
 		const tchar_t* const notice = NOTICES[m_iMarioCurseNoticeColor];
 		const vector_t tint = 0 == m_iMarioCurseNoticeColor ? Colors::Red :
 			1 == m_iMarioCurseNoticeColor ? Colors::DeepSkyBlue : Colors::Gold;
-		const float2_t noticeSize = CGameInstance::Get().Measure_Text(
-			TEXT("Font_YoonGasiIIM"), notice);
-		CGameInstance::Get().Draw_Text(
-			TEXT("Font_YoonGasiIIM"), notice,
-			float2_t(g_iWinSizeX * 0.5f, g_iWinSizeY * 0.5f),
-			tint, 0.f, float2_t(noticeSize.x * 0.5f, noticeSize.y * 0.5f), 2.f);
+		drawPrompt(notice, 0.5f, 2.f, tint);
 	}
 	/* Floating status words last, over the scene and over the two prompts above,
 	   the way the retail damage-text canvas sits on its own top layer. */
@@ -3325,9 +3323,10 @@ void Client::CLevel_KakulSaydonArena::Debug_ReturnToPlayerCamera()
 	if (!m_pCamera || !character || !character->Get_Transform()) return;
 	m_pCamera->Set_FollowTarget(character->Get_Transform());
 	m_pCamera->Set_FollowEnabled(true);
-	(void)m_pCamera->Set_FollowPose(m_FollowCameraProfile.positionOffset,
-		CArenaCameraProfile::LookOffset(m_FollowCameraProfile), m_FollowCameraProfile.rotationDegrees.z,
-		m_FollowCameraProfile.fovYDegrees, m_FollowCameraProfile.followResponse);
+	Update_SourceFollowCamera(0.f, true);
+	(void)m_pCamera->Set_FollowPose(m_EffectiveFollowCameraProfile.positionOffset,
+		CArenaCameraProfile::LookOffset(m_EffectiveFollowCameraProfile), m_EffectiveFollowCameraProfile.rotationDegrees.z,
+		m_EffectiveFollowCameraProfile.fovYDegrees, m_EffectiveFollowCameraProfile.followResponse);
 }
 
 void Client::CLevel_KakulSaydonArena::Debug_SetSequenceCombatPending(const bool_t pending)
@@ -3441,8 +3440,10 @@ HRESULT Client::CLevel_KakulSaydonArena::Ready_Layer_Camera(
 		OutputDebugStringA(("[Level_KakulSaydonArena][FollowCamera] " +
 			m_strFollowCameraProfileStatus + "\n").c_str());
 	}
-	const float3_t positionOffset = m_FollowCameraProfile.positionOffset;
-	const float3_t lookOffset = CArenaCameraProfile::LookOffset(m_FollowCameraProfile);
+	m_EffectiveFollowCameraProfile = m_FollowCameraProfile.useSourceCameraRegions ?
+		CArenaCameraProfile::KoukuSourceProfile(m_FollowCameraProfile, false) : m_FollowCameraProfile;
+	float3_t positionOffset = m_EffectiveFollowCameraProfile.positionOffset;
+	float3_t lookOffset = CArenaCameraProfile::LookOffset(m_EffectiveFollowCameraProfile);
 	float3_t minimum{};
 	float3_t maximum{};
 	float3_t focus(0.f, 0.f, 0.f);
@@ -3468,6 +3469,14 @@ HRESULT Client::CLevel_KakulSaydonArena::Ready_Layer_Camera(
 	LostArk::Shared::S2C_PLAYER_SPAWNED approvedSpawn{};
 	if (CNetworkManager::Get().Try_Get_LocalSpawn(approvedSpawn))
 	{
+		if (m_FollowCameraProfile.useSourceCameraRegions)
+		{
+			const float3_t position(approvedSpawn.fPositionX, approvedSpawn.fPositionY, approvedSpawn.fPositionZ);
+			m_EffectiveFollowCameraProfile = CArenaCameraProfile::KoukuSourceProfile(m_FollowCameraProfile,
+				CArenaCameraProfile::Contains_KoukuSourceEntrance(position));
+			positionOffset = m_EffectiveFollowCameraProfile.positionOffset;
+			lookOffset = CArenaCameraProfile::LookOffset(m_EffectiveFollowCameraProfile);
+		}
 		initialEye = float3_t(
 			approvedSpawn.fPositionX + positionOffset.x,
 			approvedSpawn.fPositionY + positionOffset.y,
@@ -3481,7 +3490,7 @@ HRESULT Client::CLevel_KakulSaydonArena::Ready_Layer_Camera(
 	CCamera_Free::CAMERA_FREE_DESC cameraDesc{};
 	cameraDesc.vEye = initialEye;
 	cameraDesc.vAt = initialAt;
-	cameraDesc.fFovy = m_FollowCameraProfile.fovYDegrees;
+	cameraDesc.fFovy = m_EffectiveFollowCameraProfile.fovYDegrees;
 	cameraDesc.fNear = 0.1f;
 	cameraDesc.fFar = (std::max)(2000.f, span * 8.f);
 	cameraDesc.fSpeedPerSec = g_KakulSaydonFreeCameraSpeed;
@@ -3490,8 +3499,8 @@ HRESULT Client::CLevel_KakulSaydonArena::Ready_Layer_Camera(
 	cameraDesc.pFollowTarget = nullptr;
 	cameraDesc.vPositionOffset = positionOffset;
 	cameraDesc.vLookOffset = lookOffset;
-	cameraDesc.fFollowResponse = m_FollowCameraProfile.followResponse;
-	cameraDesc.fFollowRollDegrees = m_FollowCameraProfile.rotationDegrees.z;
+	cameraDesc.fFollowResponse = m_EffectiveFollowCameraProfile.followResponse;
+	cameraDesc.fFollowRollDegrees = m_EffectiveFollowCameraProfile.rotationDegrees.z;
 	cameraDesc.isFollowEnabled = false;
 
 	shared_ptr<CGameObject> gameObject;
@@ -3524,19 +3533,74 @@ bool_t Client::CLevel_KakulSaydonArena::Set_FollowCameraProfile(
 {
 	if (!CArenaCameraProfile::Validate(profile, outStatus))
 		return false;
+	auto effective = profile;
+	if (profile.useSourceCameraRegions)
+	{
+		float3_t position{};
+		const auto character = Get_LocalCharacter();
+		const bool_t positioned = character && character->Get_Transform();
+		if (positioned) XMStoreFloat3(&position, character->Get_Transform()->Get_State(STATE::POSITION));
+		effective = CArenaCameraProfile::KoukuSourceProfile(profile,
+			positioned && CArenaCameraProfile::Contains_KoukuSourceEntrance(position));
+	}
 	if (nullptr == m_pCamera || !m_pCamera->Set_FollowPose(
-		profile.positionOffset, CArenaCameraProfile::LookOffset(profile),
-		profile.rotationDegrees.z, profile.fovYDegrees, profile.followResponse))
+		effective.positionOffset, CArenaCameraProfile::LookOffset(effective),
+		effective.rotationDegrees.z, effective.fovYDegrees, effective.followResponse))
 	{
 		outStatus = "The active follow camera could not apply these settings.";
 		return false;
 	}
 	m_FollowCameraProfile = profile;
+	m_EffectiveFollowCameraProfile = effective;
+	m_bSourceCameraInitialized = false;
+	Update_SourceFollowCamera(0.f, true);
 	if (const auto character = Get_LocalCharacter())
 		CCharacter::Set_MapPresentationSizeProfile(profile);
 	outStatus = "Applied to this map's follow camera. Save to keep these settings.";
 	m_strFollowCameraProfileStatus = outStatus;
 	return true;
+}
+
+void Client::CLevel_KakulSaydonArena::Update_SourceFollowCamera(const f32_t timeDelta, bool_t immediate)
+{
+	if (!m_FollowCameraProfile.useSourceCameraRegions || !m_pCamera) return;
+	const auto character = Get_LocalCharacter();
+	if (!character || !character->Get_Transform())
+	{ m_bSourceCameraInitialized = false; return; }
+	float3_t position{};
+	XMStoreFloat3(&position, character->Get_Transform()->Get_State(STATE::POSITION));
+	if (!std::isfinite(position.x) || !std::isfinite(position.y) || !std::isfinite(position.z)) return;
+	const auto delta = XMLoadFloat3(&position) - XMLoadFloat3(&m_vSourceCameraPreviousPlayer);
+	immediate = immediate || !m_bSourceCameraInitialized || XMVectorGetX(XMVector3LengthSq(delta)) > 144.f;
+	const bool_t inside = CArenaCameraProfile::Contains_KoukuSourceEntrance(position,
+		!immediate && m_bInsideSourceCameraEntrance ? .25f : 0.f);
+	if (immediate || inside != m_bInsideSourceCameraEntrance)
+	{
+		m_fSourceCameraBlendFromDistance = m_EffectiveFollowCameraProfile.focusDistance;
+		m_fSourceCameraBlendElapsed = immediate ? 3.f : 0.f;
+	}
+	m_bInsideSourceCameraEntrance = inside;
+	m_bSourceCameraInitialized = true;
+	m_vSourceCameraPreviousPlayer = position;
+	const auto target = CArenaCameraProfile::KoukuSourceProfile(m_FollowCameraProfile, inside);
+	m_fSourceCameraBlendElapsed = (std::min)(3.f, m_fSourceCameraBlendElapsed +
+		(std::isfinite(timeDelta) ? (std::max)(0.f, timeDelta) : 0.f));
+	// Source BlendParam is 3 seconds. Smoothstep and exit hysteresis are project transition policy.
+	const f32_t t = m_fSourceCameraBlendElapsed / 3.f;
+	const f32_t alpha = t * t * (3.f - 2.f * t);
+	const f32_t distance = immediate ? target.focusDistance :
+		m_fSourceCameraBlendFromDistance + (target.focusDistance - m_fSourceCameraBlendFromDistance) * alpha;
+	m_EffectiveFollowCameraProfile = target;
+	m_EffectiveFollowCameraProfile.focusDistance = distance;
+	m_EffectiveFollowCameraProfile.positionOffset = {-distance * .5f,
+		distance * std::sqrt(.5f) - .1f, distance * .5f};
+	if (immediate)
+		(void)m_pCamera->Set_FollowPose(m_EffectiveFollowCameraProfile.positionOffset,
+			CArenaCameraProfile::LookOffset(m_EffectiveFollowCameraProfile), target.rotationDegrees.z,
+			target.fovYDegrees, target.followResponse);
+	else
+		// Preserve existing follow damping, cinematic ownership and the user's F6 mode.
+		m_pCamera->Set_PositionOffset(m_EffectiveFollowCameraProfile.positionOffset);
 }
 
 bool_t Client::CLevel_KakulSaydonArena::Bind_CameraToLocalCharacter()
@@ -3548,6 +3612,7 @@ bool_t Client::CLevel_KakulSaydonArena::Bind_CameraToLocalCharacter()
 	if (nullptr == localCharacter)
 	{
 		m_pCameraTarget.reset();
+		m_bSourceCameraInitialized = false;
 		m_pCamera->Set_FollowTarget(nullptr);
 		m_pCamera->Set_FollowEnabled(false);
 		return true;
@@ -3561,6 +3626,7 @@ bool_t Client::CLevel_KakulSaydonArena::Bind_CameraToLocalCharacter()
 		return false;
 	m_pCameraTarget = localCharacter;
 	m_pCamera->Set_FollowTarget(transform);
+	Update_SourceFollowCamera(0.f, true);
 	m_pCamera->Set_FollowEnabled(true);
 	return true;
 }
@@ -4665,12 +4731,12 @@ bool_t Client::CLevel_KakulSaydonArena::Resolve_CompositionFollowPose(VALTAN_CIN
 	const auto character = m_Replication.Get_LocalCharacter();
 	if (!character || !character->Get_Transform()) return false;
 	float3_t position; XMStoreFloat3(&position, character->Get_Transform()->Get_State(STATE::POSITION));
-	const auto eyeOffset = m_FollowCameraProfile.positionOffset;
-	const auto lookOffset = CArenaCameraProfile::LookOffset(m_FollowCameraProfile);
+	const auto eyeOffset = m_EffectiveFollowCameraProfile.positionOffset;
+	const auto lookOffset = CArenaCameraProfile::LookOffset(m_EffectiveFollowCameraProfile);
 	outPose.vEye = float3_t(position.x + eyeOffset.x, position.y + eyeOffset.y, position.z + eyeOffset.z);
 	outPose.vLookAt = float3_t(position.x + lookOffset.x, position.y + lookOffset.y, position.z + lookOffset.z);
-	outPose.fFovYDegrees = m_FollowCameraProfile.fovYDegrees;
-	const auto rotation = m_FollowCameraProfile.rotationDegrees;
+	outPose.fFovYDegrees = m_EffectiveFollowCameraProfile.fovYDegrees;
+	const auto rotation = m_EffectiveFollowCameraProfile.rotationDegrees;
 	const auto basis = XMMatrixRotationRollPitchYaw(XMConvertToRadians(rotation.x),
 		XMConvertToRadians(rotation.y), XMConvertToRadians(rotation.z));
 	XMStoreFloat3(&outPose.vUp, basis.r[1]); outPose.hasUp = true;
@@ -4738,8 +4804,8 @@ void Client::CLevel_KakulSaydonArena::Update_CompositionCamera(const f32_t timeD
 		if (transition.followAtStart) (void)m_pCamera->End_PresentationOverrideToPose(owner, target.vEye, target.vLookAt, target.fFovYDegrees);
 		else (void)m_pCamera->End_PresentationOverride(owner);
 		if (transition.followAtStart)
-			(void)m_pCamera->Set_FollowPose(m_FollowCameraProfile.positionOffset, CArenaCameraProfile::LookOffset(m_FollowCameraProfile),
-				m_FollowCameraProfile.rotationDegrees.z, m_FollowCameraProfile.fovYDegrees, m_FollowCameraProfile.followResponse);
+			(void)m_pCamera->Set_FollowPose(m_EffectiveFollowCameraProfile.positionOffset, CArenaCameraProfile::LookOffset(m_EffectiveFollowCameraProfile),
+				m_EffectiveFollowCameraProfile.rotationDegrees.z, m_EffectiveFollowCameraProfile.fovYDegrees, m_EffectiveFollowCameraProfile.followResponse);
 		transition.ownerKey.clear(); transition.returning = false;
 	}
 }
@@ -4770,8 +4836,8 @@ void Client::CLevel_KakulSaydonArena::Update_CameraShots(const f32_t fTimeDelta)
 	}
 
 	// The same tuned framing is the destination when a camera shot ends.
-	const float3_t positionOffset = m_FollowCameraProfile.positionOffset;
-	const float3_t lookOffset = CArenaCameraProfile::LookOffset(m_FollowCameraProfile);
+	const float3_t positionOffset = m_EffectiveFollowCameraProfile.positionOffset;
+	const float3_t lookOffset = CArenaCameraProfile::LookOffset(m_EffectiveFollowCameraProfile);
 	const float3_t followEye(
 		position.x + positionOffset.x,
 		position.y + positionOffset.y,
@@ -4813,7 +4879,7 @@ void Client::CLevel_KakulSaydonArena::Update_CameraShots(const f32_t fTimeDelta)
 		{
 			m_vCameraEyeFrom = followEye;
 			m_vCameraLookFrom = followLook;
-			m_fCameraFovFrom = m_FollowCameraProfile.fovYDegrees;
+			m_fCameraFovFrom = m_EffectiveFollowCameraProfile.fovYDegrees;
 		}
 		m_strActiveCameraShotId = shotId;
 		m_fCameraBlendSeconds = static_cast<f32_t>(blendMs) / 1000.f;
@@ -4866,7 +4932,7 @@ void Client::CLevel_KakulSaydonArena::Update_CameraShots(const f32_t fTimeDelta)
 		}
 		m_vCameraEyeTo = followEye;
 		m_vCameraLookTo = followLook;
-		m_fCameraFovTo = m_FollowCameraProfile.fovYDegrees;
+		m_fCameraFovTo = m_EffectiveFollowCameraProfile.fovYDegrees;
 	}
 
 	if (!m_bCameraShotHeld)

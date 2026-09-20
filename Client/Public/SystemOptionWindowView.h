@@ -29,9 +29,9 @@ Every row edits a value in CUserSettings keyed by its retail row id. Rows the en
 (audio buses, brightness, bloom, FXAA, SSAO, mouse cursor) take effect as they change; the
 rest look and behave like retail controls and simply store their value.
 
-Edits are live -- the draft is committed as the control moves, so the change is audible and
-visible immediately. Confirm writes the file; Cancel, the X and Esc restore the snapshot taken
-when the window opened. apply writes without closing; reset / reset-all restore the retail
+Non-display edits preview as the control moves. Display changes take effect on Apply or
+Confirm. Confirm writes the file; Cancel, the X and Esc restore the snapshot taken when the
+window opened. Apply writes without closing; reset / reset-all restore the retail
 defaults of the screen / of everything. */
 class CSystemOptionWindowView final
 {
@@ -125,7 +125,9 @@ private:
 	void Commit_Draft(const SYSTEM_OPTION_ROW& Row);
 	void Reset_Screen(const SYSTEM_OPTION_TAB& Tab);
 	void Reset_All();
+	bool_t Save_Draft();
 	void Save_And_Close();
+	void Refresh_DisplayChoices();
 	static bool_t Is_VideoRow(const SYSTEM_OPTION_ROW& Row);
 	/* Greyed by retail because of another row's value (upscaling mode, cursor outline). */
 	bool_t Is_RetailDisabled(const SYSTEM_OPTION_ROW& Row) const;
@@ -185,6 +187,12 @@ private:
 	close), nothing underneath may see the same click. */
 	bool_t							m_bPopupAteClick = false;
 
+	vector<USER_DISPLAY_SETTINGS> m_Resolutions;
+	HMONITOR m_hDisplayMonitor = nullptr;
+	RECT m_DisplayMonitorRect{};
+	uint32_t m_iDesktopWidth = 1920, m_iDesktopHeight = 1080;
+	wstring m_strSaveStatus;
+	bool_t m_bSaveFailed = false;
 	USER_SETTINGS					m_Draft{};
 	USER_SETTINGS					m_Snapshot{};
 	bool_t							m_bOpen = false;

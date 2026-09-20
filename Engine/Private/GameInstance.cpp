@@ -155,6 +155,40 @@ HRESULT CGameInstance::Initialize_Engine(const ENGINE_DESC& EngineDesc, ComPtr<I
 	return S_OK;
 }
 
+HRESULT CGameInstance::Resize_Viewport(uint32_t width, uint32_t height)
+{
+    if (!m_pGraphic_Device || !m_pTarget_Manager || !m_pRenderer || width == 0u || height == 0u ||
+        width > D3D11_REQ_TEXTURE2D_U_OR_V_DIMENSION || height > D3D11_REQ_TEXTURE2D_U_OR_V_DIMENSION)
+        return E_INVALIDARG;
+    if (m_vViewportDesc.x == static_cast<f32_t>(width) && m_vViewportDesc.y == static_cast<f32_t>(height))
+    {
+        m_pTarget_Manager->Release_OutputReferences();
+        return m_pGraphic_Device->Resize_BackBuffer(width, height);
+    }
+    try
+    {
+        CRenderer::VIEWPORT_RESIZE_STATE staged;
+        HRESULT result = m_pRenderer->Stage_ViewportResize(width, height, *m_pTarget_Manager, staged);
+        if (FAILED(result)) return result;
+        m_pTarget_Manager->Release_OutputReferences();
+        result = m_pGraphic_Device->Resize_BackBuffer(width, height);
+        if (FAILED(result)) return result;
+        // All allocations and fallible GPU work have completed. Publish one coherent size.
+        m_pRenderer->Commit_ViewportResize(*m_pTarget_Manager, staged);
+        m_vViewportDesc = float2_t(static_cast<f32_t>(width), static_cast<f32_t>(height));
+        return S_OK;
+    }
+    catch (const std::bad_alloc&)
+    {
+        return E_OUTOFMEMORY;
+    }
+}
+
+HRESULT CGameInstance::Set_FullscreenMode(bool fullscreen, uint32_t width, uint32_t height)
+{
+    return m_pGraphic_Device ? m_pGraphic_Device->Set_FullscreenMode(fullscreen, width, height) : E_FAIL;
+}
+
 void CGameInstance::Update_Engine(f32_t fTimeDelta)
 {
 	/* The deferred fog drifts on a renderer owned clock, advanced once per

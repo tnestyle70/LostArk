@@ -147,6 +147,122 @@ HRESULT CGraphic_Device::Present()
 	return m_pSwapChain->Present(0, 0);	
 }
 
+HRESULT CGraphic_Device::Resize_BackBuffer(uint32_t width, uint32_t height)
+{
+    if (!m_pDevice || !m_pDeviceContext || !m_pSwapChain || width == 0u || height == 0u ||
+        width > D3D11_REQ_TEXTURE2D_U_OR_V_DIMENSION || height > D3D11_REQ_TEXTURE2D_U_OR_V_DIMENSION)
+        return E_INVALIDARG;
+    if (!m_bBackBufferResizePending && m_pBackBufferRTV && m_pDepthStencilView &&
+        width == static_cast<uint32_t>(m_iWinSizeX) && height == static_cast<uint32_t>(m_iWinSizeY))
+        return S_OK;
+
+    DXGI_SWAP_CHAIN_DESC swapDesc{};
+    const HRESULT description = m_pSwapChain->GetDesc(&swapDesc);
+    if (FAILED(description)) return description;
+    // Allocate every independent resource before releasing the old backbuffer view.
+    D3D11_TEXTURE2D_DESC desc{};
+    desc.Width = width; desc.Height = height;
+    desc.MipLevels = desc.ArraySize = desc.SampleDesc.Count = 1u;
+    desc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+    desc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+    ComPtr<ID3D11Texture2D> texture;
+    ComPtr<ID3D11DepthStencilView> depth;
+    HRESULT result = m_pDevice->CreateTexture2D(&desc, nullptr, texture.GetAddressOf());
+    if (SUCCEEDED(result)) result = m_pDevice->CreateDepthStencilView(texture.Get(), nullptr, depth.GetAddressOf());
+    if (FAILED(result)) return result;
+
+    // The caller already dropped Target_Manager's saved output references.
+    // No pass is active: clearing context bindings cannot invalidate a draw in progress.
+    m_bBackBufferResizePending = true;
+    m_pDeviceContext->ClearState();
+    m_pBackBufferRTV.Reset();
+    result = m_pSwapChain->ResizeBuffers(0u, width, height, DXGI_FORMAT_UNKNOWN, swapDesc.Flags);
+    if (FAILED(result))
+    {
+        const HRESULT restore = Ready_BackBufferRenderTargetView();
+        if (SUCCEEDED(restore)) (void)Bind_MainRenderTarget();
+        return FAILED(restore) ? restore : result;
+    }
+
+    result = Ready_BackBufferRenderTargetView();
+    if (FAILED(result))
+    {
+        m_pBackBufferRTV.Reset();
+        const HRESULT rollback = m_pSwapChain->ResizeBuffers(0u, static_cast<uint32_t>(m_iWinSizeX),
+            static_cast<uint32_t>(m_iWinSizeY), DXGI_FORMAT_UNKNOWN, swapDesc.Flags);
+        if (FAILED(rollback)) return rollback;
+        const HRESULT restore = Ready_BackBufferRenderTargetView();
+        if (FAILED(restore)) return restore;
+        (void)Bind_MainRenderTarget();
+        return result;
+    }
+    m_pDepthStencilView.Swap(depth);
+    m_iWinSizeX = static_cast<int32_t>(width);
+    m_iWinSizeY = static_cast<int32_t>(height);
+    m_bBackBufferResizePending = false;
+    return Bind_MainRenderTarget();
+}
+
+HRESULT CGraphic_Device::Set_FullscreenMode(bool fullscreen, uint32_t width, uint32_t height)
+{
+    if (!m_pSwapChain || (fullscreen && (width == 0u || height == 0u ||
+        width > D3D11_REQ_TEXTURE2D_U_OR_V_DIMENSION || height > D3D11_REQ_TEXTURE2D_U_OR_V_DIMENSION)))
+        return E_INVALIDARG;
+    BOOL previousFullscreen = FALSE;
+    ComPtr<IDXGIOutput> previousOutput;
+    DXGI_SWAP_CHAIN_DESC previousDesc{};
+    HRESULT result = m_pSwapChain->GetFullscreenState(&previousFullscreen, previousOutput.GetAddressOf());
+    if (SUCCEEDED(result)) result = m_pSwapChain->GetDesc(&previousDesc);
+    if (FAILED(result)) return result;
+    if (!fullscreen && !previousFullscreen) return S_OK;
+
+    // DXGI's in-progress status is a success HRESULT, but no mode is committed yet.
+    const auto completed = [](HRESULT status) -> HRESULT
+    {
+        return status == DXGI_STATUS_MODE_CHANGE_IN_PROGRESS ? E_PENDING : status;
+    };
+    ComPtr<IDXGIOutput> desiredOutput;
+    if (fullscreen)
+    {
+        result = m_pSwapChain->GetContainingOutput(desiredOutput.GetAddressOf());
+        if (FAILED(result)) return result;
+        result = completed(m_pSwapChain->SetFullscreenState(TRUE, desiredOutput.Get()));
+        if (SUCCEEDED(result))
+        {
+            DXGI_MODE_DESC mode = previousDesc.BufferDesc;
+            mode.Width = width; mode.Height = height;
+            mode.RefreshRate = {0u, 0u};
+            mode.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
+            mode.Scaling = DXGI_MODE_SCALING_UNSPECIFIED;
+            result = completed(m_pSwapChain->ResizeTarget(&mode));
+        }
+    }
+    else result = completed(m_pSwapChain->SetFullscreenState(FALSE, nullptr));
+    if (SUCCEEDED(result))
+    {
+        BOOL currentFullscreen = FALSE;
+        result = m_pSwapChain->GetFullscreenState(&currentFullscreen, nullptr);
+        if (SUCCEEDED(result) && (currentFullscreen != FALSE) != fullscreen)
+            result = E_PENDING;
+    }
+    if (FAILED(result))
+    {
+        m_bBackBufferResizePending = true;
+        const HRESULT rollback = completed(m_pSwapChain->SetFullscreenState(previousFullscreen, previousOutput.Get()));
+        if (FAILED(rollback)) return rollback;
+        DXGI_MODE_DESC mode = previousDesc.BufferDesc;
+        const HRESULT restore = completed(m_pSwapChain->ResizeTarget(&mode));
+        if (FAILED(restore)) return restore;
+        BOOL restoredFullscreen = FALSE;
+        const HRESULT verify = m_pSwapChain->GetFullscreenState(&restoredFullscreen, nullptr);
+        if (FAILED(verify)) return verify;
+        return (restoredFullscreen != FALSE) == (previousFullscreen != FALSE) ? result : E_PENDING;
+    }
+    // A mode transition must realize new buffers even when the pixel size is unchanged.
+    m_bBackBufferResizePending = true;
+    return S_OK;
+}
+
 void CGraphic_Device::Shutdown()
 {
 	if (nullptr != m_pDeviceContext)
@@ -156,6 +272,7 @@ void CGraphic_Device::Shutdown()
 	}
 
 
+	if (m_pSwapChain) (void)m_pSwapChain->SetFullscreenState(FALSE, nullptr);
 	m_pSwapChain.Reset();
 	m_pBackBufferRTV.Reset();
 	m_pDepthStencilView.Reset();
@@ -231,9 +348,13 @@ HRESULT CGraphic_Device::Ready_SwapChain(HWND hWnd, WINMODE isWindowed, int32_t 
 	SwapChain.OutputWindow = hWnd;	
 	SwapChain.Windowed = static_cast<BOOL>(isWindowed);
 	SwapChain.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
+	SwapChain.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
 
 	/* 백버퍼라는 텍스처(ID3D11Texture2D)를 생성했다. */	
 	if (FAILED(pFactory->CreateSwapChain(m_pDevice.Get(), &SwapChain, &m_pSwapChain)))
+		return E_FAIL;
+	// Display mode is owned by the application settings, never implicit Alt+Enter.
+	if (FAILED(pFactory->MakeWindowAssociation(hWnd, DXGI_MWA_NO_ALT_ENTER)))
 		return E_FAIL;
 
 

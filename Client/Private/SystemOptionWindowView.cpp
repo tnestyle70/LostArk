@@ -235,12 +235,76 @@ void Client::CSystemOptionWindowView::Update_TabColumn()
 
 /* ---- open / close / draft --------------------------------------------------------- */
 
+void Client::CSystemOptionWindowView::Refresh_DisplayChoices()
+{
+	MONITORINFOEXW monitor{};
+	monitor.cbSize = sizeof(monitor);
+	m_hDisplayMonitor = MonitorFromWindow(g_hWnd, MONITOR_DEFAULTTONEAREST);
+	uint32_t maximumWidth = 1920, maximumHeight = 1080;
+	if (GetMonitorInfoW(m_hDisplayMonitor, reinterpret_cast<MONITORINFO*>(&monitor)))
+	{
+		m_DisplayMonitorRect = monitor.rcMonitor;
+		maximumWidth = static_cast<uint32_t>(monitor.rcMonitor.right - monitor.rcMonitor.left);
+		maximumHeight = static_cast<uint32_t>(monitor.rcMonitor.bottom - monitor.rcMonitor.top);
+		/* rcMonitor follows an exclusive mode switch. The saved desktop mode remains the
+		windowed/borderless reference even while fullscreen is temporarily 1280 x 720. */
+		DEVMODEW desktop{};
+		desktop.dmSize = sizeof(desktop);
+		if (EnumDisplaySettingsExW(monitor.szDevice, ENUM_REGISTRY_SETTINGS, &desktop, 0) &&
+			desktop.dmPelsWidth >= 640 && desktop.dmPelsHeight >= 480)
+		{
+			maximumWidth = desktop.dmPelsWidth;
+			maximumHeight = desktop.dmPelsHeight;
+		}
+	}
+	m_iDesktopWidth = maximumWidth;
+	m_iDesktopHeight = maximumHeight;
+	m_Resolutions.clear();
+	const auto add = [&](uint32_t width, uint32_t height) {
+		if (width < 640 || height < 480 || width > 16384 || height > 16384) return;
+		for (const auto& mode : m_Resolutions)
+			if (mode.width == width && mode.height == height) return;
+		USER_DISPLAY_SETTINGS value;
+		value.width = width;
+		value.height = height;
+		m_Resolutions.push_back(value);
+	};
+	const auto supported = [&](uint32_t width, uint32_t height) {
+		if (m_Draft.Display.mode != USER_WINDOW_MODE::FULLSCREEN)
+			return width <= maximumWidth && height <= maximumHeight;
+		DEVMODEW mode{};
+		mode.dmSize = sizeof(mode);
+		for (DWORD i = 0; EnumDisplaySettingsExW(monitor.szDevice, i, &mode, 0); ++i)
+			if (mode.dmPelsWidth == width && mode.dmPelsHeight == height && mode.dmBitsPerPel >= 24) return true;
+		return false;
+	};
+	for (const auto& size : { std::pair<uint32_t, uint32_t>{1280, 720}, {1600, 900}, {1920, 1080}, {2560, 1440} })
+		if (supported(size.first, size.second))
+			add(size.first, size.second);
+	add(maximumWidth, maximumHeight);
+	/* Keep the saved size visible even after the user moves to a smaller monitor. Apply
+	still validates it against the current display; merely opening never changes settings. */
+	add(m_Draft.Display.width, m_Draft.Display.height);
+	if (m_Resolutions.empty()) add(640, 480);
+	std::sort(m_Resolutions.begin(), m_Resolutions.end(), [](const auto& a, const auto& b) {
+		return a.width == b.width ? a.height < b.height : a.width < b.width;
+	});
+	vector<SYSTEM_OPTION_CHOICE> choices;
+	for (const auto& size : m_Resolutions)
+		choices.push_back({ std::to_string(size.width) + "x" + std::to_string(size.height),
+			std::to_wstring(size.width) + L" x " + std::to_wstring(size.height) });
+	m_Document.Set_ResolutionChoices(choices);
+}
+
 void Client::CSystemOptionWindowView::Open()
 {
 	if (m_bOpen)
 		return;
 	m_Snapshot = CUserSettings::Get().Get_Settings();
 	m_Draft = m_Snapshot;
+	m_strSaveStatus.clear();
+	m_bSaveFailed = false;
+	Refresh_DisplayChoices();
 	if (!m_Document.Get_Tabs().empty())
 		m_iActiveTabId = m_Document.Get_Tabs().front().iTabId;
 	m_strOpenParentId.clear();
@@ -292,7 +356,7 @@ void Client::CSystemOptionWindowView::Close()
 	{
 		m_Draft = m_Snapshot;
 		string strStatus;
-		if (CUserSettings::Get().Commit(m_Draft, strStatus))
+		if (CUserSettings::Get().Preview(m_Draft, strStatus))
 			m_bVideoDirty = true;
 	}
 	Hide();
@@ -315,12 +379,42 @@ bool_t Client::CSystemOptionWindowView::Take_VideoDirty()
 
 f32_t Client::CSystemOptionWindowView::Read_Value(const SYSTEM_OPTION_ROW& Row) const
 {
+	if (Row.strId == SystemOptionRowId::RESOLUTION)
+	{
+		for (size_t i = 0; i < m_Resolutions.size(); ++i)
+			if (m_Resolutions[i].width == m_Draft.Display.width && m_Resolutions[i].height == m_Draft.Display.height)
+				return static_cast<f32_t>(i);
+		return -1.f;
+	}
+	if (Row.strId == SystemOptionRowId::WINDOW_MODE)
+		return m_Draft.Display.mode == USER_WINDOW_MODE::FULLSCREEN ? 0.f :
+			m_Draft.Display.mode == USER_WINDOW_MODE::BORDERLESS ? 2.f : 1.f;
 	return m_Draft.Get(Row.strId, Row.fDefault);
 }
 
 void Client::CSystemOptionWindowView::Write_Value(const SYSTEM_OPTION_ROW& Row, const f32_t fValue)
 {
-	m_Draft.Values[Row.strId] = fValue;
+	m_strSaveStatus.clear();
+	m_bSaveFailed = false;
+	const int32_t choice = static_cast<int32_t>(std::lround(fValue));
+	if (Row.strId == SystemOptionRowId::RESOLUTION)
+	{
+		if (choice >= 0 && choice < static_cast<int32_t>(m_Resolutions.size()))
+		{
+			m_Draft.Display.width = m_Resolutions[choice].width;
+			m_Draft.Display.height = m_Resolutions[choice].height;
+		}
+	}
+	else if (Row.strId == SystemOptionRowId::WINDOW_MODE)
+	{
+		if (choice >= 0 && choice < 3)
+		{
+			m_Draft.Display.mode = choice == 0 ? USER_WINDOW_MODE::FULLSCREEN :
+				choice == 2 ? USER_WINDOW_MODE::BORDERLESS : USER_WINDOW_MODE::WINDOWED;
+			Refresh_DisplayChoices();
+		}
+	}
+	else m_Draft.Values[Row.strId] = fValue;
 }
 
 bool_t Client::CSystemOptionWindowView::Is_VideoRow(const SYSTEM_OPTION_ROW& Row)
@@ -333,8 +427,7 @@ f32_t Client::CSystemOptionWindowView::Effective_Default(const SYSTEM_OPTION_ROW
 {
 	if (SYSTEM_OPTION_CONTROL::COMBOBOX != Row.eControl || Row.fDefault >= 0.f)
 		return Row.fDefault;
-	/* -1 in EFTable_SystemOption: cursor size follows the resolution (48 px normal for this
-	1280x720 client), battle font size is the 100% entry, keyboard language the Korean one. */
+	/* -1 in EFTable_SystemOption: normal cursor, 100% battle font and Korean keyboard. */
 	if (Row.strId == SystemOptionRowId::BATTLE_FONT_SIZE)
 		return 1.f;
 	if (Row.strId == "combobox_keyboard_language")
@@ -366,7 +459,7 @@ void Client::CSystemOptionWindowView::Commit_Draft(const SYSTEM_OPTION_ROW& Row)
 		m_Draft.Values[SystemOptionRowId::GRAPHICS_PRESET] = 4.f;
 	}
 	string strStatus;
-	if (!CUserSettings::Get().Commit(m_Draft, strStatus))
+	if (!CUserSettings::Get().Preview(m_Draft, strStatus))
 	{
 		OutputDebugStringA(("[SystemOption] " + strStatus + "\n").c_str());
 		m_Draft = CUserSettings::Get().Get_Settings();
@@ -383,12 +476,19 @@ void Client::CSystemOptionWindowView::Reset_Screen(const SYSTEM_OPTION_TAB& Tab)
 	{
 		if (Row.strId.empty() || SYSTEM_OPTION_CONTROL::BUTTON == Row.eControl)
 			continue;
-		if (0 != m_Draft.Values.count(Row.strId))
-			m_Draft.Values[Row.strId] = Effective_Default(Row);
+		if (Row.strId == SystemOptionRowId::RESOLUTION)
+		{
+			const USER_DISPLAY_SETTINGS defaults;
+			for (size_t i = 0; i < m_Resolutions.size(); ++i)
+				if (m_Resolutions[i].width == defaults.width && m_Resolutions[i].height == defaults.height)
+					Write_Value(Row, static_cast<f32_t>(i));
+		}
+		else if (Row.strId == SystemOptionRowId::WINDOW_MODE) Write_Value(Row, 1.f);
+		else if (0 != m_Draft.Values.count(Row.strId)) Write_Value(Row, Effective_Default(Row));
 		bVideo |= Is_VideoRow(Row);
 	}
 	string strStatus;
-	if (CUserSettings::Get().Commit(m_Draft, strStatus) && bVideo)
+	if (CUserSettings::Get().Preview(m_Draft, strStatus) && bVideo)
 		m_bVideoDirty = true;
 }
 
@@ -398,10 +498,25 @@ void Client::CSystemOptionWindowView::Reset_All()
 		Reset_Screen(Tab);
 }
 
+bool_t Client::CSystemOptionWindowView::Save_Draft()
+{
+	string status;
+	if (!CUserSettings::Get().Commit(m_Draft, status))
+	{
+		m_bSaveFailed = true;
+		m_strSaveStatus = L"\uc124\uc815 \uc801\uc6a9 \uc2e4\ud328: \uae30\uc874 \uc800\uc7a5\uac12\uc744 \uc720\uc9c0\ud569\ub2c8\ub2e4.";
+		OutputDebugStringA(("[SystemOption] " + status + "\n").c_str());
+		return false;
+	}
+	m_Snapshot = m_Draft;
+	m_bSaveFailed = false;
+	m_strSaveStatus = L"\uc124\uc815\uc744 \uc800\uc7a5\ud588\uc2b5\ub2c8\ub2e4.";
+	return true;
+}
+
 void Client::CSystemOptionWindowView::Save_And_Close()
 {
-	/* Confirm keeps what is live for the rest of this run; nothing is written to disk. */
-	m_Snapshot = m_Draft;
+	if (!Save_Draft()) return;
 	m_bOpen = false;
 	m_iSliderDragKey = 0;
 	m_iComboOpenKey = 0;
@@ -422,6 +537,18 @@ void Client::CSystemOptionWindowView::Update(const f32_t fTimeDelta)
 		m_bDragging = false;
 		m_Drag.Reset();
 		return;
+	}
+
+	/* Moving the open settings window to another monitor or changing an exclusive mode
+	refreshes available choices. The draft dimensions remain stable, independent of index. */
+	const HMONITOR currentMonitor = MonitorFromWindow(g_hWnd, MONITOR_DEFAULTTONEAREST);
+	MONITORINFO monitor{sizeof(MONITORINFO)};
+	if (GetMonitorInfoW(currentMonitor, &monitor) &&
+		(currentMonitor != m_hDisplayMonitor || !EqualRect(&monitor.rcMonitor, &m_DisplayMonitorRect)))
+	{
+		Refresh_DisplayChoices();
+		m_iComboOpenKey = 0;
+		m_iComboHover = -1;
 	}
 
 	for (const string& strId : m_ChromeSlotIds)
@@ -579,7 +706,7 @@ void Client::CSystemOptionWindowView::Update_Buttons()
 		if (0 == strcmp(Button.pSlotId, "SO_ResetAllBtn"))
 			Reset_All();
 		else if (0 == strcmp(Button.pSlotId, "SO_ApplyBtn"))
-			m_Snapshot = m_Draft;
+			Save_Draft();
 		else if (0 == strcmp(Button.pSlotId, "SO_ConfirmBtn"))
 		{
 			Save_And_Close();
@@ -677,7 +804,16 @@ void Client::CSystemOptionWindowView::Render_Text()
 			CGameInstance::Get().Clear_TextClipOutRect();
 	}
 
-	/* Bottom band. */
+	/* Physical render pixels and monitor scaling are information, not an OS setting. */
+	const auto viewport = CGameInstance::Get().Get_ViewportSize();
+	const UINT dpi = GetDpiForWindow(g_hWnd);
+	const wstring displayInfo = L"\ud604\uc7ac " + std::to_wstring(static_cast<uint32_t>(viewport.x)) + L" x " +
+		std::to_wstring(static_cast<uint32_t>(viewport.y)) + L" px / DPI " + std::to_wstring(dpi * 100 / 96) + L"%" +
+		(m_Draft.Display.mode == USER_WINDOW_MODE::BORDERLESS ? L" / \uc804\uccb4 \ucc3d: \ubaa8\ub2c8\ud130 \ud574\uc0c1\ub3c4 \uc0ac\uc6a9" : L"");
+	Draw_Label(FONT_YG760, displayInfo, PANE_X, PANE_Y + PANE_H + 1.f, 10.f, COLOR_LABEL, vTopLeft);
+	/* Compact status in the unused left half of the bottom band. */
+	Draw_Label(FONT_YG760, m_strSaveStatus, TAB_X + BUTTON_W + 14.f, BUTTON_Y + 10.f,
+		10.f, m_bSaveFailed ? Colors::OrangeRed : COLOR_LABEL, vTopLeft);
 	const bool_t bDirty = !m_Draft.Has_SameValues(m_Snapshot);
 	Draw_Label(FONT_YOON, Find_String("button.resetAll"), TAB_X + BUTTON_W * 0.5f,
 		BUTTON_Y + BUTTON_H * 0.5f, BUTTON_PX, Colors::White, vCenter);

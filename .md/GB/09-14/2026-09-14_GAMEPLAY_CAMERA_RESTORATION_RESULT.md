@@ -1,5 +1,10 @@
 # 원본 카메라 복원·FOV 비교 결과
 
+> 2026-09-20 정정: 아래의19m source volume 수치는 유효하지만 이를1관문 전장 전체의
+> 카메라로 해석한 결론은 폐기한다. 실제 convex volume은 entrance의 Z[-86.428,1.409]m이며
+> 세이튼 전장 Z737m를 포함하지 않는다. 현재 region resolver와 검증은
+> [DPI·해상도·쿠크 카메라 RESULT](../09-20/2026-09-20_NATIVE_RESOLUTION_DPI_AND_KOUKU_CAMERA_IMPLEMENTATION_RESULT.md)를 따른다.
+
 ## G00. 실제 완료 상태
 
 Character Select, Bern, Valtan, KoukuSaydon의 시작 카메라와 F1 Player Follow Camera를

@@ -12,6 +12,39 @@ CTarget_Manager::~CTarget_Manager()
 {
 }
 
+HRESULT CTarget_Manager::Stage_Resize(const vector<RESIZE_REQUEST>& requests,
+    RESIZE_STATE& output) const
+{
+    RESIZE_STATE staged;
+    staged.Targets.reserve(requests.size());
+    for (const auto& request : requests)
+    {
+        auto current = Find_RenderTarget(request.TargetTag);
+        if (!current || any_of(staged.Targets.begin(), staged.Targets.end(),
+            [&current](const auto& item) { return item.first == current; }))
+            return E_INVALIDARG;
+        shared_ptr<CRenderTarget> candidate;
+        const HRESULT result = current->Stage_Resize(request.Width, request.Height, candidate);
+        if (FAILED(result)) return result;
+        staged.Targets.emplace_back(std::move(current), std::move(candidate));
+    }
+    output = std::move(staged);
+    return S_OK;
+}
+
+void CTarget_Manager::Commit_Resize(RESIZE_STATE& staged,
+    f32_t viewportDeltaX, f32_t viewportDeltaY) noexcept
+{
+    for (auto& target : staged.Targets)
+        target.first->Commit_Resize(*target.second, viewportDeltaX, viewportDeltaY);
+}
+
+void CTarget_Manager::Release_OutputReferences() noexcept
+{
+    m_pBackBufferRTV.Reset();
+    m_pOriginalDSV.Reset();
+}
+
 HRESULT CTarget_Manager::Add_RenderTarget(const wstring_t& strTargetTag, uint32_t iWidth, uint32_t iHeight, DXGI_FORMAT ePixelFormat, const float4_t& vClearColor)
 {
 	if (nullptr != Find_RenderTarget(strTargetTag))
@@ -91,6 +124,8 @@ HRESULT CTarget_Manager::End_MRT()
 	ID3D11RenderTargetView* RenderTargets[8] = { m_pBackBufferRTV.Get(), };
 
 	m_pContext->OMSetRenderTargets(8, RenderTargets, m_pOriginalDSV.Get());
+	// These are pass-local saved outputs, not permanent swapchain owners.
+	Release_OutputReferences();
 
 	return S_OK;
 }

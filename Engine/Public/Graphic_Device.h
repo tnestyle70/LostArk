@@ -38,6 +38,8 @@ public:
 	/* 후면 버퍼를 전면버퍼로 교체한다.(백버퍼를 화면에 직접 보여준다.) */
 	HRESULT Present();
 
+	HRESULT Resize_BackBuffer(uint32_t width, uint32_t height);
+	HRESULT Set_FullscreenMode(bool fullscreen, uint32_t width, uint32_t height);
 	void Shutdown();
 
 private:	
@@ -84,6 +86,7 @@ private:
 	ComPtr<ID3D11RenderTargetView>		m_pBackBufferRTV = { nullptr };
 	ComPtr<ID3D11DepthStencilView>		m_pDepthStencilView = { nullptr };
 
+	bool m_bBackBufferResizePending = false;
 	int32_t								m_iWinSizeX = {};
 	int32_t								m_iWinSizeY = {};
 

@@ -28,12 +28,6 @@ namespace
 		return Slot(Row, pPart) + std::to_string(iIndex);
 	}
 
-	bool_t Is_FixedCombo(const SYSTEM_OPTION_ROW& Row)
-	{
-		/* Resolution and screen mode are what this executable is; the rows show the fact. */
-		return Row.strId == "combobox_resolution" || Row.strId == "combobox_monitor";
-	}
-
 	f32_t Snap(const f32_t fValue, const SYSTEM_OPTION_ROW& Row)
 	{
 		f32_t fSnapped = fValue;
@@ -55,6 +49,8 @@ plain: the upscaling mode needs an upscaling type, and the mokoko cursor (preset
 outline variants in EFUI_CURSOR, so the outline combo has nothing to offer there. */
 bool_t Client::CSystemOptionWindowView::Is_RetailDisabled(const SYSTEM_OPTION_ROW& Row) const
 {
+	if (Row.strId == SystemOptionRowId::RESOLUTION && m_Draft.Display.mode == USER_WINDOW_MODE::BORDERLESS)
+		return true;
 	if (Row.strId == "combobox_upscaling_mode")
 		return 0 == static_cast<int32_t>(std::lround(m_Draft.Get("combobox_upscaling_type", 0.f)));
 	if (Row.strId == SystemOptionRowId::CURSOR_PRESET_OUTLINE)
@@ -334,7 +330,7 @@ void Client::CSystemOptionWindowView::Update_Rows()
 			const string strArrow = Slot(R, "arrow");
 			Place_Slot(strArrow, fBoxX + fBoxW - COMBO_ARROW_INSET, fY + 3.f, COMBO_ARROW, COMBO_ARROW, true);
 			const bool_t bDisabled = Is_RetailDisabled(R);
-			const bool_t bFixed = bDisabled || Is_FixedCombo(R) || R.Choices.empty();
+			const bool_t bFixed = bDisabled || R.Choices.empty();
 			const bool_t bOpen = m_iComboOpenKey == R.iPrimaryKey;
 			const bool_t bHovered = !bFixed && Hovered(fBoxX, fY + 1.f, fBoxW, COMBO_H);
 			m_pView->Set_SlotTexture(strBox, bDisabled ? ART_COMBO_DISABLED :
@@ -595,16 +591,11 @@ void Client::CSystemOptionWindowView::Render_RowText(const ROW_LAYOUT& Row, cons
 		const fvector_t vColor = Is_RetailDisabled(R) ? COLOR_DISABLED : COLOR_LABEL;
 		Draw_Label(FONT_YG760, R.strTitle, fX + 2.f, fY + 6.f, ROW_FONT_PX, vColor, vTopLeft);
 		wstring strShown;
-		if (R.strId == "combobox_resolution")
-			strShown = L"1280x720 (16:9)";
-		else if (R.strId == "combobox_monitor" && R.Choices.size() > 1)
-			strShown = R.Choices[1].strText;
-		else
-		{
-			const int32_t iChoice = static_cast<int32_t>(std::lround(fValue));
-			if (iChoice >= 0 && iChoice < static_cast<int32_t>(R.Choices.size()))
-				strShown = R.Choices[static_cast<size_t>(iChoice)].strText;
-		}
+		const int32_t iChoice = static_cast<int32_t>(std::lround(fValue));
+		if (iChoice >= 0 && iChoice < static_cast<int32_t>(R.Choices.size()))
+			strShown = R.Choices[static_cast<size_t>(iChoice)].strText;
+		if (R.strId == SystemOptionRowId::RESOLUTION && m_Draft.Display.mode == USER_WINDOW_MODE::BORDERLESS)
+			strShown = std::to_wstring(m_iDesktopWidth) + L" x " + std::to_wstring(m_iDesktopHeight);
 		Draw_Label(FONT_YG760, strShown, fX + R.fMarginLength + COMBO_TEXT_DX, fY + COMBO_TEXT_DY,
 			ROW_FONT_PX, vColor, vTopLeft);
 		break;

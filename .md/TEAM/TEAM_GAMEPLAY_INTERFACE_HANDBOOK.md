@@ -359,8 +359,12 @@ Pitch/Yaw/Roll(deg), Pitch +는 아래, Yaw 0은 +Z다. 응답0은 즉시 follow
 슬라이더 변경·`Reload saved`·두 preset은 활성 맵에 즉시 적용하고 follow로 복귀한다.
 다른 맵 선택 또는 연출 override 중에는 preview를 적용하지 않는다.
 
-`Source baseline`은 공통50도/16m, 발탄55도/18m, 쿠크1관문50도/19m와 원본 방향을 적용한다.
-쿠크2·3관문의 현재 baseline은1관문 값의 시험 적용이며 source match는 미확인이다.
+`Source baseline`은 공통50도/16m, 발탄55도/18m를 적용한다. 쿠크는 optional
+`useSourceCameraRegions=true`에서 원본 entrance volume 내부만19m이며 나머지는16m다.
+1관문 전장은 이 volume 밖이다. 필드 없는 기존 JSON은 manual pose를 유지한다.
+F1의 FOV·거리·pose 편집은 region 적용을 끄고 캐릭터 크기 편집은 유지한다.
+Effective distance가 실효값이며 지역 이동은 authored profile을 덮지 않는다.
+원본 package/CDO와 구역 연결 복구는 원작 최종 화면 일치 확인과 별도다.
 `Before restoration`은 복원 전 네 맵의 실제 카메라 설정으로 되돌린다. 두 버튼은 pose와 lens를
 함께 교체하고 저장은 하지 않으며 Character size 입력을 보존한다. FOV 슬라이더만 움직이면
 나머지 pose와 모든 asset scale을 유지한다. Bern 저장값55도는 사용자의 비교값이며 source50도와 구분한다.
@@ -683,9 +687,9 @@ ImGui로 만든 창이나 버튼을 스크린샷으로 떠서 교체하는 것�
 | Combat HUD layout | `Data/UI/HUD/HUD_Layout.json`, asset domain `UI/HUD/` |
 | Screen UI layout | `Data/UI/ScreenUI/ScreenUI.json`, asset domain `UI/ScreenUI/` |
 | ImGui authoring | asset palette, thumbnail, drag/drop, rect/rotation, layer order, hover preview, save/load 구현 |
-| runtime state | `CCombatHUDViewModel`과 임시 runtime HUD overlay 구현 |
-| 최종 image widget 생성 | layout JSON을 `CUIObject` 계열로 만드는 factory는 미구현 |
-| 제품 UI picking | screen-space input router와 command binding schema는 미구현 |
+| runtime state | `CCombatHUDViewModel`을 제품 HUD가 소비 |
+| 최종 image widget 생성 | `CUILayoutRuntime -> CUI_Sprite` |
+| 제품 UI picking | `CUIInputRouter`의 reference 좌표 hit test와 typed consumer |
 
 작성에서 실행까지의 목표 흐름은 하나다.
 
@@ -705,8 +709,17 @@ Resources/UI image asset
 
 저장과 asset 규칙:
 
-- reference resolution은 현재 1280×720이며 viewport scale/letterbox 보정 뒤 같은 좌표계로
-  draw와 hit test를 수행한다.
+- reference resolution은 각 layout JSON이 소유한다(기본1280×720). Sprite는 reference rect를
+  보존하고 현재 physical viewport의 X/Y 비율로 geometry/ortho를 갱신한다. 클릭은 그 역변환을
+  사용한다. 현재 자동 letterbox/anchor 재배치는 없고16:9끼리의 변경은 모양 비율을 유지한다.
+- monitor DPI를 layout rect에 곱해 저장하지 않는다. Client의 PerMonitorV2가 OS bitmap 확대를
+  방지하며 글자는 실제 픽셀 크기에 맞는 atlas를 사용한다. ESC에서 고른 physical 해상도는
+  `CUserSettings::DISPLAY_APPLY -> CClientWindowDisplay -> CGameInstance::Resize_Viewport`로
+  연결한다. UI view에서 swapchain/Win32 style을 직접 바꾸지 않는다.
+- ESC 적용/확인의 개인 정본은 `%LOCALAPPDATA%/LostArk/UserSettings.json`이다. `display`는
+  width/height/mode, `values`는 기존 stable row별 값이며 source Data/UI를 덮지 않는다.
+  저장 전 stage·freshness 재확인·backup·atomic replace와 실패 display 복구를 유지한다.
+  전체 창 모드는 monitor native size, 일반 창/전체 화면은 선택 크기를 사용한다.
 - `slot.id`가 stable widget identity다. pointer, vector index, ImGui label, 보이는 문자열을
   저장 ID로 사용하지 않는다.
 - image는 `Client/Bin/Resources/UI/<Domain>/...`에 두고 JSON에는 `UI/...` 상대 asset ID만

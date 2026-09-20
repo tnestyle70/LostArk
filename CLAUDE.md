@@ -773,9 +773,13 @@ F1의 `Player Follow Camera`는 Character Select, Bern, Valtan, KoukuSaydon을 �
 다음 진입을 위해 선택 JSON만 저장하며, 로드 후 외부 변경을 발견하면 draft와 파일을 보존하고 거절한다.
 `Data/Camera/{CharacterSelect,Bern,Valtan,KoukuSaydon}.camera.json`이 별도 publish 없는 정본이다.
 재진입 또는 F1 → Player Follow Camera → 해당 Camera map → `Reload saved`로 읽는다.
-공통 source 기준은 수평50도/16m, Valtan은55도/18m, Kouku는1관문 volume의50도/19m다.
+공통 source 기준은 수평50도/16m, Valtan은55도/18m다. Kouku의 `Use source camera regions`는
+공통16m와 원본 entrance volume 내부19m를 구분한다. 1관문 전장은 이19m volume 밖이다.
+`useSourceCameraRegions`를 생략한 기존 JSON은 manual pose를 유지한다. F1의 FOV·거리·pose
+수정은 region 적용을 끄며 Character Size 수정은 그대로 유지한다. 패널의 Effective distance는
+현재 실효값이고 authored JSON을 구역 이동마다 바꾸지 않는다. 이 값은 원본 최종 framing의
+일치 확인과 구분하며 마리오·카드미로·컷신의 별도 카메라를 대체하지 않는다.
 Bern의 현재 저장값은 사용자 비교 결과에 따라55도/16m이며 Source baseline의50도와 구분한다.
-쿠크2·3관문은 현재1관문 기준의 시험 적용이며 원작 지역별 일치가 확인된 값이 아니다.
 마리오·카드미로·컷신의 기존 개별 카메라와 presentation priority는 유지한다.
 
 MapCatalog의 optional `sourceLights`/`lights` pair는 Area별 light presentation 계약이다.
@@ -876,10 +880,31 @@ asset path는 반드시 `UI/...` Resources-relative ID이며 `CRuntimeAssetRoot:
 6. HP/resource/cooldown/boss 상태는 `CCombatHUDViewModel`에서 읽는다. UI가 Server 수치나
    판정을 자체 생성하지 않는다.
 
-현재 완료된 범위는 ImGui authoring, asset preview, layout JSON save/load와 runtime HUD
-ViewModel/임시 overlay다. layout JSON으로 최종 image widget을 생성하는 runtime factory,
-2D UI input router, interaction schema/command binding은 아직 별도 수직 슬라이스이며,
-이 세 항목을 구현하기 전에는 “ImGui UI가 제품 이미지 UI로 자동 교체됐다”고 판단하지 않는다.
+현재 제품 image widget은 `CUILayoutRuntime -> CUI_Sprite`가 만들고 입력은 `CUIInputRouter`가
+처리한다. JSON reference 좌표를 유지하고 현재 physical viewport로 매번 투영하므로 기존 HUD,
+창, keyframe animation과 Loading chrome도 창 크기 변경을 따른다. 폰트는 실제 출력 픽셀에
+가까운 atlas를 선택한다. 원본 저해상도 이미지의 디테일을 새로 생성하는 기능은 아니다.
+
+### ESC 해상도·창 모드·개인 설정
+
+Client는 embedded manifest의 PerMonitorV2로 Windows DPI bitmap 확대를 방지한다.
+ESC 환경설정의 해상도는 physical client pixel 크기이며 Windows의125%·150%를 추가 곱하지 않는다.
+`창 모드`는 선택한 client 크기, `전체 화면`은 DXGI fullscreen mode, `전체 창 모드`는 현재
+모니터 전체 크기를 쓴다. 전체 창 모드에서는 해상도 선택을 잠그고 기존 선택은 다른 모드용으로
+보존한다. 현재 렌더 크기와 모니터 DPI를 같은 창 아래 표시한다. 창 이동·resize·최소화/복귀는
+Win32 메시지에서 받아 렌더 전 경계에 반영한다.1280×720 상수는 초기/reference 용도이며
+Engine backbuffer 크기의 정본은 실제 client rect다.
+
+적용/확인은 `%LOCALAPPDATA%/LostArk/UserSettings.json`에 `display.width/height/mode`와
+기존 설정 행 `values`를 저장한다. schema는 `lostark.user-settings`, formatVersion1이다.
+창·렌더 적용 성공과 저장 전 외부 변경 재확인 뒤 임시 파일을 원자 교체하고 `.bak`를 보존한다.
+실패하면 기존 display를 복구하며 파일 오류/동시 변경은 기존 파일을 덮어쓰지 않는다.
+취소는 마지막 적용 후의 미저장 preview를 복원한다. 저장값은 다음 창 생성 전에 읽고,
+지원되지 않는 저장 fullscreen은 windowed로 복구하여 설정 창에 다시 접근할 수 있게 한다.
+
+DPI와 종횡비는 별개다. 같은16:9 해상도는 UI 배치 비율을 유지한다. 다른 종횡비는 기존
+reference 좌표의 X/Y viewport 비율을 각각 적용하므로 자동 anchor 재배치나 letterbox를
+보장하지 않는다. UI 이미지를125% 크기로 미리 확대 저장했다면 asset 자체의 품질은 별도로 확인한다.
 
 ### 새 GameObject 추가
 

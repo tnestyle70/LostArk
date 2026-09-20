@@ -50,6 +50,37 @@ HRESULT CRenderTarget::Initialize(uint32_t iWidth, uint32_t iHeight, DXGI_FORMAT
     return S_OK;
 }
 
+HRESULT CRenderTarget::Stage_Resize(uint32_t width, uint32_t height,
+    shared_ptr<CRenderTarget>& output) const
+{
+    if (!m_pTexture2D || width == 0u || height == 0u ||
+        width > D3D11_REQ_TEXTURE2D_U_OR_V_DIMENSION || height > D3D11_REQ_TEXTURE2D_U_OR_V_DIMENSION)
+        return E_INVALIDARG;
+    D3D11_TEXTURE2D_DESC original{};
+    m_pTexture2D->GetDesc(&original);
+    auto staged = shared_ptr<CRenderTarget>(new CRenderTarget(m_pDevice, m_pContext));
+    const HRESULT result = staged->Initialize(width, height, original.Format, m_vClearColor);
+    if (FAILED(result)) return result;
+    output = std::move(staged);
+    return S_OK;
+}
+
+void CRenderTarget::Commit_Resize(CRenderTarget& staged,
+    f32_t viewportDeltaX, f32_t viewportDeltaY) noexcept
+{
+    // MRT lists retain this object; only its prepared GPU resources change.
+    m_pTexture2D.Swap(staged.m_pTexture2D);
+    m_pRTV.Swap(staged.m_pRTV);
+    m_pSRV.Swap(staged.m_pSRV);
+#ifdef _DEBUG
+    m_WorldMatrix._41 -= viewportDeltaX * .5f;
+    m_WorldMatrix._42 += viewportDeltaY * .5f;
+#else
+    (void)viewportDeltaX;
+    (void)viewportDeltaY;
+#endif
+}
+
 HRESULT CRenderTarget::Bind_SRV(shared_ptr<class CShader> pShader, const char_t* pConstantName)
 {
 	return pShader->Bind_Texture(pConstantName, m_pSRV);
