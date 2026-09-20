@@ -13,6 +13,7 @@
 #include <memory>
 #include <set>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 namespace Engine { class CModel; }
@@ -63,6 +64,13 @@ public:
         ComPtr<ID3D11DeviceContext> context, CRenderingProfileService& profiles);
     ~CKoukuSaydonPresentationPlayer();
     bool Reload_Product(std::string& status, std::uint32_t expectedSourceRevision = 0u);
+    // Loading owns collection/prewarm; playback borrows these immutable V2 snapshots.
+    // The pair is (LEAF/GROUP, stable asset ID), never a prototype or vector index.
+    static bool Collect_ProductEffectTargets(std::vector<std::string>& v1Targets,
+        std::vector<std::pair<std::string, std::string>>& v2Targets, std::string& status);
+    static bool Prewarm_ProductEffectResources(const ComPtr<ID3D11Device>& device,
+        const ComPtr<ID3D11DeviceContext>& context,
+        const std::vector<std::pair<std::string, std::string>>& targets, std::string& status);
     static bool Is_TargetedCombatObjectArchetype(std::string_view archetypeId) noexcept;
     bool Start_TargetedCombatVisual(const LostArk::Shared::S2C_COMBAT_OBJECT_SPAWNED& spawn,
         std::string& status);

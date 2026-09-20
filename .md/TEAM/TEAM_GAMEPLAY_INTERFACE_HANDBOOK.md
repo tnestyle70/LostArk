@@ -1419,7 +1419,13 @@ Rendering quality의 optional `colorAdjustment`는 `bloomTint:[R,G,B,1]`(RGB0..1
 `desaturation:0..1`을 가진다. 기본값은 white/0이며 이전 profile 출력이 유지된다.
 `environmentRegions`의 optional `priority`는 큰 값이 우선하고 같은 값이면 작은 convex AABB를 선택한다.
 optional `postProcess`는 bloomThreshold(0..64), bloomIntensity(0..16), bloomTint, desaturation
-네 필드를 모두 요구한다. 진입/이탈은 기존 region blend 시간을 사용하며 base quality로 복귀한다.
+네 필드를 모두 요구한다. optional `qualityOverride`는 같은 전체 quality 구조를 받아 독립 영역의
+품질 기준을 보존한다. 활성 profile multiplier와 사용자 video 설정을 적용한 뒤 region postProcess를
+덮어쓰며, 이탈하면 활성 profile의 실효 품질로 돌아간다. exposure/gamma/whitePoint와 기존 후처리
+입력은 region blend 시간을 사용하고 기술 on/off 설정은 선택된 영역 값을 쓴다. optional
+`specularColor:[R,G,B,A]`는 RGB 0~64/A 0~1이며 없으면 활성 profile specular를 상속한다.
+추가 색상은 diffuse/ambient와 함께 보간한다. parser·publisher·Workbench serializer가 같은 optional
+계약을 사용하며 잘못된 영역 품질·LUT·색상은 전체 catalog 교체 전에 거절한다.
 Bern/Character Select의 source-rendering과 before-restoration profile은 Benchmark의 session 비교용이다.
 자동 Save/Publish하지 않으며 native tone/LUT/DOF 복원과 현재 Hable adapter를 구분한다.
 

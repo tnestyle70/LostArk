@@ -23,6 +23,7 @@
 #include "CombatHUDViewModel.h"
 #include "Level_KakulSaydonArena.h"
 #include "LightResourceCatalog.h"
+#include "MapAssetCatalog.h"
 #include "Presentation_Manager.h"
 #include "Model.h"
 #include "Npc.h"
@@ -51,6 +52,11 @@ using RESOURCE = KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE;
 using OCCURRENCE = KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE;
 using KIND = KOUKU_SAYDON_PRESENTATION_KIND;
 constexpr std::uint32_t MAX_TIMELINE_MS = 600000u;
+
+// Owner-thread only, just like the existing V2 GPU resource cache. A new arena
+// collection or explicit V2 authoring invalidation drops this CPU snapshot set.
+std::map<std::string, std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT>> g_RaidEffectSnapshots;
+std::uint64_t g_RaidEffectGeneration = 0u;
 
 float Counter_AfterimageAgeSeconds(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
     const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern, const double clockMs)
@@ -1830,6 +1836,139 @@ bool Client::CKoukuSaydonPresentationPlayer::Reload_Product(
     }
 }
 
+bool Client::CKoukuSaydonPresentationPlayer::Collect_ProductEffectTargets(
+    std::vector<std::string>& v1Targets,
+    std::vector<std::pair<std::string, std::string>>& v2Targets, std::string& status)
+{
+    try
+    {
+        std::set<std::string> v1;
+        std::set<std::pair<std::string, std::string>> v2;
+        const auto add = [&](const std::string& kind, const std::string& id) {
+            if (!CEffectV2Document::Is_ValidEffectId(id))
+                throw std::runtime_error("Invalid raid Effect identity: " + id);
+            if (kind == "V1_EFFECT" || kind == "V1_ELEMENT") v1.insert(id);
+            else if (kind == "LEAF" || kind == "GROUP") v2.emplace(kind, id);
+            else throw std::runtime_error("Unsupported raid Effect resource kind: " + kind);
+        };
+        const auto array = [](const DATA_JSON_VALUE& owner, const char* field) -> const auto& {
+            const auto& value = Field(owner, field);
+            if (!value.Is_Array() || value.Get_Array().size() > 16384u)
+                throw std::runtime_error(std::string("Raid dependency array is invalid: ") + field);
+            return value.Get_Array();
+        };
+        const auto collectResource = [&](const DATA_JSON_VALUE& row) {
+            if (Text(row, "kind") == "EFFECT")
+                add(Text(row, "resourceKind"), Text(row, "assetId"));
+        };
+        const auto product = Read_ProductPresentationRoot();
+        for (const auto& pattern : array(product, "patterns"))
+            for (const auto& row : array(pattern, "presentationOccurrences")) collectResource(row);
+        if (product.Find("fearPresentations"))
+            for (const auto& fear : array(product, "fearPresentations"))
+                if (const auto* effect = fear.Find("effectResource"); effect && !effect->Is_Null()) collectResource(*effect);
+        if (product.Find("targetedCombatVisuals"))
+            for (const auto& visual : array(product, "targetedCombatVisuals"))
+            {
+                for (const auto& row : array(visual, "resources")) collectResource(row);
+                if (const auto* contact = visual.Find("contactEffectAssetId"); contact && !contact->Is_Null())
+                    add("V1_EFFECT", Text(visual, "contactEffectAssetId"));
+            }
+
+        const auto read = [](const std::filesystem::path& path, const char* schema) {
+            std::error_code error;
+            const auto size = std::filesystem::file_size(path, error);
+            if (error || !size || size > 16u * 1024u * 1024u)
+                throw std::runtime_error("Raid dependency document is missing/oversized: " + path.string());
+            std::ifstream input(path, std::ios::binary);
+            const std::string bytes{std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>()};
+            DATA_JSON_VALUE root; std::string reason;
+            if (!input || input.bad() || bytes.size() != size || !CDataJson::Parse(bytes, root, reason) ||
+                !root.Is_Object() || Text(root, "schema") != schema)
+                throw std::runtime_error("Raid dependency document is invalid: " + path.string() + "; " + reason);
+            return root;
+        };
+        // The live raid cinematics consume this saved Sequence composition too.
+        // Only used resources join the closure; the authoring library is larger.
+        const auto sequence = read(CKoukuSaydonCompositionDocument::Resolve_SequencePath(),
+            "lostark.kouku-saydon-composition");
+        std::set<std::string> used;
+        for (const auto& pattern : array(sequence, "patterns"))
+            for (const auto& row : array(pattern, "presentationOccurrences")) used.insert(Text(row, "resourceId"));
+        for (const auto& resource : array(sequence, "presentationResources"))
+            if (used.erase(Text(resource, "resourceId"))) collectResource(resource);
+        if (!used.empty()) throw std::runtime_error("Missing raid Sequence resource: " + *used.begin());
+
+        const auto world = read(CMapAssetCatalog::Get_MapDataRoot() /
+            "LV_LUT_MIDNIGHTC_ED.worldsequences.json", "lostark.world-sequences");
+        std::set<std::string> templates;
+        for (const auto& instance : array(world, "instances"))
+        {
+            const auto& enabled = Field(instance, "enabled");
+            if (!enabled.Is_Boolean()) throw std::runtime_error("World enabled flag is invalid.");
+            if (enabled.Get_Boolean()) templates.insert(Text(instance, "templateId"));
+        }
+        for (const auto& value : array(world, "templates"))
+            if (templates.erase(Text(value, "sequenceId")) && value.Find("effectTracks"))
+                for (const auto& effect : array(value, "effectTracks"))
+                    add(Text(effect, "resourceKind"), Text(effect, "resourceId"));
+        if (!templates.empty()) throw std::runtime_error("Missing raid World template: " + *templates.begin());
+        // Server card/ball state selects these without a pattern occurrence.
+        for (const char* symbol : {"heart", "spade", "clober", "dia"})
+            for (const char* color : {"red", "black"})
+                add("GROUP", std::string("boss.kouku.card.") + symbol + "." + color);
+        for (const char* color : {"red", "blue", "yellow"})
+            add("LEAF", std::string("boss.kouku.ball.smoke.") + color + "_1");
+        v1Targets.assign(v1.begin(), v1.end());
+        v2Targets.assign(v2.begin(), v2.end());
+        g_RaidEffectSnapshots.clear();
+        g_RaidEffectGeneration = CEffectV2Runtime::Cache_Generation();
+        status = "Raid Effect dependencies: V1=" + std::to_string(v1Targets.size()) +
+            ", V2=" + std::to_string(v2Targets.size());
+        OutputDebugStringA(("[KoukuPrewarm] " + status + "\n").c_str());
+        return true;
+    }
+    catch (const std::exception& error) { status = error.what(); return false; }
+}
+
+bool Client::CKoukuSaydonPresentationPlayer::Prewarm_ProductEffectResources(
+    const ComPtr<ID3D11Device>& device, const ComPtr<ID3D11DeviceContext>& context,
+    const std::vector<std::pair<std::string, std::string>>& targets, std::string& status)
+{
+    try
+    {
+        std::map<std::string, std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT>> staged;
+        for (const auto& [kind, id] : targets)
+        {
+            std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT> snapshot;
+            if (!CEffectV2Catalog::Get().Load_ResourceSnapshot(kind == "GROUP" ?
+                EFFECT_V2_RESOURCE_KIND::GROUP : EFFECT_V2_RESOURCE_KIND::LEAF, id, snapshot, status)) return false;
+            EFFECT_V2_GROUP group;
+            if (kind == "GROUP")
+            {
+                const auto* found = snapshot ? snapshot->Find_Group(id) : nullptr;
+                if (!found) { status = "Missing raid Effect group after load: " + id; return false; }
+                group = *found;
+            }
+            else
+            {
+                group.strGroupId = id;
+                EFFECT_V2_GROUP_CHILD child;
+                child.strChildId = "raid.prewarm.leaf"; child.strResourceId = child.strEffectId = id;
+                group.Children.push_back(std::move(child));
+            }
+            if (!CEffectV2Runtime::Prewarm_Group(group, snapshot, device, context))
+            { status = "Raid Effect prewarm failed: " + id + "; " + CEffectV2Runtime::Last_Error(); return false; }
+            staged.emplace(kind + ":" + id, std::move(snapshot));
+        }
+        g_RaidEffectSnapshots = std::move(staged);
+        g_RaidEffectGeneration = CEffectV2Runtime::Cache_Generation();
+        status = "Raid V2 Effect resources prepared: " + std::to_string(targets.size());
+        return true;
+    }
+    catch (const std::exception& error) { status = "Raid Effect prewarm failed: " + std::string(error.what()); return false; }
+}
+
 bool Client::CKoukuSaydonPresentationPlayer::Ensure_EffectResource(
     const std::string& kind, const std::string& asset,
     std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT>& snapshot)
@@ -1842,6 +1981,9 @@ bool Client::CKoukuSaydonPresentationPlayer::Ensure_EffectResource(
         m_iEffectCacheGeneration = generation;
     }
     const std::string key = kind + ":" + asset;
+    if (g_RaidEffectGeneration != generation) g_RaidEffectSnapshots.clear();
+    if (const auto prepared = g_RaidEffectSnapshots.find(key); prepared != g_RaidEffectSnapshots.end())
+    { snapshot = prepared->second; return true; }
     if (const auto found = m_EffectResources.find(key); found != m_EffectResources.end())
     { snapshot = found->second; return true; }
     if (const auto failed = m_EffectResourceFailures.find(key); failed != m_EffectResourceFailures.end())
@@ -1926,7 +2068,18 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
         session.rootRecordedSeconds = recordedSeconds;
         session.rootRecordedPivot = recordedPivot;
     }
-    if (!session.rootHistory) session.rootHistory = std::make_shared<EFFECT_V2_PIVOT_HISTORY>();
+    if (!session.rootHistory)
+    {
+        session.rootHistory = std::make_shared<EFFECT_V2_PIVOT_HISTORY>();
+        // The first replicated frame can arrive after pattern time zero. Bootstrap
+        // births with that first authoritative pose until observed samples exist;
+        // never borrow a preceding pattern or fabricate later moving history.
+        if (!previewSession && clockMs > 0.f)
+        {
+            std::string historyStatus;
+            if (!session.rootHistory->Record(0.f, pivot, false, historyStatus)) m_strStatus = historyStatus;
+        }
+    }
     const float rootSeconds = clockMs / 1000.f;
     if (rootSeconds >= session.rootRecordedSeconds)
     {
@@ -1999,6 +2152,12 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
         const bool discontinuity = history.recordedSeconds >= 0.f &&
             (history.missingSinceSample || dx*dx + dy*dy + dz*dz > 2500.f);
         std::string historyStatus;
+        // A named World may become visible only after its resource preparation.
+        // Seed just its initial birth interval from the first resolved pose. All
+        // subsequent samples, gaps and teleports retain strict history semantics.
+        if (!previewSession && history.recordedSeconds < 0.f)
+            history.samples->Record((std::min)(rootSeconds, box.iStartMs / 1000.f),
+                recorded, false, historyStatus);
         if (history.samples->Record(rootSeconds, recorded, discontinuity, historyStatus))
         {
             history.recordedSeconds = rootSeconds;

@@ -5,6 +5,8 @@
 #include <DirectXColors.h>
 #pragma pop_macro("new")
 #include "WorldSequenceObject.h"
+#include "Effect_PresentationService.h"
+#include "EffectFailureDiagnostic.h"
 #include "ActorCatalog.h"
 #include "KoukuSaydonPresentationAssetService.h"
 #include "Npc.h"
@@ -114,6 +116,44 @@ namespace
 			world = **captured;
 			return true;
 		};
+	}
+
+	enum class WORLD_EFFECT_PREPARATION { READY, PENDING, FAILED };
+	WORLD_EFFECT_PREPARATION PrepareCompositionWorldEffects(const CWorldSequenceDocument& document,
+		const std::string& id, std::string& status)
+	{
+		std::set<std::string> assets;
+		for (const auto& member : CompositionWorldMotions(document, id))
+		{
+			const auto* motion = document.Find_Instance(member);
+			for (uint32_t depth = 0; motion && depth <= 32u; ++depth)
+			{
+				const auto* sequence = document.Find_Template(motion->templateId);
+				if (!sequence) break; // Normal sequence validation reports malformed data.
+				for (const auto& effect : sequence->effectTracks)
+					if (effect.resourceKind == "V1_EFFECT") assets.insert(effect.resourceId);
+				if (motion->motionEnd != WORLD_SEQUENCE_MOTION_END::NEXT) break;
+				motion = document.Find_Instance(motion->nextMotionId);
+			}
+		}
+		if (assets.empty()) return WORLD_EFFECT_PREPARATION::READY;
+		const std::vector<std::string> requested(assets.begin(), assets.end());
+		std::vector<std::string> queued;
+		if (!CEffectPresentationService::Queue_ProductTargets_Priority(requested, queued, status))
+			return WORLD_EFFECT_PREPARATION::FAILED;
+		const auto probe = CEffectPresentationService::Get_ProductCuePreparationProbe(requested);
+		if (probe.iFailedCount || probe.iUnavailableCount)
+		{
+			status = "World Object Effect preparation failed: " + id;
+			for (const auto& asset : requested)
+			{
+				const auto failure = CEffectPresentationService::Get_ProductCuePreparationFailure(asset);
+				if (!failure.empty()) status += "; " + asset + ": " + failure;
+			}
+			return WORLD_EFFECT_PREPARATION::FAILED;
+		}
+		return probe.bCatalogRevisionCurrent && probe.bSettled ?
+			WORLD_EFFECT_PREPARATION::READY : WORLD_EFFECT_PREPARATION::PENDING;
 	}
 
 	f32_t CompositionWorldSpan(const CWorldSequencePlayer& player, const std::string& id,
@@ -232,6 +272,25 @@ namespace
 	/* The framing the telescope owner holds while the card maze runs; it
 	   follows the Server role rather than a box or a sequence. */
 	constexpr const char* CARD_MAZE_TELESCOPE_SHOT_ID = "cardmaze.telescope";
+
+	bool_t Is_LocalMarioLightingActive()
+	{
+		// Shared stage props and remote players cannot change this client's lighting.
+		const auto& player = CCombatHUDViewModel::Get().Get_Player();
+		return player.isValid && !player.isPreview && player.iMarioStage >= 1u && player.iMarioStage <= 4u;
+	}
+
+	bool_t Is_SequenceCameraAudience(const std::string_view instanceId, const std::uint8_t localMarioStage)
+	{
+		// Shared stage props play for the room; only its admitted participant
+		// owns the Mario intro camera. A remote player's stage is not local state.
+		constexpr std::array<std::string_view, 4> marioIntros = {
+			"world.sequence.instance.mario_m1_intro", "world.sequence.instance.mario_m2_intro",
+			"world.sequence.instance.mario_m3_intro", "world.sequence.instance.mario_m4_intro" };
+		const auto intro = std::find(marioIntros.begin(), marioIntros.end(), instanceId);
+		return intro == marioIntros.end() ||
+			localMarioStage == static_cast<std::uint8_t>(intro - marioIntros.begin() + 1u);
+	}
 	/* The pop-up book cutscene and the boss prop it stages. The boss is
 	   presentation only, so it leaves the arena when this sequence ends. */
 	constexpr const char* KAKULSAYDON_CUTSCENE_SEQUENCE_ID =
@@ -283,7 +342,8 @@ namespace
 	}
 
 	bool_t Prepare_PopupMapLights(const CMapLightDocument& source,
-		std::shared_ptr<CMapLightPresentationRuntime>& result, std::string& status)
+		std::shared_ptr<CMapLightPresentationRuntime>& result, std::string& status,
+		const bool_t sourceOnly = false)
 	{
 		if (!source.Is_Ready() || source.Get_FormatVersion() != 2u || source.Get_AreaId() != KAKULSAYDON_AREA_ID)
 		{ status = "Popup lighting requires the authored Kouku Area light document."; return false; }
@@ -294,7 +354,9 @@ namespace
 		for (size_t i = 0; i < lights.size(); ++i)
 			if (!indices.emplace(lights[i].lightId, i).second)
 			{ status = "Popup lighting source ID is duplicated: " + lights[i].lightId; return false; }
-		std::vector<std::string> copies = {"light.LV_LUT_MIDNIGHTC_ED.1"};
+		std::vector<std::string> copies;
+		// The source reference excludes this project-authored spotlight by stable ID.
+		if (!sourceOnly) copies.push_back("light.LV_LUT_MIDNIGHTC_ED.1");
 		for (unsigned i = 151u; i <= 179u; ++i) copies.push_back("light.kouku.source.sl05." + std::to_string(i));
 		copies.push_back("light.kouku.source.sl05.227"); copies.push_back("light.kouku.source.sl05.228");
 		std::vector<std::string> excluded = {"light.kouku.source.ps.265", "light.kouku.source.ps.267", "light.kouku.source.ps.268"};
@@ -326,7 +388,8 @@ namespace
 		return true;
 	}
     bool_t Prepare_GateMapLights(const CMapLightDocument& source, const size_t gateIndex,
-        std::shared_ptr<CMapLightPresentationRuntime>& result, std::string& status)
+        std::shared_ptr<CMapLightPresentationRuntime>& result, std::string& status,
+        const bool_t sourceOnly = false)
     {
         result.reset();
         if (gateIndex != 0u && gateIndex != 2u) return true;
@@ -336,7 +399,7 @@ namespace
         if (gateIndex == 0u)
         {
             std::shared_ptr<CMapLightPresentationRuntime> popup;
-            if (!Prepare_PopupMapLights(source, popup, status)) return false;
+            if (!Prepare_PopupMapLights(source, popup, status, sourceOnly)) return false;
             document = popup->Get_Document();
         }
         auto lights = document.Get_Lights();
@@ -361,7 +424,7 @@ namespace
                 light.lightId == "light.LV_LUT_MIDNIGHTC_ED.6") light.enabled = false;
             if (light.lightId == popupSpotlightId) { light.enabled = true; foundPopupSpotlight = true; }
         }
-        if (gateIndex == 0u && !foundPopupSpotlight)
+        if (gateIndex == 0u && !sourceOnly && !foundPopupSpotlight)
         { status = "Gate spotlight is missing: " + popupSpotlightId; return false; }
         if (!document.Replace_Authored(lights, source.Get_NextLightOrdinal(), status)) return false;
         auto staged = std::make_shared<CMapLightPresentationRuntime>();
@@ -1328,9 +1391,7 @@ HRESULT Client::CLevel_KakulSaydonArena::Initialize()
 			}
 		}
 	}
-	/* A missing or rejected sequence document only costs the scripted props
-	   their animation. The arena itself, its Server contracts and every other
-	   placement stay enterable, so report the loss instead of blocking entry. */
+	// Raid props and their Effects must finish preparation before gameplay starts.
 	{
 		CProfilerScope scope(pProfiler, "Level.Kouku.WorldSequence.Load");
 		if (FAILED(CGameInstance::Get().Add_Prototype(ETOUI(LEVEL::KAKULSAYDON_ARENA),
@@ -1342,16 +1403,31 @@ HRESULT Client::CLevel_KakulSaydonArena::Initialize()
 			OutputDebugStringA((
 				"[Level_KakulSaydonArena][WorldSequence] " +
 				m_SequencePlayer.Get_Status() + "\n").c_str());
+			return E_FAIL;
 		}
 		else
 		{
+			CProfilerScope worldPrepareScope(pProfiler, "Level.Kouku.WorldResources.Prewarm");
+			for (const auto& instance : m_SequencePlayer.Get_Document().Get_Instances())
+			{
+				if (!instance.enabled) continue;
+				if (!m_SequencePlayer.Prepare_InstanceResources(instance.instanceId, sequenceTargets))
+				{
+					OutputDebugStringA(("[Level_KakulSaydonArena][WorldPrewarm] " +
+						instance.instanceId + ": " + m_SequencePlayer.Get_Status() + "\n").c_str());
+					return E_FAIL;
+				}
+			}
 			CProfilerScope prepareScope(pProfiler, "Level.Kouku.JokerCards.Prewarm");
 			// The encounter's six normal cards and one joker reuse these hidden clones.
 			// Prepare during arena entry, before the first Pattern 13 spawn frame.
 			if (!m_SequencePlayer.Prewarm_ObjectInstances("world.object.instance.kouku.card", 6u, sequenceTargets) ||
 				!m_SequencePlayer.Prewarm_ObjectInstances("world.object.instance.kouku.joker_card", 1u, sequenceTargets))
+			{
 				OutputDebugStringA(("[Level_KakulSaydonArena][JokerPrewarm] " +
 					m_SequencePlayer.Get_Status() + "\n").c_str());
+				return E_FAIL;
+			}
 		}
 	}
 
@@ -1765,19 +1841,19 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 	// Persistent terminal state also closes owners for reconnect/late packet ordering.
 	const auto& runState = m_Replication.Get_KoukuBundleState();
 	using RUN_STATE = LostArk::Shared::KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE;
-	const auto stopOwner = [&](const std::string& memberId, const RUN_STATE state)
+	const auto stopOwner = [&](const std::string& memberId, const RUN_STATE state, const std::uint32_t patternSequence = 0u)
 	{
 		LostArk::Shared::S2C_WORLD_SEQUENCE_PLAY stop;
 		stop.eOperation = state == RUN_STATE::COMPLETED ? LostArk::Shared::WORLD_SEQUENCE_OPERATION::FINISH_OWNER :
 			LostArk::Shared::WORLD_SEQUENCE_OPERATION::STOP_OWNER;
-		stop.iRunEpoch = runState.iRunEpoch; stop.strMemberId = memberId;
+		stop.iRunEpoch = runState.iRunEpoch; stop.strMemberId = memberId; stop.iPatternSequence = patternSequence;
 		Consume_OwnedWorldCue(stop, targets);
 	};
 	if (runState.iRunEpoch)
 	{
 		if (runState.eState == RUN_STATE::COMPLETED || runState.eState == RUN_STATE::ABORTED) stopOwner({}, runState.eState);
 		else for (const auto& member : runState.Members)
-			if (member.eState == RUN_STATE::COMPLETED || member.eState == RUN_STATE::ABORTED) stopOwner(member.strMemberId, member.eState);
+			if (member.eState == RUN_STATE::COMPLETED || member.eState == RUN_STATE::ABORTED) stopOwner(member.strMemberId, member.eState, member.iPatternSequence);
 	}
 	m_SequencePlayer.Update(fTimeDelta, targets);
     Debug_UpdateGateObjects(fTimeDelta);
@@ -1815,7 +1891,9 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 		m_CameraShots.begin(), m_CameraShots.end(),
 		[this](const KAKUL_CAMERA_SHOT& shot)
 		{
-			return shot.hasCameraTrack && !shot.strSequenceInstanceId.empty() &&
+			return m_bCameraShotHeld && shot.strShotId == m_strActiveCameraShotId &&
+				shot.hasCameraTrack && !shot.followsPlayer && !shot.strSequenceInstanceId.empty() &&
+				Is_SequenceCameraAudience(shot.strSequenceInstanceId, CCombatHUDViewModel::Get().Get_Player().iMarioStage) &&
 				m_SequencePlayer.Is_Playing(shot.strSequenceInstanceId);
 		});
 	bool_t sequenceInputReady = !m_bSequenceCombatPending;
@@ -3137,6 +3215,13 @@ bool_t Client::CLevel_KakulSaydonArena::Apply_ServerRaidGatePresentation(const s
     return true;
 }
 
+const string& Client::CLevel_KakulSaydonArena::Get_GatePresentationProfileId() const
+{
+	static const string marioProfile = "scene.kakulsaydon.source-rendering.v1";
+	// Stage zero (return, failure or reset) exposes the existing gate profile again.
+	return Is_LocalMarioLightingActive() ? marioProfile : m_strGatePresentationProfileId;
+}
+
 bool_t Client::CLevel_KakulSaydonArena::Commit_GatePresentation(const size_t index, std::string& status)
 {
     if (index >= 3u) { status = "Unknown Server gate."; return false; }
@@ -3906,7 +3991,8 @@ Client::CLevel_KakulSaydonArena::Find_ActiveCameraShot(
 	const KAKUL_CAMERA_SHOT* best = nullptr;
 	for (const KAKUL_CAMERA_SHOT& shot : m_CameraShots)
 	{
-		if (shot.bPatternOnly) continue;
+		if (shot.bPatternOnly || !Is_SequenceCameraAudience(shot.strSequenceInstanceId,
+			CCombatHUDViewModel::Get().Get_Player().iMarioStage)) continue;
 		const bool_t isHeldNow = shot.strShotId == m_strActiveCameraShotId;
 		bool_t isActive = false;
 		if (shot.strShotId == CARD_MAZE_TELESCOPE_SHOT_ID)
@@ -4331,6 +4417,8 @@ bool_t Client::CLevel_KakulSaydonArena::Sample_CompositionCamera(
 	const auto& shots = preview ? m_AuthoringCameraShots : m_CameraShots;
 	const auto found = std::find_if(shots.begin(), shots.end(), [shotId](const auto& shot) { return shot.strShotId == shotId; });
 	if (found == shots.end() || durationMs < found->iBlendInMs) return false;
+	if (!preview && !Is_SequenceCameraAudience(found->strSequenceInstanceId,
+		CCombatHUDViewModel::Get().Get_Player().iMarioStage)) return false;
 	auto& transition = m_CompositionCamera;
 	if (transition.cancelledOwnerKey == ownerKey) return false;
 	if (transition.ownerKey != ownerKey || transition.returning || seconds + 0.01f < transition.lastSeconds)
@@ -4661,8 +4749,91 @@ void Client::CLevel_KakulSaydonArena::Set_MapLightAuthoringOverride(
 	m_pMapLightAuthoringOverride = std::move(lights);
 }
 
+uint64_t Client::CLevel_KakulSaydonArena::Get_MapLightComparisonFingerprint() const
+{
+	// Hash named effective inputs without allocating/serializing the complete JSON during capture.
+	uint64_t hash = 14695981039346656037ull;
+	const auto add = [&hash](const auto& value)
+	{ hash ^= static_cast<uint64_t>(std::hash<std::decay_t<decltype(value)>>{}(value)); hash *= 1099511628211ull; };
+	const bool_t marioLighting = Is_LocalMarioLightingActive();
+	add(static_cast<uint32_t>(m_eMapLightComparison)); add(m_iGateLightingIndex); add(marioLighting);
+	auto lights = m_pMapLightAuthoringOverride ? m_pMapLightAuthoringOverride : m_pMapLightPresentation;
+	if (!marioLighting && m_pGateMapLightPresentation) lights = m_pGateMapLightPresentation;
+#ifdef _DEBUG
+	add(m_bCompositionMapLightPreviewActive);
+	if (m_bCompositionMapLightPreviewActive && m_pCompositionMapLightPreview) lights = m_pCompositionMapLightPreview;
+#endif
+	if (m_eMapLightComparison == MAP_LIGHT_COMPARISON::SOURCE_IMPORT)
+	{
+		lights = !marioLighting && m_pMapLightComparisonGate ? m_pMapLightComparisonGate : m_pMapLightComparisonSource;
+#ifdef _DEBUG
+		if (m_bCompositionMapLightPreviewActive && m_pMapLightComparisonPopup) lights = m_pMapLightComparisonPopup;
+#endif
+	}
+	if (m_eMapLightComparison == MAP_LIGHT_COMPARISON::DISABLED) lights.reset();
+	add(bool(lights));
+	if (!lights) return hash;
+	const auto& document = lights->Get_Document();
+	add(document.Get_AreaId()); add(document.Get_Lights().size());
+	for (const auto& light : document.Get_Lights())
+	{
+		add(light.lightId); add(light.enabled); add(static_cast<uint32_t>(light.kind));
+		add(static_cast<uint32_t>(light.receiver)); add(light.staticShadowChannel);
+		add(light.position.x); add(light.position.y); add(light.position.z);
+		add(light.rotationDegrees.x); add(light.rotationDegrees.y); add(light.rotationDegrees.z);
+		add(light.radiusMeters); add(light.falloffExponent); add(light.innerConeDegrees); add(light.outerConeDegrees);
+		add(light.color.x); add(light.color.y); add(light.color.z); add(light.color.w); add(light.brightness);
+	}
+	return hash;
+}
+
+void Client::CLevel_KakulSaydonArena::Reset_MapLightComparison()
+{
+	m_eMapLightComparison = MAP_LIGHT_COMPARISON::CURRENT;
+	m_pMapLightComparisonSource.reset();
+	m_pMapLightComparisonGate.reset();
+#ifdef _DEBUG
+	m_pMapLightComparisonPopup.reset();
+#endif
+}
+
+bool_t Client::CLevel_KakulSaydonArena::Set_MapLightComparison(
+	const MAP_LIGHT_COMPARISON mode, std::string& outStatus)
+{
+	if (mode == MAP_LIGHT_COMPARISON::CURRENT || mode == MAP_LIGHT_COMPARISON::DISABLED)
+	{
+		Reset_MapLightComparison();
+		m_eMapLightComparison = mode;
+		outStatus = mode == MAP_LIGHT_COMPARISON::CURRENT ?
+			"Current map lights restored." : "Area map lights disabled for this comparison.";
+		return true;
+	}
+	if (mode != MAP_LIGHT_COMPARISON::SOURCE_IMPORT)
+	{ outStatus = "Unknown map light comparison mode."; return false; }
+	auto source = std::make_shared<CMapLightPresentationRuntime>();
+	if (!source->Load(CProjectDataRoot::Resolve(
+		L"Rendering/Reference/KoukuImportedSourceLights.maplights.json"), std::string(KAKULSAYDON_AREA_ID)))
+	{ outStatus = source->Get_Status(); return false; }
+	std::shared_ptr<CMapLightPresentationRuntime> gate;
+	if (!Prepare_GateMapLights(source->Get_Document(), m_iGateLightingIndex, gate, outStatus, true))
+		return false;
+#ifdef _DEBUG
+	std::shared_ptr<CMapLightPresentationRuntime> popup;
+	if (!Prepare_PopupMapLights(source->Get_Document(), popup, outStatus, true))
+		return false;
+	m_pMapLightComparisonPopup = std::move(popup);
+#endif
+	m_pMapLightComparisonSource = std::move(source);
+	m_pMapLightComparisonGate = std::move(gate);
+	m_iMapLightComparisonGate = m_iGateLightingIndex;
+	m_eMapLightComparison = mode;
+	outStatus = "Comparing the 115 imported local lights from 2026-09-11.";
+	return true;
+}
+
 void Client::CLevel_KakulSaydonArena::Submit_MapLightFrame()
 {
+	const bool_t marioLighting = Is_LocalMarioLightingActive();
 	auto lights = m_pMapLightAuthoringOverride ? m_pMapLightAuthoringOverride : m_pMapLightPresentation;
     if (lights && (m_iGateLightingIndex == 0u || m_iGateLightingIndex == 2u) &&
         (!m_GateMapLightSource || !Same_MapLightSource(lights->Get_Document(), *m_GateMapLightSource)))
@@ -4677,12 +4848,42 @@ void Client::CLevel_KakulSaydonArena::Submit_MapLightFrame()
         else if (m_strDebugGateStatus != status)
         { m_strDebugGateStatus = status; OutputDebugStringA(("[GateLighting] " + status + "\n").c_str()); }
     }
-    if (m_pGateMapLightPresentation) lights = m_pGateMapLightPresentation;
+    // Gate 3 suppresses Area source lights for its arena, but Mario occupies a separate stage.
+    // Keep that gate cache staged so the local Server exit immediately restores it.
+    if (!marioLighting && m_pGateMapLightPresentation) lights = m_pGateMapLightPresentation;
 #ifdef _DEBUG
 	if (m_bCompositionMapLightPreviewActive && m_pCompositionMapLightPreview)
 		lights = m_pCompositionMapLightPreview;
 #endif
-	if (lights && !lights->Submit_Frame()) OutputDebugStringA((lights->Get_Status() + "\n").c_str());
+	if (m_eMapLightComparison == MAP_LIGHT_COMPARISON::SOURCE_IMPORT && m_pMapLightComparisonSource)
+	{
+		if (m_iMapLightComparisonGate != m_iGateLightingIndex)
+		{
+			std::shared_ptr<CMapLightPresentationRuntime> gate;
+			std::string status;
+			if (Prepare_GateMapLights(m_pMapLightComparisonSource->Get_Document(),
+				m_iGateLightingIndex, gate, status, true))
+			{
+				m_pMapLightComparisonGate = std::move(gate);
+				m_iMapLightComparisonGate = m_iGateLightingIndex;
+			}
+			else
+			{
+				OutputDebugStringA(("[LightComparison] " + status + "\n").c_str());
+				Reset_MapLightComparison();
+			}
+		}
+		if (m_pMapLightComparisonSource)
+			lights = !marioLighting && m_pMapLightComparisonGate ? m_pMapLightComparisonGate : m_pMapLightComparisonSource;
+#ifdef _DEBUG
+		// Composition popup lighting has its own placement, independent of the active gate.
+		if (m_bCompositionMapLightPreviewActive && m_pMapLightComparisonPopup)
+			lights = m_pMapLightComparisonPopup;
+#endif
+	}
+	// Current gate and draft inputs keep staging while the session comparison is active.
+	if (m_eMapLightComparison != MAP_LIGHT_COMPARISON::DISABLED && lights && !lights->Submit_Frame())
+		OutputDebugStringA((lights->Get_Status() + "\n").c_str());
 }
 
 bool_t Client::CLevel_KakulSaydonArena::Reload_MapLights()
@@ -4842,13 +5043,18 @@ void Client::CLevel_KakulSaydonArena::Consume_OwnedWorldCue(
     }
     const auto owner = std::to_string(play.iRunEpoch) + ":" + play.strMemberId;
     const auto runOwner = std::to_string(play.iRunEpoch) + ":";
+    // A Mario parent and its phase-2 follow-up share the run/member identity.
+    // A scoped stop retires only the old pattern; zero retains whole-owner semantics.
+    const auto patternOwner = owner + ":pattern:" + std::to_string(play.iPatternSequence);
     if (play.eOperation == WORLD_SEQUENCE_OPERATION::STOP_OWNER ||
         play.eOperation == WORLD_SEQUENCE_OPERATION::FINISH_OWNER)
     {
-        (play.eOperation == WORLD_SEQUENCE_OPERATION::STOP_OWNER ? m_StoppedWorldOwners : m_FinishedWorldOwners).insert(owner);
+        (play.eOperation == WORLD_SEQUENCE_OPERATION::STOP_OWNER ? m_StoppedWorldOwners : m_FinishedWorldOwners)
+            .insert(play.iPatternSequence ? patternOwner : owner);
         for (auto cue = m_OwnedWorldCues.begin(); cue != m_OwnedWorldCues.end();)
             if (cue->second.runEpoch == play.iRunEpoch &&
-                (play.strMemberId.empty() || cue->second.memberId == play.strMemberId))
+                (play.strMemberId.empty() || cue->second.memberId == play.strMemberId) &&
+                (!play.iPatternSequence || cue->second.patternSequence == play.iPatternSequence))
             {
                 if (play.eOperation == WORLD_SEQUENCE_OPERATION::FINISH_OWNER &&
                     (cue->second.untilDestroyed || cue->second.player->Get_LongestElapsedSpanMs() > cue->second.durationMs))
@@ -4870,9 +5076,19 @@ void Client::CLevel_KakulSaydonArena::Consume_OwnedWorldCue(
         return;
     }
     if (m_StoppedWorldOwners.contains(owner) || m_StoppedWorldOwners.contains(runOwner) ||
-        (!play.bUntilDestroyed && (m_FinishedWorldOwners.contains(owner) || m_FinishedWorldOwners.contains(runOwner)))) return;
+        m_StoppedWorldOwners.contains(patternOwner) ||
+        (!play.bUntilDestroyed && (m_FinishedWorldOwners.contains(owner) ||
+            m_FinishedWorldOwners.contains(runOwner) || m_FinishedWorldOwners.contains(patternOwner)))) return;
     if (m_ConsumedWorldCueIds.contains(key)) return; // reliable resend is idempotent
     if (m_ConsumedWorldCueIds.size() >= 65536u) { OutputDebugStringA("[KoukuWORLD] Run cue capacity exceeded.\n"); return; }
+    const auto defer = [&]()
+    {
+        const bool pending = std::any_of(m_PendingOwnedWorldCues.begin(), m_PendingOwnedWorldCues.end(),
+            [&](const auto& value) { return value.iRunEpoch == play.iRunEpoch &&
+                value.strMemberId == play.strMemberId && value.strCueId == play.strCueId; });
+        if (!pending && m_PendingOwnedWorldCues.size() < 1024u) m_PendingOwnedWorldCues.push_back(play);
+        else if (!pending) OutputDebugStringA("[KoukuWORLD] Pending presentation cue capacity exceeded.\n");
+    };
     float seconds = 0.f;
     const auto tick = (std::max)(play.iServerTick, m_Replication.Get_LastServerTick());
     if (!CActionPresentationTimeline::Try_ResolveActionAgeSeconds(tick, play.iStartTick, 30.f, seconds)) return;
@@ -4880,6 +5096,17 @@ void Client::CLevel_KakulSaydonArena::Consume_OwnedWorldCue(
     if (!play.strTargetSequenceInstanceId.empty() && play.iDurationMs && ageMs >= play.iDurationMs) return;
     if (!play.bUntilDestroyed && play.strTargetSequenceInstanceId.empty() && ageMs >= CompositionWorldSpan(m_SequencePlayer,
         play.strSequenceInstanceId, play.fPlaybackSpeed, play.iDurationMs)) return;
+    std::string effectStatus;
+    const auto preparation = PrepareCompositionWorldEffects(m_SequencePlayer.Get_Document(),
+        play.strSequenceInstanceId, effectStatus);
+    if (preparation == WORLD_EFFECT_PREPARATION::PENDING) { defer(); return; }
+    if (preparation == WORLD_EFFECT_PREPARATION::FAILED)
+    {
+        m_ConsumedWorldCueIds.insert(key);
+        Write_EffectFailureDiagnostic("Kouku.world.prepare", key + ": " + effectStatus);
+        OutputDebugStringA(("[KoukuWORLD] " + effectStatus + "\n").c_str());
+        return;
+    }
     if (!play.strTargetSequenceInstanceId.empty())
     {
         OWNED_WORLD_CUE* target = nullptr;
@@ -4891,7 +5118,16 @@ void Client::CLevel_KakulSaydonArena::Consume_OwnedWorldCue(
                 if (target) { OutputDebugStringA("[KoukuWORLD] Ambiguous owned motion target.\n"); return; }
                 target = &cue;
             }
-        if (!target) { OutputDebugStringA("[KoukuWORLD] Owned motion target is unavailable.\n"); return; }
+        if (!target)
+        {
+            // Its reliable birth can still be waiting for asynchronous Effect preparation.
+            if (std::any_of(m_PendingOwnedWorldCues.begin(), m_PendingOwnedWorldCues.end(), [&](const auto& pending) {
+                return pending.iRunEpoch == play.iRunEpoch && pending.strMemberId == play.strMemberId &&
+                    pending.strSequenceInstanceId == play.strTargetSequenceInstanceId &&
+                    (play.strTargetCueId.empty() || pending.strCueId == play.strTargetCueId); })) defer();
+            else OutputDebugStringA("[KoukuWORLD] Owned motion target is unavailable.\n");
+            return;
+        }
         float motionSeconds = 0.f;
         if (!CActionPresentationTimeline::Try_ResolveActionAgeSeconds(play.iStartTick, target->startTick, 30.f, motionSeconds)) return;
         const float present = (std::max)(target->clockMs, motionSeconds * 1000.f + ageMs);
@@ -4923,14 +5159,7 @@ void Client::CLevel_KakulSaydonArena::Consume_OwnedWorldCue(
     if (!play.bUntilDestroyed && (run.iRunEpoch != play.iRunEpoch || member == run.Members.end() || !m_WorldEmissionResolver ||
         !m_WorldEmissionResolver(run.iPinnedSourceRevision, member->strPatternId,
             play.strOccurrenceId, cueTargets.objectEmissionAnchor)))
-    {
-        const bool pending = std::any_of(m_PendingOwnedWorldCues.begin(), m_PendingOwnedWorldCues.end(),
-            [&](const auto& value) { return value.iRunEpoch == play.iRunEpoch &&
-                value.strMemberId == play.strMemberId && value.strCueId == play.strCueId; });
-        if (!pending && m_PendingOwnedWorldCues.size() < 1024u) m_PendingOwnedWorldCues.push_back(play);
-        else if (!pending) OutputDebugStringA("[KoukuWORLD] Pending presentation cue capacity exceeded.\n");
-        return;
-    }
+    { defer(); return; }
     BindCompositionGroupOrigin(m_SequencePlayer.Get_Document(), play.strSequenceInstanceId, cueTargets);
     auto player = std::make_shared<CWorldSequencePlayer>();
     const auto placement = WorldPlacementFromCue(play);
@@ -4940,12 +5169,15 @@ void Client::CLevel_KakulSaydonArena::Consume_OwnedWorldCue(
             float3_t(play.fPositionOffsetX, play.fPositionOffsetY, play.fPositionOffsetZ), play.iDurationMs, placement) ||
         !player->Seek_AllToMs(ageMs, cueTargets))
     {
+        const auto failure = status.empty() ? player->Get_Status() : status;
         player->Stop_All(targets, true);
-        OutputDebugStringA(("[KoukuWORLD] " + (status.empty() ? player->Get_Status() : status) + "\n").c_str());
+        Write_EffectFailureDiagnostic("Kouku.world.play", key + ": " + play.strSequenceInstanceId + ": " + failure);
+        OutputDebugStringA(("[KoukuWORLD] " + failure + "\n").c_str());
         return;
     }
     OWNED_WORLD_CUE cue;
-    cue.runEpoch = play.iRunEpoch; cue.startTick = play.iStartTick; cue.durationMs = play.iDurationMs;
+    cue.runEpoch = play.iRunEpoch; cue.patternSequence = play.iPatternSequence;
+    cue.startTick = play.iStartTick; cue.durationMs = play.iDurationMs;
     cue.untilDestroyed = play.bUntilDestroyed;
     cue.memberId = play.strMemberId; cue.cueId = play.strCueId; cue.occurrenceId = play.strOccurrenceId; cue.sequenceId = play.strSequenceInstanceId;
     cue.emissionAnchor = std::move(cueTargets.objectEmissionAnchor);

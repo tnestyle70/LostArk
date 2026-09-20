@@ -21,8 +21,13 @@ struct SCENE_ENVIRONMENT_REGION final
     HEIGHT_FOG_SETTINGS Fog{};
     float4_t vDirectionalColor{};
     float4_t vAmbientColor{};
+    bool_t bHasSpecularColor = false;
+    float4_t vSpecularColor{};
     f32_t fBlendTimeIn = 1.f, fBlendTimeOut = 1.f;
     f32_t fPriority = 0.f;
+    // Optional full regional quality keeps an independently authored area stable.
+    bool_t bHasQualityOverride = false;
+    RENDER_QUALITY_SETTINGS QualityOverride{};
     bool_t bHasPostProcess = false;
     f32_t fBloomThreshold = 1.f, fBloomIntensity = 0.8f;
     float4_t vBloomTint{ 1.f, 1.f, 1.f, 1.f };
@@ -91,6 +96,7 @@ public:
 	bool_t Delete_Profile(string_view id, string& status);
 	void Protect_ProfileIds(const vector<string>& ids);
 	const string& Get_LevelQualityProfileId() const { return m_strLevelQualityProfileId; }
+	const string& Get_AppliedEnvironmentRegionId() const noexcept { return m_strAppliedEnvironmentRegion; }
 	const string& Get_ActiveProfileId() const
 	{
 		return m_strActiveProfileId;

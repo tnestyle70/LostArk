@@ -1,7 +1,7 @@
 {
     "schema":  "lostark.rendering-profiles",
     "formatVersion":  1,
-    "revision":  54,
+    "revision":  66,
     "globalQuality":  {
                           "ssaoEnabled":  true,
                           "ssaoRadius":  0.0399999991,
@@ -613,7 +613,7 @@
                                                  "ssaoIntensity":  0.689999998,
                                                  "ssaoPower":  2.0999999,
                                                  "ssaoDistanceFade":  132.5,
-                                                 "bloomEnabled":  false,
+                                                 "bloomEnabled":  true,
                                                  "bloomThreshold":  0.400000006,
                                                  "bloomSoftKnee":  1,
                                                  "bloomIntensity":  1.25,
@@ -2566,7 +2566,7 @@
                                                  "ssaoIntensity":  0.689999998,
                                                  "ssaoPower":  2.0999999,
                                                  "ssaoDistanceFade":  132.5,
-                                                 "bloomEnabled":  false,
+                                                 "bloomEnabled":  true,
                                                  "bloomThreshold":  0.699999988,
                                                  "bloomSoftKnee":  1,
                                                  "bloomIntensity":  0.899999976,
@@ -3895,11 +3895,736 @@
                                                 ]
                      },
                      {
+                         "qualityOverride":  {
+                                                 "ssaoEnabled":  false,
+                                                 "ssaoRadius":  0.75,
+                                                 "ssaoBias":  0.0250000004,
+                                                 "ssaoIntensity":  1,
+                                                 "ssaoPower":  1.25,
+                                                 "ssaoDistanceFade":  60,
+                                                 "bloomEnabled":  true,
+                                                 "bloomThreshold":  0.699999988,
+                                                 "bloomSoftKnee":  0.5,
+                                                 "bloomIntensity":  0,
+                                                 "bloomScatter":  1,
+                                                 "exposure":  1,
+                                                 "whitePoint":  11.1999998,
+                                                 "gamma":  2.20000005,
+                                                 "fxaaEnabled":  false,
+                                                 "fxaaSubpixel":  0.75,
+                                                 "fxaaEdgeThreshold":  0.165999994,
+                                                 "fxaaEdgeThresholdMin":  0.0833000019,
+                                                 "colorAdjustment":  {
+                                                                         "bloomTint":  [
+                                                                                           1,
+                                                                                           1,
+                                                                                           1,
+                                                                                           1
+                                                                                       ],
+                                                                         "desaturation":  0
+                                                                     },
+                                                 "sourcePostProcess":  {
+                                                                           "enabled":  true,
+                                                                           "toneCurve":  "UE3_CUSTOMIZABLE",
+                                                                           "toneScale":  0.899999976,
+                                                                           "toneRange":  8,
+                                                                           "toneToe":  1,
+                                                                           "highlights":  [
+                                                                                              1,
+                                                                                              1,
+                                                                                              1
+                                                                                          ],
+                                                                           "midtones":  [
+                                                                                            1,
+                                                                                            1.10000002,
+                                                                                            1
+                                                                                        ],
+                                                                           "shadows":  [
+                                                                                           0,
+                                                                                           0,
+                                                                                           0
+                                                                                       ],
+                                                                           "colorize":  [
+                                                                                            1,
+                                                                                            1,
+                                                                                            1
+                                                                                        ],
+                                                                           "desaturation":  0,
+                                                                           "colorGradingLut":  ""
+                                                                       }
+                                             },
+                         "displayName":  "Card maze - saved current baseline",
+                         "profileId":  "scene.kakulsaydon.compare.card-maze.v1",
+                         "exposureMultiplier":  1,
+                         "bloomIntensityMultiplier":  1,
+                         "mapLightIntensityMultiplier":  1,
+                         "light":  {
+                                       "type":  "directional",
+                                       "direction":  [
+                                                         0.479700267,
+                                                         -0.767138898,
+                                                         -0.425893813,
+                                                         0
+                                                     ],
+                                       "diffuse":  [
+                                                       0.639999986,
+                                                       0.646274507,
+                                                       0.800000012,
+                                                       1
+                                                   ],
+                                       "ambient":  [
+                                                       0.203921571,
+                                                       0.225490198,
+                                                       0.235294119,
+                                                       1
+                                                   ],
+                                       "specular":  [
+                                                        0.5,
+                                                        0.5,
+                                                        0.5,
+                                                        1
+                                                    ]
+                                   },
+                         "shadow":  {
+                                        "enabled":  false,
+                                        "focus":  [
+                                                      0,
+                                                      0,
+                                                      0
+                                                  ],
+                                        "distance":  80,
+                                        "orthographicWidth":  64,
+                                        "orthographicHeight":  64,
+                                        "near":  0.100000001,
+                                        "far":  180,
+                                        "depthBias":  0.00150000001,
+                                        "normalBias":  0.0250000004,
+                                        "strength":  0.699999988
+                                    },
+                         "fog":  {
+                                     "enabled":  true,
+                                     "color":  [
+                                                   0.0152941179,
+                                                   0.0294117648,
+                                                   0.0380392149,
+                                                   1
+                                               ],
+                                     "density":  0.0700000003,
+                                     "heightFalloff":  0.200000003,
+                                     "topHeight":  129.023163,
+                                     "startDistance":  80,
+                                     "maximumOpacity":  0.800000012,
+                                     "driftSpeed":  0,
+                                     "driftHeightAmplitude":  0,
+                                     "driftDensityAmplitude":  0,
+                                     "coveragePercent":  1,
+                                     "windDirectionX":  1,
+                                     "windDirectionZ":  0,
+                                     "windSpeed":  0,
+                                     "patchScale":  0.00999999978,
+                                     "patchSoftness":  0.150000006,
+                                     "sourceExponential":  {
+                                                               "inscatteringColor":  [
+                                                                                         0.0721568614,
+                                                                                         0.0470588244,
+                                                                                         0.100000001,
+                                                                                         1
+                                                                                     ],
+                                                               "lightDirection":  [
+                                                                                      -0.479700267,
+                                                                                      0.767138898,
+                                                                                      0.425893813,
+                                                                                      -0.5
+                                                                                  ]
+                                                           }
+                                 }
+                     },
+                     {
+                         "qualityOverride":  {
+                                                 "ssaoEnabled":  true,
+                                                 "ssaoRadius":  0.0399999991,
+                                                 "ssaoBias":  0,
+                                                 "ssaoIntensity":  0.689999998,
+                                                 "ssaoPower":  2.0999999,
+                                                 "ssaoDistanceFade":  132.5,
+                                                 "bloomEnabled":  true,
+                                                 "bloomThreshold":  0.699999988,
+                                                 "bloomSoftKnee":  1,
+                                                 "bloomIntensity":  0.899999976,
+                                                 "bloomScatter":  1,
+                                                 "exposure":  1,
+                                                 "whitePoint":  1,
+                                                 "gamma":  2.20000005,
+                                                 "fxaaEnabled":  true,
+                                                 "fxaaSubpixel":  0,
+                                                 "fxaaEdgeThreshold":  0.0311999992,
+                                                 "fxaaEdgeThresholdMin":  0.0183000006,
+                                                 "colorAdjustment":  {
+                                                                         "bloomTint":  [
+                                                                                           1,
+                                                                                           1,
+                                                                                           1,
+                                                                                           1
+                                                                                       ],
+                                                                         "desaturation":  0.100000001
+                                                                     },
+                                                 "sourcePostProcess":  {
+                                                                           "enabled":  true,
+                                                                           "toneCurve":  "UE3_CUSTOMIZABLE",
+                                                                           "toneScale":  0.800000012,
+                                                                           "toneRange":  8,
+                                                                           "toneToe":  0.600000024,
+                                                                           "highlights":  [
+                                                                                              1,
+                                                                                              1,
+                                                                                              1
+                                                                                          ],
+                                                                           "midtones":  [
+                                                                                            1.20000005,
+                                                                                            1,
+                                                                                            1
+                                                                                        ],
+                                                                           "shadows":  [
+                                                                                           0,
+                                                                                           0,
+                                                                                           0
+                                                                                       ],
+                                                                           "colorize":  [
+                                                                                            1,
+                                                                                            1,
+                                                                                            1
+                                                                                        ],
+                                                                           "desaturation":  0.100000001,
+                                                                           "colorGradingLut":  "Map/Lighting/Kouku/lv_lut_midnightc_lut_02.dds"
+                                                                       }
+                                             },
+                         "displayName":  "Gate 1 - source LUT02",
+                         "profileId":  "scene.kakulsaydon.compare.gate1.v1",
+                         "exposureMultiplier":  1,
+                         "bloomIntensityMultiplier":  1,
+                         "mapLightIntensityMultiplier":  1,
+                         "light":  {
+                                       "type":  "directional",
+                                       "direction":  [
+                                                         0.479700267,
+                                                         -0.767138898,
+                                                         -0.425893813,
+                                                         0
+                                                     ],
+                                       "diffuse":  [
+                                                       0,
+                                                       0,
+                                                       0,
+                                                       1
+                                                   ],
+                                       "ambient":  [
+                                                       0.203921571,
+                                                       0.225490198,
+                                                       0.235294119,
+                                                       1
+                                                   ],
+                                       "specular":  [
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        1
+                                                    ]
+                                   },
+                         "shadow":  {
+                                        "enabled":  false,
+                                        "focus":  [
+                                                      0,
+                                                      0,
+                                                      0
+                                                  ],
+                                        "distance":  80,
+                                        "orthographicWidth":  64,
+                                        "orthographicHeight":  64,
+                                        "near":  0.100000001,
+                                        "far":  180,
+                                        "depthBias":  0.00150000001,
+                                        "normalBias":  0.0250000004,
+                                        "strength":  0.699999988
+                                    },
+                         "fog":  {
+                                     "enabled":  true,
+                                     "color":  [
+                                                   0.134901956,
+                                                   0.174117655,
+                                                   0.200000003,
+                                                   1
+                                               ],
+                                     "density":  0.100000001,
+                                     "heightFalloff":  0.200000003,
+                                     "topHeight":  129.023163,
+                                     "startDistance":  16,
+                                     "maximumOpacity":  0.300000012,
+                                     "driftSpeed":  0,
+                                     "driftHeightAmplitude":  0,
+                                     "driftDensityAmplitude":  0,
+                                     "coveragePercent":  1,
+                                     "windDirectionX":  1,
+                                     "windDirectionZ":  0,
+                                     "windSpeed":  0,
+                                     "patchScale":  0.00999999978,
+                                     "patchSoftness":  0.150000006,
+                                     "sourceExponential":  {
+                                                               "inscatteringColor":  [
+                                                                                         0.480392158,
+                                                                                         0.249019608,
+                                                                                         0,
+                                                                                         1
+                                                                                     ],
+                                                               "lightDirection":  [
+                                                                                      -0.479700267,
+                                                                                      0.767138898,
+                                                                                      0.425893813,
+                                                                                      0.707106769
+                                                                                  ]
+                                                           }
+                                 }
+                     },
+                     {
+                         "qualityOverride":  {
+                                                 "ssaoEnabled":  true,
+                                                 "ssaoRadius":  0.0399999991,
+                                                 "ssaoBias":  0,
+                                                 "ssaoIntensity":  0.689999998,
+                                                 "ssaoPower":  2.0999999,
+                                                 "ssaoDistanceFade":  132.5,
+                                                 "bloomEnabled":  true,
+                                                 "bloomThreshold":  0.699999988,
+                                                 "bloomSoftKnee":  1,
+                                                 "bloomIntensity":  0.899999976,
+                                                 "bloomScatter":  1,
+                                                 "exposure":  1,
+                                                 "whitePoint":  1,
+                                                 "gamma":  2.20000005,
+                                                 "fxaaEnabled":  true,
+                                                 "fxaaSubpixel":  0,
+                                                 "fxaaEdgeThreshold":  0.0311999992,
+                                                 "fxaaEdgeThresholdMin":  0.0183000006,
+                                                 "colorAdjustment":  {
+                                                                         "bloomTint":  [
+                                                                                           1,
+                                                                                           1,
+                                                                                           1,
+                                                                                           1
+                                                                                       ],
+                                                                         "desaturation":  0.100000001
+                                                                     },
+                                                 "sourcePostProcess":  {
+                                                                           "enabled":  true,
+                                                                           "toneCurve":  "UE3_CUSTOMIZABLE",
+                                                                           "toneScale":  0.800000012,
+                                                                           "toneRange":  8,
+                                                                           "toneToe":  1,
+                                                                           "highlights":  [
+                                                                                              1,
+                                                                                              1,
+                                                                                              1
+                                                                                          ],
+                                                                           "midtones":  [
+                                                                                            1,
+                                                                                            1,
+                                                                                            1
+                                                                                        ],
+                                                                           "shadows":  [
+                                                                                           0,
+                                                                                           0,
+                                                                                           0
+                                                                                       ],
+                                                                           "colorize":  [
+                                                                                            1,
+                                                                                            1,
+                                                                                            1
+                                                                                        ],
+                                                                           "desaturation":  0.100000001,
+                                                                           "colorGradingLut":  ""
+                                                                       }
+                                             },
+                         "displayName":  "Gate 2 - source baseline",
+                         "profileId":  "scene.kakulsaydon.compare.gate2.v1",
+                         "exposureMultiplier":  1,
+                         "bloomIntensityMultiplier":  1,
+                         "mapLightIntensityMultiplier":  1,
+                         "light":  {
+                                       "type":  "directional",
+                                       "direction":  [
+                                                         0.479700267,
+                                                         -0.767138898,
+                                                         -0.425893813,
+                                                         0
+                                                     ],
+                                       "diffuse":  [
+                                                       0,
+                                                       0,
+                                                       0,
+                                                       1
+                                                   ],
+                                       "ambient":  [
+                                                       0.203921571,
+                                                       0.225490198,
+                                                       0.235294119,
+                                                       1
+                                                   ],
+                                       "specular":  [
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        1
+                                                    ]
+                                   },
+                         "shadow":  {
+                                        "enabled":  false,
+                                        "focus":  [
+                                                      0,
+                                                      0,
+                                                      0
+                                                  ],
+                                        "distance":  80,
+                                        "orthographicWidth":  64,
+                                        "orthographicHeight":  64,
+                                        "near":  0.100000001,
+                                        "far":  180,
+                                        "depthBias":  0.00150000001,
+                                        "normalBias":  0.0250000004,
+                                        "strength":  0.699999988
+                                    },
+                         "fog":  {
+                                     "enabled":  true,
+                                     "color":  [
+                                                   0.132666662,
+                                                   0.146666661,
+                                                   0.170000002,
+                                                   1
+                                               ],
+                                     "density":  0,
+                                     "heightFalloff":  0.200000003,
+                                     "topHeight":  129.023163,
+                                     "startDistance":  16,
+                                     "maximumOpacity":  0.300000012,
+                                     "driftSpeed":  0,
+                                     "driftHeightAmplitude":  0,
+                                     "driftDensityAmplitude":  0,
+                                     "coveragePercent":  1,
+                                     "windDirectionX":  1,
+                                     "windDirectionZ":  0,
+                                     "windSpeed":  0,
+                                     "patchScale":  0.00999999978,
+                                     "patchSoftness":  0.150000006,
+                                     "sourceExponential":  {
+                                                               "inscatteringColor":  [
+                                                                                         0,
+                                                                                         0,
+                                                                                         0,
+                                                                                         1
+                                                                                     ],
+                                                               "lightDirection":  [
+                                                                                      -0.479700267,
+                                                                                      0.767138898,
+                                                                                      0.425893813,
+                                                                                      0.707106769
+                                                                                  ]
+                                                           }
+                                 }
+                     },
+                     {
+                         "qualityOverride":  {
+                                                 "ssaoEnabled":  true,
+                                                 "ssaoRadius":  0.0399999991,
+                                                 "ssaoBias":  0,
+                                                 "ssaoIntensity":  0.689999998,
+                                                 "ssaoPower":  2.0999999,
+                                                 "ssaoDistanceFade":  132.5,
+                                                 "bloomEnabled":  true,
+                                                 "bloomThreshold":  0.699999988,
+                                                 "bloomSoftKnee":  1,
+                                                 "bloomIntensity":  0.899999976,
+                                                 "bloomScatter":  1,
+                                                 "exposure":  1,
+                                                 "whitePoint":  1,
+                                                 "gamma":  2.20000005,
+                                                 "fxaaEnabled":  true,
+                                                 "fxaaSubpixel":  0,
+                                                 "fxaaEdgeThreshold":  0.0311999992,
+                                                 "fxaaEdgeThresholdMin":  0.0183000006,
+                                                 "colorAdjustment":  {
+                                                                         "bloomTint":  [
+                                                                                           1,
+                                                                                           1,
+                                                                                           1,
+                                                                                           1
+                                                                                       ],
+                                                                         "desaturation":  0.125
+                                                                     },
+                                                 "sourcePostProcess":  {
+                                                                           "enabled":  true,
+                                                                           "toneCurve":  "UE3_CUSTOMIZABLE",
+                                                                           "toneScale":  1,
+                                                                           "toneRange":  8,
+                                                                           "toneToe":  0.800000012,
+                                                                           "highlights":  [
+                                                                                              1,
+                                                                                              1,
+                                                                                              1
+                                                                                          ],
+                                                                           "midtones":  [
+                                                                                            1,
+                                                                                            1,
+                                                                                            1
+                                                                                        ],
+                                                                           "shadows":  [
+                                                                                           0,
+                                                                                           0,
+                                                                                           0
+                                                                                       ],
+                                                                           "colorize":  [
+                                                                                            1,
+                                                                                            1,
+                                                                                            1
+                                                                                        ],
+                                                                           "desaturation":  0.125,
+                                                                           "colorGradingLut":  "Map/Lighting/Kouku/lv_lut_midnightc_lut_01.dds"
+                                                                       }
+                                             },
+                         "displayName":  "Gate 3 - source LUT01",
+                         "profileId":  "scene.kakulsaydon.compare.gate3.v1",
+                         "exposureMultiplier":  1,
+                         "bloomIntensityMultiplier":  1,
+                         "mapLightIntensityMultiplier":  1,
+                         "light":  {
+                                       "type":  "directional",
+                                       "direction":  [
+                                                         0.479700267,
+                                                         -0.767138898,
+                                                         -0.425893813,
+                                                         0
+                                                     ],
+                                       "diffuse":  [
+                                                       0,
+                                                       0,
+                                                       0,
+                                                       1
+                                                   ],
+                                       "ambient":  [
+                                                       0.203921571,
+                                                       0.225490198,
+                                                       0.235294119,
+                                                       1
+                                                   ],
+                                       "specular":  [
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        1
+                                                    ]
+                                   },
+                         "shadow":  {
+                                        "enabled":  false,
+                                        "focus":  [
+                                                      0,
+                                                      0,
+                                                      0
+                                                  ],
+                                        "distance":  80,
+                                        "orthographicWidth":  64,
+                                        "orthographicHeight":  64,
+                                        "near":  0.100000001,
+                                        "far":  180,
+                                        "depthBias":  0.00150000001,
+                                        "normalBias":  0.0250000004,
+                                        "strength":  0.699999988
+                                    },
+                         "fog":  {
+                                     "enabled":  true,
+                                     "color":  [
+                                                   0.134901956,
+                                                   0.174117655,
+                                                   0.200000003,
+                                                   1
+                                               ],
+                                     "density":  0.100000001,
+                                     "heightFalloff":  0.200000003,
+                                     "topHeight":  129.023163,
+                                     "startDistance":  16,
+                                     "maximumOpacity":  0.300000012,
+                                     "driftSpeed":  0,
+                                     "driftHeightAmplitude":  0,
+                                     "driftDensityAmplitude":  0,
+                                     "coveragePercent":  1,
+                                     "windDirectionX":  1,
+                                     "windDirectionZ":  0,
+                                     "windSpeed":  0,
+                                     "patchScale":  0.00999999978,
+                                     "patchSoftness":  0.150000006,
+                                     "sourceExponential":  {
+                                                               "inscatteringColor":  [
+                                                                                         0.480392158,
+                                                                                         0.249019608,
+                                                                                         0,
+                                                                                         1
+                                                                                     ],
+                                                               "lightDirection":  [
+                                                                                      -0.479700267,
+                                                                                      0.767138898,
+                                                                                      0.425893813,
+                                                                                      0.707106769
+                                                                                  ]
+                                                           }
+                                 }
+                     },
+                     {
+                         "qualityOverride":  {
+                                                 "ssaoEnabled":  true,
+                                                 "ssaoRadius":  0.0399999991,
+                                                 "ssaoBias":  0,
+                                                 "ssaoIntensity":  0.689999998,
+                                                 "ssaoPower":  2.0999999,
+                                                 "ssaoDistanceFade":  132.5,
+                                                 "bloomEnabled":  true,
+                                                 "bloomThreshold":  0.699999988,
+                                                 "bloomSoftKnee":  1,
+                                                 "bloomIntensity":  0.899999976,
+                                                 "bloomScatter":  1,
+                                                 "exposure":  1,
+                                                 "whitePoint":  1,
+                                                 "gamma":  2.20000005,
+                                                 "fxaaEnabled":  true,
+                                                 "fxaaSubpixel":  0,
+                                                 "fxaaEdgeThreshold":  0.0311999992,
+                                                 "fxaaEdgeThresholdMin":  0.0183000006,
+                                                 "colorAdjustment":  {
+                                                                         "bloomTint":  [
+                                                                                           1,
+                                                                                           1,
+                                                                                           1,
+                                                                                           1
+                                                                                       ],
+                                                                         "desaturation":  0
+                                                                     },
+                                                 "sourcePostProcess":  {
+                                                                           "enabled":  true,
+                                                                           "toneCurve":  "UE3_CUSTOMIZABLE",
+                                                                           "toneScale":  0.850000024,
+                                                                           "toneRange":  8,
+                                                                           "toneToe":  1,
+                                                                           "highlights":  [
+                                                                                              1,
+                                                                                              1,
+                                                                                              1
+                                                                                          ],
+                                                                           "midtones":  [
+                                                                                            1.10000002,
+                                                                                            1,
+                                                                                            1
+                                                                                        ],
+                                                                           "shadows":  [
+                                                                                           0,
+                                                                                           0,
+                                                                                           0
+                                                                                       ],
+                                                                           "colorize":  [
+                                                                                            1,
+                                                                                            1,
+                                                                                            1
+                                                                                        ],
+                                                                           "desaturation":  0.150000006,
+                                                                           "colorGradingLut":  ""
+                                                                       }
+                                             },
+                         "displayName":  "Start area - recovered source world",
+                         "profileId":  "scene.kakulsaydon.compare.start.v1",
+                         "exposureMultiplier":  1,
+                         "bloomIntensityMultiplier":  1,
+                         "mapLightIntensityMultiplier":  1,
+                         "light":  {
+                                       "type":  "directional",
+                                       "direction":  [
+                                                         0.479700267,
+                                                         -0.767138898,
+                                                         -0.425893813,
+                                                         0
+                                                     ],
+                                       "diffuse":  [
+                                                       0,
+                                                       0,
+                                                       0,
+                                                       1
+                                                   ],
+                                       "ambient":  [
+                                                       0.203921571,
+                                                       0.225490198,
+                                                       0.235294119,
+                                                       1
+                                                   ],
+                                       "specular":  [
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        1
+                                                    ]
+                                   },
+                         "shadow":  {
+                                        "enabled":  false,
+                                        "focus":  [
+                                                      0,
+                                                      0,
+                                                      0
+                                                  ],
+                                        "distance":  80,
+                                        "orthographicWidth":  64,
+                                        "orthographicHeight":  64,
+                                        "near":  0.100000001,
+                                        "far":  180,
+                                        "depthBias":  0.00150000001,
+                                        "normalBias":  0.0250000004,
+                                        "strength":  0.699999988
+                                    },
+                         "fog":  {
+                                     "enabled":  true,
+                                     "color":  [
+                                                   0.464313745,
+                                                   0.65882355,
+                                                   0.800000012,
+                                                   1
+                                               ],
+                                     "density":  0.150000006,
+                                     "heightFalloff":  0.0199999996,
+                                     "topHeight":  129.023163,
+                                     "startDistance":  17,
+                                     "maximumOpacity":  0.0500000007,
+                                     "driftSpeed":  0,
+                                     "driftHeightAmplitude":  0,
+                                     "driftDensityAmplitude":  0,
+                                     "coveragePercent":  1,
+                                     "windDirectionX":  1,
+                                     "windDirectionZ":  0,
+                                     "windSpeed":  0,
+                                     "patchScale":  0.00999999978,
+                                     "patchSoftness":  0.150000006,
+                                     "sourceExponential":  {
+                                                               "inscatteringColor":  [
+                                                                                         0,
+                                                                                         0,
+                                                                                         0,
+                                                                                         1
+                                                                                     ],
+                                                               "lightDirection":  [
+                                                                                      -0.479700267,
+                                                                                      0.767138898,
+                                                                                      0.425893813,
+                                                                                      -0.5
+                                                                                  ]
+                                                           }
+                                 }
+                     },
+                     {
                          "displayName":  "씬프로필_암전",
                          "profileId":  "scene.kakulsaydon.find-true-dark.v1",
-                         "exposureMultiplier":  0.550000012,
+                         "exposureMultiplier":  0.100000001,
                          "bloomIntensityMultiplier":  0.800000012,
-                         "mapLightIntensityMultiplier":  0.0500000007,
+                         "mapLightIntensityMultiplier":  0.5,
                          "light":  {
                                        "type":  "directional",
                                        "direction":  [
@@ -3969,21 +4694,21 @@
                      },
                      {
                          "qualityOverride":  {
-                                                 "ssaoEnabled":  true,
+                                                 "ssaoEnabled":  false,
                                                  "ssaoRadius":  0.75,
                                                  "ssaoBias":  0.0250000004,
                                                  "ssaoIntensity":  1,
                                                  "ssaoPower":  1.25,
                                                  "ssaoDistanceFade":  60,
                                                  "bloomEnabled":  true,
-                                                 "bloomThreshold":  1.39999998,
-                                                 "bloomSoftKnee":  0.449999988,
-                                                 "bloomIntensity":  0.200000003,
+                                                 "bloomThreshold":  1,
+                                                 "bloomSoftKnee":  0.5,
+                                                 "bloomIntensity":  0.800000012,
                                                  "bloomScatter":  1,
-                                                 "exposure":  1.20000005,
+                                                 "exposure":  2,
                                                  "whitePoint":  11.1999998,
                                                  "gamma":  2.20000005,
-                                                 "fxaaEnabled":  true,
+                                                 "fxaaEnabled":  false,
                                                  "fxaaSubpixel":  0.75,
                                                  "fxaaEdgeThreshold":  0.165999994,
                                                  "fxaaEdgeThresholdMin":  0.0833000019,
@@ -3995,11 +4720,40 @@
                                                                                            1
                                                                                        ],
                                                                          "desaturation":  0
-                                                                     }
+                                                                     },
+                                                 "sourcePostProcess":  {
+                                                                           "enabled":  true,
+                                                                           "toneCurve":  "UE3_CUSTOMIZABLE",
+                                                                           "toneScale":  0.850000024,
+                                                                           "toneRange":  8,
+                                                                           "toneToe":  1,
+                                                                           "highlights":  [
+                                                                                              1,
+                                                                                              1,
+                                                                                              1
+                                                                                          ],
+                                                                           "midtones":  [
+                                                                                            1.10000002,
+                                                                                            1,
+                                                                                            1
+                                                                                        ],
+                                                                           "shadows":  [
+                                                                                           0,
+                                                                                           0,
+                                                                                           0
+                                                                                       ],
+                                                                           "colorize":  [
+                                                                                            1,
+                                                                                            1,
+                                                                                            1
+                                                                                        ],
+                                                                           "desaturation":  0.150000006,
+                                                                           "colorGradingLut":  ""
+                                                                       }
                                              },
                          "profileId":  "scene.kakulsaydon.g1.base.v1",
-                         "exposureMultiplier":  1,
-                         "bloomIntensityMultiplier":  1,
+                         "exposureMultiplier":  0.5,
+                         "bloomIntensityMultiplier":  0,
                          "mapLightIntensityMultiplier":  1,
                          "light":  {
                                        "type":  "directional",
@@ -4010,9 +4764,9 @@
                                                          0
                                                      ],
                                        "diffuse":  [
-                                                       0.800000012,
-                                                       0.800000012,
-                                                       0.800000012,
+                                                       0,
+                                                       0,
+                                                       0,
                                                        1
                                                    ],
                                        "ambient":  [
@@ -4022,9 +4776,9 @@
                                                        1
                                                    ],
                                        "specular":  [
-                                                        0.5,
-                                                        0.5,
-                                                        0.5,
+                                                        0,
+                                                        0,
+                                                        0,
                                                         1
                                                     ]
                                    },
@@ -4133,20 +4887,26 @@
                                                                        ]
                                                                    ],
                                                         "directionalColor":  [
-                                                                                 0.800000012,
-                                                                                 0.800000012,
-                                                                                 0.800000012,
+                                                                                 0,
+                                                                                 0,
+                                                                                 0,
                                                                                  1
                                                                              ],
                                                         "ambientColor":  [
-                                                                             0.509803951,
-                                                                             0.563725471,
-                                                                             0.588235319,
+                                                                             0.203921571,
+                                                                             0.225490198,
+                                                                             0.235294119,
                                                                              1
                                                                          ],
                                                         "blendTimeIn":  1,
                                                         "blendTimeOut":  1,
                                                         "priority":  0,
+                                                        "specularColor":  [
+                                                                              0,
+                                                                              0,
+                                                                              0,
+                                                                              1
+                                                                          ],
                                                         "postProcess":  {
                                                                             "bloomThreshold":  0.699999988,
                                                                             "bloomIntensity":  0.899999976,
@@ -4184,7 +4944,7 @@
                                                                                                                        1
                                                                                                                    ],
                                                                                                       "desaturation":  0.100000001,
-                                                                                                      "colorGradingLut":  ""
+                                                                                                      "colorGradingLut":  "Map/Lighting/Kouku/lv_lut_midnightc_lut_02.dds"
                                                                                                   }
                                                                         },
                                                         "fog":  {
@@ -4264,20 +5024,26 @@
                                                                        ]
                                                                    ],
                                                         "directionalColor":  [
-                                                                                 0.800000012,
-                                                                                 0.800000012,
-                                                                                 0.800000012,
+                                                                                 0,
+                                                                                 0,
+                                                                                 0,
                                                                                  1
                                                                              ],
                                                         "ambientColor":  [
-                                                                             0.407843143,
-                                                                             0.450980395,
-                                                                             0.470588237,
+                                                                             0.203921571,
+                                                                             0.225490198,
+                                                                             0.235294119,
                                                                              1
                                                                          ],
                                                         "blendTimeIn":  1,
                                                         "blendTimeOut":  1,
                                                         "priority":  0,
+                                                        "specularColor":  [
+                                                                              0,
+                                                                              0,
+                                                                              0,
+                                                                              1
+                                                                          ],
                                                         "postProcess":  {
                                                                             "bloomThreshold":  0.699999988,
                                                                             "bloomIntensity":  0.899999976,
@@ -4315,7 +5081,7 @@
                                                                                                                        1
                                                                                                                    ],
                                                                                                       "desaturation":  0.125,
-                                                                                                      "colorGradingLut":  ""
+                                                                                                      "colorGradingLut":  "Map/Lighting/Kouku/lv_lut_midnightc_lut_01.dds"
                                                                                                   }
                                                                         },
                                                         "fog":  {
@@ -4409,6 +5175,12 @@
                                                         "blendTimeIn":  1,
                                                         "blendTimeOut":  1,
                                                         "priority":  0,
+                                                        "specularColor":  [
+                                                                              0.5,
+                                                                              0.5,
+                                                                              0.5,
+                                                                              1
+                                                                          ],
                                                         "postProcess":  {
                                                                             "bloomThreshold":  0.5,
                                                                             "bloomIntensity":  1,
@@ -4540,6 +5312,12 @@
                                                         "blendTimeIn":  1,
                                                         "blendTimeOut":  1,
                                                         "priority":  0,
+                                                        "specularColor":  [
+                                                                              0.5,
+                                                                              0.5,
+                                                                              0.5,
+                                                                              1
+                                                                          ],
                                                         "postProcess":  {
                                                                             "bloomThreshold":  0.699999988,
                                                                             "bloomIntensity":  0.899999976,
@@ -4671,6 +5449,12 @@
                                                         "blendTimeIn":  1,
                                                         "blendTimeOut":  1,
                                                         "priority":  0,
+                                                        "specularColor":  [
+                                                                              0.5,
+                                                                              0.5,
+                                                                              0.5,
+                                                                              1
+                                                                          ],
                                                         "postProcess":  {
                                                                             "bloomThreshold":  0.699999988,
                                                                             "bloomIntensity":  1.10000002,
@@ -4788,9 +5572,9 @@
                                                                        ]
                                                                    ],
                                                         "directionalColor":  [
-                                                                                 0.800000012,
-                                                                                 0.800000012,
-                                                                                 0.800000012,
+                                                                                 0,
+                                                                                 0,
+                                                                                 0,
                                                                                  1
                                                                              ],
                                                         "ambientColor":  [
@@ -4802,6 +5586,12 @@
                                                         "blendTimeIn":  3,
                                                         "blendTimeOut":  3,
                                                         "priority":  0,
+                                                        "specularColor":  [
+                                                                              0,
+                                                                              0,
+                                                                              0,
+                                                                              1
+                                                                          ],
                                                         "postProcess":  {
                                                                             "bloomThreshold":  0.699999988,
                                                                             "bloomIntensity":  0.899999976,
@@ -4919,9 +5709,9 @@
                                                                        ]
                                                                    ],
                                                         "directionalColor":  [
-                                                                                 0.800000012,
-                                                                                 0.800000012,
-                                                                                 0.800000012,
+                                                                                 0,
+                                                                                 0,
+                                                                                 0,
                                                                                  1
                                                                              ],
                                                         "ambientColor":  [
@@ -4933,6 +5723,12 @@
                                                         "blendTimeIn":  1,
                                                         "blendTimeOut":  1,
                                                         "priority":  0,
+                                                        "specularColor":  [
+                                                                              0,
+                                                                              0,
+                                                                              0,
+                                                                              1
+                                                                          ],
                                                         "postProcess":  {
                                                                             "bloomThreshold":  0.699999988,
                                                                             "bloomIntensity":  0.899999976,
@@ -5050,9 +5846,9 @@
                                                                        ]
                                                                    ],
                                                         "directionalColor":  [
-                                                                                 0.800000012,
-                                                                                 0.800000012,
-                                                                                 0.800000012,
+                                                                                 0,
+                                                                                 0,
+                                                                                 0,
                                                                                  1
                                                                              ],
                                                         "ambientColor":  [
@@ -5064,6 +5860,12 @@
                                                         "blendTimeIn":  1,
                                                         "blendTimeOut":  1,
                                                         "priority":  0,
+                                                        "specularColor":  [
+                                                                              0,
+                                                                              0,
+                                                                              0,
+                                                                              1
+                                                                          ],
                                                         "postProcess":  {
                                                                             "bloomThreshold":  0.699999988,
                                                                             "bloomIntensity":  0.899999976,
@@ -5195,6 +5997,41 @@
                                                         "blendTimeIn":  1,
                                                         "blendTimeOut":  1,
                                                         "priority":  0,
+                                                        "specularColor":  [
+                                                                              0.5,
+                                                                              0.5,
+                                                                              0.5,
+                                                                              1
+                                                                          ],
+                                                        "qualityOverride":  {
+                                                                                "ssaoEnabled":  false,
+                                                                                "ssaoRadius":  0.75,
+                                                                                "ssaoBias":  0.0250000004,
+                                                                                "ssaoIntensity":  1,
+                                                                                "ssaoPower":  1.25,
+                                                                                "ssaoDistanceFade":  60,
+                                                                                "bloomEnabled":  true,
+                                                                                "bloomThreshold":  1,
+                                                                                "bloomSoftKnee":  0.5,
+                                                                                "bloomIntensity":  0.800000012,
+                                                                                "bloomScatter":  1,
+                                                                                "exposure":  2,
+                                                                                "whitePoint":  11.1999998,
+                                                                                "gamma":  2.20000005,
+                                                                                "fxaaEnabled":  false,
+                                                                                "fxaaSubpixel":  0.75,
+                                                                                "fxaaEdgeThreshold":  0.165999994,
+                                                                                "fxaaEdgeThresholdMin":  0.0833000019,
+                                                                                "colorAdjustment":  {
+                                                                                                        "bloomTint":  [
+                                                                                                                          1,
+                                                                                                                          1,
+                                                                                                                          1,
+                                                                                                                          1
+                                                                                                                      ],
+                                                                                                        "desaturation":  0
+                                                                                                    }
+                                                                            },
                                                         "postProcess":  {
                                                                             "bloomThreshold":  0.699999988,
                                                                             "bloomIntensity":  0.899999976,
@@ -5326,6 +6163,12 @@
                                                         "blendTimeIn":  1,
                                                         "blendTimeOut":  1,
                                                         "priority":  0,
+                                                        "specularColor":  [
+                                                                              0.5,
+                                                                              0.5,
+                                                                              0.5,
+                                                                              1
+                                                                          ],
                                                         "postProcess":  {
                                                                             "bloomThreshold":  0.699999988,
                                                                             "bloomIntensity":  0.899999976,
@@ -5457,6 +6300,12 @@
                                                         "blendTimeIn":  1,
                                                         "blendTimeOut":  1,
                                                         "priority":  0,
+                                                        "specularColor":  [
+                                                                              0.5,
+                                                                              0.5,
+                                                                              0.5,
+                                                                              1
+                                                                          ],
                                                         "postProcess":  {
                                                                             "bloomThreshold":  0.699999988,
                                                                             "bloomIntensity":  0.899999976,
@@ -5540,21 +6389,21 @@
                                                          0
                                                      ],
                                        "diffuse":  [
-                                                       0.800000012,
-                                                       0.800000012,
-                                                       0.800000012,
+                                                       0,
+                                                       0,
+                                                       0,
                                                        1
                                                    ],
                                        "ambient":  [
-                                                       0.509803951,
-                                                       0.563725471,
-                                                       0.588235319,
+                                                       0.203921571,
+                                                       0.225490198,
+                                                       0.235294119,
                                                        1
                                                    ],
                                        "specular":  [
-                                                        0.5,
-                                                        0.5,
-                                                        0.5,
+                                                        0,
+                                                        0,
+                                                        0,
                                                         1
                                                     ]
                                    },
@@ -5610,7 +6459,146 @@
                                                                                       0.707106769
                                                                                   ]
                                                            }
-                                 }
+                                 },
+                         "environmentRegions":  [
+                                                    {
+                                                        "regionId":  "kouku.ps.environment.47",
+                                                        "boundsMinimum":  [
+                                                                              -81.9015503,
+                                                                              -81.9014282,
+                                                                              655.383545
+                                                                          ],
+                                                        "boundsMaximum":  [
+                                                                              81.9015808,
+                                                                              81.9022827,
+                                                                              819.17627
+                                                                          ],
+                                                        "planes":  [
+                                                                       [
+                                                                           -1,
+                                                                           0,
+                                                                           0,
+                                                                           -81.9015503
+                                                                       ],
+                                                                       [
+                                                                           0,
+                                                                           0,
+                                                                           -1,
+                                                                           655.383545
+                                                                       ],
+                                                                       [
+                                                                           1,
+                                                                           0,
+                                                                           0,
+                                                                           -81.9015808
+                                                                       ],
+                                                                       [
+                                                                           0,
+                                                                           0,
+                                                                           1,
+                                                                           -819.17627
+                                                                       ],
+                                                                       [
+                                                                           0,
+                                                                           1,
+                                                                           0,
+                                                                           -81.9022827
+                                                                       ],
+                                                                       [
+                                                                           0,
+                                                                           -1,
+                                                                           0,
+                                                                           -81.9014282
+                                                                       ]
+                                                                   ],
+                                                        "directionalColor":  [
+                                                                                 0,
+                                                                                 0,
+                                                                                 0,
+                                                                                 1
+                                                                             ],
+                                                        "ambientColor":  [
+                                                                             0.203921571,
+                                                                             0.225490198,
+                                                                             0.235294119,
+                                                                             1
+                                                                         ],
+                                                        "blendTimeIn":  1,
+                                                        "blendTimeOut":  1,
+                                                        "priority":  0,
+                                                        "specularColor":  [
+                                                                              0,
+                                                                              0,
+                                                                              0,
+                                                                              1
+                                                                          ],
+                                                        "postProcess":  {
+                                                                            "bloomThreshold":  0.699999988,
+                                                                            "bloomIntensity":  0.899999976,
+                                                                            "bloomTint":  [
+                                                                                              1,
+                                                                                              1,
+                                                                                              1,
+                                                                                              1
+                                                                                          ],
+                                                                            "desaturation":  0.100000001,
+                                                                            "sourcePostProcess":  {
+                                                                                                      "enabled":  true,
+                                                                                                      "toneCurve":  "UE3_CUSTOMIZABLE",
+                                                                                                      "toneScale":  0.800000012,
+                                                                                                      "toneRange":  8,
+                                                                                                      "toneToe":  0.600000024,
+                                                                                                      "highlights":  [
+                                                                                                                         1,
+                                                                                                                         1,
+                                                                                                                         1
+                                                                                                                     ],
+                                                                                                      "midtones":  [
+                                                                                                                       1.20000005,
+                                                                                                                       1,
+                                                                                                                       1
+                                                                                                                   ],
+                                                                                                      "shadows":  [
+                                                                                                                      0,
+                                                                                                                      0,
+                                                                                                                      0
+                                                                                                                  ],
+                                                                                                      "colorize":  [
+                                                                                                                       1,
+                                                                                                                       1,
+                                                                                                                       1
+                                                                                                                   ],
+                                                                                                      "desaturation":  0.100000001,
+                                                                                                      "colorGradingLut":  "Map/Lighting/Kouku/lv_lut_midnightc_lut_02.dds"
+                                                                                                  }
+                                                                        },
+                                                        "fog":  {
+                                                                    "density":  0.100000001,
+                                                                    "heightFalloff":  0.200000003,
+                                                                    "topHeight":  129.023163,
+                                                                    "startDistance":  16,
+                                                                    "maximumOpacity":  0.300000012,
+                                                                    "color":  [
+                                                                                  0.134901956,
+                                                                                  0.174117655,
+                                                                                  0.200000003,
+                                                                                  1
+                                                                              ],
+                                                                    "inscatteringColor":  [
+                                                                                              0.480392158,
+                                                                                              0.249019608,
+                                                                                              0,
+                                                                                              1
+                                                                                          ],
+                                                                    "lightDirection":  [
+                                                                                           -0.479700267,
+                                                                                           0.767138898,
+                                                                                           0.425893813,
+                                                                                           0.707106769
+                                                                                       ]
+                                                                }
+                                                    }
+                                                ]
                      },
                      {
                          "displayName":  "1관문 팝업북 환경",
@@ -5627,21 +6615,21 @@
                                                          0
                                                      ],
                                        "diffuse":  [
-                                                       0.800000012,
-                                                       0.800000012,
-                                                       0.800000012,
+                                                       0,
+                                                       0,
+                                                       0,
                                                        1
                                                    ],
                                        "ambient":  [
-                                                       0.407843143,
-                                                       0.450980395,
-                                                       0.470588237,
+                                                       0.203921571,
+                                                       0.225490198,
+                                                       0.235294119,
                                                        1
                                                    ],
                                        "specular":  [
-                                                        0.5,
-                                                        0.5,
-                                                        0.5,
+                                                        0,
+                                                        0,
+                                                        0,
                                                         1
                                                     ]
                                    },
@@ -5697,7 +6685,146 @@
                                                                                       0.707106769
                                                                                   ]
                                                            }
-                                 }
+                                 },
+                         "environmentRegions":  [
+                                                    {
+                                                        "regionId":  "kouku.ps.environment.47",
+                                                        "boundsMinimum":  [
+                                                                              -81.9015503,
+                                                                              -81.9014282,
+                                                                              655.383545
+                                                                          ],
+                                                        "boundsMaximum":  [
+                                                                              81.9015808,
+                                                                              81.9022827,
+                                                                              819.17627
+                                                                          ],
+                                                        "planes":  [
+                                                                       [
+                                                                           -1,
+                                                                           0,
+                                                                           0,
+                                                                           -81.9015503
+                                                                       ],
+                                                                       [
+                                                                           0,
+                                                                           0,
+                                                                           -1,
+                                                                           655.383545
+                                                                       ],
+                                                                       [
+                                                                           1,
+                                                                           0,
+                                                                           0,
+                                                                           -81.9015808
+                                                                       ],
+                                                                       [
+                                                                           0,
+                                                                           0,
+                                                                           1,
+                                                                           -819.17627
+                                                                       ],
+                                                                       [
+                                                                           0,
+                                                                           1,
+                                                                           0,
+                                                                           -81.9022827
+                                                                       ],
+                                                                       [
+                                                                           0,
+                                                                           -1,
+                                                                           0,
+                                                                           -81.9014282
+                                                                       ]
+                                                                   ],
+                                                        "directionalColor":  [
+                                                                                 0,
+                                                                                 0,
+                                                                                 0,
+                                                                                 1
+                                                                             ],
+                                                        "ambientColor":  [
+                                                                             0.203921571,
+                                                                             0.225490198,
+                                                                             0.235294119,
+                                                                             1
+                                                                         ],
+                                                        "blendTimeIn":  1,
+                                                        "blendTimeOut":  1,
+                                                        "priority":  0,
+                                                        "specularColor":  [
+                                                                              0,
+                                                                              0,
+                                                                              0,
+                                                                              1
+                                                                          ],
+                                                        "postProcess":  {
+                                                                            "bloomThreshold":  0.699999988,
+                                                                            "bloomIntensity":  0.899999976,
+                                                                            "bloomTint":  [
+                                                                                              1,
+                                                                                              1,
+                                                                                              1,
+                                                                                              1
+                                                                                          ],
+                                                                            "desaturation":  0.100000001,
+                                                                            "sourcePostProcess":  {
+                                                                                                      "enabled":  true,
+                                                                                                      "toneCurve":  "UE3_CUSTOMIZABLE",
+                                                                                                      "toneScale":  0.800000012,
+                                                                                                      "toneRange":  8,
+                                                                                                      "toneToe":  0.600000024,
+                                                                                                      "highlights":  [
+                                                                                                                         1,
+                                                                                                                         1,
+                                                                                                                         1
+                                                                                                                     ],
+                                                                                                      "midtones":  [
+                                                                                                                       1.20000005,
+                                                                                                                       1,
+                                                                                                                       1
+                                                                                                                   ],
+                                                                                                      "shadows":  [
+                                                                                                                      0,
+                                                                                                                      0,
+                                                                                                                      0
+                                                                                                                  ],
+                                                                                                      "colorize":  [
+                                                                                                                       1,
+                                                                                                                       1,
+                                                                                                                       1
+                                                                                                                   ],
+                                                                                                      "desaturation":  0.100000001,
+                                                                                                      "colorGradingLut":  "Map/Lighting/Kouku/lv_lut_midnightc_lut_02.dds"
+                                                                                                  }
+                                                                        },
+                                                        "fog":  {
+                                                                    "density":  0.100000001,
+                                                                    "heightFalloff":  0.200000003,
+                                                                    "topHeight":  129.023163,
+                                                                    "startDistance":  16,
+                                                                    "maximumOpacity":  0.300000012,
+                                                                    "color":  [
+                                                                                  0.134901956,
+                                                                                  0.174117655,
+                                                                                  0.200000003,
+                                                                                  1
+                                                                              ],
+                                                                    "inscatteringColor":  [
+                                                                                              0.480392158,
+                                                                                              0.249019608,
+                                                                                              0,
+                                                                                              1
+                                                                                          ],
+                                                                    "lightDirection":  [
+                                                                                           -0.479700267,
+                                                                                           0.767138898,
+                                                                                           0.425893813,
+                                                                                           0.707106769
+                                                                                       ]
+                                                                }
+                                                    }
+                                                ]
                      },
                      {
                          "displayName":  "1관문_스포트라이트 무대",
@@ -5857,7 +6984,146 @@
                                                                                       -0.5
                                                                                   ]
                                                            }
-                                 }
+                                 },
+                         "environmentRegions":  [
+                                                    {
+                                                        "regionId":  "kouku.ps.environment.48",
+                                                        "boundsMinimum":  [
+                                                                              -81.9015503,
+                                                                              -81.9014282,
+                                                                              860.183533
+                                                                          ],
+                                                        "boundsMaximum":  [
+                                                                              81.9015808,
+                                                                              81.9022827,
+                                                                              1023.97626
+                                                                          ],
+                                                        "planes":  [
+                                                                       [
+                                                                           -1,
+                                                                           0,
+                                                                           0,
+                                                                           -81.9015503
+                                                                       ],
+                                                                       [
+                                                                           0,
+                                                                           0,
+                                                                           -1,
+                                                                           860.183533
+                                                                       ],
+                                                                       [
+                                                                           1,
+                                                                           0,
+                                                                           0,
+                                                                           -81.9015808
+                                                                       ],
+                                                                       [
+                                                                           0,
+                                                                           0,
+                                                                           1,
+                                                                           -1023.97626
+                                                                       ],
+                                                                       [
+                                                                           0,
+                                                                           1,
+                                                                           0,
+                                                                           -81.9022827
+                                                                       ],
+                                                                       [
+                                                                           0,
+                                                                           -1,
+                                                                           0,
+                                                                           -81.9014282
+                                                                       ]
+                                                                   ],
+                                                        "directionalColor":  [
+                                                                                 0,
+                                                                                 0,
+                                                                                 0,
+                                                                                 1
+                                                                             ],
+                                                        "ambientColor":  [
+                                                                             0,
+                                                                             0,
+                                                                             0,
+                                                                             1
+                                                                         ],
+                                                        "blendTimeIn":  1,
+                                                        "blendTimeOut":  1,
+                                                        "priority":  0,
+                                                        "specularColor":  [
+                                                                              0,
+                                                                              0,
+                                                                              0,
+                                                                              1
+                                                                          ],
+                                                        "postProcess":  {
+                                                                            "bloomThreshold":  0.699999988,
+                                                                            "bloomIntensity":  0.899999976,
+                                                                            "bloomTint":  [
+                                                                                              1,
+                                                                                              1,
+                                                                                              1,
+                                                                                              1
+                                                                                          ],
+                                                                            "desaturation":  0.125,
+                                                                            "sourcePostProcess":  {
+                                                                                                      "enabled":  true,
+                                                                                                      "toneCurve":  "UE3_CUSTOMIZABLE",
+                                                                                                      "toneScale":  1,
+                                                                                                      "toneRange":  8,
+                                                                                                      "toneToe":  0.800000012,
+                                                                                                      "highlights":  [
+                                                                                                                         1,
+                                                                                                                         1,
+                                                                                                                         1
+                                                                                                                     ],
+                                                                                                      "midtones":  [
+                                                                                                                       1,
+                                                                                                                       1,
+                                                                                                                       1
+                                                                                                                   ],
+                                                                                                      "shadows":  [
+                                                                                                                      0,
+                                                                                                                      0,
+                                                                                                                      0
+                                                                                                                  ],
+                                                                                                      "colorize":  [
+                                                                                                                       1,
+                                                                                                                       1,
+                                                                                                                       1
+                                                                                                                   ],
+                                                                                                      "desaturation":  0.125,
+                                                                                                      "colorGradingLut":  "Map/Lighting/Kouku/lv_lut_midnightc_lut_01.dds"
+                                                                                                  }
+                                                                        },
+                                                        "fog":  {
+                                                                    "density":  0.100000001,
+                                                                    "heightFalloff":  0.200000003,
+                                                                    "topHeight":  129.023163,
+                                                                    "startDistance":  16,
+                                                                    "maximumOpacity":  0.300000012,
+                                                                    "color":  [
+                                                                                  0.134901956,
+                                                                                  0.174117655,
+                                                                                  0.200000003,
+                                                                                  1
+                                                                              ],
+                                                                    "inscatteringColor":  [
+                                                                                              0.480392158,
+                                                                                              0.249019608,
+                                                                                              0,
+                                                                                              1
+                                                                                          ],
+                                                                    "lightDirection":  [
+                                                                                           -0.479700267,
+                                                                                           0.767138898,
+                                                                                           0.425893813,
+                                                                                           0.707106769
+                                                                                       ]
+                                                                }
+                                                    }
+                                                ]
                      },
                      {
                          "qualityOverride":  {
@@ -5932,9 +7198,9 @@
                                                          0
                                                      ],
                                        "diffuse":  [
-                                                       0.800000012,
-                                                       0.800000012,
-                                                       0.800000012,
+                                                       0,
+                                                       0,
+                                                       0,
                                                        1
                                                    ],
                                        "ambient":  [
@@ -5944,9 +7210,9 @@
                                                        1
                                                    ],
                                        "specular":  [
-                                                        0.5,
-                                                        0.5,
-                                                        0.5,
+                                                        0,
+                                                        0,
+                                                        0,
                                                         1
                                                     ]
                                    },
@@ -6055,20 +7321,26 @@
                                                                        ]
                                                                    ],
                                                         "directionalColor":  [
-                                                                                 0.800000012,
-                                                                                 0.800000012,
-                                                                                 0.800000012,
+                                                                                 0,
+                                                                                 0,
+                                                                                 0,
                                                                                  1
                                                                              ],
                                                         "ambientColor":  [
-                                                                             0.509803951,
-                                                                             0.563725471,
-                                                                             0.588235319,
+                                                                             0.203921571,
+                                                                             0.225490198,
+                                                                             0.235294119,
                                                                              1
                                                                          ],
                                                         "blendTimeIn":  1,
                                                         "blendTimeOut":  1,
                                                         "priority":  0,
+                                                        "specularColor":  [
+                                                                              0,
+                                                                              0,
+                                                                              0,
+                                                                              1
+                                                                          ],
                                                         "postProcess":  {
                                                                             "bloomThreshold":  0.699999988,
                                                                             "bloomIntensity":  0.899999976,
@@ -6106,7 +7378,7 @@
                                                                                                                        1
                                                                                                                    ],
                                                                                                       "desaturation":  0.100000001,
-                                                                                                      "colorGradingLut":  ""
+                                                                                                      "colorGradingLut":  "Map/Lighting/Kouku/lv_lut_midnightc_lut_02.dds"
                                                                                                   }
                                                                         },
                                                         "fog":  {
@@ -6186,20 +7458,26 @@
                                                                        ]
                                                                    ],
                                                         "directionalColor":  [
-                                                                                 0.800000012,
-                                                                                 0.800000012,
-                                                                                 0.800000012,
+                                                                                 0,
+                                                                                 0,
+                                                                                 0,
                                                                                  1
                                                                              ],
                                                         "ambientColor":  [
-                                                                             0.407843143,
-                                                                             0.450980395,
-                                                                             0.470588237,
+                                                                             0.203921571,
+                                                                             0.225490198,
+                                                                             0.235294119,
                                                                              1
                                                                          ],
                                                         "blendTimeIn":  1,
                                                         "blendTimeOut":  1,
                                                         "priority":  0,
+                                                        "specularColor":  [
+                                                                              0,
+                                                                              0,
+                                                                              0,
+                                                                              1
+                                                                          ],
                                                         "postProcess":  {
                                                                             "bloomThreshold":  0.699999988,
                                                                             "bloomIntensity":  0.899999976,
@@ -6237,7 +7515,7 @@
                                                                                                                        1
                                                                                                                    ],
                                                                                                       "desaturation":  0.125,
-                                                                                                      "colorGradingLut":  ""
+                                                                                                      "colorGradingLut":  "Map/Lighting/Kouku/lv_lut_midnightc_lut_01.dds"
                                                                                                   }
                                                                         },
                                                         "fog":  {
@@ -6331,6 +7609,12 @@
                                                         "blendTimeIn":  1,
                                                         "blendTimeOut":  1,
                                                         "priority":  0,
+                                                        "specularColor":  [
+                                                                              0.5,
+                                                                              0.5,
+                                                                              0.5,
+                                                                              1
+                                                                          ],
                                                         "postProcess":  {
                                                                             "bloomThreshold":  0.5,
                                                                             "bloomIntensity":  1,
@@ -6462,6 +7746,12 @@
                                                         "blendTimeIn":  1,
                                                         "blendTimeOut":  1,
                                                         "priority":  0,
+                                                        "specularColor":  [
+                                                                              0.5,
+                                                                              0.5,
+                                                                              0.5,
+                                                                              1
+                                                                          ],
                                                         "postProcess":  {
                                                                             "bloomThreshold":  0.699999988,
                                                                             "bloomIntensity":  0.899999976,
@@ -6593,6 +7883,12 @@
                                                         "blendTimeIn":  1,
                                                         "blendTimeOut":  1,
                                                         "priority":  0,
+                                                        "specularColor":  [
+                                                                              0.5,
+                                                                              0.5,
+                                                                              0.5,
+                                                                              1
+                                                                          ],
                                                         "postProcess":  {
                                                                             "bloomThreshold":  0.699999988,
                                                                             "bloomIntensity":  1.10000002,
@@ -6710,9 +8006,9 @@
                                                                        ]
                                                                    ],
                                                         "directionalColor":  [
-                                                                                 0.800000012,
-                                                                                 0.800000012,
-                                                                                 0.800000012,
+                                                                                 0,
+                                                                                 0,
+                                                                                 0,
                                                                                  1
                                                                              ],
                                                         "ambientColor":  [
@@ -6724,6 +8020,12 @@
                                                         "blendTimeIn":  3,
                                                         "blendTimeOut":  3,
                                                         "priority":  0,
+                                                        "specularColor":  [
+                                                                              0,
+                                                                              0,
+                                                                              0,
+                                                                              1
+                                                                          ],
                                                         "postProcess":  {
                                                                             "bloomThreshold":  0.699999988,
                                                                             "bloomIntensity":  0.899999976,
@@ -6841,9 +8143,9 @@
                                                                        ]
                                                                    ],
                                                         "directionalColor":  [
-                                                                                 0.800000012,
-                                                                                 0.800000012,
-                                                                                 0.800000012,
+                                                                                 0,
+                                                                                 0,
+                                                                                 0,
                                                                                  1
                                                                              ],
                                                         "ambientColor":  [
@@ -6855,6 +8157,12 @@
                                                         "blendTimeIn":  1,
                                                         "blendTimeOut":  1,
                                                         "priority":  0,
+                                                        "specularColor":  [
+                                                                              0,
+                                                                              0,
+                                                                              0,
+                                                                              1
+                                                                          ],
                                                         "postProcess":  {
                                                                             "bloomThreshold":  0.699999988,
                                                                             "bloomIntensity":  0.899999976,
@@ -6972,9 +8280,9 @@
                                                                        ]
                                                                    ],
                                                         "directionalColor":  [
-                                                                                 0.800000012,
-                                                                                 0.800000012,
-                                                                                 0.800000012,
+                                                                                 0,
+                                                                                 0,
+                                                                                 0,
                                                                                  1
                                                                              ],
                                                         "ambientColor":  [
@@ -6986,6 +8294,12 @@
                                                         "blendTimeIn":  1,
                                                         "blendTimeOut":  1,
                                                         "priority":  0,
+                                                        "specularColor":  [
+                                                                              0,
+                                                                              0,
+                                                                              0,
+                                                                              1
+                                                                          ],
                                                         "postProcess":  {
                                                                             "bloomThreshold":  0.699999988,
                                                                             "bloomIntensity":  0.899999976,
@@ -7117,9 +8431,44 @@
                                                         "blendTimeIn":  1,
                                                         "blendTimeOut":  1,
                                                         "priority":  0,
+                                                        "specularColor":  [
+                                                                              0.5,
+                                                                              0.5,
+                                                                              0.5,
+                                                                              1
+                                                                          ],
+                                                        "qualityOverride":  {
+                                                                                "ssaoEnabled":  false,
+                                                                                "ssaoRadius":  0.75,
+                                                                                "ssaoBias":  0.0250000004,
+                                                                                "ssaoIntensity":  1,
+                                                                                "ssaoPower":  1.25,
+                                                                                "ssaoDistanceFade":  60,
+                                                                                "bloomEnabled":  true,
+                                                                                "bloomThreshold":  1,
+                                                                                "bloomSoftKnee":  0.5,
+                                                                                "bloomIntensity":  0,
+                                                                                "bloomScatter":  1,
+                                                                                "exposure":  1,
+                                                                                "whitePoint":  11.1999998,
+                                                                                "gamma":  2.20000005,
+                                                                                "fxaaEnabled":  false,
+                                                                                "fxaaSubpixel":  0.75,
+                                                                                "fxaaEdgeThreshold":  0.165999994,
+                                                                                "fxaaEdgeThresholdMin":  0.0833000019,
+                                                                                "colorAdjustment":  {
+                                                                                                        "bloomTint":  [
+                                                                                                                          1,
+                                                                                                                          1,
+                                                                                                                          1,
+                                                                                                                          1
+                                                                                                                      ],
+                                                                                                        "desaturation":  0
+                                                                                                    }
+                                                                            },
                                                         "postProcess":  {
                                                                             "bloomThreshold":  0.699999988,
-                                                                            "bloomIntensity":  0.899999976,
+                                                                            "bloomIntensity":  0,
                                                                             "bloomTint":  [
                                                                                               1,
                                                                                               1,
@@ -7248,6 +8597,12 @@
                                                         "blendTimeIn":  1,
                                                         "blendTimeOut":  1,
                                                         "priority":  0,
+                                                        "specularColor":  [
+                                                                              0.5,
+                                                                              0.5,
+                                                                              0.5,
+                                                                              1
+                                                                          ],
                                                         "postProcess":  {
                                                                             "bloomThreshold":  0.699999988,
                                                                             "bloomIntensity":  0.899999976,
@@ -7379,6 +8734,12 @@
                                                         "blendTimeIn":  1,
                                                         "blendTimeOut":  1,
                                                         "priority":  0,
+                                                        "specularColor":  [
+                                                                              0.5,
+                                                                              0.5,
+                                                                              0.5,
+                                                                              1
+                                                                          ],
                                                         "postProcess":  {
                                                                             "bloomThreshold":  0.699999988,
                                                                             "bloomIntensity":  0.899999976,

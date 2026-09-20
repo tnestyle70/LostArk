@@ -54,6 +54,12 @@ public:
 	void Set_MapLightAuthoringOverride(std::shared_ptr<CMapLightPresentationRuntime> lights);
 	// Called once after Composition Seek/Stop, immediately before world rendering.
 	void Submit_MapLightFrame();
+	// Session-only comparison; authoring documents and gate light transforms stay intact.
+	enum class MAP_LIGHT_COMPARISON { CURRENT, SOURCE_IMPORT, DISABLED };
+	bool_t Set_MapLightComparison(MAP_LIGHT_COMPARISON mode, std::string& outStatus);
+	MAP_LIGHT_COMPARISON Get_MapLightComparison() const { return m_eMapLightComparison; }
+	void Reset_MapLightComparison();
+	uint64_t Get_MapLightComparisonFingerprint() const;
 	bool_t Reload_MapLights();
 	struct KAKUL_STAGE_MARKER final
 	{
@@ -175,7 +181,8 @@ public:
 	void Debug_ReturnToPlayerCamera();
 	void Debug_SetSequenceCombatPending(bool_t pending);
 	void Debug_HoldSequenceCombatFade();
-	const string& Get_GatePresentationProfileId() const { return m_strGatePresentationProfileId; }
+	// Includes only this client's Server-admitted Mario presentation override.
+	const string& Get_GatePresentationProfileId() const;
 	bool_t Apply_ServerRaidGatePresentation(const std::string& gateId, std::uint32_t epoch, std::string& status);
 	bool_t Begin_ServerRaidCinematicPresentation(std::string& status);
 	bool_t End_ServerRaidCinematicPresentation(bool_t restorePrevious, std::string& status);
@@ -457,6 +464,13 @@ private:
 	   suppress the bridges before the first rendered frame instead of letting
 	   them appear already unfolded. */
 	CDeployPropRuntime m_DeployRuntime;
+	MAP_LIGHT_COMPARISON m_eMapLightComparison = MAP_LIGHT_COMPARISON::CURRENT;
+	std::shared_ptr<CMapLightPresentationRuntime> m_pMapLightComparisonSource;
+	std::shared_ptr<CMapLightPresentationRuntime> m_pMapLightComparisonGate;
+#ifdef _DEBUG
+	std::shared_ptr<CMapLightPresentationRuntime> m_pMapLightComparisonPopup;
+#endif
+	size_t m_iMapLightComparisonGate = 0u;
 	std::shared_ptr<CMapLightPresentationRuntime> m_pMapLightPresentation;
 	std::shared_ptr<CMapLightPresentationRuntime> m_pMapLightAuthoringOverride;
 #ifdef _DEBUG
@@ -471,7 +485,7 @@ private:
 	bool_t m_bWorldObjectReloadPending = false;
 	struct OWNED_WORLD_CUE final
 	{
-		std::uint32_t runEpoch = 0, startTick = 0, durationMs = 0;
+		std::uint32_t runEpoch = 0, patternSequence = 0, startTick = 0, durationMs = 0;
 		std::string memberId, cueId, occurrenceId, sequenceId;
 		float clockMs = 0.f;
 		bool untilDestroyed = false;

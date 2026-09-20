@@ -2554,6 +2554,35 @@ lease에 연결한다. 저장된 DURATION은 timing 존재와 PRODUCT 의미의 
   pattern animation lane이 없을 수 있다. 그때 문서의 SourceModelPreview를 기존 sampler로
   Effect-local clock에서 읽는다. 정상 pattern lane을 바꾸거나 현재 pose로 오류를 덮지 않는다.
 
+
+### 쿠크 룰렛·World cue·마리오 연출 회귀 방지
+
+- 동적 지지면을 교체할 때 source root-motion 보스도 이전/새 지면 높이 차를 한 번 받아야 한다. 곡선의 지면 상대 높이는 유지하고 새 지지면과 옛 actor Y로 음수 시작 offset을 만들지 않는다. 반복 시작의 spawn reset도 활성 지지면을 소비한다.
+- charge 목적지가 walkable이어도 이동 경로는 막혀 있을 수 있다. 시작부터 목적지까지 `Has_LineOfSight`와 traversal을 함께 검사하고 막힌 경우 마지막 유효 지점까지만 이동한다.
+- 비동기 V1 준비 중인 World cue는 수명 안에서 재시도한다. 뒤따르는 motion cue도 준비 중인 실제 birth를 기다리며 invalid resource와 준비 중 상태를 구분한다.
+- Mario parent와 phase 2는 같은 run/member를 재사용한다. member 종료의 `iPatternSequence`를 전달·소비해 다음 패턴을 영구 차단하지 않는다. run 전체 종료와 특정 cue 파괴의 우선순위는 유지한다.
+- Mario intro의 room broadcast는 모든 플레이어의 카메라 소유권을 뜻하지 않는다. 로컬 snapshot `iMarioStage`와 해당 intro를 대조하고 실제 선택된 timed camera만 입력을 막는다.
+
+소스·집중 검사·Product 빌드·사용자 화면 확인은09-18 쿠크 패턴 재생 복구 RESULT G09 이후에서 구분한다.
+
+### native animationTrail의 비활성 SourceRecipe도 carrier 계약이다
+
+- `animationTrailBakedEdgeV1`에 recovered native material을 설치할 때 `SourceRecipe.enabled=false`라는 이유로 rendererShape를 무시하지 않는다. material admission은 typed carrier와 `rendererShape=animationTrail`을 함께 검사한다. 이전 sprite metadata가 남으면 GPU 이전에 전체 Effect가 거부될 수 있다.
+- 실제 실패 element의 stable ID·native program·carrier를 대조하고 해당 field만 교정한다. validator를 느슨하게 하거나 shader alpha를 바꾸지 않는다. 재질 승인, product load-stage, 실제 edge playback과 사용자 GPU 표시를 따로 검증한다. 발탄420633의3개 오류와 근거는09-18 KOUKU_PATTERN_RUNTIME_REPAIR_RESULT G09에 기록했다.
+
+### 쿠크 바닥·보스 표면·전투 선준비의 원본 대조
+
+- 각진 보스를 낮은 LOD라고 단정하지 않는다. 설치 모델과 원본 LOD0의 모든 삼각형 위치·UV를 대조하고 정점 N/T가 면 법선으로 덮였는지 먼저 확인한다. source tangent.w도 보존해야 mirrored UV의 normal map 방향이 맞는다. WINT 1.5 후보는 기존 CModel decoder로 검증하며 골격·클립·재질·인덱스 보존과 화면 품질을 구분한다.
+- 원본 LUT의 존재, volume의 실제 override BoolProperty, 참조 index를 함께 검사한다. 특정 맵 이름 whitelist로 다른 활성 LUT를 누락시키지 않는다. Kouku의 원본 volume 46/47은 LUT02/01 override가 실제 활성이다. LUT02는 중간 밝기를 올리므로 LUT 누락 하나로 과도한 밝기를 설명하지 않는다.
+- alias에 qualityOverride가 없으면 현재 Level의 base quality를 상속한다. globalQuality만 읽어 실효값을 추정하지 말고 Get_ActiveLevelQuality와 profile multiplier, camera region까지 소비 순서대로 대조한다. 사용자가 방금 저장한 품질·조명은 최신 디스크 기준으로 보존한다.
+- 원본 directional light의 excludevolumes와 Lightmass/character indirect 계수를 별도로 확인한다. character SH brightness를 맵 전체 uniform ambient로 곱하지 않는다. scene/camera region으로 directional을 끄는 것은 구역 단위 근사이며 receiver별 convex exclusion 완성으로 기록하지 않는다.
+- native specular power를 복원해도 Phong/Blinn 수식이 다르면 반사 폭이 틀어진다. 실제 MIC의 원본 PS와 marker producer를 대조해 해당 carrier만 고친다. Kouku floor family1/2는 3관문 바닥이며 1·2관문의 BG8 RNM 원인을 대신하지 않는다.
+- 레이드 선준비는 BossCatalog만으로 닫히지 않는다. 실제 published presentation, 사용하는 Sequence resource, enabled World effectTracks, Server가 선택하는 카드·공 target을 기존 V1/V2 준비 경로로 수집한다. CSO 사전 컴파일과 JSON/texture/model GPU 준비, 발생별 instance allocation을 구분한다. 준비 실패는 입장 실패로 처리하며 Client 실행 없이 무끊김을 확정하지 않는다.
+- Pattern 삭제의 단순 배치/Flow/Bundle 참조는 확인창에서 설명한 뒤 같은 draft transaction으로 제거한다. Logic/Summon의 필수 타깃은 명시적으로 차단한다. 외부 저장은 draft 편집 자체를 막는 이유가 아니며 실제 Save의 CAS와 실패 시 보존은 계속 필요하다.
+
+근거와 실제 적용·검증 상태는09-19 KOUKU_RENDERING_QUALITY 및 KOUKU_BOSS_SOURCE_BASIS RESULT,
+09-18 KOUKU_PATTERN_RUNTIME_REPAIR RESULT G10을 따른다.
+=======
 ### 새 섬 맵 추출에서 드러난 변형 도구 전제와 프로토콜 번호 (2026-09-19)
 
 - `build_map_material_variants.py`는 쿠크 한 Area로만 검증됐었다. 마하라카 섬에서 네 전제가 깨졌다: 패키지 루트 부모 재질은 UModel이 이름만 적는다(`zzzbg_simple_opa_inst`), 베이스 추출기는 역할 텍스처만 팩에 복사하므로 "UModel이 내보냄"은 "팩에 있음"이 아니다, `cook`이 `--package-root`를 넘기면서 인자를 정의하지 않았다, 메시 슬롯 수를 넘는 component override가 있다(UE3는 조회하지 않는다). 새 Area마다 inventory `--expect-*`를 실측값으로 넘기고 첫 실패를 원인별로 닫는다. 세부는 09-19 MAHARAKA_ISLAND_LEVEL RESULT.
@@ -2579,3 +2608,4 @@ lease에 연결한다. 저장된 DURATION은 timing 존재와 PRODUCT 의미의 
 - **발탄 `Stage_Boss`는 보스를 시작하고, 발동한 플레이어를 `Stage_Boss_ArenaEntry` 박스 중심으로 보낸다 (2026-09-19).** `CServerTriggerSystem::Run_Action`이 이 트리거만 특수 처리한다(`Place_PlayerAtValtanArenaEntry`). 보스 시작은 이미 떠 있으면 거절되지만 그 뒤에 온 플레이어도 보낸다(8인 레이드가 한 명씩 걸어 들어가지 않게). 목적지 XZ는 게시된 `Gameplay.world.json`의 ArenaEntry 박스 위치이고, 높이는 방이 `Set_GroundSampler`로 넘긴 네비 바닥이다. 박스 Y는 손으로 저작한 값이라 바닥에서 떠 있을 수 있다(2026-09-19 저장본은 25.73, 바닥 22.84). 이동 시간과 호는 ArenaEntry 박스가 저작한 이동(0.8초, 0)과 같다. Debug의 159 bar 벽 돌진 유도 지점은 더 이상 `Stage_Boss`가 부르지 않고 패턴 audition(`GameRoom_ValtanAudition.cpp`)만 쓴다. ArenaEntry 박스를 MapTool로 옮기면 착지도 따라가지만 `Publish-WorldGameplay.ps1`로 게시해야 서버가 새 위치를 읽는다. 스킬·피격으로 바쁜 플레이어는 보내지지 않고 보스 시작만 일어난다(밖으로 나갔다 다시 들어오면 보내진다).
 - **트리거 위치 표식(`effect.world.move_destination`)은 그 레벨의 로딩이 미리 준비해야 뜬다.** `CClickMoveEffect::Queue_LevelResources`가 Kouku와 Valtan에서만 이 Effect를 큐에 넣는다. 다른 레벨에 표식을 붙이려면 이 조건에도 그 레벨을 넣어야 `Spawn_LevelPlacement`가 준비된 target을 찾고, 없으면 그 표식은 조용히 retired 된다.
 - **새로 구운 몬스터·캐릭터 wmodel은 clip을 30 t/s로 다시 표현해야 한다 (2026-09-19 쿠크 몬스터 4종에서 재발)**: 쿠킹 파이프라인은 clip을 1000 t/s로 저장하는데, 엔진은 저장된 rate를 무시하고 `CAnimation`의 `COOKED_TICK_RATE`(30)로 재생한다(`Engine/Public/Animation.h:24`, `Engine/Private/Animation.cpp:51-52`). 그대로 쓰면 걷기·공격이 33배 느려 굳은 듯 미끄러진다. 쿠킹 직후 `python Tools/ActorXAssetCooker/retime_wmodel_ticks.py --wmodel <경로> --ticks-per-second 30 --expect-ticks-per-second 1000`를 실행하고, 모든 clip의 rate가 30인지와 clip 길이(초)가 원본과 같은지 측정한다. clip 이름이 wmodel에 있는지만 본 것은 검증이 아니다. 이 절차는 09-10 마리오 때 한 번 고쳤지만 그 RESULT에만 있어 쿠크 몬스터 4종(NPC_480701~480704)에서 다시 빠졌다. 그 4종은 같은 날 밤 다시 표현했고 근거는 `2026-09-19_KOUKU_NORMAL_MONSTERS_RESULT.md` 끝 절에 있다.
+

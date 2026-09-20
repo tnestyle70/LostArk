@@ -884,7 +884,8 @@ void LostArk::Server::CServerGameplayContractRunner::Run_SessionTransport(TESTS&
 					sent = session->Send_All(std::span{bytes}.subspan(offset, MAX_PACKET_BYTES), PACKET_TYPE::S2C_CHAT);
 				finished.store(true);
 			});
-			std::this_thread::sleep_for(std::chrono::milliseconds(750));
+			std::this_thread::sleep_for(std::chrono::milliseconds(resumeReader ? 750u :
+				CClientSession::TERMINAL_DRAIN_TIMEOUT_MILLISECONDS + 250u));
 			remainedOpen = !finished.load() && session->Is_Open() &&
 				session->Get_CloseDiagnostic().eReason == SESSION_DIAGNOSTIC_REASON::NONE;
 			if (resumeReader)
@@ -1006,6 +1007,84 @@ void LostArk::Server::CServerGameplayContractRunner::Run_SessionTransport(TESTS&
 			started && reliableFlushedBeforeClose && rejectedLateEnqueue &&
 			shutdownWasBounded && 1u == closedCount.load(),
 			"Flush a terminal reliable frame before sender-owned graceful close");
+	}
+	{
+		CWinSockContext winSock;
+		SOCKET sessionSocket = INVALID_SOCKET, peerSocket = INVALID_SOCKET;
+		bool ready = winSock.Initialize() && Create_LoopbackSocketPair(sessionSocket, peerSocket);
+		if (ready)
+		{
+			const int bufferBytes = 1024;
+			ready = SOCKET_ERROR != ::setsockopt(sessionSocket, SOL_SOCKET, SO_SNDBUF,
+				reinterpret_cast<const char*>(&bufferBytes), sizeof(bufferBytes)) &&
+				SOCKET_ERROR != ::setsockopt(peerSocket, SOL_SOCKET, SO_RCVBUF,
+					reinterpret_cast<const char*>(&bufferBytes), sizeof(bufferBytes));
+		}
+		std::atomic_uint32_t closedCount{0u};
+		std::unique_ptr<CClientSession> session;
+		if (ready)
+		{
+			session = std::make_unique<CClientSession>(90012u, sessionSocket,
+				CClientSession::FRAME_HANDLER{}, [&](SESSION_ID) { ++closedCount; });
+			sessionSocket = INVALID_SOCKET;
+			ready = session->Configure_TransportOptions();
+		}
+		// Fill the real kernel stream before the sender starts. This keeps the
+		// production outbound queue within its ordinary frame and byte bounds.
+		bool backpressured = false;
+		if (ready)
+		{
+			std::vector<std::uint8_t> filler(MAX_PACKET_BYTES, 0x2au);
+			const auto fillUntil = std::chrono::steady_clock::now() + std::chrono::milliseconds(350);
+			std::size_t filledBytes = 0u;
+			while (std::chrono::steady_clock::now() < fillUntil && filledBytes < 16u * 1024u * 1024u)
+			{
+				const int sent = ::send(session->m_hClientSocket.load(),
+					reinterpret_cast<const char*>(filler.data()), static_cast<int>(filler.size()), 0);
+				backpressured = SOCKET_ERROR == sent && WSAEWOULDBLOCK == ::WSAGetLastError();
+				if (sent > 0) filledBytes += static_cast<std::size_t>(sent);
+				else if (!backpressured) { ready = false; break; }
+				else std::this_thread::sleep_for(std::chrono::milliseconds(10));
+			}
+			ready = ready && backpressured && session->Start();
+		}
+		bool activeBeforeClose = false, expiredOnce = false, firstDeadlineRetained = false;
+		bool reasonRetained = false, boundedStop = false;
+		if (ready)
+		{
+			const std::array<std::uint8_t, 1u> payload{0x46u};
+			const bool queued = session->Send_Frame(PACKET_TYPE::S2C_ENTER_REJECTED, payload);
+			std::this_thread::sleep_for(std::chrono::milliseconds(350));
+			activeBeforeClose = queued && !session->Is_Closing() && session->m_isSendRunning.load() &&
+				session->Get_OutboundMetrics().iSentFrameCount == 0u;
+			const auto drainStart = std::chrono::steady_clock::now();
+			session->Request_Close_After_Flush(SESSION_DIAGNOSTIC_REASON::SERVER_EXPECTED_ROOM_FULL,
+				0, "ROOM_FULL terminal drain fixture");
+			const auto firstStart = session->m_iTerminalDrainStartTicks.load();
+			std::this_thread::sleep_for(std::chrono::milliseconds(500));
+			session->Request_Close_After_Flush();
+			firstDeadlineRetained = firstStart != 0u &&
+				firstStart == session->m_iTerminalDrainStartTicks.load();
+			expiredOnce = Wait_Until(std::chrono::milliseconds(2500), [&] {
+				return closedCount.load() == 1u && !session->m_isSendRunning.load();
+			});
+			const auto elapsed = std::chrono::steady_clock::now() - drainStart;
+			expiredOnce = expiredOnce && elapsed >= std::chrono::milliseconds(
+				CClientSession::TERMINAL_DRAIN_TIMEOUT_MILLISECONDS - 100u) &&
+				elapsed < std::chrono::milliseconds(CClientSession::TERMINAL_DRAIN_TIMEOUT_MILLISECONDS + 1000u);
+			const auto diagnostic = session->Get_CloseDiagnostic();
+			reasonRetained = diagnostic.eReason == SESSION_DIAGNOSTIC_REASON::SERVER_EXPECTED_ROOM_FULL &&
+				diagnostic.iNativeErrorCode == 0 && diagnostic.strContext == "ROOM_FULL terminal drain fixture" &&
+				session->Get_OutboundMetrics().iSendFailureCount == 0u;
+			const auto stopStart = std::chrono::steady_clock::now();
+			session->Stop();
+			boundedStop = std::chrono::steady_clock::now() - stopStart < std::chrono::milliseconds(1500);
+		}
+		if (session) session->Stop();
+		session.reset(); Close_TestSocket(sessionSocket); Close_TestSocket(peerSocket);
+		tests.Require(ready && activeBeforeClose && expiredOnce && firstDeadlineRetained &&
+			reasonRetained && boundedStop && closedCount.load() == 1u,
+			"Bound only an explicitly requested terminal drain and preserve ROOM_FULL with one close notification");
 	}
 	{
 		std::atomic_uint32_t closedCount{ 0u };

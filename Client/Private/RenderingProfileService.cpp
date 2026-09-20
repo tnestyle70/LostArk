@@ -501,15 +501,30 @@ bool_t CRenderingProfileService::Apply_CameraEnvironment(f32_t deltaSeconds, str
     fog.fMaximumOpacity = mix(from.fMaximumOpacity, fog.fMaximumOpacity);
     fog.vFogLightDirection.w = mix(from.vFogLightDirection.w, fog.vFogLightDirection.w);
     auto light = profile->Light;
-    if (selected) { light.vDiffuse = selected->vDirectionalColor; light.vAmbient = selected->vAmbientColor; }
+    if (selected)
+    {
+        light.vDiffuse = selected->vDirectionalColor;
+        light.vAmbient = selected->vAmbientColor;
+        if (selected->bHasSpecularColor) light.vSpecular = selected->vSpecularColor;
+    }
     light.vDiffuse = mixColor(fromLight.vDiffuse, light.vDiffuse);
     light.vAmbient = mixColor(fromLight.vAmbient, light.vAmbient);
-    // Profiles without region postprocess retain their existing quality owner.
-    // Region overrides replace only these four resolved scene inputs; leaving
-    // a region blends back to the active profile's effective base, without drift.
+    light.vSpecular = mixColor(fromLight.vSpecular, light.vSpecular);
+    // Regions can retain a complete authored quality baseline, then apply their
+    // source postprocess inputs. Leaving a region resolves from the active
+    // profile again, so repeated transitions never accumulate adjustments.
     const bool hasRegionPostProcess = any_of(profile->EnvironmentRegions.begin(), profile->EnvironmentRegions.end(),
-        [](const auto& region) { return region.bHasPostProcess; });
+        [](const auto& region) { return region.bHasPostProcess || region.bHasQualityOverride; });
+    const bool hasRegionQuality = any_of(profile->EnvironmentRegions.begin(), profile->EnvironmentRegions.end(),
+        [](const auto& region) { return region.bHasQualityOverride; });
     auto quality = m_EffectiveQuality;
+    if (selected && selected->bHasQualityOverride)
+    {
+        quality = selected->QualityOverride;
+        quality.fExposure *= profile->fExposureMultiplier;
+        quality.fBloomIntensity *= profile->fBloomIntensityMultiplier;
+        CUserSettings::Get().Apply_Video(quality);
+    }
     if (selected && selected->bHasPostProcess)
     {
         quality.fBloomThreshold = selected->fBloomThreshold;
@@ -517,6 +532,12 @@ bool_t CRenderingProfileService::Apply_CameraEnvironment(f32_t deltaSeconds, str
         quality.vBloomTint = selected->vBloomTint;
         quality.fSceneDesaturation = selected->fSceneDesaturation;
         if (selected->bHasSourcePostProcess) quality.SourcePostProcess = selected->SourcePostProcess;
+    }
+    if (hasRegionQuality)
+    {
+        quality.fExposure = mix(fromQuality.fExposure, quality.fExposure);
+        quality.fGamma = mix(fromQuality.fGamma, quality.fGamma);
+        quality.fWhitePoint = mix(fromQuality.fWhitePoint, quality.fWhitePoint);
     }
     quality.fBloomThreshold = mix(fromQuality.fBloomThreshold, quality.fBloomThreshold);
     quality.fBloomIntensity = mix(fromQuality.fBloomIntensity, quality.fBloomIntensity);
@@ -939,7 +960,7 @@ bool_t CRenderingProfileService::Parse_Catalog(
                 const auto* id = Required(row, "regionId", DATA_JSON_TYPE::STRING);
                 const auto* planes = Required(row, "planes", DATA_JSON_TYPE::ARRAY);
                 const auto* fog = Required(row, "fog", DATA_JSON_TYPE::OBJECT);
-                if (!Has_ExactFields(row, { "regionId", "boundsMinimum", "boundsMaximum", "planes", "fog", "directionalColor", "ambientColor", "blendTimeIn", "blendTimeOut" }, { "priority", "postProcess" }) ||
+                if (!Has_ExactFields(row, { "regionId", "boundsMinimum", "boundsMaximum", "planes", "fog", "directionalColor", "ambientColor", "blendTimeIn", "blendTimeOut" }, { "priority", "postProcess", "qualityOverride", "specularColor" }) ||
                     !id || !Is_StableId(id->Get_String()) || !regionIds.insert(id->Get_String()).second ||
                     !Read_Float3(row, "boundsMinimum", region.vBoundsMinimum) ||
                     !Read_Float3(row, "boundsMaximum", region.vBoundsMaximum) ||
@@ -960,6 +981,17 @@ bool_t CRenderingProfileService::Parse_Catalog(
                 { strOutStatus = "Invalid source environment volume or fog."; return false; }
                 if (row.Find("priority") && !Read_Float(row, "priority", -100000.f, 100000.f, region.fPriority))
                 { strOutStatus = "Invalid environment region priority."; return false; }
+                if (row.Find("specularColor"))
+                {
+                    if (!Read_Float4(row, "specularColor", region.vSpecularColor) || !Is_ValidColor(region.vSpecularColor))
+                    { strOutStatus = "Invalid environment region specular colour."; return false; }
+                    region.bHasSpecularColor = true;
+                }
+                if (const auto* quality = row.Find("qualityOverride"))
+                {
+                    if (!Parse_Quality(*quality, region.QualityOverride, strOutStatus)) return false;
+                    region.bHasQualityOverride = true;
+                }
                 if (const auto* postProcess = row.Find("postProcess"))
                 {
                     if (!Has_ExactFields(*postProcess, { "bloomThreshold", "bloomIntensity", "bloomTint", "desaturation" }, { "sourcePostProcess" }) ||
@@ -1156,6 +1188,13 @@ bool_t CRenderingProfileService::Validate_Profile(
             !Is_FiniteRange(region.Fog.fTopHeight, -10000.f, 10000.f) ||
             !Is_FiniteRange(region.Fog.fStartDistance, 0.f, 100000.f) || !Is_FiniteRange(region.Fog.fMaximumOpacity, 0.f, 1.f))
         { strOutStatus = "Invalid source environment region."; return false; }
+        if (region.bHasSpecularColor && !Is_ValidColor(region.vSpecularColor))
+        { strOutStatus = "Invalid environment region specular colour."; return false; }
+        if (region.bHasQualityOverride &&
+            (!Validate_GlobalQuality(region.QualityOverride, strOutStatus) ||
+             !Is_FiniteRange(region.QualityOverride.fExposure * Profile.fExposureMultiplier, .01f, 32.f) ||
+             !Is_FiniteRange(region.QualityOverride.fBloomIntensity * Profile.fBloomIntensityMultiplier, 0.f, 16.f)))
+        { strOutStatus = "Invalid environment region quality override."; return false; }
         if (!Is_FiniteRange(region.fPriority, -100000.f, 100000.f) ||
             (region.bHasSourcePostProcess && (!region.bHasPostProcess || !ValidSourcePostProcess(region.SourcePostProcess))) ||
             (region.bHasPostProcess && (!Is_FiniteRange(region.fBloomThreshold, 0.f, 64.f) ||
@@ -1454,6 +1493,15 @@ string CRenderingProfileService::Serialize_Catalog(const CATALOG& Catalog)
                 output << ", \"ambientColor\": "; Write_Float4(output, region.vAmbientColor);
                 output << ", \"blendTimeIn\": " << region.fBlendTimeIn << ", \"blendTimeOut\": " << region.fBlendTimeOut;
                 output << ", \"priority\": " << region.fPriority;
+                if (region.bHasSpecularColor)
+                {
+                    output << ", \"specularColor\": "; Write_Float4(output, region.vSpecularColor);
+                }
+                if (region.bHasQualityOverride)
+                {
+                    output << ", \"qualityOverride\": ";
+                    Write_Quality(output, region.QualityOverride);
+                }
                 if (region.bHasPostProcess)
                 {
                     output << ", \"postProcess\": {\"bloomThreshold\": " << region.fBloomThreshold

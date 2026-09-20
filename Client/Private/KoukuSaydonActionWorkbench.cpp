@@ -2733,7 +2733,7 @@ bool_t Client::CKoukuSaydonActionWorkbench::Render_PatternReferenceControls(
 }
 
 std::vector<std::string> Client::CKoukuSaydonActionWorkbench::Collect_PatternDeleteReferences(
-	const std::string_view patternId) const
+	const std::string_view patternId, const bool onlyBlocking) const
 {
 	std::vector<std::string> references;
 	const auto collectIds = [&](const std::vector<std::string>& ids, const std::string& owner)
@@ -2756,8 +2756,9 @@ std::vector<std::string> Client::CKoukuSaydonActionWorkbench::Collect_PatternDel
 			" [" + summon.strSummonId + "] / directionPatternIds");
 	for (const auto& parent : m_Draft.Patterns)
 	{
+		if (parent.strPatternId == patternId) continue;
 		for (const auto& box : parent.PatternOccurrences)
-			if (box.strPatternId == patternId)
+			if (box.strPatternId == patternId && (!onlyBlocking || !parent.strLoadError.empty()))
 				references.push_back("Parent Pattern: " + parent.strDisplayName + " [" +
 					parent.strPatternId + "] / " + box.strOccurrenceId);
 		for (const auto& box : parent.SummonOccurrences)
@@ -2767,16 +2768,16 @@ std::vector<std::string> Client::CKoukuSaydonActionWorkbench::Collect_PatternDel
 						parent.strPatternId + "] / " + box.strOccurrenceId + " / " + spawn.strSpawnId);
 	}
 	for (const auto& folder : m_Draft.Folders)
-		if (folder.strTimelinePatternId == patternId)
+		if (folder.strTimelinePatternId == patternId && (!onlyBlocking || !folder.strLoadError.empty()))
 			references.push_back("Parent timeline: " + folder.strDisplayName + " [" + folder.strFolderId + "]");
 	for (const auto& bundle : m_Draft.Bundles)
 		for (const auto& member : bundle.Members)
-			if (member.strPatternId == patternId)
+			if (member.strPatternId == patternId && (!onlyBlocking || !bundle.strLoadError.empty()))
 				references.push_back("Bundle: " + bundle.strDisplayName + " [" +
 					bundle.strBundleId + "] / " + member.strMemberId);
 	for (const auto& flow : m_Draft.PatternFlows)
 		for (const auto& entry : flow.Entries)
-			if (entry.strKind == "PATTERN" && entry.strTargetId == patternId)
+			if (!onlyBlocking && entry.strKind == "PATTERN" && entry.strTargetId == patternId)
 				references.push_back("Pattern Flow: " + flow.strDisplayName + " [" +
 					flow.strFlowId + "] / " + entry.strEntryId);
 	return references;
@@ -2788,9 +2789,9 @@ bool_t Client::CKoukuSaydonActionWorkbench::Delete_Pattern(
 {
 	// Callers may pass a view into m_Draft, which Commit_Candidate replaces.
 	const std::string targetId(patternId);
-	if (!m_bHasDraft || Is_PublishRunning() || !m_Document.Is_Fresh())
-	{ outStatus = m_strStatus = "Delete requires a current Composition and no publication in progress; draft preserved."; return false; }
-	const auto references = Collect_PatternDeleteReferences(targetId);
+	if (!m_bHasDraft || Is_PublishRunning())
+	{ outStatus = m_strStatus = "Delete requires a loaded Composition and no publication in progress; draft preserved."; return false; }
+	const auto references = Collect_PatternDeleteReferences(targetId, true);
 	if (!references.empty())
 	{
 		outStatus = "Pattern is still used. Remove these references before deleting:";
@@ -2810,9 +2811,21 @@ bool_t Client::CKoukuSaydonActionWorkbench::Delete_Pattern(
 		return false;
 	}
 	candidate.Patterns.erase(found);
+	// These are placements of the deleted definition, not shared source resources.
+	// Remove them in the same validated transaction so Save cannot retain a dangling ID.
+	for (auto& parent : candidate.Patterns)
+		if (std::erase_if(parent.PatternOccurrences, [&](const auto& box) { return box.strPatternId == targetId; }))
+			Mark_Draft(candidate, parent);
+	for (auto& folder : candidate.Folders)
+		if (folder.strTimelinePatternId == targetId) folder.strTimelinePatternId.clear();
+	for (auto& bundle : candidate.Bundles)
+		if (std::erase_if(bundle.Members, [&](const auto& member) { return member.strPatternId == targetId; }))
+			bundle.strAuthoringStatus = "DRAFT";
+	for (auto& flow : candidate.PatternFlows)
+		std::erase_if(flow.Entries, [&](const auto& entry) { return entry.strKind == "PATTERN" && entry.strTargetId == targetId; });
 	Rebuild_PlayAllPatternIds(candidate);
 	if (!Commit_Candidate(std::move(candidate),
-		"Deleted Pattern from the draft. Save keeps this change; Publish All Patterns updates Server playback.", outStatus))
+		"Deleted Pattern and its listed timeline, bundle and flow links from the draft. Save stores the change; review affected drafts before Publish All Patterns.", outStatus))
 		return false;
 	if (m_strAppendPatternId == targetId) m_strAppendPatternId.clear();
 	if (m_strParentReturnPatternId == targetId) m_strParentReturnPatternId.clear();
@@ -2851,18 +2864,27 @@ void Client::CKoukuSaydonActionWorkbench::Render_PatternDeleteConfirmation()
 	const auto* pattern = Find_Pattern(m_Draft, m_strDeletePatternId);
 	ImGui::TextWrapped("%s", pattern ? pattern->strDisplayName.c_str() : m_strDeletePatternId.c_str());
 	ImGui::TextWrapped("ID: %s", m_strDeletePatternId.c_str());
-	const auto references = Collect_PatternDeleteReferences(m_strDeletePatternId);
+	auto references = Collect_PatternDeleteReferences(m_strDeletePatternId);
+	const auto blockers = Collect_PatternDeleteReferences(m_strDeletePatternId, true);
+	std::erase_if(references, [&](const auto& reference) {
+		return std::find(blockers.begin(), blockers.end(), reference) != blockers.end();
+	});
 	const bool current = pattern && m_iDeletePatternGeneration == m_iDraftGeneration;
 	if (!current) ImGui::TextWrapped("The draft changed. Cancel and request Delete again to review the current Pattern.");
 	if (!references.empty())
 	{
-		ImGui::TextWrapped("Delete is blocked by %zu reference locations. Remove the listed connections in their owning editor first.", references.size());
+		ImGui::TextWrapped("Delete also removes the listed Pattern boxes, Bundle memberships, Flow entries and Parent timeline links. Shared resources remain available.");
 		if (ImGui::BeginChild("##PatternDeleteReferences", ImVec2(0.f, 220.f), ImGuiChildFlags_Borders))
 			for (const auto& reference : references) ImGui::TextWrapped("- %s", reference.c_str());
 		ImGui::EndChild();
 	}
 	else ImGui::TextWrapped("Delete this Pattern and its timeline boxes from the draft? Save stores the deletion. Shared Animation, Effect, Logic and other source resources remain available.");
-	ImGui::BeginDisabled(!current || !references.empty() || Is_PublishRunning());
+	if (!blockers.empty())
+	{
+		ImGui::TextWrapped("These required Logic/Summon targets or invalid owners must be repaired before deletion:");
+		for (const auto& blocker : blockers) ImGui::TextWrapped("- %s", blocker.c_str());
+	}
+	ImGui::BeginDisabled(!current || !blockers.empty() || Is_PublishRunning());
 	if (ImGui::Button("Delete from Draft"))
 	{
 		std::string status;
@@ -4873,7 +4895,10 @@ void Client::CKoukuSaydonActionWorkbench::Render_PatternsAndResources()
 		Request_PatternDelete(m_strSelectedPatternId);
 	ImGui::EndDisabled();
 	if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
-		ImGui::SetTooltip("Select a Pattern, then review its references before deleting. You can also right-click a Pattern in the tree.");
+		ImGui::SetTooltip("%s", Is_PublishRunning() ? "Wait for publication to finish before deleting a Pattern." :
+			(m_ePatternSelection != KOUKU_PATTERN_SELECTION::PATTERN || !Find_Pattern(m_Draft, m_strSelectedPatternId)) ?
+			"Select an individual Pattern in the tree. A Gate or Bundle selection does not select a Pattern for deletion." :
+			"Review the selected Pattern and the links removed with it. Save stores the deletion.");
 	if (ImGui::BeginChild("##KoukuPatternList", ImVec2(0.f, 480.f), ImGuiChildFlags_Borders))
 	{
 		Render_PatternTree(false);

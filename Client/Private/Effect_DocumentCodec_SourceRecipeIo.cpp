@@ -1449,6 +1449,18 @@ namespace Client::EffectDocumentCodecDetail
 
         if (pScreenPost->Find("captureShrinkSeconds") &&
             !Read_Float(*pScreenPost, "captureShrinkSeconds", Out.ScreenPost.fCaptureShrinkSeconds, strOutError)) return false;
+        if (pScreenPost->Find("captureEdgeSpeed") &&
+            !Read_Array(*pScreenPost, "captureEdgeSpeed", &Out.ScreenPost.vCaptureEdgeSpeed.x, 4u, strOutError)) return false;
+        if (pScreenPost->Find("captureDestinationOffsetUV") &&
+            !Read_Array(*pScreenPost, "captureDestinationOffsetUV", &Out.ScreenPost.vCaptureDestinationOffsetUV.x, 2u, strOutError)) return false;
+        if (pScreenPost->Find("captureRotationDegrees") &&
+            !Read_Float(*pScreenPost, "captureRotationDegrees", Out.ScreenPost.fCaptureRotationDegrees, strOutError)) return false;
+        if (pScreenPost->Find("captureSquare") &&
+            !Read_Bool(*pScreenPost, "captureSquare", Out.ScreenPost.bCaptureSquare, strOutError)) return false;
+        if (pScreenPost->Find("captureBackgroundDim") &&
+            !Read_Float(*pScreenPost, "captureBackgroundDim", Out.ScreenPost.fCaptureBackgroundDim, strOutError)) return false;
+        if (pScreenPost->Find("captureUseModelCenter") &&
+            !Read_Bool(*pScreenPost, "captureUseModelCenter", Out.ScreenPost.bCaptureUseModelCenter, strOutError)) return false;
 		if (const auto* target = pScreenPost->Find("captureTargetModelCueId"))
 		{
 			if (!target->Is_String())
@@ -1551,6 +1563,26 @@ namespace Client::EffectDocumentCodecDetail
 				<< Detail.ScreenPost.iRandomSeed;
             if (Detail.ScreenPost.fCaptureShrinkSeconds != 0.f)
                 Output << ", \"captureShrinkSeconds\": " << Detail.ScreenPost.fCaptureShrinkSeconds;
+            const auto& EdgeSpeed = Detail.ScreenPost.vCaptureEdgeSpeed;
+            if (EdgeSpeed.x != 1.f || EdgeSpeed.y != 1.f || EdgeSpeed.z != 1.f || EdgeSpeed.w != 1.f)
+            {
+                Output << ", \"captureEdgeSpeed\": ";
+                Write_Float4(Output, EdgeSpeed);
+            }
+            const auto& DestinationOffset = Detail.ScreenPost.vCaptureDestinationOffsetUV;
+            if (DestinationOffset.x != 0.f || DestinationOffset.y != 0.f)
+            {
+                Output << ", \"captureDestinationOffsetUV\": ";
+                Write_Float2(Output, DestinationOffset);
+            }
+            if (Detail.ScreenPost.fCaptureRotationDegrees != 0.f)
+                Output << ", \"captureRotationDegrees\": " << Detail.ScreenPost.fCaptureRotationDegrees;
+            if (Detail.ScreenPost.bCaptureSquare)
+                Output << ", \"captureSquare\": true";
+            if (Detail.ScreenPost.fCaptureBackgroundDim != 0.f)
+                Output << ", \"captureBackgroundDim\": " << Detail.ScreenPost.fCaptureBackgroundDim;
+            if (Detail.ScreenPost.bCaptureUseModelCenter)
+                Output << ", \"captureUseModelCenter\": true";
 			if (!Detail.ScreenPost.strCaptureTargetModelCueId.empty())
 				Output << ", \"captureTargetModelCueId\": \""
 					<< CDataJson::Escape(Detail.ScreenPost.strCaptureTargetModelCueId) << "\"";

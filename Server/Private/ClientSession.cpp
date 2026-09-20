@@ -200,6 +200,7 @@ bool LostArk::Server::CClientSession::Start()
 	m_iLastErrorCode.store(0);
 	m_hasNotifiedClosed.store(false);
 	m_closeAfterOutboundFlush.store(false);
+	m_iTerminalDrainStartTicks.store(0u);
 	m_isReceiveRunning.store(true);
 	m_isSendRunning.store(true);
 	{
@@ -270,6 +271,11 @@ void LostArk::Server::CClientSession::Request_Close_After_Flush(
 	/* Keep the send half alive for the sender worker.  The receive worker must
 	   not call the hard-close path when SD_RECEIVE wakes it, otherwise it would
 	   clear the terminal reliable frame that this operation promises to drain. */
+	// The first explicit close owns the deadline. Repeated close requests must
+	// not extend a rejected session; active sessions never get this deadline.
+	std::uint64_t unsetStart = 0u;
+	(void)m_iTerminalDrainStartTicks.compare_exchange_strong(unsetStart,
+		(std::max)(std::uint64_t{1u}, static_cast<std::uint64_t>(GetTickCount64())));
 	m_closeAfterOutboundFlush.store(true);
 	m_isReceiveRunning.store(false);
 	if (!m_isSendRunning.load())
@@ -752,6 +758,17 @@ bool LostArk::Server::CClientSession::Send_All(
 	while (sentByteCount < bytes.size())
 	{
 		if (!m_isSendRunning.load()) return false;
+		if (m_closeAfterOutboundFlush.load() &&
+			GetTickCount64() - m_iTerminalDrainStartTicks.load() >= TERMINAL_DRAIN_TIMEOUT_MILLISECONDS)
+		{
+			Record_SendProgressDiagnostic("send.terminal-drain-expired", packetType,
+				sentByteCount, bytes.size(),
+				To_Microseconds(std::chrono::steady_clock::now() - lastProgress) / 1000u);
+			// This cancels an already terminal drain, not active backpressure.
+			// Request_Close preserves the original ROOM_FULL reason and context.
+			Request_Close();
+			return false;
+		}
 		const SOCKET clientSocket = m_hClientSocket.load();
 		if (INVALID_SOCKET == clientSocket) return false;
 		const int result = ::send(clientSocket,
@@ -818,6 +835,9 @@ void LostArk::Server::CClientSession::Record_SendProgressDiagnostic(
 		if (!log) return;
 		const auto now = Current_UnixMilliseconds();
 		const auto inbound = m_iLastInboundUnixMilliseconds.load();
+		const bool terminalDrain = m_closeAfterOutboundFlush.load();
+		const auto drainStart = m_iTerminalDrainStartTicks.load();
+		const auto terminal = Get_CloseDiagnostic();
 		log << "{\"schema\":\"lostark.server-send-progress\",\"formatVersion\":1"
 			<< ",\"unixMs\":" << now << ",\"processId\":" << GetCurrentProcessId()
 			<< ",\"sessionId\":" << m_iSessionId << ",\"peerAddress\":\"" << m_PeerEndpoint.strAddress
@@ -826,6 +846,10 @@ void LostArk::Server::CClientSession::Record_SendProgressDiagnostic(
 			<< ",\"stallOrdinal\":" << m_iSendStallOrdinal << ",\"sentFrameBytes\":" << sentBytes
 			<< ",\"totalFrameBytes\":" << totalBytes << ",\"noProgressMs\":" << noProgressMilliseconds
 			<< ",\"closeOnBackpressure\":false"
+			<< ",\"terminalDrainRequested\":" << (terminalDrain ? "true" : "false")
+			<< ",\"terminalDrainElapsedMs\":" << (terminalDrain ? GetTickCount64() - drainStart : 0u)
+			<< ",\"terminalDrainLimitMs\":" << (terminalDrain ? TERMINAL_DRAIN_TIMEOUT_MILLISECONDS : 0u)
+			<< ",\"terminalReason\":\"" << LostArk::Shared::To_SessionDiagnosticReasonName(terminal.eReason) << '"'
 			<< ",\"lastInboundAgeMs\":" << (inbound && now >= inbound ? now - inbound : 0u) << "}\n";
 	}
 	catch (...) { } // Diagnostic failures cannot change stream progress or closure.

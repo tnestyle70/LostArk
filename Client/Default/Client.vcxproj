@@ -653,6 +653,7 @@
 	<None Include="..\..\Data\Sound\CharacterSoundCatalog.json" />
 	<None Include="..\..\Data\Sound\EstherActionSoundCues.json" />
 	<None Include="..\..\Data\Rendering\Authored\RenderingProfiles.json" />
+	<None Include="..\..\Data\Rendering\Reference\KoukuImportedSourceLights.maplights.json" />
 	<None Include="..\..\Data\Rendering\Authored\CharacterSelectFloorSwap.json" />
 	<None Include="..\..\Data\Compositions\Bosses\Valtan.bosscomposition.json" />
 	<None Include="..\..\Data\Compositions\Bosses\KoukuSaydonGate1.bosscomposition.json" />

@@ -1198,6 +1198,14 @@ struct EFFECT_SCREEN_POST_DETAIL_DESC final
 	std::string strCaptureTargetModelCueId;
 	// Zero uses Timing lifetime; a shorter duration holds the final rectangle/black.
 	f32_t fCaptureShrinkSeconds = 0.f;
+	// Left, right, top, bottom; values above one reach the target edge sooner.
+	float4_t vCaptureEdgeSpeed = { 1.f, 1.f, 1.f, 1.f };
+	float2_t vCaptureDestinationOffsetUV = { 0.f, 0.f };
+	f32_t fCaptureRotationDegrees = 0.f;
+	bool_t bCaptureSquare = false;
+	f32_t fCaptureBackgroundDim = 0.f;
+	// Cube-only: preserve the legacy screen center unless explicitly authored.
+	bool_t bCaptureUseModelCenter = false;
 	bool_t bEnabled = false;
 	EFFECT_SCREEN_POST_PROFILE eProfile = EFFECT_SCREEN_POST_PROFILE::END;
 	EFFECT_PRESENTATION_RUNTIME_STATUS eStatus =

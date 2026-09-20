@@ -422,6 +422,17 @@ PS_OUT_LIGHT Resolve_MapPBRLight(PS_IN input, float3 worldPosition,
     return output;
 }
 
+// The recovered floor MICs carry native Blinn powers (30/100), not Phong
+// powers. Keep their marker-1 payload separate from the HDR-scale RT5 ABI.
+float Evaluate_RecoveredFloorSpecularLobe(float3 normal, float3 viewDirection,
+    float3 lightDirection, float specularPower)
+{
+    const float3 sum = normalize(lightDirection) + normalize(viewDirection);
+    const float3 halfVector = sum * rsqrt(max(dot(sum, sum), 1e-12f));
+    const float ndoth = abs(dot(normalize(normal), halfVector));
+    return ndoth < 0.000001f ? 0.f : min(pow(ndoth, specularPower), 1.f);
+}
+
 PS_OUT_LIGHT Resolve_MapSourceSpecularLight(PS_IN input, float3 worldPosition,
     float3 lightDirection, float attenuation, float directShadow, DEFERRED_LIGHT_INPUT light)
 {
@@ -641,9 +652,13 @@ PS_OUT_LIGHT Resolve_DirectionalLight(PS_IN In, DEFERRED_LIGHT_INPUT light)
     vector vLook = vWorldPos - g_vCamPosition;
     
     const float specularPower = vDepthDesc.z > 0.f ? vDepthDesc.z : 50.f;
-    Out.vSpecular = Resolve_MaterialSpecularLight(In, light) *
-        pow(saturate(dot(normalize(vReflect) * -1.f, normalize(vLook))),
-            specularPower) * float4(Load_MaterialSpecular(In, vNormalDesc.a), 1.f) * fDirectionalShadow;
+    float specularLobe = pow(saturate(dot(normalize(vReflect) * -1.f, normalize(vLook))),
+        specularPower);
+    if (sourceDepth.w == 1.f)
+        specularLobe = Evaluate_RecoveredFloorSpecularLobe(vNormal.xyz,
+            -vLook.xyz, -light.direction.xyz, specularPower);
+    Out.vSpecular = Resolve_MaterialSpecularLight(In, light) * specularLobe *
+        float4(Load_MaterialSpecular(In, vNormalDesc.a), 1.f) * fDirectionalShadow;
     
     return Out;
 }
@@ -750,9 +765,13 @@ PS_OUT_LIGHT Resolve_LocalLight(PS_IN In, bool bSpot, DEFERRED_LIGHT_INPUT light
     vector vLook = vWorldPos - g_vCamPosition;
     
     const float specularPower = vDepthDesc.z > 0.f ? vDepthDesc.z : 50.f;
-    Out.vSpecular = Resolve_MaterialSpecularLight(In, light) *
-        pow(saturate(dot(normalize(vReflect) * -1.f, normalize(vLook))),
-            specularPower) * float4(Load_MaterialSpecular(In, vNormalDesc.a), 1.f) * fAtt;
+    float specularLobe = pow(saturate(dot(normalize(vReflect) * -1.f, normalize(vLook))),
+        specularPower);
+    if (sourceDepth.w == 1.f)
+        specularLobe = Evaluate_RecoveredFloorSpecularLobe(vNormal.xyz,
+            -vLook.xyz, -vLightDir.xyz, specularPower);
+    Out.vSpecular = Resolve_MaterialSpecularLight(In, light) * specularLobe *
+        float4(Load_MaterialSpecular(In, vNormalDesc.a), 1.f) * fAtt;
     
     return Out;
 }

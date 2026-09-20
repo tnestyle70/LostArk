@@ -615,6 +615,11 @@ void LostArk::Server::CGameRoom::Stop_KoukuWorldOwner(const std::string& memberI
 	S2C_WORLD_SEQUENCE_PLAY stop;
 	stop.eOperation = finished ? WORLD_SEQUENCE_OPERATION::FINISH_OWNER : WORLD_SEQUENCE_OPERATION::STOP_OWNER;
 	stop.iRunEpoch = m_KoukuSaydonPatternAudition.iRoomAuditionEpoch; stop.strMemberId = memberId; stop.iServerTick = m_iServerTick;
+	// Parent completion may immediately start phase 2 in the same run/member.
+	// Scope this stop to its pattern so delayed cues cannot retire the next phase.
+	if (!memberId.empty())
+		for (const auto& member : m_KoukuSaydonPatternAudition.Members)
+			if (member.strMemberId == memberId) { stop.iPatternSequence = member.iPatternSequence; break; }
 	Broadcast_OwnedWorldSequence(stop);
 	std::erase_if(m_KoukuSaydonPatternAudition.WorldPlays, [&](const auto& play) { return memberId.empty() || play.strMemberId == memberId; });
 	std::erase_if(m_KoukuSaydonPatternAudition.SupportSchedule, [&](const auto& support) { return memberId.empty() || support.strMemberId == memberId; });
@@ -662,6 +667,15 @@ bool LostArk::Server::CGameRoom::Refresh_KoukuSupportSurfaces(const std::uint32_
 		if (Has_ReachedServerTick(serverTick, support.iStartTick)) surfaces.push_back(support.Surface);
 	const auto previousRevision = m_ServerNavigation.Get_Revision();
 	const auto previousSurfaces = m_ServerNavigation.Get_RuntimeSupportSurfaces();
+	std::vector<std::pair<NET_ENTITY_ID, float>> previousRootGrounds;
+	if (surfaces != previousSurfaces)
+		for (const auto& boss : m_WorldEntities)
+		{
+			SERVER_NAV_POINT ground;
+			if (CKoukuSaydonBrain::Is_ArenaBoss(m_eWorldId, boss) && !boss.PatternStageRootMotion.empty() &&
+				m_ServerNavigation.Sample_Position(boss.fPositionX, boss.fPositionZ, ground))
+				previousRootGrounds.emplace_back(boss.iNetEntityId, ground.y);
+		}
 	std::string status;
 	if (!m_ServerNavigation.Set_RuntimeSupportSurfaces(surfaces, status))
 	{
@@ -688,12 +702,22 @@ bool LostArk::Server::CGameRoom::Refresh_KoukuSupportSurfaces(const std::uint32_
 			m_ServerNavigation.Sample_Position(player.fPositionX, player.fPositionZ, ground))
 			player.fPositionY = ground.y;
 	}
-	// Only a boss on an added/removed support may change height. Authored airborne motion keeps its Y.
+	// Source root motion owns height above ground, including before its first origin capture.
+	// Transfer a changed support's ground delta once; later samples already use that new ground.
 	for (auto& boss : m_WorldEntities)
 	{
 		if (!CKoukuSaydonBrain::Is_ArenaBoss(m_eWorldId, boss) || !boss.iCurrentHp ||
-			boss.eAction == SERVER_ENTITY_ACTION::DEAD || !boss.PatternStageRootMotion.empty() ||
-			boss.fPatternForcedMotionSpeed != 0.f) continue;
+			boss.eAction == SERVER_ENTITY_ACTION::DEAD || boss.fPatternForcedMotionSpeed != 0.f) continue;
+		if (!boss.PatternStageRootMotion.empty())
+		{
+			const auto previous = std::find_if(previousRootGrounds.begin(), previousRootGrounds.end(),
+				[&](const auto& sample) { return sample.first == boss.iNetEntityId; });
+			SERVER_NAV_POINT ground;
+			if (changed && previous != previousRootGrounds.end() &&
+				m_ServerNavigation.Sample_Position(boss.fPositionX, boss.fPositionZ, ground))
+				boss.fPositionY += ground.y - previous->second;
+			continue;
+		}
 		const auto containsBoss = [&](const auto& surface)
 		{
 			const double dx = boss.fPositionX - surface.fCenterX, dz = boss.fPositionZ - surface.fCenterZ;
@@ -789,6 +813,10 @@ void LostArk::Server::CGameRoom::Prepare_KoukuAuditionTick(const std::uint32_t s
 		if (pattern->bResetBossToSpawn)
 		{
 			start.staged.fPositionX = boss->fSpawnPositionX; start.staged.fPositionY = boss->fSpawnPositionY; start.staged.fPositionZ = boss->fSpawnPositionZ;
+			SERVER_NAV_POINT spawnGround;
+			if (!m_ServerNavigation.Get_RuntimeSupportSurfaces().empty() &&
+				m_ServerNavigation.Sample_Position(boss->fSpawnPositionX, boss->fSpawnPositionZ, spawnGround))
+				start.staged.fPositionY = (std::max)(start.staged.fPositionY, spawnGround.y);
 			if (pattern->ResetBossYawDegrees) start.staged.fYawDegrees = *pattern->ResetBossYawDegrees;
 		}
 		if (!Commit_BossPatternPlayerStageActions(start.staged, *catalog, pattern->strPatternId,

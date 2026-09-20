@@ -277,3 +277,28 @@ JSON/PowerShell parse와 diff check 후 RESULT에 빌드와 사용자 화면 검
 배포본의 EXE와 Data를 사용하고, 사용자가 고른 기존 LostArk 폴더에서는 Resources 경로만
 읽는다. Server도 배포본의 실행 파일과 DataFiles를 사용한다. 압축 파일 내 경로·manifest와
 실제 빌드 hash, no-launch 사전검증을 대조하며 Resources나 사용자 저장소를 설치·덮어쓰지 않는다.
+
+## G14. Release 시퀀스 준비 진단과 명시적 종료 세션 정리 (2026-09-19)
+
+사용자 실행 Client44800은 Product revision1753의85개 패턴 로드에 성공했지만,
+raid epoch1이 PREPARING에서 ABORTED로 전환됐다. 기존 로그에는 phase만 있고 준비 실패의
+정확한 사유가 없었다. Client MainApp의 준비 단계, Action/Sequence local·pinned revision,
+composition ID와 gameplay revision, 실패 문자열을 기존 session JSONL에 기록한다.
+Server는 raid 종료 사유를 기존 bounded room 진단 경로의 heartbeat에 기록하고
+epoch·ready mask·참가자 수·Sequence ID와 revision을 포함한다. 실패 사유를 얻기 위해
+revision 검증을 제거하거나 READY를 강제로 보내지 않는다.
+
+실제 Release reader와 설치된 데이터를 사용한 Action/Sequence 로드·9개 Sequence 확장,
+Server의 실제 진입 trigger 경로→READY→공통 cinematic 시작을1인·4인으로 확인한다.
+이 검사는 준비와 서버 상태 전이를 검증하며 화면 표시나 사용자 사건의 원인을 대신하지 않는다.
+
+250ms 송신 종료 제거 뒤 명시적인 ROOM_FULL 종료 요청까지 무기한 대기할 수 있는 경계를
+닫는다. 최초 Request_Close_After_Flush부터2초 동안 terminal 응답을 보내고, 기한 뒤에는
+이미 종료하기로 한 세션만 정리한다. 정상 세션의 송신 정체에는 이 기한을 적용하지 않는다.
+반복 종료 요청은 기한을 연장하지 않고 최초 reason/context와1회 종료 callback을 보존한다.
+실제 비수신 소켓, 정상 drain, 활성 연결의2초 초과 대기·정확한 재개를 확인한다.
+
+새 C++ TU는 없으며 project/filters 등록은 바꾸지 않는다. 사용자 Release 빌드와 중복으로
+정본 빌드를 실행하지 않는다. 최종 산출물에 변경 소스가 반영됐는지 확인한 뒤 v6 ZIP을
+별도로 만들고 v5를 보존한다. Resources·PNG·ChangedData 제외와 기존 폴더에서 Resources만
+읽는 실행 계약을 유지한다.

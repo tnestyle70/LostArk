@@ -8,6 +8,8 @@
 #include "RenderingBenchmark.h"
 #include "RenderingProfileService.h"
 #include "GameInstance.h"
+#include "Level_KakulSaydonArena.h"
+#include "Presentation_Manager.h"
 
 #include <algorithm>
 #include <chrono>
@@ -30,6 +32,10 @@ namespace
             scalar(value.x); scalar(value.y); scalar(value.z); scalar(value.w);
         };
         scalar(game.Get_CurrentLevelID());
+        scalar(Engine::CPresentation_Manager::Get().Are_TransientLightsEnabled());
+        scalar(Client::CMapLightPresentationRuntime::Get_SceneIntensityMultiplier());
+        if (const auto* arena = Client::CLevel_KakulSaydonArena::Get_Active())
+            scalar(arena->Get_MapLightComparisonFingerprint());
         const auto viewport = mutableGame.Get_ViewportSize(); scalar(viewport.x); scalar(viewport.y);
         for (const auto type : {Engine::D3DTS::VIEW, Engine::D3DTS::PROJ})
         {
@@ -303,6 +309,9 @@ void Client::CRenderingBenchmark::Notify_ProfileReload()
 void Client::CRenderingBenchmark::Update_RestorationPreview(
 	CRenderingProfileService& Profiles, const bool_t bToolVisible)
 {
+	if (!bToolVisible)
+		if (auto* arena = CLevel_KakulSaydonArena::Get_Active())
+			arena->Reset_MapLightComparison();
 	if (m_strRestorationLastProfileId.empty())
 		return;
 	if (Engine::CGameInstance::Get().Get_CurrentLevelID() != m_iRestorationLevel ||
@@ -348,8 +357,15 @@ bool_t Client::CRenderingBenchmark::Activate_RestorationProfile(
 
 bool_t Client::CRenderingBenchmark::Return_ToEntryProfile(CRenderingProfileService& Profiles)
 {
+	auto* arena = CLevel_KakulSaydonArena::Get_Active();
+	const bool_t lightsChanged = arena &&
+		arena->Get_MapLightComparison() != CLevel_KakulSaydonArena::MAP_LIGHT_COMPARISON::CURRENT;
 	if (m_strRestorationLastProfileId.empty())
-		return false;
+	{
+		if (arena) arena->Reset_MapLightComparison();
+		if (lightsChanged) m_strRestorationStatus = "Current map lights restored.";
+		return lightsChanged;
+	}
 	if (Engine::CGameInstance::Get().Get_CurrentLevelID() != m_iRestorationLevel ||
 		Profiles.Get_ActiveProfileId() != m_strRestorationLastProfileId ||
 		Profiles.Get_LevelQualityProfileId() != m_strRestorationLevelQualityId)
@@ -360,6 +376,7 @@ bool_t Client::CRenderingBenchmark::Return_ToEntryProfile(CRenderingProfileServi
 	}
 	if (!Profiles.Activate_Profile(m_strRestorationEntryProfileId, m_strRestorationStatus))
 		return false;
+	if (arena) arena->Reset_MapLightComparison();
 	Release_RestorationOwnership();
 	if (m_bCapturing)
 		m_bConditionsStable = false;
@@ -396,6 +413,47 @@ bool_t Client::CRenderingBenchmark::Render_RestorationSection(CRenderingProfileS
 		break;
 	}
 	bool_t changed = false;
+	if (auto* arena = CLevel_KakulSaydonArena::Get_Active();
+		arena && game.Get_CurrentLevelID() == ETOUI(LEVEL::KAKULSAYDON_ARENA))
+	{
+		struct AREA_PROFILE final { const char* label; const char* id; };
+		static constexpr AREA_PROFILE areaProfiles[] = {
+			{ "Start area - source", "scene.kakulsaydon.compare.start.v1" },
+			{ "Gate 1 - source LUT02", "scene.kakulsaydon.compare.gate1.v1" },
+			{ "Gate 2 - source", "scene.kakulsaydon.compare.gate2.v1" },
+			{ "Gate 3 - source LUT01", "scene.kakulsaydon.compare.gate3.v1" },
+			{ "Card maze - current baseline", "scene.kakulsaydon.compare.card-maze.v1" }
+		};
+		const char* areaLabel = "Current scene";
+		for (const auto& item : areaProfiles)
+			if (Profiles.Get_ActiveProfileId() == item.id) areaLabel = item.label;
+		ImGui::BeginDisabled(m_bCapturing);
+		if (ImGui::BeginCombo("Kouku area profile", areaLabel))
+		{
+			for (const auto& item : areaProfiles)
+			{
+				const bool available = Profiles.Has_Profile(item.id);
+				ImGui::BeginDisabled(!available);
+				if (ImGui::Selectable(item.label, Profiles.Get_ActiveProfileId() == item.id))
+					changed = Activate_RestorationProfile(Profiles, item.id) || changed;
+				ImGui::EndDisabled();
+				if (!available && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+					ImGui::SetTooltip("This comparison profile has not been published.");
+			}
+			ImGui::EndCombo();
+		}
+		ImGui::EndDisabled();
+		ImGui::TextWrapped("Applies a fixed area look to this view. Player position and raid state stay where they are. Card maze keeps its current baseline.");
+		int selection = static_cast<int>(arena->Get_MapLightComparison());
+		ImGui::BeginDisabled(m_bCapturing);
+		if (ImGui::Combo("Map light comparison", &selection,
+			"Current authored lights\0Imported source lights (2026-09-11)\0Map lights off\0"))
+			changed = arena->Set_MapLightComparison(
+				static_cast<CLevel_KakulSaydonArena::MAP_LIGHT_COMPARISON>(selection), m_strRestorationStatus);
+		ImGui::EndDisabled();
+		ImGui::TextWrapped("Source comparison uses 115 imported local lights with current receiver routing and gate placement. Scene and Effect lights remain active.");
+		ImGui::TextWrapped("This session choice preserves authored lights. Closing this workbench restores them. Compare tone and grading with the profiles below.");
+	}
 	if (beforeId)
 	{
 		const bool beforeAvailable = Profiles.Has_Profile(beforeId);
@@ -414,13 +472,20 @@ bool_t Client::CRenderingBenchmark::Render_RestorationSection(CRenderingProfileS
 	}
 	else
 		ImGui::TextWrapped("Source rendering applicability for this map is not confirmed. Comparison profiles are unavailable.");
-	ImGui::BeginDisabled(m_bCapturing || m_strRestorationLastProfileId.empty());
+	const auto* arena = CLevel_KakulSaydonArena::Get_Active();
+	const bool lightsCompared = arena &&
+		arena->Get_MapLightComparison() != CLevel_KakulSaydonArena::MAP_LIGHT_COMPARISON::CURRENT;
+	ImGui::BeginDisabled(m_bCapturing || (m_strRestorationLastProfileId.empty() && !lightsCompared));
 	if (ImGui::Button("Return to entry"))
 		changed = Return_ToEntryProfile(Profiles) || changed;
 	ImGui::EndDisabled();
 	if (!m_strRestorationEntryProfileId.empty())
 		ImGui::TextWrapped("Entry profile: %s", m_strRestorationEntryProfileId.c_str());
 	ImGui::TextWrapped("Active profile: %s", Profiles.Get_ActiveProfileId().c_str());
+	const auto& regionId = Profiles.Get_AppliedEnvironmentRegionId();
+	ImGui::TextWrapped("Camera environment: %s", regionId.empty() ? "fixed profile (no region override)" : regionId.c_str());
+	if (const auto* camera = Engine::CGameInstance::Get().Get_CamPosition())
+		ImGui::Text("Camera XYZ %.3f / %.3f / %.3f", camera->x, camera->y, camera->z);
 	const auto quality = game.Get_RenderQualitySettings();
 	const auto fog = game.Get_HeightFogSettings();
 	ImGui::Text("Exposure %.4f | Bloom %s: %.4f", quality.fExposure,
@@ -449,6 +514,8 @@ bool_t Client::CRenderingBenchmark::Render_RestorationSection(CRenderingProfileS
 			light.vDiffuse.x, light.vDiffuse.y, light.vDiffuse.z);
 		ImGui::Text("Ambient RGB %.3f / %.3f / %.3f",
 			light.vAmbient.x, light.vAmbient.y, light.vAmbient.z);
+		ImGui::Text("Directional specular RGB %.3f / %.3f / %.3f",
+			light.vSpecular.x, light.vSpecular.y, light.vSpecular.z);
 		break;
 	}
 	ImGui::TextWrapped("%s", m_strRestorationStatus.c_str());

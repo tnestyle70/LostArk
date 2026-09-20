@@ -152,8 +152,8 @@ REGION "blocked" "closed" 0 1
 		!room->m_Players[1u].hasMoveGoal, "WORLD start tick supports a stationary player without a movement command");
 	tests.Require(std::abs(room->m_WorldEntities[0].fPositionY - 1.6f) < .00001f && room->m_WorldEntities[1].fPositionY == 8.63f,
 		"The same WORLD surface supports a stationary Saydon and preserves a boss outside its footprint");
-	tests.Require(room->m_WorldEntities[2].fPositionY == 8.63f && room->m_WorldEntities[3].fPositionY == 8.63f,
-		"An active WORLD floor preserves forced motion and authored root motion vertical authority");
+	tests.Require(room->m_WorldEntities[2].fPositionY == 8.63f && std::abs(room->m_WorldEntities[3].fPositionY - 9.23f) < .00001f,
+		"An active WORLD floor preserves forced motion Y and the source root height above ground");
 	tests.Require(room->Refresh_KoukuSupportSurfaces(102u) && room->m_Players[1u].fPositionY == 1.f &&
 		room->m_ServerNavigation.Get_RuntimeSupportSurfaceCount() == 0u,
 		"WORLD end tick removes the support and restores stationary ground height");
@@ -171,8 +171,83 @@ REGION "blocked" "closed" 0 1
 		"Stopping the complete run returns players to the original floor");
 	tests.Require(room->m_WorldEntities[0].fPositionY == 1.f && room->m_WorldEntities[1].fPositionY == 8.63f,
 		"Stop owner restores only the boss previously supported by the removed floor");
-	tests.Require(room->m_WorldEntities[2].fPositionY == 8.63f && room->m_WorldEntities[3].fPositionY == 8.63f,
-		"Removing the WORLD floor preserves both scripted airborne motion authorities");
+	tests.Require(room->m_WorldEntities[2].fPositionY == 8.63f && std::abs(room->m_WorldEntities[3].fPositionY - 8.63f) < .00001f,
+		"Removing the WORLD floor restores the root terrain delta and preserves forced motion Y");
+
+	for (const bool alreadyCaptured : { false, true })
+	{
+		auto rootRoom = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+		rootRoom->m_ServerNavigation = nav;
+		rootRoom->m_WorldEntities.clear();
+		auto rootBoss = std::make_unique<SERVER_WORLD_ENTITY>(room->m_WorldEntities.front());
+		rootBoss->fPositionY = 1.f; rootBoss->fCollisionRadius = .05f;
+		BOSS_PATTERN_DEFINITION pattern; pattern.strPatternId = "KAKULSAYDON_ROOT_FLOOR_LIFECYCLE"; pattern.bFixedTimelineClock = true;
+		pattern.Stages.emplace_back(); pattern.Stages.front().iDurationMs = 1000u;
+		pattern.Stages.front().Motion.RootMotion = {{0u, 0.f, 0.f, 0.f}, {1000u, 0.f, 0.f, .3f}};
+		rootBoss->strPatternId = pattern.strPatternId; rootBoss->iPatternStartTick = 100u;
+		rootBoss->iPatternStageFirstEvaluationTick = 100u;
+		rootBoss->PatternStageRootMotion = pattern.Stages.front().Motion.RootMotion;
+		rootBoss->bPatternStageRootOriginCaptured = alreadyCaptured;
+		rootBoss->fPatternStageOriginX = 6.f; rootBoss->fPatternStageOriginY = 1.f; rootBoss->fPatternStageOriginZ = 6.f;
+		rootBoss->fPatternStageRootGroundY = 1.f;
+		rootRoom->m_WorldEntities.push_back(std::move(*rootBoss));
+		auto& liveRoot = rootRoom->m_WorldEntities.front();
+		auto rootFloor = scheduled; rootFloor.iStartTick = 100u; rootFloor.iEndTick = 102u;
+		rootRoom->m_KoukuSaydonPatternAudition.SupportSchedule = {rootFloor};
+		CServerCollisionSystem collision;
+		const bool started = rootRoom->Refresh_KoukuSupportSurfaces(100u) &&
+			CKoukuSaydonBrain::Apply_StageRootMotion(liveRoot, pattern, 100u, rootRoom->m_ServerNavigation, collision, status);
+		tests.Require(started && std::abs(liveRoot.fPositionY - 1.6f) < .00001f &&
+			std::abs(liveRoot.fPatternStageOriginY - liveRoot.fPatternStageRootGroundY) < .00001f,
+			alreadyCaptured ? "A floor raises an already captured root without doubling the terrain offset" :
+				"A floor raises the boss before its first root capture instead of capturing a negative ground offset");
+		const bool next = rootRoom->Refresh_KoukuSupportSurfaces(100u) && rootRoom->Refresh_KoukuSupportSurfaces(101u) &&
+			CKoukuSaydonBrain::Apply_StageRootMotion(liveRoot, pattern, 101u, rootRoom->m_ServerNavigation, collision, status);
+		tests.Require(next && std::abs(liveRoot.fPositionY - 1.61f) < .00001f,
+			"Repeated support refresh applies no extra lift and preserves the native vertical sample");
+		const bool removed = rootRoom->Refresh_KoukuSupportSurfaces(102u) &&
+			CKoukuSaydonBrain::Apply_StageRootMotion(liveRoot, pattern, 102u, rootRoom->m_ServerNavigation, collision, status);
+		tests.Require(removed && std::abs(liveRoot.fPositionY - 1.02f) < .00001f,
+			"Support removal returns a running root to arena ground plus its source height, never below the arena");
+	}
+
+	for (const bool skippedTicks : { false, true })
+	{
+		// Production Whirlwind is a 10 m / 3204 ms Logic charge, not source root motion.
+		BOSS_PATTERN_DEFINITION chargePattern; chargePattern.strPatternId = "KAKULSAYDON_G1_PATTERN_24";
+		BOSS_PATTERN_LOGIC_WINDOW charge; charge.strWindowId = "KAKULSAYDON_G1_PATTERN_24.logic.1";
+		charge.eKind = BOSS_PATTERN_LOGIC_KIND::ENTER_AREA; charge.iDurationMs = 3204u; charge.fBossChargeDistanceM = 10.f;
+		chargePattern.LogicWindows = {charge};
+		auto chargeBoss = std::make_unique<SERVER_WORLD_ENTITY>(room->m_WorldEntities.front());
+		chargeBoss->strPatternId = chargePattern.strPatternId; chargeBoss->iPatternSequence = 1u;
+		chargeBoss->fPositionX = 2.f; chargeBoss->fPositionY = 1.f; chargeBoss->fPositionZ = 2.f;
+		chargeBoss->fCollisionRadius = .05f;
+		std::map<PLAYER_ID, SERVER_PLAYER> targets;
+		auto& target = targets[1u]; target.iPlayerId = 1u; target.iNetEntityId = 100u;
+		target.iCurrentHp = target.iMaximumHp = 100u; target.isCombatReady = true;
+		target.fPositionX = 14.f; target.fPositionY = 1.f; target.fPositionZ = 2.f;
+		KOUKUSAYDON_LOGIC_LEDGER chargeLedger; KOUKUSAYDON_LOGIC_OUTPUT chargeOutput;
+		std::vector<DAMAGE_EVENT> damage; CServerCollisionSystem collision;
+		CKoukuSaydonLogicRuntime::Build(chargePattern, *chargeBoss, 100u, chargeLedger);
+		bool everyStepNavigable = true;
+		for (std::uint32_t tick = 100u; tick <= 197u; ++tick)
+		{
+			if (skippedTicks && tick > 100u && tick < 197u) continue;
+			const float previousX = chargeBoss->fPositionX, previousZ = chargeBoss->fPositionZ;
+			CKoukuSaydonLogicRuntime::Update(*chargeBoss, chargePattern, chargeLedger, targets,
+				room->m_GameplayCatalog.Active(), nullptr, tick, damage, chargeOutput, &nav, &collision);
+			everyStepNavigable = everyStepNavigable && nav.Has_LineOfSight(previousX, previousZ,
+				chargeBoss->fPositionX, chargeBoss->fPositionZ);
+		}
+		tests.Require(everyStepNavigable && chargeBoss->fPositionX > 3.998f && chargeBoss->fPositionX < 4.f &&
+			chargeBoss->fPositionZ == 2.f && chargeBoss->fPositionY == 1.f && chargeLedger.Windows.front().bChargeStopped,
+			skippedTicks ? "Whirlwind cannot tunnel across blocked intermediate cells even when both endpoints are walkable" :
+				"Whirlwind stops within one millimetre of navigation and every committed fixed-tick segment stays navigable");
+		const float stoppedX = chargeBoss->fPositionX;
+		CKoukuSaydonLogicRuntime::Update(*chargeBoss, chargePattern, chargeLedger, targets,
+			room->m_GameplayCatalog.Active(), nullptr, 200u, damage, chargeOutput, &nav, &collision);
+		tests.Require(chargeBoss->fPositionX == stoppedX, "Stopped Whirlwind cannot resume beyond navigation on later ticks");
+	}
 
 	for (const bool withFollowup : { false, true })
 	{

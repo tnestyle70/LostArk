@@ -125,8 +125,8 @@ namespace LostArk::Server
 			int nativeErrorCode = 0,
 			std::string_view context = {});
 		// Stop receiving immediately, drain already queued reliable frames on the
-		// sender worker, and close only after the queue becomes empty.  This is
-		// used for typed terminal replies such as ROOM_FULL; the room thread never
+		// sender worker, and close after the queue empties or a bounded terminal
+		// drain expires. Used for typed terminal replies such as ROOM_FULL; the room thread never
 		// waits for socket I/O.
 		void Request_Close_After_Flush(
 			LostArk::Shared::SESSION_DIAGNOSTIC_REASON reason =
@@ -184,6 +184,7 @@ namespace LostArk::Server
 		// Socket calls are nonblocking; temporary pressure is not a broken stream.
 		static constexpr std::uint32_t TRANSPORT_POLL_MILLISECONDS = 100u;
 		static constexpr std::uint32_t SEND_STALL_REPORT_MILLISECONDS = 250u;
+		static constexpr std::uint32_t TERMINAL_DRAIN_TIMEOUT_MILLISECONDS = 2000u;
 		static constexpr std::uint32_t SENDER_JOIN_TIMEOUT_MILLISECONDS = 2000u;
 
 		void Receive_Loop();
@@ -225,6 +226,7 @@ namespace LostArk::Server
 		std::atomic_bool m_isReceiveRunning{ false };
 		std::atomic_bool m_isSendRunning{ false };
 		std::atomic_bool m_closeAfterOutboundFlush{ false };
+		std::atomic<std::uint64_t> m_iTerminalDrainStartTicks{ 0u };
 		std::atomic_bool m_hasNotifiedClosed{ false };
 
 		std::atomic<LostArk::Shared::PLAYER_ID> m_iPlayerId

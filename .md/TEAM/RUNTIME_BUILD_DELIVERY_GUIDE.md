@@ -9,14 +9,16 @@ CSO와 필요한 `Client/Server Bin/DataFiles`를 전달한다. 제품이 직접
 
 ## Portable 실행 배포본
 
-v5 portable은 압축 해제 폴더 안의 Client/Server와 Data/DataFiles를 사용한다.
+portable 배포본은 압축 해제 폴더 안의 Client/Server와 Data/DataFiles를 사용한다.
 기존 LostArk 폴더를 선택하는 이유는 `Client/Bin/Resources`를 읽기 위해서다.
 선택한 저장소에 EXE·DLL·Data를 설치하거나 덮어쓰지 않으며, 그 저장소의 실행 파일도 사용하지 않는다.
 Resources 폴더 자체를 선택할 수도 있다. 받는 PC의 portable 폴더에는 `Framework.sln`이나 Git checkout이 필요하지 않다.
 
-현재 v5는 최종 Release 빌드·ZIP 생성·파일 검증을 완료했다. 파일은
-`LostArk-Release-20260919-v5-192.168.0.14.zip`이며, 크기·SHA256·검증 근거와 실제 실행 명령은
-[Release ZIP 안내](../../Release/zipRelease.md)에서 관리한다. 제품 빌드·ZIP 검증과 사용자의 실제 4인 화면 검증을 구분한다.
+현재 v6는 사용자의 VS Release 빌드 산출물을 pin해 ZIP 생성·파일 검증을 완료했다.
+`LostArk-Release-20260919-v6-192.168.0.14.zip`의 크기·SHA256·빌드 출처·검증 근거와 실행 명령은
+[Release ZIP 안내](../../Release/zipRelease.md)에서 관리한다. 이번 VS 빌드 캡처를 새 Product pipeline
+실행 receipt로 대신 기록하지 않는다. ZIP 파일 검증과 실제 4인 화면·레이드 준비 성공은 구분한다.
+기존 v5 ZIP은 보존한다.
 
 | 포함 경로 | 소비 계약 |
 |---|---|
@@ -51,7 +53,7 @@ Client를 시작하지 않는 `LostArk.exe --check <외부 폴더> <receipt.json
 실제 EXE·작업 폴더·Data·Resources 경로와 검증 결과를 기록한다.
 
 아래의 `New-LostArkRuntimeDelivery.ps1` / `Install-LostArkRuntimeDelivery.ps1`은
-기존 저장소에 runtime을 설치하는 별도 방식이다. portable v5에 이 설치 절차를 적용하지 않는다.
+기존 저장소에 runtime을 설치하는 별도 방식이다. portable v6에 이 설치 절차를 적용하지 않는다.
 
 ## PR #264~#266에서 최신 main으로 처음 갱신하는 PC
 
@@ -363,7 +365,7 @@ ZIP에는 `Client/Bin/Resources`가 0개여야 한다. manifest의 per-file hash
 제품은 일부 catalog·패턴·Effect·Sound JSON을 `Data`에서 직접 읽는다.
 `New-LostArkRuntimeDelivery.ps1`의 runtime 전용 ZIP에는 `Data`가 없으므로 이 설치 방식을
 쓰는 PC는 같은 commit의 `Data`를 준비해야 한다. 과거 v4의 `ChangedData/Data`는 이 설치형의
-보충 방식이다. portable v5는 필요한 JSON을 정상 `Data/...` 경로에 포함하고 별도 보충분을 만들지 않는다.
+보충 방식이다. portable v6는 필요한 JSON을 정상 `Data/...` 경로에 포함하고 별도 보충분을 만들지 않는다.
 전체 `Data`와 Resources를 무조건 복사하지 않고 실제 직접 소비 경로와 참조 문서 목록을 검증한다.
 새 sound/image/model 실물은 기존 Drive 경계로 전달한다.
 
@@ -409,7 +411,7 @@ GPU 중 하나를 원인으로 확정하지 않는다. 로그 파일을 쓸 수 
 
 시작 감시를 포함한 `LostArk.exe` wrapper는 Client가 10초 이내에 실패 종료하면 오류 창을 표시한다.
 기존 설치형 wrapper의 실행기 로그는 `%LOCALAPPDATA%/LostArk/LauncherLogs`에 보존한다.
-portable v5 wrapper는 이 로그를 만들지 않으며 오류 창 또는 `--check` receipt와 bundle 안의
+portable v6 wrapper는 이 로그를 만들지 않으며 오류 창 또는 `--check` receipt와 bundle 안의
 Client 로그를 확인한다. 10초 동안 살아 있다는 사실은 Lobby 진입 또는 이후 게임플레이 성공의
 증거가 아니다. Client/UI의 최종 화면 확인은 사용자가 수행한다.
 
