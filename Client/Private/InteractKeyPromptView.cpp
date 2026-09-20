@@ -86,12 +86,20 @@ void Client::CInteractKeyPromptView::Initialize(
 	}
 	for (const WORLD_GAMEPLAY_PLACEMENT& Placement : world.Get_Placements())
 	{
-		if (WORLD_PLACEMENT_KIND::TRIGGER_BOX != Placement.eKind ||
-			(!Placement.requiresInteract && Placement.strInteractAction.empty()))
+		/* Every trigger box, not only the ones this document gates. Whether a box waits for
+		the key is the Server's decision -- an authored requiresInteract is one input to it,
+		and its own table of what fires on entry is the other -- so a box that says nothing
+		here is still offered (the Kouku Mario crossings and jumps are all like that). The
+		list exists to answer "which icon" for whatever the Server offers, so it holds them
+		all and lets the offer decide. */
+		if (WORLD_PLACEMENT_KIND::TRIGGER_BOX != Placement.eKind)
 			continue;
 		TRIGGER Trigger{};
 		Trigger.strPlacementId = Placement.placementId;
-		Trigger.bShowWhileInside = !Placement.requiresInteract;
+		/* Only a box that named its icon and is not gated here shows without an offer: it
+		fires the moment it is entered, so no offer will ever arrive for it. */
+		Trigger.bShowWhileInside =
+			!Placement.requiresInteract && !Placement.strInteractAction.empty();
 		Trigger.vCenter = Placement.position;
 		Trigger.vHalfExtents = Placement.halfExtents;
 		Trigger.fYawDegrees = Placement.yawDegrees;
