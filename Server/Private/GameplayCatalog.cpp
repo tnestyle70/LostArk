@@ -2051,7 +2051,8 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			std::uint32_t windowCount = 0;
 			if (5u != fields.size() ||
 				!ParseNumber(fields[1], ownerSkillId) ||
-				("SKILL" != fields[2] && "MOVE" != fields[2]) ||
+				("SKILL" != fields[2] && "MOVE" != fields[2] &&
+					"DODGE" != fields[2]) ||
 				!ParseNumber(fields[3], windowCount) ||
 				windowCount < 1u || windowCount > 8u)
 			{
@@ -2064,10 +2065,10 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 				m_strStatus = "Skill cancel row does not follow its skill";
 				return false;
 			}
-			const bool isSkillKind = "SKILL" == fields[2];
-			std::vector<PLAYER_CANCEL_WINDOW>& windows = isSkillKind ?
-				owner->second.SkillCancelWindows :
-				owner->second.MoveCancelWindows;
+			std::vector<PLAYER_CANCEL_WINDOW>& windows =
+				"SKILL" == fields[2] ? owner->second.SkillCancelWindows :
+				"MOVE" == fields[2] ? owner->second.MoveCancelWindows :
+				owner->second.DodgeCancelWindows;
 			if (!windows.empty())
 			{
 				m_strStatus = "Skill cancel row is duplicated";
@@ -2088,7 +2089,8 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			if (6u != fields.size() ||
 				!ParseNumber(fields[1], ownerSkillId) ||
 				!ParseNumber(fields[2], stageIndex) ||
-				("SKILL" != fields[3] && "MOVE" != fields[3]) ||
+				("SKILL" != fields[3] && "MOVE" != fields[3] &&
+					"DODGE" != fields[3]) ||
 				!ParseNumber(fields[4], windowCount) ||
 				windowCount < 1u || windowCount > 8u)
 			{
@@ -2103,9 +2105,10 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 				return false;
 			}
 			PLAYER_COMBO_STAGE& stage = owner->second.ComboStages[stageIndex];
-			const bool isSkillKind = "SKILL" == fields[3];
-			std::vector<PLAYER_CANCEL_WINDOW>& windows = isSkillKind ?
-				stage.SkillCancelWindows : stage.MoveCancelWindows;
+			std::vector<PLAYER_CANCEL_WINDOW>& windows =
+				"SKILL" == fields[3] ? stage.SkillCancelWindows :
+				"MOVE" == fields[3] ? stage.MoveCancelWindows :
+				stage.DodgeCancelWindows;
 			if (!windows.empty())
 			{
 				m_strStatus = "Skill stage cancel row is duplicated";

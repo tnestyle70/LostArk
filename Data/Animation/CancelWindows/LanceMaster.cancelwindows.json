@@ -1,6 +1,6 @@
 {
   "schema": "lostark.animation-cancel-windows",
-  "formatVersion": 1,
+  "formatVersion": 2,
   "animationAssetId": "LanceMaster",
   "characterClass": "LANCE_MASTER",
   "skills": [
@@ -17,7 +17,8 @@
           292,
           500
         ]
-      ]
+      ],
+      "dodgeCancel": []
     },
     {
       "skillId": 34010,
@@ -35,7 +36,8 @@
               592,
               1633
             ]
-          ]
+          ],
+          "dodgeCancel": []
         },
         {
           "stageIndex": 1,
@@ -50,7 +52,8 @@
               500,
               1367
             ]
-          ]
+          ],
+          "dodgeCancel": []
         },
         {
           "stageIndex": 2,
@@ -65,7 +68,8 @@
               656,
               1533
             ]
-          ]
+          ],
+          "dodgeCancel": []
         },
         {
           "stageIndex": 3,
@@ -78,6 +82,12 @@
           "moveCancel": [
             [
               696,
+              1567
+            ]
+          ],
+          "dodgeCancel": [
+            [
+              500,
               1567
             ]
           ]
@@ -97,7 +107,8 @@
           400,
           900
         ]
-      ]
+      ],
+      "dodgeCancel": []
     },
     {
       "skillId": 34030,
@@ -112,7 +123,8 @@
           747,
           1100
         ]
-      ]
+      ],
+      "dodgeCancel": []
     },
     {
       "skillId": 34040,
@@ -135,6 +147,12 @@
           1048,
           1500
         ]
+      ],
+      "dodgeCancel": [
+        [
+          698,
+          1500
+        ]
       ]
     },
     {
@@ -150,7 +168,8 @@
           818,
           1143
         ]
-      ]
+      ],
+      "dodgeCancel": []
     },
     {
       "skillId": 34100,
@@ -163,6 +182,12 @@
       "moveCancel": [
         [
           2400,
+          3034
+        ]
+      ],
+      "dodgeCancel": [
+        [
+          501,
           3034
         ]
       ]
@@ -180,6 +205,12 @@
           659,
           1250
         ]
+      ],
+      "dodgeCancel": [
+        [
+          701,
+          1250
+        ]
       ]
     },
     {
@@ -193,6 +224,12 @@
       "moveCancel": [
         [
           2287,
+          3029
+        ]
+      ],
+      "dodgeCancel": [
+        [
+          417,
           3029
         ]
       ]
@@ -213,6 +250,12 @@
               1151,
               2118
             ]
+          ],
+          "dodgeCancel": [
+            [
+              551,
+              2118
+            ]
           ]
         },
         {
@@ -226,6 +269,12 @@
           "moveCancel": [
             [
               1551,
+              2033
+            ]
+          ],
+          "dodgeCancel": [
+            [
+              593,
               2033
             ]
           ]
@@ -243,6 +292,12 @@
       "moveCancel": [
         [
           1494,
+          2333
+        ]
+      ],
+      "dodgeCancel": [
+        [
+          418,
           2333
         ]
       ]
@@ -263,7 +318,8 @@
               291,
               2300
             ]
-          ]
+          ],
+          "dodgeCancel": []
         },
         {
           "stageIndex": 1,
@@ -276,6 +332,12 @@
           "moveCancel": [
             [
               800,
+              1400
+            ]
+          ],
+          "dodgeCancel": [
+            [
+              684,
               1400
             ]
           ]
@@ -295,7 +357,8 @@
           376,
           667
         ]
-      ]
+      ],
+      "dodgeCancel": []
     },
     {
       "skillId": 34510,
@@ -313,7 +376,8 @@
               166,
               633
             ]
-          ]
+          ],
+          "dodgeCancel": []
         },
         {
           "stageIndex": 1,
@@ -328,7 +392,8 @@
               150,
               633
             ]
-          ]
+          ],
+          "dodgeCancel": []
         },
         {
           "stageIndex": 2,
@@ -343,7 +408,8 @@
               200,
               633
             ]
-          ]
+          ],
+          "dodgeCancel": []
         }
       ]
     },
@@ -360,6 +426,18 @@
           167,
           583
         ]
+      ],
+      "dodgeCancel": []
+    },
+    {
+      "skillId": 34540,
+      "skillCancel": [],
+      "moveCancel": [],
+      "dodgeCancel": [
+        [
+          125,
+          609
+        ]
       ]
     },
     {
@@ -373,6 +451,12 @@
       "moveCancel": [
         [
           1700,
+          2467
+        ]
+      ],
+      "dodgeCancel": [
+        [
+          500,
           2467
         ]
       ]
@@ -390,6 +474,12 @@
           1416,
           1777
         ]
+      ],
+      "dodgeCancel": [
+        [
+          458,
+          1777
+        ]
       ]
     },
     {
@@ -403,6 +493,12 @@
       "moveCancel": [
         [
           1907,
+          2666
+        ]
+      ],
+      "dodgeCancel": [
+        [
+          1500,
           2666
         ]
       ]
@@ -423,6 +519,12 @@
               1200,
               2000
             ]
+          ],
+          "dodgeCancel": [
+            [
+              550,
+              2000
+            ]
           ]
         },
         {
@@ -438,6 +540,12 @@
               800,
               1300
             ]
+          ],
+          "dodgeCancel": [
+            [
+              583,
+              1300
+            ]
           ]
         }
       ]
@@ -445,6 +553,17 @@
     {
       "skillId": 34590,
       "stages": [
+        {
+          "stageIndex": 0,
+          "skillCancel": [],
+          "moveCancel": [],
+          "dodgeCancel": [
+            [
+              550,
+              700
+            ]
+          ]
+        },
         {
           "stageIndex": 1,
           "skillCancel": [
@@ -458,7 +577,8 @@
               0,
               1000
             ]
-          ]
+          ],
+          "dodgeCancel": []
         },
         {
           "stageIndex": 2,
@@ -471,6 +591,12 @@
           "moveCancel": [
             [
               800,
+              1200
+            ]
+          ],
+          "dodgeCancel": [
+            [
+              396,
               1200
             ]
           ]
@@ -498,6 +624,12 @@
           6067,
           6433
         ]
+      ],
+      "dodgeCancel": [
+        [
+          5513,
+          6433
+        ]
       ]
     },
     {
@@ -513,6 +645,12 @@
           6033,
           6800
         ]
+      ],
+      "dodgeCancel": [
+        [
+          5953,
+          6800
+        ]
       ]
     },
     {
@@ -526,6 +664,16 @@
       "moveCancel": [
         [
           1883,
+          2433
+        ]
+      ],
+      "dodgeCancel": [
+        [
+          733,
+          1173
+        ],
+        [
+          1833,
           2433
         ]
       ]

@@ -384,7 +384,13 @@ bool LostArk::Server::CPlayerSkillSystem::Try_StartInternal(
 
 	/* A combo continuation, or a running action that has reached one of its own
 	authored cancel windows, is the only reason to accept input mid-action.
-	Everything else keeps the original guard. */
+	Everything else keeps the original guard.
+
+	The Space dodge is its own input in the original: its window usually opens
+	before, and always covers, the skill window. So the dodge answers to either
+	list while every other skill still answers to the skill list alone. */
+	const bool isDodge = PLAYER_SKILL_KIND::ACTIVE == skill->eSkillKind &&
+		"SPACE" == skill->strInputSlot;
 	if (!isStandup && PLAYER_ACTION_STATE::NONE != player.eAction)
 	{
 		const PLAYER_SKILL_DEFINITION* running =
@@ -392,9 +398,12 @@ bool LostArk::Server::CPlayerSkillSystem::Try_StartInternal(
 				catalog.Find_Skill(player.iCurrentSkillId) : nullptr;
 		if (nullptr != running &&
 			command.iSkillId != player.iCurrentSkillId &&
-			Is_InsideCancelWindow(
+			(Is_InsideCancelWindow(
 				*running, player.iComboStage,
-				player.fActionElapsedSeconds, false))
+				player.fActionElapsedSeconds, PLAYER_CANCEL_INPUT::SKILL) ||
+			(isDodge && Is_InsideCancelWindow(
+				*running, player.iComboStage,
+				player.fActionElapsedSeconds, PLAYER_CANCEL_INPUT::DODGE))))
 		{
 			/* Fall through to the cooldown, resource and stance checks below:
 			the cancel opens the door, it does not pay for the skill.

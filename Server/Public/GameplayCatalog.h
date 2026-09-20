@@ -107,11 +107,19 @@ namespace LostArk::Server
 
 	/* One authored window, in action-local milliseconds, during which a running
 	action accepts the next input instead of holding it to the end. The original
-	opens skill and movement separately, so each kind carries its own list. */
+	opens skill, movement and the Space dodge separately, so each kind carries
+	its own list. */
 	struct PLAYER_CANCEL_WINDOW final
 	{
 		std::uint32_t iStartMs = 0;
 		std::uint32_t iEndMs = 0;
+	};
+
+	enum class PLAYER_CANCEL_INPUT : std::uint8_t
+	{
+		SKILL,
+		MOVE,
+		DODGE,
 	};
 
 	struct PLAYER_COMBO_STAGE final
@@ -129,6 +137,7 @@ namespace LostArk::Server
 		std::vector<PLAYER_SKILL_PROJECTILE> Projectiles;
 		std::vector<PLAYER_CANCEL_WINDOW> SkillCancelWindows;
 		std::vector<PLAYER_CANCEL_WINDOW> MoveCancelWindows;
+		std::vector<PLAYER_CANCEL_WINDOW> DodgeCancelWindows;
 	};
 
 	struct PLAYER_SKILL_DEFINITION
@@ -176,6 +185,7 @@ namespace LostArk::Server
 		std::vector<PLAYER_SKILL_PROJECTILE> Projectiles;
 		std::vector<PLAYER_CANCEL_WINDOW> SkillCancelWindows;
 		std::vector<PLAYER_CANCEL_WINDOW> MoveCancelWindows;
+		std::vector<PLAYER_CANCEL_WINDOW> DodgeCancelWindows;
 	};
 
 	/* One authored destructible piece of a boss. iPlateIndex is the authored
@@ -1531,7 +1541,7 @@ namespace LostArk::Server
 		const PLAYER_SKILL_DEFINITION& running,
 		const std::uint32_t comboStage,
 		const float actionElapsedSeconds,
-		const bool forMovement)
+		const PLAYER_CANCEL_INPUT input)
 	{
 		const std::size_t stageIndex =
 			0u == comboStage ? 0u : comboStage - 1u;
@@ -1540,11 +1550,18 @@ namespace LostArk::Server
 				LostArk::Shared::PLAYER_SKILL_KIND::HOLD == running.eSkillKind ||
 				LostArk::Shared::PLAYER_SKILL_KIND::COUNTER == running.eSkillKind) &&
 			stageIndex < running.ComboStages.size();
+		const auto select = [input](const auto& owner)
+			-> const std::vector<PLAYER_CANCEL_WINDOW>&
+		{
+			switch (input)
+			{
+			case PLAYER_CANCEL_INPUT::MOVE: return owner.MoveCancelWindows;
+			case PLAYER_CANCEL_INPUT::DODGE: return owner.DodgeCancelWindows;
+			default: return owner.SkillCancelWindows;
+			}
+		};
 		const std::vector<PLAYER_CANCEL_WINDOW>& windows = hasStage ?
-			(forMovement ? running.ComboStages[stageIndex].MoveCancelWindows :
-				running.ComboStages[stageIndex].SkillCancelWindows) :
-			(forMovement ? running.MoveCancelWindows :
-				running.SkillCancelWindows);
+			select(running.ComboStages[stageIndex]) : select(running);
 		if (windows.empty() || !(actionElapsedSeconds >= 0.f))
 			return false;
 		const double elapsedMs =
