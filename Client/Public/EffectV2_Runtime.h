@@ -76,6 +76,11 @@ public:
 	static void Notify_Clip(
 		const EFFECT_V2_TARGET& Target,
 		const char_t* pClipName);
+	/* The stable archetype a target's bindings are keyed by, which an NPC
+	   without an explicit binding owner resolves from its model tag. Exposed
+	   so other per-archetype presentation documents use this one identity
+	   instead of repeating the lookup. Empty when the target has none. */
+	static std::string Resolve_ArchetypeId(const EFFECT_V2_TARGET& Target);
 	static void Tick(
 		const EFFECT_V2_TARGET& Target,
 		const ComPtr<ID3D11Device>& pDevice,

@@ -25,6 +25,7 @@ class CEffectLoadPreparationJob;
 struct EFFECT_PRODUCT_CAMERA_PREPARATION;
 class CEffectObject;
 class CEffectScreenOverlayPresentation;
+class CNpc;
 class CValtan;
 
 struct EFFECT_SPAWN_DESC final
@@ -33,6 +34,9 @@ struct EFFECT_SPAWN_DESC final
     std::string strElementId;
 	std::weak_ptr<CCharacter> pOwner;
 	std::weak_ptr<CValtan> pBossOwner;
+	/* A level-owned world-root spawn whose follow anchors read this NPC's body
+	   model. The NPC is never the budget/lifetime owner. */
+	std::weak_ptr<CNpc> pNpcAnchorOwner;
     std::string strAnchorSlotId = "root";
     EFFECT_TRANSFORM_DESC LocalTransform{};
     EFFECT_FOLLOW_POLICY eFollowPolicy = EFFECT_FOLLOW_POLICY::FOLLOW;
@@ -111,6 +115,8 @@ struct EFFECT_LEVEL_PLACEMENT_SPAWN_DESC final
 	f32_t fSourceLoopEndSeconds = 0.f;
 	// The owning Object supplies the model and every model-cue bone anchor.
 	bool_t bExternalModelCueAnchors = false;
+	// Source socket follow anchors read this NPC's body model each frame.
+	std::weak_ptr<CNpc> pAnchorOwner;
 };
 
 struct EFFECT_SOURCE_BONE_ANCHOR_BUILD_DESC final

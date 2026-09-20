@@ -17,6 +17,7 @@
 #include "Effect_VisualProgramCorpus.h"
 #include "GameInstance.h"
 #include "Model.h"
+#include "Npc.h"
 #include "Profiler.h"
 #include "RuntimeAssetRoot.h"
 #include "Transform.h"
@@ -167,6 +168,8 @@ namespace
 		std::shared_ptr<Client::CValtan> pBoss;
 		uint32_t iLevelIndex = ETOUI(Client::LEVEL::END);
 		bool_t bVehicleModel = false;
+		/* Anchor model of a level-owned NPC action spawn; not an owner. */
+		std::shared_ptr<Client::CNpc> pNpcAnchors;
 
 		bool_t Is_Valid() const
 		{
@@ -182,15 +185,19 @@ namespace
 			if (nullptr != pCharacter)
 				return bVehicleModel ? pCharacter->Try_Get_VehicleWorldMatrix(Out) :
 					pCharacter->Try_Get_PresentationRootMatrix(&Out);
-			return nullptr != pBoss &&
-				pBoss->Try_Get_PresentationRootMatrix(&Out);
+			if (nullptr != pBoss)
+				return pBoss->Try_Get_PresentationRootMatrix(&Out);
+			/* The NPC renders its body at the bare transform world; the 0.01
+			   import basis lives in the bones and is normalized per anchor. */
+			return nullptr != pNpcAnchors && Try_Get_OwnerWorld(Out);
 		}
 
 		bool_t Try_Get_OwnerWorld(float4x4_t& Out) const
 		{
 			const std::shared_ptr<Engine::CTransform> pTransform =
 				nullptr != pBoss ? pBoss->Get_Transform() :
-				(nullptr != pCharacter ? pCharacter->Get_Transform() : nullptr);
+				nullptr != pCharacter ? pCharacter->Get_Transform() :
+				nullptr != pNpcAnchors ? pNpcAnchors->Get_Transform() : nullptr;
 			if (nullptr == pTransform)
 				return false;
 			Out = *pTransform->Get_WorldMatrixPtr();
@@ -201,7 +208,9 @@ namespace
 		{
 			if (nullptr != pCharacter)
 				return bVehicleModel ? pCharacter->Get_VehicleModel() : pCharacter->Get_BodyModel();
-			return nullptr != pBoss ? pBoss->Get_BodyModel() : nullptr;
+			if (nullptr != pBoss)
+				return pBoss->Get_BodyModel();
+			return nullptr != pNpcAnchors ? pNpcAnchors->Get_Model() : nullptr;
 		}
 	};
 
@@ -213,6 +222,7 @@ namespace
         std::shared_ptr<Client::CEffectObject> pObject;
         std::weak_ptr<Client::CCharacter> pOwner;
 		std::weak_ptr<Client::CValtan> pBossOwner;
+		std::weak_ptr<Client::CNpc> pNpcAnchorOwner;
         uint32_t iLevelIndex = UINT32_MAX;
         std::string strEffectAssetId;
         std::string strAnchorSlotId;
@@ -309,7 +319,8 @@ namespace
 		return {
 			Desc.pOwner.lock(), Desc.pBossOwner.lock(),
 			Desc.bLevelOwned ? Desc.iLevelOwnerIndex : ETOUI(Client::LEVEL::END),
-			Desc.bVehicleModelAnchors
+			Desc.bVehicleModelAnchors,
+			Desc.pNpcAnchorOwner.lock()
 		};
 	}
 
@@ -318,7 +329,8 @@ namespace
 		return {
 			Effect.pOwner.lock(), Effect.pBossOwner.lock(),
 			Effect.bLevelOwned ? Effect.iLevelIndex : ETOUI(Client::LEVEL::END),
-			Effect.bVehicleModelAnchors
+			Effect.bVehicleModelAnchors,
+			Effect.pNpcAnchorOwner.lock()
 		};
 	}
 
@@ -4151,7 +4163,9 @@ bool_t Client::CEffectPresentationService::Requires_SourceBoneImportScaleNormali
 	// combined bones retain a 0.01 import basis while translations are meters.
 	// Normalize that basis once; preserve source StartSize and model geometry.
 	// Vehicle models (admission 0.0001, rig root 100) measure the same 0.01 basis.
+	// The Esther Silian NPC body is cooked through the same NPC pipeline.
 	return strEffectAssetId.starts_with("effect.vehicle.") ||
+		strEffectAssetId.starts_with("effect.esther.silian.") ||
 		(strEffectAssetId.starts_with("effect.valtan.action.") &&
 		strEffectAssetId.ends_with(".full.restore")) ||
 		strEffectAssetId == WARLORD_Q_SOURCE_BONE_SCALE.strEffectAssetId ||
@@ -5162,6 +5176,7 @@ bool_t Client::CEffectPresentationService::Spawn_LevelPlacement(
 	spawn.bOwnerSustainedSourceLoops = Desc.bOwnerSustainedSourceLoops;
 	spawn.fSourceLoopEndSeconds = Desc.fSourceLoopEndSeconds;
 	spawn.bExternalModelCueAnchors = Desc.bExternalModelCueAnchors;
+	spawn.pNpcAnchorOwner = Desc.pAnchorOwner;
 	spawn.strLevelPlacementId = Desc.strPlacementId;
 	if (!Spawn(spawn, strOutStatus))
 		return false;
@@ -5511,6 +5526,8 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
 		(Desc.bExternallySampled && !Desc.bLevelOwned) ||
 		(Desc.bVehicleModelAnchors &&
 			(nullptr == Owner.pCharacter || Desc.bUseWorldRoot || nullptr == Owner.Get_Model())) ||
+		(nullptr != Owner.pNpcAnchors &&
+			(!Desc.bLevelOwned || !Desc.bUseWorldRoot || nullptr == Owner.Get_Model())) ||
 		(Desc.bOwnerSustainedSourceLoops &&
 			(!Desc.bUseWorldRoot || Desc.bExternallySampled || Owner.pCharacter ||
 				(!Desc.bLevelOwned && !Owner.pBoss) ||
@@ -5721,6 +5738,7 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
     Active.pObject = pEffect;
 	Active.pOwner = Owner.pCharacter;
 	Active.pBossOwner = Owner.pBoss;
+	Active.pNpcAnchorOwner = Owner.pNpcAnchors;
     Active.iLevelIndex = iLevelIndex;
     Active.strEffectAssetId = Desc.strEffectAssetId;
     Active.strAnchorSlotId = Desc.strAnchorSlotId;
@@ -5973,6 +5991,17 @@ void Client::CEffectPresentationService::Synchronize_FollowAnchors()
 		if (0u != Effect.iWorldRootHandle)
 		{
 			Effect.pObject->Set_RootWorldForNextUpdate(Effect.WorldRoot);
+			/* An NPC action spawn keeps its snapshot root but follows the
+			   NPC's live bones for socket-attached emitters. */
+			if (nullptr != Owner.pNpcAnchors && !Effect.SourceAnchorRequests.empty())
+			{
+				Resolve_SourceAnchors(
+					Owner, Effect.eScalePolicy, Effect.vWorldScale,
+					Effect.SourceAnchorRequests,
+					Effect.SourceAnchorWorldsScratch);
+				Effect.pObject->Set_SourceAnchorWorlds(
+					std::move(Effect.SourceAnchorWorldsScratch));
+			}
 			continue;
 		}
 		Resolve_SourceAnchors(

@@ -29,6 +29,7 @@
 #include "MapAssetCatalog.h"
 #include "MapEffectDocument.h"
 #include "NetworkManager.h"
+#include "NpcActionEffectCueDocument.h"
 #include "ProjectDataRoot.h"
 #include "UI_Sprite.h"
 #include "ValtanPatternEffectCueDocument.h"
@@ -688,6 +689,37 @@ bool_t CLevel_Loading::Advance_TargetEffectPreparation()
 		}
 		m_EffectPreparationTargets.insert(m_EffectPreparationTargets.end(),
 			PlayerEffectAssetIds.begin(), PlayerEffectAssetIds.end());
+
+		/* The Loader readies the Esther summon roster for these arenas; their
+		   restored action Effect documents join the same worker so a summon
+		   strike never waits on a first-spawn preparation. */
+		if (bCharacterSelect || bValtanArena || bKoukuArena)
+		{
+			std::vector<std::string> EstherEffectAssetIds;
+			for (const char* pEstherArchetypeId :
+				{ "NPC_59030", "NPC_58700", "NPC_59060" })
+			{
+				if (!CNpcActionEffectCueDocument::Load(pEstherArchetypeId, Status))
+					return IsolateFailure(Status);
+				for (const NPC_ACTION_EFFECT_CUE& Cue :
+					CNpcActionEffectCueDocument::Get_Cues(pEstherArchetypeId))
+				{
+					EstherEffectAssetIds.push_back(Cue.strEffectAssetId);
+				}
+			}
+			std::sort(EstherEffectAssetIds.begin(), EstherEffectAssetIds.end());
+			EstherEffectAssetIds.erase(std::unique(EstherEffectAssetIds.begin(),
+				EstherEffectAssetIds.end()), EstherEffectAssetIds.end());
+			if (!EstherEffectAssetIds.empty())
+			{
+				std::vector<std::string> EstherTargets;
+				if (!CEffectPresentationService::Queue_ProductTargets_Priority(
+						EstherEffectAssetIds, EstherTargets, Status))
+					return IsolateFailure(Status);
+				m_EffectPreparationTargets.insert(m_EffectPreparationTargets.end(),
+					EstherTargets.begin(), EstherTargets.end());
+			}
+		}
 
 		/* Character Select can audition the same catalog-backed Valtan lazily.
 		   Its ambient attachments use this existing worker preparation gate. */
