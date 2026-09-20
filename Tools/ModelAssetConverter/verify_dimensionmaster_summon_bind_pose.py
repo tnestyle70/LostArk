@@ -428,7 +428,7 @@ def sample_vector(
         return keys[0][1:4]
     if time >= keys[-1][0]:
         return keys[-1][1:4]
-    right = bisect.bisect_right([key[0] for key in keys], time)
+    right = bisect.bisect_right(keys, time, key=lambda row: row[0])
     left_key, right_key = keys[right - 1], keys[right]
     ratio = (time - left_key[0]) / (right_key[0] - left_key[0])
     return tuple(
@@ -446,7 +446,7 @@ def sample_quaternion(
         return keys[0][1:5]
     if time >= keys[-1][0]:
         return keys[-1][1:5]
-    right = bisect.bisect_right([key[0] for key in keys], time)
+    right = bisect.bisect_right(keys, time, key=lambda row: row[0])
     left_key, right_key = keys[right - 1], keys[right]
     ratio = (time - left_key[0]) / (right_key[0] - left_key[0])
     left = list(left_key[1:5])

@@ -1,0 +1,23 @@
+{
+  "schema": "lostark.character-interaction-bindings",
+  "formatVersion": 1,
+  "characterAssetId": "Artist",
+  "bodyAssetId": "Character/Artist/Artist.wmodel",
+  "modes": [
+    {
+      "mode": "MAZE",
+      "skills": [
+        {
+          "clip": "maze_hammer_q",
+          "playRate": 1,
+          "effectAssetId": "effect.kouku.cardmaze.q"
+        },
+        {
+          "clip": "maze_hammer_lmb",
+          "playRate": 1,
+          "effectAssetId": "effect.kouku.cardmaze.lmb"
+        }
+      ]
+    }
+  ]
+}

@@ -162,6 +162,7 @@ float       g_fSpotInnerCos = 1.f;
 float       g_fSpotOuterCos = 1.f;
 vector      g_vLightDiffuse;
 vector      g_vLightAmbient;
+float4      g_vSourceCharacterAmbient = 0.f;
 vector      g_vLightSpecular;
 
 struct DEFERRED_LIGHT_INPUT
@@ -173,6 +174,7 @@ struct DEFERRED_LIGHT_INPUT
     float4 specular;
     float4 attenuation; // range, falloff exponent, spot inner/outer cosine
     uint4 flags; // receiver, static-shadow channel, directional-shadow enable, source local bounds
+    float4 sourceCharacterAmbient;
 };
 
 cbuffer DeferredLightInstances
@@ -188,6 +190,7 @@ DEFERRED_LIGHT_INPUT LegacyLightInput()
     light.position = g_vLightPos;
     light.diffuse = g_vLightDiffuse;
     light.ambient = g_vLightAmbient;
+    light.sourceCharacterAmbient = g_vSourceCharacterAmbient;
     light.specular = g_vLightSpecular;
     light.attenuation = float4(g_fLightRange, g_fLightFalloffExponent,
         g_fSpotInnerCos, g_fSpotOuterCos);
@@ -552,10 +555,14 @@ PS_OUT_LIGHT Resolve_SourceCharacterLight(PS_IN input, float3 lightDirection,
     output.vSpecular = float4(native.targets[0].rgb * (attenuation * shadowAdapter), 0.f);
     // Engine-owned source SH/cube values are not authored in these MICs. Keep
     // the scene's explicit ambient approximation separate from recovered direct.
-    const bool nativeMapBaked = g_SourceCharacterProgram >= 80u &&
-        g_SourceCharacterProgram <= 83u && g_SourceMapMonsterBakedEnabled != 0u &&
+    const bool nativeMapMaterial = g_SourceCharacterProgram >= 80u && g_SourceCharacterProgram <= 83u;
+    const bool nativeMapBaked = nativeMapMaterial && g_SourceMapMonsterBakedEnabled != 0u &&
         g_MaterialSpecularTexture.Load(pixel).w > .5f;
-    output.vShade = nativeMapBaked ? 0.f : light.diffuse * light.ambient * g_vMtrlAmbient *
+    // A missing source SH/probe input may be supplied explicitly by the scene.
+    // It is independent of excluded directional RGB, and defaults to zero.
+    // Native IBL stays in RT4; resolved MRT3 albedo is multiplied once at combine.
+    output.vShade = nativeMapBaked ? 0.f :
+        (light.diffuse * light.ambient + (nativeMapMaterial ? 0.f : light.sourceCharacterAmbient)) * g_vMtrlAmbient *
         (attenuation * Resolve_AmbientOcclusion(input.vTexcoord));
     output.vShade.a = 0.f;
     return output;

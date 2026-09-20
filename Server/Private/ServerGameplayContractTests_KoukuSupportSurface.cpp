@@ -1331,6 +1331,144 @@ REGION "blocked" "closed" 0 1
 				childRows.replace(pos, patternId.size(), childId);
 			const auto category = childRows.find("\tNORMAL\t");
 			childRows.replace(category, 8u, "\tMECHANIC\t");
+			{
+				const std::string prefix = encounter + "\t" + patternId;
+				const std::string tailRows = childRows + "PATTERNTIMELINE\t" + prefix + "\t11000\n" +
+					"PATTERNWORLDSEQUENCE\t" + prefix + "\t6000\tworld.tail.contract\t1\t0\t0\t0\tNONE\t0\t0\t0\t3000\ttail.world.1\n" +
+					"PATTERNMECHANICTRIGGER\t" + prefix + "\ttail.summon\tSUMMON_PATTERNS\t6000\t5000\t0\t0\t0\t0\t-\t0\t0\t0\t1\t0\t0\t0\t0\t0\t0\t0\t0\t0\n" +
+					"PATTERNSUMMONSPAWN\t" + prefix + "\ttail.summon\ttail.spawn\t" + childId + "\t4\t1\t4\t45\tMAP\n" +
+					"PATTERNLOGIC\t" + prefix + "\t0\ttail.hit\tENTER_AREA\t6000\t3000\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t-\t0\t0\n" +
+					"PATTERNLOGICREGION\t" + prefix + "\ttail.hit\t0\ttail.body\tBOSS_SPAWN\tCIRCLE\t0\t0\t0\t0\t1\t1\t1\t2\t45\tNONE\tNONE\n" +
+					"PATTERNLOGICREGION\t" + prefix + "\ttail.hit\t1\ttail.follow\tBOSS_CURRENT\tCIRCLE\t0\t0\t0\t0\t1\t1\t1\t2\t45\tNONE\tNONE\n" +
+					"PATTERNLOGICOUTCOME\t" + prefix + "\ttail.hit\tSUCCESS\t0\tMAX_HP_PERCENT_DAMAGE\t10\t0\t-";
+				const bool tailLoaded = loadSupplement(tailRows);
+				tests.Require(tailLoaded, "Catalog admits independent late Logic, World and Summon rows without extending the five-second Stage");
+				if (!tailLoaded) std::cout << "Tail admission: " << parsedTargets.Get_Status() << '\n';
+				if (tailLoaded) for (const bool explicitStop : {false, true})
+				{
+					auto tailRoom = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+					tailRoom->m_WorldEntities.clear(); tailRoom->m_ServerNavigation = nav;
+					tailRoom->m_ServerCollisionSystem.Initialize({}, status);
+					auto& run = tailRoom->m_KoukuSaydonPatternAudition;
+					run.ePhase = CGameRoom::KOUKUSAYDON_PATTERN_AUDITION_PHASE::ACTIVE;
+					run.iRoomAuditionEpoch = 99u;
+					run.iOwnerSessionId = 77u; run.Request.Scope.strGateId = "GATE3";
+					run.PinnedGameplayRevision = tailRoom->m_GameplayCatalog.Get_ActiveRevision();
+					run.pProductGeneration = std::make_shared<CGameplayCatalog>(parsedTargets);
+					run.iPinnedSourceRevision = CKoukuSaydonBrain::Resolve_ProductSourceRevision(parsedTargets);
+					const auto* definition = CKoukuSaydonBrain::Find_AnimationOnlyPattern(parsedTargets, patternId, status);
+					WORLD_BOOTSTRAP_PLACEMENT place;
+					place.eKind = WORLD_BOOTSTRAP_KIND::BOSS; place.strPlacementId = "boss.kakulsaydon.g3.saydon";
+					place.strArchetypeId = "BOSS_KAKULSAYDON_G3_SAYDON"; place.strEncounterId = encounter;
+					place.fPositionX = place.fPositionZ = 8.f; place.fPositionY = 1.f;
+					SERVER_WORLD_ENTITY primary;
+					const bool ready = definition && tailRoom->Build_WorldEntity(place, 900u, primary) &&
+						tailRoom->m_KoukuSaydonBrain.Begin_Pattern(primary, *definition, run.PinnedGameplayRevision, 10000u, status);
+					tests.Require(ready, "Independent row fixture admits the real boss and pinned catalog");
+					if (!ready) continue;
+					tailRoom->m_WorldEntities.push_back(primary); tailRoom->m_iNextNetEntityId = 1000u;
+					auto& member = run.Members.emplace_back(); member.strMemberId = "tail.member";
+					member.iBossEntityId = 900u; member.iPatternSequence = primary.iPatternSequence;
+					member.PatternIds = {patternId}; member.ePhase = CGameRoom::KOUKUSAYDON_PATTERN_AUDITION_PHASE::ACTIVE;
+					CKoukuSaydonLogicRuntime::Build(*definition, primary, 10000u, member.LogicLedger);
+					auto& player = tailRoom->m_Players[1u]; player.iPlayerId = 1u; player.iNetEntityId = 901u;
+					player.iMaximumHp = player.iCurrentHp = 100u; player.isCombatReady = true;
+					player.fPositionX = player.fPositionZ = 8.f; player.fPositionY = 1.f;
+					auto& follower = tailRoom->m_Players[2u]; follower = player; follower.iPlayerId = 2u; follower.iNetEntityId = 902u;
+					follower.fPositionX = follower.fPositionZ = 14.f;
+					tailRoom->m_iServerTick = 10150u;
+					tests.Require(tailRoom->Update_KoukuSaydonBoss(tailRoom->m_WorldEntities.front(), 10150u) &&
+						tailRoom->m_WorldEntities.front().strPatternId.empty() && run.Tails.size() == 1u &&
+						run.ePhase == CGameRoom::KOUKUSAYDON_PATTERN_AUDITION_PHASE::INACTIVE,
+						"The five-second Stage finishes and emits natural completion before the eleven-second row lifetime");
+					if (run.Tails.empty()) continue;
+					// A newer body occurrence must not steal the old row origin, identity or ledger.
+					auto& newer = tailRoom->m_WorldEntities.front(); newer.strPatternId = childId;
+					newer.iPatternSequence = 77u; newer.fPositionX = newer.fPositionZ = 14.f;
+					tailRoom->Update_KoukuPatternTails(10180u); tailRoom->Commit_KoukuMechanicTriggers(10180u);
+
+					tests.Require(player.iCurrentHp == 90u && follower.iCurrentHp == 90u && run.WorldPlays.size() == 1u &&
+						run.WorldPlays.front().iPatternSequence == primary.iPatternSequence &&
+						run.WorldPlays.front().iStartTick == 10180u && tailRoom->m_WorldEntities.size() == 2u &&
+						tailRoom->m_WorldEntities.front().iPatternSequence == 77u && tailRoom->m_WorldEntities.front().fPositionX == 14.f,
+						"Late Logic preserves BOSS_SPAWN and follows BOSS_CURRENT; World keeps its clock and Summon leaves the newer Pattern intact");
+					tailRoom->Update_KoukuPatternTails(10181u); tailRoom->Commit_KoukuMechanicTriggers(10181u);
+					tailRoom->Update_KoukuGazeClones(10181u);
+					tests.Require(player.iCurrentHp == 90u && follower.iCurrentHp == 90u && run.WorldPlays.size() == 1u && tailRoom->m_WorldEntities.size() == 2u,
+						"Later ticks neither duplicate row outputs nor remove the summon when the primary sequence has advanced");
+					{
+						const auto oldPin = run.PinnedGameplayRevision;
+						const bool newGeneration = tailRoom->Stage_GameplayGeneration(1u, oldPin,
+							std::make_shared<CGameplayCatalog>(parsedTargets), status) && tailRoom->Commit_GameplayGeneration(1u);
+						for (auto& entity : tailRoom->m_WorldEntities) entity.PinnedDefinitionRevision = tailRoom->m_GameplayCatalog.Get_ActiveRevision();
+						std::vector<GameplayDataRevision> pins;
+						const bool pinned = tailRoom->Build_RequiredPinnedGameplayRevisions(pins);
+						tailRoom->m_GameplayCatalog.Collect_Garbage(pins);
+						tests.Require(newGeneration && pinned && std::find(pins.begin(), pins.end(), oldPin) != pins.end() &&
+							tailRoom->m_GameplayCatalog.Resolve(oldPin) != nullptr,
+							"A naturally completed run pins its row generation through catalog replacement and garbage collection");
+					}
+					{
+						auto& oldOwner = *run.Tails.front().pOwner;
+						auto& currentBody = tailRoom->m_WorldEntities.front();
+						(void)CBossCombatRuntime::Set_Flag(oldOwner.BossCombat, SERVER_BOSS_COMBAT_FLAG::COUNTERABLE, true);
+						const bool countered = CBossCombatRuntime::Try_TriggerCounter(currentBody, 10182u);
+						tests.Require(countered && oldOwner.BossCombat.PendingOutcomes.size() == 1u &&
+							oldOwner.BossCombat.PendingOutcomes.front().iPatternSequence == primary.iPatternSequence &&
+							currentBody.BossCombat.PendingOutcomes.empty() && currentBody.iPatternSequence == 77u &&
+							!CBossCombatRuntime::Try_TriggerCounter(currentBody, 10182u),
+							"A retained counter flag consumes once and publishes only to its born Pattern, not the newer actor");
+						oldOwner.bKoukuShieldActive = true; oldOwner.fKoukuShieldArcDegrees = 60.f; oldOwner.fYawDegrees = 0.f;
+						tests.Require(CKoukuSaydonLogicRuntime::Is_ShieldReflected(currentBody, 14.f, 18.f) &&
+							!CKoukuSaydonLogicRuntime::Is_ShieldReflected(currentBody, 14.f, 10.f),
+							"The actual damage consumer sees the retained shield at its live BOSS_CURRENT root");
+						oldOwner.bKoukuShieldActive = false;
+					}
+
+					auto support = scheduled; support.iStartTick = 10150u; support.iEndTick = 10330u; support.strMemberId = "tail.member";
+					run.SupportSchedule.push_back(support);
+					tailRoom->Stop_KoukuWorldOwner("tail.member", true);
+					tests.Require(run.Tails.size() == 1u && run.WorldPlays.size() == 1u && run.SupportSchedule.size() == 1u,
+						"FINISH_OWNER preserves independent Logic, World and navigation support rows");
+					if (!explicitStop)
+					{
+						auto& raid = tailRoom->m_KoukuRaid;
+						raid.State.ePhase = KOUKUSAYDON_RAID_PHASE::COMBAT; raid.State.strGateId = "GATE3";
+						raid.iOwnerSessionId = run.iOwnerSessionId; raid.iAuditionEpoch = run.iRoomAuditionEpoch;
+						auto& body = tailRoom->m_WorldEntities.front(); body.strPatternId.clear(); body.strActionId.clear();
+						C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST request;
+						request.iRequestSequence = 1u; request.eOperation = KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_SELECTED;
+						request.strPatternId = childId; request.Scope.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+						request.Scope.strEncounterId = encounter; request.Scope.strGateId = "GATE3";
+						request.Scope.strBossPlacementId = "boss.kakulsaydon.g3.saydon";
+						request.Scope.strBossArchetypeId = "BOSS_KAKULSAYDON_G3_SAYDON";
+						request.Scope.ExpectedGameplayRevision = run.PinnedGameplayRevision;
+						request.Scope.iExpectedSourceRevision = run.iPinnedSourceRevision;
+						S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT result;
+						tailRoom->m_iServerTick = 10182u;
+						const auto verdict = tailRoom->Evaluate_KoukuSaydonPatternAudition(77u, request, result, true);
+						if (verdict != KOUKUSAYDON_PATTERN_AUDITION_RESULT::QUEUED) std::cout << "Continuation admission: " << result.strReason << '\n';
+						tailRoom->Prepare_KoukuAuditionTick(10183u);
+						tests.Require(verdict == KOUKUSAYDON_PATTERN_AUDITION_RESULT::QUEUED && run.iRoomAuditionEpoch == 99u &&
+							run.Tails.size() == 1u && run.WorldPlays.size() == 1u && run.SupportSchedule.size() == 1u &&
+							tailRoom->m_WorldEntities.front().strPatternId == childId,
+							"Automatic next Flow Entry starts the next actor Pattern in the same epoch while prior rows remain alive");
+					}
+					if (explicitStop)
+					{
+						tailRoom->Clear_KoukuSaydonPatternAudition(); tailRoom->Update_KoukuGazeClones(10182u);
+						tests.Require(run.Tails.empty() && run.WorldPlays.empty() && run.SupportSchedule.empty() && tailRoom->m_WorldEntities.size() == 1u,
+							"Explicit Stop cancels tails, pending supports and already spawned summons");
+					}
+					else
+					{
+						tailRoom->Update_KoukuPatternTails(10330u); tailRoom->Update_KoukuGazeClones(10330u);
+						tailRoom->Update_KoukuPatternTails(10331u);
+						tests.Require(run.Tails.empty() && run.WorldPlays.empty() && tailRoom->m_WorldEntities.size() == 1u,
+							"Each row and summon expires at its own absolute deadline after the Stage has completed");
+					}
+				}
+			}
 			const std::string triggerRow = "PATTERNMECHANICTRIGGER\t" + encounter + "\t" + patternId +
 				"\ttest.summon\tSUMMON_PATTERNS\t0\t5000\t0\t0\t0\t0\t-\t0\t0\t0\t1\t0\t0\t0\t0\t0\t0\t0\t0\t0\n";
 			const auto spawnRows = [&](const unsigned count, const std::string& anchor) {

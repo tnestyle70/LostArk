@@ -682,6 +682,13 @@ bool Client::CClientReplication::Has_WorldEntity(
 	return false;
 }
 
+std::shared_ptr<Client::CValtan> Client::CClientReplication::Find_PrimaryValtanPresentation() const
+{
+    std::shared_ptr<CValtan> result;
+    std::string status;
+    return Resolve_PrimaryValtan("BOSS_VALTAN", LostArk::Shared::INVALID_NET_ENTITY_ID, result, status) ? result : nullptr;
+}
+
 bool_t Client::CClientReplication::Resolve_PrimaryValtan(
 	const std::string_view strArchetypeId,
 	const LostArk::Shared::NET_ENTITY_ID iOwnerBossNetEntityId,
@@ -3595,6 +3602,7 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 
 			const std::string* clip = &actor->presentationClips.idle;
 			f32_t playbackRate = 1.f;
+			const std::string* endEffect = nullptr;
 			switch (frame.eKind)
 			{
 			case MONSTER_PRESENTATION_ACTION_KIND::CHASE:
@@ -3609,6 +3617,7 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 							frame.iOccurrenceStartTick,
 							actor->attackPresentations.size());
 					clip = &actor->attackPresentations[attackIndex].clip;
+					endEffect = &actor->attackPresentations[attackIndex].endEffectAssetId;
 					playbackRate =
 						actor->attackPresentations[attackIndex].playbackRate;
 				}
@@ -3623,6 +3632,10 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 					clip->c_str(), frame.isLoop, playbackRate, 0.12f))
 			{
 				iter->second.strCurrentClip = *clip;
+				if (endEffect && !endEffect->empty())
+					(void)monster->Schedule_ClipEndEffect(*endEffect, m_Desc.iLayerLevelIndex,
+						"monster:" + std::to_string(entity.iNetEntityId) + ":" +
+						std::to_string(frame.iOccurrenceStartTick) + ":clip-end");
 			}
 			else
 			{

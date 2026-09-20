@@ -280,6 +280,8 @@ public:
 		f32_t fOutlineWidth = 0.f;
 		float4_t vOutlineColor = { 1.f, 1.f, 1.f, 1.f };
 		f32_t fBloomIntensity = 1.f;
+        // Independent of emissive texture gain; scales this surface's bloom RGB.
+        f32_t fSceneBloomScale = 1.f;
 		f32_t fDistortionIntensity = 0.f;
 		float2_t vUVStart = { 0.f, 0.f };
 		float2_t vUVSpeed = { 0.f, 0.f };
@@ -395,6 +397,7 @@ public:
 	const std::string& Status() const { return m_strStatus; }
 	SHAPE Shape() const { return m_eShape; }
 	f32_t Time() const { return m_fTime; }
+	f32_t Elapsed_Seconds() const { return static_cast<f32_t>(m_dElapsedSeconds); }
 	f32_t Life_Ratio() const;
 	f32_t Dissolve_Amount() const;
 	f32_t Alpha_Envelope() const;

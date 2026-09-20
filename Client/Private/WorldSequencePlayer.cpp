@@ -321,6 +321,22 @@ bool_t CWorldSequencePlayer::Prepare_AreaLoad(const uint32_t levelIndex,
 	return true;
 }
 
+bool_t CWorldSequencePlayer::Try_CollectPreparedAreaV1EffectTargets(const uint32_t levelIndex,
+    const std::string& areaId, std::vector<std::string>& outTargets)
+{
+    std::scoped_lock lock(g_PreparedAreaMutex);
+    outTargets.clear();
+    if (!g_PreparedArea || g_PreparedArea->levelIndex != levelIndex || g_PreparedArea->areaId != areaId)
+        return false; // The Loader has not published its immutable Area stage yet.
+    if (!g_PreparedArea->ready) return true; // Optional sequence admission failed; preserve ordinary presentation.
+    for (const auto& sequence : g_PreparedArea->document.Get_Templates())
+        for (const auto& effect : sequence.effectTracks)
+            if (effect.resourceKind == "V1_EFFECT") outTargets.push_back(effect.resourceId);
+    std::sort(outTargets.begin(), outTargets.end());
+    outTargets.erase(std::unique(outTargets.begin(), outTargets.end()), outTargets.end());
+    return true;
+}
+
 bool_t CWorldSequencePlayer::Load_PreparedArea(const std::string& areaId, const TARGET_SET& targets)
 {
 	CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "WorldSequence.CommitPrepared");

@@ -5197,12 +5197,7 @@ bool_t Client::CKoukuSaydonCompositionDocument::Try_ExpandPatternDocument(
     {
         auto staged = source;
         auto& pattern = staged.Patterns[static_cast<size_t>(selected - source.Patterns.begin())];
-        std::uint64_t stageDurationMs = 0u;
-        for (const auto& stage : pattern.Stages) stageDurationMs += stage.iDurationMs;
-        // A leaf's late authored lanes keep the final pose through the existing
-        // Stage playback clamp. Only this preview copy receives the held tail.
-        if (lifetime > stageDurationMs && !pattern.Stages.empty())
-            pattern.Stages.back().iDurationMs += static_cast<std::uint32_t>(lifetime - stageDurationMs);
+        // Row tails never lengthen the authored Stage/animation clock.
         if (!Try_ResolveAnimationBlendWindows(staged, pattern, pattern.AnimationBlendWindows, outStatus)) return false;
         outDocument = std::move(staged); outStatus.clear(); return true;
     }

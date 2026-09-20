@@ -1237,6 +1237,8 @@ namespace LostArk::Server
 		std::vector<BOSS_PATTERN_LOGIC_WINDOW> LogicWindows;
 		bool bResetBossToSpawn = false;
 		bool bFixedTimelineClock = false;
+        // Zero is legacy Stage sum. Independent row tails never delay a Stage.
+        std::uint32_t iTimelineDurationMs = 0u;
 		std::optional<float> ResetBossYawDegrees;
 		std::optional<BOSS_PATTERN_BOSS_MOTION> BossMotion;
 		std::vector<BOSS_PATTERN_MECHANIC_TRIGGER> MechanicTriggers;

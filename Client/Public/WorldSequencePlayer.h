@@ -107,6 +107,8 @@ public:
 	// Product activation never falls back to synchronous file parsing. Failed or
 	// missing preparation preserves this player's document and reports its reason.
 	bool_t Load_PreparedArea(const std::string& areaId, const TARGET_SET& targets);
+	static bool_t Try_CollectPreparedAreaV1EffectTargets(uint32_t levelIndex,
+		const std::string& areaId, std::vector<std::string>& outTargets);
 	// CPU snapshot admitted by the Loader; lookup performs no IO or GPU work.
 	std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT> Find_PreparedLeafSnapshot(const std::string& leafId) const;
 	bool_t Set_Document(const CWorldSequenceDocument& document, const TARGET_SET& targets, std::string& status);
@@ -131,6 +133,9 @@ public:
 	/* emissionIndex selects one row of an authored emission list; a seeded
 	   emitter keeps the single-object contract and answers index 0 only. */
 	bool_t Try_GetObjectPivot(const std::string& instanceId, float4x4_t& out, uint32_t emissionIndex = 0u) const;
+	// No match leaves status empty; an active but unavailable/ambiguous actor fails closed.
+	bool_t Try_GetPresentationBossAnchor(const std::string& archetype, const std::string& bone,
+		PLAYER_ANCHOR& out, std::string& status) const;
 	bool_t Try_GetSequencePivot(const std::string& instanceId, float4x4_t& out, uint32_t emissionIndex = 0u) const;
 	std::string Get_ObjectSampleStatus(const std::string& instanceId) const;
 #ifdef _DEBUG

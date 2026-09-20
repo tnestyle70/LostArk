@@ -714,6 +714,22 @@ namespace ServerGameplayContractDetail
 			}
 			tests.Require(0xffu == cardMask && stable,
 				"Deal all eight suit/color cards on Server and preserve the chosen card across form and HUD changes");
+			bool unique = true;
+			for (std::uint32_t count = 1u; count <= 4u; ++count)
+				for (std::uint32_t tick = 1u; tick <= 128u; ++tick)
+				{
+					std::uint8_t used = 0u;
+					for (PLAYER_ID id = 1u; id <= count; ++id)
+					{
+						auto player = makePlayer(id, 0.f, 0.f, 0.f);
+						CKoukuSaydonLogicRuntime::Assign_EncounterCard(player, logicBoss.iNetEntityId, tick, used);
+						const auto suit = static_cast<std::uint8_t>(player.eMechanicCardSymbol);
+						if (suit < 1u || suit > 4u) { unique = false; continue; }
+						const auto bit = static_cast<std::uint8_t>(1u << (suit - 1u));
+						unique = unique && !(used & bit); used |= bit;
+					}
+				}
+			tests.Require(unique, "Deal unique suits for every one-to-four player roster independently of card color");
 		}
 
 

@@ -313,7 +313,7 @@ class CWorldSequenceDocument final
 public:
 	static constexpr uint32_t MAX_TEMPLATE_COUNT = 512;
 	static constexpr uint32_t MAX_INSTANCE_COUNT = 2048;
-	static constexpr uint32_t MAX_TRACK_COUNT = 32;
+	static constexpr uint32_t MAX_TRACK_COUNT = 64;
 	static constexpr uint32_t MAX_KEY_COUNT = 256;
 	static constexpr uint32_t MAX_DURATION_MS = 600000;
 

@@ -21,7 +21,7 @@ namespace
 	constexpr f32_t MAX_SHAKE_AMPLITUDE = 2.f;
 	constexpr uint32_t MAX_SHAKE_DURATION_MS = 1000u;
 	constexpr uint32_t MAX_CUE_COUNT = 32u;
-	constexpr uint32_t MAX_KEYFRAME_COUNT = 64u;
+	constexpr uint32_t MAX_KEYFRAME_COUNT = 512u;
 	constexpr f32_t MAX_WORLD_COORDINATE = 100000.f;
 	constexpr size_t MAX_SKY_ASSET_ID_LENGTH = 128u;
 
@@ -228,6 +228,37 @@ namespace
 		return true;
 	}
 
+    bool_t Is_KeyframeObject(const DATA_JSON_VALUE& value)
+    {
+        if (!value.Is_Object()) return false;
+        const size_t optional = (value.Find("up") ? 1u : 0u) +
+            (value.Find("cutBefore") ? 1u : 0u);
+        if (value.Get_Object().size() != 5u + optional) return false;
+        for (const char* key : { "sceneId", "timeMs", "eye", "lookAt", "fovYDegrees" })
+            if (!value.Find(key)) return false;
+        return true;
+    }
+
+    bool_t Read_KeyframeExtras(const DATA_JSON_VALUE& value,
+        VALTAN_CINEMATIC_CAMERA_KEYFRAME& keyframe)
+    {
+        if (const auto* cut = value.Find("cutBefore"))
+        {
+            if (!cut->Is_Boolean()) return false;
+            keyframe.cutBefore = cut->Get_Boolean();
+        }
+        if (value.Find("up"))
+        {
+            if (!Read_Float3(value, "up", keyframe.vUp)) return false;
+            const auto cross = XMVector3Cross(XMLoadFloat3(&keyframe.vUp),
+                XMLoadFloat3(&keyframe.vLookAt) - XMLoadFloat3(&keyframe.vEye));
+            const auto length = XMVectorGetX(XMVector3LengthSq(cross));
+            if (!std::isfinite(length) || length <= 0.000001f) return false;
+            keyframe.hasUp = true;
+        }
+        return true;
+    }
+
 	bool_t Read_Tracking(
 		const DATA_JSON_VALUE& parent,
 		VALTAN_CINEMATIC_TRACKING_MODE& outMode,
@@ -266,7 +297,7 @@ namespace
 		const DATA_JSON_VALUE* value = parent.Find("fovYDegrees");
 		if (nullptr == value || !value->Is_Number() ||
 			!std::isfinite(value->Get_Number()) ||
-			value->Get_Number() < 10.0 || value->Get_Number() > 120.0)
+			value->Get_Number() <= 1.0 || value->Get_Number() >= 179.0)
 		{
 			return false;
 		}
@@ -353,7 +384,15 @@ namespace
 			output << ",\n" << indent << "    \"lookAt\": ";
 			Write_Float3(output, keyframe.vLookAt);
 			output << ",\n" << indent << "    \"fovYDegrees\": "
-				<< keyframe.fFovYDegrees << "\n" << indent << "  }";
+				<< keyframe.fFovYDegrees;
+            if (keyframe.hasUp)
+            {
+                output << ",\n" << indent << "    \"up\": ";
+                Write_Float3(output, keyframe.vUp);
+            }
+            if (keyframe.cutBefore)
+                output << ",\n" << indent << "    \"cutBefore\": true";
+            output << "\n" << indent << "  }";
 		}
 		if (!keyframes.empty())
 			output << '\n' << indent;
@@ -396,9 +435,9 @@ bool_t Client::CValtanCinematicCameraDocument::Parse_Text(
 	DATA_JSON_VALUE root;
 	std::string parseError;
 	DATA_JSON_PARSE_LIMITS limits{};
-	limits.iMaximumBytes = 512u * 1024u;
+	limits.iMaximumBytes = 1024u * 1024u;
 	limits.iMaximumDepth = 16u;
-	limits.iMaximumValues = 4096u;
+	limits.iMaximumValues = 65536u;
 	if (!CDataJson::Parse(text, root, parseError, limits))
 	{
 		outStatus = "Cinematic camera parse failed: " + parseError;
@@ -504,8 +543,7 @@ bool_t Client::CValtanCinematicCameraDocument::Parse_Text(
 		for (size_t index = 0u; index < keyframes->Get_Array().size(); ++index)
 		{
 			const DATA_JSON_VALUE& keyframeValue = keyframes->Get_Array()[index];
-			if (!Is_ExactObject(keyframeValue,
-				{ "sceneId", "timeMs", "eye", "lookAt", "fovYDegrees" }))
+			if (!Is_KeyframeObject(keyframeValue))
 			{
 				outStatus = "Cinematic camera keyframe has unexpected properties";
 				return false;
@@ -519,6 +557,7 @@ bool_t Client::CValtanCinematicCameraDocument::Parse_Text(
 				!Read_Float3(keyframeValue, "eye", keyframe.vEye) ||
 				!Read_Float3(keyframeValue, "lookAt", keyframe.vLookAt) ||
 				!Read_Fov(keyframeValue, keyframe.fFovYDegrees) ||
+				!Read_KeyframeExtras(keyframeValue, keyframe) ||
 				(index == 0u && 0u != keyframe.iTimeMs) ||
 				(index > 0u && keyframe.iTimeMs <= previousTime))
 			{
@@ -590,8 +629,7 @@ bool_t Client::CValtanCinematicCameraDocument::Parse_Text(
 		{
 			const DATA_JSON_VALUE& keyframeValue =
 				deathKeyframes->Get_Array()[index];
-			if (!Is_ExactObject(keyframeValue,
-				{ "sceneId", "timeMs", "eye", "lookAt", "fovYDegrees" }))
+			if (!Is_KeyframeObject(keyframeValue))
 			{
 				outStatus = "Cinematic death keyframe has unexpected properties";
 				return false;
@@ -605,6 +643,7 @@ bool_t Client::CValtanCinematicCameraDocument::Parse_Text(
 				!Read_Float3(keyframeValue, "eye", keyframe.vEye) ||
 				!Read_Float3(keyframeValue, "lookAt", keyframe.vLookAt) ||
 				!Read_Fov(keyframeValue, keyframe.fFovYDegrees) ||
+				!Read_KeyframeExtras(keyframeValue, keyframe) ||
 				(index == 0u && 0u != keyframe.iTimeMs) ||
 				(index > 0u && keyframe.iTimeMs <= previousDeathTime))
 			{

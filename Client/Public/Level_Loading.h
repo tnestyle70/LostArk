@@ -56,6 +56,9 @@ private:
 	std::vector<std::string> m_EffectPreparationTargets;
 	std::vector<std::pair<std::string, std::string>> m_KoukuV2EffectTargets;
 	bool_t m_isKoukuV2Prepared = false;
+	uint64_t m_iKoukuLoadStartedMs = 0u;
+	uint64_t m_iKoukuV1StartedMs = 0u;
+	bool_t m_isKoukuV1TimingRecorded = false;
 	std::string m_strEffectPreparationStatus;
 	std::string m_strEffectPreparationRegistrationFailure;
 	uint32_t m_iEffectPreparationTargetCount = 0u;

@@ -275,6 +275,19 @@ class EffectV2BindingPipelineTests(unittest.TestCase):
             groups["$defs"]["child"]["required"],
         )
 
+    def test_surface_bloom_scale_is_optional_bounded_and_not_a_screen_or_modulate_gain(self) -> None:
+        for params in ({}, {"sceneBloomScale": 0.0}, {"sceneBloomScale": 0.5}, {"sceneBloomScale": 1.0}):
+            pipeline._validate_leaf_params("surface", "Texture", params)
+        for value in (-0.1, 1.1, float("nan"), float("inf"), True, "0"):
+            with self.subTest(value=value), self.assertRaises(pipeline.BindingContractError):
+                pipeline._validate_leaf_params("surface", "Texture", {"sceneBloomScale": value})
+        for effect_type, params in (
+            ("ScreenPost", {"sceneBloomScale": 0.0}),
+            ("Texture", {"blend": "Multiply", "sceneBloomScale": 0.0}),
+        ):
+            with self.subTest(effect_type=effect_type), self.assertRaises(pipeline.BindingContractError):
+                pipeline._validate_leaf_params("surface", effect_type, params)
+
     def test_valid_stable_binding_and_transitive_group_read_set_pass(self) -> None:
         document = self.document(
             [

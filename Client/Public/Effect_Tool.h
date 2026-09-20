@@ -1119,6 +1119,7 @@ private:
     void Reset_ProductCueSnapshot();
     void Start_WorldPreviewFromBeginning();
     void Synchronize_LoadedSkillPreview();
+	bool_t Try_PreviewMazeSkill(bool_t jumpSlam);
 	void Select_PlayerPreviewCueCandidate(size_t iCandidateIndex);
     void Restart_SynchronizedAnimationSequence();
 	bool_t Resolve_SynchronizedAnimationClipStart(

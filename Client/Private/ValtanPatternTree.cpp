@@ -4171,11 +4171,11 @@ namespace
 					[](const DATA_JSON_VALUE& Value)
 					{
 						return !Is_FiniteNumber(&Value) ||
-							Value.Get_Number() != 1.5;
+							Value.Get_Number() < 0.000001 || Value.Get_Number() > 1000.0;
 					}))
 			{
 				strOutError =
-					"split presentation cue worldScale must preserve 1.5";
+					"split presentation cue worldScale must be finite and within 0.000001..1000";
 				return false;
 			}
 		}

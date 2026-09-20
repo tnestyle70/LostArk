@@ -346,8 +346,8 @@
       },
       "movement": {
         "kind": "LINEAR",
-        "speedMps": 11.9911209755,
-        "maximumDistanceM": 15.5884572681,
+        "speedMps": 17.986681463215263,
+        "maximumDistanceM": 23.38268590217984,
         "startDelayMs": 300,
         "expireOnDistanceEnd": false
       },

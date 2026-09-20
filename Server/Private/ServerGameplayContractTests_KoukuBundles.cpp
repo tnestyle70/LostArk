@@ -85,6 +85,16 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuBundles(TESTS& tes
 		appendPattern("KAKULSAYDON_G1_BUNDLE_A", "BOSS_KAKULSAYDON_G2_KOUKU", "boss.kakulsaydon.g2.kouku", 200u);
 		appendPattern("KAKULSAYDON_G1_BUNDLE_B", "BOSS_KAKULSAYDON_G2_BIG_SAYDON", "boss.kakulsaydon.g2.big-saydon", 1000u);
 		appendPattern("KAKULSAYDON_G1_BUNDLE_A_FOLLOW", "BOSS_KAKULSAYDON_G2_KOUKU", "boss.kakulsaydon.g2.kouku", 200u);
+		const std::string encoreId = "KAKULSAYDON_G3_ENCORE_REUSE_CONTRACT";
+		for (const bool layout : {false, true})
+		{
+			const std::string id = encoreId + (layout ? "_LAYOUT" : "");
+			const auto begin = bytes.size();
+			appendPattern(id, "BOSS_KAKULSAYDON_G3_SAYDON", "boss.kakulsaydon.g3.saydon", 1000u);
+			const auto gate = bytes.find("GATE2", begin); bytes.replace(gate, 5u, "GATE3");
+			if (layout) bytes += "PATTERNWORLDSEQUENCE\t" + encounter + "\t" + id +
+				"\t0\tworld.encore.layout\t1\t0\t0\t0\tNONE\t0\t0\t0\t1000\tencore.layout\n";
+		}
 		const std::string reentryId = "KAKULSAYDON_G1_REENTRY_CONTRACT";
 		appendPattern(reentryId, "BOSS_KAKULSAYDON_G2_KOUKU", "boss.kakulsaydon.g2.kouku", 10000u);
 		bytes += "PATTERNLOGIC\t" + encounter + "\t" + reentryId + "\t0\treentry.hit\tENTER_AREA\t0\t10000\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t-\t0\t0\n";
@@ -172,7 +182,8 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuBundles(TESTS& tes
 		bytes += "PATTERNMECHANICTRIGGER\t" + encounter + "\t" + crossParentId + "\tparent.later.hud\tHUD_ENTER\t300\t300\t3\t0\t0\t0\t-\t0\t0\t0\t1\n";
 		const auto appendContactFixture = [&](const std::string& id, const bool miss, const bool lastTick)
 		{
-			appendPattern(id, "BOSS_KAKULSAYDON_G2_KOUKU", "boss.kakulsaydon.g2.kouku", 1000u);
+			appendPattern(id, "BOSS_KAKULSAYDON_G2_KOUKU", "boss.kakulsaydon.g2.kouku", miss || lastTick ? 500u : 1000u);
+			if (miss || lastTick) bytes += "PATTERNTIMELINE\t" + encounter + "\t" + id + "\t1000\n";
 			const auto row = [&](const std::initializer_list<std::string> fields)
 			{
 				bool first = true;
@@ -304,6 +315,33 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuBundles(TESTS& tes
 				request.strBundleId = "kakulsaydon.bundle.contract." + std::to_string(offset); return request;
 			};
 			const auto tick = [](CGameRoom& room) { room.Update_WorldEntities(1.f / 30.f); ++room.m_iServerTick; };
+			for (const bool layout : {false, true})
+			{
+				auto room = makeRoom();
+				const auto* placement = room->Find_Placement("boss.kakulsaydon.bingo.saydon");
+				SERVER_WORLD_ENTITY entity;
+				const bool spawned = placement && room->Build_WorldEntity(*placement, room->m_iNextNetEntityId, entity);
+				if (spawned) { ++room->m_iNextNetEntityId; room->m_WorldEntities.push_back(std::move(entity)); }
+				auto request = requestFor(*room, 0u);
+				request.eOperation = KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_SELECTED;
+				request.strBundleId.clear(); request.strPatternId = encoreId + (layout ? "_LAYOUT" : "");
+				request.Scope.strGateId = "BINGO";
+				request.Scope.strBossPlacementId = "boss.kakulsaydon.bingo.saydon";
+				request.Scope.strBossArchetypeId = "BOSS_KAKULSAYDON_BINGO_SAYDON";
+				S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT result;
+				const auto verdict = room->Evaluate_KoukuSaydonPatternAudition(931u, request, result);
+				tests.Require(spawned && verdict == (layout ? KOUKUSAYDON_PATTERN_AUDITION_RESULT::REJECTED_UNSUPPORTED_PATTERN :
+					KOUKUSAYDON_PATTERN_AUDITION_RESULT::QUEUED),
+					"Encore reuses a Gate 3 attack but rejects Gate-specific world geometry");
+				if (!layout && verdict == KOUKUSAYDON_PATTERN_AUDITION_RESULT::QUEUED)
+				{
+					tick(*room);
+					const auto* boss = room->Find_KoukuSaydonArenaBoss("boss.kakulsaydon.bingo.saydon", "BOSS_KAKULSAYDON_BINGO_SAYDON");
+					tests.Require(boss && boss->strPatternId == encoreId && boss->iPatternSequence != 0u,
+						"Encore Server snapshot retains the exact original Gate 3 pattern identity");
+				}
+			}
+
 			{
 				auto room = makeRoom(); auto request = requestFor(*room, 0u);
 				request.eOperation = KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_SELECTED;
@@ -510,19 +548,25 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuBundles(TESTS& tes
 				S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT deadlineResult;
 				const bool queuedDeadline = deadlineRoom->Evaluate_KoukuSaydonPatternAudition(909u, deadlineRequest, deadlineResult) ==
 					KOUKUSAYDON_PATTERN_AUDITION_RESULT::QUEUED;
-				for (unsigned i = 0u; i < 30u; ++i) tick(*deadlineRoom);
+				for (unsigned i = 0u; i < 20u; ++i) tick(*deadlineRoom);
 				const auto* beforeBoss = getBoss(*deadlineRoom, false);
-				const bool heldLastPose = beforeBoss && beforeBoss->strPatternId == deadlineRequest.strPatternId &&
+				const bool releasedStage = beforeBoss && beforeBoss->strPatternId.empty() &&
+					deadlineRoom->m_KoukuSaydonPatternAudition.Tails.size() == 1u &&
 					deadlineRoom->m_KoukuSaydonPatternAudition.Members.size() == 1u &&
 					deadlineRoom->m_KoukuSaydonPatternAudition.Members.front().PatternIds.size() == 1u;
-				tick(*deadlineRoom);
+				for (unsigned i = 20u; i < 31u; ++i) tick(*deadlineRoom);
 				const auto& deadlineRun = deadlineRoom->m_KoukuSaydonPatternAudition;
-				tests.Require(queuedDeadline && heldLastPose && deadlineRun.Members.size() == 1u &&
+				const auto expected = finalTickSuccess ? "KAKULSAYDON_G1_BUNDLE_A_FOLLOW" : "KAKULSAYDON_G1_BUNDLE_A";
+				const bool resolvedOnce = deadlineRun.Members.size() == 1u &&
 					deadlineRun.Members.front().PatternIds.size() == 2u &&
-					deadlineRun.Members.front().PatternIds.back() == (finalTickSuccess ? "KAKULSAYDON_G1_BUNDLE_A_FOLLOW" : "KAKULSAYDON_G1_BUNDLE_A") &&
-					deadlineRun.WorldPlays.size() == (finalTickSuccess ? 2u : 1u), finalTickSuccess ?
-					"Actual Room holds the final pose and resolves last-tick contact success before timeout and early completion" :
-					"Actual Room preserves a missed strike until the external deadline and emits its timeout exactly once");
+					deadlineRun.Members.front().PatternIds.back() == expected &&
+					deadlineRun.WorldPlays.size() == (finalTickSuccess ? 1u : 0u);
+				for (unsigned i = 0u; i < 3u; ++i) tick(*deadlineRoom);
+				tests.Require(queuedDeadline && releasedStage && resolvedOnce &&
+					deadlineRun.Members.front().PatternIds.size() == 2u &&
+					beforeBoss && beforeBoss->strPatternId == expected, finalTickSuccess ?
+					"The 500ms Stage releases before its 1000ms tail; last-tick contact starts its successor once without timeout" :
+					"The 500ms Stage releases before its 1000ms tail; a missed strike starts its timeout successor exactly once");
 			}
 			{
 				auto motionRoom = makeRoom(); auto motionRequest = requestFor(*motionRoom, 0u);

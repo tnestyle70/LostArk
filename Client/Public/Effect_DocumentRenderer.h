@@ -807,7 +807,7 @@ private:
 	HRESULT Render_AfterImages(
 		const EFFECT_EVALUATED_FRAME& Frame,
 		std::span<const EFFECT_EVALUATED_AFTERIMAGE> AfterImages);
-	static bool_t Sample_ModelCuePose(
+	bool_t Sample_ModelCuePose(
 		const EFFECT_MODEL_CUE_DESC& Cue, MODEL_CUE_RESOURCE& Resource,
 		f32_t fSampleTimeSeconds, const float4x4_t& RootWorld,
 		float4x4_t& OutWorld, std::string& strOutError);

@@ -547,7 +547,7 @@ namespace
 
 void LostArk::Server::CKoukuSaydonLogicRuntime::Assign_EncounterCard(
 	SERVER_PLAYER& player, const LostArk::Shared::NET_ENTITY_ID encounterOwnerId,
-	const std::uint32_t serverTick)
+	const std::uint32_t serverTick, const std::uint8_t unavailableSymbols)
 {
 	using namespace LostArk::Shared;
 	if (0u == player.iCurrentHp || PLAYER_ACTION_STATE::DEAD == player.eAction ||
@@ -558,8 +558,14 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Assign_EncounterCard(
 		return;
 	const std::uint64_t roll = Mix((static_cast<std::uint64_t>(encounterOwnerId) << 32) ^
 		(static_cast<std::uint64_t>(player.iPlayerId) << 8) ^ serverTick);
-	player.eMechanicCardSymbol = static_cast<MECHANIC_CARD_SYMBOL>(1u + (roll & 3u));
-	player.eMechanicCardColor = 0u == (roll & 4u) ? MECHANIC_CARD_COLOR::RED : MECHANIC_CARD_COLOR::BLACK;
+	std::uint8_t available[4]{};
+	std::uint32_t count = 0u;
+	for (std::uint8_t symbol = 1u; symbol <= 4u; ++symbol)
+		if (0u == (unavailableSymbols & (1u << (symbol - 1u)))) available[count++] = symbol;
+	if (!count) return;
+	player.eMechanicCardSymbol = static_cast<MECHANIC_CARD_SYMBOL>(available[roll % count]);
+	// Color is independent of the remaining suit deck.
+	player.eMechanicCardColor = 0u == (Mix(roll) & 1u) ? MECHANIC_CARD_COLOR::RED : MECHANIC_CARD_COLOR::BLACK;
 }
 
 void LostArk::Server::CKoukuSaydonLogicRuntime::Discard(
@@ -861,6 +867,9 @@ bool LostArk::Server::CKoukuSaydonLogicRuntime::Is_ShieldReflected(
 	const float sourceX,
 	const float sourceZ) noexcept
 {
+	for (const auto& retained : boss.KoukuRetainedLogicOwners)
+		if (const auto owner = retained.lock(); owner && Is_ShieldReflected(*owner, sourceX, sourceZ))
+			return true;
 	if (!boss.bKoukuShieldActive || boss.fKoukuShieldArcDegrees <= 0.f)
 		return false;
 	const auto reflects = [sourceX, sourceZ](const float centerX, const float centerZ,
@@ -1816,7 +1825,7 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Update_PlayerModes(
 		case KOUKU_HUD_MODE::DANCE: count = 4u; break;
 		case KOUKU_HUD_MODE::POLYMORPH: count = 3u; break;
 		case KOUKU_HUD_MODE::MARIO: count = 2u; break;
-		case KOUKU_HUD_MODE::MAZE: count = 1u; break;
+		case KOUKU_HUD_MODE::MAZE: count = 2u; break;
 		case KOUKU_HUD_MODE::NONE: break;
 		default: break;
 		}

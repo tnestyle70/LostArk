@@ -70,7 +70,14 @@
     case 2315u: nativeColor=ArtistNative2315(input); opaqueCoverage=true; break;
 #endif
 #if (!defined(EFFECT_NATIVE_PROFILE_GROUP) || EFFECT_NATIVE_PROFILE_GROUP == 2304) && !defined(EFFECT_NATIVE_MESH_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
-    case 2316u: nativeColor=ArtistNative2316(input); opaqueCoverage=false; break;
+    case 2316u:
+    {
+        nativeColor=ArtistNative2316(input);
+        const float4 accumulated=ArtistNative2316Distortion(input);
+        output.SceneColor=float4(nativeColor.rgb*g_EmissiveIntensity,nativeColor.a);
+        output.Distortion=float4(accumulated.xy-accumulated.zw,0.f,0.f);
+        return output;
+    }
 #endif
 #if (!defined(EFFECT_NATIVE_PROFILE_GROUP) || EFFECT_NATIVE_PROFILE_GROUP == 2304) && !defined(EFFECT_NATIVE_MESH_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
     case 2317u: nativeColor=ArtistNative2317(input); opaqueCoverage=false; break;
@@ -172,7 +179,14 @@
     case 2342u: nativeColor=ArtistNative2342(input); opaqueCoverage=false; break;
 #endif
 #if (!defined(EFFECT_NATIVE_PROFILE_GROUP) || EFFECT_NATIVE_PROFILE_GROUP == 2304) && !defined(EFFECT_NATIVE_MESH_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
-    case 2343u: nativeColor=ArtistNative2343(input); opaqueCoverage=true; break;
+    case 2343u:
+    {
+        nativeColor=ArtistNative2343(input);
+        const float4 accumulated=ArtistNative2343Distortion(input);
+        output.SceneColor=float4(nativeColor.rgb*g_EmissiveIntensity,1.f);
+        output.Distortion=float4(accumulated.xy-accumulated.zw,0.f,0.f);
+        return output;
+    }
 #endif
 #if (!defined(EFFECT_NATIVE_PROFILE_GROUP) || EFFECT_NATIVE_PROFILE_GROUP == 2304) && !defined(EFFECT_NATIVE_MESH_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
     case 2344u: nativeColor=ArtistNative2344(input); opaqueCoverage=true; break;

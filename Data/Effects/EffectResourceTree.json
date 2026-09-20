@@ -194,7 +194,13 @@
     {"id": "valtan.category.afterimage", "parentId": "root.v1", "kind": "CATEGORY", "displayName": "Valtan"},
     {"id": "valtan.category.dash_charge.afterimage", "parentId": "valtan.category.afterimage", "kind": "CATEGORY", "displayName": "3연 구르기 후 돌진"},
     {"id": "kouku.category.e91d6c39c6bb77d4489c", "parentId": "kouku.category.d9def6e601e406cf41f1", "kind": "CATEGORY", "displayName": "세이튼_카운터"},
-    {"id": "kouku.category.5f3ba197e012574adc46", "parentId": "kouku.category.21b77063d62ab216089c", "kind": "CATEGORY", "displayName": "대형 세이튼_원형장판"}
+    {"id": "kouku.category.5f3ba197e012574adc46", "parentId": "kouku.category.21b77063d62ab216089c", "kind": "CATEGORY", "displayName": "대형 세이튼_원형장판"},
+    {"id": "kouku.category.6635509e9d05496f51ad", "parentId": "kouku.category.f20d85c12b1f39e952da", "kind": "CATEGORY", "displayName": "폭탄"},
+    {"id": "kouku.category.d3c802d4e7877f373cb2", "parentId": "kouku.category.f20d85c12b1f39e952da", "kind": "CATEGORY", "displayName": "망치_선행이펙트"},
+    {"id": "kouku.category.f7fb1a1d25d5813edd14", "parentId": "kouku.category.f20d85c12b1f39e952da", "kind": "CATEGORY", "displayName": "메두사패턴"},
+    {"id": "kouku.category.28b4c811573e7f4a3517", "parentId": "kouku.category.740c3d777d3601b40a84", "kind": "CATEGORY", "displayName": "거미카운터"},
+    {"id": "kouku.category.e2af08171f1370a20ec0", "parentId": "kouku.category.28b4c811573e7f4a3517", "kind": "CATEGORY", "displayName": "피격 공포"},
+    {"id": "kouku.category.b408dc1faf3a0f0a62d4", "parentId": "kouku.category.f20d85c12b1f39e952da", "kind": "CATEGORY", "displayName": "일반해골"}
   ],
   "references": [
     {"kind": "V1", "assetId": "effect.kouku.gate3.showtime.sector.warning.shot", "displayName": "부채꼴 예고·사격 (저작 조합)", "parentId": "kouku.category.d767402008919487db6b"},
@@ -1016,6 +1022,13 @@
     {"kind": "V1", "assetId": "effect.kouku.gate1.stagger.boundary.group", "displayName": "세이튼 / 무력화 | 외곽 경계", "parentId": "kouku.category.cdef6f5c47c6e9a619ed"},
     {"kind": "V1", "assetId": "effect.kouku.gate1.stagger.star.boundary.group", "displayName": "세이튼 / 무력화 | 무력화 별과 외곽 경계", "parentId": "kouku.category.cdef6f5c47c6e9a619ed"},
     {"kind": "V1", "assetId": "effect.kouku.gate1.stagger.laser.group", "displayName": "세이튼 / 무력화 | 레이저 생성·변화", "parentId": "kouku.category.cdef6f5c47c6e9a619ed"},
-    {"kind": "V1", "assetId": "effect.kouku.gate2.bigsaydon.circle.warning", "displayName": "원형 장판", "parentId": "kouku.category.5f3ba197e012574adc46"}
+    {"kind": "V1", "assetId": "effect.kouku.gate2.bigsaydon.circle.warning", "displayName": "원형 장판", "parentId": "kouku.category.5f3ba197e012574adc46"},
+    {"kind": "V1", "assetId": "effect.kouku.bingo.bomb.full.restore", "displayName": "빙고_해골 폭탄_본체_심지영역폭발", "parentId": "kouku.category.6635509e9d05496f51ad"},
+    {"kind": "V1", "assetId": "effect.kouku.bingo.hammer.aura", "displayName": "빙고 | 망치_선행이펙트", "parentId": "kouku.category.d3c802d4e7877f373cb2"},
+    {"kind": "V1", "assetId": "effect.kouku.bingo.medusa.face.full.restore", "displayName": "빙고 | 메두사패턴", "parentId": "kouku.category.f7fb1a1d25d5813edd14"},
+    {"kind": "V1", "assetId": "effect.kouku.fear.screen.full.restore", "displayName": "쿠크 | 거미 피격 공포 얼굴 | 원본 반복", "parentId": "kouku.category.e2af08171f1370a20ec0"},
+    {"kind": "V1", "assetId": "effect.kouku.bingo.skull.flip", "displayName": "일반해골_생성_플립", "parentId": "kouku.category.b408dc1faf3a0f0a62d4"},
+    {"kind": "V1", "assetId": "effect.kouku.bingo.skull.white", "displayName": "일반해골_유지", "parentId": "kouku.category.b408dc1faf3a0f0a62d4"},
+    {"kind": "V1", "assetId": "effect.kouku.bingo.skull.red", "displayName": "빙고해골_유지", "parentId": "kouku.category.b408dc1faf3a0f0a62d4"}
   ]
 }

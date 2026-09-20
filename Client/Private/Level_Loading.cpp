@@ -5,6 +5,7 @@
 #pragma pop_macro("new")
 
 #include "Level_Loading.h"
+#include "WorldSequencePlayer.h"
 
 #include "AnimationEffectCueDocument.h"
 #include "ActorCatalog.h"
@@ -14,6 +15,7 @@
 #include "ClickMoveEffect.h"
 #include "DataJson.h"
 #include "Effect_Catalog.h"
+#include "EffectFailureDiagnostic.h"
 #include "Effect_LoadPreparationJob.h"
 #include "Effect_PresentationService.h"
 #include "GameInstance.h"
@@ -98,6 +100,17 @@ HRESULT CLevel_Loading::Initialize(
 
 	m_eNextLevelID = eNextLevelID;
 	m_iLobbyCommandToken = lobbyCommandToken;
+	if (LEVEL::KAKULSAYDON_ARENA == eNextLevelID)
+	{
+		m_iKoukuLoadStartedMs = GetTickCount64();
+#ifdef _DEBUG
+		Write_EffectFailureDiagnostic("Kouku.Loading.Begin", "configuration=Debug raid_effects=lazy load_started_ms=" +
+			std::to_string(m_iKoukuLoadStartedMs));
+#else
+		Write_EffectFailureDiagnostic("Kouku.Loading.Begin", "configuration=Release raid_effects=preload load_started_ms=" +
+			std::to_string(m_iKoukuLoadStartedMs));
+#endif
+	}
 
 	/* No per-scenario text source exists yet, so every target level shows a fixed
 	placeholder title/tip. Written as \x escapes -- this source file has no BOM and the
@@ -350,6 +363,11 @@ void CLevel_Loading::Update(const f32_t fTimeDelta)
 		{
 			m_isActivationRequested = true;
 			m_iLobbyCommandToken = INVALID_LOBBY_COMMAND_TOKEN;
+			if (LEVEL::KAKULSAYDON_ARENA == m_eNextLevelID)
+				Write_EffectFailureDiagnostic("Kouku.Loading.GateReady",
+					"elapsed_ms=" + std::to_string(GetTickCount64() - m_iKoukuLoadStartedMs) +
+					" v1_targets=" + std::to_string(m_iEffectPreparationTargetCount) +
+					" v2_targets=" + std::to_string(m_KoukuV2EffectTargets.size()));
 		}
 		else
 		{
@@ -629,6 +647,14 @@ bool_t CLevel_Loading::Advance_TargetEffectPreparation()
 		return false;
 	};
 
+    std::vector<std::string> sourceCinematicEffects;
+    if (bValtanArena && !m_isEffectPreparationRegistered &&
+        !CWorldSequencePlayer::Try_CollectPreparedAreaV1EffectTargets(
+            ETOUI(LEVEL::VALTAN_ARENA), "LV_LUT_HEARTRB_ED", sourceCinematicEffects))
+    {
+        m_strEffectPreparationStatus = "Waiting for Valtan source cinematic metadata.";
+        return false;
+    }
 	if (!m_isEffectPreparationRegistered)
 	{
 		std::string Status;
@@ -705,6 +731,7 @@ bool_t CLevel_Loading::Advance_TargetEffectPreparation()
 					"Valtan BossCatalog has no combat-object visuals to prepare.");
 			}
 			std::vector<std::string> EffectAssetIds;
+			EffectAssetIds.insert(EffectAssetIds.end(), sourceCinematicEffects.begin(), sourceCinematicEffects.end());
 			EffectAssetIds.reserve(CueDocument.Cues.size() +
 				pBossActor->combatObjectVisuals.size());
 #ifdef _DEBUG
@@ -773,9 +800,19 @@ bool_t CLevel_Loading::Advance_TargetEffectPreparation()
 			if (!CActorCatalog::Initialize())
 				return IsolateFailure(CActorCatalog::Get_Status());
 			std::vector<std::string> EffectAssetIds;
+#ifndef _DEBUG
+			// Release must finish the entire published raid dependency closure.
+			// Debug keeps the existing on-demand worker/consumer paths so editing
+			// one pattern does not prepare every other pattern and cinematic.
 			if (!CKoukuSaydonPresentationPlayer::Collect_ProductEffectTargets(
 				EffectAssetIds, m_KoukuV2EffectTargets, Status))
 				return IsolateFailure(Status);
+#endif
+			// Monster clip-end cues share the same prepared V1 target cache.
+			for (const auto& monster : CActorCatalog::Get_Monsters())
+				for (const auto& attack : monster.attackPresentations)
+					if (!attack.endEffectAssetId.empty())
+						EffectAssetIds.push_back(attack.endEffectAssetId);
 			/* Server combat-object pulses have no animation Effect cue. Prepare
 			   their catalog visuals for every supported arena body before entry,
 			   through the same Loader worker and target activation probe. */
@@ -875,6 +912,7 @@ bool_t CLevel_Loading::Advance_TargetEffectPreparation()
 				"Loader-worker Effect staging could not start: " + JobStatus);
 		}
 		m_isEffectLoadJobStarted = true;
+		if (bKoukuArena) m_iKoukuV1StartedMs = GetTickCount64();
 		m_strEffectPreparationStatus = JobStatus;
 	}
 
@@ -914,6 +952,15 @@ bool_t CLevel_Loading::Advance_TargetEffectPreparation()
 	}
 	if (bKoukuArena)
 	{
+		if (!m_isKoukuV1TimingRecorded)
+		{
+			m_isKoukuV1TimingRecorded = true;
+			Write_EffectFailureDiagnostic("Kouku.Loading.V1Settled",
+				"elapsed_ms=" + std::to_string(GetTickCount64() - m_iKoukuV1StartedMs) +
+				" targets=" + std::to_string(m_iEffectPreparationTargetCount) +
+				" prepared=" + std::to_string(m_iEffectPreparationPreparedCount) +
+				" failed=" + std::to_string(m_iEffectPreparationFailedCount));
+		}
 		if (m_iEffectPreparationFailedCount != 0u)
 		{
 			m_strEffectPreparationStatus = "Required raid Effect preparation failed: " +
@@ -928,6 +975,7 @@ bool_t CLevel_Loading::Advance_TargetEffectPreparation()
 		if (!m_pLoader->Finished()) return false;
 		if (!m_isKoukuV2Prepared)
 		{
+#ifndef _DEBUG
 			if (!CKoukuSaydonPresentationPlayer::Prewarm_ProductEffectResources(
 				m_pDevice, m_pContext, m_KoukuV2EffectTargets, m_strEffectPreparationStatus))
 			{
@@ -935,6 +983,8 @@ bool_t CLevel_Loading::Advance_TargetEffectPreparation()
 				m_iEffectPreparationFailedCount = 1u;
 				return false;
 			}
+#endif
+			// Debug leaves V2 preparation to the existing first-use consumer.
 			m_isKoukuV2Prepared = true;
 		}
 	}
@@ -969,6 +1019,10 @@ void CLevel_Loading::Recover_FromFailure(const HRESULT result)
 		return;
 
 	m_isFailureReported = true;
+	if (LEVEL::KAKULSAYDON_ARENA == m_eNextLevelID)
+		Write_EffectFailureDiagnostic("Kouku.Loading.Failed",
+			"elapsed_ms=" + std::to_string(GetTickCount64() - m_iKoukuLoadStartedMs) +
+			" status=" + m_strEffectPreparationStatus);
 	if (m_isEffectLoadJobStarted && nullptr != m_pLoader)
 	{
 		CEffectPresentationService::Cancel_LoadingProductCuePreparation(

@@ -19,6 +19,7 @@
 #include "WorldDestructionDebrisPresentationRuntime.h"
 #include "WorldDestructionProjectionDocument.h"
 #include "WorldPlayerNameplateView.h"
+#include "WorldSequencePlayer.h"
 
 #include <array>
 
@@ -28,6 +29,8 @@ NS_END
 
 NS_BEGIN(Client)
 
+struct VALTAN_PATTERN_VIEW;
+class EFFECT_V2_CATALOG_SNAPSHOT;
 class CCamera_Free;
 class CCharacter;
 class IPlayerCommandSink;
@@ -50,6 +53,7 @@ public:
 	virtual HRESULT Render() override;
 
 	static CLevel_ValtanArena* Get_Active() { return s_pActiveInstance; }
+	bool_t Is_CinematicCameraActive() const { return m_bCinematicCameraApplied; }
 	// Product UI and editor commands share the level-owned typed controller.
 	CPlayerController& Get_DebugPlayerController() { return m_PlayerController; }
 
@@ -136,6 +140,9 @@ public:
 	bool_t Can_Play_PrimaryValtanPresentation(
 		const LostArk::Shared::GameplayDataRevision& ExpectedRevision,
 		std::string& strOutStatus) const;
+    bool_t Debug_PrepareCompletePlayResources(const VALTAN_PATTERN_VIEW& pattern,
+        bool_t& ready, std::string& status);
+    void Debug_ResetCompletePlayPreparation() { m_CompletePlayPreparation.reset(); }
 	bool_t Get_PrimaryValtanPatternSoundSourceReceipt(
 		VALTAN_PATTERN_SOUND_SOURCE_RECEIPT& OutReceipt,
 		std::string& strOutStatus) const;
@@ -173,6 +180,11 @@ public:
 
 private:
 	HRESULT Ready_Layer_Camera(const wstring_t& strLayerTag);
+    CWorldSequencePlayer::TARGET_SET SourceCinematicTargets();
+    void Ready_SourceCinematics();
+    void Prepare_SourceCinematicInput(VALTAN_CINEMATIC_CAMERA_INPUT& input);
+    bool_t Update_SourceCinematic(const VALTAN_CINEMATIC_CAMERA_INPUT& input);
+    void Stop_SourceCinematic();
 	bool_t Ready_CinematicCamera();
 	bool_t Bind_CameraToLocalCharacter();
 	void Update_CinematicCamera(f32_t fTimeDelta);
@@ -264,6 +276,26 @@ private:
 	CMapPlacementRuntime m_MapRuntime;
 	CDeployPropRuntime m_DeployRuntime;
 	CMapEffectPresentationRuntime m_MapEffectPresentationRuntime;
+    struct COMPLETE_PLAY_PREPARATION {
+        std::string patternId;
+        std::vector<std::string> v1Ids, worldIds;
+        std::vector<std::pair<std::string,std::string>> v2Ids;
+        std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT> v2Snapshot;
+        uint64_t v1Revision=0, v2Generation=0, v2Revision=0;
+        uint32_t worldRevision=0;
+        size_t v2Index=0, worldIndex=0;
+    };
+    std::optional<COMPLETE_PLAY_PREPARATION> m_CompletePlayPreparation;
+    CWorldSequencePlayer m_SourceCinematicPlayer;
+    std::string m_strSourceCinematic;
+    uint32_t m_iSourceCinematicSequence = 0u;
+    uint64_t m_iSourceCinematicEntity = 0u;
+    bool_t m_bSourceCinematicsReady = false;
+    bool_t m_bSourceDeathStarted = false;
+    bool_t m_bSourceDeathFinished = false;
+    VALTAN_CINEMATIC_CAMERA_INPUT m_LastSourceCinematicInput{};
+    VALTAN_CINEMATIC_CAMERA_INPUT m_SourceDeathInput{};
+    weak_ptr<CValtan> m_pSourceCinematicBoss;
 	shared_ptr<CMapLightPresentationRuntime> m_pMapLightPresentation;
 	bool_t m_bMapLightSubmissionFailureReported = false;
 	shared_ptr<CCamera_Free> m_pCamera = { nullptr };

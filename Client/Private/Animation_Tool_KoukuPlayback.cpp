@@ -750,6 +750,9 @@ bool_t Client::CAnimation_Tool::Start_PendingKoukuSaydonCompositionPreview(
                 append(row, durationMs, stage.iDurationMs, durationMs + (&row == &*first ? 0u : row.iStartOffsetMs));
 			durationMs += stage.iDurationMs;
 		}
+        // The audition cursor includes independent row tails. Animation rows
+        // retain their original windows; no Stage is lengthened by this clock.
+        durationMs = (std::max)(durationMs, m_PendingKoukuSaydonCompositionPatternPreview.iDurationMs);
 	}
 	m_bKoukuSaydonCompositionAnimationPreviewPending = false;
 	m_bKoukuSaydonCompositionPatternPreviewPending = false;

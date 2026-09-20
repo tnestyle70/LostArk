@@ -301,14 +301,16 @@ bool LostArk::Server::CBossCombatRuntime::Try_TriggerCounter(
 	const std::uint32_t serverTick)
 {
 	SERVER_BOSS_COMBAT_STATE& state = boss.BossCombat;
-	if (!Has_Flag(state, SERVER_BOSS_COMBAT_FLAG::COUNTERABLE) ||
-		!Publish_PatternOutcome(
-			boss, BOSS_PATTERN_STAGE_OUTCOME::COUNTER_HIT, serverTick))
+	if (Has_Flag(state, SERVER_BOSS_COMBAT_FLAG::COUNTERABLE) &&
+		Publish_PatternOutcome(boss, BOSS_PATTERN_STAGE_OUTCOME::COUNTER_HIT, serverTick))
 	{
-		return false;
+		(void)Set_Flag(state, SERVER_BOSS_COMBAT_FLAG::COUNTERABLE, false);
+		return true;
 	}
-	(void)Set_Flag(state, SERVER_BOSS_COMBAT_FLAG::COUNTERABLE, false);
-	return true;
+	for (const auto& retained : boss.KoukuRetainedLogicOwners)
+		if (const auto owner = retained.lock(); owner && Try_TriggerCounter(*owner, serverTick))
+			return true;
+	return false;
 }
 
 bool LostArk::Server::CBossCombatRuntime::Publish_PatternOutcome(

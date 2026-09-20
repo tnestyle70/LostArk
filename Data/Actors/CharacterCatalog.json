@@ -27,7 +27,8 @@
         "Character/LanceMaster/AnimSets/LanceMaster_RideHoverboardAnimSet.wmodel",
         "Character/LanceMaster/AnimSets/LanceMaster_RideHeavywalkerBm9AnimSet.wmodel",
         "Character/LanceMaster/AnimSets/LanceMaster_RideTubeAnimSet.wmodel",
-        "Character/LanceMaster/AnimSets/LanceMaster_RideDragon2AnimSet.wmodel"
+        "Character/LanceMaster/AnimSets/LanceMaster_RideDragon2AnimSet.wmodel",
+        "Character/LanceMaster/AnimSets/LanceMaster_MazeHammerAnimSet.wmodel"
       ],
       "animationSetId": "ANIM_LANCE_MASTER",
       "runtimeStatus": "supported",
@@ -2547,7 +2548,9 @@
       "weaponModels": [
         "Character/WP_WGDH_02H/WP_WGDH_02H.wmodel"
       ],
-      "animationSetModels": [],
+      "animationSetModels": [
+        "Character/GunSlinger/AnimSets/GunSlinger_MazeHammerAnimSet.wmodel"
+      ],
       "animationSetId": "ANIM_GUNSLINGER",
       "runtimeStatus": "supported"
     },
@@ -2566,7 +2569,9 @@
       "weaponModels": [
         "Character/WP_WWBK_03/WP_WWBK_03.wmodel"
       ],
-      "animationSetModels": [],
+      "animationSetModels": [
+        "Character/Slayer/AnimSets/Slayer_MazeHammerAnimSet.wmodel"
+      ],
       "animationSetId": "ANIM_SLAYER",
       "runtimeStatus": "supported"
     },
@@ -2595,7 +2600,8 @@
         "Character/Artist/AnimSets/Artist_RideHoverboardAnimSet.wmodel",
         "Character/Artist/AnimSets/Artist_RideHeavywalkerBm9AnimSet.wmodel",
         "Character/Artist/AnimSets/Artist_RideTubeAnimSet.wmodel",
-        "Character/Artist/AnimSets/Artist_RideDragon2AnimSet.wmodel"
+        "Character/Artist/AnimSets/Artist_RideDragon2AnimSet.wmodel",
+        "Character/Artist/AnimSets/Artist_MazeHammerAnimSet.wmodel"
       ],
       "animationSetId": "ANIM_ARTIST",
       "runtimeStatus": "supported",
@@ -5783,7 +5789,8 @@
         "Character/DimensionMaster/AnimSets/DimensionMaster_RideHoverboardAnimSet.wmodel",
         "Character/DimensionMaster/AnimSets/DimensionMaster_RideHeavywalkerBm9AnimSet.wmodel",
         "Character/DimensionMaster/AnimSets/DimensionMaster_RideTubeAnimSet.wmodel",
-        "Character/DimensionMaster/AnimSets/DimensionMaster_RideDragon2AnimSet.wmodel"
+        "Character/DimensionMaster/AnimSets/DimensionMaster_RideDragon2AnimSet.wmodel",
+        "Character/DimensionMaster/AnimSets/DimensionMaster_MazeHammerAnimSet.wmodel"
       ],
       "animationSetId": "ANIM_DIMENSIONMASTER",
       "runtimeStatus": "supported",
@@ -8369,7 +8376,8 @@
         "Character/Warlord/AnimSets/Warlord_RideHoverboardAnimSet.wmodel",
         "Character/Warlord/AnimSets/Warlord_RideHeavywalkerBm9AnimSet.wmodel",
         "Character/Warlord/AnimSets/Warlord_RideTubeAnimSet.wmodel",
-        "Character/Warlord/AnimSets/Warlord_RideDragon2AnimSet.wmodel"
+        "Character/Warlord/AnimSets/Warlord_RideDragon2AnimSet.wmodel",
+        "Character/Warlord/AnimSets/Warlord_MazeHammerAnimSet.wmodel"
       ],
       "animationSetId": "ANIM_WARLORD",
       "runtimeStatus": "supported",

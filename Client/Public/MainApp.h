@@ -165,6 +165,19 @@ private:
 	std::uint32_t m_iNextKoukuRaidRequest = 1u, m_iKoukuRaidPendingRequest = 0u, m_iKoukuRaidDocumentEpoch = 0u;
 	std::string m_strKoukuRaidPresentationKey, m_strKoukuRaidFailedKey;
 	std::chrono::steady_clock::time_point m_KoukuRaidReplyDeadline{};
+#ifdef _DEBUG
+    struct KOUKU_RAID_RESOURCE_PREPARATION final
+    {
+        LostArk::Shared::C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST request;
+        std::vector<std::string> patternIds;
+        uint64_t worldGeneration = 0u;
+        std::chrono::steady_clock::time_point deadline;
+    };
+    std::optional<KOUKU_RAID_RESOURCE_PREPARATION> m_KoukuRaidResourcePreparation;
+    uint32_t m_iKoukuRaidResourceEpoch = 0u;
+    std::vector<std::string> m_KoukuRaidResourcePatternIds;
+#endif
+
 	bool_t m_bKoukuRaidStopAfterAdmission = false;
 	uint64_t m_iKoukuCompletePlayWorldGeneration = 0u;
 	std::uint32_t m_iKoukuRaidAcknowledgedEpoch = 0u;

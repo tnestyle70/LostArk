@@ -2450,6 +2450,7 @@ bool_t CValtan::Reload_PatternEffectCues_WhileAdmitted(
 
 void CValtan::Spawn_DuePatternEffectCues(const f32_t fActionAgeSeconds)
 {
+	if (m_isCinematicPresentationSuppressed) return;
 	const bool_t bLocalPreview =
 		!m_isServerAuthoritative && m_bLocalPatternAuthoringPreview;
 	const std::string& PatternId = bLocalPreview ?
@@ -3663,7 +3664,7 @@ void CValtan::Stop_DefaultParticles()
 void CValtan::Update_DefaultParticles(const f32_t /*fTimeDelta*/)
 {
 	if (m_isReplicationDormant || m_isGhostPresentationHidden || m_isPatternBodyHidden ||
-		m_DeathPresentationClock.Has_Started() || m_iState == VALTAN_STATE::DEAD)
+		m_isCinematicPresentationSuppressed || m_DeathPresentationClock.Has_Started() || m_iState == VALTAN_STATE::DEAD)
 	{
 		Stop_DefaultParticles();
 		return;
@@ -3759,6 +3760,20 @@ void CValtan::Update_DefaultParticles(const f32_t /*fTimeDelta*/)
 	}
 }
 
+void CValtan::Set_CinematicPresentationSuppressed(const bool_t suppressed)
+{
+    if (m_isCinematicPresentationSuppressed == suppressed) return;
+    m_isCinematicPresentationSuppressed = suppressed;
+    const auto owner = static_pointer_cast<CValtan>(shared_from_this());
+    CEffectV2Runtime::Set_Ignored(EFFECT_V2_TARGET::From_Valtan(owner),
+        suppressed || m_isGhostPresentationHidden || m_isReplicationDormant);
+    if (suppressed)
+    {
+        Stop_DefaultParticles();
+        CEffectPresentationService::Stop_BossOwner(owner);
+    }
+}
+
 void CValtan::Late_Update(f32_t fTimeDelta)
 {
     // Source420604/4_01 TrailGhost starts at2461.7ms; this approved stage
@@ -3781,7 +3796,7 @@ void CValtan::Late_Update(f32_t fTimeDelta)
 	/* Container Update still advances the body animation and every Effect clock.
 	Only render submission is suppressed for the authoritative relocation edge;
 	clearing the snapshot flag therefore restores the same presentation group. */
-	if (!m_isGhostPresentationHidden && !m_isPatternBodyHidden)
+	if (!m_isGhostPresentationHidden && !m_isPatternBodyHidden && !m_isCinematicPresentationSuppressed)
 		__super::Late_Update(fTimeDelta);
 	Client::CEffectV2Runtime::Tick(
 		Client::EFFECT_V2_TARGET::From_Valtan(
@@ -3970,6 +3985,16 @@ HRESULT CValtan::Ready_PartObjects()
 
 	Ready_ArmorParts();
 	return S_OK;
+}
+
+bool_t CValtan::Set_LocalPreviewGhostPresentation(bool_t ghost, std::string& status)
+{
+	if (m_isServerAuthoritative)
+	{
+		status = "A local preview cannot replace a replicated Valtan presentation.";
+		return false;
+	}
+	return Replace_PresentationPartGroup(ghost ? "BOSS_VALTAN_GHOST" : "BOSS_VALTAN", status);
 }
 
 bool_t CValtan::Replace_PresentationPartGroup(
@@ -4468,7 +4493,7 @@ bool_t CValtan::Apply_BossCombatState(
 		CEffectV2Runtime::Set_Ignored(
 			EFFECT_V2_TARGET::From_Valtan(
 				static_pointer_cast<CValtan>(shared_from_this())),
-			isGhostHidden);
+			isGhostHidden || m_isCinematicPresentationSuppressed);
 	}
 	m_BossCombatState = state;
 	m_hasBossCombatState = true;

@@ -30,12 +30,17 @@ public:
     void Deactivate();
     void Update(f32_t seconds, bool_t active);
     void Render();
+    void Render_QuickTransformTuning(const std::string& objectId, const std::string& instanceId);
     void Begin_WorkbenchFrame() override;
     void Render_WorkbenchPane(COMPOSITION_WORKBENCH_PANE pane) override;
     void End_WorkbenchFrame() override {}
     void On_WorkbenchDeactivated() override { Deactivate(); }
     bool_t Is_Open() const { return m_Open; }
     bool Consume_InteractionRequest();
+    bool Consume_ServerPlayRequest(std::string& patternId, uint32_t& sourceRevision);
+    bool Consume_ServerStopRequest() { const bool requested = m_ServerStopRequested; m_ServerStopRequested = false; return requested; }
+    void Set_ServerPlayPreparationPending(bool pending) { m_ServerPreparationPending = pending; }
+    void Set_ServerPlayStatus(std::string status) { m_ServerPlayStatus = std::move(status); }
     void Set_LinkedSaveCallbacks(std::function<bool(std::string&)> canSave,
         std::function<bool(bool, std::string&)> apply)
     { m_CanSaveLinked = std::move(canSave); m_ApplyLinkedSave = std::move(apply); }
@@ -69,6 +74,9 @@ private:
     bool Prepare_PreviewEffects(const CWorldSequenceDocument& document, const std::string& targetId);
     bool Begin_EffectPreview(CWorldSequenceDocument staged, const std::string& instanceId);
     void Play_Preview();
+    std::vector<std::string> Server_ColliderMotionIds() const;
+    bool Refresh_ServerPlayPatterns(const std::vector<std::string>& motionIds);
+    void Render_ServerPlayControls();
     const WORLD_SEQUENCE_INSTANCE* Preview_Instance() const;
     void Seek(f32_t clockMs);
     f32_t SpanMs() const;
@@ -101,6 +109,8 @@ private:
     bool Assign_SelectedModel();
     void Render_Detail();
     bool Render_TravelEditor(WORLD_SEQUENCE_INSTANCE& instance, WORLD_SEQUENCE_TEMPLATE& sequence);
+    void Use_AuthoredMapPreview();
+    bool Render_MapAnchor(const WORLD_SEQUENCE_OBJECT_RESOURCE& resource);
     void Render_ObjectDetail(WORLD_SEQUENCE_OBJECT_RESOURCE& resource);
     const WORLD_SEQUENCE_OBJECT_RESOURCE* Preview_Group() const;
     void Render_GroupDetail(WORLD_SEQUENCE_OBJECT_RESOURCE& resource);
@@ -121,6 +131,10 @@ private:
     bool m_ResetLayoutRequested = false;
     bool m_InteractionRequested = false;
     bool m_PreviewAtCharacter = true;
+    std::string m_ServerPlayScope, m_ServerPatternId, m_ServerPlayStatus, m_PendingServerPatternId;
+    std::vector<std::pair<std::string, std::string>> m_ServerPatterns;
+    uint32_t m_ServerSourceRevision = 0u, m_PendingServerSourceRevision = 0u;
+    bool m_ServerStopRequested = false, m_ServerPreparationPending = false;
     // Read-only context from a Composition box, valid only while this Object is selected.
     std::optional<CWorldSequencePlayer::OBJECT_PLACEMENT> m_CompositionPreviewPlacement;
     std::string m_CompositionPreviewObjectId;

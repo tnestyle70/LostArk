@@ -370,6 +370,12 @@ namespace Client::EffectDocumentCodecDetail
         if (Track.AlphaScale && (Track.AlphaScale->iComponentCount != 3u ||
             Track.AlphaScale->iOperation != 1u || !CEffectDistribution::Validate(*Track.AlphaScale, Error)))
             return false;
+        if (Track.AlphaScaleFactors.size() > 16u)
+        { Error = "Too many source alpha scale factors."; return false; }
+        for (const auto& Factor : Track.AlphaScaleFactors)
+            if (Factor.Keys.empty() || Factor.iComponentCount != 3u || Factor.iOperation != 1u ||
+                !CEffectDistribution::Validate(Factor, Error))
+            { if (Error.empty()) Error = "Invalid source alpha scale factor."; return false; }
         if (Track.MaterialParameterTracks.size() > 64u)
         { Error = "Too many source material parameter tracks."; return false; }
         std::vector<std::string_view> materialNames;
@@ -439,7 +445,7 @@ namespace Client::EffectDocumentCodecDetail
     {
         using namespace Client;
         if (!Value.Is_Object() || !Validate_ExactFields(Value,
-            { "sourceOccurrenceId", "sourceTimeOriginSeconds", "previewOriginUE3Cm", "nodes", "alphaScaleKeys", "materialParameterTracks" },
+            { "sourceOccurrenceId", "sourceTimeOriginSeconds", "previewOriginUE3Cm", "nodes", "alphaScaleKeys", "alphaScaleFactors", "materialParameterTracks" },
             "Effect source transform track", Error)) return false;
         const auto* Nodes = Find_Field(Value, "nodes", DATA_JSON_TYPE::ARRAY, Error);
         if (!Nodes || !Read_String(Value, "sourceOccurrenceId", Out.strSourceOccurrenceId, Error) ||
@@ -470,6 +476,17 @@ namespace Client::EffectDocumentCodecDetail
             EFFECT_DISTRIBUTION_DESC Curve;
             if (!Read_SourceTransformCurve(*Alpha, Curve, "alphaScale", Error)) return false;
             Out.AlphaScale = std::move(Curve);
+        }
+        if (const auto* Factors = Value.Find("alphaScaleFactors"))
+        {
+            if (!Factors->Is_Array() || Factors->Get_Array().size() > 16u)
+            { Error = "Source alpha scale factors must be a bounded array."; return false; }
+            for (const auto& Factor : Factors->Get_Array())
+            {
+                EFFECT_DISTRIBUTION_DESC Curve;
+                if (!Read_SourceTransformCurve(Factor, Curve, "alphaScaleFactor", Error)) return false;
+                Out.AlphaScaleFactors.push_back(std::move(Curve));
+            }
         }
         if (const auto* Parameters = Value.Find("materialParameterTracks"))
         {
@@ -542,6 +559,16 @@ namespace Client::EffectDocumentCodecDetail
         {
             Output << ", \"alphaScaleKeys\": ";
             Write_SourceTransformCurve(Output,*Track.AlphaScale);
+        }
+        if (!Track.AlphaScaleFactors.empty())
+        {
+            Output << ", \"alphaScaleFactors\": [";
+            for (size_t i = 0; i < Track.AlphaScaleFactors.size(); ++i)
+            {
+                if (i) Output << ", ";
+                Write_SourceTransformCurve(Output, Track.AlphaScaleFactors[i]);
+            }
+            Output << ']';
         }
         if (!Track.MaterialParameterTracks.empty())
         {

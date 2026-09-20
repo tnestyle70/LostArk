@@ -2711,6 +2711,28 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 		}
 		static const std::vector<EFFECT_SKILL_TREE_ENTRY::PRODUCT_CUE>
 			EmptyProductCues;
+		ImGui::SeparatorText("CARD MAZE SKILLS");
+		for (const bool jumpSlam : { false, true })
+		{
+			const char* asset = jumpSlam ? "effect.kouku.cardmaze.q" : "effect.kouku.cardmaze.lmb";
+			const char* label = jumpSlam ? "Skill | Q | 카드미로 내려치기" : "Skill | LMB | 카드미로 휘두르기";
+			if (!Search.empty() && !Contains_NoCase(label, Search) && !Contains_NoCase(asset, Search)) continue;
+			ImGui::PushID(asset);
+			if (ImGui::TreeNodeEx(label, ImGuiTreeNodeFlags_OpenOnArrow))
+			{
+				if (ImGui::SmallButton("Play animation")) (void)Try_PreviewMazeSkill(jumpSlam);
+				ImGui::SameLine();
+				if (ImGui::SmallButton("Open Effect"))
+				{
+					const auto path = CProjectDataRoot::Resolve(std::filesystem::path("Effects/Authored") /
+						(std::string(asset) + ".effect.json"));
+					Try_LoadDocumentPath(path, EFFECT_DOCUMENT_SOURCE::AUTHORED, asset);
+				}
+				ImGui::TextDisabled("Shared by all six classes. Add the effect here; the animation is class-native.");
+				ImGui::TreePop();
+			}
+			ImGui::PopID();
+		}
 		ImGui::SeparatorText("SAVED / PLAYABLE SKILL EFFECTS");
 		for (const PLAYER_SKILL_DEFINITION& Skill : Skills)
 		{

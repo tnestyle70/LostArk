@@ -1210,12 +1210,59 @@ void CMainApp::UpdateKoukuGateCompletePlay()
     auto* arena = CLevel_KakulSaydonArena::Get_Active();
     if (!arena)
     {
+#ifdef _DEBUG
+        m_KoukuRaidResourcePreparation.reset();
+        m_iKoukuRaidResourceEpoch = 0u; m_KoukuRaidResourcePatternIds.clear();
+#endif
         if (m_pKoukuPresentationPlayer && m_pKoukuPresentationPlayer->Preview_IsServerClock()) m_pKoukuPresentationPlayer->Stop_Preview();
         m_pKoukuRaidSequenceDocument.reset(); m_iKoukuRaidDocumentEpoch = m_iKoukuRaidAcknowledgedEpoch = 0u;
         m_strKoukuRaidPresentationKey.clear(); m_strKoukuRaidFailedKey.clear(); m_strKoukuCompletePlayFlowGate.clear();
         m_iKoukuRaidPendingRequest = 0u; m_bKoukuRaidStopAfterAdmission = false;
         return;
     }
+#ifdef _DEBUG
+    if (m_KoukuRaidResourcePreparation)
+    {
+        const auto& pending = *m_KoukuRaidResourcePreparation;
+        const auto fail = [&](std::string reason) {
+            m_KoukuRaidResourcePreparation.reset(); arena->Debug_ResetCompletePlayPreparation();
+            m_strKoukuCompletePlayStatus = "Complete raid preparation stopped; no Server start was sent. " + reason;
+        };
+        if (!CNetworkManager::Get().Is_Connected() || !arena->Get_PlayerCommandSink() ||
+            pending.worldGeneration != CNetworkManager::Get().Get_WorldInboundGeneration() ||
+            pending.request.ExpectedGameplayRevision != CNetworkManager::Get().Get_GameplayRevisionState().ServerActiveRevision)
+        { fail("The connected world or gameplay revision changed."); return; }
+        if (std::chrono::steady_clock::now() >= pending.deadline)
+        { fail("Preparation exceeded 20 minutes. " + m_strKoukuCompletePlayStatus); return; }
+        if ((m_pKoukuSaydonActionWorkbench && (m_pKoukuSaydonActionWorkbench->Is_Dirty() || m_pKoukuSaydonActionWorkbench->Is_PublishRunning())) ||
+            (m_pSequenceActionWorkbench && (m_pSequenceActionWorkbench->Is_Dirty() || m_pSequenceActionWorkbench->Is_PublishRunning())) ||
+            (m_pKoukuSaydonBossTool && m_pKoukuSaydonBossTool->Is_PlayPreparationPending()) ||
+            CKoukuSaydonPatternAuditionService::Get().Get_Snapshot().Is_InFlight() ||
+            CKoukuSaydonPatternAuditionService::Get().Get_FlowSnapshot().bActive)
+        { fail("An editor mutation or another playback replaced this preparation."); return; }
+        bool ready = false; std::string reason;
+        if (!arena->Debug_PrepareCompletePlayResources(pending.patternIds, {}, pending.request.iActionSourceRevision,
+            ready, reason, true)) { fail(reason); return; }
+        m_strKoukuCompletePlayStatus = std::move(reason);
+        if (!ready) return;
+        CKoukuSaydonCompositionDocument actions;
+        CKoukuSaydonCompositionDocument sequences(CKoukuSaydonCompositionDocument::Resolve_SequencePath());
+        CKoukuSaydonBossTool product;
+        if (!actions.Reload(reason) || !sequences.Reload(reason) || !product.Reload(reason) ||
+            actions.Get_LastGood().iRevision != pending.request.iActionSourceRevision ||
+            product.Get_SourceRevision() != pending.request.iActionSourceRevision ||
+            sequences.Get_LastGood().iRevision != pending.request.iSequenceSourceRevision)
+        { fail("Saved or published Action/Sequence changed while preparing. " + reason); return; }
+        const auto request = pending.request;
+        if (!arena->Get_PlayerCommandSink()->Request_KoukuRaid(request))
+        { fail("The prepared raid request could not be submitted."); return; }
+        m_KoukuRaidResourcePreparation.reset();
+        m_KoukuRaidRequest = request; m_iKoukuRaidPendingRequest = request.iRequestSequence;
+        m_KoukuRaidReplyDeadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+        m_iKoukuCompletePlayWorldGeneration = CNetworkManager::Get().Get_WorldInboundGeneration();
+        m_strKoukuCompletePlayStatus = "All raid resources prepared; waiting for Server admission.";
+    }
+#endif
     const auto& reply = arena->Get_KoukuRaidReply();
     if (m_iKoukuRaidPendingRequest && reply.iRequestSequence == m_iKoukuRaidPendingRequest &&
         (!reply.iRunEpoch || reply.iOwnerPlayerId == CNetworkManager::Get().Get_LocalPlayerId()))
@@ -1248,7 +1295,10 @@ void CMainApp::UpdateKoukuGateCompletePlay()
         CKoukuSaydonCompositionDocument actions;
         CKoukuSaydonCompositionDocument sequences(CKoukuSaydonCompositionDocument::Resolve_SequencePath());
         std::string preparationStage = "action.reload";
-        bool ready = actions.Reload(preparationError);
+        bool ready = true;
+        if (m_iKoukuRaidDocumentEpoch != state.iRunEpoch || !m_pKoukuRaidSequenceDocument)
+        {
+        ready = actions.Reload(preparationError);
         if (ready)
         {
             preparationStage = "sequence.reload";
@@ -1277,6 +1327,41 @@ void CMainApp::UpdateKoukuGateCompletePlay()
             m_iKoukuRaidDocumentEpoch = state.iRunEpoch;
         }
         else if (preparationError.empty()) preparationError = "Raid document preparation failed";
+        }
+#ifdef _DEBUG
+        if (ready)
+        {
+            preparationStage = "resources.prepare";
+            CKoukuSaydonBossTool published;
+            if (m_iKoukuRaidResourceEpoch != state.iRunEpoch)
+            {
+                if (!published.Reload(preparationError) || published.Get_SourceRevision() != state.iActionSourceRevision)
+                    ready = false;
+                else
+                {
+                    m_KoukuRaidResourcePatternIds = published.Get_PlayAllPatternIds();
+                    m_iKoukuRaidResourceEpoch = state.iRunEpoch;
+                }
+            }
+            bool resourcesReady = false;
+            if (ready && !arena->Debug_PrepareCompletePlayResources(m_KoukuRaidResourcePatternIds, {},
+                state.iActionSourceRevision, resourcesReady, preparationError, true)) ready = false;
+            if (ready && !resourcesReady)
+            {
+                m_strKoukuCompletePlayStatus = preparationError + " Waiting for all raid participants.";
+                return; // PREPARING owns no playback clock; never acknowledge queued-only work.
+            }
+            if (ready)
+            {
+                preparationStage = "resources.final_revision";
+                ready = actions.Reload(preparationError) && sequences.Reload(preparationError) && published.Reload(preparationError) &&
+                    actions.Get_LastGood().iRevision == state.iActionSourceRevision &&
+                    sequences.Get_LastGood().iRevision == state.iSequenceSourceRevision &&
+                    published.Get_SourceRevision() == state.iActionSourceRevision;
+                if (!ready && preparationError.empty()) preparationError = "Saved or published data changed during resource preparation";
+            }
+        }
+#endif
         // Preserve the exact local preflight result before the bounded wire reason is shortened.
         try
         {
@@ -1321,7 +1406,12 @@ void CMainApp::UpdateKoukuGateCompletePlay()
     if (!cinematic)
     {
         if (m_pKoukuPresentationPlayer && m_pKoukuPresentationPlayer->Preview_IsServerClock())
-        { m_pKoukuPresentationPlayer->Stop_Preview(); arena->Debug_ReturnToPlayerCamera(); }
+        {
+            m_pKoukuPresentationPlayer->Stop_Preview();
+            // Natural cinematic completion keeps the authored return blend alive.
+            // Explicit Stop/abort still uses Debug_ReturnToPlayerCamera below.
+            arena->Stop_CompositionCamera(!active);
+        }
         // Return the cinematic lease before the ordinary transactional gate commit.
         // This preserves the original visibility/legacy-book baseline on restart.
         std::string restorationStatus;
@@ -2488,7 +2578,8 @@ void CMainApp::Update(const f32_t fTimeDelta)
      const auto* arena = CLevel_KakulSaydonArena::Get_Active();
      if (!arena) { previewRouteStatus = "World Object Preview requires the KoukuSaydon Arena."; contextReady = false; }
      else contextReady = Resolve_KoukuWorldPreviewActor(document,
-      worldSource ? *worldSource : arena->Get_WorldSequenceDocument(), workbench->Get_SelectedPatternId(),
+      worldSource ? *worldSource : arena->Get_WorldSequenceDocument(),
+      resourcePreview.strSourcePatternId.empty() ? workbench->Get_SelectedPatternId() : resourcePreview.strSourcePatternId,
       resourcePattern, worldRequiresActor, previewRouteStatus);
     }
     bool resourceStarted = false;
@@ -2896,6 +2987,31 @@ void CMainApp::Update(const f32_t fTimeDelta)
 			m_pWorldObjectTool->Update(fTimeDelta, m_bDeveloperToolsVisible &&
 			IsDebugToolVisible(DEBUG_TOOL::WORLD_OBJECT) && DEBUG_TOOL::WORLD_OBJECT == m_eDebugInputOwner);
 		}
+	if (m_pWorldObjectTool)
+	{
+		std::string patternId, status;
+		uint32_t sourceRevision = 0u;
+		if (m_pWorldObjectTool->Consume_ServerPlayRequest(patternId, sourceRevision))
+		{
+			if (SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::KOUKU_SAYDON_BOSS)) && m_pKoukuSaydonBossTool)
+			{
+				if (auto* arena = CLevel_KakulSaydonArena::Get_Active()) arena->Debug_StopCompositionWorldPreview();
+				if (m_pKoukuPresentationPlayer) m_pKoukuPresentationPlayer->Stop_Preview();
+				ClaimCompositionPreviewOwner(DEBUG_TOOL::NONE);
+				(void)m_pKoukuSaydonBossTool->Play_PatternById(patternId, sourceRevision, status);
+			}
+			else status = "KoukuSaydon Boss Tool could not prepare Server collision playback.";
+			m_pWorldObjectTool->Set_ServerPlayStatus(std::move(status));
+		}
+		if (m_pWorldObjectTool->Consume_ServerStopRequest())
+		{
+			if (m_pKoukuSaydonBossTool) (void)m_pKoukuSaydonBossTool->Cancel_PlayPreparation(status);
+			(void)CKoukuSaydonPatternAuditionService::Get().Stop(status);
+			m_pWorldObjectTool->Set_ServerPlayStatus(std::move(status));
+		}
+		m_pWorldObjectTool->Set_ServerPlayPreparationPending(
+			m_pKoukuSaydonBossTool && m_pKoukuSaydonBossTool->Is_PlayPreparationPending());
+	}
 	RefreshWorldObjectResources();
 	if (nullptr != m_pCameraTool)
 	{
@@ -2915,7 +3031,32 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	{
 		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "MainApp.LevelAndEnvironment.Update");
     string environmentStatus;
-    if (!m_RenderingProfiles.Apply_CameraEnvironment(fTimeDelta, environmentStatus))
+    const auto* cinematicArena = CLevel_KakulSaydonArena::Get_Active();
+    const bool_t koukuCinematic = cinematicArena &&
+        CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::KAKULSAYDON_ARENA) &&
+        cinematicArena->Is_CinematicPresentationActive();
+    LIGHT_DESC cinematicLight{};
+    const LIGHT_DESC* cinematicLightOverride = nullptr;
+    if (koukuCinematic && cinematicArena->Needs_Gate2IntroCharacterLight())
+    {
+        if (const auto* source = m_RenderingProfiles.Find_Profile("scene.kakulsaydon.before-restoration.v1"))
+        {
+            cinematicLight = source->Light;
+            // Unbaked native actors need the recovered directional input in this
+            // isolated shot. Static map lightmaps must not receive it twice.
+            cinematicLight.eReceiver = Engine::LIGHT_RECEIVER::SOURCE_CHARACTER;
+            cinematicLightOverride = &cinematicLight;
+        }
+    }
+    const auto* valtanArena = CLevel_ValtanArena::Get_Active();
+    const bool_t valtanCinematic = valtanArena &&
+        CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::VALTAN_ARENA) &&
+        valtanArena->Is_CinematicCameraActive();
+    const bool_t marioStage = cinematicArena &&
+        CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::KAKULSAYDON_ARENA) &&
+        cinematicArena->Is_LocalMarioStageActive();
+    if (!m_RenderingProfiles.Apply_CameraEnvironment(fTimeDelta, environmentStatus,
+        koukuCinematic || valtanCinematic || marioStage, cinematicLightOverride))
         OutputDebugStringA((environmentStatus + "\n").c_str());
 	Apply_LevelRequest();
 	}
@@ -4195,7 +4336,10 @@ void CMainApp::RenderQuickSlotKeyLabels()
 		{
 			continue;
 		}
-		DrawKeyLabel(Label.pSlotId, Label.pLabel);
+		const bool_t mazeMouseSlot = bKoukuModeLabels &&
+			koukuLabelState.eHudMode == HUD_KOUKU_HUD_MODE::MAZE &&
+			0 == std::strcmp(Label.pSlotId, "Skill_W");
+		DrawKeyLabel(Label.pSlotId, mazeMouseSlot ? L"LMB" : Label.pLabel);
 	}
 	if (m_bHudSpecialSlotShown)
 		DrawKeyLabel("Special_Space", L"Space");
@@ -9438,13 +9582,43 @@ void CMainApp::RenderArenaFollowCameraSettings()
 	if (orbitEdited && CArenaCameraProfile::Set_OrbitAroundFocus(draft, orbitDistance, orbitPitch, orbitYaw, status))
 		edited = true;
 	ImGui::TextDisabled("Distance moves the camera toward or away from the same focus. Pitch changes the ground angle; yaw circles the focus.");
-	edited |= ImGui::SliderFloat("Character size", &draft.characterSizeMultiplier,
-		0.25f, 4.f, "%.3f x", ImGuiSliderFlags_AlwaysClamp);
-	ImGui::SameLine();
-	if (ImGui::Button("Reset size"))
+	if (ImGui::TreeNodeEx("Character Size", ImGuiTreeNodeFlags_DefaultOpen))
 	{
-		draft.characterSizeMultiplier = 1.f;
-		edited = true;
+		edited |= ImGui::SliderFloat("All characters", &draft.characterSizeMultiplier,
+			0.25f, 4.f, "%.3f x", ImGuiSliderFlags_AlwaysClamp);
+		const char* classNames[] = { "Lance Master", "Gunslinger", "Slayer", "Artist", nullptr, "DimensionMaster", "Warlord" };
+		for (size_t i = 0u; i < draft.classSizeMultipliers.size(); ++i)
+			if (classNames[i]) edited |= ImGui::SliderFloat(classNames[i], &draft.classSizeMultipliers[i],
+				0.25f, 4.f, "%.3f x", ImGuiSliderFlags_AlwaysClamp);
+		edited |= ImGui::SliderFloat("Madness clown", &draft.clownSizeMultiplier,
+			0.25f, 4.f, "%.3f x", ImGuiSliderFlags_AlwaysClamp);
+		edited |= ImGui::SliderFloat("Mario clown", &draft.marioSizeMultiplier,
+			0.25f, 4.f, "%.3f x", ImGuiSliderFlags_AlwaysClamp);
+		if (ImGui::Button("Requested size defaults"))
+		{
+			const ARENA_CAMERA_PROFILE defaults;
+			draft.characterSizeMultiplier = defaults.characterSizeMultiplier;
+			draft.classSizeMultipliers = defaults.classSizeMultipliers;
+			draft.clownSizeMultiplier = defaults.clownSizeMultiplier;
+			draft.marioSizeMultiplier = defaults.marioSizeMultiplier;
+			edited = true;
+		}
+		ImGui::TextWrapped("Class values multiply the current catalog model. Artist 1.6x, DimensionMaster 0.7x and madness clown 0.7x are the requested defaults. Mario 1x keeps its 1.5m admission height.");
+		ImGui::TextDisabled("Local and remote characters use this map's values. Save / Reload below also stores these sizes.");
+		ImGui::TreePop();
+	}
+	if (ImGui::TreeNodeEx("Card Maze Player Hammer", ImGuiTreeNodeFlags_DefaultOpen))
+	{
+		edited |= ImGui::DragFloat3("Hammer position (cm)", &draft.mazeHammerPositionCm.x, .1f, -1000.f, 1000.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+		edited |= ImGui::DragFloat3("Hammer rotation (deg)", &draft.mazeHammerRotationDegrees.x, .25f, -3600.f, 3600.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+		edited |= ImGui::DragFloat3("Hammer size", &draft.mazeHammerScale.x, .01f, .05f, 8.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+		if (ImGui::Button("Reset player hammer"))
+		{
+			draft.mazeHammerPositionCm = {}; draft.mazeHammerRotationDegrees = {};
+			draft.mazeHammerScale = { 1.f, 1.f, 1.f }; edited = true;
+		}
+		ImGui::TextWrapped("Offsets from each class's right hand. Size 1 keeps the 1.120 m source hammer before character size. Save / Reload below stores this map's player hammer settings.");
+		ImGui::TreePop();
 	}
 	shared_ptr<CCharacter> character;
 	if (index == 0u && characterSelect) character = characterSelect->Get_LocalCharacter();
@@ -9464,17 +9638,29 @@ void CMainApp::RenderArenaFollowCameraSettings()
 	ImGui::TextDisabled("Camera distance and pitch also affect screen size. Character size does not change combat ranges.");
 	if (ImGui::Button("Source baseline"))
 	{
-		const f32_t characterSize = draft.characterSizeMultiplier;
+		const ARENA_CAMERA_PROFILE sizeSettings = draft;
 		draft = CArenaCameraProfile::Default(map);
-		draft.characterSizeMultiplier = characterSize;
+		draft.characterSizeMultiplier = sizeSettings.characterSizeMultiplier;
+		draft.classSizeMultipliers = sizeSettings.classSizeMultipliers;
+		draft.clownSizeMultiplier = sizeSettings.clownSizeMultiplier;
+		draft.marioSizeMultiplier = sizeSettings.marioSizeMultiplier;
+		draft.mazeHammerPositionCm = sizeSettings.mazeHammerPositionCm;
+		draft.mazeHammerRotationDegrees = sizeSettings.mazeHammerRotationDegrees;
+		draft.mazeHammerScale = sizeSettings.mazeHammerScale;
 		edited = true;
 	}
 	ImGui::SameLine();
 	if (ImGui::Button("Before restoration"))
 	{
-		const f32_t characterSize = draft.characterSizeMultiplier;
+		const ARENA_CAMERA_PROFILE sizeSettings = draft;
 		draft = CArenaCameraProfile::BeforeRestoration(map);
-		draft.characterSizeMultiplier = characterSize;
+		draft.characterSizeMultiplier = sizeSettings.characterSizeMultiplier;
+		draft.classSizeMultipliers = sizeSettings.classSizeMultipliers;
+		draft.clownSizeMultiplier = sizeSettings.clownSizeMultiplier;
+		draft.marioSizeMultiplier = sizeSettings.marioSizeMultiplier;
+		draft.mazeHammerPositionCm = sizeSettings.mazeHammerPositionCm;
+		draft.mazeHammerRotationDegrees = sizeSettings.mazeHammerRotationDegrees;
+		draft.mazeHammerScale = sizeSettings.mazeHammerScale;
 		edited = true;
 	}
 	ImGui::TextDisabled("Presets replace camera pose and lens, preserving character size. Save persists this map's settings.");
@@ -10063,6 +10249,207 @@ void CMainApp::OpenDebugResourceFile(const size_t iFile)
 			". Opened its domain owner only; this arbitrary file was not loaded or presented as an editable canonical document.");
 }
 
+#ifdef _DEBUG
+namespace
+{
+	bool_t Read_EncoreFile(const std::filesystem::path& path, std::string& text)
+	{
+		std::ifstream input(path, std::ios::binary);
+		if (!input)
+			return false;
+		text.assign(std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>());
+		return !input.bad();
+	}
+
+	/* Stage both documents before replacing either. Backups survive a failed
+	   rollback; stale authoring bytes never get silently overwritten. */
+	bool_t Commit_EncoreFiles(
+		const std::array<std::filesystem::path, 1>& paths,
+		const std::array<std::string, 1>& expected,
+		const std::array<std::string, 1>& replacements,
+		std::string& status)
+	{
+		status.clear();
+		const std::wstring suffix = L".kouku-encore." +
+			std::to_wstring(GetCurrentProcessId()) + L"." + std::to_wstring(GetTickCount64());
+		std::array<std::filesystem::path, 1> staged, backups;
+		std::size_t promoted = 0u;
+		auto cleanup = [&]()
+		{
+			for (const auto& path : staged)
+			{
+				std::error_code error;
+				if (!path.empty()) std::filesystem::remove(path, error);
+			}
+		};
+		for (std::size_t i = 0u; i < paths.size(); ++i)
+		{
+			std::string current;
+			if (!Read_EncoreFile(paths[i], current) || current != expected[i])
+			{
+				status = "Encore source changed; Reload Baseline before saving. Nothing was written.";
+				cleanup();
+				return false;
+			}
+			staged[i] = paths[i]; staged[i] += suffix + L".tmp";
+			backups[i] = paths[i]; backups[i] += suffix + L".rollback";
+			const HANDLE file = CreateFileW(staged[i].c_str(), GENERIC_WRITE, 0,
+				nullptr, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, nullptr);
+			DWORD written = 0u;
+			const bool_t durable = INVALID_HANDLE_VALUE != file &&
+				WriteFile(file, replacements[i].data(),
+					static_cast<DWORD>(replacements[i].size()), &written, nullptr) &&
+				written == replacements[i].size() && FlushFileBuffers(file);
+			if (INVALID_HANDLE_VALUE != file) CloseHandle(file);
+			std::string verified;
+			if (!durable || !Read_EncoreFile(staged[i], verified) || verified != replacements[i])
+			{
+				status = "Could not stage encore files; original files are unchanged.";
+				cleanup();
+				return false;
+			}
+		}
+		for (std::size_t i = 0u; i < paths.size(); ++i)
+		{
+			std::string current;
+			if (!Read_EncoreFile(paths[i], current) || current != expected[i])
+			{
+				status = "Encore source changed during save; reverting committed files.";
+				break;
+			}
+			if (!ReplaceFileW(paths[i].c_str(), staged[i].c_str(), backups[i].c_str(), 0, nullptr, nullptr))
+			{
+				const DWORD error = GetLastError();
+				status = "Encore file replacement failed (" + std::to_string(error) +
+					"); reverting committed files.";
+				// ReplaceFile may move the original to the backup before failing.
+				// Restore that exact source without replacing a concurrent writer.
+				if (ERROR_UNABLE_TO_MOVE_REPLACEMENT_2 == error &&
+					(!Read_EncoreFile(backups[i], current) || current != expected[i] ||
+					 !MoveFileExW(backups[i].c_str(), paths[i].c_str(), MOVEFILE_WRITE_THROUGH)))
+					status += " Recovery copy retained at " + backups[i].string();
+				break;
+			}
+			++promoted;
+			// The atomic replace captures the source it actually replaced. A
+			// writer between our read and replace must be restored, not lost.
+			if (!Read_EncoreFile(backups[i], current) || current != expected[i])
+			{
+				status = "Encore source changed at replacement; reverting committed files.";
+				break;
+			}
+			if (!Read_EncoreFile(paths[i], current) || current != replacements[i])
+			{
+				status = "Encore write verification failed; reverting committed files.";
+				break;
+			}
+		}
+		if (promoted != paths.size() || !status.empty())
+		{
+			while (promoted > 0u)
+			{
+				const std::size_t i = --promoted;
+				std::string current;
+				if (!Read_EncoreFile(paths[i], current) || current != replacements[i] ||
+					!MoveFileExW(backups[i].c_str(), paths[i].c_str(),
+						MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
+				{
+					status += " Recovery copy retained at " + backups[i].string();
+				}
+			}
+			cleanup();
+			return false;
+		}
+		for (const auto& path : backups)
+		{
+			std::error_code error;
+			std::filesystem::remove(path, error);
+		}
+		cleanup();
+		return true;
+	}
+
+	bool Patch_EncoreNumber(std::string& text, const std::string_view anchor,
+		const std::string_view key, const double value)
+	{
+		const auto row = text.find(anchor);
+		const auto field = row == std::string::npos ? row : text.find(key, row);
+		if (field == std::string::npos || !std::isfinite(value)) return false;
+		auto begin = text.find(':', field + key.size());
+		if (begin == std::string::npos) return false;
+		begin = text.find_first_not_of(" \t\r\n", begin + 1u);
+		const auto end = text.find_first_not_of("0123456789.eE+-", begin);
+		if (begin == std::string::npos || begin == end) return false;
+		std::ostringstream number; number << std::setprecision(9) << value;
+		text.replace(begin, end - begin, number.str());
+		return true;
+	}
+
+	void Render_KoukuEncoreRotation(CLevel_KakulSaydonArena& arena)
+	{
+		static bool loaded = false, preview = false;
+		static float baselineYaw = 0.f, targetYaw = 0.f;
+		static std::string status;
+		constexpr const char* placementId = "boss.kakulsaydon.bingo.saydon";
+		const auto path = CProjectDataRoot::Resolve(L"Worlds/LV_LUT_MIDNIGHTC_ED/Gameplay.world.json");
+		const auto npc = arena.Debug_FindArenaBossNpc("BOSS_KAKULSAYDON_BINGO_SAYDON");
+		const auto load = [&]() {
+			CWorldGameplayDocument document;
+			if (!document.Load(path, "LV_LUT_MIDNIGHTC_ED", status)) return false;
+			const auto* row = document.Find(placementId);
+			if (!row) { status = "Encore placement is missing."; return false; }
+			baselineYaw = targetYaw = row->yawDegrees;
+			loaded = true; preview = false;
+			if (npc) npc->Set_DebugPresentationYawOffset(0.f);
+			status = "Loaded the saved Encore rotation.";
+			return true;
+		};
+		ImGui::SeparatorText("Bingo Encore Rotation");
+		if (!loaded) (void)load();
+		ImGui::BeginDisabled(!loaded);
+		if (ImGui::DragFloat("Encore yaw (degrees)", &targetYaw, .25f, -360.f, 360.f,
+			"%.2f", ImGuiSliderFlags_AlwaysClamp)) preview = true;
+		if (ImGui::Button("Save Encore Rotation"))
+		{
+			std::string original;
+			CWorldGameplayDocument latest;
+			if (Read_EncoreFile(path, original) && latest.Load(path, "LV_LUT_MIDNIGHTC_ED", status))
+			{
+				const auto* row = latest.Find(placementId);
+				if (!row || std::abs(row->yawDegrees - baselineYaw) > .00001f)
+					status = "Encore yaw changed on disk. Reload Saved Rotation before saving.";
+				else
+				{
+					std::string replacement = original;
+					DATA_JSON_VALUE checked;
+					const float wrapped = std::fmod(std::fmod(targetYaw, 360.f) + 360.f, 360.f);
+					if (!Patch_EncoreNumber(replacement, "\"" + std::string(placementId) + "\"", "\"yawDegrees\"", wrapped) ||
+						!Patch_EncoreNumber(replacement, "\"revision\"", "\"revision\"", latest.Get_Revision() + 1.0) ||
+						!CDataJson::Parse(replacement, checked, status))
+						status = "Could not validate the Encore rotation patch.";
+					else if (Commit_EncoreFiles({path}, {original}, {replacement}, status))
+					{
+						baselineYaw = targetYaw = wrapped;
+						status = "Saved Encore rotation. Publish World Gameplay and reload the Server world to use it for combat.";
+					}
+				}
+			}
+			else if (status.empty()) status = "Could not read the latest Encore placement.";
+		}
+		ImGui::SameLine();
+		if (ImGui::Button("Reload Saved Rotation")) (void)load();
+		ImGui::SameLine();
+		if (ImGui::Button("Reset Rotation Preview"))
+		{ preview = false; targetYaw = baselineYaw; if (npc) npc->Set_DebugPresentationYawOffset(0.f); }
+		ImGui::EndDisabled();
+		if (preview && npc) npc->Set_DebugPresentationYawOffset(targetYaw - npc->Get_DebugUnadjustedYawDegrees());
+		ImGui::TextDisabled(npc ? "Live authoring preview; combat keeps the Server rotation." : "Spawn Bingo Saydon to preview rotation.");
+		if (!status.empty()) ImGui::TextWrapped("%s", status.c_str());
+	}
+
+}
+#endif
+
 void CMainApp::RenderKoukuSaydonArenaControls()
 {
 	Engine::CProfilerScope panelScope(CGameInstance::Get().Get_Profiler(), "ImGui.Hub.KoukuArena");
@@ -10108,6 +10495,14 @@ void CMainApp::RenderKoukuSaydonArenaControls()
 	/* Bingo board check. Play1 paints cells 0, 1 and 2 white; Play2 paints 3
 	and 4, which completes the first row and turns those five red. The Server
 	owns both masks, so these only ask. */
+	Render_KoukuEncoreRotation(*pArena);
+	if (ImGui::TreeNode("Kouku Whirlwind Hammer Transform"))
+	{
+		if ((m_pKoukuSaydonActionWorkbench || SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::SEQUENCER))) && m_pKoukuSaydonActionWorkbench)
+			m_pKoukuSaydonActionWorkbench->Render_WorldPlacementTuning("KAKULSAYDON_G1_PATTERN_24",
+				"KAKULSAYDON_G1_PATTERN_24.world.1");
+		ImGui::TreePop();
+	}
 	ImGui::SeparatorText("Bingo Board");
 	ImGui::TextDisabled(
 		"Play1 paints cells 0-2, Play2 paints 3-4 and completes row 0. Rows, columns and both diagonals count.");
@@ -10315,7 +10710,9 @@ void CMainApp::RenderKoukuSaydonArenaControls()
 bool_t CMainApp::PrepareKoukuGateCompletePlay(const std::string_view gateId, std::string& status)
 {
     auto* arena = CLevel_KakulSaydonArena::Get_Active();
-    if (!arena || !arena->Get_PlayerCommandSink() || !m_strKoukuCompletePlayFlowGate.empty() || m_iKoukuRaidPendingRequest ||
+    if (!arena || !arena->Get_PlayerCommandSink() || m_KoukuRaidResourcePreparation ||
+        (m_pKoukuSaydonBossTool && m_pKoukuSaydonBossTool->Is_PlayPreparationPending()) ||
+        !m_strKoukuCompletePlayFlowGate.empty() || m_iKoukuRaidPendingRequest ||
         CKoukuSaydonPatternAuditionService::Get().Get_Snapshot().Is_InFlight() || CKoukuSaydonPatternAuditionService::Get().Get_FlowSnapshot().bActive)
     { status = "Complete Play requires an idle Kouku arena with a Server connection."; return false; }
     if (gateId != "GATE1" && gateId != "GATE2" && gateId != "GATE3")
@@ -10345,11 +10742,14 @@ bool_t CMainApp::StartKoukuGateCompletePlay(const std::string_view gateId, std::
     request.ExpectedGameplayRevision = CNetworkManager::Get().Get_GameplayRevisionState().ServerActiveRevision;
     request.iActionSourceRevision = m_pKoukuSaydonBossTool->Get_SourceRevision();
     request.iSequenceSourceRevision = sequences.Get_LastGood().iRevision; request.strStartGateId = std::string(gateId);
-    if (!arena->Get_PlayerCommandSink()->Request_KoukuRaid(request)) { status = "Complete Play could not be submitted to the Server."; return false; }
-    m_KoukuRaidRequest = request; m_iKoukuRaidPendingRequest = request.iRequestSequence;
-    m_KoukuRaidReplyDeadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
-    m_iKoukuCompletePlayWorldGeneration = CNetworkManager::Get().Get_WorldInboundGeneration();
-    status = m_strKoukuCompletePlayStatus = "Waiting for the Server to admit the complete raid and its saved revisions.";
+    KOUKU_RAID_RESOURCE_PREPARATION pending;
+    pending.request = request;
+    pending.patternIds = m_pKoukuSaydonBossTool->Get_PlayAllPatternIds();
+    pending.worldGeneration = CNetworkManager::Get().Get_WorldInboundGeneration();
+    pending.deadline = std::chrono::steady_clock::now() + std::chrono::minutes(20);
+    arena->Debug_ResetCompletePlayPreparation();
+    m_KoukuRaidResourcePreparation = std::move(pending);
+    status = m_strKoukuCompletePlayStatus = "Preparing all raid Effect/Sequence/WORLD dependencies before the Server start request.";
     return true;
 }
 
@@ -10362,6 +10762,13 @@ void CMainApp::CancelKoukuGateCompletePlay(const std::string& status)
 {
     using namespace LostArk::Shared;
     const std::string reason = status;
+    if (m_KoukuRaidResourcePreparation)
+    {
+        m_KoukuRaidResourcePreparation.reset();
+        if (auto* level = CLevel_KakulSaydonArena::Get_Active()) level->Debug_ResetCompletePlayPreparation();
+        m_strKoukuCompletePlayStatus = "Complete raid preparation cancelled before Server playback.";
+        return;
+    }
     auto* arena = CLevel_KakulSaydonArena::Get_Active();
     if (arena && m_iKoukuRaidPendingRequest && m_iKoukuCompletePlayWorldGeneration == CNetworkManager::Get().Get_WorldInboundGeneration())
     {
@@ -10456,7 +10863,7 @@ void CMainApp::RenderKoukuSaydonCompletePlayControls()
 	const bool preparing = m_pKoukuSaydonBossTool->Is_PlayPreparationPending();
 	const bool arena=ETOUI(LEVEL::KAKULSAYDON_ARENA)==CGameInstance::Get().Get_CurrentLevelID();
 	const bool ready=bundleSelected?selectedBundle->strLoadError.empty() && !selectedBundle->Members.empty():pattern && pattern->strGateId==gate && pattern->strLoadError.empty();
-	const bool sequencePlaying = m_iKoukuRaidPendingRequest || !m_strKoukuCompletePlayFlowGate.empty() ||
+	const bool sequencePlaying = m_KoukuRaidResourcePreparation || m_iKoukuRaidPendingRequest || !m_strKoukuCompletePlayFlowGate.empty() ||
 		(m_pSequenceActionWorkbench && m_pSequenceActionWorkbench->Is_CompleteSequencePlaying());
 	ImGui::BeginDisabled(!arena || !ready || audition.Is_InFlight() || flow.bActive || sequencePlaying || preparing);
 	const auto prepareSavedProduct = [&]() {
@@ -10602,6 +11009,8 @@ bool_t CMainApp::Debug_SelectCompletePlayPattern(
 			strPatternId + ".";
 		return false;
 	}
+    if (m_strCompletePlayPatternId != *found && m_pValtanBossTool)
+        m_pValtanBossTool->Cancel_PlayPreparation("The Complete Play selection changed.");
 	m_strCompletePlayPatternId = *found;
 	m_strCompletePlayStatus =
 		"Complete Play selection: " + m_strCompletePlayPatternId + ".";
@@ -10728,12 +11137,15 @@ void CMainApp::RenderCompletePlayControls()
 		CGameInstance::Get().Get_CurrentLevelID();
 	const bool_t canCompletePlay = nullptr != m_pValtanBossTool &&
 		!m_strCompletePlayPatternId.empty() && isValtanArena;
-	ImGui::BeginDisabled(!canCompletePlay);
+    const bool_t preparing = m_pValtanBossTool && m_pValtanBossTool->Is_PlayPreparationPending();
+	ImGui::BeginDisabled(!canCompletePlay || preparing);
 	if (ImGui::Button("Complete Play##GlobalServerPattern"))
 	{
 		(void)Debug_CompletePlaySelected(m_strCompletePlayStatus);
 	}
 	ImGui::EndDisabled();
+    if (preparing && ImGui::Button("Cancel Complete Play Preparation##GlobalServerPattern"))
+        m_pValtanBossTool->Cancel_PlayPreparation("Cancelled by user.");
 	if (!canCompletePlay)
 	{
 		ImGui::TextDisabled(
@@ -10742,7 +11154,7 @@ void CMainApp::RenderCompletePlayControls()
 	else
 	{
 		ImGui::TextDisabled(
-			"The exact Product revision and Sound source generation are validated once when Complete Play is pressed, not once per rendered frame.");
+			"Complete Play prepares every selected dependency before automatically submitting. Product and Sound are checked at request time and once more before Server submission.");
 	}
 	ImGui::TextWrapped("%s", m_strCompletePlayStatus.c_str());
 }

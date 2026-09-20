@@ -336,11 +336,11 @@ entrance_gameplay = next(
 require(
     entrance_gameplay["invulnerableWhileRunning"] is True and
     [row["durationMs"] for row in entrance_gameplay["stages"]] ==
-    [8600, 5800, 5467] and
+    [8600, 5800, 10308] and
     all(row["hit"]["shape"]["kind"] == "NONE"
         for row in entrance_gameplay["stages"]) and
-    sum(row["durationMs"] for row in entrance_gameplay["stages"]) == 19867,
-    "Valtan entrance Server gate is not an invulnerable, non-damaging 19.867s sequence",
+    sum(row["durationMs"] for row in entrance_gameplay["stages"]) == 24708,
+    "Valtan entrance Server gate is not an invulnerable, non-damaging 24.708s sequence",
 )
 entrance_presentation = next(
     row for row in presentation["patterns"]

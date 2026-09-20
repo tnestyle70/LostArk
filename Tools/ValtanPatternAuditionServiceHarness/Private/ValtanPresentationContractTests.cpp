@@ -918,7 +918,9 @@ namespace
 				A.iTimeMs != B.iTimeMs ||
 				!NearlyEqualPosition(A.vEye, B.vEye) ||
 				!NearlyEqualPosition(A.vLookAt, B.vLookAt) ||
-				!NearlyEqual(A.fFovYDegrees, B.fFovYDegrees))
+				!NearlyEqual(A.fFovYDegrees, B.fFovYDegrees) ||
+				A.hasUp != B.hasUp || A.cutBefore != B.cutBefore ||
+				(A.hasUp && !NearlyEqualPosition(A.vUp, B.vUp)))
 			{
 				return false;
 			}
@@ -1214,39 +1216,91 @@ namespace
 				nullptr != EntranceEstablishCue,
 				"required Valtan camera cues are missing") ||
 			!Require(
-				Client::VALTAN_CINEMATIC_CAMERA_INTERPOLATION::CATMULL_ROM ==
+				Client::VALTAN_CINEMATIC_CAMERA_INTERPOLATION::LINEAR ==
 					EntranceEstablishCue->eInterpolation &&
 				Client::VALTAN_CINEMATIC_CAMERA_EASING::LINEAR ==
 					EntranceEstablishCue->eEasing,
-				"entrance camera still stops its velocity at every keyframe") ||
+				"source entrance camera must preserve sampled linear time") ||
 			!Require(Client::VALTAN_CINEMATIC_TRACKING_MODE::BOSS_XZ ==
 					TrackingCue->eTrackingMode,
 				"100-bar camera cue is not boss-XZ tracked") ||
 			!Require(Client::VALTAN_CINEMATIC_TRACKING_MODE::WORLD ==
 					WorldCue->eTrackingMode,
 				"legacy 109 camera cue stopped being world-space") ||
-			!Require(Client::VALTAN_CINEMATIC_TRACKING_MODE::BOSS_FACING ==
+			!Require(Client::VALTAN_CINEMATIC_TRACKING_MODE::BOSS_XZ ==
 					BossFacingCue->eTrackingMode &&
 				BossFacingCue->strPatternId == "VALTAN_ARENA_BREAK_109" &&
-				BossFacingCue->strStageId == "WIDE_REVEAL",
-				"109 wide reveal is not an exact BOSS_FACING cue") ||
-			!Require(Client::VALTAN_CINEMATIC_TRACKING_MODE::PLAYER_BOSS_FRAME ==
+				BossFacingCue->strStageId == "WIDE_REVEAL" &&
+				BossFacingCue->iDurationMs == 2300u &&
+				BossFacingCue->Keyframes.size() == 63u &&
+				BossFacingCue->eEasing == Client::VALTAN_CINEMATIC_CAMERA_EASING::LINEAR,
+				"109 wide reveal lost the original phase2 source500..2800 curve") ||
+			!Require(Client::VALTAN_CINEMATIC_TRACKING_MODE::BOSS_XZ ==
 					PlayerBossCue->eTrackingMode &&
 				PlayerBossCue->strPatternId == "VALTAN_ARENA_BREAK_109" &&
 				PlayerBossCue->strStageId == "RECOVERY" &&
+				PlayerBossCue->iDurationMs == 2700u &&
+				PlayerBossCue->Keyframes.size() == 28u &&
+				PlayerBossCue->eEasing == Client::VALTAN_CINEMATIC_CAMERA_EASING::LINEAR &&
 				400u == PlayerBossCue->iTransitionInMs &&
 				400u == PlayerBossCue->iTransitionOutMs,
-				"109 recovery is not an exact PLAYER_BOSS_FRAME cue") ||
+				"109 recovery lost the original phase2 source2800..5500 curve") ||
 			!Require(nullptr == PizzaLandingCue &&
 					nullptr == Document.Find_Cue("VALTAN_SIX_PIZZA_106", 2u,
 						"valtan.sequence.center-six-pizza-charge.step-03") &&
-					std::none_of(Document.Get_Cues().begin(), Document.Get_Cues().end(),
+					2 == std::count_if(Document.Get_Cues().begin(), Document.Get_Cues().end(),
 						[](const auto& Cue) {
 							return Cue.strPatternId == "VALTAN_SIX_PIZZA_106";
 						}),
-				"Six Pizza still owns a cinematic camera cue"))
+				"Six Pizza must retain only its two source wall-break camera stages"))
 		{
 			return false;
+		}
+
+		const auto* SourceImpactHold = FindCueById(Document,
+			"camera.valtan.arena-break-109.impact-hold");
+		const auto SameSourcePose = [](const auto& Left, const auto& Right) {
+			return NearlyEqualPosition(Left.vEye, Right.vEye) &&
+				NearlyEqualPosition(Left.vLookAt, Right.vLookAt) &&
+				Left.hasUp && Right.hasUp && NearlyEqualPosition(Left.vUp, Right.vUp) &&
+				NearlyEqual(Left.fFovYDegrees, Right.fFovYDegrees);
+		};
+		if (!Require(SourceImpactHold && SourceImpactHold->iDurationMs == 1100u &&
+			SourceImpactHold->Keyframes.size() == 17u &&
+			SameSourcePose(SourceImpactHold->Keyframes.back(), BossFacingCue->Keyframes.front()) &&
+			SameSourcePose(BossFacingCue->Keyframes.back(), PlayerBossCue->Keyframes.front()) &&
+			NearlyEqualPosition(PlayerBossCue->Keyframes.back().vEye,
+				float3_t(124.475091f, 57.684300f, -89.673707f)),
+			"original SCENE02A/52 camera joins, roll, or 5500ms endpoint drifted")) return false;
+		for (const auto* Cue : { SourceImpactHold, BossFacingCue, PlayerBossCue })
+		{
+			if (!Require(Cue->eTrackingMode == Client::VALTAN_CINEMATIC_TRACKING_MODE::BOSS_XZ &&
+				Cue->eInterpolation == Client::VALTAN_CINEMATIC_CAMERA_INTERPOLATION::LINEAR &&
+				Cue->eEasing == Client::VALTAN_CINEMATIC_CAMERA_EASING::LINEAR &&
+				NearlyEqualPosition(Cue->vTrackingOrigin, float3_t(156.03f, 22.99751f, -122.06f)) &&
+				Cue->Keyframes.front().iTimeMs == 0u && Cue->Keyframes.back().iTimeMs == Cue->iDurationMs &&
+				std::all_of(Cue->Keyframes.begin(), Cue->Keyframes.end(), [](const auto& Key) { return Key.hasUp; }),
+				"phase2 source camera changed clock, anchor, bounded keys, or original roll")) return false;
+		}
+
+		const auto* SourceWall = FindCueById(Document, "camera.valtan.source.wall-break.step-05");
+		if (!Require(SourceWall && SourceWall->iDurationMs == 3924u &&
+			SourceWall->Keyframes.size() > 64u,
+			"original wall camera curve was truncated or retimed")) return false;
+		for (const auto& Key : SourceWall->Keyframes)
+		{
+			if (!Key.cutBefore) continue;
+			Client::VALTAN_CINEMATIC_CAMERA_POSE Before{}, AtCut{};
+			const auto Index = static_cast<size_t>(&Key - SourceWall->Keyframes.data());
+			if (!Require(Index > 0u && Key.hasUp &&
+				Client::CValtanCinematicCameraController::Sample_Cue(*SourceWall,
+					(static_cast<f32_t>(Key.iTimeMs) - .5f) * .001f, Before) &&
+				Client::CValtanCinematicCameraController::Sample_Cue(*SourceWall,
+					static_cast<f32_t>(Key.iTimeMs) * .001f, AtCut) &&
+				NearlyEqualPosition(Before.vEye, SourceWall->Keyframes[Index - 1u].vEye) &&
+				NearlyEqualPosition(AtCut.vEye, Key.vEye) &&
+				AtCut.hasUp && NearlyEqualPosition(AtCut.vUp, Key.vUp),
+				"source Director cut interpolated through the camera jump or lost roll")) return false;
 		}
 
 		Client::VALTAN_CINEMATIC_CAMERA_CUE CatmullCue = *SplineCue;
@@ -1451,6 +1505,39 @@ namespace
 			return false;
 		}
 
+		/* Tracking-mode regression fixtures are independent of the saved source
+		   cinematic, which now correctly uses BOSS_XZ for all phase2 segments. */
+		std::vector<Client::VALTAN_CINEMATIC_CAMERA_CUE> ModeCues = Document.Get_Cues();
+		for (auto& Cue : ModeCues)
+		{
+			if (Cue.strCueId == BossFacingCue->strCueId)
+			{
+				Cue.eTrackingMode = Client::VALTAN_CINEMATIC_TRACKING_MODE::BOSS_FACING;
+				Cue.eEasing = Client::VALTAN_CINEMATIC_CAMERA_EASING::SMOOTHSTEP;
+				Cue.Keyframes = {
+					{ "camera.test.facing.0", 0u, float3_t(156.03f, 61.f, -88.06f), float3_t(156.03f, 23.f, -122.06f), 60.f },
+					{ "camera.test.facing.1", Cue.iDurationMs, float3_t(156.03f, 65.f, -82.06f), float3_t(156.03f, 23.f, -122.06f), 62.f }
+				};
+			}
+			else if (Cue.strCueId == PlayerBossCue->strCueId)
+			{
+				Cue.eTrackingMode = Client::VALTAN_CINEMATIC_TRACKING_MODE::PLAYER_BOSS_FRAME;
+				Cue.vTrackingOrigin = float3_t(0.f, 0.f, 0.f);
+				Cue.eEasing = Client::VALTAN_CINEMATIC_CAMERA_EASING::SMOOTHSTEP;
+				Cue.Keyframes = {
+					{ "camera.test.player-boss.0", 0u, float3_t(0.f, 14.f, -22.f), float3_t(0.f, 2.5f, 0.f), 62.f },
+					{ "camera.test.player-boss.1", Cue.iDurationMs, float3_t(.4f, 8.f, -10.f), float3_t(0.f, 2.f, 1.5f), 62.f }
+				};
+			}
+		}
+		Client::CValtanCinematicCameraDocument ModeDocument;
+		std::string ModeText;
+		if (!Require(Document.Stage_CameraDraft(ModeCues, Document.Has_DeathCue(),
+			Document.Has_DeathCue() ? *Document.Find_DeathCue() : Client::VALTAN_CINEMATIC_CAMERA_CUE{},
+			Encounter, ModeDocument, ModeText, Status),
+			"independent tracking-mode camera fixtures were not admitted")) return false;
+		BossFacingCue = FindCueById(ModeDocument, "camera.valtan.arena-break-109.wide-reveal");
+		PlayerBossCue = FindCueById(ModeDocument, "camera.valtan.arena-break-109.recovery");
 		Client::CValtanCinematicCameraController FacingBaseController;
 		Client::CValtanCinematicCameraController FacingRotatedController;
 		Client::VALTAN_CINEMATIC_CAMERA_POSE FacingBasePose{};
@@ -1461,9 +1548,9 @@ namespace
 			FacingBaseInput;
 		FacingRotatedInput.fBossYawDegrees = 90.f;
 		if (!Require(FacingBaseController.Initialize(
-				&Document, Encounter.Get_FixedTickHz()) &&
+				&ModeDocument, Encounter.Get_FixedTickHz()) &&
 			FacingRotatedController.Initialize(
-				&Document, Encounter.Get_FixedTickHz()) &&
+				&ModeDocument, Encounter.Get_FixedTickHz()) &&
 			FacingBaseController.Update(
 				FacingBaseInput, 0.f, FacingBasePose) &&
 			FacingRotatedController.Update(
@@ -1506,7 +1593,7 @@ namespace
 			BuildInput(*PlayerBossCue, float3_t(10.f, 2.f, 0.f), 600u);
 		PlayerBossInput.vLocalPlayerPosition = float3_t(-10.f, 1.f, 0.f);
 		if (!Require(PlayerBossController.Initialize(
-				&Document, Encounter.Get_FixedTickHz()) &&
+				&ModeDocument, Encounter.Get_FixedTickHz()) &&
 			PlayerBossController.Update(
 				PlayerBossInput, 0.f, PlayerBossPose),
 				"player-boss framed camera pose did not resolve") ||
@@ -1553,7 +1640,7 @@ namespace
 			return false;
 		}
 
-		/* The 109 recovery changes from a boss-facing world pose into the dynamic
+		/* The explicit regression fixture changes from a boss-facing pose into the dynamic
 		   player/boss frame. The first recovery frame must be the exact pose that
 		   was actually output by the prior stage, then converge to the normally
 		   sampled incoming pose within the authored bound. */
@@ -1580,8 +1667,8 @@ namespace
 		Client::VALTAN_CINEMATIC_CAMERA_POSE OutgoingPose{};
 		Client::VALTAN_CINEMATIC_CAMERA_POSE RecoveryStartPose{};
 		Client::VALTAN_CINEMATIC_CAMERA_POSE DirectRecoveryStartPose{};
-		if (!Require(TransitionController.Initialize(&Document, FixedTickHz) &&
-			DirectStartController.Initialize(&Document, FixedTickHz),
+		if (!Require(TransitionController.Initialize(&ModeDocument, FixedTickHz) &&
+			DirectStartController.Initialize(&ModeDocument, FixedTickHz),
 				"109 transition controllers did not initialize") ||
 			!Require(TransitionController.Update(
 				OutgoingInput, 0.f, OutgoingPose),
@@ -1614,7 +1701,7 @@ namespace
 		Client::CValtanCinematicCameraController DirectMidController;
 		Client::VALTAN_CINEMATIC_CAMERA_POSE RecoveryMidPose{};
 		Client::VALTAN_CINEMATIC_CAMERA_POSE DirectRecoveryMidPose{};
-		if (!Require(DirectMidController.Initialize(&Document, FixedTickHz) &&
+		if (!Require(DirectMidController.Initialize(&ModeDocument, FixedTickHz) &&
 			TransitionController.Update(RecoveryMidInput, 0.f, RecoveryMidPose) &&
 			DirectMidController.Update(
 				RecoveryMidInput, 0.f, DirectRecoveryMidPose),
@@ -1663,7 +1750,7 @@ namespace
 		Client::CValtanCinematicCameraController DirectCompleteController;
 		Client::VALTAN_CINEMATIC_CAMERA_POSE RecoveryCompletePose{};
 		Client::VALTAN_CINEMATIC_CAMERA_POSE DirectRecoveryCompletePose{};
-		if (!Require(DirectCompleteController.Initialize(&Document, FixedTickHz) &&
+		if (!Require(DirectCompleteController.Initialize(&ModeDocument, FixedTickHz) &&
 			TransitionController.Update(
 				RecoveryCompleteInput, 0.f, RecoveryCompletePose) &&
 			DirectCompleteController.Update(
@@ -1772,7 +1859,7 @@ namespace
 		Client::VALTAN_CINEMATIC_CAMERA_POSE MissingPlayerPose{};
 		PlayerBossInput.hasLocalPlayerPosition = false;
 		if (!Require(MissingPlayerController.Initialize(
-				&Document, Encounter.Get_FixedTickHz()) &&
+				&ModeDocument, Encounter.Get_FixedTickHz()) &&
 			!MissingPlayerController.Update(
 				PlayerBossInput, 0.f, MissingPlayerPose),
 				"PLAYER_BOSS_FRAME accepted a missing local player position"))
@@ -1784,7 +1871,7 @@ namespace
 		std::ostringstream Buffer;
 		Buffer << Input.rdbuf();
 		std::string InvalidText = Buffer.str();
-		const std::string ValidMode = "\"trackingMode\":  \"BOSS_XZ\"";
+		const std::string ValidMode = "\"BOSS_XZ\"";
 		const size_t ModeAt = InvalidText.find(ValidMode);
 		if (!Require(Input.good() || Input.eof(),
 				"camera document text could not be read for rollback test") ||
@@ -1794,7 +1881,7 @@ namespace
 			return false;
 		}
 		InvalidText.replace(ModeAt, ValidMode.size(),
-			"\"trackingMode\":  \"BOSS_Y\"");
+			"\"BOSS_Y\"");
 		const size_t CueCountBeforeFailure = Document.Get_Cues().size();
 		if (!Require(!Client::CValtanCinematicCameraDocument::Parse_Text(
 				InvalidText, Encounter, Document, Status),

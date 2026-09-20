@@ -35,8 +35,11 @@ namespace Engine
 		float		fSpotOuterCos = 1.f;
 		LIGHT_RECEIVER eReceiver = LIGHT_RECEIVER::ALL;
         uint32_t staticShadowChannel = 0u;
+        // Optional scene indirect input for native characters. Independent of direct RGB.
+        float4_t vSourceCharacterAmbient{ 0.f, 0.f, 0.f, 0.f };
 	}LIGHT_DESC;
-	static_assert(sizeof(LIGHT_DESC) == 108u);
+	static_assert(sizeof(LIGHT_DESC) == 124u);
+	static_assert(offsetof(LIGHT_DESC, vSourceCharacterAmbient) == 108u);
 	static_assert(offsetof(LIGHT_DESC, fRange) == 36u);
 	static_assert(offsetof(LIGHT_DESC, fFalloffExponent) == 40u);
 	static_assert(offsetof(LIGHT_DESC, vDiffuse) == 44u);

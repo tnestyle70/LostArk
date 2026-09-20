@@ -262,6 +262,8 @@ void Client::CValtanBossTool::Update(
 	const bool_t bValtanBossToolVisible,
 	const bool_t bLogicPatternVisible)
 {
+    Update_PlayPreparation();
+    if (m_PlayPreparation) return;
 	if ((!bValtanBossToolVisible || !m_bOpen) &&
 		(!bLogicPatternVisible || !m_bLogicPatternOpen))
 	{
@@ -350,6 +352,7 @@ void Client::CValtanBossTool::Schedule_CanonicalReloadRetry()
 
 bool_t Client::CValtanBossTool::Reload_Graph()
 {
+    Cancel_PlayPreparation("The pattern inventory was reloaded.");
 	m_bReviveFeedbackPending = false;
 	m_strActionFeedback.clear();
 	m_bGraphLoadAttempted = true;
@@ -645,29 +648,72 @@ bool_t Client::CValtanBossTool::Submit_SelectedPattern()
 		}
 		return false;
 	}
-	if (!CValtanPatternAuditionService::Get().Submit(
-			CONSUMER_ID,
-			BOSS_PLACEMENT_ID,
-			m_strSelectedPatternId,
-			expectedActiveRevision,
-			PinnedSoundReceipt,
-			Status))
-	{
-		m_strStatus = Status;
-		if (m_bRepeat)
-		{
-			m_bRepeat = false;
-			m_strRepeatPatternId.clear();
-		}
-		return false;
-	}
-
-	m_strRepeatPatternId = m_bRepeat ?
-		m_strSelectedPatternId : std::string{};
-	m_bFollowLive = true;
-	m_strStatus = Status;
-	return true;
+    auto* arena = CLevel_ValtanArena::Get_Active();
+    if (!arena) { m_strStatus = "Complete Play requires Valtan Arena."; return false; }
+    arena->Debug_ResetCompletePlayPreparation();
+    PLAY_PREPARATION pending;
+    pending.patternId = m_strSelectedPatternId; pending.revision = expectedActiveRevision;
+    pending.sound = PinnedSoundReceipt;
+    pending.worldGeneration = CNetworkManager::Get().Get_WorldInboundGeneration();
+    pending.startTick = GetTickCount64();
+    m_PlayPreparation = std::move(pending); m_bPreparationTerminal = false;
+    m_strPreparationPatternId = m_strSelectedPatternId;
+    m_strPreparationStatus = m_strStatus = "Preparing selected Valtan pattern resources; Server playback has not started.";
+    return true;
 }
+
+void Client::CValtanBossTool::Cancel_PlayPreparation(const std::string& reason)
+{
+    if (!m_PlayPreparation) return;
+    m_strPreparationPatternId = m_PlayPreparation->patternId;
+    m_PlayPreparation.reset(); m_bPreparationTerminal = true;
+    m_bRepeat = false; m_strRepeatPatternId.clear();
+    m_strPreparationStatus = m_strStatus = "Complete Play stopped before Server submission. " + reason;
+    if (auto* arena = CLevel_ValtanArena::Get_Active()) arena->Debug_ResetCompletePlayPreparation();
+}
+
+void Client::CValtanBossTool::Update_PlayPreparation()
+{
+    if (!m_PlayPreparation) return;
+    const auto pending = *m_PlayPreparation;
+    auto* arena = CLevel_ValtanArena::Get_Active();
+    auto& network = CNetworkManager::Get();
+    std::string reason;
+    const auto* pattern = Find_AuditionPattern(pending.patternId);
+    if (!arena || !network.Is_Connected() || pending.worldGeneration != network.Get_WorldInboundGeneration())
+    { Cancel_PlayPreparation("The admitted world/session changed."); return; }
+    if (pending.patternId != m_strSelectedPatternId || !pattern)
+    { Cancel_PlayPreparation("The selected pattern changed."); return; }
+    if (pending.revision != network.Get_GameplayRevisionState().ServerActiveRevision ||
+        !Can_MutateCanonicalGraph(reason) || Is_RuntimePublishMutationBlocked(m_pBalanceTool,"Complete Play preparation",reason))
+    { Cancel_PlayPreparation("The saved/admitted revision changed. " + reason); return; }
+    if (GetTickCount64() - pending.startTick > 20ull*60ull*1000ull)
+    { Cancel_PlayPreparation("Resource preparation exceeded 20 minutes. " + m_strPreparationStatus); return; }
+    bool_t ready = false;
+    if (!arena->Debug_PrepareCompletePlayResources(*pattern,ready,reason))
+    { Cancel_PlayPreparation(reason); return; }
+    m_strPreparationStatus = m_strStatus = std::move(reason);
+    if (!ready) return;
+    LostArk::Shared::GameplayDataRevision revision;
+    VALTAN_PATTERN_SOUND_SOURCE_RECEIPT sound;
+    CValtanPatternSoundSourceReadAdmission admission;
+    if (!Acquire_ServerPlaybackAdmission(revision,sound,admission,reason,true) ||
+        revision != pending.revision || sound != pending.sound)
+    { Cancel_PlayPreparation("Final Product/Sound admission changed. " + reason); return; }
+    // Clear local ownership before one typed submit. No Server request/deadline
+    // exists during resource preparation and subsequent Update cannot resubmit.
+    m_PlayPreparation.reset(); m_bPreparationTerminal = false;
+    if (!CValtanPatternAuditionService::Get().Submit(CONSUMER_ID,BOSS_PLACEMENT_ID,
+        pending.patternId,revision,sound,reason))
+    {
+        m_bPreparationTerminal = true; m_bRepeat = false; m_strRepeatPatternId.clear();
+        m_strPreparationStatus = m_strStatus = "Complete Play final submission rejected. " + reason;
+        return;
+    }
+    m_strRepeatPatternId = m_bRepeat ? pending.patternId : std::string{};
+    m_bFollowLive = true; m_strStatus = std::move(reason);
+}
+
 
 bool_t Client::CValtanBossTool::Restart_SelectedPattern()
 {
@@ -921,6 +967,7 @@ bool_t Client::CValtanBossTool::Observe_ServerActivePatternRevision(
 bool_t Client::CValtanBossTool::Can_CommitPatternSoundGeneration(
 	std::string& strOutStatus) const
 {
+    if (m_PlayPreparation) { strOutStatus = "Pattern Sound changes are blocked during Complete Play preparation."; return false; }
 	CValtanPatternAuditionService& Audition =
 		CValtanPatternAuditionService::Get();
 	CValtanPatternFlowService& Flow = CValtanPatternFlowService::Get();
@@ -946,8 +993,10 @@ bool_t Client::CValtanBossTool::Acquire_ServerPlaybackAdmission(
 	LostArk::Shared::GameplayDataRevision& OutRevision,
 	VALTAN_PATTERN_SOUND_SOURCE_RECEIPT& OutSoundReceipt,
 	CValtanPatternSoundSourceReadAdmission& SoundAdmission,
-	std::string& strOutStatus) const
+	std::string& strOutStatus, const bool_t preparedOwner) const
 {
+    if (m_PlayPreparation && !preparedOwner)
+    { strOutStatus = "Complete Play is preparing resources. Cancel preparation before another playback command."; return false; }
 	OutRevision = {};
 	OutSoundReceipt = {};
 	if (Is_RuntimePublishMutationBlocked(
@@ -1095,6 +1144,8 @@ bool_t Client::CValtanBossTool::Get_ServerPatternStatus(
 	std::string& strOutStatus,
 	bool_t& bOutInFlight) const
 {
+    if (strPatternId == m_strPreparationPatternId && (m_PlayPreparation || m_bPreparationTerminal))
+    { strOutStatus = m_strPreparationStatus; bOutInFlight = m_PlayPreparation.has_value(); return true; }
 	bOutInFlight = false;
 	const VALTAN_PATTERN_AUDITION_SNAPSHOT& snapshot =
 		CValtanPatternAuditionService::Get().Get_Snapshot();
@@ -3802,6 +3853,12 @@ void Client::CValtanBossTool::Render_LiveSummary()
 
 void Client::CValtanBossTool::Render_ActionBar()
 {
+    if (m_PlayPreparation)
+    {
+        ImGui::TextWrapped("%s",m_strPreparationStatus.c_str());
+        if (ImGui::Button("Cancel Complete Play Preparation")) Cancel_PlayPreparation("Cancelled by user.");
+        return;
+    }
 	const CValtanPatternAuditionService& PatternService =
 		CValtanPatternAuditionService::Get();
 	const VALTAN_PATTERN_AUDITION_SNAPSHOT& Audition =

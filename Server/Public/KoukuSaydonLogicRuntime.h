@@ -145,7 +145,8 @@ namespace LostArk::Server
 		static constexpr std::uint32_t DANCE_POSE_COUNT = 4u;
 
 		static void Assign_EncounterCard(SERVER_PLAYER& player,
-			LostArk::Shared::NET_ENTITY_ID encounterOwnerId, std::uint32_t serverTick);
+			LostArk::Shared::NET_ENTITY_ID encounterOwnerId, std::uint32_t serverTick,
+			std::uint8_t unavailableSymbols = 0u);
 
 		static bool Can_EnterMarioEntry(const SERVER_PLAYER& player) noexcept;
 		// A chain root or any ENTER_AREA window whose sole Success is MARIO_ENTER with regions.
@@ -383,6 +384,8 @@ namespace LostArk::Server
 		in front at tick 30, and rests there through tick 42. 12 was inside the
 		wind-up, so a swing counted before anything had been hit. */
 		static constexpr std::uint32_t HAMMER_HIT_TICK_OFFSET = 30u;
+		static constexpr std::uint32_t Hammer_HitTickOffset(std::uint32_t interactionIndex) noexcept
+		{ return 1u == interactionIndex ? 12u : HAMMER_HIT_TICK_OFFSET; }
 		static constexpr float HAMMER_RANGE_M = 2.4f;
 		/* cos(60 degrees): the swing covers a 120 degree arc in front. */
 		static constexpr float HAMMER_HALF_ANGLE_COS = 0.5f;

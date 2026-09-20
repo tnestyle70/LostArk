@@ -113,6 +113,14 @@ foreach ($invalidIds in @(@(-1), @(0,0))) {
 }
 """)
 
+    def test_encore_reuses_gate3_body_and_staff(self):
+        catalog = load("Data/Actors/BossCatalog.json")
+        bingo = unique(catalog["bosses"], "archetypeId", "BOSS_KAKULSAYDON_BINGO_SAYDON")
+        gate3 = unique(catalog["bosses"], "archetypeId", "BOSS_KAKULSAYDON_G3_SAYDON")
+        for key in ("bodyModel", "bodyModelPreScale", "weaponModel", "weaponModelPreScale", "weaponModelPreRotationDegrees"):
+            self.assertEqual(gate3[key], bingo[key], key)
+        self.assertEqual("Character/KoukuSaton/WP_MN_RPCT_05/WP_MN_RPCT_05.wmodel", bingo["weaponModel"])
+
     def test_boss_catalog_admits_only_kouku_without_a_weapon(self):
         catalog = load("Data/Actors/BossCatalog.json")
         self.assertEqual("lostark.boss-catalog", catalog["schema"])
@@ -171,19 +179,17 @@ foreach ($invalidIds in @(@(-1), @(0,0))) {
                 KOUKU_BOSS_ID,
                 "BOSS_KAKULSAYDON_G1_SAYDON",
                 "BOSS_KAKULSAYDON_G2_KOUKU",
-                "BOSS_KAKULSAYDON_G3_SAYDON",
             ],
             [row["archetypeId"] for row in catalog["bosses"]
              if row["weaponModel"] is None],
         )
-        # The bingo Saydon and the big Saydon both hold the hammer. The big
-        # body is admitted at 0.1 (not 0.017), so its hammer keeps its own
-        # pre-scale; both values are tuned from the F1 slice.
+        # Encore reuses Gate 3 body/staff admission; Big Saydon owns its hammer.
         hammer = "Character/KoukuSaton/WP_MN_RPCT_06/WP_MN_RPCT_06.wmodel"
-        bingo = unique(
-            catalog["bosses"], "archetypeId", "BOSS_KAKULSAYDON_BINGO_SAYDON")
-        self.assertEqual(hammer, bingo["weaponModel"])
-        self.assertGreater(bingo["weaponModelPreScale"], 0.0)
+        bingo = unique(catalog["bosses"], "archetypeId", "BOSS_KAKULSAYDON_BINGO_SAYDON")
+        gate3 = unique(catalog["bosses"], "archetypeId", "BOSS_KAKULSAYDON_G3_SAYDON")
+        for key in ("bodyModel", "bodyModelPreScale", "weaponModel", "weaponModelPreScale", "weaponModelPreRotationDegrees"):
+            self.assertEqual(gate3[key], bingo[key], key)
+        self.assertEqual("Character/KoukuSaton/WP_MN_RPCT_05/WP_MN_RPCT_05.wmodel", bingo["weaponModel"])
         big_saydon = unique(
             catalog["bosses"], "archetypeId", "BOSS_KAKULSAYDON_G2_BIG_SAYDON")
         self.assertEqual(hammer, big_saydon["weaponModel"])

@@ -1254,9 +1254,9 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanPinnedGeneration(
 						runner.bPortalRushTargetLocked &&
 						BOSS_PATTERN_STAGE_MOTION_KIND::PORTAL_TARGET_RUSH ==
 							runner.ePatternStageMotionKind &&
-						std::fabs(runner.fPortalRushDistanceM - 15.5884572681f) <
+						std::fabs(runner.fPortalRushDistanceM - 23.3826859022f) <
 							0.001f &&
-						std::fabs(runner.fPortalRushSpeedMps - 11.9911209755f) <
+						std::fabs(runner.fPortalRushSpeedMps - 17.9866814632f) <
 							0.001f &&
 						runner.DependentPatternSequence.PatternIds.empty();
 				}

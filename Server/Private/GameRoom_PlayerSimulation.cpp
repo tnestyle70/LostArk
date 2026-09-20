@@ -144,7 +144,7 @@ bool LostArk::Server::CGameRoom::Capture_PlayerAttachment(
 	const LostArk::Shared::NET_ENTITY_ID playerEntityId,
 	const LostArk::Shared::NET_ENTITY_ID ownerEntityId,
 	const LostArk::Shared::PLAYER_ATTACHMENT_SLOT slot,
-	const std::uint32_t serverTick, const std::uint32_t holdEndTick)
+	const std::uint32_t serverTick, const std::uint32_t holdEndTick, const std::uint32_t sourcePatternSequence)
 {
 	using namespace LostArk::Shared;
 	if (INVALID_NET_ENTITY_ID == playerEntityId ||
@@ -162,13 +162,16 @@ bool LostArk::Server::CGameRoom::Capture_PlayerAttachment(
 	const auto playerIter = m_Players.find(playerId->second);
 	if (m_Players.end() == playerIter)
 		return false;
-	const auto owner = std::find_if(
+	const auto liveOwner = std::find_if(
 		m_WorldEntities.begin(), m_WorldEntities.end(),
 		[ownerEntityId](const SERVER_WORLD_ENTITY& entity)
 		{
 			return entity.iNetEntityId == ownerEntityId;
 		});
-	if (m_WorldEntities.end() == owner ||
+	auto* owner = sourcePatternSequence && m_eWorldId == WORLD_ID::KAKULSAYDON_ARENA ?
+		Find_KoukuOccurrenceOwner(ownerEntityId, sourcePatternSequence) :
+		(liveOwner == m_WorldEntities.end() ? nullptr : &*liveOwner);
+	if (nullptr == owner ||
 		WORLD_BOOTSTRAP_KIND::BOSS != owner->eKind ||
 		SERVER_ENTITY_ACTION::DEAD == owner->eAction ||
 		0u == owner->iCurrentHp || 0u == owner->iPatternSequence ||
@@ -365,13 +368,16 @@ bool LostArk::Server::CGameRoom::Update_PlayerAttachment(
         (void)Release_PlayerAttachment(player, ownerEntityId, 0.f, 0u, false, 0u, serverTick ? serverTick : 1u);
         return false;
     }
-	const auto owner = std::find_if(
+	const auto body = std::find_if(
 		m_WorldEntities.begin(), m_WorldEntities.end(),
 		[ownerEntityId](const SERVER_WORLD_ENTITY& entity)
 		{
 			return entity.iNetEntityId == ownerEntityId;
 		});
-	const bool liveOwner = m_WorldEntities.end() != owner &&
+	const auto* owner = m_eWorldId == WORLD_ID::KAKULSAYDON_ARENA ?
+		Find_KoukuOccurrenceOwner(ownerEntityId, player.iAttachmentPatternSequence) :
+		(body == m_WorldEntities.end() ? nullptr : &*body);
+	const bool liveOwner = nullptr != owner &&
 		WORLD_BOOTSTRAP_KIND::BOSS == owner->eKind &&
 		SERVER_ENTITY_ACTION::DEAD != owner->eAction &&
 		0u != owner->iCurrentHp && 0u != owner->iPatternSequence &&
@@ -731,7 +737,7 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 		/* The maze hammer lands part-way through its press: judge the swing
 		once, on that tick, against the run's targets in front of the player. */
 		if (mazeHammerPress &&
-			updateTick == player.iActionStartTick + CKoukuCardMazeRuntime::HAMMER_HIT_TICK_OFFSET)
+			updateTick == player.iActionStartTick + CKoukuCardMazeRuntime::Hammer_HitTickOffset(player.iCurrentSkillId))
 		{
 			Resolve_CardMazeHammerHit(player, updateTick);
 		}

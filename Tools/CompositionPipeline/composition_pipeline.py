@@ -1731,8 +1731,8 @@ def _validate_valtan_camera_cue(
                 raise CompositionError(f"{cue_id}.transitionInMs exceeds durationMs")
 
     keyframes = row["keyframes"]
-    if not isinstance(keyframes, list) or not 2 <= len(keyframes) <= 64:
-        raise CompositionError(f"{cue_id}.keyframes must contain 2..64 rows")
+    if not isinstance(keyframes, list) or not 2 <= len(keyframes) <= 512:
+        raise CompositionError(f"{cue_id}.keyframes must contain 2..512 rows")
     previous_time: int | None = None
     for ordinal, keyframe in enumerate(keyframes):
         frame_context = f"{cue_id}.keyframes[{ordinal}]"
@@ -1741,7 +1741,7 @@ def _validate_valtan_camera_cue(
         _require_exact_fields(
             keyframe,
             ("sceneId", "timeMs", "eye", "lookAt", "fovYDegrees"),
-            (),
+            ("up", "cutBefore"),
             frame_context,
         )
         scene_id = _require_owner_stable_id(
@@ -1769,12 +1769,19 @@ def _validate_valtan_camera_cue(
         )
         if sum((eye[index] - look_at[index]) ** 2 for index in range(3)) <= 0.000001:
             raise CompositionError(f"{frame_context} eye and lookAt must differ")
-        _require_finite_number(
-            keyframe["fovYDegrees"],
-            f"{frame_context}.fovYDegrees",
-            minimum=10.0,
-            maximum=120.0,
-        )
+        if "cutBefore" in keyframe and type(keyframe["cutBefore"]) is not bool:
+            raise CompositionError(f"{frame_context}.cutBefore must be boolean")
+        if "up" in keyframe:
+            up = _require_float3(keyframe["up"], f"{frame_context}.up", maximum_magnitude=100000.0)
+            forward = [look_at[i] - eye[i] for i in range(3)]
+            cross = [up[1]*forward[2] - up[2]*forward[1],
+                     up[2]*forward[0] - up[0]*forward[2],
+                     up[0]*forward[1] - up[1]*forward[0]]
+            if sum(value*value for value in cross) <= 0.000001:
+                raise CompositionError(f"{frame_context}.up is parallel to camera forward")
+        fov = _require_finite_number(keyframe["fovYDegrees"], f"{frame_context}.fovYDegrees")
+        if not 1.0 < fov < 179.0:
+            raise CompositionError(f"{frame_context}.fovYDegrees must be between 1 and 179")
         previous_time = time_ms
     if previous_time != duration_ms:
         raise CompositionError(f"{cue_id} final keyframe must match durationMs")

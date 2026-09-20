@@ -415,8 +415,6 @@ void LostArk::Server::CGameRoom::Handle_InteractionSlot(
 	/* The dance answer is judged only while an authored POSE_INPUT window of
 	the running pattern is open; the Debug dance override plays the pose alone. */
 	if (KOUKU_HUD_MODE::DANCE == state.eKoukuHudMode &&
-		KOUKUSAYDON_PATTERN_AUDITION_PHASE::ACTIVE ==
-			m_KoukuSaydonPatternAudition.ePhase &&
 		nullptr != Active_KoukuPlayerLedger())
 	{
 		const CGameplayCatalog* pinnedCatalog = Resolve_KoukuProductCatalog();
@@ -542,8 +540,7 @@ void LostArk::Server::CGameRoom::Update_KoukuPlayerModes(
 				std::string(KOUKUSAYDON_G1_ENCOUNTER_ID)) :
 			nullptr;
 	const KOUKUSAYDON_LOGIC_LEDGER* ledger = nullptr;
-	if (KOUKUSAYDON_PATTERN_AUDITION_PHASE::ACTIVE ==
-		m_KoukuSaydonPatternAudition.ePhase)
+	if (nullptr != Active_KoukuPlayerLedger())
 	{
 		ledger = Active_KoukuPlayerLedger();
 		if (const auto* product = Resolve_KoukuProductCatalog())
@@ -560,10 +557,20 @@ void LostArk::Server::CGameRoom::Apply_KoukuGateEntryCard(
 	using namespace LostArk::Shared;
 	if (WORLD_ID::KAKULSAYDON_ARENA != m_eWorldId)
 		return;
-	player.Clear_KoukuAssignedCard();
-	if ("BOSS_KAKULSAYDON_G1_KOUKU" == boss.strArchetypeId ||
-		"BOSS_KAKULSAYDON_G1_SAYDON" == boss.strArchetypeId)
-		CKoukuSaydonLogicRuntime::Assign_EncounterCard(player, boss.iNetEntityId, m_iServerTick);
+	if ("BOSS_KAKULSAYDON_G1_KOUKU" != boss.strArchetypeId &&
+		"BOSS_KAKULSAYDON_G1_SAYDON" != boss.strArchetypeId)
+	{ player.Clear_KoukuAssignedCard(); return; }
+	std::uint8_t used = 0u;
+	for (const auto& [id, other] : m_Players)
+	{
+		if (id == player.iPlayerId) continue;
+		const auto symbol = static_cast<std::uint8_t>(other.eMechanicCardSymbol);
+		if (symbol >= 1u && symbol <= 4u) used |= static_cast<std::uint8_t>(1u << (symbol - 1u));
+	}
+	const auto symbol = static_cast<std::uint8_t>(player.eMechanicCardSymbol);
+	if (symbol >= 1u && symbol <= 4u && (used & (1u << (symbol - 1u))))
+		player.Clear_KoukuAssignedCard();
+	CKoukuSaydonLogicRuntime::Assign_EncounterCard(player, boss.iNetEntityId, m_iServerTick, used);
 }
 
 bool LostArk::Server::CGameRoom::Apply_KoukuLogicOutput(
@@ -572,7 +579,7 @@ bool LostArk::Server::CGameRoom::Apply_KoukuLogicOutput(
 	const std::uint32_t serverTick)
 {
 	using namespace LostArk::Shared;
-	auto* member = Find_KoukuAuditionMember(boss.iNetEntityId);
+	auto* member = Find_KoukuAuditionMember(boss.iNetEntityId, boss.iPatternSequence);
 	if (!member) return false;
     for (const auto& request : output.CaptureRequests)
     {
@@ -582,7 +589,7 @@ bool LostArk::Server::CGameRoom::Apply_KoukuLogicOutput(
             member->LogicLedger.Windows[request.iWindowIndex].iHoldEndTick != request.iHoldEndTick)
         { m_strStatus = "Kouku capture candidate lost its owning Hold window"; continue; }
         if (Capture_PlayerAttachment(request.iPlayerNetEntityId, boss.iNetEntityId,
-            request.eAttachmentSlot, serverTick, request.iHoldEndTick))
+            request.eAttachmentSlot, serverTick, request.iHoldEndTick, boss.iPatternSequence))
         {
             member->LogicLedger.Windows[request.iWindowIndex].Answers[player->second] = KOUKUSAYDON_LOGIC_ANSWER::SUCCESS;
             member->LogicLedger.Windows[request.iWindowIndex].InsidePlayers.insert(player->second);
@@ -632,16 +639,27 @@ bool LostArk::Server::CGameRoom::Apply_KoukuLogicOutput(
 	}
 	/* A follow-up joins the audition right after the running slot, with a
 	one-tick transition, so Play All and Play Selected both continue into it. */
-	std::size_t insertAt = member->iPatternIndex + 1u;
+	auto* scheduleMember = Find_KoukuAuditionMember(boss.iNetEntityId);
+	if (!scheduleMember) scheduleMember = member;
+	const bool resumeCompleted = scheduleMember->bCompleted && !output.FollowupPatternIds.empty();
+	std::size_t insertAt = scheduleMember->iPatternIndex + 1u;
 	for (const std::string& followup : output.FollowupPatternIds)
 	{
-		if (insertAt > member->PatternIds.size())
+		if (insertAt > scheduleMember->PatternIds.size())
 			break;
-		member->PatternIds.insert(
-			member->PatternIds.begin() + insertAt, followup);
-		member->TransitionTicks.insert(
-			member->TransitionTicks.begin() + (insertAt - 1u), 1u);
+		scheduleMember->PatternIds.insert(
+			scheduleMember->PatternIds.begin() + insertAt, followup);
+		scheduleMember->TransitionTicks.insert(
+			scheduleMember->TransitionTicks.begin() + (insertAt - 1u), 1u);
 		++insertAt;
+	}
+	if (resumeCompleted)
+	{
+		++scheduleMember->iPatternIndex;
+		scheduleMember->bCompleted = false;
+		scheduleMember->ePhase = KOUKUSAYDON_PATTERN_AUDITION_PHASE::PENDING;
+		scheduleMember->iNextStartTick = CKoukuSaydonLogicRuntime::Add_Ticks(serverTick, 1u);
+		m_KoukuSaydonPatternAudition.ePhase = KOUKUSAYDON_PATTERN_AUDITION_PHASE::PENDING;
 	}
 	if (!output.strStatus.empty())
 		m_strStatus = "KoukuSaydon logic: " + output.strStatus;

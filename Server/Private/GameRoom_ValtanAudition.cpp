@@ -2652,8 +2652,9 @@ bool LostArk::Server::CGameRoom::Build_RequiredPinnedGameplayRevisions(
 			return false;
 		}
 	}
-	if (KOUKUSAYDON_PATTERN_AUDITION_PHASE::INACTIVE !=
-			m_KoukuSaydonPatternAudition.ePhase &&
+	if ((KOUKUSAYDON_PATTERN_AUDITION_PHASE::INACTIVE != m_KoukuSaydonPatternAudition.ePhase ||
+		!m_KoukuSaydonPatternAudition.Tails.empty() || !m_KoukuSaydonPatternAudition.WorldPlays.empty() ||
+		!m_KoukuSaydonPatternAudition.SupportSchedule.empty()) &&
 		!append(m_KoukuSaydonPatternAudition.PinnedGameplayRevision))
 	{
 		outRevisions.clear();

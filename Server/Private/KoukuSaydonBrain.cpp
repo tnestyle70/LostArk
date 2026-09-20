@@ -231,6 +231,8 @@ bool LostArk::Server::CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
 		{ status = "Parent stage boundaries must occupy distinct Server ticks"; return false; }
 		patternDurationMs += stage.iDurationMs;
 	}
+	// Rows use their independent lifetime; Stage progression still uses only Stages.
+	patternDurationMs = (std::max)(patternDurationMs, std::uint64_t(pattern.iTimelineDurationMs));
 	if (pattern.BossMotion)
 	{
 		const auto& motion = *pattern.BossMotion;
@@ -961,25 +963,6 @@ LostArk::Server::CKoukuSaydonBrain::Update(
 		Enter_Stage(boss, pattern->Stages[nextStage], nextStage, serverTick, false);
 		status.clear();
 		return KOUKUSAYDON_BRAIN_UPDATE_RESULT::STAGE_CHANGED;
-	}
-	// Contact/deadline windows use the pattern clock, whose final sample may be
-	// one tick after the last animation stage. Keep that pose until Logic has
-	// evaluated the terminal tick; intermediate stage clocks remain unchanged.
-	const std::uint64_t patternElapsedTicks = serverTick >= boss.iPatternStartTick ?
-		static_cast<std::uint64_t>(serverTick - boss.iPatternStartTick) :
-		static_cast<std::uint64_t>((std::numeric_limits<std::uint32_t>::max)() - boss.iPatternStartTick) + serverTick;
-	for (const auto& window : pattern->LogicWindows)
-	{
-		if (window.eKind != BOSS_PATTERN_LOGIC_KIND::OBJECT_CONTACT && window.eKind != BOSS_PATTERN_LOGIC_KIND::EXTERNAL_SIGNAL && window.eKind != BOSS_PATTERN_LOGIC_KIND::PATTERN_COMPLETION_COUNT &&
-            window.eKind != BOSS_PATTERN_LOGIC_KIND::COUNTER_WINDOW && window.eKind != BOSS_PATTERN_LOGIC_KIND::ATTACHMENT_HOLD &&
-            window.fBossChargeDistanceM <= 0.f) continue;
-		const std::uint64_t endMs = std::uint64_t(window.iStartMs) + window.iDurationMs;
-		const std::uint64_t deadlineTicks = (endMs * SERVER_TICK_HZ + MILLISECONDS_PER_SECOND - 1u) / MILLISECONDS_PER_SECOND;
-		if (patternElapsedTicks < deadlineTicks)
-		{
-			status.clear();
-			return KOUKUSAYDON_BRAIN_UPDATE_RESULT::RUNNING;
-		}
 	}
 	Finish_Pattern(boss, serverTick,
 		SERVER_BOSS_PATTERN_TERMINAL_RESULT::COMPLETED);

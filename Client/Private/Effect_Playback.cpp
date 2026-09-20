@@ -7900,6 +7900,10 @@ Client::EFFECT_COLOR_DESC Client::CEffectPlayback::Evaluate_Color(
         Color.vColorMultiply.w *= CEffectDistribution::Evaluate(
             *Element.SourceTransformTrack->AlphaScale,
             m_fSampleTimeSeconds + Element.SourceTransformTrack->fSourceTimeOriginSeconds, 0.f).x;
+    if (Element.SourceTransformTrack)
+        for (const auto& Factor : Element.SourceTransformTrack->AlphaScaleFactors)
+            Color.vColorMultiply.w *= CEffectDistribution::Evaluate(Factor,
+                m_fSampleTimeSeconds + Element.SourceTransformTrack->fSourceTimeOriginSeconds, 0.f).x;
 	return Color;
 }
 

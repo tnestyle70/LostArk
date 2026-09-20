@@ -685,7 +685,7 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
                 document = {"patterns": [value]}
                 self.assertIs(document, subject._coalesce_trailing_pose_holds(document))
 
-    def test_explicit_leaf_lifetime_preserves_effect_clocks_and_holds_final_pose(self):
+    def test_explicit_leaf_lifetime_preserves_rows_without_extending_stage(self):
         document = self.showtime_document()
         pattern = document["patterns"][0]
         pattern["durationMs"] = 6000
@@ -697,7 +697,7 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
         projected = subject._expand_parent_patterns(document)
         held = projected["patterns"][0]
         self.assertEqual(before, document)
-        self.assertEqual(6000, held["stages"][0]["durationMs"])
+        self.assertEqual(3000, held["stages"][0]["durationMs"])
         self.assertEqual(stage["animationOccurrences"], held["stages"][0]["animationOccurrences"])
         expected = copy.deepcopy(pattern)
         expected["stages"] = held["stages"]
@@ -705,6 +705,29 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
         self.assertTrue(subject._animation_holds_window_end(held["stages"][0], held["stages"][0]["animationOccurrences"][0]))
         self.assertEqual(subject._project_showtime_targets(document, pattern),
                          subject._project_showtime_targets(projected, held))
+        presentation = subject._project_pattern_presentation(projected, held)
+        self.assertEqual((3000, 6000), (presentation["stageDurationMs"], presentation["durationMs"]))
+        with mock.patch.object(subject, "_project_pattern_root_motion", return_value={}):
+            encounter = subject.project_encounter(document)["patterns"][0]
+        self.assertEqual(3000, sum(row["durationMs"] for row in encounter["stages"]))
+        self.assertEqual(6000, encounter["timelineDurationMs"])
+
+    def test_world_only_stage_does_not_wait_for_its_longer_rows(self):
+        document = self.showtime_document()
+        pattern = document["patterns"][0]
+        pattern["durationMs"] = 6000
+        stage = pattern["stages"][0]
+        stage["durationMs"] = 3000
+        stage["animationOccurrences"] = []
+        before = copy.deepcopy(document)
+        self.validate(document)
+        expanded = subject._expand_parent_patterns(document)["patterns"][0]
+        self.assertEqual(before, document)
+        self.assertEqual(1, len(expanded["stages"]))
+        self.assertEqual((stage["stageId"], stage["actionId"], 3000),
+                         (expanded["stages"][0]["stageId"], expanded["stages"][0]["actionId"], expanded["stages"][0]["durationMs"]))
+        self.assertEqual(3000, expanded["stages"][0]["animationOccurrences"][0]["playMs"])
+        self.assertEqual(6000, expanded["durationMs"])
 
     def test_explicit_leaf_empty_tail_uses_absolute_clock_and_preserves_source(self):
         document = self.showtime_document()
@@ -722,7 +745,7 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
         self.assertEqual(before, document)
         held = projected["patterns"][0]
         self.assertEqual(1, len(held["stages"]))
-        self.assertEqual(6000, held["stages"][0]["durationMs"])
+        self.assertEqual(3002, held["stages"][0]["durationMs"])
         self.assertEqual(stage["stageId"], held["stages"][0]["stageId"])
         self.assertEqual(stage["animationOccurrences"], held["stages"][0]["animationOccurrences"])
         self.assertEqual(pattern["presentationOccurrences"], held["presentationOccurrences"])

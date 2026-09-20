@@ -253,7 +253,10 @@ bool_t Client::CValtanCinematicCameraController::Sample_Cue(
 	{
 		return false;
 	}
-	const f32_t elapsedMs = elapsedSeconds * 1000.f;
+	f32_t elapsedMs = elapsedSeconds * 1000.f;
+	// Seconds-to-milliseconds roundoff must not delay an authored Director cut.
+	const f32_t roundedMs = std::round(elapsedMs);
+	if (std::fabs(elapsedMs - roundedMs) < 0.001f) elapsedMs = roundedMs;
 	const auto upper = std::upper_bound(
 		cue.Keyframes.begin(), cue.Keyframes.end(), elapsedMs,
 		[](const f32_t value, const VALTAN_CINEMATIC_CAMERA_KEYFRAME& frame)
@@ -274,6 +277,11 @@ bool_t Client::CValtanCinematicCameraController::Sample_Cue(
 		return Is_ValidPose(outPose);
 	}
 	const auto& right = cue.Keyframes[rightIndex];
+    if (right.cutBefore)
+    {
+        outPose = { left.vEye, left.vLookAt, left.fFovYDegrees, left.vUp, left.hasUp };
+        return Is_ValidPose(outPose);
+    }
 	const f32_t span = static_cast<f32_t>(right.iTimeMs - left.iTimeMs);
 	const f32_t rawAlpha = span <= 0.f ? 0.f : (std::clamp)(
 		(elapsedMs - static_cast<f32_t>(left.iTimeMs)) / span, 0.f, 1.f);
@@ -306,10 +314,11 @@ bool_t Client::CValtanCinematicCameraController::Sample_Cue(
 		break;
 	case VALTAN_CINEMATIC_CAMERA_INTERPOLATION::CATMULL_ROM:
 	{
-		const size_t firstControlIndex = 0u == leftIndex ?
+		const size_t firstControlIndex = (0u == leftIndex || left.cutBefore) ?
 			leftIndex : leftIndex - 1u;
-		const size_t fourthControlIndex = (std::min)(
+		size_t fourthControlIndex = (std::min)(
 			rightIndex + 1u, cue.Keyframes.size() - 1u);
+        if (cue.Keyframes[fourthControlIndex].cutBefore) fourthControlIndex = rightIndex;
 		const auto& firstControl = cue.Keyframes[firstControlIndex];
 		const auto& fourthControl = cue.Keyframes[fourthControlIndex];
 		XMStoreFloat3(&outPose.vEye, XMVectorCatmullRom(
@@ -371,6 +380,9 @@ bool_t Client::CValtanCinematicCameraController::Apply_CueTracking(
 		return true;
 	}
 	case VALTAN_CINEMATIC_TRACKING_MODE::BOSS_FACING:
+		if (inOutPose.hasUp)
+			inOutPose.vUp = Resolve_BossFacingPoint(inOutPose.vUp, float3_t(0.f, 0.f, 0.f),
+				float3_t(0.f, 0.f, 0.f), input.fBossYawDegrees);
 		inOutPose.vEye = Resolve_BossFacingPoint(
 			inOutPose.vEye, cue.vTrackingOrigin,
 			input.vBossPosition, input.fBossYawDegrees);
@@ -379,6 +391,12 @@ bool_t Client::CValtanCinematicCameraController::Apply_CueTracking(
 			input.vBossPosition, input.fBossYawDegrees);
 		return true;
 	case VALTAN_CINEMATIC_TRACKING_MODE::PLAYER_BOSS_FRAME:
+		if (inOutPose.hasUp)
+		{
+			const auto zero = Resolve_PlayerBossFramePoint(float3_t(0.f, 0.f, 0.f), cue.vTrackingOrigin, input);
+			const auto point = Resolve_PlayerBossFramePoint(inOutPose.vUp, cue.vTrackingOrigin, input);
+			inOutPose.vUp = float3_t(point.x - zero.x, point.y - zero.y, point.z - zero.z);
+		}
 		inOutPose.vEye = Resolve_PlayerBossFramePoint(
 			inOutPose.vEye, cue.vTrackingOrigin, input);
 		inOutPose.vLookAt = Resolve_PlayerBossFramePoint(
@@ -411,6 +429,9 @@ bool_t Client::CValtanCinematicCameraController::Remove_CueTracking(
 		break;
 	}
 	case VALTAN_CINEMATIC_TRACKING_MODE::BOSS_FACING:
+		if (inOutPose.hasUp)
+			inOutPose.vUp = Remove_BossFacingPoint(inOutPose.vUp, float3_t(0.f, 0.f, 0.f),
+				float3_t(0.f, 0.f, 0.f), input.fBossYawDegrees);
 		inOutPose.vEye = Remove_BossFacingPoint(
 			inOutPose.vEye, cue.vTrackingOrigin,
 			input.vBossPosition, input.fBossYawDegrees);
@@ -419,6 +440,12 @@ bool_t Client::CValtanCinematicCameraController::Remove_CueTracking(
 			input.vBossPosition, input.fBossYawDegrees);
 		break;
 	case VALTAN_CINEMATIC_TRACKING_MODE::PLAYER_BOSS_FRAME:
+		if (inOutPose.hasUp)
+		{
+			const auto zero = Remove_PlayerBossFramePoint(float3_t(0.f, 0.f, 0.f), cue.vTrackingOrigin, input);
+			const auto point = Remove_PlayerBossFramePoint(inOutPose.vUp, cue.vTrackingOrigin, input);
+			inOutPose.vUp = float3_t(point.x - zero.x, point.y - zero.y, point.z - zero.z);
+		}
 		inOutPose.vEye = Remove_PlayerBossFramePoint(
 			inOutPose.vEye, cue.vTrackingOrigin, input);
 		inOutPose.vLookAt = Remove_PlayerBossFramePoint(

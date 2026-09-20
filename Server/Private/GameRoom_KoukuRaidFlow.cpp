@@ -153,7 +153,14 @@ bool LostArk::Server::CGameRoom::Begin_KoukuRaidPreparation(const SESSION_ID ses
     state.ePhase = KOUKUSAYDON_RAID_PHASE::PREPARING;
     state.strSequenceCompositionId = gate->strSequenceCompositionId; state.strSequencePatternId = gate->strIntroPatternId;
     state.ParticipantPlayerIds = m_KoukuRaid.PlayerIds;
-    state.iStartTick = 0u; state.iEndTick = Add_ServerTicksSkippingReservedZero(m_iServerTick, 300u); state.iServerTick = m_iServerTick;
+    // Only Debug raid admission waits for on-demand GPU/resource preparation.
+    // Release entry retains its preloaded-document deadline; combat clocks are unchanged.
+#ifdef _DEBUG
+    constexpr uint32_t preparationTicks = 20u * 60u * 30u;
+#else
+    constexpr uint32_t preparationTicks = 300u;
+#endif
+    state.iStartTick = 0u; state.iEndTick = Add_ServerTicksSkippingReservedZero(m_iServerTick, preparationTicks); state.iServerTick = m_iServerTick;
     m_KoukuRaidReceipts[sessionId] = {request, state};
     Broadcast_KoukuRaidState(); return true;
 }
@@ -175,7 +182,7 @@ bool LostArk::Server::CGameRoom::Apply_KoukuRaidReadiness(const SESSION_ID sessi
     if (run.State.ePhase != KOUKUSAYDON_RAID_PHASE::PREPARING)
     { reason = "This raid no longer accepts preparation ACKs"; return false; }
     if (Has_ReachedServerTick(m_iServerTick, run.State.iEndTick))
-    { Stop_KoukuRaid("Raid preparation exceeded ten seconds"); reason = "Raid preparation timed out"; return false; }
+    { Stop_KoukuRaid("Raid preparation deadline expired"); reason = "Raid preparation timed out"; return false; }
     if (request.eOperation == KOUKUSAYDON_RAID_OPERATION::FAILED)
     {
         Stop_KoukuRaid("Player " + std::to_string(player->second) + " preparation failed: " + request.strReason); return true;
@@ -227,7 +234,7 @@ void LostArk::Server::CGameRoom::Stop_KoukuRaid(std::string reason, const bool c
             m_ServerTriggerSystem.Reset_SequenceActivation(m_KoukuRaid.strEntryTriggerSequenceId);
         Broadcast_KoukuRaidState(); return;
     }
-    if (m_KoukuSaydonPatternAudition.ePhase != KOUKUSAYDON_PATTERN_AUDITION_PHASE::INACTIVE) Clear_KoukuSaydonPatternAudition(false, "Raid stopped");
+    if (m_KoukuSaydonPatternAudition.iRoomAuditionEpoch != 0u) Clear_KoukuSaydonPatternAudition(false, "Raid stopped");
     Reset_CardMaze();
     (void)Despawn_KoukuSaydonArenaDebugEntities(true);
     for (auto& [id, player] : m_Players) { player.Clear_KoukuInteractionState(); player.Clear_MarioControl(); }
@@ -253,7 +260,12 @@ bool LostArk::Server::CGameRoom::Begin_KoukuRaidCinematic(const std::string& gat
     run.State.iSequenceSourceRevision = gate->iSequenceRevision;
     run.State.iStartTick = tick; run.State.iEndTick = Add_ServerTicksSkippingReservedZero(tick, CKoukuSaydonLogicRuntime::Ticks_FromMs(clear ? gate->iClearDurationMs : gate->iIntroDurationMs));
     run.State.iServerTick = m_iServerTick; run.State.iFlowEntryIndex = 0u; run.State.strFlowEntryId.clear();
-    for (auto& [id, player] : m_Players) Reset_PlayerForDebugTeleport(player);
+    for (auto& [id, player] : m_Players)
+    {
+        Reset_PlayerForDebugTeleport(player);
+        // A new gate cinematic ends the previous gate's persistent overhead cards.
+        player.Clear_KoukuAssignedCard();
+    }
     Broadcast_KoukuRaidState(); return true;
 }
 bool LostArk::Server::CGameRoom::Start_KoukuRaidCombat(const std::uint32_t tick)
@@ -303,7 +315,8 @@ bool LostArk::Server::CGameRoom::Start_KoukuRaidEntry(const std::uint32_t tick)
     request.Scope.strBossPlacementId = placementId; request.Scope.strBossArchetypeId = placement->strArchetypeId;
     const auto published = m_pKoukuPublishedProductGeneration; m_pKoukuPublishedProductGeneration = run.pCatalog;
     S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT result;
-    const auto verdict = Evaluate_KoukuSaydonPatternAudition(run.iOwnerSessionId, request, result);
+    const auto verdict = Evaluate_KoukuSaydonPatternAudition(run.iOwnerSessionId, request, result,
+        run.State.iFlowEntryIndex > 0u && run.iAuditionEpoch != 0u);
     m_pKoukuPublishedProductGeneration = published;
     if (verdict != KOUKUSAYDON_PATTERN_AUDITION_RESULT::QUEUED) { m_strStatus = result.strReason; return false; }
     run.iAuditionRequestSequence = request.iRequestSequence; run.iAuditionEpoch = result.iRoomAuditionEpoch; run.bEntryRunning = true;
@@ -316,7 +329,7 @@ void LostArk::Server::CGameRoom::Notify_KoukuRaidBossDeath(const SERVER_WORLD_EN
         boss.iNetEntityId != run.iPrimaryBossId || (boss.iCurrentHp && boss.eAction != SERVER_ENTITY_ACTION::DEAD)) return;
     run.State.ePhase = KOUKUSAYDON_RAID_PHASE::WAIT_GATE; run.State.iStartTick = tick;
     run.State.iEndTick = 0u; run.State.iServerTick = tick; run.bEntryRunning = false;
-    if (m_KoukuSaydonPatternAudition.ePhase != KOUKUSAYDON_PATTERN_AUDITION_PHASE::INACTIVE) Clear_KoukuSaydonPatternAudition(false, "Gate boss defeated");
+    if (m_KoukuSaydonPatternAudition.iRoomAuditionEpoch != 0u) Clear_KoukuSaydonPatternAudition(false, "Gate boss defeated");
     const auto* gate = run.pCatalog->Find_KoukuRaidGate(run.State.strGateId);
     const int index = gate ? Gate_IndexOfPlacement(gate->strPrimaryBossPlacementId) : -1;
     if (index >= 0)
@@ -344,7 +357,7 @@ bool LostArk::Server::CGameRoom::Advance_KoukuRaidGate(const std::uint8_t nextGa
         if (player == m_Players.end() || !m_GameplayCatalog.Find_Player(player->second.eCharacterClass)) return false;
     }
     // The existing unanimous vote authorizes a reset, including reviving dead participants.
-    if (m_KoukuSaydonPatternAudition.ePhase != KOUKUSAYDON_PATTERN_AUDITION_PHASE::INACTIVE)
+    if (m_KoukuSaydonPatternAudition.iRoomAuditionEpoch != 0u)
         Clear_KoukuSaydonPatternAudition(false, restart ? "Gate restart approved" : "Next gate approved");
     Reset_CardMaze();
     const bool clear = !restart && current == 2u;
@@ -372,7 +385,7 @@ void LostArk::Server::CGameRoom::Update_KoukuRaid(const std::uint32_t tick)
     const auto* gate = run.pCatalog->Find_KoukuRaidGate(run.State.strGateId); if (!gate) { Stop_KoukuRaid("Pinned gate disappeared"); return; }
     if (run.State.ePhase == KOUKUSAYDON_RAID_PHASE::PREPARING)
     {
-        if (Has_ReachedServerTick(tick, run.State.iEndTick)) { Stop_KoukuRaid("Raid preparation exceeded ten seconds"); return; }
+        if (Has_ReachedServerTick(tick, run.State.iEndTick)) { Stop_KoukuRaid("Raid preparation deadline expired"); return; }
         if (run.State.iReadyMask == (1u << run.PlayerIds.size()) - 1u)
         {
             for (const auto id : run.PlayerIds)

@@ -136,6 +136,84 @@ class BuildDomainManifestContractTests(unittest.TestCase):
         self.document = json.loads(MANIFEST.read_text(encoding="utf-8"))
         self.domains = {row["id"]: row for row in self.document["domains"]}
 
+    def test_server_startup_worlds_and_navigation_are_required_outputs(self) -> None:
+        world_areas = {
+            "BERN": "LV_BER_BERNCASTLE",
+            "VALTAN_ARENA": "LV_LUT_HEARTRB_ED",
+            "TRAINING_GROUND": "LV_DEV_TRAINING_GROUND",
+            "KAKULSAYDON_ARENA": "LV_LUT_MIDNIGHTC_ED",
+            "MAHARAKA": "LV_OCN_EVENTIS_MHP",
+            "CHARACTER_SELECT_ARENA": "LV_LOBBY_CLASSSELECT_SL00",
+        }
+        server = (ROOT / "Server/Private/ServerApp.cpp").read_text(encoding="utf-8-sig")
+        shared = set(re.findall(r"stageSharedSimulation\(WORLD_ID::([A-Z_]+)\)", server))
+        self.assertEqual(set(world_areas) - {"CHARACTER_SELECT_ARENA"}, shared)
+        self.assertRegex(server, r"validationSimulation\s*=\s*std::make_shared<CGameRoom>\(\s*"
+                                r"WORLD_ID::CHARACTER_SELECT_ARENA,")
+        world_required = {p for p in self.domains["world.gameplay"]["requiredOutputPatterns"]
+                          if p.endswith(".worldbootstrap")}
+        nav_required = {p for p in self.domains["navigation"]["requiredOutputPatterns"]
+                        if p.startswith("Server/") and p.endswith(".navgrid")}
+        self.assertEqual({f"Server/Bin/DataFiles/World/{world}.worldbootstrap"
+                          for world in world_areas}, world_required)
+        self.assertEqual({f"Server/Bin/DataFiles/Navigation/{area}.navgrid"
+                          for area in world_areas.values()}, nav_required)
+
+    def test_product_detects_each_missing_startup_file_without_publishing(self) -> None:
+        # Execute only the actual runner's missing-input assignment against an
+        # isolated filesystem. Never invoke the runner, MSBuild, or a publisher.
+        owners = ("gameplay.balance", "items.catalog", "vehicles.profiles",
+                  "honortitles.catalog", "valtan.rewards", "world.gameplay", "navigation")
+        required = [pattern for owner in owners
+                    for pattern in self.domains[owner]["requiredOutputPatterns"]
+                    if pattern.startswith("Server/Bin/DataFiles/")]
+        required.append("Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.mapassets")
+        self.assertEqual(19, len(required))
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            cases = []
+            for pattern in required:
+                relative = pattern.replace("*.json", "fixture.json")
+                path = root / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("fixture", encoding="utf-8")
+                cases.append({"pattern": pattern, "path": str(path)})
+            (root / "cases.json").write_text(json.dumps(cases), encoding="utf-8")
+            quoted = lambda path: str(path).replace("'", "''")
+            script = f"""
+Import-Module '{quoted(MODULE)}' -Force -WarningAction SilentlyContinue
+$repoRoot = '{quoted(root)}'
+$runtimeInputManifest = Read-BuildDomainManifest '{quoted(MANIFEST)}'
+$tokens = $null; $parseErrors = $null
+$ast = [Management.Automation.Language.Parser]::ParseFile(
+    '{quoted(ROOT / 'Tools/Build/Invoke-BuildAndRegression.ps1')}', [ref]$tokens, [ref]$parseErrors)
+if ($parseErrors.Count) {{ throw 'Product runner PowerShell parse failed' }}
+$assignments = @($ast.FindAll({{ param($node)
+    $node -is [Management.Automation.Language.AssignmentStatementAst] -and
+    $node.Left.Extent.Text -ceq '$missingRuntimeInputs'
+}}, $true))
+if ($assignments.Count -ne 1) {{ throw 'Expected one Product missing-input evaluator' }}
+$evaluate = [scriptblock]::Create($assignments[0].Extent.Text)
+. $evaluate
+$baseline = @($missingRuntimeInputs)
+$results = @()
+foreach ($case in (Get-Content -LiteralPath (Join-Path $repoRoot 'cases.json') -Raw | ConvertFrom-Json)) {{
+    Remove-Item -LiteralPath $case.path
+    . $evaluate
+    $results += [pscustomobject]@{{ pattern = $case.pattern; missing = @($missingRuntimeInputs) }}
+    [IO.File]::WriteAllText($case.path, 'fixture')
+}}
+. $evaluate
+@{{ baseline = $baseline; cases = $results; restored = @($missingRuntimeInputs) }} |
+    ConvertTo-Json -Depth 5 -Compress
+"""
+            result = json.loads(powershell(script, root).splitlines()[-1])
+            self.assertEqual([], result["baseline"])
+            self.assertEqual([], result["restored"])
+            self.assertEqual(len(required), len(result["cases"]))
+            for case in result["cases"]:
+                self.assertEqual([case["pattern"]], case["missing"], case["pattern"])
+
     def test_diagnostic_graph_excludes_product_and_preserves_domain_validators(self) -> None:
         self.assertEqual(self.document["schema"], "lostark.build-domain-graph")
         self.assertEqual(self.document["formatVersion"], 1)
@@ -464,9 +542,15 @@ class BuildDomainManifestContractTests(unittest.TestCase):
         )
         for token in (
             "Assert-RuntimeLayout", "Test-Path -LiteralPath", "$missingRuntimeInputs",
-            "schema = 'lostark.compile-result'", "Write-BuildAtomicJson",
+            "Write-ProductCompileEvidence 'PASS' @($missingRuntimeInputs)",
         ):
             self.assertIn(token, product)
+        evidence_start = runner.index("function Write-ProductCompileEvidence {")
+        evidence_end = runner.index("\nfunction ", evidence_start + 1)
+        evidence = runner[evidence_start:evidence_end]
+        for token in ("schema = 'lostark.compile-result'", "Write-BuildAtomicJson",
+                      "missingRuntimeInputs = @($MissingRuntimeInputs)"):
+            self.assertIn(token, evidence)
         for owner_name in ("Server", "Client"):
             self.assertIn(
                 "Write-Host 'powershell -ExecutionPolicy Bypass -File "

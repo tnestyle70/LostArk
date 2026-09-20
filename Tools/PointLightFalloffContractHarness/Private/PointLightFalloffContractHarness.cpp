@@ -26,7 +26,7 @@
 using namespace Client;
 using namespace Engine;
 
-static_assert(sizeof(LIGHT_DESC) == 108u);
+static_assert(sizeof(LIGHT_DESC) == 124u);
 static_assert(offsetof(LIGHT_DESC, fRange) == 36u);
 static_assert(offsetof(LIGHT_DESC, fFalloffExponent) == 40u);
 static_assert(offsetof(LIGHT_DESC, vDiffuse) == 44u);
@@ -576,6 +576,28 @@ int wmain(const int iArgumentCount, wchar_t* pArguments[])
 	if (!SameBits(DefaultDesc.fSpotInnerCos, 1.f) ||
 		!SameBits(DefaultDesc.fSpotOuterCos, 1.f))
 		return Fail("LIGHT_DESC cone defaults changed legacy initialization");
+
+    const auto& defaultIndirect = DefaultDesc.vSourceCharacterAmbient;
+    if (defaultIndirect.x != 0.f || defaultIndirect.y != 0.f ||
+        defaultIndirect.z != 0.f || defaultIndirect.w != 0.f)
+        return Fail("legacy lights gained native character indirect energy");
+    LIGHT_DESC independentIndirect = MakeValidPointLight();
+    independentIndirect.eType = LIGHT::DIRECTIONAL;
+    independentIndirect.vDirection = { 0.f, -1.f, 0.f, 0.f };
+    independentIndirect.vDiffuse = { 0.f, 0.f, 0.f, 1.f };
+    independentIndirect.vSourceCharacterAmbient = { .51f, .56f, .59f, 0.f };
+    if (!CLight::Is_ValidDesc(independentIndirect))
+        return Fail("independent native ambient rejected with zero direct RGB");
+    for (float value : { -1.f, 65.f, std::numeric_limits<float>::quiet_NaN(),
+        std::numeric_limits<float>::infinity() })
+    {
+        auto invalid = independentIndirect; invalid.vSourceCharacterAmbient.x = value;
+        if (CLight::Is_ValidDesc(invalid)) return Fail("invalid native ambient RGB admitted");
+    }
+    auto invalidIndirect = independentIndirect; invalidIndirect.vSourceCharacterAmbient.w = 1.f;
+    if (CLight::Is_ValidDesc(invalidIndirect)) return Fail("native ambient reserved component admitted");
+    invalidIndirect = independentIndirect; invalidIndirect.eType = LIGHT::POINT;
+    if (CLight::Is_ValidDesc(invalidIndirect)) return Fail("local light supplied scene-only native ambient");
 
 	const LIGHT_DESC Valid = MakeValidPointLight();
 	auto Light = CLight::Create(Valid);

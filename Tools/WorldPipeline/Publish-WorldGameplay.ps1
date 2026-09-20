@@ -294,6 +294,7 @@ function Get-EncounterProfiles {
 			}
 			if ($isKoukuSaydon -and $null -ne $pattern.PSObject.Properties['bossMotion']) { $patternProperties += 'bossMotion' }
 			if ($isKoukuSaydon -and $null -ne $pattern.PSObject.Properties['resetBossYawDegrees']) { $patternProperties += 'resetBossYawDegrees' }
+			if ($isKoukuSaydon -and $null -ne $pattern.PSObject.Properties['timelineDurationMs']) { $patternProperties += 'timelineDurationMs' }
 			if ($isKoukuSaydon -and $null -ne $pattern.PSObject.Properties['fixedTimeline']) {
 				# Parent timing belongs to the gameplay publisher and Server. Accept its
 				# typed Product field while resolving this encounter's world placements.
@@ -330,6 +331,11 @@ function Get-EncounterProfiles {
 				Assert-JsonInteger $stage.durationMs "$($document.encounterId) stage durationMs" 1 ([uint32]::MaxValue)
 				$bossMotionPatternDurationMs += [uint64]$stage.durationMs
 			}
+            if ($isKoukuSaydon -and $null -ne $pattern.PSObject.Properties['timelineDurationMs']) {
+                Assert-JsonInteger $pattern.timelineDurationMs 'KoukuSaydon timelineDurationMs' 1 600000
+                if ([uint64]$pattern.timelineDurationMs -lt $bossMotionPatternDurationMs) { throw 'KoukuSaydon timelineDurationMs cannot trim Stage clocks' }
+                $bossMotionPatternDurationMs = [uint64]$pattern.timelineDurationMs
+            }
 			if ($null -ne $pattern.PSObject.Properties['bossMotion']) {
 				$bossMotion = $pattern.bossMotion
 				Assert-ExactProperties $bossMotion @('startMs','endMs','startPosition','endPosition','yawDegrees') 'KoukuSaydon bossMotion'

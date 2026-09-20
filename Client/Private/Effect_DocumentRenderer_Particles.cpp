@@ -61,7 +61,14 @@ bool Client::CEffectDocumentRenderer::Try_ProjectCaptureTargetBounds(
         XMMatrixRotationRollPitchYaw(XMConvertToRadians(Transform.vRotationDegrees.x),
             XMConvertToRadians(Transform.vRotationDegrees.y), XMConvertToRadians(Transform.vRotationDegrees.z)) *
         XMMatrixTranslation(Transform.vPosition.x, Transform.vPosition.y, Transform.vPosition.z);
-    const matrix_t WorldViewProjection = Local * XMLoadFloat4x4(&Frame.RootWorld) * ViewMatrix * ProjectionMatrix;
+    matrix_t World = Local * XMLoadFloat4x4(&Frame.RootWorld);
+    if (const auto* control = Find_StartingCaptureControl(Document, cueId))
+    {
+        float4x4_t rig;
+        if (!Build_StartingCaptureRig(control->Detail, Frame.RootWorld, *View, *Projection, false, rig)) return false;
+        World = World * XMLoadFloat4x4(&rig);
+    }
+    const matrix_t WorldViewProjection = World * ViewMatrix * ProjectionMatrix;
     float2_t Lower{FLT_MAX, FLT_MAX}, Upper{-FLT_MAX, -FLT_MAX};
     for (uint32_t i = 0u; i < 8u; ++i)
     {
@@ -88,8 +95,67 @@ void Client::CEffectDocumentRenderer::Apply_StartingCaptureCameraFraming(
     const EFFECT_EVALUATED_FRAME& Frame, const EFFECT_EVALUATED_PARTICLE& Particle,
     const Engine::CModel& Model, float4x4_t& World)
 {
-    if (!Particle.pElement || !Is_StartingSceneCaptureCameraEmitter(*Particle.pElement)) return;
+    if (!Particle.pElement) return;
     const auto& Document = Get_StagedDocument();
+    if (Is_StartingCaptureFrameEmitter(*Particle.pElement))
+    {
+        const auto row = std::find_if(Document.Elements.begin(), Document.Elements.end(), [](const auto& element) {
+            return element.bVisible && element.Detail.ScreenPost.bEnabled &&
+                element.Detail.ScreenPost.eProfile == EFFECT_SCREEN_POST_PROFILE::SCENE_CAPTURE_CUBE_V1 &&
+                element.Detail.ScreenPost.strCaptureTargetModelCueId == "altv.source.notify036.cube";
+        });
+        if (row == Document.Elements.end() || !Model.Has_LocalBounds()) return;
+        const auto& timing = row->Detail.Timing; const auto& post = row->Detail.ScreenPost;
+        const float end = timing.fStartDelaySeconds + timing.fLifeTimeSeconds;
+        if (Frame.fSampleTimeSeconds < timing.fStartDelaySeconds || Frame.fSampleTimeSeconds >= end) return;
+        float2_t center{}, size{};
+        if (!Try_ProjectCaptureTargetBounds(Frame, post.strCaptureTargetModelCueId, end, center, size)) return;
+        const auto* view = CGameInstance::Get().Get_Transform(D3DTS::VIEW);
+        const auto* projection = CGameInstance::Get().Get_Transform(D3DTS::PROJ);
+        ComPtr<ID3D11Resource> resource; ComPtr<ID3D11Texture2D> texture;
+        if (!view || !projection || !m_pStartingSceneCapture) return;
+        m_pStartingSceneCapture->GetResource(resource.GetAddressOf());
+        if (!resource || FAILED(resource.As(&texture))) return;
+        D3D11_TEXTURE2D_DESC desc{}; texture->GetDesc(&desc);
+        if (!desc.Width || !desc.Height) return;
+        // The target bounds already contain the common camera-space anchor,
+        // endpoint TRS and UV offset. Do not replace them with a second centre.
+        if (post.bCaptureSquare)
+        {
+            const float side = (std::min)(size.x * desc.Width, size.y * desc.Height);
+            size = {side / desc.Width, side / desc.Height};
+        }
+        const float duration = post.fCaptureShrinkSeconds > 0.f ? post.fCaptureShrinkSeconds : timing.fLifeTimeSeconds;
+        const float t = std::clamp((Frame.fSampleTimeSeconds - timing.fStartDelaySeconds) / duration, 0.f, 1.f);
+        const float progress = t * t * (3.f - 2.f * t);
+        const auto edge = [&](float speed) { return std::pow(progress, 1.f / speed); };
+        const float left = (center.x - size.x * .5f) * edge(post.vCaptureEdgeSpeed.x);
+        const float right = 1.f + (center.x + size.x * .5f - 1.f) * edge(post.vCaptureEdgeSpeed.y);
+        const float top = (center.y - size.y * .5f) * edge(post.vCaptureEdgeSpeed.z);
+        const float bottom = 1.f + (center.y + size.y * .5f - 1.f) * edge(post.vCaptureEdgeSpeed.w);
+        if (right <= left || bottom <= top) return;
+        const auto minimum = Model.Get_LocalBoundsMin(), maximum = Model.Get_LocalBoundsMax();
+        const float3_t extent{maximum.x-minimum.x,maximum.y-minimum.y,maximum.z-minimum.z};
+        if (extent.x <= 1e-6f || extent.y <= 1e-6f || extent.z <= 1e-6f) return;
+        const auto viewMatrix = XMLoadFloat4x4(view);
+        const float depth = (std::max)(.2f, XMVectorGetZ((XMLoadFloat4x4(&World) * viewMatrix).r[3]));
+        const float width = 2.f * depth * (right-left) / projection->_11;
+        const float height = 2.f * depth * (bottom-top) / projection->_22;
+        // A narrow source box preserves its native edge shader while sharing the
+        // authored screen plane. Capture stays in the existing ScreenPost path.
+        const auto fitted = XMMatrixTranslation(-(minimum.x+maximum.x)*.5f,
+            -(minimum.y+maximum.y)*.5f,-(minimum.z+maximum.z)*.5f) *
+            XMMatrixScaling(width/extent.x,height/extent.y,.002f*depth/extent.z) *
+            XMMatrixRotationZ(-XMConvertToRadians(post.fCaptureRotationDegrees +
+                StartingCaptureEndpointTransform(row->Detail).vRotationDegrees.z) * progress) *
+            XMMatrixTranslation((left+right-1.f)*depth/projection->_11,
+                (1.f-top-bottom)*depth/projection->_22,depth) * XMMatrixInverse(nullptr,viewMatrix);
+        float4x4_t candidate; XMStoreFloat4x4(&candidate, fitted);
+        for (const auto& values : candidate.m) for (float value : values) if (!std::isfinite(value)) return;
+        World = candidate;
+        return;
+    }
+    if (!Is_StartingSceneCaptureCameraEmitter(*Particle.pElement)) return;
     const auto Cue = std::find_if(Document.ModelCues.begin(), Document.ModelCues.end(), [](const auto& Value) {
         return Value.bVisible && Value.strCueId == "altv.source.notify036.cube" &&
             Has_DimensionMasterALTVModelCueMaterialContract(Value);

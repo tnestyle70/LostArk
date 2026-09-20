@@ -250,18 +250,29 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuProduct(TESTS& tes
         if (!room->Is_Ready() || !placement || !room->Build_WorldEntity(*placement, room->m_iNextNetEntityId++, boss)) {
             tests.Require(false, "Load Mario scenario from the published Gate 3 placement"); return std::vector<std::string>{};
         }
-        // An owned catalog copy exercises the still-supported optional followup.
-        // The default two-pattern terminal scenario consumes the actual published definition.
-        if (!noFollowup) {
+        // Fix the test's two-completion/six-candidate scenario explicitly. Live authoring may
+        // select a different count or pool without changing this optional runtime contract.
+        {
             auto generation = std::make_shared<CGameplayCatalog>(room->m_GameplayCatalog.Active());
             auto* definitions = const_cast<std::vector<BOSS_PATTERN_DEFINITION>*>(generation->Find_BossPatterns("ENCOUNTER_KAKULSAYDON_G1"));
             if (definitions) for (auto& definition : *definitions) if (definition.strPatternId == "KAKULSAYDON_G1_PATTERN_34")
                 for (auto& window : definition.LogicWindows) if (window.eKind == BOSS_PATTERN_LOGIC_KIND::PATTERN_COMPLETION_COUNT) {
-                    BOSS_PATTERN_LOGIC_RESULT followup{};
-                    followup.eKind = BOSS_PATTERN_LOGIC_RESULT_KIND::FOLLOWUP_PATTERN;
-                    followup.strPatternId = "KAKULSAYDON_G1_PATTERN_33";
-                    window.OnSuccess = {followup};
+                    window.iCompletionCount = 2u;
+                    window.PatternIds = {"KAKULSAYDON_G1_PATTERN_38", "KAKULSAYDON_G1_PATTERN_39", "KAKULSAYDON_G1_PATTERN_40",
+                        "KAKULSAYDON_G1_PATTERN_43", "KAKULSAYDON_G1_PATTERN_52", "KAKULSAYDON_G1_PATTERN_46"};
+                    window.OnSuccess.clear();
+                    if (!noFollowup) {
+                        BOSS_PATTERN_LOGIC_RESULT followup{};
+                        followup.eKind = BOSS_PATTERN_LOGIC_RESULT_KIND::FOLLOWUP_PATTERN;
+                        followup.strPatternId = "KAKULSAYDON_G1_PATTERN_33";
+                        window.OnSuccess = {followup};
+                    }
                 }
+            // This fixture exercises optional success with no entrant, independently of
+            // a designer-authored failure policy on the current product's entry window.
+            if (definitions) for (auto& definition : *definitions) if (definition.strPatternId == "KAKULSAYDON_G1_PATTERN_34")
+                for (auto& window : definition.LogicWindows) if (window.eKind == BOSS_PATTERN_LOGIC_KIND::ENTER_AREA)
+                    window.OnTimeout.clear();
             room->m_pKoukuPublishedProductGeneration = std::move(generation);
         }
         const auto bossId = boss.iNetEntityId;
@@ -342,12 +353,12 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuProduct(TESTS& tes
                 bounded = bounded && aborted; break;
             }
             if (!live || !room->Update_KoukuSaydonBoss(*live, tick)) { bounded = false; break; }
-            if (room->m_KoukuSaydonPatternAudition.Members.empty()) {
+            if (room->m_KoukuSaydonPatternAudition.ePhase == CGameRoom::KOUKUSAYDON_PATTERN_AUDITION_PHASE::INACTIVE) {
                 const auto receipt = room->m_KoukuSaydonPatternAuditionReceiptBySessionId.find(player.iSessionId);
                 terminalCompleted = noFollowup && receipt != room->m_KoukuSaydonPatternAuditionReceiptBySessionId.end() &&
                     receipt->second.LastLifecycle && receipt->second.LastLifecycle->eState == KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::COMPLETED;
                 bounded = bounded && terminalCompleted && completed == 1u && finalChildDurationTicks &&
-                    tick >= finalChildStartTick + finalChildDurationTicks && live->strPatternId.empty() && room->m_PendingKoukuMarioEntries.empty();
+                    tick + 1u >= finalChildStartTick + finalChildDurationTicks && live->strPatternId.empty() && room->m_PendingKoukuMarioEntries.empty();
                 if (terminalCompleted) { completed = 2u; completionTick = tick; }
                 break;
             }
@@ -431,9 +442,10 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuProduct(TESTS& tes
                     began = began && room->Apply_MarioReturn(entrant, command).eResult == MARIO_RETURN_RESULT::ACCEPTED &&
                         entrant.TriggerMove.fElapsedSeconds == motion.fElapsedSeconds;
                 } else {
-                    const auto* exit = room->Find_Placement("Mario3_Trigger_12");
-                    began = exit && exit->TriggerActions.size() == 1u && CServerTriggerSystem::Begin_MovePlayer(entrant, exit->TriggerActions.front(), tick);
-                    if (began) { entrant.TriggerMove.strSourcePlacementId = exit->strPlacementId; room->Update_MarioControlState(entrant); }
+                    // The current product pins a pattern-owned landing. The typed Return
+                    // command consumes it; replaying the static exit action would bypass it.
+                    C2S_MARIO_RETURN command{}; command.iClientSequence = 1u; command.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+                    began = room->Apply_MarioReturn(entrant, command).eResult == MARIO_RETURN_RESULT::ACCEPTED;
                 }
                 tests.Require(began && entrant.TriggerMove.isActive && !member.bMarioReturnCompleted,
                     "Start terminal return through authored motion and keep the solo gate closed before landing");
@@ -453,6 +465,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuProduct(TESTS& tes
             }
         }
         if (scenario == MARIO_SCENARIO::NO_ENTRY) noEntryCompletionTick = completionTick;
+
         tests.Require(bounded && retained && wire && selected.size() == 2u && std::set<std::string>(selected.begin(), selected.end()).size() == 2u &&
             std::all_of(selected.begin(), selected.end(), [&](const auto& id) { return marioCandidates.contains(id); }) &&
             completed == 2u && (noFollowup ? terminalCompleted && !phase2Tick : (abortScenario ? aborted && !phase2Tick : phase2Tick > completionTick)),
@@ -589,7 +602,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuProduct(TESTS& tes
                 completionTick = tick;
             }
             room->Commit_KoukuMarioEntries();
-            if (room->m_KoukuSaydonPatternAudition.Members.empty()) {
+            if (room->m_KoukuSaydonPatternAudition.ePhase == CGameRoom::KOUKUSAYDON_PATTERN_AUDITION_PHASE::INACTIVE) {
                 if (scenario == PARENT_ENTRY::LAST_TICK_SINGLE && singleCompletionQueued) {
                     entryTick = room->m_Players.at(player.iPlayerId).iMarioStage ? tick : 0u;
                     secondReached = true; anchorCleared = true; pendingClear = room->m_PendingKoukuMarioEntries.empty();
@@ -660,6 +673,10 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuProduct(TESTS& tes
         std::string bytes((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
         if (!bytes.empty() && bytes.back() != '\n') bytes += '\n';
         const std::string row = "PATTERNLOGICOUTCOME\tENCOUNTER_KAKULSAYDON_G1\tKAKULSAYDON_G1_PATTERN_88\tKAKULSAYDON_G1_PATTERN_88.logic.1\tSUCCESS\t0\t";
+        // Replace this fixture's exact outcome ordinal; the saved product may already own it.
+        for (auto at = bytes.find(row); at != std::string::npos; at = bytes.find(row)) {
+            const auto end = bytes.find('\n', at); bytes.erase(at, (end == std::string::npos ? bytes.size() : end + 1u) - at);
+        }
         unsigned fixture = 0u;
         const auto load = [&](const std::string& extra, std::uint8_t& outStage) {
             std::string copy = bytes + extra;

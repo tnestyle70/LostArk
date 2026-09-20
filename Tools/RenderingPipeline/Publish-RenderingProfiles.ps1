@@ -19,6 +19,11 @@ if ([string]::IsNullOrWhiteSpace($DestinationPath)) {
 $SourcePath = [IO.Path]::GetFullPath($SourcePath)
 $DestinationPath = [IO.Path]::GetFullPath($DestinationPath)
 
+function Assert-SourceCharacterAmbient([object]$Value, [string]$Context) {
+    Assert-Vector4 $Value 0.0 64.0 $Context
+    Assert-FiniteFloatRange $Value[3] 0.0 0.0 "$Context reserved component"
+}
+
 function Assert-SourceFog([object]$Value) {
     Assert-Color $Value.inscatteringColor 'sourceFog inscatteringColor'
     Assert-Vector4 $Value.lightDirection -1 1 'sourceFog lightDirection'
@@ -344,6 +349,10 @@ function Assert-RenderingProfileDocument([object]$Document) {
                     $regionFields += 'priority'
                     Assert-FiniteFloatRange $region.priority -100000.0 100000.0 'environmentRegion.priority'
                 }
+                if ($null -ne $region.PSObject.Properties['sourceCharacterAmbient']) {
+                    $regionFields += 'sourceCharacterAmbient'
+                    Assert-SourceCharacterAmbient $region.sourceCharacterAmbient 'environmentRegion.sourceCharacterAmbient'
+                }
                 if ($null -ne $region.PSObject.Properties['specularColor']) {
                     $regionFields += 'specularColor'
                     Assert-Color $region.specularColor 'environmentRegion.specularColor'
@@ -417,8 +426,12 @@ function Assert-RenderingProfileDocument([object]$Document) {
             "$profileId.bloomIntensityMultiplier"
 
         $light = $profile.light
-        Assert-ExactProperties $light @(
-            'type', 'direction', 'diffuse', 'ambient', 'specular') "$profileId.light"
+        $lightFields = @('type', 'direction', 'diffuse', 'ambient', 'specular')
+        if ($null -ne $light.PSObject.Properties['sourceCharacterAmbient']) {
+            $lightFields += 'sourceCharacterAmbient'
+            Assert-SourceCharacterAmbient $light.sourceCharacterAmbient "$profileId.light.sourceCharacterAmbient"
+        }
+        Assert-ExactProperties $light $lightFields "$profileId.light"
         if ($light.type -isnot [string] -or
 			[string]$light.type -cne 'directional') {
             throw "$profileId.light.type must be directional."

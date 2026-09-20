@@ -484,6 +484,9 @@ def _validate_leaf_params(
         ("dissolveSoftness", 0.1),
     ):
         _optional_number(params, key, owner, default)
+    scene_bloom = _optional_number(params, "sceneBloomScale", owner, 1.0)
+    if not 0.0 <= scene_bloom <= 1.0 or ((effect_type == "ScreenPost" or params.get("blend") == "Multiply") and scene_bloom != 1.0):
+        raise BindingContractError(f"{owner}.sceneBloomScale must be in [0,1] and is unavailable for ScreenPost/Multiply")
     orbit_radius = _optional_number(params, "orbitRadius", owner, 0.0)
     _optional_number(params, "orbitDegreesPerSecond", owner, 0.0)
     _optional_number(params, "orbitStartDegrees", owner, 0.0)
