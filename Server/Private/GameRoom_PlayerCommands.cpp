@@ -105,6 +105,15 @@ void LostArk::Server::CGameRoom::Handle_Move(
 			player.fKnockbackRemainingSeconds <= 0.f &&
 			Is_MoveCancellableAction(player))
 		{
+			/* A stance swap's move-cancel window only opens once the swap has
+			happened on screen, so walking out of the tail keeps the new stance
+			instead of discarding it with the action. */
+			if (const PLAYER_SKILL_DEFINITION* cancelled =
+				m_GameplayCatalog.Find_Skill(player.iCurrentSkillId))
+			{
+				CPlayerSkillSystem::Commit_StanceChange(
+					player, *cancelled, m_GameplayCatalog);
+			}
 			/* Leave the action the same way every other release does. A cleared
 			eAction that still carries the old skill id and start tick is a
 			half-ended action to every later reader. */

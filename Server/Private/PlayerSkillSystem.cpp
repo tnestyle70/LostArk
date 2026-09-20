@@ -397,7 +397,20 @@ bool LostArk::Server::CPlayerSkillSystem::Try_StartInternal(
 				player.fActionElapsedSeconds, false))
 		{
 			/* Fall through to the cooldown, resource and stance checks below:
-			the cancel opens the door, it does not pay for the skill. */
+			the cancel opens the door, it does not pay for the skill.
+
+			A stance swap's window only opens once the swap has happened on
+			screen, so commit it here rather than losing it to the cancel. The
+			commit is idempotent, so the running action's own natural end still
+			ends up at the same stance if these later checks refuse. Re-test the
+			incoming skill against the stance it now really stands in: the guard
+			above ran while the swap was still pending. */
+			Commit_StanceChange(player, *running, catalog);
+			if (PLAYER_STANCE_ID::NONE != skill->eRequiredStance &&
+				skill->eRequiredStance != player.eStance)
+			{
+				return false;
+			}
 		}
 		else
 		{
@@ -502,6 +515,35 @@ bool LostArk::Server::CPlayerSkillSystem::Try_StartInternal(
 	player.hasReleasedHold = false;
 	player.PendingCommand.Clear();
 	return true;
+}
+
+void LostArk::Server::CPlayerSkillSystem::Commit_StanceChange(
+	SERVER_PLAYER& player,
+	const PLAYER_SKILL_DEFINITION& skill,
+	const CGameplayCatalog& catalog)
+{
+	using namespace LostArk::Shared;
+	if (PLAYER_STANCE_ID::NONE == skill.eSetsStance)
+		return;
+	/* A class that spends identity per switch (LanceMaster's spear swap) pays
+	here, once, only if enough is already banked. A short fall still lets the
+	swap through for free -- see Is_HoldingGaugedStance for why this never also
+	drains. */
+	if (skill.eSetsStance != player.eStance)
+	{
+		if (const PLAYER_RUNTIME_PROFILE* stanceProfile =
+			catalog.Find_Player(player.eCharacterClass))
+		{
+			if (0u != stanceProfile->iIdentityStanceSwitchCost &&
+				player.iCurrentIdentity >=
+					stanceProfile->iIdentityStanceSwitchCost)
+			{
+				player.iCurrentIdentity -=
+					stanceProfile->iIdentityStanceSwitchCost;
+			}
+		}
+	}
+	player.eStance = skill.eSetsStance;
 }
 
 bool LostArk::Server::CPlayerSkillSystem::Is_HoldingGaugedStance(
@@ -1289,28 +1331,7 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 		}
 		else
 		{
-			if (PLAYER_STANCE_ID::NONE != skill->eSetsStance)
-			{
-				/* A class that spends identity per switch (LanceMaster's spear
-				swap) pays here, once, only if enough is already banked. A short
-				fall still lets the swap through for free -- see
-				Is_HoldingGaugedStance for why this never also drains. */
-				if (skill->eSetsStance != player.eStance)
-				{
-					if (const PLAYER_RUNTIME_PROFILE* stanceProfile =
-						catalog.Find_Player(player.eCharacterClass))
-					{
-						if (0u != stanceProfile->iIdentityStanceSwitchCost &&
-							player.iCurrentIdentity >=
-								stanceProfile->iIdentityStanceSwitchCost)
-						{
-							player.iCurrentIdentity -=
-								stanceProfile->iIdentityStanceSwitchCost;
-						}
-					}
-				}
-				player.eStance = skill->eSetsStance;
-			}
+			Commit_StanceChange(player, *skill, catalog);
 			player.eAction = PLAYER_ACTION_STATE::NONE;
 			player.iCurrentSkillId = INVALID_SKILL_ID;
 			player.iActionStartTick = 0;
