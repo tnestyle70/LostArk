@@ -287,7 +287,12 @@ HRESULT Client::CEffectDocumentRenderer::Build_NativeScreenPost(
         EFFECT_NATIVE_SCREEN_POST_SNAPSHOT snapshot;
         snapshot.pShader = m_pNativeScreenPostShader;
         snapshot.bSceneCollapse = true;
-        const float shrinkSeconds = Element.Detail.ScreenPost.fCaptureShrinkSeconds;
+        const auto& post = Element.Detail.ScreenPost;
+        snapshot.vCaptureEdgeSpeed = post.vCaptureEdgeSpeed;
+        snapshot.fCaptureRotationDegrees = post.fCaptureRotationDegrees;
+        snapshot.fCaptureBackgroundDim = post.fCaptureBackgroundDim;
+        snapshot.bCaptureSquare = post.bCaptureSquare;
+        const float shrinkSeconds = post.fCaptureShrinkSeconds;
         snapshot.fCaptureProgress = shrinkSeconds > 0.f ?
             std::clamp((Frame.fSampleTimeSeconds - timing.fStartDelaySeconds) / shrinkSeconds, 0.f, 1.f) :
             std::clamp(Evaluated.fNormalizedLife, 0.f, 1.f);
@@ -335,11 +340,12 @@ HRESULT Client::CEffectDocumentRenderer::Build_NativeScreenPost(
                 capture->pBloom = m_pStartingSceneBloomCapture;
                 capture->hLastResult = S_OK;
             }
-            // Keep the requested screen-centered shrink independent of camera/root motion.
-            // The target model supplies the ending size, not a drifting screen position.
-            snapshot.vCaptureDestinationUV = {.5f, .5f};
+            // Existing documents keep their screen-centered endpoint. Explicit model
+            // following uses the same projected first-pose center as the ending size.
+            if (!post.bCaptureUseModelCenter) snapshot.vCaptureDestinationUV = {.5f, .5f};
             capture->vDestinationUV = snapshot.vCaptureDestinationUV;
         }
+        snapshot.vCaptureDestinationOffsetUV = post.vCaptureDestinationOffsetUV;
         OutMaterial = std::make_shared<CEffectNativeScreenPostMaterial>(std::move(snapshot));
         return S_OK;
     }

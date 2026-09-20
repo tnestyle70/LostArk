@@ -24,6 +24,7 @@ public:
 	virtual HRESULT Submit_Presentation() override;
 	void Clear();
 
+	static f32_t Get_SceneIntensityMultiplier() { return s_fSceneIntensityMultiplier; }
 	bool_t Is_Ready() const { return m_Document.Is_Ready(); }
 	const std::string& Get_Status() const { return m_Status; }
 	const CMapLightDocument& Get_Document() const { return m_Document; }

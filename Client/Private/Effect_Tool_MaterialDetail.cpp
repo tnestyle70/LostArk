@@ -1625,12 +1625,18 @@ void Client::CEffect_Tool::Render_KindDetail(
 					static_cast<EFFECT_SCREEN_POST_PROFILE>(iProfile);
 				const bool_t bSelected = eCandidate == Post.eProfile;
 				if (ImGui::Selectable(ScreenPostProfile_Label(eCandidate),
-					bSelected))
+					bSelected) && !bSelected)
 				{
 					Post.eProfile = eCandidate;
                     if (eCandidate != EFFECT_SCREEN_POST_PROFILE::SCENE_CAPTURE_CUBE_V1)
                         Post.strCaptureTargetModelCueId.clear();
                     Post.fCaptureShrinkSeconds = 0.f;
+                    Post.vCaptureEdgeSpeed = { 1.f, 1.f, 1.f, 1.f };
+                    Post.vCaptureDestinationOffsetUV = { 0.f, 0.f };
+                    Post.fCaptureRotationDegrees = 0.f;
+                    Post.bCaptureSquare = false;
+                    Post.fCaptureBackgroundDim = 0.f;
+                    Post.bCaptureUseModelCenter = false;
 					bPresentationChanged = true;
 				}
 				if (bSelected)
@@ -1638,22 +1644,44 @@ void Client::CEffect_Tool::Render_KindDetail(
 			}
 			ImGui::EndCombo();
 		}
-        if (Post.eProfile == EFFECT_SCREEN_POST_PROFILE::SCENE_COLLAPSE_CAPTURE_V1)
+        const bool_t bCaptureProfile =
+            Post.eProfile == EFFECT_SCREEN_POST_PROFILE::SCENE_COLLAPSE_CAPTURE_V1 ||
+            Post.eProfile == EFFECT_SCREEN_POST_PROFILE::SCENE_CAPTURE_CUBE_V1;
+        if (bCaptureProfile)
         {
-            ImGui::TextWrapped("Capture the scene when this box begins, then shrink it over black. A shorter shrink duration holds black until the box ends. Zero uses the full box duration.");
+            const bool_t bCubeCapture = Post.eProfile == EFFECT_SCREEN_POST_PROFILE::SCENE_CAPTURE_CUBE_V1;
+            if (bCubeCapture)
+            {
+                ImGui::TextWrapped("The captured scene shrinks to the target cube. Outside Dimming darkens the live scene outside the captured image.");
+                if (ImGui::BeginCombo("Capture Target Model Cue", Post.strCaptureTargetModelCueId.c_str()))
+                {
+                    if (m_ActiveDocument) for (const auto& cue : m_ActiveDocument->ModelCues)
+                        if (cue.bVisible && ImGui::Selectable(cue.strCueId.c_str(), cue.strCueId == Post.strCaptureTargetModelCueId))
+                        { Post.strCaptureTargetModelCueId = cue.strCueId; bPresentationChanged = true; }
+                    ImGui::EndCombo();
+                }
+                bPresentationChanged |= ImGui::Checkbox("Use Model Center", &Post.bCaptureUseModelCenter);
+                bPresentationChanged |= ImGui::SliderFloat("Outside Dimming", &Post.fCaptureBackgroundDim,
+                    0.f, 1.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+            }
+            else
+                ImGui::TextWrapped("Capture the scene when this box begins, then shrink it over black.");
+            ImGui::TextWrapped("Zero duration uses the full box duration. A shorter duration holds the final shape until the box ends. Edge speed above 1 moves that edge faster.");
             bPresentationChanged |= ImGui::DragFloat("Shrink Duration (s)", &Post.fCaptureShrinkSeconds,
                 .01f, 0.f, Detail.Timing.fLifeTimeSeconds, "%.3f", ImGuiSliderFlags_AlwaysClamp);
-        }
-        else if (Post.eProfile == EFFECT_SCREEN_POST_PROFILE::SCENE_CAPTURE_CUBE_V1)
-        {
-            ImGui::TextWrapped("The captured scene shrinks to the target cube while the live world stays visible outside it.");
-            if (ImGui::BeginCombo("Capture Target Model Cue", Post.strCaptureTargetModelCueId.c_str()))
-            {
-                if (m_ActiveDocument) for (const auto& cue : m_ActiveDocument->ModelCues)
-                    if (cue.bVisible && ImGui::Selectable(cue.strCueId.c_str(), cue.strCueId == Post.strCaptureTargetModelCueId))
-                    { Post.strCaptureTargetModelCueId = cue.strCueId; bPresentationChanged = true; }
-                ImGui::EndCombo();
-            }
+            bPresentationChanged |= ImGui::DragFloat("Left Edge Speed", &Post.vCaptureEdgeSpeed.x,
+                .01f, .05f, 20.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+            bPresentationChanged |= ImGui::DragFloat("Right Edge Speed", &Post.vCaptureEdgeSpeed.y,
+                .01f, .05f, 20.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+            bPresentationChanged |= ImGui::DragFloat("Top Edge Speed", &Post.vCaptureEdgeSpeed.z,
+                .01f, .05f, 20.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+            bPresentationChanged |= ImGui::DragFloat("Bottom Edge Speed", &Post.vCaptureEdgeSpeed.w,
+                .01f, .05f, 20.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+            bPresentationChanged |= ImGui::DragFloat2("Destination Offset (UV)", &Post.vCaptureDestinationOffsetUV.x,
+                .005f, -1.f, 1.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+            bPresentationChanged |= ImGui::DragFloat("Capture Rotation (deg)", &Post.fCaptureRotationDegrees,
+                .25f, -180.f, 180.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+            bPresentationChanged |= ImGui::Checkbox("Square Capture", &Post.bCaptureSquare);
         }
         else
         {

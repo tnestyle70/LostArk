@@ -1837,6 +1837,9 @@
 	<None Include="..\..\Data\Rendering\Authored\RenderingProfiles.json">
 	  <Filter>96.DataFiles\Rendering\Authored</Filter>
 	</None>
+	<None Include="..\..\Data\Rendering\Reference\KoukuImportedSourceLights.maplights.json">
+	  <Filter>96.DataFiles\Rendering</Filter>
+	</None>
 	<None Include="..\..\Data\Rendering\Authored\CharacterSelectFloorSwap.json">
 	  <Filter>96.DataFiles\Rendering\Authored</Filter>
 	</None>

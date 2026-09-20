@@ -1228,6 +1228,13 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds,
 			<< " FlowIndex=" << m_KoukuRaid.State.iFlowEntryIndex
 			<< " FlowEntry=" << std::quoted(m_KoukuRaid.State.strFlowEntryId)
 			<< " RaidPhase=" << static_cast<unsigned>(m_KoukuRaid.State.ePhase)
+			<< " RaidEpoch=" << m_KoukuRaid.State.iRunEpoch
+			<< " RaidReason=" << std::quoted(m_KoukuRaid.State.strReason)
+			<< " SequencePattern=" << std::quoted(m_KoukuRaid.State.strSequencePatternId)
+			<< " ActionRevision=" << m_KoukuRaid.State.iActionSourceRevision
+			<< " SequenceRevision=" << m_KoukuRaid.State.iSequenceSourceRevision
+			<< " ReadyMask=" << static_cast<unsigned>(m_KoukuRaid.State.iReadyMask)
+			<< " Participants=" << m_KoukuRaid.State.ParticipantPlayerIds.size()
 			<< " LiveCombatObjects=" << combatObjects.size()
 			<< " ReplicatedCombatObjects=" << replicatedCombatObjects
 			<< " ReplicatedCombatObjectCap=" << LostArk::Shared::MAX_COMBAT_OBJECTS_PER_SNAPSHOT

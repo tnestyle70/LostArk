@@ -81,8 +81,17 @@ HRESULT Client::CEffectNativeScreenPostMaterial::Bind(
         if (!State.pShader || !State.pCapture ||
             !std::isfinite(State.fCaptureProgress) || State.fCaptureProgress < 0.f || State.fCaptureProgress > 1.f ||
             !std::isfinite(State.vCaptureDestinationUV.x) || !std::isfinite(State.vCaptureDestinationUV.y) ||
+            !std::isfinite(State.vCaptureDestinationOffsetUV.x) || !std::isfinite(State.vCaptureDestinationOffsetUV.y) ||
+            std::abs(State.vCaptureDestinationOffsetUV.x) > 1.f || std::abs(State.vCaptureDestinationOffsetUV.y) > 1.f ||
             !std::isfinite(State.vCaptureDestinationSizeUV.x) || !std::isfinite(State.vCaptureDestinationSizeUV.y) ||
-            State.vCaptureDestinationSizeUV.x < 0.f || State.vCaptureDestinationSizeUV.y < 0.f)
+            State.vCaptureDestinationSizeUV.x < 0.f || State.vCaptureDestinationSizeUV.y < 0.f ||
+            !IsFinite(State.vCaptureEdgeSpeed) ||
+            State.vCaptureEdgeSpeed.x < .05f || State.vCaptureEdgeSpeed.x > 20.f ||
+            State.vCaptureEdgeSpeed.y < .05f || State.vCaptureEdgeSpeed.y > 20.f ||
+            State.vCaptureEdgeSpeed.z < .05f || State.vCaptureEdgeSpeed.z > 20.f ||
+            State.vCaptureEdgeSpeed.w < .05f || State.vCaptureEdgeSpeed.w > 20.f ||
+            !std::isfinite(State.fCaptureRotationDegrees) || std::abs(State.fCaptureRotationDegrees) > 180.f ||
+            !std::isfinite(State.fCaptureBackgroundDim) || State.fCaptureBackgroundDim < 0.f || State.fCaptureBackgroundDim > 1.f)
             return E_INVALIDARG;
         const bool ready = State.pCapture->pColor && State.pCapture->pBloom;
         const bool priming = !ready && !State.bCaptureAllowed;
@@ -90,9 +99,14 @@ HRESULT Client::CEffectNativeScreenPostMaterial::Bind(
         if (FAILED(result)) return result;
         auto& shader = *State.pShader;
         const int live = State.bCaptureOverLiveScene ? 1 : 0;
+        const int square = State.bCaptureSquare ? 1 : 0;
         const float progress = priming ? 0.f : State.fCaptureProgress;
-        const auto& destination = State.bCaptureOverLiveScene ?
+        auto destination = State.bCaptureOverLiveScene ?
             State.vCaptureDestinationUV : State.pCapture->vDestinationUV;
+        // Freeze the capture anchor, not the current authored tuning. Apply/Save
+        // preserves this occurrence's image while a changed offset takes effect now.
+        destination.x += State.vCaptureDestinationOffsetUV.x;
+        destination.y += State.vCaptureDestinationOffsetUV.y;
         result = shader.Bind_Matrix("g_WorldMatrix", &Input.World);
         if (SUCCEEDED(result)) result = shader.Bind_Matrix("g_ViewMatrix", &Input.View);
         if (SUCCEEDED(result)) result = shader.Bind_Matrix("g_ProjMatrix", &Input.Projection);
@@ -104,6 +118,10 @@ HRESULT Client::CEffectNativeScreenPostMaterial::Bind(
         if (SUCCEEDED(result)) result = shader.Bind_RawValue("g_CaptureDestinationUV", &destination, sizeof(float2_t));
         if (SUCCEEDED(result)) result = shader.Bind_RawValue("g_CaptureDestinationSizeUV", &State.vCaptureDestinationSizeUV, sizeof(float2_t));
         if (SUCCEEDED(result)) result = shader.Bind_RawValue("g_CaptureOverLiveScene", &live, sizeof(live));
+        if (SUCCEEDED(result)) result = shader.Bind_RawValue("g_CaptureEdgeSpeed", &State.vCaptureEdgeSpeed, sizeof(float4_t));
+        if (SUCCEEDED(result)) result = shader.Bind_RawValue("g_CaptureRotationDegrees", &State.fCaptureRotationDegrees, sizeof(float));
+        if (SUCCEEDED(result)) result = shader.Bind_RawValue("g_CaptureBackgroundDim", &State.fCaptureBackgroundDim, sizeof(float));
+        if (SUCCEEDED(result)) result = shader.Bind_RawValue("g_CaptureSquare", &square, sizeof(square));
         result = FAILED(result) ? result : shader.Begin(1u);
         State.pCapture->hLastResult = SUCCEEDED(result) && priming ? S_FALSE : result;
         return result;

@@ -48,6 +48,11 @@ struct EFFECT_NATIVE_SCREEN_POST_SNAPSHOT final
     bool bCaptureAllowed = true;
     bool bCaptureOverLiveScene = false;
     float2_t vCaptureDestinationSizeUV = {0.f, 0.f};
+    float2_t vCaptureDestinationOffsetUV = {0.f, 0.f};
+    float4_t vCaptureEdgeSpeed = {1.f, 1.f, 1.f, 1.f};
+    f32_t fCaptureRotationDegrees = 0.f;
+    f32_t fCaptureBackgroundDim = 0.f;
+    bool bCaptureSquare = false;
     std::shared_ptr<EFFECT_SCENE_CAPTURE_STATE> pCapture;
 };
 

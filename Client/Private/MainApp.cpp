@@ -1246,7 +1246,14 @@ void CMainApp::UpdateKoukuGateCompletePlay()
         std::string preparationError;
         CKoukuSaydonCompositionDocument actions;
         CKoukuSaydonCompositionDocument sequences(CKoukuSaydonCompositionDocument::Resolve_SequencePath());
-        bool ready = actions.Reload(preparationError) && sequences.Reload(preparationError);
+        std::string preparationStage = "action.reload";
+        bool ready = actions.Reload(preparationError);
+        if (ready)
+        {
+            preparationStage = "sequence.reload";
+            ready = sequences.Reload(preparationError);
+        }
+        if (ready) preparationStage = "revision.match";
         if (ready && (actions.Get_LastGood().iRevision != state.iActionSourceRevision ||
             sequences.Get_LastGood().iRevision != state.iSequenceSourceRevision ||
             sequences.Get_LastGood().strCompositionId != state.strSequenceCompositionId ||
@@ -1257,6 +1264,7 @@ void CMainApp::UpdateKoukuGateCompletePlay()
             // Preload and validate immutable documents only. No playback, spawn, camera or teleport occurs here.
             for (const auto& pattern : sequences.Get_LastGood().Patterns)
             {
+                preparationStage = "sequence.expand:" + pattern.strPatternId;
                 KOUKU_SAYDON_COMPOSITION_DOCUMENT expanded;
                 if (!CKoukuSaydonCompositionDocument::Try_ExpandPatternDocument(sequences.Get_LastGood(), pattern.strPatternId, expanded, preparationError))
                 { ready = false; break; }
@@ -1268,6 +1276,22 @@ void CMainApp::UpdateKoukuGateCompletePlay()
             m_iKoukuRaidDocumentEpoch = state.iRunEpoch;
         }
         else if (preparationError.empty()) preparationError = "Raid document preparation failed";
+        // Preserve the exact local preflight result before the bounded wire reason is shortened.
+        try
+        {
+            CNetworkManager::Get().Record_SessionEvent("kouku.raid.prepare",
+                "runEpoch=" + std::to_string(state.iRunEpoch) + "; ready=" + (ready ? "true" : "false") +
+                "; stage=" + preparationStage + "; actionLocal=" + std::to_string(actions.Get_LastGood().iRevision) +
+                "; actionPinned=" + std::to_string(state.iActionSourceRevision) +
+                "; sequenceLocal=" + std::to_string(sequences.Get_LastGood().iRevision) +
+                "; sequencePinned=" + std::to_string(state.iSequenceSourceRevision) +
+                "; compositionLocal=" + sequences.Get_LastGood().strCompositionId +
+                "; compositionPinned=" + state.strSequenceCompositionId +
+                "; gameplayLocal=" + Format_GameplayDataRevision(CNetworkManager::Get().Get_GameplayRevisionState().ServerActiveRevision) +
+                "; gameplayPinned=" + Format_GameplayDataRevision(state.PinnedGameplayRevision) +
+                "; reason=" + preparationError);
+        }
+        catch (...) { } // Diagnostics never decide readiness or alter the acknowledgement.
         if (preparationError.size() > MAX_KOUKUSAYDON_PATTERN_AUDITION_REASON_BYTES)
         {
             auto cut = MAX_KOUKUSAYDON_PATTERN_AUDITION_REASON_BYTES;

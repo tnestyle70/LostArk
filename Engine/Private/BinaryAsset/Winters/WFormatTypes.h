@@ -20,6 +20,7 @@ namespace Engine::WintersFormat
 	constexpr uint16_t WINT_UV1_VERSION_MINOR = 2;
 	constexpr uint16_t WINT_SKINNED_UV_VERSION_MINOR = 3;
 	constexpr uint16_t WINT_STATIC_UV2_VERSION_MINOR = 4;
+	constexpr uint16_t WINT_SKINNED_BASIS_VERSION_MINOR = 5;
 	constexpr uint32_t VF_POSITION = 1u << 0;
 	constexpr uint32_t VF_NORMAL = 1u << 1;
 	constexpr uint32_t VF_TEXCOORD0 = 1u << 2;
@@ -34,6 +35,8 @@ namespace Engine::WintersFormat
 	constexpr uint32_t STRIDE_STATIC = 48;
 	constexpr uint32_t STRIDE_STATIC_COLOR0 = 52;
 	constexpr uint32_t STRIDE_SKINNED = 76;
+	// WMSH 1.5 appends tangent handedness after the unchanged 76-byte skin data.
+	constexpr uint32_t STRIDE_SKINNED_BASIS = 80;
 	constexpr uint32_t SHA256_SIZE = 32;
 	constexpr uint32_t MAX_SUBMESHES = 2048;
 	constexpr uint32_t MAX_BONES = 512;

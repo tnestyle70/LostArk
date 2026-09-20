@@ -2574,6 +2574,7 @@
       "archetypeId": "PLAYER_ARTIST",
       "networkClassId": "ARTIST",
       "assetId": "Artist",
+      "presentationScale": 1.5,
       "bodyModel": "Character/Artist/Artist.wmodel",
       "equipmentModels": [
         "Character/Artist/Artist_Upper.wmodel",
@@ -5763,7 +5764,7 @@
       "archetypeId": "PLAYER_DIMENSIONMASTER",
       "networkClassId": "DIMENSIONMASTER",
       "assetId": "DimensionMaster",
-      "presentationScale": 1.5,
+      "presentationScale": 1.05,
       "bodyModel": "Character/DimensionMaster/DimensionMaster_Character.wmodel",
       "equipmentModels": [
         "Character/DimensionMaster/Equipment/pc_sp_m_55_hair/head.wmodel"

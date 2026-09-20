@@ -1,6 +1,6 @@
 # 쿠크 패턴 실제 재생 연결·복구 결과
 
-최신 후속 상태는 아래 **G07. 쇼타임 Seek·Summon 배치·불뿜기·연출 정보** 절에 기록한다.
+최신 이펙트 선준비 후속 상태는 아래 **G10. 레이드 진입 전 Effect dependency 준비** 절에 기록한다. 이전 절의 빌드·게시 시점과 구분한다.
 
 ## 완료 범위
 
@@ -138,3 +138,126 @@ Summon Box Detail의 `World Preview`와 pos/yaw 편집을 `Workbench → MainApp
 ### G07 최종64-bit tick 보정 빌드
 
 회전 helper가 Server의64-bit 경과/남은 tick을 그대로 받도록 보정했다.619 native 검사에는2^40/UINT64_MAX 경계8개가 포함된다. 최종 Product Debug Build는16.488초, Engine/Shared OBJ0, Server OBJ1, Client OBJ1, 각EXE1, CSO/PCH0으로 PASS다. 회전 호출부의 새 C4244 경고는 없다. 최종 receipt는 `out/BuildPipeline/runs/20260918T111713742Z-debug-product.json`, 로그는 `out/KoukuScrub20260918/product-build-final.log`다. 최종 Client EXE는20:17:12, Server EXE는20:17:02이며 이 출력이 앞20:12/20:10 출력을 대체한다. 데이터 게시 및 제품 프로세스 실행은 하지 않았다.
+
+## G09. 룰렛·World cue·마리오 수신 범위 후속 (2026-09-19)
+
+### 실제 소스 변경
+
+- `GameRoom_KoukuAudition.cpp`: 지지면 교체 전후의 Server navigation 높이 차를 source root-motion 보스에 한 번 적용한다. 곡선의 지면 상대 높이를 유지하고 첫 origin capture에 음수 바닥 offset이 남는 결함을 막는다. spawn reset도 현재 활성 지지면을 확인한다.
+- `KoukuSaydonLogicRuntime.cpp`: 실제 P24 휠윈드는 RootMotion이 아니라10m/3204ms charge를 사용한다. 목적지 높이만 확인하던 charge에 segment LOS,1mm 경계 bisect, collision 이후 재검사를 연결했다. 막힌 셀 너머 walkable 목적지로 건너뛰지 않는다.
+- `Level_KakulSaydonArena.cpp/.h`와 Server `Stop_KoukuWorldOwner`: Mario parent와 P33이 공유하는 run/member 종료를 기존 `iPatternSequence`로 한정한다. reliable stop과 persistent terminal snapshot 양쪽에 적용했다. 전체 run 종료와 cue 파괴는 계속 전체/해당 cue를 정리하며 Shared wire layout은 변경하지 않았다.
+- World group/NEXT motion의 V1을 함께 준비하고 cold 상태의 reliable PLAY를 pending으로 유지한다. 준비 후 원래 Server 시각으로 catch-up하며 만료·종료·실제 리소스 실패는 구분한다. P83은 이미6개 motion,5회 분열의 총63개 공으로 연결되어 있어 저장된 개수·배율을 변경하지 않았다.
+- `KoukuSaydonPresentationPlayer.cpp`, `EffectV2_Runtime.cpp`: 첫 product snapshot이0초 뒤에 도착하면 최초 관측 pose를 새 occurrence의 초기 birth 구간에만 제공한다. 실제 과거 pose 복원이 아니라 시작/늦은 참가 표현 근사다. 이후 missing-history/teleport 거절과 preview의 엄격한 이력은 유지한다. 긴 시계의 float endpoint 오차는 정밀도 기반 허용치로 처리한다.
+- 네 Mario intro camera는 로컬 snapshot의 해당 `iMarioStage`에만 적용한다. room World sequence 재생만으로 미입장자 카메라·입력을 빼앗지 않는다. 명시적 authoring preview와 일반 공용 컷씬은 유지한다.
+
+### 비둘기 중앙이동 저작 반영
+
+P82의 `kakulsaydon.g1.logic.79`는 이름과 TRIGGER 종류만 있고 실행 필드가 없었다. 저장본1753→1754에 `triggerKind=BOSS_TELEPORT_XZ`, `teleportPosition=[-0.07,1.32,737.53]` 두 필드만 추가했다. 대상은 Gameplay.world와 설치 worldbootstrap이 일치하는 `boss.kakulsaydon.g1.saydon` 중심이다. 기존4587ms 시각·pattern·Effect는 보존했고 XZ 이동/높이는 기존 Server teleport/root/nav가 소비한다.
+
+Client/Server 프로세스가 없는 상태에서 최신 저장본 재독해, stable ID 필드 병합, 동일 필드 충돌 검사, 백업, 최종 hash 검사, 원자 교체를 수행했다. 근거는 `out/KoukuNavigation20260919/pigeon-center.installation.json`과 같은 폴더 backup이다. 전체 문서에는 수정 전부터 `presentation occurrence exceeds the Pattern lifetime`인 별도 미게시 draft가 있다. 이를 수정하지 않았으며 실제 P82 publication closure의 validate/publishable/project 검사를 통과했다.
+
+`logic.78` 사라지기는 비어 있고 참조 occurrence도 없다. 원본4219941 HidePawn4개를 조사했지만 현재 Kouku visibility 소비자는 없으므로 중앙이동 수정이 원본 HidePawn 복원까지 구현한 것은 아니다. 정확한 원본 시간·hash는 `out/KoukuNavigation20260919/NAVIGATION_RESULT.md`에 있다.
+
+### 실행한 집중 검사
+
+| 검사 | 결과와 한계 |
+|---|---|
+| 실제 camera selector/input lambda 추출 |71개 통과. 수정 전 동일 검사49개 실패. stage4종, 미입장, 다른 stage, 복귀, 공용 camera와 입력 확인. 화면 검사는 아님. |
+| 실제 World cue 소비자/terminal lambda 추출 |16개 통과. resource/render는 test double. parent→P33, 늦은 stop, 전체 종료, async 준비·중복·catch-up·만료·실패 확인. |
+| 실제 pivot history/bootstrap + DirectXMath |82개 통과.69개 float endpoint 오류 재현. ±ULP/teleport endpoint, 실제 내부 단절·미래·NaN 거절, preview 엄격성 확인. |
+| 대상 resource closure |19개 V1,98개 설치 경로, 누락0. P33/P82/P83/P84/P90 연결 및63개 공 확인. GPU/화면 PASS 아님. |
+| Server 변경3개 TU 격리 컴파일 |통과. Product 링크와 runtime contract는 별도 기록. |
+
+근거는 `out/KoukuRuntimeRepair20260919`, `out/KoukuWorldRepair20260919`, `out/KoukuNavigation20260919`다. 독립 읽기 전용 검토에서 support delta 중복, charge tunnelling, Mario audience의 추가 재현 결함은 발견되지 않았다. dirty WIP를 최종 PR 승인으로 표시하지 않는다.
+
+### 게시와 쿠크 원본 조명 비교
+
+`Invoke-BuildDomainOwner.ps1 -Owner KoukuSaydon -ExpectedKoukuSaydonSourceRevision 1754`는 exit0, map.kakulsaydon/world.gameplay/gameplay.balance PASS다. 게시된 Encounter와 patternbindings의 sourceRevision은1754이며 P82의4587ms `BOSS_TELEPORT_XZ`를 확인했다. 실제 resource closure도1754 기준 재검사하여19개 V1/98개 경로 누락0이다. 실행 중 Server의 catalog나 Client의 메모리 draft를 Reload하지 않았다.
+
+`RenderingBenchmark`의 기존 Rendering restoration에 Current authored lights / Imported source lights (2026-09-11) / Map lights off를 추가했다. `CLevel_KakulSaydonArena`의 세션 상태만 바꾸며 reference parse와 관문·팝업 provider stage가 성공한 뒤 commit한다. 실패 시 기존 provider를 보존한다. Return to entry/Workbench 닫기는 Current로 돌아가고, 캡처 중 전환은 막으며 비교 모드를 capture condition에 포함한다. Scene/Effect light는 이 선택에 포함하지 않는다.
+
+비교 원본은 commit `359412c46d12fd5a0df3155045d6468a01acfd12`의115개 import stable ID다. 기존4개 저작 ID와 현재 추가7개를 이름 추정 없이 구분했다. 현재115개 원본의 위치·색·광도·범위·cone은 import와 float32 기준 동일하다. 과거 SOURCE_CHARACTER84개는 현재 수정된 UNBAKED로 유지하고 ALL31개도 유지한다. G1의-204.8m popup 변환, G3 mask, Composition popup의 별도 배치를 그대로 소비한다. 이 비교는 현재 renderer에서 추가 조명의 영향을 분리하며 원본 게임과 시각적으로 동일하다는 증거는 아니다.
+
+`Data/Rendering/Reference/KoukuImportedSourceLights.maplights.json` SHA256은 `3ed3b3d79fb3db598228fe996c7b0863136e27c7e68d0689904f26434efba34e`다. 실제 CMapLightDocument parse115/UNBAKED84/ALL31, Serialize→Parse115, 실패 load 시 기존115개 유지 검사를 통과했다. Client 프로젝트와 filters에 `None`으로 등록했다. Level/Benchmark 최종 MSVC `/Zs`도 통과했다.
+
+Kouku source profile의 UE3 tone scale.85/range8/toe1/desaturation.15와 neutral LUT는 기존 연결을 사용한다. 원본 LUT override가 꺼진 자료를 근거 없이 켜지 않았다. 추가 조명7개가 현재 화질 불만의 원인인지는 사용자 A/B 확인 전까지 미확정이다. 상세 원본·검증 근거는 `out/GhostMaterial20260919/rendering-notes.md`에 있다.
+
+### 유령 발탄의 확인 범위
+
+실제 설치 ghost body3slot,87bone, preScale.01, material program84와 설치 shader pass10을 사용한 headless WARP 검사에서 변경192pixel/alphaMax.947501/nonfinite0, 모든 bind/pass HRESULT0을 확인했다. 전용 donor와 current88개 pattern clip도 연결되어 있고 idle/groggy/portal CPU pose는 finite metre scale이다. 아레나 phase>=3의 ghost 교체·BLEND 제출·유한 hide window를 추적했지만 현재 조사만으로 실제 화면의 누락 원인은 재현하지 못했다. 이 결과를 유령 발탄 수정 완료나 실제 아레나 표시 PASS로 기록하지 않는다.
+
+Effect Tool Full Restore는 현재 normal BOSS_VALTAN만 선택한다는 별도 제한을 확인했다. 이는 보통 일반 몸체가 나오는 제한이며, 사용자가 말한 완전한 비표시 원인이라고 확정하지 않았다. `out/KoukuNavigation20260919/GHOST_VALTAN_READONLY_RESULT.md`에 실제 carrier/phase/hidden 근거와 남은 재현 경계를 기록했다.
+
+### Product 빌드 상태
+
+정상 Product Debug를 시도했으나 Debug Client PID51696와 Server PID54260이 각 표준 EXE를 사용 중이라 Product output guard에서 exit1로 중단됐다. 컴파일·링크 성공으로 기록하지 않는다. 사용자의 저장·종료를 요청했고 자동 종료나 Reload를 하지 않았다. 로그는 `out/KoukuRuntimeRepair20260919/product-build.log`, receipt는 `out/BuildPipeline/runs/20260918T230006782Z-debug-product.json`이다. 현재 실행 EXE는 이번 최종 코드의 설치 결과가 아니다.
+
+### 추가 최소 컴파일와 구조 검사
+
+변경된 Client `EffectV2_Runtime.cpp`, `KoukuSaydonPresentationPlayer.cpp`도 정본 VS14.44 x64/Debug 설정의 격리 `/Zs`를 통과했다. 앞의 Level/Benchmark 검사와 합쳐 Client 변경4개 TU의 문법/타입 검사를 확인했다. `out/KoukuRuntimeRepair20260919/compile-world.log`가 근거이며 표준 Client EXE 링크를 대신하지 않는다.
+
+변경/게시 JSON7개, Client vcxproj/filters2개 parse와 실제 reference 파일 연결,115개 light receiver84/31 계약을 통과했다. `out/KoukuRuntimeRepair20260919/final-structure-validation.json`에 경로와 revision을 기록했다. 전체 `git diff --check`도 통과했다(기존 autocrlf 알림만 존재).
+
+### 사용자가 새 바이너리에서 확인할 범위
+
+1. 저장 후 실행 중 Debug Client/Server를 닫고 정상 Product Debug Build를 완료해야 이번 최종 C++가 실행 파일에 반영된다. 이후 Server를 새로 시작해야1754 게시 데이터를 새 catalog로 소비한다. 자동 종료·메모리 Reload·Client 실행은 하지 않았다.
+2. `Lobby → KoukuSaydon → F1 → Action Workbench`의 Server Play에서 룰렛 생성 직후 세이튼 발높이, 다음 root motion, 룰렛 제거 후 높이와 P24 휠윈드의 후퇴 경계를 확인한다.
+3. P82 중앙 이동/비둘기, P83 투하의5회 분열63개 공, 공던지기·훌라후프, Mario 후속 P33 갈고리·일반/즉사 칼날을 cold 첫 재생과 반복 재생에서 확인한다. resource closure·cue 검사와 실제 GPU 표시는 별도다.
+4. 두 참가자 중 한 명만 Mario에 들어가면 입장자의 intro camera만 재생되고 미입장자의 카메라·이동입력은 유지되는지 확인한다.
+5. `F1 → Rendering Workbench → Rendering restoration`에서 Before/Restored source profile과 Map light comparison을 각각 비교한다. Current/Return to entry/도구 닫기는 사용자 저작 조명으로 돌아간다. 유령 발탄은 실제 아레나 본체/portal 분신/Full Restore 중 실패 경로를 아직 구분해야 하며 수정 완료로 보지 않는다.
+
+### 발탄420633 재질 승인 실패의 별도 수정
+
+사용자의 기존 `Client/Default/EffectFailure.user.log`07:22:57에는 `effect.valtan.pattern.420633.active`가 `Native Artist requires its recovered material variant, carrier and named inputs`로 거부된 기록이 있었다. 이는 유령 몸체가 아니라 입장/sequence/일반 휠윈드 Effect의 별도 결함이다. native2377/2378/2379를 쓰는 `valtan.420633.notify004.emitter5259/5260/5258`은 실제 trail+`animationTrailBakedEdgeV1`인데 비활성 SourceRecipe의 `rendererShape`만 sprite로 남아 있었다. 재질 계약도 이 carrier metadata를 검사하므로 전체 문서가 거부됐다.
+
+`Data/Effects/Authored/effect.valtan.pattern.420633.active.effect.json`의 해당3개 필드만 `animationTrail`로 고쳤다(3+/3-). alpha·texture·shader·scale·history·다른 element는 변경하지 않았다. 최신 저장본 stable ID/기존 kind/carrier/program 검사, 백업, 최종 hash 재확인, 원자 교체 후 native 검증 후보와 byte-identical인 것을 확인했다. receipt는 `out/GhostMaterial20260919/whirlwind_shape_install.receipt.json`이다.
+
+현재 실제 CEffectDocumentCodec은 수정 전 로그와 같은 실패를 재현했고 수정 후9elements/1history를 승인했다. 각3개 field를 sprite로 되돌리는 negative 검사도 모두 거부했다. `Capture_ProductLoadStageRequest → Stage_ProductLoadTarget`은 projection1로 성공했고 actual projection playback에서3trail/최대157edge pair가 생성됐다. 이는 GPU/나머지 particle5개나 유령 본체 화면 확인이 아니다. log는 `out/GhostMaterial20260919/whirlwind_shape_probe.log`다.
+
+이 파일은 EffectCatalog가 직접 읽는 Authored 원본이라 별도 publisher 대상이 아니다. 설치된 문서는 검증 후보와 동일하지만 이미 캐시된 immutable target이나 열린 미저장 draft는 교체하지 않았다. 새 Client/사용자의 명시적 Reload에서 새 디스크 문서를 읽어야 한다. 최종 구조 검사 범위는 JSON8개/XML2개로 늘었다.
+
+### 실제 Server 회귀 실행 결과
+
+표준 출력이 실행 중이므로 모든 산출물을 `out/KoukuNavigation20260919/isolated-contract`에 둔 별도 실행 파일로 현재 Server 함수를 연결했다. 변경3개 TU는 현재 소스로 다시 컴파일했고, 나머지 Server/PCH90개·Shared8개 object의 소스/의존성 시각·hash를 감사했다. 이 검사는 표준 Product 교체가 아니다.
+
+- 신규 룰렛 지지면6개/실제 P24 휠윈드4개, 총10개 회귀 모두 PASS.
+- `--kouku-bundle-contract-test`:91 PASS/0 FAIL, exit0.
+- `--kouku-support-surface-contract-test`:197 PASS/4 FAIL, exit1. 동일 의존성에 HEAD `8dc16688517f567c64976434f24bb7425f0e0830`의 변경 전3개 TU를 별도 컴파일·링크한 baseline은187 PASS/동일4 FAIL이었다. 이번 수정으로 추가된 실패는 없지만 이 suite 전체가 통과한 것은 아니다.
+- 기존4개 실패는 finite card 종료 burst, swept card 접촉 explosion/retirement, 추적자 반속 이동, 동일 tick 재실행 항목이다. 별도 원인 수정은 이번 요청에 섞지 않았다.
+
+정확한 검사 문구, 실행 exit/count, executable/Shared/bootstrap hash, 기존 소스와 object의 불변 확인은 `isolated-contract/verification.json`에 있다. Client와 실행 중 Server를 종료하거나 조작하지 않았다.
+
+### 조명 비교 최종 검토 보완
+
+독립 검토에서 발견한 두 경계를 수정했다. Return to entry는 scene profile 복구가 성공한 뒤에만 map light 비교를 초기화하므로 profile activation 실패 시 기존 조명도 보존한다. 캡처 조건에는 transient light 활성, 실제 map intensity multiplier, 선택 provider의 stable ID/위치/색/광도/receiver/관문·popup 상태까지 포함하여 캡처 중 다른 조명 설정이 바뀐 A/B를 동일 조건으로 취급하지 않는다. 이를 위해 `MapLightPresentationRuntime.h`에 현재 multiplier의 읽기 전용 getter만 추가했다. 최종 Level/Benchmark `/Zs`와 diff 검사를 다시 통과했다.
+
+최종 상태는 소스·위3개 Effect field·1754 게시 데이터 반영, 집중 검사 완료이며 표준 Product 링크와 사용자 화면 검증은 미완료다. 유령 발탄 본체의 비표시 원인은 미확정이다. 실행 중 Debug Client/Server가 유지되어 빌드 차단 상태도 그대로다. 무관한 기존 transport/MainApp/배포 문서 변경을 보존하고 자동 stage/commit/push하지 않았다.
+
+## G10. 레이드 진입 전 Effect dependency 준비 (2026-09-19)
+
+### 원인과 실제 연결
+
+Shader는 이미 Debug/Release 빌드에서 CSO를 굽고 `Shader.cpp`가 module-adjacent CSO를 읽어 `D3DX11CreateEffectFromMemory`로 생성한다. 패턴 중 보인 준비를 전부 런타임 HLSL 컴파일이라고 해석하지 않는다. 실제 누락은 Level_Loading의 쿠크 대상이 BossCatalog combat-object Effect 중심이어서 Product occurrence, Sequence composition, World effectTracks가 충분히 포함되지 않은 것이다. 첫 `Sample`의 V1 priority queue와 V2 `Load_ResourceSnapshot`, World `Prepare_ObjectResources`가 JSON·shader effect 객체·model·texture 준비를 첫 재생 때 수행할 수 있었다.
+
+조사 당시 Product sourceRevision1770 / Sequence revision65 / World revision2129에서 Product85패턴·Effect occurrence698개를 확인했다. 직접 V1 ID84개 중 기존 BossCatalog 대상과 겹치는 것은1개여서83개가 이 초기 대상에서 빠졌다. Product·사용되는 Sequence resource·enabled World template 및 Server state로 선택되는 card/ball을 합한 closure는 V1 119개, V2 45개(28 groups, group 확장 후 leaf79개)였다. 참조 V1 및 V2 JSON 누락은0개였다. 이후 사용자 저장본이나 publish로 수가 바뀔 수 있으므로 이 수를 영구 고정 요구사항으로 쓰지 않는다.
+
+`KoukuSaydonPresentationPlayer::Collect_ProductEffectTargets`가 기존 Product loader와 Sequence 경로·published World 문서를 읽어 이 closure를 수집한다. Sequence resourceId·World templateId 참조가 빠지면 진입 준비에서 실패한다. 새 manifest나 별도 이펙트 런타임을 만들지 않고 기존 V1 Loader worker/target gate와 V2 catalog/Prewarm_Group을 사용한다. selected class는 Server가 승인한 `Get_LocalCharacterClass()`를 사용해 실제 Loader class와 맞춘다.
+
+`Level_Loading`은 해당 V1 및 선택 class 준비를 마치고 Loader producer가 끝난 뒤 V2를 준비한다. 필수 쿠크 Effect의 등록·준비 실패는 상태에 남기고 기존 load recovery로 되돌린다. 실패를 격리 성공으로 간주해 전투에 들어가지 않는다. `Level_KakulSaydonArena::Initialize`에서 prepared World document의 모든 enabled instance 자원과 기존 Joker clone prewarm도 입장 전에 준비하고 실패하면 E_FAIL로 닫는다.
+
+V2 snapshot은 owner thread에서 준비한 immutable set을 runtime consumer가 재사용한다. 전역 Effect cache generation이 바뀌면 이 set도 비워 기존 tool save/reload invalidation 계약을 유지한다. 새 레이드 준비에서 기존 set을 교체하므로 무한히 누적되는 전역 catalog를 만들지 않는다. 사용자 draft나 runtime 도구 상태를 강제로 Reload하지 않았다.
+
+### enabled World 범위 검증
+
+현재 published World instances326개 모두 enabled이며 NEXT2건도 enabled target을 가리킨다. `WorldSequencePlayer.cpp`의 `Play`는 disabled를 거부하고 `Prepare_ObjectMotionChain`은 NEXT의 disabled target에서 실패한다. `Apply_ObjectMotion`과 `Resolve_ObjectMotion`도 disabled를 거부한다. `WorldSequencePlayer_Objects.cpp::Prepare_InstanceResources`는 같은 gate를 사용한다. `Level_KakulSaydonArena.cpp::CompositionWorldMotions`는 group의 enabled member만 반환하며, direct ID 역시 최종 Play/Prepare gate를 통과해야 한다. 따라서 enabled-only 수집이 실제 explicit PLAY·NEXT·Composition 재생 가능한 범위를 누락하지 않는다.
+
+### 실행한 검증과 남은 비용
+
+- 저장된 Product·Sequence·World 및 V1/V2 dependency를 별도 구조 검사로 대조했고 누락0을 확인했다. disabled/NEXT consumer는 실제 C++ 분기로 추적했다.
+- 변경 Client5개 C++/header의 기존 인코딩·줄끝을 보존했다. `Level_KakulSaydonArena.cpp`의 BOM도 유지했다. 담당 파일 `git diff --check` PASS.
+- 사용자 저장·종료 확인 뒤 root의 정상 Product Release/Debug 빌드가 모두 PASS했다. receipt는 `out/BuildPipeline/runs/20260919T084237404Z-release-product.json`, `20260919T084643387Z-debug-product.json`이다. 이 G10의 preload 소스도 표준 Client에 반영됐다. Client/UI를 실행하지 않았다.
+- 처음 `Test-CompiledShaderClosure.ps1 -Configuration Release -Modules Product`는 `Shader_VtxEffectParticleArtist448.hlsl` family technique/pass count mismatch로 실패했고 정상 Product 재빌드 후에도 동일했다. 원인은 검사기가 모든 particle을5-pass로 가정한 것이며 현재 ARTIST family7은 원본 Modulate용6번째 pass를 실제 소비하고 있었다. `ProductEffectShaderWarpProbe.cpp`를 현재 ABI에 맞춰6번째 pass 이름·SourceModulate PS·Dst*Src blend·RT0 alpha 보존·독립 RT1/2 write 차단까지 검증하도록 수정했다. 제품 source/CSO를 바꾸거나 검사를 완화하지 않았다. 최종 Debug/Release 모두99 family/8 resource-root/140 FxCompile/120 Client consumer와 V1·V2 각1352 pixels 검사를 PASS했다. 로그는 `out/KoukuRenderingQuality20260919/shader-closure-release-after.log` 및 `shader-closure-debug-after.log`다.
+- 이 변경은 패턴 시작 시 발생하던 immutable asset·V2 JSON 준비를 진입 시점으로 옮긴다. 새 instance clone, particle/trail mutable buffer allocation, provider/history sampling, draw work 자체는 재생 중에도 필요하다. 모든 frame allocation이나 끊김이0이라고 주장하지 않는다.
+- Sequence runtime metadata parsing, runtime tool save 뒤의 명시 cache invalidation/reload, 실제 cold 첫 패턴의 frametime 및 GPU 표시 확인은 위 구조 검사와 별도다. Product 빌드는 완료됐으나 새 Client 실행·화면 검증은 사용자 경계로 남긴다.
+
+G09 작성 시점의 표준 Product 잠금·미링크 상태는 사용자의 저장·종료 확인과 위 G10 Debug/Release 빌드로 해소됐다. G09의 별도 Server 기능 검사4개 기존 실패 및 유령 발탄 실제 화면 미확정 상태를 이번 선준비 검증의 PASS로 바꾸지는 않는다.

@@ -1264,9 +1264,14 @@ bool_t Client::EFFECT_V2_PIVOT_HISTORY::Record(const f32_t fGroupAgeSeconds,
 bool_t Client::EFFECT_V2_PIVOT_HISTORY::Sample(const f32_t fGroupAgeSeconds,
 	float4x4_t& OutPivot, std::string& strOutError) const
 {
+	// Pattern milliseconds and occurrence seconds reach the same endpoint through
+	// different float operations. At long clocks one ULP already exceeds 1us.
+	// Admit rounding at the recorded endpoints, never a missing frame of history.
+	const f32_t tolerance = (std::max)(0.000001f,
+		4.f * (std::numeric_limits<f32_t>::epsilon)() * (std::max)(1.f, std::fabs(fGroupAgeSeconds)));
 	if (!std::isfinite(fGroupAgeSeconds) || m_Samples.empty() ||
-		fGroupAgeSeconds < m_Samples.front().fSeconds - 0.000001f ||
-		fGroupAgeSeconds > m_Samples.back().fSeconds + 0.000001f)
+		fGroupAgeSeconds < m_Samples.front().fSeconds - tolerance ||
+		fGroupAgeSeconds > m_Samples.back().fSeconds + tolerance)
 	{
 		strOutError = "Requested root time has not been recorded.";
 		return false;
@@ -1274,7 +1279,7 @@ bool_t Client::EFFECT_V2_PIVOT_HISTORY::Sample(const f32_t fGroupAgeSeconds,
 	const auto Right = std::lower_bound(m_Samples.begin(), m_Samples.end(), fGroupAgeSeconds,
 		[](const SAMPLE& Row, const f32_t Time) { return Row.fSeconds < Time; });
 	if (Right == m_Samples.end()) { OutPivot = m_Samples.back().Pivot; strOutError.clear(); return true; }
-	if (Right == m_Samples.begin() || std::fabs(Right->fSeconds - fGroupAgeSeconds) <= 0.000001f)
+	if (Right == m_Samples.begin() || std::fabs(Right->fSeconds - fGroupAgeSeconds) <= tolerance)
 	{ OutPivot = Right->Pivot; strOutError.clear(); return true; }
 	if (Right->bDiscontinuity)
 	{

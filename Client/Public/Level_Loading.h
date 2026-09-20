@@ -5,6 +5,7 @@
 #include "LobbyCommandService.h"
 
 #include <string>
+#include <utility>
 #include <vector>
 
 NS_BEGIN(Client)
@@ -53,6 +54,8 @@ private:
 	bool_t m_isEffectLoadJobStarted = { false };
 	uint64_t m_iEffectLoadJobEpoch = 0u;
 	std::vector<std::string> m_EffectPreparationTargets;
+	std::vector<std::pair<std::string, std::string>> m_KoukuV2EffectTargets;
+	bool_t m_isKoukuV2Prepared = false;
 	std::string m_strEffectPreparationStatus;
 	std::string m_strEffectPreparationRegistrationFailure;
 	uint32_t m_iEffectPreparationTargetCount = 0u;

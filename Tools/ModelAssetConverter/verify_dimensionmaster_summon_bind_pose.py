@@ -275,7 +275,9 @@ def read_wmodel(
     vertex_count = mesh_header[5]
     index_count = mesh_header[6]
     index_stride = mesh_header[7]
-    require(vertex_stride == 76 and index_stride in (2, 4),
+    mesh_minor = FILE_HEADER.unpack_from(data, mesh_offset)[2]
+    require(vertex_stride == (80 if mesh_minor == 5 else 76)
+            and mesh_minor in (0, 3, 5) and index_stride in (2, 4),
             "WMSH skinned vertex contract is invalid")
     offset += MESH_HEADER.size
     require(offset + submesh_count * SUBMESH_DESC.size <= mesh_end,

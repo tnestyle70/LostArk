@@ -15,6 +15,7 @@ int Run_ValtanEncounterReferenceContractTests();
 int Run_ValtanCanonicalGraphContractTests();
 int Run_BossCompositionDocumentContractTests();
 int Run_KoukuCompositionEditorContractTests();
+int Run_KoukuPatternDeleteContractTests();
 int Run_KoukuSequenceDocumentContractTests();
 int Run_KoukuPreviewTransportContractTests();
 int Run_KoukuColliderGroupContractTests();
@@ -1376,6 +1377,8 @@ namespace
 
 int main(const int argc, const char* const argv[])
 {
+	if (argc == 2 && std::string(argv[1]) == "--kouku-pattern-delete-contract")
+		return Run_KoukuPatternDeleteContractTests();
 	if (argc == 2 && std::string(argv[1]) == "--kouku-collider-group-contract")
 		return Run_KoukuColliderGroupContractTests();
 	if (argc == 2 && std::string(argv[1]) == "--presentation-generation-admission-contract")
@@ -1389,7 +1392,7 @@ int main(const int argc, const char* const argv[])
 	if (argc != 1)
 	{
 		std::cerr << "Usage: ValtanPatternAuditionServiceHarness "
-			"[--presentation-generation-admission-contract | --kouku-composition-editor-contract | --kouku-preview-transport-contract | --kouku-sequence-document-contract | --kouku-collider-group-contract]\n";
+			"[--kouku-pattern-delete-contract | --presentation-generation-admission-contract | --kouku-composition-editor-contract | --kouku-preview-transport-contract | --kouku-sequence-document-contract | --kouku-collider-group-contract]\n";
 		return 2;
 	}
 	const std::vector<std::pair<const char*, std::function<void()>>> Tests{

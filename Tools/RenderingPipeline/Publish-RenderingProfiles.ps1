@@ -344,6 +344,18 @@ function Assert-RenderingProfileDocument([object]$Document) {
                     $regionFields += 'priority'
                     Assert-FiniteFloatRange $region.priority -100000.0 100000.0 'environmentRegion.priority'
                 }
+                if ($null -ne $region.PSObject.Properties['specularColor']) {
+                    $regionFields += 'specularColor'
+                    Assert-Color $region.specularColor 'environmentRegion.specularColor'
+                }
+                if ($null -ne $region.PSObject.Properties['qualityOverride']) {
+                    $regionFields += 'qualityOverride'
+                    Assert-RenderingQuality $region.qualityOverride
+                    $regionExposure = [single]([single]$region.qualityOverride.exposure * [single]$profile.exposureMultiplier)
+                    $regionQualityBloom = [single]([single]$region.qualityOverride.bloomIntensity * [single]$profile.bloomIntensityMultiplier)
+                    Assert-FiniteFloatRange $regionExposure 0.01 32.0 'environmentRegion.qualityOverride.effectiveExposure'
+                    Assert-FiniteFloatRange $regionQualityBloom 0.0 16.0 'environmentRegion.qualityOverride.effectiveBloomIntensity'
+                }
                 if ($null -ne $region.PSObject.Properties['postProcess']) {
                     $regionFields += 'postProcess'
                     $postProcess = $region.postProcess

@@ -117,7 +117,7 @@ namespace
 		{ L"corrupt_mesh_version.wmodel", 850u,
 			"83cacb9581abcf86ac6e82e66c7b119d6a18360f71650e6ffd00dcf2d677c336",
 			CORRUPT_FIXTURE_KIND::MODEL,
-			"Invalid WINT mesh file header." },
+			"Invalid WMSH version, flags, stride, or bone metadata." },
 		{ L"corrupt_metadata_hash.wmodel", 850u,
 			"1476ab40e74f84b64e7ef55b6a39f3c81974f034d90fa696ca043fc655670ae8",
 			CORRUPT_FIXTURE_KIND::MODEL,
@@ -133,7 +133,7 @@ namespace
 		{ L"corrupt_outer_version.wmodel", 850u,
 			"b1f682537b61f41439b7b7e0ac8db35a820adff6bea9911c3452931c956bd035",
 			CORRUPT_FIXTURE_KIND::MODEL,
-			"Invalid WINT WModel file header." },
+			"WMOD and WMSH geometry format versions do not match." },
 		{ L"corrupt_parallel_basis.wmodel", 850u,
 			"653ecf159ad99026b95b817f8c0315c06fc47977176f00284fa762ce34747a9b",
 			CORRUPT_FIXTURE_KIND::MODEL,
@@ -944,6 +944,143 @@ namespace
 			asset.meshes.front().color0Rgba8.empty();
 	}
 
+	bool Validate_Skinned_Basis_V15(const std::filesystem::path& root)
+	{
+		std::vector<uint8_t> legacy;
+		LEGACY_FILE_HEADER file{};
+		LEGACY_MESH_HEADER mesh{};
+		constexpr size_t vertexOffset = 16u + 36u + 48u;
+		if (!Read_File_Bytes(root / L"legacy_skinned.wmesh", legacy) ||
+			!Read_At(legacy, 0, file) || !Read_At(legacy, 16, mesh) ||
+			file.versionMinor != 0 || mesh.submeshCount != 1 ||
+			mesh.totalVertexCount != 3 || mesh.vertexStride != 76 ||
+			legacy.size() < vertexOffset + 3u * 76u)
+			return false;
+		std::vector<uint8_t> valid(legacy.begin(), legacy.begin() + vertexOffset);
+		for (size_t vertex = 0; vertex < 3; ++vertex)
+		{
+			const size_t source = vertexOffset + vertex * 76u;
+			valid.insert(valid.end(), legacy.begin() + source, legacy.begin() + source + 76u);
+			Append_F32_LE(valid, vertex == 1 ? -1.f : 1.f);
+			const float normal[3] = { 0.f, 1.f, 0.f };
+			const float tangent[3] = { 1.f, 0.f, 0.f };
+			memcpy(valid.data() + vertexOffset + vertex * 80u + 12u, normal, sizeof(normal));
+			memcpy(valid.data() + vertexOffset + vertex * 80u + 32u, tangent, sizeof(tangent));
+		}
+		valid.insert(valid.end(), legacy.begin() + vertexOffset + 3u * 76u, legacy.end());
+		file.versionMinor = 5;
+		file.contentSize = static_cast<uint32_t>(valid.size() - sizeof(file));
+		mesh.vertexStride = 80;
+		mesh.vertexFormatFlags = 0x3fu;
+		memcpy(valid.data(), &file, sizeof(file));
+		memcpy(valid.data() + sizeof(file), &mesh, sizeof(mesh));
+
+		const auto temporaryPath = root /
+			(L"skinned_basis_v15_" + std::to_wstring(_getpid()) + L".wmesh");
+		const auto check = [&](const std::vector<uint8_t>& bytes, bool expectSuccess)
+		{
+			{
+				std::ofstream stream(temporaryPath, std::ios::binary | std::ios::trunc);
+				if (!stream.write(reinterpret_cast<const char*>(bytes.data()), bytes.size()))
+					return false;
+			}
+			MODEL_ASSET_LOAD_DESC desc{};
+			desc.assetRoot = root;
+			desc.meshPath = temporaryPath;
+			desc.skeletonPath = root / L"legacy_skinned.wskel";
+			MODEL_ASSET_DATA asset{};
+			MODEL_DECODE_REPORT report{};
+			const bool decoded = Decode_Desc(desc, asset, report);
+			std::error_code removeError;
+			std::filesystem::remove(temporaryPath, removeError);
+			if (removeError)
+				return false;
+			if (!expectSuccess)
+				return !decoded && !report.succeeded && !report.error.empty() && Is_Default_Asset(asset);
+			if (!decoded || !report.succeeded || !asset.hasSkeleton || asset.meshes.size() != 1 ||
+				asset.meshes.front().skinnedVertices.size() != 3)
+				return false;
+			for (size_t vertex = 0; vertex < 3; ++vertex)
+			{
+				const auto& value = asset.meshes.front().skinnedVertices[vertex];
+				if (!Nearly_Equal(value.vNormal.y, 1.f) || !Nearly_Equal(value.vTangent.x, 1.f) ||
+					!Nearly_Equal(value.vBinormal.x, 0.f) || !Nearly_Equal(value.vBinormal.y, 0.f) ||
+					!Nearly_Equal(value.vBinormal.z, vertex == 1 ? 1.f : -1.f))
+					return false;
+			}
+			return true;
+		};
+		bool succeeded = check(valid, true);
+		const auto rejectU32 = [&](size_t offset, uint32_t value)
+		{
+			auto bytes = valid;
+			memcpy(bytes.data() + offset, &value, sizeof(value));
+			return check(bytes, false);
+		};
+		succeeded = rejectU32(vertexOffset + 76u, 0u) && succeeded;
+		succeeded = rejectU32(vertexOffset + 76u, 0x7fc00000u) && succeeded;
+		succeeded = rejectU32(vertexOffset + 16u, 0u) && succeeded; // Zero normal.
+		succeeded = rejectU32(vertexOffset + 16u, 0x7f800000u) && succeeded;
+		succeeded = rejectU32(vertexOffset + 32u, 0u) && succeeded; // Zero tangent.
+		auto parallel = valid;
+		memcpy(parallel.data() + vertexOffset + 32u, parallel.data() + vertexOffset + 12u, 12u);
+		succeeded = check(parallel, false) && succeeded;
+		succeeded = rejectU32(16u + 12u, 0x1fu) && succeeded; // Missing handedness flag.
+		succeeded = rejectU32(16u + 12u, 0xbfu) && succeeded; // Unsupported UV1.
+		succeeded = rejectU32(16u + 16u, 76u) && succeeded;
+		return succeeded;
+	}
+
+	bool Validate_Skinned_Basis_Candidate(const std::filesystem::path& path)
+	{
+		std::vector<uint8_t> bytes;
+		LEGACY_FILE_HEADER file{};
+		LEGACY_MODEL_HEADER model{};
+		if (!Read_File_Bytes(path, bytes) || !Read_At(bytes, 0, file) ||
+			file.versionMinor != 5 || !Read_At(bytes, sizeof(file), model))
+			return false;
+		size_t meshOffset = 0;
+		for (uint32_t row = 0; row < model.sectionCount; ++row)
+		{
+			LEGACY_SECTION_DESC section{};
+			if (!Read_At(bytes, sizeof(file) + sizeof(model) + row * sizeof(section), section))
+				return false;
+			if (section.type == 1)
+				meshOffset = sizeof(file) + static_cast<size_t>(section.offset);
+		}
+		LEGACY_FILE_HEADER meshFile{};
+		LEGACY_MESH_HEADER mesh{};
+		if (!meshOffset || !Read_At(bytes, meshOffset, meshFile) || meshFile.versionMinor != 5 ||
+			!Read_At(bytes, meshOffset + sizeof(meshFile), mesh) || mesh.vertexStride != 80)
+			return false;
+		MODEL_ASSET_DATA asset{};
+		MODEL_DECODE_REPORT report{};
+		if (!Decode(path, asset, report) || !report.succeeded || !asset.hasSkeleton ||
+			asset.meshes.size() != mesh.submeshCount)
+			return false;
+		const size_t vertexBlob = meshOffset + sizeof(meshFile) + sizeof(mesh) + mesh.submeshCount * 48u;
+		size_t positive = 0, negative = 0, vertexIndex = 0;
+		for (const auto& decodedMesh : asset.meshes)
+		{
+			for (const auto& vertex : decodedMesh.skinnedVertices)
+			{
+				float sign = 0.f;
+				if (!Read_At(bytes, vertexBlob + vertexIndex++ * 80u + 76u, sign))
+					return false;
+				const auto cross = DirectX::XMVector3Normalize(DirectX::XMVector3Cross(
+					DirectX::XMLoadFloat3(&vertex.vNormal), DirectX::XMLoadFloat3(&vertex.vTangent)));
+				const float decodedSign = DirectX::XMVectorGetX(DirectX::XMVector3Dot(
+					cross, DirectX::XMLoadFloat3(&vertex.vBinormal)));
+				if (!Nearly_Equal(decodedSign, sign))
+					return false;
+				(sign > 0.f ? positive : negative)++;
+			}
+		}
+		std::cout << "WModel skinned source basis: vertices=" << vertexIndex
+			<< " positive=" << positive << " negative=" << negative << '\n';
+		return vertexIndex == mesh.totalVertexCount && positive != 0 && negative != 0;
+	}
+
 	struct CORRUPT_REJECTION_RESULT
 	{
 		bool decodeRejected = false;
@@ -1246,6 +1383,8 @@ namespace
 
 int wmain(int argc, wchar_t** argv)
 {
+	if (3 == argc && std::wstring_view(argv[1]) == L"--skinned-basis-candidate")
+		return Validate_Skinned_Basis_Candidate(std::filesystem::absolute(argv[2]).lexically_normal()) ? 0 : 1;
 	if (3 == argc && std::wstring_view(argv[1]) == L"--candidate")
 	{
 		const std::filesystem::path candidate =
@@ -1283,6 +1422,7 @@ int wmain(int argc, wchar_t** argv)
 	{
 		std::wcerr << L"usage: WModelGeometryContractHarness <suite-directory> "
 			L"| --candidate <wmodel> | --dump-candidate <wmodel> "
+			L"| --skinned-basis-candidate <wmodel> "
 			L"| --legacy-corpus <Resources> "
 			L"| --writer-independent-golden <hex> <expected-json>\n";
 		return 2;
@@ -1298,6 +1438,7 @@ int wmain(int argc, wchar_t** argv)
 	const bool legacyStatic = Validate_Legacy_Static_Multisubmesh(
 		root / L"legacy_static_multisubmesh_bounds.wmesh");
 	const bool legacySkinned = Validate_Legacy_Skinned(root);
+	const bool skinnedBasisV15 = Validate_Skinned_Basis_V15(root);
 	const bool corruptBaselineIdentity =
 		Validate_Corrupt_Baseline_Manifest(root);
 	const bool corruptFixtureManifest = Validate_Corrupt_Fixture_Manifest(root);
@@ -1347,6 +1488,7 @@ int wmain(int argc, wchar_t** argv)
 		<< " legacyMetadataAbsent=" << legacyAbsent
 		<< " legacyStaticMultiBounds=" << legacyStatic
 		<< " legacySkinned=" << legacySkinned
+		<< " skinnedBasisV15=" << skinnedBasisV15
 		<< " corruptBaselineIdentity=" << corruptBaselineIdentity
 		<< " corruptFixtureManifest=" << corruptFixtureManifest
 		<< " corruptMutationIdentities=" << corruptMutationIdentities
@@ -1363,7 +1505,7 @@ int wmain(int argc, wchar_t** argv)
 		<< "preScaleConsumed=false product=false\n";
 	return validColor && validNoColor && validTangentBoundary &&
 		legacyAbsent && legacyStatic &&
-		legacySkinned && corruptBaselineIdentity && corruptFixtureManifest &&
+		legacySkinned && skinnedBasisV15 && corruptBaselineIdentity && corruptFixtureManifest &&
 		corruptMutationIdentities &&
 		corruptModelBytesRejected && corruptModelTransactional &&
 		corruptModelErrorCategories && corruptSkeleton.decodeRejected &&

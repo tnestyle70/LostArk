@@ -1291,21 +1291,46 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Update(
         const auto& motion = *state.ChargeMotion;
         const auto position = CKoukuSaydonBrain::Sample_BossMotion(motion, serverTick - ledger.iPatternStartTick);
         SERVER_NAV_POINT destination{position[0], position[1], position[2]};
-        if (navigation && !navigation->Resolve_TraversalStep(boss.fPositionX, boss.fPositionZ,
-            destination.x, destination.z, destination))
-        { state.bChargeStopped = true; outOutput.strStatus = "boss charge stopped at navigation boundary"; continue; }
+        bool navigationBlocked = false;
+        if (navigation && (!navigation->Has_LineOfSight(boss.fPositionX, boss.fPositionZ, destination.x, destination.z) ||
+            !navigation->Resolve_TraversalStep(boss.fPositionX, boss.fPositionZ, destination.x, destination.z, destination)))
+        {
+            // Endpoint heights alone can skip a blocked cell or clip its corner.
+            // Stop at the same last navigable point used by native root-motion recoil.
+            const double dx = double(destination.x) - boss.fPositionX, dz = double(destination.z) - boss.fPositionZ;
+            const double length = std::hypot(dx, dz);
+            double low = 0., high = 1.;
+            bool found = false;
+            SERVER_NAV_POINT clamped{};
+            for (unsigned iteration = 0u; iteration < 40u && (high - low) * length > .001; ++iteration)
+            {
+                const double middle = (low + high) * .5;
+                const float x = static_cast<float>(boss.fPositionX + dx * middle);
+                const float z = static_cast<float>(boss.fPositionZ + dz * middle);
+                SERVER_NAV_POINT candidate{};
+                if (navigation->Has_LineOfSight(boss.fPositionX, boss.fPositionZ, x, z) &&
+                    navigation->Resolve_TraversalStep(boss.fPositionX, boss.fPositionZ, x, z, candidate))
+                { low = middle; clamped = candidate; found = true; }
+                else high = middle;
+            }
+            if (!found || low * length < .001)
+            { state.bChargeStopped = true; outOutput.strStatus = "boss charge stopped at navigation boundary"; continue; }
+            destination = clamped;
+            navigationBlocked = true;
+        }
         bool blocked = false;
         if (collision && !collision->Resolve_CircleMove(boss.fPositionX, boss.fPositionY, boss.fPositionZ,
             destination.x, destination.y, destination.z, boss.fCollisionRadius, boss.fCollisionRadius,
             boss.fCollisionRadius, destination.x, destination.y, destination.z, blocked, boss.iNetEntityId, false))
         { state.bChargeStopped = true; outOutput.strStatus = "boss charge collision resolution failed"; continue; }
-        if (navigation && !navigation->Resolve_TraversalStep(boss.fPositionX, boss.fPositionZ,
-            destination.x, destination.z, destination))
+        if (navigation && (!navigation->Has_LineOfSight(boss.fPositionX, boss.fPositionZ, destination.x, destination.z) ||
+            !navigation->Resolve_TraversalStep(boss.fPositionX, boss.fPositionZ, destination.x, destination.z, destination)))
         { state.bChargeStopped = true; outOutput.strStatus = "boss charge collision destination is not navigable"; continue; }
         boss.fPositionX = destination.x; boss.fPositionY = destination.y; boss.fPositionZ = destination.z;
         boss.fYawDegrees = motion.fYawDegrees;
-        state.bChargeStopped = blocked || Has_ReachedTick(serverTick, state.iEndTick);
-        if (blocked) outOutput.strStatus = "boss charge stopped at collision boundary";
+        state.bChargeStopped = navigationBlocked || blocked || Has_ReachedTick(serverTick, state.iEndTick);
+        if (navigationBlocked) outOutput.strStatus = "boss charge stopped at navigation boundary";
+        else if (blocked) outOutput.strStatus = "boss charge stopped at collision boundary";
     }
 	// Resolve all contacts before any duration timeout, including the final tick.
 	// A group's priority order is fixed at Build; one card consumes one result per strike.

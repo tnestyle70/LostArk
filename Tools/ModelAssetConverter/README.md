@@ -196,6 +196,32 @@ receipt에 기록된 glTF와 buffer hash, 실제 package와 converter, 현재 le
 채널 누락·mixed presence·기하 불일치는 실패이고, 없는 UV·색·접선을 만들어 검사를 통과시키지 않습니다.
 상세 재개 조건과 명령은 [Bern 공통 cook](../BernCastlePipeline/README.md#공통-geometry-cook의-근거와-실패-처리)을 따릅니다.
 
+### ActorX 경유 skinned 모델의 원본 표면 basis 복구
+
+`restore_skinned_source_basis.py`는 원본 패키지에서 UModel로 직접 추출한 단일 LOD glTF와
+설치된 legacy WModel 1.0의 모든 삼각형 꼭짓점·UV0를 대조한 뒤 원본 NORMAL/TANGENT만 복구합니다.
+현재 지원하는 대응은 `glTF (x,y,z) -> WModel (x,-z,-y)`와 역순 winding이며,
+위치 오차 `1e-5 m`, UV 오차 `1e-6`을 넘거나 삼각형 수가 다르면 실패합니다.
+LOD 변경·subdivision·임의 smooth normal 생성은 하지 않습니다.
+
+```powershell
+python Tools/ModelAssetConverter/restore_skinned_source_basis.py `
+  --model '<installed-legacy.wmodel>' --source-gltf '<original-lod0.gltf>' `
+  --source-package '<original.upk>' --output '<candidate.wmodel>' --report '<receipt.json>'
+```
+
+출력은 WINT 1.5 skinned 전용 형식으로, 기존 76-byte 정점 뒤에 원본 tangent handedness float를
+추가한 80-byte 정점을 사용합니다. reflection 좌표 변환에 맞춰 glTF tangent.w의 부호를 반전하고,
+런타임은 `normalize(cross(N,T)) * handedness`로 binormal을 복원합니다.
+기존 위치·UV0·bone index/weight와 mesh 이외의 재질·골격·애니메이션 section은 그대로 보존합니다.
+1.5는 UV1/UV2/COLOR0를 지원하지 않으며 기존 1.0~1.4의 계약을 변경하지 않습니다.
+
+설치 파일에 직접 덮어쓰거나 기존 candidate를 재사용하지 않습니다. 입력·원본 패키지·glTF·buffer·출력
+hash와 실제 대응 오차를 receipt에 기록합니다. 패키지 hash 단독으로 추출의 정확성을 주장하지 않으며,
+직접 추출 명령과 원본 object/LOD도 함께 보존합니다. 배포 전에 기존
+`WModelGeometryContractHarness --skinned-basis-candidate <candidate.wmodel>`로 실제 decode를 확인하고,
+새 decoder를 포함한 Product 빌드가 준비된 뒤 Resources를 교체합니다. 화면 판정은 별도입니다.
+
 ## 결과 검사
 
 ```powershell

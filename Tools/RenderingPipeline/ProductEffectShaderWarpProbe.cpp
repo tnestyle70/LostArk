@@ -752,13 +752,18 @@ namespace
             D3DX11_TECHNIQUE_DESC Desc{};
             const bool Mesh = Program.eCarrier == EFFECT_SHADER_CARRIER::MESH;
             const bool NativeMesh = Mesh && Program.eFamily != EFFECT_SHADER_FAMILY::GENERIC;
-            const UINT ExpectedPasses = NativeMesh ? 14u : (Mesh ? 7u : 5u);
+            // Artist-family source sprites admit native Modulate at index 5.
+            // Keep the exact ordered ABI; other particles still have five passes.
+            const bool NativeModulate = !Mesh && Program.eFamily == EFFECT_SHADER_FAMILY::ARTIST;
+            const UINT ExpectedPasses = NativeMesh ? 14u : (Mesh ? 7u : (NativeModulate ? 6u : 5u));
             if (!Technique || !Technique->IsValid() || FAILED(Technique->GetDesc(&Desc)) || Desc.Passes != ExpectedPasses)
-                return Fail("family technique/pass count mismatch");
+                return Fail("family technique/pass count mismatch: expected=" + std::to_string(ExpectedPasses) +
+                    " actual=" + std::to_string(Desc.Passes));
             for (UINT i = 0u; i < ExpectedPasses; ++i)
             {
                 auto* Pass = Technique->GetPassByIndex(i); D3DX11_PASS_DESC PD{};
-                if (!Pass || FAILED(Pass->GetDesc(&PD)) || !PD.Name || std::string_view(PD.Name) != PassNames[i])
+                const char* ExpectedName = NativeModulate && i == 5u ? "MultiplyOneSidedDepthRead" : PassNames[i];
+                if (!Pass || FAILED(Pass->GetDesc(&PD)) || !PD.Name || std::string_view(PD.Name) != ExpectedName)
                     return Fail("family ordered pass contract mismatch");
                 ComPtr<ID3D11InputLayout> Layout;
                 if (FAILED(pDevice->CreateInputLayout(NativeMesh ? NativeMeshElements.data() :
@@ -767,6 +772,34 @@ namespace
                         (Mesh ? static_cast<UINT>(std::size(MeshElements)) : static_cast<UINT>(std::size(ParticleElements))),
                         PD.pIAInputSignature, PD.IAInputSignatureSize, &Layout)))
                     return Fail("family carrier input signature mismatch");
+                if (NativeModulate && i == 5u)
+                {
+                    D3DX11_PASS_SHADER_DESC Pixel{};
+                    D3DX11_EFFECT_VARIABLE_DESC Variable{};
+                    if (FAILED(Pass->GetPixelShaderDesc(&Pixel)) ||
+                        !Pixel.pShaderVariable || !Pixel.pShaderVariable->IsValid() ||
+                        FAILED(Pixel.pShaderVariable->GetDesc(&Variable)) || !Variable.Name ||
+                        std::string_view(Variable.Name) != "SourceModulatePS")
+                        return Fail("native Modulate must use its source-factor pixel shader");
+                    ComPtr<ID3D11DeviceContext> Context;
+                    pDevice->GetImmediateContext(&Context);
+                    if (!Context || FAILED(Pass->Apply(0u, Context.Get())))
+                        return Fail("native Modulate pass could not apply");
+                    ComPtr<ID3D11BlendState> Blend;
+                    Context->OMGetBlendState(&Blend, nullptr, nullptr);
+                    Context->ClearState();
+                    if (!Blend) return Fail("native Modulate blend state is absent");
+                    D3D11_BLEND_DESC BlendDesc{};
+                    Blend->GetDesc(&BlendDesc);
+                    const auto& Target = BlendDesc.RenderTarget[0];
+                    if (!Target.BlendEnable || Target.SrcBlend != D3D11_BLEND_DEST_COLOR ||
+                        Target.DestBlend != D3D11_BLEND_ZERO || Target.BlendOp != D3D11_BLEND_OP_ADD ||
+                        Target.SrcBlendAlpha != D3D11_BLEND_ZERO || Target.DestBlendAlpha != D3D11_BLEND_ONE ||
+                        Target.BlendOpAlpha != D3D11_BLEND_OP_ADD || Target.RenderTargetWriteMask != 0x07u ||
+                        !BlendDesc.IndependentBlendEnable || BlendDesc.RenderTarget[1].RenderTargetWriteMask != 0u ||
+                        BlendDesc.RenderTarget[2].RenderTargetWriteMask != 0u)
+                        return Fail("native Modulate must multiply RT0 RGB, preserve alpha and leave RT1/RT2 untouched");
+                }
                 if (NativeMesh)
                 {
                     D3DX11_PASS_SHADER_DESC Vertex{};

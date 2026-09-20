@@ -22,6 +22,7 @@
 #include "UILayoutRuntime.h"
 #include "LevelTransitionService.h"
 #include "LevelRegistry.h"
+#include "KoukuSaydonPresentationPlayer.h"
 #include "Loader.h"
 #include "MapAssetCatalog.h"
 #include "MapEffectDocument.h"
@@ -195,6 +196,14 @@ void CLevel_Loading::Update(const f32_t fTimeDelta)
 	}
 
 	const bool_t bLoaderFinished = m_pLoader->Finished();
+	// All producers have joined before recovery releases their prototype stage.
+	// Required raid Effects cannot turn a failed preparation into a live fight.
+	if (LEVEL::KAKULSAYDON_ARENA == m_eNextLevelID && bLoaderFinished &&
+		m_iEffectPreparationFailedCount != 0u)
+	{
+		Recover_FromFailure(E_FAIL);
+		return;
+	}
 	const CLoader::PROGRESS_SNAPSHOT LoaderProgress =
 		m_pLoader->Get_ProgressSnapshot();
 	EFFECT_LOAD_PROGRESS_SNAPSHOT EffectProgress;
@@ -630,12 +639,10 @@ bool_t CLevel_Loading::Advance_TargetEffectPreparation()
 		if (bCharacterSelect || bBern || bValtanArena || bKoukuArena)
 		{
 		using LostArk::Shared::CHARACTER_CLASS_ID;
-		CHARACTER_CLASS_ID SelectedClass = CHARACTER_CLASS_ID::LANCE_MASTER;
-		if (!CCharacterSelectionState::Try_Get_SelectedClass(SelectedClass) ||
-			!LostArk::Shared::Is_Supported_Playable_Character_Class(
-				SelectedClass))
+		const CHARACTER_CLASS_ID SelectedClass = CNetworkManager::Get().Get_LocalCharacterClass();
+		if (!LostArk::Shared::Is_Supported_Playable_Character_Class(SelectedClass))
 		{
-			SelectedClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+			return IsolateFailure("Server admission has no supported Effect preparation class.");
 		}
 		const CHARACTER_SPEC* pSpec =
 			CCharacterCatalog::Find_Spec(SelectedClass);
@@ -766,6 +773,9 @@ bool_t CLevel_Loading::Advance_TargetEffectPreparation()
 			if (!CActorCatalog::Initialize())
 				return IsolateFailure(CActorCatalog::Get_Status());
 			std::vector<std::string> EffectAssetIds;
+			if (!CKoukuSaydonPresentationPlayer::Collect_ProductEffectTargets(
+				EffectAssetIds, m_KoukuV2EffectTargets, Status))
+				return IsolateFailure(Status);
 			/* Server combat-object pulses have no animation Effect cue. Prepare
 			   their catalog visuals for every supported arena body before entry,
 			   through the same Loader worker and target activation probe. */
@@ -902,6 +912,32 @@ bool_t CLevel_Loading::Advance_TargetEffectPreparation()
 		}
 		return false;
 	}
+	if (bKoukuArena)
+	{
+		if (m_iEffectPreparationFailedCount != 0u)
+		{
+			m_strEffectPreparationStatus = "Required raid Effect preparation failed: " +
+				m_strEffectPreparationRegistrationFailure;
+			for (const auto& id : m_EffectPreparationTargets)
+			{
+				const auto failure = CEffectPresentationService::Get_ProductCuePreparationFailure(id);
+				if (!failure.empty()) { m_strEffectPreparationStatus += id + ": " + failure; break; }
+			}
+			return false;
+		}
+		if (!m_pLoader->Finished()) return false;
+		if (!m_isKoukuV2Prepared)
+		{
+			if (!CKoukuSaydonPresentationPlayer::Prewarm_ProductEffectResources(
+				m_pDevice, m_pContext, m_KoukuV2EffectTargets, m_strEffectPreparationStatus))
+			{
+				m_strEffectPreparationRegistrationFailure = m_strEffectPreparationStatus;
+				m_iEffectPreparationFailedCount = 1u;
+				return false;
+			}
+			m_isKoukuV2Prepared = true;
+		}
+	}
 
 	if (!m_strEffectPreparationRegistrationFailure.empty())
 	{
@@ -945,7 +981,8 @@ void CLevel_Loading::Recover_FromFailure(const HRESULT result)
 	CLevelTransitionService::Report_Recovery(
 		LostArk::Shared::SESSION_DIAGNOSTIC_REASON::CLIENT_LOAD_FAILED,
 		"loading.target-resource-load",
-		"[Loader] " + CLoader::Get_ActiveStatus(),
+		"[Loader] " + CLoader::Get_ActiveStatus() +
+			(m_strEffectPreparationStatus.empty() ? "" : " / " + m_strEffectPreparationStatus),
 		result);
 	CNetworkManager::Get().Close_ServerConnection();
 

@@ -664,7 +664,7 @@ namespace Client
 			std::string_view displayName, std::string& outStatus);
 		bool_t Render_RenameControl(RENAME_TARGET target, std::string_view id,
 			std::string_view displayName);
-		std::vector<std::string> Collect_PatternDeleteReferences(std::string_view patternId) const;
+		std::vector<std::string> Collect_PatternDeleteReferences(std::string_view patternId, bool onlyBlocking = false) const;
 		void Request_PatternDelete(std::string_view patternId);
 		void Render_PatternDeleteContext(std::string_view patternId);
 		void Render_PatternDeleteConfirmation();

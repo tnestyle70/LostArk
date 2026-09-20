@@ -2039,19 +2039,15 @@
                         "targetDocument":  "Data/Balance/DamageProfiles.json",
                         "targetId":  "damage:damage.player.2050540",
                         "targetField":  "damageRatePercent",
-                        "basis":  "OFFICIAL_EXTRACTED",
+                        "basis":  "PROJECT_TUNED",
                         "source":  {
-                                       "type":  "official-table-cell",
-                                       "database":  "EFTable_SkillEffect.db",
-                                       "databaseSha256":  "25cad4759a6474d8932e857a7a045d325dc85159011f855c6a924e41881a1113",
-                                       "table":  "SkillEffect",
-                                       "primaryKey":  20505401,
-                                       "secondaryKey":  1,
-                                       "column":  "ValueA"
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  100,
-                        "transform":  "identity",
-                        "resultValue":  100
+                        "sourceValue":  33826,
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  33826,
+                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
                         "targetDocument":  "Data/Balance/DamageProfiles.json",
@@ -2380,19 +2376,15 @@
                         "targetDocument":  "Data/Balance/DamageProfiles.json",
                         "targetId":  "damage:damage.player.31930",
                         "targetField":  "damageRatePercent",
-                        "basis":  "OFFICIAL_EXTRACTED",
+                        "basis":  "PROJECT_TUNED",
                         "source":  {
-                                       "type":  "official-table-cell",
-                                       "database":  "EFTable_SkillEffect.db",
-                                       "databaseSha256":  "25cad4759a6474d8932e857a7a045d325dc85159011f855c6a924e41881a1113",
-                                       "table":  "SkillEffect",
-                                       "primaryKey":  319300,
-                                       "secondaryKey":  1,
-                                       "column":  "ValueA"
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  100,
-                        "transform":  "identity",
-                        "resultValue":  100
+                        "sourceValue":  33826,
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  33826,
+                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
                         "targetDocument":  "Data/Balance/DamageProfiles.json",
