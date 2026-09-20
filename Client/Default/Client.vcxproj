@@ -112,6 +112,7 @@
     <ClInclude Include="..\Public\AnimationEffectCueDocument.h" />
     <ClInclude Include="..\Public\SoundCueCatalog.h" />
     <ClInclude Include="..\Public\EstherActionSoundCueDocument.h" />
+    <ClInclude Include="..\Public\NpcActionEffectCueDocument.h" />
     <ClInclude Include="..\Public\Effect_PresentationService.h" />
     <ClInclude Include="..\Public\EffectFailureDiagnostic.h" />
     <ClInclude Include="..\Public\Effect_ProductPrewarmQueue.h" />
@@ -395,6 +396,7 @@
     <ClCompile Include="..\Private\AnimationEffectCueDocument.cpp" />
     <ClCompile Include="..\Private\SoundCueCatalog.cpp" />
     <ClCompile Include="..\Private\EstherActionSoundCueDocument.cpp" />
+    <ClCompile Include="..\Private\NpcActionEffectCueDocument.cpp" />
     <ClCompile Include="..\Private\Effect_PresentationService.cpp" />
     <ClCompile Include="..\Private\Effect_ProductPrewarmQueue.cpp" />
     <ClCompile Include="..\Private\Level_CharacterSelect.cpp" />
