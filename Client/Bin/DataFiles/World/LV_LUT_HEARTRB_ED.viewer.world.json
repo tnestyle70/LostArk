@@ -95,6 +95,7 @@
                                                1.5,
                                                2
                                            ],
+                           "interactAction":  "godown",
                            "triggerOnce":  true,
                            "events":  [
                                           {
@@ -118,7 +119,6 @@
                                                1.5,
                                                2.5
                                            ],
-                           "requiresInteract":  true,
                            "triggerOnce":  true,
                            "events":  [
                                           {

@@ -389,7 +389,7 @@ bool_t Client::CWorldGameplayDocument::Load(
 			(triggerPlacement && !Is_ExactObjectWithOptional(value,
 			{ "placementId", "kind", "position", "yawDegrees", "enabled",
 			  "halfExtents", "triggerOnce", "events" },
-			{ "requiresInteract" })) ||
+			{ "requiresInteract", "interactAction" })) ||
 			(collisionPlacement && !Is_ExactObject(value,
 			{ "placementId", "kind", "position", "yawDegrees", "enabled",
 			  "halfExtents" })) ||
@@ -472,6 +472,16 @@ bool_t Client::CWorldGameplayDocument::Load(
 					return false;
 				}
 				record.requiresInteract = requiresInteract->Get_Boolean();
+			}
+			const DATA_JSON_VALUE* interactAction = value.Find("interactAction");
+			if (nullptr != interactAction)
+			{
+				if (!interactAction->Is_String() || interactAction->Get_String().empty())
+				{
+					outStatus = "Gameplay trigger interactAction is invalid";
+					return false;
+				}
+				record.strInteractAction = interactAction->Get_String();
 			}
 			for (const DATA_JSON_VALUE& eventValue : events->Get_Array())
 			{

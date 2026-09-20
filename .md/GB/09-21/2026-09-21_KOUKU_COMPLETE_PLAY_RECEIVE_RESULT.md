@@ -58,3 +58,14 @@ mailbox 회귀는 실제 관련 MainApp 함수, ClientReplication의 raid case·
 Product 명령은 `Tools/Build/Invoke-BuildAndRegression.ps1 -Configuration Debug -BuildLogDirectory out/KoukuCompletePlayReceive20260921/product`다. 결과 receipt는 `out/BuildPipeline/runs/20260920T182407063Z-debug-product.json`, 로그는 `out/KoukuCompletePlayReceive20260921/product-build.log`다. 기존 소스 문자 집합 경고는 남아 있고 컴파일 오류는 없다. 실행 파일과 소스 hash는 `product-final-files.json`에 기록했다. Release 실행 파일 전체 빌드는 수행하지 않았다.
 
 Client 화면의 Gate2 Complete Play와 대형 세이튼 세 번 내려치기는 사용자가 새 Debug Server/Client에서 직접 확인해야 한다. 파일 게시·서버 내부 검증을 Client 화면·GPU·음성 재생 완료로 기록하지 않는다.
+
+## G05. PR #431 main 병합 검증
+
+원격 PR head는 `241ea0dd4`, main은 `db01564c2`였고 충돌 해결 커밋은 원격에 없었다. 원본 작업 폴더에서 Client/Server와 MSBuild가 실행 중이므로 별도 `kouku-pr431-merge` worktree에서 main을 병합했다. 실제 충돌은 `MainApp.cpp`의 F1 표시 한 곳이다. 기존 `setSpeed` lambda와 `Current map`을 보존하고 main의 `Player world`·`Interact offer` 표시를 이어 붙였다. main의 로딩 UI 억제, NPC effect anchor, 프로젝트 등록과 기존 Debug profiler·13개 codec 최적화도 모두 유지했다.
+
+- 병합한 MainApp.cpp와 Effect_PresentationService.cpp 각각 Debug/Release 실제 `/c` 컴파일 4/4 PASS. VS18 Insiders MSVC14.44.35207, SDK10.0.26100.0, 기존 ABI/컴파일 옵션을 사용했다.
+- sourceDependencies로 worktree의 Client/Shared 헤더 사용을 확인했다. 양 branch에서 같은 Engine의 기존 SDK만 원본 경로에서 읽었고 원본 Client/Shared 헤더 유입은 0이었다. 각 source의 컴파일 전후 SHA가 같다.
+- 병합 대상 JSON/XML 16개 parse, NPC H/CPP 등록, Debug codec 최적화 13개와 양쪽 기능 보존 검사 PASS. unmerged index와 충돌 마커는 없고 staged/unstaged diff check도 PASS했다.
+- 증거는 병합 worktree의 `out/Pr431Merge20260921/compile-manifest.json`, 각 `.rsp/.log/.dependencies.json`, `merge-structural-check.json`이다. 별도 Server 방화벽 설정은 관리자 권한이 필요해 변경하지 않았다. 격리 컴파일에 listener는 필요하지 않다.
+
+병합 revision의 전체 Product 링크와 화면 재생은 다시 실행하지 않았다. 앞 G04의 Product 성공은 main 병합 전 기능본 검증이며, 이번 검증은 병합된 두 C++ TU와 구조 검증이다. 원본 실행 폴더와 사용자 프로세스는 변경하지 않았다.

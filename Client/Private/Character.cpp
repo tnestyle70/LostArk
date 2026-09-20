@@ -245,6 +245,29 @@ void CCharacter::Load_InteractionAnimationBindings()
    !bodyId || !bodyId->Is_String() || bodyId->Get_String() != catalog->bodyModel)
   { status = "character/body identity does not match the admitted catalog"; fail(); return; }
  }
+ /* Optional block: the server drives a movePlayer trigger's position, this only
+ names the clip that plays over it. A class without the cooked AnimSet simply
+ omits it and keeps the previous locomotion loop. */
+ m_hasTerrainJumpClip = false;
+ if (const auto* jump = root.Find("terrainJump"))
+ {
+  const auto* clip = jump->Is_Object() ? jump->Find("clip") : nullptr;
+  if (!clip || !clip->Is_String() || clip->Get_String().empty())
+  { status = "invalid terrainJump clip"; fail(); return; }
+  CLIP_STEP step{}; step.clip = clip->Get_String(); step.loop = false; step.playRate = 1.f;
+  if (const auto* rate = jump->Find("playRate"))
+  {
+   if (!rate->Is_Number() || !std::isfinite(rate->Get_Number()) ||
+    rate->Get_Number() <= 0.0 || rate->Get_Number() > 8.0)
+   { status = "invalid terrainJump play rate"; fail(); return; }
+   step.playRate = static_cast<float>(rate->Get_Number());
+  }
+  std::uint32_t animation; float duration;
+  if (!Resolve_ClipTiming(step, animation, duration))
+  { status = "model has no clip " + step.clip; fail(); return; }
+  m_TerrainJumpClip = std::move(step);
+  m_hasTerrainJumpClip = true;
+ }
  std::array<std::vector<CLIP_STEP>, 5> staged;
  std::array<std::vector<std::string>, 5> effects;
  for (const auto& mode : modes->Get_Array())
@@ -2112,13 +2135,11 @@ bool_t CCharacter::Apply_NetworkAction(
 	{
 		if (INVALID_SKILL_ID != skillId || 0u == actionStartTick)
 			return false;
-		if (m_eNetworkAction == action &&
-			m_iLastNetworkActionStartTick == actionStartTick)
-		{
-			return true;
-		}
-		if (PLAYER_ACTION_STATE::SKILL == m_eNetworkAction ||
-			PLAYER_ACTION_STATE::KNOCKDOWN == m_eNetworkAction)
+		const bool_t same = m_eNetworkAction == action &&
+			m_iLastNetworkActionStartTick == actionStartTick;
+		if (!same &&
+			(PLAYER_ACTION_STATE::SKILL == m_eNetworkAction ||
+			 PLAYER_ACTION_STATE::KNOCKDOWN == m_eNetworkAction))
 		{
 			m_pChain = nullptr;
 			m_iChainStage = 0;
@@ -2126,8 +2147,32 @@ bool_t CCharacter::Apply_NetworkAction(
 			m_eKnockdownStep = KNOCKDOWN_STEP::NONE;
 			m_fActionPresentationSeconds = 0.f;
 			Commit_PendingClipChains();
+		}
+		/* The native jump clip is authored longer than most crossings, so it is
+		seeked on the server's own action clock and held on its last frame
+		rather than looped: the landing pose is what the arc ends on. */
+		std::uint32_t animation; float duration; f32_t age = 0.f;
+		if (m_hasTerrainJumpClip &&
+			CActionPresentationTimeline::Try_ResolveActionAgeSeconds(
+				serverTick, actionStartTick, SERVER_TICK_HZ, age) &&
+			Resolve_ClipTiming(m_TerrainJumpClip, animation, duration) &&
+			(same || Start_Clip(m_TerrainJumpClip)))
+		{
+			const float seconds = (std::min)(
+				age * m_TerrainJumpClip.playRate,
+				(std::max)(0.f, duration - .0001f));
+			m_pBodyModel->Set_AnimTrackPosition(animation,
+				seconds * m_pBodyModel->Get_AnimationTickPerSecond(animation));
+			m_pBodyModel->Play_Animation(0.f);
+		}
+		else if (!same &&
+			(PLAYER_ACTION_STATE::SKILL == m_eNetworkAction ||
+			 PLAYER_ACTION_STATE::KNOCKDOWN == m_eNetworkAction))
+		{
 			Set_Animation(CHARACTER_ANIM::RUN, true);
 		}
+		if (same)
+			return true;
 		m_iLastNetworkActionStartTick = actionStartTick;
 	}
 	else if (PLAYER_ACTION_STATE::GRABBED == action)

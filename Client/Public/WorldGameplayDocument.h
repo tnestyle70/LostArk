@@ -140,6 +140,12 @@ struct WORLD_GAMEPLAY_PLACEMENT
 	   and runs its action only once the Server accepts the interact
 	   request, so a document written before this field reads as false. */
 	bool_t requiresInteract = false;
+	/* Optional on a gated trigger box: which retail MasterKey action the prompt shows
+	("godown", "climb", "tightrope", "jump", "check"). Empty means the prompt reads the
+	box's own movePlayer height the way it did before this field existed -- a box whose
+	action is not a move, or whose move does not describe what the player is doing, names
+	it here instead. */
+	std::string strInteractAction;
 	std::vector<WORLD_TRIGGER_EVENT> triggerEvents;
 	uint64_t deployRuntimePlacementId = 0;
 	WORLD_DESTROYABLE_STATE eInitialState = WORLD_DESTROYABLE_STATE::INTACT;

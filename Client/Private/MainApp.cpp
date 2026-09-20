@@ -1628,7 +1628,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		Close_RuntimeWindowsForLoading();
 	m_bWasLoadingLevel = bLoadingLevel;
 
-	if (!CUIInputRouter::Get().Is_CinematicSuppressed() && !bLoadingLevel)
+	if (!Is_RuntimeUIScreenSuppressed())
 	{
 	/* I is a normal gameplay keybind (the inventory), not an F1/F6 tool-switch key.
 	Is_TextInputActive is the runtime UI's own WantTextInput (the ImGui-free nickname field) --
@@ -3738,7 +3738,7 @@ HRESULT CMainApp::Render()
 	{
 		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Render.UIText");
 		Engine::CProfilerGpuScope gpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Render.UIText");
-	if (!CUIInputRouter::Get().Is_CinematicSuppressed())
+	if (!Is_RuntimeUIScreenSuppressed())
 	{
 	/* Same reasoning as the old combat-HUD/boss-bar/charge-gauge
 	   image gate above (isCharSelectDebugPreviewOpen there) -- these are that
@@ -5347,6 +5347,12 @@ void CMainApp::Update_LobbyButtons(const f32_t fTimeDelta)
 
 	/* TitleBackground's looping movie flipbook and the one-shot logo reveal. */
 	m_pLobbyBackgroundView->Update(fTimeDelta);
+}
+
+bool_t CMainApp::Is_RuntimeUIScreenSuppressed() const
+{
+	return CUIInputRouter::Get().Is_CinematicSuppressed() ||
+		ETOUI(LEVEL::LOADING) == CGameInstance::Get().Get_CurrentLevelID();
 }
 
 void CMainApp::Close_RuntimeWindowsForLoading()
@@ -9804,6 +9810,24 @@ void CMainApp::RenderArenaCameraAndPlayerControls()
 			else (void)camera->Set_FreeMoveSpeed(speed);
 		};
 		ImGui::Text("Current map: %s", mapName);
+		/* Where the local player actually stands and which interact box the Server is offering
+		there, so an authored trigger can be placed against real coordinates instead of guesses. */
+		{
+			const std::shared_ptr<CCharacter> pDebugLocal =
+				nullptr != valtan ? valtan->Get_LocalCharacter() :
+				(nullptr != kouku ? kouku->Get_LocalCharacter() : nullptr);
+			if (nullptr != pDebugLocal && nullptr != pDebugLocal->Get_Transform())
+			{
+				float3_t vPlayer{};
+				XMStoreFloat3(&vPlayer,
+					pDebugLocal->Get_Transform()->Get_State(STATE::POSITION));
+				ImGui::Text("Player world: (%.1f, %.1f, %.1f)",
+					vPlayer.x, vPlayer.y, vPlayer.z);
+			}
+			const std::string& offered =
+				CCombatHUDViewModel::Get().Get_InteractPromptTriggerId();
+			ImGui::Text("Interact offer: %s", offered.empty() ? "(none)" : offered.c_str());
+		}
 		f32_t speed = camera->Get_FreeMoveSpeed();
 		if (ImGui::DragFloat("Free camera speed (m/s)", &speed, 0.5f,
 			CCamera_Free::MIN_FREE_MOVE_SPEED, CCamera_Free::MAX_FREE_MOVE_SPEED,

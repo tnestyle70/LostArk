@@ -1,0 +1,25 @@
+{
+  "schema": "lostark.npc-action-effect-cues",
+  "formatVersion": 1,
+  "archetypeId": "NPC_59030",
+  "cues": [
+    {
+      "cueId": "npc_59030.npc_evt1_sk_swordofchampion_bk",
+      "effectAssetId": "effect.esther.silian.npc_evt1_sk_swordofchampion_bk.full.restore",
+      "clip": "npc_evt1_sk_swordofchampion_bk",
+      "startMs": 0,
+      "durationMs": 9501,
+      "bone": "b_effectroot",
+      "followBone": false
+    },
+    {
+      "cueId": "npc_59030.npc_att_battle_7_01",
+      "effectAssetId": "effect.esther.silian.npc_att_battle_7_01.full.restore",
+      "clip": "npc_att_battle_7_01",
+      "startMs": 0,
+      "durationMs": 7801,
+      "bone": "b_effectroot",
+      "followBone": false
+    }
+  ]
+}

@@ -29,3 +29,7 @@
 변경한 C++ 인코딩과 기존 project/filter 등록을 보존한다. 새 제품 파일이 필요하면 해당 project/filter에 필요한 항목만 등록한다. 실제 queue 정책 회귀, 늦은 거절·성공·취소 검증 및 Debug/Release 최소 컴파일을 수행하고 최종 Product 빌드 가능 여부를 확인한다. 사용자 실행/빌드와 경합하지 않으며 실행 중 EXE 점유 해제가 필요한 마지막 시점에만 종료를 안내한다. 변경 source의 `git diff --check`와 변경 XML/JSON parse를 확인하고 실행한 증거만 RESULT에 기록한다.
 
 사용자는 불뿜기 중복 클립 의심은 보류하고 Complete Play만 먼저 수정하도록 범위를 확정했다. 불뿜기 패턴 자체와 기존 sound/sequence 편집값을 이 작업에서 교체하지 않는다.
+
+## G05. PR #431의 main 병합
+
+PR head `241ea0dd4`와 main `db01564c2`의 단일 MainApp 충돌을 별도 worktree에서 해결한다. 전 맵 camera 선택·setSpeed·Current map과 main의 Player world·Interact offer 표시를 함께 보존한다. 자동 병합된 Effect presentation profiler/NPC 연결, MainApp 로딩 UI 억제, project 등록도 양쪽 delta로 확인한다. 현재 사용자 실행 폴더는 변경하지 않고 병합된 MainApp/Effect_PresentationService의 Debug·Release 격리 컴파일, JSON/XML parse와 diff 검사를 마친 뒤 기존 PR에 fast-forward push한다.

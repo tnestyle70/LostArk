@@ -563,6 +563,10 @@ private:
 	void Load_InteractionAnimationBindings();
 	std::array<std::vector<CLIP_STEP>, 5> m_InteractionClips;
 	std::array<std::vector<std::string>, 5> m_InteractionEffectIds;
+	/* Optional: a class whose base AnimSet has not been cooked yet keeps the
+	previous locomotion loop for a server movePlayer instead of failing. */
+	bool_t m_hasTerrainJumpClip = false;
+	CLIP_STEP m_TerrainJumpClip{};
 	LostArk::Shared::KOUKU_HUD_MODE m_eInteractionMode = LostArk::Shared::KOUKU_HUD_MODE::NONE;
 	std::uint32_t m_iInteractionIndex = UINT32_MAX;
 	void Commit_PendingClipChains();

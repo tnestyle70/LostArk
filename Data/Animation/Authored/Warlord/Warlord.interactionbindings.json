@@ -3,6 +3,10 @@
   "formatVersion": 1,
   "characterAssetId": "Warlord",
   "bodyAssetId": "Character/Warlord/Warlord.wmodel",
+  "terrainJump": {
+    "clip": "terrain_jump_short",
+    "playRate": 1
+  },
   "modes": [
     {
       "mode": "MAZE",

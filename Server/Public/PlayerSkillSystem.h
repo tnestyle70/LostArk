@@ -73,6 +73,16 @@ namespace LostArk::Server
 			std::uint32_t downMs,
 			std::uint32_t serverTick);
 
+		/* A stance-setting skill's authored cancel windows open after the swap has
+		already happened on screen, so every exit from its action commits the
+		stance: the natural end, a move cancel and a skill cancel alike. Without
+		this the last stretch of the action silently loses the swap. Skills that
+		set no stance are a no-op here. */
+		static void Commit_StanceChange(
+			SERVER_PLAYER& player,
+			const PLAYER_SKILL_DEFINITION& skill,
+			const CGameplayCatalog& catalog);
+
 		/* True while the player stands in a stance the identity gauge is paying
 		for, which is any stance other than the class default on a class that has
 		a gauge. Movement and the drain both key off this one answer. */
