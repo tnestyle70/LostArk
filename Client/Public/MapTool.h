@@ -261,6 +261,9 @@ public:
 	void Render();
 
 	bool IsOpen() const;
+    void Collect_WorldSequenceSubtitles(std::vector<WORLD_SEQUENCE_SUBTITLE_SAMPLE>& out) const
+    { m_ArenaRisePlayer.Collect_Subtitles(out); }
+
 	bool_t ConsumesWorldLeftMouse() const;
 
 private:
@@ -1009,6 +1012,8 @@ private:
 	std::string m_strCutsceneSessionId;
 	std::string m_strCutsceneSessionArea;
 	f32_t m_fCutsceneSessionMs = 0.f;
+	bool_t m_bCutsceneSoundNaturallyFinished = false;
+	bool_t m_bCutsceneSoundSeekRequested = false;
 	/* The cut that owned the camera last frame, so a cut change can restart
 	   the blend and a gap can hand the camera back exactly once. */
 	std::string m_strCutsceneActiveCutId;
@@ -1030,6 +1035,10 @@ private:
 	std::optional<WORLD_SEQUENCE_TEMPLATE> m_CutsceneEditTemplateSnapshot;
 	int32_t m_iCutsceneSelectedActorKey = 0;
 	std::string m_CutsceneActorEditStatus;
+	std::string m_CutsceneSubtitleSequenceId;
+	std::optional<WORLD_SEQUENCE_SUBTITLE_TRACK> m_CutsceneSubtitleDraft;
+	std::string m_CutsceneSoundSequenceId;
+	std::optional<WORLD_SEQUENCE_SOUND_TRACK> m_CutsceneSoundDraft;
 	/* Integrated cutscene view. The session and its documents stay with their
 	   existing owners; only the view state lives here. */
 	ICompositionWorkbenchSession* m_pSequenceCompositionSession = nullptr;

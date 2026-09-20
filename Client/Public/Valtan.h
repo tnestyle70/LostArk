@@ -466,6 +466,7 @@ private:
 		LostArk::Shared::INVALID_NET_ENTITY_ID;
 	bool_t m_isRaidBgmEnabled = false;
 	uint64_t m_iRaidBgmOwnershipGeneration = 0u;
+    f32_t m_fRaidBgmNaturalTailRemainingSeconds = 0.f;
 	CDeathPresentationClock m_DeathPresentationClock;
 	uint32_t m_iDeathAnimationIndex = (std::numeric_limits<uint32_t>::max)();
 	bool_t m_hasObservedEntrancePattern = false;

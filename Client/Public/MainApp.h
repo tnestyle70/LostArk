@@ -179,6 +179,7 @@ private:
 #endif
 
 	bool_t m_bKoukuRaidStopAfterAdmission = false;
+	bool_t m_bKoukuLocalPreviewStopRequested = false;
 	uint64_t m_iKoukuCompletePlayWorldGeneration = 0u;
 	std::uint32_t m_iKoukuRaidAcknowledgedEpoch = 0u;
 	string m_strKoukuCompletePlayStatus =
@@ -201,6 +202,7 @@ private:
 	O-key raid-entry preview -- since these LEVEL::STATIC sprites keep their last state instead
 	of simply not being drawn the way the old ImGui pass did. */
 	void Sync_KoukuCinematicUI();
+	void RenderCinematicSubtitles();
 	void Update_CombatHUD(f32_t fTimeDelta);
 	void Hide_CombatHUD();
 	/* HealthBar/ManaBar's own JSON layer (HUD_Layout.json) is the dark empty-state background

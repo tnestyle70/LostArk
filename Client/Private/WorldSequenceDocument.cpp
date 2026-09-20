@@ -30,14 +30,14 @@ namespace
 	constexpr f32_t MAX_COMPONENT = 100000.f;
 	constexpr uintmax_t MAX_DOCUMENT_BYTES = 16u * 1024u * 1024u;
 
-	bool_t Is_ValidUtf8DisplayText(const std::string& value)
+	bool_t Is_ValidUtf8DisplayText(const std::string& value, const bool_t allowLineFeed = false)
 	{
 		for (size_t offset = 0u; offset < value.size();)
 		{
 			const uint8_t first = static_cast<uint8_t>(value[offset]);
 			if (first < 0x80u)
 			{
-				if (first < 0x20u || 0x7fu == first)
+				if ((first < 0x20u && !(allowLineFeed && first == 0x0au)) || 0x7fu == first)
 					return false;
 				++offset;
 				continue;
@@ -585,7 +585,7 @@ bool_t Client::CWorldSequenceDocument::Load(
 				  "interpolation", "tracks" }) :
 			Is_ObjectShape(templateValue,
 				{ "sequenceId", "displayName", "category", "durationMs",
-				  "interpolation", "tracks", "animationTracks" }, { "objectMotion", "effectTracks", "colliderTracks" });
+				  "interpolation", "tracks", "animationTracks" }, { "objectMotion", "effectTracks", "colliderTracks", "soundTracks", "subtitleTracks" });
 		if (!validTemplateShape)
 		{
 			outStatus = "World sequence template shape is invalid";
@@ -848,6 +848,48 @@ bool_t Client::CWorldSequenceDocument::Load(
 				parsedTemplate.colliderTracks.push_back(std::move(collider));
 			}
 		}
+
+        if (const auto* sounds = templateValue.Find("soundTracks"))
+        {
+            if (parsedFormatVersion < 3u || !sounds->Is_Array() || sounds->Get_Array().size() > MAX_TRACK_COUNT)
+            { outStatus = "World soundTracks must be a bounded v3 array"; return false; }
+            for (const auto& row : sounds->Get_Array())
+            {
+                WORLD_SEQUENCE_SOUND_TRACK sound;
+                if (!Is_ExactObject(row, { "soundTrackId", "assetId", "startMs", "durationMs", "volume" }) ||
+                    !row.Find("soundTrackId")->Is_String() || !row.Find("assetId")->Is_String() || !row.Find("volume")->Is_Number() ||
+                    !Read_Uint32(row.Find("startMs"), sound.startMs, MAX_DURATION_MS) ||
+                    !Read_Uint32(row.Find("durationMs"), sound.durationMs, MAX_DURATION_MS))
+                { outStatus = "World sound track fields are invalid"; return false; }
+                sound.soundTrackId = row.Find("soundTrackId")->Get_String();
+                sound.assetId = row.Find("assetId")->Get_String();
+                sound.volume = static_cast<f32_t>(row.Find("volume")->Get_Number());
+                parsedTemplate.soundTracks.push_back(std::move(sound));
+            }
+        }
+        if (const auto* subtitles = templateValue.Find("subtitleTracks"))
+        {
+            if (parsedFormatVersion < 3u || !subtitles->Is_Array() || subtitles->Get_Array().size() > MAX_TRACK_COUNT)
+            { outStatus = "World subtitleTracks must be a bounded v3 array"; return false; }
+            for (const auto& row : subtitles->Get_Array())
+            {
+                WORLD_SEQUENCE_SUBTITLE_TRACK subtitle;
+                if (!Is_ExactObject(row, { "subtitleTrackId", "stringId", "text", "position", "slotId", "startMs", "durationMs" }))
+                { outStatus = "World subtitle track shape is invalid"; return false; }
+                for (const auto* key : { "subtitleTrackId", "stringId", "text", "position", "slotId" })
+                    if (!row.Find(key)->Is_String())
+                    { outStatus = "World subtitle identity and text must be strings"; return false; }
+                if (!Read_Uint32(row.Find("startMs"), subtitle.startMs, MAX_DURATION_MS) ||
+                    !Read_Uint32(row.Find("durationMs"), subtitle.durationMs, MAX_DURATION_MS))
+                { outStatus = "World subtitle timing is invalid"; return false; }
+                subtitle.subtitleTrackId = row.Find("subtitleTrackId")->Get_String();
+                subtitle.stringId = row.Find("stringId")->Get_String();
+                subtitle.text = row.Find("text")->Get_String();
+                subtitle.position = row.Find("position")->Get_String();
+                subtitle.slotId = row.Find("slotId")->Get_String();
+                parsedTemplate.subtitleTracks.push_back(std::move(subtitle));
+            }
+        }
 
 		staged.m_Templates.push_back(std::move(parsedTemplate));
 	}
@@ -1224,6 +1266,33 @@ bool_t Client::CWorldSequenceDocument::Save(
 			}
 			output << "\n      ]";
 		}
+        if (!value.soundTracks.empty())
+        {
+            output << ",\n      \"soundTracks\": [";
+            for (size_t index = 0; index < value.soundTracks.size(); ++index)
+            {
+                const auto& sound = value.soundTracks[index];
+                output << (index ? ",\n" : "\n") << "        { \"soundTrackId\": \"" << CDataJson::Escape(sound.soundTrackId)
+                    << "\", \"assetId\": \"" << CDataJson::Escape(sound.assetId)
+                    << "\", \"startMs\": " << sound.startMs << ", \"durationMs\": " << sound.durationMs
+                    << ", \"volume\": " << sound.volume << " }";
+            }
+            output << "\n      ]";
+        }
+        if (!value.subtitleTracks.empty())
+        {
+            output << ",\n      \"subtitleTracks\": [";
+            for (size_t index = 0; index < value.subtitleTracks.size(); ++index)
+            {
+                const auto& subtitle = value.subtitleTracks[index];
+                output << (index ? ",\n" : "\n") << "        { \"subtitleTrackId\": \"" << CDataJson::Escape(subtitle.subtitleTrackId)
+                    << "\", \"stringId\": \"" << CDataJson::Escape(subtitle.stringId)
+                    << "\", \"text\": \"" << CDataJson::Escape(subtitle.text)
+                    << "\", \"position\": \"" << subtitle.position << "\", \"slotId\": \"" << CDataJson::Escape(subtitle.slotId)
+                    << "\", \"startMs\": " << subtitle.startMs << ", \"durationMs\": " << subtitle.durationMs << " }";
+            }
+            output << "\n      ]";
+        }
 		output << "\n    }";
 	}
 	output << (m_Templates.empty() ? "],\n" : "\n  ],\n")
@@ -1402,12 +1471,34 @@ bool_t Client::CWorldSequenceDocument::Validate(
 			(WORLD_SEQUENCE_INTERPOLATION::LINEAR != value.interpolation &&
 				WORLD_SEQUENCE_INTERPOLATION::SMOOTH_STEP != value.interpolation) ||
 			(value.tracks.empty() && value.animationTracks.empty()) ||
-			value.tracks.size() + value.animationTracks.size() + value.effectTracks.size() + value.colliderTracks.size() > MAX_TRACK_COUNT)
+			value.tracks.size() + value.animationTracks.size() + value.effectTracks.size() + value.colliderTracks.size() +
+                value.soundTracks.size() + value.subtitleTracks.size() > MAX_TRACK_COUNT)
 		{
 			outStatus = "Invalid or duplicate world sequence template: " +
 				value.sequenceId;
 			return false;
 		}
+        std::unordered_set<std::string> soundIds, subtitleIds;
+        for (const auto& sound : value.soundTracks)
+            if (!Is_ValidStableId(sound.soundTrackId) || !soundIds.insert(sound.soundTrackId).second ||
+                !Is_ResourcePath(sound.assetId, false) || !sound.assetId.starts_with("Sound/") || !sound.assetId.ends_with(".wav") ||
+                sound.startMs > value.durationMs || sound.durationMs == 0u ||
+                uint64_t(sound.startMs) + sound.durationMs > MAX_DURATION_MS ||
+                !std::isfinite(sound.volume) || sound.volume < 0.f || sound.volume > 4.f)
+            { outStatus = "Invalid World sound track: " + value.sequenceId + "/" + sound.soundTrackId; return false; }
+        for (const auto& subtitle : value.subtitleTracks)
+        {
+            const bool balloon = subtitle.position == "BALLOON";
+            const bool slotExists = std::any_of(value.tracks.begin(), value.tracks.end(),
+                [&](const auto& track) { return track.slotId == subtitle.slotId; });
+            if (!Is_ValidStableId(subtitle.subtitleTrackId) || !subtitleIds.insert(subtitle.subtitleTrackId).second ||
+                !Is_ValidStableId(subtitle.stringId) || subtitle.text.empty() || subtitle.text.size() > 4096u ||
+                !Is_ValidUtf8DisplayText(subtitle.text, true) || subtitle.text.find_first_of("<>") != std::string::npos ||
+                (!balloon && subtitle.position != "NORMAL" && subtitle.position != "UPPER") ||
+                (balloon ? !Is_ValidStableId(subtitle.slotId) || !slotExists : !subtitle.slotId.empty()) ||
+                !subtitle.durationMs || uint64_t(subtitle.startMs) + subtitle.durationMs > value.durationMs)
+            { outStatus = "Invalid World subtitle track: " + value.sequenceId + "/" + subtitle.subtitleTrackId; return false; }
+        }
 		const auto& motion = value.objectMotion;
 		if (!Is_BoundedFloat3(motion.velocity) || !Is_BoundedFloat3(motion.acceleration) ||
 			!Is_BoundedFloat3(motion.angularVelocityDegrees) ||
@@ -1565,6 +1656,10 @@ bool_t Client::CWorldSequenceDocument::Validate(
 		if (!targetTemplate->effectTracks.empty() && (value.bindings.size() != 1u ||
 			value.bindings.front().targetKind != WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE))
 		{ outStatus = "Effect lanes require one Object Resource binding: " + value.instanceId; return false; }
+        for (const auto& subtitle : targetTemplate->subtitleTracks)
+            if (subtitle.position == "BALLOON" && std::none_of(value.bindings.begin(), value.bindings.end(), [&](const auto& binding) {
+                return binding.slotId == subtitle.slotId && binding.targetKind == WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE; }))
+            { outStatus = "World balloon subtitle requires its Object Resource binding: " + value.instanceId; return false; }
 		if (value.walkableSurface)
 		{
 			const auto& surface = *value.walkableSurface;
@@ -1896,6 +1991,7 @@ bool_t Client::CWorldSequenceDocument::Is_Equivalent(
 			left.animationTracks.size() != right.animationTracks.size() ||
 			left.effectTracks.size() != right.effectTracks.size() ||
 			left.colliderTracks.size() != right.colliderTracks.size() ||
+            left.soundTracks != right.soundTracks || left.subtitleTracks != right.subtitleTracks ||
 			!sameFloat3(left.objectMotion.velocity, right.objectMotion.velocity) ||
 			!sameFloat3(left.objectMotion.acceleration, right.objectMotion.acceleration) ||
 			!sameFloat3(left.objectMotion.angularVelocityDegrees, right.objectMotion.angularVelocityDegrees) ||

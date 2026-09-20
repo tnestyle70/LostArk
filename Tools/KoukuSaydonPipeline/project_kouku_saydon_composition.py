@@ -136,7 +136,7 @@ PATTERN_OPTIONAL_KEYS = {
     "nextWorldOccurrenceOrdinal",
     "worldOccurrences",
     "nextSceneProfileOccurrenceOrdinal",
-    "sceneProfileOccurrences", "resetBossToSpawn", "resetBossYawDegrees", "bossMotion", "animationRootVerticalScale",
+    "sceneProfileOccurrences", "resetBossToSpawn", "resetBossYawDegrees", "bossMotion", "animationRootVerticalScale", "animationRootHorizontalScale",
     "presentationOccurrences", "nextPresentationOccurrenceOrdinal", "gateId", "targetBossPlacementId", "folderId",
 }
 LOGIC_KEYS = {"logicId", "displayName", "logicType"}
@@ -157,6 +157,7 @@ LOGIC_KIND_VALUE_KEYS = {
     "COUNTER_WINDOW": {"endsPatternOnSuccess"},
     "ATTACHMENT_HOLD": set(),
     "BOSS_TRACK_TARGET": {"followSpeedScale"},
+    "BINGO_BOARD": set(),
     "PURSUIT_PROJECTILES": {"projectileHits", "visualIds", "contactVisualId", "speedMps", "contactRadiusM", "spawnRadiusM", "lifetimeMs", "spawnIntervalMs", "homing", "countPerWave", "maxDistanceM"},
     "CROSS_DIRECTION_CLONES": {"directionPatternIds", "cloneEndStageId", "summonOccurrenceId"},
     "PATTERN_COMPLETION_COUNT": {"patternIds", "completionCount"},
@@ -713,7 +714,7 @@ def _validate_logic_definition(
         elif kind == "CARD_MAZE_HIDE_NEXT":
             if extra != {"triggerKind"}:
                 raise CompositionError(f"{context} CARD_MAZE_HIDE_NEXT carries unrelated values")
-        elif kind in {"CARD_MAZE_ENTER", "BOSS_TELEPORT_XZ", "BOSS_TELEPORT_FACE_CENTER", "MARIO_PHASE2_PLAYERS"}:
+        elif kind in {"CARD_MAZE_ENTER", "BOSS_TELEPORT_XZ", "BOSS_TELEPORT_GROUNDED", "BOSS_TELEPORT_FACE_CENTER", "MARIO_PHASE2_PLAYERS"}:
             if extra != {"triggerKind", "teleportPosition"}:
                 raise CompositionError(f"{context} {kind} requires only teleportPosition")
             position = logic["teleportPosition"]
@@ -1103,7 +1104,7 @@ def _validate_cross_direction(document, owner):
                 continue
             other_definition = definitions[other["logicId"]]
             moves_boss = (other_definition.get("judgementKind") == "BOSS_TRACK_TARGET" or
-                other_definition.get("triggerKind") in {"REAL_GAZE_TELEPORT", "BOSS_TELEPORT_XZ", "ALBION_AIRBORNE"} or
+                other_definition.get("triggerKind") in {"REAL_GAZE_TELEPORT", "BOSS_TELEPORT_XZ", "BOSS_TELEPORT_GROUNDED", "ALBION_AIRBORNE"} or
                 other_definition.get("bossChargeDistanceM", 0) > 0)
             if moves_boss and start < other["startMs"] + other["durationMs"] and other["startMs"] < end:
                 raise CompositionError("Cross direction cannot overlap another boss movement or tracking Logic")
@@ -1188,7 +1189,10 @@ def _validate_pattern_children(document: dict[str, Any], parent: dict[str, Any])
             raise CompositionError("Child Pattern is missing: " + child_id)
         if child_id == parent["patternId"] or child.get("patternOccurrences"):
             raise CompositionError("Nested or recursive Parent references are not supported; append a leaf Pattern: " + child_id)
-        if _pattern_target_metadata(child) != _pattern_target_metadata(parent):
+        encore = (parent.get("gateId") == "BINGO" and parent.get("targetBossPlacementId") == "boss.kakulsaydon.bingo.saydon" and
+                  child.get("gateId") == "GATE3" and child.get("targetBossPlacementId") == "boss.kakulsaydon.g3.saydon" and
+                  child.get("actorProfileId") == parent.get("actorProfileId") == "MN_RPCT_05")
+        if not encore and _pattern_target_metadata(child) != _pattern_target_metadata(parent):
             raise CompositionError("Child Pattern must retain Parent Gate, actor, and target boss: " + child_id)
         if not _pattern_duration(child):
             raise CompositionError("Child Pattern has no playable duration: " + child_id)
@@ -1212,6 +1216,8 @@ def _validate_pattern_children(document: dict[str, Any], parent: dict[str, Any])
                 raise CompositionError(f"Child Pattern {child_id} uses {key}; keep this action on the Parent or a separate Pattern")
         if child.get("animationRootVerticalScale", 1.0) != parent.get("animationRootVerticalScale", 1.0):
             raise CompositionError("Child animationRootVerticalScale must match the Parent: " + child_id)
+        if child.get("animationRootHorizontalScale", 1.0) != parent.get("animationRootHorizontalScale", 1.0):
+            raise CompositionError("Child animationRootHorizontalScale must match the Parent: " + child_id)
         for row in child.get("logicOccurrences", []):
             if not row.get("enabled", True): continue
             definition = logics.get(row["logicId"], {})
@@ -1240,7 +1246,7 @@ def _validate_pattern_children(document: dict[str, Any], parent: dict[str, Any])
         if any(stage.get("retargetOnEnter", False) for owner in owners for stage in owner["stages"]):
             raise CompositionError("Parent expansion retargetOnEnter cannot share bossMotion yaw")
         if any(row.get("enabled", True) and (
-                logics.get(row["logicId"], {}).get("triggerKind") in {"REAL_GAZE_TELEPORT", "BOSS_TELEPORT_XZ", "ALBION_AIRBORNE"} or
+                logics.get(row["logicId"], {}).get("triggerKind") in {"REAL_GAZE_TELEPORT", "BOSS_TELEPORT_XZ", "BOSS_TELEPORT_GROUNDED", "ALBION_AIRBORNE"} or
                 logics.get(row["logicId"], {}).get("bossChargeDistanceM", 0) > 0)
                for owner in owners for row in owner.get("logicOccurrences", [])):
             raise CompositionError("Parent expansion bossMotion cannot share teleport or charge movement")
@@ -1901,6 +1907,7 @@ def validate_document(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
         )
         _boolean(pattern.get("resetBossToSpawn", False), f"{context} resetBossToSpawn")
         _number(pattern.get("animationRootVerticalScale", 1.0), f"{context} animationRootVerticalScale", 0.0, 1.0)
+        _number(pattern.get("animationRootHorizontalScale", 1.0), f"{context} animationRootHorizontalScale", 0.0, 1.0)
         if "resetBossYawDegrees" in pattern:
             _number(pattern["resetBossYawDegrees"], f"{context} resetBossYawDegrees", -360, 360)
             if not pattern.get("resetBossToSpawn", False):
@@ -1997,9 +2004,9 @@ def validate_document(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
                 if enabled and status == "PRODUCT" and (not hold.get("enabled", True) or
                         hold_start > capture_start or hold_start + hold_duration < capture_start + capture_duration):
                     raise CompositionError(f"{box_context} Hold must be enabled and cover the complete Trigger window")
-            if kind in {"ATTACHMENT_HOLD", "BOSS_TRACK_TARGET", "CROSS_DIRECTION_CLONES"} and any(outcomes.values()):
+            if kind in {"ATTACHMENT_HOLD", "BOSS_TRACK_TARGET", "CROSS_DIRECTION_CLONES", "BINGO_BOARD"} and any(outcomes.values()):
                 raise CompositionError(f"{box_context} {kind} has no outcomes")
-            if kind in {"ATTACHMENT_HOLD", "BOSS_TRACK_TARGET", "CROSS_DIRECTION_CLONES"} and any(row.get("logicOccurrenceId") == box_id and
+            if kind in {"ATTACHMENT_HOLD", "BOSS_TRACK_TARGET", "CROSS_DIRECTION_CLONES", "BINGO_BOARD"} and any(row.get("logicOccurrenceId") == box_id and
                     presentation_resources[row["resourceId"]]["kind"] == "COLLIDER" for row in pattern.get("presentationOccurrences", [])):
                 raise CompositionError(f"{box_context} {kind} has no Collider")
             if sum(logic_defs[target].get("kind") == "CAPTURE_PLAYER" for target in outcomes["Success"]) > 1:
@@ -2314,7 +2321,7 @@ def validate_document(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
                 raise CompositionError(f"{context} bossMotion requires an ordered interval and equal base Y")
             if pattern.get("resetBossToSpawn", False) or "resetBossYawDegrees" in pattern:
                 raise CompositionError(f"{context} bossMotion cannot also reset boss to spawn")
-            if any(box.get("enabled", True) and logic_defs[box["logicId"]].get("kind") in {"REAL_GAZE_TELEPORT", "BOSS_TELEPORT_XZ"} for box in logic_occurrences):
+            if any(box.get("enabled", True) and logic_defs[box["logicId"]].get("kind") in {"REAL_GAZE_TELEPORT", "BOSS_TELEPORT_XZ", "BOSS_TELEPORT_GROUNDED"} for box in logic_occurrences):
                 raise CompositionError(f"{context} bossMotion cannot also teleport the boss")
         _validate_presentation_occurrences(pattern, presentation_resources, pattern_duration_ms, worlds_by_id)
         # These explicit occurrence references are a Save contract, including
@@ -3612,7 +3619,7 @@ def _sample_root_curve(samples, time_ms):
     return tuple(a[key] + (b[key] - a[key]) * alpha for key in ("forward", "lateral", "up"))
 
 
-def _build_animation_root_motion_samples(actor, animation, stage_duration_ms, vertical_scale=1.0, *, diagnostics=None):
+def _build_animation_root_motion_samples(actor, animation, stage_duration_ms, vertical_scale=1.0, *, horizontal_scale=1.0, diagnostics=None):
     native_ms, curve = _animation_root_curve(actor, animation, vertical_scale)
     # Keep source-range admission identical to the presentation sampler.
     _sample_animation_source_ms(animation, 0.0, native_ms)
@@ -3656,7 +3663,8 @@ def _build_animation_root_motion_samples(actor, animation, stage_duration_ms, ve
         cycles = math.floor(source_age / source_span) if looping else 0
         local = source_age - cycles * source_span if looping else min(source_age, source_span)
         position = _sample_root_curve(curve, source_start + local)
-        return tuple(cycles * delta + value - base for delta, value, base in zip(cycle_delta, position, baseline))
+        return tuple((cycles * delta + value - base) * (horizontal_scale if axis < 2 else 1.0)
+                     for axis, (delta, value, base) in enumerate(zip(cycle_delta, position, baseline)))
     samples = [{"timeMs": time, **dict(zip(("forward", "lateral", "up"), sample(time)))} for time in sorted(times)]
     if any(not math.isfinite(row[key]) or abs(row[key]) > 100000 for row in samples for key in ("forward", "lateral", "up")):
         raise CompositionError("Animation root motion loop exceeds the finite displacement range")
@@ -3772,7 +3780,8 @@ def _project_pattern_root_motion(document, pattern, root, cache):
             diagnostics = {}
             try:
                 samples = _build_animation_root_motion_samples(actor, animations[0], stage["durationMs"],
-                    pattern.get("animationRootVerticalScale", 1.0), diagnostics=diagnostics)
+                    pattern.get("animationRootVerticalScale", 1.0),
+                    horizontal_scale=pattern.get("animationRootHorizontalScale", 1.0), diagnostics=diagnostics)
             except (ValueError, IndexError, KeyError, ZeroDivisionError) as error:
                 raise CompositionError(f"Cannot bake Animation root motion {pattern['patternId']}/{stage['stageId']}: {error}") from error
             session = _PUBLICATION_INPUTS.get()
@@ -4361,7 +4370,7 @@ def project_encounter(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
                 continue
             logic = logics[box["logicId"]]
             kind = logic.get("judgementKind", logic.get("triggerKind"))
-            if kind in {"SHOWTIME_PLAYER_TARGETS", "BOSS_TRACK_TARGET", "CROSS_DIRECTION_CLONES", "PURSUIT_PROJECTILES"}:
+            if kind in {"SHOWTIME_PLAYER_TARGETS", "BOSS_TRACK_TARGET", "CROSS_DIRECTION_CLONES", "PURSUIT_PROJECTILES", "BINGO_BOARD"}:
                 continue
             if logic["logicType"] != "DURATION" and kind not in {"ENTER_AREA", "OBJECT_CONTACT"}:
                 continue
@@ -4412,7 +4421,7 @@ def project_encounter(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
                 continue
             logic = logics[box["logicId"]]
             kind = logic.get("judgementKind") if logic["logicType"] == "DURATION" else logic.get("triggerKind")
-            if kind not in {"BOSS_TRACK_TARGET", "CROSS_DIRECTION_CLONES"} and (logic["logicType"] != "TRIGGER" or kind in {None, "ENTER_AREA", "OBJECT_CONTACT", "ANIMATION_BLEND"}):
+            if kind not in {"BOSS_TRACK_TARGET", "CROSS_DIRECTION_CLONES", "BINGO_BOARD"} and (logic["logicType"] != "TRIGGER" or kind in {None, "ENTER_AREA", "OBJECT_CONTACT", "ANIMATION_BLEND"}):
                 continue
             clone_id = logic.get("clonePatternId", "")
             if clone_id and not any(p["patternId"] == clone_id and p["authoringStatus"] == "PRODUCT"
@@ -4567,7 +4576,7 @@ PRESENTATION_RESOURCE_REQUIRED = {"resourceId", "displayName", "kind", "assetId"
 PRESENTATION_RESOURCE_DEFAULTS = {
     "resourceKind": "GROUP", "elementId": "", "durationMs": 1000, "shape": "BOX", "colliderKind": "GEOMETRY",
     "halfExtents": [1.0, 1.0, 1.0], "radiusM": 3.0, "innerRadiusM": 0.0, "halfAngleDegrees": 45.0,
-    "defaultAnchorKind": "BOSS", "soundEvent": "",
+    "defaultAnchorKind": "BOSS", "soundEvent": "", "subtitleText": "", "subtitlePosition": "NORMAL",
 }
 PRESENTATION_OCCURRENCE_REQUIRED = {"occurrenceId", "resourceId", "startMs", "durationMs"}
 PRESENTATION_OCCURRENCE_EDITOR_KEYS = {"selectionGroupId"}
@@ -4604,17 +4613,31 @@ def _validate_presentation_resources(document: dict[str, Any]) -> dict[str, dict
         _display_name(resource["displayName"], "presentation displayName")
         normalized = {**PRESENTATION_RESOURCE_DEFAULTS, **resource}
         kind = normalized["kind"]
-        if kind not in {"EFFECT", "SOUND", "CAMERA", "COLLIDER", "LIGHT"}:
+        if kind not in {"EFFECT", "SOUND", "CAMERA", "COLLIDER", "LIGHT", "SUBTITLE"}:
             raise CompositionError("presentation resource kind is unsupported")
         if normalized["soundEvent"] != "":
             if kind != "SOUND":
                 raise CompositionError("soundEvent belongs only to SOUND resources")
             _stable_id(normalized["soundEvent"], "Sound catalog event")
+        subtitle = normalized["subtitleText"]
+        if kind == "SUBTITLE":
+            try:
+                subtitle_bytes = subtitle.encode("utf-8") if isinstance(subtitle, str) else b""
+            except UnicodeEncodeError as error:
+                raise CompositionError("SUBTITLE contains invalid UTF-8") from error
+            if not subtitle_bytes or len(subtitle_bytes) > 4096 or any((ord(c) < 32 and c != "\n") or ord(c) == 127 or c in "<>" for c in subtitle):
+                raise CompositionError("SUBTITLE requires bounded plain UTF-8 text")
+            if normalized["resourceKind"] != "" or normalized["defaultAnchorKind"] != "MAP":
+                raise CompositionError("SUBTITLE requires an empty resourceKind and MAP anchor")
+        elif subtitle != "" or normalized["subtitlePosition"] != "NORMAL":
+            raise CompositionError("Subtitle fields belong only to SUBTITLE resources")
+        if normalized["subtitlePosition"] not in {"NORMAL", "UPPER"}:
+            raise CompositionError("Invalid subtitlePosition")
         asset = normalized["assetId"]
         if kind == "COLLIDER":
             if asset != "":
                 raise CompositionError("COLLIDER assetId must be empty")
-        elif kind in {"CAMERA", "LIGHT"}:
+        elif kind in {"CAMERA", "LIGHT", "SUBTITLE"}:
             _stable_id(asset, f"{kind} assetId")
         else:
             _string(asset, "presentation assetId", 512)
@@ -4735,9 +4758,13 @@ def _validate_presentation_occurrences(pattern: dict[str, Any], resources: dict[
         light = resources[box["resourceId"]]["kind"] == "LIGHT"
         effect = resources[box["resourceId"]]["kind"] == "EFFECT"
         collider = resources[box["resourceId"]]["kind"] == "COLLIDER"
-        allowed_anchors = {"BOSS", "PLAYER", "MAP", "WORLD"} if light else ({"BOSS", "WORLD", "MAP"} if effect or collider else {"BOSS", "WORLD"})
+        subtitle = resources[box["resourceId"]]["kind"] == "SUBTITLE"
+        allowed_anchors = {"MAP"} if subtitle else ({"BOSS", "PLAYER", "MAP", "WORLD"} if light else ({"BOSS", "WORLD", "MAP"} if effect or collider else {"BOSS", "WORLD"}))
         if normalized["anchorKind"] not in allowed_anchors:
             raise CompositionError("presentation anchorKind is invalid")
+        if subtitle and (normalized["followBoss"] or normalized["bone"] or normalized["worldId"] or
+                         normalized["worldOccurrenceId"] or normalized["worldEmissionIndex"]):
+            raise CompositionError("Subtitle requires a fixed MAP anchor without a bone or World occurrence")
         if light and (normalized["scale"] != [1.0, 1.0, 1.0] or
                       (normalized["anchorKind"] != "WORLD" and normalized["worldId"]) or
                       normalized["logicOccurrenceId"] or
@@ -5116,6 +5143,8 @@ def _project_pattern_presentation(document: dict[str, Any], pattern: dict[str, A
             **({"bossMotion": copy.deepcopy(pattern["bossMotion"])} if "bossMotion" in pattern else {}),
             **({"animationRootVerticalScale": 0.0} if suppress_root_motion else
                ({"animationRootVerticalScale": pattern["animationRootVerticalScale"]} if pattern.get("animationRootVerticalScale", 1.0) != 1.0 else {})),
+            **({"animationRootHorizontalScale": pattern["animationRootHorizontalScale"]}
+               if pattern.get("animationRootHorizontalScale", 1.0) != 1.0 else {}),
             **({"worldEmissionAnchors": emission_anchors} if emission_anchors else {}),
             **({"sourceAnchorAnimations": source_animations} if source_animations else {}),
             **({"animationBlendWindows": blend_windows} if blend_windows else {}),

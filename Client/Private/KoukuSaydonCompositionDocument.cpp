@@ -751,7 +751,7 @@ namespace
 				std::any_of(logic.TeleportPosition.begin(), logic.TeleportPosition.end(), [](double x) { return x != 0.0; }))
 			{ outStatus = "ENTER_AREA geometry belongs to its linked Collider occurrence."; return false; }
 		}
-		else if (logic.strTriggerKind == "CARD_MAZE_HIDE_NEXT" || logic.strTriggerKind == "CARD_MAZE_ENTER" || (logic.strTriggerKind == "BOSS_TELEPORT_XZ" || logic.strTriggerKind == "BOSS_TELEPORT_FACE_CENTER" || logic.strTriggerKind == "MARIO_PHASE2_PLAYERS"))
+		else if (logic.strTriggerKind == "CARD_MAZE_HIDE_NEXT" || logic.strTriggerKind == "CARD_MAZE_ENTER" || ((logic.strTriggerKind == "BOSS_TELEPORT_XZ" || logic.strTriggerKind == "BOSS_TELEPORT_GROUNDED") || logic.strTriggerKind == "BOSS_TELEPORT_FACE_CENTER" || logic.strTriggerKind == "MARIO_PHASE2_PLAYERS"))
 		{
 			if (!logic.strHudMode.empty() || !logic.strClonePatternId.empty() || !logic.ClockHours.empty() ||
 				logic.fFaceCenterYawOffsetDegrees != 0.0 ||
@@ -858,6 +858,7 @@ namespace
 		{
 		case KOUKU_SAYDON_PRESENTATION_KIND::EFFECT: return "EFFECT";
 		case KOUKU_SAYDON_PRESENTATION_KIND::SOUND: return "SOUND";
+		case KOUKU_SAYDON_PRESENTATION_KIND::SUBTITLE: return "SUBTITLE";
 		case KOUKU_SAYDON_PRESENTATION_KIND::CAMERA: return "CAMERA";
 		case KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER: return "COLLIDER";
 		case KOUKU_SAYDON_PRESENTATION_KIND::LIGHT: return "LIGHT";
@@ -911,7 +912,7 @@ namespace
 		KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE& row)
 	{
 		if (!Has_Properties(value, { "resourceId", "displayName", "kind", "assetId" },
-			{ "resourceKind", "elementId", "durationMs", "shape", "halfExtents", "radiusM", "innerRadiusM", "halfAngleDegrees", "colliderKind", "defaultAnchorKind", "soundEvent" }))
+			{ "resourceKind", "elementId", "durationMs", "shape", "halfExtents", "radiusM", "innerRadiusM", "halfAngleDegrees", "colliderKind", "defaultAnchorKind", "soundEvent", "subtitleText", "subtitlePosition" }))
 			return false;
 		std::string kind;
 		if (!Read_PresentationText(value, "resourceId", row.strResourceId, true) ||
@@ -919,6 +920,8 @@ namespace
 			!Read_PresentationText(value, "kind", kind, true) ||
 			!Read_PresentationText(value, "assetId", row.strAssetId, true) ||
 			!Read_PresentationText(value, "soundEvent", row.strSoundEvent) ||
+			!Read_PresentationText(value, "subtitleText", row.strSubtitleText) ||
+			!Read_PresentationText(value, "subtitlePosition", row.strSubtitlePosition) ||
 			!Read_PresentationText(value, "resourceKind", row.strResourceKind) ||
 			!Read_PresentationText(value, "elementId", row.strElementId) ||
 			!Read_PresentationText(value, "defaultAnchorKind", row.strDefaultAnchorKind) ||
@@ -931,7 +934,8 @@ namespace
 			!Read_PresentationNumber(value, "halfAngleDegrees", row.fHalfAngleDegrees, row.strShape == "REVERSE_SECTOR" ? 0.0 : 0.001, 180.0)) return false;
 		for (const auto candidate : { KOUKU_SAYDON_PRESENTATION_KIND::EFFECT,
 			KOUKU_SAYDON_PRESENTATION_KIND::SOUND, KOUKU_SAYDON_PRESENTATION_KIND::CAMERA,
-			KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER, KOUKU_SAYDON_PRESENTATION_KIND::LIGHT })
+			KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER, KOUKU_SAYDON_PRESENTATION_KIND::LIGHT,
+			KOUKU_SAYDON_PRESENTATION_KIND::SUBTITLE })
 			if (kind == Presentation_KindName(candidate)) { row.eKind = candidate; return true; }
 		return false;
 	}
@@ -1189,7 +1193,7 @@ namespace
                 if (!otherLogic || other.iStartMs >= end ||
                     std::uint64_t(other.iStartMs) + (std::max)(1u, other.iDurationMs) <= box.iStartMs) continue;
                 if (otherLogic->strJudgementKind == "BOSS_TRACK_TARGET" || otherLogic->strJudgementKind == "PATTERN_COMPLETION_COUNT" ||
-                    otherLogic->strTriggerKind == "REAL_GAZE_TELEPORT" || otherLogic->strTriggerKind == "BOSS_TELEPORT_XZ" ||
+                    otherLogic->strTriggerKind == "REAL_GAZE_TELEPORT" || (otherLogic->strTriggerKind == "BOSS_TELEPORT_XZ" || otherLogic->strTriggerKind == "BOSS_TELEPORT_GROUNDED") ||
                     otherLogic->strTriggerKind == "ALBION_AIRBORNE" || otherLogic->strTriggerKind == "ANIMATION_BLEND" || otherLogic->fBossChargeDistanceM > 0.0)
                     return fail("another Logic controls the body during this window.");
             }
@@ -1225,8 +1229,11 @@ namespace
                 std::any_of(document.Folders.begin(), document.Folders.end(), [&](const auto& folder) {
                     return folder.strTimelinePatternId == child->strPatternId; }))
                 return fail("Nested Parent or cyclic Pattern reference: " + row.strPatternId);
-            if (child->strGateId != pattern.strGateId || child->strActorProfileId != pattern.strActorProfileId ||
-                child->strTargetBossPlacementId != pattern.strTargetBossPlacementId)
+            const bool encore = pattern.strGateId == "BINGO" && pattern.strTargetBossPlacementId == "boss.kakulsaydon.bingo.saydon" &&
+                child->strGateId == "GATE3" && child->strTargetBossPlacementId == "boss.kakulsaydon.g3.saydon" &&
+                child->strActorProfileId == "MN_RPCT_05" && pattern.strActorProfileId == "MN_RPCT_05";
+            if (!encore && (child->strGateId != pattern.strGateId || child->strActorProfileId != pattern.strActorProfileId ||
+                child->strTargetBossPlacementId != pattern.strTargetBossPlacementId))
                 return fail("Child requires the same Gate, actor and target boss: " + row.strPatternId);
             if (!Pattern_Lifetime(*child) || Pattern_Lifetime(*child) > MAX_TIME_MS ||
                 !row.iDurationMs || std::uint64_t(row.iStartMs) + row.iDurationMs > lifetime)
@@ -1243,7 +1250,7 @@ namespace
                     if (!box.bEnabled) continue;
                     const auto definition = std::find_if(document.Logics.begin(), document.Logics.end(),
                         [&](const auto& logic) { return logic.strLogicId == box.strLogicId; });
-                    if (definition != document.Logics.end() && (definition->strTriggerKind == "REAL_GAZE_TELEPORT" || definition->strTriggerKind == "BOSS_TELEPORT_XZ" ||
+                    if (definition != document.Logics.end() && (definition->strTriggerKind == "REAL_GAZE_TELEPORT" || (definition->strTriggerKind == "BOSS_TELEPORT_XZ" || definition->strTriggerKind == "BOSS_TELEPORT_GROUNDED") ||
                         (definition->strTriggerKind == "ENTER_AREA" && definition->fBossChargeDistanceM > 0.0)))
                         return fail("Moving child cannot share Parent teleport or charge Logic.");
                 }
@@ -1589,6 +1596,12 @@ namespace
 			if (!row.strSoundEvent.empty() &&
 				(row.eKind != KOUKU_SAYDON_PRESENTATION_KIND::SOUND || !Is_StableId(row.strSoundEvent)))
 			{ outStatus = "Sound event requires a SOUND resource and a stable catalog identity."; return false; }
+			if ((row.eKind == KOUKU_SAYDON_PRESENTATION_KIND::SUBTITLE &&
+				!CKoukuSaydonCompositionDocument::Is_ValidSubtitleText(row.strSubtitleText)) ||
+				(row.eKind != KOUKU_SAYDON_PRESENTATION_KIND::SUBTITLE && !row.strSubtitleText.empty()) ||
+				(row.strSubtitlePosition != "NORMAL" && row.strSubtitlePosition != "UPPER") ||
+				(row.eKind != KOUKU_SAYDON_PRESENTATION_KIND::SUBTITLE && row.strSubtitlePosition != "NORMAL"))
+			{ outStatus = "Subtitle text/position requires a valid SUBTITLE resource."; return false; }
 			bool_t validAsset = false;
 			switch (row.eKind)
 			{
@@ -1610,6 +1623,9 @@ namespace
 					std::none_of(assetPath.begin(), assetPath.end(), [](const auto& part) { return part == ".."; });
 				break;
 			}
+			case KOUKU_SAYDON_PRESENTATION_KIND::SUBTITLE:
+				validAsset = Is_StableId(row.strAssetId) && row.strResourceKind.empty() &&
+					row.strElementId.empty() && row.strDefaultAnchorKind == "MAP"; break;
 			case KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER:
 				validAsset = row.strAssetId.empty() && (row.strShape == "BOX" || row.strShape == "SECTOR" || row.strShape == "REVERSE_SECTOR" || row.strShape == "CIRCLE"); break;
 			default: break;
@@ -1733,6 +1749,9 @@ namespace
 			if (!std::isfinite(pattern.fAnimationRootVerticalScale) ||
 				pattern.fAnimationRootVerticalScale < 0.0 || pattern.fAnimationRootVerticalScale > 1.0)
 			{ outStatus = "Animation root vertical scale must be finite 0..1."; return false; }
+			if (!std::isfinite(pattern.fAnimationRootHorizontalScale) ||
+				pattern.fAnimationRootHorizontalScale < 0.0 || pattern.fAnimationRootHorizontalScale > 1.0)
+			{ outStatus = "Animation root horizontal scale must be finite 0..1."; return false; }
 			if (pattern.ResetBossYawDegrees && (!pattern.bResetBossToSpawn ||
 				!std::isfinite(*pattern.ResetBossYawDegrees) || std::abs(*pattern.ResetBossYawDegrees) > 360.0))
 			{
@@ -1936,12 +1955,16 @@ namespace
 					row.strAnchorKind != "BOSS" || row.strBone.empty()))
 				{ outStatus = "Bone rotation requires a boss Effect with an explicit bone: " + row.strOccurrenceId; return false; }
 				if ((resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::LIGHT &&
-					(row.strAnchorKind == "PLAYER" || (row.strAnchorKind == "MAP" && resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT && resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER) || row.fBrightnessMultiplier != 1.0)) ||
+					(row.strAnchorKind == "PLAYER" || (row.strAnchorKind == "MAP" && resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT && resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER && resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::SUBTITLE) || row.fBrightnessMultiplier != 1.0)) ||
 					(resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::LIGHT &&
 					(row.Scale != std::array<double, 3u>{1.0, 1.0, 1.0} ||
 					 (row.strAnchorKind != "BOSS" && !row.strBone.empty()) ||
 					 (row.strAnchorKind == "PLAYER" && !row.bFollowBoss))))
 				{ outStatus = "Invalid Light anchor, scale, bone or brightness: " + row.strOccurrenceId; return false; }
+				if (resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::SUBTITLE &&
+					(row.strAnchorKind != "MAP" || row.bFollowBoss || !row.strBone.empty() ||
+					 !row.strWorldId.empty() || !row.strWorldOccurrenceId.empty() || row.iWorldEmissionIndex != 0u))
+				{ outStatus = "Subtitle requires a fixed MAP anchor without a bone or World occurrence."; return false; }
 				if ((resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT || resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER) && row.strAnchorKind == "MAP" &&
 					(row.bFollowBoss || !row.strBone.empty() || row.strBoneTarget != "BODY" || !row.strWorldId.empty() || !row.strWorldOccurrenceId.empty() || (resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER && row.iWorldEmissionIndex != 0u)))
 				{ outStatus = "MAP Effect/Collider requires a fixed position without a bone or World occurrence."; return false; }
@@ -2078,7 +2101,7 @@ namespace
 				if (std::count_if(box.OnSuccessLogicIds.begin(), box.OnSuccessLogicIds.end(), [&](const auto& id) {
 					const auto* result = findLogic(id); return result && result->strOutcomeKind == "CAPTURE_PLAYER"; }) > 1)
 				{ outStatus = "One Trigger may apply at most one CAPTURE_PLAYER Result."; return false; }
-				if (pattern.BossMotion && box.bEnabled && (owner.strTriggerKind == "REAL_GAZE_TELEPORT" || owner.strTriggerKind == "BOSS_TELEPORT_XZ" || owner.strTriggerKind == "ALBION_AIRBORNE"))
+				if (pattern.BossMotion && box.bEnabled && (owner.strTriggerKind == "REAL_GAZE_TELEPORT" || (owner.strTriggerKind == "BOSS_TELEPORT_XZ" || owner.strTriggerKind == "BOSS_TELEPORT_GROUNDED") || owner.strTriggerKind == "ALBION_AIRBORNE"))
 				{ outStatus = "Boss Motion cannot also teleport the boss."; return false; }
                 if (box.bEnabled && owner.fBossChargeDistanceM > 0.0)
                 {
@@ -2770,6 +2793,15 @@ namespace
 	};
 }
 
+bool_t Client::CKoukuSaydonCompositionDocument::Is_ValidSubtitleText(const std::string_view text)
+{
+    return !text.empty() && text.size() <= 4096u &&
+        std::none_of(text.begin(), text.end(), [](const unsigned char c) {
+            return (c < 0x20u && c != '\n') || c == 0x7fu || c == '<' || c == '>';
+        }) && MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, text.data(),
+            static_cast<int>(text.size()), nullptr, 0) > 0;
+}
+
 Client::CKoukuSaydonCompositionDocument::CKoukuSaydonCompositionDocument(
 	std::filesystem::path path)
 	: m_Path(std::move(path))
@@ -3402,7 +3434,7 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 				  "nextSummonOccurrenceOrdinal", "summonOccurrences",
 				  "nextWorldOccurrenceOrdinal", "worldOccurrences",
 				  "nextSceneProfileOccurrenceOrdinal", "sceneProfileOccurrences",
-				  "nextPresentationOccurrenceOrdinal", "presentationOccurrences", "enterCombatOnFinish", "resetBossToSpawn", "resetBossYawDegrees", "bossMotion", "animationRootVerticalScale", "gateId", "targetBossPlacementId", "folderId", "durationMs", "nextPatternOccurrenceOrdinal", "patternOccurrences" }) :
+				  "nextPresentationOccurrenceOrdinal", "presentationOccurrences", "enterCombatOnFinish", "resetBossToSpawn", "resetBossYawDegrees", "bossMotion", "animationRootVerticalScale", "animationRootHorizontalScale", "gateId", "targetBossPlacementId", "folderId", "durationMs", "nextPatternOccurrenceOrdinal", "patternOccurrences" }) :
 			Has_Properties(patternValue,
 				{ "patternId", "actorProfileId", "displayName", "authoringStatus", "category",
 				  "nextStageOrdinal", "nextAnimationOrdinal", "stages" },
@@ -3410,7 +3442,7 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 				  "nextSummonOccurrenceOrdinal", "summonOccurrences",
 				  "nextWorldOccurrenceOrdinal", "worldOccurrences",
 				  "nextSceneProfileOccurrenceOrdinal", "sceneProfileOccurrences",
-				  "nextPresentationOccurrenceOrdinal", "presentationOccurrences", "enterCombatOnFinish", "resetBossToSpawn", "resetBossYawDegrees", "bossMotion", "animationRootVerticalScale", "gateId", "targetBossPlacementId", "folderId", "durationMs", "nextPatternOccurrenceOrdinal", "patternOccurrences" });
+				  "nextPresentationOccurrenceOrdinal", "presentationOccurrences", "enterCombatOnFinish", "resetBossToSpawn", "resetBossYawDegrees", "bossMotion", "animationRootVerticalScale", "animationRootHorizontalScale", "gateId", "targetBossPlacementId", "folderId", "durationMs", "nextPatternOccurrenceOrdinal", "patternOccurrences" });
 		if (!validProperties)
 		{
 			outStatus = "KoukuSaydon Pattern has unexpected properties.";
@@ -3826,6 +3858,9 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 		if (const auto* scale = patternValue.Find("animationRootVerticalScale"); nullptr != scale)
 			if (!Try_ParseFinite(*scale, 0.0, 1.0, stagedPattern.fAnimationRootVerticalScale))
 			{ outStatus = "Invalid animationRootVerticalScale: use 0..1."; return false; }
+		if (const auto* scale = patternValue.Find("animationRootHorizontalScale"); nullptr != scale)
+			if (!Try_ParseFinite(*scale, 0.0, 1.0, stagedPattern.fAnimationRootHorizontalScale))
+			{ outStatus = "Invalid animationRootHorizontalScale: use 0..1."; return false; }
 		if (const auto* value = patternValue.Find("bossMotion"); nullptr != value)
 		{
 			KOUKU_SAYDON_BOSS_MOTION motion;
@@ -4512,7 +4547,7 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 			}
 			else if (logic.strTriggerKind == "HUD_ENTER")
 				output << ",\n      \"hudMode\": \"" << logic.strHudMode << "\"";
-			else if (logic.strTriggerKind == "CARD_MAZE_ENTER" || (logic.strTriggerKind == "BOSS_TELEPORT_XZ" || logic.strTriggerKind == "BOSS_TELEPORT_FACE_CENTER" || logic.strTriggerKind == "MARIO_PHASE2_PLAYERS"))
+			else if (logic.strTriggerKind == "CARD_MAZE_ENTER" || ((logic.strTriggerKind == "BOSS_TELEPORT_XZ" || logic.strTriggerKind == "BOSS_TELEPORT_GROUNDED") || logic.strTriggerKind == "BOSS_TELEPORT_FACE_CENTER" || logic.strTriggerKind == "MARIO_PHASE2_PLAYERS"))
 				output << ",\n      \"teleportPosition\": [" << logic.TeleportPosition[0] << ", " << logic.TeleportPosition[1] << ", " << logic.TeleportPosition[2] << "]";
 			else if (logic.strTriggerKind == "REAL_GAZE_TELEPORT")
 			{
@@ -4583,6 +4618,9 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 			<< "\", \"durationMs\": " << row.iDurationMs
 			<< ", \"shape\": \"" << CDataJson::Escape(row.strShape) << "\", \"colliderKind\": \"" << CDataJson::Escape(row.strColliderKind) << "\", \"halfExtents\": ";
 		Write_PresentationVector(output, row.HalfExtents);
+		if (row.eKind == KOUKU_SAYDON_PRESENTATION_KIND::SUBTITLE)
+			output << ", \"subtitleText\": \"" << CDataJson::Escape(row.strSubtitleText)
+				<< "\", \"subtitlePosition\": \"" << CDataJson::Escape(row.strSubtitlePosition) << "\"";
 		if (row.fInnerRadiusM > 0.0) output << ", \"innerRadiusM\": " << row.fInnerRadiusM;
 		output << ", \"radiusM\": " << row.fRadiusM << ", \"halfAngleDegrees\": " << row.fHalfAngleDegrees
 			<< '}' << (i + 1u < document.PresentationResources.size() ? "," : "") << '\n';
@@ -4751,6 +4789,8 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 			output << ",\n      \"enterCombatOnFinish\": true";
 		if (pattern.fAnimationRootVerticalScale != 1.0)
 			output << ",\n      \"animationRootVerticalScale\": " << pattern.fAnimationRootVerticalScale;
+		if (pattern.fAnimationRootHorizontalScale != 1.0)
+			output << ",\n      \"animationRootHorizontalScale\": " << pattern.fAnimationRootHorizontalScale;
 		if (pattern.BossMotion)
 		{
 			const auto& motion = *pattern.BossMotion;
@@ -5304,6 +5344,8 @@ bool_t Client::CKoukuSaydonCompositionDocument::Try_ExpandPatternDocument(
         }
         if (child.fAnimationRootVerticalScale != selected->fAnimationRootVerticalScale)
             return fail("Child animation root vertical scale differs from Parent: " + child.strPatternId);
+        if (child.fAnimationRootHorizontalScale != selected->fAnimationRootHorizontalScale)
+            return fail("Child animation root horizontal scale differs from Parent: " + child.strPatternId);
         const auto childDuration = static_cast<std::uint32_t>(Pattern_Lifetime(child));
         const auto slotEnd = slot.iStartMs + slot.iDurationMs;
         std::uint32_t cycleStart = slot.iStartMs;

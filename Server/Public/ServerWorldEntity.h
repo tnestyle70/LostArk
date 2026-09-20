@@ -390,6 +390,8 @@ namespace LostArk::Server
 		float fPatternStageOriginY = 0.f;
 		float fPatternStageRootGroundY = 0.f;
 		bool bPatternStageRootOriginCaptured = false;
+		// An explicit grounded teleport anchors later stages to navigation until this pattern ends.
+		bool bPatternRootGrounded = false;
 		std::uint32_t iPatternStageRootLastTick = 0u;
 		bool bPatternWallContact = false;
 		/* The running stage reaches through a raised encounter prop, so cover

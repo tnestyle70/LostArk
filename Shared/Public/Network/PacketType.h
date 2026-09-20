@@ -85,7 +85,9 @@ namespace LostArk::Shared
 	// 93 combines main gate-progress votes with the fixed-roster Kouku raid
 	// preparation and shared Sequence clock. Earlier peers are incompatible.
 	// 94 admits the Maharaka Paradise island as a Server-owned shared world.
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 94;
+	// 95 adds the Gate 3 arrival-to-combat entry wait phase; earlier peers reject it.
+	// 96 adds the explicit Gate 3 entry vote; earlier peers reject its intent.
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 96;
 
 	enum class WORLD_ID : std::uint16_t
 	{

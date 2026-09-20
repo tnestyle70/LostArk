@@ -1104,9 +1104,12 @@ namespace LostArk::Shared
 	/* Bingo bomb. The Server owns the whole clock: the mark rides one
 	player, and when it expires the bomb is planted at wherever that player
 	was standing. The Client draws only the phase the snapshot names. */
-	constexpr std::uint32_t KOUKU_BINGO_BOMB_MARK_MS = 3000u;
+	constexpr std::uint32_t KOUKU_BINGO_BOMB_MARK_MS = 5000u;
+	constexpr std::uint32_t KOUKU_BINGO_BOMB_INTERVAL_MS = 5000u;
+	constexpr std::uint32_t KOUKU_BINGO_HAMMER_INTERVAL_MS = 10000u;
+	constexpr std::uint32_t KOUKU_BINGO_HAMMER_WARNING_MS = 3000u;
 	/* How long the planted bomb burns before it paints its cross. */
-	constexpr std::uint32_t KOUKU_BINGO_BOMB_FUSE_MS = 2000u;
+	constexpr std::uint32_t KOUKU_BINGO_BOMB_FUSE_MS = 3000u;
 	/* One mark per player in a full room. */
 	constexpr std::int32_t KOUKU_BINGO_MAX_BOMBS = 4;
 
@@ -2893,12 +2896,13 @@ namespace LostArk::Shared
 		END
 	};
 
-	/* What the vote is for: ADVANCE raises the next gate after a clear, RESTART raises the
-	   current gate again (the widget's restart button, retail's "restart vote"). */
+	/* ADVANCE raises the next gate after a clear; RESTART raises the current gate again.
+	   ENTER_GATE3 admits the Gate 3 arrival deck independently of the currently raised gate. */
 	enum class GATE_PROGRESS_KIND : std::uint8_t
 	{
 		ADVANCE = 0,
 		RESTART,
+		ENTER_GATE3,
 		END
 	};
 
@@ -3183,7 +3187,7 @@ namespace LostArk::Shared
 	// Complete Play has one room clock; clients only present this state.
 	enum class KOUKUSAYDON_RAID_OPERATION : std::uint8_t { START, STOP, READY, FAILED, END };
 	enum class KOUKUSAYDON_RAID_PHASE : std::uint8_t
-	{ INACTIVE, PREPARING, CINEMATIC, COMBAT, WAIT_GATE, WAIT_MINIGAME, COMPLETE, ABORTED, END };
+	{ INACTIVE, PREPARING, CINEMATIC, COMBAT, WAIT_GATE, WAIT_MINIGAME, COMPLETE, ABORTED, WAIT_ENTRY, END };
 	struct C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST final
 	{
 		std::uint32_t iRequestSequence = 0u;

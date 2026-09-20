@@ -184,7 +184,12 @@ public:
 	void Debug_HoldSequenceCombatFade();
 	// Includes only this client's Server-admitted Mario presentation override.
 	const string& Get_GatePresentationProfileId() const;
+	bool_t Prepare_ServerRaidGatePresentation(const std::string& gateId, std::string& status);
 	bool_t Apply_ServerRaidGatePresentation(const std::string& gateId, std::uint32_t epoch, std::string& status);
+	// An admitted local Sequence shares the existing Level-owned Music channel.
+	void Notify_SequencePlaybackStarted();
+	void Notify_SequencePlaybackEnded();
+	bool_t Is_AtGate3EntryTerrace() const;
 	bool_t Begin_ServerRaidCinematicPresentation(std::string& status);
 	bool_t End_ServerRaidCinematicPresentation(bool_t restorePrevious, std::string& status);
 
@@ -306,7 +311,6 @@ public:
 	bool_t Sample_CompositionCamera(std::string_view shotId, float seconds, const float3_t& offset, std::string_view ownerKey, uint32_t durationMs, bool_t preview);
 	bool_t Is_CompositionCameraEnabled() const;
 	bool_t Is_CinematicPresentationActive() const;
-	bool_t Needs_Gate2IntroCharacterLight() const;
 	bool_t Is_LocalMarioStageActive() const;
 	void Trace_CinematicPresentation(std::string_view renderingProfile);
 	void Stop_CompositionCamera(bool_t force = false);
@@ -545,6 +549,7 @@ private:
 		std::vector<VISIBILITY> visibility;
 		std::optional<DEPLOY_PROP_STATE> previousLegacyBook;
 		bool_t suspended = true;
+		bool_t serverRaidPrepared = false;
 	};
 	unique_ptr<GATE_OBJECT_PRESENTATION> m_pPendingGateObjects;
 	unique_ptr<GATE_OBJECT_PRESENTATION> m_pGateObjects;
@@ -650,6 +655,8 @@ private:
     std::shared_ptr<CMapLightPresentationRuntime> m_pGateMapLightPresentation;
     std::uint32_t m_iServerRaidGatePresentationEpoch = 0u;
     std::optional<CMapLightDocument> m_GateMapLightSource;
+    std::shared_ptr<CMapLightPresentationRuntime> m_pPendingGateMapLights;
+    std::optional<CMapLightDocument> m_PendingGateMapLightSource;
 
 	bool_t m_bSequenceCombatPending = false;
 	bool_t m_bSequenceCombatFadeHeld = false;
@@ -662,8 +669,6 @@ private:
 	float m_fDebugGazeHalfAngle = 45.f;
 	float m_fDebugGazeDistance = 30.f;
 	std::uint32_t m_iNextDebugGateRequestSequence = 1u;
-    std::shared_ptr<CMapLightPresentationRuntime> m_pPendingGateMapLights;
-    std::optional<CMapLightDocument> m_PendingGateMapLightSource;
 	size_t m_iPendingDebugGate = NO_ACTIVE_DEBUG_GATE;
 	std::map<std::string, std::uint64_t> m_DebugGatePendingPlacements;
 	bool_t m_bDebugGateFailed = false;
@@ -710,11 +715,23 @@ private:
 	bool_t m_bGateVoteAnswered = false;
 	bool_t m_bMvpWasVisible = false;
 	std::uint32_t m_iNextGateRequestSequence = 1u;
+	// Attempt once on each playback edge; missing media never retries every frame.
+	bool_t m_bReadyTerraceBgmInitialized = false;
+	bool_t m_bReadyTerraceBgmWanted = false;
+	bool_t m_bLocalSequencePlaybackActive = false;
+	bool_t m_bReadyTerraceBgmStarted = false;
+	std::uint32_t m_iReadyTerraceObservedRunEpoch = 0u;
+	LostArk::Shared::KOUKUSAYDON_RAID_PHASE m_eReadyTerraceObservedPhase = LostArk::Shared::KOUKUSAYDON_RAID_PHASE::INACTIVE;
+	bool_t Try_GetReplicatedLocalPlayerPosition(float3_t& outPosition) const;
+	void Start_ReadyTerraceBgm();
+	void Stop_ReadyTerraceBgm();
+	void Update_ReadyTerraceBgm();
 	void Update_GateProgress(f32_t fTimeDelta);
 	void Apply_GateProgressState(const LostArk::Shared::S2C_GATE_PROGRESS_STATE& State);
 	/* Both Server gate routes share the same object / lighting commit. Active Raid
 	   presentation waits for its cinematic clock before this owner changes. */
 	void Apply_ServerGate(size_t gateIndex);
+	bool_t Prepare_GatePresentation(size_t gateIndex, std::string& status);
 	bool_t Commit_GatePresentation(size_t gateIndex, std::string& status);
 	bool_t Is_ServerRaidActive() const;
 	bool_t Is_LocalGateParticipant() const;

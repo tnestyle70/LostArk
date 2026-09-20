@@ -4192,6 +4192,28 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
         pattern["bossMotion"] = manual_motion
         self.assertTrue(all("animationRootVerticalScale" not in row for row in subject.project_presentation(document)["bindings"]))
 
+    def test_animation_root_horizontal_scale_is_optional_bounded_pattern_metadata(self):
+        document = copy.deepcopy(self.document)
+        pattern = self.find(document, "KAKULSAYDON_G1_PATTERN_21")
+        document["patterns"] = [self.strip_lanes(pattern)]
+        for key in ("logics", "summons", "worlds", "sceneProfiles", "presentationResources"):
+            document[key] = []
+        pattern["authoringStatus"] = "PRODUCT"
+        document["playAllPatternIds"] = [pattern["patternId"]]
+        for scale in (0, .5, 1):
+            pattern["animationRootHorizontalScale"] = scale
+            self.validate(document)
+            product = subject.project_presentation(document)
+            self.assertEqual(scale, product["patterns"][0].get("animationRootHorizontalScale", 1))
+            self.assertTrue(all("animationRootHorizontalScale" not in row for row in product["bindings"]))
+        for scale in (None, True, "0.5", -.1, 1.1, float("nan"), float("inf")):
+            pattern["animationRootHorizontalScale"] = scale
+            with self.subTest(scale=scale), self.assertRaisesRegex(subject.CompositionError, "animationRootHorizontalScale"):
+                self.validate(document)
+        pattern.pop("animationRootHorizontalScale")
+        self.validate(document)
+        self.assertNotIn("animationRootHorizontalScale", subject.project_presentation(document)["patterns"][0])
+
     def test_animation_root_vertical_scale_matches_original_rise_and_cache_isolation(self):
         pattern = self.find(self.document, "KAKULSAYDON_G1_PATTERN_8")
         actor = subject._load_bone_bake_actor(pattern, ROOT, {})
@@ -5148,13 +5170,45 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
             trigger.pop(key, None)
         trigger.update(triggerKind="BOSS_TELEPORT_XZ", teleportPosition=[2.57, 1.3, 952.27])
         product = self.strip_lanes(self.first_product(document))
+        product["authoringStatus"] = "PRODUCT"
         product["nextLogicOccurrenceOrdinal"] = 2
         product["logicOccurrences"] = [{"occurrenceId": product["patternId"] + ".logic.1",
             "logicId": trigger["logicId"], "startMs": 250, "durationMs": 100}]
+        document["playAllPatternIds"] = [p["patternId"] for p in document["patterns"] if p["authoringStatus"] == "PRODUCT"]
         self.validate(document)
         row = next(p for p in subject.project_encounter(document)["patterns"]
                    if p["patternId"] == product["patternId"])["mechanicTriggers"][0]
         self.assertEqual("BOSS_TELEPORT_XZ", row["kind"])
+        self.assertEqual([2.57, 1.3, 952.27], row["teleportPosition"])
+        self.assertEqual([], row["clockHours"])
+        self.assertEqual("", row["clonePatternId"])
+        trigger["teleportPosition"][0] = 100001
+        with self.assertRaises(subject.CompositionError):
+            self.validate(document)
+        trigger["teleportPosition"][0] = 2.57
+        product["bossMotion"] = {"startMs": 0, "endMs": 100, "startPosition": [0, 0, 0],
+                                 "endPosition": [0, 0, 1], "yawDegrees": 0}
+        product["resetBossToSpawn"] = False
+        product.pop("resetBossYawDegrees", None)
+        with self.assertRaisesRegex(subject.CompositionError, "cannot also teleport"):
+            self.validate(document)
+
+    def test_grounded_teleport_preserves_reference_y_and_rejects_absolute_motion(self):
+        document = self.without_catalog_boxes(copy.deepcopy(self.document))
+        trigger = next(row for row in document["logics"] if row["logicId"] == "kakulsaydon.g1.logic.9")
+        for key in subject.LOGIC_TRIGGER_VALUE_KEYS:
+            trigger.pop(key, None)
+        trigger.update(triggerKind="BOSS_TELEPORT_GROUNDED", teleportPosition=[2.57, 1.3, 952.27])
+        product = self.strip_lanes(self.first_product(document))
+        product["authoringStatus"] = "PRODUCT"
+        product["nextLogicOccurrenceOrdinal"] = 2
+        product["logicOccurrences"] = [{"occurrenceId": product["patternId"] + ".logic.1",
+            "logicId": trigger["logicId"], "startMs": 250, "durationMs": 100}]
+        document["playAllPatternIds"] = [p["patternId"] for p in document["patterns"] if p["authoringStatus"] == "PRODUCT"]
+        self.validate(document)
+        row = next(p for p in subject.project_encounter(document)["patterns"]
+                   if p["patternId"] == product["patternId"])["mechanicTriggers"][0]
+        self.assertEqual("BOSS_TELEPORT_GROUNDED", row["kind"])
         self.assertEqual([2.57, 1.3, 952.27], row["teleportPosition"])
         self.assertEqual([], row["clockHours"])
         self.assertEqual("", row["clonePatternId"])
@@ -5542,6 +5596,61 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
             self.assertNotEqual(0, run().returncode)
 
 class KoukuPublishAllInventoryTests(unittest.TestCase):
+    def test_logic_tail_requires_explicit_lifetime_before_complete_play_flow_admission(self):
+        source = self.source()
+        pattern = source["patterns"][0]
+        identity = pattern["patternId"]
+        stages = copy.deepcopy(pattern["stages"])
+        stage_ms = sum(stage["durationMs"] for stage in stages)
+        lifetime_ms = stage_ms + 7000
+        source["logics"] = [{"logicId": "kakulsaydon.g1.logic.1", "displayName": "Tail window",
+            "logicType": "DURATION", "judgementKind": "STAGGER_WINDOW",
+            "threshold": 1, "shieldArcDegrees": 0}]
+        pattern.update(nextLogicOccurrenceOrdinal=2, logicOccurrences=[{
+            "occurrenceId": identity + ".logic.1", "logicId": "kakulsaydon.g1.logic.1",
+            "startMs": stage_ms - 1000, "durationMs": 8000}])
+        source["patternFlows"] = [{"flowId": "kakulsaydon.flow.gate2", "gateId": "GATE2",
+            "displayName": "Tail admission", "entries": [{"entryId": "kakulsaydon.flow.gate2.entry.1",
+                "kind": "PATTERN", "targetId": identity, "waitAfterMs": 0}]}]
+        before = copy.deepcopy(source)
+        product, inventory = subject.prepare_publication(source, ROOT)
+        reason = next(row for row in inventory["patterns"] if row["patternId"] == identity)["unavailableReason"]
+        self.assertIn("Logic box exceeds the Pattern lifetime: " + identity + ".logic.1", reason)
+        self.assertEqual([], product["patternFlows"])
+        self.assertNotIn(identity, product["playAllPatternIds"])
+        self.assertEqual(before, source)
+
+        pattern["durationMs"] = lifetime_ms
+        approved = copy.deepcopy(source)
+        product, inventory = subject.prepare_publication(source, ROOT)
+        self.assertEqual("", next(row for row in inventory["patterns"] if row["patternId"] == identity)["unavailableReason"])
+        self.assertEqual(source["patternFlows"], product["patternFlows"])
+        self.assertEqual(approved, source)
+        outputs = subject.projected_outputs(product, ROOT, inventory)
+        encounter = json.loads(outputs[subject.ENCOUNTER_PATH])
+        projected = next(row for row in encounter["patterns"] if row["patternId"] == identity)
+        self.assertEqual(lifetime_ms, projected["timelineDurationMs"])
+        self.assertEqual(stage_ms, sum(stage["durationMs"] for stage in projected["stages"]))
+        self.assertEqual(stages, next(row for row in product["patterns"] if row["patternId"] == identity)["stages"])
+        gate = next(row for row in encounter["raidGates"] if row["gateId"] == "GATE2")
+        self.assertEqual(source["patternFlows"][0]["entries"], gate["entries"])
+
+        for case in ("explicit_limit", "row_end_limit", "missing_reference"):
+            with self.subTest(case=case):
+                invalid = subject._publication_candidate(source, {identity})
+                target = invalid["patterns"][0]
+                if case == "explicit_limit":
+                    target["durationMs"] = subject.MAX_TIMELINE_MS + 1
+                elif case == "row_end_limit":
+                    target["durationMs"] = subject.MAX_TIMELINE_MS
+                    target["logicOccurrences"][0].update(startMs=subject.MAX_TIMELINE_MS - 1, durationMs=2)
+                else:
+                    target["logicOccurrences"][0]["logicId"] = "missing.logic.reference"
+                preserved = copy.deepcopy(invalid)
+                with self.assertRaises(subject.CompositionError):
+                    subject.validate_document(invalid, ROOT)
+                self.assertEqual(preserved, invalid)
+
     def source(self):
         source = subject.load_json(ROOT / subject.SOURCE_PATH)
         source.pop("patternFlows", None)  # This fixture retains only three local Pattern identities.
@@ -5800,6 +5909,24 @@ class KoukuAnimationRootMotionTests(unittest.TestCase):
         for age in (500, 1500, 2500):
             self.assertEqual((-3, 2, 5), subject._sample_root_curve(returns, age))
         self.assertEqual((0, 0, 0), subject._sample_root_curve(returns, 2000))
+
+    def test_horizontal_scale_preserves_vertical_crop_loop_and_hold_motion(self):
+        points = self.curve([(0, 2, 3, 4), (400, -2, 5, 8), (1000, 4, 7, 10)])
+        for animation, duration in ((self.animation(), 1000),
+                (self.animation(sourceStartMs=200, sourceEndMs=800, startOffsetMs=100,
+                    playMs=700, playRate=2, endPolicy="HOLD_LAST_POSE"), 1000),
+                (self.animation(playMs=2500, endPolicy="LOOP_TO_WINDOW"), 2500)):
+            with mock.patch.object(subject, "_animation_root_curve", return_value=(1000, points)):
+                original = subject._build_animation_root_motion_samples({}, animation, duration)
+                explicit = subject._build_animation_root_motion_samples({}, animation, duration, horizontal_scale=1)
+                self.assertEqual(original, explicit)
+                for scale in (0, .5):
+                    scaled = subject._build_animation_root_motion_samples({}, animation, duration, horizontal_scale=scale)
+                    for age in range(0, duration + 1, 25):
+                        x, z, y = subject._sample_root_curve(original, age)
+                        actual = subject._sample_root_curve(scaled, age)
+                        for expected, value in zip((x * scale, z * scale, y), actual):
+                            self.assertAlmostEqual(expected, value, places=6)
 
     def test_inplace_omits_curve_and_full_return_keeps_middle_motion(self):
         self.assertEqual([], self.bake([(0, 5, -3, 8), (1000, 5, -3, 8)]))

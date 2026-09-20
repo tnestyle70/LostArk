@@ -318,8 +318,8 @@ bool_t CGameInstance::IsMouseInputBlocked() const
 }
 
 #ifdef _WIN64
-uint64_t CGameInstance::Play_SoundCue(const wstring_t& path, f32_t volume, uint32_t ageMs, bool_t paused)
-{ return m_pSound_Manager ? m_pSound_Manager->Play_SoundCue(path, volume, ageMs, paused) : 0u; }
+uint64_t CGameInstance::Play_SoundCue(const wstring_t& path, f32_t volume, uint32_t ageMs, bool_t paused, f32_t playbackRate)
+{ return m_pSound_Manager ? m_pSound_Manager->Play_SoundCue(path, volume, ageMs, paused, playbackRate) : 0u; }
 bool_t CGameInstance::Get_SoundDurationMs(const wstring_t& path, uint32_t& durationMs)
 { return m_pSound_Manager && m_pSound_Manager->Get_SoundDurationMs(path, durationMs); }
 bool_t CGameInstance::Is_SoundCueActive(uint64_t handle) const

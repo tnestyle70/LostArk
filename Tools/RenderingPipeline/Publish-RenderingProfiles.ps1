@@ -349,6 +349,13 @@ function Assert-RenderingProfileDocument([object]$Document) {
                     $regionFields += 'priority'
                     Assert-FiniteFloatRange $region.priority -100000.0 100000.0 'environmentRegion.priority'
                 }
+                if ($null -ne $region.PSObject.Properties['receiver']) {
+                    $regionFields += 'receiver'
+                    if ($region.receiver -isnot [string] -or
+                        @('ALL', 'SOURCE_CHARACTER', 'UNBAKED') -cnotcontains $region.receiver) {
+                        throw 'environmentRegion.receiver must be ALL, SOURCE_CHARACTER or UNBAKED.'
+                    }
+                }
                 if ($null -ne $region.PSObject.Properties['sourceCharacterAmbient']) {
                     $regionFields += 'sourceCharacterAmbient'
                     Assert-SourceCharacterAmbient $region.sourceCharacterAmbient 'environmentRegion.sourceCharacterAmbient'
@@ -427,6 +434,13 @@ function Assert-RenderingProfileDocument([object]$Document) {
 
         $light = $profile.light
         $lightFields = @('type', 'direction', 'diffuse', 'ambient', 'specular')
+        if ($null -ne $light.PSObject.Properties['receiver']) {
+            $lightFields += 'receiver'
+            if ($light.receiver -isnot [string] -or
+                @('ALL', 'SOURCE_CHARACTER', 'UNBAKED') -cnotcontains $light.receiver) {
+                throw "$profileId.light.receiver must be ALL, SOURCE_CHARACTER or UNBAKED."
+            }
+        }
         if ($null -ne $light.PSObject.Properties['sourceCharacterAmbient']) {
             $lightFields += 'sourceCharacterAmbient'
             Assert-SourceCharacterAmbient $light.sourceCharacterAmbient "$profileId.light.sourceCharacterAmbient"

@@ -691,3 +691,93 @@ void LostArk::Server::CServerGameplayContractRunner::Run_PlayerCombos(TESTS& tes
 		"Clamp a mitigated connected hit to at least one damage");
 }
 
+
+void LostArk::Server::CServerGameplayContractRunner::Run_RuntimeSupportPrediction(
+	TESTS& tests, const CServerNavigation& navigation)
+{
+	// Exercise the real room floor, movement command and serialized snapshot.
+	auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+	CGameRoom& room = *roomStorage;
+	room.m_ServerNavigation = navigation;
+	room.m_ServerCollisionSystem = {};
+	room.m_WorldEntities.clear();
+	constexpr SESSION_ID sessionId = 88201u;
+	constexpr PLAYER_ID playerId = 88202u;
+	auto session = std::make_shared<CClientSession>(sessionId, INVALID_SOCKET,
+		CClientSession::FRAME_HANDLER{}, CClientSession::CLOSED_HANDLER{});
+	session->m_isSendRunning.store(true);
+	room.m_Sessions.emplace(sessionId, session);
+	room.m_PlayerIdBySessionId.emplace(sessionId, playerId);
+	SERVER_PLAYER player;
+	player.iSessionId = sessionId; player.iPlayerId = playerId; player.iNetEntityId = playerId;
+	player.eCharacterClass = CHARACTER_CLASS_ID::WARLORD;
+	player.iCurrentHp = player.iMaximumHp = 100u;
+	player.fMoveSpeed = 6.f;
+	player.fPositionX = 6.f; player.fPositionY = 1.f; player.fPositionZ = 6.f;
+	room.m_Players.emplace(playerId, player);
+	auto& live = room.m_Players.at(playerId);
+	CGameRoom::KOUKU_SCHEDULED_SUPPORT_SURFACE scheduled;
+	scheduled.strMemberId = "roulette.prediction"; scheduled.iStartTick = 100u; scheduled.iEndTick = 200u;
+	scheduled.Surface = { "1/roulette/prediction", 6.f, 6.f, 2.f, 1.6f };
+	// Live support owners must pin the admitted gameplay revision before broadcasting.
+	room.m_KoukuSaydonPatternAudition.PinnedGameplayRevision = room.m_GameplayCatalog.Get_ActiveRevision();
+	room.m_KoukuSaydonPatternAudition.SupportSchedule = { scheduled };
+	const auto readLatest = [&](PLAYER_SNAPSHOT& snapshot)
+	{
+		room.Broadcast_WorldSnapshot();
+		if (session->m_OutboundFrames.empty()) return false;
+		const auto& bytes = session->m_OutboundFrames.back().Bytes;
+		if (bytes.size() <= PACKET_HEADER_BYTES) return false;
+		CPacketReader reader{ std::span<const std::uint8_t>{ bytes }.subspan(PACKET_HEADER_BYTES) };
+		S2C_WORLD_SNAPSHOT decoded;
+		if (!Read_Message(reader, decoded) || reader.Get_RemainingSize() || decoded.Players.size() != 1u) return false;
+		snapshot = decoded.Players.front();
+		return true;
+	};
+	PLAYER_SNAPSHOT snapshot;
+	room.m_iServerTick = 99u;
+	tests.Require(room.Refresh_KoukuSupportSurfaces(99u) && readLatest(snapshot) &&
+		snapshot.canPredictMove && snapshot.fPositionY == 1.f,
+		"A scheduled roulette floor leaves ordinary prediction enabled before its start tick");
+	room.m_iServerTick = 100u;
+	tests.Require(room.Refresh_KoukuSupportSurfaces(100u) && readLatest(snapshot) &&
+		!snapshot.canPredictMove && !snapshot.hasMoveGoal && std::abs(snapshot.fPositionY - 1.6f) < .00001f &&
+		snapshot.fPositionX == 6.f && snapshot.fPositionZ == 6.f && snapshot.eAction == PLAYER_ACTION_STATE::NONE,
+		"A stationary roulette player receives raised Server Y with static-nav prediction disabled");
+	C2S_MOVE move; move.iClientSequence = 1u; move.fGoalX = 7.f; move.fGoalZ = 6.f;
+	room.Handle_Move(sessionId, move);
+	const bool accepted = live.hasMoveGoal && live.iLastMoveSequence == 1u;
+	room.Update_Players(1.f / 30.f);
+	tests.Require(accepted && live.fPositionX > 6.f && live.fPositionX < 7.f && live.hasMoveGoal &&
+		readLatest(snapshot) && !snapshot.canPredictMove && !snapshot.hasMoveGoal &&
+		snapshot.eLocomotionState == PLAYER_LOCOMOTION_STATE::MOVING &&
+		std::abs(snapshot.fPositionY - 1.6f) < .00001f && snapshot.iLastProcessedMoveSequence == 1u,
+		"Prediction suppression preserves move input, authoritative walking, raised Y and moving locomotion");
+	live.fPositionX = 8.f;
+	tests.Require(room.Refresh_KoukuSupportSurfaces(101u) && readLatest(snapshot) && !snapshot.canPredictMove,
+		"The exact circular support edge uses the same prediction boundary as navigation height");
+	live.fPositionX = 8.01f;
+	tests.Require(room.Refresh_KoukuSupportSurfaces(101u) && readLatest(snapshot) && snapshot.canPredictMove &&
+		snapshot.hasMoveGoal && snapshot.fPositionY == 1.f,
+		"Leaving a live roulette surface immediately restores static-ground prediction and the existing goal");
+	live.fPositionX = 6.f;
+	tests.Require(room.Refresh_KoukuSupportSurfaces(101u) && readLatest(snapshot) && !snapshot.canPredictMove &&
+		std::abs(snapshot.fPositionY - 1.6f) < .00001f,
+		"Re-entering a live surface returns to authoritative raised-height presentation");
+	tests.Require(room.Refresh_KoukuSupportSurfaces(200u) && readLatest(snapshot) && snapshot.canPredictMove &&
+		snapshot.fPositionY == 1.f && snapshot.fPositionX == 6.f && snapshot.fPositionZ == 6.f,
+		"Removing roulette support restores ground Y and ordinary prediction on the same snapshot");
+	live.fKnockbackRemainingSeconds = .2f;
+	tests.Require(readLatest(snapshot) && !snapshot.canPredictMove,
+		"Roulette removal does not unlock prediction during knockback");
+	live.fKnockbackRemainingSeconds = 0.f; live.iMarioStage = 1u;
+	tests.Require(readLatest(snapshot) && !snapshot.canPredictMove,
+		"Roulette removal preserves the Mario prediction exclusion");
+	live.iMarioStage = 0u; live.TriggerMove.isActive = true;
+	tests.Require(readLatest(snapshot) && !snapshot.canPredictMove,
+		"Roulette removal preserves authored jump and hook movement ownership");
+	live.TriggerMove.isActive = false; live.bPatternBound = true;
+	tests.Require(readLatest(snapshot) && !snapshot.canPredictMove,
+		"Roulette removal preserves pattern-bind movement ownership");
+	session->Request_Close();
+}

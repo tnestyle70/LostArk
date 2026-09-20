@@ -20,12 +20,14 @@ class CServerGameplayContractRunner final
 {
 public:
     static int Run(ServerGameplayContractDetail::CONTRACT_TEST_RUN_CONTEXT& context);
+    static void Run_RuntimeSupportPrediction(TESTS& tests, const CServerNavigation& navigation);
 
 private:
     static int Run_WorldPlayback(TESTS& tests);
     static int Run_DebugTeleport(TESTS& tests);
     static void Run_KoukuBundles(TESTS& tests);
     static void Run_KoukuRaidIntegration(TESTS& tests);
+    static void Run_KoukuGate3Entry(TESTS& tests);
     static void Run_KoukuMarioEntryContact(TESTS& tests);
     static void Run_KoukuProduct(TESTS& tests, CGameplayCatalog& catalog);
     static void Run_ValtanLifecycle(TESTS& tests, CGameplayCatalog& catalog);

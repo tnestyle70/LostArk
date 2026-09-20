@@ -21,6 +21,9 @@ struct SCENE_ENVIRONMENT_REGION final
     HEIGHT_FOG_SETTINGS Fog{};
     float4_t vDirectionalColor{};
     float4_t vAmbientColor{};
+    // Omitted regions inherit the scene receiver; explicit ALL preserves a lit area.
+    bool_t bHasReceiver = false;
+    Engine::LIGHT_RECEIVER eReceiver = Engine::LIGHT_RECEIVER::ALL;
     bool_t bHasSourceCharacterAmbient = false;
     float4_t vSourceCharacterAmbient{};
     bool_t bHasSpecularColor = false;
@@ -64,6 +67,16 @@ struct SCENE_RENDERING_PROFILE final
 	float4_t vEnvironmentRotationIntensity{ 0.f, 1.f, 1.f, 0.f };
 };
 
+struct RENDERING_COMPARISON_OPTIONS final
+{
+    bool_t bActive = false;
+    bool_t bDirectionalEnabled = true;
+    bool_t bLutEnabled = true;
+    bool_t bFXAAEnabled = true;
+    bool_t bBloomEnabled = true;
+    f32_t fExposureMultiplier = 1.f;
+};
+
 class CRenderingProfileService final
 {
 public:
@@ -71,6 +84,9 @@ public:
 		"scene.loading.neutral.v1";
 
 public:
+    const RENDERING_COMPARISON_OPTIONS& Get_ComparisonOptions() const { return m_ComparisonOptions; }
+    bool_t Set_ComparisonOptions(const RENDERING_COMPARISON_OPTIONS& options);
+    void Clear_ComparisonOptions() { m_ComparisonOptions = {}; }
 	bool_t Load_Runtime(string& strOutStatus);
     // Transient presentation inputs are applied after camera regions and never saved.
     bool_t Apply_CameraEnvironment(f32_t deltaSeconds, string& status,
@@ -131,6 +147,9 @@ private:
     bool_t Restore_PresentationEnvironment(string& status);
     bool_t m_bPresentationFogOverride = false;
     bool_t m_bPresentationLightOverride = false;
+    bool_t m_bPresentationQualityOverride = false;
+    RENDER_QUALITY_SETTINGS m_PresentationBaseQuality{};
+    RENDERING_COMPARISON_OPTIONS m_ComparisonOptions{};
     HEIGHT_FOG_SETTINGS m_PresentationBaseFog{};
     LIGHT_DESC m_PresentationBaseLight{};
 	static bool_t Parse_Catalog(

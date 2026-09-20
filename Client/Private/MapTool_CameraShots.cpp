@@ -1416,6 +1416,10 @@ void Client::CMapTool::Render_CutsceneSection()
 					m_iCutsceneSelectedActorKey = 0;
 					m_CutsceneEditInstanceSnapshot.reset();
 					m_CutsceneEditTemplateSnapshot.reset();
+					m_CutsceneSubtitleSequenceId.clear();
+					m_CutsceneSubtitleDraft.reset();
+					m_CutsceneSoundSequenceId.clear();
+					m_CutsceneSoundDraft.reset();
 				}
 				m_iSelectedCutscene = index;
 			}
@@ -1457,6 +1461,8 @@ void Client::CMapTool::Render_CutsceneSection()
 		static_cast<f32_t>((std::max)(1, cutscene.durationMs)), "%.0f"))
 	{
 		m_eCutsceneState = EDITOR_CUTSCENE_STATE::PAUSED;
+        m_bCutsceneSoundNaturallyFinished = false;
+        m_bCutsceneSoundSeekRequested = true;
 		m_fCutsceneSessionMs = std::clamp(scrub, 0.f,
 			static_cast<f32_t>(cutscene.durationMs));
 	}
@@ -1683,6 +1689,10 @@ void Client::CMapTool::Render_CutsceneActorSection(
 				m_iCutsceneSelectedActorKey = 0;
 				m_CutsceneEditInstanceSnapshot.reset();
 				m_CutsceneEditTemplateSnapshot.reset();
+				m_CutsceneSubtitleSequenceId.clear();
+				m_CutsceneSubtitleDraft.reset();
+				m_CutsceneSoundSequenceId.clear();
+				m_CutsceneSoundDraft.reset();
 			}
 			ImGui::PopID();
 			ImGui::TableSetColumnIndex(1);
@@ -1806,6 +1816,10 @@ void Client::CMapTool::Render_CutsceneActorSection(
 			m_bCutsceneWorldPreviewStale = true;
 			m_CutsceneEditInstanceSnapshot.reset();
 			m_CutsceneEditTemplateSnapshot.reset();
+			m_CutsceneSubtitleSequenceId.clear();
+			m_CutsceneSubtitleDraft.reset();
+			m_CutsceneSoundSequenceId.clear();
+			m_CutsceneSoundDraft.reset();
 			m_CutsceneActorEditStatus = "전용 템플릿으로 복제했습니다 (미저장): " + copyId;
 			return;
 		}
@@ -2010,6 +2024,196 @@ void Client::CMapTool::Render_CutsceneActorSection(
 			}
 			ImGui::EndTable();
 		}
+	}
+	ImGui::SeparatorText("Sounds");
+	ImGui::TextDisabled("Select a sound row, edit its timing or volume, then Apply Sound and Save.");
+	if (m_CutsceneSoundSequenceId != sequence->sequenceId)
+	{
+		m_CutsceneSoundSequenceId = sequence->sequenceId;
+		m_CutsceneSoundDraft.reset();
+	}
+	if (!m_CutsceneSoundDraft && !sequence->soundTracks.empty())
+		m_CutsceneSoundDraft = sequence->soundTracks.front();
+	if (ImGui::BeginTable("##CutsceneSounds", 4,
+		ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp))
+	{
+		ImGui::TableSetupColumn("Sound row");
+		ImGui::TableSetupColumn("Start (ms)");
+		ImGui::TableSetupColumn("Duration (ms)");
+		ImGui::TableSetupColumn("Volume");
+		ImGui::TableHeadersRow();
+		for (const auto& row : sequence->soundTracks)
+		{
+			ImGui::PushID(row.soundTrackId.c_str());
+			ImGui::TableNextRow(); ImGui::TableSetColumnIndex(0);
+			if (ImGui::Selectable(row.soundTrackId.c_str(), m_CutsceneSoundDraft &&
+				m_CutsceneSoundDraft->soundTrackId == row.soundTrackId,
+				ImGuiSelectableFlags_SpanAllColumns)) m_CutsceneSoundDraft = row;
+			ImGui::TableSetColumnIndex(1); ImGui::Text("%u", row.startMs);
+			ImGui::TableSetColumnIndex(2); ImGui::Text("%u", row.durationMs);
+			ImGui::TableSetColumnIndex(3); ImGui::Text("%.3f", row.volume);
+			ImGui::PopID();
+		}
+		ImGui::EndTable();
+	}
+	if (m_CutsceneSoundDraft)
+	{
+		auto& row = *m_CutsceneSoundDraft;
+		ImGui::PushID("CutsceneSoundEdit");
+		ImGui::TextWrapped("%s", row.assetId.c_str());
+		ImGui::SetNextItemWidth(160.f);
+		ImGui::InputScalar("Sound Start (ms)", ImGuiDataType_U32, &row.startMs);
+		ImGui::SetNextItemWidth(160.f);
+		ImGui::InputScalar("Sound Duration (ms)", ImGuiDataType_U32, &row.durationMs);
+		ImGui::SetNextItemWidth(160.f);
+		ImGui::DragFloat("Volume", &row.volume, .01f, 0.f, 4.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+		const auto existing = std::find_if(sequence->soundTracks.begin(), sequence->soundTracks.end(),
+			[&](const auto& saved) { return saved.soundTrackId == row.soundTrackId; });
+		ImGui::BeginDisabled(existing == sequence->soundTracks.end());
+		if (ImGui::Button("Apply Sound") && existing != sequence->soundTracks.end())
+		{
+			const auto previous = *existing;
+			*existing = row;
+			std::string status;
+			if (!m_pWorldSequenceToolPanel->Validate(m_Catalog,
+				Authoring_Placements(), Authoring_Deploy(), status))
+			{
+				*existing = previous;
+				m_CutsceneActorEditStatus = "Sound edit refused; saved draft preserved: " + status;
+			}
+			else
+			{
+				m_pWorldSequenceToolPanel->Mark_ExternalEdit();
+				m_bCutsceneWorldPreviewStale = true;
+				m_CutsceneEditTemplateSnapshot = *sequence;
+				m_CutsceneActorEditStatus = "Sound applied to the World draft. Save stores the edit.";
+			}
+		}
+		ImGui::SameLine();
+		if (ImGui::Button("Reset Sound Inputs") && existing != sequence->soundTracks.end()) row = *existing;
+		ImGui::EndDisabled();
+		ImGui::PopID();
+	}
+	ImGui::SeparatorText("Subtitles");
+	ImGui::TextDisabled("Select a row, edit, then Apply Subtitle. Save stores the same World Sequence draft.");
+	if (m_CutsceneSubtitleSequenceId != sequence->sequenceId)
+	{
+		m_CutsceneSubtitleSequenceId = sequence->sequenceId;
+		m_CutsceneSubtitleDraft.reset();
+	}
+	if (!m_CutsceneSubtitleDraft && !sequence->subtitleTracks.empty())
+		m_CutsceneSubtitleDraft = sequence->subtitleTracks.front();
+	if (ImGui::BeginTable("##CutsceneSubtitles", 4,
+		ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp))
+	{
+		ImGui::TableSetupColumn("Subtitle row");
+		ImGui::TableSetupColumn("Start (ms)");
+		ImGui::TableSetupColumn("Duration (ms)");
+		ImGui::TableSetupColumn("Text");
+		ImGui::TableHeadersRow();
+		for (const auto& row : sequence->subtitleTracks)
+		{
+			ImGui::PushID(row.subtitleTrackId.c_str());
+			ImGui::TableNextRow(); ImGui::TableSetColumnIndex(0);
+			if (ImGui::Selectable(row.subtitleTrackId.c_str(), m_CutsceneSubtitleDraft &&
+				m_CutsceneSubtitleDraft->subtitleTrackId == row.subtitleTrackId,
+				ImGuiSelectableFlags_SpanAllColumns)) m_CutsceneSubtitleDraft = row;
+			ImGui::TableSetColumnIndex(1); ImGui::Text("%u", row.startMs);
+			ImGui::TableSetColumnIndex(2); ImGui::Text("%u", row.durationMs);
+			ImGui::TableSetColumnIndex(3); ImGui::TextWrapped("%s", row.text.c_str());
+			ImGui::PopID();
+		}
+		ImGui::EndTable();
+	}
+	const size_t rowCount = sequence->tracks.size() + sequence->animationTracks.size() +
+		sequence->effectTracks.size() + sequence->colliderTracks.size() +
+		sequence->soundTracks.size() + sequence->subtitleTracks.size();
+	ImGui::BeginDisabled(rowCount >= CWorldSequenceDocument::MAX_TRACK_COUNT);
+	if (ImGui::Button("Add Subtitle"))
+	{
+		WORLD_SEQUENCE_SUBTITLE_TRACK row;
+		for (uint32_t suffix = 1u;; ++suffix)
+		{
+			row.subtitleTrackId = "subtitle.custom." + std::to_string(suffix);
+			if (std::none_of(sequence->subtitleTracks.begin(), sequence->subtitleTracks.end(),
+				[&](const auto& existing) { return existing.subtitleTrackId == row.subtitleTrackId; })) break;
+		}
+		row.stringId = row.subtitleTrackId;
+		row.position = "NORMAL";
+		row.startMs = static_cast<uint32_t>(std::clamp(localTimeOf(*instance), 0.f,
+			static_cast<float>(sequence->durationMs - 1u)));
+		row.durationMs = (std::min)(2000u, sequence->durationMs - row.startMs);
+		m_CutsceneSubtitleDraft = std::move(row);
+	}
+	ImGui::EndDisabled();
+	if (m_CutsceneSubtitleDraft)
+	{
+		auto& row = *m_CutsceneSubtitleDraft;
+		ImGui::PushID("CutsceneSubtitleEdit");
+		ImGui::TextDisabled("%s | %s", row.subtitleTrackId.c_str(), row.stringId.c_str());
+		std::array<char, 4097> text{};
+		std::snprintf(text.data(), text.size(), "%s", row.text.c_str());
+		if (ImGui::InputTextMultiline("Text", text.data(), text.size(), ImVec2(-1.f, 80.f)))
+			row.text = text.data();
+		ImGui::SetNextItemWidth(160.f);
+		ImGui::InputScalar("Subtitle Start (ms)", ImGuiDataType_U32, &row.startMs);
+		ImGui::SetNextItemWidth(160.f);
+		ImGui::InputScalar("Subtitle Duration (ms)", ImGuiDataType_U32, &row.durationMs);
+		int position = row.position == "BALLOON" ? 2 : row.position == "UPPER" ? 1 : 0;
+		if (ImGui::Combo("Position", &position, "Normal\0Upper\0Balloon\0"))
+		{
+			row.position = position == 2 ? "BALLOON" : position == 1 ? "UPPER" : "NORMAL";
+			row.slotId.clear();
+			if (position == 2)
+				for (const auto& binding : instance->bindings)
+					if (binding.targetKind == WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE)
+					{ row.slotId = binding.slotId; break; }
+		}
+		if (row.position == "BALLOON")
+		{
+			if (ImGui::BeginCombo("Actor Slot", row.slotId.c_str()))
+			{
+				for (const auto& binding : instance->bindings)
+					if (binding.targetKind == WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE &&
+						ImGui::Selectable(binding.slotId.c_str(), binding.slotId == row.slotId))
+						row.slotId = binding.slotId;
+				ImGui::EndCombo();
+			}
+			ImGui::TextDisabled("Balloon follows the visible actor model; a hidden or absent actor has no balloon.");
+		}
+		const auto existing = std::find_if(sequence->subtitleTracks.begin(), sequence->subtitleTracks.end(),
+			[&](const auto& saved) { return saved.subtitleTrackId == row.subtitleTrackId; });
+		const bool present = existing != sequence->subtitleTracks.end();
+		const bool apply = ImGui::Button("Apply Subtitle");
+		ImGui::SameLine();
+		ImGui::BeginDisabled(!present);
+		const bool remove = ImGui::Button("Delete Subtitle");
+		ImGui::SameLine();
+		if (ImGui::Button("Reset Subtitle Inputs") && present) row = *existing;
+		ImGui::EndDisabled();
+		if (apply || remove)
+		{
+			const auto previous = *sequence;
+			if (remove) sequence->subtitleTracks.erase(existing);
+			else if (present) *existing = row;
+			else sequence->subtitleTracks.push_back(row);
+			std::string status;
+			if (!m_pWorldSequenceToolPanel->Validate(m_Catalog,
+				Authoring_Placements(), Authoring_Deploy(), status))
+			{
+				*sequence = previous;
+				m_CutsceneActorEditStatus = "Subtitle edit refused; saved draft preserved: " + status;
+			}
+			else
+			{
+				m_pWorldSequenceToolPanel->Mark_ExternalEdit();
+				m_bCutsceneWorldPreviewStale = true;
+				m_CutsceneEditTemplateSnapshot = *sequence;
+				m_CutsceneActorEditStatus = "Subtitle applied to the World draft. Save stores the edit.";
+				if (remove) m_CutsceneSubtitleDraft.reset();
+			}
+		}
+		ImGui::PopID();
 	}
 	if (!m_CutsceneActorEditStatus.empty())
 		ImGui::TextWrapped("%s", m_CutsceneActorEditStatus.c_str());

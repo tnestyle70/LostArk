@@ -109,29 +109,34 @@ int LostArk::Server::Run_ServerCardMazeContractTests()
 		tests.Require(findBox()->iCurrentHp == hpBeforeLmb, "LMB does not hit before native swing contact");
 		room->m_iServerTick = lmbHit - 1u; room->Update_Players(1.f / 30.f);
 		const auto hpAfterLmb = findBox()->iCurrentHp;
-		tests.Require(hpAfterLmb < hpBeforeLmb, "LMB applies authoritative maze damage at its own contact tick");
+		tests.Require(hpBeforeLmb - hpAfterLmb == 100u, "LMB keeps 100 authoritative damage at its own contact tick");
 		room->m_iServerTick = lmbHit; room->Update_Players(1.f / 30.f);
 		tests.Require(findBox()->iCurrentHp == hpAfterLmb, "LMB contact is applied exactly once");
 		tests.Require(Kouku_InteractionActionMs(KOUKU_HUD_MODE::MAZE, 0u) == 2500u &&
 			Kouku_InteractionActionMs(KOUKU_HUD_MODE::MAZE, 1u) == 1000u, "Both locks match native clip lengths");
+		// Reset this real 500-HP box to measure a full-health Q after the LMB check.
+		findBox()->iCurrentHp = findBox()->iMaximumHp;
+		const auto hpBeforeQ = findBox()->iCurrentHp;
+		press.iRequestSequence = 3u; press.eSlot = INTERACTION_SLOT::Q;
+		room->Handle_InteractionSlot(11u, press);
+		tests.Require(entrant.eAction == PLAYER_ACTION_STATE::INTERACTION && entrant.iCurrentSkillId == 0u,
+			"Maze Q reaches the actual interaction handler");
+		const auto qHit = entrant.iActionStartTick + Maze::Hammer_HitTickOffset(0u);
+		room->m_TickDamageEvents.clear();
+		room->m_iServerTick = qHit - 2u; room->Update_Players(1.f / 30.f);
+		tests.Require(findBox()->iCurrentHp == hpBeforeQ, "Q does not hit before native slam contact");
+		room->m_iServerTick = qHit - 1u; room->Update_Players(1.f / 30.f);
+		const bool qReported = std::any_of(room->m_TickDamageEvents.begin(), room->m_TickDamageEvents.end(),
+			[boxId](const DAMAGE_EVENT& event) { return event.iTargetNetEntityId == boxId && event.iAmount == 500u; });
+		tests.Require(hpBeforeQ == 500u && qReported && room->m_bCardMazeClownBoxDestroyed &&
+			findBox()->iCurrentHp == 0u && findBox()->eAction == SERVER_ENTITY_ACTION::DEAD &&
+			room->m_KoukuCardMaze.Get_Phase() == Maze::PHASE::INACTIVE,
+			"Q deals 500 and destroys the full-health clown box without claiming the telescope");
+		const auto eventCountAfterQ = room->m_TickDamageEvents.size();
+		room->m_iServerTick = qHit; room->Update_Players(1.f / 30.f);
+		tests.Require(room->m_TickDamageEvents.size() == eventCountAfterQ &&
+			room->m_KoukuCardMaze.Get_Phase() == Maze::PHASE::INACTIVE, "Q contact is applied exactly once");
 		tick = room->m_iServerTick + 1u;
-		// The hammer damages it like any monster; each landed swing reports a damage event.
-		std::uint32_t swings = 0u;
-		bool shutWhileStanding = true;
-		while (INVALID_NET_ENTITY_ID != boxId && !room->m_bCardMazeClownBoxDestroyed && swings < 64u)
-		{
-			room->m_TickDamageEvents.clear();
-			room->Resolve_CardMazeHammerHit(entrant, tick++);
-			++swings;
-			const bool reported = std::any_of(room->m_TickDamageEvents.begin(), room->m_TickDamageEvents.end(),
-				[boxId](const DAMAGE_EVENT& event) { return event.iTargetNetEntityId == boxId; });
-			shutWhileStanding = shutWhileStanding && reported &&
-				room->m_KoukuCardMaze.Get_Phase() == Maze::PHASE::INACTIVE;
-		}
-		tests.Require(room->m_bCardMazeClownBoxDestroyed && swings > 1u && shutWhileStanding &&
-			findBox() != room->m_WorldEntities.end() && 0u == findBox()->iCurrentHp &&
-			findBox()->eAction == SERVER_ENTITY_ACTION::DEAD,
-			"Hammer swings damage the clown box until it dies while the telescope stays shut");
 		room->Resolve_CardMazeHammerHit(entrant, tick++);
 		tests.Require(room->m_KoukuCardMaze.Get_Phase() == Maze::PHASE::HUNTING &&
 			room->m_KoukuCardMaze.Get_Targets().size() == 1u && (entrant.CardMaze.flags & 1u),

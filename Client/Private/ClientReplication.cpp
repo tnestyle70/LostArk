@@ -71,7 +71,8 @@ namespace
 	bool Is_KoukuSaydonDependentArchetype(const std::string_view archetypeId)
 	{
 		return archetypeId == "BOSS_KAKULSAYDON_G1_SAYDON" ||
-			archetypeId == "BOSS_KAKULSAYDON_G3_SAYDON";
+			archetypeId == "BOSS_KAKULSAYDON_G3_SAYDON" ||
+			archetypeId == "BOSS_KAKULSAYDON_G2_KOUKU";
 	}
 
 	/* Arena bosses and their supported same-body clones share the catalog
@@ -3115,6 +3116,16 @@ bool Client::CClientReplication::Apply_CombatObjectPresentationEvent(
                 record->strCombatObjectArchetypeId != event.strCombatObjectArchetypeId ||
                 record->Snapshot.PinnedDefinitionRevision != event.PinnedDefinitionRevision)
             { m_strPendingPresentationFailure = "Pursuit contact has no matching replicated occurrence."; return false; }
+            if (event.strHitId == "combatpresentation.kouku.pursuit.started")
+            {
+                if (event.eKind != LostArk::Shared::COMBAT_OBJECT_PRESENTATION_EVENT_KIND::HIT_PULSE ||
+                    event.iRepeatIndex != 0u || !event.iEventSequence || !event.iServerTick ||
+                    !std::isfinite(event.fPositionX) || !std::isfinite(event.fPositionY) ||
+                    !std::isfinite(event.fPositionZ) || !std::isfinite(event.fYawDegrees))
+                { m_strPendingPresentationFailure = "Pursuit lifecycle marker has an invalid kind, clock or pose."; return false; }
+                // The admitted projection already owns the card; this marker starts no contact Effect.
+                return true;
+            }
             return m_pTargetedCombatPresentationPlayer->Play_TargetedCombatContact(event, m_strPendingPresentationFailure);
         }
 		if (source->second.pNpc.expired() || !record || record->iSourceNetEntityId != event.iSourceNetEntityId ||

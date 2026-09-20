@@ -286,11 +286,15 @@ void Client::CMapTool::Abandon_EditorCutscene(const std::string& reason)
 	m_strCutsceneSessionArea.clear();
 	m_strCutsceneActiveCutId.clear();
 	m_fCutsceneSessionMs = 0.f;
+    m_bCutsceneSoundNaturallyFinished = false;
+    m_bCutsceneSoundSeekRequested = false;
 	m_CutsceneStatus = reason;
 }
 
 bool_t Client::CMapTool::Refresh_EditorCutsceneWorldDraft()
 {
+    m_bCutsceneSoundNaturallyFinished = false;
+    m_bCutsceneSoundSeekRequested = true;
 	m_bCutsceneWorldPreviewStale = false;
 	if (EDITOR_CUTSCENE_STATE::STOPPED == m_eCutsceneState)
 		return true;
@@ -313,6 +317,9 @@ bool_t Client::CMapTool::Refresh_EditorCutsceneWorldDraft()
 
 void Client::CMapTool::Seek_EditorCutsceneWorld()
 {
+    const auto* source = Find_EditorCutscene(m_strCutsceneSessionId);
+    if (m_bCutsceneSoundNaturallyFinished && source && m_fCutsceneSessionMs >= source->durationMs) return;
+    m_bCutsceneSoundNaturallyFinished = false;
 	if (!m_bCutsceneWorldPrepared || m_CutsceneSessionInstanceIds.empty())
 		return;
 	CWorldSequencePlayer::TARGET_SET targets{};
@@ -328,11 +335,15 @@ void Client::CMapTool::Seek_EditorCutsceneWorld()
 	/* One absolute seek per frame, and only for this session's instances.
 	   Calling Update as well would advance them a second time and drift them
 	   away from the camera. */
-	m_ArenaRisePlayer.Set_Paused(true);
+    const bool_t playing = m_eCutsceneState == EDITOR_CUTSCENE_STATE::PLAYING;
+	m_ArenaRisePlayer.Set_Paused(!playing);
 	for (const std::string& instanceId : m_CutsceneSessionInstanceIds)
 	{
+        f32_t previousMs = 0.f;
+        const bool_t scrubbed = m_bCutsceneSoundSeekRequested || (!playing &&
+            (!m_ArenaRisePlayer.Try_GetElapsedMs(instanceId, previousMs) || previousMs != m_fCutsceneSessionMs));
 		if (m_ArenaRisePlayer.Seek_InstanceToMs(
-			instanceId, m_fCutsceneSessionMs, targets))
+			instanceId, m_fCutsceneSessionMs, targets, scrubbed))
 		{
 			continue;
 		}
@@ -350,10 +361,12 @@ void Client::CMapTool::Seek_EditorCutsceneWorld()
 			". Every actor was released; Resume continues camera-only.";
 		return;
 	}
+    m_bCutsceneSoundSeekRequested = false;
 }
 
 bool_t Client::CMapTool::Play_EditorCutscene(const std::string& cutsceneId)
 {
+    m_bCutsceneSoundNaturallyFinished = false;
 	const EDITOR_CUTSCENE* cutscene = Find_EditorCutscene(cutsceneId);
 	if (nullptr == cutscene)
 	{
@@ -377,6 +390,8 @@ bool_t Client::CMapTool::Play_EditorCutscene(const std::string& cutsceneId)
 	m_strCutsceneSessionId = cutscene->cutsceneId;
 	m_strCutsceneSessionArea = descriptor->areaId;
 	m_fCutsceneSessionMs = 0.f;
+    m_bCutsceneSoundNaturallyFinished = false;
+    m_bCutsceneSoundSeekRequested = false;
 	m_strCutsceneActiveCutId.clear();
 	m_eCutsceneState = EDITOR_CUTSCENE_STATE::PLAYING;
 	m_CutsceneStatus = "Playing " + cutscene->displayName;
@@ -402,12 +417,15 @@ void Client::CMapTool::Stop_EditorCutscene()
 	m_strCutsceneSessionArea.clear();
 	m_strCutsceneActiveCutId.clear();
 	m_fCutsceneSessionMs = 0.f;
+    m_bCutsceneSoundNaturallyFinished = false;
+    m_bCutsceneSoundSeekRequested = false;
 }
 
 void Client::CMapTool::Update_EditorCutscene(const f32_t fTimeDelta)
 {
 	if (EDITOR_CUTSCENE_STATE::STOPPED == m_eCutsceneState)
 		return;
+    m_ArenaRisePlayer.Update_SoundTails(fTimeDelta);
 	const EDITOR_AREA_DESCRIPTOR* descriptor = Get_ActiveEditorArea();
 	/* Changing Area mid-preview would drive another map's actors, so the
 	   session ends with its own Area rather than following along. */
@@ -435,6 +453,9 @@ void Client::CMapTool::Update_EditorCutscene(const f32_t fTimeDelta)
 			/* Hold the last instant instead of restarting: the editor judges
 			   the ending pose, and a silent loop hides where it ends. */
 			m_fCutsceneSessionMs = static_cast<f32_t>(cutscene->durationMs);
+            Seek_EditorCutsceneWorld();
+            for (const auto& id : m_CutsceneSessionInstanceIds) m_ArenaRisePlayer.Retire_InstanceSoundTails(id);
+            m_bCutsceneSoundNaturallyFinished = true;
 			m_eCutsceneState = EDITOR_CUTSCENE_STATE::PAUSED;
 			m_CutsceneStatus = cutscene->displayName + " reached its end.";
 		}
@@ -752,7 +773,8 @@ void Client::CMapTool::Update_CutsceneArenaRise(
 	const f32_t fTimeDelta,
 	const bool_t isMapAuthoringLevel)
 {
-	if (!isMapAuthoringLevel || !m_Catalog.Is_Ready())
+	if (!isMapAuthoringLevel || !m_Catalog.Is_Ready() ||
+        m_eCutsceneState != EDITOR_CUTSCENE_STATE::STOPPED)
 		return;
 	CWorldSequencePlayer::TARGET_SET targets{};
 	targets.levelIndex = m_iAuthoringLevelIndex;

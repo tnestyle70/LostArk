@@ -3831,7 +3831,7 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 			}
 		}
 		if ([double]$bossMotion.startPosition[1] -ne [double]$bossMotion.endPosition[1]) { throw 'KoukuSaydon bossMotion base Y must remain constant' }
-		if (@($koukuPattern.mechanicTriggers | Where-Object { $_.kind -cin @('REAL_GAZE_TELEPORT','BOSS_TELEPORT_XZ') }).Count -gt 0) { throw 'KoukuSaydon bossMotion cannot also teleport the boss' }
+		if (@($koukuPattern.mechanicTriggers | Where-Object { $_.kind -cin @('REAL_GAZE_TELEPORT','BOSS_TELEPORT_XZ','BOSS_TELEPORT_GROUNDED') }).Count -gt 0) { throw 'KoukuSaydon bossMotion cannot also teleport the boss' }
 		$bossMotionRow = @('PATTERNBOSSMOTION', $koukuEncounterDocument.encounterId, $koukuPattern.patternId, $bossMotion.startMs, $bossMotion.endMs)
 		foreach ($component in @($bossMotion.startPosition) + @($bossMotion.endPosition) + @($bossMotion.yawDegrees)) {
 			$bossMotionRow += Format-InvariantSignedFloat $component 'KoukuSaydon bossMotion'
@@ -4039,7 +4039,7 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
                 $null -ne $koukuPattern.PSObject.Properties['bossMotion']) { throw 'Boss charge needs ENTER_AREA and 0..1000 m without absolute bossMotion' }
             $patternRows.Add((@('PATTERNLOGICCHARGE', $koukuEncounterDocument.encounterId, $koukuPattern.patternId,
                 $window.windowId, (Format-InvariantFloat $window.bossChargeDistanceM 'Boss charge distance'),
-                (Format-InvariantFloat $chargeYawOffset 'Boss charge yaw offset')) -join "`t"))
+                (Format-InvariantSignedFloat $chargeYawOffset 'Boss charge yaw offset')) -join "`t"))
         }
 		$contactTargetIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 		if ($windowKind -ceq 'OBJECT_CONTACT') {
@@ -4450,7 +4450,7 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 		$modes = @('NONE','POLYMORPH','MARIO','DANCE','MAZE')
 		$triggerHudMode = [Array]::IndexOf($modes, [string]$trigger.hudMode)
 		if (-not $triggerIds.Add([string]$trigger.triggerId) -or $triggerHudMode -lt 0 -or
-			$trigger.kind -cnotin @('REAL_GAZE_TELEPORT','BOSS_TELEPORT_FACE_CENTER','MARIO_PHASE2_PLAYERS','BOSS_TELEPORT_XZ','BOSS_TRACK_TARGET','HUD_ENTER','CARD_MAZE_HIDE_NEXT','CARD_MAZE_ENTER','ALBION_BLUE_CIRCLE','SUMMON_PATTERNS','ALBION_AIRBORNE') -or
+			$trigger.kind -cnotin @('REAL_GAZE_TELEPORT','BOSS_TELEPORT_FACE_CENTER','MARIO_PHASE2_PLAYERS','BOSS_TELEPORT_XZ','BOSS_TELEPORT_GROUNDED','BOSS_TRACK_TARGET','BINGO_BOARD','HUD_ENTER','CARD_MAZE_HIDE_NEXT','CARD_MAZE_ENTER','ALBION_BLUE_CIRCLE','SUMMON_PATTERNS','ALBION_AIRBORNE') -or
 			([uint64]$trigger.startMs + [uint64]$trigger.durationMs) -gt $koukuPatternDurationMs -or
 			$trigger.teleportPosition -isnot [Array] -or @($trigger.teleportPosition).Count -ne 3 -or
 			$trigger.clockHours -isnot [Array]) {
@@ -4458,10 +4458,10 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 		}
 		$position = @($trigger.teleportPosition)
 		foreach ($coordinate in $position) { Assert-JsonNumber $coordinate 'KoukuSaydon teleport coordinate' }
-		if ($trigger.kind -ceq 'BOSS_TELEPORT_XZ' -and @($position | Where-Object { [Math]::Abs([double]$_) -gt 100000 }).Count -ne 0) { throw 'Boss XZ teleport coordinates exceed the world bounds' }
-		if ($trigger.kind -cin @('CARD_MAZE_HIDE_NEXT','CARD_MAZE_ENTER','BOSS_TELEPORT_FACE_CENTER','MARIO_PHASE2_PLAYERS','BOSS_TELEPORT_XZ','BOSS_TRACK_TARGET') -and
+		if ($trigger.kind -cin @('BOSS_TELEPORT_XZ','BOSS_TELEPORT_GROUNDED') -and @($position | Where-Object { [Math]::Abs([double]$_) -gt 100000 }).Count -ne 0) { throw 'Boss XZ teleport coordinates exceed the world bounds' }
+		if ($trigger.kind -cin @('CARD_MAZE_HIDE_NEXT','CARD_MAZE_ENTER','BOSS_TELEPORT_FACE_CENTER','MARIO_PHASE2_PLAYERS','BOSS_TELEPORT_XZ','BOSS_TELEPORT_GROUNDED','BOSS_TRACK_TARGET','BINGO_BOARD') -and
 			($triggerHudMode -ne 0 -or $trigger.faceCenterYawOffsetDegrees -ne 0 -or
-			 ($trigger.kind -cin @('CARD_MAZE_HIDE_NEXT','BOSS_TRACK_TARGET') -and @($position | Where-Object { $_ -ne 0 }).Count -ne 0))) {
+			 ($trigger.kind -cin @('CARD_MAZE_HIDE_NEXT','BOSS_TRACK_TARGET','BINGO_BOARD') -and @($position | Where-Object { $_ -ne 0 }).Count -ne 0))) {
 			throw "KoukuSaydon card maze trigger carries unrelated values"
 		}
 		Assert-JsonInteger $trigger.countPerPlayer 'KoukuSaydon circles per player' 0 8

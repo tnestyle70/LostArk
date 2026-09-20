@@ -2203,6 +2203,9 @@
     <None Include="..\..\Data\Effects\V2\Authored\cardmaze.symbol.heart.effectv2.json">
       <Filter>96.DataFiles</Filter>
     </None>
+    <None Include="..\..\Data\Effects\V2\Authored\bingo.hammer.warning.arrow.effectv2.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
     <None Include="..\..\Data\Effects\V2\Groups\cardmaze.mark.heart.effectv2group.json">
       <Filter>96.DataFiles</Filter>
     </None>

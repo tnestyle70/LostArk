@@ -1,7 +1,7 @@
 {
     "schema":  "lostark.rendering-profiles",
     "formatVersion":  1,
-    "revision":  69,
+    "revision":  71,
     "globalQuality":  {
                           "ssaoEnabled":  true,
                           "ssaoRadius":  0.0399999991,
@@ -4764,9 +4764,9 @@
                                                          0
                                                      ],
                                        "diffuse":  [
-                                                       0,
-                                                       0,
-                                                       0,
+                                                       0.800000012,
+                                                       0.800000012,
+                                                       0.800000012,
                                                        1
                                                    ],
                                        "ambient":  [
@@ -4776,11 +4776,12 @@
                                                        1
                                                    ],
                                        "specular":  [
-                                                        0,
-                                                        0,
-                                                        0,
+                                                        0.5,
+                                                        0.5,
+                                                        0.5,
                                                         1
-                                                    ]
+                                                    ],
+                                       "receiver":  "UNBAKED"
                                    },
                          "shadow":  {
                                         "enabled":  false,
@@ -4887,9 +4888,9 @@
                                                                        ]
                                                                    ],
                                                         "directionalColor":  [
-                                                                                 0,
-                                                                                 0,
-                                                                                 0,
+                                                                                 0.800000012,
+                                                                                 0.800000012,
+                                                                                 0.800000012,
                                                                                  1
                                                                              ],
                                                         "ambientColor":  [
@@ -4902,9 +4903,9 @@
                                                         "blendTimeOut":  1,
                                                         "priority":  0,
                                                         "specularColor":  [
-                                                                              0,
-                                                                              0,
-                                                                              0,
+                                                                              0.5,
+                                                                              0.5,
+                                                                              0.5,
                                                                               1
                                                                           ],
                                                         "postProcess":  {
@@ -5030,9 +5031,9 @@
                                                                        ]
                                                                    ],
                                                         "directionalColor":  [
-                                                                                 0,
-                                                                                 0,
-                                                                                 0,
+                                                                                 0.800000012,
+                                                                                 0.800000012,
+                                                                                 0.800000012,
                                                                                  1
                                                                              ],
                                                         "ambientColor":  [
@@ -5045,9 +5046,9 @@
                                                         "blendTimeOut":  1,
                                                         "priority":  0,
                                                         "specularColor":  [
-                                                                              0,
-                                                                              0,
-                                                                              0,
+                                                                              0.5,
+                                                                              0.5,
+                                                                              0.5,
                                                                               1
                                                                           ],
                                                         "postProcess":  {
@@ -5251,7 +5252,8 @@
                                                                                            0.425893813,
                                                                                            0.707106769
                                                                                        ]
-                                                                }
+                                                                },
+                                                        "receiver":  "ALL"
                                                     },
                                                     {
                                                         "regionId":  "kouku.ps.environment.50",
@@ -5388,7 +5390,8 @@
                                                                                            0.425893813,
                                                                                            0.707106769
                                                                                        ]
-                                                                }
+                                                                },
+                                                        "receiver":  "ALL"
                                                     },
                                                     {
                                                         "regionId":  "kouku.ps.environment.51",
@@ -5525,7 +5528,8 @@
                                                                                            0.425893813,
                                                                                            0.707106769
                                                                                        ]
-                                                                }
+                                                                },
+                                                        "receiver":  "ALL"
                                                     },
                                                     {
                                                         "regionId":  "kouku.ps.environment.52",
@@ -5578,9 +5582,9 @@
                                                                        ]
                                                                    ],
                                                         "directionalColor":  [
-                                                                                 0,
-                                                                                 0,
-                                                                                 0,
+                                                                                 0.800000012,
+                                                                                 0.800000012,
+                                                                                 0.800000012,
                                                                                  1
                                                                              ],
                                                         "ambientColor":  [
@@ -5593,9 +5597,9 @@
                                                         "blendTimeOut":  3,
                                                         "priority":  0,
                                                         "specularColor":  [
-                                                                              0,
-                                                                              0,
-                                                                              0,
+                                                                              0.5,
+                                                                              0.5,
+                                                                              0.5,
                                                                               1
                                                                           ],
                                                         "postProcess":  {
@@ -5715,9 +5719,9 @@
                                                                        ]
                                                                    ],
                                                         "directionalColor":  [
-                                                                                 0,
-                                                                                 0,
-                                                                                 0,
+                                                                                 0.800000012,
+                                                                                 0.800000012,
+                                                                                 0.800000012,
                                                                                  1
                                                                              ],
                                                         "ambientColor":  [
@@ -5730,9 +5734,9 @@
                                                         "blendTimeOut":  1,
                                                         "priority":  0,
                                                         "specularColor":  [
-                                                                              0,
-                                                                              0,
-                                                                              0,
+                                                                              0.5,
+                                                                              0.5,
+                                                                              0.5,
                                                                               1
                                                                           ],
                                                         "postProcess":  {
@@ -5852,9 +5856,9 @@
                                                                        ]
                                                                    ],
                                                         "directionalColor":  [
-                                                                                 0,
-                                                                                 0,
-                                                                                 0,
+                                                                                 0.800000012,
+                                                                                 0.800000012,
+                                                                                 0.800000012,
                                                                                  1
                                                                              ],
                                                         "ambientColor":  [
@@ -5867,9 +5871,9 @@
                                                         "blendTimeOut":  1,
                                                         "priority":  0,
                                                         "specularColor":  [
-                                                                              0,
-                                                                              0,
-                                                                              0,
+                                                                              0.5,
+                                                                              0.5,
+                                                                              0.5,
                                                                               1
                                                                           ],
                                                         "postProcess":  {
@@ -6102,7 +6106,8 @@
                                                                                            0.425893813,
                                                                                            -0.5
                                                                                        ]
-                                                                }
+                                                                },
+                                                        "receiver":  "ALL"
                                                     },
                                                     {
                                                         "regionId":  "kouku.ps.environment.56",
@@ -6239,7 +6244,8 @@
                                                                                            0.425893813,
                                                                                            -0.5
                                                                                        ]
-                                                                }
+                                                                },
+                                                        "receiver":  "ALL"
                                                     },
                                                     {
                                                         "regionId":  "kouku.sl03.environment.59",
@@ -6376,7 +6382,8 @@
                                                                                            0.425893813,
                                                                                            -0.5
                                                                                        ]
-                                                                }
+                                                                },
+                                                        "receiver":  "ALL"
                                                     }
                                                 ]
                      },
@@ -6395,9 +6402,9 @@
                                                          0
                                                      ],
                                        "diffuse":  [
-                                                       0,
-                                                       0,
-                                                       0,
+                                                       0.800000012,
+                                                       0.800000012,
+                                                       0.800000012,
                                                        1
                                                    ],
                                        "ambient":  [
@@ -6407,11 +6414,12 @@
                                                        1
                                                    ],
                                        "specular":  [
-                                                        0,
-                                                        0,
-                                                        0,
+                                                        0.5,
+                                                        0.5,
+                                                        0.5,
                                                         1
-                                                    ]
+                                                    ],
+                                       "receiver":  "UNBAKED"
                                    },
                          "shadow":  {
                                         "enabled":  false,
@@ -6518,9 +6526,9 @@
                                                                        ]
                                                                    ],
                                                         "directionalColor":  [
-                                                                                 0,
-                                                                                 0,
-                                                                                 0,
+                                                                                 0.800000012,
+                                                                                 0.800000012,
+                                                                                 0.800000012,
                                                                                  1
                                                                              ],
                                                         "ambientColor":  [
@@ -6533,9 +6541,9 @@
                                                         "blendTimeOut":  1,
                                                         "priority":  0,
                                                         "specularColor":  [
-                                                                              0,
-                                                                              0,
-                                                                              0,
+                                                                              0.5,
+                                                                              0.5,
+                                                                              0.5,
                                                                               1
                                                                           ],
                                                         "postProcess":  {
@@ -6627,9 +6635,9 @@
                                                          0
                                                      ],
                                        "diffuse":  [
-                                                       0,
-                                                       0,
-                                                       0,
+                                                       0.800000012,
+                                                       0.800000012,
+                                                       0.800000012,
                                                        1
                                                    ],
                                        "ambient":  [
@@ -6639,11 +6647,12 @@
                                                        1
                                                    ],
                                        "specular":  [
-                                                        0,
-                                                        0,
-                                                        0,
+                                                        0.5,
+                                                        0.5,
+                                                        0.5,
                                                         1
-                                                    ]
+                                                    ],
+                                       "receiver":  "UNBAKED"
                                    },
                          "shadow":  {
                                         "enabled":  false,
@@ -6750,9 +6759,9 @@
                                                                        ]
                                                                    ],
                                                         "directionalColor":  [
-                                                                                 0,
-                                                                                 0,
-                                                                                 0,
+                                                                                 0.800000012,
+                                                                                 0.800000012,
+                                                                                 0.800000012,
                                                                                  1
                                                                              ],
                                                         "ambientColor":  [
@@ -6765,9 +6774,9 @@
                                                         "blendTimeOut":  1,
                                                         "priority":  0,
                                                         "specularColor":  [
-                                                                              0,
-                                                                              0,
-                                                                              0,
+                                                                              0.5,
+                                                                              0.5,
+                                                                              0.5,
                                                                               1
                                                                           ],
                                                         "postProcess":  {
@@ -6932,9 +6941,9 @@
                                                          0
                                                      ],
                                        "diffuse":  [
-                                                       0,
-                                                       0,
-                                                       0,
+                                                       0.800000012,
+                                                       0.800000012,
+                                                       0.800000012,
                                                        1
                                                    ],
                                        "ambient":  [
@@ -6944,11 +6953,12 @@
                                                        1
                                                    ],
                                        "specular":  [
-                                                        0,
-                                                        0,
-                                                        0,
+                                                        0.5,
+                                                        0.5,
+                                                        0.5,
                                                         1
-                                                    ]
+                                                    ],
+                                       "receiver":  "UNBAKED"
                                    },
                          "shadow":  {
                                         "enabled":  false,
@@ -7055,9 +7065,9 @@
                                                                        ]
                                                                    ],
                                                         "directionalColor":  [
-                                                                                 0,
-                                                                                 0,
-                                                                                 0,
+                                                                                 0.800000012,
+                                                                                 0.800000012,
+                                                                                 0.800000012,
                                                                                  1
                                                                              ],
                                                         "ambientColor":  [
@@ -7070,9 +7080,9 @@
                                                         "blendTimeOut":  1,
                                                         "priority":  0,
                                                         "specularColor":  [
-                                                                              0,
-                                                                              0,
-                                                                              0,
+                                                                              0.5,
+                                                                              0.5,
+                                                                              0.5,
                                                                               1
                                                                           ],
                                                         "postProcess":  {
@@ -7159,7 +7169,7 @@
                                                  "exposure":  1,
                                                  "whitePoint":  1,
                                                  "gamma":  2.20000005,
-                                                 "fxaaEnabled":  true,
+                                                 "fxaaEnabled":  false,
                                                  "fxaaSubpixel":  0,
                                                  "fxaaEdgeThreshold":  0.0311999992,
                                                  "fxaaEdgeThresholdMin":  0.0183000006,
@@ -7216,9 +7226,9 @@
                                                          0
                                                      ],
                                        "diffuse":  [
-                                                       0,
-                                                       0,
-                                                       0,
+                                                       0.800000012,
+                                                       0.800000012,
+                                                       0.800000012,
                                                        1
                                                    ],
                                        "ambient":  [
@@ -7228,11 +7238,12 @@
                                                        1
                                                    ],
                                        "specular":  [
-                                                        0,
-                                                        0,
-                                                        0,
+                                                        0.5,
+                                                        0.5,
+                                                        0.5,
                                                         1
-                                                    ]
+                                                    ],
+                                       "receiver":  "UNBAKED"
                                    },
                          "shadow":  {
                                         "enabled":  false,
@@ -7339,9 +7350,9 @@
                                                                        ]
                                                                    ],
                                                         "directionalColor":  [
-                                                                                 0,
-                                                                                 0,
-                                                                                 0,
+                                                                                 0.800000012,
+                                                                                 0.800000012,
+                                                                                 0.800000012,
                                                                                  1
                                                                              ],
                                                         "ambientColor":  [
@@ -7354,9 +7365,9 @@
                                                         "blendTimeOut":  1,
                                                         "priority":  0,
                                                         "specularColor":  [
-                                                                              0,
-                                                                              0,
-                                                                              0,
+                                                                              0.5,
+                                                                              0.5,
+                                                                              0.5,
                                                                               1
                                                                           ],
                                                         "postProcess":  {
@@ -7482,9 +7493,9 @@
                                                                        ]
                                                                    ],
                                                         "directionalColor":  [
-                                                                                 0,
-                                                                                 0,
-                                                                                 0,
+                                                                                 0.800000012,
+                                                                                 0.800000012,
+                                                                                 0.800000012,
                                                                                  1
                                                                              ],
                                                         "ambientColor":  [
@@ -7497,9 +7508,9 @@
                                                         "blendTimeOut":  1,
                                                         "priority":  0,
                                                         "specularColor":  [
-                                                                              0,
-                                                                              0,
-                                                                              0,
+                                                                              0.5,
+                                                                              0.5,
+                                                                              0.5,
                                                                               1
                                                                           ],
                                                         "postProcess":  {
@@ -7703,7 +7714,8 @@
                                                                                            0.425893813,
                                                                                            0.707106769
                                                                                        ]
-                                                                }
+                                                                },
+                                                        "receiver":  "ALL"
                                                     },
                                                     {
                                                         "regionId":  "kouku.ps.environment.50",
@@ -7840,7 +7852,8 @@
                                                                                            0.425893813,
                                                                                            0.707106769
                                                                                        ]
-                                                                }
+                                                                },
+                                                        "receiver":  "ALL"
                                                     },
                                                     {
                                                         "regionId":  "kouku.ps.environment.51",
@@ -7977,7 +7990,8 @@
                                                                                            0.425893813,
                                                                                            0.707106769
                                                                                        ]
-                                                                }
+                                                                },
+                                                        "receiver":  "ALL"
                                                     },
                                                     {
                                                         "regionId":  "kouku.ps.environment.52",
@@ -8030,9 +8044,9 @@
                                                                        ]
                                                                    ],
                                                         "directionalColor":  [
-                                                                                 0,
-                                                                                 0,
-                                                                                 0,
+                                                                                 0.800000012,
+                                                                                 0.800000012,
+                                                                                 0.800000012,
                                                                                  1
                                                                              ],
                                                         "ambientColor":  [
@@ -8045,9 +8059,9 @@
                                                         "blendTimeOut":  3,
                                                         "priority":  0,
                                                         "specularColor":  [
-                                                                              0,
-                                                                              0,
-                                                                              0,
+                                                                              0.5,
+                                                                              0.5,
+                                                                              0.5,
                                                                               1
                                                                           ],
                                                         "postProcess":  {
@@ -8167,9 +8181,9 @@
                                                                        ]
                                                                    ],
                                                         "directionalColor":  [
-                                                                                 0,
-                                                                                 0,
-                                                                                 0,
+                                                                                 0.800000012,
+                                                                                 0.800000012,
+                                                                                 0.800000012,
                                                                                  1
                                                                              ],
                                                         "ambientColor":  [
@@ -8182,9 +8196,9 @@
                                                         "blendTimeOut":  1,
                                                         "priority":  0,
                                                         "specularColor":  [
-                                                                              0,
-                                                                              0,
-                                                                              0,
+                                                                              0.5,
+                                                                              0.5,
+                                                                              0.5,
                                                                               1
                                                                           ],
                                                         "postProcess":  {
@@ -8304,9 +8318,9 @@
                                                                        ]
                                                                    ],
                                                         "directionalColor":  [
-                                                                                 0,
-                                                                                 0,
-                                                                                 0,
+                                                                                 0.800000012,
+                                                                                 0.800000012,
+                                                                                 0.800000012,
                                                                                  1
                                                                              ],
                                                         "ambientColor":  [
@@ -8319,9 +8333,9 @@
                                                         "blendTimeOut":  1,
                                                         "priority":  0,
                                                         "specularColor":  [
-                                                                              0,
-                                                                              0,
-                                                                              0,
+                                                                              0.5,
+                                                                              0.5,
+                                                                              0.5,
                                                                               1
                                                                           ],
                                                         "postProcess":  {
@@ -8554,7 +8568,8 @@
                                                                                            0.425893813,
                                                                                            -0.5
                                                                                        ]
-                                                                }
+                                                                },
+                                                        "receiver":  "ALL"
                                                     },
                                                     {
                                                         "regionId":  "kouku.ps.environment.56",
@@ -8691,7 +8706,8 @@
                                                                                            0.425893813,
                                                                                            -0.5
                                                                                        ]
-                                                                }
+                                                                },
+                                                        "receiver":  "ALL"
                                                     },
                                                     {
                                                         "regionId":  "kouku.sl03.environment.59",
@@ -8828,7 +8844,8 @@
                                                                                            0.425893813,
                                                                                            -0.5
                                                                                        ]
-                                                                }
+                                                                },
+                                                        "receiver":  "ALL"
                                                     }
                                                 ]
                      },

@@ -29,7 +29,7 @@ void LostArk::Server::CGameRoom::Handle_Move(
 	const SESSION_ID sessionId,
 	const LostArk::Shared::C2S_MOVE& move)
 {
-	if (Is_KoukuRaidCinematic()) return;
+	if (Is_KoukuRaidInputBlocked()) return;
 	const auto sessionIter = m_PlayerIdBySessionId.find(sessionId);
 	if (sessionIter == m_PlayerIdBySessionId.end())
 	{
@@ -292,7 +292,7 @@ void LostArk::Server::CGameRoom::Handle_UseSkill(
 	const SESSION_ID sessionId,
 	const LostArk::Shared::C2S_USE_SKILL& useSkill)
 {
-	if (Is_KoukuRaidCinematic()) return;
+	if (Is_KoukuRaidInputBlocked()) return;
 	const auto sessionIter = m_PlayerIdBySessionId.find(sessionId);
 	if (sessionIter == m_PlayerIdBySessionId.end())
 	{

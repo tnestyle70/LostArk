@@ -65,8 +65,8 @@ namespace Client
 	/* The judgement a DURATION Logic runs and the outcome a RESULT Logic
 	   applies. Both are the Server's typed vocabulary; a definition that is
 	   only a name keeps the kind empty and stays DRAFT-only. */
-	inline constexpr std::array<const char_t*, 15u> KOUKU_SAYDON_JUDGEMENT_KINDS = {
-		"CARD_DICE_BIND", "ROULETTE_CARD_MATCH", "GAZE_REAL_BOSS", "POSE_INPUT", "STAGGER_WINDOW", "COUNTER_WINDOW", "AREA_OVERLAP", "OBJECT_OVERLAP", "EXTERNAL_SIGNAL", "ATTACHMENT_HOLD", "PATTERN_COMPLETION_COUNT", "SHOWTIME_PLAYER_TARGETS", "BOSS_TRACK_TARGET", "CROSS_DIRECTION_CLONES", "PURSUIT_PROJECTILES" };
+	inline constexpr std::array<const char_t*, 16u> KOUKU_SAYDON_JUDGEMENT_KINDS = {
+		"CARD_DICE_BIND", "ROULETTE_CARD_MATCH", "GAZE_REAL_BOSS", "POSE_INPUT", "STAGGER_WINDOW", "COUNTER_WINDOW", "AREA_OVERLAP", "OBJECT_OVERLAP", "EXTERNAL_SIGNAL", "ATTACHMENT_HOLD", "PATTERN_COMPLETION_COUNT", "SHOWTIME_PLAYER_TARGETS", "BOSS_TRACK_TARGET", "CROSS_DIRECTION_CLONES", "PURSUIT_PROJECTILES", "BINGO_BOARD" };
 	inline constexpr std::array<const char_t*, 12u> KOUKU_SAYDON_OUTCOME_KINDS = {
 		"INSTANT_DEATH", "MAX_HP_PERCENT_DAMAGE", "MADNESS_GAUGE_ADD_PERCENT",
 		"CLOWN_TRANSFORM", "FEAR", "FOLLOWUP_PATTERN", "PLAY_WORLD_OBJECT_MOTION",
@@ -96,7 +96,7 @@ namespace Client
 		const std::string_view judgementKind,
 		const KOUKU_SAYDON_OUTCOME_SLOT slot)
 	{
-		if (judgementKind == "CARD_DICE_BIND" || judgementKind == "ATTACHMENT_HOLD" || judgementKind == "SHOWTIME_PLAYER_TARGETS" || judgementKind == "BOSS_TRACK_TARGET" || judgementKind == "CROSS_DIRECTION_CLONES" || judgementKind == "PURSUIT_PROJECTILES") return false;
+		if (judgementKind == "CARD_DICE_BIND" || judgementKind == "ATTACHMENT_HOLD" || judgementKind == "SHOWTIME_PLAYER_TARGETS" || judgementKind == "BOSS_TRACK_TARGET" || judgementKind == "CROSS_DIRECTION_CLONES" || judgementKind == "PURSUIT_PROJECTILES" || judgementKind == "BINGO_BOARD") return false;
 		if (judgementKind == "PATTERN_COMPLETION_COUNT") return slot == KOUKU_SAYDON_OUTCOME_SLOT::SUCCESS;
 		if (KOUKU_SAYDON_OUTCOME_SLOT::TIMEOUT == slot)
 			return judgementKind != "GAZE_REAL_BOSS" && judgementKind != "OBJECT_CONTACT";
@@ -218,12 +218,12 @@ namespace Client
 
 	inline bool_t Kouku_LogicOwnsOutcomes(const KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION& logic)
 	{
-		return (logic.strLogicType == "DURATION" && logic.strJudgementKind != "CARD_DICE_BIND" && logic.strJudgementKind != "ATTACHMENT_HOLD" && logic.strJudgementKind != "SHOWTIME_PLAYER_TARGETS" && logic.strJudgementKind != "BOSS_TRACK_TARGET" && logic.strJudgementKind != "CROSS_DIRECTION_CLONES" && logic.strJudgementKind != "PURSUIT_PROJECTILES") ||
+		return (logic.strLogicType == "DURATION" && logic.strJudgementKind != "CARD_DICE_BIND" && logic.strJudgementKind != "ATTACHMENT_HOLD" && logic.strJudgementKind != "SHOWTIME_PLAYER_TARGETS" && logic.strJudgementKind != "BOSS_TRACK_TARGET" && logic.strJudgementKind != "CROSS_DIRECTION_CLONES" && logic.strJudgementKind != "PURSUIT_PROJECTILES" && logic.strJudgementKind != "BINGO_BOARD") ||
 			(logic.strLogicType == "TRIGGER" && (logic.strTriggerKind == "ENTER_AREA" || logic.strTriggerKind == "OBJECT_CONTACT"));
 	}
 	inline bool_t Kouku_LogicAcceptsColliders(const KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION& logic)
 	{
-		return (logic.strLogicType == "DURATION" && logic.strJudgementKind != "CARD_DICE_BIND" && logic.strJudgementKind != "PATTERN_COMPLETION_COUNT" && logic.strJudgementKind != "EXTERNAL_SIGNAL" && logic.strJudgementKind != "COUNTER_WINDOW" && logic.strJudgementKind != "ATTACHMENT_HOLD" && logic.strJudgementKind != "SHOWTIME_PLAYER_TARGETS" && logic.strJudgementKind != "BOSS_TRACK_TARGET" && logic.strJudgementKind != "CROSS_DIRECTION_CLONES" && logic.strJudgementKind != "PURSUIT_PROJECTILES") ||
+		return (logic.strLogicType == "DURATION" && logic.strJudgementKind != "CARD_DICE_BIND" && logic.strJudgementKind != "PATTERN_COMPLETION_COUNT" && logic.strJudgementKind != "EXTERNAL_SIGNAL" && logic.strJudgementKind != "COUNTER_WINDOW" && logic.strJudgementKind != "ATTACHMENT_HOLD" && logic.strJudgementKind != "SHOWTIME_PLAYER_TARGETS" && logic.strJudgementKind != "BOSS_TRACK_TARGET" && logic.strJudgementKind != "CROSS_DIRECTION_CLONES" && logic.strJudgementKind != "PURSUIT_PROJECTILES" && logic.strJudgementKind != "BINGO_BOARD") ||
 			(logic.strLogicType == "TRIGGER" && (logic.strTriggerKind == "ENTER_AREA" || logic.strTriggerKind == "OBJECT_CONTACT"));
 	}
 	inline const std::string& Kouku_LogicOutcomeKind(const KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION& logic)
@@ -391,7 +391,7 @@ namespace Client
 
 	enum class KOUKU_SAYDON_PRESENTATION_KIND : std::uint8_t
 	{
-		EFFECT, SOUND, CAMERA, COLLIDER, LIGHT, WORLD, SCENE_PROFILE
+		EFFECT, SOUND, CAMERA, COLLIDER, LIGHT, WORLD, SCENE_PROFILE, SUBTITLE
 	};
 
 	/* EFFECT/SOUND/CAMERA/COLLIDER/LIGHT definitions share stable resource identity.
@@ -405,6 +405,8 @@ namespace Client
 		std::string strAssetId;
 		// Optional KoukuSaydon catalog event; its admitted variants each contain one complete source event.
 		std::string strSoundEvent;
+		std::string strSubtitleText;
+		std::string strSubtitlePosition = "NORMAL";
 		std::string strResourceKind = "GROUP";
 		std::string strElementId;
 		std::string strDefaultAnchorKind = "BOSS";
@@ -525,6 +527,7 @@ namespace Client
 		std::optional<double> ResetBossYawDegrees;
 		std::optional<KOUKU_SAYDON_BOSS_MOTION> BossMotion;
 		double fAnimationRootVerticalScale = 1.0;
+		double fAnimationRootHorizontalScale = 1.0;
 		std::vector<KOUKU_SAYDON_COMPOSITION_STAGE> Stages;
 		// Execution snapshot only. Serialize derives these from Logic definitions/boxes.
 		std::vector<KOUKU_SAYDON_ANIMATION_BLEND_WINDOW> AnimationBlendWindows;
@@ -664,6 +667,7 @@ namespace Client
 		// Separate authoring owner; never a Product publisher input.
 		static std::filesystem::path Resolve_SequencePath();
 		static bool_t Is_KnownProfile(std::string_view profileId);
+		static bool_t Is_ValidSubtitleText(std::string_view text);
 		static bool_t Is_KnownGate(std::string_view gateId);
 		static std::string_view Resolve_DefaultPlacementId(std::string_view gateId, std::string_view actorProfileId);
 		static std::string_view Resolve_BossArchetypeId(std::string_view placementId);

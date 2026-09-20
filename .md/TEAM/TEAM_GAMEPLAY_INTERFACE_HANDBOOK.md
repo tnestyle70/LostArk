@@ -908,7 +908,7 @@ Action Workbench는 모델 선택과 무관하게 전체 Gate→Parent→Bundle�
 이미 준비된 관문은 위치를 초기화하지 않는다. 준비 중 Stop·실패·관문/연결 변경은 지연 재생을 취소한다.
 `Complete Play - Sequences + Pattern Flow`는 typed Raid START로 선택 관문부터의 전체 진행을 Server에 요청한다.
 Server가 저장 Action·Sequence revision과 Flow를 검증하고 실행 epoch·시작 참가자·공통 tick을 고정한다.
-입장 Sequence 종료 전에는 보스를 생성하지 않으며, 종료 뒤 기존 audition으로 저장 Flow를 실행한다.
+입장 Sequence 종료 전에는 보스를 생성하지 않는다. 1·2관문은 종료 뒤 기존 audition으로 저장 Flow를 실행하며, 3관문 최초 입장은 아래 `WAIT_ENTRY` 승인을 기다린다. BINGO는 별도 입장 Sequence 없이 같은 준비 승인 후 저장 Flow를 시작한다.
 Stop은 실행 owner와 epoch가 일치할 때만 처리한다. `Play Saved Pattern Flow`는 전투 순서만 실행하고 `Composition Play All`은 선택 관문의
 게시 목록에서 Bundle을 하나의 동시 실행 항목으로 유지하며 해당 child의 중복 단독 재생을 제외한다.
 Flow는 정확한 Server COMPLETED를 받은 뒤 대기 시간을 거쳐 다음 typed Pattern/Bundle 요청을 보낸다.
@@ -1032,7 +1032,7 @@ Sequence의 `Complete Play`와 `Complete Play - Sequences + Pattern Flow`는 같
 ROOM_PLAYER_ARRIVAL은 게시된 Sequence의 슬롯·위치·시각을 Server가 실행하며 Client가 목적지를 다시 제출하지 않는다.
 Client는 `S2C_KOUKUSAYDON_RAID_STATE`의 공통 tick으로 기존 presentation player를 샘플링하고,
 같은 composition ID·Sequence revision의 저장 문서를 실행 동안 유지한다. 로컬 Pause·scrub·Preview 전환은
-Server 시계를 바꾸지 않는다. owner의 Stop은 해당 실행 epoch를 명시한 Raid STOP이다.
+Server 시계를 바꾸지 않는다. owner의 Stop은 해당 실행 epoch를 명시한 Raid STOP이다. 명시적 Reset이나 새 로컬 Preview 요청도 활성 Raid가 있으면 기존 typed STOP의 종료 확인을 기다린 뒤 최신 draft의 로컬 재생을 소비한다. 단순 선택·Reload로 내부 Stop을 호출하는 경우에는 Raid를 중단하지 않으며, Save가 실행 중 pin한 revision을 바꾸지 않는다.
 F6 free camera에서는 camera track override를 해제하고 현재 pose/FOV를 유지한다. follow로 복귀하면
 현재 연출 시각의 camera track을 다시 적용한다. 정상 종료에서는 플레이어 follow를 켠다.
 `1관문_통합_시퀀스` 종료 시 Server가 전투 배우와 Flow를 시작하며, Client는 복제된 관문 상태로
@@ -1664,11 +1664,11 @@ MAZE 진입 → 30tick 뒤 중앙의 Server 삐에로 상자(`MONSTER_KOUKU_CLOW
 
 Kouku Sequence Composition의 optional `enterCombatOnFinish`는 GATE1/GATE2/GATE3별 입장 Pattern 하나를 식별한다. publisher는 Action의 저장 `patternFlows`와 Sequence의 입장·클리어·도착 슬롯을 `RAIDGATE`, `RAIDFLOWSTEP`, `RAIDARRIVAL` 행으로 투영한다. `C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST` START는 Server-active gameplay revision, 저장 Action·Sequence revision, 시작 관문을 전달한다. Server는 같은 비쿠크 gameplay를 유지하는 최신 게시 Product만 승인하고 실행 동안 immutable catalog를 유지한다. Debug owner의 STOP은 실행 epoch가 일치해야 하며 재전송은 같은 요청 결과를 반환한다. Release는 published `RAIDGATE.entrySequenceInstanceId`에 해당하는 입장 collider 접촉이 같은 준비 helper를 호출한다. 기존 단독 WorldSequence 재생을 중복 실행하지 않으며, 준비 실패 뒤에는 해당 one-shot activation만 복원해 재접촉을 허용한다. 기존 GateProgress packet ID를 유지한 뒤 Raid packet을 추가한다.
 
-Server는 시작 시 1~4명의 PlayerId 순서를 고정하고 `PREPARING` 상태에 roster와 10초 준비 기한을 전송한다. 각 참가자는 저장 Action·Sequence의 정확한 revision을 검사하고 Sequence 문서를 immutable copy로 미리 읽은 뒤 같은 epoch/revision으로 `READY` 또는 이유가 있는 `FAILED`를 회신한다. 준비 단계에서는 재생·teleport·boss despawn을 하지 않는다. 모든 시작 참가자의 READY 뒤 다음 fixed tick에서 공통 시작 시각을 확정한다. FAILED·timeout·owner STOP·참가자 퇴장은 기존 actor·위치·미니게임 상태를 보존한 채 준비를 중단한다. 중복 ACK는 멱등이며 이전 epoch·다른 revision·late join의 ACK는 시작 roster를 바꾸지 못한다. 입장 중 이동·스킬을 차단하며 저작 도착 시각에 각 슬롯을 이동한다. Sequence가 끝나면 기존 audition 경로로 Flow의 Pattern/Bundle을 순서대로 실행한다. 카드미로가 활성 상태이거나 참가자의 역할이 남아 있으면 다음 Flow 항목을 기다린다. 게시된 primary 보스의 실제 HP 0/사망은 기존 GateProgress clear mask를 갱신하고 `WAIT_GATE`로 전환한다. Gate 2의 보조 배우는 이 완료 조건을 지연하거나 대신 충족하지 않는다. 자동 10초 전환은 없으며 기존 클리어·MVP·던전입장 UI를 거친 고정 roster 전원의 승인만 다음 관문 Sequence를 시작한다. 거절·투표 timeout은 WAIT_GATE를 유지한다. 재시작 투표 승인도 같은 관문의 입장 Sequence와 첫 Flow 항목으로 돌아간다. 2관문 승인 뒤에는 클리어 Sequence 다음에 3관문 입장 Sequence를 재생한다. 마지막 관문은 WAIT_GATE와 clear mask를 유지하여 기존 EXIT·재시작 UI를 받는다. 단순 Flow 종료나 보스 제거는 관문 클리어로 취급하지 않는다.
+Server는 시작 시 1~4명의 PlayerId 순서를 고정하고 `PREPARING` 상태에 roster와 준비 기한(Release 10초, Debug의 지연 리소스 준비는 20분)을 전송한다. 각 참가자는 저장 Action·Sequence의 정확한 revision을 검사하고 Sequence 문서를 immutable copy로 미리 읽은 뒤 같은 epoch/revision으로 `READY` 또는 이유가 있는 `FAILED`를 회신한다. 준비 단계에서는 재생·teleport·boss despawn을 하지 않는다. 모든 시작 참가자의 READY 뒤 다음 fixed tick에서 공통 시작 시각을 확정한다. FAILED·timeout·owner STOP·참가자 퇴장은 기존 actor·위치·미니게임 상태를 보존한 채 준비를 중단한다. 중복 ACK는 멱등이며 이전 epoch·다른 revision·late join의 ACK는 시작 roster를 바꾸지 못한다. 입장 중 이동·스킬을 차단하며 저작 도착 시각에 각 슬롯을 이동한다. 1·2관문 Sequence가 끝나면 기존 audition 경로로 Flow의 Pattern/Bundle을 순서대로 실행한다. Client는 READY 전에 관문 오브젝트와 조명을 준비하고 같은 Server 실행의 stage를 전투 전환에서 commit한다. 카드미로가 활성 상태이거나 참가자의 역할이 남아 있으면 다음 Flow 항목을 기다린다. 게시된 primary 보스의 실제 HP 0/사망은 기존 GateProgress clear mask를 갱신하고 `WAIT_GATE`로 전환한다. Gate 2의 보조 배우는 이 완료 조건을 지연하거나 대신 충족하지 않는다. 자동 10초 전환은 없으며 기존 클리어·MVP·던전입장 UI를 거친 고정 roster 전원의 승인만 다음 관문 Sequence를 시작한다. 거절·투표 timeout은 WAIT_GATE를 유지한다. 재시작 투표 승인도 같은 관문의 입장 Sequence와 첫 Flow 항목으로 돌아간다. 2관문 클리어 후 승인하면 3관문 입장 Sequence만 재생한다. 3관문 최초 Sequence 종료는 `WAIT_ENTRY`로 전환하며 HUD를 표시하되 이동·스킬 입력을 차단한다. 마지막 네 Effect의 도착 슬롯 위치와 전투 시작 위치는 별개다. 기존 leader·전원 승인 정책의 `3관문 입장` 버튼이 명시 `ENTER_GATE3` 투표를 제출하고, Server가 모든 참가자의 session·profile·목적지 navigation/높이/충돌과 기존 audition evaluator의 첫 Flow admission을 staged actor로 검증한 뒤 전원을 원래 전투 위치로 이동하고 첫 Flow를 시작한다. 검증 실패는 위치와 대기 상태를 유지한다. 한 번 입장한 뒤 버튼은 `재시작`이며 재시작 Sequence 뒤에는 자동으로 전투를 시작한다. 3관문 클리어 후 `빙고 입장`은 기존 ADVANCE 투표를 사용한다. BINGO는 입장 Sequence 없이 준비·목적지 검증 후 전투를 시작하고 UI에는 기존 세 관문을 완료 상태로 표시한다. 빙고 클리어는 WAIT_GATE와 clear mask를 유지하여 기존 EXIT·재시작 UI를 받는다. 단순 Flow 종료나 보스 제거는 관문 클리어로 취급하지 않는다.
 
-`S2C_KOUKUSAYDON_RAID_STATE`의 phase·epoch·시작/종료/server tick이 모든 Client의 연출 시계다. Client는 저장 Sequence의 정확한 composition ID와 revision을 별도로 pin하고 기존 presentation player로 표현한다. 늦은 입장에는 현재 상태와 원래 시작 tick에 이어 `S2C_GATE_PROGRESS_STATE`의 현재 관문·클리어 mask·진행 중 투표 상태를 초기 reliable batch로 전송한다. 시작 참가자 슬롯과 투표 권한은 추가하지 않는다. 시작 참가자가 퇴장하면 실행을 중단한다. 시작 참가자가 준비 중 Sequence를 불러오지 못하면 FAILED로 전원 시작을 중단한다. 준비가 끝난 뒤의 표시 실패나 late join의 문서 불일치는 해당 Client에 이유를 표시하며 이미 확정된 Server 실행 시각을 바꾸지 않는다. 단독 F1 Gate/일반 Preview는 별도 기존 시험 경로를 유지한다.
+`S2C_KOUKUSAYDON_RAID_STATE`의 phase·epoch·시작/종료/server tick이 모든 Client의 연출 시계다. Client는 저장 Sequence의 정확한 composition ID와 revision을 별도로 pin하고 기존 presentation player로 표현한다. 늦은 입장에는 현재 상태와 원래 시작 tick에 이어 `S2C_GATE_PROGRESS_STATE`의 현재 관문·클리어 mask·진행 중 투표 상태를 초기 reliable batch로 전송한다. 시작 참가자 슬롯과 투표 권한은 추가하지 않는다. 시작 참가자가 퇴장하면 실행을 중단한다. 시작 참가자가 준비 중 Sequence를 불러오지 못하면 FAILED로 전원 시작을 중단한다. 준비가 끝난 뒤의 표시 실패나 late join의 문서 불일치는 해당 Client에 이유를 표시하며 이미 확정된 Server 실행 시각을 바꾸지 않는다. 단독 F1 Gate/일반 Preview는 별도 기존 시험 경로를 유지한다. 일반 Preview의 도착 Logic 또는 ImGui의 `3관문 입장 전 공간` 이동은 기존 Server 승인 teleport를 사용한다. 제품 Raid가 없는 이 공간에서는 같은 `ENTER_GATE3` 투표를 받아 실제 proposer 위치와 참가자 roster, 전원 목적지 및 boss 생성·정리를 사전 검증한 뒤 기존 3관문을 활성화한다. 거절·timeout·사전 검증 실패는 이전 위치와 보스를 보존한다. Client에서 WAIT_ENTRY를 만들지 않는다. Client의 대기 BGM과 이 버튼 표시는 공유 ready-area 범위에 대한 replicated XYZ를 읽으며 이동 판정 권위를 갖지 않는다. 시작 공간 및 3관문 판자 공간의 BGM은 local Sequence 재생 중과 Server CINEMATIC/COMBAT 중 억제하고 Level 퇴장에서 정리한다.
 
-Raid packet 계약은 protocol 93이며 Server와 Client를 함께 빌드·재시작해야 한다. protocol 92 이하 peer는 ENTER_WORLD의 exact version 검사에서 거절한다. 이후 Action·Sequence 게시 데이터만 바뀌면 다음 START가 exact revision으로 재승인하며 진행 중 실행은 기존 catalog와 문서를 유지한다. World placement·navigation·다른 gameplay balance를 적용하는 Server 재시작과, Client의 저장 문서 Reload·화면 확인은 별개다. 게시 또는 파일 설치 성공을 실행 중 도구의 미저장 draft 반영이나 화면 검증 완료로 기록하지 않는다.
+Raid packet 계약은 protocol 96이며 Server와 Client를 함께 빌드·재시작해야 한다. `GATE_PROGRESS_KIND::ENTER_GATE3`는 현재 관문 재시작과 분리한 3관문 입장 요청이다. `WAIT_ENTRY`는 기존 phase 값 뒤에 추가했고 GATE3의 종료 tick 없는 대기 상태로만 허용한다. START와 상태의 관문 ID는 기존 BINGO를 포함한다. protocol 95 이하 peer는 ENTER_WORLD의 exact version 검사에서 거절한다. 이후 Action·Sequence 게시 데이터만 바뀌면 다음 START가 exact revision으로 재승인하며 진행 중 실행은 기존 catalog와 문서를 유지한다. World placement·navigation·다른 gameplay balance를 적용하는 Server 재시작과, Client의 저장 문서 Reload·화면 확인은 별개다. 게시 또는 파일 설치 성공을 실행 중 도구의 미저장 draft 반영이나 화면 검증 완료로 기록하지 않는다.
 
 Object Tool의 Group Layout은 motion emission의 count·spacing·Delay를 소유한다. Box Detail의 Object/Motion 열기는 stable object ID와 instance ID를 전달하며 자동 preview·저장을 하지 않는다. WORLD Collider/전용 Logic 참조를 함께 바꾸는 저장은 source 변경을 재확인한 뒤 교체하며, 공유 또는 모호한 참조와 미저장 Composition은 이유를 표시하고 기존 문서를 보존한다.
 
@@ -1745,3 +1745,28 @@ Server가 대상 선택·이동·Shared XZ swept circle 접촉과 객체 종료�
 publisher는 실제 Effect 참조를 `targetedCombatVisuals`로 고정한다. Client는 서버 snapshot의 위치·yaw와 독립된 표시 반복 시계를 사용한다. 접촉 event의 stable ID는 고정한 `contactVisualId`와 일치해야 하며 폭발은 카드 despawn 뒤에도 자기 위치·리소스를 보존한다. 새 socket 호출·Client local 추적 권위·중복 모델 runtime은 없다. 편집은 Logic Detail의 카드·폭발 선택과 속도·최대 거리·반경·수명·간격 입력, Apply → Save → Publish All Patterns로 반영한다.
 
 Kouku Product의 게시 가능한 pattern 개수 상한은 Shared `MAX_VALTAN_PATTERN_FLOW_SLOTS`와 같은255다. projector·Gameplay bootstrap·Boss Tool은 동일 한계를 적용한다. 저장된 미완성 Pattern은 ready inventory에서 별도 unavailable로 남으며 정상 Pattern을 게시하기 위해 원본을 삭제하지 않는다.
+
+
+### Kouku 연출의 텍스트 자막
+
+Composition presentation resource의 `kind=SUBTITLE`은 `subtitleText`와 `subtitlePosition` (`NORMAL` / `UPPER`)을 소유한다. 텍스트는 1~4096 byte valid UTF-8 plain text이며 줄바꿈 LF를 허용하고 markup/control은 거부한다. `assetId`는 원본 GameMsg stable ID이고 이미지 파일 경로가 아니다. resource/occurrence는 MAP anchor와 `followBoss=false`를 사용하며 기존 occurrence의 `startMs`/`durationMs`로 시간을 편집한다. 기존 Save/Reload/Seek/Stop 경로가 같은 데이터를 소비한다.
+
+Presentation Player의 읽기 전용 활성 자막 목록을 MainApp이 기존 한글 폰트와 UI text layer로 그린다. cinematic HUD 숨김과 자막 숨김은 분리된다. 이 계약은 현재 한국어 문구를 직접 저장하며 언어별 catalog 선택이나 다국어 font fallback 구현을 뜻하지 않는다. 원본 시간/문구가 없는 구간은 임의 대사를 만들지 않는다.
+
+
+### 빙고 Parent와 서버 주기 기믹
+
+BINGO는 기존 saved Flow의 Pattern/Bundle 경로로 실행하며 새 별도 시퀀서나 보스 런타임을 만들지 않는다. BINGO Parent가 G3 MN_RPCT_05 Pattern을 재사용할 때만 `boss.kakulsaydon.g3.saydon` → `boss.kakulsaydon.bingo.saydon` child 참조를 허용한다. 그 외 관문/owner 불일치는 계속 거부한다. `DURATION / BINGO_BOARD`는 결과·collider를 소유하지 않는 1~600,000ms 서버 주기 기믹이다. 해당 행이 끝나면 신규 발생을 멈추며 기존 폭탄 표식·fuse는 완료한다. 같은 Complete Play run의 반복 Parent는 보드와 다음 bomb/hammer/madness deadline을 유지한다. run restart/exit/아레나 시작점 복귀는 모두 초기화한다.
+
+BINGO Flow는 intro Pattern과 arrival를 생성하지 않고 Action/Sequence revision을 그대로 pin한다. 준비와 목적지 admission을 마친 서버 전투만 소비한다. 부모 50,000ms 안의 5개 공격은 기존 P62 블랙홀 빔, P94 메두사, P60 기분나빠, P67 3방향 화염, P40 십자 화염 폭발이다. 공격 사이 1,000ms로 마지막 공격은40,477ms에 끝나며 나머지9,523ms에는 기믹만 계속된다. 다음 Parent도 같은 Flow 항목을 반복한다.
+
+보드는 처음 일반 해골2칸,5초마다 살아 있는 보드 위 플레이어1명 표식,5초 후 현재 칸 중심에 폭탄 설치,3초 후 중심+상하좌우를 일반해골로 만든다. 기존 일반해골은 빨간해골로 승격하며 빨간해골은 유지한다. 기존 완성 line 승격도 보존한다. 두 해골 모두 초당 광기3이며 최대 도달 시 기존 광대 변신 policy를 소비한다. 10초마다 같은 축의 서로 최소2칸 떨어진 두 무작위 경로를 선택한다. 원본4.69m 망치 머리 폭보다 넓은6.08m 이상 간격으로 실제 머리도 겹치지 않는다. UV 화살표3초 뒤 원본 하강1.4초+이동1.6초를 소비하고 머리의 swept XZ만 서버 즉사 판정한다. 높은 사슬은 판정하지 않는다.
+
+갈고리 attachment는 마지막 authored grip에 도달하면 끝쪽 정지/tail을 기다리지 않고 이동 잠금을 해제한다. 마지막 숨김 key 좌표도 적용한 뒤 해제하며 강제1.5초 knockdown을 추가하지 않는다. 정지 갈고리는 기존 명시 deadline을 유지한다.
+
+
+### 쿠크 바닥 이동과 동적 발판의 예측
+
+기존 TRIGGER mechanic의 `BOSS_TELEPORT_XZ`는 Y를 보존한다. `BOSS_TELEPORT_GROUNDED`는 navigation·authoring 목적지 높이·body overlap을 먼저 검증하고 성공할 때만 보스와 animation root 기준을 바닥으로 이동한다. 해당 Pattern의 다음 Stage root origin도 바닥에서 시작하되 원본 Up curve는 유지한다. 실패는 위치·root·정책을 보존하고 Pattern 종료/새 실행은 바닥 정책을 초기화한다. 같은25필드 bootstrap 계약의 새 kind이며 Shared packet 형식은 바꾸지 않는다.
+
+Server가 제공한 동적 support 위에서는 기존 snapshot.canPredictMove=false로 Client 정적 nav 예측이 Server Y를 덮지 않게 한다. support 포함 판정은 ServerNavigation의 exact circle을 공유한다. 이 값은 표현 예측 허용이며 이동 입력 잠금이 아니다. typed MoveGoal과 Server simulation은 계속되고 Client는 기존 XYZ snapshot 보간을 사용한다. 발판 이탈·소멸 뒤에는 원래 예측 조건으로 복귀한다.

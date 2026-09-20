@@ -514,7 +514,13 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 		snapshot.fYawDegrees = player.fYawDegrees;
 		snapshot.iLastProcessedMoveSequence = player.iLastMoveSequence;
 		snapshot.fMoveSpeed = Resolve_PlayerMoveSpeed(player);
-		snapshot.canPredictMove =
+		// Client click prediction samples static navigation and cannot represent
+		// this room-owned floor. Keep input and Server movement active, but send
+		// the existing authoritative interpolation mode while standing on it.
+		const auto& supports = m_ServerNavigation.Get_RuntimeSupportSurfaces();
+		const bool onRuntimeSupport = std::any_of(supports.begin(), supports.end(),
+			[&](const auto& surface) { return surface.Contains_PointXZ(player.fPositionX, player.fPositionZ); });
+		snapshot.canPredictMove = !onRuntimeSupport &&
 			PLAYER_ACTION_STATE::NONE == player.eAction &&
 			player.iCurrentHp != 0u && !player.bPatternBound &&
 			player.iMarioStage == 0u && !player.TriggerMove.isActive &&

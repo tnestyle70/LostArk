@@ -98,6 +98,7 @@ public:
 	void Reset();
 
 	bool_t Is_Active() const { return nullptr != m_pActiveCue; }
+    bool_t Did_FinishCueNaturally() const { return m_didFinishCueNaturally; }
 	bool_t Is_ExitTransitionActive() const
 	{
 		return m_isExitTransitionActive;
@@ -130,6 +131,7 @@ private:
     uint32_t m_iCameraInvocationStartMs = 0u;
 	bool_t m_hasCueKey = false;
 	bool_t m_isCueFinished = false;
+    bool_t m_didFinishCueNaturally = false;
 	/* Stored after tracking and any active blend, so a coordinate-frame change
 	   starts from the pose that was actually submitted on the prior frame. */
 	VALTAN_CINEMATIC_CAMERA_POSE m_LastOutputPose;

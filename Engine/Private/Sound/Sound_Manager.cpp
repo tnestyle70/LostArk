@@ -255,9 +255,9 @@ HRESULT CSound_Manager::Play_Sound(const wstring_t& strSoundFilePath, f32_t fVol
 	return S_OK;
 }
 
-uint64_t CSound_Manager::Play_SoundCue(const wstring_t& path, f32_t volume, uint32_t ageMs, bool_t paused)
+uint64_t CSound_Manager::Play_SoundCue(const wstring_t& path, f32_t volume, uint32_t ageMs, bool_t paused, f32_t playbackRate)
 {
-	if (!std::isfinite(volume) || volume < 0.f || volume > 4.f || !m_pSystem ||
+	if (!std::isfinite(playbackRate) || playbackRate <= 0.f || playbackRate > 16.f || !std::isfinite(volume) || volume < 0.f || volume > 4.f || !m_pSystem ||
 		!Update_ApplicationFocusMute()) return 0u;
 	auto* sound = Find_Or_LoadSound(path, false);
 	if (!sound) return 0u;
@@ -266,6 +266,7 @@ uint64_t CSound_Manager::Play_SoundCue(const wstring_t& path, f32_t volume, uint
 	FMOD::Channel* channel = nullptr;
 	if (m_pSystem->playSound(sound, Pick_OneShotGroup(path), true, &channel) != FMOD_OK || !channel) return 0u;
 	if (channel->setVolume(volume) != FMOD_OK || channel->setPosition(ageMs, FMOD_TIMEUNIT_MS) != FMOD_OK ||
+		channel->setPitch(playbackRate) != FMOD_OK ||
 		channel->setPaused(paused) != FMOD_OK)
 	{ channel->stop(); return 0u; }
 	const uint64_t handle = m_iNextCueHandle++;

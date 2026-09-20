@@ -25,6 +25,12 @@ struct EFFECT_DOCUMENT_DESC;
 struct SAYDON_WEAPON_REPLACEMENT;
 struct SAYDON_HAT_REPLACEMENT;
 
+struct WORLD_SEQUENCE_SUBTITLE_SAMPLE final
+{
+    std::string instanceId, subtitleTrackId, text, position;
+    float3_t worldPosition{};
+};
+
 /* One playback path for authored world sequences. The Map Tool preview and the
    product level both evaluate a sequence here so a sequence can never look one
    way in the editor and another way in the game. The player only reads the
@@ -130,6 +136,10 @@ public:
 	static void Collect_ValidationTargets(const TARGET_SET& targets,
 		WORLD_SEQUENCE_PLACEMENT_MAP& placements, WORLD_SEQUENCE_DEPLOY_MAP& deploy);
 	bool_t Has_ActiveInstances() const { return !m_Active.empty(); }
+    // Append read-only samples from the last successful World clock. Hidden or
+    // missing Object targets suppress only their actor-bound balloon subtitle.
+    void Collect_Subtitles(std::vector<WORLD_SEQUENCE_SUBTITLE_SAMPLE>& out) const;
+
 	/* emissionIndex selects one row of an authored emission list; a seeded
 	   emitter keeps the single-object contract and answers index 0 only. */
 	bool_t Try_GetObjectPivot(const std::string& instanceId, float4x4_t& out, uint32_t emissionIndex = 0u) const;
@@ -194,13 +204,15 @@ public:
 	/* Authoring needs to hold a cutscene on one frame and step to any point
 	   of it. Paused instances stop advancing but keep their baselines, so a
 	   scrub never restarts the sequence or loses the placed pose. */
-	void Set_Paused(bool_t paused) { m_bPaused = paused; }
+	void Set_Paused(bool_t paused);
+    void Update_SoundTails(f32_t timeDelta);
+    void Retire_InstanceSoundTails(const std::string& instanceId);
 	bool_t Is_Paused() const noexcept { return m_bPaused; }
 	/* Moves every playing instance to the same wall-clock point and applies
 	   that frame at once. false means nothing is playing to scrub. */
 	bool_t Seek_AllToMs(f32_t elapsedMs, const TARGET_SET& targets);
-	bool_t Seek_InstanceToMs(const std::string& instanceId, f32_t elapsedMs, const TARGET_SET& targets);
-	void Stop_Instance(const std::string& instanceId, const TARGET_SET& targets, bool_t restorePlacements);
+	bool_t Seek_InstanceToMs(const std::string& instanceId, f32_t elapsedMs, const TARGET_SET& targets, bool_t discontinuous = true);
+	void Stop_Instance(const std::string& instanceId, const TARGET_SET& targets, bool_t restorePlacements, bool_t preserveSoundTail = false);
 	/* The longest authored span across the playing instances, so the tool can
 	   size a scrub bar without guessing. */
 	f32_t Get_LongestElapsedSpanMs() const;
@@ -211,7 +223,7 @@ public:
 	/* Stopping hands every animated Deploy target back: an authoring preview
 	   left running blocks the prop's state from being set, so a second play
 	   could never restore it. */
-	void Stop_All(const TARGET_SET& targets, bool_t restorePlacements = false);
+	void Stop_All(const TARGET_SET& targets, bool_t restorePlacements = false, bool_t preserveSoundTail = false);
 
 	/* Advances every playing instance and writes the sampled presentation. A
 	   target that disappears stops only its own instance. */
@@ -284,6 +296,18 @@ private:
 		// Product boss presentation drawn with this body (empty = single model).
 		std::string presentationBossArchetypeId;
 	};
+    struct SOUND_INSTANCE
+    {
+        std::string key;
+        uint64_t handle = 0u;
+        f32_t endElapsedMs = 0.f;
+    };
+    struct RETIRED_SOUND
+    {
+        std::string ownerId;
+        uint64_t handle = 0u;
+        f32_t remainingMs = 0.f;
+    };
 	struct ACTIVE_INSTANCE final
 	{
 		std::string instanceId;
@@ -299,6 +323,10 @@ private:
 		std::vector<uint64_t> deployTargets;
 		uint32_t durationMs = 0;
 		std::string objectSampleStatus;
+        std::string sampledSubtitleTemplateId;
+        f32_t sampledSubtitleLocalMs = 0.f;
+        bool_t hasSubtitleSample = false;
+
 		std::vector<OBJECT_INSTANCE> objects;
 #ifdef _DEBUG
 		std::vector<OBJECT_COLLIDER_SAMPLE> objectColliderSamples;
@@ -313,6 +341,9 @@ private:
 			float3_t sampledPositionOffset{};
 		};
 		std::vector<EFFECT_INSTANCE> effects;
+        std::vector<SOUND_INSTANCE> sounds;
+        bool_t seekSounds = false;
+        bool_t soundPlaybackFinished = false;
 		std::unordered_map<std::string, PLAYER_ANCHOR> emissionAnchors;
 	};
 
@@ -339,6 +370,9 @@ private:
 		bool_t inheritObjectRotation = true);
 	bool_t Apply_ObjectEffects(ACTIVE_INSTANCE& active, const WORLD_SEQUENCE_INSTANCE& instance,
 		const TARGET_SET& targets);
+    void Apply_Sounds(ACTIVE_INSTANCE& active);
+    void Retire_Sounds(ACTIVE_INSTANCE& active);
+    void Stop_RetiredSounds(const std::string& ownerId = {});
 	void Release_Objects(ACTIVE_INSTANCE& active);
 	void Clear_PreparedObjects();
 	static bool_t Same_ObjectModelInputs(const WORLD_SEQUENCE_OBJECT_RESOURCE& left, const WORLD_SEQUENCE_OBJECT_RESOURCE& right);
@@ -355,6 +389,7 @@ private:
 	CWorldSequenceDocument m_Document;
 	bool_t m_bPaused = false;
 	std::vector<ACTIVE_INSTANCE> m_Active;
+    std::vector<RETIRED_SOUND> m_RetiredSounds;
 	// Finished clocks no longer tick, but own their held pose until explicit stop/replay.
 	std::vector<ACTIVE_INSTANCE> m_Held;
 	std::unordered_map<std::string, shared_ptr<CModel>> m_ModelCache;

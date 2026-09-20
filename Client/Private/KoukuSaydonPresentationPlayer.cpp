@@ -238,6 +238,7 @@ KIND Read_Kind(const std::string& kind)
 {
     if (kind == "EFFECT") return KIND::EFFECT;
     if (kind == "SOUND") return KIND::SOUND;
+    if (kind == "SUBTITLE") return KIND::SUBTITLE;
     if (kind == "CAMERA") return KIND::CAMERA;
     if (kind == "COLLIDER") return KIND::COLLIDER;
     if (kind == "LIGHT") return KIND::LIGHT;
@@ -253,6 +254,12 @@ RESOURCE Read_Resource(const DATA_JSON_VALUE& row)
     resource.eKind = Read_Kind(Text(row, "kind"));
     resource.strAssetId = Text(row, "assetId", resource.eKind == KIND::COLLIDER);
     if (row.Find("soundEvent")) resource.strSoundEvent = Text(row, "soundEvent", true);
+    if (const auto* subtitle = row.Find("subtitleText"))
+    {
+        if (!subtitle->Is_String()) throw std::runtime_error("Invalid Subtitle text type.");
+        resource.strSubtitleText = subtitle->Get_String();
+    }
+    if (row.Find("subtitlePosition")) resource.strSubtitlePosition = Text(row, "subtitlePosition");
     resource.strResourceKind = Text(row, "resourceKind", resource.eKind != KIND::EFFECT);
     if (row.Find("elementId")) resource.strElementId = Text(row, "elementId", true);
     resource.iDurationMs = UInt(row, "resourceDurationMs", 1u, MAX_TIMELINE_MS);
@@ -287,6 +294,12 @@ RESOURCE Read_Resource(const DATA_JSON_VALUE& row)
     if (!resource.strSoundEvent.empty() &&
         (resource.eKind != KIND::SOUND || !stableLightId(resource.strSoundEvent)))
         throw std::runtime_error("Invalid Sound event identity: " + resource.strSoundEvent);
+    if ((resource.eKind == KIND::SUBTITLE &&
+        (!stableLightId(resource.strAssetId) || !resource.strResourceKind.empty() ||
+         !CKoukuSaydonCompositionDocument::Is_ValidSubtitleText(resource.strSubtitleText))) ||
+        (resource.eKind != KIND::SUBTITLE && (!resource.strSubtitleText.empty() || resource.strSubtitlePosition != "NORMAL")) ||
+        (resource.strSubtitlePosition != "NORMAL" && resource.strSubtitlePosition != "UPPER"))
+        throw std::runtime_error("Invalid Subtitle resource: " + resource.strResourceId);
     if (resource.eKind == KIND::SOUND &&
         (resource.strAssetId.rfind("Sound/", 0u) != 0u ||
          CRuntimeAssetRoot::Resolve(resource.strAssetId).empty()))
@@ -360,8 +373,11 @@ OCCURRENCE Read_Occurrence(const DATA_JSON_VALUE& row, std::uint32_t durationMs,
     if (row.Find("worldEmissionIndex")) box.iWorldEmissionIndex = UInt(row, "worldEmissionIndex", 0u, 127u);
     if (box.strAnchorKind != "BOSS" && box.strAnchorKind != "WORLD" &&
         !(kind == KIND::LIGHT && (box.strAnchorKind == "MAP" || box.strAnchorKind == "PLAYER")) &&
-        !((kind == KIND::EFFECT || kind == KIND::COLLIDER) && box.strAnchorKind == "MAP"))
+        !((kind == KIND::EFFECT || kind == KIND::COLLIDER || kind == KIND::SUBTITLE) && box.strAnchorKind == "MAP"))
         throw std::runtime_error("Presentation anchorKind is unsupported.");
+    if (kind == KIND::SUBTITLE && (box.strAnchorKind != "MAP" || box.bFollowBoss || !box.strBone.empty() ||
+        !box.strWorldId.empty() || !box.strWorldOccurrenceId.empty() || box.iWorldEmissionIndex != 0u))
+        throw std::runtime_error("Subtitle requires a fixed MAP anchor without a bone or World occurrence.");
     if (kind == KIND::LIGHT && ((box.strAnchorKind != "WORLD" && !box.strWorldId.empty()) ||
         box.Scale != std::array<double, 3u>{1.0, 1.0, 1.0} ||
         (box.strAnchorKind != "BOSS" && !box.strBone.empty()) ||
@@ -1585,6 +1601,8 @@ bool Client::CKoukuSaydonPresentationPlayer::Reload_Product(
             }
             if (value.Find("animationRootVerticalScale"))
                 item.pattern.fAnimationRootVerticalScale = Number(value, "animationRootVerticalScale", 0.0, 1.0);
+            if (value.Find("animationRootHorizontalScale"))
+                item.pattern.fAnimationRootHorizontalScale = Number(value, "animationRootHorizontalScale", 0.0, 1.0);
             if (const auto* source = value.Find("bossMotion"))
             {
                 KOUKU_SAYDON_BOSS_MOTION motion;
@@ -2375,6 +2393,8 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
         row.startMs = float(box.iStartMs);
         row.cameraDurationMs = box.iDurationMs;
         row.assetId = resource.strAssetId;
+        row.subtitleText = resource.strSubtitleText;
+        row.subtitleUpper = resource.strSubtitlePosition == "UPPER";
         row.cameraOffset = { float(box.PositionOffset[0]), float(box.PositionOffset[1]), float(box.PositionOffset[2]) };
         if (resource.eKind == KIND::LIGHT)
         {
@@ -2595,6 +2615,7 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
                 }
                 break;
             }
+            case KIND::SUBTITLE: break;
             case KIND::LIGHT: break;
             case KIND::COLLIDER: break;
             case KIND::CAMERA: break;
@@ -2688,6 +2709,34 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
     }
     session.lastClockMs = clockMs;
     Sample_LogicPreview(session, document, pattern, clockMs, paused);
+}
+
+std::vector<Client::KOUKU_SUBTITLE_VIEW> Client::CKoukuSaydonPresentationPlayer::Collect_Subtitles() const
+{
+    std::vector<KOUKU_SUBTITLE_VIEW> result;
+    const auto collect = [&](const SESSION& session) {
+        for (const auto& [id, row] : session.rows)
+        {
+            if (row.kind != KIND::SUBTITLE || row.failed || row.subtitleText.empty()) continue;
+            if (std::none_of(result.begin(), result.end(), [&](const auto& value) {
+                return value.strText == row.subtitleText && value.bUpper == row.subtitleUpper;
+            })) result.push_back({row.subtitleText, row.subtitleUpper});
+        }
+    };
+    if (m_bPreviewPlaying)
+    {
+        collect(m_PreviewSession);
+        for (const auto& member : m_BundlePreviewMembers) collect(member.session);
+    }
+    else
+    {
+        collect(m_ProductBundleSession);
+        for (const auto& [id, session] : m_BossSessions) collect(session);
+        for (const auto& [id, session] : m_ChildBossSessions) collect(session);
+        for (const auto& [id, session] : m_MarioEntrySessions) collect(session);
+        for (const auto& tail : m_ProductTails) collect(tail.playback);
+    }
+    return result;
 }
 
 void Client::CKoukuSaydonPresentationPlayer::Restore_Scene()
@@ -3437,7 +3486,7 @@ bool Client::CKoukuSaydonPresentationPlayer::Prepare_CloneSplitPreview(
         float ignored = 0.f;
         model->Get_AnimationProgress(clone.initialAnimation, clone.initialTicks, ignored);
         clone.rootMotion = std::make_unique<CKoukuSaydonPreviewRootMotion>();
-        return clone.rootMotion->Prepare(model, clone.animations, float(source.fAnimationRootVerticalScale), status) &&
+        return clone.rootMotion->Prepare(model, clone.animations, float(source.fAnimationRootVerticalScale), status, float(source.fAnimationRootHorizontalScale)) &&
             clone.rootMotion->Prepare_Airborne(document, source, status) && clone.rootMotion->Begin_Suppression();
     };
     for (auto& member : members)
@@ -3480,7 +3529,7 @@ bool Client::CKoukuSaydonPresentationPlayer::Prepare_CloneSplitPreview(
                 CKoukuSaydonPreviewRootMotion motion;
                 float3_t endpoint;
                 const std::vector<float> yaws(rows.size(), yaw);
-                if (!motion.Prepare(member.actor->Get_Model(), rows, float(candidate->fAnimationRootVerticalScale), status) ||
+                if (!motion.Prepare(member.actor->Get_Model(), rows, float(candidate->fAnimationRootVerticalScale), status, float(candidate->fAnimationRootHorizontalScale)) ||
                     !motion.Sample_Displacement(cutoffs[i], yaws, endpoint)) return fail(status);
                 const double dx = position.x + endpoint.x - spawn->position.x;
                 const double dz = position.z + endpoint.z - spawn->position.z;
@@ -3525,7 +3574,7 @@ bool Client::CKoukuSaydonPresentationPlayer::Prepare_CloneSplitPreview(
             member.rootMotion.reset();
             member.rootMotion = std::make_unique<CKoukuSaydonPreviewRootMotion>();
             if (!member.rootMotion->Prepare(member.actor->Get_Model(), member.animations,
-                float(member.pattern.fAnimationRootVerticalScale), status) ||
+                float(member.pattern.fAnimationRootVerticalScale), status, float(member.pattern.fAnimationRootHorizontalScale)) ||
                 !member.rootMotion->Begin_Suppression()) return fail(status);
         }
         for (const auto& summon : authoredPattern.SummonOccurrences)
@@ -3673,6 +3722,10 @@ bool Client::CKoukuSaydonPresentationPlayer::Begin_BundlePreview(
         }
         std::sort(member.animations.begin(), member.animations.end(), [](const auto& a, const auto& b)
             { return a.iStartOffsetMs != b.iStartOffsetMs ? a.iStartOffsetMs < b.iStartOffsetMs : a.strOccurrenceId < b.strOccurrenceId; });
+        // World-only cinematics already own their visible actors. Keep this
+        // boss as an anchor donor without drawing an additional idle body.
+        if (document.strCompositionId == "boss.composition.kakulsaydon.sequencer" && member.animations.empty())
+            member.actor->Set_PresentationVisible(false);
         bool airborne = false, spatialLogic = false;
         for (const auto& box : source->LogicOccurrences)
         {
@@ -3681,7 +3734,7 @@ bool Client::CKoukuSaydonPresentationPlayer::Begin_BundlePreview(
                 [&](const auto& logic) { return logic.strLogicId == box.strLogicId; });
             if (definition == document.Logics.end()) continue;
             airborne |= definition->strTriggerKind == "ALBION_AIRBORNE";
-            spatialLogic |= definition->strTriggerKind == "BOSS_TELEPORT_XZ";
+            spatialLogic |= (definition->strTriggerKind == "BOSS_TELEPORT_XZ" || definition->strTriggerKind == "BOSS_TELEPORT_GROUNDED");
             if (definition->strJudgementKind == "BOSS_TRACK_TARGET" ||
                 definition->strJudgementKind == "SHOWTIME_PLAYER_TARGETS")
             {
@@ -3704,7 +3757,7 @@ bool Client::CKoukuSaydonPresentationPlayer::Begin_BundlePreview(
         {
             member.rootMotion = std::make_unique<CKoukuSaydonPreviewRootMotion>();
             if (!member.rootMotion->Prepare(model, member.animations,
-                    float(source->fAnimationRootVerticalScale), status) ||
+                    float(source->fAnimationRootVerticalScale), status, float(source->fAnimationRootHorizontalScale)) ||
                 !member.rootMotion->Prepare_Airborne(document, *source, status) ||
                 !member.rootMotion->Begin_Suppression())
                 return fail("Bundle child root motion: " + status);
@@ -3844,6 +3897,7 @@ bool Client::CKoukuSaydonPresentationPlayer::Begin_ModelReferencePreview(
         auto& pattern = reference.Patterns.emplace_back(*source);
         pattern.BossMotion.reset();
         pattern.fAnimationRootVerticalScale = 1.0;
+        pattern.fAnimationRootHorizontalScale = 1.0;
         for (auto& stage : pattern.Stages) stage.bRetargetOnEnter = false;
         std::erase_if(pattern.LogicOccurrences, [&](const auto& box) {
             return std::none_of(reference.Logics.begin(), reference.Logics.end(),
@@ -4209,14 +4263,13 @@ bool Client::CKoukuSaydonPresentationPlayer::Sample_BundlePreviewPose(
         if (!sample->second || !targetYawAt(origin, *sample->second, targetYaw)) continue;
         const auto movingArchetype = CKoukuSaydonCompositionDocument::Resolve_BossArchetypeId(
             member.pattern.strTargetBossPlacementId);
-        const bool movingSaydon = window.followSpeedScale > 0.0 &&
-            (movingArchetype == "BOSS_KAKULSAYDON_G1_SAYDON" ||
-             movingArchetype == "BOSS_KAKULSAYDON_G3_SAYDON" ||
-             movingArchetype == "BOSS_KAKULSAYDON_BINGO_SAYDON" ||
-             movingArchetype == "BOSS_KAKULSAYDON_G2_BIG_SAYDON");
-        // Both installed Saydon skeletons face local +X; targetYawAt already
-        // applies this basis correction to BIG_SAYDON's existing turn contract.
-        if (movingSaydon && movingArchetype != "BOSS_KAKULSAYDON_G2_BIG_SAYDON")
+        const bool saydon = movingArchetype == "BOSS_KAKULSAYDON_G1_SAYDON" ||
+            movingArchetype == "BOSS_KAKULSAYDON_G3_SAYDON" ||
+            movingArchetype == "BOSS_KAKULSAYDON_BINGO_SAYDON" ||
+            movingArchetype == "BOSS_KAKULSAYDON_G2_BIG_SAYDON";
+        // Stationary Showtime and moving pursuit use the same model +X front.
+        // targetYawAt already applies BIG_SAYDON's existing basis correction.
+        if (saydon && movingArchetype != "BOSS_KAKULSAYDON_G2_BIG_SAYDON")
             targetYaw = float(std::remainder(double(targetYaw) - 90.0, 360.0));
         if (window.immediate) yaw = targetYaw;
         else
@@ -4239,7 +4292,7 @@ bool Client::CKoukuSaydonPresentationPlayer::Sample_BundlePreviewPose(
                 pinned->second * float(window.followSpeedScale) / 30.f;
             if (std::isfinite(step) && step > 0.f)
             {
-                const float radians = XMConvertToRadians(yaw + (movingSaydon ? 90.f : 0.f));
+                const float radians = XMConvertToRadians(yaw + (saydon ? 90.f : 0.f));
                 followOffset.x += std::sin(radians) * step;
                 followOffset.z += std::cos(radians) * step;
             }
@@ -4358,7 +4411,10 @@ void Client::CKoukuSaydonPresentationPlayer::Sample_BundlePreview()
     std::uint32_t effectiveMs = Preview_ClockMs();
     if (!Resolve_PreviewCaptureClock(effectiveMs, effectiveMs))
     { const auto error = m_strStatus; Fail_Preview(error); return; }
-    m_fPreviewClockMs = effectiveMs;
+    // The displayed cursor is integer milliseconds; keep the owned clock
+    // remainder unless capture actually holds or moves that cursor.
+    if (m_bPreviewCaptureClockHeld || effectiveMs != Preview_ClockMs())
+        m_fPreviewClockMs = effectiveMs;
     std::string worldPreviewStatus;
     const auto targets = level->Get_CompositionWorldTargets();
     for (auto& member : m_BundlePreviewMembers)
@@ -4645,7 +4701,10 @@ void Client::CKoukuSaydonPresentationPlayer::Sample_Preview(std::uint32_t clockM
     if (!playing) { Stop_Preview(); return; }
     if (!m_bPreviewPlaying) return;
     Set_PreviewPivot(pivot, model);
-    m_fPreviewClockMs = (std::min)(clockMs, m_iPreviewDurationMs);
+    // MainApp returns the displayed integer cursor every frame. Writing it
+    // into our accumulated clock would discard sub-millisecond time forever.
+    if (!m_bOwnPreviewClock || m_bPreviewCaptureClockHeld || clockMs != Preview_ClockMs())
+        m_fPreviewClockMs = (std::min)(clockMs, m_iPreviewDurationMs);
     m_bPreviewPaused = paused;
     ANIMATION_MODEL_TARGET_VIEW weaponView;
     const bool hasWeapon = CAnimationTargetService::Resolve_Model() == model &&
@@ -5002,6 +5061,7 @@ void Client::CKoukuSaydonPresentationPlayer::Update_BingoMarks(float dt)
     static constexpr const char* flipId = "world.object.instance.kouku.bingo_skull.flip";
     static constexpr const char* whiteId = "world.object.instance.kouku.bingo_skull.white";
     static constexpr const char* redId = "world.object.instance.kouku.bingo_skull.red";
+    static constexpr const char* redFlipId = "world.object.instance.kouku.bingo_skull.red_flip";
     if (!m_BingoWorldDocument || m_BingoWorldDocument->Get_Revision() != source.Get_Revision())
     {
         // Preserve source revision so the Level's admitted CModel pool remains shared.
@@ -5009,7 +5069,7 @@ void Client::CKoukuSaydonPresentationPlayer::Update_BingoMarks(float dt)
         auto staged = std::make_shared<CWorldSequenceDocument>(source);
         std::erase_if(staged->Get_ObjectResources(), [](const auto& row) { return row.objectId != objectId; });
         std::erase_if(staged->Get_Instances(), [](const auto& row)
-            { return row.instanceId != flipId && row.instanceId != whiteId && row.instanceId != redId; });
+            { return row.instanceId != flipId && row.instanceId != whiteId && row.instanceId != redId && row.instanceId != redFlipId; });
         std::set<std::string> templates;
         for (const auto& row : staged->Get_Instances()) templates.insert(row.templateId);
         std::erase_if(staged->Get_Templates(), [&](const auto& row) { return !templates.contains(row.sequenceId); });
@@ -5017,7 +5077,7 @@ void Client::CKoukuSaydonPresentationPlayer::Update_BingoMarks(float dt)
         WORLD_SEQUENCE_DEPLOY_MAP deploy;
         std::string error;
         if (!staged->Find_ObjectResource(objectId) || !staged->Find_Instance(flipId) ||
-            !staged->Find_Instance(whiteId) || !staged->Find_Instance(redId) ||
+            !staged->Find_Instance(whiteId) || !staged->Find_Instance(redId) || !staged->Find_Instance(redFlipId) ||
             !staged->Validate(placements, deploy, error))
         {
             m_strStatus = "Bingo skull Object motions unavailable: " + error;
@@ -5050,8 +5110,8 @@ void Client::CKoukuSaydonPresentationPlayer::Update_BingoMarks(float dt)
         auto staged = std::make_unique<CWorldSequencePlayer>();
         std::string error;
         // A newly painted white cell plays the native rotating tile, then its
-        // saved NEXT -> white maintenance. Recolouring uses the maintenance state.
-        const std::string motion = red ? redId : (mark.player ? whiteId : flipId);
+        // saved NEXT maintenance; an ordinary-to-red transition replays that native flip.
+        const std::string motion = red ? (mark.player && !mark.red ? redFlipId : redId) : (mark.player ? whiteId : flipId);
         CWorldSequencePlayer::OBJECT_PLACEMENT placement;
         placement.position = { LostArk::Shared::Kouku_BingoCellCenterX(cell), .02f,
             LostArk::Shared::Kouku_BingoCellCenterZ(cell) };

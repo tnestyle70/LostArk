@@ -5202,7 +5202,7 @@
         "Sound/KoukuSaton/Events/event.7a14e8764345d9f18db0.wav"
       ],
       "s_bgm_commanderraid.bgm_midnightc_ed_m20_scene_finish": [
-        "Sound/KoukuSaton/Events/event.f68d885eb828286691db.wav"
+        "Sound/KoukuSaton/Events/bgm_midnightc_ed_m20_scene_finish.source-stop.wav"
       ],
       "s_mob_g_bigsatan1.g_bigsatan1_attack01_cast1": [
         "Sound/KoukuSaton/S_MOB_G_BIGSATAN1/g_bigsatan1_attack01_cast1__40119513.wav"
@@ -9063,6 +9063,19 @@
       ],
       "s_systems.sys_monster_freeze1_nonducking": [
         "Sound/KoukuSaton/S_SYSTEMS/sys_monster_freeze1__98631772.wav"
+      ],
+      "s_scene_ocean3_3.scene_midnightc_ed_koukuskill": [
+        "Sound/KoukuSaton/Events/scene_midnightc_ed_koukuskill.source.wav"
+      ],
+      "s_scene_ocean3_3.scene_midnightc_ed_koukustopclearingdungeon": [
+        "Sound/KoukuSaton/Events/scene_midnightc_ed_koukustopclearingdungeon.source.wav"
+      ],
+      "s_scene_ocean3_3.scene_midnightc_ed_popup1": [
+        "Sound/KoukuSaton/Events/scene_midnightc_ed_popup1.source.1.wav",
+        "Sound/KoukuSaton/Events/scene_midnightc_ed_popup1.source.2.wav"
+      ],
+      "s_bgm_commanderraid.bgm_midnightc_ed_m18_scene_fakeclear": [
+        "Sound/KoukuSaton/Events/bgm_midnightc_ed_m18_scene_fakeclear.source-stop.wav"
       ]
     }
   }

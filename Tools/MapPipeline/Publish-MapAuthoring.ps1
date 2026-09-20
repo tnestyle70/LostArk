@@ -1657,6 +1657,9 @@ function Read-WorldSequenceDocument {
         if ($document.formatVersion -eq 3 -and $null -ne $template.PSObject.Properties['objectMotion']) { $templateProperties += 'objectMotion' }
         if ($document.formatVersion -eq 3 -and $null -ne $template.PSObject.Properties['effectTracks']) { $templateProperties += 'effectTracks' }
         if ($document.formatVersion -eq 3 -and $null -ne $template.PSObject.Properties['colliderTracks']) { $templateProperties += 'colliderTracks' }
+        foreach ($lane in @('soundTracks','subtitleTracks')) {
+            if ($document.formatVersion -eq 3 -and $null -ne $template.PSObject.Properties[$lane]) { $templateProperties += $lane }
+        }
         Assert-ExactJsonProperties $template $templateProperties 'World sequence template'
         if ($template.sequenceId -isnot [string] -or
             $template.sequenceId -notmatch $stableId -or
@@ -1935,6 +1938,52 @@ function Read-WorldSequenceDocument {
                     [Text.Encoding]::UTF8.GetByteCount([string]$row.attachmentBone) -gt 256 -or $row.attachmentBone -match '[\x00-\x1f\x7f]')) { throw 'Invalid collider attachmentBone' }
             }
         }
+        $totalTracks = 0
+        foreach ($lane in @('tracks','animationTracks','effectTracks','colliderTracks','soundTracks','subtitleTracks')) {
+            if ($null -ne $template.PSObject.Properties[$lane]) {
+                if ($template.$lane -isnot [System.Array]) { throw "World $lane must be an array" }
+                $totalTracks += @($template.$lane).Count
+                if ($lane -in @('soundTracks','subtitleTracks')) {
+                    for ($rowIndex = 0; $rowIndex -lt $template.$lane.Count; ++$rowIndex) {
+                        if ($null -eq $template.$lane[$rowIndex]) { throw "World $lane cannot contain null rows" }
+                    }
+                }
+            }
+        }
+        if ($totalTracks -gt 64) { throw 'World sequence exceeds the combined 64-track limit' }
+        $soundIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+        foreach ($row in @($template.soundTracks | Where-Object { $null -ne $_ })) {
+            Assert-ExactJsonProperties $row @('soundTrackId','assetId','startMs','durationMs','volume') 'World sound track'
+            if ($row.soundTrackId -isnot [string] -or $row.soundTrackId -cnotmatch $stableId -or -not $soundIds.Add($row.soundTrackId) -or
+                $row.assetId -isnot [string] -or -not $row.assetId.StartsWith('Sound/', [StringComparison]::Ordinal) -or
+                -not $row.assetId.EndsWith('.wav', [StringComparison]::Ordinal)) { throw 'Invalid World sound identity or asset ID' }
+            Assert-SequenceAssetPath $row.assetId $false
+            if ([Text.UTF8Encoding]::new($false, $true).GetByteCount($row.assetId) -gt 1024) { throw 'World sound asset ID exceeds its byte limit' }
+            foreach ($field in @('startMs','durationMs')) {
+                if (-not (Test-JsonNumber $row.$field) -or [double]$row.$field -ne [math]::Floor([double]$row.$field)) { throw "Sound $field must be integer milliseconds" }
+            }
+            if ($row.startMs -lt 0 -or $row.startMs -gt $template.durationMs -or $row.durationMs -lt 1 -or
+                [double]$row.startMs + [double]$row.durationMs -gt 600000 -or
+                -not (Test-JsonNumber $row.volume) -or $row.volume -lt 0 -or $row.volume -gt 4) { throw 'Invalid World sound time or volume' }
+            if (-not (Test-Path -LiteralPath (Join-Path $runtimeResourceRoot $row.assetId) -PathType Leaf)) { throw "World sound asset is missing: $($row.assetId)" }
+        }
+        $subtitleIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+        foreach ($row in @($template.subtitleTracks | Where-Object { $null -ne $_ })) {
+            Assert-ExactJsonProperties $row @('subtitleTrackId','stringId','text','position','slotId','startMs','durationMs') 'World subtitle track'
+            foreach ($field in @('subtitleTrackId','stringId','text','position','slotId')) {
+                if ($row.$field -isnot [string]) { throw "Subtitle $field must be text" }
+            }
+            if ($row.subtitleTrackId -cnotmatch $stableId -or -not $subtitleIds.Add($row.subtitleTrackId) -or $row.stringId -cnotmatch $stableId -or
+                [Text.UTF8Encoding]::new($false, $true).GetByteCount($row.text) -notin 1..4096 -or
+                $row.text -match '[\x00-\x09\x0b-\x1f\x7f<>]' -or $row.position -cnotin @('NORMAL','UPPER','BALLOON')) { throw 'Invalid World subtitle identity or plain UTF-8 text' }
+            if ($row.position -ceq 'BALLOON') {
+                if ($row.slotId -cnotmatch $stableId -or @($template.tracks | Where-Object { $_.slotId -ceq $row.slotId }).Count -ne 1) { throw 'Balloon subtitle requires an existing transform slot' }
+            } elseif ($row.slotId -cne '') { throw 'Screen subtitle cannot bind an Object slot' }
+            foreach ($field in @('startMs','durationMs')) {
+                if (-not (Test-JsonNumber $row.$field) -or [double]$row.$field -ne [math]::Floor([double]$row.$field)) { throw "Subtitle $field must be integer milliseconds" }
+            }
+            if ($row.startMs -lt 0 -or $row.durationMs -lt 1 -or [double]$row.startMs + [double]$row.durationMs -gt $template.durationMs) { throw 'World subtitle exceeds its template clock' }
+        }
         # One binding per slot, so a chained slot and a slot that also carries
         # a transform track each still count once.
         $trackCounts[[string]$template.sequenceId] = $slotIds.Count
@@ -2031,6 +2080,11 @@ function Read-WorldSequenceDocument {
         $boundSlots = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
         $boundTargets = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
         $template = $templateRows[[string]$instance.templateId]
+        foreach ($subtitle in @($template.subtitleTracks | Where-Object { $null -ne $_ -and $_.position -ceq 'BALLOON' })) {
+            if (@($bindings | Where-Object { $_.slotId -ceq $subtitle.slotId -and $_.targetKind -ceq 'OBJECT_RESOURCE' }).Count -ne 1) {
+                throw "World balloon subtitle requires its Object Resource binding: $($instance.instanceId)"
+            }
+        }
         if ($null -ne $template.PSObject.Properties['effectTracks'] -and @($template.effectTracks).Count -gt 0 -and
             ($bindings.Count -ne 1 -or $bindings[0].targetKind -cne 'OBJECT_RESOURCE')) {
             throw 'World Object effect lanes require one Object Resource binding'

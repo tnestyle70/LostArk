@@ -8,7 +8,8 @@
     "kouku.gate2.clear.fade.black",
     "kouku.gate2.maze.fade.black",
     "kouku.gate3.intro.fade.black",
-    "kouku.gate1.authored.p4.popup.transition.fade"
+    "kouku.gate1.authored.p4.popup.transition.fade",
+    "bingo.hammer.warning.arrow"
   ],
   "groups": [
     "cardmaze.mark.heart",

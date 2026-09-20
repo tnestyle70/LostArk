@@ -1,4 +1,5 @@
 #include "WorldSequencePlayer.h"
+#include "WorldSequenceObject.h"
 
 #include "DeployPropObject.h"
 #include "EffectV2_Catalog.h"
@@ -392,6 +393,7 @@ CWorldSequencePlayer::Find_PreparedLeafSnapshot(const std::string& leafId) const
 
 void CWorldSequencePlayer::Clear()
 {
+    Stop_RetiredSounds();
 	for (auto& active : m_Active) Release_Objects(active);
 	m_Active.clear();
 	for (auto& held : m_Held) Release_Objects(held);
@@ -698,6 +700,10 @@ bool_t CWorldSequencePlayer::Play(
 		});
 	if (m_Active.end() != existing)
 	{
+        for (const auto& sound : existing->sounds) CGameInstance::Get().Stop_SoundCue(sound.handle);
+        existing->sounds.clear();
+        existing->soundPlaybackFinished = false;
+        Stop_RetiredSounds(instanceId);
 		existing->durationMs = durationMs;
 		existing->elapsedMs = 0.f;
 		existing->playbackSpeed = playbackSpeed;
@@ -728,6 +734,7 @@ bool_t CWorldSequencePlayer::Play(
 		const auto previousId = m_Held[i].instanceId;
 		Stop_Instance(previousId, targets, previousId == instanceId);
 	}
+    Stop_RetiredSounds(instanceId);
 	ACTIVE_INSTANCE active;
 	active.durationMs = durationMs;
 	active.instanceId = instanceId;
@@ -887,8 +894,9 @@ bool_t CWorldSequencePlayer::Try_GetSampledPlacementRecord(
 }
 
 void CWorldSequencePlayer::Stop_Instance(
-	const std::string& instanceId, const TARGET_SET& targets, const bool_t restorePlacements)
+	const std::string& instanceId, const TARGET_SET& targets, const bool_t restorePlacements, const bool_t preserveSoundTail)
 {
+    if (!preserveSoundTail) Stop_RetiredSounds(instanceId);
 	const auto held = std::find_if(m_Held.begin(), m_Held.end(),
 		[&](const ACTIVE_INSTANCE& value) { return value.instanceId == instanceId; });
 	if (held != m_Held.end())
@@ -909,27 +917,32 @@ void CWorldSequencePlayer::Stop_Instance(
 				(void)Apply_RuntimeRecord(targets, m_ModelCache, *entry, record);
 			}
 	Release_DeployPreviews(*found, targets);
+    if (preserveSoundTail) Retire_Sounds(*found);
 	Release_Objects(*found);
 	m_Active.erase(found);
 }
 
-void CWorldSequencePlayer::Stop_All(const TARGET_SET& targets, const bool_t restorePlacements)
+void CWorldSequencePlayer::Stop_All(const TARGET_SET& targets, const bool_t restorePlacements, const bool_t preserveSoundTail)
 {
-	while (!m_Active.empty()) Stop_Instance(m_Active.back().instanceId, targets, restorePlacements);
+    if (!preserveSoundTail) Stop_RetiredSounds();
+	while (!m_Active.empty()) Stop_Instance(m_Active.back().instanceId, targets, restorePlacements, preserveSoundTail);
 	while (!m_Held.empty())
 	{
 		const auto id = m_Held.back().instanceId;
-		Stop_Instance(id, targets, restorePlacements);
+		Stop_Instance(id, targets, restorePlacements, preserveSoundTail);
 	}
 }
 
 bool_t CWorldSequencePlayer::Seek_InstanceToMs(
-	const std::string& instanceId, const f32_t elapsedMs, const TARGET_SET& targets)
+	const std::string& instanceId, const f32_t elapsedMs, const TARGET_SET& targets, const bool_t discontinuous)
 {
 	if (!targets.Is_Complete() || !std::isfinite(elapsedMs) || elapsedMs < 0.f) return false;
 	const auto found = std::find_if(m_Active.begin(), m_Active.end(),
 		[&instanceId](const ACTIVE_INSTANCE& value) { return value.instanceId == instanceId; });
 	if (found == m_Active.end()) return false;
+    if (discontinuous) Stop_RetiredSounds(instanceId);
+    found->seekSounds = discontinuous || elapsedMs < found->elapsedMs || elapsedMs - found->elapsedMs > 250.f;
+    if (found->seekSounds) found->soundPlaybackFinished = false;
 	found->elapsedMs = elapsedMs;
 	return APPLY_RESULT::FAILED != Apply_Instance(*found, targets);
 }
@@ -965,6 +978,8 @@ bool_t CWorldSequencePlayer::Seek_AllToMs(
 	for (size_t index = 0; index < m_Active.size();)
 	{
 		ACTIVE_INSTANCE& active = m_Active[index];
+        Stop_RetiredSounds(active.instanceId);
+        active.seekSounds = true;
 		active.elapsedMs = elapsedMs;
 		if (APPLY_RESULT::FAILED == Apply_Instance(active, targets))
 		{
@@ -1047,6 +1062,7 @@ void CWorldSequencePlayer::Update(
 {
 	if (m_bPaused)
 		return;
+    Update_SoundTails(timeDelta);
 	if (m_Active.empty() || !targets.Is_Complete() ||
 		!std::isfinite(timeDelta) || timeDelta < 0.f)
 	{
@@ -1067,10 +1083,11 @@ void CWorldSequencePlayer::Update(
 		if (APPLY_RESULT::FAILED == result || active.durationMs != 0u)
 		{
 			const auto id = active.instanceId;
-			Stop_Instance(id, targets, true);
+			Stop_Instance(id, targets, true, result == APPLY_RESULT::FINISHED);
 		}
 		else
 		{
+            Retire_Sounds(active);
 			Release_Objects(active);
 			m_Held.push_back(std::move(active));
 			m_Active.erase(m_Active.begin() + static_cast<ptrdiff_t>(index));
@@ -1083,6 +1100,7 @@ CWorldSequencePlayer::APPLY_RESULT CWorldSequencePlayer::Apply_Instance(
 	const TARGET_SET& targets)
 {
 	active.sampledDeployPivots.clear();
+    active.hasSubtitleSample = false;
 	const WORLD_SEQUENCE_INSTANCE* instance =
 		m_Document.Find_Instance(active.instanceId);
 	const WORLD_SEQUENCE_TEMPLATE* sequence = nullptr == instance ? nullptr :
@@ -1093,6 +1111,7 @@ CWorldSequencePlayer::APPLY_RESULT CWorldSequencePlayer::Apply_Instance(
 			active.instanceId;
 		return APPLY_RESULT::FAILED;
 	}
+    Apply_Sounds(active);
 	bool hasObjectEffects = false;
 	for (const auto& motionId : {active.instanceId, active.motionInstanceId})
 	{
@@ -1150,6 +1169,9 @@ CWorldSequencePlayer::APPLY_RESULT CWorldSequencePlayer::Apply_Instance(
 		if (!Apply_Objects(active, *instance, *sample.sequence, targets, sample.localMs, sample.visible, sample.holdFinalPose,
 			sample.emissionStartMs + (appliedMotion ? active.motionStartMs : 0.f), sample.emissionRate, sample.emissionMotionId))
 			return APPLY_RESULT::FAILED;
+        active.sampledSubtitleTemplateId = sample.sequence->sequenceId;
+        active.sampledSubtitleLocalMs = sample.localMs;
+        active.hasSubtitleSample = !sample.pending && !sample.sequence->subtitleTracks.empty();
 		return sample.finished && (active.durationMs == 0u || hasObjectEffects) && active.effects.empty() ? APPLY_RESULT::FINISHED : APPLY_RESULT::PLAYING;
 	}
 	const f32_t delayedMs =
@@ -1306,8 +1328,56 @@ CWorldSequencePlayer::APPLY_RESULT CWorldSequencePlayer::Apply_Instance(
 			return APPLY_RESULT::FAILED;
 		active.sampledPlacements[targetId] = std::move(sampled);
 	}
+    active.sampledSubtitleTemplateId = sequence->sequenceId;
+    active.sampledSubtitleLocalMs = localMs;
+    active.hasSubtitleSample = delayedMs >= 0.f && !sequence->subtitleTracks.empty();
 	/* Hold the settled pose: the sequence stops driving its targets once the
 	   authored duration is spent, leaving the last authored frame in place. */
 	return (localMs < durationMs || (active.durationMs && active.elapsedMs < active.durationMs)) ?
 		APPLY_RESULT::PLAYING : APPLY_RESULT::FINISHED;
+}
+
+void CWorldSequencePlayer::Collect_Subtitles(std::vector<WORLD_SEQUENCE_SUBTITLE_SAMPLE>& out) const
+{
+    const auto collect = [&](const ACTIVE_INSTANCE& active) {
+        if (!active.hasSubtitleSample) return;
+        const auto* sequence = m_Document.Find_Template(active.sampledSubtitleTemplateId);
+        if (!sequence) return;
+        for (const auto& row : sequence->subtitleTracks)
+        {
+            if (active.sampledSubtitleLocalMs < row.startMs ||
+                active.sampledSubtitleLocalMs >= double(row.startMs) + row.durationMs) continue;
+            WORLD_SEQUENCE_SUBTITLE_SAMPLE sample{active.instanceId, row.subtitleTrackId, row.text, row.position};
+            if (row.position == "BALLOON")
+            {
+                const auto found = std::find_if(active.objects.begin(), active.objects.end(), [&](const auto& object) {
+                    return object.slotId == row.slotId && object.emissionIndex == 0u &&
+                        object.object && object.object->Is_Visible(); });
+                if (found == active.objects.end()) continue;
+                const auto& model = found->object->Get_Model();
+                if (!model || !model->Has_LocalBounds()) continue;
+                const auto low = model->Get_LocalBoundsMin(), high = model->Get_LocalBoundsMax();
+                const auto world = DirectX::XMLoadFloat4x4(&found->object->Get_SampledWorld());
+                float3_t lo{FLT_MAX, FLT_MAX, FLT_MAX}, hi{-FLT_MAX, -FLT_MAX, -FLT_MAX};
+                bool finite = true;
+                for (unsigned corner = 0u; corner < 8u; ++corner)
+                {
+                    float3_t point;
+                    DirectX::XMStoreFloat3(&point, DirectX::XMVector3TransformCoord(DirectX::XMVectorSet(
+                        corner & 1u ? high.x : low.x, corner & 2u ? high.y : low.y,
+                        corner & 4u ? high.z : low.z, 1.f), world));
+                    finite = finite && std::isfinite(point.x) && std::isfinite(point.y) && std::isfinite(point.z);
+                    lo.x = (std::min)(lo.x,point.x); lo.y = (std::min)(lo.y,point.y); lo.z = (std::min)(lo.z,point.z);
+                    hi.x = (std::max)(hi.x,point.x); hi.y = (std::max)(hi.y,point.y); hi.z = (std::max)(hi.z,point.z);
+                }
+                if (!finite) continue;
+                // The source binds the balloon to this actor. Screen-space
+                // padding and bubble styling belong to the existing UI renderer.
+                sample.worldPosition = {(lo.x+hi.x)*.5f,hi.y,(lo.z+hi.z)*.5f};
+            }
+            out.push_back(std::move(sample));
+        }
+    };
+    for (const auto& active : m_Active) collect(active);
+    for (const auto& held : m_Held) collect(held);
 }

@@ -116,3 +116,28 @@ P38의 현재 EFFECT 소비자는 `effect.kouku.gate3.rainbow.grid.full.restore`
 - Engine Light/Light_Manager, Client RenderingProfileService/Level_KakulSaydonArena/MainApp, PointLightFalloffContractHarness의6TU `/Zs` PASS. Deferred 기본 및 SourceGroup017/025 FXC `/O1` PASS. 기존 native 함수의 potentially-uninitialized warning은 유지된다.
 - 신규 Light 경계 검사는 기존 PointLightFalloffContractHarness에 추가하고 컴파일했다. 전체 Engine ABI 재빌드가 필요한 해당 실행 파일을 오래된 DLL로 실행하지 않았다. 실행 PASS로 기록하지 않는다.
 - Engine/Client Deferred 소스 동일, 변경 파일 `git diff --check` PASS. 새 C++ 파일·프로젝트 등록은 없다. Client/UI 및 Product 빌드는 실행하지 않았다. G1 암부·Mario1~4·G3 불과 무지개댄스의 최종 화면 비교는 사용자 검증이 필요하다.
+
+
+### G07 후속 통합 반영
+
+root가 최종14필드를 최신저장본에병합하고 RenderingProfiles 정상 Publish를 완료했다. authoring/runtime모두 `Map/Lighting/Kouku/` 참조0건이며 사용자가이전한 KoukuSaydon DDS를소비한다. source revision69. 관련추가10파일 설치와 최종컴파일검사 결과는 RAID_PRESENTATION_REPAIR_IMPLEMENTATION_RESULT G09에 기록한다. 전체 Product빌드·화면은사용자진행으로 분리한다.
+
+## G08. 관문 기본 방향광 복구와 baked 맵 수신 경계
+
+사용자는 노출2 당시 모델 표현을 선호하되 LUT/노출 과광 수정은 유지하고, 후속 답변에서 directional 복구를 선택했다. 최신 RenderingProfiles69의 base/G1 book-open/G1 popup/G3 dark/source-rendering 다섯 profile에서 기본 diffuse와 specular를 before-restoration의 RGB(.8,.8,.8)/(.5,.5,.5)로 복구했다. 실제 G1/G3/start 관문 영역47/48/52/53/54의 입력도 함께 바꿨다. 기존 노출 배율, LUT, bloom, map ambient 및 G1 독립 character ambient는 유지했다. 의도된 blackout/spotlight와 비교용 profile은 바꾸지 않았다.
+
+profile.light.receiver는 기존 Engine LIGHT_RECEIVER를 사용하는 optional ALL/SOURCE_CHARACTER/UNBAKED다. 기본ALL이며 region.receiver는 생략 시 profile상속, 명시ALL을 저장해 유지한다. 복구 기본광은 UNBAKED로 적용해 RNM/native baked pixel의 중복 직접광을 차단한다. base/source의 기존 다른12영역에는 ALL을 명시하여 카드미로와 Mario의 원래 수광 경계를 보존했다. MainApp의 G2 camera3 전용 character-only override를 제거해 시퀀스와 전투가 같은 profile/region 경로를 소비한다. shader와 LUT DDS는 수정하지 않았다.
+
+이 후보는 G1 캐릭터 직접광을 복구하고 기존 독립 간접광을 보존한다. directional×ambient 항이 다시 켜지므로 uniform ambient 총량은 약1.32배다. 과거 exposure2처럼 IBL·발광·local light 전체를2배 하는 것과 같지 않으며 이전 모델 픽셀의 정확한 복원으로 기록하지 않는다. 원본 DDL receiver exclusion 완성 대신 사용자가 요청한 프로젝트 조명 복구다. 최종 선호도·바닥 연결은 사용자 화면 확인 대상이다.
+
+53필드를 최신 저장본에서 stable profile/region ID로 병합하고 hash 재확인·backup·원자 교체했다. Rendering 정상 Publish 완료, source/runtime revision70 및 JSON 동일. 증거는 out/KoukuPlaybackRepair20260920/rendering-install.receipt.json과 rendering-publish.log다. 현재 Client/Server 프로세스가 없는 상태에서 적용했으며 미저장 메모리 Reload나 Client/UI 실행은 수행하지 않았다.
+
+RenderingProfileService 전체 TU 컴파일, 실제 C++ codec의 세 receiver roundtrip/생략상속/명시ALL/invalid rollback 및 정상 publisher profile7+region8개 검사를 통과했다. 같은 후보에서 카드미로55와 Mario49/50/59의 ALL 유지, 노출1, sourceCharacterAmbient와 무관한 profile 보존을 확인했다. 검사 증거는 out/KoukuPlaybackRepair20260920/receiver에 있다. 통합 Product 결과는 RAID_PRESENTATION_REPAIR_IMPLEMENTATION_RESULT G12에 별도로 기록한다.
+
+## G09. Mario FXAA와 사용자 비교 조작
+
+로컬 Mario 참가자만 활성화하는 `scene.kakulsaydon.source-rendering.v1.qualityOverride.fxaaEnabled`를 false로 바꾸고 Rendering revision70→71을 정식 게시했다. 다른 노출/LUT/Bloom/region 필드는 그대로임을 backup과 대조했다. receipt는 `out/KoukuPlaybackRepair20260920/mario-fxaa/rendering-install.receipt.json`이다. 빛번짐의 원인을 FXAA로 확정한 것은 아니며 사용자 비교를 위한 설정 변경이다.
+
+추가 사용자 요청에 따라 Recovered map materials 위에 방향광, Exposure0.5/1/2배, LUT grading, FXAA, Bloom의 실시간 비교와 Reset을 추가했다. 실제 동작은 노출 배율이며 LUT는 한 번 평가한다. 기존 renderer의 품질 적용 경로와 presentation 환경 복원을 확장하고 Save 대상 catalog와 분리했다. region/Mario override 뒤 적용하고 다음 프레임 이전 baseline으로 돌아가므로 exposure가 누적되지 않는다. 닫기와 Level 전환은 비교 상태를 해제한다.
+
+실제 `Set_ComparisonOptions`, `Restore_PresentationEnvironment`, `Apply_CameraEnvironment` 코드를 renderer adapter stub에 연결한 native검사4025건 PASS. 1000프레임2배 고정, 세 preset, LUT/FXAA/Bloom 및 diffuse/specular만의 전환, ambient 보존, reset, 새region으로 이동, 적용/복원 실패의 기존 상태 보존을 확인했다. `out/KoukuPlaybackRepair20260920/comparison/{probe.cpp,probe.log}`. 이는 CPU 제어 검증이며 Client/UI 또는 GPU 화면 검증은 아니다. 최종 Product 빌드 기록은 통합 RESULT에 둔다.

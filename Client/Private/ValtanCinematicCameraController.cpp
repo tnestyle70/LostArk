@@ -509,6 +509,7 @@ bool_t Client::CValtanCinematicCameraController::Update(
 	const f32_t timeDelta,
 	VALTAN_CINEMATIC_CAMERA_POSE& outPose)
 {
+    m_didFinishCueNaturally = false;
 	/* A dead boss carries no pattern sequence, so the clear shot is the one cue
 	   that does not require one. Everything else still does. */
 	if (nullptr == m_pDocument || !input.isValid || 0u == input.iNetEntityId ||
@@ -543,7 +544,11 @@ bool_t Client::CValtanCinematicCameraController::Update(
 		if (m_isCueFinished)
 			return false;
 		if (nullptr != m_pActiveCue)
+        {
+            m_didFinishCueNaturally = (m_fElapsedSeconds + (std::min)(timeDelta, CAMERA_MAX_FRAME_DELTA_SECONDS)) * 1000.f >=
+                static_cast<f32_t>(m_pActiveCue->iDurationMs);
 			Begin_ExitTransition(*m_pActiveCue);
+        }
 		m_pActiveCue = nullptr;
 		m_isTransitionActive = false;
 		if (m_isExitTransitionActive)
@@ -664,6 +669,7 @@ bool_t Client::CValtanCinematicCameraController::Update(
         !input.isBossDead && input.hasStageCameraInvocations ? input.iCameraDurationMs : cue->iDurationMs))
 	{
 		Begin_ExitTransition(*cue);
+        m_didFinishCueNaturally = true;
 		m_pActiveCue = nullptr;
 		m_isCueFinished = true;
 		m_isTransitionActive = false;
@@ -731,6 +737,7 @@ void Client::CValtanCinematicCameraController::Cancel_ExitTransition()
 
 void Client::CValtanCinematicCameraController::Reset()
 {
+    m_didFinishCueNaturally = false;
 	m_pDocument = nullptr;
 	m_pActiveCue = nullptr;
 	m_iFixedTickHz = 0u;

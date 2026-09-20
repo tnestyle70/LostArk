@@ -193,6 +193,9 @@ void LostArk::Server::CGameRoom::Resolve_CardMazeHammerHit(
 	SERVER_PLAYER& player, const std::uint32_t updateTick)
 {
 	using namespace LostArk::Shared;
+	// Q is the maze jump slam; LMB and Mario keep the generic hammer amount.
+	const std::uint32_t rawDamage = 0u == player.iCurrentSkillId ?
+		500u : CKoukuCardMazeRuntime::HAMMER_RAW_DAMAGE;
 	const float yawRadians = player.fYawDegrees * DEGREES_TO_RADIANS;
 	const float forwardX = std::sin(yawRadians);
 	const float forwardZ = std::cos(yawRadians);
@@ -226,7 +229,7 @@ void LostArk::Server::CGameRoom::Resolve_CardMazeHammerHit(
 		SERVER_PLAYER_TO_WORLD_HIT hit{};
 		hit.iSourcePlayerId = player.iPlayerId;
 		hit.iSkillId = CKoukuCardMazeRuntime::HAMMER_SKILL_ID;
-		hit.iRawDamage = CKoukuCardMazeRuntime::HAMMER_RAW_DAMAGE;
+		hit.iRawDamage = rawDamage;
 		hit.fSourceX = player.fPositionX;
 		hit.fSourceZ = player.fPositionZ;
 		hit.fFallbackDirectionX = forwardX;
@@ -291,7 +294,7 @@ void LostArk::Server::CGameRoom::Resolve_CardMazeHammerHit(
 		SERVER_PLAYER_TO_WORLD_HIT hit{};
 		hit.iSourcePlayerId = player.iPlayerId;
 		hit.iSkillId = CKoukuCardMazeRuntime::HAMMER_SKILL_ID;
-		hit.iRawDamage = CKoukuCardMazeRuntime::HAMMER_RAW_DAMAGE;
+		hit.iRawDamage = rawDamage;
 		hit.fSourceX = player.fPositionX;
 		hit.fSourceZ = player.fPositionZ;
 		hit.fFallbackDirectionX = forwardX;

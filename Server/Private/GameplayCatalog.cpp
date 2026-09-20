@@ -3303,6 +3303,14 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 					trigger.fFaceCenterYawOffsetDegrees != 0.f)
 				{ m_strStatus = "Albion airborne base row carries unrelated values"; return false; }
 			}
+			else if (fields[4] == "BINGO_BOARD")
+			{
+				trigger.eKind = BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BINGO_BOARD;
+                if (mode != 0u || trigger.iDurationMs > 600000u || fields[11] != "-" ||
+                    fields[12] != "0" || fields[13] != "0" || fields[14] != "0" ||
+                    trigger.fTeleportX != 0.f || trigger.fTeleportY != 0.f || trigger.fTeleportZ != 0.f || trigger.fFaceCenterYawOffsetDegrees != 0.f)
+                { m_strStatus = "Bingo duration carries unrelated values"; return false; }
+			}
 			else if (fields[4] == "BOSS_TRACK_TARGET")
 			{
 				trigger.eKind = BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_TRACK_TARGET;
@@ -3311,10 +3319,11 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 					trigger.fTeleportX != 0.f || trigger.fTeleportY != 0.f || trigger.fTeleportZ != 0.f || trigger.fFaceCenterYawOffsetDegrees != 0.f)
 				{ m_strStatus = "Boss tracking duration carries unrelated values"; return false; }
 			}
-			else if (fields[4] == "BOSS_TELEPORT_XZ" || fields[4] == "BOSS_TELEPORT_FACE_CENTER" || fields[4] == "MARIO_PHASE2_PLAYERS")
+			else if (fields[4] == "BOSS_TELEPORT_XZ" || fields[4] == "BOSS_TELEPORT_GROUNDED" || fields[4] == "BOSS_TELEPORT_FACE_CENTER" || fields[4] == "MARIO_PHASE2_PLAYERS")
 			{
 				trigger.eKind = fields[4] == "MARIO_PHASE2_PLAYERS" ? BOSS_PATTERN_MECHANIC_TRIGGER_KIND::MARIO_PHASE2_PLAYERS :
 					fields[4] == "BOSS_TELEPORT_FACE_CENTER" ? BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_TELEPORT_FACE_CENTER :
+					fields[4] == "BOSS_TELEPORT_GROUNDED" ? BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_TELEPORT_GROUNDED :
 					BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_TELEPORT_XZ;
 				if (mode != 0u || fields[11] != "-" || fields[12] != "0" || fields[13] != "0" || fields[14] != "0" ||
 					trigger.fFaceCenterYawOffsetDegrees != 0.f || std::abs(trigger.fTeleportX) > 100000.f ||
@@ -4758,16 +4767,17 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			KOUKU_RAID_GATE_DEFINITION gate;
 			if ((fields.size() != 12u && fields.size() != 13u) ||
 				(fields.size() == 13u && fields[12] != "NONE" && (fields[2] != "GATE1" || !IsStableId(fields[12]))) ||
-				!IsStableId(fields[1]) || (fields[2] != "GATE1" && fields[2] != "GATE2" && fields[2] != "GATE3") ||
+				!IsStableId(fields[1]) || (fields[2] != "GATE1" && fields[2] != "GATE2" && fields[2] != "GATE3" && fields[2] != "BINGO") ||
 				!IsStableId(fields[3]) || !IsStableId(fields[4]) || !ParseNumber(fields[5], gate.iSequenceRevision) || !gate.iSequenceRevision ||
-				!IsStableId(fields[6]) || !ParseNumber(fields[7], gate.iIntroDurationMs) || !gate.iIntroDurationMs || gate.iIntroDurationMs > 600000u ||
+				(fields[6] != "NONE" && !IsStableId(fields[6])) || !ParseNumber(fields[7], gate.iIntroDurationMs) || gate.iIntroDurationMs > 600000u ||
+                (fields[2] == "BINGO" ? (fields[6] != "NONE" || gate.iIntroDurationMs != 0u) : (fields[6] == "NONE" || !gate.iIntroDurationMs)) ||
 				(fields[8] != "NONE" && !IsStableId(fields[8])) || !ParseNumber(fields[9], gate.iClearDurationMs) || gate.iClearDurationMs > 600000u ||
 				((fields[8] == "NONE") != (gate.iClearDurationMs == 0u)) || !IsStableId(fields[10]) ||
 				!ParseNumber(fields[11], gate.iExpectedEntryCount) || !gate.iExpectedEntryCount || gate.iExpectedEntryCount > 256u ||
 				m_KoukuRaidGates.contains(std::string(fields[2])))
 			{ m_strStatus = "Kouku raid gate metadata is invalid or duplicated"; return false; }
 			gate.strEncounterId = fields[1]; gate.strGateId = fields[2]; gate.strFlowId = fields[3]; gate.strSequenceCompositionId = fields[4];
-			gate.strIntroPatternId = fields[6]; if (fields[8] != "NONE") gate.strClearPatternId = fields[8]; gate.strPrimaryBossPlacementId = fields[10];
+			if (fields[6] != "NONE") gate.strIntroPatternId = fields[6]; if (fields[8] != "NONE") gate.strClearPatternId = fields[8]; gate.strPrimaryBossPlacementId = fields[10];
 			if (fields.size() == 13u && fields[12] != "NONE") gate.strEntrySequenceInstanceId = fields[12];
 			m_KoukuRaidGates.emplace(gate.strGateId, std::move(gate));
 		}
@@ -6120,7 +6130,8 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 					pattern.BossMotion->iEndMs > durationMs ||
 					std::any_of(pattern.MechanicTriggers.begin(), pattern.MechanicTriggers.end(), [](const auto& trigger)
 					{ return trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::REAL_GAZE_TELEPORT ||
-						trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_TELEPORT_XZ; }))
+						(trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_TELEPORT_XZ ||
+                         trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_TELEPORT_GROUNDED); }))
 				{ m_strStatus = "Boss Motion exceeds its Pattern or conflicts with another position policy"; return false; }
 			}
 			std::unordered_set<std::string> activeStageActions;

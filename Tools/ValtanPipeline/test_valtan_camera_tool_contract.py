@@ -399,9 +399,9 @@ require(
 cinematic_branch = raid_bgm_body[cinematic_begin:entrance_begin]
 require(
     "return;" in cinematic_branch and
-    "Transition_RaidBgm" not in cinematic_branch and
+    "Transition_RaidBgm(RAID_BGM_STATE::M05_INTRO);" in cinematic_branch and
     "m_hasObservedEntrancePattern" not in cinematic_branch,
-    "VALTAN_ENTRANCE_CINEMATIC must preserve Level-owned M04 without entrance state",
+    "VALTAN_ENTRANCE_CINEMATIC starts the source Matinee53 M05 without marking whirlwind completion",
 )
 
 entrance_branch = raid_bgm_body[entrance_begin:late_join_begin]

@@ -207,6 +207,11 @@ void LostArk::Server::CGameRoom::Handle_DespawnAllWorldEntities(
 
 bool LostArk::Server::CGameRoom::Despawn_KoukuSaydonArenaDebugEntities(const bool allArenaBosses)
 {
+	return Despawn_KoukuSaydonArenaDebugEntities(allArenaBosses, false);
+}
+
+bool LostArk::Server::CGameRoom::Despawn_KoukuSaydonArenaDebugEntities(const bool allArenaBosses, const bool preflightOnly)
+{
 	/* The KoukuSaydon arena keeps its statically enabled Gate 1 Kouku and any
 	Esther summon. Only entities raised from a disabled bootstrap placement
 	(the Debug gate buttons) and the dependents they own are removed. An
@@ -240,6 +245,26 @@ bool LostArk::Server::CGameRoom::Despawn_KoukuSaydonArenaDebugEntities(const boo
 					std::find(removedIds.begin(), removedIds.end(), entity.iOwnerBossNetEntityId) != removedIds.end())
 				{ removedIds.push_back(entity.iNetEntityId); added = true; }
 		}
+	}
+	if (preflightOnly)
+	{
+		// Entry admission validates pending lifecycle encoding before resetting the
+		// arena. Cancel_Source-generated messages are checked on a private copy.
+		auto staged = m_CombatObjectRuntime;
+		for (const auto id : removedIds) staged.Cancel_Source(id);
+		std::vector<LostArk::Shared::S2C_COMBAT_OBJECT_SPAWNED> spawned;
+		std::vector<LostArk::Shared::S2C_COMBAT_OBJECT_PRESENTATION_EVENT> events;
+		std::vector<LostArk::Shared::S2C_COMBAT_OBJECT_DESPAWNED> despawned;
+		staged.Drain_Lifecycle(spawned, events, despawned);
+		const auto valid = [](const auto& messages) {
+			for (const auto& message : messages)
+			{
+				LostArk::Shared::CPacketWriter writer;
+				if (!LostArk::Shared::Write_Message(writer, message)) return false;
+			}
+			return true;
+		};
+		return valid(spawned) && valid(events) && valid(despawned);
 	}
 	const std::uint32_t despawnTick =
 		0u == m_iServerTick ? 1u : m_iServerTick;

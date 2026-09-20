@@ -11,3 +11,9 @@
 새 C++ 파일은 추가하지 않으므로 vcxproj/filter 등록은 필요하지 않다. 신규 Data 문서는 Client 96.DataFiles에 등록하고 Resources 파생 모델은 산출물로 분리한다.
 
 플레이어 손의 별도 Pos(cm)/Rotation(deg)/축별 Size는 ArenaCameraProfile optional 필드로 저장한다. 기존 맵별 Save/Reload와 freshness 검증을 유지하고 기본값 0/0/1 위에 조절한다. 쿠크 보스 휠윈드의 사용자 screenshot 1.25/0/0,0/180/0,2배 수치는 이 필드에 복제하지 않는다.
+
+## 2026-09-20 카드미로 HUD와 Q 피해 교정
+
+`CKoukuMadnessGaugeView::Update`는 MAZE HUD 또는 카드미로 참여 상태에서 게이지를 숨긴다. `CMainApp::Update_KoukuHudMode`는 MAZE의 Q 스킬만 표시하고 `RenderQuickSlotKeyLabels`는 W 슬롯을 LMB로 바꾸지 않는다. 실제 LMB 입력과 원본 애니메이션은 유지한다.
+
+`CGameRoom::Resolve_CardMazeHammerHit`는 Q interaction index 0의 raw damage를 500으로 선택한다. 공유 hammer 기본 100은 LMB와 Mario에 그대로 두며 카드 병정의 기존 1회 처치 규칙을 유지한다. 기존 CardMaze 계약 검사에서 실제 typed Q 명령, contact 전/시/후와 500 피해 event를 검사한다. 새 파일과 Data 변경은 없고, Client 2 TU/Server 변경 TU 컴파일 및 기존 Server 계약 검사로 확인한다.

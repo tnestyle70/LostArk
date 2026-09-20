@@ -582,9 +582,7 @@ float LostArk::Server::CServerNavigation::Effective_Height(
 	if (!Is_CellWalkable(index)) return height;
 	for (const auto& surface : m_RuntimeSupportSurfaces)
 	{
-		const double dx = static_cast<double>(x) - surface.fCenterX;
-		const double dz = static_cast<double>(z) - surface.fCenterZ;
-		if (dx * dx + dz * dz <= static_cast<double>(surface.fRadiusM) * surface.fRadiusM)
+		if (surface.Contains_PointXZ(x, z))
 			height = (std::max)(height, surface.fHeightY);
 	}
 	return height;

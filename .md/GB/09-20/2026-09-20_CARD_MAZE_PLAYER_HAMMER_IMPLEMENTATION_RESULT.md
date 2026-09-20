@@ -26,3 +26,14 @@
 Client/UI는 실행하지 않았다. 본에 실제로 붙은 상태와 오른쪽→왼쪽 휘두르기/점프내려치기의 화면 결과는 사용자 확인 대상이다. native PSA clip1/2와 실제 모델 골격 연결은 수치로 검증했다. LMB contact .4초는 원본 notify 확정값이 아닌 프로젝트 튜닝이다. 빈 FX 두 슬롯은 사용자 저작을 기다린다.
 
 최종 JSON 15개와 Client project/filter XML 2개 parse PASS. 변경 C++/JSON/project 범위 git diff --check PASS. 기존 LF/CRLF 경고만 표시됐다.
+
+## 2026-09-20 카드미로 HUD와 Q 피해 교정
+
+- `KoukuMadnessGaugeView.cpp`의 Update는 MAZE HUD 또는 카드미로 참여 role 동안 캐릭터 광기 게이지를 숨긴다. 카드미로 이탈 후에는 기존 표시 조건으로 복구한다.
+- `MainApp.cpp`는 카드미로에서 Q만 스킬 아이콘/쿨다운을 표시하고 W의 LMB 키라벨 치환을 제거했다. 기존 빈 W 슬롯으로 돌아가며 실제 LMB 망치 입력/애니메이션은 유지한다.
+- `GameRoom_KoukuMiniGames.cpp`는 카드미로 Q(index 0)의 raw damage만 500으로 선택한다. LMB와 Mario는 기존 100, 문양 병정의 한 번 처치·조각 표시 계약도 유지한다. 현재 clown box는 HP 500/방어 0이므로 Q 한 번에 파괴된다.
+- 기존 `ServerGameplayContractTests_CardMaze.cpp`를 실제 typed Q 명령→contact 전/시/후 검증으로 강화했다. LMB 100 유지, Q damage event 500, full-health box 한 번 파괴, 중복 타격 방지, 1~4인 카드미로 탈출 검사가 모두 통과했다.
+
+Client 2 TU(`MainApp`, `KoukuMadnessGaugeView`)와 Server 2 TU(`GameRoom_KoukuMiniGames`, `ServerGameplayContractTests_CardMaze`)를 별도 out 경로에서 컴파일했다. 기존 `Camera_Free.h`의 인코딩 경고가 있었으나 컴파일 오류는 없다. 변경 Server OBJ를 기존 제품 OBJ와 격리 링크한 `out/CardMazeHud20260920/card-maze.exe --card-maze-contract-test`는 `card maze failures: 0`, 종료 코드 0이다. 로그는 `out/CardMazeHud20260920/{client,server,link,card-maze}.log`에 있다. 실행 시 `LOSTARK_SERVER_DATA_ROOT`를 현재 `Server/Bin/DataFiles`로 명시했다. 최초 기본 경로 실행은 out/DataFiles의 bootstrap 부재로 시작 검사에서 실패했으며, 경로 지정 후 전체 통과했다.
+
+Data/Resources/project 항목은 변경하지 않았고 별도 Publish는 필요하지 않다. C++/문서 변경 범위 `git diff --check` 통과. Product 통합 링크·배포와 실행 중 Server의 재시작은 이 독립 컴파일/계약 검사에 포함하지 않았다. Client/UI는 실행하지 않았으며, 카드미로 진입의 게이지 숨김·Q만 표시와 이탈 복구의 화면 확인은 사용자에게 남는다.
