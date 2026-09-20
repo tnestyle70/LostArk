@@ -23,6 +23,7 @@
 #include "CombatHUDViewModel.h"
 #include "Level_KakulSaydonArena.h"
 #include "LightResourceCatalog.h"
+#include "MapAssetCatalog.h"
 #include "Presentation_Manager.h"
 #include "Model.h"
 #include "Npc.h"
@@ -51,6 +52,11 @@ using RESOURCE = KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE;
 using OCCURRENCE = KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE;
 using KIND = KOUKU_SAYDON_PRESENTATION_KIND;
 constexpr std::uint32_t MAX_TIMELINE_MS = 600000u;
+
+// Owner-thread only, just like the existing V2 GPU resource cache. A new arena
+// collection or explicit V2 authoring invalidation drops this CPU snapshot set.
+std::map<std::string, std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT>> g_RaidEffectSnapshots;
+std::uint64_t g_RaidEffectGeneration = 0u;
 
 float Counter_AfterimageAgeSeconds(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
     const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern, const double clockMs)
@@ -699,6 +705,19 @@ CKoukuSaydonPresentationPlayer::V1_SOURCE_ANCHOR_SAMPLER Make_SourceAnchorSample
         { error = "Prepared Kouku source Effect document is unavailable."; return false; };
     auto attachments = Source_Attachments(*document, resource.strElementId);
     if (attachments.empty()) return {};
+    // This local FEAR overlay simulates wholly in camera-local coordinates.
+    // Its living particles need the current view, never historical world camera motion.
+    // Keep the general Product camera-history rejection for every other resource.
+    const bool localFearCamera = resource.strAssetId == "effect.kouku.fear.screen.full.restore" &&
+        document->ModelCues.empty() && !document->SourceModelPreview &&
+        std::all_of(document->Elements.begin(), document->Elements.end(), [](const auto& element)
+        {
+            const auto& attachment = element.ActionCueAttachment;
+            return !element.bVisible || (element.SourceRecipe.bEnabled && element.Detail.Particle.bLocalSpace &&
+                !element.SourceTransformTrack && attachment.bEnabled && attachment.bFollow &&
+                attachment.eOrientation == EFFECT_ATTACHMENT_ORIENTATION::CAMERA_VIEW &&
+                attachment.strRuntimeBoneName.empty() && attachment.strModelCueId.empty());
+        });
     std::vector<ANCHOR_ANIMATION> animations;
     uint32_t stageStart = 0u;
     for (const auto& stage : pattern.Stages)
@@ -742,10 +761,15 @@ CKoukuSaydonPresentationPlayer::V1_SOURCE_ANCHOR_SAMPLER Make_SourceAnchorSample
     return [attachments = std::move(attachments), animations = std::move(animations), names = std::move(names),
         frozenBones = std::move(frozenBones), frozenError = std::move(frozenError), freezeResourcePose,
         blendWindows = pattern.AnimationBlendWindows, weakModel = std::weak_ptr<CModel>(model), ownerRoot, startMs,
-        sourceDocument, sourceSecondsPerBoxSecond, sourceCycleStartSeconds, exactRoot = std::move(exactRoot)]
+        sourceDocument, sourceSecondsPerBoxSecond, sourceCycleStartSeconds, localFearCamera, exactRoot = std::move(exactRoot)]
         (float seconds, const float4x4_t& root, SOURCE_BONES& anchors, std::string& error)
     {
         if (!std::isfinite(seconds) || seconds < 0.f) { error = "Invalid Kouku source anchor sample time."; return false; }
+        if (localFearCamera)
+        {
+            EFFECT_V2_TARGET_VIEW cameraOnlyView;
+            return Build_SourceAnchorWorlds(attachments, cameraOnlyView, root, {}, anchors, error);
+        }
         if (std::any_of(attachments.begin(), attachments.end(), [](const auto& value)
             { return value.eOrientation == EFFECT_ATTACHMENT_ORIENTATION::CAMERA_VIEW; }))
         { error = "Kouku Product camera-view source attachment requires recorded camera history."; return false; }
@@ -1023,6 +1047,7 @@ void Client::CKoukuSaydonPresentationPlayer::Collect_FrameLights()
             }
         }
     };
+    for (const auto& tail : m_ProductTails) collect(tail.playback, false, tail.playback.bossEntityId);
     for (const auto& [id, session] : m_BossSessions) collect(session, false, id);
     for (const auto& [id, session] : m_ChildBossSessions) collect(session, false, id);
     for (const auto& [id, session] : m_MarioEntrySessions) collect(session, false, id);
@@ -1126,10 +1151,21 @@ bool Client::CKoukuSaydonPresentationPlayer::Resolve_ProductWorldEmissionAnchor(
     const std::string_view occurrenceId, WORLD_EMISSION_ANCHOR& out) const
 {
     if (sourceRevision != m_iProductSourceRevision) return false;
-    const auto pattern = m_Product.find(std::string(patternId));
-    if (pattern == m_Product.end()) return false;
-    const auto anchor = pattern->second.worldEmissionAnchors.find(std::string(occurrenceId));
-    out = anchor == pattern->second.worldEmissionAnchors.end() ? WORLD_EMISSION_ANCHOR{} : anchor->second;
+    // An automatic RaidFlow continuation may no longer list the old member.
+    // Its reliable cue still carries its original occurrence and pinned revision.
+    if (!patternId.empty() && !m_Product.contains(std::string(patternId))) return false;
+    // Reliable delayed births keep their globally stable occurrence ID even
+    // after the member has advanced. Resolve against the pinned Product, never
+    // silently replace an old motion sampler with the current Pattern's default.
+    const WORLD_EMISSION_ANCHOR* resolved = nullptr;
+    for (const auto& [id, owner] : m_Product)
+        if (const auto anchor = owner.worldEmissionAnchors.find(std::string(occurrenceId));
+            anchor != owner.worldEmissionAnchors.end())
+        {
+            if (resolved) return false;
+            resolved = &anchor->second;
+        }
+    out = resolved ? *resolved : WORLD_EMISSION_ANCHOR{};
     return true;
 }
 
@@ -1514,6 +1550,8 @@ bool Client::CKoukuSaydonPresentationPlayer::Reload_Product(
             if (value.Find("targetBossPlacementId")) item.pattern.strTargetBossPlacementId = Text(value, "targetBossPlacementId");
             if (value.Find("actorProfileId")) item.pattern.strActorProfileId = Text(value, "actorProfileId");
             item.durationMs = UInt(value, "durationMs", 1u, MAX_TIMELINE_MS);
+            item.stageDurationMs = value.Find("stageDurationMs") ?
+                UInt(value, "stageDurationMs", 1u, item.durationMs) : item.durationMs;
             if (const auto* windows = value.Find("animationBlendWindows"))
                 if (!CKoukuSaydonAnimationBlend::Read_ProductWindows(*windows, item.pattern.AnimationBlendWindows, parseStatus))
                     throw std::runtime_error(parseStatus);
@@ -1739,6 +1777,11 @@ bool Client::CKoukuSaydonPresentationPlayer::Reload_Product(
                     box.iDurationMs = item.durationMs - startMs;
                     box.strAnchorKind = anchor;
                     box.bDebugRender = false;
+                    // Original ScreenPP is one finite native pulse. The requested repetition
+                    // is scoped to this FEAR occurrence and ends with Server FEAR state.
+                    box.bLoopEffectToDuration = resource.eKind == KIND::EFFECT &&
+                        resource.strResourceKind == "V1_EFFECT" &&
+                        resource.strAssetId == "effect.kouku.fear.screen.full.restore";
                     item.document.PresentationResources.push_back(std::move(resource));
                     item.pattern.PresentationOccurrences.push_back(std::move(box));
                 };
@@ -1779,6 +1822,7 @@ bool Client::CKoukuSaydonPresentationPlayer::Reload_Product(
         for (auto& [id, session] : m_BossSessions) Stop_Session(session);
         for (auto& [id, session] : m_ChildBossSessions) Stop_Session(session);
         m_BossSessions.clear();
+        Clear_ProductTails();
         m_ChildBossSessions.clear();
         for (auto& [id, session] : m_MarioEntrySessions) Stop_Session(session);
         m_MarioEntrySessions.clear();
@@ -1830,6 +1874,152 @@ bool Client::CKoukuSaydonPresentationPlayer::Reload_Product(
     }
 }
 
+bool Client::CKoukuSaydonPresentationPlayer::Collect_ProductEffectTargets(
+    std::vector<std::string>& v1Targets,
+    std::vector<std::pair<std::string, std::string>>& v2Targets, std::string& status)
+{
+    const auto started = GetTickCount64();
+    try
+    {
+        std::set<std::string> v1;
+        std::set<std::pair<std::string, std::string>> v2;
+        const auto add = [&](const std::string& kind, const std::string& id) {
+            if (!CEffectV2Document::Is_ValidEffectId(id))
+                throw std::runtime_error("Invalid raid Effect identity: " + id);
+            if (kind == "V1_EFFECT" || kind == "V1_ELEMENT") v1.insert(id);
+            else if (kind == "LEAF" || kind == "GROUP") v2.emplace(kind, id);
+            else throw std::runtime_error("Unsupported raid Effect resource kind: " + kind);
+        };
+        const auto array = [](const DATA_JSON_VALUE& owner, const char* field) -> const auto& {
+            const auto& value = Field(owner, field);
+            if (!value.Is_Array() || value.Get_Array().size() > 16384u)
+                throw std::runtime_error(std::string("Raid dependency array is invalid: ") + field);
+            return value.Get_Array();
+        };
+        const auto collectResource = [&](const DATA_JSON_VALUE& row) {
+            if (Text(row, "kind") == "EFFECT")
+                add(Text(row, "resourceKind"), Text(row, "assetId"));
+        };
+        const auto product = Read_ProductPresentationRoot();
+        for (const auto& pattern : array(product, "patterns"))
+            for (const auto& row : array(pattern, "presentationOccurrences")) collectResource(row);
+        if (product.Find("fearPresentations"))
+            for (const auto& fear : array(product, "fearPresentations"))
+                if (const auto* effect = fear.Find("effectResource"); effect && !effect->Is_Null()) collectResource(*effect);
+        if (product.Find("targetedCombatVisuals"))
+            for (const auto& visual : array(product, "targetedCombatVisuals"))
+            {
+                for (const auto& row : array(visual, "resources")) collectResource(row);
+                if (const auto* contact = visual.Find("contactEffectAssetId"); contact && !contact->Is_Null())
+                    add("V1_EFFECT", Text(visual, "contactEffectAssetId"));
+            }
+
+        const auto read = [](const std::filesystem::path& path, const char* schema) {
+            std::error_code error;
+            const auto size = std::filesystem::file_size(path, error);
+            if (error || !size || size > 16u * 1024u * 1024u)
+                throw std::runtime_error("Raid dependency document is missing/oversized: " + path.string());
+            std::ifstream input(path, std::ios::binary);
+            const std::string bytes{std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>()};
+            DATA_JSON_VALUE root; std::string reason;
+            if (!input || input.bad() || bytes.size() != size || !CDataJson::Parse(bytes, root, reason) ||
+                !root.Is_Object() || Text(root, "schema") != schema)
+                throw std::runtime_error("Raid dependency document is invalid: " + path.string() + "; " + reason);
+            return root;
+        };
+        // The live raid cinematics consume this saved Sequence composition too.
+        // Only used resources join the closure; the authoring library is larger.
+        const auto sequence = read(CKoukuSaydonCompositionDocument::Resolve_SequencePath(),
+            "lostark.kouku-saydon-composition");
+        std::set<std::string> used;
+        for (const auto& pattern : array(sequence, "patterns"))
+            for (const auto& row : array(pattern, "presentationOccurrences")) used.insert(Text(row, "resourceId"));
+        for (const auto& resource : array(sequence, "presentationResources"))
+            if (used.erase(Text(resource, "resourceId"))) collectResource(resource);
+        if (!used.empty()) throw std::runtime_error("Missing raid Sequence resource: " + *used.begin());
+
+        const auto world = read(CMapAssetCatalog::Get_MapDataRoot() /
+            "LV_LUT_MIDNIGHTC_ED.worldsequences.json", "lostark.world-sequences");
+        std::set<std::string> templates;
+        for (const auto& instance : array(world, "instances"))
+        {
+            const auto& enabled = Field(instance, "enabled");
+            if (!enabled.Is_Boolean()) throw std::runtime_error("World enabled flag is invalid.");
+            if (enabled.Get_Boolean()) templates.insert(Text(instance, "templateId"));
+        }
+        for (const auto& value : array(world, "templates"))
+            if (templates.erase(Text(value, "sequenceId")) && value.Find("effectTracks"))
+                for (const auto& effect : array(value, "effectTracks"))
+                    add(Text(effect, "resourceKind"), Text(effect, "resourceId"));
+        if (!templates.empty()) throw std::runtime_error("Missing raid World template: " + *templates.begin());
+        // Server card/ball state selects these without a pattern occurrence.
+        for (const char* symbol : {"heart", "spade", "clober", "dia"})
+            for (const char* color : {"red", "black"})
+                add("GROUP", std::string("boss.kouku.card.") + symbol + "." + color);
+        for (const char* color : {"red", "blue", "yellow"})
+            add("LEAF", std::string("boss.kouku.ball.smoke.") + color + "_1");
+        v1Targets.assign(v1.begin(), v1.end());
+        v2Targets.assign(v2.begin(), v2.end());
+        g_RaidEffectSnapshots.clear();
+        g_RaidEffectGeneration = CEffectV2Runtime::Cache_Generation();
+        status = "Raid Effect dependencies: V1=" + std::to_string(v1Targets.size()) +
+            ", V2=" + std::to_string(v2Targets.size());
+        OutputDebugStringA(("[KoukuPrewarm] " + status + "\n").c_str());
+        Write_EffectFailureDiagnostic("Kouku.Loading.Collect",
+            "elapsed_ms=" + std::to_string(GetTickCount64() - started) +
+            " v1_targets=" + std::to_string(v1Targets.size()) +
+            " v2_targets=" + std::to_string(v2Targets.size()));
+        return true;
+    }
+    catch (const std::exception& error) { status = error.what(); return false; }
+}
+
+bool Client::CKoukuSaydonPresentationPlayer::Prewarm_ProductEffectResources(
+    const ComPtr<ID3D11Device>& device, const ComPtr<ID3D11DeviceContext>& context,
+    const std::vector<std::pair<std::string, std::string>>& targets, std::string& status)
+{
+    const auto started = GetTickCount64();
+    try
+    {
+        std::map<std::string, std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT>> staged;
+        for (const auto& [kind, id] : targets)
+        {
+            std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT> snapshot;
+            if (!CEffectV2Catalog::Get().Load_ResourceSnapshot(kind == "GROUP" ?
+                EFFECT_V2_RESOURCE_KIND::GROUP : EFFECT_V2_RESOURCE_KIND::LEAF, id, snapshot, status)) return false;
+            EFFECT_V2_GROUP group;
+            if (kind == "GROUP")
+            {
+                const auto* found = snapshot ? snapshot->Find_Group(id) : nullptr;
+                if (!found) { status = "Missing raid Effect group after load: " + id; return false; }
+                group = *found;
+            }
+            else
+            {
+                group.strGroupId = id;
+                EFFECT_V2_GROUP_CHILD child;
+                child.strChildId = "raid.prewarm.leaf"; child.strResourceId = child.strEffectId = id;
+                group.Children.push_back(std::move(child));
+            }
+            if (!CEffectV2Runtime::Prewarm_Group(group, snapshot, device, context))
+            { status = "Raid Effect prewarm failed: " + id + "; " + CEffectV2Runtime::Last_Error(); return false; }
+            staged.emplace(kind + ":" + id, std::move(snapshot));
+        }
+        // Selected Complete Play prepares one resource per frame. Keep immutable
+        // snapshots already prepared for other selections under the same cache epoch.
+        const auto generation = CEffectV2Runtime::Cache_Generation();
+        if (g_RaidEffectGeneration != generation) g_RaidEffectSnapshots.clear();
+        for (auto& [key, snapshot] : staged) g_RaidEffectSnapshots.insert_or_assign(key, std::move(snapshot));
+        g_RaidEffectGeneration = generation;
+        status = "Raid V2 Effect resources prepared: " + std::to_string(targets.size());
+        Write_EffectFailureDiagnostic("Kouku.Loading.V2Prepared",
+            "elapsed_ms=" + std::to_string(GetTickCount64() - started) +
+            " targets=" + std::to_string(targets.size()));
+        return true;
+    }
+    catch (const std::exception& error) { status = "Raid Effect prewarm failed: " + std::string(error.what()); return false; }
+}
+
 bool Client::CKoukuSaydonPresentationPlayer::Ensure_EffectResource(
     const std::string& kind, const std::string& asset,
     std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT>& snapshot)
@@ -1842,6 +2032,9 @@ bool Client::CKoukuSaydonPresentationPlayer::Ensure_EffectResource(
         m_iEffectCacheGeneration = generation;
     }
     const std::string key = kind + ":" + asset;
+    if (g_RaidEffectGeneration != generation) g_RaidEffectSnapshots.clear();
+    if (const auto prepared = g_RaidEffectSnapshots.find(key); prepared != g_RaidEffectSnapshots.end())
+    { snapshot = prepared->second; return true; }
     if (const auto found = m_EffectResources.find(key); found != m_EffectResources.end())
     { snapshot = found->second; return true; }
     if (const auto failed = m_EffectResourceFailures.find(key); failed != m_EffectResourceFailures.end())
@@ -1860,6 +2053,122 @@ bool Client::CKoukuSaydonPresentationPlayer::Ensure_EffectResource(
     m_EffectResources.emplace(key, staged);
     snapshot = std::move(staged);
     return true;
+}
+
+void Client::CKoukuSaydonPresentationPlayer::Clear_ProductTails()
+{
+    for (auto& tail : m_ProductTails) Stop_Session(tail.playback);
+    m_ProductTails.clear();
+}
+
+void Client::CKoukuSaydonPresentationPlayer::Retire_ProductSession(SESSION& session,
+    const std::vector<KOUKU_BOSS_PRESENTATION_VIEW>& bosses)
+{
+    const auto definition = m_Product.find(session.productPatternId);
+    const auto view = std::find_if(bosses.begin(), bosses.end(), [&](const auto& row) {
+        return row.Snapshot.iNetEntityId == session.bossEntityId && row.Snapshot.iCurrentHp && !row.pNpc.expired(); });
+    const auto* arena = CLevel_KakulSaydonArena::Get_Active();
+    const auto* run = arena ? &arena->Get_KoukuBundleState() : nullptr;
+    using STATE = LostArk::Shared::KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE;
+    const bool cancelled = session.runEpoch && (!run || run->iRunEpoch != session.runEpoch || run->eState == STATE::ABORTED);
+    if (cancelled && !session.key.empty())
+    {
+        auto& cancelledKeys = session.key.find(":child:") == std::string::npos ?
+            m_CancelledBossSessionKeys : m_CancelledChildSessionKeys;
+        cancelledKeys[session.bossEntityId] = session.key;
+    }
+    float seconds = 0.f;
+    const bool hasClock = view != bosses.end() && CActionPresentationTimeline::Try_ResolveActionAgeSeconds(
+        view->iServerTick, session.patternStartTick, 30.f, seconds);
+    const bool completedRun = run && session.runEpoch == run->iRunEpoch && run->eState == STATE::COMPLETED;
+    const bool nextPattern = view != bosses.end() && !view->Snapshot.strPatternId.empty() &&
+        (view->Snapshot.iPatternSequence != session.patternSequence || view->Snapshot.strPatternId != session.productPatternId);
+    const bool completed = definition != m_Product.end() && hasClock &&
+        (completedRun || nextPattern || seconds * 1000.f + 0.01f >= definition->second.stageDurationMs);
+    if (!cancelled && completed && definition->second.durationMs > definition->second.stageDurationMs &&
+        seconds * 1000.f < definition->second.durationMs && session.lastClockMs >= 0.f && m_ProductTails.size() < 1024u)
+    {
+        // Move the handles and observed anchor history; never respawn a sound or
+        // particle just because the boss has advanced to the next Pattern.
+        PRODUCT_TAIL tail;
+        tail.definition = definition->second;
+        tail.owner = view->pNpc;
+        tail.playback = std::move(session);
+        session = {};
+        m_ProductTails.push_back(std::move(tail));
+        return;
+    }
+    Stop_Session(session);
+    session = {};
+}
+
+void Client::CKoukuSaydonPresentationPlayer::Retire_ProductBundleSession()
+{
+    auto& session = m_ProductBundleSession;
+    const auto definition = m_ProductBundles.find(session.productPatternId);
+    const auto* arena = CLevel_KakulSaydonArena::Get_Active();
+    const auto* run = arena ? &arena->Get_KoukuBundleState() : nullptr;
+    using STATE = LostArk::Shared::KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE;
+    float seconds = 0.f;
+    if (run && session.runEpoch && run->iRunEpoch == session.runEpoch && run->eState != STATE::ABORTED &&
+        definition != m_ProductBundles.end() && session.lastClockMs >= 0.f && m_ProductTails.size() < 1024u &&
+        CActionPresentationTimeline::Try_ResolveActionAgeSeconds(
+            (std::max)(run->iServerTick, arena->Get_PresentationServerTick()), session.patternStartTick, 30.f, seconds) &&
+        seconds * 1000.f < definition->second.common.durationMs)
+    {
+        PRODUCT_TAIL tail;
+        tail.bundleCommon = true;
+        tail.definition = definition->second.common;
+        tail.playback = std::move(session);
+        session = {};
+        m_ProductTails.push_back(std::move(tail));
+        return;
+    }
+    Stop_Session(session);
+    session = {};
+}
+
+void Client::CKoukuSaydonPresentationPlayer::Update_ProductTails(const float dt,
+    const std::vector<KOUKU_BOSS_PRESENTATION_VIEW>& bosses)
+{
+    const auto* arena = CLevel_KakulSaydonArena::Get_Active();
+    const auto* run = arena ? &arena->Get_KoukuBundleState() : nullptr;
+    using STATE = LostArk::Shared::KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE;
+    for (auto tail = m_ProductTails.begin(); tail != m_ProductTails.end();)
+    {
+        auto& session = tail->playback;
+        const auto npc = tail->owner.lock();
+        const auto view = std::find_if(bosses.begin(), bosses.end(), [&](const auto& row) {
+            return row.Snapshot.iNetEntityId == session.bossEntityId && row.Snapshot.iCurrentHp && row.pNpc.lock() == npc; });
+        float seconds = 0.f;
+        const bool cancelled = (!tail->bundleCommon && (!npc || !npc->Get_Transform() || view == bosses.end())) ||
+            (session.runEpoch && (!run || run->iRunEpoch != session.runEpoch || run->eState == STATE::ABORTED));
+        const auto serverTick = tail->bundleCommon ? (arena && run ?
+            (std::max)(run->iServerTick, arena->Get_PresentationServerTick()) : 0u) :
+            (view != bosses.end() ? view->iServerTick : 0u);
+        const bool timed = !cancelled && CActionPresentationTimeline::Try_ResolveActionAgeSeconds(
+            serverTick, session.patternStartTick, 30.f, seconds);
+        const float clock = (std::max)(seconds * 1000.f, session.lastClockMs + dt * 1000.f);
+        if (!timed || clock >= tail->definition.durationMs)
+        {
+            Stop_Session(session);
+            tail = m_ProductTails.erase(tail);
+            continue;
+        }
+        if (tail->bundleCommon)
+        {
+            float4x4_t pivot; XMStoreFloat4x4(&pivot, XMMatrixIdentity());
+            Sample(session, tail->definition.document, tail->definition.pattern, clock, false, pivot, nullptr);
+        }
+        else
+        {
+            ANIMATION_MODEL_TARGET_VIEW weapon;
+            const bool hasWeapon = npc->Try_GetAnimationModelTarget(ANIMATION_BONE_TARGET::WEAPON, weapon);
+            Sample(session, tail->definition.document, tail->definition.pattern, clock, false,
+                *npc->Get_Transform()->Get_WorldMatrixPtr(), npc->Get_Model(), hasWeapon ? &weapon : nullptr);
+        }
+        ++tail;
+    }
 }
 
 void Client::CKoukuSaydonPresentationPlayer::Stop_Session(SESSION& session)
@@ -1926,7 +2235,18 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
         session.rootRecordedSeconds = recordedSeconds;
         session.rootRecordedPivot = recordedPivot;
     }
-    if (!session.rootHistory) session.rootHistory = std::make_shared<EFFECT_V2_PIVOT_HISTORY>();
+    if (!session.rootHistory)
+    {
+        session.rootHistory = std::make_shared<EFFECT_V2_PIVOT_HISTORY>();
+        // The first replicated frame can arrive after pattern time zero. Bootstrap
+        // births with that first authoritative pose until observed samples exist;
+        // never borrow a preceding pattern or fabricate later moving history.
+        if (!previewSession && clockMs > 0.f)
+        {
+            std::string historyStatus;
+            if (!session.rootHistory->Record(0.f, pivot, false, historyStatus)) m_strStatus = historyStatus;
+        }
+    }
     const float rootSeconds = clockMs / 1000.f;
     if (rootSeconds >= session.rootRecordedSeconds)
     {
@@ -1956,7 +2276,7 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
         if (!level) return false;
         if (session.runEpoch)
             return level->Try_GetOwnedCompositionWorldPivot(session.runEpoch, session.memberId,
-                world->strSequenceInstanceId, box.strWorldOccurrenceId, anchor, box.iWorldEmissionIndex);
+                world->strSequenceInstanceId, box.strWorldOccurrenceId, anchor, box.iWorldEmissionIndex, session.patternSequence);
         return level->Try_GetCompositionWorldPivot(world->strSequenceInstanceId, anchor, box.strWorldOccurrenceId, box.iWorldEmissionIndex);
     };
     // Observe future anchored cues as well as active ones. Their first emission
@@ -1999,6 +2319,12 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
         const bool discontinuity = history.recordedSeconds >= 0.f &&
             (history.missingSinceSample || dx*dx + dy*dy + dz*dz > 2500.f);
         std::string historyStatus;
+        // A named World may become visible only after its resource preparation.
+        // Seed just its initial birth interval from the first resolved pose. All
+        // subsequent samples, gaps and teleports retain strict history semantics.
+        if (!previewSession && history.recordedSeconds < 0.f)
+            history.samples->Record((std::min)(rootSeconds, box.iStartMs / 1000.f),
+                recorded, false, historyStatus);
         if (history.samples->Record(rootSeconds, recorded, discontinuity, historyStatus))
         {
             history.recordedSeconds = rootSeconds;
@@ -2433,6 +2759,8 @@ void Client::CKoukuSaydonPresentationPlayer::Refresh_SharedPresentation()
         if (localScene) { scene = localScene; sceneOwner = std::move(localOwner); }
         if (localCamera) { camera = localCamera; cameraOwner = std::move(localCameraOwner); cameraPreview = !product; }
     };
+    // A new Pattern takes precedence over an older Camera/Scene tail.
+    for (const auto& tail : m_ProductTails) choose(tail.playback, true);
     // Stable entity/id order resolves overlapping presentation; preview owns the final choice.
     for (const auto& [id, session] : m_BossSessions) choose(session, true);
     for (const auto& [id, session] : m_ChildBossSessions) choose(session, true);
@@ -2589,7 +2917,8 @@ void Client::CKoukuSaydonPresentationPlayer::Update(float dt,
     using RUN_STATE = LostArk::Shared::KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE;
     const bool runLive = run && run->iRunEpoch &&
         (run->eState == RUN_STATE::PENDING || run->eState == RUN_STATE::ACTIVE || run->eState == RUN_STATE::PATTERN_COMPLETED);
-    m_ProductBundleSession.runEpoch = runLive && !run->strBundleId.empty() ? run->iRunEpoch : 0u;
+    const bool runPresentationLive = run && run->iRunEpoch &&
+        (runLive || run->eState == RUN_STATE::COMPLETED);
     if (runLive && m_iProductReloadRunEpoch != run->iRunEpoch)
     {
         m_iProductReloadRunEpoch = run->iRunEpoch;
@@ -2598,7 +2927,7 @@ void Client::CKoukuSaydonPresentationPlayer::Update(float dt,
         if (run->iPinnedSourceRevision != m_iProductSourceRevision)
         { std::string status; (void)Reload_Product(status, run->iPinnedSourceRevision); }
     }
-    if (runLive && !run->strBundleId.empty())
+    if (runPresentationLive && !run->strBundleId.empty())
     {
         const auto product = m_ProductBundles.find(run->strBundleId);
         float seconds = 0.f;
@@ -2610,18 +2939,33 @@ void Client::CKoukuSaydonPresentationPlayer::Update(float dt,
         else if (CActionPresentationTimeline::Try_ResolveActionAgeSeconds(
             (std::max)(run->iServerTick, arena->Get_PresentationServerTick()), run->iCommonStartTick, 30.f, seconds))
         {
-            const auto key = "bundle-product:" + std::to_string(run->iRunEpoch) + ":" + run->strBundleId;
+            const auto key = "bundle-product:" + std::to_string(run->iRunEpoch) + ":" + run->strBundleId +
+                ":" + std::to_string(run->iCommonStartTick);
             if (m_ProductBundleSession.key != key)
-            { Stop_Session(m_ProductBundleSession); m_ProductBundleSession.key = key; }
+            {
+                Retire_ProductBundleSession();
+                m_ProductBundleSession.key = key;
+                m_ProductBundleSession.runEpoch = run->iRunEpoch;
+                m_ProductBundleSession.productPatternId = run->strBundleId;
+                m_ProductBundleSession.patternStartTick = run->iCommonStartTick;
+            }
             const float clock = m_ProductBundleSession.lastClockMs < 0.f ? seconds * 1000.f :
                 (std::max)(seconds * 1000.f, m_ProductBundleSession.lastClockMs + dt * 1000.f);
             float4x4_t pivot; XMStoreFloat4x4(&pivot, XMMatrixIdentity());
-            Sample(m_ProductBundleSession, product->second.common.document, product->second.common.pattern,
-                clock, false, pivot, nullptr);
+            if (clock < product->second.common.durationMs)
+                Sample(m_ProductBundleSession, product->second.common.document, product->second.common.pattern,
+                    clock, false, pivot, nullptr);
+            else
+            {
+                Stop_Session(m_ProductBundleSession);
+                // Retain the terminal clock for this key. The interpolated
+                // clock can finish before the next authoritative tick arrives.
+                m_ProductBundleSession.lastClockMs = clock;
+            }
         }
         else Stop_Session(m_ProductBundleSession);
     }
-    else Stop_Session(m_ProductBundleSession);
+    else Retire_ProductBundleSession();
     std::set<std::uint32_t> liveMarioEntries;
     if (runLive && run->iPinnedSourceRevision == m_iProductSourceRevision)
         for (const auto& member : run->Members)
@@ -2652,6 +2996,7 @@ void Client::CKoukuSaydonPresentationPlayer::Update(float dt,
     std::set<std::uint32_t> liveBosses;
     for (const auto& view : bosses)
     {
+        if (run && run->iRunEpoch && run->eState == RUN_STATE::ABORTED) continue;
         if (runLive && run->iPinnedSourceRevision != m_iProductSourceRevision) continue;
         const auto npc = view.pNpc.lock();
         const auto product = m_Product.find(view.Snapshot.strPatternId);
@@ -2669,16 +3014,35 @@ void Client::CKoukuSaydonPresentationPlayer::Update(float dt,
         if (liveMarioEntries.contains(id) && std::any_of(run->Members.begin(), run->Members.end(), [&](const auto& member) {
             return member.iBossNetEntityId == id && member.strMarioEntryPatternId == view.Snapshot.strPatternId;
         })) continue;
+        const LostArk::Shared::KOUKUSAYDON_BUNDLE_MEMBER_STATE* owner = nullptr;
+        if (run && run->iRunEpoch)
+            for (const auto& member : run->Members)
+                if (member.iBossNetEntityId == id) { owner = &member; break; }
+        // Run receipts can precede the boss snapshot. Do not adopt the old
+        // Pattern's handles into a new member/epoch while waiting for that snapshot.
+        float bornInRunSeconds = 0.f;
+        if (owner && (owner->iPatternSequence != view.Snapshot.iPatternSequence ||
+            owner->eState == RUN_STATE::PENDING || owner->strPatternId != view.Snapshot.strPatternId ||
+            !CActionPresentationTimeline::Try_ResolveActionAgeSeconds(
+                view.Snapshot.iPatternStartTick, run->iCommonStartTick, 30.f, bornInRunSeconds)))
+            continue;
         liveBosses.insert(id);
         SESSION& session = m_BossSessions[id];
-        session.runEpoch = 0u; session.memberId.clear();
-        if (runLive)
-            for (const auto& member : run->Members)
-                if (member.iBossNetEntityId == id)
-                { session.runEpoch = run->iRunEpoch; session.memberId = member.strMemberId; break; }
         const std::string key = std::to_string(id) + ":" + view.Snapshot.strPatternId + ":" +
             std::to_string(view.Snapshot.iPatternSequence) + ":" + std::to_string(view.Snapshot.iPatternStartTick);
-        if (session.key != key) { Stop_Session(session); session.key = key; }
+        if (session.runEpoch && (!run || session.runEpoch != run->iRunEpoch))
+            Retire_ProductSession(session, bosses);
+        if (const auto cancelled = m_CancelledBossSessionKeys.find(id);
+            cancelled != m_CancelledBossSessionKeys.end() && cancelled->second == key) continue;
+        if (session.key != key)
+        {
+            Retire_ProductSession(session, bosses);
+            session.key = key;
+            session.productPatternId = view.Snapshot.strPatternId;
+            session.bossEntityId = id; session.patternSequence = view.Snapshot.iPatternSequence;
+            session.patternStartTick = view.Snapshot.iPatternStartTick;
+            if (owner) { session.runEpoch = run->iRunEpoch; session.memberId = owner->strMemberId; }
+        }
         // Interpolate between snapshots without rewinding/restarting effects every network tick.
         const float clock = session.lastClockMs < 0.f ? seconds * 1000.f :
             (std::max)(seconds * 1000.f, session.lastClockMs + dt * 1000.f);
@@ -2692,7 +3056,7 @@ void Client::CKoukuSaydonPresentationPlayer::Update(float dt,
     for (auto session = m_BossSessions.begin(); session != m_BossSessions.end();)
     {
         if (liveBosses.contains(session->first)) { ++session; continue; }
-        Stop_Session(session->second);
+        Retire_ProductSession(session->second, bosses);
         session = m_BossSessions.erase(session);
     }
     // Child effects use their own Server clock and the same live body. Keeping
@@ -2700,6 +3064,7 @@ void Client::CKoukuSaydonPresentationPlayer::Update(float dt,
     std::set<std::uint32_t> liveChildren;
     for (const auto& view : bosses)
     {
+        if (run && run->iRunEpoch && run->eState == RUN_STATE::ABORTED) continue;
         if (runLive && run->iPinnedSourceRevision != m_iProductSourceRevision) continue;
         if (view.Snapshot.strPresentationPatternId.empty() || !view.Snapshot.iCurrentHp) continue;
         const auto npc = view.pNpc.lock();
@@ -2715,16 +3080,35 @@ void Client::CKoukuSaydonPresentationPlayer::Update(float dt,
         if (!CActionPresentationTimeline::Try_ResolveActionAgeSeconds(view.iServerTick,
             view.Snapshot.iPresentationPatternStartTick, 30.f, seconds)) continue;
         const auto id = view.Snapshot.iNetEntityId;
+        const LostArk::Shared::KOUKUSAYDON_BUNDLE_MEMBER_STATE* owner = nullptr;
+        if (run && run->iRunEpoch)
+            for (const auto& member : run->Members)
+                if (member.iBossNetEntityId == id) { owner = &member; break; }
+        // Run receipts can precede the boss snapshot. Do not adopt the old
+        // Pattern's handles into a new member/epoch while waiting for that snapshot.
+        float bornInRunSeconds = 0.f;
+        if (owner && (owner->iPatternSequence != view.Snapshot.iPatternSequence ||
+            owner->eState == RUN_STATE::PENDING || owner->strPatternId != view.Snapshot.strPatternId ||
+            !CActionPresentationTimeline::Try_ResolveActionAgeSeconds(
+                view.Snapshot.iPatternStartTick, run->iCommonStartTick, 30.f, bornInRunSeconds)))
+            continue;
         liveChildren.insert(id);
         SESSION& session = m_ChildBossSessions[id];
         const auto key = std::to_string(id) + ":child:" + view.Snapshot.strPresentationPatternId + ":" +
             std::to_string(view.Snapshot.iPatternSequence) + ":" + std::to_string(view.Snapshot.iPresentationPatternStartTick);
-        if (session.key != key) { Stop_Session(session); session.key = key; }
-        session.runEpoch = 0u; session.memberId.clear();
-        if (runLive)
-            for (const auto& member : run->Members)
-                if (member.iBossNetEntityId == id)
-                { session.runEpoch = run->iRunEpoch; session.memberId = member.strMemberId; break; }
+        if (session.runEpoch && (!run || session.runEpoch != run->iRunEpoch))
+            Retire_ProductSession(session, bosses);
+        if (const auto cancelled = m_CancelledChildSessionKeys.find(id);
+            cancelled != m_CancelledChildSessionKeys.end() && cancelled->second == key) continue;
+        if (session.key != key)
+        {
+            Retire_ProductSession(session, bosses);
+            session.key = key;
+            session.productPatternId = view.Snapshot.strPresentationPatternId;
+            session.bossEntityId = id; session.patternSequence = view.Snapshot.iPatternSequence;
+            session.patternStartTick = view.Snapshot.iPresentationPatternStartTick;
+            if (owner) { session.runEpoch = run->iRunEpoch; session.memberId = owner->strMemberId; }
+        }
         const float clock = session.lastClockMs < 0.f ? seconds * 1000.f :
             (std::max)(seconds * 1000.f, session.lastClockMs + dt * 1000.f);
         ANIMATION_MODEL_TARGET_VIEW weaponView;
@@ -2737,9 +3121,16 @@ void Client::CKoukuSaydonPresentationPlayer::Update(float dt,
     for (auto session = m_ChildBossSessions.begin(); session != m_ChildBossSessions.end();)
     {
         if (liveChildren.contains(session->first)) { ++session; continue; }
-        Stop_Session(session->second);
+        Retire_ProductSession(session->second, bosses);
         session = m_ChildBossSessions.erase(session);
     }
+    Update_ProductTails(dt, bosses);
+    const auto ownerGone = [&](const auto& item) {
+        return std::none_of(bosses.begin(), bosses.end(), [&](const auto& view) {
+            return view.Snapshot.iNetEntityId == item.first; });
+    };
+    std::erase_if(m_CancelledBossSessionKeys, ownerGone);
+    std::erase_if(m_CancelledChildSessionKeys, ownerGone);
     std::set<std::uint32_t> liveCards;
     for (const auto& view : players)
     {
@@ -2806,6 +3197,7 @@ void Client::CKoukuSaydonPresentationPlayer::Update(float dt,
         card = m_Cards.erase(card);
     }
     Update_MazeMarks(players);
+    Update_BingoMarks(dt);
     Update_FearPresentation(dt, players);
     if (m_bPreviewPlaying && m_bOwnPreviewClock && m_bPreviewPivotReady)
     {
@@ -4050,6 +4442,18 @@ void Client::CKoukuSaydonPresentationPlayer::Sample_BundlePreview()
             worldTargets.bossAnchor = [&member](const std::string& archetype, const std::string& bone,
                 CWorldSequencePlayer::PLAYER_ANCHOR& out, std::string& status)
             {
+                bool found = false;
+                for (const auto& [id, world] : member.session.previewWorlds)
+                {
+                    CWorldSequencePlayer::PLAYER_ANCHOR candidate;
+                    std::string failure;
+                    if (!world->Try_GetPresentationBossAnchor(archetype, bone, candidate, failure))
+                    { if (!failure.empty()) { status = std::move(failure); return false; } continue; }
+                    if (found && candidate.bodyModel != out.bodyModel)
+                    { status = "Bundle cinematic World boss anchor is ambiguous: " + archetype; return false; }
+                    out = candidate; found = true;
+                }
+                if (found) return true;
                 if (archetype != CKoukuSaydonCompositionDocument::Resolve_BossArchetypeId(member.pattern.strTargetBossPlacementId) ||
                     !member.actor || !member.actor->Get_Transform())
                 { status = "World Object Boss anchor does not match this preview actor: " + archetype; return false; }
@@ -4534,32 +4938,6 @@ void Client::CKoukuSaydonPresentationPlayer::Update_MazeMarks(
             i = marks.erase(i);
         }
     };
-    /* The bingo board. Both masks are room state the Server owns, so this
-       only chooses which of the two authored decals sits on each painted
-       cell and drops the ones the Server has cleared. */
-    {
-        const auto& board = CCombatHUDViewModel::Get().Get_BingoBoard();
-        std::set<std::int32_t> liveBingo;
-        for (std::int32_t cell = 0; cell < LostArk::Shared::KOUKU_BINGO_CELL_COUNT; ++cell)
-        {
-            const std::uint32_t bit = 1u << cell;
-            if (0u == (board.iWhiteMask & bit)) continue;
-            liveBingo.insert(cell);
-            float4x4_t pivot;
-            XMStoreFloat4x4(&pivot, XMMatrixTranslation(
-                LostArk::Shared::Kouku_BingoCellCenterX(cell), .02f,
-                LostArk::Shared::Kouku_BingoCellCenterZ(cell)));
-            Sync_MazeMark(m_BingoMarks[cell],
-                (0u != (board.iRedMask & bit)) ? "bingo.skull.red" : "bingo.skull.white",
-                pivot);
-        }
-        for (auto i = m_BingoMarks.begin(); i != m_BingoMarks.end();)
-        {
-            if (liveBingo.contains(i->first)) { ++i; continue; }
-            if (i->second.handle) CEffectV2Runtime::Stop_Group(i->second.handle);
-            i = m_BingoMarks.erase(i);
-        }
-    }
     /* The bingo bomb's mark. It rides one named carrier and the Server can
        cancel it mid-flight, so it stays a followed state rather than a
        timeline. Height and size live in the authored document, so the pivot
@@ -4609,6 +4987,92 @@ void Client::CKoukuSaydonPresentationPlayer::Update_MazeMarks(
     removeStale(m_MazeExits, liveExits);
 }
 
+void Client::CKoukuSaydonPresentationPlayer::Update_BingoMarks(float dt)
+{
+    const auto& board = CCombatHUDViewModel::Get().Get_BingoBoard();
+    auto* arena = CLevel_KakulSaydonArena::Get_Active();
+    if (!arena || board.iWhiteMask == 0u)
+    {
+        m_BingoMarks.clear();
+        return;
+    }
+    auto targets = arena->Get_CompositionWorldTargets();
+    const auto& source = arena->Get_WorldSequenceDocument();
+    static constexpr const char* objectId = "world.object.kouku.bingo_skull";
+    static constexpr const char* flipId = "world.object.instance.kouku.bingo_skull.flip";
+    static constexpr const char* whiteId = "world.object.instance.kouku.bingo_skull.white";
+    static constexpr const char* redId = "world.object.instance.kouku.bingo_skull.red";
+    if (!m_BingoWorldDocument || m_BingoWorldDocument->Get_Revision() != source.Get_Revision())
+    {
+        // Preserve source revision so the Level's admitted CModel pool remains shared.
+        // A small subset avoids copying unrelated cinematic documents for 25 cells.
+        auto staged = std::make_shared<CWorldSequenceDocument>(source);
+        std::erase_if(staged->Get_ObjectResources(), [](const auto& row) { return row.objectId != objectId; });
+        std::erase_if(staged->Get_Instances(), [](const auto& row)
+            { return row.instanceId != flipId && row.instanceId != whiteId && row.instanceId != redId; });
+        std::set<std::string> templates;
+        for (const auto& row : staged->Get_Instances()) templates.insert(row.templateId);
+        std::erase_if(staged->Get_Templates(), [&](const auto& row) { return !templates.contains(row.sequenceId); });
+        WORLD_SEQUENCE_PLACEMENT_MAP placements;
+        WORLD_SEQUENCE_DEPLOY_MAP deploy;
+        std::string error;
+        if (!staged->Find_ObjectResource(objectId) || !staged->Find_Instance(flipId) ||
+            !staged->Find_Instance(whiteId) || !staged->Find_Instance(redId) ||
+            !staged->Validate(placements, deploy, error))
+        {
+            m_strStatus = "Bingo skull Object motions unavailable: " + error;
+            return;
+        }
+        m_BingoWorldDocument = std::move(staged);
+    }
+    const auto generation = CEffectV2Runtime::Cache_Generation() ^
+        (static_cast<std::uint64_t>(source.Get_Revision()) << 32u);
+    const auto nowMs = static_cast<std::uint64_t>(std::chrono::duration_cast<
+        std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count());
+    for (std::int32_t cell = 0; cell < LostArk::Shared::KOUKU_BINGO_CELL_COUNT; ++cell)
+    {
+        const auto bit = 1u << cell;
+        if (!(board.iWhiteMask & bit)) continue;
+        const bool red = (board.iRedMask & bit) != 0u;
+        auto& mark = m_BingoMarks[cell];
+        mark.retry.ObserveGeneration(generation);
+        if (mark.player && mark.red == red)
+        {
+            mark.player->Update((std::max)(0.f, dt), targets);
+            if (!mark.player->Is_Playing(mark.instanceId))
+            {
+                m_strStatus = "Bingo skull Object playback failed: " + mark.player->Get_Status();
+                mark.player.reset(); mark.instanceId.clear(); mark.retry.Defer(nowMs);
+            }
+            continue;
+        }
+        if (!mark.retry.TryBegin(nowMs)) continue;
+        auto staged = std::make_unique<CWorldSequencePlayer>();
+        std::string error;
+        // A newly painted white cell plays the native rotating tile, then its
+        // saved NEXT -> white maintenance. Recolouring uses the maintenance state.
+        const std::string motion = red ? redId : (mark.player ? whiteId : flipId);
+        CWorldSequencePlayer::OBJECT_PLACEMENT placement;
+        placement.position = { LostArk::Shared::Kouku_BingoCellCenterX(cell), .02f,
+            LostArk::Shared::Kouku_BingoCellCenterZ(cell) };
+        if (!staged->Set_Document(*m_BingoWorldDocument, targets, error) ||
+            !staged->Play(motion, targets, 1.f, {}, 0u, placement))
+        {
+            m_strStatus = "Bingo skull Object start failed: " + (error.empty() ? staged->Get_Status() : error);
+            mark.retry.Defer(nowMs);
+            continue;
+        }
+        // Commit the replacement only after the new native effect starts.
+        mark.player = std::move(staged); mark.instanceId = motion; mark.red = red;
+        mark.retry = {};
+    }
+    for (auto it = m_BingoMarks.begin(); it != m_BingoMarks.end();)
+    {
+        if (board.iWhiteMask & (1u << it->first)) { ++it; continue; }
+        it = m_BingoMarks.erase(it); // Existing WorldSequence destructor releases all tails/clones.
+    }
+}
+
 void Client::CKoukuSaydonPresentationPlayer::Reset()
 {
     for (auto& [id, stage] : m_ExternalStageEnvironments) Stop_Session(stage.session);
@@ -4631,6 +5095,9 @@ void Client::CKoukuSaydonPresentationPlayer::Reset()
     for (auto& [id, session] : m_BossSessions) Stop_Session(session);
     for (auto& [id, session] : m_ChildBossSessions) Stop_Session(session);
     m_BossSessions.clear();
+    Clear_ProductTails();
+    m_CancelledBossSessionKeys.clear();
+    m_CancelledChildSessionKeys.clear();
     m_ChildBossSessions.clear();
     for (auto& [id, session] : m_MarioEntrySessions) Stop_Session(session);
     m_MarioEntrySessions.clear();
@@ -4638,9 +5105,8 @@ void Client::CKoukuSaydonPresentationPlayer::Reset()
     for (const auto& [id, card] : m_Cards)
         if (card.handle) CEffectV2Runtime::Stop_Group(card.handle);
     m_Cards.clear();
-    for (const auto& [cell, mark] : m_BingoMarks)
-        if (mark.handle) CEffectV2Runtime::Stop_Group(mark.handle);
     m_BingoMarks.clear();
+    m_BingoWorldDocument.reset();
     for (const auto& [slot, bomb] : m_BingoBombs)
         if (bomb.handle) CEffectV2Runtime::Stop_Group(bomb.handle);
     m_BingoBombs.clear();

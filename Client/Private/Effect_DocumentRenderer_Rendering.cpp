@@ -181,7 +181,21 @@ bool_t Client::CEffectDocumentRenderer::Sample_ModelCuePose(
 			XMConvertToRadians(Rotation.z)) *
 		XMMatrixTranslation(Position.x, Position.y, Position.z);
 
-	XMStoreFloat4x4(&OutWorld, Local * XMLoadFloat4x4(&RootWorld));
+    matrix_t World = Local * XMLoadFloat4x4(&RootWorld);
+    if (const auto* control = Find_StartingCaptureControl(Get_StagedDocument(), Cue.strCueId))
+    {
+        const auto* view = CGameInstance::Get().Get_Transform(D3DTS::VIEW);
+        const auto* projection = CGameInstance::Get().Get_Transform(D3DTS::PROJ);
+        float4x4_t rig;
+        if (!view || !projection || !Build_StartingCaptureRig(control->Detail,
+            RootWorld, *view, *projection, true, rig))
+        {
+            strOutError = "Starting capture cube rig has no valid camera-space endpoint.";
+            return false;
+        }
+        World = World * XMLoadFloat4x4(&rig);
+    }
+    XMStoreFloat4x4(&OutWorld, World);
 	strOutError.clear();
 	return true;
 }
@@ -287,7 +301,12 @@ HRESULT Client::CEffectDocumentRenderer::Build_NativeScreenPost(
         EFFECT_NATIVE_SCREEN_POST_SNAPSHOT snapshot;
         snapshot.pShader = m_pNativeScreenPostShader;
         snapshot.bSceneCollapse = true;
-        const float shrinkSeconds = Element.Detail.ScreenPost.fCaptureShrinkSeconds;
+        const auto& post = Element.Detail.ScreenPost;
+        snapshot.vCaptureEdgeSpeed = post.vCaptureEdgeSpeed;
+        snapshot.fCaptureRotationDegrees = post.fCaptureRotationDegrees;
+        snapshot.fCaptureBackgroundDim = post.fCaptureBackgroundDim;
+        snapshot.bCaptureSquare = post.bCaptureSquare;
+        const float shrinkSeconds = post.fCaptureShrinkSeconds;
         snapshot.fCaptureProgress = shrinkSeconds > 0.f ?
             std::clamp((Frame.fSampleTimeSeconds - timing.fStartDelaySeconds) / shrinkSeconds, 0.f, 1.f) :
             std::clamp(Evaluated.fNormalizedLife, 0.f, 1.f);
@@ -335,11 +354,16 @@ HRESULT Client::CEffectDocumentRenderer::Build_NativeScreenPost(
                 capture->pBloom = m_pStartingSceneBloomCapture;
                 capture->hLastResult = S_OK;
             }
-            // Keep the requested screen-centered shrink independent of camera/root motion.
-            // The target model supplies the ending size, not a drifting screen position.
-            snapshot.vCaptureDestinationUV = {.5f, .5f};
+            if (Find_StartingCaptureControl(Get_StagedDocument(), post.strCaptureTargetModelCueId))
+                snapshot.fCaptureRotationDegrees += StartingCaptureEndpointTransform(Element.Detail).vRotationDegrees.z;
+            else if (!post.bCaptureUseModelCenter) snapshot.vCaptureDestinationUV = {.5f, .5f};
             capture->vDestinationUV = snapshot.vCaptureDestinationUV;
         }
+        // ALT V's shared world rig already includes the offset for both the
+        // capture endpoint and the cube/attached FX. Other profiles keep theirs.
+        if (!snapshot.bCaptureOverLiveScene ||
+            !Find_StartingCaptureControl(Get_StagedDocument(), post.strCaptureTargetModelCueId))
+            snapshot.vCaptureDestinationOffsetUV = post.vCaptureDestinationOffsetUV;
         OutMaterial = std::make_shared<CEffectNativeScreenPostMaterial>(std::move(snapshot));
         return S_OK;
     }
@@ -449,6 +473,11 @@ HRESULT Client::CEffectDocumentRenderer::Bind_ModelCueNativeMaterial(const EFFEC
 		FAILED(Shader->Bind_RawValue("g_SourceTextureClampUMask", &Resource.iSourceTextureClampUMask, sizeof(Resource.iSourceTextureClampUMask))) ||
 		FAILED(Shader->Bind_RawValue("g_SourceTextureClampVMask", &Resource.iSourceTextureClampVMask, sizeof(Resource.iSourceTextureClampVMask))))
 		return E_FAIL;
+    if (Resource.iSourceMaterialProfile == 178u)
+    {
+        const auto captureUV = StartingCaptureUVTransform(Get_StagedDocument(), m_pStartingSceneCapture.Get());
+        if (FAILED(Shader->Bind_RawValue("g_ALTVCaptureUVTransform", &captureUV, sizeof(captureUV)))) return E_FAIL;
+    }
 	if ((Resource.iSourceMaterialProfile == 178u && !m_pStartingSceneBloomCapture) ||
 		FAILED(Shader->Bind_Texture("g_EffectStartingSceneBloomTexture",
 			Resource.iSourceMaterialProfile == 178u ? m_pStartingSceneBloomCapture : nullptr))) return E_FAIL;

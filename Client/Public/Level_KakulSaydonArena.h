@@ -5,6 +5,7 @@
 #include "ClientReplication.h"
 #include "DeployPropRuntime.h"
 #include "Effect_PresentationService.h"
+#include "KoukuSaydonPresentationAssetService.h"
 #include "Level.h"
 #include "MapAuthoringHost.h"
 #include "MapPlacementRuntime.h"
@@ -54,6 +55,12 @@ public:
 	void Set_MapLightAuthoringOverride(std::shared_ptr<CMapLightPresentationRuntime> lights);
 	// Called once after Composition Seek/Stop, immediately before world rendering.
 	void Submit_MapLightFrame();
+	// Session-only comparison; authoring documents and gate light transforms stay intact.
+	enum class MAP_LIGHT_COMPARISON { CURRENT, SOURCE_IMPORT, DISABLED };
+	bool_t Set_MapLightComparison(MAP_LIGHT_COMPARISON mode, std::string& outStatus);
+	MAP_LIGHT_COMPARISON Get_MapLightComparison() const { return m_eMapLightComparison; }
+	void Reset_MapLightComparison();
+	uint64_t Get_MapLightComparisonFingerprint() const;
 	bool_t Reload_MapLights();
 	struct KAKUL_STAGE_MARKER final
 	{
@@ -175,7 +182,8 @@ public:
 	void Debug_ReturnToPlayerCamera();
 	void Debug_SetSequenceCombatPending(bool_t pending);
 	void Debug_HoldSequenceCombatFade();
-	const string& Get_GatePresentationProfileId() const { return m_strGatePresentationProfileId; }
+	// Includes only this client's Server-admitted Mario presentation override.
+	const string& Get_GatePresentationProfileId() const;
 	bool_t Apply_ServerRaidGatePresentation(const std::string& gateId, std::uint32_t epoch, std::string& status);
 	bool_t Begin_ServerRaidCinematicPresentation(std::string& status);
 	bool_t End_ServerRaidCinematicPresentation(bool_t restorePrevious, std::string& status);
@@ -254,6 +262,11 @@ public:
 	size_t Get_ActiveDebugGate() const { return m_iActiveDebugGate; }
 	// Changes whenever a new gate activation is submitted, including the same gate.
 	std::uint32_t Get_DebugGateGeneration() const { return m_iNextDebugGateRequestSequence; }
+    bool Debug_PrepareCompletePlayResources(const std::vector<std::string>& patternIds,
+        const std::vector<std::string>& bundleIds, uint32_t sourceRevision,
+        bool& ready, std::string& status, bool wholeRaid = false);
+    void Debug_ResetCompletePlayPreparation() { m_CompletePlayPreparation.reset(); }
+
 	bool_t Is_DebugGatePending() const { return m_bDebugStartPending || NO_ACTIVE_DEBUG_GATE != m_iPendingDebugGate; }
 	const std::string& Get_DebugGateStatus() const { return m_strDebugGateStatus; }
 	/* Debug tuning only: the live body of one arena boss archetype. */
@@ -293,6 +306,8 @@ public:
 	bool_t Sample_CompositionCamera(std::string_view shotId, float seconds, const float3_t& offset, std::string_view ownerKey, uint32_t durationMs, bool_t preview);
 	bool_t Is_CompositionCameraEnabled() const;
 	bool_t Is_CinematicPresentationActive() const;
+	bool_t Needs_Gate2IntroCharacterLight() const;
+	bool_t Is_LocalMarioStageActive() const;
 	void Trace_CinematicPresentation(std::string_view renderingProfile);
 	void Stop_CompositionCamera(bool_t force = false);
 	bool_t Try_GetCompositionWorldPivot(std::string_view instanceId, float4x4_t& out,
@@ -313,7 +328,8 @@ public:
     bool_t Can_StartCompositionWorld(const std::string& instanceId, std::string& status,
         const CWorldSequenceDocument* sourceDocument = nullptr) const;
 	bool_t Try_GetOwnedCompositionWorldPivot(std::uint32_t runEpoch, const std::string& memberId,
-		const std::string& sequenceId, const std::string& cueId, float4x4_t& out, std::uint32_t emissionIndex = 0u) const;
+		const std::string& sequenceId, const std::string& cueId, float4x4_t& out, std::uint32_t emissionIndex = 0u,
+        std::uint32_t patternSequence = 0u) const;
 	void Get_WorldObjectValidationTargets(WORLD_SEQUENCE_PLACEMENT_MAP&, WORLD_SEQUENCE_DEPLOY_MAP&) const;
 	bool_t Reload_WorldObjectRuntime(std::string& status);
 #ifdef _DEBUG
@@ -355,6 +371,8 @@ public:
 		std::string& outStatus);
 
 private:
+	bool_t Try_GetCinematicWorldBossAnchor(const std::string& archetype, const std::string& bone,
+		CWorldSequencePlayer::PLAYER_ANCHOR& out, std::string& status) const;
 	CWorldSequencePlayer::TARGET_SET Make_WorldSequenceTargets();
 	void Apply_CutsceneSetVisible(bool_t cutsceneVisible);
 	/* The cutscene boss is presentation only, so it is taken off the arena
@@ -467,6 +485,13 @@ private:
 	   suppress the bridges before the first rendered frame instead of letting
 	   them appear already unfolded. */
 	CDeployPropRuntime m_DeployRuntime;
+	MAP_LIGHT_COMPARISON m_eMapLightComparison = MAP_LIGHT_COMPARISON::CURRENT;
+	std::shared_ptr<CMapLightPresentationRuntime> m_pMapLightComparisonSource;
+	std::shared_ptr<CMapLightPresentationRuntime> m_pMapLightComparisonGate;
+#ifdef _DEBUG
+	std::shared_ptr<CMapLightPresentationRuntime> m_pMapLightComparisonPopup;
+#endif
+	size_t m_iMapLightComparisonGate = 0u;
 	std::shared_ptr<CMapLightPresentationRuntime> m_pMapLightPresentation;
 	std::shared_ptr<CMapLightPresentationRuntime> m_pMapLightAuthoringOverride;
 #ifdef _DEBUG
@@ -478,10 +503,23 @@ private:
 	void Debug_InvalidateCompositionMapLights();
 #endif
 	CWorldSequencePlayer m_SequencePlayer;
+#ifdef _DEBUG
+    struct COMPLETE_PLAY_PREPARATION final
+    {
+        std::vector<std::string> selectedPatterns, selectedBundles;
+        KOUKU_SAYDON_PLAY_RESOURCES resources;
+        uint32_t sourceRevision = 0u;
+        bool wholeRaid = false;
+        uint64_t v1Revision = 0u, v2Generation = 0u, worldRevision = 0u;
+        size_t actorIndex = 0u, v2Index = 0u, worldIndex = 0u;
+    };
+    std::optional<COMPLETE_PLAY_PREPARATION> m_CompletePlayPreparation;
+#endif
+
 	bool_t m_bWorldObjectReloadPending = false;
 	struct OWNED_WORLD_CUE final
 	{
-		std::uint32_t runEpoch = 0, startTick = 0, durationMs = 0;
+		std::uint32_t runEpoch = 0, patternSequence = 0, startTick = 0, durationMs = 0;
 		std::string memberId, cueId, occurrenceId, sequenceId;
 		float clockMs = 0.f;
 		bool untilDestroyed = false;
@@ -586,6 +624,7 @@ private:
 		std::string shotId;
 		bool_t cinematicTrack = false;
 		std::string cancelledOwnerKey;
+		std::string finishedOwnerKey; // Suppress Area camera reacquisition while this row drains.
 		VALTAN_CINEMATIC_CAMERA_POSE fromPose;
 		VALTAN_CINEMATIC_CAMERA_POSE entryPose;
 		f32_t lastSeconds = -1.f;
@@ -666,6 +705,9 @@ private:
 	/* Madness gauge under the local character. Reads CCombatHUDViewModel's
 	   KoukuSaydon gimmick state only; hidden while that state is invalid. */
 	unique_ptr<CKoukuMadnessGaugeView> m_pMadnessGaugeView;
+	/* The same gauge over every other player in the room (a room holds four), fed from the
+	   replicated per-player madness of the world snapshot. */
+	std::array<unique_ptr<CKoukuMadnessGaugeView>, 3> m_OtherMadnessGaugeViews;
 	/* Floating status word over a head (currently the Server FEAR state). Owns no
 	   gameplay truth: Update submits one word per replicated FEAR occurrence and
 	   Render draws whatever is still inside its motion. */

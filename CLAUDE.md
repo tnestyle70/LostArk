@@ -369,6 +369,7 @@ Area Loader는 여섯 class binary를 전부 선로드하지 않는다. `CPlayab
 - `CCookedModel`과 `CBinaryAssetObject` 경로는 제거됐다. 동등한 두 번째 런타임 모델 경로를 다시 만들지 않는다.
 - `Engine/Public/BinaryAsset/`의 `CBinaryReader`, `IModelDecoder`, `CWModelDecoder` 등 decode 기반 코드는 `CModel` 내부의 `.wmodel` 입력을 지원한다.
 - WModel 1.2는 정적 UV1, 1.3은 skinned extra UV, 1.4는 정적 UV1과 선택적 UV2를 보존하며 기존 1.0~1.3도 읽는다. 1.4는 실제 UV2가 있는 정적 자산에만 사용하고 metadata evidence bit 17과 채널·stride·finite 값을 함께 검사한다. 기존 자산을 일괄 재변환하지 않는다. 런타임 `VTXMESH`는 UV2를 끝에 둔 76-byte 구조이며 기존 채널 offset은 유지한다. map material의 baked lighting에는 실제 UV1이 필요하고, source material의 `requiredExtraUVMask` bit 0/1은 각각 UV1/UV2가 없는 모델을 로드 전에 거부한다. 재질·배치별 lightmap 입력 계약은 `.md/TEAM/AREA_DATA_LAYER_GUIDE.md`의 선택적 map material 절을 따른다.
+- WModel 1.5는 원본 skinned NORMAL/TANGENT 복구 자산 전용이며 기존 76-byte 정점 뒤에 ±1 tangent handedness를 더한 80-byte 저장 형식이다. 기존 `CModel` decoder가 nonzero finite N/T/cross와 부호를 검사하며 GPU 정점 구조는 바꾸지 않는다. 1.5에 extra UV/COLOR0를 혼합하지 않는다. `Tools/ModelAssetConverter/restore_skinned_source_basis.py`는 원본 glTF와 설치 1.0 모델의 모든 삼각형 위치·UV를 확인한 후보만 출력하며 골격·클립·재질을 보존한다. 기존 1.0~1.4 자산은 계속 같은 계약으로 읽는다.
 - 신규 맵·캐릭터·보스 모델은 `CLoader -> CModel Prototype -> GameObject의 CModel Component` 계약을 사용한다.
 - `.wmodel` 머티리얼에 diffuse와 emissive가 모두 없으면 `CMaterial`이 1×1 회색 diffuse를 만들어 형상 확인을 보장한다. 이는 안전망일 뿐이며 최종 에셋은 실제 텍스처 경로를 가져야 한다.
 - 추출·스케일·텍스처 복구의 상세 주의사항은 `.md/GB/07-29/gotchas.md`를 따른다.
@@ -477,6 +478,12 @@ cache를 덮지 않으며 실제로 seek/stop이 연결된 lane과 inspection-on
 revision이 Server-active로 확인되기 전에는 Complete Play와 exact Restart를 막는다. admission 실패 뒤
 보존한 view는 진단용 read-only이고 모든 Save/재생/Server mutation을 막는다. 사용자 수동 화면 확인
 전에는 창 resize나 visual fidelity를 PASS로 기록하지 않는다.
+
+KoukuSaydon Arena는 Release에서 게시된 Pattern/Sequence의 V1/V2 Effect와 enabled World 자원을
+입장 전에 모두 준비한다. Debug는 클래스·marker·BossCatalog의 기존 선준비를 유지하고 추가
+전체 raid 자원은 기존 lazy 경로로 준비하므로 첫 패턴 재생 때 준비 지연이 생길 수 있다.
+설정별 준비 시간은 `Client/Default/EffectFailure.user.log`의 `Kouku.Loading.*`와
+`Kouku.Arena.Ready`를 구분해 확인한다.
 
 KoukuSaydon Arena의 관문 보스는 `Data/Worlds/LV_LUT_MIDNIGHTC_ED/Gameplay.world.json`의 disabled boss
 placement(`boss.kakulsaydon.g1.saydon`, `g2.big-saydon`, `g2.kouku`, `g3.saydon`, `bingo.saydon`)이며
@@ -783,9 +790,14 @@ Rendering Workbench → Benchmark → Rendering restoration은 Bern/Character Se
 `Before` / `Restored source profile` / `Return to entry` 비교를 제공한다. 기존 설정은 before profile에
 보존하고 네 맵의 base profile에는 원본 후처리 입력을 연결한다. 도구를 닫으면 같은 Level에서
 도구가 여전히 소유한 preview만 복귀한다. 외부 scene 전환·Runtime Reload는 새 소유자의 상태를 유지한다.
+쿠크의 `Kouku area profile`은 시작 지점·1/2/3관문 원본 기준과 카드미로 저장 기준을 현재 시점에서
+비교한다. 고정된 지역 look만 적용하며 플레이어·카메라·Server 관문이나 map light 배치를 이동하지 않는다.
 `RenderingProfiles.json`의 quality에는 optional `colorAdjustment`(bloomTint RGBA, desaturation)가 있고,
 환경 영역에는 optional priority와 postProcess(bloomThreshold, bloomIntensity, bloomTint, desaturation)가 있다.
-생략 시 기존 출력과 같다. quality 및 region postProcess의 optional `sourcePostProcess`는
+optional `qualityOverride`는 기존 quality와 같은 전체 구조를 가지며 해당 영역의 품질 기준을 고정한다.
+영역 품질 → 활성 scene multiplier와 사용자 video 설정 → 영역 postProcess 순서로 적용하고, 이탈 시
+활성 scene의 실효 품질로 복귀한다. optional `specularColor`는 RGB 0~64/A 0~1이며 생략하면
+scene의 specular를 상속한다. 진입·이탈 시 diffuse/ambient와 함께 블렌딩한다. 생략 시 기존 출력과 같다. quality 및 region postProcess의 optional `sourcePostProcess`는
 UE3 customizable toneScale/range/toe와 highlights/midtones/shadows/colorize/desaturation,
 Resources 상대 `colorGradingLut`를 저장한다. LUT는256×16,16³ linear8bit texture이며 빈 경로는
 neutral 입력이다. 원본 순서로 GPU LUT를 생성하고 source tone/lookup을 적용한다. 해당 블록이

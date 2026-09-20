@@ -24,6 +24,8 @@ struct VALTAN_CINEMATIC_CAMERA_KEYFRAME final
 	   keep their existing interpolation; explicit up preserves captured roll. */
 	float3_t vUp = { 0.f, 1.f, 0.f };
 	bool_t hasUp = false;
+	/* A source Director cut starts here; never interpolate into this key. */
+	bool_t cutBefore = false;
 };
 
 /* LINEAR preserves the existing authored camera path. CATMULL_ROM connects

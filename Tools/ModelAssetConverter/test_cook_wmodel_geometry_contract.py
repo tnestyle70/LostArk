@@ -686,10 +686,19 @@ def write_harness_suite(output_root: Path) -> None:
     output_root.mkdir(parents=True, exist_ok=True)
     _, valid_color, _ = _cook_fixture(output_root, "valid_color", True)
     _, valid_no_color, _ = _cook_fixture(output_root, "valid_no_color", False)
-    (output_root / "valid_color.wmodel").write_bytes(valid_color.read_bytes())
+    # Native corruption identities are frozen against the independent golden.
+    # A current cook embeds its own script hash and is intentionally not that
+    # immutable byte baseline; writer round-trip tests exercise it separately.
+    golden_path = (Path(__file__).resolve().parents[1] / "WModelGeometryContractHarness"
+                   / "Fixtures" / "wmodel_v11_writer_independent_golden.hex")
+    baseline = bytes.fromhex(golden_path.read_text(encoding="ascii"))
+    if len(baseline) != 850 or hashlib.sha256(baseline).hexdigest() != (
+            "6bb409094185d9c41f6cb241d42bdc767b0a3868f7ed981d194e8fe1ccd23627"):
+        raise ValueError("native harness immutable baseline identity changed")
+    (output_root / "valid_color.wmodel").write_bytes(baseline)
     (output_root / "valid_no_color.wmodel").write_bytes(valid_no_color.read_bytes())
     (output_root / "valid_tangent_w_boundary_in.wmodel").write_bytes(
-        _with_resigned_tangent_w(valid_color.read_bytes(), -1.0000009536743164)
+        _with_resigned_tangent_w(baseline, -1.0000009536743164)
     )
     legacy = output_root / "valid_color" / "valid_color.legacy.wmodel"
     (output_root / "legacy_v10.wmodel").write_bytes(legacy.read_bytes())
@@ -704,7 +713,7 @@ def write_harness_suite(output_root: Path) -> None:
     corrupt_animation[FILE_HEADER.size : FILE_HEADER.size + 4] = b"BAD!"
     (output_root / "corrupt_animation.wanim").write_bytes(corrupt_animation)
     invalid_names = []
-    for name, payload in _corruptions(valid_color.read_bytes()).items():
+    for name, payload in _corruptions(baseline).items():
         (output_root / name).write_bytes(payload)
         invalid_names.append(name)
     (output_root / "suite.json").write_bytes(

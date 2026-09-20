@@ -49,9 +49,9 @@ public:
 	/* Context menu's own nickname + "파티초대" label, same post-EndFrame() text-pass reasoning
 	   as Render_InvitePopupText -- called from the same call site, right alongside it. */
 	void Render_ContextMenuText();
-	/* Screen rects of whichever popup is up (context menu, invite modal), added to the text
-	   clip-out list so nameplates and other world text stop under them for this frame. */
-	void Add_TextClipOuts() const;
+	/* Registers whichever popup is up (context menu, invite modal) as a modal text occluder
+	   (CUITextOcclusion). Every frame from the level's Update, before anything renders. */
+	void Register_TextOccluders() const;
 
 private:
 	bool_t Update_ContextMenuTrigger(

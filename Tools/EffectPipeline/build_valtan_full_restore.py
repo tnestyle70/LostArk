@@ -32,6 +32,53 @@ BODY = 'Character/Valtan/MN_RPBF_01.wmodel'
 ANIMATIONS = Path('Data/Effects/ValtanFullRestoreAnimations.json')
 
 
+def decode_valtan_particle_notify(notify, sockets, bones):
+    """Resolve the original ghost-only particle override before the common decoder.
+
+    Action 15's Respawn_1 has a null base ParticleSystem. Its single typed
+    CEFParticleDataModifier owns the MN_RPBF_02 system and Color parameter;
+    the transform remains on the base CEFParticleData. Searching for the first
+    ParticleSystem and treating its following bytes as a transform reads the
+    modifier parameter table instead. Admit this measured source layout only.
+    """
+    if notify['notifyId'] != 'action-15/stage-002/notify-002':
+        return action.decode_notify(notify, sockets, bones)
+    payload = notify['serializedPayload']
+    raw = base64.b64decode(payload['data'], validate=True)
+    expected = 'af28c9ef1f68d77883cd9244b3c92341c9a9ca9bbbd04cd60f3334af4e9959eb'
+    assert len(raw) == payload['byteSize'] == 739
+    assert hashlib.sha256(raw).hexdigest() == payload['sha256'] == expected
+    assert raw[240:256] == b'CEFParticleData\0'
+    assert struct.unpack_from('<i', raw, 268)[0] == 0
+    assert struct.unpack_from('<i', raw, 420)[0] == 0
+    assert struct.unpack_from('<i', raw, 440)[0] == 1
+    assert raw[448:472] == b'CEFParticleDataModifier\0'
+    assert raw[476:507] == b'EFDLChar_MN_RPBF_02.MN_RPBF_02\0'
+    assert raw[511:568] == b"ParticleSystem'FX_MN_RPBF_00_N.Par_N_RPBF_Spawn_Cast_01'\0"
+    assert struct.unpack_from('<2i', raw, 568) == (1, 1)
+    # Flatten only the selected model's PS and parameter table. The common
+    # decoder still owns the complete base transform and parameter semantics.
+    flattened = raw[:268] + raw[507:568] + raw[272:420] + raw[572:655]
+    adapted = copy.deepcopy(notify)
+    adapted['serializedPayload'] = dict(payload,
+        data=base64.b64encode(flattened).decode('ascii'))
+    cue = action.decode_notify(adapted, sockets, bones)
+    assert cue['sourceTransformByteOffset'] == 389
+    assert cue['attachment']['mode'] == 'SNAPSHOT_ROOT'
+    assert cue['localTransform'] == dict(sourcePositionUeUnits=[0.0, 0.0, 0.0],
+        position=[0.0, 0.0, 0.0], rotationDegrees=[0.0, 0.0, 0.0], scale=[1.0, 1.0, 1.0])
+    assert len(cue['parameterOverrides']) == 1
+    parameter = cue['parameterOverrides'][0]
+    assert parameter['name'] == 'Color' and parameter['vectorValue'] == [1.0, 1.0, 1.0]
+    cue['sourceTransformByteOffset'] = 332
+    cue['sourceParameterCountByteOffset'] = 572
+    parameter.update(sourceRecordByteOffset=576, sourceValueByteOffset=598)
+    cue['sourceModelModifier'] = dict(model='EFDLChar_MN_RPBF_02.MN_RPBF_02',
+        sourceClassByteOffset=448, sourceParticleSystemByteOffset=511,
+        sourcePayloadSha256=expected)
+    return cue
+
+
 def encode_json(value):
     return (json.dumps(value, ensure_ascii=False, indent=2, allow_nan=False) + '\n').encode('utf8')
 
@@ -375,7 +422,7 @@ def build_stages(source_document, library_root, selections, evidence, native_pat
                     histories += extra
                     restored.append(dict(**context, sourceParticleSystems=systems, elementCount=len(new)))
                     continue
-                cue = action.decode_notify(notify, sockets, bones)
+                cue = decode_valtan_particle_notify(notify, sockets, bones)
                 apply_verified_portal_bone_local_position(cue, notify)
                 apply_verified_four_direction_rotator(cue, notify)
                 if not cue.get('enabled'):
@@ -394,6 +441,8 @@ def build_stages(source_document, library_root, selections, evidence, native_pat
                     elements += new
                     restored.append(dict(**context, sourceParticleSystem=system, elementCount=len(new),
                         sourceTransform=cue['localTransform'], sourceAttachment=cue['attachment'], parameters=parameters))
+                    if 'sourceModelModifier' in cue:
+                        restored[-1]['sourceModelModifier'] = cue['sourceModelModifier']
             except Exception as error:
                 failures.append(dict(**context, sourceParticleSystems=systems,
                                      errorType=type(error).__name__, reason=str(error)))

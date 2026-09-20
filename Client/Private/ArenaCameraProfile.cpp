@@ -3,6 +3,8 @@
 #include "DataJson.h"
 #include "ProjectDataRoot.h"
 
+#include <algorithm>
+#include <array>
 #include <atomic>
 #include <cmath>
 #include <fstream>
@@ -16,6 +18,8 @@ namespace
 {
 	constexpr const char* SCHEMA = "lostark.arena-camera";
 	constexpr uint32_t FORMAT_VERSION = 1u;
+	constexpr std::array<const char*, 7u> CLASS_SIZE_KEYS{
+		"LANCE_MASTER", "GUNSLINGER", "SLAYER", "ARTIST", nullptr, "DIMENSIONMASTER", "WARLORD" };
 
 	const char* AreaId(const ARENA_CAMERA_MAP map)
 	{
@@ -60,13 +64,18 @@ namespace
 		DATA_JSON_PARSE_LIMITS limits;
 		limits.iMaximumBytes = 8192u;
 		limits.iMaximumDepth = 4u;
-		limits.iMaximumValues = 32u;
+		limits.iMaximumValues = 64u;
 		if (!CDataJson::Parse(text, root, status, limits))
 			return false;
 		const char* area = AreaId(map);
-		if (nullptr == area || !root.Is_Object() || root.Get_Object().size() != (root.Find("characterSizeMultiplier") ? 9u : 8u))
+		const size_t expectedFields = 8u + (root.Find("characterSizeMultiplier") ? 1u : 0u) +
+			(root.Find("classSizeMultipliers") ? 1u : 0u) + (root.Find("clownSizeMultiplier") ? 1u : 0u) +
+			(root.Find("marioSizeMultiplier") ? 1u : 0u) +
+			(root.Find("mazeHammerPositionCm") ? 1u : 0u) +
+			(root.Find("mazeHammerRotationDegrees") ? 1u : 0u) + (root.Find("mazeHammerScale") ? 1u : 0u);
+		if (nullptr == area || !root.Is_Object() || root.Get_Object().size() != expectedFields)
 		{
-			status = "Arena camera document requires eight supported fields and optional characterSizeMultiplier.";
+			status = "Arena camera document requires eight supported fields and optional character size fields.";
 			return false;
 		}
 		const auto* schema = root.Find("schema");
@@ -87,10 +96,23 @@ namespace
 			!ReadFloat(root.Find("fovYDegrees"), staged.fovYDegrees) ||
 			!ReadFloat(root.Find("followResponse"), staged.followResponse) ||
 			(root.Find("characterSizeMultiplier") &&
-				!ReadFloat(root.Find("characterSizeMultiplier"), staged.characterSizeMultiplier)))
+				!ReadFloat(root.Find("characterSizeMultiplier"), staged.characterSizeMultiplier)) ||
+			(root.Find("clownSizeMultiplier") && !ReadFloat(root.Find("clownSizeMultiplier"), staged.clownSizeMultiplier)) ||
+			(root.Find("marioSizeMultiplier") && !ReadFloat(root.Find("marioSizeMultiplier"), staged.marioSizeMultiplier)) ||
+			(root.Find("mazeHammerPositionCm") && !ReadVector(root.Find("mazeHammerPositionCm"), staged.mazeHammerPositionCm)) ||
+			(root.Find("mazeHammerRotationDegrees") && !ReadVector(root.Find("mazeHammerRotationDegrees"), staged.mazeHammerRotationDegrees)) ||
+			(root.Find("mazeHammerScale") && !ReadVector(root.Find("mazeHammerScale"), staged.mazeHammerScale)))
 		{
 			status = "Arena camera pose and lens fields must contain finite numbers.";
 			return false;
+		}
+		if (const auto* sizes = root.Find("classSizeMultipliers"))
+		{
+			if (!sizes->Is_Object() || sizes->Get_Object().size() != 6u)
+			{ status = "Class size tuning requires exactly the six playable class names."; return false; }
+			for (size_t i = 0u; i < CLASS_SIZE_KEYS.size(); ++i)
+				if (CLASS_SIZE_KEYS[i] && !ReadFloat(sizes->Find(CLASS_SIZE_KEYS[i]), staged.classSizeMultipliers[i]))
+				{ status = "Class size tuning has an unknown/missing class or nonfinite multiplier."; return false; }
 		}
 		if (!CArenaCameraProfile::Validate(staged, status))
 			return false;
@@ -137,7 +159,20 @@ namespace
 			<< profile.rotationDegrees.z << "],\n  \"focusDistance\": " << profile.focusDistance
 			<< ",\n  \"fovYDegrees\": " << profile.fovYDegrees
 			<< ",\n  \"followResponse\": " << profile.followResponse
-			<< ",\n  \"characterSizeMultiplier\": " << profile.characterSizeMultiplier << "\n}\n";
+			<< ",\n  \"characterSizeMultiplier\": " << profile.characterSizeMultiplier
+			<< ",\n  \"classSizeMultipliers\": {";
+		bool first = true;
+		for (size_t i = 0u; i < CLASS_SIZE_KEYS.size(); ++i)
+		{
+			if (!CLASS_SIZE_KEYS[i]) continue;
+			output << (first ? "" : ",") << "\n    \"" << CLASS_SIZE_KEYS[i] << "\": " << profile.classSizeMultipliers[i];
+			first = false;
+		}
+		output << "\n  },\n  \"clownSizeMultiplier\": " << profile.clownSizeMultiplier
+			<< ",\n  \"marioSizeMultiplier\": " << profile.marioSizeMultiplier
+			<< ",\n  \"mazeHammerPositionCm\": [" << profile.mazeHammerPositionCm.x << ", " << profile.mazeHammerPositionCm.y << ", " << profile.mazeHammerPositionCm.z << "]"
+			<< ",\n  \"mazeHammerRotationDegrees\": [" << profile.mazeHammerRotationDegrees.x << ", " << profile.mazeHammerRotationDegrees.y << ", " << profile.mazeHammerRotationDegrees.z << "]"
+			<< ",\n  \"mazeHammerScale\": [" << profile.mazeHammerScale.x << ", " << profile.mazeHammerScale.y << ", " << profile.mazeHammerScale.z << "]\n}\n";
 		return output.str();
 	}
 }
@@ -233,6 +268,17 @@ bool_t CArenaCameraProfile::Validate(const ARENA_CAMERA_PROFILE& profile, std::s
 		status = "Follow response must be finite and within 0..60 (0 is immediate).";
 	else if (!InRange(profile.characterSizeMultiplier, 0.25f, 4.f))
 		status = "Character size multiplier must be finite and within 0.25..4.";
+	else if (!std::all_of(profile.classSizeMultipliers.begin(), profile.classSizeMultipliers.end(),
+		[](const f32_t value) { return InRange(value, 0.25f, 4.f); }) || profile.classSizeMultipliers[4] != 1.f)
+		status = "Class size multipliers must be finite and within 0.25..4; reserved classes stay at 1.";
+	else if (!InRange(profile.clownSizeMultiplier, 0.25f, 4.f) || !InRange(profile.marioSizeMultiplier, 0.25f, 4.f))
+		status = "Clown and Mario size multipliers must be finite and within 0.25..4.";
+	else if (!InRange(profile.mazeHammerPositionCm.x, -1000.f, 1000.f) ||
+		!InRange(profile.mazeHammerPositionCm.y, -1000.f, 1000.f) || !InRange(profile.mazeHammerPositionCm.z, -1000.f, 1000.f) ||
+		!InRange(profile.mazeHammerRotationDegrees.x, -3600.f, 3600.f) || !InRange(profile.mazeHammerRotationDegrees.y, -3600.f, 3600.f) ||
+		!InRange(profile.mazeHammerRotationDegrees.z, -3600.f, 3600.f) || !InRange(profile.mazeHammerScale.x, .05f, 8.f) ||
+		!InRange(profile.mazeHammerScale.y, .05f, 8.f) || !InRange(profile.mazeHammerScale.z, .05f, 8.f))
+		status = "Maze hammer requires finite position +/-1000 cm, rotation +/-3600 deg and scale 0.05..8.";
 	else
 	{
 		status.clear();

@@ -432,8 +432,11 @@ bool_t CWorldSequencePlayer::Prepare_ObjectResources(
                 if (!probe.bCatalogRevisionCurrent || !probe.bSettled)
                 { m_Status = "World Object V1 effect is preparing: " + effect.resourceId; return false; }
                 const auto document = CEffectCatalog::Find_Loaded(effect.resourceId);
-                const auto* owner = instance.bindings.size() == 1u ?
-                    m_Document.Find_ObjectResource(instance.bindings.front().targetId) : nullptr;
+                const auto binding = std::find_if(instance.bindings.begin(), instance.bindings.end(),
+                    [&](const auto& candidate) { return candidate.slotId == effect.slotId &&
+                        candidate.targetKind == WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE; });
+                const auto* owner = binding == instance.bindings.end() ? nullptr :
+                    m_Document.Find_ObjectResource(binding->targetId);
                 if (!document || !owner)
                 { m_Status = "World Object V1 effect has no prepared document or owner: " + effect.resourceId; return false; }
                 for (const auto& cue : document->ModelCues)
@@ -784,6 +787,46 @@ void CWorldSequencePlayer::Release_Objects(ACTIVE_INSTANCE& active)
     active.objects.clear();
 }
 
+bool_t CWorldSequencePlayer::Try_GetPresentationBossAnchor(const std::string& archetype,
+    const std::string& bone, PLAYER_ANCHOR& out, std::string& status) const
+{
+    status.clear();
+    const CWorldSequenceObject* selected = nullptr;
+    bool declared = false;
+    for (const auto& active : m_Active)
+    {
+        const auto* instance = m_Document.Find_Instance(active.instanceId);
+        if (!instance) continue;
+        for (const auto& binding : instance->bindings)
+        {
+            if (binding.targetKind != WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE) continue;
+            const auto* resource = m_Document.Find_ObjectResource(binding.targetId);
+            if (!resource) continue;
+            const auto* actor = CActorCatalog::Find_Boss(archetype);
+            const bool derivedActor = actor && resource->animated &&
+                resource->materialSourceModelAssetId == actor->bodyModel &&
+                std::abs(resource->modelPreScale - actor->bodyModelPreScale) < .0000001f;
+            if (resource->presentationBossArchetypeId != archetype && !derivedActor) continue;
+            declared = true;
+            for (const auto& entry : active.objects)
+            {
+                if (entry.slotId != binding.slotId || !entry.object || !entry.object->Is_Visible()) continue;
+                if (selected && selected != entry.object.get())
+                { status = "Cinematic World boss anchor is ambiguous: " + archetype; return false; }
+                selected = entry.object.get();
+            }
+        }
+    }
+    if (!selected)
+    {
+        if (declared) status = "Cinematic World boss anchor is waiting for its sampled actor: " + archetype;
+        return false;
+    }
+    if (!Resolve_BossBoneAnchor(selected->Get_Model(), selected->Get_SampledWorld(), bone, out, status)) return false;
+    out.liveBossAnchor = true;
+    return true;
+}
+
 bool_t CWorldSequencePlayer::Try_GetObjectPivot(const std::string& instanceId, float4x4_t& out,
     const uint32_t emissionIndex) const
 {
@@ -1125,9 +1168,6 @@ bool_t CWorldSequencePlayer::Apply_ObjectEffects(ACTIVE_INSTANCE& active,
         anchors.push_back(anchor);
     }
     std::unordered_set<std::string> wanted;
-    const auto& binding = instance.bindings.front();
-    const auto* resource = m_Document.Find_ObjectResource(binding.targetId);
-    if (!resource) return false;
     // Resolve every still-visible event from the owning clock. This preserves an
     // earlier NEXT/LOOP tail and makes a direct seek equivalent to ordinary play.
     const auto sampleChain = [&](const std::string& firstId, const f32_t firstStartMs,
@@ -1146,6 +1186,16 @@ bool_t CWorldSequencePlayer::Apply_ObjectEffects(ACTIVE_INSTANCE& active,
             const f32_t period = static_cast<f32_t>(motion->CycleSpanMs(*sequence));
             for (const auto& effect : sequence->effectTracks)
             {
+                // Each effect owns its declared slot, including a different
+                // skeleton/scale in a multi-actor cinematic or a NEXT motion.
+                const auto binding = std::find_if(motion->bindings.begin(), motion->bindings.end(),
+                    [&](const auto& candidate) { return candidate.slotId == effect.slotId &&
+                        candidate.targetKind == WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE; });
+                if (binding == motion->bindings.end())
+                { m_Status = "World Object effect slot has no object binding: " + effect.slotId; return false; }
+                const auto* resource = m_Document.Find_ObjectResource(binding->targetId);
+                if (!resource)
+                { m_Status = "World Object effect resource is unavailable: " + binding->targetId; return false; }
                 const auto snapshot = m_EffectSnapshots.find(effect.resourceKind + ":" + effect.resourceId);
                 if (effect.resourceKind != "V1_EFFECT" && snapshot == m_EffectSnapshots.end())
                 { m_Status = "World Object effect was not prepared: " + effect.resourceId; return false; }
@@ -1190,7 +1240,8 @@ bool_t CWorldSequencePlayer::Apply_ObjectEffects(ACTIVE_INSTANCE& active,
                                     !CWorldSequenceDocument::Try_EffectTimeScale(effect, sourceDuration, effectTimeScale))
                                 { m_Status = "World Object Effect fit needs a finite prepared V1 duration: " + effect.resourceId; return false; }
                             }
-                            float sourceCycleStartMs = 0.f;
+                            double sourceCycleMs = 0.0;
+                            uint64_t firstSourceCycle = 0u, lastSourceCycle = 0u;
                             bool nativeInfiniteLoop = false;
                             if (effect.loopEffectToDuration)
                             {
@@ -1203,115 +1254,147 @@ bool_t CWorldSequencePlayer::Apply_ObjectEffects(ACTIVE_INSTANCE& active,
                                     if (!CEffectPresentationService::Try_Get_PreparedProductDurationSeconds(effect.resourceId, sourceDuration) ||
                                         !std::isfinite(sourceDuration) || sourceDuration <= 0.f)
                                     { m_Status = "World Object Effect loop needs a finite prepared V1 duration: " + effect.resourceId; return false; }
-                                    const double sourceCycleMs = static_cast<double>(sourceDuration) * 1000.0;
-                                    const uint64_t sourceCycle = static_cast<uint64_t>(std::floor(ageMs / sourceCycleMs));
-                                    sourceCycleStartMs = static_cast<float>(sourceCycle * sourceCycleMs);
-                                    key += ":source-cycle:" + std::to_string(sourceCycle);
+                                    // A prepared duration includes particle/after-image tails. Repeat
+                                    // emission at its authored end, retaining each still-living cycle.
+                                    double emissionSeconds = 0.0;
+                                    for (const auto& element : document->Elements)
+                                    {
+                                        if (!element.bVisible) continue;
+                                        const auto& recipe = element.SourceRecipe;
+                                        const auto& timing = element.Detail.Timing;
+                                        const double duration = recipe.bEnabled && recipe.fEmitterDurationSeconds > 0.f ?
+                                            static_cast<double>(recipe.fEmitterDurationSeconds) * recipe.iEmitterLoopCount :
+                                            timing.fLifeTimeSeconds;
+                                        emissionSeconds = (std::max)(emissionSeconds,
+                                            timing.fStartDelaySeconds + (recipe.bEnabled ? recipe.fEmitterDelaySeconds : 0.f) + duration);
+                                    }
+                                    for (const auto& cue : document->ModelCues)
+                                        if (cue.bVisible) emissionSeconds = (std::max)(emissionSeconds,
+                                            static_cast<double>(cue.fStartDelaySeconds) + cue.fDurationSeconds);
+                                    if (!std::isfinite(emissionSeconds) || emissionSeconds <= 0.0)
+                                    { m_Status = "World Object Effect loop has no finite emission window: " + effect.resourceId; return false; }
+                                    sourceCycleMs = (std::min)(emissionSeconds, static_cast<double>(sourceDuration)) * 1000.0;
+                                    const double lastSourceEpoch = std::floor(ageMs / sourceCycleMs);
+                                    const double firstSourceEpoch = (std::max)(0.0,
+                                        std::floor((ageMs - sourceDuration * 1000.0) / sourceCycleMs) + 1.0);
+                                    if (!std::isfinite(lastSourceEpoch) ||
+                                        lastSourceEpoch >= static_cast<double>((std::numeric_limits<uint64_t>::max)()) ||
+                                        lastSourceEpoch - firstSourceEpoch >= 1024.0)
+                                    { m_Status = "World Object Effect source tails exceed the bounded occurrence range."; return false; }
+                                    firstSourceCycle = static_cast<uint64_t>(firstSourceEpoch);
+                                    lastSourceCycle = static_cast<uint64_t>(lastSourceEpoch);
                                 }
                             }
-                            wanted.insert(key);
-                            auto found = std::find_if(active.effects.begin(), active.effects.end(),
-                                [&](const auto& value) { return value.key == key; });
-                            const float sourceSeconds = (std::max)(0.f, ageMs - sourceCycleStartMs) * .001f * effectTimeScale;
-                            ACTIVE_INSTANCE placementState;
-                            placementState.positionOffset = active.positionOffset;
-                            placementState.placement = active.placement;
-                            // This provider outlives this stack frame in PresentationService. All
-                            // inputs are owned values or immutable prepared model/document handles.
-                            const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER provider =
-                                [placementState, owner = instance, sequence = *sequence, resource = *resource,
-                                 effect, emissionAnchor, emitter, trigger, effectTimeScale, sourceCycleStartMs,
-                                 model = prepared->second.model, document, v1]
-                                (float seconds, EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& output, std::string& error) -> bool_t
+                            const auto occurrenceKey = key;
+                            for (uint64_t sourceCycle = firstSourceCycle; sourceCycle <= lastSourceCycle; ++sourceCycle)
                             {
-                                output.SourceAnchorWorlds.clear();
-                                if (!std::isfinite(seconds) || seconds < 0.f) return false;
-                                const float sampleMs = (std::min)(trigger + (effect.followObject ?
-                                    sourceCycleStartMs + seconds * 1000.f / effectTimeScale : 0.f),
-                                    static_cast<float>(sequence.durationMs));
-                                float4x4_t objectWorld;
-                                if (!Sample_ObjectWorld(placementState, owner, sequence, resource, effect.slotId,
-                                    emissionAnchor, emitter, sampleMs, objectWorld, error, effect.inheritObjectRotation)) return false;
-                                matrix_t pivot = XMLoadFloat4x4(&objectWorld);
-                                // Preserve existing V2 metre sizing; V1 shares the Object's
-                                // authored owner scale so both doll variants attach proportionally.
-                                if (!v1) for (int axis = 0; axis < 3; ++axis)
-                                    pivot.r[axis] = XMVectorSetW(XMVector3Normalize(pivot.r[axis]), 0.f);
-                                if (!effect.bone.empty())
+                                const float sourceCycleStartMs = static_cast<float>(sourceCycle * sourceCycleMs);
+                                key = occurrenceKey;
+                                if (sourceCycleMs > 0.0) key += ":source-cycle:" + std::to_string(sourceCycle);
+                                wanted.insert(key);
+                                auto found = std::find_if(active.effects.begin(), active.effects.end(),
+                                    [&](const auto& value) { return value.key == key; });
+                                const float sourceSeconds = (std::max)(0.f, ageMs - sourceCycleStartMs) * .001f * effectTimeScale;
+                                ACTIVE_INSTANCE placementState;
+                                placementState.positionOffset = active.positionOffset;
+                                placementState.placement = active.placement;
+                                // This provider outlives this stack frame in PresentationService. All
+                                // inputs are owned values or immutable prepared model/document handles.
+                                const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER provider =
+                                    [placementState, owner = *motion, sequence = *sequence, resource = *resource,
+                                     effect, emissionAnchor, emitter, trigger, effectTimeScale, sourceCycleStartMs,
+                                     model = prepared->second.model, document, v1]
+                                    (float seconds, EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& output, std::string& error) -> bool_t
                                 {
-                                    float4x4_t bone;
-                                    if (!Sample_ObjectEffectBone(model, sequence, effect.slotId, effect.bone, sampleMs, bone, error)) return false;
-                                    pivot = XMLoadFloat4x4(&bone) * pivot;
+                                    output.SourceAnchorWorlds.clear();
+                                    if (!std::isfinite(seconds) || seconds < 0.f) return false;
+                                    const float sampleMs = (std::min)(trigger + (effect.followObject ?
+                                        sourceCycleStartMs + seconds * 1000.f / effectTimeScale : 0.f),
+                                        static_cast<float>(sequence.durationMs));
+                                    float4x4_t objectWorld;
+                                    if (!Sample_ObjectWorld(placementState, owner, sequence, resource, effect.slotId,
+                                        emissionAnchor, emitter, sampleMs, objectWorld, error, effect.inheritObjectRotation)) return false;
+                                    matrix_t pivot = XMLoadFloat4x4(&objectWorld);
+                                    // Preserve existing V2 metre sizing; V1 shares the Object's
+                                    // authored owner scale so both doll variants attach proportionally.
+                                    if (!v1) for (int axis = 0; axis < 3; ++axis)
+                                        pivot.r[axis] = XMVectorSetW(XMVector3Normalize(pivot.r[axis]), 0.f);
+                                    if (!effect.bone.empty())
+                                    {
+                                        float4x4_t bone;
+                                        if (!Sample_ObjectEffectBone(model, sequence, effect.slotId, effect.bone, sampleMs, bone, error)) return false;
+                                        pivot = XMLoadFloat4x4(&bone) * pivot;
+                                    }
+                                    const matrix_t local = XMMatrixScalingFromVector(XMLoadFloat3(&effect.scale)) *
+                                        XMMatrixRotationRollPitchYaw(XMConvertToRadians(effect.rotationDegrees.x),
+                                            XMConvertToRadians(effect.rotationDegrees.y), XMConvertToRadians(effect.rotationDegrees.z)) *
+                                        XMMatrixTranslationFromVector(XMLoadFloat3(&effect.positionOffset));
+                                    XMStoreFloat4x4(&output.RootWorld, local * pivot);
+                                    return !document || Sample_ObjectEffectAttachments(*document, model, sequence, effect.slotId,
+                                        sampleMs, output.RootWorld, output.SourceAnchorWorlds, error);
+                                };
+                                EFFECT_FIXED_STEP_TRANSFORM_SAMPLE frame;
+                                if (!provider(sourceSeconds, frame, m_Status)) return false;
+                                if (found == active.effects.end())
+                                {
+                                    size_t total = active.effects.size();
+                                    for (const auto& value : m_Active) if (&value != &active) total += value.effects.size();
+                                    if (total >= 1024u)
+                                    { m_Status = "World Object Effect occurrence budget reached (1024)."; return false; }
+                                    if (v1)
+                                    {
+                                        EFFECT_LEVEL_PLACEMENT_SPAWN_DESC spawn;
+                                        spawn.iLevelIndex = targets.levelIndex;
+                                        // Handle identity is process-local; no pointer is serialized.
+                                        spawn.strPlacementId = "world-object:" + std::to_string(reinterpret_cast<std::uintptr_t>(this)) + ":" + key;
+                                        spawn.strEffectAssetId = effect.resourceId;
+                                        spawn.RootWorld = frame.RootWorld;
+                                        spawn.fInitialSampleTimeSeconds = sourceSeconds;
+                                        // Finite sources keep their prepared document and repeat above. Native
+                                        // EmitterLoops=0 sources use the shared bounded emission policy.
+                                        spawn.fSourceLoopEndSeconds = nativeInfiniteLoop ? effect.durationMs * .001f : 0.f;
+                                        spawn.bExternallySampled = true;
+                                        spawn.bExternalModelCueAnchors = !document->ModelCues.empty();
+                                        EFFECT_WORLD_ROOT_HANDLE handle;
+                                        if (!CEffectPresentationService::Spawn_LevelPlacement(spawn, handle, m_Status)) return false;
+                                        active.effects.push_back({key, 0u, handle.iValue, document});
+                                    }
+                                    else
+                                    {
+                                        EFFECT_V2_GROUP_PLAYBACK_DESC playback;
+                                        playback.PivotWorld = frame.RootWorld;
+                                        playback.bExternalClock = true;
+                                        playback.bProductOwned = true;
+                                        // Sample_Group receives authored seconds; Motion speed is already applied.
+                                        playback.fDurationSeconds = -1.f;
+                                        const uint32_t handle = effect.resourceKind == "GROUP" ?
+                                            CEffectV2Runtime::Play_Group(*snapshot->second->Find_Group(effect.resourceId), snapshot->second,
+                                                playback, targets.device, targets.context) :
+                                            CEffectV2Runtime::Play_Leaf(effect.resourceId, snapshot->second, playback, targets.device, targets.context);
+                                        if (!handle)
+                                        { m_Status = "World Object effect play failed: " + effect.resourceId + " / " + CEffectV2Runtime::Last_Error(); return false; }
+                                        active.effects.push_back({key, handle});
+                                    }
+                                    found = active.effects.end() - 1;
                                 }
-                                const matrix_t local = XMMatrixScalingFromVector(XMLoadFloat3(&effect.scale)) *
-                                    XMMatrixRotationRollPitchYaw(XMConvertToRadians(effect.rotationDegrees.x),
-                                        XMConvertToRadians(effect.rotationDegrees.y), XMConvertToRadians(effect.rotationDegrees.z)) *
-                                    XMMatrixTranslationFromVector(XMLoadFloat3(&effect.positionOffset));
-                                XMStoreFloat4x4(&output.RootWorld, local * pivot);
-                                return !document || Sample_ObjectEffectAttachments(*document, model, sequence, effect.slotId,
-                                    sampleMs, output.RootWorld, output.SourceAnchorWorlds, error);
-                            };
-                            EFFECT_FIXED_STEP_TRANSFORM_SAMPLE frame;
-                            if (!provider(sourceSeconds, frame, m_Status)) return false;
-                            if (found == active.effects.end())
-                            {
-                                size_t total = active.effects.size();
-                                for (const auto& value : m_Active) if (&value != &active) total += value.effects.size();
-                                if (total >= 1024u)
-                                { m_Status = "World Object Effect occurrence budget reached (1024)."; return false; }
                                 if (v1)
                                 {
-                                    EFFECT_LEVEL_PLACEMENT_SPAWN_DESC spawn;
-                                    spawn.iLevelIndex = targets.levelIndex;
-                                    // Handle identity is process-local; no pointer is serialized.
-                                    spawn.strPlacementId = "world-object:" + std::to_string(reinterpret_cast<std::uintptr_t>(this)) + ":" + key;
-                                    spawn.strEffectAssetId = effect.resourceId;
-                                    spawn.RootWorld = frame.RootWorld;
-                                    spawn.fInitialSampleTimeSeconds = sourceSeconds;
-                                    // Finite sources keep their prepared document and repeat above. Native
-                                    // EmitterLoops=0 sources use the shared bounded emission policy.
-                                    spawn.fSourceLoopEndSeconds = nativeInfiniteLoop ? effect.durationMs * .001f : 0.f;
-                                    spawn.bExternallySampled = true;
-                                    spawn.bExternalModelCueAnchors = !document->ModelCues.empty();
-                                    EFFECT_WORLD_ROOT_HANDLE handle;
-                                    if (!CEffectPresentationService::Spawn_LevelPlacement(spawn, handle, m_Status)) return false;
-                                    active.effects.push_back({key, 0u, handle.iValue, document});
+                                    const bool placementEdited = found->sampledPlacement != active.placement ||
+                                        found->sampledPositionOffset.x != active.positionOffset.x ||
+                                        found->sampledPositionOffset.y != active.positionOffset.y ||
+                                        found->sampledPositionOffset.z != active.positionOffset.z;
+                                    if (!CEffectPresentationService::Update_WorldRoot({found->v1Handle}, frame.RootWorld) ||
+                                        !CEffectPresentationService::Seek_WorldRoot({found->v1Handle}, sourceSeconds, provider, placementEdited))
+                                    { m_Status = "World Object V1 effect sample failed: " + effect.resourceId + " / " + CEffectPresentationService::Get_Status(); return false; }
+                                    found->sampledPlacement = active.placement;
+                                    found->sampledPositionOffset = active.positionOffset;
                                 }
                                 else
                                 {
-                                    EFFECT_V2_GROUP_PLAYBACK_DESC playback;
-                                    playback.PivotWorld = frame.RootWorld;
-                                    playback.bExternalClock = true;
-                                    playback.bProductOwned = true;
-                                    // Sample_Group receives authored seconds; Motion speed is already applied.
-                                    playback.fDurationSeconds = -1.f;
-                                    const uint32_t handle = effect.resourceKind == "GROUP" ?
-                                        CEffectV2Runtime::Play_Group(*snapshot->second->Find_Group(effect.resourceId), snapshot->second,
-                                            playback, targets.device, targets.context) :
-                                        CEffectV2Runtime::Play_Leaf(effect.resourceId, snapshot->second, playback, targets.device, targets.context);
-                                    if (!handle)
-                                    { m_Status = "World Object effect play failed: " + effect.resourceId + " / " + CEffectV2Runtime::Last_Error(); return false; }
-                                    active.effects.push_back({key, handle});
+                                    CEffectV2Runtime::Set_GroupPivot(found->handle, frame.RootWorld);
+                                    if (!CEffectV2Runtime::Sample_Group(found->handle, ageMs * .001f, true, targets.device, targets.context))
+                                    { m_Status = "World Object effect sample failed: " + effect.resourceId + " / " + CEffectV2Runtime::Last_Error(); return false; }
                                 }
-                                found = active.effects.end() - 1;
-                            }
-                            if (v1)
-                            {
-                                const bool placementEdited = found->sampledPlacement != active.placement ||
-                                    found->sampledPositionOffset.x != active.positionOffset.x ||
-                                    found->sampledPositionOffset.y != active.positionOffset.y ||
-                                    found->sampledPositionOffset.z != active.positionOffset.z;
-                                if (!CEffectPresentationService::Update_WorldRoot({found->v1Handle}, frame.RootWorld) ||
-                                    !CEffectPresentationService::Seek_WorldRoot({found->v1Handle}, sourceSeconds, provider, placementEdited))
-                                { m_Status = "World Object V1 effect sample failed: " + effect.resourceId + " / " + CEffectPresentationService::Get_Status(); return false; }
-                                found->sampledPlacement = active.placement;
-                                found->sampledPositionOffset = active.positionOffset;
-                            }
-                            else
-                            {
-                                CEffectV2Runtime::Set_GroupPivot(found->handle, frame.RootWorld);
-                                if (!CEffectV2Runtime::Sample_Group(found->handle, ageMs * .001f, true, targets.device, targets.context))
-                                { m_Status = "World Object effect sample failed: " + effect.resourceId + " / " + CEffectV2Runtime::Last_Error(); return false; }
                             }
                         }
                     }

@@ -608,3 +608,50 @@ EXE/DLL/CSO/Data/DataFiles를 사용한다. 이전 v4의 changed-data 목록은 
 필요 데이터 목록이 아니므로 재사용하지 않았다. `portable-data-closure.receipt.json`과
 `root-zip-verification.json`에 참조·최종 binary SHA·ZIP 검증을 보존했다.
 실제4인 GPU 표시와 종료 재현의 성공 판정은 사용자 실행 후 기록한다.
+
+## G14. 시퀀스 준비 중단 진단과 terminal drain 후속 상태 (2026-09-19)
+
+G13은 사용자 merge로 PR415, main `8dc16688517f567c64976434f24bb7425f0e0830`에 반영됐다.
+v5 ZIP과250ms 송신 종료 제거·Product 전체 로드·공통 이펙트 admission 수정은 이 정본에 있다.
+후속 작업 브랜치는 `codex/terminal-drain-cleanup-20260919`이며 아래 추가 변경은 아직
+최종 Product 빌드·새 ZIP·merge 완료로 취급하지 않는다.
+
+### 확인한 실행 근거
+
+- 사용자 Client44800의06:06:41 로그에 `kouku.product.loaded`, revision1753, patterns85가 있다.
+  이후 사용자가 이펙트가 보인다고 보고했다. 개별 모든 효과의 시각 성공 판정은 아니다.
+- 같은 실행의 epoch1은06:07:06 PREPARING phase1에서 ABORTED phase7로 바뀌었다.
+  기록된 server tick은4045→4049다. phase 변화만으로 Client FAILED를 단정할 수 없으며,
+  기존 로그에 중단 사유가 없어 이 사용자 사건의 정확한 원인은 아직 확정하지 못했다.
+- 현재 설치 데이터와 실제 Release reader로 Action1753·Sequence65 및9개 Sequence 확장 PASS.
+  실제 Release Server 진입 trigger→READY→다음 tick의 cinematic 시작을1인·4인으로 재현했고
+  14/14검사가 통과했다. 첫4 cinematic tick도 유지됐다. 준비 검증을 우회하는 수정은 하지 않았다.
+  근거는 `out/KoukuRaidPreparing20260919/preflight_probe.log`, `server/run.log`다.
+
+### 소스 반영과 완료 경계
+
+MainApp 준비 로그에 정확한 stage, local/pinned Action·Sequence·gameplay revision,
+composition ID와 실패 사유를 추가했다. 해당 Release TU 격리 컴파일 PASS다.
+GameRoom heartbeat에 raid 관련7개 필드를 추가했다. 기존 validation과 상태 전이는 유지했다.
+사용자 Server 빌드 이후 작성한 Stop_KoukuRaid 즉시 진단 후보는 최종 소스·배포 범위에서 제외했다.
+
+ClientSession의 명시적 종료 drain에는 첫 종료 요청부터2초 기한을 적용했다. 정상 활성
+연결은 이 기한보다 긴2250ms 비수신 상태에서도 유지되고,750ms 정체 후16MiB의 정확한
+재개도 통과했다. 실제 읽지 않는 소켓에 ROOM_FULL 응답을 queued한 뒤2047ms에 정리됐고
+최초 reason/context/native code와1회 종료 통지가 보존됐다.12/12 socket 검사 및 실제
+ClientSession·SessionTransport Release TU 격리 컴파일 PASS다.
+근거: `out/BernDisconnect20260919/terminal-drain/RECEIPT.md`.
+
+사용자가 Visual Studio Release 빌드를 진행 중이라고 확인했다. 에이전트는 중복 정본 빌드를
+실행하지 않고 소스를 동결했다. 사용자 빌드 도중 원격 main과 로컬의 기준은 동일한8dc166885다.
+앞서 에이전트의 불필요한 오래된 로컬 main 전환·복구로 파일 수정 시각이 갱신되어 셰이더를
+포함한 증분 빌드 범위가 커졌다. 해당 전환 전의 소스 내용으로 복구했고 safety stash를 보존했다.
+이후 사용자 Visual Studio Release 빌드가 완료됐다. Client(06:30:47), Server(06:13:23),
+Engine(06:15:32)의 hash와 추가 진단 문자열을 확인해 v6에 포장했다. 별도 정본 빌드를
+새로 실행한 결과가 아니며 출처는 `out/KoukuRaidPreparing20260919/visual-studio-build-capture.json`이다.
+`Release/LostArk-Release-20260919-v6-192.168.0.14.zip`은 101,441,652 bytes,
+SHA256 `bb0ec4fec11845ea3ebd13aa21a14d7d54fcfe7a43e373edc5f8598f490e3f54`이다.
+최종 CRC, manifest 2,189개 hash, 세 실행 바이너리 일치, no-launch 사전 검증이 PASS했다.
+Resources·PNG·ChangedData는 각각0개다. 검증 기록은
+`out/KoukuRaidPreparing20260919/portable-final-verification.receipt.json`이다.
+시퀀스 준비 중단의 실제 원인은 여전히 미확정이며 GPU 화면·4인 실제 실행 성공으로 기록하지 않는다.

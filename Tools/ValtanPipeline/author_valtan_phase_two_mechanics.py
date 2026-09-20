@@ -19,7 +19,7 @@ GAMEPLAY = ROOT / "Data/Valtan/Valtan.gameplay.json"
 PRESENTATION = ROOT / "Data/Valtan/Valtan.presentation.json"
 CUE_PREFIX = "cue.valtan.phase2."
 REQUESTED_CUE_PREFIX = "cue.valtan.requested.20260827."
-GHOST_PORTAL_CIRCUMRADIUS_M = 7.5
+GHOST_PORTAL_CIRCUMRADIUS_M = 13.5
 GHOST_PORTAL_EDGE_LENGTH_M = GHOST_PORTAL_CIRCUMRADIUS_M * math.sqrt(3.0)
 WARP_PORTAL_DISTANCE_M = 16.0
 WARP_PORTAL_TRAVEL_MS = 1300
@@ -2608,7 +2608,7 @@ def author_runtime_completion(gameplay: dict[str, Any], presentation: dict[str, 
     ]
     presentation["independentEffects"].append({
         "independentEffectId": independent_id,
-        "displayName": "망령 포탈 동시 돌진 / 외접반지름 9m 정삼각형",
+        "displayName": "망령 포탈 동시 돌진 / 외접반지름 13.5m 정삼각형",
         "ownership": "SERVER_COMBAT_OBJECT",
         "spawnEventId": "event.valtan.ghost.portal-once.volley",
     })

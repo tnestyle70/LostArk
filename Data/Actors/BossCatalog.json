@@ -95,7 +95,7 @@
           }
         }
       ],
-      "animationSetId": "Character/Valtan/AnimSets/MN_RPBF_01_AnimSet.wmodel",
+      "animationSetId": "Character/Valtan/Cinematics/MN_RPBF_01_CinematicAnimSet.wmodel",
       "serverProfileId": "boss.valtan.server.v1",
       "clientPresentationId": "boss.valtan.client.v1",
       "presentationStatus": "complete",
@@ -146,7 +146,7 @@
       "armorModels": [],
       "armorParts": [],
       "combatObjectVisuals": [],
-      "animationSetId": "Character/Valtan/Ghost/MN_RPBF_02_AnimSet.wmodel",
+      "animationSetId": "Character/Valtan/Cinematics/MN_RPBF_02_CinematicAnimSet.wmodel",
       "serverProfileId": "boss.valtan.ghost.server.v1",
       "clientPresentationId": "boss.valtan.client.v1",
       "presentationStatus": "complete",
@@ -440,7 +440,7 @@
       "visualAssetId": "KOUKUSAYDON_MN_RPCT_05",
       "presentationScale": 1.0,
       "bodyModel": "Character/KoukuSaton/MN_RPCT_05/MN_RPCT_05.wmodel",
-      "weaponModel": "Character/KoukuSaton/WP_MN_RPCT_06/WP_MN_RPCT_06.wmodel",
+      "weaponModel": "Character/KoukuSaton/WP_MN_RPCT_05/WP_MN_RPCT_05.wmodel",
       "armorModels": [],
       "armorParts": [],
       "combatObjectVisuals": [
@@ -463,11 +463,11 @@
         "dead": "rpct00_dead_1"
       },
       "bodyModelPreScale": 0.017,
-      "weaponModelPreScale": 0.00711685,
+      "weaponModelPreScale": 0.01,
       "weaponModelPreRotationDegrees": [
-        23.0,
-        8.0,
-        8.0
+        -90.0,
+        0.0,
+        0.0
       ]
     }
   ],
@@ -10115,6 +10115,422 @@
       "sourceSubspecular": [
         2.0,
         60.0
+      ]
+    },
+    {
+      "modelAssetId": "Map/Valtan/Cinematics/Actor64/Body/MN_TSLC_00-1.wmodel",
+      "materialName": "mn_tslc_00_mi",
+      "sourceMaterial": "mn_tslc_00-1.mat.mn_tslc_00-1_mi_dead",
+      "family": "source.character.monster-dead-16902fea865c.v1",
+      "parameters": {
+        "buffcolor": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "constantoutline": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "constantoutline_blink": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "constantoutline_color": [
+          0.4230642020702362,
+          0.7928890585899353,
+          0.8507974147796631,
+          1.0
+        ],
+        "constantoutline_power": [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "dead": [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "dead_texture_tiling": [
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ],
+        "diffuse_brightness": [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "diffusecolor": [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "emissive_color": [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "emissive_intensity": [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "fx_color_desaturation_actiontool": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "fx_color_desaturation_buffsettool": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "fx_color_intensity_actiontool": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "fx_color_intensity_buffsettool": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "hit_color": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "reflection_color": [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "reflection_intensity": [
+          0.8999999761581421,
+          0.8999999761581421,
+          0.8999999761581421,
+          0.8999999761581421
+        ],
+        "rimlight_color": [
+          0.17000000178813934,
+          0.17000000178813934,
+          0.25,
+          1.0
+        ],
+        "rimlight_intensity": [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "rimlight_power": [
+          3.0,
+          3.0,
+          3.0,
+          3.0
+        ],
+        "selectioncolor": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "specular_intensity": [
+          3.0,
+          3.0,
+          3.0,
+          3.0
+        ],
+        "specular_power": [
+          60.0,
+          60.0,
+          60.0,
+          60.0
+        ],
+        "state": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "state_noise": [
+          1.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "trans_rim_hard": [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "trans_rim_inradius": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "transcolor": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "transcolor_rimlight ": [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "textures": [
+        {
+          "expressionIndex": 0,
+          "assetId": "Map/Valtan/Cinematics/Actor64/SourceMaterials/mn_tslc_00/mn_tslc_00_n_loc_int.dds",
+          "colorSpace": "linear"
+        },
+        {
+          "expressionIndex": 1,
+          "assetId": "Map/Valtan/Cinematics/Actor64/SourceMaterials/mn_tslc_00/mn_tslc_00_e_loc_int.dds",
+          "colorSpace": "srgb"
+        },
+        {
+          "expressionIndex": 2,
+          "assetId": "Map/Valtan/Cinematics/Actor64/SourceMaterials/mn_tslc_00/mn_tslc_00_d_loc_int.dds",
+          "colorSpace": "srgb"
+        },
+        {
+          "expressionIndex": 3,
+          "assetId": "Map/Valtan/Cinematics/Actor64/SourceMaterials/efmaster_material_prologue/ambientreflection_01.dds",
+          "colorSpace": "srgb"
+        },
+        {
+          "expressionIndex": 4,
+          "assetId": "Map/Valtan/Cinematics/Actor64/SourceMaterials/mn_tslc_00/mn_tslc_00_s_loc_int.dds",
+          "colorSpace": "srgb"
+        },
+        {
+          "expressionIndex": 5,
+          "assetId": "Map/Valtan/Cinematics/Actor64/SourceMaterials/efmaster_material_prologue/statefx_default.dds",
+          "colorSpace": "srgb"
+        },
+        {
+          "expressionIndex": 6,
+          "assetId": "Map/Valtan/Cinematics/Actor64/SourceMaterials/efmaster_material_prologue/fx_a_ice_003.dds",
+          "colorSpace": "srgb"
+        }
+      ]
+    },
+    {
+      "modelAssetId": "Map/Valtan/Cinematics/Actor64/Weapon/WP_MN_TSLC_00-1.wmodel",
+      "materialName": "wp_mn_tslc_00_mi",
+      "sourceMaterial": "wp_mn_tslc_00-1.mat.wp_mn_tslc_00-1_mi_dead",
+      "family": "source.character.monster-dead-e15390cf9645.v1",
+      "parameters": {
+        "buffcolor": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "constantoutline": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "constantoutline_blink": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "constantoutline_color": [
+          0.4230642020702362,
+          0.7928890585899353,
+          0.8507974147796631,
+          1.0
+        ],
+        "constantoutline_power": [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "dead": [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "dead_texture_tiling": [
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ],
+        "diffuse_brightness": [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "diffusecolor": [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "fx_color_desaturation_actiontool": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "fx_color_desaturation_buffsettool": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "fx_color_intensity_actiontool": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "fx_color_intensity_buffsettool": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "hit_color": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rimlight_color": [
+          0.17000000178813934,
+          0.17000000178813934,
+          0.25,
+          1.0
+        ],
+        "rimlight_intensity": [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "rimlight_power": [
+          3.0,
+          3.0,
+          3.0,
+          3.0
+        ],
+        "selectioncolor": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "specular_intensity": [
+          4.0,
+          4.0,
+          4.0,
+          4.0
+        ],
+        "specular_power": [
+          60.0,
+          60.0,
+          60.0,
+          60.0
+        ],
+        "state": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "state_noise": [
+          1.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "trans_rim_hard": [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "trans_rim_inradius": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "transcolor": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "transcolor_rimlight ": [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "textures": [
+        {
+          "expressionIndex": 0,
+          "assetId": "Map/Valtan/Cinematics/Actor64/SourceMaterials/wp_mn_tslc_00/wp_mn_tslc_00_n.dds",
+          "colorSpace": "linear"
+        },
+        {
+          "expressionIndex": 1,
+          "assetId": "Map/Valtan/Cinematics/Actor64/SourceMaterials/wp_mn_tslc_00/wp_mn_tslc_00_d_loc_int.dds",
+          "colorSpace": "srgb"
+        },
+        {
+          "expressionIndex": 2,
+          "assetId": "Map/Valtan/Cinematics/Actor64/SourceMaterials/efmaster_material_prologue/statefx_default.dds",
+          "colorSpace": "srgb"
+        },
+        {
+          "expressionIndex": 3,
+          "assetId": "Map/Valtan/Cinematics/Actor64/SourceMaterials/wp_mn_tslc_00/wp_mn_tslc_00_s_loc_int.dds",
+          "colorSpace": "srgb"
+        },
+        {
+          "expressionIndex": 4,
+          "assetId": "Map/Valtan/Cinematics/Actor64/SourceMaterials/efmaster_material_prologue/fx_a_ice_003.dds",
+          "colorSpace": "srgb"
+        }
       ]
     }
   ]

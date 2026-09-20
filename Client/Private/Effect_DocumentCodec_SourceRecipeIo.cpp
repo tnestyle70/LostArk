@@ -370,6 +370,12 @@ namespace Client::EffectDocumentCodecDetail
         if (Track.AlphaScale && (Track.AlphaScale->iComponentCount != 3u ||
             Track.AlphaScale->iOperation != 1u || !CEffectDistribution::Validate(*Track.AlphaScale, Error)))
             return false;
+        if (Track.AlphaScaleFactors.size() > 16u)
+        { Error = "Too many source alpha scale factors."; return false; }
+        for (const auto& Factor : Track.AlphaScaleFactors)
+            if (Factor.Keys.empty() || Factor.iComponentCount != 3u || Factor.iOperation != 1u ||
+                !CEffectDistribution::Validate(Factor, Error))
+            { if (Error.empty()) Error = "Invalid source alpha scale factor."; return false; }
         if (Track.MaterialParameterTracks.size() > 64u)
         { Error = "Too many source material parameter tracks."; return false; }
         std::vector<std::string_view> materialNames;
@@ -439,7 +445,7 @@ namespace Client::EffectDocumentCodecDetail
     {
         using namespace Client;
         if (!Value.Is_Object() || !Validate_ExactFields(Value,
-            { "sourceOccurrenceId", "sourceTimeOriginSeconds", "previewOriginUE3Cm", "nodes", "alphaScaleKeys", "materialParameterTracks" },
+            { "sourceOccurrenceId", "sourceTimeOriginSeconds", "previewOriginUE3Cm", "nodes", "alphaScaleKeys", "alphaScaleFactors", "materialParameterTracks" },
             "Effect source transform track", Error)) return false;
         const auto* Nodes = Find_Field(Value, "nodes", DATA_JSON_TYPE::ARRAY, Error);
         if (!Nodes || !Read_String(Value, "sourceOccurrenceId", Out.strSourceOccurrenceId, Error) ||
@@ -470,6 +476,17 @@ namespace Client::EffectDocumentCodecDetail
             EFFECT_DISTRIBUTION_DESC Curve;
             if (!Read_SourceTransformCurve(*Alpha, Curve, "alphaScale", Error)) return false;
             Out.AlphaScale = std::move(Curve);
+        }
+        if (const auto* Factors = Value.Find("alphaScaleFactors"))
+        {
+            if (!Factors->Is_Array() || Factors->Get_Array().size() > 16u)
+            { Error = "Source alpha scale factors must be a bounded array."; return false; }
+            for (const auto& Factor : Factors->Get_Array())
+            {
+                EFFECT_DISTRIBUTION_DESC Curve;
+                if (!Read_SourceTransformCurve(Factor, Curve, "alphaScaleFactor", Error)) return false;
+                Out.AlphaScaleFactors.push_back(std::move(Curve));
+            }
         }
         if (const auto* Parameters = Value.Find("materialParameterTracks"))
         {
@@ -542,6 +559,16 @@ namespace Client::EffectDocumentCodecDetail
         {
             Output << ", \"alphaScaleKeys\": ";
             Write_SourceTransformCurve(Output,*Track.AlphaScale);
+        }
+        if (!Track.AlphaScaleFactors.empty())
+        {
+            Output << ", \"alphaScaleFactors\": [";
+            for (size_t i = 0; i < Track.AlphaScaleFactors.size(); ++i)
+            {
+                if (i) Output << ", ";
+                Write_SourceTransformCurve(Output, Track.AlphaScaleFactors[i]);
+            }
+            Output << ']';
         }
         if (!Track.MaterialParameterTracks.empty())
         {
@@ -1449,6 +1476,18 @@ namespace Client::EffectDocumentCodecDetail
 
         if (pScreenPost->Find("captureShrinkSeconds") &&
             !Read_Float(*pScreenPost, "captureShrinkSeconds", Out.ScreenPost.fCaptureShrinkSeconds, strOutError)) return false;
+        if (pScreenPost->Find("captureEdgeSpeed") &&
+            !Read_Array(*pScreenPost, "captureEdgeSpeed", &Out.ScreenPost.vCaptureEdgeSpeed.x, 4u, strOutError)) return false;
+        if (pScreenPost->Find("captureDestinationOffsetUV") &&
+            !Read_Array(*pScreenPost, "captureDestinationOffsetUV", &Out.ScreenPost.vCaptureDestinationOffsetUV.x, 2u, strOutError)) return false;
+        if (pScreenPost->Find("captureRotationDegrees") &&
+            !Read_Float(*pScreenPost, "captureRotationDegrees", Out.ScreenPost.fCaptureRotationDegrees, strOutError)) return false;
+        if (pScreenPost->Find("captureSquare") &&
+            !Read_Bool(*pScreenPost, "captureSquare", Out.ScreenPost.bCaptureSquare, strOutError)) return false;
+        if (pScreenPost->Find("captureBackgroundDim") &&
+            !Read_Float(*pScreenPost, "captureBackgroundDim", Out.ScreenPost.fCaptureBackgroundDim, strOutError)) return false;
+        if (pScreenPost->Find("captureUseModelCenter") &&
+            !Read_Bool(*pScreenPost, "captureUseModelCenter", Out.ScreenPost.bCaptureUseModelCenter, strOutError)) return false;
 		if (const auto* target = pScreenPost->Find("captureTargetModelCueId"))
 		{
 			if (!target->Is_String())
@@ -1551,6 +1590,26 @@ namespace Client::EffectDocumentCodecDetail
 				<< Detail.ScreenPost.iRandomSeed;
             if (Detail.ScreenPost.fCaptureShrinkSeconds != 0.f)
                 Output << ", \"captureShrinkSeconds\": " << Detail.ScreenPost.fCaptureShrinkSeconds;
+            const auto& EdgeSpeed = Detail.ScreenPost.vCaptureEdgeSpeed;
+            if (EdgeSpeed.x != 1.f || EdgeSpeed.y != 1.f || EdgeSpeed.z != 1.f || EdgeSpeed.w != 1.f)
+            {
+                Output << ", \"captureEdgeSpeed\": ";
+                Write_Float4(Output, EdgeSpeed);
+            }
+            const auto& DestinationOffset = Detail.ScreenPost.vCaptureDestinationOffsetUV;
+            if (DestinationOffset.x != 0.f || DestinationOffset.y != 0.f)
+            {
+                Output << ", \"captureDestinationOffsetUV\": ";
+                Write_Float2(Output, DestinationOffset);
+            }
+            if (Detail.ScreenPost.fCaptureRotationDegrees != 0.f)
+                Output << ", \"captureRotationDegrees\": " << Detail.ScreenPost.fCaptureRotationDegrees;
+            if (Detail.ScreenPost.bCaptureSquare)
+                Output << ", \"captureSquare\": true";
+            if (Detail.ScreenPost.fCaptureBackgroundDim != 0.f)
+                Output << ", \"captureBackgroundDim\": " << Detail.ScreenPost.fCaptureBackgroundDim;
+            if (Detail.ScreenPost.bCaptureUseModelCenter)
+                Output << ", \"captureUseModelCenter\": true";
 			if (!Detail.ScreenPost.strCaptureTargetModelCueId.empty())
 				Output << ", \"captureTargetModelCueId\": \""
 					<< CDataJson::Escape(Detail.ScreenPost.strCaptureTargetModelCueId) << "\"";

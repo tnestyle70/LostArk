@@ -2,6 +2,7 @@
 #include "KoukuSaydonAnimationBlend.h"
 #include "KoukuSaydonCompositionDocument.h"
 #include "EffectV2_Runtime.h"
+#include "Effect_PresentationService.h"
 #include "AnimationTargetService.h"
 #include "NpcPresentationAssetService.h"
 
@@ -336,6 +337,8 @@ bool_t CNpc::Play_NetworkAction(
 	const f32_t fBlendSeconds,
 	const f32_t fRootVerticalScale)
 {
+	m_strClipEndEffect.clear();
+	m_fClipEndEffectRemaining = 0.f;
 	m_bNetworkAnimationWindow = false;
 	m_bNetworkAnimationTransition = false;
     m_NetworkAnimationBlendWindows.clear();
@@ -373,6 +376,22 @@ bool_t CNpc::Play_NetworkAction(
 	CEffectV2Runtime::Notify_Clip(
 		EFFECT_V2_TARGET::From_Npc(static_pointer_cast<CNpc>(shared_from_this())),
 		pClipName);
+	return true;
+}
+
+bool_t CNpc::Schedule_ClipEndEffect(const std::string& effectAssetId,
+	const uint32_t levelIndex, const std::string& occurrenceId)
+{
+	if (effectAssetId.empty() || occurrenceId.empty() || levelIndex >= ETOUI(LEVEL::END) ||
+		!m_pModelCom || m_isNetworkAnimationLoop || !CEffectCatalog::Contains(effectAssetId)) return false;
+	const uint32_t clip = m_pModelCom->Get_CurrentAnimIndex();
+	f32_t position = 0.f, duration = 0.f;
+	const f32_t rate = m_pModelCom->Get_AnimationTickPerSecond(clip) * m_fNetworkAnimationPlayRate;
+	if (rate <= 0.f || !m_pModelCom->Get_AnimationProgress(clip, position, duration) || duration <= 0.f) return false;
+	m_strClipEndEffect = effectAssetId;
+	m_strClipEndEffectOccurrence = occurrenceId;
+	m_iClipEndEffectLevel = levelIndex;
+	m_fClipEndEffectRemaining = (std::max)(0.f, duration - position) / rate;
 	return true;
 }
 
@@ -534,6 +553,24 @@ void CNpc::Update(f32_t fTimeDelta)
     }
 	Synchronize_WeaponPose();
 	Update_CombatCollider();
+	if (!m_strClipEndEffect.empty())
+	{
+		m_fClipEndEffectRemaining -= frameDelta;
+		if (m_fClipEndEffectRemaining <= 0.f)
+		{
+			EFFECT_LEVEL_PLACEMENT_SPAWN_DESC cue;
+			cue.iLevelIndex = m_iClipEndEffectLevel;
+			cue.strPlacementId = m_strClipEndEffectOccurrence;
+			cue.strEffectAssetId = m_strClipEndEffect;
+			cue.RootWorld = *m_pTransformCom->Get_WorldMatrixPtr();
+			cue.fInitialSampleTimeSeconds = -m_fClipEndEffectRemaining;
+			EFFECT_WORLD_ROOT_HANDLE handle;
+			std::string status;
+			if (!CEffectPresentationService::Spawn_LevelPlacement(cue, handle, status))
+				OutputDebugStringA(("[Npc] Clip-end Effect isolated: " + status + "\n").c_str());
+			m_strClipEndEffect.clear();
+		}
+	}
 	CEffectV2Runtime::Tick(
 		EFFECT_V2_TARGET::From_Npc(static_pointer_cast<CNpc>(shared_from_this())),
 		m_pDevice, m_pContext);

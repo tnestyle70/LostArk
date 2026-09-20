@@ -547,7 +547,7 @@ namespace
 
 void LostArk::Server::CKoukuSaydonLogicRuntime::Assign_EncounterCard(
 	SERVER_PLAYER& player, const LostArk::Shared::NET_ENTITY_ID encounterOwnerId,
-	const std::uint32_t serverTick)
+	const std::uint32_t serverTick, const std::uint8_t unavailableSymbols)
 {
 	using namespace LostArk::Shared;
 	if (0u == player.iCurrentHp || PLAYER_ACTION_STATE::DEAD == player.eAction ||
@@ -558,8 +558,14 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Assign_EncounterCard(
 		return;
 	const std::uint64_t roll = Mix((static_cast<std::uint64_t>(encounterOwnerId) << 32) ^
 		(static_cast<std::uint64_t>(player.iPlayerId) << 8) ^ serverTick);
-	player.eMechanicCardSymbol = static_cast<MECHANIC_CARD_SYMBOL>(1u + (roll & 3u));
-	player.eMechanicCardColor = 0u == (roll & 4u) ? MECHANIC_CARD_COLOR::RED : MECHANIC_CARD_COLOR::BLACK;
+	std::uint8_t available[4]{};
+	std::uint32_t count = 0u;
+	for (std::uint8_t symbol = 1u; symbol <= 4u; ++symbol)
+		if (0u == (unavailableSymbols & (1u << (symbol - 1u)))) available[count++] = symbol;
+	if (!count) return;
+	player.eMechanicCardSymbol = static_cast<MECHANIC_CARD_SYMBOL>(available[roll % count]);
+	// Color is independent of the remaining suit deck.
+	player.eMechanicCardColor = 0u == (Mix(roll) & 1u) ? MECHANIC_CARD_COLOR::RED : MECHANIC_CARD_COLOR::BLACK;
 }
 
 void LostArk::Server::CKoukuSaydonLogicRuntime::Discard(
@@ -861,6 +867,9 @@ bool LostArk::Server::CKoukuSaydonLogicRuntime::Is_ShieldReflected(
 	const float sourceX,
 	const float sourceZ) noexcept
 {
+	for (const auto& retained : boss.KoukuRetainedLogicOwners)
+		if (const auto owner = retained.lock(); owner && Is_ShieldReflected(*owner, sourceX, sourceZ))
+			return true;
 	if (!boss.bKoukuShieldActive || boss.fKoukuShieldArcDegrees <= 0.f)
 		return false;
 	const auto reflects = [sourceX, sourceZ](const float centerX, const float centerZ,
@@ -1291,21 +1300,46 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Update(
         const auto& motion = *state.ChargeMotion;
         const auto position = CKoukuSaydonBrain::Sample_BossMotion(motion, serverTick - ledger.iPatternStartTick);
         SERVER_NAV_POINT destination{position[0], position[1], position[2]};
-        if (navigation && !navigation->Resolve_TraversalStep(boss.fPositionX, boss.fPositionZ,
-            destination.x, destination.z, destination))
-        { state.bChargeStopped = true; outOutput.strStatus = "boss charge stopped at navigation boundary"; continue; }
+        bool navigationBlocked = false;
+        if (navigation && (!navigation->Has_LineOfSight(boss.fPositionX, boss.fPositionZ, destination.x, destination.z) ||
+            !navigation->Resolve_TraversalStep(boss.fPositionX, boss.fPositionZ, destination.x, destination.z, destination)))
+        {
+            // Endpoint heights alone can skip a blocked cell or clip its corner.
+            // Stop at the same last navigable point used by native root-motion recoil.
+            const double dx = double(destination.x) - boss.fPositionX, dz = double(destination.z) - boss.fPositionZ;
+            const double length = std::hypot(dx, dz);
+            double low = 0., high = 1.;
+            bool found = false;
+            SERVER_NAV_POINT clamped{};
+            for (unsigned iteration = 0u; iteration < 40u && (high - low) * length > .001; ++iteration)
+            {
+                const double middle = (low + high) * .5;
+                const float x = static_cast<float>(boss.fPositionX + dx * middle);
+                const float z = static_cast<float>(boss.fPositionZ + dz * middle);
+                SERVER_NAV_POINT candidate{};
+                if (navigation->Has_LineOfSight(boss.fPositionX, boss.fPositionZ, x, z) &&
+                    navigation->Resolve_TraversalStep(boss.fPositionX, boss.fPositionZ, x, z, candidate))
+                { low = middle; clamped = candidate; found = true; }
+                else high = middle;
+            }
+            if (!found || low * length < .001)
+            { state.bChargeStopped = true; outOutput.strStatus = "boss charge stopped at navigation boundary"; continue; }
+            destination = clamped;
+            navigationBlocked = true;
+        }
         bool blocked = false;
         if (collision && !collision->Resolve_CircleMove(boss.fPositionX, boss.fPositionY, boss.fPositionZ,
             destination.x, destination.y, destination.z, boss.fCollisionRadius, boss.fCollisionRadius,
             boss.fCollisionRadius, destination.x, destination.y, destination.z, blocked, boss.iNetEntityId, false))
         { state.bChargeStopped = true; outOutput.strStatus = "boss charge collision resolution failed"; continue; }
-        if (navigation && !navigation->Resolve_TraversalStep(boss.fPositionX, boss.fPositionZ,
-            destination.x, destination.z, destination))
+        if (navigation && (!navigation->Has_LineOfSight(boss.fPositionX, boss.fPositionZ, destination.x, destination.z) ||
+            !navigation->Resolve_TraversalStep(boss.fPositionX, boss.fPositionZ, destination.x, destination.z, destination)))
         { state.bChargeStopped = true; outOutput.strStatus = "boss charge collision destination is not navigable"; continue; }
         boss.fPositionX = destination.x; boss.fPositionY = destination.y; boss.fPositionZ = destination.z;
         boss.fYawDegrees = motion.fYawDegrees;
-        state.bChargeStopped = blocked || Has_ReachedTick(serverTick, state.iEndTick);
-        if (blocked) outOutput.strStatus = "boss charge stopped at collision boundary";
+        state.bChargeStopped = navigationBlocked || blocked || Has_ReachedTick(serverTick, state.iEndTick);
+        if (navigationBlocked) outOutput.strStatus = "boss charge stopped at navigation boundary";
+        else if (blocked) outOutput.strStatus = "boss charge stopped at collision boundary";
     }
 	// Resolve all contacts before any duration timeout, including the final tick.
 	// A group's priority order is fixed at Build; one card consumes one result per strike.
@@ -1791,7 +1825,7 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Update_PlayerModes(
 		case KOUKU_HUD_MODE::DANCE: count = 4u; break;
 		case KOUKU_HUD_MODE::POLYMORPH: count = 3u; break;
 		case KOUKU_HUD_MODE::MARIO: count = 2u; break;
-		case KOUKU_HUD_MODE::MAZE: count = 1u; break;
+		case KOUKU_HUD_MODE::MAZE: count = 2u; break;
 		case KOUKU_HUD_MODE::NONE: break;
 		default: break;
 		}

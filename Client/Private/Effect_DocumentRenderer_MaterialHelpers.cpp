@@ -26,6 +26,97 @@
 namespace EffectDocumentRendererDetail
 {
 
+    const Client::EFFECT_ELEMENT_DESC* Find_StartingCaptureControl(
+        const Client::EFFECT_DOCUMENT_DESC& Document, const std::string& cueId)
+    {
+        // This project adapter belongs to the authored ALT V capture only.
+        // A generic Model Cue must retain its original world-space transform.
+        if (cueId != "altv.source.notify036.cube") return nullptr;
+        const auto row = std::find_if(Document.Elements.begin(), Document.Elements.end(), [&](const auto& element) {
+            return element.bVisible && element.Detail.ScreenPost.bEnabled &&
+                element.Detail.ScreenPost.eProfile == Client::EFFECT_SCREEN_POST_PROFILE::SCENE_CAPTURE_CUBE_V1 &&
+                element.Detail.ScreenPost.strCaptureTargetModelCueId == cueId;
+        });
+        return row == Document.Elements.end() ? nullptr : &*row;
+    }
+
+    Client::EFFECT_TRANSFORM_DESC StartingCaptureEndpointTransform(const Client::EFFECT_DETAIL_DESC& detail)
+    {
+        // The image collapses to this endpoint; the following cube and its bone
+        // effects retain that same endpoint instead of starting another clock.
+        const float duration = detail.Timing.fTransformMotionDurationSeconds > 0.f ?
+            detail.Timing.fTransformMotionDurationSeconds : detail.Timing.fLifeTimeSeconds;
+        const float time = detail.Timing.fTransformMotionDurationSeconds > 0.f ?
+            (std::min)(detail.Timing.fLifeTimeSeconds, duration) : detail.Timing.fLifeTimeSeconds;
+        const float t = duration > 0.f ? std::clamp(time / duration, 0.f, 1.f) : 0.f;
+        const auto lerp = [t](const float3_t& a, const float3_t& b) {
+            return float3_t{a.x+(b.x-a.x)*t,a.y+(b.y-a.y)*t,a.z+(b.z-a.z)*t};
+        };
+        auto result = detail.Transform;
+        const auto& curve = detail.LinearLerp;
+        if (curve.bPosition) result.vPosition = lerp(result.vPosition, curve.vEndPosition);
+        if (curve.bRotation) result.vRotationDegrees = lerp(result.vRotationDegrees, curve.vEndRotationDegrees);
+        if (curve.bScale) result.vScale = lerp(result.vScale, curve.vEndScale);
+        if (curve.bRevolution) result.vRevolutionDegreesPerSecond =
+            lerp(result.vRevolutionDegreesPerSecond, curve.vEndRevolutionDegreesPerSecond);
+        const auto startVelocity = detail.Transform.vVelocityPerSecond;
+        const auto endVelocity = curve.bVelocity ? curve.vEndVelocityPerSecond : startVelocity;
+        result.vPosition.x += startVelocity.x*time + (endVelocity.x-startVelocity.x)*.5f*time*t;
+        result.vPosition.y += startVelocity.y*time + (endVelocity.y-startVelocity.y)*.5f*time*t;
+        result.vPosition.z += startVelocity.z*time + (endVelocity.z-startVelocity.z)*.5f*time*t;
+        result.vRotationDegrees.x += result.vRevolutionDegreesPerSecond.x*time;
+        result.vRotationDegrees.y += result.vRevolutionDegreesPerSecond.y*time;
+        result.vRotationDegrees.z += result.vRevolutionDegreesPerSecond.z*time;
+        return result;
+    }
+
+    bool Build_StartingCaptureRig(const Client::EFFECT_DETAIL_DESC& detail,
+        const float4x4_t& root, const float4x4_t& view, const float4x4_t& projection,
+        const bool includeRoll, float4x4_t& outRig)
+    {
+        const auto finite = [](const float4x4_t& matrix) {
+            for (const auto& row : matrix.m) for (float value : row) if (!std::isfinite(value)) return false;
+            return true;
+        };
+        if (!finite(root) || !finite(view) || !finite(projection) ||
+            projection._11 <= 0.f || projection._22 <= 0.f ||
+            std::abs(projection._34-1.f) > 1e-5f || std::abs(projection._44) > 1e-5f) return false;
+        const auto v = XMLoadFloat4x4(&view);
+        const float determinant = XMVectorGetX(XMMatrixDeterminant(v));
+        if (!std::isfinite(determinant) || std::abs(determinant) < 1e-12f) return false;
+        float3_t pivot;
+        XMStoreFloat3(&pivot, (XMLoadFloat4x4(&root) * v).r[3]);
+        const auto transform = StartingCaptureEndpointTransform(detail);
+        float3_t anchor = pivot;
+        if (!detail.ScreenPost.bCaptureUseModelCenter)
+        {
+            // The recovered notify's world offset remains undecoded. Do not
+            // infer a height from a foot-root. Screen centre is an explicit
+            // project camera-space anchor at the original positive depth.
+            anchor.x = -projection._31 * pivot.z / projection._11;
+            anchor.y = -projection._32 * pivot.z / projection._22;
+        }
+        anchor.x += transform.vPosition.x;
+        anchor.y += transform.vPosition.y;
+        anchor.z += transform.vPosition.z;
+        const float nearPlane = projection._33 != 0.f ? -projection._43/projection._33 : 0.f;
+        if (!std::isfinite(anchor.z) || anchor.z <= (std::max)(nearPlane, 1e-5f)) return false;
+        anchor.x += 2.f*anchor.z*detail.ScreenPost.vCaptureDestinationOffsetUV.x/projection._11;
+        anchor.y -= 2.f*anchor.z*detail.ScreenPost.vCaptureDestinationOffsetUV.y/projection._22;
+        // Bounds are measured before the final screen roll. The 2D post and
+        // source frame apply it once; the actual cube uses the full rig.
+        const float roll = includeRoll ? transform.vRotationDegrees.z + detail.ScreenPost.fCaptureRotationDegrees : 0.f;
+        const auto rig = v * XMMatrixTranslation(-pivot.x,-pivot.y,-pivot.z) *
+            XMMatrixScaling(transform.vScale.x,transform.vScale.y,transform.vScale.z) *
+            XMMatrixRotationRollPitchYaw(XMConvertToRadians(transform.vRotationDegrees.x),
+                XMConvertToRadians(transform.vRotationDegrees.y),-XMConvertToRadians(roll)) *
+            XMMatrixTranslation(anchor.x,anchor.y,anchor.z) * XMMatrixInverse(nullptr,v);
+        float4x4_t candidate; XMStoreFloat4x4(&candidate,rig);
+        if (!finite(candidate)) return false;
+        outRig = candidate;
+        return true;
+    }
+
     bool Requires_StartingSceneCapture(const Client::EFFECT_DOCUMENT_DESC& Document)
     {
         return std::ranges::any_of(Document.Elements, [](const auto& Element) {
@@ -36,6 +127,37 @@ namespace EffectDocumentRendererDetail
         }) || std::ranges::any_of(Document.ModelCues, [](const auto& Cue) {
             return Cue.bVisible && Client::Has_DimensionMasterALTVModelCueMaterialContract(Cue);
         });
+    }
+
+    float4_t StartingCaptureUVTransform(const Client::EFFECT_DOCUMENT_DESC& Document,
+        ID3D11ShaderResourceView* capture)
+    {
+        const auto row = std::find_if(Document.Elements.begin(), Document.Elements.end(), [](const auto& element) {
+            return element.bVisible && element.Detail.ScreenPost.bEnabled &&
+                element.Detail.ScreenPost.eProfile == Client::EFFECT_SCREEN_POST_PROFILE::SCENE_CAPTURE_CUBE_V1 &&
+                element.Detail.ScreenPost.strCaptureTargetModelCueId == "altv.source.notify036.cube";
+        });
+        if (row == Document.Elements.end() || !row->Detail.ScreenPost.bCaptureSquare || !capture)
+            return {1.f, 1.f, 0.f, 0.f};
+        ComPtr<ID3D11Resource> resource; ComPtr<ID3D11Texture2D> texture;
+        capture->GetResource(resource.GetAddressOf());
+        if (!resource || FAILED(resource.As(&texture))) return {1.f, 1.f, 0.f, 0.f};
+        D3D11_TEXTURE2D_DESC desc{}; texture->GetDesc(&desc);
+        if (!desc.Width || !desc.Height) return {1.f, 1.f, 0.f, 0.f};
+        const float aspect = float(desc.Width) / float(desc.Height);
+        const float x = (std::min)(1.f, 1.f / aspect), y = (std::min)(1.f, aspect);
+        return {x, y, .5f * (1.f - x), .5f * (1.f - y)};
+    }
+
+    bool Is_StartingCaptureFrameEmitter(const Client::EFFECT_ELEMENT_DESC& Element)
+    {
+        // Source box-line/edge meshes only; cracks, sparks and other camera rows
+        // retain their source transforms and are not stretched into this frame.
+        return Element.strElementId == "fx_pc_swp_04.par_m_swp_tw_s1_camera_01.particlespriteemitter_17" ||
+            Element.strElementId == "fx_pc_swp_04.par_m_swp_tw_s1_camera_01.particlespriteemitter_12" ||
+            Element.strElementId == "fx_pc_swp_04.par_m_swp_tw_s1_camera_01.particlespriteemitter_58" ||
+            Element.strElementId == "fx_pc_swp_04.par_m_swp_tw_s1_camera_01.particlespriteemitter_61" ||
+            Element.strElementId == "fx_pc_swp_04.par_m_swp_tw_s1_camera_01.particlespriteemitter_62";
     }
 
     bool Is_StartingSceneCaptureCameraEmitter(const Client::EFFECT_ELEMENT_DESC& Element)

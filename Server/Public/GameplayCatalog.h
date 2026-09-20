@@ -105,6 +105,15 @@ namespace LostArk::Server
 		std::vector<PLAYER_PROJECTILE_HIT> Hits;
 	};
 
+	/* One authored window, in action-local milliseconds, during which a running
+	action accepts the next input instead of holding it to the end. The original
+	opens skill and movement separately, so each kind carries its own list. */
+	struct PLAYER_CANCEL_WINDOW final
+	{
+		std::uint32_t iStartMs = 0;
+		std::uint32_t iEndMs = 0;
+	};
+
 	struct PLAYER_COMBO_STAGE final
 	{
 		std::uint32_t iActionDurationMs = 0;
@@ -118,6 +127,8 @@ namespace LostArk::Server
 		std::vector<ROOT_MOTION_SAMPLE> RootMotion;
 		std::vector<PLAYER_SKILL_HIT> Hits;
 		std::vector<PLAYER_SKILL_PROJECTILE> Projectiles;
+		std::vector<PLAYER_CANCEL_WINDOW> SkillCancelWindows;
+		std::vector<PLAYER_CANCEL_WINDOW> MoveCancelWindows;
 	};
 
 	struct PLAYER_SKILL_DEFINITION
@@ -158,6 +169,8 @@ namespace LostArk::Server
 		std::vector<ROOT_MOTION_SAMPLE> RootMotion;
 		std::vector<PLAYER_SKILL_HIT> Hits;
 		std::vector<PLAYER_SKILL_PROJECTILE> Projectiles;
+		std::vector<PLAYER_CANCEL_WINDOW> SkillCancelWindows;
+		std::vector<PLAYER_CANCEL_WINDOW> MoveCancelWindows;
 	};
 
 	/* One authored destructible piece of a boss. iPlateIndex is the authored
@@ -1224,6 +1237,8 @@ namespace LostArk::Server
 		std::vector<BOSS_PATTERN_LOGIC_WINDOW> LogicWindows;
 		bool bResetBossToSpawn = false;
 		bool bFixedTimelineClock = false;
+        // Zero is legacy Stage sum. Independent row tails never delay a Stage.
+        std::uint32_t iTimelineDurationMs = 0u;
 		std::optional<float> ResetBossYawDegrees;
 		std::optional<BOSS_PATTERN_BOSS_MOTION> BossMotion;
 		std::vector<BOSS_PATTERN_MECHANIC_TRIGGER> MechanicTriggers;
@@ -1446,6 +1461,12 @@ namespace LostArk::Server
 			std::uint32_t hitCount,
 			std::uint32_t limitMs,
 			std::vector<PLAYER_SKILL_HIT>& outHits);
+		/* One "startMs:endMs" run in ascending, already merged order. */
+		bool Parse_CancelWindows(
+			std::string_view packed,
+			std::uint32_t windowCount,
+			std::uint32_t limitMs,
+			std::vector<PLAYER_CANCEL_WINDOW>& outWindows);
 		/* One "areaType:range:angle:width:height:offset:inner:maxTargets:pushMs:
 		pushRange" run, shared by caster hits and projectile hits. */
 		bool Parse_HitShapeExtent(
@@ -1494,4 +1515,41 @@ namespace LostArk::Server
 		std::string m_NonKoukuBootstrapRows;
 		std::string m_strStatus;
 	};
+
+	/* A running action normally holds every other input to its end. Inside an
+	authored window it releases that hold, so the next skill or move goal starts
+	where the original lets it instead of after the recovery pose. A staged skill
+	answers on the stage clock, which the stage advance already reset. */
+	inline bool Is_InsideCancelWindow(
+		const PLAYER_SKILL_DEFINITION& running,
+		const std::uint32_t comboStage,
+		const float actionElapsedSeconds,
+		const bool forMovement)
+	{
+		const std::size_t stageIndex =
+			0u == comboStage ? 0u : comboStage - 1u;
+		const bool hasStage =
+			(LostArk::Shared::PLAYER_SKILL_KIND::COMBO == running.eSkillKind ||
+				LostArk::Shared::PLAYER_SKILL_KIND::HOLD == running.eSkillKind ||
+				LostArk::Shared::PLAYER_SKILL_KIND::COUNTER == running.eSkillKind) &&
+			stageIndex < running.ComboStages.size();
+		const std::vector<PLAYER_CANCEL_WINDOW>& windows = hasStage ?
+			(forMovement ? running.ComboStages[stageIndex].MoveCancelWindows :
+				running.ComboStages[stageIndex].SkillCancelWindows) :
+			(forMovement ? running.MoveCancelWindows :
+				running.SkillCancelWindows);
+		if (windows.empty() || !(actionElapsedSeconds >= 0.f))
+			return false;
+		const double elapsedMs =
+			static_cast<double>(actionElapsedSeconds) * 1000.0;
+		for (const PLAYER_CANCEL_WINDOW& window : windows)
+		{
+			if (elapsedMs >= static_cast<double>(window.iStartMs) &&
+				elapsedMs < static_cast<double>(window.iEndMs))
+			{
+				return true;
+			}
+		}
+		return false;
+	}
 }

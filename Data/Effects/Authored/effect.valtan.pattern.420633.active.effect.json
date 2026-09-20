@@ -7834,7 +7834,7 @@
       },
       "sourceRecipe": {
         "enabled": false,
-        "rendererShape": "sprite",
+        "rendererShape": "animationTrail",
         "emitterDelaySeconds": 0.0,
         "emitterDurationSeconds": 5.0,
         "emitterLoopCount": 1,
@@ -9021,7 +9021,7 @@
       },
       "sourceRecipe": {
         "enabled": false,
-        "rendererShape": "sprite",
+        "rendererShape": "animationTrail",
         "emitterDelaySeconds": 0.0,
         "emitterDurationSeconds": 5.0,
         "emitterLoopCount": 1,
@@ -9982,7 +9982,7 @@
       },
       "sourceRecipe": {
         "enabled": false,
-        "rendererShape": "sprite",
+        "rendererShape": "animationTrail",
         "emitterDelaySeconds": 0.0,
         "emitterDurationSeconds": 0.0,
         "emitterLoopCount": 1,

@@ -275,7 +275,9 @@ def read_wmodel(
     vertex_count = mesh_header[5]
     index_count = mesh_header[6]
     index_stride = mesh_header[7]
-    require(vertex_stride == 76 and index_stride in (2, 4),
+    mesh_minor = FILE_HEADER.unpack_from(data, mesh_offset)[2]
+    require(vertex_stride == (80 if mesh_minor == 5 else 76)
+            and mesh_minor in (0, 3, 5) and index_stride in (2, 4),
             "WMSH skinned vertex contract is invalid")
     offset += MESH_HEADER.size
     require(offset + submesh_count * SUBMESH_DESC.size <= mesh_end,
@@ -426,7 +428,7 @@ def sample_vector(
         return keys[0][1:4]
     if time >= keys[-1][0]:
         return keys[-1][1:4]
-    right = bisect.bisect_right([key[0] for key in keys], time)
+    right = bisect.bisect_right(keys, time, key=lambda row: row[0])
     left_key, right_key = keys[right - 1], keys[right]
     ratio = (time - left_key[0]) / (right_key[0] - left_key[0])
     return tuple(
@@ -444,7 +446,7 @@ def sample_quaternion(
         return keys[0][1:5]
     if time >= keys[-1][0]:
         return keys[-1][1:5]
-    right = bisect.bisect_right([key[0] for key in keys], time)
+    right = bisect.bisect_right(keys, time, key=lambda row: row[0])
     left_key, right_key = keys[right - 1], keys[right]
     ratio = (time - left_key[0]) / (right_key[0] - left_key[0])
     left = list(left_key[1:5])

@@ -905,22 +905,43 @@ bool_t Client::CEffectDocumentCodec::Validate(
 					Is_Finite(D.Light.vAmbient) &&
 					std::isfinite(D.Light.fFalloffExponent) &&
 					D.Light.fFalloffExponent > 0.f));
-        const bool_t bCaptureProfile = D.ScreenPost.eProfile == EFFECT_SCREEN_POST_PROFILE::SCENE_COLLAPSE_CAPTURE_V1 ||
-            D.ScreenPost.eProfile == EFFECT_SCREEN_POST_PROFILE::SCENE_CAPTURE_CUBE_V1;
+        const bool_t bCaptureProfile = D.ScreenPost.bEnabled &&
+            (D.ScreenPost.eProfile == EFFECT_SCREEN_POST_PROFILE::SCENE_COLLAPSE_CAPTURE_V1 ||
+             D.ScreenPost.eProfile == EFFECT_SCREEN_POST_PROFILE::SCENE_CAPTURE_CUBE_V1);
         if (!std::isfinite(D.ScreenPost.fCaptureShrinkSeconds) || D.ScreenPost.fCaptureShrinkSeconds < 0.f ||
             D.ScreenPost.fCaptureShrinkSeconds > D.Timing.fLifeTimeSeconds ||
             (!bCaptureProfile && D.ScreenPost.fCaptureShrinkSeconds != 0.f))
         { strOutError = "Screen capture shrink duration must fit its enabled capture window."; return false; }
+        const auto& Capture = D.ScreenPost;
+        const auto& EdgeSpeed = Capture.vCaptureEdgeSpeed;
+        const auto& DestinationOffset = Capture.vCaptureDestinationOffsetUV;
+        const bool_t bCaptureTuningDefault =
+            EdgeSpeed.x == 1.f && EdgeSpeed.y == 1.f && EdgeSpeed.z == 1.f && EdgeSpeed.w == 1.f &&
+            DestinationOffset.x == 0.f && DestinationOffset.y == 0.f &&
+            Capture.fCaptureRotationDegrees == 0.f && !Capture.bCaptureSquare &&
+            Capture.fCaptureBackgroundDim == 0.f && !Capture.bCaptureUseModelCenter;
+        if (!Is_Finite(EdgeSpeed) ||
+            EdgeSpeed.x < .05f || EdgeSpeed.x > 20.f || EdgeSpeed.y < .05f || EdgeSpeed.y > 20.f ||
+            EdgeSpeed.z < .05f || EdgeSpeed.z > 20.f || EdgeSpeed.w < .05f || EdgeSpeed.w > 20.f ||
+            !Is_Finite(DestinationOffset) ||
+            DestinationOffset.x < -1.f || DestinationOffset.x > 1.f ||
+            DestinationOffset.y < -1.f || DestinationOffset.y > 1.f ||
+            !std::isfinite(Capture.fCaptureRotationDegrees) ||
+            Capture.fCaptureRotationDegrees < -180.f || Capture.fCaptureRotationDegrees > 180.f ||
+            !std::isfinite(Capture.fCaptureBackgroundDim) ||
+            Capture.fCaptureBackgroundDim < 0.f || Capture.fCaptureBackgroundDim > 1.f ||
+            (!bCaptureProfile && !bCaptureTuningDefault))
+        { strOutError = "Screen capture tuning is invalid or belongs to a disabled/non-capture profile."; return false; }
 		const auto& CaptureTarget = D.ScreenPost.strCaptureTargetModelCueId;
 		const bool_t bCubeCapture = D.ScreenPost.bEnabled &&
 			D.ScreenPost.eProfile == EFFECT_SCREEN_POST_PROFILE::SCENE_CAPTURE_CUBE_V1;
+        if (!bCubeCapture && (Capture.bCaptureUseModelCenter || Capture.fCaptureBackgroundDim != 0.f))
+        { strOutError = "Only the screen cube capture profile accepts model center or outside dimming."; return false; }
 		if (bCubeCapture)
 		{
 			const auto Cue = std::find_if(Document.ModelCues.begin(), Document.ModelCues.end(),
 				[&](const auto& Value) { return Value.strCueId == CaptureTarget && Value.bVisible; });
-			if ((D.ScreenPost.fCaptureShrinkSeconds != 0.f &&
-                D.ScreenPost.fCaptureShrinkSeconds != D.Timing.fLifeTimeSeconds) ||
-                CaptureTarget.empty() || Cue == Document.ModelCues.end() ||
+			if (CaptureTarget.empty() || Cue == Document.ModelCues.end() ||
 				std::abs(D.Timing.fStartDelaySeconds + D.Timing.fLifeTimeSeconds - Cue->fStartDelaySeconds) > 1.e-4f)
 			{ strOutError = "Screen cube capture must end at its visible ModelCue's first pose: " + Element.strElementId; return false; }
 		}

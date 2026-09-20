@@ -21,8 +21,15 @@ struct SCENE_ENVIRONMENT_REGION final
     HEIGHT_FOG_SETTINGS Fog{};
     float4_t vDirectionalColor{};
     float4_t vAmbientColor{};
+    bool_t bHasSourceCharacterAmbient = false;
+    float4_t vSourceCharacterAmbient{};
+    bool_t bHasSpecularColor = false;
+    float4_t vSpecularColor{};
     f32_t fBlendTimeIn = 1.f, fBlendTimeOut = 1.f;
     f32_t fPriority = 0.f;
+    // Optional full regional quality keeps an independently authored area stable.
+    bool_t bHasQualityOverride = false;
+    RENDER_QUALITY_SETTINGS QualityOverride{};
     bool_t bHasPostProcess = false;
     f32_t fBloomThreshold = 1.f, fBloomIntensity = 0.8f;
     float4_t vBloomTint{ 1.f, 1.f, 1.f, 1.f };
@@ -65,7 +72,9 @@ public:
 
 public:
 	bool_t Load_Runtime(string& strOutStatus);
-    bool_t Apply_CameraEnvironment(f32_t deltaSeconds, string& status);
+    // Transient presentation inputs are applied after camera regions and never saved.
+    bool_t Apply_CameraEnvironment(f32_t deltaSeconds, string& status,
+        bool_t suppressFog = false, const LIGHT_DESC* directionalOverride = nullptr);
 	bool_t Reload_Runtime(string& strOutStatus);
 	bool_t Has_Profile(string_view strProfileId) const;
 	std::vector<std::string> Collect_ProfileIds() const
@@ -91,6 +100,7 @@ public:
 	bool_t Delete_Profile(string_view id, string& status);
 	void Protect_ProfileIds(const vector<string>& ids);
 	const string& Get_LevelQualityProfileId() const { return m_strLevelQualityProfileId; }
+	const string& Get_AppliedEnvironmentRegionId() const noexcept { return m_strAppliedEnvironmentRegion; }
 	const string& Get_ActiveProfileId() const
 	{
 		return m_strActiveProfileId;
@@ -117,6 +127,12 @@ private:
 	};
 
 private:
+    bool_t Apply_CameraRegionEnvironment(f32_t deltaSeconds, string& status);
+    bool_t Restore_PresentationEnvironment(string& status);
+    bool_t m_bPresentationFogOverride = false;
+    bool_t m_bPresentationLightOverride = false;
+    HEIGHT_FOG_SETTINGS m_PresentationBaseFog{};
+    LIGHT_DESC m_PresentationBaseLight{};
 	static bool_t Parse_Catalog(
 		const filesystem::path& Path,
 		CATALOG& OutCatalog,

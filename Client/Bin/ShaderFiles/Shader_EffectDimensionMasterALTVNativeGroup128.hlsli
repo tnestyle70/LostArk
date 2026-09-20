@@ -10450,7 +10450,12 @@ float4 ALTVNative178(ALTV_NATIVE_INPUT input)
     float4 v3 = float4(0.f,0.f,0.f,0.f); // native color1
     float4 v4 = float4(input.uv,0.f,0.f); // native texcoord0
     float4 v5 = float4(input.tangentView,1.f); // native texcoord6
-    float4 v6 = float4(input.uv.x*360.f,(1.f-input.uv.y)*360.f,0.f,1.f); // native texcoord5
+    // PROJECT_TUNED camera adapter: the installed cube has normalized face UVs.
+    // Source capture_centeruvtile=1.15 and U/V offsets=.5 already center the view.
+    // Rebase the synthetic world coordinate once, before the unchanged native ops.
+    // This is not a recovered UE capture-camera constant buffer.
+    float4 v6 = float4((input.uv.x-.5f)*360.f/1.15f,
+        (1.5f-input.uv.y)*360.f/1.15f,0.f,1.f); // native texcoord5
     float4 v7 = asfloat(uint4(0xffffffffu,0u,0u,0u)); // native sv_isfrontface0
     float4 r0=0.f, r1=0.f, r2=0.f, r3=0.f, r4=0.f;
     // 1: add r0.x, cb0[17].x, l(-0.333300)

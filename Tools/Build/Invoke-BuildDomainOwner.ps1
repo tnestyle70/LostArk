@@ -133,8 +133,12 @@ function Get-KoukuPublishTransactionPaths {
 
 # Every domain-owner invocation shares this lock so Client/Server publication
 # cannot replace a file while the Kouku pattern/world/balance transaction is rolling back.
+$ownerTimer = [Diagnostics.Stopwatch]::StartNew()
+Write-Host "Runtime publish ${Owner}: waiting for owner lock"
 $ownerLock = Enter-BuildExclusiveLock (Join-Path $receiptRoot 'locks\runtime-owner.lock') `
     $LockTimeoutMilliseconds 'runtime domain owner'
+Write-Host "Runtime publish ${Owner}: owner lock acquired after $($ownerTimer.ElapsedMilliseconds) ms"
+$ownerState = 'FAIL'
 $backups = @{}
 $transactionId = [Guid]::NewGuid().ToString('N')
 $backupDirectory = Join-Path $receiptRoot "transactions\kouku-$transactionId"
@@ -154,14 +158,16 @@ try {
     }
     try {
         foreach ($domainId in $domainIds) {
+            Write-Host "Build domain $domainId for ${Owner}: START (total $($ownerTimer.ElapsedMilliseconds) ms)"
             Assert-KoukuSaydonSourceRevision "domain $domainId start"
             $domain = Get-OwnerBuildDomain $domainId
             $result = Invoke-BuildDomain $repositoryRoot $domain $ResourceRoot `
                 $receiptRoot -LockTimeoutMilliseconds $LockTimeoutMilliseconds
             $state = if ($result.reused) { 'REUSED' } else { 'PASS' }
-            Write-Host "Build domain $domainId for ${Owner}: $state"
+            Write-Host "Build domain $domainId for ${Owner}: $state in $($result.elapsedMs) ms"
             Assert-KoukuSaydonSourceRevision "domain $domainId completion"
         }
+        $ownerState = 'PASS'
     }
     catch {
         $publishError = $_
@@ -213,5 +219,9 @@ finally {
         }
     }
     catch { Write-Warning "Publish transaction backup cleanup failed in ${backupDirectory}: $($_.Exception.Message)" }
-    finally { $ownerLock.Dispose() }
+    finally {
+        $ownerLock.Dispose()
+        $ownerTimer.Stop()
+        Write-Host "Runtime publish ${Owner}: $ownerState in $($ownerTimer.ElapsedMilliseconds) ms"
+    }
 }

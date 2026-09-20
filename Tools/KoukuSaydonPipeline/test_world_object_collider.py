@@ -1,5 +1,7 @@
 import copy
+from types import SimpleNamespace
 import unittest
+from unittest.mock import patch
 
 from Tools.KoukuSaydonPipeline import world_object_collider as subject
 
@@ -123,6 +125,46 @@ class ObjectColliderTests(unittest.TestCase):
         for key in s["tracks"][0]["keys"]:key["rotationQuaternion"]=subject.rotation([0,90,0])
         grip=self.bake(f)[0]["region"]["worldTrack"]["keys"][0]["gripPosition"]
         self.assertAlmostEqual(grip[0],10);self.assertAlmostEqual(grip[2],-1)
+
+    def test_hook_model_selection_is_reused_only_within_one_bake(self):
+        fixture = self.fixture("HOOK_CAPTURE")
+        fixture[0]["templates"][0]["colliderTracks"][0]["attachmentBone"] = "b_tip"
+        model = SimpleNamespace(skeleton_bones=[SimpleNamespace(name="b_tip", parent=-1,
+            transform=subject.matrix(position=(0, 0, 100)))], animations=[])
+        calls = []
+        def load(asset, clips):
+            calls.append((asset, tuple(clips)))
+            return model
+        first = subject.bake_windows(*fixture, load)
+        self.assertEqual([("unused.wmodel", ())], calls)
+        self.assertEqual([10, 0, 1], first[0]["region"]["worldTrack"]["keys"][0]["gripPosition"])
+        self.assertEqual(first, subject.bake_windows(*fixture, load))
+        self.assertEqual(2, len(calls))
+        model.skeleton_bones[0].name = "missing"
+        with self.assertRaisesRegex(subject.ColliderBakeError, "absent or ambiguous"):
+            subject.bake_windows(*fixture, load)
+
+    def test_shared_snapshot_reuses_poses_without_aliasing_other_sequences(self):
+        fixture = self.fixture("HOOK_CAPTURE")
+        fixture[0]["templates"][0]["colliderTracks"][0]["attachmentBone"] = "b_tip"
+        model = SimpleNamespace(skeleton_bones=[SimpleNamespace(name="b_tip", parent=-1,
+            transform=subject.matrix(position=(0, 0, 100)))], animations=[])
+        calls = []
+        def load(asset, clips):
+            calls.append((asset, tuple(clips)))
+            return model
+        cache = {}
+        with patch.object(subject.wm, "combined_transforms", wraps=subject.wm.combined_transforms) as poses:
+            first = subject.bake_windows(*fixture, load, sampling_cache=cache)
+            count = poses.call_count
+            self.assertGreater(count, 0)
+            self.assertEqual(first, subject.bake_windows(*fixture, load, sampling_cache=cache))
+            self.assertEqual(count, poses.call_count)
+            other = copy.deepcopy(fixture)
+            self.assertEqual(first, subject.bake_windows(*other, load, sampling_cache=cache))
+            self.assertGreater(poses.call_count, count)
+            self.assertEqual(1, len(calls))
+            self.assertIs(fixture[0], cache["sequences"][id(fixture[0])])
 
 
 if __name__=="__main__":unittest.main()

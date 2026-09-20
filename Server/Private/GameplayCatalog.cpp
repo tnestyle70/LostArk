@@ -1176,6 +1176,48 @@ bool LostArk::Server::CGameplayCatalog::Parse_SkillHits(
 	return true;
 }
 
+bool LostArk::Server::CGameplayCatalog::Parse_CancelWindows(
+	const std::string_view packed,
+	const std::uint32_t windowCount,
+	const std::uint32_t limitMs,
+	std::vector<PLAYER_CANCEL_WINDOW>& outWindows)
+{
+	outWindows.clear();
+	outWindows.reserve(windowCount);
+	std::size_t cursor = 0;
+	while (cursor <= packed.size())
+	{
+		const std::size_t comma = packed.find(',', cursor);
+		const std::string_view token{
+			packed.data() + cursor,
+			(std::string::npos == comma ? packed.size() : comma) - cursor };
+		const std::size_t colon = token.find(':');
+		PLAYER_CANCEL_WINDOW window{};
+		if (std::string_view::npos == colon ||
+			!ParseNumber(token.substr(0, colon), window.iStartMs) ||
+			!ParseNumber(token.substr(colon + 1), window.iEndMs) ||
+			window.iEndMs <= window.iStartMs ||
+			window.iEndMs > limitMs ||
+			/* The publisher merges overlaps, so a window that does not start
+			after the previous one ends means the row was hand-edited. */
+			(!outWindows.empty() && window.iStartMs <= outWindows.back().iEndMs))
+		{
+			m_strStatus = "Skill cancel window is invalid";
+			return false;
+		}
+		outWindows.push_back(window);
+		if (std::string::npos == comma)
+			break;
+		cursor = comma + 1;
+	}
+	if (outWindows.size() != windowCount)
+	{
+		m_strStatus = "Skill cancel window count does not match";
+		return false;
+	}
+	return true;
+}
+
 bool LostArk::Server::CGameplayCatalog::Parse_HitShapeExtent(
 	const std::string_view* fields,
 	PLAYER_SKILL_HIT& hit)
@@ -1975,6 +2017,79 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 				return false;
 			}
 			stage.RootMotion = std::move(samples);
+		}
+		else if (!fields.empty() && "SKILLCANCEL" == fields[0])
+		{
+			LostArk::Shared::SKILL_ID ownerSkillId =
+				LostArk::Shared::INVALID_SKILL_ID;
+			std::uint32_t windowCount = 0;
+			if (5u != fields.size() ||
+				!ParseNumber(fields[1], ownerSkillId) ||
+				("SKILL" != fields[2] && "MOVE" != fields[2]) ||
+				!ParseNumber(fields[3], windowCount) ||
+				windowCount < 1u || windowCount > 8u)
+			{
+				m_strStatus = "Skill cancel row is invalid";
+				return false;
+			}
+			const auto owner = m_Skills.find(ownerSkillId);
+			if (owner == m_Skills.end())
+			{
+				m_strStatus = "Skill cancel row does not follow its skill";
+				return false;
+			}
+			const bool isSkillKind = "SKILL" == fields[2];
+			std::vector<PLAYER_CANCEL_WINDOW>& windows = isSkillKind ?
+				owner->second.SkillCancelWindows :
+				owner->second.MoveCancelWindows;
+			if (!windows.empty())
+			{
+				m_strStatus = "Skill cancel row is duplicated";
+				return false;
+			}
+			if (!Parse_CancelWindows(
+				fields[4], windowCount, owner->second.iActionDurationMs, windows))
+			{
+				return false;
+			}
+		}
+		else if (!fields.empty() && "SKILLSTAGECANCEL" == fields[0])
+		{
+			LostArk::Shared::SKILL_ID ownerSkillId =
+				LostArk::Shared::INVALID_SKILL_ID;
+			std::uint32_t stageIndex = 0;
+			std::uint32_t windowCount = 0;
+			if (6u != fields.size() ||
+				!ParseNumber(fields[1], ownerSkillId) ||
+				!ParseNumber(fields[2], stageIndex) ||
+				("SKILL" != fields[3] && "MOVE" != fields[3]) ||
+				!ParseNumber(fields[4], windowCount) ||
+				windowCount < 1u || windowCount > 8u)
+			{
+				m_strStatus = "Skill stage cancel row is invalid";
+				return false;
+			}
+			const auto owner = m_Skills.find(ownerSkillId);
+			if (owner == m_Skills.end() ||
+				stageIndex >= owner->second.ComboStages.size())
+			{
+				m_strStatus = "Skill stage cancel row does not follow its skill";
+				return false;
+			}
+			PLAYER_COMBO_STAGE& stage = owner->second.ComboStages[stageIndex];
+			const bool isSkillKind = "SKILL" == fields[3];
+			std::vector<PLAYER_CANCEL_WINDOW>& windows = isSkillKind ?
+				stage.SkillCancelWindows : stage.MoveCancelWindows;
+			if (!windows.empty())
+			{
+				m_strStatus = "Skill stage cancel row is duplicated";
+				return false;
+			}
+			if (!Parse_CancelWindows(
+				fields[5], windowCount, stage.iActionDurationMs, windows))
+			{
+				return false;
+			}
 		}
 		else if (!fields.empty() && "SKILLHIT" == fields[0])
 		{
@@ -3456,6 +3571,21 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			spawn.strSpawnId = std::string(fields[4]); spawn.strPatternId = std::string(fields[5]);
 			trigger->PatternSpawns.push_back(std::move(spawn));
 		}
+		else if (!fields.empty() && "PATTERNTIMELINE" == fields[0])
+        {
+            std::uint32_t lifetime = 0u;
+            if (fields.size() != 4u || fields[1] != "ENCOUNTER_KAKULSAYDON_G1" || !IsStableId(fields[2]) ||
+                !ParseNumber(fields[3], lifetime) || lifetime == 0u || lifetime > 600000u)
+            { m_strStatus = "Kouku row timeline lifetime is invalid"; return false; }
+            const auto owners = m_BossPatterns.find(std::string(fields[1]));
+            if (owners == m_BossPatterns.end())
+            { m_strStatus = "Kouku row timeline encounter is missing"; return false; }
+            const auto owner = std::find_if(owners->second.begin(), owners->second.end(),
+                [&](const auto& value) { return value.strPatternId == fields[2]; });
+            if (owner == owners->second.end() || owner->iTimelineDurationMs)
+            { m_strStatus = "Kouku row timeline owner is missing or duplicated"; return false; }
+            owner->iTimelineDurationMs = lifetime;
+        }
 		else if (!fields.empty() && "PATTERNFIXEDTIMELINE" == fields[0])
 		{
 			if (fields.size() != 3u || !IsStableId(fields[1]) || !IsStableId(fields[2]))
@@ -5839,6 +5969,9 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 		std::unordered_set<std::uint64_t> healthMechanicOrderKeys;
 		for (const BOSS_PATTERN_DEFINITION& pattern : foundPatterns->second)
 		{
+            if (pattern.iTimelineDurationMs && (!isKoukuSaydonGateOne ||
+                !CKoukuSaydonBrain::Validate_AnimationOnlyPattern(pattern, m_strStatus)))
+            { if (m_strStatus.empty()) m_strStatus = "Independent row lifetime requires a valid Kouku pattern"; return false; }
 			const bool hasAirborne = std::any_of(pattern.MechanicTriggers.begin(), pattern.MechanicTriggers.end(),
 				[](const auto& trigger) { return trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::ALBION_AIRBORNE ||
                     trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::PURSUIT_PROJECTILES; });
@@ -6470,7 +6603,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 							3u == action.Volley.iCountPerResolvedTarget &&
 							BOSS_COMBAT_OBJECT_LAYOUT_KIND::RADIAL ==
 								action.Volley.eLayout &&
-							std::fabs(action.Volley.fRadiusM - 9.f) < 0.0001f &&
+							std::fabs(action.Volley.fRadiusM - 13.5f) < 0.0001f &&
 							30.f == action.Volley.fStartAngleDegrees &&
 							120.f == action.Volley.fAngleStepDegrees &&
 							!action.Volley.bAllowOverlap &&
@@ -6479,10 +6612,10 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 							0u == action.Volley.iFirstSpawnOffsetMs &&
 							0u == action.Volley.iSpawnIntervalMs &&
 							0u == action.Volley.iArenaRandomCount &&
-							std::fabs(combatObject->second.fSpeedMps - 11.9911209755f) <
+							std::fabs(combatObject->second.fSpeedMps - 17.9866814632f) <
 								0.0001f &&
 							std::fabs(combatObject->second.fMaximumDistanceM -
-								15.5884572681f) < 0.0001f &&
+								23.3826859022f) < 0.0001f &&
 							300u == combatObject->second.iMovementStartDelayMs &&
 							!combatObject->second.bExpireOnDistanceEnd &&
 							1900u == combatObject->second.iLifeMs)

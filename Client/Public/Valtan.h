@@ -273,6 +273,9 @@ public:
 	   socketed weapon consumes: Valtan body local (-90 degree source-axis
 	   correction) composed with the owning actor world transform. */
 	bool_t Try_Get_PresentationRootMatrix(float4x4_t* pOut) const;
+	// Authoring clones may select the same complete phase presentation as the Server.
+	bool_t Set_LocalPreviewGhostPresentation(bool_t ghost, std::string& status);
+	void Set_CinematicPresentationSuppressed(bool_t suppressed);
 	/* Warp portal bindings use Server-locked virtual anchors instead of the
 	current interpolated body root, which may already be mid-rush when a
 	coalesced Stage snapshot is first applied. */
@@ -428,6 +431,7 @@ private:
 	/* The Server keeps this primary boss alive and damage-authoritative while
 	one phase-three relocation snapshot suppresses only its part render queues. */
 	bool_t m_isGhostPresentationHidden = false;
+	bool_t m_isCinematicPresentationSuppressed = false;
 	/* Presentation-only window projected from the authored Stage. Unlike the
 	   replicated relocation flag, this hides part render submission while
 	   keeping the Stage's Effect clocks alive. */

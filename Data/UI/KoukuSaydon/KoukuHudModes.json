@@ -98,7 +98,13 @@
         {
           "skillId": 56411,
           "displayName": "뿅망치 내려치기",
-          "cooldownMs": 3000,
+          "cooldownMs": 400,
+          "iconPath": "UI/KoukuSaydon/Hud/skill_maze_q.png"
+        },
+        {
+          "skillId": 0,
+          "displayName": "LMB 뿅망치 휘두르기",
+          "cooldownMs": 400,
           "iconPath": "UI/KoukuSaydon/Hud/skill_maze_q.png"
         }
       ]

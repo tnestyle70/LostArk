@@ -384,6 +384,21 @@ for ordinal, selection in enumerate(selections):
             # actor/world-position prefix and tangent-space sky at rows 25..27.
             '9ae9112a9f0431448e28da5cf85ef088': ('239396ffe9f57b47a19ee2955207d2e8', 25, 'actor', [0, 1, 2, 25, 26, 27]),
         }.get(sid) if arguments.profile_domain=='kouku' and not model else None
+        # Valtan phase-two dust uses the same source tangent-up/sky carrier
+        # with dynamic-parameter and sub-UV sprite VS permutations. Their
+        # o7 is (tangentX.z,tangentY.z,normal.z), o4 is the dynamic parameter,
+        # and o8 is clip position; qualify the complete VS/PS pair so the
+        # existing LocalVF use of 21310... remains unchanged.
+        if arguments.profile_domain == 'kouku' and not model:
+            source_pair = (sid, selection['sourceVS'])
+            kouku_lit = {
+                ('21310dd53f047b4c9c6d215723e659ae', 'cf097fb30a0d434facb4ded0faee0083'):
+                    ('cf097fb30a0d434facb4ded0faee0083', 7, 'opacity', [0, 7, 8, 9]),
+                ('9e4781052a66534b9646434db8d482db', 'ea196d5080bed8449612de3b1bfc28c3'):
+                    ('ea196d5080bed8449612de3b1bfc28c3', 3, 'opacity', [0, 3, 4, 5]),
+                ('e386f4f096d15843a75f1c661c5d9d9d', 'cf097fb30a0d434facb4ded0faee0083'):
+                    ('cf097fb30a0d434facb4ded0faee0083', 7, 'opacity', [0, 7, 8, 9]),
+            }.get(source_pair, kouku_lit)
         if kouku_lit:
             assert selection['sourceVS'] == kouku_lit[0], ('Kouku lit vertex shader mismatch', selection['sourceVS'], kouku_lit[0])
             assert bindings['constantBufferClosure']['unownedConstantBuffer0Slots'] == kouku_lit[3], ('Kouku lit engine rows mismatch', bindings['constantBufferClosure']['unownedConstantBuffer0Slots'], kouku_lit[3])
@@ -411,6 +426,10 @@ for ordinal, selection in enumerate(selections):
             '0dce6ac02eeca942b3fa542f1b46a2f7': ('5d79421dc8571c45aa49790f50274f51', 15, [0, 1, 2, 13, 14, 15, 16, 17]),
             '26fddc3c63c71642b5dbb20d55a3e61c': ('772e94581a5e6548b9529bc7cc103bca', None, [0, 1, 2]),
             'db50bb574893fd46bb16839799006a50': ('772e94581a5e6548b9529bc7cc103bca', None, [0, 1, 2]),
+            # Valtan entrance cast-end: original LocalDecal projection/opacity
+            # prefix, with the same tangent-up sky expression at rows 12..14.
+            # Rows 10/11 are declared engine suffix padding, unused by this PS.
+            'b6cb82f89e22c24ebcdfdca8be587e9c': ('5d79421dc8571c45aa49790f50274f51', 12, [0, 1, 2, 10, 11, 12, 13, 14]),
         }.get(sid) if decal else None
         if kouku_decal:
             assert selection['sourceVS'] == kouku_decal[0]

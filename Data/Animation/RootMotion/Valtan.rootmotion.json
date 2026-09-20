@@ -13760,7 +13760,7 @@
           "stageIndex": 5,
           "stageId": "RECOVERY",
           "clip": "mesh_evt1_att_battle_5_01_end",
-          "durationMs": 870,
+          "durationMs": 2700,
           "samples": [
             {
               "timeMs": 0,
@@ -13926,6 +13926,12 @@
             },
             {
               "timeMs": 870,
+              "forward": 0.2986,
+              "lateral": 0.0,
+              "up": 0.0
+            },
+            {
+              "timeMs": 2700,
               "forward": 0.2986,
               "lateral": 0.0,
               "up": 0.0
@@ -27339,7 +27345,7 @@
           "stageIndex": 5,
           "stageId": "STEP_06",
           "clip": "mesh_att_battle_13_02-1",
-          "durationMs": 4100,
+          "durationMs": 5707,
           "samples": [
             {
               "timeMs": 0,
@@ -28093,6 +28099,12 @@
             },
             {
               "timeMs": 4100,
+              "forward": -0.4608,
+              "lateral": -0.0,
+              "up": 0.0
+            },
+            {
+              "timeMs": 5707,
               "forward": -0.4608,
               "lateral": -0.0,
               "up": 0.0
@@ -39972,7 +39984,7 @@
           "stageIndex": 0,
           "stageId": "STEP_01",
           "clip": "mesh_dead_1",
-          "durationMs": 3667,
+          "durationMs": 23000,
           "samples": [
             {
               "timeMs": 0,
@@ -40648,6 +40660,12 @@
             },
             {
               "timeMs": 3667,
+              "forward": 0.259,
+              "lateral": 0.0,
+              "up": 0.0
+            },
+            {
+              "timeMs": 23000,
               "forward": 0.259,
               "lateral": 0.0,
               "up": 0.0

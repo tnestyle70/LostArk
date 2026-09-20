@@ -252,6 +252,7 @@
         "Server/Bin/DataFiles/World/BERN.worldbootstrap",
         "Server/Bin/DataFiles/World/CHARACTER_SELECT_ARENA.worldbootstrap",
         "Server/Bin/DataFiles/World/KAKULSAYDON_ARENA.worldbootstrap",
+        "Server/Bin/DataFiles/World/MAHARAKA.worldbootstrap",
         "Server/Bin/DataFiles/World/TRAINING_GROUND.worldbootstrap",
         "Server/Bin/DataFiles/World/VALTAN_ARENA.worldbootstrap",
         "Client/Bin/DataFiles/World/KAKULSAYDON_ARENA.stagemarkers.json"
@@ -286,8 +287,12 @@
         "Client/Bin/DataFiles/Navigation/*.navregions"
       ],
       "requiredOutputPatterns": [
+        "Server/Bin/DataFiles/Navigation/LV_BER_BERNCASTLE.navgrid",
+        "Server/Bin/DataFiles/Navigation/LV_DEV_TRAINING_GROUND.navgrid",
+        "Server/Bin/DataFiles/Navigation/LV_LOBBY_CLASSSELECT_SL00.navgrid",
         "Server/Bin/DataFiles/Navigation/LV_LUT_HEARTRB_ED.navgrid",
         "Server/Bin/DataFiles/Navigation/LV_LUT_MIDNIGHTC_ED.navgrid",
+        "Server/Bin/DataFiles/Navigation/LV_OCN_EVENTIS_MHP.navgrid",
         "Client/Bin/DataFiles/Navigation/LV_LUT_HEARTRB_ED.navgrid",
         "Client/Bin/DataFiles/Navigation/LV_LUT_MIDNIGHTC_ED.navgrid"
       ],

@@ -95,6 +95,26 @@ int LostArk::Server::Run_ServerCardMazeContractTests()
 			findBox()->strArchetypeId == Maze::CLOWN_BOX_ARCHETYPE_ID &&
 			findBox()->strSpawnGroupId == Maze::CLOWN_BOX_SPAWN_GROUP_TAG,
 			"Clown box rises on the telescope one second after maze entry");
+		tests.Require(entrant.ModeSkillIndexBySlot[0] == 0 && entrant.ModeSkillIndexBySlot[1] == 1,
+			"MAZE exposes Q and LMB on existing Q/W wire slots");
+		const auto hpBeforeLmb = findBox()->iCurrentHp;
+		room->m_iServerTick = tick;
+		press.iRequestSequence = 2u; press.eSlot = INTERACTION_SLOT::W;
+		room->Handle_InteractionSlot(11u, press);
+		tests.Require(entrant.eAction == PLAYER_ACTION_STATE::INTERACTION && entrant.iCurrentSkillId == 1u,
+			"LMB W-wire press reaches actual handler after Q recovery cancel");
+		const auto lmbStart = entrant.iActionStartTick;
+		const auto lmbHit = lmbStart + Maze::Hammer_HitTickOffset(1u);
+		room->m_iServerTick = lmbHit - 2u; room->Update_Players(1.f / 30.f);
+		tests.Require(findBox()->iCurrentHp == hpBeforeLmb, "LMB does not hit before native swing contact");
+		room->m_iServerTick = lmbHit - 1u; room->Update_Players(1.f / 30.f);
+		const auto hpAfterLmb = findBox()->iCurrentHp;
+		tests.Require(hpAfterLmb < hpBeforeLmb, "LMB applies authoritative maze damage at its own contact tick");
+		room->m_iServerTick = lmbHit; room->Update_Players(1.f / 30.f);
+		tests.Require(findBox()->iCurrentHp == hpAfterLmb, "LMB contact is applied exactly once");
+		tests.Require(Kouku_InteractionActionMs(KOUKU_HUD_MODE::MAZE, 0u) == 2500u &&
+			Kouku_InteractionActionMs(KOUKU_HUD_MODE::MAZE, 1u) == 1000u, "Both locks match native clip lengths");
+		tick = room->m_iServerTick + 1u;
 		// The hammer damages it like any monster; each landed swing reports a damage event.
 		std::uint32_t swings = 0u;
 		bool shutWhileStanding = true;

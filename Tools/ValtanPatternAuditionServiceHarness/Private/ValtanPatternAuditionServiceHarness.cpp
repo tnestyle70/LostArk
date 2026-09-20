@@ -14,7 +14,9 @@ int Run_ValtanPresentationContractTests();
 int Run_ValtanEncounterReferenceContractTests();
 int Run_ValtanCanonicalGraphContractTests();
 int Run_BossCompositionDocumentContractTests();
+int Run_KoukuIndependentRowClockContractTests();
 int Run_KoukuCompositionEditorContractTests();
+int Run_KoukuPatternDeleteContractTests();
 int Run_KoukuSequenceDocumentContractTests();
 int Run_KoukuPreviewTransportContractTests();
 int Run_KoukuColliderGroupContractTests();
@@ -1376,6 +1378,10 @@ namespace
 
 int main(const int argc, const char* const argv[])
 {
+	if (argc == 2 && std::string(argv[1]) == "--valtan-presentation-contract")
+		return Run_ValtanPresentationContractTests();
+	if (argc == 2 && std::string(argv[1]) == "--kouku-pattern-delete-contract")
+		return Run_KoukuPatternDeleteContractTests();
 	if (argc == 2 && std::string(argv[1]) == "--kouku-collider-group-contract")
 		return Run_KoukuColliderGroupContractTests();
 	if (argc == 2 && std::string(argv[1]) == "--presentation-generation-admission-contract")
@@ -1384,12 +1390,14 @@ int main(const int argc, const char* const argv[])
 		return Run_KoukuPreviewTransportContractTests();
 	if (argc == 2 && std::string(argv[1]) == "--kouku-sequence-document-contract")
 		return Run_KoukuSequenceDocumentContractTests();
+	if (argc == 2 && std::string(argv[1]) == "--kouku-independent-row-clock-contract")
+		return Run_KoukuIndependentRowClockContractTests();
 	if (argc == 2 && std::string(argv[1]) == "--kouku-composition-editor-contract")
 		return Run_KoukuCompositionEditorContractTests();
 	if (argc != 1)
 	{
 		std::cerr << "Usage: ValtanPatternAuditionServiceHarness "
-			"[--presentation-generation-admission-contract | --kouku-composition-editor-contract | --kouku-preview-transport-contract | --kouku-sequence-document-contract | --kouku-collider-group-contract]\n";
+			"[--valtan-presentation-contract | --kouku-pattern-delete-contract | --presentation-generation-admission-contract | --kouku-composition-editor-contract | --kouku-preview-transport-contract | --kouku-sequence-document-contract | --kouku-collider-group-contract | --kouku-independent-row-clock-contract]\n";
 		return 2;
 	}
 	const std::vector<std::pair<const char*, std::function<void()>>> Tests{

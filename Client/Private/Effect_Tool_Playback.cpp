@@ -2322,8 +2322,40 @@ void Client::CEffect_Tool::Start_WorldPreviewFromBeginning()
     m_bPreviewPlaying = true;
 }
 
+bool_t Client::CEffect_Tool::Try_PreviewMazeSkill(const bool_t jumpSlam)
+{
+	const char* asset = Animation_AssetName(m_eAllEffectsClass);
+	if (!asset || !m_pCharacterPreviewPanel || !m_pCharacterPreviewPanel->Select_TargetAsset(asset))
+	{ m_strPreviewAnimationStatus = "Card maze preview class is unavailable."; return false; }
+	const auto character = CAnimationTargetService::Resolve_Character();
+	if (!character || !character->Apply_MazePresentation(true))
+	{ m_strPreviewAnimationStatus = "Card maze hammer attachment is unavailable."; return false; }
+	Reset_SynchronizedAnimationSequence();
+	m_SynchronizedAnimationClips.emplace_back(jumpSlam ? "maze_hammer_q" : "maze_hammer_lmb",
+		jumpSlam ? 2500u : 1000u, 1.f);
+	m_iSynchronizedAnimationClipIndex = 0u;
+	m_iSynchronizedAnimationLoopEpoch = 0u;
+	m_iSynchronizedAnimationTargetGeneration = CAnimationTargetService::Resolve_TargetGeneration();
+	if (!Start_SynchronizedAnimationClip(0u, false))
+	{ Reset_SynchronizedAnimationSequence(); m_strPreviewAnimationStatus = "Card maze native clip is unavailable."; return false; }
+	m_strPreviewAnimationStatus = jumpSlam ? "Card maze Q | native jump slam" : "Card maze LMB | native horizontal swing";
+	return true;
+}
+
 void Client::CEffect_Tool::Synchronize_LoadedSkillPreview()
 {
+	const EFFECT_DOCUMENT_DESC* requestedDocument =
+		m_ProductPreview.has_value() && m_SourcePreviewDocument.has_value() ?
+			&*m_SourcePreviewDocument : (m_ActiveDocument.has_value() ? &*m_ActiveDocument : nullptr);
+	if (!requestedDocument || (requestedDocument->strEffectAssetId != "effect.kouku.cardmaze.q" &&
+		requestedDocument->strEffectAssetId != "effect.kouku.cardmaze.lmb"))
+	{
+		// A tool-local preview has no Server snapshot to restore its normal weapon.
+		const auto target = CAnimationTargetService::Resolve_Character();
+		if (m_pCharacterPreviewPanel && m_pCharacterPreviewPanel->Is_PreviewActive() && target &&
+			target != CAnimationTargetService::Resolve_SceneCharacter())
+			(void)target->Apply_MazePresentation(false);
+	}
 	if (m_ValtanCombatObjectIndependentPreview.has_value())
 	{
 		m_strPreviewAnimationStatus =
@@ -2374,6 +2406,12 @@ void Client::CEffect_Tool::Synchronize_LoadedSkillPreview()
 			(m_ActiveDocument.has_value() ? &*m_ActiveDocument : nullptr);
 	if (nullptr == pPreviewDocument)
         return;
+	if (pPreviewDocument->strEffectAssetId == "effect.kouku.cardmaze.q" ||
+		pPreviewDocument->strEffectAssetId == "effect.kouku.cardmaze.lmb")
+	{
+		(void)Try_PreviewMazeSkill(pPreviewDocument->strEffectAssetId == "effect.kouku.cardmaze.q");
+		return;
+	}
 
 	/* Boss pattern Effects are action-owned rather than PlayerSkills-owned.
 	   Resolve them before the playable catalog join so Model View can stage the

@@ -10,6 +10,7 @@
 #include "KoukuSaydonPatternAuditionService.h"
 #include "KoukuSaydonBossTool.h"
 #include "Effect_Catalog.h"
+#include "Effect_Playback.h"
 
 #include <Windows.h>
 
@@ -54,6 +55,14 @@ void Client::Render_KoukuSavedEffectTree(const EFFECT_TOOL_KOUKU_EFFECT_TREE&, c
 { throw std::runtime_error("CPU editor contracts unexpectedly rendered the live Effect tree."); }
 Client::CKoukuSaydonPatternAuditionService& Client::CKoukuSaydonPatternAuditionService::Get()
 { throw std::runtime_error("CPU editor contracts unexpectedly requested live Server audition."); }
+bool Client::CKoukuSaydonPatternAuditionService::Stop(std::string&)
+{ throw std::runtime_error("CPU editor contracts unexpectedly stopped live Server audition."); }
+bool Client::CLevel_KakulSaydonArena::Duplicate_CameraShot(std::string_view, std::string_view, std::string&, std::string&)
+{ throw std::runtime_error("CPU editor contracts unexpectedly duplicated a live camera shot."); }
+bool Client::CLevel_KakulSaydonArena::Discard_UnsavedCameraShot(std::string_view, std::string&)
+{ throw std::runtime_error("CPU editor contracts unexpectedly discarded a live camera shot."); }
+float Client::CEffectPlayback::Calculate_ElementEndSeconds(const EFFECT_ELEMENT_DESC&, bool)
+{ throw std::runtime_error("This CPU editor fixture does not provide the Effect playback lifetime contract."); }
 bool Client::CKoukuSaydonBossTool::Reload(std::string&)
 { throw std::runtime_error("CPU editor contracts unexpectedly reloaded the live Boss tool."); }
 std::shared_ptr<const Client::EFFECT_DOCUMENT_DESC> Client::CEffectCatalog::Find_Loaded(const std::string&)
@@ -1507,9 +1516,16 @@ namespace
 		RequireEditorStep(workbench.Set_PatternDuration(patternId, 10000u, status), status,
 			"extend total timeline duration");
 		auto expectedDuration = occupied;
-		expectedDuration.Stages.back().iDurationMs = 5667u;
+		expectedDuration.iDurationMs = 10000u;
 		Require(EditorPattern(workbench, patternId) == expectedDuration,
-			"total duration retimed earlier Stages, boxes, owners or IDs");
+			"row lifetime retimed a Stage, box, owner or stable ID");
+        KOUKU_SAYDON_COMPOSITION_DOCUMENT expanded;
+        RequireEditorStep(CKoukuSaydonCompositionDocument::Try_ExpandPatternDocument(
+            workbench.Get_Composition(), patternId, expanded, status), status, "expand independent row lifetime");
+        const auto expandedPattern = std::find_if(expanded.Patterns.begin(), expanded.Patterns.end(),
+            [&](const auto& row) { return row.strPatternId == patternId; });
+        Require(expandedPattern != expanded.Patterns.end() && expandedPattern->Stages == occupied.Stages &&
+            expandedPattern->iDurationMs == 10000u, "preview expansion lengthened the final Stage to wait for a row tail");
 		RequireEditorRoundtrip(workbench);
 		const auto durationBaseline = workbench.Get_Composition();
 		const auto durationBytes = ReadText(sourcePath);
@@ -3542,6 +3558,113 @@ namespace
 		RequireEditorStep(promoter.Reload(status), status, "reopen the saved source after stale publish rejection");
 	}
 
+
+	void VerifyKoukuPatternDeletion()
+	{
+		using namespace Client;
+		const auto sourceRoot = CProjectDataRoot::Get();
+		const auto scratchRoot = std::filesystem::temp_directory_path() /
+			("LostArkKoukuDeletePattern-" + std::to_string(GetCurrentProcessId()) + "-" + std::to_string(GetTickCount64()));
+		SCOPED_TEST_DIRECTORY cleanup(scratchRoot);
+		const auto dataRoot = scratchRoot / "Data";
+		const auto relativeSource = std::filesystem::path("KoukuSaydon/Gate1/KoukuSaydonComposition.json");
+		const auto sourcePath = dataRoot / relativeSource;
+		for (const char* profile : {"MN_RPCT_05", "MN_RPCT_06", "MN_RPCT_07", "MN_RPCZ_00"})
+		{
+			const auto relative = std::filesystem::path("Animation/Reference/KoukuSaydon") /
+				(std::string(profile) + ".actionreference.json");
+			Require(CopyFixture(sourceRoot / relative, dataRoot / relative), "could not copy deletion action reference");
+		}
+		KOUKU_SAYDON_COMPOSITION_DOCUMENT source;
+		std::string status;
+		RequireEditorStep(CKoukuSaydonCompositionDocument::Parse_Text(ReadText(sourceRoot / relativeSource), source, status),
+			status, "parse deletion fixture source");
+		const auto owner = std::find_if(source.Patterns.begin(), source.Patterns.end(), [](const auto& row) {
+			return row.strLoadError.empty() && row.strGateId == "GATE1" && !row.Stages.empty(); });
+		Require(owner != source.Patterns.end(), "deletion needs an authored actor fixture");
+		KOUKU_SAYDON_COMPOSITION_PATTERN child;
+		child.strPatternId = owner->strPatternId; child.strActorProfileId = owner->strActorProfileId;
+		child.strGateId = owner->strGateId; child.strTargetBossPlacementId = owner->strTargetBossPlacementId;
+		child.strDisplayName = "Delete child"; child.strAuthoringStatus = "PRODUCT";
+		child.strCategory = "NORMAL"; child.iDurationMs = 1000u;
+		const auto childId = child.strPatternId;
+		source.Patterns.clear(); source.Folders.clear(); source.Bundles.clear(); source.PlayAllPatternIds.clear();
+		source.PatternFlows.clear(); source.Logics.clear(); source.Summons.clear(); source.Worlds.clear();
+		source.SceneProfiles.clear(); source.PresentationResources.clear();
+		auto parent = child;
+		parent.strPatternId = "kakulsaydon.g1.pattern." + std::to_string(source.iNextPatternOrdinal++);
+		parent.strDisplayName = "Preserved Parent"; parent.iDurationMs = 6000u;
+		const auto parentId = parent.strPatternId;
+		KOUKU_SAYDON_COMPOSITION_FOLDER folder;
+		folder.strFolderId = "kakulsaydon.folder." + std::to_string(source.iNextFolderOrdinal++);
+		folder.strGateId = "GATE1"; folder.strDisplayName = "Delete fixture";
+		folder.strTimelinePatternId = parentId; parent.strFolderId = folder.strFolderId;
+		child.strFolderId = folder.strFolderId;
+		parent.PatternOccurrences.push_back({parentId + ".pattern." + std::to_string(parent.iNextPatternOccurrenceOrdinal++), childId, 123u, 1000u, false});
+		auto untouched = child;
+		untouched.strPatternId = "kakulsaydon.g1.pattern." + std::to_string(source.iNextPatternOrdinal++);
+		untouched.strDisplayName = "Unrelated Pattern";
+		source.Patterns = {child, parent, untouched}; source.Folders.push_back(folder);
+		source.PlayAllPatternIds = {childId, parentId, untouched.strPatternId};
+		KOUKU_SAYDON_COMPOSITION_BUNDLE bundle;
+		bundle.strBundleId = "kakulsaydon.bundle." + std::to_string(source.iNextBundleOrdinal++);
+		bundle.strGateId = "GATE1"; bundle.strFolderId = folder.strFolderId; bundle.strDisplayName = "Preserved Bundle";
+		bundle.strAuthoringStatus = "PRODUCT";
+		bundle.Members.push_back({bundle.strBundleId + ".member." + std::to_string(bundle.iNextMemberOrdinal++), childId, 321u});
+		source.Bundles.push_back(bundle);
+		KOUKU_SAYDON_COMPOSITION_PATTERN_FLOW flow;
+		flow.strFlowId = "delete.fixture.flow"; flow.strGateId = "GATE1"; flow.strDisplayName = "Preserved Flow";
+		flow.Entries = {{"delete.entry", "PATTERN", childId, 81u}, {"keep.entry", "PATTERN", untouched.strPatternId, 79u},
+			{"keep.bundle", "BUNDLE", bundle.strBundleId, 44u}};
+		source.PatternFlows.push_back(flow);
+		Require(WriteText(sourcePath, CKoukuSaydonCompositionDocument::Serialize(source)), "could not write deletion fixture");
+		SCOPED_ENVIRONMENT_VARIABLE environment(L"LOSTARK_PROJECT_DATA_ROOT");
+		Require(environment.Set(dataRoot), "could not select deletion fixture");
+		CKoukuSaydonActionWorkbench workbench;
+		RequireEditorStep(workbench.Reload(status), status, "load linked deletion fixture");
+		const auto baseline = workbench.Get_Composition();
+		RequireEditorStep(workbench.Delete_Pattern(childId, status), status, "delete Pattern with Flow, Bundle and Parent references");
+		auto expected = baseline;
+		expected.Patterns.erase(expected.Patterns.begin());
+		expected.Patterns.front().PatternOccurrences.clear();
+		expected.Patterns.front().strAuthoringStatus = "DRAFT";
+		expected.Bundles.front().Members.clear();
+		expected.Bundles.front().strAuthoringStatus = "DRAFT";
+		expected.PlayAllPatternIds = {untouched.strPatternId};
+		expected.PatternFlows.front().Entries.erase(expected.PatternFlows.front().Entries.begin());
+		Require(workbench.Get_Composition() == expected, "deletion changed unrelated timing, counters or shared definitions");
+		RequireEditorRoundtrip(workbench);
+		RequireEditorStep(workbench.Delete_Pattern(parentId, status), status, "delete executable Parent timeline");
+		Require(workbench.Get_Composition().Folders.front().strTimelinePatternId.empty(), "deleted Parent left a folder timeline pointer");
+		RequireEditorRoundtrip(workbench);
+
+		auto blocked = workbench.Get_Composition();
+		KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION logic;
+		logic.strLogicId = "kakulsaydon.g1.logic." + std::to_string(blocked.iNextLogicOrdinal++);
+		logic.strDisplayName = "Required followup"; logic.strLogicType = "RESULT";
+		logic.strOutcomeKind = "FOLLOWUP_PATTERN"; logic.strFollowupPatternId = untouched.strPatternId;
+		blocked.Logics.push_back(logic);
+		Require(WriteText(sourcePath, CKoukuSaydonCompositionDocument::Serialize(blocked)), "could not write required-reference fixture");
+		RequireEditorStep(workbench.Reload(status), status, "reload required-reference fixture");
+		const auto beforeBlocked = workbench.Get_Composition();
+		const auto beforeBlockedBytes = ReadText(sourcePath);
+		Require(!workbench.Delete_Pattern(untouched.strPatternId, status) && status.find(logic.strLogicId) != std::string::npos,
+			"required Logic reference did not block deletion with its owner ID");
+		Require(workbench.Get_Composition() == beforeBlocked && ReadText(sourcePath) == beforeBlockedBytes && !workbench.Is_Dirty(),
+			"rejected deletion changed draft or saved source");
+
+		blocked.Logics.clear();
+		Require(WriteText(sourcePath, CKoukuSaydonCompositionDocument::Serialize(blocked)), "could not reset required-reference fixture");
+		RequireEditorStep(workbench.Reload(status), status, "reload for stale-source deletion");
+		const auto externallySaved = ReadText(sourcePath) + "\n ";
+		Require(WriteText(sourcePath, externallySaved), "could not simulate concurrent source save");
+		RequireEditorStep(workbench.Delete_Pattern(untouched.strPatternId, status), status, "edit deletion despite external source revision");
+		const auto pending = workbench.Get_Composition();
+		Require(!workbench.Save(status) && workbench.Get_Composition() == pending && workbench.Is_Dirty() &&
+			ReadText(sourcePath) == externallySaved, "stale Save did not preserve external source and pending deletion");
+		std::cout << "Kouku Pattern deletion: soft-link transaction, Save/reload, required-target rollback and stale Save passed\n";
+	}
+
 	void VerifyKoukuEditorRoundtrip()
 	{
 		const auto sourceRoot = Client::CProjectDataRoot::Get();
@@ -3820,4 +3943,82 @@ int Run_KoukuPreviewTransportContractTests()
 		std::cerr << "KoukuPreviewTransportContractTests: FAIL: " << error.what() << '\n';
 		return 1;
 	}
+}
+
+int Run_KoukuPatternDeleteContractTests()
+{
+    try { VerifyKoukuPatternDeletion(); return 0; }
+    catch (const std::exception& error)
+    { std::cerr << "Kouku Pattern deletion FAIL: " << error.what() << '\n'; return 1; }
+}
+
+int Run_KoukuIndependentRowClockContractTests()
+{
+    try
+    {
+        using namespace Client;
+        const auto sourceRoot = CProjectDataRoot::Get();
+        const auto scratchRoot = std::filesystem::temp_directory_path() /
+            ("LostArkKoukuIndependentRows-" + std::to_string(GetCurrentProcessId()) + "-" + std::to_string(GetTickCount64()));
+        SCOPED_TEST_DIRECTORY cleanup(scratchRoot);
+        const auto dataRoot = scratchRoot / "Data";
+        const auto relative = std::filesystem::path("KoukuSaydon/Gate1/KoukuSaydonComposition.json");
+        const auto sourcePath = dataRoot / relative;
+        Require(CopyFixture(sourceRoot / relative, sourcePath), "copy independent row fixture");
+        for (const char* profile : {"MN_RPCT_05", "MN_RPCT_06", "MN_RPCT_07", "MN_RPCZ_00"})
+        {
+            const auto reference = std::filesystem::path("Animation/Reference/KoukuSaydon") /
+                (std::string(profile) + ".actionreference.json");
+            Require(CopyFixture(sourceRoot / reference, dataRoot / reference), "copy source Action reference");
+        }
+        SCOPED_ENVIRONMENT_VARIABLE environment(L"LOSTARK_PROJECT_DATA_ROOT");
+        Require(environment.Set(dataRoot), "select scratch row clock owner");
+        CKoukuSaydonActionWorkbench workbench;
+        std::string status, patternId;
+        RequireEditorStep(workbench.Reload(status), status, "load row fixture");
+        RequireEditorStep(workbench.Select_ActorProfile("MN_RPCT_05", status), status, "select source actor");
+        RequireEditorStep(workbench.Create_Pattern("Independent row clocks", "NORMAL", patternId, status), status, "create row fixture");
+        RequireEditorStep(workbench.Append_ActionAsStages(patternId, "MN_RPCT_05", 4219811u, status), status, "append original 4333ms animation");
+        const auto originalStages = EditorPattern(workbench, patternId).Stages;
+        RequireEditorStep(workbench.Set_PatternDuration(patternId, 9000u, status), status, "extend row clock only");
+        Require(EditorPattern(workbench, patternId).Stages == originalStages, "full lifetime changed Stage clocks");
+        RequireEditorRoundtrip(workbench);
+        auto document = workbench.Get_Composition();
+        auto& pattern = *std::find_if(document.Patterns.begin(), document.Patterns.end(), [&](const auto& row) { return row.strPatternId == patternId; });
+        for (const auto kind : {KOUKU_SAYDON_PRESENTATION_KIND::SOUND, KOUKU_SAYDON_PRESENTATION_KIND::EFFECT})
+        {
+            const auto resource = std::find_if(document.PresentationResources.begin(), document.PresentationResources.end(),
+                [&](const auto& row) { return row.eKind == kind; });
+            Require(resource != document.PresentationResources.end(), "real source has no sound/effect row resource");
+            KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE row;
+            row.strOccurrenceId = patternId + ".presentation." + std::to_string(pattern.iNextPresentationOccurrenceOrdinal++);
+            row.strResourceId = resource->strResourceId;
+            row.iStartMs = 500u; row.iDurationMs = 7500u;
+            pattern.PresentationOccurrences.push_back(row);
+        }
+        Require(WriteText(sourcePath, CKoukuSaydonCompositionDocument::Serialize(document)), "install scratch long rows");
+        RequireEditorStep(workbench.Reload(status), status, "reload independent sound/effect rows");
+        const auto previousRows = EditorPattern(workbench, patternId).PresentationOccurrences;
+        const auto stageId = EditorPattern(workbench, patternId).Stages.front().strStageId;
+        RequireEditorStep(workbench.Set_StageDuration(patternId, stageId, 1000u, status), status, "shorten Stage beneath long sound/effect");
+        Require(EditorPattern(workbench, patternId).Stages.front().iDurationMs == 1000u &&
+            EditorPattern(workbench, patternId).PresentationOccurrences == previousRows, "Stage resize truncated or moved a row");
+        RequireEditorStep(workbench.Set_PatternDuration(patternId, 10000u, status), status, "extend independent timeline again");
+        RequireEditorRoundtrip(workbench);
+        KOUKU_SAYDON_COMPOSITION_DOCUMENT expanded;
+        RequireEditorStep(CKoukuSaydonCompositionDocument::Try_ExpandPatternDocument(workbench.Get_Composition(), patternId, expanded, status), status, "expand saved short Stage with long rows");
+        const auto result = std::find_if(expanded.Patterns.begin(), expanded.Patterns.end(), [&](const auto& row) { return row.strPatternId == patternId; });
+        Require(result != expanded.Patterns.end() && result->Stages.size() == 1u && result->Stages.front().iDurationMs == 1000u &&
+            result->iDurationMs == 10000u && result->PresentationOccurrences == previousRows,
+            "saved preview expansion synthesized a waiting Stage or changed row lifetimes");
+        RequireEditorStep(workbench.Set_StageDuration(patternId, stageId, 9500u, status), status, "extend Stage beyond shorter rows");
+        Require(EditorPattern(workbench, patternId).Stages.front().iDurationMs == 9500u &&
+            EditorPattern(workbench, patternId).PresentationOccurrences == previousRows,
+            "longer Stage was limited by sound/effect row ends");
+        RequireEditorRoundtrip(workbench);
+        std::cout << "KoukuIndependentRowClockContractTests: Stage shrink/extend, sound/effect tails, independent lifetime, Save/reopen and actual preview expansion PASS\n";
+        return 0;
+    }
+    catch (const std::exception& error)
+    { std::cerr << "KoukuIndependentRowClockContractTests: FAIL: " << error.what() << '\n'; return 1; }
 }

@@ -487,12 +487,27 @@ def prepare(evidence, first, last, reuse_roots=()):
                     candidates = sm.scan_native_binding_array_candidates(raw['_bytes'], raw['logicalOffset'],
                         material_map['uniformExpressionCounts'], declaration,
                         allow_engine_only_textures=True, required_vector_expression_indices=required_vectors)
-                    # Source bias-sampled material textures must have an actual
-                    # native texture-expression wire. The engine's depth load
-                    # in these shaders is sample_l, never a biased sample.
+                    # Material bias samples need a native expression wire. These
+                    # two original blur programs also bias-sample engine SceneColor:
+                    # the exact DXBC identity and complete native wire closure
+                    # distinguish those reads from a missing material texture.
+                    reviewed_scene_bias = {
+                        '7f34a1fedf7a614cbcd4e656c906fe5e':
+                            ('13ada0f252499b71e4aaeaf4988c6631790041a07f0132dbb68419915da0b66f', ['t1/s0'], ['t0/s2', 't2/s1']),
+                        'a43001dc99c4224bbab23b82863a4bc7':
+                            ('064645dda06795824e16ba8fa900acc4d4ed52790694e3c1bfe8ab13091a6adc', ['t0/s0'], ['t1/s1']),
+                    }.get(sid)
+                    if reviewed_scene_bias:
+                        assert declaration['instructionSha256'] == reviewed_scene_bias[0]
+                        candidates = [candidate for candidate in candidates
+                            if candidate['constantBufferClosure']['unownedConstantBuffer0Slots'] == [0]
+                            and candidate['textureSampleClosure']['unownedEngineSamplePairs'] == reviewed_scene_bias[1]
+                            and candidate['textureSampleClosure']['materialSamplePairs'] == reviewed_scene_bias[2]]
                     bias_pairs = {f"{sample['textureRegister']}/{sample['samplerRegister']}"
                         for sample in disassembly.get('sampleInstructions', [])
                         if sample['instruction'].startswith('sample_b_')}
+                    if reviewed_scene_bias:
+                        bias_pairs.difference_update(reviewed_scene_bias[1])
                     candidates = [candidate for candidate in candidates if bias_pairs.issubset(
                         candidate['textureSampleClosure']['materialSamplePairs'])]
                     write('shader_objects/' + sid + '.candidates.json', dict(declaration=declaration, candidates=candidates))

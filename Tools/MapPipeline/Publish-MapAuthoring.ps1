@@ -1726,7 +1726,7 @@ function Read-WorldSequenceDocument {
         $tracks = @($template.tracks)
         $animationTracks = @($template.animationTracks)
         $total = $tracks.Count + $animationTracks.Count
-        if ($total -lt 1 -or $total -gt 32) {
+        if ($total -lt 1 -or $total -gt 64) {
             throw "World sequence template track count is invalid: $($template.sequenceId)"
         }
         $slotIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
@@ -1841,7 +1841,7 @@ function Read-WorldSequenceDocument {
             $animationSlotStarts[$slot] = $startMs
         }
         if ($null -ne $template.PSObject.Properties['effectTracks']) {
-            if ($template.effectTracks -isnot [System.Array] -or $total + @($template.effectTracks).Count -gt 32) {
+            if ($template.effectTracks -isnot [System.Array] -or $total + @($template.effectTracks).Count -gt 64) {
                 throw 'World Object effectTracks must be a bounded array'
             }
             $effectIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
@@ -1905,8 +1905,8 @@ function Read-WorldSequenceDocument {
         }
         if ($null -ne $template.PSObject.Properties['colliderTracks']) {
             if ($template.colliderTracks -isnot [System.Array] -or
-                @($template.tracks).Count + @($template.animationTracks | Where-Object { $null -ne $_ }).Count + @($template.effectTracks | Where-Object { $null -ne $_ }).Count + @($template.colliderTracks).Count -gt 32) {
-                throw 'World Object colliderTracks exceed the combined 32-track limit'
+                @($template.tracks).Count + @($template.animationTracks | Where-Object { $null -ne $_ }).Count + @($template.effectTracks | Where-Object { $null -ne $_ }).Count + @($template.colliderTracks).Count -gt 64) {
+                throw 'World Object colliderTracks exceed the combined 64-track limit'
             }
             if (@($template.colliderTracks).Count -gt 0 -and ([double]$template.objectMotion.spreadDegrees -ne 0 -or @($template.objectMotion.spawnHalfExtents | Where-Object { $null -ne $_ -and [double]$_ -ne 0 }).Count)) { throw 'World Object collider publication requires zero random spread and spawn extents' }
             $colliderIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)

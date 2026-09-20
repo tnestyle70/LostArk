@@ -9,6 +9,8 @@
 
 float4 g_ALTVSourceMaterialParameters[32];
 float g_ALTVSourceMaterialTime = 0.f;
+// Project frozen-capture crop shared by native meshes and the animated cube.
+float4 g_ALTVCaptureUVTransform = float4(1.f,1.f,0.f,0.f);
 
 #ifndef EFFECT_NATIVE_DECLARATIONS_ONLY
 #include "Shader_EffectNativeScreenUV.hlsli"
@@ -107,6 +109,7 @@ float4 ALTVNativeSample6(float2 uv, float lod, bool explicitLod)
 float4 ALTVNativeSample2CapturedScene(float2 uv, float lod, bool explicitLod)
 {
     g_EffectSceneSampleUsed = true;
+    uv = uv * g_ALTVCaptureUVTransform.xy + g_ALTVCaptureUVTransform.zw;
     const float4 scene = ALTVNativeSample2(uv, lod, explicitLod);
     if (g_EffectSceneReadMode == 0u) return scene;
     if (g_EffectSceneReadMode == 2u) return float4(0.f, 0.f, 0.f, scene.a);

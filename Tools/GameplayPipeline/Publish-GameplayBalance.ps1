@@ -73,6 +73,10 @@ function Read-JsonDocument([string]$RelativePath) {
         }
     }
     if (-not [IO.File]::Exists($path)) { throw "Missing gameplay document: $RelativePath" }
+    if ($RelativePath -ceq 'Data/Encounters/Valtan/ValtanCinematicCamera.json' -and
+        (Get-Item -LiteralPath $path).Length -gt (1024 * 1024)) {
+        throw 'Valtan cinematic camera document exceeds the Client 1 MiB limit.'
+    }
 	return Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json
 }
 
@@ -268,6 +272,30 @@ function Assert-JsonNumber([object]$Value, [string]$Context) {
     if ([double]::IsNaN($number) -or [double]::IsInfinity($number)) {
         throw "$Context must be finite."
     }
+}
+
+function Format-JsonSignedNumbers([object[]]$Values, [string]$Context) {
+    # Collider tracks contain tens of thousands of keys. Keep the exact JSON
+    # number and signed-float admission, without two function/pipeline calls
+    # per coordinate. The emitted doubles use the same invariant R format.
+    $formatted = [string[]]::new($Values.Count)
+    for ($index = 0; $index -lt $Values.Count; ++$index) {
+        $value = $Values[$index]
+        if (($value -isnot [int]) -and ($value -isnot [long]) -and
+            ($value -isnot [uint32]) -and ($value -isnot [uint64]) -and
+            ($value -isnot [double]) -and ($value -isnot [decimal])) {
+            throw "$Context must be a JSON number."
+        }
+        $number = [double]$value
+        if ([double]::IsNaN($number) -or [double]::IsInfinity($number)) {
+            throw "$Context must be finite."
+        }
+        if ($number -lt -100000.0 -or $number -gt 100000.0) {
+            throw "$Context is invalid: $number"
+        }
+        $formatted[$index] = $number.ToString('R', [Globalization.CultureInfo]::InvariantCulture)
+    }
+    return ,$formatted
 }
 
 function Assert-JsonString([object]$Value, [string]$Context) {
@@ -3513,6 +3541,7 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 	if ($null -ne $koukuPattern.PSObject.Properties['bossMotion']) { $koukuOptionalProperties += 'bossMotion' }
 	if ($null -ne $koukuPattern.PSObject.Properties['folderId']) { $koukuOptionalProperties += 'folderId' }
 	if ($null -ne $koukuPattern.PSObject.Properties['fixedTimeline']) { $koukuOptionalProperties += 'fixedTimeline' }
+	if ($null -ne $koukuPattern.PSObject.Properties['timelineDurationMs']) { $koukuOptionalProperties += 'timelineDurationMs' }
 	if ($null -ne $koukuPattern.PSObject.Properties['showtimeTargets']) { $koukuOptionalProperties += 'showtimeTargets' }
 	if ($null -ne $koukuPattern.PSObject.Properties['pursuitProjectiles']) { $koukuOptionalProperties += 'pursuitProjectiles' }
 	Assert-ExactProperties $koukuPattern (@(
@@ -3778,6 +3807,12 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 	foreach ($koukuStage in @($koukuPattern.stages)) {
 		$koukuPatternDurationMs += [uint64]$koukuStage.durationMs
 	}
+    if ($null -ne $koukuPattern.PSObject.Properties['timelineDurationMs']) {
+        Assert-JsonInteger $koukuPattern.timelineDurationMs 'KoukuSaydon timelineDurationMs' 1 600000
+        if ([uint64]$koukuPattern.timelineDurationMs -lt $koukuPatternDurationMs) { throw 'KoukuSaydon timelineDurationMs cannot trim Stage clocks' }
+        $koukuPatternDurationMs = [uint64]$koukuPattern.timelineDurationMs
+        $patternRows.Add((@('PATTERNTIMELINE', $koukuEncounterDocument.encounterId, $koukuPattern.patternId, $koukuPatternDurationMs) -join "`t"))
+    }
 	if ($null -ne $koukuPattern.PSObject.Properties['bossMotion']) {
 		$bossMotion = $koukuPattern.bossMotion
 		Assert-ExactProperties $bossMotion @('startMs','endMs','startPosition','endPosition','yawDegrees') 'KoukuSaydon bossMotion'
@@ -4130,8 +4165,10 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 					$window.windowId,$region.regionId,$track.startMs,$track.startDelayMs,$track.durationMs,
 					(Format-InvariantFloat $track.playbackSpeed 'Collider WORLD speed'),$smoothFlag) + $baselineText -join "`t"))
 				$lastKeyTime = -1
-				for ($keyOrdinal=0; $keyOrdinal -lt @($track.keys).Count; ++$keyOrdinal) {
-					$key = $track.keys[$keyOrdinal]
+				$trackKeys = @($track.keys)
+				$trackHasGrip = $null -ne $trackKeys[0].PSObject.Properties['gripPosition']
+				for ($keyOrdinal=0; $keyOrdinal -lt $trackKeys.Count; ++$keyOrdinal) {
+					$key = $trackKeys[$keyOrdinal]
 					$keyFields = @('timeMs','positionOffset','rotationY','rotationW','scaleMultiplier','visible')
 					$hasGrip = $null -ne $key.PSObject.Properties['gripPosition']
 					if ($hasGrip) { $keyFields += 'gripPosition' }
@@ -4140,30 +4177,28 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 					if ($key.timeMs -le $lastKeyTime -or @($key.positionOffset).Count -ne 3 -or @($key.scaleMultiplier).Count -ne 3 -or $key.visible -isnot [bool]) { throw 'Collider WORLD key is invalid' }
 					$lastKeyTime = $key.timeMs
 					$keyNumbers = @($key.positionOffset) + @($key.rotationY,$key.rotationW) + @($key.scaleMultiplier)
-					foreach ($number in $keyNumbers) { Assert-JsonNumber $number 'Collider WORLD key geometry' }
+					$keyText = Format-JsonSignedNumbers $keyNumbers 'Collider WORLD key geometry'
 					if ($isBossBoneTrack -and ($key.rotationY -ne 0 -or $key.rotationW -ne 1 -or -not $key.visible -or
-						@($key.scaleMultiplier | Where-Object { [double]$_ -ne 1 }).Count -ne 0)) { throw 'Boss Bone Collider keys must preserve target yaw and authored scale' }
-					if (@($key.scaleMultiplier | Where-Object { [double]$_ -lt 0 }).Count -gt 0 -or
+						[double]$key.scaleMultiplier[0] -ne 1 -or [double]$key.scaleMultiplier[1] -ne 1 -or
+						[double]$key.scaleMultiplier[2] -ne 1)) { throw 'Boss Bone Collider keys must preserve target yaw and authored scale' }
+					if ([double]$key.scaleMultiplier[0] -lt 0 -or [double]$key.scaleMultiplier[1] -lt 0 -or
+						[double]$key.scaleMultiplier[2] -lt 0 -or
 						($region.shape -cne 'BOX' -and [Math]::Abs([double]$key.scaleMultiplier[0]-[double]$key.scaleMultiplier[2]) -gt 0.0001) -or
 						[Math]::Abs([double]$key.rotationY*[double]$key.rotationY+[double]$key.rotationW*[double]$key.rotationW-1) -gt 0.001) { throw 'Collider WORLD quaternion/scale is invalid' }
-					$keyText = @($keyNumbers | ForEach-Object { Format-InvariantSignedFloat $_ 'Collider WORLD key geometry' })
 					$gripFields = @()
 					if ($hasGrip) {
-                        if ($region.anchorKind -cne 'WORLD' -or $region.shape -cne 'BOX' -or $windowKind -cne 'ENTER_AREA' -or
+                        if ($keyOrdinal -eq 0 -and ($region.anchorKind -cne 'WORLD' -or $region.shape -cne 'BOX' -or $windowKind -cne 'ENTER_AREA' -or
                             @($window.onSuccess).Count -ne 1 -or $window.onSuccess[0].kind -cne 'GRAB_TO_WORLD_OBJECT' -or
-                            @($window.onFail).Count -or @($window.onTimeout).Count -or @($key.gripPosition).Count -ne 3 -or
+                            @($window.onFail).Count -or @($window.onTimeout).Count -or
                             $track.startMs -ne $window.startMs -or $track.durationMs -lt $window.durationMs -or $track.startDelayMs -ne 0 -or
                             $track.playbackSpeed -ne 1 -or $track.interpolation -cne 'LINEAR' -or $track.baselineYawDegrees -ne 0 -or
                             @($track.baselinePosition | Where-Object { [double]$_ -ne 0 }).Count -or
                             @($track.baselineScale | Where-Object { [double]$_ -ne 1 }).Count -or
-                            $track.keys[0].timeMs -ne 0 -or $track.keys[-1].timeMs -ne $track.durationMs) { throw 'Physical grip needs an exact world hook BOX track' }
-                        foreach ($number in $key.gripPosition) {
-                            Assert-JsonNumber $number 'Hook grip XYZ'
-                            if ([math]::Abs([double]$number) -gt 100000) { throw 'Hook grip XYZ exceeds bounds' }
-                            $gripFields += Format-InvariantSignedFloat $number 'Hook grip XYZ'
-                        }
+                            $track.keys[0].timeMs -ne 0 -or $track.keys[-1].timeMs -ne $track.durationMs)) { throw 'Physical grip needs an exact world hook BOX track' }
+                        if (@($key.gripPosition).Count -ne 3) { throw 'Physical grip needs an exact world hook BOX track' }
+                        $gripFields = Format-JsonSignedNumbers $key.gripPosition 'Hook grip XYZ'
                     }
-                    if ($hasGrip -ne ($null -ne $track.keys[0].PSObject.Properties['gripPosition'])) { throw 'Hook grip positions must exist on every key' }
+                    if ($hasGrip -ne $trackHasGrip) { throw 'Hook grip positions must exist on every key' }
 					$visibleFlag = if ($key.visible) { 1 } else { 0 }
 					$patternRows.Add((@('PATTERNLOGICREGIONWORLDKEY',$koukuEncounterDocument.encounterId,$koukuPattern.patternId,
 						$window.windowId,$region.regionId,$keyOrdinal,$key.timeMs) + $keyText + @($visibleFlag) + $gripFields -join "`t"))
@@ -6050,14 +6085,18 @@ function Assert-CinematicCameraKeyframes(
 	[string]$Context,
 	[Collections.Generic.HashSet[string]]$SceneIds) {
 	if ($Cue.keyframes -isnot [Array] -or
-		@($Cue.keyframes).Count -lt 2 -or @($Cue.keyframes).Count -gt 64) {
+		@($Cue.keyframes).Count -lt 2 -or @($Cue.keyframes).Count -gt 512) {
 		throw "$Context keyframe array is invalid."
 	}
 	$previousTime = $null
 	foreach ($keyframe in @($Cue.keyframes)) {
-		Assert-ExactProperties $keyframe @(
-			'sceneId','timeMs','eye','lookAt','fovYDegrees') `
-			"$Context keyframe"
+		$expectedKeyframeFields = @('sceneId','timeMs','eye','lookAt','fovYDegrees')
+		if ($null -ne $keyframe.PSObject.Properties['up']) { $expectedKeyframeFields += 'up' }
+		if ($null -ne $keyframe.PSObject.Properties['cutBefore']) {
+			$expectedKeyframeFields += 'cutBefore'
+			if ($keyframe.cutBefore -isnot [bool]) { throw "$Context cutBefore must be boolean." }
+		}
+		Assert-ExactProperties $keyframe $expectedKeyframeFields "$Context keyframe"
 		Assert-JsonString $keyframe.sceneId "$Context sceneId"
 		$sceneId = [string]$keyframe.sceneId
 		if ($sceneId.Length -gt 128 -or
@@ -6072,7 +6111,9 @@ function Assert-CinematicCameraKeyframes(
 		} elseif ($timeMs -le [uint32]$previousTime) {
 			throw "$Context scene times must be strictly increasing."
 		}
-		foreach ($fieldName in @('eye','lookAt')) {
+		$vectorFields = @('eye','lookAt')
+		if ($null -ne $keyframe.PSObject.Properties['up']) { $vectorFields += 'up' }
+		foreach ($fieldName in $vectorFields) {
 			$field = $keyframe.$fieldName
 			if ($field -isnot [Array] -or @($field).Count -ne 3) {
 				throw "$Context $fieldName is malformed."
@@ -6094,9 +6135,17 @@ function Assert-CinematicCameraKeyframes(
 			($eyeLookDeltaZ * $eyeLookDeltaZ) -le 0.000001) {
 			throw "$Context eye and lookAt must differ."
 		}
+		if ($null -ne $keyframe.PSObject.Properties['up']) {
+			$crossX = [double]$keyframe.up[1] * $eyeLookDeltaZ - [double]$keyframe.up[2] * $eyeLookDeltaY
+			$crossY = [double]$keyframe.up[2] * $eyeLookDeltaX - [double]$keyframe.up[0] * $eyeLookDeltaZ
+			$crossZ = [double]$keyframe.up[0] * $eyeLookDeltaY - [double]$keyframe.up[1] * $eyeLookDeltaX
+			if (($crossX * $crossX + $crossY * $crossY + $crossZ * $crossZ) -le 0.000001) {
+				throw "$Context up and viewing direction must not be parallel."
+			}
+		}
 		Assert-JsonNumber $keyframe.fovYDegrees "$Context fovYDegrees"
-		if ([double]$keyframe.fovYDegrees -lt 10.0 -or
-			[double]$keyframe.fovYDegrees -gt 120.0) {
+		if ([double]$keyframe.fovYDegrees -lt 1.0 -or
+			[double]$keyframe.fovYDegrees -gt 179.0) {
 			throw "$Context fovYDegrees is out of range."
 		}
 		$previousTime = $timeMs
@@ -6108,11 +6157,29 @@ function Assert-CinematicCameraKeyframes(
 
 # A pattern that owns a landing anchor also owns every cinematic camera cue
 # bound to it. WORLD cues frame the anchor directly. BOSS_XZ follows the
-# replicated boss horizontally and remains exclusive to target-locked leaps.
+# replicated boss horizontally. Target-locked leap cameras retain their strict
+# landing-anchor framing; source Matinee cameras on anchor leaps use their own
+# authored source origin and look-at curve, translated by the existing consumer.
 # BOSS_FACING and PLAYER_BOSS_FRAME are presentation-relative coordinate bases,
 # so their authored points are not compared with an absolute gameplay anchor.
 if ($serverMotionByPatternId.Count -ne 0) {
 	$cameraDocument = Read-JsonDocument 'Data/Encounters/Valtan/ValtanCinematicCamera.json'
+	# Match the bounded Client JSON parser as well as the individual cue bounds.
+	function Assert-CinematicCameraValueLimits([object]$Value, [int]$Depth, [ref]$Count) {
+		$Count.Value++
+		if ($Depth -gt 16 -or $Count.Value -gt 65536) {
+			throw 'Valtan cinematic camera document exceeds the Client JSON depth/value limit.'
+		}
+		if ($Value -is [Array]) {
+			foreach ($item in $Value) { Assert-CinematicCameraValueLimits $item ($Depth + 1) $Count }
+		} elseif ($Value -is [pscustomobject]) {
+			foreach ($property in $Value.PSObject.Properties) {
+				Assert-CinematicCameraValueLimits $property.Value ($Depth + 1) $Count
+			}
+		}
+	}
+	$cameraValueCount = 0
+	Assert-CinematicCameraValueLimits $cameraDocument 0 ([ref]$cameraValueCount)
 	Assert-ExactProperties $cameraDocument @(
 		'schema','formatVersion','encounterId','provenance','cues','deathCue') `
 		'Valtan cinematic camera document'
@@ -6197,9 +6264,10 @@ if ($serverMotionByPatternId.Count -ne 0) {
 			$serverMotionByPatternId[$cuePatternId]
 		} else { $null }
 		if ($tracking.Mode -ceq 'BOSS_XZ') {
-			if ($anchor.Kind -cne 'LEAP_TO_TARGET' -or
-				[Math]::Abs([double]$tracking.Origin[0] - $anchor.X) -gt 0.05 -or
-				[Math]::Abs([double]$tracking.Origin[2] - $anchor.Z) -gt 0.05) {
+			if ($anchor.Kind -notin @('LEAP_TO_TARGET','LEAP_TO_ANCHOR') -or
+				($anchor.Kind -ceq 'LEAP_TO_TARGET' -and
+				 ([Math]::Abs([double]$tracking.Origin[0] - $anchor.X) -gt 0.05 -or
+				  [Math]::Abs([double]$tracking.Origin[2] - $anchor.Z) -gt 0.05))) {
 				throw "BOSS_XZ cinematic origin disagrees with target-leap anchor $($anchor.AnchorId): $($cue.cueId)"
 			}
 		}
@@ -6208,6 +6276,7 @@ if ($serverMotionByPatternId.Count -ne 0) {
 				throw "Cinematic keyframe lookAt is malformed: $($cue.cueId)"
 			}
 			if ($ownsMotion -and $tracking.Mode -in @('WORLD','BOSS_XZ') -and
+				-not ($tracking.Mode -ceq 'BOSS_XZ' -and $anchor.Kind -ceq 'LEAP_TO_ANCHOR') -and
 				([Math]::Abs([double]$keyframe.lookAt[0] - $anchor.X) -gt 0.05 -or
 				[Math]::Abs([double]$keyframe.lookAt[2] - $anchor.Z) -gt 0.05)) {
 				throw "Cinematic cue does not look at its pattern landing anchor $($anchor.AnchorId): $($cue.cueId)"
@@ -6757,6 +6826,101 @@ foreach ($path in @(Get-ChildItem -LiteralPath (Join-Path $repoRoot 'Data\Animat
                     -LimitMs $skillDurationById[$id])) {
                 $hitShapeRows.Add((@('SKILLPROJ', $id, $row) -join "`t"))
             }
+        }
+    }
+}
+
+# Cancel windows are optional per skill: a skill with none keeps the original
+# behaviour of holding every other input until the action ends.
+function Format-CancelWindows {
+    param(
+        [Parameter(Mandatory = $true)][object[]]$Windows,
+        [Parameter(Mandatory = $true)][string]$SkillId,
+        [Parameter(Mandatory = $true)][uint32]$LimitMs)
+
+    $packed = [Collections.Generic.List[string]]::new()
+    [int64]$previousEndMs = -1
+    foreach ($window in $Windows) {
+        if (@($window).Count -ne 2) {
+            throw "Cancel window must be a start/end pair: $SkillId"
+        }
+        [int64]$startMs = [int64]$window[0]
+        [int64]$endMs = [int64]$window[1]
+        if ($startMs -lt 0 -or $endMs -le $startMs -or $endMs -gt [int64]$LimitMs) {
+            throw "Cancel window is outside the action: $SkillId ($startMs..$endMs > $LimitMs)"
+        }
+        if ($startMs -le $previousEndMs) {
+            throw "Cancel windows overlap or are out of order: $SkillId"
+        }
+        $previousEndMs = $endMs
+        $packed.Add(('{0}:{1}' -f $startMs, $endMs))
+    }
+    return ($packed -join ',')
+}
+
+$cancelWindowSeen = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+$cancelWindowDocumentClasses = [Collections.Generic.HashSet[string]]::new(
+	[StringComparer]::Ordinal)
+foreach ($path in @(Get-ChildItem -LiteralPath (Join-Path $repoRoot 'Data\Animation\CancelWindows') `
+        -Filter '*.cancelwindows.json' -File -ErrorAction SilentlyContinue | Sort-Object Name)) {
+    $document = Read-JsonDocument ('Data/Animation/CancelWindows/' + $path.Name)
+    Assert-ExactProperties $document @(
+        'schema','formatVersion','animationAssetId','characterClass','skills') 'cancel window document'
+    if ($document.schema -ne 'lostark.animation-cancel-windows' -or
+        [uint32]$document.formatVersion -ne 1) {
+        throw "Cancel window header is invalid: $($path.Name)"
+    }
+	$documentClass = [string]$document.characterClass
+	if ($documentClass -notin $supportedPlayerClasses -or
+		-not $cancelWindowDocumentClasses.Add($documentClass)) {
+		throw "Cancel window document class is unknown or duplicated: $documentClass"
+	}
+    foreach ($entry in @($document.skills)) {
+        $id = [string]$entry.skillId
+        if (-not $skillDurationById.ContainsKey($id)) {
+            throw "Cancel windows target an unknown skill: $id"
+        }
+		if ([string]$skillClassById[$id] -cne $documentClass) {
+			throw "Cancel windows target another class's skill: $documentClass/$id"
+		}
+        if (-not $cancelWindowSeen.Add($id)) {
+            throw "Duplicate cancel window entry: $id"
+        }
+        if ($null -ne $entry.stages) {
+            Assert-ExactProperties $entry @('skillId','stages') 'cancel window skill'
+            $stageDurations = @($skillStageDurationsById[$id])
+            if ($stageDurations.Count -lt 1) {
+                throw "Cancel window stages target a skill without combo stages: $id"
+            }
+            $seenStages = [Collections.Generic.HashSet[int]]::new()
+            foreach ($stage in @($entry.stages)) {
+                Assert-ExactProperties $stage @('stageIndex','skillCancel','moveCancel') 'cancel window stage'
+                $stageIndex = [int]$stage.stageIndex
+                if ($stageIndex -lt 0 -or $stageIndex -ge $stageDurations.Count -or
+                    -not $seenStages.Add($stageIndex)) {
+                    throw "Cancel window stage index is invalid or duplicated: $id"
+                }
+                foreach ($kind in @('SKILL','MOVE')) {
+                    $windows = @(if ($kind -ceq 'SKILL') { $stage.skillCancel } else { $stage.moveCancel })
+                    if ($windows.Count -eq 0) { continue }
+                    $packed = Format-CancelWindows -Windows $windows -SkillId $id `
+                        -LimitMs $stageDurations[$stageIndex]
+                    $hitShapeRows.Add((@(
+                        'SKILLSTAGECANCEL', $id, $stageIndex, $kind, $windows.Count, $packed) -join "`t"))
+                }
+            }
+            continue
+        }
+        Assert-ExactProperties $entry @('skillId','skillCancel','moveCancel') 'cancel window skill'
+        if (@($skillStageDurationsById[$id]).Count -ne 0) {
+            throw "A staged skill must carry per-stage cancel windows: $id"
+        }
+        foreach ($kind in @('SKILL','MOVE')) {
+            $windows = @(if ($kind -ceq 'SKILL') { $entry.skillCancel } else { $entry.moveCancel })
+            if ($windows.Count -eq 0) { continue }
+            $packed = Format-CancelWindows -Windows $windows -SkillId $id `
+                -LimitMs $skillDurationById[$id]
+            $hitShapeRows.Add((@('SKILLCANCEL', $id, $kind, $windows.Count, $packed) -join "`t"))
         }
     }
 }

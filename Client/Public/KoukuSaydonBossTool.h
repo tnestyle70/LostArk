@@ -111,7 +111,8 @@ namespace Client
 	private:
 		struct PLAY_PREPARATION final
 		{
-			std::vector<std::string> TargetPlacementIds;
+			std::vector<std::string> TargetPlacementIds, PatternIds, BundleIds;
+			bool bPreparingResources = false;
 			LostArk::Shared::GameplayDataRevision GameplayRevision;
 			std::uint32_t iSourceRevision = 0u;
 			std::uint64_t iWorldGeneration = 0u;
@@ -122,6 +123,7 @@ namespace Client
 			std::function<bool(std::string&)> Submit;
 		};
 		bool Prepare_ServerPlay(std::string_view gateId, std::vector<std::string> targets,
+            std::vector<std::string> patternIds, std::vector<std::string> bundleIds,
 			std::function<bool(std::string&)> submit, std::string& status);
 		std::optional<PLAY_PREPARATION> m_PlayPreparation;
 
@@ -161,6 +163,7 @@ namespace Client
 		std::uint32_t m_iSourceRevision = 0u;
 		bool m_bOpen = true;
 		bool m_bLoadAttempted = false;
+		bool m_bReplayGate3OnEncore = true;
 		bool m_bHasSavedComposition = false;
 	};
 }

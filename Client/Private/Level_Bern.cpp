@@ -1,6 +1,7 @@
 #include <WinSock2.h>
 #include <dinput.h>
 #include "imgui.h"
+#include "UITextOcclusion.h"
 #pragma push_macro("new")
 #undef new
 #include <DirectXColors.h>
@@ -575,6 +576,13 @@ void CLevel_Bern::Update(f32_t fTimeDelta)
 		CGameInstance::Get().SetMouseButtonBlocked(DIM::RB, true);
 	}
 	m_Replication.Collect_PlayerViews(m_NameplatePlayers);
+	m_PartyInteraction.Register_TextOccluders();
+	/* The raid entry window's dim backdrop covers the whole screen. */
+	if (Is_ValtanEntryModalOpen())
+	{
+		const float2_t vViewport = CGameInstance::Get().Get_ViewportSize();
+		CUITextOcclusion::Get().Add_Occluder(UI_TEXT_LAYER::MODAL, 0.f, 0.f, vViewport.x, vViewport.y);
+	}
 	if (m_PartyInteraction.Update(
 		m_Replication, m_pPlayerCommandSink, m_NameplatePlayers,
 		!Is_ValtanEntryModalOpen() &&
@@ -707,8 +715,6 @@ HRESULT CLevel_Bern::Render()
 	if (FAILED(__super::Render()))
 		return E_FAIL;
 
-	/* World text stops under this level's own popups, like under CMainApp's windows. */
-	m_PartyInteraction.Add_TextClipOuts();
 	m_PlayerNameplateView.Render(m_NameplatePlayers, &m_Replication.Get_PartyRoster());
 	m_ChatBubbleView.Render(m_Replication, m_NameplatePlayers);
 	m_PartyInteraction.Render(m_pPlayerCommandSink);
@@ -892,7 +898,7 @@ bool_t CLevel_Bern::Set_FollowCameraProfile(
 	}
 	m_FollowCameraProfile = profile;
 	if (const auto character = Get_LocalCharacter())
-		character->Set_PresentationSizeMultiplier(profile.characterSizeMultiplier);
+		CCharacter::Set_MapPresentationSizeProfile(profile);
 	outStatus = "Applied to this map's follow camera. Save to keep these settings.";
 	m_strFollowCameraProfileStatus = outStatus;
 	return true;
@@ -924,7 +930,7 @@ bool_t CLevel_Bern::Bind_CameraToLocalCharacter()
 	 * 이미 같은 Character에 연결되어 있으면 매 프레임
 	 * Camera Target을 다시 설정하지 않는다.
 	 */
-	localCharacter->Set_PresentationSizeMultiplier(m_FollowCameraProfile.characterSizeMultiplier);
+	CCharacter::Set_MapPresentationSizeProfile(m_FollowCameraProfile);
 	if (m_pCameraTarget.lock() == localCharacter)
 		return true;
 

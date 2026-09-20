@@ -135,6 +135,10 @@ float g_CaptureProgress;
 float2 g_CaptureDestinationUV;
 float2 g_CaptureDestinationSizeUV;
 int g_CaptureOverLiveScene;
+float4 g_CaptureEdgeSpeed;
+float g_CaptureRotationDegrees;
+float g_CaptureBackgroundDim;
+int g_CaptureSquare;
 EFFECT_PS_OUT PS_SCENE_COLLAPSE(VS_OUT input)
 {
     EFFECT_PS_OUT output = (EFFECT_PS_OUT)0;
@@ -147,13 +151,41 @@ EFFECT_PS_OUT PS_SCENE_COLLAPSE(VS_OUT input)
     }
     const float t = saturate(g_CaptureProgress);
     const float progress = t * t * (3.f - 2.f * t);
-    const float2 scale = lerp(float2(1.f, 1.f), g_CaptureDestinationSizeUV, progress);
+    // Color and its owned bloom always share the same warp and outside attenuation.
+    output.SceneColor.rgb *= 1.f - saturate(g_CaptureBackgroundDim) * progress;
+    output.BloomContribution.rgb *= 1.f - saturate(g_CaptureBackgroundDim) * progress;
+    uint width, height;
+    g_CapturedSceneColor.GetDimensions(width, height);
+    const float2 dimensions = float2(width, height);
+    float2 targetSize = g_CaptureDestinationSizeUV;
+    if (g_CaptureSquare != 0)
+    {
+        const float side = min(targetSize.x * width, targetSize.y * height);
+        targetSize = side / dimensions;
+    }
+    // Each edge has an independent ease speed, with exact shared start/end points.
+    // >1 reaches its destination sooner, <1 later; no edge can cross the endpoint.
+    const float4 edge = pow(progress.xxxx, 1.f / g_CaptureEdgeSpeed);
+    const float2 lower = lerp(float2(0.f, 0.f), g_CaptureDestinationUV - targetSize * .5f, edge.xz);
+    const float2 upper = lerp(float2(1.f, 1.f), g_CaptureDestinationUV + targetSize * .5f, edge.yw);
+    const float2 scale = upper - lower;
     if (any(scale <= 0.00001f)) return output;
-    const float2 center = lerp(float2(.5f, .5f), g_CaptureDestinationUV, progress);
-    const float2 uv = (input.uv - center) / scale + 0.5f;
+    const float2 center = (lower + upper) * .5f;
+    const float angle = radians(g_CaptureRotationDegrees) * progress;
+    float sine, cosine;
+    sincos(angle, sine, cosine);
+    const float2 pixel = (input.uv - center) * dimensions;
+    const float2 unrotated = float2(cosine * pixel.x + sine * pixel.y,
+        -sine * pixel.x + cosine * pixel.y) / dimensions;
+    const float2 uv = unrotated / scale + .5f;
     if (any(uv < 0.f) || any(uv > 1.f)) return output;
-    output.SceneColor.rgb = g_CapturedSceneColor.SampleLevel(LinearClampUVSampler, uv, 0.f).rgb;
-    output.BloomContribution.rgb = g_CapturedSceneBloom.SampleLevel(LinearClampUVSampler, uv, 0.f).rgb;
+    // Crop to the square gradually, rather than squeezing a widescreen scene.
+    const float aspect = float(width) / float(height);
+    const float2 crop = g_CaptureSquare != 0 ? lerp(float2(1.f, 1.f),
+        float2(min(1.f, 1.f / aspect), min(1.f, aspect)), progress) : float2(1.f, 1.f);
+    const float2 captureUV = (uv - .5f) * crop + .5f;
+    output.SceneColor.rgb = g_CapturedSceneColor.SampleLevel(LinearClampUVSampler, captureUV, 0.f).rgb;
+    output.BloomContribution.rgb = g_CapturedSceneBloom.SampleLevel(LinearClampUVSampler, captureUV, 0.f).rgb;
     return output;
 }
 // Identical entry/profile/arguments compile once; pass states and indices stay unchanged.

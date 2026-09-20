@@ -5,6 +5,7 @@ headers, which is the same order Level_CharacterSelect.cpp uses. Previously
 _DEBUG-only (the audition panel was its only user); the death-screen overlay
 below is a real Release-build feature, so the include is no longer guarded. */
 #include "imgui.h"
+#include "UITextOcclusion.h"
 
 #include "Level_ValtanArena.h"
 
@@ -31,6 +32,13 @@ below is a real Release-build feature, so the include is no longer guarded. */
 #include "RuntimeAssetRoot.h"
 #include "Transform.h"
 #include "Valtan.h"
+#include "ActorCatalog.h"
+#include "Effect_Catalog.h"
+#include "Effect_PresentationService.h"
+#include "EffectV2_Catalog.h"
+#include "EffectV2_Runtime.h"
+#include "ValtanPatternTree.h"
+#include <set>
 #include "WorldGameplayDocument.h"
 
 #include "DataJson.h"
@@ -180,6 +188,7 @@ CLevel_ValtanArena::~CLevel_ValtanArena()
 	End_ReferenceCamera(false);
 #endif
 	End_CinematicCamera();
+	m_SourceCinematicPlayer.Clear();
 	Clear_TriggerMarkers();
 	m_MapEffectPresentationRuntime.Clear();
 	if (RAID_PRELUDE_BGM_STATE::NONE != m_eRaidPreludeBgmState)
@@ -343,6 +352,7 @@ HRESULT CLevel_ValtanArena::Initialize()
 		{
 			Handle_WorldEntityDespawned(placementId, archetypeId);
 		};
+	Ready_SourceCinematics();
 	if (!m_Replication.Initialize(replicationDesc))
 	{
 		m_MapEffectPresentationRuntime.Clear();
@@ -641,6 +651,7 @@ void CLevel_ValtanArena::Update(f32_t fTimeDelta)
 		nullptr != m_pPlayerCommandSink)
 		m_pPlayerCommandSink->Request_ReturnToBern(m_iNextReturnToBernSequence++);
 	const bool_t isRaidClearActive = m_fRaidClearElapsedSeconds >= 0.f;
+	m_PartyInteraction.Register_TextOccluders();
 	if (!isRaidClearActive && m_PartyInteraction.Update(
 		m_Replication, m_pPlayerCommandSink, m_NameplatePlayers,
 		false))
@@ -1607,9 +1618,11 @@ void CLevel_ValtanArena::Update_CinematicCamera(const f32_t fTimeDelta)
 		return;
 	}
 
+	Prepare_SourceCinematicInput(input);
 	VALTAN_CINEMATIC_CAMERA_POSE pose{};
 	if (!m_ValtanCinematicCameraController.Update(input, fTimeDelta, pose))
 	{
+		Stop_SourceCinematic();
 		/* A cue-authored exit handoff retains the same Server cinematic owner
 		   until its final submitted pose exactly matches live gameplay follow. */
 		if (Update_CinematicCameraExitTransition(fTimeDelta))
@@ -1620,6 +1633,11 @@ void CLevel_ValtanArena::Update_CinematicCamera(const f32_t fTimeDelta)
 		return;
 	}
 
+	if (!Update_SourceCinematic(input))
+	{
+		End_CinematicCamera();
+		return;
+	}
 #ifdef _DEBUG
 	/* A Server-authored cue always preempts the local comparison aid before it
 	tries to acquire the single camera presentation owner. */
@@ -1633,7 +1651,7 @@ void CLevel_ValtanArena::Update_CinematicCamera(const f32_t fTimeDelta)
 		m_pCamera->Set_FollowEnabled(false);
 		m_pCamera->Set_FollowTarget(nullptr);
 		if (!m_pCamera->Begin_PresentationOverride(
-			static_cast<uint64_t>(boss.iNetEntityId),
+			static_cast<uint64_t>(input.iNetEntityId),
 			CCamera::PRESENTATION_PRIORITY::SERVER_CINEMATIC))
 		{
 			m_pCamera->Set_FollowTarget(m_pCinematicRestoreTarget.lock());
@@ -1644,7 +1662,7 @@ void CLevel_ValtanArena::Update_CinematicCamera(const f32_t fTimeDelta)
 		}
 		m_bCinematicCameraApplied = true;
 		m_iCinematicCameraOwnerId =
-			static_cast<uint64_t>(boss.iNetEntityId);
+			static_cast<uint64_t>(input.iNetEntityId);
 	}
 	else if (nullptr != m_pCamera->Get_FollowTarget())
 	{
@@ -1654,14 +1672,15 @@ void CLevel_ValtanArena::Update_CinematicCamera(const f32_t fTimeDelta)
 	}
 
 	if (m_iCinematicCameraOwnerId !=
-		static_cast<uint64_t>(boss.iNetEntityId))
+		static_cast<uint64_t>(input.iNetEntityId))
 	{
 		End_CinematicCamera();
 		return;
 	}
-	if (!m_pCamera->Apply_PresentationPose(
-		m_iCinematicCameraOwnerId,
-		pose.vEye, pose.vLookAt, pose.fFovYDegrees))
+	if (!(pose.hasUp ? m_pCamera->Apply_PresentationPoseWithUp(
+        m_iCinematicCameraOwnerId, pose.vEye, pose.vLookAt, pose.vUp, pose.fFovYDegrees) :
+        m_pCamera->Apply_PresentationPose(m_iCinematicCameraOwnerId,
+            pose.vEye, pose.vLookAt, pose.fFovYDegrees)))
 	{
 		End_CinematicCamera();
 	}
@@ -1732,6 +1751,7 @@ void CLevel_ValtanArena::End_CinematicCameraOverride()
 
 void CLevel_ValtanArena::End_CinematicCamera()
 {
+	Stop_SourceCinematic();
 	/* Map Effects have their own level lifetime. Camera completion must not
 	   cancel a stage-owned world Effect or restore unrelated Deploy surfaces. */
 	End_CinematicCameraOverride();
@@ -1742,12 +1762,9 @@ HRESULT CLevel_ValtanArena::Render()
 	if (FAILED(__super::Render()))
 		return E_FAIL;
 
-	/* The award page is a full-screen modal: no world text at all while it is up. Otherwise
-	   this level's own popups clip it, like CMainApp's windows do. */
+	/* The award page is a full-screen modal: no world text at all while it is up. */
 	if (!Is_MvpResultVisible())
 	{
-		m_PartyInteraction.Add_TextClipOuts();
-		m_GateProgressView.Add_TextClipOuts();
 		m_PlayerNameplateView.Render(m_NameplatePlayers, &m_Replication.Get_PartyRoster());
 		m_ChatBubbleView.Render(m_Replication, m_NameplatePlayers);
 	}
@@ -1756,7 +1773,10 @@ HRESULT CLevel_ValtanArena::Render()
 	   CUI_Sprite objects on Layer_UI and need no call. */
 	m_GateProgressView.Render_Text();
 	if (nullptr != m_pMvpResultView)
+	{
+		CUITextLayerScope PageText(UI_TEXT_LAYER::PAGE);
 		m_pMvpResultView->Render();
+	}
 
 #ifdef _DEBUG
 	CMainApp::Update_DebugWindowTitleWithFps(TEXT("Valtan Arena Map"));
@@ -2063,9 +2083,10 @@ void CLevel_ValtanArena::Update_RaidClear(f32_t fTimeDelta)
 	/* Edge-trigger only -- no "boss alive again -> hide" branch, so
 	Update_DebugRaidClearKey()'s forced trigger below (with no real dead boss behind it) is
 	free to run its own timeline out instead of being wiped the very next frame. */
-	if (isBossDead && !m_bRaidClearWasBossDead)
-		Trigger_RaidClear();
-	m_bRaidClearWasBossDead = isBossDead;
+    const bool_t waitForFinale = m_bSourceDeathStarted && !m_bSourceDeathFinished;
+    if (isBossDead && !m_bRaidClearWasBossDead && !waitForFinale)
+        Trigger_RaidClear();
+    if (!waitForFinale) m_bRaidClearWasBossDead = isBossDead;
 
 	/* Release has no Debug O-key path. An explicit process environment opt-in
 	   lets QA open the final Return button immediately in a Release Client; the
@@ -2134,8 +2155,9 @@ void CLevel_ValtanArena::Update_RaidClear(f32_t fTimeDelta)
 	/* Authoring-only placeholder, same split as DeadScene_TitleTextMarker --
 	RenderRaidClearText() (CMainApp, after EndFrame()) draws the real text. */
 	m_pRaidClearView->Set_SlotVisible("RaidClear_TitleTextBox", false);
-	/* The return button waits under the award page until that page is closed. */
-	m_pRaidClearView->Set_SlotVisible("RaidClear_ReturnButton", isAfterRaidClear && !isMvpVisible);
+	/* The clear screen's own return button is gone: the gate progress panel's exit button
+	   (top left) takes the same trip once the award page has closed. */
+	m_pRaidClearView->Set_SlotVisible("RaidClear_ReturnButton", false);
 	m_bRaidClearReturnAvailable = isAfterRaidClear && !isMvpVisible;
 	if (isShowing)
 	{
@@ -2146,52 +2168,12 @@ void CLevel_ValtanArena::Update_RaidClear(f32_t fTimeDelta)
 	}
 	m_pRaidClearView->Update(fTimeDelta);
 
-	/* "돌아가기" button -- appears once the celebration overlay's own reveal/hold
-	timeline finishes and every fading slot has hidden itself, taking that same
-	screen position rather than sitting on top of the still-playing overlay.
-	Same hover/click hit-test pattern as CLevel_ValtanArena's own DeadScene
-	Revive button (CUIInputRouter::Get() + Get_SlotRect), and the same
-	one-shot Request_* submission as before. No local hide-on-click --
-	CLevelTransitionService's real BERN switch (once the Server accepts the
-	transfer) tears this whole Level down anyway. */
-	if (isAfterRaidClear && !isMvpVisible && nullptr != m_pPlayerCommandSink)
-	{
-		f32_t fButtonX = 0.f, fButtonY = 0.f, fButtonWidth = 0.f, fButtonHeight = 0.f;
-		if (m_pRaidClearView->Get_SlotRect("RaidClear_ReturnButton",
-			fButtonX, fButtonY, fButtonWidth, fButtonHeight))
-		{
-			CUIInputRouter& Router = CUIInputRouter::Get();
-			const f32_t fResolutionWidth = m_pRaidClearView->Get_ResolutionWidth();
-			const f32_t fResolutionHeight = m_pRaidClearView->Get_ResolutionHeight();
-			const bool_t isButtonHovered = Router.Is_Hovered(
-				fButtonX, fButtonY, fButtonWidth, fButtonHeight,
-				fResolutionWidth, fResolutionHeight);
-			m_pRaidClearView->Set_SlotTexture("RaidClear_ReturnButton", isButtonHovered ?
-				"UI/ClassSelect/Common/NormalButtonHover.png" :
-				"UI/ClassSelect/Common/NormalButton.png");
-			if (isButtonHovered)
-			{
-				Router.Claim_Mouse_This_Frame();
-				if (Router.Is_Clicked(fButtonX, fButtonY, fButtonWidth, fButtonHeight,
-					fResolutionWidth, fResolutionHeight))
-				{
-					CMainApp::Play_UIButtonClickSound();
-					m_pPlayerCommandSink->Request_ReturnToBern(
-						m_iNextReturnToBernSequence++);
-				}
-			}
-		}
-	}
-
 	HUD_RAIDCLEAR_TEXT_RECTS textRects;
 	textRects.isValid = isShowing &&
 		m_pRaidClearView->Get_SlotRect("RaidClear_TitleTextBox",
 			textRects.fTitleX, textRects.fTitleY,
 			textRects.fTitleWidth, textRects.fTitleHeight);
-	textRects.isButtonValid = isAfterRaidClear &&
-		m_pRaidClearView->Get_SlotRect("RaidClear_ReturnButton",
-			textRects.fButtonX, textRects.fButtonY,
-			textRects.fButtonWidth, textRects.fButtonHeight);
+	textRects.isButtonValid = false;
 	CCombatHUDViewModel::Get().Set_RaidClearTextRects(textRects);
 }
 
@@ -2397,7 +2379,7 @@ bool_t CLevel_ValtanArena::Set_FollowCameraProfile(
 	}
 	m_FollowCameraProfile = profile;
 	if (const auto character = Get_LocalCharacter())
-		character->Set_PresentationSizeMultiplier(profile.characterSizeMultiplier);
+		CCharacter::Set_MapPresentationSizeProfile(profile);
 	outStatus = "Applied to this map's follow camera. Save to keep these settings.";
 	m_strFollowCameraProfileStatus = outStatus;
 	return true;
@@ -2431,7 +2413,7 @@ bool_t CLevel_ValtanArena::Bind_CameraToLocalCharacter()
 		m_pCamera->Set_FollowEnabled(false);
 		return true;
 	}
-	localCharacter->Set_PresentationSizeMultiplier(m_FollowCameraProfile.characterSizeMultiplier);
+	CCharacter::Set_MapPresentationSizeProfile(m_FollowCameraProfile);
 	if (m_pCameraTarget.lock() == localCharacter)
 		return true;
 
@@ -2469,4 +2451,297 @@ unique_ptr<CLevel_ValtanArena> CLevel_ValtanArena::Create(
 	if (FAILED(instance->Initialize()))
 		return nullptr;
 	return instance;
+}
+
+CWorldSequencePlayer::TARGET_SET CLevel_ValtanArena::SourceCinematicTargets()
+{
+    CWorldSequencePlayer::TARGET_SET targets;
+    targets.levelIndex = ETOUI(LEVEL::VALTAN_ARENA);
+    targets.pCatalog = &m_MapRuntime.Get_Catalog();
+    targets.pPlacements = &m_MapRuntime.Get_MutablePlacements();
+    targets.pDeployRuntime = &m_DeployRuntime;
+    targets.device = m_pDevice;
+    targets.context = m_pContext;
+    return targets;
+}
+
+
+bool_t CLevel_ValtanArena::Debug_PrepareCompletePlayResources(
+    const VALTAN_PATTERN_VIEW& pattern, bool_t& ready, std::string& status)
+{
+    ready = false;
+    if (pattern.strPatternId.empty()) { status = "Complete Play has no selected pattern."; return false; }
+    auto& v2Catalog = CEffectV2Catalog::Get();
+    if (!m_CompletePlayPreparation || m_CompletePlayPreparation->patternId != pattern.strPatternId)
+    {
+        COMPLETE_PLAY_PREPARATION staged;
+        staged.patternId = pattern.strPatternId;
+        std::set<std::string> v1;
+        std::set<std::pair<std::string,std::string>> v2;
+        std::set<std::string> actions, clips;
+        for (const auto& stage : pattern.Stages)
+        {
+            actions.insert(stage.strActionId);
+            clips.insert(stage.RuntimeClipNames.begin(), stage.RuntimeClipNames.end());
+            if (!stage.strRuntimeClipName.empty()) clips.insert(stage.strRuntimeClipName);
+            // Server-authoritative Valtan always consumes V0. Material V1 is
+            // an optional local audition lane and must not block this command.
+            for (const auto& cue : stage.ProductCues) v1.insert(cue.strEffectAssetId);
+            for (const auto& object : stage.CombatObjectEffects)
+            {
+                const auto* visual = CActorCatalog::Find_BossCombatObjectVisual("BOSS_VALTAN",
+                    object.strCombatObjectArchetypeId, object.strClientVisualId);
+                if (!visual) { status = "Complete Play combat visual is unavailable: " + object.strCombatObjectArchetypeId; return false; }
+                if (visual->activeEffectKind == BOSS_COMBAT_OBJECT_ACTIVE_EFFECT_KIND::EFFECT_V1)
+                    v1.insert(visual->effectAssetId);
+                else v2.emplace("GROUP", visual->effectV2Group.groupId);
+                if (!visual->hitEffectAssetId.empty()) v1.insert(visual->hitEffectAssetId);
+            }
+        }
+        // Both primary and ghost use these catalog attachments; the existing
+        // preparation cache makes already resident defaults a cheap probe.
+        for (const auto& actor : CActorCatalog::Get_Bosses())
+            if (actor.clientPresentationId == "boss.valtan.client.v1")
+                for (const auto& effect : actor.defaultParticles) v1.insert(effect.effectAssetId);
+        auto snapshot = v2Catalog.Get_RuntimeSnapshot();
+        if ((!snapshot || !snapshot->Is_Ready()) && !v2Catalog.Reload_BossValtanRuntime(status)) return false;
+        snapshot = v2Catalog.Get_RuntimeSnapshot();
+        if (!snapshot || !snapshot->Is_Ready()) { status = "Complete Play Valtan V2 runtime bindings are unavailable."; return false; }
+        for (const auto& binding : snapshot->Get_BossValtanBindings())
+            if (binding.strPatternId == pattern.strPatternId ||
+                (binding.strPatternId.empty() && (actions.contains(binding.strActionId) || clips.contains(binding.strClip))))
+                v2.emplace(binding.eResourceKind == EFFECT_V2_RESOURCE_KIND::GROUP ? "GROUP" : "LEAF", binding.strResourceId);
+        const auto addCinema = [&](const char* suffix) {
+            staged.worldIds.emplace_back(std::string("world.sequence.instance.valtan.source-preview.") + suffix);
+        };
+        if (pattern.strPatternId == "VALTAN_ENTRANCE_CINEMATIC")
+            for (const char* suffix : {"entrance","entrance.colorless","entrance.actor64.body.0","entrance.actor64.weapon.0","entrance.actor64.weapon.1"}) addCinema(suffix);
+        else if (pattern.strPatternId == "VALTAN_TRASH") addCinema("trash");
+        else if (pattern.strPatternId == "VALTAN_GHOST_DEATH_AUDITION") addCinema("finale");
+        else if (pattern.strPatternId == "VALTAN_ARENA_BREAK_109") addCinema("phase2");
+        const auto& world = m_SourceCinematicPlayer.Get_Document();
+        if (!staged.worldIds.empty() && !m_bSourceCinematicsReady)
+        { status = "Complete Play source cinematic assembly is unavailable: " + m_SourceCinematicPlayer.Get_Status(); return false; }
+        for (const auto& id : staged.worldIds)
+        {
+            const auto* instance = world.Find_Instance(id);
+            const auto* sequence = instance ? world.Find_Template(instance->templateId) : nullptr;
+            if (!instance || !instance->enabled || !sequence)
+            { status = "Complete Play source cinematic instance is unavailable: " + id; return false; }
+            for (const auto& effect : sequence->effectTracks)
+                if (effect.resourceKind == "V1_EFFECT") v1.insert(effect.resourceId);
+                else v2.emplace(effect.resourceKind,effect.resourceId);
+        }
+        v1.erase("");
+        staged.v1Ids.assign(v1.begin(),v1.end()); staged.v2Ids.assign(v2.begin(),v2.end());
+        std::vector<std::string> registered;
+        if (!staged.v1Ids.empty() && !CEffectPresentationService::Queue_ProductTargets_Priority(staged.v1Ids,registered,status)) return false;
+        staged.v1Revision = CEffectCatalog::Get_RuntimeRevision();
+        staged.v2Generation = CEffectV2Runtime::Cache_Generation();
+        staged.v2Revision = snapshot->Get_Revision(); staged.worldRevision = world.Get_Revision();
+        staged.v2Snapshot = std::move(snapshot);
+        m_CompletePlayPreparation = std::move(staged);
+    }
+    auto& pending = *m_CompletePlayPreparation;
+    const auto snapshot = v2Catalog.Get_RuntimeSnapshot();
+    if (pending.v1Revision != CEffectCatalog::Get_RuntimeRevision() ||
+        pending.v2Generation != CEffectV2Runtime::Cache_Generation() || !snapshot ||
+        pending.v2Revision != snapshot->Get_Revision() ||
+        pending.worldRevision != m_SourceCinematicPlayer.Get_Document().Get_Revision())
+    { status = "Complete Play resource generation changed while preparing; select Play again for the new saved generation."; return false; }
+    const auto probe = CEffectPresentationService::Get_ProductCuePreparationProbe(pending.v1Ids);
+    if (!pending.v1Ids.empty() && (!probe.strBlockingFailure.empty() || probe.iFailedCount || probe.iUnavailableCount))
+    {
+        status = "Complete Play Effect preparation failed; no Server start was sent. " + probe.strBlockingFailure;
+        for (const auto& id : pending.v1Ids)
+        {
+            const auto reason = CEffectPresentationService::Get_ProductCuePreparationFailure(id);
+            if (!reason.empty()) status += " " + id + ": " + reason;
+        }
+        if (probe.iUnavailableCount) status += " Unavailable=" + std::to_string(probe.iUnavailableCount);
+        return false;
+    }
+    status = "Preparing Valtan Complete Play: V1 " + std::to_string(probe.iPreparedCount) + "/" + std::to_string(pending.v1Ids.size()) +
+        ", V2 " + std::to_string(pending.v2Index) + "/" + std::to_string(pending.v2Ids.size()) +
+        ", WORLD " + std::to_string(pending.worldIndex) + "/" + std::to_string(pending.worldIds.size()) + ". Server playback has not started.";
+    if (pending.v2Index < pending.v2Ids.size())
+    {
+        const auto& [kind,id] = pending.v2Ids[pending.v2Index];
+        auto resourceSnapshot = pending.v2Snapshot;
+        if ((kind == "GROUP" && !resourceSnapshot->Find_Group(id)) ||
+            (kind == "LEAF" && !resourceSnapshot->Find_Document(id)))
+            if (!v2Catalog.Load_ResourceSnapshot(kind == "GROUP" ? EFFECT_V2_RESOURCE_KIND::GROUP : EFFECT_V2_RESOURCE_KIND::LEAF,
+                id, resourceSnapshot, status)) return false;
+        EFFECT_V2_GROUP group;
+        if (kind == "GROUP")
+        {
+            const auto* found = resourceSnapshot->Find_Group(id);
+            if (!found) { status = "Complete Play V2 group is unavailable: " + id; return false; }
+            group = *found;
+        }
+        else if (kind == "LEAF")
+        {
+            group.strGroupId = id; EFFECT_V2_GROUP_CHILD child;
+            child.strChildId = "valtan.complete-play.leaf"; child.strResourceId = child.strEffectId = id;
+            group.Children.push_back(std::move(child));
+        }
+        else { status = "Complete Play V2 resource kind is invalid: " + kind; return false; }
+        if (!CEffectV2Runtime::Prewarm_Group(group,resourceSnapshot,m_pDevice,m_pContext))
+        { status = "Complete Play V2 preparation failed: " + id + "; " + CEffectV2Runtime::Last_Error(); return false; }
+        ++pending.v2Index; return true;
+    }
+    if (!pending.v1Ids.empty() && (!probe.bCatalogRevisionCurrent || !probe.bSettled ||
+        probe.iPreparedCount != pending.v1Ids.size())) return true;
+    if (pending.worldIndex < pending.worldIds.size())
+    {
+        const auto& id = pending.worldIds[pending.worldIndex];
+        if (!m_SourceCinematicPlayer.Prepare_InstanceResources(id,SourceCinematicTargets()))
+        { status = "Complete Play WORLD preparation failed: " + id + "; " + m_SourceCinematicPlayer.Get_Status(); return false; }
+        ++pending.worldIndex; return true;
+    }
+    ready = true; status = "Valtan Complete Play resources are fully prepared."; return true;
+}
+
+void CLevel_ValtanArena::Ready_SourceCinematics()
+{
+    const auto targets = SourceCinematicTargets();
+    if (!m_SourceCinematicPlayer.Load_PreparedArea("LV_LUT_HEARTRB_ED", targets))
+    {
+        OutputDebugStringA(("[ValtanSourceCinema] " + m_SourceCinematicPlayer.Get_Status() + "\n").c_str());
+        return;
+    }
+    for (const char* suffix : { "entrance", "entrance.colorless", "entrance.actor64.body.0",
+        "entrance.actor64.weapon.0", "entrance.actor64.weapon.1", "trash", "finale", "phase2" })
+    {
+        const std::string id = std::string("world.sequence.instance.valtan.source-preview.") + suffix;
+        if (!m_SourceCinematicPlayer.Prepare_InstanceResources(id, targets) ||
+            !m_SourceCinematicPlayer.Prewarm_ObjectInstances(id, std::string_view(suffix).starts_with("entrance") ? 2u : 1u, targets))
+        {
+            OutputDebugStringA(("[ValtanSourceCinema] " + id + " / " + m_SourceCinematicPlayer.Get_Status() + "\n").c_str());
+            m_SourceCinematicPlayer.Clear();
+            return;
+        }
+    }
+    m_bSourceCinematicsReady = true;
+}
+
+void CLevel_ValtanArena::Prepare_SourceCinematicInput(VALTAN_CINEMATIC_CAMERA_INPUT& input)
+{
+    if (!m_bSourceCinematicsReady) return;
+    if (input.isValid && input.iNetEntityId && !input.isBossDead)
+    {
+        m_LastSourceCinematicInput = input;
+        if (const auto primary = m_Replication.Find_PrimaryValtanPresentation())
+            m_pSourceCinematicBoss = primary;
+    }
+    // Reliable DEAD despawn may retire the replicated registry before a DEAD
+    // snapshot arrives. Retain only its presentation identity, never gameplay.
+    const bool_t dead = input.isBossDead || CCombatHUDViewModel::Get().Get_BossDeadRaw();
+    if (dead && !m_bSourceDeathStarted && m_LastSourceCinematicInput.isValid)
+    {
+        Stop_SourceCinematic();
+        m_SourceDeathInput = m_LastSourceCinematicInput;
+        m_SourceDeathInput.isBossDead = true;
+        m_SourceDeathInput.iPatternSequence = 0u;
+        m_SourceDeathInput.iActionStartTick = m_SourceDeathInput.iServerTick;
+        m_SourceDeathInput.hasStageCameraInvocations = false;
+        m_SourceDeathInput.strStageId.clear();
+        m_bSourceDeathStarted = true;
+        m_bSourceDeathFinished = false;
+    }
+    if (m_bSourceDeathStarted && !m_bSourceDeathFinished)
+        input = m_SourceDeathInput;
+}
+
+bool_t CLevel_ValtanArena::Update_SourceCinematic(const VALTAN_CINEMATIC_CAMERA_INPUT& input)
+{
+    std::string selected;
+    f32_t sourceOffsetMs = 0.f;
+    if (input.isBossDead && m_bSourceDeathStarted && !m_bSourceDeathFinished)
+        selected = "finale";
+    else if (input.strPatternId == "VALTAN_GHOST_DEATH_AUDITION")
+        selected = "finale";
+    else if (input.strPatternId == "VALTAN_ENTRANCE_CINEMATIC")
+        selected = "entrance";
+    else if (input.strPatternId == "VALTAN_ARENA_BREAK_109" &&
+        (input.strStageId == "WIDE_REVEAL" || input.strStageId == "RECOVERY" ||
+         (input.strStageId == "IMPACT_HOLD" && m_ValtanCinematicCameraController.Get_ElapsedSeconds() >= 0.6f)))
+        selected = "phase2";
+    else if (input.strPatternId == "VALTAN_TRASH" &&
+        (input.strStageActionId == "valtan.sequence.center-trash-rush-if.step-05" ||
+         input.strStageActionId == "valtan.sequence.center-trash-rush-if.step-06"))
+        selected = "trash";
+    if (selected.empty())
+    {
+        Stop_SourceCinematic();
+        return true;
+    }
+    if (!m_bSourceCinematicsReady) return false;
+    if (!input.isBossDead)
+    {
+        const auto* pattern = m_ValtanEncounterReference.Find_Pattern(input.strPatternId);
+        if (!pattern || input.iStageIndex >= pattern->stages.size()) return false;
+        sourceOffsetMs = static_cast<f32_t>(pattern->stages[input.iStageIndex].iStartOffsetMs);
+        if (selected == "phase2")
+            sourceOffsetMs -= 2600.f; // Original420629: Att_Battle_12_03+400ms -> Event_02.
+        if (selected == "trash")
+        {
+            const auto first = std::find_if(pattern->stages.begin(), pattern->stages.end(),
+                [](const auto& stage) { return stage.stageId == "STEP_05"; });
+            if (first == pattern->stages.end()) return false;
+            sourceOffsetMs -= static_cast<f32_t>(first->iStartOffsetMs);
+        }
+    }
+    const auto targets = SourceCinematicTargets();
+    const std::string prefix = "world.sequence.instance.valtan.source-preview.";
+    constexpr std::array<std::string_view, 4> entranceCompanions = { "entrance.colorless",
+        "entrance.actor64.body.0", "entrance.actor64.weapon.0", "entrance.actor64.weapon.1" };
+    const bool changed = selected != m_strSourceCinematic ||
+        m_iSourceCinematicSequence != input.iPatternSequence || m_iSourceCinematicEntity != input.iNetEntityId;
+    if (changed)
+    {
+        Stop_SourceCinematic();
+        bool played = m_SourceCinematicPlayer.Play(prefix + selected, targets);
+        if (played && selected == "entrance")
+            for (const auto suffix : entranceCompanions)
+                if (!m_SourceCinematicPlayer.Play(prefix + std::string(suffix), targets)) { played = false; break; }
+        if (!played)
+        {
+            m_SourceCinematicPlayer.Stop_All(targets, true);
+            OutputDebugStringA(("[ValtanSourceCinema] play failed: " + m_SourceCinematicPlayer.Get_Status() + "\n").c_str());
+            if (selected == "finale") m_bSourceDeathFinished = true;
+            return false;
+        }
+        m_strSourceCinematic = selected;
+        m_iSourceCinematicSequence = input.iPatternSequence;
+        m_iSourceCinematicEntity = input.iNetEntityId;
+        if (const auto primary = m_pSourceCinematicBoss.lock())
+            primary->Set_CinematicPresentationSuppressed(true);
+    }
+    // The existing Server camera controller owns one smoothed action clock;
+    // actor animation and source FX sample exactly that clock, including joins.
+    const f32_t timeMs = sourceOffsetMs + m_ValtanCinematicCameraController.Get_ElapsedSeconds() * 1000.f;
+    bool sampled = m_SourceCinematicPlayer.Seek_InstanceToMs(prefix + selected, timeMs, targets);
+    if (sampled && selected == "entrance")
+        for (const auto suffix : entranceCompanions)
+            if (!m_SourceCinematicPlayer.Seek_InstanceToMs(prefix + std::string(suffix), timeMs, targets)) { sampled = false; break; }
+    if (!sampled)
+    {
+        OutputDebugStringA(("[ValtanSourceCinema] sample failed: " + m_SourceCinematicPlayer.Get_Status() + "\n").c_str());
+        Stop_SourceCinematic();
+        return false;
+    }
+    return true;
+}
+
+void CLevel_ValtanArena::Stop_SourceCinematic()
+{
+    if (m_strSourceCinematic.empty()) return;
+    if (m_strSourceCinematic == "finale") m_bSourceDeathFinished = true;
+    m_SourceCinematicPlayer.Stop_All(SourceCinematicTargets(), true);
+    if (const auto primary = m_pSourceCinematicBoss.lock())
+        primary->Set_CinematicPresentationSuppressed(false);
+    m_strSourceCinematic.clear();
+    m_iSourceCinematicSequence = 0u;
+    m_iSourceCinematicEntity = 0u;
 }

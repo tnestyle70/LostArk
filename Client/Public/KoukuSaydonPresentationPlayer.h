@@ -13,6 +13,7 @@
 #include <memory>
 #include <set>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 namespace Engine { class CModel; }
@@ -63,6 +64,13 @@ public:
         ComPtr<ID3D11DeviceContext> context, CRenderingProfileService& profiles);
     ~CKoukuSaydonPresentationPlayer();
     bool Reload_Product(std::string& status, std::uint32_t expectedSourceRevision = 0u);
+    // Loading owns collection/prewarm; playback borrows these immutable V2 snapshots.
+    // The pair is (LEAF/GROUP, stable asset ID), never a prototype or vector index.
+    static bool Collect_ProductEffectTargets(std::vector<std::string>& v1Targets,
+        std::vector<std::pair<std::string, std::string>>& v2Targets, std::string& status);
+    static bool Prewarm_ProductEffectResources(const ComPtr<ID3D11Device>& device,
+        const ComPtr<ID3D11DeviceContext>& context,
+        const std::vector<std::pair<std::string, std::string>>& targets, std::string& status);
     static bool Is_TargetedCombatObjectArchetype(std::string_view archetypeId) noexcept;
     bool Start_TargetedCombatVisual(const LostArk::Shared::S2C_COMBAT_OBJECT_SPAWNED& spawn,
         std::string& status);
@@ -189,6 +197,8 @@ private:
     struct SESSION final
     {
         std::string key;
+        std::string productPatternId;
+        std::uint32_t bossEntityId = 0u, patternSequence = 0u, patternStartTick = 0u;
         float lastClockMs = -1.f;
         std::map<std::string, PLAYING_ROW> rows;
         std::uint32_t runEpoch = 0;
@@ -213,9 +223,22 @@ private:
     {
         KOUKU_SAYDON_COMPOSITION_DOCUMENT document;
         KOUKU_SAYDON_COMPOSITION_PATTERN pattern;
-        std::uint32_t durationMs = 0;
+        std::uint32_t durationMs = 0, stageDurationMs = 0;
         std::map<std::string, WORLD_EMISSION_ANCHOR> worldEmissionAnchors;
     };
+    struct PRODUCT_TAIL final
+    {
+        SESSION playback;
+        PRODUCT_PATTERN definition;
+        std::weak_ptr<CNpc> owner;
+        bool bundleCommon = false;
+    };
+    std::vector<PRODUCT_TAIL> m_ProductTails;
+    std::map<std::uint32_t, std::string> m_CancelledBossSessionKeys, m_CancelledChildSessionKeys;
+    void Retire_ProductSession(SESSION& session, const std::vector<KOUKU_BOSS_PRESENTATION_VIEW>& bosses);
+    void Update_ProductTails(float dt, const std::vector<KOUKU_BOSS_PRESENTATION_VIEW>& bosses);
+    void Clear_ProductTails();
+    void Retire_ProductBundleSession();
     struct LOGIC_PREVIEW_SPAWN final
     {
         SESSION session;
@@ -427,8 +450,17 @@ private:
     std::map<std::uint32_t, CARD> m_MazeExits;
     std::map<std::uint32_t, CARD> m_MazePlayerMarks;
     std::map<std::uint32_t, CARD> m_MazeTargetMarks;
-    /* One floor decal per painted bingo cell, keyed by cell index. */
-    std::map<std::int32_t, CARD> m_BingoMarks;
+    struct BINGO_MARK final
+    {
+        std::unique_ptr<CWorldSequencePlayer> player;
+        std::string instanceId;
+        bool red = false;
+        CARD_MAZE_MARK_RETRY retry;
+    };
+    // Each Server-painted cell plays the same saved Object motions at its own pivot.
+    void Update_BingoMarks(float dt);
+    std::map<std::int32_t, BINGO_MARK> m_BingoMarks;
+    std::shared_ptr<const CWorldSequenceDocument> m_BingoWorldDocument;
     /* Keyed by the Server's bomb slot, so a mark turning into a planted
     bomb replaces the same entry instead of leaving two on screen. */
     std::map<std::int32_t, CARD> m_BingoBombs;

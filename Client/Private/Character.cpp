@@ -8,6 +8,7 @@
 
 #include "AnimationSkillBindingDocument.h"
 #include "ActorCatalog.h"
+#include "ArenaCameraProfile.h"
 #include "CharacterCatalog.h"
 #include "KoukuSaydonPresentationAssetService.h"
 #include "DataJson.h"
@@ -19,6 +20,7 @@
 #include "Collider.h"
 #include "Effect_Catalog.h"
 #include "Effect_PresentationService.h"
+#include "Effect_DocumentCodec.h"
 #include "EstherActionSoundCueDocument.h"
 #include "GameInstance.h"
 #include "HitAreaWire.h"
@@ -42,6 +44,8 @@
 
 namespace
 {
+	ARENA_CAMERA_PROFILE g_MapPresentationSizeProfile;
+
 	double LocalMoveClockSeconds()
 	{
 		return std::chrono::duration<double>(
@@ -213,8 +217,13 @@ validated authored document. Animation Tool Save is therefore the single
 presentation path used by local and remote Characters. */
 void CCharacter::Load_InteractionAnimationBindings()
 {
- if (m_pSpec != CCharacterCatalog::Find_ClownSpec()) return;
- const auto path = CProjectDataRoot::Resolve(L"Animation/Authored/KoukuSaydon/Clown.interactionbindings.json");
+ if (!m_pSpec || !m_pSpec->pAssetName) return;
+ const bool clown = m_pSpec == CCharacterCatalog::Find_ClownSpec();
+ const std::filesystem::path relative = clown ?
+  std::filesystem::path("Animation/Authored/KoukuSaydon/Clown.interactionbindings.json") :
+  std::filesystem::path("Animation/Authored") / m_pSpec->pAssetName /
+   (std::string(m_pSpec->pAssetName) + ".interactionbindings.json");
+ const auto path = CProjectDataRoot::Resolve(relative);
  std::ifstream input(path, std::ios::binary);
  const std::string text{std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>()};
  DATA_JSON_VALUE root;
@@ -224,10 +233,20 @@ void CCharacter::Load_InteractionAnimationBindings()
  const auto* schema = root.Find("schema");
  const auto* version = root.Find("formatVersion");
  const auto* modes = root.Find("modes");
- if (!schema || !schema->Is_String() || schema->Get_String() != "lostark.clown-interaction-bindings" ||
+ if (!schema || !schema->Is_String() || schema->Get_String() != (clown ? "lostark.clown-interaction-bindings" : "lostark.character-interaction-bindings") ||
   !version || !version->Is_Number() || version->Get_Number() != 1.0 || !modes || !modes->Is_Array())
  { status = "invalid header"; fail(); return; }
+ if (!clown)
+ {
+  const auto* characterId = root.Find("characterAssetId");
+  const auto* bodyId = root.Find("bodyAssetId");
+  const auto* catalog = CActorCatalog::Find_Character(m_pSpec->eCharacterClass);
+  if (!catalog || !characterId || !characterId->Is_String() || characterId->Get_String() != m_pSpec->pAssetName ||
+   !bodyId || !bodyId->Is_String() || bodyId->Get_String() != catalog->bodyModel)
+  { status = "character/body identity does not match the admitted catalog"; fail(); return; }
+ }
  std::array<std::vector<CLIP_STEP>, 5> staged;
+ std::array<std::vector<std::string>, 5> effects;
  for (const auto& mode : modes->Get_Array())
  {
   const auto* name = mode.Find("mode");
@@ -235,7 +254,7 @@ void CCharacter::Load_InteractionAnimationBindings()
   if (!name || !name->Is_String() || !skills || !skills->Is_Array()) { status = "invalid mode"; fail(); return; }
   const auto& id = name->Get_String();
   const std::size_t index = id == "POLYMORPH" ? 1u : id == "MARIO" ? 2u : id == "DANCE" ? 3u : id == "MAZE" ? 4u : 0u;
-  if (!index || !staged[index].empty() || skills->Get_Array().empty() || skills->Get_Array().size() > 4u)
+  if (!index || (!clown && index != 4u) || !staged[index].empty() || skills->Get_Array().empty() || skills->Get_Array().size() > 4u)
   { status = "unknown, empty or duplicate mode"; fail(); return; }
   for (const auto& skill : skills->Get_Array())
   {
@@ -251,10 +270,36 @@ void CCharacter::Load_InteractionAnimationBindings()
    std::uint32_t animation; float duration;
    if (!Resolve_ClipTiming(step, animation, duration))
    { status = "model has no clip " + step.clip; fail(); return; }
+   std::string effectId;
+   if (const auto* effect = skill.Find("effectAssetId"))
+   {
+    if (!effect->Is_String() || effect->Get_String().empty())
+    { status = "invalid effect asset id"; fail(); return; }
+    effectId = effect->Get_String();
+   }
+   effects[index].push_back(std::move(effectId));
    staged[index].push_back(std::move(step));
   }
  }
  m_InteractionClips = std::move(staged);
+ m_InteractionEffectIds = std::move(effects);
+ // Blank, registered authoring slots stay silent until the user supplies FX.
+ // A later ordinary Effect Tool Save replaces the prepared target in place.
+ std::vector<std::string> targets;
+ for (const auto& mode : m_InteractionEffectIds)
+  for (const auto& id : mode)
+   if (!id.empty() && CEffectCatalog::Contains(id))
+   {
+    const auto document = CEffectCatalog::Find(id);
+    if (document && CEffectDocumentCodec::Validate_Drawable(*document, status) &&
+     std::find(targets.begin(), targets.end(), id) == targets.end()) targets.push_back(id);
+   }
+ if (!targets.empty())
+ {
+  std::vector<std::string> admitted;
+  if (!CEffectPresentationService::Queue_ProductTargets_Priority(targets, admitted, status))
+   OutputDebugStringA(("[Interaction] Effect preparation isolated: " + status + "\n").c_str());
+ }
 }
 
 bool_t CCharacter::Load_ClipChains(const bool_t reloadSource)
@@ -1616,6 +1661,32 @@ bool_t CCharacter::Try_Get_VehicleWorldMatrix(float4x4_t& outWorld) const
 	return true;
 }
 
+bool_t CCharacter::Set_MapPresentationSizeProfile(const ARENA_CAMERA_PROFILE& profile)
+{
+	std::string status;
+	if (!CArenaCameraProfile::Validate(profile, status))
+		return false;
+	g_MapPresentationSizeProfile.characterSizeMultiplier = profile.characterSizeMultiplier;
+	g_MapPresentationSizeProfile.classSizeMultipliers = profile.classSizeMultipliers;
+	g_MapPresentationSizeProfile.clownSizeMultiplier = profile.clownSizeMultiplier;
+	g_MapPresentationSizeProfile.marioSizeMultiplier = profile.marioSizeMultiplier;
+	g_MapPresentationSizeProfile.mazeHammerPositionCm = profile.mazeHammerPositionCm;
+	g_MapPresentationSizeProfile.mazeHammerRotationDegrees = profile.mazeHammerRotationDegrees;
+	g_MapPresentationSizeProfile.mazeHammerScale = profile.mazeHammerScale;
+	return true;
+}
+
+f32_t CCharacter::Get_PresentationScale() const
+{
+	const auto& profile = g_MapPresentationSizeProfile;
+	f32_t modelMultiplier = 1.f;
+	if (m_pSpec == CCharacterCatalog::Find_ClownSpec())
+		modelMultiplier = m_bMarioPresentation ? profile.marioSizeMultiplier : profile.clownSizeMultiplier;
+	else if (m_pSpec && LostArk::Shared::Is_Supported_Playable_Character_Class(m_pSpec->eCharacterClass))
+		modelMultiplier = profile.classSizeMultipliers[static_cast<size_t>(m_pSpec->eCharacterClass)];
+	return m_fPresentationScale * m_fPresentationSizeMultiplier * profile.characterSizeMultiplier * modelMultiplier;
+}
+
 bool_t CCharacter::Set_PresentationSizeMultiplier(const f32_t multiplier)
 {
 	if (!std::isfinite(multiplier) || multiplier < 0.25f || multiplier > 4.f)
@@ -1642,6 +1713,18 @@ bool_t CCharacter::Try_Get_PresentationRootMatrix(float4x4_t* pOut) const
 
 void CCharacter::Update_PresentationRootMatrix()
 {
+	if (m_bMazePresentation)
+		if (const auto part = dynamic_pointer_cast<CTransform>(
+			__super::Get_Component(TEXT("Part_95_MazeHammer"), TEXT("Com_Transform"))))
+		{
+			const auto& p = g_MapPresentationSizeProfile;
+			const matrix_t local = XMMatrixScaling(p.mazeHammerScale.x, p.mazeHammerScale.y, p.mazeHammerScale.z) *
+				XMMatrixRotationRollPitchYaw(XMConvertToRadians(p.mazeHammerRotationDegrees.x),
+					XMConvertToRadians(p.mazeHammerRotationDegrees.y), XMConvertToRadians(p.mazeHammerRotationDegrees.z)) *
+				XMMatrixTranslation(p.mazeHammerPositionCm.x, p.mazeHammerPositionCm.y, p.mazeHammerPositionCm.z);
+			part->Set_State(STATE::RIGHT, local.r[0]); part->Set_State(STATE::UP, local.r[1]);
+			part->Set_State(STATE::LOOK, local.r[2]); part->Set_State(STATE::POSITION, local.r[3]);
+		}
 	m_vVehicleSeatOffset = {};
 	XMStoreFloat4x4(&m_VehicleSeatRotation, XMMatrixIdentity());
 	if (nullptr != m_pTransformCom)
@@ -1674,6 +1757,35 @@ void CCharacter::Set_Position(fvector_t vPosition)
 	Update_PresentationRootMatrix();
 }
 
+bool_t CCharacter::Apply_MazePresentation(const bool_t isMaze)
+{
+	if (m_pSpec == CCharacterCatalog::Find_ClownSpec()) return true;
+	if (isMaze == m_bMazePresentation) return true;
+	constexpr const wchar_t* partTag = L"Part_95_MazeHammer";
+	if (isMaze && !__super::Find_PartObject(partTag))
+	{
+		if (!m_pBodyModel || !m_pBodyModel->Has_Bone(KOUKU_MAZE_HAMMER_SOCKET_BONE) ||
+			FAILED(CKoukuSaydonPresentationAssetService::Ensure_MazeHammerPrototype(
+				m_pDevice, m_pContext, m_iPrototypeLevelIndex))) return false;
+		CPart_Equipment::PART_EQUIPMENT_DESC desc{};
+		desc.pParentMatrix = &m_PresentationRootMatrix;
+		desc.iPrototypeLevelIndex = m_iPrototypeLevelIndex;
+		desc.strModelTag = KOUKU_MAZE_HAMMER_PROTOTYPE_TAG;
+		desc.strShaderTag = TEXT("Prototype_Component_Shader_VtxMeshBinary");
+		desc.pSkeletonModel = m_pBodyModel;
+		desc.pSocketBoneName = KOUKU_MAZE_HAMMER_SOCKET_BONE;
+		if (const auto body = dynamic_pointer_cast<CTransform>(
+			__super::Get_Component(TEXT("Part_00_Body"), TEXT("Com_Transform"))))
+			desc.pSocketRootMatrix = body->Get_WorldMatrixPtr();
+		if (FAILED(__super::Add_PartObject(m_iPrototypeLevelIndex,
+			TEXT("Prototype_GameObject_Part_Equipment"), partTag, &desc))) return false;
+	}
+	m_bMazePresentation = isMaze;
+	Set_PartVisible(partTag, isMaze);
+	Apply_NetworkStance(m_eStance);
+	return true;
+}
+
 bool_t CCharacter::Apply_MarioPresentation(bool_t isMario)
 {
 	if (m_pSpec != CCharacterCatalog::Find_ClownSpec())
@@ -1687,6 +1799,9 @@ bool_t CCharacter::Apply_MarioPresentation(bool_t isMario)
 	const f32_t scale = isMario ? 1.5f / CLOWN_REFERENCE_HEIGHT_METERS : 1.f;
 	// Scale sets absolute axis lengths; Scaling would shrink on every snapshot.
 	bodyTransform->Scale(scale, scale, scale);
+	m_bMarioPresentation = isMario;
+	Set_WeaponPartsVisible(isMario);
+	Update_PresentationRootMatrix();
 	/* The weapon needs nothing here: it rides this same part transform as
 	its socket root (see Ready_Parts), so it scales with the body. */
 	return true;
@@ -1792,6 +1907,7 @@ bool_t CCharacter::Apply_NetworkAction(
 	{
 		return false;
 	}
+	if (!Apply_MazePresentation(KOUKU_HUD_MODE::MAZE == interactionMode)) return false;
 	const PLAYER_SKILL_DEFINITION* targetDefinition =
 		PLAYER_ACTION_STATE::SKILL == action ?
 		CPlayerSkillCatalog::Find_ById(skillId) : nullptr;
@@ -1841,7 +1957,24 @@ bool_t CCharacter::Apply_NetworkAction(
 				m_pBodyModel->Play_Animation(0.f);
 			}
 		}
-		else if (!same) OutputDebugStringA("[Clown] Approved interaction has no admitted clip binding.\n");
+		else if (!same) OutputDebugStringA("[Interaction] Approved action has no admitted clip binding.\n");
+		const auto& effects = m_InteractionEffectIds[static_cast<std::size_t>(interactionMode)];
+		f32_t preparedEffectSeconds = 0.f;
+		if (!same && skillId < effects.size() &&
+			CEffectPresentationService::Try_Get_PreparedProductDurationSeconds(effects[skillId], preparedEffectSeconds))
+		{
+			EFFECT_SPAWN_DESC desc;
+			desc.strEffectAssetId = effects[skillId];
+			desc.pOwner = static_pointer_cast<CCharacter>(shared_from_this());
+			desc.iActionStartTick = actionStartTick;
+			desc.strOccurrenceId = "interaction:" + std::to_string(static_cast<unsigned>(interactionMode)) + ":" + std::to_string(skillId);
+			desc.fInitialSampleTimeSeconds = age;
+			desc.eOrientationPolicy = EFFECT_ORIENTATION_POLICY::ACTION_FACING;
+			desc.bHasActionFacingYaw = true;
+			desc.fActionFacingYawDegrees = actionFacingYawDegrees;
+			std::string status;
+			CEffectPresentationService::Spawn(desc, status);
+		}
 		m_eNetworkAction = action;
 		return true;
 	}
@@ -2350,7 +2483,16 @@ void CCharacter::Set_PartVisible(const tchar_t* pPartTag, const bool_t isVisible
 	const auto pPart = dynamic_cast<CPart_Equipment*>(
 		__super::Find_PartObject(pPartTag));
 	if (nullptr != pPart)
-		pPart->Set_Visible(isVisible);
+	{
+		bool_t allowed = isVisible;
+		if (allowed && m_pSpec && (m_bMazePresentation ||
+			(m_pSpec == CCharacterCatalog::Find_ClownSpec() && !m_bMarioPresentation)))
+		{
+			for (uint32_t i = 0u; i < m_pSpec->iNumWeapons; ++i)
+				if (0 == std::wcscmp(pPartTag, m_pSpec->pWeapons[i].pPartTag)) allowed = false;
+		}
+		pPart->Set_Visible(allowed);
+	}
 }
 
 bool_t CCharacter::Apply_EquipmentPreview(

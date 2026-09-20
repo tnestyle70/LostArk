@@ -48,10 +48,27 @@ inline constexpr const wchar_t* KOUKU_CLOWN_HAMMER_PROTOTYPE_TAG =
 	L"Prototype_Component_Model_KoukuSaydonClownHammer";
 inline constexpr const char* KOUKU_CLOWN_HAMMER_SOCKET_BONE = "bip001-r-hand";
 
+inline constexpr const wchar_t* KOUKU_MAZE_HAMMER_PROTOTYPE_TAG =
+	L"Prototype_Component_Model_KoukuCardMazeHammer";
+inline constexpr const char* KOUKU_MAZE_HAMMER_SOCKET_BONE = "bip001-r-hand";
+
+// Immutable selection closure; every row, including delayed tails and spawned
+// child patterns, must be ready before an audition command starts its clock.
+struct KOUKU_SAYDON_PLAY_RESOURCES final
+{
+    std::vector<std::string> PatternIds, V1EffectIds, WorldInstanceIds, BossArchetypeIds;
+    std::vector<std::pair<std::string, std::string>> V2Effects;
+};
+
 class CKoukuSaydonPresentationAssetService final
 {
 public:
+    static bool Collect_CompletePlayResources(const std::vector<std::string>& patternIds,
+        const std::vector<std::string>& bundleIds, std::uint32_t sourceRevision,
+        KOUKU_SAYDON_PLAY_RESOURCES& output, std::string& status);
 	static void Begin_LevelLoad(std::uint32_t iLevelIndex);
+	static HRESULT Ensure_MazeHammerPrototype(ComPtr<ID3D11Device> pDevice,
+		ComPtr<ID3D11DeviceContext> pContext, std::uint32_t iLevelIndex);
 	/* Admits the Polymorph 4134 avatar body (MN_RPCZ_00-1) once per level
 	and its socketed hammer, and verifies its own idle/run clips. S_FALSE when it
 	is already ready; the failure reason lands in Get_Status(). */

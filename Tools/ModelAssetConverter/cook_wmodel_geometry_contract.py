@@ -38,8 +38,10 @@ WINT_GEOMETRY_VERSION_MINOR = 1
 WINT_UV1_VERSION_MINOR = 2
 WINT_SKINNED_UV_VERSION_MINOR = 3
 WINT_STATIC_UV2_VERSION_MINOR = 4
+WINT_SKINNED_BASIS_VERSION_MINOR = 5
 SKINNED_UV_HEADER = struct.Struct("<4sIII32s")
 STRIDE_SKINNED = 76
+STRIDE_SKINNED_BASIS = 80
 MESH_BONE_SIZE = 128
 VF_BONE_WEIGHT = 1 << 4
 VF_TEXCOORD2 = 1 << 8
@@ -1873,14 +1875,14 @@ def rebuild_wmodel(
 
 
 def parse_skinned_uv_wmodel(data: bytes) -> dict[str, Any]:
-    """Read the existing 76-byte skinned stream and optional WMSH 1.3 UV tail.
+    """Read skinned geometry, including the explicit WMSH 1.5 tangent sign.
 
     This validates payload shape, not the original-source identity of UV values.
     Callers must establish the source-to-runtime vertex join before cooking.
     """
     require(len(data) >= FILE_HEADER.size + MODEL_HEADER.size, "skinned WModel is truncated")
     magic, major, minor, flags, size = FILE_HEADER.unpack_from(data)
-    require(magic == b"WINT" and major == 1 and minor in (0, 3)
+    require(magic == b"WINT" and major == 1 and minor in (0, 3, 5)
             and flags == 0 and size == len(data) - FILE_HEADER.size,
             "skinned WModel WINT header is invalid")
     model = MODEL_HEADER.unpack_from(data, FILE_HEADER.size)
@@ -1911,12 +1913,16 @@ def parse_skinned_uv_wmodel(data: bytes) -> dict[str, Any]:
     _, subcount, bones, vertex_flags, stride, vcount, icount, istride, bounds, reserved = header
     base_flags = VF_STATIC_BASE | VF_BONE_WEIGHT
     allowed = base_flags | ((VF_TEXCOORD1 | VF_TEXCOORD2) if minor == 3 else 0)
+    if minor == WINT_SKINNED_BASIS_VERSION_MINOR:
+        allowed |= VF_TANGENT_HANDEDNESS
+    expected_stride = STRIDE_SKINNED_BASIS if minor == WINT_SKINNED_BASIS_VERSION_MINOR else STRIDE_SKINNED
     require(header[0] == b"WMSH" and 0 < subcount <= 2048 and 0 < bones <= 512
             and vcount <= 10_000_000
-            and stride == STRIDE_SKINNED and istride in (2, 4) and bounds in (0, 1)
+            and stride == expected_stride and istride in (2, 4) and bounds in (0, 1)
             and reserved == b"\0\0\0" and vertex_flags & base_flags == base_flags
             and vertex_flags & ~allowed == 0
-            and (minor != 3 or vertex_flags & VF_TEXCOORD1),
+            and (minor != 3 or vertex_flags & VF_TEXCOORD1)
+            and (minor != 5 or vertex_flags & VF_TANGENT_HANDEDNESS),
             "skinned WMSH metadata or vertex format is invalid")
     vertex_start = FILE_HEADER.size + MESH_HEADER.size + subcount * SUBMESH_DESC.size
     index_start = vertex_start + vcount * stride
@@ -1934,9 +1940,29 @@ def parse_skinned_uv_wmodel(data: bytes) -> dict[str, Any]:
     require(voffset == vcount * stride and ioffset == icount * istride,
             "skinned WMSH aggregate counts disagree")
     uv_rows: list[dict[str, list[tuple[float, float]]]] = []
-    if minor == 0:
+    if minor in (0, 5):
         require(legacy_end == len(mesh), "legacy skinned WMSH has trailing bytes")
         uv_rows = [{} for _ in submeshes]
+        if minor == 5:
+            for index in range(vcount):
+                row = vertex_start + index * stride
+                sign = struct.unpack_from("<f", mesh, row + 76)[0]
+                normal = struct.unpack_from("<3f", mesh, row + 12)
+                tangent = struct.unpack_from("<3f", mesh, row + 32)
+                normal_length2 = sum(v * v for v in normal)
+                tangent_length2 = sum(v * v for v in tangent)
+                require(all(math.isfinite(v) for v in (*normal, *tangent))
+                        and 1e-12 < normal_length2 <= 3.4028234663852886e38
+                        and 1e-12 < tangent_length2 <= 3.4028234663852886e38,
+                        "skinned source normal or tangent is degenerate")
+                normal = tuple(v / math.sqrt(normal_length2) for v in normal)
+                tangent = tuple(v / math.sqrt(tangent_length2) for v in tangent)
+                cross = (normal[1] * tangent[2] - normal[2] * tangent[1],
+                         normal[2] * tangent[0] - normal[0] * tangent[2],
+                         normal[0] * tangent[1] - normal[1] * tangent[0])
+                require(sign in (-1.0, 1.0) and all(math.isfinite(v) for v in (*normal, *tangent, *cross))
+                        and sum(v * v for v in cross) > 1e-12,
+                        "skinned source tangent basis or handedness is invalid")
     else:
         require(legacy_end + SKINNED_UV_HEADER.size <= len(mesh), "skinned UV header is truncated")
         uv_header = SKINNED_UV_HEADER.unpack_from(mesh, legacy_end)

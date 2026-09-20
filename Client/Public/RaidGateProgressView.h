@@ -48,11 +48,9 @@ public:
 	/* Owns the pointer over the button and while a prompt is up. Returns what was decided
 	   this frame; the widget button itself only opens the confirm prompt (EXIT is direct). */
 	INTENT Update(f32_t fTimeDelta);
-	/* LOA-font text pass; call from the Level's Render after its own sprites. */
+	/* LOA-font text pass; call from the Level's Render after its own sprites. The panel's
+	   labels are HUD text, the prompt's are modal text (CUITextOcclusion). */
 	void Render_Text() const;
-	/* The open prompt's screen rect on the text clip-out list, so world text (nameplates,
-	   chat bubbles) stops under the panel. */
-	void Add_TextClipOuts() const;
 
 private:
 	void Set_PromptVisible(bool_t bVisible);

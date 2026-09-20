@@ -352,6 +352,20 @@ def _publication_memo(kind, key, build):
     return session.memo[identity]
 
 
+def _memo_digest(value):
+    # Cache identities never leave this invocation. Pretty printing is reserved
+    # for Product bytes; hashing the compact form retains every authored field.
+    return hashlib.sha256(json.dumps(value, ensure_ascii=False,
+        separators=(",", ":"), allow_nan=False).encode("utf-8")).digest()
+
+
+def _pinned_json_digest(value):
+    # Only load_json's read-only, invocation-pinned documents may use this path.
+    # Retain the object too: a later object must never inherit a reused id.
+    return _publication_memo("pinned-json-digest", id(value),
+        lambda: (value, _memo_digest(value)))[1]
+
+
 def load_json(path: Path, *, use_cache: bool = True) -> dict[str, Any]:
     session = _PUBLICATION_INPUTS.get() if use_cache else None
     if session is not None:
@@ -1234,7 +1248,12 @@ def _validate_pattern_children(document: dict[str, Any], parent: dict[str, Any])
 
 def expand_pattern_document(source: dict[str, Any], pattern_id: str) -> dict[str, Any]:
     """Materialize one fixed Parent for the existing runtime, preserving the saved references."""
-    document = copy.deepcopy(source)
+    return _expand_pattern_document(source, pattern_id, copy.deepcopy(source))
+
+
+def _expand_pattern_document(source, pattern_id, document):
+    # The multi-Parent path owns one private document instead of copying every
+    # unrelated Pattern and catalog again for each Parent.
     parent = next((row for row in document["patterns"] if row["patternId"] == pattern_id), None)
     if parent is None: raise CompositionError("Parent Pattern is missing: " + pattern_id)
     _validate_pattern_children(document, parent)
@@ -1242,11 +1261,21 @@ def expand_pattern_document(source: dict[str, Any], pattern_id: str) -> dict[str
         if not parent.get("durationMs"):
             return document
         stages = parent["stages"]
-        # Keep leaf identities and authored lanes; its final pose owns a late
-        # explicit lifetime, through the existing holdAtWindowEnd consumer.
-        if stages and (all(stage["animationOccurrences"] for stage in stages) or
-                       _trailing_pose_hold_source(parent) is not None):
-            stages[-1]["durationMs"] += parent["durationMs"] - sum(stage["durationMs"] for stage in stages)
+        # A leaf's Stage clock advances the boss independently of row tails.
+        # Keep explicitly authored hold stages, but never synthesize a pose wait
+        # from a longer sound/effect/World/Logic lifetime.
+        if stages:
+            if all(stage["animationOccurrences"] for stage in stages) or _trailing_pose_hold_source(parent) is not None:
+                return document
+            idle_clip = {"MN_RPCT_05": "rpct00_idle_battle_1", "MN_RPCT_06": "mn_rpct_06_sk.ao_idle_battle_1",
+                         "MN_RPCZ_00": "rpcz00_idle_battle_1"}.get(_pattern_actor_profile_id(parent))
+            if not idle_clip: raise CompositionError("Pattern has no known idle clip for its actor")
+            for index, stage in enumerate(stages, 1):
+                if not stage["animationOccurrences"]:
+                    stage["animationOccurrences"] = [{"occurrenceId": f"{pattern_id}.idle.{index}",
+                        "profileId": _pattern_actor_profile_id(parent), "sourceActionId": 0, "sourceStageId": "RAW", "sourceSlotId": idle_clip,
+                        "referenceRevision": "", "runtimeClip": idle_clip, "startOffsetMs": 0, "sourceStartMs": 0,
+                        "playMs": stage["durationMs"], "playRate": 1.0, "endPolicy": "LOOP_TO_WINDOW"}]
             return document
     _validate_presentation_selection_groups(parent, {row["resourceId"]: row
         for row in document.get("presentationResources", [])})
@@ -1255,7 +1284,7 @@ def expand_pattern_document(source: dict[str, Any], pattern_id: str) -> dict[str
         if row.get("selectionGroupId") not in retained_groups:
             row.pop("selectionGroupId", None)
     patterns = {row["patternId"]: row for row in source["patterns"]}
-    source_definitions = source.get("logics", [])
+    source_definitions = tuple(source.get("logics", []))
     definitions = {row["logicId"]: row for row in source_definitions}
     total = _pattern_duration(parent)
     children = sorted(parent.get("patternOccurrences", []), key=lambda row: (row["startMs"], row["occurrenceId"]))
@@ -1471,11 +1500,15 @@ def _coalesce_trailing_pose_holds(document: dict[str, Any]) -> dict[str, Any]:
 
 
 def _expand_parent_patterns(document: dict[str, Any]) -> dict[str, Any]:
+    owns_document = False
     for row in document["patterns"]:
         if row.get("patternOccurrences") or (row.get("durationMs") and
                 (row["durationMs"] > sum(stage["durationMs"] for stage in row["stages"]) or
                  any(not stage["animationOccurrences"] for stage in row["stages"]))):
-            document = expand_pattern_document(document, row["patternId"])
+            if not owns_document:
+                document = copy.deepcopy(document)
+                owns_document = True
+            document = _expand_pattern_document(document, row["patternId"], document)
     return _coalesce_trailing_pose_holds(document)
 
 
@@ -2390,14 +2423,14 @@ def _publication_candidate(source: dict[str, Any], pattern_ids: set[str],
                            bundle_ids: set[str] | None = None) -> dict[str, Any]:
     # Status is a legacy editing field. Only the private validation copy changes;
     # category, timings, lanes, and the persisted document remain authored values.
-    candidate = copy.deepcopy(source)
+    candidate = copy.deepcopy({**source,
+        "patterns": [p for p in source["patterns"] if p["patternId"] in pattern_ids],
+        "bundles": [b for b in source.get("bundles", []) if b["bundleId"] in (bundle_ids or set())]})
     # The Client audition service resolves the saved Flow against this admitted
     # inventory and submits existing pattern/bundle requests after Server completion.
     candidate.pop("patternFlows", None)
-    candidate["patterns"] = [p for p in candidate["patterns"] if p["patternId"] in pattern_ids]
     for folder in candidate.get("folders", []):
         if folder.get("timelinePatternId") not in pattern_ids: folder.pop("timelinePatternId", None)
-    candidate["bundles"] = [b for b in candidate.get("bundles", []) if b["bundleId"] in (bundle_ids or set())]
     for row in [*candidate["patterns"], *candidate["bundles"]]:
         row["authoringStatus"] = "PRODUCT"
     candidate["playAllPatternIds"] = [p["patternId"] for p in candidate["patterns"]]
@@ -2410,7 +2443,7 @@ def _saved_pattern_inventory(source: dict[str, Any], root: Path) -> dict[str, An
     bundles = _array(source.get("bundles", []), "composition bundles", 4096)
     # Existing validation owns the root, shared definitions, folders and counters.
     # Row bodies are validated separately so one unfinished row cannot hide others.
-    skeleton = copy.deepcopy(source)
+    skeleton = copy.deepcopy({**source, "patterns": [], "bundles": [], "playAllPatternIds": []})
     validate_pattern_flows(source)
     skeleton.pop("patternFlows", None)
     skeleton.update(patterns=[], bundles=[], playAllPatternIds=[])
@@ -3512,6 +3545,16 @@ def _reduce_root_motion_samples(samples, tolerance=ROOT_MOTION_REDUCTION_ERROR_M
 
 
 def _animation_root_curve(actor, animation, vertical_scale):
+    # Source range/rate belongs to each occurrence, but its native clip curve is
+    # identical for every Pattern using this pinned actor and vertical scale.
+    curves = actor.setdefault("rootCurves", {})
+    key = (animation["runtimeClip"], vertical_scale)
+    if key not in curves:
+        curves[key] = _build_animation_root_curve(actor, animation, vertical_scale)
+    return curves[key]
+
+
+def _build_animation_root_curve(actor, animation, vertical_scale):
     clip = animation["runtimeClip"]
     # Reuse the pinned selective WModel reader and its native-key admission.
     local = _sample_bone_bake_pose(actor, "body", clip, 0.0, local_only=True)
@@ -3744,7 +3787,7 @@ def _project_pattern_root_motion(document, pattern, root, cache):
                 session.root_motion_diagnostics[f"{pattern['patternId']}/{stage['stageId']}"]["sampleCount"] = len(
                     curves.get(stage["stageId"], []))
         return curves
-    key = (str(root.resolve()), hashlib.sha256(serialize_json(pattern)).digest())
+    key = (str(root.resolve()), _memo_digest(pattern))
     return copy.deepcopy(_publication_memo("animation-root-motion", key, build))
 
 
@@ -3984,7 +4027,7 @@ def _bone_bake_clip_sample(pattern, pattern_ms, fixed_timeline=False):
 
 
 def _project_bone_collider_track(pattern, logic_box, collider, root, cache, suppress_root_motion=False, blend_windows=()):
-    key = (str(root.resolve()), hashlib.sha256(serialize_json([pattern, logic_box, collider, suppress_root_motion, blend_windows])).digest())
+    key = (str(root.resolve()), _memo_digest([pattern, logic_box, collider, suppress_root_motion, blend_windows]))
     track = _publication_memo("bone-track", key,
         lambda: _build_bone_collider_track(pattern, logic_box, collider, root, cache, suppress_root_motion, blend_windows))
     return copy.deepcopy(track)
@@ -4348,8 +4391,11 @@ def project_encounter(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
                 collider_boxes = [box for box in world_boxes
                                   if _world_group_instances(worlds[box["worldId"]], world_sequences) is None]
                 pattern_end_ms = _pattern_duration(source)
-                generated = _publication_memo("object-colliders", (str(root.resolve()), pattern_end_ms, hashlib.sha256(serialize_json([world_sequences, worlds, world_boxes])).digest()),
-                    lambda: bake_object_collider_windows(world_sequences, worlds, collider_boxes, load_collider_model, pattern_end_ms=pattern_end_ms))
+                sampling_cache = _publication_memo("object-collider-sampling", str(root.resolve()), dict)
+                generated = _publication_memo("object-colliders", (str(root.resolve()), pattern_end_ms,
+                    _pinned_json_digest(world_sequences), _memo_digest([worlds, world_boxes])),
+                    lambda: bake_object_collider_windows(world_sequences, worlds, collider_boxes, load_collider_model,
+                        pattern_end_ms=pattern_end_ms, sampling_cache=sampling_cache))
             except (ColliderBakeError, OSError, ValueError, KeyError, IndexError) as error:
                 raise CompositionError(f"Cannot bake Object Collider: {error}") from error
             for generated_row in generated:
@@ -4459,6 +4505,8 @@ def project_encounter(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
                 "minimumRange": 0.0,
                 "maximumRange": 1.0,
                 "stages": [_project_stage(stage, root_motion.get(stage["stageId"])) for stage in source["stages"]],
+                **({"timelineDurationMs": _pattern_duration(source)}
+                   if _pattern_duration(source) > sum(stage["durationMs"] for stage in source["stages"]) else {}),
                 # Pattern-clock lanes beside the stages: judgement windows and
                 # the presentation cues the Server broadcasts.
                 "resetBossToSpawn": source.get("resetBossToSpawn", False),
@@ -5062,7 +5110,9 @@ def _project_pattern_presentation(document: dict[str, Any], pattern: dict[str, A
                 })
             stage_start += stage["durationMs"]
         source_animations.sort(key=lambda row: row["startOffsetMs"])
-    return {"patternId": pattern["patternId"], **_pattern_target_metadata(pattern), "durationMs": sum(stage["durationMs"] for stage in pattern["stages"]),
+    return {"patternId": pattern["patternId"], **_pattern_target_metadata(pattern), "durationMs": _pattern_duration(pattern),
+            **({"stageDurationMs": sum(stage["durationMs"] for stage in pattern["stages"])}
+               if _pattern_duration(pattern) > sum(stage["durationMs"] for stage in pattern["stages"]) else {}),
             **({"bossMotion": copy.deepcopy(pattern["bossMotion"])} if "bossMotion" in pattern else {}),
             **({"animationRootVerticalScale": 0.0} if suppress_root_motion else
                ({"animationRootVerticalScale": pattern["animationRootVerticalScale"]} if pattern.get("animationRootVerticalScale", 1.0) != 1.0 else {})),
@@ -5260,7 +5310,7 @@ def serialize_json(document: dict[str, Any]) -> bytes:
 
 def projected_outputs(document: dict[str, Any], root: Path = REPOSITORY_ROOT,
                       pattern_inventory: dict[str, Any] | None = None) -> dict[Path, bytes]:
-    key = (str(root.resolve()), hashlib.sha256(serialize_json(document)).digest())
+    key = (str(root.resolve()), _memo_digest(document))
     encounter, presentation = _publication_memo("projection", key,
         lambda: (project_encounter(document, root), project_presentation(document, root)))
     if pattern_inventory is not None:

@@ -180,7 +180,16 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
         tests.Require(room->m_KoukuRaid.State.ePhase == KOUKUSAYDON_RAID_PHASE::PREPARING, "Abort fixture enters preparation through START");
         request.iRequestSequence = 2u; request.iExpectedRunEpoch = room->m_KoukuRaid.State.iRunEpoch;
         if (failure == 0u) { request.eOperation = KOUKUSAYDON_RAID_OPERATION::FAILED; request.strReason = "Sequence revision unavailable"; room->Handle_KoukuRaidRequest(501u, request); }
-        else if (failure == 1u) { room->m_iServerTick = 320u; room->Update_KoukuRaid(320u); }
+        else if (failure == 1u)
+        {
+            room->m_iServerTick = 320u; room->Update_KoukuRaid(320u);
+            tests.Require(room->m_KoukuRaid.State.ePhase == KOUKUSAYDON_RAID_PHASE::PREPARING &&
+                !room->m_KoukuRaid.State.iReadyMask && !room->m_KoukuRaid.State.iStartTick &&
+                room->m_WorldEntities.size() == beforeEntities && player.fPositionX == 9.f,
+                "Debug resource loading may exceed ten seconds without partially starting actors or the cinematic");
+            room->m_iServerTick = room->m_KoukuRaid.State.iEndTick;
+            room->Update_KoukuRaid(room->m_iServerTick);
+        }
         else if (failure == 2u) { request.eOperation = KOUKUSAYDON_RAID_OPERATION::STOP; room->Handle_KoukuRaidRequest(501u, request); }
         else { room->m_PlayerIdBySessionId.erase(501u); room->Update_KoukuRaid(21u); }
         tests.Require(room->m_KoukuRaid.State.ePhase == KOUKUSAYDON_RAID_PHASE::ABORTED &&
@@ -225,8 +234,8 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
         const auto originalEntityCount = room->m_WorldEntities.size();
         room->Handle_KoukuRaidRequest(501u, start);
         tests.Require(run.State.ePhase == KOUKUSAYDON_RAID_PHASE::PREPARING && run.State.iStartTick == 0u &&
-            run.State.iEndTick == 310u && run.State.ParticipantPlayerIds.size() == count,
-            "Real START command pins the roster and enters a ten-second preparation without starting the cinematic");
+            run.State.iEndTick == 10u + 20u * 60u * 30u && run.State.ParticipantPlayerIds.size() == count,
+            "Real START command pins the roster and enters bounded Debug resource preparation without starting the cinematic");
         if (run.State.ePhase != KOUKUSAYDON_RAID_PHASE::PREPARING)
         { std::cout << "[RAID START] " << room->m_strStatus << '\n'; continue; }
         auto ack = start; ack.iRequestSequence = 2u; ack.iExpectedRunEpoch = run.State.iRunEpoch;

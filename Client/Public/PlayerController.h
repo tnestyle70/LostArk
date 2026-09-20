@@ -635,7 +635,8 @@ namespace Client
 		std::uint32_t m_iNextMoveSequence = 1;
 		std::uint32_t m_iNextActionSequence = 1;
 		bool_t m_wasRightMouseDown = false;
-		bool_t m_wasRightMousePhysicallyDown = false;
+		bool_t m_wasMazeLeftMouseDown = false;
+	bool_t m_wasRightMousePhysicallyDown = false;
 		bool_t m_isMoveClickSuppressed = false;
 		std::chrono::steady_clock::time_point m_LastMoveGoalSentAt{};
 		float3_t m_LastSentMoveGoal{};

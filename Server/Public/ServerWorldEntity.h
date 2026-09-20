@@ -419,6 +419,8 @@ namespace LostArk::Server
 		float fKoukuShieldArcDegrees = 0.f;
 		float fKoukuShieldNormalYawOffsetDegrees = 0.f;
 		std::vector<BOSS_LOGIC_REGION> KoukuShieldRegions;
+		// Server-only weak links: the room owns retired occurrence snapshots and their deadlines.
+		std::vector<std::weak_ptr<SERVER_WORLD_ENTITY>> KoukuRetainedLogicOwners;
 		/* Raised by the hit that took a plate to zero durability. The brain owns
 		stage transitions, so it consumes this on its next tick and enters the
 		PART_BREAK stage; the damage path never moves the boss itself. */

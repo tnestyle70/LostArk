@@ -133,7 +133,7 @@ class ValtanPhase3PrimaryGhostLoopContractTests(unittest.TestCase):
             "Character/Valtan/Ghost/MN_RPBF_02.wmodel", ghost["bodyModel"]
         )
         self.assertEqual(
-            "Character/Valtan/Ghost/MN_RPBF_02_AnimSet.wmodel",
+            "Character/Valtan/Cinematics/MN_RPBF_02_CinematicAnimSet.wmodel",
             ghost["animationSetId"],
         )
         for asset_id in (ghost["bodyModel"], ghost["animationSetId"]):
@@ -208,7 +208,7 @@ class ValtanPhase3PrimaryGhostLoopContractTests(unittest.TestCase):
         )
         layout = event["layout"]
         self.assertEqual("RADIAL_AROUND_BOSS", layout["kind"])
-        self.assertAlmostEqual(9.0, layout["radiusM"], places=12)
+        self.assertAlmostEqual(13.5, layout["radiusM"], places=12)
         self.assertEqual(30.0, layout["startAngleDegrees"])
         self.assertEqual(120.0, layout["angleStepDegrees"])
 
@@ -224,12 +224,12 @@ class ValtanPhase3PrimaryGhostLoopContractTests(unittest.TestCase):
         )
         self.assertEqual("LINEAR", charge["movement"]["kind"])
         self.assertAlmostEqual(
-            9.0 * math.sqrt(3.0) / 1.3,
+            13.5 * math.sqrt(3.0) / 1.3,
             charge["movement"]["speedMps"],
             places=9,
         )
         self.assertAlmostEqual(
-            9.0 * math.sqrt(3.0),
+            13.5 * math.sqrt(3.0),
             charge["movement"]["maximumDistanceM"],
             places=9,
         )
@@ -253,7 +253,7 @@ class ValtanPhase3PrimaryGhostLoopContractTests(unittest.TestCase):
             delta_x = end[0] - start[0]
             delta_z = end[1] - start[1]
             self.assertAlmostEqual(
-                9.0 * math.sqrt(3.0),
+                13.5 * math.sqrt(3.0),
                 math.hypot(delta_x, delta_z),
                 places=9,
             )
@@ -273,7 +273,7 @@ class ValtanPhase3PrimaryGhostLoopContractTests(unittest.TestCase):
             == "valtan.independent-effect.ghost-portal-once"
         )
         self.assertEqual(
-            "망령 포탈 동시 돌진 / 외접반지름 9m 정삼각형",
+            "망령 포탈 동시 돌진 / 외접반지름 13.5m 정삼각형",
             independent["displayName"],
         )
 
@@ -366,9 +366,9 @@ class ValtanPhase3PrimaryGhostLoopContractTests(unittest.TestCase):
         self.assertIn("entity.iRotationStepIndex = 0u", room)
         self.assertIn("Update_ValtanGhostPortalScheduler", room)
         self.assertIn("PORTAL_OCCURRENCE_INTERVAL_MS = 7900u", room)
-        self.assertIn("TRIANGLE_CIRCUMRADIUS_M = 9.f", room)
-        self.assertIn("TRIANGLE_EDGE_LENGTH_M = 15.5884572681f", room)
-        self.assertIn("PORTAL_RUNNER_SPEED_MPS = 11.9911209755f", room)
+        self.assertIn("TRIANGLE_CIRCUMRADIUS_M = 13.5f", room)
+        self.assertIn("TRIANGLE_EDGE_LENGTH_M = 23.3826859022f", room)
+        self.assertIn("PORTAL_RUNNER_SPEED_MPS = 17.9866814632f", room)
         self.assertIn("synthetic.fPositionX = boss.fSpawnPositionX", room)
         self.assertIn("synthetic.fPositionZ = boss.fSpawnPositionZ", room)
         self.assertIn("owner.bGhostPhasePatternLoopActive", room)
@@ -394,7 +394,7 @@ class ValtanPhase3PrimaryGhostLoopContractTests(unittest.TestCase):
         self.assertIn("isInvulnerable && snapshot.iGameplayPhase >= 3u", packet_runtime)
         self.assertIn("m_isGhostPresentationHidden", valtan_header)
         self.assertIn(
-            "if (!m_isGhostPresentationHidden && !m_isPatternBodyHidden)\n"
+            "if (!m_isGhostPresentationHidden && !m_isPatternBodyHidden && !m_isCinematicPresentationSuppressed)\n"
             "\t\t__super::Late_Update(fTimeDelta);",
             valtan_runtime,
         )

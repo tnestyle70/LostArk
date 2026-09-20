@@ -1,5 +1,26 @@
 # 쿠크 패턴 재생 연결 및 저작 데이터 복구 계획
 
+## G10. 레이드 이펙트의 진입 전 준비 (2026-09-19)
+
+CSO는 이미 Debug/Release 제품 Build에서 생성하며 런타임은 CSO를 읽는다. 남은 문제는 쿠크 Loader가 BossCatalog combat-object 이펙트만 수집하고, 패턴 V1/V2와 World effectTracks를 첫 재생 때 준비한다는 점이다. 현재 게시본 85패턴의 698개 Effect occurrence는 V1 84종·V2 Group 18종·Leaf 9종을 참조하며, BossCatalog 준비 목록과 겹치지 않는 V1이 83종이다.
+
+- `KoukuSaydonPresentationPlayer.h/.cpp`: 기존 Product/Sequence 문서의 실제 Effect 참조와 World 트랙을 읽는 진입용 수집 API, 기존 V2 snapshot·Prewarm_Group의 호출 API를 추가한다. V1은 기존 준비 worker를 사용하고 V2는 Loading 종료 전 owner thread에서 준비한다. 준비한 immutable V2 snapshot은 실제 `Ensure_EffectResource`가 재사용하며 기존 cache generation 무효화를 따른다.
+- `Level_Loading.h/.cpp`: Server 승인 class의 Effect와 쿠크 전체 준비 목록을 같은 기존 worker/gate에 넣는다. 쿠크 필수 준비 실패는 레이드 진입 전에 기존 Loading 복구 경로로 보고하고, 실패를 단순히 settled 성공으로 취급하지 않는다.
+- `Level_KakulSaydonArena.cpp`: 게시된 enabled World Object의 모델·재질·트랙을 기존 `Prepare_InstanceResources`로 진입 중 준비하고 기존 Joker clone pool을 유지한다. 캐시와 실제 World consumer를 공유하며 별도 runtime/manifest를 만들지 않는다.
+- 기존 파일의 인코딩·개행과 다른 세션의 미커밋 변경을 보존한다. 신규 C++ 파일 및 project/filter 등록은 없다. 변경 TU의 통합 Product 빌드는 root가 한 번 수행하며, closure 수치·실패 소비자·cache generation·JSON parse 및 diff check를 확인한다. GPU 화면/실제 프레임 안정성은 사용자 확인과 분리한다.
+
+## G09. 룰렛 지지면·제품 World 재생·마리오 수신 범위 후속 (2026-09-19)
+
+현재 요청은 룰렛 아래로 내려가는 세이튼, 휠윈드 이동 경계, 투하·공던지기·훌라후프·칼날·갈고리 누락과 마리오 비입장자의 연출을 고치는 작업이다. 렌더링은 유령 발탄 pass와 쿠크의 원본 재질/LUT 연결을 별도로 조사한다. 기존 transport/MainApp의 미커밋 변경은 보존한다.
+
+- Server의 `Refresh_KoukuSupportSurfaces`와 `Apply_StageRootMotion`: root motion 중 지원면 교체를 건너뛰어 옛 배우 높이와 새 바닥의 차이가 음수로 저장되는 경로를 수정한다. 룰렛 생성·제거와 다음 이동 단계까지 높이 연속성을 기존 Server 계약 검사로 확인한다.
+- Client의 `Level_KakulSaydonArena.cpp`: 네 Mario intro World sequence는 공용 무대 재생을 위해 broadcast되지만 카메라는 로컬 snapshot의 `iMarioStage`가 해당 stage인 경우에만 선택한다. 같은 audience 검사를 자동 Area shot과 제품 Composition camera에 적용하며 명시적 authoring preview는 유지한다. 입력 차단은 실제 선택·소유한 timed camera에 한정한다. stage 0/다른 stage/복귀와 일반 공용 컷씬을 함께 확인한다.
+- World 누락은 cue 생성, pinned revision admission, emission anchor와 실제 prototype/model/material까지 추적해 실패 지점을 수정한다. 셰이더로 원인을 미리 확정하지 않는다.
+- 쿠크 조명은 기존 Rendering restoration의 Before/Restored profile에 세션 한정 Current/Imported source/Off 비교를 연결한다. 원본 import의115개 stable ID와 수치를 사용하되 현재 수정된 receiver와 관문·팝업 변환을 보존한다. 추가 저작 조명7개는 삭제하거나 저장 변경하지 않는다.
+- 새 C++ 파일은 추가하지 않는다. 비교가 소비하는 `Data/Rendering/Reference/KoukuImportedSourceLights.maplights.json`만 Client `96.DataFiles/Rendering`의 `None`으로 `.vcxproj/.filters`에 등록한다. 기존 C++ 인코딩·개행을 보존하며 필요한 Product Debug Build와 관련 focused 검사만 수행한다. Client 실행·화면 판정은 사용자 경계로 남긴다.
+
+구현 결과와 실제 검증은 같은 주제 RESULT의 G09 이후에 기록한다. 저작 라이트와 효과 데이터의 변경 후보가 필요한 경우 최신 디스크 저장본의 stable ID/field로 병합하고, 편집 중이라면 준비가 끝난 최종 교체에서만 기존 승인 여부를 확인한다.
+
 ## 목표와 확인한 원인
 현재 저장본을 기준으로 공굴리기 회전·불 앵커, 입 본 선택, 피자 10명 실제 패턴 소환, 왼손 트레일, 칼날 이동·효과·Resources를 끝까지 연결한다. 사용자 방금 저장한 수명과 effect scale/model 제거를 보존한다.
 

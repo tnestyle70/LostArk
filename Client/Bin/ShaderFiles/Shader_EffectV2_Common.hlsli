@@ -20,6 +20,7 @@ float g_SectorStartDegrees = 0.f;
 float g_SectorDegrees = 0.f;
 float g_SectorSoftness = 0.f;
 float g_BloomIntensity = 1.f;
+float g_SceneBloomScale = 1.f;
 float g_DistortionIntensity = 0.f;
 float2 g_UVStart = float2(0.f, 0.f);
 float2 g_UVSpeed = float2(0.f, 0.f);
@@ -327,6 +328,8 @@ PS_EFFECT_OUT PS_EFFECT_V2(PS_EFFECT_IN input)
 	output.vSceneColor = color;
 	output.vDistortion = float4(distortion, 0.f, 0.f);
 	output.vBloomContribution = Write_SceneBloom(output.vSceneColor);
+    // Preserve alpha coverage so an opaque marker also occludes bloom behind it.
+    output.vBloomContribution.rgb *= saturate(g_SceneBloomScale);
 	return output;
 }
 
@@ -365,6 +368,8 @@ PS_EFFECT_OUT PS_OUTLINE_V2(PS_EFFECT_IN input)
 	output.vSceneColor = g_OutlineColor;
 	output.vDistortion = float4(0.f, 0.f, 0.f, 0.f);
 	output.vBloomContribution = Write_SceneBloom(output.vSceneColor);
+    // Preserve alpha coverage so an opaque marker also occludes bloom behind it.
+    output.vBloomContribution.rgb *= saturate(g_SceneBloomScale);
 	return output;
 }
 

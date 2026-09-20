@@ -106,6 +106,7 @@ namespace Client
 		KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE Occurrence;
 		// Isolated authoring placement preview: all placed Objects, without boss or Logic playback.
 		std::vector<KOUKU_SAYDON_COMPOSITION_WORLD_OCCURRENCE> WorldBoxes;
+		std::string strSourcePatternId;
 		// A live edit may retain an existing preview only when this exact box is active.
 		std::string strEditedOccurrenceId;
 	};
@@ -157,6 +158,7 @@ namespace Client
 		bool_t Select_ActorProfile(std::string_view actorProfileId, std::string& outStatus);
 		[[nodiscard]] bool_t Is_Open() const noexcept { return m_bOpen; }
 		void Render();
+		void Render_WorldPlacementTuning(std::string_view patternId, std::string_view occurrenceId);
 		void Begin_WorkbenchFrame() override;
 		void Render_WorkbenchPane(COMPOSITION_WORKBENCH_PANE pane) override;
 		void End_WorkbenchFrame() override;
@@ -664,7 +666,7 @@ namespace Client
 			std::string_view displayName, std::string& outStatus);
 		bool_t Render_RenameControl(RENAME_TARGET target, std::string_view id,
 			std::string_view displayName);
-		std::vector<std::string> Collect_PatternDeleteReferences(std::string_view patternId) const;
+		std::vector<std::string> Collect_PatternDeleteReferences(std::string_view patternId, bool onlyBlocking = false) const;
 		void Request_PatternDelete(std::string_view patternId);
 		void Render_PatternDeleteContext(std::string_view patternId);
 		void Render_PatternDeleteConfirmation();

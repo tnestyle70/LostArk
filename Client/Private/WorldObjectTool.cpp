@@ -11,6 +11,7 @@
 #include "ProjectDataRoot.h"
 #include "WorldSequencePlayer.h"
 #include "KoukuSaydonCompositionDocument.h"
+#include "KoukuSaydonPatternAuditionService.h"
 #include "Effect_Catalog.h"
 #include "Effect_PresentationService.h"
 
@@ -851,6 +852,107 @@ bool CWorldObjectTool::Prepare_PreviewEffects(const CWorldSequenceDocument& docu
     return false;
 }
 
+std::vector<std::string> CWorldObjectTool::Server_ColliderMotionIds() const
+{
+    std::vector<std::string> ids;
+    if (const auto* group = Preview_Group()) ids = StateIds(*group);
+    else if (const auto* instance = Preview_Instance()) ids.push_back(instance->instanceId);
+    std::erase_if(ids, [&](const auto& id) {
+        const auto* instance = m_Document.Find_Instance(id);
+        const auto* sequence = instance ? m_Document.Find_Template(instance->templateId) : nullptr;
+        return !instance || !instance->enabled || !sequence || sequence->colliderTracks.empty();
+    });
+    return ids;
+}
+
+bool CWorldObjectTool::Refresh_ServerPlayPatterns(const std::vector<std::string>& motionIds)
+{
+    CKoukuSaydonCompositionDocument saved;
+    if (!saved.Reload(m_ServerPlayStatus)) return false;
+    const auto& source = saved.Get_LastGood();
+    std::vector<std::pair<std::string, std::string>> candidates;
+    for (const auto& pattern : source.Patterns)
+    {
+        if (!pattern.strLoadError.empty()) continue;
+        const bool containsAll = std::all_of(motionIds.begin(), motionIds.end(), [&](const auto& motionId) {
+            return std::any_of(pattern.WorldOccurrences.begin(), pattern.WorldOccurrences.end(), [&](const auto& occurrence) {
+                const auto world = std::find_if(source.Worlds.begin(), source.Worlds.end(),
+                    [&](const auto& value) { return value.strWorldId == occurrence.strWorldId; });
+                if (world == source.Worlds.end()) return false;
+                if (world->strSequenceInstanceId == motionId) return true;
+                const auto* group = m_Document.Find_ObjectResource(world->strSequenceInstanceId);
+                return group && std::find(group->motionInstanceIds.begin(), group->motionInstanceIds.end(), motionId) != group->motionInstanceIds.end();
+            });
+        });
+        if (containsAll) candidates.emplace_back(pattern.strPatternId, pattern.strDisplayName);
+    }
+    m_ServerPatterns = std::move(candidates);
+    m_ServerSourceRevision = source.iRevision;
+    if (std::none_of(m_ServerPatterns.begin(), m_ServerPatterns.end(), [&](const auto& row) { return row.first == m_ServerPatternId; }))
+        m_ServerPatternId = m_ServerPatterns.empty() ? std::string{} : m_ServerPatterns.front().first;
+    m_ServerPlayStatus = m_ServerPatterns.empty() ?
+        "Append this Motion to a saved Composition pattern, then publish it for Server collision playback." : std::string{};
+    return true;
+}
+
+bool CWorldObjectTool::Consume_ServerPlayRequest(std::string& patternId, uint32_t& sourceRevision)
+{
+    if (m_PendingServerPatternId.empty()) return false;
+    patternId = std::move(m_PendingServerPatternId);
+    m_PendingServerPatternId.clear();
+    sourceRevision = m_PendingServerSourceRevision;
+    m_PendingServerSourceRevision = 0u;
+    return true;
+}
+
+void CWorldObjectTool::Render_ServerPlayControls()
+{
+    const auto ids = Server_ColliderMotionIds();
+    if (ids.empty()) return;
+    std::string scope;
+    for (const auto& id : ids) scope += id + "|";
+    scope += std::to_string(m_SavedGeneration);
+    if (scope != m_ServerPlayScope)
+    { m_ServerPlayScope = scope; (void)Refresh_ServerPlayPatterns(ids); }
+    ImGui::SeparatorText("Server Collision Playback");
+    const auto selected = std::find_if(m_ServerPatterns.begin(), m_ServerPatterns.end(),
+        [&](const auto& row) { return row.first == m_ServerPatternId; });
+    if (ImGui::BeginCombo("Saved Pattern", selected == m_ServerPatterns.end() ? "No connected pattern" : selected->second.c_str()))
+    {
+        for (const auto& row : m_ServerPatterns)
+            if (ImGui::Selectable((row.second + "##" + row.first).c_str(), row.first == m_ServerPatternId)) m_ServerPatternId = row.first;
+        ImGui::EndCombo();
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Refresh##ObjectServerPatterns")) (void)Refresh_ServerPlayPatterns(ids);
+    const auto& audition = CKoukuSaydonPatternAuditionService::Get().Get_Snapshot();
+    ImGui::BeginDisabled(m_Dirty || m_PublishProcess || m_ServerPatternId.empty() || m_ServerPreparationPending || audition.Is_InFlight());
+    if (ImGui::Button("Play (with Collisions)"))
+    {
+        const auto selectedId = m_ServerPatternId;
+        if (!Matches_SourceBaseline()) m_ServerPlayStatus = m_Status;
+        else if (Refresh_ServerPlayPatterns(ids) && std::any_of(m_ServerPatterns.begin(), m_ServerPatterns.end(),
+            [&](const auto& row) { return row.first == selectedId; }))
+        {
+            Stop_Preview();
+            m_ServerPreparationPending = true;
+            m_PendingServerPatternId = selectedId;
+            m_PendingServerSourceRevision = m_ServerSourceRevision;
+            m_ServerPlayStatus = "Preparing the saved pattern for Server collision playback.";
+        }
+    }
+    ImGui::EndDisabled(); ImGui::SameLine();
+    if (ImGui::Button("Stop Server Play")) m_ServerStopRequested = true;
+    if (m_Dirty) ImGui::TextWrapped("Save the Object before Server Play. The saved pattern supplies its placement and all connected actors.");
+    else ImGui::TextWrapped("Server Play uses the selected saved pattern, including its World box placements. Collision damage and hook capture are evaluated by the Server. Visual Play above previews the current draft.");
+    if (!m_ServerPlayStatus.empty()) ImGui::TextWrapped("%s", m_ServerPlayStatus.c_str());
+    if (audition.strRequestedPatternId == m_ServerPatternId && audition.eState != KOUKU_SAYDON_PATTERN_AUDITION_STATE::IDLE)
+    {
+        ImGui::TextDisabled("Server: %s", Describe_KoukuSaydonPatternAuditionState(audition.eState));
+        ImGui::TextWrapped("%s", audition.strStatus.c_str());
+    }
+}
+
 void CWorldObjectTool::Play_Preview()
 {
     m_PlayAfterPreparation = true;
@@ -877,6 +979,8 @@ const WORLD_SEQUENCE_OBJECT_RESOURCE* CWorldObjectTool::Preview_Group() const
 
 bool CWorldObjectTool::Begin_Preview()
 {
+    if (m_ServerPreparationPending || CKoukuSaydonPatternAuditionService::Get().Get_Snapshot().Is_InFlight())
+    { m_Status = "Stop Server Play before previewing an Object draft."; return false; }
     auto* level = CLevel_KakulSaydonArena::Get_Active();
     if (!level) { m_Status = "World object preview requires the active KoukuSaydon arena."; return false; }
     if (const auto* group = Preview_Group())
@@ -944,6 +1048,58 @@ void CWorldObjectTool::Seek(const f32_t clockMs)
     if (!m_PreviewLevel->Debug_SampleWorldObjectPreview(m_ClockMs, m_PreviewStatus))
     { m_Status = m_PreviewStatus; Stop_Preview(); }
 }
+
+void CWorldObjectTool::Render_QuickTransformTuning(const std::string& objectId, const std::string& instanceId)
+{
+    if (!m_Ready && !Load_Source()) { ImGui::TextWrapped("%s", m_Status.c_str()); return; }
+    const auto* object = m_Document.Find_ObjectResource(objectId);
+    const auto* instance = m_Document.Find_Instance(instanceId);
+    const auto* sequence = instance ? m_Document.Find_Template(instance->templateId) : nullptr;
+    if (!object || !sequence || sequence->tracks.empty() || sequence->tracks.front().keys.empty())
+    { ImGui::TextDisabled("The saved hammer Motion is unavailable."); return; }
+    const auto first = sequence->tracks.front().keys.front();
+    auto position = first.positionOffset;
+    auto rotation = QuaternionEuler(first.rotationQuaternion);
+    if (std::abs(first.rotationQuaternion.x) + std::abs(first.rotationQuaternion.z) < .00001f)
+        rotation = {0.f, XMConvertToDegrees(2.f * std::atan2(first.rotationQuaternion.y, first.rotationQuaternion.w)), 0.f};
+    float3_t size{object->scale.x * first.scaleMultiplier.x, object->scale.y * first.scaleMultiplier.y,
+        object->scale.z * first.scaleMultiplier.z};
+    ImGui::PushID(instanceId.c_str());
+    ImGui::BeginDisabled(m_PublishProcess != nullptr);
+    bool changed = ImGui::DragFloat3("Pos (m)", &position.x, .01f);
+    changed |= ImGui::DragFloat3("Rotation (deg)", &rotation.x, .25f);
+    changed |= ImGui::DragFloat3("Size", &size.x, .01f, .001f, 1000.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+    if (changed)
+    {
+        auto candidate = m_Document;
+        auto* edited = candidate.Find_Template(instance->templateId);
+        const auto translation = XMLoadFloat3(&position) - XMLoadFloat3(&first.positionOffset);
+        const auto rotate = XMMatrixTranspose(XMMatrixRotationQuaternion(XMLoadFloat4(&first.rotationQuaternion))) *
+            XMMatrixRotationRollPitchYaw(XMConvertToRadians(rotation.x), XMConvertToRadians(rotation.y), XMConvertToRadians(rotation.z));
+        const float3_t oldSize{object->scale.x * first.scaleMultiplier.x, object->scale.y * first.scaleMultiplier.y,
+            object->scale.z * first.scaleMultiplier.z};
+        for (auto& track : edited->tracks)
+            for (auto& key : track.keys)
+            {
+                XMStoreFloat3(&key.positionOffset, XMLoadFloat3(&key.positionOffset) + translation);
+                XMStoreFloat4(&key.rotationQuaternion, XMQuaternionNormalize(XMQuaternionRotationMatrix(
+                    XMMatrixRotationQuaternion(XMLoadFloat4(&key.rotationQuaternion)) * rotate)));
+                key.scaleMultiplier.x *= size.x / oldSize.x;
+                key.scaleMultiplier.y *= size.y / oldSize.y;
+                key.scaleMultiplier.z *= size.z / oldSize.z;
+            }
+        std::string status;
+        if (candidate.Validate(m_MapTargets, m_DeployTargets, status))
+        { m_Document = std::move(candidate); Mark_Dirty(); }
+        else m_Status = "Hammer transform refused: " + status + ". Existing draft preserved.";
+    }
+    ImGui::TextWrapped("This changes the whirlwind Motion only. Save includes pending Object edits and publishes through the existing Object workflow.");
+    if (ImGui::Button("Save Object changes")) Save_Source();
+    ImGui::EndDisabled();
+    Render_SaveStatus();
+    ImGui::PopID();
+}
+
 
 void CWorldObjectTool::Update(const f32_t seconds, const bool_t active)
 {
@@ -2131,6 +2287,57 @@ void CWorldObjectTool::Render_AnimationResources()
     ImGui::EndChild();
 }
 
+void CWorldObjectTool::Use_AuthoredMapPreview()
+{
+    m_PreviewAtCharacter = false;
+    m_CompositionPreviewPlacement.reset();
+    m_CompositionPreviewObjectId.clear();
+}
+
+bool CWorldObjectTool::Render_MapAnchor(const WORLD_SEQUENCE_OBJECT_RESOURCE& resource)
+{
+    if (!resource.sequenceInstanceId.empty()) return false;
+    std::vector<std::string> ids;
+    float3_t center{};
+    for (const auto& id : StateIds(resource))
+        if (const auto* motion = m_Document.Find_Instance(id); motion && motion->anchorKind == "WORLD")
+        {
+            ids.push_back(id);
+            center.x += motion->position.x; center.y += motion->position.y; center.z += motion->position.z;
+        }
+    if (ids.empty()) return false;
+    const float count = static_cast<float>(ids.size());
+    center.x /= count; center.y /= count; center.z /= count;
+    auto position = center;
+    ImGui::SeparatorText("Map Anchor / All Connected Motions");
+    bool edited = ImGui::DragFloat3("Parent Map Position", &position.x, .01f);
+    if (ImGui::Button("Move Parent to Character"))
+    {
+        if (auto* level = CLevel_KakulSaydonArena::Get_Active())
+            edited = level->Try_Get_AuthoringPreviewPlacement(position, m_Status);
+        else m_Status = "Player placement requires the active KoukuSaydon arena.";
+    }
+    ImGui::TextWrapped("Moves every connected Map Motion by the same delta, including Y. Motion paths, emission spacing and individual effects stay relative to this anchor.");
+    if (!edited) return false;
+    auto candidate = m_Document;
+    for (const auto& id : ids)
+    {
+        auto* motion = candidate.Find_Instance(id);
+        motion->position.x += position.x - center.x;
+        motion->position.y += position.y - center.y;
+        motion->position.z += position.z - center.z;
+    }
+    std::string status;
+    if (!candidate.Validate(m_MapTargets, m_DeployTargets, status))
+    { m_Status = "Map anchor refused: " + status + ". Existing draft preserved."; return false; }
+    m_Document = std::move(candidate);
+    Use_AuthoredMapPreview();
+    Mark_Dirty();
+    Seek(m_ClockMs);
+    m_Status = "Moved all connected Map Motions. Preview now uses the authored Map Position.";
+    return true;
+}
+
 void CWorldObjectTool::Render_ObjectDetail(WORLD_SEQUENCE_OBJECT_RESOURCE& resource)
 {
     ImGui::SeparatorText("Object / Shared Resources");
@@ -2220,6 +2427,7 @@ void CWorldObjectTool::Render_ObjectDetail(WORLD_SEQUENCE_OBJECT_RESOURCE& resou
         }
     }
     if (changed) Mark_Dirty();
+    if (Render_MapAnchor(resource)) return;
     if (!alias)
     {
         const auto* initial = m_Document.Find_Instance(resource.defaultMotionInstanceId);
@@ -2300,7 +2508,7 @@ void CWorldObjectTool::Render_ObjectDetail(WORLD_SEQUENCE_OBJECT_RESOURCE& resou
     if (!defaultMotion || !defaultMotion->enabled)
         ImGui::TextWrapped("Choose an enabled Default Motion to Append or Preview this Object.");
     ImGui::BeginDisabled(!Preview_Instance());
-    if (ImGui::Button("Preview Default")) { Stop_Preview(); m_PreviewAtCharacter = true; m_ClockMs = 0.f; Play_Preview(); }
+    if (ImGui::Button("Preview Default")) { Stop_Preview(); m_ClockMs = 0.f; Play_Preview(); }
     ImGui::EndDisabled(); ImGui::SameLine();
     if (ImGui::Button("Stop Preview")) { Stop_Preview(); m_ClockMs = 0.f; }
     if (motions.empty()) ImGui::TextDisabled("No motions yet.");
@@ -2463,8 +2671,9 @@ void CWorldObjectTool::Render_Detail()
                 ImGui::TextDisabled("Preview at Character is on: the object follows the player, not this Map Position.");
             if (positionEdited)
             {
-                // Same live path as the radius editor: restart the running preview at the edited position.
+                // An explicit Map edit chooses authored space over transient preview placement.
                 // Mark_Dirty/Seek do not replace m_Document, so instance/sequence stay valid below.
+                Use_AuthoredMapPreview();
                 Mark_Dirty();
                 Seek(m_ClockMs);
             }
@@ -2472,7 +2681,11 @@ void CWorldObjectTool::Render_Detail()
         if (ImGui::Button("Use Current Character Position"))
         {
             if (instance->anchorKind == "PLAYER" || instance->anchorKind == "BOSS") { instance->position = {}; changed = true; }
-            else if (auto* level = CLevel_KakulSaydonArena::Get_Active()) changed |= level->Try_Get_AuthoringPreviewPlacement(instance->position, m_Status);
+            else if (auto* level = CLevel_KakulSaydonArena::Get_Active())
+            {
+                if (level->Try_Get_AuthoringPreviewPlacement(instance->position, m_Status))
+                { Use_AuthoredMapPreview(); Mark_Dirty(); Seek(m_ClockMs); }
+            }
             else m_Status = "Player placement requires the active KoukuSaydon arena.";
         }
     }
@@ -2886,6 +3099,7 @@ void CWorldObjectTool::Render_GroupDetail(WORLD_SEQUENCE_OBJECT_RESOURCE& resour
 {
     ImGui::SeparatorText(resource.displayName.c_str());
     if (EditText("Combined Motion Name", resource.displayName)) Mark_Dirty();
+    if (Render_MapAnchor(resource)) return;
     const auto* current = m_Document.Find_Instance(m_SelectedInstance);
     const auto* sequence = current ? m_Document.Find_Template(current->templateId) : nullptr;
     if (ImGui::BeginCombo("Editing Motion", sequence ? sequence->displayName.c_str() : "Choose a row"))
@@ -2921,7 +3135,7 @@ void CWorldObjectTool::Render_GroupSequence(const WORLD_SEQUENCE_OBJECT_RESOURCE
     {
         if (Render_SaveButton()) return;
         ImGui::SameLine();
-        if (ImGui::Button(m_Playing || (m_PreviewPreparationPending && m_PlayAfterPreparation) ? "Pause" : "Play"))
+        if (ImGui::Button(m_Playing || (m_PreviewPreparationPending && m_PlayAfterPreparation) ? "Pause" : "Visual Play"))
         {
             if (m_Playing || (m_PreviewPreparationPending && m_PlayAfterPreparation))
             { m_Playing = false; m_PlayAfterPreparation = false; }
@@ -2935,6 +3149,7 @@ void CWorldObjectTool::Render_GroupSequence(const WORLD_SEQUENCE_OBJECT_RESOURCE
         ImGui::TextWrapped("Click a motion row or key to edit it in Object Detail. All %zu motions keep playing together.", resource.motionInstanceIds.size());
         if (!m_PreviewStatus.empty()) ImGui::TextWrapped("%s", m_PreviewStatus.c_str());
     }
+    Render_ServerPlayControls();
     // Disabled rows remain on the authoring timeline, even when playback has a shorter span.
     float extent = 1.f;
     for (const auto& id : motionIds)
@@ -3083,7 +3298,7 @@ void CWorldObjectTool::Render_Sequence(WORLD_SEQUENCE_TEMPLATE& sequence)
     ImGui::SeparatorText(sequence.displayName.c_str());
     if (Render_SaveButton()) return;
     ImGui::SameLine();
-    if (ImGui::Button(m_Playing || (m_PreviewPreparationPending && m_PlayAfterPreparation) ? "Pause" : "Play"))
+    if (ImGui::Button(m_Playing || (m_PreviewPreparationPending && m_PlayAfterPreparation) ? "Pause" : "Visual Play"))
     {
         if (m_Playing || (m_PreviewPreparationPending && m_PlayAfterPreparation))
             { m_Playing = false; m_PlayAfterPreparation = false; }
@@ -3106,6 +3321,7 @@ void CWorldObjectTool::Render_Sequence(WORLD_SEQUENCE_TEMPLATE& sequence)
                     "Preview at the current character without changing the saved Map position. Clear to preview the authored position.");
     }
     Render_SaveStatus();
+    Render_ServerPlayControls();
     if (selectedInstance) ImGui::TextDisabled("On Complete: %s", MotionEndLabel(selectedInstance->motionEnd));
     if (m_PreviewActive) ImGui::TextWrapped("%s", m_PreviewStatus.c_str());
     if (m_ClockMs >= SpanMs() && selectedInstance &&

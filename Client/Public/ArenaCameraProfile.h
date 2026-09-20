@@ -3,6 +3,9 @@
 #include "Client_Defines.h"
 #include "Engine_Defines.h"
 
+#include "Network/PacketType.h"
+
+#include <array>
 #include <filesystem>
 #include <string>
 
@@ -26,6 +29,15 @@ struct ARENA_CAMERA_PROFILE final
 	f32_t followResponse = 0.f;
 	// Visual multiplier relative to this class's admitted catalog scale.
 	f32_t characterSizeMultiplier = 1.f;
+	// Enum-indexed in memory, stable class names on disk; reserved DESTROYER stays 1.
+	// These are relative to the currently admitted catalog models.
+	std::array<f32_t, 7u> classSizeMultipliers{ 1.f, 1.f, 1.f, 1.6f, 1.f, 0.7f, 1.f };
+	f32_t clownSizeMultiplier = 0.7f;
+	f32_t marioSizeMultiplier = 1.f;
+	// Player pickup hammer offsets in its hand frame; separate from the boss prop.
+	float3_t mazeHammerPositionCm{};
+	float3_t mazeHammerRotationDegrees{};
+	float3_t mazeHammerScale{ 1.f, 1.f, 1.f };
 };
 
 class CArenaCameraProfile final

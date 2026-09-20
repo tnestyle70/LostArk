@@ -52,7 +52,7 @@ bool Is_KoukuBossMotionNavigable(const BOSS_PATTERN_DEFINITION& pattern,
 			0u != player.CardMaze.transferStartTick ||
 			0u == player.iActionStartTick ||
 			static_cast<std::int32_t>(tick - (player.iActionStartTick +
-				LostArk::Server::CKoukuCardMazeRuntime::HAMMER_HIT_TICK_OFFSET)) < 0)
+				LostArk::Server::CKoukuCardMazeRuntime::Hammer_HitTickOffset(player.iCurrentSkillId))) < 0)
 		{
 			return false;
 		}

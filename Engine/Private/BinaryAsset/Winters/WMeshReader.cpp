@@ -410,7 +410,8 @@ namespace
 		return true;
 	}
 
-	bool_t MakeSkinnedVertex(const uint8_t* pSource, uint32_t boneCount, VTXANIMMESH& outVertex)
+	bool_t MakeSkinnedVertex(const uint8_t* pSource, uint32_t boneCount,
+		bool_t strictHandedness, VTXANIMMESH& outVertex)
 	{
 		memcpy(&outVertex.vPosition, pSource + 0, sizeof(float3_t));
 		memcpy(&outVertex.vNormal, pSource + 12, sizeof(float3_t));
@@ -451,11 +452,24 @@ namespace
 				pWeights[i] *= inverseWeight;
 		}
 
-		const vector_t normal = SafeNormalize3(XMLoadFloat3(&outVertex.vNormal), XMVectorSet(0.f, 1.f, 0.f, 0.f));
-		const vector_t tangent = SafeNormalize3(XMLoadFloat3(&outVertex.vTangent), XMVectorSet(1.f, 0.f, 0.f, 0.f));
-		const vector_t binormal = SafeNormalize3(
-			XMVector3Cross(normal, tangent),
-			XMVectorSet(0.f, 0.f, 1.f, 0.f));
+		vector_t normal{}, tangent{}, binormal{};
+		if (strictHandedness)
+		{
+			f32_t handedness = 0.f;
+			memcpy(&handedness, pSource + STRIDE_SKINNED, sizeof(handedness));
+			if (!IsValidTangentHandedness(handedness) ||
+				!TryNormalizeGeometryBasis(XMLoadFloat3(&outVertex.vNormal), normal) ||
+				!TryNormalizeGeometryBasis(XMLoadFloat3(&outVertex.vTangent), tangent) ||
+				!TryNormalizeGeometryBasis(XMVector3Cross(normal, tangent), binormal))
+				return false;
+			binormal = XMVectorScale(binormal, handedness);
+		}
+		else
+		{
+			normal = SafeNormalize3(XMLoadFloat3(&outVertex.vNormal), XMVectorSet(0.f, 1.f, 0.f, 0.f));
+			tangent = SafeNormalize3(XMLoadFloat3(&outVertex.vTangent), XMVectorSet(1.f, 0.f, 0.f, 0.f));
+			binormal = SafeNormalize3(XMVector3Cross(normal, tangent), XMVectorSet(0.f, 0.f, 1.f, 0.f));
+		}
 		XMStoreFloat3(&outVertex.vNormal, normal);
 		XMStoreFloat3(&outVertex.vTangent, tangent);
 		XMStoreFloat3(&outVertex.vBinormal, binormal);
@@ -494,7 +508,7 @@ bool_t CWMeshReader::ReadMemory(const uint8_t* pData,
 		const FILE_HEADER fileHeader = fileReader.Read<FILE_HEADER>();
 		if (!HasMagic(fileHeader.magic, WINTERS_MAGIC) ||
 			WINT_VERSION_MAJOR != fileHeader.versionMajor ||
-			fileHeader.versionMinor > WINT_STATIC_UV2_VERSION_MINOR ||
+			fileHeader.versionMinor > WINT_SKINNED_BASIS_VERSION_MINOR ||
 			0 != fileHeader.flags ||
 			fileHeader.contentSize != fileReader.Remaining())
 		{
@@ -508,6 +522,8 @@ bool_t CWMeshReader::ReadMemory(const uint8_t* pData,
 			fileHeader.versionMinor == WINT_STATIC_UV2_VERSION_MINOR;
 		const bool_t skinnedUVContract =
 			fileHeader.versionMinor == WINT_SKINNED_UV_VERSION_MINOR;
+		const bool_t skinnedBasisContract =
+			fileHeader.versionMinor == WINT_SKINNED_BASIS_VERSION_MINOR;
 		const uint8_t* pContent = fileReader.Peek();
 		CBinaryReader reader(pContent, fileHeader.contentSize);
 		const MESH_META_HEADER meshHeader = reader.Read<MESH_META_HEADER>();
@@ -517,7 +533,8 @@ bool_t CWMeshReader::ReadMemory(const uint8_t* pData,
 		const bool_t hasUV2 = 0 != (meshHeader.vertexFormatFlags & VF_TEXCOORD2);
 		const uint32_t expectedStride = (hasColor0 ?
 			STRIDE_STATIC_COLOR0 : STRIDE_STATIC) + (hasUV1 ? sizeof(float2_t) : 0) + (hasUV2 ? sizeof(float2_t) : 0);
-		const bool_t versionedFlagsValid = skinnedUVContract ?
+		const bool_t versionedFlagsValid = skinnedBasisContract ?
+			(meshHeader.vertexFormatFlags == (VF_STATIC_BASE | VF_BONE_WEIGHT | VF_TANGENT_HANDEDNESS)) : skinnedUVContract ?
 			(skinned && hasUV1 &&
 				(meshHeader.vertexFormatFlags & VF_STATIC_BASE) == VF_STATIC_BASE &&
 				0 == (meshHeader.vertexFormatFlags &
@@ -532,7 +549,7 @@ bool_t CWMeshReader::ReadMemory(const uint8_t* pData,
 			((meshHeader.vertexFormatFlags & VF_STATIC_BASE) == VF_STATIC_BASE &&
 				0 == (meshHeader.vertexFormatFlags &
 					~(VF_STATIC_BASE | VF_BONE_WEIGHT)));
-		const bool_t reservedValid = (!geometryContract && !skinnedUVContract) ||
+		const bool_t reservedValid = (!geometryContract && !skinnedUVContract && !skinnedBasisContract) ||
 			(0 == meshHeader.reserved[0] &&
 				0 == meshHeader.reserved[1] &&
 				0 == meshHeader.reserved[2]);
@@ -545,7 +562,8 @@ bool_t CWMeshReader::ReadMemory(const uint8_t* pData,
 			!versionedFlagsValid || !reservedValid ||
 			(geometryContract && (0 == meshHeader.hasBounding ||
 				meshHeader.vertexStride != expectedStride)) ||
-			(skinned && (0 == meshHeader.boneCount || meshHeader.vertexStride != STRIDE_SKINNED)) ||
+			(skinned && (0 == meshHeader.boneCount || meshHeader.vertexStride !=
+				(skinnedBasisContract ? STRIDE_SKINNED_BASIS : STRIDE_SKINNED))) ||
 			(!geometryContract && !skinned && meshHeader.vertexStride != STRIDE_STATIC))
 		{
 			outReport.error = "Invalid WMSH version, flags, stride, or bone metadata.";
@@ -554,7 +572,7 @@ bool_t CWMeshReader::ReadMemory(const uint8_t* pData,
 
 		vector<SUBMESH_DESC> submeshes(meshHeader.submeshCount);
 		reader.ReadBytes(submeshes.data(), sizeof(SUBMESH_DESC) * submeshes.size());
-		if (geometryContract || skinnedUVContract)
+		if (geometryContract || skinnedUVContract || skinnedBasisContract)
 		{
 			uint64_t expectedVertexOffset = {};
 			uint64_t expectedIndexOffset = {};
@@ -750,7 +768,7 @@ bool_t CWMeshReader::ReadMemory(const uint8_t* pData,
 				outReport.error = "A submesh points outside its vertex or index block.";
 				return false;
 			}
-			if ((geometryContract || skinnedUVContract) && (0 == sourceMesh.vertexCount ||
+			if ((geometryContract || skinnedUVContract || skinnedBasisContract) && (0 == sourceMesh.vertexCount ||
 				0 == sourceMesh.indexCount || 0 != sourceMesh.indexCount % 3))
 			{
 				outReport.error = "A versioned WMSH submesh is not an indexed triangle list.";
@@ -777,9 +795,12 @@ bool_t CWMeshReader::ReadMemory(const uint8_t* pData,
 					if (!MakeSkinnedVertex(
 						pVertices + static_cast<size_t>(i) * meshHeader.vertexStride,
 						meshHeader.boneCount,
+						skinnedBasisContract,
 						mesh.skinnedVertices[i]))
 					{
-						outReport.error = "A skinned vertex contains invalid bone data.";
+						outReport.error = skinnedBasisContract ?
+							"A WMSH 1.5 skinned vertex contains invalid bone or tangent-basis data." :
+							"A skinned vertex contains invalid bone data.";
 						return false;
 					}
 					if (mesh.hasTexcoord1) mesh.skinnedVertices[i].vTexcoord1 = skinnedUV1[submeshIndex][i];

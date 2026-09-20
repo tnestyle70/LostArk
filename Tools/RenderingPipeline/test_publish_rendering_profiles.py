@@ -50,6 +50,36 @@ def next_positive_float32(value: float) -> float:
 
 
 class RenderingProfilePublisherTest(unittest.TestCase):
+    def test_independent_native_ambient_round_trip_and_rejected_input_rollback(self) -> None:
+        document = copy.deepcopy(json.loads(AUTHORED.read_text(encoding="utf-8")))
+        profile = next(p for p in document["profiles"] if p["profileId"] == "scene.kakulsaydon.g1.base.v1")
+        region = next(r for r in profile["environmentRegions"] if r["regionId"] == "kouku.ps.environment.47")
+        profile["light"]["sourceCharacterAmbient"] = [0.1, 0.2, 0.3, 0]
+        # Explicit zero in a region must override, not inherit the profile's RGB.
+        region["sourceCharacterAmbient"] = [0, 0, 0, 0]
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            source = Path(temporary_directory) / "source.json"
+            destination = Path(temporary_directory) / "runtime.json"
+            self.write_document(source, document)
+            result = self.run_publisher(source, "Publish", destination)
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            previous = destination.read_bytes()
+            self.assertEqual(document, json.loads(previous))
+            for in_region, value in ((False, [-1, 0, 0, 0]), (False, [0, 0, 0, 1]),
+                                     (True, [65, 0, 0, 0]), (True, [0, "0", 0, 0])):
+                with self.subTest(in_region=in_region, value=value):
+                    invalid = copy.deepcopy(document)
+                    target = next(p for p in invalid["profiles"] if p["profileId"] == profile["profileId"])
+                    if in_region:
+                        target = next(r for r in target["environmentRegions"] if r["regionId"] == region["regionId"])
+                    else:
+                        target = target["light"]
+                    target["sourceCharacterAmbient"] = value
+                    self.write_document(source, invalid)
+                    result = self.run_publisher(source, "Publish", destination)
+                    self.assertNotEqual(0, result.returncode)
+                    self.assertEqual(previous, destination.read_bytes())
+
     def setUp(self) -> None:
         if POWERSHELL is None:
             self.skipTest("PowerShell is required by the rendering publisher")

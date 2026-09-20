@@ -345,6 +345,7 @@ namespace Client
 #endif
 
 		std::shared_ptr<CCharacter> Get_LocalCharacter() const;
+		std::shared_ptr<CValtan> Find_PrimaryValtanPresentation() const;
 		/* Debug tuning only: the live CNpc body of one primary KoukuSaydon
 		arena boss archetype, or null while that boss is not replicated. */
 		std::shared_ptr<CNpc> Find_ArenaBossNpc(std::string_view archetypeId) const;

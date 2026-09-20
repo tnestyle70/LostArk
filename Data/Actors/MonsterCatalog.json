@@ -9,9 +9,18 @@
       "modelScale": 0.01,
       "modelYawDegrees": -90.0,
       "attackPresentations": [
-        { "clip": "mn_padd_01_sk.ao_att_battle_1_01", "playbackRate": 1.0 },
-        { "clip": "mn_padd_01_sk.ao_att_battle_2_01", "playbackRate": 1.0 },
-        { "clip": "mn_padd_01_sk.ao_att_battle_3_01", "playbackRate": 1.0515 }
+        {
+          "clip": "mn_padd_01_sk.ao_att_battle_1_01",
+          "playbackRate": 1.0
+        },
+        {
+          "clip": "mn_padd_01_sk.ao_att_battle_2_01",
+          "playbackRate": 1.0
+        },
+        {
+          "clip": "mn_padd_01_sk.ao_att_battle_3_01",
+          "playbackRate": 1.0515
+        }
       ],
       "hitDurationSeconds": 0.3,
       "presentationClips": {
@@ -29,9 +38,18 @@
       "modelScale": 0.01,
       "modelYawDegrees": -90.0,
       "attackPresentations": [
-        { "clip": "mn_sjfc_00_sk.ao_att_battle_1_01", "playbackRate": 1.9004 },
-        { "clip": "mn_sjfc_00_sk.ao_att_battle_2_01", "playbackRate": 0.8932 },
-        { "clip": "mn_sjfc_00_sk.ao_att_battle_3_01", "playbackRate": 1.0262 }
+        {
+          "clip": "mn_sjfc_00_sk.ao_att_battle_1_01",
+          "playbackRate": 1.9004
+        },
+        {
+          "clip": "mn_sjfc_00_sk.ao_att_battle_2_01",
+          "playbackRate": 0.8932
+        },
+        {
+          "clip": "mn_sjfc_00_sk.ao_att_battle_3_01",
+          "playbackRate": 1.0262
+        }
       ],
       "hitDurationSeconds": 0.3333,
       "presentationClips": {
@@ -49,7 +67,10 @@
       "modelScale": 0.01,
       "modelYawDegrees": -90.0,
       "attackPresentations": [
-        { "clip": "mn_0019_05_sk.ao_att_battle_1_01", "playbackRate": 1.0 }
+        {
+          "clip": "mn_0019_05_sk.ao_att_battle_1_01",
+          "playbackRate": 1.0
+        }
       ],
       "hitDurationSeconds": 0.3333,
       "presentationClips": {
@@ -67,9 +88,18 @@
       "modelScale": 0.01,
       "modelYawDegrees": -90.0,
       "attackPresentations": [
-        { "clip": "mn_rprs_02_sk.ao_att_battle_1_01", "playbackRate": 1.1382 },
-        { "clip": "mn_rprs_02_sk.ao_att_battle_10_01", "playbackRate": 0.748 },
-        { "clip": "mn_rprs_02_sk.ao_att_battle_12_01", "playbackRate": 0.7317 }
+        {
+          "clip": "mn_rprs_02_sk.ao_att_battle_1_01",
+          "playbackRate": 1.1382
+        },
+        {
+          "clip": "mn_rprs_02_sk.ao_att_battle_10_01",
+          "playbackRate": 0.748
+        },
+        {
+          "clip": "mn_rprs_02_sk.ao_att_battle_12_01",
+          "playbackRate": 0.7317
+        }
       ],
       "hitDurationSeconds": 0.32,
       "presentationClips": {
@@ -87,9 +117,18 @@
       "modelScale": 0.0115,
       "modelYawDegrees": -90.0,
       "attackPresentations": [
-        { "clip": "mn_sjfc_00_sk.ao_att_battle_1_01", "playbackRate": 2.2523 },
-        { "clip": "mn_sjfc_00_sk.ao_att_battle_2_01", "playbackRate": 1.0586 },
-        { "clip": "mn_sjfc_00_sk.ao_att_battle_3_01", "playbackRate": 1.2162 }
+        {
+          "clip": "mn_sjfc_00_sk.ao_att_battle_1_01",
+          "playbackRate": 2.2523
+        },
+        {
+          "clip": "mn_sjfc_00_sk.ao_att_battle_2_01",
+          "playbackRate": 1.0586
+        },
+        {
+          "clip": "mn_sjfc_00_sk.ao_att_battle_3_01",
+          "playbackRate": 1.2162
+        }
       ],
       "hitDurationSeconds": 0.3333,
       "presentationClips": {
@@ -107,8 +146,14 @@
       "modelScale": 0.015,
       "modelYawDegrees": -90.0,
       "attackPresentations": [
-        { "clip": "mn_ppch_00_sk.ao_att_battle_1_01", "playbackRate": 1.0 },
-        { "clip": "mn_ppch_00_sk.ao_att_battle_2_01", "playbackRate": 1.0 }
+        {
+          "clip": "mn_ppch_00_sk.ao_att_battle_1_01",
+          "playbackRate": 1.0
+        },
+        {
+          "clip": "mn_ppch_00_sk.ao_att_battle_2_01",
+          "playbackRate": 1.0
+        }
       ],
       "hitDurationSeconds": 0.3333,
       "presentationClips": {
@@ -126,8 +171,14 @@
       "modelScale": 0.015,
       "modelYawDegrees": -90.0,
       "attackPresentations": [
-        { "clip": "mn_ppch_00_sk.ao_att_battle_1_01", "playbackRate": 1.0 },
-        { "clip": "mn_ppch_00_sk.ao_att_battle_2_01", "playbackRate": 1.0 }
+        {
+          "clip": "mn_ppch_00_sk.ao_att_battle_1_01",
+          "playbackRate": 1.0
+        },
+        {
+          "clip": "mn_ppch_00_sk.ao_att_battle_2_01",
+          "playbackRate": 1.0
+        }
       ],
       "hitDurationSeconds": 0.3333,
       "presentationClips": {
@@ -145,8 +196,14 @@
       "modelScale": 0.015,
       "modelYawDegrees": -90.0,
       "attackPresentations": [
-        { "clip": "mn_ppch_00_sk.ao_att_battle_1_01", "playbackRate": 1.0 },
-        { "clip": "mn_ppch_00_sk.ao_att_battle_2_01", "playbackRate": 1.0 }
+        {
+          "clip": "mn_ppch_00_sk.ao_att_battle_1_01",
+          "playbackRate": 1.0
+        },
+        {
+          "clip": "mn_ppch_00_sk.ao_att_battle_2_01",
+          "playbackRate": 1.0
+        }
       ],
       "hitDurationSeconds": 0.3333,
       "presentationClips": {
@@ -164,8 +221,14 @@
       "modelScale": 0.01,
       "modelYawDegrees": -90.0,
       "attackPresentations": [
-        { "clip": "mn_ppch_01_sk.ao_att_battle_1_01", "playbackRate": 1.0 },
-        { "clip": "mn_ppch_01_sk.ao_att_battle_2_01", "playbackRate": 1.0 }
+        {
+          "clip": "mn_ppch_01_sk.ao_att_battle_1_01",
+          "playbackRate": 1.0
+        },
+        {
+          "clip": "mn_ppch_01_sk.ao_att_battle_2_01",
+          "playbackRate": 1.0
+        }
       ],
       "hitDurationSeconds": 0.3333,
       "presentationClips": {
@@ -183,7 +246,10 @@
       "modelScale": 0.01,
       "modelYawDegrees": -90.0,
       "attackPresentations": [
-        { "clip": "att_battle_1", "playbackRate": 1.0 }
+        {
+          "clip": "att_battle_1",
+          "playbackRate": 1.0
+        }
       ],
       "hitDurationSeconds": 0.3333,
       "presentationClips": {
@@ -297,7 +363,8 @@
       "attackPresentations": [
         {
           "clip": "att_battle_1_01",
-          "playbackRate": 1.0
+          "playbackRate": 1.0,
+          "endEffectAssetId": "effect.kouku.mario.clown.hammer.end"
         }
       ],
       "hitDurationSeconds": 0.3333,

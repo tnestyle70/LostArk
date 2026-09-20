@@ -143,6 +143,84 @@ void LostArk::Server::CServerGameplayContractRunner::Run_PlayerActions(TESTS& te
     Run_CharacterActionColliderResultContracts(tests, catalog);
 
 	{
+		/* A cancel window releases the mid-action hold. The action that replaces
+		the cancelled one has to finish on its own clock like any other, so the
+		player is idle again afterwards rather than stuck in the running state. */
+		const PLAYER_SKILL_DEFINITION* sharpSwing = catalog.Find_Skill(34040u);
+		const PLAYER_SKILL_DEFINITION* dragonKick = catalog.Find_Skill(34090u);
+		tests.Require(
+			nullptr != sharpSwing && nullptr != dragonKick &&
+			2u == sharpSwing->SkillCancelWindows.size() &&
+			401u == sharpSwing->SkillCancelWindows[0].iStartMs &&
+			600u == sharpSwing->SkillCancelWindows[0].iEndMs,
+			"Load the authored skill cancel windows from the gameplay bootstrap");
+
+		const auto makePlayer = []() {
+			SERVER_PLAYER player{};
+			player.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+			player.eStance = PLAYER_STANCE_ID::LANCE_MASTER_LONG_SPEAR;
+			player.iCurrentHp = 1000u;
+			player.iMaximumHp = 1000u;
+			player.iCurrentResource = 1000u;
+			player.iMaximumResource = 1000u;
+			return player;
+		};
+		const auto press = [](const std::uint32_t sequence,
+			const LostArk::Shared::SKILL_ID skillId) {
+			C2S_USE_SKILL command{};
+			command.iClientSequence = sequence;
+			command.iSkillId = skillId;
+			command.fAimX = 4.f;
+			command.fAimZ = 0.f;
+			return command;
+		};
+
+		CPlayerSkillSystem skills;
+		std::vector<SERVER_WORLD_ENTITY> noTargets;
+		std::vector<DAMAGE_EVENT> events;
+
+		SERVER_PLAYER early = makePlayer();
+		const bool startedFirst =
+			skills.Try_Start(early, press(1u, 34040u), catalog, 100u);
+		// 200ms in: before the first authored window, so the hold still stands.
+		skills.Update(early, noTargets, catalog, nullptr, nullptr, 0.2f, 106u, events);
+		const bool refusedBeforeWindow =
+			!skills.Try_Start(early, press(2u, 34090u), catalog, 107u);
+
+		SERVER_PLAYER cancelled = makePlayer();
+		const bool startedSecond =
+			skills.Try_Start(cancelled, press(1u, 34040u), catalog, 100u);
+		// 450ms in: inside [401,600], so the next skill replaces the action.
+		skills.Update(cancelled, noTargets, catalog, nullptr, nullptr, 0.45f, 113u, events);
+		const bool cancelAdmitted =
+			skills.Try_Start(cancelled, press(2u, 34090u), catalog, 114u);
+		const bool replacedAction =
+			cancelAdmitted && 34090u == cancelled.iCurrentSkillId &&
+			PLAYER_ACTION_STATE::SKILL == cancelled.eAction &&
+			0.f == cancelled.fActionElapsedSeconds;
+		// Run the replacement past its own duration and require it to end.
+		for (int step = 0; step < 240 && PLAYER_ACTION_STATE::SKILL == cancelled.eAction; ++step)
+		{
+			skills.Update(cancelled, noTargets, catalog, nullptr, nullptr,
+				1.f / 30.f, static_cast<std::uint32_t>(115 + step), events);
+		}
+		const bool completed =
+			PLAYER_ACTION_STATE::NONE == cancelled.eAction &&
+			INVALID_SKILL_ID == cancelled.iCurrentSkillId &&
+			0u == cancelled.iComboStage &&
+			!cancelled.hasBufferedComboInput;
+
+		tests.Require(
+			startedFirst && refusedBeforeWindow,
+			"Hold the next skill until the running action reaches a cancel window");
+		tests.Require(
+			startedSecond && replacedAction,
+			"Admit the next skill inside the running action's cancel window");
+		tests.Require(completed,
+			"Return to idle after the skill that cancelled the previous action ends");
+	}
+
+	{
 		/* Armour is server state. It mitigates every incoming hit while a plate is
 		intact and only loses durability inside a GROGGY stage, so the numbers here
 		come from the published bootstrap and the same skill path the arena runs. */

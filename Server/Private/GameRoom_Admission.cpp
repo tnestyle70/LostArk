@@ -291,9 +291,9 @@ bool LostArk::Server::CGameRoom::Build_PlayerEntryFrames(
 	if (Build_GateProgressState(gateState, false, GATE_PROGRESS_VOTE_RESULT::NONE) &&
 		!append(PACKET_TYPE::S2C_GATE_PROGRESS_STATE, gateState)) return false;
 	S2C_KOUKUSAYDON_BUNDLE_STATE bundleState;
-	if (Build_KoukuBundleState(bundleState))
+	if (Build_KoukuBundleState(bundleState) && !append(PACKET_TYPE::S2C_KOUKUSAYDON_BUNDLE_STATE, bundleState)) return false;
 	{
-		if (!append(PACKET_TYPE::S2C_KOUKUSAYDON_BUNDLE_STATE, bundleState)) return false;
+		// Natural Stage/run completion retains independent World rows for late join.
 		for (auto play : m_KoukuSaydonPatternAudition.WorldPlays)
 		{
 			if (play.bUntilDestroyed) continue; // Persistent bodies below own late join replay.

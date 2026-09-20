@@ -277,6 +277,9 @@ public:
 		return m_strModelTag;
 	}
 	const std::string& Get_EffectV2BindingOwner() const { return m_strEffectV2BindingOwner; }
+	// Called only after an approved, successfully started non-looping action.
+	bool_t Schedule_ClipEndEffect(const std::string& effectAssetId,
+		uint32_t levelIndex, const std::string& occurrenceId);
 	bool_t Try_GetAnimationModelTarget(ANIMATION_BONE_TARGET target, ANIMATION_MODEL_TARGET_VIEW& outView) const;
 	bool_t Set_PlayerHandGripLocalOffset(const PLAYER_HAND_GRIP_LOCAL_OFFSET& offset);
 	void Clear_PlayerHandGripLocalOffset() { m_PlayerHandGripLocalOffset.reset(); }
@@ -380,6 +383,9 @@ private:
 	shared_ptr<Engine::CModel> m_pSaydonHatModel;
 	wstring_t m_strModelTag;
 	std::string m_strEffectV2BindingOwner;
+	std::string m_strClipEndEffect, m_strClipEndEffectOccurrence;
+	f32_t m_fClipEndEffectRemaining = 0.f;
+	uint32_t m_iClipEndEffectLevel = ETOUI(LEVEL::END);
 	/* Socketed weapon with body-clock pose synchronization; null when the
 	desc declared none. It never starts a clip of its own. */
 	shared_ptr<Engine::CModel> m_pWeaponModelCom = { nullptr };

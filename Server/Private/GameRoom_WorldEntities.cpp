@@ -97,7 +97,7 @@ bool LostArk::Server::CGameRoom::Build_WorldEntity(
 	const LostArk::Shared::NET_ENTITY_ID netEntityId,
 	SERVER_WORLD_ENTITY& outEntity,
 	const CGameplayCatalog* definitionCatalog,
-	const LostArk::Shared::NET_ENTITY_ID ownerBossNetEntityId)
+	const LostArk::Shared::NET_ENTITY_ID ownerBossNetEntityId, const std::uint32_t ownerPatternSequence)
 {
 	const CGameplayCatalog& catalog = nullptr == definitionCatalog ?
 		m_GameplayCatalog.Active() : *definitionCatalog;
@@ -182,10 +182,15 @@ bool LostArk::Server::CGameRoom::Build_WorldEntity(
 		}
 		if (isDependentArchetype || isKoukuClone)
 		{
-			const auto owner = std::find_if(m_WorldEntities.begin(), m_WorldEntities.end(),
+			const auto liveOwner = std::find_if(m_WorldEntities.begin(), m_WorldEntities.end(),
 				[ownerBossNetEntityId](const SERVER_WORLD_ENTITY& candidate)
 				{ return candidate.iNetEntityId == ownerBossNetEntityId; });
-			if (owner == m_WorldEntities.end() || WORLD_BOOTSTRAP_KIND::BOSS != owner->eKind ||
+			const SERVER_WORLD_ENTITY* owner = isKoukuClone && ownerPatternSequence ?
+				Find_KoukuOccurrenceOwner(ownerBossNetEntityId, ownerPatternSequence) :
+				(liveOwner == m_WorldEntities.end() ? nullptr : &*liveOwner);
+			if (!owner || liveOwner == m_WorldEntities.end() || !liveOwner->iCurrentHp ||
+				liveOwner->eAction == SERVER_ENTITY_ACTION::DEAD || liveOwner->bMechanicLedgerRequiresReset ||
+				WORLD_BOOTSTRAP_KIND::BOSS != owner->eKind ||
 				LostArk::Shared::INVALID_NET_ENTITY_ID != owner->iOwnerBossNetEntityId ||
 				0u == owner->iCurrentHp || SERVER_ENTITY_ACTION::DEAD == owner->eAction ||
 				owner->bMechanicLedgerRequiresReset || owner->strEncounterId != staged.strEncounterId ||

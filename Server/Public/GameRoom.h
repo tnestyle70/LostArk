@@ -321,6 +321,10 @@ namespace LostArk::Server
 			const LostArk::Shared::C2S_MOVE& move);
 		[[nodiscard]] bool Is_BufferableComboAction(
 			const SERVER_PLAYER& player) const;
+		/* A move goal inside the running skill's authored move-cancel window
+		ends the action now instead of waiting out the recovery pose. */
+		[[nodiscard]] bool Is_MoveCancellableAction(
+			const SERVER_PLAYER& player) const;
 		[[nodiscard]] bool Commit_MoveGoal(
 			SERVER_PLAYER& player, float goalX, float goalZ);
 		void Commit_PendingPlayerCommand(
@@ -568,7 +572,7 @@ namespace LostArk::Server
 				const LostArk::Shared::
 					C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST& request,
 				LostArk::Shared::
-					S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT& outResult);
+					S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT& outResult, bool continueRaid = false);
 		SERVER_WORLD_ENTITY* Find_KoukuSaydonAuditionBoss();
 		/* The live arena boss a Debug audition scope names: the Gate 1 Kouku or
 		a gate boss raised from a disabled placement. Null when that placement
@@ -651,6 +655,14 @@ namespace LostArk::Server
 			std::unordered_map<std::string, std::string> WorldCueByInstance;
 			std::unordered_map<std::string, std::string> WorldCueByOccurrence;
 		};
+		// Stage completion releases the actor clock, while these occurrence rows retain theirs.
+		struct KOUKU_PATTERN_TAIL final
+		{
+			std::shared_ptr<SERVER_WORLD_ENTITY> pOwner;
+			KOUKUSAYDON_PATTERN_AUDITION_MEMBER Member;
+			std::uint32_t iEndTick = 0u;
+			std::uint32_t iLastUpdateTick = 0u;
+		};
 		struct KOUKU_SCHEDULED_SUPPORT_SURFACE final
 		{
 			std::string strMemberId;
@@ -673,11 +685,16 @@ namespace LostArk::Server
 			std::vector<KOUKUSAYDON_PATTERN_AUDITION_MEMBER> Members;
 			std::vector<LostArk::Shared::S2C_WORLD_SEQUENCE_PLAY> WorldPlays;
 			std::vector<KOUKU_SCHEDULED_SUPPORT_SURFACE> SupportSchedule;
+			std::vector<KOUKU_PATTERN_TAIL> Tails;
 		};
-		KOUKUSAYDON_PATTERN_AUDITION_MEMBER* Find_KoukuAuditionMember(LostArk::Shared::NET_ENTITY_ID bossId);
+		KOUKUSAYDON_PATTERN_AUDITION_MEMBER* Find_KoukuAuditionMember(LostArk::Shared::NET_ENTITY_ID bossId, std::uint32_t patternSequence = 0u);
 		KOUKUSAYDON_LOGIC_LEDGER* Active_KoukuPlayerLedger();
 		[[nodiscard]] const CGameplayCatalog* Resolve_KoukuProductCatalog() const noexcept;
 		void Prepare_KoukuAuditionTick(std::uint32_t serverTick);
+		void Update_KoukuPatternTails(std::uint32_t serverTick);
+		SERVER_WORLD_ENTITY* Find_KoukuOccurrenceOwner(LostArk::Shared::NET_ENTITY_ID bossId, std::uint32_t patternSequence);
+		bool Retain_KoukuPatternTail(KOUKUSAYDON_PATTERN_AUDITION_MEMBER& member,
+			const SERVER_WORLD_ENTITY& sourceOwner, const BOSS_PATTERN_DEFINITION& pattern, std::uint32_t serverTick);
 		bool Start_KoukuCompletionChain(KOUKUSAYDON_PATTERN_AUDITION_MEMBER& member,
 			SERVER_WORLD_ENTITY& boss, const BOSS_PATTERN_DEFINITION& pattern, std::uint32_t serverTick);
 		void Update_KoukuMarioEntry(KOUKUSAYDON_PATTERN_AUDITION_MEMBER& member, std::uint32_t serverTick);
@@ -1289,7 +1306,7 @@ namespace LostArk::Server
 			SERVER_WORLD_ENTITY& outEntity,
 			const CGameplayCatalog* definitionCatalog = nullptr,
 			LostArk::Shared::NET_ENTITY_ID ownerBossNetEntityId =
-				LostArk::Shared::INVALID_NET_ENTITY_ID);
+				LostArk::Shared::INVALID_NET_ENTITY_ID, std::uint32_t ownerPatternSequence = 0u);
 		bool Initialize_WorldEntities();
 		bool Reset_ReplayableArenaWhenEmpty();
 		bool Reset_ValtanArenaWhenEmpty();
@@ -1480,7 +1497,7 @@ namespace LostArk::Server
 			LostArk::Shared::NET_ENTITY_ID playerEntityId,
 			LostArk::Shared::NET_ENTITY_ID ownerEntityId,
 			LostArk::Shared::PLAYER_ATTACHMENT_SLOT slot,
-			std::uint32_t serverTick, std::uint32_t holdEndTick = 0u);
+			std::uint32_t serverTick, std::uint32_t holdEndTick = 0u, std::uint32_t sourcePatternSequence = 0u);
 		bool Update_PlayerAttachment(
 			SERVER_PLAYER& player,
 			std::uint32_t serverTick);

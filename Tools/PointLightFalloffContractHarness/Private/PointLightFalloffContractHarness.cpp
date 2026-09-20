@@ -26,7 +26,7 @@
 using namespace Client;
 using namespace Engine;
 
-static_assert(sizeof(LIGHT_DESC) == 108u);
+static_assert(sizeof(LIGHT_DESC) == 124u);
 static_assert(offsetof(LIGHT_DESC, fRange) == 36u);
 static_assert(offsetof(LIGHT_DESC, fFalloffExponent) == 40u);
 static_assert(offsetof(LIGHT_DESC, vDiffuse) == 44u);
@@ -270,7 +270,9 @@ namespace
         const auto savedTransientLights = presentation.Get_TransientLights();
         presentation.Clear_TransientLights();
         unsigned specularCases = 0u, specularFailures = 0u;
-        for (const bool batched : {false, true})
+        for (const float power : {30.f, 100.f})
+          for (const float viewDegrees : {0.f, 20.f, 40.f})
+           for (const bool batched : {false, true})
             for (const LIGHT type : {LIGHT::DIRECTIONAL, LIGHT::POINT, LIGHT::SPOT})
                 for (const float marker : {0.f, 1.f, 2.f})
                     for (const bool legacySpecular : {false, true})
@@ -282,7 +284,11 @@ namespace
                         light.vSpecular = legacySpecular ? float4_t(.6f,.2f,.8f,0.f) : float4_t(0.f,0.f,0.f,0.f);
                         light.fSpotInnerCos = .95f;
                         light.fSpotOuterCos = .85f;
-                        if (!texture("g_DepthTexture", {.5f,.001f,32.f,marker})) return false;
+                        const float angle = XMConvertToRadians(viewDegrees);
+                        const float4_t floorCamera(10.f * std::sin(angle), 0.f,
+                            .5f - 10.f * std::cos(angle), 1.f);
+                        if (FAILED(shader->Bind_RawValue("g_vCamPosition", &floorCamera, sizeof(floorCamera))) ||
+                            !texture("g_DepthTexture", {.5f,.001f,power,marker})) return false;
                         context->ClearRenderTargetView(views[0], clear);
                         context->ClearRenderTargetView(views[1], clear);
                         const HRESULT rendered = batched ?
@@ -290,14 +296,16 @@ namespace
                                 manager->Render_Lights(shader, buffer, false)) :
                             CLight::Render_Desc(light, shader, buffer);
                         if (FAILED(rendered)) return false;
-                        // The one pixel is at (0,0,.5), with camera and light on
-                        // its -Z normal. Phong lobe/cone are one; point distance
-                        // 1.5 and range 10 yield linear attenuation .85.
+                        // Native floor DXBC uses abs(N.H)^power: with N/L on -Z,
+                        // H moves by half the camera angle. Legacy pixels retain
+                        // their reflection-vector Phong lobe at the full angle.
+                        // Point distance 1.5 / range 10 gives attenuation .85.
+                        const float lobe = std::pow(std::cos(angle * (marker == 1.f ? .5f : 1.f)), power);
                         const float attenuation = type == LIGHT::DIRECTIONAL ? 1.f : .85f;
                         const float expectedSpecular[3] = {
-                            (marker == 1.f ? .16f : (legacySpecular ? .15f : 0.f)) * attenuation,
-                            (marker == 1.f ? .12f : (legacySpecular ? .05f : 0.f)) * attenuation,
-                            (marker == 1.f ? .10f : (legacySpecular ? .20f : 0.f)) * attenuation};
+                            (marker == 1.f ? .16f : (legacySpecular ? .15f : 0.f)) * attenuation * lobe,
+                            (marker == 1.f ? .12f : (legacySpecular ? .05f : 0.f)) * attenuation * lobe,
+                            (marker == 1.f ? .10f : (legacySpecular ? .20f : 0.f)) * attenuation * lobe};
                         const float expectedShade[3] = {.8f * attenuation, .4f * attenuation, .2f * attenuation};
                         for (unsigned target = 0u; target < 2u; ++target)
                         {
@@ -313,6 +321,7 @@ namespace
                                 {
                                     std::cerr << "floor light RGB mismatch: batch=" << batched << " type=" << unsigned(type)
                                         << " marker=" << marker << " legacySpecular=" << legacySpecular
+                                        << " power=" << power << " viewDegrees=" << viewDegrees
                                         << " target=" << target << " channel=" << channel
                                         << " actual=" << actual[channel] << " expected=" << expected[channel] << "\n";
                                     ++specularFailures;
@@ -567,6 +576,28 @@ int wmain(const int iArgumentCount, wchar_t* pArguments[])
 	if (!SameBits(DefaultDesc.fSpotInnerCos, 1.f) ||
 		!SameBits(DefaultDesc.fSpotOuterCos, 1.f))
 		return Fail("LIGHT_DESC cone defaults changed legacy initialization");
+
+    const auto& defaultIndirect = DefaultDesc.vSourceCharacterAmbient;
+    if (defaultIndirect.x != 0.f || defaultIndirect.y != 0.f ||
+        defaultIndirect.z != 0.f || defaultIndirect.w != 0.f)
+        return Fail("legacy lights gained native character indirect energy");
+    LIGHT_DESC independentIndirect = MakeValidPointLight();
+    independentIndirect.eType = LIGHT::DIRECTIONAL;
+    independentIndirect.vDirection = { 0.f, -1.f, 0.f, 0.f };
+    independentIndirect.vDiffuse = { 0.f, 0.f, 0.f, 1.f };
+    independentIndirect.vSourceCharacterAmbient = { .51f, .56f, .59f, 0.f };
+    if (!CLight::Is_ValidDesc(independentIndirect))
+        return Fail("independent native ambient rejected with zero direct RGB");
+    for (float value : { -1.f, 65.f, std::numeric_limits<float>::quiet_NaN(),
+        std::numeric_limits<float>::infinity() })
+    {
+        auto invalid = independentIndirect; invalid.vSourceCharacterAmbient.x = value;
+        if (CLight::Is_ValidDesc(invalid)) return Fail("invalid native ambient RGB admitted");
+    }
+    auto invalidIndirect = independentIndirect; invalidIndirect.vSourceCharacterAmbient.w = 1.f;
+    if (CLight::Is_ValidDesc(invalidIndirect)) return Fail("native ambient reserved component admitted");
+    invalidIndirect = independentIndirect; invalidIndirect.eType = LIGHT::POINT;
+    if (CLight::Is_ValidDesc(invalidIndirect)) return Fail("local light supplied scene-only native ambient");
 
 	const LIGHT_DESC Valid = MakeValidPointLight();
 	auto Light = CLight::Create(Valid);

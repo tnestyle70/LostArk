@@ -98,6 +98,8 @@ namespace
 		std::vector<PENDING_SPAWN> StagePending;
 		std::vector<Client::EFFECT_V2_CLIP_OCCURRENCE_CLOCK> StageClocks;
 		std::vector<SPAWNED_EFFECT> Spawned;
+		// Retired stage children own object-age clocks; a new stage starts at zero.
+		std::vector<SPAWNED_EFFECT> StageTails;
 		std::shared_ptr<const Client::EFFECT_V2_CATALOG_SNAPSHOT>
 			pAuthoringSnapshot;
 	};
@@ -768,8 +770,41 @@ namespace
 		Prune_List(Spawned, false, false);
 	}
 
+	void Retire_StageLane(TARGET_STATE& State)
+	{
+		Prune_Spawned(State, false, true);
+		for (auto it = State.Spawned.begin(); it != State.Spawned.end();)
+		{
+			if (!it->bStageBound) { ++it; continue; }
+			if (const auto object = it->pObject.lock(); object && !it->bStopApplied && it->fStopSeconds >= 0.f)
+			{
+				const f32_t remaining = (std::max)(0.f,
+					it->fStopSeconds - (std::max)(0.f, State.fStageLastSeconds));
+				it->fStopSeconds = object->Elapsed_Seconds() + remaining;
+			}
+			State.StageTails.push_back(std::move(*it));
+			it = State.Spawned.erase(it);
+		}
+	}
+
+	void Advance_StageTails(TARGET_STATE& State)
+	{
+		for (auto& effect : State.StageTails)
+		{
+			const auto object = effect.pObject.lock();
+			if (!object || effect.bStopApplied || effect.fStopSeconds < 0.f ||
+				object->Elapsed_Seconds() < effect.fStopSeconds) continue;
+			effect.bStopApplied = true;
+			if (effect.eStop == Client::EFFECT_V2_CHILD_STOP::DEACTIVATE)
+				object->Stop_Emission();
+			else object->Finish();
+		}
+		Prune_List(State.StageTails, false, false);
+	}
+
 	void Remove_AllSpawned(TARGET_STATE& State)
 	{
+		Kill_List(State.StageTails);
 		CGameInstance& GameInstance = CGameInstance::Get();
 		for (SPAWNED_EFFECT& Spawned : State.Spawned)
 		{
@@ -785,6 +820,7 @@ namespace
 
 	void Reset_StageLane(TARGET_STATE& State)
 	{
+		Kill_List(State.StageTails);
 		for (SPAWNED_EFFECT& Effect : State.Spawned)
 		{
 			if (!Effect.bStageBound)
@@ -1015,9 +1051,10 @@ namespace
 		{
 			if (!bStageChanged && (bSnapshotChanged || bClocksChanged))
 				Reset_StageLane(State);
+			else if (bStageChanged)
+				Retire_StageLane(State);
 			State.strStage = strActionId;
 			State.fStageLastSeconds = -1.f;
-			Prune_Spawned(State, false, true);
 			State.StagePending.clear();
 			State.StageClocks.assign(
 				ClipOccurrences.begin(), ClipOccurrences.end());
@@ -1264,9 +1301,14 @@ bool_t Client::EFFECT_V2_PIVOT_HISTORY::Record(const f32_t fGroupAgeSeconds,
 bool_t Client::EFFECT_V2_PIVOT_HISTORY::Sample(const f32_t fGroupAgeSeconds,
 	float4x4_t& OutPivot, std::string& strOutError) const
 {
+	// Pattern milliseconds and occurrence seconds reach the same endpoint through
+	// different float operations. At long clocks one ULP already exceeds 1us.
+	// Admit rounding at the recorded endpoints, never a missing frame of history.
+	const f32_t tolerance = (std::max)(0.000001f,
+		4.f * (std::numeric_limits<f32_t>::epsilon)() * (std::max)(1.f, std::fabs(fGroupAgeSeconds)));
 	if (!std::isfinite(fGroupAgeSeconds) || m_Samples.empty() ||
-		fGroupAgeSeconds < m_Samples.front().fSeconds - 0.000001f ||
-		fGroupAgeSeconds > m_Samples.back().fSeconds + 0.000001f)
+		fGroupAgeSeconds < m_Samples.front().fSeconds - tolerance ||
+		fGroupAgeSeconds > m_Samples.back().fSeconds + tolerance)
 	{
 		strOutError = "Requested root time has not been recorded.";
 		return false;
@@ -1274,7 +1316,7 @@ bool_t Client::EFFECT_V2_PIVOT_HISTORY::Sample(const f32_t fGroupAgeSeconds,
 	const auto Right = std::lower_bound(m_Samples.begin(), m_Samples.end(), fGroupAgeSeconds,
 		[](const SAMPLE& Row, const f32_t Time) { return Row.fSeconds < Time; });
 	if (Right == m_Samples.end()) { OutPivot = m_Samples.back().Pivot; strOutError.clear(); return true; }
-	if (Right == m_Samples.begin() || std::fabs(Right->fSeconds - fGroupAgeSeconds) <= 0.000001f)
+	if (Right == m_Samples.begin() || std::fabs(Right->fSeconds - fGroupAgeSeconds) <= tolerance)
 	{ OutPivot = Right->Pivot; strOutError.clear(); return true; }
 	if (Right->bDiscontinuity)
 	{
@@ -1356,7 +1398,7 @@ void Client::CEffectV2Runtime::Set_Ignored(const EFFECT_V2_TARGET& Target, const
 		const auto Found = g_TargetStates.find(Target.pKey);
 		if (Found != g_TargetStates.end())
 		{
-			Prune_Spawned(Found->second, true, true);
+			Remove_AllSpawned(Found->second);
 			g_TargetStates.erase(Found);
 		}
 	}
@@ -1529,7 +1571,7 @@ void Client::CEffectV2Runtime::Tick(
 	{
 		if (!Iterator->second.Target.Is_Valid())
 		{
-			Prune_Spawned(Iterator->second, true, true);
+			Remove_AllSpawned(Iterator->second);
 			Iterator = g_TargetStates.erase(Iterator);
 			continue;
 		}
@@ -1945,5 +1987,10 @@ void Client::CEffectV2Runtime::Advance_ProductGroups(
 	const ComPtr<ID3D11Device>& pDevice,
 	const ComPtr<ID3D11DeviceContext>& pContext)
 {
+	for (auto& [key, state] : g_TargetStates)
+	{
+		(void)key;
+		Advance_StageTails(state);
+	}
 	Advance_FreeGroupLanes(true, fTimeDelta, pDevice, pContext);
 }

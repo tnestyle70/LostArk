@@ -452,14 +452,6 @@
       "clipOccurrenceId": "valtan.mechanic.arena-break-109.impact-hold.clip.01",
       "waivers": ["HIT", "EFFECT", "SOUND"],
       "reason": "The established arena-break pattern already owns its impact in the preceding IMPACT stage; a second unapproved landing hit would change the mechanic."
-    },
-    {
-      "patternId": "VALTAN_ARENA_BREAK_109",
-      "stageId": "WIDE_REVEAL",
-      "actionId": "valtan.mechanic.arena-break-109.wide-reveal",
-      "clipOccurrenceId": "valtan.mechanic.arena-break-109.wide-reveal.clip.01",
-      "waivers": ["HIT", "EFFECT", "SOUND"],
-      "reason": "This post-impact occurrence starts at source 900ms, after the reviewed 267ms landing contact."
     }
   ]
 }

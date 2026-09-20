@@ -2693,6 +2693,46 @@
           1.5
         ]
       }
+    },
+    {
+      "bindingId": "cue.valtan.ghost-respawn.original",
+      "occurrenceId": "cue.valtan.ghost-respawn.original.occurrence.01",
+      "patternId": "VALTAN_GHOST_RESPAWN_AUDITION",
+      "stageId": "STEP_01",
+      "actionId": "valtan.sequence.respawn.step-01",
+      "clipOccurrenceId": "valtan.sequence.respawn.step-01.clip-01",
+      "effectAssetId": "effect.valtan.action.15.stage002.full.restore",
+      "anchorSlotId": "root",
+      "followPolicy": "snapshot",
+      "stopPolicy": "natural",
+      "repeatPolicy": "once",
+      "sourceStartMs": 0,
+      "sourceEndMs": null,
+      "localTransform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotationDegrees": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "scalePolicy": {
+        "kind": "ARENA_ABSOLUTE",
+        "worldScale": [
+          1,
+          1,
+          1
+        ]
+      }
     }
   ]
 }
