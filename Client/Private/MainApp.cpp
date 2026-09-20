@@ -3360,6 +3360,15 @@ HRESULT CMainApp::Render()
 						pValtanArena->Get_PlayerCommandSink() : nullptr);
 				}
 			}
+			else if (ETOUI(LEVEL::KAKULSAYDON_ARENA) == chatLevel)
+			{
+				CLevel_KakulSaydonArena* pKouku = CLevel_KakulSaydonArena::Get_Active();
+				{
+					Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.Chat.Build");
+					m_pChatWindowView->Render(
+						nullptr != pKouku ? pKouku->Get_PlayerCommandSink() : nullptr);
+				}
+			}
 		}
 		if (nullptr != m_pPartyWindowView)
 		{
@@ -3776,10 +3785,18 @@ HRESULT CMainApp::Render()
 			pValtanArena->Render_PartyInviteText();
 		}
 	}
-	/* Not level-gated -- both views self-gate internally (open/roster state). */
 	CUITextLayerScope HudText(UI_TEXT_LAYER::HUD);
-	if (nullptr != m_pChatWindowView)
-		m_pChatWindowView->RenderText();
+	/* The chat sprites are only driven in the levels that own a chat (see the Render call
+	above); its labels follow them, or the channel label and the last lines sit over the
+	loading screen and the next level. */
+	{
+		const uint32_t chatTextLevel = CGameInstance::Get().Get_CurrentLevelID();
+		const bool_t bChatTextLevel = ETOUI(LEVEL::BERN) == chatTextLevel ||
+			ETOUI(LEVEL::VALTAN_ARENA) == chatTextLevel ||
+			ETOUI(LEVEL::KAKULSAYDON_ARENA) == chatTextLevel;
+		if (nullptr != m_pChatWindowView && bChatTextLevel)
+			m_pChatWindowView->RenderText();
+	}
 	/* The roster sprites only draw in the levels above; the labels follow them, or the
 	   member names of the last room sit over the loading screen and the next level. */
 	{
@@ -5270,6 +5287,11 @@ void CMainApp::Close_RuntimeWindowsForLoading()
 	if (nullptr != m_pWorldMapWindowView) m_pWorldMapWindowView->Close();
 	if (nullptr != m_pSystemOptionView) m_pSystemOptionView->Close();
 	if (nullptr != m_pQuickSlotDragView) m_pQuickSlotDragView->Cancel();
+	if (nullptr != m_pChatWindowView)
+	{
+		m_pChatWindowView->Close_Input();
+		m_pChatWindowView->Hide_AllSlots();
+	}
 	m_iEscapeWindowCount = 0u;
 }
 
