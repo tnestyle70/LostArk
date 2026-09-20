@@ -18,8 +18,10 @@
 
 CLevel_Development::CLevel_Development(
 	ComPtr<ID3D11Device> pDevice,
-	ComPtr<ID3D11DeviceContext> pContext)
+	ComPtr<ID3D11DeviceContext> pContext,
+	const LEVEL eLevel)
 	: CLevel{ pDevice, pContext }
+	, m_eLevel{ eLevel }
 {
 }
 
@@ -41,6 +43,7 @@ HRESULT CLevel_Development::Initialize()
 
 #ifdef _DEBUG
 	m_isMapEditorWorkspace =
+		LEVEL::DEVELOPMENT == m_eLevel &&
 		CMapEditorWorkspaceService::Is_Requested();
 	if (m_isMapEditorWorkspace)
 	{
@@ -63,10 +66,10 @@ HRESULT CLevel_Development::Initialize()
 #endif
 
 	const CLIENT_LEVEL_DESCRIPTOR* pEntry =
-		CLevelRegistry::Find(LEVEL::DEVELOPMENT);
+		CLevelRegistry::Find(m_eLevel);
 	if (nullptr == pEntry || nullptr == pEntry->pMapAreaId ||
 		!m_MapRuntime.Load_Area(
-			ETOUI(LEVEL::DEVELOPMENT),
+			ETOUI(m_eLevel),
 			pEntry->pMapAreaId,
 			pEntry->MapLoadScope))
 	{
@@ -85,8 +88,8 @@ HRESULT CLevel_Development::Initialize()
 	CClientReplication::DESC replicationDesc{};
 	replicationDesc.pDevice = m_pDevice;
 	replicationDesc.pContext = m_pContext;
-	replicationDesc.iPrototypeLevelIndex = ETOUI(LEVEL::DEVELOPMENT);
-	replicationDesc.iLayerLevelIndex = ETOUI(LEVEL::DEVELOPMENT);
+	replicationDesc.iPrototypeLevelIndex = ETOUI(m_eLevel);
+	replicationDesc.iLayerLevelIndex = ETOUI(m_eLevel);
 	replicationDesc.strMapAreaId = pEntry->pMapAreaId;
 	replicationDesc.strPlayerLayerTag = TEXT("Layer_Player");
 	replicationDesc.strWorldEntityLayerTag = TEXT("Layer_WorldEntity");
@@ -99,12 +102,12 @@ HRESULT CLevel_Development::Initialize()
 	m_pPlayerCommandSink = make_shared<CNetworkPlayerCommandSink>();
 	m_PlayerController.Set_CommandSink(m_pPlayerCommandSink);
 	if (!m_PlayerController.Initialize_TargetingPreview(
-			ETOUI(LEVEL::DEVELOPMENT)))
+			ETOUI(m_eLevel)))
 	{
 		return E_FAIL;
 	}
 	if (!m_PlayerController.Initialize_ClickMoveEffect(
-			ETOUI(LEVEL::DEVELOPMENT)))
+			ETOUI(m_eLevel)))
 	{
 		return E_FAIL;
 	}
@@ -157,6 +160,8 @@ HRESULT CLevel_Development::Render()
 #ifdef _DEBUG
 	CMainApp::Update_DebugWindowTitleWithFps(m_isMapEditorWorkspace ?
 		TEXT("LostArk Map Editor Workspace") :
+		LEVEL::MAHARAKA == m_eLevel ?
+		TEXT("LostArk Maharaka Paradise") :
 		TEXT("LostArk Test Training Ground"));
 #endif
 	return S_OK;
@@ -187,9 +192,9 @@ HRESULT CLevel_Development::Ready_Camera(
 
 	shared_ptr<CGameObject> gameObject;
 	if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(
-		ETOUI(LEVEL::DEVELOPMENT),
+		ETOUI(m_eLevel),
 		TEXT("Prototype_GameObject_Camera_Free"),
-		ETOUI(LEVEL::DEVELOPMENT),
+		ETOUI(m_eLevel),
 		strLayerTag,
 		&cameraDesc,
 		&gameObject)))
@@ -202,7 +207,7 @@ HRESULT CLevel_Development::Ready_Camera(
 	if (nullptr == camera)
 	{
 		CGameInstance::Get().Remove_GameObject_from_Layer(
-			ETOUI(LEVEL::DEVELOPMENT),
+			ETOUI(m_eLevel),
 			strLayerTag,
 			gameObject);
 		return E_FAIL;
@@ -244,10 +249,11 @@ bool_t CLevel_Development::Bind_CameraToLocalCharacter()
 
 unique_ptr<CLevel_Development> CLevel_Development::Create(
 	ComPtr<ID3D11Device> pDevice,
-	ComPtr<ID3D11DeviceContext> pContext)
+	ComPtr<ID3D11DeviceContext> pContext,
+	const LEVEL eLevel)
 {
 	auto instance = unique_ptr<CLevel_Development>(
-		new CLevel_Development(pDevice, pContext));
+		new CLevel_Development(pDevice, pContext, eLevel));
 	if (FAILED(instance->Initialize()))
 		return nullptr;
 	return instance;

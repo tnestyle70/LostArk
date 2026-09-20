@@ -416,8 +416,27 @@ class ExactMaterialResolutionTests(unittest.TestCase):
                 "Exporting Texture2D exported to C:/work/umodel/PKG/tex/exported.dds\n",
                 encoding="utf-8",
             )
+            (pack / "textures").mkdir()
+            (pack / "textures" / "exported.dds").write_bytes(b"DDS ")
             self.assertEqual(
                 [{"physicalPackage": "B.upk", "objectName": "missing"}],
+                tool.missing_loaded_texture_sources([pack.parent]),
+            )
+
+    def test_exported_texture_absent_from_pack_is_a_hydration_input(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            pack = Path(temporary) / "source" / "PACK"
+            (pack / "textures").mkdir(parents=True)
+            (pack / "textures" / "diffuse_d.dds").write_bytes(b"DDS ")
+            (pack / "umodel.log.txt").write_text(
+                "Loading Texture2D diffuse_d from package A.upk\n"
+                "Loading Texture2D mask_mk from package A.upk\n"
+                "Exporting Texture2D diffuse_d to C:/work/umodel/PKG/tex/diffuse_d.dds\n"
+                "Exporting Texture2D mask_mk to C:/work/umodel/PKG/tex/mask_mk.dds\n",
+                encoding="utf-8",
+            )
+            self.assertEqual(
+                [{"physicalPackage": "A.upk", "objectName": "mask_mk"}],
                 tool.missing_loaded_texture_sources([pack.parent]),
             )
 

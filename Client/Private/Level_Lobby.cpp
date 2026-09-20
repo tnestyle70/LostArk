@@ -349,6 +349,10 @@ bool_t CLevel_Lobby::Resolve_Stage(
 		outWorldId = WORLD_ID::BERN;
 		outTargetLevel = LEVEL::BERN;
 		return true;
+	case LOBBY_STAGE::MAHARAKA:
+		outWorldId = WORLD_ID::MAHARAKA;
+		outTargetLevel = LEVEL::MAHARAKA;
+		return true;
 	default:
 		return false;
 	}
@@ -513,6 +517,9 @@ void CLevel_Lobby::Render_StagePanel()
 	ImGui::SameLine();
 	if (ImGui::Button("Bern"))
 		CLobbyCommandService::Request(LOBBY_STAGE::BERN);
+	ImGui::SameLine();
+	if (ImGui::Button("Maharaka"))
+		CLobbyCommandService::Request(LOBBY_STAGE::MAHARAKA);
 	ImGui::EndDisabled();
 
 	ImGui::TextWrapped("%s", m_strStatus.c_str());

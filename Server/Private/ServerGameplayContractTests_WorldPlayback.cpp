@@ -43,6 +43,7 @@ int LostArk::Server::CServerGameplayContractRunner::Run_WorldPlayback(TESTS& tes
 		tests.Require(bootstrap.Load(WORLD_ID::VALTAN_ARENA) && bootstrap.Get_SequenceInstanceIds().empty(),
 			"Viewer switching to Valtan clears the previous world's sequence IDs");
 		CServerTriggerSystem triggers;
+		triggers.Set_HonourTriggerOnce(true);
 		WORLD_BOOTSTRAP_PLACEMENT box{};
 		box.strPlacementId = "viewer.trigger"; box.eKind = WORLD_BOOTSTRAP_KIND::TRIGGER_BOX;
 		box.fHalfExtentX = box.fHalfExtentY = box.fHalfExtentZ = 1.f;

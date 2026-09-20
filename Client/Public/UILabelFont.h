@@ -74,6 +74,30 @@ namespace UILabelFont
 		return strFamilyTag;
 	}
 
+	/* Centred label in screen pixels, sharp: Resolve picks the baked size, the top-left is
+	snapped to a whole pixel and the text is drawn from there (no fractional origin).
+	fMaxScreenWidth > 0 shrinks a label that would not fit. Returns the drawn width. */
+	inline f32_t Draw_Centered(const wstring_t& strFamilyTag, const wchar_t* pText,
+		const f32_t fCenterX, const f32_t fCenterY, const f32_t fTargetPx, const fvector_t vColor,
+		const f32_t fMaxScreenWidth = 0.f)
+	{
+		if (nullptr == pText || L'\0' == pText[0] || fTargetPx <= 0.f)
+			return 0.f;
+		f32_t fScale = 1.f;
+		wstring_t strTag = Resolve(strFamilyTag, fTargetPx, fScale);
+		float2_t vMeasured = CGameInstance::Get().Measure_Text(strTag, pText);
+		if (fMaxScreenWidth > 0.f && vMeasured.x * fScale > fMaxScreenWidth)
+		{
+			const f32_t fFitPx = fTargetPx * fMaxScreenWidth / (vMeasured.x * fScale);
+			strTag = Resolve(strFamilyTag, fFitPx, fScale);
+			vMeasured = CGameInstance::Get().Measure_Text(strTag, pText);
+		}
+		const float2_t vTopLeft(std::round(fCenterX - vMeasured.x * fScale * 0.5f),
+			std::round(fCenterY - vMeasured.y * fScale * 0.5f));
+		CGameInstance::Get().Draw_Text(strTag, pText, vTopLeft, vColor, 0.f, float2_t(0.f, 0.f), fScale);
+		return vMeasured.x * fScale;
+	}
+
 	/* Display-size counterpart of Resolve, for Latin-only text (a title word, a
 	percentage). Below the smallest display step it defers to Resolve, so a caller
 	can use it for one label across every viewport size. */

@@ -1,4 +1,5 @@
 #include "PartyWindowView.h"
+#include "UITextOcclusion.h"
 #pragma push_macro("new")
 #undef new
 #include <DirectXColors.h>
@@ -80,8 +81,6 @@ void Client::CPartyWindowView::Hide_AllRows()
 		m_pView->Set_SlotVisible(Row_SlotId("PartyWindow_Symbol_", iRow), false);
 		m_pView->Set_SlotVisible(Row_SlotId("PartyWindow_HpBg_", iRow), false);
 		m_pView->Set_SlotVisible(Row_SlotId("PartyWindow_HpFill_", iRow), false);
-		m_pView->Set_SlotVisible(Row_SlotId("PartyWindow_MadnessBg_", iRow), false);
-		m_pView->Set_SlotVisible(Row_SlotId("PartyWindow_MadnessFill_", iRow), false);
 		m_pView->Set_SlotVisible(Row_SlotId("PartyWindow_Number_", iRow), false);
 		m_pView->Set_SlotVisible(Row_SlotId("PartyWindow_LeaderMark_", iRow), false);
 	}
@@ -104,8 +103,6 @@ void Client::CPartyWindowView::Sync_From_Roster(
 				string("UI/ClassSelect/") + pFolderName + "/IdentitySymbol.png" : string{},
 			health.Get_Ratio(),
 			health.hasSnapshot,
-			health.Get_MadnessRatio(),
-			health.Has_Madness(),
 			0 == index });
 	}
 }
@@ -175,15 +172,6 @@ void Client::CPartyWindowView::Render()
 		{
 			m_pView->Set_SlotVisible(strHpFill, false);
 		}
-		/* Madness (KoukuSaydon): a thin bar under the HP bar, only where the room has one. */
-		{
-			const string strMadnessBg = Row_SlotId("PartyWindow_MadnessBg_", iRow);
-			const string strMadnessFill = Row_SlotId("PartyWindow_MadnessFill_", iRow);
-			m_pView->Set_SlotVisible(strMadnessBg, Member.hasMadness);
-			m_pView->Set_SlotVisible(strMadnessFill, Member.hasMadness);
-			if (Member.hasMadness)
-				m_pView->Set_SlotFillRatio(strMadnessFill, std::clamp(Member.fMadnessRatio, 0.f, 1.f));
-		}
 
 		m_pView->Set_SlotVisible(strLeader, Member.isLeader);
 	}
@@ -221,6 +209,19 @@ void Client::CPartyWindowView::Render()
 		{
 			CUIInputRouter::Get().Claim_Mouse_This_Frame();
 		}
+	}
+}
+
+void Client::CPartyWindowView::Register_TextOccluders() const
+{
+	if (nullptr == m_pView || m_Members.empty())
+		return;
+	CUITextOcclusion& Occlusion = CUITextOcclusion::Get();
+	Occlusion.Add_SlotOccluder(UI_TEXT_LAYER::HUD, *m_pView, "PartyWindow_TitleBg");
+	for (size_t iRow = 0; iRow < m_Members.size() && iRow < MAX_ROWS; ++iRow)
+	{
+		Occlusion.Add_SlotOccluder(UI_TEXT_LAYER::HUD, *m_pView, Row_SlotId("PartyWindow_Symbol_", iRow).c_str());
+		Occlusion.Add_SlotOccluder(UI_TEXT_LAYER::HUD, *m_pView, Row_SlotId("PartyWindow_HpBg_", iRow).c_str());
 	}
 }
 

@@ -130,6 +130,21 @@
       "placementCount": 2971,
       "assetCount": 330,
       "runtimeAssetRoot": "Map/LV_LUT_MIDNIGHTC_ED"
+    },
+    {
+      "id": "LV_OCN_EVENTIS_MHP",
+      "kind": "product",
+      "catalogType": "single",
+      "sourceCatalog": "Data/Maps/Imported/LV_OCN_EVENTIS_MHP/LV_OCN_EVENTIS_MHP.mapassets",
+      "sourcePlacements": "Data/Maps/Authoring/LV_OCN_EVENTIS_MHP/LV_OCN_EVENTIS_MHP.mapplacements",
+      "catalog": "Client/Bin/DataFiles/Map/LV_OCN_EVENTIS_MHP.mapassets",
+      "placements": "Client/Bin/DataFiles/Map/LV_OCN_EVENTIS_MHP.mapplacements",
+      "navigationSource": "Data/Navigation/LV_OCN_EVENTIS_MHP.navgrid.json",
+      "navigationRuntime": "Client/Bin/DataFiles/Navigation/LV_OCN_EVENTIS_MHP.navgrid",
+      "gameplayDocument": "Data/Worlds/LV_OCN_EVENTIS_MHP/Gameplay.world.json",
+      "placementCount": 3839,
+      "assetCount": 398,
+      "runtimeAssetRoot": "Map/LV_OCN_EVENTIS_MHP"
     }
   ],
   "editorSelection": {

@@ -269,7 +269,8 @@ private:
 	bool_t Is_AnyRuntimeWindowOpen() const;
 	/* End of Update: registers every open runtime window's screen rect as a text clip-out so
 	nothing drawn later in the frame (nameplates, HUD, bubbles) shows through a window. */
-	void Add_OpenWindowTextClipOuts();
+	/* Registers every shown runtime UI surface with its text layer (CUITextOcclusion). */
+	void Register_UITextOccluders();
 	/* Server-select text: panel title/header, row name/state/count, button captions, copyright,
 	plus the Release product status line. Called after EndFrame() like the other LOA-font text,
 	for the same z-order reason as RenderQuickSlotKeyLabels. */

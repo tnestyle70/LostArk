@@ -8,7 +8,9 @@
 #include "GameInstance.h"
 #include "MainApp.h"
 #include "UIInputRouter.h"
+#include "UILabelFont.h"
 #include "UILayoutRuntime.h"
+#include "UITextOcclusion.h"
 
 #include <algorithm>
 #include <cmath>
@@ -82,17 +84,14 @@ namespace
 	void Draw_Centered(const wstring_t& strFont, const wchar_t* pText, const f32_t fRefX, const f32_t fRefY,
 		const f32_t fRefPx, const fvector_t vColor)
 	{
-		CGameInstance& Instance = CGameInstance::Get();
-		const float2_t vViewport = Instance.Get_ViewportSize();
-		if (vViewport.x <= 0.f || vViewport.y <= 0.f || nullptr == pText || L'\0' == pText[0])
-			return;
-		const float2_t vMeasured = Instance.Measure_Text(strFont, pText);
-		if (vMeasured.y <= 0.f)
+		/* Baked size at 1:1 on whole pixels (UILabelFont): scaling the family atlas down was
+		   what made this panel's labels blurry. */
+		const float2_t vViewport = CGameInstance::Get().Get_ViewportSize();
+		if (vViewport.x <= 0.f || vViewport.y <= 0.f)
 			return;
 		const f32_t fScaleY = vViewport.y / 720.f;
-		Instance.Draw_Text(strFont, pText,
-			float2_t(fRefX * vViewport.x / 1280.f, fRefY * fScaleY),
-			vColor, 0.f, float2_t(0.5f, 0.5f), fRefPx * fScaleY / vMeasured.y);
+		(void)UILabelFont::Draw_Centered(strFont, pText, fRefX * vViewport.x / 1280.f, fRefY * fScaleY,
+			fRefPx * fScaleY, vColor);
 	}
 }
 
@@ -203,6 +202,11 @@ Client::CRaidGateProgressView::INTENT Client::CRaidGateProgressView::Update(cons
 {
 	if (m_fNoticeSeconds > 0.f)
 		m_fNoticeSeconds = (std::max)(0.f, m_fNoticeSeconds - fTimeDelta);
+	/* Text stacking: the panel is a HUD surface, the prompt a modal one. */
+	if (nullptr != m_pWidget)
+		CUITextOcclusion::Get().Add_SlotOccluder(UI_TEXT_LAYER::HUD, *m_pWidget, "RGP_Bg");
+	if (PROMPT::NONE != m_ePrompt && nullptr != m_pPrompt)
+		CUITextOcclusion::Get().Add_SlotOccluder(UI_TEXT_LAYER::MODAL, *m_pPrompt, "RGV_Panel");
 	if (PROMPT::NONE != m_ePrompt)
 		return Update_Prompt();
 	return Update_Button();
@@ -279,23 +283,11 @@ Client::CRaidGateProgressView::INTENT Client::CRaidGateProgressView::Update_Butt
 	}
 }
 
-void Client::CRaidGateProgressView::Add_TextClipOuts() const
-{
-	if (PROMPT::NONE == m_ePrompt || nullptr == m_pPrompt)
-		return;
-	f32_t fX = 0.f, fY = 0.f, fW = 0.f, fH = 0.f;
-	if (!m_pPrompt->Get_SlotRect("RGV_Panel", fX, fY, fW, fH))
-		return;
-	const float2_t vViewport = CGameInstance::Get().Get_ViewportSize();
-	const f32_t fScaleX = vViewport.x / m_pPrompt->Get_ResolutionWidth();
-	const f32_t fScaleY = vViewport.y / m_pPrompt->Get_ResolutionHeight();
-	CGameInstance::Get().Add_TextClipOutRect(fX * fScaleX, fY * fScaleY, fW * fScaleX, fH * fScaleY);
-}
-
 void Client::CRaidGateProgressView::Render_Text() const
 {
 	if (nullptr != m_pWidget)
 	{
+		CUITextLayerScope HudText(UI_TEXT_LAYER::HUD);
 		f32_t fX = 0.f, fY = 0.f, fW = 0.f, fH = 0.f;
 		if (m_pWidget->Get_SlotRect("RGP_Bg", fX, fY, fW, fH))
 		{
@@ -308,10 +300,12 @@ void Client::CRaidGateProgressView::Render_Text() const
 	}
 	if (m_fNoticeSeconds > 0.f)
 	{
+		CUITextLayerScope HudText(UI_TEXT_LAYER::HUD);
 		Draw_Centered(FONT_YOON, m_strNotice.c_str(), 640.f, 144.f, NOTICE_PX, DirectX::Colors::Orange);
 	}
 	if (PROMPT::NONE == m_ePrompt || nullptr == m_pPrompt)
 		return;
+	CUITextLayerScope ModalText(UI_TEXT_LAYER::MODAL);
 
 	const bool_t bRestart = Is_RestartPrompt(m_ePrompt);
 	const bool_t bVote = Is_VotePrompt(m_ePrompt);

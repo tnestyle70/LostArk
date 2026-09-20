@@ -85,6 +85,7 @@ LostArk::Server::CGameRoom::CGameRoom(
 		LostArk::Shared::WORLD_ID::TRAINING_GROUND == worldId ||
 		LostArk::Shared::WORLD_ID::CHARACTER_SELECT_ARENA == worldId ||
 		LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA == worldId ||
+		LostArk::Shared::WORLD_ID::MAHARAKA == worldId ||
 		LostArk::Shared::WORLD_ID::BERN == worldId) &&
 		!m_ServerNavigation.Load(m_WorldBootstrap.Get_AreaId()))
 	{
@@ -96,6 +97,23 @@ LostArk::Server::CGameRoom::CGameRoom(
 	{
 		return;
 	}
+	m_ServerTriggerSystem.Set_WorldId(worldId);
+	m_ServerTriggerSystem.Set_FireLog([](const std::string& line)
+	{
+		std::cout << line << '\n';
+	});
+	m_ServerTriggerSystem.Set_GroundSampler(
+		[this](const float x, const float z, float& outY)
+		{
+			SERVER_NAV_POINT point{};
+			if (!m_ServerNavigation.Is_Loaded() ||
+				!m_ServerNavigation.Sample_Position(x, z, point))
+			{
+				return false;
+			}
+			outY = point.y;
+			return true;
+		});
 	if (!m_ServerTriggerSystem.Initialize(
 		m_WorldBootstrap.Get_Placements(), m_strStatus,
 		LostArk::Shared::WORLD_ID::VALTAN_ARENA == worldId))
@@ -711,6 +729,42 @@ LostArk::Server::CGameRoom::Begin_MarioTriggerMove(
 	return Result::STARTED;
 }
 
+bool LostArk::Server::CGameRoom::Activate_TriggerTarget(
+	const WORLD_TRIGGER_ACTION_KIND kind, const std::string& targetId)
+{
+	if (WORLD_TRIGGER_ACTION_KIND::PLAY_SEQUENCE == kind)
+	{
+		// Rejected retired sequences must not consume the one-shot trigger.
+		return Broadcast_WorldSequencePlay(targetId);
+	}
+	if (WORLD_TRIGGER_ACTION_KIND::ACTIVATE_SPAWN_GROUP == kind)
+		return Activate_SpawnGroupFromTrigger(targetId);
+	if (WORLD_TRIGGER_ACTION_KIND::ACTIVATE_ENCOUNTER == kind)
+	{
+		const bool activated = Activate_Encounter(targetId);
+#ifdef _DEBUG
+		if (activated && WORLD_ID::VALTAN_ARENA == m_eWorldId &&
+			"boss.valtan.center" == targetId)
+		{
+			SERVER_WORLD_ENTITY* boss = Find_AuditionBoss();
+			if (nullptr == boss)
+				return false;
+			const std::uint32_t openingHp =
+				CValtanBrain::Resolve_HealthBarHp(*boss, 159u);
+			if (0u == openingHp)
+				return false;
+			/* The next normal brain tick observes only 160 -> 159 and
+			queues the real opening wall charge. Nothing here plays a
+			camera, breaks a wall or emits a Client cue directly. */
+			boss->iCurrentHp = openingHp;
+			boss->iLastEvaluatedHealthBar = 160u;
+		}
+#endif
+		return activated;
+	}
+	return false;
+}
+
 void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds,
 	const SERVER_ROOM_SCHEDULER_METRICS& schedulerMetrics)
 {
@@ -980,37 +1034,7 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds,
 		[this](const WORLD_TRIGGER_ACTION_KIND kind,
 			const std::string& targetId)
 		{
-			if (WORLD_TRIGGER_ACTION_KIND::PLAY_SEQUENCE == kind)
-			{
-				// Rejected retired sequences must not consume the one-shot trigger.
-				return Broadcast_WorldSequencePlay(targetId);
-			}
-			if (WORLD_TRIGGER_ACTION_KIND::ACTIVATE_SPAWN_GROUP == kind)
-				return m_SpawnGroupRuntime.Activate(targetId);
-			if (WORLD_TRIGGER_ACTION_KIND::ACTIVATE_ENCOUNTER == kind)
-			{
-				const bool activated = Activate_Encounter(targetId);
-#ifdef _DEBUG
-				if (activated && WORLD_ID::VALTAN_ARENA == m_eWorldId &&
-					"boss.valtan.center" == targetId)
-				{
-					SERVER_WORLD_ENTITY* boss = Find_AuditionBoss();
-					if (nullptr == boss)
-						return false;
-					const std::uint32_t openingHp =
-						CValtanBrain::Resolve_HealthBarHp(*boss, 159u);
-					if (0u == openingHp)
-						return false;
-					/* The next normal brain tick observes only 160 -> 159 and
-					queues the real opening wall charge. Nothing here plays a
-					camera, breaks a wall or emits a Client cue directly. */
-					boss->iCurrentHp = openingHp;
-					boss->iLastEvaluatedHealthBar = 160u;
-				}
-#endif
-				return activated;
-			}
-			return false;
+			return Activate_TriggerTarget(kind, targetId);
 		},
 		promptEdges,
 		[this](const WORLD_BOOTSTRAP_PLACEMENT& trigger, SERVER_PLAYER& player,

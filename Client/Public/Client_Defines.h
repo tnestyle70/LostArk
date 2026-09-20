@@ -23,6 +23,7 @@ namespace Client
 		VALTAN_ARENA,
 		KAKULSAYDON_ARENA,
 		DEVELOPMENT,
+		MAHARAKA,
 		END
 	};
 }

@@ -1,4 +1,5 @@
 ﻿#include "Level_KakulSaydonArena.h"
+#include "UITextOcclusion.h"
 #pragma push_macro("new")
 #undef new
 #include <DirectXColors.h>
@@ -1474,6 +1475,9 @@ HRESULT Client::CLevel_KakulSaydonArena::Initialize()
 		m_pTriggerMoveFadeView->Set_SlotCinematicOverlay("KakulFade_Screen", true);
 		m_pMadnessGaugeView = std::make_unique<CKoukuMadnessGaugeView>(
 			m_pDevice, m_pContext, ETOUI(LEVEL::KAKULSAYDON_ARENA));
+		for (unique_ptr<CKoukuMadnessGaugeView>& pOther : m_OtherMadnessGaugeViews)
+			pOther = std::make_unique<CKoukuMadnessGaugeView>(
+				m_pDevice, m_pContext, ETOUI(LEVEL::KAKULSAYDON_ARENA));
 
 		m_pDeadSceneView = std::make_unique<CUILayoutRuntime>(
 			m_pDevice, m_pContext, ETOUI(LEVEL::KAKULSAYDON_ARENA), TEXT("Layer_UI"),
@@ -1573,7 +1577,8 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 			"[Level_KakulSaydonArena] Failed to apply replication event.\n");
 	}
 	m_Replication.Collect_PlayerViews(m_NameplatePlayers);
-	m_InteractKeyPrompt.Update(m_Replication.Get_LocalCharacter(),
+	m_InteractKeyPrompt.Update(fTimeDelta, m_Replication.Get_LocalCharacter(),
+		CCombatHUDViewModel::Get().Get_InteractPromptTriggerId(),
 		nullptr == m_pMvpResultView || !m_pMvpResultView->Is_Visible());
 	if (m_Replication.Has_PendingConnectionLoss())
 	{
@@ -1910,6 +1915,26 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 		m_pMadnessGaugeView->Update(fTimeDelta, localCharacter,
 			CCombatHUDViewModel::Get().Get_KoukuGimmick());
 	}
+	/* Teammates: their own madness from the snapshot, drawn the same way over them. */
+	{
+		size_t iOther = 0u;
+		for (const REPLICATED_PLAYER_VIEW& Player : m_NameplatePlayers)
+		{
+			if (Player.isLocal || iOther >= m_OtherMadnessGaugeViews.size())
+				continue;
+			const REPLICATED_PLAYER_HEALTH Health = m_Replication.Get_PlayerHealth().Find(Player.iNetEntityId);
+			HUD_KOUKU_GIMMICK_STATE State{};
+			State.isValid = Health.Has_Madness();
+			State.iMadnessGauge = Health.iCurrentMadness;
+			State.iMadnessMaximum = Health.iMaximumMadness;
+			if (nullptr != m_OtherMadnessGaugeViews[iOther])
+				m_OtherMadnessGaugeViews[iOther]->Update(fTimeDelta, Player.pCharacter.lock(), State);
+			++iOther;
+		}
+		for (; iOther < m_OtherMadnessGaugeViews.size(); ++iOther)
+			if (nullptr != m_OtherMadnessGaugeViews[iOther])
+				m_OtherMadnessGaugeViews[iOther]->Hide();
+	}
 	Update_StatusEffectText(fTimeDelta);
 }
 
@@ -2207,11 +2232,9 @@ HRESULT Client::CLevel_KakulSaydonArena::Render()
 	if (FAILED(drawn))
 		return drawn;
 	if (Is_CinematicPresentationActive()) return drawn;
-	/* The award page is a full-screen modal: no world text at all while it is up. Otherwise
-	   the gate prompt clips it, like CMainApp's windows do. */
+	/* The award page is a full-screen modal: no world text at all while it is up. */
 	if (nullptr == m_pMvpResultView || !m_pMvpResultView->Is_Visible())
 	{
-		m_GateProgressView.Add_TextClipOuts();
 		m_PlayerNameplateView.Render(m_NameplatePlayers, &m_Replication.Get_PartyRoster());
 		m_ChatBubbleView.Render(m_Replication, m_NameplatePlayers);
 	}
@@ -2222,14 +2245,17 @@ HRESULT Client::CLevel_KakulSaydonArena::Render()
 	/* Drawn last so it sits over the scene. The text only reports what the
 	   Server is offering -- pressing the shown key submits a command and the Server
 	   decides, so nothing here can move the player by itself. */
+	/* The offered box itself shows the retail key prompt over the player's head
+	   (CInteractKeyPromptView). On the Mario lanes Up answers the same offer too, which the
+	   retail prompt does not say, so that hint stays as text. */
+	m_InteractKeyPrompt.Render_Text();
 	const std::string& offered =
 		CCombatHUDViewModel::Get().Get_InteractPromptTriggerId();
-	if (!offered.empty())
+	if (!offered.empty() && 0u != CCombatHUDViewModel::Get().Get_Player().iMarioStage)
 	{
 		/* ASCII only: this file carries no other non-ASCII byte and has no BOM,
 		   so a UTF-8 Korean literal here is read back in the system codepage. */
-		const tchar_t* const PROMPT = 0u != CCombatHUDViewModel::Get().Get_Player().iMarioStage
-			? TEXT("[ Up ]") : TEXT("[ G ]");
+		const tchar_t* const PROMPT = TEXT("[ Up ]");
 		const float2_t size = CGameInstance::Get().Measure_Text(
 			TEXT("Font_YoonGasiIIM"), PROMPT);
 		CGameInstance::Get().Draw_Text(
@@ -2318,7 +2344,10 @@ HRESULT Client::CLevel_KakulSaydonArena::Render()
 	/* Gate progress panel and prompt text, under the award page's labels. */
 	m_GateProgressView.Render_Text();
 	if (nullptr != m_pMvpResultView)
+	{
+		CUITextLayerScope PageText(UI_TEXT_LAYER::PAGE);
 		m_pMvpResultView->Render();
+	}
 	return drawn;
 }
 

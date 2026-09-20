@@ -331,6 +331,106 @@
       "runtimeStatus": "supported",
       "archetypeId": "MONSTER_MARIO_RHKP",
       "clientPresentationId": "monster.mario.rhkp.client.v1"
+    },
+    {
+      "modelAssetId": "Character/Monster/NPC_480702_MN_CMDUP_02/NPC_480702_MN_CMDUP_02.wmodel",
+      "modelScale": 0.01,
+      "modelYawDegrees": -90.0,
+      "attackPresentations": [
+        {
+          "clip": "att_battle_1",
+          "playbackRate": 1.0
+        },
+        {
+          "clip": "att_battle_2",
+          "playbackRate": 1.0
+        }
+      ],
+      "hitDurationSeconds": 0.3333,
+      "presentationClips": {
+        "idle": "idle_battle_1",
+        "chase": "run_battle_1",
+        "hit": "dmg_idle_1",
+        "dead": "dead_1"
+      },
+      "runtimeStatus": "supported",
+      "archetypeId": "MONSTER_KOUKU_CMDUP_02",
+      "clientPresentationId": "monster.kouku.cmdup02.client.v1"
+    },
+    {
+      "modelAssetId": "Character/Monster/NPC_480701_MN_REUP_04/NPC_480701_MN_REUP_04.wmodel",
+      "modelScale": 0.01,
+      "modelYawDegrees": -90.0,
+      "attackPresentations": [
+        {
+          "clip": "att_battle_1_01",
+          "playbackRate": 1.0
+        },
+        {
+          "clip": "att_battle_2_01",
+          "playbackRate": 1.0
+        }
+      ],
+      "hitDurationSeconds": 0.3333,
+      "presentationClips": {
+        "idle": "idle_battle_1",
+        "chase": "run_battle_1",
+        "hit": "dmg_idle_1",
+        "dead": "dead_1"
+      },
+      "runtimeStatus": "supported",
+      "archetypeId": "MONSTER_KOUKU_REUP_04",
+      "clientPresentationId": "monster.kouku.reup04.client.v1"
+    },
+    {
+      "modelAssetId": "Character/Monster/NPC_480703_MN_RHKP_06/NPC_480703_MN_RHKP_06.wmodel",
+      "modelScale": 0.01,
+      "modelYawDegrees": -90.0,
+      "attackPresentations": [
+        {
+          "clip": "att_battle_1_01",
+          "playbackRate": 1.0
+        },
+        {
+          "clip": "att_battle_2_01",
+          "playbackRate": 1.0
+        }
+      ],
+      "hitDurationSeconds": 0.3333,
+      "presentationClips": {
+        "idle": "idle_battle_1",
+        "chase": "run_battle_1",
+        "hit": "dmg_idle_1",
+        "dead": "dead_1"
+      },
+      "runtimeStatus": "supported",
+      "archetypeId": "MONSTER_KOUKU_RHKP_06",
+      "clientPresentationId": "monster.kouku.rhkp06.client.v1"
+    },
+    {
+      "modelAssetId": "Character/Monster/NPC_480704_MN_CMDGR_03/NPC_480704_MN_CMDGR_03.wmodel",
+      "modelScale": 0.01,
+      "modelYawDegrees": -90.0,
+      "attackPresentations": [
+        {
+          "clip": "att_battle_1_01",
+          "playbackRate": 1.0
+        },
+        {
+          "clip": "att_battle_2_01",
+          "playbackRate": 1.0
+        }
+      ],
+      "hitDurationSeconds": 0.3333,
+      "presentationClips": {
+        "idle": "idle_battle_1",
+        "chase": "run_battle_1",
+        "hit": "dmg_idle_1",
+        "dead": "dead_1"
+      },
+      "runtimeStatus": "supported",
+      "archetypeId": "MONSTER_KOUKU_CMDGR_03",
+      "clientPresentationId": "monster.kouku.cmdgr03.client.v1"
     }
   ]
 }

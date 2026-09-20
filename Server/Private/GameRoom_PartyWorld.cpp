@@ -276,6 +276,17 @@ void LostArk::Server::CGameRoom::Send_InteractPrompt(
 	}
 }
 
+bool LostArk::Server::CGameRoom::Activate_SpawnGroupFromTrigger(
+	const std::string& spawnGroupId)
+{
+	return m_SpawnGroupRuntime.Activate_Repeat(
+		spawnGroupId,
+		[this](const std::string& id)
+		{
+			return Count_SpawnGroupEntities(id);
+		});
+}
+
 void LostArk::Server::CGameRoom::Handle_InteractTrigger(
 	const SESSION_ID sessionId,
 	const LostArk::Shared::C2S_INTERACT_TRIGGER& request)
@@ -287,25 +298,35 @@ void LostArk::Server::CGameRoom::Handle_InteractTrigger(
 		return;
 	std::vector<SERVER_WORLD_TRANSFER_REQUEST> transfers;
 	const std::uint32_t actionTick = 0u == m_iServerTick ? 1u : m_iServerTick;
-	if (!m_ServerTriggerSystem.Activate_Interact(
-		playerId->second,
-		request.strTriggerPlacementId,
-		m_Players,
-		actionTick,
-		transfers,
-		[this](const WORLD_TRIGGER_ACTION_KIND kind,
-			const std::string& targetId)
-		{
-			if (WORLD_TRIGGER_ACTION_KIND::PLAY_SEQUENCE == kind)
-			{
-				return Broadcast_WorldSequencePlay(targetId);
-			}
-			if (WORLD_TRIGGER_ACTION_KIND::ACTIVATE_SPAWN_GROUP == kind)
-				return m_SpawnGroupRuntime.Activate(targetId);
-			if (WORLD_TRIGGER_ACTION_KIND::ACTIVATE_ENCOUNTER == kind)
-				return Activate_Encounter(targetId);
-			return false;
-		}))
+	const auto activateTarget = [this](const WORLD_TRIGGER_ACTION_KIND kind,
+		const std::string& targetId)
+	{
+		return Activate_TriggerTarget(kind, targetId);
+	};
+	/* Mario crossings and exits wait for G now, so the request must reach the same
+	   room-owned admission the tick uses for a stepped-in entry (stage, authority
+	   locks, contact interruption, the terminal exit's return destination). */
+	const SERVER_TRIGGER_MOVE_ENTRY_HANDLER moveEntry =
+		[this](const WORLD_BOOTSTRAP_PLACEMENT& trigger, SERVER_PLAYER& player,
+			const std::uint32_t actionStartTick)
+	{
+		return Begin_MarioTriggerMove(trigger, player, actionStartTick);
+	};
+	/* G with no box on offer names none (INTERACT_TRIGGER_HERE_ID): the Server
+	   decides which boxes the player is standing in and runs those. */
+	const bool answersHere =
+		LostArk::Shared::INTERACT_TRIGGER_HERE_ID == request.strTriggerPlacementId;
+	if (answersHere
+		? 0u == m_ServerTriggerSystem.Activate_Here(
+			playerId->second, m_Players, actionTick, transfers, activateTarget, moveEntry)
+		: !m_ServerTriggerSystem.Activate_Interact(
+			playerId->second,
+			request.strTriggerPlacementId,
+			m_Players,
+			actionTick,
+			transfers,
+			activateTarget,
+			moveEntry))
 	{
 		return;
 	}
@@ -326,10 +347,8 @@ void LostArk::Server::CGameRoom::Handle_InteractTrigger(
 		if (!alreadyStaged)
 			m_PendingWorldTransfers.push_back(std::move(transfer));
 	}
-	/* The offer is spent: withdraw it so the Client stops drawing the key.
-	   A repeatable box re-offers on the next entry edge. */
-	Send_InteractPrompt({ playerId->second,
-		request.strTriggerPlacementId, false });
+	/* The offer stays: every box is repeatable and the player is still inside
+	   it. Walking out withdraws it (Evaluate_Entries). */
 }
 
 void LostArk::Server::CGameRoom::Handle_DebugWorldPlayback(
@@ -370,7 +389,7 @@ void LostArk::Server::CGameRoom::Handle_DebugWorldPlayback(
 				[&](WORLD_TRIGGER_ACTION_KIND kind, const std::string& id)
 				{
 					if (kind == WORLD_TRIGGER_ACTION_KIND::PLAY_SEQUENCE) return play(id);
-					if (kind == WORLD_TRIGGER_ACTION_KIND::ACTIVATE_SPAWN_GROUP) return m_SpawnGroupRuntime.Activate(id);
+					if (kind == WORLD_TRIGGER_ACTION_KIND::ACTIVATE_SPAWN_GROUP) return Activate_SpawnGroupFromTrigger(id);
 					if (kind == WORLD_TRIGGER_ACTION_KIND::ACTIVATE_ENCOUNTER) return Activate_Encounter(id);
 					if (kind == WORLD_TRIGGER_ACTION_KIND::CLAIM_CARD_MAZE_TELESCOPE) return Begin_CardMaze(playerId->second);
 					return false;

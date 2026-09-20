@@ -74,6 +74,10 @@ constexpr float TWO_PI = 6.28318530717958647692f;
 // The square-hole song lock (Shared SQUAREHOLE_SONG_DURATION_MS) in fixed 30 Hz room ticks.
 	constexpr std::uint32_t SQUAREHOLE_SONG_TICKS =
 		(LostArk::Shared::SQUAREHOLE_SONG_DURATION_MS * 30u + 999u) / 1000u;
+// The whole square-hole lock: the song, then the black hold in which the Server moves the
+// player. The Client screen is already fully black when the song ticks run out.
+	constexpr std::uint32_t SQUAREHOLE_LOCK_TICKS = SQUAREHOLE_SONG_TICKS +
+		(LostArk::Shared::SQUAREHOLE_BLACKOUT_HOLD_MS * 30u + 999u) / 1000u;
 
 // One KoukuSaydon interaction HUD press converted to fixed 30 Hz room ticks.
 	constexpr std::uint32_t KOUKU_INTERACTION_TICKS =

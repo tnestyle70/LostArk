@@ -84,7 +84,8 @@ namespace LostArk::Shared
 	// 89 adds the worn honor title to player snapshots and the title change request/verdict.
 	// 93 combines main gate-progress votes with the fixed-roster Kouku raid
 	// preparation and shared Sequence clock. Earlier peers are incompatible.
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 93;
+	// 94 admits the Maharaka Paradise island as a Server-owned shared world.
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 94;
 
 	enum class WORLD_ID : std::uint16_t
 	{
@@ -93,6 +94,7 @@ namespace LostArk::Shared
 		TRAINING_GROUND = 3,
 		CHARACTER_SELECT_ARENA = 4,
 		KAKULSAYDON_ARENA = 5,
+		MAHARAKA = 6,
 		END
 	};
 
@@ -103,7 +105,8 @@ namespace LostArk::Shared
 			WORLD_ID::VALTAN_ARENA == worldId ||
 			WORLD_ID::TRAINING_GROUND == worldId ||
 			WORLD_ID::CHARACTER_SELECT_ARENA == worldId ||
-			WORLD_ID::KAKULSAYDON_ARENA == worldId;
+			WORLD_ID::KAKULSAYDON_ARENA == worldId ||
+			WORLD_ID::MAHARAKA == worldId;
 	}
 
 	enum class CHARACTER_CLASS_ID : std::uint8_t

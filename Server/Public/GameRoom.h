@@ -321,6 +321,10 @@ namespace LostArk::Server
 			const LostArk::Shared::C2S_MOVE& move);
 		[[nodiscard]] bool Is_BufferableComboAction(
 			const SERVER_PLAYER& player) const;
+		/* A move goal inside the running skill's authored move-cancel window
+		ends the action now instead of waiting out the recovery pose. */
+		[[nodiscard]] bool Is_MoveCancellableAction(
+			const SERVER_PLAYER& player) const;
 		[[nodiscard]] bool Commit_MoveGoal(
 			SERVER_PLAYER& player, float goalX, float goalZ);
 		void Commit_PendingPlayerCommand(
@@ -340,6 +344,15 @@ namespace LostArk::Server
 		void Handle_UseSquareHole(
 			SESSION_ID sessionId,
 			const LostArk::Shared::C2S_USE_SQUAREHOLE& useSquareHole);
+		/* The landing of a square hole: the world's disabled "squarehole.<id>" movePlayer
+		   row, admitted with the debug-teleport ground/height/collision rules. False when
+		   the world has no such row or the landing is not standable for this player. */
+		bool Resolve_SquareHoleDestination(
+			const SERVER_PLAYER& player,
+			std::uint16_t squareHoleId,
+			SERVER_NAV_POINT& ground);
+		/* The song lock ended: land the player at the destination, or leave them in place. */
+		void Finish_SquareHoleSong(SERVER_PLAYER& player);
 		bool Spawn_EstherSummon(
 			const ESTHER_ROSTER_ENTRY& rosterEntry,
 			float positionX,
@@ -1154,6 +1167,14 @@ namespace LostArk::Server
 		/* Offers or withdraws one interact-gated box for the one player it
 		   concerns. Unlike the sequence broadcast this is never room-wide. */
 		void Send_InteractPrompt(const SERVER_INTERACT_PROMPT_EDGE& edge);
+		/* The spawn-group activation every trigger path shares: starts a dormant
+		   group, restarts a finished one once its monsters are gone, and never
+		   stacks a wave on a group that is still running. */
+		bool Activate_SpawnGroupFromTrigger(const std::string& spawnGroupId);
+		/* What one trigger action does in this room, whether the box fired because
+		   the player stepped in (a scripted flow) or pressed G inside it. */
+		bool Activate_TriggerTarget(
+			WORLD_TRIGGER_ACTION_KIND kind, const std::string& targetId);
 		/* Leave() calls this so a disconnecting player does not linger as a
 		   ghost roster entry for whoever they partied with. */
 		void Remove_FromParty(LostArk::Shared::PLAYER_ID playerId);

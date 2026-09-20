@@ -7,7 +7,8 @@ param(
     # at a scratch folder stages a publish without touching live outputs.
     [string]$ClientOutputRoot = 'Client/Bin/DataFiles/Navigation',
     [ValidateSet('', 'LV_LUT_HEARTRB_ED', 'LV_LUT_MIDNIGHTC_ED',
-        'LV_DEV_TRAINING_GROUND', 'LV_LOBBY_CLASSSELECT_SL00', 'LV_BER_BERNCASTLE')]
+        'LV_DEV_TRAINING_GROUND', 'LV_LOBBY_CLASSSELECT_SL00', 'LV_BER_BERNCASTLE',
+        'LV_OCN_EVENTIS_MHP')]
     [string]$AreaId = ''
 )
 
@@ -1022,6 +1023,11 @@ $gridFactories = [ordered]@{
         -RelativeSourcePath 'Data/Navigation/LV_BER_BERNCASTLE.navsource' `
         -RelativePaintPath 'Data/Navigation/LV_BER_BERNCASTLE.navpaint' `
         -RuntimeMaximumStepHeight 1.0 }
+    # Maharaka starts on a flat grid at the plaza floor (20.48 m, the height of
+    # most source spots) until the island gets a MapTool bake.
+    'LV_OCN_EVENTIS_MHP' = { New-UniformNavigationGrid `
+        -RelativeAuthoringPath 'Data/Navigation/LV_OCN_EVENTIS_MHP.navgrid.json' `
+        -RuntimeMaximumStepHeight 0.6 }
 }
 $grids = @(foreach ($factory in $gridFactories.GetEnumerator()) {
     if (-not $AreaId -or $factory.Key -eq $AreaId) { & $factory.Value }

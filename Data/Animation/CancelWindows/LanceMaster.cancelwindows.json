@@ -1,0 +1,534 @@
+{
+  "schema": "lostark.animation-cancel-windows",
+  "formatVersion": 1,
+  "animationAssetId": "LanceMaster",
+  "characterClass": "LANCE_MASTER",
+  "skills": [
+    {
+      "skillId": 34000,
+      "skillCancel": [
+        [
+          292,
+          500
+        ]
+      ],
+      "moveCancel": [
+        [
+          292,
+          500
+        ]
+      ]
+    },
+    {
+      "skillId": 34010,
+      "stages": [
+        {
+          "stageIndex": 0,
+          "skillCancel": [
+            [
+              592,
+              1633
+            ]
+          ],
+          "moveCancel": [
+            [
+              592,
+              1633
+            ]
+          ]
+        },
+        {
+          "stageIndex": 1,
+          "skillCancel": [
+            [
+              500,
+              1367
+            ]
+          ],
+          "moveCancel": [
+            [
+              500,
+              1367
+            ]
+          ]
+        },
+        {
+          "stageIndex": 2,
+          "skillCancel": [
+            [
+              656,
+              1533
+            ]
+          ],
+          "moveCancel": [
+            [
+              656,
+              1533
+            ]
+          ]
+        },
+        {
+          "stageIndex": 3,
+          "skillCancel": [
+            [
+              696,
+              1567
+            ]
+          ],
+          "moveCancel": [
+            [
+              696,
+              1567
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "skillId": 34020,
+      "skillCancel": [
+        [
+          400,
+          900
+        ]
+      ],
+      "moveCancel": [
+        [
+          400,
+          900
+        ]
+      ]
+    },
+    {
+      "skillId": 34030,
+      "skillCancel": [
+        [
+          747,
+          1100
+        ]
+      ],
+      "moveCancel": [
+        [
+          747,
+          1100
+        ]
+      ]
+    },
+    {
+      "skillId": 34040,
+      "skillCancel": [
+        [
+          401,
+          600
+        ],
+        [
+          1048,
+          1500
+        ]
+      ],
+      "moveCancel": [
+        [
+          401,
+          600
+        ],
+        [
+          1048,
+          1500
+        ]
+      ]
+    },
+    {
+      "skillId": 34090,
+      "skillCancel": [
+        [
+          818,
+          1143
+        ]
+      ],
+      "moveCancel": [
+        [
+          818,
+          1143
+        ]
+      ]
+    },
+    {
+      "skillId": 34100,
+      "skillCancel": [
+        [
+          2400,
+          3034
+        ]
+      ],
+      "moveCancel": [
+        [
+          2400,
+          3034
+        ]
+      ]
+    },
+    {
+      "skillId": 34110,
+      "skillCancel": [
+        [
+          659,
+          1250
+        ]
+      ],
+      "moveCancel": [
+        [
+          659,
+          1250
+        ]
+      ]
+    },
+    {
+      "skillId": 34120,
+      "skillCancel": [
+        [
+          2287,
+          3029
+        ]
+      ],
+      "moveCancel": [
+        [
+          2287,
+          3029
+        ]
+      ]
+    },
+    {
+      "skillId": 34140,
+      "stages": [
+        {
+          "stageIndex": 0,
+          "skillCancel": [
+            [
+              1151,
+              2118
+            ]
+          ],
+          "moveCancel": [
+            [
+              1151,
+              2118
+            ]
+          ]
+        },
+        {
+          "stageIndex": 1,
+          "skillCancel": [
+            [
+              1551,
+              2033
+            ]
+          ],
+          "moveCancel": [
+            [
+              1551,
+              2033
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "skillId": 34150,
+      "skillCancel": [
+        [
+          1494,
+          2333
+        ]
+      ],
+      "moveCancel": [
+        [
+          1494,
+          2333
+        ]
+      ]
+    },
+    {
+      "skillId": 34160,
+      "stages": [
+        {
+          "stageIndex": 0,
+          "skillCancel": [
+            [
+              291,
+              2300
+            ]
+          ],
+          "moveCancel": [
+            [
+              291,
+              2300
+            ]
+          ]
+        },
+        {
+          "stageIndex": 1,
+          "skillCancel": [
+            [
+              800,
+              1400
+            ]
+          ],
+          "moveCancel": [
+            [
+              800,
+              1400
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "skillId": 34500,
+      "skillCancel": [
+        [
+          376,
+          667
+        ]
+      ],
+      "moveCancel": [
+        [
+          376,
+          667
+        ]
+      ]
+    },
+    {
+      "skillId": 34510,
+      "stages": [
+        {
+          "stageIndex": 0,
+          "skillCancel": [
+            [
+              166,
+              633
+            ]
+          ],
+          "moveCancel": [
+            [
+              166,
+              633
+            ]
+          ]
+        },
+        {
+          "stageIndex": 1,
+          "skillCancel": [
+            [
+              150,
+              633
+            ]
+          ],
+          "moveCancel": [
+            [
+              150,
+              633
+            ]
+          ]
+        },
+        {
+          "stageIndex": 2,
+          "skillCancel": [
+            [
+              200,
+              633
+            ]
+          ],
+          "moveCancel": [
+            [
+              200,
+              633
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "skillId": 34520,
+      "skillCancel": [
+        [
+          167,
+          583
+        ]
+      ],
+      "moveCancel": [
+        [
+          167,
+          583
+        ]
+      ]
+    },
+    {
+      "skillId": 34550,
+      "skillCancel": [
+        [
+          1700,
+          2467
+        ]
+      ],
+      "moveCancel": [
+        [
+          1700,
+          2467
+        ]
+      ]
+    },
+    {
+      "skillId": 34560,
+      "skillCancel": [
+        [
+          1416,
+          1777
+        ]
+      ],
+      "moveCancel": [
+        [
+          1416,
+          1777
+        ]
+      ]
+    },
+    {
+      "skillId": 34570,
+      "skillCancel": [
+        [
+          1907,
+          2666
+        ]
+      ],
+      "moveCancel": [
+        [
+          1907,
+          2666
+        ]
+      ]
+    },
+    {
+      "skillId": 34580,
+      "stages": [
+        {
+          "stageIndex": 0,
+          "skillCancel": [
+            [
+              1200,
+              2000
+            ]
+          ],
+          "moveCancel": [
+            [
+              1200,
+              2000
+            ]
+          ]
+        },
+        {
+          "stageIndex": 1,
+          "skillCancel": [
+            [
+              800,
+              1300
+            ]
+          ],
+          "moveCancel": [
+            [
+              800,
+              1300
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "skillId": 34590,
+      "stages": [
+        {
+          "stageIndex": 1,
+          "skillCancel": [
+            [
+              0,
+              1000
+            ]
+          ],
+          "moveCancel": [
+            [
+              0,
+              1000
+            ]
+          ]
+        },
+        {
+          "stageIndex": 2,
+          "skillCancel": [
+            [
+              800,
+              1200
+            ]
+          ],
+          "moveCancel": [
+            [
+              800,
+              1200
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "skillId": 34610,
+      "skillCancel": [
+        [
+          500,
+          4867
+        ],
+        [
+          6067,
+          6433
+        ]
+      ],
+      "moveCancel": [
+        [
+          500,
+          4867
+        ],
+        [
+          6067,
+          6433
+        ]
+      ]
+    },
+    {
+      "skillId": 34630,
+      "skillCancel": [
+        [
+          6033,
+          6800
+        ]
+      ],
+      "moveCancel": [
+        [
+          6033,
+          6800
+        ]
+      ]
+    },
+    {
+      "skillId": 34650,
+      "skillCancel": [
+        [
+          1883,
+          2433
+        ]
+      ],
+      "moveCancel": [
+        [
+          1883,
+          2433
+        ]
+      ]
+    }
+  ]
+}

@@ -121,9 +121,8 @@ void Client::CUIInputRouter::Set_TopWindowRect(
 	m_fTopWindowY = fScreenY;
 	m_fTopWindowWidth = fScreenWidth;
 	m_fTopWindowHeight = fScreenHeight;
-	/* Every Draw_Text of every owner (HUD captions, nameplates, other windows) stays under the
-	top window; CMainApp clears this right before the top windows draw their own text. */
-	CGameInstance::Get().Set_TextClipOutRect(fScreenX, fScreenY, fScreenWidth, fScreenHeight);
+	/* Text under this window is hidden by CUITextOcclusion (CMainApp registers every open
+	   window with its layer), not by a clip set here. */
 }
 
 bool_t Client::CUIInputRouter::Is_UnderTopWindow(f32_t fScreenX, f32_t fScreenY) const

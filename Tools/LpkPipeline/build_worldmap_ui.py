@@ -239,8 +239,24 @@ SQUARE_HOLES_REF = {"BERN": [("\uc870\ud654\uc758 \uad11\uc7a5", 852, 294), ("\u
                              ("\uc81c\uc791 \uc9c0\uad6c", 906, 650)]}
 REF_FIT = {"scale": 1.0582, "rotDeg": -43.19, "texAnchor": (660.0, 400.0), "shotAnchor": (950.0, 238.0)}
 # NPC placement id -> map symbol (retail EFTable_Npc.MapSymbolIndex -> MapSymbol icon). The item upgrade
-# NPC is the one placement whose function the project has; the other Bern NPCs are townsfolk (0).
-NPC_SYMBOLS = {"npc.bern.schmidt": "Minimap_Symbol_1_207"}   # sys.map.filter_item_enhance
+# NPC (npc.bern.schmidt) is the project's own function NPC and keeps the retail item-enhance hammer
+# (sys.map.filter_item_enhance). Every other Bern NPC with an original MapSymbolIndex is in the checked-in
+# Data/UI/WorldMap/WorldMapNpcSymbols.json, which is the source of truth for the assignment (resolved from
+# the original EFTable_Npc / EFTable_MapSymbol rows, 09-19); this tool keeps that file and only cuts the icons.
+NPC_SYMBOLS_DOC = "Data/UI/WorldMap/WorldMapNpcSymbols.json"
+NPC_SYMBOL_DEFAULT = {"npc.bern.schmidt": "Minimap_Symbol_1_207"}   # sys.map.filter_item_enhance
+
+
+def load_npc_symbols(repo):
+    """placement id -> icon stem, from the checked-in document; the hammer default if it is missing."""
+    path = repo / NPC_SYMBOLS_DOC
+    if not path.is_file():
+        return dict(NPC_SYMBOL_DEFAULT)
+    placements = json.loads(path.read_text(encoding="utf-8-sig")).get("placements", {})
+    return {pid: Path(icon).stem for pid, icon in placements.items()}
+
+
+NPC_SYMBOLS = dict(NPC_SYMBOL_DEFAULT)
 # The player's action casting bar (song play, item use): commonobject.gfx CommonActionTimingBar, matched
 # against a retail capture on 2026-09-17 -- dark pointed plate (bitmap 1058, 379x44, placed at (85,-11) in the
 # symbol), orange-red progress fill (bitmap 1060, 352x22, `track` at (99,0), masked by the value) and the
@@ -255,7 +271,7 @@ CAST_PLATE_W, CAST_PLATE_H = 379.0, 44.0
 CAST_FILL_W, CAST_FILL_H = 352.0, 22.0
 CAST_FILL_OFFSET = (99.0 - 85.0, 0.0 + 11.0)   # fill origin inside the plate
 HOLE_SLOTS = 4
-NPC_SYMBOL_SLOTS = 8
+NPC_SYMBOL_SLOTS = 48   # Bern places 38 NPCs with an original symbol; keep equal to NPC_SYMBOL_SLOT_COUNT in WorldMapWindowView.cpp
 
 
 def msg(conn, key):
@@ -368,6 +384,8 @@ def main() -> int:
         if stem not in pages:
             pages[stem] = Image.open(CAST_BAR_PAGES / (stem + ".png")).convert("RGBA")
         pages[stem].crop((x, y, x + w, y + h)).save(art_dir / (name + ".png"))
+    NPC_SYMBOLS.clear()
+    NPC_SYMBOLS.update(load_npc_symbols(repo))
     symbol_count = cut_symbols(art_dir)
 
     a = "UI/WorldMap/"

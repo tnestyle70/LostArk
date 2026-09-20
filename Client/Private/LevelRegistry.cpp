@@ -100,12 +100,21 @@ namespace
 		return CLevel_Development::Create(pDevice, pContext);
 	}
 
+	unique_ptr<CLevel> CreateMaharaka(
+		ComPtr<ID3D11Device> pDevice,
+		ComPtr<ID3D11DeviceContext> pContext)
+	{
+		// The island reuses the Development shell: map, follow camera, Server
+		// replication and the player controller, without the Map Editor branch.
+		return CLevel_Development::Create(pDevice, pContext, LEVEL::MAHARAKA);
+	}
+
 }
 
 const CLIENT_LEVEL_DESCRIPTOR* CLevelRegistry::Find(
 	const LEVEL eLevel)
 {
-	static const std::array<CLIENT_LEVEL_DESCRIPTOR, 6> levels =
+	static const std::array<CLIENT_LEVEL_DESCRIPTOR, 7> levels =
 	{{
 		{
 			LEVEL::LOBBY,
@@ -171,6 +180,18 @@ const CLIENT_LEVEL_DESCRIPTOR* CLevelRegistry::Find(
 			{ true, false, -20.f, -20.f, 20.f, 20.f },
 			CreateDevelopment,
 			&CLoader::Ready_For_Development
+		},
+		{
+			LEVEL::MAHARAKA,
+			CLIENT_LEVEL_KIND::PRODUCT,
+			"world.maharaka",
+			"LV_OCN_EVENTIS_MHP",
+			// The Bern profile carries Bern-space environment regions; the neutral
+			// profile keeps the island free of them until it gets its own.
+			"scene.development.neutral.v1",
+			MakeFullMapScope(),
+			CreateMaharaka,
+			&CLoader::Ready_For_Maharaka
 		}
 	}};
 

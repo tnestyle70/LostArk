@@ -13,6 +13,7 @@
 #include "UILayoutRuntime.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <fstream>
 
@@ -30,7 +31,9 @@ namespace
 	constexpr size_t BOSS_MARKER_COUNT = 2;
 	/* Same counts as build_worldmap_ui.py (HOLE_SLOTS / NPC_SYMBOL_SLOTS / PORTAL_SLOTS / PANEL_ROWS). */
 	constexpr size_t HOLE_SLOT_COUNT = 4;
-	constexpr size_t NPC_SYMBOL_SLOT_COUNT = 8;
+	/* Bern places 38 NPCs with an original map symbol; the extra slots leave room for a
+	fuller placement set. Keep this equal to the WM_NpcSym_* slot count of WorldMap_Layout.json. */
+	constexpr size_t NPC_SYMBOL_SLOT_COUNT = 48;
 	constexpr size_t PORTAL_SLOT_COUNT = 4;
 	constexpr size_t PANEL_ROW_COUNT = 16;
 	/* Retail px on the 1440 canvas; everything scales with the layout (2/3). */
@@ -93,9 +96,18 @@ namespace
 	const char* const BOSS_SLOTS[BOSS_MARKER_COUNT] = { "WM_Boss_0", "WM_Boss_1" };
 	const char* const HOLE_SLOTS[HOLE_SLOT_COUNT] = { "WM_Hole_0", "WM_Hole_1", "WM_Hole_2", "WM_Hole_3" };
 	const char* const PORTAL_SLOTS[PORTAL_SLOT_COUNT] = { "WM_Portal_0", "WM_Portal_1", "WM_Portal_2", "WM_Portal_3" };
-	const char* const NPC_SYMBOL_SLOTS[NPC_SYMBOL_SLOT_COUNT] =
-		{ "WM_NpcSym_0", "WM_NpcSym_1", "WM_NpcSym_2", "WM_NpcSym_3",
-		  "WM_NpcSym_4", "WM_NpcSym_5", "WM_NpcSym_6", "WM_NpcSym_7" };
+	/* Slot ids are built once so the per-frame marker pass never allocates. */
+	const std::array<string, NPC_SYMBOL_SLOT_COUNT>& Get_NpcSymbolSlots()
+	{
+		static const std::array<string, NPC_SYMBOL_SLOT_COUNT> Slots = []
+		{
+			std::array<string, NPC_SYMBOL_SLOT_COUNT> Ids;
+			for (size_t i = 0; i < NPC_SYMBOL_SLOT_COUNT; ++i)
+				Ids[i] = "WM_NpcSym_" + std::to_string(i);
+			return Ids;
+		}();
+		return Slots;
+	}
 	const char* const DIALOG_SLOTS[] =
 		{ "WM_DlgBg", "WM_DlgDeco", "WM_DlgCoin", "WM_DlgBtnOk", "WM_DlgIconOk", "WM_DlgBtnCancel", "WM_DlgIconCancel" };
 
@@ -1021,13 +1033,14 @@ void Client::CWorldMapWindowView::Update(const f32_t fTimeDelta, const LEVEL eLe
 					continue;
 				f32_t fU = 0.f, fV = 0.f, fSX = 0.f, fSY = 0.f;
 				ToUV(Npc.fX, Npc.fZ, fU, fV);
-				m_pView->Set_SlotTexture(NPC_SYMBOL_SLOTS[iSlot], Iter->second);
-				(void)PlaceAt(NPC_SYMBOL_SLOTS[iSlot], fU, fV, true, fSX, fSY);
+				const char* const pSlotId = Get_NpcSymbolSlots()[iSlot].c_str();
+				m_pView->Set_SlotTexture(pSlotId, Iter->second);
+				(void)PlaceAt(pSlotId, fU, fV, true, fSX, fSY);
 				++iSlot;
 			}
 		}
 		for (; iSlot < NPC_SYMBOL_SLOT_COUNT; ++iSlot)
-			m_pView->Set_SlotVisible(NPC_SYMBOL_SLOTS[iSlot], false);
+			m_pView->Set_SlotVisible(Get_NpcSymbolSlots()[iSlot].c_str(), false);
 	}
 	const auto PlaceMarker = [&](const char* pSlotId, const CClientReplication::MINIMAP_MARKER* pMarker)
 	{

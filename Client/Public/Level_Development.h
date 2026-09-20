@@ -17,7 +17,8 @@ class CLevel_Development final : public CLevel
 private:
 	CLevel_Development(
 		ComPtr<ID3D11Device> pDevice,
-		ComPtr<ID3D11DeviceContext> pContext);
+		ComPtr<ID3D11DeviceContext> pContext,
+		LEVEL eLevel);
 
 public:
 	virtual ~CLevel_Development();
@@ -33,6 +34,8 @@ private:
 	bool_t Bind_CameraToLocalCharacter();
 
 private:
+	// Registry entry this instance plays; only DEVELOPMENT may open the Map Editor.
+	LEVEL m_eLevel = LEVEL::DEVELOPMENT;
 	CMapPlacementRuntime m_MapRuntime;
 	bool_t m_isMapEditorWorkspace = false;
 	weak_ptr<CCamera_Free> m_pCamera;
@@ -44,7 +47,8 @@ private:
 public:
 	static unique_ptr<CLevel_Development> Create(
 		ComPtr<ID3D11Device> pDevice,
-		ComPtr<ID3D11DeviceContext> pContext);
+		ComPtr<ID3D11DeviceContext> pContext,
+		LEVEL eLevel = LEVEL::DEVELOPMENT);
 };
 
 NS_END

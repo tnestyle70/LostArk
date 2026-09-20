@@ -2551,7 +2551,8 @@ int LostArk::Server::CServerApp::Run(
 	if (!stageSharedSimulation(WORLD_ID::BERN) ||
 		!stageSharedSimulation(WORLD_ID::VALTAN_ARENA) ||
 		!stageSharedSimulation(WORLD_ID::TRAINING_GROUND) ||
-		!stageSharedSimulation(WORLD_ID::KAKULSAYDON_ARENA))
+		!stageSharedSimulation(WORLD_ID::KAKULSAYDON_ARENA) ||
+		!stageSharedSimulation(WORLD_ID::MAHARAKA))
 	{
 		return 1;
 	}
@@ -2613,7 +2614,7 @@ int LostArk::Server::CServerApp::Run(
 		0 == ::_isatty(::_fileno(stdin));
 	std::cout << "Listening on " << bindAddress << ':' << port
 		<< " with shared BERN, VALTAN_ARENA, TRAINING_GROUND, "
-		<< "KAKULSAYDON_ARENA and "
+		<< "KAKULSAYDON_ARENA, MAHARAKA and "
 		<< "session-private CHARACTER_SELECT_ARENA simulations.";
 	if (0u == automaticShutdownMilliseconds && useHeadlessMode)
 	{

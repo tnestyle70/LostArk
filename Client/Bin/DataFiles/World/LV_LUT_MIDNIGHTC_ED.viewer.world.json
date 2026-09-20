@@ -2,7 +2,7 @@
     "schema":  "lostark.world-gameplay",
     "formatVersion":  6,
     "areaId":  "LV_LUT_MIDNIGHTC_ED",
-    "revision":  8797,
+    "revision":  8798,
     "placements":  [
                        {
                            "placementId":  "1Stage_Final",
@@ -2454,6 +2454,52 @@
                                         ],
                            "yawDegrees":  0,
                            "enabled":  false
+                       },
+                       {
+                           "placementId":  "Book1_Monsters",
+                           "kind":  "triggerBox",
+                           "position":  [
+                                            1.49173,
+                                            0.15635,
+                                            -29.70873
+                                        ],
+                           "yawDegrees":  10.371094,
+                           "enabled":  true,
+                           "halfExtents":  [
+                                               5.12,
+                                               1.28,
+                                               2.56
+                                           ],
+                           "triggerOnce":  false,
+                           "events":  [
+                                          {
+                                              "type":  "activateSpawnGroup",
+                                              "spawnGroupId":  "spawn.kouku.book1"
+                                          }
+                                      ]
+                       },
+                       {
+                           "placementId":  "Book2_Monsters",
+                           "kind":  "triggerBox",
+                           "position":  [
+                                            -3.42345,
+                                            0.09022,
+                                            -53.2275
+                                        ],
+                           "yawDegrees":  15.117188,
+                           "enabled":  true,
+                           "halfExtents":  [
+                                               2.56,
+                                               1.28,
+                                               2.56
+                                           ],
+                           "triggerOnce":  false,
+                           "events":  [
+                                          {
+                                              "type":  "activateSpawnGroup",
+                                              "spawnGroupId":  "spawn.kouku.book2"
+                                          }
+                                      ]
                        }
                    ]
 }

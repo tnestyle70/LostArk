@@ -27,6 +27,7 @@ namespace
 			return "CHARACTER_SELECT_ARENA";
 		case WORLD_ID::KAKULSAYDON_ARENA:
 			return "KAKULSAYDON_ARENA";
+		case WORLD_ID::MAHARAKA: return "MAHARAKA";
 		default: return {};
 		}
 	}

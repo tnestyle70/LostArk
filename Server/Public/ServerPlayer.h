@@ -336,6 +336,10 @@ namespace LostArk::Server
 		LostArk::Shared::SKILL_ID iCurrentSkillId =
 			LostArk::Shared::INVALID_SKILL_ID;
 		std::uint32_t iActionStartTick = 0;
+		/* The square-hole row (1-based) whose song this player is in; 0 when none. The
+		Server moves the player to that row's destination when the song lock ends, and
+		Update_Players drops it on any tick the action is no longer SQUAREHOLE_SONG. */
+		std::uint16_t iSquareHoleId = 0u;
 		/* One boss-pattern bind occurrence owns this status. The Server keeps the
 		pre-bind pose so every exit path can restore the exact admitted pose before
 		returning movement/action control. */

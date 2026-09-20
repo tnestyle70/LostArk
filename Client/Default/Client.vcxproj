@@ -79,6 +79,7 @@
     <ClInclude Include="..\Public\MvpResultView.h" />
     <ClInclude Include="..\Public\RaidGateProgressView.h" />
     <ClInclude Include="..\Public\InteractKeyPromptView.h" />
+    <ClInclude Include="..\Public\UITextOcclusion.h" />
     <ClInclude Include="..\Public\BossImmuneGaugeView.h" />
     <ClInclude Include="..\Public\Effect_AuthoringDocument.h" />
     <ClInclude Include="..\Public\Effect_CascadeCompiler.h" />
@@ -352,6 +353,7 @@
     <ClCompile Include="..\Private\MvpResultView.cpp" />
     <ClCompile Include="..\Private\RaidGateProgressView.cpp" />
     <ClCompile Include="..\Private\InteractKeyPromptView.cpp" />
+    <ClCompile Include="..\Private\UITextOcclusion.cpp" />
     <ClCompile Include="..\Private\BossImmuneGaugeView.cpp" />
     <ClCompile Include="..\Private\Effect_CascadeCompiler.cpp" />
 	<ClCompile Include="..\Private\Effect_RuntimeAuthority.cpp" />

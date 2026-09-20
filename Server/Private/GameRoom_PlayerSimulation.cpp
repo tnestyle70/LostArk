@@ -607,6 +607,13 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 			};
         (void)CKoukuSaydonLogicRuntime::Update_PlayerFear(player, updateTick);
 		Update_MarioControlState(player);
+		/* A song that ended any way but its own timeout (a hit, a bind, death) never
+		lands the player later. */
+		if (0u != player.iSquareHoleId &&
+			LostArk::Shared::PLAYER_ACTION_STATE::SQUAREHOLE_SONG != player.eAction)
+		{
+			player.iSquareHoleId = 0u;
+		}
 		if (0u == player.iCurrentHp ||
 			LostArk::Shared::PLAYER_ACTION_STATE::DEAD == player.eAction)
 		{
@@ -707,11 +714,14 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 			LostArk::Shared::PLAYER_ACTION_STATE::ESTHER_CAST == player.eAction &&
 			static_cast<std::int32_t>(updateTick -
 				(player.iActionStartTick + ESTHER_CAST_TICKS)) >= 0;
-		/* The square-hole song is the same kind of fixed-length lock (no teleport yet). */
+		/* The square-hole lock is the song plus a black hold: the Client screen is fully
+		black when the song ticks run out, and the player lands inside the hold. */
 		const bool squareHoleSongElapsed =
 			LostArk::Shared::PLAYER_ACTION_STATE::SQUAREHOLE_SONG == player.eAction &&
 			static_cast<std::int32_t>(updateTick -
-				(player.iActionStartTick + SQUAREHOLE_SONG_TICKS)) >= 0;
+				(player.iActionStartTick + SQUAREHOLE_LOCK_TICKS)) >= 0;
+		if (squareHoleSongElapsed)
+			Finish_SquareHoleSong(player);
 		/* An escape teleport borrows the same INTERACTION lock and start tick,
 		so a swing is judged only for a real hammer press. */
 		const bool mazeHammerPress =
