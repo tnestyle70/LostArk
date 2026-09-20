@@ -109,11 +109,6 @@ namespace
 		return 0 == strId.compare(0, strlen(pPrefix), pPrefix);
 	}
 
-	/* Layout slot column/index -> equipment slot name in CharacterInfoDisplay.json. */
-	constexpr const char* LEFT_SLOT_NAMES[6] = { "helmet", "shoulder", "top", "pants", "gloves", "weapon" };
-	constexpr const char* RIGHT_SLOT_NAMES[7] = {
-		"necklace", "earring1", "earring2", "ring1", "ring2", "stone", "bracelet" };
-
 	/* ItemCatalog "grade" -> V2gradeIconBG art (unknown/empty = legend, the project's default). */
 	const char* Grade_BackgroundPath(const string& strGrade)
 	{
@@ -246,16 +241,6 @@ void Client::CCharacterInfoWindowView::Load_DisplayData()
 			CLASS_DISPLAY Display{};
 			ReadText(*pClass, "displayName", Display.strDisplayName);
 			ReadString(*pClass, "symbol", Display.strSymbolPath);
-			if (const DATA_JSON_VALUE* pIds = pClass->Find("equippedItemIds"); nullptr != pIds && pIds->Is_Object())
-			{
-				for (const char* pSlot : { "weapon", "helmet", "shoulder", "top", "pants", "gloves",
-					"necklace", "earring1", "earring2", "ring1", "ring2", "stone", "bracelet" })
-				{
-					string strItemId;
-					ReadString(*pIds, pSlot, strItemId);
-					Display.EquippedItemIds[pSlot] = strItemId;
-				}
-			}
 			if (const DATA_JSON_VALUE* pAvatarIds = pClass->Find("equippedAvatarItemIds");
 				nullptr != pAvatarIds && pAvatarIds->Is_Object())
 			{
@@ -611,15 +596,23 @@ void Client::CCharacterInfoWindowView::Update_EquipmentIcons(
 		m_pView->Set_SlotTexture("CI_ClassSym", pClass->strSymbolPath);
 	m_pView->Set_SlotVisible("CI_ClassSym", nullptr != pClass && !pClass->strSymbolPath.empty());
 
+	/* What each slot wears is the Server's inventory: an entry with its equipped slot. */
+	using LostArk::Shared::EQUIPMENT_SLOT;
+	const std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT>& Items =
+		CCombatHUDViewModel::Get().Get_Inventory().Items;
+	CUIInputRouter& Router = CUIInputRouter::Get();
+	const bool_t bRightClick = Router.Is_RightClickEdge();
 	const bool_t bShowSlots = 0 == m_iSelectedTab && !m_bAvatarMode;
-	const auto Apply = [&](const string& strSlotSuffix, const char* pSlotName)
+	const auto Apply = [&](const string& strSlotSuffix, const EQUIPMENT_SLOT eSlot)
 	{
 		const ITEM_DEFINITION* pItem = nullptr;
-		if (nullptr != pClass)
+		for (const LostArk::Shared::INVENTORY_ITEM_SNAPSHOT& Item : Items)
 		{
-			const auto found = pClass->EquippedItemIds.find(pSlotName);
-			if (found != pClass->EquippedItemIds.end() && !found->second.empty())
-				pItem = CItemCatalog::Find_ById(found->second);
+			if (Item.eEquippedSlot == eSlot)
+			{
+				pItem = CItemCatalog::Find_ById(Item.strItemId);
+				break;
+			}
 		}
 		const bool_t bHasItem = nullptr != pItem && !pItem->strIconPath.empty();
 		if (bHasItem)
@@ -630,11 +623,29 @@ void Client::CCharacterInfoWindowView::Update_EquipmentIcons(
 		m_pView->Set_SlotVisible("CI_SlotIcon_" + strSlotSuffix, bShowSlots && bHasItem);
 		m_pView->Set_SlotVisible("CI_SlotGrade_" + strSlotSuffix, bShowSlots && bHasItem);
 		m_pView->Set_SlotVisible("CI_SlotSil_" + strSlotSuffix, bShowSlots && !bHasItem);
+
+		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+		if (bShowSlots && bHasItem && bRightClick && !m_bCovered &&
+			m_pView->Get_SlotRect("CI_SlotIcon_" + strSlotSuffix, fX, fY, fWidth, fHeight) &&
+			Router.Is_Hovered(fX, fY, fWidth, fHeight,
+				m_pView->Get_ResolutionWidth(), m_pView->Get_ResolutionHeight()))
+			m_eUnequipRequest = eSlot;
 	};
+	/* Layout columns run in EQUIPMENT_SLOT order: L0..L5 helmet..weapon, R0..R6
+	   necklace..bracelet. */
 	for (int32_t i = 0; i < 6; ++i)
-		Apply("L" + std::to_string(i), LEFT_SLOT_NAMES[i]);
+		Apply("L" + std::to_string(i), static_cast<EQUIPMENT_SLOT>(ETOUI(EQUIPMENT_SLOT::HELMET) + i));
 	for (int32_t j = 0; j < 7; ++j)
-		Apply("R" + std::to_string(j), RIGHT_SLOT_NAMES[j]);
+		Apply("R" + std::to_string(j), static_cast<EQUIPMENT_SLOT>(ETOUI(EQUIPMENT_SLOT::NECKLACE) + j));
+}
+
+bool_t Client::CCharacterInfoWindowView::Take_UnequipRequest(LostArk::Shared::EQUIPMENT_SLOT& outSlot)
+{
+	if (LostArk::Shared::EQUIPMENT_SLOT::NONE == m_eUnequipRequest)
+		return false;
+	outSlot = m_eUnequipRequest;
+	m_eUnequipRequest = LostArk::Shared::EQUIPMENT_SLOT::NONE;
+	return true;
 }
 
 void Client::CCharacterInfoWindowView::Update_AvatarSlots(

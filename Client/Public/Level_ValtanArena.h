@@ -223,11 +223,12 @@ private:
 	own "Layer_UI" (same reasoning as m_pDeadSceneView), so CObject_Manager's normal
 	Update/Late_Update/Render cycle draws them without an explicit call here. */
 	void Update_RaidClear(f32_t fTimeDelta);
-	/* Item acquisition toast: real EFUI_ANNOUNCE frame art (announce_i3e3.dds), one item at a
-	time. Diffs CCombatHUDViewModel's own already-replicated inventory snapshot frame-to-frame
-	(itemIds present now that weren't in the previous frame) into a FIFO queue, then shows each
-	queued item's icon/name for ITEM_ANNOUNCE_HOLD_SECONDS before starting the next. The first
-	frame only captures a baseline (m_bItemAnnounceBaselineCaptured) instead of diffing, so
+	/* Item acquisition announce: retail EFUI_ANNOUNCE ItemSlotAnnounceListItem (layout from
+	Tools/LpkPipeline/build_item_announce_ui.py), one item at a time in the same place. Diffs
+	CCombatHUDViewModel's own already-replicated inventory snapshot frame-to-frame (itemIds present
+	now that weren't in the previous frame) into a FIFO queue; each queued item plays the retail
+	intro, holds ITEM_ANNOUNCE_HOLD_SECONDS, fades out, and only then does the next one start. The
+	first frame only captures a baseline (m_bItemAnnounceBaselineCaptured) instead of diffing, so
 	whatever the player already owns on Level entry never gets announced as newly acquired. */
 	/* No matching Render_ItemAnnounce() -- same reasoning as m_pDeadSceneView/m_pRaidClearView
 	above: m_pItemAnnounceView's slots are real CUI_Sprite GameObjects added to this Level's own
@@ -354,6 +355,17 @@ private:
 	unique_ptr<CUILayoutRuntime> m_pDeadSceneView;
 	unique_ptr<CUILayoutRuntime> m_pRaidClearView;
 	unique_ptr<CMvpResultView> m_pMvpResultView;
+	/* The Server's last raid-clear award input (S2C_RAID_MVP_RESULT). Fresh until the
+	   clear's award page shows it; kept afterwards so the Debug page can replay it. */
+	LostArk::Shared::S2C_RAID_MVP_RESULT m_RaidMvpResult{};
+	bool_t m_bHasRaidMvpResult = false;
+	bool_t m_bRaidMvpResultFresh = false;
+	/* The character each award panel shows (0 = MVP, 1..3 the columns), resolved from
+	   the result's players when the page opens. */
+	weak_ptr<CCharacter> m_MvpStageCharacters[4];
+	/* Opens the award page from the Server result; bReplayLast reuses an already shown
+	   one. With no result at all only a Debug build shows the sample page. */
+	void Show_MvpResult(bool_t bReplayLast);
 	/* Gate progress panel: Valtan is one gate here, checked once the clear mark starts. */
 	CRaidGateProgressView m_GateProgressView;
 	bool_t m_bRaidClearReturnAvailable = false;
@@ -378,6 +390,12 @@ private:
 	/* Negative means no toast is currently showing (queue may still be non-empty, waiting for
 	the next Update_ItemAnnounce tick to pop it). */
 	f32_t m_fItemAnnounceElapsedSeconds = -1.f;
+	/* The band's authored (settled) position; the intro slides it in from the left. */
+	f32_t m_fItemAnnounceBandX = 0.f;
+	f32_t m_fItemAnnounceBandY = 0.f;
+	/* The light-sweep frame currently on the icon (0 = none), so the texture only changes on a
+	new frame. */
+	int32_t m_iItemAnnounceSweepFrame = 0;
 #ifdef _DEBUG
 	// O key: instantly show the Raid Clear overlay, to test it without waiting to kill Valtan.
 	bool_t m_bDebugRaidClearKeyDown = false;

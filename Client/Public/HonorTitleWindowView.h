@@ -32,7 +32,7 @@ class CHonorTitleWindowView final
 {
 public:
 	/* Cancel transient gestures without closing or moving the window. */
-	void Cancel_Interaction() { m_Drag.Reset(); m_bDraggingThumb = false; m_bEscapeDownLastFrame = true; }
+	void Cancel_Interaction() { m_Drag.Reset(); m_bDraggingThumb = false; }
 	CHonorTitleWindowView(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext);
 	~CHonorTitleWindowView();
 
@@ -83,7 +83,6 @@ private:
 
 	bool_t m_bOpen = false;
 	bool_t m_bSelectWornOnUpdate = false;
-	bool_t m_bEscapeDownLastFrame = false;
 	/* Index into CHonorTitleCatalog::Get_Titles(); -1 = nothing selected. */
 	int32_t m_iSelectedTitle = -1;
 	int32_t m_iHoveredTitle = -1;

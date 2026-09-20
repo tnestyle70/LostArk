@@ -1024,6 +1024,15 @@ namespace LostArk::Server
 		void Handle_UseItem(
 			SESSION_ID sessionId,
 			const LostArk::Shared::C2S_USE_ITEM& request);
+		/* Right-click equip / unequip. Checks the slot kind, the class and bag room,
+		   then answers with the whole inventory whether or not anything moved. */
+		void Handle_SetEquipment(
+			SESSION_ID sessionId,
+			const LostArk::Shared::C2S_SET_EQUIPMENT& request);
+		bool Apply_SetEquipment(SERVER_PLAYER& player,
+			const LostArk::Shared::C2S_SET_EQUIPMENT& request) const;
+		/* After a class change: items bound to another class go back to the bag. */
+		bool Unequip_OtherClassItems(SERVER_PLAYER& player) const;
 		// Debug Character Select Arena "되돌리기" -- despawns every world entity the
 		// debug spawn buttons created in this room (Broadcast_WorldEntityDespawned per
 		// entity) and resets the spawn group runtime so the same groups can be
@@ -1117,6 +1126,12 @@ namespace LostArk::Server
 			bool bClosed, LostArk::Shared::GATE_PROGRESS_VOTE_RESULT result);
 		std::uint8_t Gate_Count() const;
 		int Gate_IndexOfPlacement(const std::string& placementId) const;
+		/* Raid-clear award input. Every fought primary boss advances its players' fight
+		   clock each tick; a dying gate boss hands its ledger to the room, and the clear
+		   sends the room ledger to every player and empties it. */
+		void Tick_MvpLedgers();
+		void Merge_MvpLedger(SERVER_WORLD_ENTITY& boss);
+		void Broadcast_RaidMvpResult(std::uint8_t iGate);
 
 		struct RAID_ENTRY_PROPOSAL
 		{
@@ -1621,6 +1636,7 @@ namespace LostArk::Server
 		std::vector<RAID_ENTRY_PROPOSAL> m_RaidEntryProposals;
 		std::uint32_t m_iNextRaidEntryProposalId = 1u;
 		GATE_PROGRESS_STATE m_GateProgress;
+		std::vector<SERVER_MVP_LEDGER_ROW> m_GateMvpLedger;
 		std::uint32_t m_iNextGateProposalId = 1u;
 
 		LostArk::Shared::WORLD_ID m_eWorldId = LostArk::Shared::WORLD_ID::END;

@@ -1,7 +1,5 @@
-/* WinSock2 then dinput, ahead of everything else -- the order VehicleWindowView.cpp already
-uses for the DIK_* constants. */
+/* WinSock2 ahead of everything else (Client_Defines pulls the socket headers). */
 #include <WinSock2.h>
-#include <dinput.h>
 
 #include "HonorTitleWindowView.h"
 
@@ -129,7 +127,6 @@ void Client::CHonorTitleWindowView::Update(const f32_t fTimeDelta, const HUD_PLA
 	if (!m_bOpen)
 	{
 		Hide();
-		m_bEscapeDownLastFrame = false;
 		m_bDraggingThumb = false;
 		m_Drag.Reset();
 		return;
@@ -164,13 +161,6 @@ void Client::CHonorTitleWindowView::Update(const f32_t fTimeDelta, const HUD_PLA
 	Update_Scroll();
 	Update_Rows(Player);
 	Update_Buttons(Player);
-
-	/* Esc closes the window (edge, so a held key from before it opened doesn't). */
-	const bool_t bEscapeDown =
-		0 != (CGameInstance::Get().Get_DIKeyState(DIK_ESCAPE) & 0x80);
-	if (bEscapeDown && !m_bEscapeDownLastFrame)
-		Close();
-	m_bEscapeDownLastFrame = bEscapeDown;
 
 	/* Anything over the window belongs to the window; while open it is the topmost runtime UI
 	(it opens over the info window), so the other windows' text passes skip its rect. */

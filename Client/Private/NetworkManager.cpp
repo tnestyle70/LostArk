@@ -1922,6 +1922,16 @@ bool CNetworkManager::Try_Consume_GateProgressState(
 	return true;
 }
 
+bool CNetworkManager::Try_Consume_RaidMvpResult(
+	LostArk::Shared::S2C_RAID_MVP_RESULT& outResult)
+{
+	if (m_RaidMvpResults.empty())
+		return false;
+	outResult = std::move(m_RaidMvpResults.front());
+	m_RaidMvpResults.pop_front();
+	return true;
+}
+
 bool CNetworkManager::Send_ReturnToBern(const std::uint32_t requestSequence)
 {
 	using namespace LostArk::Shared;
@@ -2048,6 +2058,32 @@ bool CNetworkManager::Send_UseItem(
 	std::vector<std::uint8_t> frameBytes;
 	return Build_Packet_Frame(
 		PACKET_TYPE::C2S_USE_ITEM,
+		payloadWriter.Get_Buffer(),
+		frameBytes) && Send_All(frameBytes);
+}
+
+bool CNetworkManager::Send_SetEquipment(
+	const std::uint32_t requestSequence,
+	const LostArk::Shared::EQUIPMENT_SLOT slot,
+	const bool bEquip,
+	const std::string_view itemId)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+
+	C2S_SET_EQUIPMENT message{};
+	message.iRequestSequence = requestSequence;
+	message.eSlot = slot;
+	message.bEquip = bEquip;
+	message.strItemId = std::string{ itemId };
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_SET_EQUIPMENT,
 		payloadWriter.Get_Buffer(),
 		frameBytes) && Send_All(frameBytes);
 }
@@ -2521,6 +2557,7 @@ void CNetworkManager::Reset_WorldInboundState()
 	m_VehicleRidingResults.clear();
 	m_HonorTitleResults.clear();
 	m_GateProgressStates.clear();
+	m_RaidMvpResults.clear();
 	m_DebugKoukuHudModeResults.clear();
 	m_WorldEntitySpawnResults.clear();
 	// ENTER_ACCEPTED follows the old-room command/reply barrier on this socket.
@@ -4309,6 +4346,29 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 			return;
 		}
 		m_GateProgressStates.push_back(state);
+		break;
+	}
+	case PACKET_TYPE::S2C_RAID_MVP_RESULT:
+	{
+		S2C_RAID_MVP_RESULT result{};
+		if (!Read_Message(reader, result) || 0u != reader.Get_RemainingSize())
+		{
+			Fail_Protocol(WSAEINVAL,
+				SESSION_DIAGNOSTIC_REASON::CLIENT_MESSAGE_DECODE_FAILED,
+				PACKET_TYPE::S2C_RAID_MVP_RESULT,
+				"S2C_RAID_MVP_RESULT payload decode or trailing-byte validation failed.");
+			return;
+		}
+		if (result.eWorldId != m_eWorldId)
+			break;
+		if (m_RaidMvpResults.size() >= MAX_REVISION_CONTROL_QUEUE)
+		{
+			Fail_Protocol(WSAENOBUFS, SESSION_DIAGNOSTIC_REASON::CLIENT_EVENT_QUEUE_OVERFLOW,
+				frame.ePacketType, "m_RaidMvpResults depth=" + std::to_string(m_RaidMvpResults.size()) +
+				" limit=" + std::to_string(MAX_REVISION_CONTROL_QUEUE));
+			return;
+		}
+		m_RaidMvpResults.push_back(std::move(result));
 		break;
 	}
 	case PACKET_TYPE::S2C_RAID_ENTRY_VOTE:

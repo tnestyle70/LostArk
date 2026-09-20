@@ -66,11 +66,13 @@ if ($items.Count -eq 0 -or $items.Count -gt 4096) {
 
 $itemIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 $itemRows = [Collections.Generic.List[string]]::new()
+$startingSlots = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 foreach ($item in $items) {
-    # equipSlot/characterClass/grade are Client presentation fields (character info window slots,
-    # inventory grade art); the Server bootstrap row below never carries them.
+    # grade is a Client presentation field (inventory grade art). equipSlot and characterClass
+    # also travel to the Server, which checks them on equip; startingEquippedSlot names the
+    # equipment slot a fresh character already wears the item in. "-" marks an absent value.
     Assert-Properties $item @('itemId', 'displayName', 'maxStack', 'iconPath', 'healPercent', 'category') `
-        @('equipSlot', 'characterClass', 'grade') 'item'
+        @('equipSlot', 'characterClass', 'grade', 'startingEquippedSlot') 'item'
     Assert-JsonString $item.itemId 'item itemId'
     Assert-JsonString $item.displayName 'item displayName'
     Assert-JsonInteger $item.maxStack 'item maxStack' 1 ([uint32]::MaxValue)
@@ -80,7 +82,7 @@ foreach ($item in $items) {
     if ($item.category -ne 'combat' -and $item.category -ne 'use') {
         throw "item category must be 'combat' or 'use': $($item.itemId)"
     }
-    foreach ($optional in @('equipSlot', 'characterClass', 'grade')) {
+    foreach ($optional in @('equipSlot', 'characterClass', 'grade', 'startingEquippedSlot')) {
         if ($null -ne $item.PSObject.Properties[$optional]) {
             Assert-JsonString $item.$optional "item $optional"
         }
@@ -104,7 +106,23 @@ foreach ($item in $items) {
     if (-not $itemIds.Add([string]$item.itemId)) {
         throw "Duplicate item ID: $($item.itemId)"
     }
-    $itemRows.Add((@('ITEM', $item.itemId, [uint32]$item.maxStack, [uint32]$item.healPercent) -join "`t"))
+    $equipSlotField = if ($null -ne $item.PSObject.Properties['equipSlot']) { [string]$item.equipSlot } else { '-' }
+    $classField = if ($null -ne $item.PSObject.Properties['characterClass']) { [string]$item.characterClass } else { '-' }
+    $startingField = '-'
+    if ($null -ne $item.PSObject.Properties['startingEquippedSlot']) {
+        # The slot must take the item's kind (earring1/earring2 take "earring", ring1/ring2 "ring"),
+        # the item must fit every class, and no two items may start in one slot.
+        $startingField = [string]$item.startingEquippedSlot
+        $startingKind = $startingField -replace '[12]$', ''
+        if ($equipSlotField -ceq '-' -or $startingKind -cne $equipSlotField -or
+            @('earring', 'ring') -ccontains $startingField -or
+            @('helmet', 'shoulder', 'top', 'pants', 'gloves', 'weapon', 'necklace', 'earring', 'ring', 'stone', 'bracelet') -cnotcontains $startingKind) {
+            throw "item startingEquippedSlot does not fit its equipSlot: $($item.itemId)"
+        }
+        if ($classField -cne '-') { throw "item startingEquippedSlot must be class-free: $($item.itemId)" }
+        if (-not $startingSlots.Add($startingField)) { throw "Two items start in slot $startingField" }
+    }
+    $itemRows.Add((@('ITEM', $item.itemId, [uint32]$item.maxStack, [uint32]$item.healPercent, $equipSlotField, $classField, $startingField) -join "`t"))
 }
 
 if ($Mode -eq 'Validate') {
@@ -123,7 +141,7 @@ if (-not $outputDirectory.StartsWith($repoPrefix, [StringComparison]::OrdinalIgn
 [IO.Directory]::CreateDirectory($outputDirectory) | Out-Null
 
 $lines = [Collections.Generic.List[string]]::new()
-$lines.Add("LOSTARK_ITEM_BOOTSTRAP`t2`t$($itemRows.Count)")
+$lines.Add("LOSTARK_ITEM_BOOTSTRAP`t4`t$($itemRows.Count)")
 foreach ($row in $itemRows) { $lines.Add($row) }
 
 $destination = Join-Path $outputDirectory 'Items.bootstrap'

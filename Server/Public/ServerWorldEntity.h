@@ -142,6 +142,34 @@ namespace LostArk::Server
 		}
 	};
 
+	/* One player's raid-clear award input on one boss: what their hits did to it and how
+	long they stayed alive while it was being fought. */
+	struct SERVER_MVP_LEDGER_ROW final
+	{
+		LostArk::Shared::PLAYER_ID iPlayerId = LostArk::Shared::INVALID_PLAYER_ID;
+		std::uint64_t iDamage = 0u;
+		std::uint64_t iStagger = 0u;
+		std::uint32_t iCounterCount = 0u;
+		std::uint32_t iAliveTicks = 0u;
+		std::uint32_t iFightTicks = 0u;
+		/* Medal facts. */
+		std::uint64_t iPartDamage = 0u;
+		std::uint32_t iFinishingBlows = 0u;
+		std::uint32_t iDamagingHitsTaken = 0u;
+		std::uint32_t iLowestHpPermille = 1000u;
+		std::uint32_t iLastCounterTick = 0u;
+		std::uint32_t iMinCounterGapTicks = 0u;
+		/* Health seen on the previous fight tick; a drop is one damaging hit. */
+		std::uint32_t iLastHp = 0u;
+		bool bHpSeen = false;
+		/* KNOCKDOWN entries, counted on the edge. */
+		std::uint32_t iKnockdowns = 0u;
+		bool bWasKnockedDown = false;
+	};
+
+	SERVER_MVP_LEDGER_ROW& Find_Or_Add_MvpLedgerRow(
+		std::vector<SERVER_MVP_LEDGER_ROW>& ledger, LostArk::Shared::PLAYER_ID playerId);
+
 	struct SERVER_WORLD_ENTITY
 	{
 		LostArk::Shared::NET_ENTITY_ID iNetEntityId =
@@ -457,6 +485,9 @@ namespace LostArk::Server
 		to the room's players, so a boss that stays DEAD without despawning (see
 		Valtan) is never re-looted on a later tick. */
 		bool bLootGranted = false;
+		/* Raid-clear award input per player, filled by player hits (CServerCombatHitRuntime)
+		and the room's per-tick fight clock once the first hit landed. */
+		std::vector<SERVER_MVP_LEDGER_ROW> MvpLedger;
 		/* Multiplier on the authored push range of each player hit, from the
 		monster profile; 0 never moves. */
 		float fHitKnockbackScale = 0.f;

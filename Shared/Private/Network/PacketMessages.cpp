@@ -407,11 +407,15 @@ namespace
 		for (std::size_t index = 0; index < items.size(); ++index)
 		{
 			const LostArk::Shared::INVENTORY_ITEM_SNAPSHOT& item = items[index];
-			if (!Is_Valid_ItemId(item.strItemId) || 0u == item.iQuantity)
+			const bool equipped = LostArk::Shared::EQUIPMENT_SLOT::NONE != item.eEquippedSlot;
+			if (!Is_Valid_ItemId(item.strItemId) || 0u == item.iQuantity ||
+				item.eEquippedSlot >= LostArk::Shared::EQUIPMENT_SLOT::END ||
+				(equipped && 1u != item.iQuantity))
 				return false;
 			for (std::size_t other = index + 1; other < items.size(); ++other)
 			{
-				if (items[other].strItemId == item.strItemId)
+				if (items[other].eEquippedSlot == item.eEquippedSlot &&
+					(equipped || items[other].strItemId == item.strItemId))
 					return false;
 			}
 		}
@@ -5421,6 +5425,7 @@ bool LostArk::Shared::Write_Message(
 		if (!writer.Write_String(item.strItemId, MAX_ITEM_ID_BYTES))
 			return false;
 		writer.Write_U32(item.iQuantity);
+		writer.Write_U8(static_cast<std::uint8_t>(item.eEquippedSlot));
 	}
 	return true;
 }
@@ -5440,11 +5445,14 @@ bool LostArk::Shared::Read_Message(
 	for (std::uint16_t index = 0; index < itemCount; ++index)
 	{
 		INVENTORY_ITEM_SNAPSHOT item{};
+		std::uint8_t equippedSlot = 0u;
 		if (!reader.Read_String(item.strItemId, MAX_ITEM_ID_BYTES) ||
-			!reader.Read_U32(item.iQuantity))
+			!reader.Read_U32(item.iQuantity) ||
+			!reader.Read_U8(equippedSlot))
 		{
 			return false;
 		}
+		item.eEquippedSlot = static_cast<EQUIPMENT_SLOT>(equippedSlot);
 		decoded.Items.push_back(std::move(item));
 	}
 	if (!Is_Valid_InventoryItems(decoded.Items))
@@ -5476,6 +5484,39 @@ bool LostArk::Shared::Read_Message(
 	{
 		return false;
 	}
+	message = std::move(decoded);
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer, const C2S_SET_EQUIPMENT& message)
+{
+	if (0u == message.iRequestSequence ||
+		EQUIPMENT_SLOT::NONE == message.eSlot || message.eSlot >= EQUIPMENT_SLOT::END ||
+		(message.bEquip ? !Is_Valid_ItemId(message.strItemId) : !message.strItemId.empty()))
+		return false;
+	writer.Write_U32(message.iRequestSequence);
+	writer.Write_U8(static_cast<std::uint8_t>(message.eSlot));
+	writer.Write_U8(message.bEquip ? 1u : 0u);
+	return writer.Write_String(message.strItemId, MAX_ITEM_ID_BYTES);
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader, C2S_SET_EQUIPMENT& message)
+{
+	C2S_SET_EQUIPMENT decoded{};
+	std::uint8_t slot = 0u;
+	std::uint8_t equip = 0u;
+	if (!reader.Read_U32(decoded.iRequestSequence) || !reader.Read_U8(slot) ||
+		!reader.Read_U8(equip) || !reader.Read_String(decoded.strItemId, MAX_ITEM_ID_BYTES) ||
+		equip > 1u)
+		return false;
+	decoded.eSlot = static_cast<EQUIPMENT_SLOT>(slot);
+	decoded.bEquip = 1u == equip;
+	if (0u == decoded.iRequestSequence ||
+		EQUIPMENT_SLOT::NONE == decoded.eSlot || decoded.eSlot >= EQUIPMENT_SLOT::END ||
+		(decoded.bEquip ? !Is_Valid_ItemId(decoded.strItemId) : !decoded.strItemId.empty()))
+		return false;
 	message = std::move(decoded);
 	return true;
 }
@@ -6709,6 +6750,103 @@ bool LostArk::Shared::Read_Message(
 		decoded.iAccepted > decoded.iTotal)
 		return false;
 	message = decoded;
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer, const S2C_RAID_MVP_RESULT& message)
+{
+	if (!Is_Known_World_Id(message.eWorldId) || 0u == message.iGate || message.iGate > 8u ||
+		message.Participants.size() > MAX_RAID_MVP_PARTICIPANTS)
+		return false;
+	writer.Write_U16(static_cast<std::uint16_t>(message.eWorldId));
+	writer.Write_U8(message.iGate);
+	writer.Write_U8(static_cast<std::uint8_t>(message.Participants.size()));
+	for (const RAID_MVP_PARTICIPANT& participant : message.Participants)
+	{
+		if (INVALID_PLAYER_ID == participant.iPlayerId ||
+			!Is_Known_Character_Class(participant.eCharacterClass) ||
+			!Is_Valid_PlayerNickname(participant.strNickname) ||
+			participant.iAliveTicks > participant.iFightTicks ||
+			participant.iLowestHpPermille > 1000u)
+			return false;
+		writer.Write_U32(participant.iPlayerId);
+		writer.Write_U32(participant.iNetEntityId);
+		writer.Write_U8(static_cast<std::uint8_t>(participant.eCharacterClass));
+		if (!writer.Write_String(participant.strNickname, MAX_NICKNAME_BYTES))
+			return false;
+		writer.Write_U32(static_cast<std::uint32_t>(participant.iDamage >> 32u));
+		writer.Write_U32(static_cast<std::uint32_t>(participant.iDamage));
+		writer.Write_U32(static_cast<std::uint32_t>(participant.iStagger >> 32u));
+		writer.Write_U32(static_cast<std::uint32_t>(participant.iStagger));
+		writer.Write_U32(participant.iCounterCount);
+		writer.Write_U32(participant.iAliveTicks);
+		writer.Write_U32(participant.iFightTicks);
+		writer.Write_U32(static_cast<std::uint32_t>(participant.iPartDamage >> 32u));
+		writer.Write_U32(static_cast<std::uint32_t>(participant.iPartDamage));
+		writer.Write_U32(participant.iFinishingBlows);
+		writer.Write_U32(participant.iDamagingHitsTaken);
+		writer.Write_U16(participant.iLowestHpPermille);
+		writer.Write_U8(participant.bAliveAtClear ? 1u : 0u);
+		writer.Write_U32(participant.iMinCounterGapMs);
+		writer.Write_U32(participant.iKnockdowns);
+		writer.Write_U32(participant.iFightMs);
+	}
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader, S2C_RAID_MVP_RESULT& message)
+{
+	S2C_RAID_MVP_RESULT decoded{};
+	std::uint16_t world = 0u;
+	std::uint8_t count = 0u;
+	if (!reader.Read_U16(world) || !reader.Read_U8(decoded.iGate) || !reader.Read_U8(count) ||
+		0u == decoded.iGate || decoded.iGate > 8u || count > MAX_RAID_MVP_PARTICIPANTS)
+		return false;
+	decoded.eWorldId = static_cast<WORLD_ID>(world);
+	if (!Is_Known_World_Id(decoded.eWorldId))
+		return false;
+	decoded.Participants.reserve(count);
+	for (std::uint8_t index = 0u; index < count; ++index)
+	{
+		RAID_MVP_PARTICIPANT participant{};
+		std::uint8_t rawClass = 0u;
+		std::uint32_t damageHigh = 0u, damageLow = 0u, staggerHigh = 0u, staggerLow = 0u;
+		std::uint32_t partHigh = 0u, partLow = 0u;
+		std::uint8_t aliveAtClear = 0u;
+		if (!reader.Read_U32(participant.iPlayerId) ||
+			!reader.Read_U32(participant.iNetEntityId) ||
+			!reader.Read_U8(rawClass) ||
+			!reader.Read_String(participant.strNickname, MAX_NICKNAME_BYTES) ||
+			!reader.Read_U32(damageHigh) || !reader.Read_U32(damageLow) ||
+			!reader.Read_U32(staggerHigh) || !reader.Read_U32(staggerLow) ||
+			!reader.Read_U32(participant.iCounterCount) ||
+			!reader.Read_U32(participant.iAliveTicks) ||
+			!reader.Read_U32(participant.iFightTicks) ||
+			!reader.Read_U32(partHigh) || !reader.Read_U32(partLow) ||
+			!reader.Read_U32(participant.iFinishingBlows) ||
+			!reader.Read_U32(participant.iDamagingHitsTaken) ||
+			!reader.Read_U16(participant.iLowestHpPermille) ||
+			!reader.Read_U8(aliveAtClear) ||
+			!reader.Read_U32(participant.iMinCounterGapMs) ||
+			!reader.Read_U32(participant.iKnockdowns) ||
+			!reader.Read_U32(participant.iFightMs) ||
+			aliveAtClear > 1u || participant.iLowestHpPermille > 1000u)
+			return false;
+		participant.iPartDamage = (static_cast<std::uint64_t>(partHigh) << 32u) | partLow;
+		participant.bAliveAtClear = 1u == aliveAtClear;
+		participant.eCharacterClass = static_cast<CHARACTER_CLASS_ID>(rawClass);
+		participant.iDamage = (static_cast<std::uint64_t>(damageHigh) << 32u) | damageLow;
+		participant.iStagger = (static_cast<std::uint64_t>(staggerHigh) << 32u) | staggerLow;
+		if (INVALID_PLAYER_ID == participant.iPlayerId ||
+			!Is_Known_Character_Class(participant.eCharacterClass) ||
+			!Is_Valid_PlayerNickname(participant.strNickname) ||
+			participant.iAliveTicks > participant.iFightTicks)
+			return false;
+		decoded.Participants.push_back(std::move(participant));
+	}
+	message = std::move(decoded);
 	return true;
 }
 

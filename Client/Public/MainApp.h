@@ -282,6 +282,19 @@ private:
 	this one. Also re-activates the scene rendering profile after a video edit. */
 	void Update_SystemOptionWindow(f32_t fTimeDelta);
 	bool_t Is_AnyRuntimeWindowOpen() const;
+	/* Every runtime window closes when a Level transition starts: the loading screen owns the
+	whole screen, and a window left open kept drawing its labels over it (the sprites were only
+	hidden, not closed). */
+	void Close_RuntimeWindowsForLoading();
+	/* The toggle windows one Escape press closes one at a time, newest first. */
+	enum class ESCAPE_WINDOW : uint8_t { INVENTORY, CHARACTER_INFO, AVATAR_BOOK, HONOR_TITLE, VEHICLE, WORLD_MAP, END };
+	bool_t Is_EscapeWindowOpen(ESCAPE_WINDOW eWindow) const;
+	/* Drops closed windows from m_EscapeWindowOrder and appends newly opened ones on top. */
+	void Sync_EscapeWindowOrder();
+	/* Closes the newest open window; false when none is open. */
+	bool_t Close_TopEscapeWindow();
+	/* A popup or carry that reads this Escape press itself later in the frame. */
+	bool_t Is_EscapeOwnedElsewhere() const;
 	/* End of Update: registers every open runtime window's screen rect as a text clip-out so
 	nothing drawn later in the frame (nameplates, HUD, bubbles) shows through a window. */
 	/* Registers every shown runtime UI surface with its text layer (CUITextOcclusion). */
@@ -843,6 +856,11 @@ private:
 	runtime path for; every other Escape consumer keeps its own meaning. */
 	unique_ptr<CSystemOptionWindowView> m_pSystemOptionView = { nullptr };
 	bool_t m_bSystemOptionKeyDown = false;
+	/* Edge for Close_RuntimeWindowsForLoading. */
+	bool_t m_bWasLoadingLevel = false;
+	/* Open toggle windows in opening order (oldest first); [0, m_iEscapeWindowCount). */
+	ESCAPE_WINDOW m_EscapeWindowOrder[ETOUI(ESCAPE_WINDOW::END)] = {};
+	uint32_t m_iEscapeWindowCount = 0u;
 	/* Frame pacing and the FPS readout the system option rows drive. */
 	f32_t m_fSmoothedFps = 0.f;
 	f64_t m_dLastDamageSeconds = -1000.0;   // "in combat" for the FPS display = a recent hit

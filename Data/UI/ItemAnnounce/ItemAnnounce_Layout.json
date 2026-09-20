@@ -1,45 +1,424 @@
 {
   "schema": "lostark.ui-layout",
   "formatVersion": 1,
-  "resolution": { "width": 1280, "height": 720 },
-  "classes": ["Default"],
+  "resolution": {
+    "width": 1280,
+    "height": 720
+  },
+  "classes": [
+    "Default"
+  ],
   "slots": [
     {
-      "id": "ItemAnnounce_Frame",
+      "id": "ItemAnnounce_Band",
       "ownerClass": null,
       "type": 0,
-      "rect": { "x": 290, "y": 511, "width": 700, "height": 108.68 },
+      "rect": {
+        "x": 477.33,
+        "y": 450.67,
+        "width": 428.0,
+        "height": 54.67
+      },
       "rotation": 0,
-      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
       "layers": [
-        { "path": "UI/ItemAnnounce/ItemAnnounce_Frame.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        {
+          "path": "UI/ItemAnnounce/ItemAnnounce_Band.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
       ],
-      "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "ItemAnnounce_SlotFrame",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 436.67,
+        "y": 442.67,
+        "width": 70.0,
+        "height": 71.33
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/ItemAnnounce/ItemAnnounce_SlotFrame.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
     },
     {
       "id": "ItemAnnounce_Icon",
       "ownerClass": null,
       "type": 0,
-      "rect": { "x": 344.03, "y": 558.28, "width": 40, "height": 40 },
+      "rect": {
+        "x": 451.33,
+        "y": 458.67,
+        "width": 35.34,
+        "height": 35.34
+      },
       "rotation": 0,
-      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
       "layers": [
-        { "path": "UI/Items/LanceMaster/destinyblaze_helmet.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        {
+          "path": "UI/Items/Common/necklace_a.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
       ],
-      "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "ItemAnnounce_Sweep",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 451.33,
+        "y": 458.67,
+        "width": 38.67,
+        "height": 38.67
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/ItemAnnounce/ItemAnnounce_Sweep_10.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "ItemAnnounce_QualityPlate",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 498.0,
+        "y": 436.67,
+        "width": 152.0,
+        "height": 15.33
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/ItemAnnounce/ItemAnnounce_QualityPlate.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "ItemAnnounce_QualityWell",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 570.0,
+        "y": 438.67,
+        "width": 61.33,
+        "height": 12.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/ItemAnnounce/ItemAnnounce_QualityWell.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "ItemAnnounce_QualityGauge",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 574.0,
+        "y": 442.0,
+        "width": 54.0,
+        "height": 4.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/ItemAnnounce/ItemAnnounce_QualityGauge_4.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "ItemAnnounce_QualityLabelBox",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 506.0,
+        "y": 437.33,
+        "width": 49.33,
+        "height": 13.33
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 0
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "ItemAnnounce_QualityValueBox",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 548.67,
+        "y": 437.33,
+        "width": 22.0,
+        "height": 13.33
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 0
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
     },
     {
       "id": "ItemAnnounce_TextBox",
       "ownerClass": null,
       "type": 0,
-      "rect": { "x": 412.46, "y": 558.28, "width": 258.2, "height": 40 },
+      "rect": {
+        "x": 528.67,
+        "y": 469.33,
+        "width": 266.67,
+        "height": 21.33
+      },
       "rotation": 0,
-      "stages": { "baseFrom": 0, "shineFrom": 0 },
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 0
+      },
       "layers": [],
-      "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
     }
   ]
 }

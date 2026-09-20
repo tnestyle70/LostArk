@@ -1,6 +1,5 @@
-/* WinSock2 before Windows.h (Client_Defines pulls the socket headers); dinput for DIK_*. */
+/* WinSock2 before Windows.h (Client_Defines pulls the socket headers). */
 #include <WinSock2.h>
-#include <dinput.h>
 
 #include "WorldMapWindowView.h"
 
@@ -565,7 +564,6 @@ void Client::CWorldMapWindowView::Toggle()
 	{
 		m_iZoomLevel = ZOOM_DEFAULT;
 		m_bRecenterOnUpdate = true;
-		m_bEscapeDownLastFrame = 0 != (CGameInstance::Get().Get_DIKeyState(DIK_ESCAPE) & 0x80);
 	}
 	else
 	{
@@ -1191,23 +1189,18 @@ void Client::CWorldMapWindowView::Update(const f32_t fTimeDelta, const LEVEL eLe
 			}
 		}
 	}
+}
 
-	/* Esc closes the dialog first, then the window (edge, so a held key from before it opened
-	doesn't). */
-	const bool_t bEscapeDown = 0 != (CGameInstance::Get().Get_DIKeyState(DIK_ESCAPE) & 0x80);
-	if (bEscapeDown && !m_bEscapeDownLastFrame)
+void Client::CWorldMapWindowView::Handle_EscapeEdge()
+{
+	/* The hole dialog first, then the window. */
+	if (0u != m_iDialogHoleId)
 	{
-		if (0u != m_iDialogHoleId)
-		{
-			m_iDialogHoleId = 0u;
-		}
-		else
-		{
-			Close();
-			Hide();
-		}
+		m_iDialogHoleId = 0u;
+		return;
 	}
-	m_bEscapeDownLastFrame = bEscapeDown;
+	Close();
+	Hide();
 }
 
 void Client::CWorldMapWindowView::Render_Text()

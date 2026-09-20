@@ -53,21 +53,6 @@
     "Warlord": {
       "displayName": "워로드",
       "symbol": "UI/CharacterInfo/class_warlord.png",
-      "equippedItemIds": {
-        "weapon": "EQUIP_WARLORD_HONORWHISPER_WEAPON",
-        "helmet": "EQUIP_WARLORD_HONORWHISPER_HELMET",
-        "shoulder": "EQUIP_WARLORD_HONORWHISPER_SHOULDER",
-        "top": "EQUIP_WARLORD_HONORWHISPER_TOP",
-        "pants": "EQUIP_WARLORD_HONORWHISPER_PANTS",
-        "gloves": "EQUIP_WARLORD_HONORWHISPER_GLOVES",
-        "necklace": "ACC_NECKLACE_A",
-        "earring1": "ACC_EARRING_A",
-        "earring2": "ACC_EARRING_B",
-        "ring1": "ACC_RING_A",
-        "ring2": "ACC_RING_B",
-        "stone": "ACC_ABILITYSTONE_A",
-        "bracelet": "ACC_BRACELET_A"
-      },
       "equippedAvatarItemIds": {
         "head": "",
         "outfit": ""
@@ -76,21 +61,6 @@
     "LanceMaster": {
       "displayName": "창술사",
       "symbol": "UI/CharacterInfo/class_lancemaster.png",
-      "equippedItemIds": {
-        "weapon": "EQUIP_LANCEMASTER_HONORWHISPER_WEAPON",
-        "helmet": "EQUIP_LANCEMASTER_HONORWHISPER_HELMET",
-        "shoulder": "EQUIP_LANCEMASTER_HONORWHISPER_SHOULDER",
-        "top": "EQUIP_LANCEMASTER_HONORWHISPER_TOP",
-        "pants": "EQUIP_LANCEMASTER_HONORWHISPER_PANTS",
-        "gloves": "EQUIP_LANCEMASTER_HONORWHISPER_GLOVES",
-        "necklace": "ACC_NECKLACE_A",
-        "earring1": "ACC_EARRING_A",
-        "earring2": "ACC_EARRING_B",
-        "ring1": "ACC_RING_A",
-        "ring2": "ACC_RING_B",
-        "stone": "ACC_ABILITYSTONE_A",
-        "bracelet": "ACC_BRACELET_A"
-      },
       "equippedAvatarItemIds": {
         "head": "AVATAR_LANCEMASTER_MOKOKO_HEAD",
         "outfit": "AVATAR_LANCEMASTER_MOKOKO_OUTFIT"
@@ -99,21 +69,6 @@
     "Gunslinger": {
       "displayName": "건슬링어",
       "symbol": "UI/CharacterInfo/class_gunslinger.png",
-      "equippedItemIds": {
-        "weapon": "",
-        "helmet": "",
-        "shoulder": "",
-        "top": "",
-        "pants": "",
-        "gloves": "",
-        "necklace": "ACC_NECKLACE_A",
-        "earring1": "ACC_EARRING_A",
-        "earring2": "ACC_EARRING_B",
-        "ring1": "ACC_RING_A",
-        "ring2": "ACC_RING_B",
-        "stone": "ACC_ABILITYSTONE_A",
-        "bracelet": "ACC_BRACELET_A"
-      },
       "equippedAvatarItemIds": {
         "head": "",
         "outfit": ""
@@ -122,21 +77,6 @@
     "Slayer": {
       "displayName": "슬레이어",
       "symbol": "UI/CharacterInfo/class_slayer.png",
-      "equippedItemIds": {
-        "weapon": "",
-        "helmet": "",
-        "shoulder": "",
-        "top": "",
-        "pants": "",
-        "gloves": "",
-        "necklace": "ACC_NECKLACE_A",
-        "earring1": "ACC_EARRING_A",
-        "earring2": "ACC_EARRING_B",
-        "ring1": "ACC_RING_A",
-        "ring2": "ACC_RING_B",
-        "stone": "ACC_ABILITYSTONE_A",
-        "bracelet": "ACC_BRACELET_A"
-      },
       "equippedAvatarItemIds": {
         "head": "",
         "outfit": ""
@@ -145,21 +85,6 @@
     "Artist": {
       "displayName": "도화가",
       "symbol": "UI/CharacterInfo/class_artist.png",
-      "equippedItemIds": {
-        "weapon": "EQUIP_ARTIST_HONORWHISPER_WEAPON",
-        "helmet": "EQUIP_ARTIST_HONORWHISPER_HELMET",
-        "shoulder": "EQUIP_ARTIST_HONORWHISPER_SHOULDER",
-        "top": "EQUIP_ARTIST_HONORWHISPER_TOP",
-        "pants": "EQUIP_ARTIST_HONORWHISPER_PANTS",
-        "gloves": "EQUIP_ARTIST_HONORWHISPER_GLOVES",
-        "necklace": "ACC_NECKLACE_A",
-        "earring1": "ACC_EARRING_A",
-        "earring2": "ACC_EARRING_B",
-        "ring1": "ACC_RING_A",
-        "ring2": "ACC_RING_B",
-        "stone": "ACC_ABILITYSTONE_A",
-        "bracelet": "ACC_BRACELET_A"
-      },
       "equippedAvatarItemIds": {
         "head": "",
         "outfit": ""
@@ -168,21 +93,6 @@
     "DimensionMaster": {
       "displayName": "디멘션마스터",
       "symbol": "UI/CharacterInfo/class_dimensionmaster.png",
-      "equippedItemIds": {
-        "weapon": "EQUIP_DIMENSIONMASTER_HONORWHISPER_WEAPON",
-        "helmet": "EQUIP_DIMENSIONMASTER_HONORWHISPER_HELMET",
-        "shoulder": "EQUIP_DIMENSIONMASTER_HONORWHISPER_SHOULDER",
-        "top": "EQUIP_DIMENSIONMASTER_HONORWHISPER_TOP",
-        "pants": "EQUIP_DIMENSIONMASTER_HONORWHISPER_PANTS",
-        "gloves": "EQUIP_DIMENSIONMASTER_HONORWHISPER_GLOVES",
-        "necklace": "ACC_NECKLACE_A",
-        "earring1": "ACC_EARRING_A",
-        "earring2": "ACC_EARRING_B",
-        "ring1": "ACC_RING_A",
-        "ring2": "ACC_RING_B",
-        "stone": "ACC_ABILITYSTONE_A",
-        "bracelet": "ACC_BRACELET_A"
-      },
       "equippedAvatarItemIds": {
         "head": "",
         "outfit": ""

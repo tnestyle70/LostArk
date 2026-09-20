@@ -1,8 +1,5 @@
-/* WinSock2 then dinput, ahead of everything else -- the order PlayerController.cpp and
-MvpResultView.cpp already use for the DIK_* constants (dinput.h drags in windows.h/winsock.h and
-declares POINT, which Engine_Enum.h's Engine::POINT would make ambiguous). */
+/* WinSock2 ahead of everything else (Client_Defines pulls the socket headers). */
 #include <WinSock2.h>
-#include <dinput.h>
 
 #include "VehicleWindowView.h"
 
@@ -228,7 +225,6 @@ void Client::CVehicleWindowView::Update(const f32_t fTimeDelta,
 	if (!m_bOpen)
 	{
 		Hide();
-		m_bEscapeDownLastFrame = false;
 		m_Drag.Reset();
 		return;
 	}
@@ -242,13 +238,6 @@ void Client::CVehicleWindowView::Update(const f32_t fTimeDelta,
 	Update_Chrome();
 	Update_Rows(pLocalCharacter, Player);
 	Update_Buttons(Player);
-
-	/* Esc closes the window (edge, so a held key from before it opened doesn't). */
-	const bool_t bEscapeDown =
-		0 != (CGameInstance::Get().Get_DIKeyState(DIK_ESCAPE) & 0x80);
-	if (bEscapeDown && !m_bEscapeDownLastFrame)
-		Close();
-	m_bEscapeDownLastFrame = bEscapeDown;
 
 	/* Anything over the window belongs to the window -- keeps a click on the panel from
 	turning into a gameplay move command underneath. */

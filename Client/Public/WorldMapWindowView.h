@@ -42,7 +42,7 @@ class CWorldMapWindowView final
 {
 public:
 	/* Cancel transient gestures without closing or moving the window. */
-	void Cancel_Interaction() { m_Drag.Reset(); m_bPanning = false; m_bEscapeDownLastFrame = true; }
+	void Cancel_Interaction() { m_Drag.Reset(); m_bPanning = false; }
 	CWorldMapWindowView(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext);
 	~CWorldMapWindowView();
 
@@ -54,6 +54,8 @@ public:
 	/* Opening recenters on the local player at the default zoom. */
 	void Toggle();
 	void Close() { m_bOpen = false; m_iDialogHoleId = 0u; }
+	/* One Esc press routed here by CMainApp: closes the hole dialog first, then the window. */
+	void Handle_EscapeEdge();
 
 	/* Per frame. pSnapshot == nullptr (no minimap-capable level / no local character yet) or an
 	unknown eLevel hides the window. Hover / click / drag / wheel / Esc. No-op (hides) while
@@ -206,7 +208,6 @@ private:
 	const AREA*	m_pActiveArea = nullptr;
 	bool_t		m_bOpen = false;
 	bool_t		m_bShowMarkers = true;
-	bool_t		m_bEscapeDownLastFrame = false;
 	bool_t		m_bRecenterOnUpdate = false;
 	int32_t		m_iZoomLevel = 0;
 	PANEL		m_ePanel = PANEL::NONE;

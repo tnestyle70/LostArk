@@ -940,6 +940,9 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds,
 		case ROOM_COMMAND_TYPE::USE_ITEM:
 			Handle_UseItem(command.iSessionId, command.UseItem);
 			break;
+		case ROOM_COMMAND_TYPE::SET_EQUIPMENT:
+			Handle_SetEquipment(command.iSessionId, command.SetEquipment);
+			break;
 		case ROOM_COMMAND_TYPE::DESPAWN_ALL_WORLD_ENTITIES:
 			Handle_DespawnAllWorldEntities(
 				command.iSessionId, command.DespawnAllWorldEntities);

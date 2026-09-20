@@ -38,7 +38,11 @@ class CCharacterInfoWindowView final
 {
 public:
 	/* Cancel transient gestures without closing or moving the window. */
-	void Cancel_Interaction() { m_bDraggingPanel = m_bDraggingPortrait = false; }
+	void Cancel_Interaction()
+	{
+		m_bDraggingPanel = m_bDraggingPortrait = false;
+		m_eUnequipRequest = LostArk::Shared::EQUIPMENT_SLOT::NONE;
+	}
 	CCharacterInfoWindowView(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext);
 	~CCharacterInfoWindowView();
 
@@ -69,6 +73,9 @@ public:
 	/* True once per click on the title row's change-title button; CMainApp toggles the honor title
 	window with it. */
 	bool_t Take_HonorTitleWindowRequest();
+	/* True once per right-click on a worn equipment slot (retail unequips on right-click);
+	CMainApp asks the Server to move it to the bag. */
+	bool_t Take_UnequipRequest(LostArk::Shared::EQUIPMENT_SLOT& outSlot);
 	/* While another runtime window (the avatar book) is drawn over this one: this window stops
 	registering itself as the router's top window and its own labels skip the covered area. */
 	void Set_Covered(bool_t bCovered) { m_bCovered = bCovered; }
@@ -84,10 +91,6 @@ private:
 	{
 		wstring strDisplayName;
 		string strSymbolPath;
-		/* Data/Items/ItemCatalog.json item id per equipment slot (weapon, helmet, shoulder, top,
-		pants, gloves, necklace, earring1, earring2, ring1, ring2, stone, bracelet). An empty or
-		unknown id leaves that slot as its silhouette; icon and grade art come from the catalog. */
-		std::unordered_map<string, string> EquippedItemIds;
 		/* Same for the avatar page: "head" (AVATAR_HEAD) and "outfit" (AVATAR_ARMOR). The icon
 		shows only when the character's spec actually carries that avatar part. */
 		std::unordered_map<string, string> EquippedAvatarItemIds;
@@ -160,6 +163,7 @@ private:
 	bool_t m_bCovered = false;
 	bool_t m_bAvatarBookRequested = false;
 	bool_t m_bHonorTitleWindowRequested = false;
+	LostArk::Shared::EQUIPMENT_SLOT m_eUnequipRequest = LostArk::Shared::EQUIPMENT_SLOT::NONE;
 	int32_t m_iSelectedTab = 0;
 	bool_t m_bAvatarMode = false;
 	bool_t m_bDraggingPanel = false;

@@ -2736,6 +2736,8 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 		}
 	}
 
+	Tick_MvpLedgers();
+
 	for (SERVER_WORLD_ENTITY& entity : m_WorldEntities)
 	{
 		// Only the Product arena's primary Valtan completes the raid. Dependent
@@ -2754,12 +2756,16 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 		}
 		entity.bLootGranted = true;
 		m_bValtanRaidCleared = true;
+		m_GateMvpLedger.clear();
+		Merge_MvpLedger(entity);
+		Broadcast_RaidMvpResult(1u);
 		for (const auto& [sessionId, playerId] : m_PlayerIdBySessionId)
 		{
 			const auto playerIter = m_Players.find(playerId);
 			if (playerIter == m_Players.end())
 				continue;
-			for (const std::string& itemId : m_ValtanClearRewards.Get_ItemIds())
+			for (const std::string& itemId :
+				m_ValtanClearRewards.Get_ItemIds(playerIter->second.eCharacterClass))
 				(void)Grant_Item(playerIter->second, itemId, 1u);
 			const std::shared_ptr<CClientSession> session =
 				Find_Session(sessionId);
@@ -2791,6 +2797,9 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 		}
 		if (WORLD_BOOTSTRAP_KIND::BOSS == iter->eKind)
 		{
+			/* A gate boss's award ledger goes to the room before the clear is decided. */
+			if (Gate_IndexOfPlacement(iter->strPlacementId) >= 0)
+				Merge_MvpLedger(*iter);
 			Notify_KoukuRaidBossDeath(*iter, updateTick);
 			if (LostArk::Shared::WORLD_ID::VALTAN_ARENA == m_eWorldId &&
 				"ENCOUNTER_VALTAN" == iter->strEncounterId &&

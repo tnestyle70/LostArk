@@ -1565,7 +1565,15 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		m_fSmoothedFps = m_fSmoothedFps <= 0.f ? fInstantFps : m_fSmoothedFps + (fInstantFps - m_fSmoothedFps) * 0.1f;
 	}
 
-	if (!CUIInputRouter::Get().Is_CinematicSuppressed())
+	/* The loading screen owns the screen: no window opens or toggles under it, and anything left
+	open from the previous Level closes here. */
+	const bool_t bLoadingLevel =
+		ETOUI(LEVEL::LOADING) == CGameInstance::Get().Get_CurrentLevelID();
+	if (bLoadingLevel && !m_bWasLoadingLevel)
+		Close_RuntimeWindowsForLoading();
+	m_bWasLoadingLevel = bLoadingLevel;
+
+	if (!CUIInputRouter::Get().Is_CinematicSuppressed() && !bLoadingLevel)
 	{
 	/* I is a normal gameplay keybind (the inventory), not an F1/F6 tool-switch key.
 	Is_TextInputActive is the runtime UI's own WantTextInput (the ImGui-free nickname field) --
@@ -3785,7 +3793,10 @@ HRESULT CMainApp::Render()
 
 	/* The runtime windows' labels, each on its own window layer (the steps
 	Register_UITextOccluders gave them): a window's text is hidden exactly where a window
-	stacked above it covers it. */
+	stacked above it covers it. None of them draw over the loading screen -- their sprites are
+	hidden there, so their labels would be the only thing left on it. */
+	if (ETOUI(LEVEL::LOADING) != CGameInstance::Get().Get_CurrentLevelID())
+	{
 	CUITextOcclusion& Occlusion = CUITextOcclusion::Get();
 	Occlusion.Apply(UI_TEXT_LAYER::WINDOW + 1);
 	if (nullptr != m_pCharacterInfoView)
@@ -3808,6 +3819,7 @@ HRESULT CMainApp::Render()
 	Occlusion.Apply(UI_TEXT_LAYER::HUD);
 	if (nullptr != m_pSongCastGaugeView)
 		m_pSongCastGaugeView->Render_Text();
+	}
 
 	}
 	// Cinematic subtitles remain visible while ordinary combat UI is suppressed.
@@ -4260,7 +4272,40 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 	Update_SpecialSlot();
 	Update_BuffBar();
 	if (nullptr != m_pInventoryView)
+	{
 		m_pInventoryView->Update(CCombatHUDViewModel::Get().Get_Inventory().Items);
+		/* Right-click equip: the first free slot of the item's kind (the two earrings / two
+		   rings), or the first one when both are worn. The Server checks kind and class. */
+		string strEquipItemId;
+		if (m_pInventoryView->Try_Consume_EquipRequest(strEquipItemId))
+		{
+			using LostArk::Shared::EQUIPMENT_SLOT;
+			const ITEM_DEFINITION* pEquip = CItemCatalog::Find_ById(strEquipItemId);
+			EQUIPMENT_SLOT eTarget = EQUIPMENT_SLOT::NONE;
+			for (uint32_t iSlot = ETOUI(EQUIPMENT_SLOT::HELMET);
+				nullptr != pEquip && iSlot < ETOUI(EQUIPMENT_SLOT::END); ++iSlot)
+			{
+				const EQUIPMENT_SLOT eSlot = static_cast<EQUIPMENT_SLOT>(iSlot);
+				const char* pKind = LostArk::Shared::Equipment_SlotKind(eSlot);
+				if (nullptr == pKind || pEquip->strEquipSlot != pKind)
+					continue;
+				bool_t bWorn = false;
+				for (const LostArk::Shared::INVENTORY_ITEM_SNAPSHOT& Item :
+					CCombatHUDViewModel::Get().Get_Inventory().Items)
+					bWorn = bWorn || Item.eEquippedSlot == eSlot;
+				if (EQUIPMENT_SLOT::NONE == eTarget)
+					eTarget = eSlot;
+				if (!bWorn)
+				{
+					eTarget = eSlot;
+					break;
+				}
+			}
+			if (EQUIPMENT_SLOT::NONE != eTarget)
+				(void)CNetworkManager::Get().Send_SetEquipment(
+					m_iNextUseItemSequence++, eTarget, true, strEquipItemId);
+		}
+	}
 	if (nullptr != m_pCharacterInfoView)
 	{
 		/* Each level owns its own CClientReplication, the same way the party window above
@@ -4287,6 +4332,10 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 				pLocalCharacter = pKoukuArena->Get_LocalCharacter();
 		}
 		m_pCharacterInfoView->Update(fTimeDelta, pLocalCharacter, player);
+		LostArk::Shared::EQUIPMENT_SLOT eUnequipSlot = LostArk::Shared::EQUIPMENT_SLOT::NONE;
+		if (m_pCharacterInfoView->Take_UnequipRequest(eUnequipSlot))
+			(void)CNetworkManager::Get().Send_SetEquipment(
+				m_iNextUseItemSequence++, eUnequipSlot, false, {});
 		if (nullptr != m_pAvatarBookView)
 		{
 			/* The avatar-page avatar book button toggles the book; the book lives only while the
@@ -5211,6 +5260,19 @@ void CMainApp::Update_LobbyButtons(const f32_t fTimeDelta)
 	m_pLobbyBackgroundView->Update(fTimeDelta);
 }
 
+void CMainApp::Close_RuntimeWindowsForLoading()
+{
+	if (nullptr != m_pInventoryView) m_pInventoryView->Close();
+	if (nullptr != m_pCharacterInfoView) m_pCharacterInfoView->Close();
+	if (nullptr != m_pAvatarBookView) m_pAvatarBookView->Close();
+	if (nullptr != m_pVehicleWindowView) m_pVehicleWindowView->Close();
+	if (nullptr != m_pHonorTitleWindowView) m_pHonorTitleWindowView->Close();
+	if (nullptr != m_pWorldMapWindowView) m_pWorldMapWindowView->Close();
+	if (nullptr != m_pSystemOptionView) m_pSystemOptionView->Close();
+	if (nullptr != m_pQuickSlotDragView) m_pQuickSlotDragView->Cancel();
+	m_iEscapeWindowCount = 0u;
+}
+
 bool_t CMainApp::Is_AnyRuntimeWindowOpen() const
 {
 	/* Every runtime window that answers Escape with "close me". The system option window
@@ -5229,6 +5291,87 @@ bool_t CMainApp::Is_AnyRuntimeWindowOpen() const
 	return bOpen;
 }
 
+bool_t CMainApp::Is_EscapeWindowOpen(const ESCAPE_WINDOW eWindow) const
+{
+	switch (eWindow)
+	{
+	case ESCAPE_WINDOW::INVENTORY: return nullptr != m_pInventoryView && m_pInventoryView->Is_Open();
+	case ESCAPE_WINDOW::CHARACTER_INFO: return nullptr != m_pCharacterInfoView && m_pCharacterInfoView->Is_Open();
+	case ESCAPE_WINDOW::AVATAR_BOOK: return nullptr != m_pAvatarBookView && m_pAvatarBookView->Is_Open();
+	case ESCAPE_WINDOW::HONOR_TITLE: return nullptr != m_pHonorTitleWindowView && m_pHonorTitleWindowView->Is_Open();
+	case ESCAPE_WINDOW::VEHICLE: return nullptr != m_pVehicleWindowView && m_pVehicleWindowView->Is_Open();
+	case ESCAPE_WINDOW::WORLD_MAP: return nullptr != m_pWorldMapWindowView && m_pWorldMapWindowView->Is_Open();
+	default: return false;
+	}
+}
+
+void CMainApp::Sync_EscapeWindowOrder()
+{
+	uint32_t iKept = 0u;
+	for (uint32_t i = 0u; i < m_iEscapeWindowCount; ++i)
+	{
+		if (Is_EscapeWindowOpen(m_EscapeWindowOrder[i]))
+			m_EscapeWindowOrder[iKept++] = m_EscapeWindowOrder[i];
+	}
+	m_iEscapeWindowCount = iKept;
+	/* Enum order breaks a same-frame tie, so the avatar book / title window land above the info
+	window they open over. */
+	for (uint32_t iWindow = 0u; iWindow < ETOUI(ESCAPE_WINDOW::END); ++iWindow)
+	{
+		const ESCAPE_WINDOW eWindow = static_cast<ESCAPE_WINDOW>(iWindow);
+		if (!Is_EscapeWindowOpen(eWindow))
+			continue;
+		bool_t bListed = false;
+		for (uint32_t i = 0u; i < m_iEscapeWindowCount && !bListed; ++i)
+			bListed = m_EscapeWindowOrder[i] == eWindow;
+		if (!bListed)
+			m_EscapeWindowOrder[m_iEscapeWindowCount++] = eWindow;
+	}
+}
+
+bool_t CMainApp::Close_TopEscapeWindow()
+{
+	Sync_EscapeWindowOrder();
+	if (0u == m_iEscapeWindowCount)
+		return false;
+	const ESCAPE_WINDOW eTop = m_EscapeWindowOrder[--m_iEscapeWindowCount];
+	switch (eTop)
+	{
+	case ESCAPE_WINDOW::INVENTORY: m_pInventoryView->Close(); break;
+	case ESCAPE_WINDOW::CHARACTER_INFO: m_pCharacterInfoView->Close(); break;
+	case ESCAPE_WINDOW::AVATAR_BOOK: m_pAvatarBookView->Close(); break;
+	case ESCAPE_WINDOW::HONOR_TITLE: m_pHonorTitleWindowView->Close(); break;
+	case ESCAPE_WINDOW::VEHICLE: m_pVehicleWindowView->Close(); break;
+	case ESCAPE_WINDOW::WORLD_MAP:
+		/* Its hole dialog takes the press first; the window stays on top until it closes. */
+		m_pWorldMapWindowView->Handle_EscapeEdge();
+		if (m_pWorldMapWindowView->Is_Open())
+			++m_iEscapeWindowCount;
+		break;
+	default: break;
+	}
+	return true;
+}
+
+bool_t CMainApp::Is_EscapeOwnedElsewhere() const
+{
+	/* These read the same press in their own Update, which runs later this frame. */
+	if (nullptr != m_pQuickSlotDragView && m_pQuickSlotDragView->Is_Carrying())
+		return true;
+	if (CLevel_Bern* pBern = CLevel_Bern::Get_Active();
+		nullptr != pBern && ETOUI(LEVEL::BERN) == CGameInstance::Get().Get_CurrentLevelID() &&
+		pBern->Is_ValtanEntryModalOpen())
+		return true;
+#ifdef _DEBUG
+	if (CLevel_CharacterSelect* pCharacterSelect = CLevel_CharacterSelect::Get_Active();
+		nullptr != pCharacterSelect &&
+		ETOUI(LEVEL::CHARACTER_SELECT) == CGameInstance::Get().Get_CurrentLevelID() &&
+		pCharacterSelect->Is_DebugRaidEntryPreviewOpen())
+		return true;
+#endif
+	return false;
+}
+
 void CMainApp::Update_SystemOptionWindow(const f32_t fTimeDelta)
 {
 	Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(),
@@ -5239,8 +5382,10 @@ void CMainApp::Update_SystemOptionWindow(const f32_t fTimeDelta)
 	/* Read the other windows before their own Update runs this frame: an Escape that closes
 	one of them must not fall through to opening this. This one Escape edge, read here from
 	the same key source every frame, both opens and closes the window -- the view polling
-	DirectInput on its own lagged a frame behind and closed what this had just opened. */
+	DirectInput on its own lagged a frame behind and closed what this had just opened. The same
+	edge closes the toggle windows (inventory, info, vehicle, map...) one per press. */
 	const bool_t bOtherWindowOpen = Is_AnyRuntimeWindowOpen();
+	Sync_EscapeWindowOrder();
 	if (!ImGui::GetIO().WantTextInput && !CUIInputRouter::Get().Is_TextInputActive())
 	{
 		const bool_t bWindowFocused =
@@ -5264,6 +5409,14 @@ void CMainApp::Update_SystemOptionWindow(const f32_t fTimeDelta)
 			{
 				m_bItemUpgradePreviewVisible = false;
 				Hide_ItemUpgrade();
+			}
+			else if (Is_EscapeOwnedElsewhere())
+			{
+				/* The carry / popup closes itself on this press; nothing else does. */
+			}
+			else if (Close_TopEscapeWindow())
+			{
+				/* One press, one window: the newest open one. */
 			}
 			else if (!bOtherWindowOpen)
 			{
@@ -7334,35 +7487,53 @@ void CMainApp::RenderItemAnnounceText()
 	if (!rects.isValid || rects.strItemName.empty())
 		return;
 
-	const float2_t vTextViewportSize = CGameInstance::Get().Get_ViewportSize();
-	const float textScaleX = vTextViewportSize.x / 1280.f;
-	const float textScaleY = vTextViewportSize.y / 720.f;
-	const float textUiScale = (std::min)(textScaleX, textScaleY);
+	const float2_t vViewport = CGameInstance::Get().Get_ViewportSize();
+	const f32_t fScaleX = vViewport.x / 1280.f;
+	const f32_t fScaleY = vViewport.y / 720.f;
+	/* announce.gfx text sizes are 1920x1080 stage px: the text line 16, the quality row 12.
+	ITEM_ANNOUNCE_TEXT_SCALE is the project's own enlargement (user request), not retail. */
+	constexpr f32_t ITEM_ANNOUNCE_TEXT_SCALE = 1.3f;
+	const f32_t fTextPx = 16.f * 2.f / 3.f * ITEM_ANNOUNCE_TEXT_SCALE * fScaleY;
+	const f32_t fQualityPx = 12.f * 2.f / 3.f * ITEM_ANNOUNCE_TEXT_SCALE * fScaleY;
 
-	// Scale is fit against the combined string's own measured extent, same as
-	// before the name/suffix split, so this doesn't change size/wrapping behavior.
-	const wstring strCombined = rects.strItemName + rects.strSuffix;
-	const float2_t vMeasured =
-		CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strCombined.c_str());
-	const f32_t fScaleByHeight = (vMeasured.y > 0.f) ? (rects.fTextHeight * 0.7f / vMeasured.y) : 1.f;
-	const f32_t fScaleByWidth = (vMeasured.x > 0.f) ? (rects.fTextWidth * 0.95f / vMeasured.x) : 1.f;
-	const f32_t fScale = (std::min)(fScaleByHeight, fScaleByWidth) * 0.8f * textUiScale;
-
-	const float2_t vNameMeasured =
-		CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), rects.strItemName.c_str());
-	const f32_t fCenterY = (rects.fTextY + rects.fTextHeight * 0.5f) * textScaleY;
-	const f32_t fNameX = rects.fTextX * textScaleX;
-	// Item grade gold/orange -- same #FF9100-ish tone RenderItemUpgradeLevelText
-	// already uses for an equipment item's own name label.
-	const fvector_t vGoldOrange = XMVectorSet(1.0f, 0.5686f, 0.0f, 1.f);
-	CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), rects.strItemName.c_str(),
-		float2_t(fNameX, fCenterY), vGoldOrange, 0.f, float2_t(0.f, 0.5f), fScale);
-	if (!rects.strSuffix.empty())
+	/* textField 95: one centred line, the name in its grade colour, the rest white. */
+	f32_t fNameScale = 1.f, fSuffixScale = 1.f;
+	const wstring_t strNameFont = UILabelFont::Resolve(TEXT("Font_YG760"), fTextPx, fNameScale);
+	const wstring_t strSuffixFont = UILabelFont::Resolve(TEXT("Font_YG760"), fTextPx, fSuffixScale);
+	const f32_t fNameWidth =
+		CGameInstance::Get().Measure_Text(strNameFont, rects.strItemName.c_str()).x * fNameScale;
+	const float2_t vSuffixSize = CGameInstance::Get().Measure_Text(strSuffixFont, rects.strSuffix.c_str());
+	const f32_t fLineWidth = fNameWidth + vSuffixSize.x * fSuffixScale;
+	const f32_t fLineLeft = std::round((rects.fTextX + rects.fTextWidth * 0.5f) * fScaleX - fLineWidth * 0.5f);
+	const f32_t fLineTop = std::round((rects.fTextY + rects.fTextHeight * 0.5f) * fScaleY -
+		vSuffixSize.y * fSuffixScale * 0.5f);
+	const auto Rgb = [](const std::uint32_t iRgb, const f32_t fAlpha)
 	{
-		CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), rects.strSuffix.c_str(),
-			float2_t(fNameX + vNameMeasured.x * fScale, fCenterY),
-			Colors::White, 0.f, float2_t(0.f, 0.5f), fScale);
-	}
+		return XMVectorSet(((iRgb >> 16) & 0xffu) / 255.f, ((iRgb >> 8) & 0xffu) / 255.f,
+			(iRgb & 0xffu) / 255.f, fAlpha);
+	};
+	const fvector_t vNameColor = Rgb(rects.iNameRgb, rects.fTextAlpha);
+	CGameInstance::Get().Draw_Text(strNameFont, rects.strItemName.c_str(),
+		float2_t(fLineLeft, fLineTop), vNameColor, 0.f, float2_t(0.f, 0.f), fNameScale);
+	CGameInstance::Get().Draw_Text(strSuffixFont, rects.strSuffix.c_str(),
+		float2_t(std::round(fLineLeft + fNameWidth), fLineTop),
+		XMVectorSet(1.f, 1.f, 1.f, rects.fTextAlpha), 0.f, float2_t(0.f, 0.f), fSuffixScale);
+
+	/* qualityProgress: "[$]item.option_quality" (품질) centred in its box, the value
+	right-aligned in targetText and coloured by the tier the value reaches. */
+	UILabelFont::Draw_Centered(TEXT("Font_YG760"), L"\xD488\xC9C8",
+		(rects.fQualityLabelX + rects.fQualityLabelWidth * 0.5f) * fScaleX,
+		(rects.fQualityLabelY + rects.fQualityLabelHeight * 0.5f) * fScaleY,
+		fQualityPx, XMVectorSet(1.f, 1.f, 1.f, rects.fQualityAlpha));
+	f32_t fValueScale = 1.f;
+	const wstring_t strValueFont = UILabelFont::Resolve(TEXT("Font_YG760"), fQualityPx, fValueScale);
+	const float2_t vValueSize = CGameInstance::Get().Measure_Text(strValueFont, rects.strQualityValue.c_str());
+	CGameInstance::Get().Draw_Text(strValueFont, rects.strQualityValue.c_str(),
+		float2_t(std::round((rects.fQualityValueX + rects.fQualityValueWidth) * fScaleX - vValueSize.x * fValueScale),
+			std::round((rects.fQualityValueY + rects.fQualityValueHeight * 0.5f) * fScaleY -
+				vValueSize.y * fValueScale * 0.5f)),
+		Rgb(rects.iQualityRgb, rects.fQualityAlpha),
+		0.f, float2_t(0.f, 0.f), fValueScale);
 }
 
 void CMainApp::Update_ChargeGauge()

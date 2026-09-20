@@ -39,11 +39,13 @@ bool LostArk::Server::CGameRoom::Grant_Item(
 	if (nullptr == itemDefinition)
 		return false;
 
+	/* Stacks only with the bag entry; an equipped copy stays where it is. */
 	const auto existing = std::find_if(
 		player.Inventory.begin(), player.Inventory.end(),
 		[&itemId](const INVENTORY_ITEM_SNAPSHOT& item)
 		{
-			return item.strItemId == itemId;
+			return item.strItemId == itemId &&
+				EQUIPMENT_SLOT::NONE == item.eEquippedSlot;
 		});
 	if (existing == player.Inventory.end())
 	{
@@ -119,7 +121,8 @@ void LostArk::Server::CGameRoom::Handle_UseItem(
 		player.Inventory.begin(), player.Inventory.end(),
 		[&request](const INVENTORY_ITEM_SNAPSHOT& item)
 		{
-			return item.strItemId == request.strItemId;
+			return item.strItemId == request.strItemId &&
+				EQUIPMENT_SLOT::NONE == item.eEquippedSlot;
 		});
 	if (existing == player.Inventory.end() || 0u == existing->iQuantity)
 		return;
@@ -137,6 +140,138 @@ void LostArk::Server::CGameRoom::Handle_UseItem(
 
 	if (!Send_InventorySnapshot(
 		session, request.iRequestSequence, player.Inventory))
+	{
+		session->Request_Close();
+	}
+}
+
+namespace
+{
+	/* ItemCatalog.json characterClass for a class; "" for a class with no items. */
+	const char* Item_ClassName(const LostArk::Shared::CHARACTER_CLASS_ID eClass)
+	{
+		using LostArk::Shared::CHARACTER_CLASS_ID;
+		switch (eClass)
+		{
+		case CHARACTER_CLASS_ID::LANCE_MASTER: return "LanceMaster";
+		case CHARACTER_CLASS_ID::GUNSLINGER: return "Gunslinger";
+		case CHARACTER_CLASS_ID::SLAYER: return "Slayer";
+		case CHARACTER_CLASS_ID::ARTIST: return "Artist";
+		case CHARACTER_CLASS_ID::DIMENSIONMASTER: return "DimensionMaster";
+		case CHARACTER_CLASS_ID::WARLORD: return "Warlord";
+		default: return "";
+		}
+	}
+
+	bool Is_UsableByClass(const LostArk::Server::SERVER_ITEM_DEFINITION& item,
+		const LostArk::Shared::CHARACTER_CLASS_ID eClass)
+	{
+		return item.strCharacterClass.empty() || item.strCharacterClass == Item_ClassName(eClass);
+	}
+
+	/* A bag entry of this item already exists, so an equipped copy cannot go back to the
+	   bag without breaking the one-bag-entry-per-item rule. */
+	bool Has_BagEntry(const std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT>& inventory,
+		const std::string& itemId)
+	{
+		for (const LostArk::Shared::INVENTORY_ITEM_SNAPSHOT& item : inventory)
+			if (item.strItemId == itemId && LostArk::Shared::EQUIPMENT_SLOT::NONE == item.eEquippedSlot)
+				return true;
+		return false;
+	}
+}
+
+bool LostArk::Server::CGameRoom::Apply_SetEquipment(
+	SERVER_PLAYER& player, const LostArk::Shared::C2S_SET_EQUIPMENT& request) const
+{
+	using namespace LostArk::Shared;
+	std::vector<INVENTORY_ITEM_SNAPSHOT>& inventory = player.Inventory;
+	const auto occupant = std::find_if(inventory.begin(), inventory.end(),
+		[&request](const INVENTORY_ITEM_SNAPSHOT& item) { return item.eEquippedSlot == request.eSlot; });
+
+	if (!request.bEquip)
+	{
+		if (occupant == inventory.end() || Has_BagEntry(inventory, occupant->strItemId))
+			return false;
+		occupant->eEquippedSlot = EQUIPMENT_SLOT::NONE;
+		return true;
+	}
+
+	const SERVER_ITEM_DEFINITION* definition = m_ItemCatalog.Find_Item(request.strItemId);
+	const char* slotKind = Equipment_SlotKind(request.eSlot);
+	if (nullptr == definition || nullptr == slotKind || definition->strEquipSlot != slotKind ||
+		!Is_UsableByClass(*definition, player.eCharacterClass))
+		return false;
+	const auto bagEntry = std::find_if(inventory.begin(), inventory.end(),
+		[&request](const INVENTORY_ITEM_SNAPSHOT& item)
+		{
+			return item.strItemId == request.strItemId && EQUIPMENT_SLOT::NONE == item.eEquippedSlot;
+		});
+	if (bagEntry == inventory.end() || 0u == bagEntry->iQuantity)
+		return false;
+	/* The item the slot held goes back to the bag. */
+	if (occupant != inventory.end())
+	{
+		if (occupant->strItemId != request.strItemId && Has_BagEntry(inventory, occupant->strItemId))
+			return false;
+		if (occupant->strItemId == request.strItemId)
+			return false;
+	}
+	const bool splitsStack = 1u < bagEntry->iQuantity;
+	if (splitsStack && inventory.size() >= MAX_INVENTORY_ITEMS)
+		return false;
+
+	if (occupant != inventory.end())
+		occupant->eEquippedSlot = EQUIPMENT_SLOT::NONE;
+	if (splitsStack)
+	{
+		--bagEntry->iQuantity;
+		INVENTORY_ITEM_SNAPSHOT equipped{};
+		equipped.strItemId = request.strItemId;
+		equipped.iQuantity = 1u;
+		equipped.eEquippedSlot = request.eSlot;
+		inventory.push_back(std::move(equipped));
+	}
+	else
+	{
+		bagEntry->eEquippedSlot = request.eSlot;
+	}
+	return true;
+}
+
+bool LostArk::Server::CGameRoom::Unequip_OtherClassItems(SERVER_PLAYER& player) const
+{
+	using namespace LostArk::Shared;
+	bool changed = false;
+	for (INVENTORY_ITEM_SNAPSHOT& item : player.Inventory)
+	{
+		if (EQUIPMENT_SLOT::NONE == item.eEquippedSlot)
+			continue;
+		const SERVER_ITEM_DEFINITION* definition = m_ItemCatalog.Find_Item(item.strItemId);
+		if (nullptr == definition || Is_UsableByClass(*definition, player.eCharacterClass) ||
+			Has_BagEntry(player.Inventory, item.strItemId))
+			continue;
+		item.eEquippedSlot = EQUIPMENT_SLOT::NONE;
+		changed = true;
+	}
+	return changed;
+}
+
+void LostArk::Server::CGameRoom::Handle_SetEquipment(
+	const SESSION_ID sessionId,
+	const LostArk::Shared::C2S_SET_EQUIPMENT& request)
+{
+	const std::shared_ptr<CClientSession> session = Find_Session(sessionId);
+	const auto sessionIter = m_PlayerIdBySessionId.find(sessionId);
+	if (nullptr == session || sessionIter == m_PlayerIdBySessionId.end())
+		return;
+	const auto playerIter = m_Players.find(sessionIter->second);
+	if (playerIter == m_Players.end())
+		return;
+	/* A refused move still answers, so the window drops any optimistic state. */
+	(void)Apply_SetEquipment(playerIter->second, request);
+	if (!Send_InventorySnapshot(
+		session, request.iRequestSequence, playerIter->second.Inventory))
 	{
 		session->Request_Close();
 	}
