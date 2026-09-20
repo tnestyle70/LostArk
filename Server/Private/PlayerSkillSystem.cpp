@@ -382,11 +382,25 @@ bool LostArk::Server::CPlayerSkillSystem::Try_StartInternal(
 	if (isStandup != (PLAYER_ACTION_STATE::KNOCKDOWN == player.eAction))
 		return false;
 
-	/* A combo is the only reason to accept input while an action runs, and only
-	for the same skill inside the stage's own window. Everything else keeps the
-	original guard, so no skill can be interrupted by another. */
+	/* A combo continuation, or a running action that has reached one of its own
+	authored cancel windows, is the only reason to accept input mid-action.
+	Everything else keeps the original guard. */
 	if (!isStandup && PLAYER_ACTION_STATE::NONE != player.eAction)
 	{
+		const PLAYER_SKILL_DEFINITION* running =
+			PLAYER_ACTION_STATE::SKILL == player.eAction ?
+				catalog.Find_Skill(player.iCurrentSkillId) : nullptr;
+		if (nullptr != running &&
+			command.iSkillId != player.iCurrentSkillId &&
+			Is_InsideCancelWindow(
+				*running, player.iComboStage,
+				player.fActionElapsedSeconds, false))
+		{
+			/* Fall through to the cooldown, resource and stance checks below:
+			the cancel opens the door, it does not pay for the skill. */
+		}
+		else
+		{
 		const bool isComboContinuation =
 			PLAYER_SKILL_KIND::COMBO == skill->eSkillKind &&
 			PLAYER_ACTION_STATE::SKILL == player.eAction &&
@@ -410,6 +424,7 @@ bool LostArk::Server::CPlayerSkillSystem::Try_StartInternal(
 				AimDistance(player, command.fAimX, command.fAimZ);
 		}
 		return false;
+		}
 	}
 	const auto cooldown = player.CooldownEndTickBySkillId.find(command.iSkillId);
 	/* Signed difference so a tick counter that wrapped keeps ordering; same

@@ -7090,7 +7090,7 @@
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
                         "targetId":  "skill:17030",
                         "targetField":  "resourceCost",
-                        "basis":  "OFFICIAL_EXTRACTED",
+                        "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "official-table-cell",
                                        "database":  "EFTable_Skill.db",
@@ -7101,8 +7101,8 @@
                                        "column":  "CostMp"
                                    },
                         "sourceValue":  211,
-                        "transform":  "identity",
-                        "resultValue":  211
+                        "transform":  "project-scale-0.1",
+                        "resultValue":  21
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -7382,7 +7382,7 @@
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
                         "targetId":  "skill:17040",
                         "targetField":  "resourceCost",
-                        "basis":  "OFFICIAL_EXTRACTED",
+                        "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "official-table-cell",
                                        "database":  "EFTable_Skill.db",
@@ -7393,8 +7393,8 @@
                                        "column":  "CostMp"
                                    },
                         "sourceValue":  315,
-                        "transform":  "identity",
-                        "resultValue":  315
+                        "transform":  "project-scale-0.1",
+                        "resultValue":  32
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -7674,7 +7674,7 @@
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
                         "targetId":  "skill:17060",
                         "targetField":  "resourceCost",
-                        "basis":  "OFFICIAL_EXTRACTED",
+                        "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "official-table-cell",
                                        "database":  "EFTable_Skill.db",
@@ -7685,8 +7685,8 @@
                                        "column":  "CostMp"
                                    },
                         "sourceValue":  256,
-                        "transform":  "identity",
-                        "resultValue":  256
+                        "transform":  "project-scale-0.1",
+                        "resultValue":  26
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -8098,7 +8098,7 @@
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
                         "targetId":  "skill:17080",
                         "targetField":  "resourceCost",
-                        "basis":  "OFFICIAL_EXTRACTED",
+                        "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "official-table-cell",
                                        "database":  "EFTable_Skill.db",
@@ -8109,8 +8109,8 @@
                                        "column":  "CostMp"
                                    },
                         "sourceValue":  412,
-                        "transform":  "identity",
-                        "resultValue":  412
+                        "transform":  "project-scale-0.1",
+                        "resultValue":  41
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -8390,7 +8390,7 @@
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
                         "targetId":  "skill:17090",
                         "targetField":  "resourceCost",
-                        "basis":  "OFFICIAL_EXTRACTED",
+                        "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "official-table-cell",
                                        "database":  "EFTable_Skill.db",
@@ -8401,8 +8401,8 @@
                                        "column":  "CostMp"
                                    },
                         "sourceValue":  521,
-                        "transform":  "identity",
-                        "resultValue":  521
+                        "transform":  "project-scale-0.1",
+                        "resultValue":  52
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -8682,7 +8682,7 @@
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
                         "targetId":  "skill:17100",
                         "targetField":  "resourceCost",
-                        "basis":  "OFFICIAL_EXTRACTED",
+                        "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "official-table-cell",
                                        "database":  "EFTable_Skill.db",
@@ -8693,8 +8693,8 @@
                                        "column":  "CostMp"
                                    },
                         "sourceValue":  349,
-                        "transform":  "identity",
-                        "resultValue":  349
+                        "transform":  "project-scale-0.1",
+                        "resultValue":  35
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -8974,7 +8974,7 @@
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
                         "targetId":  "skill:17110",
                         "targetField":  "resourceCost",
-                        "basis":  "OFFICIAL_EXTRACTED",
+                        "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "official-table-cell",
                                        "database":  "EFTable_Skill.db",
@@ -8985,8 +8985,8 @@
                                        "column":  "CostMp"
                                    },
                         "sourceValue":  412,
-                        "transform":  "identity",
-                        "resultValue":  412
+                        "transform":  "project-scale-0.1",
+                        "resultValue":  41
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -9266,7 +9266,7 @@
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
                         "targetId":  "skill:17140",
                         "targetField":  "resourceCost",
-                        "basis":  "OFFICIAL_EXTRACTED",
+                        "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "official-table-cell",
                                        "database":  "EFTable_Skill.db",
@@ -9277,8 +9277,8 @@
                                        "column":  "CostMp"
                                    },
                         "sourceValue":  469,
-                        "transform":  "identity",
-                        "resultValue":  469
+                        "transform":  "project-scale-0.1",
+                        "resultValue":  47
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -10048,7 +10048,7 @@
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
                         "targetId":  "skill:17240",
                         "targetField":  "resourceCost",
-                        "basis":  "OFFICIAL_EXTRACTED",
+                        "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "official-table-cell",
                                        "database":  "EFTable_Skill.db",
@@ -10059,8 +10059,8 @@
                                        "column":  "CostMp"
                                    },
                         "sourceValue":  907,
-                        "transform":  "identity",
-                        "resultValue":  907
+                        "transform":  "project-scale-0.1",
+                        "resultValue":  91
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -12603,7 +12603,7 @@
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
                         "targetId":  "skill:2050100",
                         "targetField":  "resourceCost",
-                        "basis":  "OFFICIAL_EXTRACTED",
+                        "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "official-table-cell",
                                        "database":  "EFTable_Skill.db",
@@ -12614,8 +12614,8 @@
                                        "column":  "CostMp"
                                    },
                         "sourceValue":  382,
-                        "transform":  "identity",
-                        "resultValue":  382
+                        "transform":  "project-scale-0.1",
+                        "resultValue":  38
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -12895,7 +12895,7 @@
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
                         "targetId":  "skill:2050120",
                         "targetField":  "resourceCost",
-                        "basis":  "OFFICIAL_EXTRACTED",
+                        "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "official-table-cell",
                                        "database":  "EFTable_Skill.db",
@@ -12906,8 +12906,8 @@
                                        "column":  "CostMp"
                                    },
                         "sourceValue":  441,
-                        "transform":  "identity",
-                        "resultValue":  441
+                        "transform":  "project-scale-0.1",
+                        "resultValue":  44
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -13187,7 +13187,7 @@
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
                         "targetId":  "skill:2050160",
                         "targetField":  "resourceCost",
-                        "basis":  "OFFICIAL_EXTRACTED",
+                        "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "official-table-cell",
                                        "database":  "EFTable_Skill.db",
@@ -13198,8 +13198,8 @@
                                        "column":  "CostMp"
                                    },
                         "sourceValue":  569,
-                        "transform":  "identity",
-                        "resultValue":  569
+                        "transform":  "project-scale-0.1",
+                        "resultValue":  57
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -13479,7 +13479,7 @@
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
                         "targetId":  "skill:2050180",
                         "targetField":  "resourceCost",
-                        "basis":  "OFFICIAL_EXTRACTED",
+                        "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "official-table-cell",
                                        "database":  "EFTable_Skill.db",
@@ -13490,8 +13490,8 @@
                                        "column":  "CostMp"
                                    },
                         "sourceValue":  698,
-                        "transform":  "identity",
-                        "resultValue":  698
+                        "transform":  "project-scale-0.1",
+                        "resultValue":  70
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -13771,7 +13771,7 @@
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
                         "targetId":  "skill:2050210",
                         "targetField":  "resourceCost",
-                        "basis":  "OFFICIAL_EXTRACTED",
+                        "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "official-table-cell",
                                        "database":  "EFTable_Skill.db",
@@ -13782,8 +13782,8 @@
                                        "column":  "CostMp"
                                    },
                         "sourceValue":  839,
-                        "transform":  "identity",
-                        "resultValue":  839
+                        "transform":  "project-scale-0.1",
+                        "resultValue":  84
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -14063,7 +14063,7 @@
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
                         "targetId":  "skill:2050220",
                         "targetField":  "resourceCost",
-                        "basis":  "OFFICIAL_EXTRACTED",
+                        "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "official-table-cell",
                                        "database":  "EFTable_Skill.db",
@@ -14074,8 +14074,8 @@
                                        "column":  "CostMp"
                                    },
                         "sourceValue":  698,
-                        "transform":  "identity",
-                        "resultValue":  698
+                        "transform":  "project-scale-0.1",
+                        "resultValue":  70
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -14355,7 +14355,7 @@
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
                         "targetId":  "skill:2050230",
                         "targetField":  "resourceCost",
-                        "basis":  "OFFICIAL_EXTRACTED",
+                        "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "official-table-cell",
                                        "database":  "EFTable_Skill.db",
@@ -14366,8 +14366,8 @@
                                        "column":  "CostMp"
                                    },
                         "sourceValue":  839,
-                        "transform":  "identity",
-                        "resultValue":  839
+                        "transform":  "project-scale-0.1",
+                        "resultValue":  84
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -14647,7 +14647,7 @@
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
                         "targetId":  "skill:2050240",
                         "targetField":  "resourceCost",
-                        "basis":  "OFFICIAL_EXTRACTED",
+                        "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "official-table-cell",
                                        "database":  "EFTable_Skill.db",
@@ -14658,8 +14658,8 @@
                                        "column":  "CostMp"
                                    },
                         "sourceValue":  794,
-                        "transform":  "identity",
-                        "resultValue":  794
+                        "transform":  "project-scale-0.1",
+                        "resultValue":  79
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -14939,7 +14939,7 @@
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
                         "targetId":  "skill:2050500",
                         "targetField":  "resourceCost",
-                        "basis":  "OFFICIAL_EXTRACTED",
+                        "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "official-table-cell",
                                        "database":  "EFTable_Skill.db",
@@ -14950,8 +14950,8 @@
                                        "column":  "CostMp"
                                    },
                         "sourceValue":  938,
-                        "transform":  "identity",
-                        "resultValue":  938
+                        "transform":  "project-scale-0.1",
+                        "resultValue":  94
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -17545,7 +17545,7 @@
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
                         "targetId":  "skill:31200",
                         "targetField":  "resourceCost",
-                        "basis":  "OFFICIAL_EXTRACTED",
+                        "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "official-table-cell",
                                        "database":  "EFTable_Skill.db",
@@ -17556,8 +17556,8 @@
                                        "column":  "CostMp"
                                    },
                         "sourceValue":  277,
-                        "transform":  "identity",
-                        "resultValue":  277
+                        "transform":  "project-scale-0.1",
+                        "resultValue":  28
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -18035,7 +18035,7 @@
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
                         "targetId":  "skill:31210",
                         "targetField":  "resourceCost",
-                        "basis":  "OFFICIAL_EXTRACTED",
+                        "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "official-table-cell",
                                        "database":  "EFTable_Skill.db",
@@ -18046,8 +18046,8 @@
                                        "column":  "CostMp"
                                    },
                         "sourceValue":  412,
-                        "transform":  "identity",
-                        "resultValue":  412
+                        "transform":  "project-scale-0.1",
+                        "resultValue":  41
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -18327,7 +18327,7 @@
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
                         "targetId":  "skill:31420",
                         "targetField":  "resourceCost",
-                        "basis":  "OFFICIAL_EXTRACTED",
+                        "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "official-table-cell",
                                        "database":  "EFTable_Skill.db",
@@ -18338,8 +18338,8 @@
                                        "column":  "CostMp"
                                    },
                         "sourceValue":  521,
-                        "transform":  "identity",
-                        "resultValue":  521
+                        "transform":  "project-scale-0.1",
+                        "resultValue":  52
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -18619,7 +18619,7 @@
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
                         "targetId":  "skill:31430",
                         "targetField":  "resourceCost",
-                        "basis":  "OFFICIAL_EXTRACTED",
+                        "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "official-table-cell",
                                        "database":  "EFTable_Skill.db",
@@ -18630,8 +18630,8 @@
                                        "column":  "CostMp"
                                    },
                         "sourceValue":  382,
-                        "transform":  "identity",
-                        "resultValue":  382
+                        "transform":  "project-scale-0.1",
+                        "resultValue":  38
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -18911,7 +18911,7 @@
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
                         "targetId":  "skill:31460",
                         "targetField":  "resourceCost",
-                        "basis":  "OFFICIAL_EXTRACTED",
+                        "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "official-table-cell",
                                        "database":  "EFTable_Skill.db",
@@ -18922,8 +18922,8 @@
                                        "column":  "CostMp"
                                    },
                         "sourceValue":  412,
-                        "transform":  "identity",
-                        "resultValue":  412
+                        "transform":  "project-scale-0.1",
+                        "resultValue":  41
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -19203,7 +19203,7 @@
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
                         "targetId":  "skill:31470",
                         "targetField":  "resourceCost",
-                        "basis":  "OFFICIAL_EXTRACTED",
+                        "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "official-table-cell",
                                        "database":  "EFTable_Skill.db",
@@ -19214,8 +19214,8 @@
                                        "column":  "CostMp"
                                    },
                         "sourceValue":  533,
-                        "transform":  "identity",
-                        "resultValue":  533
+                        "transform":  "project-scale-0.1",
+                        "resultValue":  53
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -19495,7 +19495,7 @@
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
                         "targetId":  "skill:31480",
                         "targetField":  "resourceCost",
-                        "basis":  "OFFICIAL_EXTRACTED",
+                        "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "official-table-cell",
                                        "database":  "EFTable_Skill.db",
@@ -19506,8 +19506,8 @@
                                        "column":  "CostMp"
                                    },
                         "sourceValue":  521,
-                        "transform":  "identity",
-                        "resultValue":  521
+                        "transform":  "project-scale-0.1",
+                        "resultValue":  52
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -19787,7 +19787,7 @@
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
                         "targetId":  "skill:31490",
                         "targetField":  "resourceCost",
-                        "basis":  "OFFICIAL_EXTRACTED",
+                        "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "official-table-cell",
                                        "database":  "EFTable_Skill.db",
@@ -19798,8 +19798,8 @@
                                        "column":  "CostMp"
                                    },
                         "sourceValue":  592,
-                        "transform":  "identity",
-                        "resultValue":  592
+                        "transform":  "project-scale-0.1",
+                        "resultValue":  59
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -20663,7 +20663,7 @@
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
                         "targetId":  "skill:31950",
                         "targetField":  "resourceCost",
-                        "basis":  "OFFICIAL_EXTRACTED",
+                        "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "official-table-cell",
                                        "database":  "EFTable_Skill.db",
@@ -20674,8 +20674,8 @@
                                        "column":  "CostMp"
                                    },
                         "sourceValue":  903,
-                        "transform":  "identity",
-                        "resultValue":  903
+                        "transform":  "project-scale-0.1",
+                        "resultValue":  90
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -21803,8 +21803,8 @@
                                        "policyId":  "lancemaster-long-spear-df-space-v1"
                                    },
                         "sourceValue":  242,
-                        "transform":  "identity",
-                        "resultValue":  242,
+                        "transform":  "project-scale-0.1",
+                        "resultValue":  24,
                         "note":  "Long-spear D/F/SPACE loadout: clip length is measured from LanceMaster.animnotify; cooldown, cost, range, damage rate and movement are project decisions because EFTable_SkillEffect has no row for 34050/34170/34020."
                     },
                     {
@@ -22377,7 +22377,7 @@
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
                         "targetId":  "skill:34040",
                         "targetField":  "resourceCost",
-                        "basis":  "OFFICIAL_EXTRACTED",
+                        "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "official-table-cell",
                                        "database":  "EFTable_Skill.db",
@@ -22388,8 +22388,8 @@
                                        "column":  "CostMp"
                                    },
                         "sourceValue":  206,
-                        "transform":  "identity",
-                        "resultValue":  206
+                        "transform":  "project-scale-0.1",
+                        "resultValue":  21
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -22669,7 +22669,7 @@
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
                         "targetId":  "skill:34090",
                         "targetField":  "resourceCost",
-                        "basis":  "OFFICIAL_EXTRACTED",
+                        "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "official-table-cell",
                                        "database":  "EFTable_Skill.db",
@@ -22680,8 +22680,8 @@
                                        "column":  "CostMp"
                                    },
                         "sourceValue":  276,
-                        "transform":  "identity",
-                        "resultValue":  276
+                        "transform":  "project-scale-0.1",
+                        "resultValue":  28
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -22961,7 +22961,7 @@
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
                         "targetId":  "skill:34100",
                         "targetField":  "resourceCost",
-                        "basis":  "OFFICIAL_EXTRACTED",
+                        "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "official-table-cell",
                                        "database":  "EFTable_Skill.db",
@@ -22972,8 +22972,8 @@
                                        "column":  "CostMp"
                                    },
                         "sourceValue":  410,
-                        "transform":  "identity",
-                        "resultValue":  410
+                        "transform":  "project-scale-0.1",
+                        "resultValue":  41
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -23253,7 +23253,7 @@
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
                         "targetId":  "skill:34110",
                         "targetField":  "resourceCost",
-                        "basis":  "OFFICIAL_EXTRACTED",
+                        "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "official-table-cell",
                                        "database":  "EFTable_Skill.db",
@@ -23264,8 +23264,8 @@
                                        "column":  "CostMp"
                                    },
                         "sourceValue":  386,
-                        "transform":  "identity",
-                        "resultValue":  386
+                        "transform":  "project-scale-0.1",
+                        "resultValue":  39
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -23545,7 +23545,7 @@
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
                         "targetId":  "skill:34120",
                         "targetField":  "resourceCost",
-                        "basis":  "OFFICIAL_EXTRACTED",
+                        "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "official-table-cell",
                                        "database":  "EFTable_Skill.db",
@@ -23556,8 +23556,8 @@
                                        "column":  "CostMp"
                                    },
                         "sourceValue":  276,
-                        "transform":  "identity",
-                        "resultValue":  276
+                        "transform":  "project-scale-0.1",
+                        "resultValue":  28
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -23969,7 +23969,7 @@
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
                         "targetId":  "skill:34140",
                         "targetField":  "resourceCost",
-                        "basis":  "OFFICIAL_EXTRACTED",
+                        "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "official-table-cell",
                                        "database":  "EFTable_Skill.db",
@@ -23980,8 +23980,8 @@
                                        "column":  "CostMp"
                                    },
                         "sourceValue":  347,
-                        "transform":  "identity",
-                        "resultValue":  347
+                        "transform":  "project-scale-0.1",
+                        "resultValue":  35
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -24261,7 +24261,7 @@
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
                         "targetId":  "skill:34150",
                         "targetField":  "resourceCost",
-                        "basis":  "OFFICIAL_EXTRACTED",
+                        "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "official-table-cell",
                                        "database":  "EFTable_Skill.db",
@@ -24272,8 +24272,8 @@
                                        "column":  "CostMp"
                                    },
                         "sourceValue":  456,
-                        "transform":  "identity",
-                        "resultValue":  456
+                        "transform":  "project-scale-0.1",
+                        "resultValue":  46
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -24685,7 +24685,7 @@
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
                         "targetId":  "skill:34160",
                         "targetField":  "resourceCost",
-                        "basis":  "OFFICIAL_EXTRACTED",
+                        "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "official-table-cell",
                                        "database":  "EFTable_Skill.db",
@@ -24696,8 +24696,8 @@
                                        "column":  "CostMp"
                                    },
                         "sourceValue":  361,
-                        "transform":  "identity",
-                        "resultValue":  361
+                        "transform":  "project-scale-0.1",
+                        "resultValue":  36
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -26006,8 +26006,8 @@
                                        "policyId":  "lancemaster-short-spear-binding-v1"
                                    },
                         "sourceValue":  36,
-                        "transform":  "identity",
-                        "resultValue":  36
+                        "transform":  "project-scale-0.1",
+                        "resultValue":  4
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -26283,8 +26283,8 @@
                                        "policyId":  "lancemaster-short-spear-binding-v1"
                                    },
                         "sourceValue":  70,
-                        "transform":  "identity",
-                        "resultValue":  70
+                        "transform":  "project-scale-0.1",
+                        "resultValue":  7
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -26560,8 +26560,8 @@
                                        "policyId":  "lancemaster-short-spear-binding-v1"
                                    },
                         "sourceValue":  88,
-                        "transform":  "identity",
-                        "resultValue":  88
+                        "transform":  "project-scale-0.1",
+                        "resultValue":  9
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -26837,8 +26837,8 @@
                                        "policyId":  "lancemaster-short-spear-binding-v1"
                                    },
                         "sourceValue":  88,
-                        "transform":  "identity",
-                        "resultValue":  88
+                        "transform":  "project-scale-0.1",
+                        "resultValue":  9
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -27246,8 +27246,8 @@
                                        "policyId":  "lancemaster-short-spear-binding-v1"
                                    },
                         "sourceValue":  80,
-                        "transform":  "identity",
-                        "resultValue":  80
+                        "transform":  "project-scale-0.1",
+                        "resultValue":  8
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -27721,8 +27721,8 @@
                                        "policyId":  "lancemaster-short-spear-binding-v1"
                                    },
                         "sourceValue":  88,
-                        "transform":  "identity",
-                        "resultValue":  88
+                        "transform":  "project-scale-0.1",
+                        "resultValue":  9
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -28581,7 +28581,7 @@
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
                         "targetId":  "skill:34650",
                         "targetField":  "resourceCost",
-                        "basis":  "OFFICIAL_EXTRACTED",
+                        "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "official-table-cell",
                                        "database":  "EFTable_Skill.db",
@@ -28592,8 +28592,8 @@
                                        "column":  "CostMp"
                                    },
                         "sourceValue":  734,
-                        "transform":  "identity",
-                        "resultValue":  734
+                        "transform":  "project-scale-0.1",
+                        "resultValue":  73
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
