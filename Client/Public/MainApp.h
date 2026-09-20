@@ -286,6 +286,11 @@ private:
 	whole screen, and a window left open kept drawing its labels over it (the sprites were only
 	hidden, not closed). */
 	void Close_RuntimeWindowsForLoading();
+	/* Something other than gameplay owns the whole screen: a cinematic, or the loading
+	screen between Levels. Every runtime HUD/window sprite and every Draw_Text this class
+	drives is gated on this one answer, because each surface deciding for itself is what
+	let a minimap zone label and the combat analyzer letter the loading art. */
+	bool_t Is_RuntimeUIScreenSuppressed() const;
 	/* The toggle windows one Escape press closes one at a time, newest first. */
 	enum class ESCAPE_WINDOW : uint8_t { INVENTORY, CHARACTER_INFO, AVATAR_BOOK, HONOR_TITLE, VEHICLE, WORLD_MAP, END };
 	bool_t Is_EscapeWindowOpen(ESCAPE_WINDOW eWindow) const;
