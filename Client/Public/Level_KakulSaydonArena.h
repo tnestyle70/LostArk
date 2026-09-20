@@ -126,6 +126,8 @@ public:
 	virtual HRESULT Render() override;
 	const ARENA_CAMERA_PROFILE& Get_FollowCameraProfile() const
 	{ return m_FollowCameraProfile; }
+	const ARENA_CAMERA_PROFILE& Get_EffectiveFollowCameraProfile() const
+	{ return m_EffectiveFollowCameraProfile; }
 	const std::string& Get_FollowCameraProfileStatus() const
 	{ return m_strFollowCameraProfileStatus; }
 	bool_t Set_FollowCameraProfile(const ARENA_CAMERA_PROFILE& profile,
@@ -459,6 +461,7 @@ private:
 	void Release_CameraShot();
 	HRESULT Ready_Layer_Camera(const wstring_t& strLayerTag);
 	bool_t Bind_CameraToLocalCharacter();
+	void Update_SourceFollowCamera(f32_t timeDelta, bool_t immediate = false);
 	/* Cutscene stage isolation. The whole map is loaded, so a wide cutscene shot sees
 	   the other stage areas hundreds of metres away. While a cinematic owns the camera
 	   only the stage areas around the camera, what it looks at and the local player are
@@ -604,6 +607,12 @@ private:
 	weak_ptr<CCharacter> m_pCameraTarget;
 	ARENA_CAMERA_PROFILE m_FollowCameraProfile =
 		CArenaCameraProfile::Default(ARENA_CAMERA_MAP::KOUKU_SAYDON);
+	ARENA_CAMERA_PROFILE m_EffectiveFollowCameraProfile = m_FollowCameraProfile;
+	bool_t m_bSourceCameraInitialized = false;
+	bool_t m_bInsideSourceCameraEntrance = false;
+	float3_t m_vSourceCameraPreviousPlayer{};
+	f32_t m_fSourceCameraBlendFromDistance = 16.f;
+	f32_t m_fSourceCameraBlendElapsed = 3.f;
 	std::string m_strFollowCameraProfileStatus;
 	CClientReplication m_Replication;
 	shared_ptr<IPlayerCommandSink> m_pPlayerCommandSink;

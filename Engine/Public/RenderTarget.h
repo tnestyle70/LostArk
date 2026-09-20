@@ -19,6 +19,8 @@ public:
 
 public:
 	HRESULT Initialize(uint32_t iWidth, uint32_t iHeight, DXGI_FORMAT ePixelFormat, const float4_t& vClearColor);
+	HRESULT Stage_Resize(uint32_t width, uint32_t height, shared_ptr<CRenderTarget>& output) const;
+	void Commit_Resize(CRenderTarget& staged, f32_t viewportDeltaX, f32_t viewportDeltaY) noexcept;
 	HRESULT Bind_SRV(shared_ptr<class CShader> pShader, const char_t* pConstantName);
 	void Clear();
 	HRESULT Copy_Resource(ComPtr<ID3D11Texture2D> pTexture2D);

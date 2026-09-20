@@ -545,12 +545,12 @@ wstring Client::CVehicleWindowView::Fit_Label(const wstring_t& strFont, const ws
 
 void Client::CVehicleWindowView::Refit_Descriptions()
 {
-	/* The cut depends on the baked font size the viewport resolves to, so it is redone only
-	when the viewport width changes (not every frame). */
-	const f32_t fViewportWidth = CGameInstance::Get().Get_ViewportSize().x;
-	if (fViewportWidth <= 0.f || fViewportWidth == m_fFitViewportWidth)
+	/* Fit_Label uses both viewport axes to select the font and measure the text. */
+	const float2_t viewport = CGameInstance::Get().Get_ViewportSize();
+	if (viewport.x <= 0.f || viewport.y <= 0.f ||
+		(viewport.x == m_vFitViewport.x && viewport.y == m_vFitViewport.y))
 		return;
-	m_fFitViewportWidth = fViewportWidth;
+	m_vFitViewport = viewport;
 	const f32_t fMaxWidth = ROW_W - ROW_TEXT_X - ROW_TEXT_RIGHT_PAD;
 	for (VEHICLE_ROW& Row : m_Rows)
 		Row.strDescriptionFit = Fit_Label(FONT_YG760, Row.strDescription, ROW_FONT_PX, fMaxWidth);

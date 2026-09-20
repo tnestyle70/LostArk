@@ -93,6 +93,9 @@ public:
 	const vector<SYSTEM_OPTION_TAB>& Get_Tabs() const { return m_Tabs; }
 	const SYSTEM_OPTION_TAB* Find_Tab(int32_t iTabId) const;
 
+	/* Runtime display choices retain the authored stable row and layout. */
+	void Set_ResolutionChoices(const vector<SYSTEM_OPTION_CHOICE>& Choices);
+
 	static SYSTEM_OPTION_CONTROL Parse_Control(const string& strName);
 
 private:

@@ -387,7 +387,9 @@ HRESULT CLevel_Loading::Render()
 	/* Each line is drawn at the point size its own text field carries, scaled from the movie's
 	1920x1080 stage into this layout's 1280x720 reference. The fields are top-anchored and
 	centre-aligned, so the marker position is the field's top-centre. */
-	const auto Fn_DrawLine = [](const wstring_t& strFamily, const wchar_t* pText,
+	const auto viewport = CGameInstance::Get().Get_ViewportSize();
+	const float sx = viewport.x / m_vChromeResolution.x, sy = viewport.y / m_vChromeResolution.y;
+	const auto Fn_DrawLine = [sx, sy](const wstring_t& strFamily, const wchar_t* pText,
 		const float2_t& vTopCenter, f32_t fEmSize, const fvector_t& vColor)
 	{
 		if (nullptr == pText || L'\0' == pText[0])
@@ -398,8 +400,8 @@ HRESULT CLevel_Loading::Render()
 		for. */
 		f32_t fScale = 1.f;
 		const wstring_t strFont =
-			UILabelFont::Resolve(strFamily, fEmSize * EM_TO_LINE_SPACING, fScale);
-		CGameInstance::Get().Draw_Text(strFont, pText, vTopCenter, vColor, 0.f,
+			UILabelFont::Resolve(strFamily, fEmSize * EM_TO_LINE_SPACING * (std::min)(sx, sy), fScale);
+		CGameInstance::Get().Draw_Text(strFont, pText, float2_t(vTopCenter.x * sx, vTopCenter.y * sy), vColor, 0.f,
 			float2_t(0.5f, 0.f), fScale);
 	};
 
@@ -1092,6 +1094,14 @@ HRESULT CLevel_Loading::Ready_Layer_Chrome()
 	if (!CDataJson::Parse(text, root, error))
 		return S_OK;
 
+	if (const auto* resolution = root.Find("resolution"); resolution && resolution->Is_Object())
+	{
+		const auto* width = resolution->Find("width");
+		const auto* height = resolution->Find("height");
+		if (width && height && width->Is_Number() && height->Is_Number() &&
+			width->Get_Number() > 0 && height->Get_Number() > 0)
+			m_vChromeResolution = {static_cast<float>(width->Get_Number()), static_cast<float>(height->Get_Number())};
+	}
 	const DATA_JSON_VALUE* pSlots = root.Find("slots");
 	if (nullptr == pSlots || !pSlots->Is_Array())
 		return S_OK;
@@ -1187,6 +1197,7 @@ HRESULT CLevel_Loading::Ready_Layer_Chrome()
 		Desc.fSizeX = fWidth;
 		Desc.fSizeY = fHeight;
 		Desc.strTextureTag = widePath;
+		Desc.referenceResolution = m_vChromeResolution;
 
 		shared_ptr<CGameObject> pObject;
 		if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(ETOUI(LEVEL::STATIC),

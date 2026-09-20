@@ -1,5 +1,6 @@
 #include "UserSettingsDocument.h"
 
+#include "DataJson.h"
 #include "GameInstance.h"
 #include "RuntimeAssetRoot.h"
 #include "Sound/Sound_Manager.h"
@@ -7,6 +8,11 @@
 #include <algorithm>
 #include <cmath>
 #include <iterator>
+#include <atomic>
+#include <fstream>
+#include <iomanip>
+#include <limits>
+#include <sstream>
 
 namespace
 {
@@ -27,6 +33,108 @@ namespace
 	/* The one cursor this client ever shows is the arrow; the class cursor is replaced in
 	place. Loaded cursors are owned here so a later choice can destroy the previous one. */
 	HCURSOR s_hUserCursor = nullptr;
+
+	bool Valid_Settings(const Client::USER_SETTINGS& value, string& error)
+	{
+		const auto& display = value.Display;
+		if (display.width < 640 || display.width > 16384 || display.height < 480 || display.height > 16384 ||
+			(display.mode != Client::USER_WINDOW_MODE::WINDOWED && display.mode != Client::USER_WINDOW_MODE::BORDERLESS &&
+			 display.mode != Client::USER_WINDOW_MODE::FULLSCREEN))
+		{ error = "Invalid display dimensions or window mode."; return false; }
+		if (value.Values.size() > 4096) { error = "Too many user setting rows."; return false; }
+		for (const auto& [key, number] : value.Values)
+			if (key.empty() || key.size() > 256 || !std::isfinite(number) || std::abs(number) > 1000000.f)
+			{ error = "Invalid user setting row: " + key; return false; }
+		return true;
+	}
+
+	bool Read_SettingsBytes(const filesystem::path& path, bool& exists, string& bytes, string& error)
+	{
+		std::error_code ec;
+		exists = filesystem::exists(path, ec);
+		if (ec) { error = "Cannot inspect user settings file."; return false; }
+		bytes.clear();
+		if (!exists) return true;
+		const auto size = filesystem::file_size(path, ec);
+		if (ec || size > 1024 * 1024) { error = "User settings file is unreadable or too large."; return false; }
+		ifstream stream(path, ios::binary);
+		if (!stream) { error = "Cannot read user settings file."; return false; }
+		bytes.assign(istreambuf_iterator<char>(stream), istreambuf_iterator<char>());
+		if (stream.bad() || bytes.size() != size) { error = "User settings file changed during read."; return false; }
+		return true;
+	}
+
+	bool Parse_Settings(const string& bytes, Client::USER_SETTINGS& settings, string& error)
+	{
+		using namespace Client;
+		DATA_JSON_VALUE root;
+		if (!CDataJson::Parse(bytes, root, error)) return false;
+		if (!root.Is_Object()) { error = "User settings root must be an object."; return false; }
+		const auto schema = root.Find("schema"), version = root.Find("formatVersion");
+		const auto display = root.Find("display"), rows = root.Find("values");
+		if (!schema || !schema->Is_String() || schema->Get_String() != "lostark.user-settings" ||
+			!version || !version->Is_Number() || version->Get_Number() != 1 ||
+			!display || !display->Is_Object() || !rows || !rows->Is_Object())
+		{ error = "Invalid user settings schema."; return false; }
+		const auto width = display->Find("width"), height = display->Find("height"), mode = display->Find("mode");
+		if (!width || !height || !mode || !width->Is_Number() || !height->Is_Number() || !mode->Is_String() ||
+			!std::isfinite(width->Get_Number()) || !std::isfinite(height->Get_Number()) ||
+			width->Get_Number() < 640 || width->Get_Number() > 16384 ||
+			height->Get_Number() < 480 || height->Get_Number() > 16384 ||
+			std::floor(width->Get_Number()) != width->Get_Number() || std::floor(height->Get_Number()) != height->Get_Number())
+		{ error = "Invalid saved display settings."; return false; }
+		USER_SETTINGS staged;
+		staged.Display.width = static_cast<uint32_t>(width->Get_Number());
+		staged.Display.height = static_cast<uint32_t>(height->Get_Number());
+		if (mode->Get_String() == "WINDOWED") staged.Display.mode = USER_WINDOW_MODE::WINDOWED;
+		else if (mode->Get_String() == "BORDERLESS") staged.Display.mode = USER_WINDOW_MODE::BORDERLESS;
+		else if (mode->Get_String() == "FULLSCREEN") staged.Display.mode = USER_WINDOW_MODE::FULLSCREEN;
+		else { error = "Unknown saved window mode."; return false; }
+		for (const auto& [key, value] : rows->Get_Object())
+		{
+			if (!value.Is_Number() || !std::isfinite(value.Get_Number()) || std::abs(value.Get_Number()) > 1000000.)
+			{ error = "Invalid saved user setting: " + key; return false; }
+			staged.Values.emplace(key, static_cast<f32_t>(value.Get_Number()));
+		}
+		if (!Valid_Settings(staged, error)) return false;
+		settings = std::move(staged);
+		return true;
+	}
+
+	string Serialize_Settings(const Client::USER_SETTINGS& settings)
+	{
+		using namespace Client;
+		const char* mode = settings.Display.mode == USER_WINDOW_MODE::FULLSCREEN ? "FULLSCREEN" :
+			settings.Display.mode == USER_WINDOW_MODE::BORDERLESS ? "BORDERLESS" : "WINDOWED";
+		ostringstream out;
+		out.imbue(std::locale::classic());
+		out << std::setprecision(std::numeric_limits<f32_t>::max_digits10);
+		out << "{\n  \"schema\": \"lostark.user-settings\",\n  \"formatVersion\": 1,\n  \"display\": {\"width\": "
+			<< settings.Display.width << ", \"height\": " << settings.Display.height << ", \"mode\": \"" << mode
+			<< "\"},\n  \"values\": {";
+		bool first = true;
+		for (const auto& [key, value] : settings.Values)
+		{
+			out << (first ? "\n" : ",\n") << "    \"" << CDataJson::Escape(key) << "\": " << value;
+			first = false;
+		}
+		out << "\n  }\n}\n";
+		return out.str();
+	}
+
+	struct SettingsSaveLock
+	{
+		HANDLE handle = CreateMutexW(nullptr, FALSE, L"Local\\LostArk.UserSettings.Save");
+		bool owned = false;
+		SettingsSaveLock()
+		{
+			if (!handle) return;
+			const DWORD result = WaitForSingleObject(handle, 0);
+			owned = result == WAIT_OBJECT_0 || result == WAIT_ABANDONED;
+		}
+		~SettingsSaveLock() { if (owned) ReleaseMutex(handle); if (handle) CloseHandle(handle); }
+	};
+
 }
 
 f32_t Client::USER_SETTINGS::Get(const string& strRowId, const f32_t fFallback) const
@@ -43,7 +151,7 @@ bool_t Client::USER_SETTINGS::Get_Flag(const string& strRowId, const bool_t bFal
 
 bool_t Client::USER_SETTINGS::Has_SameValues(const USER_SETTINGS& Other) const
 {
-	return Values == Other.Values;
+	return Values == Other.Values && Display == Other.Display;
 }
 
 Client::CUserSettings& Client::CUserSettings::Get()
@@ -77,19 +185,62 @@ void Client::CUserSettings::Initialize()
 {
 	Apply_Audio();
 	Apply_Cursor();
+	Apply_PointerSpeed();
 }
 
-bool_t Client::CUserSettings::Commit(
-	const USER_SETTINGS& Staged, string& strOutStatus)
+filesystem::path Client::CUserSettings::Get_SettingsPath()
 {
-	for (const auto& [strRowId, fValue] : Staged.Values)
+	const DWORD count = GetEnvironmentVariableW(L"LOCALAPPDATA", nullptr, 0);
+	if (!count) return {};
+	wstring base(count, L'\0');
+	const DWORD written = GetEnvironmentVariableW(L"LOCALAPPDATA", base.data(), count);
+	if (!written || written >= count) return {};
+	base.resize(written);
+	return filesystem::path(base) / L"LostArk" / L"UserSettings.json";
+}
+
+bool_t Client::CUserSettings::Load_Persisted(string& strOutStatus)
+{
+	if (m_bPersistenceLoaded)
 	{
-		if (!std::isfinite(fValue))
-		{
-			strOutStatus = "User settings value '" + strRowId + "' is not finite.";
-			return false;
-		}
+		strOutStatus = m_bPersistenceValid ? "User settings already loaded." : "The saved settings file is invalid; it was preserved.";
+		return m_bPersistenceValid;
 	}
+	m_bPersistenceLoaded = true;
+	const auto path = Get_SettingsPath();
+	USER_SETTINGS staged;
+	bool exists = false;
+	string bytes;
+	if (path.empty() || !Read_SettingsBytes(path, exists, bytes, strOutStatus) ||
+		(exists && !Parse_Settings(bytes, staged, strOutStatus)))
+	{
+		m_bPersistenceValid = false;
+		if (path.empty()) strOutStatus = "LOCALAPPDATA is unavailable.";
+		return false;
+	}
+	if (exists)
+	{
+		for (const auto& [key, value] : m_Defaults) staged.Values.emplace(key, value);
+		m_Settings = std::move(staged);
+	}
+	m_bPersistedExists = exists;
+	m_PersistedBytes = std::move(bytes);
+	strOutStatus = exists ? "User settings loaded." : "No saved settings; using defaults.";
+	return true;
+}
+
+bool_t Client::CUserSettings::Preview(const USER_SETTINGS& Staged, string& strOutStatus)
+{
+	if (!Valid_Settings(Staged, strOutStatus)) return false;
+	auto preview = Staged;
+	preview.Display = m_Settings.Display;
+	Apply_Values(preview);
+	strOutStatus = "User settings previewed.";
+	return true;
+}
+
+void Client::CUserSettings::Apply_Values(const USER_SETTINGS& Staged)
+{
 	const auto Changed = [this, &Staged](const char* pRow)
 		{ return m_Settings.Get(pRow, 0.f) != Staged.Get(pRow, 0.f); };
 	const bool_t bCursorChanged =
@@ -105,7 +256,86 @@ bool_t Client::CUserSettings::Commit(
 		Apply_Cursor();
 	if (bPointerChanged)
 		Apply_PointerSpeed();
-	strOutStatus = "User settings committed.";
+}
+
+bool_t Client::CUserSettings::Commit(const USER_SETTINGS& Staged, string& strOutStatus)
+{
+	if (!m_bPersistenceLoaded && !Load_Persisted(strOutStatus)) return false;
+	if (!m_bPersistenceValid) { strOutStatus = "The saved settings file is invalid; it was preserved."; return false; }
+	if (!Valid_Settings(Staged, strOutStatus)) return false;
+	SettingsSaveLock lock;
+	if (!lock.owned) { strOutStatus = "Another client is saving settings. Try Apply again."; return false; }
+	const auto path = Get_SettingsPath();
+	const auto fresh = [&]() {
+		bool exists = false;
+		string bytes;
+		if (!Read_SettingsBytes(path, exists, bytes, strOutStatus)) return false;
+		if (exists != m_bPersistedExists || bytes != m_PersistedBytes)
+		{ strOutStatus = "Saved settings changed outside this client. Restart to load them before saving."; return false; }
+		return true;
+	};
+	if (path.empty() || !fresh()) return false;
+	std::error_code ec;
+	filesystem::create_directories(path.parent_path(), ec);
+	if (ec) { strOutStatus = "Cannot create the user settings directory."; return false; }
+	static std::atomic<unsigned long> serial{0};
+	const auto suffix = L"." + std::to_wstring(GetCurrentProcessId()) + L"." +
+		std::to_wstring(GetTickCount64()) + L"." + std::to_wstring(++serial);
+	const filesystem::path temporary = path.wstring() + suffix + L".tmp";
+	const filesystem::path backup = path.wstring() + suffix + L".bak";
+	const string bytes = Serialize_Settings(Staged);
+	USER_SETTINGS verified;
+	if (!Parse_Settings(bytes, verified, strOutStatus) || !verified.Has_SameValues(Staged))
+	{ strOutStatus = "User settings serialization failed."; return false; }
+	HANDLE file = CreateFileW(temporary.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, nullptr);
+	if (file == INVALID_HANDLE_VALUE) { strOutStatus = "Cannot stage user settings."; return false; }
+	DWORD written = 0;
+	const bool wrote = WriteFile(file, bytes.data(), static_cast<DWORD>(bytes.size()), &written, nullptr) &&
+		written == bytes.size() && FlushFileBuffers(file);
+	CloseHandle(file);
+	if (!wrote) { DeleteFileW(temporary.c_str()); strOutStatus = "Cannot flush user settings."; return false; }
+	const auto previous = m_Settings.Display;
+	const bool displayChanged = Staged.Display != previous;
+	if (displayChanged && (!m_DisplayApply || !m_DisplayApply(Staged.Display, strOutStatus)))
+	{
+		DeleteFileW(temporary.c_str());
+		if (!m_DisplayApply) strOutStatus = "Display changes are not ready yet.";
+		return false;
+	}
+	const bool unchanged = fresh();
+	const bool saved = unchanged && (m_bPersistedExists ?
+		ReplaceFileW(path.c_str(), temporary.c_str(), backup.c_str(), 0, nullptr, nullptr) != FALSE :
+		MoveFileExW(temporary.c_str(), path.c_str(), MOVEFILE_WRITE_THROUGH) != FALSE);
+	if (!saved)
+	{
+		DeleteFileW(temporary.c_str());
+		if (unchanged)
+		{
+			strOutStatus = "Cannot atomically save user settings.";
+			/* ReplaceFile can move the old target to its backup before a later rename fails.
+			Restore only our exact baseline, and only if the target is absent or our candidate. */
+			bool targetExists = false, backupExists = false;
+			string targetBytes, backupBytes, recoveryError;
+			if (Read_SettingsBytes(backup, backupExists, backupBytes, recoveryError) && backupExists &&
+				backupBytes == m_PersistedBytes && Read_SettingsBytes(path, targetExists, targetBytes, recoveryError) &&
+				(!targetExists || targetBytes == bytes))
+			{
+				const DWORD flags = MOVEFILE_WRITE_THROUGH | (targetExists ? MOVEFILE_REPLACE_EXISTING : 0);
+				if (!MoveFileExW(backup.c_str(), path.c_str(), flags))
+					strOutStatus += " Restore from the preserved .bak file is required.";
+			}
+		}
+		if (displayChanged)
+		{
+			string rollback;
+			if (!m_DisplayApply(previous, rollback)) strOutStatus += " Display rollback failed: " + rollback;
+		}
+		return false;
+	}
+	m_PersistedBytes = bytes;
+	m_bPersistedExists = true;
+	Apply_Values(Staged);
+	strOutStatus = "User settings saved.";
 	return true;
 }
 
@@ -275,9 +505,8 @@ void Client::CUserSettings::Apply_Video(RENDER_QUALITY_SETTINGS& Quality) const
 void Client::CUserSettings::Apply_Cursor() const
 {
 	const int32_t iPreset = static_cast<int32_t>(m_Settings.Get(SystemOptionRowId::CURSOR_PRESET, 0.f));
-	/* The retail table defaults the size row to -1 ("pick by resolution"); at this client's
-	1280x720 that is the normal 48 px art, so a negative size reads as the first choice
-	instead of aborting the whole apply. */
+	/* The retail table defaults the size row to -1 ("pick by resolution"); until the user
+	chooses another size, preserve the normal 48 px art independently of the render size. */
 	int32_t iSize = static_cast<int32_t>(m_Settings.Get(SystemOptionRowId::CURSOR_PRESET_SIZE, 0.f));
 	if (iSize < 0)
 		iSize = 0;

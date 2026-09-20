@@ -27,6 +27,8 @@ struct ARENA_CAMERA_PROFILE final
 	f32_t focusDistance = 1.f;
 	f32_t fovYDegrees = 60.f;
 	f32_t followResponse = 0.f;
+	// Explicit source-volume mode; absent legacy JSON keeps its saved manual pose.
+	bool_t useSourceCameraRegions = false;
 	// Visual multiplier relative to this class's admitted catalog scale.
 	f32_t characterSizeMultiplier = 1.f;
 	// Enum-indexed in memory, stable class names on disk; reserved DESTROYER stays 1.
@@ -53,6 +55,10 @@ public:
 	// An optional baseline is compared before Save and refreshed only on success.
 	static bool_t Save(ARENA_CAMERA_MAP map, const ARENA_CAMERA_PROFILE& profile,
 		std::string& status, std::string* sourceBaseline = nullptr);
+	// Original MidnightC PS export43 convex brush; margin is an exit hysteresis in metres.
+	static bool_t Contains_KoukuSourceEntrance(const float3_t& position, f32_t marginMeters = 0.f);
+	// The common 16m CDO is a baseline, not proof of every original battle camera.
+	static ARENA_CAMERA_PROFILE KoukuSourceProfile(const ARENA_CAMERA_PROFILE& saved, bool_t entrance);
 	static float3_t LookOffset(const ARENA_CAMERA_PROFILE& profile);
 	// Move the eye around the current focus; lens and focus position stay fixed.
 	static bool_t Set_OrbitAroundFocus(ARENA_CAMERA_PROFILE& profile,

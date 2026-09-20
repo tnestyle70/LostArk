@@ -183,6 +183,24 @@
   native shader 수치 동치와 사용자 화면 판정을 구분한다. 미지원 태양광 제외영역·안개/발광
   합성과 입력 출처는 대응 09-14/09-15 렌더링 RESULT에 둔다.
 
+### 화면 픽셀 수와 맵의 투영 배율을 구분한다
+
+- DPI 선언이 없는 1280×720 Client가 150% 배율 모니터에서 1920×1080 크기로 보일 수 있다.
+  설정 상수나 캡처 외곽 크기만으로 내부 해상도를 판정하지 않고 EXE manifest, 실제 HWND DPI,
+  client rect와 swapchain/viewport/RT 크기를 함께 확인한다. 같은 종횡비·카메라에서 전체 화면을
+  같은 비율로 확대하면 맵이 차지하는 정규화 비율은 그대로이며 픽셀 선명도 문제를 분리한다.
+- PerMonitorV2와 실제 physical client 크기를 연결할 때 main buffer만 바꾸지 않는다. full-size
+  MRT/HDR/scene post/source-light-mask depth와 half-size Bloom/SSAO/DSV/texel, viewport/화면
+  projection을 stage한 뒤 한 번에 commit한다. 0 크기와 자원 준비 실패는 기존 자원을 유지한다.
+- MRT가 공유한 RenderTarget wrapper는 유지하고 GPU 자원만 바꾼다. ResizeBuffers 전 context와
+  저장된 backbuffer RTV 참조를 모두 해제하며 End_MRT의 이전 output 참조를 다음 frame까지
+  붙잡지 않는다. 같은 해상도의 exclusive fullscreen 전환도 새 buffer 실현이 필요하다.
+- 원본 카메라 volume의 값은 실제 구역 포함 여부와 함께 소비한다. 쿠크19m volume은 입구의
+  Z[-86.428,1.409]m에 있고 세이튼 전장 Z737.53m는 밖이다. 09-14의 이를1관문 전체에 적용한
+  해석을 전장 근거로 재사용하지 않는다. 바깥의 공통16m CDO 기준을 원작 최종 camera framing
+  검증 완료로 확대하지 않는다. 맵 크기, 개별 Effect source/배율, 조명·tone/LUT는 따로 대조한다.
+- 구현·수치·빌드와 사용자 화면 검증 경계는 [물리 해상도·카메라 결과](09-20/2026-09-20_NATIVE_RESOLUTION_DPI_AND_KOUKU_CAMERA_IMPLEMENTATION_RESULT.md)를 따른다.
+
 ### Cooked distribution의 range header를 방향 XYZ로 읽지 않는다
 
 - `lookupTable`의 앞 2개 값은 값 범위 header다. 실제 vector payload와 `componentCount`,

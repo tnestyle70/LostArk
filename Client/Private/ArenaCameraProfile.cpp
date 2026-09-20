@@ -70,12 +70,12 @@ namespace
 		const char* area = AreaId(map);
 		const size_t expectedFields = 8u + (root.Find("characterSizeMultiplier") ? 1u : 0u) +
 			(root.Find("classSizeMultipliers") ? 1u : 0u) + (root.Find("clownSizeMultiplier") ? 1u : 0u) +
-			(root.Find("marioSizeMultiplier") ? 1u : 0u) +
+			(root.Find("marioSizeMultiplier") ? 1u : 0u) + (root.Find("useSourceCameraRegions") ? 1u : 0u) +
 			(root.Find("mazeHammerPositionCm") ? 1u : 0u) +
 			(root.Find("mazeHammerRotationDegrees") ? 1u : 0u) + (root.Find("mazeHammerScale") ? 1u : 0u);
 		if (nullptr == area || !root.Is_Object() || root.Get_Object().size() != expectedFields)
 		{
-			status = "Arena camera document requires eight supported fields and optional character size fields.";
+			status = "Arena camera document requires eight supported fields and optional source-region/character size fields.";
 			return false;
 		}
 		const auto* schema = root.Find("schema");
@@ -90,6 +90,12 @@ namespace
 			return false;
 		}
 		ARENA_CAMERA_PROFILE staged;
+		if (const auto* regions = root.Find("useSourceCameraRegions"))
+		{
+			if (!regions->Is_Boolean() || (regions->Get_Boolean() && map != ARENA_CAMERA_MAP::KOUKU_SAYDON))
+			{ status = "Source camera regions require a boolean and are supported only for KoukuSaydon."; return false; }
+			staged.useSourceCameraRegions = regions->Get_Boolean();
+		}
 		if (!ReadVector(root.Find("positionOffset"), staged.positionOffset) ||
 			!ReadVector(root.Find("rotationDegrees"), staged.rotationDegrees) ||
 			!ReadFloat(root.Find("focusDistance"), staged.focusDistance) ||
@@ -159,6 +165,7 @@ namespace
 			<< profile.rotationDegrees.z << "],\n  \"focusDistance\": " << profile.focusDistance
 			<< ",\n  \"fovYDegrees\": " << profile.fovYDegrees
 			<< ",\n  \"followResponse\": " << profile.followResponse
+			<< ",\n  \"useSourceCameraRegions\": " << (profile.useSourceCameraRegions ? "true" : "false")
 			<< ",\n  \"characterSizeMultiplier\": " << profile.characterSizeMultiplier
 			<< ",\n  \"classSizeMultipliers\": {";
 		bool first = true;
@@ -200,10 +207,10 @@ ARENA_CAMERA_PROFILE CArenaCameraProfile::Default(const ARENA_CAMERA_MAP map)
 	// EFTable_IsometricCamera and the raid EFChangePlayerCameraVolume defaults.
 	// UE centimetres (X,Y,Z) map to runtime metres (X,Z,-Y). The lens is
 	// horizontal at 16:9 in the source; DirectXMath consumes vertical degrees.
-	const f32_t distance = map == ARENA_CAMERA_MAP::VALTAN ? 18.f :
-		map == ARENA_CAMERA_MAP::KOUKU_SAYDON ? 19.f : 16.f;
+	const f32_t distance = map == ARENA_CAMERA_MAP::VALTAN ? 18.f : 16.f;
 	const f32_t horizontalFov = map == ARENA_CAMERA_MAP::VALTAN ? 55.f : 50.f;
 	ARENA_CAMERA_PROFILE profile;
+	profile.useSourceCameraRegions = map == ARENA_CAMERA_MAP::KOUKU_SAYDON;
 	profile.positionOffset = { -distance * 0.5f, distance * std::sqrt(0.5f) - 0.1f,
 		distance * 0.5f };
 	profile.rotationDegrees = { 45.f, 135.f, 0.f };
@@ -214,6 +221,47 @@ ARENA_CAMERA_PROFILE CArenaCameraProfile::Default(const ARENA_CAMERA_MAP map)
 	profile.followResponse = map == ARENA_CAMERA_MAP::BERN ? 0.f :
 		map == ARENA_CAMERA_MAP::VALTAN ? 18.f : 12.f;
 	return profile;
+}
+
+bool_t CArenaCameraProfile::Contains_KoukuSourceEntrance(const float3_t& position, const f32_t marginMeters)
+{
+	if (!std::isfinite(position.x) || !std::isfinite(position.y) || !std::isfinite(position.z) ||
+		!std::isfinite(marginMeters) || marginMeters < 0.f)
+		return false;
+	// PS export43 Location + BrushComponent export5 VertexData, UE cm -> (X,Z,-Y)m.
+	// This rotated entrance brush is around Z -87..2, not the Saydon arena at Z738.
+	constexpr std::array<float3_t, 4u> corners{{
+		{-3.818115234375f, 0.f, 1.409208984375f},
+		{38.275830078125f, 0.f, -14.84708984375f},
+		{10.631866760254f, 0.f, -86.428344726563f},
+		{-31.462043457031f, 0.f, -70.172307128906f}}};
+	constexpr f32_t tolerance = 0.00005f;
+	if (position.y < -7.741909713745f - marginMeters - tolerance ||
+		position.y > 16.491906204224f + marginMeters + tolerance)
+		return false;
+	for (size_t i = 0; i < corners.size(); ++i)
+	{
+		const auto& a = corners[i];
+		const auto& b = corners[(i + 1u) % corners.size()];
+		const f32_t dx = b.x - a.x, dz = b.z - a.z;
+		const f32_t cross = dx * (position.z - a.z) - dz * (position.x - a.x);
+		if (cross > (marginMeters + tolerance) * std::hypot(dx, dz))
+			return false;
+	}
+	return true;
+}
+
+ARENA_CAMERA_PROFILE CArenaCameraProfile::KoukuSourceProfile(
+	const ARENA_CAMERA_PROFILE& saved, const bool_t entrance)
+{
+	auto resolved = saved;
+	const auto source = Default(ARENA_CAMERA_MAP::KOUKU_SAYDON);
+	const f32_t distance = entrance ? 19.f : 16.f;
+	resolved.positionOffset = {-distance * .5f, distance * std::sqrt(.5f) - .1f, distance * .5f};
+	resolved.rotationDegrees = source.rotationDegrees;
+	resolved.focusDistance = distance;
+	resolved.fovYDegrees = source.fovYDegrees;
+	return resolved;
 }
 
 ARENA_CAMERA_PROFILE CArenaCameraProfile::BeforeRestoration(const ARENA_CAMERA_MAP map)
@@ -348,6 +396,8 @@ bool_t CArenaCameraProfile::Save(const ARENA_CAMERA_MAP map, const ARENA_CAMERA_
 	}
 	if (!Validate(profile, status))
 		return false;
+	if (profile.useSourceCameraRegions && map != ARENA_CAMERA_MAP::KOUKU_SAYDON)
+	{ status = "Source camera regions are supported only for KoukuSaydon."; return false; }
 	std::error_code error;
 	const bool_t existed = std::filesystem::exists(path, error);
 	std::string previous;

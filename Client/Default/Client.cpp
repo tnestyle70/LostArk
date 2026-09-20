@@ -10,6 +10,8 @@
 #include "GameInstance.h"
 #include "Profiler.h"
 #include "UIInputRouter.h"
+#include "ClientWindowDisplay.h"
+#include "UserSettingsDocument.h"
 
 #include "ImGuiLayer.h"
 
@@ -103,6 +105,10 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     LoadStringW(hInstance, IDC_CLIENT, szWindowClass, MAX_LOADSTRING);
     MyRegisterClass(hInstance);
 
+    std::string settingsStatus;
+    if (!Client::CUserSettings::Get().Load_Persisted(settingsStatus))
+        OutputDebugStringA(("[Settings] " + settingsStatus + "\n").c_str());
+
     // 애플리케이션 초기화를 수행합니다:
     if (!InitInstance (hInstance, nCmdShow))
     {
@@ -146,6 +152,17 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
             break;
         }
 
+        std::string displayStatus;
+        if (!Client::CClientWindowDisplay::Process_PendingResize(displayStatus))
+        {
+            WriteExitDiagnostic("Display resize failed", E_FAIL);
+            break;
+        }
+        // Keep consuming network events and frame-owned render submissions while minimized.
+        // The last nonzero GPU size remains valid; throttle these background frames to 20 Hz.
+        if (Client::CClientWindowDisplay::Is_Minimized())
+            MsgWaitForMultipleObjects(0, nullptr, FALSE, 50, QS_ALLINPUT);
+
         CGameInstance::Get().Update_TimeDelta(TEXT("Timer_60"));
         Engine::CProfiler* pProfiler = CGameInstance::Get().Get_Profiler();
         if (nullptr != pProfiler)
@@ -175,6 +192,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         }
     }
 
+    Client::CClientWindowDisplay::Shutdown();
     return (int) msg.wParam;
 }
 
@@ -232,6 +250,16 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
       return FALSE;
    }
 
+   g_hWnd = hWnd;
+   std::string displayStatus;
+   if (!Client::CClientWindowDisplay::Configure_InitialWindow(hWnd,
+       Client::CUserSettings::Get().Get_DisplaySettings(), displayStatus))
+   {
+       WriteExitDiagnostic("Initial display configuration failed", E_FAIL);
+       DestroyWindow(hWnd);
+       return FALSE;
+   }
+
    ShowWindow(hWnd, nCmdShow);
    UpdateWindow(hWnd);
 
@@ -252,6 +280,31 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 //
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
+    if (message == WM_SIZE)
+        Client::CClientWindowDisplay::Queue_Size(LOWORD(lParam), HIWORD(lParam), wParam == SIZE_MINIMIZED);
+    if (message == WM_DPICHANGED)
+    {
+        Client::CClientWindowDisplay::On_DpiChanged(HIWORD(wParam), *reinterpret_cast<const RECT*>(lParam));
+        return 0;
+    }
+    if (message == WM_GETMINMAXINFO)
+    {
+        auto* limits = reinterpret_cast<MINMAXINFO*>(lParam);
+        RECT minimum{0, 0, 640, 480};
+        AdjustWindowRectExForDpi(&minimum, static_cast<DWORD>(GetWindowLongPtrW(hWnd, GWL_STYLE)),
+            FALSE, static_cast<DWORD>(GetWindowLongPtrW(hWnd, GWL_EXSTYLE)), GetDpiForWindow(hWnd));
+        limits->ptMinTrackSize.x = minimum.right - minimum.left;
+        limits->ptMinTrackSize.y = minimum.bottom - minimum.top;
+        // A physical client resolution can need a larger outer frame than the desktop.
+        // Keep maximize's monitor bounds, but allow explicit resolution/window resizing.
+        RECT maximum{0, 0, 16384, 16384};
+        AdjustWindowRectExForDpi(&maximum, static_cast<DWORD>(GetWindowLongPtrW(hWnd, GWL_STYLE)),
+            FALSE, static_cast<DWORD>(GetWindowLongPtrW(hWnd, GWL_EXSTYLE)), GetDpiForWindow(hWnd));
+        limits->ptMaxTrackSize.x = maximum.right - maximum.left;
+        limits->ptMaxTrackSize.y = maximum.bottom - maximum.top;
+        return 0;
+    }
+
     if (CImGuiLayer::HandleWindowMessage(hWnd, message, wParam, lParam))
         return 1;
 

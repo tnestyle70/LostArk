@@ -63,6 +63,7 @@
 #include "CharacterInfoWindowView.h"
 #include "VehicleWindowView.h"
 #include "SystemOptionWindowView.h"
+#include "ClientWindowDisplay.h"
 #include "CombatAnalysisFrameView.h"
 #include "HonorTitleCatalog.h"
 #include "HonorTitleWindowView.h"
@@ -791,8 +792,11 @@ HRESULT CMainApp::Initialize()
 	engineDesc.hWnd = g_hWnd;
 	engineDesc.eWinMode = WINMODE::WIN;
 	engineDesc.iNumLevels = ETOUI(LEVEL::END);
-	engineDesc.iWinSizeX = g_iWinSizeX;
-	engineDesc.iWinSizeY = g_iWinSizeY;
+	RECT physicalClient{};
+	if (!GetClientRect(g_hWnd, &physicalClient) || physicalClient.right <= 0 || physicalClient.bottom <= 0)
+		return E_FAIL;
+	engineDesc.iWinSizeX = physicalClient.right;
+	engineDesc.iWinSizeY = physicalClient.bottom;
 
     HRESULT startupResult = InitializeStage("Engine.Initialize", [&]()
     {
@@ -801,9 +805,11 @@ HRESULT CMainApp::Initialize()
     if (FAILED(startupResult))
         return startupResult;
 
-	/* Before the first rendering profile resolve: Resolve_EffectiveQuality folds the
-	user's video settings in, and Apply_Audio needs the mixer Initialize_Engine just
-	built. Every run starts from the retail defaults; nothing is read from disk. */
+	string displayStatus;
+	if (!CClientWindowDisplay::Attach_Engine(displayStatus))
+		return E_FAIL;
+	CUserSettings::Get().Set_DisplayApplyCallback(CClientWindowDisplay::Apply);
+	/* Preferences were parsed before window creation; apply audio after Engine startup. */
 	CUserSettings::Get().Initialize();
 
     WriteStartupDiagnostic("Rendering.Load_Runtime", S_OK, "begin");
@@ -9719,6 +9725,28 @@ void CMainApp::RenderArenaFollowCameraSettings()
 		if (applied) camera->Set_FollowEnabled(true);
 	};
 	bool edited = false;
+	if (map == ARENA_CAMERA_MAP::KOUKU_SAYDON)
+	{
+		if (ImGui::Checkbox("Use source camera regions", &draft.useSourceCameraRegions))
+		{
+			if (draft.useSourceCameraRegions)
+			{
+				const auto source = CArenaCameraProfile::Default(map);
+				draft.positionOffset = source.positionOffset;
+				draft.rotationDegrees = source.rotationDegrees;
+				draft.focusDistance = source.focusDistance;
+				draft.fovYDegrees = source.fovYDegrees;
+				draft.followResponse = source.followResponse;
+			}
+			edited = true;
+		}
+		if (kouku)
+		{
+			const auto& effective = kouku->Get_EffectiveFollowCameraProfile();
+			ImGui::Text("Effective distance: %.3f m | Source regions: %s",
+				effective.focusDistance, draft.useSourceCameraRegions ? "On" : "Off");
+		}
+	}
 	const auto horizontalFov = [](f32_t vertical, f32_t aspect)
 	{
 		return XMConvertToDegrees(2.f * std::atan(std::tan(XMConvertToRadians(vertical) * 0.5f) * aspect));
@@ -9733,6 +9761,7 @@ void CMainApp::RenderArenaFollowCameraSettings()
 		draft.fovYDegrees = XMConvertToDegrees(2.f * std::atan(
 			std::tan(XMConvertToRadians(referenceFov) * 0.5f) / referenceAspect));
 		draft.fovYDegrees = std::clamp(draft.fovYDegrees, 10.f, 150.f);
+		draft.useSourceCameraRegions = false;
 		edited = true;
 	}
 	f32_t orbitDistance = draft.focusDistance;
@@ -9745,7 +9774,10 @@ void CMainApp::RenderArenaFollowCameraSettings()
 	orbitEdited |= ImGui::DragFloat("Camera yaw (deg)", &orbitYaw, 0.25f, -180.f, 180.f,
 		"%.2f", ImGuiSliderFlags_AlwaysClamp);
 	if (orbitEdited && CArenaCameraProfile::Set_OrbitAroundFocus(draft, orbitDistance, orbitPitch, orbitYaw, status))
+	{
+		draft.useSourceCameraRegions = false;
 		edited = true;
+	}
 	ImGui::TextDisabled("Distance moves the camera toward or away from the same focus. Pitch changes the ground angle; yaw circles the focus.");
 	if (ImGui::TreeNodeEx("Character Size", ImGuiTreeNodeFlags_DefaultOpen))
 	{
@@ -9830,18 +9862,20 @@ void CMainApp::RenderArenaFollowCameraSettings()
 	}
 	ImGui::TextDisabled("Presets replace camera pose and lens, preserving character size. Save persists this map's settings.");
 	if (map == ARENA_CAMERA_MAP::KOUKU_SAYDON)
-		ImGui::TextWrapped("Source baseline: Gate 1 volume, 50 deg / 19 m. Gates 2/3 use this trial baseline; their source match is unverified. Mario, maze and cinematic shots keep their own cameras.");
+		ImGui::TextWrapped("Source baseline: 50 deg / 16 m outside the verified entrance volume, 19 m inside it. Gate 1 battle floor is outside that volume. Final retail framing remains unverified. Manual camera edits disable region selection; Mario, maze and cinematic shots retain their cameras.");
 	if (ImGui::TreeNode("Advanced camera pose"))
 	{
+		bool poseEdited = false;
 		ImGui::TextDisabled("World axes relative to player. Pitch +: down; Yaw 0: +Z.");
-		edited |= ImGui::DragFloat3("Position offset XYZ (m)", &draft.positionOffset.x, 0.05f, -1000.f, 1000.f,
+		poseEdited |= ImGui::DragFloat3("Position offset XYZ (m)", &draft.positionOffset.x, 0.05f, -1000.f, 1000.f,
 			"%.3f", ImGuiSliderFlags_AlwaysClamp);
-		edited |= ImGui::DragFloat("Pitch (deg)", &draft.rotationDegrees.x, 0.25f, -89.f, 89.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-		edited |= ImGui::DragFloat("Yaw (deg)", &draft.rotationDegrees.y, 0.25f, -180.f, 180.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-		edited |= ImGui::DragFloat("Roll (deg)", &draft.rotationDegrees.z, 0.25f, -180.f, 180.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-		edited |= ImGui::DragFloat("Focus distance (m)", &draft.focusDistance, 0.05f, 0.1f, 1000.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
-		edited |= ImGui::DragFloat("FOV Y (deg)", &draft.fovYDegrees, 0.25f, 10.f, 150.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-		edited |= ImGui::DragFloat("Follow response", &draft.followResponse, 0.1f, 0.f, 60.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+		poseEdited |= ImGui::DragFloat("Pitch (deg)", &draft.rotationDegrees.x, 0.25f, -89.f, 89.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+		poseEdited |= ImGui::DragFloat("Yaw (deg)", &draft.rotationDegrees.y, 0.25f, -180.f, 180.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+		poseEdited |= ImGui::DragFloat("Roll (deg)", &draft.rotationDegrees.z, 0.25f, -180.f, 180.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+		poseEdited |= ImGui::DragFloat("Focus distance (m)", &draft.focusDistance, 0.05f, 0.1f, 1000.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+		poseEdited |= ImGui::DragFloat("FOV Y (deg)", &draft.fovYDegrees, 0.25f, 10.f, 150.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+		poseEdited |= ImGui::DragFloat("Follow response", &draft.followResponse, 0.1f, 0.f, 60.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+		if (poseEdited) { draft.useSourceCameraRegions = false; edited = true; }
 		ImGui::TreePop();
 	}
 	if (edited) preview();

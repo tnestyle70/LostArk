@@ -22,6 +22,7 @@ HRESULT Client::CUI_Sprite::Initialize(void* pArg)
 	auto pDesc = static_cast<UI_SPRITE_DESC*>(pArg);
 
 	m_strTextureTag = pDesc->strTextureTag;
+	m_vReferenceResolution = pDesc->referenceResolution;
 
 	if (FAILED(__super::Initialize(pDesc)))
 		return E_FAIL;
@@ -44,6 +45,9 @@ HRESULT Client::CUI_Sprite::Render()
 	// Render-time gating also covers sprites queued before this frame's cutscene starts.
 	if (!m_bVisible || (!m_bCinematicOverlay && CUIInputRouter::Get().Is_CinematicSuppressed()))
 		return S_OK;
+	const auto viewport = CGameInstance::Get().Get_ViewportSize();
+	if (viewport.x != m_vAppliedViewport.x || viewport.y != m_vAppliedViewport.y)
+		Apply_Transform();
 	if (FAILED(Bind_ShaderResources()))
 		return E_FAIL;
 
@@ -136,7 +140,11 @@ void Client::CUI_Sprite::Set_Rect(f32_t fCenterX, f32_t fCenterY, f32_t fSizeX, 
 
 void Client::CUI_Sprite::Apply_Transform()
 {
-	m_pTransformCom->Scale(m_fSizeX, m_fSizeY);
+	const auto viewport = CGameInstance::Get().Get_ViewportSize();
+	const float sx = m_vReferenceResolution.x > 0.f ? viewport.x / m_vReferenceResolution.x : 1.f;
+	const float sy = m_vReferenceResolution.y > 0.f ? viewport.y / m_vReferenceResolution.y : 1.f;
+	m_vAppliedViewport = viewport;
+	m_pTransformCom->Scale(m_fSizeX * sx, m_fSizeY * sy);
 	/* Screen-space clockwise degrees (the HUD Layout Tool/HUDRuntimeView convention, y-down) map
 	to a negative mathematical rotation about +Z in this y-up world space. CTransform::Rotation
 	rebuilds right/up/look from axis-aligned axes at the current scale, so it must run after
@@ -145,8 +153,8 @@ void Client::CUI_Sprite::Apply_Transform()
 	m_pTransformCom->Rotation(XMVectorSet(0.f, 0.f, 1.f, 0.f), -m_fRotationDeg);
 	m_pTransformCom->Set_State(STATE::POSITION,
 		XMVectorSet(
-			m_fX - CGameInstance::Get().Get_ViewportSize().x * 0.5f,
-			-m_fY + CGameInstance::Get().Get_ViewportSize().y * 0.5f,
+			m_fX * sx - viewport.x * 0.5f,
+			-m_fY * sy + viewport.y * 0.5f,
 			0.f, 1.f));
 }
 
@@ -178,7 +186,10 @@ HRESULT Client::CUI_Sprite::Bind_ShaderResources()
 	if (FAILED(__super::Bind_ShaderResource(m_pShaderCom, "g_ViewMatrix", D3DTS::VIEW)))
 		return E_FAIL;
 
-	if (FAILED(__super::Bind_ShaderResource(m_pShaderCom, "g_ProjMatrix", D3DTS::PROJ)))
+	const auto viewport = CGameInstance::Get().Get_ViewportSize();
+	float4x4_t projection{};
+	XMStoreFloat4x4(&projection, XMMatrixOrthographicLH(viewport.x, viewport.y, 0.f, 1.f));
+	if (FAILED(m_pShaderCom->Bind_Matrix("g_ProjMatrix", &projection)))
 		return E_FAIL;
 
 	if (nullptr != m_pOverrideTextureSRV)

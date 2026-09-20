@@ -235,13 +235,6 @@ private:
 	wstring_t						m_strDocumentPath;
 	f32_t							m_fResolutionWidth = 1280.f;
 	f32_t							m_fResolutionHeight = 720.f;
-	/* Reference-resolution -> viewport-pixels scale, computed once at Load() (not re-applied on
-	later resize, matching CMainApp's own LoadingLayout chrome). Get_SlotRect/RUNTIME_SLOT stay
-	in raw reference-resolution units -- matching CHUDRuntimeView's own Get_SlotRect contract,
-	which every existing caller (RenderItemAnnounceText, etc.) already assumes and scales itself
-	-- these two are applied only when actually positioning a CUI_Sprite. */
-	f32_t							m_fScaleX = 1.f;
-	f32_t							m_fScaleY = 1.f;
 
 	vector<RUNTIME_SLOT>			m_Slots;
 	/* Runtime lookup only; document order and sprite ownership stay in m_Slots. Duplicate

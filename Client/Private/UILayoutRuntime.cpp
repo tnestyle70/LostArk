@@ -38,11 +38,12 @@ shared_ptr<Client::CUI_Sprite> Client::CUILayoutRuntime::Create_Sprite(
 	Ensure_TexturePrototype(strWidePath);
 
 	CUI_Sprite::UI_SPRITE_DESC Desc{};
-	Desc.fX = (fRectX + fRectWidth * 0.5f) * m_fScaleX;
-	Desc.fY = (fRectY + fRectHeight * 0.5f) * m_fScaleY;
-	Desc.fSizeX = fRectWidth * m_fScaleX;
-	Desc.fSizeY = fRectHeight * m_fScaleY;
+	Desc.fX = (fRectX + fRectWidth * 0.5f);
+	Desc.fY = (fRectY + fRectHeight * 0.5f);
+	Desc.fSizeX = fRectWidth;
+	Desc.fSizeY = fRectHeight;
 	Desc.strTextureTag = strWidePath;
+	Desc.referenceResolution = {m_fResolutionWidth, m_fResolutionHeight};
 
 	shared_ptr<CGameObject> pObject;
 	if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(
@@ -88,14 +89,7 @@ HRESULT Client::CUILayoutRuntime::Load()
 	if (nullptr == pSlots || !pSlots->Is_Array())
 		return S_OK;
 
-	/* Reference-resolution -> current viewport pixels, computed once here (not re-applied on
-	later resize) -- the same simplification CMainApp's own LoadingLayout chrome already
-	accepts (its JSON coordinates are consumed as direct viewport pixels with no per-frame
-	rescale either). Stored on the instance (not just a Load()-local) so Set_SlotPosition and
-	the per-frame keyframe evaluation can apply the same conversion later. */
-	const float2_t vViewportSize = CGameInstance::Get().Get_ViewportSize();
-	m_fScaleX = (m_fResolutionWidth > 0.f) ? vViewportSize.x / m_fResolutionWidth : 1.f;
-	m_fScaleY = (m_fResolutionHeight > 0.f) ? vViewportSize.y / m_fResolutionHeight : 1.f;
+	/* Sprite geometry keeps document coordinates; CUI_Sprite projects them to the current physical viewport. */
 
 	for (const DATA_JSON_VALUE& SlotValue : pSlots->Get_Array())
 	{
@@ -631,10 +625,10 @@ void Client::CUILayoutRuntime::Set_SlotPosition(const string& strId, f32_t fX, f
 	RUNTIME_SLOT& Slot = *pSlot;
 	Slot.fX = fX;
 	Slot.fY = fY;
-	const f32_t fCenterX = (fX + Slot.fSizeX * 0.5f) * m_fScaleX;
-	const f32_t fCenterY = (fY + Slot.fSizeY * 0.5f) * m_fScaleY;
-	const f32_t fSizeX = Slot.fSizeX * m_fScaleX;
-	const f32_t fSizeY = Slot.fSizeY * m_fScaleY;
+	const f32_t fCenterX = (fX + Slot.fSizeX * 0.5f);
+	const f32_t fCenterY = (fY + Slot.fSizeY * 0.5f);
+	const f32_t fSizeX = Slot.fSizeX;
+	const f32_t fSizeY = Slot.fSizeY;
 	if (nullptr != Slot.pSprite)
 		Slot.pSprite->Set_Rect(fCenterX, fCenterY, fSizeX, fSizeY);
 	for (const shared_ptr<CUI_Sprite>& pExtra : Slot.ExtraLayerSprites)
@@ -653,13 +647,13 @@ void Client::CUILayoutRuntime::Set_SlotRect(
 	Slot.fY = fY;
 	Slot.fSizeX = fWidth;
 	Slot.fSizeY = fHeight;
-	const f32_t fCenterX = (fX + fWidth * 0.5f) * m_fScaleX;
-	const f32_t fCenterY = (fY + fHeight * 0.5f) * m_fScaleY;
+	const f32_t fCenterX = (fX + fWidth * 0.5f);
+	const f32_t fCenterY = (fY + fHeight * 0.5f);
 	if (nullptr != Slot.pSprite)
-		Slot.pSprite->Set_Rect(fCenterX, fCenterY, fWidth * m_fScaleX, fHeight * m_fScaleY);
+		Slot.pSprite->Set_Rect(fCenterX, fCenterY, fWidth, fHeight);
 	for (const shared_ptr<CUI_Sprite>& pExtra : Slot.ExtraLayerSprites)
 		if (nullptr != pExtra)
-			pExtra->Set_Rect(fCenterX, fCenterY, fWidth * m_fScaleX, fHeight * m_fScaleY);
+			pExtra->Set_Rect(fCenterX, fCenterY, fWidth, fHeight);
 }
 
 void Client::CUILayoutRuntime::Set_SlotFillRatio(const string& strId, f32_t fFillRatio)
@@ -841,9 +835,9 @@ void Client::CUILayoutRuntime::Update_KeyframeSlot(RUNTIME_SLOT& Slot, f32_t fTi
 		const f32_t fKeyHeight = fTexHeight * pActiveKey->fScaleY * fLocalScale;
 
 		pKeySprite->Set_Rect(
-			(fKeyX + fKeyWidth * 0.5f) * m_fScaleX,
-			(fKeyY + fKeyHeight * 0.5f) * m_fScaleY,
-			fKeyWidth * m_fScaleX, fKeyHeight * m_fScaleY);
+			(fKeyX + fKeyWidth * 0.5f),
+			(fKeyY + fKeyHeight * 0.5f),
+			fKeyWidth, fKeyHeight);
 		pKeySprite->Set_Rotation(pActiveKey->fRotationDeg);
 		pKeySprite->Set_Texture(pKeySRV);
 		pKeySprite->Set_Tint(float4_t(

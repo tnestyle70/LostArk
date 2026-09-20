@@ -220,3 +220,11 @@ const Client::SYSTEM_OPTION_TAB* Client::CSystemOptionRowsDocument::Find_Tab(con
 	}
 	return nullptr;
 }
+
+void Client::CSystemOptionRowsDocument::Set_ResolutionChoices(const vector<SYSTEM_OPTION_CHOICE>& Choices)
+{
+	for (SYSTEM_OPTION_TAB& Tab : m_Tabs)
+		for (SYSTEM_OPTION_ROW& Row : Tab.Rows)
+			if (Row.strId == "combobox_resolution")
+				Row.Choices = Choices;
+}

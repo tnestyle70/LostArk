@@ -2,6 +2,7 @@
 
 #include "GameObject.h"
 #include "Engine_RenderTypes.h"
+#include "Target_Manager.h"
 
 /* 화면에 그려져야할 객체들을 그리는 순서에 따른 그룹별로 모아둔다. */
 /* 모아둔 순서대로 객체들의 드로우콜을 수행해준다.*/
@@ -19,6 +20,19 @@ public:
 	~CRenderer();
 
 public:
+    struct VIEWPORT_RESIZE_STATE final
+    {
+        uint32_t Width = 0u, Height = 0u;
+        CTarget_Manager::RESIZE_STATE Targets;
+        ComPtr<ID3D11DepthStencilView> BloomDSV, SSAODSV, SourceLightMaskDSV;
+        ComPtr<ID3D11Texture2D> ScenePostTextures[2];
+        ComPtr<ID3D11RenderTargetView> ScenePostRTVs[2], SceneBloomPostRTVs[2];
+        ComPtr<ID3D11ShaderResourceView> ScenePostSRVs[2], SceneBloomPostSRVs[2];
+    };
+    HRESULT Stage_ViewportResize(uint32_t width, uint32_t height,
+        const CTarget_Manager& targets, VIEWPORT_RESIZE_STATE& output) const;
+    void Commit_ViewportResize(CTarget_Manager& targets, VIEWPORT_RESIZE_STATE& staged) noexcept;
+
 	HRESULT Initialize();
 	HRESULT Add_RenderObject(RENDERGROUP eRenderGroupID, shared_ptr<CGameObject> pRenderObject);
 	HRESULT Draw();

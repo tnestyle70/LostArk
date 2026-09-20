@@ -287,6 +287,7 @@
     <ClInclude Include="..\Public\RuntimeAssetRoot.h" />
     <ClInclude Include="..\Public\ProjectDataRoot.h" />
     <ClInclude Include="..\Public\UserSettingsDocument.h" />
+    <ClInclude Include="..\Public\ClientWindowDisplay.h" />
     <ClInclude Include="..\Public\DataJson.h" />
     <ClInclude Include="..\Public\Valtan.h" />
     <ClInclude Include="Client.h" />
@@ -622,6 +623,7 @@
     </ClCompile>
     <ClCompile Include="..\Private\ProjectDataRoot.cpp" />
     <ClCompile Include="..\Private\UserSettingsDocument.cpp" />
+    <ClCompile Include="..\Private\ClientWindowDisplay.cpp" />
     <ClCompile Include="..\Private\DataJson.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">MaxSpeed</Optimization>
       <BasicRuntimeChecks Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Default</BasicRuntimeChecks>
@@ -1222,6 +1224,14 @@
     </ClCompile>
     <ClInclude Include="..\..\Tools\Build\CppStandardPch.h" />
   </ItemGroup>
+  <ItemGroup>
+    <Manifest Include="Client.manifest" />
+  </ItemGroup>
+  <ItemDefinitionGroup>
+    <Manifest>
+      <AdditionalManifestFiles>$(ProjectDir)Client.manifest;%(AdditionalManifestFiles)</AdditionalManifestFiles>
+    </Manifest>
+  </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <PropertyGroup>
     <EngineRoot>$(ProjectDir)..\..\Engine\</EngineRoot>

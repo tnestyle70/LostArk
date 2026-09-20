@@ -414,6 +414,106 @@ HRESULT CRenderer::Initialize()
 	return S_OK;
 }
 
+HRESULT CRenderer::Stage_ViewportResize(uint32_t width, uint32_t height,
+    const CTarget_Manager& targets, VIEWPORT_RESIZE_STATE& output) const
+{
+    if (width == 0u || height == 0u || width > D3D11_REQ_TEXTURE2D_U_OR_V_DIMENSION ||
+        height > D3D11_REQ_TEXTURE2D_U_OR_V_DIMENSION) return E_INVALIDARG;
+    VIEWPORT_RESIZE_STATE staged;
+    staged.Width = width;
+    staged.Height = height;
+    const uint32_t halfWidth = max(1u, width / 2u), halfHeight = max(1u, height / 2u);
+    const wchar_t* fullTargets[] = {
+        L"Target_Diffuse", L"Target_Normal", L"Target_Shade", L"Target_Depth",
+        L"Target_Specular", L"Target_MaterialSpecular", L"Target_CharacterSurface",
+        L"Target_CharacterGeometry", L"Target_PickPos", L"Target_Emissive",
+        L"Target_SceneHDR", L"Target_SceneBloom", L"Target_EffectSceneColor",
+        L"Target_EffectSceneBloom", L"Target_Distortion"
+    };
+    const wchar_t* halfTargets[] = {
+        L"Target_SSAORaw", L"Target_SSAOBlur", L"Target_BloomExtract",
+        L"Target_BloomPing", L"Target_BloomResult"
+    };
+    vector<CTarget_Manager::RESIZE_REQUEST> requests;
+    requests.reserve(size(fullTargets) + size(halfTargets));
+    for (const auto* tag : fullTargets) requests.push_back({tag, width, height});
+    for (const auto* tag : halfTargets) requests.push_back({tag, halfWidth, halfHeight});
+    HRESULT result = targets.Stage_Resize(requests, staged.Targets);
+    if (FAILED(result)) return result;
+
+    const auto stageDepth = [this](uint32_t w, uint32_t h,
+        ComPtr<ID3D11DepthStencilView>& depth) -> HRESULT
+    {
+        D3D11_TEXTURE2D_DESC desc{};
+        desc.Width = w; desc.Height = h;
+        desc.MipLevels = desc.ArraySize = desc.SampleDesc.Count = 1u;
+        desc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+        desc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+        ComPtr<ID3D11Texture2D> texture;
+        HRESULT hr = m_pDevice->CreateTexture2D(&desc, nullptr, texture.GetAddressOf());
+        if (SUCCEEDED(hr)) hr = m_pDevice->CreateDepthStencilView(texture.Get(), nullptr, depth.GetAddressOf());
+        return hr;
+    };
+    result = stageDepth(halfWidth, halfHeight, staged.BloomDSV);
+    if (SUCCEEDED(result)) result = stageDepth(halfWidth, halfHeight, staged.SSAODSV);
+    if (SUCCEEDED(result)) result = stageDepth(width, height, staged.SourceLightMaskDSV);
+    if (FAILED(result)) return result;
+
+    D3D11_TEXTURE2D_DESC desc{};
+    desc.Width = width; desc.Height = height;
+    desc.MipLevels = desc.ArraySize = desc.SampleDesc.Count = 1u;
+    desc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+    desc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+    for (size_t index = 0u; index < 2u; ++index)
+    {
+        ComPtr<ID3D11Texture2D> bloom;
+        result = m_pDevice->CreateTexture2D(&desc, nullptr, staged.ScenePostTextures[index].GetAddressOf());
+        if (SUCCEEDED(result)) result = m_pDevice->CreateRenderTargetView(staged.ScenePostTextures[index].Get(),
+            nullptr, staged.ScenePostRTVs[index].GetAddressOf());
+        if (SUCCEEDED(result)) result = m_pDevice->CreateShaderResourceView(staged.ScenePostTextures[index].Get(),
+            nullptr, staged.ScenePostSRVs[index].GetAddressOf());
+        if (SUCCEEDED(result)) result = m_pDevice->CreateTexture2D(&desc, nullptr, bloom.GetAddressOf());
+        if (SUCCEEDED(result)) result = m_pDevice->CreateRenderTargetView(bloom.Get(), nullptr,
+            staged.SceneBloomPostRTVs[index].GetAddressOf());
+        if (SUCCEEDED(result)) result = m_pDevice->CreateShaderResourceView(bloom.Get(), nullptr,
+            staged.SceneBloomPostSRVs[index].GetAddressOf());
+        if (FAILED(result)) return result;
+    }
+    output = std::move(staged);
+    return S_OK;
+}
+
+void CRenderer::Commit_ViewportResize(CTarget_Manager& targets, VIEWPORT_RESIZE_STATE& staged) noexcept
+{
+    const auto previous = CGameInstance::Get().Get_ViewportSize();
+    targets.Commit_Resize(staged.Targets, static_cast<f32_t>(staged.Width) - previous.x,
+        static_cast<f32_t>(staged.Height) - previous.y);
+    m_pBloomDSV.Swap(staged.BloomDSV);
+    m_pSSAODSV.Swap(staged.SSAODSV);
+    m_pSourceLightMaskDSV.Swap(staged.SourceLightMaskDSV);
+    m_iSourceLightMaskWidth = staged.Width; m_iSourceLightMaskHeight = staged.Height;
+    m_iSourceLightMaskFailedWidth = m_iSourceLightMaskFailedHeight = 0u;
+    m_iBloomWidth = m_iSSAOWidth = max(1u, staged.Width / 2u);
+    m_iBloomHeight = m_iSSAOHeight = max(1u, staged.Height / 2u);
+    m_vBloomTexelSize = m_vSSAOTexelSize = float2_t(1.f / m_iBloomWidth, 1.f / m_iBloomHeight);
+    for (size_t index = 0u; index < 2u; ++index)
+    {
+        m_pScenePostTextures[index].Swap(staged.ScenePostTextures[index]);
+        m_pScenePostRTVs[index].Swap(staged.ScenePostRTVs[index]);
+        m_pScenePostSRVs[index].Swap(staged.ScenePostSRVs[index]);
+        m_pSceneBloomPostRTVs[index].Swap(staged.SceneBloomPostRTVs[index]);
+        m_pSceneBloomPostSRVs[index].Swap(staged.SceneBloomPostSRVs[index]);
+    }
+    m_iScenePostWidth = staged.Width; m_iScenePostHeight = staged.Height;
+    m_iScenePostFinalTarget = 0u;
+    // Keep a pending scene-color capture request for the next draw at the new size.
+    XMStoreFloat4x4(&m_WorldMatrix, XMMatrixScaling(static_cast<f32_t>(staged.Width),
+        static_cast<f32_t>(staged.Height), 1.f));
+    XMStoreFloat4x4(&m_ProjMatrix, XMMatrixOrthographicLH(static_cast<f32_t>(staged.Width),
+        static_cast<f32_t>(staged.Height), 0.f, 1.f));
+    // Quality, source LUTs, scene environment and fixed-resolution shadow resources survive.
+}
+
 HRESULT CRenderer::Add_RenderObject(RENDERGROUP eRenderGroupID, shared_ptr<CGameObject> pRenderObject)
 {
 	if (nullptr == pRenderObject ||

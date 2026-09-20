@@ -20,6 +20,7 @@ public:
 	typedef struct tagUISpriteDesc : public CUIObject::UIOBJECT_DESC
 	{
 		wstring_t	strTextureTag;
+        float2_t referenceResolution = {0.f, 0.f};
 	}UI_SPRITE_DESC;
 
 private:
@@ -87,6 +88,8 @@ private:
 	shared_ptr<CTexture>			m_pTextureCom = { nullptr };
 	shared_ptr<CVIBuffer_Rect>		m_pVIBufferCom = { nullptr };
 
+	float2_t m_vReferenceResolution = {0.f, 0.f};
+	float2_t m_vAppliedViewport = {0.f, 0.f};
 	float4_t						m_vTint = float4_t(1.f, 1.f, 1.f, 1.f);
 	float4_t						m_vTintMultiplier = float4_t(1.f, 1.f, 1.f, 1.f);
 	bool_t							m_bFlipX = false;
