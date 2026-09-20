@@ -993,6 +993,7 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 				{3u,"Mario3_Trigger_8","Mario3_Trigger_10",-1.f},
 				{3u,"Mario3_Trigger_10","Mario3_Trigger_12",1.f},
 				{4u,"Mario4_go","Mario4_Tigger_2",1.f},
+				{4u,"Mario4_Tigger_2","Mario4_Tigger_5",-1.f},
 				{4u,"Mario4_Tigger_3","Mario4_Tigger_6",1.f},
 				{4u,"Mario4_Tigger_6","Mario4_Tigger_7",-1.f},
 				{4u,"Mario4_Tigger_7","Mario4_Tigger_13",1.f},
@@ -1019,7 +1020,13 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 					std::abs(player.fMarioRailRightX - dx / length * lane.sign) < 0.00001f &&
 					std::abs(player.fMarioRailRightZ - dz / length * lane.sign) < 0.00001f &&
 					player.fMarioRailOriginX == action.fTargetX && player.fMarioRailOriginZ == action.fTargetZ,
-					"All 17 Mario lanes derive fixed signed axes from actual gameplay placement coordinates");
+					"All 18 Mario lanes derive fixed signed axes from actual gameplay placement coordinates");
+				/* This lane was missing from the table above, so its sign was never checked. Its landing is
+				   framed by 4Mario.follow.floor2.near (looks toward -Z, screen right = -X), so the right key
+				   has to move toward -X even though the exit Mario4_Tigger_5 lies toward +X. */
+				if (4u == lane.stage && configured && std::string(lane.arrival) == "Mario4_Tigger_2")
+					tests.Require(player.fMarioRailRightX < -0.9f && player.fMarioRailRightZ > 0.f,
+						"Mario4_Tigger_2 lane: the right key moves toward -X, the screen right of the floor-2 near camera");
 				if (3u == lane.stage && configured)
 				{
 					/* Diagnose the complete current movement route, not just the

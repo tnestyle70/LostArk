@@ -833,6 +833,29 @@ bool_t CWorldSequencePlayer::Is_PlacementSuppressed(const uint64_t placementId) 
 	return m_SuppressedPlacements.contains(placementId);
 }
 
+uint64_t CWorldSequencePlayer::Collect_OwnedPlacements(std::unordered_set<uint64_t>* pOut) const
+{
+	uint64_t signature = 0u;
+	uint64_t count = 0u;
+	const auto accumulate = [&signature, &count, pOut](const std::vector<ACTIVE_INSTANCE>& instances)
+	{
+		for (const ACTIVE_INSTANCE& active : instances)
+		{
+			for (const PLACEMENT_BASELINE& baseline : active.placementBaselines)
+			{
+				// A sum of well-mixed ids: the same set always gives the same value, whatever its order.
+				signature += (baseline.placementId ^ (baseline.placementId >> 31)) * 0x9E3779B97F4A7C15ull;
+				++count;
+				if (nullptr != pOut)
+					pOut->insert(baseline.placementId);
+			}
+		}
+	};
+	accumulate(m_Active);
+	accumulate(m_Held);
+	return 0u == count ? 0u : ((signature ^ (count << 48)) | 1u);
+}
+
 bool_t CWorldSequencePlayer::Is_Playing(const std::string& instanceId) const
 {
 	return m_Active.end() != std::find_if(m_Active.begin(), m_Active.end(),

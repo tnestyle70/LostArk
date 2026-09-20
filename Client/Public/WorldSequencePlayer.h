@@ -175,6 +175,10 @@ public:
 	   hands the placement back. */
 	void Set_PlacementSuppressed(uint64_t placementId, bool_t suppressed);
 	bool_t Is_PlacementSuppressed(uint64_t placementId) const;
+	/* Placements the instances that are playing or holding a pose right now manipulate. Returns an
+	   order-independent signature (0 = none) so a caller can see the set change without copying it;
+	   pOut (optional) receives the ids. Nothing is allocated when pOut is null. */
+	uint64_t Collect_OwnedPlacements(std::unordered_set<uint64_t>* pOut) const;
 	/* The camera cue runs on the cutscene's own clock. Only the player owns
 	   that clock, so it hands out a read-only sample instead of letting a
 	   second owner count the same time. false means the instance is not

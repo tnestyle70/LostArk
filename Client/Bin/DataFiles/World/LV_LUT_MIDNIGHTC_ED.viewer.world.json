@@ -2,7 +2,7 @@
     "schema":  "lostark.world-gameplay",
     "formatVersion":  6,
     "areaId":  "LV_LUT_MIDNIGHTC_ED",
-    "revision":  8798,
+    "revision":  8799,
     "placements":  [
                        {
                            "placementId":  "1Stage_Final",
@@ -1126,7 +1126,6 @@
                                                1
                                            ],
                            "triggerOnce":  true,
-                           "requiresInteract":  true,
                            "events":  [
                                           {
                                               "type":  "movePlayer",
@@ -1156,7 +1155,6 @@
                                                1
                                            ],
                            "triggerOnce":  true,
-                           "requiresInteract":  true,
                            "events":  [
                                           {
                                               "type":  "movePlayer",
