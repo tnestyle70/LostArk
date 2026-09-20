@@ -1,0 +1,213 @@
+LOSTARK_SPAWN_GROUP_BOOTSTRAP	4	KAKULSAYDON_ARENA	LV_LUT_MIDNIGHTC_ED	196	89	7	15
+PROFILE	MONSTER_KOUKU_CARD_CLUB	300	1	0	0.6	0.01	0.01	0.01	1	1	1	2500	0	0	0	0	0	0.02	1	1	1	0.6
+PROFILE	MONSTER_KOUKU_CARD_DIAMOND	300	1	0	0.6	0.01	0.01	0.01	1	1	1	2500	0	0	0	0	0	0.02	1	1	1	0.6
+PROFILE	MONSTER_KOUKU_CARD_HEART	300	1	0	0.6	0.01	0.01	0.01	1	1	1	2500	0	0	0	0	0	0.02	1	1	1	0.6
+PROFILE	MONSTER_KOUKU_CARD_SPADE	300	1	0	0.6	0.01	0.01	0.01	1	1	1	2500	0	0	0	0	0	0.02	1	1	1	0.6
+PROFILE	MONSTER_KOUKU_CLOWN_BOX	500	1	0	0.6	0.01	0.01	0.01	1	1	1	3500	0	0	0	0	0	0.02	1	1	1	0.6
+PROFILE	MONSTER_KOUKU_CMDGR_03	5000	35	30	0.8	8	1.08	2.6	700	250	1000	2500	0.5	0.5	150	0	0	20	300	8	12	2
+PROFILE	MONSTER_KOUKU_CMDUP_02	900	70	10	0.5	8	2.15	1.8	500	200	800	2000	1	0.5	150	0	0	20	420	10	14	1.2
+PROFILE	MONSTER_KOUKU_REUP_04	900	30	10	0.5	8	2.15	1.8	500	200	800	2000	1	0.5	150	0	0	20	420	10	14	1.2
+PROFILE	MONSTER_KOUKU_RHKP_06	900	70	10	0.5	8	2.15	1.8	500	200	800	2000	1	0.5	150	0	0	20	420	10	14	1.2
+PROFILE	MONSTER_MARIO_CDMD	1	100	0	0.6	2	1.2	2	600	100	1300	2500	0	0	0	0	0	3	360	4	6	0.6
+PROFILE	MONSTER_MARIO_CLUB	1	100	0	0.6	2	1.2	2	600	100	1300	2500	0	0	0	0	0	3	360	4	6	0.6
+PROFILE	MONSTER_MARIO_DIAMOND	1	100	0	0.6	2	1.2	2	600	100	1300	2500	0	0	0	0	0	3	360	4	6	0.6
+PROFILE	MONSTER_MARIO_HEART	1	100	0	0.6	2	1.2	2	600	100	1300	2500	0	0	0	0	0	3	360	4	6	0.6
+PROFILE	MONSTER_MARIO_REUP	1	100	0	0.6	2	1.2	2	600	100	1300	2500	0	0	0	0	0	3	360	4	6	0.6
+PROFILE	MONSTER_MARIO_RHKP	1	100	0	0.6	2	1.2	2	600	100	1300	2500	0	0	0	0	0	3	360	4	6	0.6
+ANCHOR	anchor.kouku.book1.source.12	8.149468	0.04	-29.961379	-204.433594
+ANCHOR	anchor.kouku.book1.source.13	7.839951	0.04	-35.792961	-163.476562
+ANCHOR	anchor.kouku.book1.source.14	0.701255	0.030563	-44.181299	-72.070312
+ANCHOR	anchor.kouku.book1.source.15	1.779026	0.032561	-42.991992	-127.792969
+ANCHOR	anchor.kouku.book1.source.16	2.360061	0.032883	-45.253521	-103.710938
+ANCHOR	anchor.kouku.book1.source.17	-3.938651	0.009849	-42.227861	-55.019531
+ANCHOR	anchor.kouku.book1.source.18	-4.622169	0.014443	-43.690908	-65.742188
+ANCHOR	anchor.kouku.book1.source.19	4.36175	0.111261	-34.341023	0
+ANCHOR	anchor.kouku.book1.source.20	6.697717	0.04	-29.852441	-193.535156
+ANCHOR	anchor.kouku.book1.source.21	5.906116	0.0686	-31.615027	-165.9375
+ANCHOR	anchor.kouku.book1.source.22	-7.027886	0.031997	-44.410308	0
+ANCHOR	anchor.kouku.book1.source.23	-5.076855	0.019073	-44.134897	0
+ANCHOR	anchor.kouku.book1.source.265	7.419199	0.045135	-35.589221	-163.476562
+ANCHOR	anchor.kouku.book1.source.266	4.170725	0.033123	-39.621377	0
+ANCHOR	anchor.kouku.book1.source.267	4.995455	0.072501	-37.000452	0
+ANCHOR	anchor.kouku.book1.source.268	7.637363	0.04	-35.714534	-162.773438
+ANCHOR	anchor.kouku.book1.source.269	7.155859	0.04	-31.551062	-203.203125
+ANCHOR	anchor.kouku.book1.source.270	-5.507099	0.014762	-42.568013	-41.132812
+ANCHOR	anchor.kouku.book1.source.271	3.257232	0.03652	-42.729819	-108.984375
+ANCHOR	anchor.kouku.book1.source.272	-2.852023	0.018755	-43.942207	0
+ANCHOR	anchor.kouku.book1.source.273	1.984258	0.030128	-41.907559	0
+ANCHOR	anchor.kouku.book1.source.274	-0.360342	0.02591	-43.335239	0
+ANCHOR	anchor.kouku.book2.source.275	5.373132	-0.042935	-56.686152	-177.890625
+ANCHOR	anchor.kouku.book2.source.276	3.595508	-0.04449	-57.795845	-140.273438
+ANCHOR	anchor.kouku.book2.source.277	1.351204	0.026747	-60.715298	-64.863281
+ANCHOR	anchor.kouku.book2.source.278	-5.147382	0.04	-59.485029	-41.484375
+ANCHOR	anchor.kouku.book2.source.279	1.767949	0.031635	-59.082739	-137.285156
+ANCHOR	anchor.kouku.book2.source.280	9.574761	0.04	-63.880693	-151.347656
+ANCHOR	anchor.kouku.book2.source.281	11.847126	0.04	-58.529561	-137.636719
+ANCHOR	anchor.kouku.book2.source.282	6.31914	-0.010517	-57.657192	-137.636719
+ANCHOR	anchor.kouku.book2.source.283	11.508132	0.04	-56.411245	-195.46875
+ANCHOR	anchor.kouku.book2.source.284	0.765876	0.01532	-63.627227	-73.828125
+ANCHOR	anchor.kouku.book2.source.285	12.423378	0.034744	-61.930981	-151.523438
+ANCHOR	anchor.kouku.book2.source.286	10.311534	0.04	-62.260884	-115.3125
+ANCHOR	anchor.kouku.book2.source.287	5.873021	-0.002336	-61.501543	-142.558594
+ANCHOR	anchor.kouku.book2.source.31	0.403862	0.04	-61.289902	-138.164062
+ANCHOR	anchor.kouku.book2.source.32	2.115016	-0.032858	-62.370137	-103.007812
+ANCHOR	anchor.kouku.book2.source.33	6.522332	0.002536	-59.53334	-161.367188
+ANCHOR	anchor.kouku.book2.source.34	-0.001593	0.038114	-62.556943	-130.429688
+ANCHOR	anchor.kouku.book2.source.35	4.372334	-0.007927	-62.788306	-73.828125
+ANCHOR	anchor.kouku.book2.source.36	-6.715983	0.04	-57.757876	-6.679688
+ANCHOR	anchor.kouku.book2.source.38	-7.136772	0.04	-59.834688	-20.742188
+ANCHOR	anchor.kouku.book2.source.39	11.711835	0.036698	-63.618672	-142.734375
+ANCHOR	anchor.kouku.book2.source.40	3.222877	-0.011633	-63.847417	-115.3125
+ANCHOR	anchor.kouku.book2.source.41	6.995563	0.029071	-61.242622	-126.386719
+ANCHOR	anchor.kouku.book2.source.42	9.787922	0.04	-56.914717	-174.023438
+ANCHOR	anchor.kouku.book2.source.47	3.812866	-0.032812	-60.174243	-129.550781
+ANCHOR	anchor.kouku.cardmaze.profiles	0.28	-0.01	1351.65	0
+ANCHOR	anchor.mario1.source.634	-1165.809140625	-11.51	-926.0428125	0
+ANCHOR	anchor.mario1.source.635	-1197.83265625	-11.51	-953.0159375	0
+ANCHOR	anchor.mario1.source.636	-1204.449609375	-11.51	-963.0384375	0
+ANCHOR	anchor.mario2.source.362	-1443.15546875	-9.01	-1188.130625	0
+ANCHOR	anchor.mario2.source.363	-1444.00828125	-9.01	-1189.296640625	0
+ANCHOR	anchor.mario2.source.368	-1438.95390625	-3.89	-1213.991328125	0
+ANCHOR	anchor.mario2.source.369	-1440.74671875	-3.89	-1215.76125	0
+ANCHOR	anchor.mario2.source.370	-1439.85734375	-3.89	-1214.879296875	0
+ANCHOR	anchor.mario2.source.629	-1441.8134375	-6.45	-1195.92984375	168.75
+ANCHOR	anchor.mario2.source.641	-1426.1765625	-3.89	-1201.003359375	129.9957275390625
+ANCHOR	anchor.mario3.source.408	-1890.756875	-8.97	-1659.21359375	0
+ANCHOR	anchor.mario3.source.409	-1893.71171875	-6.41	-1666.1746875	0
+ANCHOR	anchor.mario3.source.411	-1891.73234375	-8.97	-1660.6940625	0
+ANCHOR	anchor.mario3.source.412	-1892.77109375	-8.97	-1662.22671875	0
+ANCHOR	anchor.mario3.source.413	-1892.69359375	-6.41	-1664.91625	0
+ANCHOR	anchor.mario3.source.414	-1891.87640625	-6.41	-1663.93953125	0
+ANCHOR	anchor.mario3.source.416	-1919.48	-6.41	-1688.39921875	0
+ANCHOR	anchor.mario3.source.417	-1918.30515625	-6.41	-1687.5353125	0
+ANCHOR	anchor.mario3.source.418	-1916.7884375	-6.41	-1686.59796875	0
+ANCHOR	anchor.mario3.source.548	-1929.82015625	-8.97	-1688.24734375	0
+ANCHOR	anchor.mario3.source.549	-1928.540625	-8.97	-1687.76859375	0
+ANCHOR	anchor.mario3.source.550	-1927.26640625	-8.97	-1687.21265625	0
+ANCHOR	anchor.mario3.source.646	-1896.7928125	-11.53	-1662.4575	112.5
+ANCHOR	anchor.mario3.source.655	-1909.16625	-8.97	-1679.659375	157.5
+ANCHOR	anchor.mario4.source.598	-1631.224375	-17.92	-1420.249375	0
+ANCHOR	anchor.mario4.source.599	-1632.715	-17.92	-1420.051875	0
+ANCHOR	anchor.mario4.source.600	-1634.37390625	-17.92	-1419.739375	0
+ANCHOR	anchor.mario4.source.602	-1621.94921875	-12.8	-1441.66609375	0
+ANCHOR	anchor.mario4.source.603	-1623.51015625	-15.36	-1421.39390625	0
+ANCHOR	anchor.mario4.source.604	-1620.5415625	-12.8	-1444.16625	0
+ANCHOR	anchor.mario4.source.605	-1624.97546875	-15.36	-1422.3440625	0
+ANCHOR	anchor.mario4.source.606	-1645.95890625	-17.92	-1448.68453125	0
+ANCHOR	anchor.mario4.source.607	-1645.0065625	-17.92	-1450.77140625	0
+ANCHOR	anchor.mario4.source.608	-1644.19453125	-17.92	-1452.68265625	0
+ANCHOR	anchor.mario4.source.609	-1627.96640625	-15.35	-1444.7390625	0
+ANCHOR	anchor.mario4.source.610	-1629.2128125	-15.35	-1445.12203125	0
+ANCHOR	anchor.mario4.source.667	-1640.32078125	-20.48	-1409.2278125	135
+ANCHOR	anchor.mario4.source.668	-1614.734375	-15.36	-1415.54390625	146.25
+ANCHOR	anchor.mario4.source.669	-1626.21515625	-15.36	-1423.203125	0
+ANCHOR	anchor.mario4.source.689	-1648.83453125	-17.92	-1441.4646875	67.5
+ANCHOR	anchor.valtan.editor	0.266000003	0.5	-46.2719994	11
+GROUP	spawn.kouku.cardmaze.profiles	-	5	1	ONCE	0
+WAVE	spawn.kouku.cardmaze.profiles	wave.01	0	0	5	ALL_DEAD	0
+ENTRY	spawn.kouku.cardmaze.profiles	wave.01	0	MONSTER_KOUKU_CARD_HEART	1	anchor.kouku.cardmaze.profiles	0	100
+ENTRY	spawn.kouku.cardmaze.profiles	wave.01	1	MONSTER_KOUKU_CARD_DIAMOND	1	anchor.kouku.cardmaze.profiles	0	100
+ENTRY	spawn.kouku.cardmaze.profiles	wave.01	2	MONSTER_KOUKU_CARD_CLUB	1	anchor.kouku.cardmaze.profiles	0	100
+ENTRY	spawn.kouku.cardmaze.profiles	wave.01	3	MONSTER_KOUKU_CARD_SPADE	1	anchor.kouku.cardmaze.profiles	0	100
+ENTRY	spawn.kouku.cardmaze.profiles	wave.01	4	MONSTER_KOUKU_CLOWN_BOX	1	anchor.kouku.cardmaze.profiles	0	100
+GROUP	spawn.mario1.source	-	3	1	ONCE	0
+WAVE	spawn.mario1.source	wave.source	0	0	3	ALL_DEAD	0
+ENTRY	spawn.mario1.source	wave.source	0	MONSTER_MARIO_REUP	1	anchor.mario1.source.634	0	0
+ENTRY	spawn.mario1.source	wave.source	1	MONSTER_MARIO_REUP	1	anchor.mario1.source.635	0	0
+ENTRY	spawn.mario1.source	wave.source	2	MONSTER_MARIO_REUP	1	anchor.mario1.source.636	0	0
+GROUP	spawn.mario2.source	-	7	1	ONCE	0
+WAVE	spawn.mario2.source	wave.source	0	0	7	ALL_DEAD	0
+ENTRY	spawn.mario2.source	wave.source	0	MONSTER_MARIO_CLUB	1	anchor.mario2.source.362	0	0
+ENTRY	spawn.mario2.source	wave.source	1	MONSTER_MARIO_HEART	1	anchor.mario2.source.363	0	0
+ENTRY	spawn.mario2.source	wave.source	2	MONSTER_MARIO_CLUB	1	anchor.mario2.source.368	0	0
+ENTRY	spawn.mario2.source	wave.source	3	MONSTER_MARIO_HEART	1	anchor.mario2.source.369	0	0
+ENTRY	spawn.mario2.source	wave.source	4	MONSTER_MARIO_DIAMOND	1	anchor.mario2.source.370	0	0
+ENTRY	spawn.mario2.source	wave.source	5	MONSTER_MARIO_CDMD	1	anchor.mario2.source.629	0	0
+ENTRY	spawn.mario2.source	wave.source	6	MONSTER_MARIO_CDMD	1	anchor.mario2.source.641	0	0
+GROUP	spawn.mario3.source	-	14	1	ONCE	0
+WAVE	spawn.mario3.source	wave.source	0	0	14	ALL_DEAD	0
+ENTRY	spawn.mario3.source	wave.source	0	MONSTER_MARIO_REUP	1	anchor.mario3.source.411	0	0
+ENTRY	spawn.mario3.source	wave.source	1	MONSTER_MARIO_REUP	1	anchor.mario3.source.412	0	0
+ENTRY	spawn.mario3.source	wave.source	2	MONSTER_MARIO_REUP	1	anchor.mario3.source.413	0	0
+ENTRY	spawn.mario3.source	wave.source	3	MONSTER_MARIO_REUP	1	anchor.mario3.source.414	0	0
+ENTRY	spawn.mario3.source	wave.source	4	MONSTER_MARIO_REUP	1	anchor.mario3.source.416	0	0
+ENTRY	spawn.mario3.source	wave.source	5	MONSTER_MARIO_REUP	1	anchor.mario3.source.417	0	0
+ENTRY	spawn.mario3.source	wave.source	6	MONSTER_MARIO_REUP	1	anchor.mario3.source.548	0	0
+ENTRY	spawn.mario3.source	wave.source	7	MONSTER_MARIO_REUP	1	anchor.mario3.source.549	0	0
+ENTRY	spawn.mario3.source	wave.source	8	MONSTER_MARIO_CDMD	1	anchor.mario3.source.646	0	0
+ENTRY	spawn.mario3.source	wave.source	9	MONSTER_MARIO_CDMD	1	anchor.mario3.source.655	0	0
+ENTRY	spawn.mario3.source	wave.source	10	MONSTER_MARIO_REUP	1	anchor.mario3.source.408	0	0
+ENTRY	spawn.mario3.source	wave.source	11	MONSTER_MARIO_REUP	1	anchor.mario3.source.418	0	0
+ENTRY	spawn.mario3.source	wave.source	12	MONSTER_MARIO_REUP	1	anchor.mario3.source.550	0	0
+ENTRY	spawn.mario3.source	wave.source	13	MONSTER_MARIO_RHKP	1	anchor.mario3.source.409	0	0
+GROUP	spawn.mario4.source	-	16	1	ONCE	0
+WAVE	spawn.mario4.source	wave.source	0	0	16	ALL_DEAD	0
+ENTRY	spawn.mario4.source	wave.source	0	MONSTER_MARIO_DIAMOND	1	anchor.mario4.source.599	0	0
+ENTRY	spawn.mario4.source	wave.source	1	MONSTER_MARIO_CLUB	1	anchor.mario4.source.600	0	0
+ENTRY	spawn.mario4.source	wave.source	2	MONSTER_MARIO_DIAMOND	1	anchor.mario4.source.602	0	0
+ENTRY	spawn.mario4.source	wave.source	3	MONSTER_MARIO_CLUB	1	anchor.mario4.source.603	0	0
+ENTRY	spawn.mario4.source	wave.source	4	MONSTER_MARIO_HEART	1	anchor.mario4.source.604	0	0
+ENTRY	spawn.mario4.source	wave.source	5	MONSTER_MARIO_CLUB	1	anchor.mario4.source.605	0	0
+ENTRY	spawn.mario4.source	wave.source	6	MONSTER_MARIO_DIAMOND	1	anchor.mario4.source.606	0	0
+ENTRY	spawn.mario4.source	wave.source	7	MONSTER_MARIO_HEART	1	anchor.mario4.source.607	0	0
+ENTRY	spawn.mario4.source	wave.source	8	MONSTER_MARIO_CLUB	1	anchor.mario4.source.609	0	0
+ENTRY	spawn.mario4.source	wave.source	9	MONSTER_MARIO_CLUB	1	anchor.mario4.source.610	0	0
+ENTRY	spawn.mario4.source	wave.source	10	MONSTER_MARIO_CDMD	1	anchor.mario4.source.667	0	0
+ENTRY	spawn.mario4.source	wave.source	11	MONSTER_MARIO_CDMD	1	anchor.mario4.source.668	0	0
+ENTRY	spawn.mario4.source	wave.source	12	MONSTER_MARIO_CDMD	1	anchor.mario4.source.689	0	0
+ENTRY	spawn.mario4.source	wave.source	13	MONSTER_MARIO_HEART	1	anchor.mario4.source.608	0	0
+ENTRY	spawn.mario4.source	wave.source	14	MONSTER_MARIO_HEART	1	anchor.mario4.source.598	0	0
+ENTRY	spawn.mario4.source	wave.source	15	MONSTER_MARIO_HEART	1	anchor.mario4.source.669	0	0
+GROUP	spawn.kouku.book1	-	22	2	ONCE	0
+WAVE	spawn.kouku.book1	wave.01	0	0	16	TIMER	200
+ENTRY	spawn.kouku.book1	wave.01	0	MONSTER_KOUKU_CMDUP_02	1	anchor.kouku.book1.source.19	0	0
+ENTRY	spawn.kouku.book1	wave.01	1	MONSTER_KOUKU_CMDUP_02	1	anchor.kouku.book1.source.267	0	0
+ENTRY	spawn.kouku.book1	wave.01	2	MONSTER_KOUKU_CMDUP_02	1	anchor.kouku.book1.source.266	0	0
+ENTRY	spawn.kouku.book1	wave.01	3	MONSTER_KOUKU_CMDUP_02	1	anchor.kouku.book1.source.273	0	0
+ENTRY	spawn.kouku.book1	wave.01	4	MONSTER_KOUKU_CMDUP_02	1	anchor.kouku.book1.source.22	0	0
+ENTRY	spawn.kouku.book1	wave.01	5	MONSTER_KOUKU_CMDUP_02	1	anchor.kouku.book1.source.23	0	0
+ENTRY	spawn.kouku.book1	wave.01	6	MONSTER_KOUKU_CMDUP_02	1	anchor.kouku.book1.source.272	0	0
+ENTRY	spawn.kouku.book1	wave.01	7	MONSTER_KOUKU_CMDUP_02	1	anchor.kouku.book1.source.274	0	0
+ENTRY	spawn.kouku.book1	wave.01	8	MONSTER_KOUKU_CMDUP_02	1	anchor.kouku.book1.source.15	0	0
+ENTRY	spawn.kouku.book1	wave.01	9	MONSTER_KOUKU_RHKP_06	1	anchor.kouku.book1.source.14	0	0
+ENTRY	spawn.kouku.book1	wave.01	10	MONSTER_KOUKU_RHKP_06	1	anchor.kouku.book1.source.16	0	0
+ENTRY	spawn.kouku.book1	wave.01	11	MONSTER_KOUKU_RHKP_06	1	anchor.kouku.book1.source.271	0	0
+ENTRY	spawn.kouku.book1	wave.01	12	MONSTER_KOUKU_CMDUP_02	1	anchor.kouku.book1.source.13	0	0
+ENTRY	spawn.kouku.book1	wave.01	13	MONSTER_KOUKU_REUP_04	1	anchor.kouku.book1.source.21	0	0
+ENTRY	spawn.kouku.book1	wave.01	14	MONSTER_KOUKU_RHKP_06	1	anchor.kouku.book1.source.17	0	0
+ENTRY	spawn.kouku.book1	wave.01	15	MONSTER_KOUKU_REUP_04	1	anchor.kouku.book1.source.18	0	0
+WAVE	spawn.kouku.book1	wave.02	1	0	6	ALL_DEAD	0
+ENTRY	spawn.kouku.book1	wave.02	0	MONSTER_KOUKU_CMDUP_02	1	anchor.kouku.book1.source.269	0	0
+ENTRY	spawn.kouku.book1	wave.02	1	MONSTER_KOUKU_CMDUP_02	1	anchor.kouku.book1.source.20	0	0
+ENTRY	spawn.kouku.book1	wave.02	2	MONSTER_KOUKU_CMDUP_02	1	anchor.kouku.book1.source.268	0	0
+ENTRY	spawn.kouku.book1	wave.02	3	MONSTER_KOUKU_RHKP_06	1	anchor.kouku.book1.source.270	0	0
+ENTRY	spawn.kouku.book1	wave.02	4	MONSTER_KOUKU_REUP_04	1	anchor.kouku.book1.source.12	0	0
+ENTRY	spawn.kouku.book1	wave.02	5	MONSTER_KOUKU_CMDUP_02	1	anchor.kouku.book1.source.265	0	0
+GROUP	spawn.kouku.book2	-	15	2	ONCE	0
+WAVE	spawn.kouku.book2	wave.01	0	0	15	ALL_DEAD	0
+ENTRY	spawn.kouku.book2	wave.01	0	MONSTER_KOUKU_CMDGR_03	1	anchor.kouku.book2.source.47	0	0
+ENTRY	spawn.kouku.book2	wave.01	1	MONSTER_KOUKU_CMDUP_02	1	anchor.kouku.book2.source.277	0	0
+ENTRY	spawn.kouku.book2	wave.01	2	MONSTER_KOUKU_CMDUP_02	1	anchor.kouku.book2.source.282	0	0
+ENTRY	spawn.kouku.book2	wave.01	3	MONSTER_KOUKU_CMDUP_02	1	anchor.kouku.book2.source.32	0	0
+ENTRY	spawn.kouku.book2	wave.01	4	MONSTER_KOUKU_CMDUP_02	1	anchor.kouku.book2.source.276	0	0
+ENTRY	spawn.kouku.book2	wave.01	5	MONSTER_KOUKU_RHKP_06	1	anchor.kouku.book2.source.33	0	0
+ENTRY	spawn.kouku.book2	wave.01	6	MONSTER_KOUKU_CMDUP_02	1	anchor.kouku.book2.source.34	0	0
+ENTRY	spawn.kouku.book2	wave.01	7	MONSTER_KOUKU_CMDUP_02	1	anchor.kouku.book2.source.287	0	0
+ENTRY	spawn.kouku.book2	wave.01	8	MONSTER_KOUKU_CMDUP_02	1	anchor.kouku.book2.source.40	0	0
+ENTRY	spawn.kouku.book2	wave.01	9	MONSTER_KOUKU_CMDUP_02	1	anchor.kouku.book2.source.279	0	0
+ENTRY	spawn.kouku.book2	wave.01	10	MONSTER_KOUKU_CMDUP_02	1	anchor.kouku.book2.source.275	0	0
+ENTRY	spawn.kouku.book2	wave.01	11	MONSTER_KOUKU_REUP_04	1	anchor.kouku.book2.source.35	0	0
+ENTRY	spawn.kouku.book2	wave.01	12	MONSTER_KOUKU_REUP_04	1	anchor.kouku.book2.source.31	0	0
+ENTRY	spawn.kouku.book2	wave.01	13	MONSTER_KOUKU_RHKP_06	1	anchor.kouku.book2.source.41	0	0
+ENTRY	spawn.kouku.book2	wave.01	14	MONSTER_KOUKU_REUP_04	1	anchor.kouku.book2.source.284	0	0
+WAVE	spawn.kouku.book2	wave.02	1	0	10	ALL_DEAD	0
+ENTRY	spawn.kouku.book2	wave.02	0	MONSTER_KOUKU_CMDUP_02	1	anchor.kouku.book2.source.36	0	0
+ENTRY	spawn.kouku.book2	wave.02	1	MONSTER_KOUKU_CMDUP_02	1	anchor.kouku.book2.source.278	0	0
+ENTRY	spawn.kouku.book2	wave.02	2	MONSTER_KOUKU_REUP_04	1	anchor.kouku.book2.source.283	0	0
+ENTRY	spawn.kouku.book2	wave.02	3	MONSTER_KOUKU_CMDUP_02	1	anchor.kouku.book2.source.38	0	0
+ENTRY	spawn.kouku.book2	wave.02	4	MONSTER_KOUKU_CMDUP_02	1	anchor.kouku.book2.source.285	0	0
+ENTRY	spawn.kouku.book2	wave.02	5	MONSTER_KOUKU_REUP_04	1	anchor.kouku.book2.source.39	0	0
+ENTRY	spawn.kouku.book2	wave.02	6	MONSTER_KOUKU_CMDUP_02	1	anchor.kouku.book2.source.286	0	0
+ENTRY	spawn.kouku.book2	wave.02	7	MONSTER_KOUKU_CMDUP_02	1	anchor.kouku.book2.source.281	0	0
+ENTRY	spawn.kouku.book2	wave.02	8	MONSTER_KOUKU_CMDUP_02	1	anchor.kouku.book2.source.42	0	0
+ENTRY	spawn.kouku.book2	wave.02	9	MONSTER_KOUKU_RHKP_06	1	anchor.kouku.book2.source.280	0	0

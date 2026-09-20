@@ -1,0 +1,602 @@
+LOSTARK_WORLD_BOOTSTRAP	11	KAKULSAYDON_ARENA	LV_LUT_MIDNIGHTC_ED	8799	114	334	36	117
+1Stage_Final	triggerBox	-	-	27.7999992	0.449999988	-67.6999969	123.5	1	6	1	1	1	1	0	playSequence	1	world.sequence.instance.circusfinale
+2-1Stage_Move	triggerBox	-	-	48.4529991	5.42626988E-16	-81.762001	45.5	0	3	1	3	1	1	0	playSequence	1	world.sequence.instance.original_kouku
+Book1_Monsters	triggerBox	-	-	1.49173	0.15635	-29.70873	10.371094	1	5.12	1.28	2.56	0	1	0	activateSpawnGroup	1	spawn.kouku.book1
+Book2_Monsters	triggerBox	-	-	-3.42345	0.09022	-53.2275	15.117188	1	2.56	1.28	2.56	0	1	0	activateSpawnGroup	1	spawn.kouku.book2
+boss.kakulsaydon.bingo.saydon	boss	BOSS_KAKULSAYDON_BINGO_SAYDON	ENCOUNTER_KAKULSAYDON_G1	-0.600000024	0	1147.43994	151	0
+boss.kakulsaydon.g1.kouku	boss	BOSS_KAKULSAYDON_G1_KOUKU	ENCOUNTER_KAKULSAYDON_G1	22	-0.0500000007	-62	0	0
+boss.kakulsaydon.g1.saydon	boss	BOSS_KAKULSAYDON_G1_SAYDON	ENCOUNTER_KAKULSAYDON_G1	-0.07	1.32	737.53	237	0
+boss.kakulsaydon.g2.big-saydon	boss	BOSS_KAKULSAYDON_G2_BIG_SAYDON	ENCOUNTER_KAKULSAYDON_G1	10.2399998	10	317.75	226.5	0
+boss.kakulsaydon.g2.kouku	boss	BOSS_KAKULSAYDON_G2_KOUKU	ENCOUNTER_KAKULSAYDON_G1	6.36000013	10.5600004	321.290009	216.5	0
+boss.kakulsaydon.g3.saydon	boss	BOSS_KAKULSAYDON_G3_SAYDON	ENCOUNTER_KAKULSAYDON_G1	-0.0700000003	1.32000005	942.330017	223	0
+cardmaze.return	triggerBox	-	-	0.280000001	-0.00999999978	1351.65002	0	0	1	1	1	0	1	0	movePlayer	5	3.38000011	10.5600004	323.920013	1.20000005	0
+cardmaze.telescope	triggerBox	-	-	0.280000001	-0.00999999978	1351.65002	0	1	1.5	1.5	1.5	0	1	0	claimCardMazeTelescope	1	cardmaze.telescope
+jump.1	triggerBox	-	-	3.13100004	8.64000034	-17.3759995	-23	1	1	0.300000012	1	0	1	0	movePlayer	5	-0.148000002	6.11000013	-14.566	0.800000012	1
+jump.2	triggerBox	-	-	-0.547999978	6.10984421	-14.6660004	68.5	1	0.5	0.200000003	1	0	1	0	movePlayer	5	-1.20000005	3.55999994	-16.6000004	0.800000012	1
+jump.3	triggerBox	-	-	-0.407999992	3.55999923	-19.4060001	68.5	1	0.5	0.100000001	1.10000002	0	1	0	movePlayer	5	2.58599997	1.023	-24.7789993	0.800000012	1
+Mario1_go	triggerBox	-	-	3.38000011	1.32000005	945.330017	44	0	1	0.5	1	1	1	0	movePlayer	6	-1148.703	-11.5246	-910.572998	1.5	0	MARIO
+Mario1_Intro	triggerBox	-	-	-1148.703	-11.5246	-910.572998	0	1	3	2	3	1	1	0	playSequence	1	world.sequence.instance.mario_m1_intro
+Mario1_Trigger_1	triggerBox	-	-	-1170.71594	-11.033	-930.359009	-47	1	1	0.100000001	1	1	1	0	movePlayer	5	-1172.90002	-14.0799999	-934.090027	0.600000024	1.20000005
+Mario1_Trigger_2	triggerBox	-	-	-1166.59595	-11.0299997	-926.494019	135	1	1	0.5	2.0999999	1	1	0	playSequence	1	world.sequence.instance.mario_m1_28
+Mario1_Trigger_3	triggerBox	-	-	-1188.54297	-13.9901953	-941.656982	51.5	1	2	0.5	1	1	1	0	movePlayer	5	-1193.03003	-11.5	-946.25	0.699999988	1.79999995
+Mario1_Trigger_4	triggerBox	-	-	-1201.33301	-11.500001	-959.445984	33.5	1	2	0.5	2	1	1	0	playSequence	1	world.sequence.instance.mario_m1_27
+Mario1_Trigger_5	triggerBox	-	-	-1207.36206	-11.5045977	-969.10498	34	1	2	0.5	2	0	1	0	movePlayer	6	-2	1.317626	942	1.5	0	NONE
+Mario2_Boom	triggerBox	-	-	-1452.45996	-9.02043533	-1202.08679	36.5	0	1	1	1	1	0	0
+Mario2_Boom_1	triggerBox	-	-	-1414.82605	-6.46043539	-1191.02405	78.5	0	1	1	1	1	0	0
+Mario2_Boom_2	triggerBox	-	-	-1447.68994	-3.90043545	-1223.35486	47	0	1	1	1	1	0	0
+Mario2_go	triggerBox	-	-	1.58000004	1.32000005	942.929993	40	0	1	0.5	1	1	1	0	movePlayer	5	-1434.48999	-9.02000999	-1175.96997	1.5	0
+Mario2_Intro	triggerBox	-	-	-1434.48999	-9.02000999	-1175.96997	0	1	3	2	3	0	1	0	playSequence	1	world.sequence.instance.mario_m2_intro
+Mario2_Trigger_1	triggerBox	-	-	-1440.58997	-9.02043438	-1184.66699	-56	1	1	0.5	1	1	1	0	playSequence	1	world.sequence.instance.mario_m2_spin
+Mario2_Trigger_2	triggerBox	-	-	-1447.71704	-9.02043533	-1196.14404	34	1	1	0.5	1	1	1	0	movePlayer	5	-1443.92004	-6.46000004	-1196.52002	0.699999988	1.79999995
+Mario2_Trigger_3	triggerBox	-	-	-1433.92102	-6.46043491	-1194.82104	-9.5	0	1	0.5	1	1	0	0
+Mario2_Trigger_4	triggerBox	-	-	-1418.71301	-6.46043444	-1191.37927	78	1	1	0.5	1	1	1	0	movePlayer	5	-1419.72998	-3.9000001	-1195.22998	0.699999988	1.79999995
+Mario2_Trigger_5	triggerBox	-	-	-1425.13196	-3.90043521	-1201.03198	46.5	1	1	0.5	1	1	1	0	playSequence	1	world.sequence.instance.mario_m2_29
+Mario2_Trigger_6	triggerBox	-	-	-1435.396	-3.90043545	-1210.83752	47	0	2	0.5	1	1	0	0
+Mario2_Trigger_7	triggerBox	-	-	-1446.08301	-3.90043497	-1221.57202	46.5	1	2	1	2	1	1	0	movePlayer	5	-2	1.317626	942	1.5	0
+Mario3_Boom	triggerBox	-	-	-1897.24097	-8.9670229	-1668.71497	37.5	0	1	1	1	1	0	0
+Mario3_Boom_1	triggerBox	-	-	-1885.05701	-8.9670229	-1651.20496	35	0	1	1	1	1	0	0
+Mario3_Boom_2	triggerBox	-	-	-1911.41797	-6.40875769	-1683.177	53	0	1	1	1	1	0	0
+Mario3_go	triggerBox	-	-	-0.920000017	1.32000005	941.22998	44	0	1	0.5	1	1	1	0	movePlayer	5	-1889.68994	-11.5299997	-1646.20996	1.5	0
+Mario3_Intro	triggerBox	-	-	-1889.68994	-11.5299997	-1646.20996	0	1	3	2	3	0	1	0	playSequence	1	world.sequence.instance.mario_m3_intro
+Mario3_Trigger_1	triggerBox	-	-	-1893.76904	-11.5270224	-1656.33215	21	1	1	0.5	1	1	1	0	playSequence	1	world.sequence.instance.mario_m4_45
+Mario3_Trigger_10	triggerBox	-	-	-1913.87903	-6.40875864	-1685.15601	56	1	1	0.5	1	1	1	0	movePlayer	5	-1907.51001	-8.97000027	-1679.81995	0.699999988	1
+Mario3_Trigger_11	triggerBox	-	-	-1919.51001	-8.96702194	-1684.41699	68.5	1	1	0.5	1	1	1	0	playSequence	1	world.sequence.instance.mario_m4_52
+Mario3_Trigger_12	triggerBox	-	-	-1932.651	-8.96702194	-1689.995	68.5	1	1	0.5	1	0	1	0	movePlayer	5	-2	1.317626	942	1.5	0
+Mario3_Trigger_2	triggerBox	-	-	-1889.50098	-8.96702194	-1658.63098	32	1	1	0.5	1	1	1	0	playSequence	1	world.sequence.instance.mario_m4_48
+Mario3_Trigger_3	triggerBox	-	-	-1889.95996	-6.407022	-1662.03296	37	1	1	0.5	1	1	1	0	playSequence	1	world.sequence.instance.mario_m4_49
+Mario3_Trigger_4	triggerBox	-	-	-1898.26294	-11.5270214	-1666.60498	24.5	1	1	0.5	1	1	1	0	movePlayer	5	-1893.98999	-8.47000027	-1663.72998	0.600000024	1.20000005
+Mario3_Trigger_5	triggerBox	-	-	-1887.07605	-8.96702194	-1654.48804	34.5	1	1	0.5	1	1	1	0	movePlayer	5	-1887.85999	-6.40999985	-1659.82996	0.600000024	1.20000005
+Mario3_Trigger_6	triggerBox	-	-	-1895.953	-6.40702295	-1669.22095	37.5	1	1	0.5	1	1	1	0	movePlayer	5	-1911.43201	-3.84800005	-1684.83496	0.300000012	0
+Mario3_Trigger_7	triggerBox	-	-	-1911.43201	-3.84771752	-1684.83496	49	1	1	0.5	1	1	1	0	playSequence	1	world.sequence.instance.mario_m4_50
+Mario3_Trigger_8	triggerBox	-	-	-1919.52905	-3.84771729	-1691.70398	49.5	1	1	0.5	1	1	1	0	movePlayer	5	-1925.26697	-6.04899979	-1692.71594	0.600000024	1
+Mario3_Trigger_9	triggerBox	-	-	-1919.76697	-6.40875912	-1689.01599	56	1	1	0.5	1	1	1	0	playSequence	1	world.sequence.instance.mario_m4_51
+Mario4_Boom	triggerBox	-	-	-1613.31421	-15.3704367	-1414.651	56	0	1	1	1	1	0	0
+Mario4_go	triggerBox	-	-	-3.11999989	1.32000005	939.530029	45.5	0	1	0.5	1	1	1	0	movePlayer	5	-1632.56995	-20.4899998	-1400.92004	1.5	0
+Mario4_Intro	triggerBox	-	-	-1632.56995	-20.4899998	-1400.92004	0	1	3	2	3	0	1	0	playSequence	1	world.sequence.instance.mario_m4_intro
+Mario4_Tigger_1	triggerBox	-	-	-1637.97095	-20.4904346	-1407.42395	43.5	1	1	0.5	1	1	1	0	playSequence	1	world.sequence.instance.mario_m3_33
+Mario4_Tigger_10	triggerBox	-	-	-1623.82397	-12.8104353	-1438.38696	58	1	1	0.5	1	0	1	0	playSequence	1	world.sequence.instance.mario_m3_card03
+Mario4_Tigger_11	triggerBox	-	-	-1620.5	-12.8104362	-1441.73206	55	1	1	0.5	1	0	1	0	playSequence	1	world.sequence.instance.mario_m3_card04
+Mario4_Tigger_12	triggerBox	-	-	-1618.90906	-12.8104353	-1445.68604	56.5	1	1	0.5	1	0	1	0	playSequence	1	world.sequence.instance.mario_m3_card05
+Mario4_Tigger_13	triggerBox	-	-	-1615.255	-12.8104362	-1450.40991	61	1	1	0.5	1	0	1	0	movePlayer	5	-2	1.317626	942	1.5	0
+Mario4_Tigger_2	triggerBox	-	-	-1646.79895	-20.4904366	-1416.57764	47.5	1	1	0.5	1	1	1	0	movePlayer	5	-1643.84998	-17.9300003	-1418.60999	0.699999988	1.5
+Mario4_Tigger_3	triggerBox	-	-	-1655.99951	-20.4904366	-1425.09131	48	1	1	0.5	1	1	1	0	movePlayer	5	-1654.01001	-17.9300003	-1428.75	0.600000024	1.20000005
+Mario4_Tigger_4	triggerBox	-	-	-1638.79797	-17.9304333	-1419.71704	10.5	1	1	0.5	1	1	1	0	playSequence	1	world.sequence.instance.mario_m3_swing
+Mario4_Tigger_5	triggerBox	-	-	-1628.62805	-17.9304371	-1420.724	4	1	1	0.5	1	1	1	0	movePlayer	5	-1626.70996	-15.3699999	-1423.92004	0.600000024	1.20000005
+Mario4_Tigger_6	triggerBox	-	-	-1649.01001	-17.9304352	-1438.84595	65	1	1	0.5	1	1	1	0	movePlayer	5	-1646.27002	-15.3699999	-1436.38	0.600000024	1.20000005
+Mario4_Tigger_7	triggerBox	-	-	-1632.71204	-15.3704367	-1426.81494	57.5	1	1	0.5	1	1	1	0	movePlayer	5	-1629.37	-11.9700003	-1430.88	0.699999988	1.5
+Mario4_Tigger_8	triggerBox	-	-	-1629.36804	-11.9700003	-1430.88403	57	1	1	0.5	1	0	1	0	playSequence	1	world.sequence.instance.mario_m3_card01
+Mario4_Tigger_9	triggerBox	-	-	-1625.41797	-12.8104353	-1434.66602	56.5	1	1	0.5	1	0	1	0	playSequence	1	world.sequence.instance.mario_m3_card02
+Miro_1	triggerBox	-	-	-20.4904499	-0.00999999978	1328.98901	0	0	1	0.5	1.39999998	0	0	0
+Miro_10	triggerBox	-	-	22.4409199	-0.00999999978	1331.18958	0	0	1.39999998	0.5	1	0	0	0
+Miro_11	triggerBox	-	-	22.4409199	-0.00999999978	1336.30981	0	0	1.39999998	0.5	1	0	0	0
+Miro_12	triggerBox	-	-	22.4408798	-0.00999999978	1341.42969	0	0	1.39999998	0.5	1	0	0	0
+Miro_13	triggerBox	-	-	22.4407501	-0.00999999978	1346.54956	0	0	1.39999998	0.5	1	0	0	0
+Miro_14	triggerBox	-	-	22.4410992	-0.00999999978	1351.66968	0	0	1.39999998	0.5	1	0	0	0
+Miro_15	triggerBox	-	-	22.4411793	-0.00999999978	1356.78967	0	0	1.39999998	0.5	1	0	0	0
+Miro_16	triggerBox	-	-	22.4405594	-0.00999999978	1361.90918	0	0	1.39999998	0.5	1	0	0	0
+Miro_17	triggerBox	-	-	22.4408302	-0.00999999978	1367.02942	0	0	1.39999998	0.5	1	0	0	0
+Miro_18	triggerBox	-	-	22.4408894	-0.00999999978	1372.14954	0	0	1.39999998	0.5	1	0	0	0
+Miro_19	triggerBox	-	-	20.4695492	-0.00999999978	1374.12085	0	0	1	0.5	1.39999998	0	0	0
+Miro_2	triggerBox	-	-	-15.37045	-0.00999999978	1328.98901	0	0	1	0.5	1.39999998	0	0	0
+Miro_20	triggerBox	-	-	15.3495502	-0.00999999978	1374.12085	0	0	1	0.5	1.39999998	0	0	0
+Miro_21	triggerBox	-	-	10.2295504	-0.00999999978	1374.12085	0	0	1	0.5	1.39999998	0	0	0
+Miro_22	triggerBox	-	-	5.10955	-0.00999999978	1374.12085	0	0	1	0.5	1.39999998	0	0	0
+Miro_23	triggerBox	-	-	-0.0104499999	-0.00999999978	1374.12085	0	0	1	0.5	1.39999998	0	0	0
+Miro_24	triggerBox	-	-	-5.13044977	-0.00999999978	1374.12085	0	0	1	0.5	1.39999998	0	0	0
+Miro_25	triggerBox	-	-	-10.2504501	-0.00999999978	1374.12085	0	0	1	0.5	1.39999998	0	0	0
+Miro_26	triggerBox	-	-	-15.37045	-0.00999999978	1374.12085	0	0	1	0.5	1.39999998	0	0	0
+Miro_27	triggerBox	-	-	-20.4904499	-0.00999999978	1374.12085	0	0	1	0.5	1.39999998	0	0	0
+Miro_28	triggerBox	-	-	-22.9408894	-0.00999999978	1372.14954	0	0	1.39999998	0.5	1	0	0	0
+Miro_29	triggerBox	-	-	-22.9408302	-0.00999999978	1367.02942	0	0	1.39999998	0.5	1	0	0	0
+Miro_3	triggerBox	-	-	-10.2504501	-0.00999999978	1328.98901	0	0	1	0.5	1.39999998	0	0	0
+Miro_30	triggerBox	-	-	-22.9405594	-0.00999999978	1361.90918	0	0	1.39999998	0.5	1	0	0	0
+Miro_31	triggerBox	-	-	-22.9411793	-0.00999999978	1356.78967	0	0	1.39999998	0.5	1	0	0	0
+Miro_32	triggerBox	-	-	-22.9410992	-0.00999999978	1351.66968	0	0	1.39999998	0.5	1	0	0	0
+Miro_33	triggerBox	-	-	-22.9407501	-0.00999999978	1346.54956	0	0	1.39999998	0.5	1	0	0	0
+Miro_34	triggerBox	-	-	-22.9408798	-0.00999999978	1341.42969	0	0	1.39999998	0.5	1	0	0	0
+Miro_35	triggerBox	-	-	-22.9409199	-0.00999999978	1336.30981	0	0	1.39999998	0.5	1	0	0	0
+Miro_36	triggerBox	-	-	-22.9409199	-0.00999999978	1331.18958	0	0	1.39999998	0.5	1	0	0	0
+Miro_4	triggerBox	-	-	-5.13044977	-0.00999999978	1328.98901	0	0	1	0.5	1.39999998	0	0	0
+Miro_5	triggerBox	-	-	-0.0104499999	-0.00999999978	1328.98901	0	0	1	0.5	1.39999998	0	0	0
+Miro_6	triggerBox	-	-	5.10955	-0.00999999978	1328.98901	0	0	1	0.5	1.39999998	0	0	0
+Miro_7	triggerBox	-	-	10.2295504	-0.00999999978	1328.98901	0	0	1	0.5	1.39999998	0	0	0
+Miro_8	triggerBox	-	-	15.3495502	-0.00999999978	1328.98901	0	0	1	0.5	1.39999998	0	0	0
+Miro_9	triggerBox	-	-	20.4695492	-0.00999999978	1328.98901	0	0	1	0.5	1.39999998	0	0	0
+paper.1	triggerBox	-	-	0.414999992	0.547999978	-46.1549988	11	1	0.5	0.5	0.5	1	1	0	playSequence	1	world.sequence.instance.1
+paper.2	triggerBox	-	-	15.0349998	0.247999996	-61.7910004	17	1	0.5	0.5	0.5	1	1	0	playSequence	1	world.sequence.instance.5
+player.spawn.kakul.party01	playerSpawn	-	-	3.28999996	8.64000034	-10.6899996	0	1
+player.spawn.kakul.party02	playerSpawn	-	-	3.4000001	8.64000034	-10.6899996	0	1
+player.spawn.kakul.party03	playerSpawn	-	-	3.45000005	8.64000034	-10.6899996	0	1
+player.spawn.kakul.party04	playerSpawn	-	-	3.0999999	8.64000034	-10.6899996	0	1
+stage.kakul.sl01	playerSpawn	-	-	66	0.0199999996	-102	0	0
+stage.kakul.sl02	playerSpawn	-	-	-1148.703	-11.524601	-910.572998	0	0
+stage.kakul.sl03	playerSpawn	-	-	2	3.54000497	330	0	0
+stage.kakul.sl04	playerSpawn	-	-	-2	1.29900503	730	0	0
+stage.kakul.sl05	playerSpawn	-	-	-2	1.317626	942	0	0
+cardmiro.march.instance.from12.lane1
+cardmiro.march.instance.from12.lane2
+cardmiro.march.instance.from12.lane3
+cardmiro.march.instance.from12.lane4
+cardmiro.march.instance.from12.lane5
+cardmiro.march.instance.from12.lane6
+cardmiro.march.instance.from12.lane7
+cardmiro.march.instance.from12.lane8
+cardmiro.march.instance.from12.lane9
+cardmiro.march.instance.from3.lane1
+cardmiro.march.instance.from3.lane2
+cardmiro.march.instance.from3.lane3
+cardmiro.march.instance.from3.lane4
+cardmiro.march.instance.from3.lane5
+cardmiro.march.instance.from3.lane6
+cardmiro.march.instance.from3.lane7
+cardmiro.march.instance.from3.lane8
+cardmiro.march.instance.from3.lane9
+cardmiro.march.instance.from6.lane1
+cardmiro.march.instance.from6.lane2
+cardmiro.march.instance.from6.lane3
+cardmiro.march.instance.from6.lane4
+cardmiro.march.instance.from6.lane5
+cardmiro.march.instance.from6.lane6
+cardmiro.march.instance.from6.lane7
+cardmiro.march.instance.from6.lane8
+cardmiro.march.instance.from6.lane9
+cardmiro.march.instance.from9.lane1
+cardmiro.march.instance.from9.lane2
+cardmiro.march.instance.from9.lane3
+cardmiro.march.instance.from9.lane4
+cardmiro.march.instance.from9.lane5
+cardmiro.march.instance.from9.lane6
+cardmiro.march.instance.from9.lane7
+cardmiro.march.instance.from9.lane8
+cardmiro.march.instance.from9.lane9
+world.object.instance.kouku.ball
+world.object.instance.kouku.ball_bounce
+world.object.instance.kouku.bingo
+world.object.instance.kouku.bingo_bomb
+world.object.instance.kouku.bingo_bomb.native.bomb_att_battle_1_01
+world.object.instance.kouku.bingo_bomb.native.bomb_respawn_1
+world.object.instance.kouku.bingo_skull.flip
+world.object.instance.kouku.bingo_skull.red
+world.object.instance.kouku.bingo_skull.red_flip
+world.object.instance.kouku.bingo_skull.white
+world.object.instance.kouku.card
+world.object.instance.kouku.card_flip
+world.object.instance.kouku.card_hop
+world.object.instance.kouku.card_saved_chain
+world.object.instance.kouku.cutting_blade
+world.object.instance.kouku.g3.bazooka
+world.object.instance.kouku.g3.outer_fire.d_ccw
+world.object.instance.kouku.g3.outer_fire.d_cw
+world.object.instance.kouku.g3.outer_fire.e_ccw
+world.object.instance.kouku.g3.outer_fire.e_cw
+world.object.instance.kouku.g3.outer_fire.f_ccw
+world.object.instance.kouku.g3.outer_fire.f_cw
+world.object.instance.kouku.hook
+world.object.instance.kouku.hook.native.hook_att_battle_1_01
+world.object.instance.kouku.hook.native.hook_att_battle_2_01
+world.object.instance.kouku.hook.native.hook_att_battle_3_01
+world.object.instance.kouku.hook.native.hook_respawn_1
+world.object.instance.kouku.iron_maiden.att_battle_01
+world.object.instance.kouku.iron_maiden.dead_1
+world.object.instance.kouku.iron_maiden.dead_1_loop
+world.object.instance.kouku.iron_maiden.idle_normal_1
+world.object.instance.kouku.joker_card
+world.object.instance.kouku.joker_card_flip
+world.object.instance.kouku.joker_card_hop
+world.object.instance.kouku.joker_card_saved_chain
+world.object.instance.kouku.laser_cannon
+world.object.instance.kouku.mario_circus_ball.aura
+world.object.instance.kouku.maze_cinematic_hammer
+world.object.instance.kouku.odd_doll.abn_bug_1
+world.object.instance.kouku.odd_doll.abn_earthquake_1
+world.object.instance.kouku.odd_doll.abn_fear_1
+world.object.instance.kouku.odd_doll.abn_shock_1
+world.object.instance.kouku.odd_doll.abn_stun_1
+world.object.instance.kouku.odd_doll.att_battle_1_b
+world.object.instance.kouku.odd_doll.att_battle_1_f
+world.object.instance.kouku.odd_doll.att_battle_1_l
+world.object.instance.kouku.odd_doll.att_battle_1_r
+world.object.instance.kouku.odd_doll.att_battle_2_01
+world.object.instance.kouku.odd_doll.att_battle_3_01
+world.object.instance.kouku.odd_doll.att_battle_4_01
+world.object.instance.kouku.odd_doll.bound
+world.object.instance.kouku.odd_doll.bound_hit_land
+world.object.instance.kouku.odd_doll.bound_land
+world.object.instance.kouku.odd_doll.dead_1
+world.object.instance.kouku.odd_doll.dmg_idle_1
+world.object.instance.kouku.odd_doll.dmg_idle_2
+world.object.instance.kouku.odd_doll.ground_1
+world.object.instance.kouku.odd_doll.idle_battle_1
+world.object.instance.kouku.odd_doll.idle_normal_1
+world.object.instance.kouku.odd_doll.idle_normal_1_1
+world.object.instance.kouku.odd_doll.knockdown
+world.object.instance.kouku.odd_doll.knockdown_land
+world.object.instance.kouku.odd_doll.large.abn_bug_1
+world.object.instance.kouku.odd_doll.large.abn_earthquake_1
+world.object.instance.kouku.odd_doll.large.abn_fear_1
+world.object.instance.kouku.odd_doll.large.abn_shock_1
+world.object.instance.kouku.odd_doll.large.abn_stun_1
+world.object.instance.kouku.odd_doll.large.att_battle_1_b
+world.object.instance.kouku.odd_doll.large.att_battle_1_f
+world.object.instance.kouku.odd_doll.large.att_battle_1_l
+world.object.instance.kouku.odd_doll.large.att_battle_1_r
+world.object.instance.kouku.odd_doll.large.att_battle_2_01
+world.object.instance.kouku.odd_doll.large.att_battle_3_01
+world.object.instance.kouku.odd_doll.large.att_battle_4_01
+world.object.instance.kouku.odd_doll.large.bound
+world.object.instance.kouku.odd_doll.large.bound_hit_land
+world.object.instance.kouku.odd_doll.large.bound_land
+world.object.instance.kouku.odd_doll.large.dead_1
+world.object.instance.kouku.odd_doll.large.dmg_idle_1
+world.object.instance.kouku.odd_doll.large.dmg_idle_2
+world.object.instance.kouku.odd_doll.large.ground_1
+world.object.instance.kouku.odd_doll.large.idle_battle_1
+world.object.instance.kouku.odd_doll.large.idle_normal_1
+world.object.instance.kouku.odd_doll.large.idle_normal_1_1
+world.object.instance.kouku.odd_doll.large.knockdown
+world.object.instance.kouku.odd_doll.large.knockdown_land
+world.object.instance.kouku.odd_doll.large.respawn_1
+world.object.instance.kouku.odd_doll.large.run_battle_1
+world.object.instance.kouku.odd_doll.large.standup_1
+world.object.instance.kouku.odd_doll.large.twistknockdown
+world.object.instance.kouku.odd_doll.large.twistknockdown_land
+world.object.instance.kouku.odd_doll.large.walk_normal_1
+world.object.instance.kouku.odd_doll.respawn_1
+world.object.instance.kouku.odd_doll.run_battle_1
+world.object.instance.kouku.odd_doll.standup_1
+world.object.instance.kouku.odd_doll.twistknockdown
+world.object.instance.kouku.odd_doll.twistknockdown_land
+world.object.instance.kouku.odd_doll.walk_normal_1
+world.object.instance.kouku.saydon.circus.shot.g0
+world.object.instance.kouku.saydon.circus.shot.g1
+world.object.instance.kouku.saydon.circus.shot.g2
+world.object.instance.kouku.saydon.circus.shot.g3
+world.object.instance.kouku.saydon.circus.shot.g4
+world.object.instance.kouku.saydon.circus.shot.g5
+world.object.instance.kouku.saydon.circus.split.g0
+world.object.instance.kouku.saydon.circus.split.g1
+world.object.instance.kouku.saydon.circus.split.g2
+world.object.instance.kouku.saydon.circus.split.g3
+world.object.instance.kouku.saydon.circus.split.g4
+world.object.instance.kouku.saydon.circus.split.g5
+world.object.instance.kouku.saydon.eaten.ball
+world.object.instance.kouku.saydon.rolling.ball
+world.object.instance.kouku.saydon_hat_right
+world.object.instance.kouku.saydon_showtime_gun_left
+world.object.instance.kouku.saydon_showtime_gun_right
+world.object.instance.kouku.seto
+world.object.instance.kouku.seto.native.seto_att_battle_21_02
+world.object.instance.kouku.seto.native.seto_run_battle_1
+world.object.instance.kouku.seto.native.seto_walk_normal_1
+world.object.instance.kouku.trumpet
+world.object.instance.kouku.whirlwind_hammer
+world.object.instance.mario.clown_face_ball.show
+world.object.instance.mario.horn_clown.show
+world.object.instance.mario.red_star_ball.show
+world.object.instance.mario.striped_ball.show
+world.object.kouku.cutting_blade.state.1.instance
+world.object.kouku.cutting_blade.state.instant_death.instance
+world.object.kouku.cutting_blade.state.mario_phase2_instant.instance
+world.object.kouku.mario_clown.attack.instance
+world.object.kouku.mario_clown.idle.instance
+world.sequence.instance.1
+world.sequence.instance.2
+world.sequence.instance.3
+world.sequence.instance.4
+world.sequence.instance.5
+world.sequence.instance.6
+world.sequence.instance.7
+world.sequence.instance.8
+world.sequence.instance.arena_rise_00
+world.sequence.instance.arena_rise_01
+world.sequence.instance.arena_rise_02
+world.sequence.instance.arena_rise_03
+world.sequence.instance.arena_rise_04
+world.sequence.instance.arena_rise_05
+world.sequence.instance.arena_rise_06
+world.sequence.instance.arena_rise_07
+world.sequence.instance.arena_rise_08
+world.sequence.instance.arena_rise_09
+world.sequence.instance.arena_rise_10
+world.sequence.instance.arena_rise_11
+world.sequence.instance.arena_rise_12
+world.sequence.instance.arena_rise_13
+world.sequence.instance.book_open
+world.sequence.instance.boss_book01
+world.sequence.instance.boss_clap
+world.sequence.instance.boss_handup
+world.sequence.instance.boss_idle
+world.sequence.instance.boss_lookback
+world.sequence.instance.boss_showtime
+world.sequence.instance.boss_talk2
+world.sequence.instance.circusfinale
+world.sequence.instance.curtain_drop
+world.sequence.instance.kouku.bingo.bomb.planted.slot.0
+world.sequence.instance.kouku.bingo.bomb.planted.slot.1
+world.sequence.instance.kouku.bingo.bomb.planted.slot.2
+world.sequence.instance.kouku.bingo.bomb.planted.slot.3
+world.sequence.instance.kouku.bingo.encore.saydon
+world.sequence.instance.kouku.bingo.hammer.anchor.0
+world.sequence.instance.kouku.bingo.hammer.anchor.1
+world.sequence.instance.kouku.bingo.hammer.anchor.10
+world.sequence.instance.kouku.bingo.hammer.anchor.11
+world.sequence.instance.kouku.bingo.hammer.anchor.12
+world.sequence.instance.kouku.bingo.hammer.anchor.13
+world.sequence.instance.kouku.bingo.hammer.anchor.14
+world.sequence.instance.kouku.bingo.hammer.anchor.15
+world.sequence.instance.kouku.bingo.hammer.anchor.16
+world.sequence.instance.kouku.bingo.hammer.anchor.17
+world.sequence.instance.kouku.bingo.hammer.anchor.18
+world.sequence.instance.kouku.bingo.hammer.anchor.19
+world.sequence.instance.kouku.bingo.hammer.anchor.2
+world.sequence.instance.kouku.bingo.hammer.anchor.3
+world.sequence.instance.kouku.bingo.hammer.anchor.4
+world.sequence.instance.kouku.bingo.hammer.anchor.5
+world.sequence.instance.kouku.bingo.hammer.anchor.6
+world.sequence.instance.kouku.bingo.hammer.anchor.7
+world.sequence.instance.kouku.bingo.hammer.anchor.8
+world.sequence.instance.kouku.bingo.hammer.anchor.9
+world.sequence.instance.kouku.g3.fire_hook.extra_fire_d_ccw
+world.sequence.instance.kouku.g3.fire_hook.extra_fire_d_cw
+world.sequence.instance.kouku.g3.fire_hook.extra_fire_e_ccw
+world.sequence.instance.kouku.g3.fire_hook.extra_fire_e_cw
+world.sequence.instance.kouku.g3.fire_hook.extra_fire_f_ccw
+world.sequence.instance.kouku.g3.fire_hook.extra_fire_f_cw
+world.sequence.instance.kouku.g3.fire_hook.hook_diagonal
+world.sequence.instance.kouku.gate1.authored.book
+world.sequence.instance.kouku.gate1.full.book
+world.sequence.instance.kouku.gate1.full.saydonbook
+world.sequence.instance.kouku.gate1.full.saydonfinale
+world.sequence.instance.kouku.gate1.full.saydonstage
+world.sequence.instance.kouku.gate1.full.set.1
+world.sequence.instance.kouku.gate1.full.set.2
+world.sequence.instance.kouku.gate1.full.set.3
+world.sequence.instance.kouku.gate1.full.set.4
+world.sequence.instance.kouku.gate1.full.set.5
+world.sequence.instance.kouku.gate1.full.set.6
+world.sequence.instance.kouku.gate1.full.set.7
+world.sequence.instance.kouku.gate1.full.set.8
+world.sequence.instance.kouku.gate1.full.set.9
+world.sequence.instance.kouku.gate2.clear.kouku
+world.sequence.instance.kouku.gate2.clear.largesaydon
+world.sequence.instance.kouku.gate2.clear.saydonarrival
+world.sequence.instance.kouku.gate2.intro.backdrop.parent22.part1.segment1
+world.sequence.instance.kouku.gate2.intro.backdrop.parent3.part1.segment1
+world.sequence.instance.kouku.gate2.intro.backdrop.parent32.part1.segment1
+world.sequence.instance.kouku.gate2.intro.backdrop.parent33.part1.segment1
+world.sequence.instance.kouku.gate2.intro.backdrop.parent34.part1.segment1
+world.sequence.instance.kouku.gate2.intro.backdrop.parent35.part1.segment1
+world.sequence.instance.kouku.gate2.intro.backdrop.parent36.part1.segment1
+world.sequence.instance.kouku.gate2.intro.backdrop.parent37.part1.segment1
+world.sequence.instance.kouku.gate2.intro.backdrop.parent4.part1.segment1
+world.sequence.instance.kouku.gate2.intro.backdrop.parent5.part1.segment1
+world.sequence.instance.kouku.gate2.intro.backdrop.parent6.part1.segment1
+world.sequence.instance.kouku.gate2.intro.backdrop.parent7.part1.segment1
+world.sequence.instance.kouku.gate2.intro.backdrop.parent8.part1.segment1
+world.sequence.instance.kouku.gate2.intro.backdrop.parent9.part1.segment1
+world.sequence.instance.kouku.gate2.intro.book
+world.sequence.instance.kouku.gate2.intro.candle1
+world.sequence.instance.kouku.gate2.intro.candle2
+world.sequence.instance.kouku.gate2.intro.carderuption
+world.sequence.instance.kouku.gate2.intro.cards342
+world.sequence.instance.kouku.gate2.intro.cards363
+world.sequence.instance.kouku.gate2.intro.cards373
+world.sequence.instance.kouku.gate2.intro.cards374
+world.sequence.instance.kouku.gate2.intro.cards387
+world.sequence.instance.kouku.gate2.intro.cards391
+world.sequence.instance.kouku.gate2.intro.chair1
+world.sequence.instance.kouku.gate2.intro.chair2
+world.sequence.instance.kouku.gate2.intro.chair3
+world.sequence.instance.kouku.gate2.intro.chair4
+world.sequence.instance.kouku.gate2.intro.handbook
+world.sequence.instance.kouku.gate2.intro.kouku
+world.sequence.instance.kouku.gate2.intro.saydon
+world.sequence.instance.kouku.gate2.intro.table
+world.sequence.instance.kouku.gate2.maze.kouku
+world.sequence.instance.kouku.gate3.intro.saydonarrival
+world.sequence.instance.kouku.hook.original_preview
+world.sequence.instance.mario.striped_ball.bounce
+world.sequence.instance.mario_m1_23
+world.sequence.instance.mario_m1_24
+world.sequence.instance.mario_m1_26
+world.sequence.instance.mario_m1_27
+world.sequence.instance.mario_m1_28
+world.sequence.instance.mario_m1_44
+world.sequence.instance.mario_m1_intro
+world.sequence.instance.mario_m2_29
+world.sequence.instance.mario_m2_deco
+world.sequence.instance.mario_m2_intro
+world.sequence.instance.mario_m2_spin
+world.sequence.instance.mario_m2_sway
+world.sequence.instance.mario_m3_33
+world.sequence.instance.mario_m3_35
+world.sequence.instance.mario_m3_36
+world.sequence.instance.mario_m3_card01
+world.sequence.instance.mario_m3_card02
+world.sequence.instance.mario_m3_card03
+world.sequence.instance.mario_m3_card04
+world.sequence.instance.mario_m3_card05
+world.sequence.instance.mario_m3_card06
+world.sequence.instance.mario_m3_intro
+world.sequence.instance.mario_m3_swing
+world.sequence.instance.mario_m4_25
+world.sequence.instance.mario_m4_45
+world.sequence.instance.mario_m4_47
+world.sequence.instance.mario_m4_48
+world.sequence.instance.mario_m4_49
+world.sequence.instance.mario_m4_50
+world.sequence.instance.mario_m4_51
+world.sequence.instance.mario_m4_52
+world.sequence.instance.mario_m4_intro
+world.sequence.instance.mario1.source.layout1
+world.sequence.instance.mario1.source.layout2
+world.sequence.instance.mario1.source.layout3
+world.sequence.instance.mario2.source.layout1
+world.sequence.instance.mario2.source.layout2
+world.sequence.instance.mario2.source.layout3
+world.sequence.instance.mario3.source.layout1
+world.sequence.instance.mario3.source.layout2
+world.sequence.instance.mario3.source.layout3
+world.sequence.instance.mario4.source.layout1
+world.sequence.instance.mario4.source.layout2
+world.sequence.instance.mario4.source.layout3
+world.sequence.instance.original_8T6_00
+world.sequence.instance.original_8T6_01
+world.sequence.instance.original_8T6_02
+world.sequence.instance.original_8T6_03
+world.sequence.instance.original_8T6_04
+world.sequence.instance.original_book
+world.sequence.instance.original_kouku
+cardmiro.march.instance.from3.lane5	0	12895	-0.0104499999	-0.00999999978	1328.98901	-0.0104499999	-0.00999999978	1374.12101
+cardmiro.march.instance.from6.lane5	12895	12966	22.4410992	-0.00999999978	1351.66968	-22.940900799999998	-0.00999999978	1351.66968
+cardmiro.march.instance.from9.lane5	25861	12895	-0.0104499999	-0.00999999978	1374.12085	-0.0104499999	-0.00999999978	1328.98885
+cardmiro.march.instance.from12.lane5	38756	12966	-22.9410992	-0.00999999978	1351.66968	22.440900799999998	-0.00999999978	1351.66968
+cardmiro.march.instance.from3.lane1	0	12895	-20.4904499	-0.00999999978	1328.98901	-20.4904499	-0.00999999978	1374.12101
+cardmiro.march.instance.from3.lane2	0	12895	-15.37045	-0.00999999978	1328.98901	-15.37045	-0.00999999978	1374.12101
+cardmiro.march.instance.from3.lane3	0	12895	-10.2504501	-0.00999999978	1328.98901	-10.2504501	-0.00999999978	1374.12101
+cardmiro.march.instance.from3.lane4	0	12895	-5.13044977	-0.00999999978	1328.98901	-5.13044977	-0.00999999978	1374.12101
+cardmiro.march.instance.from3.lane6	0	12895	5.10955	-0.00999999978	1328.98901	5.10955	-0.00999999978	1374.12101
+cardmiro.march.instance.from3.lane7	0	12895	10.2295504	-0.00999999978	1328.98901	10.2295504	-0.00999999978	1374.12101
+cardmiro.march.instance.from3.lane8	0	12895	15.3495502	-0.00999999978	1328.98901	15.3495502	-0.00999999978	1374.12101
+cardmiro.march.instance.from3.lane9	0	12895	20.4695492	-0.00999999978	1328.98901	20.4695492	-0.00999999978	1374.12101
+cardmiro.march.instance.from6.lane1	12895	12966	22.4409199	-0.00999999978	1331.18958	-22.941080099999997	-0.00999999978	1331.18958
+cardmiro.march.instance.from6.lane2	12895	12966	22.4409199	-0.00999999978	1336.30981	-22.941080099999997	-0.00999999978	1336.30981
+cardmiro.march.instance.from6.lane3	12895	12966	22.4408798	-0.00999999978	1341.42969	-22.941120199999997	-0.00999999978	1341.42969
+cardmiro.march.instance.from6.lane4	12895	12966	22.4407501	-0.00999999978	1346.54956	-22.9412499	-0.00999999978	1346.54956
+cardmiro.march.instance.from6.lane6	12895	12966	22.4411793	-0.00999999978	1356.78967	-22.940820699999996	-0.00999999978	1356.78967
+cardmiro.march.instance.from6.lane7	12895	12966	22.4405594	-0.00999999978	1361.90918	-22.941440599999996	-0.00999999978	1361.90918
+cardmiro.march.instance.from6.lane8	12895	12966	22.4408302	-0.00999999978	1367.02942	-22.941169799999997	-0.00999999978	1367.02942
+cardmiro.march.instance.from6.lane9	12895	12966	22.4408894	-0.00999999978	1372.14954	-22.9411106	-0.00999999978	1372.14954
+cardmiro.march.instance.from9.lane1	25861	12895	20.4695492	-0.00999999978	1374.12085	20.4695492	-0.00999999978	1328.98885
+cardmiro.march.instance.from9.lane2	25861	12895	15.3495502	-0.00999999978	1374.12085	15.3495502	-0.00999999978	1328.98885
+cardmiro.march.instance.from9.lane3	25861	12895	10.2295504	-0.00999999978	1374.12085	10.2295504	-0.00999999978	1328.98885
+cardmiro.march.instance.from9.lane4	25861	12895	5.10955	-0.00999999978	1374.12085	5.10955	-0.00999999978	1328.98885
+cardmiro.march.instance.from9.lane6	25861	12895	-5.13044977	-0.00999999978	1374.12085	-5.13044977	-0.00999999978	1328.98885
+cardmiro.march.instance.from9.lane7	25861	12895	-10.2504501	-0.00999999978	1374.12085	-10.2504501	-0.00999999978	1328.98885
+cardmiro.march.instance.from9.lane8	25861	12895	-15.37045	-0.00999999978	1374.12085	-15.37045	-0.00999999978	1328.98885
+cardmiro.march.instance.from9.lane9	25861	12895	-20.4904499	-0.00999999978	1374.12085	-20.4904499	-0.00999999978	1328.98885
+cardmiro.march.instance.from12.lane1	38756	12966	-22.9408894	-0.00999999978	1372.14954	22.4411106	-0.00999999978	1372.14954
+cardmiro.march.instance.from12.lane2	38756	12966	-22.9408302	-0.00999999978	1367.02942	22.441169799999997	-0.00999999978	1367.02942
+cardmiro.march.instance.from12.lane3	38756	12966	-22.9405594	-0.00999999978	1361.90918	22.441440599999996	-0.00999999978	1361.90918
+cardmiro.march.instance.from12.lane4	38756	12966	-22.9411793	-0.00999999978	1356.78967	22.440820699999996	-0.00999999978	1356.78967
+cardmiro.march.instance.from12.lane6	38756	12966	-22.9407501	-0.00999999978	1346.54956	22.4412499	-0.00999999978	1346.54956
+cardmiro.march.instance.from12.lane7	38756	12966	-22.9408798	-0.00999999978	1341.42969	22.441120199999997	-0.00999999978	1341.42969
+cardmiro.march.instance.from12.lane8	38756	12966	-22.9409199	-0.00999999978	1336.30981	22.441080099999997	-0.00999999978	1336.30981
+cardmiro.march.instance.from12.lane9	38756	12966	-22.9409199	-0.00999999978	1331.18958	22.441080099999997	-0.00999999978	1331.18958
+MARIOBALL	1	1	0	0	15849624984520486748	-1160.64673	-11.5100002	-920.771118
+MARIOBALL	1	1	1	1	12454274333077724228	-1167.13684	-11.5100002	-927.278992
+MARIOBALL	1	1	2	1	16807125584632291305	-1169.17322	-11.5100002	-929.315369
+MARIOBALL	1	1	3	0	9613302675668038620	-1176.21838	-14.0699997	-934.813049
+MARIOBALL	1	1	4	2	12984898520043161401	-1185.052	-14.0699997	-939.499146
+MARIOBALL	1	1	5	2	11861721973220034676	-1194.65076	-11.5100002	-948.387634
+MARIOBALL	1	1	6	1	14173038742974341731	-1199.40466	-11.5100002	-955.363525
+MARIOBALL	1	1	7	0	14670008248215437654	-1201.53845	-11.5100002	-958.556641
+MARIOBALL	1	1	8	2	11893419355309699644	-1205.79199	-11.5100002	-965.019836
+MARIOBALL	1	2	0	2	16300444883640035958	-1160.65674	-11.5100002	-920.771118
+MARIOBALL	1	2	1	1	17230799828394157492	-1167.16675	-11.5100002	-927.278992
+MARIOBALL	1	2	2	0	16608545504120955803	-1169.18323	-11.5100002	-929.315369
+MARIOBALL	1	2	3	0	13220190445247114222	-1176.22839	-14.0699997	-934.813049
+MARIOBALL	1	2	4	1	14812443829130277852	-1185.052	-14.0699997	-939.499146
+MARIOBALL	1	2	5	0	16885206942139601043	-1194.65076	-11.5100002	-948.387634
+MARIOBALL	1	2	6	2	12524124469335001651	-1199.40466	-11.5100002	-955.363525
+MARIOBALL	1	2	7	2	14972407113329144304	-1201.53845	-11.5100002	-958.556641
+MARIOBALL	1	2	8	1	15489598841298980587	-1205.79199	-11.5100002	-965.019836
+MARIOBALL	1	3	0	2	10122922709667045500	-1160.64673	-11.5100002	-920.771118
+MARIOBALL	1	3	1	0	11522742754018356754	-1167.13684	-11.5100002	-927.278992
+MARIOBALL	1	3	2	2	14296109539322583869	-1169.17322	-11.5100002	-929.315369
+MARIOBALL	1	3	3	2	17137783998785121900	-1176.21838	-14.0699997	-934.813049
+MARIOBALL	1	3	4	1	9872118543303752658	-1185.052	-14.0699997	-939.499146
+MARIOBALL	1	3	5	1	18248190915452154418	-1194.65076	-11.5100002	-948.387634
+MARIOBALL	1	3	6	0	15261190133742103616	-1199.40466	-11.5100002	-955.363525
+MARIOBALL	1	3	7	1	16440338428974607398	-1201.53845	-11.5100002	-958.556641
+MARIOBALL	1	3	8	0	16105270748381025808	-1205.79199	-11.5100002	-965.019836
+MARIOBALL	2	1	0	2	13167110996266697676	-1443.59619	-9.01000023	-1188.79297
+MARIOBALL	2	1	1	0	13093658811624776329	-1445.19263	-9.01000023	-1191.18994
+MARIOBALL	2	1	2	1	14705345169670269365	-1434.42334	-6.44999981	-1194.49463
+MARIOBALL	2	1	3	0	14375127411651074781	-1429.23975	-6.44999981	-1193.46362
+MARIOBALL	2	1	4	1	17357116116008748097	-1421.36267	-6.44999981	-1191.90271
+MARIOBALL	2	1	5	0	16251018763918439349	-1420.77051	-3.8900001	-1195.78271
+MARIOBALL	2	1	6	2	12477493011318561087	-1431.17981	-3.8900001	-1206.19019
+MARIOBALL	2	1	7	2	18003328393602502805	-1433.21631	-3.8900001	-1208.22656
+MARIOBALL	2	1	8	1	10220527045682934269	-1444.54004	-3.8900001	-1219.55334
+MARIOBALL	2	2	0	1	12999618608498671806	-1443.59619	-9.01000023	-1188.79297
+MARIOBALL	2	2	1	1	18144428693447975350	-1445.19263	-9.01000023	-1191.18994
+MARIOBALL	2	2	2	2	13704424434713181819	-1429.23975	-6.44999981	-1193.46362
+MARIOBALL	2	2	3	2	12024347263138251506	-1434.42334	-6.44999981	-1194.49463
+MARIOBALL	2	2	4	0	14512483731181453344	-1421.36267	-6.44999981	-1191.90271
+MARIOBALL	2	2	5	1	12605083005152039365	-1420.77051	-3.8900001	-1195.78271
+MARIOBALL	2	2	6	0	17998049531460441093	-1431.17981	-3.8900001	-1206.19019
+MARIOBALL	2	2	7	2	17168136396503782646	-1433.21631	-3.8900001	-1208.22656
+MARIOBALL	2	2	8	0	14927357370818241943	-1444.54004	-3.8900001	-1219.55334
+MARIOBALL	2	3	0	0	12315683611669624963	-1443.59619	-9.01000023	-1188.79297
+MARIOBALL	2	3	1	1	11978930757009179125	-1445.19263	-9.01000023	-1191.18994
+MARIOBALL	2	3	2	1	15207685394773826234	-1434.42334	-6.44999981	-1194.49463
+MARIOBALL	2	3	3	0	13967334085452701958	-1429.23975	-6.44999981	-1193.46362
+MARIOBALL	2	3	4	2	15105857468319449487	-1421.36267	-6.44999981	-1191.90271
+MARIOBALL	2	3	5	2	11491509377276600951	-1420.77051	-3.8900001	-1195.78271
+MARIOBALL	2	3	6	1	14371242431544948635	-1431.17981	-3.8900001	-1206.19019
+MARIOBALL	2	3	7	0	10728108534725303664	-1433.21631	-3.8900001	-1208.22656
+MARIOBALL	2	3	8	2	15196005698782503978	-1444.54004	-3.8900001	-1219.55334
+MARIOBALL	3	1	0	0	13979625027705329394	-1896.1803	-11.5299997	-1660.97937
+MARIOBALL	3	1	1	2	15094679042862793092	-1897.40527	-11.5299997	-1663.93567
+MARIOBALL	3	1	2	1	16734400089818520516	-1889.4281	-8.97000027	-1657.21033
+MARIOBALL	3	1	3	2	11553531800977482992	-1887.3064	-8.97000027	-1654.03198
+MARIOBALL	3	1	4	0	13751577433238878466	-1914.52161	-3.8499999	-1686.77637
+MARIOBALL	3	1	5	2	17201726566960684162	-1917.48975	-3.8499999	-1689.21204
+MARIOBALL	3	1	6	1	12290737765603892669	-1925.13513	-6.40999985	-1692.15796
+MARIOBALL	3	1	7	1	17467433725994538225	-1915.68762	-8.97000027	-1682.4917
+MARIOBALL	3	1	8	0	18048827335228711856	-1910.9574	-8.97000027	-1680.53235
+MARIOBALL	3	2	0	1	16599607213784058121	-1896.1803	-11.5299997	-1660.97937
+MARIOBALL	3	2	1	0	15351761764906297057	-1897.40527	-11.5299997	-1663.93567
+MARIOBALL	3	2	2	0	13150150405151552012	-1889.4281	-8.97000027	-1657.21033
+MARIOBALL	3	2	3	1	12882454345120287452	-1887.3064	-8.97000027	-1654.03198
+MARIOBALL	3	2	4	2	10292231654741143304	-1914.52161	-3.8499999	-1686.77637
+MARIOBALL	3	2	5	0	17678458386289096179	-1917.48975	-3.8499999	-1689.21204
+MARIOBALL	3	2	6	1	9251098352743419186	-1910.9574	-8.97000027	-1680.53235
+MARIOBALL	3	2	7	2	11475312513796837668	-1915.68762	-8.97000027	-1682.4917
+MARIOBALL	3	2	8	2	12676900108127679704	-1925.13513	-6.40999985	-1692.15796
+MARIOBALL	3	3	0	0	15847736994787644683	-1896.1803	-11.5299997	-1660.97937
+MARIOBALL	3	3	1	1	9728562872186966672	-1897.40527	-11.5299997	-1663.93567
+MARIOBALL	3	3	2	2	9909238821774629924	-1889.4281	-8.97000027	-1657.21033
+MARIOBALL	3	3	3	0	14448025187203863439	-1887.3064	-8.97000027	-1654.03198
+MARIOBALL	3	3	4	1	15907240914805971002	-1914.52161	-3.8499999	-1686.77637
+MARIOBALL	3	3	5	2	17642666029548302670	-1917.48975	-3.8499999	-1689.21204
+MARIOBALL	3	3	6	0	12681276071607999705	-1925.13513	-6.40999985	-1692.15796
+MARIOBALL	3	3	7	2	14068281839417394520	-1910.9574	-8.97000027	-1680.53235
+MARIOBALL	3	3	8	1	15860452880825020390	-1915.68762	-8.97000027	-1682.4917
+MARIOBALL	4	1	0	1	17886632632542189984	-1648.93958	-20.4799995	-1417.77771
+MARIOBALL	4	1	1	0	11414948696591917681	-1651.65454	-20.4799995	-1420.49268
+MARIOBALL	4	1	2	0	16293424650263605664	-1643.21057	-17.9200001	-1418.48657
+MARIOBALL	4	1	3	2	13614176894447086585	-1653.5708	-17.9200001	-1430.11707
+MARIOBALL	4	1	4	2	13293827696748951659	-1643.34277	-17.9200001	-1454.81238
+MARIOBALL	4	1	5	0	15495029808643599404	-1616.23767	-15.3599997	-1416.4895
+MARIOBALL	4	1	6	1	15738374806144370375	-1629.84924	-15.3599997	-1425.50171
+MARIOBALL	4	1	7	2	10547263648908771528	-1634.91724	-15.3599997	-1428.85791
+MARIOBALL	4	1	8	1	13812798434788533082	-1641.05151	-15.3599997	-1432.92126
+MARIOBALL	4	1	9	0	11944268775622333166	-1635.00354	-15.3500004	-1446.86475
+MARIOBALL	4	1	10	2	16937791389767514911	-1629.22021	-12.8000002	-1430.91089
+MARIOBALL	4	1	11	1	15757879640000171724	-1619.15125	-12.8000002	-1445.8772
+MARIOBALL	4	2	0	0	18056531747880050133	-1648.93958	-20.4799995	-1417.77771
+MARIOBALL	4	2	1	2	10471272542900489154	-1651.65454	-20.4799995	-1420.49268
+MARIOBALL	4	2	2	1	13531816720907652060	-1643.21057	-17.9200001	-1418.48657
+MARIOBALL	4	2	3	0	16525908722906651528	-1653.5708	-17.9200001	-1430.11707
+MARIOBALL	4	2	4	1	14245524712329012505	-1643.34277	-17.9200001	-1454.81238
+MARIOBALL	4	2	5	1	12379651912531536891	-1616.23767	-15.3599997	-1416.4895
+MARIOBALL	4	2	6	2	15020721077471114691	-1629.84924	-15.3599997	-1425.50171
+MARIOBALL	4	2	7	0	11911700234592772323	-1634.91724	-15.3599997	-1428.85791
+MARIOBALL	4	2	8	2	17985432879385003245	-1641.05151	-15.3599997	-1432.92126
+MARIOBALL	4	2	9	2	10138624490264439232	-1635.00354	-15.3500004	-1446.86475
+MARIOBALL	4	2	10	1	18215732179694243339	-1629.22021	-12.8000002	-1430.91089
+MARIOBALL	4	2	11	0	9765169321255716906	-1619.15125	-12.8000002	-1445.8772
+MARIOBALL	4	3	0	2	10413217829253513623	-1648.93958	-20.4799995	-1417.77771
+MARIOBALL	4	3	1	0	14280535991677009612	-1651.65454	-20.4799995	-1420.49268
+MARIOBALL	4	3	2	0	14188734622944276050	-1643.21057	-17.9200001	-1418.48657
+MARIOBALL	4	3	3	1	9587865839703449061	-1653.5708	-17.9200001	-1430.11707
+MARIOBALL	4	3	4	1	13192429465247390506	-1643.34277	-17.9200001	-1454.81238
+MARIOBALL	4	3	5	2	14798635071709104861	-1616.23767	-15.3599997	-1416.4895
+MARIOBALL	4	3	6	2	14908263942825586290	-1629.84924	-15.3599997	-1425.50171
+MARIOBALL	4	3	7	1	10771690277540992721	-1634.91724	-15.3599997	-1428.85791
+MARIOBALL	4	3	8	0	13889324634922950245	-1641.05151	-15.3599997	-1432.92126
+MARIOBALL	4	3	9	1	16756389300833259107	-1635.00354	-15.3500004	-1446.86475
+MARIOBALL	4	3	10	0	14303044118132496597	-1629.22021	-12.8000002	-1430.91089
+MARIOBALL	4	3	11	2	12911998875669689517	-1619.15125	-12.8000002	-1445.8772

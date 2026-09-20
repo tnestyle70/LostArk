@@ -1,0 +1,40 @@
+{
+    "schema":  "lostark.kakul-stage-markers-runtime",
+    "formatVersion":  1,
+    "worldId":  "KAKULSAYDON_ARENA",
+    "areaId":  "LV_LUT_MIDNIGHTC_ED",
+    "revision":  1,
+    "semanticStatus":  "SOURCE_LEVEL_ID_ONLY",
+    "stages":  [
+                   {
+                       "stageId":  "stage.kakul.sl01",
+                       "placementId":  "stage.kakul.sl01",
+                       "displayNameKo":  "LV_LUT_MIDNIGHTC_ED_SL01 복구 스테이지",
+                       "sourceLevelId":  "LV_LUT_MIDNIGHTC_ED_SL01"
+                   },
+                   {
+                       "stageId":  "stage.kakul.sl02",
+                       "placementId":  "stage.kakul.sl02",
+                       "displayNameKo":  "LV_LUT_MIDNIGHTC_ED_SL02 복구 스테이지",
+                       "sourceLevelId":  "LV_LUT_MIDNIGHTC_ED_SL02"
+                   },
+                   {
+                       "stageId":  "stage.kakul.sl03",
+                       "placementId":  "stage.kakul.sl03",
+                       "displayNameKo":  "LV_LUT_MIDNIGHTC_ED_SL03 복구 스테이지",
+                       "sourceLevelId":  "LV_LUT_MIDNIGHTC_ED_SL03"
+                   },
+                   {
+                       "stageId":  "stage.kakul.sl04",
+                       "placementId":  "stage.kakul.sl04",
+                       "displayNameKo":  "LV_LUT_MIDNIGHTC_ED_SL04 복구 스테이지",
+                       "sourceLevelId":  "LV_LUT_MIDNIGHTC_ED_SL04"
+                   },
+                   {
+                       "stageId":  "stage.kakul.sl05",
+                       "placementId":  "stage.kakul.sl05",
+                       "displayNameKo":  "LV_LUT_MIDNIGHTC_ED_SL05 복구 스테이지",
+                       "sourceLevelId":  "LV_LUT_MIDNIGHTC_ED_SL05"
+                   }
+               ]
+}

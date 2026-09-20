@@ -1,0 +1,6 @@
+LOSTARK_ENCOUNTER_PROP_BOOTSTRAP	1	VALTAN_ARENA	LV_LUT_HEARTRB_ED	1	1	4
+PROPSET	encounterprop.valtan.four-pillars	ENCOUNTER_VALTAN	DEPLOY_ITR_02326	0.9
+PROPSLOT	encounterprop.valtan.four-pillars	pillar.valtan.slot00	159.636245	-118.453755
+PROPSLOT	encounterprop.valtan.four-pillars	pillar.valtan.slot01	159.636245	-125.666245
+PROPSLOT	encounterprop.valtan.four-pillars	pillar.valtan.slot02	152.423755	-125.666245
+PROPSLOT	encounterprop.valtan.four-pillars	pillar.valtan.slot03	152.423755	-118.453755
