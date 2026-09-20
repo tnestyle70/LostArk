@@ -10,6 +10,13 @@ icon per gate (frame labels check / active / inactive). Geometry is the frame's 
                    active = image 1 (192,899)-(284,987) blue glow (92x88, drawn centred),
                    inactive = image 1 (561,899)-(606,951) blue door (45x52)
   dungeonName label at (11,7) 18 px centred over the frame, dungeonRank at (11,48)
+  dungeonLine sprite 146 at (94,94): the gold divider, a standalone (nopack) 252x76 texture
+      drawn at 124x29
+  showToggleBtn sprite 136 at (143,73): the shared V2step1ListArrow_selected arrow
+      (shareImageV2 image 0 = shareImageV2_IB, (104,1005)-(127,1024)), placed scale -1/-1 from
+      (19,15), i.e. a 23x19 arrow at frame-local (139,69) turned 180 degrees (pointing down)
+  setting sprite 171 is an authoring text sheet (Arial #333333 labels at x 225..685) and
+      gateTooltipMc sprite 135 is a fully transparent 278x53 hit area -- neither is visible art
 Image ids come from the .gfx DefineSubImage tags; umodel exports the pages as
 epicgatecommanderprocess_i<hex>.dds (image 1 = _i5a, 2 = _i52, 3 = _i60, checked by alpha).
 The host places the frame top-left; that position is not in the document, so the layout
@@ -49,7 +56,10 @@ CROPS = [
 SHARED_CROPS = [
     ("GateProgress_Btn_Normal", "shareimagev2_i46", 643, 988, 103, 36),
     ("GateProgress_Btn_Over",   "shareimagev2_i46", 328, 988, 103, 36),
+    ("GateProgress_ToggleArrow", "shareimagev2_ib", 104, 1005, 23, 19),
 ]
+# The divider is its own standalone texture, not an atlas rect.
+LINE_PAGE = PAGES / "epicgatecommanderprocess_i1.png"
 
 # Placement: the frame's own sprite 172 geometry, checked against the retail 1080p capture of
 # the live widget (frame top-left at the screen's (0,52)): dungeonName 18 px centred at (141,28),
@@ -62,15 +72,18 @@ WIDGET_X, WIDGET_Y = 4.0, 32.0
 BUTTON_LOCAL = (56.0, 128.0, 176.0, 37.0)
 ICON_LOCAL = [(59.0, 74.0), (121.0, 74.0), (183.0, 74.0)]
 ICON_W, ICON_H = 59.0, 65.0
+LINE_LOCAL = (94.0, 94.0, 124.0, 29.0)
+# Flipped about (19,15) inside showToggleBtn at (143,73): the art ends up here, turned 180.
+TOGGLE_LOCAL = (139.0, 69.0, 23.0, 19.0)
 
 
-def layout_slot(slot_id, x, y, w, h, path, hover=None):
+def layout_slot(slot_id, x, y, w, h, path, hover=None, rotation=0, additive=False):
     return {
         "id": slot_id, "ownerClass": None, "type": 0,
         "rect": {"x": x, "y": y, "width": w, "height": h},
-        "rotation": 0, "stages": {"baseFrom": 0, "shineFrom": 1},
+        "rotation": rotation, "stages": {"baseFrom": 0, "shineFrom": 1},
         "layers": [{"path": path, "hoverPath": hover, "tint": [1, 1, 1, 1],
-                    "additive": False, "flipX": False}],
+                    "additive": additive, "flipX": False}],
         "shine": {"texture": None, "additive": False},
         "animation": {"fps": 10, "scale": 1, "offset": {"x": 0, "y": 0},
                       "frames": [], "loop": True, "additive": False},
@@ -90,6 +103,13 @@ def build_widget_layout():
     bx, by, bw, bh = BUTTON_LOCAL
     slots.append(layout_slot("RGP_Button", WIDGET_X + bx * s, WIDGET_Y + by * s, bw * s, bh * s,
                              a + "GateProgress_Btn_Normal.png", a + "GateProgress_Btn_Over.png"))
+    lx, ly, lw, lh = LINE_LOCAL
+    # The divider texture is a glow baked on black with no alpha, so it draws additively.
+    slots.append(layout_slot("RGP_Line", WIDGET_X + lx * s, WIDGET_Y + ly * s, lw * s, lh * s,
+                             a + "GateProgress_Line.png", additive=True))
+    tx, ty, tw, th = TOGGLE_LOCAL
+    slots.append(layout_slot("RGP_Toggle", WIDGET_X + tx * s, WIDGET_Y + ty * s, tw * s, th * s,
+                             a + "GateProgress_ToggleArrow.png", rotation=180))
     for i, (lx, ly) in enumerate(ICON_LOCAL):
         slots.append(layout_slot("RGP_Icon%d" % i, WIDGET_X + lx * s, WIDGET_Y + ly * s,
                                  ICON_W * s, ICON_H * s, a + "GateIcon_Inactive.png"))
@@ -123,10 +143,11 @@ def main() -> int:
             print("  ! empty crop", name)
             return 1
         crop.save(art_out / (name + ".png"))
+    Image.open(LINE_PAGE).convert("RGBA").save(art_out / "GateProgress_Line.png")
     for name, stem, x, y, w, h in SHARED_CROPS:
         page = Image.open(SHARE / (stem + ".png")).convert("RGBA")
         page.crop((x, y, x + w, y + h)).save(art_out / (name + ".png"))
-    print("wrote %d png to %s" % (len(CROPS) + len(SHARED_CROPS), art_out))
+    print("wrote %d png to %s" % (len(CROPS) + len(SHARED_CROPS) + 1, art_out))
 
     for file_name, doc in (("RaidGateProgress_Layout.json", build_widget_layout()),
                            ("RaidGateVote_Layout.json", build_vote_layout())):

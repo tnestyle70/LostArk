@@ -100,6 +100,96 @@
    }
   },
   {
+   "id": "RGP_Line",
+   "ownerClass": null,
+   "type": 0,
+   "rect": {
+    "x": 66.66666666666666,
+    "y": 94.66666666666666,
+    "width": 82.66666666666666,
+    "height": 19.333333333333332
+   },
+   "rotation": 0,
+   "stages": {
+    "baseFrom": 0,
+    "shineFrom": 1
+   },
+   "layers": [
+    {
+     "path": "UI/RaidGateProgress/GateProgress_Line.png",
+     "hoverPath": null,
+     "tint": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "additive": true,
+     "flipX": false
+    }
+   ],
+   "shine": {
+    "texture": null,
+    "additive": false
+   },
+   "animation": {
+    "fps": 10,
+    "scale": 1,
+    "offset": {
+     "x": 0,
+     "y": 0
+    },
+    "frames": [],
+    "loop": true,
+    "additive": false
+   }
+  },
+  {
+   "id": "RGP_Toggle",
+   "ownerClass": null,
+   "type": 0,
+   "rect": {
+    "x": 96.66666666666666,
+    "y": 78.0,
+    "width": 15.333333333333332,
+    "height": 12.666666666666666
+   },
+   "rotation": 180,
+   "stages": {
+    "baseFrom": 0,
+    "shineFrom": 1
+   },
+   "layers": [
+    {
+     "path": "UI/RaidGateProgress/GateProgress_ToggleArrow.png",
+     "hoverPath": null,
+     "tint": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "additive": false,
+     "flipX": false
+    }
+   ],
+   "shine": {
+    "texture": null,
+    "additive": false
+   },
+   "animation": {
+    "fps": 10,
+    "scale": 1,
+    "offset": {
+     "x": 0,
+     "y": 0
+    },
+    "frames": [],
+    "loop": true,
+    "additive": false
+   }
+  },
+  {
    "id": "RGP_Icon0",
    "ownerClass": null,
    "type": 0,
