@@ -165,6 +165,7 @@ private:
 	std::uint32_t m_iNextKoukuRaidRequest = 1u, m_iKoukuRaidPendingRequest = 0u, m_iKoukuRaidDocumentEpoch = 0u;
 	std::string m_strKoukuRaidPresentationKey, m_strKoukuRaidFailedKey;
 	std::chrono::steady_clock::time_point m_KoukuRaidReplyDeadline{};
+	std::string m_strKoukuRaidReplyStatus; // Latest unresolved/rejected request, independent of broadcast raid presentation.
 #ifdef _DEBUG
     struct KOUKU_RAID_RESOURCE_PREPARATION final
     {

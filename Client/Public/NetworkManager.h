@@ -31,6 +31,9 @@ public:
 	static constexpr std::size_t MAX_REPLICATION_EVENT_QUEUE = 4096u;
 	static constexpr std::size_t MAX_INBOUND_FRAME_QUEUE = 4096u;
 	static constexpr std::size_t MAX_REVISION_CONTROL_QUEUE = 64u;
+	// Return to typed consumers before one raw burst fills their smallest queue.
+	static constexpr std::size_t MAX_INBOUND_DISPATCH_PER_UPDATE =
+		MAX_REVISION_CONTROL_QUEUE;
 	static constexpr std::size_t MAX_PRESENTATION_ALIAS_GENERATIONS = 16u;
 
 	struct PRESENTATION_ARTIFACT_BASELINE final
@@ -462,6 +465,9 @@ private:
 		std::span<const std::uint8_t> bytes,
 		LostArk::Shared::PACKET_TYPE triggeringPacket =
 			LostArk::Shared::PACKET_TYPE::INVALID);
+	bool Enqueue_InboundFrame(LostArk::Shared::PACKET_FRAME&& frame);
+	[[nodiscard]] bool Has_DispatchCapacity(
+		LostArk::Shared::PACKET_TYPE packetType) const;
 	bool Enqueue_ReplicationEvent(
 		Client::CLIENT_REPLICATION_EVENT&& event);
 	void Fail_Protocol(

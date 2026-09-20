@@ -335,6 +335,7 @@ public:
 	std::uint32_t Get_PresentationServerTick() const { return m_Replication.Get_LastServerTick(); }
 	const LostArk::Shared::S2C_KOUKUSAYDON_RAID_STATE& Get_KoukuRaidState() const { return m_Replication.Get_KoukuRaidState(); }
 	const LostArk::Shared::S2C_KOUKUSAYDON_RAID_STATE& Get_KoukuRaidReply() const { return m_Replication.Get_KoukuRaidReply(); }
+	void Expect_KoukuRaidReply(std::uint32_t requestSequence) { m_Replication.Expect_KoukuRaidReply(requestSequence); }
     bool_t Can_StartCompositionWorld(const std::string& instanceId, std::string& status,
         const CWorldSequenceDocument* sourceDocument = nullptr) const;
 	bool_t Try_GetOwnedCompositionWorldPivot(std::uint32_t runEpoch, const std::string& memberId,

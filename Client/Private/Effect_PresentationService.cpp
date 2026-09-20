@@ -2989,7 +2989,12 @@ bool_t Client::CEffectPresentationService::Stage_LoadingProductTarget(
 		return false;
 	}
 
+	Engine::CProfiler* const pProfiler = CGameInstance::Get().Get_Profiler();
 	std::shared_ptr<const EFFECT_PRODUCT_LOAD_STAGE_RESULT> CatalogStage;
+	{
+	Engine::CProfilerScope profile(pProfiler, "Effect.Prepare.Document");
+	const EFFECT_SLOW_SCOPE_DIAGNOSTIC phase{
+		"V1.prepare.document", Request.strEffectAssetId, {}};
 	if (!CEffectCatalog::Stage_ProductLoadTarget(
 			Request, CatalogStage, strOutStatus) || nullptr == CatalogStage ||
 		nullptr == CatalogStage->pDocument ||
@@ -3014,8 +3019,13 @@ bool_t Client::CEffectPresentationService::Stage_LoadingProductTarget(
 		return false;
 	}
 
+	} // Document read/parse/decode/projection, including the source lease.
 	auto Candidate = std::make_shared<EFFECT_PRODUCT_LOADING_TARGET_STAGE>();
 	Candidate->pCatalogStage = CatalogStage;
+	{
+	Engine::CProfilerScope profile(pProfiler, "Effect.Prepare.Metadata");
+	const EFFECT_SLOW_SCOPE_DIAGNOSTIC phase{
+		"V1.prepare.metadata", Request.strEffectAssetId, {}};
 	if (Request.strEffectAssetId.ends_with(".restore"))
 	{
 		std::string CameraStatus;
@@ -3058,6 +3068,11 @@ bool_t Client::CEffectPresentationService::Stage_LoadingProductTarget(
 			Request.strEffectAssetId + ": " + strOutStatus;
 		return false;
 	}
+	} // Camera, overlay, budget and playback duration preparation.
+	{
+	Engine::CProfilerScope profile(pProfiler, "Effect.Prepare.Renderer");
+	const EFFECT_SLOW_SCOPE_DIAGNOSTIC phase{
+		"V1.prepare.renderer", Request.strEffectAssetId, {}};
 	if (!CEffectDocumentRenderer::Stage_VisualProgramTarget(
 			std::move(pDevice), std::move(pContextIdentity),
 			Request.iCatalogRevision,
@@ -3071,6 +3086,7 @@ bool_t Client::CEffectPresentationService::Stage_LoadingProductTarget(
 		return false;
 	}
 
+	} // Device resource staging; not a GPU execution-time measurement.
 	OutStage = std::move(Candidate);
 	strOutStatus = "Staged Product Effect resources on Loader worker: " +
 		Request.strEffectAssetId;
@@ -3317,6 +3333,10 @@ void Client::CEffectPresentationService::Advance_LoadingProductCuePreparation(
 		return;
 	}
 
+	Engine::CProfilerScope commitProfile(
+		CGameInstance::Get().Get_Profiler(), "Effect.Prepare.Commit");
+	const EFFECT_SLOW_SCOPE_DIAGNOSTIC commitDiagnostic{
+		"V1.prepare.commit", EffectId, {}};
 	EFFECT_LOAD_JOB_COMMAND TargetCommitAck =
 		EFFECT_LOAD_JOB_COMMAND::Target_CommitAck(
 			iJobEpoch, iCatalogRevision, EffectId);

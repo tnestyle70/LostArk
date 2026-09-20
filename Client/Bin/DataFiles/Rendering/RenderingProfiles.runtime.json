@@ -1,7 +1,7 @@
 {
     "schema":  "lostark.rendering-profiles",
     "formatVersion":  1,
-    "revision":  71,
+    "revision":  72,
     "globalQuality":  {
                           "ssaoEnabled":  true,
                           "ssaoRadius":  0.0399999991,
@@ -613,7 +613,7 @@
                                                  "ssaoIntensity":  0.689999998,
                                                  "ssaoPower":  2.0999999,
                                                  "ssaoDistanceFade":  132.5,
-                                                 "bloomEnabled":  true,
+                                                 "bloomEnabled":  false,
                                                  "bloomThreshold":  0.400000006,
                                                  "bloomSoftKnee":  1,
                                                  "bloomIntensity":  1.25,
@@ -4902,6 +4902,12 @@
                                                         "blendTimeIn":  1,
                                                         "blendTimeOut":  1,
                                                         "priority":  0,
+                                                        "sourceCharacterAmbient":  [
+                                                                                       0.509803951,
+                                                                                       0.563725471,
+                                                                                       0.588235319,
+                                                                                       0
+                                                                                   ],
                                                         "specularColor":  [
                                                                               0.5,
                                                                               0.5,
@@ -4972,13 +4978,7 @@
                                                                                            0.425893813,
                                                                                            0.707106769
                                                                                        ]
-                                                                },
-                                                        "sourceCharacterAmbient":  [
-                                                                                       0.5098039215686274,
-                                                                                       0.5637254901960784,
-                                                                                       0.5882352941176471,
-                                                                                       0
-                                                                                   ]
+                                                                }
                                                     },
                                                     {
                                                         "regionId":  "kouku.ps.environment.48",
@@ -5182,6 +5182,7 @@
                                                         "blendTimeIn":  1,
                                                         "blendTimeOut":  1,
                                                         "priority":  0,
+                                                        "receiver":  "ALL",
                                                         "specularColor":  [
                                                                               0.5,
                                                                               0.5,
@@ -5252,8 +5253,7 @@
                                                                                            0.425893813,
                                                                                            0.707106769
                                                                                        ]
-                                                                },
-                                                        "receiver":  "ALL"
+                                                                }
                                                     },
                                                     {
                                                         "regionId":  "kouku.ps.environment.50",
@@ -5320,6 +5320,7 @@
                                                         "blendTimeIn":  1,
                                                         "blendTimeOut":  1,
                                                         "priority":  0,
+                                                        "receiver":  "ALL",
                                                         "specularColor":  [
                                                                               0.5,
                                                                               0.5,
@@ -5390,8 +5391,7 @@
                                                                                            0.425893813,
                                                                                            0.707106769
                                                                                        ]
-                                                                },
-                                                        "receiver":  "ALL"
+                                                                }
                                                     },
                                                     {
                                                         "regionId":  "kouku.ps.environment.51",
@@ -5458,6 +5458,7 @@
                                                         "blendTimeIn":  1,
                                                         "blendTimeOut":  1,
                                                         "priority":  0,
+                                                        "receiver":  "ALL",
                                                         "specularColor":  [
                                                                               0.5,
                                                                               0.5,
@@ -5528,8 +5529,7 @@
                                                                                            0.425893813,
                                                                                            0.707106769
                                                                                        ]
-                                                                },
-                                                        "receiver":  "ALL"
+                                                                }
                                                     },
                                                     {
                                                         "regionId":  "kouku.ps.environment.52",
@@ -6007,6 +6007,7 @@
                                                         "blendTimeIn":  1,
                                                         "blendTimeOut":  1,
                                                         "priority":  0,
+                                                        "receiver":  "ALL",
                                                         "specularColor":  [
                                                                               0.5,
                                                                               0.5,
@@ -6106,8 +6107,7 @@
                                                                                            0.425893813,
                                                                                            -0.5
                                                                                        ]
-                                                                },
-                                                        "receiver":  "ALL"
+                                                                }
                                                     },
                                                     {
                                                         "regionId":  "kouku.ps.environment.56",
@@ -6174,6 +6174,7 @@
                                                         "blendTimeIn":  1,
                                                         "blendTimeOut":  1,
                                                         "priority":  0,
+                                                        "receiver":  "ALL",
                                                         "specularColor":  [
                                                                               0.5,
                                                                               0.5,
@@ -6244,8 +6245,7 @@
                                                                                            0.425893813,
                                                                                            -0.5
                                                                                        ]
-                                                                },
-                                                        "receiver":  "ALL"
+                                                                }
                                                     },
                                                     {
                                                         "regionId":  "kouku.sl03.environment.59",
@@ -6312,6 +6312,7 @@
                                                         "blendTimeIn":  1,
                                                         "blendTimeOut":  1,
                                                         "priority":  0,
+                                                        "receiver":  "ALL",
                                                         "specularColor":  [
                                                                               0.5,
                                                                               0.5,
@@ -6382,8 +6383,7 @@
                                                                                            0.425893813,
                                                                                            -0.5
                                                                                        ]
-                                                                },
-                                                        "receiver":  "ALL"
+                                                                }
                                                     }
                                                 ]
                      },
@@ -6540,6 +6540,12 @@
                                                         "blendTimeIn":  1,
                                                         "blendTimeOut":  1,
                                                         "priority":  0,
+                                                        "sourceCharacterAmbient":  [
+                                                                                       0.509803951,
+                                                                                       0.563725471,
+                                                                                       0.588235319,
+                                                                                       0
+                                                                                   ],
                                                         "specularColor":  [
                                                                               0.5,
                                                                               0.5,
@@ -6610,13 +6616,7 @@
                                                                                            0.425893813,
                                                                                            0.707106769
                                                                                        ]
-                                                                },
-                                                        "sourceCharacterAmbient":  [
-                                                                                       0.5098039215686274,
-                                                                                       0.5637254901960784,
-                                                                                       0.5882352941176471,
-                                                                                       0
-                                                                                   ]
+                                                                }
                                                     }
                                                 ]
                      },
@@ -6773,6 +6773,12 @@
                                                         "blendTimeIn":  1,
                                                         "blendTimeOut":  1,
                                                         "priority":  0,
+                                                        "sourceCharacterAmbient":  [
+                                                                                       0.509803951,
+                                                                                       0.563725471,
+                                                                                       0.588235319,
+                                                                                       0
+                                                                                   ],
                                                         "specularColor":  [
                                                                               0.5,
                                                                               0.5,
@@ -6843,13 +6849,7 @@
                                                                                            0.425893813,
                                                                                            0.707106769
                                                                                        ]
-                                                                },
-                                                        "sourceCharacterAmbient":  [
-                                                                                       0.5098039215686274,
-                                                                                       0.5637254901960784,
-                                                                                       0.5882352941176471,
-                                                                                       0
-                                                                                   ]
+                                                                }
                                                     }
                                                 ]
                      },
@@ -7364,6 +7364,12 @@
                                                         "blendTimeIn":  1,
                                                         "blendTimeOut":  1,
                                                         "priority":  0,
+                                                        "sourceCharacterAmbient":  [
+                                                                                       0.509803951,
+                                                                                       0.563725471,
+                                                                                       0.588235319,
+                                                                                       0
+                                                                                   ],
                                                         "specularColor":  [
                                                                               0.5,
                                                                               0.5,
@@ -7434,13 +7440,7 @@
                                                                                            0.425893813,
                                                                                            0.707106769
                                                                                        ]
-                                                                },
-                                                        "sourceCharacterAmbient":  [
-                                                                                       0.5098039215686274,
-                                                                                       0.5637254901960784,
-                                                                                       0.5882352941176471,
-                                                                                       0
-                                                                                   ]
+                                                                }
                                                     },
                                                     {
                                                         "regionId":  "kouku.ps.environment.48",
@@ -7644,6 +7644,7 @@
                                                         "blendTimeIn":  1,
                                                         "blendTimeOut":  1,
                                                         "priority":  0,
+                                                        "receiver":  "ALL",
                                                         "specularColor":  [
                                                                               0.5,
                                                                               0.5,
@@ -7714,8 +7715,7 @@
                                                                                            0.425893813,
                                                                                            0.707106769
                                                                                        ]
-                                                                },
-                                                        "receiver":  "ALL"
+                                                                }
                                                     },
                                                     {
                                                         "regionId":  "kouku.ps.environment.50",
@@ -7782,6 +7782,7 @@
                                                         "blendTimeIn":  1,
                                                         "blendTimeOut":  1,
                                                         "priority":  0,
+                                                        "receiver":  "ALL",
                                                         "specularColor":  [
                                                                               0.5,
                                                                               0.5,
@@ -7852,8 +7853,7 @@
                                                                                            0.425893813,
                                                                                            0.707106769
                                                                                        ]
-                                                                },
-                                                        "receiver":  "ALL"
+                                                                }
                                                     },
                                                     {
                                                         "regionId":  "kouku.ps.environment.51",
@@ -7920,6 +7920,7 @@
                                                         "blendTimeIn":  1,
                                                         "blendTimeOut":  1,
                                                         "priority":  0,
+                                                        "receiver":  "ALL",
                                                         "specularColor":  [
                                                                               0.5,
                                                                               0.5,
@@ -7990,8 +7991,7 @@
                                                                                            0.425893813,
                                                                                            0.707106769
                                                                                        ]
-                                                                },
-                                                        "receiver":  "ALL"
+                                                                }
                                                     },
                                                     {
                                                         "regionId":  "kouku.ps.environment.52",
@@ -8469,6 +8469,7 @@
                                                         "blendTimeIn":  1,
                                                         "blendTimeOut":  1,
                                                         "priority":  0,
+                                                        "receiver":  "ALL",
                                                         "specularColor":  [
                                                                               0.5,
                                                                               0.5,
@@ -8568,8 +8569,7 @@
                                                                                            0.425893813,
                                                                                            -0.5
                                                                                        ]
-                                                                },
-                                                        "receiver":  "ALL"
+                                                                }
                                                     },
                                                     {
                                                         "regionId":  "kouku.ps.environment.56",
@@ -8636,6 +8636,7 @@
                                                         "blendTimeIn":  1,
                                                         "blendTimeOut":  1,
                                                         "priority":  0,
+                                                        "receiver":  "ALL",
                                                         "specularColor":  [
                                                                               0.5,
                                                                               0.5,
@@ -8706,8 +8707,7 @@
                                                                                            0.425893813,
                                                                                            -0.5
                                                                                        ]
-                                                                },
-                                                        "receiver":  "ALL"
+                                                                }
                                                     },
                                                     {
                                                         "regionId":  "kouku.sl03.environment.59",
@@ -8774,6 +8774,7 @@
                                                         "blendTimeIn":  1,
                                                         "blendTimeOut":  1,
                                                         "priority":  0,
+                                                        "receiver":  "ALL",
                                                         "specularColor":  [
                                                                               0.5,
                                                                               0.5,
@@ -8844,8 +8845,7 @@
                                                                                            0.425893813,
                                                                                            -0.5
                                                                                        ]
-                                                                },
-                                                        "receiver":  "ALL"
+                                                                }
                                                     }
                                                 ]
                      },

@@ -62,6 +62,7 @@ $script:buildStartProductSourceInputSha256 = ''
 $script:buildToolchain = $null
 $script:productCompileEvidencePath = ''
 $script:buildFailure = ''
+$script:runtimeDataChecks = @()
 
 function Get-ValtanRepositorySourceRevision {
     $manifestText = (& python $valtanPipeline --repository-root $repoRoot `
@@ -112,7 +113,8 @@ function Add-BuildStepRecord {
 function Write-ProductCompileEvidence {
     param(
         [Parameter(Mandatory = $true)][ValidateSet('PASS', 'FAIL')][string]$Result,
-        [string[]]$MissingRuntimeInputs = @()
+        [string[]]$MissingRuntimeInputs = @(),
+        [string[]]$InvalidRuntimeInputs = @()
     )
 
     $compileResult = [ordered]@{
@@ -128,6 +130,8 @@ function Write-ProductCompileEvidence {
         toolchain = $script:buildToolchain
         steps = @($script:buildStepRecords)
         missingRuntimeInputs = @($MissingRuntimeInputs)
+        invalidRuntimeInputs = @($InvalidRuntimeInputs)
+        runtimeDataChecks = @($script:runtimeDataChecks)
     }
     $stamp = [DateTime]::UtcNow.ToString('yyyyMMddTHHmmssfffZ')
     $path = Join-Path $buildEvidenceRoot "$stamp-$($Configuration.ToLowerInvariant())-product.json"
@@ -359,6 +363,46 @@ function Assert-RuntimeLayout {
     }
 }
 
+function Test-ProductPublishedCatalogs {
+    # These small publishers own their expected serialized format. Compare their
+    # current source projection without publishing, hashing the full tree, or
+    # duplicating bootstrap versions in this build runner.
+    $checks = @(
+        @{ publisher = 'Tools\GameplayPipeline\Publish-ItemCatalog.ps1';
+           output = 'Server/Bin/DataFiles/Items/Items.bootstrap' },
+        @{ publisher = 'Tools\ValtanPipeline\Publish-ValtanClearRewards.ps1';
+           output = 'Server/Bin/DataFiles/Valtan/ClearRewards.bootstrap' }
+    )
+    foreach ($check in $checks) {
+        if (-not (Test-Path -LiteralPath (Join-Path $repoRoot $check.output) -PathType Leaf)) {
+            continue # Reported by the existing required-file check.
+        }
+        $timer = [Diagnostics.Stopwatch]::StartNew()
+        $checkResult = 'FAIL'
+        $checkOutput = ''
+        try {
+            # Both PowerShell publishers report failure by throwing. Invoke in
+            # script scope to avoid two fresh PowerShell hosts on every Build.
+            $checkOutput = (& (Join-Path $repoRoot $check.publisher) `
+                -Mode CheckPublished | Out-String).Trim()
+            $checkResult = 'PASS'
+        }
+        catch {
+            $checkOutput = $_.Exception.Message
+        }
+        finally {
+            $timer.Stop()
+        }
+        [pscustomobject][ordered]@{
+            path = $check.output
+            publisher = $check.publisher
+            result = $checkResult
+            elapsedMs = $timer.ElapsedMilliseconds
+            details = $checkOutput
+        }
+    }
+}
+
 function Invoke-PythonGate {
     param(
         [string]$Description,
@@ -521,10 +565,17 @@ try {
             Write-Host 'powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildDomainOwner.ps1 -Owner Server'
             Write-Host 'powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildDomainOwner.ps1 -Owner Client'
         }
+        $script:runtimeDataChecks = @(Test-ProductPublishedCatalogs)
+        $invalidRuntimeInputs = @($script:runtimeDataChecks | Where-Object result -ne 'PASS' |
+            ForEach-Object { $_.path })
+        foreach ($check in $script:runtimeDataChecks | Where-Object result -ne 'PASS') {
+            Write-Warning ("Published runtime data is not current: $($check.path)`n$($check.details)")
+            Write-Host "Repair this catalog explicitly: powershell -NoProfile -ExecutionPolicy Bypass -File $($check.publisher) -Mode Publish"
+        }
         $script:buildRunTimer.Stop()
-        Write-ProductCompileEvidence 'PASS' @($missingRuntimeInputs)
+        Write-ProductCompileEvidence 'PASS' @($missingRuntimeInputs) @($invalidRuntimeInputs)
         Write-Host "Product compile/deploy completed: $Configuration (SkipBuild=$([bool]$SkipBuild))"
-        Write-Host 'Data publishing and runtime diagnostics were not run. Visual/audio review remains user-operated.'
+        Write-Host 'Runtime file presence and Item/Valtan reward catalog content were checked; no data was published. Other runtime domains and visual/audio review remain separate.'
         return
     }
 

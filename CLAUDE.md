@@ -37,7 +37,7 @@ Portable ZIP은 전체 압축 해제 후 최상위 `LostArk.exe`를 사용한다
 Resources만 읽고, EXE/DLL/CSO와 Data/DataFiles는 압축 해제한 배포본을 사용한다.
 Portable에는 Resources·PNG나 기존 저장소를 덮어쓰는 설치기를 포함하지 않는다.
 ZIP의 EXE/DLL/CSO는 실행용이며 다른 PC의 OBJ/PCH/증분 추적 기록을 제공하지 않는다.
-소스를 수정해 개발할 때는 아래 Debug 제품 빌드를 실행한다. 최초 실행 데이터가 없으면 아래 명시 publisher 명령으로 준비한다.
+소스를 수정해 개발할 때는 아래 Debug 제품 빌드를 실행한다. 게시된 `Client/Bin/DataFiles`, `Server/Bin/DataFiles`는 Git으로 함께 받는다. 받은 snapshot이 현재 소비 schema와 맞고 저작 정본을 수정하지 않았다면 전체 publish를 반복하지 않는다. 실행 데이터 누락·이전 schema가 확인되면 아래 명시 publisher 명령으로 해당 domain만 복구한다.
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.ps1 `
@@ -141,8 +141,9 @@ Native FX는 원본 재질 계산만 포함하고, 범용 typed/reconstructed ba
 `Tools/EffectPipeline/install_kouku_gate1_native_shaders.py`가 include·dispatch·실행 표와
 project/filter 등록을 함께 갱신하며 내용이 같은 파일은 다시 쓰지 않는다. 원본 native ID,
 수식·carrier guard·패스 상태를 유지하며 큰 단일 구간으로 다시 합치지 않는다.
-Client 프로젝트는 `MultiProcFXC=true`, `MultiProcMaxCount=4`를 Microsoft.Cpp props보다 먼저
-기본값으로 설정하며 사용자가 명시한 MSBuild 값은 보존한다. FX만 병렬화하고 C++/MIDL의
+Engine과 Client의 공용 `Tools/Build/ProductToolchain.props`는 `MultiProcFXC=true`,
+`MultiProcMaxCount=4`를 Microsoft.Cpp props보다 먼저 기본값으로 설정하며 사용자가 명시한
+MSBuild 값은 보존한다. 기존 C++ PCH와 `/MP8`은 유지하고 FX만 병렬화하며 C++/MIDL의
 UseMultiToolTask를 일괄 변경하지 않는다. 변경 없는 일반 Build는 기존 FX tracking을 재사용한다.
 실행 시에는 기존 device별 공유 Effect renderer Core가 CSO를 준비하며 draw 중 생성·컴파일하지 않는다.
 
@@ -153,6 +154,10 @@ UseMultiToolTask를 일괄 변경하지 않는다. 변경 없는 일반 Build는
 제품 네 프로젝트의 x64 Debug/Release는 `Tools/Build/CppCompilation.props`를 공유하고,
 각 IntDir에 별도 PCH를 생성한다. PCH는 표준 라이브러리만 포함하며 게임·저작·렌더 설정
 헤더를 넣지 않는다. 컴파일 옵션이 다른 최적화 CPP와 외부 구현은 PCH를 사용하지 않는다.
+반복 사용되는 `<filesystem>`, `<set>`, `<sstream>`도 공용 표준 PCH에 포함한다.
+PCH 내용이 바뀐 commit을 처음 빌드할 때는 관련 OBJ가 한 번 다시 컴파일되는 것이 정상이며,
+그 뒤 변경되지 않은 PCH를 재사용한다. 공용 gameplay/packet 헤더를 PCH에 넣어 전체 재빌드
+범위를 늘리지 않는다.
 C++ worker 기본은 논리 CPU 수와8 중 작은 값이고 명시한 `CL_MPCount`가 우선한다.
 runner의 `-MaxCompilerProcesses`로 한 실행만 지정할 수 있다.
 
@@ -189,14 +194,33 @@ MSBuild binary/diagnostic 로그를 추가하여 재컴파일 원인과 작업 �
 재빌드나 전체 하네스를 진단 전제로 붙이지 않는다. `CSO 쓰기 0`은 기존 출력 재사용 결과이고,
 최초 빌드나 shader 변경 빌드가 같은 시간에 끝난다는 뜻은 아니다.
 
-runtime 데이터를 바꾼 경우 해당 publisher 또는 `Tools/Build/Invoke-BuildDomainOwner.ps1 -Owner <Client|Server|KoukuSaydon>`으로 명시 생성한다. Map의 `.mapassets`·`.mapplacements`는 시퀀스와 함께 PR에 포함하는 Git LFS 추적 출력이다. 같은 commit을 pull하고 LFS 파일을 받은 PC는 그 맵 snapshot을 사용한다. 맵 원본을 수정한 작업자는 Area Publish/Check 후 변경된 출력을 함께 커밋한다. 일반 컴파일은 실행 데이터를 재생성하지 않으며, Client/Server의 pre-build publisher는 `LostArkPublishRuntimeData=true`일 때만 동작한다. 최초 실행 데이터나 Git 제외 domain의 입력이 없는 경우 준비 명령은 다음과 같다.
+### Publish와 Git 전달
+
+Save는 `Data/`의 저작 정본을 저장한다. Publish는 그 정본을 읽어 schema·stable ID·참조를 검증하고, 필요한 projection·navigation bake·직렬화를 수행한 뒤 `Client/Bin/DataFiles`, `Server/Bin/DataFiles`에 실행용 snapshot을 게시한다. C++/HLSL 컴파일은 별도 단계다. publisher는 실행 중 Server의 메모리나 Client 편집 draft를 자동 갱신하지 않는다.
+
+게시된 실행 데이터는 Git으로 함께 전달한다. 정본·publisher·소비 schema를 수정한 작성자는 변경한 domain만 게시·검증하고 대응 출력을 같은 PR에 포함한다. bootstrap과 world/navigation 및 presentation 참조 파일도 포함한다. Map의 `.mapassets`·`.mapplacements`는 기존 Git LFS 규칙을 사용한다. 받는 PC는 같은 commit과 LFS 실물을 받아 이 snapshot을 사용하므로, 로컬 정본을 바꾸지 않았다면 pull할 때마다 전체 publish나 navigation bake를 반복하지 않는다.
+
+일반 컴파일은 실행 데이터를 재생성하지 않는다. Client/Server pre-build publisher는 `LostArkPublishRuntimeData=true`일 때만 동작하며 기본값으로 켜지 않는다. 누락·오래된 schema가 확인되면 해당 publisher로 복구한다. 예를 들어 아이템만 잘못됐으면 `powershell -ExecutionPolicy Bypass -File Tools/GameplayPipeline/Publish-ItemCatalog.ps1 -Mode Publish`를 실행한다. 여러 domain의 최초 준비나 전체 실행 배포본 생성이 필요할 때는 다음 owner 명령을 사용한다.
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildDomainOwner.ps1 -Owner Server
 powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildDomainOwner.ps1 -Owner Client
 ```
 
-`BuildDomains.json`의 진단 profile과 명시 publisher는 기존 receipt를 재사용하지만 기본 Product 경로는 이를 호출하지 않는다. Client 작업 디렉터리는 `Client/Default`다.
+정본 Product runner는 compile/deploy 뒤 필수 runtime 파일의 존재와 Items·Valtan ClearRewards의
+현재 정본 대비 게시 내용을 읽기 전용으로 검사한다. 두 publisher의 `CheckPublished`는 schema와
+전체 생성 행을 비교하며 파일을 재게시하지 않는다. 결과의 `missingRuntimeInputs`,
+`invalidRuntimeInputs`, `runtimeDataChecks`를 확인한다. 컴파일 `PASS`와 실행 데이터 준비 상태는
+별개이며 다른 domain의 전체 내용 검증이나 실제 Server 시작 성공을 대신하지 않는다.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File Tools/GameplayPipeline/Publish-ItemCatalog.ps1 -Mode CheckPublished
+powershell -ExecutionPolicy Bypass -File Tools/ValtanPipeline/Publish-ValtanClearRewards.ps1 -Mode CheckPublished
+```
+
+불일치는 해당 명령의 `-Mode Publish`로 복구하고 변경된 출력을 같은 PR에 포함한다.
+`BuildDomains.json`의 진단 profile과 명시 owner는 기존 receipt를 재사용하지만 기본 Product는
+전체 domain 게시 그래프를 실행하지 않는다. Client 작업 디렉터리는 `Client/Default`다.
 `BuildDomains.json`의 `composition.presentation` domain은 명시 publish/Core/FullDiagnostic에서 Boss
 Composition과 Arena Sequencer source graph를 검증하고, resolved Client read model 4개와 publish receipt
 하나를 생성한다. 이 domain은 Server gameplay bootstrap이나 runtime Hot Reload를 대신하지 않는다.
@@ -221,7 +245,7 @@ Loader worker에서 호출되는 shader/model/navigation/camera/character/part/V
 | 소스 · 프로젝트 파일 | `Engine/`, `Client/`, `*.sln/.vcxproj/.filters` | Git 일반 추적 |
 | 프로젝트 데이터 정본 | `Data/`의 catalog, imported, authoring, reference JSON/문서 | Git 일반 추적; 대용량 map 문서는 Git LFS |
 | 필수 바이너리 입력 | `Engine/ThirdPartyLib/` | **Git LFS** (`.gitattributes` 패턴) |
-| 실행 데이터 생성물 | `Client/Bin/DataFiles/`, `Server/Bin/DataFiles/` | `Data/`에서 publisher가 생성; 직접 편집 금지 |
+| 게시된 실행 데이터 | `Client/Bin/DataFiles/`, `Server/Bin/DataFiles/` | publisher가 생성·검증하고 정본/schema 변경과 같은 PR로 Git 전달; 직접 편집 금지 |
 | 런타임 리소스 · 쿠킹 산출물 | `Client/Bin/Resources/{Fonts,Character,Deploy,Effect,Map,Sound,UI}` | 팀장 Drive 관리 물리 폴더; Git 추적 금지 |
 
 - clone 시 `git lfs install` 후 clone하거나, 이미 받았다면 `git lfs pull`을 실행해야 lib/DLL/DDS가 포인터가 아닌 실물이 된다.
@@ -953,7 +977,7 @@ reference 좌표의 X/Y viewport 비율을 각각 적용하므로 자동 anchor 
 - 셰이더: `../Bin/ShaderFiles/Shader_*.hlsl`
 - 프로젝트 데이터: `CProjectDataRoot::Resolve()`로 `Data/` 정본을 해석한다.
 - 전투 수치: `Data/Balance/PlayerProfiles.json`, `PlayerSkills.json`, `DamageProfiles.json`, `BossProfiles.json`이 정본이다. two-step ground target의 optional 입력·preview 계약은 `PlayerSkillTargeting.json`이며 기존 skillId/maximumRange와 exact join한다. 명시 실행하는 `Publish-GameplayBalance.ps1`이 수치와 `SKILLTARGET` admission runtime bootstrap을 생성한다. texture ID와 tint는 Client-only이며 Server bootstrap에 넣지 않는다.
-- 아이템: `Data/Items/ItemCatalog.json`이 정본이다. 명시 실행하는 `Publish-ItemCatalog.ps1`이 `Server/Bin/DataFiles/Items/Items.bootstrap`을 생성하고 `CItemCatalog`이 이를 필수 로드한다. `Server/Bin` 생성물을 커밋하거나 Server가 authoring JSON을 직접 읽게 하지 않는다.
+- 아이템: `Data/Items/ItemCatalog.json`이 정본이다. 명시 실행하는 `Publish-ItemCatalog.ps1`이 `Server/Bin/DataFiles/Items/Items.bootstrap`을 생성하고 `CItemCatalog`이 이를 필수 로드한다. 아이템 정본·publisher·reader schema가 바뀌면 갱신한 bootstrap도 같은 PR에 포함한다. 현재 header version은4이며 ITEM은7열이다. `Item bootstrap header is invalid`는 받은 bootstrap header와 실행한 Server reader의 version을 먼저 대조하고 해당 publisher로 복구한다. 생성물을 손으로 고치거나 Server가 authoring JSON을 직접 읽게 하지 않는다.
 - Git 관리 대상 `Data` 원본은 `Client.vcxproj`에서 `96.DataFiles`의 `None` 항목으로 보인다. 이는 탐색용 링크이며 runtime 복사나 두 번째 정본이 아니다.
 - 현재 밸런스 검증은 JSON publish 후 Server 재기동과 `dev.training.ground` smoke로 수행한다. 무중단 Hot Reload는 아직 활성화하지 않으며 revision과 Server tick-boundary commit 없이 Client만 재읽지 않는다. 상세 계약은 `.md/TEAM/BALANCE_TUNING_AND_HOT_RELOAD_CONTRACT.md`를 따른다.
 - 서버 길찾기: `Data/Navigation`이 정본이다. MapTool bake Area는 `<AreaId>.navsource/.navpaint/.navblockers`, 단순 uniform Area는 `<AreaId>.navgrid.json`을 사용하며 `Publish-ServerNavigation.ps1`이 Client/Server runtime `.navgrid`와 Area별 최대 인접 높이차를 가진 `.navpolicy`를 결정적으로 생성한다. gameplay spawn/boss의 walkable cell·높이 정합성도 같은 publish에서 검사한다. `.navpaint` version 3의 optional height override는 resolved surface의 다층 bake 오선택을 교정하며 Server A*와 이동 적용 직전 guard가 `.navpolicy`를 소비한다. Client 제품 Loader도 같은 정책 값을 `CNavigation::Create_NavGrid`의 네 번째 인자로 전달하며 prototype/Clone과 Character 클릭 이동 예측의 `Get_MaxStepHeight()` 경로 요청이 이를 보존한다. 기존 명시적 raw/editor factory 호출의 기본값은 0.6이다. Area는 선택적으로 `Data/Navigation/<AreaId>.navregions`에 세부 영역 격자를 선언한다. 각 영역은 `<AreaId>.<regionId>` grid ID로 자기 `.navsource/.navpaint`와 런타임 `.navgrid/.navpolicy`를 갖고, Server는 질의의 첫 점을 담는 영역이 있으면 그 격자에서만 판정한다. 영역은 서로 겹칠 수 없고 runtime blocker를 갖지 않으며, 매니페스트가 없으면 Area는 기본 격자 하나로 종전과 동일하게 동작한다.
