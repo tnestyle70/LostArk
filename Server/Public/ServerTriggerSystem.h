@@ -237,6 +237,9 @@ namespace LostArk::Server
 		LostArk::Shared::WORLD_ID m_eWorldId = LostArk::Shared::WORLD_ID::END;
 		/* Tick of each player's last accepted G activation (debounce). */
 		std::unordered_map<LostArk::Shared::PLAYER_ID, std::uint32_t> m_LastKeyActivationTick;
+		/* Bern only: players seen in a TRIGGER_MOVE, so the tick they land is known (see
+		Evaluate_Entries). */
+		std::unordered_set<LostArk::Shared::PLAYER_ID> m_TriggerMoveInFlight;
 		std::function<void(const std::string&)> m_FireLog;
 		std::function<bool(float, float, float&)> m_GroundSampler;
 	};

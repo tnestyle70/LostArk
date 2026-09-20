@@ -150,7 +150,7 @@ void CMapAssetObject::Late_Update(f32_t fTimeDelta)
 			Engine::EProfilerCounter::MapFallbackObjects);
 	}
 
-	if (!m_bVisible)
+	if (!Is_Rendered())
 		return;
     bool queued[static_cast<size_t>(RENDERGROUP::END)]{};
     for (uint32_t mesh = 0; mesh < m_pModelCom->Get_NumMeshes(); ++mesh)
@@ -193,7 +193,7 @@ HRESULT CMapAssetObject::Render_Group(RENDERGROUP group)
 {
 	/* Late_Update may already have queued this object when a presentation cue
 	   hides it. Re-check at draw time so the previous frame cannot leak through. */
-	if (!m_bVisible || m_fPresentationOpacityMultiplier <= 0.f ||
+	if (!Is_Rendered() || m_fPresentationOpacityMultiplier <= 0.f ||
         CGameInstance::Get().Is_SceneEnvironmentReplaced())
 		return S_OK;
 
@@ -282,7 +282,7 @@ HRESULT CMapAssetObject::Render_Shadow()
 {
 	constexpr uint32_t STATIC_SHADOW_PASS_BASE = 12u;
 	constexpr uint32_t OPAQUE_SHADOW_PASS_BASE = 20u;
-	if (!m_bVisible || m_fPresentationOpacityMultiplier <= 0.f ||
+	if (!Is_Rendered() || m_fPresentationOpacityMultiplier <= 0.f ||
         CGameInstance::Get().Is_SceneEnvironmentReplaced())
 		return S_OK;
     if (!m_RenderProfile.castsShadow) return S_OK;
@@ -342,7 +342,7 @@ bool_t CMapAssetObject::Try_GetStaticShadowRevision(uint64_t& outRevision) const
 		m_bStaticShadowSnapshotValid = false;
 		return false;
 	};
-	if (!m_bVisible || !m_RenderProfile.castsShadow || !m_pModelCom ||
+	if (!Is_Rendered() || !m_RenderProfile.castsShadow || !m_pModelCom ||
 		!m_pTransformCom || m_pModelCom->Is_Skinned() ||
 		!std::isfinite(m_fPresentationOpacityMultiplier) ||
 		m_fPresentationOpacityMultiplier != 1.f ||
@@ -360,7 +360,7 @@ bool_t CMapAssetObject::Try_GetStaticShadowRevision(uint64_t& outRevision) const
 	current.worldCullCenter = m_vWorldCullCenter;
 	current.worldCullRadius = m_fWorldCullRadius;
 	current.presentationOpacity = m_fPresentationOpacityMultiplier;
-	current.visible = m_bVisible;
+	current.visible = Is_Rendered();
 	current.mirrored = m_bMirrored;
 	current.hasWorldCullBounds = m_bHasWorldCullBounds;
 	if (current.hasWorldCullBounds &&

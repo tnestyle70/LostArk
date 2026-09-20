@@ -24,6 +24,7 @@ namespace
 		VALTAN_ARENA spawn group   corridor waves (Stage_1, Stage_2, Stage_MiniBoss_Spawn)
 		VALTAN_ARENA encounter     boss start (Stage_Boss)
 		KAKULSAYDON_ARENA spawn group  start-area book waves (ids Book1_Monsters, Book2_Monsters)
+		BERN movePlayer            castle / library travel boxes (ids castle, castle.2, library, library.2)
 	   Everything the PLAYER does to move -- Mario crossings (jump down, climb, cross a gap),
 	   the Mario terminal exits, jump.*, the Valtan start box and the other Valtan movePlayer
 	   boxes -- is deliberately NOT here: it waits for G. A Mario lane box still goes through
@@ -43,6 +44,8 @@ namespace
 		{ LostArk::Shared::WORLD_ID::VALTAN_ARENA, LostArk::Server::WORLD_TRIGGER_ACTION_KIND::ACTIVATE_SPAWN_GROUP, nullptr },
 		{ LostArk::Shared::WORLD_ID::VALTAN_ARENA, LostArk::Server::WORLD_TRIGGER_ACTION_KIND::ACTIVATE_ENCOUNTER, nullptr },
 		{ LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA, LostArk::Server::WORLD_TRIGGER_ACTION_KIND::ACTIVATE_SPAWN_GROUP, "Book" },
+		{ LostArk::Shared::WORLD_ID::BERN, LostArk::Server::WORLD_TRIGGER_ACTION_KIND::MOVE_PLAYER, "castle" },
+		{ LostArk::Shared::WORLD_ID::BERN, LostArk::Server::WORLD_TRIGGER_ACTION_KIND::MOVE_PLAYER, "library" },
 	};
 
 	/* Valtan boss start. The Stage_Boss box starts the boss encounter and also sends
@@ -133,6 +136,14 @@ bool LostArk::Server::CServerTriggerSystem::Update_PlayerMotion(
 	}
 
 	SERVER_TRIGGER_MOVE& move = player.TriggerMove;
+	if (move.fHeldSeconds < move.fHoldSeconds)
+	{
+		/* Bern travel: the player stays where they stand while the Client darkens the screen;
+		   the displacement starts on the tick after the hold is used up. */
+		move.fHeldSeconds = (std::min)(
+			move.fHoldSeconds, move.fHeldSeconds + fixedDeltaSeconds);
+		return true;
+	}
 	move.fElapsedSeconds = (std::min)(
 		move.fDurationSeconds,
 		move.fElapsedSeconds + fixedDeltaSeconds);
@@ -180,7 +191,16 @@ bool LostArk::Server::CServerTriggerSystem::Run_Action(
 	{
 		fired = Begin_MovePlayer(player, action, actionStartTick);
 		if (fired)
+		{
 			player.TriggerMove.strSourcePlacementId = trigger.Definition.strPlacementId;
+			/* Every Bern movement box travels behind a blackout: hold the player in place until
+			   the Client screen is dark (Shared BERN_TRAVEL_HOLD_MS). Other worlds move at once. */
+			if (LostArk::Shared::WORLD_ID::BERN == m_eWorldId)
+			{
+				player.TriggerMove.fHoldSeconds =
+					static_cast<float>(LostArk::Shared::BERN_TRAVEL_HOLD_MS) / 1000.f;
+			}
+		}
 	}
 	else if (WORLD_TRIGGER_ACTION_KIND::CHANGE_LEVEL == action.eKind)
 	{
@@ -503,6 +523,20 @@ void LostArk::Server::CServerTriggerSystem::Evaluate_Entries(
 {
 	outTransfers.clear();
 	outPromptEdges.clear();
+	/* Bern travel: a player who has just landed inside another travel box does not fire it.
+	   A box only fires on a fresh step in, so the castle and library pairs cannot bounce the
+	   player back and forth; they have to walk out and in again. */
+	std::unordered_set<LostArk::Shared::PLAYER_ID> landed;
+	if (LostArk::Shared::WORLD_ID::BERN == m_eWorldId)
+	{
+		for (const auto& [playerId, player] : players)
+		{
+			if (LostArk::Shared::PLAYER_ACTION_STATE::TRIGGER_MOVE == player.eAction)
+				m_TriggerMoveInFlight.insert(playerId);
+			else if (0u != m_TriggerMoveInFlight.erase(playerId))
+				landed.insert(playerId);
+		}
+	}
 	for (RUNTIME_TRIGGER& trigger : m_Triggers)
 	{
 		/* The telescope box is a strike volume the room measures the hammer
@@ -535,7 +569,7 @@ void LostArk::Server::CServerTriggerSystem::Evaluate_Entries(
 				}
 				continue;
 			}
-			if (wasInside ||
+			if (wasInside || landed.contains(playerId) ||
 				(trigger.Definition.isTriggerOnce && trigger.hasFired))
 			{
 				continue;
@@ -565,6 +599,13 @@ void LostArk::Server::CServerTriggerSystem::Evaluate_Entries(
 			if (fired)
 			{
 				Log_Fire(trigger, playerId, "ENTER");
+				/* A Bern move can finish before the next evaluation sees it in flight, so the
+				   landing is recorded the moment it starts. */
+				if (LostArk::Shared::WORLD_ID::BERN == m_eWorldId &&
+					LostArk::Shared::PLAYER_ACTION_STATE::TRIGGER_MOVE == player.eAction)
+				{
+					m_TriggerMoveInFlight.insert(playerId);
+				}
 				/* An owned entry fires without going through Run_Action, so the
 				   one-shot latch is still set here for that path. It is a no-op
 				   unless Set_HonourTriggerOnce kept isTriggerOnce. */
@@ -677,6 +718,7 @@ void LostArk::Server::CServerTriggerSystem::Remove_Player(
 		trigger.PlayersInside.erase(playerId);
 	}
 	m_LastKeyActivationTick.erase(playerId);
+	m_TriggerMoveInFlight.erase(playerId);
 }
 
 bool LostArk::Server::CServerTriggerSystem::Contains(
