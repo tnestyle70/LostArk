@@ -5,6 +5,7 @@
 #include "GameObject.h"
 #include "PlayerHandGripTransform.h"
 #include "KoukuSaydonCompositionDocument.h"
+#include "NpcActionEffectCueDocument.h"
 #include "SkeletalAfterimage.h"
 
 #include <algorithm>
@@ -386,6 +387,15 @@ private:
 	std::string m_strClipEndEffect, m_strClipEndEffectOccurrence;
 	f32_t m_fClipEndEffectRemaining = 0.f;
 	uint32_t m_iClipEndEffectLevel = ETOUI(LEVEL::END);
+	/* Restored original notify timeline for this clip, spawned through the
+	same level-placement path the clip-end effect already uses. An archetype
+	with no cue document leaves this inactive and keeps the binding path. */
+	NPC_ACTION_EFFECT_PLAYBACK_STATE m_NpcActionEffectState;
+	std::string m_strNpcActionEffectArchetype;
+	uint32_t m_iNpcActionEffectOccurrence = 0u;
+	bool_t m_bNpcActionEffectTargetsQueued = false;
+	void Arm_ActionEffectCues(const char_t* pClipName);
+	void Update_ActionEffectCues(f32_t fTimeDelta);
 	/* Socketed weapon with body-clock pose synchronization; null when the
 	desc declared none. It never starts a clip of its own. */
 	shared_ptr<Engine::CModel> m_pWeaponModelCom = { nullptr };

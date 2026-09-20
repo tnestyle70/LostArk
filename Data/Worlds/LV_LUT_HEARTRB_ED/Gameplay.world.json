@@ -48,6 +48,7 @@
       "yawDegrees": 48,
       "enabled": true,
       "halfExtents": [2, 1.5, 2],
+      "interactAction": "godown",
       "triggerOnce": true,
       "events": [
         { "type": "activateEncounter", "targetPlacementId": "boss.valtan.center" }
@@ -60,7 +61,6 @@
       "yawDegrees": 45.5,
       "enabled": true,
       "halfExtents": [2.5, 1.5, 2.5],
-      "requiresInteract": true,
       "triggerOnce": true,
       "events": [
         { "type": "movePlayer", "targetPosition": [147.75, 23.0175991, -117.25], "durationSeconds": 0.800000012, "arcHeight": 0 }

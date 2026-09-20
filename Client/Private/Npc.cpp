@@ -185,6 +185,7 @@ bool_t CNpc::Set_Animation(const char_t* pClipName, bool_t isLoop)
 	CEffectV2Runtime::Notify_Clip(
 		EFFECT_V2_TARGET::From_Npc(static_pointer_cast<CNpc>(shared_from_this())),
 		pClipName);
+	Arm_ActionEffectCues(pClipName);
 	return true;
 }
 
@@ -376,7 +377,109 @@ bool_t CNpc::Play_NetworkAction(
 	CEffectV2Runtime::Notify_Clip(
 		EFFECT_V2_TARGET::From_Npc(static_pointer_cast<CNpc>(shared_from_this())),
 		pClipName);
+	Arm_ActionEffectCues(pClipName);
 	return true;
+}
+
+void CNpc::Arm_ActionEffectCues(const char_t* pClipName)
+{
+	m_NpcActionEffectState.Reset();
+	m_strNpcActionEffectArchetype.clear();
+	if (nullptr == pClipName || '\0' == pClipName[0])
+		return;
+	/* One identity for both presentation documents: an NPC without an explicit
+	binding owner resolves its archetype from the model tag, exactly as the
+	existing binding path does. */
+	const std::string archetype = CEffectV2Runtime::Resolve_ArchetypeId(
+		EFFECT_V2_TARGET::From_Npc(static_pointer_cast<CNpc>(shared_from_this())));
+	if (archetype.empty())
+		return;
+	std::string status;
+	if (!CNpcActionEffectCueDocument::Load(archetype, status))
+	{
+		OutputDebugStringA(
+			("[Npc] Action Effect cues rejected for " + archetype + ": " +
+			 status + "\n").c_str());
+		return;
+	}
+	if (!CNpcActionEffectCueDocument::Has_Clip(archetype, pClipName))
+		return;
+	/* Product spawn only consumes prepared targets, so register this
+	archetype's documents once. Preparation settles on later frame seams;
+	a cue whose target is not ready yet is isolated by Spawn itself. */
+	if (!m_bNpcActionEffectTargetsQueued)
+	{
+		m_bNpcActionEffectTargetsQueued = true;
+		std::vector<std::string> targets, admitted;
+		for (const NPC_ACTION_EFFECT_CUE& cue :
+			CNpcActionEffectCueDocument::Get_Cues(archetype))
+		{
+			if (std::find(targets.begin(), targets.end(), cue.strEffectAssetId) ==
+				targets.end())
+			{
+				targets.push_back(cue.strEffectAssetId);
+			}
+		}
+		if (!targets.empty() &&
+			!CEffectPresentationService::Queue_ProductTargets_Priority(
+				targets, admitted, status))
+		{
+			OutputDebugStringA(
+				("[Npc] Action Effect targets rejected for " + archetype + ": " +
+				 status + "\n").c_str());
+		}
+	}
+	m_strNpcActionEffectArchetype = archetype;
+	m_NpcActionEffectState.strClip = pClipName;
+	m_NpcActionEffectState.bActive = true;
+	++m_iNpcActionEffectOccurrence;
+}
+
+void CNpc::Update_ActionEffectCues(const f32_t fTimeDelta)
+{
+	if (!m_NpcActionEffectState.bActive || nullptr == m_pTransformCom ||
+		!std::isfinite(fTimeDelta) || fTimeDelta < 0.f)
+	{
+		return;
+	}
+	m_NpcActionEffectState.fElapsedSeconds += fTimeDelta;
+	const auto& cues =
+		CNpcActionEffectCueDocument::Get_Cues(m_strNpcActionEffectArchetype);
+	const uint32_t iLevel = CGameInstance::Get().Get_CurrentLevelID();
+	while (m_NpcActionEffectState.iNextCue < cues.size())
+	{
+		const NPC_ACTION_EFFECT_CUE& cue = cues[m_NpcActionEffectState.iNextCue];
+		if (cue.strClip != m_NpcActionEffectState.strClip)
+		{
+			++m_NpcActionEffectState.iNextCue;
+			continue;
+		}
+		const f32_t fDue = static_cast<f32_t>(cue.iStartMs) * 0.001f;
+		if (m_NpcActionEffectState.fElapsedSeconds < fDue)
+			break;
+		++m_NpcActionEffectState.iNextCue;
+		EFFECT_LEVEL_PLACEMENT_SPAWN_DESC desc;
+		desc.iLevelIndex = iLevel;
+		desc.strPlacementId = cue.strCueId + ":" +
+			std::to_string(m_iNpcActionEffectOccurrence);
+		desc.strEffectAssetId = cue.strEffectAssetId;
+		desc.RootWorld = *m_pTransformCom->Get_WorldMatrixPtr();
+		desc.pAnchorOwner = static_pointer_cast<CNpc>(shared_from_this());
+		/* Catch a cue the frame overshot so a long frame still starts it at
+		its authored phase instead of from zero. */
+		desc.fInitialSampleTimeSeconds =
+			m_NpcActionEffectState.fElapsedSeconds - fDue;
+		EFFECT_WORLD_ROOT_HANDLE handle;
+		std::string status;
+		if (!CEffectPresentationService::Spawn_LevelPlacement(desc, handle, status))
+		{
+			OutputDebugStringA(
+				("[Npc] Action Effect cue isolated: " + cue.strCueId + " " +
+				 status + "\n").c_str());
+		}
+	}
+	if (m_NpcActionEffectState.iNextCue >= cues.size())
+		m_NpcActionEffectState.bActive = false;
 }
 
 bool_t CNpc::Schedule_ClipEndEffect(const std::string& effectAssetId,
@@ -571,6 +674,7 @@ void CNpc::Update(f32_t fTimeDelta)
 			m_strClipEndEffect.clear();
 		}
 	}
+	Update_ActionEffectCues(frameDelta);
 	CEffectV2Runtime::Tick(
 		EFFECT_V2_TARGET::From_Npc(static_pointer_cast<CNpc>(shared_from_this())),
 		m_pDevice, m_pContext);

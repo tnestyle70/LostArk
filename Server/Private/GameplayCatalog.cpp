@@ -1698,6 +1698,9 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 	}
 
 	std::unordered_set<LostArk::Shared::SKILL_ID> skillCombatTraitOwners;
+	/* Optional, unlike the combat traits above: only a skill the project has
+	actually retuned carries a row, so this set is never checked for coverage. */
+	std::unordered_set<LostArk::Shared::SKILL_ID> skillRootMotionScaleOwners;
 	std::unordered_set<LostArk::Shared::SKILL_ID> skillTargetOwners;
 	std::unordered_set<std::string> patternPolicyOwners;
 	std::unordered_set<std::string> patternSourceOwners;
@@ -1838,6 +1841,29 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			owner->second.iStaggerDamage = staggerDamage;
 			owner->second.iPartDamage = partDamage;
 			owner->second.iCounterPower = counterPower;
+		}
+		else if (!fields.empty() && "SKILLROOTMOTIONSCALE" == fields[0])
+		{
+			LostArk::Shared::SKILL_ID ownerSkillId =
+				LostArk::Shared::INVALID_SKILL_ID;
+			float scale = 1.f;
+			if (3u != fields.size() ||
+				!ParseNumber(fields[1], ownerSkillId) ||
+				!ParseNumber(fields[2], scale) ||
+				!std::isfinite(scale) || scale <= 0.f || scale > 8.f)
+			{
+				m_strStatus = "Player skill root motion scale row is invalid";
+				return false;
+			}
+			const auto owner = m_Skills.find(ownerSkillId);
+			if (m_Skills.end() == owner ||
+				!skillRootMotionScaleOwners.insert(ownerSkillId).second)
+			{
+				m_strStatus =
+					"Player skill root motion scale has no owner or is duplicated";
+				return false;
+			}
+			owner->second.fRootMotionScale = scale;
 		}
 		else if (!fields.empty() && "SKILLTARGET" == fields[0])
 		{

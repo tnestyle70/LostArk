@@ -3,6 +3,10 @@
   "formatVersion": 1,
   "characterAssetId": "LanceMaster",
   "bodyAssetId": "Character/LanceMaster/LanceMaster.wmodel",
+  "terrainJump": {
+    "clip": "terrain_jump_short",
+    "playRate": 1
+  },
   "modes": [
     {
       "mode": "MAZE",

@@ -723,9 +723,19 @@ function Convert-WorldDocument {
 				'placementId','kind','position','yawDegrees','enabled',
 				'halfExtents','triggerOnce','events')
 			if ($hasInteract) { $triggerProperties += 'requiresInteract' }
+			# interactAction names the retail prompt icon this box shows. It is presentation
+			# only: a box that also gates on requiresInteract still waits for the key, and one
+			# that fires on entry keeps firing on entry while showing the icon.
+			$hasInteractAction = $null -ne $placement.PSObject.Properties['interactAction']
+			if ($hasInteractAction) { $triggerProperties += 'interactAction' }
 			Assert-ExactProperties $placement $triggerProperties "$relativePath triggerBox"
 			if ($hasInteract -and $placement.requiresInteract -isnot [bool]) {
 				throw "Trigger requiresInteract must be a JSON Boolean: $($placement.placementId)"
+			}
+			if ($hasInteractAction) {
+				if ($placement.interactAction -cnotin @('godown','climb','tightrope','check')) {
+					throw "Trigger interactAction is not a known prompt action: $($placement.placementId)"
+				}
 			}
 			if (@($placement.halfExtents).Count -ne 3) {
 				throw "Trigger halfExtents must contain exactly three numbers: $($placement.placementId)"
