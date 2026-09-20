@@ -24,6 +24,12 @@ namespace LostArk::Server
 		float fCenterZ = 0.f;
 		float fRadiusM = 0.f;
 		float fHeightY = 0.f;
+		bool Contains_PointXZ(const float x, const float z) const noexcept
+		{
+			const double dx = static_cast<double>(x) - fCenterX;
+			const double dz = static_cast<double>(z) - fCenterZ;
+			return dx * dx + dz * dz <= static_cast<double>(fRadiusM) * fRadiusM;
+		}
 		bool operator==(const SERVER_NAVIGATION_SUPPORT_SURFACE&) const = default;
 	};
 

@@ -460,6 +460,7 @@ Action 원본과 저장 ID·창·draft를 분리하고 동일 Preview backend를
 `Composition Camera`의 `Reload Cameras`는 카메라 저작 문서를 명시적으로 다시 읽는다. 실패한 최초 로드는
 프레임마다 재시도하지 않으며, 원본을 고친 뒤 이 버튼으로 재시도한다. 미저장 camera draft는 먼저 Save한다.
 연출 편집기의 Save/Preview는 제품 패턴 게시·Server Play와 연결하지 않는다. 파티 생성은 후속 Summon/Logic 범위다.
+쿠크 local Preview가 재생 중일 때 변경 내용을 Save하면 이전 재생 문서를 중단하고 cursor를 보존한다. 다시 Play하면 저장한 위치·구간을 사용한다. 편집 뒤 Scrub/Resume도 변경 전 문서를 재사용하지 않으며 새 Preview 준비 실패는 이전 소리까지 중단한다. Server가 고정한 Complete Play 문서는 이 local 갱신 대상이 아니다.
 Resources는 여섯 보스 몸체의 실제 Animation clip을 WModel 헤더에서 읽으며 현재 preview 모델과 무관하게
 목록을 표시한다. clip 선택은 Animation Tool 창을 열지 않고 기존 preview backend를 사용한다.
 Valtan session은 하나의 playhead 위에 Animation·Collider·Effect·Sound·Camera·World 관계를 표시한다. `CBalanceTool`의 동일
@@ -737,12 +738,16 @@ Server는 저장 Action·Sequence revision, 관문 Flow, 시작 1~4인 roster를
 카드미로 완료를 기다려 다음 Flow 항목을 시작한다. 주 보스가 실제 사망하면 기존 클리어·MVP·던전입장
 UI에 결과를 표시하고 `WAIT_GATE`에서 기다린다. 시간 경과로 관문을 전환하지 않는다. 시작 roster 전원의
 관문 입장 승인을 받아야 다음 Sequence를 재생하며, 거절·투표 timeout은 현재 관문을 유지한다.
-재시작 승인도 같은 관문의 입장 Sequence를 거친다. 2관문 승인 뒤에는 클리어 Sequence와 3관문 입장
-Sequence를 차례로 재생한다. 마지막 관문 클리어는 기존 EXIT·재시작 UI를 유지한다.
+재시작 승인도 같은 관문의 입장 Sequence를 거친다. 2관문 승인 뒤에는 3관문 입장 Sequence를 재생한다.
+3관문 최초 Sequence 종료는 판자 도착 위치에서 기다리며, 좌상단 `3관문 입장`의 명시 `ENTER_GATE3`
+투표가 승인되면 Server가 전원을 원래 전투 위치로 이동시킨다. 일반 Play 후 또는 ImGui의
+`3관문 입장 전 공간` 이동 후에도 실제 판자 공간에서 같은 입장 버튼을 사용한다.
+시작 공간과 판자 공간에서는 `m12_ready_terrace_2ndcircus` BGM을 재생하고, 시퀀스 시작·공간 이탈·전투 입장에서 종료한다.
+일반 Play가 종료되면 실제 위치를 다시 확인해 대기 BGM을 재생한다. 마지막 관문 클리어는 기존 EXIT·재시작 UI를 유지한다.
 Client는 저장 Sequence의 정확한 ID/revision을 유지하며 복제된 시각으로 기존 presentation을 샘플링한다.
 늦은 입장은 현재 시각과 GateProgress의 관문·클리어·진행 중 투표 상태를 초기 동기화로 받는다.
 시작 roster의 도착 슬롯이나 투표 권한에는 추가되지 않으며, 시작 참가자 퇴장은
-실행을 중단한다. protocol 93 계약은 양쪽 실행 파일을 함께 갱신·재시작한다. protocol 92 이하 peer는 입장 시 거절한다. 이후 저장 Action·Sequence만
+실행을 중단한다. protocol 96 계약은 양쪽 실행 파일을 함께 갱신·재시작한다. 서로 다른 protocol peer는 입장 시 거절한다. 이후 저장 Action·Sequence만
 재게시하면 다음 START가 새 Product를 검증하며, Client의 Reload와 사용자 화면 확인은 별도 단계다.
 자세한 권위 경계는 팀 인터페이스 사용서의 `입장 Sequence와 열린 아레나 전투 연결`을 따른다.
 

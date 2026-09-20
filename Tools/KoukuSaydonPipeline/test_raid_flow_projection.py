@@ -34,6 +34,26 @@ def documents():
 
 
 class RaidProjectionTests(unittest.TestCase):
+    def test_bingo_reuses_saved_flow_without_inventing_an_intro(self):
+        action, sequence = documents()
+        sequence["patterns"].append({"patternId": PREFIX + "9", "gateId": "BINGO",
+            "durationMs": 51285, "stages": [{"durationMs": 49083}], "logicOccurrences": []})
+        action["patterns"].append({"patternId": "parent.bingo", "gateId": "BINGO", "authoringStatus": "PRODUCT"})
+        flow = {"gateId": "BINGO", "flowId": "flow.bingo", "entries": [
+            {"entryId": "bingo.parent", "kind": "PATTERN", "targetId": "parent.bingo", "waitAfterMs": 0}]}
+        action["patternFlows"].append(flow)
+        bingo = subject.project_raid_gates(action, sequence)[-1]
+        self.assertEqual("BINGO", bingo["gateId"])
+        self.assertEqual("boss.kakulsaydon.bingo.saydon", bingo["primaryBossPlacementId"])
+        self.assertEqual(("", 0, []), (bingo["introPatternId"], bingo["introDurationMs"], bingo["arrivals"]))
+        self.assertEqual(flow["entries"], bingo["entries"])
+        self.assertEqual((PREFIX + "9", 51285), (bingo["clearPatternId"], bingo["clearDurationMs"]))
+        self.assertEqual((sequence["compositionId"], sequence["revision"]),
+                         (bingo["sequenceCompositionId"], bingo["sequenceRevision"]))
+        action["patterns"][-1]["authoringStatus"] = "DRAFT"
+        with self.assertRaisesRegex(ValueError, "unavailable parent.bingo"):
+            subject.project_raid_gates(action, sequence)
+
     def test_release_entry_uses_the_authored_time_zero_world_identity(self):
         action, sequence = documents()
         sequence["worlds"] = [{"worldId": "world.entry", "sequenceInstanceId": "sequence.entry"},
@@ -52,7 +72,8 @@ class RaidProjectionTests(unittest.TestCase):
         gates = subject.project_raid_gates(action, sequence)
         self.assertEqual([4, 3, 7], [int(g["introPatternId"].removeprefix(PREFIX)) for g in gates])
         self.assertEqual([1000] * 3, [g["introDurationMs"] for g in gates])
-        self.assertEqual(PREFIX + "5", gates[1]["clearPatternId"])
+        self.assertEqual("", gates[1]["clearPatternId"])
+        self.assertEqual(0, gates[1]["clearDurationMs"])
         self.assertEqual([f["entries"] for f in action["patternFlows"]], [g["entries"] for g in gates])
         self.assertEqual(before, (action, sequence))
 
@@ -64,10 +85,12 @@ class RaidProjectionTests(unittest.TestCase):
                 else: action["patternFlows"].pop(1)
                 self.assertEqual(["GATE1", "GATE3"], [g["gateId"] for g in subject.project_raid_gates(action, sequence)])
 
-    def test_gate2_clear_cannot_disappear_silently(self):
+    def test_gate2_clear_is_independent_from_the_raid_transition(self):
         action, sequence = documents()
         sequence["patterns"].pop()
-        with self.assertRaises(KeyError): subject.project_raid_gates(action, sequence)
+        gates = subject.project_raid_gates(action, sequence)
+        self.assertEqual("", gates[1]["clearPatternId"])
+        self.assertEqual(PREFIX + "7", gates[2]["introPatternId"])
 
     def test_duplicate_arrival_slot_is_rejected(self):
         action, sequence = documents()

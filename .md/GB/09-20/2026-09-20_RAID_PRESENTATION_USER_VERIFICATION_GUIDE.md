@@ -1,27 +1,27 @@
 # 쿠크·발탄 연출 복구 사용자 검증 가이드
 
-기준일: 2026-09-20. 브랜치: `GB/koukubugfix-bingo`.
+기준일: 2026-09-20. 브랜치: `GB/koukubugfix-bingo`. 최신 후속 요청의 확인은 G13~G15를 먼저 읽는다. G01~G12에는 앞선 수정의 배경과 상세 점검 항목이 포함돼 있다.
 
 이 문서는 이전 요청과 후속 정정을 현재 구현·게시 데이터에 대조한 **화면 검토 순서**다. 아래의 반영 완료는 코드·데이터·자동 검사 상태를 뜻한다. 사용자가 앞서 실행하며 보고한 현상을 기준으로 수정했으며, 에이전트는 Client/UI를 실행하지 않았다. 복구 후 게임 화면, 다인 접속 화면, 실제 조작감에 대한 최종 사용자 판정은 아직 받지 않았다. 개별 수치 하네스와 WARP shader 검사를 게임 전체 화면 PASS로 간주하지 않는다.
 
-실행 전제는 최신 게시 데이터를 읽는 정상 Server에 Client가 접속하고, Lobby에서 해당 아레나 입장을 승인받은 상태다. 이 문서는 Server를 다시 실행하거나 Client의 미저장 draft를 Reload하라고 요구하지 않는다.
+실행 전제는 최신 게시 데이터를 읽는 정상 Server에 Client가 접속하고, Lobby에서 해당 아레나 입장을 승인받은 상태다. 현재 후속 수정은 Engine·Shared·Server·Client 코드를 포함하며 protocol95를 사용하므로 Server와 Client를 같은 최신 빌드로 실행한다. 게시 데이터는 Server 재시작 때 읽으며 Client의 미저장 draft를 버리는 Reload는 자동 수행하지 않는다.
 
-후속 회귀 수정 상태: 1관문 캐릭터 전용 간접광, Mario1~4 fog 억제, G3 실효 노출2→1, 주사위 카드 전용 bloom0, ALT V 공통 capture/cube rig, 휠윈드 Motion offset 및 F1 Pattern Box 편집, Complete Play 리소스 준비 대기를 코드에 반영했다. 관련 데이터는 최신 저장본의 해당 필드만 병합했다. `Map/Lighting/Kouku/` 참조는 사용자가 옮긴 기존 `Map/Lighting/KoukuSaydon/` DDS로 통일했다. 리소스 복사·재생성은 하지 않았다.
+후속 회귀 수정 상태: 1관문 캐릭터 전용 간접광, Mario1~4 fog 억제, G3 실효 노출2→1, 주사위 카드 전용 bloom0, ALT V 공통 capture/cube rig, 휠윈드 Motion offset 및 F1 Pattern Box 편집, Complete Play 리소스 준비 대기를 코드에 반영했다. 관련 데이터는 최신 저장본의 해당 필드만 병합했다. `Map/Lighting/Kouku/` 참조는 사용자가 옮긴 기존 `Map/Lighting/KoukuSaydon/` DDS로 통일했다. 이 DDS 이전에서는 리소스 복사·재생성을 하지 않았다. 이후 추가한 WAV와 빙고 화살표 JSON은 별도 리소스 목록을 따른다.
 
-이번 최종 전체 Product 빌드와 EXE 실행은 사용자가 직접 진행한다. 이전 Product 빌드 PASS를 이번 변경의 빌드 PASS로 재사용하지 않는다. 현재 변경에는 Engine 조명 ABI·Client·Server 코드가 포함되므로 **Debug x64 전체 Solution Build 후 Server와 Client를 새로 실행**한다. 실행 중인 예전 Server가 있다면 먼저 종료해야 새 EXE와 게시 데이터를 사용한다. F5/Ctrl+F5는 VS 설정에 따라 Build를 수행할 수 있다.
+최신 게임 동작 소스를 포함한 Release와 Debug Product compile/link/deploy는 모두 PASS다. 마지막 검사 fixture의 보완 및 별도 서버 계약 실행 결과는 주 RESULT 마지막 절에 기록한다. Rendering Workbench는 Debug에서 확인한다. Client 실행과 화면·실제 청취는 사용자가 직접 한다. F5/Ctrl+F5는 VS 설정에 따라 Build를 수행할 수 있다.
 
 ### 이번 수정 우선 검증 순서
 
 1. **1관문 Complete Play**: 준비 진행 중에는 패턴 시간이 시작되지 않음 → 모든 필수 리소스 준비 성공 → 시퀀스 시작. 누락/실패는 부분 재생 대신 사유를 표시한다. 파티 Debug 참가자도 준비 완료 후 READY를 보낸다.
 2. **1관문 책 카메라와 전투**: 원본 책 카메라37800ms가 끝나면1200ms blend-out으로 현재 플레이어 follow를 따른다. WORLD 행의 긴 꼬리 때문에 마지막 카메라 포즈를 붙잡지 않는다. 자연 종료·늦은 Seek·명시 Stop을 구분한다.
 3. **밝기**: G1 세이튼 몸체·장비 → Mario1~4 근거리/원거리 fog → G3 불과 무지개댄스 순서로 비교한다. G1 간접광은 원본 계수를 이용한 uniform 근사이며 원본 SH 복원 완료가 아니다. Mario의 재질·LUT·bloom까지 제거한 것은 아니다.
-4. **주사위 카드 P78**: 시작 후6.114/10.114/14.114/18.114초의4장(각4초 간격), 카드의 색·문양과 bloom 억제 확인. Stage 합계17.165초는 그대로여서 마지막 카드는 이전 Logic 행의 독립 수명으로 나온다.
+4. **주사위 카드 P78**: 시작 후6.114/10.114/14.114/18.114초의4장(각4초 간격), 카드의 색·문양과 bloom 억제 확인. Stage 합계17.165초는 그대로이며 명시적 행 수명22.981초 안에서 마지막 카드가 나온다. 누락됐던 행 수명 필드를 보완하여 P78 Available과 G1 전체 Flow admission을 실제 C++ 경로로 다시 확인했다.
 5. **휠윈드 망치 P24**: Pattern Box 위치(1.25,0,0), 회전(0,180,0), 크기(2,2,2). 손 Motion은 기존 위치(.3,0,0), quaternion(-.5,-.5,.5,.5). F1에서도 같은 Pattern Box를 편집하며 플레이어 카드미로 망치 설정과 구분한다.
 6. **차원술사 ALT V**: 이미지·액자·cube가 같은 중심에서 연결되는지 확인. Effect Detail의 `Capture / Cube Position`, `Capture / Cube Rotation (Degrees)`, `Capture / Cube Scale`과 기존 수축 방향·속도로 튜닝한다. 위치의 X/Y/Z는 카메라 기준 오른쪽/위/깊이다.
 7. **빙고 복원**: 아래 G06의 `Bingo_Play1/Play2/Reset` → `Bingo_Bomb` → `Bingo_Hammer` → P94 `메두사공포` 순서. 생성 flip, 영구 경계, 폭탄 본체·심지·폭발, 망치 선행, 얼굴을 각각 확인한다.
 8. **발탄 Complete Play**: 선택 Pattern 준비 진행률 → 준비 성공 후 자동 재생. 취소/선택 변경/데이터 revision 변경 시 시작하지 않음 확인. 별도 Saved Flow 전체의 새 준비 장벽까지 추가한 것은 아니다.
 
-**거미 카운터 방향은 사용자가 직접 수정하기로 하여 이번 변경에서 보정하지 않았다.** 피격 시 공포 얼굴 복원은 유지한다. 개별 스킬 누락이 Release에서 자동 해결된다고 판정하지 않는다.
+**후속 확인으로 거미 카운터의 몸체 전방 보정을 +90→−90으로 수정했다.** 실제 돌진 클립이 +X를 향함을 확인했고, 사용자의 추가 수정 지시를 반영했다. 세 번의 돌진에서 머리가 목표를 향하는지 확인한다. 이펙트 회전과 피격 시 공포 얼굴 복원은 유지한다. 개별 스킬 누락이 Release에서 자동 해결된다고 판정하지 않는다.
 
 ## G00. 도구 진입과 저장 기준
 
@@ -115,7 +115,7 @@ F1은 `LostArk Developer Tools`, F6는 Follow/Free Camera 전환이다. 실제 L
 1. 빙고에 입장한 뒤 `Bingo Encore Rotation`을 조절하고 저장·재독한다. 저장 즉시 보이는 것은 authoring yaw preview이며 Server 회전 변경까지 완료된 것으로 세지 않는다.
 2. Boss Tool에서 `Reuse Gate 3 attacks on Encore`를 켜고 저장된 G3 일반 공격을 `Play Isolated`한다. 같은 몸체/지팡이와 clip을 확인한다. 전용 layout/mechanic은 원래 G3에서 확인하며 빙고 재생 거절 사유를 기록한다.
 3. F1 `KoukuSaydon Arena`→`Bingo Board`에서 `Bingo_Play1`을 누른다. 흰칸 0~2가 생성 flip 후 경계 유지로 이어져야 한다. 최소18초 관찰한다. `Bingo_Play2`는 3~4를 채워 첫 줄을 빨강으로 바꾼다. `Bingo_Reset`에서 잔존 FX가 제거되는지 확인한다.
-4. `Bingo_Bomb`으로 MARKED→설치→2초 심지→폭발/십자 변경을 확인한다. 원본 1배 본체, 심지 위치와 폭발 tail을 함께 본다. `Bingo_Hammer`로 선행 aura가 낙하/쓸기와 맞는지 확인한다.
+4. `Bingo_Bomb`으로 MARKED 5초→설치→3초 심지→폭발/십자 변경을 확인한다. 원본 1배 본체, 심지 위치와 폭발 tail을 함께 본다. `Bingo_Hammer`로 선행 aura가 낙하/쓸기와 맞는지 확인한다.
 5. P94 `메두사공포`를 재생해 뒤돌기와 쿠크 얼굴 표시를 확인한다. source DRAFT 표시는 유지되지만 최신 게시 패턴이 있으므로 도구의 실제 admission으로 재생한다. 새 시선 판정·공포 피해를 추가한 변경으로 평가하지 않는다.
 6. Object에서 `월드오브젝트_빙고일반해골`의 세 모션을 각각 열어 생성 flip/흰 유지/붉은 유지가 분리돼 있는지 확인한다. 기존 floor와 해골 효과가 이중으로 겹치지 않는지 본다.
 
@@ -134,7 +134,7 @@ Valtan Arena에서 아래 순서로 개별 `Complete Play (Server/Arena)`를 실
 | 순서 | Pattern ID / 표시 이름 | 핵심 관찰 지점 |
 |---|---|---|
 | 1 | `VALTAN_ENTRANCE_CINEMATIC` / 발탄 등장 컷신 | 24.708초 원본 카메라, 일반/colorless 발탄, 일리아칸 원본 몸체·무기·두 손 FX. actor가 원점으로 튀거나 장비가 손에서 분리되지 않는지. |
-| 2 | `VALTAN_SIX_PIZZA_106` / 중앙이동 후 6방향 공격 후 피자 패턴 | STEP_04/05의 벽 파괴 camera 전환과 기존 gameplay 시점. 별도 roar WorldSequence의16 FX가 자동으로 모두 따라온다고 기대하지 않는다. |
+| 2 | `VALTAN_SIX_PIZZA_106` / 중앙이동 후 6방향 공격 후 피자 패턴 | STEP_04/05의 벽 파괴 camera 전환과 기존 gameplay 시점. 기존 roar WorldSequence를 같은 STEP_04/05 시계에 연결했으므로 배우·FX·신규 음성과 자막이 함께 시작하는지 확인한다. |
 | 3 | `VALTAN_ARENA_BREAK_109` / 중앙 이동 후 2페이즈 컷씬 | phase/wall authority 1600ms 유지, pattern2600ms부터 원본5.5초 actor/camera, RECOVERY2700ms. 연출 끝이 잘리지 않는지. |
 | 4 | `VALTAN_TRASH` / 버러지 패턴 | STEP_05/06의6.374초 원본 actor/camera/FX, 원본 reverse/blend와 이동. |
 | 5 | `VALTAN_GHOST_RESPAWN_AUDITION` / 3페이즈 망령화 발탄 부활 | ghost body/weapon/armor가 실제 생성되고 부활 clip과 FX가 재생되는지. All Effects `Full Restore`에서 매칭된 원본을 열 수 있는지. |
@@ -145,7 +145,7 @@ Workbench의 현재 정본은 `Valtan.gameplay.json`/`Valtan.presentation.json`�
 
 ## G09. 발탄에서 보류된 원본 구간
 
-최종 연결은 52 asset/89 FX 시간 구간이며 실제 Codec Load/Drawable/Stage가 전부 통과했다. 구성은 입장16/버러지들8/roar16/사망39/2페이즈10이다. **roar16구간은 저장된 WorldSequence 미리보기 범위이며 별도 자동 전투 연출 소비까지 완료한 항목이 아니다.**
+최종 연결은 52 asset/89 FX 시간 구간이며 실제 Codec Load/Drawable/Stage가 전부 통과했다. 구성은 입장16/버러지들8/roar16/사망39/2페이즈10이다. G15 후속 변경에서 roar WorldSequence를 실제 SIX_PIZZA_106 STEP04/05의 연출 시계에 연결했다. 자동 화면 재생의 최종 판정은 사용자 확인 대상이다.
 
 아래 5개 원본 시스템의7구간은 prewarm 전체 실패를 막기 위해 연결만 보류했다. 원본 recipe/material은 보존했다. 이 누락은 새 화면 회귀로 잘못 기록하지 말고 남은 복구 범위로 관리한다.
 
@@ -192,3 +192,73 @@ Workbench의 현재 정본은 `Valtan.gameplay.json`/`Valtan.presentation.json`�
 - [발탄 최종 복구](C:/Users/user/Desktop/LostArk/.md/GB/09-20/2026-09-20_VALTAN_PRESENTATION_REPAIR_RESULT.md), [쿠크 독립 행 수명](C:/Users/user/Desktop/LostArk/.md/GB/09-20/2026-09-20_KOUKU_ROW_LIFETIME_RESULT.md)
 
 패널 이름은 현재 `MainApp.cpp`, `WorldObjectTool.cpp`, `Effect_Tool_ResourceBrowser.cpp`, `Effect_Tool_MaterialDetail.cpp`, `Effect_Tool_Valtan.cpp`, `KoukuSaydonActionWorkbench.cpp`, `KoukuSaydonBossTool.cpp`를 읽어 확인했다. 이 가이드 작성에서는 코드·데이터를 수정하거나 Client/UI를 실행하지 않았다.
+
+
+## G13. 후속 수정의 인게임 확인 순서
+
+이 절은 관문 전환·빙고·자막·사운드·조명 후속 요청의 최신 기준이다. 이전 절의 과거 빌드/revision은 최신 통합 RESULT G12~G17 및 최종 빌드 결과로 대체해 읽는다. 테스트에서는 저장한 저작값을 먼저 보존하고 사용자 미저장 draft를 버리는 Reload를 하지 않는다.
+
+| 순서 | 재생·조작 | 기대 결과와 확인 지점 |
+|---|---|---|
+| 1 | Rendering Workbench → Recovered map materials 위 Live rendering comparison | directional, exposure0.5/1/2, LUT grading, FXAA, Bloom이 즉시 비교된다. 몇 초 유지해도 밝기가 계속 증가하지 않는다. Reset/창 닫기/Level 변경은 저장값으로 복귀한다. |
+| 2 | G1 입장 끝→카메라 복귀→HUD→전투, 이어 같은 관문 재시작 | 전투 맵/조명 준비를 먼저 끝내며 연출 끝의 바닥이 한 프레임 다른 환경으로 튀지 않아야 한다. 마지막 카메라 이동과 실제 입력 가능 시점 사이의 멈춤은 화면에서 최종 확인한다. |
+| 3 | G1 Sequence SOUND 시작 시간을 편집하고 Save→Reset→로컬 Play | 변경 시간이 Complete Play를 다시 누르지 않아도 반영돼야 한다. 이전 Complete Play는 명시 Stop으로 정리되며 새로운 로컬 재생을 막지 않아야 한다. |
+| 4 | G2 Saved Flow 카드미로 P77 | 원본 카메라 연출이 재생되고 전체 음성·효과음이 끝까지 들린다. 캐릭터 밑 광기 게이지와 Q 옆 LMB 안내는 없다. Q 피해500을 Server 결과로 확인한다. |
+| 5 | 쿠크_피자 P25/P84 | 훌라후프 쿠크10명이 실제 표시된다. 서버 숫자만10인 상태로 통과하지 않는다. |
+| 6 | 거미 P15와 쇼타임 | 거미 세 돌진의 몸체가 이동 방향을 본다. 쇼타임은 플레이어를 여러 방향으로 이동시켜 본체와 공격의 실제 전방이 목표를 따라 도는지 확인한다. 기존90도 빗나감이 없어야 한다. |
+| 7 | 레이저 P21·휠윈드 P24·팡파레 P23 | 수평 root 이동으로 뒤로 밀리지 않아야 한다. 원본 상체·수직 animation은 유지한다. |
+| 8 | G2 종료→G3 입장 | G2 종료 연출을 중복 재생하지 않고 G3 입장으로 이어진다. 마지막4 FX 위치에 인원별 플레이어가 도착한다. 첫 버튼은3관문 입장, 누르면 원래 전투 spawn으로 이동/전투. 그 뒤 버튼은재시작이다. |
+| 9 | G3 패턴 연출 | 별도 중앙 idle 보스가 중복으로 표시되지 않는다. 실제 패턴 actor와 공격 이펙트는 유지된다. |
+| 10 | Bingo Complete Play | 기존 G3 공격5개가 반복되며 처음 일반해골2칸,5초마다1명 표식→5초 후 현재칸 설치→3초 후 십자 폭발을 확인한다. 일반→빨강 전환과 양쪽 광기3/초,50초 경계에서 보드/남은 폭탄 유지도 본다. |
+| 11 | 빙고 망치 | 10초마다 겹치지 않는 두 경로의 빨간 UV 화살표가3초 먼저 나온다. 머리가 경로를 쓸고 실제 머리 접촉은 즉사다. 높은 사슬에 닿았다는 이유로 즉사하면 실패다. |
+| 12 | 갈고리에 잡힌 뒤 마지막 이동 위치 | 끝 위치에 도달하면 이동 입력이 다시 가능하다. 효과 tail이 남았다고 추가로 붙잡거나1.5초 넘어짐이 없어야 한다. |
+| 13 | 빙고 보스 사망 | 기존 P9 엔딩이 한 번만 재생되고 대사 마지막까지 나온다. 약51.285초 연출 종료 뒤 clear 확정. 첫 앵콜 입장 연출과 별도 검증이다. |
+| 14 | Mario1~4 입장/복귀 | 기본 FXAA off, Mario 동안 fog 억제와 복귀 시 원래 설정 회복. 비교 토글로 FXAA/Bloom/LUT 각각의 영향과 글자·이펙트 선명도를 확인한다. 원인을 FXAA로 확정한 상태는 아니다. |
+
+조명 기본은 실효 노출1과 복구된 directional이다. 쿠크 모델만 LUT2배를 받는 별도 pass는 추가하지 않았다. 모델 직접광과 기존 독립 character ambient를 복구했고 baked 맵은 중복 직접광을 피하는 UNBAKED receiver를 사용한다. 기존 카드미로/Mario 영역의 ALL 수광은 보존한다.
+
+Live comparison은 현재 화면에 적용하는 임시 비교이며 Save 대상이 아니다. 기존 Scene profile의 Exposure Multiplier/조명은 Save Light·Publish Light로, Level 공통 품질은 Save Authored·Publish Runtime으로 저장한다. 관문/영역별 qualityOverride 데이터는 존재하지만 새 비교 버튼이 관문마다 자동 저장되는 독립 프리셋 UI인 것은 아니다. 관문 별 결과를 기록할 때 active profile/region과 Effective exposure를 함께 남긴다.
+
+## G14. 발탄 카메라·배우·자막·사운드 함께 확인
+
+기존 작업자가 만든 camera shot/key를 새로 제작하거나 WAV 길이에 맞춰 늘리지 않았다. 기존 cinematic controller의 원본 source 시각으로 연결된 World 배우/FX를 샘플링하며, 같은 World instance의 soundTracks와 subtitleTracks가 그 시각을 읽는다. MapTool에서는 기존 연출의 World 배우 섹션 아래 Subtitles/Sound 행을 편집하고 Apply 후 기존 World Save를 사용한다. 직접 PLAYING과 수동 scrub/Pause를 구분해 음성을 매 프레임 다시 시작하지 않아야 한다.
+
+- 입장, 버러지, 포효,2페이즈,사망 audition은 위 G08의 실제 Pattern을 Complete Play하고 자막·음성·배우·카메라가 같은 장면을 가리키는지 본다. 입장/사망은 실제 전투 경로도 별도 확인한다.
+- 카메라가 끝나도 이미 시작한 긴 대사는 끝까지 이어지며, 명시 Stop·다른 시각으로 scrub·Level 이탈에서는 그 재생의 소리가 정리돼야 한다. 카메라 종료 뒤 음원 길이만큼 전투가 더 잠기는 것은 실패다.
+- 사망 BGM과 scene 음성은 서로 다른 내용이며 각1회만 들려야 한다. 여러 배우가 있다고 같은 scene 음성이 겹쳐 커지면 실패다.
+- 한국어 자막은 일반 아래/상단/배우 말풍선 위치를 확인한다. 말풍선은 배우를 숨기면 함께 숨고 실제 visible 배우의 머리 위를 따라야 한다. HUD가 숨겨져도 연출 자막은 보여야 한다.
+- 발탄 늑대 입장 음성1행·말풍선2행은 기존 World/MapTool 미리보기에서 확인한다. 자동1관문 입장까지 새로 연결한 것으로 평가하지 않는다.
+- 앵콜 첫 입장의 원본 사운드/자막 및 유리 균열은 추출·인계 상태다. 다른 작업자의 입장 camera/animation 연결 이후에 통합 재생을 확인한다. 발탄 collapse/M02도 원본 추출과 실제 trigger 연결 상태를 구분한다.
+
+자막은 PNG가 아니라 JSON 텍스트/시간이며 기존 한글 폰트를 사용한다. 번역 catalog 선택과 다국어 font fallback은 구현하지 않았다. 전체 리소스 목록은 KOUKU_RESOURCE_AND_SUBTITLE_INVENTORY_RESULT를 따른다.
+
+
+발탄의 실제 연결 표는 다음과 같다. World template 이름은 공통 접두사 `sequence.LV_LUT_HEARTRB_ED.valtan.source-preview.` 뒤의 이름이다. 카메라/배우 시각은 `sourceOffsetMs + 기존 camera elapsed`로 계산하며 stage 경계를 넘어도 원본 시각이 이어진다.
+
+| World template | 기존 패턴/시작 기준 | 이번 사운드·자막 |
+|---|---|---|
+| entrance | VALTAN_ENTRANCE_CINEMATIC, ESTABLISH→ARENA_REVEAL→HERO_HANDOFF, offset0/8600/14400ms | 1800ms에 원본 음원25,659ms, 아래 자막2행. 일리아칸 몸체·무기도 같은 clock. |
+| trash | VALTAN_TRASH STEP05/06, 원본 STEP05시작5733ms 기준 | 10ms에8,698ms 음원, 상단 자막2행. |
+| roar | VALTAN_SIX_PIZZA_106 STEP04/05, 원본 STEP04시작3400ms 기준 | 50ms에10,553ms 음원. 원본에 연결할 텍스트 cue 없음. |
+| phase2 | VALTAN_ARENA_BREAK_109, 원본 pattern2600ms 기준, IMPACT_HOLD600ms 이후→WIDE_REVEAL→RECOVERY | 50ms에7,500ms 음원. 원본에 연결할 텍스트 cue 없음. |
+| finale | 실제 보스 사망 또는 VALTAN_GHOST_DEATH_AUDITION STEP01 | 50ms에24,912ms 음원, 아래 자막2행. M09 BGM은 기존 Music owner. |
+| gate1-entrance / gate1-entrance.black-wolf | 기존 World/MapTool 미리보기 | 흰늑대 template에300ms 시작14,000ms 공통음원1행, 두 배우 말풍선 각1행. 자동 전투 입장은 별도 연결 전. |
+
+
+## G15. 마지막 추가 요청: 쇼타임 높이·장판·룰렛 플레이어
+
+1. P35 쇼타임의55.869초 중앙 복귀에서 보스가 기존 공중 높이를 붙잡지 않고 Server navigation 바닥으로 내려오는지 확인한다. 그 뒤 원본 마지막 점프는 남겨 두었으므로, 점프 자체를 오류로 판정하지 않는다. 마지막 점프가 끝난 뒤 높이가 약간 남거나 지면 아래로 들어가는지까지 관찰한다. 무지개댄스 P38의 기존 중앙이동과 쇼타임 중간39.209초 이동은 이번 분리 대상이 아니다.
+2. 같은 P35의5.520/10.965/24.886/30.727초 노란 부채꼴 장판이 생성되는 순간 위치·방향은 기존과 같아야 한다. 생성된 뒤 플레이어를 옆으로 움직여 보스가 회전해도 이미 깔린 장판의 중심과 방향이 따라 움직이지 않아야 한다. 원래 고정된 MAP 장판과 주황 사각형 경고10행은 변경하지 않았다.
+3. 룰렛 발판이 올라갈 때 플레이어가 멈춰 있는 경우와 계속 이동하는 경우를 모두 확인한다. 보스와 같은 발판 높이를 유지하고 낮은 정적 바닥으로 매 프레임 떨어지면 실패다. 발판 밖으로 나가거나 룰렛이 사라지면 원래 지면으로 돌아와야 한다. 클릭 이동/스킬 입력이 막히지 않는지도 확인한다. 발판 안에서는 Server XYZ 보간을 사용하므로 이동 감각도 함께 확인한다.
+
+## G16. 사용자 지정 리소스 보관 위치
+
+사용자가 마지막으로 확정한 경로는 `C:\Users\user\Desktop\GBResources`다. 실행용 WAV 13개는 기존 Resources 상대 경로의 Sound 폴더에 복사했다. `Deploy/RaidPresentation20260920`에는 유리 추출·복원 근거 33파일, 발탄 미연결 WAV 4개와 근거 8파일, 새 화살표 저작 JSON, 리소스 목록을 보관했다. 전체 payload 60파일을 SHA-256으로 대조했고 두 manifest 및 README도 함께 두었다. 추출 보관본을 실제 패턴 연결 완료로 해석하지 않는다.
+
+## G20. Sound 검색과 앞뒤 자르기 — 다음 Client 빌드 필요
+
+- Composition Resources → Sound의 검색창에서 `movetoinsideofcircustent`(연출음), `m02_scene_movetocircus`(BGM)를 찾는다. Created Resources도 같은 검색어로 필터링된다. 물리 WAV 목록의 파일명은 event hash이므로 위 이름은 등록된 Created Resource에서 확인한다.
+- Sound 탭을 열고 닫을 때, 빈 검색·검색 결과 없음·Clear·스크롤에서 FPS를 비교한다. 목록은 더 이상 매 프레임 전체 복사/제출하지 않지만 실제 사용자 FPS는 미측정이다.
+- 바 왼쪽 끝을 오른쪽으로 자르면 timeline 시작과 WAV Source In이 함께 증가한다. 오른쪽 끝은 종료만 바꾸며, 가운데 이동은 WAV 구간을 유지한다. 숫자 보정은 Box Detail의 Source In/Out ms → Apply → Save를 사용한다. 원본 WAV는 그대로 유지된다.
+- 최종 청취에서는 두 소리를 따로 Preview하여 확인한다. 기존 반복 Save→Reset→Play에서 이전 시간에 재생되는 G19는 별도 미해결이므로 이 기능 추가를 해당 버그 해결로 간주하지 않는다.
+- 두 전달 WAV는 `C:/Users/user/Desktop/GBResources/Sound/KoukuSaton/Events/`의 `event.f8dcefc1b0f00e75024f.wav`(연출47.851초), `event.cdd84d3942cd42d9166c.wav`(BGM17.563초)다. 사용자 편집 중인 시퀀스에 두 행을 자동 복구하지 않았다.

@@ -55,6 +55,12 @@ struct KOUKU_MAZE_TARGET_VIEW final
     std::string archetypeId;
 };
 
+struct KOUKU_SUBTITLE_VIEW final
+{
+    std::string strText;
+    bool bUpper = false;
+};
+
 // The Server supplies identity and time. This owner only samples presentation
 // resources and releases its own effects, audio and temporary scene/camera state.
 class CKoukuSaydonPresentationPlayer final
@@ -139,6 +145,7 @@ public:
     void Reset();
     // Called after ImGui NewFrame; sampling never draws from a loader/update thread.
     void Render_Debug() const;
+    std::vector<KOUKU_SUBTITLE_VIEW> Collect_Subtitles() const;
     void Refresh_ColliderAuthoring(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document, std::uint64_t generation);
     // Only the selected Collider/Effect placement changes; clocks and unrelated cues remain live.
     bool Preview_PresentationGeometry(const std::string& patternId,
@@ -175,6 +182,8 @@ private:
         std::uint32_t cameraDurationMs = 0u;
         float4x4_t pivot{};
         std::string assetId;
+        std::string subtitleText;
+        bool subtitleUpper = false;
         float3_t cameraOffset{};
         HIT_AREA_SHAPE wire{};
         float4x4_t placementAnchor{};

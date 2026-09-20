@@ -182,7 +182,7 @@ void LostArk::Server::CGameRoom::Handle_DebugBingoHammer(
 	same five seconds rather than deciding them. */
 	if (m_KoukuBingo.Start_Hammer(anchor, m_iServerTick,
 		m_iServerTick +
-			(KOUKU_BINGO_HAMMER_RAISE_MS * SERVER_TICK_HZ + 999u) / 1000u))
+			(KOUKU_BINGO_HAMMER_WARNING_MS * SERVER_TICK_HZ + 999u) / 1000u))
 	{
 		Broadcast_WorldSequencePlay(
 			"world.sequence.instance.kouku.bingo.hammer.anchor." +
@@ -199,11 +199,131 @@ void LostArk::Server::CGameRoom::Handle_DebugBingoHammer(
 #endif
 }
 
+void LostArk::Server::CGameRoom::Stop_KoukuBingoDuration(const bool clearBoard)
+{
+    using namespace LostArk::Shared;
+    for (const auto& hammer : m_KoukuBingoDuration.Hammers)
+        if (hammer.anchor >= 0) Broadcast_WorldSequencePlay(
+            "world.sequence.instance.kouku.bingo.hammer.anchor." + std::to_string(hammer.anchor),
+            1.f, 0.f, 0.f, 0.f, 0u, {}, WORLD_SEQUENCE_OPERATION::STOP);
+    const auto nextBomb = m_KoukuBingoDuration.iNextBombTick;
+    const auto nextHammer = m_KoukuBingoDuration.iNextHammerTick;
+    const auto nextMadness = m_KoukuBingoDuration.iNextMadnessTick;
+    m_KoukuBingoDuration = {};
+    if (!clearBoard)
+    {
+        // A repeated Parent resumes these deadlines instead of losing the
+        // 50 s mark/hammer at the boundary and introducing a ten-second gap.
+        m_KoukuBingoDuration.iNextBombTick = nextBomb;
+        m_KoukuBingoDuration.iNextHammerTick = nextHammer;
+        m_KoukuBingoDuration.iNextMadnessTick = nextMadness;
+    }
+    if (clearBoard)
+    {
+        for (std::size_t slot = 0u; slot < m_KoukuBingo.Get_Bombs().size(); ++slot)
+            Broadcast_WorldSequencePlay("world.sequence.instance.kouku.bingo.bomb.planted.slot." + std::to_string(slot),
+                1.f, 0.f, 0.f, 0.f, 0u, {}, WORLD_SEQUENCE_OPERATION::STOP);
+        m_KoukuBingo.Reset(); m_iKoukuBingoBoardEpoch = 0u;
+    }
+}
+
+void LostArk::Server::CGameRoom::Begin_KoukuBingoDuration(const SERVER_WORLD_ENTITY& owner,
+    const BOSS_PATTERN_MECHANIC_TRIGGER& trigger, const std::uint32_t tick)
+{
+    using namespace LostArk::Shared;
+    if (owner.strArchetypeId != "BOSS_KAKULSAYDON_BINGO_SAYDON" || !trigger.iDurationMs || trigger.iDurationMs > 600000u) return;
+    const auto epoch = Is_KoukuRaidRunning() ? m_KoukuRaid.State.iRunEpoch : m_KoukuSaydonPatternAudition.iRoomAuditionEpoch;
+    if (!epoch) return;
+    if (m_iKoukuBingoBoardEpoch != epoch)
+    {
+        Stop_KoukuBingoDuration(true);
+        m_iKoukuBingoBoardEpoch = epoch;
+        const auto random = Mix_DeterministicRandom((std::uint64_t(epoch) << 32u) | tick);
+        const auto first = std::uint32_t(random % KOUKU_BINGO_CELL_COUNT);
+        const auto second = (first + 1u + std::uint32_t((random >> 8u) % (KOUKU_BINGO_CELL_COUNT - 1))) % KOUKU_BINGO_CELL_COUNT;
+        m_KoukuBingo.Fill((1u << first) | (1u << second));
+    }
+    else Stop_KoukuBingoDuration(false);
+    auto& duration = m_KoukuBingoDuration;
+    duration.iOwnerId = owner.iNetEntityId; duration.iPatternSequence = owner.iPatternSequence;
+    duration.iEndTick = Add_ServerTicksSkippingReservedZero(tick, CKoukuSaydonLogicRuntime::Ticks_FromMs(trigger.iDurationMs));
+    if (!duration.iNextBombTick) duration.iNextBombTick = Add_ServerTicksSkippingReservedZero(tick, CKoukuSaydonLogicRuntime::Ticks_FromMs(KOUKU_BINGO_BOMB_INTERVAL_MS));
+    if (!duration.iNextHammerTick) duration.iNextHammerTick = Add_ServerTicksSkippingReservedZero(tick, CKoukuSaydonLogicRuntime::Ticks_FromMs(KOUKU_BINGO_HAMMER_INTERVAL_MS));
+    if (!duration.iNextMadnessTick) duration.iNextMadnessTick = Add_ServerTicksSkippingReservedZero(tick, SERVER_TICK_HZ);
+}
+
 void LostArk::Server::CGameRoom::Update_KoukuBingo(const std::uint32_t tick)
 {
 	using namespace LostArk::Shared;
 	if (WORLD_ID::KAKULSAYDON_ARENA != m_eWorldId)
 		return;
+
+    auto& duration = m_KoukuBingoDuration;
+    const auto* owner = duration.iOwnerId ? Find_KoukuOccurrenceOwner(duration.iOwnerId, duration.iPatternSequence) : nullptr;
+    if (duration.iOwnerId && (!owner || !owner->iCurrentHp || Has_ReachedServerTick(tick, duration.iEndTick)))
+    { Stop_KoukuBingoDuration(false); owner = nullptr; }
+    if (owner)
+    {
+        std::vector<SERVER_PLAYER*> alive;
+        for (auto& [id, player] : m_Players)
+            if (player.iCurrentHp && player.eAction != PLAYER_ACTION_STATE::DEAD &&
+                Is_KoukuBingoCell(Kouku_BingoCellAt(player.fPositionX, player.fPositionZ))) alive.push_back(&player);
+        if (Has_ReachedServerTick(tick, duration.iNextHammerTick))
+        {
+            const auto random = Mix_DeterministicRandom((std::uint64_t(duration.iPatternSequence) << 32u) | tick);
+            const int axis = int(random % 2u) * KOUKU_BINGO_SIDE;
+            // Native heads are 4.69 m wide, wider than one 3.04 m cell.
+            // Leave at least one row/column between paths so their heads never overlap.
+            static constexpr std::array<std::array<int, 2u>, 6u> pairs{{{0, 2}, {0, 3}, {0, 4}, {1, 3}, {1, 4}, {2, 4}}};
+            const auto pair = pairs[(random >> 4u) % pairs.size()];
+            const std::array<int, 2u> lines{axis + pair[0], axis + pair[1]};
+            for (std::size_t slot = 0; slot < lines.size(); ++slot)
+            {
+                auto& hammer = duration.Hammers[slot];
+                hammer.anchor = lines[slot] * 2 + int((random >> (12u + slot)) & 1u); hammer.startTick = tick;
+                Broadcast_WorldSequencePlay("world.sequence.instance.kouku.bingo.hammer.anchor." + std::to_string(hammer.anchor));
+            }
+            duration.iNextHammerTick = Add_ServerTicksSkippingReservedZero(tick, CKoukuSaydonLogicRuntime::Ticks_FromMs(KOUKU_BINGO_HAMMER_INTERVAL_MS));
+        }
+        const auto* catalog = Resolve_KoukuProductCatalog();
+        const auto* madness = catalog ? catalog->Find_KoukuMadnessPolicy("ENCOUNTER_KAKULSAYDON_G1") : nullptr;
+        if (Has_ReachedServerTick(tick, duration.iNextMadnessTick))
+        {
+            for (auto* player : alive)
+            {
+                const auto cell = Kouku_BingoCellAt(player->fPositionX, player->fPositionZ);
+                if (!(m_KoukuBingo.Get_WhiteMask() & (1u << cell))) continue;
+                player->iCurrentMadness = (std::min)(player->iMaximumMadness, player->iCurrentMadness + 3u);
+                if (player->iMaximumMadness && player->iCurrentMadness == player->iMaximumMadness)
+                    CKoukuSaydonLogicRuntime::Transform_ToClown(*player, madness, tick, 0u);
+            }
+            duration.iNextMadnessTick = Add_ServerTicksSkippingReservedZero(tick, SERVER_TICK_HZ);
+        }
+        for (auto& hammer : duration.Hammers)
+        {
+            if (hammer.anchor < 0) continue;
+            const float ageMs = float(tick - hammer.startTick) * 1000.f / SERVER_TICK_HZ;
+            constexpr float sweepStart = float(KOUKU_BINGO_HAMMER_WARNING_MS + KOUKU_BINGO_HAMMER_DESCEND_MS);
+            if (ageMs < sweepStart) continue;
+            if (ageMs > sweepStart + KOUKU_BINGO_HAMMER_SWEEP_MS) { hammer = {}; continue; }
+            const auto path = Kouku_BingoHammerPath(hammer.anchor);
+            const float dx = path.fEndX - path.fStartX, dz = path.fEndZ - path.fStartZ;
+            const float length = std::hypot(dx, dz), fx = dx / length, fz = dz / length;
+            const float previous = (std::clamp)((ageMs - 1000.f / SERVER_TICK_HZ - sweepStart) / KOUKU_BINGO_HAMMER_SWEEP_MS, 0.f, 1.f);
+            const float current = (std::clamp)((ageMs - sweepStart) / KOUKU_BINGO_HAMMER_SWEEP_MS, 0.f, 1.f);
+            // Installed MN_UMAC_01 head: 4.69 m wide x 3.21 m deep at authored scale 1.8.
+            // Sweep the head between ticks, never the tall chain above it.
+            for (auto* player : alive)
+            {
+                if (!catalog || !player->iCurrentHp || !CombatCollision::Circle_IntersectsForwardBox(
+                    {player->fPositionX, player->fPositionZ, WorldCollision::PLAYER_HALF_EXTENT_X + WorldCollision::CONTACT_MARGIN},
+                    path.fStartX + dx * previous - fx * 1.605f, path.fStartZ + dz * previous - fz * 1.605f,
+                    fx, fz, 3.21f + length * (current - previous), 2.345f)) continue;
+                BOSS_PATTERN_LOGIC_RESULT death; death.eKind = BOSS_PATTERN_LOGIC_RESULT_KIND::INSTANT_DEATH;
+                CKoukuSaydonLogicRuntime::Apply_Result(*player, death, *owner, *catalog, madness, tick, m_TickDamageEvents);
+            }
+        }
+    }
 	(void)m_KoukuBingo.Advance_Hammer(tick);
 	const auto& bombs = m_KoukuBingo.Get_Bombs();
 	for (std::size_t slot = 0u; slot < bombs.size(); ++slot)
@@ -241,18 +361,37 @@ void LostArk::Server::CGameRoom::Update_KoukuBingo(const std::uint32_t tick)
 		}
 		if (tick >= bombs[slot].iDetonateTick)
 		{
-			m_KoukuBingo.Plant_Bomb(slot, carrier->fPositionX, carrier->fPositionZ,
-				tick + (KOUKU_BINGO_BOMB_FUSE_MS * SERVER_TICK_HZ + 999u) / 1000u);
+            const auto cell = Kouku_BingoCellAt(carrier->fPositionX, carrier->fPositionZ);
+            if (!Is_KoukuBingoCell(cell)) { m_KoukuBingo.Clear_Bomb(slot); continue; }
+            const auto x = Kouku_BingoCellCenterX(cell), z = Kouku_BingoCellCenterZ(cell);
+            m_KoukuBingo.Plant_Bomb(slot, x, z,
+                Add_ServerTicksSkippingReservedZero(tick, CKoukuSaydonLogicRuntime::Ticks_FromMs(KOUKU_BINGO_BOMB_FUSE_MS)));
 			/* The burning bomb is authored. One instance per slot, because a
 			second play of the same instance restarts it in place, and the plant
 			point rides the cue as its position offset. The fuse above stays
-			authoritative; the sequence shows those same two seconds. */
+			authoritative; the sequence shows those same three seconds. */
 			Broadcast_WorldSequencePlay(
 				"world.sequence.instance.kouku.bingo.bomb.planted.slot." +
 				std::to_string(slot), 1.f,
-				carrier->fPositionX, 0.f, carrier->fPositionZ);
+                x, 0.f, z);
 		}
 	}
+    // Mature existing marks first: at each 5 s boundary even a solo player can
+    // plant the previous bomb and receive the next head mark in the same tick.
+    if (owner && Has_ReachedServerTick(tick, duration.iNextBombTick))
+    {
+        std::vector<NET_ENTITY_ID> alive;
+        for (const auto& [id, player] : m_Players)
+            if (player.iCurrentHp && player.eAction != PLAYER_ACTION_STATE::DEAD &&
+                Is_KoukuBingoCell(Kouku_BingoCellAt(player.fPositionX, player.fPositionZ))) alive.push_back(player.iNetEntityId);
+        if (!alive.empty())
+        {
+            const auto pick = Mix_DeterministicRandom(std::uint64_t(tick) ^ (std::uint64_t(duration.iPatternSequence) << 32u)) % alive.size();
+            m_KoukuBingo.Start_Bomb(alive[pick], Add_ServerTicksSkippingReservedZero(tick,
+                CKoukuSaydonLogicRuntime::Ticks_FromMs(KOUKU_BINGO_BOMB_MARK_MS)));
+        }
+        duration.iNextBombTick = Add_ServerTicksSkippingReservedZero(tick, CKoukuSaydonLogicRuntime::Ticks_FromMs(KOUKU_BINGO_BOMB_INTERVAL_MS));
+    }
 }
 
 void LostArk::Server::CGameRoom::Handle_DebugSetMadnessForm(
@@ -726,7 +865,7 @@ LostArk::Server::CGameRoom::Apply_DebugReturnToKoukuStart(SERVER_PLAYER& player,
 			if (action.eKind == WORLD_TRIGGER_ACTION_KIND::PLAY_SEQUENCE && entrySequences.insert(action.strTargetId).second)
 				Broadcast_WorldSequencePlay(action.strTargetId, 1.f, 0.f, 0.f, 0.f, 0u, {}, WORLD_SEQUENCE_OPERATION::STOP);
 	Reset_CardMaze();
-	m_KoukuBingo.Reset();
+	Stop_KoukuBingoDuration(true);
 	m_iNextMarioEntryStage = 1u;
 	player.Clear_KoukuInteractionState();
 	player.Clear_KoukuAssignedCard();
@@ -851,7 +990,7 @@ LostArk::Server::CGameRoom::Apply_DebugTeleportToPosition(
 
 LostArk::Shared::DEBUG_TELEPORT_RESULT LostArk::Server::CGameRoom::Validate_DebugTeleportDestination(
 	const SERVER_PLAYER& player, const LostArk::Shared::C2S_DEBUG_TELEPORT_TO_POSITION& request,
-	SERVER_NAV_POINT& ground)
+	SERVER_NAV_POINT& ground, const LostArk::Shared::NET_ENTITY_ID ignoredBodyId)
 {
 	using namespace LostArk::Shared;
 	if (0u == player.iCurrentHp || PLAYER_ACTION_STATE::DEAD == player.eAction ||
@@ -875,7 +1014,7 @@ LostArk::Shared::DEBUG_TELEPORT_RESULT LostArk::Server::CGameRoom::Validate_Debu
 		return (DEBUG_TELEPORT_RESULT::REJECTED_HEIGHT);
 	Refresh_PlayerBlockingBodies();
 	if (!m_ServerCollisionSystem.Is_PlayerPositionClear(
-		ground.x, ground.y, ground.z, player.iNetEntityId))
+		ground.x, ground.y, ground.z, ignoredBodyId == INVALID_NET_ENTITY_ID ? player.iNetEntityId : ignoredBodyId))
 		return (DEBUG_TELEPORT_RESULT::REJECTED_COLLISION);
 	return DEBUG_TELEPORT_RESULT::ACCEPTED;
 }

@@ -17,7 +17,7 @@ public:
         const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern);
     bool Prepare(const std::shared_ptr<Engine::CModel>& model,
         const std::vector<KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE>& rows,
-        float verticalScale, std::string& status);
+        float verticalScale, std::string& status, float horizontalScale = 1.f);
     bool Begin_Suppression();
     // Empty yaw span returns displacement in the model's actor frame. Otherwise
     // each row keeps the facing captured for its own stage, even after a seek.
@@ -60,6 +60,7 @@ private:
     std::vector<WINDOW> m_Windows;
     uint32_t m_RootIndex = UINT32_MAX;
     float m_VerticalScale = 1.f;
+    float m_HorizontalScale = 1.f;
     Engine::CModel::ROOT_MOTION_SUPPRESSION_STATE m_PreviousSuppression;
     bool m_SuppressionActive = false;
 };

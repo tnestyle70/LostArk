@@ -521,9 +521,11 @@ namespace
 		const std::uint32_t patternElapsedTicks,
 		const LostArk::Server::CServerNavigation* navigation) noexcept
 	{
+        using namespace LostArk::Server;
 		LOGIC_REGION_TRANSFORM transform;
-		if (!Resolve_LogicRegionTransform(region, boss, patternElapsedTicks, transform) ||
-			!std::isfinite(transform.centerX) || !std::isfinite(transform.centerZ) ||
+        const bool visible = Resolve_LogicRegionTransform(region, boss, patternElapsedTicks, transform);
+        if ((!visible && !Resolve_LogicRegionTransform(region, boss, patternElapsedTicks, transform, false)) ||
+            !std::isfinite(transform.centerX) || !std::isfinite(transform.centerZ) ||
 			!std::isfinite(transform.yaw))
 			return false;
 		/* The caught body rides the hook, so it follows the authored path even
@@ -541,8 +543,35 @@ namespace
 		player.fYawDegrees = Wrap180(transform.yaw + player.fAttachmentYawOffsetDegrees);
 		player.hasMoveGoal = false;
 		player.isCombatReady = false;
-		return true;
-	}
+        if (!visible) return false;
+        const auto& track = region.WorldTrack;
+        if (track.bEnabled && track.Keys.size() > 1u)
+        {
+            auto last = track.Keys.size() - 1u;
+            while (last && !track.Keys[last].bVisible) --last;
+            const auto position = [](const BOSS_LOGIC_WORLD_TRANSFORM_KEY& key) {
+                return key.bHasGripPosition ? key.GripPosition : std::array<float, 3u>{key.fOffsetX, key.fOffsetY, key.fOffsetZ};
+            };
+            const auto end = position(track.Keys[last]);
+            const auto atEnd = [&](const BOSS_LOGIC_WORLD_TRANSFORM_KEY& key) {
+                const auto p = position(key);
+                return std::abs(p[0] - end[0]) <= .001f && std::abs(p[1] - end[1]) <= .001f && std::abs(p[2] - end[2]) <= .001f;
+            };
+            // Ignore the terminal hold/tail once the authored grip has reached its
+            // final position. A stationary hook still owns its explicit deadline.
+            auto arrived = last;
+            while (arrived && atEnd(track.Keys[arrived - 1u])) --arrived;
+            if (arrived)
+            {
+                const auto startTicks = CKoukuSaydonLogicRuntime::Ticks_FromMs(track.iStartMs);
+                const double elapsed = region.eAnchor == BOSS_LOGIC_REGION_ANCHOR::BOSS_CURRENT ?
+                    double(patternElapsedTicks) * (1000.0 / 30.0) - track.iStartMs :
+                    double(patternElapsedTicks - (std::min)(patternElapsedTicks, startTicks)) * (1000.0 / 30.0);
+                if ((elapsed - track.iStartDelayMs) * track.fPlaybackSpeed >= track.Keys[arrived].iTimeMs) return false;
+            }
+        }
+        return true;
+    }
 }
 
 void LostArk::Server::CKoukuSaydonLogicRuntime::Assign_EncounterCard(
@@ -1894,9 +1923,9 @@ void LostArk::Server::CKoukuBingoRuntime::Detonate(const std::uint32_t cellMask)
 	the rest is decided against the board as it stands right now. */
 	const std::uint32_t affected =
 		(cellMask & KOUKU_BINGO_ALL_CELLS_MASK) & ~m_iRedMask;
-	const std::uint32_t cleared = affected & m_iWhiteMask;
-	const std::uint32_t lit = affected & ~m_iWhiteMask;
-	m_iWhiteMask = (m_iWhiteMask & ~cleared) | lit;
+	// A second blast promotes an existing ordinary skull; empty cells become ordinary.
+	m_iRedMask |= affected & m_iWhiteMask;
+	m_iWhiteMask |= affected;
 	Promote_Lines();
 }
 

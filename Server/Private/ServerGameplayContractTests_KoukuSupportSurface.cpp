@@ -117,6 +117,7 @@ REGION "blocked" "closed" 0 1
 		nav.Get_RuntimeSupportSurfaceCount() == 2u, "Invalid surface replacement preserves the previous committed list");
 	nav.Set_RuntimeSupportSurfaces({}, status);
 #ifdef _DEBUG
+	CServerGameplayContractRunner::Run_RuntimeSupportPrediction(tests, nav);
 	// The same owned schedule methods used before walking also cover stationary players and cleanup.
 	auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
 	room->m_ServerNavigation = nav;
@@ -660,7 +661,8 @@ REGION "blocked" "closed" 0 1
 	targets.strTrackingVisualId = "test.showtime.tracking"; targets.iFixedLifetimeMs = 4384u;
 	targets.iSpawnIntervalMs = 2000u; targets.fFollowSpeedScale = .5f;
 	showtime.MechanicTriggers.push_back(targets);
-	albionOwner.strPatternId = showtime.strPatternId; albionOwner.iPatternSequence = 4u; albionOwner.fYawDegrees = 90.f;
+	// Saydon model +X is already aimed at the +X target when its body yaw is zero.
+	albionOwner.strPatternId = showtime.strPatternId; albionOwner.iPatternSequence = 4u; albionOwner.fYawDegrees = 0.f;
 	KOUKUSAYDON_LOGIC_LEDGER showtimeLedger;
 	CKoukuSaydonLogicRuntime::Build(showtime, albionOwner, 2000u, showtimeLedger);
 	const auto updateTargets = [&](const std::uint32_t tick) {
@@ -680,8 +682,8 @@ REGION "blocked" "closed" 0 1
 	albionOwner.iPatternTargetEntityId = 102u;
 	albionOwner.fPositionX = 6.f; albionOwner.fPositionZ = 6.f;
 	updateTargets(2000u);
-	tests.Require(albionOwner.iPatternTargetEntityId == 102u && std::abs(albionOwner.fYawDegrees - 90.f) < .0001f,
-		"Showtime keeps the existing server pattern target and an already aligned yaw, independently of roster order");
+	tests.Require(albionOwner.iPatternTargetEntityId == 102u && std::abs(albionOwner.fYawDegrees) < .0001f,
+		"Showtime keeps the existing server pattern target and the already aligned Saydon +X yaw, independently of roster order");
 	auto& trackingIds = showtimeLedger.PlayerTargetWindows.front().TrackingObjects;
 	tests.Require(countTargetObjects(false) == 2 && countTargetObjects(true) == 2 && trackingIds.size() == 2u &&
 		std::all_of(room->m_CombatObjectRuntime.Get_LiveObjects().begin(), room->m_CombatObjectRuntime.Get_LiveObjects().end(),
@@ -767,8 +769,8 @@ REGION "blocked" "closed" 0 1
 	albionOwner.iPatternTargetEntityId = 101u; albionOwner.fPositionX = 6.f; albionOwner.fPositionZ = 6.f;
 	room->m_Players[1u].fPositionX = 9.f; room->m_Players[1u].fPositionZ = 9.f;
 	updateTargets(2402u);
-	tests.Require(albionOwner.iPatternTargetEntityId == 101u && std::abs(albionOwner.fYawDegrees - 45.f) < .0001f,
-		"The existing SHOWTIME_PLAYER_TARGETS keeps immediate facing independently of the new rotate-only duration");
+	tests.Require(albionOwner.iPatternTargetEntityId == 101u && std::abs(albionOwner.fYawDegrees + 45.f) < .0001f,
+		"The existing SHOWTIME_PLAYER_TARGETS immediately aims Saydon model +X independently of the rotate-only duration");
 	for (const bool completed : { true, false })
 	{
 		room->m_CombatObjectRuntime.Reset(); albionOwner.strPatternId = showtime.strPatternId;
@@ -837,6 +839,23 @@ REGION "blocked" "closed" 0 1
 			"A moving selected target is followed from the current yaw using the remaining duration");
 		setDirection(90.f); beginFacing(-90.f, 1000u); albionOwner.strArchetypeId = "BOSS_KAKULSAYDON_G2_BIG_SAYDON"; updateTargets(5014u);
 		tests.Require(nearYaw(albionOwner.fYawDegrees, -0.0089955f), "Big Saydon keeps its existing minus-ninety-degree model forward basis during interpolation");
+		for (const auto* archetype : { "BOSS_KAKULSAYDON_G1_SAYDON", "BOSS_KAKULSAYDON_G3_SAYDON",
+			"BOSS_KAKULSAYDON_BINGO_SAYDON", "BOSS_KAKULSAYDON_G2_BIG_SAYDON" })
+			for (const bool immediate : { false, true })
+				for (const float heading : { 0.f, 90.f, 180.f, -90.f })
+				{
+					setDirection(heading); beginFacing(45.f, 1000u);
+					albionOwner.strArchetypeId = archetype;
+					if (immediate) { showtime.MechanicTriggers.front() = targets; }
+					CKoukuSaydonLogicRuntime::Build(showtime, albionOwner, 5000u, showtimeLedger);
+					updateTargets(immediate ? 5000u : 5029u);
+					const float forward = (albionOwner.fYawDegrees + 90.f) * .017453292519943295f;
+					const float targetHeading = heading * .017453292519943295f;
+					const float dot = std::sin(forward) * std::sin(targetHeading) + std::cos(forward) * std::cos(targetHeading);
+					tests.Require(dot > .99999f && nearYaw(albionOwner.fYawDegrees, heading - 90.f),
+						immediate ? "Showtime immediate tracking aims the actual Saydon model +X front at the player" :
+						"Stationary Showtime tracking aims the actual Saydon model +X front at the player");
+				}
 		// Movement-enabled tracking still commits the body yaw before its root/navigation step.
 		beginFacing(0.f, 8582u); setDirection(90.f);
 		showtime.MechanicTriggers.front().fFollowSpeedScale = 1.f;
@@ -1132,9 +1151,9 @@ REGION "blocked" "closed" 0 1
 		BOSS_PATTERN_MECHANIC_TRIGGER teleport;
 		teleport.strTriggerId = "test.teleport.xz"; teleport.eKind = BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_TELEPORT_XZ;
 		teleport.iDurationMs = 100u; teleport.fTeleportX = 10.f; teleport.fTeleportY = 1.3f; teleport.fTeleportZ = 10.f;
-		const auto queueTeleport = [&] {
+		const auto queueTeleport = [&](const std::uint32_t tick = 3003u) {
 			room->m_PendingKoukuMechanicTriggers.push_back({ albionOwner.iNetEntityId, albionOwner.iPatternSequence, teleport });
-			room->Commit_KoukuMechanicTriggers(3003u);
+			room->Commit_KoukuMechanicTriggers(tick);
 		};
 		queueTeleport();
 		tests.Require(albionOwner.fPositionX == 10.f && albionOwner.fPositionZ == 10.f &&
@@ -1159,6 +1178,128 @@ REGION "blocked" "closed" 0 1
 		tests.Require(preserved(), "Occupied destination rejects XZ teleport without partially rebasing the root origin");
 		teleport.fTeleportX = 6.f; teleport.fTeleportZ = 2.f; queueTeleport();
 		tests.Require(preserved(), "Missing navigation rejects XZ teleport and preserves its full previous pose");
+        // The explicit grounded variant lands the source root baseline as one transaction.
+        room->m_ServerCollisionSystem.Set_BlockingBodies({});
+        albionOwner = *beforeTeleport;
+        teleport.eKind = BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_TELEPORT_GROUNDED;
+        teleport.fTeleportX = teleport.fTeleportZ = 10.f; teleport.fTeleportY = 1.3f;
+        queueTeleport();
+        tests.Require(albionOwner.bPatternRootGrounded && albionOwner.fPositionY == 1.6f && albionOwner.fPositionX == 10.f && albionOwner.fPositionZ == 10.f &&
+            std::abs(albionOwner.fPatternStageOriginY - (beforeTeleport->fPatternStageOriginY + 1.6f - beforeTeleport->fPositionY)) < .0001f &&
+            albionOwner.fYawDegrees == beforeTeleport->fYawDegrees && albionOwner.iPatternStageRootLastTick == 3003u &&
+            albionOwner.iActionStartTick == beforeTeleport->iActionStartTick && albionOwner.iPatternSequence == beforeTeleport->iPatternSequence,
+            "Grounded teleport samples the actual floor and rebases vertical root without changing yaw or action clock");
+        tests.Require(CKoukuSaydonBrain::Apply_StageRootMotion(albionOwner, teleportPattern, 3004u,
+            room->m_ServerNavigation, room->m_ServerCollisionSystem, status) &&
+            std::abs(albionOwner.fPositionX - 10.1f) < .0001f && std::abs(albionOwner.fPositionY - (1.6f + 2.f / 30.f)) < .0001f,
+            "The next grounded root tick continues only its authored delta and cannot restore the former airborne offset");
+        const auto groundedPose = std::make_unique<SERVER_WORLD_ENTITY>(albionOwner);
+        const auto groundedPreserved = [&] { return albionOwner.fPositionX == groundedPose->fPositionX &&
+            albionOwner.fPositionY == groundedPose->fPositionY && albionOwner.fPositionZ == groundedPose->fPositionZ &&
+            albionOwner.fPatternStageOriginX == groundedPose->fPatternStageOriginX &&
+            albionOwner.fPatternStageOriginY == groundedPose->fPatternStageOriginY &&
+            albionOwner.fPatternStageOriginZ == groundedPose->fPatternStageOriginZ &&
+            albionOwner.fPatternStageRootGroundY == groundedPose->fPatternStageRootGroundY &&
+            albionOwner.iPatternStageRootLastTick == groundedPose->iPatternStageRootLastTick &&
+            albionOwner.bPatternRootGrounded == groundedPose->bPatternRootGrounded; };
+        teleport.fTeleportY = 4.f; queueTeleport();
+        tests.Require(groundedPreserved(), "Grounded destination deck mismatch preserves position and every root baseline");
+        teleport.fTeleportY = 1.3f; teleport.fTeleportX = 6.f; teleport.fTeleportZ = 2.f; queueTeleport();
+        tests.Require(groundedPreserved(), "Missing grounded destination navigation preserves position and every root baseline");
+        teleport.fTeleportX = teleport.fTeleportZ = 10.f;
+        room->m_ServerCollisionSystem.Set_BlockingBodies({ {10.f, 10.f, 1.f, 1.6f, 2.f, 999u} });
+        queueTeleport();
+        tests.Require(groundedPreserved(), "Ground-level blocking body rejects the complete teleport before any root update");
+        room->m_ServerCollisionSystem.Set_BlockingBodies({});
+        albionOwner.bPatternStageRootOriginCaptured = false; albionOwner.iPatternStageRootLastTick = 0u;
+        albionOwner.iPatternStageFirstEvaluationTick = albionOwner.iActionStartTick = albionOwner.iPatternStartTick = 4000u;
+        albionOwner.fPositionY = 8.f;
+        queueTeleport(4000u);
+        // This stage clock evaluates its first 1/30-second step on the entry tick.
+        constexpr float firstRootUp = 2.f / 30.f;
+        tests.Require(CKoukuSaydonBrain::Apply_StageRootMotion(albionOwner, teleportPattern, 4000u,
+            room->m_ServerNavigation, room->m_ServerCollisionSystem, status) &&
+            std::abs(albionOwner.fPositionY - (1.6f + firstRootUp)) < .0001f &&
+            std::abs(albionOwner.fPatternStageOriginY - 1.6f) < .0001f,
+            "A first root sample after grounded teleport captures the landed floor instead of the old airborne height");
+        albionOwner.bPatternStageRootOriginCaptured = false; albionOwner.iPatternStageRootLastTick = 0u;
+        albionOwner.fPositionY = 1.85f;
+        tests.Require(CKoukuSaydonBrain::Apply_StageRootMotion(albionOwner, teleportPattern, 4000u,
+            room->m_ServerNavigation, room->m_ServerCollisionSystem, status) &&
+            std::abs(albionOwner.fPositionY - (1.6f + firstRootUp)) < .0001f &&
+            std::abs(albionOwner.fPatternStageOriginY - 1.6f) < .0001f,
+            "A later grounded stage captures the floor without inheriting the previous clip residual Up");
+        albionOwner.PatternStageRootMotion.back().fUp = -2.f;
+        tests.Require(CKoukuSaydonBrain::Apply_StageRootMotion(albionOwner, teleportPattern, 4001u,
+            room->m_ServerNavigation, room->m_ServerCollisionSystem, status) && albionOwner.fPositionY >= 1.6f,
+            "Grounded root continuation cannot send the boss below the resolved floor");
+        room->m_KoukuSaydonBrain.Abort_Pattern(albionOwner, 4002u);
+        tests.Require(!albionOwner.bPatternRootGrounded, "Explicit Stop/abort clears the pattern-local grounded continuation policy");
+
+	}
+
+	// Consume the published Showtime tail through the real stage clock, floor and teleport owner.
+	{
+		const auto savedBoss = std::make_unique<SERVER_WORLD_ENTITY>(albionOwner);
+		const auto savedNavigation = room->m_ServerNavigation;
+		CServerNavigation publishedNavigation;
+		const auto* showtime = CKoukuSaydonBrain::Find_AnimationOnlyPattern(room->m_GameplayCatalog,
+			"KAKULSAYDON_G1_PATTERN_35", status);
+		const auto center = showtime ? std::find_if(showtime->MechanicTriggers.begin(), showtime->MechanicTriggers.end(),
+			[](const auto& trigger) { return trigger.strTriggerId == "KAKULSAYDON_G1_PATTERN_35.logic.17"; }) :
+			std::vector<BOSS_PATTERN_MECHANIC_TRIGGER>::const_iterator{};
+		const bool ready = showtime && center != showtime->MechanicTriggers.end() &&
+			center->eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_TELEPORT_GROUNDED &&
+			publishedNavigation.Load("LV_LUT_MIDNIGHTC_ED");
+		tests.Require(ready, "Published Showtime final return uses its grounded occurrence and actual G3 navigation");
+		if (ready)
+		{
+			room->m_ServerNavigation = std::move(publishedNavigation);
+			room->m_ServerCollisionSystem.Set_BlockingBodies({});
+			albionOwner.fPositionX = center->fTeleportX; albionOwner.fPositionZ = center->fTeleportZ;
+			albionOwner.fPositionY = 8.f; albionOwner.fCollisionRadius = .1f;
+			SERVER_NAV_POINT floor;
+			const bool began = room->m_ServerNavigation.Sample_Position(center->fTeleportX, center->fTeleportZ, floor) &&
+				room->m_KoukuSaydonBrain.Begin_Pattern(albionOwner, *showtime,
+					room->m_GameplayCatalog.Get_ActiveRevision(), 10000u, status);
+			tests.Require(began && !albionOwner.bPatternRootGrounded, "New pattern admission clears any former grounded root policy");
+			if (began)
+			{
+				for (std::uint32_t tick = 10001u; tick <= 11676u; ++tick)
+					(void)room->m_KoukuSaydonBrain.Update(albionOwner, room->m_GameplayCatalog, tick, status);
+				tests.Require(albionOwner.strPatternStageId == "STAGE_11" &&
+					CKoukuSaydonBrain::Apply_StageRootMotion(albionOwner, *showtime, 11677u,
+						room->m_ServerNavigation, room->m_ServerCollisionSystem, status),
+					"Showtime 55.869s return samples the actual final Stage 11 curve at its first fixed tick");
+				room->m_PendingKoukuMechanicTriggers.push_back({ albionOwner.iNetEntityId, albionOwner.iPatternSequence, *center });
+				room->Commit_KoukuMechanicTriggers(11677u);
+				tests.Require(albionOwner.bPatternRootGrounded && std::abs(albionOwner.fPositionY - floor.y) < .00001f,
+					"The actual published grounded trigger atomically lands on the G3 center floor");
+				float minimumUp = 10000.f, maximumUp = -10000.f;
+				bool sampled = true;
+				for (std::uint32_t tick = 11678u; tick <= 11770u && !albionOwner.strPatternId.empty(); ++tick)
+				{
+					sampled = CKoukuSaydonBrain::Apply_StageRootMotion(albionOwner, *showtime, tick,
+						room->m_ServerNavigation, room->m_ServerCollisionSystem, status) && sampled;
+					SERVER_NAV_POINT ground;
+					if (room->m_ServerNavigation.Sample_Position(albionOwner.fPositionX, albionOwner.fPositionZ, ground))
+					{
+						minimumUp = (std::min)(minimumUp, albionOwner.fPositionY - ground.y);
+						maximumUp = (std::max)(maximumUp, albionOwner.fPositionY - ground.y);
+					}
+					else sampled = false;
+					(void)room->m_KoukuSaydonBrain.Update(albionOwner, room->m_GameplayCatalog, tick, status);
+				}
+				SERVER_NAV_POINT endFloor;
+				tests.Require(sampled && minimumUp >= -.00001f && maximumUp > 2.15f && maximumUp < 2.23f,
+					"The complete published Showtime tail stays above the floor and retains the original 2.19m Stage 12 jump");
+				tests.Require(room->m_ServerNavigation.Sample_Position(albionOwner.fPositionX, albionOwner.fPositionZ, endFloor) &&
+					std::abs(albionOwner.fPositionY - endFloor.y) < .00001f && albionOwner.strPatternId.empty() && !albionOwner.bPatternRootGrounded,
+					"Showtime completion leaves neither residual hover nor a grounded policy on the next pattern");
+			}
+		}
+		albionOwner = *savedBoss;
+		room->m_ServerNavigation = savedNavigation;
 	}
 
 	// Parse the actual supplemental row through catalog admission, preserving its previous generation on failure.
@@ -1299,6 +1440,17 @@ REGION "blocked" "closed" 0 1
 		tests.Require(!loadSupplement(teleportPrefix + "100001\t1.3\t952.27" + teleportSuffix) &&
 			parsedTargets.Get_ActiveRevision() == teleportRevision,
 			"Out-of-bounds XZ teleport preserves the previous admitted catalog");
+        auto groundedPrefix = teleportPrefix;
+        groundedPrefix.replace(groundedPrefix.find("BOSS_TELEPORT_XZ"), std::string("BOSS_TELEPORT_XZ").size(), "BOSS_TELEPORT_GROUNDED");
+        const bool parsedGrounded = loadSupplement(groundedPrefix + "-0.07\t1.32\t942.33" + teleportSuffix);
+        const auto* groundedPattern = parsedGrounded ? CKoukuSaydonBrain::Find_AnimationOnlyPattern(parsedTargets, patternId, status) : nullptr;
+        tests.Require(groundedPattern && groundedPattern->MechanicTriggers.size() == 1u &&
+            groundedPattern->MechanicTriggers.front().eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_TELEPORT_GROUNDED &&
+            groundedPattern->MechanicTriggers.front().fTeleportY == 1.32f,
+            "Grounded teleport joins the existing 25-field mechanic row with its authored reference floor");
+        const auto groundedRevision = parsedTargets.Get_ActiveRevision();
+        tests.Require(!loadSupplement(groundedPrefix + "-0.07\t100001\t942.33" + teleportSuffix) &&
+            parsedTargets.Get_ActiveRevision() == groundedRevision, "Invalid grounded height preserves the admitted product catalog");
 		const std::string groupId="world.object.kouku.saydon.circus.split", groupCue="test.circus.group.world.1";
 		const std::string groupRow="PATTERNWORLDSEQUENCE\t"+encounter+"\t"+patternId+"\t0\t"+groupId+"\t1\t0\t0\t0\tNONE\t0\t0\t0\t11500\t"+groupCue;
 		const std::string groupPlacement="PATTERNWORLDPLACEMENT\t"+encounter+"\t"+patternId+"\t"+groupCue+"\t2\t1\t3\t0\t40\t0\t1\t1\t1";

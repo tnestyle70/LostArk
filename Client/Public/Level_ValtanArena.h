@@ -54,6 +54,9 @@ public:
 
 	static CLevel_ValtanArena* Get_Active() { return s_pActiveInstance; }
 	bool_t Is_CinematicCameraActive() const { return m_bCinematicCameraApplied; }
+    void Collect_SourceCinematicSubtitles(std::vector<WORLD_SEQUENCE_SUBTITLE_SAMPLE>& out) const
+    { m_SourceCinematicPlayer.Collect_Subtitles(out); }
+
 	// Product UI and editor commands share the level-owned typed controller.
 	CPlayerController& Get_DebugPlayerController() { return m_PlayerController; }
 
@@ -184,7 +187,7 @@ private:
     void Ready_SourceCinematics();
     void Prepare_SourceCinematicInput(VALTAN_CINEMATIC_CAMERA_INPUT& input);
     bool_t Update_SourceCinematic(const VALTAN_CINEMATIC_CAMERA_INPUT& input);
-    void Stop_SourceCinematic();
+    void Stop_SourceCinematic(bool_t preserveSoundTail = false);
 	bool_t Ready_CinematicCamera();
 	bool_t Bind_CameraToLocalCharacter();
 	void Update_CinematicCamera(f32_t fTimeDelta);

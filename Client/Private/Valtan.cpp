@@ -343,7 +343,11 @@ CValtan::CValtan(ComPtr<ID3D11Device> pDevice,
 CValtan::~CValtan()
 {
 	Stop_DefaultParticles();
+	// The finite M09 asset contains the source Stop event and fade; actor
+    // retirement must not truncate it. The level still stops music on exit.
 	if (m_isRaidBgmEnabled && RAID_BGM_STATE::NONE != m_eRaidBgmState &&
+        (RAID_BGM_STATE::M09_DEATH != m_eRaidBgmState ||
+            !m_DeathPresentationClock.Has_Started() || !m_DeathPresentationClock.Is_Complete()) &&
 		m_iRaidBgmOwnershipGeneration == g_iRaidBgmOwnershipGeneration)
 		CGameInstance::Get().Stop_Music();
 }
@@ -3551,6 +3555,8 @@ void CValtan::Update_GhostPortalRoutePresentation(const f32_t fTimeDelta)
 
 void CValtan::Update(f32_t fTimeDelta)
 {
+    if (std::isfinite(fTimeDelta) && fTimeDelta > 0.f)
+        m_fRaidBgmNaturalTailRemainingSeconds = (std::max)(0.f, m_fRaidBgmNaturalTailRemainingSeconds - fTimeDelta);
 	if (m_isReplicationDormant)
 		return;
 	if (m_fHitFlashRemainingSeconds > 0.f)
@@ -4603,6 +4609,7 @@ void CValtan::Transition_RaidBgm(const RAID_BGM_STATE nextState)
 	The Server snapshot remains authoritative, and a missing WAV must not turn
 	every following snapshot into a 30 Hz load retry. */
 	m_eRaidBgmState = nextState;
+    m_fRaidBgmNaturalTailRemainingSeconds = 0.f;
 	const filesystem::path MusicPath = CRuntimeAssetRoot::Resolve(pAssetId);
 	if (MusicPath.empty() || !filesystem::is_regular_file(MusicPath) ||
 		FAILED(CGameInstance::Get().Play_Music(
@@ -4614,6 +4621,12 @@ void CValtan::Transition_RaidBgm(const RAID_BGM_STATE nextState)
 			"runtime WAV could not be played.\n");
 #endif
 	}
+    else if (nextState == RAID_BGM_STATE::M09_DEATH)
+    {
+        uint32_t durationMs = 0u;
+        if (CGameInstance::Get().Get_SoundDurationMs(MusicPath.wstring(), durationMs))
+            m_fRaidBgmNaturalTailRemainingSeconds = durationMs * .001f;
+    }
 }
 
 void CValtan::Update_RaidBgm(
@@ -4634,7 +4647,7 @@ void CValtan::Update_RaidBgm(
 	const bool_t isGhostPhaseEdge = isGhostTransition &&
 		VALTAN_GHOST_PHASE_ACTION_ID == actionId;
 
-	if (LostArk::Shared::WORLD_ENTITY_ACTION::DEAD == action)
+	if (LostArk::Shared::WORLD_ENTITY_ACTION::DEAD == action || patternId == "VALTAN_GHOST_DEATH_AUDITION")
 	{
 		Transition_RaidBgm(RAID_BGM_STATE::M09_DEATH);
 		return;
@@ -4657,11 +4670,13 @@ void CValtan::Update_RaidBgm(
 		Transition_RaidBgm(RAID_BGM_STATE::M08_GHOST_PHASE);
 		return;
 	}
-	/* These camera-only entrance gates deliberately add no BGM edge. Keep
-	   the Level-owned M04 track until VALTAN_ENTRANCE_WHIRLWIND starts M05,
-	   and do not classify its non-idle snapshots as a late join. */
+	// SCENE06A Matinee53 starts M05 at source time zero. The same music
+    // owner persists through the following whirlwind and switches once to M06.
 	if (isCinematicEntrancePattern)
+    {
+        Transition_RaidBgm(RAID_BGM_STATE::M05_INTRO);
 		return;
+    }
 	if (isEntrancePattern)
 	{
 		m_hasObservedEntrancePattern = true;
@@ -4669,6 +4684,9 @@ void CValtan::Update_RaidBgm(
 		return;
 	}
 
+    // A finite death audition releases camera/control at its authored end;
+    // the original M09 Stop fade can still finish before ordinary phase music resumes.
+    if (m_eRaidBgmState == RAID_BGM_STATE::M09_DEATH && m_fRaidBgmNaturalTailRemainingSeconds > 0.f) return;
 	if (RAID_BGM_STATE::NONE == m_eRaidBgmState ||
 		RAID_BGM_STATE::M09_DEATH == m_eRaidBgmState)
 	{

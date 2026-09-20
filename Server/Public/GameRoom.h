@@ -203,6 +203,7 @@ namespace LostArk::Server
 	{
 		friend class CServerGameplayContractRunner;
 		friend int Run_ServerKoukuSupportSurfaceContractTests();
+        friend int Run_ServerBingoContractTests();
 		friend int Run_ServerCardMazeContractTests();
         friend int Run_ServerKoukuObjectOverlapContractTests();
 		friend int Run_ServerVehicleRidingContractTests();
@@ -530,7 +531,7 @@ namespace LostArk::Server
 			const LostArk::Shared::
 				C2S_DEBUG_VALTAN_PATTERN_FLOW_STOP_AFTER_CURRENT& request);
 		void Handle_KoukuRaidRequest(SESSION_ID sessionId, const LostArk::Shared::C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST& request);
-		bool Is_KoukuRaidCinematic() const;
+		bool Is_KoukuRaidInputBlocked() const;
 		struct KOUKU_RAID_RUN final
 		{
 			SESSION_ID iOwnerSessionId = INVALID_SESSION_ID;
@@ -545,7 +546,7 @@ namespace LostArk::Server
 			std::set<std::string> CompletedArrivals;
 			LostArk::Shared::NET_ENTITY_ID iPrimaryBossId = LostArk::Shared::INVALID_NET_ENTITY_ID;
 			std::uint32_t iAuditionRequestSequence = 0u, iAuditionEpoch = 0u, iNextEntryTick = 0u;
-			bool bClearCinematic = false, bEntryRunning = false;
+			bool bClearCinematic = false, bEntryRunning = false, bGate3CombatEntered = false;
 		};
 		KOUKU_RAID_RUN m_KoukuRaid;
 		std::uint32_t m_iNextKoukuRaidEpoch = 1u;
@@ -560,7 +561,10 @@ namespace LostArk::Server
 		bool Apply_KoukuRaidReadiness(SESSION_ID sessionId, const LostArk::Shared::C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST& request, std::string& reason);
 		bool Begin_KoukuRaidCinematic(const std::string& gateId, bool clear, std::uint32_t tick);
 		bool Advance_KoukuRaidGate(std::uint8_t nextGate, bool restart);
-		bool Start_KoukuRaidCombat(std::uint32_t tick);
+		bool Start_KoukuRaidCombat(std::uint32_t tick, const std::string& preflightGateId = {});
+        bool Build_KoukuRaidEntryRequest(const KOUKU_RAID_GATE_DEFINITION& gate, std::uint32_t entryIndex,
+            LostArk::Shared::C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST& request);
+		bool Enter_KoukuRaidCombat(std::uint8_t gate);
 		bool Start_KoukuRaidEntry(std::uint32_t tick);
 		void Handle_KoukuSaydonPatternAudition(
 			SESSION_ID sessionId,
@@ -572,7 +576,8 @@ namespace LostArk::Server
 				const LostArk::Shared::
 					C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST& request,
 				LostArk::Shared::
-					S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT& outResult, bool continueRaid = false);
+					S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT& outResult, bool continueRaid = false,
+                const std::vector<SERVER_WORLD_ENTITY>* stagedBosses = nullptr);
 		SERVER_WORLD_ENTITY* Find_KoukuSaydonAuditionBoss();
 		/* The live arena boss a Debug audition scope names: the Gate 1 Kouku or
 		a gate boss raised from a disabled placement. Null when that placement
@@ -1030,6 +1035,7 @@ namespace LostArk::Server
 		raised from disabled bootstrap placements (the F1 gate buttons) and
 		their dependents, keeping the statically enabled Gate 1 Kouku. */
 		bool Despawn_KoukuSaydonArenaDebugEntities(bool allArenaBosses = false);
+		bool Despawn_KoukuSaydonArenaDebugEntities(bool allArenaBosses, bool preflightOnly);
 		// Bern's Valtan-entry confirm window (right-click a guide NPC). Replaces the
 		// old automatic changeLevel triggerBox OBB fire: validates the requesting
 		// player is still near the named guide NPC world entity, alive, and idle,
@@ -1102,7 +1108,9 @@ namespace LostArk::Server
 		// A gate placement came up (Debug button or Advance_Gate): that gate is now current.
 		void Note_GatePlacementRaised(const std::string& placementId);
 		bool Advance_Gate(std::uint8_t nextGate);
+		bool Advance_Gate(std::uint8_t nextGate, const std::vector<LostArk::Shared::PLAYER_ID>* participants);
 		bool Spawn_GatePlacement(const std::string& placementId);
+		bool Spawn_GatePlacement(const std::string& placementId, SERVER_WORLD_ENTITY* prepared);
 		bool Build_GateProgressState(LostArk::Shared::S2C_GATE_PROGRESS_STATE& message,
 			bool bClosed, LostArk::Shared::GATE_PROGRESS_VOTE_RESULT result) const;
 		void Broadcast_GateProgressState(
@@ -1168,7 +1176,7 @@ namespace LostArk::Server
 			SESSION_ID sessionId, const LostArk::Shared::C2S_DEBUG_WORLD_PLAYBACK& request);
 		LostArk::Shared::DEBUG_TELEPORT_RESULT Validate_DebugTeleportDestination(
 			const SERVER_PLAYER& player, const LostArk::Shared::C2S_DEBUG_TELEPORT_TO_POSITION& request,
-			SERVER_NAV_POINT& ground);
+			SERVER_NAV_POINT& ground, LostArk::Shared::NET_ENTITY_ID ignoredBodyId = LostArk::Shared::INVALID_NET_ENTITY_ID);
 		struct ROOM_PLAYER_ARRIVAL_RUN final
 		{
 			std::uint32_t iEpoch = 0u;
@@ -1633,6 +1641,19 @@ namespace LostArk::Server
 		std::uint8_t m_iNextMarioEntryStage = 1u;
 		CKoukuCardMazeRuntime m_KoukuCardMaze;
 		CKoukuBingoRuntime m_KoukuBingo;
+        struct KOUKU_BINGO_DURATION final
+        {
+            LostArk::Shared::NET_ENTITY_ID iOwnerId = LostArk::Shared::INVALID_NET_ENTITY_ID;
+            std::uint32_t iPatternSequence = 0u, iEndTick = 0u;
+            std::uint32_t iNextBombTick = 0u, iNextHammerTick = 0u, iNextMadnessTick = 0u;
+            struct HAMMER { std::int32_t anchor = -1; std::uint32_t startTick = 0u; };
+            std::array<HAMMER, 2u> Hammers{};
+        } m_KoukuBingoDuration;
+        std::uint32_t m_iKoukuBingoBoardEpoch = 0u;
+        void Begin_KoukuBingoDuration(const SERVER_WORLD_ENTITY& owner,
+            const BOSS_PATTERN_MECHANIC_TRIGGER& trigger, std::uint32_t tick);
+        void Stop_KoukuBingoDuration(bool clearBoard);
+
 		std::uint32_t m_iCardMazeMarchStartTick = 0u;
 		std::uint32_t m_iCardMazeCycleMs = 0u;
 		std::map<LostArk::Shared::PLAYER_ID, std::pair<float, float>> m_CardMazePreviousPositions;

@@ -1618,11 +1618,15 @@ void CLevel_ValtanArena::Update_CinematicCamera(const f32_t fTimeDelta)
 		return;
 	}
 
+    m_SourceCinematicPlayer.Update_SoundTails(fTimeDelta);
 	Prepare_SourceCinematicInput(input);
 	VALTAN_CINEMATIC_CAMERA_POSE pose{};
 	if (!m_ValtanCinematicCameraController.Update(input, fTimeDelta, pose))
 	{
-		Stop_SourceCinematic();
+        if (!m_strSourceCinematic.empty())
+            Stop_SourceCinematic(m_ValtanCinematicCameraController.Did_FinishCueNaturally());
+        else if (!input.isValid)
+            m_SourceCinematicPlayer.Stop_All(SourceCinematicTargets(), true);
 		/* A cue-authored exit handoff retains the same Server cinematic owner
 		   until its final submitted pose exactly matches live gameplay follow. */
 		if (Update_CinematicCameraExitTransition(fTimeDelta))
@@ -2517,6 +2521,7 @@ bool_t CLevel_ValtanArena::Debug_PrepareCompletePlayResources(
         if (pattern.strPatternId == "VALTAN_ENTRANCE_CINEMATIC")
             for (const char* suffix : {"entrance","entrance.colorless","entrance.actor64.body.0","entrance.actor64.weapon.0","entrance.actor64.weapon.1"}) addCinema(suffix);
         else if (pattern.strPatternId == "VALTAN_TRASH") addCinema("trash");
+        else if (pattern.strPatternId == "VALTAN_SIX_PIZZA_106") addCinema("roar");
         else if (pattern.strPatternId == "VALTAN_GHOST_DEATH_AUDITION") addCinema("finale");
         else if (pattern.strPatternId == "VALTAN_ARENA_BREAK_109") addCinema("phase2");
         const auto& world = m_SourceCinematicPlayer.Get_Document();
@@ -2611,7 +2616,7 @@ void CLevel_ValtanArena::Ready_SourceCinematics()
         return;
     }
     for (const char* suffix : { "entrance", "entrance.colorless", "entrance.actor64.body.0",
-        "entrance.actor64.weapon.0", "entrance.actor64.weapon.1", "trash", "finale", "phase2" })
+        "entrance.actor64.weapon.0", "entrance.actor64.weapon.1", "trash", "roar", "finale", "phase2" })
     {
         const std::string id = std::string("world.sequence.instance.valtan.source-preview.") + suffix;
         if (!m_SourceCinematicPlayer.Prepare_InstanceResources(id, targets) ||
@@ -2671,9 +2676,12 @@ bool_t CLevel_ValtanArena::Update_SourceCinematic(const VALTAN_CINEMATIC_CAMERA_
         (input.strStageActionId == "valtan.sequence.center-trash-rush-if.step-05" ||
          input.strStageActionId == "valtan.sequence.center-trash-rush-if.step-06"))
         selected = "trash";
+    else if (input.strPatternId == "VALTAN_SIX_PIZZA_106" &&
+        (input.strStageId == "STEP_04" || input.strStageId == "STEP_05"))
+        selected = "roar";
     if (selected.empty())
     {
-        Stop_SourceCinematic();
+        Stop_SourceCinematic(true);
         return true;
     }
     if (!m_bSourceCinematicsReady) return false;
@@ -2684,10 +2692,10 @@ bool_t CLevel_ValtanArena::Update_SourceCinematic(const VALTAN_CINEMATIC_CAMERA_
         sourceOffsetMs = static_cast<f32_t>(pattern->stages[input.iStageIndex].iStartOffsetMs);
         if (selected == "phase2")
             sourceOffsetMs -= 2600.f; // Original420629: Att_Battle_12_03+400ms -> Event_02.
-        if (selected == "trash")
+        if (selected == "trash" || selected == "roar")
         {
             const auto first = std::find_if(pattern->stages.begin(), pattern->stages.end(),
-                [](const auto& stage) { return stage.stageId == "STEP_05"; });
+                [&](const auto& stage) { return stage.stageId == (selected == "trash" ? "STEP_05" : "STEP_04"); });
             if (first == pattern->stages.end()) return false;
             sourceOffsetMs -= static_cast<f32_t>(first->iStartOffsetMs);
         }
@@ -2700,7 +2708,7 @@ bool_t CLevel_ValtanArena::Update_SourceCinematic(const VALTAN_CINEMATIC_CAMERA_
         m_iSourceCinematicSequence != input.iPatternSequence || m_iSourceCinematicEntity != input.iNetEntityId;
     if (changed)
     {
-        Stop_SourceCinematic();
+        if (!m_strSourceCinematic.empty()) Stop_SourceCinematic();
         bool played = m_SourceCinematicPlayer.Play(prefix + selected, targets);
         if (played && selected == "entrance")
             for (const auto suffix : entranceCompanions)
@@ -2721,10 +2729,10 @@ bool_t CLevel_ValtanArena::Update_SourceCinematic(const VALTAN_CINEMATIC_CAMERA_
     // The existing Server camera controller owns one smoothed action clock;
     // actor animation and source FX sample exactly that clock, including joins.
     const f32_t timeMs = sourceOffsetMs + m_ValtanCinematicCameraController.Get_ElapsedSeconds() * 1000.f;
-    bool sampled = m_SourceCinematicPlayer.Seek_InstanceToMs(prefix + selected, timeMs, targets);
+    bool sampled = m_SourceCinematicPlayer.Seek_InstanceToMs(prefix + selected, timeMs, targets, false);
     if (sampled && selected == "entrance")
         for (const auto suffix : entranceCompanions)
-            if (!m_SourceCinematicPlayer.Seek_InstanceToMs(prefix + std::string(suffix), timeMs, targets)) { sampled = false; break; }
+            if (!m_SourceCinematicPlayer.Seek_InstanceToMs(prefix + std::string(suffix), timeMs, targets, false)) { sampled = false; break; }
     if (!sampled)
     {
         OutputDebugStringA(("[ValtanSourceCinema] sample failed: " + m_SourceCinematicPlayer.Get_Status() + "\n").c_str());
@@ -2734,11 +2742,15 @@ bool_t CLevel_ValtanArena::Update_SourceCinematic(const VALTAN_CINEMATIC_CAMERA_
     return true;
 }
 
-void CLevel_ValtanArena::Stop_SourceCinematic()
+void CLevel_ValtanArena::Stop_SourceCinematic(const bool_t preserveSoundTail)
 {
-    if (m_strSourceCinematic.empty()) return;
+    if (m_strSourceCinematic.empty())
+    {
+        if (!preserveSoundTail) m_SourceCinematicPlayer.Stop_All(SourceCinematicTargets(), true);
+        return;
+    }
     if (m_strSourceCinematic == "finale") m_bSourceDeathFinished = true;
-    m_SourceCinematicPlayer.Stop_All(SourceCinematicTargets(), true);
+    m_SourceCinematicPlayer.Stop_All(SourceCinematicTargets(), true, preserveSoundTail);
     if (const auto primary = m_pSourceCinematicBoss.lock())
         primary->Set_CinematicPresentationSuppressed(false);
     m_strSourceCinematic.clear();

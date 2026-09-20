@@ -782,6 +782,7 @@
     <None Include="..\..\Data\Effects\V2\Groups\kouku.gate2.intro.fade.effectv2group.json" />
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050100.restore.effect.json" />
     <None Include="..\..\Data\Effects\V2\Authored\cardmaze.symbol.heart.effectv2.json" />
+    <None Include="..\..\Data\Effects\V2\Authored\bingo.hammer.warning.arrow.effectv2.json" />
     <None Include="..\..\Data\Effects\V2\Groups\cardmaze.mark.heart.effectv2group.json" />
     <None Include="..\..\Data\Effects\V2\Groups\cardmaze.exit.heart.effectv2group.json" />
     <None Include="..\..\Data\Effects\V2\Authored\cardmaze.symbol.spade.effectv2.json" />

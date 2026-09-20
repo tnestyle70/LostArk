@@ -354,7 +354,7 @@ function Get-EncounterProfiles {
 					}
 				}
 				if ([double]$bossMotion.startPosition[1] -ne [double]$bossMotion.endPosition[1]) { throw 'KoukuSaydon bossMotion base Y must remain constant' }
-				if (@($pattern.mechanicTriggers | Where-Object { $_.kind -cin @('REAL_GAZE_TELEPORT','BOSS_TELEPORT_XZ') }).Count -gt 0) { throw 'KoukuSaydon bossMotion cannot also teleport the boss' }
+				if (@($pattern.mechanicTriggers | Where-Object { $_.kind -cin @('REAL_GAZE_TELEPORT','BOSS_TELEPORT_XZ','BOSS_TELEPORT_GROUNDED') }).Count -gt 0) { throw 'KoukuSaydon bossMotion cannot also teleport the boss' }
 			}
 		}
 		if ($isKoukuSaydon) {

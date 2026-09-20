@@ -257,8 +257,25 @@ baseline이 Save 직전과 다르면 stale editor 저장을 거부한다. sequen
 
 WorldSequence 문서의 template 상한은 512개, instance 상한은 2048개다. C++ codec과
 World Tool, Effect Composition resolver, Map publisher와 Composition validator가 같은
-상한을 소비한다. template당 track 32개, track당 key 256개와 문서 16 MiB 제한은 별도로
+상한을 소비한다. template당 모든 lane을 합한 track 64개, track당 key 256개와 문서 16 MiB 제한은 별도로
 유지한다. JSON array와 stable ID 계약은 그대로이며 template 수를 늘려도 wire 형식은 바뀌지 않는다.
+
+WorldSequence v3의 optional `soundTracks`는 `{ soundTrackId, assetId, startMs, durationMs, volume }`을
+저장한다. ID는 lane 안에서 유일한 stable ID이며 asset은 Resources-relative `Sound/*.wav`다.
+`startMs`는 0..template duration, `durationMs`는 양수, 합은 최대 600000ms이며 volume은 finite
+0..4다. 원본 사운드의 끝이 visual duration을 넘어도 `PresentationSpanMs`와 `CycleSpanMs`,
+카메라 종료 시간은 늘리지 않는다. 자연 종료 후 남은 소리는 기존 sound handle로 관리하며 명시적
+Stop, Seek, Level 정리는 해당 handle을 함께 종료한다.
+
+optional `subtitleTracks`는 `{ subtitleTrackId, stringId, text, position, slotId, startMs, durationMs }`다.
+`text`는 1..4096-byte valid UTF-8 plain text이며 LF만 허용하고 다른 제어 문자와 `<`, `>`는 거부한다.
+position은 `NORMAL`, `UPPER`, `BALLOON`이다. 일반·상단 자막은 빈 slotId를 쓰고, 말풍선은 같은
+instance의 `OBJECT_RESOURCE`에 binding된 기존 transform slot을 참조한다. 말풍선의 실제 모델이
+숨겨져 있으면 해당 자막도 숨긴다. 양수 duration과 start 합은 template duration 안에 있어야 한다.
+모든 자막·사운드 lane은 기존 template 총 track 64개 한도에 포함되며 C++ codec과 Map publisher가
+같은 입력을 검증한다. 잘못된 Load/Save 입력은 기존 문서와 설치본을 보존한다.
+MapTool 연출의 World 배우 섹션에서 자막 행의 시작·길이·본문·위치·말풍선 actor slot을 편집한다.
+Apply Subtitle와 사운드 행의 시작·길이·volume Apply는 전체 World draft를 검증한 뒤 반영하고 preview를 stale로 표시하며, 기존 Save가 디스크 저장을 맡는다.
 
 WorldSequence JSON의 저장 버전은 `formatVersion: 3`이며 `CWorldSequenceDocument`는 기존 v1/v2도
 읽는다. v3의 `objectResources`는 stable `objectId`, `displayName`, Resources-relative `.wmodel`
@@ -539,6 +556,10 @@ map light의 optional `receiver`는 `ALL`, `SOURCE_CHARACTER`, `UNBAKED`다. `UN
 있는 정적 맵 pixel에는 중복 조명을 더하지 않는다. Deferred와 forward map이 같은 수광 계약을
 사용한다. 쿠크의 원본 구운 광원 84개는 이 값을 사용하며 광원 위치·색·강도는 원본대로 유지한다.
 잘못된 receiver 값은 source/runtime 로드 단계에서 거부한다.
+Scene RenderingProfiles의 light.receiver도 같은 세 값을 사용하며 생략 기본값은 ALL이다.
+nvironmentRegions[].receiver는 선택된 영역에서만 기본 receiver를 덮고, 생략하면 profile을 상속한다.
+명시적 ALL은 저장 시 보존하므로 기본광을 UNBAKED로 복구해도 기존 카드미로·Mario의 수광 정책을 유지할 수 있다.
+프로필 Save/Reload와 Rendering publisher는 이 구분을 보존하고 잘못된 값을 거부한다.
 
 Valtan DeployProp은 Development MapTool에서 source catalog 12 asset / 151 placement를
 `CDeployPropRuntime` 한 경로로 stage한다. Deploy asset catalog는 format version 2이며 각 asset의
@@ -794,7 +815,7 @@ World Object Tool → Object Resources에서 통합 묶음은 자식 없는 한 
 
 ### Object Motion의 Collider 행
 
-WorldSequence v3 template의 optional `colliderTracks`는 stable `colliderTrackId`, Transform `slotId`, `startMs`, `durationMs`, `positionOffset`, `halfExtents`, `yawDegrees`, `behavior`, `damagePercent`, `gripLocalOffset`을 저장한다. `attachmentBone`은 선택 필드다. 모든 Transform/Animation/Effect/Collider 행을 합해 32개 이하이며, 시간 창은 Motion 내부여야 한다. Collider가 있는 instance는 같은 슬롯에 WORLD Object Resource 하나를 바인딩한다.
+WorldSequence v3 template의 optional `colliderTracks`는 stable `colliderTrackId`, Transform `slotId`, `startMs`, `durationMs`, `positionOffset`, `halfExtents`, `yawDegrees`, `behavior`, `damagePercent`, `gripLocalOffset`을 저장한다. `attachmentBone`은 선택 필드다. 모든 Transform/Animation/Effect/Collider/Sound/Subtitle 행을 합해 64개 이하이며, 시간 창은 Motion 내부여야 한다. Collider가 있는 instance는 같은 슬롯에 WORLD Object Resource 하나를 바인딩한다.
 
 사각형은 수평 BOX다. DAMAGE는 정수 1~100의 최대 HP 비율을 사용하고, INSTANT_DEATH와 HOOK_CAPTURE는 damagePercent 0을 사용한다. 본과 grip은 HOOK_CAPTURE만 사용하며 본이 있으면 실제 animated CModel에서 존재해야 한다. 본 offset은 모델 import scale 적용 후, Object/placement scale 적용 전의 미터 단위다. 칼날의 시각적 자전이나 메시를 세우는 회전은 사각형의 방향을 바꾸지 않는다.
 

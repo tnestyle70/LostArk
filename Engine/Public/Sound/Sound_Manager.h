@@ -28,7 +28,7 @@ public:
 
 public:
 	HRESULT Play_Sound(const wstring_t& strSoundFilePath, f32_t fVolume);
-	uint64_t Play_SoundCue(const wstring_t& path, f32_t volume, uint32_t ageMs = 0u, bool_t paused = false);
+	uint64_t Play_SoundCue(const wstring_t& path, f32_t volume, uint32_t ageMs = 0u, bool_t paused = false, f32_t playbackRate = 1.f);
 	bool_t Get_SoundDurationMs(const wstring_t& path, uint32_t& durationMs);
 	bool_t Is_SoundCueActive(uint64_t handle) const;
 	void Pause_SoundCue(uint64_t handle, bool_t paused);

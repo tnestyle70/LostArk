@@ -82,6 +82,27 @@ class KoukuSaydonClientProductLevelContractTests(unittest.TestCase):
             with self.subTest(action=row["actionId"]):
                 self.assertTrue(row_required <= row.keys() <= row_required | row_optional)
 
+    def test_authored_summons_have_admitted_client_body_types(self) -> None:
+        document = projector.load_json(ROOT / projector.SOURCE_PATH)
+        replication = read("Client/Private/ClientReplication.cpp")
+        predicate = cpp_function_definition(
+            replication, "Is_KoukuSaydonDependentArchetype"
+        )
+        admitted = set(re.findall(r'archetypeId\s*==\s*"([^"\n]+)"', predicate))
+        actual_summons = []
+        for pattern in document["patterns"]:
+            for occurrence in pattern.get("summonOccurrences", []):
+                if occurrence.get("patternSpawns"):
+                    metadata = projector._pattern_target_metadata(pattern)
+                    archetype = projector.GATE_TARGETS[
+                        (metadata["gateId"], metadata["actorProfileId"])
+                    ][1]
+                    actual_summons.append((occurrence["occurrenceId"], archetype))
+        self.assertTrue(actual_summons)
+        for occurrence_id, archetype in actual_summons:
+            with self.subTest(occurrence=occurrence_id, archetype=archetype):
+                self.assertIn(archetype, admitted)
+
     def test_registry_owns_exact_product_identity(self) -> None:
         descriptor = re.search(
             rf"LEVEL::{LEVEL},\s*CLIENT_LEVEL_KIND::PRODUCT,\s*"

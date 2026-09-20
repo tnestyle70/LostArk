@@ -751,6 +751,8 @@ void CWorldSequencePlayer::Clear_PreparedObjects()
 
 void CWorldSequencePlayer::Release_Objects(ACTIVE_INSTANCE& active)
 {
+    for (const auto& sound : active.sounds) CGameInstance::Get().Stop_SoundCue(sound.handle);
+    active.sounds.clear();
 #ifdef _DEBUG
     active.objectColliderSamples.clear();
 #endif
@@ -1460,4 +1462,131 @@ bool_t Client::CWorldSequencePlayer::Try_GetSequencePivot(const std::string& ins
   XMMatrixRotationQuaternion(XMLoadFloat4(&record.rotationQuaternion)) *
   XMMatrixTranslation(record.position.x, record.position.y, record.position.z));
  return true;
+}
+
+void CWorldSequencePlayer::Set_Paused(const bool_t paused)
+{
+    m_bPaused = paused;
+    auto& audio = CGameInstance::Get();
+    for (const auto& active : m_Active)
+        for (const auto& sound : active.sounds) audio.Pause_SoundCue(sound.handle, paused);
+    for (const auto& sound : m_RetiredSounds) audio.Pause_SoundCue(sound.handle, paused);
+}
+
+void CWorldSequencePlayer::Stop_RetiredSounds(const std::string& ownerId)
+{
+    for (auto at = m_RetiredSounds.begin(); at != m_RetiredSounds.end();)
+    {
+        if (!ownerId.empty() && at->ownerId != ownerId) { ++at; continue; }
+        CGameInstance::Get().Stop_SoundCue(at->handle);
+        at = m_RetiredSounds.erase(at);
+    }
+}
+
+void CWorldSequencePlayer::Retire_Sounds(ACTIVE_INSTANCE& active)
+{
+    // Only handles survive natural visual completion. Camera, actor and control
+    // clocks retain their authored duration and explicit Stop still owns cleanup.
+    for (const auto& sound : active.sounds)
+        if (sound.handle && sound.endElapsedMs > active.elapsedMs)
+            m_RetiredSounds.push_back({active.instanceId, sound.handle, sound.endElapsedMs - active.elapsedMs});
+        else CGameInstance::Get().Stop_SoundCue(sound.handle);
+    active.sounds.clear();
+}
+
+void CWorldSequencePlayer::Update_SoundTails(const f32_t timeDelta)
+{
+    if (m_bPaused || !std::isfinite(timeDelta) || timeDelta < 0.f) return;
+    for (auto at = m_RetiredSounds.begin(); at != m_RetiredSounds.end();)
+    {
+        at->remainingMs -= timeDelta * 1000.f;
+        if (at->remainingMs > 0.f && CGameInstance::Get().Is_SoundCueActive(at->handle)) { ++at; continue; }
+        CGameInstance::Get().Stop_SoundCue(at->handle);
+        at = m_RetiredSounds.erase(at);
+    }
+}
+
+void CWorldSequencePlayer::Retire_InstanceSoundTails(const std::string& instanceId)
+{
+    for (auto& active : m_Active)
+        if (active.instanceId == instanceId)
+        {
+            Retire_Sounds(active);
+            active.soundPlaybackFinished = true;
+        }
+}
+
+void CWorldSequencePlayer::Apply_Sounds(ACTIVE_INSTANCE& active)
+{
+    if (active.soundPlaybackFinished && !active.seekSounds) return;
+    active.soundPlaybackFinished = false;
+    std::unordered_set<std::string> wanted;
+    auto& audio = CGameInstance::Get();
+    const auto sampleChain = [&](const std::string& firstId, const f32_t firstStartMs, const f32_t cutoffMs)
+    {
+        const auto* motion = m_Document.Find_Instance(firstId);
+        f32_t start = firstStartMs;
+        for (uint32_t depth = 0u; motion && depth <= 32u; ++depth)
+        {
+            const auto* sequence = m_Document.Find_Template(motion->templateId);
+            if (!sequence) break;
+            const f32_t rate = motion->playbackSpeed * active.playbackSpeed;
+            if (!std::isfinite(rate) || rate <= 0.f) break;
+            start += motion->startDelayMs;
+            const f32_t localMs = (active.elapsedMs - start) * rate;
+            if (localMs < 0.f || start >= cutoffMs) break;
+            const f32_t period = static_cast<f32_t>(motion->CycleSpanMs(*sequence));
+            const bool loop = motion->motionEnd == WORLD_SEQUENCE_MOTION_END::LOOP;
+            for (const auto& row : sequence->soundTracks)
+            {
+                if (localMs < row.startMs) continue;
+                const uint64_t last = loop ? static_cast<uint64_t>(std::floor((localMs - row.startMs) / period)) : 0u;
+                const uint64_t first = loop ? static_cast<uint64_t>((std::max)(0.0,
+                    std::floor((localMs - row.startMs - row.durationMs) / period) + 1.0)) : 0u;
+                if (last < first || last - first > 1024u) continue;
+                for (uint64_t epoch = first; epoch <= last; ++epoch)
+                {
+                    const f32_t eventMs = row.startMs + static_cast<f32_t>(epoch) * period;
+                    const f32_t ageMs = localMs - eventMs;
+                    const f32_t birthMs = start + eventMs / rate;
+                    if (ageMs < 0.f || ageMs >= row.durationMs || birthMs >= cutoffMs) continue;
+                    const auto key = firstId + ":" + motion->instanceId + ":" + std::to_string(firstStartMs) +
+                        ":" + row.soundTrackId + ":" + std::to_string(epoch);
+                    wanted.insert(key);
+                    auto found = std::find_if(active.sounds.begin(), active.sounds.end(),
+                        [&](const auto& sound) { return sound.key == key; });
+                    if (found != active.sounds.end() && active.seekSounds)
+                    {
+                        audio.Stop_SoundCue(found->handle);
+                        active.sounds.erase(found);
+                        found = active.sounds.end();
+                    }
+                    if (found == active.sounds.end())
+                    {
+                        const auto path = CRuntimeAssetRoot::Resolve(row.assetId);
+                        const auto handle = audio.Play_SoundCue(path.wstring(), row.volume,
+                            static_cast<uint32_t>(ageMs), m_bPaused, rate);
+                        // A missing cue is isolated and remembered, so a broken asset
+                        // cannot retrigger file I/O or invalidate an otherwise valid scene.
+                        active.sounds.push_back({key, handle, birthMs + row.durationMs / rate});
+                        if (!handle) m_Status = "World sequence sound unavailable: " + row.assetId;
+                    }
+                }
+            }
+            if (motion->motionEnd != WORLD_SEQUENCE_MOTION_END::NEXT) break;
+            start += period / rate;
+            motion = m_Document.Find_Instance(motion->nextMotionId);
+        }
+    };
+    const f32_t end = active.durationMs ? static_cast<f32_t>(active.durationMs) : (std::numeric_limits<f32_t>::max)();
+    const bool changed = !active.motionInstanceId.empty() && active.elapsedMs >= active.motionStartMs;
+    sampleChain(active.instanceId, 0.f, changed ? (std::min)(end, active.motionStartMs) : end);
+    if (changed) sampleChain(active.motionInstanceId, active.motionStartMs, end);
+    for (auto at = active.sounds.begin(); at != active.sounds.end();)
+    {
+        if (wanted.contains(at->key)) { ++at; continue; }
+        audio.Stop_SoundCue(at->handle);
+        at = active.sounds.erase(at);
+    }
+    active.seekSounds = false;
 }

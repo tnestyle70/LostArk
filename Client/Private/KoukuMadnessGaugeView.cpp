@@ -152,6 +152,8 @@ void Client::CKoukuMadnessGaugeView::Update(
 	const HUD_KOUKU_GIMMICK_STATE& State)
 {
 	if (!m_bConfigLoaded || !State.isValid || 0u == State.iMadnessMaximum ||
+		HUD_KOUKU_HUD_MODE::MAZE == State.eHudMode ||
+		LostArk::Shared::CARD_MAZE_ROLE::NONE != State.eCardMazeRole ||
 		nullptr == pLocalCharacter || m_SlotOffsets.empty())
 	{
 		Hide();

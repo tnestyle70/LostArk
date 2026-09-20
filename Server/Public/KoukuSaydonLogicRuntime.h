@@ -288,8 +288,8 @@ namespace LostArk::Server
 		complete. Bits outside the board are ignored rather than refused so a
 		caller cannot half-apply a fill. */
 		void Fill(std::uint32_t cellMask) noexcept;
-		/* One bomb blast. Empty cells in the mask light up, white cells that
-		are not part of a completed line go back out, and red cells are left
+		/* One bomb blast. Empty cells in the mask light up, white cells
+		become red skulls, and red cells are left
 		alone. Every cell is judged against the board as it stood before the
 		blast, so neighbours inside one cross cannot cancel each other by
 		order. Completed lines promote afterwards, same as Fill. */

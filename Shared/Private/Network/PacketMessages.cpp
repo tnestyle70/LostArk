@@ -6716,7 +6716,7 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const C2S_DEBUG_KOUKU
 {
 	if (!m.iRequestSequence || m.eWorldId != WORLD_ID::KAKULSAYDON_ARENA || m.eOperation >= KOUKUSAYDON_RAID_OPERATION::END ||
 		!m.ExpectedGameplayRevision.Is_Valid() || !m.iActionSourceRevision || !m.iSequenceSourceRevision ||
-		(m.strStartGateId != "GATE1" && m.strStartGateId != "GATE2" && m.strStartGateId != "GATE3") ||
+		(m.strStartGateId != "GATE1" && m.strStartGateId != "GATE2" && m.strStartGateId != "GATE3" && m.strStartGateId != "BINGO") ||
 		(m.eOperation == KOUKUSAYDON_RAID_OPERATION::START ? m.iExpectedRunEpoch != 0u : m.iExpectedRunEpoch == 0u) ||
 		!Is_Valid_BoundedReason(m.strReason, MAX_KOUKUSAYDON_PATTERN_AUDITION_REASON_BYTES, m.eOperation != KOUKUSAYDON_RAID_OPERATION::FAILED) ||
 		(m.eOperation != KOUKUSAYDON_RAID_OPERATION::FAILED && !m.strReason.empty())) return false;
@@ -6744,12 +6744,14 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_KOUKUSAYDON
 	if (m.eWorldId != WORLD_ID::KAKULSAYDON_ARENA || !m.iRequestSequence || m.ePhase == KOUKUSAYDON_RAID_PHASE::INACTIVE || m.ePhase >= KOUKUSAYDON_RAID_PHASE::END ||
         (m.iRunEpoch ? m.iOwnerPlayerId == INVALID_PLAYER_ID : (m.ePhase != KOUKUSAYDON_RAID_PHASE::ABORTED || m.iOwnerPlayerId != INVALID_PLAYER_ID)) ||
 		!m.PinnedGameplayRevision.Is_Valid() || !m.iActionSourceRevision || !m.iSequenceSourceRevision ||
-		(m.strGateId != "GATE1" && m.strGateId != "GATE2" && m.strGateId != "GATE3") ||
+		(m.strGateId != "GATE1" && m.strGateId != "GATE2" && m.strGateId != "GATE3" && m.strGateId != "BINGO") ||
 		!Is_Valid_StableId(m.strSequenceCompositionId, true) || !Is_Valid_StableId(m.strSequencePatternId, true) ||
 		!Is_Valid_StableId(m.strFlowEntryId, true) || m.iFlowEntryIndex > 256u ||
 		!Is_Valid_BoundedReason(m.strReason, MAX_KOUKUSAYDON_PATTERN_AUDITION_REASON_BYTES, true) ||
-		(m.ePhase == KOUKUSAYDON_RAID_PHASE::PREPARING && (!m.iRunEpoch || m.iStartTick || !m.iEndTick || m.strSequenceCompositionId.empty() || m.strSequencePatternId.empty())) ||
-		(m.ePhase == KOUKUSAYDON_RAID_PHASE::CINEMATIC && (!m.iRunEpoch || !m.iStartTick || !m.iEndTick || m.strSequenceCompositionId.empty() || m.strSequencePatternId.empty()))) return false;
+		(m.ePhase == KOUKUSAYDON_RAID_PHASE::PREPARING && (!m.iRunEpoch || m.iStartTick || !m.iEndTick || m.strSequenceCompositionId.empty() || (m.strGateId == "BINGO" ? !m.strSequencePatternId.empty() : m.strSequencePatternId.empty()))) ||
+		(m.ePhase == KOUKUSAYDON_RAID_PHASE::CINEMATIC && (!m.iRunEpoch || !m.iStartTick || !m.iEndTick || m.strSequenceCompositionId.empty() || m.strSequencePatternId.empty())) ||
+        (m.ePhase == KOUKUSAYDON_RAID_PHASE::WAIT_ENTRY && (!m.iRunEpoch || m.strGateId != "GATE3" || !m.iStartTick ||
+            m.iEndTick || !m.strSequencePatternId.empty() || !m.strFlowEntryId.empty() || m.iFlowEntryIndex))) return false;
 	writer.Write_U16(static_cast<std::uint16_t>(m.eWorldId)); writer.Write_U32(m.iRequestSequence); writer.Write_U32(m.iRunEpoch); writer.Write_U8(static_cast<std::uint8_t>(m.ePhase));
 	if (!writer.Write_String(m.strGateId, MAX_STABLE_NETWORK_ID_BYTES) || !writer.Write_String(m.strSequenceCompositionId, MAX_STABLE_NETWORK_ID_BYTES) ||
 		!writer.Write_String(m.strSequencePatternId, MAX_STABLE_NETWORK_ID_BYTES) || !writer.Write_String(m.strFlowEntryId, MAX_STABLE_NETWORK_ID_BYTES) ||

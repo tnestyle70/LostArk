@@ -1,8 +1,8 @@
 # Called inside the gameplay publisher after normal Pattern/Bundle validation.
 function Add-KoukuRaidRows([object]$Encounter, [object]$Rows) {
     if ($null -eq $Encounter.PSObject.Properties['raidGates']) { return }
-    if ($Encounter.raidGates -isnot [Array] -or @($Encounter.raidGates).Count -gt 3) {
-        throw 'Kouku raidGates must contain at most three gates.'
+    if ($Encounter.raidGates -isnot [Array] -or @($Encounter.raidGates).Count -gt 4) {
+        throw 'Kouku raidGates must contain at most four gates.'
     }
     $seenGates = @{}
     foreach ($gate in $Encounter.raidGates) {
@@ -11,15 +11,20 @@ function Add-KoukuRaidRows([object]$Encounter, [object]$Rows) {
             'entries','arrivals')
         if ($null -ne $gate.PSObject.Properties['entrySequenceInstanceId']) { $gateProperties += 'entrySequenceInstanceId' }
         Assert-ExactProperties $gate $gateProperties 'Kouku raid gate'
-        if ($gate.gateId -cnotin @('GATE1','GATE2','GATE3') -or $seenGates.ContainsKey($gate.gateId)) {
+        if ($gate.gateId -cnotin @('GATE1','GATE2','GATE3','BINGO') -or $seenGates.ContainsKey($gate.gateId)) {
             throw 'Kouku raid gate is unknown or duplicated.'
         }
         $seenGates[$gate.gateId] = $true
-        foreach ($field in @('flowId','sequenceCompositionId','introPatternId','primaryBossPlacementId')) {
+        foreach ($field in @('flowId','sequenceCompositionId','primaryBossPlacementId')) {
             Assert-StableId $gate.$field "Kouku raid $field"
         }
         Assert-JsonInteger $gate.sequenceRevision 'Kouku raid sequence revision' 1 ([uint32]::MaxValue)
-        Assert-JsonInteger $gate.introDurationMs 'Kouku raid intro duration' 1 600000
+        if ($gate.gateId -ceq 'BINGO') {
+            if ($gate.introPatternId -cne '' -or $gate.introDurationMs -ne 0 -or @($gate.arrivals).Count -ne 0) { throw 'Bingo enters combat without a cinematic or arrivals.' }
+        } else {
+            Assert-StableId $gate.introPatternId 'Kouku raid intro pattern'
+            Assert-JsonInteger $gate.introDurationMs 'Kouku raid intro duration' 1 600000
+        }
         Assert-JsonInteger $gate.clearDurationMs 'Kouku raid clear duration' 0 600000
         if ($gate.clearPatternId -isnot [string] -or
             ([string]::IsNullOrEmpty($gate.clearPatternId) -ne ($gate.clearDurationMs -eq 0))) {
@@ -40,7 +45,7 @@ function Add-KoukuRaidRows([object]$Encounter, [object]$Rows) {
             }
         }
         $Rows.Add((@('RAIDGATE',$Encounter.encounterId,$gate.gateId,$gate.flowId,$gate.sequenceCompositionId,
-            $gate.sequenceRevision,$gate.introPatternId,$gate.introDurationMs,$clearId,$gate.clearDurationMs,
+            $gate.sequenceRevision,$(if ($gate.introPatternId) { $gate.introPatternId } else { 'NONE' }),$gate.introDurationMs,$clearId,$gate.clearDurationMs,
             $gate.primaryBossPlacementId,@($gate.entries).Count,$entrySequence) -join "`t"))
         $entryIds = @{}
         for ($index = 0; $index -lt @($gate.entries).Count; ++$index) {
@@ -85,7 +90,7 @@ function Add-KoukuRaidRows([object]$Encounter, [object]$Rows) {
             $Rows.Add(((@('RAIDARRIVAL',$gate.gateId,$arrival.phase,$arrival.occurrenceId,$arrival.playerSlot,$arrival.startMs) + $xyz) -join "`t"))
         }
         foreach ($slot in 0..3) {
-            if (-not $arrivalSlots.ContainsKey("INTRO.$slot")) { throw 'Kouku raid intro must define all four room arrival slots.' }
+            if ($gate.gateId -cne 'BINGO' -and -not $arrivalSlots.ContainsKey("INTRO.$slot")) { throw 'Kouku raid intro must define all four room arrival slots.' }
         }
     }
 }

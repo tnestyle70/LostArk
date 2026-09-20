@@ -1,17 +1,17 @@
 {
   "schema": "lostark.kouku-saydon-composition",
   "formatVersion": 3,
-  "revision": 1913,
+  "revision": 1918,
   "compositionId": "boss.composition.kakulsaydon.gate1",
   "encounterId": "ENCOUNTER_KAKULSAYDON_G1",
   "bossArchetypeId": "BOSS_KAKULSAYDON_G1_KOUKU",
   "bossPlacementId": "boss.kakulsaydon.g1.kouku",
   "areaId": "LV_LUT_MIDNIGHTC_ED",
   "fixedTickHz": 30,
-  "nextPatternOrdinal": 97,
-  "nextFolderOrdinal": 26,
+  "nextPatternOrdinal": 98,
+  "nextFolderOrdinal": 27,
   "nextBundleOrdinal": 12,
-  "nextLogicOrdinal": 99,
+  "nextLogicOrdinal": 101,
   "nextSummonOrdinal": 9,
   "nextWorldOrdinal": 42,
   "nextSceneProfileOrdinal": 3,
@@ -450,7 +450,7 @@
       "logicType": "TRIGGER",
       "triggerKind": "ENTER_AREA",
       "bossChargeDistanceM": 7,
-      "chargeYawOffsetDegrees": 90
+      "chargeYawOffsetDegrees": -90
     },
     {
       "logicId": "kakulsaydon.g1.logic.32",
@@ -513,7 +513,7 @@
       "logicType": "TRIGGER",
       "triggerKind": "ENTER_AREA",
       "repeatAfterKnockback": true,
-      "bossChargeDistanceM": 10
+      "bossChargeDistanceM": 0
     },
     {
       "logicId": "kakulsaydon.g1.logic.39",
@@ -1516,6 +1516,23 @@
       "percent": 10,
       "durationMs": 0,
       "followupPatternId": ""
+    },
+    {
+      "logicId": "kakulsaydon.g1.logic.99",
+      "displayName": "빙고_바닥_망치생성",
+      "logicType": "DURATION",
+      "judgementKind": "BINGO_BOARD"
+    },
+    {
+      "logicId": "kakulsaydon.g1.logic.100",
+      "displayName": "Showtime center return to server floor",
+      "logicType": "TRIGGER",
+      "triggerKind": "BOSS_TELEPORT_GROUNDED",
+      "teleportPosition": [
+        -0.0700000003,
+        1.32000005,
+        942.330017
+      ]
     }
   ],
   "summons": [
@@ -8712,11 +8729,11 @@
       "displayName": "쿠크 원본 사운드 / bgm_midnightc_ed_m20_scene_finish",
       "defaultAnchorKind": "BOSS",
       "kind": "SOUND",
-      "assetId": "Sound/KoukuSaton/Events/event.f68d885eb828286691db.wav",
+      "assetId": "Sound/KoukuSaton/Events/bgm_midnightc_ed_m20_scene_finish.source-stop.wav",
       "soundEvent": "s_bgm_commanderraid.bgm_midnightc_ed_m20_scene_finish",
       "resourceKind": "",
       "elementId": "",
-      "durationMs": 53734,
+      "durationMs": 50965,
       "shape": "BOX",
       "colliderKind": "GEOMETRY",
       "halfExtents": [
@@ -22877,6 +22894,233 @@
       ],
       "radiusM": 3,
       "halfAngleDegrees": 45
+    },
+    {
+      "resourceId": "subtitle.kouku.cin.37081_25_01",
+      "displayName": "자막 / cin.37081_25_01",
+      "kind": "SUBTITLE",
+      "assetId": "cin.37081_25_01",
+      "resourceKind": "",
+      "defaultAnchorKind": "MAP",
+      "durationMs": 6300,
+      "subtitleText": "몸풀기는 여기까지 하고, 다음 장으로 넘어가 볼까?",
+      "subtitlePosition": "NORMAL"
+    },
+    {
+      "resourceId": "subtitle.kouku.cin.37081_25_02",
+      "displayName": "자막 / cin.37081_25_02",
+      "kind": "SUBTITLE",
+      "assetId": "cin.37081_25_02",
+      "resourceKind": "",
+      "defaultAnchorKind": "MAP",
+      "durationMs": 4300,
+      "subtitleText": "판이 깔렸으니, 신나게 놀아보자고!",
+      "subtitlePosition": "NORMAL"
+    },
+    {
+      "resourceId": "subtitle.kouku.cin.37081_31_01",
+      "displayName": "자막 / cin.37081_31_01",
+      "kind": "SUBTITLE",
+      "assetId": "cin.37081_31_01",
+      "resourceKind": "",
+      "defaultAnchorKind": "MAP",
+      "durationMs": 1700,
+      "subtitleText": "다들 준비됐어?",
+      "subtitlePosition": "NORMAL"
+    },
+    {
+      "resourceId": "subtitle.kouku.cin.37081_31_03",
+      "displayName": "자막 / cin.37081_31_03",
+      "kind": "SUBTITLE",
+      "assetId": "cin.37081_31_03",
+      "resourceKind": "",
+      "defaultAnchorKind": "MAP",
+      "durationMs": 1500,
+      "subtitleText": "다음 이야긴 뭔데?",
+      "subtitlePosition": "NORMAL"
+    },
+    {
+      "resourceId": "subtitle.kouku.cin.37081_31_04",
+      "displayName": "자막 / cin.37081_31_04",
+      "kind": "SUBTITLE",
+      "assetId": "cin.37081_31_04",
+      "resourceKind": "",
+      "defaultAnchorKind": "MAP",
+      "durationMs": 3000,
+      "subtitleText": "장르를 바꾸는 거야.\n로맨스?",
+      "subtitlePosition": "NORMAL"
+    },
+    {
+      "resourceId": "subtitle.kouku.cin.37081_31_05",
+      "displayName": "자막 / cin.37081_31_05",
+      "kind": "SUBTITLE",
+      "assetId": "cin.37081_31_05",
+      "resourceKind": "",
+      "defaultAnchorKind": "MAP",
+      "durationMs": 3200,
+      "subtitleText": "아니. 잔혹한, 스릴러...!",
+      "subtitlePosition": "NORMAL"
+    },
+    {
+      "resourceId": "subtitle.kouku.cin.37081_31_02",
+      "displayName": "자막 / cin.37081_31_02",
+      "kind": "SUBTITLE",
+      "assetId": "cin.37081_31_02",
+      "resourceKind": "",
+      "defaultAnchorKind": "MAP",
+      "durationMs": 3000,
+      "subtitleText": "오케이! 다음으로 넘어가자고!",
+      "subtitlePosition": "NORMAL"
+    },
+    {
+      "resourceId": "subtitle.kouku.cin.37081_31_06",
+      "displayName": "자막 / cin.37081_31_06",
+      "kind": "SUBTITLE",
+      "assetId": "cin.37081_31_06",
+      "resourceKind": "",
+      "defaultAnchorKind": "MAP",
+      "durationMs": 4000,
+      "subtitleText": "자, 이제 클라이막스를 시작해볼까?\n자, 이제 클라이막스를 시작해볼까?",
+      "subtitlePosition": "NORMAL"
+    },
+    {
+      "resourceId": "subtitle.kouku.cin.37081_32_01",
+      "displayName": "자막 / cin.37081_32_01",
+      "kind": "SUBTITLE",
+      "assetId": "cin.37081_32_01",
+      "resourceKind": "",
+      "defaultAnchorKind": "MAP",
+      "durationMs": 2300,
+      "subtitleText": "렛츠, 쇼타임~!",
+      "subtitlePosition": "UPPER"
+    },
+    {
+      "resourceId": "subtitle.kouku.cin.37081_33_01",
+      "displayName": "자막 / cin.37081_33_01",
+      "kind": "SUBTITLE",
+      "assetId": "cin.37081_33_01",
+      "resourceKind": "",
+      "defaultAnchorKind": "MAP",
+      "durationMs": 3176,
+      "subtitleText": "일어나, 발연기 그만하라고.",
+      "subtitlePosition": "NORMAL"
+    },
+    {
+      "resourceId": "subtitle.kouku.cin.37081_33_02",
+      "displayName": "자막 / cin.37081_33_02",
+      "kind": "SUBTITLE",
+      "assetId": "cin.37081_33_02",
+      "resourceKind": "",
+      "defaultAnchorKind": "MAP",
+      "durationMs": 3182,
+      "subtitleText": "좋아. 오늘은 여기까지!",
+      "subtitlePosition": "NORMAL"
+    },
+    {
+      "resourceId": "subtitle.kouku.cin.37081_33_03",
+      "displayName": "자막 / cin.37081_33_03",
+      "kind": "SUBTITLE",
+      "assetId": "cin.37081_33_03",
+      "resourceKind": "",
+      "defaultAnchorKind": "MAP",
+      "durationMs": 2970,
+      "subtitleText": "계속 분발해.\n자만하지 말고!",
+      "subtitlePosition": "NORMAL"
+    },
+    {
+      "resourceId": "subtitle.kouku.cin.37081_33_04",
+      "displayName": "자막 / cin.37081_33_04",
+      "kind": "SUBTITLE",
+      "assetId": "cin.37081_33_04",
+      "resourceKind": "",
+      "defaultAnchorKind": "MAP",
+      "durationMs": 5250,
+      "subtitleText": "우리가 널 응원하고 있으니까 말이야.",
+      "subtitlePosition": "NORMAL"
+    },
+    {
+      "resourceId": "subtitle.kouku.cin.37081_33_05",
+      "displayName": "자막 / cin.37081_33_05",
+      "kind": "SUBTITLE",
+      "assetId": "cin.37081_33_05",
+      "resourceKind": "",
+      "defaultAnchorKind": "MAP",
+      "durationMs": 5056,
+      "subtitleText": "그럼 혼돈이 가득 차오를 때, 다시 보자고!",
+      "subtitlePosition": "NORMAL"
+    },
+    {
+      "resourceId": "sound.kouku.9a04be7d125304cdb8dc",
+      "displayName": "쇼타임 연출 / 원본 음성·효과음",
+      "kind": "SOUND",
+      "assetId": "Sound/KoukuSaton/Events/scene_midnightc_ed_koukuskill.source.wav",
+      "soundEvent": "s_scene_ocean3_3.scene_midnightc_ed_koukuskill",
+      "resourceKind": "",
+      "durationMs": 7395,
+      "defaultAnchorKind": "MAP"
+    },
+    {
+      "resourceId": "sound.kouku.696b5ad453c3fd2116d7",
+      "displayName": "빙고 입장 / 원본 팝업 효과음",
+      "kind": "SOUND",
+      "assetId": "Sound/KoukuSaton/Events/scene_midnightc_ed_popup1.source.1.wav",
+      "soundEvent": "s_scene_ocean3_3.scene_midnightc_ed_popup1",
+      "resourceKind": "",
+      "durationMs": 2367,
+      "defaultAnchorKind": "MAP"
+    },
+    {
+      "resourceId": "sound.kouku.140ac8e3578ea5f47409",
+      "displayName": "빙고 입장 / 원본 음성·효과음",
+      "kind": "SOUND",
+      "assetId": "Sound/KoukuSaton/Events/scene_midnightc_ed_koukustopclearingdungeon.source.wav",
+      "soundEvent": "s_scene_ocean3_3.scene_midnightc_ed_koukustopclearingdungeon",
+      "resourceKind": "",
+      "durationMs": 23793,
+      "defaultAnchorKind": "MAP"
+    },
+    {
+      "resourceId": "sound.kouku.7fccf417eb9300dcdbdf",
+      "displayName": "빙고 입장 BGM",
+      "kind": "SOUND",
+      "assetId": "Sound/KoukuSaton/Events/bgm_midnightc_ed_m18_scene_fakeclear.source-stop.wav",
+      "soundEvent": "s_bgm_commanderraid.bgm_midnightc_ed_m18_scene_fakeclear",
+      "resourceKind": "",
+      "durationMs": 26322,
+      "defaultAnchorKind": "MAP"
+    },
+    {
+      "resourceId": "subtitle.kouku.cin.37081_12_01",
+      "displayName": "빙고 입장 / 누구 맘대로 끝을 내?!",
+      "kind": "SUBTITLE",
+      "assetId": "cin.37081_12_01",
+      "resourceKind": "",
+      "defaultAnchorKind": "MAP",
+      "subtitleText": "누구 맘대로 끝을 내?!",
+      "subtitlePosition": "UPPER",
+      "durationMs": 1700
+    },
+    {
+      "resourceId": "subtitle.kouku.cin.37081_12_02",
+      "displayName": "빙고 입장 / 무효야, 전부 무효!",
+      "kind": "SUBTITLE",
+      "assetId": "cin.37081_12_02",
+      "resourceKind": "",
+      "defaultAnchorKind": "MAP",
+      "subtitleText": "무효야, 전부 무효!",
+      "subtitlePosition": "UPPER",
+      "durationMs": 3600
+    },
+    {
+      "resourceId": "subtitle.kouku.cin.37081_12_03",
+      "displayName": "빙고 입장 / 진짜 시작은 지금부터라고!",
+      "kind": "SUBTITLE",
+      "assetId": "cin.37081_12_03",
+      "resourceKind": "",
+      "defaultAnchorKind": "MAP",
+      "subtitleText": "진짜 시작은 지금부터라고!",
+      "subtitlePosition": "UPPER",
+      "durationMs": 3050
     },
     {
       "resourceId": "presentation.kouku.bingo.encore.camera.1",
@@ -44358,7 +44602,8 @@
           "logicOccurrenceId": "",
           "worldOccurrenceId": ""
         }
-      ]
+      ],
+      "animationRootHorizontalScale": 0
     },
     {
       "patternId": "KAKULSAYDON_G1_PATTERN_22",
@@ -46619,7 +46864,8 @@
           "logicOccurrenceId": "KAKULSAYDON_G1_PATTERN_23.logic.7",
           "worldOccurrenceId": ""
         }
-      ]
+      ],
+      "animationRootHorizontalScale": 0
     },
     {
       "patternId": "KAKULSAYDON_G1_PATTERN_24",
@@ -48356,7 +48602,8 @@
           "logicOccurrenceId": "KAKULSAYDON_G1_PATTERN_24.logic.19",
           "worldOccurrenceId": ""
         }
-      ]
+      ],
+      "animationRootHorizontalScale": 0
     },
     {
       "patternId": "KAKULSAYDON_G1_PATTERN_18",
@@ -54699,7 +54946,7 @@
         },
         {
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_35.logic.17",
-          "logicId": "kakulsaydon.g1.logic.47",
+          "logicId": "kakulsaydon.g1.logic.100",
           "startMs": 55869,
           "durationMs": 1000,
           "enabled": true,
@@ -55958,7 +56205,7 @@
           "brightnessMultiplier": 1,
           "volume": 1,
           "soundSourceStartMs": 0,
-          "followBoss": true,
+          "followBoss": false,
           "debugRender": true,
           "bone": "",
           "boneTarget": "BODY",
@@ -66274,7 +66521,7 @@
           "brightnessMultiplier": 1,
           "volume": 1,
           "soundSourceStartMs": 0,
-          "followBoss": true,
+          "followBoss": false,
           "debugRender": true,
           "bone": "",
           "boneTarget": "BODY",
@@ -67393,7 +67640,7 @@
           "brightnessMultiplier": 1,
           "volume": 1,
           "soundSourceStartMs": 0,
-          "followBoss": true,
+          "followBoss": false,
           "debugRender": true,
           "bone": "",
           "boneTarget": "BODY",
@@ -67673,7 +67920,7 @@
           "brightnessMultiplier": 1,
           "volume": 1,
           "soundSourceStartMs": 0,
-          "followBoss": true,
+          "followBoss": false,
           "debugRender": true,
           "bone": "",
           "boneTarget": "BODY",
@@ -91685,7 +91932,7 @@
       ],
       "sceneProfileOccurrences": [],
       "resetBossToSpawn": false,
-      "nextPresentationOccurrenceOrdinal": 14,
+      "nextPresentationOccurrenceOrdinal": 16,
       "presentationOccurrences": [
         {
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_73.presentation.1",
@@ -92076,6 +92323,22 @@
           "worldId": "",
           "logicOccurrenceId": "",
           "worldOccurrenceId": ""
+        },
+        {
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_73.presentation.14",
+          "resourceId": "subtitle.kouku.cin.37081_25_01",
+          "startMs": 3080,
+          "durationMs": 6300,
+          "anchorKind": "MAP",
+          "followBoss": false
+        },
+        {
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_73.presentation.15",
+          "resourceId": "subtitle.kouku.cin.37081_25_02",
+          "startMs": 20000,
+          "durationMs": 4300,
+          "anchorKind": "MAP",
+          "followBoss": false
         }
       ]
     },
@@ -92130,7 +92393,7 @@
       ],
       "sceneProfileOccurrences": [],
       "resetBossToSpawn": false,
-      "nextPresentationOccurrenceOrdinal": 28,
+      "nextPresentationOccurrenceOrdinal": 34,
       "presentationOccurrences": [
         {
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_74.presentation.1",
@@ -93067,6 +93330,54 @@
           "worldId": "",
           "logicOccurrenceId": "",
           "worldOccurrenceId": ""
+        },
+        {
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_74.presentation.28",
+          "resourceId": "subtitle.kouku.cin.37081_31_01",
+          "startMs": 1343,
+          "durationMs": 1700,
+          "anchorKind": "MAP",
+          "followBoss": false
+        },
+        {
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_74.presentation.29",
+          "resourceId": "subtitle.kouku.cin.37081_31_03",
+          "startMs": 8942,
+          "durationMs": 1500,
+          "anchorKind": "MAP",
+          "followBoss": false
+        },
+        {
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_74.presentation.30",
+          "resourceId": "subtitle.kouku.cin.37081_31_04",
+          "startMs": 10991,
+          "durationMs": 3000,
+          "anchorKind": "MAP",
+          "followBoss": false
+        },
+        {
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_74.presentation.31",
+          "resourceId": "subtitle.kouku.cin.37081_31_05",
+          "startMs": 14568,
+          "durationMs": 3200,
+          "anchorKind": "MAP",
+          "followBoss": false
+        },
+        {
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_74.presentation.32",
+          "resourceId": "subtitle.kouku.cin.37081_31_02",
+          "startMs": 3576,
+          "durationMs": 3000,
+          "anchorKind": "MAP",
+          "followBoss": false
+        },
+        {
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_74.presentation.33",
+          "resourceId": "subtitle.kouku.cin.37081_31_06",
+          "startMs": 26445,
+          "durationMs": 4000,
+          "anchorKind": "MAP",
+          "followBoss": false
         }
       ]
     },
@@ -93075,7 +93386,7 @@
       "actorProfileId": "MN_RPCT_05",
       "gateId": "BINGO",
       "targetBossPlacementId": "boss.kakulsaydon.bingo.saydon",
-      "durationMs": 49083,
+      "durationMs": 51285,
       "displayName": "빙고_최종엔딩씬",
       "authoringStatus": "DRAFT",
       "category": "MECHANIC",
@@ -93099,7 +93410,7 @@
       "worldOccurrences": [],
       "sceneProfileOccurrences": [],
       "resetBossToSpawn": false,
-      "nextPresentationOccurrenceOrdinal": 15,
+      "nextPresentationOccurrenceOrdinal": 20,
       "presentationOccurrences": [
         {
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_75.presentation.1",
@@ -93573,7 +93884,7 @@
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_75.presentation.13",
           "resourceId": "sound.kouku.107e53f0c73d5a11c2c8",
           "startMs": 100,
-          "durationMs": 48983,
+          "durationMs": 51185,
           "positionOffset": [
             0,
             0,
@@ -93611,8 +93922,8 @@
         {
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_75.presentation.14",
           "resourceId": "sound.kouku.bd6539c4598c9be3626e",
-          "startMs": 0,
-          "durationMs": 49083,
+          "startMs": 10,
+          "durationMs": 50965,
           "positionOffset": [
             0,
             0,
@@ -93646,6 +93957,46 @@
           "worldId": "",
           "logicOccurrenceId": "",
           "worldOccurrenceId": ""
+        },
+        {
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_75.presentation.15",
+          "resourceId": "subtitle.kouku.cin.37081_33_01",
+          "startMs": 14467,
+          "durationMs": 3175,
+          "anchorKind": "MAP",
+          "followBoss": false
+        },
+        {
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_75.presentation.16",
+          "resourceId": "subtitle.kouku.cin.37081_33_02",
+          "startMs": 19633,
+          "durationMs": 3183,
+          "anchorKind": "MAP",
+          "followBoss": false
+        },
+        {
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_75.presentation.17",
+          "resourceId": "subtitle.kouku.cin.37081_33_03",
+          "startMs": 27267,
+          "durationMs": 2970,
+          "anchorKind": "MAP",
+          "followBoss": false
+        },
+        {
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_75.presentation.18",
+          "resourceId": "subtitle.kouku.cin.37081_33_04",
+          "startMs": 31208,
+          "durationMs": 5250,
+          "anchorKind": "MAP",
+          "followBoss": false
+        },
+        {
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_75.presentation.19",
+          "resourceId": "subtitle.kouku.cin.37081_33_05",
+          "startMs": 38367,
+          "durationMs": 5056,
+          "anchorKind": "MAP",
+          "followBoss": false
         }
       ]
     },
@@ -93790,7 +94141,7 @@
       "sceneProfileOccurrences": [],
       "resetBossToSpawn": true,
       "resetBossYawDegrees": 234.4921875,
-      "nextPresentationOccurrenceOrdinal": 6,
+      "nextPresentationOccurrenceOrdinal": 8,
       "presentationOccurrences": [
         {
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_76.presentation.1",
@@ -93986,8 +94337,27 @@
           "worldId": "",
           "logicOccurrenceId": "",
           "worldOccurrenceId": ""
+        },
+        {
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_76.presentation.6",
+          "resourceId": "subtitle.kouku.cin.37081_32_01",
+          "startMs": 689,
+          "durationMs": 2300,
+          "anchorKind": "MAP",
+          "followBoss": false
+        },
+        {
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_76.presentation.7",
+          "resourceId": "sound.kouku.9a04be7d125304cdb8dc",
+          "startMs": 79,
+          "durationMs": 7395,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "anchorKind": "BOSS",
+          "followBoss": false
         }
-      ]
+      ],
+      "durationMs": 7474
     },
     {
       "patternId": "KAKULSAYDON_G1_PATTERN_77",
@@ -94405,7 +94775,7 @@
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_77.presentation.10",
           "resourceId": "sound.kouku.6ce8d89a1aa43803c7a7",
           "startMs": 450,
-          "durationMs": 11500,
+          "durationMs": 16827,
           "positionOffset": [
             0,
             0,
@@ -94639,6 +95009,7 @@
     },
     {
       "patternId": "KAKULSAYDON_G1_PATTERN_78",
+      "durationMs": 22981,
       "actorProfileId": "MN_RPCT_05",
       "gateId": "GATE1",
       "targetBossPlacementId": "boss.kakulsaydon.g1.saydon",
@@ -108242,6 +108613,80 @@
       "actorProfileId": "MN_RPCT_05",
       "gateId": "BINGO",
       "targetBossPlacementId": "boss.kakulsaydon.bingo.saydon",
+      "durationMs": 50000,
+      "displayName": "빙고_반복전투",
+      "authoringStatus": "DRAFT",
+      "category": "MECHANIC",
+      "nextStageOrdinal": 1,
+      "nextAnimationOrdinal": 1,
+      "nextLogicOccurrenceOrdinal": 2,
+      "nextSummonOccurrenceOrdinal": 1,
+      "nextWorldOccurrenceOrdinal": 1,
+      "nextSceneProfileOccurrenceOrdinal": 1,
+      "nextPresentationOccurrenceOrdinal": 1,
+      "nextPatternOccurrenceOrdinal": 6,
+      "stages": [],
+      "logicOccurrences": [
+        {
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_96.logic.1",
+          "logicId": "kakulsaydon.g1.logic.99",
+          "startMs": 0,
+          "durationMs": 50000,
+          "enabled": true,
+          "onSuccessLogicIds": [],
+          "onFailLogicIds": [],
+          "onTimeoutLogicIds": []
+        }
+      ],
+      "summonOccurrences": [],
+      "worldOccurrences": [],
+      "sceneProfileOccurrences": [],
+      "presentationOccurrences": [],
+      "patternOccurrences": [
+        {
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_96.pattern.1",
+          "patternId": "KAKULSAYDON_G1_PATTERN_62",
+          "startMs": 0,
+          "durationMs": 4509,
+          "repeat": false
+        },
+        {
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_96.pattern.2",
+          "patternId": "KAKULSAYDON_G1_PATTERN_94",
+          "startMs": 5509,
+          "durationMs": 13100,
+          "repeat": false
+        },
+        {
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_96.pattern.3",
+          "patternId": "KAKULSAYDON_G1_PATTERN_60",
+          "startMs": 19609,
+          "durationMs": 5167,
+          "repeat": false
+        },
+        {
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_96.pattern.4",
+          "patternId": "KAKULSAYDON_G1_PATTERN_67",
+          "startMs": 25776,
+          "durationMs": 6434,
+          "repeat": false
+        },
+        {
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_96.pattern.5",
+          "patternId": "KAKULSAYDON_G1_PATTERN_40",
+          "startMs": 33210,
+          "durationMs": 7267,
+          "repeat": false
+        }
+      ],
+      "resetBossToSpawn": false,
+      "folderId": "kakulsaydon.folder.26"
+    },
+    {
+      "patternId": "KAKULSAYDON_G1_PATTERN_97",
+      "actorProfileId": "MN_RPCT_05",
+      "gateId": "BINGO",
+      "targetBossPlacementId": "boss.kakulsaydon.bingo.saydon",
       "displayName": "앵콜컷신",
       "authoringStatus": "DRAFT",
       "category": "MECHANIC",
@@ -108254,7 +108699,7 @@
       "stages": [
         {
           "stageId": "STAGE_1",
-          "actionId": "KAKULSAYDON_G1_PATTERN_96.stage.1",
+          "actionId": "KAKULSAYDON_G1_PATTERN_97.stage.1",
           "stageKind": "ACTIVE",
           "durationMs": 23333,
           "animationOccurrences": []
@@ -108264,7 +108709,7 @@
       "summonOccurrences": [],
       "worldOccurrences": [
         {
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_96.world.1",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_97.world.1",
           "worldId": "kakulsaydon.g1.world.41",
           "startMs": 0,
           "durationMs": 23333,
@@ -108276,7 +108721,7 @@
       "nextPresentationOccurrenceOrdinal": 3,
       "presentationOccurrences": [
         {
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_96.presentation.1",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_97.presentation.1",
           "resourceId": "presentation.kouku.bingo.encore.camera.1",
           "startMs": 0,
           "durationMs": 23333,
@@ -108314,7 +108759,7 @@
           "worldOccurrenceId": ""
         },
         {
-          "occurrenceId": "KAKULSAYDON_G1_PATTERN_96.presentation.2",
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_97.presentation.2",
           "resourceId": "presentation.kouku.bingo.encore.fade.black",
           "startMs": 0,
           "durationMs": 23333,
@@ -108489,6 +108934,12 @@
       "gateId": "GATE3",
       "displayName": "1마리오_4페이즈",
       "timelinePatternId": "KAKULSAYDON_G1_PATTERN_93"
+    },
+    {
+      "folderId": "kakulsaydon.folder.26",
+      "gateId": "BINGO",
+      "displayName": "빙고_반복전투",
+      "timelinePatternId": "KAKULSAYDON_G1_PATTERN_96"
     }
   ],
   "bundles": [
@@ -108932,8 +109383,8 @@
         },
         {
           "entryId": "kakulsaydon.flow.gate2.entry.10",
-          "kind": "BUNDLE",
-          "targetId": "kakulsaydon.bundle.4",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_77",
           "waitAfterMs": 1000
         },
         {
@@ -109001,6 +109452,19 @@
           "entryId": "kakulsaydon.flow.gate3.entry.3",
           "kind": "PATTERN",
           "targetId": "KAKULSAYDON_G1_PATTERN_35",
+          "waitAfterMs": 0
+        }
+      ]
+    },
+    {
+      "flowId": "kakulsaydon.flow.bingo",
+      "gateId": "BINGO",
+      "displayName": "빙고 반복 패턴",
+      "entries": [
+        {
+          "entryId": "kakulsaydon.flow.bingo.entry.1",
+          "kind": "PATTERN",
+          "targetId": "KAKULSAYDON_G1_PATTERN_96",
           "waitAfterMs": 0
         }
       ]

@@ -960,12 +960,13 @@ void LostArk::Server::CGameRoom::Update_KoukuPlayerTargets(
 			continue;
 		}
 		const bool rotateOnly = trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_TRACK_TARGET;
-		// The RPCT_05 and RPCT_06 bodies face model +X. Moving pursuit owns a
-		// body yaw, while its navigation heading must point along that visual front.
-		const bool movingSaydon = rotateOnly && trigger.fFollowSpeedScale > 0.f &&
-			(boss.strArchetypeId == "BOSS_KAKULSAYDON_G1_SAYDON" ||
-			 boss.strArchetypeId == "BOSS_KAKULSAYDON_G3_SAYDON" || boss.strArchetypeId == "BOSS_KAKULSAYDON_BINGO_SAYDON");
-		const float forwardYawOffset = movingSaydon || boss.strArchetypeId == "BOSS_KAKULSAYDON_G2_BIG_SAYDON" ? 90.f : 0.f;
+		// RPCT_05 and RPCT_06 face model +X in every tracking mode. The same
+		// basis must aim the stationary Showtime body and moving pursuit.
+		const bool saydon = boss.strArchetypeId == "BOSS_KAKULSAYDON_G1_SAYDON" ||
+			boss.strArchetypeId == "BOSS_KAKULSAYDON_G3_SAYDON" ||
+			boss.strArchetypeId == "BOSS_KAKULSAYDON_BINGO_SAYDON" ||
+			boss.strArchetypeId == "BOSS_KAKULSAYDON_G2_BIG_SAYDON";
+		const float forwardYawOffset = saydon ? 90.f : 0.f;
 		if (!rotateOnly && (trigger.eKind != BOSS_PATTERN_MECHANIC_TRIGGER_KIND::SHOWTIME_PLAYER_TARGETS ||
 			trigger.iSpawnIntervalMs == 0u || trigger.strFixedVisualId == trigger.strTrackingVisualId ||
 			trigger.strFixedVisualId.empty() != (trigger.iFixedLifetimeMs == 0u) ||
@@ -1337,6 +1338,8 @@ void LostArk::Server::CGameRoom::Commit_KoukuMechanicTriggers(const std::uint32_
 		if (!owner || liveOwner == m_WorldEntities.end()) continue;
 		const bool detached = owner != &*liveOwner;
 		const auto& trigger = pending.Trigger;
+        if (trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BINGO_BOARD)
+        { Begin_KoukuBingoDuration(*owner, trigger, serverTick); continue; }
 		if (trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::ALBION_AIRBORNE)
 		{
 			const auto* catalog = Resolve_KoukuProductCatalog(); std::string status;
@@ -1351,33 +1354,43 @@ void LostArk::Server::CGameRoom::Commit_KoukuMechanicTriggers(const std::uint32_
 			continue;
 		}
 		if (trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_TELEPORT_XZ ||
+            trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_TELEPORT_GROUNDED ||
 			trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_TELEPORT_FACE_CENTER)
 		{
 			SERVER_NAV_POINT oldGround{}, newGround{};
 			const bool faceCenter = trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_TELEPORT_FACE_CENTER;
-			const float destinationY = faceCenter ? trigger.fTeleportY : owner->fPositionY;
-			if (!std::isfinite(destinationY) || !std::isfinite(trigger.fTeleportX) || !std::isfinite(trigger.fTeleportZ) ||
+			const bool grounded = trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_TELEPORT_GROUNDED;
+            // Match the existing FaceCenter/Albion center deck admission tolerance.
+            constexpr float destinationHeightToleranceM = 1.f;
+            const float referenceY = (faceCenter || grounded) ? trigger.fTeleportY : owner->fPositionY;
+			if (!std::isfinite(referenceY) || !std::isfinite(trigger.fTeleportX) || !std::isfinite(trigger.fTeleportZ) ||
 				!m_ServerNavigation.Is_PointWalkableExact(trigger.fTeleportX, trigger.fTeleportZ) ||
 				!m_ServerNavigation.Sample_Position(owner->fPositionX, owner->fPositionZ, oldGround) ||
 				!m_ServerNavigation.Sample_Position(trigger.fTeleportX, trigger.fTeleportZ, newGround) ||
-				(faceCenter && std::abs(destinationY - newGround.y) > 1.f) ||
-				!m_ServerCollisionSystem.Is_CirclePositionClear(trigger.fTeleportX, destinationY + owner->fCollisionRadius, trigger.fTeleportZ,
+				((faceCenter || grounded) && std::abs(referenceY - newGround.y) > destinationHeightToleranceM))
+            { m_strStatus = "Boss teleport preserved its pose: destination navigation or height is invalid"; continue; }
+            const float destinationY = grounded ? newGround.y : referenceY;
+            if (!m_ServerCollisionSystem.Is_CirclePositionClear(trigger.fTeleportX, destinationY + owner->fCollisionRadius, trigger.fTeleportZ,
 					owner->fCollisionRadius, owner->fCollisionRadius, owner->fCollisionRadius, owner->iNetEntityId))
 			{ m_strStatus = "Boss XZ teleport preserved its pose: destination navigation or body overlap is invalid"; continue; }
 			const float rootX = owner->fPatternStageOriginX + trigger.fTeleportX - owner->fPositionX;
 			const float rootZ = owner->fPatternStageOriginZ + trigger.fTeleportZ - owner->fPositionZ;
 			const float rootGroundY = owner->fPatternStageRootGroundY + newGround.y - oldGround.y;
+            const float rootY = owner->fPatternStageOriginY + (grounded ? destinationY - owner->fPositionY : 0.f);
 			if (owner->bPatternStageRootOriginCaptured &&
-				(!std::isfinite(rootX) || !std::isfinite(rootZ) || !std::isfinite(rootGroundY)))
+				(!std::isfinite(rootX) || !std::isfinite(rootZ) || !std::isfinite(rootY) || !std::isfinite(rootGroundY)))
 			{ m_strStatus = "Boss XZ teleport preserved its pose: root origin is invalid"; continue; }
-			// Keep Y, root-up, stage clock and action identity. Rebase captured XZ so
-			// the next absolute root sample continues at the destination.
+			// XZ keeps root-up; grounded rebases Y by the same committed floor delta.
+            // Both preserve stage/action clocks and continue the existing root curve.
 			if (owner->bPatternStageRootOriginCaptured)
 			{
 				owner->fPatternStageOriginX = rootX; owner->fPatternStageOriginZ = rootZ;
 				owner->fPatternStageRootGroundY = rootGroundY;
+                if (grounded) owner->fPatternStageOriginY = rootY;
 			}
+            if (grounded) owner->bPatternRootGrounded = true;
 			owner->fPositionX = trigger.fTeleportX; owner->fPositionZ = trigger.fTeleportZ;
+            if (grounded) owner->fPositionY = destinationY;
 			if (trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_TELEPORT_FACE_CENTER)
 			{
 				owner->fPositionY = trigger.fTeleportY;

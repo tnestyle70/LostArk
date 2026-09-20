@@ -451,19 +451,34 @@ bool_t CRenderingProfileService::Reload_Runtime(string& strOutStatus)
 	return true;
 }
 
+bool_t CRenderingProfileService::Set_ComparisonOptions(const RENDERING_COMPARISON_OPTIONS& options)
+{
+    if (!Is_FiniteRange(options.fExposureMultiplier, 0.5f, 2.f)) return false;
+    m_ComparisonOptions = options;
+    return true;
+}
+
 bool_t CRenderingProfileService::Restore_PresentationEnvironment(string& status)
 {
     auto& game = CGameInstance::Get();
     const auto previousFog = game.Get_HeightFogSettings();
+    const auto previousQuality = game.Get_RenderQualitySettings();
+    if (m_bPresentationQualityOverride && FAILED(game.Apply_RenderQualitySettings(m_PresentationBaseQuality)))
+    { status = "Presentation quality restore rejected; current scene preserved."; return false; }
     if (m_bPresentationFogOverride && FAILED(game.Apply_HeightFog(m_PresentationBaseFog)))
-    { status = "Presentation fog restore rejected; current scene preserved."; return false; }
+    {
+        if (m_bPresentationQualityOverride) game.Apply_RenderQualitySettings(previousQuality);
+        status = "Presentation fog restore rejected; current scene preserved.";
+        return false;
+    }
     if (m_bPresentationLightOverride && FAILED(game.Add_Light(m_PresentationBaseLight)))
     {
         if (m_bPresentationFogOverride) game.Apply_HeightFog(previousFog);
+        if (m_bPresentationQualityOverride) game.Apply_RenderQualitySettings(previousQuality);
         status = "Presentation light restore rejected; current scene preserved.";
         return false;
     }
-    m_bPresentationFogOverride = m_bPresentationLightOverride = false;
+    m_bPresentationFogOverride = m_bPresentationLightOverride = m_bPresentationQualityOverride = false;
     return true;
 }
 
@@ -474,27 +489,53 @@ bool_t CRenderingProfileService::Apply_CameraEnvironment(f32_t deltaSeconds, str
     // cinematic light/fog. Ending or cancelling a shot restores that same scene.
     if (!Restore_PresentationEnvironment(status) ||
         !Apply_CameraRegionEnvironment(deltaSeconds, status)) return false;
-    if (!Get_ActiveProfile() || (!suppressFog && !directionalOverride)) return true;
+    if (!Get_ActiveProfile() || (!suppressFog && !directionalOverride && !m_ComparisonOptions.bActive)) return true;
     auto& game = CGameInstance::Get();
     const auto fog = game.Get_HeightFogSettings();
     const auto& lights = game.Get_SceneLights();
-    if (directionalOverride && lights.size() != 1u)
+    const bool_t compareLight = m_ComparisonOptions.bActive && !m_ComparisonOptions.bDirectionalEnabled;
+    const bool_t overrideLight = directionalOverride || compareLight;
+    if (overrideLight && lights.size() != 1u)
     { status = "Presentation directional override requires one scene light."; return false; }
     auto presentationFog = fog;
     presentationFog.bEnabled = false;
     if (suppressFog && FAILED(game.Apply_HeightFog(presentationFog)))
     { status = "Presentation fog override rejected; current scene preserved."; return false; }
-    const auto light = directionalOverride ? lights.front() : LIGHT_DESC{};
-    if (directionalOverride && FAILED(game.Add_Light(*directionalOverride)))
+    const auto light = overrideLight ? lights.front() : LIGHT_DESC{};
+    auto desiredLight = directionalOverride ? *directionalOverride : light;
+    if (compareLight)
+    {
+        desiredLight.vDiffuse = { 0.f, 0.f, 0.f, desiredLight.vDiffuse.w };
+        desiredLight.vSpecular = { 0.f, 0.f, 0.f, desiredLight.vSpecular.w };
+    }
+    if (overrideLight && FAILED(game.Add_Light(desiredLight)))
     {
         if (suppressFog) game.Apply_HeightFog(fog);
         status = "Presentation directional override rejected; current scene preserved.";
         return false;
     }
+    const auto quality = game.Get_RenderQualitySettings();
+    if (m_ComparisonOptions.bActive)
+    {
+        auto compared = quality;
+        compared.fExposure = std::clamp(quality.fExposure * m_ComparisonOptions.fExposureMultiplier, 0.01f, 32.f);
+        compared.bFXAAEnabled = m_ComparisonOptions.bFXAAEnabled;
+        compared.bBloomEnabled = m_ComparisonOptions.bBloomEnabled;
+        if (!m_ComparisonOptions.bLutEnabled) compared.SourcePostProcess.LutLayers.clear();
+        if (FAILED(game.Apply_RenderQualitySettings(compared)))
+        {
+            if (suppressFog) game.Apply_HeightFog(fog);
+            if (overrideLight) game.Add_Light(light);
+            status = "Rendering comparison rejected; authored scene preserved.";
+            return false;
+        }
+    }
+    m_PresentationBaseQuality = quality;
+    m_bPresentationQualityOverride = m_ComparisonOptions.bActive;
     m_PresentationBaseFog = fog;
     m_PresentationBaseLight = light;
     m_bPresentationFogOverride = suppressFog;
-    m_bPresentationLightOverride = directionalOverride != nullptr;
+    m_bPresentationLightOverride = overrideLight;
     return true;
 }
 
@@ -552,6 +593,7 @@ bool_t CRenderingProfileService::Apply_CameraRegionEnvironment(f32_t deltaSecond
     {
         light.vDiffuse = selected->vDirectionalColor;
         light.vAmbient = selected->vAmbientColor;
+        if (selected->bHasReceiver) light.eReceiver = selected->eReceiver;
         if (selected->bHasSourceCharacterAmbient) light.vSourceCharacterAmbient = selected->vSourceCharacterAmbient;
         if (selected->bHasSpecularColor) light.vSpecular = selected->vSpecularColor;
     }
@@ -633,7 +675,8 @@ bool_t CRenderingProfileService::Activate_LevelProfile(string_view strProfileId,
 {
 	const string previousOwner = m_strLevelQualityProfileId;
 	m_strLevelQualityProfileId = string(strProfileId);
-	if (Activate_Profile(strProfileId, strOutStatus)) return true;
+	if (Activate_Profile(strProfileId, strOutStatus))
+    { Clear_ComparisonOptions(); return true; }
 	m_strLevelQualityProfileId = previousOwner;
 	return false;
 }
@@ -894,7 +937,7 @@ bool_t CRenderingProfileService::Parse_Catalog(
 		if (nullptr == pId || nullptr == pLight || nullptr == pShadow ||
 			nullptr == pFog ||
 			!Has_ExactFields(*pLight,
-				{ "type", "direction", "diffuse", "ambient", "specular" }, { "sourceCharacterAmbient" }) ||
+				{ "type", "direction", "diffuse", "ambient", "specular" }, { "sourceCharacterAmbient", "receiver" }) ||
 			!Has_ExactFields(*pShadow,
 				{ "enabled", "focus", "distance", "orthographicWidth",
 				  "orthographicHeight", "near", "far", "depthBias",
@@ -909,6 +952,16 @@ bool_t CRenderingProfileService::Parse_Catalog(
 		{
 			strOutStatus = "Scene profile light contract is invalid.";
 			return false;
+		}
+		if (const auto* receiver = pLight->Find("receiver"))
+		{
+			if (!receiver->Is_String())
+			{ strOutStatus = "Scene light receiver is invalid."; return false; }
+			const auto& name = receiver->Get_String();
+			if (name == "ALL") profile.Light.eReceiver = LIGHT_RECEIVER::ALL;
+			else if (name == "SOURCE_CHARACTER") profile.Light.eReceiver = LIGHT_RECEIVER::SOURCE_CHARACTER;
+			else if (name == "UNBAKED") profile.Light.eReceiver = LIGHT_RECEIVER::UNBAKED;
+			else { strOutStatus = "Scene light receiver is invalid."; return false; }
 		}
 		if (pLight->Find("sourceCharacterAmbient") &&
 			!Read_Float4(*pLight, "sourceCharacterAmbient", profile.Light.vSourceCharacterAmbient))
@@ -1012,7 +1065,7 @@ bool_t CRenderingProfileService::Parse_Catalog(
                 const auto* id = Required(row, "regionId", DATA_JSON_TYPE::STRING);
                 const auto* planes = Required(row, "planes", DATA_JSON_TYPE::ARRAY);
                 const auto* fog = Required(row, "fog", DATA_JSON_TYPE::OBJECT);
-                if (!Has_ExactFields(row, { "regionId", "boundsMinimum", "boundsMaximum", "planes", "fog", "directionalColor", "ambientColor", "blendTimeIn", "blendTimeOut" }, { "priority", "postProcess", "qualityOverride", "specularColor", "sourceCharacterAmbient" }) ||
+                if (!Has_ExactFields(row, { "regionId", "boundsMinimum", "boundsMaximum", "planes", "fog", "directionalColor", "ambientColor", "blendTimeIn", "blendTimeOut" }, { "priority", "postProcess", "qualityOverride", "specularColor", "sourceCharacterAmbient", "receiver" }) ||
                     !id || !Is_StableId(id->Get_String()) || !regionIds.insert(id->Get_String()).second ||
                     !Read_Float3(row, "boundsMinimum", region.vBoundsMinimum) ||
                     !Read_Float3(row, "boundsMaximum", region.vBoundsMaximum) ||
@@ -1033,6 +1086,17 @@ bool_t CRenderingProfileService::Parse_Catalog(
                 { strOutStatus = "Invalid source environment volume or fog."; return false; }
                 if (row.Find("priority") && !Read_Float(row, "priority", -100000.f, 100000.f, region.fPriority))
                 { strOutStatus = "Invalid environment region priority."; return false; }
+                if (const auto* receiver = row.Find("receiver"))
+                {
+                    if (!receiver->Is_String())
+                    { strOutStatus = "Environment region receiver is invalid."; return false; }
+                    const auto& name = receiver->Get_String();
+                    if (name == "ALL") region.eReceiver = LIGHT_RECEIVER::ALL;
+                    else if (name == "SOURCE_CHARACTER") region.eReceiver = LIGHT_RECEIVER::SOURCE_CHARACTER;
+                    else if (name == "UNBAKED") region.eReceiver = LIGHT_RECEIVER::UNBAKED;
+                    else { strOutStatus = "Environment region receiver is invalid."; return false; }
+                    region.bHasReceiver = true;
+                }
                 if (row.Find("sourceCharacterAmbient"))
                 {
                     if (!Read_Float4(row, "sourceCharacterAmbient", region.vSourceCharacterAmbient))
@@ -1230,6 +1294,10 @@ bool_t CRenderingProfileService::Validate_Profile(
     const auto validCharacterAmbient = [](const float4_t& value)
     { return Is_FiniteRange(value.x, 0.f, 64.f) && Is_FiniteRange(value.y, 0.f, 64.f) &&
         Is_FiniteRange(value.z, 0.f, 64.f) && value.w == 0.f; };
+    if (Profile.Light.eReceiver != LIGHT_RECEIVER::ALL &&
+        Profile.Light.eReceiver != LIGHT_RECEIVER::SOURCE_CHARACTER &&
+        Profile.Light.eReceiver != LIGHT_RECEIVER::UNBAKED)
+    { strOutStatus = "Scene light receiver is invalid."; return false; }
     if (!validCharacterAmbient(Profile.Light.vSourceCharacterAmbient))
     { strOutStatus = "Invalid source-character ambient colour."; return false; }
     if (Profile.Fog.bSourceExponential && !validSourceFog(Profile.Fog))
@@ -1251,6 +1319,9 @@ bool_t CRenderingProfileService::Validate_Profile(
             !Is_FiniteRange(region.Fog.fTopHeight, -10000.f, 10000.f) ||
             !Is_FiniteRange(region.Fog.fStartDistance, 0.f, 100000.f) || !Is_FiniteRange(region.Fog.fMaximumOpacity, 0.f, 1.f))
         { strOutStatus = "Invalid source environment region."; return false; }
+        if (region.bHasReceiver && region.eReceiver != LIGHT_RECEIVER::ALL &&
+            region.eReceiver != LIGHT_RECEIVER::SOURCE_CHARACTER && region.eReceiver != LIGHT_RECEIVER::UNBAKED)
+        { strOutStatus = "Environment region receiver is invalid."; return false; }
         if (region.bHasSourceCharacterAmbient && !validCharacterAmbient(region.vSourceCharacterAmbient))
         { strOutStatus = "Invalid environment region source-character ambient."; return false; }
         if (region.bHasSpecularColor && !Is_ValidColor(region.vSpecularColor))
@@ -1404,7 +1475,7 @@ bool_t CRenderingProfileService::Commit_Resolved(
 		return false;
 	}
 	// A committed profile owns the new scene; an old shot may not restore over it.
-    m_bPresentationFogOverride = m_bPresentationLightOverride = false;
+    m_bPresentationFogOverride = m_bPresentationLightOverride = m_bPresentationQualityOverride = false;
 	m_strAppliedEnvironmentRegion.clear();
 	CGameInstance::Get().Commit_RenderEnvironment(stagedEnvironment);
 	CMapLightPresentationRuntime::Commit_SceneIntensityMultiplier(
@@ -1487,6 +1558,9 @@ string CRenderingProfileService::Serialize_Catalog(const CATALOG& Catalog)
 		Write_Float4(output, profile.Light.vAmbient);
 		output << ",\n        \"specular\": ";
 		Write_Float4(output, profile.Light.vSpecular);
+		if (profile.Light.eReceiver != LIGHT_RECEIVER::ALL)
+			output << ",\n        \"receiver\": \"" <<
+				(profile.Light.eReceiver == LIGHT_RECEIVER::SOURCE_CHARACTER ? "SOURCE_CHARACTER" : "UNBAKED") << "\"";
 		const auto& characterAmbient = profile.Light.vSourceCharacterAmbient;
 		if (characterAmbient.x != 0.f || characterAmbient.y != 0.f || characterAmbient.z != 0.f)
 		{ output << ",\n        \"sourceCharacterAmbient\": "; Write_Float4(output, characterAmbient); }
@@ -1563,6 +1637,10 @@ string CRenderingProfileService::Serialize_Catalog(const CATALOG& Catalog)
                 output << ", \"ambientColor\": "; Write_Float4(output, region.vAmbientColor);
                 output << ", \"blendTimeIn\": " << region.fBlendTimeIn << ", \"blendTimeOut\": " << region.fBlendTimeOut;
                 output << ", \"priority\": " << region.fPriority;
+                if (region.bHasReceiver)
+                    output << ", \"receiver\": \"" <<
+                        (region.eReceiver == LIGHT_RECEIVER::ALL ? "ALL" :
+                            region.eReceiver == LIGHT_RECEIVER::SOURCE_CHARACTER ? "SOURCE_CHARACTER" : "UNBAKED") << "\"";
                 if (region.bHasSourceCharacterAmbient)
                 {
                     output << ", \"sourceCharacterAmbient\": "; Write_Float4(output, region.vSourceCharacterAmbient);

@@ -770,6 +770,11 @@ bool_t CLevel_KakulSaydonArena::Debug_CommitGateObjects(const size_t gateIndex, 
     Debug_StopCompositionWorldPreview();
     Debug_StopWorldObjectPreview();
 #endif
+    // A cinematic may keep the legacy book hidden after suspending this owner.
+    // Transfer its original baseline without restarting the outgoing book.
+    const auto cinematicLegacyBook = m_pGateObjects && m_pGateObjects->suspended &&
+        m_pServerRaidCinematicBorrowedGateObjects == m_pGateObjects.get() ?
+        m_pGateObjects->previousLegacyBook : std::optional<DEPLOY_PROP_STATE>{};
     if (m_pGateObjects && !Debug_ReleaseGateObjectPresentation(*m_pGateObjects, status)) return false;
     auto staged = std::move(m_pPendingGateObjects);
     const auto rollback = [&]() {
@@ -788,8 +793,15 @@ bool_t CLevel_KakulSaydonArena::Debug_CommitGateObjects(const size_t gateIndex, 
         if (!entry || !CMapPlacementRuntime::Try_GetRuntimeVisible(*entry, row.previous))
         { status = "Gate Object baseline capture failed: " + std::to_string(row.placementId); return rollback(); }
     }
-    if (gateIndex == 0u)
-        if (const auto book = m_DeployRuntime.Find(7u)) staged->previousLegacyBook = book->Get_State();
+    if (const auto book = m_DeployRuntime.Find(7u))
+    {
+        const bool inheritedCinematicHide = cinematicLegacyBook && book->Get_State() == DEPLOY_PROP_STATE::DESPAWNED;
+        if (gateIndex == 0u)
+            staged->previousLegacyBook = inheritedCinematicHide ? *cinematicLegacyBook : book->Get_State();
+        else if (inheritedCinematicHide && book->Get_State() != *cinematicLegacyBook &&
+            !m_DeployRuntime.Set_State(7u, *cinematicLegacyBook))
+        { status = "Gate Object cinematic book restore failed: " + m_DeployRuntime.Get_Status(); return rollback(); }
+    }
     if (!Debug_StartGateObjectPresentation(*staged, status)) return rollback();
     m_pGateObjects = std::move(staged);
     status.clear();
@@ -873,6 +885,11 @@ bool_t CLevel_KakulSaydonArena::Begin_ServerRaidCinematicPresentation(std::strin
 bool_t CLevel_KakulSaydonArena::End_ServerRaidCinematicPresentation(
     const bool_t restorePrevious, std::string& status)
 {
+    if (restorePrevious && m_pPendingGateObjects && m_pPendingGateObjects->serverRaidPrepared)
+    {
+        Debug_CancelGateObjects();
+        m_pPendingGateMapLights.reset(); m_PendingGateMapLightSource.reset();
+    }
     if (!m_pServerRaidCinematicBorrowedGateObjects) return true;
     // A successful gate commit replaced this owner. Never resurrect an old gate
     // over its successor; failure/abort resumes only the exact borrowed owner.

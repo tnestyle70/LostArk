@@ -46,7 +46,8 @@ LostArk::Server::CGameRoom::Evaluate_KoukuSaydonPatternAudition(
 	const SESSION_ID sessionId,
 	const LostArk::Shared::
 		C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST& request,
-	LostArk::Shared::S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT& outResult, const bool continueRaid)
+	LostArk::Shared::S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT& outResult, const bool continueRaid,
+    const std::vector<SERVER_WORLD_ENTITY>* stagedBosses)
 {
 	using namespace LostArk::Shared;
 	outResult = {};
@@ -150,6 +151,9 @@ LostArk::Server::CGameRoom::Evaluate_KoukuSaydonPatternAudition(
 		m_KoukuSaydonPatternAudition.iPinnedSourceRevision != request.Scope.iExpectedSourceRevision))
 		return reject(RESULT::REJECTED_STALE_REQUEST, "Automatic continuation lost its completed raid occurrence");
 	const bool controlsRun = request.eOperation == OP::STOP || restart;
+    if (stagedBosses && (continueRaid || (request.eOperation != OP::PLAY_SELECTED && request.eOperation != OP::PLAY_BUNDLE) ||
+        !Is_KoukuRaidRunning() || m_KoukuRaid.iOwnerSessionId != sessionId))
+        return reject(RESULT::REJECTED_SCOPE_MISMATCH, "Staged admission requires the active raid owner");
 	const auto expectedGameplay = (controlsRun && ownsRun) || continueRaid ?
 		m_KoukuSaydonPatternAudition.PinnedGameplayRevision : m_GameplayCatalog.Get_ActiveRevision();
 	if (request.Scope.ExpectedGameplayRevision != expectedGameplay)
@@ -180,7 +184,7 @@ LostArk::Server::CGameRoom::Evaluate_KoukuSaydonPatternAudition(
 			return outResult.eResult;
 		}
 	}
-	else if (running) return reject(RESULT::REJECTED_BUSY, "KoukuSaydon room already owns an audition run");
+	else if (running && !stagedBosses) return reject(RESULT::REJECTED_BUSY, "KoukuSaydon room already owns an audition run");
 
 	std::shared_ptr<const CGameplayCatalog> productGeneration = (restart || continueRaid) ?
 		m_KoukuSaydonPatternAudition.pProductGeneration : m_GameplayCatalog.Get_ActiveGeneration();
@@ -249,7 +253,14 @@ LostArk::Server::CGameRoom::Evaluate_KoukuSaydonPatternAudition(
 			(bundleRequest && !gateOwns(request.Scope.strGateId, placement->strPlacementId)) ||
 			(!bundleRequest && placement->strArchetypeId != request.Scope.strBossArchetypeId))
 			return reject(RESULT::REJECTED_SCOPE_MISMATCH, "KoukuSaydon target placement/Gate/archetype does not match Product");
-		auto* boss = Find_KoukuSaydonArenaBoss(placement->strPlacementId, placement->strArchetypeId);
+		const SERVER_WORLD_ENTITY* boss = nullptr;
+        if (stagedBosses)
+        {
+            const auto found = std::find_if(stagedBosses->begin(), stagedBosses->end(), [&](const auto& candidate) {
+                return candidate.strPlacementId == placement->strPlacementId && candidate.strArchetypeId == placement->strArchetypeId; });
+            if (found != stagedBosses->end()) boss = &*found;
+        }
+        else boss = Find_KoukuSaydonArenaBoss(placement->strPlacementId, placement->strArchetypeId);
 		if (!boss) return reject(RESULT::REJECTED_NO_BOSS, "KoukuSaydon target is not spawned: " + placement->strPlacementId);
 		if (!boss->iCurrentHp || boss->eAction == SERVER_ENTITY_ACTION::DEAD)
 			return reject(RESULT::REJECTED_BOSS_DEAD, "KoukuSaydon target is dead: " + placement->strPlacementId);
@@ -346,6 +357,9 @@ LostArk::Server::CGameRoom::Evaluate_KoukuSaydonPatternAudition(
 			std::any_of(m_Players.begin(), m_Players.end(), [](const auto& pair) { return pair.second.iMarioStage != 0u; }))
 			return reject(RESULT::REJECTED_UNSUPPORTED_PATTERN, "Mario test requires one entry pattern (chain root or ENTER_AREA -> MARIO_ENTER) and no player inside Mario");
 	}
+    // The raid can validate its future actors before clearing the old encounter or
+    // moving a player. This is the same admission path with no receipt, clock or world commit.
+    if (stagedBosses) { outResult.eResult = RESULT::QUEUED; return outResult.eResult; }
 	if (continueRaid)
 	{
 		// Automatic Flow Entry progression retains the same epoch and born row owners.

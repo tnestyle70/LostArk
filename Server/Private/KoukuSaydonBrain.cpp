@@ -380,6 +380,7 @@ bool LostArk::Server::CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
 			trigger.iStartMs >= patternDurationMs || 0u == trigger.iDurationMs ||
 			static_cast<std::uint64_t>(trigger.iStartMs) + trigger.iDurationMs > patternDurationMs ||
 			((BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_TELEPORT_XZ == trigger.eKind ||
+             BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_TELEPORT_GROUNDED == trigger.eKind ||
 			 BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_TELEPORT_FACE_CENTER == trigger.eKind ||
 			 BOSS_PATTERN_MECHANIC_TRIGGER_KIND::MARIO_PHASE2_PLAYERS == trigger.eKind) &&
 			 (pattern.BossMotion || !std::isfinite(trigger.fTeleportX) || !std::isfinite(trigger.fTeleportY) ||
@@ -838,6 +839,7 @@ bool LostArk::Server::CKoukuSaydonBrain::Begin_Pattern(
 	boss.iKoukuDirectionEndTick = 0u;
 	boss.bKoukuDirectionPlaybackComplete = false;
 	boss.PatternTerminalReceipt = {};
+	boss.bPatternRootGrounded = false;
 	boss.AlbionAirborne = {};
 	boss.KoukuSummonStartedTriggers.clear();
 	boss.strPatternId = pattern.strPatternId;
@@ -864,6 +866,7 @@ void LostArk::Server::CKoukuSaydonBrain::Finish_Pattern(
 		boss.PatternTerminalReceipt.eResult = result;
 	}
 	boss.PatternStageRootMotion.clear();
+	boss.bPatternRootGrounded = false;
 	boss.KoukuDirectionPlayback.reset();
 	boss.iKoukuDirectionEndTick = 0u;
 	boss.bKoukuDirectionPlaybackComplete = false;
@@ -1086,7 +1089,9 @@ bool LostArk::Server::CKoukuSaydonBrain::Apply_StageRootMotion(
 			!navigation.Sample_Position(boss.fPositionX, boss.fPositionZ, originGround))
 		{ status = "KoukuSaydon root motion origin is not navigable"; return false; }
 		boss.fPatternStageOriginX = boss.fPositionX;
-		boss.fPatternStageOriginY = boss.fPositionY;
+		// Continue the authored jump, but do not carry a previous clip's residual Up
+		// into every later stage after an explicit landing. Other patterns retain Y.
+		boss.fPatternStageOriginY = boss.bPatternRootGrounded ? originGround.y : boss.fPositionY;
 		boss.fPatternStageOriginZ = boss.fPositionZ;
 		boss.fPatternStageOriginYawDegrees = boss.fYawDegrees;
 		boss.fPatternStageRootGroundY = originGround.y;
@@ -1150,6 +1155,8 @@ bool LostArk::Server::CKoukuSaydonBrain::Apply_StageRootMotion(
 	{ status = "KoukuSaydon root motion lost its current ground"; return false; }
 	const float targetGroundY = ground.y;
 	destination.y += targetGroundY - boss.fPatternStageRootGroundY;
+	if (boss.bPatternRootGrounded)
+		destination.y = (std::max)(destination.y, targetGroundY);
 	auto airborneState = boss.AlbionAirborne;
 	if (airborne)
 	{

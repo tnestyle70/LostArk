@@ -310,8 +310,11 @@ void Client::CRenderingBenchmark::Update_RestorationPreview(
 	CRenderingProfileService& Profiles, const bool_t bToolVisible)
 {
 	if (!bToolVisible)
+    {
+        Profiles.Clear_ComparisonOptions();
 		if (auto* arena = CLevel_KakulSaydonArena::Get_Active())
 			arena->Reset_MapLightComparison();
+    }
 	if (m_strRestorationLastProfileId.empty())
 		return;
 	if (Engine::CGameInstance::Get().Get_CurrentLevelID() != m_iRestorationLevel ||

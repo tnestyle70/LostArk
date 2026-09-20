@@ -213,6 +213,13 @@ namespace Client
 		bool_t Consume_PreviewTransportRequest(
 			KOUKU_PREVIEW_TRANSPORT& outTransport,
 			std::uint32_t& outSeekMs);
+		[[nodiscard]] bool_t Has_PendingLocalPreviewRequest() const noexcept {
+			return m_bPatternPreviewRequestPending || m_bBundlePreviewRequestPending ||
+				m_bPreviewRequestPending || m_bPresentationPreviewRequestPending;
+		}
+		[[nodiscard]] bool_t Has_PendingPreviewReset() const noexcept {
+			return m_bExplicitPreviewReset && m_ePendingTransport == KOUKU_PREVIEW_TRANSPORT::STOP;
+		}
 		void Set_PreviewState(const KOUKU_PREVIEW_STATE& state) {
 			if (!state.strStatus.empty() && (m_bPreviewResultStatusPending ||
 				state.strStatus != m_PreviewState.strStatus))
@@ -282,7 +289,9 @@ namespace Client
 		[[nodiscard]] bool_t Is_CompleteSequencePlaying() const noexcept {
 			return !m_CompleteSequencePatternIds.empty();
 		}
+		void Request_PreviewReset();
 		bool_t Request_PreviewPause();
+		bool_t Request_PreviewResume();
 		bool_t Request_PatternScrub(std::string_view patternId, std::uint32_t clockMs, std::string& outStatus);
 		bool_t Request_BundleScrub(std::uint32_t clockMs);
 		// Detail Preview keeps its actor animation and starts at this edited Bone Collider's window.
@@ -722,6 +731,10 @@ namespace Client
 		void Queue_SequencePreview(const COMPOSITION_ANIMATION_SEQUENCE_RESOURCE& sequence);
 		void Queue_ResourcePatternPreview(KOUKU_SAYDON_COMPOSITION_PATTERN pattern,
 			const std::string& targetAssetName);
+		bool_t Has_StaleLocalPreviewSnapshot() const;
+		bool_t Refresh_LocalPreviewSnapshot(std::uint32_t clockMs, bool_t paused, std::string& outStatus);
+		void Stop_StaleLocalPreview(std::string_view status);
+		bool_t Queue_BundleDocumentPreview(std::string_view bundleId, std::uint32_t clockMs, bool_t paused);
 		bool_t Queue_PatternDocumentPreview(KOUKU_SAYDON_COMPOSITION_DOCUMENT previewDraft,
 			std::string_view patternId, std::uint32_t startClockMs, std::string& outStatus, bool_t startPaused);
 		void Queue_SequenceEffectPreview(const KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE& source);
@@ -777,6 +790,7 @@ namespace Client
             const KOUKU_SAYDON_COMPOSITION_PATTERN* parent);
 		void Render_SummonResources();
 		void Render_SummonBoxDetails(const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern);
+		std::uint32_t Resolve_SoundDurationMs(const KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE& resource);
 		void Render_PresentationResources(KOUKU_SAYDON_PRESENTATION_KIND kind);
 		void Render_CameraAuthoring(std::string_view shotId, std::string_view patternId = {}, std::string_view occurrenceId = {});
 		void Render_CameraWindow();
@@ -895,6 +909,17 @@ namespace Client
 			EFFECT_TOOL_KOUKU_EFFECT_TREE koukuTree;
 			std::vector<std::size_t> koukuRows;
 		};
+		struct SOUND_RESOURCE_VIEW_CACHE final
+		{
+			bool valid = false;
+			std::uint64_t draftGeneration = 0u;
+			std::string search;
+			std::vector<KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE> rows;
+			std::unordered_map<std::string, std::size_t> sourceIndices;
+		};
+		SOUND_RESOURCE_VIEW_CACHE m_SoundSourceView, m_CreatedSoundView;
+		std::unordered_map<std::string, std::uint32_t> m_SoundNativeDurations;
+		char_t m_SoundResourceSearch[256]{};
 		EFFECT_RESOURCE_VIEW_CACHE m_EffectSourceView, m_CreatedEffectView;
 		std::unordered_map<std::string, std::string> m_EffectResourceOwners;
 		std::vector<KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE> m_PresentationResourceInventory;
@@ -1053,11 +1078,15 @@ namespace Client
 		KOUKU_SAYDON_COMPOSITION_PATTERN m_PendingPatternPreview;
 		std::string m_strPendingPreviewTargetAsset;
 		KOUKU_PREVIEW_STATE m_PreviewState;
+		std::string m_strLocalPreviewSnapshotId;
+		std::uint64_t m_iLocalPreviewSnapshotGeneration = UINT64_MAX;
+		bool_t m_bLocalPreviewSnapshotIsBundle = false;
 		std::vector<std::string> m_CompleteSequencePatternIds;
 		std::function<bool_t(std::string_view, std::string&)> m_CompleteSequenceAdmission;
 		std::size_t m_iCompleteSequenceIndex = 0u;
 		bool_t m_bCompleteSequenceAdmitted = false;
 		KOUKU_PREVIEW_TRANSPORT m_ePendingTransport = KOUKU_PREVIEW_TRANSPORT::NONE;
+		bool_t m_bExplicitPreviewReset = false;
 		std::uint32_t m_iPendingSeekMs = 0u;
 		std::uint32_t m_iCursorMs = 0u;
 		std::string m_strCursorPatternId;

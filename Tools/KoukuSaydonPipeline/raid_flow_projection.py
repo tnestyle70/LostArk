@@ -15,15 +15,16 @@ def project_raid_gates(action: dict[str, Any], sequence: dict[str, Any]) -> list
     result = []
     for gate, intro_number, clear_number, primary in (
         ("GATE1", 4, None, "boss.kakulsaydon.g1.saydon"),
-        ("GATE2", 3, 5, "boss.kakulsaydon.g2.kouku"),
+        ("GATE2", 3, None, "boss.kakulsaydon.g2.kouku"),
         ("GATE3", 7, None, "boss.kakulsaydon.g3.saydon"),
+        ("BINGO", None, 9, "boss.kakulsaydon.bingo.saydon"),
     ):
         flow = flows.get(gate)
         if not flow or not flow["entries"]:
             continue
-        intro = sequences[f"KAKULSAYDON_G1_PATTERN_{intro_number}"]
+        intro = sequences[f"KAKULSAYDON_G1_PATTERN_{intro_number}"] if intro_number else None
         clear = sequences[f"KAKULSAYDON_G1_PATTERN_{clear_number}"] if clear_number else None
-        if intro.get("gateId") != gate or not intro.get("enterCombatOnFinish", False):
+        if intro is not None and (intro.get("gateId") != gate or not intro.get("enterCombatOnFinish", False)):
             raise ValueError(f"{gate} raid intro must be its authored combat handoff sequence")
         entries = []
         for row in flow["entries"]:
@@ -32,7 +33,7 @@ def project_raid_gates(action: dict[str, Any], sequence: dict[str, Any]) -> list
                 raise ValueError(f"{gate} flow cannot admit unavailable {row['targetId']}")
             entries.append(dict(row))
         arrivals = []
-        intro_ready = False
+        intro_ready = gate == "BINGO"
         durations = {}
         for phase, pattern in (("INTRO", intro), ("CLEAR", clear)):
             if pattern is None:
@@ -62,13 +63,13 @@ def project_raid_gates(action: dict[str, Any], sequence: dict[str, Any]) -> list
         if not intro_ready:
             continue
         entry_sequences = {worlds[box["worldId"]]["sequenceInstanceId"]
-                           for box in intro.get("worldOccurrences", [])
+                           for box in (intro or {}).get("worldOccurrences", [])
                            if gate == "GATE1" and box.get("enabled", True) and box["startMs"] == 0}
         if len(entry_sequences) > 1:
             raise ValueError("Gate 1 entry requires one unambiguous World sequence at time zero")
         result.append({"gateId": gate, "flowId": flow["flowId"],
                        "sequenceCompositionId": sequence["compositionId"], "sequenceRevision": sequence["revision"],
-                       "introPatternId": intro["patternId"], "introDurationMs": durations["INTRO"],
+                       "introPatternId": intro["patternId"] if intro else "", "introDurationMs": durations["INTRO"],
                        "clearPatternId": clear["patternId"] if clear else "", "clearDurationMs": durations["CLEAR"],
                        "primaryBossPlacementId": primary, "entries": entries, "arrivals": arrivals,
                        "entrySequenceInstanceId": next(iter(entry_sequences), "")})

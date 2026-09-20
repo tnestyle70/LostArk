@@ -2583,7 +2583,7 @@ lease에 연결한다. 저장된 DURATION은 timing 존재와 PRODUCT 의미의 
 
 근거와 실제 적용·검증 상태는09-19 KOUKU_RENDERING_QUALITY 및 KOUKU_BOSS_SOURCE_BASIS RESULT,
 09-18 KOUKU_PATTERN_RUNTIME_REPAIR RESULT G10을 따른다.
-=======
+
 ### 새 섬 맵 추출에서 드러난 변형 도구 전제와 프로토콜 번호 (2026-09-19)
 
 - `build_map_material_variants.py`는 쿠크 한 Area로만 검증됐었다. 마하라카 섬에서 네 전제가 깨졌다: 패키지 루트 부모 재질은 UModel이 이름만 적는다(`zzzbg_simple_opa_inst`), 베이스 추출기는 역할 텍스처만 팩에 복사하므로 "UModel이 내보냄"은 "팩에 있음"이 아니다, `cook`이 `--package-root`를 넘기면서 인자를 정의하지 않았다, 메시 슬롯 수를 넘는 component override가 있다(UE3는 조회하지 않는다). 새 Area마다 inventory `--expect-*`를 실측값으로 넘기고 첫 실패를 원인별로 닫는다. 세부는 09-19 MAHARAKA_ISLAND_LEVEL RESULT.
@@ -2635,15 +2635,44 @@ lease에 연결한다. 저장된 DURATION은 timing 존재와 PRODUCT 의미의 
 - Server는 접속할 월드 하나만이 아니라 시작 시 등록된 여섯 world와 각 navigation을 초기화한다. MAHARAKA를 당장 플레이하지 않아도 `MAHARAKA.worldbootstrap` 또는 `LV_OCN_EVENTIS_MHP.navgrid`가 없으면 listener 생성 전에 종료한다. `server connection failed`에서 IP를 변경하기 전에 Server 초기화 오류를 확인한다.
 - 특정 encounter만 Publish한 결과와 Server 전체 준비를 구분한다. Product는 compile/deploy 경로이고 데이터 게시나 실제 Server 시작 검증을 자동 수행하지 않는다. 전체 world 정본은 `Publish-WorldGameplay.ps1 -Mode Publish -WorldId ALL`, 빠진 navigation은 `Publish-ServerNavigation.ps1 -Mode Publish -AreaId <실제 AreaId>`로 게시한다. 누락 산출물을 직접 작성하거나 다른 world 파일로 대체하지 않는다. 정상 초기화와 실제 endpoint listener/TCP 도달을 따로 확인한다.
 
-
 ### 2026-09-20 재검토: 별도 조명 입력·Box/Motion·capture 중심
-
 - native character ambient를 직접광색에 곱하면 G1처럼 directional0인 장면에서 몸체가 검어진다. 선택적 sourceCharacterAmbient는 직접광과 독립이며 기본0, native map은 제외한다. source SH와 uniform 근사를 구분한다.
 - profile raw quality와 active multiplier를 혼동해 부모 multiplier를 재상속하지 않는다. V1 explicit effect bloom은 scene intensity와 선택 관계다. LUT 런타임 경로는 기존 `Map/Lighting/KoukuSaydon`을 사용한다.
 - 휠윈드 Pattern World Box의 TRS를 손 Object Motion에 다시 쓰지 않는다. saved Motion→Box→live bone 순서로 합성한다. 고정 Pattern을 편집하는 quick panel Preview는 현재 선택이 아니라 원 소유 Pattern ID를 전달해야 한다.
 - ALT V captureUseModelCenter는 실제 cube의 첫 pose 월드 중심을 사용한다. 그 중심이 발밑이면 capture도 내려간다. screen Transform을 bounds로 덮지 말고 이미지·액자·cube의 같은 camera rig에 적용한다.
 - Complete Play는 큐 등록 수가 아니라 actual prepared/current/failed0을 확인한 뒤 typed start/READY를 보낸다. Debug 준비 제한과 시작 후 gameplay 시간은 분리한다.
 - 카메라 source 끝과 긴 World 행 끝을 구분한다. 완료 row guard는 Area 재획득을 막되 늦은 Seek의 기존 camera lease도 인계·복귀해야 한다. 상세 검증은09-20 RAID_PRESENTATION_REPAIR_IMPLEMENTATION_RESULT G09.
+- Stage보다 늦게 끝나는 Logic/World/Summon 행을 늘릴 때 기존 명시 `pattern.durationMs`도 확인한다. Stage 길이는 애니메이션 진행, 명시 수명은 남은 행 보유를 담당한다. 검증기의 행 범위 검사를 느슨하게 하거나 Stage를 늘려 누락을 숨기지 않는다. 개별 패턴이 Unavailable로 격리돼도 전체 Publish는 성공할 수 있으므로, 변경 패턴의 inventory와 실제 `Prepare_PatternFlow` 허용 결과까지 확인한다.
+- 돌진 이동과 머리 방향이 반대라면 Effect에 보정 회전을 먼저 넣지 않는다. 실제 설치 CModel의 해당 clip 전방과 Server의 world 이동 벡터·body yaw를 따로 측정한다. Kouku 거미는 +X 모델 전방에 −90도 보정이 맞으며 기존 +90은 역방향이었다. 수정 시 body-local 피해 영역과 별도 카운터 방향 조건도 함께 검사한다.
+- yaw처럼 음수를 허용하는 계약은 validator와 Server parser뿐 아니라 bootstrap 숫자 formatter도 signed 경로여야 한다. `PATTERNLOGICCHARGE`의 yaw는 기존 `Format-InvariantSignedFloat`, 거리는 nonnegative formatter를 사용한다. 허용 범위 안의 음수와 양수 모두 실제 행 생성으로 검증한다.
+
+### 쿠크 기본 방향광 복구와 시퀀스 소비자 (2026-09-20)
+
+- directional RGB를 복구할 때 scene LIGHT_DESC의 기본 receiver=ALL까지 확인한다. map light의 UNBAKED만으로 scene directional의 baked 중복을 막지는 못한다. Scene Profile light.receiver와 region.receiver는 기존 GPU 수광 계약을 사용하고, 정상 카드미로/Mario 영역의 명시ALL을 보존한다. 노출1에서 직접광을 복구한 결과와 과거 노출2의 전체 HDR 결과를 동일하다고 기록하지 않는다.
+- 피자 소환은 서버 spawn10 성공만 확인하지 않는다. ClientReplication dependent archetype admission까지 실제 G2_KOUKU와 owner entity를 연결해야 한다. stationary Showtime도 Saydon의 +X 전방을 moving pursuit와 같은 -90도 yaw로 계산한다.
+- Complete Play 활성 guard가 로컬 Reset/Play를 소비하기 전에 return/continue하면 Save가 성공해도 편집 재생은 이전 서버 소유 상태에 막힌다. 명시 사용자 Reset과 내부 선택의 Stop_Preview를 구분하고 기존 typed STOP 뒤 최신 로컬 요청을 소비한다. 시퀀스 종료의 책/맵 준비 비용과 HUD 표시 bool 변경을 구분한다.
+
+- Rendering Workbench의 임시 노출/LUT/FXAA/Bloom 비교값은 다음 프레임 camera-region 보간 전에 원래 품질로 복원해야 한다. 비교된 현재 exposure에 다시 배율을 곱하면 프레임마다 밝기가 누적된다. 새 profile commit은 이전 복원 snapshot을 폐기하고, 닫기/Level 변경은 비교 옵션을 해제한다. Save는 catalog만 직렬화하며 임시 renderer 값을 저작값으로 역수집하지 않는다.
+
+
+### 연출 원본 음성·자막과 재생 시계
+
+- WAV가 이미 원본 전체 layer/길이를 담고 있어도 SOUND 행이 짧으면 끝이 잘린다. 누락 판단은 bank Event→Action→media 목록과 설치 WAV, 실제 occurrence 시작·끝을 함께 대조한다. Stop event와 시작 지연·fade도 재생 계약에 포함한다.
+- World 연출의 sound는 actor별로 시작하지 않고 instance별 stable soundTrackId로 시작한다. 배우가 여러 명이면 같은 음성을 중복 재생하지 않도록 한다. sound tail은 visual/camera/전투 잠금 수명과 분리하고 자연 완료 때만 보존한다. Stop/Seek/Level 정리는 owner handle을 종료한다.
+- 외부 시계로 World를 매 프레임 샘플링하는 편집기/연출은 PLAYING의 continuous seek와 사용자의 discontinuous scrub을 구분한다. 매 프레임 paused=true 또는 기본 discontinuous Seek를 적용하면 원본 사운드가 계속 멈추거나 재생성된다.
+- JSON source가 codec상 유효해도 pretty-print로 16MiB 문서 경계를 넘을 수 있다. 기존 compact World 문서의 저장 스타일을 보존하고 실제 publisher를 통과시킨다. 개별 source extraction·설치·게시·실제 화면/청취 확인을 구분한다.
+
+
+- 고정 장판의 생성 위치를 유지하려면 BOSS anchor를 MAP으로 바꾸기 전에 follow 정책을 확인한다. 기존 BOSS pivot의 생성 시점 snapshot과 followBoss=false 경로는 위치·회전·크기를 보존한다. exact asset의 내부 transform/attachment도 끝단 decal world까지 확인하고 정상인 다른 색/shape 행은 바꾸지 않는다.
+- 동적 발판의 Server Y가 맞아도 Client 정적 navigation 기반 이동 예측이 매 frame 덮을 수 있다. Server support 포함 판정과 snapshot.canPredictMove, Character의 예측/보간 분기를 같이 확인한다. 입력 command 송신과 로컬 예측 허용은 별개 계약이다.
+- XZ teleport는 기존 높이를 유지하는 계약이다. 바닥 착지가 필요한 한 occurrence만 별도 typed policy로 분리하고 공유 logic definition의 다른 소비자를 확인한다. 현재 root Y만 보정하면 다음 Stage가 잔여 offset을 origin으로 캡처할 수 있으므로 실제 마지막 curve와 Stage/Pattern 종료 높이까지 검사한다.
+
+### 2026-09-20 Sound 리소스 목록과 구간 편집
+
+- 대형 Sound 목록은 매 프레임 resource 구조체를 복사하거나 화면 밖 Selectable을 모두 제출하지 않는다. source는 Refresh/검색 변경, Created는 draft generation/검색 변경에서만 재구성하고 가시 행만 그린다. 파일 길이는 선택한 WAV만 확인하고 실패도 cache해 반복 I/O를 막는다. physical inventory의 임시3000ms를 실제 WAV 길이로 clamp하면 긴 음원을 편집할 수 없어진다.
+- 사운드 바 왼쪽 trim은 timeline start와 soundSourceStartMs를 같은 양만큼 변경해야 WAV 앞부분이 잘린다. timeline start만 바꾸면 동일한 처음 부분을 늦게 재생한다. 오른쪽은 길이, 가운데 이동은 timeline 위치만 변경한다. Source In/Out 저장·Play 소비자와 별도로 서버/로컬 preview 전환의 이전 문서 재생 문제를 검증한다.
+- 누적 재생 시계에 정수 ms 표시값을 매 프레임 되쓰지 않는다. double로 dt를 더해도 표시값을 다시 대입하면 소수부가 소실되어 60Hz·50초에서 타임라인이 2초 늦어질 수 있다. 내부 clock의 분수부를 보존하고 외부 clock·명시 Seek·capture 경계 이동만 지정 시각을 적용한다. 저장·재로드 성공과 오디오/시각 시계 동기화는 별도로 검증한다.
+- Save의 디스크 성공은 실행 중 Preview snapshot 갱신을 뜻하지 않는다. local snapshot의 draft generation을 추적하고 변경 저장 뒤 이전 재생을 STOP하며 다음 Play는 최신 문서를 사용한다. Scrub/Resume도 stale 문서에 transport만 보내지 않는다. 준비 요청을 최신으로 표시한 뒤 실제 admission이 실패하면 같은 Pattern뿐 아니라 다른 Pattern 교체도 STOP으로 정리한다. pending Play→edit→Save와 실패→Resume를 함께 검사한다. 부모 바 밖의 음원은 자식 Pattern 및 Server/product owner도 구분하고 임의로 모두 mute하지 않는다.
 - **마리오 lane의 `rightSign`은 그 lane을 비추는 follow 카메라의 화면 오른쪽에 손으로 맞춘 값이라, 어긋나면 ←/→가 반대로 움직인다 (2026-09-20 `Mario4_Tigger_2 -> Mario4_Tigger_5`)**: Client는 화면 기준 LEFT/RIGHT만 보내고 Server가 `Configure_MarioRail`에서 `normalize(출구 위치 - 이동을 마친 위치) * MARIO_LANES의 rightSign`(`GameRoom_Internal.h`)을 레일 오른쪽으로 삼는다. 그 자리를 비추는 shot(Client는 박스가 겹치면 우선순위가 가장 높은 것, 동률이면 목록 앞을 고르고 `플레이어 위치 + eyeOffset`을 월드 오프셋으로 적용한다)의 화면 오른쪽과 부호가 반대면 입력이 뒤집힌다. 화면 오른쪽은 왼손 좌표계에서 `(fz, -fx)`이고 `(fx, fz)`는 `lookAtOffset - eyeOffset`의 수평 성분이다. lane을 추가하거나 카메라 shot·트리거 위치를 옮기면 모든 lane에서 (→ 방향 · 화면 오른쪽) 내적이 양수인지 수치로 다시 확인한다(`out/MarioDirectionCheck/mario_direction_check.py`, 방법은 `2026-09-20_KOUKU_MARIO4_DIRECTION_INVERT_RESULT.md` 3절). 서버 계약 테스트의 lane 표(`ServerGameplayContractTests_DebugTeleport.cpp`)는 서버 표의 복사본이라 함께 고쳐야 하며, 이 lane은 17행짜리 테스트 표에 없어 부호가 한 번도 단언되지 않았다.
 - **쿠크 컷신 중 다른 무대 구역이 보이던 원인과 격리 규칙 (2026-09-20)**: 쿠크 맵의 배치 3,369개는 서로 떨어진 무대 구역 17곳(60m 연결 거리로 묶은 군집, 원본 sub-level `SL01~SL05`·`SCENE01A`와 대응)에 흩어져 있는데 제품 로딩은 전체 scope이고 카메라 far가 `max(2000, span*8)`라 컷신 카메라가 다른 구역을 그대로 그렸다. 컷신 중 주변을 숨기는 범용 장치는 없었고(`KAKUL_ARENA_HIDDEN_PLACEMENT_IDS`와 게이트 오브젝트 처리는 특정 연출 전용) 원본에서도 주변 숨김 규칙은 확인하지 못했다(앵콜 컷신 SCENE07A의 `ToggleHidden`은 컷신 출연 액터를 컷신 동안만 보이게 한다). 지금은 `Is_CinematicPresentationActive()`가 true인 동안 카메라와 전방 40m/100m 표본점이 속한 구역(AABB+80m)만 그리고(로컬 플레이어는 기준점이 아니다) 나머지 구역의 배치는 `CMapPlacementRuntime::Set_RuntimeSuppressed` 오버레이로 숨긴다. 논리 표시(`Set_RuntimeVisible`)는 건드리지 않으므로 팝업북 아레나 교체 같은 기존 로직과 값이 충돌하지 않고, 복원은 오버레이 해제 하나다. 지금 재생 중이거나 자세를 유지 중인 시퀀스가 소유한 배치(`CWorldSequencePlayer::Collect_OwnedPlacements`)와 스케일 100 이상 배경물(5개)은 숨기지 않는다. 지킬 것: 새 무대를 다른 무대에서 60m 안에 두면 한 구역으로 합쳐져 함께 보인다. 구역에서 300m 이상 떨어진 컷신 카메라(2관문 입장 후반 shot, 지하 y -100)는 구역 배치를 전부 숨기고 시퀀스 소유 대상만 그린다. Deploy 소품 7개와 NPC·보스·플레이어 엔티티는 이 규칙의 대상이 아니다. 2차 수정(같은 날): 처음에는 로컬 플레이어 위치와 모든 시퀀스의 바인딩(814개)을 유지·면제 기준에 넣었는데, 플레이어가 다른 무대(2관문 SL03)에 서 있는 채로 F1 Workbench 1관문 팝업북 미리보기를 재생하자 그 무대의 배치 92개가 400m 밖 먼 조각으로 남았다(로그 `stageSuppressed=2402` = 유지 구역 팝업북 아레나 + SL03). 유지 구역은 카메라 기준점으로만 정하고, 면제는 재생 중인 시퀀스의 것으로 좁힌다. 검증 하네스가 "플레이어는 컷신 무대에 있다"고 가정하면 이런 누수를 놓치므로 플레이어를 다른 무대에 둔 경우를 항상 함께 계산할 것. 로그 `stageKept=x,z|x,z`가 유지 구역 중심이다. 근거와 검증 수치는 `.md/GB/09-20/2026-09-20_KOUKU_CUTSCENE_HIDE_SURROUNDINGS_RESULT.md` 10절에 있다.
 - **컷신 항목(패턴) 하나를 Boss 탭과 Sequence 탭에 추가하는 절차와 함정 (2026-09-20 `앵콜컷신`)**: 두 탭은 별개 문서다. Boss 탭은 `Data/KoukuSaydon/Gate1/KoukuSaydonComposition.json`, Sequence 탭은 `Data/Compositions/Sequences/KoukuSaydonSequenceComposition.json`이고, 같은 컷신도 각 문서에 패턴이 따로 있으며(ID 접두사만 다르다) 둘 다 `camerashots.json`의 shot과 `Data/Effects/V2`의 페이드 이펙트를 참조한다. 게이트별 트리는 `KoukuSaydonActionWorkbench.cpp`의 `Render_PatternTree`가 gateId와 folder/bundle 유무로 만들며, 폴더 없는 패턴은 게이트 바로 아래 `표시이름 [Actor]`로 나온다. `Tools/KoukuSaydonPipeline/build_gate_cutscenes_g12.py`는 CONFIGS 전체를 다시 만들고 id가 지금 문서와 어긋나 있어(id=8이 현재는 `1관문_연출`) 새 컷신을 위해 다시 돌리지 않는다. 컷신 하나만 추가할 때는 `Tools/KoukuSaydonPipeline/build_encore_cutscene.py`처럼 기존 `빙고_최종엔딩씬` 패턴을 복제하고 쓰기 직전에 baseline을 다시 확인한 뒤 원자 교체한다. Composition 두 문서는 파이썬 indent=2 + CRLF로 다시 써도 바이트가 같지만 `camerashots.json`은 실수 표기가 섞여 있어 텍스트 삽입으로만 고친다. 자막·가짜 클리어 UI·깨진 유리·배우 굽기(slot a/b 밖의 skelcontrolstrength 무시)는 이 파이프라인이 표현하지 못하므로, 패턴이 생겼다고 그 요소가 들어간 것이 아니다. 근거와 미포함 목록은 `2026-09-20_KOUKU_ENCORE_COMPOSITION_ENTRY_RESULT.md`에 있다.

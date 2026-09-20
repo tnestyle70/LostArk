@@ -2,7 +2,7 @@
   "schema": "lostark.world-sequences",
   "formatVersion": 3,
   "areaId": "LV_LUT_HEARTRB_ED",
-  "revision": 19,
+  "revision": 20,
   "objectResources": [
     {
       "objectId": "world.object.valtan.source-preview.body",
@@ -1080,6 +1080,26 @@
           "holdLastFrame": true,
           "sourceStartMs": 201
         }
+      ],
+      "soundTracks": [
+        {
+          "soundTrackId": "sound.valtan.source.gate1-entrance.lictusappear_foley",
+          "assetId": "Sound/Valtan/Scenes/scene_heartrb_ed_lictusappear_foley.wav",
+          "startMs": 300,
+          "durationMs": 14000,
+          "volume": 1
+        }
+      ],
+      "subtitleTracks": [
+        {
+          "subtitleTrackId": "subtitle.valtan.cin.37053_01_02",
+          "stringId": "cin.37053_01_02",
+          "text": "머리는 내 것이다, 루가루!",
+          "position": "BALLOON",
+          "slotId": "actor",
+          "startMs": 3733,
+          "durationMs": 1800
+        }
       ]
     },
     {
@@ -1415,6 +1435,17 @@
           "loop": false,
           "holdLastFrame": true,
           "sourceStartMs": 84
+        }
+      ],
+      "subtitleTracks": [
+        {
+          "subtitleTrackId": "subtitle.valtan.cin.37053_01_01",
+          "stringId": "cin.37053_01_01",
+          "text": "새로운 사냥감이군. ",
+          "position": "BALLOON",
+          "slotId": "actor",
+          "startMs": 7500,
+          "durationMs": 2200
         }
       ]
     },
@@ -2234,6 +2265,35 @@
             71.42857142857143,
             71.42857142857143
           ]
+        }
+      ],
+      "soundTracks": [
+        {
+          "soundTrackId": "sound.valtan.source.entrance.valtanappear",
+          "assetId": "Sound/Valtan/Scenes/scene_heartrb_ed_valtanappear.wav",
+          "startMs": 1800,
+          "durationMs": 25659,
+          "volume": 1
+        }
+      ],
+      "subtitleTracks": [
+        {
+          "subtitleTrackId": "subtitle.valtan.cin.37053_03_01",
+          "stringId": "cin.37053_03_01",
+          "text": "나, 는...",
+          "position": "NORMAL",
+          "slotId": "",
+          "startMs": 19289,
+          "durationMs": 1300
+        },
+        {
+          "subtitleTrackId": "subtitle.valtan.cin.37053_03_02",
+          "stringId": "cin.37053_03_02",
+          "text": "마수군단장... 발탄...!",
+          "position": "NORMAL",
+          "slotId": "",
+          "startMs": 20645,
+          "durationMs": 3500
         }
       ]
     },
@@ -3545,6 +3605,35 @@
             0.7142857142857143
           ]
         }
+      ],
+      "soundTracks": [
+        {
+          "soundTrackId": "sound.valtan.source.finale.valtandeath",
+          "assetId": "Sound/Valtan/Scenes/scene_heartrb_ed_valtandeath.wav",
+          "startMs": 50,
+          "durationMs": 24912,
+          "volume": 1
+        }
+      ],
+      "subtitleTracks": [
+        {
+          "subtitleTrackId": "subtitle.valtan.cin.37053_04_01",
+          "stringId": "cin.37053_04_01",
+          "text": "안돼, 안돼!",
+          "position": "NORMAL",
+          "slotId": "",
+          "startMs": 5460,
+          "durationMs": 2300
+        },
+        {
+          "subtitleTrackId": "subtitle.valtan.cin.37053_04_02",
+          "stringId": "cin.37053_04_02",
+          "text": "크으으아아아악! 카마... 인...!",
+          "position": "NORMAL",
+          "slotId": "",
+          "startMs": 7860,
+          "durationMs": 6500
+        }
       ]
     },
     {
@@ -3884,6 +3973,35 @@
             0.7142857142857143,
             0.7142857142857143
           ]
+        }
+      ],
+      "soundTracks": [
+        {
+          "soundTrackId": "sound.valtan.source.trash.valtanskill_lock",
+          "assetId": "Sound/Valtan/Scenes/scene_heartrb_ed_valtanskill_lock.wav",
+          "startMs": 10,
+          "durationMs": 8698,
+          "volume": 1
+        }
+      ],
+      "subtitleTracks": [
+        {
+          "subtitleTrackId": "subtitle.valtan.cin.37053_09_01",
+          "stringId": "cin.37053_09_01",
+          "text": "이 버러지들...",
+          "position": "UPPER",
+          "slotId": "",
+          "startMs": 623,
+          "durationMs": 1800
+        },
+        {
+          "subtitleTrackId": "subtitle.valtan.cin.37053_09_02",
+          "stringId": "cin.37053_09_02",
+          "text": "다... 짓뭉개주마!",
+          "position": "UPPER",
+          "slotId": "",
+          "startMs": 3276,
+          "durationMs": 2500
         }
       ]
     },
@@ -4647,6 +4765,15 @@
             0.7142857142857143,
             0.7142857142857143
           ]
+        }
+      ],
+      "soundTracks": [
+        {
+          "soundTrackId": "sound.valtan.source.roar.valtanskill_widearea",
+          "assetId": "Sound/Valtan/Scenes/scene_heartrb_ed_valtanskill_widearea.wav",
+          "startMs": 50,
+          "durationMs": 10553,
+          "volume": 1
         }
       ]
     },
@@ -8344,6 +8471,15 @@
             0.7692307692307692,
             0.7692307692307692
           ]
+        }
+      ],
+      "soundTracks": [
+        {
+          "soundTrackId": "sound.valtan.source.phase2.valtanhowl",
+          "assetId": "Sound/Valtan/Scenes/scene_heartrb_ed_valtanhowl.wav",
+          "startMs": 50,
+          "durationMs": 7500,
+          "volume": 1
         }
       ]
     },

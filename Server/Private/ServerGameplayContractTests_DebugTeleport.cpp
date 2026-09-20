@@ -324,6 +324,11 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 				tests.Require(std::any_of(room->m_WorldEntities.begin(), room->m_WorldEntities.end(), [](const auto& entity) { return entity.iNetEntityId == 987651u; }) &&
 					std::any_of(room->m_WorldEntities.begin(), room->m_WorldEntities.end(), [](const auto& entity) { return entity.iNetEntityId == 987652u; }),
 					"Arena start preserves unrelated NPC and Esther entities");
+				// The product reset restores repeatable triggers; this duplicate-request fixture
+				// reloads its deliberate once-only policy before consuming the fresh latch.
+				room->m_ServerTriggerSystem.Set_HonourTriggerOnce(true);
+				tests.Require(room->m_ServerTriggerSystem.Initialize(placements, latchStatus),
+					"Duplicate reset fixture explicitly restores its authored once-only policy");
 				if (once != placements.end())
 					tests.Require(room->m_ServerTriggerSystem.Debug_Activate(123u, once->strPlacementId, false, room->m_Players, 3u, transfers, acceptSequence) == DEBUG_WORLD_PLAYBACK_RESULT::ACCEPTED,
 						"Arena start rearms the actual once-only entry sequence trigger");

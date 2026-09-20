@@ -393,7 +393,7 @@ bool LostArk::Server::CGameRoom::Update_PlayerAttachment(
 				serverTick, player.iAttachmentReleaseTick))
 		{
 			(void)Release_PlayerAttachment(
-				player, ownerEntityId, 0.f, 0u, liveOwner, liveOwner ? 1500u : 0u,
+				player, ownerEntityId, 0.f, 0u, false, 0u,
 				0u == serverTick ? 1u : serverTick);
 			return false;
 		}

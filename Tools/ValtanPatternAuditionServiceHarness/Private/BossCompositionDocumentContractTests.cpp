@@ -665,6 +665,66 @@ namespace
 		Require(!sequenceWorkbench.Request_CompleteSequencePlay(status, "BINGO"), "Gate without an entry replayed another Gate");
 		CKoukuSaydonActionWorkbench actionWorkbench;
 		Require(!actionWorkbench.Request_CompleteSequencePlay(status), "Action workspace admitted Sequence Complete Play");
+		Require(KOUKU_SAYDON_COMPOSITION_PATTERN{}.fAnimationRootHorizontalScale == 1.0,
+			"omitted horizontal root scale did not keep its original displacement");
+		for (const double scale : { 0.0, 0.5 })
+		{
+			auto scaled = sequenceGood;
+			scaled.iRevision = sequence.Get_LastGood().iRevision;
+			for (auto& row : scaled.Patterns) row.fAnimationRootHorizontalScale = scale;
+			RequireEditorStep(CKoukuSaydonCompositionDocument::Parse_Text(
+				CKoukuSaydonCompositionDocument::Serialize(scaled), roundTrip, status), status, "horizontal root scale round trip");
+			Require(roundTrip == scaled, "horizontal root scale serialization changed authored sequence rows");
+			RequireEditorStep(sequence.Save_Atomic(scaled, status), status, "save horizontal root scale");
+			RequireEditorStep(sequence.Reload(status), status, "reload horizontal root scale");
+			Require(std::all_of(sequence.Get_LastGood().Patterns.begin(), sequence.Get_LastGood().Patterns.end(),
+				[&](const auto& row) { return row.strLoadError.empty() && row.fAnimationRootHorizontalScale == scale; }) &&
+				ReadText(actionPath) == actionBytes, "horizontal root scale save/reload lost values or changed the Action owner");
+		}
+		auto invalidRootScale = CKoukuSaydonCompositionDocument::Serialize(sequence.Get_LastGood());
+		Require(ReplaceOnce(invalidRootScale, "\"animationRootHorizontalScale\": 0.5", "\"animationRootHorizontalScale\": 1.5"),
+			"could not stage out-of-range horizontal root scale");
+		RequireEditorStep(CKoukuSaydonCompositionDocument::Parse_Text(invalidRootScale, roundTrip, status), status,
+			"isolate malformed horizontal root scale");
+		Require(std::any_of(roundTrip.Patterns.begin(), roundTrip.Patterns.end(), [](const auto& row) {
+			return !row.strLoadError.empty() && row.strPreservedJson.find("animationRootHorizontalScale") != std::string::npos; }),
+			"malformed horizontal root scale did not quarantine and preserve its Pattern");
+		Require(WriteText(sequencePath, sequenceBytes), "could not restore root scale fixture");
+		RequireEditorStep(sequence.Reload(status), status, "restore Sequence owner after root scale test");
+        // Saving and resetting a Sequence must leave a fresh local request
+        // available while MainApp waits for an old Server-owned run to stop.
+        const auto sound = std::find_if(gateOne.PresentationOccurrences.begin(), gateOne.PresentationOccurrences.end(),
+            [&](const auto& box) { return std::any_of(sequenceGood.PresentationResources.begin(), sequenceGood.PresentationResources.end(),
+                [&](const auto& resource) { return resource.strResourceId == box.strResourceId &&
+                    resource.eKind == KOUKU_SAYDON_PRESENTATION_KIND::SOUND; }); });
+        Require(sound != gateOne.PresentationOccurrences.end(), "Gate 1 entry has no saved Sound row");
+        auto editedSound = *sound;
+        editedSound.iStartMs += 137u;
+        RequireEditorStep(sequenceWorkbench.Set_PresentationBox(gateOne.strPatternId, editedSound, status), status, "edit Sequence Sound start");
+        RequireEditorStep(sequenceWorkbench.Save(status), status, "save Sequence Sound timing");
+        const auto soundRevision = sequenceWorkbench.Get_Composition().iRevision;
+        sequenceWorkbench.Request_PreviewReset();
+        Require(sequenceWorkbench.Has_PendingPreviewReset() && !sequenceWorkbench.Has_PendingLocalPreviewRequest(),
+            "Reset did not expose its stop edge or retained an obsolete local request");
+        KOUKU_PREVIEW_TRANSPORT resetTransport;
+        std::uint32_t resetMs = 0u;
+        Require(sequenceWorkbench.Consume_PreviewTransportRequest(resetTransport, resetMs) &&
+            resetTransport == KOUKU_PREVIEW_TRANSPORT::STOP && !sequenceWorkbench.Has_PendingPreviewReset(),
+            "Sequence Reset was not a single consumable stop request");
+        RequireEditorStep(sequenceWorkbench.Request_PatternPreview(gateOne.strPatternId, 0u, status), status, "local Play after Sound Save and Reset");
+        Require(sequenceWorkbench.Has_PendingLocalPreviewRequest() && sequenceWorkbench.Has_PendingLocalPreviewRequest(),
+            "waiting for Server stop consumed the pending Sequence request");
+        KOUKU_SAYDON_COMPOSITION_PATTERN localSequence;
+        std::uint32_t localClock = 999u; bool_t localPaused = true; std::string localTarget;
+        Require(sequenceWorkbench.Consume_PatternPreviewRequest(localSequence, localClock, localPaused, localTarget) &&
+            localClock == 0u && !localPaused && !sequenceWorkbench.Has_PendingLocalPreviewRequest() &&
+            sequenceWorkbench.Get_PatternPreviewDocument().iRevision == soundRevision &&
+            std::any_of(localSequence.PresentationOccurrences.begin(), localSequence.PresentationOccurrences.end(),
+                [&](const auto& box) { return box.strOccurrenceId == editedSound.strOccurrenceId && box.iStartMs == editedSound.iStartMs; }),
+            "local Sequence Play retained stale Sound timing or required Complete Play");
+        Require(ReadText(actionPath) == actionBytes, "Sequence Sound save changed the Action document");
+        Require(WriteText(sequencePath, sequenceBytes), "could not restore Sound timing fixture");
+        RequireEditorStep(sequenceWorkbench.Reload(status), status, "restore Sequence after Sound timing test");
 		auto duplicate = sequenceGood;
 		for (auto& row : duplicate.Patterns)
 			if (row.strPatternId == legacyGateOne.front()->strPatternId) row.bEnterCombatOnFinish = true;

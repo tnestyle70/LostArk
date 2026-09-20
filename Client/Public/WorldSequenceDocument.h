@@ -240,6 +240,28 @@ struct WORLD_SEQUENCE_COLLIDER_TRACK
 	std::string attachmentBone;
 };
 
+struct WORLD_SEQUENCE_SOUND_TRACK
+{
+    std::string soundTrackId;
+    std::string assetId;
+    uint32_t startMs = 0u;
+    uint32_t durationMs = 1u;
+    f32_t volume = 1.f;
+    bool operator==(const WORLD_SEQUENCE_SOUND_TRACK&) const = default;
+};
+
+struct WORLD_SEQUENCE_SUBTITLE_TRACK
+{
+    std::string subtitleTrackId;
+    std::string stringId;
+    std::string text;
+    std::string position = "NORMAL";
+    std::string slotId;
+    uint32_t startMs = 0u;
+    uint32_t durationMs = 1u;
+    bool operator==(const WORLD_SEQUENCE_SUBTITLE_TRACK&) const = default;
+};
+
 struct WORLD_SEQUENCE_TEMPLATE
 {
 	std::string sequenceId;
@@ -252,6 +274,8 @@ struct WORLD_SEQUENCE_TEMPLATE
 	std::vector<WORLD_SEQUENCE_ANIMATION_TRACK> animationTracks;
 	std::vector<WORLD_SEQUENCE_EFFECT_TRACK> effectTracks;
 	std::vector<WORLD_SEQUENCE_COLLIDER_TRACK> colliderTracks;
+    std::vector<WORLD_SEQUENCE_SOUND_TRACK> soundTracks;
+    std::vector<WORLD_SEQUENCE_SUBTITLE_TRACK> subtitleTracks;
 	WORLD_SEQUENCE_OBJECT_MOTION objectMotion;
 	uint32_t EffectStartMs(const WORLD_SEQUENCE_EFFECT_TRACK& effect) const noexcept
 	{ return effect.timing == "MOTION_END" ? durationMs : effect.startMs; }
@@ -262,7 +286,8 @@ struct WORLD_SEQUENCE_TEMPLATE
 		uint32_t span = durationMs;
 		for (const auto& effect : effectTracks)
 			span = (std::max)(span, EffectStartMs(effect) + effect.durationMs);
-		return span + (effectTracks.empty() ? 0u : objectMotion.LastEmissionDelayMs());
+        // Finite audio tails retain their own handles without extending the visual owner.
+        return span + (effectTracks.empty() ? 0u : objectMotion.LastEmissionDelayMs());
 	}
 };
 

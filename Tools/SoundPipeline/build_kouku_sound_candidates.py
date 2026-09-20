@@ -196,6 +196,7 @@ SCENES = [
     ("kouku.gate2.clear", "SCENE02A", 117),
     ("kouku.gate3.intro", "SCENE02A", 117),
     ("kouku.gate2.maze", "SCENE04A", 393),
+    ("kouku.gate3.showtime", "SCENE02B", 49),
     ("kouku.bingo.ending", "SCENE01B", 45),
 ]
 
