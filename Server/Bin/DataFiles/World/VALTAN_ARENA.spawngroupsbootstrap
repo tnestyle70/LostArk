@@ -1,0 +1,40 @@
+LOSTARK_SPAWN_GROUP_BOOTSTRAP	4	VALTAN_ARENA	LV_LUT_HEARTRB_ED	1531	9	3	4
+PROFILE	MINIBOSS_LUGARU	25000	300	95	1.35	28	3.6	3.2	720	280	1050	3000	0	2	250	1	2000	36	300	9	12	2.8
+PROFILE	MONSTER_VALTAN_0019_05	1100	110	28	0.65	20	2.8	2.2	525	225	750	2000	1	0.6	150	0	0	26	330	10	14	2
+PROFILE	MONSTER_VALTAN_PADD_01	700	80	15	0.55	18	3.2	1.8	455	195	650	1800	1	0.5	150	0	0	24	420	12	16	1.6
+PROFILE	MONSTER_VALTAN_SJFC_00_4	850	95	22	0.6	20	3	2	614	263	877	1900	1	0.5	150	0	0	26	360	11	15	1.8
+ANCHOR	anchor.valtan.stage01.a	35.25	10.3500004	-41.75	180
+ANCHOR	anchor.valtan.stage01.b	22.2999992	10.3500004	-51	180
+ANCHOR	anchor.valtan.stage01.c	22.7000008	10.3500004	-59.5999985	180
+ANCHOR	anchor.valtan.stage02.a	36.25	10.3500004	-46.25	225
+ANCHOR	anchor.valtan.stage02.b	22.5	10.3500004	-52.5	225
+ANCHOR	anchor.valtan.stage02.lugaru	55.2000008	10.3500004	-92.4000015	225
+ANCHOR	anchor.valtan.stage03.a	87	15.75	-80.0999985	180
+ANCHOR	anchor.valtan.stage03.b	98.4000015	16.0499992	-81.3000031	180
+ANCHOR	anchor.valtan.stage03.c	92.3000031	16.0499992	-81.5	180
+GROUP	spawn.valtan.stage01	-	10	3	ONCE	0
+WAVE	spawn.valtan.stage01	wave.01	0	300	3	ALL_DEAD	0
+ENTRY	spawn.valtan.stage01	wave.01	0	MONSTER_VALTAN_PADD_01	3	anchor.valtan.stage01.a	0	350
+ENTRY	spawn.valtan.stage01	wave.01	1	MONSTER_VALTAN_SJFC_00_4	2	anchor.valtan.stage01.b	250	450
+ENTRY	spawn.valtan.stage01	wave.01	2	MONSTER_VALTAN_0019_05	2	anchor.valtan.stage01.c	400	500
+WAVE	spawn.valtan.stage01	wave.02	1	900	3	ALL_DEAD	0
+ENTRY	spawn.valtan.stage01	wave.02	0	MONSTER_VALTAN_0019_05	3	anchor.valtan.stage02.a	0	450
+ENTRY	spawn.valtan.stage01	wave.02	1	MONSTER_VALTAN_PADD_01	3	anchor.valtan.stage02.b	200	350
+ENTRY	spawn.valtan.stage01	wave.02	2	MONSTER_VALTAN_SJFC_00_4	2	anchor.valtan.stage01.a	350	450
+WAVE	spawn.valtan.stage01	wave.03	2	900	4	ALL_DEAD	0
+ENTRY	spawn.valtan.stage01	wave.03	0	MONSTER_VALTAN_SJFC_00_4	3	anchor.valtan.stage01.c	0	400
+ENTRY	spawn.valtan.stage01	wave.03	1	MONSTER_VALTAN_0019_05	2	anchor.valtan.stage01.b	200	500
+ENTRY	spawn.valtan.stage01	wave.03	2	MONSTER_VALTAN_PADD_01	3	anchor.valtan.stage02.a	300	350
+ENTRY	spawn.valtan.stage01	wave.03	3	MONSTER_VALTAN_0019_05	2	anchor.valtan.stage02.b	500	450
+GROUP	spawn.valtan.stage02.miniboss	-	1	1	ONCE	0
+WAVE	spawn.valtan.stage02.miniboss	wave.01	0	600	1	ALL_DEAD	0
+ENTRY	spawn.valtan.stage02.miniboss	wave.01	0	MINIBOSS_LUGARU	1	anchor.valtan.stage02.lugaru	0	0
+GROUP	spawn.valtan.stage03	-	10	2	ONCE	0
+WAVE	spawn.valtan.stage03	wave.01	0	300	3	ALL_DEAD	0
+ENTRY	spawn.valtan.stage03	wave.01	0	MONSTER_VALTAN_PADD_01	3	anchor.valtan.stage03.a	0	300
+ENTRY	spawn.valtan.stage03	wave.01	1	MONSTER_VALTAN_SJFC_00_4	3	anchor.valtan.stage03.b	200	400
+ENTRY	spawn.valtan.stage03	wave.01	2	MONSTER_VALTAN_0019_05	2	anchor.valtan.stage03.c	400	500
+WAVE	spawn.valtan.stage03	wave.02	1	800	3	ALL_DEAD	0
+ENTRY	spawn.valtan.stage03	wave.02	0	MONSTER_VALTAN_0019_05	3	anchor.valtan.stage03.a	0	450
+ENTRY	spawn.valtan.stage03	wave.02	1	MONSTER_VALTAN_PADD_01	3	anchor.valtan.stage03.b	250	350
+ENTRY	spawn.valtan.stage03	wave.02	2	MONSTER_VALTAN_SJFC_00_4	3	anchor.valtan.stage03.c	400	400

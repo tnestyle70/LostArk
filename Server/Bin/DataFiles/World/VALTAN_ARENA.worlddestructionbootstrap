@@ -1,0 +1,423 @@
+LOSTARK_WORLD_DESTRUCTION_BOOTSTRAP	2	ENCOUNTER_VALTAN	LV_LUT_HEARTRB_ED	50e5ee40352acad8d6ef6d4738d6a9eb90d31b851db422a8b6e45bf02bfef8ae	30	102	102	218
+G	destroyable.group.valtan.entrance.frontwallA	INTACT	1	17404480870746281119
+G	destroyable.group.valtan.entrance.frontwallB	INTACT	1	12252498194881956917
+G	destroyable.group.valtan.floor30.brick.7000000000000000002	INTACT	1	7000000000000000002
+G	destroyable.group.valtan.floor30.brick.7000000000000000003	INTACT	1	7000000000000000003
+G	destroyable.group.valtan.floor30.rail.7000000000000000001	INTACT	1	7000000000000000001
+G	destroyable.group.valtan.floor84.brick.7000000000000000006	INTACT	1	7000000000000000006
+G	destroyable.group.valtan.floor84.brick.7000000000000000007	INTACT	1	7000000000000000007
+G	destroyable.group.valtan.floor84.rail.7000000000000000005	INTACT	1	7000000000000000005
+G	destroyable.group.valtan.outerwall109.1090000000000001	INTACT	2	1090000000000001	1091000000000001
+G	destroyable.group.valtan.outerwall109.1090000000000002	INTACT	2	1090000000000002	1091000000000002
+G	destroyable.group.valtan.outerwall109.1090000000000003	INTACT	2	1090000000000003	1091000000000003
+G	destroyable.group.valtan.outerwall109.1090000000000004	INTACT	2	1090000000000004	1091000000000004
+G	destroyable.group.valtan.outerwall109.1090000000000005	INTACT	2	1090000000000005	1091000000000005
+G	destroyable.group.valtan.outerwall109.1090000000000006	INTACT	2	1090000000000006	1091000000000006
+G	destroyable.group.valtan.outerwall109.1090000000000007	INTACT	2	1090000000000007	1091000000000007
+G	destroyable.group.valtan.outerwall109.1090000000000008	INTACT	2	1090000000000008	1091000000000008
+G	destroyable.group.valtan.outerwall109.1090000000000009	INTACT	2	1090000000000009	1091000000000009
+G	destroyable.group.valtan.outerwall109.1090000000000010	INTACT	2	1090000000000010	1091000000000010
+G	destroyable.group.valtan.outerwall109.1090000000000012	INTACT	2	1090000000000012	1091000000000012
+G	destroyable.group.valtan.outerwall109.1090000000000013	INTACT	2	1090000000000013	1091000000000013
+G	destroyable.group.valtan.outerwall109.1090000000000014	INTACT	2	1090000000000014	1091000000000014
+G	destroyable.group.valtan.outerwall109.1090000000000015	INTACT	2	1090000000000015	1091000000000015
+G	destroyable.group.valtan.outerwall109.1090000000000016	INTACT	2	1090000000000016	1091000000000016
+G	destroyable.group.valtan.outerwall109.1090000000000017	INTACT	2	1090000000000017	1091000000000017
+G	destroyable.group.valtan.outerwall109.1090000000000018	INTACT	2	1090000000000018	1091000000000018
+G	destroyable.group.valtan.outerwall109.1090000000000019	INTACT	2	1090000000000019	1091000000000019
+G	destroyable.group.valtan.outerwall109.1090000000000020	INTACT	2	1090000000000020	1091000000000020
+G	destroyable.group.valtan.outerwall109.1090000000000021	INTACT	2	1090000000000021	1091000000000021
+G	destroyable.group.valtan.outerwall109.1090000000000022	INTACT	2	1090000000000022	1091000000000022
+G	destroyable.group.valtan.outerwall109.1090000000000023	INTACT	2	1090000000000023	1091000000000023
+G	destroyable.group.valtan.outerwall109.1090000000000024	INTACT	2	1090000000000024	1091000000000024
+G	destroyable.group.valtan.outerwall109.1090000000000027	INTACT	2	1090000000000027	1091000000000027
+G	destroyable.group.valtan.outerwall109.1090000000000028	INTACT	2	1090000000000028	1091000000000028
+G	destroyable.group.valtan.outerwall109.1090000000000029	INTACT	2	1090000000000029	1091000000000029
+G	destroyable.group.valtan.outerwall109.1090000000000030	INTACT	2	1090000000000030	1091000000000030
+G	destroyable.group.valtan.wall.10435996578153793381	INTACT	1	10435996578153793381
+G	destroyable.group.valtan.wall.10672658406952543185	INTACT	1	10672658406952543185
+G	destroyable.group.valtan.wall.10912388091405377926	INTACT	1	10912388091405377926
+G	destroyable.group.valtan.wall.10938566942418286882	INTACT	1	10938566942418286882
+G	destroyable.group.valtan.wall.11170070275064524686	INTACT	1	11170070275064524686
+G	destroyable.group.valtan.wall.11190594702002930167	INTACT	2	11190594702002930167	12150087330863237518
+G	destroyable.group.valtan.wall.11909088500311713272	INTACT	2	11909088500311713272	15375899663358889626
+G	destroyable.group.valtan.wall.12037145985028191659	INTACT	1	12037145985028191659
+G	destroyable.group.valtan.wall.12135716830026868823	INTACT	1	12135716830026868823
+G	destroyable.group.valtan.wall.12612119053333525111	INTACT	1	12612119053333525111
+G	destroyable.group.valtan.wall.12681913253468198394	INTACT	1	12681913253468198394
+G	destroyable.group.valtan.wall.12804542616476082944	INTACT	1	12804542616476082944
+G	destroyable.group.valtan.wall.12819104299115621849	INTACT	1	12819104299115621849
+G	destroyable.group.valtan.wall.12956154234820310428	INTACT	1	12956154234820310428
+G	destroyable.group.valtan.wall.13154681496987253568	INTACT	1	13154681496987253568
+G	destroyable.group.valtan.wall.13195423984589183291	INTACT	2	13195423984589183291	16879630230908101275
+G	destroyable.group.valtan.wall.13221745590928612509	INTACT	2	10358956607506909163	13221745590928612509
+G	destroyable.group.valtan.wall.13290943434399830027	INTACT	1	13290943434399830027
+G	destroyable.group.valtan.wall.13520360247339696445	INTACT	1	13520360247339696445
+G	destroyable.group.valtan.wall.13837284136111935898	INTACT	1	13837284136111935898
+G	destroyable.group.valtan.wall.13907193421470993692	INTACT	1	13907193421470993692
+G	destroyable.group.valtan.wall.14210737191027038638	INTACT	1	14210737191027038638
+G	destroyable.group.valtan.wall.14345577340107998055	INTACT	1	14345577340107998055
+G	destroyable.group.valtan.wall.14398285027733086155	INTACT	1	14398285027733086155
+G	destroyable.group.valtan.wall.14439275443581760904	INTACT	1	14439275443581760904
+G	destroyable.group.valtan.wall.14462438123003083514	INTACT	1	14462438123003083514
+G	destroyable.group.valtan.wall.14520149530921636720	INTACT	1	14520149530921636720
+G	destroyable.group.valtan.wall.14754587218800370239	INTACT	1	14754587218800370239
+G	destroyable.group.valtan.wall.15148418014021580024	INTACT	1	15148418014021580024
+G	destroyable.group.valtan.wall.15358675764127682739	INTACT	1	15358675764127682739
+G	destroyable.group.valtan.wall.15393154990485032341	INTACT	1	15393154990485032341
+G	destroyable.group.valtan.wall.15423695113667715748	INTACT	1	15423695113667715748
+G	destroyable.group.valtan.wall.15451422525499780584	INTACT	1	15451422525499780584
+G	destroyable.group.valtan.wall.15495684800954131707	INTACT	1	15495684800954131707
+G	destroyable.group.valtan.wall.15590072441712178822	INTACT	1	15590072441712178822
+G	destroyable.group.valtan.wall.15590636842883334976	INTACT	1	15590636842883334976
+G	destroyable.group.valtan.wall.15675921917269125843	INTACT	2	15212127038612238715	15675921917269125843
+G	destroyable.group.valtan.wall.15736179535184396369	INTACT	1	15736179535184396369
+G	destroyable.group.valtan.wall.16181172586312392552	INTACT	1	16181172586312392552
+G	destroyable.group.valtan.wall.17150846598057876717	INTACT	2	10426387515393336411	17150846598057876717
+G	destroyable.group.valtan.wall.17280669848983777578	INTACT	1	17280669848983777578
+G	destroyable.group.valtan.wall.17296963925068961735	INTACT	1	17296963925068961735
+G	destroyable.group.valtan.wall.17359606121069777624	INTACT	1	17359606121069777624
+G	destroyable.group.valtan.wall.17695249952621776147	INTACT	1	17695249952621776147
+G	destroyable.group.valtan.wall.17788407538468874008	INTACT	1	17788407538468874008
+G	destroyable.group.valtan.wall.18100758183075339831	INTACT	1	18100758183075339831
+G	destroyable.group.valtan.wall.18105374220469669789	INTACT	1	18105374220469669789
+G	destroyable.group.valtan.wall.18177041425620847396	INTACT	1	18177041425620847396
+G	destroyable.group.valtan.wall.18360145892842596691	INTACT	1	18360145892842596691
+G	destroyable.group.valtan.wall.18362175117092037953	INTACT	1	18362175117092037953
+G	destroyable.group.valtan.wall.9335938568718910930	INTACT	1	9335938568718910930
+G	destroyable.group.valtan.wall.9460380659834835619	INTACT	1	9460380659834835619
+G	destroyable.group.valtan.wall.9522135662464469029	INTACT	2	9522135662464469029	9606721395667492840
+G	destroyable.group.valtan.wall.9652616057759700150	INTACT	1	9652616057759700150
+G	destroyable.group.valtan.wall.9671293252162296055	INTACT	1	9671293252162296055
+G	destroyable.group.valtan.wall.9681544306002658031	INTACT	1	9681544306002658031
+G	destroyable.group.valtan.wall.9863801195242004116	INTACT	2	9863801195242004116	12598937882346321836
+G	destroyable.group.valtan.wall159.10619331645164562008	INTACT	1	10619331645164562008
+G	destroyable.group.valtan.wall159.10758879797263276529	INTACT	1	10758879797263276529
+G	destroyable.group.valtan.wall159.11047903315509031966	INTACT	1	11047903315509031966
+G	destroyable.group.valtan.wall159.12385961325933108240	INTACT	1	12385961325933108240
+G	destroyable.group.valtan.wall159.15221142224278623810	INTACT	1	15221142224278623810
+G	destroyable.group.valtan.wall159.15719065619666776634	INTACT	1	15719065619666776634
+G	destroyable.group.valtan.wall159.16891123250307634887	INTACT	1	16891123250307634887
+G	destroyable.group.valtan.wall159.17769051189408857662	INTACT	1	17769051189408857662
+G	destroyable.group.valtan.wall159.18064647264029106986	INTACT	1	18064647264029106986
+G	destroyable.group.valtan.wall159.18095941116451824308	INTACT	1	18095941116451824308
+M	mutation.valtan.entrance.frontwallA.despawn	destroyable.group.valtan.entrance.frontwallA	DESPAWNED	8	collision.valtan.wallgroup.frontwallA	condition.valtan.entrance.frontwallA.destroyed	0
+M	mutation.valtan.entrance.frontwallB.despawn	destroyable.group.valtan.entrance.frontwallB	DESPAWNED	8	collision.valtan.wallgroup.frontwallB	condition.valtan.entrance.frontwallB.destroyed	0
+M	mutation.valtan.floor30.brick.7000000000000000002.collapse	destroyable.group.valtan.floor30.brick.7000000000000000002	DESPAWNED	8	-	condition.valtan.floor30.brick.7000000000000000002.collapsed	1
+M	mutation.valtan.floor30.brick.7000000000000000003.collapse	destroyable.group.valtan.floor30.brick.7000000000000000003	DESPAWNED	8	-	condition.valtan.floor30.brick.7000000000000000003.collapsed	1
+M	mutation.valtan.floor30.rail.7000000000000000001.collapse	destroyable.group.valtan.floor30.rail.7000000000000000001	DESPAWNED	8	-	condition.valtan.floor30.rail.7000000000000000001.collapsed	1
+M	mutation.valtan.floor84.brick.7000000000000000006.collapse	destroyable.group.valtan.floor84.brick.7000000000000000006	DESPAWNED	8	-	condition.valtan.floor84.brick.7000000000000000006.collapsed	1
+M	mutation.valtan.floor84.brick.7000000000000000007.collapse	destroyable.group.valtan.floor84.brick.7000000000000000007	DESPAWNED	8	-	condition.valtan.floor84.brick.7000000000000000007.collapsed	1
+M	mutation.valtan.floor84.rail.7000000000000000005.collapse	destroyable.group.valtan.floor84.rail.7000000000000000005	DESPAWNED	8	-	condition.valtan.floor84.rail.7000000000000000005.collapsed	1
+M	mutation.valtan.outerwall109.1090000000000001.despawn	destroyable.group.valtan.outerwall109.1090000000000001	DESPAWNED	8	collision.valtan.wallgroup.sector00.1090000000000001	condition.valtan.outerwall109.1090000000000001.destroyed	0
+M	mutation.valtan.outerwall109.1090000000000002.despawn	destroyable.group.valtan.outerwall109.1090000000000002	DESPAWNED	8	collision.valtan.wallgroup.sector00.1090000000000002	condition.valtan.outerwall109.1090000000000002.destroyed	0
+M	mutation.valtan.outerwall109.1090000000000003.despawn	destroyable.group.valtan.outerwall109.1090000000000003	DESPAWNED	8	collision.valtan.wallgroup.sector00.1090000000000003	condition.valtan.outerwall109.1090000000000003.destroyed	0
+M	mutation.valtan.outerwall109.1090000000000004.despawn	destroyable.group.valtan.outerwall109.1090000000000004	DESPAWNED	8	collision.valtan.wallgroup.sector01.1090000000000004	condition.valtan.outerwall109.1090000000000004.destroyed	0
+M	mutation.valtan.outerwall109.1090000000000005.despawn	destroyable.group.valtan.outerwall109.1090000000000005	DESPAWNED	8	collision.valtan.wallgroup.sector01.1090000000000005	condition.valtan.outerwall109.1090000000000005.destroyed	0
+M	mutation.valtan.outerwall109.1090000000000006.despawn	destroyable.group.valtan.outerwall109.1090000000000006	DESPAWNED	8	collision.valtan.wallgroup.sector01.1090000000000006	condition.valtan.outerwall109.1090000000000006.destroyed	0
+M	mutation.valtan.outerwall109.1090000000000007.despawn	destroyable.group.valtan.outerwall109.1090000000000007	DESPAWNED	8	collision.valtan.wallgroup.sector02.1090000000000007	condition.valtan.outerwall109.1090000000000007.destroyed	0
+M	mutation.valtan.outerwall109.1090000000000008.despawn	destroyable.group.valtan.outerwall109.1090000000000008	DESPAWNED	8	collision.valtan.wallgroup.sector02.1090000000000008	condition.valtan.outerwall109.1090000000000008.destroyed	0
+M	mutation.valtan.outerwall109.1090000000000009.despawn	destroyable.group.valtan.outerwall109.1090000000000009	DESPAWNED	8	collision.valtan.wallgroup.sector02.1090000000000009	condition.valtan.outerwall109.1090000000000009.destroyed	0
+M	mutation.valtan.outerwall109.1090000000000010.despawn	destroyable.group.valtan.outerwall109.1090000000000010	DESPAWNED	8	collision.valtan.wallgroup.sector03.1090000000000010	condition.valtan.outerwall109.1090000000000010.destroyed	0
+M	mutation.valtan.outerwall109.1090000000000012.despawn	destroyable.group.valtan.outerwall109.1090000000000012	DESPAWNED	8	collision.valtan.wallgroup.sector03.1090000000000012	-	0
+M	mutation.valtan.outerwall109.1090000000000013.despawn	destroyable.group.valtan.outerwall109.1090000000000013	DESPAWNED	8	collision.valtan.wallgroup.sector04.1090000000000013	condition.valtan.outerwall109.1090000000000013.destroyed	0
+M	mutation.valtan.outerwall109.1090000000000014.despawn	destroyable.group.valtan.outerwall109.1090000000000014	DESPAWNED	8	collision.valtan.wallgroup.sector04.1090000000000014	condition.valtan.outerwall109.1090000000000014.destroyed	0
+M	mutation.valtan.outerwall109.1090000000000015.despawn	destroyable.group.valtan.outerwall109.1090000000000015	DESPAWNED	8	collision.valtan.wallgroup.sector04.1090000000000015	condition.valtan.outerwall109.1090000000000015.destroyed	0
+M	mutation.valtan.outerwall109.1090000000000016.despawn	destroyable.group.valtan.outerwall109.1090000000000016	DESPAWNED	8	collision.valtan.wallgroup.sector05.1090000000000016	condition.valtan.outerwall109.1090000000000016.destroyed	0
+M	mutation.valtan.outerwall109.1090000000000017.despawn	destroyable.group.valtan.outerwall109.1090000000000017	DESPAWNED	8	collision.valtan.wallgroup.sector05.1090000000000017	condition.valtan.outerwall109.1090000000000017.destroyed	0
+M	mutation.valtan.outerwall109.1090000000000018.despawn	destroyable.group.valtan.outerwall109.1090000000000018	DESPAWNED	8	collision.valtan.wallgroup.sector05.1090000000000018	condition.valtan.outerwall109.1090000000000018.destroyed	0
+M	mutation.valtan.outerwall109.1090000000000019.despawn	destroyable.group.valtan.outerwall109.1090000000000019	DESPAWNED	8	collision.valtan.wallgroup.sector06.1090000000000019	condition.valtan.outerwall109.1090000000000019.destroyed	0
+M	mutation.valtan.outerwall109.1090000000000020.despawn	destroyable.group.valtan.outerwall109.1090000000000020	DESPAWNED	8	collision.valtan.wallgroup.sector06.1090000000000020	condition.valtan.outerwall109.1090000000000020.destroyed	0
+M	mutation.valtan.outerwall109.1090000000000021.despawn	destroyable.group.valtan.outerwall109.1090000000000021	DESPAWNED	8	collision.valtan.wallgroup.sector06.1090000000000021	condition.valtan.outerwall109.1090000000000021.destroyed	0
+M	mutation.valtan.outerwall109.1090000000000022.despawn	destroyable.group.valtan.outerwall109.1090000000000022	DESPAWNED	8	collision.valtan.wallgroup.sector07.1090000000000022	condition.valtan.outerwall109.1090000000000022.destroyed	0
+M	mutation.valtan.outerwall109.1090000000000023.despawn	destroyable.group.valtan.outerwall109.1090000000000023	DESPAWNED	8	collision.valtan.wallgroup.sector07.1090000000000023	condition.valtan.outerwall109.1090000000000023.destroyed	0
+M	mutation.valtan.outerwall109.1090000000000024.despawn	destroyable.group.valtan.outerwall109.1090000000000024	DESPAWNED	8	collision.valtan.wallgroup.sector07.1090000000000024	condition.valtan.outerwall109.1090000000000024.destroyed	0
+M	mutation.valtan.outerwall109.1090000000000027.despawn	destroyable.group.valtan.outerwall109.1090000000000027	DESPAWNED	8	collision.valtan.wallgroup.sector03.1090000000000027	condition.valtan.outerwall109.1090000000000027.destroyed	0
+M	mutation.valtan.outerwall109.1090000000000028.despawn	destroyable.group.valtan.outerwall109.1090000000000028	DESPAWNED	8	collision.valtan.wallgroup.sector03.1090000000000028	condition.valtan.outerwall109.1090000000000028.destroyed	0
+M	mutation.valtan.outerwall109.1090000000000029.despawn	destroyable.group.valtan.outerwall109.1090000000000029	DESPAWNED	8	collision.valtan.wallgroup.sector06.1090000000000029	condition.valtan.outerwall109.1090000000000029.destroyed	0
+M	mutation.valtan.outerwall109.1090000000000030.despawn	destroyable.group.valtan.outerwall109.1090000000000030	DESPAWNED	8	collision.valtan.wallgroup.sector06.1090000000000030	condition.valtan.outerwall109.1090000000000030.destroyed	0
+M	mutation.valtan.wall.10435996578153793381.despawn	destroyable.group.valtan.wall.10435996578153793381	DESPAWNED	8	collision.valtan.wallgroup.12252498194881956917.10435996578153793381	condition.valtan.wall.10435996578153793381.destroyed	0
+M	mutation.valtan.wall.10672658406952543185.despawn	destroyable.group.valtan.wall.10672658406952543185	DESPAWNED	8	collision.valtan.wallgroup.17695249952621776147.10672658406952543185	condition.valtan.wall.10672658406952543185.destroyed	0
+M	mutation.valtan.wall.10912388091405377926.despawn	destroyable.group.valtan.wall.10912388091405377926	DESPAWNED	8	collision.valtan.wallgroup.12252498194881956917.10912388091405377926	condition.valtan.wall.10912388091405377926.destroyed	0
+M	mutation.valtan.wall.10938566942418286882.despawn	destroyable.group.valtan.wall.10938566942418286882	DESPAWNED	8	collision.valtan.wallgroup.12135716830026868823.10938566942418286882	condition.valtan.wall.10938566942418286882.destroyed	0
+M	mutation.valtan.wall.11170070275064524686.despawn	destroyable.group.valtan.wall.11170070275064524686	DESPAWNED	8	collision.valtan.wallgroup.11170070275064524686.11170070275064524686	condition.valtan.wall.11170070275064524686.destroyed	0
+M	mutation.valtan.wall.11190594702002930167.despawn	destroyable.group.valtan.wall.11190594702002930167	DESPAWNED	8	collision.valtan.wallgroup.11190594702002930167.11190594702002930167	condition.valtan.wall.11190594702002930167.destroyed	0
+M	mutation.valtan.wall.11909088500311713272.despawn	destroyable.group.valtan.wall.11909088500311713272	DESPAWNED	8	collision.valtan.wallgroup.9522135662464469029.11909088500311713272	condition.valtan.wall.11909088500311713272.destroyed	0
+M	mutation.valtan.wall.12037145985028191659.despawn	destroyable.group.valtan.wall.12037145985028191659	DESPAWNED	8	collision.valtan.wallgroup.3705102.12037145985028191659	condition.valtan.wall.12037145985028191659.destroyed	0
+M	mutation.valtan.wall.12135716830026868823.despawn	destroyable.group.valtan.wall.12135716830026868823	DESPAWNED	8	collision.valtan.wallgroup.12135716830026868823.12135716830026868823	condition.valtan.wall.12135716830026868823.destroyed	0
+M	mutation.valtan.wall.12612119053333525111.despawn	destroyable.group.valtan.wall.12612119053333525111	DESPAWNED	8	collision.valtan.wallgroup.12135716830026868823.12612119053333525111	condition.valtan.wall.12612119053333525111.destroyed	0
+M	mutation.valtan.wall.12681913253468198394.despawn	destroyable.group.valtan.wall.12681913253468198394	DESPAWNED	8	collision.valtan.wallgroup.17695249952621776147.12681913253468198394	condition.valtan.wall.12681913253468198394.destroyed	0
+M	mutation.valtan.wall.12804542616476082944.despawn	destroyable.group.valtan.wall.12804542616476082944	DESPAWNED	8	collision.valtan.wallgroup.15495684800954131707.12804542616476082944	condition.valtan.wall.12804542616476082944.destroyed	0
+M	mutation.valtan.wall.12819104299115621849.despawn	destroyable.group.valtan.wall.12819104299115621849	DESPAWNED	8	collision.valtan.wallgroup.15495684800954131707.12819104299115621849	condition.valtan.wall.12819104299115621849.destroyed	0
+M	mutation.valtan.wall.12956154234820310428.despawn	destroyable.group.valtan.wall.12956154234820310428	DESPAWNED	8	collision.valtan.wallgroup.12135716830026868823.12956154234820310428	condition.valtan.wall.12956154234820310428.destroyed	0
+M	mutation.valtan.wall.13154681496987253568.despawn	destroyable.group.valtan.wall.13154681496987253568	DESPAWNED	8	collision.valtan.wallgroup.12252498194881956917.13154681496987253568	condition.valtan.wall.13154681496987253568.destroyed	0
+M	mutation.valtan.wall.13195423984589183291.despawn	destroyable.group.valtan.wall.13195423984589183291	DESPAWNED	8	collision.valtan.wallgroup.11190594702002930167.13195423984589183291	condition.valtan.wall.13195423984589183291.destroyed	0
+M	mutation.valtan.wall.13221745590928612509.despawn	destroyable.group.valtan.wall.13221745590928612509	DESPAWNED	8	collision.valtan.wallgroup.15675921917269125843.13221745590928612509	condition.valtan.wall.13221745590928612509.destroyed	0
+M	mutation.valtan.wall.13290943434399830027.despawn	destroyable.group.valtan.wall.13290943434399830027	DESPAWNED	8	collision.valtan.wallgroup.15495684800954131707.13290943434399830027	condition.valtan.wall.13290943434399830027.destroyed	0
+M	mutation.valtan.wall.13520360247339696445.despawn	destroyable.group.valtan.wall.13520360247339696445	DESPAWNED	8	collision.valtan.wallgroup.13520360247339696445.13520360247339696445	condition.valtan.wall.13520360247339696445.destroyed	0
+M	mutation.valtan.wall.13837284136111935898.despawn	destroyable.group.valtan.wall.13837284136111935898	DESPAWNED	8	collision.valtan.wallgroup.12252498194881956917.13837284136111935898	condition.valtan.wall.13837284136111935898.destroyed	0
+M	mutation.valtan.wall.13907193421470993692.despawn	destroyable.group.valtan.wall.13907193421470993692	DESPAWNED	8	collision.valtan.wallgroup.12135716830026868823.13907193421470993692	condition.valtan.wall.13907193421470993692.destroyed	0
+M	mutation.valtan.wall.14210737191027038638.despawn	destroyable.group.valtan.wall.14210737191027038638	DESPAWNED	8	collision.valtan.wallgroup.15495684800954131707.14210737191027038638	condition.valtan.wall.14210737191027038638.destroyed	0
+M	mutation.valtan.wall.14345577340107998055.despawn	destroyable.group.valtan.wall.14345577340107998055	DESPAWNED	8	collision.valtan.wallgroup.15495684800954131707.14345577340107998055	condition.valtan.wall.14345577340107998055.destroyed	0
+M	mutation.valtan.wall.14398285027733086155.despawn	destroyable.group.valtan.wall.14398285027733086155	DESPAWNED	8	collision.valtan.wallgroup.17695249952621776147.14398285027733086155	condition.valtan.wall.14398285027733086155.destroyed	0
+M	mutation.valtan.wall.14439275443581760904.despawn	destroyable.group.valtan.wall.14439275443581760904	DESPAWNED	8	collision.valtan.wallgroup.15495684800954131707.14439275443581760904	condition.valtan.wall.14439275443581760904.destroyed	0
+M	mutation.valtan.wall.14462438123003083514.despawn	destroyable.group.valtan.wall.14462438123003083514	DESPAWNED	8	collision.valtan.wallgroup.17695249952621776147.14462438123003083514	condition.valtan.wall.14462438123003083514.destroyed	0
+M	mutation.valtan.wall.14520149530921636720.despawn	destroyable.group.valtan.wall.14520149530921636720	DESPAWNED	8	collision.valtan.wallgroup.15495684800954131707.14520149530921636720	condition.valtan.wall.14520149530921636720.destroyed	0
+M	mutation.valtan.wall.14754587218800370239.despawn	destroyable.group.valtan.wall.14754587218800370239	DESPAWNED	8	collision.valtan.wallgroup.12135716830026868823.14754587218800370239	condition.valtan.wall.14754587218800370239.destroyed	0
+M	mutation.valtan.wall.15148418014021580024.despawn	destroyable.group.valtan.wall.15148418014021580024	DESPAWNED	8	collision.valtan.wallgroup.12252498194881956917.15148418014021580024	condition.valtan.wall.15148418014021580024.destroyed	0
+M	mutation.valtan.wall.15358675764127682739.despawn	destroyable.group.valtan.wall.15358675764127682739	DESPAWNED	8	collision.valtan.wallgroup.15495684800954131707.15358675764127682739	condition.valtan.wall.15358675764127682739.destroyed	0
+M	mutation.valtan.wall.15393154990485032341.despawn	destroyable.group.valtan.wall.15393154990485032341	DESPAWNED	8	collision.valtan.wallgroup.12252498194881956917.15393154990485032341	condition.valtan.wall.15393154990485032341.destroyed	0
+M	mutation.valtan.wall.15423695113667715748.despawn	destroyable.group.valtan.wall.15423695113667715748	DESPAWNED	8	collision.valtan.wallgroup.15495684800954131707.15423695113667715748	condition.valtan.wall.15423695113667715748.destroyed	0
+M	mutation.valtan.wall.15451422525499780584.despawn	destroyable.group.valtan.wall.15451422525499780584	DESPAWNED	8	collision.valtan.wallgroup.17695249952621776147.15451422525499780584	condition.valtan.wall.15451422525499780584.destroyed	0
+M	mutation.valtan.wall.15495684800954131707.despawn	destroyable.group.valtan.wall.15495684800954131707	DESPAWNED	8	collision.valtan.wallgroup.15495684800954131707.15495684800954131707	condition.valtan.wall.15495684800954131707.destroyed	0
+M	mutation.valtan.wall.15590072441712178822.despawn	destroyable.group.valtan.wall.15590072441712178822	DESPAWNED	8	collision.valtan.wallgroup.12135716830026868823.15590072441712178822	condition.valtan.wall.15590072441712178822.destroyed	0
+M	mutation.valtan.wall.15590636842883334976.despawn	destroyable.group.valtan.wall.15590636842883334976	DESPAWNED	8	collision.valtan.wallgroup.12135716830026868823.15590636842883334976	condition.valtan.wall.15590636842883334976.destroyed	0
+M	mutation.valtan.wall.15675921917269125843.despawn	destroyable.group.valtan.wall.15675921917269125843	DESPAWNED	8	collision.valtan.wallgroup.15675921917269125843.15675921917269125843	condition.valtan.wall.15675921917269125843.destroyed	0
+M	mutation.valtan.wall.15736179535184396369.despawn	destroyable.group.valtan.wall.15736179535184396369	DESPAWNED	8	collision.valtan.wallgroup.12252498194881956917.15736179535184396369	condition.valtan.wall.15736179535184396369.destroyed	0
+M	mutation.valtan.wall.16181172586312392552.despawn	destroyable.group.valtan.wall.16181172586312392552	DESPAWNED	8	collision.valtan.wallgroup.12135716830026868823.16181172586312392552	condition.valtan.wall.16181172586312392552.destroyed	0
+M	mutation.valtan.wall.17150846598057876717.despawn	destroyable.group.valtan.wall.17150846598057876717	DESPAWNED	8	collision.valtan.wallgroup.17150846598057876717.17150846598057876717	condition.valtan.wall.17150846598057876717.destroyed	0
+M	mutation.valtan.wall.17280669848983777578.despawn	destroyable.group.valtan.wall.17280669848983777578	DESPAWNED	8	collision.valtan.wallgroup.3705102.17280669848983777578	condition.valtan.wall.17280669848983777578.destroyed	0
+M	mutation.valtan.wall.17296963925068961735.despawn	destroyable.group.valtan.wall.17296963925068961735	DESPAWNED	8	collision.valtan.wallgroup.12252498194881956917.17296963925068961735	condition.valtan.wall.17296963925068961735.destroyed	0
+M	mutation.valtan.wall.17359606121069777624.despawn	destroyable.group.valtan.wall.17359606121069777624	DESPAWNED	8	collision.valtan.wallgroup.15495684800954131707.17359606121069777624	condition.valtan.wall.17359606121069777624.destroyed	0
+M	mutation.valtan.wall.17695249952621776147.despawn	destroyable.group.valtan.wall.17695249952621776147	DESPAWNED	8	collision.valtan.wallgroup.17695249952621776147.17695249952621776147	condition.valtan.wall.17695249952621776147.destroyed	0
+M	mutation.valtan.wall.17788407538468874008.despawn	destroyable.group.valtan.wall.17788407538468874008	DESPAWNED	8	collision.valtan.wallgroup.12252498194881956917.17788407538468874008	condition.valtan.wall.17788407538468874008.destroyed	0
+M	mutation.valtan.wall.18100758183075339831.despawn	destroyable.group.valtan.wall.18100758183075339831	DESPAWNED	8	collision.valtan.wallgroup.15495684800954131707.18100758183075339831	condition.valtan.wall.18100758183075339831.destroyed	0
+M	mutation.valtan.wall.18105374220469669789.despawn	destroyable.group.valtan.wall.18105374220469669789	DESPAWNED	8	collision.valtan.wallgroup.12135716830026868823.18105374220469669789	condition.valtan.wall.18105374220469669789.destroyed	0
+M	mutation.valtan.wall.18177041425620847396.despawn	destroyable.group.valtan.wall.18177041425620847396	DESPAWNED	8	collision.valtan.wallgroup.3705102.18177041425620847396	condition.valtan.wall.18177041425620847396.destroyed	0
+M	mutation.valtan.wall.18360145892842596691.despawn	destroyable.group.valtan.wall.18360145892842596691	DESPAWNED	8	collision.valtan.wallgroup.12135716830026868823.18360145892842596691	condition.valtan.wall.18360145892842596691.destroyed	0
+M	mutation.valtan.wall.18362175117092037953.despawn	destroyable.group.valtan.wall.18362175117092037953	DESPAWNED	8	collision.valtan.wallgroup.12252498194881956917.18362175117092037953	condition.valtan.wall.18362175117092037953.destroyed	0
+M	mutation.valtan.wall.9335938568718910930.despawn	destroyable.group.valtan.wall.9335938568718910930	DESPAWNED	8	collision.valtan.wallgroup.3705102.9335938568718910930	condition.valtan.wall.9335938568718910930.destroyed	0
+M	mutation.valtan.wall.9460380659834835619.despawn	destroyable.group.valtan.wall.9460380659834835619	DESPAWNED	8	collision.valtan.wallgroup.17695249952621776147.9460380659834835619	condition.valtan.wall.9460380659834835619.destroyed	0
+M	mutation.valtan.wall.9522135662464469029.despawn	destroyable.group.valtan.wall.9522135662464469029	DESPAWNED	8	collision.valtan.wallgroup.9522135662464469029.9522135662464469029	condition.valtan.wall.9522135662464469029.destroyed	0
+M	mutation.valtan.wall.9652616057759700150.despawn	destroyable.group.valtan.wall.9652616057759700150	DESPAWNED	8	collision.valtan.wallgroup.9652616057759700150.9652616057759700150	condition.valtan.wall.9652616057759700150.destroyed	0
+M	mutation.valtan.wall.9671293252162296055.despawn	destroyable.group.valtan.wall.9671293252162296055	DESPAWNED	8	collision.valtan.wallgroup.15495684800954131707.9671293252162296055	condition.valtan.wall.9671293252162296055.destroyed	0
+M	mutation.valtan.wall.9681544306002658031.despawn	destroyable.group.valtan.wall.9681544306002658031	DESPAWNED	8	collision.valtan.wallgroup.3705102.9681544306002658031	condition.valtan.wall.9681544306002658031.destroyed	0
+M	mutation.valtan.wall.9863801195242004116.despawn	destroyable.group.valtan.wall.9863801195242004116	DESPAWNED	8	collision.valtan.wallgroup.17150846598057876717.9863801195242004116	condition.valtan.wall.9863801195242004116.destroyed	0
+M	mutation.valtan.wall159.10619331645164562008.despawn	destroyable.group.valtan.wall159.10619331645164562008	DESPAWNED	8	collision.valtan.wallgroup.11047903315509031966.10619331645164562008	condition.valtan.wall159.10619331645164562008.destroyed	0
+M	mutation.valtan.wall159.10758879797263276529.despawn	destroyable.group.valtan.wall159.10758879797263276529	DESPAWNED	8	collision.valtan.wallgroup.11047903315509031966.10758879797263276529	condition.valtan.wall159.10758879797263276529.destroyed	0
+M	mutation.valtan.wall159.11047903315509031966.despawn	destroyable.group.valtan.wall159.11047903315509031966	DESPAWNED	8	collision.valtan.wallgroup.11047903315509031966.11047903315509031966	condition.valtan.wall159.11047903315509031966.destroyed	0
+M	mutation.valtan.wall159.12385961325933108240.despawn	destroyable.group.valtan.wall159.12385961325933108240	DESPAWNED	8	collision.valtan.wallgroup.11047903315509031966.12385961325933108240	condition.valtan.wall159.12385961325933108240.destroyed	0
+M	mutation.valtan.wall159.15221142224278623810.despawn	destroyable.group.valtan.wall159.15221142224278623810	DESPAWNED	8	collision.valtan.wallgroup.11047903315509031966.15221142224278623810	condition.valtan.wall159.15221142224278623810.destroyed	0
+M	mutation.valtan.wall159.15719065619666776634.despawn	destroyable.group.valtan.wall159.15719065619666776634	DESPAWNED	8	collision.valtan.wallgroup.11047903315509031966.15719065619666776634	condition.valtan.wall159.15719065619666776634.destroyed	0
+M	mutation.valtan.wall159.16891123250307634887.despawn	destroyable.group.valtan.wall159.16891123250307634887	DESPAWNED	8	collision.valtan.wallgroup.11047903315509031966.16891123250307634887	condition.valtan.wall159.16891123250307634887.destroyed	0
+M	mutation.valtan.wall159.17769051189408857662.despawn	destroyable.group.valtan.wall159.17769051189408857662	DESPAWNED	8	collision.valtan.wallgroup.11047903315509031966.17769051189408857662	condition.valtan.wall159.17769051189408857662.destroyed	0
+M	mutation.valtan.wall159.18064647264029106986.despawn	destroyable.group.valtan.wall159.18064647264029106986	DESPAWNED	8	collision.valtan.wallgroup.11047903315509031966.18064647264029106986	condition.valtan.wall159.18064647264029106986.destroyed	0
+M	mutation.valtan.wall159.18095941116451824308.despawn	destroyable.group.valtan.wall159.18095941116451824308	DESPAWNED	8	collision.valtan.wallgroup.11047903315509031966.18095941116451824308	condition.valtan.wall159.18095941116451824308.destroyed	0
+B	binding.valtan.entrance.frontwallA.contact	mutation.valtan.entrance.frontwallA.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.frontwallA.17404480870746281119
+B	binding.valtan.entrance.frontwallA.impact	mutation.valtan.entrance.frontwallA.despawn	BOSS_IMPACT	VALTAN_ENTRANCE_WHIRLWIND	SWEEP	valtan.mechanic.entrance-whirlwind.sweep	1	collision.valtan.wallgroup.frontwallA.receiver
+B	binding.valtan.entrance.frontwallB.contact	mutation.valtan.entrance.frontwallB.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.frontwallB.12252498194881956917
+B	binding.valtan.entrance.frontwallB.impact	mutation.valtan.entrance.frontwallB.despawn	BOSS_IMPACT	VALTAN_ENTRANCE_WHIRLWIND	SWEEP	valtan.mechanic.entrance-whirlwind.sweep	1	collision.valtan.wallgroup.frontwallB.receiver
+B	binding.valtan.floor30.brick.7000000000000000002	mutation.valtan.floor30.brick.7000000000000000002.collapse	STAGE	VALTAN_TERRAIN_DESTRUCTION_9_OCLOCK	IMPACT	valtan.mechanic.terrain-destruction-9.impact	3	-
+B	binding.valtan.floor30.brick.7000000000000000003	mutation.valtan.floor30.brick.7000000000000000003.collapse	STAGE	VALTAN_TERRAIN_DESTRUCTION_9_OCLOCK	IMPACT	valtan.mechanic.terrain-destruction-9.impact	3	-
+B	binding.valtan.floor30.rail.7000000000000000001	mutation.valtan.floor30.rail.7000000000000000001.collapse	STAGE	VALTAN_TERRAIN_DESTRUCTION_9_OCLOCK	IMPACT	valtan.mechanic.terrain-destruction-9.impact	3	-
+B	binding.valtan.floor84.brick.7000000000000000006	mutation.valtan.floor84.brick.7000000000000000006.collapse	STAGE	VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK	IMPACT	valtan.mechanic.terrain-destruction-3.impact	3	-
+B	binding.valtan.floor84.brick.7000000000000000007	mutation.valtan.floor84.brick.7000000000000000007.collapse	STAGE	VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK	IMPACT	valtan.mechanic.terrain-destruction-3.impact	3	-
+B	binding.valtan.floor84.rail.7000000000000000005	mutation.valtan.floor84.rail.7000000000000000005.collapse	STAGE	VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK	IMPACT	valtan.mechanic.terrain-destruction-3.impact	3	-
+B	binding.valtan.outerwall109.1090000000000001.dash-charge-impact	mutation.valtan.outerwall109.1090000000000001.despawn	BOSS_IMPACT	VALTAN_DASH_CHARGE	CHARGE	valtan.attack.dash-charge.active	1	collision.valtan.wallgroup.sector00.1090000000000001.receiver
+B	binding.valtan.outerwall109.1090000000000001.impact	mutation.valtan.outerwall109.1090000000000001.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.outerwall109.1090000000000002.dash-charge-impact	mutation.valtan.outerwall109.1090000000000002.despawn	BOSS_IMPACT	VALTAN_DASH_CHARGE	CHARGE	valtan.attack.dash-charge.active	1	collision.valtan.wallgroup.sector00.1090000000000002.receiver
+B	binding.valtan.outerwall109.1090000000000002.impact	mutation.valtan.outerwall109.1090000000000002.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.outerwall109.1090000000000003.dash-charge-impact	mutation.valtan.outerwall109.1090000000000003.despawn	BOSS_IMPACT	VALTAN_DASH_CHARGE	CHARGE	valtan.attack.dash-charge.active	1	collision.valtan.wallgroup.sector00.1090000000000003.receiver
+B	binding.valtan.outerwall109.1090000000000003.impact	mutation.valtan.outerwall109.1090000000000003.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.outerwall109.1090000000000004.dash-charge-impact	mutation.valtan.outerwall109.1090000000000004.despawn	BOSS_IMPACT	VALTAN_DASH_CHARGE	CHARGE	valtan.attack.dash-charge.active	1	collision.valtan.wallgroup.sector01.1090000000000004.receiver
+B	binding.valtan.outerwall109.1090000000000004.impact	mutation.valtan.outerwall109.1090000000000004.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.outerwall109.1090000000000005.dash-charge-impact	mutation.valtan.outerwall109.1090000000000005.despawn	BOSS_IMPACT	VALTAN_DASH_CHARGE	CHARGE	valtan.attack.dash-charge.active	1	collision.valtan.wallgroup.sector01.1090000000000005.receiver
+B	binding.valtan.outerwall109.1090000000000005.impact	mutation.valtan.outerwall109.1090000000000005.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.outerwall109.1090000000000006.dash-charge-impact	mutation.valtan.outerwall109.1090000000000006.despawn	BOSS_IMPACT	VALTAN_DASH_CHARGE	CHARGE	valtan.attack.dash-charge.active	1	collision.valtan.wallgroup.sector01.1090000000000006.receiver
+B	binding.valtan.outerwall109.1090000000000006.impact	mutation.valtan.outerwall109.1090000000000006.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.outerwall109.1090000000000007.dash-charge-impact	mutation.valtan.outerwall109.1090000000000007.despawn	BOSS_IMPACT	VALTAN_DASH_CHARGE	CHARGE	valtan.attack.dash-charge.active	1	collision.valtan.wallgroup.sector02.1090000000000007.receiver
+B	binding.valtan.outerwall109.1090000000000007.impact	mutation.valtan.outerwall109.1090000000000007.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.outerwall109.1090000000000008.dash-charge-impact	mutation.valtan.outerwall109.1090000000000008.despawn	BOSS_IMPACT	VALTAN_DASH_CHARGE	CHARGE	valtan.attack.dash-charge.active	1	collision.valtan.wallgroup.sector02.1090000000000008.receiver
+B	binding.valtan.outerwall109.1090000000000008.impact	mutation.valtan.outerwall109.1090000000000008.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.outerwall109.1090000000000009.dash-charge-impact	mutation.valtan.outerwall109.1090000000000009.despawn	BOSS_IMPACT	VALTAN_DASH_CHARGE	CHARGE	valtan.attack.dash-charge.active	1	collision.valtan.wallgroup.sector02.1090000000000009.receiver
+B	binding.valtan.outerwall109.1090000000000009.impact	mutation.valtan.outerwall109.1090000000000009.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.outerwall109.1090000000000010.dash-charge-impact	mutation.valtan.outerwall109.1090000000000010.despawn	BOSS_IMPACT	VALTAN_DASH_CHARGE	CHARGE	valtan.attack.dash-charge.active	1	collision.valtan.wallgroup.sector03.1090000000000010.receiver
+B	binding.valtan.outerwall109.1090000000000010.impact	mutation.valtan.outerwall109.1090000000000010.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.outerwall109.1090000000000012.dash-charge-impact	mutation.valtan.outerwall109.1090000000000012.despawn	BOSS_IMPACT	VALTAN_DASH_CHARGE	CHARGE	valtan.attack.dash-charge.active	1	collision.valtan.wallgroup.sector03.1090000000000012.receiver
+B	binding.valtan.outerwall109.1090000000000012.impact	mutation.valtan.outerwall109.1090000000000012.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.outerwall109.1090000000000013.dash-charge-impact	mutation.valtan.outerwall109.1090000000000013.despawn	BOSS_IMPACT	VALTAN_DASH_CHARGE	CHARGE	valtan.attack.dash-charge.active	1	collision.valtan.wallgroup.sector04.1090000000000013.receiver
+B	binding.valtan.outerwall109.1090000000000013.impact	mutation.valtan.outerwall109.1090000000000013.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.outerwall109.1090000000000014.dash-charge-impact	mutation.valtan.outerwall109.1090000000000014.despawn	BOSS_IMPACT	VALTAN_DASH_CHARGE	CHARGE	valtan.attack.dash-charge.active	1	collision.valtan.wallgroup.sector04.1090000000000014.receiver
+B	binding.valtan.outerwall109.1090000000000014.impact	mutation.valtan.outerwall109.1090000000000014.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.outerwall109.1090000000000015.dash-charge-impact	mutation.valtan.outerwall109.1090000000000015.despawn	BOSS_IMPACT	VALTAN_DASH_CHARGE	CHARGE	valtan.attack.dash-charge.active	1	collision.valtan.wallgroup.sector04.1090000000000015.receiver
+B	binding.valtan.outerwall109.1090000000000015.impact	mutation.valtan.outerwall109.1090000000000015.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.outerwall109.1090000000000016.dash-charge-impact	mutation.valtan.outerwall109.1090000000000016.despawn	BOSS_IMPACT	VALTAN_DASH_CHARGE	CHARGE	valtan.attack.dash-charge.active	1	collision.valtan.wallgroup.sector05.1090000000000016.receiver
+B	binding.valtan.outerwall109.1090000000000016.impact	mutation.valtan.outerwall109.1090000000000016.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.outerwall109.1090000000000017.dash-charge-impact	mutation.valtan.outerwall109.1090000000000017.despawn	BOSS_IMPACT	VALTAN_DASH_CHARGE	CHARGE	valtan.attack.dash-charge.active	1	collision.valtan.wallgroup.sector05.1090000000000017.receiver
+B	binding.valtan.outerwall109.1090000000000017.impact	mutation.valtan.outerwall109.1090000000000017.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.outerwall109.1090000000000018.dash-charge-impact	mutation.valtan.outerwall109.1090000000000018.despawn	BOSS_IMPACT	VALTAN_DASH_CHARGE	CHARGE	valtan.attack.dash-charge.active	1	collision.valtan.wallgroup.sector05.1090000000000018.receiver
+B	binding.valtan.outerwall109.1090000000000018.impact	mutation.valtan.outerwall109.1090000000000018.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.outerwall109.1090000000000019.dash-charge-impact	mutation.valtan.outerwall109.1090000000000019.despawn	BOSS_IMPACT	VALTAN_DASH_CHARGE	CHARGE	valtan.attack.dash-charge.active	1	collision.valtan.wallgroup.sector06.1090000000000019.receiver
+B	binding.valtan.outerwall109.1090000000000019.impact	mutation.valtan.outerwall109.1090000000000019.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.outerwall109.1090000000000020.dash-charge-impact	mutation.valtan.outerwall109.1090000000000020.despawn	BOSS_IMPACT	VALTAN_DASH_CHARGE	CHARGE	valtan.attack.dash-charge.active	1	collision.valtan.wallgroup.sector06.1090000000000020.receiver
+B	binding.valtan.outerwall109.1090000000000020.impact	mutation.valtan.outerwall109.1090000000000020.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.outerwall109.1090000000000021.dash-charge-impact	mutation.valtan.outerwall109.1090000000000021.despawn	BOSS_IMPACT	VALTAN_DASH_CHARGE	CHARGE	valtan.attack.dash-charge.active	1	collision.valtan.wallgroup.sector06.1090000000000021.receiver
+B	binding.valtan.outerwall109.1090000000000021.impact	mutation.valtan.outerwall109.1090000000000021.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.outerwall109.1090000000000022.dash-charge-impact	mutation.valtan.outerwall109.1090000000000022.despawn	BOSS_IMPACT	VALTAN_DASH_CHARGE	CHARGE	valtan.attack.dash-charge.active	1	collision.valtan.wallgroup.sector07.1090000000000022.receiver
+B	binding.valtan.outerwall109.1090000000000022.impact	mutation.valtan.outerwall109.1090000000000022.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.outerwall109.1090000000000023.dash-charge-impact	mutation.valtan.outerwall109.1090000000000023.despawn	BOSS_IMPACT	VALTAN_DASH_CHARGE	CHARGE	valtan.attack.dash-charge.active	1	collision.valtan.wallgroup.sector07.1090000000000023.receiver
+B	binding.valtan.outerwall109.1090000000000023.impact	mutation.valtan.outerwall109.1090000000000023.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.outerwall109.1090000000000024.dash-charge-impact	mutation.valtan.outerwall109.1090000000000024.despawn	BOSS_IMPACT	VALTAN_DASH_CHARGE	CHARGE	valtan.attack.dash-charge.active	1	collision.valtan.wallgroup.sector07.1090000000000024.receiver
+B	binding.valtan.outerwall109.1090000000000024.impact	mutation.valtan.outerwall109.1090000000000024.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.outerwall109.1090000000000027.dash-charge-impact	mutation.valtan.outerwall109.1090000000000027.despawn	BOSS_IMPACT	VALTAN_DASH_CHARGE	CHARGE	valtan.attack.dash-charge.active	1	collision.valtan.wallgroup.sector03.1090000000000027.receiver
+B	binding.valtan.outerwall109.1090000000000027.impact	mutation.valtan.outerwall109.1090000000000027.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.outerwall109.1090000000000028.dash-charge-impact	mutation.valtan.outerwall109.1090000000000028.despawn	BOSS_IMPACT	VALTAN_DASH_CHARGE	CHARGE	valtan.attack.dash-charge.active	1	collision.valtan.wallgroup.sector03.1090000000000028.receiver
+B	binding.valtan.outerwall109.1090000000000028.impact	mutation.valtan.outerwall109.1090000000000028.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.outerwall109.1090000000000029.dash-charge-impact	mutation.valtan.outerwall109.1090000000000029.despawn	BOSS_IMPACT	VALTAN_DASH_CHARGE	CHARGE	valtan.attack.dash-charge.active	1	collision.valtan.wallgroup.sector06.1090000000000029.receiver
+B	binding.valtan.outerwall109.1090000000000029.impact	mutation.valtan.outerwall109.1090000000000029.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.outerwall109.1090000000000030.dash-charge-impact	mutation.valtan.outerwall109.1090000000000030.despawn	BOSS_IMPACT	VALTAN_DASH_CHARGE	CHARGE	valtan.attack.dash-charge.active	1	collision.valtan.wallgroup.sector06.1090000000000030.receiver
+B	binding.valtan.outerwall109.1090000000000030.impact	mutation.valtan.outerwall109.1090000000000030.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall.10435996578153793381.contact	mutation.valtan.wall.10435996578153793381.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.12252498194881956917.10435996578153793381
+B	binding.valtan.wall.10435996578153793381.preview	mutation.valtan.wall.10435996578153793381.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall.10672658406952543185.contact	mutation.valtan.wall.10672658406952543185.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.17695249952621776147.10672658406952543185
+B	binding.valtan.wall.10672658406952543185.preview	mutation.valtan.wall.10672658406952543185.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall.10912388091405377926.contact	mutation.valtan.wall.10912388091405377926.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.12252498194881956917.10912388091405377926
+B	binding.valtan.wall.10912388091405377926.preview	mutation.valtan.wall.10912388091405377926.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall.10938566942418286882.contact	mutation.valtan.wall.10938566942418286882.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.12135716830026868823.10938566942418286882
+B	binding.valtan.wall.10938566942418286882.preview	mutation.valtan.wall.10938566942418286882.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall.11170070275064524686.contact	mutation.valtan.wall.11170070275064524686.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.11170070275064524686.11170070275064524686
+B	binding.valtan.wall.11170070275064524686.preview	mutation.valtan.wall.11170070275064524686.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall.11190594702002930167.contact	mutation.valtan.wall.11190594702002930167.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.11190594702002930167.11190594702002930167
+B	binding.valtan.wall.11190594702002930167.preview	mutation.valtan.wall.11190594702002930167.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall.11909088500311713272.contact	mutation.valtan.wall.11909088500311713272.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.9522135662464469029.11909088500311713272
+B	binding.valtan.wall.11909088500311713272.preview	mutation.valtan.wall.11909088500311713272.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall.12037145985028191659.contact	mutation.valtan.wall.12037145985028191659.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.3705102.12037145985028191659
+B	binding.valtan.wall.12037145985028191659.preview	mutation.valtan.wall.12037145985028191659.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall.12135716830026868823.contact	mutation.valtan.wall.12135716830026868823.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.12135716830026868823.12135716830026868823
+B	binding.valtan.wall.12135716830026868823.preview	mutation.valtan.wall.12135716830026868823.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall.12612119053333525111.contact	mutation.valtan.wall.12612119053333525111.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.12135716830026868823.12612119053333525111
+B	binding.valtan.wall.12612119053333525111.preview	mutation.valtan.wall.12612119053333525111.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall.12681913253468198394.contact	mutation.valtan.wall.12681913253468198394.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.17695249952621776147.12681913253468198394
+B	binding.valtan.wall.12681913253468198394.preview	mutation.valtan.wall.12681913253468198394.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall.12804542616476082944.contact	mutation.valtan.wall.12804542616476082944.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.15495684800954131707.12804542616476082944
+B	binding.valtan.wall.12804542616476082944.preview	mutation.valtan.wall.12804542616476082944.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall.12819104299115621849.contact	mutation.valtan.wall.12819104299115621849.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.15495684800954131707.12819104299115621849
+B	binding.valtan.wall.12819104299115621849.preview	mutation.valtan.wall.12819104299115621849.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall.12956154234820310428.contact	mutation.valtan.wall.12956154234820310428.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.12135716830026868823.12956154234820310428
+B	binding.valtan.wall.12956154234820310428.preview	mutation.valtan.wall.12956154234820310428.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall.13154681496987253568.contact	mutation.valtan.wall.13154681496987253568.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.12252498194881956917.13154681496987253568
+B	binding.valtan.wall.13154681496987253568.preview	mutation.valtan.wall.13154681496987253568.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall.13195423984589183291.contact	mutation.valtan.wall.13195423984589183291.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.11190594702002930167.13195423984589183291
+B	binding.valtan.wall.13195423984589183291.preview	mutation.valtan.wall.13195423984589183291.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall.13221745590928612509.contact	mutation.valtan.wall.13221745590928612509.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.15675921917269125843.13221745590928612509
+B	binding.valtan.wall.13221745590928612509.preview	mutation.valtan.wall.13221745590928612509.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall.13290943434399830027.contact	mutation.valtan.wall.13290943434399830027.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.15495684800954131707.13290943434399830027
+B	binding.valtan.wall.13290943434399830027.preview	mutation.valtan.wall.13290943434399830027.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall.13520360247339696445.contact	mutation.valtan.wall.13520360247339696445.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.13520360247339696445.13520360247339696445
+B	binding.valtan.wall.13520360247339696445.preview	mutation.valtan.wall.13520360247339696445.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall.13837284136111935898.contact	mutation.valtan.wall.13837284136111935898.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.12252498194881956917.13837284136111935898
+B	binding.valtan.wall.13837284136111935898.preview	mutation.valtan.wall.13837284136111935898.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall.13907193421470993692.contact	mutation.valtan.wall.13907193421470993692.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.12135716830026868823.13907193421470993692
+B	binding.valtan.wall.13907193421470993692.preview	mutation.valtan.wall.13907193421470993692.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall.14210737191027038638.contact	mutation.valtan.wall.14210737191027038638.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.15495684800954131707.14210737191027038638
+B	binding.valtan.wall.14210737191027038638.preview	mutation.valtan.wall.14210737191027038638.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall.14345577340107998055.contact	mutation.valtan.wall.14345577340107998055.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.15495684800954131707.14345577340107998055
+B	binding.valtan.wall.14345577340107998055.preview	mutation.valtan.wall.14345577340107998055.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall.14398285027733086155.contact	mutation.valtan.wall.14398285027733086155.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.17695249952621776147.14398285027733086155
+B	binding.valtan.wall.14398285027733086155.preview	mutation.valtan.wall.14398285027733086155.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall.14439275443581760904.contact	mutation.valtan.wall.14439275443581760904.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.15495684800954131707.14439275443581760904
+B	binding.valtan.wall.14439275443581760904.preview	mutation.valtan.wall.14439275443581760904.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall.14462438123003083514.contact	mutation.valtan.wall.14462438123003083514.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.17695249952621776147.14462438123003083514
+B	binding.valtan.wall.14462438123003083514.preview	mutation.valtan.wall.14462438123003083514.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall.14520149530921636720.contact	mutation.valtan.wall.14520149530921636720.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.15495684800954131707.14520149530921636720
+B	binding.valtan.wall.14520149530921636720.preview	mutation.valtan.wall.14520149530921636720.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall.14754587218800370239.contact	mutation.valtan.wall.14754587218800370239.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.12135716830026868823.14754587218800370239
+B	binding.valtan.wall.14754587218800370239.preview	mutation.valtan.wall.14754587218800370239.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall.15148418014021580024.contact	mutation.valtan.wall.15148418014021580024.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.12252498194881956917.15148418014021580024
+B	binding.valtan.wall.15148418014021580024.preview	mutation.valtan.wall.15148418014021580024.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall.15358675764127682739.contact	mutation.valtan.wall.15358675764127682739.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.15495684800954131707.15358675764127682739
+B	binding.valtan.wall.15358675764127682739.preview	mutation.valtan.wall.15358675764127682739.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall.15393154990485032341.contact	mutation.valtan.wall.15393154990485032341.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.12252498194881956917.15393154990485032341
+B	binding.valtan.wall.15393154990485032341.preview	mutation.valtan.wall.15393154990485032341.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall.15423695113667715748.contact	mutation.valtan.wall.15423695113667715748.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.15495684800954131707.15423695113667715748
+B	binding.valtan.wall.15423695113667715748.preview	mutation.valtan.wall.15423695113667715748.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall.15451422525499780584.contact	mutation.valtan.wall.15451422525499780584.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.17695249952621776147.15451422525499780584
+B	binding.valtan.wall.15451422525499780584.preview	mutation.valtan.wall.15451422525499780584.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall.15495684800954131707.contact	mutation.valtan.wall.15495684800954131707.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.15495684800954131707.15495684800954131707
+B	binding.valtan.wall.15495684800954131707.preview	mutation.valtan.wall.15495684800954131707.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall.15590072441712178822.contact	mutation.valtan.wall.15590072441712178822.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.12135716830026868823.15590072441712178822
+B	binding.valtan.wall.15590072441712178822.preview	mutation.valtan.wall.15590072441712178822.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall.15590636842883334976.contact	mutation.valtan.wall.15590636842883334976.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.12135716830026868823.15590636842883334976
+B	binding.valtan.wall.15590636842883334976.preview	mutation.valtan.wall.15590636842883334976.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall.15675921917269125843.contact	mutation.valtan.wall.15675921917269125843.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.15675921917269125843.15675921917269125843
+B	binding.valtan.wall.15675921917269125843.preview	mutation.valtan.wall.15675921917269125843.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall.15736179535184396369.contact	mutation.valtan.wall.15736179535184396369.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.12252498194881956917.15736179535184396369
+B	binding.valtan.wall.15736179535184396369.preview	mutation.valtan.wall.15736179535184396369.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall.16181172586312392552.contact	mutation.valtan.wall.16181172586312392552.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.12135716830026868823.16181172586312392552
+B	binding.valtan.wall.16181172586312392552.preview	mutation.valtan.wall.16181172586312392552.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall.17150846598057876717.contact	mutation.valtan.wall.17150846598057876717.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.17150846598057876717.17150846598057876717
+B	binding.valtan.wall.17150846598057876717.preview	mutation.valtan.wall.17150846598057876717.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall.17280669848983777578.contact	mutation.valtan.wall.17280669848983777578.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.3705102.17280669848983777578
+B	binding.valtan.wall.17280669848983777578.preview	mutation.valtan.wall.17280669848983777578.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall.17296963925068961735.contact	mutation.valtan.wall.17296963925068961735.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.12252498194881956917.17296963925068961735
+B	binding.valtan.wall.17296963925068961735.preview	mutation.valtan.wall.17296963925068961735.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall.17359606121069777624.contact	mutation.valtan.wall.17359606121069777624.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.15495684800954131707.17359606121069777624
+B	binding.valtan.wall.17359606121069777624.preview	mutation.valtan.wall.17359606121069777624.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall.17695249952621776147.contact	mutation.valtan.wall.17695249952621776147.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.17695249952621776147.17695249952621776147
+B	binding.valtan.wall.17695249952621776147.preview	mutation.valtan.wall.17695249952621776147.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall.17788407538468874008.contact	mutation.valtan.wall.17788407538468874008.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.12252498194881956917.17788407538468874008
+B	binding.valtan.wall.17788407538468874008.preview	mutation.valtan.wall.17788407538468874008.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall.18100758183075339831.contact	mutation.valtan.wall.18100758183075339831.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.15495684800954131707.18100758183075339831
+B	binding.valtan.wall.18100758183075339831.preview	mutation.valtan.wall.18100758183075339831.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall.18105374220469669789.contact	mutation.valtan.wall.18105374220469669789.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.12135716830026868823.18105374220469669789
+B	binding.valtan.wall.18105374220469669789.preview	mutation.valtan.wall.18105374220469669789.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall.18177041425620847396.contact	mutation.valtan.wall.18177041425620847396.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.3705102.18177041425620847396
+B	binding.valtan.wall.18177041425620847396.preview	mutation.valtan.wall.18177041425620847396.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall.18360145892842596691.contact	mutation.valtan.wall.18360145892842596691.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.12135716830026868823.18360145892842596691
+B	binding.valtan.wall.18360145892842596691.preview	mutation.valtan.wall.18360145892842596691.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall.18362175117092037953.contact	mutation.valtan.wall.18362175117092037953.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.12252498194881956917.18362175117092037953
+B	binding.valtan.wall.18362175117092037953.preview	mutation.valtan.wall.18362175117092037953.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall.9335938568718910930.contact	mutation.valtan.wall.9335938568718910930.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.3705102.9335938568718910930
+B	binding.valtan.wall.9335938568718910930.preview	mutation.valtan.wall.9335938568718910930.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall.9460380659834835619.contact	mutation.valtan.wall.9460380659834835619.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.17695249952621776147.9460380659834835619
+B	binding.valtan.wall.9460380659834835619.preview	mutation.valtan.wall.9460380659834835619.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall.9522135662464469029.contact	mutation.valtan.wall.9522135662464469029.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.9522135662464469029.9522135662464469029
+B	binding.valtan.wall.9522135662464469029.preview	mutation.valtan.wall.9522135662464469029.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall.9652616057759700150.contact	mutation.valtan.wall.9652616057759700150.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.9652616057759700150.9652616057759700150
+B	binding.valtan.wall.9652616057759700150.preview	mutation.valtan.wall.9652616057759700150.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall.9671293252162296055.contact	mutation.valtan.wall.9671293252162296055.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.15495684800954131707.9671293252162296055
+B	binding.valtan.wall.9671293252162296055.preview	mutation.valtan.wall.9671293252162296055.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall.9681544306002658031.contact	mutation.valtan.wall.9681544306002658031.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.3705102.9681544306002658031
+B	binding.valtan.wall.9681544306002658031.preview	mutation.valtan.wall.9681544306002658031.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall.9863801195242004116.contact	mutation.valtan.wall.9863801195242004116.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.17150846598057876717.9863801195242004116
+B	binding.valtan.wall.9863801195242004116.preview	mutation.valtan.wall.9863801195242004116.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall159.10619331645164562008.arena-break-109	mutation.valtan.wall159.10619331645164562008.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall159.10619331645164562008.contact	mutation.valtan.wall159.10619331645164562008.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.11047903315509031966.10619331645164562008
+B	binding.valtan.wall159.10619331645164562008.dash-charge-impact	mutation.valtan.wall159.10619331645164562008.despawn	BOSS_IMPACT	VALTAN_DASH_CHARGE	CHARGE	valtan.attack.dash-charge.active	1	collision.valtan.wallgroup.11047903315509031966.10619331645164562008.receiver
+B	binding.valtan.wall159.10619331645164562008.impact	mutation.valtan.wall159.10619331645164562008.despawn	BOSS_IMPACT	VALTAN_ARMOR_BREAK_OPENING	WALL_CHARGE	valtan.mechanic.armor-break-opening.charge	0	collision.valtan.wallgroup.11047903315509031966.10619331645164562008.receiver
+B	binding.valtan.wall159.10758879797263276529.arena-break-109	mutation.valtan.wall159.10758879797263276529.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall159.10758879797263276529.contact	mutation.valtan.wall159.10758879797263276529.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.11047903315509031966.10758879797263276529
+B	binding.valtan.wall159.10758879797263276529.dash-charge-impact	mutation.valtan.wall159.10758879797263276529.despawn	BOSS_IMPACT	VALTAN_DASH_CHARGE	CHARGE	valtan.attack.dash-charge.active	1	collision.valtan.wallgroup.11047903315509031966.10758879797263276529.receiver
+B	binding.valtan.wall159.10758879797263276529.impact	mutation.valtan.wall159.10758879797263276529.despawn	BOSS_IMPACT	VALTAN_ARMOR_BREAK_OPENING	WALL_CHARGE	valtan.mechanic.armor-break-opening.charge	0	collision.valtan.wallgroup.11047903315509031966.10758879797263276529.receiver
+B	binding.valtan.wall159.11047903315509031966.arena-break-109	mutation.valtan.wall159.11047903315509031966.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall159.11047903315509031966.contact	mutation.valtan.wall159.11047903315509031966.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.11047903315509031966.11047903315509031966
+B	binding.valtan.wall159.11047903315509031966.dash-charge-impact	mutation.valtan.wall159.11047903315509031966.despawn	BOSS_IMPACT	VALTAN_DASH_CHARGE	CHARGE	valtan.attack.dash-charge.active	1	collision.valtan.wallgroup.11047903315509031966.11047903315509031966.receiver
+B	binding.valtan.wall159.11047903315509031966.impact	mutation.valtan.wall159.11047903315509031966.despawn	BOSS_IMPACT	VALTAN_ARMOR_BREAK_OPENING	WALL_CHARGE	valtan.mechanic.armor-break-opening.charge	0	collision.valtan.wallgroup.11047903315509031966.11047903315509031966.receiver
+B	binding.valtan.wall159.12385961325933108240.arena-break-109	mutation.valtan.wall159.12385961325933108240.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall159.12385961325933108240.contact	mutation.valtan.wall159.12385961325933108240.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.11047903315509031966.12385961325933108240
+B	binding.valtan.wall159.12385961325933108240.dash-charge-impact	mutation.valtan.wall159.12385961325933108240.despawn	BOSS_IMPACT	VALTAN_DASH_CHARGE	CHARGE	valtan.attack.dash-charge.active	1	collision.valtan.wallgroup.11047903315509031966.12385961325933108240.receiver
+B	binding.valtan.wall159.12385961325933108240.impact	mutation.valtan.wall159.12385961325933108240.despawn	BOSS_IMPACT	VALTAN_ARMOR_BREAK_OPENING	WALL_CHARGE	valtan.mechanic.armor-break-opening.charge	0	collision.valtan.wallgroup.11047903315509031966.12385961325933108240.receiver
+B	binding.valtan.wall159.15221142224278623810.arena-break-109	mutation.valtan.wall159.15221142224278623810.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall159.15221142224278623810.contact	mutation.valtan.wall159.15221142224278623810.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.11047903315509031966.15221142224278623810
+B	binding.valtan.wall159.15221142224278623810.dash-charge-impact	mutation.valtan.wall159.15221142224278623810.despawn	BOSS_IMPACT	VALTAN_DASH_CHARGE	CHARGE	valtan.attack.dash-charge.active	1	collision.valtan.wallgroup.11047903315509031966.15221142224278623810.receiver
+B	binding.valtan.wall159.15221142224278623810.impact	mutation.valtan.wall159.15221142224278623810.despawn	BOSS_IMPACT	VALTAN_ARMOR_BREAK_OPENING	WALL_CHARGE	valtan.mechanic.armor-break-opening.charge	0	collision.valtan.wallgroup.11047903315509031966.15221142224278623810.receiver
+B	binding.valtan.wall159.15719065619666776634.arena-break-109	mutation.valtan.wall159.15719065619666776634.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall159.15719065619666776634.contact	mutation.valtan.wall159.15719065619666776634.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.11047903315509031966.15719065619666776634
+B	binding.valtan.wall159.15719065619666776634.dash-charge-impact	mutation.valtan.wall159.15719065619666776634.despawn	BOSS_IMPACT	VALTAN_DASH_CHARGE	CHARGE	valtan.attack.dash-charge.active	1	collision.valtan.wallgroup.11047903315509031966.15719065619666776634.receiver
+B	binding.valtan.wall159.15719065619666776634.impact	mutation.valtan.wall159.15719065619666776634.despawn	BOSS_IMPACT	VALTAN_ARMOR_BREAK_OPENING	WALL_CHARGE	valtan.mechanic.armor-break-opening.charge	0	collision.valtan.wallgroup.11047903315509031966.15719065619666776634.receiver
+B	binding.valtan.wall159.16891123250307634887.arena-break-109	mutation.valtan.wall159.16891123250307634887.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall159.16891123250307634887.contact	mutation.valtan.wall159.16891123250307634887.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.11047903315509031966.16891123250307634887
+B	binding.valtan.wall159.16891123250307634887.dash-charge-impact	mutation.valtan.wall159.16891123250307634887.despawn	BOSS_IMPACT	VALTAN_DASH_CHARGE	CHARGE	valtan.attack.dash-charge.active	1	collision.valtan.wallgroup.11047903315509031966.16891123250307634887.receiver
+B	binding.valtan.wall159.16891123250307634887.impact	mutation.valtan.wall159.16891123250307634887.despawn	BOSS_IMPACT	VALTAN_ARMOR_BREAK_OPENING	WALL_CHARGE	valtan.mechanic.armor-break-opening.charge	0	collision.valtan.wallgroup.11047903315509031966.16891123250307634887.receiver
+B	binding.valtan.wall159.17769051189408857662.arena-break-109	mutation.valtan.wall159.17769051189408857662.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall159.17769051189408857662.contact	mutation.valtan.wall159.17769051189408857662.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.11047903315509031966.17769051189408857662
+B	binding.valtan.wall159.17769051189408857662.dash-charge-impact	mutation.valtan.wall159.17769051189408857662.despawn	BOSS_IMPACT	VALTAN_DASH_CHARGE	CHARGE	valtan.attack.dash-charge.active	1	collision.valtan.wallgroup.11047903315509031966.17769051189408857662.receiver
+B	binding.valtan.wall159.17769051189408857662.impact	mutation.valtan.wall159.17769051189408857662.despawn	BOSS_IMPACT	VALTAN_ARMOR_BREAK_OPENING	WALL_CHARGE	valtan.mechanic.armor-break-opening.charge	0	collision.valtan.wallgroup.11047903315509031966.17769051189408857662.receiver
+B	binding.valtan.wall159.18064647264029106986.arena-break-109	mutation.valtan.wall159.18064647264029106986.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall159.18064647264029106986.contact	mutation.valtan.wall159.18064647264029106986.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.11047903315509031966.18064647264029106986
+B	binding.valtan.wall159.18064647264029106986.dash-charge-impact	mutation.valtan.wall159.18064647264029106986.despawn	BOSS_IMPACT	VALTAN_DASH_CHARGE	CHARGE	valtan.attack.dash-charge.active	1	collision.valtan.wallgroup.11047903315509031966.18064647264029106986.receiver
+B	binding.valtan.wall159.18064647264029106986.impact	mutation.valtan.wall159.18064647264029106986.despawn	BOSS_IMPACT	VALTAN_ARMOR_BREAK_OPENING	WALL_CHARGE	valtan.mechanic.armor-break-opening.charge	0	collision.valtan.wallgroup.11047903315509031966.18064647264029106986.receiver
+B	binding.valtan.wall159.18095941116451824308.arena-break-109	mutation.valtan.wall159.18095941116451824308.despawn	STAGE	VALTAN_ARENA_BREAK_109	IMPACT	valtan.mechanic.arena-break-109.impact	2	-
+B	binding.valtan.wall159.18095941116451824308.contact	mutation.valtan.wall159.18095941116451824308.despawn	COLLIDER_CONTACT	-	-	-	0	collision.valtan.wallgroup.11047903315509031966.18095941116451824308
+B	binding.valtan.wall159.18095941116451824308.dash-charge-impact	mutation.valtan.wall159.18095941116451824308.despawn	BOSS_IMPACT	VALTAN_DASH_CHARGE	CHARGE	valtan.attack.dash-charge.active	1	collision.valtan.wallgroup.11047903315509031966.18095941116451824308.receiver
+B	binding.valtan.wall159.18095941116451824308.impact	mutation.valtan.wall159.18095941116451824308.despawn	BOSS_IMPACT	VALTAN_ARMOR_BREAK_OPENING	WALL_CHARGE	valtan.mechanic.armor-break-opening.charge	0	collision.valtan.wallgroup.11047903315509031966.18095941116451824308.receiver

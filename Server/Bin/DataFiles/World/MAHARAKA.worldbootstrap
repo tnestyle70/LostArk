@@ -1,0 +1,5 @@
+LOSTARK_WORLD_BOOTSTRAP	11	MAHARAKA	LV_OCN_EVENTIS_MHP	1	4	0	0	0
+player.spawn.maharaka.party01	playerSpawn	-	-	61.18	20.48	-975.7	0	1
+player.spawn.maharaka.party02	playerSpawn	-	-	68.36	20.48	-968.82	0	1
+player.spawn.maharaka.party03	playerSpawn	-	-	63.81	20.48	-971.06	0	1
+player.spawn.maharaka.party04	playerSpawn	-	-	57.55	20.48	-982.72	0	1
