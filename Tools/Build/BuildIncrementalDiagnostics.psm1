@@ -72,7 +72,7 @@ function Get-MSBuildIncrementalReasons {
     if (-not [IO.File]::Exists($LogPath)) { return }
     # Diagnostic wording is toolset/localization dependent. Preserve bounded
     # verbatim evidence; lack of a matching line never means no rebuild occurred.
-    $pattern = '(?i)out.of.date|not up.to.date|newer than|older than|command.line.*chang|because.*(?:input|output)|\uBA85\uB839\uC904.*\uBCC0\uACBD|\uC785\uB825.*\uCD9C\uB825.*\uBCF4\uB2E4.*(?:\uCD5C\uC2E0|\uC0C8)'
+    $pattern = '(?i)out.of.date|not up.to.date|newer than|older than|command.line.*chang|because.*(?:input|output)|modified.*compil|compil.*modified|will be compiled|\uBA85\uB839\uC904.*\uBCC0\uACBD|\uC785\uB825.*\uCD9C\uB825.*\uBCF4\uB2E4.*(?:\uCD5C\uC2E0|\uC0C8)|\uCEF4\uD30C\uC77C\uB429\uB2C8\uB2E4'
     $seen = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
     foreach ($line in [IO.File]::ReadLines($LogPath)) {
         if ($line -notmatch $pattern) { continue }

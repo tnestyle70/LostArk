@@ -94,7 +94,7 @@ flowchart LR
 |---|---|---|---|
 | 원본/Reference | 외부 추출 workspace, `Data/*/Reference` | 추출기, 조사 담당 | 원작 DB·notify·clip·LookInfo에서 얻은 증거. runtime 미사용 |
 | Authoring/Catalog | repository `Data/` | ImGui Tool 또는 사람이 검토 | 팀이 합의한 정본 JSON/전용 line format |
-| Published | `Client/Bin/DataFiles`, `Server/Bin/DataFiles` | publisher만 | 검증된 결정적 runtime 입력. 직접 편집 금지 |
+| Published | `Client/Bin/DataFiles`, `Server/Bin/DataFiles` | publisher만 | 검증된 결정적 runtime 입력. 정본·publisher·소비 schema와 같은 PR로 Git 전달. 직접 편집 금지 |
 | Runtime Definition | `CGameplayCatalog`, Client catalog/view definition | Loader/Server startup | immutable definition snapshot |
 | Runtime State | `GameRoom`, replication, ViewModel, GameObject | Server tick / Client frame | HP, cooldown end tick, current action, phase, transform 등 저장하지 않는 상태 |
 

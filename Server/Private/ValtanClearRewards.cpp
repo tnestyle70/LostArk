@@ -116,10 +116,20 @@ bool LostArk::Server::CValtanClearRewards::Load()
 	std::uint32_t rowCount = 0;
 	if (3u != header.size() ||
 		"LOSTARK_VALTAN_CLEAR_REWARDS_BOOTSTRAP" != header[0] ||
-		!ParseNumber(header[1], version) || 2u != version ||
+		!ParseNumber(header[1], version) ||
 		!ParseNumber(header[2], rowCount) || 0u == rowCount || rowCount > 512u)
 	{
-		m_strStatus = "Valtan clear rewards bootstrap header is invalid";
+		m_strStatus = "Valtan clear rewards bootstrap header is invalid: " + path.string();
+		m_ItemIds = std::move(previousItemIds);
+		return false;
+	}
+
+	if (2u != version)
+	{
+		m_strStatus = "Valtan clear rewards bootstrap version mismatch: expected 2, got " +
+			std::to_string(version) + "; path=" + path.string() +
+			"; run powershell -ExecutionPolicy Bypass -File "
+			"Tools/ValtanPipeline/Publish-ValtanClearRewards.ps1 -Mode Publish";
 		m_ItemIds = std::move(previousItemIds);
 		return false;
 	}

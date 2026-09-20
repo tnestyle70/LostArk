@@ -8,6 +8,12 @@
     <PreferredToolArchitecture>x64</PreferredToolArchitecture>
     <WindowsSDKToolArchitecture>Native64Bit</WindowsSDKToolArchitecture>
   </PropertyGroup>
+  <!-- FxCompile reads these defaults from Microsoft.Cpp.props. Both shader
+       producers must set them before that import, without changing C++/MIDL. -->
+  <PropertyGroup Condition="'$(LostArkProductX64Toolchain)'=='true' and ('$(MSBuildProjectName)'=='Engine' or '$(MSBuildProjectName)'=='Client')">
+    <MultiProcFXC Condition="'$(MultiProcFXC)'==''">true</MultiProcFXC>
+    <MultiProcMaxCount Condition="'$(MultiProcMaxCount)'==''">4</MultiProcMaxCount>
+  </PropertyGroup>
   <!-- InitialTargets runs before PrepareForBuild can write shared tracking state. -->
   <Target Name="ValidateLostArkProductToolchain" Condition="'$(LostArkProductX64Toolchain)'=='true'">
     <Error Code="LARKBUILD001"

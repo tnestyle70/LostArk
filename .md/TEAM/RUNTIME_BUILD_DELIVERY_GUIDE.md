@@ -2,8 +2,13 @@
 
 ## 경계
 
-팀 Git은 코드와 `Data` 저작 정본을 관리하고, 팀장 Drive는
-`Client/Bin/Resources` 물리 리소스를 관리한다. 실행 배포본은 이미 빌드·publish된 EXE, DLL,
+팀 Git은 코드, `Data` 저작 정본과 게시된 `Client/Bin/DataFiles`, `Server/Bin/DataFiles`를
+함께 관리한다. 정본·publisher·reader schema 변경 PR에는 대응 snapshot과 필요한 참조 파일을
+포함하며 받는 PC는 같은 commit을 사용한다. 로컬 저작 변경이 없으면 수신을 위해 전체 publish를
+반복하지 않는다. 게시 snapshot은 해당 publisher만 생성·검증하고 직접 편집하지 않는다.
+staging/rollback과 로컬 receipt/cache는 Git에 넣지 않는다. `out`의 로컬 publish cache와
+DataFiles에서 소비하는 presentation generation/descriptor receipt는 서로 다른 파일이다.
+팀장 Drive는 `Client/Bin/Resources` 물리 리소스를 관리한다. 실행 배포본은 이미 빌드·publish된 EXE, DLL,
 CSO와 필요한 `Client/Server Bin/DataFiles`를 전달한다. 제품이 직접 읽는 `Data` JSON도 실행 위치에서
 같은 버전으로 준비해야 한다. Resources를 배포 ZIP, manifest 또는 Git 정본으로 승격하지 않는다.
 

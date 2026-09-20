@@ -28,6 +28,14 @@ public:
 	virtual void Update(f32_t fTimeDelta) override;
 	virtual HRESULT Render() override;
 
+	// The current Development/Training or Maharaka owner exposes its existing camera.
+	static CLevel_Development* Get_Active(LEVEL level)
+	{
+		return s_pActiveInstance && s_pActiveInstance->m_eLevel == level ?
+			s_pActiveInstance : nullptr;
+	}
+	shared_ptr<CCamera_Free> Get_DebugCamera() const { return m_pCamera.lock(); }
+
 private:
 	HRESULT Ready_Lights();
 	HRESULT Ready_Camera(const wstring_t& strLayerTag);
@@ -43,6 +51,7 @@ private:
 	CClientReplication m_Replication;
 	shared_ptr<IPlayerCommandSink> m_pPlayerCommandSink;
 	CPlayerController m_PlayerController;
+	static CLevel_Development* s_pActiveInstance;
 
 public:
 	static unique_ptr<CLevel_Development> Create(

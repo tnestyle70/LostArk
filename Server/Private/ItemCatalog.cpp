@@ -128,10 +128,20 @@ bool LostArk::Server::CItemCatalog::Load()
 	std::uint32_t version = 0;
 	std::uint32_t rowCount = 0;
 	if (3u != header.size() || "LOSTARK_ITEM_BOOTSTRAP" != header[0] ||
-		!ParseNumber(header[1], version) || 4u != version ||
+		!ParseNumber(header[1], version) ||
 		!ParseNumber(header[2], rowCount) || 0u == rowCount || rowCount > 4096u)
 	{
-		m_strStatus = "Item bootstrap header is invalid";
+		m_strStatus = "Item bootstrap header is invalid: " + path.string();
+		m_Items = std::move(previousItems);
+		return false;
+	}
+
+	if (4u != version)
+	{
+		m_strStatus = "Item bootstrap version mismatch: expected 4, got " +
+			std::to_string(version) + "; path=" + path.string() +
+			"; run powershell -ExecutionPolicy Bypass -File "
+			"Tools/GameplayPipeline/Publish-ItemCatalog.ps1 -Mode Publish";
 		m_Items = std::move(previousItems);
 		return false;
 	}

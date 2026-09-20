@@ -1,4 +1,11 @@
 # LostArk merge 회귀 방지 정본
+
+### 게시 데이터의 Git 전달과 bootstrap schema 불일치
+
+- `Client/Bin/DataFiles`, `Server/Bin/DataFiles`의 게시 snapshot은 정본·publisher·소비 schema와 같은 PR로 전달한다. 수신 PC에서 전체 publish나 navigation bake를 반복하는 것을 기본 절차로 두지 않는다. 생성물 수동 편집 금지는 Git 전달 금지와 다른 규칙이다. 신규 출력도 일반 `git add`에 포함하며 Resources·컴파일 산출물·staging/rollback·로컬 cache는 계속 제외한다.
+- `World simulation failed to initialize ... Item bootstrap header is invalid`이면 실제 `Items.bootstrap` header와 실행한 Server reader를 먼저 대조한다. v2의4열 ITEM 데이터와 v4의7열 reader가 함께 전달된 사례가 있었다. 같은 수신본의 Valtan `ClearRewards.bootstrap`도 v1 데이터와 v2 reader가 달랐다. 오래된 게시 데이터를 새 코드와 합치면 pull/build 성공만으로 실행 준비가 끝나지 않는다. 각각 `Publish-ItemCatalog.ps1 -Mode Publish`, `Publish-ValtanClearRewards.ps1 -Mode Publish`로 현재 정본을 재게시하고 갱신된 bootstrap을 같은 PR에 포함한다. header 숫자만 수정하거나 schema 검사·필수 로드를 우회하지 않는다.
+- 정본 Product runner는 Items·Valtan ClearRewards의 `CheckPublished`로 현재 정본의 전체 생성 행과 게시본을 읽기 전용 비교한다. `invalidRuntimeInputs`와 `runtimeDataChecks`를 확인하며, compile PASS를 모든 domain의 실행 준비 완료로 설명하지 않는다.
+- publisher·reader schema 변경자는 대응 출력을 갱신하고 실제 consumer에서 읽히는지 확인한다. 특정 domain 오류를 전체 재게시나 Clean/Rebuild로 우회하지 않는다. Git 수신, C++/shader 빌드, 데이터 게시, 실행 중 메모리 reload/Server 재시작과 사용자 화면 확인은 별도 단계다.
 
 ### 쿠크 이펙트 상한·컷씬 UI·배경 진단
 
@@ -2700,3 +2707,17 @@ lease에 연결한다. 저장된 DURATION은 timing 존재와 PRODUCT 의미의 
 
 - **main과 병합할 때 두 브랜치가 같은 "다음 번호"를 쓰면 ID가 조용히 겹친다 (2026-09-20 쿠크 `PATTERN_94`, `world.40`).** 쿠크 Composition은 저장할 때 `nextPatternOrdinal`/`nextWorldOrdinal`을 올리므로, 같은 기준에서 갈라진 두 브랜치가 각자 새 패턴·월드를 만들면 서로 다른 내용이 같은 ID(`KAKULSAYDON_G1_PATTERN_94` 메두사공포 대 앵콜컷신, `kakulsaydon.g1.world.40` 뿅망치 대 앵콜 세이튼)를 갖는다. git은 텍스트 충돌만 보여 주므로 JSON을 ID 기준으로 비교해 "양쪽이 같은 ID를 추가했고 내용이 다름"부터 찾고, 한쪽을 새 번호로 옮기면서 그 ID를 참조하는 모든 파일(Composition, Encounter, patternbindings)을 함께 바꾼다. 생성 출력물(`KoukuSaydonEncounter.json`, `KoukuSaydon.patternbindings.json`)은 손으로 합치지 말고 병합된 Composition으로 재생성한다. 재생성 전에는 `sourceRevision`이 Composition `revision`보다 낮은 오래된 상태다.
 - **병합 충돌 해결 때의 함정 세 가지 (2026-09-20).** (1) 해결 스크립트가 실패해도 `;`로 이어 둔 `git add`는 실행되어 충돌 마커가 남은 파일이 "해결됨"으로 스테이징된다. 해결 명령은 `&&`로만 잇고 스테이징 뒤 `git show :0:<파일> | grep -c "^<<<<<<<"`로 0개를 확인한다. (2) autocrlf 때문에 작업 사본은 CRLF, 인덱스 blob은 LF라 바이트 앵커를 쓰는 해결 스크립트는 줄끝부터 감지해야 한다. main의 `gotchas.md`처럼 `CR CR LF`로 저장된 파일은 main 원본 바이트를 그대로 두고 우리 줄만 같은 줄끝으로 붙인다. (3) `git status`가 내용이 같은 파일을 계속 M으로 표시할 수 있다. `git update-index --refresh` 뒤에도 남으면 blob 해시와 `cmp`로 같음을 확인한 뒤 `git checkout -- <파일>`로 정리한다.
+
+### Debug JSON 로딩은 빈 컨테이너 생성과 전체 consumer ABI를 함께 본다
+
+- 같은 /O2라도 /MDd와 Debug STL의 할당 비용은 남는다. DATA_JSON_VALUE의 모든 scalar에 string/vector/map/order를 생성하던 구조를 활성 payload만 생성하도록 바꿔 실제 119개 입력의 parse·digest·해제에서 약57~59% 감소를 확인했다. 전체 맵 입장이나 GPU 개선율로 확대하지 않는다. 상세 수치는 `09-21/2026-09-21_DEBUG_LOADING_CPU_RESULT.md`를 따른다.
+- Debug는 같은 문서의 3worker 처리가 1worker보다 느릴 수 있다. thread 수를 늘리기 전에 parse/decode와 renderer 준비를 분리하고 같은 입력·할당량·순서 교대 시간을 비교한다. 기존 필수 준비 장벽이나 validation을 지워 시간을 줄이지 않는다.
+- JSON value의 메모리 배치가 바뀌면 DataJson OBJ 하나만 기존 Client나 probe에 링크하지 않는다. public header를 소비하는 모든 TU를 정상 의존성 빌드로 다시 컴파일한다. /MDd와 /MD 또는 iterator ABI를 파일별로 혼합하지 않는다.
+- `Effect.Prepare.Document/Metadata/Renderer/Commit`과 `V1.prepare.*`는 CPU 단계다. 부모 total과 자식 단계, 서로 병렬인 target 시간을 합산해 전체 진입 시간으로 표시하지 않는다.
+
+### Complete Play는 저작 revision·최종 응답·수신 소비 순서를 함께 확인한다
+
+- Action revision이 같아도 Sequence revision은 별도로 게시되어야 한다. 저장 Sequence와 Encounter raidGates, Server Gameplay.bootstrap RAIDGATE의 revision을 대조한다. 오래된 게시본의 거절을 timeout으로 오인하지 않도록 exact request ID의 최종 Server 응답을 보존한다. timeout은 승인·거절이 아니며 같은 session에서 미확정 START를 자동 재시도하지 않는다.
+- raw queue 전체를 typed queue로 옮긴 뒤 소비자를 실행하면, raw 4096 한도보다 작은 lifecycle 64 한도가 정상 backlog를 연결 오류로 바꿀 수 있다. 한 Update의 dispatch를 제한하고, 다음 목적지 queue가 차면 FIFO head를 보존한 채 소비자에게 반환한다. reliable lifecycle을 버리거나 snapshot처럼 합치지 않는다.
+- ENTER_ACCEPTED의 world reset 뒤 같은 수신 배치의 spawn/snapshot은 새 world 입력이다. session 종료의 전체 폐기와 world 전환의 typed state 정리를 구분해 검증한다. 기록된 queue overflow와 반복 이펙트 의심은 각각의 증거로 조사한다.
+- 수정·재게시와 실제 화면 재생 완료를 구분한다. 근거와 실행 범위는 `09-21/2026-09-21_KOUKU_COMPLETE_PLAY_RECEIVE_RESULT.md`에 기록한다.

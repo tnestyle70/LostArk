@@ -10,8 +10,11 @@ Profiles are cumulative by intent, but broad diagnostics are never part of a nor
 Visual Studio Solution Build:
 
 - `-Profile Product` (default): Engine, Shared, Server and Client compilation and
-  normal MSBuild deployment. Publishers, source/resource fingerprints and broad
-  diagnostics do not run. `Client.vcxproj` is the single owner of EngineSDK,
+  normal MSBuild deployment. Data publishing, source/resource fingerprints and broad
+  diagnostics do not run. A read-only Item and Valtan reward `CheckPublished`
+  comparison reports stale/malformed runtime catalogs alongside missing files;
+  compile success does not certify that every runtime domain is ready.
+  `Client.vcxproj` is the single owner of EngineSDK,
   compiled-shader and Client runtime dependency deployment.
 - `-Profile Core`: Product plus publisher validation, NetworkProtocol, and
   one real-Server Character Select `Core` isolation scenario.
@@ -37,6 +40,9 @@ Debug and Release separately. Runtime Resources are managed directly by the team
 lead and are not an immutable-pack/hash gate.
 
 Product writes a compact result to `out/BuildPipeline/runs/*-product.json`.
+`missingRuntimeInputs`, `invalidRuntimeInputs` and `runtimeDataChecks` keep data
+readiness separate from the compile result. Catalog checks use the publishers'
+serialization contract without rewriting the files or duplicating format versions.
 Each project records elapsed time, toolchain and tracking state before/after,
 and counts of OBJ, PCH, CSO and binary outputs whose size or modification time
 changed. Those counts measure output writes, including deployed copies; they
@@ -49,6 +55,9 @@ The shared project settings control C++ `/MP` workers for both the IDE and CLI;
 `-MaxCompilerProcesses 4` explicitly overrides `CL_MPCount` for one runner call.
 Zero (the default) leaves that shared setting and explicit environment choices
 intact. This does not enable `UseMultiToolTask` or change the shader worker limit.
+`ProductToolchain.props` sets both Engine and Client FXC defaults to four workers
+before Microsoft.Cpp.props is imported. Explicit `MultiProcFXC` and
+`MultiProcMaxCount` settings are preserved; C++ and MIDL scheduling is unchanged.
 
 Keep the same Visual Studio installation between IDE and command-line builds.
 `-MSBuildPath` chooses an explicit executable; otherwise the runner respects
@@ -86,6 +95,9 @@ source. The PCH contains stable standard-library headers only. Do not add
 `Engine_Defines.h`, gameplay types, authoring documents, or shader registries to
 it: changing such input would invalidate every PCH consumer. Optimized units
 with different compiler settings and third-party implementations opt out.
+Frequently shared `filesystem`, `set` and `sstream` headers are also cached;
+they previously repeated their parsing in most Client translation units. A PCH
+header update rebuilds its consumers once; subsequent feature edits reuse it.
 `CL_MPCount` defaults to the smaller of 8 and the machine's logical processor
 count, unless explicitly set. The shader worker count remains independent.
 

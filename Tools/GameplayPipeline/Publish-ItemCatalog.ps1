@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [ValidateSet('Validate', 'Publish')]
+    [ValidateSet('Validate', 'Publish', 'CheckPublished')]
     [string]$Mode = 'Validate',
     [string]$OutputRoot = 'Server/Bin/DataFiles/Items'
 )
@@ -8,11 +8,13 @@ param(
 $ErrorActionPreference = 'Stop'
 $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
 $stableIdPattern = '^[A-Za-z0-9_.-]{1,64}$'
+. (Join-Path $PSScriptRoot 'Publish-FileTransaction.ps1')
+$publishSources = @{}
 
 function Read-JsonDocument([string]$RelativePath) {
     $path = [IO.Path]::GetFullPath((Join-Path $repoRoot $RelativePath))
     if (-not [IO.File]::Exists($path)) { throw "Missing item document: $RelativePath" }
-    return Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json
+    return Read-PublishJsonSnapshot $path $publishSources
 }
 
 function Assert-ExactProperties([object]$Value, [string[]]$Expected, [string]$Context) {
@@ -138,31 +140,12 @@ $repoPrefix = $repoRoot.TrimEnd('\') + '\'
 if (-not $outputDirectory.StartsWith($repoPrefix, [StringComparison]::OrdinalIgnoreCase)) {
     throw 'Item catalog OutputRoot escaped the repository.'
 }
-[IO.Directory]::CreateDirectory($outputDirectory) | Out-Null
 
 $lines = [Collections.Generic.List[string]]::new()
 $lines.Add("LOSTARK_ITEM_BOOTSTRAP`t4`t$($itemRows.Count)")
 foreach ($row in $itemRows) { $lines.Add($row) }
 
 $destination = Join-Path $outputDirectory 'Items.bootstrap'
-$transactionId = [Guid]::NewGuid().ToString('N')
-$staged = "$destination.staging.$transactionId"
-$rollback = "$destination.rollback.$transactionId"
-$hadPrevious = $false
-try {
-    [IO.File]::WriteAllLines($staged, $lines, [Text.UTF8Encoding]::new($false))
-    if ([IO.File]::Exists($destination)) {
-        [IO.File]::Move($destination, $rollback)
-        $hadPrevious = $true
-    }
-    [IO.File]::Move($staged, $destination)
-    if ($hadPrevious) { [IO.File]::Delete($rollback) }
-    Write-Output "Item catalog Publish succeeded: $($itemRows.Count) items -> $destination"
-}
-catch {
-    if ([IO.File]::Exists($staged)) { [IO.File]::Delete($staged) }
-    if ($hadPrevious -and [IO.File]::Exists($rollback) -and -not [IO.File]::Exists($destination)) {
-        [IO.File]::Move($rollback, $destination)
-    }
-    throw
-}
+Write-PublishTextCatalog -Mode $Mode -Destination $destination -Lines $lines `
+    -Sources $publishSources -Context 'Item catalog' `
+    -RepairCommand 'powershell -ExecutionPolicy Bypass -File Tools/GameplayPipeline/Publish-ItemCatalog.ps1 -Mode Publish'

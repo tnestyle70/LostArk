@@ -75,18 +75,21 @@
 # Client runtime directory: Resources are shared through the team Drive and stay untracked.
 # Feature PRs record Resources-relative IDs and physical handoff paths; do not force-add payloads.
 /Client/Bin/*
-/Server/Bin/
+/Server/Bin/*
+!/Server/Bin/DataFiles/
+!/Server/Bin/DataFiles/**
 /Client/Bin/Resources/
 !/Client/Bin/DataFiles/
 !/Client/Bin/DataFiles/**
-# Published Map catalogs and placements are tracked with their sequence JSON.
+# Published Client/Server runtime data travels with its authoring/schema PR.
 # Existing .gitattributes rules store .mapassets/.mapplacements in Git LFS.
-# The following other publisher outputs retain their existing ignore policy.
-/Client/Bin/DataFiles/Navigation/*.navblockers
-/Client/Bin/DataFiles/Navigation/*.navgrid
-/Client/Bin/DataFiles/Navigation/*.navpolicy
-/Client/Bin/DataFiles/World/*.npcpresentation.json
-/Client/Bin/DataFiles/World/*.stagemarkers.json
+# Incomplete publish transactions are local recovery files, not runtime snapshots.
+/Client/Bin/DataFiles/**/*.staging.*
+/Client/Bin/DataFiles/**/*.rollback.*
+/Server/Bin/DataFiles/**/*.staging.*
+/Server/Bin/DataFiles/**/*.rollback.*
+/Client/Bin/DataFiles/**/*.stage.*
+/Server/Bin/DataFiles/**/*.stage.*
 # Effect Product reads Data/Effects/Authored directly. Runtime catalogs and
 # hashed authored copies under Bin are retired generated artifacts.
 /Client/Bin/DataFiles/Effect/
