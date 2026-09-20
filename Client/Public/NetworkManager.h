@@ -273,6 +273,7 @@ public:
 	bool Send_GateProgressRespond(
 		std::uint32_t requestSequence, std::uint32_t proposalId, bool accepted);
 	bool Try_Consume_GateProgressState(LostArk::Shared::S2C_GATE_PROGRESS_STATE& outState);
+	bool Try_Consume_RaidMvpResult(LostArk::Shared::S2C_RAID_MVP_RESULT& outResult);
 	// Raid Clear screen's "돌아가기" button, Valtan Arena only -- reverse trip
 	// of Send_ConfirmNpcEntry, no NPC target needed.
 	bool Send_ReturnToBern(std::uint32_t requestSequence);
@@ -301,6 +302,13 @@ public:
 	event, plus the next S2C_WORLD_SNAPSHOT tick for the new HP. */
 	bool Send_UseItem(
 		std::uint32_t requestSequence,
+		std::string_view itemId);
+	/* Right-click equip (bEquip, itemId into slot) or unequip (slot to the bag, no item id).
+	The Server answers with an S2C_INVENTORY_SNAPSHOT either way. */
+	bool Send_SetEquipment(
+		std::uint32_t requestSequence,
+		LostArk::Shared::EQUIPMENT_SLOT slot,
+		bool bEquip,
 		std::string_view itemId);
 	/* Debug Valtan pattern audition. The Server owns the verdict; this only
 	carries the request and hands back whatever it answered. */
@@ -549,6 +557,7 @@ private:
 	std::deque<LostArk::Shared::S2C_SET_VEHICLE_RIDING_RESULT> m_VehicleRidingResults;
 	std::deque<LostArk::Shared::S2C_SET_HONOR_TITLE_RESULT> m_HonorTitleResults;
 	std::deque<LostArk::Shared::S2C_GATE_PROGRESS_STATE> m_GateProgressStates;
+	std::deque<LostArk::Shared::S2C_RAID_MVP_RESULT> m_RaidMvpResults;
 	std::deque<LostArk::Shared::S2C_DEBUG_SET_KOUKU_HUD_MODE_RESULT> m_DebugKoukuHudModeResults;
 	struct WORLD_ENTITY_SPAWN_REQUEST
 	{

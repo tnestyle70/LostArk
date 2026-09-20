@@ -55,7 +55,27 @@ shared_ptr<Client::CUI_Sprite> Client::CUILayoutRuntime::Create_Sprite(
 		still registered by the caller. */
 		return nullptr;
 	}
-	return static_pointer_cast<CUI_Sprite>(pObject);
+	const shared_ptr<CUI_Sprite> pSprite = static_pointer_cast<CUI_Sprite>(pObject);
+	/* Every sprite of one document draws on that document's layer, including ones created
+	later by a frame animation or an extra layer. */
+	pSprite->Set_UISortLayer(m_iUISortLayer);
+	return pSprite;
+}
+
+void Client::CUILayoutRuntime::Set_UISortLayer(const int32_t iLayer)
+{
+	m_iUISortLayer = iLayer;
+	for (RUNTIME_SLOT& Slot : m_Slots)
+	{
+		if (nullptr != Slot.pSprite)
+			Slot.pSprite->Set_UISortLayer(iLayer);
+		for (const shared_ptr<CUI_Sprite>& pExtra : Slot.ExtraLayerSprites)
+			if (nullptr != pExtra)
+				pExtra->Set_UISortLayer(iLayer);
+		for (const shared_ptr<CUI_Sprite>& pKeyframe : Slot.KeyframeSprites)
+			if (nullptr != pKeyframe)
+				pKeyframe->Set_UISortLayer(iLayer);
+	}
 }
 
 HRESULT Client::CUILayoutRuntime::Load()

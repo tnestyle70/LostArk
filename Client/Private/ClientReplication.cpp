@@ -585,6 +585,17 @@ void Client::CClientReplication::Apply_ChatReceived(
 	m_ChatBubblesByNetEntityId[received.iFromNetEntityId] = CHAT_BUBBLE_ENTRY{
 		received.strText,
 		std::chrono::steady_clock::now() + CHAT_BUBBLE_DURATION };
+	/* The same broadcast is the log's only source, sender included, so a line reads
+	"<nickname> : <text>" for everyone in the room the way retail writes it. */
+	if (m_PendingChatLines.size() >= MAX_PENDING_CHAT_LINES)
+		m_PendingChatLines.erase(m_PendingChatLines.begin());
+	m_PendingChatLines.push_back(CHAT_LINE{ received.strFromNickname, received.strText });
+}
+
+void Client::CClientReplication::Drain_ChatLines(std::vector<CHAT_LINE>& outLines)
+{
+	outLines = std::move(m_PendingChatLines);
+	m_PendingChatLines.clear();
 }
 
 bool Client::CClientReplication::Try_Get_ActiveChatBubble(

@@ -63,6 +63,20 @@ namespace
 			result.ptr == value.data() + value.size();
 	}
 
+	bool ParseClass(const std::string_view value,
+		LostArk::Shared::CHARACTER_CLASS_ID& output)
+	{
+		using LostArk::Shared::CHARACTER_CLASS_ID;
+		if ("LANCE_MASTER" == value) output = CHARACTER_CLASS_ID::LANCE_MASTER;
+		else if ("GUNSLINGER" == value) output = CHARACTER_CLASS_ID::GUNSLINGER;
+		else if ("SLAYER" == value) output = CHARACTER_CLASS_ID::SLAYER;
+		else if ("ARTIST" == value) output = CHARACTER_CLASS_ID::ARTIST;
+		else if ("DIMENSIONMASTER" == value) output = CHARACTER_CLASS_ID::DIMENSIONMASTER;
+		else if ("WARLORD" == value) output = CHARACTER_CLASS_ID::WARLORD;
+		else return false;
+		return true;
+	}
+
 	bool IsStableId(const std::string_view value)
 	{
 		return !value.empty() && value.size() <= 64u &&
@@ -76,8 +90,8 @@ namespace
 
 bool LostArk::Server::CValtanClearRewards::Load()
 {
-	std::vector<std::string> previousItemIds = std::move(m_ItemIds);
-	m_ItemIds.clear();
+	CLASS_ITEM_IDS previousItemIds = std::move(m_ItemIds);
+	m_ItemIds = {};
 
 	const std::filesystem::path dataRoot = Resolve_DataRoot();
 	const std::filesystem::path path = dataRoot / L"Valtan" / L"ClearRewards.bootstrap";
@@ -102,15 +116,14 @@ bool LostArk::Server::CValtanClearRewards::Load()
 	std::uint32_t rowCount = 0;
 	if (3u != header.size() ||
 		"LOSTARK_VALTAN_CLEAR_REWARDS_BOOTSTRAP" != header[0] ||
-		!ParseNumber(header[1], version) || 1u != version ||
-		!ParseNumber(header[2], rowCount) || 0u == rowCount || rowCount > 64u)
+		!ParseNumber(header[1], version) || 2u != version ||
+		!ParseNumber(header[2], rowCount) || 0u == rowCount || rowCount > 512u)
 	{
 		m_strStatus = "Valtan clear rewards bootstrap header is invalid";
 		m_ItemIds = std::move(previousItemIds);
 		return false;
 	}
 
-	m_ItemIds.reserve(rowCount);
 	for (std::uint32_t row = 0; row < rowCount; ++row)
 	{
 		if (!std::getline(input, line))
@@ -120,13 +133,17 @@ bool LostArk::Server::CValtanClearRewards::Load()
 			return false;
 		}
 		StripCarriageReturn(line);
-		if (!IsStableId(line))
+		const std::vector<std::string_view> fields = SplitTabs(line);
+		LostArk::Shared::CHARACTER_CLASS_ID characterClass =
+			LostArk::Shared::CHARACTER_CLASS_ID::END;
+		if (2u != fields.size() || !ParseClass(fields[0], characterClass) ||
+			!IsStableId(fields[1]))
 		{
 			m_strStatus = "Valtan clear rewards bootstrap row is invalid";
 			m_ItemIds = std::move(previousItemIds);
 			return false;
 		}
-		m_ItemIds.emplace_back(line);
+		m_ItemIds[static_cast<std::size_t>(characterClass)].emplace_back(fields[1]);
 	}
 
 	if (std::getline(input, line))
@@ -138,4 +155,12 @@ bool LostArk::Server::CValtanClearRewards::Load()
 
 	m_strStatus = "Loaded Valtan clear rewards bootstrap";
 	return true;
+}
+
+const std::vector<std::string>& LostArk::Server::CValtanClearRewards::Get_ItemIds(
+	const LostArk::Shared::CHARACTER_CLASS_ID characterClass) const
+{
+	static const std::vector<std::string> NONE;
+	return LostArk::Shared::Is_Known_Character_Class(characterClass) ?
+		m_ItemIds[static_cast<std::size_t>(characterClass)] : NONE;
 }

@@ -207,9 +207,18 @@ namespace Client
 		float fTextX = 0.f, fTextY = 0.f, fTextWidth = 0.f, fTextHeight = 0.f;
 		/* Kept as two separate pieces (not one combined string) so
 		CMainApp::RenderItemAnnounceText() can draw the item name in its own grade
-		color and the "을(를) 획득하였습니다" suffix in plain white. */
+		color and the "을(를) 획득하였습니다." suffix in plain white. */
 		std::wstring strItemName;
 		std::wstring strSuffix;
+		std::uint32_t iNameRgb = 0xFFFFFFu;
+		/* The text line's own timeline alpha and the quality row's (whole-item) alpha. */
+		float fTextAlpha = 1.f;
+		float fQualityAlpha = 1.f;
+		/* Quality row: the "품질" label box and the right-aligned value box. */
+		float fQualityLabelX = 0.f, fQualityLabelY = 0.f, fQualityLabelWidth = 0.f, fQualityLabelHeight = 0.f;
+		float fQualityValueX = 0.f, fQualityValueY = 0.f, fQualityValueWidth = 0.f, fQualityValueHeight = 0.f;
+		std::wstring strQualityValue;
+		std::uint32_t iQualityRgb = 0xFFFFFFu;
 	};
 
 	/* KoukuSaydon arena HUD mode. Retail switches the quick-slot frame into an

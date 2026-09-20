@@ -1,7 +1,5 @@
-/* WinSock2 then dinput, ahead of everything else -- the order VehicleWindowView.cpp already
-uses for the DIK_* constants. */
+/* WinSock2 ahead of everything else (Client_Defines pulls the socket headers). */
 #include <WinSock2.h>
-#include <dinput.h>
 
 #include "HonorTitleWindowView.h"
 
@@ -13,6 +11,7 @@ uses for the DIK_* constants. */
 #include "MainApp.h"
 #include "UIInputRouter.h"
 #include "UILabelFont.h"
+#include "UITextOcclusion.h"
 #include "UILayoutRuntime.h"
 
 #include <algorithm>
@@ -97,6 +96,9 @@ Client::CHonorTitleWindowView::CHonorTitleWindowView(
 		pDevice, pContext, ETOUI(LEVEL::STATIC), TEXT("Layer_UI"),
 		L"UI/HonorTitle/HonorTitle_Layout.json") }
 {
+	/* Draw order for this window's panel; the same number orders its labels
+	(Register_UITextOccluders) and its clicks. */
+	m_pView->Set_UISortLayer(UI_TEXT_LAYER::WINDOW_HONOR_TITLE);
 	m_SlotIds = m_pView->Get_SlotIds();
 	f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
 	if (m_pView->Get_SlotRect("HT_WinBg", fX, fY, fWidth, fHeight) && fWidth > 0.f)
@@ -125,11 +127,13 @@ int32_t Client::CHonorTitleWindowView::Max_Scroll() const
 
 void Client::CHonorTitleWindowView::Update(const f32_t fTimeDelta, const HUD_PLAYER_STATE& Player)
 {
+	/* Hit tests below belong to this window; the router refuses a press that lands on the
+	window in front and lets only one widget take any one press. */
+	CUIPointerScope PointerScope(this);
 	(void)fTimeDelta;
 	if (!m_bOpen)
 	{
 		Hide();
-		m_bEscapeDownLastFrame = false;
 		m_bDraggingThumb = false;
 		m_Drag.Reset();
 		return;
@@ -165,13 +169,6 @@ void Client::CHonorTitleWindowView::Update(const f32_t fTimeDelta, const HUD_PLA
 	Update_Rows(Player);
 	Update_Buttons(Player);
 
-	/* Esc closes the window (edge, so a held key from before it opened doesn't). */
-	const bool_t bEscapeDown =
-		0 != (CGameInstance::Get().Get_DIKeyState(DIK_ESCAPE) & 0x80);
-	if (bEscapeDown && !m_bEscapeDownLastFrame)
-		Close();
-	m_bEscapeDownLastFrame = bEscapeDown;
-
 	/* Anything over the window belongs to the window; while open it is the topmost runtime UI
 	(it opens over the info window), so the other windows' text passes skip its rect. */
 	CUIInputRouter& Router = CUIInputRouter::Get();
@@ -186,7 +183,7 @@ void Client::CHonorTitleWindowView::Update(const f32_t fTimeDelta, const HUD_PLA
 		{
 			const f32_t fScaleX = vViewport.x / m_pView->Get_ResolutionWidth();
 			const f32_t fScaleY = vViewport.y / m_pView->Get_ResolutionHeight();
-			Router.Set_TopWindowRect(fX * fScaleX, fY * fScaleY, fWidth * fScaleX, fHeight * fScaleY);
+			Router.Set_TopWindowRect(this, fX * fScaleX, fY * fScaleY, fWidth * fScaleX, fHeight * fScaleY);
 		}
 	}
 }

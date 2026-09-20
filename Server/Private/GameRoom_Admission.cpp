@@ -174,6 +174,15 @@ bool LostArk::Server::CGameRoom::Stage_PlayerEntry(
 			item.iQuantity = (std::min)(500u, definition->iMaxStack);
 			player.Inventory.push_back(std::move(item));
 		}
+		/* A fresh character already wears the catalog's starting accessories. */
+		for (const auto& [itemId, slot] : m_ItemCatalog.Get_StartingEquipment())
+		{
+			INVENTORY_ITEM_SNAPSHOT item{};
+			item.strItemId = itemId;
+			item.iQuantity = 1u;
+			item.eEquippedSlot = slot;
+			player.Inventory.push_back(std::move(item));
+		}
 	}
 	staged = std::move(candidate);
 	return true;

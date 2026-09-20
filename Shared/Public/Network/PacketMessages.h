@@ -1660,6 +1660,24 @@ namespace LostArk::Shared
 		// The immutable definition generation pinned when this occurrence began.
 		GameplayDataRevision PinnedDefinitionRevision{};
 	};
+	/* Retail damagetext.gfx (EFUI_DAMAGE, DamageTextWnd) draws a number in one of five
+	styles, chosen by the flag the native side sends with it. Ordinary hits and potion
+	heals are the two this Server judges today; CRITICAL and MISS wait on the combat
+	numbers that will decide them, and INVINCIBLE draws nothing at all in retail. */
+	enum class DAMAGE_HIT_FLAG : std::uint8_t
+	{
+		NORMAL = 0,
+		CRITICAL,
+		MISS,
+		INVINCIBLE,
+		HEAL,
+		END
+	};
+	inline bool Is_Valid_DamageHitFlag(const DAMAGE_HIT_FLAG eFlag)
+	{
+		return static_cast<std::uint8_t>(eFlag) <
+			static_cast<std::uint8_t>(DAMAGE_HIT_FLAG::END);
+	}
 	// One resolved hit. HP in the snapshots above is a level, so a client that
 	// only sees levels cannot tell 500 damage from two 250s inside one tick, and
 	// cannot place a number where the hit landed. The server already computes this
@@ -1678,7 +1696,8 @@ namespace LostArk::Shared
 		float fPositionY = 0.f;
 		float fPositionZ = 0.f;
 		// True when a player dealt it. Presentation styles incoming and outgoing
-		// damage differently, and only the server knows which is which.
+		// damage differently, and only the server knows which is which. A HEAL
+		// event is always the target's own gain, so it is outgoing too.
 		bool isOutgoing = false;
 		/* NONE on an ordinary hit. A card maze shard instead names the suit the
 		hunter was dealt and carries their running count in iAmount, because the
@@ -1692,6 +1711,9 @@ namespace LostArk::Shared
 		PLAYER_ID iSourcePlayerId = INVALID_PLAYER_ID;
 		std::uint32_t iStaggerAmount = 0;
 		bool isCounterSuccess = false;
+		/* Which of the retail damage-text styles this event is drawn in. The Server
+		decides it, exactly as retail's native side does. */
+		DAMAGE_HIT_FLAG eHitFlag = DAMAGE_HIT_FLAG::NORMAL;
 	};
 
 	enum class BOSS_COMBAT_EVENT_KIND : std::uint8_t
@@ -2570,10 +2592,58 @@ namespace LostArk::Shared
 		CPacketReader& reader,
 		C2S_DEBUG_GIVE_ITEM& message);
 
+	/* The character info window's thirteen equipment slots. NONE is an item in the bag. */
+	enum class EQUIPMENT_SLOT : std::uint8_t
+	{
+		NONE = 0,
+		HELMET,
+		SHOULDER,
+		TOP,
+		PANTS,
+		GLOVES,
+		WEAPON,
+		NECKLACE,
+		EARRING1,
+		EARRING2,
+		RING1,
+		RING2,
+		STONE,
+		BRACELET,
+		END
+	};
+
+	/* The Data/Items/ItemCatalog.json equipSlot an item needs to go into this slot;
+	   nullptr for NONE/END. Both earrings take "earring", both rings "ring". */
+	[[nodiscard]]
+	constexpr const char* Equipment_SlotKind(const EQUIPMENT_SLOT slot)
+	{
+		switch (slot)
+		{
+		case EQUIPMENT_SLOT::HELMET: return "helmet";
+		case EQUIPMENT_SLOT::SHOULDER: return "shoulder";
+		case EQUIPMENT_SLOT::TOP: return "top";
+		case EQUIPMENT_SLOT::PANTS: return "pants";
+		case EQUIPMENT_SLOT::GLOVES: return "gloves";
+		case EQUIPMENT_SLOT::WEAPON: return "weapon";
+		case EQUIPMENT_SLOT::NECKLACE: return "necklace";
+		case EQUIPMENT_SLOT::EARRING1:
+		case EQUIPMENT_SLOT::EARRING2: return "earring";
+		case EQUIPMENT_SLOT::RING1:
+		case EQUIPMENT_SLOT::RING2: return "ring";
+		case EQUIPMENT_SLOT::STONE: return "stone";
+		case EQUIPMENT_SLOT::BRACELET: return "bracelet";
+		default: return nullptr;
+		}
+	}
+
+	/* One inventory entry. An equipped item stays in the same list with the slot it
+	   occupies, so every path that carries the inventory (snapshot, world transfer)
+	   carries the equipment with it. (itemId, slot) is unique and so is each slot. */
 	struct INVENTORY_ITEM_SNAPSHOT
 	{
 		std::string strItemId;
 		std::uint32_t iQuantity = 0;
+		EQUIPMENT_SLOT eEquippedSlot = EQUIPMENT_SLOT::NONE;
 	};
 
 	// Replace-in-full, the same shape S2C_ENCOUNTER_PROP_SYNC uses: one message
@@ -2600,6 +2670,20 @@ namespace LostArk::Shared
 		std::uint32_t iRequestSequence = 0;
 		std::string strItemId;
 	};
+
+	/* Right-click equip / unequip. bEquip moves one strItemId from the bag into eSlot
+	   (whatever was there goes back to the bag); !bEquip moves eSlot's item to the bag and
+	   carries no item id. The Server checks the slot kind and the class and answers with
+	   an S2C_INVENTORY_SNAPSHOT either way. */
+	struct C2S_SET_EQUIPMENT
+	{
+		std::uint32_t iRequestSequence = 0;
+		EQUIPMENT_SLOT eSlot = EQUIPMENT_SLOT::NONE;
+		bool bEquip = false;
+		std::string strItemId;
+	};
+	bool Write_Message(CPacketWriter& writer, const C2S_SET_EQUIPMENT& message);
+	bool Read_Message(CPacketReader& reader, C2S_SET_EQUIPMENT& message);
 
 	bool Write_Message(
 		CPacketWriter& writer,
@@ -2951,6 +3035,49 @@ namespace LostArk::Shared
 	};
 	bool Write_Message(CPacketWriter& writer, const S2C_GATE_PROGRESS_STATE& message);
 	bool Read_Message(CPacketReader& reader, S2C_GATE_PROGRESS_STATE& message);
+
+	/* Raid-clear award input (protocol 94). Sent once to every player in the room when a
+	   gate's last primary boss (KoukuSaydon) or Valtan dies. Each row is what the Server
+	   recorded on those bosses for one player: health damage and stagger dealt, counters
+	   landed, and how many fight ticks the player was alive out of the ticks the fight
+	   lasted while they were in the room. The medal facts ride along: part (destruction)
+	   damage, killing blows, how many times the player's health dropped, the lowest health
+	   reached, whether they stood at the clear, and the shortest gap between two of their
+	   counters. The Client picks the MVP, titles and medals from these amounts; it never
+	   invents them. */
+	inline constexpr std::size_t MAX_RAID_MVP_PARTICIPANTS = 8u;
+	struct RAID_MVP_PARTICIPANT
+	{
+		PLAYER_ID iPlayerId = INVALID_PLAYER_ID;
+		NET_ENTITY_ID iNetEntityId = INVALID_NET_ENTITY_ID;
+		CHARACTER_CLASS_ID eCharacterClass = CHARACTER_CLASS_ID::END;
+		std::string strNickname;
+		std::uint64_t iDamage = 0u;
+		std::uint64_t iStagger = 0u;
+		std::uint32_t iCounterCount = 0u;
+		std::uint32_t iAliveTicks = 0u;
+		std::uint32_t iFightTicks = 0u;
+		std::uint64_t iPartDamage = 0u;
+		std::uint32_t iFinishingBlows = 0u;
+		std::uint32_t iDamagingHitsTaken = 0u;
+		// Lowest health during the fight, 0..1000 of maximum.
+		std::uint16_t iLowestHpPermille = 1000u;
+		bool bAliveAtClear = false;
+		// Shortest time between two consecutive counters; 0 = fewer than two.
+		std::uint32_t iMinCounterGapMs = 0u;
+		// Times the player was knocked down during the fight, and the fight's length.
+		std::uint32_t iKnockdowns = 0u;
+		std::uint32_t iFightMs = 0u;
+	};
+	struct S2C_RAID_MVP_RESULT
+	{
+		WORLD_ID eWorldId = WORLD_ID::END;
+		// 1-based gate the clear belongs to (Valtan is its single gate 1).
+		std::uint8_t iGate = 0u;
+		std::vector<RAID_MVP_PARTICIPANT> Participants;
+	};
+	bool Write_Message(CPacketWriter& writer, const S2C_RAID_MVP_RESULT& message);
+	bool Read_Message(CPacketReader& reader, S2C_RAID_MVP_RESULT& message);
 
 	// One authored world sequence instance started. The Server owns the trigger
 	// entry that decided when; the Client resolves the stable instance ID

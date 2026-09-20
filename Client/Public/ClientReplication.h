@@ -369,6 +369,13 @@ namespace Client
 			f32_t fZ = 0.f;
 			bool_t bParty = false;
 		};
+		/* One received chat line: who said it and what they said, as the room
+		   broadcast them. Order is arrival order. */
+		struct CHAT_LINE
+		{
+			std::string strNickname;
+			std::string strText;
+		};
 		struct MINIMAP_MARKER_SNAPSHOT
 		{
 			bool_t hasLocal = false;
@@ -482,6 +489,11 @@ namespace Client
 		bool Try_Get_ActiveChatBubble(
 			LostArk::Shared::NET_ENTITY_ID netEntityId,
 			std::string& outText) const;
+		/* Chat lines that arrived since the last drain, oldest first, each with
+		   the sender's Server-replicated nickname. The room broadcasts back to
+		   the sender too, so this is also where your own line comes from -- the
+		   window keeps no separate local echo. */
+		void Drain_ChatLines(std::vector<CHAT_LINE>& outLines);
 
 	private:
 #ifdef _DEBUG
@@ -709,6 +721,9 @@ namespace Client
 		static constexpr std::chrono::seconds CHAT_BUBBLE_DURATION{ 5 };
 		std::unordered_map<LostArk::Shared::NET_ENTITY_ID, CHAT_BUBBLE_ENTRY>
 			m_ChatBubblesByNetEntityId;
+		/* Bounded so a level that never drains (no chat window) cannot grow it. */
+		static constexpr size_t MAX_PENDING_CHAT_LINES = 64;
+		std::vector<CHAT_LINE> m_PendingChatLines;
 		/* Latest snapshot's worn honor title per player, read by Collect_PlayerViews. */
 		std::unordered_map<LostArk::Shared::NET_ENTITY_ID, LostArk::Shared::HONOR_TITLE_ID>
 			m_HonorTitleByNetEntityId;

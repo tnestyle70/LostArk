@@ -1739,12 +1739,10 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 	{
 		/* The award page has no characters of its own: every panel is a host
 		   render target in mvp.gfx, so the page is handed whichever character
-		   each one should draw. Until a raid roster exists the only character
-		   here is the local one, and it fills all four so the column path gets
-		   exercised alongside the MVP panel. */
-		const shared_ptr<CCharacter> pStaged = m_Replication.Get_LocalCharacter();
+		   each one should draw -- the player that panel names (Show_MvpResult). */
 		for (size_t iStageSlot = 0; iStageSlot < 4u; ++iStageSlot)
-			m_pMvpResultView->Set_StageCharacter(iStageSlot, pStaged);
+			m_pMvpResultView->Set_StageCharacter(
+				iStageSlot, m_MvpStageCharacters[iStageSlot].lock());
 		m_pMvpResultView->Update(fTimeDelta);
 	}
 	Update_GateProgress(fTimeDelta);
@@ -2477,12 +2475,47 @@ namespace
 	constexpr int32_t KOUKU_RAID_GROUP_ID = 103;
 	constexpr const char* KOUKU_DIFFICULTY_ID = "normal";
 
-	/* Sample page for a clear until the Server hands out real contributions. */
+	/* Sample page for the Debug award button when no Server result has arrived. */
 	Client::MVP_RESULT_DATA Build_MvpResultPreviewData(const int32_t iGate)
 	{
 		return Client::CMvpAwardCatalog::Get().Build_PreviewPage(
 			KOUKU_RAID_GROUP_ID, iGate, KOUKU_DIFFICULTY_ID, MVP_PARTY_SIZE);
 	}
+}
+
+void Client::CLevel_KakulSaydonArena::Show_MvpResult(const bool_t bReplayLast)
+{
+	if (nullptr == m_pMvpResultView)
+		return;
+	for (weak_ptr<CCharacter>& pStaged : m_MvpStageCharacters)
+		pStaged.reset();
+	if (m_bHasRaidMvpResult && (m_bRaidMvpResultFresh || bReplayLast))
+	{
+		vector<LostArk::Shared::PLAYER_ID> StagePlayerIds;
+		const MVP_RESULT_DATA Data = CMvpAwardCatalog::Get().Build_ServerPage(
+			KOUKU_RAID_GROUP_ID, KOUKU_DIFFICULTY_ID, MVP_PARTY_SIZE,
+			m_RaidMvpResult, StagePlayerIds);
+		vector<REPLICATED_PLAYER_VIEW> Players;
+		m_Replication.Collect_PlayerViews(Players);
+		for (size_t iSlot = 0; iSlot < StagePlayerIds.size() && iSlot < 4u; ++iSlot)
+		{
+			for (const REPLICATED_PLAYER_VIEW& Player : Players)
+			{
+				if (Player.iPlayerId == StagePlayerIds[iSlot])
+				{
+					m_MvpStageCharacters[iSlot] = Player.pCharacter;
+					break;
+				}
+			}
+		}
+		m_bRaidMvpResultFresh = false;
+		m_pMvpResultView->Show(Data);
+		return;
+	}
+#ifdef _DEBUG
+	m_MvpStageCharacters[0] = m_Replication.Get_LocalCharacter();
+	m_pMvpResultView->Show(Build_MvpResultPreviewData(Current_GateNumber()));
+#endif
 }
 
 namespace
@@ -2574,9 +2607,7 @@ void Client::CLevel_KakulSaydonArena::Update_RaidClear(const f32_t fTimeDelta)
 	if (fPrevious * CLEAR_FPS < CLEAR_END_FRAME && fFrame >= CLEAR_END_FRAME)
 	{
 		m_pRaidClearView->Set_AllSlotsVisible(false);
-		if (nullptr != m_pMvpResultView)
-			m_pMvpResultView->Show(
-				Build_MvpResultPreviewData(Current_GateNumber()));
+		Show_MvpResult(false);
 	}
 }
 
@@ -2743,6 +2774,13 @@ void Client::CLevel_KakulSaydonArena::Update_GateProgress(const f32_t fTimeDelta
 	S2C_GATE_PROGRESS_STATE State{};
 	while (nullptr != m_pPlayerCommandSink && m_pPlayerCommandSink->Consume_GateProgressState(State))
 		Apply_GateProgressState(State);
+	S2C_RAID_MVP_RESULT MvpResult{};
+	while (nullptr != m_pPlayerCommandSink && m_pPlayerCommandSink->Consume_RaidMvpResult(MvpResult))
+	{
+		m_RaidMvpResult = std::move(MvpResult);
+		m_bHasRaidMvpResult = true;
+		m_bRaidMvpResultFresh = true;
+	}
 
 	/* Defer votes under a cinematic, clear mark or MVP; late joins observe only. */
 	const bool_t canInteract = Can_InteractGateProgress();
@@ -2840,9 +2878,7 @@ void Client::CLevel_KakulSaydonArena::Debug_Play_ClearThenMvp()
 
 void Client::CLevel_KakulSaydonArena::Debug_Show_MvpResult()
 {
-	if (nullptr == m_pMvpResultView)
-		return;
-	m_pMvpResultView->Show(Build_MvpResultPreviewData(Current_GateNumber()));
+	Show_MvpResult(true);
 }
 
 void Client::CLevel_KakulSaydonArena::Debug_Hide_MvpResult()

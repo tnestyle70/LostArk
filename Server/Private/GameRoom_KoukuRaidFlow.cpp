@@ -365,6 +365,7 @@ void LostArk::Server::CGameRoom::Notify_KoukuRaidBossDeath(const SERVER_WORLD_EN
         m_GateProgress.iCurrentGate = static_cast<std::uint8_t>(index + 1);
         m_GateProgress.iClearedMask |= static_cast<std::uint8_t>(1u << index);
         Broadcast_GateProgressState(false, GATE_PROGRESS_VOTE_RESULT::NONE);
+        Broadcast_RaidMvpResult(static_cast<std::uint8_t>(index + 1));
     }
     Broadcast_KoukuRaidState();
 }

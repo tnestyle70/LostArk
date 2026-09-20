@@ -1,8 +1,5 @@
-/* WinSock2 then dinput, ahead of everything else -- the order PlayerController.cpp and
-MvpResultView.cpp already use for the DIK_* constants (dinput.h drags in windows.h/winsock.h and
-declares POINT, which Engine_Enum.h's Engine::POINT would make ambiguous). */
+/* WinSock2 ahead of everything else (Client_Defines pulls the socket headers). */
 #include <WinSock2.h>
-#include <dinput.h>
 
 #include "VehicleWindowView.h"
 
@@ -18,6 +15,7 @@ declares POINT, which Engine_Enum.h's Engine::POINT would make ambiguous). */
 #include "ProjectDataRoot.h"
 #include "UIInputRouter.h"
 #include "UILabelFont.h"
+#include "UITextOcclusion.h"
 #include "UILayoutRuntime.h"
 
 #include <cmath>
@@ -129,6 +127,9 @@ Client::CVehicleWindowView::CVehicleWindowView(
 		pDevice, pContext, ETOUI(LEVEL::STATIC), TEXT("Layer_UI"),
 		L"UI/Vehicle/Vehicle_Layout.json") }
 {
+	/* Draw order for this window's panel; the same number orders its labels
+	(Register_UITextOccluders) and its clicks. */
+	m_pView->Set_UISortLayer(UI_TEXT_LAYER::WINDOW_VEHICLE);
 	m_SlotIds = m_pView->Get_SlotIds();
 	f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
 	if (m_pView->Get_SlotRect("VH_WinBg", fX, fY, fWidth, fHeight) && fWidth > 0.f)
@@ -224,11 +225,13 @@ void Client::CVehicleWindowView::Load_Catalog()
 void Client::CVehicleWindowView::Update(const f32_t fTimeDelta,
 	const std::shared_ptr<CCharacter>& pLocalCharacter, const HUD_PLAYER_STATE& Player)
 {
+	/* Hit tests below belong to this window; the router refuses a press that lands on the
+	window in front and lets only one widget take any one press. */
+	CUIPointerScope PointerScope(this);
 	(void)fTimeDelta;
 	if (!m_bOpen)
 	{
 		Hide();
-		m_bEscapeDownLastFrame = false;
 		m_Drag.Reset();
 		return;
 	}
@@ -242,13 +245,6 @@ void Client::CVehicleWindowView::Update(const f32_t fTimeDelta,
 	Update_Chrome();
 	Update_Rows(pLocalCharacter, Player);
 	Update_Buttons(Player);
-
-	/* Esc closes the window (edge, so a held key from before it opened doesn't). */
-	const bool_t bEscapeDown =
-		0 != (CGameInstance::Get().Get_DIKeyState(DIK_ESCAPE) & 0x80);
-	if (bEscapeDown && !m_bEscapeDownLastFrame)
-		Close();
-	m_bEscapeDownLastFrame = bEscapeDown;
 
 	/* Anything over the window belongs to the window -- keeps a click on the panel from
 	turning into a gameplay move command underneath. */

@@ -1048,5 +1048,12 @@ void LostArk::Server::CGameRoom::Handle_ChangeCharacterClass(
 		session, request, result, player.eCharacterClass))
 	{
 		session->Request_Close();
+		return;
+	}
+	/* The new class cannot wear another class's gear. */
+	if (Unequip_OtherClassItems(player) &&
+		!Send_InventorySnapshot(session, 0u, player.Inventory))
+	{
+		session->Request_Close();
 	}
 }

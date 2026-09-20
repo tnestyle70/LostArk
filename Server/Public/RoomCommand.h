@@ -47,6 +47,7 @@ namespace LostArk::Server
 		KOUKUSAYDON_RAID,
 		DEBUG_GIVE_ITEM,
 		USE_ITEM,
+		SET_EQUIPMENT,
 		DESPAWN_ALL_WORLD_ENTITIES,
 		CONFIRM_NPC_ENTRY,
 		INTERACT_TRIGGER,
@@ -126,6 +127,7 @@ namespace LostArk::Server
 
 		LostArk::Shared::C2S_DEBUG_GIVE_ITEM DebugGiveItem;
 		LostArk::Shared::C2S_USE_ITEM UseItem;
+		LostArk::Shared::C2S_SET_EQUIPMENT SetEquipment;
 		LostArk::Shared::C2S_DESPAWN_ALL_WORLD_ENTITIES DespawnAllWorldEntities;
 		LostArk::Shared::C2S_CONFIRM_NPC_ENTRY ConfirmNpcEntry;
 		LostArk::Shared::C2S_INTERACT_TRIGGER InteractTrigger;

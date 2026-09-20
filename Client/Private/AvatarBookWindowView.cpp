@@ -15,6 +15,7 @@
 #include "ProjectDataRoot.h"
 #include "UIInputRouter.h"
 #include "UILabelFont.h"
+#include "UITextOcclusion.h"
 #include "UILayoutRuntime.h"
 
 #include <cmath>
@@ -107,6 +108,9 @@ Client::CAvatarBookWindowView::CAvatarBookWindowView(
 		L"UI/AvatarBook/AvatarBook_Layout.json") }
 	, m_pPortrait{ std::make_unique<CCharacterPortraitRenderer>(pDevice, pContext) }
 {
+	/* Draw order for this window's panel; the same number orders its labels
+	(Register_UITextOccluders) and its clicks. */
+	m_pView->Set_UISortLayer(UI_TEXT_LAYER::WINDOW_AVATAR_BOOK);
 	m_SlotIds = m_pView->Get_SlotIds();
 	Load_DisplayData();
 	m_fPortraitYawDegrees = m_Display.fPortraitYawDegrees;
@@ -279,6 +283,9 @@ void Client::CAvatarBookWindowView::Update(const f32_t fTimeDelta,
 	const std::shared_ptr<CCharacter>& pLocalCharacter, const HUD_PLAYER_STATE& Player,
 	const CCharacterInfoWindowView& InfoView)
 {
+	/* Hit tests below belong to this window; the router refuses a press that lands on the
+	window in front and lets only one widget take any one press. */
+	CUIPointerScope PointerScope(this);
 	(void)fTimeDelta;
 	if (!m_bOpen)
 	{
@@ -325,7 +332,7 @@ void Client::CAvatarBookWindowView::Update(const f32_t fTimeDelta,
 		{
 			const f32_t fScaleX = vViewport.x / m_pView->Get_ResolutionWidth();
 			const f32_t fScaleY = vViewport.y / m_pView->Get_ResolutionHeight();
-			Router.Set_TopWindowRect(fX * fScaleX, fY * fScaleY, fWidth * fScaleX, fHeight * fScaleY);
+			Router.Set_TopWindowRect(this, fX * fScaleX, fY * fScaleY, fWidth * fScaleX, fHeight * fScaleY);
 		}
 	}
 }

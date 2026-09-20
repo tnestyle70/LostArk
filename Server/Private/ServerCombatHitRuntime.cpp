@@ -96,6 +96,19 @@ namespace
 	}
 }
 
+LostArk::Server::SERVER_MVP_LEDGER_ROW& LostArk::Server::Find_Or_Add_MvpLedgerRow(
+	std::vector<SERVER_MVP_LEDGER_ROW>& ledger, const LostArk::Shared::PLAYER_ID playerId)
+{
+	for (SERVER_MVP_LEDGER_ROW& row : ledger)
+	{
+		if (row.iPlayerId == playerId)
+			return row;
+	}
+	SERVER_MVP_LEDGER_ROW& row = ledger.emplace_back();
+	row.iPlayerId = playerId;
+	return row;
+}
+
 LostArk::Server::SERVER_COMBAT_HIT_RESULT
 LostArk::Server::CServerCombatHitRuntime::Apply_PlayerToWorld(
 	SERVER_WORLD_ENTITY& target,
@@ -143,6 +156,29 @@ LostArk::Server::CServerCombatHitRuntime::Apply_PlayerToWorld(
 		damage = bossHit.iHealthDamage;
 		staggerDealt = bossHit.iStaggerDamage;
 		counterTriggered = bossHit.bCounterTriggered;
+		if (LostArk::Shared::INVALID_PLAYER_ID != hit.iSourcePlayerId &&
+			(0u != damage || 0u != staggerDealt || counterTriggered || 0u != bossHit.iPartDamage))
+		{
+			SERVER_MVP_LEDGER_ROW& row =
+				Find_Or_Add_MvpLedgerRow(target.MvpLedger, hit.iSourcePlayerId);
+			row.iDamage += damage;
+			row.iStagger += staggerDealt;
+			row.iPartDamage += bossHit.iPartDamage;
+			if (counterTriggered)
+			{
+				++row.iCounterCount;
+				if (0u != row.iLastCounterTick && hit.iServerTick > row.iLastCounterTick)
+				{
+					const std::uint32_t gapTicks = hit.iServerTick - row.iLastCounterTick;
+					if (0u == row.iMinCounterGapTicks || gapTicks < row.iMinCounterGapTicks)
+						row.iMinCounterGapTicks = gapTicks;
+				}
+				row.iLastCounterTick = hit.iServerTick;
+			}
+			/* The hit that took the boss's last health. */
+			if (0u != damage && 0u == target.iCurrentHp)
+				++row.iFinishingBlows;
+		}
 		if (bossHit.bPartDestroyed)
 		{
 			MirrorTypedPartBreakToLegacyArmor(

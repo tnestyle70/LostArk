@@ -206,6 +206,8 @@ HRESULT CLevel_ValtanArena::Initialize()
 
 	m_PartyInteraction.Initialize(m_pDevice, m_pContext, ETOUI(LEVEL::VALTAN_ARENA));
 	m_ChatBubbleView.Initialize(m_pDevice, m_pContext, ETOUI(LEVEL::VALTAN_ARENA));
+	m_InteractKeyPrompt.Initialize(m_pDevice, m_pContext, ETOUI(LEVEL::VALTAN_ARENA),
+		"LV_LUT_HEARTRB_ED");
 
 	const CLIENT_LEVEL_DESCRIPTOR* pEntry =
 		CLevelRegistry::Find(LEVEL::VALTAN_ARENA);
@@ -432,8 +434,12 @@ HRESULT CLevel_ValtanArena::Initialize()
 	m_pItemAnnounceView = std::make_unique<CUILayoutRuntime>(
 		m_pDevice, m_pContext, ETOUI(LEVEL::VALTAN_ARENA), TEXT("Layer_UI"),
 		L"UI/ItemAnnounce/ItemAnnounce_Layout.json");
-	m_pItemAnnounceView->Set_SlotVisible("ItemAnnounce_Frame", false);
-	m_pItemAnnounceView->Set_SlotVisible("ItemAnnounce_Icon", false);
+	m_pItemAnnounceView->Set_AllSlotsVisible(false);
+	{
+		f32_t fWidth = 0.f, fHeight = 0.f;
+		(void)m_pItemAnnounceView->Get_SlotRect("ItemAnnounce_Band",
+			m_fItemAnnounceBandX, m_fItemAnnounceBandY, fWidth, fHeight);
+	}
 
 	Transition_RaidPreludeBgm(RAID_PRELUDE_BGM_STATE::M01_PROGRESS);
 	return S_OK;
@@ -622,6 +628,9 @@ void CLevel_ValtanArena::Update(f32_t fTimeDelta)
 	frame's replicated player list, so Collect_PlayerViews moves here
 	instead of Render(). */
 	m_Replication.Collect_PlayerViews(m_NameplatePlayers);
+	m_InteractKeyPrompt.Update(fTimeDelta, m_Replication.Get_LocalCharacter(),
+		CCombatHUDViewModel::Get().Get_InteractPromptTriggerId(),
+		!Is_MvpResultVisible());
 	Update_TriggerMarkerClocks(fTimeDelta);
 	/* worldInteractionAllowed=false: the right-click-a-player invite context menu
 	is Bern-only by design (party formation happens before a Valtan entry, not
@@ -632,14 +641,23 @@ void CLevel_ValtanArena::Update(f32_t fTimeDelta)
 	/* Raid Clear is the topmost product modal. Update it before any gameplay or
 	   lower-priority product interaction so its click cannot also become an
 	   attack, movement command, revive, or party action in this frame. */
+	{
+		LostArk::Shared::S2C_RAID_MVP_RESULT MvpResult{};
+		while (nullptr != m_pPlayerCommandSink && m_pPlayerCommandSink->Consume_RaidMvpResult(MvpResult))
+		{
+			m_RaidMvpResult = std::move(MvpResult);
+			m_bHasRaidMvpResult = true;
+			m_bRaidMvpResultFresh = true;
+		}
+	}
 	Update_RaidClear(fTimeDelta);
 	if (nullptr != m_pMvpResultView)
 	{
-		/* The award page has no characters of its own; until a raid roster exists the
-		   local character fills every panel, as on KoukuSaydon. */
-		const shared_ptr<CCharacter> pStaged = m_Replication.Get_LocalCharacter();
+		/* The award page has no characters of its own; each panel draws the player it
+		   names (Show_MvpResult), as on KoukuSaydon. */
 		for (size_t iStageSlot = 0; iStageSlot < 4u; ++iStageSlot)
-			m_pMvpResultView->Set_StageCharacter(iStageSlot, pStaged);
+			m_pMvpResultView->Set_StageCharacter(
+				iStageSlot, m_MvpStageCharacters[iStageSlot].lock());
 		m_pMvpResultView->Update(fTimeDelta);
 	}
 	m_GateProgressView.Set_Progress(1u, m_fRaidClearElapsedSeconds >= 0.f ? 1u : 0u);
@@ -1772,6 +1790,7 @@ HRESULT CLevel_ValtanArena::Render()
 		m_PlayerNameplateView.Render(m_NameplatePlayers, &m_Replication.Get_PartyRoster());
 		m_ChatBubbleView.Render(m_Replication, m_NameplatePlayers);
 	}
+	m_InteractKeyPrompt.Render_Text();
 	m_PartyInteraction.Render(m_pPlayerCommandSink);
 	/* Award page labels over everything else this Level draws; its image layers are
 	   CUI_Sprite objects on Layer_UI and need no call. */
@@ -2066,6 +2085,52 @@ namespace
 		RAIDCLEAR_REVEAL_SECONDS + RAIDCLEAR_HOLD_SECONDS;
 }
 
+namespace
+{
+	/* EFTable_ZoneEpicGate.GroupId 101 = Valtan, gate 1, normal; an eight-player raid
+	   takes the eight-player cutoffs. */
+	constexpr int32_t VALTAN_RAID_GROUP_ID = 101;
+	constexpr const char* VALTAN_DIFFICULTY_ID = "normal";
+	constexpr int32_t VALTAN_MVP_PARTY_SIZE = 8;
+}
+
+void CLevel_ValtanArena::Show_MvpResult(const bool_t bReplayLast)
+{
+	if (nullptr == m_pMvpResultView)
+		return;
+	for (weak_ptr<CCharacter>& pStaged : m_MvpStageCharacters)
+		pStaged.reset();
+	if (m_bHasRaidMvpResult && (m_bRaidMvpResultFresh || bReplayLast))
+	{
+		vector<LostArk::Shared::PLAYER_ID> StagePlayerIds;
+		const MVP_RESULT_DATA Data = CMvpAwardCatalog::Get().Build_ServerPage(
+			VALTAN_RAID_GROUP_ID, VALTAN_DIFFICULTY_ID, VALTAN_MVP_PARTY_SIZE,
+			m_RaidMvpResult, StagePlayerIds);
+		vector<REPLICATED_PLAYER_VIEW> Players;
+		m_Replication.Collect_PlayerViews(Players);
+		for (size_t iSlot = 0; iSlot < StagePlayerIds.size() && iSlot < 4u; ++iSlot)
+		{
+			for (const REPLICATED_PLAYER_VIEW& Player : Players)
+			{
+				if (Player.iPlayerId == StagePlayerIds[iSlot])
+				{
+					m_MvpStageCharacters[iSlot] = Player.pCharacter;
+					break;
+				}
+			}
+		}
+		m_bRaidMvpResultFresh = false;
+		m_pMvpResultView->Show(Data);
+		return;
+	}
+#ifdef _DEBUG
+	/* The O-key test clear has no Server result behind it. */
+	m_MvpStageCharacters[0] = m_Replication.Get_LocalCharacter();
+	m_pMvpResultView->Show(CMvpAwardCatalog::Get().Build_PreviewPage(
+		VALTAN_RAID_GROUP_ID, 1, VALTAN_DIFFICULTY_ID, VALTAN_MVP_PARTY_SIZE));
+#endif
+}
+
 void CLevel_ValtanArena::Trigger_RaidClear()
 {
 	m_fRaidClearElapsedSeconds = 0.f;
@@ -2113,9 +2178,7 @@ void CLevel_ValtanArena::Update_RaidClear(f32_t fTimeDelta)
 		fPreviousElapsedSeconds >= 0.f && fPreviousElapsedSeconds < RAIDCLEAR_TOTAL_SECONDS &&
 		m_fRaidClearElapsedSeconds >= RAIDCLEAR_TOTAL_SECONDS)
 	{
-		/* EFTable_ZoneEpicGate.GroupId 101 = Valtan, gate 1, normal; an eight-player raid
-		   takes the eight-player cutoffs. */
-		m_pMvpResultView->Show(CMvpAwardCatalog::Get().Build_PreviewPage(101, 1, "normal", 8));
+		Show_MvpResult(false);
 	}
 	const bool_t isMvpVisible = nullptr != m_pMvpResultView && m_pMvpResultView->Is_Visible();
 
@@ -2187,7 +2250,71 @@ that self-render through the normal CRenderer/RENDERGROUP::UI pipeline
 
 namespace
 {
+	/* announce.gfx ItemSlotAnnounceListItem (sprite 360) runs at 40 fps. Frames 1..10 bring the
+	band, slot frame and icon from alpha 0 to 1 while the band slides 10 stage px right; frames
+	1..16 do the same for the text line. The quality row carries no colour transform, so it is up
+	from frame 1. Frame 29 dispatches "complete"; the host's `time` then holds the item and
+	BaseAnnounceListItem::initComplete fades it out over 0.35 s. The list fades a new item in over
+	0.15 s (DefaultAnnounceListCtrl::addListItem). The hold is the one value the movie does not
+	carry; 2 s is the project's choice. */
+	constexpr f32_t ITEM_ANNOUNCE_FPS = 40.f;
+	constexpr f32_t ITEM_ANNOUNCE_INTRO_SECONDS = 29.f / ITEM_ANNOUNCE_FPS;
+	constexpr f32_t ITEM_ANNOUNCE_CHROME_IN_FRAMES = 9.f;
+	constexpr f32_t ITEM_ANNOUNCE_TEXT_IN_FRAMES = 15.f;
+	constexpr f32_t ITEM_ANNOUNCE_SLIDE_REF_PX = 10.f * 2.f / 3.f;
 	constexpr f32_t ITEM_ANNOUNCE_HOLD_SECONDS = 2.f;
+	constexpr f32_t ITEM_ANNOUNCE_LIST_FADE_IN_SECONDS = 0.15f;
+	constexpr f32_t ITEM_ANNOUNCE_FADE_OUT_SECONDS = 0.35f;
+	constexpr f32_t ITEM_ANNOUNCE_TOTAL_SECONDS =
+		ITEM_ANNOUNCE_INTRO_SECONDS + ITEM_ANNOUNCE_HOLD_SECONDS + ITEM_ANNOUNCE_FADE_OUT_SECONDS;
+
+	/* qualityProgress.colorList "cut,frame,colour": the gauge shows the frame of the highest cut
+	the value reaches and the value text takes its colour. */
+	struct ITEM_ANNOUNCE_QUALITY_TIER { int32_t iCut; int32_t iFrame; uint32_t iColor; };
+	constexpr ITEM_ANNOUNCE_QUALITY_TIER ITEM_ANNOUNCE_QUALITY_TIERS[] = {
+		{ 0, 1, 0x686660u }, { 1, 1, 0xff6000u }, { 10, 2, 0xffd200u }, { 30, 3, 0x91fe02u },
+		{ 70, 4, 0x00b5ffu }, { 90, 5, 0xce43fcu }, { 100, 6, 0xfe9600u } };
+
+	const ITEM_ANNOUNCE_QUALITY_TIER& Item_AnnounceQualityTier(const int32_t iQuality)
+	{
+		const ITEM_ANNOUNCE_QUALITY_TIER* pTier = &ITEM_ANNOUNCE_QUALITY_TIERS[0];
+		for (const ITEM_ANNOUNCE_QUALITY_TIER& Tier : ITEM_ANNOUNCE_QUALITY_TIERS)
+			if (iQuality >= Tier.iCut)
+				pTier = &Tier;
+		return *pTier;
+	}
+
+	/* Light sweep over the icon: sprite 360 depth 7 (masked by depth 6) lives on frames 10..28;
+	build_item_announce_ui.py bakes one image per frame. */
+	constexpr int32_t ITEM_ANNOUNCE_SWEEP_FIRST_FRAME = 10;
+	constexpr int32_t ITEM_ANNOUNCE_SWEEP_LAST_FRAME = 28;
+
+	constexpr const char* ITEM_ANNOUNCE_ART_SLOTS[] = {
+		"ItemAnnounce_Band", "ItemAnnounce_SlotFrame", "ItemAnnounce_Icon", "ItemAnnounce_Sweep",
+		"ItemAnnounce_QualityPlate", "ItemAnnounce_QualityWell", "ItemAnnounce_QualityGauge" };
+
+	/* The project keeps no item quality; the announce shows a fixed 70..90 per item id so the
+	row reads like retail's and never changes between two pickups of the same item. */
+	int32_t Item_AnnounceQuality(const string& strItemId)
+	{
+		uint32_t iHash = 2166136261u;
+		for (const unsigned char c : strItemId)
+			iHash = (iHash ^ c) * 16777619u;
+		return 70 + static_cast<int32_t>(iHash % 21u);
+	}
+
+	/* Item grade colours as GameMsg writes them: tooltip / setup-pass / recommendation strings
+	colour 고대 #E3C7A1, 유물 #FF6000, 전설 #FE9600, 영웅 #CE43FC, 희귀 #00B5FF, 고급 #91FE02. */
+	uint32_t Item_GradeRgb(const string& strGrade)
+	{
+		if ("ancient" == strGrade) return 0xe3c7a1u;
+		if ("relic" == strGrade) return 0xff6000u;
+		if ("legend" == strGrade) return 0xfe9600u;
+		if ("epic" == strGrade) return 0xce43fcu;
+		if ("rare" == strGrade) return 0x00b5ffu;
+		if ("uncommon" == strGrade) return 0x91fe02u;
+		return 0xffffffu;
+	}
 
 	/* Standard Hangul syllable-block final-consonant test (Unicode Hangul Syllables block,
 	U+AC00..U+D7A3 = 28 trailing-consonant slots per syllable): (codepoint - 0xAC00) % 28 == 0
@@ -2247,10 +2374,21 @@ void CLevel_ValtanArena::Update_ItemAnnounce(f32_t fTimeDelta)
 		}
 	}
 
+	/* The award page owns the screen: the announce draws nothing under it and its clock waits,
+	so the items still queued when the page opened are shown once it closes instead of running
+	out of time behind it. */
+	if (Is_MvpResultVisible())
+	{
+		for (const char* pSlot : ITEM_ANNOUNCE_ART_SLOTS)
+			m_pItemAnnounceView->Set_SlotVisible(pSlot, false);
+		CCombatHUDViewModel::Get().Set_ItemAnnounceTextRects(HUD_ITEMANNOUNCE_TEXT_RECTS{});
+		return;
+	}
+
 	if (m_fItemAnnounceElapsedSeconds >= 0.f)
 	{
 		m_fItemAnnounceElapsedSeconds += fTimeDelta;
-		if (m_fItemAnnounceElapsedSeconds >= ITEM_ANNOUNCE_HOLD_SECONDS)
+		if (m_fItemAnnounceElapsedSeconds >= ITEM_ANNOUNCE_TOTAL_SECONDS)
 			m_fItemAnnounceElapsedSeconds = -1.f;
 	}
 
@@ -2264,36 +2402,99 @@ void CLevel_ValtanArena::Update_ItemAnnounce(f32_t fTimeDelta)
 			CItemCatalog::Find_ById(m_strItemAnnounceCurrentItemId);
 		if (nullptr != pDefinition && !pDefinition->strIconPath.empty())
 			m_pItemAnnounceView->Set_SlotTexture("ItemAnnounce_Icon", pDefinition->strIconPath);
+		/* Quality gauge: the target mask reveals quality/100 of the track, whose frame follows
+		the colour tier the value reaches. */
+		const int32_t iQuality = Item_AnnounceQuality(m_strItemAnnounceCurrentItemId);
+		m_pItemAnnounceView->Set_SlotTexture("ItemAnnounce_QualityGauge",
+			"UI/ItemAnnounce/ItemAnnounce_QualityGauge_" +
+			std::to_string(Item_AnnounceQualityTier(iQuality).iFrame) + ".png");
+		m_pItemAnnounceView->Set_SlotFillRatio("ItemAnnounce_QualityGauge", iQuality / 100.f);
+		m_iItemAnnounceSweepFrame = 0;
 
 		const std::filesystem::path soundPath = CRuntimeAssetRoot::Resolve(
 			L"Sound/UI/System/sys_item_itemgetepic1__202768724.wav");
 		CGameInstance::Get().Play_Sound(soundPath.wstring(), 1.f);
 	}
 
+	/* The award page owns the screen: the announce keeps its own clock running underneath but
+	draws nothing, the way retail's list sits behind that window. */
 	const bool_t isShowing = m_fItemAnnounceElapsedSeconds >= 0.f;
-	m_pItemAnnounceView->Set_SlotVisible("ItemAnnounce_Frame", isShowing);
-	m_pItemAnnounceView->Set_SlotVisible("ItemAnnounce_Icon", isShowing);
-
 	HUD_ITEMANNOUNCE_TEXT_RECTS textRects;
-	textRects.isValid = isShowing && m_pItemAnnounceView->Get_SlotRect("ItemAnnounce_TextBox",
-		textRects.fTextX, textRects.fTextY, textRects.fTextWidth, textRects.fTextHeight);
+	if (!isShowing)
+	{
+		for (const char* pSlot : ITEM_ANNOUNCE_ART_SLOTS)
+			m_pItemAnnounceView->Set_SlotVisible(pSlot, false);
+		CCombatHUDViewModel::Get().Set_ItemAnnounceTextRects(textRects);
+		return;
+	}
+
+	/* The retail timeline: see the ITEM_ANNOUNCE_* constants. */
+	const f32_t fElapsed = m_fItemAnnounceElapsedSeconds;
+	const f32_t fFrame = fElapsed * ITEM_ANNOUNCE_FPS;
+	const f32_t fChromeIn = (std::min)(fFrame / ITEM_ANNOUNCE_CHROME_IN_FRAMES, 1.f);
+	const f32_t fTextIn = (std::min)(fFrame / ITEM_ANNOUNCE_TEXT_IN_FRAMES, 1.f);
+	const f32_t fListIn = (std::min)(fElapsed / ITEM_ANNOUNCE_LIST_FADE_IN_SECONDS, 1.f);
+	const f32_t fFadeOut = 1.f - (std::clamp)((fElapsed - ITEM_ANNOUNCE_INTRO_SECONDS -
+		ITEM_ANNOUNCE_HOLD_SECONDS) / ITEM_ANNOUNCE_FADE_OUT_SECONDS, 0.f, 1.f);
+	const f32_t fItemAlpha = fListIn * fFadeOut;
+
+	for (const char* pSlot : ITEM_ANNOUNCE_ART_SLOTS)
+		m_pItemAnnounceView->Set_SlotVisible(pSlot, true);
+	m_pItemAnnounceView->Set_SlotPosition("ItemAnnounce_Band",
+		m_fItemAnnounceBandX - (1.f - fChromeIn) * ITEM_ANNOUNCE_SLIDE_REF_PX, m_fItemAnnounceBandY);
+	m_pItemAnnounceView->Set_SlotAlpha("ItemAnnounce_Band", fChromeIn * fItemAlpha);
+	m_pItemAnnounceView->Set_SlotAlpha("ItemAnnounce_SlotFrame", fChromeIn * fItemAlpha);
+	m_pItemAnnounceView->Set_SlotAlpha("ItemAnnounce_Icon", fChromeIn * fItemAlpha);
+	m_pItemAnnounceView->Set_SlotAlpha("ItemAnnounce_QualityPlate", fItemAlpha);
+	m_pItemAnnounceView->Set_SlotAlpha("ItemAnnounce_QualityWell", fItemAlpha);
+	m_pItemAnnounceView->Set_SlotAlpha("ItemAnnounce_QualityGauge", fItemAlpha);
+
+	/* Timeline frame numbers start at 1 on the item's first update. */
+	const int32_t iTimelineFrame = static_cast<int32_t>(fFrame) + 1;
+	const bool_t bSweeping = iTimelineFrame >= ITEM_ANNOUNCE_SWEEP_FIRST_FRAME &&
+		iTimelineFrame <= ITEM_ANNOUNCE_SWEEP_LAST_FRAME;
+	if (bSweeping && iTimelineFrame != m_iItemAnnounceSweepFrame)
+	{
+		m_iItemAnnounceSweepFrame = iTimelineFrame;
+		m_pItemAnnounceView->Set_SlotTexture("ItemAnnounce_Sweep",
+			"UI/ItemAnnounce/ItemAnnounce_Sweep_" + std::to_string(iTimelineFrame) + ".png");
+	}
+	m_pItemAnnounceView->Set_SlotVisible("ItemAnnounce_Sweep", bSweeping);
+	m_pItemAnnounceView->Set_SlotAlpha("ItemAnnounce_Sweep", fItemAlpha);
+
+	const int32_t iQuality = Item_AnnounceQuality(m_strItemAnnounceCurrentItemId);
+	const ITEM_ANNOUNCE_QUALITY_TIER* pTier = &Item_AnnounceQualityTier(iQuality);
+
+	textRects.isValid = m_pItemAnnounceView->Get_SlotRect("ItemAnnounce_TextBox",
+		textRects.fTextX, textRects.fTextY, textRects.fTextWidth, textRects.fTextHeight) &&
+		m_pItemAnnounceView->Get_SlotRect("ItemAnnounce_QualityLabelBox",
+			textRects.fQualityLabelX, textRects.fQualityLabelY,
+			textRects.fQualityLabelWidth, textRects.fQualityLabelHeight) &&
+		m_pItemAnnounceView->Get_SlotRect("ItemAnnounce_QualityValueBox",
+			textRects.fQualityValueX, textRects.fQualityValueY,
+			textRects.fQualityValueWidth, textRects.fQualityValueHeight);
 	if (textRects.isValid)
 	{
+		/* The text line slides in 10 stage px with its own fade. */
+		textRects.fTextX -= (1.f - fTextIn) * ITEM_ANNOUNCE_SLIDE_REF_PX;
+		textRects.fTextAlpha = fTextIn * fItemAlpha;
+		textRects.fQualityAlpha = fItemAlpha;
+		textRects.strQualityValue = std::to_wstring(iQuality);
+		textRects.iQualityRgb = pTier->iColor;
 		const ITEM_DEFINITION* pDefinition =
 			CItemCatalog::Find_ById(m_strItemAnnounceCurrentItemId);
 		wstring strItemName;
 		if (nullptr != pDefinition &&
 			ConvertUtf8ToWide(pDefinition->strDisplayName, strItemName))
 		{
-			// "을 획득하였습니다" / "를 획득하였습니다" -- particle chosen by the item name's
-			// last syllable's final consonant (Has_HangulFinalConsonant above). Kept
-			// separate from the name (not concatenated into one string) so
-			// RenderItemAnnounceText can draw the name in its own grade color and
-			// this suffix in plain white.
+			// GameMsg sys.common.item_get "{0}을 획득하였습니다." -- the particle follows the
+			// item name's last syllable (Has_HangulFinalConsonant above). Kept separate from the
+			// name so RenderItemAnnounceText can draw the name in its grade colour.
 			textRects.strSuffix = Has_HangulFinalConsonant(strItemName.back()) ?
-				L"\xC744 \xD68D\xB4DD\xD558\xC600\xC2B5\xB2C8\xB2E4" :  // "을 획득하였습니다"
-				L"\xB97C \xD68D\xB4DD\xD558\xC600\xC2B5\xB2C8\xB2E4";  // "를 획득하였습니다"
+				L"\xC744 \xD68D\xB4DD\xD558\xC600\xC2B5\xB2C8\xB2E4." :  // "을 획득하였습니다."
+				L"\xB97C \xD68D\xB4DD\xD558\xC600\xC2B5\xB2C8\xB2E4.";  // "를 획득하였습니다."
 			textRects.strItemName = std::move(strItemName);
+			textRects.iNameRgb = Item_GradeRgb(pDefinition->strGrade);
 		}
 	}
 	CCombatHUDViewModel::Get().Set_ItemAnnounceTextRects(textRects);

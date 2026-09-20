@@ -81,6 +81,10 @@ public:
 	const ComPtr<ID3D11Device>& Get_MapAuthoringDevice() const { return m_pDevice; }
 	const ComPtr<ID3D11DeviceContext>& Get_MapAuthoringContext() const { return m_pContext; }
 #endif
+	void Drain_ChatLines(std::vector<CClientReplication::CHAT_LINE>& outLines)
+	{
+		m_Replication.Drain_ChatLines(outLines);
+	}
 	const LostArk::Shared::S2C_PARTY_ROSTER& Get_PartyRoster() const
 	{
 		return m_Replication.Get_PartyRoster();
@@ -107,6 +111,11 @@ public:
 	/* The level's own input controller: the vehicle window submits its mount request through
 	   it so the Server round trip has one owner (CPlayerController::Request_VehicleRiding). */
 	CPlayerController& Get_PlayerController() { return m_PlayerController; }
+	/* Out-of-line for the same reason as Render_ValtanEntryModalText() above --
+	   keeps CRaidEntryPreviewView's definition out of this header's own
+	   compile requirement for unrelated includers. CMainApp reads it so one Esc press
+	   closes only this popup. */
+	bool_t Is_ValtanEntryModalOpen() const;
 
 private:
 	HRESULT Ready_Layer_Camera(
@@ -114,11 +123,6 @@ private:
 		const std::string& areaId);
 
 	bool_t Bind_CameraToLocalCharacter();
-
-	/* Out-of-line for the same reason as Render_ValtanEntryModalText() above --
-	   keeps CRaidEntryPreviewView's definition out of this header's own
-	   compile requirement for unrelated includers. */
-	bool_t Is_ValtanEntryModalOpen() const;
 
 	/* Loads the Bern authoring document once and keeps only the two known
 	Valtan-entry guide NPCs' authored positions (npc.bern.beda.guide,

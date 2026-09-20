@@ -45,7 +45,7 @@ class CVehicleWindowView final
 {
 public:
 	/* Cancel transient gestures without closing or moving the window. */
-	void Cancel_Interaction() { m_Drag.Reset(); m_bIconPicked = false; m_bEscapeDownLastFrame = true; }
+	void Cancel_Interaction() { m_Drag.Reset(); m_bIconPicked = false; }
 	CVehicleWindowView(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext);
 	~CVehicleWindowView();
 
@@ -131,7 +131,6 @@ private:
 	wstring m_strHint;
 
 	bool_t m_bOpen = false;
-	bool_t m_bEscapeDownLastFrame = false;
 	int32_t m_iSelectedRow = 0;
 	int32_t m_iHoveredRow = -1;
 	/* Button state this frame, for the label pass: false = the selected vehicle has no riding

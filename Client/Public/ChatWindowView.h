@@ -47,6 +47,11 @@ public:
 	/* Drops focus from the input line without submitting whatever was being typed. */
 	void Close_Input();
 
+	/* Appends one received line to the scrollback, stamped with the local clock the way the
+	retail log stamps arrival. The room broadcasts a line back to its sender as well, so this
+	is also how your own message reaches the log -- there is no separate local echo. */
+	void Append_ReceivedLine(const string& strNickname, const string& strText);
+
 	/* Hides everything once HIDE_AFTER_SECONDS have passed since the last activity (a submitted
 	message or the input line being focused) with no active focus -- the whole window (log +
 	input bar) disappears until the next Open_Input()/submit. Otherwise keeps the panel sprites
@@ -59,11 +64,16 @@ public:
 	caret. Split out because CGameInstance::Draw_Text submits its SpriteBatch immediately, so it
 	belongs in the post-EndFrame text pass rather than alongside the sprite state above. */
 	void RenderText();
+	/* Forces every owned sprite invisible (a Level transition: the loading screen owns the
+	screen and this window is only driven in the levels that have a chat). */
+	void Hide_AllSlots();
 
 private:
 	struct CHAT_LOG_LINE
 	{
 		string strTimestamp;
+		/* Server-replicated nickname of whoever said it; drawn as "<name> : <text>". */
+		string strSpeaker;
 		string strText;
 	};
 
@@ -73,7 +83,15 @@ private:
 	static constexpr std::chrono::seconds HIDE_AFTER{ 30 };
 
 private:
-	void Hide_AllSlots();
+	/* Mouse wheel over the log panel and the two scroll buttons move the scrollback the way
+	chattingControl's own chatLogTopScroll / chatLogBottomScroll do: one line per notch, newest
+	line pinned to the bottom at offset 0. */
+	void Update_LogScroll();
+	/* The title buttons the widget really owns: the lock stops the drag, the minimise button
+	collapses everything above the input row (retail's minimumMode). The option button opens the
+	chat filter window (chatlogfilteroption.gfx), which this project has no window for, so it
+	stays hidden rather than drawn dead. */
+	void Update_TitleButtons();
 	/* True while this frame's sprites are shown -- RenderText only draws over a visible panel. */
 	bool_t Is_Visible() const;
 
@@ -85,11 +103,17 @@ private:
 
 	bool_t m_bInputOpen = false;
 	bool_t m_bFocusPending = false;
+	/* Eats the character the opening Enter keystroke sends into the fresh capture. */
+	bool_t m_bSwallowOpenEnter = false;
 	char_t m_InputBuffer[INPUT_BUFFER_SIZE] = {};
 	/* UTF-16 edit buffer the WM_CHAR stream (CUIInputRouter) appends to; re-encoded into
 	m_InputBuffer, which stays the UTF-8 contract Request_SendChat and the log lines use. */
 	wstring_t m_InputDraftW;
 	vector<CHAT_LOG_LINE> m_LogLines;
+	/* Lines scrolled back from the newest one (0 = bottom). */
+	size_t m_iLogScrollBack = 0u;
+	bool_t m_bLocked = false;
+	bool_t m_bMinimised = false;
 	std::chrono::steady_clock::time_point m_HideDeadline =
 		std::chrono::steady_clock::now() + HIDE_AFTER;
 };

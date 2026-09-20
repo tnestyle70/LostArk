@@ -2170,12 +2170,27 @@ HRESULT CRenderer::Render_Final()
 
 HRESULT CRenderer::Render_UI()
 {
+	/* UI surfaces submit in the order their owners update, which is creation order and says
+	nothing about which one is in front. Drawing follows Get_UISortLayer instead, and
+	stable_sort keeps submission order inside one layer so a document's own slots still draw
+	in their authored sequence. The scratch buffer is function-local static for the same
+	reason the blend one is: rendering is single-threaded and this runs every frame. */
+	static std::vector<CGameObject*> SortedUIObjects;
+	SortedUIObjects.clear();
+	SortedUIObjects.reserve(m_RenderObjects[ETOUI(RENDERGROUP::UI)].size());
 	for (size_t renderIndex = 0; renderIndex < m_RenderObjects[ETOUI(RENDERGROUP::UI)].size(); ++renderIndex)
 	{
 		CGameObject* const pRenderObject = m_RenderObjects[ETOUI(RENDERGROUP::UI)][renderIndex].get();
 		if (nullptr != pRenderObject)
-			pRenderObject->Render_Group(RENDERGROUP::UI);
+			SortedUIObjects.push_back(pRenderObject);
 	}
+	std::stable_sort(SortedUIObjects.begin(), SortedUIObjects.end(),
+		[](const CGameObject* pLeft, const CGameObject* pRight)
+		{
+			return pLeft->Get_UISortLayer() < pRight->Get_UISortLayer();
+		});
+	for (CGameObject* const pRenderObject : SortedUIObjects)
+		pRenderObject->Render_Group(RENDERGROUP::UI);
 
 	m_RenderObjects[ETOUI(RENDERGROUP::UI)].clear();
 
