@@ -1276,8 +1276,9 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 					player.fMarioRailOriginX == action.fTargetX && player.fMarioRailOriginZ == action.fTargetZ,
 					"Authored Mario arrival arms lane from its exact completed target");
 			}
-			/* T2's tiny transfer in Mario4 preserves A's direction, then T3
-			uses its real placement target to establish C's new fixed lane. */
+			/* T2 lands under 4Mario.follow.floor2.near: screen right is opposite
+			the authored T5 continuation (rightSign -1). T3 then uses its real
+			placement target to establish its new fixed lane. */
 			auto& player = room->m_Players[123u];
 			for (const char* source : { "Mario4_Tigger_2", "Mario4_Tigger_3" })
 			{
@@ -1308,9 +1309,9 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 					const float dz = nextExit ? nextExit->fPositionZ - player.fPositionZ : 0.f;
 					const float length = std::hypot(dx, dz);
 					tests.Require(nextExit && length > .1f &&
-						std::abs(player.fMarioRailRightX - dx / length) < .00001f &&
-						std::abs(player.fMarioRailRightZ - dz / length) < .00001f,
-						"Mario4 T2 follows the currently authored T5 continuation axis");
+						std::abs(player.fMarioRailRightX + dx / length) < .00001f &&
+						std::abs(player.fMarioRailRightZ + dz / length) < .00001f,
+						"Mario4 T2 lands on the screen-right axis opposite its authored T5 continuation");
 				}
 			}
 			CServerCollisionSystem collision;
