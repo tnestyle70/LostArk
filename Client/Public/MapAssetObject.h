@@ -78,6 +78,11 @@ public:
 	void Set_PlacementTransform(const float3_t& position,
 		const float4_t& rotationQuaternion, const float3_t& signedScale);
 	void Set_Visible(bool_t visible) { m_bVisible = visible; }
+	/* Overlay that hides the object without touching the logical visibility that
+	   gameplay and Sequences own. A cinematic stage suppresses the areas around it
+	   through this flag and clears it when the cinematic ends. */
+	bool_t Is_StageSuppressed() const { return m_bStageSuppressed; }
+	void Set_StageSuppressed(bool_t suppressed) { m_bStageSuppressed = suppressed; }
 	void Set_PresentationOpacityMultiplier(f32_t multiplier);
 	void Set_PresentationVortexProfile(
 		PRESENTATION_VORTEX_PROFILE profile,
@@ -93,6 +98,8 @@ private:
 
 	bool_t m_bApplyBottomCenter = false;
 	bool_t m_bVisible = true;
+	bool_t m_bStageSuppressed = false;
+	bool_t Is_Rendered() const { return m_bVisible && !m_bStageSuppressed; }
 	bool_t m_bMirrored = false;
 	//Frustum Culling을 위한 멤버 변수 추가 
 	bool_t m_bHasLocalCullBounds = false;

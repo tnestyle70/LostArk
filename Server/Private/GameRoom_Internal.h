@@ -120,7 +120,9 @@ constexpr std::array<MARIO_LANE_BINDING, 18u> MARIO_LANES{{
 		{3u, "Mario3_Trigger_8", "Mario3_Trigger_10", -1.f},
 		{3u, "Mario3_Trigger_10", "Mario3_Trigger_12", 1.f},
 		{4u, "Mario4_go", "Mario4_Tigger_2", 1.f},
-		{4u, "Mario4_Tigger_2", "Mario4_Tigger_5", 1.f},
+		// Landing at Mario4_Tigger_2 is framed by 4Mario.follow.floor2.near, which looks toward -Z:
+		// its screen right is -X while the exit Mario4_Tigger_5 lies toward +X, so the sign is -1.
+		{4u, "Mario4_Tigger_2", "Mario4_Tigger_5", -1.f},
 		{4u, "Mario4_Tigger_3", "Mario4_Tigger_6", 1.f},
 		{4u, "Mario4_Tigger_6", "Mario4_Tigger_7", -1.f},
 		{4u, "Mario4_Tigger_7", "Mario4_Tigger_13", 1.f},

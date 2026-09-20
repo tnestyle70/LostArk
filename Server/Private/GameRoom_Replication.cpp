@@ -543,7 +543,9 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 			snapshot.fMoveWaypointZ = waypoint.z;
 		}
 		snapshot.eLocomotionState =
-			(player.hasMoveGoal || player.TriggerMove.isActive) ?
+			(player.hasMoveGoal ||
+				(player.TriggerMove.isActive &&
+					player.TriggerMove.fHeldSeconds >= player.TriggerMove.fHoldSeconds)) ?
 			PLAYER_LOCOMOTION_STATE::MOVING : PLAYER_LOCOMOTION_STATE::IDLE;
 		snapshot.eAction = player.eAction;
 		snapshot.eStance = player.eStance;

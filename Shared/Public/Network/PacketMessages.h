@@ -493,6 +493,13 @@ namespace LostArk::Shared
 	inline constexpr std::uint32_t SQUAREHOLE_SONG_DURATION_MS = 3000u;
 	inline constexpr std::uint32_t SQUAREHOLE_BLACKOUT_FADE_MS = 600u;
 	inline constexpr std::uint32_t SQUAREHOLE_BLACKOUT_HOLD_MS = 400u;
+	/* Bern castle/library travel (movePlayer boxes of the Bern world). The Server keeps the player
+	standing BERN_TRAVEL_HOLD_MS after the trigger action starts (PLAYER_ACTION_STATE::TRIGGER_MOVE)
+	and only then travels. The Client fades the screen to black over BERN_TRAVEL_FADE_OUT_MS from
+	the first snapshot that carries the action, so the screen is already black when the position
+	changes, and fades back in once the action ends. */
+	inline constexpr std::uint32_t BERN_TRAVEL_FADE_OUT_MS = 300u;
+	inline constexpr std::uint32_t BERN_TRAVEL_HOLD_MS = 500u;
 	struct C2S_USE_SQUAREHOLE
 	{
 		std::uint32_t iClientSequence = 0;

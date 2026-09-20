@@ -3,7 +3,7 @@
   "formatVersion": 1,
   "lightResourceRevision": 16,
   "bossArchetypeId": "BOSS_KAKULSAYDON_G1_KOUKU",
-  "sourceRevision": 1912,
+  "sourceRevision": 1913,
   "bindings": [
     {
       "actionId": "KAKULSAYDON_G1_PATTERN_1.stage.43",
@@ -6540,6 +6540,16 @@
       "playMs": 3000,
       "playRate": 1,
       "endPolicy": "EXACT"
+    },
+    {
+      "actionId": "KAKULSAYDON_G1_PATTERN_96.stage.1",
+      "occurrenceId": "KAKULSAYDON_G1_PATTERN_96.idle.1",
+      "clip": "rpct00_idle_battle_1",
+      "startOffsetMs": 0,
+      "sourceStartMs": 0,
+      "playMs": 23333,
+      "playRate": 1.0,
+      "endPolicy": "LOOP_TO_WINDOW"
     }
   ],
   "fearPresentations": [
@@ -115722,6 +115732,127 @@
       "actorProfileId": "MN_RPCT_05",
       "durationMs": 12000,
       "presentationOccurrences": []
+    },
+    {
+      "patternId": "KAKULSAYDON_G1_PATTERN_96",
+      "gateId": "BINGO",
+      "targetBossPlacementId": "boss.kakulsaydon.bingo.saydon",
+      "actorProfileId": "MN_RPCT_05",
+      "durationMs": 23333,
+      "presentationOccurrences": [
+        {
+          "resourceKind": "",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "",
+          "resourceId": "presentation.kouku.bingo.encore.camera.1",
+          "kind": "CAMERA",
+          "assetId": "kouku.bingo.encore.camera.1",
+          "resourceDurationMs": 23333,
+          "positionOffset": [
+            0,
+            0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.95,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "WORLD",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": false,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_96.presentation.1",
+          "startMs": 0,
+          "durationMs": 23333,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        },
+        {
+          "resourceKind": "LEAF",
+          "elementId": "",
+          "shape": "BOX",
+          "colliderKind": "GEOMETRY",
+          "halfExtents": [
+            1,
+            1,
+            1
+          ],
+          "radiusM": 3,
+          "halfAngleDegrees": 45,
+          "soundEvent": "",
+          "resourceId": "presentation.kouku.bingo.encore.fade.black",
+          "kind": "EFFECT",
+          "assetId": "kouku.bingo.encore.fade.black",
+          "resourceDurationMs": 23333,
+          "positionOffset": [
+            0,
+            0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.95,
+          "dissolveEnd": 1,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "bone": "",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "MAP",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "debugRender": false,
+          "worldOccurrenceId": "",
+          "worldEmissionIndex": 0,
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_96.presentation.2",
+          "startMs": 0,
+          "durationMs": 23333,
+          "brightnessMultiplier": 1,
+          "boneTarget": "BODY",
+          "worldSequenceInstanceId": ""
+        }
+      ]
     }
   ]
 }
