@@ -1106,11 +1106,16 @@ $claimedSlotStances = @{}
 $claimedStandupSlots = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 $skillRows = [Collections.Generic.List[string]]::new()
 foreach ($skill in @($skillDocument.skills)) {
-	Assert-ExactProperties $skill @(
+	# rootMotionScale is optional: only a skill whose travel the project retuned
+	# carries one, and its absence has to keep the authored distance exactly.
+	$expectedSkillProperties = @(
 		'skillId','characterClass','inputSlot','displayName','actionId','skillKind','requiredStance','setsStance',
 		'cooldownMs','actionDurationMs',
         'hitTimeMs','resourceCost','identityCost','movementDistance','maximumRange','serverDamageProfileId',
-		'staggerDamage','partDamage','counterPower','effectId','comboStages') 'player skill'
+		'staggerDamage','partDamage','counterPower','effectId','comboStages')
+	$hasRootMotionScale = $null -ne $skill.PSObject.Properties['rootMotionScale']
+	if ($hasRootMotionScale) { $expectedSkillProperties += 'rootMotionScale' }
+	Assert-ExactProperties $skill $expectedSkillProperties 'player skill'
 	Assert-JsonInteger $skill.skillId 'skillId' 1 ([uint32]::MaxValue)
 	foreach ($stringField in @('characterClass','inputSlot','displayName','actionId','skillKind','serverDamageProfileId',
 		'effectId','requiredStance','setsStance')) {
@@ -1126,6 +1131,16 @@ foreach ($skill in @($skillDocument.skills)) {
 	}
 	Assert-JsonNumber $skill.movementDistance "skill $($skill.skillId) movementDistance"
 	Assert-JsonNumber $skill.maximumRange "skill $($skill.skillId) maximumRange"
+	if ($hasRootMotionScale) {
+		Assert-JsonNumber $skill.rootMotionScale "skill $($skill.skillId) rootMotionScale"
+		$rootMotionScale = [double]$skill.rootMotionScale
+		if ($rootMotionScale -le 0.0 -or $rootMotionScale -gt 8.0) {
+			throw "Skill rootMotionScale is out of range: $($skill.skillId)"
+		}
+		if ($rootMotionScale -eq 1.0) {
+			throw "Skill rootMotionScale of 1 changes nothing; drop the field: $($skill.skillId)"
+		}
+	}
     Assert-StableId $skill.characterClass 'characterClass'
     Assert-StableId $skill.inputSlot 'inputSlot'
     Assert-StableId $skill.actionId 'actionId'
@@ -1344,6 +1359,11 @@ foreach ($skill in @($skillDocument.skills)) {
 	$skillRows.Add((@(
 		'SKILLCOMBATTRAITS', $id, [uint32]$skill.staggerDamage,
 		[uint32]$skill.partDamage, [uint32]$skill.counterPower) -join "`t"))
+	if ($hasRootMotionScale) {
+		$skillRows.Add((@(
+			'SKILLROOTMOTIONSCALE', $id,
+			(Format-InvariantFloat $skill.rootMotionScale "skill $id rootMotionScale")) -join "`t"))
+	}
 	for ($stageIndex = 0; $stageIndex -lt $stages.Count; $stageIndex++) {
 		$stage = $stages[$stageIndex]
 		$skillRows.Add((@(

@@ -984,6 +984,11 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 		stepForward = skill->fMovementDistance /
 			durationSeconds * fixedDeltaSeconds;
 	}
+	/* Scaling the per-tick delta rather than the curve keeps the authored
+	shape - acceleration, pauses, a step back at the end - and only stretches
+	how far it carries. The walkable clamp below still applies per tick. */
+	stepForward *= skill->fRootMotionScale;
+	stepLateral *= skill->fRootMotionScale;
 
 	if (0.f != stepForward || 0.f != stepLateral)
 	{

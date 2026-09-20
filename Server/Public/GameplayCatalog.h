@@ -154,6 +154,11 @@ namespace LostArk::Server
 		std::uint32_t iPartDamage = 0;
 		std::uint32_t iCounterPower = 0;
 		float fMovementDistance = 0.f;
+		/* PROJECT_TUNED multiplier on whatever displacement the skill already
+		produces, so the extracted root motion curve keeps its original values.
+		1 leaves the baked distance exactly as authored. The clip length does
+		not change with it, so a larger value also travels faster. */
+		float fRootMotionScale = 1.f;
 		float fMaximumRange = 0.f;
 		LostArk::Shared::SKILL_TARGET_INTENT_KIND eTargetIntent =
 			LostArk::Shared::SKILL_TARGET_INTENT_KIND::AIM_POINT;
