@@ -40,6 +40,11 @@ public:
 	/* Real show/hide (a hidden sprite is skipped entirely, no transparent-quad draw call) --
 	tint/alpha/texture state is untouched, so showing again restores exactly what was set
 	before. For a keyframe slot this gates whether Update() drives its layer sprites at all. */
+	/* Draw order of this whole document inside RENDERGROUP::UI, from the Client's UI layer
+	table (UI_TEXT_LAYER in UITextOcclusion.h -- sprites and text share it so a window's
+	panel and its labels always agree on what they are above). Applies to the sprites that
+	exist now and to any created afterwards. */
+	void Set_UISortLayer(int32_t iLayer);
 	void Set_SlotVisible(const string& strId, bool_t bVisible);
 	void Set_SlotCinematicOverlay(const string& strId, bool_t overlay);
 	/* Runtime tint override (0..1 RGBA) on every authored static layer sprite. */
@@ -236,6 +241,7 @@ private:
 	f32_t							m_fResolutionWidth = 1280.f;
 	f32_t							m_fResolutionHeight = 720.f;
 
+	int32_t							m_iUISortLayer = 0;
 	vector<RUNTIME_SLOT>			m_Slots;
 	/* Runtime lookup only; document order and sprite ownership stay in m_Slots. Duplicate
 	IDs retain their ordered candidates because animation calls skip ineligible slots. */

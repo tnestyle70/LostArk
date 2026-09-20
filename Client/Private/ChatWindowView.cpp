@@ -48,16 +48,20 @@ namespace
 	title buttons. The text boxes are markers the text pass draws into. */
 	constexpr const char_t* CHAT_SLOTS[] =
 	{
-		"Chat_LogPanel", "Chat_ScrollUp", "Chat_ScrollUpArrow", "Chat_ScrollDown",
-		"Chat_ScrollDownArrow", "Chat_ComboArrow", "Chat_LockButton", "Chat_OptionButton",
-		"Chat_MinimizeButton", "Chat_Tab0", "Chat_TabAdd", "Chat_TabAddPlus",
+		"Chat_LogPanel", "Chat_LogPanelArt", "Chat_ScrollUp", "Chat_ScrollUpArrow",
+		"Chat_ScrollDown", "Chat_ScrollDownArrow", "Chat_ComboBg", "Chat_ComboArrow",
+		"Chat_InputBoxOuter", "Chat_InputBoxInner", "Chat_LockButton", "Chat_OptionButton",
+		"Chat_MinimizeButton", "Chat_Tab0", "Chat_TabAdd", "Chat_TabAddPlus", "Chat_LangIcon",
 	};
 
-	/* chattingControl's textField is YG760 14 px on the 1920x1080 stage. */
-	constexpr f32_t CHAT_TEXT_STAGE_PX = 14.f;
+	/* chattingControl's textField is YG760 14 px on the 1920x1080 stage. The panel itself is
+	authored larger than retail (build_chat_ui.py's WIDGET_SCALE), so the lines follow it by the
+	same factor -- otherwise small text would float in a bigger box. */
+	constexpr f32_t WIDGET_SCALE = 1.25f;
+	constexpr f32_t CHAT_TEXT_STAGE_PX = 14.f * WIDGET_SCALE;
 	constexpr f32_t STAGE_TO_REF = 2.f / 3.f;
-	/* One log line in reference px (the 14 px stage line with its leading). */
-	constexpr f32_t LOG_LINE_HEIGHT = 15.f;
+	/* textField [86] is fontHeight 280 with leading 40, i.e. a 16 stage px line. */
+	constexpr f32_t LOG_LINE_HEIGHT = 16.f * WIDGET_SCALE * STAGE_TO_REF;
 
 	bool_t Convert_Utf8ToWide(const string& strUtf8, wstring_t& outWide)
 	{
@@ -106,6 +110,7 @@ void Client::CChatWindowView::Open_Input()
 {
 	m_bInputOpen = true;
 	m_bFocusPending = true;
+	m_bSwallowOpenEnter = true;
 	m_HideDeadline = std::chrono::steady_clock::now() + HIDE_AFTER;
 	/* Takes the WM_CHAR stream for this field -- the same capture the Create Character
 	nickname box uses, replacing what ImGui::SetKeyboardFocusHere/InputText did. */
@@ -116,9 +121,31 @@ void Client::CChatWindowView::Close_Input()
 {
 	m_bInputOpen = false;
 	m_bFocusPending = false;
+	m_bSwallowOpenEnter = false;
 	m_InputBuffer[0] = '\0';
 	m_InputDraftW.clear();
 	CUIInputRouter::Get().Stop_TextInput();
+}
+
+void Client::CChatWindowView::Append_ReceivedLine(
+	const string& strNickname, const string& strText)
+{
+	if (strText.empty())
+		return;
+	const time_t rawTime = time(nullptr);
+	tm localTime{};
+	localtime_s(&localTime, &rawTime);
+	char_t strTimestamp[8];
+	snprintf(strTimestamp, sizeof(strTimestamp), "%02d:%02d",
+		localTime.tm_hour, localTime.tm_min);
+
+	m_LogLines.push_back(CHAT_LOG_LINE{ strTimestamp, strNickname, strText });
+	if (m_LogLines.size() > MAX_LOG_LINES)
+		m_LogLines.erase(m_LogLines.begin());
+	/* A new line pins the view back to the bottom, as the retail list does, and keeps the
+	window on screen so an arriving message is actually readable. */
+	m_iLogScrollBack = 0u;
+	m_HideDeadline = std::chrono::steady_clock::now() + HIDE_AFTER;
 }
 
 void Client::CChatWindowView::Update_TitleButtons()
@@ -145,8 +172,8 @@ void Client::CChatWindowView::Update_TitleButtons()
 	m_pView->Set_SlotTint("Chat_LockButton", m_bLocked ?
 		float4_t(1.f, 1.f, 1.f, 1.f) : float4_t(1.f, 1.f, 1.f, 0.5f));
 	/* Minimised: only the input row and the title buttons stay. */
-	for (const char_t* pSlotId : { "Chat_LogPanel", "Chat_ScrollUp", "Chat_ScrollUpArrow",
-		"Chat_ScrollDown", "Chat_ScrollDownArrow", "Chat_Tab0" })
+	for (const char_t* pSlotId : { "Chat_LogPanel", "Chat_LogPanelArt", "Chat_ScrollUp",
+		"Chat_ScrollUpArrow", "Chat_ScrollDown", "Chat_ScrollDownArrow", "Chat_Tab0" })
 		m_pView->Set_SlotVisible(pSlotId, !m_bMinimised);
 }
 
@@ -217,6 +244,12 @@ void Client::CChatWindowView::Render(
 	buttons have nothing to open. */
 	for (const char_t* pSlotId : { "Chat_TabAdd", "Chat_TabAddPlus", "Chat_OptionButton" })
 		m_pView->Set_SlotVisible(pSlotId, false);
+	/* languageIcon_mc: frame 2 is the Korean glyph, frame 1 is an empty box, so Latin input
+	shows nothing at all in retail. The field has to own input for either to mean anything. */
+	m_pView->Set_SlotVisible("Chat_LangIcon", m_bInputOpen && Is_KoreanInputActive());
+	/* The input row's own art only belongs on screen while the field is open. */
+	for (const char_t* pSlotId : { "Chat_InputBoxOuter", "Chat_InputBoxInner" })
+		m_pView->Set_SlotVisible(pSlotId, m_bInputOpen);
 	Update_TitleButtons();
 	if (!m_bMinimised)
 		Update_LogScroll();
@@ -275,6 +308,15 @@ void Client::CChatWindowView::Render(
 	{
 		if (L'\r' == ch || L'\n' == ch)
 		{
+			/* The keystroke that opens the field also delivers its own WM_CHAR, and the capture
+			is already live when that message is pumped. Submitting it would close the empty line
+			again a frame later, which is what made Enter feel like it toggled at random -- the
+			field looked open, the next key went to gameplay. The opening Enter is eaten once. */
+			if (m_bSwallowOpenEnter)
+			{
+				m_bSwallowOpenEnter = false;
+				continue;
+			}
 			submitted = true;
 		}
 		else if (L'\x1b' == ch)
@@ -302,6 +344,10 @@ void Client::CChatWindowView::Render(
 				textChanged = true;
 		}
 	}
+
+	/* Anything that arrived after the opening keystroke means it is behind us. */
+	if (!typed.empty())
+		m_bSwallowOpenEnter = false;
 
 	if (textChanged)
 	{
@@ -352,21 +398,10 @@ void Client::CChatWindowView::Render(
 	if (nullptr != pCommandSink)
 		pCommandSink->Request_SendChat(strLine);
 
-	/* Local echo happens regardless of send success -- this is your own scrollback, not the
-	head bubble (that reads the Server's broadcast back, same as everyone else's). Keeps the
-	input open so a chat session can send several lines without re-pressing Enter each time. */
-	const time_t rawTime = time(nullptr);
-	tm localTime{};
-	localtime_s(&localTime, &rawTime);
-	char_t strTimestamp[8];
-	snprintf(strTimestamp, sizeof(strTimestamp), "%02d:%02d",
-		localTime.tm_hour, localTime.tm_min);
-
-	m_LogLines.push_back(CHAT_LOG_LINE{ strTimestamp, strLine });
-	if (m_LogLines.size() > MAX_LOG_LINES)
-		m_LogLines.erase(m_LogLines.begin());
-	/* A new line pins the view back to the bottom, as the retail list does. */
-	m_iLogScrollBack = 0u;
+	/* No local echo: the room broadcasts the line back to its sender too, and that broadcast
+	carries the Server's nickname, so the log gets it through Append_ReceivedLine with the same
+	"<name> : <text>" shape as everyone else's. Focus stays so a chat session can send several
+	lines without re-pressing Enter each time. */
 	m_InputBuffer[0] = '\0';
 	m_InputDraftW.clear();
 	m_HideDeadline = std::chrono::steady_clock::now() + HIDE_AFTER;
@@ -436,6 +471,15 @@ void Client::CChatWindowView::RenderText()
 			fScreenX += Fn_DrawLeft(fScreenX, fScreenY, strStamp.c_str(), TEXT_HEIGHT,
 				XMVectorSet(0.62f, 0.65f, 0.7f, 1.f));
 
+			/* "<name> : <text>", the name in the channel's own colour like the retail log. */
+			wstring_t strSpeaker;
+			if (!Line.strSpeaker.empty() && Convert_Utf8ToWide(Line.strSpeaker, strSpeaker))
+			{
+				strSpeaker += L" : ";
+				fScreenX += Fn_DrawLeft(fScreenX, fScreenY, strSpeaker.c_str(), TEXT_HEIGHT,
+					XMVectorSet(0.85f, 0.88f, 0.93f, 1.f));
+			}
+
 			wstring_t strText;
 			if (Convert_Utf8ToWide(Line.strText, strText))
 				Fn_DrawLeft(fScreenX, fScreenY, strText.c_str(), TEXT_HEIGHT, Colors::White);
@@ -457,7 +501,8 @@ void Client::CChatWindowView::RenderText()
 			CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), TAB_LABEL,
 				float2_t((fTabX + fTabW * 0.5f) * fScaleX, (fTabY + fTabH * 0.5f) * fScaleY),
 				XMVectorSet(145.f / 255.f, 156.f / 255.f, 166.f / 255.f, 1.f), 0.f,
-				float2_t(0.5f, 0.5f), (16.f * STAGE_TO_REF / vTabMeasured.y) * fUiScale);
+				float2_t(0.5f, 0.5f),
+				(16.f * WIDGET_SCALE * STAGE_TO_REF / vTabMeasured.y) * fUiScale);
 		}
 	}
 

@@ -11,6 +11,7 @@
 #include "MainApp.h"
 #include "UIInputRouter.h"
 #include "UILabelFont.h"
+#include "UITextOcclusion.h"
 #include "UILayoutRuntime.h"
 
 #include <algorithm>
@@ -95,6 +96,9 @@ Client::CHonorTitleWindowView::CHonorTitleWindowView(
 		pDevice, pContext, ETOUI(LEVEL::STATIC), TEXT("Layer_UI"),
 		L"UI/HonorTitle/HonorTitle_Layout.json") }
 {
+	/* Draw order for this window's panel; the same number orders its labels
+	(Register_UITextOccluders) and its clicks. */
+	m_pView->Set_UISortLayer(UI_TEXT_LAYER::WINDOW_HONOR_TITLE);
 	m_SlotIds = m_pView->Get_SlotIds();
 	f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
 	if (m_pView->Get_SlotRect("HT_WinBg", fX, fY, fWidth, fHeight) && fWidth > 0.f)
@@ -123,6 +127,9 @@ int32_t Client::CHonorTitleWindowView::Max_Scroll() const
 
 void Client::CHonorTitleWindowView::Update(const f32_t fTimeDelta, const HUD_PLAYER_STATE& Player)
 {
+	/* Hit tests below belong to this window; the router refuses a press that lands on the
+	window in front and lets only one widget take any one press. */
+	CUIPointerScope PointerScope(this);
 	(void)fTimeDelta;
 	if (!m_bOpen)
 	{
@@ -176,7 +183,7 @@ void Client::CHonorTitleWindowView::Update(const f32_t fTimeDelta, const HUD_PLA
 		{
 			const f32_t fScaleX = vViewport.x / m_pView->Get_ResolutionWidth();
 			const f32_t fScaleY = vViewport.y / m_pView->Get_ResolutionHeight();
-			Router.Set_TopWindowRect(fX * fScaleX, fY * fScaleY, fWidth * fScaleX, fHeight * fScaleY);
+			Router.Set_TopWindowRect(this, fX * fScaleX, fY * fScaleY, fWidth * fScaleX, fHeight * fScaleY);
 		}
 	}
 }

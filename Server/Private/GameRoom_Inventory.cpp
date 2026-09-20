@@ -130,9 +130,28 @@ void LostArk::Server::CGameRoom::Handle_UseItem(
 	const std::uint64_t healAmount =
 		(static_cast<std::uint64_t>(player.iMaximumHp) *
 			static_cast<std::uint64_t>(itemDefinition->iHealPercent)) / 100u;
+	const std::uint32_t healedFromHp = player.iCurrentHp;
 	player.iCurrentHp = static_cast<std::uint32_t>((std::min)(
 		static_cast<std::uint64_t>(player.iMaximumHp),
 		static_cast<std::uint64_t>(player.iCurrentHp) + healAmount));
+
+	/* Retail floats the restored amount over the drinker in COLOR_HEAL. The number is
+	what the potion actually restored, so a nearly full bar shows the smaller figure. */
+	const std::uint32_t healedAmount = player.iCurrentHp - healedFromHp;
+	if (0u != healedAmount &&
+		m_PendingCommandDamageEvents.size() < MAX_DAMAGE_EVENTS)
+	{
+		DAMAGE_EVENT healEvent{};
+		healEvent.iTargetNetEntityId = player.iNetEntityId;
+		healEvent.iAmount = healedAmount;
+		healEvent.fPositionX = player.fPositionX;
+		healEvent.fPositionY = player.fPositionY;
+		healEvent.fPositionZ = player.fPositionZ;
+		healEvent.isOutgoing = true;
+		healEvent.iSourcePlayerId = playerIter->first;
+		healEvent.eHitFlag = DAMAGE_HIT_FLAG::HEAL;
+		m_PendingCommandDamageEvents.push_back(healEvent);
+	}
 
 	--existing->iQuantity;
 	if (0u == existing->iQuantity)

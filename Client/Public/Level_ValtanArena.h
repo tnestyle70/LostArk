@@ -11,6 +11,7 @@
 #include "MapLightPresentationRuntime.h"
 #include "PartyInteractionView.h"
 #include "PlayerController.h"
+#include "InteractKeyPromptView.h"
 #include "RaidGateProgressView.h"
 #include "WorldPlayerChatBubbleView.h"
 #include "ValtanCinematicCameraController.h"
@@ -98,6 +99,10 @@ public:
 	{
 		m_PartyInteraction.Render_InvitePopupText();
 		m_PartyInteraction.Render_ContextMenuText();
+	}
+	void Drain_ChatLines(std::vector<CClientReplication::CHAT_LINE>& outLines)
+	{
+		m_Replication.Drain_ChatLines(outLines);
 	}
 	const LostArk::Shared::S2C_PARTY_ROSTER& Get_PartyRoster() const
 	{
@@ -368,6 +373,9 @@ private:
 	void Show_MvpResult(bool_t bReplayLast);
 	/* Gate progress panel: Valtan is one gate here, checked once the clear mark starts. */
 	CRaidGateProgressView m_GateProgressView;
+	/* The retail G prompt over the player's head while the Server offers one of this Area's
+	interact-gated trigger boxes (the climb/descend points). Presentation only. */
+	CInteractKeyPromptView m_InteractKeyPrompt;
 	bool_t m_bRaidClearReturnAvailable = false;
 	/* Edge-detect for the boss's replicated eAction (see Update_RaidClear) and the elapsed time
 	since that edge -- negative means the overlay is not currently showing. */

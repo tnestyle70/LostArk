@@ -15,6 +15,7 @@
 #include "ProjectDataRoot.h"
 #include "UIInputRouter.h"
 #include "UILabelFont.h"
+#include "UITextOcclusion.h"
 #include "UILayoutRuntime.h"
 
 #include <cmath>
@@ -126,6 +127,9 @@ Client::CVehicleWindowView::CVehicleWindowView(
 		pDevice, pContext, ETOUI(LEVEL::STATIC), TEXT("Layer_UI"),
 		L"UI/Vehicle/Vehicle_Layout.json") }
 {
+	/* Draw order for this window's panel; the same number orders its labels
+	(Register_UITextOccluders) and its clicks. */
+	m_pView->Set_UISortLayer(UI_TEXT_LAYER::WINDOW_VEHICLE);
 	m_SlotIds = m_pView->Get_SlotIds();
 	f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
 	if (m_pView->Get_SlotRect("VH_WinBg", fX, fY, fWidth, fHeight) && fWidth > 0.f)
@@ -221,6 +225,9 @@ void Client::CVehicleWindowView::Load_Catalog()
 void Client::CVehicleWindowView::Update(const f32_t fTimeDelta,
 	const std::shared_ptr<CCharacter>& pLocalCharacter, const HUD_PLAYER_STATE& Player)
 {
+	/* Hit tests below belong to this window; the router refuses a press that lands on the
+	window in front and lets only one widget take any one press. */
+	CUIPointerScope PointerScope(this);
 	(void)fTimeDelta;
 	if (!m_bOpen)
 	{

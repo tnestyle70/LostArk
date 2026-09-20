@@ -81,6 +81,10 @@ public:
 	const ComPtr<ID3D11Device>& Get_MapAuthoringDevice() const { return m_pDevice; }
 	const ComPtr<ID3D11DeviceContext>& Get_MapAuthoringContext() const { return m_pContext; }
 #endif
+	void Drain_ChatLines(std::vector<CClientReplication::CHAT_LINE>& outLines)
+	{
+		m_Replication.Drain_ChatLines(outLines);
+	}
 	const LostArk::Shared::S2C_PARTY_ROSTER& Get_PartyRoster() const
 	{
 		return m_Replication.Get_PartyRoster();

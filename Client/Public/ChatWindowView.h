@@ -47,6 +47,11 @@ public:
 	/* Drops focus from the input line without submitting whatever was being typed. */
 	void Close_Input();
 
+	/* Appends one received line to the scrollback, stamped with the local clock the way the
+	retail log stamps arrival. The room broadcasts a line back to its sender as well, so this
+	is also how your own message reaches the log -- there is no separate local echo. */
+	void Append_ReceivedLine(const string& strNickname, const string& strText);
+
 	/* Hides everything once HIDE_AFTER_SECONDS have passed since the last activity (a submitted
 	message or the input line being focused) with no active focus -- the whole window (log +
 	input bar) disappears until the next Open_Input()/submit. Otherwise keeps the panel sprites
@@ -67,6 +72,8 @@ private:
 	struct CHAT_LOG_LINE
 	{
 		string strTimestamp;
+		/* Server-replicated nickname of whoever said it; drawn as "<name> : <text>". */
+		string strSpeaker;
 		string strText;
 	};
 
@@ -96,6 +103,8 @@ private:
 
 	bool_t m_bInputOpen = false;
 	bool_t m_bFocusPending = false;
+	/* Eats the character the opening Enter keystroke sends into the fresh capture. */
+	bool_t m_bSwallowOpenEnter = false;
 	char_t m_InputBuffer[INPUT_BUFFER_SIZE] = {};
 	/* UTF-16 edit buffer the WM_CHAR stream (CUIInputRouter) appends to; re-encoded into
 	m_InputBuffer, which stays the UTF-8 contract Request_SendChat and the log lines use. */

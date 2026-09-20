@@ -38,8 +38,23 @@ private:
 	void Hide_Bubble(size_t iBubble);
 
 private:
+	/* One text line already placed in screen px. The nine art slices are CUI_Sprite objects the
+	level's UI render group draws, and that group runs before this view is reached, so a rect set
+	here only reaches the screen on the next frame. Drawing the text immediately therefore let it
+	slide ahead of its own bubble while the speaker moved. The line is kept here and drawn on the
+	next call instead, so art and text always show the same frame's anchor. */
+	struct PLACED_LINE
+	{
+		std::wstring strText;
+		float2_t vPosition{};
+	};
+
+private:
 	unique_ptr<CUILayoutRuntime> m_pView;
 	std::vector<std::wstring> m_Lines;
+	std::vector<PLACED_LINE> m_PlacedLines;
+	wstring_t m_strPlacedFont;
+	f32_t m_fPlacedFontScale = 1.f;
 };
 
 NS_END

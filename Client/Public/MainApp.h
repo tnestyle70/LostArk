@@ -778,6 +778,9 @@ private:
 		hunter's card maze shard count instead. */
 		LostArk::Shared::MECHANIC_CARD_SYMBOL eCardMazeSuit =
 			LostArk::Shared::MECHANIC_CARD_SYMBOL::NONE;
+		/* Picks the retail DamageTextWnd colour for this number. */
+		LostArk::Shared::DAMAGE_HIT_FLAG eHitFlag =
+			LostArk::Shared::DAMAGE_HIT_FLAG::NORMAL;
 	};
 	vector<FLOATING_DAMAGE_NUMBER> m_FloatingDamageNumbers;
 	/* Update_BossHealthBar's own edge-detect state, matching two real effects confirmed from the

@@ -1002,6 +1002,14 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds,
 	}
 
 	m_TickDamageEvents.clear();
+	if (!m_PendingCommandDamageEvents.empty())
+	{
+		const size_t take = (std::min)(m_PendingCommandDamageEvents.size(),
+			static_cast<size_t>(LostArk::Shared::MAX_DAMAGE_EVENTS));
+		m_TickDamageEvents.assign(m_PendingCommandDamageEvents.begin(),
+			m_PendingCommandDamageEvents.begin() + take);
+		m_PendingCommandDamageEvents.clear();
+	}
 	m_TickBossCombatEvents.clear();
 	const std::uint32_t updateTick =
 		(std::numeric_limits<std::uint32_t>::max)() == m_iServerTick ?

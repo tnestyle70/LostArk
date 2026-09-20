@@ -1660,6 +1660,24 @@ namespace LostArk::Shared
 		// The immutable definition generation pinned when this occurrence began.
 		GameplayDataRevision PinnedDefinitionRevision{};
 	};
+	/* Retail damagetext.gfx (EFUI_DAMAGE, DamageTextWnd) draws a number in one of five
+	styles, chosen by the flag the native side sends with it. Ordinary hits and potion
+	heals are the two this Server judges today; CRITICAL and MISS wait on the combat
+	numbers that will decide them, and INVINCIBLE draws nothing at all in retail. */
+	enum class DAMAGE_HIT_FLAG : std::uint8_t
+	{
+		NORMAL = 0,
+		CRITICAL,
+		MISS,
+		INVINCIBLE,
+		HEAL,
+		END
+	};
+	inline bool Is_Valid_DamageHitFlag(const DAMAGE_HIT_FLAG eFlag)
+	{
+		return static_cast<std::uint8_t>(eFlag) <
+			static_cast<std::uint8_t>(DAMAGE_HIT_FLAG::END);
+	}
 	// One resolved hit. HP in the snapshots above is a level, so a client that
 	// only sees levels cannot tell 500 damage from two 250s inside one tick, and
 	// cannot place a number where the hit landed. The server already computes this
@@ -1678,7 +1696,8 @@ namespace LostArk::Shared
 		float fPositionY = 0.f;
 		float fPositionZ = 0.f;
 		// True when a player dealt it. Presentation styles incoming and outgoing
-		// damage differently, and only the server knows which is which.
+		// damage differently, and only the server knows which is which. A HEAL
+		// event is always the target's own gain, so it is outgoing too.
 		bool isOutgoing = false;
 		/* NONE on an ordinary hit. A card maze shard instead names the suit the
 		hunter was dealt and carries their running count in iAmount, because the
@@ -1692,6 +1711,9 @@ namespace LostArk::Shared
 		PLAYER_ID iSourcePlayerId = INVALID_PLAYER_ID;
 		std::uint32_t iStaggerAmount = 0;
 		bool isCounterSuccess = false;
+		/* Which of the retail damage-text styles this event is drawn in. The Server
+		decides it, exactly as retail's native side does. */
+		DAMAGE_HIT_FLAG eHitFlag = DAMAGE_HIT_FLAG::NORMAL;
 	};
 
 	enum class BOSS_COMBAT_EVENT_KIND : std::uint8_t

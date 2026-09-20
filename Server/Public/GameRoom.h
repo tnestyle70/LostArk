@@ -1706,6 +1706,10 @@ namespace LostArk::Server
 		and consumed by Broadcast_WorldSnapshot, so an event can only ever ride
 		the snapshot of the tick that produced it. */
 		std::vector<LostArk::Shared::DAMAGE_EVENT> m_TickDamageEvents;
+		/* Damage-text events raised while draining room commands, which happens before
+		m_TickDamageEvents is cleared for the tick. Moved in right after that clear so a
+		potion heal reaches the same broadcast as a combat hit. */
+		std::vector<LostArk::Shared::DAMAGE_EVENT> m_PendingCommandDamageEvents;
 		std::vector<LostArk::Shared::BOSS_COMBAT_EVENT>
 			m_TickBossCombatEvents;
 		std::string m_strStatus;

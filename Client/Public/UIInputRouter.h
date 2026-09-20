@@ -86,8 +86,17 @@ public:
 	and every window's text pass runs after all sprites, so the windows underneath skip glyphs
 	whose anchor falls inside this rect instead of bleeding through the panel. Cleared in
 	End_Frame. */
-	void Set_TopWindowRect(f32_t fScreenX, f32_t fScreenY, f32_t fScreenWidth, f32_t fScreenHeight);
+	void Set_TopWindowRect(const void* pOwner, f32_t fScreenX, f32_t fScreenY,
+		f32_t fScreenWidth, f32_t fScreenHeight);
 	bool_t Is_UnderTopWindow(f32_t fScreenX, f32_t fScreenY) const;
+	/* Which window's widgets the following hit tests belong to. Two open windows can overlap,
+	and each tests its own rects without knowing about the other, so one press used to fire a
+	button in the front window and another in the window behind it. A window names itself for
+	the duration of its input pass (CUIPointerScope below) and the router then answers only the
+	front one: a press over the registered top window is refused to every other window, and any
+	one press is consumed by the first widget that takes it. */
+	void Set_PointerScope(const void* pScope) { m_pPointerScope = pScope; }
+	const void* Get_PointerScope() const { return m_pPointerScope; }
 	/* Text-input capture for a runtime UI text field (the Create Character nickname box) -- the
 	WM_CHAR half of what ImGui::InputText provided. While active, WndProc (Client.cpp) feeds every
 	committed WM_CHAR UTF-16 unit into a queue the owning screen drains once per frame via
@@ -116,6 +125,18 @@ private:
 	bool_t	m_bMouseClaimedThisFrame = false;
 	bool_t	m_bMouseClaimedLastFrame = false;
 	bool_t	m_bHasTopWindow = false;
+	/* The top window registers during its own render, after windows drawn earlier have already
+	hit-tested, so arbitration reads the previous frame's registration. A window keeps its
+	position from frame to frame, which is what makes that safe. */
+	const void*	m_pTopWindowOwner = nullptr;
+	const void*	m_pTopWindowOwnerLastFrame = nullptr;
+	bool_t	m_bHasTopWindowLastFrame = false;
+	f32_t	m_fTopWindowXLastFrame = 0.f;
+	f32_t	m_fTopWindowYLastFrame = 0.f;
+	f32_t	m_fTopWindowWidthLastFrame = 0.f;
+	f32_t	m_fTopWindowHeightLastFrame = 0.f;
+	const void*	m_pPointerScope = nullptr;
+	bool_t	m_bLeftClickConsumed = false;
 	f32_t	m_fTopWindowX = 0.f;
 	f32_t	m_fTopWindowY = 0.f;
 	f32_t	m_fTopWindowWidth = 0.f;
@@ -130,6 +151,24 @@ private:
 	int32_t	m_iWheelDeltaPending = 0;
 	int32_t	m_iWheelNotchesThisFrame = 0;
 	wstring_t	m_TypedChars;
+};
+
+/* Names the window whose widgets are being hit-tested, for as long as it lives. Every runtime
+window that can overlap another one opens this at the top of its input pass. */
+class CUIPointerScope final
+{
+public:
+	explicit CUIPointerScope(const void* pOwner)
+		: m_pPrevious(CUIInputRouter::Get().Get_PointerScope())
+	{
+		CUIInputRouter::Get().Set_PointerScope(pOwner);
+	}
+	~CUIPointerScope() { CUIInputRouter::Get().Set_PointerScope(m_pPrevious); }
+	CUIPointerScope(const CUIPointerScope&) = delete;
+	CUIPointerScope& operator=(const CUIPointerScope&) = delete;
+
+private:
+	const void* m_pPrevious = nullptr;
 };
 
 NS_END

@@ -26,6 +26,21 @@ namespace UI_TEXT_LAYER
 	constexpr int32_t WINDOW = 200;
 	constexpr int32_t MODAL = 300;
 	constexpr int32_t PAGE = 400;
+
+	/* The same numbers order the sprites: CUILayoutRuntime::Set_UISortLayer hands this to every
+	sprite of a document and CRenderer draws RENDERGROUP::UI in that order. Before that, UI
+	sprites drew in the order their owners were created, so a HUD surface built on entering an
+	arena (the Kouku madness gauge) covered a window built at start-up. One surface therefore
+	names its layer once, here, and its panel, its labels and its click arbitration all agree.
+	A surface that says nothing stays at WORLD, below every window. */
+	constexpr int32_t WINDOW_INVENTORY = WINDOW + 0;
+	constexpr int32_t WINDOW_CHARACTER_INFO = WINDOW + 1;
+	constexpr int32_t WINDOW_AVATAR_BOOK = WINDOW + 2;
+	constexpr int32_t WINDOW_VEHICLE = WINDOW + 3;
+	constexpr int32_t WINDOW_HONOR_TITLE = WINDOW + 4;
+	constexpr int32_t WINDOW_WORLD_MAP = WINDOW + 5;
+	constexpr int32_t WINDOW_SYSTEM_OPTION = WINDOW + 6;
+	constexpr int32_t WINDOW_ITEM_UPGRADE = WINDOW + 7;
 }
 
 class CUITextOcclusion final

@@ -150,6 +150,10 @@ public:
 		return m_Replication.Get_LocalCharacter();
 	}
 	/* Party roster window (CMainApp): the Server roster and the per-player HP / madness join. */
+	void Drain_ChatLines(std::vector<CClientReplication::CHAT_LINE>& outLines)
+	{
+		m_Replication.Drain_ChatLines(outLines);
+	}
 	const LostArk::Shared::S2C_PARTY_ROSTER& Get_PartyRoster() const
 	{
 		return m_Replication.Get_PartyRoster();

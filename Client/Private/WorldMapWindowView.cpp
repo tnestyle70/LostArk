@@ -9,6 +9,7 @@
 #include "ProjectDataRoot.h"
 #include "UIInputRouter.h"
 #include "UILabelFont.h"
+#include "UITextOcclusion.h"
 #include "UILayoutRuntime.h"
 
 #include <algorithm>
@@ -204,6 +205,9 @@ Client::CWorldMapWindowView::CWorldMapWindowView(
 		L"UI/WorldMap/WorldMap_Layout.json") }
 	, m_iZoomLevel{ ZOOM_DEFAULT }
 {
+	/* Draw order for this window's panel; the same number orders its labels
+	(Register_UITextOccluders) and its clicks. */
+	m_pView->Set_UISortLayer(UI_TEXT_LAYER::WINDOW_WORLD_MAP);
 	m_SlotIds = m_pView->Get_SlotIds();
 	for (const string& strId : m_SlotIds)
 	{
@@ -638,12 +642,15 @@ void Client::CWorldMapWindowView::Register_TopWindow() const
 		return;
 	const f32_t fScaleX = vViewport.x / m_pView->Get_ResolutionWidth();
 	const f32_t fScaleY = vViewport.y / m_pView->Get_ResolutionHeight();
-	CUIInputRouter::Get().Set_TopWindowRect(fX * fScaleX, fY * fScaleY, fWidth * fScaleX, fHeight * fScaleY);
+	CUIInputRouter::Get().Set_TopWindowRect(this, fX * fScaleX, fY * fScaleY, fWidth * fScaleX, fHeight * fScaleY);
 }
 
 void Client::CWorldMapWindowView::Update(const f32_t fTimeDelta, const LEVEL eLevel,
 	const CClientReplication::MINIMAP_MARKER_SNAPSHOT* pSnapshot)
 {
+	/* Hit tests below belong to this window; the router refuses a press that lands on the
+	window in front and lets only one widget take any one press. */
+	CUIPointerScope PointerScope(this);
 	(void)fTimeDelta;
 	m_Texts.clear();
 	const AREA* pArea = Find_Area(eLevel);

@@ -9,6 +9,7 @@
 #include "ItemCatalog.h"
 #include "MainApp.h"
 #include "UIInputRouter.h"
+#include "UITextOcclusion.h"
 #include "UILayoutRuntime.h"
 
 #include <utility>
@@ -19,6 +20,9 @@ Client::CInventoryView::CInventoryView(
 		pDevice, pContext, ETOUI(LEVEL::STATIC), TEXT("Layer_UI"),
 		L"UI/Inventory/InventoryUI.json") }
 {
+	/* Draw order for this window's panel; the same number orders its labels
+	(Register_UITextOccluders) and its clicks. */
+	m_pBackgroundView->Set_UISortLayer(UI_TEXT_LAYER::WINDOW_INVENTORY);
 	/* Authored layer tint is opaque ([1,1,1,1]) -- every slot would otherwise sit fully visible
 	on screen (LEVEL::STATIC's GameObjects persist across every Level, including Lobby/Loading)
 	from construction until whatever first calls Update() while m_bOpen is still false. */
@@ -46,6 +50,9 @@ void Client::CInventoryView::Hide()
 void Client::CInventoryView::Update(
 	const std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT>& items)
 {
+	/* Hit tests below belong to this window; the router refuses a press that lands on the
+	window in front and lets only one widget take any one press. */
+	CUIPointerScope PointerScope(this);
 	if (nullptr == m_pBackgroundView)
 		return;
 	if (!m_bOpen)

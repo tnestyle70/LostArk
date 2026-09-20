@@ -206,6 +206,8 @@ HRESULT CLevel_ValtanArena::Initialize()
 
 	m_PartyInteraction.Initialize(m_pDevice, m_pContext, ETOUI(LEVEL::VALTAN_ARENA));
 	m_ChatBubbleView.Initialize(m_pDevice, m_pContext, ETOUI(LEVEL::VALTAN_ARENA));
+	m_InteractKeyPrompt.Initialize(m_pDevice, m_pContext, ETOUI(LEVEL::VALTAN_ARENA),
+		"LV_LUT_HEARTRB_ED");
 
 	const CLIENT_LEVEL_DESCRIPTOR* pEntry =
 		CLevelRegistry::Find(LEVEL::VALTAN_ARENA);
@@ -626,6 +628,9 @@ void CLevel_ValtanArena::Update(f32_t fTimeDelta)
 	frame's replicated player list, so Collect_PlayerViews moves here
 	instead of Render(). */
 	m_Replication.Collect_PlayerViews(m_NameplatePlayers);
+	m_InteractKeyPrompt.Update(fTimeDelta, m_Replication.Get_LocalCharacter(),
+		CCombatHUDViewModel::Get().Get_InteractPromptTriggerId(),
+		!Is_MvpResultVisible());
 	Update_TriggerMarkerClocks(fTimeDelta);
 	/* worldInteractionAllowed=false: the right-click-a-player invite context menu
 	is Bern-only by design (party formation happens before a Valtan entry, not
@@ -1785,6 +1790,7 @@ HRESULT CLevel_ValtanArena::Render()
 		m_PlayerNameplateView.Render(m_NameplatePlayers, &m_Replication.Get_PartyRoster());
 		m_ChatBubbleView.Render(m_Replication, m_NameplatePlayers);
 	}
+	m_InteractKeyPrompt.Render_Text();
 	m_PartyInteraction.Render(m_pPlayerCommandSink);
 	/* Award page labels over everything else this Level draws; its image layers are
 	   CUI_Sprite objects on Layer_UI and need no call. */

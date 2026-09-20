@@ -15,9 +15,9 @@
       "type": 0,
       "rect": {
         "x": 0.67,
-        "y": 620.0,
-        "width": 251.33,
-        "height": 56.67
+        "y": 595.0,
+        "width": 314.17,
+        "height": 70.83
       },
       "rotation": 0,
       "stages": {
@@ -55,14 +55,59 @@
       }
     },
     {
+      "id": "Chat_LogPanelArt",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 0.67,
+        "y": 595.83,
+        "width": 315.0,
+        "height": 70.75
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Chat/Chat_LogPanelArt.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
       "id": "Chat_LogTextBox",
       "ownerClass": null,
       "type": 0,
       "rect": {
-        "x": 16.67,
-        "y": 621.33,
-        "width": 234.67,
-        "height": 55.33
+        "x": 20.67,
+        "y": 596.67,
+        "width": 293.33,
+        "height": 69.17
       },
       "rotation": 0,
       "stages": {
@@ -91,10 +136,10 @@
       "ownerClass": null,
       "type": 0,
       "rect": {
-        "x": 1.33,
-        "y": 622.13,
-        "width": 12.0,
-        "height": 10.67
+        "x": 3.17,
+        "y": 596.75,
+        "width": 15.0,
+        "height": 13.33
       },
       "rotation": 0,
       "stages": {
@@ -136,10 +181,10 @@
       "ownerClass": null,
       "type": 0,
       "rect": {
-        "x": 2.67,
-        "y": 623.47,
-        "width": 9.33,
-        "height": 9.33
+        "x": 3.17,
+        "y": 599.25,
+        "width": 11.67,
+        "height": 11.67
       },
       "rotation": 0,
       "stages": {
@@ -181,10 +226,10 @@
       "ownerClass": null,
       "type": 0,
       "rect": {
-        "x": 1.33,
-        "y": 664.13,
-        "width": 12.0,
-        "height": 10.67
+        "x": 3.17,
+        "y": 651.0,
+        "width": 15.0,
+        "height": 13.33
       },
       "rotation": 180,
       "stages": {
@@ -226,10 +271,10 @@
       "ownerClass": null,
       "type": 0,
       "rect": {
-        "x": 2.67,
-        "y": 664.13,
-        "width": 9.33,
-        "height": 9.33
+        "x": 3.17,
+        "y": 653.5,
+        "width": 11.67,
+        "height": 11.67
       },
       "rotation": 0,
       "stages": {
@@ -267,14 +312,59 @@
       }
     },
     {
+      "id": "Chat_ComboBg",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 0.83,
+        "y": 666.67,
+        "width": 84.17,
+        "height": 26.67
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Chat/Chat_ComboBg.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
       "id": "Chat_ComboArrow",
       "ownerClass": null,
       "type": 0,
       "rect": {
-        "x": 1.47,
-        "y": 680.0,
-        "width": 16.67,
-        "height": 16.0
+        "x": 1.67,
+        "y": 670.0,
+        "width": 20.83,
+        "height": 20.0
       },
       "rotation": 0,
       "stages": {
@@ -316,10 +406,10 @@
       "ownerClass": null,
       "type": 0,
       "rect": {
-        "x": 19.47,
-        "y": 680.0,
-        "width": 40.0,
-        "height": 15.33
+        "x": 24.17,
+        "y": 670.0,
+        "width": 50.0,
+        "height": 19.17
       },
       "rotation": 0,
       "stages": {
@@ -327,6 +417,96 @@
         "shineFrom": 0
       },
       "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Chat_InputBoxOuter",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 78.33,
+        "y": 664.25,
+        "width": 237.5,
+        "height": 29.17
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Chat/Chat_InputBoxOuter.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Chat_InputBoxInner",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 81.5,
+        "y": 668.08,
+        "width": 233.5,
+        "height": 23.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Chat/Chat_InputBoxInner.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
       "shine": {
         "texture": null,
         "additive": false
@@ -348,10 +528,10 @@
       "ownerClass": null,
       "type": 0,
       "rect": {
-        "x": 72.8,
-        "y": 679.33,
-        "width": 156.67,
-        "height": 15.33
+        "x": 92.5,
+        "y": 670.83,
+        "width": 187.5,
+        "height": 19.17
       },
       "rotation": 0,
       "stages": {
@@ -376,14 +556,59 @@
       }
     },
     {
+      "id": "Chat_LangIcon",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 293.33,
+        "y": 674.17,
+        "width": 12.5,
+        "height": 11.67
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Chat/Chat_LangKorean.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
       "id": "Chat_LockButton",
       "ownerClass": null,
       "type": 0,
       "rect": {
-        "x": 200.0,
-        "y": 601.33,
-        "width": 16.0,
-        "height": 16.67
+        "x": 249.83,
+        "y": 571.67,
+        "width": 20.0,
+        "height": 20.83
       },
       "rotation": 0,
       "stages": {
@@ -425,10 +650,10 @@
       "ownerClass": null,
       "type": 0,
       "rect": {
-        "x": 216.0,
-        "y": 601.33,
-        "width": 17.33,
-        "height": 16.67
+        "x": 269.83,
+        "y": 571.67,
+        "width": 21.67,
+        "height": 20.83
       },
       "rotation": 0,
       "stages": {
@@ -470,10 +695,10 @@
       "ownerClass": null,
       "type": 0,
       "rect": {
-        "x": 234.67,
-        "y": 602.0,
-        "width": 17.33,
-        "height": 16.67
+        "x": 293.17,
+        "y": 572.5,
+        "width": 21.67,
+        "height": 20.83
       },
       "rotation": 0,
       "stages": {
@@ -516,9 +741,9 @@
       "type": 0,
       "rect": {
         "x": 0.67,
-        "y": 600.0,
-        "width": 62.67,
-        "height": 21.33
+        "y": 570.0,
+        "width": 78.33,
+        "height": 26.67
       },
       "rotation": 0,
       "stages": {
@@ -561,9 +786,9 @@
       "type": 0,
       "rect": {
         "x": 0.67,
-        "y": 604.67,
-        "width": 62.67,
-        "height": 16.67
+        "y": 575.83,
+        "width": 78.33,
+        "height": 20.83
       },
       "rotation": 0,
       "stages": {
@@ -592,10 +817,10 @@
       "ownerClass": null,
       "type": 0,
       "rect": {
-        "x": 64.67,
-        "y": 600.0,
-        "width": 19.33,
-        "height": 21.33
+        "x": 80.67,
+        "y": 570.0,
+        "width": 24.17,
+        "height": 26.67
       },
       "rotation": 0,
       "stages": {
@@ -637,10 +862,10 @@
       "ownerClass": null,
       "type": 0,
       "rect": {
-        "x": 68.67,
-        "y": 605.33,
-        "width": 11.33,
-        "height": 11.33
+        "x": 85.67,
+        "y": 576.67,
+        "width": 14.17,
+        "height": 14.17
       },
       "rotation": 0,
       "stages": {

@@ -1736,10 +1736,11 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		!CUIInputRouter::Get().Is_TextInputActive())
 	{
 		/* Same level restriction as the chat window's own Render() gate -- Enter should not open
-		an input box that would render invisible outside Bern/Valtan. */
+		an input box that would render invisible in a level the window is not drawn in. */
 		const uint32_t chatLevel = CGameInstance::Get().Get_CurrentLevelID();
 		const bool_t chatLevelAllowed =
-			ETOUI(LEVEL::BERN) == chatLevel || ETOUI(LEVEL::VALTAN_ARENA) == chatLevel;
+			ETOUI(LEVEL::BERN) == chatLevel || ETOUI(LEVEL::VALTAN_ARENA) == chatLevel ||
+			ETOUI(LEVEL::KAKULSAYDON_ARENA) == chatLevel;
 		const bool_t windowFocused =
 			IsWindowOwnedByCurrentProcess(GetForegroundWindow());
 		const bool_t enterDown = chatLevelAllowed && windowFocused &&
@@ -3162,21 +3163,21 @@ void CMainApp::Register_UITextOccluders()
 	f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
 	/* Windows stack in the order CMainApp builds their sprites; each gets its own step. */
 	if (nullptr != m_pInventoryView && m_pInventoryView->Get_ScreenRect(fX, fY, fWidth, fHeight))
-		Occlusion.Add_Occluder(UI_TEXT_LAYER::WINDOW + 0, fX, fY, fWidth, fHeight);
+		Occlusion.Add_Occluder(UI_TEXT_LAYER::WINDOW_INVENTORY, fX, fY, fWidth, fHeight);
 	if (nullptr != m_pCharacterInfoView && m_pCharacterInfoView->Get_ScreenRect(fX, fY, fWidth, fHeight))
-		Occlusion.Add_Occluder(UI_TEXT_LAYER::WINDOW + 1, fX, fY, fWidth, fHeight);
+		Occlusion.Add_Occluder(UI_TEXT_LAYER::WINDOW_CHARACTER_INFO, fX, fY, fWidth, fHeight);
 	if (nullptr != m_pAvatarBookView && m_pAvatarBookView->Get_ScreenRect(fX, fY, fWidth, fHeight))
-		Occlusion.Add_Occluder(UI_TEXT_LAYER::WINDOW + 2, fX, fY, fWidth, fHeight);
+		Occlusion.Add_Occluder(UI_TEXT_LAYER::WINDOW_AVATAR_BOOK, fX, fY, fWidth, fHeight);
 	if (nullptr != m_pVehicleWindowView && m_pVehicleWindowView->Get_ScreenRect(fX, fY, fWidth, fHeight))
-		Occlusion.Add_Occluder(UI_TEXT_LAYER::WINDOW + 3, fX, fY, fWidth, fHeight);
+		Occlusion.Add_Occluder(UI_TEXT_LAYER::WINDOW_VEHICLE, fX, fY, fWidth, fHeight);
 	if (nullptr != m_pHonorTitleWindowView && m_pHonorTitleWindowView->Get_ScreenRect(fX, fY, fWidth, fHeight))
-		Occlusion.Add_Occluder(UI_TEXT_LAYER::WINDOW + 4, fX, fY, fWidth, fHeight);
+		Occlusion.Add_Occluder(UI_TEXT_LAYER::WINDOW_HONOR_TITLE, fX, fY, fWidth, fHeight);
 	if (nullptr != m_pWorldMapWindowView && m_pWorldMapWindowView->Get_ScreenRect(fX, fY, fWidth, fHeight))
-		Occlusion.Add_Occluder(UI_TEXT_LAYER::WINDOW + 5, fX, fY, fWidth, fHeight);
+		Occlusion.Add_Occluder(UI_TEXT_LAYER::WINDOW_WORLD_MAP, fX, fY, fWidth, fHeight);
 	if (nullptr != m_pSystemOptionView && m_pSystemOptionView->Get_ScreenRect(fX, fY, fWidth, fHeight))
-		Occlusion.Add_Occluder(UI_TEXT_LAYER::WINDOW + 6, fX, fY, fWidth, fHeight);
+		Occlusion.Add_Occluder(UI_TEXT_LAYER::WINDOW_SYSTEM_OPTION, fX, fY, fWidth, fHeight);
 	if (m_bItemUpgradePreviewVisible && nullptr != m_pItemUpgradeView)
-		Occlusion.Add_SlotOccluder(UI_TEXT_LAYER::WINDOW + 7, *m_pItemUpgradeView, "ItemUpgrade_PanelBg");
+		Occlusion.Add_SlotOccluder(UI_TEXT_LAYER::WINDOW_ITEM_UPGRADE, *m_pItemUpgradeView, "ItemUpgrade_PanelBg");
 	/* HUD surfaces in the levels that show them. */
 	const uint32_t iLevel = CGameInstance::Get().Get_CurrentLevelID();
 	if (nullptr != m_pPartyWindowView && (ETOUI(LEVEL::BERN) == iLevel ||
@@ -3341,9 +3342,17 @@ HRESULT CMainApp::Render()
 			this list as real in-game stages are added. Real send needs the active level's own
 			command sink, same reasoning as the party roster fetch just below. */
 			const uint32_t chatLevel = CGameInstance::Get().Get_CurrentLevelID();
+			/* Received lines, sender included, reach the log through the active level's own
+			replication -- the Server broadcast is the single source, so a line shows the same
+			Server nickname on every client. */
+			std::vector<CClientReplication::CHAT_LINE> chatLines;
 			if (ETOUI(LEVEL::BERN) == chatLevel)
 			{
 				CLevel_Bern* pBern = CLevel_Bern::Get_Active();
+				if (nullptr != pBern)
+					pBern->Drain_ChatLines(chatLines);
+				for (const CClientReplication::CHAT_LINE& Line : chatLines)
+					m_pChatWindowView->Append_ReceivedLine(Line.strNickname, Line.strText);
 				{
 					Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.Chat.Build");
 					m_pChatWindowView->Render(
@@ -3353,6 +3362,10 @@ HRESULT CMainApp::Render()
 			else if (ETOUI(LEVEL::VALTAN_ARENA) == chatLevel)
 			{
 				CLevel_ValtanArena* pValtanArena = CLevel_ValtanArena::Get_Active();
+				if (nullptr != pValtanArena)
+					pValtanArena->Drain_ChatLines(chatLines);
+				for (const CClientReplication::CHAT_LINE& Line : chatLines)
+					m_pChatWindowView->Append_ReceivedLine(Line.strNickname, Line.strText);
 				{
 					Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.Chat.Build");
 					m_pChatWindowView->Render(
@@ -3363,6 +3376,10 @@ HRESULT CMainApp::Render()
 			else if (ETOUI(LEVEL::KAKULSAYDON_ARENA) == chatLevel)
 			{
 				CLevel_KakulSaydonArena* pKouku = CLevel_KakulSaydonArena::Get_Active();
+				if (nullptr != pKouku)
+					pKouku->Drain_ChatLines(chatLines);
+				for (const CClientReplication::CHAT_LINE& Line : chatLines)
+					m_pChatWindowView->Append_ReceivedLine(Line.strNickname, Line.strText);
 				{
 					Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.Chat.Build");
 					m_pChatWindowView->Render(
@@ -3721,7 +3738,7 @@ HRESULT CMainApp::Render()
 			m_pCombatAnalysisView->Render_Text();
 	}
 	{
-		CUITextLayerScope WindowText(UI_TEXT_LAYER::WINDOW + 0);
+		CUITextLayerScope WindowText(UI_TEXT_LAYER::WINDOW_INVENTORY);
 		if (nullptr != m_pInventoryView)
 			m_pInventoryView->Render_Text();
 	}
@@ -3737,7 +3754,7 @@ HRESULT CMainApp::Render()
 		RenderFpsText();
 	}
 	{
-		CUITextLayerScope WindowText(UI_TEXT_LAYER::WINDOW + 7);
+		CUITextLayerScope WindowText(UI_TEXT_LAYER::WINDOW_ITEM_UPGRADE);
 		RenderItemUpgradeButtonText();
 		RenderItemUpgradeLevelText();
 		RenderItemUpgradeMaterialCounts();
@@ -3815,22 +3832,22 @@ HRESULT CMainApp::Render()
 	if (ETOUI(LEVEL::LOADING) != CGameInstance::Get().Get_CurrentLevelID())
 	{
 	CUITextOcclusion& Occlusion = CUITextOcclusion::Get();
-	Occlusion.Apply(UI_TEXT_LAYER::WINDOW + 1);
+	Occlusion.Apply(UI_TEXT_LAYER::WINDOW_CHARACTER_INFO);
 	if (nullptr != m_pCharacterInfoView)
 		m_pCharacterInfoView->Render_Text();
-	Occlusion.Apply(UI_TEXT_LAYER::WINDOW + 2);
+	Occlusion.Apply(UI_TEXT_LAYER::WINDOW_AVATAR_BOOK);
 	if (nullptr != m_pAvatarBookView)
 		m_pAvatarBookView->Render_Text();
-	Occlusion.Apply(UI_TEXT_LAYER::WINDOW + 3);
+	Occlusion.Apply(UI_TEXT_LAYER::WINDOW_VEHICLE);
 	if (nullptr != m_pVehicleWindowView)
 		m_pVehicleWindowView->Render_Text();
-	Occlusion.Apply(UI_TEXT_LAYER::WINDOW + 4);
+	Occlusion.Apply(UI_TEXT_LAYER::WINDOW_HONOR_TITLE);
 	if (nullptr != m_pHonorTitleWindowView)
 		m_pHonorTitleWindowView->Render_Text();
-	Occlusion.Apply(UI_TEXT_LAYER::WINDOW + 5);
+	Occlusion.Apply(UI_TEXT_LAYER::WINDOW_WORLD_MAP);
 	if (nullptr != m_pWorldMapWindowView)
 		m_pWorldMapWindowView->Render_Text();
-	Occlusion.Apply(UI_TEXT_LAYER::WINDOW + 6);
+	Occlusion.Apply(UI_TEXT_LAYER::WINDOW_SYSTEM_OPTION);
 	if (nullptr != m_pSystemOptionView)
 		m_pSystemOptionView->Render_Text();
 	Occlusion.Apply(UI_TEXT_LAYER::HUD);
@@ -8158,7 +8175,8 @@ void CMainApp::RenderDamageNumbers()
 	constexpr f32_t DAMAGE_FONT_PX_END = 19.f;
 	constexpr f32_t DAMAGE_RISE_PX_PHASE0 = 15.f;
 	constexpr f32_t DAMAGE_RISE_PX_END = 100.f;
-	constexpr size_t MAX_FLOATING_DAMAGE_NUMBERS = 48u;
+	/* DamageTextTween.DAMAGE_ANI_LIMIT: retail animates at most 20 numbers at once. */
+	constexpr size_t MAX_FLOATING_DAMAGE_NUMBERS = 20u;
 
 	/* Get_DamageEvents() keeps every retained hit, not just this frame's -- only spawn a floating
 	number for events strictly newer than the last batch we already spawned from. See the member
@@ -8194,6 +8212,7 @@ void CMainApp::RenderDamageNumbers()
 		number.iAmount = damageEvent.Event.iAmount;
 		number.isOutgoing = damageEvent.Event.isOutgoing;
 		number.eCardMazeSuit = damageEvent.Event.eCardMazeSuit;
+		number.eHitFlag = damageEvent.Event.eHitFlag;
 		m_dLastDamageSeconds = number.dSpawnSeconds;
 		m_FloatingDamageNumbers.push_back(number);
 	}
@@ -8285,24 +8304,55 @@ void CMainApp::RenderDamageNumbers()
 			continue;
 		const bool_t isShard =
 			LostArk::Shared::MECHANIC_CARD_SYMBOL::NONE != number.eCardMazeSuit;
+		/* INVINCIBLE is drawn by nothing in retail either. */
+		if (LostArk::Shared::DAMAGE_HIT_FLAG::INVINCIBLE == number.eHitFlag)
+			continue;
 		const wstring strAmount = isShard ?
 			shardText(number.eCardMazeSuit, number.iAmount) :
 			Format_ThousandsSeparated(number.iAmount);
 		const float2_t vMeasured =
 			CGameInstance::Get().Measure_Text(TEXT("Font_EventDamage"), strAmount.c_str());
 		const f32_t fScale = vMeasured.y > 0.f ? (fFontPx * stageScale) / vMeasured.y : 1.f;
-		/* Retail DamageTextWnd colours: outgoing hits use the critical yellow (0xFFCC00) for every
-		hit by project decision, incoming hits the enemy red (0xFF0000). */
-		/* A shard is a pickup, not a hit, so it reads white instead of the
-		outgoing yellow or the incoming red. */
-		const fvector_t vColor = isShard ?
+		/* Retail DamageTextWnd's own colour table, selected by the Server's hit flag:
+		COLOR_PC_DAMAGE 0xFFFFFF for what the player deals, COLOR_ENEMY_DAMAGE 0xFF0000 for what
+		it takes, COLOR_CRITICAL_DAMAGE 0xFFCC00, COLOR_MISS_DAMAGE 0x999999, COLOR_HEAL
+		0x00FF00. A potion heal is the one non-combat flag the Server raises today; CRITICAL and
+		MISS light up once the combat numbers that decide them exist. */
+		vector_t vColor = number.isOutgoing ?
 			XMVectorSet(1.f, 1.f, 1.f, fAlpha) :
-			(number.isOutgoing ?
-				XMVectorSet(1.f, 0.8f, 0.f, fAlpha) :
-				XMVectorSet(1.f, 0.f, 0.f, fAlpha));
+			XMVectorSet(1.f, 0.f, 0.f, fAlpha);
+		switch (number.eHitFlag)
+		{
+		case LostArk::Shared::DAMAGE_HIT_FLAG::CRITICAL:
+			vColor = XMVectorSet(1.f, 204.f / 255.f, 0.f, fAlpha); break;
+		case LostArk::Shared::DAMAGE_HIT_FLAG::MISS:
+			vColor = XMVectorSet(0.6f, 0.6f, 0.6f, fAlpha); break;
+		case LostArk::Shared::DAMAGE_HIT_FLAG::HEAL:
+			vColor = XMVectorSet(0.f, 1.f, 0.f, fAlpha); break;
+		default: break;
+		}
+		/* A shard is a pickup, not a hit, so it keeps the plain white. */
+		if (isShard)
+			vColor = XMVectorSet(1.f, 1.f, 1.f, fAlpha);
+		const float2_t vDrawPosition(
+			XMVectorGetX(vProjected), XMVectorGetY(vProjected) - fRisePx * stageScale);
+		/* textContainer carries a GLOWFILTER (blur 5, strength 1, opaque black) in retail, which
+		is what keeps a number readable over a bright floor. A sprite font cannot blur, so the
+		same black is stamped around the glyphs once per direction before the coloured pass. */
+		const f32_t fGlowOffset = (std::max)(1.f, fFontPx * 0.06f * stageScale);
+		const fvector_t vGlowColor = XMVectorSet(0.f, 0.f, 0.f, fAlpha);
+		for (const float2_t& vStep : {
+			float2_t(-1.f, 0.f), float2_t(1.f, 0.f), float2_t(0.f, -1.f), float2_t(0.f, 1.f),
+			float2_t(-0.7f, -0.7f), float2_t(0.7f, -0.7f), float2_t(-0.7f, 0.7f),
+			float2_t(0.7f, 0.7f) })
+		{
+			CGameInstance::Get().Draw_Text(TEXT("Font_EventDamage"), strAmount.c_str(),
+				float2_t(vDrawPosition.x + vStep.x * fGlowOffset,
+					vDrawPosition.y + vStep.y * fGlowOffset),
+				vGlowColor, 0.f, float2_t(0.5f, 0.5f), fScale);
+		}
 		CGameInstance::Get().Draw_Text(TEXT("Font_EventDamage"), strAmount.c_str(),
-			float2_t(XMVectorGetX(vProjected), XMVectorGetY(vProjected) - fRisePx * stageScale),
-			vColor, 0.f, float2_t(0.5f, 0.5f), fScale);
+			vDrawPosition, vColor, 0.f, float2_t(0.5f, 0.5f), fScale);
 	}
 }
 

@@ -40,7 +40,9 @@ namespace
 	constexpr f32_t PAD_BOTTOM = 6.f;
 	constexpr f32_t MAX_TEXT_W = 200.f;
 	constexpr f32_t TEXT_PX = 12.f;
-	constexpr f32_t TEXT_BOOST = 1.15f;
+	/* Retail draws this line at 12 px on the 1080 stage, which reads too small here; the user
+	asked for a larger bubble line, so the stage size is scaled up rather than the art. */
+	constexpr f32_t TEXT_BOOST = 1.5f;
 	/* Balloon.as defaultStrLength: a message this short is centred, longer ones are left aligned. */
 	constexpr size_t CENTER_UP_TO_CHARS = 15;
 	constexpr size_t BUBBLE_SLOTS = 4;
@@ -118,6 +120,17 @@ void Client::CWorldPlayerChatBubbleView::Render(
 	const std::vector<REPLICATED_PLAYER_VIEW>& Players)
 {
 	CGameInstance& gameInstance = CGameInstance::Get();
+	/* Last frame's lines, drawn now so they land on the same frame as the art placed with them. */
+	for (const PLACED_LINE& Line : m_PlacedLines)
+	{
+		gameInstance.Draw_Text(m_strPlacedFont, Line.strText.c_str(),
+			float2_t(Line.vPosition.x + 1.f, Line.vPosition.y + 1.f),
+			XMVectorSet(0.f, 0.f, 0.f, 0.6f), 0.f, float2_t(0.f, 0.f), m_fPlacedFontScale);
+		gameInstance.Draw_Text(m_strPlacedFont, Line.strText.c_str(), Line.vPosition, COLOR_TEXT,
+			0.f, float2_t(0.f, 0.f), m_fPlacedFontScale);
+	}
+	m_PlacedLines.clear();
+
 	const float4x4_t* const pViewMatrix =
 		gameInstance.Get_Transform(D3DTS::VIEW);
 	const float4x4_t* const pProjectionMatrix =
@@ -139,6 +152,8 @@ void Client::CWorldPlayerChatBubbleView::Render(
 	f32_t fFontScale = 1.f;
 	const wstring_t strFont = UILabelFont::Resolve(FONT_YG760, TEXT_PX * fS * TEXT_BOOST, fFontScale);
 	const f32_t fLineHeight = gameInstance.Measure_Text(strFont, L"\xAC00").y * fFontScale;
+	m_strPlacedFont = strFont;
+	m_fPlacedFontScale = fFontScale;
 
 	size_t iBubble = 0;
 	for (const REPLICATED_PLAYER_VIEW& player : Players)
@@ -212,12 +227,8 @@ void Client::CWorldPlayerChatBubbleView::Render(
 			const f32_t fLineW = gameInstance.Measure_Text(strFont, strLine.c_str()).x * fFontScale;
 			const f32_t fLineX = bCenter ?
 				fLeft + (fW - fLineW) * 0.5f : fLeft + PAD_X * fS;
-			const float2_t vPosition(std::round(fLineX), std::round(fLineY));
-			gameInstance.Draw_Text(strFont, strLine.c_str(),
-				float2_t(vPosition.x + 1.f, vPosition.y + 1.f),
-				XMVectorSet(0.f, 0.f, 0.f, 0.6f), 0.f, float2_t(0.f, 0.f), fFontScale);
-			gameInstance.Draw_Text(strFont, strLine.c_str(), vPosition, COLOR_TEXT, 0.f,
-				float2_t(0.f, 0.f), fFontScale);
+			m_PlacedLines.push_back(PLACED_LINE{ strLine,
+				float2_t(std::round(fLineX), std::round(fLineY)) });
 			fLineY += fLineHeight;
 		}
 		++iBubble;
