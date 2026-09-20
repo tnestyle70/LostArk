@@ -336,13 +336,13 @@ void LostArk::Server::CServerGameplayContractRunner::Run_GenerationRetention(TES
 			hasBranch(entranceArenaReveal, BOSS_PATTERN_STAGE_OUTCOME::TIMEOUT,
 				"valtan.cinematic.entrance.hero-handoff") &&
 			nullptr != entranceHeroHandoff &&
-			5467u == entranceHeroHandoff->iDurationMs &&
+			10308u == entranceHeroHandoff->iDurationMs &&
 			BOSS_PATTERN_HIT_SHAPE::NONE == entranceHeroHandoff->eHitShape &&
 			entranceHeroHandoff->Actions.empty() &&
 			hasBranch(entranceHeroHandoff, BOSS_PATTERN_STAGE_OUTCOME::TIMEOUT, "");
 		tests.Require(
 			entranceCameraGateExact,
-			"Load the exact invulnerable 19.867-second Valtan entrance camera gate");
+			"Load the exact invulnerable 24.708-second Valtan entrance camera gate");
 
 		const bool reactiveTopologyExact = nullptr != patterns &&
 			nullptr != parryStance && 2u == parryStance->Actions.size() &&

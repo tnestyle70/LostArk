@@ -455,10 +455,11 @@ void Client::CKoukuSaydonBossTool::Open()
 }
 
 bool Client::CKoukuSaydonBossTool::Prepare_ServerPlay(const std::string_view gateId,
-	std::vector<std::string> targets, std::function<bool(std::string&)> submit, std::string& status)
+	std::vector<std::string> targets, std::vector<std::string> patternIds,
+    std::vector<std::string> bundleIds, std::function<bool(std::string&)> submit, std::string& status)
 {
 #ifndef _DEBUG
-	(void)gateId; (void)targets; (void)submit;
+	(void)gateId; (void)targets; (void)patternIds; (void)bundleIds; (void)submit;
 	status = m_strStatus = "KoukuSaydon Server Play is available only in Debug builds.";
 	return false;
 #else
@@ -481,17 +482,6 @@ bool Client::CKoukuSaydonBossTool::Prepare_ServerPlay(const std::string_view gat
 			return actor.empty() || CKoukuSaydonCompositionDocument::Resolve_DefaultPlacementId(gateId, actor) != target;
 		}))
 	{ status = m_strStatus = "Published Pattern has no supported Gate and boss target."; return false; }
-	const auto targetsReady = [&] {
-		return std::all_of(targets.begin(), targets.end(), [&](const auto& target) {
-			return arena->Debug_FindArenaBossNpc(CKoukuSaydonCompositionDocument::Resolve_BossArchetypeId(target)) != nullptr;
-		});
-	};
-	if (arena->Get_ActiveDebugGate() == gateIndex && targetsReady())
-	{
-		const bool played = submit(status);
-		m_strStatus = status;
-		return played;
-	}
 	// Gate preparation reuses the Level's typed spawn/teleport approvals and
 	// map/light commit. Pattern selection alone never creates a local boss.
 	CKoukuSaydonCompositionDocument saved;
@@ -499,6 +489,8 @@ bool Client::CKoukuSaydonBossTool::Prepare_ServerPlay(const std::string_view gat
 	{ status = m_strStatus = "Save and publish the selected Composition before preparing its Gate. " + status; return false; }
 	PLAY_PREPARATION pending;
 	pending.TargetPlacementIds = std::move(targets);
+    pending.PatternIds = std::move(patternIds); pending.BundleIds = std::move(bundleIds);
+    arena->Debug_ResetCompletePlayPreparation();
 	pending.GameplayRevision = revision;
 	pending.iSourceRevision = m_iSourceRevision;
 	pending.iWorldGeneration = network.Get_WorldInboundGeneration();
@@ -513,7 +505,7 @@ bool Client::CKoukuSaydonBossTool::Prepare_ServerPlay(const std::string_view gat
 	pending.iGateGeneration = arena->Get_DebugGateGeneration();
 	m_PlayPreparation = std::move(pending);
 	status = m_strStatus = "Preparing " + std::string(gateId) +
-		" on the Server; the selected saved playback starts after boss and player placement approval.";
+		" on the Server; playback waits for approved placement and the complete Effect/WORLD dependency closure.";
 	return true;
 #endif
 }
@@ -521,6 +513,9 @@ bool Client::CKoukuSaydonBossTool::Prepare_ServerPlay(const std::string_view gat
 bool Client::CKoukuSaydonBossTool::Cancel_PlayPreparation(std::string& status)
 {
 	if (!m_PlayPreparation) return false;
+#ifdef _DEBUG
+    if (auto* arena = CLevel_KakulSaydonArena::Get_Active()) arena->Debug_ResetCompletePlayPreparation();
+#endif
 	m_PlayPreparation.reset();
 	status = m_strStatus = "Pending Server Play cancelled; the submitted gate placement may still finish.";
 	return true;
@@ -531,10 +526,11 @@ void Client::CKoukuSaydonBossTool::Update()
 #ifdef _DEBUG
 	if (!m_PlayPreparation) return;
 	const auto fail = [&](const std::string& reason) {
+        if (auto* arena = CLevel_KakulSaydonArena::Get_Active()) arena->Debug_ResetCompletePlayPreparation();
 		m_PlayPreparation.reset();
 		m_strStatus = "Server Play preparation stopped: " + reason;
 	};
-	const auto& pending = *m_PlayPreparation;
+	auto& pending = *m_PlayPreparation;
 	const auto& network = CNetworkManager::Get();
 	auto* arena = CLevel_KakulSaydonArena::Get_Active();
 	const auto& service = CKoukuSaydonPatternAuditionService::Get();
@@ -547,13 +543,29 @@ void Client::CKoukuSaydonBossTool::Update()
 	if (arena->Get_DebugGateGeneration() != pending.iGateGeneration)
 	{ fail("another gate activation replaced this preparation."); return; }
 	if (GetTickCount64() >= pending.iDeadlineMilliseconds)
-	{ fail("timed out waiting for the approved Gate and replicated boss. " + arena->Get_DebugGateStatus()); return; }
+    {
+        fail(pending.bPreparingResources ? "the complete resource preparation exceeded 20 minutes; no Pattern was started. " + m_strStatus :
+            "timed out waiting for the approved Gate and replicated boss. " + arena->Get_DebugGateStatus());
+        return;
+    }
 	if (arena->Is_DebugGatePending()) return;
 	if (arena->Get_ActiveDebugGate() != pending.iGateIndex)
 	{ fail(arena->Get_DebugGateStatus()); return; }
 	if (!std::all_of(pending.TargetPlacementIds.begin(), pending.TargetPlacementIds.end(), [&](const auto& target) {
 		return arena->Debug_FindArenaBossNpc(CKoukuSaydonCompositionDocument::Resolve_BossArchetypeId(target)) != nullptr;
 	})) return;
+    if (!pending.bPreparingResources)
+    {
+        pending.bPreparingResources = true;
+        pending.iDeadlineMilliseconds = GetTickCount64() + 20u * 60u * 1000u;
+    }
+    bool resourcesReady = false;
+    std::string preparationStatus;
+    if (!arena->Debug_PrepareCompletePlayResources(pending.PatternIds, pending.BundleIds,
+        pending.iSourceRevision, resourcesReady, preparationStatus))
+    { fail(preparationStatus); return; }
+    m_strStatus = std::move(preparationStatus);
+    if (!resourcesReady) return;
 	// Read into temporary owners so a delayed submission cannot reload an editor
 	// draft or silently replace the exact source selected at the original click.
 	CKoukuSaydonCompositionDocument saved;
@@ -656,11 +668,38 @@ bool Client::CKoukuSaydonBossTool::Play_LoadedPatternById(const std::string_view
 	m_strSelectedInventoryId = pattern->strPatternId;
 	const auto revision =
 		CNetworkManager::Get().Get_GameplayRevisionState().ServerActiveRevision;
-	const std::string id = pattern->strPatternId, target = pattern->strTargetBossPlacementId;
+#ifdef _DEBUG
+	const auto* arena = CLevel_KakulSaydonArena::Get_Active();
+	const bool encoreReplay = m_bReplayGate3OnEncore && arena && arena->Get_ActiveDebugGate() == 8u &&
+		pattern->strGateId == "GATE3" && pattern->strActorProfileId == "MN_RPCT_05";
+#else
+    constexpr bool encoreReplay = false;
+#endif
+	if (encoreReplay)
+	{
+		const auto& document = m_FlowDocument.Get_LastGood();
+		const auto source = std::find_if(document.Patterns.begin(), document.Patterns.end(),
+			[&](const auto& row) { return row.strPatternId == patternId; });
+		const bool hasScene = source != document.Patterns.end() && std::any_of(
+			source->PresentationOccurrences.begin(), source->PresentationOccurrences.end(), [&](const auto& cue) {
+				const auto resource = std::find_if(document.PresentationResources.begin(), document.PresentationResources.end(),
+					[&](const auto& row) { return row.strResourceId == cue.strResourceId; });
+				return resource != document.PresentationResources.end() && resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::CAMERA;
+			});
+		if (source == document.Patterns.end() || !source->WorldOccurrences.empty() ||
+			!source->SceneProfileOccurrences.empty() || !source->LogicOccurrences.empty() ||
+			!source->SummonOccurrences.empty() || !source->PatternOccurrences.empty() || source->BossMotion || hasScene)
+		{
+			outStatus = m_strStatus = "This pattern owns a Gate 3 layout or mechanic. Disable Encore reuse to play it in Gate 3.";
+			return false;
+		}
+	}
+	const std::string id = pattern->strPatternId;
+	const std::string target = encoreReplay ? "boss.kakulsaydon.bingo.saydon" : pattern->strTargetBossPlacementId;
 	const auto sourceRevision = m_iSourceRevision;
 	const auto marioStage = CKoukuSaydonPatternAuditionService::Get().Get_MarioTestStage();
 	const auto marioSeed = CKoukuSaydonPatternAuditionService::Get().Get_MarioTestSeed();
-	return Prepare_ServerPlay(pattern->strGateId, {target},
+	return Prepare_ServerPlay(encoreReplay ? "BINGO" : pattern->strGateId, {target}, {id}, {},
 		[id, target, revision, sourceRevision, marioStage, marioSeed](std::string& status) {
 			auto& service = CKoukuSaydonPatternAuditionService::Get();
 			service.Set_TargetBoss(target, CKoukuSaydonCompositionDocument::Resolve_BossArchetypeId(target));
@@ -871,12 +910,13 @@ bool Client::CKoukuSaydonBossTool::Play_CompositionAll(const std::string_view ga
 bool Client::CKoukuSaydonBossTool::Play_LoadedFlow(const std::string_view gateId,
 	const std::vector<KOUKU_SAYDON_PATTERN_FLOW_ENTRY>& entries, std::string& status)
 {
-	std::vector<std::string> targets;
+	std::vector<std::string> targets, patternIds, bundleIds;
 	for (const auto& entry : entries)
 	{
-		if (entry.strBundleId.empty()) targets.push_back(entry.strBossPlacementId);
+		if (entry.strBundleId.empty()) { targets.push_back(entry.strBossPlacementId); patternIds.push_back(entry.strPatternId); }
 		else
 		{
+            bundleIds.push_back(entry.strBundleId);
 			const auto bundle = std::find_if(m_ProductBundles.begin(), m_ProductBundles.end(),
 				[&](const auto& item) { return item.strBundleId == entry.strBundleId; });
 			if (bundle == m_ProductBundles.end())
@@ -886,7 +926,7 @@ bool Client::CKoukuSaydonBossTool::Play_LoadedFlow(const std::string_view gateId
 	}
 	const auto revision = CNetworkManager::Get().Get_GameplayRevisionState().ServerActiveRevision;
 	const auto sourceRevision = m_iSourceRevision;
-	return Prepare_ServerPlay(gateId, std::move(targets),
+	return Prepare_ServerPlay(gateId, std::move(targets), std::move(patternIds), std::move(bundleIds),
 		[gate = std::string(gateId), entries, revision, sourceRevision](std::string& output) {
 			return CKoukuSaydonPatternAuditionService::Get().Play_Flow(gate, entries, revision, sourceRevision, output);
 		}, status);
@@ -978,7 +1018,7 @@ bool Client::CKoukuSaydonBossTool::Play_LoadedBundleById(const std::string_view 
 	for (const auto& member : found->Members) targets.push_back(member.strTargetBossPlacementId);
 	const auto revision = CNetworkManager::Get().Get_GameplayRevisionState().ServerActiveRevision;
 	const auto sourceRevision = m_iSourceRevision;
-	return Prepare_ServerPlay(gate, std::move(targets),
+	return Prepare_ServerPlay(gate, std::move(targets), {}, {id},
 		[id, gate, target, revision, sourceRevision](std::string& output) {
 			auto& service = CKoukuSaydonPatternAuditionService::Get();
 			service.Set_TargetBoss(target, CKoukuSaydonCompositionDocument::Resolve_BossArchetypeId(target));
@@ -1253,6 +1293,13 @@ void Client::CKoukuSaydonBossTool::Render()
 		(void)Reload(status);
 	}
 	ImGui::SameLine();
+#ifdef _DEBUG
+	if (const auto* arena = CLevel_KakulSaydonArena::Get_Active(); arena && arena->Get_ActiveDebugGate() == 8u)
+	{
+		ImGui::Checkbox("Reuse Gate 3 attacks on Encore", &m_bReplayGate3OnEncore);
+		ImGui::TextDisabled("Select a saved Gate 3 attack and Play Isolated. Layout/mechanic sequences keep their Gate.");
+	}
+#endif
 	const auto* selectedPattern = Find_SelectedPattern();
 	const auto* selectedBundle = Find_SelectedBundle();
 	const bool ready = selectedBundle ? selectedBundle->strLoadError.empty() && !selectedBundle->Members.empty() :

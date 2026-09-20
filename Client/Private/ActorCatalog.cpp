@@ -904,7 +904,10 @@ namespace
 			for (const DATA_JSON_VALUE& attack : pAttacks->Get_Array())
 			{
 				MONSTER_ACTOR_ENTRY::ATTACK_PRESENTATION presentation;
-				if (!attack.Is_Object() || 2u != attack.Get_Object().size() ||
+				const auto* endEffect = attack.Find("endEffectAssetId");
+				if (!attack.Is_Object() || attack.Get_Object().size() != (endEffect ? 3u : 2u) ||
+					(endEffect && (!endEffect->Is_String() || endEffect->Get_String().empty() ||
+						endEffect->Get_String().find_first_of("/\\:") != std::string::npos)) ||
 					!ReadRequiredString(attack, "clip", presentation.clip) ||
 					!ReadRequiredNumber(
 						attack, "playbackRate", presentation.playbackRate) ||
@@ -914,6 +917,7 @@ namespace
 				{
 					return false;
 				}
+				if (endEffect) presentation.endEffectAssetId = endEffect->Get_String();
 				entry.attackPresentations.push_back(std::move(presentation));
 			}
 			staged.push_back(std::move(entry));

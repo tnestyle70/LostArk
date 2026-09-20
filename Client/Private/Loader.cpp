@@ -699,6 +699,16 @@ HRESULT CLoader::Ready_For_ValtanArena()
 		return E_FAIL;
 	}
 
+    Set_Status(TEXT("VALTAN: source cinematic world sequences"));
+    std::string worldSequenceStatus;
+    if (!CWorldSequencePlayer::Prepare_AreaLoad(ETOUI(LEVEL::VALTAN_ARENA),
+        pEntry->pMapAreaId, pEntry->MapLoadScope, worldSequenceStatus,
+        [this]() { return m_isCancellationRequested.load(std::memory_order_acquire); }))
+    {
+        if (m_isCancellationRequested.load(std::memory_order_acquire))
+            return HRESULT_FROM_WIN32(ERROR_CANCELLED);
+        OutputDebugStringA(("[Loader][ValtanSourceCinema] " + worldSequenceStatus + "\n").c_str());
+    }
 	Set_Status(TEXT("Valtan arena loading complete"));
 	rollback.Commit();
 	return S_OK;

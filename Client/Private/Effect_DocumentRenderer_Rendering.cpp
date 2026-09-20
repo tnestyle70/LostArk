@@ -181,7 +181,21 @@ bool_t Client::CEffectDocumentRenderer::Sample_ModelCuePose(
 			XMConvertToRadians(Rotation.z)) *
 		XMMatrixTranslation(Position.x, Position.y, Position.z);
 
-	XMStoreFloat4x4(&OutWorld, Local * XMLoadFloat4x4(&RootWorld));
+    matrix_t World = Local * XMLoadFloat4x4(&RootWorld);
+    if (const auto* control = Find_StartingCaptureControl(Get_StagedDocument(), Cue.strCueId))
+    {
+        const auto* view = CGameInstance::Get().Get_Transform(D3DTS::VIEW);
+        const auto* projection = CGameInstance::Get().Get_Transform(D3DTS::PROJ);
+        float4x4_t rig;
+        if (!view || !projection || !Build_StartingCaptureRig(control->Detail,
+            RootWorld, *view, *projection, true, rig))
+        {
+            strOutError = "Starting capture cube rig has no valid camera-space endpoint.";
+            return false;
+        }
+        World = World * XMLoadFloat4x4(&rig);
+    }
+    XMStoreFloat4x4(&OutWorld, World);
 	strOutError.clear();
 	return true;
 }
@@ -340,12 +354,16 @@ HRESULT Client::CEffectDocumentRenderer::Build_NativeScreenPost(
                 capture->pBloom = m_pStartingSceneBloomCapture;
                 capture->hLastResult = S_OK;
             }
-            // Existing documents keep their screen-centered endpoint. Explicit model
-            // following uses the same projected first-pose center as the ending size.
-            if (!post.bCaptureUseModelCenter) snapshot.vCaptureDestinationUV = {.5f, .5f};
+            if (Find_StartingCaptureControl(Get_StagedDocument(), post.strCaptureTargetModelCueId))
+                snapshot.fCaptureRotationDegrees += StartingCaptureEndpointTransform(Element.Detail).vRotationDegrees.z;
+            else if (!post.bCaptureUseModelCenter) snapshot.vCaptureDestinationUV = {.5f, .5f};
             capture->vDestinationUV = snapshot.vCaptureDestinationUV;
         }
-        snapshot.vCaptureDestinationOffsetUV = post.vCaptureDestinationOffsetUV;
+        // ALT V's shared world rig already includes the offset for both the
+        // capture endpoint and the cube/attached FX. Other profiles keep theirs.
+        if (!snapshot.bCaptureOverLiveScene ||
+            !Find_StartingCaptureControl(Get_StagedDocument(), post.strCaptureTargetModelCueId))
+            snapshot.vCaptureDestinationOffsetUV = post.vCaptureDestinationOffsetUV;
         OutMaterial = std::make_shared<CEffectNativeScreenPostMaterial>(std::move(snapshot));
         return S_OK;
     }
@@ -455,6 +473,11 @@ HRESULT Client::CEffectDocumentRenderer::Bind_ModelCueNativeMaterial(const EFFEC
 		FAILED(Shader->Bind_RawValue("g_SourceTextureClampUMask", &Resource.iSourceTextureClampUMask, sizeof(Resource.iSourceTextureClampUMask))) ||
 		FAILED(Shader->Bind_RawValue("g_SourceTextureClampVMask", &Resource.iSourceTextureClampVMask, sizeof(Resource.iSourceTextureClampVMask))))
 		return E_FAIL;
+    if (Resource.iSourceMaterialProfile == 178u)
+    {
+        const auto captureUV = StartingCaptureUVTransform(Get_StagedDocument(), m_pStartingSceneCapture.Get());
+        if (FAILED(Shader->Bind_RawValue("g_ALTVCaptureUVTransform", &captureUV, sizeof(captureUV)))) return E_FAIL;
+    }
 	if ((Resource.iSourceMaterialProfile == 178u && !m_pStartingSceneBloomCapture) ||
 		FAILED(Shader->Bind_Texture("g_EffectStartingSceneBloomTexture",
 			Resource.iSourceMaterialProfile == 178u ? m_pStartingSceneBloomCapture : nullptr))) return E_FAIL;

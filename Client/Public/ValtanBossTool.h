@@ -7,6 +7,7 @@
 #include "Network/PacketMessages.h"
 #include "ValtanCinematicCameraDocument.h"
 #include "ValtanPatternFlowDocument.h"
+#include "ValtanPatternSoundCueDocument.h"
 #include "ValtanPatternTree.h"
 #include "ValtanViewAdmission.h"
 
@@ -79,6 +80,8 @@ public:
 	bool_t Play_ServerPattern(
 		const std::string& strPatternId,
 		std::string& strOutStatus);
+    bool_t Is_PlayPreparationPending() const { return m_PlayPreparation.has_value(); }
+    void Cancel_PlayPreparation(const std::string& reason);
 	/* Valtan Action Workbench restarts the exact selected occurrence
 	   without reaching into Valtan Boss Tool widget state.  Server-side predecessor
 	   CAS remains authoritative and a stale/completed mismatch is rejected. */
@@ -160,8 +163,9 @@ private:
 		LostArk::Shared::GameplayDataRevision& OutRevision,
 		VALTAN_PATTERN_SOUND_SOURCE_RECEIPT& OutSoundReceipt,
 		CValtanPatternSoundSourceReadAdmission& SoundAdmission,
-		std::string& strOutStatus) const;
+		std::string& strOutStatus, bool_t preparedOwner = false) const;
 	bool_t Submit_SelectedPattern();
+    void Update_PlayPreparation();
 	/* Restarts only this Tool's exact active/completed single-Pattern
 	   occurrence. The Server performs a boss-only reset, preserves the current
 	   arena state, and starts that Pattern again from its first Stage. */
@@ -239,6 +243,16 @@ private:
 	const VALTAN_PATTERN_FLOW_EDGE* Find_SelectedFlowEdge() const;
 	std::vector<std::string> Build_AdmittedPatternIds() const;
 private:
+    struct PLAY_PREPARATION {
+        std::string patternId;
+        LostArk::Shared::GameplayDataRevision revision;
+        VALTAN_PATTERN_SOUND_SOURCE_RECEIPT sound;
+        uint32_t worldGeneration=0;
+        uint64_t startTick=0;
+    };
+    std::optional<PLAY_PREPARATION> m_PlayPreparation;
+    std::string m_strPreparationPatternId, m_strPreparationStatus;
+    bool_t m_bPreparationTerminal = false;
 	VALTAN_PATTERN_TREE_VIEW m_Graph;
 	VALTAN_TOOL_AUDITION_INVENTORY m_AuditionInventory;
 	std::vector<std::string> m_NextPatternIds;

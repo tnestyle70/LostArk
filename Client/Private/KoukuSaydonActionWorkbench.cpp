@@ -6526,45 +6526,26 @@ bool_t Client::CKoukuSaydonActionWorkbench::Set_PatternDuration(
 		outStatus = m_strStatus = "Full lifetime requires an editable Pattern.";
 		return false;
 	}
-	if (pattern->iDurationMs || Find_TimelineParent(candidate, patternId))
-	{
-		if (!durationMs || durationMs > MAX_EDITOR_TIME_MS) { outStatus = m_strStatus = "Parent lifetime must be 1..600000 ms."; return false; }
-		pattern->iDurationMs = durationMs;
-		Mark_Draft(candidate, *pattern);
-		if (!Commit_Candidate(std::move(candidate), "Updated Parent lifetime; existing row times are preserved.", outStatus)) return false;
-		m_bFitRequested = true; return true;
-	}
-	if (pattern->Stages.empty())
+	if (pattern->Stages.empty() && !pattern->iDurationMs && !Find_TimelineParent(candidate, patternId))
 	{
 		std::string stageId;
 		return Add_Stage(patternId, "ACTIVE", durationMs, stageId, outStatus);
 	}
-	auto& finalStage = pattern->Stages.back();
-	const std::uint64_t earlierMs = Pattern_DurationMs(*pattern) - finalStage.iDurationMs;
-	std::uint64_t occupiedEndMs = 1u;
-	for (const auto& box : finalStage.AnimationOccurrences)
-		occupiedEndMs = (std::max)(occupiedEndMs,
-			static_cast<std::uint64_t>(box.iStartOffsetMs) + box.iPlayMs);
-	const auto minimumMs = (std::max)((std::max)(earlierMs + occupiedEndMs,
-		static_cast<std::uint64_t>(Pattern_LaneEndMs(*pattern))),
-		(std::max)(static_cast<std::uint64_t>(Pattern_LogicEndMs(*pattern)),
-			static_cast<std::uint64_t>(Pattern_SummonEndMs(*pattern))));
+	std::uint64_t stageEndMs = 0u;
+	for (const auto& stage : pattern->Stages) stageEndMs += stage.iDurationMs;
+	const auto minimumMs = (std::max)({std::uint64_t{1u}, stageEndMs,
+		std::uint64_t(Pattern_LaneEndMs(*pattern)), std::uint64_t(Pattern_LogicEndMs(*pattern)),
+		std::uint64_t(Pattern_SummonEndMs(*pattern))});
 	if (durationMs < minimumMs || durationMs > MAX_EDITOR_TIME_MS)
 	{
-		outStatus = m_strStatus = "Full lifetime must be " + std::to_string(minimumMs) +
-			"..600000 ms. Earlier Stage clocks, existing animation boxes and Logic boxes are preserved.";
+		outStatus = m_strStatus = "Timeline lifetime must cover the existing rows (" +
+			std::to_string(minimumMs) + "..600000 ms). Resize a Stage to change boss progression.";
 		return false;
 	}
-	if (durationMs == Pattern_DurationMs(*pattern))
-	{
-		outStatus = m_strStatus = "Full lifetime is unchanged.";
-		return true;
-	}
-	finalStage.iDurationMs = static_cast<std::uint32_t>(durationMs - earlierMs);
+	pattern->iDurationMs = durationMs;
 	Mark_Draft(candidate, *pattern);
 	if (!Commit_Candidate(std::move(candidate),
-		"Updated full lifetime. Press Save to keep it and Play to preview the edited clock.", outStatus))
-		return false;
+		"Updated row lifetime; Stage clocks and next-pattern timing are unchanged. Press Save.", outStatus)) return false;
 	m_bFitRequested = true;
 	return true;
 }
@@ -8037,7 +8018,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 		(ImGui::IsKeyPressed(ImGuiKey_Enter, false) ||
 		 ImGui::IsKeyPressed(ImGuiKey_KeypadEnter, false));
 	if (ImGui::IsItemHovered())
-		ImGui::SetTooltip("Sum of Stage clocks. Enter or Apply changes the final Stage only; existing animation windows are preserved.");
+		ImGui::SetTooltip("Lifetime of all rows. Enter or Apply preserves Stage and Animation clocks. The boss advances when its last Stage ends; remaining rows keep playing.");
 	ImGui::SameLine();
 	durationRequested |= ImGui::Button("Apply##KoukuSequencerLifetime");
 	ImGui::EndDisabled();
@@ -10009,6 +9990,38 @@ bool_t Client::CKoukuSaydonActionWorkbench::Stage_NewWorldPlacement(
 	return true;
 }
 
+void Client::CKoukuSaydonActionWorkbench::Render_WorldPlacementTuning(
+	const std::string_view patternId, const std::string_view occurrenceId)
+{
+	if (!m_bHasDraft)
+	{
+		std::string status;
+		if (!Reload(status)) { ImGui::TextWrapped("%s", status.c_str()); return; }
+	}
+	const auto* pattern = Find_Pattern(m_Draft, patternId);
+	const auto* box = pattern ? Find_WorldBox(*pattern, occurrenceId) : nullptr;
+	if (!box) { ImGui::TextDisabled("Saved Pattern World box is unavailable."); return; }
+	auto placement = box->Placement.value_or(KOUKU_SAYDON_WORLD_PLACEMENT{});
+	const auto edit = [](const char* label, std::array<double, 3u>& values, float step, float minimum, float maximum) {
+		float v[3] = {float(values[0]), float(values[1]), float(values[2])};
+		if (!ImGui::DragFloat3(label, v, step, minimum, maximum, "%.3f")) return false;
+		for (size_t i = 0; i < 3u; ++i) values[i] = v[i];
+		return true;
+	};
+	ImGui::BeginDisabled(Is_PublishRunning() || m_bServerPlayPreparationPending);
+	bool changed = edit("Local position (m)", placement.Position, .01f, -100000.f, 100000.f);
+	changed |= edit("Rotation (degrees)", placement.RotationDegrees, .5f, -36000.f, 36000.f);
+	changed |= edit("Scale", placement.Scale, .01f, .001f, 1000.f);
+	std::string status;
+	if (changed) (void)Set_WorldBoxPlacement(patternId, occurrenceId, placement, status);
+	if (ImGui::Button("Preview placement")) Queue_WorldBoxPreview(patternId, occurrenceId);
+	ImGui::SameLine();
+	if (ImGui::Button("Save Pattern changes")) (void)Save(status);
+	ImGui::EndDisabled();
+	ImGui::TextWrapped("This edits the same Pattern World box as Action Workbench. The saved hand Motion stays separate. Save includes other Pattern draft changes.");
+	ImGui::TextWrapped("%s", m_strStatus.c_str());
+}
+
 bool_t Client::CKoukuSaydonActionWorkbench::Set_WorldBoxPlacement(
 	const std::string_view patternId, const std::string_view occurrenceId,
 	const KOUKU_SAYDON_WORLD_PLACEMENT& placement, std::string& outStatus)
@@ -11105,6 +11118,7 @@ void Client::CKoukuSaydonActionWorkbench::Queue_WorldBoxPreview(
 	resource.iDurationMs = MAX_EDITOR_TIME_MS;
 	Queue_PresentationPreview(resource);
 	m_PendingPresentationPreviewRequest.strEditedOccurrenceId = std::string(occurrenceId);
+	m_PendingPresentationPreviewRequest.strSourcePatternId = std::string(patternId);
 	for (auto placed : pattern->WorldOccurrences)
 	{
 		if (!placed.Placement && placed.strOccurrenceId != occurrenceId) continue;

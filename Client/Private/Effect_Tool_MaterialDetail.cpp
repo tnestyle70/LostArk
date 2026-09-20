@@ -1661,6 +1661,14 @@ void Client::CEffect_Tool::Render_KindDetail(
                     ImGui::EndCombo();
                 }
                 bPresentationChanged |= ImGui::Checkbox("Use Model Center", &Post.bCaptureUseModelCenter);
+                if (Post.strCaptureTargetModelCueId == "altv.source.notify036.cube")
+                {
+                    ImGui::TextWrapped("Off: screen-centred capture/cube rig. On: source model world centre (an unresolved zero notify offset may be at the feet). Position uses camera X=right, Y=up, Z=depth. These are the same saved Transform fields below.");
+                    bPresentationChanged |= ImGui::DragFloat3("Capture / Cube Position", &Detail.Transform.vPosition.x, .01f);
+                    bPresentationChanged |= ImGui::DragFloat3("Capture / Cube Rotation (Degrees)", &Detail.Transform.vRotationDegrees.x, .25f);
+                    bPresentationChanged |= ImGui::DragFloat3("Capture / Cube Scale", &Detail.Transform.vScale.x, .01f);
+                    ImGui::TextWrapped("The end-of-capture Transform drives the image endpoint, source frame, cube and attached cube effects. X/Y rotation tilts the cube and changes its projected envelope; Z rolls the image/frame/cube. Square Capture keeps the image square; turn it off for separate width/height tuning. Model Cue Local TRS remains an additional model adjustment.");
+                }
                 bPresentationChanged |= ImGui::SliderFloat("Outside Dimming", &Post.fCaptureBackgroundDim,
                     0.f, 1.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
             }
@@ -1682,6 +1690,16 @@ void Client::CEffect_Tool::Render_KindDetail(
             bPresentationChanged |= ImGui::DragFloat("Capture Rotation (deg)", &Post.fCaptureRotationDegrees,
                 .25f, -180.f, 180.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
             bPresentationChanged |= ImGui::Checkbox("Square Capture", &Post.bCaptureSquare);
+            if (ImGui::Button("45 degree capture into cube"))
+            {
+                Post.fCaptureRotationDegrees = 45.f;
+                Post.bCaptureSquare = true;
+                Post.bCaptureUseModelCenter = false;
+                bPresentationChanged = true;
+            }
+            ImGui::TextWrapped("Rotation turns the capture rectangle and image together. Left/Right/Top/Bottom edge speed controls the compression direction; Duration controls the overall speed. Apply then Save preserves the values.");
+            if (bCubeCapture)
+                ImGui::TextDisabled("The target cube's native translucent material consumes the same captured scene at the handoff.");
         }
         else
         {

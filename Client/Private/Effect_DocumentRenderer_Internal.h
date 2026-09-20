@@ -121,7 +121,17 @@
 namespace EffectDocumentRendererDetail
 {
 
+    const Client::EFFECT_ELEMENT_DESC* Find_StartingCaptureControl(
+        const Client::EFFECT_DOCUMENT_DESC& Document, const std::string& cueId);
+    Client::EFFECT_TRANSFORM_DESC StartingCaptureEndpointTransform(const Client::EFFECT_DETAIL_DESC& detail);
+    bool Build_StartingCaptureRig(const Client::EFFECT_DETAIL_DESC& detail,
+        const float4x4_t& root, const float4x4_t& view, const float4x4_t& projection,
+        bool includeRoll, float4x4_t& outRig);
+
     bool Requires_StartingSceneCapture(const Client::EFFECT_DOCUMENT_DESC& Document);
+    float4_t StartingCaptureUVTransform(const Client::EFFECT_DOCUMENT_DESC& Document,
+        ID3D11ShaderResourceView* capture);
+    bool Is_StartingCaptureFrameEmitter(const Client::EFFECT_ELEMENT_DESC& Element);
 
 
     bool Is_StartingSceneCaptureCameraEmitter(const Client::EFFECT_ELEMENT_DESC& Element);

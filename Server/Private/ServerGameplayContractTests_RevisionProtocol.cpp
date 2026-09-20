@@ -1093,7 +1093,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_RevisionProtocol(TESTS&
 			"PATTERNSTAGEVOLLEY\tENCOUNTER_VALTAN\t"
 			"VALTAN_GHOST_PORTAL_ONCE\tvaltan.ghost.portal-once.active\t"
 			"0\tENTER\tcombatobject.valtan.ghost.portal-charge\t"
-			"BOSS_RELATIVE\t3\tRADIAL\t9\t30\t120\t0\t3\t1\t0\t"
+			"BOSS_RELATIVE\t3\tRADIAL\t13.5\t30\t120\t0\t3\t1\t0\t"
 			"0\t0\t0\t0\tNONE";
 		std::string wrappingPortalVolleyBootstrap = bootstrapText;
 		const bool madeWrappingPortalVolley = replaceBootstrapRow(
@@ -1101,7 +1101,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_RevisionProtocol(TESTS&
 			"PATTERNSTAGEVOLLEY\tENCOUNTER_VALTAN\t"
 			"VALTAN_GHOST_PORTAL_ONCE\tvaltan.ghost.portal-once.active\t"
 			"0\tENTER\tcombatobject.valtan.ghost.portal-charge\t"
-			"BOSS_RELATIVE\t3\tRADIAL\t9\t30\t121\t0\t3\t1\t0\t"
+			"BOSS_RELATIVE\t3\tRADIAL\t13.5\t30\t121\t0\t3\t1\t0\t"
 			"0\t0\t0\t0\tNONE");
 		std::string nonEquilateralPortalVolleyBootstrap = bootstrapText;
 		const bool madeNonEquilateralPortalVolley = replaceBootstrapRow(
@@ -1109,7 +1109,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_RevisionProtocol(TESTS&
 			"PATTERNSTAGEVOLLEY\tENCOUNTER_VALTAN\t"
 			"VALTAN_GHOST_PORTAL_ONCE\tvaltan.ghost.portal-once.active\t"
 			"0\tENTER\tcombatobject.valtan.ghost.portal-charge\t"
-			"BOSS_RELATIVE\t3\tRADIAL\t9\t30\t119\t0\t3\t1\t0\t"
+			"BOSS_RELATIVE\t3\tRADIAL\t13.5\t30\t119\t0\t3\t1\t0\t"
 			"0\t0\t0\t0\tNONE");
 		const std::string highJumpVolleyRow =
 			"PATTERNSTAGEVOLLEY\tENCOUNTER_VALTAN\tVALTAN_HIGH_JUMP\t"

@@ -9,6 +9,12 @@ namespace
 {
 	bool_t IsValidLightAttenuation(const LIGHT_DESC& LightDesc)
 	{
+		const auto& indirect = LightDesc.vSourceCharacterAmbient;
+		if (!std::isfinite(indirect.x) || !std::isfinite(indirect.y) || !std::isfinite(indirect.z) ||
+			indirect.x < 0.f || indirect.x > 64.f || indirect.y < 0.f || indirect.y > 64.f ||
+			indirect.z < 0.f || indirect.z > 64.f || indirect.w != 0.f ||
+			(LightDesc.eType != LIGHT::DIRECTIONAL &&
+			 (indirect.x != 0.f || indirect.y != 0.f || indirect.z != 0.f))) return false;
 		if (LightDesc.staticShadowChannel > 15u || (LightDesc.eReceiver != LIGHT_RECEIVER::ALL &&
 			LightDesc.eReceiver != LIGHT_RECEIVER::SOURCE_CHARACTER &&
 			LightDesc.eReceiver != LIGHT_RECEIVER::UNBAKED) ||
@@ -140,6 +146,8 @@ HRESULT CLight::Render_Desc(
 
     if (FAILED(pShader->Bind_RawValue("g_vLightDiffuse", &LightDesc.vDiffuse, sizeof LightDesc.vDiffuse)))
         return E_FAIL;
+    if (FAILED(pShader->Bind_RawValue("g_vSourceCharacterAmbient",
+        &LightDesc.vSourceCharacterAmbient, sizeof LightDesc.vSourceCharacterAmbient))) return E_FAIL;
     if (FAILED(pShader->Bind_RawValue("g_vLightAmbient", &LightDesc.vAmbient, sizeof LightDesc.vAmbient)))
         return E_FAIL;
     if (FAILED(pShader->Bind_RawValue("g_vLightSpecular", &LightDesc.vSpecular, sizeof LightDesc.vSpecular)))

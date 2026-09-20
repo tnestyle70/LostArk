@@ -20,6 +20,7 @@ namespace
 
 	bool_t IsValidSceneLight(const LIGHT_DESC& Light)
 	{
+		if (!CLight::Is_ValidDesc(Light)) return false;
 		if (Light.staticShadowChannel > 15u || (Light.eReceiver != LIGHT_RECEIVER::ALL &&
 			Light.eReceiver != LIGHT_RECEIVER::SOURCE_CHARACTER &&
 			Light.eReceiver != LIGHT_RECEIVER::UNBAKED) ||
@@ -101,8 +102,9 @@ HRESULT CLight_Manager::Render_Lights(
     {
         float4_t direction, position, diffuse, ambient, specular, attenuation;
         uint32_t flags[4]; // receiver, static channel, directional shadow, source local bounds
+        float4_t sourceCharacterAmbient;
     };
-    static_assert(sizeof(LightInstance) == 112u);
+    static_assert(sizeof(LightInstance) == 128u);
     std::array<LightInstance, maximumLightInstances> instances;
     std::array<LIGHT, maximumLightInstances> types;
     uint32_t count = 0u;
@@ -144,6 +146,7 @@ HRESULT CLight_Manager::Render_Lights(
         record.position = light.vPosition;
         record.diffuse = light.vDiffuse;
         record.ambient = light.vAmbient;
+        record.sourceCharacterAmbient = scene ? light.vSourceCharacterAmbient : float4_t{};
         record.specular = light.vSpecular;
         record.attenuation = float4_t(light.fRange, light.fFalloffExponent,
             light.fSpotInnerCos, light.fSpotOuterCos);

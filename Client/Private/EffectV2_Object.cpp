@@ -125,6 +125,8 @@ HRESULT Client::CEffectV2Object::Initialize(void* pArg)
 	m_CreationDesc = Desc;
 	m_eShape = Desc.eShape;
 	m_Params = Desc.Params;
+    if (!std::isfinite(m_Params.fSceneBloomScale) || m_Params.fSceneBloomScale < 0.f ||
+        m_Params.fSceneBloomScale > 1.f) return Fail("Scene bloom scale must be in [0,1].");
 	m_PivotWorld = Desc.PivotWorld;
 
 	std::string strError;
@@ -1751,6 +1753,7 @@ HRESULT Client::CEffectV2Object::Bind_Common(
 		FAILED(pShader->Bind_RawValue("g_SectorDegrees", &P.fSectorDegrees, sizeof(f32_t))) ||
 		FAILED(pShader->Bind_RawValue("g_SectorSoftness", &P.fSectorSoftness, sizeof(f32_t))) ||
 		FAILED(pShader->Bind_RawValue("g_BloomIntensity", &P.fBloomIntensity, sizeof(f32_t))) ||
+        FAILED(pShader->Bind_RawValue("g_SceneBloomScale", &P.fSceneBloomScale, sizeof(f32_t))) ||
 		FAILED(pShader->Bind_RawValue("g_DistortionIntensity", &P.fDistortionIntensity, sizeof(f32_t))) ||
 		FAILED(pShader->Bind_RawValue("g_UVStart", &P.vUVStart, sizeof(P.vUVStart))) ||
 		FAILED(pShader->Bind_RawValue("g_UVSpeed", &P.vUVSpeed, sizeof(P.vUVSpeed))) ||

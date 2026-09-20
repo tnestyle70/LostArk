@@ -121,7 +121,10 @@ public:
 	shared_ptr<Engine::CModel> Get_BodyModel() const;
 	/* Effective visual scale: catalog admission times this map's size control.
 	Bone-space measurements use the same product as the body and equipment root. */
-	f32_t Get_PresentationScale() const { return m_fPresentationScale * m_fPresentationSizeMultiplier; }
+	f32_t Get_PresentationScale() const;
+	// Active map view settings are shared by local/remote and newly spawned characters.
+	// Gameplay transforms and collision continue to use the Server values.
+	static bool_t Set_MapPresentationSizeProfile(const struct ARENA_CAMERA_PROFILE& profile);
 	f32_t Get_CatalogPresentationScale() const { return m_fPresentationScale; }
 	bool_t Set_PresentationSizeMultiplier(f32_t multiplier);
 	uint32_t Get_PrototypeLevelIndex() const
@@ -157,6 +160,7 @@ public:
 	/* Replication owns Mario admission. Resize only the clown body, not its
 	   network transform/collider; leaving Mario restores the normal body size. */
 	bool_t Apply_MarioPresentation(bool_t isMario);
+	bool_t Apply_MazePresentation(bool_t isMaze);
 	//charcter represent function
 	bool_t Apply_NetworkState(
 		const float3_t& position,
@@ -388,6 +392,8 @@ private:
 	f32_t m_fMoveSpeed = { 5.f };
 	f32_t m_fPresentationScale = 1.f;
 	f32_t m_fPresentationSizeMultiplier = 1.f;
+	bool_t m_bMarioPresentation = false;
+	bool_t m_bMazePresentation = false;
 	// Part parent pointers refer to this instance member for their whole lifetime.
 	float4x4_t m_PresentationRootMatrix = {};
 	bool_t m_isMoving = { false };
@@ -556,6 +562,7 @@ private:
 	bool_t Load_ClipChains(bool_t reloadSource = false);
 	void Load_InteractionAnimationBindings();
 	std::array<std::vector<CLIP_STEP>, 5> m_InteractionClips;
+	std::array<std::vector<std::string>, 5> m_InteractionEffectIds;
 	LostArk::Shared::KOUKU_HUD_MODE m_eInteractionMode = LostArk::Shared::KOUKU_HUD_MODE::NONE;
 	std::uint32_t m_iInteractionIndex = UINT32_MAX;
 	void Commit_PendingClipChains();

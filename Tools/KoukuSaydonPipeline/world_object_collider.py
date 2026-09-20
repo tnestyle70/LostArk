@@ -41,8 +41,8 @@ def validate_tracks(sequence):
         return
     rows = sequence.get("colliderTracks", [])
     if not isinstance(rows, list) or sum(len(sequence.get(k, [])) for k in
-            ("tracks", "animationTracks", "effectTracks", "colliderTracks")) > 32:
-        raise ColliderBakeError("Object tracks exceed the combined 32-track limit")
+            ("tracks", "animationTracks", "effectTracks", "colliderTracks")) > 64:
+        raise ColliderBakeError("Object tracks exceed the combined 64-track limit")
     motion=sequence.get("objectMotion",{})
     if rows and (motion.get("spreadDegrees",0) or any(motion.get("spawnHalfExtents",[0,0,0]))):
         raise ColliderBakeError("Collider publication requires zero spread and zero random spawn extents")
@@ -110,9 +110,16 @@ def sample_key(sequence, slot, age):
 
 def sample_bone(sequence, resource, slot, age, bone, load_model):
     tracks = sorted((r for r in sequence.get("animationTracks", []) if r["slotId"] == slot), key=lambda r:r.get("startMs",0))
-    model = load_model(resource["modelAssetId"], [r["clipName"] for r in tracks])
+    clips = tuple(r["clipName"] for r in tracks)
+    models = getattr(load_model, "_collider_models", None)
+    model_key = (resource["modelAssetId"], clips)
+    model = models.get(model_key) if models is not None else None
+    if model is None:
+        model = load_model(resource["modelAssetId"], clips)
+        if models is not None:
+            models[model_key] = model
     cache = getattr(load_model, "_collider_pose_cache", None)
-    cache_key = (id(model),sequence["sequenceId"],slot,age,bone,resource.get("modelPreScale",.01))
+    cache_key = (id(model),id(sequence),slot,age,bone,resource.get("modelPreScale",.01))
     if cache is not None and cache_key in cache: return cache[cache_key]
     indices = [i for i,b in enumerate(model.skeleton_bones) if b.name == bone]
     if len(indices) != 1:
@@ -147,7 +154,7 @@ def sample_bone(sequence, resource, slot, age, bone, load_model):
         for i in range(3): result[base+i] /= length
     for i in range(12,15): result[i] *= resource.get("modelPreScale",.01)
     if cache is not None:
-        if len(cache)>=8192: cache.clear()
+        if len(cache)>=65536: cache.clear()
         cache[cache_key]=result
     return result
 
@@ -210,9 +217,17 @@ def sample_object(sequence, instance, resource, box, world, emitter, age, row, l
     return center,grip,scale,yaw+row["yawDegrees"],key.get("visible",True)
 
 
-def bake_windows(sequences, worlds, boxes, load_model, *, pattern_end_ms=None):
+def bake_windows(sequences, worlds, boxes, load_model, *, pattern_end_ms=None, sampling_cache=None):
     """Return generated ENTER_AREA descriptors, preserving finite Motion cycles."""
-    load_model._collider_pose_cache = {}
+    sampling_cache = {} if sampling_cache is None else sampling_cache
+    # A shared cache belongs to one publication's immutable input snapshot.
+    # Keep sequence references alive for the identity-based pose keys.
+    sampling_cache.setdefault("sequences", {})[id(sequences)] = sequences
+    load_model._collider_pose_cache = sampling_cache.setdefault("poses", {})
+    # A bake uses pinned publication inputs. Resolve/check/decode a model+clip
+    # selection once, not at every pose sample (including pose-cache hits).
+    # The publisher still rechecks every observed input before/after promotion.
+    load_model._collider_models = sampling_cache.setdefault("models", {})
     templates = {r["sequenceId"]:r for r in sequences["templates"]}
     instances = {r["instanceId"]:r for r in sequences["instances"]}
     resources = {r["objectId"]:r for r in sequences.get("objectResources",[])}

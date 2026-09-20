@@ -737,7 +737,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanTimelines(TESTS& 
 		std::set<int> portalUndirectedEdgeHeadings;
 		constexpr float DEGREES_TO_RADIANS_TEST =
 			0.01745329251994329577f;
-		constexpr float PORTAL_CIRCUMRADIUS = 9.f;
+		constexpr float PORTAL_CIRCUMRADIUS = 13.5f;
 		for (std::size_t ordinal = 0u;
 			triangleEdgeRoutesExact && ordinal < portalObjects.size(); ++ordinal)
 		{
@@ -791,7 +791,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanTimelines(TESTS& 
 					portalBoss.fPositionY) < 0.001f &&
 				std::abs(object.LiveState.CurrentPose.fPositionZ -
 					(portalBoss.fPositionZ + startOffsetZ)) < 0.001f &&
-				std::abs(routeLength - 15.5884573f) < 0.001f &&
+				std::abs(routeLength - 23.3826859f) < 0.001f &&
 				std::abs(object.LiveState.CurrentPose.fDirectionX -
 					expectedDirectionX) < 0.001f &&
 				std::abs(object.LiveState.CurrentPose.fDirectionZ -
@@ -799,8 +799,8 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanTimelines(TESTS& 
 				std::abs(object.LiveState.CurrentPose.fYawDegrees - expectedYaw) <
 					0.001f &&
 				exactUndirectedHeading &&
-				std::abs(object.fSpeedMps - 11.9911210f) < 0.001f &&
-				std::abs(object.fRemainingDistanceM - 15.5884573f) < 0.001f &&
+				std::abs(object.fSpeedMps - 17.9866815f) < 0.001f &&
+				std::abs(object.fRemainingDistanceM - 23.3826859f) < 0.001f &&
 				300u == object.iMovementStartDelayMs &&
 				!object.bExpireOnDistanceEnd &&
 				std::abs(object.fRemainingMilliseconds - 1900.f) < 0.001f &&
@@ -826,8 +826,8 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanTimelines(TESTS& 
 					(portalBoss.fPositionZ + startOffsetZ + routeZ)) < 0.001f &&
 				std::abs(runner.fYawDegrees - expectedYaw) < 0.001f &&
 				300u == runner.iPortalRushRetargetDelayMs &&
-				std::abs(runner.fPortalRushSpeedMps - 11.9911210f) < 0.001f &&
-				std::abs(runner.fPortalRushDistanceM - 15.5884573f) < 0.001f;
+				std::abs(runner.fPortalRushSpeedMps - 17.9866815f) < 0.001f &&
+				std::abs(runner.fPortalRushDistanceM - 23.3826859f) < 0.001f;
 		}
 		std::vector<S2C_COMBAT_OBJECT_SPAWNED> portalSpawned;
 		std::vector<S2C_COMBAT_OBJECT_PRESENTATION_EVENT>

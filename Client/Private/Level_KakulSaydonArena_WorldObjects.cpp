@@ -390,6 +390,28 @@ void CLevel_KakulSaydonArena::Update_MarioBallPresentation(const f32_t timeDelta
         }
 }
 
+bool_t CLevel_KakulSaydonArena::Try_GetCinematicWorldBossAnchor(const std::string& archetype,
+    const std::string& bone, CWorldSequencePlayer::PLAYER_ANCHOR& out, std::string& status) const
+{
+    status.clear();
+    bool found = false;
+    const auto collect = [&](const CWorldSequencePlayer& player) {
+        CWorldSequencePlayer::PLAYER_ANCHOR candidate;
+        std::string failure;
+        if (!player.Try_GetPresentationBossAnchor(archetype, bone, candidate, failure))
+        { if (!failure.empty()) status = std::move(failure); return; }
+        if (found && candidate.bodyModel != out.bodyModel)
+        { status = "Multiple cinematic World actors own this Boss anchor: " + archetype; return; }
+        out = candidate; found = true;
+    };
+    collect(m_SequencePlayer);
+    for (const auto& [id, cue] : m_OwnedWorldCues) if (cue.player) collect(*cue.player);
+#ifdef _DEBUG
+    for (const auto& [id, cue] : m_CompositionWorldPreviewCues) if (cue.player) collect(*cue.player);
+#endif
+    return found && status.empty();
+}
+
 CWorldSequencePlayer::TARGET_SET CLevel_KakulSaydonArena::Make_WorldSequenceTargets()
 {
     CWorldSequencePlayer::TARGET_SET targets;
@@ -417,6 +439,8 @@ CWorldSequencePlayer::TARGET_SET CLevel_KakulSaydonArena::Make_WorldSequenceTarg
     targets.bossAnchor = [this](const std::string& archetype, const std::string& bone,
         CWorldSequencePlayer::PLAYER_ANCHOR& out, std::string& status)
     {
+        if (Try_GetCinematicWorldBossAnchor(archetype, bone, out, status)) return true;
+        if (!status.empty()) return false;
         std::vector<KOUKU_BOSS_PRESENTATION_VIEW> bosses;
         std::vector<KOUKU_CARD_PRESENTATION_VIEW> players;
         m_Replication.Collect_KoukuPresentationViews(bosses, players);

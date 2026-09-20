@@ -739,6 +739,7 @@ bool_t Client::CEffectV2Document::Parse_Document(
 		!Read_Number(*pParams, "outlineWidth", P.fOutlineWidth, strOutError) ||
 		!Read_FloatArray(*pParams, "outlineColor", &P.vOutlineColor.x, 4u, strOutError) ||
 		!Read_Number(*pParams, "bloomIntensity", P.fBloomIntensity, strOutError) ||
+        !Read_Number(*pParams, "sceneBloomScale", P.fSceneBloomScale, strOutError) ||
 		!Read_Number(*pParams, "distortionIntensity", P.fDistortionIntensity, strOutError) ||
 		!Read_FloatArray(*pParams, "uvStart", &P.vUVStart.x, 2u, strOutError) ||
 		!Read_FloatArray(*pParams, "uvSpeed", &P.vUVSpeed.x, 2u, strOutError) ||
@@ -775,6 +776,12 @@ bool_t Client::CEffectV2Document::Parse_Document(
 		strOutError = "params.meshPreScale/lifetime/playRate out of range.";
 		return false;
 	}
+    if (P.fSceneBloomScale < 0.f || P.fSceneBloomScale > 1.f ||
+        ((Document.eType == EFFECT_V2_TYPE::SCREEN_POST || P.eBlend == CEffectV2Object::BLEND_MODE::MULTIPLY) && P.fSceneBloomScale != 1.f))
+    {
+        strOutError = "params.sceneBloomScale must be in [0,1] and is unavailable for ScreenPost/Multiply.";
+        return false;
+    }
 	if (P.fSoftFadeDistance < 0.f)
 	{
 		strOutError = "params.softFadeDistance must be >= 0.";
@@ -1416,6 +1423,8 @@ std::string Client::CEffectV2Document::Serialize_Document(const EFFECT_V2_DOCUME
 	Text += "    \"outlineWidth\": " + Json_Number(P.fOutlineWidth) + ",\n";
 	Text += "    \"outlineColor\": " + Json_Float4(P.vOutlineColor) + ",\n";
 	Text += "    \"bloomIntensity\": " + Json_Number(P.fBloomIntensity) + ",\n";
+    if (P.fSceneBloomScale != 1.f)
+        Text += "    \"sceneBloomScale\": " + Json_Number(P.fSceneBloomScale) + ",\n";
 	Text += "    \"distortionIntensity\": " + Json_Number(P.fDistortionIntensity) + ",\n";
 	Text += "    \"uvStart\": " + Json_Float2(P.vUVStart) + ",\n";
 	Text += "    \"uvSpeed\": " + Json_Float2(P.vUVSpeed) + ",\n";

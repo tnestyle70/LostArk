@@ -17,6 +17,9 @@
 #include <iterator>
 #include <limits>
 #include <mutex>
+#include <functional>
+#include <set>
+#include <stdexcept>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
@@ -473,6 +476,34 @@ Client::CKoukuSaydonPresentationAssetService::Get_GameObjectPrototypeTag()
 	return KOUKU_OBJECT_PROTOTYPE;
 }
 
+
+HRESULT Client::CKoukuSaydonPresentationAssetService::Ensure_MazeHammerPrototype(
+	ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext,
+	const std::uint32_t iLevelIndex)
+{
+	if (!pDevice || !pContext || iLevelIndex >= ETOUI(LEVEL::END)) return E_INVALIDARG;
+	std::scoped_lock lock{ g_KoukuAssetMutex };
+	auto& ready = g_ReadyByLevel[iLevelIndex];
+	constexpr const char* key = "avatar.kouku-saydon.maze-hammer";
+	if (ready.contains(key)) return S_FALSE;
+	Engine::MODEL_ASSET_LOAD_DESC load;
+	std::string status;
+	if (!CActorCatalog::Build_ModelLoadDescription(
+		"Effect/KoukuSaydon/WorldObjects/WhirlwindHammer/WhirlwindHammer.wmodel", load, status))
+		return Reject("Card maze hammer material input failed: " + status);
+	// The same world-object mesh is 56.016 cm long. The hand bone already
+	// carries the class cm-to-m conversion; only the world's authored x2 remains.
+	auto model = Engine::CModel::Create(pDevice, pContext, MODEL::NONANIM, load,
+		XMMatrixScaling(2.f, 2.f, 2.f));
+	if (!model || !model->Get_NumMeshes()) return Reject("Card maze hammer model failed.");
+	std::vector<std::pair<std::wstring, unique_ptr<Engine::CPrototype>>> staged;
+	staged.emplace_back(KOUKU_MAZE_HAMMER_PROTOTYPE_TAG, std::move(model));
+	if (FAILED(CGameInstance::Get().Add_Prototypes(iLevelIndex, std::move(staged))))
+		return Reject("Card maze hammer prototype commit failed.");
+	ready.insert(key);
+	return S_OK;
+}
+
 HRESULT Client::CKoukuSaydonPresentationAssetService::Ensure_ClownBodyPrototype(
 	ComPtr<ID3D11Device> pDevice,
 	ComPtr<ID3D11DeviceContext> pContext,
@@ -753,4 +784,153 @@ bool_t Client::CKoukuSaydonPresentationAssetService::Reload_ProductBindings(
     g_BindingSourceRevisions = std::move(revisions);
     status = g_Status = "Product animation bindings admitted for source revision " + std::to_string(expectedSourceRevision);
     return true;
+}
+
+
+bool Client::CKoukuSaydonPresentationAssetService::Collect_CompletePlayResources(
+    const std::vector<std::string>& patternIds, const std::vector<std::string>& bundleIds,
+    const std::uint32_t sourceRevision, KOUKU_SAYDON_PLAY_RESOURCES& output, std::string& status)
+{
+    try
+    {
+        if (!sourceRevision || (patternIds.empty() && bundleIds.empty()))
+            throw std::runtime_error("Complete Play requires a pinned, nonempty selection.");
+        const auto text = [](const DATA_JSON_VALUE& row, const char* key) -> const std::string& {
+            const auto* value = Required(row, key, DATA_JSON_TYPE::STRING);
+            if (!value) throw std::runtime_error(std::string("Missing dependency identity: ") + key);
+            return value->Get_String();
+        };
+        const auto array = [](const DATA_JSON_VALUE& row, const char* key) -> const auto& {
+            const auto* value = Required(row, key, DATA_JSON_TYPE::ARRAY);
+            if (!value || value->Get_Array().size() > 16384u)
+                throw std::runtime_error(std::string("Invalid dependency array: ") + key);
+            return value->Get_Array();
+        };
+        const auto read = [&](const wchar_t* relative, const char* schema, uint32_t version) {
+            const auto path = CProjectDataRoot::Resolve(relative);
+            std::error_code error;
+            const auto bytes = std::filesystem::file_size(path, error);
+            if (error || !bytes || bytes > 64u * 1024u * 1024u)
+                throw std::runtime_error("Missing/oversized Complete Play dependency document: " + path.string());
+            std::ifstream input(path, std::ios::binary);
+            std::string data(size_t(bytes), '\0');
+            input.read(data.data(), std::streamsize(bytes));
+            if (!input || input.peek() != std::char_traits<char>::eof())
+                throw std::runtime_error("Complete Play dependency document changed during read: " + path.string());
+            DATA_JSON_VALUE root; DATA_JSON_PARSE_LIMITS limits; std::string errorText;
+            limits.iMaximumBytes = 64u * 1024u * 1024u; limits.iMaximumValues = 4'000'000u;
+            uint32_t revision = 0u, parsedVersion = 0u;
+            if (!CDataJson::Parse(data, root, errorText, limits) || text(root, "schema") != schema ||
+                !root.Find("sourceRevision") || !Try_U32(*root.Find("sourceRevision"), UINT32_MAX, revision) ||
+                revision != sourceRevision || !root.Find("formatVersion") ||
+                !Try_U32(*root.Find("formatVersion"), version, parsedVersion) || parsedVersion != version)
+                throw std::runtime_error("Complete Play dependency document revision/header mismatch: " + path.string() + "; " + errorText);
+            return root;
+        };
+        const auto encounter = read(L"Encounters/KoukuSaydon/KoukuSaydonEncounter.json", "lostark.encounter-profile", 4u);
+        const auto presentation = read(L"Animation/Authored/KoukuSaydon/KoukuSaydon.patternbindings.json", "lostark.kouku-saydon-pattern-bindings", 1u);
+        std::map<std::string, const DATA_JSON_VALUE*> patterns, visuals, fears, presentationPatterns, bundles;
+        const auto index = [&](const DATA_JSON_VALUE& root, const char* field, const char* key, auto& target) {
+            if (!root.Find(field)) return;
+            for (const auto& row : array(root, field))
+                if (!target.emplace(text(row, key), &row).second)
+                    throw std::runtime_error("Duplicate Complete Play dependency: " + text(row, key));
+        };
+        index(encounter, "patterns", "patternId", patterns);
+        index(encounter, "bundles", "bundleId", bundles);
+        index(presentation, "patterns", "patternId", presentationPatterns);
+        index(presentation, "targetedCombatVisuals", "clientVisualId", visuals);
+        index(presentation, "fearPresentations", "presentationId", fears);
+        std::set<std::string> pending(patternIds.begin(), patternIds.end()), visited, v1, worlds, actors;
+        std::set<std::pair<std::string, std::string>> v2;
+        std::set<std::string> selectedVisuals, selectedFears;
+        const auto addEffect = [&](const DATA_JSON_VALUE& row) {
+            if (text(row, "kind") != "EFFECT") return;
+            const auto& id = text(row, "assetId"); const auto& kind = text(row, "resourceKind");
+            if (id.empty()) throw std::runtime_error("Empty Complete Play Effect ID.");
+            if (kind == "V1_EFFECT" || kind == "V1_ELEMENT") v1.insert(id);
+            else if (kind == "GROUP" || kind == "LEAF") v2.emplace(kind, id);
+            else throw std::runtime_error("Unsupported Complete Play Effect kind: " + kind);
+        };
+        for (const auto& id : bundleIds)
+        {
+            const auto found = bundles.find(id);
+            if (found == bundles.end()) throw std::runtime_error("Missing Complete Play Bundle: " + id);
+            for (const auto& member : array(*found->second, "members")) pending.insert(text(member, "patternId"));
+        }
+        // Traverse only typed Product identity fields. This includes all branches
+        // and every future row, without filtering against stage time or duration.
+        std::function<void(const DATA_JSON_VALUE&)> dependencies;
+        dependencies = [&](const DATA_JSON_VALUE& value) {
+            if (value.Is_Array()) { for (const auto& child : value.Get_Array()) dependencies(child); return; }
+            if (!value.Is_Object()) return;
+            for (const auto& [key, child] : value.Get_Object())
+            {
+                if (key == "patternId" || key == "clonePatternId")
+                { if (child.Is_String() && !child.Get_String().empty()) pending.insert(child.Get_String()); }
+                else if (key == "patternIds" || key == "directionPatternIds")
+                {
+                    if (!child.Is_Array()) throw std::runtime_error("Invalid child pattern dependency array.");
+                    for (const auto& id : child.Get_Array())
+                    { if (!id.Is_String() || id.Get_String().empty()) throw std::runtime_error("Invalid child pattern identity."); pending.insert(id.Get_String()); }
+                }
+                else if (key == "sequenceInstanceId" || key == "worldSequenceInstanceId" ||
+                    key == "targetWorldInstanceId" || key == "motionInstanceId")
+                { if (child.Is_String() && !child.Get_String().empty()) worlds.insert(child.Get_String()); }
+                else if (key == "fixedVisualId" || key == "trackingVisualId" || key == "clientVisualId" || key == "selectedEffectVisualId")
+                { if (child.Is_String() && !child.Get_String().empty()) selectedVisuals.insert(child.Get_String()); }
+                else if (key == "visualIds")
+                {
+                    if (!child.Is_Array()) throw std::runtime_error("Invalid targeted visual dependencies.");
+                    for (const auto& id : child.Get_Array())
+                    { if (!id.Is_String()) throw std::runtime_error("Invalid targeted visual identity."); selectedVisuals.insert(id.Get_String()); }
+                }
+                else if (key == "presentationId")
+                { if (child.Is_String() && !child.Get_String().empty()) selectedFears.insert(child.Get_String()); }
+                dependencies(child);
+            }
+        };
+        while (!pending.empty())
+        {
+            const auto id = *pending.begin(); pending.erase(pending.begin());
+            if (!visited.insert(id).second) continue;
+            if (visited.size() > 4096u) throw std::runtime_error("Complete Play pattern closure exceeds its bounded capacity.");
+            const auto source = patterns.find(id), visual = presentationPatterns.find(id);
+            if (source == patterns.end() || visual == presentationPatterns.end())
+                throw std::runtime_error("Missing published Complete Play child pattern: " + id);
+            dependencies(*source->second);
+            const auto actor = CKoukuSaydonCompositionDocument::Resolve_BossArchetypeId(text(*source->second, "targetBossPlacementId"));
+            if (actor.empty()) throw std::runtime_error("Missing Complete Play boss identity: " + id);
+            actors.emplace(actor);
+            for (const auto& row : array(*visual->second, "presentationOccurrences"))
+            { addEffect(row); dependencies(row); }
+        }
+        for (const auto& id : selectedVisuals)
+        {
+            const auto found = visuals.find(id);
+            if (found == visuals.end()) throw std::runtime_error("Missing Complete Play combat visual: " + id);
+            for (const auto& row : array(*found->second, "resources")) addEffect(row);
+            if (const auto* contact = found->second->Find("contactEffectAssetId"); contact && contact->Is_String() && !contact->Get_String().empty())
+                v1.insert(contact->Get_String());
+        }
+        for (const auto& id : selectedFears)
+        {
+            const auto found = fears.find(id);
+            if (found == fears.end()) throw std::runtime_error("Missing Complete Play Fear presentation: " + id);
+            if (const auto* effect = found->second->Find("effectResource"); effect && !effect->Is_Null()) addEffect(*effect);
+        }
+        // The same shared state presentations used by Release prewarm are selected
+        // by authoritative card/ball state rather than a named occurrence.
+        for (const char* symbol : {"heart", "spade", "clober", "dia"})
+            for (const char* color : {"red", "black"}) v2.emplace("GROUP", std::string("boss.kouku.card.") + symbol + "." + color);
+        for (const char* color : {"red", "blue", "yellow"}) v2.emplace("LEAF", std::string("boss.kouku.ball.smoke.") + color + "_1");
+        KOUKU_SAYDON_PLAY_RESOURCES staged;
+        staged.PatternIds.assign(visited.begin(), visited.end()); staged.V1EffectIds.assign(v1.begin(), v1.end());
+        staged.V2Effects.assign(v2.begin(), v2.end()); staged.WorldInstanceIds.assign(worlds.begin(), worlds.end());
+        staged.BossArchetypeIds.assign(actors.begin(), actors.end());
+        output = std::move(staged);
+        status = "Complete Play dependency closure collected.";
+        return true;
+    }
+    catch (const std::exception& error) { status = error.what(); return false; }
 }

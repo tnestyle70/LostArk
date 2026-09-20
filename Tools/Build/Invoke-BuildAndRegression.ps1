@@ -494,15 +494,27 @@ try {
             Invoke-MSBuildProject $msbuild 'Client\Default\Client.vcxproj'
         }
         Assert-RuntimeLayout
+        # Read the publishers' required-file contract without running them.
+        # Server startup admits every world, regardless of the selected raid.
+        $runtimeInputManifest = Read-BuildDomainManifest $domainManifestPath
         $missingRuntimeInputs = @(
-            'Server/Bin/DataFiles/Gameplay/Gameplay.bootstrap',
-            'Server/Bin/DataFiles/Items/Items.bootstrap',
-            'Server/Bin/DataFiles/Vehicles/Vehicles.bootstrap',
-            'Server/Bin/DataFiles/World/BERN.worldbootstrap',
-            'Server/Bin/DataFiles/World/CHARACTER_SELECT_ARENA.worldbootstrap',
-            'Server/Bin/DataFiles/World/KAKULSAYDON_ARENA.worldbootstrap',
+            foreach ($runtimeDomainId in @('gameplay.balance', 'items.catalog',
+                'vehicles.profiles', 'honortitles.catalog', 'valtan.rewards',
+                'world.gameplay', 'navigation')) {
+                $runtimeDomain = Get-BuildDomainById $runtimeInputManifest $runtimeDomainId
+                $runtimeDomain.requiredOutputPatterns | Where-Object {
+                    ([string]$_).StartsWith('Server/Bin/DataFiles/', [StringComparison]::Ordinal)
+                }
+            }
             'Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.mapassets'
-        ) | Where-Object { -not (Test-Path -LiteralPath (Join-Path $repoRoot $_)) }
+        ) | Where-Object {
+            $runtimeInputPath = Join-Path $repoRoot $_
+            if ([Management.Automation.WildcardPattern]::ContainsWildcardCharacters([IO.Path]::GetFileName($_))) {
+                @(Get-ChildItem -LiteralPath (Split-Path -Parent $runtimeInputPath) `
+                    -Filter (Split-Path -Leaf $runtimeInputPath) -File -ErrorAction SilentlyContinue).Count -eq 0
+            }
+            else { -not (Test-Path -LiteralPath $runtimeInputPath -PathType Leaf) }
+        }
         if ($missingRuntimeInputs) {
             Write-Warning ('Runtime data is not prepared: ' + ($missingRuntimeInputs -join ', '))
             Write-Host 'Before launching, run these explicit data-generation commands:'

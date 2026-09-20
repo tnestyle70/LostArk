@@ -278,9 +278,9 @@ bool LostArk::Server::CGameRoom::Update_ValtanGhostPortalScheduler(
 	using namespace LostArk::Shared;
 	constexpr std::uint32_t PORTAL_OCCURRENCE_INTERVAL_MS = 7900u;
 	constexpr std::uint32_t PORTAL_RUNNER_START_DELAY_MS = 300u;
-	constexpr float TRIANGLE_CIRCUMRADIUS_M = 9.f;
-	constexpr float TRIANGLE_EDGE_LENGTH_M = 15.5884572681f;
-	constexpr float PORTAL_RUNNER_SPEED_MPS = 11.9911209755f;
+	constexpr float TRIANGLE_CIRCUMRADIUS_M = 13.5f;
+	constexpr float TRIANGLE_EDGE_LENGTH_M = 23.3826859022f;
+	constexpr float PORTAL_RUNNER_SPEED_MPS = 17.9866814632f;
 	constexpr float TRIANGLE_START_ANGLE_DEGREES = 30.f;
 	constexpr float TRIANGLE_ANGLE_STEP_DEGREES = 120.f;
 	if (!boss.bGhostPhasePatternLoopActive)
@@ -862,7 +862,7 @@ void LostArk::Server::CGameRoom::Update_KoukuPursuitProjectiles(
 	SERVER_PLAYER* target = nullptr;
 	NET_ENTITY_ID requiredTarget = boss.iPatternTargetEntityId;
 	bool diceBinding = false;
-	if (const auto* member = Find_KoukuAuditionMember(boss.iNetEntityId))
+	if (const auto* member = Find_KoukuAuditionMember(boss.iNetEntityId, boss.iPatternSequence))
 		for (const auto& binding : member->LogicLedger.Windows)
 			if (binding.bOpened && !binding.bClosed && binding.iFreePlayerNetEntityId != INVALID_NET_ENTITY_ID)
 			{ requiredTarget = binding.iFreePlayerNetEntityId; diceBinding = true; break; }
@@ -1060,8 +1060,9 @@ void LostArk::Server::CGameRoom::Update_KoukuPlayerTargets(
 				boss.fPatternStageRootGroundY += followGround.y - startGround.y;
 			}
 			boss.fPositionX = destination.x; boss.fPositionY = followY; boss.fPositionZ = destination.z;
-			(void)m_ServerCollisionSystem.Update_BlockingBody(boss.iNetEntityId,
-				boss.fPositionX, boss.fPositionY + boss.fCollisionRadius, boss.fPositionZ);
+			if (std::any_of(m_WorldEntities.begin(), m_WorldEntities.end(), [&](const auto& body) { return &body == &boss; }))
+				(void)m_ServerCollisionSystem.Update_BlockingBody(boss.iNetEntityId,
+					boss.fPositionX, boss.fPositionY + boss.fCollisionRadius, boss.fPositionZ);
 			if (followBlocked) m_strStatus = "Boss tracking follow stopped at the collision boundary";
 			continue;
 		}
@@ -1310,7 +1311,8 @@ bool LostArk::Server::CGameRoom::Commit_KoukuAlbionAirborne(
 	}
 	if (state.iSelectedPlayer) staged->iTargetEntityId=staged->iPatternTargetEntityId=state.iSelectedPlayer;
 	boss = std::move(*staged);
-	(void)m_ServerCollisionSystem.Update_BlockingBody(boss.iNetEntityId,boss.fPositionX,boss.fPositionY+boss.fCollisionRadius,boss.fPositionZ);
+	if (std::any_of(m_WorldEntities.begin(), m_WorldEntities.end(), [&](const auto& body) { return &body == &boss; }))
+		(void)m_ServerCollisionSystem.Update_BlockingBody(boss.iNetEntityId,boss.fPositionX,boss.fPositionY+boss.fCollisionRadius,boss.fPositionZ);
 	return true;
 }
 
@@ -1329,11 +1331,11 @@ void LostArk::Server::CGameRoom::Commit_KoukuMechanicTriggers(const std::uint32_
 	// This executes outside the world iteration: vector growth cannot invalidate a boss reference.
 	for (const auto& pending : m_PendingKoukuMechanicTriggers)
 	{
-		auto owner = std::find_if(m_WorldEntities.begin(), m_WorldEntities.end(),
+		auto liveOwner = std::find_if(m_WorldEntities.begin(), m_WorldEntities.end(),
 			[&pending](const SERVER_WORLD_ENTITY& entity) { return entity.iNetEntityId == pending.iBossEntityId; });
-		if (owner == m_WorldEntities.end() || owner->strPatternId.empty() ||
-			owner->iPatternSequence != pending.iPatternSequence || 0u == owner->iCurrentHp)
-			continue;
+		auto* owner = Find_KoukuOccurrenceOwner(pending.iBossEntityId, pending.iPatternSequence);
+		if (!owner || liveOwner == m_WorldEntities.end()) continue;
+		const bool detached = owner != &*liveOwner;
 		const auto& trigger = pending.Trigger;
 		if (trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::ALBION_AIRBORNE)
 		{
@@ -1388,7 +1390,7 @@ void LostArk::Server::CGameRoom::Commit_KoukuMechanicTriggers(const std::uint32_
 				owner->fPatternStageOriginYawDegrees = owner->fYawDegrees;
 			}
 
-			m_ServerCollisionSystem.Update_BlockingBody(owner->iNetEntityId, owner->fPositionX,
+			if (!detached) m_ServerCollisionSystem.Update_BlockingBody(owner->iNetEntityId, owner->fPositionX,
 				owner->fPositionY + owner->fCollisionRadius, owner->fPositionZ);
 			continue;
 		}
@@ -1423,7 +1425,7 @@ void LostArk::Server::CGameRoom::Commit_KoukuMechanicTriggers(const std::uint32_
 				placement.fYawDegrees = owner->fYawDegrees;
 				SERVER_WORLD_ENTITY clone{};
 				if (!child || nextId == INVALID_NET_ENTITY_ID ||
-					!Build_WorldEntity(placement, nextId, clone, baseCatalog, owner->iNetEntityId))
+					!Build_WorldEntity(placement, nextId, clone, baseCatalog, owner->iNetEntityId, owner->iPatternSequence))
 				{ status = "a cross direction clone failed dependent-owner admission"; break; }
 				clone.fPositionX = clone.fSpawnPositionX = placement.fPositionX;
 				clone.fPositionY = clone.fSpawnPositionY = placement.fPositionY;
@@ -1440,9 +1442,9 @@ void LostArk::Server::CGameRoom::Commit_KoukuMechanicTriggers(const std::uint32_
 			}
 			if (clones.size() != 3u)
 			{ m_strStatus = "Cross direction preserved all actors: " + status; continue; }
-			const auto ownerIndex = static_cast<std::size_t>(std::distance(m_WorldEntities.begin(), owner));
+			const auto ownerIndex = static_cast<std::size_t>(std::distance(m_WorldEntities.begin(), liveOwner));
 			m_WorldEntities.reserve(m_WorldEntities.size() + clones.size());
-			auto& committedOwner = m_WorldEntities[ownerIndex];
+			auto& committedOwner = detached ? *owner : m_WorldEntities[ownerIndex];
 			committedOwner.KoukuDirectionPlayback = std::move(real);
 			committedOwner.bKoukuDirectionPlaybackComplete = false;
 			committedOwner.iKoukuDirectionEndTick = CKoukuSaydonLogicRuntime::Add_Ticks(committedOwner.iPatternStartTick,
@@ -1499,7 +1501,7 @@ void LostArk::Server::CGameRoom::Commit_KoukuMechanicTriggers(const std::uint32_
 				if (nextId == INVALID_NET_ENTITY_ID || !std::isfinite(placement.fPositionX) || !std::isfinite(placement.fPositionY) ||
 					!std::isfinite(placement.fPositionZ) || !std::isfinite(placement.fYawDegrees) ||
 					!m_ServerNavigation.Is_PointWalkableExact(placement.fPositionX, placement.fPositionZ) ||
-					!Build_WorldEntity(placement, nextId, clone, baseCatalog, owner->iNetEntityId))
+					!Build_WorldEntity(placement, nextId, clone, baseCatalog, owner->iNetEntityId, owner->iPatternSequence))
 				{ status = "a summoned actor failed navigation or dependent-owner admission"; admitted = false; break; }
 				clone.fPositionX = clone.fSpawnPositionX = placement.fPositionX;
 				clone.fPositionY = clone.fSpawnPositionY = placement.fPositionY;
@@ -1690,7 +1692,7 @@ void LostArk::Server::CGameRoom::Commit_KoukuMechanicTriggers(const std::uint32_
 			if (INVALID_NET_ENTITY_ID == nextId ||
 				(m_ServerNavigation.Is_Loaded() && !m_ServerNavigation.Is_PointWalkableExact(
 					placement.fPositionX, placement.fPositionZ)) ||
-				!Build_WorldEntity(placement, nextId, clone, baseCatalog, owner->iNetEntityId))
+				!Build_WorldEntity(placement, nextId, clone, baseCatalog, owner->iNetEntityId, owner->iPatternSequence))
 			{
 				admitted = false;
 				break;
@@ -1725,9 +1727,9 @@ void LostArk::Server::CGameRoom::Commit_KoukuMechanicTriggers(const std::uint32_
 			m_strStatus = "KoukuSaydon teleport preserved all actors: clone admission failed: " + status;
 			continue;
 		}
-		const auto ownerIndex = static_cast<std::size_t>(std::distance(m_WorldEntities.begin(), owner));
+		const auto ownerIndex = static_cast<std::size_t>(std::distance(m_WorldEntities.begin(), liveOwner));
 		m_WorldEntities.reserve(m_WorldEntities.size() + clones.size());
-		auto& committedOwner = m_WorldEntities[ownerIndex];
+		auto& committedOwner = detached ? *owner : m_WorldEntities[ownerIndex];
 		committedOwner.fPositionX = trigger.fTeleportX;
 		committedOwner.fPositionY = trigger.fTeleportY;
 		committedOwner.fPositionZ = trigger.fTeleportZ;
@@ -1781,10 +1783,8 @@ void LostArk::Server::CGameRoom::Update_KoukuGazeClones(const std::uint32_t serv
 			++clone;
 			continue;
 		}
-		const auto owner = std::find_if(m_WorldEntities.begin(), m_WorldEntities.end(),
-			[&clone](const SERVER_WORLD_ENTITY& entity) { return entity.iNetEntityId == clone->iOwnerBossNetEntityId; });
-		bool live = owner != m_WorldEntities.end() && !owner->strPatternId.empty() &&
-			owner->iPatternSequence == clone->iKoukuCloneOwnerSequence && owner->iCurrentHp > 0u &&
+		const auto* owner = Find_KoukuOccurrenceOwner(clone->iOwnerBossNetEntityId, clone->iKoukuCloneOwnerSequence);
+		bool live = owner != nullptr && owner->iCurrentHp > 0u &&
 			!CKoukuSaydonLogicRuntime::Has_ReachedTick(serverTick, clone->iKoukuCloneEndTick);
 		const auto* catalog = Resolve_KoukuProductCatalog();
 		if (live && nullptr != catalog && !clone->strPatternId.empty())
@@ -1828,6 +1828,7 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 		1u : m_iServerTick + 1u;
 	// Idempotent for direct simulation callers; normal ticks already prepared before players.
 	Prepare_KoukuAuditionTick(updateTick);
+	Update_KoukuPatternTails(updateTick);
 	Update_KoukuGazeClones(updateTick);
 	if (!Update_DependentBosses(updateTick))
 	{

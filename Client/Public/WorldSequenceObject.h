@@ -46,6 +46,7 @@ public:
     void Hide() { m_Visible = false; }
     // Return to the same rest-pose state as a new clone, without recreating it.
     bool_t Reset_ForReuse();
+    const shared_ptr<Engine::CModel>& Get_Model() const { return m_Model; }
     const float4x4_t& Get_SampledWorld() const { return m_World; }
     const std::string& Get_RenderStatus() const
     { return m_RenderStatus.empty() ? m_TranslucentRenderStatus : m_RenderStatus; }

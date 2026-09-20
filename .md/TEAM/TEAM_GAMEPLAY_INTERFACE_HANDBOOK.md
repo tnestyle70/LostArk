@@ -54,8 +54,9 @@ optional `koukuHudMode`는 `MARIO/MAZE/NONE`이고 Server가 이동 성공 후 �
 Clown 본체는 `Character/KoukuSaton/MN_RPCZ_00-1/MN_RPCZ_00-1.wmodel`이며 admission scale은
 `0.017 × 0.709`다. 별도 프라이팬 `IT_GSTFP_00` 장착 part를 제외했고 본체와 망치 몸동작은 유지한다.
 `Data/Animation/Authored/KoukuSaydon/Clown.interactionbindings.json`이 mode/index별 clip을 소유한다.
-G1 Saydon 활성 동안 Server가 카드 문양 4종 × RED/BLACK 중 하나를 배정해 복제하며 G1 종료/퇴장에
-NONE으로 정리한다. Client는 8개 `boss.kouku.card.*` V2 group을 머리 위에 표시하고 카드 상태를 생성하지 않는다.
+G1 전투 진입 snapshot 전에 Server가 참가자 1~4명의 문양을 중복 없이 배정하고 색 RED/BLACK은 독립으로 선택한다. 유효한 기존 배정은 유지하며 G2 진입 연출 시작과 퇴장에 NONE으로 정리한다. Client는 8개 `boss.kouku.card.*` V2 group을 머리 위에 표시하고 카드 상태를 생성하지 않는다.
+
+카드미로의 여섯 class는 `Data/Animation/Authored/<Class>/<Class>.interactionbindings.json`의 원본 손 본과 clip을 사용한다. LMB는 오른쪽에서 왼쪽으로 휘두르는 clip, Q는 점프 내려찍기이며 기존 typed interaction command와 Server hit 시각을 따른다. 기본 무기를 숨기고 별도 카드미로 망치를 표시하며 퇴장 시 기본 무기로 복귀한다. 일반 광기 광대는 망치를 숨기고 Mario 광대만 표시한다.
 쿠크의 사망 화면은 기존 DeadScene UI와 typed revive 명령을 사용한다. Server는 사망 XZ의
 walkable 지면으로 부활시키며, 더 이상 유효하지 않은 지점은 기존 navigation projection으로 보정한다.
 캐릭터 정보창과 아바타 도감은 아레나의 현재 복제 캐릭터를 읽고, 같은 class의 광대 교체도 목록 갱신 경계로 본다.
@@ -352,6 +353,7 @@ FOV 아래 `Character size`는 catalog presentation scale에 곱하는 0.25~4배
 `Reset size`는 1배로 복귀하며 몸·장비·본 부착이 같은 root를 소비한다. Server Transform,
 충돌·공격 반경은 이 값의 소비자가 아니다. 맵별 optional `characterSizeMultiplier`를 생략하면
 1을 사용하고, 생성·class 교체·재입장 때 저장된 값을 다시 적용한다.
+F1 `Character Size`의 optional `classSizeMultipliers`는 여섯 stable class 이름으로 저장한다. 기본값은 Artist 1.6, DimensionMaster 0.7, 나머지 1이며 현재 catalog scale에 곱한다. `clownSizeMultiplier` 기본 0.7과 `marioSizeMultiplier` 기본 1은 변신별 추가 배율이다. 로컬·원격 캐릭터가 같은 map profile을 소비한다. 카드미로 플레이어 망치의 `mazeHammerPositionCm`, `mazeHammerRotationDegrees`, `mazeHammerScale`은 손 기준 cm/degree/축별 배율이고 같은 Save/Reload로 저장한다. 쿠크 휠윈드 Object의 Transform과는 별도 필드다.
 `Advanced camera pose`의 Position offset은 플레이어 기준 월드 XYZ(m), Rotation은
 Pitch/Yaw/Roll(deg), Pitch +는 아래, Yaw 0은 +Z다. 응답0은 즉시 follow다.
 슬라이더 변경·`Reload saved`·두 preset은 활성 맵에 즉시 적용하고 follow로 복귀한다.
@@ -508,6 +510,7 @@ Animation Tool은 Scene Character의 현재 model에 실제 존재하는 clip만
 
 F1 진입 이름은 `Action Workbench`다. Boss 선택에 따라 동일한 Sequencer/Resources/Patterns/Box Detail 창이
 Valtan/KoukuSaydon의 독립된 문서·draft·저장 session을 연결한다. 아래 split-owner 계약은 Valtan session에 적용한다.
+쿠크의 Stage 합계는 다음 stage/pattern으로 진행하는 시각이다. Effect/Sound/World/Logic/Summon row는 자신의 시작·종료 시간을 유지한다. `Full lifetime ms`는 전체 row 수명만 바꾸고 마지막 Stage를 늘리지 않는다. 게시 encounter의 optional `timelineDurationMs`와 bootstrap `PATTERNTIMELINE`은 row 수명을, presentation의 `durationMs`/optional `stageDurationMs`는 전체 수명/Stage 합계를 소유한다. 생략한 문서는 기존 Stage 합계를 사용한다. 자연 완료는 원래 시작 tick·occurrence·catalog revision과 남은 핸들을 보존하고, 명시 Stop·수동 새 실행·사망·관문 전환은 잔여 row도 정리한다. 자동 RaidFlow 다음 Entry는 같은 epoch와 immutable catalog revision을 유지하며 이전 row를 넘긴다. Client는 Server 진행을 기다리게 하거나 row 수명으로 다음 Pattern을 결정하지 않는다.
 Valtan의 Server stage, animation occurrence, Effect, Pattern Sound, Shake/Camera와 world/combat-object를
 stable action·occurrence ID로 join한다. Workbench는 새 Product JSON이나 두 번째 runtime을 소유하지 않는다.
 stage·release·Counter/Groggy·Collider는 `CBalanceTool`의 joined gameplay draft를, animation slot과 Effect
@@ -1435,7 +1438,7 @@ payload에 없으므로 `raw * 100 / (100 + defense)`는 `PROJECT_TUNED` 중앙 
 
 수업용 `CMonster`와 `astar/Monster`는 제거 대상 레거시다. 제품 일반 몬스터는 Valtan archetype을 `MonsterCatalog.json`과 `MonsterProfiles.json`에 등록하고, Area `SpawnGroups.world.json` → publisher → Server `CSpawnGroupRuntime/CMonsterBrain` → Shared world entity spawn/snapshot/despawn → Client catalog presentation 경로를 사용한다. `MonsterProfiles.json` formatVersion 2의 `targetReleaseRange`, `turnSpeedDegreesPerSecond`, `acceleration`, `deceleration`, `arrivalSlowRadius`가 Server 권위 추적 유지·회전·가감속 정본이며 publisher는 이를 spawn-group bootstrap v4로 투영한다. Brain은 살아 있는 현재 타깃을 release range 안에서 유지하고 WINDUP부터 RECOVERY까지 타깃과 공격 방향을 고정하며, Server navigation 경로 단축과 기존 원형 body sweep/slide를 이동·knockback에 함께 사용한다. 레거시 클래스를 이 계약에 다시 연결하지 않는다.
 
-Client 일반 몬스터 표현은 root-motion 억제와 network-transform 보간을 독립 정책으로 사용한다. Server 권위 몬스터는 기존 2-tick `CNpcNetworkTransformInterpolator`로 표시하고, `WINDUP` occurrence에서 공격 clip을 0초부터 한 번 시작한 뒤 `ACTIVE/RECOVERY` 동안 같은 clip을 이어서 재생한다. 다음 `WINDUP`은 같은 clip이어도 새 occurrence로 다시 시작한다. `MonsterCatalog.json` formatVersion 2의 presentation-only `attackPresentations[]`는 실제 clip과 playback rate를 소유한다. Client는 Server entity ID와 occurrence tick으로 pool을 결정적으로 선택하므로 Server timing과 Client 간 일치성을 바꾸지 않는다. IDLE/CHASE 중 damage event는 catalog hit clip을 짧게 재생한 뒤 이전 locomotion으로 복귀하고 ATTACK/DEAD는 덮어쓰지 않는다. Valtan Loader는 spawn 전에 지원 archetype prototype을 미리 준비하고, 누락 모델/clip은 해당 archetype/action 표현만 격리한다.
+Client 일반 몬스터 표현은 root-motion 억제와 network-transform 보간을 독립 정책으로 사용한다. Server 권위 몬스터는 기존 2-tick `CNpcNetworkTransformInterpolator`로 표시하고, `WINDUP` occurrence에서 공격 clip을 0초부터 한 번 시작한 뒤 `ACTIVE/RECOVERY` 동안 같은 clip을 이어서 재생한다. 다음 `WINDUP`은 같은 clip이어도 새 occurrence로 다시 시작한다. `MonsterCatalog.json` formatVersion 2의 presentation-only `attackPresentations[]`는 실제 clip과 playback rate를 소유한다. optional `endEffectAssetId`는 해당 공격 clip이 끝날 때 한 번 재생하는 Effect ID이며, 공격이 중단되면 미재생 cue를 취소한다. 마리오 광대의 망치 마지막 효과가 이 계약을 사용한다. Client는 Server entity ID와 occurrence tick으로 pool을 결정적으로 선택하므로 Server timing과 Client 간 일치성을 바꾸지 않는다. IDLE/CHASE 중 damage event는 catalog hit clip을 짧게 재생한 뒤 이전 locomotion으로 복귀하고 ATTACK/DEAD는 덮어쓰지 않는다. Valtan Loader는 spawn 전에 지원 archetype prototype을 미리 준비하고, 누락 모델/clip은 해당 archetype/action 표현만 격리한다.
 
 combat body와 공격 footprint는 `Shared/Public/Gameplay/CombatCollisionContract.h`와 Server combat-object geometry의 pure XZ primitive로 평가한다. 플레이어 스킬은 target body radius, 일반 몬스터와 Lugaru는 player footprint, Valtan inline stage는 circle/ring/cone/forward-box/cross, 이동 검기는 swept circle과 player footprint의 교차를 Server fixed tick에서 판정한다. HP·damage·counter·death는 같은 typed Server hit resolver 순서를 유지한다. Client `CCollider`와 world-root Effect는 Debug/visual projection일 뿐 damage 판정이나 PhysX 권위가 아니다.
 

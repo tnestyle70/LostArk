@@ -549,6 +549,20 @@
         }
       ]
     },
-    {"effectAssetId": "effect.valtan.action.420604.stage003.full.restore", "sourceActionId": 420604, "sourceStageIndex": 3, "animationClips": [{"clipName": "mesh_att_battle_4_01", "playMs": 4733, "loop": false, "previewWallMs": 4733, "previewWallBasis": "SOURCE_ANIMATION_WINDOW"}]}
+    {"effectAssetId": "effect.valtan.action.420604.stage003.full.restore", "sourceActionId": 420604, "sourceStageIndex": 3, "animationClips": [{"clipName": "mesh_att_battle_4_01", "playMs": 4733, "loop": false, "previewWallMs": 4733, "previewWallBasis": "SOURCE_ANIMATION_WINDOW"}]},
+    {
+      "effectAssetId": "effect.valtan.action.15.stage002.full.restore",
+      "sourceActionId": 15,
+      "sourceStageIndex": 2,
+      "animationClips": [
+        {
+          "clipName": "mesh_respawn_1",
+          "playMs": 3000,
+          "loop": false,
+          "previewWallMs": 3000,
+          "previewWallBasis": "SOURCE_ANIMATION_WINDOW"
+        }
+      ]
+    }
   ]
 }

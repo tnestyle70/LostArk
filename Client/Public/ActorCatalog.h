@@ -323,6 +323,8 @@ struct MONSTER_ACTOR_ENTRY final
 	{
 		std::string clip;
 		f32_t playbackRate = 1.f;
+		// Optional natural-lifetime cue at the end of the admitted attack clip.
+		std::string endEffectAssetId;
 	};
 
 	struct PRESENTATION_CLIPS final

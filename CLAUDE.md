@@ -479,6 +479,12 @@ revision이 Server-active로 확인되기 전에는 Complete Play와 exact Resta
 보존한 view는 진단용 read-only이고 모든 Save/재생/Server mutation을 막는다. 사용자 수동 화면 확인
 전에는 창 resize나 visual fidelity를 PASS로 기록하지 않는다.
 
+KoukuSaydon Arena는 Release에서 게시된 Pattern/Sequence의 V1/V2 Effect와 enabled World 자원을
+입장 전에 모두 준비한다. Debug는 클래스·marker·BossCatalog의 기존 선준비를 유지하고 추가
+전체 raid 자원은 기존 lazy 경로로 준비하므로 첫 패턴 재생 때 준비 지연이 생길 수 있다.
+설정별 준비 시간은 `Client/Default/EffectFailure.user.log`의 `Kouku.Loading.*`와
+`Kouku.Arena.Ready`를 구분해 확인한다.
+
 KoukuSaydon Arena의 관문 보스는 `Data/Worlds/LV_LUT_MIDNIGHTC_ED/Gameplay.world.json`의 disabled boss
 placement(`boss.kakulsaydon.g1.saydon`, `g2.big-saydon`, `g2.kouku`, `g3.saydon`, `bingo.saydon`)이며
 `BOSS_KAKULSAYDON_*` archetype이 `ENCOUNTER_KAKULSAYDON_G1`을 공유한다. Debug F1 `KoukuSaydon Arena`의 관문

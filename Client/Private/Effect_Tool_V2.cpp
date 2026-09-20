@@ -5141,6 +5141,11 @@ void Client::CEffect_Tool_V2::Render_DraftDetail(EFFECT_V2_DOCUMENT& document,
 	ImGui::BeginDisabled(!hasTexture(CEffectV2Object::TEXTURE_INPUT::EMISSIVE));
 	ImGui::DragFloat("Bloom Intensity", &P.fBloomIntensity, 0.05f, 0.f, 32.f);
 	ImGui::EndDisabled();
+    if (document.eType != EFFECT_V2_TYPE::SCREEN_POST && P.eBlend != CEffectV2Object::BLEND_MODE::MULTIPLY)
+    {
+        ImGui::SliderFloat("Scene Bloom", &P.fSceneBloomScale, 0.f, 1.f);
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("Bloom contribution of this surface. Does not change its visible color or other effects.");
+    }
 	if (!hasTexture(CEffectV2Object::TEXTURE_INPUT::EMISSIVE))
 		ImGui::TextDisabled("Bind an Emissive texture to use Bloom Intensity.");
 	ImGui::BeginDisabled(!hasTexture(CEffectV2Object::TEXTURE_INPUT::NOISE));
@@ -5235,7 +5240,10 @@ void Client::CEffect_Tool_V2::Render_DraftDetail(EFFECT_V2_DOCUMENT& document,
         {
             if (eShape == CEffectV2Object::SHAPE::DECAL && index == 2) continue;
             if (ImGui::Selectable(labels[index], index == iBlend))
+            {
                 P.eBlend = static_cast<CEffectV2Object::BLEND_MODE>(index);
+                if (P.eBlend == CEffectV2Object::BLEND_MODE::MULTIPLY) P.fSceneBloomScale = 1.f;
+            }
         }
         ImGui::EndCombo();
     }

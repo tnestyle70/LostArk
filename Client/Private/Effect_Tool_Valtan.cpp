@@ -138,7 +138,14 @@ namespace
 			[&Source](const uint32_t Id)
 			{ return Source.strEffectAssetId.starts_with(
 				"effect.valtan.action." + std::to_string(Id) + ".stage"); });
-		if (!ActionMatches)
+		// An explicitly authored Product cue can join a reviewed original Action
+		// even when the animation promotion retains a legacy action alias.
+		const bool_t CueMatches = std::ranges::any_of(Pattern.Stages,
+			[&Source](const auto& Stage)
+			{ return std::ranges::any_of(Stage.ProductCues,
+				[&Source](const auto& Cue)
+				{ return Cue.strEffectAssetId == Source.strEffectAssetId; }); });
+		if (!ActionMatches && !CueMatches)
 			return false;
 		for (const auto& Stage : Pattern.Stages)
 			for (const auto& Clip : Stage.ClipOccurrences)
@@ -280,6 +287,22 @@ bool_t Client::CEffect_Tool::Play_ValtanStageSequence(
 		m_strPreviewAnimationStatus =
 			"Valtan model could not be staged for the ordered clip sequence.";
 		return false;
+	}
+	// Action 15's Respawn_1 notify explicitly owns the MN_RPBF_02 ghost body.
+	// Full Restore and Product cue playback share this exact source animation.
+	if (const auto previewBoss = CAnimationTargetService::Resolve_Boss())
+	{
+		const auto previousModel = previewBoss->Get_BodyModel();
+		const bool_t ghost = Clips.size() == 1u &&
+			(Clips.front().strClipName == "mesh_respawn_1" ||
+			 Clips.front().strClipName == "valtan.cinematic.finale");
+		if (!previewBoss->Set_LocalPreviewGhostPresentation(ghost, m_strPreviewAnimationStatus))
+			return false;
+		if (previousModel != previewBoss->Get_BodyModel())
+		{
+			CAnimationTargetService::Clear_Preview();
+			CAnimationTargetService::Bind_Preview(previewBoss, VALTAN_ANIMATION_ASSET_NAME);
+		}
 	}
 	const shared_ptr<Engine::CModel> pModel =
 		CAnimationTargetService::Resolve_Model();
@@ -3105,6 +3128,36 @@ void Client::CEffect_Tool::Render_ValtanPatternNode(
 		return;
 	}
 
+	const bool_t bSourceCinematic =
+		Pattern.strPatternId == "VALTAN_ENTRANCE_CINEMATIC" ||
+		Pattern.strPatternId == "VALTAN_TRASH" ||
+		Pattern.strPatternId == "VALTAN_GHOST_DEATH_AUDITION";
+	ImGui::SeparatorText("Saved Stages and Animation");
+	if (bSourceCinematic)
+	{
+		ImGui::TextWrapped("Complete Play runs the saved original cinematic actors, camera and sequence effects in the Arena. Animation Play below previews the selected clip segment.");
+	}
+	for (const auto& Stage : Pattern.Stages)
+	{
+		ImGui::PushID(Stage.strStageId.c_str());
+		const std::string StageLabel = Stage.strStageId + " | " +
+			std::to_string(Stage.iDurationMs) + " ms";
+		if (ImGui::TreeNode(StageLabel.c_str()))
+		{
+			for (const auto& Clip : Stage.ClipOccurrences)
+			{
+				ImGui::PushID(Clip.strClipOccurrenceId.c_str());
+				ImGui::TextWrapped("%s | source %u ms | play %u ms | rate %.3f",
+					Clip.strClipName.c_str(), Clip.iSourceStartMs, Clip.iPlayMs, Clip.fPlayRate);
+				if (ImGui::SmallButton("Animation Play"))
+					Play_ValtanStageSequence({ Clip });
+				ImGui::PopID();
+			}
+			ImGui::TreePop();
+		}
+		ImGui::PopID();
+	}
+
 	struct RUNTIME_VALTAN_PRODUCT_SOURCE final
 	{
 		const VALTAN_STAGE_VIEW* pStage = nullptr;
@@ -3209,7 +3262,7 @@ void Client::CEffect_Tool::Render_ValtanPatternNode(
 	if (bPatternOpen)
 	{
 		ImGui::SeparatorText("Saved Pattern Effects");
-		if (RuntimeRows.empty())
+		if (RuntimeRows.empty() && !bSourceCinematic)
 		{
 			ImGui::TextDisabled(
 				"This pattern currently has no saved Effect cue or combat-object visual.");
@@ -3530,7 +3583,9 @@ void Client::CEffect_Tool::Render_ValtanPatternNode(
 		std::ranges::sort(FullRestoreSources, {},
 			[](const auto* Source) { return std::string_view(Source->strEffectAssetId); });
 		if (FullRestoreSources.empty())
-			ImGui::TextDisabled("No saved Full Restore matching this pattern's animation clips.");
+			ImGui::TextDisabled(bSourceCinematic ?
+				"Original cinematic effects are saved in the World Sequence and replayed by Complete Play." :
+				"No saved Full Restore matching this pattern's animation clips.");
 		for (const auto* Source : FullRestoreSources)
 		{
 			ImGui::PushID("FullRestore");

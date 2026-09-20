@@ -21,17 +21,17 @@
           "actionId": "valtan.cinematic.entrance.establish",
           "sequenceRole": "ESTABLISH",
           "animation": {
-            "endPolicy": "LOOP_TO_STAGE_END",
+            "endPolicy": "EXACT",
             "repeatCount": 1,
             "occurrences": [
               {
                 "clipOccurrenceId": "valtan.cinematic.entrance.establish.clip.01",
-                "clip": "mesh_att_battle_20_02",
-                "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+                "clip": "valtan.cinematic.entrance",
+                "mappingBasis": "SOURCE_REVIEWED_DELTA",
                 "sourceStartMs": 0,
-                "playMs": 0,
+                "playMs": 8600,
                 "playRate": 1.0,
-                "repeatUntilStageEnd": true
+                "repeatUntilStageEnd": false
               }
             ]
           },
@@ -52,17 +52,17 @@
           "actionId": "valtan.cinematic.entrance.arena-reveal",
           "sequenceRole": "ARENA_REVEAL",
           "animation": {
-            "endPolicy": "LOOP_TO_STAGE_END",
+            "endPolicy": "EXACT",
             "repeatCount": 1,
             "occurrences": [
               {
                 "clipOccurrenceId": "valtan.cinematic.entrance.arena-reveal.clip.01",
-                "clip": "mesh_att_battle_20_03",
-                "mappingBasis": "CURRENT_PRODUCT_BASELINE",
-                "sourceStartMs": 0,
-                "playMs": 0,
+                "clip": "valtan.cinematic.entrance",
+                "mappingBasis": "SOURCE_REVIEWED_DELTA",
+                "sourceStartMs": 8600,
+                "playMs": 5800,
                 "playRate": 1.0,
-                "repeatUntilStageEnd": true
+                "repeatUntilStageEnd": false
               }
             ]
           },
@@ -83,17 +83,17 @@
           "actionId": "valtan.cinematic.entrance.hero-handoff",
           "sequenceRole": "HERO_HANDOFF",
           "animation": {
-            "endPolicy": "LOOP_TO_STAGE_END",
+            "endPolicy": "EXACT",
             "repeatCount": 1,
             "occurrences": [
               {
                 "clipOccurrenceId": "valtan.cinematic.entrance.hero-handoff.clip.01",
-                "clip": "mesh_att_battle_20_04",
-                "mappingBasis": "CURRENT_PRODUCT_BASELINE",
-                "sourceStartMs": 0,
-                "playMs": 0,
+                "clip": "valtan.cinematic.entrance",
+                "mappingBasis": "SOURCE_REVIEWED_DELTA",
+                "sourceStartMs": 14400,
+                "playMs": 10308,
                 "playRate": 1.0,
-                "repeatUntilStageEnd": true
+                "repeatUntilStageEnd": false
               }
             ]
           },
@@ -105,7 +105,7 @@
               "trigger": "ENTER",
               "startOffsetMs": 0,
               "durationPolicy": "EXPLICIT",
-              "durationMs": 4467
+              "durationMs": 10308
             }
           ]
         }
@@ -1302,7 +1302,16 @@
                 "clip": "mesh_att_battle_12_03",
                 "mappingBasis": "PROJECT_AUTHORED",
                 "sourceStartMs": 0,
-                "playMs": 900,
+                "playMs": 400,
+                "playRate": 1.0,
+                "repeatUntilStageEnd": false
+              },
+              {
+                "clipOccurrenceId": "valtan.mechanic.arena-break-109.impact-hold.original-phase2.clip",
+                "clip": "valtan.cinematic.phase2",
+                "mappingBasis": "SOURCE_REVIEWED_DELTA",
+                "sourceStartMs": 0,
+                "playMs": 500,
                 "playRate": 1.0,
                 "repeatUntilStageEnd": false
               }
@@ -1330,27 +1339,27 @@
             "occurrences": [
               {
                 "clipOccurrenceId": "valtan.mechanic.arena-break-109.wide-reveal.clip.01",
-                "clip": "mesh_att_battle_12_03",
-                "mappingBasis": "PROJECT_AUTHORED",
-                "sourceStartMs": 900,
+                "clip": "valtan.cinematic.phase2",
+                "mappingBasis": "SOURCE_REVIEWED_DELTA",
+                "sourceStartMs": 500,
                 "playMs": 300,
                 "playRate": 1.0,
                 "repeatUntilStageEnd": false
               },
               {
                 "clipOccurrenceId": "valtan.mechanic.arena-break-109.wide-reveal.roar-windup.clip.01",
-                "clip": "mesh_evt1_att_battle_5_01_start",
-                "mappingBasis": "PROJECT_AUTHORED",
-                "sourceStartMs": 0,
+                "clip": "valtan.cinematic.phase2",
+                "mappingBasis": "SOURCE_REVIEWED_DELTA",
+                "sourceStartMs": 800,
                 "playMs": 1300,
                 "playRate": 1.0,
                 "repeatUntilStageEnd": false
               },
               {
                 "clipOccurrenceId": "valtan.mechanic.arena-break-109.wide-reveal.roar-active.clip.01",
-                "clip": "mesh_evt1_att_battle_5_01_loop",
-                "mappingBasis": "PROJECT_AUTHORED",
-                "sourceStartMs": 0,
+                "clip": "valtan.cinematic.phase2",
+                "mappingBasis": "SOURCE_REVIEWED_DELTA",
+                "sourceStartMs": 2100,
                 "playMs": 700,
                 "playRate": 1.0,
                 "repeatUntilStageEnd": false
@@ -1374,17 +1383,17 @@
           "actionId": "valtan.mechanic.arena-break-109.recovery",
           "sequenceRole": "ROAR_RECOVERY",
           "animation": {
-            "endPolicy": "LOOP_TO_STAGE_END",
+            "endPolicy": "EXACT",
             "repeatCount": 1,
             "occurrences": [
               {
                 "clipOccurrenceId": "valtan.mechanic.arena-break-109.recovery.clip.01",
-                "clip": "mesh_evt1_att_battle_5_01_end",
-                "mappingBasis": "PROJECT_AUTHORED",
-                "sourceStartMs": 0,
-                "playMs": 0,
+                "clip": "valtan.cinematic.phase2",
+                "mappingBasis": "SOURCE_REVIEWED_DELTA",
+                "sourceStartMs": 2800,
+                "playMs": 2700,
                 "playRate": 1.0,
-                "repeatUntilStageEnd": true
+                "repeatUntilStageEnd": false
               }
             ]
           },
@@ -1396,7 +1405,7 @@
               "trigger": "ENTER",
               "startOffsetMs": 0,
               "durationPolicy": "EXPLICIT",
-              "durationMs": 870
+              "durationMs": 2700
             }
           ]
         }
@@ -3025,7 +3034,16 @@
             ]
           },
           "effectCues": [],
-          "cameraInvocations": []
+          "cameraInvocations": [
+            {
+              "cameraInvocationId": "camera.valtan.source.wall-break.step-04.invocation",
+              "cameraCueId": "camera.valtan.source.wall-break.step-04",
+              "trigger": "ENTER",
+              "startOffsetMs": 0,
+              "durationPolicy": "EXPLICIT",
+              "durationMs": 2800
+            }
+          ]
         },
         {
           "stageId": "STEP_05",
@@ -3047,7 +3065,16 @@
             ]
           },
           "effectCues": [],
-          "cameraInvocations": []
+          "cameraInvocations": [
+            {
+              "cameraInvocationId": "camera.valtan.source.wall-break.step-05.invocation",
+              "cameraCueId": "camera.valtan.source.wall-break.step-05",
+              "trigger": "ENTER",
+              "startOffsetMs": 0,
+              "durationPolicy": "EXPLICIT",
+              "durationMs": 3924
+            }
+          ]
         },
         {
           "stageId": "STEP_06",
@@ -5091,8 +5118,8 @@
             "occurrences": [
               {
                 "clipOccurrenceId": "valtan.sequence.center-trash-rush-if.step-05.clip-01",
-                "clip": "mesh_att_battle_13_02",
-                "mappingBasis": "PROJECT_AUTHORED",
+                "clip": "valtan.cinematic.trash",
+                "mappingBasis": "SOURCE_REVIEWED_DELTA",
                 "sourceStartMs": 0,
                 "playMs": 667,
                 "playRate": 1.0,
@@ -5101,7 +5128,16 @@
             ]
           },
           "effectCues": [],
-          "cameraInvocations": []
+          "cameraInvocations": [
+            {
+              "cameraInvocationId": "camera.valtan.source.trash.step-05.invocation",
+              "cameraCueId": "camera.valtan.source.trash.step-05",
+              "trigger": "ENTER",
+              "startOffsetMs": 0,
+              "durationPolicy": "EXPLICIT",
+              "durationMs": 667
+            }
+          ]
         },
         {
           "stageId": "STEP_06",
@@ -5113,17 +5149,26 @@
             "occurrences": [
               {
                 "clipOccurrenceId": "valtan.sequence.center-trash-rush-if.step-06.clip-01",
-                "clip": "mesh_att_battle_13_02-1",
-                "mappingBasis": "PROJECT_AUTHORED",
-                "sourceStartMs": 0,
-                "playMs": 4100,
+                "clip": "valtan.cinematic.trash",
+                "mappingBasis": "SOURCE_REVIEWED_DELTA",
+                "sourceStartMs": 667,
+                "playMs": 5707,
                 "playRate": 1.0,
                 "repeatUntilStageEnd": false
               }
             ]
           },
           "effectCues": [],
-          "cameraInvocations": []
+          "cameraInvocations": [
+            {
+              "cameraInvocationId": "camera.valtan.source.trash.step-06.invocation",
+              "cameraCueId": "camera.valtan.source.trash.step-06",
+              "trigger": "ENTER",
+              "startOffsetMs": 0,
+              "durationPolicy": "EXPLICIT",
+              "durationMs": 5707
+            }
+          ]
         },
         {
           "stageId": "STEP_07",
@@ -6919,7 +6964,46 @@
               }
             ]
           },
-          "effectCues": [],
+          "effectCues": [
+            {
+              "cueId": "cue.valtan.ghost-respawn.original",
+              "scalePolicy": {
+                "kind": "ARENA_ABSOLUTE",
+                "worldScale": [
+                  1,
+                  1,
+                  1
+                ]
+              },
+              "occurrenceId": "cue.valtan.ghost-respawn.original.occurrence.01",
+              "effectAssetId": "effect.valtan.action.15.stage002.full.restore",
+              "clipOccurrenceId": "valtan.sequence.respawn.step-01.clip-01",
+              "sourceStartMs": 0,
+              "sourceEndMs": null,
+              "anchorSlotId": "root",
+              "followPolicy": "snapshot",
+              "stopPolicy": "natural",
+              "repeatPolicy": "once",
+              "localTransform": {
+                "position": [
+                  0,
+                  0,
+                  0
+                ],
+                "rotationDegrees": [
+                  0,
+                  0,
+                  0
+                ],
+                "scale": [
+                  1,
+                  1,
+                  1
+                ]
+              },
+              "mappingBasis": "PROJECT_AUTHORED"
+            }
+          ],
           "cameraInvocations": []
         }
       ]
@@ -6945,17 +7029,26 @@
             "occurrences": [
               {
                 "clipOccurrenceId": "valtan.sequence.dead.step-01.clip-01",
-                "clip": "mesh_dead_1",
-                "mappingBasis": "PROJECT_AUTHORED",
+                "clip": "valtan.cinematic.finale",
+                "mappingBasis": "SOURCE_REVIEWED_DELTA",
                 "sourceStartMs": 0,
-                "playMs": 3667,
+                "playMs": 23000,
                 "playRate": 1.0,
                 "repeatUntilStageEnd": false
               }
             ]
           },
           "effectCues": [],
-          "cameraInvocations": []
+          "cameraInvocations": [
+            {
+              "cameraInvocationId": "camera.valtan.source.finale.audition.invocation",
+              "cameraCueId": "camera.valtan.source.finale.audition",
+              "trigger": "ENTER",
+              "startOffsetMs": 0,
+              "durationPolicy": "EXPLICIT",
+              "durationMs": 23000
+            }
+          ]
         }
       ]
     },
@@ -7048,7 +7141,7 @@
     },
     {
       "independentEffectId": "valtan.independent-effect.ghost-portal-once",
-      "displayName": "망령 포탈 동시 돌진 / 외접반지름 9m 정삼각형",
+      "displayName": "망령 포탈 동시 돌진 / 외접반지름 13.5m 정삼각형",
       "ownership": "SERVER_COMBAT_OBJECT",
       "spawnEventId": "event.valtan.ghost.portal-once.volley"
     }

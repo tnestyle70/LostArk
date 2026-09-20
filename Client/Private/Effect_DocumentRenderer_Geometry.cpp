@@ -355,6 +355,9 @@ HRESULT Client::CEffectDocumentRenderer::Render_Mesh(
 			return Fail_RenderOperation("Native capture box has no starting scene snapshot.", E_FAIL, true);
 		if (!m_pStartingSceneBloomCapture)
 			return Fail_RenderOperation("Native capture box has no matching bloom snapshot.", E_FAIL, true);
+        const auto captureUV = StartingCaptureUVTransform(Get_StagedDocument(), m_pStartingSceneCapture.Get());
+        if (FAILED(pDrawShader->Bind_RawValue("g_ALTVCaptureUVTransform", &captureUV, sizeof(captureUV))))
+            return Fail_RenderOperation("Native capture crop binding failed.", E_FAIL, true);
 		hResult = pDrawShader->Bind_Texture("g_SourceTexture2", m_pStartingSceneCapture);
 		if (FAILED(hResult))
 			return Fail_RenderOperation("Native capture box snapshot binding failed.", hResult, true);

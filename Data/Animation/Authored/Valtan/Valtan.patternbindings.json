@@ -1641,7 +1641,16 @@
           "clip": "mesh_att_battle_12_03",
           "mappingBasis": "PROJECT_AUTHORED",
           "sourceStartMs": 0,
-          "playMs": 900,
+          "playMs": 400,
+          "playRate": 1.0,
+          "loop": false
+        },
+        {
+          "clipOccurrenceId": "valtan.mechanic.arena-break-109.impact-hold.original-phase2.clip",
+          "clip": "valtan.cinematic.phase2",
+          "mappingBasis": "SOURCE_REVIEWED_DELTA",
+          "sourceStartMs": 0,
+          "playMs": 500,
           "playRate": 1.0,
           "loop": false
         }
@@ -1662,27 +1671,27 @@
       "clips": [
         {
           "clipOccurrenceId": "valtan.mechanic.arena-break-109.wide-reveal.clip.01",
-          "clip": "mesh_att_battle_12_03",
-          "mappingBasis": "PROJECT_AUTHORED",
-          "sourceStartMs": 900,
+          "clip": "valtan.cinematic.phase2",
+          "mappingBasis": "SOURCE_REVIEWED_DELTA",
+          "sourceStartMs": 500,
           "playMs": 300,
           "playRate": 1.0,
           "loop": false
         },
         {
           "clipOccurrenceId": "valtan.mechanic.arena-break-109.wide-reveal.roar-windup.clip.01",
-          "clip": "mesh_evt1_att_battle_5_01_start",
-          "mappingBasis": "PROJECT_AUTHORED",
-          "sourceStartMs": 0,
+          "clip": "valtan.cinematic.phase2",
+          "mappingBasis": "SOURCE_REVIEWED_DELTA",
+          "sourceStartMs": 800,
           "playMs": 1300,
           "playRate": 1.0,
           "loop": false
         },
         {
           "clipOccurrenceId": "valtan.mechanic.arena-break-109.wide-reveal.roar-active.clip.01",
-          "clip": "mesh_evt1_att_battle_5_01_loop",
-          "mappingBasis": "PROJECT_AUTHORED",
-          "sourceStartMs": 0,
+          "clip": "valtan.cinematic.phase2",
+          "mappingBasis": "SOURCE_REVIEWED_DELTA",
+          "sourceStartMs": 2100,
           "playMs": 700,
           "playRate": 1.0,
           "loop": false
@@ -1704,12 +1713,12 @@
       "clips": [
         {
           "clipOccurrenceId": "valtan.mechanic.arena-break-109.recovery.clip.01",
-          "clip": "mesh_evt1_att_battle_5_01_end",
-          "mappingBasis": "PROJECT_AUTHORED",
-          "sourceStartMs": 0,
-          "playMs": 0,
+          "clip": "valtan.cinematic.phase2",
+          "mappingBasis": "SOURCE_REVIEWED_DELTA",
+          "sourceStartMs": 2800,
+          "playMs": 2700,
           "playRate": 1.0,
-          "loop": true
+          "loop": false
         }
       ],
       "cameraInvocations": [
@@ -1719,7 +1728,7 @@
           "trigger": "ENTER",
           "startOffsetMs": 0,
           "durationPolicy": "EXPLICIT",
-          "durationMs": 870
+          "durationMs": 2700
         }
       ]
     },
@@ -2117,7 +2126,16 @@
           "loop": false
         }
       ],
-      "cameraInvocations": []
+      "cameraInvocations": [
+        {
+          "cameraInvocationId": "camera.valtan.source.wall-break.step-04.invocation",
+          "cameraCueId": "camera.valtan.source.wall-break.step-04",
+          "trigger": "ENTER",
+          "startOffsetMs": 0,
+          "durationPolicy": "EXPLICIT",
+          "durationMs": 2800
+        }
+      ]
     },
     {
       "actionId": "valtan.sequence.center-six-pizza-charge.step-05",
@@ -2132,7 +2150,16 @@
           "loop": false
         }
       ],
-      "cameraInvocations": []
+      "cameraInvocations": [
+        {
+          "cameraInvocationId": "camera.valtan.source.wall-break.step-05.invocation",
+          "cameraCueId": "camera.valtan.source.wall-break.step-05",
+          "trigger": "ENTER",
+          "startOffsetMs": 0,
+          "durationPolicy": "EXPLICIT",
+          "durationMs": 3924
+        }
+      ]
     },
     {
       "actionId": "valtan.sequence.center-six-pizza-charge.step-06",
@@ -3075,30 +3102,48 @@
       "clips": [
         {
           "clipOccurrenceId": "valtan.sequence.center-trash-rush-if.step-05.clip-01",
-          "clip": "mesh_att_battle_13_02",
-          "mappingBasis": "PROJECT_AUTHORED",
+          "clip": "valtan.cinematic.trash",
+          "mappingBasis": "SOURCE_REVIEWED_DELTA",
           "sourceStartMs": 0,
           "playMs": 667,
           "playRate": 1.0,
           "loop": false
         }
       ],
-      "cameraInvocations": []
+      "cameraInvocations": [
+        {
+          "cameraInvocationId": "camera.valtan.source.trash.step-05.invocation",
+          "cameraCueId": "camera.valtan.source.trash.step-05",
+          "trigger": "ENTER",
+          "startOffsetMs": 0,
+          "durationPolicy": "EXPLICIT",
+          "durationMs": 667
+        }
+      ]
     },
     {
       "actionId": "valtan.sequence.center-trash-rush-if.step-06",
       "clips": [
         {
           "clipOccurrenceId": "valtan.sequence.center-trash-rush-if.step-06.clip-01",
-          "clip": "mesh_att_battle_13_02-1",
-          "mappingBasis": "PROJECT_AUTHORED",
-          "sourceStartMs": 0,
-          "playMs": 4100,
+          "clip": "valtan.cinematic.trash",
+          "mappingBasis": "SOURCE_REVIEWED_DELTA",
+          "sourceStartMs": 667,
+          "playMs": 5707,
           "playRate": 1.0,
           "loop": false
         }
       ],
-      "cameraInvocations": []
+      "cameraInvocations": [
+        {
+          "cameraInvocationId": "camera.valtan.source.trash.step-06.invocation",
+          "cameraCueId": "camera.valtan.source.trash.step-06",
+          "trigger": "ENTER",
+          "startOffsetMs": 0,
+          "durationPolicy": "EXPLICIT",
+          "durationMs": 5707
+        }
+      ]
     },
     {
       "actionId": "valtan.sequence.center-trash-rush-if.step-07",
@@ -3624,12 +3669,12 @@
       "clips": [
         {
           "clipOccurrenceId": "valtan.cinematic.entrance.establish.clip.01",
-          "clip": "mesh_att_battle_20_02",
-          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "clip": "valtan.cinematic.entrance",
+          "mappingBasis": "SOURCE_REVIEWED_DELTA",
           "sourceStartMs": 0,
-          "playMs": 0,
+          "playMs": 8600,
           "playRate": 1.0,
-          "loop": true
+          "loop": false
         }
       ],
       "cameraInvocations": [
@@ -3648,12 +3693,12 @@
       "clips": [
         {
           "clipOccurrenceId": "valtan.cinematic.entrance.arena-reveal.clip.01",
-          "clip": "mesh_att_battle_20_03",
-          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
-          "sourceStartMs": 0,
-          "playMs": 0,
+          "clip": "valtan.cinematic.entrance",
+          "mappingBasis": "SOURCE_REVIEWED_DELTA",
+          "sourceStartMs": 8600,
+          "playMs": 5800,
           "playRate": 1.0,
-          "loop": true
+          "loop": false
         }
       ],
       "cameraInvocations": [
@@ -3672,12 +3717,12 @@
       "clips": [
         {
           "clipOccurrenceId": "valtan.cinematic.entrance.hero-handoff.clip.01",
-          "clip": "mesh_att_battle_20_04",
-          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
-          "sourceStartMs": 0,
-          "playMs": 0,
+          "clip": "valtan.cinematic.entrance",
+          "mappingBasis": "SOURCE_REVIEWED_DELTA",
+          "sourceStartMs": 14400,
+          "playMs": 10308,
           "playRate": 1.0,
-          "loop": true
+          "loop": false
         }
       ],
       "cameraInvocations": [
@@ -3687,7 +3732,7 @@
           "trigger": "ENTER",
           "startOffsetMs": 0,
           "durationPolicy": "EXPLICIT",
-          "durationMs": 4467
+          "durationMs": 10308
         }
       ]
     },
@@ -4197,15 +4242,24 @@
       "clips": [
         {
           "clipOccurrenceId": "valtan.sequence.dead.step-01.clip-01",
-          "clip": "mesh_dead_1",
-          "mappingBasis": "PROJECT_AUTHORED",
+          "clip": "valtan.cinematic.finale",
+          "mappingBasis": "SOURCE_REVIEWED_DELTA",
           "sourceStartMs": 0,
-          "playMs": 3667,
+          "playMs": 23000,
           "playRate": 1.0,
           "loop": false
         }
       ],
-      "cameraInvocations": []
+      "cameraInvocations": [
+        {
+          "cameraInvocationId": "camera.valtan.source.finale.audition.invocation",
+          "cameraCueId": "camera.valtan.source.finale.audition",
+          "trigger": "ENTER",
+          "startOffsetMs": 0,
+          "durationPolicy": "EXPLICIT",
+          "durationMs": 23000
+        }
+      ]
     },
     {
       "actionId": "valtan.sequence.sequence.400440.0.step-01",

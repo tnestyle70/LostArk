@@ -1352,6 +1352,9 @@ struct EFFECT_SOURCE_TRANSFORM_TRACK final
     std::vector<EFFECT_SOURCE_TRANSFORM_NODE> Nodes;
     // A direct ParticleParameter driving ColorScaleOverLife alpha at scene time.
     std::optional<EFFECT_DISTRIBUTION_DESC> AlphaScale;
+    // Separate source parameter multipliers retain each original Hermite curve.
+    // Repeated factors are meaningful (two modules may consume the same alpha).
+    std::vector<EFFECT_DISTRIBUTION_DESC> AlphaScaleFactors;
     std::vector<EFFECT_SOURCE_MATERIAL_PARAMETER_TRACK> MaterialParameterTracks;
 };
 

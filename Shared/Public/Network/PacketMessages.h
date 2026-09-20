@@ -989,7 +989,8 @@ namespace LostArk::Shared
 			return 0u == slotSkillIndex ? 2500u :
 				1u == slotSkillIndex ? 1500u : KOUKU_INTERACTION_ACTION_MS;
 		case KOUKU_HUD_MODE::MAZE:
-			return 0u == slotSkillIndex ? 2500u : KOUKU_INTERACTION_ACTION_MS;
+			return 0u == slotSkillIndex ? 2500u :
+				1u == slotSkillIndex ? 1000u : KOUKU_INTERACTION_ACTION_MS;
 		default:
 			/* The four dance poses are authored at exactly the ceiling. */
 			return KOUKU_INTERACTION_ACTION_MS;

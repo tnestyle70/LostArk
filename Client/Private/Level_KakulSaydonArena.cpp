@@ -9,6 +9,9 @@
 #include "EffectFailureDiagnostic.h"
 #include "ActorCatalog.h"
 #include "KoukuSaydonPresentationAssetService.h"
+#include "KoukuSaydonPresentationPlayer.h"
+#include "EffectV2_Runtime.h"
+#include "Effect_Catalog.h"
 #include "Npc.h"
 #include "Model.h"
 #include "ActionPresentationTimeline.h"
@@ -1199,6 +1202,15 @@ bool_t Client::CLevel_KakulSaydonArena::Debug_SampleCompositionWorldPreview(
 				{ status = "World Object Boss anchor is waiting for its matching Model View actor: " + archetype; return false; }
 				return CWorldSequencePlayer::Resolve_BossBoneAnchor(view.Model, view.BoneRoot, bone, out, status);
 			};
+		// A cutscene BODY is a World actor, distinct from the selected or replicated boss.
+		const auto actorFallback = targets.bossAnchor;
+		targets.bossAnchor = [this, actorFallback](const std::string& archetype, const std::string& bone,
+			CWorldSequencePlayer::PLAYER_ANCHOR& out, std::string& status)
+		{
+			if (Try_GetCinematicWorldBossAnchor(archetype, bone, out, status)) return true;
+			if (!status.empty()) return false;
+			return actorFallback && actorFallback(archetype, bone, out, status);
+		};
 		bool_t bossAnchorPending = false;
 		const auto resolveBossAnchor = targets.bossAnchor;
 		targets.bossAnchor = [resolveBossAnchor, &bossAnchorPending](const std::string& archetype,
@@ -1280,6 +1292,8 @@ bool_t Client::CLevel_KakulSaydonArena::Debug_SampleCompositionWorldPreview(
 
 HRESULT Client::CLevel_KakulSaydonArena::Initialize()
 {
+	const auto arenaStarted = GetTickCount64();
+	const EFFECT_SLOW_SCOPE_DIAGNOSTIC arenaTiming{"Kouku.Arena.Initialize", {}, {}};
 	CProfiler* const pProfiler = CGameInstance::Get().Get_Profiler();
 	CProfilerScope initializeScope(pProfiler, "Level.Kouku.Initialize");
 	if (FAILED(__super::Initialize()))
@@ -1391,7 +1405,8 @@ HRESULT Client::CLevel_KakulSaydonArena::Initialize()
 			}
 		}
 	}
-	// Raid props and their Effects must finish preparation before gameplay starts.
+	// Release prepares every raid prop before gameplay; Debug uses the same
+	// Prepare_InstanceResources path when a World sequence is requested.
 	{
 		CProfilerScope scope(pProfiler, "Level.Kouku.WorldSequence.Load");
 		if (FAILED(CGameInstance::Get().Add_Prototype(ETOUI(LEVEL::KAKULSAYDON_ARENA),
@@ -1407,6 +1422,9 @@ HRESULT Client::CLevel_KakulSaydonArena::Initialize()
 		}
 		else
 		{
+#ifndef _DEBUG
+			const auto worldStarted = GetTickCount64();
+			size_t worldPrepared = 0u;
 			CProfilerScope worldPrepareScope(pProfiler, "Level.Kouku.WorldResources.Prewarm");
 			for (const auto& instance : m_SequencePlayer.Get_Document().Get_Instances())
 			{
@@ -1417,7 +1435,12 @@ HRESULT Client::CLevel_KakulSaydonArena::Initialize()
 						instance.instanceId + ": " + m_SequencePlayer.Get_Status() + "\n").c_str());
 					return E_FAIL;
 				}
+				++worldPrepared;
 			}
+			Write_EffectFailureDiagnostic("Kouku.Loading.WorldPrepared",
+				"elapsed_ms=" + std::to_string(GetTickCount64() - worldStarted) +
+				" instances=" + std::to_string(worldPrepared));
+#endif
 			CProfilerScope prepareScope(pProfiler, "Level.Kouku.JokerCards.Prewarm");
 			// The encounter's six normal cards and one joker reuse these hidden clones.
 			// Prepare during arena entry, before the first Pattern 13 spawn frame.
@@ -1558,6 +1581,8 @@ HRESULT Client::CLevel_KakulSaydonArena::Initialize()
 	}
 #endif
 
+	Write_EffectFailureDiagnostic("Kouku.Arena.Ready",
+		"elapsed_ms=" + std::to_string(GetTickCount64() - arenaStarted));
 	return S_OK;
 }
 
@@ -3215,6 +3240,11 @@ bool_t Client::CLevel_KakulSaydonArena::Apply_ServerRaidGatePresentation(const s
     return true;
 }
 
+bool_t Client::CLevel_KakulSaydonArena::Is_LocalMarioStageActive() const
+{
+    return Is_LocalMarioLightingActive();
+}
+
 const string& Client::CLevel_KakulSaydonArena::Get_GatePresentationProfileId() const
 {
 	static const string marioProfile = "scene.kakulsaydon.source-rendering.v1";
@@ -3360,7 +3390,7 @@ bool_t Client::CLevel_KakulSaydonArena::Set_FollowCameraProfile(
 	}
 	m_FollowCameraProfile = profile;
 	if (const auto character = Get_LocalCharacter())
-		character->Set_PresentationSizeMultiplier(profile.characterSizeMultiplier);
+		CCharacter::Set_MapPresentationSizeProfile(profile);
 	outStatus = "Applied to this map's follow camera. Save to keep these settings.";
 	m_strFollowCameraProfileStatus = outStatus;
 	return true;
@@ -3379,7 +3409,7 @@ bool_t Client::CLevel_KakulSaydonArena::Bind_CameraToLocalCharacter()
 		m_pCamera->Set_FollowEnabled(false);
 		return true;
 	}
-	localCharacter->Set_PresentationSizeMultiplier(m_FollowCameraProfile.characterSizeMultiplier);
+	CCharacter::Set_MapPresentationSizeProfile(m_FollowCameraProfile);
 	if (m_pCameraTarget.lock() == localCharacter)
 		return true;
 
@@ -4366,6 +4396,19 @@ bool_t Client::CLevel_KakulSaydonArena::Is_CinematicPresentationActive() const
 		!shot->strSequenceInstanceId.empty() && m_SequencePlayer.Is_Playing(shot->strSequenceInstanceId);
 }
 
+bool_t Client::CLevel_KakulSaydonArena::Needs_Gate2IntroCharacterLight() const
+{
+    // The 13.950-19.490 s shot moves the actors into a separate cinematic set.
+    // Source map exclusion still applies to the battle arena and its baked props.
+    if (!m_pCamera || !Is_CinematicPresentationActive()) return false;
+    constexpr std::string_view shotId = "kouku.gate2.intro.camera.3";
+    if (m_CompositionCamera.cinematicTrack && !m_CompositionCamera.returning &&
+        m_CompositionCamera.shotId == shotId && !m_CompositionCamera.ownerKey.empty())
+        return m_pCamera->Is_PresentationOverrideOwnedBy(0x4b4f554b55434f4dull);
+    return m_bCameraShotHeld && m_strActiveCameraShotId == shotId &&
+        m_pCamera->Is_PresentationOverrideOwnedBy(KAKULSAYDON_CAMERA_SHOT_OWNER_ID);
+}
+
 void Client::CLevel_KakulSaydonArena::Trace_CinematicPresentation(const std::string_view renderingProfile)
 {
 	const auto& raid = m_Replication.Get_KoukuRaidState();
@@ -4421,6 +4464,12 @@ bool_t Client::CLevel_KakulSaydonArena::Sample_CompositionCamera(
 		CCombatHUDViewModel::Get().Get_Player().iMarioStage)) return false;
 	auto& transition = m_CompositionCamera;
 	if (transition.cancelledOwnerKey == ownerKey) return false;
+	// The Gate 1 book row includes a World tail after its authored camera has finished.
+	// Other shots keep their explicitly authored row window (including inter-shot holds).
+	const bool cameraTrackFinished = shotId == "kouku.gate1.authored.book" && found->hasCameraTrack &&
+		!found->followsPlayer && found->CameraTrack.iDurationMs &&
+		seconds * 1000.f >= float(found->CameraTrack.iDurationMs);
+	if (cameraTrackFinished && transition.finishedOwnerKey == ownerKey) return true;
 	if (transition.ownerKey != ownerKey || transition.returning || seconds + 0.01f < transition.lastSeconds)
 	{
 		VALTAN_CINEMATIC_CAMERA_POSE current;
@@ -4432,6 +4481,7 @@ bool_t Client::CLevel_KakulSaydonArena::Sample_CompositionCamera(
 		transition.shotId = std::string(shotId);
 		transition.cinematicTrack = found->hasCameraTrack && !found->followsPlayer;
 		transition.cancelledOwnerKey.clear();
+		transition.finishedOwnerKey.clear();
 		transition.fromPose = current;
 		transition.entryPose = current;
 		transition.appliedPose = current;
@@ -4440,6 +4490,13 @@ bool_t Client::CLevel_KakulSaydonArena::Sample_CompositionCamera(
 		transition.returnSeconds = 0.f;
 		transition.returning = false;
 		transition.followAtStart = m_pCamera->Is_FollowEnabled();
+	}
+	if (cameraTrackFinished)
+	{
+		// Late joins/seeks first inherit the currently displayed Area/Composition pose.
+		Stop_CompositionCamera();
+		transition.finishedOwnerKey = std::string(ownerKey);
+		return true;
 	}
 	if (!m_pCamera->Is_PresentationOverrideOwnedBy(owner) ||
 		m_pCamera->Is_FollowEnabled() != transition.followAtStart)
@@ -4493,6 +4550,7 @@ bool_t Client::CLevel_KakulSaydonArena::Resolve_CompositionFollowPose(VALTAN_CIN
 void Client::CLevel_KakulSaydonArena::Stop_CompositionCamera(const bool_t force)
 {
 	auto& transition = m_CompositionCamera;
+	transition.finishedOwnerKey.clear();
 	if (transition.ownerKey.empty()) return;
 	if (force)
 	{
@@ -4558,7 +4616,7 @@ void Client::CLevel_KakulSaydonArena::Update_CompositionCamera(const f32_t timeD
 
 void Client::CLevel_KakulSaydonArena::Update_CameraShots(const f32_t fTimeDelta)
 {
-	if (!m_CompositionCamera.ownerKey.empty()) return;
+	if (!m_CompositionCamera.ownerKey.empty() || !m_CompositionCamera.finishedOwnerKey.empty()) return;
 	if (nullptr == m_pCamera || m_CameraShots.empty())
 		return;
 	if (!m_pCamera->Is_FollowEnabled())
@@ -5056,8 +5114,9 @@ void Client::CLevel_KakulSaydonArena::Consume_OwnedWorldCue(
                 (play.strMemberId.empty() || cue->second.memberId == play.strMemberId) &&
                 (!play.iPatternSequence || cue->second.patternSequence == play.iPatternSequence))
             {
-                if (play.eOperation == WORLD_SEQUENCE_OPERATION::FINISH_OWNER &&
-                    (cue->second.untilDestroyed || cue->second.player->Get_LongestElapsedSpanMs() > cue->second.durationMs))
+                // Natural Pattern completion releases boss progression only.
+                // Every emitted World row retains its own authored end clock.
+                if (play.eOperation == WORLD_SEQUENCE_OPERATION::FINISH_OWNER)
                 { ++cue; continue; }
                 cue->second.player->Stop_All(targets, true); cue = m_OwnedWorldCues.erase(cue);
             }
@@ -5075,10 +5134,10 @@ void Client::CLevel_KakulSaydonArena::Consume_OwnedWorldCue(
         { cue->second.player->Stop_All(targets, true); m_OwnedWorldCues.erase(cue); }
         return;
     }
+    // A reliable PLAY may follow a completion receipt while its row is still
+    // live. Explicit STOP is terminal; FINISH keeps independent row clocks.
     if (m_StoppedWorldOwners.contains(owner) || m_StoppedWorldOwners.contains(runOwner) ||
-        m_StoppedWorldOwners.contains(patternOwner) ||
-        (!play.bUntilDestroyed && (m_FinishedWorldOwners.contains(owner) ||
-            m_FinishedWorldOwners.contains(runOwner) || m_FinishedWorldOwners.contains(patternOwner)))) return;
+        m_StoppedWorldOwners.contains(patternOwner)) return;
     if (m_ConsumedWorldCueIds.contains(key)) return; // reliable resend is idempotent
     if (m_ConsumedWorldCueIds.size() >= 65536u) { OutputDebugStringA("[KoukuWORLD] Run cue capacity exceeded.\n"); return; }
     const auto defer = [&]()
@@ -5156,8 +5215,9 @@ void Client::CLevel_KakulSaydonArena::Consume_OwnedWorldCue(
     const auto& run = m_Replication.Get_KoukuBundleState();
     const auto member = std::find_if(run.Members.begin(), run.Members.end(),
         [&](const auto& value) { return value.strMemberId == play.strMemberId; });
-    if (!play.bUntilDestroyed && (run.iRunEpoch != play.iRunEpoch || member == run.Members.end() || !m_WorldEmissionResolver ||
-        !m_WorldEmissionResolver(run.iPinnedSourceRevision, member->strPatternId,
+    if (!play.bUntilDestroyed && (run.iRunEpoch != play.iRunEpoch || !m_WorldEmissionResolver ||
+        !m_WorldEmissionResolver(run.iPinnedSourceRevision,
+            member == run.Members.end() ? std::string{} : member->strPatternId,
             play.strOccurrenceId, cueTargets.objectEmissionAnchor)))
     { defer(); return; }
     BindCompositionGroupOrigin(m_SequencePlayer.Get_Document(), play.strSequenceInstanceId, cueTargets);
@@ -5188,11 +5248,13 @@ void Client::CLevel_KakulSaydonArena::Consume_OwnedWorldCue(
 
 bool_t Client::CLevel_KakulSaydonArena::Try_GetOwnedCompositionWorldPivot(
     std::uint32_t runEpoch, const std::string& memberId, const std::string& sequenceId,
-    const std::string& cueId, float4x4_t& out, const std::uint32_t emissionIndex) const
+    const std::string& cueId, float4x4_t& out, const std::uint32_t emissionIndex,
+    const std::uint32_t patternSequence) const
 {
     const OWNED_WORLD_CUE* found = nullptr;
     for (const auto& [id, cue] : m_OwnedWorldCues)
         if (cue.runEpoch == runEpoch && cue.memberId == memberId && cue.sequenceId == sequenceId &&
+            (!patternSequence || cue.patternSequence == patternSequence) &&
             (cueId.empty() || cue.occurrenceId == cueId))
         {
             if (found) return false;
@@ -5233,3 +5295,134 @@ bool_t Client::CLevel_KakulSaydonArena::Can_StartCompositionWorld(
         { status = "WORLD map/deploy target is already owned by another run/member cue: " + instanceId; return false; }
     return true;
 }
+
+
+#ifdef _DEBUG
+bool Client::CLevel_KakulSaydonArena::Debug_PrepareCompletePlayResources(
+    const std::vector<std::string>& patternIds, const std::vector<std::string>& bundleIds,
+    const uint32_t sourceRevision, bool& ready, std::string& status, const bool wholeRaid)
+{
+    ready = false;
+    const auto& document = m_SequencePlayer.Get_Document();
+    const auto v1Revision = CEffectCatalog::Get_RuntimeRevision();
+    const auto v2Generation = CEffectV2Runtime::Cache_Generation();
+    if (!m_CompletePlayPreparation || m_CompletePlayPreparation->selectedPatterns != patternIds ||
+        m_CompletePlayPreparation->selectedBundles != bundleIds || m_CompletePlayPreparation->sourceRevision != sourceRevision ||
+        m_CompletePlayPreparation->wholeRaid != wholeRaid)
+    {
+        COMPLETE_PLAY_PREPARATION staged;
+        staged.selectedPatterns = patternIds; staged.selectedBundles = bundleIds; staged.sourceRevision = sourceRevision;
+        if (!CKoukuSaydonPresentationAssetService::Collect_CompletePlayResources(patternIds, bundleIds,
+            sourceRevision, staged.resources, status)) return false;
+        staged.wholeRaid = wholeRaid;
+        if (wholeRaid)
+        {
+            // Complete raid playback can cross later gates. Reuse the exact Release
+            // effect closure, including original Sequence lanes and enabled WORLDs.
+            if (!CKoukuSaydonPresentationPlayer::Collect_ProductEffectTargets(staged.resources.V1EffectIds,
+                staged.resources.V2Effects, status)) return false;
+            for (const auto& instance : document.Get_Instances())
+                if (instance.enabled) staged.resources.WorldInstanceIds.push_back(instance.instanceId);
+        }
+        std::set<std::string> v1(staged.resources.V1EffectIds.begin(), staged.resources.V1EffectIds.end());
+        std::set<std::pair<std::string, std::string>> v2(staged.resources.V2Effects.begin(), staged.resources.V2Effects.end());
+        std::set<std::string> motions, queued(staged.resources.WorldInstanceIds.begin(), staged.resources.WorldInstanceIds.end());
+        // Group children and NEXT states may start after the selected stage ends.
+        // They still belong to the selected run's initial preparation barrier.
+        while (!queued.empty())
+        {
+            const auto id = *queued.begin(); queued.erase(queued.begin());
+            if (motions.contains(id)) continue;
+            if (const auto* group = document.Find_ObjectResource(id); group && !group->motionInstanceIds.empty())
+            {
+                const auto members = CompositionWorldMotions(document, id);
+                if (members.empty()) { status = "Complete Play WORLD group has no admitted motions: " + id; return false; }
+                queued.insert(members.begin(), members.end());
+                continue;
+            }
+            const auto* instance = document.Find_Instance(id);
+            const auto* sequence = instance ? document.Find_Template(instance->templateId) : nullptr;
+            if (!instance || !instance->enabled || !sequence)
+            { status = "Complete Play WORLD is absent, disabled or has no template: " + id; return false; }
+            if (motions.size() >= 16384u) { status = "Complete Play WORLD closure exceeds its bounded capacity."; return false; }
+            motions.insert(id);
+            if (instance->motionEnd == WORLD_SEQUENCE_MOTION_END::NEXT) queued.insert(instance->nextMotionId);
+            for (const auto& effect : sequence->effectTracks)
+                if (effect.resourceKind == "V1_EFFECT") v1.insert(effect.resourceId);
+                else v2.emplace(effect.resourceKind, effect.resourceId);
+        }
+        for (const auto& id : staged.resources.BossArchetypeIds)
+        {
+            const auto* actor = CActorCatalog::Find_Boss(id);
+            if (!actor) { status = "Complete Play boss catalog entry is unavailable: " + id; return false; }
+            for (const auto& effect : actor->defaultParticles) v1.insert(effect.effectAssetId);
+            for (const auto& effect : actor->combatObjectVisuals)
+            {
+                if (effect.activeEffectKind == BOSS_COMBAT_OBJECT_ACTIVE_EFFECT_KIND::EFFECT_V1) v1.insert(effect.effectAssetId);
+                else v2.emplace("GROUP", effect.effectV2Group.groupId);
+                if (!effect.hitEffectAssetId.empty()) v1.insert(effect.hitEffectAssetId);
+            }
+        }
+        staged.resources.V1EffectIds.assign(v1.begin(), v1.end()); staged.resources.V2Effects.assign(v2.begin(), v2.end());
+        staged.resources.WorldInstanceIds.assign(motions.begin(), motions.end());
+        std::vector<std::string> registered;
+        if (!staged.resources.V1EffectIds.empty() && !CEffectPresentationService::Queue_ProductTargets_Priority(
+            staged.resources.V1EffectIds, registered, status)) return false;
+        staged.v1Revision = CEffectCatalog::Get_RuntimeRevision(); staged.v2Generation = v2Generation;
+        staged.worldRevision = document.Get_Revision();
+        m_CompletePlayPreparation = std::move(staged);
+        status = "Complete Play is preparing the entire selected dependency closure; Server playback has not started.";
+        return true;
+    }
+    auto& pending = *m_CompletePlayPreparation;
+    if (pending.v1Revision != v1Revision || pending.v2Generation != v2Generation ||
+        pending.worldRevision != document.Get_Revision())
+    { status = "Complete Play resource catalog or WORLD revision changed during preparation. Start the updated selection explicitly."; return false; }
+    const auto& resources = pending.resources;
+    const auto probe = CEffectPresentationService::Get_ProductCuePreparationProbe(resources.V1EffectIds);
+    if (!resources.V1EffectIds.empty() && (!probe.strBlockingFailure.empty() || probe.iFailedCount || probe.iUnavailableCount))
+    {
+        status = "Complete Play Effect preparation failed. " + probe.strBlockingFailure;
+        for (const auto& id : resources.V1EffectIds)
+        {
+            const auto reason = CEffectPresentationService::Get_ProductCuePreparationFailure(id);
+            if (!reason.empty()) status += " " + id + ": " + reason;
+        }
+        if (probe.iUnavailableCount) status += " Unavailable targets=" + std::to_string(probe.iUnavailableCount);
+        return false;
+    }
+    status = "Preparing Complete Play: V1 " + std::to_string(probe.iPreparedCount) + "/" + std::to_string(resources.V1EffectIds.size()) +
+        ", V2 " + std::to_string(pending.v2Index) + "/" + std::to_string(resources.V2Effects.size()) +
+        ", actors " + std::to_string(pending.actorIndex) + "/" + std::to_string(resources.BossArchetypeIds.size()) +
+        ", WORLD " + std::to_string(pending.worldIndex) + "/" + std::to_string(resources.WorldInstanceIds.size()) + ". Server playback has not started.";
+    // GPU/context owners stay on their existing main thread. At most one bounded
+    // V2/model/WORLD item is prepared per update; V1 uses its existing worker queue.
+    if (pending.actorIndex < resources.BossArchetypeIds.size())
+    {
+        const auto& id = resources.BossArchetypeIds[pending.actorIndex];
+        if (FAILED(CKoukuSaydonPresentationAssetService::Ensure_Prototypes(m_pDevice, m_pContext,
+            ETOUI(LEVEL::KAKULSAYDON_ARENA), id)))
+        { status = "Complete Play boss preparation failed: " + id + "; " + CKoukuSaydonPresentationAssetService::Get_Status(); return false; }
+        ++pending.actorIndex; return true;
+    }
+    if (pending.v2Index < resources.V2Effects.size())
+    {
+        std::string reason;
+        if (!CKoukuSaydonPresentationPlayer::Prewarm_ProductEffectResources(m_pDevice, m_pContext,
+            {resources.V2Effects[pending.v2Index]}, reason)) { status = std::move(reason); return false; }
+        ++pending.v2Index; return true;
+    }
+    if (!resources.V1EffectIds.empty() && (!probe.bCatalogRevisionCurrent || !probe.bSettled ||
+        probe.iPreparedCount != resources.V1EffectIds.size())) return true;
+    if (pending.worldIndex < resources.WorldInstanceIds.size())
+    {
+        const auto& id = resources.WorldInstanceIds[pending.worldIndex];
+        if (!m_SequencePlayer.Prepare_InstanceResources(id, Make_WorldSequenceTargets()))
+        { status = "Complete Play WORLD preparation failed: " + id + "; " + m_SequencePlayer.Get_Status(); return false; }
+        ++pending.worldIndex; return true;
+    }
+    ready = true;
+    status = "Complete Play dependencies are fully prepared.";
+    return true;
+}
+#endif

@@ -1,7 +1,7 @@
 {
     "schema":  "lostark.rendering-profiles",
     "formatVersion":  1,
-    "revision":  66,
+    "revision":  69,
     "globalQuality":  {
                           "ssaoEnabled":  true,
                           "ssaoRadius":  0.0399999991,
@@ -2566,7 +2566,7 @@
                                                  "ssaoIntensity":  0.689999998,
                                                  "ssaoPower":  2.0999999,
                                                  "ssaoDistanceFade":  132.5,
-                                                 "bloomEnabled":  true,
+                                                 "bloomEnabled":  false,
                                                  "bloomThreshold":  0.699999988,
                                                  "bloomSoftKnee":  1,
                                                  "bloomIntensity":  0.899999976,
@@ -4095,7 +4095,7 @@
                                                                                             1
                                                                                         ],
                                                                            "desaturation":  0.100000001,
-                                                                           "colorGradingLut":  "Map/Lighting/Kouku/lv_lut_midnightc_lut_02.dds"
+                                                                           "colorGradingLut":  "Map/Lighting/KoukuSaydon/lv_lut_midnightc_lut_02.dds"
                                                                        }
                                              },
                          "displayName":  "Gate 1 - source LUT02",
@@ -4385,7 +4385,7 @@
                                                                                             1
                                                                                         ],
                                                                            "desaturation":  0.125,
-                                                                           "colorGradingLut":  "Map/Lighting/Kouku/lv_lut_midnightc_lut_01.dds"
+                                                                           "colorGradingLut":  "Map/Lighting/KoukuSaydon/lv_lut_midnightc_lut_01.dds"
                                                                        }
                                              },
                          "displayName":  "Gate 3 - source LUT01",
@@ -4944,7 +4944,7 @@
                                                                                                                        1
                                                                                                                    ],
                                                                                                       "desaturation":  0.100000001,
-                                                                                                      "colorGradingLut":  "Map/Lighting/Kouku/lv_lut_midnightc_lut_02.dds"
+                                                                                                      "colorGradingLut":  "Map/Lighting/KoukuSaydon/lv_lut_midnightc_lut_02.dds"
                                                                                                   }
                                                                         },
                                                         "fog":  {
@@ -4971,7 +4971,13 @@
                                                                                            0.425893813,
                                                                                            0.707106769
                                                                                        ]
-                                                                }
+                                                                },
+                                                        "sourceCharacterAmbient":  [
+                                                                                       0.5098039215686274,
+                                                                                       0.5637254901960784,
+                                                                                       0.5882352941176471,
+                                                                                       0
+                                                                                   ]
                                                     },
                                                     {
                                                         "regionId":  "kouku.ps.environment.48",
@@ -5081,7 +5087,7 @@
                                                                                                                        1
                                                                                                                    ],
                                                                                                       "desaturation":  0.125,
-                                                                                                      "colorGradingLut":  "Map/Lighting/Kouku/lv_lut_midnightc_lut_01.dds"
+                                                                                                      "colorGradingLut":  "Map/Lighting/KoukuSaydon/lv_lut_midnightc_lut_01.dds"
                                                                                                   }
                                                                         },
                                                         "fog":  {
@@ -6377,7 +6383,7 @@
                      {
                          "displayName":  "쿠크 1관문 책 펼침 / 원본 무대 분위기",
                          "profileId":  "scene.kakulsaydon.g1.book-open.v1",
-                         "exposureMultiplier":  1,
+                         "exposureMultiplier":  0.5,
                          "bloomIntensityMultiplier":  1,
                          "mapLightIntensityMultiplier":  1,
                          "light":  {
@@ -6569,7 +6575,7 @@
                                                                                                                        1
                                                                                                                    ],
                                                                                                       "desaturation":  0.100000001,
-                                                                                                      "colorGradingLut":  "Map/Lighting/Kouku/lv_lut_midnightc_lut_02.dds"
+                                                                                                      "colorGradingLut":  "Map/Lighting/KoukuSaydon/lv_lut_midnightc_lut_02.dds"
                                                                                                   }
                                                                         },
                                                         "fog":  {
@@ -6596,14 +6602,20 @@
                                                                                            0.425893813,
                                                                                            0.707106769
                                                                                        ]
-                                                                }
+                                                                },
+                                                        "sourceCharacterAmbient":  [
+                                                                                       0.5098039215686274,
+                                                                                       0.5637254901960784,
+                                                                                       0.5882352941176471,
+                                                                                       0
+                                                                                   ]
                                                     }
                                                 ]
                      },
                      {
                          "displayName":  "1관문 팝업북 환경",
                          "profileId":  "scene.kakulsaydon.g1.popup.v1",
-                         "exposureMultiplier":  1,
+                         "exposureMultiplier":  0.5,
                          "bloomIntensityMultiplier":  1,
                          "mapLightIntensityMultiplier":  1,
                          "light":  {
@@ -6795,7 +6807,7 @@
                                                                                                                        1
                                                                                                                    ],
                                                                                                       "desaturation":  0.100000001,
-                                                                                                      "colorGradingLut":  "Map/Lighting/Kouku/lv_lut_midnightc_lut_02.dds"
+                                                                                                      "colorGradingLut":  "Map/Lighting/KoukuSaydon/lv_lut_midnightc_lut_02.dds"
                                                                                                   }
                                                                         },
                                                         "fog":  {
@@ -6822,7 +6834,13 @@
                                                                                            0.425893813,
                                                                                            0.707106769
                                                                                        ]
-                                                                }
+                                                                },
+                                                        "sourceCharacterAmbient":  [
+                                                                                       0.5098039215686274,
+                                                                                       0.5637254901960784,
+                                                                                       0.5882352941176471,
+                                                                                       0
+                                                                                   ]
                                                     }
                                                 ]
                      },
@@ -6902,7 +6920,7 @@
                      {
                          "displayName":  "쿠크 3관문 어두운 무대 / 파란 스포트라이트",
                          "profileId":  "scene.kakulsaydon.g3.dark.v1",
-                         "exposureMultiplier":  1,
+                         "exposureMultiplier":  0.5,
                          "bloomIntensityMultiplier":  1,
                          "mapLightIntensityMultiplier":  1,
                          "light":  {
@@ -7094,7 +7112,7 @@
                                                                                                                        1
                                                                                                                    ],
                                                                                                       "desaturation":  0.125,
-                                                                                                      "colorGradingLut":  "Map/Lighting/Kouku/lv_lut_midnightc_lut_01.dds"
+                                                                                                      "colorGradingLut":  "Map/Lighting/KoukuSaydon/lv_lut_midnightc_lut_01.dds"
                                                                                                   }
                                                                         },
                                                         "fog":  {
@@ -7378,7 +7396,7 @@
                                                                                                                        1
                                                                                                                    ],
                                                                                                       "desaturation":  0.100000001,
-                                                                                                      "colorGradingLut":  "Map/Lighting/Kouku/lv_lut_midnightc_lut_02.dds"
+                                                                                                      "colorGradingLut":  "Map/Lighting/KoukuSaydon/lv_lut_midnightc_lut_02.dds"
                                                                                                   }
                                                                         },
                                                         "fog":  {
@@ -7405,7 +7423,13 @@
                                                                                            0.425893813,
                                                                                            0.707106769
                                                                                        ]
-                                                                }
+                                                                },
+                                                        "sourceCharacterAmbient":  [
+                                                                                       0.5098039215686274,
+                                                                                       0.5637254901960784,
+                                                                                       0.5882352941176471,
+                                                                                       0
+                                                                                   ]
                                                     },
                                                     {
                                                         "regionId":  "kouku.ps.environment.48",
@@ -7515,7 +7539,7 @@
                                                                                                                        1
                                                                                                                    ],
                                                                                                       "desaturation":  0.125,
-                                                                                                      "colorGradingLut":  "Map/Lighting/Kouku/lv_lut_midnightc_lut_01.dds"
+                                                                                                      "colorGradingLut":  "Map/Lighting/KoukuSaydon/lv_lut_midnightc_lut_01.dds"
                                                                                                   }
                                                                         },
                                                         "fog":  {

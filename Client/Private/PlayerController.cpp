@@ -208,6 +208,8 @@ void Client::CPlayerController::Update(
 		CCombatHUDViewModel::Get().Get_Player());
 	const bool_t isLeftMousePhysicallyDown =
 		0 != (CGameInstance::Get().Get_DIMouseStateRaw(Attack_MouseButton()) & 0x80);
+	const bool_t isMazeLeftPressed = isLeftMousePhysicallyDown && !m_wasMazeLeftMouseDown;
+	m_wasMazeLeftMouseDown = isLeftMousePhysicallyDown;
 	const bool_t isRightMousePhysicallyDown =
 		0 != (CGameInstance::Get().Get_DIMouseStateRaw(Move_MouseButton()) & 0x80);
 	// Observe raw presses before any early return; UI/capture release is not a new click.
@@ -280,6 +282,15 @@ void Client::CPlayerController::Update(
 	const shared_ptr<IPlayerCommandSink> commandSink =
 		m_pCommandSink;
 
+	if (LostArk::Shared::KOUKU_HUD_MODE::MAZE == CCombatHUDViewModel::Get().Get_Player().eKoukuHudMode &&
+		gameplayCommandsEnabled && character && commandSink && isMazeLeftPressed &&
+		!isControlCaptured && GetForegroundWindow() == g_hWnd &&
+		!CGameInstance::Get().IsMouseInputBlocked() &&
+		!m_CaptureInputGate.Is_Blocked(CPLAYER_CAPTURE_INPUT_GATE::LEFT_MOUSE))
+	{
+		if (commandSink->Request_InteractionSlot(m_iNextActionSequence, LostArk::Shared::INTERACTION_SLOT::W) &&
+			0u == ++m_iNextActionSequence) m_iNextActionSequence = 1u;
+	}
 	if (LostArk::Shared::KOUKU_HUD_MODE::NONE != CCombatHUDViewModel::Get().Get_Player().eKoukuHudMode)
 		Cancel_GroundTargeting();
 	if (m_GroundTargeting.Is_Active())
@@ -607,6 +618,8 @@ void Client::CPlayerController::Poll_SkillSlots(
 		for (std::size_t i = 0; i < keys.size(); ++i)
 		{
 			const bool_t down = 0 != (readKeyState(keys[i]) & 0x80);
+			if (mode == LostArk::Shared::KOUKU_HUD_MODE::MAZE && i != 0u)
+			{ m_wasKeyDown[keys[i]] = down; continue; }
 			if (!isKeyboardBlocked && down && !m_wasKeyDown[keys[i]] && !submitted && m_pCommandSink)
 			{
 				submitted = m_pCommandSink->Request_InteractionSlot(m_iNextActionSequence,

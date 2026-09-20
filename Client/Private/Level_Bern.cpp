@@ -898,7 +898,7 @@ bool_t CLevel_Bern::Set_FollowCameraProfile(
 	}
 	m_FollowCameraProfile = profile;
 	if (const auto character = Get_LocalCharacter())
-		character->Set_PresentationSizeMultiplier(profile.characterSizeMultiplier);
+		CCharacter::Set_MapPresentationSizeProfile(profile);
 	outStatus = "Applied to this map's follow camera. Save to keep these settings.";
 	m_strFollowCameraProfileStatus = outStatus;
 	return true;
@@ -930,7 +930,7 @@ bool_t CLevel_Bern::Bind_CameraToLocalCharacter()
 	 * 이미 같은 Character에 연결되어 있으면 매 프레임
 	 * Camera Target을 다시 설정하지 않는다.
 	 */
-	localCharacter->Set_PresentationSizeMultiplier(m_FollowCameraProfile.characterSizeMultiplier);
+	CCharacter::Set_MapPresentationSizeProfile(m_FollowCameraProfile);
 	if (m_pCameraTarget.lock() == localCharacter)
 		return true;
 
