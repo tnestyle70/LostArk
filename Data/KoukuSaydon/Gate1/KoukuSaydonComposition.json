@@ -1,7 +1,7 @@
 {
   "schema": "lostark.kouku-saydon-composition",
   "formatVersion": 3,
-  "revision": 1918,
+  "revision": 1919,
   "compositionId": "boss.composition.kakulsaydon.gate1",
   "encounterId": "ENCOUNTER_KAKULSAYDON_G1",
   "bossArchetypeId": "BOSS_KAKULSAYDON_G1_KOUKU",
@@ -108718,7 +108718,7 @@
       ],
       "sceneProfileOccurrences": [],
       "resetBossToSpawn": false,
-      "nextPresentationOccurrenceOrdinal": 3,
+      "nextPresentationOccurrenceOrdinal": 6,
       "presentationOccurrences": [
         {
           "occurrenceId": "KAKULSAYDON_G1_PATTERN_97.presentation.1",
@@ -108795,6 +108795,30 @@
           "worldId": "",
           "logicOccurrenceId": "",
           "worldOccurrenceId": ""
+        },
+        {
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_97.presentation.3",
+          "resourceId": "subtitle.kouku.cin.37081_12_01",
+          "startMs": 10233,
+          "durationMs": 1700,
+          "anchorKind": "MAP",
+          "followBoss": false
+        },
+        {
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_97.presentation.4",
+          "resourceId": "subtitle.kouku.cin.37081_12_02",
+          "startMs": 12367,
+          "durationMs": 3600,
+          "anchorKind": "MAP",
+          "followBoss": false
+        },
+        {
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_97.presentation.5",
+          "resourceId": "subtitle.kouku.cin.37081_12_03",
+          "startMs": 16700,
+          "durationMs": 3050,
+          "anchorKind": "MAP",
+          "followBoss": false
         }
       ],
       "durationMs": 23333
