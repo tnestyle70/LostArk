@@ -20,6 +20,9 @@ Data/UI/WorldMap/SongCastGauge_Layout.json, written by Tools/LpkPipeline/build_w
 The same song also drives the screen blackout that hides the Server-owned landing: the screen
 finishes fading to black when the song ends (Shared SQUAREHOLE_BLACKOUT_FADE_MS before it),
 stays black while the Server holds the action, and fades back in once the action ends.
+In the Bern level the same fade also covers a Server trigger travel (TRIGGER_MOVE): it darkens over
+Shared BERN_TRAVEL_FADE_OUT_MS while the Server still holds the player in place
+(BERN_TRAVEL_HOLD_MS), stays black through the move and fades back in when the action ends.
 The view decides nothing: it reads CCombatHUDViewModel's player state and draws. */
 class CSongCastGaugeView final
 {
@@ -29,14 +32,14 @@ public:
 
 public:
 	/* Per frame with the current HUD player state; hides itself outside the song action. */
-	void Update(f32_t fTimeDelta, const HUD_PLAYER_STATE& Player);
+	void Update(f32_t fTimeDelta, const HUD_PLAYER_STATE& Player, bool_t bTravelFadeLevel);
 	/* LOA-font caption pass -- after CImGuiLayer::EndFrame() like the other runtime windows. */
 	void Render_Text();
 	void Hide();
 
 private:
 	void Load_Strings();
-	void Update_Fade(f32_t fTimeDelta, bool_t bInSong, int32_t iAgeTicks);
+	void Update_Fade(f32_t fTimeDelta, bool_t bInSong, int32_t iAgeTicks, bool_t bInTravel);
 
 private:
 	ComPtr<ID3D11Device>			m_pDevice;

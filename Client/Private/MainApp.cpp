@@ -5387,7 +5387,8 @@ void CMainApp::Update_Minimap(const f32_t fTimeDelta)
 		}
 	}
 	if (nullptr != m_pSongCastGaugeView)
-		m_pSongCastGaugeView->Update(fTimeDelta, CCombatHUDViewModel::Get().Get_Player());
+		m_pSongCastGaugeView->Update(fTimeDelta, CCombatHUDViewModel::Get().Get_Player(),
+			ETOUI(LEVEL::BERN) == CGameInstance::Get().Get_CurrentLevelID());
 }
 
 void CMainApp::RenderMinimapText()

@@ -198,6 +198,11 @@ public:
 	static bool_t Try_GetRuntimeVisible(
 		const MAP_RUNTIME_PLACED_ENTRY& entry,
 		bool_t& outVisible);
+	/* Cinematic stage overlay. It never changes the logical visibility above, so
+	   clearing it (suppressed == false) restores exactly the state gameplay set. */
+	static bool_t Set_RuntimeSuppressed(
+		MAP_RUNTIME_PLACED_ENTRY& entry,
+		bool_t suppressed);
 #ifdef _DEBUG
 	/* Stages ordinary CMapAssetObjects and commits only after both material and
 	visibility operations succeed. The original placement order stays stable. */

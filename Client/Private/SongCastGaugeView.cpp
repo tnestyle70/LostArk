@@ -112,14 +112,19 @@ void Client::CSongCastGaugeView::Hide()
 	m_pView->Set_AllSlotsVisible(false);
 }
 
-void Client::CSongCastGaugeView::Update(const f32_t fTimeDelta, const HUD_PLAYER_STATE& Player)
+void Client::CSongCastGaugeView::Update(
+	const f32_t fTimeDelta, const HUD_PLAYER_STATE& Player, const bool_t bTravelFadeLevel)
 {
 	using LostArk::Shared::PLAYER_ACTION_STATE;
 	const bool_t bInSong = Player.isValid && !Player.isPreview &&
 		PLAYER_ACTION_STATE::SQUAREHOLE_SONG == Player.eAction && 0u != Player.iActionStartTick;
 	const int32_t iAge = bInSong ?
 		static_cast<int32_t>(Player.iServerTick - Player.iActionStartTick) : 0;
-	Update_Fade(fTimeDelta, bInSong, iAge);
+	/* Only the level that asks for it (Bern) blacks out a trigger travel; the Kouku arena has
+	its own trigger fade and must not be darkened twice. */
+	const bool_t bInTravel = bTravelFadeLevel && Player.isValid && !Player.isPreview &&
+		PLAYER_ACTION_STATE::TRIGGER_MOVE == Player.eAction && 0u != Player.iActionStartTick;
+	Update_Fade(fTimeDelta, bInSong, iAge, bInTravel);
 	if (!bInSong)
 	{
 		m_iShownActionStartTick = 0u;
@@ -148,7 +153,7 @@ void Client::CSongCastGaugeView::Update(const f32_t fTimeDelta, const HUD_PLAYER
 }
 
 void Client::CSongCastGaugeView::Update_Fade(
-	const f32_t fTimeDelta, const bool_t bInSong, const int32_t iAgeTicks)
+	const f32_t fTimeDelta, const bool_t bInSong, const int32_t iAgeTicks, const bool_t bInTravel)
 {
 	/* The Server lifts the song lock SQUAREHOLE_BLACKOUT_HOLD_MS after the song and moves the
 	player inside that hold. The fade-out starts so that it finishes exactly when the song
@@ -165,8 +170,14 @@ void Client::CSongCastGaugeView::Update_Fade(
 		m_bFadingOut = false;
 	else if (static_cast<f32_t>(iAgeTicks) >= FADE_START_TICKS)
 		m_bFadingOut = true;
-	const f32_t fStep = m_bFadingOut ?
-		fTimeDelta / FADE_OUT_SECONDS : -fTimeDelta / FADE_IN_SECONDS;
+	/* A Bern trigger travel darkens on its own, quicker ramp and stays black while the action
+	lasts; it never overlaps the song, which is a different action. */
+	constexpr f32_t TRAVEL_FADE_OUT_SECONDS =
+		static_cast<f32_t>(LostArk::Shared::BERN_TRAVEL_FADE_OUT_MS) / 1000.f;
+	const bool_t bDarken = m_bFadingOut || bInTravel;
+	const f32_t fFadeOutSeconds = m_bFadingOut ? FADE_OUT_SECONDS : TRAVEL_FADE_OUT_SECONDS;
+	const f32_t fStep = bDarken ?
+		fTimeDelta / fFadeOutSeconds : -fTimeDelta / FADE_IN_SECONDS;
 	m_fFadeAlpha = std::clamp(m_fFadeAlpha + fStep, 0.f, 1.f);
 	if (nullptr == m_pFadeView)
 		return;

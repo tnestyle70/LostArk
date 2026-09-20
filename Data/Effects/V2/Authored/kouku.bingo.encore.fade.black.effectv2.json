@@ -1,0 +1,119 @@
+{
+  "schema": "lostark.effect-v2",
+  "formatVersion": 1,
+  "effectId": "kouku.bingo.encore.fade.black",
+  "displayName": "앵콜컷신 / 원본 암전",
+  "effectType": "ScreenPost",
+  "slots": {
+    "mesh": "",
+    "base": "Effect/KoukuSaydon/Textures/FX_TEX_00/fx_a_blankwhite_01.dds",
+    "noise": "",
+    "mask": "",
+    "emissive": "",
+    "dissolve": ""
+  },
+  "params": {
+    "lifetime": 23.333,
+    "loop": false,
+    "playRate": 1.0,
+    "alphaInEnd": 0.0,
+    "alphaOutStart": 1.0,
+    "screenPost": {
+      "profile": "TexturedOverlay",
+      "intensityStart": 1.0,
+      "intensityEnd": 1.0,
+      "intensityLerp": false,
+      "intensitySmoothstep": false,
+      "intensityKeys": [
+        {
+          "timeSeconds": 0.0,
+          "intensity": 0.0
+        },
+        {
+          "timeSeconds": 22.5000019,
+          "intensity": 0.0
+        },
+        {
+          "timeSeconds": 22.54,
+          "intensity": 0.006690208554572978
+        },
+        {
+          "timeSeconds": 22.58,
+          "intensity": 0.025877412487547016
+        },
+        {
+          "timeSeconds": 22.62,
+          "intensity": 0.05623450173962293
+        },
+        {
+          "timeSeconds": 22.68,
+          "intensity": 0.11981061730194055
+        },
+        {
+          "timeSeconds": 22.72,
+          "intensity": 0.17228631327355504
+        },
+        {
+          "timeSeconds": 22.78,
+          "intensity": 0.2628195104385406
+        },
+        {
+          "timeSeconds": 22.84,
+          "intensity": 0.3635549612275351
+        },
+        {
+          "timeSeconds": 23.02,
+          "intensity": 0.6821848703067362
+        },
+        {
+          "timeSeconds": 23.08,
+          "intensity": 0.7789393705599135
+        },
+        {
+          "timeSeconds": 23.12,
+          "intensity": 0.8369451137210416
+        },
+        {
+          "timeSeconds": 23.18,
+          "intensity": 0.9108900677636873
+        },
+        {
+          "timeSeconds": 23.24,
+          "intensity": 0.965177298742431
+        },
+        {
+          "timeSeconds": 23.28,
+          "intensity": 0.988235978678841
+        },
+        {
+          "timeSeconds": 23.333,
+          "intensity": 0.9999995182944628
+        }
+      ],
+      "tint": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "overlayPositionStart": [
+        0.5,
+        0.5
+      ],
+      "overlayPositionHold": [
+        0.5,
+        0.5
+      ],
+      "overlayPositionEnd": [
+        0.5,
+        0.5
+      ],
+      "overlayScale": [
+        1,
+        1
+      ],
+      "displaySpace": true
+    }
+  },
+  "parts": []
+}

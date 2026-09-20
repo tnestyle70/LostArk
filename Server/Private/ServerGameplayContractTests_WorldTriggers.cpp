@@ -1864,5 +1864,189 @@ void LostArk::Server::CServerGameplayContractRunner::Run_WorldTriggers(TESTS& te
 		std::error_code cleanupError;
 		fs::remove_all(overCostRoot, cleanupError);
 	}
+
+	{
+		/* Bern castle / library travel: a movePlayer box that fires the moment the player steps in,
+		   holds the player still for BERN_TRAVEL_HOLD_MS, then moves them onto the partner box,
+		   where landing must not fire that box again until the player has left and re-entered. */
+		const auto makeBox = [](const char* id, const float x, const float targetX)
+		{
+			WORLD_BOOTSTRAP_PLACEMENT box{};
+			box.strPlacementId = id;
+			box.eKind = WORLD_BOOTSTRAP_KIND::TRIGGER_BOX;
+			box.isEnabled = true;
+			box.isTriggerOnce = false;
+			box.fPositionX = x;
+			box.fHalfExtentX = box.fHalfExtentY = box.fHalfExtentZ = 2.f;
+			WORLD_TRIGGER_ACTION move{};
+			move.eKind = WORLD_TRIGGER_ACTION_KIND::MOVE_PLAYER;
+			move.fTargetX = targetX;
+			move.fDurationSeconds = 0.05f;
+			box.TriggerActions.push_back(move);
+			return box;
+		};
+		const float holdSeconds = static_cast<float>(BERN_TRAVEL_HOLD_MS) / 1000.f;
+		const auto makeBernPlayer = []()
+		{
+			SERVER_PLAYER player{};
+			player.iPlayerId = 1u;
+			player.iCurrentHp = player.iMaximumHp = 100u;
+			player.fPositionX = -20.f;
+			return player;
+		};
+
+		CServerTriggerSystem bern;
+		bern.Set_WorldId(WORLD_ID::BERN);
+		std::string status;
+		tests.Require(
+			bern.Initialize({ makeBox("castle", 0.f, 100.f), makeBox("castle.2", 100.f, 0.f) }, status) &&
+			2u == bern.Get_TriggerCount(),
+			"Initialize the Bern castle / castle.2 travel pair");
+		std::map<PLAYER_ID, SERVER_PLAYER> players;
+		players.emplace(1u, makeBernPlayer());
+		SERVER_PLAYER& player = players.at(1u);
+		std::vector<SERVER_WORLD_TRANSFER_REQUEST> transfers;
+		std::vector<SERVER_INTERACT_PROMPT_EDGE> prompts;
+		std::uint32_t tick = 10u;
+		const auto evaluate = [&]()
+		{
+			bern.Evaluate_Entries(players, ++tick, transfers, {}, prompts);
+		};
+		/* The room order: motion first, then trigger evaluation, every 1/30 s. */
+		const auto finishTravel = [&]()
+		{
+			for (int step = 0; step < 90 && PLAYER_ACTION_STATE::NONE != player.eAction; ++step)
+			{
+				bern.Update_PlayerMotion(player, 1.f / 30.f);
+				evaluate();
+			}
+		};
+		const auto stepOutAndIn = [&](const float centreX)
+		{
+			player.fPositionX = centreX + 10.f;
+			evaluate();
+			player.fPositionX = centreX;
+			evaluate();
+		};
+
+		evaluate();
+		tests.Require(
+			PLAYER_ACTION_STATE::NONE == player.eAction && prompts.empty(),
+			"Standing outside both Bern travel boxes runs nothing");
+		player.fPositionX = 0.f;
+		evaluate();
+		tests.Require(
+			PLAYER_ACTION_STATE::TRIGGER_MOVE == player.eAction &&
+			player.TriggerMove.isActive && "castle" == player.TriggerMove.strSourcePlacementId &&
+			std::abs(player.TriggerMove.fTargetX - 100.f) < 0.001f &&
+			std::abs(player.TriggerMove.fHoldSeconds - holdSeconds) < 0.001f &&
+			std::abs(player.fPositionX) < 0.001f && prompts.empty(),
+			"Stepping into castle fires at once, without G, and starts the blackout hold");
+		bern.Update_PlayerMotion(player, holdSeconds - 0.1f);
+		tests.Require(
+			std::abs(player.fPositionX) < 0.001f &&
+			PLAYER_ACTION_STATE::TRIGGER_MOVE == player.eAction,
+			"The player stays where they stand during the hold");
+		finishTravel();
+		tests.Require(
+			PLAYER_ACTION_STATE::NONE == player.eAction && !player.TriggerMove.isActive &&
+			std::abs(player.fPositionX - 100.f) < 0.001f,
+			"The travel ends on the partner box centre and does not fire castle.2 on landing");
+		evaluate();
+		evaluate();
+		tests.Require(
+			PLAYER_ACTION_STATE::NONE == player.eAction && !player.TriggerMove.isActive &&
+			std::abs(player.fPositionX - 100.f) < 0.001f,
+			"Standing on the landing box keeps it quiet on later ticks");
+		stepOutAndIn(100.f);
+		tests.Require(
+			PLAYER_ACTION_STATE::TRIGGER_MOVE == player.eAction &&
+			"castle.2" == player.TriggerMove.strSourcePlacementId &&
+			std::abs(player.TriggerMove.fTargetX) < 0.001f,
+			"Walking out of castle.2 and back in fires it and sends the player to castle");
+		finishTravel();
+		tests.Require(
+			PLAYER_ACTION_STATE::NONE == player.eAction &&
+			std::abs(player.fPositionX) < 0.001f,
+			"The return travel lands on castle without firing it");
+		stepOutAndIn(0.f);
+		tests.Require(
+			PLAYER_ACTION_STATE::TRIGGER_MOVE == player.eAction &&
+			"castle" == player.TriggerMove.strSourcePlacementId,
+			"The pair can be used again and again");
+
+		{
+			/* A travel that lands before any later evaluation saw it in flight is still recognised. */
+			CServerTriggerSystem instant;
+			instant.Set_WorldId(WORLD_ID::BERN);
+			std::string instantStatus;
+			tests.Require(
+				instant.Initialize({ makeBox("library", 0.f, 100.f), makeBox("library.2", 100.f, 0.f) }, instantStatus),
+				"Initialize the Bern library / library.2 travel pair");
+			std::map<PLAYER_ID, SERVER_PLAYER> lone;
+			lone.emplace(1u, makeBernPlayer());
+			SERVER_PLAYER& runner = lone.at(1u);
+			runner.fPositionX = 0.f;
+			std::uint32_t instantTick = 40u;
+			std::vector<SERVER_WORLD_TRANSFER_REQUEST> instantTransfers;
+			std::vector<SERVER_INTERACT_PROMPT_EDGE> instantPrompts;
+			instant.Evaluate_Entries(lone, ++instantTick, instantTransfers, {}, instantPrompts);
+			tests.Require(
+				PLAYER_ACTION_STATE::TRIGGER_MOVE == runner.eAction &&
+				"library" == runner.TriggerMove.strSourcePlacementId,
+				"Stepping into library fires the library pair");
+			for (int step = 0; step < 90 && PLAYER_ACTION_STATE::NONE != runner.eAction; ++step)
+				instant.Update_PlayerMotion(runner, 1.f / 30.f);
+			instant.Evaluate_Entries(lone, ++instantTick, instantTransfers, {}, instantPrompts);
+			tests.Require(
+				PLAYER_ACTION_STATE::NONE == runner.eAction &&
+				std::abs(runner.fPositionX - 100.f) < 0.001f,
+				"Landing on library.2 without an evaluation in flight does not fire it either");
+		}
+
+		{
+			/* Only Bern gets the auto entry and the hold; another world keeps the G-only rule. */
+			CServerTriggerSystem valtan;
+			valtan.Set_WorldId(WORLD_ID::VALTAN_ARENA);
+			std::string valtanStatus;
+			tests.Require(
+				valtan.Initialize({ makeBox("castle", 0.f, 100.f) }, valtanStatus),
+				"Initialize a castle box outside Bern");
+			std::map<PLAYER_ID, SERVER_PLAYER> lone;
+			lone.emplace(1u, makeBernPlayer());
+			SERVER_PLAYER& runner = lone.at(1u);
+			runner.fPositionX = 0.f;
+			std::vector<SERVER_WORLD_TRANSFER_REQUEST> otherTransfers;
+			std::vector<SERVER_INTERACT_PROMPT_EDGE> otherPrompts;
+			valtan.Evaluate_Entries(lone, 60u, otherTransfers, {}, otherPrompts);
+			tests.Require(
+				PLAYER_ACTION_STATE::NONE == runner.eAction && 1u == otherPrompts.size(),
+				"Outside Bern the same box only offers itself and waits for G");
+			tests.Require(
+				1u == valtan.Activate_Here(1u, lone, 70u, otherTransfers, {}) &&
+				PLAYER_ACTION_STATE::TRIGGER_MOVE == runner.eAction &&
+				runner.TriggerMove.fHoldSeconds == 0.f,
+				"Outside Bern the G-fired move has no hold, so it travels at once");
+		}
+
+		{
+			CServerTriggerSystem bernOther;
+			bernOther.Set_WorldId(WORLD_ID::BERN);
+			std::string otherStatus;
+			tests.Require(
+				bernOther.Initialize({ makeBox("gate.other", 0.f, 100.f) }, otherStatus),
+				"Initialize a Bern movement box outside the castle / library ids");
+			std::map<PLAYER_ID, SERVER_PLAYER> lone;
+			lone.emplace(1u, makeBernPlayer());
+			SERVER_PLAYER& runner = lone.at(1u);
+			runner.fPositionX = 0.f;
+			std::vector<SERVER_WORLD_TRANSFER_REQUEST> otherTransfers;
+			std::vector<SERVER_INTERACT_PROMPT_EDGE> otherPrompts;
+			bernOther.Evaluate_Entries(lone, 80u, otherTransfers, {}, otherPrompts);
+			tests.Require(
+				PLAYER_ACTION_STATE::NONE == runner.eAction && 1u == otherPrompts.size(),
+				"Only the castle and library ids fire on entry in Bern; any other movement box waits for G");
+		}
+	}
 }
 

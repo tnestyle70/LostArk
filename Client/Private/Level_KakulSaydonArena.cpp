@@ -1409,6 +1409,7 @@ HRESULT Client::CLevel_KakulSaydonArena::Initialize()
 			}
 		}
 	}
+	Build_CinematicStageAreas();
 	// Release prepares every raid prop before gameplay; Debug uses the same
 	// Prepare_InstanceResources path when a World sequence is requested.
 	{
@@ -1998,6 +1999,7 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 	Update_CutsceneBossRetire(targets);
 	Update_CompositionCamera(fTimeDelta);
 	Update_CameraShots(fTimeDelta);
+	Update_CinematicSurroundings();
 	// Consume this frame's Server-started camera sequence before accepting input.
 	// A completed shot may keep following the player and must not block controls.
 	const bool_t isCameraTrackPlaying = std::any_of(
@@ -4543,6 +4545,7 @@ void Client::CLevel_KakulSaydonArena::Trace_CinematicPresentation(const std::str
 {
 	const auto& raid = m_Replication.Get_KoukuRaidState();
 	const std::string key = std::to_string(Is_CinematicPresentationActive()) + ":" +
+		std::to_string(m_iCinematicSuppressedCount) + ":" +
 		std::to_string(raid.iRunEpoch) + ":" + std::to_string(static_cast<int>(raid.ePhase)) + ":" +
 		raid.strGateId + ":" + raid.strSequencePatternId + ":" + m_CompositionCamera.ownerKey + ":" +
 		m_strActiveCameraShotId + ":" + std::string(renderingProfile) + ":" + m_strGatePresentationProfileId;
@@ -4566,11 +4569,248 @@ void Client::CLevel_KakulSaydonArena::Trace_CinematicPresentation(const std::str
 		<< " lightGateIndex=" << m_iGateLightingIndex << " lightAuthoring=" << bool(m_pMapLightAuthoringOverride)
 		<< " cameraOwner=" << m_CompositionCamera.ownerKey << " cameraShot=" << m_CompositionCamera.shotId
 		<< " areaShot=" << m_strActiveCameraShotId << " cameraReturning=" << m_CompositionCamera.returning
-		<< " fade=" << m_fTriggerMoveFadeAlpha << " fadeHeld=" << m_bSequenceCombatFadeHeld;
+		<< " fade=" << m_fTriggerMoveFadeAlpha << " fadeHeld=" << m_bSequenceCombatFadeHeld
+		<< " stageAreas=" << m_CinematicStageAreas.size() << " stageSuppressed=" << m_iCinematicSuppressedCount
+		<< " stageKept=";
+	{
+		// Centre x,z of every kept area, so one log line shows which stages a cutscene kept drawn.
+		bool_t anyKept = false;
+		for (std::size_t area = 0u; area < m_CinematicKeptAreas.size() && area < m_CinematicStageAreas.size(); ++area)
+		{
+			if (0u == m_CinematicKeptAreas[area])
+				continue;
+			const CINEMATIC_STAGE_AREA& bounds = m_CinematicStageAreas[area];
+			detail << (anyKept ? "|" : "")
+				<< static_cast<int>(std::lround((bounds.fMinX + bounds.fMaxX) * 0.5f)) << ","
+				<< static_cast<int>(std::lround((bounds.fMinZ + bounds.fMaxZ) * 0.5f));
+			anyKept = true;
+		}
+		if (!anyKept)
+			detail << "none";
+	}
 #ifdef _DEBUG
 	detail << " lightComposition=" << m_bCompositionMapLightPreviewActive;
 #endif
 	CNetworkManager::Get().Record_SessionEvent("kouku.cinematic.transition", detail.str());
+}
+
+void Client::CLevel_KakulSaydonArena::Build_CinematicStageAreas()
+{
+	m_CinematicStageAreas.clear();
+	m_CinematicAreaOfPlacement.clear();
+	m_CinematicKeptAreas.clear();
+	m_CinematicKeptScratch.clear();
+	m_bCinematicSurroundingsApplied = false;
+	m_iCinematicSuppressedCount = 0u;
+	m_iCinematicOwnedSignature = 0u;
+	const auto& placements = m_MapRuntime.Get_Placements();
+	if (placements.empty())
+		return;
+
+	/* The stages sit in separate areas of one big map. Placements closer than the link
+	   distance belong to the same area, so an area is a connected cluster of the authored
+	   positions and needs no extra authoring data. Measured on the shipped map, 60 m splits
+	   it into the arenas, the plaza and the Mario stages without bridging two of them. */
+	constexpr f32_t LINK_METERS = 60.f;
+	const std::size_t count = placements.size();
+	std::vector<uint32_t> parent(count);
+	for (std::size_t index = 0u; index < count; ++index)
+		parent[index] = static_cast<uint32_t>(index);
+	const auto findRoot = [&parent](uint32_t node)
+	{
+		while (parent[node] != node)
+		{
+			parent[node] = parent[parent[node]];
+			node = parent[node];
+		}
+		return node;
+	};
+	const auto cellOf = [](const f32_t value)
+	{
+		return static_cast<int32_t>(std::floor(value / LINK_METERS));
+	};
+	const auto cellKey = [](const int32_t cellX, const int32_t cellZ)
+	{
+		return (static_cast<uint64_t>(static_cast<uint32_t>(cellX)) << 32) |
+			static_cast<uint64_t>(static_cast<uint32_t>(cellZ));
+	};
+	std::unordered_map<uint64_t, std::vector<uint32_t>> grid;
+	grid.reserve(count);
+	for (std::size_t index = 0u; index < count; ++index)
+	{
+		const float3_t& position = placements[index].record.position;
+		if (!std::isfinite(position.x) || !std::isfinite(position.z))
+			continue;
+		grid[cellKey(cellOf(position.x), cellOf(position.z))].push_back(static_cast<uint32_t>(index));
+	}
+	for (const auto& cell : grid)
+	{
+		const float3_t& origin = placements[cell.second.front()].record.position;
+		const int32_t cellX = cellOf(origin.x);
+		const int32_t cellZ = cellOf(origin.z);
+		for (int32_t offsetX = -1; offsetX <= 1; ++offsetX)
+		{
+			for (int32_t offsetZ = -1; offsetZ <= 1; ++offsetZ)
+			{
+				const auto neighbour = grid.find(cellKey(cellX + offsetX, cellZ + offsetZ));
+				if (neighbour == grid.end())
+					continue;
+				for (const uint32_t first : cell.second)
+				{
+					const float3_t& a = placements[first].record.position;
+					for (const uint32_t second : neighbour->second)
+					{
+						if (second <= first)
+							continue;
+						const float3_t& b = placements[second].record.position;
+						const f32_t deltaX = a.x - b.x;
+						const f32_t deltaZ = a.z - b.z;
+						if (deltaX * deltaX + deltaZ * deltaZ > LINK_METERS * LINK_METERS)
+							continue;
+						const uint32_t rootA = findRoot(first);
+						const uint32_t rootB = findRoot(second);
+						if (rootA != rootB)
+							parent[rootA] = rootB;
+					}
+				}
+			}
+		}
+	}
+
+	std::unordered_map<uint32_t, uint32_t> areaOfRoot;
+	m_CinematicAreaOfPlacement.reserve(count);
+	for (const auto& cell : grid)
+	{
+		for (const uint32_t index : cell.second)
+		{
+			const float3_t& position = placements[index].record.position;
+			const auto emplaced = areaOfRoot.try_emplace(
+				findRoot(index), static_cast<uint32_t>(m_CinematicStageAreas.size()));
+			if (emplaced.second)
+				m_CinematicStageAreas.push_back({ position.x, position.x, position.z, position.z });
+			CINEMATIC_STAGE_AREA& area = m_CinematicStageAreas[emplaced.first->second];
+			area.fMinX = (std::min)(area.fMinX, position.x);
+			area.fMaxX = (std::max)(area.fMaxX, position.x);
+			area.fMinZ = (std::min)(area.fMinZ, position.z);
+			area.fMaxZ = (std::max)(area.fMaxZ, position.z);
+			m_CinematicAreaOfPlacement[placements[index].record.placementId] = emplaced.first->second;
+		}
+	}
+}
+
+void Client::CLevel_KakulSaydonArena::Update_CinematicSurroundings()
+{
+	if (m_CinematicStageAreas.empty())
+		return;
+#ifdef _DEBUG
+	// The Map Tool edits and previews every placement, so nothing may be hidden under it.
+	if (m_bMapAuthoringActive)
+	{
+		if (m_bCinematicSurroundingsApplied)
+			Restore_CinematicSurroundings();
+		return;
+	}
+#endif
+	if (!Is_CinematicPresentationActive())
+	{
+		if (m_bCinematicSurroundingsApplied)
+			Restore_CinematicSurroundings();
+		return;
+	}
+	const float4x4_t* const cameraWorld = CGameInstance::Get().Get_InverseTransform(D3DTS::VIEW);
+	if (nullptr == cameraWorld)
+		return;
+	const float3_t eye(cameraWorld->_41, cameraWorld->_42, cameraWorld->_43);
+	const float3_t look(cameraWorld->_31, cameraWorld->_32, cameraWorld->_33);
+	const f32_t lookLength = std::sqrt(look.x * look.x + look.y * look.y + look.z * look.z);
+	if (!std::isfinite(eye.x) || !std::isfinite(eye.z) || !std::isfinite(lookLength) || lookLength < 1e-4f)
+		return;
+	// Row 2 of the camera world matrix is the look direction; normalise so the sample
+	// distances below are metres whatever scale the matrix carries.
+	const float3_t forward(look.x / lookLength, look.y / lookLength, look.z / lookLength);
+
+	/* The areas a cutscene may show: the ones around the camera and around what it looks at
+	   (forward samples). The margin and the samples were fitted on the authored camera tracks:
+	   of the 2920 keyframes in 92 tracks, the 2741 whose shot has a stage area within 100 m
+	   never lost that area at 80 m with 40 m and 100 m samples, while 60 m and below did, and
+	   the 22 static shots keep theirs too. The local player is deliberately NOT an anchor: it can
+	   stand in another stage while a cutscene plays elsewhere (a Workbench preview, a gate
+	   teleport in flight), and that whole stage then stayed drawn as a distant piece. */
+	constexpr f32_t AREA_MARGIN_METERS = 80.f;
+	constexpr std::array<f32_t, 2> LOOK_SAMPLE_METERS = { 40.f, 100.f };
+	std::array<float3_t, 3> anchors{};
+	std::size_t anchorCount = 0u;
+	anchors[anchorCount++] = eye;
+	for (const f32_t meters : LOOK_SAMPLE_METERS)
+		anchors[anchorCount++] = float3_t(
+			eye.x + forward.x * meters, eye.y + forward.y * meters, eye.z + forward.z * meters);
+
+	std::vector<uint8_t>& kept = m_CinematicKeptScratch;
+	kept.assign(m_CinematicStageAreas.size(), 0u);
+	for (std::size_t area = 0u; area < m_CinematicStageAreas.size(); ++area)
+	{
+		const CINEMATIC_STAGE_AREA& bounds = m_CinematicStageAreas[area];
+		for (std::size_t anchor = 0u; anchor < anchorCount; ++anchor)
+		{
+			const float3_t& point = anchors[anchor];
+			if (point.x >= bounds.fMinX - AREA_MARGIN_METERS && point.x <= bounds.fMaxX + AREA_MARGIN_METERS &&
+				point.z >= bounds.fMinZ - AREA_MARGIN_METERS && point.z <= bounds.fMaxZ + AREA_MARGIN_METERS)
+			{
+				kept[area] = 1u;
+				break;
+			}
+		}
+	}
+	/* No kept area is a valid answer: the Gate 2 intro shots sit about 300 m outside every
+	   area (and below the map), so there only what the Sequence owns is drawn and every area
+	   placement is suppressed. */
+	// The placements a Sequence owns change when one starts, holds a pose or stops, which must re-apply too.
+	const uint64_t ownedSignature = m_SequencePlayer.Collect_OwnedPlacements(nullptr);
+	if (m_bCinematicSurroundingsApplied && kept == m_CinematicKeptAreas &&
+		ownedSignature == m_iCinematicOwnedSignature)
+		return;
+	Apply_CinematicSurroundings(kept);
+}
+
+void Client::CLevel_KakulSaydonArena::Apply_CinematicSurroundings(const std::vector<uint8_t>& keptAreas)
+{
+	/* A placement a Sequence that is playing (or holding a pose) manipulates is owned by that
+	   Sequence, which reveals and moves it on its own clock, so it is never suppressed. Only those
+	   count: a Sequence that is not running owns nothing, so its placements follow the area rule
+	   like any other (exempting every authored binding kept other stages' props drawn). Backdrop-
+	   size placements are shared by every area they tower over and stay as well. */
+	constexpr f32_t BACKDROP_SCALE = 100.f;
+	std::unordered_set<uint64_t> sequenceOwned;
+	m_iCinematicOwnedSignature = m_SequencePlayer.Collect_OwnedPlacements(&sequenceOwned);
+	std::size_t suppressed = 0u;
+	for (MAP_RUNTIME_PLACED_ENTRY& entry : m_MapRuntime.Get_MutablePlacements())
+	{
+		bool_t suppress = false;
+		const auto area = m_CinematicAreaOfPlacement.find(entry.record.placementId);
+		if (area != m_CinematicAreaOfPlacement.end() && area->second < keptAreas.size() &&
+			0u == keptAreas[area->second] && !sequenceOwned.contains(entry.record.placementId) &&
+			(std::max)({ std::fabs(entry.record.signedScale.x), std::fabs(entry.record.signedScale.y),
+				std::fabs(entry.record.signedScale.z) }) < BACKDROP_SCALE)
+		{
+			suppress = true;
+		}
+		(void)CMapPlacementRuntime::Set_RuntimeSuppressed(entry, suppress);
+		if (suppress)
+			++suppressed;
+	}
+	m_CinematicKeptAreas = keptAreas;
+	m_bCinematicSurroundingsApplied = true;
+	m_iCinematicSuppressedCount = suppressed;
+}
+
+void Client::CLevel_KakulSaydonArena::Restore_CinematicSurroundings()
+{
+	for (MAP_RUNTIME_PLACED_ENTRY& entry : m_MapRuntime.Get_MutablePlacements())
+		(void)CMapPlacementRuntime::Set_RuntimeSuppressed(entry, false);
+	m_CinematicKeptAreas.clear();
+	m_bCinematicSurroundingsApplied = false;
+	m_iCinematicSuppressedCount = 0u;
+	m_iCinematicOwnedSignature = 0u;
 }
 
 bool_t Client::CLevel_KakulSaydonArena::Is_CompositionCameraEnabled() const

@@ -30,6 +30,8 @@ struct FMapStaticInstance final
 	float3_t WorldBoundsCenter = {};
 	f32_t WorldBoundsRadius = {};
 	bool_t Visible = true;
+	// Cinematic stage overlay, see CMapAssetObject::Set_StageSuppressed.
+	bool_t Suppressed = false;
 	MAP_FRUSTUM_RUNTIME_STATE FrustumState{};
 };
 
@@ -80,6 +82,11 @@ public:
 	HRESULT Try_GetInstanceVisible(
 		uint64_t placementId,
 		bool_t& outVisible) const;
+	/* Hides one instance from the draw and shadow lists without changing its
+	   authored Visible flag, so clearing it restores exactly what was there. */
+	HRESULT Set_InstanceSuppressed(
+		uint64_t placementId,
+		bool_t suppressed);
 
 	uint32_t Get_VisibleInstanceCount() const
 	{

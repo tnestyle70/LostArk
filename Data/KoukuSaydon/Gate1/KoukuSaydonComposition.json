@@ -1,19 +1,19 @@
 {
   "schema": "lostark.kouku-saydon-composition",
   "formatVersion": 3,
-  "revision": 1917,
+  "revision": 1918,
   "compositionId": "boss.composition.kakulsaydon.gate1",
   "encounterId": "ENCOUNTER_KAKULSAYDON_G1",
   "bossArchetypeId": "BOSS_KAKULSAYDON_G1_KOUKU",
   "bossPlacementId": "boss.kakulsaydon.g1.kouku",
   "areaId": "LV_LUT_MIDNIGHTC_ED",
   "fixedTickHz": 30,
-  "nextPatternOrdinal": 97,
+  "nextPatternOrdinal": 98,
   "nextFolderOrdinal": 27,
   "nextBundleOrdinal": 12,
   "nextLogicOrdinal": 101,
   "nextSummonOrdinal": 9,
-  "nextWorldOrdinal": 41,
+  "nextWorldOrdinal": 42,
   "nextSceneProfileOrdinal": 3,
   "madnessPolicy": {
     "maximum": 100,
@@ -2819,6 +2819,23 @@
       "worldId": "kakulsaydon.g1.world.40",
       "displayName": "카드미로 연출 쿠크 뿅망치",
       "sequenceInstanceId": "world.object.instance.kouku.maze_cinematic_hammer",
+      "positionOffset": [
+        0,
+        0,
+        0
+      ],
+      "anchorKind": "NONE",
+      "anchorPosition": [
+        0,
+        0,
+        0
+      ],
+      "companionEffectResourceId": ""
+    },
+    {
+      "worldId": "kakulsaydon.g1.world.41",
+      "displayName": "앵콜컷신 / Saydon",
+      "sequenceInstanceId": "world.sequence.instance.kouku.bingo.encore.saydon",
       "positionOffset": [
         0,
         0,
@@ -23104,6 +23121,44 @@
       "subtitleText": "진짜 시작은 지금부터라고!",
       "subtitlePosition": "UPPER",
       "durationMs": 3050
+    },
+    {
+      "resourceId": "presentation.kouku.bingo.encore.camera.1",
+      "displayName": "앵콜컷신 카메라 / cam",
+      "defaultAnchorKind": "WORLD",
+      "kind": "CAMERA",
+      "assetId": "kouku.bingo.encore.camera.1",
+      "resourceKind": "",
+      "elementId": "",
+      "durationMs": 23333,
+      "shape": "BOX",
+      "colliderKind": "GEOMETRY",
+      "halfExtents": [
+        1,
+        1,
+        1
+      ],
+      "radiusM": 3,
+      "halfAngleDegrees": 45
+    },
+    {
+      "resourceId": "presentation.kouku.bingo.encore.fade.black",
+      "displayName": "앵콜컷신 / 원본 암전",
+      "defaultAnchorKind": "WORLD",
+      "kind": "EFFECT",
+      "assetId": "kouku.bingo.encore.fade.black",
+      "resourceKind": "LEAF",
+      "elementId": "",
+      "durationMs": 23333,
+      "shape": "BOX",
+      "colliderKind": "GEOMETRY",
+      "halfExtents": [
+        1,
+        1,
+        1
+      ],
+      "radiusM": 3,
+      "halfAngleDegrees": 45
     }
   ],
   "patterns": [
@@ -108626,6 +108681,123 @@
       ],
       "resetBossToSpawn": false,
       "folderId": "kakulsaydon.folder.26"
+    },
+    {
+      "patternId": "KAKULSAYDON_G1_PATTERN_97",
+      "actorProfileId": "MN_RPCT_05",
+      "gateId": "BINGO",
+      "targetBossPlacementId": "boss.kakulsaydon.bingo.saydon",
+      "displayName": "앵콜컷신",
+      "authoringStatus": "DRAFT",
+      "category": "MECHANIC",
+      "nextStageOrdinal": 2,
+      "nextAnimationOrdinal": 1,
+      "nextLogicOccurrenceOrdinal": 1,
+      "nextSummonOccurrenceOrdinal": 1,
+      "nextWorldOccurrenceOrdinal": 2,
+      "nextSceneProfileOccurrenceOrdinal": 1,
+      "stages": [
+        {
+          "stageId": "STAGE_1",
+          "actionId": "KAKULSAYDON_G1_PATTERN_97.stage.1",
+          "stageKind": "ACTIVE",
+          "durationMs": 23333,
+          "animationOccurrences": []
+        }
+      ],
+      "logicOccurrences": [],
+      "summonOccurrences": [],
+      "worldOccurrences": [
+        {
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_97.world.1",
+          "worldId": "kakulsaydon.g1.world.41",
+          "startMs": 0,
+          "durationMs": 23333,
+          "playbackSpeed": 1
+        }
+      ],
+      "sceneProfileOccurrences": [],
+      "resetBossToSpawn": false,
+      "nextPresentationOccurrenceOrdinal": 3,
+      "presentationOccurrences": [
+        {
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_97.presentation.1",
+          "resourceId": "presentation.kouku.bingo.encore.camera.1",
+          "startMs": 0,
+          "durationMs": 23333,
+          "positionOffset": [
+            0,
+            0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.95,
+          "dissolveEnd": 1,
+          "brightnessMultiplier": 1,
+          "volume": 1,
+          "followBoss": false,
+          "debugRender": false,
+          "bone": "",
+          "boneTarget": "BODY",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "WORLD",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "worldOccurrenceId": ""
+        },
+        {
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_97.presentation.2",
+          "resourceId": "presentation.kouku.bingo.encore.fade.black",
+          "startMs": 0,
+          "durationMs": 23333,
+          "positionOffset": [
+            0,
+            0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.95,
+          "dissolveEnd": 1,
+          "brightnessMultiplier": 1,
+          "volume": 1,
+          "followBoss": false,
+          "debugRender": false,
+          "bone": "",
+          "boneTarget": "BODY",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "MAP",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "worldOccurrenceId": ""
+        }
+      ],
+      "durationMs": 23333
     }
   ],
   "folders": [

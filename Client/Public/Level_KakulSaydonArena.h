@@ -459,6 +459,16 @@ private:
 	void Release_CameraShot();
 	HRESULT Ready_Layer_Camera(const wstring_t& strLayerTag);
 	bool_t Bind_CameraToLocalCharacter();
+	/* Cutscene stage isolation. The whole map is loaded, so a wide cutscene shot sees
+	   the other stage areas hundreds of metres away. While a cinematic owns the camera
+	   only the stage areas around the camera, what it looks at and the local player are
+	   drawn; every other area is suppressed through an overlay flag that never touches
+	   the logical visibility gameplay and Sequences own, and the flag is cleared the
+	   moment the cinematic ends. */
+	void Build_CinematicStageAreas();
+	void Update_CinematicSurroundings();
+	void Apply_CinematicSurroundings(const std::vector<uint8_t>& keptAreas);
+	void Restore_CinematicSurroundings();
 
 #ifdef _DEBUG
 	/* The three arena-side `_go` boxes are the only way into the Mario
@@ -632,6 +642,20 @@ private:
 	} m_CompositionCamera;
 	std::string m_strActiveCameraShotId;
 	std::string m_strCinematicDiagnosticKey;
+	struct CINEMATIC_STAGE_AREA final
+	{
+		f32_t fMinX = 0.f;
+		f32_t fMaxX = 0.f;
+		f32_t fMinZ = 0.f;
+		f32_t fMaxZ = 0.f;
+	};
+	std::vector<CINEMATIC_STAGE_AREA> m_CinematicStageAreas;
+	std::unordered_map<uint64_t, uint32_t> m_CinematicAreaOfPlacement;
+	std::vector<uint8_t> m_CinematicKeptAreas;
+	std::vector<uint8_t> m_CinematicKeptScratch;
+	bool_t m_bCinematicSurroundingsApplied = false;
+	std::size_t m_iCinematicSuppressedCount = 0u;
+	uint64_t m_iCinematicOwnedSignature = 0u;
 	/* The pose written last frame. A hand-over starts from this, so entering,
 	   swapping and leaving all begin at what the player already sees. */
 	float3_t m_vCameraEyeApplied = {};

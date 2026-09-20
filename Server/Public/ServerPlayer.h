@@ -33,6 +33,10 @@ namespace LostArk::Server
 		float fArcHeight = 0.f;
 		LostArk::Shared::KOUKU_HUD_MODE eKoukuHudModeOnArrival = LostArk::Shared::KOUKU_HUD_MODE::END;
 		bool isActive = false;
+		/* The player stands still for fHoldSeconds after the action starts and only then travels
+		(Bern castle/library: the Client darkens the screen during the wait). 0 travels at once. */
+		float fHoldSeconds = 0.f;
+		float fHeldSeconds = 0.f;
 	};
 
 	/* One projectile-hit target the object has already touched: a contact hit
