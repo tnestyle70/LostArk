@@ -933,6 +933,8 @@ Flow는 정확한 Server COMPLETED를 받은 뒤 대기 시간을 거쳐 다음 
 Sequencer의 Reset 오른쪽 `Play Pattern`은 현재 Pattern/Parent/Bundle을 기존 Server audition으로
 요청한다. Save와 Publish 완료 후 사용하며 dirty·게시 진행·저장/게시 revision 불일치·미지원
 대상은 이유를 표시하고 요청하지 않는다. 자동 저장·게시나 local collider 판정은 하지 않는다.
+명시적 Play Pattern은 일반 패턴도 준비 진행·실패와 Server 승인·거절 상태를 같은 Workbench에 표시한다.
+버튼의 준비 안내는 서버 실행 완료를 의미하지 않으며, 실제 재생은 리소스 준비와 Server admission 뒤 시작한다.
 버튼 tooltip의 대상 이름과 stable ID가 실제 실행 단위다. Resources에서 고른 Pattern은 Append할
 원본이며 현재 타임라인을 바꾸지 않는다. 기존 local 재생은 `Play Preview`로 구분하고 별도
 Sequence workspace는 원래 전투 입장 흐름을 유지한다. 후속 패턴을 가진 Logic도 Server에서
@@ -1001,6 +1003,21 @@ optional `bossMotion { startMs, endMs, startPosition, endPosition, yawDegrees }`
 spawn reset 및 REAL_GAZE_TELEPORT와 동시 사용은 거부한다. Server는 audition stage 전에 경로 navigation을
 검증하고 30Hz fixed tick에서 보간한 위치·yaw를 기존 snapshot/늦은 입장의 spawn으로 전달한다.
 Client는 기존 root 수평 억제를 유지하고 원본 animation의 수직 pose를 재생한다. 별도 높이 arc는 더하지 않는다.
+`bossMotion.keys`를 명시하면 2~512개의 `{timeMs, position:[x,y,z]}`를 순서대로 보간하는
+절대 컷씬 경로를 사용한다. 첫·마지막 key는 구간과 양 끝 위치에 일치해야 하고 중복 시각·비유한 좌표는
+거부한다. 이 명시 경로는 무대 밖 연출을 포함할 수 있어 일반 이동 navigation에 투영하지 않는다.
+원본 root 변위를 경로에 합친 연출은 `animationRootVerticalScale=0`으로 수직 변위를 중복 적용하지 않는다.
+key를 생략한 기존 선형 XZ 경로의 높이·navigation 검증은 유지한다. 부모 시간 이동은 key 시각도 함께 옮긴다.
+
+`CARD_MAZE_STAGE_PLAYERS`는 같은 Pattern의 고정 MAP EFFECT occurrence ID 1~4개를
+`playerEntryEffectOccurrenceIds`에 순서대로 저장한다. publisher가 현재 효과 위치를
+`playerEntryPositions`로 해석하고 Server가 roster와 목적지를 검증한 뒤 일괄 이동한다.
+이후 `CARD_MAZE_HIDE_NEXT`는 같은 roster 순서로 소멸 표시를 진행한다. 숨김은 사망이 아니며
+실제 카드미로 이동은 기존 `CARD_MAZE_ENTER`가 소유한다. 저작 UI가 플레이어 Transform을 직접 바꾸지 않는다.
+
+BossCatalog의 `animationSetId`가 `bodyModel`과 다르면 기존 CModel에 동일 골격의 animation set을
+추가한다. 원래 body clip과 이름이 겹치거나 골격이 다르면 admission에 실패한다. 서버 판정용 bone bake도
+해당 clip의 실제 donor 파일을 읽으며 별도 컷씬 배우를 생성해 기존 보스 재사용을 대신하지 않는다.
 Stage의 optional `retargetOnEnter`는 strict boolean, 기본false다. Workbench Stage Detail과
 Composition parse/validate/save가 같은 값을 소유하고 기존 `RETARGET_RANDOM_ALIVE` ENTER action으로
 투영한다. Server는 Stage 진입 때 살아 있는 player의 현재 위치와 yaw를 한 번 확정해 다음 지정
@@ -1042,6 +1059,7 @@ Sequence 전용 `TRIGGER / ROOM_PLAYER_ARRIVAL`은 Logic occurrence의 optional
 다른 World와 Release Server는 실행하지 않는다. Pause·scrub은 이동 요청을 만들지 않고,
 같은 재생의 occurrence는 한 번만 보낸다. 거절·5초 응답 부재는 전투 진입을 막는다.
 Sequence의 `Complete Play`와 `Complete Play - Sequences + Pattern Flow`는 같은 Server Raid START를 사용한다.
+Sequence의 combat handoff는 BINGO 앵콜까지 허용하며, 관문 intro 선택은 게시된 Server raid plan이 소유한다. 직접 BINGO Complete Play는 전투 Loop이고 컷씬 단독은 앵콜/최종엔딩 행의 일반 Play다. SOUND의 MAP anchor는 비위치 음향이며 followBoss·bone·World occurrence·emission index를 사용하지 않는다.
 ROOM_PLAYER_ARRIVAL은 게시된 Sequence의 슬롯·위치·시각을 Server가 실행하며 Client가 목적지를 다시 제출하지 않는다.
 Client는 `S2C_KOUKUSAYDON_RAID_STATE`의 공통 tick으로 기존 presentation player를 샘플링하고,
 같은 composition ID·Sequence revision의 저장 문서를 실행 동안 유지한다. 로컬 Pause·scrub·Preview 전환은
@@ -1076,10 +1094,12 @@ Sequencer Benchmark에도 적용된다. Effect Tool의 Kouku `Play All`은 현�
 destructor가 이미 제거된 Layer를 다시 조작하지 않는 종료 계약도 유지한다.
 관측한 anchor 기록으로 외부 시계 재생·seek를 처리하며 과거 기록이 없는 구간을 임의 포즈로 보충하지 않는다.
 
-Kouku FEAR Result는 durationMs와 optional sceneProfileId/lightResourceId/effectResourceId/effectDelayMs를
+Kouku FEAR Result는 durationMs와 optional sceneProfileId/lightResourceId/effectResourceId/soundResourceId/effectDelayMs를
 소유한다. 서버의 FEAR action, 시작 tick, 종료 tick, Result logicId가 상태의 정본이며 공포 중 이동·스킬을
 차단한다. Client는 각 class 공포 animation과 로컬 플레이어의 Scene/캐릭터 Light/화면 Effect를 그 시간에
-맞춰 재생하고 종료하면 기존 표현을 복원한다. 전체 화면 이미지는 V2 ScreenPost Effect로 관리한다.
+맞춰 재생하고 종료하면 기존 표현을 복원한다. 화면 Effect는 등록된 V1 원본 또는 V2 ScreenPost 경로를 사용한다.
+soundResourceId는 SOUND 리소스만 참조하며 얼굴의 effectDelayMs 시점에 같은 FEAR session에서 한 번 재생한다.
+같은 snapshot과 반복 얼굴이 보이스를 중첩 시작하지 않고 FEAR 종료·사망·연결 정리 시 기존 SoundCue handle을 해제한다.
 GAZE_REAL_BOSS의 Fail에 FEAR를 연결하면 시야 밖 보스에 대한 공포가 되고, ENTER_AREA의 Success에
 연결하면 따라가는 Collider 접촉 공포가 된다. OBJECT_CONTACT는 World Object 접촉에 사용한다.
 COUNTER_WINDOW는 실제 Server counter hit를 소비하며 Success의 FOLLOWUP_PATTERN과
@@ -1594,18 +1614,19 @@ powershell -ExecutionPolicy Bypass -File Tools/CompositionPipeline/Publish-Compo
 
 `Client/Bin/Resources`는 `Fonts, Character, Deploy, Effect, Map, Sound, UI` 일곱 root만 허용한다. asset ID는 Resources 상대 경로이며 절대 경로, drive-qualified 경로, `..` 탈출을 금지한다.
 
-runtime payload는 팀장이 `Client/Bin/Resources` 물리 폴더로 관리하고 Git에는 추적하지 않는다. AssetPacks lock, immutable Resource manifest, Resource ZIP hash, Snapshot/Publish/Hydrate/Verify를 팀 완료 조건으로 사용하지 않는다. 코드와 데이터에는 Resources 상대 asset ID만 저장하고 팀원별 절대 경로 하드코딩은 금지한다.
+모델·텍스처·사운드 등의 Resources payload는 팀장이 `Client/Bin/Resources` 물리 폴더로 관리하고 Git에는 추적하지 않는다. AssetPacks lock, immutable Resource manifest, Resource ZIP hash, Snapshot/Publish/Hydrate/Verify를 팀 완료 조건으로 사용하지 않는다. 코드와 데이터에는 Resources 상대 asset ID만 저장하고 팀원별 절대 경로 하드코딩은 금지한다.
 
 팀원이 branch를 pull한 뒤 최초 실행하는 순서는 다음과 같다.
 
 ```text
 git lfs pull
 → 팀장이 전달한 Resources 물리 폴더 확인
-→ Debug 전체 회귀
+→ 같은 commit의 게시된 Client/Server DataFiles 확인
+→ C++/HLSL 변경 시 정상 증분 Debug Product Build
 → 담당 public interface에서 작업 시작
 ```
 
-기능은 `main`이 아닌 별도 branch/PR로 전달한다. 코드, 소비 데이터, project/filter 등록, harness, RESULT를 같은 검증 단위로 묶는다. build output, `EngineSDK`, `.vs`, `.codex_tmp`, `_work`, `imgui.ini`, `Client/Bin/Resources` payload를 stage하지 않는다.
+기능은 `main`이 아닌 별도 branch/PR로 전달한다. 코드, Data 정본, publisher/schema와 대응 Client/Server DataFiles 출력, 필요한 project/filter 등록과 검증, RESULT를 같은 변경 단위로 묶는다. 게시 snapshot은 해당 publisher로 생성하고 일반 `git add`로 전달한다. 받는 PC는 저작 변경이 없으면 전체 publish/navigation bake를 반복하지 않는다. 컴파일·링크 산출물, `EngineSDK`, `.vs`, `.codex_tmp`, `_work`, `imgui.ini`, `Client/Bin/Resources` payload는 stage하지 않는다.
 
 ## 11. 완료 검증
 
@@ -1614,9 +1635,9 @@ powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.p
 powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.ps1 -Configuration Release
 ```
 
-자동화 순서는 Engine → UpdateLib → Shared/Protocol Harness → Server build/contract test → Client build → balance/world/navigation/rendering publisher validate + Effect source validate → 변경 domain의 실행형 harness이다. 실제 Level 흐름은 `Framework.slnLaunch`로 Server와 Client를 함께 실행해 검증한다.
+기본 Product는 Engine → Shared → Server → Client의 컴파일·링크와 SDK/shader/runtime DLL 배포를 수행한다. Client 프로젝트가 SDK 배포를 소유하므로 `UpdateLib.bat`을 별도 자동 단계로 반복하지 않는다. publisher와 광역 하네스는 명시 owner/Core/FullDiagnostic 경로에서 실행하며 매 pull/build의 필수 단계가 아니다. 데이터만 변경한 경우 해당 domain 게시·실제 소비 검증을 수행하고, C++/HLSL을 변경했으면 정상 증분 Product Build를 추가한다.
 
-최소 성공 증거:
+아래는 네트워크·레벨 전환 등 전체 흐름을 변경하거나 명시적으로 광역 통합 검증을 수행할 때의 확인 항목이다. 일반 변경 완료 조건은 `AGENTS.md`의 기능별 최소 검증을 따른다. 실제 Client/UI 실행과 화면 판정은 사용자가 수행한다.
 
 - Protocol Harness `failures : 0`
 - Server gameplay contract `failures : 0`
@@ -1783,3 +1804,25 @@ BINGO Flow는 intro Pattern과 arrival를 생성하지 않고 Action/Sequence re
 기존 TRIGGER mechanic의 `BOSS_TELEPORT_XZ`는 Y를 보존한다. `BOSS_TELEPORT_GROUNDED`는 navigation·authoring 목적지 높이·body overlap을 먼저 검증하고 성공할 때만 보스와 animation root 기준을 바닥으로 이동한다. 해당 Pattern의 다음 Stage root origin도 바닥에서 시작하되 원본 Up curve는 유지한다. 실패는 위치·root·정책을 보존하고 Pattern 종료/새 실행은 바닥 정책을 초기화한다. 같은25필드 bootstrap 계약의 새 kind이며 Shared packet 형식은 바꾸지 않는다.
 
 Server가 제공한 동적 support 위에서는 기존 snapshot.canPredictMove=false로 Client 정적 nav 예측이 Server Y를 덮지 않게 한다. support 포함 판정은 ServerNavigation의 exact circle을 공유한다. 이 값은 표현 예측 허용이며 이동 입력 잠금이 아니다. typed MoveGoal과 Server simulation은 계속되고 Client는 기존 XYZ snapshot 보간을 사용한다. 발판 이탈·소멸 뒤에는 원래 예측 조건으로 복귀한다.
+
+
+### 쿠크 안전존 Duration과 상태 문구
+
+Composition `INVULNERABILITY_ZONE`은 같은 시간 창의 고정 MAP Collider 1~64개를 연결하는 DURATION이다. Result 슬롯은 없으며 영역 안 플레이어에게 같은 Pattern 실행의 `INSTANT_DEATH`, `MAX_HP_PERCENT_DAMAGE`, `FEAR` Result가 새로 적용되는 것을 막는다. 이미 걸린 공포를 해제하는 정화나 다른 보스·별도 페널티까지 막는 전역 무적은 아니다. 게시 region의 XZ 플레이어 중심 포함 판정을 소비한다.
+
+Protocol 99의 `SNAPSHOT_PLAYER.iInvulnerabilityZonePulseTick`은 서버가 정한 입장 및 2초 간격의 표시 occurrence이며 밖/종료/비활성에는 0이다. Client는 파란 무적 문구만 표시하고 지역 충돌이나 반복 시간을 판정하지 않는다. 문구 중복 제거는 플레이어와 단어별로 구분해 서로 다른 상태의 tick이 상대 문구를 다시 생성하지 않게 한다. Client와 Server를 함께 빌드·재시작한다.
+
+
+### 쿠크 Result의 강제 밀림과 아레나 경계 이탈
+
+`MAX_HP_PERCENT_DAMAGE` Result의 양수 `pushRangeM`/`pushMs`는 기존 밀림 시간과 거리를 사용한다. optional `forcePush`와 `pushCanLeaveArena`의 기본값은 false이며, true일 때 양수 밀림이 필수다. `pushYawOffsetDegrees`는 기본0, 범위−360~360이고 0이 아닌 값은 양수 `BOSS_FORWARD` 밀림에만 허용한다. 방향은 body local+Z에 yaw offset을 적용하므로 collider의 실제 축이+X라면+90도를 사용한다. 사선 collider는 각자의 저작 축을 소비한다.
+
+`forcePush`는 공포·다운·기상 보호·진행 중 밀림을 새 밀림으로 교체한다. 사망·낙하·잡힘·패턴 부착·맵 이동 등 제외 상태는 유지한다. 안전존이 같은 Pattern의 피해 Result를 막으면 그 Result의 밀림도 발생하지 않는다. `pushCanLeaveArena`는 Kouku 본 아레나의 명시된 밀림에서 외곽 통과가 확인됐을 때 기존 서버 FALLING→DEAD 경로를 사용하며 Mario와 일반 밀림의 navigation 제한은 유지한다. 거리만으로 사망을 예약하거나 Client가 낙사를 판정하지 않는다.
+
+Gameplay bootstrap의 `PATTERNLOGICPUSH`는 기존8/9필드를 계속 읽는다. 새 flag가 필요하면 direction·force·leave의11필드, yaw까지 필요하면12필드를 쓴다. Client codec, projector, Gameplay publisher와 Server catalog가 같은 조건을 검증한다.
+
+### 쿠크 포물선 넉백과 크기 프로필 보완
+
+Composition Result의 optional pushBallistic은 기존 직선 push 기본값을 유지한다. 활성화 시 pushRangeM은0초과100m이하, pushDurationMs는100~5000, pushCanLeaveArena=true가 필수다. AWAY_FROM_CONTACT는 실제 판정에 쓰인 장판 중심→플레이어 방향이며 BOSS_FORWARD만 yaw offset을 허용한다. Client 편집→projector→publisher→Server parser가 동일 정책을 보존한다. Server 비행은 gravity와 원본 navigation surface를 소비하여 착지와 낙사를 구분한다.
+
+Character Size Save/Reload는 계속 선택 맵별 camera JSON을 소유한다. 카메라 컷신 재생 여부가 크기 적용을 막지 않는다. Test/Training/Maharaka 공용 Development는 CharacterSelect의 저장된 크기만 읽고 기존 카메라 포즈를 유지한다. 현재 맵들의 Artist/DimensionMaster 배율을 동일하게 맞춘 값은 각 Data/Camera 문서가 정본이며 모델 자체 catalog scale은 별개다.

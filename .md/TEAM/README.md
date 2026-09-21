@@ -2,6 +2,14 @@
 
 이 폴더는 팀원이 pull 후 가장 먼저 보는 살아 있는 public 계약의 정본이다. 날짜별 PLAN/RESULT는 구현 당시의 증거이므로 `.md/GB/<MM-DD>/`에 그대로 보존하고, 여기서 현재 유효한 문서만 연결한다.
 
+## 게시된 실행 데이터 전달
+
+`Client/Bin/DataFiles`, `Server/Bin/DataFiles`의 게시 snapshot은 정본·publisher·소비 schema와
+같은 PR로 전달한다. 받는 PC는 pull과 필요한 LFS 다운로드 뒤 정상 증분 Product Build를 사용하며,
+로컬 저작 변경이 없으면 전체 publish나 navigation bake를 반복하지 않는다. 누락·이전 schema는
+해당 publisher로만 복구한다. 원리와 명령은 [CLAUDE.md의 Publish와 Git 전달](../../CLAUDE.md#publish와-git-전달),
+생성물/Resources/컴파일 산출물의 구분은 [Runtime 전달 가이드](RUNTIME_BUILD_DELIVERY_GUIDE.md)를 따른다.
+
 ## PR #264 이후 main pull 전 1회 확인
 
 PR #264~#266 기준 PC가 PR #267 이후 `main`을 처음 받을 때는 pull 전에

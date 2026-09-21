@@ -76,7 +76,8 @@ void LostArk::Server::CGameRoom::Note_GatePlacementRaised(const std::string& pla
 void LostArk::Server::CGameRoom::Notify_GateBossDeath(const SERVER_WORLD_ENTITY& deadBoss)
 {
     // A pinned raid defines its primary boss; Gate 2's supporting actor cannot delay or trigger its clear.
-    if (Is_KoukuRaidRunning() && m_KoukuRaid.State.ePhase != LostArk::Shared::KOUKUSAYDON_RAID_PHASE::PREPARING) return;
+    if (Is_KoukuRaidRunning() && (m_KoukuRaid.State.ePhase != LostArk::Shared::KOUKUSAYDON_RAID_PHASE::PREPARING ||
+        m_KoukuRaid.bClearedGate3Preparation)) return;
 	const int iGate = Gate_IndexOfPlacement(deadBoss.strPlacementId);
 	if (iGate < 0)
 		return;
@@ -232,6 +233,8 @@ void LostArk::Server::CGameRoom::Handle_GateProgressPropose(
 		return;
 
     const bool raid = Is_KoukuRaidRunning();
+    if (raid && m_KoukuRaid.State.strGateId == "GATE3" &&
+        m_KoukuRaid.State.ePhase == KOUKUSAYDON_RAID_PHASE::WAIT_GATE && m_KoukuRaid.State.iEndTick) return;
     if (request.eKind == GATE_PROGRESS_KIND::ENTER_GATE3 &&
         (raid ? (m_KoukuRaid.State.strGateId != "GATE3" ||
             m_KoukuRaid.State.ePhase != KOUKUSAYDON_RAID_PHASE::WAIT_ENTRY) :
@@ -409,9 +412,11 @@ bool LostArk::Server::CGameRoom::Enter_KoukuRaidCombat(const std::uint8_t gateIn
         (run.State.ePhase == KOUKUSAYDON_RAID_PHASE::WAIT_ENTRY ||
             (run.State.ePhase == KOUKUSAYDON_RAID_PHASE::CINEMATIC && run.bGate3CombatEntered));
     const bool bingoEntry = gateIndex == 4u &&
-        ((run.State.strGateId == "GATE3" && run.State.ePhase == KOUKUSAYDON_RAID_PHASE::WAIT_GATE) ||
+        ((run.State.strGateId == "GATE3" && run.State.ePhase == KOUKUSAYDON_RAID_PHASE::WAIT_GATE && !run.State.iEndTick) ||
             (run.State.strGateId == "BINGO" && (run.State.ePhase == KOUKUSAYDON_RAID_PHASE::PREPARING ||
-                run.State.ePhase == KOUKUSAYDON_RAID_PHASE::WAIT_GATE || run.State.ePhase == KOUKUSAYDON_RAID_PHASE::COMBAT)));
+                run.State.ePhase == KOUKUSAYDON_RAID_PHASE::WAIT_GATE || run.State.ePhase == KOUKUSAYDON_RAID_PHASE::COMBAT ||
+                (run.State.ePhase == KOUKUSAYDON_RAID_PHASE::CINEMATIC && !run.bClearCinematic &&
+                    GameRoomDetail::Has_ReachedServerTick(m_iServerTick, run.State.iEndTick)))));
     if ((!gateThreeEntry && !bingoEntry) || run.PlayerIds.empty() || !run.pCatalog ||
         !run.pCatalog->Find_KoukuRaidGate(bingoEntry ? "BINGO" : "GATE3")) return false;
     const auto& gate = KOUKU_GATES[gateIndex - 1u];
@@ -426,7 +431,7 @@ bool LostArk::Server::CGameRoom::Enter_KoukuRaidCombat(const std::uint8_t gateIn
         const auto session = m_PlayerIdBySessionId.find(player->second.iSessionId);
         if (session == m_PlayerIdBySessionId.end() || session->second != id) return false;
         if (!m_GameplayCatalog.Find_Player(player->second.eCharacterClass)) return false;
-        // A unanimous Bingo entry/restart revives participants. Validate that future
+        // The raid-owned encore handoff or unanimous Bingo restart revives participants. Validate that future
         // state without touching the live player or cancelling the existing encounter.
         auto candidate = player->second;
         if (bingoEntry)

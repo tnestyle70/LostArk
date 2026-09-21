@@ -278,6 +278,7 @@
       "tools": ["Tools/NavigationPipeline/Publish-ServerNavigation.ps1"],
       "outputs": [
         "Server/Bin/DataFiles/Navigation/*.navgrid",
+        "Server/Bin/DataFiles/Navigation/*.navsurface",
         "Server/Bin/DataFiles/Navigation/*.navblockers",
         "Server/Bin/DataFiles/Navigation/*.navpolicy",
         "Server/Bin/DataFiles/Navigation/*.navregions",
@@ -487,7 +488,10 @@
         "Data/Valtan/Valtan.clearrewards.json",
         "Data/Items/ItemCatalog.json"
       ],
-      "tools": ["Tools/ValtanPipeline/Publish-ValtanClearRewards.ps1"],
+      "tools": [
+        "Tools/ValtanPipeline/Publish-ValtanClearRewards.ps1",
+        "Tools/GameplayPipeline/Publish-FileTransaction.ps1"
+      ],
       "outputs": ["Server/Bin/DataFiles/Valtan/ClearRewards.bootstrap"],
       "requiredOutputPatterns": [
         "Server/Bin/DataFiles/Valtan/ClearRewards.bootstrap"

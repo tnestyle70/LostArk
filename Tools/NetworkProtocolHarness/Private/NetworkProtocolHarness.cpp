@@ -2284,7 +2284,7 @@ namespace
 				unchanged.eDirection == request.eDirection,
 				"Malformed Mario direction or stop preserves output");
 		}
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 84u && Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_MOVE) &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 100u && Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_MOVE) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_MARIO_MOVE) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) + 1u,
 			"Mario direction packet retains its appended identity in protocol 84");
@@ -2299,14 +2299,16 @@ namespace
         player.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
         player.eAction = PLAYER_ACTION_STATE::FEAR; player.iActionStartTick = 100u;
         player.iFearEndTick = 190u; player.strFearPresentationId = "kakulsaydon.g1.logic.28";
+        player.iInvulnerabilityZonePulseTick = 100u;
         snapshot.Players = {player};
         CPacketWriter writer;
         const bool written = Write_Message(writer, snapshot);
         CPacketReader reader{writer.Get_Buffer()}; S2C_WORLD_SNAPSHOT decoded{};
         testRunner.Require(written && Read_Message(reader, decoded) && reader.Get_RemainingSize() == 0u &&
             decoded.Players[0].eAction == PLAYER_ACTION_STATE::FEAR && decoded.Players[0].iFearEndTick == 190u &&
-            decoded.Players[0].strFearPresentationId == player.strFearPresentationId,
-            "Fear action, authoritative deadline and presentation identity round trip");
+            decoded.Players[0].strFearPresentationId == player.strFearPresentationId &&
+            decoded.Players[0].iInvulnerabilityZonePulseTick == 100u,
+            "Fear deadline, presentation identity and independent invulnerability-zone pulse round trip");
         for (int invalid = 0; invalid < 4; ++invalid)
         {
             auto bad = snapshot;
@@ -2318,6 +2320,11 @@ namespace
             testRunner.Require(!Write_Message(rejected, bad) && rejected.Get_Buffer().empty(),
                 "Malformed fear or stale fear fields reject before serializing any bytes");
         }
+        auto idleZone = snapshot; idleZone.Players[0].eAction = PLAYER_ACTION_STATE::NONE;
+        idleZone.Players[0].iFearEndTick = 0u; idleZone.Players[0].strFearPresentationId.clear();
+        CPacketWriter zoneOnly; testRunner.Require(Write_Message(zoneOnly, idleZone), "Zone pulse does not require a FEAR action");
+        idleZone.Players[0].iCurrentHp = 0u; CPacketWriter deadZone;
+        testRunner.Require(!Write_Message(deadZone, idleZone) && deadZone.Get_Buffer().empty(), "Dead player cannot advertise active zone pulse");
         auto truncated = writer.Get_Buffer(); truncated.pop_back();
         CPacketReader malformed{truncated}; decoded.iServerTick = 777u;
         testRunner.Require(!Read_Message(malformed, decoded) && decoded.iServerTick == 777u,
@@ -2678,7 +2685,7 @@ namespace
 				unchanged.eWorldId == WORLD_ID::BERN && unchanged.eResult == MARIO_RETURN_RESULT::REJECTED_DESTINATION,
 				"Invalid Mario return verdict preserves caller output");
 		}
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 84u &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 100u &&
 			Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_RETURN) && Is_Known_Packet_Type(PACKET_TYPE::S2C_MARIO_RETURN_RESULT) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_MARIO_RETURN) == static_cast<std::uint16_t>(PACKET_TYPE::S2C_SET_VEHICLE_RIDING_RESULT) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_MARIO_RETURN_RESULT) == static_cast<std::uint16_t>(PACKET_TYPE::C2S_MARIO_RETURN) + 1u,
@@ -2799,7 +2806,7 @@ namespace
 				unchanged.eResult == DEBUG_MARIO_JUMP_RESULT::REJECTED_DISABLED,
 				"Mario invalid or truncated verdict preserves caller output");
 		}
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 84u &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 100u &&
 			Is_Known_Packet_Type(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) &&
 			Is_Known_Packet_Type(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) ==
@@ -2956,14 +2963,14 @@ namespace
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_BINGO_HAMMER) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_SET_VEHICLE_RIDING_RESULT) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_SET_VEHICLE_RIDING) + 1u &&
-			NETWORK_PROTOCOL_VERSION == 84u,
+			NETWORK_PROTOCOL_VERSION == 100u,
 			"Riding packet identities append without renumbering peers");
 	}
 
 	void Test_WorldObjectMotionProtocol(TEST_RUNNER& testRunner)
 	{
 		using namespace LostArk::Shared;
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 84u, "World Object owner lifecycle and fear use protocol 84");
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 100u, "World Object owner lifecycle, fear, zone pulse and ember use protocol 100");
 		testRunner.Require(
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) == 72u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) == 73u &&
@@ -3316,7 +3323,7 @@ namespace
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_INTERACT_PROMPT) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_INTERACTION_SLOT) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_INTERACT_TRIGGER) + 1u &&
-			NETWORK_PROTOCOL_VERSION == 84u,
+			NETWORK_PROTOCOL_VERSION == 100u,
 			"Protocol 84 preserves main trigger identities with WORLD occurrence placement");
 	}
 
@@ -3433,7 +3440,7 @@ namespace
 	void Test_PartyInviteProtocol(TEST_RUNNER& testRunner)
 	{
 		{
-			testRunner.Require(84u == NETWORK_PROTOCOL_VERSION,
+			testRunner.Require(99u == NETWORK_PROTOCOL_VERSION,
 				"KoukuSaydon Source Pin And Existing Contracts Use Protocol 84");
 			C2S_ENTER_WORLD oldPeer{};
 			oldPeer.iProtocolVersion = 40u;
@@ -3947,25 +3954,32 @@ namespace
         constexpr std::size_t playerCardMazeBytes = 5 + (4 * 6);
 		// Protocol 78 adds a fear deadline and the empty presentation string length.
         constexpr std::size_t playerFearBytes = 4 + 2;
+        // Protocol 99 carries a zone presentation pulse independently of action state.
+        constexpr std::size_t playerZonePulseBytes = 4;
 		// Protocol 81 appends the acknowledgement and ordinary movement state.
 		constexpr std::size_t playerPredictionBytes = 4 + 4 + 1 + 1 + (4 * 3);
-		// Protocol 84 appends the ridden vehicle id; protocol 89 the honor title id.
-		constexpr std::size_t playerVehicleBytes = 4 + 4;
-		/* The + 3 after the identity pair is the protocol 99 ember triple. */
+		// Protocol 84 appends the ridden vehicle id.
+		constexpr std::size_t playerVehicleBytes = 4;
+        // Protocol 89 adds the equipped honor-title identity to every player.
+        constexpr std::size_t playerHonorTitleBytes = 4;
+		/* The + 3 after the identity pair is the protocol 100 ember triple. */
 		constexpr std::size_t playerFixedBytes =
 			4 + 1 + (4 * 4) + 1 + 1 + 1 + (4 * 8) + 1 + (4 * 3) + 3 +
 			1 + 1 + 1 + playerAttachmentBytes + playerPatternStatusBytes +
-			playerMadnessBytes + playerInteractionBytes + playerMarioStageBytes + playerCardMazeBytes + playerFearBytes + playerPredictionBytes +
-			playerVehicleBytes;
+			playerMadnessBytes + playerInteractionBytes + playerMarioStageBytes + playerCardMazeBytes + playerFearBytes + playerZonePulseBytes + playerPredictionBytes +
+			playerVehicleBytes + playerHonorTitleBytes;
 		constexpr std::size_t cooldownBytes = 4 + 4;
 		/* The first trailing 1 is the optional Portal rush route flag.
 		   The final 1 + 1 + 1 is iPhase, iBrokenArmorMask and the
 		   hasBossCombatState flag. The block after it is the boss combat
 		   snapshot the flag guards. */
+		// Retained presentation has its own IDs and pattern/action/stage clocks.
+        const std::size_t entityPresentationBytes =
+            2 + entity.strPresentationPatternId.size() + 2 + entity.strPresentationActionId.size() + (4 * 3);
 		const std::size_t entityBytes =
 			4 + 1 + 2 + entity.strPatternId.size() + 2 +
 			entity.strActionId.size() + (4 * 4) + 1 + (4 * 7) + 1 + 1 + 1 +
-			4 + 4 + 2 + (4 * 6) + 1 + GAMEPLAY_DATA_REVISION_BYTES;
+			4 + 4 + 2 + (4 * 6) + 1 + GAMEPLAY_DATA_REVISION_BYTES + entityPresentationBytes;
 		constexpr std::size_t bossCombatEventBytes =
 			8 + 4 + 4 + 1 + 4;
 		constexpr std::size_t combatObjectBytes =
@@ -6792,7 +6806,7 @@ namespace
 		}
 
 		testRunner.Require(
-			84u == NETWORK_PROTOCOL_VERSION,
+			99u == NETWORK_PROTOCOL_VERSION,
 			"Session Diagnostics Use Current Protocol Version 80");
 		testRunner.Require(
 			allReasonsAreKnown && allValuesAreContiguous,
@@ -6820,7 +6834,7 @@ namespace
 	void Test_DataRevisionHotReloadProtocol(TEST_RUNNER& testRunner)
 	{
 		testRunner.Require(
-			84u == NETWORK_PROTOCOL_VERSION,
+			99u == NETWORK_PROTOCOL_VERSION,
 			"World Spawn Pin Complete Play And Two-Revision Restart CAS Use Protocol 84");
 		const GameplayDataRevision base = Make_GameplayDataRevision(10u);
 		const GameplayDataRevision candidate = Make_GameplayDataRevision(40u);

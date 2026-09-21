@@ -555,6 +555,8 @@ namespace
 			output = BOSS_PATTERN_LOGIC_KIND::CARD_DICE_BIND;
 		else if ("STAGGER_WINDOW" == value)
 			output = BOSS_PATTERN_LOGIC_KIND::STAGGER_WINDOW;
+		else if ("INVULNERABILITY_ZONE" == value)
+			output = BOSS_PATTERN_LOGIC_KIND::INVULNERABILITY_ZONE;
 		else if ("AREA_OVERLAP" == value)
 			output = BOSS_PATTERN_LOGIC_KIND::AREA_OVERLAP;
 		else if ("ENTER_AREA" == value)
@@ -3177,12 +3179,16 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 		{
 			std::uint32_t ordinal = 0u, pushMs = 0u;
 			float rangeM = 0.f;
-			if ((fields.size() != 8u && fields.size() != 9u) || !IsStableId(fields[1]) || !IsStableId(fields[2]) || !IsStableId(fields[3]) ||
-				(fields.size() == 9u && fields[8] != "AWAY_FROM_BOSS" && fields[8] != "BOSS_FORWARD") ||
+			const bool ballistic = fields.size() == 13u && fields[12] == "1";
+			if ((fields.size() != 8u && fields.size() != 9u && fields.size() != 11u && fields.size() != 12u && fields.size() != 13u) || !IsStableId(fields[1]) || !IsStableId(fields[2]) || !IsStableId(fields[3]) ||
+				(fields.size() >= 9u && fields[8] != "AWAY_FROM_BOSS" && fields[8] != "BOSS_FORWARD" && fields[8] != "AWAY_FROM_CONTACT") ||
+				(fields.size() >= 11u && ((fields[9] != "0" && fields[9] != "1") || (fields[10] != "0" && fields[10] != "1"))) ||
 				(fields[4] != "SUCCESS" && fields[4] != "FAIL" && fields[4] != "TIMEOUT") ||
 				!ParseNumber(fields[5], ordinal) || ordinal > 3u ||
-				!ParseNumber(fields[6], rangeM) || !std::isfinite(rangeM) || rangeM <= 0.f || rangeM > 20.f ||
-				!ParseNumber(fields[7], pushMs) || pushMs == 0u || pushMs > 600000u)
+				!ParseNumber(fields[6], rangeM) || !std::isfinite(rangeM) || rangeM <= 0.f || rangeM > (ballistic ? 100.f : 20.f) ||
+				!ParseNumber(fields[7], pushMs) || pushMs == 0u || pushMs > (ballistic ? 5000u : 600000u) ||
+				(fields.size() == 13u && fields[12] != "0" && fields[12] != "1") ||
+				(ballistic && (pushMs < 100u || fields[10] != "1")))
 			{ m_strStatus = "Boss logic push requires paired bounded range and duration"; return false; }
 			const auto owners = m_BossPatterns.find(std::string(fields[1]));
 			if (owners == m_BossPatterns.end())
@@ -3202,8 +3208,20 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			{ m_strStatus = "Boss logic push needs one max-HP damage outcome"; return false; }
 			outcomes[ordinal].fPushRangeM = rangeM;
 			outcomes[ordinal].iPushMs = pushMs;
-			if (fields.size() == 9u && fields[8] == "BOSS_FORWARD")
+			outcomes[ordinal].bPushBallistic = ballistic;
+			if (fields.size() >= 9u && fields[8] == "AWAY_FROM_CONTACT")
+				outcomes[ordinal].ePushDirection = BOSS_LOGIC_PUSH_DIRECTION::AWAY_FROM_CONTACT;
+			if (fields.size() >= 9u && fields[8] == "BOSS_FORWARD")
 				outcomes[ordinal].ePushDirection = BOSS_LOGIC_PUSH_DIRECTION::BOSS_FORWARD;
+			if (fields.size() >= 11u)
+			{
+				outcomes[ordinal].bForcePush = fields[9] == "1";
+				outcomes[ordinal].bPushCanLeaveArena = fields[10] == "1";
+			}
+			if (fields.size() >= 12u && (!ParseNumber(fields[11], outcomes[ordinal].fPushYawOffsetDegrees) ||
+				!std::isfinite(outcomes[ordinal].fPushYawOffsetDegrees) || std::abs(outcomes[ordinal].fPushYawOffsetDegrees) > 360.f ||
+				(outcomes[ordinal].fPushYawOffsetDegrees != 0.f && outcomes[ordinal].ePushDirection != BOSS_LOGIC_PUSH_DIRECTION::BOSS_FORWARD)))
+			{ m_strStatus = "Boss logic push yaw offset requires bounded BOSS_FORWARD push"; return false; }
 		}
 		else if (!fields.empty() && (fields[0] == "PATTERNLOGICCONTACTTARGET" || fields[0] == "PATTERNLOGICCONTACTGROUP" ||
 			fields[0] == "PATTERNLOGICCONTACTMOTION" || fields[0] == "PATTERNLOGICSIGNAL"))
@@ -3403,13 +3421,13 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 					std::abs(trigger.fTeleportY) > 100000.f || std::abs(trigger.fTeleportZ) > 100000.f)
 				{ m_strStatus = "Boss XZ teleport carries invalid coordinates or unrelated values"; return false; }
 			}
-			else if (fields[4] == "CARD_MAZE_HIDE_NEXT" || fields[4] == "CARD_MAZE_ENTER")
+			else if (fields[4] == "CARD_MAZE_HIDE_NEXT" || fields[4] == "CARD_MAZE_ENTER" || fields[4] == "CARD_MAZE_STAGE_PLAYERS")
 			{
-				trigger.eKind = fields[4] == "CARD_MAZE_HIDE_NEXT" ?
-					BOSS_PATTERN_MECHANIC_TRIGGER_KIND::CARD_MAZE_HIDE_NEXT : BOSS_PATTERN_MECHANIC_TRIGGER_KIND::CARD_MAZE_ENTER;
+				trigger.eKind = fields[4] == "CARD_MAZE_STAGE_PLAYERS" ? BOSS_PATTERN_MECHANIC_TRIGGER_KIND::CARD_MAZE_STAGE_PLAYERS :
+					fields[4] == "CARD_MAZE_HIDE_NEXT" ? BOSS_PATTERN_MECHANIC_TRIGGER_KIND::CARD_MAZE_HIDE_NEXT : BOSS_PATTERN_MECHANIC_TRIGGER_KIND::CARD_MAZE_ENTER;
 				if (mode != 0u || fields[11] != "-" || fields[12] != "0" || fields[13] != "0" || fields[14] != "0" ||
 					trigger.fFaceCenterYawOffsetDegrees != 0.f ||
-					(trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::CARD_MAZE_HIDE_NEXT &&
+					(trigger.eKind != BOSS_PATTERN_MECHANIC_TRIGGER_KIND::CARD_MAZE_ENTER &&
 					 (trigger.fTeleportX != 0.f || trigger.fTeleportY != 0.f || trigger.fTeleportZ != 0.f)))
 				{ m_strStatus = "Card maze trigger carries unrelated values"; return false; }
 			}
@@ -3424,6 +3442,28 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			if (owners->second.end() == owner || owner->MechanicTriggers.size() >= 64u)
 				return false;
 			owner->MechanicTriggers.push_back(std::move(trigger));
+		}
+		else if (!fields.empty() && "PATTERNCARDMAZESTAGING" == fields[0])
+		{
+			std::uint32_t slot = 0u;
+			std::array<float, 3u> position{};
+			if (fields.size() != 8u || !IsStableId(fields[1]) || !IsStableId(fields[2]) || !IsStableId(fields[3]) ||
+				!ParseNumber(fields[4], slot) || slot >= 4u)
+			{ m_strStatus = "Card maze staging row identity or slot is invalid"; return false; }
+			for (std::size_t axis = 0u; axis < position.size(); ++axis)
+				if (!ParseNumber(fields[5u + axis], position[axis]) || !std::isfinite(position[axis]) || std::abs(position[axis]) > 100000.f)
+				{ m_strStatus = "Card maze staging position is invalid"; return false; }
+			const auto owners = m_BossPatterns.find(std::string(fields[1]));
+			if (owners == m_BossPatterns.end()) return false;
+			const auto owner = std::find_if(owners->second.begin(), owners->second.end(),
+				[&fields](const auto& pattern) { return pattern.strPatternId == fields[2]; });
+			if (owner == owners->second.end()) return false;
+			const auto trigger = std::find_if(owner->MechanicTriggers.begin(), owner->MechanicTriggers.end(),
+				[&fields](const auto& row) { return row.strTriggerId == fields[3]; });
+			if (trigger == owner->MechanicTriggers.end() || trigger->eKind != BOSS_PATTERN_MECHANIC_TRIGGER_KIND::CARD_MAZE_STAGE_PLAYERS ||
+				trigger->PlayerEntryPositions.size() != slot)
+			{ m_strStatus = "Card maze staging slots must follow their owner in contiguous order"; return false; }
+			trigger->PlayerEntryPositions.push_back(position);
 		}
 		else if (!fields.empty() && "PATTERNALBIONAIRBORNE" == fields[0])
 		{
@@ -3696,8 +3736,6 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 					!std::isfinite(motion.StartPosition[axis]) || !std::isfinite(motion.EndPosition[axis]) ||
 					std::abs(motion.StartPosition[axis]) > 100000.f || std::abs(motion.EndPosition[axis]) > 100000.f)
 				{ m_strStatus = "Boss Motion position is invalid"; return false; }
-			if (motion.StartPosition[1] != motion.EndPosition[1])
-			{ m_strStatus = "Boss Motion base height must remain constant"; return false; }
 			const auto owners = m_BossPatterns.find(std::string(fields[1]));
 			if (owners == m_BossPatterns.end()) return false;
 			const auto owner = std::find_if(owners->second.begin(), owners->second.end(),
@@ -3705,6 +3743,26 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			if (owner == owners->second.end() || owner->BossMotion || owner->bResetBossToSpawn ||
 				owner->strEncounterId != "ENCOUNTER_KAKULSAYDON_G1") return false;
 			owner->BossMotion = motion;
+		}
+		else if (!fields.empty() && "PATTERNBOSSMOTIONKEY" == fields[0])
+		{
+			std::uint32_t index = 0u;
+			BOSS_PATTERN_BOSS_MOTION_KEY key;
+			if (fields.size() != 8u || !IsStableId(fields[1]) || !IsStableId(fields[2]) ||
+				!ParseNumber(fields[3], index) || index >= 512u || !ParseNumber(fields[4], key.iTimeMs)) return false;
+			for (std::size_t axis = 0u; axis < key.Position.size(); ++axis)
+				if (!ParseNumber(fields[5u + axis], key.Position[axis]) || !std::isfinite(key.Position[axis]) || std::abs(key.Position[axis]) > 100000.f)
+				{ m_strStatus = "Boss Motion key position is invalid"; return false; }
+			const auto owners = m_BossPatterns.find(std::string(fields[1]));
+			if (owners == m_BossPatterns.end()) return false;
+			const auto owner = std::find_if(owners->second.begin(), owners->second.end(),
+				[&fields](const auto& pattern) { return pattern.strPatternId == fields[2]; });
+			if (owner == owners->second.end() || !owner->BossMotion) return false;
+			auto& motion = *owner->BossMotion;
+			if (motion.Keys.size() != index || key.iTimeMs < motion.iStartMs || key.iTimeMs > motion.iEndMs ||
+				(!motion.Keys.empty() && key.iTimeMs <= motion.Keys.back().iTimeMs))
+			{ m_strStatus = "Boss Motion keys must follow their owner in strictly increasing order"; return false; }
+			motion.Keys.push_back(key);
 		}
 		else if (!fields.empty() && "PATTERNSPAWNRESET" == fields[0])
 		{
@@ -4843,7 +4901,8 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 				!IsStableId(fields[1]) || (fields[2] != "GATE1" && fields[2] != "GATE2" && fields[2] != "GATE3" && fields[2] != "BINGO") ||
 				!IsStableId(fields[3]) || !IsStableId(fields[4]) || !ParseNumber(fields[5], gate.iSequenceRevision) || !gate.iSequenceRevision ||
 				(fields[6] != "NONE" && !IsStableId(fields[6])) || !ParseNumber(fields[7], gate.iIntroDurationMs) || gate.iIntroDurationMs > 600000u ||
-                (fields[2] == "BINGO" ? (fields[6] != "NONE" || gate.iIntroDurationMs != 0u) : (fields[6] == "NONE" || !gate.iIntroDurationMs)) ||
+                ((fields[6] == "NONE") != (gate.iIntroDurationMs == 0u)) ||
+                (fields[2] != "BINGO" && fields[6] == "NONE") ||
 				(fields[8] != "NONE" && !IsStableId(fields[8])) || !ParseNumber(fields[9], gate.iClearDurationMs) || gate.iClearDurationMs > 600000u ||
 				((fields[8] == "NONE") != (gate.iClearDurationMs == 0u)) || !IsStableId(fields[10]) ||
 				!ParseNumber(fields[11], gate.iExpectedEntryCount) || !gate.iExpectedEntryCount || gate.iExpectedEntryCount > 256u ||
@@ -6112,6 +6171,9 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			{ if (m_strStatus.empty()) m_strStatus = "Albion airborne requires a Kouku Product pattern"; return false; }
 			for (const auto& trigger : pattern.MechanicTriggers)
 			{
+				if ((trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::CARD_MAZE_STAGE_PLAYERS) != !trigger.PlayerEntryPositions.empty() ||
+					trigger.PlayerEntryPositions.size() > 4u)
+				{ m_strStatus = "Card maze staging requires one to four destinations on its own trigger"; return false; }
 				if (trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::CROSS_DIRECTION_CLONES)
 				{
 					SERVER_WORLD_ENTITY candidate{};
@@ -6244,6 +6306,12 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			}
 			if (pattern.BossMotion)
 			{
+				const auto& motion = *pattern.BossMotion;
+				if (motion.Keys.empty() ? motion.StartPosition[1] != motion.EndPosition[1] :
+					(motion.Keys.size() < 2u || motion.Keys.size() > 512u ||
+					 motion.Keys.front().iTimeMs != motion.iStartMs || motion.Keys.back().iTimeMs != motion.iEndMs ||
+					 motion.Keys.front().Position != motion.StartPosition || motion.Keys.back().Position != motion.EndPosition))
+				{ m_strStatus = "Boss Motion keys must include both exact endpoints, or retain the linear base height"; return false; }
 				std::uint64_t durationMs = 0u;
 				for (const auto& stage : pattern.Stages) durationMs += stage.iDurationMs;
 				if (!isKoukuSaydonGateOne || pattern.bResetBossToSpawn || pattern.ResetBossYawDegrees ||

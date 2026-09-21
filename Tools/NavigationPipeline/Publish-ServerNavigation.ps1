@@ -15,6 +15,146 @@ param(
 $ErrorActionPreference = 'Stop'
 $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
 
+# Keep the authoring/paint/placement contract in this publisher. Only the dense
+# cell loops run as compiled code: invoking a PowerShell pipeline for every cell
+# dominated publication of the large base and detail grids.
+if (-not ('LostArk.NavigationPublish.CellBuffer' -as [type])) {
+    Add-Type -TypeDefinition @'
+using System;
+using System.Globalization;
+using System.IO;
+using System.Text.RegularExpressions;
+
+namespace LostArk.NavigationPublish
+{
+    public sealed class CellBuffer
+    {
+        public byte[] Resolved;
+        public byte[] Walkable;
+        public float[] Heights;
+        private static readonly Regex Tokens = new Regex("\"[^\"]*\"|\\S+", RegexOptions.Compiled);
+
+        public static CellBuffer Parse(string[] lines, uint version, uint width, uint height, string path)
+        {
+            int count = checked((int)((ulong)width * height));
+            var cells = new CellBuffer {
+                Resolved = new byte[count], Walkable = new byte[count], Heights = new float[count]
+            };
+            var seen = new byte[count];
+            var culture = CultureInfo.InvariantCulture;
+            for (int row = 0; row < count; ++row)
+            {
+                var tokens = Tokens.Matches(lines[row + 1]);
+                if (tokens.Count != (version == 1 ? 4 : 5))
+                    throw new InvalidDataException("Navigation authoring row is invalid: " + path + " row=" + row);
+                int x = int.Parse(tokens[0].Value.Trim('"'), culture);
+                int z = int.Parse(tokens[1].Value.Trim('"'), culture);
+                uint surface = uint.Parse(tokens[2].Value.Trim('"'), culture);
+                uint walkable = version == 1 ? surface : uint.Parse(tokens[3].Value.Trim('"'), culture);
+                float level = float.Parse(tokens[version == 1 ? 3 : 4].Value.Trim('"'), culture);
+                if (x < 0 || z < 0 || x >= width || z >= height || surface > 1 || walkable > surface ||
+                    float.IsNaN(level) || float.IsInfinity(level))
+                    throw new InvalidDataException("Navigation authoring cell is invalid: " + path + " row=" + row);
+                int index = checked(z * (int)width + x);
+                if (seen[index] != 0)
+                    throw new InvalidDataException("Navigation authoring has duplicate cells: " + path);
+                seen[index] = 1;
+                cells.Resolved[index] = (byte)surface;
+                cells.Walkable[index] = (byte)walkable;
+                cells.Heights[index] = surface == 0 ? 0.0f : level;
+            }
+            return cells;
+        }
+
+        public static byte[] SerializeSurface(byte[] grid, byte[] resolved)
+        {
+            ulong hash = 14695981039346656037UL;
+            unchecked { foreach (byte value in grid) { hash ^= value; hash *= 1099511628211UL; } }
+            using (var stream = new MemoryStream(20 + resolved.Length))
+            using (var writer = new BinaryWriter(stream))
+            {
+                writer.Write((uint)0x4652534e); writer.Write((uint)1); writer.Write(hash);
+                writer.Write((uint)resolved.Length); writer.Write(resolved); writer.Flush();
+                return stream.ToArray();
+            }
+        }
+
+        public static byte[] Serialize(uint width, uint height, float cellSize, float originX, float originZ,
+            byte[] resolved, byte[] walkable, float[] heights, byte[] overrides)
+        {
+            int count = heights.Length;
+            using (var stream = new MemoryStream(checked(20 + count * 5)))
+            using (var writer = new BinaryWriter(stream))
+            {
+                writer.Write(width); writer.Write(height); writer.Write(cellSize);
+                writer.Write(originX); writer.Write(originZ);
+                for (int index = 0; index < count; ++index)
+                    writer.Write((byte)(resolved[index] != 0 && (overrides[index] == 2 ||
+                        (overrides[index] == 0 && walkable[index] != 0)) ? 1 : 0));
+                foreach (float level in heights) writer.Write(level);
+                writer.Flush();
+                return stream.ToArray();
+            }
+        }
+
+        public static double[] Analyze(byte[] bytes, uint width, uint height, bool requireSingleComponent, string areaId)
+        {
+            int count = checked((int)((ulong)width * height));
+            int stride = checked((int)width);
+            int heightOffset = 20 + count;
+            int walkableCount = 0;
+            double maximumStep = 0.0;
+            for (int z = 0; z < height; ++z)
+            for (int x = 0; x < width; ++x)
+            {
+                int index = z * stride + x;
+                if (bytes[20 + index] != 1) continue;
+                ++walkableCount;
+                double level = BitConverter.ToSingle(bytes, heightOffset + 4 * index);
+                if (x + 1 < width && bytes[20 + index + 1] == 1)
+                    maximumStep = Math.Max(maximumStep, Math.Abs(level - BitConverter.ToSingle(bytes, heightOffset + 4 * (index + 1))));
+                if (z + 1 < height && bytes[20 + index + stride] == 1)
+                    maximumStep = Math.Max(maximumStep, Math.Abs(level - BitConverter.ToSingle(bytes, heightOffset + 4 * (index + stride))));
+            }
+            if (requireSingleComponent)
+            {
+                int first = -1;
+                for (int index = 0; index < count; ++index)
+                    if (bytes[20 + index] == 1) { first = index; break; }
+                if (first < 0)
+                    throw new InvalidDataException("Navigation grid has no walkable component: " + areaId);
+                var visited = new byte[count];
+                var queue = new int[count];
+                queue[0] = first;
+                visited[first] = 1;
+                int head = 0, tail = 1;
+                while (head < tail)
+                {
+                    int current = queue[head++];
+                    int x = current % stride, z = current / stride;
+                    Visit(x + 1 < width ? current + 1 : -1, bytes, visited, queue, ref tail);
+                    Visit(x > 0 ? current - 1 : -1, bytes, visited, queue, ref tail);
+                    Visit(z + 1 < height ? current + stride : -1, bytes, visited, queue, ref tail);
+                    Visit(z > 0 ? current - stride : -1, bytes, visited, queue, ref tail);
+                }
+                if (tail != walkableCount)
+                    throw new InvalidDataException("Navigation grid has disconnected walkable islands: " + areaId +
+                        " connected=" + tail + " total=" + walkableCount);
+            }
+            return new double[] { walkableCount, maximumStep };
+        }
+
+        private static void Visit(int index, byte[] bytes, byte[] visited, int[] queue, ref int tail)
+        {
+            if (index < 0 || bytes[20 + index] != 1 || visited[index] != 0) return;
+            visited[index] = 1;
+            queue[tail++] = index;
+        }
+    }
+}
+'@
+}
+
 function New-UniformNavigationGrid {
     param(
         [string]$RelativeAuthoringPath,
@@ -64,6 +204,8 @@ function New-UniformNavigationGrid {
         return [pscustomobject]@{
             AreaId = [string]$source.areaId
             Bytes = $stream.ToArray()
+            SurfaceBytes = [LostArk.NavigationPublish.CellBuffer]::SerializeSurface(
+                $stream.ToArray(), [byte[]](1..$cellCount | ForEach-Object { 1 }))
             WorldPath = "Data/Worlds/$($source.areaId)/Gameplay.world.json"
             RuntimeMaximumStepHeight = $RuntimeMaximumStepHeight
         }
@@ -224,39 +366,11 @@ function Convert-NavigationAuthoringGrid {
         throw "Navigation authoring dimensions are invalid: $sourcePath"
     }
 
-    $resolved = [byte[]]::new([int]$cellCount)
-    $baseWalkable = [byte[]]::new([int]$cellCount)
-    $heights = [single[]]::new([int]$cellCount)
-    $seen = [byte[]]::new([int]$cellCount)
-    for ($row = 0; $row -lt $cellCount; ++$row) {
-        $tokens = @(Split-NavigationTokens $lines[$row + 1])
-        $expectedRowCount = if ($version -eq 1) { 4 } else { 5 }
-        if ($tokens.Count -ne $expectedRowCount) {
-            throw "Navigation authoring row is invalid: $sourcePath row=$row"
-        }
-        $cellX = [int32]::Parse($tokens[0], $culture)
-        $cellZ = [int32]::Parse($tokens[1], $culture)
-        $surface = [uint32]::Parse($tokens[2], $culture)
-        $walkable = if ($version -eq 1) { $surface } else {
-            [uint32]::Parse($tokens[3], $culture)
-        }
-        $heightToken = if ($version -eq 1) { $tokens[3] } else { $tokens[4] }
-        $cellHeight = [single]::Parse($heightToken, $culture)
-        if ($cellX -lt 0 -or $cellZ -lt 0 -or
-            $cellX -ge $width -or $cellZ -ge $height -or
-            $surface -gt 1 -or $walkable -gt $surface -or
-            [single]::IsNaN($cellHeight) -or [single]::IsInfinity($cellHeight)) {
-            throw "Navigation authoring cell is invalid: $sourcePath row=$row"
-        }
-        $index = $cellZ * $width + $cellX
-        if ($seen[$index] -ne 0) {
-            throw "Navigation authoring has duplicate cells: $sourcePath"
-        }
-        $seen[$index] = 1
-        $resolved[$index] = [byte]$surface
-        $baseWalkable[$index] = [byte]$walkable
-        $heights[$index] = if ($surface -eq 0) { [single]0 } else { $cellHeight }
-    }
+    $cells = [LostArk.NavigationPublish.CellBuffer]::Parse(
+        $lines, $version, $width, $height, $sourcePath)
+    $resolved = $cells.Resolved
+    $baseWalkable = $cells.Walkable
+    $heights = $cells.Heights
 
     # 0 = inherit baked state, 1 = force blocked, 2 = force walkable.
     $overrides = [byte[]]::new([int]$cellCount)
@@ -423,43 +537,16 @@ function Convert-NavigationAuthoringGrid {
         }
     }
 
-    $stream = [IO.MemoryStream]::new()
-    $writer = [IO.BinaryWriter]::new($stream)
-    try {
-        $writer.Write($width)
-        $writer.Write($height)
-        $writer.Write($cellSize)
-        $writer.Write($originX)
-        $writer.Write($originZ)
-        for ($index = 0; $index -lt $cellCount; ++$index) {
-            $isWalkable = $false
-            if ($resolved[$index] -ne 0) {
-                if ($overrides[$index] -eq 2) {
-                    $isWalkable = $true
-                }
-                elseif ($overrides[$index] -eq 0) {
-                    $isWalkable = $baseWalkable[$index] -ne 0
-                }
-            }
-            $walkableByte = if ($isWalkable) { [byte]1 } else { [byte]0 }
-            $writer.Write($walkableByte)
-        }
-        for ($index = 0; $index -lt $cellCount; ++$index) {
-            $writer.Write($heights[$index])
-        }
-        $writer.Flush()
-        return [pscustomobject]@{
-            AreaId = $areaId
-            Bytes = $stream.ToArray()
-            WorldPath = "Data/Worlds/$areaId/Gameplay.world.json"
-            MaximumStepHeight = $MaximumStepHeight
-            RuntimeMaximumStepHeight = $RuntimeMaximumStepHeight
-            RequireSingleComponent = [bool]$RequireSingleComponent
-        }
-    }
-    finally {
-        $writer.Dispose()
-        $stream.Dispose()
+    $gridBytes = [LostArk.NavigationPublish.CellBuffer]::Serialize(
+        $width, $height, $cellSize, $originX, $originZ, $resolved, $baseWalkable, $heights, $overrides)
+    return [pscustomobject]@{
+        AreaId = $areaId
+        Bytes = $gridBytes
+        SurfaceBytes = [LostArk.NavigationPublish.CellBuffer]::SerializeSurface($gridBytes, $resolved)
+        WorldPath = "Data/Worlds/$areaId/Gameplay.world.json"
+        MaximumStepHeight = $MaximumStepHeight
+        RuntimeMaximumStepHeight = $RuntimeMaximumStepHeight
+        RequireSingleComponent = [bool]$RequireSingleComponent
     }
 }
 
@@ -601,77 +688,13 @@ function Assert-NavigationGrid {
         throw "Navigation grid contract is invalid: $($Grid.AreaId)"
     }
 
-    $walkableOffset = 20
-    $heightOffset = $walkableOffset + [int]$cellCount
-    $walkableCount = 0
-    $maximumObservedStep = 0.0
-    for ($cellZ = 0; $cellZ -lt $height; ++$cellZ) {
-        for ($cellX = 0; $cellX -lt $width; ++$cellX) {
-            $index = $cellZ * $width + $cellX
-            if ($bytes[$walkableOffset + $index] -ne 1) { continue }
-            ++$walkableCount
-            $cellHeight = [BitConverter]::ToSingle(
-                $bytes, $heightOffset + 4 * $index)
-            foreach ($neighborIndex in @(
-                $(if ($cellX + 1 -lt $width) { $index + 1 } else { -1 }),
-                $(if ($cellZ + 1 -lt $height) { $index + $width } else { -1 })
-            )) {
-                if ($neighborIndex -lt 0 -or
-                    $bytes[$walkableOffset + $neighborIndex] -ne 1) {
-                    continue
-                }
-                $neighborHeight = [BitConverter]::ToSingle(
-                    $bytes, $heightOffset + 4 * $neighborIndex)
-                $maximumObservedStep = [Math]::Max(
-                    $maximumObservedStep,
-                    [Math]::Abs([double]$cellHeight - $neighborHeight))
-            }
-        }
-    }
+    $analysis = [LostArk.NavigationPublish.CellBuffer]::Analyze(
+        $bytes, $width, $height, [bool]$Grid.RequireSingleComponent, $Grid.AreaId)
+    $walkableCount = [int]$analysis[0]
+    $maximumObservedStep = $analysis[1]
     if ($Grid.MaximumStepHeight -gt 0.0 -and
         $maximumObservedStep -gt $Grid.MaximumStepHeight + 0.000001) {
         throw "Navigation grid has an unsafe adjacent step: $($Grid.AreaId) max=$maximumObservedStep limit=$($Grid.MaximumStepHeight)"
-    }
-
-    if ($Grid.RequireSingleComponent) {
-        $firstWalkable = -1
-        for ($index = 0; $index -lt $cellCount; ++$index) {
-            if ($bytes[$walkableOffset + $index] -eq 1) {
-                $firstWalkable = $index
-                break
-            }
-        }
-        if ($firstWalkable -lt 0) {
-            throw "Navigation grid has no walkable component: $($Grid.AreaId)"
-        }
-        $visited = [byte[]]::new([int]$cellCount)
-        $queue = [Collections.Generic.Queue[int]]::new()
-        $queue.Enqueue($firstWalkable)
-        $visited[$firstWalkable] = 1
-        $visitedCount = 0
-        while ($queue.Count -ne 0) {
-            $current = $queue.Dequeue()
-            ++$visitedCount
-            $cellX = $current % $width
-            $cellZ = [Math]::Floor($current / $width)
-            foreach ($neighborIndex in @(
-                $(if ($cellX + 1 -lt $width) { $current + 1 } else { -1 }),
-                $(if ($cellX -gt 0) { $current - 1 } else { -1 }),
-                $(if ($cellZ + 1 -lt $height) { $current + $width } else { -1 }),
-                $(if ($cellZ -gt 0) { $current - $width } else { -1 })
-            )) {
-                if ($neighborIndex -lt 0 -or
-                    $bytes[$walkableOffset + $neighborIndex] -ne 1 -or
-                    $visited[$neighborIndex] -ne 0) {
-                    continue
-                }
-                $visited[$neighborIndex] = 1
-                $queue.Enqueue($neighborIndex)
-            }
-        }
-        if ($visitedCount -ne $walkableCount) {
-            throw "Navigation grid has disconnected walkable islands: $($Grid.AreaId) connected=$visitedCount total=$walkableCount"
-        }
     }
 
     return "${width}x${height}, cellSize=$cellSize, walkable=$walkableCount, maxStep=$maximumObservedStep"
@@ -989,9 +1012,95 @@ function Invoke-NavigationPaintContractTest {
     }
 }
 
+function Invoke-NavigationCellContractTest {
+    # A blocked cell still has physical floor; a missing surface does not.
+    $surfaceCells = [LostArk.NavigationPublish.CellBuffer]::Parse(
+        [string[]]@('header', '0 0 1 0 0', '1 0 0 0 0'), 2, 2, 1, 'surface-contract')
+    $surfaceGrid = [LostArk.NavigationPublish.CellBuffer]::Serialize(
+        2, 1, 1, 0, 0, $surfaceCells.Resolved, $surfaceCells.Walkable, $surfaceCells.Heights, [byte[]]@(0,0))
+    $surface = [LostArk.NavigationPublish.CellBuffer]::SerializeSurface($surfaceGrid, $surfaceCells.Resolved)
+    if ($surface.Length -ne 22 -or [BitConverter]::ToUInt32($surface, 0) -ne 0x4652534e -or
+        [BitConverter]::ToUInt32($surface, 4) -ne 1 -or [BitConverter]::ToUInt32($surface, 16) -ne 2 -or
+        $surface[20] -ne 1 -or $surface[21] -ne 0 -or $surfaceGrid[20] -ne 0 -or $surfaceGrid[21] -ne 0) {
+        throw 'Navigation surface sidecar conflated blocked ground and missing floor'
+    }
+    $changedGrid = [byte[]]$surfaceGrid.Clone(); $changedGrid[22] = $changedGrid[22] -bxor 1
+    $changedSurface = [LostArk.NavigationPublish.CellBuffer]::SerializeSurface($changedGrid, $surfaceCells.Resolved)
+    if ([BitConverter]::ToUInt64($surface, 8) -eq [BitConverter]::ToUInt64($changedSurface, 8)) {
+        throw 'Navigation surface sidecar lost grid generation binding'
+    }
+    # Source v1/v2, quoted tokens and row order must produce the same bytes.
+    # The second cell has no surface: its authored height must stay discarded.
+    $expected = $null
+    foreach ($sourceCase in @(
+        @{ Version=1; Rows=@('1 0 0 99', '0 0 1 1.25') },
+        @{ Version=2; Rows=@('0 0 1 1 1.25', '1 0 0 0 99') },
+        @{ Version=2; Rows=@('"1" "0" "0" "0" "99"', '"0" "0" "1" "1" "1.25"') }
+    )) {
+        $cells = [LostArk.NavigationPublish.CellBuffer]::Parse(
+            [string[]](@('header') + $sourceCase.Rows), $sourceCase.Version, 2, 1, 'cell-contract')
+        $bytes = [LostArk.NavigationPublish.CellBuffer]::Serialize(
+            2, 1, 0.5, -2, 3, $cells.Resolved, $cells.Walkable, $cells.Heights, [byte[]]@(0, 0))
+        if ($bytes.Length -ne 30 -or $bytes[20] -ne 1 -or $bytes[21] -ne 0 -or
+            [BitConverter]::ToSingle($bytes, 22) -ne 1.25 -or
+            [BitConverter]::ToSingle($bytes, 26) -ne 0 -or
+            [BitConverter]::ToSingle($bytes, 8) -ne 0.5 -or
+            [BitConverter]::ToSingle($bytes, 12) -ne -2 -or
+            [BitConverter]::ToSingle($bytes, 16) -ne 3) {
+            throw 'Navigation dense cell conversion changed the binary contract'
+        }
+        $actual = [BitConverter]::ToString($bytes)
+        if ($null -ne $expected -and $actual -cne $expected) {
+            throw 'Navigation dense cell conversion depends on source version or row order'
+        }
+        $expected = $actual
+    }
+    foreach ($badRows in @(
+        @('0 0 1 1 0', '0 0 1 1 0'),
+        @('0 0 1 1 0', '2 0 1 1 0'),
+        @('0 0 1 1 0', '1 -1 1 1 0'),
+        @('0 0 1 1 0', '1 0 2 1 0'),
+        @('0 0 1 1 0', '1 0 0 1 0'),
+        @('0 0 1 1 0', '1 0 1 1 NaN'),
+        @('0 0 1 1 0', '1 0 1 1 Infinity'),
+        @('0 0 1 1 0', '1 0 1 1'),
+        @('0 0 1 1 0', '1 0 1 1 0 extra')
+    )) {
+        $rejected = $false
+        try {
+            [LostArk.NavigationPublish.CellBuffer]::Parse(
+                [string[]](@('header') + $badRows), 2, 2, 1, 'invalid-cell-contract') | Out-Null
+        }
+        catch { $rejected = $true }
+        if (-not $rejected) { throw 'Navigation dense cell parser accepted an invalid source' }
+    }
+    foreach ($case in @(
+        @{ Cells=@(1,1,0,0,1,1); Error=$null; Count=4 },
+        @{ Cells=@(0,0,1,1,0,0); Error='disconnected'; Count=2 },
+        @{ Cells=@(0,0,0,0,0,0); Error='no walkable'; Count=0 }
+    )) {
+        $bytes = [LostArk.NavigationPublish.CellBuffer]::Serialize(
+            3, 2, 1, 0, 0, [byte[]]$case.Cells, [byte[]]$case.Cells,
+            [single[]]@(0,0.5,0,0,1,1.5), [byte[]]::new(6))
+        $failure = $null
+        try {
+            $analysis = [LostArk.NavigationPublish.CellBuffer]::Analyze($bytes, 3, 2, $true, 'component-contract')
+            if ($analysis[0] -ne $case.Count -or $analysis[1] -ne 0.5) {
+                throw 'Navigation dense grid statistics differ'
+            }
+        }
+        catch { $failure = $_.Exception.Message }
+        if (($null -eq $case.Error -and $null -ne $failure) -or
+            ($null -ne $case.Error -and ($null -eq $failure -or $failure -notlike "*$($case.Error)*"))) {
+            throw "Navigation dense grid component contract failed: $failure"
+        }
+    }
+}
+
 if ($Mode -eq 'ContractTest') {
+    Invoke-NavigationCellContractTest
     Invoke-NavigationPaintContractTest
-    Write-Host 'Server navigation ContractTest succeeded: navpaint, runtime blockers and placement height acceptance/rejection cases.'
+    Write-Host 'Server navigation ContractTest succeeded: source cells, connectivity, navpaint, runtime blockers and placement height acceptance/rejection cases.'
     return
 }
 
@@ -1073,6 +1182,7 @@ if ($Mode -eq 'Publish') {
         [IO.Directory]::CreateDirectory($clientRoot) | Out-Null
         $token = [Guid]::NewGuid().ToString('N')
         $targets = [Collections.Generic.List[object]]::new()
+        $targets.Add(@{ Destination=(Join-Path $root "$($entry.Grid.AreaId).navsurface"); Bytes=[byte[]]$entry.Grid.SurfaceBytes })
         $targets.Add(@{ Destination=(Join-Path $root "$($entry.Grid.AreaId).navgrid"); Bytes=[byte[]]$entry.Grid.Bytes })
         $targets.Add(@{ Destination=(Join-Path $root "$($entry.Grid.AreaId).navblockers"); Lines=[string[]]$entry.BlockerLines })
         $targets.Add(@{ Destination=(Join-Path $root "$($entry.Grid.AreaId).navpolicy"); Lines=[string[]]$entry.PolicyLines })
@@ -1081,6 +1191,7 @@ if ($Mode -eq 'Publish') {
         $targets.Add(@{ Destination=(Join-Path $clientRoot "$($entry.Grid.AreaId).navpolicy"); Lines=[string[]]$entry.PolicyLines })
         foreach ($regionEntry in @($entry.Regions)) {
             $regionGridId = $regionEntry.Grid.AreaId
+            $targets.Add(@{ Destination=(Join-Path $root "$regionGridId.navsurface"); Bytes=[byte[]]$regionEntry.Grid.SurfaceBytes })
             $targets.Add(@{ Destination=(Join-Path $root "$regionGridId.navgrid"); Bytes=[byte[]]$regionEntry.Grid.Bytes })
             $targets.Add(@{ Destination=(Join-Path $root "$regionGridId.navblockers"); Lines=[string[]]$regionEntry.BlockerLines })
             $targets.Add(@{ Destination=(Join-Path $root "$regionGridId.navpolicy"); Lines=[string[]]$regionEntry.PolicyLines })

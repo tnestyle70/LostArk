@@ -1,6 +1,7 @@
 #include "Level_Development.h"
 
 #include "Camera_Free.h"
+#include "ArenaCameraProfile.h"
 #include "Character.h"
 #include "CharacterSelectionState.h"
 #include "CombatHUDViewModel.h"
@@ -16,6 +17,8 @@
 #include "MapEditorWorkspaceService.h"
 #endif
 
+CLevel_Development* CLevel_Development::s_pActiveInstance = nullptr;
+
 CLevel_Development::CLevel_Development(
 	ComPtr<ID3D11Device> pDevice,
 	ComPtr<ID3D11DeviceContext> pContext,
@@ -23,10 +26,13 @@ CLevel_Development::CLevel_Development(
 	: CLevel{ pDevice, pContext }
 	, m_eLevel{ eLevel }
 {
+	s_pActiveInstance = this;
 }
 
 CLevel_Development::~CLevel_Development()
 {
+	if (this == s_pActiveInstance)
+		s_pActiveInstance = nullptr;
 #ifdef _DEBUG
 	if (m_isMapEditorWorkspace)
 	{
@@ -175,6 +181,13 @@ HRESULT CLevel_Development::Ready_Lights()
 HRESULT CLevel_Development::Ready_Camera(
 	const wstring_t& strLayerTag)
 {
+	// Training/Maharaka share the saved Character Select sizes, independent
+	// of whichever arena last wrote the process presentation profile.
+	ARENA_CAMERA_PROFILE sizeProfile = CArenaCameraProfile::Default(ARENA_CAMERA_MAP::CHARACTER_SELECT);
+	std::string sizeStatus;
+	if (!CArenaCameraProfile::Load(ARENA_CAMERA_MAP::CHARACTER_SELECT, sizeProfile, sizeStatus))
+		OutputDebugStringA(("[Level_Development][CharacterSize] " + sizeStatus + "\n").c_str());
+	CCharacter::Set_MapPresentationSizeProfile(sizeProfile);
 	CCamera_Free::CAMERA_FREE_DESC cameraDesc{};
 	cameraDesc.vEye = float3_t(-18.f, 10.f, -18.f);
 	cameraDesc.vAt = float3_t(0.f, 3.f, 0.f);

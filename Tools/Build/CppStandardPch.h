@@ -6,12 +6,15 @@
 #include <array>
 #include <cstdint>
 #include <ctime>
+#include <filesystem>
 #include <functional>
 #include <list>
 #include <map>
 #include <memory>
 #include <optional>
+#include <set>
 #include <span>
+#include <sstream>
 #include <string>
 #include <string_view>
 #include <unordered_map>

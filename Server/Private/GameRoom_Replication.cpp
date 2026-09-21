@@ -520,7 +520,12 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 		const auto& supports = m_ServerNavigation.Get_RuntimeSupportSurfaces();
 		const bool onRuntimeSupport = std::any_of(supports.begin(), supports.end(),
 			[&](const auto& surface) { return surface.Contains_PointXZ(player.fPositionX, player.fPositionZ); });
-		snapshot.canPredictMove = !onRuntimeSupport &&
+		// The Client predictor currently loads the base grid only. Refined Kouku
+		// regions use the same authoritative interpolation as temporary floors.
+		const bool onKoukuDetailGrid = m_eWorldId == WORLD_ID::KAKULSAYDON_ARENA &&
+			m_ServerNavigation.Is_InSameDetailRegion(player.fPositionX, player.fPositionZ,
+				player.fPositionX, player.fPositionZ);
+		snapshot.canPredictMove = !onRuntimeSupport && !onKoukuDetailGrid &&
 			PLAYER_ACTION_STATE::NONE == player.eAction &&
 			player.iCurrentHp != 0u && !player.bPatternBound &&
 			player.iMarioStage == 0u && !player.TriggerMove.isActive &&
@@ -622,6 +627,10 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
             snapshot.iFearEndTick = player.iFearEndTick;
             snapshot.strFearPresentationId = player.strFearPresentationId;
         }
+		if (player.iInvulnerabilityZoneContactTick == m_iServerTick && m_iServerTick != 0u &&
+			player.iCurrentHp != 0u && player.isCombatReady && player.eAction != PLAYER_ACTION_STATE::DEAD &&
+			player.eAction != PLAYER_ACTION_STATE::FALLING && player.eAction != PLAYER_ACTION_STATE::GRABBED)
+			snapshot.iInvulnerabilityZonePulseTick = player.iInvulnerabilityZonePulseTick;
 		snapshot.iSilenceEndTick = player.iSilenceEndTick;
 		snapshot.iSilenceDurationTicks = player.iSilenceDurationTicks;
 		snapshot.iComboStage = player.iComboStage;

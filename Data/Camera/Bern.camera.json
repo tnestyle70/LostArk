@@ -15,5 +15,13 @@
   "focusDistance": 16,
   "fovYDegrees": 32.64206322821485,
   "followResponse": 0,
-  "characterSizeMultiplier": 1
+  "characterSizeMultiplier": 1,
+  "classSizeMultipliers": {
+    "LANCE_MASTER": 1,
+    "GUNSLINGER": 1,
+    "SLAYER": 1,
+    "ARTIST": 0.717000008,
+    "DIMENSIONMASTER": 0.987999976,
+    "WARLORD": 1
+  }
 }

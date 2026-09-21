@@ -28,6 +28,8 @@ namespace Client
 		double fPushRangeM = 0.0;
 		std::uint32_t iPushMs = 0u;
 		std::string strPushDirection = "AWAY_FROM_BOSS";
+		bool_t bForcePush = false, bPushCanLeaveArena = false, bPushBallistic = false;
+		double fPushYawOffsetDegrees = 0.0;
 	};
 
 	enum class KOUKU_PATTERN_SELECTION : std::uint8_t { GATE, FOLDER, BUNDLE, PATTERN };
@@ -315,7 +317,11 @@ namespace Client
 		bool_t Consume_ServerPlayRequest(
 			std::string& outPatternId,
 			std::uint32_t& outSourceRevision);
-		void Set_ServerPlayPreparationPending(bool_t pending) { m_bServerPlayPreparationPending = pending; }
+		void Set_ServerPlayPreparationPending(bool_t pending, std::string_view status = {})
+		{
+			m_bServerPlayPreparationPending = pending;
+			if (!status.empty()) m_strStatus = status;
+		}
 		bool_t Consume_ServerPlayCancelRequest()
 		{ const bool_t requested = m_bServerPlayCancelRequested; m_bServerPlayCancelRequested = false; return requested; }
 

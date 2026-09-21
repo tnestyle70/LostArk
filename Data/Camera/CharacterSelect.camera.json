@@ -2,18 +2,24 @@
   "schema": "lostark.arena-camera",
   "formatVersion": 1,
   "areaId": "LV_LOBBY_CLASSSELECT_SL00",
-  "positionOffset": [
-    -8.0,
-    11.213708498984762,
-    8.0
-  ],
-  "rotationDegrees": [
-    45,
-    135,
-    0
-  ],
+  "positionOffset": [-8, 11.2137089, 8],
+  "rotationDegrees": [45, 135, 0],
   "focusDistance": 16,
-  "fovYDegrees": 29.39495760413827,
+  "fovYDegrees": 29.3949585,
   "followResponse": 12,
-  "characterSizeMultiplier": 1
+  "useSourceCameraRegions": false,
+  "characterSizeMultiplier": 1,
+  "classSizeMultipliers": {
+    "LANCE_MASTER": 1,
+    "GUNSLINGER": 1,
+    "SLAYER": 1,
+    "ARTIST": 0.717000008,
+    "DIMENSIONMASTER": 0.987999976,
+    "WARLORD": 1
+  },
+  "clownSizeMultiplier": 0.699999988,
+  "marioSizeMultiplier": 1,
+  "mazeHammerPositionCm": [0, 0, 0],
+  "mazeHammerRotationDegrees": [0, 0, 0],
+  "mazeHammerScale": [1, 1, 1]
 }

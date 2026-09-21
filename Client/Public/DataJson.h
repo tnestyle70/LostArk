@@ -6,6 +6,7 @@
 #include <map>
 #include <string>
 #include <string_view>
+#include <variant>
 #include <vector>
 
 NS_BEGIN(Client)
@@ -61,23 +62,26 @@ public:
 	bool_t Was_FloatingPointToken() const {
 		return m_bFloatingPointToken;
 	}
-	const string& Get_String() const { return m_String; }
-	const ARRAY& Get_Array() const { return m_Array; }
-	const OBJECT& Get_Object() const { return m_Object; }
-	const vector<string>& Get_ObjectInsertionOrder() const {
-		return m_ObjectInsertionOrder;
-	}
+	const string& Get_String() const;
+	const ARRAY& Get_Array() const;
+	const OBJECT& Get_Object() const;
+	const vector<string>& Get_ObjectInsertionOrder() const;
 	const DATA_JSON_VALUE* Find(string_view key) const;
 
 private:
+	struct OBJECT_PAYLOAD final
+	{
+		OBJECT values;
+		vector<string> insertionOrder;
+	};
+
 	DATA_JSON_TYPE m_eType = DATA_JSON_TYPE::NULL_VALUE;
 	bool_t m_Boolean = false;
 	double m_Number = {};
 	bool_t m_bFloatingPointToken = false;
-	string m_String;
-	ARRAY m_Array;
-	OBJECT m_Object;
-	vector<string> m_ObjectInsertionOrder;
+	// Scalars must not construct empty Debug STL containers and their proxies.
+	// Each value owns only its active payload; copying still copies the subtree.
+	std::variant<std::monostate, string, ARRAY, OBJECT_PAYLOAD> m_Payload;
 };
 
 struct DATA_JSON_PARSE_LIMITS final

@@ -101,3 +101,97 @@ function Close-PublishDestinationMutex(
 		}
 	}
 }
+
+# Small text catalogs share the same read-only freshness check and atomic writer.
+# LF/CRLF checkouts are equivalent; BOMs, changed rows and changed schemas are not.
+function Read-PublishJsonSnapshot([string]$Path, [hashtable]$Sources) {
+	$bytes = [IO.File]::ReadAllBytes($Path)
+	$Sources[$Path] = [Convert]::ToBase64String($bytes)
+	return [Text.UTF8Encoding]::new($false, $true).GetString($bytes).TrimStart([char]0xFEFF) | ConvertFrom-Json
+}
+
+function Assert-PublishSourceSnapshots([hashtable]$Sources) {
+	foreach ($path in $Sources.Keys) {
+		if (-not [IO.File]::Exists($path) -or
+			[Convert]::ToBase64String([IO.File]::ReadAllBytes($path)) -cne $Sources[$path]) {
+			throw "Publish input changed during validation: $path. Retry with the latest saved source."
+		}
+	}
+}
+
+function Write-PublishTextCatalog(
+	[ValidateSet('Publish', 'CheckPublished')][string]$Mode,
+	[string]$Destination,
+	[string[]]$Lines,
+	[hashtable]$Sources,
+	[string]$Context,
+	[string]$RepairCommand) {
+	$expectedText = [string]::Join("`n", $Lines) + "`n"
+	$mutex = $null
+	$staged = ''
+	$rollback = ''
+	try {
+		if ($Mode -eq 'Publish') {
+			$mutex = Enter-PublishDestinationMutex (Get-PublishDestinationMutexName $Destination)
+		}
+		$previousHash = $null
+		$currentText = ''
+		$actualHeader = '<missing>'
+		if ([IO.File]::Exists($Destination)) {
+			$previousHash = Get-PublishFileSha256 $Destination
+			try {
+				$currentText = [Text.UTF8Encoding]::new($false, $true).GetString(
+					[IO.File]::ReadAllBytes($Destination)).Replace("`r`n", "`n")
+				$actualHeader = ($currentText -split "`n", 2)[0]
+			}
+			catch [Text.DecoderFallbackException] {
+				# Explicit Publish must be able to repair a corrupt output too.
+				$actualHeader = '<invalid UTF-8>'
+			}
+		}
+		Assert-PublishSourceSnapshots $Sources
+		if ([string]::Equals($currentText, $expectedText, [StringComparison]::Ordinal)) {
+			Write-Output "$Context $Mode succeeded: unchanged -> $Destination"
+			return
+		}
+		if ($Mode -eq 'CheckPublished') {
+			throw "$Context published data is stale or invalid: $Destination. Expected header '$($Lines[0])'; actual '$actualHeader'. Run: $RepairCommand"
+		}
+		[IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($Destination)) | Out-Null
+		$transactionId = [Guid]::NewGuid().ToString('N')
+		$staged = "$Destination.staging.$transactionId"
+		$rollback = "$Destination.rollback.$transactionId"
+		[IO.File]::WriteAllLines($staged, $Lines, [Text.UTF8Encoding]::new($false))
+		Assert-PublishSourceSnapshots $Sources
+		if ($null -ne $previousHash) {
+			if (-not (Test-PublishFileHash $Destination $previousHash $Context)) {
+				throw "$Context destination changed during publish: $Destination"
+			}
+			Invoke-PublishFileOperation {
+				Assert-PublishSourceSnapshots $Sources
+				if (-not (Test-PublishFileHash $Destination $previousHash $Context)) {
+					throw "$Context destination changed during publish: $Destination"
+				}
+				[IO.File]::Replace($staged, $Destination, $rollback)
+			} $Context
+		}
+		else {
+			# Move refuses to overwrite a destination created by another writer.
+			[IO.File]::Move($staged, $Destination)
+		}
+		Write-Output "$Context Publish succeeded: $($Lines.Length - 1) items -> $Destination"
+	}
+	finally {
+		try {
+			foreach ($temporary in @($staged, $rollback)) {
+				if ($temporary -and [IO.File]::Exists($temporary)) {
+					try { [IO.File]::Delete($temporary) }
+					catch { Write-Warning "$Context temporary cleanup failed; retained $temporary`: $($_.Exception.Message)" }
+				}
+			}
+		}
+		finally {
+			Close-PublishDestinationMutex $mutex $Context
+		}
+	}
+}

@@ -18,9 +18,9 @@ Without --install only candidate documents are written under OUT. --install chec
 baseline of every target immediately before writing and replaces each file atomically.
 
 Second pass (--actor / --install-actor): adds the boss actor 쿠크세이튼_03 (Matinee group 51) the way
-the other source Sequences carry Saydon (build_source_sequences.actor_world): one new baked WModel
-under Map/KakulSaydon/SourceSequences/kouku.bingo.encore/Saydon/ (mesh/skeleton/material bytes of the
-project Saydon body MN_RPCT_05 plus ONE 30 ticks/s clip; no existing WModel is edited), one World
+the other source Sequences carry Saydon (build_source_sequences.actor_world): one new 30 ticks/s
+WANM appended to a candidate copy of the Character MN_RPCT_05 body, preserving its mesh,
+skeleton, materials and existing clips. Installation appends only that named WANM, plus one World
 Sequence object/template/instance appended to worldsequences.json (text insertion, existing bytes
 untouched) and one `worlds` row + one worldOccurrence in each composition document. Not baked by the
 baker: the skelcontrolstrength tracks (j_dn, h_dn, h_up, ee_up, l_t2), the fc1 slot and hit_color.
@@ -48,6 +48,7 @@ from scipy.spatial.transform import Rotation
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import build_gate2_intro_composition as base  # noqa: E402
 import build_source_sequences as bss  # noqa: E402
+from bake_character_cinematic_clips import install_baked_clip  # noqa: E402
 
 ROOT = base.ROOT
 OUT = ROOT / 'out/KoukuEncoreComposition20260920'
@@ -152,7 +153,8 @@ ACTOR = dict(group=51, source='Character/KoukuSaton/MN_RPCT_05/MN_RPCT_05.wmodel
              pre_scale=.017, source_scale=1.,
              material_source='Character/KoukuSaton/MN_RPCT_05/MN_RPCT_05.wmodel')
 WORLDS_PATH = bss.AREA / (base.AREA + '.worldsequences.json')
-ACTOR_WMODEL = 'Map/KakulSaydon/SourceSequences/%s/%s/%s.wmodel' % (CONFIG['prefix'], ACTOR['label'], ACTOR['label'])
+ACTOR_WMODEL = ACTOR['source']
+ACTOR_DONOR = 'Map/KakulSaydon/SourceSequences/%s/%s/%s.wmodel' % (CONFIG['prefix'], ACTOR['label'], ACTOR['label'])
 
 
 def find_array(text, key):
@@ -205,11 +207,11 @@ def prepare_candidate_resources():
     source = base.RESOURCES / ACTOR['source']
     linked = root / ACTOR['source']
     linked.parent.mkdir(parents=True, exist_ok=True)
-    if not linked.exists():
-        try:
-            os.link(source, linked)
-        except OSError:
-            shutil.copy2(source, linked)
+    # Canonical bodies may gain new clips between runs. Keep a fresh independent
+    # copy; an in-place write to a hard link could otherwise alter the live body.
+    temporary = linked.with_name(linked.name + '.source.tmp')
+    shutil.copy2(source, temporary)
+    os.replace(temporary, linked)
     return root
 
 
@@ -353,8 +355,10 @@ def actor_main(args):
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(data)
     model = base.wm.read_wmodel(wmodel_candidate)
-    assert len(model.animations) == 1 and model.animations[0].name == template['animationTracks'][0]['clipName']
-    clip = model.animations[0]
+    clip_name = template['animationTracks'][0]['clipName']
+    matches = [animation for animation in model.animations if animation.name == clip_name]
+    assert len(matches) == 1, ('encore named clip', clip_name)
+    clip = matches[0]
     report = dict(installed=args.install_actor, patterns=patterns, actorWModel=ACTOR_WMODEL,
                   wmodelBytes=wmodel_candidate.stat().st_size, wmodelSha256=sha(wmodel_candidate.read_bytes()),
                   textures=sorted(f.name for f in (wmodel_candidate.parent / 'textures').iterdir()),
@@ -386,17 +390,13 @@ def actor_main(args):
             shutil.copyfile(file, temporary)
             assert sha(temporary.read_bytes()) == sha(file.read_bytes())
             os.replace(temporary, target)
-        if destination.exists():
-            assert sha(destination.read_bytes()) == report['wmodelSha256'], 'installed actor WModel differs'
-        else:
-            temporary = destination.with_name(destination.name + '.encore.tmp')
-            shutil.copyfile(wmodel_candidate, temporary)
-            assert sha(temporary.read_bytes()) == report['wmodelSha256']
-            os.replace(temporary, destination)
+        install_baked_clip(base.RESOURCES, ACTOR_DONOR, clip.name, donor_path=wmodel_candidate)
+        report['installedWmodelSha256'] = sha(destination.read_bytes())
         for path, data in outputs.items():
             temporary = path.with_name(path.name + '.encore.tmp')
             temporary.write_bytes(data)
             os.replace(temporary, path)
+        base.write(OUT / 'report_actor.json', report)
     print(json.dumps(report, ensure_ascii=False, indent=1), flush=True)
 
 

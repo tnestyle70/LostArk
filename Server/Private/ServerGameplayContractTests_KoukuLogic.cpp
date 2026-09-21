@@ -410,8 +410,71 @@ namespace ServerGameplayContractDetail
 	the verdict rules never depend on which pattern the composition authors.
 	A function of its own keeps these rooms and players off the contract
 	frame, which already sits close to the 1 MiB production stack. */
+    void Run_KoukuInvulnerabilityZoneContracts(TESTS& tests, const CGameplayCatalog& catalog)
+    {
+        auto boss = std::make_unique<SERVER_WORLD_ENTITY>(); boss->iPatternSequence = 1u;
+        SERVER_PLAYER base{}; base.iPlayerId = 1u; base.iNetEntityId = 101u;
+        base.iCurrentHp = base.iMaximumHp = 100u; base.isCombatReady = true;
+        base.fPositionZ = 2.f; base.fYawDegrees = 180.f;
+        BOSS_PATTERN_LOGIC_RESULT fear{}, half{}, death{};
+        fear.eKind = BOSS_PATTERN_LOGIC_RESULT_KIND::FEAR; fear.iDurationMs = 3000u; fear.strFearPresentationId = "zone.fear";
+        half.eKind = BOSS_PATTERN_LOGIC_RESULT_KIND::MAX_HP_PERCENT_DAMAGE; half.iPercent = 50u;
+        death.eKind = BOSS_PATTERN_LOGIC_RESULT_KIND::INSTANT_DEATH;
+        BOSS_PATTERN_LOGIC_WINDOW zone{}, gaze{};
+        zone.strWindowId = "zone"; zone.eKind = BOSS_PATTERN_LOGIC_KIND::INVULNERABILITY_ZONE; zone.iDurationMs = 3000u;
+        BOSS_LOGIC_REGION region{}; region.strRegionId = "zone.region"; region.eAnchor = BOSS_LOGIC_REGION_ANCHOR::WORLD;
+        region.bCircle = true; region.fRadiusM = 1.f; region.fCenterZ = 2.f; zone.CardRegions = {region};
+        gaze.strWindowId = "gaze"; gaze.eKind = BOSS_PATTERN_LOGIC_KIND::GAZE_REAL_BOSS;
+        gaze.iDurationMs = 100u; gaze.fHalfAngleDegrees = 45.f; gaze.fMaxDistanceM = 30.f; gaze.bInsideIsFail = true;
+        for (const bool inside : {false, true}) for (const bool fearFirst : {false, true})
+        {
+            BOSS_PATTERN_DEFINITION pattern{}; pattern.strPatternId = "zone.pattern";
+            gaze.OnFail = fearFirst ? std::vector<BOSS_PATTERN_LOGIC_RESULT>{fear, half} : std::vector<BOSS_PATTERN_LOGIC_RESULT>{half, fear};
+            // Protection follows the result window in authoring; order must not matter.
+            pattern.LogicWindows = {gaze, zone};
+            pattern.LogicWindows.back().iDurationMs = gaze.iDurationMs; // Shared final judgement tick.
+            std::map<PLAYER_ID, SERVER_PLAYER> players{{1u, base}}; auto& player = players.at(1u);
+            if (!inside) player.fPositionZ = 3.01f;
+            KOUKUSAYDON_LOGIC_LEDGER ledger{}; KOUKUSAYDON_LOGIC_OUTPUT output{}; std::vector<DAMAGE_EVENT> events;
+            CKoukuSaydonLogicRuntime::Build(pattern, *boss, 100u, ledger);
+            CKoukuSaydonLogicRuntime::Update(*boss, pattern, ledger, players, catalog, nullptr, 103u, events, output);
+            tests.Require(inside ? player.iCurrentHp == 100u && player.iFearEndTick == 0u && events.empty() :
+                player.iCurrentHp == 50u && player.eAction == PLAYER_ACTION_STATE::FEAR && player.iFearEndTick == 193u,
+                "Owning zone blocks gaze fear and 50 percent damage in either result order; outside receives both");
+            if (inside)
+            {
+                auto unrelated = pattern; unrelated.strPatternId = "other.pattern"; unrelated.LogicWindows = {gaze};
+                KOUKUSAYDON_LOGIC_LEDGER other{}; CKoukuSaydonLogicRuntime::Build(unrelated, *boss, 100u, other);
+                CKoukuSaydonLogicRuntime::Update(*boss, unrelated, other, players, catalog, nullptr, 103u, events, output);
+                tests.Require(player.iCurrentHp == 50u && player.eAction == PLAYER_ACTION_STATE::FEAR,
+                    "A different Pattern in the same tick does not inherit zone protection");
+                CKoukuSaydonLogicRuntime::Discard(ledger, players, boss.get());
+                CKoukuSaydonLogicRuntime::Apply_Result(player, death, *boss, catalog, nullptr, 103u, events);
+                tests.Require(player.iCurrentHp == 0u, "Ended Pattern does not shield external same-tick penalty");
+            }
+        }
+        BOSS_PATTERN_DEFINITION pattern{}; pattern.strPatternId = "zone.pattern"; pattern.LogicWindows = {zone};
+        std::map<PLAYER_ID, SERVER_PLAYER> players{{1u, base}}; auto& player = players.at(1u);
+        KOUKUSAYDON_LOGIC_LEDGER ledger{}; KOUKUSAYDON_LOGIC_OUTPUT output{}; std::vector<DAMAGE_EVENT> events;
+        CKoukuSaydonLogicRuntime::Build(pattern, *boss, 100u, ledger);
+        const auto update = [&](std::uint32_t tick) {
+            CKoukuSaydonLogicRuntime::Update(*boss, pattern, ledger, players, catalog, nullptr, tick, events, output);
+        };
+        update(100u); bool cadence = player.iInvulnerabilityZonePulseTick == 100u;
+        for (std::uint32_t tick = 101u; tick < 160u; ++tick) update(tick);
+        cadence = cadence && player.iInvulnerabilityZonePulseTick == 100u;
+        update(160u); cadence = cadence && player.iInvulnerabilityZonePulseTick == 160u;
+        player.fPositionZ = 4.f; update(161u); cadence = cadence && player.iInvulnerabilityZoneContactTick != 161u;
+        player.fPositionZ = 2.f; update(162u);
+        tests.Require(cadence && player.iInvulnerabilityZonePulseTick == 162u,
+            "Zone entry and re-entry pulse immediately, repeat every 60 ticks, and contact expires on exit");
+        update(190u); tests.Require(player.iInvulnerabilityZoneContactTick == 190u, "Zone protects the final judgement tick");
+        update(191u); tests.Require(player.iInvulnerabilityZoneContactTick != 191u, "Zone expires after final judgement tick");
+    }
+
     void Run_KoukuFearAndCounterContracts(TESTS& tests, const LostArk::Server::CGameplayCatalog& catalog)
     {
+        Run_KoukuInvulnerabilityZoneContracts(tests, catalog);
         using namespace LostArk::Shared;
         using namespace LostArk::Server;
         auto boss = std::make_unique<SERVER_WORLD_ENTITY>();

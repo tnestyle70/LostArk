@@ -489,6 +489,12 @@ Visual runtime은 `Publish-MapAuthoring.ps1`, world bootstrap은
 Server navigation publisher는 optional `-AreaId <AreaId>`로 해당 Area의 source/paint/regions만
 검증·게시한다. 생략하면 기존 모든 Area를 처리하며 알 수 없는 ID는 쓰기 전에 거부한다.
 Client/Server의 navgrid·navpolicy·navblockers는 기존 Area별 transaction으로 함께 교체한다.
+Server 전용 `.navsurface`도 같은 transaction으로 게시한다. NSRF version 1은 해당
+`.navgrid` 전체 바이트의 FNV-1a 64-bit hash와 cell 수, source/paint resolved surface mask를
+저장한다. 보행 불가 셀에도 바닥은 있을 수 있으므로 ballistic 착지는 이 mask와 height를
+사용하고, 일반 보행은 기존 walkable·blocker 계약을 유지한다. 명시 void condition만 바닥을
+제거한다. sidecar가 없는 구버전 grid는 기존 walkable 집합을 바닥으로 간주하며, sidecar가
+존재하지만 hash·개수·bit가 잘못되면 전체 navigation load를 실패시킨다. Client 파일 형식은 같다.
 실행 중 프로그램은 재시작해야 새 데이터를 읽는다. 예를 들어 Character Select만 갱신할 때는
 `powershell -ExecutionPolicy Bypass -File Tools/NavigationPipeline/Publish-ServerNavigation.ps1 -AreaId LV_LOBBY_CLASSSELECT_SL00 -Mode Validate` 후 같은 명령의 `-Mode Publish`를 실행한다.
 
@@ -516,7 +522,7 @@ mapassets, mapplacements, deployassets, deployplacements, maplights, mapmaterial
 worldsequences, camerashots의8개이며, 누락된 출력은 기존 receipt로 생략하지 않는다.
 일반 Client 컴파일은 계속 자동 배포를 하지 않는다. 컴파일 성공과 실행용 데이터 준비는
 별도로 확인한다. 생성물은 직접 편집하거나 `git add -f`로 우회하지 않고 기존 LFS
-규칙과 일반 `git add`로 추적한다. 다른 domain의 Git 제외 정책은 변경하지 않는다.
+규칙과 일반 `git add`로 추적한다. 같은 전달 계약은 Client/Server Navigation, World와 Server bootstrap에도 적용된다. 해당 domain을 수정한 작성자가 게시 결과와 필요한 참조 파일을 같은 PR에 포함한다.
 
 Valtan 파괴 벽의 `navblockers`는 각 source collisionBox의 실제 XZ OBB와 base-walkable 셀, 해당 셀 높이에서
 시작하는 Server body 수직 범위가 겹치는 곳만 소유한다. 위층 벽으로 아래층 길을 막거나 nearest cell을

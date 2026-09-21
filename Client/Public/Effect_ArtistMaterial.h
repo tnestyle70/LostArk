@@ -115,10 +115,14 @@ inline bool Build_ArtistMaterialTrackBindings(const EFFECT_ELEMENT_DESC& Element
         !Program->bMesh && !Program->bModelCue && Program->strRuntimeProfileId.starts_with("effect.ue3.kouku-") &&
         Program->strRendererShape == "decal" && Element.SourceRecipe.bEnabled &&
         Element.SourceRecipe.strRendererShape == "decal";
-    if ((!bSourceMesh && !bSourceDecal) ||
+    const bool bSourceScreenPost = Program && Element.eKind == EFFECT_ELEMENT_KIND::SCREEN_POST &&
+        !Program->bMesh && !Program->bModelCue && Program->strRendererShape == "screenPost" &&
+        Element.Detail.ScreenPost.bEnabled && Element.SourceRecipe.bEnabled &&
+        Element.SourceRecipe.strRendererShape == "screenPost";
+    if ((!bSourceMesh && !bSourceDecal && !bSourceScreenPost) ||
         Tracks.size() > 64u || !std::isfinite(Element.SourceTransformTrack->fSourceTimeOriginSeconds) ||
         !Build_ArtistParameters(Element.Material.SourceMaterial, Parameters))
-    { Error = "Source material parameter tracks require an admitted native Mesh or LocalDecal material."; return false; }
+    { Error = "Source material parameter tracks require an admitted native Mesh, LocalDecal or ScreenPost material."; return false; }
     std::vector<ARTIST_PARAMETER_DESC> Candidate;
     for (const auto& Track : Tracks)
     {

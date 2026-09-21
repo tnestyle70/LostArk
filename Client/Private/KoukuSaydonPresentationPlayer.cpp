@@ -373,7 +373,7 @@ OCCURRENCE Read_Occurrence(const DATA_JSON_VALUE& row, std::uint32_t durationMs,
     if (row.Find("worldEmissionIndex")) box.iWorldEmissionIndex = UInt(row, "worldEmissionIndex", 0u, 127u);
     if (box.strAnchorKind != "BOSS" && box.strAnchorKind != "WORLD" &&
         !(kind == KIND::LIGHT && (box.strAnchorKind == "MAP" || box.strAnchorKind == "PLAYER")) &&
-        !((kind == KIND::EFFECT || kind == KIND::COLLIDER || kind == KIND::SUBTITLE) && box.strAnchorKind == "MAP"))
+        !((kind == KIND::EFFECT || kind == KIND::COLLIDER || kind == KIND::SUBTITLE || kind == KIND::SOUND) && box.strAnchorKind == "MAP"))
         throw std::runtime_error("Presentation anchorKind is unsupported.");
     if (kind == KIND::SUBTITLE && (box.strAnchorKind != "MAP" || box.bFollowBoss || !box.strBone.empty() ||
         !box.strWorldId.empty() || !box.strWorldOccurrenceId.empty() || box.iWorldEmissionIndex != 0u))
@@ -383,11 +383,11 @@ OCCURRENCE Read_Occurrence(const DATA_JSON_VALUE& row, std::uint32_t durationMs,
         (box.strAnchorKind != "BOSS" && !box.strBone.empty()) ||
         (box.strAnchorKind == "PLAYER" && !box.bFollowBoss)))
         throw std::runtime_error("Invalid Light anchor, scale or bone.");
-    if ((kind == KIND::EFFECT || kind == KIND::COLLIDER) && box.strAnchorKind == "MAP" &&
+    if ((kind == KIND::EFFECT || kind == KIND::COLLIDER || kind == KIND::SOUND) && box.strAnchorKind == "MAP" &&
         (box.bFollowBoss || !box.strBone.empty() || box.strBoneTarget != "BODY" ||
             !box.strWorldId.empty() || !box.strWorldOccurrenceId.empty() ||
-            (kind == KIND::COLLIDER && box.iWorldEmissionIndex != 0u)))
-        throw std::runtime_error("MAP Effect/Collider requires a fixed position without a bone or World occurrence.");
+            ((kind == KIND::COLLIDER || kind == KIND::SOUND) && box.iWorldEmissionIndex != 0u)))
+        throw std::runtime_error("MAP Effect/Collider/Sound requires a fixed position without a bone or World occurrence.");
     if ((kind == KIND::EFFECT || kind == KIND::LIGHT || kind == KIND::COLLIDER) &&
         box.strAnchorKind == "WORLD" && box.strWorldId.empty())
         throw std::runtime_error("World Object anchor needs a worldId; fixed world coordinates use MAP: " + box.strOccurrenceId);
@@ -1611,7 +1611,26 @@ bool Client::CKoukuSaydonPresentationPlayer::Reload_Product(
                 motion.StartPosition = Vector(*source, "startPosition", -100000.0, 100000.0);
                 motion.EndPosition = Vector(*source, "endPosition", -100000.0, 100000.0);
                 motion.fYawDegrees = Number(*source, "yawDegrees", -360.0, 360.0);
-                if (std::abs(motion.StartPosition[1] - motion.EndPosition[1]) > 0.0001)
+                if (const auto* keys = source->Find("keys"))
+                {
+                    if (!keys->Is_Array() || keys->Get_Array().size() < 2u || keys->Get_Array().size() > 512u)
+                        throw std::runtime_error("Product bossMotion keys require 2..512 samples.");
+                    for (const auto& row : keys->Get_Array())
+                    {
+                        KOUKU_SAYDON_BOSS_MOTION_KEY key;
+                        if (!row.Is_Object() || row.Get_Object().size() != 2u)
+                            throw std::runtime_error("Product bossMotion key requires timeMs and position.");
+                        key.iTimeMs = UInt(row, "timeMs", motion.iStartMs, motion.iEndMs);
+                        key.Position = Vector(row, "position", -100000.0, 100000.0);
+                        if (!motion.Keys.empty() && key.iTimeMs <= motion.Keys.back().iTimeMs)
+                            throw std::runtime_error("Product bossMotion key times must increase strictly.");
+                        motion.Keys.push_back(key);
+                    }
+                    if (motion.Keys.front().iTimeMs != motion.iStartMs || motion.Keys.back().iTimeMs != motion.iEndMs ||
+                        motion.Keys.front().Position != motion.StartPosition || motion.Keys.back().Position != motion.EndPosition)
+                        throw std::runtime_error("Product bossMotion keys must match its interval and endpoints.");
+                }
+                if (motion.Keys.empty() && std::abs(motion.StartPosition[1] - motion.EndPosition[1]) > 0.0001)
                     throw std::runtime_error("Product bossMotion must keep its ground height.");
                 item.pattern.BossMotion = motion;
             }
@@ -1822,6 +1841,13 @@ bool Client::CKoukuSaydonPresentationPlayer::Reload_Product(
                     append(std::move(resource), delayMs, "BOSS");
                 }
                 else if (delayMs) throw std::runtime_error("Fear delay requires an Effect resource.");
+                if (const auto* sound = value.Find("soundResource"); sound && !sound->Is_Null())
+                {
+                    auto resource = Read_Resource(*sound);
+                    if (resource.eKind != KIND::SOUND) throw std::runtime_error("Fear soundResource must be SOUND.");
+                    // One existing SOUND row shares the face onset and FEAR cleanup.
+                    append(std::move(resource), delayMs, "PLAYER");
+                }
                 if (const auto* light = value.Find("lightResource"); light && !light->Is_Null())
                 {
                     auto resource = Read_Resource(*light);
@@ -4225,7 +4251,10 @@ bool Client::CKoukuSaydonPresentationPlayer::Sample_BundlePreviewPose(
                 if (inserted && player && player->Get_Transform())
                 {
                     const auto& target = *player->Get_Transform()->Get_WorldMatrixPtr();
-                    (void)targetYawAt(origin, {target._41, target._42, target._43}, sample->second);
+                    if (targetYawAt(origin, {target._41, target._42, target._43}, sample->second) &&
+                        CKoukuSaydonCompositionDocument::Resolve_BossArchetypeId(
+                            member.pattern.strTargetBossPlacementId) == "BOSS_KAKULSAYDON_G2_KOUKU")
+                        sample->second -= 90.f; // Match the Server stage retarget for the laser's model +X front.
                 }
                 yaw = sample->second;
             }
@@ -5096,27 +5125,47 @@ void Client::CKoukuSaydonPresentationPlayer::Update_BingoMarks(float dt)
         const bool red = (board.iRedMask & bit) != 0u;
         auto& mark = m_BingoMarks[cell];
         mark.retry.ObserveGeneration(generation);
-        if (mark.player && mark.red == red)
+        if (mark.player)
         {
+            // A failed colour change keeps the previous cell animated while retry waits.
             mark.player->Update((std::max)(0.f, dt), targets);
             if (!mark.player->Is_Playing(mark.instanceId))
             {
                 m_strStatus = "Bingo skull Object playback failed: " + mark.player->Get_Status();
                 mark.player.reset(); mark.instanceId.clear(); mark.retry.Defer(nowMs);
+                continue;
             }
-            continue;
+            if (mark.red == red) continue;
         }
         if (!mark.retry.TryBegin(nowMs)) continue;
-        auto staged = std::make_unique<CWorldSequencePlayer>();
-        std::string error;
         // A newly painted white cell plays the native rotating tile, then its
         // saved NEXT maintenance; an ordinary-to-red transition replays that native flip.
         const std::string motion = red ? (mark.player && !mark.red ? redFlipId : redId) : (mark.player ? whiteId : flipId);
         CWorldSequencePlayer::OBJECT_PLACEMENT placement;
         placement.position = { LostArk::Shared::Kouku_BingoCellCenterX(cell), .02f,
             LostArk::Shared::Kouku_BingoCellCenterZ(cell) };
+        if (mark.player && mark.player->Get_Document().Get_Revision() == m_BingoWorldDocument->Get_Revision())
+        {
+            // Reuse the admitted document/models. Stage a distinct instance so a
+            // failed first sample cannot erase the previous colour. Applying a
+            // motion in place would retain its 300-second maintenance effect tail.
+            if (!mark.player->Play(motion, targets, 1.f, {}, 0u, placement) ||
+                !mark.player->Seek_InstanceToMs(motion, 0.f, targets))
+            {
+                m_strStatus = "Bingo skull Object change failed: " + mark.player->Get_Status();
+                mark.player->Stop_Instance(motion, targets, true);
+                mark.retry.Defer(nowMs);
+                continue;
+            }
+            mark.player->Stop_Instance(mark.instanceId, targets, true);
+            mark.instanceId = motion; mark.red = red; mark.retry = {};
+            continue;
+        }
+        auto staged = std::make_unique<CWorldSequencePlayer>();
+        std::string error;
         if (!staged->Set_Document(*m_BingoWorldDocument, targets, error) ||
-            !staged->Play(motion, targets, 1.f, {}, 0u, placement))
+            !staged->Play(motion, targets, 1.f, {}, 0u, placement) ||
+            !staged->Seek_InstanceToMs(motion, 0.f, targets))
         {
             m_strStatus = "Bingo skull Object start failed: " + (error.empty() ? staged->Get_Status() : error);
             mark.retry.Defer(nowMs);

@@ -468,9 +468,9 @@ namespace
 			(logic.strInsideOutcome != "SUCCESS" && (logic.strLogicType != "DURATION" || (logic.strJudgementKind != "AREA_OVERLAP" && logic.strJudgementKind != "OBJECT_OVERLAP" && logic.strJudgementKind != "GAZE_REAL_BOSS"))))
 		{ outStatus = "Only AREA_OVERLAP/OBJECT_OVERLAP/GAZE_REAL_BOSS takes an inside outcome of SUCCESS or FAIL: " + logic.strLogicId; return false; }
 		const bool_t hasResultValues = !logic.strOutcomeKind.empty() ||
-			0u != logic.iPercent || 0u != logic.iDurationMs || logic.fPushRangeM != 0.0 || logic.iPushMs != 0u || !logic.strFollowupPatternId.empty() ||
+			0u != logic.iPercent || 0u != logic.iDurationMs || logic.fPushRangeM != 0.0 || logic.iPushMs != 0u || logic.bForcePush || logic.bPushCanLeaveArena || logic.bPushBallistic || logic.fPushYawOffsetDegrees != 0.0 || !logic.strFollowupPatternId.empty() ||
 			(!logic.strTargetWorldInstanceId.empty() && logic.strJudgementKind != "OBJECT_OVERLAP") || !logic.strMotionInstanceId.empty() ||
-			!logic.strSceneProfileId.empty() || !logic.strEffectResourceId.empty() || !logic.strLightResourceId.empty() || logic.iEffectDelayMs != 0u ||
+			!logic.strSceneProfileId.empty() || !logic.strEffectResourceId.empty() || !logic.strLightResourceId.empty() || !logic.strSoundResourceId.empty() || logic.iEffectDelayMs != 0u ||
 			!logic.strAttachmentSlot.empty() || logic.GripLocalOffset != std::array<double, 3u>{} ||
 			!logic.ContactMotions.empty() || !logic.strTargetLogicOccurrenceId.empty() || !logic.strContactTargetWorldOccurrenceId.empty() || logic.iMarioEntryStage != 0u;
 		const bool_t hasContactValues = !logic.TargetWorldOccurrenceIds.empty() || !logic.strContactGroupId.empty() || logic.iContactPriority != 0u;
@@ -484,19 +484,27 @@ namespace
 		if (((logic.bRearmOnExit || logic.bRepeatAfterKnockback) && (logic.strLogicType != "TRIGGER" || logic.strTriggerKind != "ENTER_AREA")) ||
 			(logic.bRearmOnExit && logic.bRepeatAfterKnockback))
 		{ outStatus = "ENTER_AREA accepts one contact repeat policy."; return false; }
-		if (!std::isfinite(logic.fPushRangeM) || logic.fPushRangeM < 0.0 || logic.fPushRangeM > 20.0 ||
-			(logic.strPushDirection != "AWAY_FROM_BOSS" && logic.strPushDirection != "BOSS_FORWARD") ||
-			(logic.strPushDirection == "BOSS_FORWARD" && logic.fPushRangeM <= 0.0) ||
+		if (!std::isfinite(logic.fPushRangeM) || logic.fPushRangeM < 0.0 ||
+			logic.fPushRangeM > (logic.bPushBallistic ? 100.0 : 20.0) ||
+			(logic.strPushDirection != "AWAY_FROM_BOSS" && logic.strPushDirection != "BOSS_FORWARD" && logic.strPushDirection != "AWAY_FROM_CONTACT") ||
+			(logic.strPushDirection != "AWAY_FROM_BOSS" && logic.fPushRangeM <= 0.0) ||
+			(logic.bPushBallistic && (logic.fPushRangeM <= 0.0 || logic.iPushMs < 100u || logic.iPushMs > 5000u || !logic.bPushCanLeaveArena)) ||
+			!std::isfinite(logic.fPushYawOffsetDegrees) || std::abs(logic.fPushYawOffsetDegrees) > 360.0 ||
+			(logic.fPushYawOffsetDegrees != 0.0 && (logic.strPushDirection != "BOSS_FORWARD" || logic.fPushRangeM <= 0.0)) ||
+			((logic.bForcePush || logic.bPushCanLeaveArena) && logic.fPushRangeM <= 0.0) ||
 			logic.iPushMs > MAX_TIME_MS || ((logic.fPushRangeM == 0.0) != (logic.iPushMs == 0u)) ||
 			((logic.fPushRangeM != 0.0 || logic.iPushMs != 0u) &&
 			 (logic.strLogicType != "RESULT" || logic.strOutcomeKind != "MAX_HP_PERCENT_DAMAGE")))
-		{ outStatus = "Damage knockback needs both a distance of 0..20 m and time of 0..600000 ms; zero disables both."; return false; }
+		{ outStatus = "Damage knockback needs paired distance/time: ordinary 0..20 m and 0..600000 ms; ballistic >0..100 m and 100..5000 ms with arena exit allowed. Only BOSS_FORWARD accepts yaw."; return false; }
 		const bool_t hasPlayerEffectValues = logic.iCountPerPlayer != 0u || logic.fPlayerEffectRadiusM != 0.0 || logic.iEffectLifetimeMs != 0u ||
 			logic.iArenaRandomCount != 0u || logic.fArenaRandomRadiusM != 0.0 || logic.fArenaHeightToleranceM != 0.0 ||
 			logic.fArenaMinimumSpacingM != 0.0 || logic.bRandomPlayerOnly;
 		if (hasPlayerEffectValues && (logic.strLogicType != "TRIGGER" || logic.strTriggerKind != "ALBION_BLUE_CIRCLE"))
 		{ outStatus = "Player effect layout belongs to ALBION_BLUE_CIRCLE."; return false; }
-		const bool_t hasTriggerValues = hasPlayerEffectValues || logic.bRearmOnExit || logic.bRepeatAfterKnockback || logic.fBossChargeDistanceM != 0.0 || hasContactValues || !logic.strTriggerKind.empty() || !logic.strHudMode.empty() ||
+		const bool stagePlayers = logic.strLogicType == "TRIGGER" && logic.strTriggerKind == "CARD_MAZE_STAGE_PLAYERS";
+		if (!stagePlayers && !logic.PlayerEntryEffectOccurrenceIds.empty())
+		{ outStatus = "Player entry Effect references belong to CARD_MAZE_STAGE_PLAYERS."; return false; }
+		const bool_t hasTriggerValues = !logic.PlayerEntryEffectOccurrenceIds.empty() || hasPlayerEffectValues || logic.bRearmOnExit || logic.bRepeatAfterKnockback || logic.fBossChargeDistanceM != 0.0 || hasContactValues || !logic.strTriggerKind.empty() || !logic.strHudMode.empty() ||
 			!logic.strClonePatternId.empty() || !logic.ClockHours.empty() || logic.fFaceCenterYawOffsetDegrees != 0.0 ||
 			std::any_of(logic.TeleportPosition.begin(), logic.TeleportPosition.end(), [](double x) { return x != 0.0; });
 		if (!std::isfinite(logic.fNormalYawOffsetDegrees) || std::abs(logic.fNormalYawOffsetDegrees) > 360.0 ||
@@ -664,9 +672,10 @@ namespace
                 (!logic.strSceneProfileId.empty() && !Is_StableId(logic.strSceneProfileId)) ||
                 (!logic.strEffectResourceId.empty() && !Is_StableId(logic.strEffectResourceId)) ||
                 (!logic.strLightResourceId.empty() && !Is_StableId(logic.strLightResourceId)) ||
+                (!logic.strSoundResourceId.empty() && !Is_StableId(logic.strSoundResourceId)) ||
                 (logic.strEffectResourceId.empty() && logic.iEffectDelayMs != 0u))) ||
-                (kind != "FEAR" && (!logic.strSceneProfileId.empty() || !logic.strEffectResourceId.empty() || !logic.strLightResourceId.empty() || logic.iEffectDelayMs != 0u)))
-            { outStatus = "FEAR requires a duration and valid optional Scene Profile/Effect references and delay."; return false; }
+                (kind != "FEAR" && (!logic.strSceneProfileId.empty() || !logic.strEffectResourceId.empty() || !logic.strLightResourceId.empty() || !logic.strSoundResourceId.empty() || logic.iEffectDelayMs != 0u)))
+            { outStatus = "FEAR requires a duration and valid optional Scene Profile/Effect/Light/Sound references and delay."; return false; }
 			if ((kind != "MARIO_ENTER" && followup != !logic.strFollowupPatternId.empty()) ||
 				(!logic.strFollowupPatternId.empty() && !Is_StableId(logic.strFollowupPatternId)))
 			{
@@ -683,6 +692,18 @@ namespace
 		if (logic.strTriggerKind.empty())
 		{
 			if (hasTriggerValues) { outStatus = "Trigger values need a triggerKind."; return false; }
+		}
+		else if (stagePlayers)
+		{
+			std::unordered_set<std::string> ids;
+			if (logic.PlayerEntryEffectOccurrenceIds.empty() || logic.PlayerEntryEffectOccurrenceIds.size() > 4u ||
+				!std::all_of(logic.PlayerEntryEffectOccurrenceIds.begin(), logic.PlayerEntryEffectOccurrenceIds.end(),
+					[&](const auto& id) { return Is_StableId(id) && ids.insert(id).second; }) ||
+				hasPlayerEffectValues || hasContactValues || logic.bRearmOnExit || logic.bRepeatAfterKnockback ||
+				logic.fBossChargeDistanceM != 0.0 || !logic.strHudMode.empty() || !logic.strClonePatternId.empty() ||
+				!logic.ClockHours.empty() || logic.fFaceCenterYawOffsetDegrees != 0.0 ||
+				logic.TeleportPosition != std::array<double, 3>{})
+			{ outStatus = "CARD_MAZE_STAGE_PLAYERS needs only 1..4 unique player entry Effect occurrence IDs."; return false; }
 		}
 		else if (logic.strTriggerKind == "ANIMATION_BLEND" || logic.strTriggerKind == "ROOM_PLAYER_ARRIVAL")
 		{
@@ -1004,6 +1025,18 @@ namespace
 	{
 		return std::all_of(value.begin(), value.end(), [=](const double number) {
 			return std::isfinite(number) && number >= minimum && number <= maximum; });
+	}
+
+	bool Valid_BossMotionKeys(const KOUKU_SAYDON_BOSS_MOTION& motion)
+	{
+		if (motion.Keys.empty()) return true;
+		if (motion.Keys.size() < 2u || motion.Keys.size() > 512u ||
+			motion.Keys.front().iTimeMs != motion.iStartMs || motion.Keys.back().iTimeMs != motion.iEndMs ||
+			motion.Keys.front().Position != motion.StartPosition || motion.Keys.back().Position != motion.EndPosition) return false;
+		for (std::size_t i = 0u; i < motion.Keys.size(); ++i)
+			if (!Valid_PresentationVector(motion.Keys[i].Position, -100000.0, 100000.0) ||
+				(i && motion.Keys[i].iTimeMs <= motion.Keys[i - 1u].iTimeMs)) return false;
+		return true;
 	}
 
 	void Write_PresentationVector(std::ostringstream& out, const std::array<double, 3u>& value)
@@ -1367,7 +1400,7 @@ namespace
                     const auto* logic = findLogic(box.strLogicId);
                     if (!logic) return fail("member Logic reference is missing");
                     if (logic->strJudgementKind == "POSE_INPUT" || logic->strJudgementKind == "ROULETTE_CARD_MATCH" ||
-                        (logic->strTriggerKind == "HUD_ENTER" || logic->strTriggerKind == "CARD_MAZE_HIDE_NEXT" || logic->strTriggerKind == "CARD_MAZE_ENTER")) statefulMembers.insert(member.strMemberId);
+                        (logic->strTriggerKind == "HUD_ENTER" || logic->strTriggerKind == "CARD_MAZE_HIDE_NEXT" || logic->strTriggerKind == "CARD_MAZE_ENTER" || logic->strTriggerKind == "CARD_MAZE_STAGE_PLAYERS")) statefulMembers.insert(member.strMemberId);
                     for (const auto* outcomes : {&box.OnSuccessLogicIds, &box.OnFailLogicIds, &box.OnTimeoutLogicIds})
                         for (const auto& id : *outcomes)
                         {
@@ -1673,6 +1706,7 @@ namespace
             if (logic.strOutcomeKind != "FEAR") continue;
             const auto effect = presentationResources.find(logic.strEffectResourceId);
             const auto light = presentationResources.find(logic.strLightResourceId);
+            const auto sound = presentationResources.find(logic.strSoundResourceId);
             if ((!logic.strSceneProfileId.empty() && !sceneProfileIds.contains(logic.strSceneProfileId)) ||
                 (!logic.strEffectResourceId.empty() && (effect == presentationResources.end() ||
                  effect->second->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT)))
@@ -1680,6 +1714,9 @@ namespace
             if (!logic.strLightResourceId.empty() && (light == presentationResources.end() ||
                 light->second->eKind != KOUKU_SAYDON_PRESENTATION_KIND::LIGHT || light->second->strDefaultAnchorKind != "PLAYER"))
             { outStatus = "FEAR requires a PLAYER Light resource: " + logic.strLogicId; return false; }
+            if (!logic.strSoundResourceId.empty() && (sound == presentationResources.end() ||
+                sound->second->eKind != KOUKU_SAYDON_PRESENTATION_KIND::SOUND))
+            { outStatus = "FEAR references a missing Sound resource: " + logic.strLogicId; return false; }
         }
 		for (const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern : document.Patterns)
 		{
@@ -1743,8 +1780,8 @@ namespace
 			}
 
 			if (pattern.bEnterCombatOnFinish && pattern.strGateId != "GATE1" &&
-				pattern.strGateId != "GATE2" && pattern.strGateId != "GATE3")
-			{ outStatus = "Combat entry sequences require GATE1, GATE2, or GATE3."; return false; }
+				pattern.strGateId != "GATE2" && pattern.strGateId != "GATE3" && pattern.strGateId != "BINGO")
+			{ outStatus = "Combat entry sequences require GATE1, GATE2, GATE3, or BINGO."; return false; }
 
 			if (!std::isfinite(pattern.fAnimationRootVerticalScale) ||
 				pattern.fAnimationRootVerticalScale < 0.0 || pattern.fAnimationRootVerticalScale > 1.0)
@@ -1867,9 +1904,9 @@ namespace
 					motion.iStartMs >= motion.iEndMs || motion.iEndMs > lifetimeMs ||
 					!Valid_PresentationVector(motion.StartPosition, -100000.0, 100000.0) ||
 					!Valid_PresentationVector(motion.EndPosition, -100000.0, 100000.0) ||
-					motion.StartPosition[1] != motion.EndPosition[1] ||
+					(motion.Keys.empty() && motion.StartPosition[1] != motion.EndPosition[1]) || !Valid_BossMotionKeys(motion) ||
 					!std::isfinite(motion.fYawDegrees) || std::abs(motion.fYawDegrees) > 360.0)
-				{ outStatus = "Boss Motion needs a valid pattern interval, equal base Y and no spawn reset."; return false; }
+				{ outStatus = "Boss Motion needs a valid interval, matching ordered key endpoints (or equal linear base Y), and no spawn reset."; return false; }
 			}
 			if (pattern.PatternOccurrences.empty())
 			{
@@ -1955,7 +1992,7 @@ namespace
 					row.strAnchorKind != "BOSS" || row.strBone.empty()))
 				{ outStatus = "Bone rotation requires a boss Effect with an explicit bone: " + row.strOccurrenceId; return false; }
 				if ((resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::LIGHT &&
-					(row.strAnchorKind == "PLAYER" || (row.strAnchorKind == "MAP" && resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT && resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER && resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::SUBTITLE) || row.fBrightnessMultiplier != 1.0)) ||
+					(row.strAnchorKind == "PLAYER" || (row.strAnchorKind == "MAP" && resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT && resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER && resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::SUBTITLE && resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::SOUND) || row.fBrightnessMultiplier != 1.0)) ||
 					(resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::LIGHT &&
 					(row.Scale != std::array<double, 3u>{1.0, 1.0, 1.0} ||
 					 (row.strAnchorKind != "BOSS" && !row.strBone.empty()) ||
@@ -1965,9 +2002,9 @@ namespace
 					(row.strAnchorKind != "MAP" || row.bFollowBoss || !row.strBone.empty() ||
 					 !row.strWorldId.empty() || !row.strWorldOccurrenceId.empty() || row.iWorldEmissionIndex != 0u))
 				{ outStatus = "Subtitle requires a fixed MAP anchor without a bone or World occurrence."; return false; }
-				if ((resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT || resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER) && row.strAnchorKind == "MAP" &&
-					(row.bFollowBoss || !row.strBone.empty() || row.strBoneTarget != "BODY" || !row.strWorldId.empty() || !row.strWorldOccurrenceId.empty() || (resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER && row.iWorldEmissionIndex != 0u)))
-				{ outStatus = "MAP Effect/Collider requires a fixed position without a bone or World occurrence."; return false; }
+				if ((resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT || resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER || resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::SOUND) && row.strAnchorKind == "MAP" &&
+					(row.bFollowBoss || !row.strBone.empty() || row.strBoneTarget != "BODY" || !row.strWorldId.empty() || !row.strWorldOccurrenceId.empty() || ((resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER || resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::SOUND) && row.iWorldEmissionIndex != 0u)))
+				{ outStatus = "MAP Effect/Collider/Sound requires a fixed position without a bone or World occurrence."; return false; }
 				if (!row.strWorldOccurrenceId.empty())
 				{
 					const auto owner = std::find_if(pattern.WorldOccurrences.begin(), pattern.WorldOccurrences.end(),
@@ -2003,6 +2040,9 @@ namespace
 						!Kouku_LogicAcceptsColliders(*owner) ||
 						linked->iStartMs != row.iStartMs || linked->iDurationMs != row.iDurationMs)
 					{ outStatus = "Collider link needs an existing Duration/Trigger window with identical timing: " + row.strOccurrenceId; return false; }
+					if (owner->strJudgementKind == "INVULNERABILITY_ZONE" &&
+						(row.strAnchorKind != "MAP" || row.bFollowBoss || !row.strBone.empty() || row.strBoneTarget != "BODY"))
+					{ outStatus = "INVULNERABILITY_ZONE requires fixed MAP Colliders."; return false; }
 					if (owner->strTriggerKind == "OBJECT_CONTACT" &&
 						((row.strAnchorKind == "WORLD" && (!row.strBone.empty() || row.strBoneTarget != "BODY")) || (row.strAnchorKind == "BOSS" && !row.bFollowBoss)))
 					{ outStatus = "OBJECT_CONTACT Collider must follow its boss Bone/pivot or use a WORLD track without a Bone."; return false; }
@@ -2039,6 +2079,17 @@ namespace
 					return false;
 				}
 				const KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION& owner = *findLogic(box.strLogicId);
+				for (const auto& id : owner.PlayerEntryEffectOccurrenceIds)
+				{
+					const auto row = std::find_if(pattern.PresentationOccurrences.begin(), pattern.PresentationOccurrences.end(),
+						[&](const auto& value) { return value.strOccurrenceId == id; });
+					if (row == pattern.PresentationOccurrences.end() || !presentationResources.contains(row->strResourceId) ||
+						presentationResources.at(row->strResourceId)->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT ||
+						row->strAnchorKind != "MAP" || row->bFollowBoss || !row->strBone.empty() || row->strBoneTarget != "BODY" ||
+						!row->strWorldId.empty() || !row->strWorldOccurrenceId.empty() || row->iWorldEmissionIndex != 0u ||
+						!row->strLogicOccurrenceId.empty() || row->iStartMs < box.iStartMs)
+					{ outStatus = "Card maze entry requires same-pattern fixed MAP Effects starting at or after the staging Trigger: " + id; return false; }
+				}
                 if (!owner.strSelectedEffectGroupId.empty())
                 {
                     size_t members = 0u;
@@ -2255,6 +2306,13 @@ namespace
 					outStatus = "KoukuSaydon PRODUCT Pattern owns a DURATION box without a judgement kind: " +
 						box.strOccurrenceId;
 					return false;
+				}
+				if (product && box.bEnabled && "INVULNERABILITY_ZONE" == owner.strJudgementKind)
+				{
+					const auto count = std::count_if(pattern.PresentationOccurrences.begin(), pattern.PresentationOccurrences.end(),
+						[&](const auto& row) { return row.strLogicOccurrenceId == box.strOccurrenceId; });
+					if (count == 0 || count > 64)
+					{ outStatus = "INVULNERABILITY_ZONE needs 1..64 linked Colliders."; return false; }
 				}
 				if (product && box.bEnabled && "ROULETTE_CARD_MATCH" == owner.strJudgementKind)
 				{
@@ -2986,11 +3044,11 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 					  "randomVolleyOccurrenceSets", "randomSpawnIntervalMs", "randomArenaRadiusM", "randomArenaHeightToleranceM", "insideOutcome", "sectorCount", "sectorSymbols", "regionIds", "centerX", "centerZ",
 					  "outerRadiusM", "worldSequenceInstanceId", "halfAngleDegrees",
 					  "maxDistanceM", "poseIndex", "threshold", "shieldArcDegrees",
-					  "endsPatternOnSuccess", "normalYawOffsetDegrees", "faceCenterYawOffsetDegrees", "outcomeKind", "percent", "durationMs", "pushRangeM", "pushMs", "pushDirection", "targetWorldInstanceId", "motionInstanceId", "targetRadiusM",
-					  "directionPatternIds", "cloneEndStageId", "summonOccurrenceId", "airbornePhase", "airborneHeightM", "airborneDurationMs", "airborneTargetPositionPolicy", "selectedEffectGroupId", "patternIds", "completionCount", "followupPatternId", "marioStage", "triggerKind", "countPerPlayer", "radiusM", "effectLifetimeMs",
+					  "endsPatternOnSuccess", "normalYawOffsetDegrees", "faceCenterYawOffsetDegrees", "outcomeKind", "percent", "durationMs", "pushRangeM", "pushMs", "pushDirection", "forcePush", "pushCanLeaveArena", "pushBallistic", "pushYawOffsetDegrees", "targetWorldInstanceId", "motionInstanceId", "targetRadiusM",
+					  "directionPatternIds", "cloneEndStageId", "summonOccurrenceId", "airbornePhase", "airborneHeightM", "airborneDurationMs", "airborneTargetPositionPolicy", "selectedEffectGroupId", "patternIds", "completionCount", "followupPatternId", "marioStage", "triggerKind", "playerEntryEffectOccurrenceIds", "countPerPlayer", "radiusM", "effectLifetimeMs",
 					  "arenaRandomCount", "arenaRandomRadiusM", "arenaHeightToleranceM", "arenaMinimumSpacingM", "randomPlayerOnly",
 					  "rearmOnExit", "repeatAfterKnockback", "bossChargeDistanceM", "chargeYawOffsetDegrees", "hudMode", "teleportPosition", "clonePatternId", "clockHours",
-					  "targetWorldOccurrenceIds", "contactGroupId", "contactPriority", "contactMotions", "targetLogicOccurrenceId", "contactTargetWorldOccurrenceId", "sceneProfileId", "effectResourceId", "lightResourceId", "effectDelayMs", "attachmentSlot", "gripLocalOffset" }))
+					  "targetWorldOccurrenceIds", "contactGroupId", "contactPriority", "contactMotions", "targetLogicOccurrenceId", "contactTargetWorldOccurrenceId", "sceneProfileId", "effectResourceId", "lightResourceId", "soundResourceId", "effectDelayMs", "attachmentSlot", "gripLocalOffset" }))
 			{
 				outStatus = "KoukuSaydon Logic definition has unexpected properties.";
 				return false;
@@ -3066,6 +3124,9 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 			}
             const DATA_JSON_VALUE* const homing = logicValue.Find("homing");
 			const DATA_JSON_VALUE* const endsPattern = logicValue.Find("endsPatternOnSuccess");
+			const DATA_JSON_VALUE* const forcePush = logicValue.Find("forcePush");
+			const DATA_JSON_VALUE* const pushCanLeaveArena = logicValue.Find("pushCanLeaveArena");
+			const DATA_JSON_VALUE* const pushBallistic = logicValue.Find("pushBallistic");
 			const DATA_JSON_VALUE* const rearmOnExit = logicValue.Find("rearmOnExit");
 			const DATA_JSON_VALUE* const repeatAfterKnockback = logicValue.Find("repeatAfterKnockback");
 			const DATA_JSON_VALUE* const randomPlayerOnly = logicValue.Find("randomPlayerOnly");
@@ -3115,17 +3176,23 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 				!optionalUnsigned("marioStage", 4u, stagedLogic.iMarioEntryStage) ||
 				!optionalUnsigned("durationMs", MAX_TIME_MS, stagedLogic.iDurationMs) ||
 				!optionalText("pushDirection", stagedLogic.strPushDirection) ||
-				!optionalFinite("pushRangeM", 0.0, 20.0, stagedLogic.fPushRangeM) ||
+				!optionalFinite("pushRangeM", 0.0, 100.0, stagedLogic.fPushRangeM) ||
 				!optionalUnsigned("pushMs", MAX_TIME_MS, stagedLogic.iPushMs) ||
+				!optionalFinite("pushYawOffsetDegrees", -360.0, 360.0, stagedLogic.fPushYawOffsetDegrees) ||
+				(nullptr != forcePush && !forcePush->Is_Boolean()) ||
+				(nullptr != pushCanLeaveArena && !pushCanLeaveArena->Is_Boolean()) ||
+				(nullptr != pushBallistic && !pushBallistic->Is_Boolean()) ||
 				(nullptr != rearmOnExit && !rearmOnExit->Is_Boolean()) ||
 				(nullptr != repeatAfterKnockback && !repeatAfterKnockback->Is_Boolean()) ||
 				!optionalText("followupPatternId", stagedLogic.strFollowupPatternId) ||
 				!optionalText("sceneProfileId", stagedLogic.strSceneProfileId) ||
 				!optionalText("effectResourceId", stagedLogic.strEffectResourceId) ||
 				!optionalText("lightResourceId", stagedLogic.strLightResourceId) ||
+				!optionalText("soundResourceId", stagedLogic.strSoundResourceId) ||
 				!optionalText("attachmentSlot", stagedLogic.strAttachmentSlot) ||
 				!optionalUnsigned("effectDelayMs", MAX_TIME_MS, stagedLogic.iEffectDelayMs) ||
 				!optionalText("triggerKind", stagedLogic.strTriggerKind) ||
+				!Try_ParseTextList(logicValue.Find("playerEntryEffectOccurrenceIds"), 4u, stagedLogic.PlayerEntryEffectOccurrenceIds) ||
 				!optionalText("airbornePhase", stagedLogic.strAirbornePhase) ||
 				!optionalText("airborneTargetPositionPolicy", stagedLogic.strAirborneTargetPositionPolicy) ||
 				!optionalText("selectedEffectGroupId", stagedLogic.strSelectedEffectGroupId) ||
@@ -3152,6 +3219,18 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 				outStatus = "KoukuSaydon Logic definition typed value is invalid: " + stagedLogic.strLogicId;
 				return false;
 			}
+            const bool stagePlayers = stagedLogic.strLogicType == "TRIGGER" && stagedLogic.strTriggerKind == "CARD_MAZE_STAGE_PLAYERS";
+            if (const auto* ids = logicValue.Find("playerEntryEffectOccurrenceIds"); ids &&
+                ids->Get_Array().size() != stagedLogic.PlayerEntryEffectOccurrenceIds.size())
+            { outStatus = "Player entry Effect occurrence IDs must not be empty."; return false; }
+            if (stagePlayers && !Has_ExactProperties(logicValue,
+                { "logicId", "displayName", "logicType", "triggerKind", "playerEntryEffectOccurrenceIds" }))
+            { outStatus = "CARD_MAZE_STAGE_PLAYERS carries only ordered Effect references."; return false; }
+            if (stagePlayers != (logicValue.Find("playerEntryEffectOccurrenceIds") != nullptr))
+            { outStatus = "CARD_MAZE_STAGE_PLAYERS requires playerEntryEffectOccurrenceIds, and no other kind accepts it."; return false; }
+            if (logicValue.Find("soundResourceId") &&
+                (stagedLogic.strLogicType != "RESULT" || stagedLogic.strOutcomeKind != "FEAR"))
+            { outStatus = "Only FEAR owns soundResourceId."; return false; }
             const bool pursuit = stagedLogic.strLogicType == "DURATION" && stagedLogic.strJudgementKind == "PURSUIT_PROJECTILES";
             for (const char* key : { "visualIds", "contactVisualId", "speedMps", "contactRadiusM", "spawnRadiusM", "lifetimeMs", "homing" })
                 if (pursuit != (logicValue.Find(key) != nullptr))
@@ -3170,6 +3249,9 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 				(!airborne && (logicValue.Find("airbornePhase") || logicValue.Find("airborneHeightM") || logicValue.Find("airborneDurationMs") ||
 				 logicValue.Find("airborneTargetPositionPolicy") || logicValue.Find("selectedEffectGroupId"))))
 			{ outStatus = "ALBION_AIRBORNE requires phase, height, duration and teleportPosition together."; return false; }
+			if (forcePush) stagedLogic.bForcePush = forcePush->Get_Boolean();
+			if (pushCanLeaveArena) stagedLogic.bPushCanLeaveArena = pushCanLeaveArena->Get_Boolean();
+			if (pushBallistic) stagedLogic.bPushBallistic = pushBallistic->Get_Boolean();
 			if (rearmOnExit) stagedLogic.bRearmOnExit = rearmOnExit->Get_Boolean();
 			if (repeatAfterKnockback) stagedLogic.bRepeatAfterKnockback = repeatAfterKnockback->Get_Boolean();
 			if (randomPlayerOnly) stagedLogic.bRandomPlayerOnly = randomPlayerOnly->Get_Boolean();
@@ -3177,7 +3259,7 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 				logicValue.Find("arenaHeightToleranceM") || logicValue.Find("arenaMinimumSpacingM") || randomPlayerOnly) &&
 				(stagedLogic.strLogicType != "TRIGGER" || stagedLogic.strTriggerKind != "ALBION_BLUE_CIRCLE"))
 			{ outStatus = "Arena circle placement and randomPlayerOnly belong to ALBION_BLUE_CIRCLE."; return false; }
-			if ((logicValue.Find("pushDirection") && stagedLogic.strOutcomeKind != "MAX_HP_PERCENT_DAMAGE") ||
+			if (((logicValue.Find("pushDirection") || forcePush || pushCanLeaveArena || pushBallistic || logicValue.Find("pushYawOffsetDegrees")) && stagedLogic.strOutcomeKind != "MAX_HP_PERCENT_DAMAGE") ||
 				(logicValue.Find("pushRangeM") != nullptr) != (logicValue.Find("pushMs") != nullptr) ||
 				((logicValue.Find("pushRangeM") || logicValue.Find("pushMs")) && stagedLogic.strOutcomeKind != "MAX_HP_PERCENT_DAMAGE") ||
 				((rearmOnExit || repeatAfterKnockback) && (stagedLogic.strLogicType != "TRIGGER" || stagedLogic.strTriggerKind != "ENTER_AREA")))
@@ -3864,13 +3946,29 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 		if (const auto* value = patternValue.Find("bossMotion"); nullptr != value)
 		{
 			KOUKU_SAYDON_BOSS_MOTION motion;
-			if (!Has_ExactProperties(*value, { "startMs", "endMs", "startPosition", "endPosition", "yawDegrees" }) ||
+			if (!Has_Properties(*value, { "startMs", "endMs", "startPosition", "endPosition", "yawDegrees" }, { "keys" }) ||
 				!Try_ParseUnsigned(*value->Find("startMs"), MAX_TIME_MS, motion.iStartMs) ||
 				!Try_ParseUnsigned(*value->Find("endMs"), MAX_TIME_MS, motion.iEndMs) ||
 				!Read_PresentationVector(*value, "startPosition", motion.StartPosition, -100000.0, 100000.0) ||
 				!Read_PresentationVector(*value, "endPosition", motion.EndPosition, -100000.0, 100000.0) ||
 				!Try_ParseFinite(*value->Find("yawDegrees"), -360.0, 360.0, motion.fYawDegrees))
 			{ outStatus = "Invalid Boss Motion fields."; return false; }
+			if (const auto* keys = value->Find("keys"))
+			{
+				if (!keys->Is_Array() || keys->Get_Array().size() < 2u || keys->Get_Array().size() > 512u)
+				{ outStatus = "Boss Motion keys require 2..512 samples."; return false; }
+				for (const auto& row : keys->Get_Array())
+				{
+					KOUKU_SAYDON_BOSS_MOTION_KEY key;
+					if (!Has_ExactProperties(row, { "timeMs", "position" }) ||
+						!Try_ParseUnsigned(*row.Find("timeMs"), MAX_TIME_MS, key.iTimeMs) ||
+						!Read_PresentationVector(row, "position", key.Position, -100000.0, 100000.0))
+					{ outStatus = "Invalid Boss Motion key fields."; return false; }
+					motion.Keys.push_back(key);
+				}
+				if (!Valid_BossMotionKeys(motion))
+				{ outStatus = "Boss Motion keys must increase strictly and match the interval/endpoints."; return false; }
+			}
 			stagedPattern.BossMotion = motion;
 		}
 		if (const auto* ordinal = patternValue.Find("nextPresentationOccurrenceOrdinal"); nullptr != ordinal)
@@ -4474,11 +4572,17 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 					<< ",\n      \"pushMs\": " << logic.iPushMs;
 			if (logic.strPushDirection != "AWAY_FROM_BOSS")
 				output << ",\n      \"pushDirection\": \"" << logic.strPushDirection << "\"";
+			if (logic.bForcePush) output << ",\n      \"forcePush\": true";
+			if (logic.bPushCanLeaveArena) output << ",\n      \"pushCanLeaveArena\": true";
+			if (logic.bPushBallistic) output << ",\n      \"pushBallistic\": true";
+			if (logic.fPushYawOffsetDegrees != 0.0) output << ",\n      \"pushYawOffsetDegrees\": " << logic.fPushYawOffsetDegrees;
 			if (logic.strOutcomeKind == "FEAR")
                 output << ",\n      \"sceneProfileId\": \"" << CDataJson::Escape(logic.strSceneProfileId)
                     << "\",\n      \"effectResourceId\": \"" << CDataJson::Escape(logic.strEffectResourceId)
                     << "\",\n      \"lightResourceId\": \"" << CDataJson::Escape(logic.strLightResourceId)
                     << "\",\n      \"effectDelayMs\": " << logic.iEffectDelayMs;
+			if (logic.strOutcomeKind == "FEAR" && !logic.strSoundResourceId.empty())
+				output << ",\n      \"soundResourceId\": \"" << CDataJson::Escape(logic.strSoundResourceId) << "\"";
 			if (logic.strOutcomeKind == "CAPTURE_PLAYER")
 				output << ",\n      \"attachmentSlot\": \"" << CDataJson::Escape(logic.strAttachmentSlot)
 					<< "\",\n      \"gripLocalOffset\": {\"forwardM\": " << logic.GripLocalOffset[0]
@@ -4544,6 +4648,11 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 					<< ",\n      \"contactPriority\": " << logic.iContactPriority;
 				if (!logic.strContactGroupId.empty())
 					output << ",\n      \"contactGroupId\": \"" << CDataJson::Escape(logic.strContactGroupId) << "\"";
+			}
+			else if (logic.strTriggerKind == "CARD_MAZE_STAGE_PLAYERS")
+			{
+				output << ",\n";
+				textList("playerEntryEffectOccurrenceIds", logic.PlayerEntryEffectOccurrenceIds, "      ", true);
 			}
 			else if (logic.strTriggerKind == "HUD_ENTER")
 				output << ",\n      \"hudMode\": \"" << logic.strHudMode << "\"";
@@ -4799,7 +4908,19 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 			Write_PresentationVector(output, motion.StartPosition);
 			output << ", \"endPosition\": ";
 			Write_PresentationVector(output, motion.EndPosition);
-			output << ", \"yawDegrees\": " << motion.fYawDegrees << "}";
+			output << ", \"yawDegrees\": " << motion.fYawDegrees;
+			if (!motion.Keys.empty())
+			{
+				output << ", \"keys\": [";
+				for (std::size_t i = 0u; i < motion.Keys.size(); ++i)
+				{
+					output << (i ? ", " : "") << "{\"timeMs\": " << motion.Keys[i].iTimeMs << ", \"position\": ";
+					Write_PresentationVector(output, motion.Keys[i].Position);
+					output << "}";
+				}
+				output << "]";
+			}
+			output << "}";
 		}
 		if (pattern.ResetBossYawDegrees)
 			output << ",\n      \"resetBossYawDegrees\": " << *pattern.ResetBossYawDegrees;
@@ -5134,6 +5255,23 @@ bool Client::Sample_KoukuSaydonBossMotion(
 	if (!pattern.BossMotion || !std::isfinite(patternTimeMs)) return false;
 	const auto& motion = *pattern.BossMotion;
 	if (motion.iEndMs <= motion.iStartMs) return false;
+	if (!motion.Keys.empty())
+	{
+		if (!Valid_BossMotionKeys(motion)) return false;
+		const auto right = std::upper_bound(motion.Keys.begin(), motion.Keys.end(), patternTimeMs,
+			[](double timeMs, const auto& key) { return timeMs < key.iTimeMs; });
+		if (right == motion.Keys.begin()) outPosition = right->Position;
+		else if (right == motion.Keys.end()) outPosition = motion.Keys.back().Position;
+		else
+		{
+			const auto& left = *std::prev(right);
+			const double alpha = (patternTimeMs - left.iTimeMs) / double(right->iTimeMs - left.iTimeMs);
+			for (std::size_t axis = 0u; axis < outPosition.size(); ++axis)
+				outPosition[axis] = left.Position[axis] + (right->Position[axis] - left.Position[axis]) * alpha;
+		}
+		outYawDegrees = motion.fYawDegrees;
+		return true;
+	}
 	const double alpha = std::clamp((patternTimeMs - motion.iStartMs) /
 		static_cast<double>(motion.iEndMs - motion.iStartMs), 0.0, 1.0);
 	for (std::size_t axis = 0u; axis < outPosition.size(); ++axis)
@@ -5340,6 +5478,7 @@ bool_t Client::CKoukuSaydonCompositionDocument::Try_ExpandPatternDocument(
             auto motion = *child.BossMotion;
             motion.iStartMs += slot.iStartMs;
             motion.iEndMs += slot.iStartMs;
+            for (auto& key : motion.Keys) key.iTimeMs += slot.iStartMs;
             result.BossMotion = motion;
         }
         if (child.fAnimationRootVerticalScale != selected->fAnimationRootVerticalScale)
@@ -5424,7 +5563,7 @@ bool_t Client::CKoukuSaydonCompositionDocument::Try_ExpandPatternDocument(
                 if (!usedLogic.contains(sourceLogic.strLogicId)) continue;
                 if (sourceLogic.bEndsPatternOnSuccess || sourceLogic.strOutcomeKind == "FOLLOWUP_PATTERN" ||
                     sourceLogic.strTriggerKind == "HUD_ENTER" || sourceLogic.strTriggerKind == "CARD_MAZE_HIDE_NEXT" ||
-                    sourceLogic.strTriggerKind == "CARD_MAZE_ENTER")
+                    sourceLogic.strTriggerKind == "CARD_MAZE_ENTER" || sourceLogic.strTriggerKind == "CARD_MAZE_STAGE_PLAYERS")
                     return fail("Child Logic changes the whole Pattern or persistent HUD: " + sourceLogic.strLogicId);
                 auto definition = sourceLogic;
                 remap(definition.strLogicId);

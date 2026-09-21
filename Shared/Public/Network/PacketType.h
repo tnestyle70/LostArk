@@ -91,9 +91,10 @@ namespace LostArk::Shared
 	// the inventory entry's equipped slot and the C2S_SET_EQUIPMENT request.
 	// 98 carries the retail damage-text hit flag on every damage event, so a potion
 	// heal draws in its own colour instead of reading as an ordinary hit.
-	// 99 appends the Guardian Knight ember orbs, locked sockets and pool size to
+	// 99 adds the Server-authoritative invulnerability-zone presentation pulse.
+	// 100 appends the Guardian Knight ember orbs, locked sockets and pool size to
 	// player snapshots.
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 99;
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 100;
 
 	enum class WORLD_ID : std::uint16_t
 	{

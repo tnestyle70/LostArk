@@ -19,6 +19,9 @@
 *.mapassets filter=lfs diff=lfs merge=lfs -text
 *.mapplacements filter=lfs diff=lfs merge=lfs -text
 
+# Published navigation grids are binary runtime data; never normalize line endings.
+*.navgrid -text
+
 # Audio assets
 *.wav filter=lfs diff=lfs merge=lfs -text
 *.mp3 filter=lfs diff=lfs merge=lfs -text

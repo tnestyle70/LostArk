@@ -255,7 +255,12 @@ bool_t CWorldSequencePlayer::Set_DocumentBatch(const CWorldSequenceDocument& doc
     { status = "World Object document batch has an empty or duplicate player."; return false; }
     WORLD_SEQUENCE_PLACEMENT_MAP placements;
     WORLD_SEQUENCE_DEPLOY_MAP deploy;
-    Collect_ValidationTargets(targets, placements, deploy);
+    // Object-only documents own their bindings; unrelated map/deploy tables
+    // are neither read nor consumed by Validate for these occurrences.
+    const bool usesPlacedTargets = std::any_of(document.Get_Instances().begin(), document.Get_Instances().end(),
+        [](const auto& instance) { return std::any_of(instance.bindings.begin(), instance.bindings.end(),
+            [](const auto& binding) { return binding.targetKind != WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE; }); });
+    if (usesPlacedTargets) Collect_ValidationTargets(targets, placements, deploy);
     if (!document.Validate(placements, deploy, status))
         return false;
     std::vector<CWorldSequenceDocument> staged;

@@ -38,6 +38,7 @@
 #include "LevelRegistry.h"
 #include "LevelTransitionService.h"
 #include "Level_Bern.h"
+#include "Level_Development.h"
 #include "Level_Lobby.h"
 #include "ActionPresentationTimeline.h"
 #include "Level_CharacterSelect.h"
@@ -1216,13 +1217,42 @@ namespace
 }
 #endif
 
+namespace
+{
+    void Record_KoukuRaidRequestEvent(const std::string_view eventName,
+        const LostArk::Shared::C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST& request,
+        const uint64_t worldGeneration, const uint32_t runEpoch, const std::string_view reason) noexcept
+    {
+        try
+        {
+            CNetworkManager::Get().Record_SessionEvent(eventName,
+                "request=" + std::to_string(request.iRequestSequence) + "; operation=" + std::to_string(unsigned(request.eOperation)) +
+                "; worldGeneration=" + std::to_string(worldGeneration) + "; runEpoch=" + std::to_string(runEpoch) +
+                "; gate=" + request.strStartGateId + "; reason=" + std::string(reason));
+        }
+        catch (...) { } // Diagnostics never decide admission or change request ownership.
+    }
+}
+
 void CMainApp::UpdateKoukuGateCompletePlay()
 {
     using namespace LostArk::Shared;
     auto* arena = CLevel_KakulSaydonArena::Get_Active();
-    if (!arena)
+    auto& network = CNetworkManager::Get();
+    const bool worldChanged = m_iKoukuCompletePlayWorldGeneration != 0u &&
+        m_iKoukuCompletePlayWorldGeneration != network.Get_WorldInboundGeneration();
+    if (!arena || !network.Is_Connected() || worldChanged)
     {
+        if (arena) arena->Expect_KoukuRaidReply(0u);
+        if (m_iKoukuCompletePlayWorldGeneration || m_iKoukuRaidPendingRequest)
+            m_strKoukuCompletePlayStatus = "The connected world session changed; the previous raid request is no longer tracked.";
+        if (m_iKoukuRaidPendingRequest)
+        {
+            Record_KoukuRaidRequestEvent("kouku.raid.request.reset", m_KoukuRaidRequest,
+                m_iKoukuCompletePlayWorldGeneration, 0u, m_strKoukuCompletePlayStatus);
+        }
 #ifdef _DEBUG
+        if (arena) arena->Debug_ResetCompletePlayPreparation();
         m_KoukuRaidResourcePreparation.reset();
         m_iKoukuRaidResourceEpoch = 0u; m_KoukuRaidResourcePatternIds.clear();
 #endif
@@ -1230,6 +1260,8 @@ void CMainApp::UpdateKoukuGateCompletePlay()
         m_pKoukuRaidSequenceDocument.reset(); m_iKoukuRaidDocumentEpoch = m_iKoukuRaidAcknowledgedEpoch = 0u;
         m_strKoukuRaidPresentationKey.clear(); m_strKoukuRaidFailedKey.clear(); m_strKoukuCompletePlayFlowGate.clear();
         m_iKoukuRaidPendingRequest = 0u; m_bKoukuRaidStopAfterAdmission = false;
+        m_KoukuRaidRequest = {}; m_KoukuRaidReplyDeadline = {}; m_strKoukuRaidReplyStatus.clear();
+        m_iKoukuCompletePlayWorldGeneration = 0u;
         return;
     }
 #ifdef _DEBUG
@@ -1269,21 +1301,43 @@ void CMainApp::UpdateKoukuGateCompletePlay()
         if (!arena->Get_PlayerCommandSink()->Request_KoukuRaid(request))
         { fail("The prepared raid request could not be submitted."); return; }
         m_KoukuRaidResourcePreparation.reset();
+        arena->Expect_KoukuRaidReply(request.iRequestSequence);
         m_KoukuRaidRequest = request; m_iKoukuRaidPendingRequest = request.iRequestSequence;
         m_KoukuRaidReplyDeadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
         m_iKoukuCompletePlayWorldGeneration = CNetworkManager::Get().Get_WorldInboundGeneration();
+        m_strKoukuRaidReplyStatus.clear();
         m_strKoukuCompletePlayStatus = "All raid resources prepared; waiting for Server admission.";
+        Record_KoukuRaidRequestEvent("kouku.raid.request.sent", request,
+            m_iKoukuCompletePlayWorldGeneration, request.iExpectedRunEpoch, {});
     }
 #endif
-    const auto& reply = arena->Get_KoukuRaidReply();
+    const auto reply = arena->Get_KoukuRaidReply();
     if (m_iKoukuRaidPendingRequest && reply.iRequestSequence == m_iKoukuRaidPendingRequest &&
         (!reply.iRunEpoch || reply.iOwnerPlayerId == CNetworkManager::Get().Get_LocalPlayerId()))
     {
-        m_iKoukuRaidPendingRequest = 0u;
-        if (!reply.iRunEpoch) { m_bKoukuRaidStopAfterAdmission = false; m_strKoukuCompletePlayStatus = reply.strReason; return; }
+        Record_KoukuRaidRequestEvent("kouku.raid.request.reply", m_KoukuRaidRequest,
+            m_iKoukuCompletePlayWorldGeneration, reply.iRunEpoch, reply.strReason);
+        arena->Expect_KoukuRaidReply(0u);
+        m_iKoukuRaidPendingRequest = 0u; m_KoukuRaidReplyDeadline = {};
+        m_strKoukuRaidReplyStatus.clear();
+        if (!reply.iRunEpoch)
+        {
+            m_bKoukuRaidStopAfterAdmission = false;
+            m_strKoukuRaidReplyStatus = m_strKoukuCompletePlayStatus = reply.strReason;
+            return;
+        }
     }
-    if (m_iKoukuRaidPendingRequest && std::chrono::steady_clock::now() >= m_KoukuRaidReplyDeadline)
-    { m_iKoukuRaidPendingRequest = 0u; m_strKoukuCompletePlayStatus = "Server raid reply timed out; the run status is unconfirmed."; }
+    if (m_iKoukuRaidPendingRequest && m_KoukuRaidReplyDeadline != std::chrono::steady_clock::time_point{} &&
+        std::chrono::steady_clock::now() >= m_KoukuRaidReplyDeadline)
+    {
+        // A deadline is a notice, not a Server verdict. Retain the exact request
+        // until its reply or the owning world session ends; never allow a second START.
+        m_KoukuRaidReplyDeadline = {};
+        m_strKoukuRaidReplyStatus = m_strKoukuCompletePlayStatus =
+            "Server raid reply timed out; still waiting for this request's final Server response.";
+        Record_KoukuRaidRequestEvent("kouku.raid.request.timeout", m_KoukuRaidRequest,
+            m_iKoukuCompletePlayWorldGeneration, m_KoukuRaidRequest.iExpectedRunEpoch, m_strKoukuRaidReplyStatus);
+    }
     const auto& state = arena->Get_KoukuRaidState();
     if (!state.iRunEpoch) return;
     const bool active = state.ePhase == KOUKUSAYDON_RAID_PHASE::PREPARING || state.ePhase == KOUKUSAYDON_RAID_PHASE::CINEMATIC || state.ePhase == KOUKUSAYDON_RAID_PHASE::COMBAT ||
@@ -1294,7 +1348,8 @@ void CMainApp::UpdateKoukuGateCompletePlay()
     if (m_bKoukuRaidStopAfterAdmission && !m_iKoukuRaidPendingRequest)
     {
         m_bKoukuRaidStopAfterAdmission = false;
-        if (active) { CancelKoukuGateCompletePlay("Queued Complete Play stop."); return; }
+        if (active && state.iRunEpoch == reply.iRunEpoch && state.iOwnerPlayerId == reply.iOwnerPlayerId)
+        { CancelKoukuGateCompletePlay("Queued Complete Play stop."); return; }
     }
 #endif
     if (state.ePhase == KOUKUSAYDON_RAID_PHASE::PREPARING)
@@ -1322,7 +1377,7 @@ void CMainApp::UpdateKoukuGateCompletePlay()
             sequences.Get_LastGood().strCompositionId != state.strSequenceCompositionId ||
             CNetworkManager::Get().Get_GameplayRevisionState().ServerActiveRevision != state.PinnedGameplayRevision))
         { ready = false; preparationError = "Saved Action/Sequence or gameplay revision differs from the Server pin"; }
-        if (ready && state.strGateId != "BINGO")
+        if (ready)
         {
             // Preload and validate immutable documents only. No playback, spawn, camera or teleport occurs here.
             for (const auto& pattern : sequences.Get_LastGood().Patterns)
@@ -1357,7 +1412,7 @@ void CMainApp::UpdateKoukuGateCompletePlay()
             }
             bool resourcesReady = false;
             if (ready && !arena->Debug_PrepareCompletePlayResources(m_KoukuRaidResourcePatternIds, {},
-                state.iActionSourceRevision, resourcesReady, preparationError, state.strGateId != "BINGO")) ready = false;
+                state.iActionSourceRevision, resourcesReady, preparationError, true)) ready = false;
             if (ready && !resourcesReady)
             {
                 m_strKoukuCompletePlayStatus = preparationError + " Waiting for all raid participants.";
@@ -1850,7 +1905,8 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		if (preparing) m_strKoukuCompletePlayStatus = m_pKoukuSaydonBossTool->Get_Status();
 		if (m_pKoukuSaydonActionWorkbench)
 			m_pKoukuSaydonActionWorkbench->Set_ServerPlayPreparationPending(
-				m_pKoukuSaydonBossTool->Is_PlayPreparationPending());
+				m_pKoukuSaydonBossTool->Is_PlayPreparationPending(),
+				preparing ? std::string_view(m_pKoukuSaydonBossTool->Get_Status()) : std::string_view{});
 	}
 #endif
 	{
@@ -2315,6 +2371,17 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		auto* workbench = route.workbench;
 		auto* shell = route.shell;
 		if (!workbench) continue;
+		// Observe publisher completion even while the Server raid owns playback.
+		workbench->Tick_Background();
+		if (route.owner == DEBUG_TOOL::SEQUENCER && m_bKoukuFlowPublishPending && !workbench->Is_PublishRunning())
+		{
+			m_bKoukuFlowPublishPending = false;
+			m_strKoukuCompletePlayStatus = workbench->Get_Status();
+			if (m_pKoukuSaydonBossTool) m_pKoukuSaydonBossTool->Set_Status(m_strKoukuCompletePlayStatus);
+		}
+		if (workbench->Consume_ProductInventoryRefreshRequest() &&
+			route.owner == DEBUG_TOOL::SEQUENCER && m_pKoukuSaydonBossTool)
+			(void)m_pKoukuSaydonBossTool->Reload(m_strKoukuCompletePlayStatus);
         if (!m_strKoukuCompletePlayFlowGate.empty())
         {
             // Reset/Play must not disappear behind the active raid guard. Stop
@@ -2392,16 +2459,6 @@ void CMainApp::Update(const f32_t fTimeDelta)
     };
 	if (nullptr != workbench)
 	{
-		workbench->Tick_Background();
-		if (route.owner == DEBUG_TOOL::SEQUENCER && m_bKoukuFlowPublishPending && !workbench->Is_PublishRunning())
-		{
-			m_bKoukuFlowPublishPending = false;
-			m_strKoukuCompletePlayStatus = workbench->Get_Status();
-			if (m_pKoukuSaydonBossTool) m_pKoukuSaydonBossTool->Set_Status(m_strKoukuCompletePlayStatus);
-		}
-		if (workbench->Consume_ProductInventoryRefreshRequest() &&
-			route.owner == DEBUG_TOOL::SEQUENCER && m_pKoukuSaydonBossTool)
-			(void)m_pKoukuSaydonBossTool->Reload(m_strKoukuCompletePlayStatus);
 		KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE occurrence;
 		if (workbench->Consume_AnimationPreviewRequest(
 				occurrence))
@@ -2461,7 +2518,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
 			ClaimCompositionPreviewOwner(DEBUG_TOOL::NONE);
 			if (!m_pKoukuSaydonBossTool) m_pKoukuSaydonBossTool = make_unique<CKoukuSaydonBossTool>();
 			(void)m_pKoukuSaydonBossTool->Play_BundleById(serverBundleId, bundleRevision, m_strToolStatus);
-			workbench->Set_ServerPlayPreparationPending(m_pKoukuSaydonBossTool->Is_PlayPreparationPending());
+			workbench->Set_ServerPlayPreparationPending(m_pKoukuSaydonBossTool->Is_PlayPreparationPending(), m_strToolStatus);
 		}
 		KOUKU_SAYDON_COMPOSITION_PATTERN pattern;
 		std::uint32_t startClockMs = 0u;
@@ -2771,7 +2828,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
 				SetDebugToolVisible(DEBUG_TOOL::KOUKU_SAYDON_BOSS, true);
 				(void)m_pKoukuSaydonBossTool->Play_PatternById(
 					serverPatternId, sourceRevision, m_strToolStatus);
-				workbench->Set_ServerPlayPreparationPending(m_pKoukuSaydonBossTool->Is_PlayPreparationPending());
+				workbench->Set_ServerPlayPreparationPending(m_pKoukuSaydonBossTool->Is_PlayPreparationPending(), m_strToolStatus);
 				m_eDebugInputOwner = DEBUG_TOOL::KOUKU_SAYDON_BOSS;
 				m_eDebugWindowFocusPending = DEBUG_TOOL::KOUKU_SAYDON_BOSS;
 			}
@@ -2779,6 +2836,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
 			{
 				m_strToolStatus =
 					"KoukuSaydon Boss Tool could not open for Server Play.";
+				workbench->Set_ServerPlayPreparationPending(false, m_strToolStatus);
 			}
 		}
 	}
@@ -9758,39 +9816,48 @@ void CMainApp::RenderArenaCameraAndPlayerControls()
 		CLevel_KakulSaydonArena::Get_Active() : nullptr;
 	CLevel_CharacterSelect* characterSelect = LEVEL::CHARACTER_SELECT == level ?
 		CLevel_CharacterSelect::Get_Active() : nullptr;
+	CLevel_Bern* bern = LEVEL::BERN == level ? CLevel_Bern::Get_Active() : nullptr;
+	CLevel_Development* development = LEVEL::DEVELOPMENT == level || LEVEL::MAHARAKA == level ?
+		CLevel_Development::Get_Active(level) : nullptr;
 	shared_ptr<CCamera_Free> camera;
 	CPlayerController* controller = nullptr;
+	const char* mapName = "Unavailable";
 	if (nullptr != valtan)
 	{
 		camera = valtan->Get_DebugCamera();
 		controller = &valtan->Get_DebugPlayerController();
+		mapName = "Valtan";
 	}
 	else if (nullptr != kouku)
 	{
 		camera = kouku->Get_DebugCamera();
 		controller = &kouku->Get_DebugPlayerController();
+		mapName = "KoukuSaydon";
 	}
 	else if (nullptr != characterSelect)
 	{
 		camera = characterSelect->Get_DebugCamera();
-		controller = &characterSelect->Get_DebugPlayerController();
+		mapName = "Character Select";
 	}
-	if (nullptr == camera || nullptr == controller)
+	else if (nullptr != bern)
 	{
-		if (LEVEL::BERN == level)
-			RenderArenaFollowCameraSettings();
-		if (m_pLevelNavigationDebug) m_pLevelNavigationDebug->Render_Controls();
-		return;
+		camera = bern->Get_DebugCamera();
+		mapName = "Bern";
 	}
-	const auto setSpeed = [valtan, kouku, characterSelect, camera](const f32_t speed)
+	else if (nullptr != development)
 	{
-		if (nullptr != valtan) valtan->Set_DebugCameraSpeed(speed);
-		else if (nullptr != kouku) kouku->Set_DebugCameraSpeed(speed);
-		else if (nullptr != characterSelect) (void)camera->Set_FreeMoveSpeed(speed);
-	};
-	if (ImGui::CollapsingHeader("Arena Camera / Player", ImGuiTreeNodeFlags_DefaultOpen))
+		camera = development->Get_DebugCamera();
+		mapName = LEVEL::MAHARAKA == level ? "Maharaka" : "Development / Training";
+	}
+	if (camera && ImGui::CollapsingHeader("Map Camera / Player", ImGuiTreeNodeFlags_DefaultOpen))
 	{
-		ImGui::Text("Current arena: %s", nullptr != valtan ? "Valtan" : nullptr != kouku ? "KoukuSaydon" : "Character Select");
+		const auto setSpeed = [valtan, kouku, camera](const f32_t speed)
+		{
+			if (nullptr != valtan) valtan->Set_DebugCameraSpeed(speed);
+			else if (nullptr != kouku) kouku->Set_DebugCameraSpeed(speed);
+			else (void)camera->Set_FreeMoveSpeed(speed);
+		};
+		ImGui::Text("Current map: %s", mapName);
 		/* Where the local player actually stands and which interact box the Server is offering
 		there, so an authored trigger can be placed against real coordinates instead of guesses. */
 		{
@@ -9819,38 +9886,43 @@ void CMainApp::RenderArenaCameraAndPlayerControls()
 		ImGui::TextDisabled("Shift: x%.0f (%.1f m/s).",
 			CCamera_Free::FREE_MOVE_SPRINT_MULTIPLIER,
 			camera->Get_FreeMoveSpeed() * CCamera_Free::FREE_MOVE_SPRINT_MULTIPLIER);
-		ImGui::TextDisabled(characterSelect ? "Free-camera speed lasts for this map visit." :
-			"Free-camera speed is saved per arena for this session.");
+		ImGui::TextDisabled(valtan || kouku ? "Free-camera speed is saved per arena for this session." :
+			"Free-camera speed lasts for this map visit.");
 
-		const bool_t freeCamera = !camera->Is_FollowRequested() &&
-			!camera->Is_PresentationOverrideActive();
-		ImGui::BeginDisabled(nullptr != characterSelect || !freeCamera || controller->Is_DebugPlayerPlacementPending() ||
-			controller->Is_DebugPlayerPlacementArmed());
-		if (ImGui::Button("Move Player"))
+		// Server player placement remains confined to the two existing arena owners.
+		if (controller)
 		{
-			const auto world = nullptr != valtan ? LostArk::Shared::WORLD_ID::VALTAN_ARENA :
-				LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA;
-			if (controller->Begin_DebugPlayerPlacement(world))
-				camera->Set_MouseLookEnabled(false);
+			const bool_t freeCamera = !camera->Is_FollowRequested() &&
+				!camera->Is_PresentationOverrideActive();
+			ImGui::BeginDisabled(!freeCamera || controller->Is_DebugPlayerPlacementPending() ||
+				controller->Is_DebugPlayerPlacementArmed());
+			if (ImGui::Button("Move Player"))
+			{
+				const auto world = nullptr != valtan ? LostArk::Shared::WORLD_ID::VALTAN_ARENA :
+					LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA;
+				if (controller->Begin_DebugPlayerPlacement(world))
+					camera->Set_MouseLookEnabled(false);
+			}
+			ImGui::EndDisabled();
+			if (controller->Is_DebugPlayerPlacementArmed())
+			{
+				ImGui::SameLine();
+				if (ImGui::Button("Cancel Pick"))
+					controller->Cancel_DebugPlayerPlacement();
+			}
+			ImGui::TextDisabled("F6 free camera -> Move Player -> click ground. Esc / right-click cancels.");
+			ImGui::TextDisabled("Tab toggles mouse-look. Only your player moves after Server approval.");
+			if (!controller->Get_DebugPlayerPlacementStatus().empty())
+				ImGui::TextWrapped("%s", controller->Get_DebugPlayerPlacementStatus().c_str());
 		}
-		ImGui::EndDisabled();
-		if (controller->Is_DebugPlayerPlacementArmed())
-		{
-			ImGui::SameLine();
-			if (ImGui::Button("Cancel Pick"))
-				controller->Cancel_DebugPlayerPlacement();
-		}
-		ImGui::TextDisabled("F6 free camera -> Move Player -> click ground. Esc / right-click cancels.");
-		ImGui::TextDisabled("Tab toggles mouse-look. Only your player moves after Server approval.");
-		if (!controller->Get_DebugPlayerPlacementStatus().empty())
-			ImGui::TextWrapped("%s", controller->Get_DebugPlayerPlacementStatus().c_str());
-		if (nullptr != characterSelect)
-			ImGui::TextDisabled("Move Player is available in Valtan and KoukuSaydon arenas.");
+		else
+			ImGui::TextDisabled("F6 toggles follow / free camera when a player is available. Tab toggles mouse-look.");
 	}
 	if (m_pLevelNavigationDebug) m_pLevelNavigationDebug->Render_Controls();
 	if (nullptr != characterSelect)
 		RenderCharacterSelectFloorSwapControls();
-	RenderArenaFollowCameraSettings();
+	if (characterSelect || kouku || bern || valtan)
+		RenderArenaFollowCameraSettings();
 	if (nullptr != kouku)
 		RenderKoukuUiPreviewControls();
 }
@@ -10026,15 +10098,39 @@ void CMainApp::RenderArenaFollowCameraSettings()
 		m_ArenaCameraDraftLoaded[index] = true;
 	}
 	const bool canPreview = active && camera && !camera->Is_PresentationOverrideActive();
+	const auto applyProfile = [&]()
+	{
+		if (!active || !camera) return false;
+		if (index == 0u) return characterSelect->Set_FollowCameraProfile(draft, status);
+		if (index == 1u) return kouku->Set_FollowCameraProfile(draft, status);
+		if (index == 2u) return bern->Set_FollowCameraProfile(draft, status);
+		return valtan->Set_FollowCameraProfile(draft, status);
+	};
 	const auto preview = [&]()
 	{
-		if (!canPreview) return;
-		bool applied = false;
-		if (index == 0u) applied = characterSelect->Set_FollowCameraProfile(draft, status);
-		else if (index == 1u) applied = kouku->Set_FollowCameraProfile(draft, status);
-		else if (index == 2u) applied = bern->Set_FollowCameraProfile(draft, status);
-		else if (index == 3u) applied = valtan->Set_FollowCameraProfile(draft, status);
-		if (applied) camera->Set_FollowEnabled(true);
+		if (canPreview && applyProfile()) camera->Set_FollowEnabled(true);
+	};
+	const auto save = [&]()
+	{
+		if (!CArenaCameraProfile::Save(map, draft, status, &baseline)) return;
+		const std::string savedStatus = status;
+		if (!active)
+			status += " Saved for the next entry.";
+		else if (applyProfile())
+			status = savedStatus + " Character sizes applied to the current map.";
+		else
+			status = savedStatus + " Current map could not apply the profile: " + status;
+	};
+	const auto reload = [&]()
+	{
+		if (!CArenaCameraProfile::Load(map, draft, status, &baseline)) return;
+		const std::string loadedStatus = status;
+		if (!active)
+			status += " Loaded for the selected map; enter it to apply these settings.";
+		else if (applyProfile())
+			status = loadedStatus + " Character sizes applied to the current map.";
+		else
+			status = loadedStatus + " Current map could not apply the profile: " + status;
 	};
 	bool edited = false;
 	if (map == ARENA_CAMERA_MAP::KOUKU_SAYDON)
@@ -10093,15 +10189,16 @@ void CMainApp::RenderArenaFollowCameraSettings()
 	ImGui::TextDisabled("Distance moves the camera toward or away from the same focus. Pitch changes the ground angle; yaw circles the focus.");
 	if (ImGui::TreeNodeEx("Character Size", ImGuiTreeNodeFlags_DefaultOpen))
 	{
-		edited |= ImGui::SliderFloat("All characters", &draft.characterSizeMultiplier,
+		bool sizeEdited = false;
+		sizeEdited |= ImGui::SliderFloat("All characters", &draft.characterSizeMultiplier,
 			0.25f, 4.f, "%.3f x", ImGuiSliderFlags_AlwaysClamp);
 		const char* classNames[] = { "Lance Master", "Gunslinger", "Slayer", "Artist", nullptr, "DimensionMaster", "Warlord", "Guardian Knight" };
 		for (size_t i = 0u; i < draft.classSizeMultipliers.size(); ++i)
-			if (classNames[i]) edited |= ImGui::SliderFloat(classNames[i], &draft.classSizeMultipliers[i],
+			if (classNames[i]) sizeEdited |= ImGui::SliderFloat(classNames[i], &draft.classSizeMultipliers[i],
 				0.25f, 4.f, "%.3f x", ImGuiSliderFlags_AlwaysClamp);
-		edited |= ImGui::SliderFloat("Madness clown", &draft.clownSizeMultiplier,
+		sizeEdited |= ImGui::SliderFloat("Madness clown", &draft.clownSizeMultiplier,
 			0.25f, 4.f, "%.3f x", ImGuiSliderFlags_AlwaysClamp);
-		edited |= ImGui::SliderFloat("Mario clown", &draft.marioSizeMultiplier,
+		sizeEdited |= ImGui::SliderFloat("Mario clown", &draft.marioSizeMultiplier,
 			0.25f, 4.f, "%.3f x", ImGuiSliderFlags_AlwaysClamp);
 		if (ImGui::Button("Requested size defaults"))
 		{
@@ -10110,23 +10207,37 @@ void CMainApp::RenderArenaFollowCameraSettings()
 			draft.classSizeMultipliers = defaults.classSizeMultipliers;
 			draft.clownSizeMultiplier = defaults.clownSizeMultiplier;
 			draft.marioSizeMultiplier = defaults.marioSizeMultiplier;
-			edited = true;
+			sizeEdited = true;
 		}
+		// Size tuning does not transfer camera ownership or enable F6 follow.
+		if (sizeEdited && applyProfile())
+			status = "Character sizes applied live. Save to keep the selected map's settings.";
+		if (ImGui::Button("Save##CharacterSize")) save();
+		ImGui::SameLine();
+		if (ImGui::Button("Reload saved##CharacterSize")) reload();
 		ImGui::TextWrapped("Class values multiply the current catalog model. Artist 1.6x, DimensionMaster 0.7x and madness clown 0.7x are the requested defaults. Mario 1x keeps its 1.5m admission height.");
-		ImGui::TextDisabled("Local and remote characters use this map's values. Save / Reload below also stores these sizes.");
+		ImGui::Text("Save / Reload target: %s", names[index]);
+		ImGui::TextDisabled("Sizes apply during camera sequences too. Save keeps this map's settings for local and remote characters.");
 		ImGui::TreePop();
 	}
 	if (ImGui::TreeNodeEx("Card Maze Player Hammer", ImGuiTreeNodeFlags_DefaultOpen))
 	{
-		edited |= ImGui::DragFloat3("Hammer position (cm)", &draft.mazeHammerPositionCm.x, .1f, -1000.f, 1000.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-		edited |= ImGui::DragFloat3("Hammer rotation (deg)", &draft.mazeHammerRotationDegrees.x, .25f, -3600.f, 3600.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-		edited |= ImGui::DragFloat3("Hammer size", &draft.mazeHammerScale.x, .01f, .05f, 8.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+		bool hammerEdited = ImGui::DragFloat3("Hammer position (cm)", &draft.mazeHammerPositionCm.x, .1f, -1000.f, 1000.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+		hammerEdited |= ImGui::DragFloat3("Hammer rotation (deg)", &draft.mazeHammerRotationDegrees.x, .25f, -3600.f, 3600.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+		hammerEdited |= ImGui::DragFloat3("Hammer size", &draft.mazeHammerScale.x, .01f, .05f, 8.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
 		if (ImGui::Button("Reset player hammer"))
 		{
 			draft.mazeHammerPositionCm = {}; draft.mazeHammerRotationDegrees = {};
-			draft.mazeHammerScale = { 1.f, 1.f, 1.f }; edited = true;
+			draft.mazeHammerScale = { 1.f, 1.f, 1.f }; hammerEdited = true;
 		}
-		ImGui::TextWrapped("Offsets from each class's right hand. Size 1 keeps the 1.120 m source hammer before character size. Save / Reload below stores this map's player hammer settings.");
+		// The maze owns an override camera. Its camera preview gate must not
+		// suppress the profile consumed by the player's attached hammer.
+		if (hammerEdited && applyProfile())
+			status = "Player hammer changes applied live. Save to keep this map's settings.";
+		ImGui::SameLine();
+		if (ImGui::Button("Save player hammer")) save();
+		ImGui::TextWrapped("Offsets from each class's right hand. Changes apply live while holding the Card Maze hammer, including during the maze camera. Size 1 keeps the 1.120 m source hammer before character size.");
+		ImGui::TextDisabled("Save keeps these values in the selected map's profile for the next entry.");
 		ImGui::TreePop();
 	}
 	shared_ptr<CCharacter> character;
@@ -10200,13 +10311,9 @@ void CMainApp::RenderArenaFollowCameraSettings()
 	if (!active) ImGui::TextDisabled("Save this map, then enter it to apply its settings.");
 	else if (camera && camera->Is_PresentationOverrideActive())
 		ImGui::TextDisabled("Live follow-camera preview is unavailable during a camera sequence.");
-	if (ImGui::Button("Save camera settings"))
-	{
-		if (CArenaCameraProfile::Save(map, draft, status, &baseline))
-			status += " Saved for the next entry.";
-	}
+	if (ImGui::Button("Save camera settings")) save();
 	ImGui::SameLine();
-	if (ImGui::Button("Reload saved") && CArenaCameraProfile::Load(map, draft, status, &baseline)) preview();
+	if (ImGui::Button("Reload saved")) reload();
 	ImGui::TextWrapped("%s", CArenaCameraProfile::Path(map).generic_string().c_str());
 	if (!status.empty()) ImGui::TextWrapped("%s", status.c_str());
 	ImGui::PopID();
@@ -11006,7 +11113,6 @@ void CMainApp::RenderKoukuSaydonArenaControls()
 	/* Bingo board check. Play1 paints cells 0, 1 and 2 white; Play2 paints 3
 	and 4, which completes the first row and turns those five red. The Server
 	owns both masks, so these only ask. */
-	Render_KoukuEncoreRotation(*pArena);
 	if (ImGui::TreeNode("Kouku Whirlwind Hammer Transform"))
 	{
 		if ((m_pKoukuSaydonActionWorkbench || SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::SEQUENCER))) && m_pKoukuSaydonActionWorkbench)
@@ -11121,6 +11227,11 @@ void CMainApp::RenderKoukuSaydonArenaControls()
 				nullptr != gate.pHudFocusArchetypeId ?
 					gate.pHudFocusArchetypeId : "(none)");
 		}
+#ifdef _DEBUG
+		if (gate.pAuditionPlacementId &&
+			std::string_view(gate.pAuditionPlacementId) == "boss.kakulsaydon.bingo.saydon")
+			Render_KoukuEncoreRotation(*pArena);
+#endif
 		ImGui::PopID();
 	}
 	ImGui::BeginDisabled(placementPending);
@@ -11268,6 +11379,7 @@ bool_t CMainApp::StartKoukuGateCompletePlay(const std::string_view gateId, std::
     pending.deadline = std::chrono::steady_clock::now() + std::chrono::minutes(20);
     arena->Debug_ResetCompletePlayPreparation();
     m_KoukuRaidResourcePreparation = std::move(pending);
+    m_strKoukuRaidReplyStatus.clear();
     status = m_strKoukuCompletePlayStatus = "Preparing all raid Effect/Sequence/WORLD dependencies before the Server start request.";
     return true;
 }
@@ -11309,8 +11421,12 @@ void CMainApp::CancelKoukuGateCompletePlay(const std::string& status)
             request.iSequenceSourceRevision = state.iSequenceSourceRevision; request.strStartGateId = state.strGateId;
             if (arena->Get_PlayerCommandSink()->Request_KoukuRaid(request))
             {
-                m_iKoukuRaidPendingRequest = request.iRequestSequence;
+                arena->Expect_KoukuRaidReply(request.iRequestSequence);
+                m_KoukuRaidRequest = request; m_iKoukuRaidPendingRequest = request.iRequestSequence;
                 m_KoukuRaidReplyDeadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+                m_strKoukuRaidReplyStatus.clear();
+                Record_KoukuRaidRequestEvent("kouku.raid.request.sent", request,
+                    m_iKoukuCompletePlayWorldGeneration, request.iExpectedRunEpoch, {});
                 m_strKoukuCompletePlayStatus = "Waiting for the Server to stop this raid epoch."; return;
             }
         }
@@ -11325,7 +11441,9 @@ void CMainApp::CancelKoukuGateCompletePlay(const std::string& status)
         { m_strKoukuCompletePlayStatus = "Previous gate restore failed: " + restore; return; }
     }
     m_strKoukuRaidPresentationKey.clear(); m_strKoukuRaidFailedKey.clear(); m_pKoukuRaidSequenceDocument.reset(); m_iKoukuRaidDocumentEpoch = 0u;
+    if (arena) arena->Expect_KoukuRaidReply(0u);
     m_strKoukuCompletePlayFlowGate.clear(); m_iKoukuRaidPendingRequest = 0u; m_bKoukuRaidStopAfterAdmission = false; m_strKoukuCompletePlayStatus = reason;
+    m_KoukuRaidRequest = {}; m_KoukuRaidReplyDeadline = {}; m_strKoukuRaidReplyStatus.clear();
 }
 
 
@@ -11455,6 +11573,11 @@ void CMainApp::RenderKoukuSaydonCompletePlayControls()
 	if (!m_strKoukuCompletePlayStatus.starts_with("Waiting for the Server to admit") &&
 		m_strKoukuCompletePlayStatus != audition.strStatus)
 		ImGui::TextWrapped("%s",m_strKoukuCompletePlayStatus.c_str());
+    // Keep an unresolved or rejected command visible even while older raid state
+    // broadcasts continue to update the presentation status above.
+    if (!m_strKoukuRaidReplyStatus.empty() && m_strKoukuRaidReplyStatus != m_strKoukuCompletePlayStatus &&
+        m_strKoukuRaidReplyStatus != audition.strStatus)
+        ImGui::TextWrapped("%s", m_strKoukuRaidReplyStatus.c_str());
 }
 
 void CMainApp::RefreshCompletePlayPatternOptions()
@@ -12577,14 +12700,10 @@ void CMainApp::RenderRenderingWorkbench()
     }
     ImGui::BeginDisabled(m_pRenderingBenchmark && m_pRenderingBenchmark->Is_Capturing());
     bool_t comparisonChanged = ImGui::Checkbox("Directional light##LiveCompare", &comparison.bDirectionalEnabled);
-    ImGui::TextUnformatted("Exposure multiplier");
-    for (const auto& preset : std::array<std::pair<const char*, f32_t>, 3>{{
-        { "0.5x##CompareExposure", 0.5f }, { "1x##CompareExposure", 1.f }, { "2x##CompareExposure", 2.f } }})
-    {
-        if (preset.second != 0.5f) ImGui::SameLine();
-        if (ImGui::RadioButton(preset.first, comparison.fExposureMultiplier == preset.second))
-        { comparison.fExposureMultiplier = preset.second; comparisonChanged = true; }
-    }
+    comparisonChanged |= ImGui::SliderFloat("Exposure multiplier##LiveCompare",
+        &comparison.fExposureMultiplier, 0.5f, 2.f, "%.3fx", ImGuiSliderFlags_AlwaysClamp);
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("Updates the current view while dragging. Ctrl+click to enter an exact multiplier.");
     comparisonChanged |= ImGui::Checkbox("LUT grading##LiveCompare", &comparison.bLutEnabled);
     ImGui::SameLine();
     comparisonChanged |= ImGui::Checkbox("FXAA##LiveCompare", &comparison.bFXAAEnabled);

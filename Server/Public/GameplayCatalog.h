@@ -644,7 +644,8 @@ namespace LostArk::Server
 		EXTERNAL_SIGNAL,
 		COUNTER_WINDOW,
         ATTACHMENT_HOLD,
-		PATTERN_COMPLETION_COUNT
+		PATTERN_COMPLETION_COUNT,
+		INVULNERABILITY_ZONE
 	};
 
 	enum class BOSS_PATTERN_LOGIC_RESULT_KIND : std::uint8_t
@@ -673,7 +674,7 @@ namespace LostArk::Server
 		std::string strMotionInstanceId;
 	};
 
-	enum class BOSS_LOGIC_PUSH_DIRECTION : std::uint8_t { AWAY_FROM_BOSS, BOSS_FORWARD };
+	enum class BOSS_LOGIC_PUSH_DIRECTION : std::uint8_t { AWAY_FROM_BOSS, BOSS_FORWARD, AWAY_FROM_CONTACT };
 
 	struct BOSS_PATTERN_LOGIC_RESULT final
 	{
@@ -693,6 +694,10 @@ namespace LostArk::Server
 		float fPushRangeM = 0.f;
 		std::uint32_t iPushMs = 0u;
 		BOSS_LOGIC_PUSH_DIRECTION ePushDirection = BOSS_LOGIC_PUSH_DIRECTION::AWAY_FROM_BOSS;
+		bool bForcePush = false;
+		bool bPushCanLeaveArena = false;
+		bool bPushBallistic = false;
+		float fPushYawOffsetDegrees = 0.f;
 	};
 
 	/* One authored judgement window of a KoukuSaydon pattern, pattern-relative
@@ -803,7 +808,8 @@ namespace LostArk::Server
 		CROSS_DIRECTION_CLONES,
 		PURSUIT_PROJECTILES,
 		BINGO_BOARD,
-		BOSS_TELEPORT_GROUNDED
+		BOSS_TELEPORT_GROUNDED,
+		CARD_MAZE_STAGE_PLAYERS
 	};
 
 	enum class ALBION_AIRBORNE_PHASE : std::uint8_t
@@ -841,6 +847,8 @@ namespace LostArk::Server
 		float fTeleportX = 0.f;
 		float fTeleportY = 0.f;
 		float fTeleportZ = 0.f;
+		// Ordered cinematic destinations resolved from authored MAP Effect occurrences.
+		std::vector<std::array<float, 3u>> PlayerEntryPositions;
 		std::string strClonePatternId;
 		std::vector<std::uint32_t> ClockHours;
 		float fFaceCenterYawOffsetDegrees = 0.f;
@@ -1194,6 +1202,12 @@ namespace LostArk::Server
 		std::vector<KOUKU_RAID_ARRIVAL> Arrivals;
 	};
 
+	struct BOSS_PATTERN_BOSS_MOTION_KEY
+	{
+		std::uint32_t iTimeMs = 0u;
+		std::array<float, 3u> Position{};
+	};
+
 	struct BOSS_PATTERN_BOSS_MOTION
 	{
 		std::uint32_t iStartMs = 0u;
@@ -1201,6 +1215,7 @@ namespace LostArk::Server
 		std::array<float, 3u> StartPosition{};
 		std::array<float, 3u> EndPosition{};
 		float fYawDegrees = 0.f;
+		std::vector<BOSS_PATTERN_BOSS_MOTION_KEY> Keys;
 	};
 
 	struct BOSS_PATTERN_DEFINITION

@@ -10,8 +10,10 @@ MSBuild project items.
 from __future__ import annotations
 
 from pathlib import Path
+import json
 import re
 import subprocess
+import tempfile
 import unittest
 import xml.etree.ElementTree as ET
 
@@ -24,6 +26,94 @@ def read(relative: str) -> str:
 
 
 class BuildProfileContractTests(unittest.TestCase):
+    def test_incremental_reasons_include_korean_modified_and_untracked_sources(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="lostark-build-reasons-") as directory:
+            fixture = Path(directory)
+            log = fixture / "build.log"
+            messages = [
+                "header.h was modified; consumer.cpp will be compiled.",
+                "PacketMessages.h이(가) 2026-09-20 오후 8:50:39에서 수정되었으므로 "
+                "Character.cpp이(가) 컴파일됩니다.(작업 ID:73)",
+                "ClientWindowDisplay.cpp이(가) 추적 로그에 없으므로 컴파일됩니다.(작업 ID:73)",
+            ]
+            log.write_text("\n".join(["MinimalRebuildFromTracking=True", *messages, messages[1]]),
+                           encoding="utf-8")
+            script = fixture / "check.ps1"
+            script.write_text(
+                "param([string]$ModulePath, [string]$LogPath)\n"
+                "Import-Module $ModulePath -Force\n"
+                "@(Get-MSBuildIncrementalReasons $LogPath).Count\n",
+                encoding="utf-8",
+            )
+            result = subprocess.run(
+                ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass",
+                 "-File", str(script), "-ModulePath",
+                 str(ROOT / "Tools/Build/BuildIncrementalDiagnostics.psm1"),
+                 "-LogPath", str(log)],
+                text=True, capture_output=True, timeout=15, check=False,
+            )
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            self.assertEqual("3", result.stdout.strip())
+
+    def test_product_catalog_check_preserves_failure_without_publishing(self) -> None:
+        # Run the real check function with small publisher fixtures. A publisher
+        # failure must remain FAIL without stopping the other catalog or
+        # accidentally invoking the mutating Publish mode.
+        with tempfile.TemporaryDirectory(prefix="lostark-catalog-readiness-") as directory:
+            fixture = Path(directory)
+            for relative in (
+                "Server/Bin/DataFiles/Items/Items.bootstrap",
+                "Server/Bin/DataFiles/Valtan/ClearRewards.bootstrap",
+            ):
+                output = fixture / relative
+                output.parent.mkdir(parents=True, exist_ok=True)
+                output.write_text("fixture", encoding="utf-8")
+            for relative, result in (
+                ("Tools/GameplayPipeline/Publish-ItemCatalog.ps1", "throw 'stale catalog fixture'"),
+                (
+                    "Tools/ValtanPipeline/Publish-ValtanClearRewards.ps1",
+                    "Write-Output 'current'",
+                ),
+            ):
+                publisher = fixture / relative
+                publisher.parent.mkdir(parents=True, exist_ok=True)
+                publisher.write_text(
+                    "param([string]$Mode)\n"
+                    "if ($Mode -ne 'CheckPublished') { throw 'Unexpected publish' }\n"
+                    + result,
+                    encoding="utf-8",
+                )
+            script = fixture / "check.ps1"
+            script.write_text(
+                "param([string]$RunnerPath, [string]$FixtureRoot)\n"
+                "$ErrorActionPreference = 'Stop'\n"
+                "$ast = [Management.Automation.Language.Parser]::ParseFile("
+                "$RunnerPath, [ref]$null, [ref]$null)\n"
+                "$function = $ast.Find({ param($node) "
+                "$node -is [Management.Automation.Language.FunctionDefinitionAst] "
+                "-and $node.Name -eq 'Test-ProductPublishedCatalogs' }, $false)\n"
+                "Invoke-Expression $function.Extent.Text\n"
+                "$repoRoot = $FixtureRoot\n"
+                "@(Test-ProductPublishedCatalogs) | ConvertTo-Json -Depth 4\n",
+                encoding="utf-8",
+            )
+            result = subprocess.run(
+                [
+                    "powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass",
+                    "-File", str(script), "-RunnerPath",
+                    str(ROOT / "Tools/Build/Invoke-BuildAndRegression.ps1"),
+                    "-FixtureRoot", str(fixture),
+                ],
+                text=True, capture_output=True, timeout=30, check=False,
+            )
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            checks = json.loads(result.stdout)
+            self.assertEqual(["FAIL", "PASS"], [row["result"] for row in checks])
+            self.assertIn("stale catalog fixture", checks[0]["details"])
+            self.assertTrue(all(row["elapsedMs"] >= 0 for row in checks))
+            for output in fixture.glob("Server/Bin/DataFiles/*/*.bootstrap"):
+                self.assertEqual("fixture", output.read_text(encoding="utf-8"))
+
     def test_solution_default_build_contains_only_four_product_projects(self) -> None:
         solution = read("Framework.sln")
         product_guids = {

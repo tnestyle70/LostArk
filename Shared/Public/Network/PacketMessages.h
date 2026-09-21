@@ -1509,7 +1509,7 @@ namespace LostArk::Shared
 		// the HUD then has nothing to draw.
 		std::uint32_t iCurrentIdentity = 0;
 		std::uint32_t iMaximumIdentity = 0;
-		/* Guardian Knight ember (protocol 99). A maximum of 0 says the class has
+		/* Guardian Knight ember (protocol 100). A maximum of 0 says the class has
 		no ember pool. Orbs held plus locked sockets never exceed the maximum. */
 		std::uint8_t iEmberOrbs = 0;
 		std::uint8_t iEmberLockedSockets = 0;
@@ -1563,6 +1563,8 @@ namespace LostArk::Shared
 		// FEAR uses iActionStartTick and a Server-owned deadline.
 		std::uint32_t iFearEndTick = 0u;
 		std::string strFearPresentationId;
+		// Latest Server zone entry/2-second pulse, or zero while outside the active zone.
+		std::uint32_t iInvulnerabilityZonePulseTick = 0u;
 		// 0 outside a staged action, 1-based stage index while one runs: combo
 		// stages, and start/loop/end for a HOLD skill. The server owns it; the
 		// client must not count stages itself.

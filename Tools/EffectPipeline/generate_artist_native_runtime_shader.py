@@ -612,9 +612,21 @@ for ordinal, selection in enumerate(selections):
             assert not vertex['disassembly']['sampleInstructions']
             assert all(r['materialMap']['uniformExpressionCounts'][name] == 0 for name in (
                 'vertexVectorExpressions', 'vertexScalarExpressions', 'vertexTexture2DExpressions'))
+        kouku_glass_post = (arguments.profile_domain == 'kouku' and
+            sid == 'b704e932ad66a6419217a18d5be491e8')
+        if kouku_glass_post:
+            # SCENE07A's EFInterpTrackPostRenderMaterial: LocalVF UV0 is the
+            # full-screen quad UV. CB2[6].xy supplies viewport aspect ratio;
+            # TEXCOORD4 is neutral fog (0,0,0,1). Only RT0 is composited.
+            assert selection['rendererShape'] == 'screenPost'
+            assert selection['sourceVF'] == 'flocalvertexfactory'
+            assert selection['sourceVS'] == '8562847977cf324b900feff85799f43a'
+            assert bindings['constantBufferClosure']['unownedConstantBuffer0Slots'] == [0]
+            assert 'div r0.x, cb2[6].x, cb2[6].y' in instructions
+            assert 'mul o0.w, r0.w, cb0[0].x' in instructions
         pass_count = max(4, next((int(re.search(r'CB2\[(\d+)\]', d)[1]) for d in declarations if d.startswith('dcl_constantbuffer CB2[')), 0))
         if pass_count > 4:
-            assert screen_space_mesh or (arguments.profile_domain == 'kouku' and sid in (
+            assert kouku_glass_post or screen_space_mesh or (arguments.profile_domain == 'kouku' and sid in (
                 '1eb6e82b0befd243ba7ffc9e49b6d067', '42ebb4e66c0c0b4b92db497fcd69ccc2',
                 '286c952473acd34a8cdd4e981db6ec1f',
                 '2837f9c4eed1a745b242b4abb6f57be1',
@@ -705,7 +717,7 @@ for ordinal, selection in enumerate(selections):
                 skip.add(sampleIndex+1);skip.update(range(reconstructionIndex+1,reconstructionIndex+4));break
             else:raise ValueError(('unclosed native depth sample',sid,sampleInstruction))
         for i,ins in enumerate(instructions):
-            if (model or decal or kouku_lit or kouku_ice) and re.search(r'\bo[1-9]\.',ins):continue # Existing forward carrier consumes RT0; other native MRT writes remain recorded in the source archive.
+            if (model or decal or kouku_lit or kouku_ice or kouku_glass_post) and re.search(r'\bo[1-9]\.',ins):continue # Existing forward carrier consumes RT0; other native MRT writes remain recorded in the source archive.
             if i in skip:continue
             if i in depthReconstruct:
                 raw,dst=depthReconstruct[i]

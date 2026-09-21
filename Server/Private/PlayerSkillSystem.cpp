@@ -1561,9 +1561,13 @@ bool LostArk::Server::CPlayerSkillSystem::Try_Counter(
 }
 
 bool LostArk::Server::CPlayerSkillSystem::Can_ArmPlayerHitReaction(
-	const SERVER_PLAYER& player, const std::uint32_t serverTick)
+	const SERVER_PLAYER& player, const std::uint32_t serverTick, const bool forcePush)
 {
 	using namespace LostArk::Shared;
+	if (forcePush)
+		return player.iCurrentHp != 0u && player.isCombatReady && !player.bPatternBound && !player.bArenaEjectionActive &&
+			player.eAction != PLAYER_ACTION_STATE::DEAD && player.eAction != PLAYER_ACTION_STATE::FALLING &&
+			player.eAction != PLAYER_ACTION_STATE::GRABBED && player.eAction != PLAYER_ACTION_STATE::TRIGGER_MOVE;
 	return !(0u == player.iCurrentHp ||
 		PLAYER_ACTION_STATE::DEAD == player.eAction ||
 		PLAYER_ACTION_STATE::TRIGGER_MOVE == player.eAction ||
@@ -1582,15 +1586,31 @@ void LostArk::Server::CPlayerSkillSystem::Arm_PlayerHitReaction(
 	const std::uint32_t pushMs,
 	const bool knockdown,
 	const std::uint32_t downMs,
-	const std::uint32_t serverTick)
+	const std::uint32_t serverTick, const bool forcePush, const bool pushCanLeaveArena, const bool pushBallistic)
 {
 	using namespace LostArk::Shared;
-	if (!Can_ArmPlayerHitReaction(player, serverTick)) return;
 	const bool hasPush =
 		0.f != pushRangeM && 0u != pushMs && std::isfinite(pushRangeM);
+	if (!Can_ArmPlayerHitReaction(player, serverTick, forcePush && hasPush)) return;
 	if (!hasPush && !knockdown)
 		return;
 	player.PendingCommand.Clear();
+	if (forcePush && hasPush)
+	{
+		// This explicit mechanic replaces an existing reaction instead of stacking velocities.
+		player.eAction = PLAYER_ACTION_STATE::NONE;
+		player.iCurrentSkillId = INVALID_SKILL_ID;
+		player.Clear_SkillTarget();
+		player.iComboStage = 0u;
+		player.hasBufferedComboInput = player.hasReleasedHold = false;
+		player.fActionElapsedSeconds = 0.f;
+		player.iActionStartTick = serverTick == 0u ? 1u : serverTick;
+		player.iFearEndTick = player.iKnockdownEndTick = player.iHitReactionGraceEndTick = 0u;
+		player.strFearPresentationId.clear();
+		player.hasMoveGoal = false;
+		player.MovePath.clear();
+		player.iMovePathIndex = 0u;
+	}
 	if (hasPush)
 	{
 		float directionX = player.fPositionX - sourceX;
@@ -1621,8 +1641,13 @@ void LostArk::Server::CPlayerSkillSystem::Arm_PlayerHitReaction(
 		player.fKnockbackDirectionZ = directionZ;
 		player.fKnockbackSpeed = std::fabs(pushRangeM) / windowSeconds;
 		player.fKnockbackRemainingSeconds = windowSeconds;
+		player.bKnockbackCanLeaveArena = pushCanLeaveArena;
+		player.bKnockbackBallistic = pushBallistic;
+		player.fKnockbackLaunchY = player.fPositionY;
+		player.fKnockbackVelocityY = pushBallistic ?
+			0.5f * SERVER_PLAYER::KNOCKBACK_GRAVITY_MPS2 * windowSeconds : 0.f;
 	}
-	if (knockdown && 0u != downMs)
+	if ((knockdown && 0u != downMs) || (hasPush && pushBallistic))
 	{
 		player.eAction = PLAYER_ACTION_STATE::KNOCKDOWN;
 		player.iCurrentSkillId = INVALID_SKILL_ID;
@@ -1634,7 +1659,7 @@ void LostArk::Server::CPlayerSkillSystem::Arm_PlayerHitReaction(
 		player.fActionElapsedSeconds = 0.f;
 		player.iActionStartTick = 0u == serverTick ? 1u : serverTick;
 		player.iKnockdownEndTick =
-			player.iActionStartTick + MillisecondsToTicks(downMs);
+			player.iActionStartTick + MillisecondsToTicks((std::max)(downMs, pushBallistic ? pushMs : 0u));
 		player.hasMoveGoal = false;
 		player.MovePath.clear();
 		player.iMovePathIndex = 0;

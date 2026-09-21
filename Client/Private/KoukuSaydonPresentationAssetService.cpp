@@ -636,6 +636,17 @@ HRESULT Client::CKoukuSaydonPresentationAssetService::Ensure_Prototypes(
 	{
 		return Reject("KoukuSaydon embedded body has no usable animated geometry.");
 	}
+	if (!actor->animationSetId.empty() && actor->animationSetId != actor->bodyModel)
+	{
+		const auto donorPath = CRuntimeAssetRoot::Resolve(actor->animationSetId);
+		if (donorPath.empty()) return Reject("KoukuSaydon animation donor path is invalid.");
+		const auto donor = Engine::CModel::Create(pDevice, pContext, MODEL::ANIM,
+			donorPath.string().c_str(), XMMatrixScaling(scale, scale, scale));
+		// Attach validates the full skeleton identity and every duplicate clip before mutation.
+		// Body geometry and its embedded gameplay clips remain on this same prototype.
+		if (!donor || !donor->Has_Animations() || FAILED(body->Attach_AnimationSet(*donor)))
+			return Reject("KoukuSaydon animation donor does not match its body: " + actor->animationSetId);
+	}
 	if (!Has_Clip(*body, actor->presentationClips.idle))
 		return Reject("KoukuSaydon body is missing the catalog idle clip.");
 

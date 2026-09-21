@@ -1929,6 +1929,8 @@ namespace EffectToolDetail
 			return "RGB Noise (Reconstructed v1)";
 		case Client::EFFECT_SCREEN_POST_PROFILE::ZOOM_BLUR_RECONSTRUCTED_V1:
 			return "Zoom Blur (Reconstructed v1)";
+		case Client::EFFECT_SCREEN_POST_PROFILE::CHROMATIC_ABERRATION_RECONSTRUCTED_V1:
+			return "Chromatic Aberration (Reconstructed v1)";
 		case Client::EFFECT_SCREEN_POST_PROFILE::FILM_NOISE_RECONSTRUCTED_V1:
 			return "Film Noise (Reconstructed v1)";
 		case Client::EFFECT_SCREEN_POST_PROFILE::MOTION_BLUR_RECONSTRUCTED_V1:

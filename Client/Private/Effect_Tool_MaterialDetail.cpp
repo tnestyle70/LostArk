@@ -1706,6 +1706,12 @@ void Client::CEffect_Tool::Render_KindDetail(
 		bPresentationChanged |= ImGui::DragFloat("Post Intensity",
 			&Post.fIntensity, 0.001f, 0.f, 100.f, "%.4f",
 			ImGuiSliderFlags_AlwaysClamp);
+		bPresentationChanged |= ImGui::Checkbox("Post Intensity Lerp",
+			&Post.bIntensityLerp);
+		if (Post.bIntensityLerp)
+			bPresentationChanged |= ImGui::DragFloat("Post End Intensity",
+				&Post.fIntensityEnd, 0.001f, 0.f, 100.f, "%.4f",
+				ImGuiSliderFlags_AlwaysClamp);
 		bPresentationChanged |= ImGui::DragFloat("Post Secondary Intensity",
 			&Post.fSecondaryIntensity, 0.001f, 0.f, 100.f, "%.4f",
 			ImGuiSliderFlags_AlwaysClamp);

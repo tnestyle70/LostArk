@@ -3902,7 +3902,10 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
     }
 	if ($null -ne $koukuPattern.PSObject.Properties['bossMotion']) {
 		$bossMotion = $koukuPattern.bossMotion
-		Assert-ExactProperties $bossMotion @('startMs','endMs','startPosition','endPosition','yawDegrees') 'KoukuSaydon bossMotion'
+		$motionProperties = @('startMs','endMs','startPosition','endPosition','yawDegrees')
+		$hasMotionKeys = $null -ne $bossMotion.PSObject.Properties['keys']
+		if ($hasMotionKeys) { $motionProperties += 'keys' }
+		Assert-ExactProperties $bossMotion $motionProperties 'KoukuSaydon bossMotion'
 		Assert-JsonInteger $bossMotion.startMs 'KoukuSaydon bossMotion startMs' 0 600000
 		Assert-JsonInteger $bossMotion.endMs 'KoukuSaydon bossMotion endMs' 1 $koukuPatternDurationMs
 		Assert-JsonNumber $bossMotion.yawDegrees 'KoukuSaydon bossMotion yawDegrees'
@@ -3917,13 +3920,40 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 				if ([Math]::Abs([double]$component) -gt 100000) { throw 'KoukuSaydon bossMotion position exceeds bounds' }
 			}
 		}
-		if ([double]$bossMotion.startPosition[1] -ne [double]$bossMotion.endPosition[1]) { throw 'KoukuSaydon bossMotion base Y must remain constant' }
+		if (-not $hasMotionKeys -and [double]$bossMotion.startPosition[1] -ne [double]$bossMotion.endPosition[1]) { throw 'KoukuSaydon bossMotion base Y must remain constant' }
+		$motionKeyRows = [Collections.Generic.List[string]]::new()
+		if ($hasMotionKeys) {
+			if ($bossMotion.keys -isnot [Array] -or @($bossMotion.keys).Count -lt 2 -or @($bossMotion.keys).Count -gt 512) { throw 'Boss motion requires 2..512 keys' }
+			$previousTime = -1
+			$keyIndex = 0
+			foreach ($key in $bossMotion.keys) {
+				Assert-ExactProperties $key @('timeMs','position') 'Boss motion key'
+				Assert-JsonInteger $key.timeMs 'Boss motion key time' $bossMotion.startMs $bossMotion.endMs
+				if ($key.timeMs -le $previousTime -or $key.position -isnot [Array] -or @($key.position).Count -ne 3) { throw 'Boss motion keys require increasing times and XYZ' }
+				$keyRow = @('PATTERNBOSSMOTIONKEY', $koukuEncounterDocument.encounterId, $koukuPattern.patternId, $keyIndex, $key.timeMs)
+				foreach ($coordinate in $key.position) {
+					Assert-JsonNumber $coordinate 'Boss motion key coordinate'
+					if ([Math]::Abs([double]$coordinate) -gt 100000) { throw 'Boss motion key exceeds world bounds' }
+					$keyRow += Format-InvariantSignedFloat $coordinate 'Boss motion key coordinate'
+				}
+				$motionKeyRows.Add(($keyRow -join "`t"))
+				$previousTime = $key.timeMs
+				++$keyIndex
+			}
+			$firstKey = $bossMotion.keys[0]; $lastKey = $bossMotion.keys[-1]
+			if ($firstKey.timeMs -ne $bossMotion.startMs -or $lastKey.timeMs -ne $bossMotion.endMs) { throw 'Boss motion keys must match endpoint times' }
+			for ($axis = 0; $axis -lt 3; ++$axis) {
+				if ([double]$firstKey.position[$axis] -ne [double]$bossMotion.startPosition[$axis] -or
+					[double]$lastKey.position[$axis] -ne [double]$bossMotion.endPosition[$axis]) { throw 'Boss motion keys must match endpoint positions' }
+			}
+		}
 		if (@($koukuPattern.mechanicTriggers | Where-Object { $_.kind -cin @('REAL_GAZE_TELEPORT','BOSS_TELEPORT_XZ','BOSS_TELEPORT_GROUNDED') }).Count -gt 0) { throw 'KoukuSaydon bossMotion cannot also teleport the boss' }
 		$bossMotionRow = @('PATTERNBOSSMOTION', $koukuEncounterDocument.encounterId, $koukuPattern.patternId, $bossMotion.startMs, $bossMotion.endMs)
 		foreach ($component in @($bossMotion.startPosition) + @($bossMotion.endPosition) + @($bossMotion.yawDegrees)) {
 			$bossMotionRow += Format-InvariantSignedFloat $component 'KoukuSaydon bossMotion'
 		}
 		$patternRows.Add(($bossMotionRow -join "`t"))
+		foreach ($motionKeyRow in $motionKeyRows) { $patternRows.Add($motionKeyRow) }
 	}
 	if ($koukuPattern.logicWindows -isnot [Array] -or
 		@($koukuPattern.logicWindows).Count -gt 128 -or
@@ -3995,7 +4025,7 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 		$insideFail = if ($window.insideOutcome -ceq 'FAIL') { 1 } else { 0 }
 		$windowEndMs = [uint64]$window.startMs + [uint64]$window.durationMs
 		if ($windowKind -cnotin @(
-				'CARD_DICE_BIND','ROULETTE_CARD_MATCH','GAZE_REAL_BOSS','POSE_INPUT','STAGGER_WINDOW','COUNTER_WINDOW','AREA_OVERLAP','ENTER_AREA','OBJECT_OVERLAP','OBJECT_CONTACT','EXTERNAL_SIGNAL','ATTACHMENT_HOLD','PATTERN_COMPLETION_COUNT') -or
+				'CARD_DICE_BIND','ROULETTE_CARD_MATCH','GAZE_REAL_BOSS','POSE_INPUT','STAGGER_WINDOW','COUNTER_WINDOW','AREA_OVERLAP','ENTER_AREA','OBJECT_OVERLAP','OBJECT_CONTACT','EXTERNAL_SIGNAL','ATTACHMENT_HOLD','PATTERN_COMPLETION_COUNT','INVULNERABILITY_ZONE') -or
 			-not $koukuWindowIds.Add([string]$window.windowId) -or
 			[uint32]$window.durationMs -eq 0 -or
 			$windowEndMs -gt $koukuPatternDurationMs -or
@@ -4032,6 +4062,10 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 			}
 		}
 		# Kind rules mirror CKoukuSaydonBrain::Validate_AnimationOnlyPattern.
+		if ($windowKind -ceq 'INVULNERABILITY_ZONE' -and (@($window.onSuccess).Count -ne 0 -or
+			@($window.onFail).Count -ne 0 -or @($window.onTimeout).Count -ne 0 -or $window.endsPatternOnSuccess)) {
+			throw 'INVULNERABILITY_ZONE requires collider regions and has no outcomes or Pattern completion'
+		}
 		if ($windowKind -ceq 'ATTACHMENT_HOLD' -and (@($window.onSuccess).Count -ne 0 -or
 			@($window.onFail).Count -ne 0 -or @($window.onTimeout).Count -ne 0 -or
 			@($window.cardRegions).Count -ne 0 -or $window.endsPatternOnSuccess)) {
@@ -4170,7 +4204,7 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 			}
 		}
 		if ($window.cardRegions -isnot [Array] -or @($window.cardRegions).Count -gt 64 -or
-			($windowKind -cin @('AREA_OVERLAP','ENTER_AREA','OBJECT_OVERLAP','OBJECT_CONTACT') -and @($window.cardRegions).Count -eq 0)) {
+			($windowKind -cin @('AREA_OVERLAP','ENTER_AREA','OBJECT_OVERLAP','OBJECT_CONTACT','INVULNERABILITY_ZONE') -and @($window.cardRegions).Count -eq 0)) {
 			throw 'KoukuSaydon collider region list is invalid'
 		}
 		$regionIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
@@ -4185,6 +4219,9 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 			if ($hasInnerRadius) { $regionFields += 'innerRadiusM' }
 			$hasWorldTrack = $region.PSObject.Properties.Name -contains 'worldTrack'
 			if ($hasWorldTrack) { $regionFields += 'worldTrack' }
+			if ($windowKind -ceq 'INVULNERABILITY_ZONE' -and ($region.anchorKind -cne 'WORLD' -or $hasWorldTrack)) {
+				throw 'INVULNERABILITY_ZONE requires fixed WORLD collider regions'
+			}
 			Assert-ExactProperties $region $regionFields 'KoukuSaydon collider region'
 			Assert-StableId $region.regionId 'KoukuSaydon region ID'
 			if (-not $regionIds.Add([string]$region.regionId) -or $region.shape -cnotin @('BOX','SECTOR','REVERSE_SECTOR','CIRCLE') -or
@@ -4300,7 +4337,7 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 			for ($ordinal = 0; $ordinal -lt $outcomes.Count; ++$ordinal) {
 				$outcome = $outcomes[$ordinal]
 				$outcomeProperties = @('kind','percent','durationMs','patternId')
-				foreach ($field in @('pushRangeM','pushMs','pushDirection')) {
+				foreach ($field in @('pushRangeM','pushMs','pushDirection','forcePush','pushCanLeaveArena','pushBallistic','pushYawOffsetDegrees')) {
 					if ($null -ne $outcome.PSObject.Properties[$field]) { $outcomeProperties += $field }
 				}
 				if ($outcome.kind -ceq 'FEAR') { $outcomeProperties += 'presentationId' }
@@ -4321,6 +4358,12 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 				$outcomePushRangeM = 0.0
 				$outcomePushMs = 0
 				$outcomePushDirection = 'AWAY_FROM_BOSS'
+				$outcomePushBallistic = $false
+				if ($null -ne $outcome.PSObject.Properties['pushBallistic']) {
+					if ($outcome.pushBallistic -isnot [bool]) { throw 'pushBallistic must be Boolean' }
+					$outcomePushBallistic = [bool]$outcome.pushBallistic
+				}
+				$outcomePushRangeLimit = $(if ($outcomePushBallistic) { 100 } else { 20 })
 				if ($null -ne $outcome.PSObject.Properties['pushRangeM'] -or $null -ne $outcome.PSObject.Properties['pushMs']) {
 					if ($outcomeKind -cne 'MAX_HP_PERCENT_DAMAGE') { throw 'Only MAX_HP_PERCENT_DAMAGE owns push values' }
 					if (($null -ne $outcome.PSObject.Properties['pushRangeM']) -ne ($null -ne $outcome.PSObject.Properties['pushMs'])) {
@@ -4334,16 +4377,35 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 						Assert-JsonInteger $outcome.pushMs 'KoukuSaydon outcome pushMs' 0 600000
 						$outcomePushMs = [uint32]$outcome.pushMs
 					}
-					if ($outcomePushRangeM -lt 0 -or $outcomePushRangeM -gt 20 -or
+					if ($outcomePushRangeM -lt 0 -or $outcomePushRangeM -gt $outcomePushRangeLimit -or
 						(($outcomePushRangeM -eq 0) -ne ($outcomePushMs -eq 0))) {
-						throw 'KoukuSaydon outcome pushRangeM 0..20 and pushMs 0..600000 must both be zero or positive'
+						throw 'KoukuSaydon outcome pushRangeM exceeds its policy bound, or pushMs 0..600000 must both be zero or positive'
 					}
 				}
 				if ($null -ne $outcome.PSObject.Properties['pushDirection']) {
 					Assert-JsonString $outcome.pushDirection 'KoukuSaydon pushDirection'
 					$outcomePushDirection = [string]$outcome.pushDirection
-					if ($outcomeKind -cne 'MAX_HP_PERCENT_DAMAGE' -or $outcomePushDirection -cnotin @('AWAY_FROM_BOSS','BOSS_FORWARD') -or
-						($outcomePushDirection -ceq 'BOSS_FORWARD' -and $outcomePushRangeM -le 0)) { throw 'Invalid damage pushDirection' }
+					if ($outcomeKind -cne 'MAX_HP_PERCENT_DAMAGE' -or $outcomePushDirection -cnotin @('AWAY_FROM_BOSS','BOSS_FORWARD','AWAY_FROM_CONTACT') -or
+						($outcomePushDirection -cne 'AWAY_FROM_BOSS' -and $outcomePushRangeM -le 0)) { throw 'Invalid damage pushDirection' }
+				}
+				$outcomePushYawOffsetDegrees = 0.0
+				if ($null -ne $outcome.PSObject.Properties['pushYawOffsetDegrees']) {
+					Assert-JsonNumber $outcome.pushYawOffsetDegrees 'Push yaw offset'
+					$outcomePushYawOffsetDegrees = [double]$outcome.pushYawOffsetDegrees
+					if ([math]::Abs($outcomePushYawOffsetDegrees) -gt 360 -or $outcomeKind -cne 'MAX_HP_PERCENT_DAMAGE' -or
+						($outcomePushYawOffsetDegrees -ne 0 -and ($outcomePushDirection -cne 'BOSS_FORWARD' -or $outcomePushRangeM -le 0))) { throw 'Push yaw offset requires bounded positive BOSS_FORWARD damage push' }
+				}
+				$outcomeForcePush = $false
+				$outcomePushCanLeaveArena = $false
+				foreach ($policy in @('forcePush','pushCanLeaveArena','pushBallistic')) {
+					if ($null -eq $outcome.PSObject.Properties[$policy]) { continue }
+					if ($outcome.$policy -isnot [bool] -or $outcomeKind -cne 'MAX_HP_PERCENT_DAMAGE' -or
+						($outcome.$policy -and $outcomePushRangeM -le 0)) { throw 'Push policy requires a Boolean on a positive damage push' }
+				}
+				if ($null -ne $outcome.PSObject.Properties['forcePush']) { $outcomeForcePush = [bool]$outcome.forcePush }
+				if ($null -ne $outcome.PSObject.Properties['pushCanLeaveArena']) { $outcomePushCanLeaveArena = [bool]$outcome.pushCanLeaveArena }
+				if ($outcomePushBallistic -and (-not $outcomePushCanLeaveArena -or $outcomePushMs -lt 100 -or $outcomePushMs -gt 5000)) {
+					throw 'Ballistic push requires pushCanLeaveArena and pushMs 100..5000'
 				}
 				$isContactResult = $outcomeKind -cin @('PLAY_CONTACT_WORLD_OBJECT_MOTION','COMPLETE_LOGIC_WINDOW')
 				if ($isContactResult -ne ($windowKind -ceq 'OBJECT_CONTACT')) { throw 'OBJECT_CONTACT requires contact motion or window signal results' }
@@ -4416,7 +4478,7 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 				if ($outcomePushRangeM -gt 0) {
 					$patternRows.Add((@('PATTERNLOGICPUSH', $koukuEncounterDocument.encounterId,
 						$koukuPattern.patternId, $window.windowId, $slotName, $ordinal,
-						(Format-InvariantFloat $outcomePushRangeM 'KoukuSaydon outcome pushRangeM'), $outcomePushMs) + $(if ($outcomePushDirection -ceq 'BOSS_FORWARD') { @($outcomePushDirection) } else { @() }) -join "`t"))
+						(Format-InvariantFloat $outcomePushRangeM 'KoukuSaydon outcome pushRangeM'), $outcomePushMs) + $(if ($outcomePushBallistic) { @($outcomePushDirection, [int]$outcomeForcePush, [int]$outcomePushCanLeaveArena, (Format-InvariantSignedFloat $outcomePushYawOffsetDegrees 'Push yaw offset'), 1) } elseif ($outcomePushYawOffsetDegrees -ne 0) { @($outcomePushDirection, [int]$outcomeForcePush, [int]$outcomePushCanLeaveArena, (Format-InvariantSignedFloat $outcomePushYawOffsetDegrees 'Push yaw offset')) } elseif ($outcomeForcePush -or $outcomePushCanLeaveArena) { @($outcomePushDirection, [int]$outcomeForcePush, [int]$outcomePushCanLeaveArena) } elseif ($outcomePushDirection -cne 'AWAY_FROM_BOSS') { @($outcomePushDirection) } else { @() }) -join "`t"))
 				}
 				if ($isContactResult -and ($outcome.percent -ne 0 -or $outcome.durationMs -ne 0)) { throw 'Contact result does not take percent or durationMs' }
 				if ($outcomeKind -ceq 'PLAY_CONTACT_WORLD_OBJECT_MOTION') {
@@ -4512,6 +4574,7 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 		}
 		$triggerOptionalProperties = @()
 		if ($null -ne $trigger.PSObject.Properties['patternSpawns']) { $triggerOptionalProperties += 'patternSpawns' }
+		if ($null -ne $trigger.PSObject.Properties['playerEntryPositions']) { $triggerOptionalProperties += 'playerEntryPositions' }
 		foreach ($field in @('airbornePhase','airborneHeightM','airborneDurationMs','airborneTargetPositionPolicy','selectedEffectVisualId','selectedEffectLifetimeMs')) {
 			if ($null -ne $trigger.PSObject.Properties[$field]) { $triggerOptionalProperties += $field }
 		}
@@ -4537,7 +4600,7 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 		$modes = @('NONE','POLYMORPH','MARIO','DANCE','MAZE')
 		$triggerHudMode = [Array]::IndexOf($modes, [string]$trigger.hudMode)
 		if (-not $triggerIds.Add([string]$trigger.triggerId) -or $triggerHudMode -lt 0 -or
-			$trigger.kind -cnotin @('REAL_GAZE_TELEPORT','BOSS_TELEPORT_FACE_CENTER','MARIO_PHASE2_PLAYERS','BOSS_TELEPORT_XZ','BOSS_TELEPORT_GROUNDED','BOSS_TRACK_TARGET','BINGO_BOARD','HUD_ENTER','CARD_MAZE_HIDE_NEXT','CARD_MAZE_ENTER','ALBION_BLUE_CIRCLE','SUMMON_PATTERNS','ALBION_AIRBORNE') -or
+			$trigger.kind -cnotin @('REAL_GAZE_TELEPORT','BOSS_TELEPORT_FACE_CENTER','MARIO_PHASE2_PLAYERS','BOSS_TELEPORT_XZ','BOSS_TELEPORT_GROUNDED','BOSS_TRACK_TARGET','BINGO_BOARD','HUD_ENTER','CARD_MAZE_HIDE_NEXT','CARD_MAZE_ENTER','CARD_MAZE_STAGE_PLAYERS','ALBION_BLUE_CIRCLE','SUMMON_PATTERNS','ALBION_AIRBORNE') -or
 			([uint64]$trigger.startMs + [uint64]$trigger.durationMs) -gt $koukuPatternDurationMs -or
 			$trigger.teleportPosition -isnot [Array] -or @($trigger.teleportPosition).Count -ne 3 -or
 			$trigger.clockHours -isnot [Array]) {
@@ -4546,9 +4609,9 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 		$position = @($trigger.teleportPosition)
 		foreach ($coordinate in $position) { Assert-JsonNumber $coordinate 'KoukuSaydon teleport coordinate' }
 		if ($trigger.kind -cin @('BOSS_TELEPORT_XZ','BOSS_TELEPORT_GROUNDED') -and @($position | Where-Object { [Math]::Abs([double]$_) -gt 100000 }).Count -ne 0) { throw 'Boss XZ teleport coordinates exceed the world bounds' }
-		if ($trigger.kind -cin @('CARD_MAZE_HIDE_NEXT','CARD_MAZE_ENTER','BOSS_TELEPORT_FACE_CENTER','MARIO_PHASE2_PLAYERS','BOSS_TELEPORT_XZ','BOSS_TELEPORT_GROUNDED','BOSS_TRACK_TARGET','BINGO_BOARD') -and
+		if ($trigger.kind -cin @('CARD_MAZE_HIDE_NEXT','CARD_MAZE_ENTER','CARD_MAZE_STAGE_PLAYERS','BOSS_TELEPORT_FACE_CENTER','MARIO_PHASE2_PLAYERS','BOSS_TELEPORT_XZ','BOSS_TELEPORT_GROUNDED','BOSS_TRACK_TARGET','BINGO_BOARD') -and
 			($triggerHudMode -ne 0 -or $trigger.faceCenterYawOffsetDegrees -ne 0 -or
-			 ($trigger.kind -cin @('CARD_MAZE_HIDE_NEXT','BOSS_TRACK_TARGET','BINGO_BOARD') -and @($position | Where-Object { $_ -ne 0 }).Count -ne 0))) {
+			 ($trigger.kind -cin @('CARD_MAZE_HIDE_NEXT','CARD_MAZE_STAGE_PLAYERS','BOSS_TRACK_TARGET','BINGO_BOARD') -and @($position | Where-Object { $_ -ne 0 }).Count -ne 0))) {
 			throw "KoukuSaydon card maze trigger carries unrelated values"
 		}
 		Assert-JsonInteger $trigger.countPerPlayer 'KoukuSaydon circles per player' 0 8
@@ -4593,6 +4656,25 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 			throw "KoukuSaydon HUD trigger carries clone values"
 		}
 		$spawnRows = [Collections.Generic.List[string]]::new()
+		if ($trigger.kind -ceq 'CARD_MAZE_STAGE_PLAYERS') {
+			if ($trigger.playerEntryPositions -isnot [Array] -or @($trigger.playerEntryPositions).Count -lt 1 -or
+				@($trigger.playerEntryPositions).Count -gt 4) { throw 'Card maze staging needs one to four player entry positions' }
+			$entrySlot = 0
+			foreach ($entry in $trigger.playerEntryPositions) {
+				if ($entry -isnot [Array] -or @($entry).Count -ne 3) { throw 'Card maze entry needs X/Y/Z' }
+				foreach ($coordinate in $entry) {
+					Assert-JsonNumber $coordinate 'Card maze entry coordinate'
+					if ([Math]::Abs([double]$coordinate) -gt 100000) { throw 'Card maze entry exceeds world bounds' }
+				}
+				$spawnRows.Add((@('PATTERNCARDMAZESTAGING', $koukuEncounterDocument.encounterId,
+					$koukuPattern.patternId, $trigger.triggerId, $entrySlot,
+					(Format-InvariantSignedFloat $entry[0] 'Card maze entry X'),
+					(Format-InvariantSignedFloat $entry[1] 'Card maze entry Y'),
+					(Format-InvariantSignedFloat $entry[2] 'Card maze entry Z')) -join "`t"))
+				++$entrySlot
+			}
+		}
+		elseif ($null -ne $trigger.PSObject.Properties['playerEntryPositions']) { throw 'Only card maze staging can carry playerEntryPositions' }
 		if ($trigger.kind -ceq 'SUMMON_PATTERNS') {
 			if ($trigger.patternSpawns -isnot [Array] -or @($trigger.patternSpawns).Count -lt 1 -or
 				@($trigger.patternSpawns).Count -gt 16 -or $triggerHudMode -ne 0 -or
@@ -4898,7 +4980,7 @@ foreach ($bundle in @($koukuEncounterDocument.bundles)) {
             }
             if (@($reachable.sceneProfiles).Count -gt 0) { [void]$sceneOwners.Add([string]$member.memberId) }
             foreach ($trigger in @($reachable.mechanicTriggers)) {
-                if ($trigger.kind -cin @('HUD_ENTER','CARD_MAZE_HIDE_NEXT','CARD_MAZE_ENTER')) { [void]$statefulOwners.Add([string]$member.memberId) }
+                if ($trigger.kind -cin @('HUD_ENTER','CARD_MAZE_HIDE_NEXT','CARD_MAZE_ENTER','CARD_MAZE_STAGE_PLAYERS')) { [void]$statefulOwners.Add([string]$member.memberId) }
             }
             foreach ($window in @($reachable.logicWindows)) {
                 if ($window.kind -cin @('POSE_INPUT','ROULETTE_CARD_MATCH')) { [void]$statefulOwners.Add([string]$member.memberId) }
@@ -7078,8 +7160,12 @@ function Get-BootstrapRowSortKey {
     if ($fields.Count -ge 4 -and $fields[0] -ceq 'PATTERNPURSUITPROJECTILES') {
         $Row = (@($fields[0],$fields[1],$fields[2],$fields[3],0) + @($fields[4..($fields.Count - 1)])) -join "`t"
     }
-	if ($fields.Count -ge 4 -and $fields[0] -cin @('PATTERNMECHANICTRIGGER','PATTERNALBIONAIRBORNE')) {
-		# Airborne settings resolve their exact, already loaded mechanic occurrence.
+	if ($fields.Count -ge 4 -and $fields[0] -cin @('PATTERNBOSSMOTION','PATTERNBOSSMOTIONKEY')) {
+		$dependencyOrder = if ($fields[0] -ceq 'PATTERNBOSSMOTION') { 0 } else { 1 }
+		$Row = (@('PATTERNBOSSMOTION',$fields[1],$fields[2],$dependencyOrder) + @($fields[3..($fields.Count - 1)])) -join "`t"
+	}
+	if ($fields.Count -ge 4 -and $fields[0] -cin @('PATTERNMECHANICTRIGGER','PATTERNALBIONAIRBORNE','PATTERNCARDMAZESTAGING')) {
+		# Child settings resolve their exact, already loaded mechanic occurrence.
 		$dependencyOrder = if ($fields[0] -ceq 'PATTERNMECHANICTRIGGER') { 0 } else { 1 }
 		$Row = (@('PATTERNMECHANICTRIGGER',$fields[1],$fields[2],$fields[3],$dependencyOrder) +
 			@($fields[4..($fields.Count - 1)])) -join "`t"

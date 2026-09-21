@@ -261,6 +261,13 @@ bool Client::CClientReplication::Initialize(const DESC& desc)
 	return true;
 }
 
+void Client::CClientReplication::Expect_KoukuRaidReply(const std::uint32_t requestSequence)
+{
+	m_KoukuRaidReply = {};
+	m_iKoukuRaidReplyRequestSequence = requestSequence;
+	m_iKoukuRaidReplyWorldGeneration = requestSequence ? CNetworkManager::Get().Get_WorldInboundGeneration() : 0u;
+}
+
 bool Client::CClientReplication::Update()
 {
 	Engine::CProfilerScope updateScope(
@@ -419,7 +426,13 @@ bool Client::CClientReplication::Update()
 		case CLIENT_REPLICATION_EVENT_TYPE::KOUKUSAYDON_RAID_STATE:
 			if (m_Desc.iLayerLevelIndex == ETOUI(LEVEL::KAKULSAYDON_ARENA) && event.KoukuRaidState.eWorldId == LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA)
 			{
-				m_KoukuRaidReply = event.KoukuRaidState;
+				// One exact local command owns this mailbox. Later state broadcasts
+				// must not replace its verdict before MainApp can consume the batch.
+				if (m_iKoukuRaidReplyRequestSequence && !m_KoukuRaidReply.iRequestSequence &&
+					m_iKoukuRaidReplyWorldGeneration == networkManager.Get_WorldInboundGeneration() &&
+					event.KoukuRaidState.iRequestSequence == m_iKoukuRaidReplyRequestSequence &&
+					(!event.KoukuRaidState.iRunEpoch || event.KoukuRaidState.iOwnerPlayerId == networkManager.Get_LocalPlayerId()))
+					m_KoukuRaidReply = event.KoukuRaidState;
 				if (event.KoukuRaidState.iRunEpoch && event.KoukuRaidState.iRunEpoch >= m_KoukuRaidState.iRunEpoch)
 					m_KoukuRaidState = event.KoukuRaidState;
 			}
@@ -4121,7 +4134,7 @@ void Client::CClientReplication::Reset_World()
 	m_FailedPlayerAssetClasses.clear();
 	m_PendingWorldSequencePlays.clear();
 	m_KoukuBundleState = {};
-	m_KoukuRaidState = {}; m_KoukuRaidReply = {};
+	m_KoukuRaidState = {}; Expect_KoukuRaidReply(0u);
 	//?묒냽???딄꼈?????꾩옱 registry???댁븘?덈뒗 character瑜?紐⑤몢 layer?먯꽌 ?쒓굅?섍퀬,
 	//registry? local handle??珥덇린?뷀븳??
 	//?뚭눼?먯뿉???몄텧?섏? ?딅뒗 ?댁쑀??留욌떎. ?꾩옱 engine? ?덈꺼 ?꾪솚 ??layer瑜?

@@ -461,6 +461,7 @@ namespace Client
 		std::uint32_t Get_LastServerTick() const { return m_iLastServerTick; }
 		const LostArk::Shared::S2C_KOUKUSAYDON_RAID_STATE& Get_KoukuRaidState() const { return m_KoukuRaidState; }
 		const LostArk::Shared::S2C_KOUKUSAYDON_RAID_STATE& Get_KoukuRaidReply() const { return m_KoukuRaidReply; }
+		void Expect_KoukuRaidReply(std::uint32_t requestSequence);
 		std::vector<LostArk::Shared::S2C_WORLD_SEQUENCE_PLAY> Consume_WorldSequencePlays()
 		{
 			auto pending = std::move(m_PendingWorldSequencePlays);
@@ -711,6 +712,8 @@ namespace Client
 		std::vector<LostArk::Shared::S2C_WORLD_SEQUENCE_PLAY> m_PendingWorldSequencePlays;
 		LostArk::Shared::S2C_KOUKUSAYDON_BUNDLE_STATE m_KoukuBundleState;
 		LostArk::Shared::S2C_KOUKUSAYDON_RAID_STATE m_KoukuRaidState, m_KoukuRaidReply;
+		std::uint32_t m_iKoukuRaidReplyRequestSequence = 0u;
+		std::uint64_t m_iKoukuRaidReplyWorldGeneration = 0u;
 		std::string m_strInteractPromptTriggerId;
 
 		struct CHAT_BUBBLE_ENTRY

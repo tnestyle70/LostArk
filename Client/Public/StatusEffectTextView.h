@@ -7,6 +7,7 @@
 #include <memory>
 #include <random>
 #include <string>
+#include <utility>
 #include <vector>
 
 NS_BEGIN(Client)
@@ -50,8 +51,8 @@ class CStatusEffectTextView final
 public:
 	struct REQUEST
 	{
-		/* Identity of whoever the word belongs to. One owner shows one word at a
-		time; a changed key is a new occurrence and restarts the motion. */
+		/* Identity of the owner and occurrence. Each word has its own last key,
+		so concurrent statuses cannot retrigger one another. */
 		std::uint32_t				iOwnerEntityId = 0u;
 		std::uint32_t				iOccurrenceKey = 0u;
 		std::wstring				strWord;
@@ -86,8 +87,8 @@ private:
 
 private:
 	vector<OCCURRENCE>						m_Occurrences;
-	/* Last key spawned per owner. Bounded by the players in the room. */
-	std::map<std::uint32_t, std::uint32_t>	m_SpawnedKeyByOwner;
+	/* Last key per owner and word. Independent Server status clocks may share a tick. */
+	std::map<std::pair<std::uint32_t, std::wstring>, std::uint32_t> m_SpawnedKeyByOwner;
 	std::mt19937							m_Scatter{ std::random_device{}() };
 };
 

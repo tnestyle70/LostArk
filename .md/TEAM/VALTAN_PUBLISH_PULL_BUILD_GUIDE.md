@@ -14,13 +14,15 @@ Product를 보게 만드는 실행 순서의 정본이다. `git pull` 성공과 
   `ValtanCombatObjects.json`, `Data/Animation/Authored/Valtan/*`
 - Git 관리 Composition descriptor: `Data/Compositions/Bosses/Valtan.bosscomposition.json`.
   기존 owner의 경로·coverage·Pattern index만 소유하는 `SHADOW` source manifest다
-- 로컬 생성물: `Server/Bin/DataFiles/Gameplay/Gameplay.bootstrap`
-- 로컬 Composition 생성물: `Client/Bin/DataFiles/Compositions/**`. resolved read model과 receipt이며
+- Git 관리 실행 생성물: `Server/Bin/DataFiles/Gameplay/Gameplay.bootstrap`와 참조하는
+  `ValtanPresentationGenerations` 문서
+- Git 관리 Composition 생성물: `Client/Bin/DataFiles/Compositions/**`. resolved read model과 receipt이며
   직접 편집하지 않고 현재 Client/Server gameplay runtime도 소비하지 않는다
 
-`Gameplay.bootstrap`은 직접 편집하거나 Git으로 전달하지 않는다. 각 PC의 publisher가 같은 Git
-정본으로 다시 생성한다. Client와 Server는 `Shared/Public/GameplayDataRevision.h`의 공용 format
-version을 함께 사용한다.
+`Gameplay.bootstrap`과 참조 presentation generation은 publisher로 생성하고 정본 변경과 같은
+PR에 포함한다. 직접 편집하지 않는다. 받는 PC는 같은 Git snapshot을 사용하며 수신을 위해 다시
+게시하지 않는다. Client와 Server는 `Shared/Public/GameplayDataRevision.h`의 공용 format
+version을 함께 사용하므로 reader/schema 변경에도 대응 출력과 소비 검증을 포함한다.
 
 ## 작성자가 PR 전에 실행할 순서
 
@@ -32,13 +34,15 @@ powershell -ExecutionPolicy Bypass -File Tools/CompositionPipeline/Publish-Compo
 powershell -ExecutionPolicy Bypass -File Tools/GameplayPipeline/Publish-GameplayBalance.ps1 -Mode Publish
 python Tools/GameplayPipeline/test_valtan_presentation_generation.py
 python Tools/EffectToolV2/validate_effect_v2.py --repository-root . --resource-root Client/Bin/Resources
-powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.ps1 -Configuration Debug -Profile Product
-powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.ps1 -Configuration Debug -Profile Core
 git diff --check
 ```
 
-`PublishV2`가 바꾼 Git 관리 Product 파일은 정본 변경과 같은 PR에 포함한다. publisher 또는 하네스
-기대값만 완화해 서로 다른 데이터 세대를 통과시키지 않는다.
+`PublishV2`가 바꾼 Product 파일, Composition 출력과 `Gameplay.bootstrap` 및 참조 generation은
+정본 변경과 같은 PR에 포함한다. 위 순서는 발탄 gameplay/presentation 전체를 바꿀 때의 게시
+순서이며 변경하지 않은 domain을 매 작업마다 다시 게시할 필요는 없다. CPP/HLSL/schema 소비자를
+바꿨으면 정상 증분 Product Build와 해당 기능의 소비 검증을 수행한다. Core/FullDiagnostic은
+명시적 광역 진단이고 매 PR·pull의 필수 단계가 아니다. publisher 또는 하네스 기대값만 완화해
+서로 다른 데이터 세대를 통과시키지 않는다.
 `SyncValtanShadow`가 갱신한 Composition descriptor도 같은 PR에 포함한다. 이 명령은 split join의
 Pattern index/coverage가 실제로 달라졌을 때만 descriptor revision을 올린다.
 
@@ -46,20 +50,19 @@ Pattern index/coverage가 실제로 달라졌을 때만 descriptor revision을 �
 
 ```powershell
 git pull --ff-only origin main
+git lfs pull
 powershell -ExecutionPolicy Bypass -File Tools/Network/Sync-TeamLanEndpoint.ps1
-powershell -ExecutionPolicy Bypass -File Tools/ValtanPipeline/Project-ValtanPatternMaster.ps1 -Mode Validate -RepositoryRoot $PWD
-powershell -ExecutionPolicy Bypass -File Tools/CompositionPipeline/Publish-Compositions.ps1 -Mode Validate -RepositoryRoot $PWD
-powershell -ExecutionPolicy Bypass -File Tools/CompositionPipeline/Publish-Compositions.ps1 -Mode Publish -RepositoryRoot $PWD
-powershell -ExecutionPolicy Bypass -File Tools/GameplayPipeline/Publish-GameplayBalance.ps1 -Mode Publish
-powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.ps1 -Configuration Debug -Profile Core
+powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.ps1 -Configuration Debug -Profile Product
 ```
 
-증분 빌드가 통과했더라도 Core의 publisher와 하네스를 생략하지 않는다. 기존 PC에는 이전 bootstrap,
-이전 harness EXE 또는 이미 컴파일된 Client object가 남을 수 있어 새 PC의 clean build와 결과가
-달라질 수 있다.
+위 pull은 작업 변경을 보존한 뒤 `main`에서 실행한다. 받은 변경이 데이터뿐이고 현재 바이너리가
+같은 schema를 지원하면 C++/HLSL 재빌드 없이 해당 runtime reload/재시작 계약을 따른다.
+일반 Product Build는 게시 데이터를 재생성하지 않는다. 정본 runner는 Items·Valtan ClearRewards의
+`CheckPublished` 결과를 컴파일 성공과 별도로 기록한다. 누락이나 bootstrap version 불일치가
+있으면 실제 읽힌 경로·header와 현재 reader를 대조하고 해당 publisher로만 복구한다.
 pull한 팀원은 `SyncValtanShadow`를 실행하지 않는다. 작성자가 PR에 포함하지 않은 descriptor drift를
-로컬에서 덮어 가릴 수 있기 때문이다. Product/Core/FullDiagnostic runner는 `BuildDomains.json`의
-`composition.presentation` domain으로 Composition Publish를 자동 실행한다.
+로컬에서 덮어 가릴 수 있기 때문이다. 명시 publish/Core/FullDiagnostic만 `BuildDomains.json`의
+`composition.presentation` domain을 실행한다. Resources는 별도 Drive 전달 계약을 따른다.
 
 ## 대표 오류의 실제 소유자
 

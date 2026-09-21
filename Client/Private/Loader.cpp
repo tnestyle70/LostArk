@@ -19,6 +19,7 @@
 #include "Effect_PresentationService.h"
 #include "GameInstance.h"
 #include "LevelRegistry.h"
+#include "LevelTransitionService.h"
 #include "MapAssetCatalog.h"
 #include "MapAssetObject.h"
 #include "MapAssetPreview.h"
@@ -180,10 +181,21 @@ HRESULT CLoader::Initialize(
 	const uint64_t iEffectLoadJobEpoch,
 	const uint64_t iEffectCatalogRevision)
 {
+	const auto reject = [](const HRESULT result, const std::string_view source,
+		const std::string_view detail)
+	{
+		// Record before Create destroys this Loader and MainApp reports the generic null.
+		// The transition service preserves the first recovery for this load attempt.
+		CLevelTransitionService::Report_Recovery(
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::CLIENT_LOADING_START_FAILED,
+			source, detail, result);
+		return result;
+	};
 	if (nullptr == CLevelRegistry::Find(eNextLevelID))
-		return E_INVALIDARG;
+		return reject(E_INVALIDARG, "loader.initialize.target", "Target Level is not registered.");
 	if ((0u == iEffectLoadJobEpoch) != (0u == iEffectCatalogRevision))
-		return E_INVALIDARG;
+		return reject(E_INVALIDARG, "loader.initialize.effect-input",
+			"Effect preparation epoch and catalog revision must both be present or absent.");
 	if (0u != iEffectLoadJobEpoch)
 	{
 		m_pEffectLoadJob = std::make_shared<CEffectLoadPreparationJob>();
@@ -193,7 +205,7 @@ HRESULT CLoader::Initialize(
 		{
 			OutputDebugStringA(("[Loader][Effect] " + JobStatus + "\n").c_str());
 			m_pEffectLoadJob.reset();
-			return E_FAIL;
+			return reject(E_FAIL, "loader.initialize.effect-job", JobStatus);
 		}
 	}
 
@@ -206,7 +218,7 @@ HRESULT CLoader::Initialize(
 		if (!CActorCatalog::Initialize())
 		{
 			OutputDebugStringA(("[Loader] " + CActorCatalog::Get_Status() + "\n").c_str());
-			return E_FAIL;
+			return reject(E_FAIL, "loader.initialize.actor-catalog", CActorCatalog::Get_Status());
 		}
 		m_ePreparedCharacterClass = CNetworkManager::Get().Get_LocalCharacterClass();
 		// Lobby's accepted enter-world generation preserves this exact class.
@@ -215,10 +227,13 @@ HRESULT CLoader::Initialize(
 		{
 			Set_Status(TEXT("Character preparation rejected: Server admission has no supported class."));
 			OutputDebugStringA("[Loader] Missing/invalid Server-approved character class.\n");
-			return E_INVALIDARG;
+			return reject(E_INVALIDARG, "loader.initialize.character-class",
+				"Server admission has no supported character class.");
 		}
 		m_pCharacterAuthoringInput = CPlayableCharacterAssetService::Capture_AuthoringInput(m_ePreparedCharacterClass);
-		if (!m_pCharacterAuthoringInput) return E_FAIL;
+		if (!m_pCharacterAuthoringInput)
+			return reject(E_FAIL, "loader.initialize.character-authoring",
+				"Character authoring snapshot could not be captured; player skills are unavailable.");
 	}
 	m_eNextLevelID = eNextLevelID;
 	m_iResult.store(S_FALSE, std::memory_order_release);
@@ -247,7 +262,7 @@ HRESULT CLoader::Initialize(
 		Request_Cancellation();
 		m_iResult.store(E_FAIL, std::memory_order_release);
 		m_eState.store(STATE::FAILED, std::memory_order_release);
-		return E_FAIL;
+		return reject(E_FAIL, "loader.initialize.worker", "Could not create the Level loading worker.");
 	}
 	return S_OK;
 }
