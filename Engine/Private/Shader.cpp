@@ -444,7 +444,7 @@ HRESULT CShader::Stage_ProgramVariants(const tchar_t* pShaderFilePath,
 		for (auto& variable : pBindings->Variables)
 			if (variable.strName == "g_SourceCharacterProgram") staged->pProgram = &variable;
 		if (nullptr == staged->pProgram) return E_FAIL;
-		constexpr uint32_t ranges[][2] = { {1u,8u}, {9u,16u}, {17u,24u}, {25u,32u}, {80u,83u}, {84u,93u} };
+		constexpr uint32_t ranges[][2] = { {1u,8u}, {9u,16u}, {17u,24u}, {25u,32u}, {80u,83u}, {84u,99u} };
 		staged->Groups.reserve(std::size(ranges));
 		for (const auto& range : ranges)
 		{

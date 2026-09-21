@@ -1,0 +1,27 @@
+{
+  "schema": "lostark.character-interaction-bindings",
+  "formatVersion": 1,
+  "characterAssetId": "GuardianKnight",
+  "bodyAssetId": "Character/GuardianKnight/GuardianKnight.wmodel",
+  "terrainJump": {
+    "clip": "terrain_jump_short",
+    "playRate": 1
+  },
+  "modes": [
+    {
+      "mode": "MAZE",
+      "skills": [
+        {
+          "clip": "maze_hammer_q",
+          "playRate": 1,
+          "effectAssetId": "effect.kouku.cardmaze.q"
+        },
+        {
+          "clip": "maze_hammer_lmb",
+          "playRate": 1,
+          "effectAssetId": "effect.kouku.cardmaze.lmb"
+        }
+      ]
+    }
+  ]
+}

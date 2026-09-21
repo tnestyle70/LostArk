@@ -146,6 +146,24 @@ SOURCE_CHARACTER_NATIVE_OUTPUT EvaluateSourceCharacterBase(SOURCE_CHARACTER_NATI
 #if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 84
     case 93u: return SourceCharacterBase93(input);
 #endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 84
+    case 94u: return SourceCharacterBase94(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 84
+    case 95u: return SourceCharacterBase95(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 84
+    case 96u: return SourceCharacterBase96(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 84
+    case 97u: return SourceCharacterBase97(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 84
+    case 98u: return SourceCharacterBase98(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 84
+    case 99u: return SourceCharacterBase99(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
 #if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 80
     case 80u: { if (input.hasBakedLighting) return SourceMapMonsterBaked80(input); return SourceCharacterBase80(input); }
 #endif // SOURCE_CHARACTER_PROGRAM_GROUP

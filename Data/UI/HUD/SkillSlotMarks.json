@@ -167,6 +167,70 @@
    "mark": "combo",
    "skillKind": "COMBO",
    "retailType": 6
+  },
+  {
+   "skillId": 49000,
+   "characterClass": "GUARDIANKNIGHT",
+   "inputSlot": "LMB",
+   "mark": "combo",
+   "skillKind": "COMBO",
+   "retailType": 1
+  },
+  {
+   "skillId": 49001,
+   "characterClass": "GUARDIANKNIGHT",
+   "inputSlot": "LMB",
+   "mark": "combo",
+   "skillKind": "COMBO",
+   "retailType": 1
+  },
+  {
+   "skillId": 49021,
+   "characterClass": "GUARDIANKNIGHT",
+   "inputSlot": "SPACE",
+   "mark": "holding",
+   "skillKind": "HOLD",
+   "retailType": 5
+  },
+  {
+   "skillId": 49110,
+   "characterClass": "GUARDIANKNIGHT",
+   "inputSlot": "W",
+   "mark": "combo",
+   "skillKind": "COMBO",
+   "retailType": 6
+  },
+  {
+   "skillId": 49150,
+   "characterClass": "GUARDIANKNIGHT",
+   "inputSlot": "D",
+   "mark": "holding",
+   "skillKind": "HOLD",
+   "retailType": 5
+  },
+  {
+   "skillId": 49200,
+   "characterClass": "GUARDIANKNIGHT",
+   "inputSlot": "A",
+   "mark": "holding",
+   "skillKind": "HOLD",
+   "retailType": 5
+  },
+  {
+   "skillId": 49210,
+   "characterClass": "GUARDIANKNIGHT",
+   "inputSlot": "A",
+   "mark": "holding",
+   "skillKind": "HOLD",
+   "retailType": 5
+  },
+  {
+   "skillId": 49270,
+   "characterClass": "GUARDIANKNIGHT",
+   "inputSlot": "F",
+   "mark": "combo",
+   "skillKind": "COMBO",
+   "retailType": 6
   }
  ]
 }

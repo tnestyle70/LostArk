@@ -690,6 +690,7 @@
     <None Include="..\..\Data\Animation\Reference\Warlord\Warlord.skilltiming" />
     <None Include="..\..\Data\Animation\Authored\GuardianKnight\GuardianKnight.animevents" />
     <None Include="..\..\Data\Animation\Authored\GuardianKnight\GuardianKnight.skillbindings.json" />
+    <None Include="..\..\Data\Animation\Authored\GuardianKnight\GuardianKnight.interactionbindings.json" />
     <None Include="..\..\Data\Animation\Reference\GuardianKnight\GuardianKnight.animnotify" />
     <None Include="..\..\Data\Animation\Reference\GuardianKnight\GuardianKnight.clipmap" />
     <None Include="..\..\Data\Animation\Reference\GuardianKnight\GuardianKnight.clipseq" />

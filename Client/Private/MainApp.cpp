@@ -4799,7 +4799,9 @@ void CMainApp::Update_BuffBar()
 		else if ("stance" == Source.strSource)
 		{
 			bActive = ("WARLORD_DEFENSE" == Source.strStance &&
-				LostArk::Shared::PLAYER_STANCE_ID::WARLORD_DEFENSE == player.eStance);
+				LostArk::Shared::PLAYER_STANCE_ID::WARLORD_DEFENSE == player.eStance) ||
+				("GUARDIANKNIGHT_DRAGON" == Source.strStance &&
+				LostArk::Shared::PLAYER_STANCE_ID::GUARDIANKNIGHT_DRAGON == player.eStance);
 		}
 		else if ("silence" == Source.strSource)
 		{

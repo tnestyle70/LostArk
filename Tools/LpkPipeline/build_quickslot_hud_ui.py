@@ -103,11 +103,13 @@ STATUS_ICONS = [
     ("fetter", 1022, "debuff"),         # isPatternBound / iPatternBindEndTick
     ("fear", 13010, "debuff"),          # iFearEndTick
 ]
-# Warlord Z (17810 = 방어 태세 전환) icon stands for the WARLORD_DEFENSE stance buff.
-STANCE_BUFFS = [("WARLORD_DEFENSE", 17810, "Warlord")]
+# Warlord Z (17810 = 방어 태세 전환) icon stands for the WARLORD_DEFENSE stance buff;
+# Guardian Knight Z (49040 = 화신화) for GUARDIANKNIGHT_DRAGON.
+STANCE_BUFFS = [("WARLORD_DEFENSE", 17810, "Warlord"), ("GUARDIANKNIGHT_DRAGON", 49040, "GuardianKnight")]
 
 CLASS_DIR = {"LANCE_MASTER": "LanceMaster", "WARLORD": "Warlord", "ARTIST": "Artist",
-             "DIMENSIONMASTER": "DimensionMaster", "GUNSLINGER": "Gunslinger", "SLAYER": "Slayer"}
+             "DIMENSIONMASTER": "DimensionMaster", "GUNSLINGER": "Gunslinger", "SLAYER": "Slayer",
+             "GUARDIANKNIGHT": "GuardianKnight"}
 
 
 def iconinfo_lookup(data: bytes, name: str):

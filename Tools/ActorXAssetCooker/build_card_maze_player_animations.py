@@ -93,12 +93,19 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source", type=Path, required=True)
     parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument("--classes", nargs="*", default=[])
     args = parser.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
     catalog = json.loads((ROOT / "Data/Actors/CharacterCatalog.json").read_text(encoding="utf-8"))
+    wanted = set(args.classes) if args.classes else set(SOURCES)
+    unknown = wanted - set(SOURCES)
+    if unknown:
+        raise SystemExit("Unknown class: %s" % ", ".join(sorted(unknown)))
     receipt = []
     for actor in catalog["characters"]:
         name = actor["assetId"]
+        if name not in wanted:
+            continue
         package = SOURCES[name]
         psa = args.source / package / "AnimSet" / (package.lower() + "_ani.psa")
         body = ROOT / "Client/Bin/Resources" / actor["bodyModel"]

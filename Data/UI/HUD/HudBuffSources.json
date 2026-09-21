@@ -58,6 +58,17 @@
     "primaryKey": 17810,
     "icon": "GL_Skill_01_39"
    }
+  },
+  {
+   "source": "stance",
+   "stance": "GUARDIANKNIGHT_DRAGON",
+   "kind": "buff",
+   "iconAsset": "UI/HUD/Buff/buff_stance_guardianknight_dragon.png",
+   "iconSource": {
+    "table": "EFTable_Skill",
+    "primaryKey": 49040,
+    "icon": "DDK_Skill_01_23"
+   }
   }
  ]
 }

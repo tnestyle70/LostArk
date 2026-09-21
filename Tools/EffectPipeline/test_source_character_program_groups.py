@@ -45,7 +45,7 @@ class SourceCharacterProgramGroups(unittest.TestCase):
     def test_unregistered_program_is_rejected_before_writing(self):
         path = SHADERS / 'Shader_SourceCharacterBasePrograms.hlsli'
         source = expand_source_character_stage(path.read_text(encoding='utf8'), SHADERS)
-        source = source.replace('SourceCharacterBase88(', 'SourceCharacterBase92(')
+        source = source.replace('SourceCharacterBase88(', 'SourceCharacterBase100(')
         with self.assertRaisesRegex(ValueError, 'registered CSO cohort'):
             partition_source_character_stage(source, 'Base', SHADERS)
 
