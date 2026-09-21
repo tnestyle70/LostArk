@@ -496,9 +496,12 @@ bool_t Client::CWorldGameplayDocument::Load(
 				if (WORLD_TRIGGER_EVENT_KIND::MOVE_PLAYER == event.eKind)
 				{
 					const auto* koukuMode = eventValue.Find("koukuHudMode");
-					if (!(nullptr == koukuMode ? Is_ExactObject(eventValue,
-						{ "type", "targetPosition", "durationSeconds", "arcHeight" }) : Is_ExactObject(eventValue,
-						{ "type", "targetPosition", "durationSeconds", "arcHeight", "koukuHudMode" })) ||
+					const auto* trackMove = eventValue.Find("trackMove");
+					if (nullptr != koukuMode && nullptr != trackMove ||
+						!(nullptr == trackMove ? (nullptr == koukuMode ? Is_ExactObject(eventValue,
+							{ "type", "targetPosition", "durationSeconds", "arcHeight" }) : Is_ExactObject(eventValue,
+							{ "type", "targetPosition", "durationSeconds", "arcHeight", "koukuHudMode" })) :
+							Is_ExactObject(eventValue, { "type", "targetPosition", "durationSeconds", "arcHeight", "trackMove" })) ||
 						!Read_Position(eventValue.Find("targetPosition"), event.targetPosition))
 					{
 						outStatus = "Gameplay movePlayer event has invalid fields";
@@ -523,6 +526,56 @@ bool_t Client::CWorldGameplayDocument::Load(
 							return false;
 						}
 						event.koukuHudMode = koukuMode->Get_String();
+					}
+					if (nullptr != trackMove)
+					{
+						if (!Is_ExactObject(*trackMove, { "style", "facingYawDegrees", "samples" }))
+						{
+							outStatus = "Gameplay movePlayer trackMove fields are invalid";
+							return false;
+						}
+						const auto* style = trackMove->Find("style");
+						const auto* facing = trackMove->Find("facingYawDegrees");
+						const auto* samples = trackMove->Find("samples");
+						if (nullptr == style || !style->Is_String() || style->Get_String() != "wallClimb" ||
+							nullptr == facing || !facing->Is_Number() ||
+							nullptr == samples || !samples->Is_Array() ||
+							samples->Get_Array().size() < 2u || samples->Get_Array().size() > 181u)
+						{
+							outStatus = "Gameplay movePlayer wallClimb track is invalid";
+							return false;
+						}
+						event.trackMoveStyle = style->Get_String();
+						event.trackMoveFacingYawDegrees = static_cast<f32_t>(facing->Get_Number());
+						uint32_t previousTimeMs = 0u;
+						for (const DATA_JSON_VALUE& sampleValue : samples->Get_Array())
+						{
+							if (!Is_ExactObject(sampleValue, { "timeMs", "position" }))
+								return false;
+							const auto* timeMs = sampleValue.Find("timeMs");
+							WORLD_TRIGGER_EVENT::TRACK_MOVE_SAMPLE sample{};
+							if (nullptr == timeMs || !timeMs->Is_Number() ||
+								!Read_Position(sampleValue.Find("position"), sample.position))
+								return false;
+							const double rawTimeMs = timeMs->Get_Number();
+							if (!std::isfinite(rawTimeMs) || rawTimeMs < 0.0 || rawTimeMs > 10000.0 ||
+								std::floor(rawTimeMs) != rawTimeMs ||
+								(!event.trackMoveSamples.empty() && static_cast<uint32_t>(rawTimeMs) <= previousTimeMs))
+								return false;
+							sample.timeMs = static_cast<uint32_t>(rawTimeMs);
+							previousTimeMs = sample.timeMs;
+							event.trackMoveSamples.push_back(sample);
+						}
+						if (!std::isfinite(event.trackMoveFacingYawDegrees) ||
+							std::abs(event.trackMoveFacingYawDegrees) > 360.f ||
+							event.trackMoveSamples.front().timeMs != 0u ||
+							std::abs(event.durationSeconds - static_cast<f32_t>(event.trackMoveSamples.back().timeMs) / 1000.f) > .001f)
+							return false;
+						const float3_t& lastPosition = event.trackMoveSamples.back().position;
+						if (std::abs(event.targetPosition.x - lastPosition.x) > .001f ||
+							std::abs(event.targetPosition.y - lastPosition.y) > .001f ||
+							std::abs(event.targetPosition.z - lastPosition.z) > .001f)
+							return false;
 					}
 				}
 				else if (WORLD_TRIGGER_EVENT_KIND::CHANGE_LEVEL == event.eKind)
@@ -950,6 +1003,18 @@ bool_t Client::CWorldGameplayDocument::Save(
 						<< "\"arcHeight\": " << event.arcHeight;
 					if (!event.koukuHudMode.empty())
 						output << ", \"koukuHudMode\": \"" << event.koukuHudMode << "\"";
+					if (!event.trackMoveStyle.empty())
+					{
+						output << ", \"trackMove\": { \"style\": \"" << event.trackMoveStyle <<
+							"\", \"facingYawDegrees\": " << event.trackMoveFacingYawDegrees << ", \"samples\": [";
+						for (std::size_t sampleIndex = 0u; sampleIndex < event.trackMoveSamples.size(); ++sampleIndex)
+						{
+							const auto& sample = event.trackMoveSamples[sampleIndex];
+							output << (0u == sampleIndex ? "" : ", ") << "{ \"timeMs\": " << sample.timeMs <<
+								", \"position\": [" << sample.position.x << ", " << sample.position.y << ", " << sample.position.z << "] }";
+						}
+						output << "] }";
+					}
 				}
 				else if (WORLD_TRIGGER_EVENT_KIND::CHANGE_LEVEL == event.eKind)
 				{
@@ -1105,6 +1170,15 @@ bool_t Client::CWorldGameplayDocument::Is_Valid(
 					{
 						return (event.koukuHudMode.empty() || event.koukuHudMode == "MARIO" ||
 						event.koukuHudMode == "MAZE" || event.koukuHudMode == "NONE") &&
+						(event.trackMoveStyle.empty() ||
+							(event.trackMoveStyle == "wallClimb" && std::isfinite(event.trackMoveFacingYawDegrees) &&
+							 std::abs(event.trackMoveFacingYawDegrees) <= 360.f &&
+							 event.trackMoveSamples.size() >= 2u && event.trackMoveSamples.size() <= 181u &&
+							 event.trackMoveSamples.front().timeMs == 0u &&
+							 std::all_of(event.trackMoveSamples.begin(), event.trackMoveSamples.end(),
+								[](const WORLD_TRIGGER_EVENT::TRACK_MOVE_SAMPLE& sample)
+								{ return std::isfinite(sample.position.x) && std::isfinite(sample.position.y) && std::isfinite(sample.position.z); }) &&
+							 std::abs(event.durationSeconds - static_cast<f32_t>(event.trackMoveSamples.back().timeMs) / 1000.f) <= .001f)) &&
 						std::isfinite(event.targetPosition.x) &&
 							std::isfinite(event.targetPosition.y) &&
 							std::isfinite(event.targetPosition.z) &&

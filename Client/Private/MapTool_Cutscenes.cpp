@@ -44,6 +44,10 @@ bool_t Client::CMapTool::Build_CutsceneTargets(
 	outTargets.device = m_pDevice;
 	outTargets.context = m_pContext;
 	outTargets.objectPreparationOwner = &m_ArenaRisePlayer;
+	/* MapTool samples cutscenes after MainApp has already committed ordinary
+	   Effect requests for this frame. Its newly born V1 world roots therefore
+	   need their scoped post-update commit before the same-frame seek. */
+	outTargets.bCommitWorldRootEffectsAfterSpawn = true;
 	return outTargets.Is_Complete();
 }
 

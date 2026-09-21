@@ -93,8 +93,11 @@ namespace LostArk::Shared
 	// heal draws in its own colour instead of reading as an ordinary hit.
 	// 99 adds the Server-authoritative invulnerability-zone presentation pulse.
 	// 100 adds the Debug-only wave-monster re-summon request (F1 "Normal Monster 1/2").
-	// Earlier peers do not know the appended packet identity.
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 100;
+	// 101 appends WALL_CLIMB to the replicated player action state.  The Server
+	// owns the original Valtan TrackMove position samples; the Client uses this
+	// distinct state to keep an idle presentation instead of playing a terrain hop.
+	// Earlier peers do not know the appended action identity.
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 101;
 
 	enum class WORLD_ID : std::uint16_t
 	{

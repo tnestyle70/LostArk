@@ -6,7 +6,7 @@ param(
     # Client-side World outputs of the same transaction. Pointing both roots at
     # a scratch folder stages a publish without touching live outputs.
     [string]$ClientOutputRoot = 'Client/Bin/DataFiles/World',
-    [ValidateSet('ALL', 'KAKULSAYDON_ARENA', 'VALTAN_ARENA')]
+    [ValidateSet('ALL', 'BERN', 'KAKULSAYDON_ARENA', 'VALTAN_ARENA')]
     [string]$WorldId = 'ALL',
 	[ValidateRange(0, 12)]
 	[int]$FailureAfterPromote = 0
@@ -788,12 +788,17 @@ function Convert-WorldDocument {
 				if ($event.type -eq 'movePlayer') {
 					$moveKeys = @('type','targetPosition','durationSeconds','arcHeight')
 					$hasKoukuMode = $event.PSObject.Properties.Name -contains 'koukuHudMode'
+					$hasTrackMove = $event.PSObject.Properties.Name -contains 'trackMove'
+					if ($hasKoukuMode -and $hasTrackMove) {
+						throw "movePlayer cannot combine koukuHudMode and trackMove: $($placement.placementId)"
+					}
 					if ($hasKoukuMode) {
 						$moveKeys += 'koukuHudMode'
 						if ($WorldId -cne 'KAKULSAYDON_ARENA' -or $event.koukuHudMode -cnotin @('MARIO','MAZE','NONE')) {
 							throw "movePlayer koukuHudMode requires a Kouku arena mode"
 						}
 					}
+					if ($hasTrackMove) { $moveKeys += 'trackMove' }
 					Assert-ExactProperties $event $moveKeys "$relativePath movePlayer event"
 					if (@($event.targetPosition).Count -ne 3) {
 						throw "movePlayer target requires three coordinates: $($placement.placementId)"
@@ -809,14 +814,60 @@ function Convert-WorldDocument {
 						$arcHeight -lt 0.0 -or $arcHeight -gt 1000.0) {
 						throw "movePlayer timing or arc is out of range: $($placement.placementId)"
 					}
+					$trackFields = @()
+					if ($hasTrackMove) {
+						Assert-ExactProperties $event.trackMove @('style','facingYawDegrees','samples') "$relativePath movePlayer trackMove"
+						if ($WorldId -cne 'VALTAN_ARENA' -or [string]$event.trackMove.style -cne 'wallClimb') {
+							throw "movePlayer trackMove supports only Valtan wallClimb: $($placement.placementId)"
+						}
+						Assert-JsonNumber $event.trackMove.facingYawDegrees "$relativePath trackMove facingYawDegrees"
+						if ([math]::Abs([double]$event.trackMove.facingYawDegrees) -gt 360.0) {
+							throw "movePlayer wallClimb facing yaw is out of range: $($placement.placementId)"
+						}
+						$trackSamples = @($event.trackMove.samples)
+						if ($trackSamples.Count -lt 2 -or $trackSamples.Count -gt 181) {
+							throw "movePlayer wallClimb needs 2..181 samples: $($placement.placementId)"
+						}
+						$previousTimeMs = -1
+						foreach ($sample in $trackSamples) {
+							Assert-ExactProperties $sample @('timeMs','position') "$relativePath trackMove sample"
+							Assert-JsonNumber $sample.timeMs "$relativePath trackMove timeMs"
+							$timeMs = [double]$sample.timeMs
+							if ($timeMs -lt 0 -or $timeMs -gt 10000 -or [math]::Floor($timeMs) -ne $timeMs -or $timeMs -le $previousTimeMs) {
+								throw "movePlayer wallClimb sample time is invalid: $($placement.placementId)"
+							}
+							if (@($sample.position).Count -ne 3) { throw "movePlayer wallClimb sample position needs three coordinates: $($placement.placementId)" }
+							for ($samplePositionIndex = 0; $samplePositionIndex -lt 3; ++$samplePositionIndex) {
+								Assert-JsonNumber $sample.position[$samplePositionIndex] "$relativePath trackMove position[$samplePositionIndex]"
+							}
+							$previousTimeMs = [int]$timeMs
+						}
+						if ($previousTimeMs -ne [math]::Round(1000.0 * $duration) -or [int]$trackSamples[0].timeMs -ne 0) {
+							throw "movePlayer wallClimb duration must exactly match its samples: $($placement.placementId)"
+						}
+						$lastSample = $trackSamples[$trackSamples.Count - 1].position
+						for ($targetIndex = 0; $targetIndex -lt 3; ++$targetIndex) {
+							if ([math]::Abs(([double]$event.targetPosition[$targetIndex]) - ([double]$lastSample[$targetIndex])) -gt 0.001) {
+								throw "movePlayer wallClimb target must equal its last sample: $($placement.placementId)"
+							}
+						}
+						$trackFields += @('WALL_CLIMB', (Format-InvariantFloat $event.trackMove.facingYawDegrees), [string]$trackSamples.Count)
+						foreach ($sample in $trackSamples) {
+							$trackFields += @([string][int]$sample.timeMs,
+								(Format-InvariantFloat $sample.position[0]),
+								(Format-InvariantFloat $sample.position[1]),
+								(Format-InvariantFloat $sample.position[2]))
+						}
+					}
 					$triggerFields += @(
-						'movePlayer', $(if ($hasKoukuMode) { '6' } else { '5' }),
+						'movePlayer', $(if ($hasTrackMove) { [string](8 + 4 * $trackSamples.Count) } elseif ($hasKoukuMode) { '6' } else { '5' }),
 						(Format-InvariantFloat $event.targetPosition[0]),
 						(Format-InvariantFloat $event.targetPosition[1]),
 						(Format-InvariantFloat $event.targetPosition[2]),
 						(Format-InvariantFloat $duration),
 						(Format-InvariantFloat $arcHeight))
 					if ($hasKoukuMode) { $triggerFields += [string]$event.koukuHudMode }
+					if ($hasTrackMove) { $triggerFields += $trackFields }
 				}
 				elseif ($event.type -eq 'changeLevel') {
 					Assert-ExactProperties $event @('type','targetWorldId') "$relativePath changeLevel event"
@@ -1450,7 +1501,12 @@ $actorIds = Get-ActorIds
 $encounterProfiles = Get-EncounterProfiles
 $monsterProfiles = Get-MonsterProfiles
 $kakulStageMarkers = Convert-KakulStageMarkersDocument
-if ($WorldId -eq 'KAKULSAYDON_ARENA') {
+if ($WorldId -eq 'BERN') {
+    $spawnDocuments = @((Convert-SpawnGroupsDocument -AreaId 'LV_BER_BERNCASTLE' -WorldId $WorldId -ActorIds $actorIds -MonsterProfiles $monsterProfiles))
+    $encounterPropDocuments = @((Convert-EncounterPropsDocument -AreaId 'LV_BER_BERNCASTLE' -WorldId $WorldId))
+    $worlds = @((Convert-WorldDocument -AreaId 'LV_BER_BERNCASTLE' -WorldId $WorldId -ActorIds $actorIds -EncounterProfiles $encounterProfiles -SpawnGroupIds $spawnDocuments[0].GroupIds))
+}
+elseif ($WorldId -eq 'KAKULSAYDON_ARENA') {
     $spawnDocuments = @((Convert-SpawnGroupsDocument -AreaId 'LV_LUT_MIDNIGHTC_ED' -WorldId $WorldId -ActorIds $actorIds -MonsterProfiles $monsterProfiles))
     $encounterPropDocuments = @((Convert-EncounterPropsDocument -AreaId 'LV_LUT_MIDNIGHTC_ED' -WorldId $WorldId))
     $worlds = @((Convert-WorldDocument -AreaId 'LV_LUT_MIDNIGHTC_ED' -WorldId $WorldId -ActorIds $actorIds -EncounterProfiles $encounterProfiles -SpawnGroupIds $spawnDocuments[0].GroupIds))
@@ -1550,7 +1606,7 @@ if ($Mode -eq 'Publish') {
 			[IO.Path]::GetFullPath($ClientOutputRoot)
 		} else { [IO.Path]::GetFullPath((Join-Path $repoRoot $ClientOutputRoot)) }
 		[IO.Directory]::CreateDirectory($clientWorldRoot) | Out-Null
-		if ($WorldId -ne 'VALTAN_ARENA') {
+		if ($WorldId -in @('ALL', 'KAKULSAYDON_ARENA')) {
 		$stagedKakulMarkers = Join-Path $stagingRoot 'KAKULSAYDON_ARENA.stagemarkers.json'
 		[IO.File]::WriteAllText(
 			$stagedKakulMarkers,
@@ -1640,7 +1696,7 @@ if ($Mode -eq 'Publish') {
 				$entry.location -isnot [string] -or
 				-not $labelIds.Add("$($entry.areaId)/$($entry.kind)/$($entry.targetId)")) { throw 'Invalid or duplicated viewer label.' }
 		}
-		if ($WorldId -ne 'VALTAN_ARENA') {
+		if ($WorldId -in @('ALL', 'KAKULSAYDON_ARENA')) {
 		$labelsName = 'SequenceViewer.labels.json'
 		$labelsStaged = Join-Path $stagingRoot $labelsName
 		[IO.File]::WriteAllText($labelsStaged, ($labels | ConvertTo-Json -Depth 8), [Text.UTF8Encoding]::new($false))

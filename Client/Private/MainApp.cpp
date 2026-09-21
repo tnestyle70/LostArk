@@ -70,6 +70,7 @@
 #include "HonorTitleWindowView.h"
 #include "WorldMapWindowView.h"
 #include "SongCastGaugeView.h"
+#include "Network/PacketMessages.h"
 #include "InventoryView.h"
 #include "QuickSlotDragView.h"
 #include "SkillWindowView.h"
@@ -5647,6 +5648,15 @@ void CMainApp::Update_Minimap(const f32_t fTimeDelta)
 			if (nullptr == pController || !pController->Request_UseSquareHole(iHoleId))
 				OutputDebugStringA("[Client][WorldMapWindow] Square hole request not sent (no controller, or the player is busy).\n");
 		}
+		if (m_pWorldMapWindowView->Take_ShipTravelRequest())
+		{
+			CPlayerController* pController = Find_ActivePlayerController();
+			if (nullptr == pController || !pController->Request_UseSquareHole(
+				LostArk::Shared::WORLD_MAP_SHIP_TRAVEL_DESTINATION_ID))
+			{
+				OutputDebugStringA("[Client][WorldMapWindow] Ship travel request not sent (no controller, or the player is busy).\n");
+			}
+		}
 	}
 	if (nullptr != m_pSongCastGaugeView)
 		m_pSongCastGaugeView->Update(fTimeDelta, CCombatHUDViewModel::Get().Get_Player(),
@@ -9797,6 +9807,7 @@ void CMainApp::RenderArenaCameraAndPlayerControls()
 	else if (nullptr != bern)
 	{
 		camera = bern->Get_DebugCamera();
+		controller = &bern->Get_PlayerController();
 		mapName = "Bern";
 	}
 	else if (nullptr != development)
@@ -9818,7 +9829,8 @@ void CMainApp::RenderArenaCameraAndPlayerControls()
 		{
 			const std::shared_ptr<CCharacter> pDebugLocal =
 				nullptr != valtan ? valtan->Get_LocalCharacter() :
-				(nullptr != kouku ? kouku->Get_LocalCharacter() : nullptr);
+				(nullptr != kouku ? kouku->Get_LocalCharacter() :
+					(nullptr != bern ? bern->Get_LocalCharacter() : nullptr));
 			if (nullptr != pDebugLocal && nullptr != pDebugLocal->Get_Transform())
 			{
 				float3_t vPlayer{};
@@ -9844,7 +9856,8 @@ void CMainApp::RenderArenaCameraAndPlayerControls()
 		ImGui::TextDisabled(valtan || kouku ? "Free-camera speed is saved per arena for this session." :
 			"Free-camera speed lasts for this map visit.");
 
-		// Server player placement remains confined to the two existing arena owners.
+		// The Server projects every request onto this active world's authored navigation.
+		// Bern needs this same Debug-only path to inspect the separate Bern3 deck.
 		if (controller)
 		{
 			const bool_t freeCamera = !camera->Is_FollowRequested() &&
@@ -9854,7 +9867,8 @@ void CMainApp::RenderArenaCameraAndPlayerControls()
 			if (ImGui::Button("Move Player"))
 			{
 				const auto world = nullptr != valtan ? LostArk::Shared::WORLD_ID::VALTAN_ARENA :
-					LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA;
+					(nullptr != bern ? LostArk::Shared::WORLD_ID::BERN :
+						LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA);
 				if (controller->Begin_DebugPlayerPlacement(world))
 					camera->Set_MouseLookEnabled(false);
 			}
@@ -11080,8 +11094,7 @@ void CMainApp::RenderValtanArenaControls()
 	if (ETOUI(LEVEL::VALTAN_ARENA) != CGameInstance::Get().Get_CurrentLevelID())
 		return;
 	Engine::CProfilerScope panelScope(CGameInstance::Get().Get_Profiler(), "ImGui.Hub.ValtanArena");
-	if (!ImGui::CollapsingHeader("Valtan Arena", ImGuiTreeNodeFlags_DefaultOpen))
-		return;
+	ImGui::SeparatorText("Valtan Arena / Wave Monsters");
 	CLevel_ValtanArena* pArena = CLevel_ValtanArena::Get_Active();
 	if (nullptr == pArena)
 	{

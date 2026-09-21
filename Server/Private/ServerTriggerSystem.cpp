@@ -169,7 +169,8 @@ bool LostArk::Server::CServerTriggerSystem::Update_PlayerMotion(
 	const float fixedDeltaSeconds) const
 {
 	using namespace LostArk::Shared;
-	if (PLAYER_ACTION_STATE::TRIGGER_MOVE != player.eAction)
+	if (PLAYER_ACTION_STATE::TRIGGER_MOVE != player.eAction &&
+		PLAYER_ACTION_STATE::WALL_CLIMB != player.eAction)
 	{
 		return false;
 	}
@@ -201,13 +202,39 @@ bool LostArk::Server::CServerTriggerSystem::Update_PlayerMotion(
 		move.fDurationSeconds,
 		move.fElapsedSeconds + fixedDeltaSeconds);
 	const float ratio = move.fElapsedSeconds / move.fDurationSeconds;
-	player.fPositionX = move.fStartX +
-		(move.fTargetX - move.fStartX) * ratio;
-	player.fPositionY = move.fStartY +
-		(move.fTargetY - move.fStartY) * ratio +
-		4.f * move.fArcHeight * ratio * (1.f - ratio);
-	player.fPositionZ = move.fStartZ +
-		(move.fTargetZ - move.fStartZ) * ratio;
+	if (move.TrackSamples.empty())
+	{
+		player.fPositionX = move.fStartX +
+			(move.fTargetX - move.fStartX) * ratio;
+		player.fPositionY = move.fStartY +
+			(move.fTargetY - move.fStartY) * ratio +
+			4.f * move.fArcHeight * ratio * (1.f - ratio);
+		player.fPositionZ = move.fStartZ +
+			(move.fTargetZ - move.fStartZ) * ratio;
+	}
+	else
+	{
+		/* TrackMove samples are absolute original positions.  The Server owns
+		interpolation between them so every recipient sees its replicated truth,
+		rather than a Client-side spline approximation. */
+		const float elapsedMs = move.fElapsedSeconds * 1000.f;
+		const SERVER_TRIGGER_MOVE_SAMPLE* before = &move.TrackSamples.front();
+		const SERVER_TRIGGER_MOVE_SAMPLE* after = &move.TrackSamples.back();
+		for (std::size_t index = 1u; index < move.TrackSamples.size(); ++index)
+		{
+			if (elapsedMs <= static_cast<float>(move.TrackSamples[index].iTimeMs))
+			{
+				after = &move.TrackSamples[index];
+				before = &move.TrackSamples[index - 1u];
+				break;
+			}
+		}
+		const float spanMs = static_cast<float>(after->iTimeMs - before->iTimeMs);
+		const float local = spanMs > 0.f ? (elapsedMs - static_cast<float>(before->iTimeMs)) / spanMs : 1.f;
+		player.fPositionX = before->fPositionX + (after->fPositionX - before->fPositionX) * local;
+		player.fPositionY = before->fPositionY + (after->fPositionY - before->fPositionY) * local;
+		player.fPositionZ = before->fPositionZ + (after->fPositionZ - before->fPositionZ) * local;
+	}
 
 	if (ratio >= 1.f)
 	{
@@ -586,7 +613,8 @@ void LostArk::Server::CServerTriggerSystem::Evaluate_Entries(
 	{
 		for (const auto& [playerId, player] : players)
 		{
-			if (LostArk::Shared::PLAYER_ACTION_STATE::TRIGGER_MOVE == player.eAction)
+				if (LostArk::Shared::PLAYER_ACTION_STATE::TRIGGER_MOVE == player.eAction ||
+					LostArk::Shared::PLAYER_ACTION_STATE::WALL_CLIMB == player.eAction)
 				m_TriggerMoveInFlight.insert(playerId);
 			else if (0u != m_TriggerMoveInFlight.erase(playerId))
 				landed.insert(playerId);
@@ -661,7 +689,8 @@ void LostArk::Server::CServerTriggerSystem::Evaluate_Entries(
 				/* A Bern move can finish before the next evaluation sees it in flight, so the
 				   landing is recorded the moment it starts. */
 				if (LostArk::Shared::WORLD_ID::BERN == m_eWorldId &&
-					LostArk::Shared::PLAYER_ACTION_STATE::TRIGGER_MOVE == player.eAction)
+					(LostArk::Shared::PLAYER_ACTION_STATE::TRIGGER_MOVE == player.eAction ||
+					 LostArk::Shared::PLAYER_ACTION_STATE::WALL_CLIMB == player.eAction))
 				{
 					m_TriggerMoveInFlight.insert(playerId);
 				}
@@ -675,6 +704,7 @@ void LostArk::Server::CServerTriggerSystem::Evaluate_Entries(
 			}
 			else if (LostArk::Shared::PLAYER_ACTION_STATE::NONE != player.eAction &&
 				LostArk::Shared::PLAYER_ACTION_STATE::TRIGGER_MOVE != player.eAction &&
+				LostArk::Shared::PLAYER_ACTION_STATE::WALL_CLIMB != player.eAction &&
 				(WORLD_TRIGGER_ACTION_KIND::MOVE_PLAYER ==
 					trigger.Definition.TriggerActions.front().eKind ||
 				WORLD_TRIGGER_ACTION_KIND::CHANGE_LEVEL ==
@@ -831,22 +861,38 @@ bool LostArk::Server::CServerTriggerSystem::Begin_MovePlayer(
 	player.hasBufferedComboInput = false;
 	player.PendingCommand.Clear();
 	player.TriggerMove = {};
-	player.TriggerMove.fStartX = player.fPositionX;
-	player.TriggerMove.fStartY = player.fPositionY;
-	player.TriggerMove.fStartZ = player.fPositionZ;
-	player.TriggerMove.fTargetX = action.fTargetX;
-	player.TriggerMove.fTargetY = action.fTargetY;
-	player.TriggerMove.fTargetZ = action.fTargetZ;
-	player.TriggerMove.fDurationSeconds = action.fDurationSeconds;
+	const bool wallClimb = WORLD_TRIGGER_MOVE_STYLE::WALL_CLIMB == action.eMoveStyle;
+	if (wallClimb && action.TrackSamples.size() < 2u)
+		return false;
+	player.TriggerMove.fStartX = wallClimb ? action.TrackSamples.front().fPositionX : player.fPositionX;
+	player.TriggerMove.fStartY = wallClimb ? action.TrackSamples.front().fPositionY : player.fPositionY;
+	player.TriggerMove.fStartZ = wallClimb ? action.TrackSamples.front().fPositionZ : player.fPositionZ;
+	player.TriggerMove.fTargetX = wallClimb ? action.TrackSamples.back().fPositionX : action.fTargetX;
+	player.TriggerMove.fTargetY = wallClimb ? action.TrackSamples.back().fPositionY : action.fTargetY;
+	player.TriggerMove.fTargetZ = wallClimb ? action.TrackSamples.back().fPositionZ : action.fTargetZ;
+	player.TriggerMove.fDurationSeconds = wallClimb ?
+		static_cast<float>(action.TrackSamples.back().iTimeMs) / 1000.f : action.fDurationSeconds;
 	player.TriggerMove.fElapsedSeconds = 0.f;
-	player.TriggerMove.fArcHeight = action.fArcHeight;
+	player.TriggerMove.fArcHeight = wallClimb ? 0.f : action.fArcHeight;
+	if (wallClimb)
+	{
+		player.TriggerMove.TrackSamples.reserve(action.TrackSamples.size());
+		for (const WORLD_TRIGGER_MOVE_SAMPLE& sample : action.TrackSamples)
+			player.TriggerMove.TrackSamples.push_back({ sample.iTimeMs,
+				sample.fPositionX, sample.fPositionY, sample.fPositionZ });
+		player.fPositionX = player.TriggerMove.fStartX;
+		player.fPositionY = player.TriggerMove.fStartY;
+		player.fPositionZ = player.TriggerMove.fStartZ;
+		player.fYawDegrees = action.fFacingYawDegrees;
+	}
 	player.TriggerMove.eKoukuHudModeOnArrival = action.eKoukuHudModeOnArrival;
 	player.TriggerMove.isActive = true;
 	const float deltaX = action.fTargetX - player.fPositionX;
 	const float deltaZ = action.fTargetZ - player.fPositionZ;
-	if (deltaX * deltaX + deltaZ * deltaZ > 0.000001f)
+	if (!wallClimb && deltaX * deltaX + deltaZ * deltaZ > 0.000001f)
 		player.fYawDegrees = std::atan2(deltaX, deltaZ) * RADIANS_TO_DEGREES;
-	player.eAction = PLAYER_ACTION_STATE::TRIGGER_MOVE;
+	player.eAction = wallClimb ? PLAYER_ACTION_STATE::WALL_CLIMB :
+		PLAYER_ACTION_STATE::TRIGGER_MOVE;
 	player.iActionStartTick = actionStartTick;
 	return true;
 }

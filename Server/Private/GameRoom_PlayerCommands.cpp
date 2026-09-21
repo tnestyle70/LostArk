@@ -713,16 +713,19 @@ bool LostArk::Server::CGameRoom::Resolve_SquareHoleDestination(
 	using namespace LostArk::Shared;
 	if (0u == squareHoleId)
 		return false;
-	/* Authored like cardmaze.return: a disabled triggerBox whose single movePlayer
-	target is the landing point, editable in MapTool World Gameplay. */
-	const std::string placementId = "squarehole." + std::to_string(squareHoleId);
+	/* Every map-travel destination is a disabled triggerBox with one movePlayer target,
+	editable in MapTool World Gameplay. The map's Set Sail button is explicitly routed to
+	the authored ship row rather than smuggling its coordinates through the packet. */
+	const std::string placementId =
+		WORLD_MAP_SHIP_TRAVEL_DESTINATION_ID == squareHoleId ? "ship" :
+		"squarehole." + std::to_string(squareHoleId);
 	const WORLD_BOOTSTRAP_PLACEMENT* destination = Find_Placement(placementId);
 	if (nullptr == destination ||
 		WORLD_BOOTSTRAP_KIND::TRIGGER_BOX != destination->eKind ||
 		1u != destination->TriggerActions.size() ||
 		WORLD_TRIGGER_ACTION_KIND::MOVE_PLAYER != destination->TriggerActions.front().eKind)
 	{
-		m_strStatus = "Square hole has no movePlayer placement in this world: " + placementId;
+		m_strStatus = "World map travel has no movePlayer placement in this world: " + placementId;
 		return false;
 	}
 	const WORLD_TRIGGER_ACTION& move = destination->TriggerActions.front();
@@ -737,7 +740,7 @@ bool LostArk::Server::CGameRoom::Resolve_SquareHoleDestination(
 		Validate_DebugTeleportDestination(player, target, ground);
 	if (DEBUG_TELEPORT_RESULT::ACCEPTED != verdict)
 	{
-		m_strStatus = "Square hole landing was refused: " + placementId +
+		m_strStatus = "World map travel landing was refused: " + placementId +
 			" result=" + std::to_string(static_cast<int>(verdict));
 		return false;
 	}

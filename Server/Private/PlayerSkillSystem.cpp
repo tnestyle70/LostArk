@@ -1403,10 +1403,12 @@ bool LostArk::Server::CPlayerSkillSystem::Can_ArmPlayerHitReaction(
 	if (forcePush)
 		return player.iCurrentHp != 0u && player.isCombatReady && !player.bPatternBound && !player.bArenaEjectionActive &&
 			player.eAction != PLAYER_ACTION_STATE::DEAD && player.eAction != PLAYER_ACTION_STATE::FALLING &&
-			player.eAction != PLAYER_ACTION_STATE::GRABBED && player.eAction != PLAYER_ACTION_STATE::TRIGGER_MOVE;
+			player.eAction != PLAYER_ACTION_STATE::GRABBED && player.eAction != PLAYER_ACTION_STATE::TRIGGER_MOVE &&
+			player.eAction != PLAYER_ACTION_STATE::WALL_CLIMB;
 	return !(0u == player.iCurrentHp ||
 		PLAYER_ACTION_STATE::DEAD == player.eAction ||
 		PLAYER_ACTION_STATE::TRIGGER_MOVE == player.eAction ||
+		PLAYER_ACTION_STATE::WALL_CLIMB == player.eAction ||
 		PLAYER_ACTION_STATE::KNOCKDOWN == player.eAction ||
 		PLAYER_ACTION_STATE::FEAR == player.eAction ||
 		player.fKnockbackRemainingSeconds > 0.f ||

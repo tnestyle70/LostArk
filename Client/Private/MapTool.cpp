@@ -96,6 +96,7 @@ void Client::CMapTool::SetOpen(const bool_t isOpen)
 	{
 		/* Closing the tool hands the camera and every cutscene actor back
 		   while the Level that owns them is still alive. */
+		Set_CameraPreviewSurroundingsCleared(false);
 		Stop_EditorCutscene();
 		Restore_DestructionPreview();
 		Refresh_DestructionHighlight();
@@ -194,6 +195,10 @@ void Client::CMapTool::Update(
 	   cutscene flags below: a Valtan cutscene sets none of them, so the
 	   clock would never advance after Play. */
 	Update_EditorCutscene(fTimeDelta);
+	/* Server and cutscene code can replace the Deploy state while it plays.
+	   Reapply the independent camera overlay after those updates. */
+	if (m_bCameraPreviewSurroundingsCleared)
+		Refresh_CameraPreviewSurroundings();
 	Update_CutsceneArenaRise(fTimeDelta, isMapAuthoringLevel);
 	if (isMapAuthoringLevel && !m_bRuntimeAuthoring)
 		Update_MarioIntro();

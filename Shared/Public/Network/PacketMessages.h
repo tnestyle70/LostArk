@@ -481,11 +481,12 @@ namespace LostArk::Shared
 		CPacketReader& reader,
 		C2S_USE_ESTHER_SKILL& message);
 
-	/* World map square hole use. iSquareHoleId is the 1-based row of the zone's
-	square-hole document the Client clicked. The Server resolves it to the world's
-	"squarehole.<id>" placement (a disabled triggerBox row with one movePlayer event
-	in that area's Gameplay.world.json) and refuses the request, playing no song, when
-	the world has none or the landing is not standable. The timeline is Server owned and
+	/* World-map travel. Normal ids are the 1-based rows of the zone's square-hole
+	document; WORLD_MAP_SHIP_TRAVEL_DESTINATION_ID is reserved for the map's Set Sail
+	button and resolves to the disabled "ship" triggerBox. Every destination owns one
+	movePlayer event in Gameplay.world.json, so MapTool remains the only source of its
+	landing coordinates. The Server refuses a missing or unstandable landing before the
+	song starts. The timeline is Server owned and
 	shared with the Client screen fade: the song runs SQUAREHOLE_SONG_DURATION_MS, the
 	screen finishes fading to black exactly when the song ends (fade length
 	SQUAREHOLE_BLACKOUT_FADE_MS), stays black for SQUAREHOLE_BLACKOUT_HOLD_MS while the
@@ -493,6 +494,9 @@ namespace LostArk::Shared
 	inline constexpr std::uint32_t SQUAREHOLE_SONG_DURATION_MS = 3000u;
 	inline constexpr std::uint32_t SQUAREHOLE_BLACKOUT_FADE_MS = 600u;
 	inline constexpr std::uint32_t SQUAREHOLE_BLACKOUT_HOLD_MS = 400u;
+	/* UINT16_MAX is outside the authored 1-based square-hole row range and keeps the
+	existing packet framing stable while making the ship destination explicit. */
+	inline constexpr std::uint16_t WORLD_MAP_SHIP_TRAVEL_DESTINATION_ID = 0xffffu;
 	/* Bern castle/library travel (movePlayer boxes of the Bern world). The Server keeps the player
 	standing BERN_TRAVEL_HOLD_MS after the trigger action starts (PLAYER_ACTION_STATE::TRIGGER_MOVE)
 	and only then travels. The Client fades the screen to black over BERN_TRAVEL_FADE_OUT_MS from
@@ -1427,11 +1431,15 @@ namespace LostArk::Shared
 		skill the Server admitted for the ridden vehicle and iActionStartTick its
 		start; the room owns the length and any authored root motion. */
 		VEHICLE_SKILL,
-		/* The player stands and plays the square-hole song (world map square hole
-		use). The room owns the fixed length SQUAREHOLE_SONG_DURATION_MS and returns
-		the player to NONE in place; no teleport follows yet. Appended last, same
-		wire rule as FALLING. */
+		/* The player stands and plays the world-map travel song. The room owns the
+		fixed length SQUAREHOLE_SONG_DURATION_MS, moves the player at the black-hold
+		boundary, then returns them to NONE. Appended last, same wire rule as FALLING. */
 		SQUAREHOLE_SONG,
+		/* A Server-authored TrackMove drives the body through a climb path.  It is
+		deliberately separate from TRIGGER_MOVE: an ordinary crossing may use the
+		terrain-jump presentation, while this state keeps the temporary idle pose
+		until per-class climb clips are installed. */
+		WALL_CLIMB,
 		END
 	};
 

@@ -251,7 +251,8 @@ namespace
 			((LostArk::Shared::PLAYER_ACTION_STATE::SKILL == snapshot.eAction &&
 				snapshot.iSkillId != LostArk::Shared::INVALID_SKILL_ID &&
 				0 != snapshot.iActionStartTick) ||
-			 (LostArk::Shared::PLAYER_ACTION_STATE::TRIGGER_MOVE == snapshot.eAction &&
+			 ((LostArk::Shared::PLAYER_ACTION_STATE::TRIGGER_MOVE == snapshot.eAction ||
+			   LostArk::Shared::PLAYER_ACTION_STATE::WALL_CLIMB == snapshot.eAction) &&
 				snapshot.iSkillId == LostArk::Shared::INVALID_SKILL_ID &&
 				0 != snapshot.iActionStartTick) ||
 			 /* A fall is timed: the client seeks the descent from this tick when
@@ -281,6 +282,7 @@ namespace
 			 ((LostArk::Shared::PLAYER_ACTION_STATE::SKILL != snapshot.eAction &&
 				LostArk::Shared::PLAYER_ACTION_STATE::VEHICLE_SKILL != snapshot.eAction &&
 				LostArk::Shared::PLAYER_ACTION_STATE::TRIGGER_MOVE != snapshot.eAction &&
+				LostArk::Shared::PLAYER_ACTION_STATE::WALL_CLIMB != snapshot.eAction &&
 				LostArk::Shared::PLAYER_ACTION_STATE::FALLING != snapshot.eAction &&
 				LostArk::Shared::PLAYER_ACTION_STATE::KNOCKDOWN != snapshot.eAction &&
 				LostArk::Shared::PLAYER_ACTION_STATE::FEAR != snapshot.eAction &&

@@ -30,9 +30,9 @@ by the replicated placement id (EFTable_Npc.MapSymbolIndex). Chrome per the in-g
 title band, zone name centred on top (titleTF), continent name top-left (continentNameTF), search
 box (display only), the square-hole / legend toggles and their tree panel (WorldMapPanels.json:
 ZoneBase rows in SortOrder with the current zone expanded to its square holes, MapLegend
-categories), the voyage / memo bottom buttons (display only) and the square-hole confirm dialog
-(dialog.gfx DialogWindow strings). The window decides nothing about gameplay: a confirmed square
-hole is handed out through Take_SquareHoleRequest for the level's controller to submit.
+categories), the voyage / memo bottom buttons and the square-hole confirm dialog (dialog.gfx
+DialogWindow strings). The Set Sail button and a confirmed square hole are only handed out as
+requests; the level controller owns the Server round trip and this view never moves a player.
 
 Controls: M toggles (CMainApp), Esc / close X closes (Esc closes the dialog first), left-drag
 pans, wheel zooms about the view center, bottom-left buttons = retail theWholeWorld_btn (fit the
@@ -69,6 +69,9 @@ public:
 	/* One confirmed square hole since the last call (1-based id of WorldMapSquareHoles.json);
 	the window closes itself on the confirm. */
 	bool_t Take_SquareHoleRequest(uint16_t& outHoleId);
+	/* One Set Sail click since the last call. The map closes before the controller starts the
+	Server-owned song, blackout, and ship-trigger landing flow. */
+	bool_t Take_ShipTravelRequest();
 
 private:
 	struct AREA
@@ -199,7 +202,7 @@ private:
 	wstring_t						m_strConfirmOk;
 	wstring_t						m_strConfirmCancel;
 	/* Bottom bar captions (sys.voyage.ui_worldmap_liner_btn,
-	sys.squarehole.direct_departure_btn_worldmap, sys.map.memo_btn). Display only. */
+	sys.squarehole.direct_departure_btn_worldmap, sys.map.memo_btn). */
 	wstring_t						m_strLinerButton;
 	wstring_t						m_strOceanButton;
 	wstring_t						m_strMemoButton;
@@ -215,6 +218,7 @@ private:
 	/* Reference-resolution rect of the open dialog; Render_Text drops map text inside it. */
 	f32_t		m_fDialogX = 0.f, m_fDialogY = 0.f, m_fDialogW = 0.f, m_fDialogH = 0.f;
 	uint16_t	m_iPendingHoleId = 0;
+	bool_t		m_bPendingShipTravel = false;
 	/* Map point (uv of the area image) shown at the view center. */
 	f32_t		m_fCenterU = 0.5f;
 	f32_t		m_fCenterV = 0.5f;

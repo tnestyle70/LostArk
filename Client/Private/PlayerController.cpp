@@ -1238,7 +1238,8 @@ bool_t Client::CPlayerController::Begin_DebugPlayerPlacement(
 	using LostArk::Shared::WORLD_ID;
 	if (!m_debugPlacementEnabled || Is_DebugPlayerPlacementPending() ||
 		m_pLocalCharacter.expired() || nullptr == m_pCommandSink ||
-		(WORLD_ID::VALTAN_ARENA != worldId && WORLD_ID::KAKULSAYDON_ARENA != worldId))
+		(WORLD_ID::VALTAN_ARENA != worldId && WORLD_ID::KAKULSAYDON_ARENA != worldId &&
+			WORLD_ID::BERN != worldId))
 	{
 		if (!Is_DebugPlayerPlacementPending())
 			m_debugPlacementStatus = "Move Player requires a live player and F6 free camera.";
@@ -1276,7 +1277,8 @@ bool_t Client::CPlayerController::Request_DebugTeleportToPosition(
 	using LostArk::Shared::WORLD_ID;
 	if (Is_DebugPlayerPlacementPending() || m_pLocalCharacter.expired() ||
 		nullptr == m_pCommandSink ||
-		(WORLD_ID::VALTAN_ARENA != worldId && WORLD_ID::KAKULSAYDON_ARENA != worldId) ||
+		(WORLD_ID::VALTAN_ARENA != worldId && WORLD_ID::KAKULSAYDON_ARENA != worldId &&
+			WORLD_ID::BERN != worldId) ||
 		!std::isfinite(x) || !std::isfinite(y) || !std::isfinite(z))
 	{
 		if (!Is_DebugPlayerPlacementPending())

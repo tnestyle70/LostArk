@@ -32,6 +32,8 @@ struct FMapStaticInstance final
 	bool_t Visible = true;
 	// Cinematic stage overlay, see CMapAssetObject::Set_StageSuppressed.
 	bool_t Suppressed = false;
+	// Map Tool camera inspection overlay. It does not alter the stage overlay.
+	bool_t CameraPreviewSuppressed = false;
 	MAP_FRUSTUM_RUNTIME_STATE FrustumState{};
 };
 
@@ -85,6 +87,11 @@ public:
 	/* Hides one instance from the draw and shadow lists without changing its
 	   authored Visible flag, so clearing it restores exactly what was there. */
 	HRESULT Set_InstanceSuppressed(
+		uint64_t placementId,
+		bool_t suppressed);
+	/* Preview-only suppression used while reviewing camera cuts. It is kept
+	   separate from the cinematic stage overlay so either can restore alone. */
+	HRESULT Set_InstanceCameraPreviewSuppressed(
 		uint64_t placementId,
 		bool_t suppressed);
 

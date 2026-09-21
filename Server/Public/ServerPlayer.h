@@ -17,6 +17,14 @@
 
 namespace LostArk::Server
 {
+	struct SERVER_TRIGGER_MOVE_SAMPLE
+	{
+		std::uint32_t iTimeMs = 0u;
+		float fPositionX = 0.f;
+		float fPositionY = 0.f;
+		float fPositionZ = 0.f;
+	};
+
 	struct SERVER_TRIGGER_MOVE
 	{
 		/* Empty for a validated direct move such as the Debug Mario jump.
@@ -31,6 +39,9 @@ namespace LostArk::Server
 		float fDurationSeconds = 0.f;
 		float fElapsedSeconds = 0.f;
 		float fArcHeight = 0.f;
+		/* Empty is the established direct/arc move.  A populated list is an
+		authored absolute TrackMove sampled by the Server, never by the Client. */
+		std::vector<SERVER_TRIGGER_MOVE_SAMPLE> TrackSamples;
 		LostArk::Shared::KOUKU_HUD_MODE eKoukuHudModeOnArrival = LostArk::Shared::KOUKU_HUD_MODE::END;
 		bool isActive = false;
 		/* The player stands still for fHoldSeconds after the action starts and only then travels

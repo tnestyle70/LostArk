@@ -392,8 +392,10 @@ HRESULT CMapStaticBatchObject::Update_Instance(
 			--m_iAuthoredVisibleInstanceCount;
 	}
 	const bool_t suppressed = current.Suppressed;
+	const bool_t cameraPreviewSuppressed = current.CameraPreviewSuppressed;
 	current = instance;
 	current.Suppressed = suppressed;
+	current.CameraPreviewSuppressed = cameraPreviewSuppressed;
     m_InstanceLinearScaleBounds[iter->second] = LinearScaleBound(current.World);
     m_bBatchBoundsDirty = true;
 	m_bShadowInstancesDirty = true;
@@ -454,6 +456,26 @@ HRESULT CMapStaticBatchObject::Set_InstanceSuppressed(
 		instance.Suppressed = suppressed;
 		// Batch bounds stay conservative (they still cover this instance); only
 		// the draw and shadow payloads and the cached static shadow change.
+		if (m_iStaticShadowRevision != 0u)
+			++m_iStaticShadowRevision;
+		m_bShadowInstancesDirty = true;
+		m_bVisibleInstancesDirty = true;
+	}
+	return S_OK;
+}
+
+HRESULT CMapStaticBatchObject::Set_InstanceCameraPreviewSuppressed(
+	const uint64_t placementId,
+	const bool_t suppressed)
+{
+	const auto iter = m_PlacementLookup.find(placementId);
+	if (iter == m_PlacementLookup.end() || iter->second >= m_Instances.size())
+		return HRESULT_FROM_WIN32(ERROR_NOT_FOUND);
+
+	FMapStaticInstance& instance = m_Instances[iter->second];
+	if (instance.CameraPreviewSuppressed != suppressed)
+	{
+		instance.CameraPreviewSuppressed = suppressed;
 		if (m_iStaticShadowRevision != 0u)
 			++m_iStaticShadowRevision;
 		m_bShadowInstancesDirty = true;
@@ -637,7 +659,8 @@ HRESULT CMapStaticBatchObject::Upload_VisibleInstances(
 	for (size_t index = 0u; index < m_Instances.size(); ++index)
 	{
         FMapStaticInstance& instance = m_Instances[index];
-		if (!instance.Visible || instance.Suppressed)
+		if (!instance.Visible || instance.Suppressed ||
+			instance.CameraPreviewSuppressed)
 			continue;
 
 		MAP_FRUSTUM_CULL_DECISION decision{};
@@ -767,6 +790,7 @@ HRESULT CMapStaticBatchObject::Upload_ShadowInstances()
 	for (const FMapStaticInstance& instance : m_Instances)
 	{
 		if (!instance.Visible || instance.Suppressed ||
+			instance.CameraPreviewSuppressed ||
 			(hasLightSnapshot && !CMapAssetRenderUtils::Intersects_ShadowCullSnapshot(
 				lightSnapshot, instance.WorldBoundsCenter, instance.WorldBoundsRadius)))
 			continue;

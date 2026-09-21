@@ -2803,3 +2803,19 @@ lease에 연결한다. 저장된 DURATION은 timing 존재와 PRODUCT 의미의 
 - 원본 SkelControl translation의 cm와 설치 Character 본 로컬 단위를 구분한다. armature scale100을 실측한 본체에서는 해당 translation에0.01을 적용하고, 회전·scale·다른 clip은 보존한다. 얼굴이 늘어나는 현상을 애니메이션 누락이나 Character 경로 오류로 단정하지 않는다.
 - 검증 도중 수정된 후보가 이전 통합 staging에 자동 반영되지는 않는다. 최종 검증한 파일 SHA와 설치 직전 staging·설치 후 파일 SHA를 연결한다. 형식 version 숫자만 바꾼 effect는 필수 root 누락으로 거부되며 admission 완화로 우회하지 않는다.
 - 결과와 설치 증거는 `09-21/2026-09-21_KOUKU_COMPLETE_PLAY_WORLD_AND_BINGO_RESULT.md`의G06/G07을 따른다. 실제 화면·음향과 프레임 시간은 사용자 확인 전 자동 검사 성공으로 대신 기록하지 않는다.
+
+### Debug Server 웨이브 트리거와 수동 재소환
+
+- Kouku `Book1_Monsters`/`Book2_Monsters`와 Valtan `Stage_1`/`Stage_2`는 Debug Server에서 밟아도, G를 눌러도 시작하지 않는다. 대신 F1 `Normal Monster 1/2`(쿠크는 `KoukuSaydon Arena`의 `Bingo Board` 아래, 발탄은 아레나 안에서만 보이는 `Valtan Arena` 헤더)로 다시 소환한다. Release Server는 이전처럼 밟으면 시작한다. Debug에서 "밟았는데 안 나온다"를 트리거 데이터나 navigation 결함으로 조사하기 전에 빌드 구성을 확인한다.
+- `Stage_MiniBoss_Spawn`(`spawn.valtan.stage02.miniboss`)은 이 네 개에 속하지 않아 Debug에서도 밟으면 시작한다. `Stage_2`가 시작하는 그룹은 `spawn.valtan.stage03`이며 G로 움직이는 `Stage_3` 이동 상자와 다른 기능이다.
+- 억제는 컴파일 시 `_DEBUG`이고 `CGameRoom`이 `CServerTriggerSystem::Set_SuppressWaveMonsterTriggers(true)`를 Debug에서만 호출한다. 이 상자들의 제품 동작은 Release 빌드에서 확인한다. 무엇이 나오지 않았는지 볼 때 `[Trigger] Fire Trigger=...` 줄이 Server 콘솔에 찍혔는지가 첫 단서다.
+- `C2S_DEBUG_RESUMMON_WAVE_MONSTERS`는 protocol 100에 추가됐다. protocol 99의 무적 구역 연출 펄스와 별개이므로, 두 기능을 함께 가진 Client와 Server는 같은 protocol 100으로 빌드해야 한다.
+- 근거와 검증 범위는 `09-21/2026-09-21_DEBUG_WAVE_MONSTER_BUTTONS_RESULT.md`에 기록한다.
+
+### MapTool 컷신에서 새 V1 월드 이펙트를 즉시 seek할 때
+
+- MapTool은 MainApp의 일반 `Commit_PendingSpawns` 뒤에 컷신을 seek한다. 같은 editor frame에서 태어난 V1 world-root 이펙트를 다음 frame까지 pending으로 남긴 채 root/외부 시계 sample을 실패로 처리하면, 하나의 effect 실패가 컷신 배우 전체 해제로 확대된다. `TARGET_SET`의 명시적 editor-only flag로 해당 handle만 scoped commit한 뒤 seek하고, 게임 Level/전투 consumer의 post-update 경계를 전역으로 바꾸지 않는다. `Queued admitted Effect`는 resource/document 실패 증거가 아니라 commit 전 상태일 수 있다.
+
+### V1 bounded source loop에 포함된 보조 light
+
+원본 Cascade source가 `EmitterLoops=0` sprite/mesh/ribbon emitter와 같은 source visual program의 `LIGHT`/`light` carrier를 함께 가질 수 있다. bounded source-loop 검증은 반복 방출을 수행하는 admitted particle/ribbon carrier를 최소 하나 요구하되, 그 보조 light를 particle/ribbon이 아니라는 이유로 거절해서는 안 된다. 반대로 light만으로 loop0 조건을 만족시키면 안 된다. `effect.valtan.cinematic.trash.actor106.at667`이 이 경우이며, 원본 emitter count나 `loopEffectToDuration`을 변경해 우회하지 않는다.

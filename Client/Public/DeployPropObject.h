@@ -101,6 +101,14 @@ public:
 
 	bool_t Set_State(DEPLOY_PROP_STATE state);
 	DEPLOY_PROP_STATE Get_State() const { return m_State; }
+	/* Camera-shot inspection can hide a prop without changing the Server-owned
+	   persistent Deploy state. This overlay remains in effect across state
+	   replication and authored cutscene sampling until the tool restores it. */
+	void Set_CameraPreviewSuppressed(bool_t suppressed);
+	bool_t Is_CameraPreviewSuppressed() const
+	{
+		return m_bCameraPreviewSuppressed;
+	}
 	bool_t Apply_SurfacePresentation(
 		const DEPLOY_SURFACE_PRESENTATION_PACKET& packet);
 	const DEPLOY_SURFACE_PRESENTATION_PACKET& Get_SurfacePresentation() const
@@ -316,6 +324,7 @@ private:
 	bool_t m_bDebrisPreviewActive = false;
 	bool_t m_bDebrisSuppressSource = false;
 	bool_t m_bTransientDestructionSuppressed = false;
+	bool_t m_bCameraPreviewSuppressed = false;
 	DEBRIS_PRESENTATION_OWNER m_eDebrisPresentationOwner =
 		DEBRIS_PRESENTATION_OWNER::NONE;
 	shared_ptr<CShader> m_pShaderCom = { nullptr };
