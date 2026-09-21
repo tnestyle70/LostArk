@@ -384,7 +384,13 @@ bool LostArk::Server::CPlayerSkillSystem::Try_StartInternal(
 
 	/* A combo continuation, or a running action that has reached one of its own
 	authored cancel windows, is the only reason to accept input mid-action.
-	Everything else keeps the original guard. */
+	Everything else keeps the original guard.
+
+	The Space dodge is its own input in the original: its window usually opens
+	before, and always covers, the skill window. So the dodge answers to either
+	list while every other skill still answers to the skill list alone. */
+	const bool isDodge = PLAYER_SKILL_KIND::ACTIVE == skill->eSkillKind &&
+		"SPACE" == skill->strInputSlot;
 	if (!isStandup && PLAYER_ACTION_STATE::NONE != player.eAction)
 	{
 		const PLAYER_SKILL_DEFINITION* running =
@@ -392,9 +398,12 @@ bool LostArk::Server::CPlayerSkillSystem::Try_StartInternal(
 				catalog.Find_Skill(player.iCurrentSkillId) : nullptr;
 		if (nullptr != running &&
 			command.iSkillId != player.iCurrentSkillId &&
-			Is_InsideCancelWindow(
+			(Is_InsideCancelWindow(
 				*running, player.iComboStage,
-				player.fActionElapsedSeconds, false))
+				player.fActionElapsedSeconds, PLAYER_CANCEL_INPUT::SKILL) ||
+			(isDodge && Is_InsideCancelWindow(
+				*running, player.iComboStage,
+				player.fActionElapsedSeconds, PLAYER_CANCEL_INPUT::DODGE))))
 		{
 			/* Fall through to the cooldown, resource and stance checks below:
 			the cancel opens the door, it does not pay for the skill.
@@ -1264,8 +1273,23 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 
 	const bool holdLeavesLoop = isHold && 2u == player.iComboStage &&
 		player.hasReleasedHold;
-	const bool holdSkipsLoop = isHold && 1u == player.iComboStage &&
+	/* A start stage whose comboAdvanceMs ends before its own motion is a
+	branching take-off (Guardian Knight glide): held past that point it hands
+	off to the loop right there, released before it the motion plays out to its
+	own landing and the action ends without the loop or the end stage. A start
+	stage advancing at its full length keeps the charge contract, where an
+	early release still fires the end stage. */
+	const bool holdBranchStart = isHold && 1u == player.iComboStage &&
+		comboAdvanceMs < durationMs;
+	const bool holdBranchesToLoop = holdBranchStart &&
+		!player.hasReleasedHold &&
+		player.fActionElapsedSeconds >=
+			static_cast<float>(comboAdvanceMs) * MILLISECONDS_TO_SECONDS;
+	const bool holdEndsAfterStart = holdBranchStart &&
 		player.hasReleasedHold &&
+		player.fActionElapsedSeconds >= durationSeconds;
+	const bool holdSkipsLoop = isHold && 1u == player.iComboStage &&
+		!holdBranchStart && player.hasReleasedHold &&
 		player.fActionElapsedSeconds >= durationSeconds;
 
 	/* A counter never advances on its own clock: only a hit taken inside the
@@ -1307,9 +1331,10 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 		(!hasPendingExplicit || defersPendingThroughAutomaticChain);
 
 	if (advancesComboStage || commitsPendingExplicit || holdLeavesLoop ||
+		holdBranchesToLoop ||
 		player.fActionElapsedSeconds >= durationSeconds)
 	{
-		if (!commitsPendingExplicit && hasNextStage)
+		if (!commitsPendingExplicit && hasNextStage && !holdEndsAfterStart)
 		{
 			/* The press that bought this stage aimed somewhere, and that is where
 			the stage plays: facing and root motion both turn to it. A hold

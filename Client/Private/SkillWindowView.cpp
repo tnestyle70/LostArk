@@ -26,6 +26,7 @@ namespace
 		case CHARACTER_CLASS_ID::ARTIST: return "Yinyangshi";
 		case CHARACTER_CLASS_ID::DIMENSIONMASTER: return "DimensionMaster";
 		case CHARACTER_CLASS_ID::WARLORD: return "Warlord";
+		case CHARACTER_CLASS_ID::GUARDIANKNIGHT: return "GuardianKnight";
 		default: return "";
 		}
 	}
@@ -40,6 +41,7 @@ namespace
 		case CHARACTER_CLASS_ID::ARTIST: return "Artist";
 		case CHARACTER_CLASS_ID::DIMENSIONMASTER: return "Dimension Master";
 		case CHARACTER_CLASS_ID::WARLORD: return "Warlord";
+		case CHARACTER_CLASS_ID::GUARDIANKNIGHT: return "Guardian Knight";
 		default: return "Unknown";
 		}
 	}

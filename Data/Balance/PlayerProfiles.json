@@ -97,6 +97,22 @@
       "identityStanceSwitchCost": 0,
       "identityCyclic": 0,
       "defaultStance": "WARLORD_NORMAL"
+    },
+    {
+      "characterClass": "GUARDIANKNIGHT",
+      "maximumHp": 50000,
+      "maximumResource": 1000,
+      "resourceRegenPerSecond": 500,
+      "attackPower": 1000,
+      "defense": 130,
+      "moveSpeed": 2.95,
+      "defenseStanceMoveSpeedScale": 1.0,
+      "maximumIdentity": 0,
+      "identityRegenPerSecond": 0,
+      "identityDrainPerSecond": 0,
+      "identityStanceSwitchCost": 0,
+      "identityCyclic": 0,
+      "defaultStance": "GUARDIANKNIGHT_HUMAN"
     }
   ]
 }

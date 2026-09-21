@@ -1,0 +1,218 @@
+{
+  "schema": "lostark.animation-skill-bindings",
+  "formatVersion": 3,
+  "animationAssetId": "GuardianKnight",
+  "characterClass": "GUARDIANKNIGHT",
+  "bindings": [
+    {
+      "skillId": 49000,
+      "clips": [
+        [
+          "ddk_att_battle_1_01"
+        ],
+        [
+          "ddk_att_battle_1_02"
+        ],
+        [
+          "ddk_att_battle_1_03"
+        ]
+      ]
+    },
+    {
+      "skillId": 49001,
+      "clips": [
+        [
+          "ddk_att_identity1_1_01"
+        ],
+        [
+          "ddk_att_identity1_1_02"
+        ],
+        [
+          "ddk_att_identity1_1_03"
+        ]
+      ]
+    },
+    {
+      "skillId": 49020,
+      "clips": [
+        "ddk_sk_lunge"
+      ]
+    },
+    {
+      "skillId": 49021,
+      "clips": [
+        [
+          "ddk_sk_flying_01"
+        ],
+        [
+          "ddk_sk_flying_02",
+          "ddk_sk_flying_02",
+          "ddk_sk_flying_02"
+        ],
+        [
+          "ddk_sk_flying_03"
+        ]
+      ]
+    },
+    {
+      "skillId": 49040,
+      "clips": [
+        "ddk_sk_transformdragon"
+      ]
+    },
+    {
+      "skillId": 49041,
+      "clips": [
+        "ddk_sk_transformhuman"
+      ]
+    },
+    {
+      "skillId": 49100,
+      "clips": [
+        "ddk_sk_cleave"
+      ]
+    },
+    {
+      "skillId": 49110,
+      "clips": [
+        [
+          "ddk_sk_wildupper_01"
+        ],
+        [
+          "ddk_sk_wildupper_02"
+        ],
+        [
+          "ddk_sk_wildupper_03"
+        ]
+      ]
+    },
+    {
+      "skillId": 49120,
+      "clips": [
+        "ddk_sk_thrust_01",
+        "ddk_sk_thrust_02",
+        "ddk_sk_thrust_03"
+      ]
+    },
+    {
+      "skillId": 49130,
+      "clips": [
+        "ddk_sk_guillotinespin_01",
+        "ddk_sk_guillotinespin_02",
+        "ddk_sk_guillotinespin_03"
+      ]
+    },
+    {
+      "skillId": 49200,
+      "clips": [
+        [
+          "ddk_sk_revenge_01"
+        ],
+        [
+          "ddk_sk_revenge_04"
+        ],
+        [
+          "ddk_sk_revenge_02"
+        ]
+      ]
+    },
+    {
+      "skillId": 49210,
+      "clips": [
+        [
+          "ddk_sk_brutalmarch_01"
+        ],
+        [
+          "ddk_sk_brutalmarch_02"
+        ],
+        [
+          "ddk_sk_brutalmarch_03"
+        ]
+      ]
+    },
+    {
+      "skillId": 49220,
+      "clips": [
+        "ddk_sk_flame_scale_01",
+        "ddk_sk_flame_scale_02"
+      ]
+    },
+    {
+      "skillId": 49230,
+      "clips": [
+        "ddk_sk_abaddonflame_01",
+        "ddk_sk_abaddonflame_02"
+      ]
+    },
+    {
+      "skillId": 49150,
+      "clips": [
+        [
+          "ddk_sk_grandfinale_01"
+        ],
+        [
+          {
+            "clip": "ddk_sk_grandfinale_02",
+            "holdLastPose": true
+          }
+        ],
+        [
+          "ddk_sk_grandfinale_03"
+        ]
+      ]
+    },
+    {
+      "skillId": 49260,
+      "clips": [
+        "ddk_sk_eurosloof_01",
+        "ddk_sk_eurosloof_02",
+        "ddk_sk_eurosloof_03"
+      ]
+    },
+    {
+      "skillId": 49270,
+      "clips": [
+        [
+          {
+            "clip": "ddk_sk_eurosflash_01",
+            "playRate": 1.5
+          }
+        ],
+        [
+          {
+            "clip": "ddk_sk_eurosflash_02",
+            "playRate": 1.5
+          }
+        ],
+        [
+          {
+            "clip": "ddk_sk_eurosflash_03",
+            "playRate": 1.5
+          }
+        ]
+      ]
+    },
+    {
+      "skillId": 49330,
+      "clips": [
+        "ddk_sk_deepimpact_01",
+        "ddk_sk_deepimpact_02",
+        "ddk_sk_deepimpact_03"
+      ]
+    },
+    {
+      "skillId": 49400,
+      "clips": [
+        "ddk_sk_prayforembereth_01",
+        "ddk_sk_prayforembereth_02",
+        "ddk_sk_prayforembereth_03"
+      ]
+    },
+    {
+      "skillId": 49420,
+      "clips": [
+        "ddk_sk_super_sanctumofembereth"
+      ]
+    }
+  ]
+}

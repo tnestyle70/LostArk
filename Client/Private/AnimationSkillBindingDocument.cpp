@@ -78,6 +78,7 @@ namespace
 		if ("ARTIST" == value) return CHARACTER_CLASS_ID::ARTIST;
 		if ("DIMENSIONMASTER" == value) return CHARACTER_CLASS_ID::DIMENSIONMASTER;
 		if ("WARLORD" == value) return CHARACTER_CLASS_ID::WARLORD;
+		if ("GUARDIANKNIGHT" == value) return CHARACTER_CLASS_ID::GUARDIANKNIGHT;
 		return CHARACTER_CLASS_ID::END;
 	}
 
@@ -91,6 +92,7 @@ namespace
 		case CHARACTER_CLASS_ID::ARTIST: return "ARTIST";
 		case CHARACTER_CLASS_ID::DIMENSIONMASTER: return "DIMENSIONMASTER";
 		case CHARACTER_CLASS_ID::WARLORD: return "WARLORD";
+		case CHARACTER_CLASS_ID::GUARDIANKNIGHT: return "GUARDIANKNIGHT";
 		default: return nullptr;
 		}
 	}
@@ -191,7 +193,8 @@ namespace
 		const ANIMATION_SKILL_CLIP& clip)
 	{
 		if (0u == clip.iPlayMs && 1.f == clip.fPlayRate &&
-			0u == clip.iSourceStartMs && clip.strClipOccurrenceId.empty())
+			0u == clip.iSourceStartMs && clip.strClipOccurrenceId.empty() &&
+			!clip.isHoldPose)
 		{
 			output << '"' << CDataJson::Escape(clip.strClipName) << '"';
 			return;
@@ -206,6 +209,8 @@ namespace
 			output << ", \"playMs\": " << clip.iPlayMs;
 		if (1.f != clip.fPlayRate)
 			output << ", \"playRate\": " << clip.fPlayRate;
+		if (clip.isHoldPose)
+			output << ", \"holdLastPose\": true";
 		output << " }";
 	}
 
@@ -978,7 +983,7 @@ bool_t Client::CAnimationSkillBindingDocument::Parse_Text(
 					stagedClip.strClipName = clip.Get_String();
 				}
 				else if (Has_OnlyKnownProperties(
-					clip, { "clip", "sourceStartMs", "playMs", "playRate", "clipOccurrenceId" }))
+					clip, { "clip", "sourceStartMs", "playMs", "playRate", "clipOccurrenceId", "holdLastPose" }))
 				{
 					const DATA_JSON_VALUE* occurrence = clip.Find("clipOccurrenceId");
 					if (occurrence && (!occurrence->Is_String() || !Is_StableToken(occurrence->Get_String())))
@@ -990,9 +995,18 @@ bool_t Client::CAnimationSkillBindingDocument::Parse_Text(
 						clip.Find("sourceStartMs");
 					const DATA_JSON_VALUE* playMs = clip.Find("playMs");
 					const DATA_JSON_VALUE* playRate = clip.Find("playRate");
+					const DATA_JSON_VALUE* holdLastPose = clip.Find("holdLastPose");
+					if (nullptr != holdLastPose && !holdLastPose->Is_Boolean())
+					{
+						outStatus = "Skill binding clip holdLastPose must be a boolean.";
+						return false;
+					}
+					if (nullptr != holdLastPose)
+						stagedClip.isHoldPose = holdLastPose->Get_Boolean();
 					if (nullptr == clipName ||
 						(nullptr == sourceStartMs && nullptr == playMs &&
-							nullptr == playRate && nullptr == occurrence) ||
+							nullptr == playRate && nullptr == occurrence &&
+							nullptr == holdLastPose) ||
 						(nullptr != sourceStartMs &&
 							!Try_ParseSourceMs(
 								*sourceStartMs, stagedClip.iSourceStartMs)) ||

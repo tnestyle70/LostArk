@@ -22,6 +22,7 @@ SOURCES = {
     "LanceMaster": "PC_FT_00", "GunSlinger": "PC_GN_F_00",
     "Slayer": "PC_WR_F_00", "Artist": "PC_SP_00",
     "DimensionMaster": "PC_SP_M_00", "Warlord": "PC_WR_00",
+    "GuardianKnight": "PC_DL_00",
 }
 CLIPS = {"terrain_jump_short": "act_jump_s_1",
          "terrain_jump_medium": "act_jump_m_1"}

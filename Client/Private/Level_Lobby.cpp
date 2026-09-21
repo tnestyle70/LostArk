@@ -36,6 +36,8 @@ namespace
 			return "Dimension Master";
 		case CHARACTER_CLASS_ID::WARLORD:
 			return "Warlord";
+		case CHARACTER_CLASS_ID::GUARDIANKNIGHT:
+			return "Guardian Knight";
 		default:
 			return "Not selected";
 		}

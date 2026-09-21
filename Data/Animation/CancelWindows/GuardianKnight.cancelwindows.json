@@ -1,0 +1,673 @@
+{
+  "schema": "lostark.animation-cancel-windows",
+  "formatVersion": 2,
+  "animationAssetId": "GuardianKnight",
+  "characterClass": "GUARDIANKNIGHT",
+  "skills": [
+    {
+      "skillId": 49000,
+      "stages": [
+        {
+          "stageIndex": 0,
+          "skillCancel": [
+            [
+              500,
+              1400
+            ]
+          ],
+          "moveCancel": [
+            [
+              500,
+              1400
+            ]
+          ],
+          "dodgeCancel": [
+            [
+              500,
+              1400
+            ]
+          ]
+        },
+        {
+          "stageIndex": 1,
+          "skillCancel": [
+            [
+              600,
+              2200
+            ]
+          ],
+          "moveCancel": [
+            [
+              600,
+              2200
+            ]
+          ],
+          "dodgeCancel": [
+            [
+              530,
+              2200
+            ]
+          ]
+        },
+        {
+          "stageIndex": 2,
+          "skillCancel": [
+            [
+              660,
+              2067
+            ]
+          ],
+          "moveCancel": [
+            [
+              660,
+              2067
+            ]
+          ],
+          "dodgeCancel": [
+            [
+              660,
+              2067
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "skillId": 49001,
+      "stages": [
+        {
+          "stageIndex": 0,
+          "skillCancel": [
+            [
+              350,
+              1567
+            ]
+          ],
+          "moveCancel": [
+            [
+              350,
+              1567
+            ]
+          ],
+          "dodgeCancel": [
+            [
+              400,
+              1567
+            ]
+          ]
+        },
+        {
+          "stageIndex": 1,
+          "skillCancel": [
+            [
+              350,
+              1700
+            ]
+          ],
+          "moveCancel": [
+            [
+              350,
+              1700
+            ]
+          ],
+          "dodgeCancel": [
+            [
+              450,
+              1700
+            ]
+          ]
+        },
+        {
+          "stageIndex": 2,
+          "skillCancel": [
+            [
+              500,
+              2100
+            ]
+          ],
+          "moveCancel": [
+            [
+              500,
+              2100
+            ]
+          ],
+          "dodgeCancel": [
+            [
+              386,
+              2100
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "skillId": 49020,
+      "skillCancel": [
+        [
+          100,
+          1300
+        ]
+      ],
+      "moveCancel": [
+        [
+          100,
+          1300
+        ]
+      ],
+      "dodgeCancel": []
+    },
+    {
+      "skillId": 49021,
+      "stages": [
+        {
+          "stageIndex": 0,
+          "skillCancel": [
+            [
+              100,
+              1867
+            ]
+          ],
+          "moveCancel": [
+            [
+              100,
+              1867
+            ]
+          ],
+          "dodgeCancel": []
+        },
+        {
+          "stageIndex": 1,
+          "skillCancel": [
+            [
+              0,
+              3000
+            ]
+          ],
+          "moveCancel": [
+            [
+              0,
+              3000
+            ]
+          ],
+          "dodgeCancel": []
+        },
+        {
+          "stageIndex": 2,
+          "skillCancel": [
+            [
+              0,
+              1467
+            ]
+          ],
+          "moveCancel": [
+            [
+              0,
+              1467
+            ]
+          ],
+          "dodgeCancel": []
+        }
+      ]
+    },
+    {
+      "skillId": 49040,
+      "skillCancel": [
+        [
+          800,
+          1633
+        ]
+      ],
+      "moveCancel": [
+        [
+          800,
+          1633
+        ]
+      ],
+      "dodgeCancel": [
+        [
+          500,
+          1633
+        ]
+      ]
+    },
+    {
+      "skillId": 49041,
+      "skillCancel": [
+        [
+          400,
+          1500
+        ]
+      ],
+      "moveCancel": [
+        [
+          500,
+          1500
+        ]
+      ],
+      "dodgeCancel": [
+        [
+          300,
+          1500
+        ]
+      ]
+    },
+    {
+      "skillId": 49100,
+      "skillCancel": [
+        [
+          700,
+          2067
+        ]
+      ],
+      "moveCancel": [
+        [
+          700,
+          2067
+        ]
+      ],
+      "dodgeCancel": [
+        [
+          501,
+          2067
+        ]
+      ]
+    },
+    {
+      "skillId": 49110,
+      "stages": [
+        {
+          "stageIndex": 1,
+          "skillCancel": [
+            [
+              200,
+              1433
+            ]
+          ],
+          "moveCancel": [
+            [
+              200,
+              1433
+            ]
+          ],
+          "dodgeCancel": [
+            [
+              250,
+              1433
+            ]
+          ]
+        },
+        {
+          "stageIndex": 2,
+          "skillCancel": [
+            [
+              600,
+              1933
+            ]
+          ],
+          "moveCancel": [
+            [
+              600,
+              1933
+            ]
+          ],
+          "dodgeCancel": [
+            [
+              600,
+              1933
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "skillId": 49120,
+      "skillCancel": [
+        [
+          750,
+          2333
+        ]
+      ],
+      "moveCancel": [
+        [
+          750,
+          2333
+        ]
+      ],
+      "dodgeCancel": [
+        [
+          750,
+          2333
+        ]
+      ]
+    },
+    {
+      "skillId": 49130,
+      "skillCancel": [
+        [
+          2983,
+          5533
+        ]
+      ],
+      "moveCancel": [
+        [
+          2983,
+          5533
+        ]
+      ],
+      "dodgeCancel": [
+        [
+          713,
+          2133
+        ],
+        [
+          2983,
+          5533
+        ]
+      ]
+    },
+    {
+      "skillId": 49150,
+      "stages": [
+        {
+          "stageIndex": 1,
+          "skillCancel": [
+            [
+              400,
+              1733
+            ]
+          ],
+          "moveCancel": [
+            [
+              400,
+              1733
+            ]
+          ],
+          "dodgeCancel": []
+        },
+        {
+          "stageIndex": 2,
+          "skillCancel": [
+            [
+              500,
+              2367
+            ]
+          ],
+          "moveCancel": [
+            [
+              500,
+              2367
+            ]
+          ],
+          "dodgeCancel": [
+            [
+              250,
+              2367
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "skillId": 49200,
+      "stages": [
+        {
+          "stageIndex": 1,
+          "skillCancel": [
+            [
+              200,
+              1000
+            ]
+          ],
+          "moveCancel": [
+            [
+              200,
+              1000
+            ]
+          ],
+          "dodgeCancel": [
+            [
+              100,
+              1000
+            ]
+          ]
+        },
+        {
+          "stageIndex": 2,
+          "skillCancel": [
+            [
+              800,
+              1367
+            ]
+          ],
+          "moveCancel": [
+            [
+              800,
+              1367
+            ]
+          ],
+          "dodgeCancel": [
+            [
+              0,
+              1367
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "skillId": 49210,
+      "stages": [
+        {
+          "stageIndex": 1,
+          "skillCancel": [
+            [
+              0,
+              1333
+            ]
+          ],
+          "moveCancel": [
+            [
+              0,
+              1333
+            ]
+          ],
+          "dodgeCancel": []
+        },
+        {
+          "stageIndex": 2,
+          "skillCancel": [
+            [
+              900,
+              2267
+            ]
+          ],
+          "moveCancel": [
+            [
+              900,
+              2267
+            ]
+          ],
+          "dodgeCancel": [
+            [
+              750,
+              2267
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "skillId": 49220,
+      "skillCancel": [
+        [
+          1250,
+          2000
+        ]
+      ],
+      "moveCancel": [
+        [
+          1250,
+          2000
+        ]
+      ],
+      "dodgeCancel": [
+        [
+          500,
+          2000
+        ]
+      ]
+    },
+    {
+      "skillId": 49230,
+      "skillCancel": [
+        [
+          1550,
+          2600
+        ]
+      ],
+      "moveCancel": [
+        [
+          1550,
+          2600
+        ]
+      ],
+      "dodgeCancel": [
+        [
+          510,
+          2600
+        ]
+      ]
+    },
+    {
+      "skillId": 49260,
+      "skillCancel": [
+        [
+          1800,
+          2500
+        ]
+      ],
+      "moveCancel": [
+        [
+          1800,
+          2500
+        ]
+      ],
+      "dodgeCancel": [
+        [
+          670,
+          2500
+        ]
+      ]
+    },
+    {
+      "skillId": 49270,
+      "stages": [
+        {
+          "stageIndex": 1,
+          "skillCancel": [
+            [
+              267,
+              955
+            ]
+          ],
+          "moveCancel": [
+            [
+              267,
+              955
+            ]
+          ],
+          "dodgeCancel": [
+            [
+              667,
+              955
+            ]
+          ]
+        },
+        {
+          "stageIndex": 2,
+          "skillCancel": [
+            [
+              400,
+              689
+            ]
+          ],
+          "moveCancel": [
+            [
+              400,
+              689
+            ]
+          ],
+          "dodgeCancel": [
+            [
+              167,
+              689
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "skillId": 49330,
+      "skillCancel": [
+        [
+          2433,
+          3600
+        ]
+      ],
+      "moveCancel": [
+        [
+          2433,
+          3600
+        ]
+      ],
+      "dodgeCancel": [
+        [
+          2083,
+          3600
+        ]
+      ]
+    },
+    {
+      "skillId": 49400,
+      "skillCancel": [
+        [
+          3300,
+          4800
+        ]
+      ],
+      "moveCancel": [
+        [
+          3300,
+          4800
+        ]
+      ],
+      "dodgeCancel": [
+        [
+          2950,
+          4800
+        ]
+      ]
+    },
+    {
+      "skillId": 49420,
+      "skillCancel": [
+        [
+          4300,
+          4833
+        ]
+      ],
+      "moveCancel": [
+        [
+          4300,
+          4833
+        ]
+      ],
+      "dodgeCancel": [
+        [
+          4000,
+          4833
+        ]
+      ]
+    }
+  ]
+}

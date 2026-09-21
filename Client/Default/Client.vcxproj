@@ -203,6 +203,7 @@
     <ClInclude Include="..\Public\Logic_DimensionMaster.h" />
     <ClInclude Include="..\Public\Logic_Slayer.h" />
     <ClInclude Include="..\Public\Logic_Warlord.h" />
+    <ClInclude Include="..\Public\Logic_GuardianKnight.h" />
     <ClInclude Include="..\Public\NetObjectRegistry.h" />
     <ClInclude Include="..\Public\Npc.h" />
     <ClInclude Include="..\Public\NetworkManager.h" />
@@ -479,6 +480,7 @@
     <ClCompile Include="..\Private\Logic_DimensionMaster.cpp" />
     <ClCompile Include="..\Private\Logic_Slayer.cpp" />
     <ClCompile Include="..\Private\Logic_Warlord.cpp" />
+    <ClCompile Include="..\Private\Logic_GuardianKnight.cpp" />
     <ClCompile Include="..\Private\NetObjectRegistry.cpp" />
     <ClCompile Include="..\Private\Npc.cpp" />
     <ClCompile Include="..\Private\NetworkManager.cpp" />
@@ -693,6 +695,12 @@
     <None Include="..\..\Data\Animation\Reference\Warlord\Warlord.clipmap" />
     <None Include="..\..\Data\Animation\Reference\Warlord\Warlord.clipseq" />
     <None Include="..\..\Data\Animation\Reference\Warlord\Warlord.skilltiming" />
+    <None Include="..\..\Data\Animation\Authored\GuardianKnight\GuardianKnight.animevents" />
+    <None Include="..\..\Data\Animation\Authored\GuardianKnight\GuardianKnight.skillbindings.json" />
+    <None Include="..\..\Data\Animation\Reference\GuardianKnight\GuardianKnight.animnotify" />
+    <None Include="..\..\Data\Animation\Reference\GuardianKnight\GuardianKnight.clipmap" />
+    <None Include="..\..\Data\Animation\Reference\GuardianKnight\GuardianKnight.clipseq" />
+    <None Include="..\..\Data\Animation\Reference\GuardianKnight\GuardianKnight.skilltiming" />
     <None Include="..\..\Data\Animation\Authored\Slayer\Slayer.animevents" />
     <None Include="..\..\Data\Animation\Authored\Slayer\Slayer.skillbindings.json" />
     <None Include="..\..\Data\Animation\Authored\Valtan\Valtan.patterneffectcues.json" />
@@ -717,10 +725,12 @@
 	<None Include="..\..\Data\Animation\Authored\KoukuSaydon\MN_RPCZ_00.patternbindings.json" />
     <None Include="..\..\Data\Animation\RootMotion\LanceMaster.rootmotion.json" />
     <None Include="..\..\Data\Animation\RootMotion\Warlord.rootmotion.json" />
+    <None Include="..\..\Data\Animation\RootMotion\GuardianKnight.rootmotion.json" />
     <None Include="..\..\Data\Animation\RootMotion\Artist.rootmotion.json" />
     <None Include="..\..\Data\Animation\RootMotion\DimensionMaster.rootmotion.json" />
     <None Include="..\..\Data\Animation\HitShapes\LanceMaster.hitshapes.json" />
     <None Include="..\..\Data\Animation\HitShapes\Warlord.hitshapes.json" />
+    <None Include="..\..\Data\Animation\HitShapes\GuardianKnight.hitshapes.json" />
     <None Include="..\..\Data\Animation\HitShapes\Artist.hitshapes.json" />
     <None Include="..\..\Data\Animation\HitShapes\DimensionMaster.hitshapes.json" />
     <None Include="..\..\Data\Animation\Reference\Artist\Artist.animnotify" />

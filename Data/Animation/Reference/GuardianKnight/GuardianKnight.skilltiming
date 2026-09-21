@@ -1,0 +1,158 @@
+LOSTARK_SKILL_TIMING 2 "GuardianKnight" 52
+49000 "기본 공격" hits="" freeze=0.6 push=0.14 multi=0 interval=0 sa=0 move=0 cd=0 base=49000
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=600 fzin=150 fzout=250 fzcancel=1 push=100 pushr=40 area=3 ar=260 aa=140 ah=180 ax=-10 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="" sndset=""
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=600 fzin=150 fzout=250 fzcancel=1 push=100 pushr=40 area=2 ar=220 aa=150 ah=180 ax=10 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="" sndset=""
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=600 fzin=150 fzout=250 fzcancel=1 push=140 pushr=60 area=3 ar=270 aa=210 ah=180 ax=-10 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="" sndset=""
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=100 pushr=35 area=3 ar=260 aa=150 ah=180 ax=-10 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_DDK_DragonHit" sndset="SKHitted_DRAGONHIT1"
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=100 pushr=35 area=2 ar=260 aa=165 ah=180 ax=10 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_DDK_DragonHit" sndset="SKHitted_DRAGONHIT1"
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=550 fzin=150 fzout=250 fzcancel=1 push=100 pushr=45 area=1 ar=255 aa=0 ah=180 ax=-10 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_DDK_DragonHit" sndset="SKHitted_DRAGONHIT1"
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=100 pushr=35 area=3 ar=270 aa=140 ah=180 ax=-10 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_DDK_DragonHit" sndset="SKHitted_DRAGONHIT1"
+49001 " [49000 변형]" hits="" freeze=0.6 push=0.14 multi=0 interval=0 sa=0 move=0 cd=0 base=49001
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=600 fzin=150 fzout=250 fzcancel=1 push=100 pushr=40 area=3 ar=260 aa=140 ah=180 ax=-10 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="" sndset=""
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=600 fzin=150 fzout=250 fzcancel=1 push=100 pushr=40 area=2 ar=220 aa=150 ah=180 ax=10 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="" sndset=""
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=600 fzin=150 fzout=250 fzcancel=1 push=140 pushr=60 area=3 ar=270 aa=210 ah=180 ax=-10 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="" sndset=""
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=100 pushr=35 area=3 ar=260 aa=150 ah=180 ax=-10 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_DDK_DragonHit" sndset="SKHitted_DRAGONHIT1"
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=100 pushr=35 area=2 ar=260 aa=165 ah=180 ax=10 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_DDK_DragonHit" sndset="SKHitted_DRAGONHIT1"
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=550 fzin=150 fzout=250 fzcancel=1 push=100 pushr=45 area=1 ar=255 aa=0 ah=180 ax=-10 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_DDK_DragonHit" sndset="SKHitted_DRAGONHIT1"
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=100 pushr=35 area=3 ar=270 aa=140 ah=180 ax=-10 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_DDK_DragonHit" sndset="SKHitted_DRAGONHIT1"
+49100 "클리브" hits="" freeze=0.45 push=0.1 multi=0 interval=0 sa=0 move=0 cd=6000 base=49100
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=100 pushr=25 area=1 ar=280 aa=0 ah=180 ax=0 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="" sndset=""
+49110 "와일드 어퍼" hits="1.74-1.832" freeze=0.45 push=0 multi=0 interval=0 sa=0 move=0 cd=8000 base=49110
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=550 fzin=150 fzout=250 fzcancel=1 push=100 pushr=40 area=2 ar=250 aa=150 ah=180 ax=-20 arem=0 maxt=0 hittype=4 back=0 counter=1 hitset="" sndset=""
+  hit g=0 key=1 timed=1 t=1740 w=92 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=2 ar=280 aa=180 ah=180 ax=20 arem=0 maxt=0 hittype=5 back=0 counter=1 hitset="" sndset=""
+49115 "와일드 어퍼 [49110 변형]" hits="1.74-1.832" freeze=0.45 push=0 multi=0 interval=0 sa=0 move=0 cd=8000 base=49110
+  hit g=0 key=1 timed=1 t=1740 w=92 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=2 ar=250 aa=200 ah=180 ax=20 arem=0 maxt=0 hittype=5 back=0 counter=1 hitset="" sndset=""
+49116 "와일드 어퍼 [49110 변형]" hits="1.74-1.832" freeze=0.45 push=0 multi=0 interval=0 sa=0 move=0 cd=8000 base=49110
+  hit g=0 key=1 timed=1 t=1740 w=92 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=2 ar=380 aa=200 ah=180 ax=20 arem=0 maxt=0 hittype=5 back=0 counter=1 hitset="" sndset=""
+49120 "쓰러스트" hits="" freeze=0.45 push=0.14 multi=0 interval=0 sa=1 move=0 cd=8000 base=49120
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=140 pushr=80 area=2 ar=350 aa=200 ah=180 ax=-25 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="" sndset=""
+49130 "길로틴 스핀" hits="1.654-1.741" freeze=0.45 push=0 multi=0 interval=0 sa=1 move=0 cd=24000 base=49130
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=650 fzin=150 fzout=250 fzcancel=1 push=100 pushr=40 area=1 ar=260 aa=0 ah=180 ax=20 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="" sndset=""
+  hit g=0 key=1 timed=1 t=1654 w=87 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=3 ar=400 aa=100 ah=180 ax=-10 arem=0 maxt=0 hittype=6 back=0 counter=0 hitset="" sndset=""
+49134 "길로틴 스핀 [49130 변형]" hits="1.654-1.741" freeze=0.45 push=0 multi=0 interval=0 sa=1 move=0 cd=24000 base=49130
+  hit g=0 key=1 timed=1 t=1654 w=87 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=1 ar=275 aa=0 ah=180 ax=100 arem=0 maxt=0 hittype=6 back=0 counter=0 hitset="" sndset=""
+49136 "길로틴 스핀 [49130 변형]" hits="1.654-1.741" freeze=0.45 push=0 multi=0 interval=0 sa=1 move=0 cd=24000 base=49130
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=650 fzin=150 fzout=250 fzcancel=1 push=100 pushr=40 area=1 ar=260 aa=0 ah=180 ax=20 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="" sndset=""
+  hit g=0 key=1 timed=1 t=1654 w=87 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=1 ar=300 aa=0 ah=180 ax=20 arem=0 maxt=0 hittype=6 back=0 counter=0 hitset="" sndset=""
+49137 "길로틴 스핀 [49130 변형]" hits="1.654-1.741" freeze=0.45 push=0 multi=0 interval=0 sa=1 move=0 cd=24000 base=49130
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=650 fzin=150 fzout=250 fzcancel=1 push=100 pushr=-40 area=1 ar=340 aa=0 ah=180 ax=20 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="" sndset=""
+  hit g=0 key=1 timed=1 t=1654 w=87 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=3 ar=520 aa=100 ah=180 ax=-10 arem=0 maxt=0 hittype=6 back=0 counter=0 hitset="" sndset=""
+  hit g=0 key=1 timed=1 t=1654 w=87 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=1 ar=390 aa=0 ah=180 ax=20 arem=0 maxt=0 hittype=6 back=0 counter=0 hitset="" sndset=""
+  hit g=0 key=1 timed=1 t=1654 w=87 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=1 ar=357 aa=0 ah=180 ax=100 arem=0 maxt=0 hittype=6 back=0 counter=0 hitset="" sndset=""
+49140 "미티어 크래시" hits="0.3-0.316" freeze=0.45 push=0 multi=0 interval=0 sa=1 move=0 cd=15000 base=49140
+  hit g=0 key=1 timed=1 t=300 w=16 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=1 ar=200 aa=0 ah=180 ax=20 arem=0 maxt=0 hittype=8 back=0 counter=0 hitset="" sndset=""
+49144 "미티어 크래시 [49140 변형]" hits="0.3-0.316" freeze=0.45 push=0 multi=0 interval=0 sa=1 move=0 cd=15000 base=49140
+  hit g=0 key=1 timed=1 t=300 w=16 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=1 ar=200 aa=0 ah=180 ax=20 arem=0 maxt=0 hittype=8 back=0 counter=0 hitset="" sndset=""
+  hit g=0 key=1 timed=1 t=300 w=16 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=1 ar=200 aa=0 ah=180 ax=20 arem=0 maxt=0 hittype=8 back=0 counter=0 hitset="" sndset="SKHitted_EARTH1"
+49145 "미티어 크래시 [49140 변형]" hits="0.3-0.316" freeze=0.45 push=0 multi=0 interval=0 sa=1 move=0 cd=15000 base=49140
+  hit g=0 key=1 timed=1 t=300 w=16 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=1 ar=200 aa=0 ah=180 ax=20 arem=0 maxt=0 hittype=8 back=0 counter=0 hitset="" sndset=""
+  hit g=0 key=1 timed=1 t=300 w=16 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=1 ar=200 aa=0 ah=180 ax=20 arem=0 maxt=0 hittype=8 back=0 counter=0 hitset="" sndset="SKHitted_FIRE_FLAME1"
+49146 "미티어 크래시 [49140 변형]" hits="0.3-0.316" freeze=0.45 push=0 multi=0 interval=0 sa=1 move=0 cd=15000 base=49140
+  hit g=0 key=1 timed=1 t=300 w=16 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=1 ar=200 aa=0 ah=180 ax=20 arem=0 maxt=0 hittype=8 back=0 counter=0 hitset="" sndset=""
+  hit g=0 key=1 timed=1 t=300 w=16 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=1 ar=200 aa=0 ah=180 ax=20 arem=0 maxt=0 hittype=8 back=0 counter=0 hitset="" sndset="SKHitted_SPARK1"
+49147 "미티어 크래시 [49140 변형]" hits="0.3-0.316" freeze=0.45 push=0 multi=0 interval=0 sa=1 move=0 cd=15000 base=49140
+  hit g=0 key=1 timed=1 t=300 w=16 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=1 ar=300 aa=0 ah=180 ax=20 arem=0 maxt=0 hittype=8 back=0 counter=0 hitset="" sndset=""
+  hit g=0 key=1 timed=1 t=300 w=16 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=1 ar=300 aa=0 ah=180 ax=20 arem=0 maxt=0 hittype=8 back=0 counter=0 hitset="" sndset="SKHitted_EARTH1"
+  hit g=0 key=1 timed=1 t=300 w=16 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=1 ar=300 aa=0 ah=180 ax=20 arem=0 maxt=0 hittype=8 back=0 counter=0 hitset="" sndset="SKHitted_FIRE_FLAME1"
+  hit g=0 key=1 timed=1 t=300 w=16 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=1 ar=300 aa=0 ah=180 ax=20 arem=0 maxt=0 hittype=8 back=0 counter=0 hitset="" sndset="SKHitted_SPARK1"
+49150 "퀘이크 스매시" hits="1.654-1.741" freeze=0.45 push=0 multi=0 interval=0 sa=1 move=0 cd=40000 base=49150
+  hit g=0 key=1 timed=1 t=1654 w=87 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=2 ar=330 aa=250 ah=180 ax=20 arem=0 maxt=0 hittype=6 back=0 counter=0 hitset="" sndset=""
+  hit g=0 key=1 timed=1 t=1654 w=87 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=2 ar=350 aa=280 ah=180 ax=20 arem=0 maxt=0 hittype=6 back=0 counter=0 hitset="" sndset=""
+49154 "퀘이크 스매시 [49150 변형]" hits="1.654-1.741" freeze=0.45 push=0 multi=0 interval=0 sa=1 move=0 cd=40000 base=49150
+  hit g=0 key=1 timed=1 t=1654 w=87 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=2 ar=460 aa=280 ah=180 ax=20 arem=0 maxt=0 hittype=6 back=0 counter=0 hitset="" sndset=""
+49155 "퀘이크 스매시 [49150 변형]" hits="0.954-1.004,1.054-1.109,1.654-1.741" freeze=0.45 push=0 multi=0 interval=0 sa=1 move=0 cd=40000 base=49150
+  hit g=0 key=1 timed=1 t=954 w=50 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=1 push=0 pushr=0 area=2 ar=330 aa=250 ah=180 ax=20 arem=0 maxt=0 hittype=6 back=0 counter=0 hitset="" sndset=""
+  hit g=0 key=1 timed=1 t=1054 w=55 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=1 push=0 pushr=0 area=2 ar=430 aa=250 ah=180 ax=20 arem=0 maxt=0 hittype=6 back=0 counter=0 hitset="" sndset=""
+  hit g=0 key=1 timed=1 t=1654 w=87 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=2 ar=470 aa=280 ah=180 ax=20 arem=0 maxt=0 hittype=6 back=0 counter=0 hitset="" sndset=""
+49160 "임페일 쇼크" hits="1.654-1.741" freeze=0.45 push=0 multi=0 interval=0 sa=1 move=0 cd=24000 base=49160
+  hit g=0 key=2 timed=0 t=0 w=0 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=1 push=140 pushr=80 area=2 ar=270 aa=150 ah=180 ax=20 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="" sndset=""
+  hit g=0 key=2 timed=1 t=1654 w=87 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=1 ar=250 aa=0 ah=200 ax=190 arem=0 maxt=0 hittype=6 back=0 counter=0 hitset="" sndset=""
+  hit g=0 key=2 timed=0 t=0 w=0 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=100 pushr=-40 area=1 ar=250 aa=0 ah=200 ax=190 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="" sndset=""
+49164 "임페일 쇼크 [49160 변형]" hits="1.654-1.741" freeze=0.45 push=0 multi=0 interval=0 sa=1 move=0 cd=24000 base=49160
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=1 push=140 pushr=80 area=2 ar=270 aa=150 ah=180 ax=20 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="" sndset=""
+  hit g=0 key=2 timed=1 t=1654 w=87 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=1 ar=250 aa=0 ah=200 ax=190 arem=0 maxt=0 hittype=6 back=0 counter=0 hitset="" sndset=""
+49165 "임페일 쇼크 [49160 변형]" hits="1.654-1.741" freeze=0.45 push=0 multi=0 interval=0 sa=1 move=0 cd=24000 base=49160
+  hit g=0 key=2 timed=1 t=1654 w=87 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=1 ar=250 aa=0 ah=200 ax=190 arem=0 maxt=0 hittype=6 back=0 counter=0 hitset="" sndset=""
+49168 "임페일 쇼크 [49160 변형]" hits="1.254-1.32,1.404-1.478,1.654-1.741" freeze=0.45 push=0 multi=0 interval=0 sa=1 move=0 cd=24000 base=49160
+  hit g=0 key=2 timed=1 t=1654 w=87 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=2 ar=700 aa=270 ah=200 ax=0 arem=0 maxt=0 hittype=6 back=0 counter=0 hitset="" sndset=""
+  hit g=0 key=2 timed=1 t=1254 w=66 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=2 ar=700 aa=270 ah=200 ax=0 arem=0 maxt=0 hittype=6 back=0 counter=0 hitset="" sndset=""
+  hit g=0 key=2 timed=1 t=1404 w=74 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=2 ar=700 aa=270 ah=200 ax=0 arem=0 maxt=0 hittype=6 back=0 counter=0 hitset="" sndset=""
+49170 "프렌지 스윕" hits="0.3-0.316,1.39-1.463" freeze=0.45 push=0 multi=0 interval=0 sa=1 move=0 cd=36000 base=49170
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=650 fzin=150 fzout=250 fzcancel=1 push=80 pushr=10 area=3 ar=335 aa=140 ah=180 ax=-10 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="" sndset=""
+  hit g=0 key=1 timed=1 t=1390 w=73 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=1 ar=275 aa=0 ah=180 ax=160 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="" sndset=""
+  hit g=0 key=1 timed=1 t=300 w=16 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=1 ar=275 aa=0 ah=180 ax=160 arem=0 maxt=0 hittype=8 back=0 counter=0 hitset="" sndset=""
+49174 "프렌지 스윕 [49170 변형]" hits="0.3-0.316,1.39-1.463" freeze=0.45 push=0 multi=0 interval=0 sa=1 move=0 cd=36000 base=49170
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=650 fzin=150 fzout=250 fzcancel=1 push=80 pushr=10 area=3 ar=335 aa=140 ah=180 ax=-10 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="" sndset=""
+  hit g=0 key=1 timed=1 t=1390 w=73 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=1 ar=275 aa=0 ah=180 ax=160 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="" sndset=""
+  hit g=0 key=1 timed=1 t=300 w=16 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=1 ar=275 aa=0 ah=180 ax=160 arem=0 maxt=0 hittype=8 back=0 counter=0 hitset="" sndset=""
+49175 "프렌지 스윕 [49170 변형]" hits="0.3-0.316,1.39-1.463" freeze=0.45 push=0 multi=0 interval=0 sa=1 move=0 cd=36000 base=49170
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=650 fzin=150 fzout=250 fzcancel=1 push=100 pushr=40 area=3 ar=335 aa=140 ah=180 ax=-10 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="" sndset=""
+  hit g=0 key=1 timed=1 t=1390 w=73 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=1 ar=275 aa=0 ah=180 ax=160 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="" sndset=""
+  hit g=0 key=1 timed=1 t=300 w=16 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=1 ar=275 aa=0 ah=180 ax=160 arem=0 maxt=0 hittype=8 back=0 counter=0 hitset="" sndset=""
+49177 "프렌지 스윕 [49170 변형]" hits="1.39-1.463" freeze=0.45 push=0 multi=0 interval=0 sa=1 move=0 cd=36000 base=49170
+  hit g=0 key=1 timed=1 t=1390 w=73 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=1 ar=150 aa=0 ah=300 ax=0 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="" sndset=""
+49178 "프렌지 스윕 [49170 변형]" hits="1.654-1.741" freeze=0.45 push=0 multi=0 interval=0 sa=1 move=0 cd=36000 base=49170
+  hit g=0 key=1 timed=1 t=1654 w=87 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=1 ar=275 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=6 back=0 counter=0 hitset="" sndset=""
+  hit g=0 key=1 timed=1 t=1654 w=87 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=1 ar=275 aa=0 ah=500 ax=0 arem=0 maxt=0 hittype=6 back=0 counter=0 hitset="" sndset="SKHitted_EARTH1"
+49200 "리벤지 블로우" hits="1.19-1.253" freeze=0.45 push=0 multi=0 interval=0 sa=2 move=0 cd=15000 base=49200
+  hit g=0 key=1 timed=1 t=1190 w=63 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=2 ar=350 aa=250 ah=180 ax=0 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="SkHit_DDK_DragonImpact" sndset="SKHitted_DRAGONIMPACT1"
+49202 "리벤지 블로우 [49200 변형]" hits="1.19-1.253" freeze=0.45 push=0 multi=0 interval=0 sa=2 move=0 cd=15000 base=49200
+  hit g=0 key=1 timed=1 t=1190 w=63 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=2 ar=350 aa=250 ah=180 ax=0 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="SkHit_DDK_DragonImpact" sndset="SKHitted_DRAGONIMPACT1"
+49208 "리벤지 블로우 [49200 변형]" hits="1.19-1.253" freeze=0.45 push=0 multi=0 interval=0 sa=2 move=0 cd=15000 base=49200
+  hit g=0 key=1 timed=1 t=1190 w=63 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=2 ar=350 aa=250 ah=180 ax=0 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="SkHit_DDK_DragonImpact" sndset="SKHitted_DRAGONIMPACT1"
+49210 "리벤지 스피어" hits="1.19-1.253" freeze=0.45 push=0 multi=0 interval=0 sa=0 move=250 cd=21000 base=49210
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=375 fzin=125 fzout=200 fzcancel=1 push=80 pushr=10 area=2 ar=280 aa=190 ah=180 ax=0 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_DDK_DragonHit" sndset="SKHitted_DRAGONHIT1"
+  hit g=0 key=1 timed=1 t=1190 w=63 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=2 ar=350 aa=250 ah=180 ax=0 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="SkHit_DDK_DragonImpact" sndset="SKHitted_DRAGONIMPACT1"
+49214 "리벤지 스피어 [49210 변형]" hits="1.19-1.253" freeze=0.45 push=0 multi=0 interval=0 sa=0 move=250 cd=21000 base=49210
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=375 fzin=125 fzout=200 fzcancel=1 push=80 pushr=10 area=2 ar=392 aa=228 ah=180 ax=0 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_DDK_DragonHit" sndset="SKHitted_DRAGONHIT1"
+  hit g=0 key=1 timed=1 t=1190 w=63 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=2 ar=490 aa=300 ah=180 ax=0 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="SkHit_DDK_DragonImpact" sndset="SKHitted_DRAGONIMPACT1"
+49220 "스피닝 플레임" hits="" freeze=0.45 push=0 multi=0 interval=0 sa=0 move=0 cd=10000 base=49220
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=1 ar=130 aa=0 ah=180 ax=0 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_DDK_DragonHit" sndset="SKHitted_FIRE_BALL1"
+49238 "아바돈 플레임 [49230 변형]" hits="1.19-1.253" freeze=0.45 push=0 multi=0 interval=0 sa=0 move=0 cd=18000 base=49230
+  hit g=0 key=2 timed=0 t=0 w=0 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=1 ar=225 aa=0 ah=180 ax=0 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_DDK_DragonHit" sndset="SKHitted_FIRE_BALL1"
+  hit g=0 key=2 timed=1 t=1190 w=63 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=1 ar=275 aa=0 ah=180 ax=0 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="SkHit_DDK_DragonHit" sndset="SKHitted_FIRE_BALL1"
+49245 "윙 스팅어 [49240 변형]" hits="-0.2--0.211" freeze=0.55 push=0.14 multi=0 interval=0 sa=1 move=0 cd=9000 base=49240
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=140 pushr=80 area=2 ar=355 aa=250 ah=180 ax=0 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_DDK_DragonHit" sndset="SKHitted_DRAGONHIT1"
+  hit g=0 key=1 timed=1 t=-200 w=0 rep=0 repms=0 fz=550 fzin=150 fzout=250 fzcancel=1 push=140 pushr=110 area=2 ar=355 aa=250 ah=180 ax=0 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_DDK_DragonHit" sndset="SKHitted_DRAGONHIT1"
+49255 "윙 래시 [49250 변형]" hits="1.195-1.258" freeze=0.45 push=0 multi=0 interval=0 sa=0 move=0 cd=18000 base=49250
+  hit g=0 key=1 timed=1 t=1195 w=63 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=2 ar=350 aa=475 ah=180 ax=0 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="SkHit_DDK_DragonHit" sndset="SKHitted_DRAGONHIT1"
+49258 "윙 래시 [49250 변형]" hits="1.195-1.258,1.445-1.521" freeze=0.45 push=0 multi=0 interval=0 sa=0 move=0 cd=18000 base=49250
+  hit g=0 key=1 timed=1 t=1445 w=76 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=2 ar=350 aa=475 ah=180 ax=0 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="SkHit_DDK_DragonHit" sndset="SKHitted_DRAGONHIT1"
+  hit g=0 key=1 timed=1 t=1195 w=63 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=2 ar=350 aa=475 ah=180 ax=0 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="SkHit_DDK_DragonHit" sndset="SKHitted_DRAGONHIT1"
+49260 "블레이즈 스윕" hits="1.39-1.463" freeze=0.45 push=0 multi=0 interval=0 sa=1 move=0 cd=24000 base=49260
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=1 push=100 pushr=40 area=2 ar=220 aa=150 ah=180 ax=0 arem=0 maxt=0 hittype=4 back=0 counter=1 hitset="SkHit_DDK_DragonHit" sndset="SKHitted_DRAGONHIT1"
+  hit g=0 key=1 timed=1 t=1390 w=73 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=1 ar=300 aa=0 ah=180 ax=0 arem=0 maxt=0 hittype=5 back=0 counter=1 hitset="SkHit_DDK_DragonHit" sndset="SKHitted_DRAGONHIT1"
+49267 "블레이즈 스윕 [49260 변형]" hits="1.554-1.636" freeze=0.45 push=0 multi=0 interval=0 sa=1 move=0 cd=24000 base=49260
+  hit g=0 key=1 timed=1 t=1554 w=82 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=-15 area=1 ar=300 aa=0 ah=180 ax=0 arem=0 maxt=0 hittype=6 back=0 counter=1 hitset="SkHit_DDK_DragonHit" sndset="SKHitted_DRAGONHIT1"
+49270 "블레이즈 플래시" hits="1.304-1.373,1.657-1.744" freeze=0.45 push=0 multi=0 interval=0 sa=0 move=0 cd=24000 base=49270
+  hit g=0 key=1 timed=1 t=1657 w=87 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=2 ar=220 aa=240 ah=250 ax=-30 arem=0 maxt=0 hittype=5 back=0 counter=1 hitset="SkHit_DDK_DragonHit" sndset="SKHitted_DRAGONHIT1"
+  hit g=0 key=1 timed=1 t=1304 w=69 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=2 ar=260 aa=320 ah=250 ax=-30 arem=0 maxt=0 hittype=6 back=0 counter=1 hitset="SkHit_DDK_DragonHit" sndset="SKHitted_DRAGONHIT1"
+49277 "블레이즈 플래시 [49270 변형]" hits="1.654-1.741" freeze=0.45 push=0 multi=0 interval=0 sa=0 move=0 cd=24000 base=49270
+  hit g=0 key=1 timed=1 t=1654 w=87 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=1 ar=300 aa=0 ah=250 ax=20 arem=0 maxt=0 hittype=6 back=0 counter=1 hitset="SkHit_DDK_DragonHit" sndset="SKHitted_DRAGONHIT1"
+49278 "블레이즈 플래시 [49270 변형]" hits="1.304-1.373" freeze=0.45 push=0 multi=0 interval=0 sa=0 move=0 cd=24000 base=49270
+  hit g=0 key=1 timed=1 t=1304 w=69 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=2 ar=260 aa=320 ah=250 ax=-30 arem=0 maxt=0 hittype=6 back=0 counter=1 hitset="SkHit_DDK_DragonHit" sndset="SKHitted_DRAGONHIT1"
+49290 "익스플로전 피니셔" hits="1.654-1.741" freeze=0.6 push=0 multi=0 interval=0 sa=0 move=0 cd=52000 base=49290
+  hit g=0 key=1 timed=1 t=1654 w=87 rep=0 repms=0 fz=600 fzin=200 fzout=300 fzcancel=1 push=0 pushr=0 area=1 ar=280 aa=0 ah=180 ax=200 arem=0 maxt=0 hittype=6 back=0 counter=0 hitset="SkHit_DDK_DragonHit" sndset="SKHitted_DRAGONHIT1"
+49294 "익스플로전 피니셔 [49290 변형]" hits="1.654-1.741" freeze=0.6 push=0 multi=0 interval=0 sa=0 move=0 cd=52000 base=49290
+  hit g=0 key=1 timed=1 t=1654 w=87 rep=0 repms=0 fz=600 fzin=200 fzout=300 fzcancel=1 push=0 pushr=0 area=1 ar=280 aa=0 ah=180 ax=200 arem=0 maxt=0 hittype=6 back=0 counter=0 hitset="SkHit_DDK_DragonHit" sndset="SKHitted_DRAGONHIT1"
+49298 "익스플로전 피니셔 [49290 변형]" hits="1.654-1.741" freeze=0.6 push=0 multi=0 interval=0 sa=0 move=0 cd=52000 base=49290
+  hit g=0 key=1 timed=1 t=1654 w=87 rep=0 repms=0 fz=600 fzin=200 fzout=300 fzcancel=1 push=0 pushr=0 area=1 ar=280 aa=0 ah=180 ax=200 arem=0 maxt=0 hittype=6 back=0 counter=0 hitset="SkHit_DDK_DragonHit" sndset="SKHitted_DRAGONHIT1"
+49320 "소울 디바이드" hits="1.574-1.657,1.626-1.712" freeze=0.6 push=0 multi=0 interval=0 sa=1 move=0 cd=70000 base=49320
+  hit g=0 key=1 timed=1 t=1626 w=86 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=3 ar=270 aa=140 ah=170 ax=0 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="" sndset=""
+  hit g=0 key=1 timed=1 t=1574 w=83 rep=0 repms=0 fz=600 fzin=200 fzout=300 fzcancel=1 push=0 pushr=0 area=2 ar=550 aa=230 ah=225 ax=0 arem=0 maxt=0 hittype=6 back=0 counter=0 hitset="" sndset=""
+49330 "딥 임팩트" hits="0.3-0.316" freeze=0.6 push=0 multi=0 interval=0 sa=2 move=0 cd=90000 base=49330
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=1 ar=125 aa=0 ah=180 ax=0 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_DDK_DragonHit" sndset="SKHitted_DRAGONHIT1"
+  hit g=0 key=1 timed=1 t=300 w=16 rep=0 repms=0 fz=600 fzin=200 fzout=300 fzcancel=1 push=0 pushr=0 area=1 ar=400 aa=0 ah=180 ax=0 arem=0 maxt=0 hittype=8 back=0 counter=0 hitset="SkHit_DDK_DragonHit" sndset="SKHitted_DRAGONHIT1"
+  hit g=493303 key=1 timed=1 t=300 w=16 rep=0 repms=0 fz=600 fzin=200 fzout=300 fzcancel=1 push=0 pushr=0 area=1 ar=200 aa=0 ah=180 ax=0 arem=0 maxt=0 hittype=8 back=0 counter=0 hitset="SkHit_DDK_DragonHit" sndset="SKHitted_DRAGONHIT1"
+  hit g=493303 key=1 timed=1 t=300 w=16 rep=0 repms=0 fz=600 fzin=200 fzout=300 fzcancel=1 push=0 pushr=0 area=1 ar=400 aa=0 ah=180 ax=0 arem=200 maxt=0 hittype=8 back=0 counter=0 hitset="SkHit_DDK_DragonHit" sndset="SKHitted_DRAGONHIT1"
+  hit g=0 key=1 timed=1 t=300 w=16 rep=0 repms=0 fz=600 fzin=200 fzout=300 fzcancel=1 push=0 pushr=0 area=1 ar=480 aa=0 ah=180 ax=0 arem=0 maxt=0 hittype=8 back=0 counter=0 hitset="SkHit_DDK_DragonHit" sndset="SKHitted_DRAGONHIT1"
+49400 "가디언 백래시" hits="1.39-1.463,1.445-1.521" freeze=0.6 push=0 multi=0 interval=0 sa=3 move=0 cd=300000 base=49400
+  hit g=0 key=1 timed=1 t=1445 w=76 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=2 ar=500 aa=350 ah=225 ax=-300 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="SkHit_DDK_DragonHit" sndset="SKHitted_DRAGONHIT1"
+  hit g=0 key=1 timed=1 t=1390 w=73 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=2 ar=375 aa=350 ah=225 ax=-100 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="SkHit_DDK_DragonHit" sndset="SKHitted_DRAGONHIT1"
+  hit g=0 key=1 timed=1 t=1390 w=73 rep=0 repms=0 fz=600 fzin=200 fzout=300 fzcancel=1 push=0 pushr=0 area=1 ar=300 aa=0 ah=225 ax=20 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="SkHit_DDK_DragonHit" sndset="SKHitted_DRAGONHIT1"
+49410 "가디언즈 크래시" hits="1.654-1.741" freeze=0.6 push=0 multi=0 interval=0 sa=3 move=0 cd=300000 base=49410
+  hit g=0 key=1 timed=1 t=1654 w=87 rep=0 repms=0 fz=600 fzin=200 fzout=300 fzcancel=1 push=0 pushr=0 area=1 ar=330 aa=0 ah=225 ax=135 arem=0 maxt=0 hittype=6 back=0 counter=0 hitset="SkHit_DDK_DragonHit" sndset="SKHitted_DRAGONHIT1"
+49420 "브레스 오브 엠버레스" hits="" freeze=1 push=0.08 multi=0 interval=0 sa=3 move=0 cd=300000 base=49420
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=1000 fzin=250 fzout=350 fzcancel=1 push=80 pushr=10 area=2 ar=800 aa=550 ah=225 ax=0 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_DDK_DragonHit" sndset="SKHitted_EXPLOTION1"
+49430 "어웨이큰" hits="0.3-0.316" freeze=1 push=0 multi=0 interval=0 sa=3 move=0 cd=300000 base=49430
+  hit g=0 key=2 timed=1 t=300 w=16 rep=0 repms=0 fz=1000 fzin=250 fzout=350 fzcancel=1 push=0 pushr=0 area=1 ar=700 aa=0 ah=225 ax=0 arem=0 maxt=0 hittype=8 back=0 counter=0 hitset="SkHit_DDK_DragonHit" sndset="SKHitted_DRAGONHIT1"

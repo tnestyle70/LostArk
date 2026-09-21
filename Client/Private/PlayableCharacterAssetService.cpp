@@ -136,6 +136,22 @@ namespace
 			2u
 		};
 
+		static const CHARACTER_PROTOTYPE_TAGS GUARDIANKNIGHT
+		{
+			TEXT("Prototype_Component_Model_GuardianKnight"),
+			{
+				TEXT("Prototype_Component_Model_GuardianKnight_Upper"),
+				TEXT("Prototype_Component_Model_GuardianKnight_Lower"),
+				TEXT("Prototype_Component_Model_GuardianKnight_Arm"),
+				TEXT("Prototype_Component_Model_GuardianKnight_Shoulder"),
+				TEXT("Prototype_Component_Model_GuardianKnight_Helmet"),
+				TEXT("Prototype_Component_Model_GuardianKnight_Wing")
+			},
+			6u,
+			{ TEXT("Prototype_Component_Model_GuardianKnight_Weapon") },
+			1u
+		};
+
 		switch (characterClass)
 		{
 		case LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER:
@@ -150,6 +166,8 @@ namespace
 			return &DIMENSIONMASTER;
 		case LostArk::Shared::CHARACTER_CLASS_ID::WARLORD:
 			return &WARLORD;
+		case LostArk::Shared::CHARACTER_CLASS_ID::GUARDIANKNIGHT:
+			return &GUARDIANKNIGHT;
 		default:
 			return nullptr;
 		}

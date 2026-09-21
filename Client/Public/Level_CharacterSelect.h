@@ -324,14 +324,15 @@ public:
 
 private:
 	static constexpr std::array<
-		LostArk::Shared::CHARACTER_CLASS_ID, 6> SUPPORTED_CLASSES =
+		LostArk::Shared::CHARACTER_CLASS_ID, 7> SUPPORTED_CLASSES =
 	{
 		LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER,
 		LostArk::Shared::CHARACTER_CLASS_ID::GUNSLINGER,
 		LostArk::Shared::CHARACTER_CLASS_ID::SLAYER,
 		LostArk::Shared::CHARACTER_CLASS_ID::ARTIST,
 		LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONMASTER,
-		LostArk::Shared::CHARACTER_CLASS_ID::WARLORD
+		LostArk::Shared::CHARACTER_CLASS_ID::WARLORD,
+		LostArk::Shared::CHARACTER_CLASS_ID::GUARDIANKNIGHT
 	};
 
 	/* The try-on costumes: which visual set each of the five stands for, the catalog that owns

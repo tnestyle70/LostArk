@@ -110,6 +110,22 @@
     { "damageProfileId": "damage.player.34560", "damageRatePercent": 873 },
     { "damageProfileId": "damage.player.34570", "damageRatePercent": 3441 },
     { "damageProfileId": "damage.player.34580", "damageRatePercent": 1882 },
-    { "damageProfileId": "damage.player.34590", "damageRatePercent": 4274 }
+    { "damageProfileId": "damage.player.34590", "damageRatePercent": 4274 },
+    { "damageProfileId": "damage.player.49000", "damageRatePercent": 100 },
+    { "damageProfileId": "damage.player.49001", "damageRatePercent": 100 },
+    { "damageProfileId": "damage.player.49100", "damageRatePercent": 1049 },
+    { "damageProfileId": "damage.player.49110", "damageRatePercent": 376 },
+    { "damageProfileId": "damage.player.49120", "damageRatePercent": 1328 },
+    { "damageProfileId": "damage.player.49130", "damageRatePercent": 666 },
+    { "damageProfileId": "damage.player.49200", "damageRatePercent": 3098 },
+    { "damageProfileId": "damage.player.49210", "damageRatePercent": 191 },
+    { "damageProfileId": "damage.player.49220", "damageRatePercent": 538 },
+    { "damageProfileId": "damage.player.49230", "damageRatePercent": 344 },
+    { "damageProfileId": "damage.player.49150", "damageRatePercent": 6198 },
+    { "damageProfileId": "damage.player.49260", "damageRatePercent": 453 },
+    { "damageProfileId": "damage.player.49270", "damageRatePercent": 1084 },
+    { "damageProfileId": "damage.player.49330", "damageRatePercent": 397 },
+    { "damageProfileId": "damage.player.49400", "damageRatePercent": 397 },
+    { "damageProfileId": "damage.player.49420", "damageRatePercent": 397 }
   ]
 }

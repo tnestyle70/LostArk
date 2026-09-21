@@ -18,6 +18,7 @@ EXPECTED_CLASSES = {
     "ARTIST",
     "DIMENSIONMASTER",
     "WARLORD",
+    "GUARDIANKNIGHT",
 }
 
 
@@ -48,7 +49,7 @@ class ValtanFastCombatTuningContractTests(unittest.TestCase):
         non_basic_attacks = [
             row for row in self.skills if row["inputSlot"] != "LMB"
         ]
-        self.assertEqual(87, len(non_basic_attacks))
+        self.assertEqual(105, len(non_basic_attacks))
         self.assertTrue(
             all(row["cooldownMs"] == 3000 for row in non_basic_attacks)
         )
@@ -56,7 +57,7 @@ class ValtanFastCombatTuningContractTests(unittest.TestCase):
         basic_attacks = [
             row for row in self.skills if row["inputSlot"] == "LMB"
         ]
-        self.assertEqual(7, len(basic_attacks))
+        self.assertEqual(9, len(basic_attacks))
         self.assertTrue(all(row["cooldownMs"] == 0 for row in basic_attacks))
 
     def test_player_attack_power_is_one_thousand(self) -> None:

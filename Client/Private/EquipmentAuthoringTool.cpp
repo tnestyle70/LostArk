@@ -30,13 +30,14 @@ namespace
 		const char_t* pLabel;
 	};
 
-	constexpr std::array<EQUIPMENT_CLASS_OPTION, 6u> CLASS_OPTIONS = {{
+	constexpr std::array<EQUIPMENT_CLASS_OPTION, 7u> CLASS_OPTIONS = {{
 		{ CHARACTER_CLASS_ID::LANCE_MASTER, "LANCE_MASTER", "LanceMaster", "Lance Master" },
 		{ CHARACTER_CLASS_ID::GUNSLINGER, "GUNSLINGER", "GunSlinger", "Gunslinger" },
 		{ CHARACTER_CLASS_ID::SLAYER, "SLAYER", "Slayer", "Slayer" },
 		{ CHARACTER_CLASS_ID::ARTIST, "ARTIST", "Artist", "Artist" },
 		{ CHARACTER_CLASS_ID::DIMENSIONMASTER, "DIMENSIONMASTER", "DimensionMaster", "Dimension Master" },
 		{ CHARACTER_CLASS_ID::WARLORD, "WARLORD", "Warlord", "Warlord" },
+		{ CHARACTER_CLASS_ID::GUARDIANKNIGHT, "GUARDIANKNIGHT", "GuardianKnight", "Guardian Knight" },
 	}};
 
 	const char_t* Attachment_Mode_Label(
@@ -67,6 +68,10 @@ namespace
 			return "WARLORD_NORMAL";
 		case PLAYER_STANCE_ID::WARLORD_DEFENSE:
 			return "WARLORD_DEFENSE";
+		case PLAYER_STANCE_ID::GUARDIANKNIGHT_HUMAN:
+			return "GUARDIANKNIGHT_HUMAN";
+		case PLAYER_STANCE_ID::GUARDIANKNIGHT_DRAGON:
+			return "GUARDIANKNIGHT_DRAGON";
 		default:
 			return "INVALID";
 		}

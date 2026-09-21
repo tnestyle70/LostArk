@@ -396,7 +396,8 @@ bool_t CCharacter::Load_ClipChains(const bool_t reloadSource)
 				const bool_t isHoldLoop =
 					isHold && 1u == chain.stages.size() &&
 					3u == binding.Stages.size() &&
-					clipIndex + 1u == stage.Clips.size();
+					clipIndex + 1u == stage.Clips.size() &&
+					!clip.isHoldPose;
 				CLIP_STEP stagedStep{
 					clip.strClipName, clip.iPlayMs, clip.fPlayRate, isHoldLoop,
 					clip.iSourceStartMs };
@@ -2485,6 +2486,17 @@ void CCharacter::Apply_NetworkStance(const LostArk::Shared::PLAYER_STANCE_ID sta
 			m_isMoving ? CHARACTER_ANIM::RUN : CHARACTER_ANIM::IDLE,
 			true);
 	}
+	/* Stance-owned equipment (the Guardian Knight wings) follows the stance the
+	same way a stance-owned weapon does; pieces with no stance are untouched. */
+	for (uint32_t i = 0; i < m_pSpec->iNumEquipment; ++i)
+	{
+		const EQUIPMENT_PART_SPEC& equipment = m_pSpec->pEquipment[i];
+		if (LostArk::Shared::PLAYER_STANCE_ID::NONE == equipment.eRequiredStance)
+			continue;
+		Set_PartVisible(
+			equipment.pPartTag,
+			!equipment.isHidden && equipment.eRequiredStance == stance);
+	}
 	if (m_isEquipmentPreviewActive)
 	{
 		Sync_EquipmentPreviewStanceVisibility();
@@ -2716,6 +2728,11 @@ void CCharacter::Apply_DefaultEquipmentVisibility(
 		}
 		else if (EQUIPMENT_SLOT_KIND::AVATAR_ARMOR == equipment.eSlotKind &&
 			m_isAvatarArmorHidden)
+		{
+			isVisible = false;
+		}
+		if (LostArk::Shared::PLAYER_STANCE_ID::NONE != equipment.eRequiredStance &&
+			equipment.eRequiredStance != m_eStance)
 		{
 			isVisible = false;
 		}

@@ -566,8 +566,10 @@ namespace
 			Is_Supported_Playable_Character_Class(
 				CHARACTER_CLASS_ID::ARTIST) &&
 			Is_Supported_Playable_Character_Class(
-				CHARACTER_CLASS_ID::DIMENSIONMASTER),
-			"Accept Six Playable Character Classes");
+				CHARACTER_CLASS_ID::DIMENSIONMASTER) &&
+			Is_Supported_Playable_Character_Class(
+				CHARACTER_CLASS_ID::GUARDIANKNIGHT),
+			"Accept Seven Playable Character Classes");
 
 		testRunner.Require(
 			!Is_Supported_Playable_Character_Class(

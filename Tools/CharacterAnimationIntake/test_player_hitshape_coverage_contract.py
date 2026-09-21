@@ -12,6 +12,7 @@ CLASSES = (
     "ARTIST",
     "DIMENSIONMASTER",
     "WARLORD",
+    "GUARDIANKNIGHT",
 )
 IMPORTED_RUNTIME_FALLBACKS = {
     38120,
@@ -56,8 +57,8 @@ class PlayerHitShapeCoverageContractTests(unittest.TestCase):
             missing.update(damage_ids - authored)
             totals.append((character_class, len(authored), len(damage_ids)))
         self.assertEqual(set(), missing)
-        self.assertEqual(76, sum(row[1] for row in totals))
-        self.assertEqual(76, sum(row[2] for row in totals))
+        self.assertEqual(92, sum(row[1] for row in totals))
+        self.assertEqual(92, sum(row[2] for row in totals))
 
     def test_document_class_owns_every_covered_skill(self) -> None:
         owners = {int(skill["skillId"]): skill["characterClass"] for skill in self.skills}

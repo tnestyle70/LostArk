@@ -218,6 +218,29 @@ void LostArk::Server::CServerGameplayContractRunner::Run_PlayerActions(TESTS& te
 			"Admit the next skill inside the running action's cancel window");
 		tests.Require(completed,
 			"Return to idle after the skill that cancelled the previous action ends");
+
+		/* The Space dodge answers to its own window. 34040 closes its first skill
+		window at 600ms and opens the dodge window at 698ms, so 800ms in, a normal
+		skill is still held while the dodge goes through. */
+		tests.Require(
+			1u == sharpSwing->DodgeCancelWindows.size() &&
+			698u == sharpSwing->DodgeCancelWindows[0].iStartMs &&
+			1500u == sharpSwing->DodgeCancelWindows[0].iEndMs,
+			"Load the authored dodge cancel windows from the gameplay bootstrap");
+
+		SERVER_PLAYER dodged = makePlayer();
+		const bool startedThird =
+			skills.Try_Start(dodged, press(1u, 34040u), catalog, 100u);
+		skills.Update(dodged, noTargets, catalog, nullptr, nullptr, 0.8f, 124u, events);
+		const bool refusedSkillOutsideItsWindow =
+			!skills.Try_Start(dodged, press(2u, 34090u), catalog, 125u);
+		const bool dodgeAdmitted =
+			skills.Try_Start(dodged, press(3u, 34020u), catalog, 125u) &&
+			34020u == dodged.iCurrentSkillId &&
+			PLAYER_ACTION_STATE::SKILL == dodged.eAction;
+		tests.Require(
+			startedThird && refusedSkillOutsideItsWindow && dodgeAdmitted,
+			"Admit the Space dodge inside the dodge window while other skills stay held");
 	}
 
 	{

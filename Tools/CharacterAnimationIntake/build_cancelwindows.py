@@ -12,11 +12,17 @@ MAX_WINDOWS = 8
 # The animators labelled the windows in Korean and the vocabulary drifted between
 # classes: LanceMaster and DimensionMaster leave the generic window's payload
 # empty, Artist spells out both kinds, Warlord writes 입력캔슬 for the shared one.
-# Buffered pre-input (선*), dodge-only and tripod/stance names are not cancels.
+# Buffered pre-input (선*) and tripod/stance names are not cancels. The Space
+# dodge (EFTable_Skill.ActionType 2) has its own window: 회피캔슬 in most
+# classes, 이동기캔슬 in Artist. The empty payload stays out of it: a clip that
+# carries both an empty and a dodge row opens them at different times.
 SKILL_CANCEL_PAYLOADS = frozenset(
     ('', '스킬캔슬', '[스킬캔슬]', '입력캔슬', '[입력캔슬]'))
 MOVE_CANCEL_PAYLOADS = frozenset(
     ('', '이동캔슬', '[이동캔슬]', '입력캔슬', '[입력캔슬]'))
+DODGE_CANCEL_PAYLOADS = frozenset(
+    ('회피캔슬', '[회피캔슬]', '회피기캔슬', '회피기 캔슬', '회피기캔슬(테스트)',
+     '회피기 및 절룡세 캔슬', '이동기캔슬', '이동기 캔슬', '입력캔슬', '[입력캔슬]'))
 
 
 def read_clip_ticks(wmodel_path):
@@ -58,6 +64,7 @@ def read_cancel_rows(asset):
             'endMs': end_ms,
             'skill': text in SKILL_CANCEL_PAYLOADS,
             'move': text in MOVE_CANCEL_PAYLOADS,
+            'dodge': text in DODGE_CANCEL_PAYLOADS,
         })
     return rows
 
@@ -87,6 +94,7 @@ def stage_windows(entries, clip_ticks, clip_cancels, limit_ms, label):
     playRate, and the next clip starts where the previous one stopped."""
     skill_windows = []
     move_windows = []
+    dodge_windows = []
     elapsed_ms = 0.0
     for entry in entries:
         name = entry if isinstance(entry, str) else entry['clip']
@@ -107,13 +115,16 @@ def stage_windows(entries, clip_ticks, clip_cancels, limit_ms, label):
                 skill_windows.append((start_ms, end_ms))
             if row['move']:
                 move_windows.append((start_ms, end_ms))
+            if row['dodge']:
+                dodge_windows.append((start_ms, end_ms))
         elapsed_ms += source_ms / rate
     skill_windows = merge(skill_windows, limit_ms)
     move_windows = merge(move_windows, limit_ms)
-    for kind, windows in (('skill', skill_windows), ('move', move_windows)):
+    dodge_windows = merge(dodge_windows, limit_ms)
+    for kind, windows in (('skill', skill_windows), ('move', move_windows), ('dodge', dodge_windows)):
         if len(windows) > MAX_WINDOWS:
             raise SystemExit('%s: more than %d %s cancel windows' % (label, MAX_WINDOWS, kind))
-    return skill_windows, move_windows
+    return skill_windows, move_windows, dodge_windows
 
 
 def build(asset):
@@ -140,30 +151,32 @@ def build(asset):
             for index, group in enumerate(stages):
                 label = '%s %d stage %d' % (asset, skill_id, index)
                 limit_ms = int(combo_stages[index]['actionDurationMs'])
-                skill_windows, move_windows = stage_windows(
+                skill_windows, move_windows, dodge_windows = stage_windows(
                     group, clip_ticks, clip_cancels, limit_ms, label)
-                if skill_windows or move_windows:
+                if skill_windows or move_windows or dodge_windows:
                     rows.append({
                         'stageIndex': index,
                         'skillCancel': skill_windows,
                         'moveCancel': move_windows,
+                        'dodgeCancel': dodge_windows,
                     })
             if rows:
                 out.append({'skillId': skill_id, 'stages': rows})
             continue
         label = '%s %d' % (asset, skill_id)
         limit_ms = int(skill['actionDurationMs'])
-        skill_windows, move_windows = stage_windows(
+        skill_windows, move_windows, dodge_windows = stage_windows(
             stages[0], clip_ticks, clip_cancels, limit_ms, label)
-        if skill_windows or move_windows:
+        if skill_windows or move_windows or dodge_windows:
             out.append({
                 'skillId': skill_id,
                 'skillCancel': skill_windows,
                 'moveCancel': move_windows,
+                'dodgeCancel': dodge_windows,
             })
     return {
         'schema': 'lostark.animation-cancel-windows',
-        'formatVersion': 1,
+        'formatVersion': 2,
         'animationAssetId': asset,
         'characterClass': bindings['characterClass'],
         'skills': out,
@@ -184,8 +197,8 @@ def main(argv):
         old = io.open(path, encoding='utf-8').read() if os.path.exists(path) else None
         skill_count = len(document['skills'])
         window_count = sum(
-            len(s.get('skillCancel', [])) + len(s.get('moveCancel', [])) +
-            sum(len(st['skillCancel']) + len(st['moveCancel']) for st in s.get('stages', []))
+            len(s.get('skillCancel', [])) + len(s.get('moveCancel', [])) + len(s.get('dodgeCancel', [])) +
+            sum(len(st['skillCancel']) + len(st['moveCancel']) + len(st['dodgeCancel']) for st in s.get('stages', []))
             for s in document['skills'])
         print('%s: %d skills, %d windows, %s' % (
             asset, skill_count, window_count, 'unchanged' if old == text else 'changed'))
