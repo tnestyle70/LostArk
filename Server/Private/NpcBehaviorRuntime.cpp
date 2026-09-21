@@ -238,7 +238,7 @@ namespace
 		std::vector<SERVER_NAV_POINT> path;
 		if (!navigation.Find_Path(
 			entity.fPositionX, entity.fPositionZ,
-			goalX, goalZ, path))
+			goalX, goalZ, path, entity.fPositionY))
 		{
 			return false;
 		}
@@ -253,12 +253,13 @@ namespace
 		const float spawnZ,
 		const float currentX,
 		const float currentZ,
+		const float currentY,
 		const float candidateX,
 		const float candidateZ,
 		std::vector<SERVER_NAV_POINT>& outPath)
 	{
 		SERVER_NAV_POINT projected{};
-		if (!navigation.Project_Point(candidateX, candidateZ, projected))
+		if (!navigation.Project_Point(candidateX, candidateZ, projected, currentY))
 			return false;
 		const float fromSpawnX = projected.x - spawnX;
 		const float fromSpawnZ = projected.z - spawnZ;
@@ -277,7 +278,7 @@ namespace
 			return false;
 		}
 		if (!navigation.Find_Path(
-			currentX, currentZ, projected.x, projected.z, outPath) ||
+			currentX, currentZ, projected.x, projected.z, outPath, currentY) ||
 			outPath.empty())
 		{
 			return false;
@@ -310,7 +311,7 @@ namespace
 			if (!Try_BuildWanderPath(
 				descriptor, navigation,
 				entity.fSpawnPositionX, entity.fSpawnPositionZ,
-				entity.fPositionX, entity.fPositionZ,
+				entity.fPositionX, entity.fPositionZ, entity.fPositionY,
 				candidateX, candidateZ, path))
 			{
 				continue;
@@ -325,7 +326,7 @@ namespace
 			entity.fPositionX, entity.fPositionZ,
 			entity.fSpawnPositionX, entity.fSpawnPositionZ,
 			descriptor.fWanderRadius, WANDER_DISPLACEMENT_EPSILON,
-			path))
+			path, entity.fPositionY))
 		{
 			return false;
 		}
@@ -381,7 +382,7 @@ namespace
 			SERVER_NAV_POINT sampled{};
 			if (!navigation.Resolve_TraversalStep(
 				entity.fPositionX, entity.fPositionZ,
-				resolvedX, resolvedZ, sampled))
+				resolvedX, resolvedZ, sampled, entity.fPositionY))
 			{
 				return PATH_ADVANCE_RESULT::BLOCKED;
 			}
@@ -472,7 +473,8 @@ bool LostArk::Server::CNpcBehaviorRuntime::Validate_Descriptor(
 	}
 	SERVER_NAV_POINT spawn{};
 	if (!navigation.Project_Point(
-		placement.fPositionX, placement.fPositionZ, spawn))
+		placement.fPositionX, placement.fPositionZ, spawn,
+		placement.fPositionY))
 	{
 		outStatus = "NPC placement is outside server navigation: " +
 			placement.strPlacementId;
@@ -484,7 +486,7 @@ bool LostArk::Server::CNpcBehaviorRuntime::Validate_Descriptor(
 		if (!navigation.Find_PathToReachablePointWithinRadius(
 			spawn.x, spawn.z, spawn.x, spawn.z,
 			descriptor.fWanderRadius, WANDER_DISPLACEMENT_EPSILON,
-			reachablePath))
+			reachablePath, spawn.y))
 		{
 			outStatus = "NPC wander owns no nontrivial reachable destination: " +
 				placement.strPlacementId;
@@ -500,10 +502,10 @@ bool LostArk::Server::CNpcBehaviorRuntime::Validate_Descriptor(
 	for (const WORLD_NPC_BEHAVIOR_WAYPOINT& waypoint : descriptor.Waypoints)
 	{
 		if (!navigation.Is_PointWalkableExact(
-			waypoint.fPositionX, waypoint.fPositionZ) ||
+			waypoint.fPositionX, waypoint.fPositionZ, spawn.y) ||
 			!navigation.Find_Path(
 				startX, startZ,
-				waypoint.fPositionX, waypoint.fPositionZ, segment))
+				waypoint.fPositionX, waypoint.fPositionZ, segment, spawn.y))
 		{
 			outStatus = "NPC patrol waypoint is unreachable: " +
 				placement.strPlacementId + "/" + waypoint.strWaypointId;
@@ -517,7 +519,7 @@ bool LostArk::Server::CNpcBehaviorRuntime::Validate_Descriptor(
 			startX, startZ,
 			descriptor.Waypoints.front().fPositionX,
 			descriptor.Waypoints.front().fPositionZ,
-			segment))
+			segment, spawn.y))
 	{
 		outStatus = "NPC patrol loop cannot return to its first waypoint: " +
 			placement.strPlacementId;
@@ -597,7 +599,7 @@ bool LostArk::Server::CNpcBehaviorRuntime::Initialize(
 	{
 		SERVER_NAV_POINT spawn{};
 		if (!navigation.Project_Point(
-			entity.fPositionX, entity.fPositionZ, spawn))
+			entity.fPositionX, entity.fPositionZ, spawn, entity.fPositionY))
 		{
 			outStatus = "NPC behavior spawn projection failed: " +
 				placement.strPlacementId;

@@ -804,7 +804,8 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 			{
 				const SERVER_NAV_POINT& ahead = player.MovePath[candidate - 1u];
 				if (m_ServerNavigation.Has_LineOfSight(
-					player.fPositionX, player.fPositionZ, ahead.x, ahead.z))
+					player.fPositionX, player.fPositionZ, ahead.x, ahead.z,
+					player.fPositionY))
 				{
 					player.iMovePathIndex = candidate - 1u;
 					break;
@@ -884,7 +885,8 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 				player.fPositionZ,
 				proposedX,
 				proposedZ,
-				proposedGround))
+				proposedGround,
+				player.fPositionY))
 			{
 				player.hasMoveGoal = false;
 				player.MovePath.clear();
@@ -925,7 +927,8 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 				player.fPositionZ,
 				resolvedX,
 				resolvedZ,
-				resolvedGround))
+				resolvedGround,
+				player.fPositionY))
 			{
 				player.hasMoveGoal = false;
 				player.MovePath.clear();
@@ -960,14 +963,16 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 					player.fPositionZ,
 					player.fMoveGoalX,
 					player.fMoveGoalZ,
-					reroute))
+					reroute,
+					player.fPositionY))
 			{
 				m_ServerNavigation.Smooth_Path(
 					player.fPositionX,
 					player.fPositionZ,
 					player.fMoveGoalX,
 					player.fMoveGoalZ,
-					reroute);
+					reroute,
+					player.fPositionY);
 				player.MovePath = std::move(reroute);
 				player.iMovePathIndex = 0;
 				continue;
@@ -1127,7 +1132,8 @@ void LostArk::Server::CGameRoom::Advance_PlayerKnockback(
 			desiredX,
 			desiredZ,
 			reachable,
-			wasClamped);
+			wasClamped,
+			player.fPositionY);
 	}
 	Project_MarioRailPoint(player, reachable.x, reachable.z);
 	if (0u != player.iMarioStage)

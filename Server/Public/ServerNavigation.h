@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <map>
 #include <set>
 #include <string>
@@ -9,6 +10,12 @@
 
 namespace LostArk::Server
 {
+	/* Height hint of a query whose caller does not know a height for the point.
+	Only detail regions that share an XZ footprint (stacked height layers) care:
+	without a hint they fall back to manifest order. */
+	inline constexpr float NAVIGATION_HEIGHT_UNKNOWN =
+		std::numeric_limits<float>::quiet_NaN();
+
 	struct SERVER_NAV_POINT
 	{
 		float x = 0.f;
@@ -79,12 +86,17 @@ namespace LostArk::Server
 		bool Load(const std::string& areaId);
 		// Includes leaf detail grids once; region dispatch itself is not timed.
 		SERVER_NAVIGATION_PERFORMANCE_METRICS Get_PerformanceMetrics() const;
+		/* Every query that takes a trailing height hint (startY, hintY, fromY) uses
+		it only to pick the detail region when several regions share the XZ of the
+		query's first point; see Select_Region. Callers that stand on a known deck
+		should pass that deck's height. */
 		bool Find_Path(
 			float startX,
 			float startZ,
 			float goalX,
 			float goalZ,
-			std::vector<SERVER_NAV_POINT>& outPath) const;
+			std::vector<SERVER_NAV_POINT>& outPath,
+			float startY = NAVIGATION_HEIGHT_UNKNOWN) const;
 		/* Line-of-sight string pulling shared by player commands and monster AI.
 		The exact projected goal replaces the last cell centre when it is visible. */
 		void Smooth_Path(
@@ -92,7 +104,8 @@ namespace LostArk::Server
 			float startZ,
 			float goalX,
 			float goalZ,
-			std::vector<SERVER_NAV_POINT>& path) const;
+			std::vector<SERVER_NAV_POINT>& path,
+			float startY = NAVIGATION_HEIGHT_UNKNOWN) const;
 		/* Deterministic bounded BFS used by wander admission and its runtime
 		fallback. Every returned cell centre stays inside the spawn circle, so a
 		reachable destination whose only route leaves the radius is rejected. */
@@ -103,11 +116,13 @@ namespace LostArk::Server
 			float centerZ,
 			float radius,
 			float minimumDestinationDistance,
-			std::vector<SERVER_NAV_POINT>& outPath) const;
+			std::vector<SERVER_NAV_POINT>& outPath,
+			float startY = NAVIGATION_HEIGHT_UNKNOWN) const;
 		bool Project_Point(
 			float x,
 			float z,
-			SERVER_NAV_POINT& outPoint) const;
+			SERVER_NAV_POINT& outPoint,
+			float hintY = NAVIGATION_HEIGHT_UNKNOWN) const;
 		/* Projects onto ground that belongs to the same deck as the cell under
 		(x, z). Project_Point searches in XZ only, so beside a collapsed arena
 		floor it can hand back walkable ground more than ten metres lower on
@@ -115,7 +130,8 @@ namespace LostArk::Server
 		bool Project_PointOnSameLevel(
 			float x,
 			float z,
-			SERVER_NAV_POINT& outPoint) const;
+			SERVER_NAV_POINT& outPoint,
+			float hintY = NAVIGATION_HEIGHT_UNKNOWN) const;
 		bool Prepare_ConditionChanges(
 			const std::vector<SERVER_NAVIGATION_CONDITION_CHANGE>& changes,
 			SERVER_NAVIGATION_CONDITION_STAGE& outStage,
@@ -134,7 +150,10 @@ namespace LostArk::Server
 		// Diagnostic counter for the Debug audition panel: how many authored
 		// blocker regions are still holding cells closed right now.
 		std::size_t Get_ActiveBlockerRegionCount() const;
-		bool Is_PointWalkableExact(float x, float z) const;
+		bool Is_PointWalkableExact(
+			float x,
+			float z,
+			float hintY = NAVIGATION_HEIGHT_UNKNOWN) const;
 		/* Declares which conditions open a hole rather than clear an obstacle.
 		Called once at room admission from the world destruction descriptor that
 		authored them; every id must already exist and every region that uses it
@@ -147,7 +166,8 @@ namespace LostArk::Server
 		bool Sample_Position(
 			float x,
 			float z,
-			SERVER_NAV_POINT& outPoint) const;
+			SERVER_NAV_POINT& outPoint,
+			float hintY = NAVIGATION_HEIGHT_UNKNOWN) const;
 		/* Resolves one live walking step against the ground under both XZ
 		positions. The returned Y always comes from the destination cell; callers
 		must not interpolate toward a distant smoothed-waypoint Y. */
@@ -156,12 +176,14 @@ namespace LostArk::Server
 			float fromZ,
 			float toX,
 			float toZ,
-			SERVER_NAV_POINT& outPoint) const;
+			SERVER_NAV_POINT& outPoint,
+			float fromY = NAVIGATION_HEIGHT_UNKNOWN) const;
 		bool Has_LineOfSight(
 			float startX,
 			float startZ,
 			float endX,
-			float endZ) const;
+			float endZ,
+			float startY = NAVIGATION_HEIGHT_UNKNOWN) const;
 		/* Runtime-authored deck guard. Zero disables the guard for maps whose
 		single-layer grid intentionally joins large encounter height changes. */
 		bool Is_HeightTransitionAllowed(float fromY, float toY) const;
@@ -175,7 +197,14 @@ namespace LostArk::Server
 		a query whose first point lies inside it runs on that grid and never
 		sees base cells, so a region has to cover the whole walkable extent of
 		the stage it refines. Stages joined only by authored moves need no
-		cross-region paths, which is why none exist. */
+		cross-region paths, which is why none exist.
+		Regions may share an XZ footprint when they are stacked height layers
+		(an upper deck and the ground below it). The query's height hint then
+		picks the layer whose ground at that XZ is nearest, and Load rejects a
+		pair that has ground on both layers at one XZ closer than
+		max(2 m, 2 x the larger step policy), because a hint cannot tell those
+		apart. Layers are never joined on foot; moving between them is an
+		authored move like any other cross-region change. */
 		std::size_t Get_RegionCount() const noexcept { return m_Regions.size(); }
 		/* Both points must belong to the same loaded detail grid, not the base
 		grid. An authored stage entrance can identify its whole refined region
@@ -213,9 +242,24 @@ namespace LostArk::Server
 		bool Load_RuntimeBlockers(const std::string& areaId);
 		void Rebuild_InitialRuntimeBlockers() noexcept;
 		bool Load_Regions(const std::string& areaId);
-		const CServerNavigation* Select_Region(float x, float z) const;
+		/* The one place that decides which detail region answers a query.
+		Without overlapping regions it is exactly the old rule (the region that
+		contains the XZ, else the base grid). With several candidates, a region
+		with walkable ground at that XZ beats one without; among those the
+		smallest |ground - hintY| wins, and a tie or an unknown hint keeps
+		manifest order. A candidate with no ground there is ranked by its
+		distance to the height band of its walkable cells. */
+		const CServerNavigation* Select_Region(
+			float x,
+			float z,
+			float hintY = NAVIGATION_HEIGHT_UNKNOWN) const;
 		bool Contains_Point(float x, float z) const;
 		bool Overlaps_Grid(const CServerNavigation& other) const;
+		void Compute_WalkableBand();
+		bool Get_WalkableHeightAt(float x, float z, float& outY) const;
+		float Get_DistanceToWalkableBand(float y) const;
+		bool Find_AmbiguousLayerOverlap(
+			const CServerNavigation& other, std::string& outDetail) const;
 		std::size_t Get_DeclaredBlockerRegionCount() const noexcept
 		{
 			return m_RuntimeBlockerRegions.size();
@@ -229,6 +273,9 @@ namespace LostArk::Server
 		float m_fOriginX = 0.f;
 		float m_fOriginZ = 0.f;
 		float m_fMaximumTraversalStepHeight = 0.f;
+		/* Height band of the walkable cells, set by Load. Empty band: min > max. */
+		float m_fWalkableMinY = (std::numeric_limits<float>::max)();
+		float m_fWalkableMaxY = std::numeric_limits<float>::lowest();
 		std::vector<std::uint8_t> m_Walkable;
 		std::vector<float> m_Heights;
 		std::vector<SERVER_NAVIGATION_SUPPORT_SURFACE> m_RuntimeSupportSurfaces;

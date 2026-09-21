@@ -131,6 +131,91 @@ namespace LostArk.NavigationPublish
             return new double[] { walkableCount, maximumStep };
         }
 
+        // Ground height of the walkable cell under (x, z), NaN when outside the grid or not walkable.
+        public static double GroundAt(byte[] bytes, double x, double z)
+        {
+            uint width = BitConverter.ToUInt32(bytes, 0), height = BitConverter.ToUInt32(bytes, 4);
+            float cell = BitConverter.ToSingle(bytes, 8);
+            float originX = BitConverter.ToSingle(bytes, 12), originZ = BitConverter.ToSingle(bytes, 16);
+            if (double.IsNaN(x) || double.IsNaN(z) || x < originX || z < originZ ||
+                x >= (double)originX + (double)width * cell || z >= (double)originZ + (double)height * cell)
+                return double.NaN;
+            int cellX = (int)Math.Floor((x - originX) / cell), cellZ = (int)Math.Floor((z - originZ) / cell);
+            if (cellX < 0 || cellZ < 0 || cellX >= width || cellZ >= height) return double.NaN;
+            int index = cellZ * (int)width + cellX;
+            if (bytes[20 + index] != 1) return double.NaN;
+            return BitConverter.ToSingle(bytes, 20 + checked((int)((ulong)width * height)) + 4 * index);
+        }
+
+        // [minimum, maximum] height over the walkable cells; minimum > maximum when there is none.
+        public static double[] WalkableBand(byte[] bytes)
+        {
+            uint width = BitConverter.ToUInt32(bytes, 0), height = BitConverter.ToUInt32(bytes, 4);
+            int count = checked((int)((ulong)width * height));
+            double minimum = double.MaxValue, maximum = double.MinValue;
+            for (int index = 0; index < count; ++index)
+            {
+                if (bytes[20 + index] != 1) continue;
+                double level = BitConverter.ToSingle(bytes, 20 + count + 4 * index);
+                if (level < minimum) minimum = level;
+                if (level > maximum) maximum = level;
+            }
+            return new double[] { minimum, maximum };
+        }
+
+        // Ground two grids share at one XZ, measured from the centre of every walkable cell of each grid
+        // against the other grid (the rule CServerNavigation::Find_AmbiguousLayerOverlap uses).
+        // Returns [pairs, closest separation, pairs closer than minimumSeparation, x, z, height1, height2];
+        // x, z and the heights describe the first too-close pair, or the closest pair when none is too close.
+        public static double[] MeasureLayerOverlap(byte[] first, byte[] second, double minimumSeparation)
+        {
+            double pairs = 0.0, tooClose = 0.0, closest = double.MaxValue;
+            double[] closestPair = new double[4], firstTooClose = new double[4];
+            bool haveTooClose = false;
+            for (int pass = 0; pass < 2; ++pass)
+            {
+                byte[] from = pass == 0 ? first : second;
+                byte[] to = pass == 0 ? second : first;
+                uint fromWidth = BitConverter.ToUInt32(from, 0), fromHeight = BitConverter.ToUInt32(from, 4);
+                float fromCell = BitConverter.ToSingle(from, 8);
+                float fromOriginX = BitConverter.ToSingle(from, 12), fromOriginZ = BitConverter.ToSingle(from, 16);
+                int fromCount = checked((int)((ulong)fromWidth * fromHeight));
+                uint toWidth = BitConverter.ToUInt32(to, 0), toHeight = BitConverter.ToUInt32(to, 4);
+                int toCount = checked((int)((ulong)toWidth * toHeight));
+                for (int z = 0; z < fromHeight; ++z)
+                {
+                    float centerZ = fromOriginZ + ((float)z + 0.5f) * fromCell;
+                    for (int x = 0; x < fromWidth; ++x)
+                    {
+                        int index = z * (int)fromWidth + x;
+                        if (from[20 + index] != 1) continue;
+                        float centerX = fromOriginX + ((float)x + 0.5f) * fromCell;
+                        double other = GroundAt(to, centerX, centerZ);
+                        if (double.IsNaN(other)) continue;
+                        double level = BitConverter.ToSingle(from, 20 + fromCount + 4 * index);
+                        double separation = Math.Abs(level - other);
+                        pairs += 1.0;
+                        if (separation < closest)
+                        {
+                            closest = separation;
+                            closestPair = new double[] { centerX, centerZ, level, other };
+                        }
+                        if (separation < minimumSeparation)
+                        {
+                            tooClose += 1.0;
+                            if (!haveTooClose)
+                            {
+                                haveTooClose = true;
+                                firstTooClose = new double[] { centerX, centerZ, level, other };
+                            }
+                        }
+                    }
+                }
+            }
+            double[] report = haveTooClose ? firstTooClose : closestPair;
+            return new double[] { pairs, pairs == 0.0 ? 0.0 : closest, tooClose, report[0], report[1], report[2], report[3] };
+        }
+
         private static void Visit(int index, byte[] bytes, byte[] visited, int[] queue, ref int tail)
         {
             if (index < 0 || bytes[20 + index] != 1 || visited[index] != 0) return;
@@ -621,20 +706,80 @@ function Get-NavigationGridBounds {
     }
 }
 
+# Two regions may share an XZ footprint only as separate height layers. A query tells them apart by
+# its height hint, which is off by up to one step on a real deck, so the ground of the two layers at
+# one XZ must be at least twice the larger step policy apart, and never less than 2 m. The Server
+# applies the same rule when it loads the manifest (CServerNavigation::Find_AmbiguousLayerOverlap).
+function Get-NavigationLayerMinimumSeparation {
+    param([object]$First, [object]$Second)
+    $step = [Math]::Max([double]$First.RuntimeMaximumStepHeight,
+        [double]$Second.RuntimeMaximumStepHeight)
+    return [Math]::Max(2.0, 2.0 * $step)
+}
+
 function Assert-NavigationRegionFootprints {
     param([object[]]$RegionGrids)
     for ($outer = 0; $outer -lt $RegionGrids.Count; ++$outer) {
         $a = Get-NavigationGridBounds $RegionGrids[$outer]
         for ($inner = $outer + 1; $inner -lt $RegionGrids.Count; ++$inner) {
             $b = Get-NavigationGridBounds $RegionGrids[$inner]
-            if ($a.MinX -lt $b.MaxX -and $b.MinX -lt $a.MaxX -and
-                $a.MinZ -lt $b.MaxZ -and $b.MinZ -lt $a.MaxZ) {
+            if (-not ($a.MinX -lt $b.MaxX -and $b.MinX -lt $a.MaxX -and
+                $a.MinZ -lt $b.MaxZ -and $b.MinZ -lt $a.MaxZ)) { continue }
+            $minimum = Get-NavigationLayerMinimumSeparation `
+                $RegionGrids[$outer] $RegionGrids[$inner]
+            $measure = [LostArk.NavigationPublish.CellBuffer]::MeasureLayerOverlap(
+                [byte[]]$RegionGrids[$outer].Bytes, [byte[]]$RegionGrids[$inner].Bytes, $minimum)
+            if ($measure[2] -gt 0) {
                 throw ("Navigation regions overlap: " +
                     "$($RegionGrids[$outer].AreaId) and " +
-                    "$($RegionGrids[$inner].AreaId)")
+                    "$($RegionGrids[$inner].AreaId) " +
+                    "($([int]$measure[2]) cells have ground on both layers closer than " +
+                    "$minimum m; first at x=$([Math]::Round($measure[3], 3)) " +
+                    "z=$([Math]::Round($measure[4], 3)) heights " +
+                    "$([Math]::Round($measure[5], 3)) and $([Math]::Round($measure[6], 3)))")
             }
         }
     }
+}
+
+# Same dispatch as CServerNavigation::Select_Region with the point height as the hint: the region whose
+# footprint contains (x, z), the base grid when none does. Several regions may share the footprint; a
+# region with ground at that XZ beats one without, then the nearest ground wins, then manifest order.
+function Select-NavigationOwnerGrid {
+    param(
+        [object]$BaseGrid,
+        [object[]]$RegionGrids,
+        [double]$X,
+        [double]$Y,
+        [double]$Z
+    )
+    $candidates = @(foreach ($region in $RegionGrids) {
+        $regionBounds = Get-NavigationGridBounds $region
+        if ($X -ge $regionBounds.MinX -and $X -lt $regionBounds.MaxX -and
+            $Z -ge $regionBounds.MinZ -and $Z -lt $regionBounds.MaxZ) { $region }
+    })
+    if ($candidates.Count -eq 0) { return $BaseGrid }
+    if ($candidates.Count -eq 1) { return $candidates[0] }
+    $best = $null
+    $bestHasGround = $false
+    $bestDistance = 0.0
+    foreach ($candidate in $candidates) {
+        $ground = [LostArk.NavigationPublish.CellBuffer]::GroundAt([byte[]]$candidate.Bytes, $X, $Z)
+        $hasGround = -not [double]::IsNaN($ground)
+        if ($hasGround) { $distance = [Math]::Abs($ground - $Y) }
+        else {
+            $band = [LostArk.NavigationPublish.CellBuffer]::WalkableBand([byte[]]$candidate.Bytes)
+            $distance = if ($band[0] -gt $band[1]) { [double]::PositiveInfinity }
+                else { [Math]::Max([Math]::Max($band[0] - $Y, 0.0), $Y - $band[1]) }
+        }
+        if ($null -eq $best -or ($hasGround -and -not $bestHasGround) -or
+            ($hasGround -eq $bestHasGround -and $distance -lt $bestDistance)) {
+            $best = $candidate
+            $bestHasGround = $hasGround
+            $bestDistance = $distance
+        }
+    }
+    return $best
 }
 
 function Convert-NavigationRuntimeRegionManifest {
@@ -702,17 +847,9 @@ function Assert-NavigationPlacements {
             [double]::IsNaN($z) -or [double]::IsInfinity($z)) {
             throw "Gameplay placement position is not finite: $($placement.placementId)"
         }
-        # Same dispatch as CServerNavigation::Select_Region: the first region
-        # whose footprint contains the point owns it, otherwise the base grid.
-        $owner = $BaseGrid
-        foreach ($region in $RegionGrids) {
-            $regionBounds = Get-NavigationGridBounds $region
-            if ($x -ge $regionBounds.MinX -and $x -lt $regionBounds.MaxX -and
-                $z -ge $regionBounds.MinZ -and $z -lt $regionBounds.MaxZ) {
-                $owner = $region
-                break
-            }
-        }
+        # Same dispatch as CServerNavigation::Select_Region, with the placement height as the hint.
+        $owner = Select-NavigationOwnerGrid -BaseGrid $BaseGrid -RegionGrids $RegionGrids `
+            -X $x -Y $y -Z $z
         $bytes = [byte[]]$owner.Bytes
         $bounds = Get-NavigationGridBounds $owner
         $cellX = [int][Math]::Floor(($x - $bounds.MinX) / $bounds.CellSize)
@@ -1065,10 +1202,90 @@ function Invoke-NavigationCellContractTest {
     }
 }
 
+function New-NavigationLayerTestGrid {
+    param(
+        [string]$AreaId,
+        [double]$Height,
+        [double]$Step,
+        [uint32]$Width = 4,
+        [uint32]$Depth = 4,
+        [double]$OriginX = 1.0,
+        [double]$OriginZ = 1.0,
+        [int]$HoleCell = -1
+    )
+    $count = [int]($Width * $Depth)
+    $ground = [byte[]]::new($count)
+    for ($index = 0; $index -lt $count; ++$index) { $ground[$index] = $(if ($index -eq $HoleCell) { 0 } else { 1 }) }
+    $levels = [single[]]::new($count)
+    for ($index = 0; $index -lt $count; ++$index) { $levels[$index] = [single]$Height }
+    $bytes = [LostArk.NavigationPublish.CellBuffer]::Serialize(
+        $Width, $Depth, 0.5, [single]$OriginX, [single]$OriginZ,
+        [byte[]]$ground, [byte[]]$ground, [single[]]$levels, [byte[]]::new($count))
+    return [pscustomobject]@{
+        AreaId = $AreaId; Bytes = [byte[]]$bytes; RuntimeMaximumStepHeight = [single]$Step }
+}
+
+function Invoke-NavigationLayerContractTest {
+    $accepts = {
+        param($UpperHeight, $LowerHeight, $Step)
+        try {
+            Assert-NavigationRegionFootprints -RegionGrids @(
+                (New-NavigationLayerTestGrid 'T.upper' $UpperHeight $Step),
+                (New-NavigationLayerTestGrid 'T.lower' $LowerHeight $Step))
+            return $true
+        } catch { return $false }
+    }
+    if (-not (& $accepts 10.0 2.0 0.75)) { throw 'Stacked layers 8 m apart were rejected' }
+    if (& $accepts 3.0 2.0 0.75) { throw 'Stacked layers 1 m apart were accepted' }
+    if (& $accepts 3.9 2.0 0.75) { throw 'Stacked layers 1.9 m apart were accepted' }
+    if (-not (& $accepts 4.0 2.0 0.75)) { throw 'Stacked layers exactly 2 m apart were rejected' }
+    if (& $accepts 4.5 2.0 1.5) { throw 'Stacked layers closer than twice a 1.5 m step were accepted' }
+    if (-not (& $accepts 5.0 2.0 1.5)) { throw 'Stacked layers exactly twice a 1.5 m step apart were rejected' }
+    if (& $accepts 2.0 2.0 0.75) { throw 'Two same-height regions on one footprint were accepted' }
+    $message = $null
+    try {
+        Assert-NavigationRegionFootprints -RegionGrids @(
+            (New-NavigationLayerTestGrid 'T.upper' 3.0 0.75),
+            (New-NavigationLayerTestGrid 'T.lower' 2.0 0.75))
+    } catch { $message = $_.Exception.Message }
+    if ($message -notlike '*T.upper and T.lower*' -or $message -notlike '*closer than 2 m*') {
+        throw "Ambiguous layer rejection does not name the pair and the rule: $message"
+    }
+    # Footprints that only touch or do not overlap never need a separation.
+    Assert-NavigationRegionFootprints -RegionGrids @(
+        (New-NavigationLayerTestGrid 'T.left' 2.0 0.75),
+        (New-NavigationLayerTestGrid 'T.right' 2.0 0.75 -OriginX 3.0))
+    Assert-NavigationRegionFootprints -RegionGrids @(
+        (New-NavigationLayerTestGrid 'T.near' 2.0 0.75),
+        (New-NavigationLayerTestGrid 'T.far' 2.0 0.75 -OriginX 20.0 -OriginZ 20.0))
+
+    $base = New-NavigationLayerTestGrid 'T' 0.0 1.0 -Width 4 -Depth 4 -OriginX 0.0 -OriginZ 0.0
+    $upper = New-NavigationLayerTestGrid 'T.upper' 10.0 0.75
+    $lower = New-NavigationLayerTestGrid 'T.lower' 2.0 0.75
+    $pick = {
+        param($Regions, $Y, $X = 1.25, $Z = 1.25)
+        return (Select-NavigationOwnerGrid -BaseGrid $base -RegionGrids $Regions -X $X -Y $Y -Z $Z).AreaId
+    }
+    if ((& $pick @($upper, $lower) 10.3) -ne 'T.upper' -or (& $pick @($upper, $lower) 1.7) -ne 'T.lower') {
+        throw 'A stacked placement was not assigned to the layer nearest its height'
+    }
+    if ((& $pick @($upper, $lower) ([double]::NaN)) -ne 'T.upper' -or
+        (& $pick @($lower, $upper) ([double]::NaN)) -ne 'T.lower') {
+        throw 'Manifest order is not the tie-break of an unhinted stacked placement'
+    }
+    if ((& $pick @($upper, $lower) 10.3 0.25 0.25) -ne 'T') { throw 'A point outside every region did not fall back to the base grid' }
+    $upperWithHole = New-NavigationLayerTestGrid 'T.upper' 10.0 0.75 -HoleCell 0
+    if ((& $pick @($upperWithHole, $lower) 10.3) -ne 'T.lower' -or
+        (& $pick @($upperWithHole, $lower) 10.3 1.75 1.25) -ne 'T.upper') {
+        throw 'Ground under the XZ did not beat a nearer layer without ground'
+    }
+}
+
 if ($Mode -eq 'ContractTest') {
     Invoke-NavigationCellContractTest
     Invoke-NavigationPaintContractTest
-    Write-Host 'Server navigation ContractTest succeeded: source cells, connectivity, navpaint, runtime blockers and placement height acceptance/rejection cases.'
+    Invoke-NavigationLayerContractTest
+    Write-Host 'Server navigation ContractTest succeeded: source cells, connectivity, navpaint, runtime blockers, placement height acceptance/rejection cases and stacked layer overlap acceptance/rejection.'
     return
 }
 

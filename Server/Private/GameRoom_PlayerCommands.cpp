@@ -195,9 +195,11 @@ bool LostArk::Server::CGameRoom::Commit_MoveGoal(
 		steer at it and let the existing body sweep slide along what it
 		touches. Only a closed line needs a route. */
 		SERVER_NAV_POINT exactGoal{};
-		if (m_ServerNavigation.Sample_Position(goalX, goalZ, exactGoal) &&
+		if (m_ServerNavigation.Sample_Position(
+			goalX, goalZ, exactGoal, player.fPositionY) &&
 			m_ServerNavigation.Has_LineOfSight(
-				player.fPositionX, player.fPositionZ, exactGoal.x, exactGoal.z))
+				player.fPositionX, player.fPositionZ, exactGoal.x, exactGoal.z,
+				player.fPositionY))
 		{
 			player.MovePath.clear();
 			player.iMovePathIndex = 0;
@@ -221,7 +223,8 @@ bool LostArk::Server::CGameRoom::Commit_MoveGoal(
 			player.fPositionZ,
 			goalX,
 			goalZ,
-			player.MovePath))
+			player.MovePath,
+			player.fPositionY))
 		{
 			player.hasMoveGoal = false;
 			return false;
@@ -231,7 +234,8 @@ bool LostArk::Server::CGameRoom::Commit_MoveGoal(
 			player.fPositionZ,
 			goalX,
 			goalZ,
-			player.MovePath);
+			player.MovePath,
+			player.fPositionY);
 		const SERVER_NAV_POINT& goal = player.MovePath.back();
 		player.fMoveGoalX = goal.x;
 		player.fMoveGoalZ = goal.z;
@@ -430,11 +434,12 @@ void LostArk::Server::CGameRoom::Handle_RevivePlayer(
 	if (m_ServerNavigation.Is_Loaded())
 	{
 		SERVER_NAV_POINT projected{};
-		if (!m_ServerNavigation.Project_Point(reviveX, reviveZ, projected))
+		if (!m_ServerNavigation.Project_Point(
+			reviveX, reviveZ, projected, reviveY))
 			return;
 		// Project_Point provides a safe floor if the death location is unwalkable.
 		if (WORLD_ID::VALTAN_ARENA == m_eWorldId ||
-			!m_ServerNavigation.Is_PointWalkableExact(reviveX, reviveZ))
+			!m_ServerNavigation.Is_PointWalkableExact(reviveX, reviveZ, reviveY))
 		{
 			reviveX = projected.x;
 			reviveZ = projected.z;
@@ -826,7 +831,8 @@ void LostArk::Server::CGameRoom::Handle_UseEstherSkill(
 		const float targetZ = caster.fPositionZ +
 			directionZ / directionLength * ESTHER_SUMMON_FORWARD_METERS;
 		SERVER_NAV_POINT landing{};
-		if (m_ServerNavigation.Sample_Position(targetX, targetZ, landing))
+		if (m_ServerNavigation.Sample_Position(
+			targetX, targetZ, landing, caster.fPositionY))
 		{
 			pending.fPositionX = landing.x;
 			pending.fPositionY = landing.y;
@@ -975,7 +981,8 @@ LostArk::Server::CGameRoom::Apply_CharacterClassChange(
 		{
 			SERVER_NAV_POINT projected{};
 			if (!m_ServerNavigation.Project_Point(
-				staged.fPositionX, staged.fPositionZ, projected))
+				staged.fPositionX, staged.fPositionZ, projected,
+				staged.fPositionY))
 			{
 				return CHARACTER_CLASS_CHANGE_RESULT::REJECTED_STATE;
 			}
