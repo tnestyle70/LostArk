@@ -86,10 +86,32 @@ void Client::CInteractKeyPromptView::Initialize(
 	}
 	for (const WORLD_GAMEPLAY_PLACEMENT& Placement : world.Get_Placements())
 	{
-		if (WORLD_PLACEMENT_KIND::TRIGGER_BOX != Placement.eKind || !Placement.requiresInteract)
+		if (WORLD_PLACEMENT_KIND::TRIGGER_BOX != Placement.eKind ||
+			(!Placement.requiresInteract && Placement.strInteractAction.empty()))
 			continue;
 		TRIGGER Trigger{};
 		Trigger.strPlacementId = Placement.placementId;
+		Trigger.bShowWhileInside = !Placement.requiresInteract;
+		Trigger.vCenter = Placement.position;
+		Trigger.vHalfExtents = Placement.halfExtents;
+		Trigger.fYawDegrees = Placement.yawDegrees;
+		/* An authored action wins: a box whose own move does not describe what the player
+		is doing (the Valtan ledge runs an encounter, not a move) names its icon instead. */
+		if (!Placement.strInteractAction.empty())
+		{
+			if ("godown" == Placement.strInteractAction) Trigger.eAction = ACTION::GODOWN;
+			else if ("climb" == Placement.strInteractAction) Trigger.eAction = ACTION::CLIMB;
+			else if ("tightrope" == Placement.strInteractAction) Trigger.eAction = ACTION::TIGHTROPE;
+			else if ("check" == Placement.strInteractAction) Trigger.eAction = ACTION::CHECK;
+			else
+			{
+				OutputDebugStringA(("[InteractKeyPrompt] unknown interactAction: " +
+					Placement.strInteractAction + "\n").c_str());
+				continue;
+			}
+			m_Triggers.push_back(std::move(Trigger));
+			continue;
+		}
 		for (const WORLD_TRIGGER_EVENT& Event : Placement.triggerEvents)
 		{
 			if (WORLD_TRIGGER_EVENT_KIND::MOVE_PLAYER != Event.eKind)
@@ -116,15 +138,44 @@ void Client::CInteractKeyPromptView::Update(const f32_t fTimeDelta,
 	const std::shared_ptr<CCharacter>& pLocalCharacter, const std::string& strOfferedTriggerId,
 	const bool_t bShown)
 {
-	if (nullptr == m_pView || !bShown || strOfferedTriggerId.empty() || nullptr == pLocalCharacter)
+	if (nullptr == m_pView || !bShown || nullptr == pLocalCharacter)
 	{
 		Hide();
 		return;
 	}
 	const TRIGGER* pTrigger = nullptr;
-	for (const TRIGGER& Trigger : m_Triggers)
-		if (Trigger.strPlacementId == strOfferedTriggerId)
-			pTrigger = &Trigger;
+	if (!strOfferedTriggerId.empty())
+	{
+		for (const TRIGGER& Trigger : m_Triggers)
+			if (Trigger.strPlacementId == strOfferedTriggerId)
+				pTrigger = &Trigger;
+	}
+	if (nullptr == pTrigger && nullptr != pLocalCharacter->Get_Transform())
+	{
+		/* No Server offer: a box that fires on entry still shows the icon it authored
+		while the player stands in it. */
+		float3_t vPlayer{};
+		XMStoreFloat3(&vPlayer, pLocalCharacter->Get_Transform()->Get_State(STATE::POSITION));
+		for (const TRIGGER& Trigger : m_Triggers)
+		{
+			if (!Trigger.bShowWhileInside)
+				continue;
+			const f32_t fRadians = XMConvertToRadians(Trigger.fYawDegrees);
+			const f32_t fCos = cosf(fRadians), fSin = sinf(fRadians);
+			const f32_t fDeltaX = vPlayer.x - Trigger.vCenter.x;
+			const f32_t fDeltaZ = vPlayer.z - Trigger.vCenter.z;
+			/* Into the box's own axes, the way the Server tests the same OBB. */
+			const f32_t fLocalX = fDeltaX * fCos + fDeltaZ * fSin;
+			const f32_t fLocalZ = -fDeltaX * fSin + fDeltaZ * fCos;
+			if (fabsf(fLocalX) <= Trigger.vHalfExtents.x &&
+				fabsf(fLocalZ) <= Trigger.vHalfExtents.z &&
+				fabsf(vPlayer.y - Trigger.vCenter.y) <= Trigger.vHalfExtents.y + 2.f)
+			{
+				pTrigger = &Trigger;
+				break;
+			}
+		}
+	}
 	if (nullptr == pTrigger)
 	{
 		Hide();
@@ -145,10 +196,10 @@ void Client::CInteractKeyPromptView::Update(const f32_t fTimeDelta,
 		return;
 	}
 
-	if (m_strShownTriggerId != strOfferedTriggerId)
+	if (m_strShownTriggerId != pTrigger->strPlacementId)
 	{
 		/* A new offer replays the "show" glow and swaps the action icon. */
-		m_strShownTriggerId = strOfferedTriggerId;
+		m_strShownTriggerId = pTrigger->strPlacementId;
 		m_eAction = pTrigger->eAction;
 		m_fShowSeconds = 0.f;
 		m_pView->Set_SlotTexture("IKP_Icon", Action_Icon(static_cast<uint8_t>(m_eAction)));

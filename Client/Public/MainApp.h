@@ -165,6 +165,7 @@ private:
 	std::uint32_t m_iNextKoukuRaidRequest = 1u, m_iKoukuRaidPendingRequest = 0u, m_iKoukuRaidDocumentEpoch = 0u;
 	std::string m_strKoukuRaidPresentationKey, m_strKoukuRaidFailedKey;
 	std::chrono::steady_clock::time_point m_KoukuRaidReplyDeadline{};
+	std::string m_strKoukuRaidReplyStatus; // Latest unresolved/rejected request, independent of broadcast raid presentation.
 #ifdef _DEBUG
     struct KOUKU_RAID_RESOURCE_PREPARATION final
     {
@@ -282,6 +283,24 @@ private:
 	this one. Also re-activates the scene rendering profile after a video edit. */
 	void Update_SystemOptionWindow(f32_t fTimeDelta);
 	bool_t Is_AnyRuntimeWindowOpen() const;
+	/* Every runtime window closes when a Level transition starts: the loading screen owns the
+	whole screen, and a window left open kept drawing its labels over it (the sprites were only
+	hidden, not closed). */
+	void Close_RuntimeWindowsForLoading();
+	/* Something other than gameplay owns the whole screen: a cinematic, or the loading
+	screen between Levels. Every runtime HUD/window sprite and every Draw_Text this class
+	drives is gated on this one answer, because each surface deciding for itself is what
+	let a minimap zone label and the combat analyzer letter the loading art. */
+	bool_t Is_RuntimeUIScreenSuppressed() const;
+	/* The toggle windows one Escape press closes one at a time, newest first. */
+	enum class ESCAPE_WINDOW : uint8_t { INVENTORY, CHARACTER_INFO, AVATAR_BOOK, HONOR_TITLE, VEHICLE, WORLD_MAP, END };
+	bool_t Is_EscapeWindowOpen(ESCAPE_WINDOW eWindow) const;
+	/* Drops closed windows from m_EscapeWindowOrder and appends newly opened ones on top. */
+	void Sync_EscapeWindowOrder();
+	/* Closes the newest open window; false when none is open. */
+	bool_t Close_TopEscapeWindow();
+	/* A popup or carry that reads this Escape press itself later in the frame. */
+	bool_t Is_EscapeOwnedElsewhere() const;
 	/* End of Update: registers every open runtime window's screen rect as a text clip-out so
 	nothing drawn later in the frame (nameplates, HUD, bubbles) shows through a window. */
 	/* Registers every shown runtime UI surface with its text layer (CUITextOcclusion). */
@@ -765,6 +784,9 @@ private:
 		hunter's card maze shard count instead. */
 		LostArk::Shared::MECHANIC_CARD_SYMBOL eCardMazeSuit =
 			LostArk::Shared::MECHANIC_CARD_SYMBOL::NONE;
+		/* Picks the retail DamageTextWnd colour for this number. */
+		LostArk::Shared::DAMAGE_HIT_FLAG eHitFlag =
+			LostArk::Shared::DAMAGE_HIT_FLAG::NORMAL;
 	};
 	vector<FLOATING_DAMAGE_NUMBER> m_FloatingDamageNumbers;
 	/* Update_BossHealthBar's own edge-detect state, matching two real effects confirmed from the
@@ -843,6 +865,11 @@ private:
 	runtime path for; every other Escape consumer keeps its own meaning. */
 	unique_ptr<CSystemOptionWindowView> m_pSystemOptionView = { nullptr };
 	bool_t m_bSystemOptionKeyDown = false;
+	/* Edge for Close_RuntimeWindowsForLoading. */
+	bool_t m_bWasLoadingLevel = false;
+	/* Open toggle windows in opening order (oldest first); [0, m_iEscapeWindowCount). */
+	ESCAPE_WINDOW m_EscapeWindowOrder[ETOUI(ESCAPE_WINDOW::END)] = {};
+	uint32_t m_iEscapeWindowCount = 0u;
 	/* Frame pacing and the FPS readout the system option rows drive. */
 	f32_t m_fSmoothedFps = 0.f;
 	f64_t m_dLastDamageSeconds = -1000.0;   // "in combat" for the FPS display = a recent hit

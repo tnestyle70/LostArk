@@ -11,6 +11,18 @@ Client::CUIInputRouter& Client::CUIInputRouter::Get()
 void Client::CUIInputRouter::Begin_Frame()
 {
 	m_bMouseClaimedThisFrame = false;
+	/* Arbitration uses the registration the top window made last frame, and one press may be
+	taken by one widget only. */
+	m_bHasTopWindowLastFrame = m_bHasTopWindow;
+	m_pTopWindowOwnerLastFrame = m_pTopWindowOwner;
+	m_fTopWindowXLastFrame = m_fTopWindowX;
+	m_fTopWindowYLastFrame = m_fTopWindowY;
+	m_fTopWindowWidthLastFrame = m_fTopWindowWidth;
+	m_fTopWindowHeightLastFrame = m_fTopWindowHeight;
+	m_bHasTopWindow = false;
+	m_pTopWindowOwner = nullptr;
+	m_bLeftClickConsumed = false;
+	m_pPointerScope = nullptr;
 	m_bLeftDownThisFrame =
 		0 != (CGameInstance::Get().Get_DIMouseStateRaw(DIM::LB) & 0x80);
 	m_bRightDownThisFrame =
@@ -61,9 +73,30 @@ bool_t Client::CUIInputRouter::Is_Clicked(
 	if (!Is_Hovered(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
 		return false;
 
+	/* The cursor is over this widget, so this window owns the mouse for the frame even when the
+	press itself belongs to the window in front. */
 	Claim_Mouse_This_Frame();
 
-	return Is_LeftClickEdge();
+	if (!Is_LeftClickEdge())
+		return false;
+	/* A press inside the front window's panel belongs to that window alone. */
+	if (m_bHasTopWindowLastFrame && m_pPointerScope != m_pTopWindowOwnerLastFrame)
+	{
+		f32_t fCursorX = 0.f, fCursorY = 0.f;
+		if (Get_ClientCursorPosition(fCursorX, fCursorY) &&
+			fCursorX >= m_fTopWindowXLastFrame &&
+			fCursorX < m_fTopWindowXLastFrame + m_fTopWindowWidthLastFrame &&
+			fCursorY >= m_fTopWindowYLastFrame &&
+			fCursorY < m_fTopWindowYLastFrame + m_fTopWindowHeightLastFrame)
+		{
+			return false;
+		}
+	}
+	/* One press, one action: whatever takes it first is the only taker this frame. */
+	if (m_bLeftClickConsumed)
+		return false;
+	m_bLeftClickConsumed = true;
+	return true;
 }
 
 bool_t Client::CUIInputRouter::Is_LeftClickEdge() const
@@ -114,9 +147,11 @@ void Client::CUIInputRouter::Claim_Mouse_This_Frame()
 }
 
 void Client::CUIInputRouter::Set_TopWindowRect(
-	f32_t fScreenX, f32_t fScreenY, f32_t fScreenWidth, f32_t fScreenHeight)
+	const void* pOwner, f32_t fScreenX, f32_t fScreenY,
+	f32_t fScreenWidth, f32_t fScreenHeight)
 {
 	m_bHasTopWindow = true;
+	m_pTopWindowOwner = pOwner;
 	m_fTopWindowX = fScreenX;
 	m_fTopWindowY = fScreenY;
 	m_fTopWindowWidth = fScreenWidth;

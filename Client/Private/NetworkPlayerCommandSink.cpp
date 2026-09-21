@@ -304,6 +304,12 @@ bool Client::CNetworkPlayerCommandSink::Consume_GateProgressState(
 	return CNetworkManager::Get().Try_Consume_GateProgressState(outState);
 }
 
+bool Client::CNetworkPlayerCommandSink::Consume_RaidMvpResult(
+	LostArk::Shared::S2C_RAID_MVP_RESULT& outResult)
+{
+	return CNetworkManager::Get().Try_Consume_RaidMvpResult(outResult);
+}
+
 bool Client::CNetworkPlayerCommandSink::Request_ReturnToBern(
 	const std::uint32_t clientSequence)
 {

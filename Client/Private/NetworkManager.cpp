@@ -855,28 +855,106 @@ void CNetworkManager::Update()
 		return;
 	}
 
-	//Inbound mutex ��� -> Worker�� ���� raw frame queue�� ���� queue�� swap
-	//mutex ���� -> frame�� ���� ������� handle_frame�� ����
-
-	std::deque<LostArk::Shared::PACKET_FRAME> receivedFrames;
-	// Worker�� �ϼ��� Frame�� Main Thread�� �Ű� Packet �޽�����
-	// Replication Event�� �����Ѵ�. Engine ��ü�� ���⼭ ���� �������� �ʴ´�.
+	// Keep undelivered frames in the worker queue. A full typed destination
+	// pauses at the FIFO head until its main-thread consumer has drained it.
+	// Handle_Frame runs outside the mutex: it may close/reset the connection.
+	for (std::size_t dispatched = 0u;
+		dispatched < MAX_INBOUND_DISPATCH_PER_UPDATE; ++dispatched)
 	{
-		std::scoped_lock lock
+		LostArk::Shared::PACKET_FRAME frame;
 		{
-			m_InboundMutex
-		};
-		//swap�� ���ؼ� frame�� �ؼ��ϴ� ���� network workter�� ���
-		//�� frame�� ���� �� �ִ�.
-		receivedFrames.swap(m_InboundFrames);
-		m_SessionDiagnostic.Record_RawQueueDepth(m_InboundFrames.size());
-	}
-	
-	for (const auto& frame : receivedFrames)
-	{
+			std::scoped_lock lock{ m_InboundMutex };
+			if (m_InboundFrames.empty() ||
+				!Has_DispatchCapacity(m_InboundFrames.front().ePacketType))
+				break;
+			frame = std::move(m_InboundFrames.front());
+			m_InboundFrames.pop_front();
+			m_SessionDiagnostic.Record_RawQueueDepth(m_InboundFrames.size());
+		}
 		Handle_Frame(frame);
 		if (m_hasProtocolFailure.load())
 			break;
+	}
+}
+
+bool CNetworkManager::Has_DispatchCapacity(
+	const LostArk::Shared::PACKET_TYPE packetType) const
+{
+	using LostArk::Shared::PACKET_TYPE;
+	switch (packetType)
+	{
+	case PACKET_TYPE::S2C_DEBUG_TELEPORT_TO_POSITION_RESULT:
+		return m_DebugTeleportResults.size() < MAX_REVISION_CONTROL_QUEUE;
+	case PACKET_TYPE::S2C_MARIO_RETURN_RESULT:
+		return m_MarioReturnResults.size() < MAX_REVISION_CONTROL_QUEUE;
+	case PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT:
+		return m_DebugMarioJumpResults.size() < MAX_REVISION_CONTROL_QUEUE;
+	case PACKET_TYPE::S2C_DEBUG_WORLD_PLAYBACK_RESULT:
+		return m_DebugWorldPlaybackResults.size() < MAX_REVISION_CONTROL_QUEUE;
+	case PACKET_TYPE::S2C_DEBUG_SET_KOUKU_HUD_MODE_RESULT:
+		return m_DebugKoukuHudModeResults.size() < MAX_REVISION_CONTROL_QUEUE;
+	case PACKET_TYPE::S2C_DEBUG_SET_MADNESS_FORM_RESULT:
+		return m_DebugMadnessFormResults.size() < MAX_REVISION_CONTROL_QUEUE;
+	case PACKET_TYPE::S2C_SET_VEHICLE_RIDING_RESULT:
+		return m_VehicleRidingResults.size() < MAX_REVISION_CONTROL_QUEUE;
+	case PACKET_TYPE::S2C_SET_HONOR_TITLE_RESULT:
+		return m_HonorTitleResults.size() < MAX_REVISION_CONTROL_QUEUE;
+	case PACKET_TYPE::S2C_WORLD_ENTITY_SPAWN_RESULT:
+		return m_WorldEntitySpawnResults.size() < MAX_REVISION_CONTROL_QUEUE;
+	case PACKET_TYPE::S2C_CHARACTER_CLASS_CHANGE_RESULT:
+		return m_CharacterClassChangeResults.size() < MAX_REVISION_CONTROL_QUEUE;
+	case PACKET_TYPE::S2C_VALTAN_AUDITION_LIFECYCLE:
+		return m_ValtanAuditionLifecycleEvents.size() < MAX_REVISION_CONTROL_QUEUE;
+	case PACKET_TYPE::S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT:
+		return m_KoukuSaydonPatternAuditionResults.size() < MAX_REVISION_CONTROL_QUEUE;
+	case PACKET_TYPE::S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE:
+		return m_KoukuSaydonPatternAuditionLifecycleEvents.size() < MAX_REVISION_CONTROL_QUEUE;
+	case PACKET_TYPE::S2C_DEBUG_VALTAN_PATTERN_FLOW_RESULT:
+		return m_ValtanPatternFlowResults.size() < MAX_REVISION_CONTROL_QUEUE;
+	case PACKET_TYPE::S2C_DEBUG_VALTAN_PATTERN_FLOW_LIFECYCLE:
+		return m_ValtanPatternFlowLifecycleEvents.size() < MAX_REVISION_CONTROL_QUEUE;
+	case PACKET_TYPE::S2C_GATE_PROGRESS_STATE:
+		return m_GateProgressStates.size() < MAX_REVISION_CONTROL_QUEUE;
+	case PACKET_TYPE::S2C_RAID_MVP_RESULT:
+		return m_RaidMvpResults.size() < MAX_REVISION_CONTROL_QUEUE;
+	case PACKET_TYPE::S2C_VALTAN_AUDITION_RESULT:
+		// Both operation-specific consumers run after Update, so neither lane
+		// may overflow while this packet still owns the FIFO head.
+		return m_ValtanAuditionResults.size() < MAX_REVISION_CONTROL_QUEUE &&
+			m_ValtanPatternAuditionByIdResults.size() < MAX_REVISION_CONTROL_QUEUE;
+	case PACKET_TYPE::S2C_WORLD_SNAPSHOT:
+		if (!m_ReplicationEvents.empty() &&
+			Client::Can_CoalesceAdjacentReplicationEvents(
+				m_ReplicationEvents.back().eType,
+				Client::CLIENT_REPLICATION_EVENT_TYPE::WORLD_SNAPSHOT))
+			return true;
+		[[fallthrough]];
+	case PACKET_TYPE::S2C_PLAYER_SPAWNED:
+	case PACKET_TYPE::S2C_WORLD_ENTITY_SPAWNED:
+	case PACKET_TYPE::S2C_COMBAT_OBJECT_SPAWNED:
+	case PACKET_TYPE::S2C_COMBAT_OBJECT_PRESENTATION_EVENT:
+	case PACKET_TYPE::S2C_WORLD_ENTITY_DESPAWNED:
+	case PACKET_TYPE::S2C_COMBAT_OBJECT_DESPAWNED:
+	case PACKET_TYPE::S2C_INVENTORY_SNAPSHOT:
+	case PACKET_TYPE::S2C_PARTY_INVITE_RECEIVED:
+	case PACKET_TYPE::S2C_KOUKUSAYDON_RAID_STATE:
+	case PACKET_TYPE::S2C_KOUKUSAYDON_BUNDLE_STATE:
+	case PACKET_TYPE::S2C_WORLD_SEQUENCE_PLAY:
+	case PACKET_TYPE::S2C_INTERACT_PROMPT:
+	case PACKET_TYPE::S2C_PARTY_ROSTER:
+	case PACKET_TYPE::S2C_PARTY_TRANSFER_RESULT:
+	case PACKET_TYPE::S2C_RAID_ENTRY_PROMPT:
+	case PACKET_TYPE::S2C_RAID_ENTRY_VOTE:
+	case PACKET_TYPE::S2C_CHAT:
+	case PACKET_TYPE::S2C_WORLD_DESTRUCTION_FULL_SYNC:
+	case PACKET_TYPE::S2C_ENCOUNTER_PROP_SYNC:
+	case PACKET_TYPE::S2C_WORLD_DESTRUCTION_DELTA:
+	case PACKET_TYPE::S2C_PLAYER_DESPAWNED:
+		return m_ReplicationEvents.size() < MAX_REPLICATION_EVENT_QUEUE;
+	default:
+		// Admission/revision messages do not append a typed queue. In particular,
+		// ENTER_ACCEPTED must still reset the previous world's full event queues.
+		return true;
 	}
 }
 
@@ -1922,6 +2000,16 @@ bool CNetworkManager::Try_Consume_GateProgressState(
 	return true;
 }
 
+bool CNetworkManager::Try_Consume_RaidMvpResult(
+	LostArk::Shared::S2C_RAID_MVP_RESULT& outResult)
+{
+	if (m_RaidMvpResults.empty())
+		return false;
+	outResult = std::move(m_RaidMvpResults.front());
+	m_RaidMvpResults.pop_front();
+	return true;
+}
+
 bool CNetworkManager::Send_ReturnToBern(const std::uint32_t requestSequence)
 {
 	using namespace LostArk::Shared;
@@ -2048,6 +2136,32 @@ bool CNetworkManager::Send_UseItem(
 	std::vector<std::uint8_t> frameBytes;
 	return Build_Packet_Frame(
 		PACKET_TYPE::C2S_USE_ITEM,
+		payloadWriter.Get_Buffer(),
+		frameBytes) && Send_All(frameBytes);
+}
+
+bool CNetworkManager::Send_SetEquipment(
+	const std::uint32_t requestSequence,
+	const LostArk::Shared::EQUIPMENT_SLOT slot,
+	const bool bEquip,
+	const std::string_view itemId)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+
+	C2S_SET_EQUIPMENT message{};
+	message.iRequestSequence = requestSequence;
+	message.eSlot = slot;
+	message.bEquip = bEquip;
+	message.strItemId = std::string{ itemId };
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_SET_EQUIPMENT,
 		payloadWriter.Get_Buffer(),
 		frameBytes) && Send_All(frameBytes);
 }
@@ -2521,6 +2635,7 @@ void CNetworkManager::Reset_WorldInboundState()
 	m_VehicleRidingResults.clear();
 	m_HonorTitleResults.clear();
 	m_GateProgressStates.clear();
+	m_RaidMvpResults.clear();
 	m_DebugKoukuHudModeResults.clear();
 	m_WorldEntitySpawnResults.clear();
 	// ENTER_ACCEPTED follows the old-room command/reply barrier on this socket.
@@ -3173,6 +3288,56 @@ bool CNetworkManager::Try_Get_LocalSpawn(
 	return true;
 }
 
+bool CNetworkManager::Enqueue_InboundFrame(
+	LostArk::Shared::PACKET_FRAME&& frame)
+{
+	using namespace LostArk::Shared;
+	std::scoped_lock lock{
+	   m_InboundMutex
+	};
+	/* Level activation can synchronously prepare GPU resources before the
+	   main thread resumes Update().  Coalesce adjacent snapshots at the
+	   worker boundary as well as the parsed-event boundary so that cold
+	   loading cannot exhaust the raw frame queue.  Any lifecycle or
+	   destruction frame remains an ordering barrier. */
+	/* Raw frames are not decoded here, so a replaced snapshot frame loses its
+	   DamageEvents/BossCombatEvents for good. Normal play delivers one or two
+	   snapshots per main-thread drain (TCP batching), so coalesce only once a
+	   real backlog has built up -- a cold level load -- and let the parsed-event
+	   queue carry events forward for the short bursts. */
+	constexpr std::size_t INBOUND_SNAPSHOT_COALESCE_DEPTH = 30u;
+	if (m_InboundFrames.size() >= INBOUND_SNAPSHOT_COALESCE_DEPTH &&
+		Client::Can_CoalesceAdjacentInboundFrames(
+			m_InboundFrames.back().ePacketType,
+			frame.ePacketType))
+	{
+		m_InboundFrames.back() = std::move(frame);
+		m_SessionDiagnostic.Record_RawSnapshotCoalesced();
+		m_SessionDiagnostic.Record_InboundFrame(
+			m_InboundFrames.back().ePacketType,
+			m_InboundFrames.size());
+		return true;
+	}
+	if (m_InboundFrames.size() >= MAX_INBOUND_FRAME_QUEUE)
+	{
+		m_iLastErrorCode.store(WSAENOBUFS);
+		m_SessionDiagnostic.Record_Terminal(
+			SESSION_DIAGNOSTIC_REASON::CLIENT_RAW_QUEUE_OVERFLOW,
+			WSAENOBUFS,
+			frame.ePacketType,
+			"Inbound raw frame queue reached its 4096-frame bound.");
+		m_hasProtocolFailure.store(true);
+		m_isReceiveRunning.store(false);
+		return false;
+	}
+	m_InboundFrames.push_back(
+		std::move(frame));
+	m_SessionDiagnostic.Record_InboundFrame(
+		m_InboundFrames.back().ePacketType,
+		m_InboundFrames.size());
+	return true;
+}
+
 void CNetworkManager::Receive_Loop(const SOCKET serverSocket)
 {
 	//recv()�� server�� ���� ����Ʈ�� �޴´�
@@ -3273,51 +3438,8 @@ void CNetworkManager::Receive_Loop(const SOCKET serverSocket)
 				return;
 			}
 			//FRAME_READY�� ��쿡�� main thread ���� ť�� �ִ´�.
-			{
-				std::scoped_lock lock{
-				   m_InboundMutex
-				};
-				/* Level activation can synchronously prepare GPU resources before the
-				   main thread resumes Update().  Coalesce adjacent snapshots at the
-				   worker boundary as well as the parsed-event boundary so that cold
-				   loading cannot exhaust the raw frame queue.  Any lifecycle or
-				   destruction frame remains an ordering barrier. */
-				/* Raw frames are not decoded here, so a replaced snapshot frame loses its
-				   DamageEvents/BossCombatEvents for good. Normal play delivers one or two
-				   snapshots per main-thread drain (TCP batching), so coalesce only once a
-				   real backlog has built up -- a cold level load -- and let the parsed-event
-				   queue carry events forward for the short bursts. */
-				constexpr std::size_t INBOUND_SNAPSHOT_COALESCE_DEPTH = 30u;
-				if (m_InboundFrames.size() >= INBOUND_SNAPSHOT_COALESCE_DEPTH &&
-					Client::Can_CoalesceAdjacentInboundFrames(
-						m_InboundFrames.back().ePacketType,
-						frame.ePacketType))
-				{
-					m_InboundFrames.back() = std::move(frame);
-					m_SessionDiagnostic.Record_RawSnapshotCoalesced();
-					m_SessionDiagnostic.Record_InboundFrame(
-						m_InboundFrames.back().ePacketType,
-						m_InboundFrames.size());
-					continue;
-				}
-				if (m_InboundFrames.size() >= MAX_INBOUND_FRAME_QUEUE)
-				{
-					m_iLastErrorCode.store(WSAENOBUFS);
-					m_SessionDiagnostic.Record_Terminal(
-						SESSION_DIAGNOSTIC_REASON::CLIENT_RAW_QUEUE_OVERFLOW,
-						WSAENOBUFS,
-						frame.ePacketType,
-						"Inbound raw frame queue reached its 4096-frame bound.");
-					m_hasProtocolFailure.store(true);
-					m_isReceiveRunning.store(false);
-					return;
-				}
-				m_InboundFrames.push_back(
-					std::move(frame));
-				m_SessionDiagnostic.Record_InboundFrame(
-					m_InboundFrames.back().ePacketType,
-					m_InboundFrames.size());
-			}
+			if (!Enqueue_InboundFrame(std::move(frame)))
+				return;
 		}
 	}
 	m_isReceiveRunning.store(false);
@@ -4309,6 +4431,29 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 			return;
 		}
 		m_GateProgressStates.push_back(state);
+		break;
+	}
+	case PACKET_TYPE::S2C_RAID_MVP_RESULT:
+	{
+		S2C_RAID_MVP_RESULT result{};
+		if (!Read_Message(reader, result) || 0u != reader.Get_RemainingSize())
+		{
+			Fail_Protocol(WSAEINVAL,
+				SESSION_DIAGNOSTIC_REASON::CLIENT_MESSAGE_DECODE_FAILED,
+				PACKET_TYPE::S2C_RAID_MVP_RESULT,
+				"S2C_RAID_MVP_RESULT payload decode or trailing-byte validation failed.");
+			return;
+		}
+		if (result.eWorldId != m_eWorldId)
+			break;
+		if (m_RaidMvpResults.size() >= MAX_REVISION_CONTROL_QUEUE)
+		{
+			Fail_Protocol(WSAENOBUFS, SESSION_DIAGNOSTIC_REASON::CLIENT_EVENT_QUEUE_OVERFLOW,
+				frame.ePacketType, "m_RaidMvpResults depth=" + std::to_string(m_RaidMvpResults.size()) +
+				" limit=" + std::to_string(MAX_REVISION_CONTROL_QUEUE));
+			return;
+		}
+		m_RaidMvpResults.push_back(std::move(result));
 		break;
 	}
 	case PACKET_TYPE::S2C_RAID_ENTRY_VOTE:

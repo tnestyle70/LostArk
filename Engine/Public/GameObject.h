@@ -30,6 +30,11 @@ public:
 	virtual HRESULT Render_Group(RENDERGROUP group);
 	// Lower values draw first within BLEND; equal values retain distance order.
 	virtual int32_t Get_BlendSortPriority() const { return 0; }
+	/* Lower values draw first within UI; equal values keep submission order. UI objects are
+	submitted in whatever order their owners happen to update in, which made a surface created
+	later (a HUD gauge built on entering an arena) cover a window created at start-up. The
+	Client's UI layer table is the single place that decides this. */
+	virtual int32_t Get_UISortLayer() const { return 0; }
 	virtual HRESULT Render_DeferredOverlay();
 	virtual HRESULT Render_Shadow();
     // Opt in only for side-effect-free, time-invariant depth. Every change to

@@ -162,6 +162,9 @@ public:
 	virtual bool Request_GateProgressPropose(std::uint32_t, LostArk::Shared::GATE_PROGRESS_KIND) { return false; }
 	virtual bool Request_GateProgressRespond(std::uint32_t, std::uint32_t, bool) { return false; }
 	virtual bool Consume_GateProgressState(LostArk::Shared::S2C_GATE_PROGRESS_STATE&) { return false; }
+	/* Raid-clear award input: each player's contribution to the cleared gate, as the Server
+	recorded it. Sinks without a Server have none. */
+	virtual bool Consume_RaidMvpResult(LostArk::Shared::S2C_RAID_MVP_RESULT&) { return false; }
 	// Raid Clear screen's own "돌아가기" (return) button, Valtan Arena only --
 	// the reverse trip of Request_ConfirmNpcEntry. No target NPC to name (the
 	// button has no proximity requirement); the Server lands the player back

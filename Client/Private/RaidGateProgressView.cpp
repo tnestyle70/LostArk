@@ -130,11 +130,21 @@ void Client::CRaidGateProgressView::Set_Progress(const uint8_t iCurrentGate, con
 	m_iClearedMask = iClearedMask;
 	if (nullptr == m_pWidget)
 		return;
+	/* EpicGateCommanderProgressFrame::setGate: a dungeon with fewer than three gates hides the
+	middle icon and uses the outer ones, so a two-gate raid reads as a pair rather than as two
+	of three. */
+	uint8_t iSlotOfGate[3] = { 0u, 1u, 2u };
+	if (m_iGateCount < 3u)
+		iSlotOfGate[1] = 2u;
+	bool_t bSlotUsed[3] = { false, false, false };
+	for (uint8_t i = 0u; i < m_iGateCount && i < 3u; ++i)
+		bSlotUsed[iSlotOfGate[i]] = true;
+	for (uint8_t iSlot = 0u; iSlot < 3u; ++iSlot)
+		m_pWidget->Set_SlotVisible("RGP_Icon" + std::to_string(iSlot), bSlotUsed[iSlot]);
 	for (uint8_t i = 0u; i < 3u; ++i)
 	{
-		const string strSlot = "RGP_Icon" + std::to_string(i);
+		const string strSlot = "RGP_Icon" + std::to_string(iSlotOfGate[i]);
 		const bool_t bShown = i < m_iGateCount;
-		m_pWidget->Set_SlotVisible(strSlot, bShown);
 		if (!bShown)
 			continue;
 		const bool_t bCleared = 0u != (m_iClearedMask & (1u << i));

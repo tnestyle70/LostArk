@@ -40,6 +40,7 @@ public:
 	{
 		m_iDragFromSlot = -1; m_bDraggingPanel = false;
 		m_bHasPendingItemDrop = m_bHasPendingItemPick = false;
+		m_strPendingEquipItemId.clear();
 		m_strPendingDropItemId.clear(); m_strPendingPickItemId.clear(); m_strPendingPickIconPath.clear();
 	}
 	CInventoryView(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext);
@@ -51,6 +52,7 @@ public:
 	underneath out of it, so no text ever shows through a window on top. */
 	bool_t Get_ScreenRect(f32_t& fX, f32_t& fY, f32_t& fWidth, f32_t& fHeight) const;
 	void Toggle() { m_bOpen = !m_bOpen; }
+	void Close() { m_bOpen = false; }
 
 	/* No-op while closed. */
 	void Update(const std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT>& items);
@@ -69,6 +71,9 @@ public:
 	same Inventory_Slot_N) -- the item is picked up for the click-to-carry quick-slot binding
 	(CQuickSlotDragView; CMainApp decides where it lands). */
 	bool_t Try_Consume_ItemPick(string& outItemId, string& outIconPath);
+	/* One-shot: the equipment item right-clicked in the bag this frame (retail equips on
+	right-click); CMainApp picks the slot and asks the Server. */
+	bool_t Try_Consume_EquipRequest(string& outItemId);
 
 	/* Forces every owned CUI_Sprite invisible without touching m_bOpen -- the panel reappears on
 	its own, still at whatever m_bOpen/category/position state it had, the next time Update()
@@ -126,6 +131,8 @@ private:
 	bool_t m_bHasPendingItemPick = false;
 	string m_strPendingPickItemId;
 	string m_strPendingPickIconPath;
+	/* Set by Update_Items on a right-click over an equipment item. */
+	string m_strPendingEquipItemId;
 };
 
 NS_END

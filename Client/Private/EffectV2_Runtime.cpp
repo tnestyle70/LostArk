@@ -1450,6 +1450,13 @@ const std::string& Client::CEffectV2Runtime::Last_Error()
 	return g_strLastError;
 }
 
+std::string Client::CEffectV2Runtime::Resolve_ArchetypeId(
+	const Client::EFFECT_V2_TARGET& Target)
+{
+	const std::string* pArchetype = Resolve_Archetype(Target);
+	return nullptr == pArchetype ? std::string() : *pArchetype;
+}
+
 void Client::CEffectV2Runtime::Notify_Clip(
 	const EFFECT_V2_TARGET& Target,
 	const char_t* pClipName)

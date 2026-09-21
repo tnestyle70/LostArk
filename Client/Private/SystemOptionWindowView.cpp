@@ -13,6 +13,7 @@ Engine_Enum.h's Engine::POINT would make ambiguous). */
 #include "ProjectDataRoot.h"
 #include "UIInputRouter.h"
 #include "UILabelFont.h"
+#include "UITextOcclusion.h"
 #include "UILayoutRuntime.h"
 
 #include <algorithm>
@@ -47,6 +48,9 @@ Client::CSystemOptionWindowView::CSystemOptionWindowView(
 		pDevice, pContext, ETOUI(LEVEL::STATIC), TEXT("Layer_UI"),
 		L"UI/SystemOption/SystemOption_Layout.json") }
 {
+	/* Draw order for this window's panel; the same number orders its labels
+	(Register_UITextOccluders) and its clicks. */
+	m_pView->Set_UISortLayer(UI_TEXT_LAYER::WINDOW_SYSTEM_OPTION);
 	m_ChromeSlotIds = m_pView->Get_SlotIds();
 	f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
 	if (m_pView->Get_SlotRect("SO_WinBg", fX, fY, fWidth, fHeight) && fWidth > 0.f)
@@ -529,6 +533,9 @@ void Client::CSystemOptionWindowView::Save_And_Close()
 
 void Client::CSystemOptionWindowView::Update(const f32_t fTimeDelta)
 {
+	/* Hit tests below belong to this window; the router refuses a press that lands on the
+	window in front and lets only one widget take any one press. */
+	CUIPointerScope PointerScope(this);
 	(void)fTimeDelta;
 	if (!m_bOpen)
 	{

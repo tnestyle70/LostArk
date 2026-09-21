@@ -150,6 +150,10 @@ public:
 		return m_Replication.Get_LocalCharacter();
 	}
 	/* Party roster window (CMainApp): the Server roster and the per-player HP / madness join. */
+	void Drain_ChatLines(std::vector<CClientReplication::CHAT_LINE>& outLines)
+	{
+		m_Replication.Drain_ChatLines(outLines);
+	}
 	const LostArk::Shared::S2C_PARTY_ROSTER& Get_PartyRoster() const
 	{
 		return m_Replication.Get_PartyRoster();
@@ -331,6 +335,7 @@ public:
 	std::uint32_t Get_PresentationServerTick() const { return m_Replication.Get_LastServerTick(); }
 	const LostArk::Shared::S2C_KOUKUSAYDON_RAID_STATE& Get_KoukuRaidState() const { return m_Replication.Get_KoukuRaidState(); }
 	const LostArk::Shared::S2C_KOUKUSAYDON_RAID_STATE& Get_KoukuRaidReply() const { return m_Replication.Get_KoukuRaidReply(); }
+	void Expect_KoukuRaidReply(std::uint32_t requestSequence) { m_Replication.Expect_KoukuRaidReply(requestSequence); }
     bool_t Can_StartCompositionWorld(const std::string& instanceId, std::string& status,
         const CWorldSequenceDocument* sourceDocument = nullptr) const;
 	bool_t Try_GetOwnedCompositionWorldPivot(std::uint32_t runEpoch, const std::string& memberId,
@@ -747,6 +752,17 @@ private:
 	bool_t m_bGateProgressKnown = false;
 	bool_t m_bGateVoteAnswered = false;
 	bool_t m_bMvpWasVisible = false;
+	/* The Server's last raid-clear award input (S2C_RAID_MVP_RESULT). Fresh until the
+	   clear's award page shows it; kept afterwards so the Debug page can replay it. */
+	LostArk::Shared::S2C_RAID_MVP_RESULT m_RaidMvpResult{};
+	bool_t m_bHasRaidMvpResult = false;
+	bool_t m_bRaidMvpResultFresh = false;
+	/* The character each award panel shows (0 = MVP, 1..3 the columns), resolved from
+	   the result's players when the page opens. */
+	weak_ptr<CCharacter> m_MvpStageCharacters[4];
+	/* Opens the award page from the Server result; bReplayLast reuses an already shown
+	   one. With no result at all only a Debug build shows the sample page. */
+	void Show_MvpResult(bool_t bReplayLast);
 	std::uint32_t m_iNextGateRequestSequence = 1u;
 	// Attempt once on each playback edge; missing media never retries every frame.
 	bool_t m_bReadyTerraceBgmInitialized = false;

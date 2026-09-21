@@ -6140,6 +6140,16 @@
       "effectAssetId": "effect.valtan.cinematic.finale.actor35.parameters",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
       "authoringPath": "Effects/Authored/effect.valtan.cinematic.finale.actor35.parameters.effect.json"
+    },
+    {
+      "effectAssetId": "effect.esther.silian.npc_evt1_sk_swordofchampion_bk.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.esther.silian.npc_evt1_sk_swordofchampion_bk.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.esther.silian.npc_att_battle_7_01.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.esther.silian.npc_att_battle_7_01.full.restore.effect.json"
     }
   ]
 }

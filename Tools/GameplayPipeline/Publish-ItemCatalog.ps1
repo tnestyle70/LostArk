@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [ValidateSet('Validate', 'Publish')]
+    [ValidateSet('Validate', 'Publish', 'CheckPublished')]
     [string]$Mode = 'Validate',
     [string]$OutputRoot = 'Server/Bin/DataFiles/Items'
 )
@@ -8,11 +8,13 @@ param(
 $ErrorActionPreference = 'Stop'
 $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
 $stableIdPattern = '^[A-Za-z0-9_.-]{1,64}$'
+. (Join-Path $PSScriptRoot 'Publish-FileTransaction.ps1')
+$publishSources = @{}
 
 function Read-JsonDocument([string]$RelativePath) {
     $path = [IO.Path]::GetFullPath((Join-Path $repoRoot $RelativePath))
     if (-not [IO.File]::Exists($path)) { throw "Missing item document: $RelativePath" }
-    return Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json
+    return Read-PublishJsonSnapshot $path $publishSources
 }
 
 function Assert-ExactProperties([object]$Value, [string[]]$Expected, [string]$Context) {
@@ -66,11 +68,13 @@ if ($items.Count -eq 0 -or $items.Count -gt 4096) {
 
 $itemIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 $itemRows = [Collections.Generic.List[string]]::new()
+$startingSlots = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 foreach ($item in $items) {
-    # equipSlot/characterClass/grade are Client presentation fields (character info window slots,
-    # inventory grade art); the Server bootstrap row below never carries them.
+    # grade is a Client presentation field (inventory grade art). equipSlot and characterClass
+    # also travel to the Server, which checks them on equip; startingEquippedSlot names the
+    # equipment slot a fresh character already wears the item in. "-" marks an absent value.
     Assert-Properties $item @('itemId', 'displayName', 'maxStack', 'iconPath', 'healPercent', 'category') `
-        @('equipSlot', 'characterClass', 'grade') 'item'
+        @('equipSlot', 'characterClass', 'grade', 'startingEquippedSlot') 'item'
     Assert-JsonString $item.itemId 'item itemId'
     Assert-JsonString $item.displayName 'item displayName'
     Assert-JsonInteger $item.maxStack 'item maxStack' 1 ([uint32]::MaxValue)
@@ -80,7 +84,7 @@ foreach ($item in $items) {
     if ($item.category -ne 'combat' -and $item.category -ne 'use') {
         throw "item category must be 'combat' or 'use': $($item.itemId)"
     }
-    foreach ($optional in @('equipSlot', 'characterClass', 'grade')) {
+    foreach ($optional in @('equipSlot', 'characterClass', 'grade', 'startingEquippedSlot')) {
         if ($null -ne $item.PSObject.Properties[$optional]) {
             Assert-JsonString $item.$optional "item $optional"
         }
@@ -104,7 +108,23 @@ foreach ($item in $items) {
     if (-not $itemIds.Add([string]$item.itemId)) {
         throw "Duplicate item ID: $($item.itemId)"
     }
-    $itemRows.Add((@('ITEM', $item.itemId, [uint32]$item.maxStack, [uint32]$item.healPercent) -join "`t"))
+    $equipSlotField = if ($null -ne $item.PSObject.Properties['equipSlot']) { [string]$item.equipSlot } else { '-' }
+    $classField = if ($null -ne $item.PSObject.Properties['characterClass']) { [string]$item.characterClass } else { '-' }
+    $startingField = '-'
+    if ($null -ne $item.PSObject.Properties['startingEquippedSlot']) {
+        # The slot must take the item's kind (earring1/earring2 take "earring", ring1/ring2 "ring"),
+        # the item must fit every class, and no two items may start in one slot.
+        $startingField = [string]$item.startingEquippedSlot
+        $startingKind = $startingField -replace '[12]$', ''
+        if ($equipSlotField -ceq '-' -or $startingKind -cne $equipSlotField -or
+            @('earring', 'ring') -ccontains $startingField -or
+            @('helmet', 'shoulder', 'top', 'pants', 'gloves', 'weapon', 'necklace', 'earring', 'ring', 'stone', 'bracelet') -cnotcontains $startingKind) {
+            throw "item startingEquippedSlot does not fit its equipSlot: $($item.itemId)"
+        }
+        if ($classField -cne '-') { throw "item startingEquippedSlot must be class-free: $($item.itemId)" }
+        if (-not $startingSlots.Add($startingField)) { throw "Two items start in slot $startingField" }
+    }
+    $itemRows.Add((@('ITEM', $item.itemId, [uint32]$item.maxStack, [uint32]$item.healPercent, $equipSlotField, $classField, $startingField) -join "`t"))
 }
 
 if ($Mode -eq 'Validate') {
@@ -120,31 +140,12 @@ $repoPrefix = $repoRoot.TrimEnd('\') + '\'
 if (-not $outputDirectory.StartsWith($repoPrefix, [StringComparison]::OrdinalIgnoreCase)) {
     throw 'Item catalog OutputRoot escaped the repository.'
 }
-[IO.Directory]::CreateDirectory($outputDirectory) | Out-Null
 
 $lines = [Collections.Generic.List[string]]::new()
-$lines.Add("LOSTARK_ITEM_BOOTSTRAP`t2`t$($itemRows.Count)")
+$lines.Add("LOSTARK_ITEM_BOOTSTRAP`t4`t$($itemRows.Count)")
 foreach ($row in $itemRows) { $lines.Add($row) }
 
 $destination = Join-Path $outputDirectory 'Items.bootstrap'
-$transactionId = [Guid]::NewGuid().ToString('N')
-$staged = "$destination.staging.$transactionId"
-$rollback = "$destination.rollback.$transactionId"
-$hadPrevious = $false
-try {
-    [IO.File]::WriteAllLines($staged, $lines, [Text.UTF8Encoding]::new($false))
-    if ([IO.File]::Exists($destination)) {
-        [IO.File]::Move($destination, $rollback)
-        $hadPrevious = $true
-    }
-    [IO.File]::Move($staged, $destination)
-    if ($hadPrevious) { [IO.File]::Delete($rollback) }
-    Write-Output "Item catalog Publish succeeded: $($itemRows.Count) items -> $destination"
-}
-catch {
-    if ([IO.File]::Exists($staged)) { [IO.File]::Delete($staged) }
-    if ($hadPrevious -and [IO.File]::Exists($rollback) -and -not [IO.File]::Exists($destination)) {
-        [IO.File]::Move($rollback, $destination)
-    }
-    throw
-}
+Write-PublishTextCatalog -Mode $Mode -Destination $destination -Lines $lines `
+    -Sources $publishSources -Context 'Item catalog' `
+    -RepairCommand 'powershell -ExecutionPolicy Bypass -File Tools/GameplayPipeline/Publish-ItemCatalog.ps1 -Mode Publish'

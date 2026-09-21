@@ -3,6 +3,7 @@
 #include "Client_Defines.h"
 #include "Engine_Defines.h"
 #include "MvpResultView.h"
+#include "Network/PacketMessages.h"
 
 #include <string>
 #include <utility>
@@ -182,7 +183,8 @@ public:
 	MVP_RESULT_DATA Compose_Page(
 		const vector<MVP_TEXT_RUN>& ContentName,
 		const vector<MVP_AWARD_PARTICIPANT>& Participants,
-		int32_t iPartySize) const;
+		int32_t iPartySize,
+		vector<size_t>* pOutRankedIndices = nullptr) const;
 
 	/* The page for a raid clear until the Server hands out real contributions: a
 	   fixed sample of four participants (made-up shares, scores and medal
@@ -192,6 +194,22 @@ public:
 	MVP_RESULT_DATA Build_PreviewPage(
 		int32_t iRaidGroupId, int32_t iGate, const char* szDifficultyId,
 		int32_t iPartySize) const;
+
+	/* The page for a real clear, from the Server's S2C_RAID_MVP_RESULT: health damage,
+	   stagger and counters become each player's share of the party total (the MVP card
+	   prints it as a whole percent), and staying alive through the whole fight earns the
+	   survival row. Compose_Page then picks the
+	   MVP and titles exactly as it does for the sample. outStagePlayerIds lists the
+	   players in page order -- the MVP first, then the columns left to right -- so the
+	   level can stage each one's own character. Medals come from the Server's facts
+	   against each medal's Params: dodge master, near death, finisher, counter specialist
+	   (two counters within Param1 seconds), deep rooted (at most Param2 knockdowns over a
+	   fight of at least Param1 ms) and heavy smasher. The Server records no heal,
+	   shield, battle item or weak-point contribution, so those titles and medals never show. */
+	MVP_RESULT_DATA Build_ServerPage(
+		int32_t iRaidGroupId, const char* szDifficultyId, int32_t iPartySize,
+		const LostArk::Shared::S2C_RAID_MVP_RESULT& Result,
+		vector<LostArk::Shared::PLAYER_ID>& outStagePlayerIds) const;
 
 	/* Single pieces of the headline for the gate progress panel: the raid's name by
 	   EFTable_ZoneEpicGate.GroupId and the difficulty's bracketed text. Empty when the

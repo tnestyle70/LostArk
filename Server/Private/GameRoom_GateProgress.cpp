@@ -1,4 +1,5 @@
 #include "GameRoom.h"
+#include "GameRoom_Internal.h"
 
 #include "ClientSession.h"
 #include "KoukuSaydonBrain.h"
@@ -66,6 +67,7 @@ void LostArk::Server::CGameRoom::Note_GatePlacementRaised(const std::string& pla
 	if (m_GateProgress.iCurrentGate == iRaised && !(m_GateProgress.iClearedMask & (1u << iGate)))
 		return;
 	/* A gate raised again (Debug button after a clear) fights again. */
+	m_GateMvpLedger.clear();
 	m_GateProgress.iCurrentGate = iRaised;
 	m_GateProgress.iClearedMask &= static_cast<std::uint8_t>(~(1u << iGate));
 	Broadcast_GateProgressState(false, LostArk::Shared::GATE_PROGRESS_VOTE_RESULT::NONE);
@@ -90,6 +92,119 @@ void LostArk::Server::CGameRoom::Notify_GateBossDeath(const SERVER_WORLD_ENTITY&
 	m_GateProgress.iCurrentGate = static_cast<std::uint8_t>(iGate + 1);
 	m_GateProgress.iClearedMask |= static_cast<std::uint8_t>(1u << iGate);
 	Broadcast_GateProgressState(false, LostArk::Shared::GATE_PROGRESS_VOTE_RESULT::NONE);
+	Broadcast_RaidMvpResult(static_cast<std::uint8_t>(iGate + 1));
+}
+
+void LostArk::Server::CGameRoom::Tick_MvpLedgers()
+{
+	for (SERVER_WORLD_ENTITY& entity : m_WorldEntities)
+	{
+		/* The clock starts with the first recorded hit and stops with the boss. */
+		if (WORLD_BOOTSTRAP_KIND::BOSS != entity.eKind || entity.MvpLedger.empty() ||
+			LostArk::Shared::INVALID_NET_ENTITY_ID != entity.iOwnerBossNetEntityId ||
+			0u == entity.iCurrentHp || SERVER_ENTITY_ACTION::DEAD == entity.eAction)
+			continue;
+		for (const auto& [playerId, player] : m_Players)
+		{
+			SERVER_MVP_LEDGER_ROW& row = Find_Or_Add_MvpLedgerRow(entity.MvpLedger, playerId);
+			++row.iFightTicks;
+			if (0u != player.iCurrentHp && LostArk::Shared::PLAYER_ACTION_STATE::DEAD != player.eAction)
+				++row.iAliveTicks;
+			if (row.bHpSeen && player.iCurrentHp < row.iLastHp)
+				++row.iDamagingHitsTaken;
+			row.iLastHp = player.iCurrentHp;
+			row.bHpSeen = true;
+			const bool knockedDown = LostArk::Shared::PLAYER_ACTION_STATE::KNOCKDOWN == player.eAction;
+			if (knockedDown && !row.bWasKnockedDown)
+				++row.iKnockdowns;
+			row.bWasKnockedDown = knockedDown;
+			if (0u != player.iMaximumHp)
+			{
+				const std::uint64_t permille =
+					static_cast<std::uint64_t>(player.iCurrentHp) * 1000u / player.iMaximumHp;
+				row.iLowestHpPermille = (std::min)(row.iLowestHpPermille,
+					static_cast<std::uint32_t>((std::min)(permille, std::uint64_t(1000u))));
+			}
+		}
+	}
+}
+
+void LostArk::Server::CGameRoom::Merge_MvpLedger(SERVER_WORLD_ENTITY& boss)
+{
+	for (const SERVER_MVP_LEDGER_ROW& source : boss.MvpLedger)
+	{
+		SERVER_MVP_LEDGER_ROW& row = Find_Or_Add_MvpLedgerRow(m_GateMvpLedger, source.iPlayerId);
+		row.iDamage += source.iDamage;
+		row.iStagger += source.iStagger;
+		row.iCounterCount += source.iCounterCount;
+		row.iPartDamage += source.iPartDamage;
+		row.iFinishingBlows += source.iFinishingBlows;
+		row.iDamagingHitsTaken += source.iDamagingHitsTaken;
+		row.iKnockdowns += source.iKnockdowns;
+		row.iLowestHpPermille = (std::min)(row.iLowestHpPermille, source.iLowestHpPermille);
+		if (0u != source.iMinCounterGapTicks &&
+			(0u == row.iMinCounterGapTicks || source.iMinCounterGapTicks < row.iMinCounterGapTicks))
+			row.iMinCounterGapTicks = source.iMinCounterGapTicks;
+		/* Two bosses fought at once share one clock: keep the longer one. */
+		if (source.iFightTicks > row.iFightTicks)
+		{
+			row.iFightTicks = source.iFightTicks;
+			row.iAliveTicks = source.iAliveTicks;
+		}
+	}
+	boss.MvpLedger.clear();
+}
+
+void LostArk::Server::CGameRoom::Broadcast_RaidMvpResult(const std::uint8_t iGate)
+{
+	using namespace LostArk::Shared;
+	S2C_RAID_MVP_RESULT message{};
+	message.eWorldId = m_eWorldId;
+	message.iGate = iGate;
+	/* Only players still in the room have an identity to show. */
+	for (const SERVER_MVP_LEDGER_ROW& row : m_GateMvpLedger)
+	{
+		const auto playerIter = m_Players.find(row.iPlayerId);
+		if (playerIter == m_Players.end() || message.Participants.size() >= MAX_RAID_MVP_PARTICIPANTS)
+			continue;
+		RAID_MVP_PARTICIPANT participant{};
+		participant.iPlayerId = row.iPlayerId;
+		participant.iNetEntityId = playerIter->second.iNetEntityId;
+		participant.eCharacterClass = playerIter->second.eCharacterClass;
+		participant.strNickname = playerIter->second.strNickName;
+		participant.iDamage = row.iDamage;
+		participant.iStagger = row.iStagger;
+		participant.iCounterCount = row.iCounterCount;
+		participant.iFightTicks = row.iFightTicks;
+		participant.iAliveTicks = (std::min)(row.iAliveTicks, row.iFightTicks);
+		participant.iPartDamage = row.iPartDamage;
+		participant.iFinishingBlows = row.iFinishingBlows;
+		participant.iDamagingHitsTaken = row.iDamagingHitsTaken;
+		participant.iLowestHpPermille = static_cast<std::uint16_t>((std::min)(row.iLowestHpPermille, 1000u));
+		participant.bAliveAtClear = 0u != playerIter->second.iCurrentHp &&
+			LostArk::Shared::PLAYER_ACTION_STATE::DEAD != playerIter->second.eAction;
+		participant.iMinCounterGapMs = static_cast<std::uint32_t>(
+			static_cast<std::uint64_t>(row.iMinCounterGapTicks) * 1000u / GameRoomDetail::SERVER_TICK_HZ);
+		participant.iKnockdowns = row.iKnockdowns;
+		participant.iFightMs = static_cast<std::uint32_t>(
+			static_cast<std::uint64_t>(row.iFightTicks) * 1000u / GameRoomDetail::SERVER_TICK_HZ);
+		message.Participants.push_back(std::move(participant));
+	}
+	m_GateMvpLedger.clear();
+	if (message.Participants.empty())
+		return;
+	CPacketWriter writer;
+	if (!Write_Message(writer, message))
+		return;
+	for (const auto& [playerId, player] : m_Players)
+	{
+		const std::shared_ptr<CClientSession> session = Find_Session(player.iSessionId);
+		if (nullptr != session &&
+			!session->Send_Frame(PACKET_TYPE::S2C_RAID_MVP_RESULT, writer.Get_Buffer()))
+		{
+			session->Request_Close();
+		}
+	}
 }
 
 void LostArk::Server::CGameRoom::Handle_GateProgressPropose(

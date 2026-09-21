@@ -441,7 +441,7 @@ DATA_JSON_VALUE DATA_JSON_VALUE::String(string value)
 {
 	DATA_JSON_VALUE result;
 	result.m_eType = DATA_JSON_TYPE::STRING;
-	result.m_String = move(value);
+	result.m_Payload.emplace<string>(move(value));
 	return result;
 }
 
@@ -449,7 +449,7 @@ DATA_JSON_VALUE DATA_JSON_VALUE::Array(ARRAY value)
 {
 	DATA_JSON_VALUE result;
 	result.m_eType = DATA_JSON_TYPE::ARRAY;
-	result.m_Array = move(value);
+	result.m_Payload.emplace<ARRAY>(move(value));
 	return result;
 }
 
@@ -458,24 +458,57 @@ DATA_JSON_VALUE DATA_JSON_VALUE::Object(
 {
 	DATA_JSON_VALUE result;
 	result.m_eType = DATA_JSON_TYPE::OBJECT;
-	result.m_Object = move(value);
-	if (insertionOrder.size() == result.m_Object.size())
-		result.m_ObjectInsertionOrder = move(insertionOrder);
-	else
+	if (insertionOrder.size() != value.size())
 	{
-		result.m_ObjectInsertionOrder.reserve(result.m_Object.size());
-		for (const auto& [key, child] : result.m_Object)
-			result.m_ObjectInsertionOrder.push_back(key);
+		insertionOrder.clear();
+		insertionOrder.reserve(value.size());
+		for (const auto& [key, child] : value)
+			insertionOrder.push_back(key);
 	}
+	result.m_Payload.emplace<OBJECT_PAYLOAD>(
+		move(value), move(insertionOrder));
 	return result;
+}
+
+const string& DATA_JSON_VALUE::Get_String() const
+{
+	if (const auto* value = std::get_if<string>(&m_Payload))
+		return *value;
+	static const string empty;
+	return empty;
+}
+
+const DATA_JSON_VALUE::ARRAY& DATA_JSON_VALUE::Get_Array() const
+{
+	if (const auto* value = std::get_if<ARRAY>(&m_Payload))
+		return *value;
+	static const ARRAY empty;
+	return empty;
+}
+
+const DATA_JSON_VALUE::OBJECT& DATA_JSON_VALUE::Get_Object() const
+{
+	if (const auto* value = std::get_if<OBJECT_PAYLOAD>(&m_Payload))
+		return value->values;
+	static const OBJECT empty;
+	return empty;
+}
+
+const vector<string>& DATA_JSON_VALUE::Get_ObjectInsertionOrder() const
+{
+	if (const auto* value = std::get_if<OBJECT_PAYLOAD>(&m_Payload))
+		return value->insertionOrder;
+	static const vector<string> empty;
+	return empty;
 }
 
 const DATA_JSON_VALUE* DATA_JSON_VALUE::Find(const string_view key) const
 {
 	if (!Is_Object())
 		return nullptr;
-	const auto iterator = m_Object.find(key);
-	return iterator == m_Object.end() ? nullptr : &iterator->second;
+	const OBJECT& values = Get_Object();
+	const auto iterator = values.find(key);
+	return iterator == values.end() ? nullptr : &iterator->second;
 }
 
 bool_t CDataJson::Parse(

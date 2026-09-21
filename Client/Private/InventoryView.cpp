@@ -9,6 +9,7 @@
 #include "ItemCatalog.h"
 #include "MainApp.h"
 #include "UIInputRouter.h"
+#include "UITextOcclusion.h"
 #include "UILayoutRuntime.h"
 
 #include <utility>
@@ -19,6 +20,9 @@ Client::CInventoryView::CInventoryView(
 		pDevice, pContext, ETOUI(LEVEL::STATIC), TEXT("Layer_UI"),
 		L"UI/Inventory/InventoryUI.json") }
 {
+	/* Draw order for this window's panel; the same number orders its labels
+	(Register_UITextOccluders) and its clicks. */
+	m_pBackgroundView->Set_UISortLayer(UI_TEXT_LAYER::WINDOW_INVENTORY);
 	/* Authored layer tint is opaque ([1,1,1,1]) -- every slot would otherwise sit fully visible
 	on screen (LEVEL::STATIC's GameObjects persist across every Level, including Lobby/Loading)
 	from construction until whatever first calls Update() while m_bOpen is still false. */
@@ -46,6 +50,9 @@ void Client::CInventoryView::Hide()
 void Client::CInventoryView::Update(
 	const std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT>& items)
 {
+	/* Hit tests below belong to this window; the router refuses a press that lands on the
+	window in front and lets only one widget take any one press. */
+	CUIPointerScope PointerScope(this);
 	if (nullptr == m_pBackgroundView)
 		return;
 	if (!m_bOpen)
@@ -92,6 +99,15 @@ void Client::CInventoryView::Update(
 			CUIInputRouter::Get().Claim_Mouse_This_Frame();
 		}
 	}
+}
+
+bool_t Client::CInventoryView::Try_Consume_EquipRequest(string& outItemId)
+{
+	if (m_strPendingEquipItemId.empty())
+		return false;
+	outItemId = std::move(m_strPendingEquipItemId);
+	m_strPendingEquipItemId.clear();
+	return true;
 }
 
 void Client::CInventoryView::Render_Text()
@@ -408,6 +424,9 @@ vector<size_t> Client::CInventoryView::Build_FilteredIndices(
 	filteredIndices.reserve(items.size());
 	for (size_t i = 0; i < items.size(); ++i)
 	{
+		/* Worn equipment lives in the character info window, not the bag. */
+		if (LostArk::Shared::EQUIPMENT_SLOT::NONE != items[i].eEquippedSlot)
+			continue;
 		if (bShowAll)
 		{
 			filteredIndices.push_back(i);
@@ -474,6 +493,20 @@ void Client::CInventoryView::Update_Items(
 
 		/* Quantity numbers and the hover tooltip draw in Render_Text() (the post-EndFrame
 		LOA-font pass) -- CGameInstance::Draw_Text there, no ImGui. */
+	}
+
+	/* Right-click on a bag equipment item: equip it. Avatar pieces are worn through the
+	avatar book, not this path. */
+	if (Router.Is_RightClickEdge() && iHoveredSlot >= 0 &&
+		static_cast<size_t>(iHoveredSlot) < m_DisplayOrder.size() &&
+		m_DisplayOrder[iHoveredSlot] < filteredIndices.size() &&
+		filteredIndices[m_DisplayOrder[iHoveredSlot]] < items.size())
+	{
+		const string& strItemId = items[filteredIndices[m_DisplayOrder[iHoveredSlot]]].strItemId;
+		const ITEM_DEFINITION* pEquip = CItemCatalog::Find_ById(strItemId);
+		if (nullptr != pEquip && !pEquip->strEquipSlot.empty() &&
+			"avatarHead" != pEquip->strEquipSlot && "avatarOutfit" != pEquip->strEquipSlot)
+			m_strPendingEquipItemId = strItemId;
 	}
 
 	/* Drag-and-drop: press-and-hold over a filled slot starts a drag. Releasing over a

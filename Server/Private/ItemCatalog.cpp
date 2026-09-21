@@ -64,6 +64,31 @@ namespace
 			result.ptr == value.data() + value.size();
 	}
 
+	/* The character info window's slot names; "-" is no starting slot. */
+	bool ParseStartingSlot(const std::string_view value,
+		LostArk::Shared::EQUIPMENT_SLOT& output)
+	{
+		using LostArk::Shared::EQUIPMENT_SLOT;
+		static constexpr std::pair<std::string_view, EQUIPMENT_SLOT> SLOTS[] = {
+			{ "-", EQUIPMENT_SLOT::NONE }, { "helmet", EQUIPMENT_SLOT::HELMET },
+			{ "shoulder", EQUIPMENT_SLOT::SHOULDER }, { "top", EQUIPMENT_SLOT::TOP },
+			{ "pants", EQUIPMENT_SLOT::PANTS }, { "gloves", EQUIPMENT_SLOT::GLOVES },
+			{ "weapon", EQUIPMENT_SLOT::WEAPON }, { "necklace", EQUIPMENT_SLOT::NECKLACE },
+			{ "earring1", EQUIPMENT_SLOT::EARRING1 }, { "earring2", EQUIPMENT_SLOT::EARRING2 },
+			{ "ring1", EQUIPMENT_SLOT::RING1 }, { "ring2", EQUIPMENT_SLOT::RING2 },
+			{ "stone", EQUIPMENT_SLOT::STONE }, { "bracelet", EQUIPMENT_SLOT::BRACELET },
+		};
+		for (const auto& [name, slot] : SLOTS)
+		{
+			if (name == value)
+			{
+				output = slot;
+				return true;
+			}
+		}
+		return false;
+	}
+
 	bool IsStableId(const std::string_view value)
 	{
 		return !value.empty() && value.size() <= 64u &&
@@ -103,10 +128,20 @@ bool LostArk::Server::CItemCatalog::Load()
 	std::uint32_t version = 0;
 	std::uint32_t rowCount = 0;
 	if (3u != header.size() || "LOSTARK_ITEM_BOOTSTRAP" != header[0] ||
-		!ParseNumber(header[1], version) || 2u != version ||
+		!ParseNumber(header[1], version) ||
 		!ParseNumber(header[2], rowCount) || 0u == rowCount || rowCount > 4096u)
 	{
-		m_strStatus = "Item bootstrap header is invalid";
+		m_strStatus = "Item bootstrap header is invalid: " + path.string();
+		m_Items = std::move(previousItems);
+		return false;
+	}
+
+	if (4u != version)
+	{
+		m_strStatus = "Item bootstrap version mismatch: expected 4, got " +
+			std::to_string(version) + "; path=" + path.string() +
+			"; run powershell -ExecutionPolicy Bypass -File "
+			"Tools/GameplayPipeline/Publish-ItemCatalog.ps1 -Mode Publish";
 		m_Items = std::move(previousItems);
 		return false;
 	}
@@ -122,15 +157,22 @@ bool LostArk::Server::CItemCatalog::Load()
 		StripCarriageReturn(line);
 		const std::vector<std::string_view> fields = SplitTabs(line);
 		SERVER_ITEM_DEFINITION item{};
-		if (4u != fields.size() || "ITEM" != fields[0] || !IsStableId(fields[1]) ||
+		if (7u != fields.size() || "ITEM" != fields[0] || !IsStableId(fields[1]) ||
 			!ParseNumber(fields[2], item.iMaxStack) || 0u == item.iMaxStack ||
-			!ParseNumber(fields[3], item.iHealPercent) || item.iHealPercent > 100u)
+			!ParseNumber(fields[3], item.iHealPercent) || item.iHealPercent > 100u ||
+			fields[4].empty() || fields[5].empty() ||
+			!ParseStartingSlot(fields[6], item.eStartingEquippedSlot))
 		{
 			m_strStatus = "Item bootstrap row is invalid";
 			m_Items = std::move(previousItems);
 			return false;
 		}
 		item.strItemId = fields[1];
+		/* "-" is the publisher's "no value" marker for the two optional columns. */
+		if ("-" != fields[4])
+			item.strEquipSlot = fields[4];
+		if ("-" != fields[5])
+			item.strCharacterClass = fields[5];
 		if (!m_Items.emplace(item.strItemId, std::move(item)).second)
 		{
 			m_strStatus = "Duplicate item ID";
@@ -146,6 +188,12 @@ bool LostArk::Server::CItemCatalog::Load()
 		return false;
 	}
 
+	m_StartingEquipment.clear();
+	for (const auto& [itemId, item] : m_Items)
+		if (LostArk::Shared::EQUIPMENT_SLOT::NONE != item.eStartingEquippedSlot)
+			m_StartingEquipment.emplace_back(itemId, item.eStartingEquippedSlot);
+	std::sort(m_StartingEquipment.begin(), m_StartingEquipment.end(),
+		[](const auto& left, const auto& right) { return left.second < right.second; });
 	m_strStatus = "Loaded item bootstrap";
 	return true;
 }

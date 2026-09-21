@@ -1594,18 +1594,19 @@ powershell -ExecutionPolicy Bypass -File Tools/CompositionPipeline/Publish-Compo
 
 `Client/Bin/Resources`는 `Fonts, Character, Deploy, Effect, Map, Sound, UI` 일곱 root만 허용한다. asset ID는 Resources 상대 경로이며 절대 경로, drive-qualified 경로, `..` 탈출을 금지한다.
 
-runtime payload는 팀장이 `Client/Bin/Resources` 물리 폴더로 관리하고 Git에는 추적하지 않는다. AssetPacks lock, immutable Resource manifest, Resource ZIP hash, Snapshot/Publish/Hydrate/Verify를 팀 완료 조건으로 사용하지 않는다. 코드와 데이터에는 Resources 상대 asset ID만 저장하고 팀원별 절대 경로 하드코딩은 금지한다.
+모델·텍스처·사운드 등의 Resources payload는 팀장이 `Client/Bin/Resources` 물리 폴더로 관리하고 Git에는 추적하지 않는다. AssetPacks lock, immutable Resource manifest, Resource ZIP hash, Snapshot/Publish/Hydrate/Verify를 팀 완료 조건으로 사용하지 않는다. 코드와 데이터에는 Resources 상대 asset ID만 저장하고 팀원별 절대 경로 하드코딩은 금지한다.
 
 팀원이 branch를 pull한 뒤 최초 실행하는 순서는 다음과 같다.
 
 ```text
 git lfs pull
 → 팀장이 전달한 Resources 물리 폴더 확인
-→ Debug 전체 회귀
+→ 같은 commit의 게시된 Client/Server DataFiles 확인
+→ C++/HLSL 변경 시 정상 증분 Debug Product Build
 → 담당 public interface에서 작업 시작
 ```
 
-기능은 `main`이 아닌 별도 branch/PR로 전달한다. 코드, 소비 데이터, project/filter 등록, harness, RESULT를 같은 검증 단위로 묶는다. build output, `EngineSDK`, `.vs`, `.codex_tmp`, `_work`, `imgui.ini`, `Client/Bin/Resources` payload를 stage하지 않는다.
+기능은 `main`이 아닌 별도 branch/PR로 전달한다. 코드, Data 정본, publisher/schema와 대응 Client/Server DataFiles 출력, 필요한 project/filter 등록과 검증, RESULT를 같은 변경 단위로 묶는다. 게시 snapshot은 해당 publisher로 생성하고 일반 `git add`로 전달한다. 받는 PC는 저작 변경이 없으면 전체 publish/navigation bake를 반복하지 않는다. 컴파일·링크 산출물, `EngineSDK`, `.vs`, `.codex_tmp`, `_work`, `imgui.ini`, `Client/Bin/Resources` payload는 stage하지 않는다.
 
 ## 11. 완료 검증
 
@@ -1614,9 +1615,9 @@ powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.p
 powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.ps1 -Configuration Release
 ```
 
-자동화 순서는 Engine → UpdateLib → Shared/Protocol Harness → Server build/contract test → Client build → balance/world/navigation/rendering publisher validate + Effect source validate → 변경 domain의 실행형 harness이다. 실제 Level 흐름은 `Framework.slnLaunch`로 Server와 Client를 함께 실행해 검증한다.
+기본 Product는 Engine → Shared → Server → Client의 컴파일·링크와 SDK/shader/runtime DLL 배포를 수행한다. Client 프로젝트가 SDK 배포를 소유하므로 `UpdateLib.bat`을 별도 자동 단계로 반복하지 않는다. publisher와 광역 하네스는 명시 owner/Core/FullDiagnostic 경로에서 실행하며 매 pull/build의 필수 단계가 아니다. 데이터만 변경한 경우 해당 domain 게시·실제 소비 검증을 수행하고, C++/HLSL을 변경했으면 정상 증분 Product Build를 추가한다.
 
-최소 성공 증거:
+아래는 네트워크·레벨 전환 등 전체 흐름을 변경하거나 명시적으로 광역 통합 검증을 수행할 때의 확인 항목이다. 일반 변경 완료 조건은 `AGENTS.md`의 기능별 최소 검증을 따른다. 실제 Client/UI 실행과 화면 판정은 사용자가 수행한다.
 
 - Protocol Harness `failures : 0`
 - Server gameplay contract `failures : 0`

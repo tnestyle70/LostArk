@@ -38,6 +38,7 @@
 #include "LevelRegistry.h"
 #include "LevelTransitionService.h"
 #include "Level_Bern.h"
+#include "Level_Development.h"
 #include "Level_Lobby.h"
 #include "ActionPresentationTimeline.h"
 #include "Level_CharacterSelect.h"
@@ -1212,13 +1213,42 @@ namespace
 }
 #endif
 
+namespace
+{
+    void Record_KoukuRaidRequestEvent(const std::string_view eventName,
+        const LostArk::Shared::C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST& request,
+        const uint64_t worldGeneration, const uint32_t runEpoch, const std::string_view reason) noexcept
+    {
+        try
+        {
+            CNetworkManager::Get().Record_SessionEvent(eventName,
+                "request=" + std::to_string(request.iRequestSequence) + "; operation=" + std::to_string(unsigned(request.eOperation)) +
+                "; worldGeneration=" + std::to_string(worldGeneration) + "; runEpoch=" + std::to_string(runEpoch) +
+                "; gate=" + request.strStartGateId + "; reason=" + std::string(reason));
+        }
+        catch (...) { } // Diagnostics never decide admission or change request ownership.
+    }
+}
+
 void CMainApp::UpdateKoukuGateCompletePlay()
 {
     using namespace LostArk::Shared;
     auto* arena = CLevel_KakulSaydonArena::Get_Active();
-    if (!arena)
+    auto& network = CNetworkManager::Get();
+    const bool worldChanged = m_iKoukuCompletePlayWorldGeneration != 0u &&
+        m_iKoukuCompletePlayWorldGeneration != network.Get_WorldInboundGeneration();
+    if (!arena || !network.Is_Connected() || worldChanged)
     {
+        if (arena) arena->Expect_KoukuRaidReply(0u);
+        if (m_iKoukuCompletePlayWorldGeneration || m_iKoukuRaidPendingRequest)
+            m_strKoukuCompletePlayStatus = "The connected world session changed; the previous raid request is no longer tracked.";
+        if (m_iKoukuRaidPendingRequest)
+        {
+            Record_KoukuRaidRequestEvent("kouku.raid.request.reset", m_KoukuRaidRequest,
+                m_iKoukuCompletePlayWorldGeneration, 0u, m_strKoukuCompletePlayStatus);
+        }
 #ifdef _DEBUG
+        if (arena) arena->Debug_ResetCompletePlayPreparation();
         m_KoukuRaidResourcePreparation.reset();
         m_iKoukuRaidResourceEpoch = 0u; m_KoukuRaidResourcePatternIds.clear();
 #endif
@@ -1226,6 +1256,8 @@ void CMainApp::UpdateKoukuGateCompletePlay()
         m_pKoukuRaidSequenceDocument.reset(); m_iKoukuRaidDocumentEpoch = m_iKoukuRaidAcknowledgedEpoch = 0u;
         m_strKoukuRaidPresentationKey.clear(); m_strKoukuRaidFailedKey.clear(); m_strKoukuCompletePlayFlowGate.clear();
         m_iKoukuRaidPendingRequest = 0u; m_bKoukuRaidStopAfterAdmission = false;
+        m_KoukuRaidRequest = {}; m_KoukuRaidReplyDeadline = {}; m_strKoukuRaidReplyStatus.clear();
+        m_iKoukuCompletePlayWorldGeneration = 0u;
         return;
     }
 #ifdef _DEBUG
@@ -1265,21 +1297,43 @@ void CMainApp::UpdateKoukuGateCompletePlay()
         if (!arena->Get_PlayerCommandSink()->Request_KoukuRaid(request))
         { fail("The prepared raid request could not be submitted."); return; }
         m_KoukuRaidResourcePreparation.reset();
+        arena->Expect_KoukuRaidReply(request.iRequestSequence);
         m_KoukuRaidRequest = request; m_iKoukuRaidPendingRequest = request.iRequestSequence;
         m_KoukuRaidReplyDeadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
         m_iKoukuCompletePlayWorldGeneration = CNetworkManager::Get().Get_WorldInboundGeneration();
+        m_strKoukuRaidReplyStatus.clear();
         m_strKoukuCompletePlayStatus = "All raid resources prepared; waiting for Server admission.";
+        Record_KoukuRaidRequestEvent("kouku.raid.request.sent", request,
+            m_iKoukuCompletePlayWorldGeneration, request.iExpectedRunEpoch, {});
     }
 #endif
-    const auto& reply = arena->Get_KoukuRaidReply();
+    const auto reply = arena->Get_KoukuRaidReply();
     if (m_iKoukuRaidPendingRequest && reply.iRequestSequence == m_iKoukuRaidPendingRequest &&
         (!reply.iRunEpoch || reply.iOwnerPlayerId == CNetworkManager::Get().Get_LocalPlayerId()))
     {
-        m_iKoukuRaidPendingRequest = 0u;
-        if (!reply.iRunEpoch) { m_bKoukuRaidStopAfterAdmission = false; m_strKoukuCompletePlayStatus = reply.strReason; return; }
+        Record_KoukuRaidRequestEvent("kouku.raid.request.reply", m_KoukuRaidRequest,
+            m_iKoukuCompletePlayWorldGeneration, reply.iRunEpoch, reply.strReason);
+        arena->Expect_KoukuRaidReply(0u);
+        m_iKoukuRaidPendingRequest = 0u; m_KoukuRaidReplyDeadline = {};
+        m_strKoukuRaidReplyStatus.clear();
+        if (!reply.iRunEpoch)
+        {
+            m_bKoukuRaidStopAfterAdmission = false;
+            m_strKoukuRaidReplyStatus = m_strKoukuCompletePlayStatus = reply.strReason;
+            return;
+        }
     }
-    if (m_iKoukuRaidPendingRequest && std::chrono::steady_clock::now() >= m_KoukuRaidReplyDeadline)
-    { m_iKoukuRaidPendingRequest = 0u; m_strKoukuCompletePlayStatus = "Server raid reply timed out; the run status is unconfirmed."; }
+    if (m_iKoukuRaidPendingRequest && m_KoukuRaidReplyDeadline != std::chrono::steady_clock::time_point{} &&
+        std::chrono::steady_clock::now() >= m_KoukuRaidReplyDeadline)
+    {
+        // A deadline is a notice, not a Server verdict. Retain the exact request
+        // until its reply or the owning world session ends; never allow a second START.
+        m_KoukuRaidReplyDeadline = {};
+        m_strKoukuRaidReplyStatus = m_strKoukuCompletePlayStatus =
+            "Server raid reply timed out; still waiting for this request's final Server response.";
+        Record_KoukuRaidRequestEvent("kouku.raid.request.timeout", m_KoukuRaidRequest,
+            m_iKoukuCompletePlayWorldGeneration, m_KoukuRaidRequest.iExpectedRunEpoch, m_strKoukuRaidReplyStatus);
+    }
     const auto& state = arena->Get_KoukuRaidState();
     if (!state.iRunEpoch) return;
     const bool active = state.ePhase == KOUKUSAYDON_RAID_PHASE::PREPARING || state.ePhase == KOUKUSAYDON_RAID_PHASE::CINEMATIC || state.ePhase == KOUKUSAYDON_RAID_PHASE::COMBAT ||
@@ -1290,7 +1344,8 @@ void CMainApp::UpdateKoukuGateCompletePlay()
     if (m_bKoukuRaidStopAfterAdmission && !m_iKoukuRaidPendingRequest)
     {
         m_bKoukuRaidStopAfterAdmission = false;
-        if (active) { CancelKoukuGateCompletePlay("Queued Complete Play stop."); return; }
+        if (active && state.iRunEpoch == reply.iRunEpoch && state.iOwnerPlayerId == reply.iOwnerPlayerId)
+        { CancelKoukuGateCompletePlay("Queued Complete Play stop."); return; }
     }
 #endif
     if (state.ePhase == KOUKUSAYDON_RAID_PHASE::PREPARING)
@@ -1565,7 +1620,15 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		m_fSmoothedFps = m_fSmoothedFps <= 0.f ? fInstantFps : m_fSmoothedFps + (fInstantFps - m_fSmoothedFps) * 0.1f;
 	}
 
-	if (!CUIInputRouter::Get().Is_CinematicSuppressed())
+	/* The loading screen owns the screen: no window opens or toggles under it, and anything left
+	open from the previous Level closes here. */
+	const bool_t bLoadingLevel =
+		ETOUI(LEVEL::LOADING) == CGameInstance::Get().Get_CurrentLevelID();
+	if (bLoadingLevel && !m_bWasLoadingLevel)
+		Close_RuntimeWindowsForLoading();
+	m_bWasLoadingLevel = bLoadingLevel;
+
+	if (!Is_RuntimeUIScreenSuppressed())
 	{
 	/* I is a normal gameplay keybind (the inventory), not an F1/F6 tool-switch key.
 	Is_TextInputActive is the runtime UI's own WantTextInput (the ImGui-free nickname field) --
@@ -1728,10 +1791,11 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		!CUIInputRouter::Get().Is_TextInputActive())
 	{
 		/* Same level restriction as the chat window's own Render() gate -- Enter should not open
-		an input box that would render invisible outside Bern/Valtan. */
+		an input box that would render invisible in a level the window is not drawn in. */
 		const uint32_t chatLevel = CGameInstance::Get().Get_CurrentLevelID();
 		const bool_t chatLevelAllowed =
-			ETOUI(LEVEL::BERN) == chatLevel || ETOUI(LEVEL::VALTAN_ARENA) == chatLevel;
+			ETOUI(LEVEL::BERN) == chatLevel || ETOUI(LEVEL::VALTAN_ARENA) == chatLevel ||
+			ETOUI(LEVEL::KAKULSAYDON_ARENA) == chatLevel;
 		const bool_t windowFocused =
 			IsWindowOwnedByCurrentProcess(GetForegroundWindow());
 		const bool_t enterDown = chatLevelAllowed && windowFocused &&
@@ -3154,21 +3218,21 @@ void CMainApp::Register_UITextOccluders()
 	f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
 	/* Windows stack in the order CMainApp builds their sprites; each gets its own step. */
 	if (nullptr != m_pInventoryView && m_pInventoryView->Get_ScreenRect(fX, fY, fWidth, fHeight))
-		Occlusion.Add_Occluder(UI_TEXT_LAYER::WINDOW + 0, fX, fY, fWidth, fHeight);
+		Occlusion.Add_Occluder(UI_TEXT_LAYER::WINDOW_INVENTORY, fX, fY, fWidth, fHeight);
 	if (nullptr != m_pCharacterInfoView && m_pCharacterInfoView->Get_ScreenRect(fX, fY, fWidth, fHeight))
-		Occlusion.Add_Occluder(UI_TEXT_LAYER::WINDOW + 1, fX, fY, fWidth, fHeight);
+		Occlusion.Add_Occluder(UI_TEXT_LAYER::WINDOW_CHARACTER_INFO, fX, fY, fWidth, fHeight);
 	if (nullptr != m_pAvatarBookView && m_pAvatarBookView->Get_ScreenRect(fX, fY, fWidth, fHeight))
-		Occlusion.Add_Occluder(UI_TEXT_LAYER::WINDOW + 2, fX, fY, fWidth, fHeight);
+		Occlusion.Add_Occluder(UI_TEXT_LAYER::WINDOW_AVATAR_BOOK, fX, fY, fWidth, fHeight);
 	if (nullptr != m_pVehicleWindowView && m_pVehicleWindowView->Get_ScreenRect(fX, fY, fWidth, fHeight))
-		Occlusion.Add_Occluder(UI_TEXT_LAYER::WINDOW + 3, fX, fY, fWidth, fHeight);
+		Occlusion.Add_Occluder(UI_TEXT_LAYER::WINDOW_VEHICLE, fX, fY, fWidth, fHeight);
 	if (nullptr != m_pHonorTitleWindowView && m_pHonorTitleWindowView->Get_ScreenRect(fX, fY, fWidth, fHeight))
-		Occlusion.Add_Occluder(UI_TEXT_LAYER::WINDOW + 4, fX, fY, fWidth, fHeight);
+		Occlusion.Add_Occluder(UI_TEXT_LAYER::WINDOW_HONOR_TITLE, fX, fY, fWidth, fHeight);
 	if (nullptr != m_pWorldMapWindowView && m_pWorldMapWindowView->Get_ScreenRect(fX, fY, fWidth, fHeight))
-		Occlusion.Add_Occluder(UI_TEXT_LAYER::WINDOW + 5, fX, fY, fWidth, fHeight);
+		Occlusion.Add_Occluder(UI_TEXT_LAYER::WINDOW_WORLD_MAP, fX, fY, fWidth, fHeight);
 	if (nullptr != m_pSystemOptionView && m_pSystemOptionView->Get_ScreenRect(fX, fY, fWidth, fHeight))
-		Occlusion.Add_Occluder(UI_TEXT_LAYER::WINDOW + 6, fX, fY, fWidth, fHeight);
+		Occlusion.Add_Occluder(UI_TEXT_LAYER::WINDOW_SYSTEM_OPTION, fX, fY, fWidth, fHeight);
 	if (m_bItemUpgradePreviewVisible && nullptr != m_pItemUpgradeView)
-		Occlusion.Add_SlotOccluder(UI_TEXT_LAYER::WINDOW + 7, *m_pItemUpgradeView, "ItemUpgrade_PanelBg");
+		Occlusion.Add_SlotOccluder(UI_TEXT_LAYER::WINDOW_ITEM_UPGRADE, *m_pItemUpgradeView, "ItemUpgrade_PanelBg");
 	/* HUD surfaces in the levels that show them. */
 	const uint32_t iLevel = CGameInstance::Get().Get_CurrentLevelID();
 	if (nullptr != m_pPartyWindowView && (ETOUI(LEVEL::BERN) == iLevel ||
@@ -3333,9 +3397,17 @@ HRESULT CMainApp::Render()
 			this list as real in-game stages are added. Real send needs the active level's own
 			command sink, same reasoning as the party roster fetch just below. */
 			const uint32_t chatLevel = CGameInstance::Get().Get_CurrentLevelID();
+			/* Received lines, sender included, reach the log through the active level's own
+			replication -- the Server broadcast is the single source, so a line shows the same
+			Server nickname on every client. */
+			std::vector<CClientReplication::CHAT_LINE> chatLines;
 			if (ETOUI(LEVEL::BERN) == chatLevel)
 			{
 				CLevel_Bern* pBern = CLevel_Bern::Get_Active();
+				if (nullptr != pBern)
+					pBern->Drain_ChatLines(chatLines);
+				for (const CClientReplication::CHAT_LINE& Line : chatLines)
+					m_pChatWindowView->Append_ReceivedLine(Line.strNickname, Line.strText);
 				{
 					Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.Chat.Build");
 					m_pChatWindowView->Render(
@@ -3345,11 +3417,28 @@ HRESULT CMainApp::Render()
 			else if (ETOUI(LEVEL::VALTAN_ARENA) == chatLevel)
 			{
 				CLevel_ValtanArena* pValtanArena = CLevel_ValtanArena::Get_Active();
+				if (nullptr != pValtanArena)
+					pValtanArena->Drain_ChatLines(chatLines);
+				for (const CClientReplication::CHAT_LINE& Line : chatLines)
+					m_pChatWindowView->Append_ReceivedLine(Line.strNickname, Line.strText);
 				{
 					Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.Chat.Build");
 					m_pChatWindowView->Render(
 					nullptr != pValtanArena ?
 						pValtanArena->Get_PlayerCommandSink() : nullptr);
+				}
+			}
+			else if (ETOUI(LEVEL::KAKULSAYDON_ARENA) == chatLevel)
+			{
+				CLevel_KakulSaydonArena* pKouku = CLevel_KakulSaydonArena::Get_Active();
+				if (nullptr != pKouku)
+					pKouku->Drain_ChatLines(chatLines);
+				for (const CClientReplication::CHAT_LINE& Line : chatLines)
+					m_pChatWindowView->Append_ReceivedLine(Line.strNickname, Line.strText);
+				{
+					Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.Chat.Build");
+					m_pChatWindowView->Render(
+						nullptr != pKouku ? pKouku->Get_PlayerCommandSink() : nullptr);
 				}
 			}
 		}
@@ -3649,7 +3738,7 @@ HRESULT CMainApp::Render()
 	{
 		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Render.UIText");
 		Engine::CProfilerGpuScope gpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Render.UIText");
-	if (!CUIInputRouter::Get().Is_CinematicSuppressed())
+	if (!Is_RuntimeUIScreenSuppressed())
 	{
 	/* Same reasoning as the old combat-HUD/boss-bar/charge-gauge
 	   image gate above (isCharSelectDebugPreviewOpen there) -- these are that
@@ -3704,7 +3793,7 @@ HRESULT CMainApp::Render()
 			m_pCombatAnalysisView->Render_Text();
 	}
 	{
-		CUITextLayerScope WindowText(UI_TEXT_LAYER::WINDOW + 0);
+		CUITextLayerScope WindowText(UI_TEXT_LAYER::WINDOW_INVENTORY);
 		if (nullptr != m_pInventoryView)
 			m_pInventoryView->Render_Text();
 	}
@@ -3720,7 +3809,7 @@ HRESULT CMainApp::Render()
 		RenderFpsText();
 	}
 	{
-		CUITextLayerScope WindowText(UI_TEXT_LAYER::WINDOW + 7);
+		CUITextLayerScope WindowText(UI_TEXT_LAYER::WINDOW_ITEM_UPGRADE);
 		RenderItemUpgradeButtonText();
 		RenderItemUpgradeLevelText();
 		RenderItemUpgradeMaterialCounts();
@@ -3768,10 +3857,18 @@ HRESULT CMainApp::Render()
 			pValtanArena->Render_PartyInviteText();
 		}
 	}
-	/* Not level-gated -- both views self-gate internally (open/roster state). */
 	CUITextLayerScope HudText(UI_TEXT_LAYER::HUD);
-	if (nullptr != m_pChatWindowView)
-		m_pChatWindowView->RenderText();
+	/* The chat sprites are only driven in the levels that own a chat (see the Render call
+	above); its labels follow them, or the channel label and the last lines sit over the
+	loading screen and the next level. */
+	{
+		const uint32_t chatTextLevel = CGameInstance::Get().Get_CurrentLevelID();
+		const bool_t bChatTextLevel = ETOUI(LEVEL::BERN) == chatTextLevel ||
+			ETOUI(LEVEL::VALTAN_ARENA) == chatTextLevel ||
+			ETOUI(LEVEL::KAKULSAYDON_ARENA) == chatTextLevel;
+		if (nullptr != m_pChatWindowView && bChatTextLevel)
+			m_pChatWindowView->RenderText();
+	}
 	/* The roster sprites only draw in the levels above; the labels follow them, or the
 	   member names of the last room sit over the loading screen and the next level. */
 	{
@@ -3785,29 +3882,33 @@ HRESULT CMainApp::Render()
 
 	/* The runtime windows' labels, each on its own window layer (the steps
 	Register_UITextOccluders gave them): a window's text is hidden exactly where a window
-	stacked above it covers it. */
+	stacked above it covers it. None of them draw over the loading screen -- their sprites are
+	hidden there, so their labels would be the only thing left on it. */
+	if (ETOUI(LEVEL::LOADING) != CGameInstance::Get().Get_CurrentLevelID())
+	{
 	CUITextOcclusion& Occlusion = CUITextOcclusion::Get();
-	Occlusion.Apply(UI_TEXT_LAYER::WINDOW + 1);
+	Occlusion.Apply(UI_TEXT_LAYER::WINDOW_CHARACTER_INFO);
 	if (nullptr != m_pCharacterInfoView)
 		m_pCharacterInfoView->Render_Text();
-	Occlusion.Apply(UI_TEXT_LAYER::WINDOW + 2);
+	Occlusion.Apply(UI_TEXT_LAYER::WINDOW_AVATAR_BOOK);
 	if (nullptr != m_pAvatarBookView)
 		m_pAvatarBookView->Render_Text();
-	Occlusion.Apply(UI_TEXT_LAYER::WINDOW + 3);
+	Occlusion.Apply(UI_TEXT_LAYER::WINDOW_VEHICLE);
 	if (nullptr != m_pVehicleWindowView)
 		m_pVehicleWindowView->Render_Text();
-	Occlusion.Apply(UI_TEXT_LAYER::WINDOW + 4);
+	Occlusion.Apply(UI_TEXT_LAYER::WINDOW_HONOR_TITLE);
 	if (nullptr != m_pHonorTitleWindowView)
 		m_pHonorTitleWindowView->Render_Text();
-	Occlusion.Apply(UI_TEXT_LAYER::WINDOW + 5);
+	Occlusion.Apply(UI_TEXT_LAYER::WINDOW_WORLD_MAP);
 	if (nullptr != m_pWorldMapWindowView)
 		m_pWorldMapWindowView->Render_Text();
-	Occlusion.Apply(UI_TEXT_LAYER::WINDOW + 6);
+	Occlusion.Apply(UI_TEXT_LAYER::WINDOW_SYSTEM_OPTION);
 	if (nullptr != m_pSystemOptionView)
 		m_pSystemOptionView->Render_Text();
 	Occlusion.Apply(UI_TEXT_LAYER::HUD);
 	if (nullptr != m_pSongCastGaugeView)
 		m_pSongCastGaugeView->Render_Text();
+	}
 
 	}
 	// Cinematic subtitles remain visible while ordinary combat UI is suppressed.
@@ -4260,7 +4361,40 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 	Update_SpecialSlot();
 	Update_BuffBar();
 	if (nullptr != m_pInventoryView)
+	{
 		m_pInventoryView->Update(CCombatHUDViewModel::Get().Get_Inventory().Items);
+		/* Right-click equip: the first free slot of the item's kind (the two earrings / two
+		   rings), or the first one when both are worn. The Server checks kind and class. */
+		string strEquipItemId;
+		if (m_pInventoryView->Try_Consume_EquipRequest(strEquipItemId))
+		{
+			using LostArk::Shared::EQUIPMENT_SLOT;
+			const ITEM_DEFINITION* pEquip = CItemCatalog::Find_ById(strEquipItemId);
+			EQUIPMENT_SLOT eTarget = EQUIPMENT_SLOT::NONE;
+			for (uint32_t iSlot = ETOUI(EQUIPMENT_SLOT::HELMET);
+				nullptr != pEquip && iSlot < ETOUI(EQUIPMENT_SLOT::END); ++iSlot)
+			{
+				const EQUIPMENT_SLOT eSlot = static_cast<EQUIPMENT_SLOT>(iSlot);
+				const char* pKind = LostArk::Shared::Equipment_SlotKind(eSlot);
+				if (nullptr == pKind || pEquip->strEquipSlot != pKind)
+					continue;
+				bool_t bWorn = false;
+				for (const LostArk::Shared::INVENTORY_ITEM_SNAPSHOT& Item :
+					CCombatHUDViewModel::Get().Get_Inventory().Items)
+					bWorn = bWorn || Item.eEquippedSlot == eSlot;
+				if (EQUIPMENT_SLOT::NONE == eTarget)
+					eTarget = eSlot;
+				if (!bWorn)
+				{
+					eTarget = eSlot;
+					break;
+				}
+			}
+			if (EQUIPMENT_SLOT::NONE != eTarget)
+				(void)CNetworkManager::Get().Send_SetEquipment(
+					m_iNextUseItemSequence++, eTarget, true, strEquipItemId);
+		}
+	}
 	if (nullptr != m_pCharacterInfoView)
 	{
 		/* Each level owns its own CClientReplication, the same way the party window above
@@ -4287,6 +4421,10 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 				pLocalCharacter = pKoukuArena->Get_LocalCharacter();
 		}
 		m_pCharacterInfoView->Update(fTimeDelta, pLocalCharacter, player);
+		LostArk::Shared::EQUIPMENT_SLOT eUnequipSlot = LostArk::Shared::EQUIPMENT_SLOT::NONE;
+		if (m_pCharacterInfoView->Take_UnequipRequest(eUnequipSlot))
+			(void)CNetworkManager::Get().Send_SetEquipment(
+				m_iNextUseItemSequence++, eUnequipSlot, false, {});
 		if (nullptr != m_pAvatarBookView)
 		{
 			/* The avatar-page avatar book button toggles the book; the book lives only while the
@@ -5211,6 +5349,30 @@ void CMainApp::Update_LobbyButtons(const f32_t fTimeDelta)
 	m_pLobbyBackgroundView->Update(fTimeDelta);
 }
 
+bool_t CMainApp::Is_RuntimeUIScreenSuppressed() const
+{
+	return CUIInputRouter::Get().Is_CinematicSuppressed() ||
+		ETOUI(LEVEL::LOADING) == CGameInstance::Get().Get_CurrentLevelID();
+}
+
+void CMainApp::Close_RuntimeWindowsForLoading()
+{
+	if (nullptr != m_pInventoryView) m_pInventoryView->Close();
+	if (nullptr != m_pCharacterInfoView) m_pCharacterInfoView->Close();
+	if (nullptr != m_pAvatarBookView) m_pAvatarBookView->Close();
+	if (nullptr != m_pVehicleWindowView) m_pVehicleWindowView->Close();
+	if (nullptr != m_pHonorTitleWindowView) m_pHonorTitleWindowView->Close();
+	if (nullptr != m_pWorldMapWindowView) m_pWorldMapWindowView->Close();
+	if (nullptr != m_pSystemOptionView) m_pSystemOptionView->Close();
+	if (nullptr != m_pQuickSlotDragView) m_pQuickSlotDragView->Cancel();
+	if (nullptr != m_pChatWindowView)
+	{
+		m_pChatWindowView->Close_Input();
+		m_pChatWindowView->Hide_AllSlots();
+	}
+	m_iEscapeWindowCount = 0u;
+}
+
 bool_t CMainApp::Is_AnyRuntimeWindowOpen() const
 {
 	/* Every runtime window that answers Escape with "close me". The system option window
@@ -5229,6 +5391,87 @@ bool_t CMainApp::Is_AnyRuntimeWindowOpen() const
 	return bOpen;
 }
 
+bool_t CMainApp::Is_EscapeWindowOpen(const ESCAPE_WINDOW eWindow) const
+{
+	switch (eWindow)
+	{
+	case ESCAPE_WINDOW::INVENTORY: return nullptr != m_pInventoryView && m_pInventoryView->Is_Open();
+	case ESCAPE_WINDOW::CHARACTER_INFO: return nullptr != m_pCharacterInfoView && m_pCharacterInfoView->Is_Open();
+	case ESCAPE_WINDOW::AVATAR_BOOK: return nullptr != m_pAvatarBookView && m_pAvatarBookView->Is_Open();
+	case ESCAPE_WINDOW::HONOR_TITLE: return nullptr != m_pHonorTitleWindowView && m_pHonorTitleWindowView->Is_Open();
+	case ESCAPE_WINDOW::VEHICLE: return nullptr != m_pVehicleWindowView && m_pVehicleWindowView->Is_Open();
+	case ESCAPE_WINDOW::WORLD_MAP: return nullptr != m_pWorldMapWindowView && m_pWorldMapWindowView->Is_Open();
+	default: return false;
+	}
+}
+
+void CMainApp::Sync_EscapeWindowOrder()
+{
+	uint32_t iKept = 0u;
+	for (uint32_t i = 0u; i < m_iEscapeWindowCount; ++i)
+	{
+		if (Is_EscapeWindowOpen(m_EscapeWindowOrder[i]))
+			m_EscapeWindowOrder[iKept++] = m_EscapeWindowOrder[i];
+	}
+	m_iEscapeWindowCount = iKept;
+	/* Enum order breaks a same-frame tie, so the avatar book / title window land above the info
+	window they open over. */
+	for (uint32_t iWindow = 0u; iWindow < ETOUI(ESCAPE_WINDOW::END); ++iWindow)
+	{
+		const ESCAPE_WINDOW eWindow = static_cast<ESCAPE_WINDOW>(iWindow);
+		if (!Is_EscapeWindowOpen(eWindow))
+			continue;
+		bool_t bListed = false;
+		for (uint32_t i = 0u; i < m_iEscapeWindowCount && !bListed; ++i)
+			bListed = m_EscapeWindowOrder[i] == eWindow;
+		if (!bListed)
+			m_EscapeWindowOrder[m_iEscapeWindowCount++] = eWindow;
+	}
+}
+
+bool_t CMainApp::Close_TopEscapeWindow()
+{
+	Sync_EscapeWindowOrder();
+	if (0u == m_iEscapeWindowCount)
+		return false;
+	const ESCAPE_WINDOW eTop = m_EscapeWindowOrder[--m_iEscapeWindowCount];
+	switch (eTop)
+	{
+	case ESCAPE_WINDOW::INVENTORY: m_pInventoryView->Close(); break;
+	case ESCAPE_WINDOW::CHARACTER_INFO: m_pCharacterInfoView->Close(); break;
+	case ESCAPE_WINDOW::AVATAR_BOOK: m_pAvatarBookView->Close(); break;
+	case ESCAPE_WINDOW::HONOR_TITLE: m_pHonorTitleWindowView->Close(); break;
+	case ESCAPE_WINDOW::VEHICLE: m_pVehicleWindowView->Close(); break;
+	case ESCAPE_WINDOW::WORLD_MAP:
+		/* Its hole dialog takes the press first; the window stays on top until it closes. */
+		m_pWorldMapWindowView->Handle_EscapeEdge();
+		if (m_pWorldMapWindowView->Is_Open())
+			++m_iEscapeWindowCount;
+		break;
+	default: break;
+	}
+	return true;
+}
+
+bool_t CMainApp::Is_EscapeOwnedElsewhere() const
+{
+	/* These read the same press in their own Update, which runs later this frame. */
+	if (nullptr != m_pQuickSlotDragView && m_pQuickSlotDragView->Is_Carrying())
+		return true;
+	if (CLevel_Bern* pBern = CLevel_Bern::Get_Active();
+		nullptr != pBern && ETOUI(LEVEL::BERN) == CGameInstance::Get().Get_CurrentLevelID() &&
+		pBern->Is_ValtanEntryModalOpen())
+		return true;
+#ifdef _DEBUG
+	if (CLevel_CharacterSelect* pCharacterSelect = CLevel_CharacterSelect::Get_Active();
+		nullptr != pCharacterSelect &&
+		ETOUI(LEVEL::CHARACTER_SELECT) == CGameInstance::Get().Get_CurrentLevelID() &&
+		pCharacterSelect->Is_DebugRaidEntryPreviewOpen())
+		return true;
+#endif
+	return false;
+}
+
 void CMainApp::Update_SystemOptionWindow(const f32_t fTimeDelta)
 {
 	Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(),
@@ -5239,8 +5482,10 @@ void CMainApp::Update_SystemOptionWindow(const f32_t fTimeDelta)
 	/* Read the other windows before their own Update runs this frame: an Escape that closes
 	one of them must not fall through to opening this. This one Escape edge, read here from
 	the same key source every frame, both opens and closes the window -- the view polling
-	DirectInput on its own lagged a frame behind and closed what this had just opened. */
+	DirectInput on its own lagged a frame behind and closed what this had just opened. The same
+	edge closes the toggle windows (inventory, info, vehicle, map...) one per press. */
 	const bool_t bOtherWindowOpen = Is_AnyRuntimeWindowOpen();
+	Sync_EscapeWindowOrder();
 	if (!ImGui::GetIO().WantTextInput && !CUIInputRouter::Get().Is_TextInputActive())
 	{
 		const bool_t bWindowFocused =
@@ -5264,6 +5509,14 @@ void CMainApp::Update_SystemOptionWindow(const f32_t fTimeDelta)
 			{
 				m_bItemUpgradePreviewVisible = false;
 				Hide_ItemUpgrade();
+			}
+			else if (Is_EscapeOwnedElsewhere())
+			{
+				/* The carry / popup closes itself on this press; nothing else does. */
+			}
+			else if (Close_TopEscapeWindow())
+			{
+				/* One press, one window: the newest open one. */
 			}
 			else if (!bOtherWindowOpen)
 			{
@@ -7334,35 +7587,53 @@ void CMainApp::RenderItemAnnounceText()
 	if (!rects.isValid || rects.strItemName.empty())
 		return;
 
-	const float2_t vTextViewportSize = CGameInstance::Get().Get_ViewportSize();
-	const float textScaleX = vTextViewportSize.x / 1280.f;
-	const float textScaleY = vTextViewportSize.y / 720.f;
-	const float textUiScale = (std::min)(textScaleX, textScaleY);
+	const float2_t vViewport = CGameInstance::Get().Get_ViewportSize();
+	const f32_t fScaleX = vViewport.x / 1280.f;
+	const f32_t fScaleY = vViewport.y / 720.f;
+	/* announce.gfx text sizes are 1920x1080 stage px: the text line 16, the quality row 12.
+	ITEM_ANNOUNCE_TEXT_SCALE is the project's own enlargement (user request), not retail. */
+	constexpr f32_t ITEM_ANNOUNCE_TEXT_SCALE = 1.3f;
+	const f32_t fTextPx = 16.f * 2.f / 3.f * ITEM_ANNOUNCE_TEXT_SCALE * fScaleY;
+	const f32_t fQualityPx = 12.f * 2.f / 3.f * ITEM_ANNOUNCE_TEXT_SCALE * fScaleY;
 
-	// Scale is fit against the combined string's own measured extent, same as
-	// before the name/suffix split, so this doesn't change size/wrapping behavior.
-	const wstring strCombined = rects.strItemName + rects.strSuffix;
-	const float2_t vMeasured =
-		CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strCombined.c_str());
-	const f32_t fScaleByHeight = (vMeasured.y > 0.f) ? (rects.fTextHeight * 0.7f / vMeasured.y) : 1.f;
-	const f32_t fScaleByWidth = (vMeasured.x > 0.f) ? (rects.fTextWidth * 0.95f / vMeasured.x) : 1.f;
-	const f32_t fScale = (std::min)(fScaleByHeight, fScaleByWidth) * 0.8f * textUiScale;
-
-	const float2_t vNameMeasured =
-		CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), rects.strItemName.c_str());
-	const f32_t fCenterY = (rects.fTextY + rects.fTextHeight * 0.5f) * textScaleY;
-	const f32_t fNameX = rects.fTextX * textScaleX;
-	// Item grade gold/orange -- same #FF9100-ish tone RenderItemUpgradeLevelText
-	// already uses for an equipment item's own name label.
-	const fvector_t vGoldOrange = XMVectorSet(1.0f, 0.5686f, 0.0f, 1.f);
-	CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), rects.strItemName.c_str(),
-		float2_t(fNameX, fCenterY), vGoldOrange, 0.f, float2_t(0.f, 0.5f), fScale);
-	if (!rects.strSuffix.empty())
+	/* textField 95: one centred line, the name in its grade colour, the rest white. */
+	f32_t fNameScale = 1.f, fSuffixScale = 1.f;
+	const wstring_t strNameFont = UILabelFont::Resolve(TEXT("Font_YG760"), fTextPx, fNameScale);
+	const wstring_t strSuffixFont = UILabelFont::Resolve(TEXT("Font_YG760"), fTextPx, fSuffixScale);
+	const f32_t fNameWidth =
+		CGameInstance::Get().Measure_Text(strNameFont, rects.strItemName.c_str()).x * fNameScale;
+	const float2_t vSuffixSize = CGameInstance::Get().Measure_Text(strSuffixFont, rects.strSuffix.c_str());
+	const f32_t fLineWidth = fNameWidth + vSuffixSize.x * fSuffixScale;
+	const f32_t fLineLeft = std::round((rects.fTextX + rects.fTextWidth * 0.5f) * fScaleX - fLineWidth * 0.5f);
+	const f32_t fLineTop = std::round((rects.fTextY + rects.fTextHeight * 0.5f) * fScaleY -
+		vSuffixSize.y * fSuffixScale * 0.5f);
+	const auto Rgb = [](const std::uint32_t iRgb, const f32_t fAlpha)
 	{
-		CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), rects.strSuffix.c_str(),
-			float2_t(fNameX + vNameMeasured.x * fScale, fCenterY),
-			Colors::White, 0.f, float2_t(0.f, 0.5f), fScale);
-	}
+		return XMVectorSet(((iRgb >> 16) & 0xffu) / 255.f, ((iRgb >> 8) & 0xffu) / 255.f,
+			(iRgb & 0xffu) / 255.f, fAlpha);
+	};
+	const fvector_t vNameColor = Rgb(rects.iNameRgb, rects.fTextAlpha);
+	CGameInstance::Get().Draw_Text(strNameFont, rects.strItemName.c_str(),
+		float2_t(fLineLeft, fLineTop), vNameColor, 0.f, float2_t(0.f, 0.f), fNameScale);
+	CGameInstance::Get().Draw_Text(strSuffixFont, rects.strSuffix.c_str(),
+		float2_t(std::round(fLineLeft + fNameWidth), fLineTop),
+		XMVectorSet(1.f, 1.f, 1.f, rects.fTextAlpha), 0.f, float2_t(0.f, 0.f), fSuffixScale);
+
+	/* qualityProgress: "[$]item.option_quality" (품질) centred in its box, the value
+	right-aligned in targetText and coloured by the tier the value reaches. */
+	UILabelFont::Draw_Centered(TEXT("Font_YG760"), L"\xD488\xC9C8",
+		(rects.fQualityLabelX + rects.fQualityLabelWidth * 0.5f) * fScaleX,
+		(rects.fQualityLabelY + rects.fQualityLabelHeight * 0.5f) * fScaleY,
+		fQualityPx, XMVectorSet(1.f, 1.f, 1.f, rects.fQualityAlpha));
+	f32_t fValueScale = 1.f;
+	const wstring_t strValueFont = UILabelFont::Resolve(TEXT("Font_YG760"), fQualityPx, fValueScale);
+	const float2_t vValueSize = CGameInstance::Get().Measure_Text(strValueFont, rects.strQualityValue.c_str());
+	CGameInstance::Get().Draw_Text(strValueFont, rects.strQualityValue.c_str(),
+		float2_t(std::round((rects.fQualityValueX + rects.fQualityValueWidth) * fScaleX - vValueSize.x * fValueScale),
+			std::round((rects.fQualityValueY + rects.fQualityValueHeight * 0.5f) * fScaleY -
+				vValueSize.y * fValueScale * 0.5f)),
+		Rgb(rects.iQualityRgb, rects.fQualityAlpha),
+		0.f, float2_t(0.f, 0.f), fValueScale);
 }
 
 void CMainApp::Update_ChargeGauge()
@@ -7965,7 +8236,8 @@ void CMainApp::RenderDamageNumbers()
 	constexpr f32_t DAMAGE_FONT_PX_END = 19.f;
 	constexpr f32_t DAMAGE_RISE_PX_PHASE0 = 15.f;
 	constexpr f32_t DAMAGE_RISE_PX_END = 100.f;
-	constexpr size_t MAX_FLOATING_DAMAGE_NUMBERS = 48u;
+	/* DamageTextTween.DAMAGE_ANI_LIMIT: retail animates at most 20 numbers at once. */
+	constexpr size_t MAX_FLOATING_DAMAGE_NUMBERS = 20u;
 
 	/* Get_DamageEvents() keeps every retained hit, not just this frame's -- only spawn a floating
 	number for events strictly newer than the last batch we already spawned from. See the member
@@ -8001,6 +8273,7 @@ void CMainApp::RenderDamageNumbers()
 		number.iAmount = damageEvent.Event.iAmount;
 		number.isOutgoing = damageEvent.Event.isOutgoing;
 		number.eCardMazeSuit = damageEvent.Event.eCardMazeSuit;
+		number.eHitFlag = damageEvent.Event.eHitFlag;
 		m_dLastDamageSeconds = number.dSpawnSeconds;
 		m_FloatingDamageNumbers.push_back(number);
 	}
@@ -8092,24 +8365,55 @@ void CMainApp::RenderDamageNumbers()
 			continue;
 		const bool_t isShard =
 			LostArk::Shared::MECHANIC_CARD_SYMBOL::NONE != number.eCardMazeSuit;
+		/* INVINCIBLE is drawn by nothing in retail either. */
+		if (LostArk::Shared::DAMAGE_HIT_FLAG::INVINCIBLE == number.eHitFlag)
+			continue;
 		const wstring strAmount = isShard ?
 			shardText(number.eCardMazeSuit, number.iAmount) :
 			Format_ThousandsSeparated(number.iAmount);
 		const float2_t vMeasured =
 			CGameInstance::Get().Measure_Text(TEXT("Font_EventDamage"), strAmount.c_str());
 		const f32_t fScale = vMeasured.y > 0.f ? (fFontPx * stageScale) / vMeasured.y : 1.f;
-		/* Retail DamageTextWnd colours: outgoing hits use the critical yellow (0xFFCC00) for every
-		hit by project decision, incoming hits the enemy red (0xFF0000). */
-		/* A shard is a pickup, not a hit, so it reads white instead of the
-		outgoing yellow or the incoming red. */
-		const fvector_t vColor = isShard ?
+		/* Retail DamageTextWnd's own colour table, selected by the Server's hit flag:
+		COLOR_PC_DAMAGE 0xFFFFFF for what the player deals, COLOR_ENEMY_DAMAGE 0xFF0000 for what
+		it takes, COLOR_CRITICAL_DAMAGE 0xFFCC00, COLOR_MISS_DAMAGE 0x999999, COLOR_HEAL
+		0x00FF00. A potion heal is the one non-combat flag the Server raises today; CRITICAL and
+		MISS light up once the combat numbers that decide them exist. */
+		vector_t vColor = number.isOutgoing ?
 			XMVectorSet(1.f, 1.f, 1.f, fAlpha) :
-			(number.isOutgoing ?
-				XMVectorSet(1.f, 0.8f, 0.f, fAlpha) :
-				XMVectorSet(1.f, 0.f, 0.f, fAlpha));
+			XMVectorSet(1.f, 0.f, 0.f, fAlpha);
+		switch (number.eHitFlag)
+		{
+		case LostArk::Shared::DAMAGE_HIT_FLAG::CRITICAL:
+			vColor = XMVectorSet(1.f, 204.f / 255.f, 0.f, fAlpha); break;
+		case LostArk::Shared::DAMAGE_HIT_FLAG::MISS:
+			vColor = XMVectorSet(0.6f, 0.6f, 0.6f, fAlpha); break;
+		case LostArk::Shared::DAMAGE_HIT_FLAG::HEAL:
+			vColor = XMVectorSet(0.f, 1.f, 0.f, fAlpha); break;
+		default: break;
+		}
+		/* A shard is a pickup, not a hit, so it keeps the plain white. */
+		if (isShard)
+			vColor = XMVectorSet(1.f, 1.f, 1.f, fAlpha);
+		const float2_t vDrawPosition(
+			XMVectorGetX(vProjected), XMVectorGetY(vProjected) - fRisePx * stageScale);
+		/* textContainer carries a GLOWFILTER (blur 5, strength 1, opaque black) in retail, which
+		is what keeps a number readable over a bright floor. A sprite font cannot blur, so the
+		same black is stamped around the glyphs once per direction before the coloured pass. */
+		const f32_t fGlowOffset = (std::max)(1.f, fFontPx * 0.06f * stageScale);
+		const fvector_t vGlowColor = XMVectorSet(0.f, 0.f, 0.f, fAlpha);
+		for (const float2_t& vStep : {
+			float2_t(-1.f, 0.f), float2_t(1.f, 0.f), float2_t(0.f, -1.f), float2_t(0.f, 1.f),
+			float2_t(-0.7f, -0.7f), float2_t(0.7f, -0.7f), float2_t(-0.7f, 0.7f),
+			float2_t(0.7f, 0.7f) })
+		{
+			CGameInstance::Get().Draw_Text(TEXT("Font_EventDamage"), strAmount.c_str(),
+				float2_t(vDrawPosition.x + vStep.x * fGlowOffset,
+					vDrawPosition.y + vStep.y * fGlowOffset),
+				vGlowColor, 0.f, float2_t(0.5f, 0.5f), fScale);
+		}
 		CGameInstance::Get().Draw_Text(TEXT("Font_EventDamage"), strAmount.c_str(),
-			float2_t(XMVectorGetX(vProjected), XMVectorGetY(vProjected) - fRisePx * stageScale),
-			vColor, 0.f, float2_t(0.5f, 0.5f), fScale);
+			vDrawPosition, vColor, 0.f, float2_t(0.5f, 0.5f), fScale);
 	}
 }
 
@@ -9464,39 +9768,66 @@ void CMainApp::RenderArenaCameraAndPlayerControls()
 		CLevel_KakulSaydonArena::Get_Active() : nullptr;
 	CLevel_CharacterSelect* characterSelect = LEVEL::CHARACTER_SELECT == level ?
 		CLevel_CharacterSelect::Get_Active() : nullptr;
+	CLevel_Bern* bern = LEVEL::BERN == level ? CLevel_Bern::Get_Active() : nullptr;
+	CLevel_Development* development = LEVEL::DEVELOPMENT == level || LEVEL::MAHARAKA == level ?
+		CLevel_Development::Get_Active(level) : nullptr;
 	shared_ptr<CCamera_Free> camera;
 	CPlayerController* controller = nullptr;
+	const char* mapName = "Unavailable";
 	if (nullptr != valtan)
 	{
 		camera = valtan->Get_DebugCamera();
 		controller = &valtan->Get_DebugPlayerController();
+		mapName = "Valtan";
 	}
 	else if (nullptr != kouku)
 	{
 		camera = kouku->Get_DebugCamera();
 		controller = &kouku->Get_DebugPlayerController();
+		mapName = "KoukuSaydon";
 	}
 	else if (nullptr != characterSelect)
 	{
 		camera = characterSelect->Get_DebugCamera();
-		controller = &characterSelect->Get_DebugPlayerController();
+		mapName = "Character Select";
 	}
-	if (nullptr == camera || nullptr == controller)
+	else if (nullptr != bern)
 	{
-		if (LEVEL::BERN == level)
-			RenderArenaFollowCameraSettings();
-		if (m_pLevelNavigationDebug) m_pLevelNavigationDebug->Render_Controls();
-		return;
+		camera = bern->Get_DebugCamera();
+		mapName = "Bern";
 	}
-	const auto setSpeed = [valtan, kouku, characterSelect, camera](const f32_t speed)
+	else if (nullptr != development)
 	{
-		if (nullptr != valtan) valtan->Set_DebugCameraSpeed(speed);
-		else if (nullptr != kouku) kouku->Set_DebugCameraSpeed(speed);
-		else if (nullptr != characterSelect) (void)camera->Set_FreeMoveSpeed(speed);
-	};
-	if (ImGui::CollapsingHeader("Arena Camera / Player", ImGuiTreeNodeFlags_DefaultOpen))
+		camera = development->Get_DebugCamera();
+		mapName = LEVEL::MAHARAKA == level ? "Maharaka" : "Development / Training";
+	}
+	if (camera && ImGui::CollapsingHeader("Map Camera / Player", ImGuiTreeNodeFlags_DefaultOpen))
 	{
-		ImGui::Text("Current arena: %s", nullptr != valtan ? "Valtan" : nullptr != kouku ? "KoukuSaydon" : "Character Select");
+		const auto setSpeed = [valtan, kouku, camera](const f32_t speed)
+		{
+			if (nullptr != valtan) valtan->Set_DebugCameraSpeed(speed);
+			else if (nullptr != kouku) kouku->Set_DebugCameraSpeed(speed);
+			else (void)camera->Set_FreeMoveSpeed(speed);
+		};
+		ImGui::Text("Current map: %s", mapName);
+		/* Where the local player actually stands and which interact box the Server is offering
+		there, so an authored trigger can be placed against real coordinates instead of guesses. */
+		{
+			const std::shared_ptr<CCharacter> pDebugLocal =
+				nullptr != valtan ? valtan->Get_LocalCharacter() :
+				(nullptr != kouku ? kouku->Get_LocalCharacter() : nullptr);
+			if (nullptr != pDebugLocal && nullptr != pDebugLocal->Get_Transform())
+			{
+				float3_t vPlayer{};
+				XMStoreFloat3(&vPlayer,
+					pDebugLocal->Get_Transform()->Get_State(STATE::POSITION));
+				ImGui::Text("Player world: (%.1f, %.1f, %.1f)",
+					vPlayer.x, vPlayer.y, vPlayer.z);
+			}
+			const std::string& offered =
+				CCombatHUDViewModel::Get().Get_InteractPromptTriggerId();
+			ImGui::Text("Interact offer: %s", offered.empty() ? "(none)" : offered.c_str());
+		}
 		f32_t speed = camera->Get_FreeMoveSpeed();
 		if (ImGui::DragFloat("Free camera speed (m/s)", &speed, 0.5f,
 			CCamera_Free::MIN_FREE_MOVE_SPEED, CCamera_Free::MAX_FREE_MOVE_SPEED,
@@ -9507,38 +9838,43 @@ void CMainApp::RenderArenaCameraAndPlayerControls()
 		ImGui::TextDisabled("Shift: x%.0f (%.1f m/s).",
 			CCamera_Free::FREE_MOVE_SPRINT_MULTIPLIER,
 			camera->Get_FreeMoveSpeed() * CCamera_Free::FREE_MOVE_SPRINT_MULTIPLIER);
-		ImGui::TextDisabled(characterSelect ? "Free-camera speed lasts for this map visit." :
-			"Free-camera speed is saved per arena for this session.");
+		ImGui::TextDisabled(valtan || kouku ? "Free-camera speed is saved per arena for this session." :
+			"Free-camera speed lasts for this map visit.");
 
-		const bool_t freeCamera = !camera->Is_FollowRequested() &&
-			!camera->Is_PresentationOverrideActive();
-		ImGui::BeginDisabled(nullptr != characterSelect || !freeCamera || controller->Is_DebugPlayerPlacementPending() ||
-			controller->Is_DebugPlayerPlacementArmed());
-		if (ImGui::Button("Move Player"))
+		// Server player placement remains confined to the two existing arena owners.
+		if (controller)
 		{
-			const auto world = nullptr != valtan ? LostArk::Shared::WORLD_ID::VALTAN_ARENA :
-				LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA;
-			if (controller->Begin_DebugPlayerPlacement(world))
-				camera->Set_MouseLookEnabled(false);
+			const bool_t freeCamera = !camera->Is_FollowRequested() &&
+				!camera->Is_PresentationOverrideActive();
+			ImGui::BeginDisabled(!freeCamera || controller->Is_DebugPlayerPlacementPending() ||
+				controller->Is_DebugPlayerPlacementArmed());
+			if (ImGui::Button("Move Player"))
+			{
+				const auto world = nullptr != valtan ? LostArk::Shared::WORLD_ID::VALTAN_ARENA :
+					LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA;
+				if (controller->Begin_DebugPlayerPlacement(world))
+					camera->Set_MouseLookEnabled(false);
+			}
+			ImGui::EndDisabled();
+			if (controller->Is_DebugPlayerPlacementArmed())
+			{
+				ImGui::SameLine();
+				if (ImGui::Button("Cancel Pick"))
+					controller->Cancel_DebugPlayerPlacement();
+			}
+			ImGui::TextDisabled("F6 free camera -> Move Player -> click ground. Esc / right-click cancels.");
+			ImGui::TextDisabled("Tab toggles mouse-look. Only your player moves after Server approval.");
+			if (!controller->Get_DebugPlayerPlacementStatus().empty())
+				ImGui::TextWrapped("%s", controller->Get_DebugPlayerPlacementStatus().c_str());
 		}
-		ImGui::EndDisabled();
-		if (controller->Is_DebugPlayerPlacementArmed())
-		{
-			ImGui::SameLine();
-			if (ImGui::Button("Cancel Pick"))
-				controller->Cancel_DebugPlayerPlacement();
-		}
-		ImGui::TextDisabled("F6 free camera -> Move Player -> click ground. Esc / right-click cancels.");
-		ImGui::TextDisabled("Tab toggles mouse-look. Only your player moves after Server approval.");
-		if (!controller->Get_DebugPlayerPlacementStatus().empty())
-			ImGui::TextWrapped("%s", controller->Get_DebugPlayerPlacementStatus().c_str());
-		if (nullptr != characterSelect)
-			ImGui::TextDisabled("Move Player is available in Valtan and KoukuSaydon arenas.");
+		else
+			ImGui::TextDisabled("F6 toggles follow / free camera when a player is available. Tab toggles mouse-look.");
 	}
 	if (m_pLevelNavigationDebug) m_pLevelNavigationDebug->Render_Controls();
 	if (nullptr != characterSelect)
 		RenderCharacterSelectFloorSwapControls();
-	RenderArenaFollowCameraSettings();
+	if (characterSelect || kouku || bern || valtan)
+		RenderArenaFollowCameraSettings();
 	if (nullptr != kouku)
 		RenderKoukuUiPreviewControls();
 }
@@ -9714,15 +10050,28 @@ void CMainApp::RenderArenaFollowCameraSettings()
 		m_ArenaCameraDraftLoaded[index] = true;
 	}
 	const bool canPreview = active && camera && !camera->Is_PresentationOverrideActive();
+	const auto applyProfile = [&]()
+	{
+		if (!active || !camera) return false;
+		if (index == 0u) return characterSelect->Set_FollowCameraProfile(draft, status);
+		if (index == 1u) return kouku->Set_FollowCameraProfile(draft, status);
+		if (index == 2u) return bern->Set_FollowCameraProfile(draft, status);
+		return valtan->Set_FollowCameraProfile(draft, status);
+	};
 	const auto preview = [&]()
 	{
-		if (!canPreview) return;
-		bool applied = false;
-		if (index == 0u) applied = characterSelect->Set_FollowCameraProfile(draft, status);
-		else if (index == 1u) applied = kouku->Set_FollowCameraProfile(draft, status);
-		else if (index == 2u) applied = bern->Set_FollowCameraProfile(draft, status);
-		else if (index == 3u) applied = valtan->Set_FollowCameraProfile(draft, status);
-		if (applied) camera->Set_FollowEnabled(true);
+		if (canPreview && applyProfile()) camera->Set_FollowEnabled(true);
+	};
+	const auto save = [&]()
+	{
+		if (!CArenaCameraProfile::Save(map, draft, status, &baseline)) return;
+		const std::string savedStatus = status;
+		if (!active)
+			status += " Saved for the next entry.";
+		else if (applyProfile())
+			status = savedStatus + " Character sizes applied to the current map.";
+		else
+			status = savedStatus + " Current map could not apply the profile: " + status;
 	};
 	bool edited = false;
 	if (map == ARENA_CAMERA_MAP::KOUKU_SAYDON)
@@ -9800,8 +10149,9 @@ void CMainApp::RenderArenaFollowCameraSettings()
 			draft.marioSizeMultiplier = defaults.marioSizeMultiplier;
 			edited = true;
 		}
+		if (ImGui::Button("Save##CharacterSize")) save();
 		ImGui::TextWrapped("Class values multiply the current catalog model. Artist 1.6x, DimensionMaster 0.7x and madness clown 0.7x are the requested defaults. Mario 1x keeps its 1.5m admission height.");
-		ImGui::TextDisabled("Local and remote characters use this map's values. Save / Reload below also stores these sizes.");
+		ImGui::TextDisabled("Save stores this map's settings and applies the sizes to its local and remote characters.");
 		ImGui::TreePop();
 	}
 	if (ImGui::TreeNodeEx("Card Maze Player Hammer", ImGuiTreeNodeFlags_DefaultOpen))
@@ -9888,11 +10238,7 @@ void CMainApp::RenderArenaFollowCameraSettings()
 	if (!active) ImGui::TextDisabled("Save this map, then enter it to apply its settings.");
 	else if (camera && camera->Is_PresentationOverrideActive())
 		ImGui::TextDisabled("Live follow-camera preview is unavailable during a camera sequence.");
-	if (ImGui::Button("Save camera settings"))
-	{
-		if (CArenaCameraProfile::Save(map, draft, status, &baseline))
-			status += " Saved for the next entry.";
-	}
+	if (ImGui::Button("Save camera settings")) save();
 	ImGui::SameLine();
 	if (ImGui::Button("Reload saved") && CArenaCameraProfile::Load(map, draft, status, &baseline)) preview();
 	ImGui::TextWrapped("%s", CArenaCameraProfile::Path(map).generic_string().c_str());
@@ -10956,6 +11302,7 @@ bool_t CMainApp::StartKoukuGateCompletePlay(const std::string_view gateId, std::
     pending.deadline = std::chrono::steady_clock::now() + std::chrono::minutes(20);
     arena->Debug_ResetCompletePlayPreparation();
     m_KoukuRaidResourcePreparation = std::move(pending);
+    m_strKoukuRaidReplyStatus.clear();
     status = m_strKoukuCompletePlayStatus = "Preparing all raid Effect/Sequence/WORLD dependencies before the Server start request.";
     return true;
 }
@@ -10997,8 +11344,12 @@ void CMainApp::CancelKoukuGateCompletePlay(const std::string& status)
             request.iSequenceSourceRevision = state.iSequenceSourceRevision; request.strStartGateId = state.strGateId;
             if (arena->Get_PlayerCommandSink()->Request_KoukuRaid(request))
             {
-                m_iKoukuRaidPendingRequest = request.iRequestSequence;
+                arena->Expect_KoukuRaidReply(request.iRequestSequence);
+                m_KoukuRaidRequest = request; m_iKoukuRaidPendingRequest = request.iRequestSequence;
                 m_KoukuRaidReplyDeadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+                m_strKoukuRaidReplyStatus.clear();
+                Record_KoukuRaidRequestEvent("kouku.raid.request.sent", request,
+                    m_iKoukuCompletePlayWorldGeneration, request.iExpectedRunEpoch, {});
                 m_strKoukuCompletePlayStatus = "Waiting for the Server to stop this raid epoch."; return;
             }
         }
@@ -11013,7 +11364,9 @@ void CMainApp::CancelKoukuGateCompletePlay(const std::string& status)
         { m_strKoukuCompletePlayStatus = "Previous gate restore failed: " + restore; return; }
     }
     m_strKoukuRaidPresentationKey.clear(); m_strKoukuRaidFailedKey.clear(); m_pKoukuRaidSequenceDocument.reset(); m_iKoukuRaidDocumentEpoch = 0u;
+    if (arena) arena->Expect_KoukuRaidReply(0u);
     m_strKoukuCompletePlayFlowGate.clear(); m_iKoukuRaidPendingRequest = 0u; m_bKoukuRaidStopAfterAdmission = false; m_strKoukuCompletePlayStatus = reason;
+    m_KoukuRaidRequest = {}; m_KoukuRaidReplyDeadline = {}; m_strKoukuRaidReplyStatus.clear();
 }
 
 
@@ -11143,6 +11496,11 @@ void CMainApp::RenderKoukuSaydonCompletePlayControls()
 	if (!m_strKoukuCompletePlayStatus.starts_with("Waiting for the Server to admit") &&
 		m_strKoukuCompletePlayStatus != audition.strStatus)
 		ImGui::TextWrapped("%s",m_strKoukuCompletePlayStatus.c_str());
+    // Keep an unresolved or rejected command visible even while older raid state
+    // broadcasts continue to update the presentation status above.
+    if (!m_strKoukuRaidReplyStatus.empty() && m_strKoukuRaidReplyStatus != m_strKoukuCompletePlayStatus &&
+        m_strKoukuRaidReplyStatus != audition.strStatus)
+        ImGui::TextWrapped("%s", m_strKoukuRaidReplyStatus.c_str());
 }
 
 void CMainApp::RefreshCompletePlayPatternOptions()

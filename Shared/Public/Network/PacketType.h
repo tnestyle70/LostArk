@@ -87,7 +87,11 @@ namespace LostArk::Shared
 	// 94 admits the Maharaka Paradise island as a Server-owned shared world.
 	// 95 adds the Gate 3 arrival-to-combat entry wait phase; earlier peers reject it.
 	// 96 adds the explicit Gate 3 entry vote; earlier peers reject its intent.
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 96;
+	// 97 adds the raid-clear award contributions (S2C_RAID_MVP_RESULT) and equipment:
+	// the inventory entry's equipped slot and the C2S_SET_EQUIPMENT request.
+	// 98 carries the retail damage-text hit flag on every damage event, so a potion
+	// heal draws in its own colour instead of reading as an ordinary hit.
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 98;
 
 	enum class WORLD_ID : std::uint16_t
 	{
@@ -371,7 +375,12 @@ namespace LostArk::Shared
 		C2S_GATE_PROGRESS_RESPOND,
 		S2C_GATE_PROGRESS_STATE,
 		C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST,
-		S2C_KOUKUSAYDON_RAID_STATE
+		S2C_KOUKUSAYDON_RAID_STATE,
+		// Raid-clear award input: each player's recorded contribution to the cleared
+		// gate's bosses.
+		S2C_RAID_MVP_RESULT,
+		// Right-click equip / unequip between the bag and the equipment slots.
+		C2S_SET_EQUIPMENT
 	};
 
 	//TCP는 메시지 경계를 보존하지 않기 때문에, payload앞에 header를 둔다.
@@ -483,6 +492,8 @@ namespace LostArk::Shared
 		case PACKET_TYPE::C2S_GATE_PROGRESS_PROPOSE:
 		case PACKET_TYPE::C2S_GATE_PROGRESS_RESPOND:
 		case PACKET_TYPE::S2C_GATE_PROGRESS_STATE:
+		case PACKET_TYPE::S2C_RAID_MVP_RESULT:
+		case PACKET_TYPE::C2S_SET_EQUIPMENT:
 			return true;
 		default:
 			return  false;

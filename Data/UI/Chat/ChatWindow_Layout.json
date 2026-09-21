@@ -5,16 +5,19 @@
     "width": 1280,
     "height": 720
   },
+  "classes": [
+    "Default"
+  ],
   "slots": [
     {
-      "id": "Chat_LogPanelBg",
+      "id": "Chat_LogPanel",
       "ownerClass": null,
       "type": 0,
       "rect": {
-        "x": 8.0,
-        "y": 552.0,
-        "width": 375.0,
-        "height": 130.0
+        "x": 0.67,
+        "y": 595.0,
+        "width": 314.17,
+        "height": 70.83
       },
       "rotation": 0,
       "stages": {
@@ -23,52 +26,7 @@
       },
       "layers": [
         {
-          "path": "UI/Chat/LogPanelBg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            0.5098
-          ],
-          "additive": false,
-          "flipX": false
-        }
-      ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
-    },
-    {
-      "id": "Chat_NormalBar",
-      "ownerClass": null,
-      "type": 0,
-      "rect": {
-        "x": 8.0,
-        "y": 682.0,
-        "width": 96.0,
-        "height": 32.0
-      },
-      "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
-      "layers": [
-        {
-          "path": "UI/Chat/Normal Bar.png",
+          "path": "UI/Chat/Chat_LogPanel.png",
           "hoverPath": null,
           "tint": [
             1,
@@ -97,14 +55,14 @@
       }
     },
     {
-      "id": "Chat_InputBar",
+      "id": "Chat_LogPanelArt",
       "ownerClass": null,
       "type": 0,
       "rect": {
-        "x": 108.0,
-        "y": 682.0,
-        "width": 275.0,
-        "height": 30.0
+        "x": 0.67,
+        "y": 595.83,
+        "width": 315.0,
+        "height": 70.75
       },
       "rotation": 0,
       "stages": {
@@ -113,7 +71,7 @@
       },
       "layers": [
         {
-          "path": "UI/Chat/Input Bar.png",
+          "path": "UI/Chat/Chat_LogPanelArt.png",
           "hoverPath": null,
           "tint": [
             1,
@@ -142,14 +100,46 @@
       }
     },
     {
-      "id": "Chat_ImeIcon",
+      "id": "Chat_LogTextBox",
       "ownerClass": null,
       "type": 0,
       "rect": {
-        "x": 358.0,
-        "y": 689.0,
-        "width": 17.0,
-        "height": 16.0
+        "x": 20.67,
+        "y": 596.67,
+        "width": 293.33,
+        "height": 69.17
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 0
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Chat_ScrollUp",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 3.17,
+        "y": 596.75,
+        "width": 15.0,
+        "height": 13.33
       },
       "rotation": 0,
       "stages": {
@@ -158,7 +148,733 @@
       },
       "layers": [
         {
-          "path": "UI/Chat/English Input.png",
+          "path": "UI/Chat/Chat_ScrollButton.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Chat_ScrollUpArrow",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 3.17,
+        "y": 599.25,
+        "width": 11.67,
+        "height": 11.67
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Chat/Chat_ScrollArrowUp.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Chat_ScrollDown",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 3.17,
+        "y": 651.0,
+        "width": 15.0,
+        "height": 13.33
+      },
+      "rotation": 180,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Chat/Chat_ScrollButton.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Chat_ScrollDownArrow",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 3.17,
+        "y": 653.5,
+        "width": 11.67,
+        "height": 11.67
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Chat/Chat_ScrollArrowDown.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Chat_ComboBg",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 0.83,
+        "y": 666.67,
+        "width": 84.17,
+        "height": 26.67
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Chat/Chat_ComboBg.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Chat_ComboArrow",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 1.67,
+        "y": 670.0,
+        "width": 20.83,
+        "height": 20.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Chat/Chat_ComboArrow.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Chat_ChannelTextBox",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 24.17,
+        "y": 670.0,
+        "width": 50.0,
+        "height": 19.17
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 0
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Chat_InputBoxOuter",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 78.33,
+        "y": 664.25,
+        "width": 237.5,
+        "height": 29.17
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Chat/Chat_InputBoxOuter.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Chat_InputBoxInner",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 81.5,
+        "y": 668.08,
+        "width": 233.5,
+        "height": 23.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Chat/Chat_InputBoxInner.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Chat_InputTextBox",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 92.5,
+        "y": 670.83,
+        "width": 187.5,
+        "height": 19.17
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 0
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Chat_LangIcon",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 293.33,
+        "y": 674.17,
+        "width": 12.5,
+        "height": 11.67
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Chat/Chat_LangKorean.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Chat_LockButton",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 249.83,
+        "y": 571.67,
+        "width": 20.0,
+        "height": 20.83
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Chat/Chat_LockButton.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Chat_OptionButton",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 269.83,
+        "y": 571.67,
+        "width": 21.67,
+        "height": 20.83
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Chat/Chat_OptionButton.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Chat_MinimizeButton",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 293.17,
+        "y": 572.5,
+        "width": 21.67,
+        "height": 20.83
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Chat/Chat_MinimizeButton.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Chat_Tab0",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 0.67,
+        "y": 570.0,
+        "width": 78.33,
+        "height": 26.67
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Chat/Chat_TabBg.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Chat_Tab0TextBox",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 0.67,
+        "y": 575.83,
+        "width": 78.33,
+        "height": 20.83
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 0
+      },
+      "layers": [],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Chat_TabAdd",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 80.67,
+        "y": 570.0,
+        "width": 24.17,
+        "height": 26.67
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Chat/Chat_TabAddBg.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Chat_TabAddPlus",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 85.67,
+        "y": 576.67,
+        "width": 14.17,
+        "height": 14.17
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Chat/Chat_TabAddPlus.png",
           "hoverPath": null,
           "tint": [
             1,

@@ -387,10 +387,13 @@ vector<Client::MVP_RESULT_STAT> Client::CMvpAwardCatalog::Select_Rows(
 Client::MVP_RESULT_DATA Client::CMvpAwardCatalog::Compose_Page(
 	const vector<MVP_TEXT_RUN>& ContentName,
 	const vector<MVP_AWARD_PARTICIPANT>& Participants,
-	const int32_t iPartySize) const
+	const int32_t iPartySize,
+	vector<size_t>* const pOutRankedIndices) const
 {
 	MVP_RESULT_DATA Data;
 	Data.ContentName = ContentName;
+	if (nullptr != pOutRankedIndices)
+		pOutRankedIndices->clear();
 	if (!m_bLoaded || Participants.empty())
 		return Data;
 
@@ -430,6 +433,11 @@ Client::MVP_RESULT_DATA Client::CMvpAwardCatalog::Compose_Page(
 	for (size_t i = 0; i < iColumns; ++i)
 		Data.Party.push_back(Fill(*Ranked[i + 1u], false, ColumnTaken));
 
+	if (nullptr != pOutRankedIndices)
+	{
+		for (size_t i = 0; i <= iColumns; ++i)
+			pOutRankedIndices->push_back(static_cast<size_t>(Ranked[i] - Participants.data()));
+	}
 	return Data;
 }
 
@@ -682,7 +690,16 @@ namespace
 	constexpr int32_t MVP_STAT_HEAL = 4;
 	constexpr int32_t MVP_STAT_BATTLE_ITEM = 9;
 	constexpr int32_t MVP_STAT_COUNTER = 11;
+	constexpr int32_t MVP_STAT_SURVIVAL = 12;
 	constexpr int32_t MVP_STAT_SUPPORT_DAMAGE = 13;
+
+	/* EFTable_MvpMedalDescription indices the Server's facts can decide. */
+	constexpr int32_t MVP_MEDAL_DODGE_MASTER = 2;      // damaging hits taken <= Param1
+	constexpr int32_t MVP_MEDAL_NEAR_DEATH = 3;        // health <= Param1 % and standing at the clear
+	constexpr int32_t MVP_MEDAL_FINISHER = 7;          // took a main target's last health
+	constexpr int32_t MVP_MEDAL_COUNTER_SPECIALIST = 11; // two counters within Param1 seconds
+	constexpr int32_t MVP_MEDAL_DEEP_ROOTED = 12;      // <= Param2 knockdowns over a Param1 ms fight
+	constexpr int32_t MVP_MEDAL_HEAVY_SMASHER = 15;    // most part (destruction) damage
 
 	/* The reference capture shows no guild line under any of the four names:
 	   MvpResultFrame fills guildNameTF only when the character has a guild, so
@@ -736,6 +753,146 @@ Client::MVP_RESULT_DATA Client::CMvpAwardCatalog::Build_PreviewPage(
 	return Compose_Page(
 		Build_ContentName(iRaidGroupId, iGate, szDifficultyId),
 		Participants, iPartySize);
+}
+
+namespace
+{
+	/* MvpClassSymbols.json keys its rows by CHARACTER_CLASS_ID name. */
+	const char* Network_ClassId(const LostArk::Shared::CHARACTER_CLASS_ID eClass)
+	{
+		using LostArk::Shared::CHARACTER_CLASS_ID;
+		switch (eClass)
+		{
+		case CHARACTER_CLASS_ID::LANCE_MASTER: return "LANCE_MASTER";
+		case CHARACTER_CLASS_ID::GUNSLINGER: return "GUNSLINGER";
+		case CHARACTER_CLASS_ID::SLAYER: return "SLAYER";
+		case CHARACTER_CLASS_ID::ARTIST: return "ARTIST";
+		case CHARACTER_CLASS_ID::DIMENSIONMASTER: return "DIMENSIONMASTER";
+		case CHARACTER_CLASS_ID::WARLORD: return "WARLORD";
+		default: return "";
+		}
+	}
+
+	/* The retail capture prints the MVP card's value as the party share, a whole
+	   percent ("51%", "24%"), for damage and stagger alike; the party columns have no
+	   value field at all. */
+	wstring_t Format_Percent(const f32_t fPercent)
+	{
+		wchar_t szText[32] = {};
+		swprintf_s(szText, L"%.0f%%", fPercent);
+		return szText;
+	}
+
+	f32_t Share_Percent(const std::uint64_t iPart, const std::uint64_t iTotal)
+	{
+		return 0u == iTotal ? 0.f :
+			static_cast<f32_t>(static_cast<f64_t>(iPart) * 100.0 / static_cast<f64_t>(iTotal));
+	}
+}
+
+Client::MVP_RESULT_DATA Client::CMvpAwardCatalog::Build_ServerPage(
+	const int32_t iRaidGroupId, const char* const szDifficultyId, const int32_t iPartySize,
+	const LostArk::Shared::S2C_RAID_MVP_RESULT& Result,
+	vector<LostArk::Shared::PLAYER_ID>& outStagePlayerIds) const
+{
+	outStagePlayerIds.clear();
+	std::uint64_t iTotalDamage = 0u, iTotalStagger = 0u, iTotalCounters = 0u;
+	for (const LostArk::Shared::RAID_MVP_PARTICIPANT& Row : Result.Participants)
+	{
+		iTotalDamage += Row.iDamage;
+		iTotalStagger += Row.iStagger;
+		iTotalCounters += Row.iCounterCount;
+	}
+
+	const auto Make_Contribution = [](const int32_t iStatType, const f32_t fShare)
+	{
+		MVP_AWARD_CONTRIBUTION Contribution;
+		Contribution.iStatType = iStatType;
+		Contribution.fScore = fShare;
+		Contribution.fSharePercent = fShare;
+		Contribution.strValue = Format_Percent(fShare);
+		return Contribution;
+	};
+
+	std::uint64_t iMostPartDamage = 0u;
+	for (const LostArk::Shared::RAID_MVP_PARTICIPANT& Row : Result.Participants)
+		iMostPartDamage = (std::max)(iMostPartDamage, Row.iPartDamage);
+
+	/* Medals are achievements of their own, not a reading of the titles. The group
+	   (Find_Medal) supplies each one's Param1. */
+	const auto Earned_Medals = [this, iMostPartDamage](
+		const LostArk::Shared::RAID_MVP_PARTICIPANT& Row)
+	{
+		vector<int32_t> Medals;
+		const MVP_AWARD_MEDAL* pDodge = Find_Medal(MVP_MEDAL_DODGE_MASTER);
+		if (nullptr != pDodge && 0u != Row.iFightTicks &&
+			Row.iDamagingHitsTaken <= static_cast<std::uint32_t>((std::max)(pDodge->iParam1, 0)))
+			Medals.push_back(MVP_MEDAL_DODGE_MASTER);
+		const MVP_AWARD_MEDAL* pNearDeath = Find_Medal(MVP_MEDAL_NEAR_DEATH);
+		if (nullptr != pNearDeath && Row.bAliveAtClear &&
+			Row.iLowestHpPermille <= static_cast<std::uint32_t>((std::max)(pNearDeath->iParam1, 0)) * 10u)
+			Medals.push_back(MVP_MEDAL_NEAR_DEATH);
+		if (nullptr != Find_Medal(MVP_MEDAL_FINISHER) && 0u != Row.iFinishingBlows)
+			Medals.push_back(MVP_MEDAL_FINISHER);
+		const MVP_AWARD_MEDAL* pCounter = Find_Medal(MVP_MEDAL_COUNTER_SPECIALIST);
+		if (nullptr != pCounter && 0u != Row.iMinCounterGapMs &&
+			Row.iMinCounterGapMs <= static_cast<std::uint32_t>((std::max)(pCounter->iParam1, 0)) * 1000u)
+			Medals.push_back(MVP_MEDAL_COUNTER_SPECIALIST);
+		const MVP_AWARD_MEDAL* pDeepRooted = Find_Medal(MVP_MEDAL_DEEP_ROOTED);
+		if (nullptr != pDeepRooted &&
+			Row.iFightMs >= static_cast<std::uint32_t>((std::max)(pDeepRooted->iParam1, 0)) &&
+			Row.iKnockdowns <= static_cast<std::uint32_t>((std::max)(pDeepRooted->iParam2, 0)))
+			Medals.push_back(MVP_MEDAL_DEEP_ROOTED);
+		if (nullptr != Find_Medal(MVP_MEDAL_HEAVY_SMASHER) &&
+			0u != Row.iPartDamage && Row.iPartDamage == iMostPartDamage)
+			Medals.push_back(MVP_MEDAL_HEAVY_SMASHER);
+		return Medals;
+	};
+
+	vector<MVP_AWARD_PARTICIPANT> Participants;
+	Participants.reserve(Result.Participants.size());
+	for (const LostArk::Shared::RAID_MVP_PARTICIPANT& Row : Result.Participants)
+	{
+		MVP_AWARD_PARTICIPANT Participant;
+		Participant.Medals = Earned_Medals(Row);
+		(void)Convert_Utf8ToWide(Row.strNickname, Participant.strCharacterName);
+		Participant.strNetworkClassId = Network_ClassId(Row.eCharacterClass);
+		Participant.Contributions.push_back(Make_Contribution(
+			MVP_STAT_DAMAGE, Share_Percent(Row.iDamage, iTotalDamage)));
+		Participant.Contributions.push_back(Make_Contribution(
+			MVP_STAT_STAGGER, Share_Percent(Row.iStagger, iTotalStagger)));
+		Participant.Contributions.push_back(Make_Contribution(
+			MVP_STAT_COUNTER, Share_Percent(Row.iCounterCount, iTotalCounters)));
+		/* Survival is a yes/no title, so it never outranks a share row on its card. */
+		if (0u != Row.iFightTicks && Row.iAliveTicks == Row.iFightTicks)
+		{
+			MVP_AWARD_CONTRIBUTION Survival;
+			Survival.iStatType = MVP_STAT_SURVIVAL;
+			Survival.strValue = Format_Percent(100.f);
+			Participant.Contributions.push_back(Survival);
+		}
+		/* The MVP is the largest share of the "core" contributions; a "support" share
+		   only settles a tie, so it is scaled far below any core difference. */
+		for (const MVP_AWARD_CONTRIBUTION& Contribution : Participant.Contributions)
+		{
+			const MVP_AWARD_STAT* pStat = Find_Stat(Contribution.iStatType);
+			if (nullptr == pStat)
+				continue;
+			if ("core" == pStat->strScoreRole)
+				Participant.fTotalScore += Contribution.fSharePercent;
+			else if ("support" == pStat->strScoreRole)
+				Participant.fTotalScore += Contribution.fSharePercent * 0.001f;
+		}
+		Participants.push_back(std::move(Participant));
+	}
+
+	vector<size_t> RankedIndices;
+	MVP_RESULT_DATA Data = Compose_Page(
+		Build_ContentName(iRaidGroupId, Result.iGate, szDifficultyId),
+		Participants, iPartySize, &RankedIndices);
+	for (const size_t iIndex : RankedIndices)
+		outStagePlayerIds.push_back(Result.Participants[iIndex].iPlayerId);
+	return Data;
 }
 
 wstring_t Client::CMvpAwardCatalog::Find_RaidName(const int32_t iRaidGroupId) const

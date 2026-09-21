@@ -16,6 +16,8 @@
 #include "MapEditorWorkspaceService.h"
 #endif
 
+CLevel_Development* CLevel_Development::s_pActiveInstance = nullptr;
+
 CLevel_Development::CLevel_Development(
 	ComPtr<ID3D11Device> pDevice,
 	ComPtr<ID3D11DeviceContext> pContext,
@@ -23,10 +25,13 @@ CLevel_Development::CLevel_Development(
 	: CLevel{ pDevice, pContext }
 	, m_eLevel{ eLevel }
 {
+	s_pActiveInstance = this;
 }
 
 CLevel_Development::~CLevel_Development()
 {
+	if (this == s_pActiveInstance)
+		s_pActiveInstance = nullptr;
 #ifdef _DEBUG
 	if (m_isMapEditorWorkspace)
 	{

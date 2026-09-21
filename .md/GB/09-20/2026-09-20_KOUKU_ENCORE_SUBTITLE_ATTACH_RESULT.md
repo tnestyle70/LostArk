@@ -64,3 +64,14 @@
 2. F1 → Action Workbench → Boss/Sequence의 `앵콜컷신`(Action P97, Sequence P10)을 재생한다.
 3. 컷신 시작 후 약 10.2초에 "누구 맘대로 끝을 내?!", 12.4초에 "무효야, 전부 무효!", 16.7초에 "진짜 시작은 지금부터라고!"가 화면 위쪽에 뜨는지 본다.
 4. Workbench가 열려 있는 상태에서 이 파일을 직접 고친 것이므로, 이미 열어 둔 Workbench의 draft가 있으면 저장하지 말고 다시 불러온다(외부에서 바뀐 문서 위에 덮어 저장하면 이번 편집이 사라진다).
+
+## 2026-09-21 main 병합 뒤 재적용
+
+`origin/main`(`44624ed1`, 프로토콜 98)을 병합하면서 쿠크 Composition 두 파일이 충돌했다. 팀장이 패턴·시퀀스를 다시 정리해 Action은 revision 1957, Sequence는 revision 154였고 앵콜 컷신(Action P97, Sequence P10)에는 자막 배치가 없었다. 글자 단위 병합 대신 main 버전을 가져온 뒤 자막 3줄을 다시 넣었다.
+
+- 방법: 같은 문서의 기존 자막 배치(P73, P3)를 텍스트로 복제해 occurrenceId·resourceId·startMs·durationMs만 바꿨다. 결과가 "배치 3개, `nextPresentationOccurrenceOrdinal` 3에서 6, revision +1"만 바뀐 것임을 의미 비교로 확인했다.
+- 결과: Action revision 1957에서 1958, Sequence 154에서 155. 파일마다 실제 텍스트 변경은 +6/-3줄이다.
+- 값은 이전과 같다(10233/1700, 12367/3600, 16700/3050ms, UPPER 리소스). Sequence 배치는 이전 커밋과 필드까지 같다.
+- 차이 하나: main의 Action 문서는 기존 자막 배치 14개가 모두 25개 필드 형식(`positionOffset`, `rotationDegrees`, `scale` …)으로 정규화돼 있어서, 새 3개도 그 형식을 따른다. 이전 커밋의 Action 배치(6개 필드)와 필드 수만 다르고 시각·길이·자막은 같다.
+- 검증: 충돌 마커 0개, `Publish-Compositions.ps1 -Mode Validate` 통과(Valtan patterns=42, KoukuSaydon actions=349, arena sequencers=2), `test_scene_subtitle_candidates`와 `test_raid_flow_projection` 14개 OK.
+- 아직 게시하지 않았다. 게임에서 자막이 나오려면 쿠크 게시와 클라이언트 게시가 필요하다.

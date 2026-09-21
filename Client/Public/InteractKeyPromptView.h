@@ -42,6 +42,14 @@ private:
 	{
 		std::string strPlacementId;
 		ACTION eAction = ACTION::CHECK;
+		/* Box in world units. A box that fires on entry is never offered by the Server --
+		its action has already run by the time anyone could press a key -- so the icon it
+		authored is shown while the local player stands in it. Presentation only: nothing
+		here submits a command or changes when the box fires. */
+		bool_t bShowWhileInside = false;
+		float3_t vCenter{};
+		float3_t vHalfExtents{};
+		f32_t fYawDegrees = 0.f;
 	};
 	void Hide();
 
