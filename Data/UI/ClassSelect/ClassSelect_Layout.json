@@ -1054,6 +1054,397 @@
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Slayer_DifficultyFill",
+      "ownerClass": "Slayer",
+      "type": 0,
+      "rect": { "x": 5.12712288, "y": 307.764282, "width": 146.960007, "height": 10.75 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/Common/DifficultyMedium.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Slayer_Tag_1",
+      "ownerClass": "Slayer",
+      "type": 0,
+      "rect": { "x": 6.70569229, "y": 387.142639, "width": 50, "height": 50 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/Slayer/Tag_04.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Slayer_Tag_2",
+      "ownerClass": "Slayer",
+      "type": 0,
+      "rect": { "x": 60.7140923, "y": 385.714111, "width": 50, "height": 50 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/Slayer/Tag_23.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Slayer_Tag_3",
+      "ownerClass": "Slayer",
+      "type": 0,
+      "rect": { "x": 108.571297, "y": 385.714172, "width": 50, "height": 50 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/Slayer/Tag_10.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Slayer_Tag_4",
+      "ownerClass": "Slayer",
+      "type": 0,
+      "rect": { "x": 157.857101, "y": 384.285553, "width": 50, "height": 50 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/Slayer/Tag_03.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Slayer_Illustration",
+      "ownerClass": "Slayer",
+      "type": 0,
+      "rect": { "x": 1.42841005, "y": -12.1428375, "width": 250, "height": 230 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/Slayer/Illustration.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Slayer_NameSymbol",
+      "ownerClass": "Slayer",
+      "type": 5,
+      "rect": { "x": 13.5714264, "y": 191.285675, "width": 50, "height": 50 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/Slayer/IdentitySymbol.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Slayer_Description",
+      "ownerClass": "Slayer",
+      "type": 0,
+      "rect": { "x": 15, "y": 540, "width": 210, "height": 55 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Slayer_IdentityID",
+      "ownerClass": "Slayer",
+      "type": 0,
+      "rect": { "x": 6.42850351, "y": 499.428406, "width": 250, "height": 57 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/Slayer/NameID.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Slayer_IdentityDescription",
+      "ownerClass": "Slayer",
+      "type": 0,
+      "rect": { "x": 19.2857151, "y": 568.571472, "width": 210, "height": 45 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Gunslinger_DifficultyFill",
+      "ownerClass": "Gunslinger",
+      "type": 0,
+      "rect": { "x": 5.12712288, "y": 307.764282, "width": 146.960007, "height": 10.75 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/Common/DifficultyMedium.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Gunslinger_Tag_1",
+      "ownerClass": "Gunslinger",
+      "type": 0,
+      "rect": { "x": 6.70569229, "y": 387.142639, "width": 50, "height": 50 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/Gunslinger/Tag_04.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Gunslinger_Tag_2",
+      "ownerClass": "Gunslinger",
+      "type": 0,
+      "rect": { "x": 60.7140923, "y": 385.714111, "width": 50, "height": 50 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/Gunslinger/Tag_23.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Gunslinger_Tag_3",
+      "ownerClass": "Gunslinger",
+      "type": 0,
+      "rect": { "x": 108.571297, "y": 385.714172, "width": 50, "height": 50 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/Gunslinger/Tag_10.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Gunslinger_Tag_4",
+      "ownerClass": "Gunslinger",
+      "type": 0,
+      "rect": { "x": 157.857101, "y": 384.285553, "width": 50, "height": 50 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/Gunslinger/Tag_03.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Gunslinger_Illustration",
+      "ownerClass": "Gunslinger",
+      "type": 0,
+      "rect": { "x": 1.42841005, "y": -12.1428375, "width": 250, "height": 230 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/Gunslinger/Illustration.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Gunslinger_NameSymbol",
+      "ownerClass": "Gunslinger",
+      "type": 5,
+      "rect": { "x": 13.5714264, "y": 191.285675, "width": 50, "height": 50 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/Gunslinger/IdentitySymbol.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Gunslinger_Description",
+      "ownerClass": "Gunslinger",
+      "type": 0,
+      "rect": { "x": 15, "y": 540, "width": 210, "height": 55 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Gunslinger_IdentityID",
+      "ownerClass": "Gunslinger",
+      "type": 0,
+      "rect": { "x": 6.42850351, "y": 499.428406, "width": 250, "height": 57 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/Gunslinger/NameID.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Gunslinger_IdentityDescription",
+      "ownerClass": "Gunslinger",
+      "type": 0,
+      "rect": { "x": 19.2857151, "y": 568.571472, "width": 210, "height": 45 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "GuardianKnight_DifficultyFill",
+      "ownerClass": "GuardianKnight",
+      "type": 0,
+      "rect": { "x": 5.12712288, "y": 307.764282, "width": 146.960007, "height": 10.75 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/Common/DifficultyMedium.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "GuardianKnight_Tag_1",
+      "ownerClass": "GuardianKnight",
+      "type": 0,
+      "rect": { "x": 6.70569229, "y": 387.142639, "width": 50, "height": 50 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/GuardianKnight/Tag_04.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "GuardianKnight_Tag_2",
+      "ownerClass": "GuardianKnight",
+      "type": 0,
+      "rect": { "x": 60.7140923, "y": 385.714111, "width": 50, "height": 50 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/GuardianKnight/Tag_23.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "GuardianKnight_Tag_3",
+      "ownerClass": "GuardianKnight",
+      "type": 0,
+      "rect": { "x": 108.571297, "y": 385.714172, "width": 50, "height": 50 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/GuardianKnight/Tag_10.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "GuardianKnight_Tag_4",
+      "ownerClass": "GuardianKnight",
+      "type": 0,
+      "rect": { "x": 157.857101, "y": 384.285553, "width": 50, "height": 50 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/GuardianKnight/Tag_03.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "GuardianKnight_Tag_5",
+      "ownerClass": "GuardianKnight",
+      "type": 0,
+      "rect": { "x": 202.142868, "y": 384.285553, "width": 50, "height": 50 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/GuardianKnight/Tag_28.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "GuardianKnight_Illustration",
+      "ownerClass": "GuardianKnight",
+      "type": 0,
+      "rect": { "x": 1.42841005, "y": -12.1428375, "width": 250, "height": 230 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/GuardianKnight/Illustration.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "GuardianKnight_NameSymbol",
+      "ownerClass": "GuardianKnight",
+      "type": 5,
+      "rect": { "x": 13.5714264, "y": 191.285675, "width": 50, "height": 50 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/GuardianKnight/IdentitySymbol.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "GuardianKnight_Description",
+      "ownerClass": "GuardianKnight",
+      "type": 0,
+      "rect": { "x": 15, "y": 540, "width": 210, "height": 55 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "GuardianKnight_IdentityID",
+      "ownerClass": "GuardianKnight",
+      "type": 0,
+      "rect": { "x": 6.42850351, "y": 499.428406, "width": 250, "height": 57 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/GuardianKnight/NameID.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "GuardianKnight_IdentityDescription",
+      "ownerClass": "GuardianKnight",
+      "type": 0,
+      "rect": { "x": 19.2857151, "y": 568.571472, "width": 210, "height": 45 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     }
   ]
 }
