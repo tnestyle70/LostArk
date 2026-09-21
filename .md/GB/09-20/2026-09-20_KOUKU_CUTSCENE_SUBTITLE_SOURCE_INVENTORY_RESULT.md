@@ -175,4 +175,3 @@ Sequence P7의 "범위 밖" 4행(`31_01~31_04`)은 3관문 진입이 원본 16.7
 - 원본 추출 스크립트: `C:\LostArkExtract\KoukuSubtitle_20260920\scripts\` (`scan_all_packages.py`, `scan_all_packages_v2.py`, `scan_midnightc.py`, `tracks_full.py`, `gamemsg_cin.py`, `build_inventory.py`, `write_report.py` 등). 추출 자료: 같은 위치의 `data\`.
 - 재실행 순서: `scan_all_packages_v2.py 22`(약 3분) → `gamemsg_cin.py` → `tracks_full.py` → `build_inventory.py` → `write_report.py`.
 - 이 조사는 UPK 파서(`Tools/LevelPlacementExtractor/extract_ue3_placements.py`)와 게임 설치본을 읽기만 했다.
-
