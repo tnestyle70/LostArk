@@ -180,3 +180,17 @@ git diff --check    통과
   (런지·활공·리벤지 스피어), 원본 PBR 재질 program(`realpbr-avatar-v2` 해시 대조), 이펙트·사운드,
   ClassSelect 아트, 커스터마이징, 탈것(`PC_DL_00_Vehicle_Ani`), 장비 catalog, MazeHammer 애니셋.
 - `.skilltiming` 49000 행 이름은 v2 fill이 비워 `기본 공격`으로 손수 채웠다.
+
+## 추가: 스킬 사운드·카메라 쉐이크 (2026-09-21 밤)
+
+- 원인 1: `CharacterSoundCatalog.json`에 `GuardianKnight` 클래스가 없고 wav도 배포되지 않았다. 기존
+  `build_sound_catalog.py`는 D: raw wav 덤프 전용이라 새 클래스를 못 다룬다.
+- 원인 2: `ddk_sk_deepimpact_03`의 SHAKE 행 `fov=5,-1`(음수 주파수)을 `CCameraShakeService::Parse_PayloadSpec`이
+  거부해 GK cue 문서 전체(EFFECT/SOUND/SHAKE)가 `Character Effect cue load isolated`로 로드 실패하고 있었다.
+- 수정: `Parse_Oscillator`가 음수 주파수를 진폭 부호로 접어 받는다(`sin(-f t) = -sin(f t)`).
+  `Tools/SoundPipeline/build_character_sound_catalog.py` 신규 — `.animevents` SOUND 행을 Wwise 패키지
+  (`SOUND_PC_DRAGONKNIGHT*`, Common은 `SOUND_PC_COMMON*` + 클래스 뱅크)에서 resolve → FMOD PCM wav →
+  `Client/Bin/Resources/Sound/Character/GuardianKnight/` 1056개(259MB, Drive 전달 대상) + 카탈로그 갱신.
+- 커버리지: 219 이벤트 중 216 매칭. 미매칭 `PC_DragonKnight_F_Stop1`(Stop 전용), `DragonicResonance1_Vox4_1/2`,
+  `PC_Common_Dual1_DragonKnight_F_Vox1_1`(Play 대상이 배포 뱅크에 없음). Common에 새 이벤트 2개 추가, 다른 클래스 항목 변경 없음.
+- 검증: 카탈로그 JSON parse·클래스별 diff 확인. Client 컴파일·실제 청취/쉐이크 확인은 사용자 몫(Client 재시작 필요, 카탈로그는 부팅 시 로드).

@@ -24,9 +24,15 @@ namespace
 		const size_t Comma = Text.find(',');
 		if (std::string_view::npos == Comma)
 			return false;
-		return Parse_Number(Text.substr(0u, Comma), Out.fAmplitude) &&
-			Parse_Number(Text.substr(Comma + 1u), Out.fFrequency) &&
-			Out.fFrequency >= 0.f;
+		if (!Parse_Number(Text.substr(0u, Comma), Out.fAmplitude) ||
+			!Parse_Number(Text.substr(Comma + 1u), Out.fFrequency))
+			return false;
+		if (Out.fFrequency < 0.f)
+		{
+			Out.fFrequency = -Out.fFrequency;
+			Out.fAmplitude = -Out.fAmplitude;
+		}
+		return true;
 	}
 
 	f32_t Oscillate(

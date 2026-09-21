@@ -144,7 +144,9 @@ $py = "C:/Program Files/Blender Foundation/Blender 5.0/5.0/python/bin/python.exe
 from the empty AKPK packages, and every LUT `languageID` field in every
 installed package (209,675 samples). Both must come back with no mismatch.
 
-Consumers: `Tools/VehiclePipeline/build_vehicle_sound_catalog.py`.
+Consumers: `Tools/VehiclePipeline/build_vehicle_sound_catalog.py`,
+`build_character_sound_catalog.py` (a class's `.animevents` SOUND rows -> `CharacterSoundCatalog.json`
+class bucket + `Resources/Sound/Character/<Class>` wavs; Common events already in the catalog are kept).
 
 ## KoukuSaydon source sound candidates
 
