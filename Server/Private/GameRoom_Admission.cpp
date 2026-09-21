@@ -140,7 +140,8 @@ bool LostArk::Server::CGameRoom::Stage_PlayerEntry(
 	player.iCurrentHp = player.iMaximumHp = profile->iMaximumHp;
 	player.iCurrentResource = player.iMaximumResource = profile->iMaximumResource;
 	player.fMoveSpeed = profile->fMoveSpeed;
-	player.iCurrentIdentity = player.iMaximumIdentity = profile->iMaximumIdentity;
+	player.iMaximumIdentity = profile->iMaximumIdentity;
+	CPlayerSkillSystem::Reset_Gauges(player, m_GameplayCatalog);
 	player.iCurrentMadness = 0u;
 	player.iMaximumMadness = SERVER_PLAYER::MADNESS_GAUGE_MAXIMUM;
 	player.eMadnessForm = PLAYER_MADNESS_FORM::NORMAL;

@@ -402,7 +402,7 @@ bool LostArk::Server::CGameRoom::Advance_KoukuRaidGate(const std::uint8_t nextGa
         const auto* profile = m_GameplayCatalog.Find_Player(player.eCharacterClass);
         player.Clear_KoukuInteractionState(); Reset_PlayerForDebugTeleport(player);
         player.iCurrentHp = player.iMaximumHp; player.iCurrentResource = player.iMaximumResource;
-        player.iResourceAccumulator = 0u; player.iCurrentIdentity = player.iMaximumIdentity; player.iIdentityAccumulator = 0u;
+        player.iResourceAccumulator = 0u; CPlayerSkillSystem::Reset_Gauges(player, m_GameplayCatalog);
         player.iCurrentMadness = 0u; player.eMadnessForm = PLAYER_MADNESS_FORM::NORMAL;
         player.eStance = profile->eDefaultStance; player.CooldownEndTickBySkillId.clear();
     }

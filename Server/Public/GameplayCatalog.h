@@ -168,6 +168,13 @@ namespace LostArk::Server
 		1 leaves the baked distance exactly as authored. The clip length does
 		not change with it, so a larger value also travels faster. */
 		float fRootMotionScale = 1.f;
+		/* Guardian Knight ember. A refill skill carries iEmberGain, an expression
+		or dragon skill carries iEmberCost; never both. locksEmberSocket is the
+		human-form expression price: one socket closes per cast until the dragon
+		form reopens them. All zero for every other skill. */
+		std::uint32_t iEmberGain = 0;
+		std::uint32_t iEmberCost = 0;
+		bool locksEmberSocket = false;
 		float fMaximumRange = 0.f;
 		LostArk::Shared::SKILL_TARGET_INTENT_KIND eTargetIntent =
 			LostArk::Shared::SKILL_TARGET_INTENT_KIND::AIM_POINT;
@@ -1371,6 +1378,21 @@ namespace LostArk::Server
 			LostArk::Shared::PLAYER_STANCE_ID::NONE;
 	};
 
+	/* Guardian Knight's Embereth resources, joined to the class whose identity
+	gauge is the orb gauge. The gauge fills iGaugeGainPerHit per landed hit in
+	the default stance, and once full lets the dragon stance in, where it runs
+	from full to empty over iDragonDurationMs and drops the stance at zero. The
+	ember pool holds iMaximumSockets orbs minus the sockets a human-form
+	expression skill has locked; each orb a skill spends adds
+	iDamageBonusPercentPerOrb to that action's damage. */
+	struct GUARDIAN_EMBER_PROFILE
+	{
+		std::uint32_t iGaugeGainPerHit = 0;
+		std::uint32_t iDragonDurationMs = 0;
+		std::uint32_t iMaximumSockets = 0;
+		std::uint32_t iDamageBonusPercentPerOrb = 0;
+	};
+
 	class CGameplayCatalog final
 	{
 	public:
@@ -1426,6 +1448,9 @@ namespace LostArk::Server
 		const std::string& Find_IntroPatternId(
 			const std::string& encounterId) const;
 		const PLAYER_RUNTIME_PROFILE* Find_Player(
+			LostArk::Shared::CHARACTER_CLASS_ID characterClass) const;
+		/* Null for every class without Embereth resources. */
+		const GUARDIAN_EMBER_PROFILE* Find_EmberProfile(
 			LostArk::Shared::CHARACTER_CLASS_ID characterClass) const;
 		/* Percent of the caster's attack power, straight from the official
 		EFTable_SkillEffect rate. Zero means the profile is unknown. */
@@ -1522,6 +1547,8 @@ namespace LostArk::Server
 			m_KoukuMadnessPolicies;
 		std::unordered_map<LostArk::Shared::CHARACTER_CLASS_ID,
 			PLAYER_RUNTIME_PROFILE> m_Players;
+		std::unordered_map<LostArk::Shared::CHARACTER_CLASS_ID,
+			GUARDIAN_EMBER_PROFILE> m_EmberProfiles;
 		std::unordered_map<std::string, std::uint32_t>
 			m_DamageRatePercentByProfileId;
 		LostArk::Shared::GameplayDataRevision m_ActiveRevision{};

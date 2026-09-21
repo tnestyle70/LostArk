@@ -6721,7 +6721,10 @@ void CMainApp::Update_PlayerHealthManaBar()
 	m_pHUDRuntimeView->Set_SlotFillRatio("HealthBar_Fill", healthRatio);
 	m_pHUDRuntimeView->Set_SlotVisible("HealthBar_Fill", healthRatio > 0.f);
 	m_pHUDRuntimeView->Set_SlotFillRatio("ManaBar_Fill", manaRatio);
-	m_pHUDRuntimeView->Set_SlotVisible("ManaBar_Fill", manaRatio > 0.f);
+	/* A class with an ember pool runs on ember, not mana: the mana fill stays
+	hidden and the readout below the bar shows the orb gauge instead. */
+	m_pHUDRuntimeView->Set_SlotVisible("ManaBar_Fill",
+		manaRatio > 0.f && 0u == player.iEmberMaximumSockets);
 }
 
 void CMainApp::Update_LanceMasterIdentityGauge()
@@ -8167,7 +8170,14 @@ void CMainApp::RenderCombatHUDText()
 	{
 		const wstring hp = std::to_wstring(player.iCurrentHp) +
 			L" / " + std::to_wstring(player.iMaximumHp);
-		const wstring mana = std::to_wstring(player.iCurrentResource) +
+		const wstring mana = 0u != player.iEmberMaximumSockets ?
+			/* Guardian Knight: orb gauge percent and ember orbs over the open
+			sockets, in place of mana until the class HUD art exists. */
+			L"\uC624\uBE0C " + std::to_wstring(0u == player.iMaximumIdentity ? 0u :
+				player.iCurrentIdentity * 100u / player.iMaximumIdentity) +
+			L"%  \uAE30\uC6B4 " + std::to_wstring(player.iEmberOrbs) + L" / " +
+			std::to_wstring(player.iEmberMaximumSockets - player.iEmberLockedSockets) :
+			std::to_wstring(player.iCurrentResource) +
 			L" / " + std::to_wstring(player.iMaximumResource);
 		/* Positions/size follow the same 0.75 anchor-scale (around 673.675, 747.092) and -12
 		vertical shift applied to the whole bottom HUD in HUD_Layout.json -- these two labels

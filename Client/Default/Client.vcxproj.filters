@@ -2149,6 +2149,9 @@
 	<None Include="..\..\Data\Balance\PlayerSkillTargeting.json">
 	  <Filter>96.DataFiles\Balance</Filter>
 	</None>
+	<None Include="..\..\Data\Balance\GuardianKnightEmber.json">
+	  <Filter>96.DataFiles\Balance</Filter>
+	</None>
     <None Include="..\..\Data\Balance\ValtanBossParts.json">
       <Filter>96.DataFiles\Balance</Filter>
     </None>

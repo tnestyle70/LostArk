@@ -262,6 +262,12 @@ namespace LostArk::Server
 		std::uint32_t iCurrentIdentity = 0;
 		std::uint32_t iMaximumIdentity = 0;
 		std::uint32_t iIdentityAccumulator = 0;
+		/* Guardian Knight ember. Orbs held now, sockets a human-form expression
+		skill has locked (each one lowers the pool cap), and the orbs the running
+		action spent, which its damage reads. All 0 for every other class. */
+		std::uint32_t iEmberOrbs = 0;
+		std::uint32_t iEmberLockedSockets = 0;
+		std::uint32_t iEmberSpentOnAction = 0;
 		/* KoukuSaydon madness gauge and the avatar it drives. The maximum is a
 		fixed first value until the encounter owns it; nothing raises the
 		current value yet. The form is Server truth the Client presents; the

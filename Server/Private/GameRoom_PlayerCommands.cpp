@@ -449,8 +449,7 @@ void LostArk::Server::CGameRoom::Handle_RevivePlayer(
 	player.iCurrentHp = player.iMaximumHp;
 	player.iCurrentResource = player.iMaximumResource;
 	player.iResourceAccumulator = 0u;
-	player.iCurrentIdentity = player.iMaximumIdentity;
-	player.iIdentityAccumulator = 0u;
+	CPlayerSkillSystem::Reset_Gauges(player, m_GameplayCatalog);
 	player.iCurrentMadness = 0u;
 	player.iMaximumMadness = SERVER_PLAYER::MADNESS_GAUGE_MAXIMUM;
 	player.eMadnessForm = PLAYER_MADNESS_FORM::NORMAL;

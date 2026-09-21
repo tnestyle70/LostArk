@@ -107,7 +107,7 @@
       "defense": 130,
       "moveSpeed": 2.95,
       "defenseStanceMoveSpeedScale": 1.0,
-      "maximumIdentity": 0,
+      "maximumIdentity": 100,
       "identityRegenPerSecond": 0,
       "identityDrainPerSecond": 0,
       "identityStanceSwitchCost": 0,

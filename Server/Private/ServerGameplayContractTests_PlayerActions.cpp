@@ -254,6 +254,66 @@ void LostArk::Server::CServerGameplayContractRunner::Run_PlayerActions(TESTS& te
 			PLAYER_ACTION_STATE::SKILL == dodging.eAction;
 		tests.Require(startedDodge && heldDodge,
 			"Refuse another skill inside a running dodge's own cancel window");
+
+		/* Guardian Knight ember: the orb gauge starts empty, a human-form
+		expression skill spends orbs and locks a socket, a refill skill tops the
+		pool up to the open sockets, the dragon form opens only on a full gauge,
+		reopens every socket, and runs the gauge out over the profile duration. */
+		const PLAYER_SKILL_DEFINITION* emberCleave = catalog.Find_Skill(49100u);
+		const PLAYER_SKILL_DEFINITION* emberFlash = catalog.Find_Skill(49220u);
+		const GUARDIAN_EMBER_PROFILE* emberProfile =
+			catalog.Find_EmberProfile(CHARACTER_CLASS_ID::GUARDIANKNIGHT);
+		tests.Require(
+			nullptr != emberProfile && 10u == emberProfile->iMaximumSockets &&
+			15000u == emberProfile->iDragonDurationMs &&
+			nullptr != emberCleave && 2u == emberCleave->iEmberGain &&
+			nullptr != emberFlash && 4u == emberFlash->iEmberCost &&
+			emberFlash->locksEmberSocket,
+			"Load the Guardian Knight ember profile and skill rows from the gameplay bootstrap");
+
+		SERVER_PLAYER knight{};
+		knight.eCharacterClass = CHARACTER_CLASS_ID::GUARDIANKNIGHT;
+		knight.eStance = PLAYER_STANCE_ID::GUARDIANKNIGHT_HUMAN;
+		knight.iCurrentHp = knight.iMaximumHp = 1000u;
+		knight.iCurrentResource = knight.iMaximumResource = 1000u;
+		knight.iMaximumIdentity = 100u;
+		CPlayerSkillSystem::Reset_Gauges(knight, catalog);
+		const bool startsEmpty = 0u == knight.iCurrentIdentity &&
+			10u == knight.iEmberOrbs && 0u == knight.iEmberLockedSockets;
+		const auto runOut = [&](std::uint32_t tick)
+		{
+			for (int step = 0; step < 600 && PLAYER_ACTION_STATE::SKILL == knight.eAction; ++step)
+				skills.Update(knight, noTargets, catalog, nullptr, nullptr, 1.f / 30.f, tick++, events);
+			return tick;
+		};
+		const bool flashStarted = skills.Try_Start(knight, press(1u, 49220u), catalog, 100u);
+		const bool spentAndLocked = 6u == knight.iEmberOrbs &&
+			1u == knight.iEmberLockedSockets && 4u == knight.iEmberSpentOnAction;
+		std::uint32_t emberTick = runOut(101u);
+		knight.iEmberOrbs = 8u;
+		const bool cleaveStarted = skills.Try_Start(knight, press(2u, 49100u), catalog, emberTick);
+		const bool refilledToOpenSockets = 9u == knight.iEmberOrbs;
+		emberTick = runOut(emberTick + 1u);
+		const bool transformRefused = !skills.Try_Start(knight, press(3u, 49040u), catalog, emberTick);
+		knight.iCurrentIdentity = 100u;
+		const bool transformAdmitted = skills.Try_Start(knight, press(4u, 49040u), catalog, emberTick + 1u);
+		emberTick = runOut(emberTick + 2u);
+		const bool dragonEntered = PLAYER_STANCE_ID::GUARDIANKNIGHT_DRAGON == knight.eStance &&
+			10u == knight.iEmberOrbs && 0u == knight.iEmberLockedSockets &&
+			100u == knight.iCurrentIdentity;
+		int drainTicks = 0;
+		for (; drainTicks < 600 && PLAYER_STANCE_ID::GUARDIANKNIGHT_DRAGON == knight.eStance; ++drainTicks)
+			skills.Update(knight, noTargets, catalog, nullptr, nullptr, 1.f / 30.f, emberTick++, events);
+		const bool drainedOut = 0u == knight.iCurrentIdentity &&
+			PLAYER_STANCE_ID::GUARDIANKNIGHT_HUMAN == knight.eStance && 450 == drainTicks;
+		tests.Require(startsEmpty && flashStarted && spentAndLocked,
+			"Spend ember orbs and lock a socket on a human-form expression skill");
+		tests.Require(cleaveStarted && refilledToOpenSockets,
+			"Refill ember orbs up to the open sockets on a refill skill");
+		tests.Require(transformRefused && transformAdmitted && dragonEntered,
+			"Open the dragon form only on a full orb gauge and reopen every socket on entry");
+		tests.Require(drainedOut,
+			"Run the orb gauge from full to empty over the dragon duration and drop the form at zero");
 	}
 
 	{

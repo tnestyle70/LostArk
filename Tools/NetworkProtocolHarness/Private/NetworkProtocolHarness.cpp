@@ -3833,6 +3833,9 @@ namespace
 		first.iMaximumHp = 1000;
 		first.iCurrentResource = 80;
 		first.iMaximumResource = 100;
+		first.iEmberOrbs = 7u;
+		first.iEmberLockedSockets = 2u;
+		first.iEmberMaximumSockets = 10u;
 		first.iCurrentMadness = 35u;
 		first.iMaximumMadness = 100u;
 		first.eMadnessForm = PLAYER_MADNESS_FORM::CLOWN;
@@ -3946,10 +3949,11 @@ namespace
         constexpr std::size_t playerFearBytes = 4 + 2;
 		// Protocol 81 appends the acknowledgement and ordinary movement state.
 		constexpr std::size_t playerPredictionBytes = 4 + 4 + 1 + 1 + (4 * 3);
-		// Protocol 84 appends the ridden vehicle id.
-		constexpr std::size_t playerVehicleBytes = 4;
+		// Protocol 84 appends the ridden vehicle id; protocol 89 the honor title id.
+		constexpr std::size_t playerVehicleBytes = 4 + 4;
+		/* The + 3 after the identity pair is the protocol 99 ember triple. */
 		constexpr std::size_t playerFixedBytes =
-			4 + 1 + (4 * 4) + 1 + 1 + 1 + (4 * 8) + 1 + (4 * 3) +
+			4 + 1 + (4 * 4) + 1 + 1 + 1 + (4 * 8) + 1 + (4 * 3) + 3 +
 			1 + 1 + 1 + playerAttachmentBytes + playerPatternStatusBytes +
 			playerMadnessBytes + playerInteractionBytes + playerMarioStageBytes + playerCardMazeBytes + playerFearBytes + playerPredictionBytes +
 			playerVehicleBytes;
@@ -4066,6 +4070,10 @@ namespace
 			decoded.Players[0].fSkillTargetY == 0.25f &&
 			decoded.Players[0].fSkillTargetZ == -3.f &&
 			decoded.Players[0].iCurrentHp == 875 &&
+			decoded.Players[0].iEmberOrbs == 7u &&
+			decoded.Players[0].iEmberLockedSockets == 2u &&
+			decoded.Players[0].iEmberMaximumSockets == 10u &&
+			decoded.Players[1].iEmberMaximumSockets == 0u &&
 			decoded.Players[0].iCurrentMadness == 35u &&
 			decoded.Players[0].iMaximumMadness == 100u &&
 			decoded.Players[0].eMadnessForm == PLAYER_MADNESS_FORM::CLOWN &&

@@ -585,6 +585,15 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 		snapshot.iMaximumResource = player.iMaximumResource;
 		snapshot.iCurrentIdentity = player.iCurrentIdentity;
 		snapshot.iMaximumIdentity = player.iMaximumIdentity;
+		if (const GUARDIAN_EMBER_PROFILE* ember =
+			m_GameplayCatalog.Active().Find_EmberProfile(player.eCharacterClass))
+		{
+			snapshot.iEmberOrbs = static_cast<std::uint8_t>(player.iEmberOrbs);
+			snapshot.iEmberLockedSockets =
+				static_cast<std::uint8_t>(player.iEmberLockedSockets);
+			snapshot.iEmberMaximumSockets =
+				static_cast<std::uint8_t>(ember->iMaximumSockets);
+		}
 		snapshot.iCurrentMadness = player.iCurrentMadness;
 		snapshot.iMaximumMadness = player.iMaximumMadness;
 		snapshot.eMadnessForm = player.eMadnessForm;

@@ -63561,11 +63561,12 @@
       "basis": "PROJECT_TUNED",
       "source": {
         "type": "project-policy",
-        "policyId": "project-identity-gauge-v1"
+        "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 0,
-      "transform": "identity",
-      "resultValue": 0
+      "sourceValue": 100,
+      "transform": "Balance Tool authored override",
+      "resultValue": 100,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Balance/PlayerProfiles.json",
