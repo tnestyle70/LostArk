@@ -8270,18 +8270,30 @@ void CMainApp::RenderDamageNumbers()
 	if (nullptr != m_pSkillWindowView && m_pSkillWindowView->Is_Open())
 		return;
 
-	/* Retail damagetext.gfx (EFUI_DAMAGE, class DamageTextCBT2): $YoonGasiIIM 32px centered text
-	on the 1080p stage, driven by two linear tweens. The native side passes the tween values and
-	no shipped data table carries them, so the factory defaults in the decompiled AS3 are the
-	evidence used here: phase 0 (450 ms) holds 32px and drifts 15px up; phase 1 (70 ms) shrinks
-	to 19px, drifts on to 100px up and fades to 0. Stage pixels scale with the viewport height. */
-	constexpr f64_t DAMAGE_PHASE0_SECONDS = 0.45;
-	constexpr f64_t DAMAGE_PHASE1_SECONDS = 0.07;
-	constexpr f64_t DAMAGE_NUMBER_LIFETIME_SECONDS = DAMAGE_PHASE0_SECONDS + DAMAGE_PHASE1_SECONDS;
+	/* Retail damagetext.gfx (EFUI_DAMAGE): $YoonGasiIIM 32px centred text on the 1080p stage.
+	What animates it is DamageTextElement's own timeline, which DamageTextWnd starts per hit
+	kind (gotoAndPlay "playerDamageType0" / "critical" / "heal") -- not DamageTextCBT2's tween
+	parameters, which only a test harness drives. The movie runs at 30 fps and the frames below
+	are its scaleX keys, so a number punches out to 2.65x within five frames and settles back
+	onto 1.0 by frame 18. It does not travel: the timeline has no translation and no alpha. */
+	constexpr f32_t DAMAGE_TIMELINE_FPS = 30.f;
+	constexpr f32_t DAMAGE_SCALE_NORMAL[] = {
+		1.00f, 1.25f, 2.00f, 2.33f, 2.65f, 2.60f, 2.55f, 2.50f, 2.17f,
+		1.83f, 1.50f, 1.37f, 1.26f, 1.16f, 1.09f, 1.04f, 1.01f, 1.00f };
+	/* "critical": a bigger punch to 4.0 that settles on 3.0 and stays there. */
+	constexpr f32_t DAMAGE_SCALE_CRITICAL[] = {
+		1.01f, 1.19f, 1.75f, 2.69f, 4.00f, 3.50f, 3.00f };
+	/* "heal" holds 1.5 for its whole run. */
+	constexpr f32_t DAMAGE_SCALE_HEAL = 1.5f;
 	constexpr f32_t DAMAGE_FONT_PX_START = 32.f;
-	constexpr f32_t DAMAGE_FONT_PX_END = 19.f;
-	constexpr f32_t DAMAGE_RISE_PX_PHASE0 = 15.f;
-	constexpr f32_t DAMAGE_RISE_PX_END = 100.f;
+	/* The timeline ends on its last key and the host then drops the element. How long the
+	settled number is held and how it leaves are native values the movie does not carry, so
+	the number rests where it landed and fades from there. */
+	constexpr f64_t DAMAGE_HOLD_SECONDS = 0.25;
+	constexpr f64_t DAMAGE_FADE_SECONDS = 0.25;
+	constexpr f64_t DAMAGE_NUMBER_LIFETIME_SECONDS =
+		std::size(DAMAGE_SCALE_NORMAL) / DAMAGE_TIMELINE_FPS +
+		DAMAGE_HOLD_SECONDS + DAMAGE_FADE_SECONDS;
 	/* DamageTextTween.DAMAGE_ANI_LIMIT: retail animates at most 20 numbers at once. */
 	constexpr size_t MAX_FLOATING_DAMAGE_NUMBERS = 20u;
 
@@ -8320,6 +8332,16 @@ void CMainApp::RenderDamageNumbers()
 		number.isOutgoing = damageEvent.Event.isOutgoing;
 		number.eCardMazeSuit = damageEvent.Event.eCardMazeSuit;
 		number.eHitFlag = damageEvent.Event.eHitFlag;
+		/* Retail fills DamageTextElement's randValue/direction per hit so a burst does not
+		stack on one point; the spread reads wider than the status words' 26x18. The values
+		are native, so the range is the project's. */
+		{
+			static std::mt19937 scatterRandom{ std::random_device{}() };
+			std::uniform_real_distribution<f32_t> spreadX(-42.f, 42.f);
+			std::uniform_real_distribution<f32_t> spreadY(-26.f, 12.f);
+			number.fScatterX = spreadX(scatterRandom);
+			number.fScatterY = spreadY(scatterRandom);
+		}
 		m_dLastDamageSeconds = number.dSpawnSeconds;
 		m_FloatingDamageNumbers.push_back(number);
 	}
@@ -8382,21 +8404,29 @@ void CMainApp::RenderDamageNumbers()
 	for (const FLOATING_DAMAGE_NUMBER& number : m_FloatingDamageNumbers)
 	{
 		const f64_t dAge = dNow - number.dSpawnSeconds;
-		f32_t fFontPx = DAMAGE_FONT_PX_START;
-		f32_t fRisePx = 0.f;
-		f32_t fAlpha = 1.f;
-		if (dAge < DAMAGE_PHASE0_SECONDS)
+		/* Walk the element's own frames: hold the last key once the timeline has run out. */
+		const bool_t isCritical =
+			LostArk::Shared::DAMAGE_HIT_FLAG::CRITICAL == number.eHitFlag;
+		const bool_t isHeal = LostArk::Shared::DAMAGE_HIT_FLAG::HEAL == number.eHitFlag;
+		const f32_t* pCurve = isCritical ? DAMAGE_SCALE_CRITICAL : DAMAGE_SCALE_NORMAL;
+		const size_t iCurveKeys = isCritical ?
+			std::size(DAMAGE_SCALE_CRITICAL) : std::size(DAMAGE_SCALE_NORMAL);
+		const f32_t fFrame = static_cast<f32_t>(dAge) * DAMAGE_TIMELINE_FPS;
+		f32_t fTimelineScale = DAMAGE_SCALE_HEAL;
+		if (!isHeal)
 		{
-			fRisePx = DAMAGE_RISE_PX_PHASE0 * static_cast<f32_t>(dAge / DAMAGE_PHASE0_SECONDS);
+			const size_t iKey = (std::min)(static_cast<size_t>((std::max)(fFrame, 0.f)),
+				iCurveKeys - 1u);
+			const size_t iNext = (std::min)(iKey + 1u, iCurveKeys - 1u);
+			const f32_t fBlend = (std::clamp)(fFrame - static_cast<f32_t>(iKey), 0.f, 1.f);
+			fTimelineScale = pCurve[iKey] + (pCurve[iNext] - pCurve[iKey]) * fBlend;
 		}
-		else
-		{
-			const f32_t t = (std::clamp)(
-				static_cast<f32_t>((dAge - DAMAGE_PHASE0_SECONDS) / DAMAGE_PHASE1_SECONDS), 0.f, 1.f);
-			fFontPx = DAMAGE_FONT_PX_START + (DAMAGE_FONT_PX_END - DAMAGE_FONT_PX_START) * t;
-			fRisePx = DAMAGE_RISE_PX_PHASE0 + (DAMAGE_RISE_PX_END - DAMAGE_RISE_PX_PHASE0) * t;
-			fAlpha = 1.f - t;
-		}
+		const f32_t fFontPx = DAMAGE_FONT_PX_START * fTimelineScale;
+		/* The number stays where it landed; only the tail fades. */
+		const f64_t dTimeline = iCurveKeys / DAMAGE_TIMELINE_FPS;
+		const f32_t fAlpha = dAge <= dTimeline + DAMAGE_HOLD_SECONDS ? 1.f :
+			1.f - (std::clamp)(static_cast<f32_t>(
+				(dAge - dTimeline - DAMAGE_HOLD_SECONDS) / DAMAGE_FADE_SECONDS), 0.f, 1.f);
 		/* Anchored a little above the hit point (the event carries the target's ground position);
 		the tween moves it in screen space from there, like retail's canvas does. */
 		const vector_t vProjected = XMVector3Project(
@@ -8442,7 +8472,8 @@ void CMainApp::RenderDamageNumbers()
 		if (isShard)
 			vColor = XMVectorSet(1.f, 1.f, 1.f, fAlpha);
 		const float2_t vDrawPosition(
-			XMVectorGetX(vProjected), XMVectorGetY(vProjected) - fRisePx * stageScale);
+			XMVectorGetX(vProjected) + number.fScatterX * stageScale,
+			XMVectorGetY(vProjected) + number.fScatterY * stageScale);
 		/* textContainer carries a GLOWFILTER (blur 5, strength 1, opaque black) in retail, which
 		is what keeps a number readable over a bright floor. A sprite font cannot blur, so the
 		same black is stamped around the glyphs once per direction before the coloured pass. */
