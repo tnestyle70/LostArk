@@ -90,7 +90,8 @@ public:
 	bool_t Load_Runtime(string& strOutStatus);
     // Transient presentation inputs are applied after camera regions and never saved.
     bool_t Apply_CameraEnvironment(f32_t deltaSeconds, string& status,
-        bool_t suppressFog = false, const LIGHT_DESC* directionalOverride = nullptr);
+        bool_t suppressFog = false, const LIGHT_DESC* directionalOverride = nullptr,
+        f32_t directionalBrightnessMultiplier = 1.f, const float4_t* directionalColor = nullptr);
 	bool_t Reload_Runtime(string& strOutStatus);
 	bool_t Has_Profile(string_view strProfileId) const;
 	std::vector<std::string> Collect_ProfileIds() const

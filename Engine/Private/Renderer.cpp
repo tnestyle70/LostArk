@@ -1658,9 +1658,12 @@ HRESULT CRenderer::Render_ScreenPostPass(
 		Input.World = m_WorldMatrix;
 		Input.View = m_ViewMatrix;
 		Input.Projection = m_ProjMatrix;
-		if (nullptr == Input.pSceneColor || nullptr == Input.pSceneBloom || nullptr == Input.pSceneDepth ||
-			FAILED(pPostDesc->pMaterial->Bind(Input)) ||
-			FAILED(m_pVIBuffer->Bind_Resources()) || FAILED(m_pVIBuffer->Render()))
+		if (nullptr == Input.pSceneColor || nullptr == Input.pSceneBloom || nullptr == Input.pSceneDepth)
+			return E_FAIL;
+		const HRESULT hBind = pPostDesc->pMaterial->Bind(Input);
+		if (hBind != S_OK)
+			return hBind; // S_FALSE is a suppressed pass: do not draw stale shader state.
+		if (FAILED(m_pVIBuffer->Bind_Resources()) || FAILED(m_pVIBuffer->Render()))
 			return E_FAIL;
 		return S_OK;
 	}
@@ -1744,6 +1747,7 @@ HRESULT CRenderer::Render_SceneReplacements()
         result = Render_ScreenPostPass(color, m_pScenePostRTVs[0], 0u,
             bloom, m_pSceneBloomPostRTVs[0], &post);
         if (FAILED(result)) break;
+        if (result == S_FALSE) continue;
         ID3D11ShaderResourceView* clear[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT]{};
         m_pContext->PSSetShaderResources(0u, _countof(clear), clear);
         m_pContext->OMSetRenderTargets(0u, nullptr, nullptr);
@@ -1798,7 +1802,7 @@ HRESULT CRenderer::Render_ScreenPosts()
 		const PRESENTATION_SCREEN_POST_DESC& Post = ScreenPosts[iPost];
 		if (Post.pMaterial && Post.pMaterial->Replaces_SceneBeforeBlend()) continue;
 		const PRESENTATION_SCREEN_POST_PLAN_STEP Step =
-			Build_PresentationScreenPostPlanStep(composedPostCount++);
+			Build_PresentationScreenPostPlanStep(composedPostCount);
 		uint32_t iPassIndex = {};
 		switch (Post.eProfile)
 		{
@@ -1826,6 +1830,8 @@ HRESULT CRenderer::Render_ScreenPosts()
 			m_pScenePostRTVs[Step.iDestinationTarget],
 			iPassIndex, m_pSceneBloomPostSRVs[Step.iSourceTarget],
 			m_pSceneBloomPostRTVs[Step.iDestinationTarget], &Post);
+		if (hResult == S_OK)
+			++composedPostCount;
 	}
 	const vector<PRESENTATION_SCREEN_OVERLAY_DESC>& ScreenOverlays =
 		Presentation.Get_ScreenOverlays();

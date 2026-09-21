@@ -284,11 +284,32 @@ def load_valtan_composite_animation_inventory(
 ) -> ValtanCompositeAnimationInventory:
     resolved_repo = repo_root.resolve()
     catalog = _read_json(resolved_repo / BOSS_CATALOG_REL)
-    return build_valtan_composite_animation_inventory(
+    inventory = build_valtan_composite_animation_inventory(
         catalog,
         resource_root or resolved_repo / "Client/Bin/Resources",
         boss_archetype_id=boss_archetype_id,
     )
+
+    if boss_archetype_id != DEFAULT_BOSS_ARCHETYPE_ID:
+        return inventory
+    from Tools.ValtanPipeline.authored_bone_clips import SOURCE_REL, validate_document
+    source = resolved_repo / SOURCE_REL
+    if not source.is_file():
+        return inventory
+    try:
+        if source.stat().st_size > 8 * 1024 * 1024:
+            raise ValueError("bone clip document exceeds 8 MiB")
+        rows = validate_document(_read_json(source), inventory.sources[0].path,
+            {name: clip.native_duration_ms for name, clip in inventory.clips.items()})
+    except (ValueError, OSError, UnicodeError, struct.error) as exc:
+        raise NativeAnimationInventoryError(str(exc)) from exc
+    clips = dict(inventory.clips)
+    for name, duration in rows.items():
+        clips[name] = NativeClipTiming(name, SOURCE_REL, -1, duration * .03, 30.0, float(duration), duration)
+    payload = source.read_bytes()
+    return ValtanCompositeAnimationInventory(inventory.boss_archetype_id,
+        (*inventory.sources, NativeAnimationSource(SOURCE_REL, source, hashlib.sha256(payload).hexdigest(), len(payload), len(rows))),
+        MappingProxyType(clips))
 
 
 def validate_native_source_window(

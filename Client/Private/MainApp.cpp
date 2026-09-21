@@ -3208,8 +3208,15 @@ void CMainApp::Update(const f32_t fTimeDelta)
     const bool_t marioStage = cinematicArena &&
         CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::KAKULSAYDON_ARENA) &&
         cinematicArena->Is_LocalMarioStageActive();
+    const auto localCharacter = CAnimationTargetService::Resolve_SceneCharacter();
+    float vehicleBrightness = localCharacter ? localCharacter->Get_VehicleDirectionalBrightness() : 1.f;
+    float controlsBrightness=1.f;float4_t controlsColor{};
+    const auto selectedCharacter=CAnimationTargetService::Resolve_Character();
+    if(!(selectedCharacter&&selectedCharacter->Get_PresentationDirectionalControl(controlsBrightness,controlsColor)) && localCharacter)
+        localCharacter->Get_PresentationDirectionalControl(controlsBrightness,controlsColor);
+    vehicleBrightness=std::clamp(vehicleBrightness*controlsBrightness,0.f,16.f);
     if (!m_RenderingProfiles.Apply_CameraEnvironment(fTimeDelta, environmentStatus,
-        koukuCinematic || valtanCinematic || marioStage))
+        koukuCinematic || valtanCinematic || marioStage, nullptr, vehicleBrightness, &controlsColor))
         OutputDebugStringA((environmentStatus + "\n").c_str());
 	Apply_LevelRequest();
 	}
@@ -11170,13 +11177,37 @@ void CMainApp::RenderValtanArenaControls()
 	if (ETOUI(LEVEL::VALTAN_ARENA) != CGameInstance::Get().Get_CurrentLevelID())
 		return;
 	Engine::CProfilerScope panelScope(CGameInstance::Get().Get_Profiler(), "ImGui.Hub.ValtanArena");
-	ImGui::SeparatorText("Valtan Arena / Wave Monsters");
+	ImGui::SeparatorText("Valtan Arena");
 	CLevel_ValtanArena* pArena = CLevel_ValtanArena::Get_Active();
 	if (nullptr == pArena)
 	{
 		ImGui::TextDisabled("Valtan Arena Level instance is unavailable.");
 		return;
 	}
+    auto& controller = pArena->Get_DebugPlayerController();
+    ImGui::BeginDisabled(controller.Is_DebugPlayerPlacementPending() || pArena->Is_DebugValtanBossCommandPending());
+    if (ImGui::Button("Start Position"))
+        (void)controller.Request_DebugTeleportToPosition(LostArk::Shared::WORLD_ID::VALTAN_ARENA, 8.8f, 9.77f, -20.22f);
+    ImGui::SameLine();
+    if (ImGui::Button("Before Entrance"))
+        (void)controller.Request_DebugTeleportToPosition(LostArk::Shared::WORLD_ID::VALTAN_ARENA, 125.9f, 23.0176f, -93.1f);
+    ImGui::SameLine();
+    if (ImGui::Button("Arena Start"))
+        (void)controller.Request_DebugTeleportToPosition(LostArk::Shared::WORLD_ID::VALTAN_ARENA, 147.75f, 23.0176f, -117.25f);
+    if (ImGui::Button("Despawn Valtan Boss"))
+    {
+        std::string status;
+        (void)pArena->Debug_DespawnValtanBoss(status);
+    }
+    ImGui::EndDisabled();
+    if (!pArena->Get_DebugValtanBossCommandStatus().empty())
+        ImGui::TextWrapped("%s", pArena->Get_DebugValtanBossCommandStatus().c_str());
+    if (ImGui::TreeNode("Valtan Presentation Status"))
+    {
+        ImGui::TextWrapped("%s", pArena->Get_DebugValtanPresentationDiagnostic().c_str());
+        ImGui::TextWrapped("%s", pArena->Get_SourceCinematicPreparationStatus().c_str());
+        ImGui::TreePop();
+    }
 	ImGui::SeparatorText("Wave Monsters");
 	ImGui::TextDisabled(
 		"Debug builds no longer raise the Stage_1 / Stage_2 corridor waves when you step into their trigger; these buttons summon them again.");

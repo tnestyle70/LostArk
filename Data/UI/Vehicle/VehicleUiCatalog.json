@@ -415,6 +415,79 @@
      }
     }
    ]
+  },
+  {
+   "vehicleId": 9523,
+   "archetypeId": "VEHICLE_ANCIENT_SEA",
+   "name": "고대의 바다",
+   "description": "강력한 고대의 신비가 깃든 용.",
+   "moveSpeed": 5.0,
+   "iconAsset": "UI/Vehicle/Icons/vehicle_9523.png",
+   "iconSource": {
+    "page": "NewVehicle_1",
+    "x": 768,
+    "y": 896,
+    "width": 128,
+    "height": 128
+   },
+   "skills": [
+    {
+     "slot": "SPACE",
+     "skillId": 98520,
+     "cooldownMs": 10000,
+     "name": "돌진",
+     "iconAsset": "UI/Vehicle/Skills/skill_98520.png",
+     "iconSource": {
+      "page": "Vehicle_1",
+      "x": 768,
+      "y": 192,
+      "width": 64,
+      "height": 64
+     }
+    },
+    {
+     "slot": "Q",
+     "skillId": 98521,
+     "cooldownMs": 8000,
+     "name": "포효",
+     "iconAsset": "UI/Vehicle/Skills/skill_98521.png",
+     "iconSource": {
+      "page": "Vehicle_0",
+      "x": 0,
+      "y": 0,
+      "width": 64,
+      "height": 64
+     }
+    },
+    {
+     "slot": "W",
+     "skillId": 98522,
+     "cooldownMs": 8000,
+     "name": "안개 브레스",
+     "iconAsset": "UI/Vehicle/Skills/skill_98522.png",
+     "iconSource": {
+      "page": "Vehicle_0",
+      "x": 64,
+      "y": 0,
+      "width": 64,
+      "height": 64
+     }
+    },
+    {
+     "slot": "E",
+     "skillId": 98523,
+     "cooldownMs": 8000,
+     "name": "암흑의 비상",
+     "iconAsset": "UI/Vehicle/Skills/skill_98523.png",
+     "iconSource": {
+      "page": "Vehicle_0",
+      "x": 128,
+      "y": 0,
+      "width": 64,
+      "height": 64
+     }
+    }
+   ]
   }
  ]
 }

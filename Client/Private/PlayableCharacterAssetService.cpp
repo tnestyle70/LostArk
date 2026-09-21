@@ -1,4 +1,5 @@
 #include "PlayableCharacterAssetService.h"
+#include "BoneAnimationDocument.h"
 
 #include "ActorCatalog.h"
 #include "AssetPreparationBatch.h"
@@ -365,6 +366,9 @@ HRESULT Client::CPlayableCharacterAssetService::Prepare_Models(
 		if (FAILED(pBodyPalette->Attach_AnimationSet(*models[index]))) return E_FAIL;
 		models[index].reset();
 	}
+	std::string authoredClipStatus;
+	if (!CBoneAnimationDocument::Load_IntoModel(*pBodyPalette, pActor->assetId, authoredClipStatus))
+		OutputDebugStringA(("[AuthoredAnimation] " + authoredClipStatus + "\n").c_str());
 	for (size_t index = equipmentBegin; index < equipmentBegin + pTags->iEquipmentCount; ++index)
 	{
 		if (Is_Cancelled(pCancellationRequested)) return HRESULT_FROM_WIN32(ERROR_CANCELLED);

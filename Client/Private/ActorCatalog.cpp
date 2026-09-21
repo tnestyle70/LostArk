@@ -204,7 +204,8 @@ namespace
 	}
 
     bool_t ParseModelMaterialOverrides(const DATA_JSON_VALUE& row,
-        ModelMaterials& replacements, CHARACTER_ACTOR_ENTRY* character = nullptr)
+        ModelMaterials& replacements, CHARACTER_ACTOR_ENTRY* character = nullptr,
+        std::vector<CHARACTER_MATERIAL_PARAMETERS>* retainedParameters = nullptr)
     {
         const auto* definitions = row.Find("modelMaterialOverrides");
         if (!definitions) return true;
@@ -276,6 +277,8 @@ namespace
             if (character)
                 character->modelMaterialParameters[asset].push_back(
                     CHARACTER_MATERIAL_PARAMETERS{replacement.materialName,family,std::move(values)});
+            if (retainedParameters) retainedParameters->push_back(
+                CHARACTER_MATERIAL_PARAMETERS{replacement.materialName,family,std::move(values)});
             replacements[asset].push_back(std::move(replacement));
         }
         return true;
@@ -940,6 +943,78 @@ namespace
 			return false;
 		}
 		const std::uint32_t clipCount = static_cast<std::uint32_t>(skill.vehicleClips.size());
+        const auto number = [](const DATA_JSON_VALUE& value, const char* name, float& out, float maximum)
+        {
+            const auto* field = value.Find(name);
+            if (!field || !field->Is_Number() || !std::isfinite(field->Get_Number()) ||
+                field->Get_Number() < 0.0 || field->Get_Number() > maximum) return false;
+            out = static_cast<float>(field->Get_Number()); return true;
+        };
+        if (const auto* cues = skillValue.Find("directionalLightCues"))
+        {
+            if (!cues->Is_Array() || cues->Get_Array().size() > 16u) return false;
+            for (const auto& value : cues->Get_Array())
+            {
+                VEHICLE_DIRECTIONAL_LIGHT_CUE cue;
+                if (!value.Is_Object() || value.Get_Object().size() != 6u ||
+                    !ReadRequiredU32(value, "clipIndex", cue.clipIndex) || cue.clipIndex >= clipCount ||
+                    !ReadRequiredU32(value, "startMs", cue.startMs) || cue.startMs > 60000u ||
+                    !number(value,"fadeInSeconds",cue.fadeInSeconds,60.f) ||
+                    !number(value,"holdSeconds",cue.holdSeconds,60.f) ||
+                    !number(value,"fadeOutSeconds",cue.fadeOutSeconds,60.f) ||
+                    !number(value,"brightnessMultiplier",cue.brightnessMultiplier,16.f) ||
+                    cue.fadeInSeconds + cue.holdSeconds + cue.fadeOutSeconds <= 0.f) return false;
+                skill.directionalLightCues.push_back(std::move(cue));
+            }
+        }
+        if (const auto* cues = skillValue.Find("materialVectorCues"))
+        {
+            if (!cues->Is_Array() || cues->Get_Array().size() > 16u) return false;
+            for (const auto& value : cues->Get_Array())
+            {
+                VEHICLE_MATERIAL_VECTOR_CUE cue;
+                const auto* keys = value.Find("keys");
+                if (!value.Is_Object() || value.Get_Object().size() != 4u ||
+                    !ReadRequiredU32(value,"clipIndex",cue.clipIndex) || cue.clipIndex >= clipCount ||
+                    !ReadRequiredU32(value,"startMs",cue.startMs) || cue.startMs > 60000u ||
+                    !ReadRequiredString(value,"parameter",cue.parameter) || !IsStableId(cue.parameter) ||
+                    !keys || !keys->Is_Array() || keys->Get_Array().size() < 2u || keys->Get_Array().size() > 128u) return false;
+                for (const auto& key : keys->Get_Array())
+                {
+                    VEHICLE_MATERIAL_VECTOR_KEY point;
+                    const auto* vector = key.Find("value");
+                    if (!key.Is_Object() || key.Get_Object().size() != 2u ||
+                        !number(key,"seconds",point.seconds,60.f) ||
+                        (!cue.keys.empty() && point.seconds <= cue.keys.back().seconds) ||
+                        !vector || !vector->Is_Array() || vector->Get_Array().size() != 4u) return false;
+                    for (size_t i=0u;i<4u;++i)
+                    {
+                        const auto& component = vector->Get_Array()[i];
+                        if (!component.Is_Number() || !std::isfinite(component.Get_Number()) ||
+                            std::abs(component.Get_Number()) > 65536.0) return false;
+                        point.value[i] = static_cast<float>(component.Get_Number());
+                    }
+                    cue.keys.push_back(point);
+                }
+                if (cue.keys.front().seconds != 0.f) return false;
+                skill.materialVectorCues.push_back(std::move(cue));
+            }
+        }
+        if (const auto* shakes = skillValue.Find("shakeCues"))
+        {
+            if (!shakes->Is_Array() || shakes->Get_Array().size() > 16u) return false;
+            for (const auto& value : shakes->Get_Array())
+            {
+                VEHICLE_SKILL_SHAKE_CUE cue;
+                std::string status;
+                if (!value.Is_Object() || value.Get_Object().size() != 3u ||
+                    !ReadRequiredU32(value, "clipIndex", cue.clipIndex) || cue.clipIndex >= clipCount ||
+                    !ReadRequiredU32(value, "startMs", cue.startMs) ||
+                    !ReadRequiredString(value, "payload", cue.payload) || cue.payload.size() > 4096u ||
+                    !CCameraShakeService::Parse_PayloadSpec(cue.payload, cue.Spec, status)) return false;
+                skill.shakeCues.push_back(std::move(cue));
+            }
+        }
 		for (const DATA_JSON_VALUE& value : pEffects->Get_Array())
 		{
 			VEHICLE_SKILL_EFFECT_CUE cue;
@@ -1005,6 +1080,27 @@ namespace
 		return true;
 	}
 
+    bool_t ParseVehicleLifetimeCues(const DATA_JSON_VALUE& value, const char* field,
+        const char* requiredStopPolicy, std::vector<VEHICLE_LIFETIME_EFFECT_CUE>& output)
+    {
+        const auto* cues = value.Find(field);
+        if (!cues) return true;
+        if (!cues->Is_Array() || cues->Get_Array().size() > 16u) return false;
+        std::set<std::pair<std::string, uint32_t>> identities;
+        for (const auto& row : cues->Get_Array())
+        {
+            VEHICLE_LIFETIME_EFFECT_CUE cue;
+            std::string policy;
+            if (!row.Is_Object() || row.Get_Object().size() != 3u ||
+                !ReadRequiredString(row, "effectAssetId", cue.effectAssetId) || !IsEffectAssetId(cue.effectAssetId) ||
+                !ReadRequiredU32(row, "startMs", cue.startMs) || cue.startMs > 60000u ||
+                !ReadRequiredString(row, "stopPolicy", policy) || policy != requiredStopPolicy ||
+                !identities.emplace(cue.effectAssetId, cue.startMs).second) return false;
+            output.push_back(std::move(cue));
+        }
+        return true;
+    }
+
 	bool_t ParseVehicles(const DATA_JSON_VALUE& root)
 	{
 		const DATA_JSON_VALUE* pSchema = root.Find("schema");
@@ -1048,10 +1144,13 @@ namespace
 			body turns the rider with the seat bone instead of only moving them. */
 			const DATA_JSON_VALUE* pSeatRotation = value.Is_Object() ?
 				value.Find("seatBoneRotatesRider") : nullptr;
-			const std::size_t baseKeyCount = nullptr == pSeatRotation ? 11u : 12u;
-			if (baseKeyCount != keyCount &&
-				!(hasLocomotionCues && baseKeyCount + 1u == keyCount))
-				return false;
+            const std::size_t optionalCount = (pSeatRotation ? 1u : 0u) +
+                (hasLocomotionCues && value.Find("locomotionSoundCues") ? 1u : 0u) +
+                (hasLocomotionCues && value.Find("ambientEffectCues") ? 1u : 0u) +
+                (hasLocomotionCues && value.Find("mountEffectCues") ? 1u : 0u) +
+                (hasLocomotionCues && value.Find("mountSoundEvent") ? 1u : 0u) +
+                (hasLocomotionCues && value.Find("dismountSoundEvent") ? 1u : 0u);
+            if (keyCount != 11u + optionalCount) return false;
 			if (nullptr != pSeatRotation && !pSeatRotation->Is_Boolean())
 				return false;
 			VEHICLE_ACTOR_ENTRY entry;
@@ -1059,6 +1158,19 @@ namespace
 				nullptr != pSeatRotation && pSeatRotation->Get_Boolean();
 			if (hasLocomotionCues && !ParseVehicleLocomotionCues(value, entry))
 				return false;
+            if (hasLocomotionCues &&
+                (!ParseVehicleLifetimeCues(value, "ambientEffectCues", "MOUNT_END", entry.ambientEffectCues) ||
+                 !ParseVehicleLifetimeCues(value, "mountEffectCues", "NATURAL", entry.mountEffectCues))) return false;
+            if (hasLocomotionCues)
+            {
+                const auto readSoundEvent = [&value](const char* key, std::string& event)
+                {
+                    if (!value.Find(key)) return true;
+                    return ReadRequiredString(value, key, event) && !event.empty();
+                };
+                if (!readSoundEvent("mountSoundEvent", entry.mountSoundEvent) ||
+                    !readSoundEvent("dismountSoundEvent", entry.dismountSoundEvent)) return false;
+            }
 			const DATA_JSON_VALUE* pRiders = value.Find("riders");
 			const DATA_JSON_VALUE* pSkills = value.Find("skills");
 			if (!ReadRequiredU32(value, "vehicleId", entry.vehicleId) || 0u == entry.vehicleId ||
@@ -1108,7 +1220,11 @@ namespace
 			{
 				VEHICLE_SKILL_ENTRY skill;
 				const DATA_JSON_VALUE* pSkillRiders = skillValue.Find("riders");
-				if (!skillValue.Is_Object() || (hasSkillCues ? 6u : 4u) != skillValue.Get_Object().size() ||
+				const std::size_t optionalShake = hasLocomotionCues ?
+                    (skillValue.Find("shakeCues") ? 1u : 0u) +
+                    (skillValue.Find("directionalLightCues") ? 1u : 0u) +
+                    (skillValue.Find("materialVectorCues") ? 1u : 0u) : 0u;
+				if (!skillValue.Is_Object() || (hasSkillCues ? 6u : 4u) + optionalShake != skillValue.Get_Object().size() ||
 					!ReadRequiredU32(skillValue, "skillId", skill.skillId) ||
 					0u == skill.skillId ||
 					!ReadRequiredString(skillValue, "inputSlot", skill.inputSlot) ||
@@ -1145,7 +1261,7 @@ namespace
 					return false;
 				entry.skills.push_back(std::move(skill));
 			}
-			if (!ParseModelMaterialOverrides(value, stagedMaterials))
+			if (!ParseModelMaterialOverrides(value, stagedMaterials, nullptr, &entry.modelMaterialParameters))
 				return false;
 			staged.push_back(std::move(entry));
 		}

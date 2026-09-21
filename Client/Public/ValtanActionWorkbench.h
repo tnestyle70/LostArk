@@ -4,6 +4,7 @@
 #include "Engine_Defines.h"
 #include "ActionCompositionGraphModel.h"
 #include "Animation_Tool.h"
+#include "BoneAnimationWorkbench.h"
 #include "CompositionResourceTree.h"
 #include "CompositionWorkbenchSession.h"
 #include "EffectV2_Document.h"
@@ -381,6 +382,9 @@ private:
 	void Refresh_PatternLocalPreviewAfterMutation(
 		const VALTAN_PATTERN_VIEW* pPattern,
 		std::string& strInOutStatus);
+	bool_t Trim_AnimationOccurrence(const VALTAN_PATTERN_VIEW& Pattern,
+        const VALTAN_STAGE_VIEW& Stage, const std::string& occurrenceId,
+        bool_t startEdge, int64_t wallDeltaMs, std::string& status);
 	bool_t Apply_AnimationOccurrenceTiming(
 		const VALTAN_PATTERN_VIEW& Pattern,
 		const VALTAN_STAGE_VIEW& Stage,
@@ -594,6 +598,10 @@ private:
 	bool_t m_bOpenAnimationToolRequested = false;
 	bool_t m_bEffectToolOpenRequested = false;
 	bool_t m_bCameraToolOpenRequested = false;
+    std::uint64_t m_iTimelineGestureDraftGeneration = 0u;
+    std::uint64_t m_iTimelineGestureSoundGeneration = 0u;
+    std::uint64_t m_iTimelineGestureEffectRevision = 0u;
+	CBoneAnimationWorkbench m_BoneEditor;
 	bool_t m_bTimelineTrimActive = false;
 	bool_t m_bTimelineTrimStartEdge = false;
 	std::string m_strTimelineTrimPatternId;

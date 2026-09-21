@@ -116,6 +116,7 @@ private:
 	unique_ptr<CUILayoutRuntime>	m_pView;
 	vector<string>					m_SlotIds;
 	vector<VEHICLE_ROW>				m_Rows;
+    int32_t m_iLayoutRowCount = 0;
 	/* Retail px -> reference px, read back from the VH_WinBg slot (the layout document owns
 	how large the window is drawn). */
 	f32_t							m_fRetailScale = 2.f / 3.f;

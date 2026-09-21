@@ -952,130 +952,6 @@ float4 ArtistNative3017(ARTIST_NATIVE_INPUT input)
 #endif
 #endif
 
-#if !defined(EFFECT_NATIVE_MESH_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
-#ifndef ARTIST_NATIVE_MODEL_ONLY
-// fx_j_pa_rampshape_01_1_ad: b84a7fcc21483d4bb4797c17f439d485; selected map a5b8a6bd8ef12a68a6eec9fb44415e76752977542aac6053d23759b88cf4b750.
-float4 ArtistNative3018(ARTIST_NATIVE_INPUT input)
-{
-    float4 source[5]; [unroll] for (uint i=0u; i<5u; ++i) source[i]=0.f;
-    source[0].x=1.f; // Project engine opacity multiplier.
-    float4 output=0.f;
-    source[1] = g_ArtistSourceMaterialParameters[2u];
-    source[2] = ArtistNativeAppend(ArtistNativePeriodic(((g_ArtistSourceMaterialTime.xxxx*g_ArtistSourceMaterialParameters[0u].wwww)*float4(0.0, 0.0, 0.0, 0.0))),ArtistNativePeriodic(((g_ArtistSourceMaterialTime.xxxx*g_ArtistSourceMaterialParameters[0u].wwww)*float4(-0.699999988, 0.0, 0.0, 0.0))),1u);
-    source[3].x = (g_ArtistSourceMaterialParameters[0u].zzzz).x;
-    source[3].y = (g_ArtistSourceMaterialParameters[0u].xxxx).x;
-    source[3].z = (g_ArtistSourceMaterialParameters[0u].wwww).x;
-    source[3].w = (g_ArtistSourceMaterialTime.xxxx).x;
-    source[4].x = (ArtistNativePeriodic(((g_ArtistSourceMaterialTime.xxxx*g_ArtistSourceMaterialParameters[0u].wwww)*float4(0.0, 0.0, 0.0, 0.0)))).x;
-    source[4].y = (g_ArtistSourceMaterialParameters[1u].xxxx).x;
-    source[4].z = (g_ArtistSourceMaterialParameters[0u].yyyy).x;
-    float4 passValues[4]; [unroll] for(uint passIndex=0u;passIndex<4u;++passIndex) passValues[passIndex]=0.f;
-    passValues[0]=float4(.5f,-.5f,.5f,.5f);
-    float4 v0 = float4(input.sourceBasisX,0.f); // native texcoord10
-    float4 v1 = float4(input.sourceBasisZ,input.handedness); // native texcoord11
-    float4 v2 = float4(input.uv,float2(0.f,0.f)); // native texcoord0
-    float4 v3 = input.color; // native texcoord1
-    float4 v4 = input.dynamicParameter; // native texcoord2
-    float4 v5 = float4(0.f,0.f,0.f,1.f); // native texcoord4
-    float4 v6 = float4(input.tangentView,1.f); // native texcoord6
-    float4 v7 = float4((input.screenUV*float2(2.f,-2.f)+float2(-1.f,1.f))*input.projectionW,input.projectionZ,input.projectionW); // native texcoord5
-    float4 v8 = asfloat(uint4(input.frontFace ? 0xffffffffu : 0u,0u,0u,0u)); // native sv_isfrontface0
-    float4 r0=0.f, r1=0.f;
-    // 1: add r0.xy, v2.xyxx, l(-0.500000, -0.500000, 0.000000, 0.000000)
-    r0.xy = ((v2.xyxx)+(float4(-0.500000,-0.500000,0.000000,0.000000))).xy;
-    // 2: dp2 r0.x, r0.xyxx, r0.xyxx
-    r0.x = (dot((r0.xyxx).xy,(r0.xyxx).xy).xxxx).x;
-    // 3: sqrt r0.x, r0.x
-    r0.x = (sqrt(r0.xxxx)).x;
-    // 4: mad r0.x, -r0.x, l(2.000000), l(1.000000)
-    r0.x = ((-(r0.xxxx))*(float4(2.000000,2.000000,2.000000,2.000000))+(float4(1.000000,1.000000,1.000000,1.000000))).x;
-    // 5: max r0.x, r0.x, l(0.000000)
-    r0.x = (max(r0.xxxx,float4(0.000000,0.000000,0.000000,0.000000))).x;
-    // 6: log r0.y, r0.x
-    r0.y = (log2(r0.xxxx)).y;
-    // 7: mul r0.y, r0.y, v4.z
-    r0.y = ((r0.yyyy)*(v4.zzzz)).y;
-    // 8: exp r0.y, r0.y
-    r0.y = (exp2(r0.yyyy)).y;
-    // 9: mul r0.y, r0.y, v4.y
-    r0.y = ((r0.yyyy)*(v4.yyyy)).y;
-    // 10: lt r0.z, r0.x, l(0.000001)
-    r0.z = (asfloat((uint4)((r0.xxxx)<(float4(0.000001,0.000001,0.000001,0.000001))) * 0xffffffffu)).z;
-    // 11: movc r0.y, r0.z, l(0), r0.y
-    r0.y = ((asuint(r0.zzzz) != 0u) ? (float4(asfloat(0u),asfloat(0u),asfloat(0u),asfloat(0u))) : (r0.yyyy)).y;
-    // 12: add r0.zw, v2.xxxy, cb0[2].xxxy
-    r0.zw = ((v2.xxxy)+(source[2].xxxy)).zw;
-    // 13: sample_b_indexable(texture2d)(float,float,float,float) r0.z, r0.zwzz, t0.yzxw, s1, l(0.000000)
-    r0.z = (ArtistNativeSample1((r0.zwzz).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x, false).yzxw).z;
-    // 14: mul r0.w, r0.z, cb0[4].y
-    r0.w = ((r0.zzzz)*(source[4].yyyy)).w;
-    // 15: add_sat r0.z, r0.z, v3.w
-    r0.z = (saturate((r0.zzzz)+(v3.wwww))).z;
-    // 16: mad r1.xy, cb0[3].yyyy, v2.xyxx, r0.wwww
-    r1.xy = ((source[3].yyyy)*(v2.xyxx)+(r0.wwww)).xy;
-    // 17: sample_b_indexable(texture2d)(float,float,float,float) r0.w, r1.xyxx, t2.yzwx, s2, l(0.000000)
-    r0.w = (ArtistNativeSample2((r1.xyxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x, false).yzwx).w;
-    // 18: mul r0.w, r0.w, cb0[4].z
-    r0.w = ((r0.wwww)*(source[4].zzzz)).w;
-    // 19: mad_sat r0.x, r0.w, r0.x, r0.y
-    r0.x = (saturate((r0.wwww)*(r0.xxxx)+(r0.yyyy))).x;
-    // 20: add r0.x, r0.x, v4.x
-    r0.x = ((r0.xxxx)+(v4.xxxx)).x;
-    // 21: mul r0.xy, r0.xxxx, l(0.800000, 5.026548, 0.000000, 0.000000)
-    r0.xy = ((r0.xxxx)*(float4(0.800000,5.026548,0.000000,0.000000))).xy;
-    // 22: sincos null, r0.y, r0.y
-    r0.y = (cos(r0.yyyy)).y;
-    // 23: max r0.y, r0.y, l(0.000000)
-    r0.y = (max(r0.yyyy,float4(0.000000,0.000000,0.000000,0.000000))).y;
-    // 24: sample_b_indexable(texture2d)(float,float,float,float) r0.w, v2.xyxx, t1.yzwx, s0, l(0.000000)
-    r0.w = (ArtistNativeSample0((v2.xyxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x, false).yzwx).w;
-    // 25: mul r1.x, r0.w, cb0[3].x
-    r1.x = ((r0.wwww)*(source[3].xxxx)).x;
-    // 26: mad r0.x, r0.w, cb0[3].x, r0.x
-    r0.x = ((r0.wwww)*(source[3].xxxx)+(r0.xxxx)).x;
-    // 27: add r0.x, r0.x, l(-1.000000)
-    r0.x = ((r0.xxxx)+(float4(-1.000000,-1.000000,-1.000000,-1.000000))).x;
-    // 28: mul_sat r0.x, r0.x, v4.w
-    r0.x = (saturate((r0.xxxx)*(v4.wwww))).x;
-    // 29: add r0.x, -r0.x, l(1.000000)
-    r0.x = ((-(r0.xxxx))+(float4(1.000000,1.000000,1.000000,1.000000))).x;
-    // 30: mul r0.y, r0.y, r1.x
-    r0.y = ((r0.yyyy)*(r1.xxxx)).y;
-    // 31: mul r0.w, r0.x, r0.x
-    r0.w = ((r0.xxxx)*(r0.xxxx)).w;
-    // 32: mul r0.w, r0.w, r0.w
-    r0.w = ((r0.wwww)*(r0.wwww)).w;
-    // 33: mul r0.w, r0.w, r0.x
-    r0.w = ((r0.wwww)*(r0.xxxx)).w;
-    // 34: lt r0.x, r0.x, l(0.000001)
-    r0.x = (asfloat((uint4)((r0.xxxx)<(float4(0.000001,0.000001,0.000001,0.000001))) * 0xffffffffu)).x;
-    // 35: frc r0.w, r0.w
-    r0.w = (frac(r0.wwww)).w;
-    // 36: movc r0.x, r0.x, l(0), r0.w
-    r0.x = ((asuint(r0.xxxx) != 0u) ? (float4(asfloat(0u),asfloat(0u),asfloat(0u),asfloat(0u))) : (r0.wwww)).x;
-    // 37: mul r0.y, r0.y, r0.x
-    r0.y = ((r0.yyyy)*(r0.xxxx)).y;
-    // 38: mul r0.x, r0.x, r0.z
-    r0.x = ((r0.xxxx)*(r0.zzzz)).x;
-    // 39: mul r0.x, r0.x, v3.w
-    r0.x = ((r0.xxxx)*(v3.wwww)).x;
-    // 40: mul r0.x, r0.x, cb0[0].x
-    r0.x = ((r0.xxxx)*(source[0].xxxx)).x;
-    // 41: mul r0.y, r0.y, l(3.000000)
-    r0.y = ((r0.yyyy)*(float4(3.000000,3.000000,3.000000,3.000000))).y;
-    // 42: mad r0.yzw, r0.yyyy, v3.xxyz, cb0[1].xxyz
-    r0.yzw = ((r0.yyyy)*(v3.xxyz)+(source[1].xxyz)).yzw;
-    // 43: mul r0.yzw, r0.yyzw, v5.wwww
-    r0.yzw = ((r0.yyzw)*(v5.wwww)).yzw;
-    // 44: mul o0.xyz, r0.xxxx, r0.yzwy
-    output.xyz = ((r0.xxxx)*(r0.yzwy)).xyz;
-    // 45: mov o0.w, l(0)
-    output.w = (float4(asfloat(0u),asfloat(0u),asfloat(0u),asfloat(0u))).w;
-    return output;
-}
-#endif
-#endif
-
 #if !defined(EFFECT_NATIVE_PARTICLE_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
 #ifndef ARTIST_NATIVE_MODEL_ONLY
 // fx_d_me_master_01_060_ds_dt_ts_ad: 6516bdeeadc64344adc43427394b8ed6; selected map e9ac13aecc9dfbb2b4e68b36d9de36df6fb0dd33a72f09d49c1f4429cfbd00f7.
@@ -1425,50 +1301,6 @@ float4 ArtistNative3021(ARTIST_NATIVE_INPUT input)
     output.xyz = ((r0.wwww)*(r0.xyzx)).xyz;
     // 33: mov o0.w, l(0)
     output.w = (float4(asfloat(0u),asfloat(0u),asfloat(0u),asfloat(0u))).w;
-    return output;
-}
-#endif
-#endif
-
-#if !defined(EFFECT_NATIVE_MESH_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
-#ifndef ARTIST_NATIVE_MODEL_ONLY
-// fx_m_pa_lightsq_01_4_tr: 5d016e3a03a0bd47bdcbdf53e041895a; selected map ae3744a0e49a1b8be69bd89a156417378867f75bfa41b80f7ea26fb15a42dd26.
-float4 ArtistNative3022(ARTIST_NATIVE_INPUT input)
-{
-    float4 source[3]; [unroll] for (uint i=0u; i<3u; ++i) source[i]=0.f;
-    source[0].x=1.f; // Project engine opacity multiplier.
-    float4 output=0.f;
-    source[1] = g_ArtistSourceMaterialParameters[0u];
-    float4 passValues[4]; [unroll] for(uint passIndex=0u;passIndex<4u;++passIndex) passValues[passIndex]=0.f;
-    passValues[0]=float4(.5f,-.5f,.5f,.5f);
-    float4 v0 = float4(input.sourceBasisX,input.subUVBlend); // native texcoord10
-    float4 v1 = float4(input.sourceBasisZ,input.handedness); // native texcoord11
-    float4 v2 = float4(input.uv,input.uvNext); // native texcoord0
-    float4 v3 = input.color; // native texcoord1
-    float4 v4 = float4(0.f,0.f,0.f,0.f); // native texcoord2
-    float4 v5 = float4(0.f,0.f,0.f,1.f); // native texcoord4
-    float4 v6 = float4(input.tangentView,1.f); // native texcoord6
-    float4 v7 = float4((input.screenUV*float2(2.f,-2.f)+float2(-1.f,1.f))*input.projectionW,input.projectionZ,input.projectionW); // native texcoord5
-    float4 v8 = asfloat(uint4(input.frontFace ? 0xffffffffu : 0u,0u,0u,0u)); // native sv_isfrontface0
-    float4 r0=0.f, r1=0.f;
-    // 1: sample_b_indexable(texture2d)(float,float,float,float) r0.xyzw, v2.zwzz, t0.xyzw, s0, l(0.000000)
-    r0.xyzw = (ArtistNativeSample0((v2.zwzz).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x, false).xyzw).xyzw;
-    // 2: sample_b_indexable(texture2d)(float,float,float,float) r1.xyzw, v2.xyxx, t0.xyzw, s0, l(0.000000)
-    r1.xyzw = (ArtistNativeSample0((v2.xyxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x, false).xyzw).xyzw;
-    // 3: add r0.xyzw, r0.wxyz, -r1.wxyz
-    r0.xyzw = ((r0.wxyz)+(-(r1.wxyz))).xyzw;
-    // 4: mad r0.xyzw, v0.wwww, r0.xyzw, r1.wxyz
-    r0.xyzw = ((v0.wwww)*(r0.xyzw)+(r1.wxyz)).xyzw;
-    // 5: mul r0.x, r0.x, v3.w
-    r0.x = ((r0.xxxx)*(v3.wwww)).x;
-    // 6: mad r0.yzw, r0.yyzw, v3.xxyz, cb0[1].xxyz
-    r0.yzw = ((r0.yyzw)*(v3.xxyz)+(source[1].xxyz)).yzw;
-    // 7: mad o0.xyz, r0.yzwy, v5.wwww, v5.xyzx
-    output.xyz = ((r0.yzwy)*(v5.wwww)+(v5.xyzx)).xyz;
-    // 8: mov_sat r0.x, r0.x
-    r0.x = (saturate(r0.xxxx)).x;
-    // 9: mul o0.w, r0.x, cb0[0].x
-    output.w = ((r0.xxxx)*(source[0].xxxx)).w;
     return output;
 }
 #endif
@@ -3482,147 +3314,6 @@ float4 ArtistNative3028(ARTIST_NATIVE_INPUT input)
 
 #if !defined(EFFECT_NATIVE_MESH_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
 #ifndef ARTIST_NATIVE_MODEL_ONLY
-// fx_e_pa_fd_04_1_tr: a40cba34e2e4df4a88cb86692b690da3; selected map 075338ae49df4f3c7cf9d0e65f2455cc6070f44a45cb22739d8a2b49d724cf80.
-float4 ArtistNative3029(ARTIST_NATIVE_INPUT input)
-{
-    float4 source[5]; [unroll] for (uint i=0u; i<5u; ++i) source[i]=0.f;
-    source[0].x=1.f; // Project engine opacity multiplier.
-    float4 output=0.f;
-    source[1] = g_ArtistSourceMaterialParameters[3u];
-    source[2] = g_ArtistSourceMaterialParameters[2u];
-    source[3].x = (g_ArtistSourceMaterialParameters[0u].yyyy).x;
-    source[3].y = (g_ArtistSourceMaterialParameters[0u].zzzz).x;
-    source[3].z = (g_ArtistSourceMaterialParameters[0u].wwww).x;
-    source[3].w = (g_ArtistSourceMaterialParameters[1u].wwww).x;
-    source[4].x = (g_ArtistSourceMaterialParameters[1u].xxxx).x;
-    source[4].y = (g_ArtistSourceMaterialParameters[1u].yyyy).x;
-    source[4].z = (g_ArtistSourceMaterialParameters[1u].zzzz).x;
-    source[4].w = (g_ArtistSourceMaterialParameters[0u].xxxx).x;
-    float4 passValues[4]; [unroll] for(uint passIndex=0u;passIndex<4u;++passIndex) passValues[passIndex]=0.f;
-    passValues[0]=float4(.5f,-.5f,.5f,.5f);
-    float4 v0 = float4(input.sourceBasisX,0.f); // native texcoord10
-    float4 v1 = float4(input.sourceBasisZ,input.handedness); // native texcoord11
-    float4 v2 = float4(input.uv,float2(0.f,0.f)); // native texcoord0
-    float4 v3 = input.color; // native texcoord1
-    float4 v4 = input.dynamicParameter; // native texcoord2
-    float4 v5 = float4(0.f,0.f,0.f,1.f); // native texcoord4
-    float4 v6 = float4(input.tangentView,1.f); // native texcoord6
-    float4 v7 = float4((input.screenUV*float2(2.f,-2.f)+float2(-1.f,1.f))*input.projectionW,input.projectionZ,input.projectionW); // native texcoord5
-    float4 v8 = asfloat(uint4(input.frontFace ? 0xffffffffu : 0u,0u,0u,0u)); // native sv_isfrontface0
-    float4 r0=0.f, r1=0.f;
-    // 1: div r0.xy, v7.xyxx, v7.wwww
-    r0.xy = ((v7.xyxx)/(v7.wwww)).xy;
-    // 2: mad r0.xy, r0.xyxx, cb2[0].xyxx, cb2[0].wzww
-    r0.xy = ((r0.xyxx)*(passValues[0].xyxx)+(passValues[0].wzww)).xy;
-    // Native 3: source device depth mapped to centimetre view depth; reconstruction at 5.
-    r0.x = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, (r0.xyxx).xy, 0.f).y * 100000.f;
-    // Native 5-8: reconstructed view depth is supplied by the runtime adapter.
-    r0.x = r0.x;
-    // 9: add r0.x, r0.x, -v7.w
-    r0.x = ((r0.xxxx)+(-(v7.wwww))).x;
-    // 10: add r0.y, -cb0[4].w, l(1.000000)
-    r0.y = ((-(source[4].wwww))+(float4(1.000000,1.000000,1.000000,1.000000))).y;
-    // 11: max r0.y, r0.y, l(0.001000)
-    r0.y = (max(r0.yyyy,float4(0.001000,0.001000,0.001000,0.001000))).y;
-    // 12: div_sat r0.x, r0.x, r0.y
-    r0.x = (saturate((r0.xxxx)/(r0.yyyy))).x;
-    // 13: sample_b_indexable(texture2d)(float,float,float,float) r0.y, v2.xyxx, t1.yxzw, s1, l(0.000000)
-    r0.y = (ArtistNativeSample0((v2.xyxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x, false).yxzw).y;
-    // 14: mul r0.y, r0.y, cb0[3].x
-    r0.y = ((r0.yyyy)*(source[3].xxxx)).y;
-    // 15: log r0.z, |r0.y|
-    r0.z = (log2(abs(r0.yyyy))).z;
-    // 16: lt r0.y, |r0.y|, l(0.000001)
-    r0.y = (asfloat((uint4)((abs(r0.yyyy))<(float4(0.000001,0.000001,0.000001,0.000001))) * 0xffffffffu)).y;
-    // 17: mul r0.z, r0.z, cb0[3].y
-    r0.z = ((r0.zzzz)*(source[3].yyyy)).z;
-    // 18: exp r0.z, r0.z
-    r0.z = (exp2(r0.zzzz)).z;
-    // 19: movc r0.y, r0.y, l(0), r0.z
-    r0.y = ((asuint(r0.yyyy) != 0u) ? (float4(asfloat(0u),asfloat(0u),asfloat(0u),asfloat(0u))) : (r0.zzzz)).y;
-    // 20: mad r0.z, v4.x, l(2.000000), l(-1.000000)
-    r0.z = ((v4.xxxx)*(float4(2.000000,2.000000,2.000000,2.000000))+(float4(-1.000000,-1.000000,-1.000000,-1.000000))).z;
-    // 21: add r0.y, r0.y, r0.z
-    r0.y = ((r0.yyyy)+(r0.zzzz)).y;
-    // 22: log r0.z, |r0.y|
-    r0.z = (log2(abs(r0.yyyy))).z;
-    // 23: lt r0.y, |r0.y|, l(0.000001)
-    r0.y = (asfloat((uint4)((abs(r0.yyyy))<(float4(0.000001,0.000001,0.000001,0.000001))) * 0xffffffffu)).y;
-    // 24: mul r0.z, r0.z, cb0[3].z
-    r0.z = ((r0.zzzz)*(source[3].zzzz)).z;
-    // 25: exp r0.z, r0.z
-    r0.z = (exp2(r0.zzzz)).z;
-    // 26: min r0.z, r0.z, l(1.000000)
-    r0.z = (min(r0.zzzz,float4(1.000000,1.000000,1.000000,1.000000))).z;
-    // 27: movc r0.y, r0.y, l(0), r0.z
-    r0.y = ((asuint(r0.yyyy) != 0u) ? (float4(asfloat(0u),asfloat(0u),asfloat(0u),asfloat(0u))) : (r0.zzzz)).y;
-    // 28: mad r0.z, cb0[3].w, v4.z, l(-1.000000)
-    r0.z = ((source[3].wwww)*(v4.zzzz)+(float4(-1.000000,-1.000000,-1.000000,-1.000000))).z;
-    // 29: mul r0.z, r0.z, l(0.500000)
-    r0.z = ((r0.zzzz)*(float4(0.500000,0.500000,0.500000,0.500000))).z;
-    // 30: mul r0.w, v4.z, cb0[3].w
-    r0.w = ((v4.zzzz)*(source[3].wwww)).w;
-    // 31: mad r0.zw, r0.wwww, v2.xxxy, -r0.zzzz
-    r0.zw = ((r0.wwww)*(v2.xxxy)+(-(r0.zzzz))).zw;
-    // 32: sample_b_indexable(texture2d)(float,float,float,float) r1.xyzw, r0.zwzz, t0.xyzw, s2, l(0.000000)
-    r1.xyzw = (ArtistNativeSample1((r0.zwzz).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x, false).xyzw).xyzw;
-    // 33: log r0.z, |r1.w|
-    r0.z = (log2(abs(r1.wwww))).z;
-    // 34: mul r0.z, r0.z, cb0[4].z
-    r0.z = ((r0.zzzz)*(source[4].zzzz)).z;
-    // 35: exp r0.z, r0.z
-    r0.z = (exp2(r0.zzzz)).z;
-    // 36: mul r0.z, r0.z, v3.w
-    r0.z = ((r0.zzzz)*(v3.wwww)).z;
-    // 37: lt r0.w, |r1.w|, l(0.000001)
-    r0.w = (asfloat((uint4)((abs(r1.wwww))<(float4(0.000001,0.000001,0.000001,0.000001))) * 0xffffffffu)).w;
-    // 38: movc r0.z, r0.w, l(0), |r0.z|
-    r0.z = ((asuint(r0.wwww) != 0u) ? (float4(asfloat(0u),asfloat(0u),asfloat(0u),asfloat(0u))) : (abs(r0.zzzz))).z;
-    // 39: log r0.w, r0.z
-    r0.w = (log2(r0.zzzz)).w;
-    // 40: lt r0.z, r0.z, l(0.000001)
-    r0.z = (asfloat((uint4)((r0.zzzz)<(float4(0.000001,0.000001,0.000001,0.000001))) * 0xffffffffu)).z;
-    // 41: mul r0.w, r0.w, v4.y
-    r0.w = ((r0.wwww)*(v4.yyyy)).w;
-    // 42: exp r0.w, r0.w
-    r0.w = (exp2(r0.wwww)).w;
-    // 43: mul r0.w, r0.y, r0.w
-    r0.w = ((r0.yyyy)*(r0.wwww)).w;
-    // 44: ge r0.y, l(0.250000), r0.y
-    r0.y = (asfloat((uint4)((float4(0.250000,0.250000,0.250000,0.250000))>=(r0.yyyy)) * 0xffffffffu)).y;
-    // 45: mul r0.x, r0.x, r0.w
-    r0.x = ((r0.xxxx)*(r0.wwww)).x;
-    // 46: min r0.x, r0.x, l(1.000000)
-    r0.x = (min(r0.xxxx,float4(1.000000,1.000000,1.000000,1.000000))).x;
-    // 47: mul r0.x, r0.x, cb0[0].x
-    r0.x = ((r0.xxxx)*(source[0].xxxx)).x;
-    // 48: movc o0.w, r0.z, l(0), r0.x
-    output.w = ((asuint(r0.zzzz) != 0u) ? (float4(asfloat(0u),asfloat(0u),asfloat(0u),asfloat(0u))) : (r0.xxxx)).w;
-    // 49: mul r0.xzw, r1.xxyz, cb0[4].xxxx
-    r0.xzw = ((r1.xxyz)*(source[4].xxxx)).xzw;
-    // 50: dp3 r1.w, r0.xzwx, l(0.300000, 0.590000, 0.110000, 0.000000)
-    r1.w = (dot((r0.xzwx).xyz,(float4(0.300000,0.590000,0.110000,0.000000)).xyz).xxxx).w;
-    // 51: mad r1.xyz, -cb0[4].xxxx, r1.xyzx, r1.wwww
-    r1.xyz = ((-(source[4].xxxx))*(r1.xyzx)+(r1.wwww)).xyz;
-    // 52: mad r0.xzw, cb0[4].yyyy, r1.xxyz, r0.xxzw
-    r0.xzw = ((source[4].yyyy)*(r1.xxyz)+(r0.xxzw)).xzw;
-    // 53: mul r0.xzw, r0.xxzw, v3.xxyz
-    r0.xzw = ((r0.xxzw)*(v3.xxyz)).xzw;
-    // 54: mul r1.xyz, cb0[2].xyzx, cb0[2].wwww
-    r1.xyz = ((source[2].xyzx)*(source[2].wwww)).xyz;
-    // 55: movc r0.xyz, r0.yyyy, r1.xyzx, r0.xzwx
-    r0.xyz = ((asuint(r0.yyyy) != 0u) ? (r1.xyzx) : (r0.xzwx)).xyz;
-    // 56: add r0.xyz, r0.xyzx, cb0[1].xyzx
-    r0.xyz = ((r0.xyzx)+(source[1].xyzx)).xyz;
-    // 57: mad o0.xyz, r0.xyzx, v5.wwww, v5.xyzx
-    output.xyz = ((r0.xyzx)*(v5.wwww)+(v5.xyzx)).xyz;
-    return output;
-}
-#endif
-#endif
-
-#if !defined(EFFECT_NATIVE_MESH_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
-#ifndef ARTIST_NATIVE_MODEL_ONLY
 // fx_e_pa_fd_07_1_ad: 8f3418a0c1946f4da7b4be5ed4bac6d3; selected map c6d16a81ea3b83954a8566d0e42f723c0014b008807285ddbe8ddedccbd1ce76.
 float4 ArtistNative3030(ARTIST_NATIVE_INPUT input)
 {
@@ -4656,90 +4347,6 @@ float4 ArtistNative3035(ARTIST_NATIVE_INPUT input)
 #endif
 #endif
 
-#if !defined(EFFECT_NATIVE_MESH_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
-#ifndef ARTIST_NATIVE_MODEL_ONLY
-// fx_a_pa_gl_01_6_ad: c058e92770ba0b488812c453984a6c6c; selected map 3bfdf33f4814032d8490d912e6851095862f6b1a880a141b9d66c4d2c795070e.
-float4 ArtistNative3036(ARTIST_NATIVE_INPUT input)
-{
-    float4 source[8]; [unroll] for (uint i=0u; i<8u; ++i) source[i]=0.f;
-    source[0].x=1.f; // Project engine opacity multiplier.
-    float4 output=0.f;
-    source[1] = g_ArtistSourceMaterialParameters[3u];
-    source[2] = g_ArtistSourceMaterialParameters[2u];
-    source[3] = ArtistNativeAppend(g_ArtistSourceMaterialParameters[0u].wwww,g_ArtistSourceMaterialParameters[1u].xxxx,1u);
-    source[4] = ArtistNativeAppend(g_ArtistSourceMaterialParameters[1u].zzzz,g_ArtistSourceMaterialParameters[1u].wwww,1u);
-    source[5].x = (g_ArtistSourceMaterialTime.xxxx).x;
-    source[5].y = (g_ArtistSourceMaterialParameters[1u].xxxx).x;
-    source[5].z = (g_ArtistSourceMaterialParameters[0u].wwww).x;
-    source[5].w = (g_ArtistSourceMaterialParameters[1u].yyyy).x;
-    source[6].x = (g_ArtistSourceMaterialParameters[0u].zzzz).x;
-    source[6].y = (g_ArtistSourceMaterialParameters[1u].wwww).x;
-    source[6].z = (g_ArtistSourceMaterialParameters[1u].zzzz).x;
-    source[6].w = (g_ArtistSourceMaterialParameters[0u].xxxx).x;
-    source[7].x = (g_ArtistSourceMaterialParameters[0u].yyyy).x;
-    float4 passValues[4]; [unroll] for(uint passIndex=0u;passIndex<4u;++passIndex) passValues[passIndex]=0.f;
-    passValues[0]=float4(.5f,-.5f,.5f,.5f);
-    float4 v0 = float4(input.sourceBasisX,0.f); // native texcoord10
-    float4 v1 = float4(input.sourceBasisZ,input.handedness); // native texcoord11
-    float4 v2 = float4(input.uv,float2(0.f,0.f)); // native texcoord0
-    float4 v3 = input.color; // native texcoord1
-    float4 v4 = input.dynamicParameter; // native texcoord2
-    float4 v5 = float4(0.f,0.f,0.f,1.f); // native texcoord4
-    float4 v6 = float4(input.tangentView,1.f); // native texcoord6
-    float4 v7 = float4((input.screenUV*float2(2.f,-2.f)+float2(-1.f,1.f))*input.projectionW,input.projectionZ,input.projectionW); // native texcoord5
-    float4 v8 = asfloat(uint4(input.frontFace ? 0xffffffffu : 0u,0u,0u,0u)); // native sv_isfrontface0
-    float4 r0=0.f, r1=0.f;
-    // 1: mad r0.xy, cb0[5].xxxx, cb0[3].xyxx, v2.xyxx
-    r0.xy = ((source[5].xxxx)*(source[3].xyxx)+(v2.xyxx)).xy;
-    // 2: mul r0.xy, r0.xyxx, cb0[5].wwww
-    r0.xy = ((r0.xyxx)*(source[5].wwww)).xy;
-    // 3: sample_b_indexable(texture2d)(float,float,float,float) r0.xy, r0.xyxx, t0.xyzw, s0, l(0.000000)
-    r0.xy = (ArtistNativeSample0((r0.xyxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x, false).xyzw).xy;
-    // 4: mad r0.zw, cb0[5].xxxx, cb0[4].xxxy, v2.xxxy
-    r0.zw = ((source[5].xxxx)*(source[4].xxxy)+(v2.xxxy)).zw;
-    // 5: mad r0.xy, cb0[6].xxxx, r0.xyxx, r0.zwzz
-    r0.xy = ((source[6].xxxx)*(r0.xyxx)+(r0.zwzz)).xy;
-    // 6: sample_b_indexable(texture2d)(float,float,float,float) r0.xyzw, r0.xyxx, t1.xyzw, s1, l(0.000000)
-    r0.xyzw = (ArtistNativeSample1((r0.xyxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x, false).xyzw).xyzw;
-    // 7: mul r1.xyz, r0.xyzx, cb0[6].wwww
-    r1.xyz = ((r0.xyzx)*(source[6].wwww)).xyz;
-    // 8: dp3 r1.w, r1.xyzx, l(0.300000, 0.590000, 0.110000, 0.000000)
-    r1.w = (dot((r1.xyzx).xyz,(float4(0.300000,0.590000,0.110000,0.000000)).xyz).xxxx).w;
-    // 9: mad r0.xyz, -cb0[6].wwww, r0.xyzx, r1.wwww
-    r0.xyz = ((-(source[6].wwww))*(r0.xyzx)+(r1.wwww)).xyz;
-    // 10: mul r0.w, r0.w, v3.w
-    r0.w = ((r0.wwww)*(v3.wwww)).w;
-    // 11: mad r0.xyz, cb0[7].xxxx, r0.xyzx, r1.xyzx
-    r0.xyz = ((source[7].xxxx)*(r0.xyzx)+(r1.xyzx)).xyz;
-    // 12: mul r1.xyz, cb0[2].xyzx, cb0[2].wwww
-    r1.xyz = ((source[2].xyzx)*(source[2].wwww)).xyz;
-    // 13: mul r0.xyz, r0.xyzx, r1.xyzx
-    r0.xyz = ((r0.xyzx)*(r1.xyzx)).xyz;
-    // 14: mad r0.xyz, r0.xyzx, v3.xyzx, cb0[1].xyzx
-    r0.xyz = ((r0.xyzx)*(v3.xyzx)+(source[1].xyzx)).xyz;
-    // 15: mul r0.xyz, r0.xyzx, v5.wwww
-    r0.xyz = ((r0.xyzx)*(v5.wwww)).xyz;
-    // 16: log r1.x, |r0.w|
-    r1.x = (log2(abs(r0.wwww))).x;
-    // 17: lt r0.w, |r0.w|, l(0.000001)
-    r0.w = (asfloat((uint4)((abs(r0.wwww))<(float4(0.000001,0.000001,0.000001,0.000001))) * 0xffffffffu)).w;
-    // 18: mul r1.x, r1.x, v4.y
-    r1.x = ((r1.xxxx)*(v4.yyyy)).x;
-    // 19: exp r1.x, r1.x
-    r1.x = (exp2(r1.xxxx)).x;
-    // 20: mul r1.x, r1.x, cb0[0].x
-    r1.x = ((r1.xxxx)*(source[0].xxxx)).x;
-    // 21: movc r0.w, r0.w, l(0), r1.x
-    r0.w = ((asuint(r0.wwww) != 0u) ? (float4(asfloat(0u),asfloat(0u),asfloat(0u),asfloat(0u))) : (r1.xxxx)).w;
-    // 22: mul o0.xyz, r0.wwww, r0.xyzx
-    output.xyz = ((r0.wwww)*(r0.xyzx)).xyz;
-    // 23: mov o0.w, l(0)
-    output.w = (float4(asfloat(0u),asfloat(0u),asfloat(0u),asfloat(0u))).w;
-    return output;
-}
-#endif
-#endif
-
 #if !defined(EFFECT_NATIVE_PARTICLE_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
 #ifndef ARTIST_NATIVE_MODEL_ONLY
 // fx_m_me_trail_02_15_tr: 7a136305e992f4499924062dfce8bd6b; selected map 432313b60c27dbe3f1900e7245dfae87270c951da1be09a74e56e1fb85502794.
@@ -5001,564 +4608,6 @@ float4 ArtistNative3038(ARTIST_NATIVE_INPUT input)
     r0.w = (saturate(r0.wwww)).w;
     // 6: mul o0.w, r0.w, cb0[0].x
     output.w = ((r0.wwww)*(source[0].xxxx)).w;
-    return output;
-}
-#endif
-#endif
-
-#if !defined(EFFECT_NATIVE_MESH_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
-#ifndef ARTIST_NATIVE_MODEL_ONLY
-// fx_m_pa_skull_02_23_tr: 456fc57bd455014b93b97e18c9390a4f; selected map 45f9f31688792848e09af99f5a64410bef1bac4520e1f2c9707f5c31e5b7fdc4.
-float4 ArtistNative3039(ARTIST_NATIVE_INPUT input)
-{
-    float4 source[20]; [unroll] for (uint i=0u; i<20u; ++i) source[i]=0.f;
-    source[0].x=1.f; // Project engine opacity multiplier.
-    float4 output=0.f;
-    source[1] = g_ArtistSourceMaterialParameters[8u];
-    source[2] = ArtistNativeAppend(g_ArtistSourceMaterialParameters[7u].yyyy,g_ArtistSourceMaterialParameters[7u].zzzz,1u);
-    source[3] = ArtistNativeAppend(ArtistNativePeriodic(((g_ArtistSourceMaterialParameters[5u].yyyy*g_ArtistSourceMaterialTime.xxxx)*float4(-0.200000003, 0.0, 0.0, 0.0))),ArtistNativePeriodic(((g_ArtistSourceMaterialParameters[5u].yyyy*g_ArtistSourceMaterialTime.xxxx)*float4(1.0, 0.0, 0.0, 0.0))),1u);
-    source[4] = ArtistNativeAppend(ArtistNativePeriodic(((g_ArtistSourceMaterialParameters[5u].yyyy*g_ArtistSourceMaterialTime.xxxx)*float4(0.0500000007, 0.0, 0.0, 0.0))),ArtistNativePeriodic(((g_ArtistSourceMaterialParameters[5u].yyyy*g_ArtistSourceMaterialTime.xxxx)*float4(0.400000006, 0.0, 0.0, 0.0))),1u);
-    source[5] = ArtistNativeAppend(g_ArtistSourceMaterialParameters[4u].yyyy,g_ArtistSourceMaterialParameters[4u].zzzz,1u);
-    source[6] = ArtistNativeAppend(ArtistNativePeriodic(((g_ArtistSourceMaterialParameters[3u].wwww*g_ArtistSourceMaterialTime.xxxx)*float4(0.0, 0.0, 0.0, 0.0))),ArtistNativePeriodic(((g_ArtistSourceMaterialParameters[3u].wwww*g_ArtistSourceMaterialTime.xxxx)*float4(0.5, 0.0, 0.0, 0.0))),1u);
-    source[7] = ArtistNativeAppend(cos(((g_ArtistSourceMaterialParameters[4u].xxxx*float4(3.1400001, 0.0, 0.0, 0.0))*float4(0.25, 0.0, 0.0, 0.0))),(float4(-1.0, 0.0, 0.0, 0.0)*sin(((g_ArtistSourceMaterialParameters[4u].xxxx*float4(3.1400001, 0.0, 0.0, 0.0))*float4(0.25, 0.0, 0.0, 0.0)))),1u);
-    source[8] = ArtistNativeAppend(sin(((g_ArtistSourceMaterialParameters[4u].xxxx*float4(3.1400001, 0.0, 0.0, 0.0))*float4(0.25, 0.0, 0.0, 0.0))),cos(((g_ArtistSourceMaterialParameters[4u].xxxx*float4(3.1400001, 0.0, 0.0, 0.0))*float4(0.25, 0.0, 0.0, 0.0))),1u);
-    source[9] = ArtistNativeAppend(g_ArtistSourceMaterialParameters[0u].zzzz,g_ArtistSourceMaterialParameters[0u].wwww,1u);
-    source[10].x = (g_ArtistSourceMaterialTime.xxxx).x;
-    source[10].y = (g_ArtistSourceMaterialParameters[5u].yyyy).x;
-    source[10].z = ((g_ArtistSourceMaterialParameters[5u].yyyy*g_ArtistSourceMaterialTime.xxxx)).x;
-    source[10].w = (((g_ArtistSourceMaterialParameters[5u].yyyy*g_ArtistSourceMaterialTime.xxxx)*float4(-0.200000003, 0.0, 0.0, 0.0))).x;
-    source[11].x = (((g_ArtistSourceMaterialParameters[5u].yyyy*g_ArtistSourceMaterialTime.xxxx)*float4(1.0, 0.0, 0.0, 0.0))).x;
-    source[11].y = (g_ArtistSourceMaterialParameters[7u].xxxx).x;
-    source[11].z = (g_ArtistSourceMaterialParameters[6u].wwww).x;
-    source[11].w = (g_ArtistSourceMaterialParameters[7u].zzzz).x;
-    source[12].x = (((g_ArtistSourceMaterialParameters[5u].yyyy*g_ArtistSourceMaterialTime.xxxx)*float4(0.400000006, 0.0, 0.0, 0.0))).x;
-    source[12].y = (g_ArtistSourceMaterialParameters[6u].yyyy).x;
-    source[12].z = (g_ArtistSourceMaterialParameters[6u].zzzz).x;
-    source[12].w = (ArtistNativePeriodic(((g_ArtistSourceMaterialParameters[5u].yyyy*g_ArtistSourceMaterialTime.xxxx)*float4(0.400000006, 0.0, 0.0, 0.0)))).x;
-    source[13].x = (ArtistNativePeriodic(((g_ArtistSourceMaterialParameters[5u].yyyy*g_ArtistSourceMaterialTime.xxxx)*float4(0.0500000007, 0.0, 0.0, 0.0)))).x;
-    source[13].y = (g_ArtistSourceMaterialParameters[6u].xxxx).x;
-    source[13].z = (g_ArtistSourceMaterialParameters[4u].xxxx).x;
-    source[13].w = ((g_ArtistSourceMaterialParameters[4u].xxxx*float4(3.1400001, 0.0, 0.0, 0.0))).x;
-    source[14].x = (g_ArtistSourceMaterialParameters[5u].xxxx).x;
-    source[14].y = (g_ArtistSourceMaterialParameters[4u].wwww).x;
-    source[14].z = (g_ArtistSourceMaterialParameters[4u].zzzz).x;
-    source[14].w = (g_ArtistSourceMaterialParameters[4u].yyyy).x;
-    source[15].x = (g_ArtistSourceMaterialParameters[5u].zzzz).x;
-    source[15].y = (ArtistNativePeriodic(((g_ArtistSourceMaterialParameters[3u].wwww*g_ArtistSourceMaterialTime.xxxx)*float4(0.5, 0.0, 0.0, 0.0)))).x;
-    source[15].z = (ArtistNativePeriodic(((g_ArtistSourceMaterialParameters[3u].wwww*g_ArtistSourceMaterialTime.xxxx)*float4(0.0, 0.0, 0.0, 0.0)))).x;
-    source[15].w = (g_ArtistSourceMaterialParameters[5u].wwww).x;
-    source[16].x = (g_ArtistSourceMaterialParameters[3u].yyyy).x;
-    source[16].y = (g_ArtistSourceMaterialParameters[3u].zzzz).x;
-    source[16].z = (g_ArtistSourceMaterialParameters[3u].xxxx).x;
-    source[16].w = (g_ArtistSourceMaterialParameters[0u].xxxx).x;
-    source[17].x = ((float4(1.0, 0.0, 0.0, 0.0)/max(float4(9.99999975e-06, 0.0, 0.0, 0.0),g_ArtistSourceMaterialParameters[1u].xxxx))).x;
-    source[17].y = (g_ArtistSourceMaterialParameters[0u].yyyy).x;
-    source[17].z = ((float4(1.0, 0.0, 0.0, 0.0)-g_ArtistSourceMaterialParameters[0u].yyyy)).x;
-    source[17].w = (max((float4(1.0, 0.0, 0.0, 0.0)-g_ArtistSourceMaterialParameters[0u].yyyy),float4(9.99999975e-06, 0.0, 0.0, 0.0))).x;
-    source[18].x = ((float4(1.0, 0.0, 0.0, 0.0)/max((float4(1.0, 0.0, 0.0, 0.0)-g_ArtistSourceMaterialParameters[0u].yyyy),float4(9.99999975e-06, 0.0, 0.0, 0.0)))).x;
-    source[18].y = (g_ArtistSourceMaterialParameters[1u].yyyy).x;
-    source[18].z = (g_ArtistSourceMaterialParameters[1u].wwww).x;
-    source[18].w = (g_ArtistSourceMaterialParameters[2u].yyyy).x;
-    source[19].x = (g_ArtistSourceMaterialParameters[2u].zzzz).x;
-    source[19].y = (g_ArtistSourceMaterialParameters[2u].xxxx).x;
-    source[19].z = (g_ArtistSourceMaterialParameters[2u].wwww).x;
-    source[19].w = (g_ArtistSourceMaterialParameters[1u].zzzz).x;
-    float4 passValues[4]; [unroll] for(uint passIndex=0u;passIndex<4u;++passIndex) passValues[passIndex]=0.f;
-    passValues[0]=float4(.5f,-.5f,.5f,.5f);
-    float4 v0 = float4(input.sourceBasisX,0.f); // native texcoord10
-    float4 v1 = float4(input.sourceBasisZ,input.handedness); // native texcoord11
-    float4 v2 = float4(input.uv,float2(0.f,0.f)); // native texcoord0
-    float4 v3 = input.color; // native texcoord1
-    float4 v4 = input.dynamicParameter; // native texcoord2
-    float4 v5 = float4(0.f,0.f,0.f,1.f); // native texcoord4
-    float4 v6 = float4(input.tangentView,1.f); // native texcoord6
-    float4 v7 = float4((input.screenUV*float2(2.f,-2.f)+float2(-1.f,1.f))*input.projectionW,input.projectionZ,input.projectionW); // native texcoord5
-    float4 v8 = asfloat(uint4(input.frontFace ? 0xffffffffu : 0u,0u,0u,0u)); // native sv_isfrontface0
-    float4 r0=0.f, r1=0.f, r2=0.f;
-    // 1: mad r0.xy, v2.xyxx, cb0[11].yzyy, cb0[2].xyxx
-    r0.xy = ((v2.xyxx)*(source[11].yzyy)+(source[2].xyxx)).xy;
-    // 2: add r0.xy, r0.xyxx, cb0[3].xyxx
-    r0.xy = ((r0.xyxx)+(source[3].xyxx)).xy;
-    // 3: sample_b_indexable(texture2d)(float,float,float,float) r0.x, r0.xyxx, t0.xyzw, s0, l(0.000000)
-    r0.x = (ArtistNativeSample0((r0.xyxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x, false).xyzw).x;
-    // 4: mad r0.yz, v2.xxyx, cb0[12].yyzy, cb0[4].xxyx
-    r0.yz = ((v2.xxyx)*(source[12].yyzy)+(source[4].xxyx)).yz;
-    // 5: sample_b_indexable(texture2d)(float,float,float,float) r0.y, r0.yzyy, t0.yxzw, s0, l(0.000000)
-    r0.y = (ArtistNativeSample0((r0.yzyy).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x, false).yxzw).y;
-    // 6: mul r0.x, r0.y, r0.x
-    r0.x = ((r0.yyyy)*(r0.xxxx)).x;
-    // 7: mul r0.x, r0.x, cb0[13].y
-    r0.x = ((r0.xxxx)*(source[13].yyyy)).x;
-    // 8: mad r0.yz, v2.xxyx, cb0[14].xxyx, cb0[5].xxyx
-    r0.yz = ((v2.xxyx)*(source[14].xxyx)+(source[5].xxyx)).yz;
-    // 9: mad r1.xy, cb0[15].xxxx, r0.xxxx, r0.yzyy
-    r1.xy = ((source[15].xxxx)*(r0.xxxx)+(r0.yzyy)).xy;
-    // 10: add r1.xy, r1.xyxx, cb0[6].xyxx
-    r1.xy = ((r1.xyxx)+(source[6].xyxx)).xy;
-    // 11: add r1.xy, r1.xyxx, l(-0.500000, -0.500000, 0.000000, 0.000000)
-    r1.xy = ((r1.xyxx)+(float4(-0.500000,-0.500000,0.000000,0.000000))).xy;
-    // 12: dp2 r2.x, cb0[7].xyxx, r1.xyxx
-    r2.x = (dot((source[7].xyxx).xy,(r1.xyxx).xy).xxxx).x;
-    // 13: dp2 r2.y, cb0[8].xyxx, r1.xyxx
-    r2.y = (dot((source[8].xyxx).xy,(r1.xyxx).xy).xxxx).y;
-    // 14: add r1.xy, r2.xyxx, l(0.500000, 0.500000, 0.000000, 0.000000)
-    r1.xy = ((r2.xyxx)+(float4(0.500000,0.500000,0.000000,0.000000))).xy;
-    // 15: sample_b_indexable(texture2d)(float,float,float,float) r0.w, r1.xyxx, t1.yzwx, s1, l(0.000000)
-    r0.w = (ArtistNativeSample1((r1.xyxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x, false).yzwx).w;
-    // 16: mul r1.x, r0.x, cb0[15].x
-    r1.x = ((r0.xxxx)*(source[15].xxxx)).x;
-    // 17: mad r0.yz, r1.xxxx, cb0[15].wwww, r0.yyzy
-    r0.yz = ((r1.xxxx)*(source[15].wwww)+(r0.yyzy)).yz;
-    // 18: add r0.yz, r0.yyzy, cb0[6].xxyx
-    r0.yz = ((r0.yyzy)+(source[6].xxyx)).yz;
-    // 19: add r0.yz, r0.yyzy, l(0.000000, -0.500000, -0.500000, 0.000000)
-    r0.yz = ((r0.yyzy)+(float4(0.000000,-0.500000,-0.500000,0.000000))).yz;
-    // 20: dp2 r1.x, cb0[7].xyxx, r0.yzyy
-    r1.x = (dot((source[7].xyxx).xy,(r0.yzyy).xy).xxxx).x;
-    // 21: dp2 r1.y, cb0[8].xyxx, r0.yzyy
-    r1.y = (dot((source[8].xyxx).xy,(r0.yzyy).xy).xxxx).y;
-    // 22: add r0.yz, r1.xxyx, l(0.000000, 0.500000, 0.500000, 0.000000)
-    r0.yz = ((r1.xxyx)+(float4(0.000000,0.500000,0.500000,0.000000))).yz;
-    // 23: sample_b_indexable(texture2d)(float,float,float,float) r0.y, r0.yzyy, t1.yxzw, s1, l(0.000000)
-    r0.y = (ArtistNativeSample1((r0.yzyy).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x, false).yxzw).y;
-    // 24: mul r0.z, r0.y, r0.w
-    r0.z = ((r0.yyyy)*(r0.wwww)).z;
-    // 25: mad r0.w, r0.w, r0.y, r0.w
-    r0.w = ((r0.wwww)*(r0.yyyy)+(r0.wwww)).w;
-    // 26: log r1.x, |r0.z|
-    r1.x = (log2(abs(r0.zzzz))).x;
-    // 27: lt r0.z, |r0.z|, l(0.000001)
-    r0.z = (asfloat((uint4)((abs(r0.zzzz))<(float4(0.000001,0.000001,0.000001,0.000001))) * 0xffffffffu)).z;
-    // 28: mul r1.x, r1.x, l(0.200000)
-    r1.x = ((r1.xxxx)*(float4(0.200000,0.200000,0.200000,0.200000))).x;
-    // 29: exp r1.x, r1.x
-    r1.x = (exp2(r1.xxxx)).x;
-    // 30: movc r0.z, r0.z, l(0), r1.x
-    r0.z = ((asuint(r0.zzzz) != 0u) ? (float4(asfloat(0u),asfloat(0u),asfloat(0u),asfloat(0u))) : (r1.xxxx)).z;
-    // 31: mul r0.z, r0.z, r0.x
-    r0.z = ((r0.zzzz)*(r0.xxxx)).z;
-    // 32: mul r0.x, r0.x, l(0.300000)
-    r0.x = ((r0.xxxx)*(float4(0.300000,0.300000,0.300000,0.300000))).x;
-    // 33: mad r1.xy, v2.xyxx, l(1.000000, 0.820000, 0.000000, 0.000000), r0.xxxx
-    r1.xy = ((v2.xyxx)*(float4(1.000000,0.820000,0.000000,0.000000))+(r0.xxxx)).xy;
-    // 34: add r1.xy, r1.xyxx, cb0[9].xyxx
-    r1.xy = ((r1.xyxx)+(source[9].xyxx)).xy;
-    // 35: add r1.xy, r1.xyxx, l(-0.500000, -0.500000, 0.000000, 0.000000)
-    r1.xy = ((r1.xyxx)+(float4(-0.500000,-0.500000,0.000000,0.000000))).xy;
-    // 36: dp2 r0.x, r1.xyxx, r1.xyxx
-    r0.x = (dot((r1.xyxx).xy,(r1.xyxx).xy).xxxx).x;
-    // 37: sqrt r0.x, r0.x
-    r0.x = (sqrt(r0.xxxx)).x;
-    // 38: mad r0.x, -r0.x, cb0[17].x, l(1.000000)
-    r0.x = ((-(r0.xxxx))*(source[17].xxxx)+(float4(1.000000,1.000000,1.000000,1.000000))).x;
-    // 39: mul_sat r0.x, r0.x, cb0[18].x
-    r0.x = (saturate((r0.xxxx)*(source[18].xxxx))).x;
-    // 40: mul r0.x, r0.x, r0.x
-    r0.x = ((r0.xxxx)*(r0.xxxx)).x;
-    // 41: mul_sat r0.x, r0.x, cb0[18].y
-    r0.x = (saturate((r0.xxxx)*(source[18].yyyy))).x;
-    // 42: mad r0.x, r0.y, cb0[16].w, r0.x
-    r0.x = ((r0.yyyy)*(source[16].wwww)+(r0.xxxx)).x;
-    // 43: mul r0.x, r0.x, v3.w
-    r0.x = ((r0.xxxx)*(v3.wwww)).x;
-    // 44: log r0.y, |r0.z|
-    r0.y = (log2(abs(r0.zzzz))).y;
-    // 45: lt r0.z, |r0.z|, l(0.000001)
-    r0.z = (asfloat((uint4)((abs(r0.zzzz))<(float4(0.000001,0.000001,0.000001,0.000001))) * 0xffffffffu)).z;
-    // 46: mul r0.y, r0.y, cb0[16].x
-    r0.y = ((r0.yyyy)*(source[16].xxxx)).y;
-    // 47: exp r0.y, r0.y
-    r0.y = (exp2(r0.yyyy)).y;
-    // 48: mul r0.y, r0.y, cb0[16].y
-    r0.y = ((r0.yyyy)*(source[16].yyyy)).y;
-    // 49: movc r0.y, r0.z, l(0), r0.y
-    r0.y = ((asuint(r0.zzzz) != 0u) ? (float4(asfloat(0u),asfloat(0u),asfloat(0u),asfloat(0u))) : (r0.yyyy)).y;
-    // 50: mad r0.y, r0.w, cb0[16].z, r0.y
-    r0.y = ((r0.wwww)*(source[16].zzzz)+(r0.yyyy)).y;
-    // 51: mad r0.yzw, r0.yyyy, v3.xxyz, cb0[1].xxyz
-    r0.yzw = ((r0.yyyy)*(v3.xxyz)+(source[1].xxyz)).yzw;
-    // 52: mad o0.xyz, r0.yzwy, v5.wwww, v5.xyzx
-    output.xyz = ((r0.yzwy)*(v5.wwww)+(v5.xyzx)).xyz;
-    // 53: mul r0.y, v2.x, cb0[18].w
-    r0.y = ((v2.xxxx)*(source[18].wwww)).y;
-    // 54: mad r1.x, cb0[10].x, cb0[18].z, r0.y
-    r1.x = ((source[10].xxxx)*(source[18].zzzz)+(r0.yyyy)).x;
-    // 55: mul r0.y, v2.y, cb0[19].x
-    r0.y = ((v2.yyyy)*(source[19].xxxx)).y;
-    // 56: mad r1.y, cb0[10].x, cb0[19].y, r0.y
-    r1.y = ((source[10].xxxx)*(source[19].yyyy)+(r0.yyyy)).y;
-    // 57: sample_b_indexable(texture2d)(float,float,float,float) r0.y, r1.xyxx, t2.yxzw, s2, l(0.000000)
-    r0.y = (ArtistNativeSample2((r1.xyxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x, false).yxzw).y;
-    // 58: add r0.z, v4.x, cb0[19].z
-    r0.z = ((v4.xxxx)+(source[19].zzzz)).z;
-    // 59: add r0.y, -r0.z, r0.y
-    r0.y = ((-(r0.zzzz))+(r0.yyyy)).y;
-    // 60: mul_sat r0.y, r0.y, cb0[19].w
-    r0.y = (saturate((r0.yyyy)*(source[19].wwww))).y;
-    // 61: mul_sat r0.x, r0.y, r0.x
-    r0.x = (saturate((r0.yyyy)*(r0.xxxx))).x;
-    // 62: mul o0.w, r0.x, cb0[0].x
-    output.w = ((r0.xxxx)*(source[0].xxxx)).w;
-    return output;
-}
-#endif
-#endif
-
-#if !defined(EFFECT_NATIVE_MESH_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
-#ifndef ARTIST_NATIVE_MODEL_ONLY
-// fx_a_pa_gl_01_4_ad: b0d551a53864c9408d2c03215f9ef88f; selected map 4dd93e1b4ffae10c2db3ed0c4c9132c6db631aa6aa2fdbffcc7ea3e1b5d89ab4.
-float4 ArtistNative3040(ARTIST_NATIVE_INPUT input)
-{
-    float4 source[4]; [unroll] for (uint i=0u; i<4u; ++i) source[i]=0.f;
-    source[0].x=1.f; // Project engine opacity multiplier.
-    float4 output=0.f;
-    source[1] = g_ArtistSourceMaterialParameters[2u];
-    source[2].x = (g_ArtistSourceMaterialParameters[1u].xxxx).x;
-    source[2].y = (g_ArtistSourceMaterialParameters[0u].yyyy).x;
-    source[2].z = (g_ArtistSourceMaterialParameters[0u].zzzz).x;
-    source[2].w = (g_ArtistSourceMaterialParameters[0u].wwww).x;
-    source[3].x = (g_ArtistSourceMaterialParameters[0u].xxxx).x;
-    float4 passValues[4]; [unroll] for(uint passIndex=0u;passIndex<4u;++passIndex) passValues[passIndex]=0.f;
-    passValues[0]=float4(.5f,-.5f,.5f,.5f);
-    float4 v0 = float4(input.sourceBasisX,0.f); // native texcoord10
-    float4 v1 = float4(input.sourceBasisZ,input.handedness); // native texcoord11
-    float4 v2 = float4(input.uv,float2(0.f,0.f)); // native texcoord0
-    float4 v3 = input.color; // native texcoord1
-    float4 v4 = input.dynamicParameter; // native texcoord2
-    float4 v5 = float4(0.f,0.f,0.f,1.f); // native texcoord4
-    float4 v6 = float4(input.tangentView,1.f); // native texcoord6
-    float4 v7 = float4((input.screenUV*float2(2.f,-2.f)+float2(-1.f,1.f))*input.projectionW,input.projectionZ,input.projectionW); // native texcoord5
-    float4 v8 = asfloat(uint4(input.frontFace ? 0xffffffffu : 0u,0u,0u,0u)); // native sv_isfrontface0
-    float4 r0=0.f, r1=0.f;
-    // 1: div r0.xy, v7.xyxx, v7.wwww
-    r0.xy = ((v7.xyxx)/(v7.wwww)).xy;
-    // 2: mad r0.xy, r0.xyxx, cb2[0].xyxx, cb2[0].wzww
-    r0.xy = ((r0.xyxx)*(passValues[0].xyxx)+(passValues[0].wzww)).xy;
-    // Native 3: source device depth mapped to centimetre view depth; reconstruction at 5.
-    r0.x = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, (r0.xyxx).xy, 0.f).y * 100000.f;
-    // Native 5-8: reconstructed view depth is supplied by the runtime adapter.
-    r0.x = r0.x;
-    // 9: add r0.x, r0.x, -v7.w
-    r0.x = ((r0.xxxx)+(-(v7.wwww))).x;
-    // 10: add r0.y, -cb0[3].x, l(1.000000)
-    r0.y = ((-(source[3].xxxx))+(float4(1.000000,1.000000,1.000000,1.000000))).y;
-    // 11: max r0.y, r0.y, l(0.001000)
-    r0.y = (max(r0.yyyy,float4(0.001000,0.001000,0.001000,0.001000))).y;
-    // 12: div_sat r0.x, r0.x, r0.y
-    r0.x = (saturate((r0.xxxx)/(r0.yyyy))).x;
-    // 13: mad r0.y, cb0[2].x, v4.x, l(-1.000000)
-    r0.y = ((source[2].xxxx)*(v4.xxxx)+(float4(-1.000000,-1.000000,-1.000000,-1.000000))).y;
-    // 14: mul r0.y, r0.y, l(0.500000)
-    r0.y = ((r0.yyyy)*(float4(0.500000,0.500000,0.500000,0.500000))).y;
-    // 15: mul r0.z, v4.x, cb0[2].x
-    r0.z = ((v4.xxxx)*(source[2].xxxx)).z;
-    // 16: mad r0.yz, r0.zzzz, v2.xxyx, -r0.yyyy
-    r0.yz = ((r0.zzzz)*(v2.xxyx)+(-(r0.yyyy))).yz;
-    // 17: sample_b_indexable(texture2d)(float,float,float,float) r1.xyzw, r0.yzyy, t0.xyzw, s1, l(0.000000)
-    r1.xyzw = (ArtistNativeSample0((r0.yzyy).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x, false).xyzw).xyzw;
-    // 18: log r0.y, |r1.w|
-    r0.y = (log2(abs(r1.wwww))).y;
-    // 19: mul r0.y, r0.y, cb0[2].w
-    r0.y = ((r0.yyyy)*(source[2].wwww)).y;
-    // 20: exp r0.y, r0.y
-    r0.y = (exp2(r0.yyyy)).y;
-    // 21: mul r0.y, r0.y, v3.w
-    r0.y = ((r0.yyyy)*(v3.wwww)).y;
-    // 22: lt r0.z, |r1.w|, l(0.000001)
-    r0.z = (asfloat((uint4)((abs(r1.wwww))<(float4(0.000001,0.000001,0.000001,0.000001))) * 0xffffffffu)).z;
-    // 23: movc r0.y, r0.z, l(0), |r0.y|
-    r0.y = ((asuint(r0.zzzz) != 0u) ? (float4(asfloat(0u),asfloat(0u),asfloat(0u),asfloat(0u))) : (abs(r0.yyyy))).y;
-    // 24: log r0.z, r0.y
-    r0.z = (log2(r0.yyyy)).z;
-    // 25: lt r0.y, r0.y, l(0.000001)
-    r0.y = (asfloat((uint4)((r0.yyyy)<(float4(0.000001,0.000001,0.000001,0.000001))) * 0xffffffffu)).y;
-    // 26: mul r0.z, r0.z, v4.y
-    r0.z = ((r0.zzzz)*(v4.yyyy)).z;
-    // 27: exp r0.z, r0.z
-    r0.z = (exp2(r0.zzzz)).z;
-    // 28: mul r0.x, r0.x, r0.z
-    r0.x = ((r0.xxxx)*(r0.zzzz)).x;
-    // 29: mul r0.x, r0.x, cb0[0].x
-    r0.x = ((r0.xxxx)*(source[0].xxxx)).x;
-    // 30: movc r0.x, r0.y, l(0), r0.x
-    r0.x = ((asuint(r0.yyyy) != 0u) ? (float4(asfloat(0u),asfloat(0u),asfloat(0u),asfloat(0u))) : (r0.xxxx)).x;
-    // 31: mul r0.yzw, r1.xxyz, cb0[2].yyyy
-    r0.yzw = ((r1.xxyz)*(source[2].yyyy)).yzw;
-    // 32: dp3 r1.w, r0.yzwy, l(0.300000, 0.590000, 0.110000, 0.000000)
-    r1.w = (dot((r0.yzwy).xyz,(float4(0.300000,0.590000,0.110000,0.000000)).xyz).xxxx).w;
-    // 33: mad r1.xyz, -cb0[2].yyyy, r1.xyzx, r1.wwww
-    r1.xyz = ((-(source[2].yyyy))*(r1.xyzx)+(r1.wwww)).xyz;
-    // 34: mad r0.yzw, cb0[2].zzzz, r1.xxyz, r0.yyzw
-    r0.yzw = ((source[2].zzzz)*(r1.xxyz)+(r0.yyzw)).yzw;
-    // 35: mad r0.yzw, r0.yyzw, v3.xxyz, cb0[1].xxyz
-    r0.yzw = ((r0.yyzw)*(v3.xxyz)+(source[1].xxyz)).yzw;
-    // 36: mul r0.yzw, r0.yyzw, v5.wwww
-    r0.yzw = ((r0.yyzw)*(v5.wwww)).yzw;
-    // 37: mul o0.xyz, r0.xxxx, r0.yzwy
-    output.xyz = ((r0.xxxx)*(r0.yzwy)).xyz;
-    // 38: mov o0.w, l(0)
-    output.w = (float4(asfloat(0u),asfloat(0u),asfloat(0u),asfloat(0u))).w;
-    return output;
-}
-#endif
-#endif
-
-#if !defined(EFFECT_NATIVE_MESH_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
-#ifndef ARTIST_NATIVE_MODEL_ONLY
-// fx_c_pa_ring_06_ad: e91186b92721ed429a45977dbd4c5e7e; selected map 1994ac3e07582e978a16e8fdfc9b15127be2206134c65dde6db4fc3232563321.
-float4 ArtistNative3041(ARTIST_NATIVE_INPUT input)
-{
-    float4 source[3]; [unroll] for (uint i=0u; i<3u; ++i) source[i]=0.f;
-    source[0].x=1.f; // Project engine opacity multiplier.
-    float4 output=0.f;
-    source[1] = g_ArtistSourceMaterialParameters[0u];
-    source[2].x = (((float4(1.70000005, 0.0, 0.0, 0.0)+sin((g_ArtistSourceMaterialTime.xxxx*float4(20.9439507, 0.0, 0.0, 0.0))))*float4(0.600000024, 0.0, 0.0, 0.0))).x;
-    source[2].y = ((((float4(1.70000005, 0.0, 0.0, 0.0)+sin((g_ArtistSourceMaterialTime.xxxx*float4(20.9439507, 0.0, 0.0, 0.0))))*float4(0.600000024, 0.0, 0.0, 0.0))*((float4(1.70000005, 0.0, 0.0, 0.0)+cos((g_ArtistSourceMaterialTime.xxxx*float4(8.9759798, 0.0, 0.0, 0.0))))*float4(0.600000024, 0.0, 0.0, 0.0)))).x;
-    source[2].z = (clamp((((float4(1.70000005, 0.0, 0.0, 0.0)+sin((g_ArtistSourceMaterialTime.xxxx*float4(20.9439507, 0.0, 0.0, 0.0))))*float4(0.600000024, 0.0, 0.0, 0.0))*((float4(1.70000005, 0.0, 0.0, 0.0)+cos((g_ArtistSourceMaterialTime.xxxx*float4(8.9759798, 0.0, 0.0, 0.0))))*float4(0.600000024, 0.0, 0.0, 0.0))),float4(0.0, 0.0, 0.0, 0.0),float4(1.0, 0.0, 0.0, 0.0))).x;
-    float4 passValues[4]; [unroll] for(uint passIndex=0u;passIndex<4u;++passIndex) passValues[passIndex]=0.f;
-    passValues[0]=float4(.5f,-.5f,.5f,.5f);
-    float4 v0 = float4(input.sourceBasisX,0.f); // native texcoord10
-    float4 v1 = float4(input.sourceBasisZ,input.handedness); // native texcoord11
-    float4 v2 = float4(input.uv,float2(0.f,0.f)); // native texcoord0
-    float4 v3 = input.color; // native texcoord1
-    float4 v4 = float4(0.f,0.f,0.f,0.f); // native texcoord2
-    float4 v5 = float4(0.f,0.f,0.f,1.f); // native texcoord4
-    float4 v6 = float4(input.tangentView,1.f); // native texcoord6
-    float4 v7 = float4((input.screenUV*float2(2.f,-2.f)+float2(-1.f,1.f))*input.projectionW,input.projectionZ,input.projectionW); // native texcoord5
-    float4 v8 = asfloat(uint4(input.frontFace ? 0xffffffffu : 0u,0u,0u,0u)); // native sv_isfrontface0
-    float4 r0=0.f;
-    // 1: add r0.xy, v2.xyxx, l(-0.500000, -0.500000, 0.000000, 0.000000)
-    r0.xy = ((v2.xyxx)+(float4(-0.500000,-0.500000,0.000000,0.000000))).xy;
-    // 2: mul r0.xy, r0.xyxx, r0.xyxx
-    r0.xy = ((r0.xyxx)*(r0.xyxx)).xy;
-    // 3: add r0.x, r0.y, r0.x
-    r0.x = ((r0.yyyy)+(r0.xxxx)).x;
-    // 4: add r0.x, -r0.x, l(1.000000)
-    r0.x = ((-(r0.xxxx))+(float4(1.000000,1.000000,1.000000,1.000000))).x;
-    // 5: log r0.y, |r0.x|
-    r0.y = (log2(abs(r0.xxxx))).y;
-    // 6: lt r0.x, |r0.x|, l(0.000001)
-    r0.x = (asfloat((uint4)((abs(r0.xxxx))<(float4(0.000001,0.000001,0.000001,0.000001))) * 0xffffffffu)).x;
-    // 7: mul r0.yz, r0.yyyy, l(0.000000, 15.000000, 30.000000, 0.000000)
-    r0.yz = ((r0.yyyy)*(float4(0.000000,15.000000,30.000000,0.000000))).yz;
-    // 8: exp r0.yz, r0.yyzy
-    r0.yz = (exp2(r0.yyzy)).yz;
-    // 9: mul r0.y, r0.y, l(3.000000)
-    r0.y = ((r0.yyyy)*(float4(3.000000,3.000000,3.000000,3.000000))).y;
-    // 10: min r0.yz, r0.yyzy, l(0.000000, 1.000000, 1.000000, 0.000000)
-    r0.yz = (min(r0.yyzy,float4(0.000000,1.000000,1.000000,0.000000))).yz;
-    // 11: movc r0.z, r0.x, l(-0.000000), -r0.z
-    r0.z = ((asuint(r0.xxxx) != 0u) ? (float4(-0.000000,-0.000000,-0.000000,-0.000000)) : (-(r0.zzzz))).z;
-    // 12: movc r0.x, r0.x, l(0), r0.y
-    r0.x = ((asuint(r0.xxxx) != 0u) ? (float4(asfloat(0u),asfloat(0u),asfloat(0u),asfloat(0u))) : (r0.yyyy)).x;
-    // 13: add r0.x, r0.z, r0.x
-    r0.x = ((r0.zzzz)+(r0.xxxx)).x;
-    // 14: max r0.x, r0.x, l(0.000000)
-    r0.x = (max(r0.xxxx,float4(0.000000,0.000000,0.000000,0.000000))).x;
-    // 15: mul r0.y, r0.x, r0.x
-    r0.y = ((r0.xxxx)*(r0.xxxx)).y;
-    // 16: lt r0.x, r0.x, l(0.000001)
-    r0.x = (asfloat((uint4)((r0.xxxx)<(float4(0.000001,0.000001,0.000001,0.000001))) * 0xffffffffu)).x;
-    // 17: mad r0.z, cb0[2].z, l(0.500000), l(0.500000)
-    r0.z = ((source[2].zzzz)*(float4(0.500000,0.500000,0.500000,0.500000))+(float4(0.500000,0.500000,0.500000,0.500000))).z;
-    // 18: mul r0.y, r0.z, r0.y
-    r0.y = ((r0.zzzz)*(r0.yyyy)).y;
-    // 19: mul r0.yzw, r0.yyyy, v3.xxyz
-    r0.yzw = ((r0.yyyy)*(v3.xxyz)).yzw;
-    // 20: movc r0.xyz, r0.xxxx, l(0,0,0,0), r0.yzwy
-    r0.xyz = ((asuint(r0.xxxx) != 0u) ? (float4(asfloat(0u),asfloat(0u),asfloat(0u),asfloat(0u))) : (r0.yzwy)).xyz;
-    // 21: add r0.xyz, r0.xyzx, cb0[1].xyzx
-    r0.xyz = ((r0.xyzx)+(source[1].xyzx)).xyz;
-    // 22: mul r0.xyz, r0.xyzx, v5.wwww
-    r0.xyz = ((r0.xyzx)*(v5.wwww)).xyz;
-    // 23: mul r0.w, v3.w, cb0[0].x
-    r0.w = ((v3.wwww)*(source[0].xxxx)).w;
-    // 24: mul o0.xyz, r0.wwww, r0.xyzx
-    output.xyz = ((r0.wwww)*(r0.xyzx)).xyz;
-    // 25: mov o0.w, l(0)
-    output.w = (float4(asfloat(0u),asfloat(0u),asfloat(0u),asfloat(0u))).w;
-    return output;
-}
-#endif
-#endif
-
-#if !defined(EFFECT_NATIVE_MESH_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
-#ifndef ARTIST_NATIVE_MODEL_ONLY
-// fx_j_pa_fluid_01_1_tr: 28af9ecbaa26d040820b16dea7d6fbdd; selected map 7b903d701d364ecd68b56da9eb8569e4558885ac9e5c7d5cfbb0fd6bf5a89843.
-float4 ArtistNative3042(ARTIST_NATIVE_INPUT input)
-{
-    float4 source[7]; [unroll] for (uint i=0u; i<7u; ++i) source[i]=0.f;
-    source[0].x=1.f; // Project engine opacity multiplier.
-    float4 output=0.f;
-    source[1] = g_ArtistSourceMaterialParameters[4u];
-    source[2].x = (g_ArtistSourceMaterialParameters[1u].yyyy).x;
-    source[2].y = (g_ArtistSourceMaterialParameters[3u].xxxx).x;
-    source[2].z = (g_ArtistSourceMaterialTime.xxxx).x;
-    source[2].w = (g_ArtistSourceMaterialParameters[3u].zzzz).x;
-    source[3].x = (g_ArtistSourceMaterialParameters[3u].yyyy).x;
-    source[3].y = (g_ArtistSourceMaterialParameters[2u].wwww).x;
-    source[3].z = (g_ArtistSourceMaterialParameters[0u].wwww).x;
-    source[3].w = (g_ArtistSourceMaterialParameters[1u].xxxx).x;
-    source[4].x = (g_ArtistSourceMaterialParameters[0u].xxxx).x;
-    source[4].y = (g_ArtistSourceMaterialParameters[0u].yyyy).x;
-    source[4].z = (g_ArtistSourceMaterialParameters[2u].xxxx).x;
-    source[4].w = (g_ArtistSourceMaterialParameters[2u].zzzz).x;
-    source[5].x = (g_ArtistSourceMaterialParameters[2u].yyyy).x;
-    source[5].y = (g_ArtistSourceMaterialParameters[1u].zzzz).x;
-    source[5].z = ((float4(-0.100000001, 0.0, 0.0, 0.0)*g_ArtistSourceMaterialParameters[1u].zzzz)).x;
-    source[5].w = (g_ArtistSourceMaterialParameters[0u].zzzz).x;
-    source[6].x = (g_ArtistSourceMaterialParameters[1u].wwww).x;
-    source[6].y = ((float4(-1.0, 0.0, 0.0, 0.0)*g_ArtistSourceMaterialParameters[1u].wwww)).x;
-    float4 passValues[4]; [unroll] for(uint passIndex=0u;passIndex<4u;++passIndex) passValues[passIndex]=0.f;
-    passValues[0]=float4(.5f,-.5f,.5f,.5f);
-    float4 v0 = float4(input.sourceBasisX,0.f); // native texcoord10
-    float4 v1 = float4(input.sourceBasisZ,input.handedness); // native texcoord11
-    float4 v2 = float4(input.uv,float2(0.f,0.f)); // native texcoord0
-    float4 v3 = input.color; // native texcoord1
-    float4 v4 = input.dynamicParameter; // native texcoord2
-    float4 v5 = float4(0.f,0.f,0.f,1.f); // native texcoord4
-    float4 v6 = float4(input.tangentView,1.f); // native texcoord6
-    float4 v7 = float4((input.screenUV*float2(2.f,-2.f)+float2(-1.f,1.f))*input.projectionW,input.projectionZ,input.projectionW); // native texcoord5
-    float4 v8 = asfloat(uint4(input.frontFace ? 0xffffffffu : 0u,0u,0u,0u)); // native sv_isfrontface0
-    float4 r0=0.f, r1=0.f, r2=0.f, r3=0.f, r4=0.f, r5=0.f;
-    // 1: add r0.x, v4.x, cb0[5].z
-    r0.x = ((v4.xxxx)+(source[5].zzzz)).x;
-    // 2: add r0.y, cb0[2].x, l(-1.000000)
-    r0.y = ((source[2].xxxx)+(float4(-1.000000,-1.000000,-1.000000,-1.000000))).y;
-    // 3: mul r0.y, r0.y, l(0.500000)
-    r0.y = ((r0.yyyy)*(float4(0.500000,0.500000,0.500000,0.500000))).y;
-    // 4: mad r0.yz, cb0[2].xxxx, v2.xxyx, -r0.yyyy
-    r0.yz = ((source[2].xxxx)*(v2.xxyx)+(-(r0.yyyy))).yz;
-    // 5: add r1.xy, r0.yzyy, l(-0.500000, -0.500000, 0.000000, 0.000000)
-    r1.xy = ((r0.yzyy)+(float4(-0.500000,-0.500000,0.000000,0.000000))).xy;
-    // 6: dp2 r0.w, r1.xyxx, r1.xyxx
-    r0.w = (dot((r1.xyxx).xy,(r1.xyxx).xy).xxxx).w;
-    // 7: sqrt r0.w, r0.w
-    r0.w = (sqrt(r0.wwww)).w;
-    // 8: mad r0.w, r0.w, l(2.000000), l(1.000000)
-    r0.w = ((r0.wwww)*(float4(2.000000,2.000000,2.000000,2.000000))+(float4(1.000000,1.000000,1.000000,1.000000))).w;
-    // 9: add r0.x, -r0.x, r0.w
-    r0.x = ((-(r0.xxxx))+(r0.wwww)).x;
-    // 10: add_sat r0.x, r0.x, r0.x
-    r0.x = (saturate((r0.xxxx)+(r0.xxxx))).x;
-    // 11: mul r1.xy, r0.yzyy, cb0[4].wwww
-    r1.xy = ((r0.yzyy)*(source[4].wwww)).xy;
-    // 12: mad r2.x, cb0[2].z, cb0[4].z, r1.x
-    r2.x = ((source[2].zzzz)*(source[4].zzzz)+(r1.xxxx)).x;
-    // 13: mad r2.y, cb0[2].z, cb0[5].x, r1.y
-    r2.y = ((source[2].zzzz)*(source[5].xxxx)+(r1.yyyy)).y;
-    // 14: sample_b_indexable(texture2d)(float,float,float,float) r1.xyz, r2.xyxx, t2.xyzw, s2, l(0.000000)
-    r1.xyz = (ArtistNativeSample2((r2.xyxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x, false).xyzw).xyz;
-    // 15: mad r2.xyz, r0.xxxx, r1.xyzx, r0.xxxx
-    r2.xyz = ((r0.xxxx)*(r1.xyzx)+(r0.xxxx)).xyz;
-    // 16: max r2.xyz, |r2.xyzx|, l(0.000001, 0.000001, 0.000001, 0.000000)
-    r2.xyz = (max(abs(r2.xyzx),float4(0.000001,0.000001,0.000001,0.000000))).xyz;
-    // 17: mul r3.xyz, r2.xyzx, r2.xyzx
-    r3.xyz = ((r2.xyzx)*(r2.xyzx)).xyz;
-    // 18: mul r3.xyz, r3.xyzx, r3.xyzx
-    r3.xyz = ((r3.xyzx)*(r3.xyzx)).xyz;
-    // 19: mul r2.xyz, r2.xyzx, r3.xyzx
-    r2.xyz = ((r2.xyzx)*(r3.xyzx)).xyz;
-    // 20: min r2.xyz, r2.xyzx, l(1.000000, 1.000000, 1.000000, 0.000000)
-    r2.xyz = (min(r2.xyzx,float4(1.000000,1.000000,1.000000,0.000000))).xyz;
-    // 21: add r0.x, r0.w, -v4.x
-    r0.x = ((r0.wwww)+(-(v4.xxxx))).x;
-    // 22: add_sat r0.x, r0.x, r0.x
-    r0.x = (saturate((r0.xxxx)+(r0.xxxx))).x;
-    // 23: mad r3.xyz, r0.xxxx, r1.xyzx, r0.xxxx
-    r3.xyz = ((r0.xxxx)*(r1.xyzx)+(r0.xxxx)).xyz;
-    // 24: max r3.xyz, |r3.xyzx|, l(0.000001, 0.000001, 0.000001, 0.000000)
-    r3.xyz = (max(abs(r3.xyzx),float4(0.000001,0.000001,0.000001,0.000000))).xyz;
-    // 25: mul r4.xyz, r3.xyzx, r3.xyzx
-    r4.xyz = ((r3.xyzx)*(r3.xyzx)).xyz;
-    // 26: mul r4.xyz, r4.xyzx, r4.xyzx
-    r4.xyz = ((r4.xyzx)*(r4.xyzx)).xyz;
-    // 27: mul r3.xyz, r3.xyzx, r4.xyzx
-    r3.xyz = ((r3.xyzx)*(r4.xyzx)).xyz;
-    // 28: min r3.xyz, r3.xyzx, l(1.000000, 1.000000, 1.000000, 0.000000)
-    r3.xyz = (min(r3.xyzx,float4(1.000000,1.000000,1.000000,0.000000))).xyz;
-    // 29: add r2.xyz, r2.xyzx, -r3.xyzx
-    r2.xyz = ((r2.xyzx)+(-(r3.xyzx))).xyz;
-    // 30: max r2.xyz, |r2.xyzx|, l(0.000001, 0.000001, 0.000001, 0.000000)
-    r2.xyz = (max(abs(r2.xyzx),float4(0.000001,0.000001,0.000001,0.000000))).xyz;
-    // 31: mul r4.xyz, r2.xyzx, r2.xyzx
-    r4.xyz = ((r2.xyzx)*(r2.xyzx)).xyz;
-    // 32: mul r4.xyz, r4.xyzx, r4.xyzx
-    r4.xyz = ((r4.xyzx)*(r4.xyzx)).xyz;
-    // 33: mul r2.xyz, r2.xyzx, r4.xyzx
-    r2.xyz = ((r2.xyzx)*(r4.xyzx)).xyz;
-    // 34: mul r4.xy, r0.yzyy, cb0[2].wwww
-    r4.xy = ((r0.yzyy)*(source[2].wwww)).xy;
-    // 35: mad r5.x, cb0[2].z, cb0[2].y, r4.x
-    r5.x = ((source[2].zzzz)*(source[2].yyyy)+(r4.xxxx)).x;
-    // 36: mad r5.y, cb0[2].z, cb0[3].x, r4.y
-    r5.y = ((source[2].zzzz)*(source[3].xxxx)+(r4.yyyy)).y;
-    // 37: sample_b_indexable(texture2d)(float,float,float,float) r4.xy, r5.xyxx, t0.xyzw, s0, l(0.000000)
-    r4.xy = (ArtistNativeSample0((r5.xyxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x, false).xyzw).xy;
-    // 38: mad r4.xy, r4.xyxx, l(2.000000, 2.000000, 0.000000, 0.000000), l(-1.000000, -1.000000, 0.000000, 0.000000)
-    r4.xy = ((r4.xyxx)*(float4(2.000000,2.000000,0.000000,0.000000))+(float4(-1.000000,-1.000000,0.000000,0.000000))).xy;
-    // 39: mad r0.xy, cb0[3].yyyy, r4.xyxx, r0.yzyy
-    r0.xy = ((source[3].yyyy)*(r4.xyxx)+(r0.yzyy)).xy;
-    // 40: add r0.xy, r0.xyxx, l(-0.500000, -0.500000, 0.000000, 0.000000)
-    r0.xy = ((r0.xyxx)+(float4(-0.500000,-0.500000,0.000000,0.000000))).xy;
-    // 41: mad r0.xy, r0.xyxx, cb0[3].zwzz, l(0.500000, 0.500000, 0.000000, 0.000000)
-    r0.xy = ((r0.xyxx)*(source[3].zwzz)+(float4(0.500000,0.500000,0.000000,0.000000))).xy;
-    // 42: sample_b_indexable(texture2d)(float,float,float,float) r0.xyz, r0.xyxx, t1.xyzw, s1, l(0.000000)
-    r0.xyz = (ArtistNativeSample1((r0.xyxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x, false).xyzw).xyz;
-    // 43: dp3 r1.w, r0.xyzx, l(0.300000, 0.590000, 0.110000, 0.000000)
-    r1.w = (dot((r0.xyzx).xyz,(float4(0.300000,0.590000,0.110000,0.000000)).xyz).xxxx).w;
-    // 44: add r4.xyz, -r0.xyzx, r1.wwww
-    r4.xyz = ((-(r0.xyzx))+(r1.wwww)).xyz;
-    // 45: mad r0.xyz, cb0[4].xxxx, r4.xyzx, r0.xyzx
-    r0.xyz = ((source[4].xxxx)*(r4.xyzx)+(r0.xyzx)).xyz;
-    // 46: mul r0.xyz, r0.xyzx, cb0[4].yyyy
-    r0.xyz = ((r0.xyzx)*(source[4].yyyy)).xyz;
-    // 47: mad r0.xyz, r3.xyzx, -r0.xyzx, r0.xyzx
-    r0.xyz = ((r3.xyzx)*(-(r0.xyzx))+(r0.xyzx)).xyz;
-    // 48: mul r2.xyz, r2.xyzx, r0.xyzx
-    r2.xyz = ((r2.xyzx)*(r0.xyzx)).xyz;
-    // 49: mad r0.xyz, cb0[5].wwww, r2.xyzx, r0.xyzx
-    r0.xyz = ((source[5].wwww)*(r2.xyzx)+(r0.xyzx)).xyz;
-    // 50: add r1.w, v4.x, cb0[6].y
-    r1.w = ((v4.xxxx)+(source[6].yyyy)).w;
-    // 51: add r0.w, r0.w, -r1.w
-    r0.w = ((r0.wwww)+(-(r1.wwww))).w;
-    // 52: add_sat r0.w, r0.w, r0.w
-    r0.w = (saturate((r0.wwww)+(r0.wwww))).w;
-    // 53: mad r1.xyz, r0.wwww, r1.xyzx, r0.wwww
-    r1.xyz = ((r0.wwww)*(r1.xyzx)+(r0.wwww)).xyz;
-    // 54: max r1.xyz, |r1.xyzx|, l(0.000001, 0.000001, 0.000001, 0.000000)
-    r1.xyz = (max(abs(r1.xyzx),float4(0.000001,0.000001,0.000001,0.000000))).xyz;
-    // 55: mul r2.xyz, r1.xyzx, r1.xyzx
-    r2.xyz = ((r1.xyzx)*(r1.xyzx)).xyz;
-    // 56: mul r2.xyz, r2.xyzx, r2.xyzx
-    r2.xyz = ((r2.xyzx)*(r2.xyzx)).xyz;
-    // 57: mul r1.xyz, r1.xyzx, r2.xyzx
-    r1.xyz = ((r1.xyzx)*(r2.xyzx)).xyz;
-    // 58: min r1.xyz, r1.xyzx, l(1.000000, 1.000000, 1.000000, 0.000000)
-    r1.xyz = (min(r1.xyzx,float4(1.000000,1.000000,1.000000,0.000000))).xyz;
-    // 59: mul r0.xyz, r0.xyzx, r1.xyzx
-    r0.xyz = ((r0.xyzx)*(r1.xyzx)).xyz;
-    // 60: dp3 r0.w, r0.xyzx, l(0.300000, 0.590000, 0.110000, 0.000000)
-    r0.w = (dot((r0.xyzx).xyz,(float4(0.300000,0.590000,0.110000,0.000000)).xyz).xxxx).w;
-    // 61: mad r0.xyz, v3.xyzx, r0.xyzx, cb0[1].xyzx
-    r0.xyz = ((v3.xyzx)*(r0.xyzx)+(source[1].xyzx)).xyz;
-    // 62: mad o0.xyz, r0.xyzx, v5.wwww, v5.xyzx
-    output.xyz = ((r0.xyzx)*(v5.wwww)+(v5.xyzx)).xyz;
-    // 63: log r0.x, |r0.w|
-    r0.x = (log2(abs(r0.wwww))).x;
-    // 64: lt r0.y, |r0.w|, l(0.000001)
-    r0.y = (asfloat((uint4)((abs(r0.wwww))<(float4(0.000001,0.000001,0.000001,0.000001))) * 0xffffffffu)).y;
-    // 65: mul r0.x, r0.x, v4.y
-    r0.x = ((r0.xxxx)*(v4.yyyy)).x;
-    // 66: exp r0.x, r0.x
-    r0.x = (exp2(r0.xxxx)).x;
-    // 67: mul_sat r0.x, r0.x, v3.w
-    r0.x = (saturate((r0.xxxx)*(v3.wwww))).x;
-    // 68: mul r0.x, r0.x, cb0[0].x
-    r0.x = ((r0.xxxx)*(source[0].xxxx)).x;
-    // 69: movc o0.w, r0.y, l(0), r0.x
-    output.w = ((asuint(r0.yyyy) != 0u) ? (float4(asfloat(0u),asfloat(0u),asfloat(0u),asfloat(0u))) : (r0.xxxx)).w;
     return output;
 }
 #endif
@@ -6673,328 +5722,6 @@ float4 ArtistNative3046(ARTIST_NATIVE_INPUT input)
     // 63: mad r0.xyz, r0.xxxx, cb0[1].xyzx, cb0[2].xyzx
     r0.xyz = ((r0.xxxx)*(source[1].xyzx)+(source[2].xyzx)).xyz;
     // 64: mad o0.xyz, r0.xyzx, v5.wwww, v5.xyzx
-    output.xyz = ((r0.xyzx)*(v5.wwww)+(v5.xyzx)).xyz;
-    return output;
-}
-#endif
-#endif
-
-#if !defined(EFFECT_NATIVE_MESH_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
-#ifndef ARTIST_NATIVE_MODEL_ONLY
-// fx_o_pa_watertrail_02_01_tr: c8d46bc03ec9c14cbc02326980dd6464; selected map 784b4f7e0f67db00ac7518c9187667686cc14db2f0398c14cb40e0ed70057c6b.
-float4 ArtistNative3047(ARTIST_NATIVE_INPUT input)
-{
-    float4 source[18]; [unroll] for (uint i=0u; i<18u; ++i) source[i]=0.f;
-    source[0].x=1.f; // Project engine opacity multiplier.
-    float4 output=0.f;
-    source[1] = g_ArtistSourceMaterialParameters[9u];
-    source[2] = ArtistNativeAppend(g_ArtistSourceMaterialParameters[7u].zzzz,g_ArtistSourceMaterialParameters[7u].wwww,1u);
-    source[3] = ArtistNativeAppend(g_ArtistSourceMaterialParameters[3u].wwww,g_ArtistSourceMaterialParameters[4u].xxxx,1u);
-    source[4] = ArtistNativeAppend(cos(((g_ArtistSourceMaterialParameters[4u].wwww*float4(6.28000021, 0.0, 0.0, 0.0))*float4(0.25, 0.0, 0.0, 0.0))),(float4(-1.0, 0.0, 0.0, 0.0)*sin(((g_ArtistSourceMaterialParameters[4u].wwww*float4(6.28000021, 0.0, 0.0, 0.0))*float4(0.25, 0.0, 0.0, 0.0)))),1u);
-    source[5] = ArtistNativeAppend(sin(((g_ArtistSourceMaterialParameters[4u].wwww*float4(6.28000021, 0.0, 0.0, 0.0))*float4(0.25, 0.0, 0.0, 0.0))),cos(((g_ArtistSourceMaterialParameters[4u].wwww*float4(6.28000021, 0.0, 0.0, 0.0))*float4(0.25, 0.0, 0.0, 0.0))),1u);
-    source[6] = ArtistNativeAppend(cos((g_ArtistSourceMaterialParameters[1u].wwww*float4(0.25, 0.0, 0.0, 0.0))),(float4(-1.0, 0.0, 0.0, 0.0)*sin((g_ArtistSourceMaterialParameters[1u].wwww*float4(0.25, 0.0, 0.0, 0.0)))),1u);
-    source[7] = ArtistNativeAppend(sin((g_ArtistSourceMaterialParameters[1u].wwww*float4(0.25, 0.0, 0.0, 0.0))),cos((g_ArtistSourceMaterialParameters[1u].wwww*float4(0.25, 0.0, 0.0, 0.0))),1u);
-    source[8] = g_ArtistSourceMaterialParameters[8u];
-    source[9].x = ((float4(-1.0, 0.0, 0.0, 0.0)*sin(((g_ArtistSourceMaterialParameters[4u].wwww*float4(6.28000021, 0.0, 0.0, 0.0))*float4(0.25, 0.0, 0.0, 0.0))))).x;
-    source[9].y = (cos(((g_ArtistSourceMaterialParameters[4u].wwww*float4(6.28000021, 0.0, 0.0, 0.0))*float4(0.25, 0.0, 0.0, 0.0)))).x;
-    source[9].z = (g_ArtistSourceMaterialParameters[4u].yyyy).x;
-    source[9].w = (g_ArtistSourceMaterialTime.xxxx).x;
-    source[10].x = (g_ArtistSourceMaterialParameters[5u].xxxx).x;
-    source[10].y = (g_ArtistSourceMaterialParameters[5u].yyyy).x;
-    source[10].z = (g_ArtistSourceMaterialParameters[4u].zzzz).x;
-    source[10].w = (g_ArtistSourceMaterialParameters[3u].yyyy).x;
-    source[11].x = (g_ArtistSourceMaterialParameters[3u].zzzz).x;
-    source[11].y = (g_ArtistSourceMaterialParameters[6u].zzzz).x;
-    source[11].z = (g_ArtistSourceMaterialParameters[7u].xxxx).x;
-    source[11].w = (g_ArtistSourceMaterialParameters[7u].yyyy).x;
-    source[12].x = (g_ArtistSourceMaterialParameters[6u].wwww).x;
-    source[12].y = (g_ArtistSourceMaterialParameters[7u].wwww).x;
-    source[12].z = (g_ArtistSourceMaterialParameters[7u].zzzz).x;
-    source[12].w = (g_ArtistSourceMaterialParameters[6u].yyyy).x;
-    source[13].x = (g_ArtistSourceMaterialParameters[4u].xxxx).x;
-    source[13].y = (g_ArtistSourceMaterialParameters[3u].wwww).x;
-    source[13].z = (g_ArtistSourceMaterialParameters[2u].zzzz).x;
-    source[13].w = (g_ArtistSourceMaterialParameters[2u].wwww).x;
-    source[14].x = (g_ArtistSourceMaterialParameters[2u].yyyy).x;
-    source[14].y = (g_ArtistSourceMaterialParameters[0u].xxxx).x;
-    source[14].z = (g_ArtistSourceMaterialParameters[0u].zzzz).x;
-    source[14].w = (g_ArtistSourceMaterialParameters[0u].wwww).x;
-    source[15].x = (cos((g_ArtistSourceMaterialParameters[1u].wwww*float4(0.25, 0.0, 0.0, 0.0)))).x;
-    source[15].y = (g_ArtistSourceMaterialParameters[0u].yyyy).x;
-    source[15].z = (g_ArtistSourceMaterialParameters[1u].yyyy).x;
-    source[15].w = (g_ArtistSourceMaterialParameters[1u].zzzz).x;
-    source[16].x = (g_ArtistSourceMaterialParameters[1u].xxxx).x;
-    source[16].y = (g_ArtistSourceMaterialParameters[2u].xxxx).x;
-    source[16].z = (g_ArtistSourceMaterialParameters[5u].zzzz).x;
-    source[16].w = (g_ArtistSourceMaterialParameters[5u].wwww).x;
-    source[17].x = (g_ArtistSourceMaterialParameters[6u].xxxx).x;
-    source[17].y = (g_ArtistSourceMaterialParameters[3u].xxxx).x;
-    float4 passValues[4]; [unroll] for(uint passIndex=0u;passIndex<4u;++passIndex) passValues[passIndex]=0.f;
-    passValues[0]=float4(.5f,-.5f,.5f,.5f);
-    float4 v0 = float4(input.sourceBasisX,input.subUVBlend); // native texcoord10
-    float4 v1 = float4(input.sourceBasisZ,input.handedness); // native texcoord11
-    float4 v2 = float4(input.uv,input.uvNext); // native texcoord0
-    float4 v3 = input.color; // native texcoord1
-    float4 v4 = input.dynamicParameter; // native texcoord2
-    float4 v5 = float4(0.f,0.f,0.f,1.f); // native texcoord4
-    float4 v6 = float4(input.tangentView,1.f); // native texcoord6
-    float4 v7 = float4((input.screenUV*float2(2.f,-2.f)+float2(-1.f,1.f))*input.projectionW,input.projectionZ,input.projectionW); // native texcoord5
-    float4 v8 = asfloat(uint4(input.frontFace ? 0xffffffffu : 0u,0u,0u,0u)); // native sv_isfrontface0
-    float4 r0=0.f, r1=0.f, r2=0.f;
-    // 1: add r0.xy, v2.xyxx, l(-0.500000, -0.500000, 0.000000, 0.000000)
-    r0.xy = ((v2.xyxx)+(float4(-0.500000,-0.500000,0.000000,0.000000))).xy;
-    // 2: max r0.z, |r0.y|, |r0.x|
-    r0.z = (max(abs(r0.yyyy),abs(r0.xxxx))).z;
-    // 3: div r0.z, l(1.000000, 1.000000, 1.000000, 1.000000), r0.z
-    r0.z = ((float4(1.000000,1.000000,1.000000,1.000000))/(r0.zzzz)).z;
-    // 4: min r0.w, |r0.y|, |r0.x|
-    r0.w = (min(abs(r0.yyyy),abs(r0.xxxx))).w;
-    // 5: mul r0.z, r0.z, r0.w
-    r0.z = ((r0.zzzz)*(r0.wwww)).z;
-    // 6: mul r0.w, r0.z, r0.z
-    r0.w = ((r0.zzzz)*(r0.zzzz)).w;
-    // 7: mad r1.x, r0.w, l(0.020835), l(-0.085133)
-    r1.x = ((r0.wwww)*(float4(0.020835,0.020835,0.020835,0.020835))+(float4(-0.085133,-0.085133,-0.085133,-0.085133))).x;
-    // 8: mad r1.x, r0.w, r1.x, l(0.180141)
-    r1.x = ((r0.wwww)*(r1.xxxx)+(float4(0.180141,0.180141,0.180141,0.180141))).x;
-    // 9: mad r1.x, r0.w, r1.x, l(-0.330299)
-    r1.x = ((r0.wwww)*(r1.xxxx)+(float4(-0.330299,-0.330299,-0.330299,-0.330299))).x;
-    // 10: mad r0.w, r0.w, r1.x, l(0.999866)
-    r0.w = ((r0.wwww)*(r1.xxxx)+(float4(0.999866,0.999866,0.999866,0.999866))).w;
-    // 11: mul r1.x, r0.w, r0.z
-    r1.x = ((r0.wwww)*(r0.zzzz)).x;
-    // 12: mad r1.x, r1.x, l(-2.000000), l(1.570796)
-    r1.x = ((r1.xxxx)*(float4(-2.000000,-2.000000,-2.000000,-2.000000))+(float4(1.570796,1.570796,1.570796,1.570796))).x;
-    // 13: lt r1.y, |r0.y|, |r0.x|
-    r1.y = (asfloat((uint4)((abs(r0.yyyy))<(abs(r0.xxxx))) * 0xffffffffu)).y;
-    // 14: and r1.x, r1.y, r1.x
-    r1.x = (asfloat(asuint(r1.yyyy) & asuint(r1.xxxx))).x;
-    // 15: mad r0.z, r0.z, r0.w, r1.x
-    r0.z = ((r0.zzzz)*(r0.wwww)+(r1.xxxx)).z;
-    // 16: lt r0.w, r0.y, -r0.y
-    r0.w = (asfloat((uint4)((r0.yyyy)<(-(r0.yyyy))) * 0xffffffffu)).w;
-    // 17: and r0.w, r0.w, l(0xc0490fdb)
-    r0.w = (asfloat(asuint(r0.wwww) & uint4(0xc0490fdbu,0xc0490fdbu,0xc0490fdbu,0xc0490fdbu))).w;
-    // 18: add r0.z, r0.w, r0.z
-    r0.z = ((r0.wwww)+(r0.zzzz)).z;
-    // 19: min r0.w, r0.y, r0.x
-    r0.w = (min(r0.yyyy,r0.xxxx)).w;
-    // 20: lt r0.w, r0.w, -r0.w
-    r0.w = (asfloat((uint4)((r0.wwww)<(-(r0.wwww))) * 0xffffffffu)).w;
-    // 21: max r1.x, r0.y, r0.x
-    r1.x = (max(r0.yyyy,r0.xxxx)).x;
-    // 22: ge r1.x, r1.x, -r1.x
-    r1.x = (asfloat((uint4)((r1.xxxx)>=(-(r1.xxxx))) * 0xffffffffu)).x;
-    // 23: and r0.w, r0.w, r1.x
-    r0.w = (asfloat(asuint(r0.wwww) & asuint(r1.xxxx))).w;
-    // 24: movc r0.z, r0.w, -r0.z, r0.z
-    r0.z = ((asuint(r0.wwww) != 0u) ? (-(r0.zzzz)) : (r0.zzzz)).z;
-    // 25: mad r1.x, r0.z, l(0.159155), l(0.500000)
-    r1.x = ((r0.zzzz)*(float4(0.159155,0.159155,0.159155,0.159155))+(float4(0.500000,0.500000,0.500000,0.500000))).x;
-    // 26: dp2 r0.z, r0.xyxx, r0.xyxx
-    r0.z = (dot((r0.xyxx).xy,(r0.xyxx).xy).xxxx).z;
-    // 27: sqrt r0.z, r0.z
-    r0.z = (sqrt(r0.zzzz)).z;
-    // 28: log r0.w, r0.z
-    r0.w = (log2(r0.zzzz)).w;
-    // 29: mul r0.w, r0.w, v4.w
-    r0.w = ((r0.wwww)*(v4.wwww)).w;
-    // 30: exp r0.w, r0.w
-    r0.w = (exp2(r0.wwww)).w;
-    // 31: lt r1.z, r0.z, l(0.000001)
-    r1.z = (asfloat((uint4)((r0.zzzz)<(float4(0.000001,0.000001,0.000001,0.000001))) * 0xffffffffu)).z;
-    // 32: mad r0.z, -r0.z, l(2.000000), l(1.000000)
-    r0.z = ((-(r0.zzzz))*(float4(2.000000,2.000000,2.000000,2.000000))+(float4(1.000000,1.000000,1.000000,1.000000))).z;
-    // 33: max r0.z, r0.z, l(0.000000)
-    r0.z = (max(r0.zzzz,float4(0.000000,0.000000,0.000000,0.000000))).z;
-    // 34: mul r0.z, r0.z, cb0[16].z
-    r0.z = ((r0.zzzz)*(source[16].zzzz)).z;
-    // 35: max r0.z, r0.z, cb0[17].x
-    r0.z = (max(r0.zzzz,source[17].xxxx)).z;
-    // 36: min r0.z, r0.z, cb0[16].w
-    r0.z = (min(r0.zzzz,source[16].wwww)).z;
-    // 37: movc r1.y, r1.z, l(0), r0.w
-    r1.y = ((asuint(r1.zzzz) != 0u) ? (float4(asfloat(0u),asfloat(0u),asfloat(0u),asfloat(0u))) : (r0.wwww)).y;
-    // 38: mul r1.xy, r1.xyxx, cb0[10].xyxx
-    r1.xy = ((r1.xyxx)*(source[10].xyxx)).xy;
-    // 39: mad r2.x, cb0[9].w, cb0[9].z, r1.x
-    r2.x = ((source[9].wwww)*(source[9].zzzz)+(r1.xxxx)).x;
-    // 40: mad r2.y, cb0[9].w, cb0[10].z, r1.y
-    r2.y = ((source[9].wwww)*(source[10].zzzz)+(r1.yyyy)).y;
-    // 41: mul r1.x, v4.x, cb0[10].w
-    r1.x = ((v4.xxxx)*(source[10].wwww)).x;
-    // 42: mul r1.y, v4.x, cb0[11].x
-    r1.y = ((v4.xxxx)*(source[11].xxxx)).y;
-    // 43: mad r1.xy, r2.xyxx, l(2.000000, 2.000000, 0.000000, 0.000000), r1.xyxx
-    r1.xy = ((r2.xyxx)*(float4(2.000000,2.000000,0.000000,0.000000))+(r1.xyxx)).xy;
-    // 44: mul r1.zw, v2.xxxy, cb0[11].zzzw
-    r1.zw = ((v2.xxxy)*(source[11].zzzw)).zw;
-    // 45: mad r2.x, cb0[9].w, cb0[11].y, r1.z
-    r2.x = ((source[9].wwww)*(source[11].yyyy)+(r1.zzzz)).x;
-    // 46: mad r2.y, cb0[9].w, cb0[12].x, r1.w
-    r2.y = ((source[9].wwww)*(source[12].xxxx)+(r1.wwww)).y;
-    // 47: add r1.zw, r2.xxxy, cb0[2].xxxy
-    r1.zw = ((r2.xxxy)+(source[2].xxxy)).zw;
-    // 48: sample_b_indexable(texture2d)(float,float,float,float) r0.w, r1.zwzz, t0.yzwx, s1, l(0.000000)
-    r0.w = (ArtistNativeSample1((r1.zwzz).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x, false).yzwx).w;
-    // 49: add r1.z, v4.z, cb0[12].w
-    r1.z = ((v4.zzzz)+(source[12].wwww)).z;
-    // 50: mad r1.zw, r0.wwww, r1.zzzz, cb0[3].xxxy
-    r1.zw = ((r0.wwww)*(r1.zzzz)+(source[3].xxxy)).zw;
-    // 51: add r1.xy, r1.zwzz, r1.xyxx
-    r1.xy = ((r1.zwzz)+(r1.xyxx)).xy;
-    // 52: add r1.xy, r1.xyxx, l(-0.500000, -0.500000, 0.000000, 0.000000)
-    r1.xy = ((r1.xyxx)+(float4(-0.500000,-0.500000,0.000000,0.000000))).xy;
-    // 53: dp2 r2.x, cb0[4].xyxx, r1.xyxx
-    r2.x = (dot((source[4].xyxx).xy,(r1.xyxx).xy).xxxx).x;
-    // 54: dp2 r2.y, cb0[5].xyxx, r1.xyxx
-    r2.y = (dot((source[5].xyxx).xy,(r1.xyxx).xy).xxxx).y;
-    // 55: add r1.xy, r2.xyxx, l(0.500000, 0.500000, 0.000000, 0.000000)
-    r1.xy = ((r2.xyxx)+(float4(0.500000,0.500000,0.000000,0.000000))).xy;
-    // 56: sample_l_indexable(texture2d)(float,float,float,float) r0.w, r1.xyxx, t1.yzwx, s0, l(-1.000000)
-    r0.w = (ArtistNativeSample0((r1.xyxx).xy, (float4(-1.000000,-1.000000,-1.000000,-1.000000)).x, true).yzwx).w;
-    // 57: log r1.x, |r0.w|
-    r1.x = (log2(abs(r0.wwww))).x;
-    // 58: mul r1.x, r1.x, cb0[13].z
-    r1.x = ((r1.xxxx)*(source[13].zzzz)).x;
-    // 59: exp r1.x, r1.x
-    r1.x = (exp2(r1.xxxx)).x;
-    // 60: mul r1.x, r1.x, cb0[13].w
-    r1.x = ((r1.xxxx)*(source[13].wwww)).x;
-    // 61: lt r1.y, |r0.w|, l(0.000001)
-    r1.y = (asfloat((uint4)((abs(r0.wwww))<(float4(0.000001,0.000001,0.000001,0.000001))) * 0xffffffffu)).y;
-    // 62: movc r1.x, r1.y, l(0), r1.x
-    r1.x = ((asuint(r1.yyyy) != 0u) ? (float4(asfloat(0u),asfloat(0u),asfloat(0u),asfloat(0u))) : (r1.xxxx)).x;
-    // 63: mad r1.x, r0.w, cb0[14].x, r1.x
-    r1.x = ((r0.wwww)*(source[14].xxxx)+(r1.xxxx)).x;
-    // 64: dp2 r2.x, cb0[6].xyxx, r0.xyxx
-    r2.x = (dot((source[6].xyxx).xy,(r0.xyxx).xy).xxxx).x;
-    // 65: dp2 r2.y, cb0[7].xyxx, r0.xyxx
-    r2.y = (dot((source[7].xyxx).xy,(r0.xyxx).xy).xxxx).y;
-    // 66: add r0.xy, r2.xyxx, l(0.500000, 0.500000, 0.000000, 0.000000)
-    r0.xy = ((r2.xyxx)+(float4(0.500000,0.500000,0.000000,0.000000))).xy;
-    // 67: mul r0.xy, r0.xyxx, cb0[14].zwzz
-    r0.xy = ((r0.xyxx)*(source[14].zwzz)).xy;
-    // 68: mad r2.x, cb0[9].w, cb0[14].y, r0.x
-    r2.x = ((source[9].wwww)*(source[14].yyyy)+(r0.xxxx)).x;
-    // 69: mad r2.y, cb0[9].w, cb0[15].y, r0.y
-    r2.y = ((source[9].wwww)*(source[15].yyyy)+(r0.yyyy)).y;
-    // 70: add r0.xy, r2.xyxx, cb0[15].zwzz
-    r0.xy = ((r2.xyxx)+(source[15].zwzz)).xy;
-    // 71: sample_b_indexable(texture2d)(float,float,float,float) r0.x, r0.xyxx, t2.xyzw, s2, l(0.000000)
-    r0.x = (ArtistNativeSample2((r0.xyxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x, false).xyzw).x;
-    // 72: add r0.x, r0.x, l(0.100000)
-    r0.x = ((r0.xxxx)+(float4(0.100000,0.100000,0.100000,0.100000))).x;
-    // 73: add r0.y, v4.y, l(-1.000000)
-    r0.y = ((v4.yyyy)+(float4(-1.000000,-1.000000,-1.000000,-1.000000))).y;
-    // 74: add_sat r0.x, -r0.y, r0.x
-    r0.x = (saturate((-(r0.yyyy))+(r0.xxxx))).x;
-    // 75: log r0.y, r0.x
-    r0.y = (log2(r0.xxxx)).y;
-    // 76: mul r0.y, r0.y, cb0[16].y
-    r0.y = ((r0.yyyy)*(source[16].yyyy)).y;
-    // 77: exp r0.y, r0.y
-    r0.y = (exp2(r0.yyyy)).y;
-    // 78: mul_sat r0.y, r0.y, cb0[16].x
-    r0.y = (saturate((r0.yyyy)*(source[16].xxxx))).y;
-    // 79: lt r1.y, r0.x, l(0.000001)
-    r1.y = (asfloat((uint4)((r0.xxxx)<(float4(0.000001,0.000001,0.000001,0.000001))) * 0xffffffffu)).y;
-    // 80: mul r0.x, r0.x, cb0[16].x
-    r0.x = ((r0.xxxx)*(source[16].xxxx)).x;
-    // 81: movc r0.y, r1.y, l(-0.000000), -r0.y
-    r0.y = ((asuint(r1.yyyy) != 0u) ? (float4(-0.000000,-0.000000,-0.000000,-0.000000)) : (-(r0.yyyy))).y;
-    // 82: mov_sat r1.y, r0.x
-    r1.y = (saturate(r0.xxxx)).y;
-    // 83: mul r0.x, r0.x, r0.w
-    r0.x = ((r0.xxxx)*(r0.wwww)).x;
-    // 84: mul r0.x, r0.x, cb0[17].y
-    r0.x = ((r0.xxxx)*(source[17].yyyy)).x;
-    // 85: mul_sat r0.x, r0.x, v3.w
-    r0.x = (saturate((r0.xxxx)*(v3.wwww))).x;
-    // 86: mul r0.x, r0.x, r0.z
-    r0.x = ((r0.xxxx)*(r0.zzzz)).x;
-    // 87: mul o0.w, r0.x, cb0[0].x
-    output.w = ((r0.xxxx)*(source[0].xxxx)).w;
-    // 88: add r0.x, r0.y, r1.y
-    r0.x = ((r0.yyyy)+(r1.yyyy)).x;
-    // 89: max r0.x, r0.x, l(0.000000)
-    r0.x = (max(r0.xxxx,float4(0.000000,0.000000,0.000000,0.000000))).x;
-    // 90: mul r0.xyz, r0.xxxx, cb0[8].xyzx
-    r0.xyz = ((r0.xxxx)*(source[8].xyzx)).xyz;
-    // 91: mad r0.xyz, r0.wwww, r0.xyzx, r1.xxxx
-    r0.xyz = ((r0.wwww)*(r0.xyzx)+(r1.xxxx)).xyz;
-    // 92: mad r0.xyz, r0.xyzx, v3.xyzx, cb0[1].xyzx
-    r0.xyz = ((r0.xyzx)*(v3.xyzx)+(source[1].xyzx)).xyz;
-    // 93: mad o0.xyz, r0.xyzx, v5.wwww, v5.xyzx
-    output.xyz = ((r0.xyzx)*(v5.wwww)+(v5.xyzx)).xyz;
-    return output;
-}
-#endif
-#endif
-
-#if !defined(EFFECT_NATIVE_MESH_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
-#ifndef ARTIST_NATIVE_MODEL_ONLY
-// fx_j_pa_exsmokes_01_tr: dc075f2e2fc7b545b57d1787e3a8d210; selected map ad92bed5e3ed5872fdda6d7a39d7b150b82f3b903f69d36d598831fc87337457.
-float4 ArtistNative3048(ARTIST_NATIVE_INPUT input)
-{
-    float4 source[3]; [unroll] for (uint i=0u; i<3u; ++i) source[i]=0.f;
-    source[0].x=1.f; // Project engine opacity multiplier.
-    float4 output=0.f;
-    source[1] = g_ArtistSourceMaterialParameters[0u];
-    source[2] = ArtistNativeAppend(ArtistNativePeriodic((g_ArtistSourceMaterialTime.xxxx*float4(0.0, 0.0, 0.0, 0.0))),ArtistNativePeriodic((g_ArtistSourceMaterialTime.xxxx*float4(0.5, 0.0, 0.0, 0.0))),1u);
-    float4 passValues[4]; [unroll] for(uint passIndex=0u;passIndex<4u;++passIndex) passValues[passIndex]=0.f;
-    passValues[0]=float4(.5f,-.5f,.5f,.5f);
-    float4 v0 = float4(input.sourceBasisX,0.f); // native texcoord10
-    float4 v1 = float4(input.sourceBasisZ,input.handedness); // native texcoord11
-    float4 v2 = float4(input.uv,float2(0.f,0.f)); // native texcoord0
-    float4 v3 = input.color; // native texcoord1
-    float4 v4 = input.dynamicParameter; // native texcoord2
-    float4 v5 = float4(0.f,0.f,0.f,1.f); // native texcoord4
-    float4 v6 = float4(input.tangentView,1.f); // native texcoord6
-    float4 v7 = float4((input.screenUV*float2(2.f,-2.f)+float2(-1.f,1.f))*input.projectionW,input.projectionZ,input.projectionW); // native texcoord5
-    float4 v8 = asfloat(uint4(input.frontFace ? 0xffffffffu : 0u,0u,0u,0u)); // native sv_isfrontface0
-    float4 r0=0.f, r1=0.f;
-    // 1: add r0.x, v2.y, -v3.w
-    r0.x = ((v2.yyyy)+(-(v3.wwww))).x;
-    // 2: add r0.x, r0.x, l(1.000000)
-    r0.x = ((r0.xxxx)+(float4(1.000000,1.000000,1.000000,1.000000))).x;
-    // 3: add_sat r0.x, -r0.x, l(1.000000)
-    r0.x = (saturate((-(r0.xxxx))+(float4(1.000000,1.000000,1.000000,1.000000)))).x;
-    // 4: mad r0.yz, v2.xxyx, l(0.000000, 2.000000, 1.000000, 0.000000), cb0[2].xxyx
-    r0.yz = ((v2.xxyx)*(float4(0.000000,2.000000,1.000000,0.000000))+(source[2].xxyx)).yz;
-    // 5: sample_b_indexable(texture2d)(float,float,float,float) r0.y, r0.yzyy, t0.yxzw, s0, l(0.000000)
-    r0.y = (ArtistNativeSample0((r0.yzyy).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x, false).yxzw).y;
-    // 6: mul r0.z, v4.z, l(0.100000)
-    r0.z = ((v4.zzzz)*(float4(0.100000,0.100000,0.100000,0.100000))).z;
-    // 7: mad r0.zw, r0.zzzz, r0.yyyy, v2.xxxy
-    r0.zw = ((r0.zzzz)*(r0.yyyy)+(v2.xxxy)).zw;
-    // 8: sample_b_indexable(texture2d)(float,float,float,float) r0.z, r0.zwzz, t1.yzxw, s1, l(0.000000)
-    r0.z = (ArtistNativeSample1((r0.zwzz).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x, false).yzxw).z;
-    // 9: dp2 r0.y, r0.zzzz, r0.yyyy
-    r0.y = (dot((r0.zzzz).xy,(r0.yyyy).xy).xxxx).y;
-    // 10: add r0.x, r0.x, r0.y
-    r0.x = ((r0.xxxx)+(r0.yyyy)).x;
-    // 11: mul_sat r0.y, r0.z, v4.y
-    r0.y = (saturate((r0.zzzz)*(v4.yyyy))).y;
-    // 12: mul r0.x, r0.x, r0.y
-    r0.x = ((r0.xxxx)*(r0.yyyy)).x;
-    // 13: mul o0.w, r0.x, cb0[0].x
-    output.w = ((r0.xxxx)*(source[0].xxxx)).w;
-    // 14: log r0.x, |r0.z|
-    r0.x = (log2(abs(r0.zzzz))).x;
-    // 15: lt r0.y, |r0.z|, l(0.000001)
-    r0.y = (asfloat((uint4)((abs(r0.zzzz))<(float4(0.000001,0.000001,0.000001,0.000001))) * 0xffffffffu)).y;
-    // 16: mul r0.x, r0.x, v4.x
-    r0.x = ((r0.xxxx)*(v4.xxxx)).x;
-    // 17: exp r0.x, r0.x
-    r0.x = (exp2(r0.xxxx)).x;
-    // 18: mul r0.xzw, r0.xxxx, v3.xxyz
-    r0.xzw = ((r0.xxxx)*(v3.xxyz)).xzw;
-    // 19: movc r0.xyz, r0.yyyy, l(0,0,0,0), r0.xzwx
-    r0.xyz = ((asuint(r0.yyyy) != 0u) ? (float4(asfloat(0u),asfloat(0u),asfloat(0u),asfloat(0u))) : (r0.xzwx)).xyz;
-    // 20: add r0.xyz, r0.xyzx, cb0[1].xyzx
-    r0.xyz = ((r0.xyzx)+(source[1].xyzx)).xyz;
-    // 21: mad o0.xyz, r0.xyzx, v5.wwww, v5.xyzx
     output.xyz = ((r0.xyzx)*(v5.wwww)+(v5.xyzx)).xyz;
     return output;
 }
@@ -8438,234 +7165,6 @@ float4 ArtistNative3060(ARTIST_NATIVE_INPUT input)
     // 32: mul o0.xyz, r0.xxxx, r0.yzwy
     output.xyz = ((r0.xxxx)*(r0.yzwy)).xyz;
     // 33: mov o0.w, l(0)
-    output.w = (float4(asfloat(0u),asfloat(0u),asfloat(0u),asfloat(0u))).w;
-    return output;
-}
-#endif
-#endif
-
-#if !defined(EFFECT_NATIVE_MESH_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
-#ifndef ARTIST_NATIVE_MODEL_ONLY
-// fx_o_pa_shockwave_02_2_ad: 9028c32167632a45a5a22a4fc6ba324c; selected map 90cd63a191d704129e0b9ca16079790692223dacd1503eb24e6b9929607f2279.
-float4 ArtistNative3061(ARTIST_NATIVE_INPUT input)
-{
-    float4 source[8]; [unroll] for (uint i=0u; i<8u; ++i) source[i]=0.f;
-    source[0].x=1.f; // Project engine opacity multiplier.
-    float4 output=0.f;
-    source[1] = g_ArtistSourceMaterialParameters[6u];
-    source[2] = g_ArtistSourceMaterialParameters[5u];
-    source[3].x = (g_ArtistSourceMaterialParameters[1u].zzzz).x;
-    source[3].y = (g_ArtistSourceMaterialTime.xxxx).x;
-    source[3].z = (g_ArtistSourceMaterialParameters[0u].zzzz).x;
-    source[3].w = (g_ArtistSourceMaterialParameters[1u].xxxx).x;
-    source[4].x = (g_ArtistSourceMaterialParameters[2u].xxxx).x;
-    source[4].y = (g_ArtistSourceMaterialParameters[2u].wwww).x;
-    source[4].z = (g_ArtistSourceMaterialParameters[3u].xxxx).x;
-    source[4].w = (g_ArtistSourceMaterialParameters[3u].yyyy).x;
-    source[5].x = (g_ArtistSourceMaterialParameters[0u].xxxx).x;
-    source[5].y = ((float4(1.0, 0.0, 0.0, 0.0)-g_ArtistSourceMaterialParameters[0u].xxxx)).x;
-    source[5].z = (g_ArtistSourceMaterialParameters[4u].xxxx).x;
-    source[5].w = (g_ArtistSourceMaterialParameters[3u].zzzz).x;
-    source[6].x = (g_ArtistSourceMaterialParameters[3u].wwww).x;
-    source[6].y = (g_ArtistSourceMaterialParameters[1u].yyyy).x;
-    source[6].z = (g_ArtistSourceMaterialParameters[0u].yyyy).x;
-    source[6].w = (g_ArtistSourceMaterialParameters[0u].wwww).x;
-    source[7].x = (g_ArtistSourceMaterialParameters[1u].wwww).x;
-    source[7].y = (g_ArtistSourceMaterialParameters[2u].yyyy).x;
-    source[7].z = (g_ArtistSourceMaterialParameters[2u].zzzz).x;
-    float4 passValues[4]; [unroll] for(uint passIndex=0u;passIndex<4u;++passIndex) passValues[passIndex]=0.f;
-    passValues[0]=float4(.5f,-.5f,.5f,.5f);
-    float4 v0 = float4(input.sourceBasisX,0.f); // native texcoord10
-    float4 v1 = float4(input.sourceBasisZ,input.handedness); // native texcoord11
-    float4 v2 = float4(input.uv,float2(0.f,0.f)); // native texcoord0
-    float4 v3 = input.color; // native texcoord1
-    float4 v4 = input.dynamicParameter; // native texcoord2
-    float4 v5 = float4(0.f,0.f,0.f,1.f); // native texcoord4
-    float4 v6 = float4(input.tangentView,1.f); // native texcoord6
-    float4 v7 = float4((input.screenUV*float2(2.f,-2.f)+float2(-1.f,1.f))*input.projectionW,input.projectionZ,input.projectionW); // native texcoord5
-    float4 v8 = asfloat(uint4(input.frontFace ? 0xffffffffu : 0u,0u,0u,0u)); // native sv_isfrontface0
-    float4 r0=0.f, r1=0.f, r2=0.f;
-    // 1: mad r0.xy, v2.xyxx, l(1.000000, 0.500000, 0.000000, 0.000000), l(-0.500000, -0.500000, 0.000000, 0.000000)
-    r0.xy = ((v2.xyxx)*(float4(1.000000,0.500000,0.000000,0.000000))+(float4(-0.500000,-0.500000,0.000000,0.000000))).xy;
-    // 2: max r0.z, |r0.x|, |r0.y|
-    r0.z = (max(abs(r0.xxxx),abs(r0.yyyy))).z;
-    // 3: div r0.z, l(1.000000, 1.000000, 1.000000, 1.000000), r0.z
-    r0.z = ((float4(1.000000,1.000000,1.000000,1.000000))/(r0.zzzz)).z;
-    // 4: min r0.w, |r0.x|, |r0.y|
-    r0.w = (min(abs(r0.xxxx),abs(r0.yyyy))).w;
-    // 5: mul r0.z, r0.z, r0.w
-    r0.z = ((r0.zzzz)*(r0.wwww)).z;
-    // 6: mul r0.w, r0.z, r0.z
-    r0.w = ((r0.zzzz)*(r0.zzzz)).w;
-    // 7: mad r1.x, r0.w, l(0.020835), l(-0.085133)
-    r1.x = ((r0.wwww)*(float4(0.020835,0.020835,0.020835,0.020835))+(float4(-0.085133,-0.085133,-0.085133,-0.085133))).x;
-    // 8: mad r1.x, r0.w, r1.x, l(0.180141)
-    r1.x = ((r0.wwww)*(r1.xxxx)+(float4(0.180141,0.180141,0.180141,0.180141))).x;
-    // 9: mad r1.x, r0.w, r1.x, l(-0.330299)
-    r1.x = ((r0.wwww)*(r1.xxxx)+(float4(-0.330299,-0.330299,-0.330299,-0.330299))).x;
-    // 10: mad r0.w, r0.w, r1.x, l(0.999866)
-    r0.w = ((r0.wwww)*(r1.xxxx)+(float4(0.999866,0.999866,0.999866,0.999866))).w;
-    // 11: mul r1.x, r0.w, r0.z
-    r1.x = ((r0.wwww)*(r0.zzzz)).x;
-    // 12: mad r1.x, r1.x, l(-2.000000), l(1.570796)
-    r1.x = ((r1.xxxx)*(float4(-2.000000,-2.000000,-2.000000,-2.000000))+(float4(1.570796,1.570796,1.570796,1.570796))).x;
-    // 13: lt r1.y, |r0.x|, |r0.y|
-    r1.y = (asfloat((uint4)((abs(r0.xxxx))<(abs(r0.yyyy))) * 0xffffffffu)).y;
-    // 14: and r1.x, r1.y, r1.x
-    r1.x = (asfloat(asuint(r1.yyyy) & asuint(r1.xxxx))).x;
-    // 15: mad r0.z, r0.z, r0.w, r1.x
-    r0.z = ((r0.zzzz)*(r0.wwww)+(r1.xxxx)).z;
-    // 16: lt r0.w, r0.x, -r0.x
-    r0.w = (asfloat((uint4)((r0.xxxx)<(-(r0.xxxx))) * 0xffffffffu)).w;
-    // 17: and r0.w, r0.w, l(0xc0490fdb)
-    r0.w = (asfloat(asuint(r0.wwww) & uint4(0xc0490fdbu,0xc0490fdbu,0xc0490fdbu,0xc0490fdbu))).w;
-    // 18: add r0.z, r0.w, r0.z
-    r0.z = ((r0.wwww)+(r0.zzzz)).z;
-    // 19: min r0.w, r0.x, r0.y
-    r0.w = (min(r0.xxxx,r0.yyyy)).w;
-    // 20: lt r0.w, r0.w, -r0.w
-    r0.w = (asfloat((uint4)((r0.wwww)<(-(r0.wwww))) * 0xffffffffu)).w;
-    // 21: max r1.x, r0.x, r0.y
-    r1.x = (max(r0.xxxx,r0.yyyy)).x;
-    // 22: dp2 r0.x, r0.xyxx, r0.xyxx
-    r0.x = (dot((r0.xyxx).xy,(r0.xyxx).xy).xxxx).x;
-    // 23: sqrt r0.x, r0.x
-    r0.x = (sqrt(r0.xxxx)).x;
-    // 24: ge r0.y, r1.x, -r1.x
-    r0.y = (asfloat((uint4)((r1.xxxx)>=(-(r1.xxxx))) * 0xffffffffu)).y;
-    // 25: and r0.y, r0.y, r0.w
-    r0.y = (asfloat(asuint(r0.yyyy) & asuint(r0.wwww))).y;
-    // 26: movc r0.y, r0.y, -r0.z, r0.z
-    r0.y = ((asuint(r0.yyyy) != 0u) ? (-(r0.zzzz)) : (r0.zzzz)).y;
-    // 27: mad r0.yz, r0.yyyy, l(0.000000, 0.159155, 0.159155, 0.000000), l(0.000000, 0.500000, 0.250000, 0.000000)
-    r0.yz = ((r0.yyyy)*(float4(0.000000,0.159155,0.159155,0.000000))+(float4(0.000000,0.500000,0.250000,0.000000))).yz;
-    // 28: mad r0.z, -|r0.z|, l(4.000000), l(1.000000)
-    r0.z = ((-(abs(r0.zzzz)))*(float4(4.000000,4.000000,4.000000,4.000000))+(float4(1.000000,1.000000,1.000000,1.000000))).z;
-    // 29: add r1.x, r0.y, r0.y
-    r1.x = ((r0.yyyy)+(r0.yyyy)).x;
-    // 30: mov_sat r0.y, v4.x
-    r0.y = (saturate(v4.xxxx)).y;
-    // 31: add r0.y, -r0.y, l(1.000000)
-    r0.y = ((-(r0.yyyy))+(float4(1.000000,1.000000,1.000000,1.000000))).y;
-    // 32: add r0.w, -r0.y, r0.z
-    r0.w = ((-(r0.yyyy))+(r0.zzzz)).w;
-    // 33: add r0.z, r0.z, -cb0[5].y
-    r0.z = ((r0.zzzz)+(-(source[5].yyyy))).z;
-    // 34: mul_sat r0.z, r0.z, cb0[5].z
-    r0.z = (saturate((r0.zzzz)*(source[5].zzzz))).z;
-    // 35: add r0.y, -r0.y, l(1.000000)
-    r0.y = ((-(r0.yyyy))+(float4(1.000000,1.000000,1.000000,1.000000))).y;
-    // 36: div r0.y, l(1.000000, 1.000000, 1.000000, 1.000000), r0.y
-    r0.y = ((float4(1.000000,1.000000,1.000000,1.000000))/(r0.yyyy)).y;
-    // 37: mul_sat r0.y, r0.y, r0.w
-    r0.y = (saturate((r0.yyyy)*(r0.wwww))).y;
-    // 38: mul r0.y, r0.y, l(10.000000)
-    r0.y = ((r0.yyyy)*(float4(10.000000,10.000000,10.000000,10.000000))).y;
-    // 39: min r0.y, r0.y, l(1.000000)
-    r0.y = (min(r0.yyyy,float4(1.000000,1.000000,1.000000,1.000000))).y;
-    // 40: mul r0.y, r0.y, r0.z
-    r0.y = ((r0.yyyy)*(r0.zzzz)).y;
-    // 41: mad r0.z, -r0.x, l(2.000000), l(1.000000)
-    r0.z = ((-(r0.xxxx))*(float4(2.000000,2.000000,2.000000,2.000000))+(float4(1.000000,1.000000,1.000000,1.000000))).z;
-    // 42: max r0.z, r0.z, l(0.000000)
-    r0.z = (max(r0.zzzz,float4(0.000000,0.000000,0.000000,0.000000))).z;
-    // 43: add r0.w, -r0.z, l(1.000000)
-    r0.w = ((-(r0.zzzz))+(float4(1.000000,1.000000,1.000000,1.000000))).w;
-    // 44: mul_sat r0.z, r0.z, cb0[5].w
-    r0.z = (saturate((r0.zzzz)*(source[5].wwww))).z;
-    // 45: mul r0.z, r0.z, r0.w
-    r0.z = ((r0.zzzz)*(r0.wwww)).z;
-    // 46: log r0.w, r0.z
-    r0.w = (log2(r0.zzzz)).w;
-    // 47: lt r0.z, r0.z, l(0.000001)
-    r0.z = (asfloat((uint4)((r0.zzzz)<(float4(0.000001,0.000001,0.000001,0.000001))) * 0xffffffffu)).z;
-    // 48: mul r0.w, r0.w, cb0[6].x
-    r0.w = ((r0.wwww)*(source[6].xxxx)).w;
-    // 49: exp r0.w, r0.w
-    r0.w = (exp2(r0.wwww)).w;
-    // 50: mul r0.y, r0.w, r0.y
-    r0.y = ((r0.wwww)*(r0.yyyy)).y;
-    // 51: movc r0.y, r0.z, l(0), r0.y
-    r0.y = ((asuint(r0.zzzz) != 0u) ? (float4(asfloat(0u),asfloat(0u),asfloat(0u),asfloat(0u))) : (r0.yyyy)).y;
-    // 52: add r0.z, r0.x, r0.x
-    r0.z = ((r0.xxxx)+(r0.xxxx)).z;
-    // 53: lt r0.x, r0.x, l(0.000000)
-    r0.x = (asfloat((uint4)((r0.xxxx)<(float4(0.000000,0.000000,0.000000,0.000000))) * 0xffffffffu)).x;
-    // 54: log r0.z, r0.z
-    r0.z = (log2(r0.zzzz)).z;
-    // 55: mul r0.z, r0.z, v4.y
-    r0.z = ((r0.zzzz)*(v4.yyyy)).z;
-    // 56: exp r0.z, r0.z
-    r0.z = (exp2(r0.zzzz)).z;
-    // 57: movc r1.y, r0.x, l(0), r0.z
-    r1.y = ((asuint(r0.xxxx) != 0u) ? (float4(asfloat(0u),asfloat(0u),asfloat(0u),asfloat(0u))) : (r0.zzzz)).y;
-    // 58: mul r0.xz, r1.xxyx, cb0[6].zzwz
-    r0.xz = ((r1.xxyx)*(source[6].zzwz)).xz;
-    // 59: mul r1.xy, r1.xyxx, cb0[3].zwzz
-    r1.xy = ((r1.xyxx)*(source[3].zwzz)).xy;
-    // 60: mad r2.x, cb0[3].y, cb0[6].y, r0.x
-    r2.x = ((source[3].yyyy)*(source[6].yyyy)+(r0.xxxx)).x;
-    // 61: mad r2.y, cb0[3].y, cb0[7].x, r0.z
-    r2.y = ((source[3].yyyy)*(source[7].xxxx)+(r0.zzzz)).y;
-    // 62: sample_b_indexable(texture2d)(float,float,float,float) r0.x, r2.xyxx, t0.yxzw, s1, l(0.000000)
-    r0.x = (ArtistNativeSample1((r2.xyxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x, false).yxzw).x;
-    // 63: mov_sat r0.z, v3.w
-    r0.z = (saturate(v3.wwww)).z;
-    // 64: add r0.z, -r0.z, l(1.000000)
-    r0.z = ((-(r0.zzzz))+(float4(1.000000,1.000000,1.000000,1.000000))).z;
-    // 65: add r0.x, -r0.z, r0.x
-    r0.x = ((-(r0.zzzz))+(r0.xxxx)).x;
-    // 66: mul_sat r0.x, r0.x, cb0[7].y
-    r0.x = (saturate((r0.xxxx)*(source[7].yyyy))).x;
-    // 67: log r0.z, r0.x
-    r0.z = (log2(r0.xxxx)).z;
-    // 68: lt r0.x, r0.x, l(0.000001)
-    r0.x = (asfloat((uint4)((r0.xxxx)<(float4(0.000001,0.000001,0.000001,0.000001))) * 0xffffffffu)).x;
-    // 69: mul r0.z, r0.z, cb0[7].z
-    r0.z = ((r0.zzzz)*(source[7].zzzz)).z;
-    // 70: exp r0.z, r0.z
-    r0.z = (exp2(r0.zzzz)).z;
-    // 71: movc r0.x, r0.x, l(0), r0.z
-    r0.x = ((asuint(r0.xxxx) != 0u) ? (float4(asfloat(0u),asfloat(0u),asfloat(0u),asfloat(0u))) : (r0.zzzz)).x;
-    // 72: mul r0.x, r0.x, r0.y
-    r0.x = ((r0.xxxx)*(r0.yyyy)).x;
-    // 73: mul_sat r0.x, r0.x, v3.w
-    r0.x = (saturate((r0.xxxx)*(v3.wwww))).x;
-    // 74: mul r0.x, r0.x, cb0[0].x
-    r0.x = ((r0.xxxx)*(source[0].xxxx)).x;
-    // 75: mad r2.x, cb0[3].y, cb0[3].x, r1.x
-    r2.x = ((source[3].yyyy)*(source[3].xxxx)+(r1.xxxx)).x;
-    // 76: mad r2.y, cb0[3].y, cb0[4].x, r1.y
-    r2.y = ((source[3].yyyy)*(source[4].xxxx)+(r1.yyyy)).y;
-    // 77: sample_b_indexable(texture2d)(float,float,float,float) r0.yzw, r2.xyxx, t1.wxyz, s0, l(0.000000)
-    r0.yzw = (ArtistNativeSample0((r2.xyxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x, false).wxyz).yzw;
-    // 78: dp3 r1.x, r0.yzwy, l(0.300000, 0.590000, 0.110000, 0.000000)
-    r1.x = (dot((r0.yzwy).xyz,(float4(0.300000,0.590000,0.110000,0.000000)).xyz).xxxx).x;
-    // 79: add r1.xyz, -r0.yzwy, r1.xxxx
-    r1.xyz = ((-(r0.yzwy))+(r1.xxxx)).xyz;
-    // 80: mad r0.yzw, cb0[4].yyyy, r1.xxyz, r0.yyzw
-    r0.yzw = ((source[4].yyyy)*(r1.xxyz)+(r0.yyzw)).yzw;
-    // 81: max r0.yzw, |r0.yyzw|, l(0.000000, 0.000001, 0.000001, 0.000001)
-    r0.yzw = (max(abs(r0.yyzw),float4(0.000000,0.000001,0.000001,0.000001))).yzw;
-    // 82: log r0.yzw, r0.yyzw
-    r0.yzw = (log2(r0.yyzw)).yzw;
-    // 83: mul r0.yzw, r0.yyzw, cb0[4].zzzz
-    r0.yzw = ((r0.yyzw)*(source[4].zzzz)).yzw;
-    // 84: exp r0.yzw, r0.yyzw
-    r0.yzw = (exp2(r0.yyzw)).yzw;
-    // 85: mul r0.yzw, r0.yyzw, cb0[4].wwww
-    r0.yzw = ((r0.yyzw)*(source[4].wwww)).yzw;
-    // 86: mul r1.xyz, cb0[2].xyzx, cb0[2].wwww
-    r1.xyz = ((source[2].xyzx)*(source[2].wwww)).xyz;
-    // 87: mul r0.yzw, r0.yyzw, r1.xxyz
-    r0.yzw = ((r0.yyzw)*(r1.xxyz)).yzw;
-    // 88: mad r0.yzw, r0.yyzw, v3.xxyz, cb0[1].xxyz
-    r0.yzw = ((r0.yyzw)*(v3.xxyz)+(source[1].xxyz)).yzw;
-    // 89: mul r0.yzw, r0.yyzw, v5.wwww
-    r0.yzw = ((r0.yyzw)*(v5.wwww)).yzw;
-    // 90: mul o0.xyz, r0.xxxx, r0.yzwy
-    output.xyz = ((r0.xxxx)*(r0.yzwy)).xyz;
-    // 91: mov o0.w, l(0)
     output.w = (float4(asfloat(0u),asfloat(0u),asfloat(0u),asfloat(0u))).w;
     return output;
 }
@@ -10450,64 +8949,6 @@ float4 ArtistNative3026Distortion(ARTIST_NATIVE_INPUT input)
 #endif
 
 #if !defined(ARTIST_NATIVE_MODEL_ONLY) && !defined(EFFECT_NATIVE_MESH_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
-float4 ArtistNative3029Distortion(ARTIST_NATIVE_INPUT input)
-{
-    float4 source[3]; [unroll] for (uint i=0u; i<3u; ++i) source[i]=0.f;
-    source[0].x=1.f; // Project engine opacity multiplier.
-    float4 output=0.f;
-    float4 passValues[4]; [unroll] for(uint passIndex=0u;passIndex<4u;++passIndex) passValues[passIndex]=0.f;
-    passValues[0]=float4(.5f,-.5f,.5f,.5f);
-    float4 v0 = float4(input.sourceBasisX,0.f); // native texcoord10
-    float4 v1 = float4(input.uv,float2(0.f,0.f)); // native texcoord0
-    float4 v2 = input.color; // native texcoord1
-    float4 v3 = input.dynamicParameter; // native texcoord2
-    float4 v4 = float4((input.screenUV*float2(2.f,-2.f)+float2(-1.f,1.f))*input.projectionW,input.projectionZ,input.projectionW); // native texcoord5
-    float4 v5 = float4(input.tangentView,1.f); // native texcoord6
-    float4 v6 = asfloat(uint4(input.frontFace ? 0xffffffffu : 0u,0u,0u,0u)); // native sv_isfrontface0
-    float4 r0=0.f, r1=0.f;
-    // 1: mad r0.xyzw, cb2[0].xyxy, l(-1.000000, 1.000000, -1.000000, 1.000000), cb2[0].wzwz
-    r0.xyzw = ((passValues[0].xyxy)*(float4(-1.000000,1.000000,-1.000000,1.000000))+(passValues[0].wzwz)).xyzw;
-    // 2: dp2 r1.x, r0.zwzz, r0.zwzz
-    r1.x = (dot((r0.zwzz).xy,(r0.zwzz).xy).xxxx).x;
-    // 3: add r1.x, r1.x, l(-0.100000)
-    r1.x = ((r1.xxxx)+(float4(-0.100000,-0.100000,-0.100000,-0.100000))).x;
-    // 4: lt r1.x, r1.x, l(0.000000)
-    r1.x = (asfloat((uint4)((r1.xxxx)<(float4(0.000000,0.000000,0.000000,0.000000))) * 0xffffffffu)).x;
-    // 5: discard_nz r1.x
-    if ((asuint(r1.xxxx)).x != 0u) return 0.f;
-    // 6: div r1.xy, v4.xyxx, v4.wwww
-    r1.xy = ((v4.xyxx)/(v4.wwww)).xy;
-    // 7: mad r1.xy, r1.xyxx, cb2[0].xyxx, cb2[0].wzww
-    r1.xy = ((r1.xyxx)*(passValues[0].xyxx)+(passValues[0].wzww)).xy;
-    // 8: mad r0.xy, r0.xyxx, l(0.003922, -0.003922, 0.000000, 0.000000), r1.xyxx
-    r0.xy = ((r0.xyxx)*(float4(0.003922,-0.003922,0.000000,0.000000))+(r1.xyxx)).xy;
-    // 9: mul r0.zw, r0.zzzw, l(0.000000, 0.000000, 4.000000, 4.000000)
-    r0.zw = ((r0.zzzw)*(float4(0.000000,0.000000,4.000000,4.000000))).zw;
-    // 10: max r0.zw, r0.zzzw, l(0.000000, 0.000000, -255.000000, -255.000000)
-    r0.zw = (max(r0.zzzw,float4(0.000000,0.000000,-255.000000,-255.000000))).zw;
-    // 11: min r0.zw, r0.zzzw, l(0.000000, 0.000000, 255.000000, 255.000000)
-    r0.zw = (min(r0.zzzw,float4(0.000000,0.000000,255.000000,255.000000))).zw;
-    // 12: mul r0.zw, r0.zzzw, l(0.000000, 0.000000, 0.003922, 0.003922)
-    r0.zw = ((r0.zzzw)*(float4(0.000000,0.000000,0.003922,0.003922))).zw;
-    // Native 13: source device depth mapped to centimetre view depth; reconstruction at 15.
-    r0.x = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, (r0.xyxx).xy, 0.f).y * 100000.f;
-    // Native 15-18: reconstructed view depth is supplied by the runtime adapter.
-    r0.x = r0.x;
-    // 19: ge r0.x, v4.w, r0.x
-    r0.x = (asfloat((uint4)((v4.wwww)>=(r0.xxxx)) * 0xffffffffu)).x;
-    // 20: movc r0.xy, r0.xxxx, l(0,0,0,0), r0.zwzz
-    r0.xy = ((asuint(r0.xxxx) != 0u) ? (float4(asfloat(0u),asfloat(0u),asfloat(0u),asfloat(0u))) : (r0.zwzz)).xy;
-    // 21: max o0.xy, r0.xyxx, l(0.000000, 0.000000, 0.000000, 0.000000)
-    output.xy = (max(r0.xyxx,float4(0.000000,0.000000,0.000000,0.000000))).xy;
-    // 22: min r0.xy, r0.xyxx, l(0.000000, 0.000000, 0.000000, 0.000000)
-    r0.xy = (min(r0.xyxx,float4(0.000000,0.000000,0.000000,0.000000))).xy;
-    // 23: mov o0.zw, -r0.xxxy
-    output.zw = (-(r0.xxxy)).zw;
-    return output;
-}
-#endif
-
-#if !defined(ARTIST_NATIVE_MODEL_ONLY) && !defined(EFFECT_NATIVE_MESH_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
 float4 ArtistNative3033Distortion(ARTIST_NATIVE_INPUT input)
 {
     float4 source[7]; [unroll] for (uint i=0u; i<7u; ++i) source[i]=0.f;
@@ -10729,122 +9170,6 @@ float4 ArtistNative3033Distortion(ARTIST_NATIVE_INPUT input)
 
 #if !defined(ARTIST_NATIVE_MODEL_ONLY) && !defined(EFFECT_NATIVE_MESH_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
 float4 ArtistNative3034Distortion(ARTIST_NATIVE_INPUT input)
-{
-    float4 source[3]; [unroll] for (uint i=0u; i<3u; ++i) source[i]=0.f;
-    source[0].x=1.f; // Project engine opacity multiplier.
-    float4 output=0.f;
-    float4 passValues[4]; [unroll] for(uint passIndex=0u;passIndex<4u;++passIndex) passValues[passIndex]=0.f;
-    passValues[0]=float4(.5f,-.5f,.5f,.5f);
-    float4 v0 = float4(input.sourceBasisX,0.f); // native texcoord10
-    float4 v1 = float4(input.uv,float2(0.f,0.f)); // native texcoord0
-    float4 v2 = input.color; // native texcoord1
-    float4 v3 = input.dynamicParameter; // native texcoord2
-    float4 v4 = float4((input.screenUV*float2(2.f,-2.f)+float2(-1.f,1.f))*input.projectionW,input.projectionZ,input.projectionW); // native texcoord5
-    float4 v5 = float4(input.tangentView,1.f); // native texcoord6
-    float4 v6 = asfloat(uint4(input.frontFace ? 0xffffffffu : 0u,0u,0u,0u)); // native sv_isfrontface0
-    float4 r0=0.f, r1=0.f;
-    // 1: mad r0.xyzw, cb2[0].xyxy, l(-1.000000, 1.000000, -1.000000, 1.000000), cb2[0].wzwz
-    r0.xyzw = ((passValues[0].xyxy)*(float4(-1.000000,1.000000,-1.000000,1.000000))+(passValues[0].wzwz)).xyzw;
-    // 2: dp2 r1.x, r0.zwzz, r0.zwzz
-    r1.x = (dot((r0.zwzz).xy,(r0.zwzz).xy).xxxx).x;
-    // 3: add r1.x, r1.x, l(-0.100000)
-    r1.x = ((r1.xxxx)+(float4(-0.100000,-0.100000,-0.100000,-0.100000))).x;
-    // 4: lt r1.x, r1.x, l(0.000000)
-    r1.x = (asfloat((uint4)((r1.xxxx)<(float4(0.000000,0.000000,0.000000,0.000000))) * 0xffffffffu)).x;
-    // 5: discard_nz r1.x
-    if ((asuint(r1.xxxx)).x != 0u) return 0.f;
-    // 6: div r1.xy, v4.xyxx, v4.wwww
-    r1.xy = ((v4.xyxx)/(v4.wwww)).xy;
-    // 7: mad r1.xy, r1.xyxx, cb2[0].xyxx, cb2[0].wzww
-    r1.xy = ((r1.xyxx)*(passValues[0].xyxx)+(passValues[0].wzww)).xy;
-    // 8: mad r0.xy, r0.xyxx, l(0.003922, -0.003922, 0.000000, 0.000000), r1.xyxx
-    r0.xy = ((r0.xyxx)*(float4(0.003922,-0.003922,0.000000,0.000000))+(r1.xyxx)).xy;
-    // 9: mul r0.zw, r0.zzzw, l(0.000000, 0.000000, 4.000000, 4.000000)
-    r0.zw = ((r0.zzzw)*(float4(0.000000,0.000000,4.000000,4.000000))).zw;
-    // 10: max r0.zw, r0.zzzw, l(0.000000, 0.000000, -255.000000, -255.000000)
-    r0.zw = (max(r0.zzzw,float4(0.000000,0.000000,-255.000000,-255.000000))).zw;
-    // 11: min r0.zw, r0.zzzw, l(0.000000, 0.000000, 255.000000, 255.000000)
-    r0.zw = (min(r0.zzzw,float4(0.000000,0.000000,255.000000,255.000000))).zw;
-    // 12: mul r0.zw, r0.zzzw, l(0.000000, 0.000000, 0.003922, 0.003922)
-    r0.zw = ((r0.zzzw)*(float4(0.000000,0.000000,0.003922,0.003922))).zw;
-    // Native 13: source device depth mapped to centimetre view depth; reconstruction at 15.
-    r0.x = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, (r0.xyxx).xy, 0.f).y * 100000.f;
-    // Native 15-18: reconstructed view depth is supplied by the runtime adapter.
-    r0.x = r0.x;
-    // 19: ge r0.x, v4.w, r0.x
-    r0.x = (asfloat((uint4)((v4.wwww)>=(r0.xxxx)) * 0xffffffffu)).x;
-    // 20: movc r0.xy, r0.xxxx, l(0,0,0,0), r0.zwzz
-    r0.xy = ((asuint(r0.xxxx) != 0u) ? (float4(asfloat(0u),asfloat(0u),asfloat(0u),asfloat(0u))) : (r0.zwzz)).xy;
-    // 21: max o0.xy, r0.xyxx, l(0.000000, 0.000000, 0.000000, 0.000000)
-    output.xy = (max(r0.xyxx,float4(0.000000,0.000000,0.000000,0.000000))).xy;
-    // 22: min r0.xy, r0.xyxx, l(0.000000, 0.000000, 0.000000, 0.000000)
-    r0.xy = (min(r0.xyxx,float4(0.000000,0.000000,0.000000,0.000000))).xy;
-    // 23: mov o0.zw, -r0.xxxy
-    output.zw = (-(r0.xxxy)).zw;
-    return output;
-}
-#endif
-
-#if !defined(ARTIST_NATIVE_MODEL_ONLY) && !defined(EFFECT_NATIVE_MESH_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
-float4 ArtistNative3040Distortion(ARTIST_NATIVE_INPUT input)
-{
-    float4 source[3]; [unroll] for (uint i=0u; i<3u; ++i) source[i]=0.f;
-    source[0].x=1.f; // Project engine opacity multiplier.
-    float4 output=0.f;
-    float4 passValues[4]; [unroll] for(uint passIndex=0u;passIndex<4u;++passIndex) passValues[passIndex]=0.f;
-    passValues[0]=float4(.5f,-.5f,.5f,.5f);
-    float4 v0 = float4(input.sourceBasisX,0.f); // native texcoord10
-    float4 v1 = float4(input.uv,float2(0.f,0.f)); // native texcoord0
-    float4 v2 = input.color; // native texcoord1
-    float4 v3 = input.dynamicParameter; // native texcoord2
-    float4 v4 = float4((input.screenUV*float2(2.f,-2.f)+float2(-1.f,1.f))*input.projectionW,input.projectionZ,input.projectionW); // native texcoord5
-    float4 v5 = float4(input.tangentView,1.f); // native texcoord6
-    float4 v6 = asfloat(uint4(input.frontFace ? 0xffffffffu : 0u,0u,0u,0u)); // native sv_isfrontface0
-    float4 r0=0.f, r1=0.f;
-    // 1: mad r0.xyzw, cb2[0].xyxy, l(-1.000000, 1.000000, -1.000000, 1.000000), cb2[0].wzwz
-    r0.xyzw = ((passValues[0].xyxy)*(float4(-1.000000,1.000000,-1.000000,1.000000))+(passValues[0].wzwz)).xyzw;
-    // 2: dp2 r1.x, r0.zwzz, r0.zwzz
-    r1.x = (dot((r0.zwzz).xy,(r0.zwzz).xy).xxxx).x;
-    // 3: add r1.x, r1.x, l(-0.100000)
-    r1.x = ((r1.xxxx)+(float4(-0.100000,-0.100000,-0.100000,-0.100000))).x;
-    // 4: lt r1.x, r1.x, l(0.000000)
-    r1.x = (asfloat((uint4)((r1.xxxx)<(float4(0.000000,0.000000,0.000000,0.000000))) * 0xffffffffu)).x;
-    // 5: discard_nz r1.x
-    if ((asuint(r1.xxxx)).x != 0u) return 0.f;
-    // 6: div r1.xy, v4.xyxx, v4.wwww
-    r1.xy = ((v4.xyxx)/(v4.wwww)).xy;
-    // 7: mad r1.xy, r1.xyxx, cb2[0].xyxx, cb2[0].wzww
-    r1.xy = ((r1.xyxx)*(passValues[0].xyxx)+(passValues[0].wzww)).xy;
-    // 8: mad r0.xy, r0.xyxx, l(0.003922, -0.003922, 0.000000, 0.000000), r1.xyxx
-    r0.xy = ((r0.xyxx)*(float4(0.003922,-0.003922,0.000000,0.000000))+(r1.xyxx)).xy;
-    // 9: mul r0.zw, r0.zzzw, l(0.000000, 0.000000, 4.000000, 4.000000)
-    r0.zw = ((r0.zzzw)*(float4(0.000000,0.000000,4.000000,4.000000))).zw;
-    // 10: max r0.zw, r0.zzzw, l(0.000000, 0.000000, -255.000000, -255.000000)
-    r0.zw = (max(r0.zzzw,float4(0.000000,0.000000,-255.000000,-255.000000))).zw;
-    // 11: min r0.zw, r0.zzzw, l(0.000000, 0.000000, 255.000000, 255.000000)
-    r0.zw = (min(r0.zzzw,float4(0.000000,0.000000,255.000000,255.000000))).zw;
-    // 12: mul r0.zw, r0.zzzw, l(0.000000, 0.000000, 0.003922, 0.003922)
-    r0.zw = ((r0.zzzw)*(float4(0.000000,0.000000,0.003922,0.003922))).zw;
-    // Native 13: source device depth mapped to centimetre view depth; reconstruction at 15.
-    r0.x = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, (r0.xyxx).xy, 0.f).y * 100000.f;
-    // Native 15-18: reconstructed view depth is supplied by the runtime adapter.
-    r0.x = r0.x;
-    // 19: ge r0.x, v4.w, r0.x
-    r0.x = (asfloat((uint4)((v4.wwww)>=(r0.xxxx)) * 0xffffffffu)).x;
-    // 20: movc r0.xy, r0.xxxx, l(0,0,0,0), r0.zwzz
-    r0.xy = ((asuint(r0.xxxx) != 0u) ? (float4(asfloat(0u),asfloat(0u),asfloat(0u),asfloat(0u))) : (r0.zwzz)).xy;
-    // 21: max o0.xy, r0.xyxx, l(0.000000, 0.000000, 0.000000, 0.000000)
-    output.xy = (max(r0.xyxx,float4(0.000000,0.000000,0.000000,0.000000))).xy;
-    // 22: min r0.xy, r0.xyxx, l(0.000000, 0.000000, 0.000000, 0.000000)
-    r0.xy = (min(r0.xyxx,float4(0.000000,0.000000,0.000000,0.000000))).xy;
-    // 23: mov o0.zw, -r0.xxxy
-    output.zw = (-(r0.xxxy)).zw;
-    return output;
-}
-#endif
-
-#if !defined(ARTIST_NATIVE_MODEL_ONLY) && !defined(EFFECT_NATIVE_MESH_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
-float4 ArtistNative3042Distortion(ARTIST_NATIVE_INPUT input)
 {
     float4 source[3]; [unroll] for (uint i=0u; i<3u; ++i) source[i]=0.f;
     source[0].x=1.f; // Project engine opacity multiplier.
@@ -11179,6 +9504,1296 @@ float4 ArtistNative3051Distortion(ARTIST_NATIVE_INPUT input)
 }
 #endif
 
+#if !defined(ARTIST_NATIVE_MODEL_ONLY) && !defined(EFFECT_NATIVE_PARTICLE_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
+float4 ArtistNative3065Distortion(ARTIST_NATIVE_INPUT input)
+{
+    float4 source[3]; [unroll] for (uint i=0u; i<3u; ++i) source[i]=0.f;
+    source[0].x=1.f; // Project engine opacity multiplier.
+    float4 output=0.f;
+    source[1]=input.color; // Native mesh particle color prefix.
+    float4 passValues[4]; [unroll] for(uint passIndex=0u;passIndex<4u;++passIndex) passValues[passIndex]=0.f;
+    passValues[0]=float4(.5f,-.5f,.5f,.5f);
+    float4 v0 = input.vertexColor; // native color0
+    float4 v1 = float4(0.f,0.f,0.f,0.f); // native color1
+    float4 v2 = float4(input.uv,input.uv1); // native texcoord0
+    float4 v3 = float4((input.screenUV*float2(2.f,-2.f)+float2(-1.f,1.f))*input.projectionW,input.projectionZ,input.projectionW); // native texcoord5
+    float4 v4 = float4(input.tangentView,1.f); // native texcoord6
+    float4 v5 = asfloat(uint4(input.frontFace ? 0xffffffffu : 0u,0u,0u,0u)); // native sv_isfrontface0
+    float4 r0=0.f, r1=0.f;
+    // 1: mad r0.xyzw, cb2[0].xyxy, l(-1.000000, 1.000000, -1.000000, 1.000000), cb2[0].wzwz
+    r0.xyzw = ((passValues[0].xyxy)*(float4(-1.000000,1.000000,-1.000000,1.000000))+(passValues[0].wzwz)).xyzw;
+    // 2: dp2 r1.x, r0.zwzz, r0.zwzz
+    r1.x = (dot((r0.zwzz).xy,(r0.zwzz).xy).xxxx).x;
+    // 3: add r1.x, r1.x, l(-0.100000)
+    r1.x = ((r1.xxxx)+(float4(-0.100000,-0.100000,-0.100000,-0.100000))).x;
+    // 4: lt r1.x, r1.x, l(0.000000)
+    r1.x = (asfloat((uint4)((r1.xxxx)<(float4(0.000000,0.000000,0.000000,0.000000))) * 0xffffffffu)).x;
+    // 5: discard_nz r1.x
+    if ((asuint(r1.xxxx)).x != 0u) return 0.f;
+    // 6: div r1.xy, v3.xyxx, v3.wwww
+    r1.xy = ((v3.xyxx)/(v3.wwww)).xy;
+    // 7: mad r1.xy, r1.xyxx, cb2[0].xyxx, cb2[0].wzww
+    r1.xy = ((r1.xyxx)*(passValues[0].xyxx)+(passValues[0].wzww)).xy;
+    // 8: mad r0.xy, r0.xyxx, l(0.003922, -0.003922, 0.000000, 0.000000), r1.xyxx
+    r0.xy = ((r0.xyxx)*(float4(0.003922,-0.003922,0.000000,0.000000))+(r1.xyxx)).xy;
+    // 9: mul r0.zw, r0.zzzw, l(0.000000, 0.000000, 4.000000, 4.000000)
+    r0.zw = ((r0.zzzw)*(float4(0.000000,0.000000,4.000000,4.000000))).zw;
+    // 10: max r0.zw, r0.zzzw, l(0.000000, 0.000000, -255.000000, -255.000000)
+    r0.zw = (max(r0.zzzw,float4(0.000000,0.000000,-255.000000,-255.000000))).zw;
+    // 11: min r0.zw, r0.zzzw, l(0.000000, 0.000000, 255.000000, 255.000000)
+    r0.zw = (min(r0.zzzw,float4(0.000000,0.000000,255.000000,255.000000))).zw;
+    // 12: mul r0.zw, r0.zzzw, l(0.000000, 0.000000, 0.003922, 0.003922)
+    r0.zw = ((r0.zzzw)*(float4(0.000000,0.000000,0.003922,0.003922))).zw;
+    // Native 13: source device depth mapped to centimetre view depth; reconstruction at 15.
+    r0.x = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, (r0.xyxx).xy, 0.f).y * 100000.f;
+    // Native 15-18: reconstructed view depth is supplied by the runtime adapter.
+    r0.x = r0.x;
+    // 19: ge r0.x, v3.w, r0.x
+    r0.x = (asfloat((uint4)((v3.wwww)>=(r0.xxxx)) * 0xffffffffu)).x;
+    // 20: movc r0.xy, r0.xxxx, l(0,0,0,0), r0.zwzz
+    r0.xy = ((asuint(r0.xxxx) != 0u) ? (float4(asfloat(0u),asfloat(0u),asfloat(0u),asfloat(0u))) : (r0.zwzz)).xy;
+    // 21: max o0.xy, r0.xyxx, l(0.000000, 0.000000, 0.000000, 0.000000)
+    output.xy = (max(r0.xyxx,float4(0.000000,0.000000,0.000000,0.000000))).xy;
+    // 22: min r0.xy, r0.xyxx, l(0.000000, 0.000000, 0.000000, 0.000000)
+    r0.xy = (min(r0.xyxx,float4(0.000000,0.000000,0.000000,0.000000))).xy;
+    // 23: mov o0.zw, -r0.xxxy
+    output.zw = (-(r0.xxxy)).zw;
+    return output;
+}
+#endif
+
+#if !defined(EFFECT_NATIVE_MESH_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
+#ifndef ARTIST_NATIVE_MODEL_ONLY
+// Installed source-identical native reuse
+float4 ArtistNative3047(ARTIST_NATIVE_INPUT input)
+{
+    float4 source[18]; [unroll] for (uint i=0u; i<18u; ++i) source[i]=0.f;
+    source[0].x=1.f; // Project engine opacity multiplier.
+    float4 output=0.f;
+    source[1] = g_ArtistSourceMaterialParameters[9u];
+    source[2] = ArtistNativeAppend(g_ArtistSourceMaterialParameters[7u].zzzz,g_ArtistSourceMaterialParameters[7u].wwww,1u);
+    source[3] = ArtistNativeAppend(g_ArtistSourceMaterialParameters[3u].wwww,g_ArtistSourceMaterialParameters[4u].xxxx,1u);
+    source[4] = ArtistNativeAppend(cos(((g_ArtistSourceMaterialParameters[4u].wwww*float4(6.28000021, 0.0, 0.0, 0.0))*float4(0.25, 0.0, 0.0, 0.0))),(float4(-1.0, 0.0, 0.0, 0.0)*sin(((g_ArtistSourceMaterialParameters[4u].wwww*float4(6.28000021, 0.0, 0.0, 0.0))*float4(0.25, 0.0, 0.0, 0.0)))),1u);
+    source[5] = ArtistNativeAppend(sin(((g_ArtistSourceMaterialParameters[4u].wwww*float4(6.28000021, 0.0, 0.0, 0.0))*float4(0.25, 0.0, 0.0, 0.0))),cos(((g_ArtistSourceMaterialParameters[4u].wwww*float4(6.28000021, 0.0, 0.0, 0.0))*float4(0.25, 0.0, 0.0, 0.0))),1u);
+    source[6] = ArtistNativeAppend(cos((g_ArtistSourceMaterialParameters[1u].wwww*float4(0.25, 0.0, 0.0, 0.0))),(float4(-1.0, 0.0, 0.0, 0.0)*sin((g_ArtistSourceMaterialParameters[1u].wwww*float4(0.25, 0.0, 0.0, 0.0)))),1u);
+    source[7] = ArtistNativeAppend(sin((g_ArtistSourceMaterialParameters[1u].wwww*float4(0.25, 0.0, 0.0, 0.0))),cos((g_ArtistSourceMaterialParameters[1u].wwww*float4(0.25, 0.0, 0.0, 0.0))),1u);
+    source[8] = g_ArtistSourceMaterialParameters[8u];
+    source[9].x = ((float4(-1.0, 0.0, 0.0, 0.0)*sin(((g_ArtistSourceMaterialParameters[4u].wwww*float4(6.28000021, 0.0, 0.0, 0.0))*float4(0.25, 0.0, 0.0, 0.0))))).x;
+    source[9].y = (cos(((g_ArtistSourceMaterialParameters[4u].wwww*float4(6.28000021, 0.0, 0.0, 0.0))*float4(0.25, 0.0, 0.0, 0.0)))).x;
+    source[9].z = (g_ArtistSourceMaterialParameters[4u].yyyy).x;
+    source[9].w = (g_ArtistSourceMaterialTime.xxxx).x;
+    source[10].x = (g_ArtistSourceMaterialParameters[5u].xxxx).x;
+    source[10].y = (g_ArtistSourceMaterialParameters[5u].yyyy).x;
+    source[10].z = (g_ArtistSourceMaterialParameters[4u].zzzz).x;
+    source[10].w = (g_ArtistSourceMaterialParameters[3u].yyyy).x;
+    source[11].x = (g_ArtistSourceMaterialParameters[3u].zzzz).x;
+    source[11].y = (g_ArtistSourceMaterialParameters[6u].zzzz).x;
+    source[11].z = (g_ArtistSourceMaterialParameters[7u].xxxx).x;
+    source[11].w = (g_ArtistSourceMaterialParameters[7u].yyyy).x;
+    source[12].x = (g_ArtistSourceMaterialParameters[6u].wwww).x;
+    source[12].y = (g_ArtistSourceMaterialParameters[7u].wwww).x;
+    source[12].z = (g_ArtistSourceMaterialParameters[7u].zzzz).x;
+    source[12].w = (g_ArtistSourceMaterialParameters[6u].yyyy).x;
+    source[13].x = (g_ArtistSourceMaterialParameters[4u].xxxx).x;
+    source[13].y = (g_ArtistSourceMaterialParameters[3u].wwww).x;
+    source[13].z = (g_ArtistSourceMaterialParameters[2u].zzzz).x;
+    source[13].w = (g_ArtistSourceMaterialParameters[2u].wwww).x;
+    source[14].x = (g_ArtistSourceMaterialParameters[2u].yyyy).x;
+    source[14].y = (g_ArtistSourceMaterialParameters[0u].xxxx).x;
+    source[14].z = (g_ArtistSourceMaterialParameters[0u].zzzz).x;
+    source[14].w = (g_ArtistSourceMaterialParameters[0u].wwww).x;
+    source[15].x = (cos((g_ArtistSourceMaterialParameters[1u].wwww*float4(0.25, 0.0, 0.0, 0.0)))).x;
+    source[15].y = (g_ArtistSourceMaterialParameters[0u].yyyy).x;
+    source[15].z = (g_ArtistSourceMaterialParameters[1u].yyyy).x;
+    source[15].w = (g_ArtistSourceMaterialParameters[1u].zzzz).x;
+    source[16].x = (g_ArtistSourceMaterialParameters[1u].xxxx).x;
+    source[16].y = (g_ArtistSourceMaterialParameters[2u].xxxx).x;
+    source[16].z = (g_ArtistSourceMaterialParameters[5u].zzzz).x;
+    source[16].w = (g_ArtistSourceMaterialParameters[5u].wwww).x;
+    source[17].x = (g_ArtistSourceMaterialParameters[6u].xxxx).x;
+    source[17].y = (g_ArtistSourceMaterialParameters[3u].xxxx).x;
+    float4 passValues[4]; [unroll] for(uint passIndex=0u;passIndex<4u;++passIndex) passValues[passIndex]=0.f;
+    passValues[0]=float4(.5f,-.5f,.5f,.5f);
+    float4 v0 = float4(input.sourceBasisX,input.subUVBlend); // native texcoord10
+    float4 v1 = float4(input.sourceBasisZ,input.handedness); // native texcoord11
+    float4 v2 = float4(input.uv,input.uvNext); // native texcoord0
+    float4 v3 = input.color; // native texcoord1
+    float4 v4 = input.dynamicParameter; // native texcoord2
+    float4 v5 = float4(0.f,0.f,0.f,1.f); // native texcoord4
+    float4 v6 = float4(input.tangentView,1.f); // native texcoord6
+    float4 v7 = float4((input.screenUV*float2(2.f,-2.f)+float2(-1.f,1.f))*input.projectionW,input.projectionZ,input.projectionW); // native texcoord5
+    float4 v8 = asfloat(uint4(input.frontFace ? 0xffffffffu : 0u,0u,0u,0u)); // native sv_isfrontface0
+    float4 r0=0.f, r1=0.f, r2=0.f;
+    // 1: add r0.xy, v2.xyxx, l(-0.500000, -0.500000, 0.000000, 0.000000)
+    r0.xy = ((v2.xyxx)+(float4(-0.500000,-0.500000,0.000000,0.000000))).xy;
+    // 2: max r0.z, |r0.y|, |r0.x|
+    r0.z = (max(abs(r0.yyyy),abs(r0.xxxx))).z;
+    // 3: div r0.z, l(1.000000, 1.000000, 1.000000, 1.000000), r0.z
+    r0.z = ((float4(1.000000,1.000000,1.000000,1.000000))/(r0.zzzz)).z;
+    // 4: min r0.w, |r0.y|, |r0.x|
+    r0.w = (min(abs(r0.yyyy),abs(r0.xxxx))).w;
+    // 5: mul r0.z, r0.z, r0.w
+    r0.z = ((r0.zzzz)*(r0.wwww)).z;
+    // 6: mul r0.w, r0.z, r0.z
+    r0.w = ((r0.zzzz)*(r0.zzzz)).w;
+    // 7: mad r1.x, r0.w, l(0.020835), l(-0.085133)
+    r1.x = ((r0.wwww)*(float4(0.020835,0.020835,0.020835,0.020835))+(float4(-0.085133,-0.085133,-0.085133,-0.085133))).x;
+    // 8: mad r1.x, r0.w, r1.x, l(0.180141)
+    r1.x = ((r0.wwww)*(r1.xxxx)+(float4(0.180141,0.180141,0.180141,0.180141))).x;
+    // 9: mad r1.x, r0.w, r1.x, l(-0.330299)
+    r1.x = ((r0.wwww)*(r1.xxxx)+(float4(-0.330299,-0.330299,-0.330299,-0.330299))).x;
+    // 10: mad r0.w, r0.w, r1.x, l(0.999866)
+    r0.w = ((r0.wwww)*(r1.xxxx)+(float4(0.999866,0.999866,0.999866,0.999866))).w;
+    // 11: mul r1.x, r0.w, r0.z
+    r1.x = ((r0.wwww)*(r0.zzzz)).x;
+    // 12: mad r1.x, r1.x, l(-2.000000), l(1.570796)
+    r1.x = ((r1.xxxx)*(float4(-2.000000,-2.000000,-2.000000,-2.000000))+(float4(1.570796,1.570796,1.570796,1.570796))).x;
+    // 13: lt r1.y, |r0.y|, |r0.x|
+    r1.y = (asfloat((uint4)((abs(r0.yyyy))<(abs(r0.xxxx))) * 0xffffffffu)).y;
+    // 14: and r1.x, r1.y, r1.x
+    r1.x = (asfloat(asuint(r1.yyyy) & asuint(r1.xxxx))).x;
+    // 15: mad r0.z, r0.z, r0.w, r1.x
+    r0.z = ((r0.zzzz)*(r0.wwww)+(r1.xxxx)).z;
+    // 16: lt r0.w, r0.y, -r0.y
+    r0.w = (asfloat((uint4)((r0.yyyy)<(-(r0.yyyy))) * 0xffffffffu)).w;
+    // 17: and r0.w, r0.w, l(0xc0490fdb)
+    r0.w = (asfloat(asuint(r0.wwww) & uint4(0xc0490fdbu,0xc0490fdbu,0xc0490fdbu,0xc0490fdbu))).w;
+    // 18: add r0.z, r0.w, r0.z
+    r0.z = ((r0.wwww)+(r0.zzzz)).z;
+    // 19: min r0.w, r0.y, r0.x
+    r0.w = (min(r0.yyyy,r0.xxxx)).w;
+    // 20: lt r0.w, r0.w, -r0.w
+    r0.w = (asfloat((uint4)((r0.wwww)<(-(r0.wwww))) * 0xffffffffu)).w;
+    // 21: max r1.x, r0.y, r0.x
+    r1.x = (max(r0.yyyy,r0.xxxx)).x;
+    // 22: ge r1.x, r1.x, -r1.x
+    r1.x = (asfloat((uint4)((r1.xxxx)>=(-(r1.xxxx))) * 0xffffffffu)).x;
+    // 23: and r0.w, r0.w, r1.x
+    r0.w = (asfloat(asuint(r0.wwww) & asuint(r1.xxxx))).w;
+    // 24: movc r0.z, r0.w, -r0.z, r0.z
+    r0.z = ((asuint(r0.wwww) != 0u) ? (-(r0.zzzz)) : (r0.zzzz)).z;
+    // 25: mad r1.x, r0.z, l(0.159155), l(0.500000)
+    r1.x = ((r0.zzzz)*(float4(0.159155,0.159155,0.159155,0.159155))+(float4(0.500000,0.500000,0.500000,0.500000))).x;
+    // 26: dp2 r0.z, r0.xyxx, r0.xyxx
+    r0.z = (dot((r0.xyxx).xy,(r0.xyxx).xy).xxxx).z;
+    // 27: sqrt r0.z, r0.z
+    r0.z = (sqrt(r0.zzzz)).z;
+    // 28: log r0.w, r0.z
+    r0.w = (log2(r0.zzzz)).w;
+    // 29: mul r0.w, r0.w, v4.w
+    r0.w = ((r0.wwww)*(v4.wwww)).w;
+    // 30: exp r0.w, r0.w
+    r0.w = (exp2(r0.wwww)).w;
+    // 31: lt r1.z, r0.z, l(0.000001)
+    r1.z = (asfloat((uint4)((r0.zzzz)<(float4(0.000001,0.000001,0.000001,0.000001))) * 0xffffffffu)).z;
+    // 32: mad r0.z, -r0.z, l(2.000000), l(1.000000)
+    r0.z = ((-(r0.zzzz))*(float4(2.000000,2.000000,2.000000,2.000000))+(float4(1.000000,1.000000,1.000000,1.000000))).z;
+    // 33: max r0.z, r0.z, l(0.000000)
+    r0.z = (max(r0.zzzz,float4(0.000000,0.000000,0.000000,0.000000))).z;
+    // 34: mul r0.z, r0.z, cb0[16].z
+    r0.z = ((r0.zzzz)*(source[16].zzzz)).z;
+    // 35: max r0.z, r0.z, cb0[17].x
+    r0.z = (max(r0.zzzz,source[17].xxxx)).z;
+    // 36: min r0.z, r0.z, cb0[16].w
+    r0.z = (min(r0.zzzz,source[16].wwww)).z;
+    // 37: movc r1.y, r1.z, l(0), r0.w
+    r1.y = ((asuint(r1.zzzz) != 0u) ? (float4(asfloat(0u),asfloat(0u),asfloat(0u),asfloat(0u))) : (r0.wwww)).y;
+    // 38: mul r1.xy, r1.xyxx, cb0[10].xyxx
+    r1.xy = ((r1.xyxx)*(source[10].xyxx)).xy;
+    // 39: mad r2.x, cb0[9].w, cb0[9].z, r1.x
+    r2.x = ((source[9].wwww)*(source[9].zzzz)+(r1.xxxx)).x;
+    // 40: mad r2.y, cb0[9].w, cb0[10].z, r1.y
+    r2.y = ((source[9].wwww)*(source[10].zzzz)+(r1.yyyy)).y;
+    // 41: mul r1.x, v4.x, cb0[10].w
+    r1.x = ((v4.xxxx)*(source[10].wwww)).x;
+    // 42: mul r1.y, v4.x, cb0[11].x
+    r1.y = ((v4.xxxx)*(source[11].xxxx)).y;
+    // 43: mad r1.xy, r2.xyxx, l(2.000000, 2.000000, 0.000000, 0.000000), r1.xyxx
+    r1.xy = ((r2.xyxx)*(float4(2.000000,2.000000,0.000000,0.000000))+(r1.xyxx)).xy;
+    // 44: mul r1.zw, v2.xxxy, cb0[11].zzzw
+    r1.zw = ((v2.xxxy)*(source[11].zzzw)).zw;
+    // 45: mad r2.x, cb0[9].w, cb0[11].y, r1.z
+    r2.x = ((source[9].wwww)*(source[11].yyyy)+(r1.zzzz)).x;
+    // 46: mad r2.y, cb0[9].w, cb0[12].x, r1.w
+    r2.y = ((source[9].wwww)*(source[12].xxxx)+(r1.wwww)).y;
+    // 47: add r1.zw, r2.xxxy, cb0[2].xxxy
+    r1.zw = ((r2.xxxy)+(source[2].xxxy)).zw;
+    // 48: sample_b_indexable(texture2d)(float,float,float,float) r0.w, r1.zwzz, t0.yzwx, s1, l(0.000000)
+    r0.w = (ArtistNativeSample1((r1.zwzz).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x, false).yzwx).w;
+    // 49: add r1.z, v4.z, cb0[12].w
+    r1.z = ((v4.zzzz)+(source[12].wwww)).z;
+    // 50: mad r1.zw, r0.wwww, r1.zzzz, cb0[3].xxxy
+    r1.zw = ((r0.wwww)*(r1.zzzz)+(source[3].xxxy)).zw;
+    // 51: add r1.xy, r1.zwzz, r1.xyxx
+    r1.xy = ((r1.zwzz)+(r1.xyxx)).xy;
+    // 52: add r1.xy, r1.xyxx, l(-0.500000, -0.500000, 0.000000, 0.000000)
+    r1.xy = ((r1.xyxx)+(float4(-0.500000,-0.500000,0.000000,0.000000))).xy;
+    // 53: dp2 r2.x, cb0[4].xyxx, r1.xyxx
+    r2.x = (dot((source[4].xyxx).xy,(r1.xyxx).xy).xxxx).x;
+    // 54: dp2 r2.y, cb0[5].xyxx, r1.xyxx
+    r2.y = (dot((source[5].xyxx).xy,(r1.xyxx).xy).xxxx).y;
+    // 55: add r1.xy, r2.xyxx, l(0.500000, 0.500000, 0.000000, 0.000000)
+    r1.xy = ((r2.xyxx)+(float4(0.500000,0.500000,0.000000,0.000000))).xy;
+    // 56: sample_l_indexable(texture2d)(float,float,float,float) r0.w, r1.xyxx, t1.yzwx, s0, l(-1.000000)
+    r0.w = (ArtistNativeSample0((r1.xyxx).xy, (float4(-1.000000,-1.000000,-1.000000,-1.000000)).x, true).yzwx).w;
+    // 57: log r1.x, |r0.w|
+    r1.x = (log2(abs(r0.wwww))).x;
+    // 58: mul r1.x, r1.x, cb0[13].z
+    r1.x = ((r1.xxxx)*(source[13].zzzz)).x;
+    // 59: exp r1.x, r1.x
+    r1.x = (exp2(r1.xxxx)).x;
+    // 60: mul r1.x, r1.x, cb0[13].w
+    r1.x = ((r1.xxxx)*(source[13].wwww)).x;
+    // 61: lt r1.y, |r0.w|, l(0.000001)
+    r1.y = (asfloat((uint4)((abs(r0.wwww))<(float4(0.000001,0.000001,0.000001,0.000001))) * 0xffffffffu)).y;
+    // 62: movc r1.x, r1.y, l(0), r1.x
+    r1.x = ((asuint(r1.yyyy) != 0u) ? (float4(asfloat(0u),asfloat(0u),asfloat(0u),asfloat(0u))) : (r1.xxxx)).x;
+    // 63: mad r1.x, r0.w, cb0[14].x, r1.x
+    r1.x = ((r0.wwww)*(source[14].xxxx)+(r1.xxxx)).x;
+    // 64: dp2 r2.x, cb0[6].xyxx, r0.xyxx
+    r2.x = (dot((source[6].xyxx).xy,(r0.xyxx).xy).xxxx).x;
+    // 65: dp2 r2.y, cb0[7].xyxx, r0.xyxx
+    r2.y = (dot((source[7].xyxx).xy,(r0.xyxx).xy).xxxx).y;
+    // 66: add r0.xy, r2.xyxx, l(0.500000, 0.500000, 0.000000, 0.000000)
+    r0.xy = ((r2.xyxx)+(float4(0.500000,0.500000,0.000000,0.000000))).xy;
+    // 67: mul r0.xy, r0.xyxx, cb0[14].zwzz
+    r0.xy = ((r0.xyxx)*(source[14].zwzz)).xy;
+    // 68: mad r2.x, cb0[9].w, cb0[14].y, r0.x
+    r2.x = ((source[9].wwww)*(source[14].yyyy)+(r0.xxxx)).x;
+    // 69: mad r2.y, cb0[9].w, cb0[15].y, r0.y
+    r2.y = ((source[9].wwww)*(source[15].yyyy)+(r0.yyyy)).y;
+    // 70: add r0.xy, r2.xyxx, cb0[15].zwzz
+    r0.xy = ((r2.xyxx)+(source[15].zwzz)).xy;
+    // 71: sample_b_indexable(texture2d)(float,float,float,float) r0.x, r0.xyxx, t2.xyzw, s2, l(0.000000)
+    r0.x = (ArtistNativeSample2((r0.xyxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x, false).xyzw).x;
+    // 72: add r0.x, r0.x, l(0.100000)
+    r0.x = ((r0.xxxx)+(float4(0.100000,0.100000,0.100000,0.100000))).x;
+    // 73: add r0.y, v4.y, l(-1.000000)
+    r0.y = ((v4.yyyy)+(float4(-1.000000,-1.000000,-1.000000,-1.000000))).y;
+    // 74: add_sat r0.x, -r0.y, r0.x
+    r0.x = (saturate((-(r0.yyyy))+(r0.xxxx))).x;
+    // 75: log r0.y, r0.x
+    r0.y = (log2(r0.xxxx)).y;
+    // 76: mul r0.y, r0.y, cb0[16].y
+    r0.y = ((r0.yyyy)*(source[16].yyyy)).y;
+    // 77: exp r0.y, r0.y
+    r0.y = (exp2(r0.yyyy)).y;
+    // 78: mul_sat r0.y, r0.y, cb0[16].x
+    r0.y = (saturate((r0.yyyy)*(source[16].xxxx))).y;
+    // 79: lt r1.y, r0.x, l(0.000001)
+    r1.y = (asfloat((uint4)((r0.xxxx)<(float4(0.000001,0.000001,0.000001,0.000001))) * 0xffffffffu)).y;
+    // 80: mul r0.x, r0.x, cb0[16].x
+    r0.x = ((r0.xxxx)*(source[16].xxxx)).x;
+    // 81: movc r0.y, r1.y, l(-0.000000), -r0.y
+    r0.y = ((asuint(r1.yyyy) != 0u) ? (float4(-0.000000,-0.000000,-0.000000,-0.000000)) : (-(r0.yyyy))).y;
+    // 82: mov_sat r1.y, r0.x
+    r1.y = (saturate(r0.xxxx)).y;
+    // 83: mul r0.x, r0.x, r0.w
+    r0.x = ((r0.xxxx)*(r0.wwww)).x;
+    // 84: mul r0.x, r0.x, cb0[17].y
+    r0.x = ((r0.xxxx)*(source[17].yyyy)).x;
+    // 85: mul_sat r0.x, r0.x, v3.w
+    r0.x = (saturate((r0.xxxx)*(v3.wwww))).x;
+    // 86: mul r0.x, r0.x, r0.z
+    r0.x = ((r0.xxxx)*(r0.zzzz)).x;
+    // 87: mul o0.w, r0.x, cb0[0].x
+    output.w = ((r0.xxxx)*(source[0].xxxx)).w;
+    // 88: add r0.x, r0.y, r1.y
+    r0.x = ((r0.yyyy)+(r1.yyyy)).x;
+    // 89: max r0.x, r0.x, l(0.000000)
+    r0.x = (max(r0.xxxx,float4(0.000000,0.000000,0.000000,0.000000))).x;
+    // 90: mul r0.xyz, r0.xxxx, cb0[8].xyzx
+    r0.xyz = ((r0.xxxx)*(source[8].xyzx)).xyz;
+    // 91: mad r0.xyz, r0.wwww, r0.xyzx, r1.xxxx
+    r0.xyz = ((r0.wwww)*(r0.xyzx)+(r1.xxxx)).xyz;
+    // 92: mad r0.xyz, r0.xyzx, v3.xyzx, cb0[1].xyzx
+    r0.xyz = ((r0.xyzx)*(v3.xyzx)+(source[1].xyzx)).xyz;
+    // 93: mad o0.xyz, r0.xyzx, v5.wwww, v5.xyzx
+    output.xyz = ((r0.xyzx)*(v5.wwww)+(v5.xyzx)).xyz;
+    return output;
+}
+#endif
+#endif
+
+#if !defined(EFFECT_NATIVE_MESH_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
+#ifndef ARTIST_NATIVE_MODEL_ONLY
+// Installed source-identical native reuse
+float4 ArtistNative3029(ARTIST_NATIVE_INPUT input)
+{
+    float4 source[5]; [unroll] for (uint i=0u; i<5u; ++i) source[i]=0.f;
+    source[0].x=1.f; // Project engine opacity multiplier.
+    float4 output=0.f;
+    source[1] = g_ArtistSourceMaterialParameters[3u];
+    source[2] = g_ArtistSourceMaterialParameters[2u];
+    source[3].x = (g_ArtistSourceMaterialParameters[0u].yyyy).x;
+    source[3].y = (g_ArtistSourceMaterialParameters[0u].zzzz).x;
+    source[3].z = (g_ArtistSourceMaterialParameters[0u].wwww).x;
+    source[3].w = (g_ArtistSourceMaterialParameters[1u].wwww).x;
+    source[4].x = (g_ArtistSourceMaterialParameters[1u].xxxx).x;
+    source[4].y = (g_ArtistSourceMaterialParameters[1u].yyyy).x;
+    source[4].z = (g_ArtistSourceMaterialParameters[1u].zzzz).x;
+    source[4].w = (g_ArtistSourceMaterialParameters[0u].xxxx).x;
+    float4 passValues[4]; [unroll] for(uint passIndex=0u;passIndex<4u;++passIndex) passValues[passIndex]=0.f;
+    passValues[0]=float4(.5f,-.5f,.5f,.5f);
+    float4 v0 = float4(input.sourceBasisX,0.f); // native texcoord10
+    float4 v1 = float4(input.sourceBasisZ,input.handedness); // native texcoord11
+    float4 v2 = float4(input.uv,float2(0.f,0.f)); // native texcoord0
+    float4 v3 = input.color; // native texcoord1
+    float4 v4 = input.dynamicParameter; // native texcoord2
+    float4 v5 = float4(0.f,0.f,0.f,1.f); // native texcoord4
+    float4 v6 = float4(input.tangentView,1.f); // native texcoord6
+    float4 v7 = float4((input.screenUV*float2(2.f,-2.f)+float2(-1.f,1.f))*input.projectionW,input.projectionZ,input.projectionW); // native texcoord5
+    float4 v8 = asfloat(uint4(input.frontFace ? 0xffffffffu : 0u,0u,0u,0u)); // native sv_isfrontface0
+    float4 r0=0.f, r1=0.f;
+    // 1: div r0.xy, v7.xyxx, v7.wwww
+    r0.xy = ((v7.xyxx)/(v7.wwww)).xy;
+    // 2: mad r0.xy, r0.xyxx, cb2[0].xyxx, cb2[0].wzww
+    r0.xy = ((r0.xyxx)*(passValues[0].xyxx)+(passValues[0].wzww)).xy;
+    // Native 3: source device depth mapped to centimetre view depth; reconstruction at 5.
+    r0.x = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, (r0.xyxx).xy, 0.f).y * 100000.f;
+    // Native 5-8: reconstructed view depth is supplied by the runtime adapter.
+    r0.x = r0.x;
+    // 9: add r0.x, r0.x, -v7.w
+    r0.x = ((r0.xxxx)+(-(v7.wwww))).x;
+    // 10: add r0.y, -cb0[4].w, l(1.000000)
+    r0.y = ((-(source[4].wwww))+(float4(1.000000,1.000000,1.000000,1.000000))).y;
+    // 11: max r0.y, r0.y, l(0.001000)
+    r0.y = (max(r0.yyyy,float4(0.001000,0.001000,0.001000,0.001000))).y;
+    // 12: div_sat r0.x, r0.x, r0.y
+    r0.x = (saturate((r0.xxxx)/(r0.yyyy))).x;
+    // 13: sample_b_indexable(texture2d)(float,float,float,float) r0.y, v2.xyxx, t1.yxzw, s1, l(0.000000)
+    r0.y = (ArtistNativeSample0((v2.xyxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x, false).yxzw).y;
+    // 14: mul r0.y, r0.y, cb0[3].x
+    r0.y = ((r0.yyyy)*(source[3].xxxx)).y;
+    // 15: log r0.z, |r0.y|
+    r0.z = (log2(abs(r0.yyyy))).z;
+    // 16: lt r0.y, |r0.y|, l(0.000001)
+    r0.y = (asfloat((uint4)((abs(r0.yyyy))<(float4(0.000001,0.000001,0.000001,0.000001))) * 0xffffffffu)).y;
+    // 17: mul r0.z, r0.z, cb0[3].y
+    r0.z = ((r0.zzzz)*(source[3].yyyy)).z;
+    // 18: exp r0.z, r0.z
+    r0.z = (exp2(r0.zzzz)).z;
+    // 19: movc r0.y, r0.y, l(0), r0.z
+    r0.y = ((asuint(r0.yyyy) != 0u) ? (float4(asfloat(0u),asfloat(0u),asfloat(0u),asfloat(0u))) : (r0.zzzz)).y;
+    // 20: mad r0.z, v4.x, l(2.000000), l(-1.000000)
+    r0.z = ((v4.xxxx)*(float4(2.000000,2.000000,2.000000,2.000000))+(float4(-1.000000,-1.000000,-1.000000,-1.000000))).z;
+    // 21: add r0.y, r0.y, r0.z
+    r0.y = ((r0.yyyy)+(r0.zzzz)).y;
+    // 22: log r0.z, |r0.y|
+    r0.z = (log2(abs(r0.yyyy))).z;
+    // 23: lt r0.y, |r0.y|, l(0.000001)
+    r0.y = (asfloat((uint4)((abs(r0.yyyy))<(float4(0.000001,0.000001,0.000001,0.000001))) * 0xffffffffu)).y;
+    // 24: mul r0.z, r0.z, cb0[3].z
+    r0.z = ((r0.zzzz)*(source[3].zzzz)).z;
+    // 25: exp r0.z, r0.z
+    r0.z = (exp2(r0.zzzz)).z;
+    // 26: min r0.z, r0.z, l(1.000000)
+    r0.z = (min(r0.zzzz,float4(1.000000,1.000000,1.000000,1.000000))).z;
+    // 27: movc r0.y, r0.y, l(0), r0.z
+    r0.y = ((asuint(r0.yyyy) != 0u) ? (float4(asfloat(0u),asfloat(0u),asfloat(0u),asfloat(0u))) : (r0.zzzz)).y;
+    // 28: mad r0.z, cb0[3].w, v4.z, l(-1.000000)
+    r0.z = ((source[3].wwww)*(v4.zzzz)+(float4(-1.000000,-1.000000,-1.000000,-1.000000))).z;
+    // 29: mul r0.z, r0.z, l(0.500000)
+    r0.z = ((r0.zzzz)*(float4(0.500000,0.500000,0.500000,0.500000))).z;
+    // 30: mul r0.w, v4.z, cb0[3].w
+    r0.w = ((v4.zzzz)*(source[3].wwww)).w;
+    // 31: mad r0.zw, r0.wwww, v2.xxxy, -r0.zzzz
+    r0.zw = ((r0.wwww)*(v2.xxxy)+(-(r0.zzzz))).zw;
+    // 32: sample_b_indexable(texture2d)(float,float,float,float) r1.xyzw, r0.zwzz, t0.xyzw, s2, l(0.000000)
+    r1.xyzw = (ArtistNativeSample1((r0.zwzz).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x, false).xyzw).xyzw;
+    // 33: log r0.z, |r1.w|
+    r0.z = (log2(abs(r1.wwww))).z;
+    // 34: mul r0.z, r0.z, cb0[4].z
+    r0.z = ((r0.zzzz)*(source[4].zzzz)).z;
+    // 35: exp r0.z, r0.z
+    r0.z = (exp2(r0.zzzz)).z;
+    // 36: mul r0.z, r0.z, v3.w
+    r0.z = ((r0.zzzz)*(v3.wwww)).z;
+    // 37: lt r0.w, |r1.w|, l(0.000001)
+    r0.w = (asfloat((uint4)((abs(r1.wwww))<(float4(0.000001,0.000001,0.000001,0.000001))) * 0xffffffffu)).w;
+    // 38: movc r0.z, r0.w, l(0), |r0.z|
+    r0.z = ((asuint(r0.wwww) != 0u) ? (float4(asfloat(0u),asfloat(0u),asfloat(0u),asfloat(0u))) : (abs(r0.zzzz))).z;
+    // 39: log r0.w, r0.z
+    r0.w = (log2(r0.zzzz)).w;
+    // 40: lt r0.z, r0.z, l(0.000001)
+    r0.z = (asfloat((uint4)((r0.zzzz)<(float4(0.000001,0.000001,0.000001,0.000001))) * 0xffffffffu)).z;
+    // 41: mul r0.w, r0.w, v4.y
+    r0.w = ((r0.wwww)*(v4.yyyy)).w;
+    // 42: exp r0.w, r0.w
+    r0.w = (exp2(r0.wwww)).w;
+    // 43: mul r0.w, r0.y, r0.w
+    r0.w = ((r0.yyyy)*(r0.wwww)).w;
+    // 44: ge r0.y, l(0.250000), r0.y
+    r0.y = (asfloat((uint4)((float4(0.250000,0.250000,0.250000,0.250000))>=(r0.yyyy)) * 0xffffffffu)).y;
+    // 45: mul r0.x, r0.x, r0.w
+    r0.x = ((r0.xxxx)*(r0.wwww)).x;
+    // 46: min r0.x, r0.x, l(1.000000)
+    r0.x = (min(r0.xxxx,float4(1.000000,1.000000,1.000000,1.000000))).x;
+    // 47: mul r0.x, r0.x, cb0[0].x
+    r0.x = ((r0.xxxx)*(source[0].xxxx)).x;
+    // 48: movc o0.w, r0.z, l(0), r0.x
+    output.w = ((asuint(r0.zzzz) != 0u) ? (float4(asfloat(0u),asfloat(0u),asfloat(0u),asfloat(0u))) : (r0.xxxx)).w;
+    // 49: mul r0.xzw, r1.xxyz, cb0[4].xxxx
+    r0.xzw = ((r1.xxyz)*(source[4].xxxx)).xzw;
+    // 50: dp3 r1.w, r0.xzwx, l(0.300000, 0.590000, 0.110000, 0.000000)
+    r1.w = (dot((r0.xzwx).xyz,(float4(0.300000,0.590000,0.110000,0.000000)).xyz).xxxx).w;
+    // 51: mad r1.xyz, -cb0[4].xxxx, r1.xyzx, r1.wwww
+    r1.xyz = ((-(source[4].xxxx))*(r1.xyzx)+(r1.wwww)).xyz;
+    // 52: mad r0.xzw, cb0[4].yyyy, r1.xxyz, r0.xxzw
+    r0.xzw = ((source[4].yyyy)*(r1.xxyz)+(r0.xxzw)).xzw;
+    // 53: mul r0.xzw, r0.xxzw, v3.xxyz
+    r0.xzw = ((r0.xxzw)*(v3.xxyz)).xzw;
+    // 54: mul r1.xyz, cb0[2].xyzx, cb0[2].wwww
+    r1.xyz = ((source[2].xyzx)*(source[2].wwww)).xyz;
+    // 55: movc r0.xyz, r0.yyyy, r1.xyzx, r0.xzwx
+    r0.xyz = ((asuint(r0.yyyy) != 0u) ? (r1.xyzx) : (r0.xzwx)).xyz;
+    // 56: add r0.xyz, r0.xyzx, cb0[1].xyzx
+    r0.xyz = ((r0.xyzx)+(source[1].xyzx)).xyz;
+    // 57: mad o0.xyz, r0.xyzx, v5.wwww, v5.xyzx
+    output.xyz = ((r0.xyzx)*(v5.wwww)+(v5.xyzx)).xyz;
+    return output;
+}
+#endif
+#endif
+
+#if !defined(ARTIST_NATIVE_MODEL_ONLY) && !defined(EFFECT_NATIVE_MESH_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
+float4 ArtistNative3029Distortion(ARTIST_NATIVE_INPUT input)
+{
+    float4 source[3]; [unroll] for (uint i=0u; i<3u; ++i) source[i]=0.f;
+    source[0].x=1.f; // Project engine opacity multiplier.
+    float4 output=0.f;
+    float4 passValues[4]; [unroll] for(uint passIndex=0u;passIndex<4u;++passIndex) passValues[passIndex]=0.f;
+    passValues[0]=float4(.5f,-.5f,.5f,.5f);
+    float4 v0 = float4(input.sourceBasisX,0.f); // native texcoord10
+    float4 v1 = float4(input.uv,float2(0.f,0.f)); // native texcoord0
+    float4 v2 = input.color; // native texcoord1
+    float4 v3 = input.dynamicParameter; // native texcoord2
+    float4 v4 = float4((input.screenUV*float2(2.f,-2.f)+float2(-1.f,1.f))*input.projectionW,input.projectionZ,input.projectionW); // native texcoord5
+    float4 v5 = float4(input.tangentView,1.f); // native texcoord6
+    float4 v6 = asfloat(uint4(input.frontFace ? 0xffffffffu : 0u,0u,0u,0u)); // native sv_isfrontface0
+    float4 r0=0.f, r1=0.f;
+    // 1: mad r0.xyzw, cb2[0].xyxy, l(-1.000000, 1.000000, -1.000000, 1.000000), cb2[0].wzwz
+    r0.xyzw = ((passValues[0].xyxy)*(float4(-1.000000,1.000000,-1.000000,1.000000))+(passValues[0].wzwz)).xyzw;
+    // 2: dp2 r1.x, r0.zwzz, r0.zwzz
+    r1.x = (dot((r0.zwzz).xy,(r0.zwzz).xy).xxxx).x;
+    // 3: add r1.x, r1.x, l(-0.100000)
+    r1.x = ((r1.xxxx)+(float4(-0.100000,-0.100000,-0.100000,-0.100000))).x;
+    // 4: lt r1.x, r1.x, l(0.000000)
+    r1.x = (asfloat((uint4)((r1.xxxx)<(float4(0.000000,0.000000,0.000000,0.000000))) * 0xffffffffu)).x;
+    // 5: discard_nz r1.x
+    if ((asuint(r1.xxxx)).x != 0u) return 0.f;
+    // 6: div r1.xy, v4.xyxx, v4.wwww
+    r1.xy = ((v4.xyxx)/(v4.wwww)).xy;
+    // 7: mad r1.xy, r1.xyxx, cb2[0].xyxx, cb2[0].wzww
+    r1.xy = ((r1.xyxx)*(passValues[0].xyxx)+(passValues[0].wzww)).xy;
+    // 8: mad r0.xy, r0.xyxx, l(0.003922, -0.003922, 0.000000, 0.000000), r1.xyxx
+    r0.xy = ((r0.xyxx)*(float4(0.003922,-0.003922,0.000000,0.000000))+(r1.xyxx)).xy;
+    // 9: mul r0.zw, r0.zzzw, l(0.000000, 0.000000, 4.000000, 4.000000)
+    r0.zw = ((r0.zzzw)*(float4(0.000000,0.000000,4.000000,4.000000))).zw;
+    // 10: max r0.zw, r0.zzzw, l(0.000000, 0.000000, -255.000000, -255.000000)
+    r0.zw = (max(r0.zzzw,float4(0.000000,0.000000,-255.000000,-255.000000))).zw;
+    // 11: min r0.zw, r0.zzzw, l(0.000000, 0.000000, 255.000000, 255.000000)
+    r0.zw = (min(r0.zzzw,float4(0.000000,0.000000,255.000000,255.000000))).zw;
+    // 12: mul r0.zw, r0.zzzw, l(0.000000, 0.000000, 0.003922, 0.003922)
+    r0.zw = ((r0.zzzw)*(float4(0.000000,0.000000,0.003922,0.003922))).zw;
+    // Native 13: source device depth mapped to centimetre view depth; reconstruction at 15.
+    r0.x = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, (r0.xyxx).xy, 0.f).y * 100000.f;
+    // Native 15-18: reconstructed view depth is supplied by the runtime adapter.
+    r0.x = r0.x;
+    // 19: ge r0.x, v4.w, r0.x
+    r0.x = (asfloat((uint4)((v4.wwww)>=(r0.xxxx)) * 0xffffffffu)).x;
+    // 20: movc r0.xy, r0.xxxx, l(0,0,0,0), r0.zwzz
+    r0.xy = ((asuint(r0.xxxx) != 0u) ? (float4(asfloat(0u),asfloat(0u),asfloat(0u),asfloat(0u))) : (r0.zwzz)).xy;
+    // 21: max o0.xy, r0.xyxx, l(0.000000, 0.000000, 0.000000, 0.000000)
+    output.xy = (max(r0.xyxx,float4(0.000000,0.000000,0.000000,0.000000))).xy;
+    // 22: min r0.xy, r0.xyxx, l(0.000000, 0.000000, 0.000000, 0.000000)
+    r0.xy = (min(r0.xyxx,float4(0.000000,0.000000,0.000000,0.000000))).xy;
+    // 23: mov o0.zw, -r0.xxxy
+    output.zw = (-(r0.xxxy)).zw;
+    return output;
+}
+#endif
+
+#if !defined(EFFECT_NATIVE_MESH_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
+#ifndef ARTIST_NATIVE_MODEL_ONLY
+// Installed source-identical native reuse
+float4 ArtistNative3048(ARTIST_NATIVE_INPUT input)
+{
+    float4 source[3]; [unroll] for (uint i=0u; i<3u; ++i) source[i]=0.f;
+    source[0].x=1.f; // Project engine opacity multiplier.
+    float4 output=0.f;
+    source[1] = g_ArtistSourceMaterialParameters[0u];
+    source[2] = ArtistNativeAppend(ArtistNativePeriodic((g_ArtistSourceMaterialTime.xxxx*float4(0.0, 0.0, 0.0, 0.0))),ArtistNativePeriodic((g_ArtistSourceMaterialTime.xxxx*float4(0.5, 0.0, 0.0, 0.0))),1u);
+    float4 passValues[4]; [unroll] for(uint passIndex=0u;passIndex<4u;++passIndex) passValues[passIndex]=0.f;
+    passValues[0]=float4(.5f,-.5f,.5f,.5f);
+    float4 v0 = float4(input.sourceBasisX,0.f); // native texcoord10
+    float4 v1 = float4(input.sourceBasisZ,input.handedness); // native texcoord11
+    float4 v2 = float4(input.uv,float2(0.f,0.f)); // native texcoord0
+    float4 v3 = input.color; // native texcoord1
+    float4 v4 = input.dynamicParameter; // native texcoord2
+    float4 v5 = float4(0.f,0.f,0.f,1.f); // native texcoord4
+    float4 v6 = float4(input.tangentView,1.f); // native texcoord6
+    float4 v7 = float4((input.screenUV*float2(2.f,-2.f)+float2(-1.f,1.f))*input.projectionW,input.projectionZ,input.projectionW); // native texcoord5
+    float4 v8 = asfloat(uint4(input.frontFace ? 0xffffffffu : 0u,0u,0u,0u)); // native sv_isfrontface0
+    float4 r0=0.f, r1=0.f;
+    // 1: add r0.x, v2.y, -v3.w
+    r0.x = ((v2.yyyy)+(-(v3.wwww))).x;
+    // 2: add r0.x, r0.x, l(1.000000)
+    r0.x = ((r0.xxxx)+(float4(1.000000,1.000000,1.000000,1.000000))).x;
+    // 3: add_sat r0.x, -r0.x, l(1.000000)
+    r0.x = (saturate((-(r0.xxxx))+(float4(1.000000,1.000000,1.000000,1.000000)))).x;
+    // 4: mad r0.yz, v2.xxyx, l(0.000000, 2.000000, 1.000000, 0.000000), cb0[2].xxyx
+    r0.yz = ((v2.xxyx)*(float4(0.000000,2.000000,1.000000,0.000000))+(source[2].xxyx)).yz;
+    // 5: sample_b_indexable(texture2d)(float,float,float,float) r0.y, r0.yzyy, t0.yxzw, s0, l(0.000000)
+    r0.y = (ArtistNativeSample0((r0.yzyy).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x, false).yxzw).y;
+    // 6: mul r0.z, v4.z, l(0.100000)
+    r0.z = ((v4.zzzz)*(float4(0.100000,0.100000,0.100000,0.100000))).z;
+    // 7: mad r0.zw, r0.zzzz, r0.yyyy, v2.xxxy
+    r0.zw = ((r0.zzzz)*(r0.yyyy)+(v2.xxxy)).zw;
+    // 8: sample_b_indexable(texture2d)(float,float,float,float) r0.z, r0.zwzz, t1.yzxw, s1, l(0.000000)
+    r0.z = (ArtistNativeSample1((r0.zwzz).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x, false).yzxw).z;
+    // 9: dp2 r0.y, r0.zzzz, r0.yyyy
+    r0.y = (dot((r0.zzzz).xy,(r0.yyyy).xy).xxxx).y;
+    // 10: add r0.x, r0.x, r0.y
+    r0.x = ((r0.xxxx)+(r0.yyyy)).x;
+    // 11: mul_sat r0.y, r0.z, v4.y
+    r0.y = (saturate((r0.zzzz)*(v4.yyyy))).y;
+    // 12: mul r0.x, r0.x, r0.y
+    r0.x = ((r0.xxxx)*(r0.yyyy)).x;
+    // 13: mul o0.w, r0.x, cb0[0].x
+    output.w = ((r0.xxxx)*(source[0].xxxx)).w;
+    // 14: log r0.x, |r0.z|
+    r0.x = (log2(abs(r0.zzzz))).x;
+    // 15: lt r0.y, |r0.z|, l(0.000001)
+    r0.y = (asfloat((uint4)((abs(r0.zzzz))<(float4(0.000001,0.000001,0.000001,0.000001))) * 0xffffffffu)).y;
+    // 16: mul r0.x, r0.x, v4.x
+    r0.x = ((r0.xxxx)*(v4.xxxx)).x;
+    // 17: exp r0.x, r0.x
+    r0.x = (exp2(r0.xxxx)).x;
+    // 18: mul r0.xzw, r0.xxxx, v3.xxyz
+    r0.xzw = ((r0.xxxx)*(v3.xxyz)).xzw;
+    // 19: movc r0.xyz, r0.yyyy, l(0,0,0,0), r0.xzwx
+    r0.xyz = ((asuint(r0.yyyy) != 0u) ? (float4(asfloat(0u),asfloat(0u),asfloat(0u),asfloat(0u))) : (r0.xzwx)).xyz;
+    // 20: add r0.xyz, r0.xyzx, cb0[1].xyzx
+    r0.xyz = ((r0.xyzx)+(source[1].xyzx)).xyz;
+    // 21: mad o0.xyz, r0.xyzx, v5.wwww, v5.xyzx
+    output.xyz = ((r0.xyzx)*(v5.wwww)+(v5.xyzx)).xyz;
+    return output;
+}
+#endif
+#endif
+
+#if !defined(EFFECT_NATIVE_MESH_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
+#ifndef ARTIST_NATIVE_MODEL_ONLY
+// Installed source-identical native reuse
+float4 ArtistNative3039(ARTIST_NATIVE_INPUT input)
+{
+    float4 source[20]; [unroll] for (uint i=0u; i<20u; ++i) source[i]=0.f;
+    source[0].x=1.f; // Project engine opacity multiplier.
+    float4 output=0.f;
+    source[1] = g_ArtistSourceMaterialParameters[8u];
+    source[2] = ArtistNativeAppend(g_ArtistSourceMaterialParameters[7u].yyyy,g_ArtistSourceMaterialParameters[7u].zzzz,1u);
+    source[3] = ArtistNativeAppend(ArtistNativePeriodic(((g_ArtistSourceMaterialParameters[5u].yyyy*g_ArtistSourceMaterialTime.xxxx)*float4(-0.200000003, 0.0, 0.0, 0.0))),ArtistNativePeriodic(((g_ArtistSourceMaterialParameters[5u].yyyy*g_ArtistSourceMaterialTime.xxxx)*float4(1.0, 0.0, 0.0, 0.0))),1u);
+    source[4] = ArtistNativeAppend(ArtistNativePeriodic(((g_ArtistSourceMaterialParameters[5u].yyyy*g_ArtistSourceMaterialTime.xxxx)*float4(0.0500000007, 0.0, 0.0, 0.0))),ArtistNativePeriodic(((g_ArtistSourceMaterialParameters[5u].yyyy*g_ArtistSourceMaterialTime.xxxx)*float4(0.400000006, 0.0, 0.0, 0.0))),1u);
+    source[5] = ArtistNativeAppend(g_ArtistSourceMaterialParameters[4u].yyyy,g_ArtistSourceMaterialParameters[4u].zzzz,1u);
+    source[6] = ArtistNativeAppend(ArtistNativePeriodic(((g_ArtistSourceMaterialParameters[3u].wwww*g_ArtistSourceMaterialTime.xxxx)*float4(0.0, 0.0, 0.0, 0.0))),ArtistNativePeriodic(((g_ArtistSourceMaterialParameters[3u].wwww*g_ArtistSourceMaterialTime.xxxx)*float4(0.5, 0.0, 0.0, 0.0))),1u);
+    source[7] = ArtistNativeAppend(cos(((g_ArtistSourceMaterialParameters[4u].xxxx*float4(3.1400001, 0.0, 0.0, 0.0))*float4(0.25, 0.0, 0.0, 0.0))),(float4(-1.0, 0.0, 0.0, 0.0)*sin(((g_ArtistSourceMaterialParameters[4u].xxxx*float4(3.1400001, 0.0, 0.0, 0.0))*float4(0.25, 0.0, 0.0, 0.0)))),1u);
+    source[8] = ArtistNativeAppend(sin(((g_ArtistSourceMaterialParameters[4u].xxxx*float4(3.1400001, 0.0, 0.0, 0.0))*float4(0.25, 0.0, 0.0, 0.0))),cos(((g_ArtistSourceMaterialParameters[4u].xxxx*float4(3.1400001, 0.0, 0.0, 0.0))*float4(0.25, 0.0, 0.0, 0.0))),1u);
+    source[9] = ArtistNativeAppend(g_ArtistSourceMaterialParameters[0u].zzzz,g_ArtistSourceMaterialParameters[0u].wwww,1u);
+    source[10].x = (g_ArtistSourceMaterialTime.xxxx).x;
+    source[10].y = (g_ArtistSourceMaterialParameters[5u].yyyy).x;
+    source[10].z = ((g_ArtistSourceMaterialParameters[5u].yyyy*g_ArtistSourceMaterialTime.xxxx)).x;
+    source[10].w = (((g_ArtistSourceMaterialParameters[5u].yyyy*g_ArtistSourceMaterialTime.xxxx)*float4(-0.200000003, 0.0, 0.0, 0.0))).x;
+    source[11].x = (((g_ArtistSourceMaterialParameters[5u].yyyy*g_ArtistSourceMaterialTime.xxxx)*float4(1.0, 0.0, 0.0, 0.0))).x;
+    source[11].y = (g_ArtistSourceMaterialParameters[7u].xxxx).x;
+    source[11].z = (g_ArtistSourceMaterialParameters[6u].wwww).x;
+    source[11].w = (g_ArtistSourceMaterialParameters[7u].zzzz).x;
+    source[12].x = (((g_ArtistSourceMaterialParameters[5u].yyyy*g_ArtistSourceMaterialTime.xxxx)*float4(0.400000006, 0.0, 0.0, 0.0))).x;
+    source[12].y = (g_ArtistSourceMaterialParameters[6u].yyyy).x;
+    source[12].z = (g_ArtistSourceMaterialParameters[6u].zzzz).x;
+    source[12].w = (ArtistNativePeriodic(((g_ArtistSourceMaterialParameters[5u].yyyy*g_ArtistSourceMaterialTime.xxxx)*float4(0.400000006, 0.0, 0.0, 0.0)))).x;
+    source[13].x = (ArtistNativePeriodic(((g_ArtistSourceMaterialParameters[5u].yyyy*g_ArtistSourceMaterialTime.xxxx)*float4(0.0500000007, 0.0, 0.0, 0.0)))).x;
+    source[13].y = (g_ArtistSourceMaterialParameters[6u].xxxx).x;
+    source[13].z = (g_ArtistSourceMaterialParameters[4u].xxxx).x;
+    source[13].w = ((g_ArtistSourceMaterialParameters[4u].xxxx*float4(3.1400001, 0.0, 0.0, 0.0))).x;
+    source[14].x = (g_ArtistSourceMaterialParameters[5u].xxxx).x;
+    source[14].y = (g_ArtistSourceMaterialParameters[4u].wwww).x;
+    source[14].z = (g_ArtistSourceMaterialParameters[4u].zzzz).x;
+    source[14].w = (g_ArtistSourceMaterialParameters[4u].yyyy).x;
+    source[15].x = (g_ArtistSourceMaterialParameters[5u].zzzz).x;
+    source[15].y = (ArtistNativePeriodic(((g_ArtistSourceMaterialParameters[3u].wwww*g_ArtistSourceMaterialTime.xxxx)*float4(0.5, 0.0, 0.0, 0.0)))).x;
+    source[15].z = (ArtistNativePeriodic(((g_ArtistSourceMaterialParameters[3u].wwww*g_ArtistSourceMaterialTime.xxxx)*float4(0.0, 0.0, 0.0, 0.0)))).x;
+    source[15].w = (g_ArtistSourceMaterialParameters[5u].wwww).x;
+    source[16].x = (g_ArtistSourceMaterialParameters[3u].yyyy).x;
+    source[16].y = (g_ArtistSourceMaterialParameters[3u].zzzz).x;
+    source[16].z = (g_ArtistSourceMaterialParameters[3u].xxxx).x;
+    source[16].w = (g_ArtistSourceMaterialParameters[0u].xxxx).x;
+    source[17].x = ((float4(1.0, 0.0, 0.0, 0.0)/max(float4(9.99999975e-06, 0.0, 0.0, 0.0),g_ArtistSourceMaterialParameters[1u].xxxx))).x;
+    source[17].y = (g_ArtistSourceMaterialParameters[0u].yyyy).x;
+    source[17].z = ((float4(1.0, 0.0, 0.0, 0.0)-g_ArtistSourceMaterialParameters[0u].yyyy)).x;
+    source[17].w = (max((float4(1.0, 0.0, 0.0, 0.0)-g_ArtistSourceMaterialParameters[0u].yyyy),float4(9.99999975e-06, 0.0, 0.0, 0.0))).x;
+    source[18].x = ((float4(1.0, 0.0, 0.0, 0.0)/max((float4(1.0, 0.0, 0.0, 0.0)-g_ArtistSourceMaterialParameters[0u].yyyy),float4(9.99999975e-06, 0.0, 0.0, 0.0)))).x;
+    source[18].y = (g_ArtistSourceMaterialParameters[1u].yyyy).x;
+    source[18].z = (g_ArtistSourceMaterialParameters[1u].wwww).x;
+    source[18].w = (g_ArtistSourceMaterialParameters[2u].yyyy).x;
+    source[19].x = (g_ArtistSourceMaterialParameters[2u].zzzz).x;
+    source[19].y = (g_ArtistSourceMaterialParameters[2u].xxxx).x;
+    source[19].z = (g_ArtistSourceMaterialParameters[2u].wwww).x;
+    source[19].w = (g_ArtistSourceMaterialParameters[1u].zzzz).x;
+    float4 passValues[4]; [unroll] for(uint passIndex=0u;passIndex<4u;++passIndex) passValues[passIndex]=0.f;
+    passValues[0]=float4(.5f,-.5f,.5f,.5f);
+    float4 v0 = float4(input.sourceBasisX,0.f); // native texcoord10
+    float4 v1 = float4(input.sourceBasisZ,input.handedness); // native texcoord11
+    float4 v2 = float4(input.uv,float2(0.f,0.f)); // native texcoord0
+    float4 v3 = input.color; // native texcoord1
+    float4 v4 = input.dynamicParameter; // native texcoord2
+    float4 v5 = float4(0.f,0.f,0.f,1.f); // native texcoord4
+    float4 v6 = float4(input.tangentView,1.f); // native texcoord6
+    float4 v7 = float4((input.screenUV*float2(2.f,-2.f)+float2(-1.f,1.f))*input.projectionW,input.projectionZ,input.projectionW); // native texcoord5
+    float4 v8 = asfloat(uint4(input.frontFace ? 0xffffffffu : 0u,0u,0u,0u)); // native sv_isfrontface0
+    float4 r0=0.f, r1=0.f, r2=0.f;
+    // 1: mad r0.xy, v2.xyxx, cb0[11].yzyy, cb0[2].xyxx
+    r0.xy = ((v2.xyxx)*(source[11].yzyy)+(source[2].xyxx)).xy;
+    // 2: add r0.xy, r0.xyxx, cb0[3].xyxx
+    r0.xy = ((r0.xyxx)+(source[3].xyxx)).xy;
+    // 3: sample_b_indexable(texture2d)(float,float,float,float) r0.x, r0.xyxx, t0.xyzw, s0, l(0.000000)
+    r0.x = (ArtistNativeSample0((r0.xyxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x, false).xyzw).x;
+    // 4: mad r0.yz, v2.xxyx, cb0[12].yyzy, cb0[4].xxyx
+    r0.yz = ((v2.xxyx)*(source[12].yyzy)+(source[4].xxyx)).yz;
+    // 5: sample_b_indexable(texture2d)(float,float,float,float) r0.y, r0.yzyy, t0.yxzw, s0, l(0.000000)
+    r0.y = (ArtistNativeSample0((r0.yzyy).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x, false).yxzw).y;
+    // 6: mul r0.x, r0.y, r0.x
+    r0.x = ((r0.yyyy)*(r0.xxxx)).x;
+    // 7: mul r0.x, r0.x, cb0[13].y
+    r0.x = ((r0.xxxx)*(source[13].yyyy)).x;
+    // 8: mad r0.yz, v2.xxyx, cb0[14].xxyx, cb0[5].xxyx
+    r0.yz = ((v2.xxyx)*(source[14].xxyx)+(source[5].xxyx)).yz;
+    // 9: mad r1.xy, cb0[15].xxxx, r0.xxxx, r0.yzyy
+    r1.xy = ((source[15].xxxx)*(r0.xxxx)+(r0.yzyy)).xy;
+    // 10: add r1.xy, r1.xyxx, cb0[6].xyxx
+    r1.xy = ((r1.xyxx)+(source[6].xyxx)).xy;
+    // 11: add r1.xy, r1.xyxx, l(-0.500000, -0.500000, 0.000000, 0.000000)
+    r1.xy = ((r1.xyxx)+(float4(-0.500000,-0.500000,0.000000,0.000000))).xy;
+    // 12: dp2 r2.x, cb0[7].xyxx, r1.xyxx
+    r2.x = (dot((source[7].xyxx).xy,(r1.xyxx).xy).xxxx).x;
+    // 13: dp2 r2.y, cb0[8].xyxx, r1.xyxx
+    r2.y = (dot((source[8].xyxx).xy,(r1.xyxx).xy).xxxx).y;
+    // 14: add r1.xy, r2.xyxx, l(0.500000, 0.500000, 0.000000, 0.000000)
+    r1.xy = ((r2.xyxx)+(float4(0.500000,0.500000,0.000000,0.000000))).xy;
+    // 15: sample_b_indexable(texture2d)(float,float,float,float) r0.w, r1.xyxx, t1.yzwx, s1, l(0.000000)
+    r0.w = (ArtistNativeSample1((r1.xyxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x, false).yzwx).w;
+    // 16: mul r1.x, r0.x, cb0[15].x
+    r1.x = ((r0.xxxx)*(source[15].xxxx)).x;
+    // 17: mad r0.yz, r1.xxxx, cb0[15].wwww, r0.yyzy
+    r0.yz = ((r1.xxxx)*(source[15].wwww)+(r0.yyzy)).yz;
+    // 18: add r0.yz, r0.yyzy, cb0[6].xxyx
+    r0.yz = ((r0.yyzy)+(source[6].xxyx)).yz;
+    // 19: add r0.yz, r0.yyzy, l(0.000000, -0.500000, -0.500000, 0.000000)
+    r0.yz = ((r0.yyzy)+(float4(0.000000,-0.500000,-0.500000,0.000000))).yz;
+    // 20: dp2 r1.x, cb0[7].xyxx, r0.yzyy
+    r1.x = (dot((source[7].xyxx).xy,(r0.yzyy).xy).xxxx).x;
+    // 21: dp2 r1.y, cb0[8].xyxx, r0.yzyy
+    r1.y = (dot((source[8].xyxx).xy,(r0.yzyy).xy).xxxx).y;
+    // 22: add r0.yz, r1.xxyx, l(0.000000, 0.500000, 0.500000, 0.000000)
+    r0.yz = ((r1.xxyx)+(float4(0.000000,0.500000,0.500000,0.000000))).yz;
+    // 23: sample_b_indexable(texture2d)(float,float,float,float) r0.y, r0.yzyy, t1.yxzw, s1, l(0.000000)
+    r0.y = (ArtistNativeSample1((r0.yzyy).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x, false).yxzw).y;
+    // 24: mul r0.z, r0.y, r0.w
+    r0.z = ((r0.yyyy)*(r0.wwww)).z;
+    // 25: mad r0.w, r0.w, r0.y, r0.w
+    r0.w = ((r0.wwww)*(r0.yyyy)+(r0.wwww)).w;
+    // 26: log r1.x, |r0.z|
+    r1.x = (log2(abs(r0.zzzz))).x;
+    // 27: lt r0.z, |r0.z|, l(0.000001)
+    r0.z = (asfloat((uint4)((abs(r0.zzzz))<(float4(0.000001,0.000001,0.000001,0.000001))) * 0xffffffffu)).z;
+    // 28: mul r1.x, r1.x, l(0.200000)
+    r1.x = ((r1.xxxx)*(float4(0.200000,0.200000,0.200000,0.200000))).x;
+    // 29: exp r1.x, r1.x
+    r1.x = (exp2(r1.xxxx)).x;
+    // 30: movc r0.z, r0.z, l(0), r1.x
+    r0.z = ((asuint(r0.zzzz) != 0u) ? (float4(asfloat(0u),asfloat(0u),asfloat(0u),asfloat(0u))) : (r1.xxxx)).z;
+    // 31: mul r0.z, r0.z, r0.x
+    r0.z = ((r0.zzzz)*(r0.xxxx)).z;
+    // 32: mul r0.x, r0.x, l(0.300000)
+    r0.x = ((r0.xxxx)*(float4(0.300000,0.300000,0.300000,0.300000))).x;
+    // 33: mad r1.xy, v2.xyxx, l(1.000000, 0.820000, 0.000000, 0.000000), r0.xxxx
+    r1.xy = ((v2.xyxx)*(float4(1.000000,0.820000,0.000000,0.000000))+(r0.xxxx)).xy;
+    // 34: add r1.xy, r1.xyxx, cb0[9].xyxx
+    r1.xy = ((r1.xyxx)+(source[9].xyxx)).xy;
+    // 35: add r1.xy, r1.xyxx, l(-0.500000, -0.500000, 0.000000, 0.000000)
+    r1.xy = ((r1.xyxx)+(float4(-0.500000,-0.500000,0.000000,0.000000))).xy;
+    // 36: dp2 r0.x, r1.xyxx, r1.xyxx
+    r0.x = (dot((r1.xyxx).xy,(r1.xyxx).xy).xxxx).x;
+    // 37: sqrt r0.x, r0.x
+    r0.x = (sqrt(r0.xxxx)).x;
+    // 38: mad r0.x, -r0.x, cb0[17].x, l(1.000000)
+    r0.x = ((-(r0.xxxx))*(source[17].xxxx)+(float4(1.000000,1.000000,1.000000,1.000000))).x;
+    // 39: mul_sat r0.x, r0.x, cb0[18].x
+    r0.x = (saturate((r0.xxxx)*(source[18].xxxx))).x;
+    // 40: mul r0.x, r0.x, r0.x
+    r0.x = ((r0.xxxx)*(r0.xxxx)).x;
+    // 41: mul_sat r0.x, r0.x, cb0[18].y
+    r0.x = (saturate((r0.xxxx)*(source[18].yyyy))).x;
+    // 42: mad r0.x, r0.y, cb0[16].w, r0.x
+    r0.x = ((r0.yyyy)*(source[16].wwww)+(r0.xxxx)).x;
+    // 43: mul r0.x, r0.x, v3.w
+    r0.x = ((r0.xxxx)*(v3.wwww)).x;
+    // 44: log r0.y, |r0.z|
+    r0.y = (log2(abs(r0.zzzz))).y;
+    // 45: lt r0.z, |r0.z|, l(0.000001)
+    r0.z = (asfloat((uint4)((abs(r0.zzzz))<(float4(0.000001,0.000001,0.000001,0.000001))) * 0xffffffffu)).z;
+    // 46: mul r0.y, r0.y, cb0[16].x
+    r0.y = ((r0.yyyy)*(source[16].xxxx)).y;
+    // 47: exp r0.y, r0.y
+    r0.y = (exp2(r0.yyyy)).y;
+    // 48: mul r0.y, r0.y, cb0[16].y
+    r0.y = ((r0.yyyy)*(source[16].yyyy)).y;
+    // 49: movc r0.y, r0.z, l(0), r0.y
+    r0.y = ((asuint(r0.zzzz) != 0u) ? (float4(asfloat(0u),asfloat(0u),asfloat(0u),asfloat(0u))) : (r0.yyyy)).y;
+    // 50: mad r0.y, r0.w, cb0[16].z, r0.y
+    r0.y = ((r0.wwww)*(source[16].zzzz)+(r0.yyyy)).y;
+    // 51: mad r0.yzw, r0.yyyy, v3.xxyz, cb0[1].xxyz
+    r0.yzw = ((r0.yyyy)*(v3.xxyz)+(source[1].xxyz)).yzw;
+    // 52: mad o0.xyz, r0.yzwy, v5.wwww, v5.xyzx
+    output.xyz = ((r0.yzwy)*(v5.wwww)+(v5.xyzx)).xyz;
+    // 53: mul r0.y, v2.x, cb0[18].w
+    r0.y = ((v2.xxxx)*(source[18].wwww)).y;
+    // 54: mad r1.x, cb0[10].x, cb0[18].z, r0.y
+    r1.x = ((source[10].xxxx)*(source[18].zzzz)+(r0.yyyy)).x;
+    // 55: mul r0.y, v2.y, cb0[19].x
+    r0.y = ((v2.yyyy)*(source[19].xxxx)).y;
+    // 56: mad r1.y, cb0[10].x, cb0[19].y, r0.y
+    r1.y = ((source[10].xxxx)*(source[19].yyyy)+(r0.yyyy)).y;
+    // 57: sample_b_indexable(texture2d)(float,float,float,float) r0.y, r1.xyxx, t2.yxzw, s2, l(0.000000)
+    r0.y = (ArtistNativeSample2((r1.xyxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x, false).yxzw).y;
+    // 58: add r0.z, v4.x, cb0[19].z
+    r0.z = ((v4.xxxx)+(source[19].zzzz)).z;
+    // 59: add r0.y, -r0.z, r0.y
+    r0.y = ((-(r0.zzzz))+(r0.yyyy)).y;
+    // 60: mul_sat r0.y, r0.y, cb0[19].w
+    r0.y = (saturate((r0.yyyy)*(source[19].wwww))).y;
+    // 61: mul_sat r0.x, r0.y, r0.x
+    r0.x = (saturate((r0.yyyy)*(r0.xxxx))).x;
+    // 62: mul o0.w, r0.x, cb0[0].x
+    output.w = ((r0.xxxx)*(source[0].xxxx)).w;
+    return output;
+}
+#endif
+#endif
+
+#if !defined(EFFECT_NATIVE_MESH_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
+#ifndef ARTIST_NATIVE_MODEL_ONLY
+// Installed source-identical native reuse
+float4 ArtistNative3036(ARTIST_NATIVE_INPUT input)
+{
+    float4 source[8]; [unroll] for (uint i=0u; i<8u; ++i) source[i]=0.f;
+    source[0].x=1.f; // Project engine opacity multiplier.
+    float4 output=0.f;
+    source[1] = g_ArtistSourceMaterialParameters[3u];
+    source[2] = g_ArtistSourceMaterialParameters[2u];
+    source[3] = ArtistNativeAppend(g_ArtistSourceMaterialParameters[0u].wwww,g_ArtistSourceMaterialParameters[1u].xxxx,1u);
+    source[4] = ArtistNativeAppend(g_ArtistSourceMaterialParameters[1u].zzzz,g_ArtistSourceMaterialParameters[1u].wwww,1u);
+    source[5].x = (g_ArtistSourceMaterialTime.xxxx).x;
+    source[5].y = (g_ArtistSourceMaterialParameters[1u].xxxx).x;
+    source[5].z = (g_ArtistSourceMaterialParameters[0u].wwww).x;
+    source[5].w = (g_ArtistSourceMaterialParameters[1u].yyyy).x;
+    source[6].x = (g_ArtistSourceMaterialParameters[0u].zzzz).x;
+    source[6].y = (g_ArtistSourceMaterialParameters[1u].wwww).x;
+    source[6].z = (g_ArtistSourceMaterialParameters[1u].zzzz).x;
+    source[6].w = (g_ArtistSourceMaterialParameters[0u].xxxx).x;
+    source[7].x = (g_ArtistSourceMaterialParameters[0u].yyyy).x;
+    float4 passValues[4]; [unroll] for(uint passIndex=0u;passIndex<4u;++passIndex) passValues[passIndex]=0.f;
+    passValues[0]=float4(.5f,-.5f,.5f,.5f);
+    float4 v0 = float4(input.sourceBasisX,0.f); // native texcoord10
+    float4 v1 = float4(input.sourceBasisZ,input.handedness); // native texcoord11
+    float4 v2 = float4(input.uv,float2(0.f,0.f)); // native texcoord0
+    float4 v3 = input.color; // native texcoord1
+    float4 v4 = input.dynamicParameter; // native texcoord2
+    float4 v5 = float4(0.f,0.f,0.f,1.f); // native texcoord4
+    float4 v6 = float4(input.tangentView,1.f); // native texcoord6
+    float4 v7 = float4((input.screenUV*float2(2.f,-2.f)+float2(-1.f,1.f))*input.projectionW,input.projectionZ,input.projectionW); // native texcoord5
+    float4 v8 = asfloat(uint4(input.frontFace ? 0xffffffffu : 0u,0u,0u,0u)); // native sv_isfrontface0
+    float4 r0=0.f, r1=0.f;
+    // 1: mad r0.xy, cb0[5].xxxx, cb0[3].xyxx, v2.xyxx
+    r0.xy = ((source[5].xxxx)*(source[3].xyxx)+(v2.xyxx)).xy;
+    // 2: mul r0.xy, r0.xyxx, cb0[5].wwww
+    r0.xy = ((r0.xyxx)*(source[5].wwww)).xy;
+    // 3: sample_b_indexable(texture2d)(float,float,float,float) r0.xy, r0.xyxx, t0.xyzw, s0, l(0.000000)
+    r0.xy = (ArtistNativeSample0((r0.xyxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x, false).xyzw).xy;
+    // 4: mad r0.zw, cb0[5].xxxx, cb0[4].xxxy, v2.xxxy
+    r0.zw = ((source[5].xxxx)*(source[4].xxxy)+(v2.xxxy)).zw;
+    // 5: mad r0.xy, cb0[6].xxxx, r0.xyxx, r0.zwzz
+    r0.xy = ((source[6].xxxx)*(r0.xyxx)+(r0.zwzz)).xy;
+    // 6: sample_b_indexable(texture2d)(float,float,float,float) r0.xyzw, r0.xyxx, t1.xyzw, s1, l(0.000000)
+    r0.xyzw = (ArtistNativeSample1((r0.xyxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x, false).xyzw).xyzw;
+    // 7: mul r1.xyz, r0.xyzx, cb0[6].wwww
+    r1.xyz = ((r0.xyzx)*(source[6].wwww)).xyz;
+    // 8: dp3 r1.w, r1.xyzx, l(0.300000, 0.590000, 0.110000, 0.000000)
+    r1.w = (dot((r1.xyzx).xyz,(float4(0.300000,0.590000,0.110000,0.000000)).xyz).xxxx).w;
+    // 9: mad r0.xyz, -cb0[6].wwww, r0.xyzx, r1.wwww
+    r0.xyz = ((-(source[6].wwww))*(r0.xyzx)+(r1.wwww)).xyz;
+    // 10: mul r0.w, r0.w, v3.w
+    r0.w = ((r0.wwww)*(v3.wwww)).w;
+    // 11: mad r0.xyz, cb0[7].xxxx, r0.xyzx, r1.xyzx
+    r0.xyz = ((source[7].xxxx)*(r0.xyzx)+(r1.xyzx)).xyz;
+    // 12: mul r1.xyz, cb0[2].xyzx, cb0[2].wwww
+    r1.xyz = ((source[2].xyzx)*(source[2].wwww)).xyz;
+    // 13: mul r0.xyz, r0.xyzx, r1.xyzx
+    r0.xyz = ((r0.xyzx)*(r1.xyzx)).xyz;
+    // 14: mad r0.xyz, r0.xyzx, v3.xyzx, cb0[1].xyzx
+    r0.xyz = ((r0.xyzx)*(v3.xyzx)+(source[1].xyzx)).xyz;
+    // 15: mul r0.xyz, r0.xyzx, v5.wwww
+    r0.xyz = ((r0.xyzx)*(v5.wwww)).xyz;
+    // 16: log r1.x, |r0.w|
+    r1.x = (log2(abs(r0.wwww))).x;
+    // 17: lt r0.w, |r0.w|, l(0.000001)
+    r0.w = (asfloat((uint4)((abs(r0.wwww))<(float4(0.000001,0.000001,0.000001,0.000001))) * 0xffffffffu)).w;
+    // 18: mul r1.x, r1.x, v4.y
+    r1.x = ((r1.xxxx)*(v4.yyyy)).x;
+    // 19: exp r1.x, r1.x
+    r1.x = (exp2(r1.xxxx)).x;
+    // 20: mul r1.x, r1.x, cb0[0].x
+    r1.x = ((r1.xxxx)*(source[0].xxxx)).x;
+    // 21: movc r0.w, r0.w, l(0), r1.x
+    r0.w = ((asuint(r0.wwww) != 0u) ? (float4(asfloat(0u),asfloat(0u),asfloat(0u),asfloat(0u))) : (r1.xxxx)).w;
+    // 22: mul o0.xyz, r0.wwww, r0.xyzx
+    output.xyz = ((r0.wwww)*(r0.xyzx)).xyz;
+    // 23: mov o0.w, l(0)
+    output.w = (float4(asfloat(0u),asfloat(0u),asfloat(0u),asfloat(0u))).w;
+    return output;
+}
+#endif
+#endif
+
+#if !defined(EFFECT_NATIVE_MESH_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
+#ifndef ARTIST_NATIVE_MODEL_ONLY
+// Installed source-identical native reuse
+float4 ArtistNative3022(ARTIST_NATIVE_INPUT input)
+{
+    float4 source[3]; [unroll] for (uint i=0u; i<3u; ++i) source[i]=0.f;
+    source[0].x=1.f; // Project engine opacity multiplier.
+    float4 output=0.f;
+    source[1] = g_ArtistSourceMaterialParameters[0u];
+    float4 passValues[4]; [unroll] for(uint passIndex=0u;passIndex<4u;++passIndex) passValues[passIndex]=0.f;
+    passValues[0]=float4(.5f,-.5f,.5f,.5f);
+    float4 v0 = float4(input.sourceBasisX,input.subUVBlend); // native texcoord10
+    float4 v1 = float4(input.sourceBasisZ,input.handedness); // native texcoord11
+    float4 v2 = float4(input.uv,input.uvNext); // native texcoord0
+    float4 v3 = input.color; // native texcoord1
+    float4 v4 = float4(0.f,0.f,0.f,0.f); // native texcoord2
+    float4 v5 = float4(0.f,0.f,0.f,1.f); // native texcoord4
+    float4 v6 = float4(input.tangentView,1.f); // native texcoord6
+    float4 v7 = float4((input.screenUV*float2(2.f,-2.f)+float2(-1.f,1.f))*input.projectionW,input.projectionZ,input.projectionW); // native texcoord5
+    float4 v8 = asfloat(uint4(input.frontFace ? 0xffffffffu : 0u,0u,0u,0u)); // native sv_isfrontface0
+    float4 r0=0.f, r1=0.f;
+    // 1: sample_b_indexable(texture2d)(float,float,float,float) r0.xyzw, v2.zwzz, t0.xyzw, s0, l(0.000000)
+    r0.xyzw = (ArtistNativeSample0((v2.zwzz).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x, false).xyzw).xyzw;
+    // 2: sample_b_indexable(texture2d)(float,float,float,float) r1.xyzw, v2.xyxx, t0.xyzw, s0, l(0.000000)
+    r1.xyzw = (ArtistNativeSample0((v2.xyxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x, false).xyzw).xyzw;
+    // 3: add r0.xyzw, r0.wxyz, -r1.wxyz
+    r0.xyzw = ((r0.wxyz)+(-(r1.wxyz))).xyzw;
+    // 4: mad r0.xyzw, v0.wwww, r0.xyzw, r1.wxyz
+    r0.xyzw = ((v0.wwww)*(r0.xyzw)+(r1.wxyz)).xyzw;
+    // 5: mul r0.x, r0.x, v3.w
+    r0.x = ((r0.xxxx)*(v3.wwww)).x;
+    // 6: mad r0.yzw, r0.yyzw, v3.xxyz, cb0[1].xxyz
+    r0.yzw = ((r0.yyzw)*(v3.xxyz)+(source[1].xxyz)).yzw;
+    // 7: mad o0.xyz, r0.yzwy, v5.wwww, v5.xyzx
+    output.xyz = ((r0.yzwy)*(v5.wwww)+(v5.xyzx)).xyz;
+    // 8: mov_sat r0.x, r0.x
+    r0.x = (saturate(r0.xxxx)).x;
+    // 9: mul o0.w, r0.x, cb0[0].x
+    output.w = ((r0.xxxx)*(source[0].xxxx)).w;
+    return output;
+}
+#endif
+#endif
+
+#if !defined(EFFECT_NATIVE_MESH_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
+#ifndef ARTIST_NATIVE_MODEL_ONLY
+// Installed source-identical native reuse
+float4 ArtistNative3040(ARTIST_NATIVE_INPUT input)
+{
+    float4 source[4]; [unroll] for (uint i=0u; i<4u; ++i) source[i]=0.f;
+    source[0].x=1.f; // Project engine opacity multiplier.
+    float4 output=0.f;
+    source[1] = g_ArtistSourceMaterialParameters[2u];
+    source[2].x = (g_ArtistSourceMaterialParameters[1u].xxxx).x;
+    source[2].y = (g_ArtistSourceMaterialParameters[0u].yyyy).x;
+    source[2].z = (g_ArtistSourceMaterialParameters[0u].zzzz).x;
+    source[2].w = (g_ArtistSourceMaterialParameters[0u].wwww).x;
+    source[3].x = (g_ArtistSourceMaterialParameters[0u].xxxx).x;
+    float4 passValues[4]; [unroll] for(uint passIndex=0u;passIndex<4u;++passIndex) passValues[passIndex]=0.f;
+    passValues[0]=float4(.5f,-.5f,.5f,.5f);
+    float4 v0 = float4(input.sourceBasisX,0.f); // native texcoord10
+    float4 v1 = float4(input.sourceBasisZ,input.handedness); // native texcoord11
+    float4 v2 = float4(input.uv,float2(0.f,0.f)); // native texcoord0
+    float4 v3 = input.color; // native texcoord1
+    float4 v4 = input.dynamicParameter; // native texcoord2
+    float4 v5 = float4(0.f,0.f,0.f,1.f); // native texcoord4
+    float4 v6 = float4(input.tangentView,1.f); // native texcoord6
+    float4 v7 = float4((input.screenUV*float2(2.f,-2.f)+float2(-1.f,1.f))*input.projectionW,input.projectionZ,input.projectionW); // native texcoord5
+    float4 v8 = asfloat(uint4(input.frontFace ? 0xffffffffu : 0u,0u,0u,0u)); // native sv_isfrontface0
+    float4 r0=0.f, r1=0.f;
+    // 1: div r0.xy, v7.xyxx, v7.wwww
+    r0.xy = ((v7.xyxx)/(v7.wwww)).xy;
+    // 2: mad r0.xy, r0.xyxx, cb2[0].xyxx, cb2[0].wzww
+    r0.xy = ((r0.xyxx)*(passValues[0].xyxx)+(passValues[0].wzww)).xy;
+    // Native 3: source device depth mapped to centimetre view depth; reconstruction at 5.
+    r0.x = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, (r0.xyxx).xy, 0.f).y * 100000.f;
+    // Native 5-8: reconstructed view depth is supplied by the runtime adapter.
+    r0.x = r0.x;
+    // 9: add r0.x, r0.x, -v7.w
+    r0.x = ((r0.xxxx)+(-(v7.wwww))).x;
+    // 10: add r0.y, -cb0[3].x, l(1.000000)
+    r0.y = ((-(source[3].xxxx))+(float4(1.000000,1.000000,1.000000,1.000000))).y;
+    // 11: max r0.y, r0.y, l(0.001000)
+    r0.y = (max(r0.yyyy,float4(0.001000,0.001000,0.001000,0.001000))).y;
+    // 12: div_sat r0.x, r0.x, r0.y
+    r0.x = (saturate((r0.xxxx)/(r0.yyyy))).x;
+    // 13: mad r0.y, cb0[2].x, v4.x, l(-1.000000)
+    r0.y = ((source[2].xxxx)*(v4.xxxx)+(float4(-1.000000,-1.000000,-1.000000,-1.000000))).y;
+    // 14: mul r0.y, r0.y, l(0.500000)
+    r0.y = ((r0.yyyy)*(float4(0.500000,0.500000,0.500000,0.500000))).y;
+    // 15: mul r0.z, v4.x, cb0[2].x
+    r0.z = ((v4.xxxx)*(source[2].xxxx)).z;
+    // 16: mad r0.yz, r0.zzzz, v2.xxyx, -r0.yyyy
+    r0.yz = ((r0.zzzz)*(v2.xxyx)+(-(r0.yyyy))).yz;
+    // 17: sample_b_indexable(texture2d)(float,float,float,float) r1.xyzw, r0.yzyy, t0.xyzw, s1, l(0.000000)
+    r1.xyzw = (ArtistNativeSample0((r0.yzyy).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x, false).xyzw).xyzw;
+    // 18: log r0.y, |r1.w|
+    r0.y = (log2(abs(r1.wwww))).y;
+    // 19: mul r0.y, r0.y, cb0[2].w
+    r0.y = ((r0.yyyy)*(source[2].wwww)).y;
+    // 20: exp r0.y, r0.y
+    r0.y = (exp2(r0.yyyy)).y;
+    // 21: mul r0.y, r0.y, v3.w
+    r0.y = ((r0.yyyy)*(v3.wwww)).y;
+    // 22: lt r0.z, |r1.w|, l(0.000001)
+    r0.z = (asfloat((uint4)((abs(r1.wwww))<(float4(0.000001,0.000001,0.000001,0.000001))) * 0xffffffffu)).z;
+    // 23: movc r0.y, r0.z, l(0), |r0.y|
+    r0.y = ((asuint(r0.zzzz) != 0u) ? (float4(asfloat(0u),asfloat(0u),asfloat(0u),asfloat(0u))) : (abs(r0.yyyy))).y;
+    // 24: log r0.z, r0.y
+    r0.z = (log2(r0.yyyy)).z;
+    // 25: lt r0.y, r0.y, l(0.000001)
+    r0.y = (asfloat((uint4)((r0.yyyy)<(float4(0.000001,0.000001,0.000001,0.000001))) * 0xffffffffu)).y;
+    // 26: mul r0.z, r0.z, v4.y
+    r0.z = ((r0.zzzz)*(v4.yyyy)).z;
+    // 27: exp r0.z, r0.z
+    r0.z = (exp2(r0.zzzz)).z;
+    // 28: mul r0.x, r0.x, r0.z
+    r0.x = ((r0.xxxx)*(r0.zzzz)).x;
+    // 29: mul r0.x, r0.x, cb0[0].x
+    r0.x = ((r0.xxxx)*(source[0].xxxx)).x;
+    // 30: movc r0.x, r0.y, l(0), r0.x
+    r0.x = ((asuint(r0.yyyy) != 0u) ? (float4(asfloat(0u),asfloat(0u),asfloat(0u),asfloat(0u))) : (r0.xxxx)).x;
+    // 31: mul r0.yzw, r1.xxyz, cb0[2].yyyy
+    r0.yzw = ((r1.xxyz)*(source[2].yyyy)).yzw;
+    // 32: dp3 r1.w, r0.yzwy, l(0.300000, 0.590000, 0.110000, 0.000000)
+    r1.w = (dot((r0.yzwy).xyz,(float4(0.300000,0.590000,0.110000,0.000000)).xyz).xxxx).w;
+    // 33: mad r1.xyz, -cb0[2].yyyy, r1.xyzx, r1.wwww
+    r1.xyz = ((-(source[2].yyyy))*(r1.xyzx)+(r1.wwww)).xyz;
+    // 34: mad r0.yzw, cb0[2].zzzz, r1.xxyz, r0.yyzw
+    r0.yzw = ((source[2].zzzz)*(r1.xxyz)+(r0.yyzw)).yzw;
+    // 35: mad r0.yzw, r0.yyzw, v3.xxyz, cb0[1].xxyz
+    r0.yzw = ((r0.yyzw)*(v3.xxyz)+(source[1].xxyz)).yzw;
+    // 36: mul r0.yzw, r0.yyzw, v5.wwww
+    r0.yzw = ((r0.yyzw)*(v5.wwww)).yzw;
+    // 37: mul o0.xyz, r0.xxxx, r0.yzwy
+    output.xyz = ((r0.xxxx)*(r0.yzwy)).xyz;
+    // 38: mov o0.w, l(0)
+    output.w = (float4(asfloat(0u),asfloat(0u),asfloat(0u),asfloat(0u))).w;
+    return output;
+}
+#endif
+#endif
+
+#if !defined(ARTIST_NATIVE_MODEL_ONLY) && !defined(EFFECT_NATIVE_MESH_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
+float4 ArtistNative3040Distortion(ARTIST_NATIVE_INPUT input)
+{
+    float4 source[3]; [unroll] for (uint i=0u; i<3u; ++i) source[i]=0.f;
+    source[0].x=1.f; // Project engine opacity multiplier.
+    float4 output=0.f;
+    float4 passValues[4]; [unroll] for(uint passIndex=0u;passIndex<4u;++passIndex) passValues[passIndex]=0.f;
+    passValues[0]=float4(.5f,-.5f,.5f,.5f);
+    float4 v0 = float4(input.sourceBasisX,0.f); // native texcoord10
+    float4 v1 = float4(input.uv,float2(0.f,0.f)); // native texcoord0
+    float4 v2 = input.color; // native texcoord1
+    float4 v3 = input.dynamicParameter; // native texcoord2
+    float4 v4 = float4((input.screenUV*float2(2.f,-2.f)+float2(-1.f,1.f))*input.projectionW,input.projectionZ,input.projectionW); // native texcoord5
+    float4 v5 = float4(input.tangentView,1.f); // native texcoord6
+    float4 v6 = asfloat(uint4(input.frontFace ? 0xffffffffu : 0u,0u,0u,0u)); // native sv_isfrontface0
+    float4 r0=0.f, r1=0.f;
+    // 1: mad r0.xyzw, cb2[0].xyxy, l(-1.000000, 1.000000, -1.000000, 1.000000), cb2[0].wzwz
+    r0.xyzw = ((passValues[0].xyxy)*(float4(-1.000000,1.000000,-1.000000,1.000000))+(passValues[0].wzwz)).xyzw;
+    // 2: dp2 r1.x, r0.zwzz, r0.zwzz
+    r1.x = (dot((r0.zwzz).xy,(r0.zwzz).xy).xxxx).x;
+    // 3: add r1.x, r1.x, l(-0.100000)
+    r1.x = ((r1.xxxx)+(float4(-0.100000,-0.100000,-0.100000,-0.100000))).x;
+    // 4: lt r1.x, r1.x, l(0.000000)
+    r1.x = (asfloat((uint4)((r1.xxxx)<(float4(0.000000,0.000000,0.000000,0.000000))) * 0xffffffffu)).x;
+    // 5: discard_nz r1.x
+    if ((asuint(r1.xxxx)).x != 0u) return 0.f;
+    // 6: div r1.xy, v4.xyxx, v4.wwww
+    r1.xy = ((v4.xyxx)/(v4.wwww)).xy;
+    // 7: mad r1.xy, r1.xyxx, cb2[0].xyxx, cb2[0].wzww
+    r1.xy = ((r1.xyxx)*(passValues[0].xyxx)+(passValues[0].wzww)).xy;
+    // 8: mad r0.xy, r0.xyxx, l(0.003922, -0.003922, 0.000000, 0.000000), r1.xyxx
+    r0.xy = ((r0.xyxx)*(float4(0.003922,-0.003922,0.000000,0.000000))+(r1.xyxx)).xy;
+    // 9: mul r0.zw, r0.zzzw, l(0.000000, 0.000000, 4.000000, 4.000000)
+    r0.zw = ((r0.zzzw)*(float4(0.000000,0.000000,4.000000,4.000000))).zw;
+    // 10: max r0.zw, r0.zzzw, l(0.000000, 0.000000, -255.000000, -255.000000)
+    r0.zw = (max(r0.zzzw,float4(0.000000,0.000000,-255.000000,-255.000000))).zw;
+    // 11: min r0.zw, r0.zzzw, l(0.000000, 0.000000, 255.000000, 255.000000)
+    r0.zw = (min(r0.zzzw,float4(0.000000,0.000000,255.000000,255.000000))).zw;
+    // 12: mul r0.zw, r0.zzzw, l(0.000000, 0.000000, 0.003922, 0.003922)
+    r0.zw = ((r0.zzzw)*(float4(0.000000,0.000000,0.003922,0.003922))).zw;
+    // Native 13: source device depth mapped to centimetre view depth; reconstruction at 15.
+    r0.x = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, (r0.xyxx).xy, 0.f).y * 100000.f;
+    // Native 15-18: reconstructed view depth is supplied by the runtime adapter.
+    r0.x = r0.x;
+    // 19: ge r0.x, v4.w, r0.x
+    r0.x = (asfloat((uint4)((v4.wwww)>=(r0.xxxx)) * 0xffffffffu)).x;
+    // 20: movc r0.xy, r0.xxxx, l(0,0,0,0), r0.zwzz
+    r0.xy = ((asuint(r0.xxxx) != 0u) ? (float4(asfloat(0u),asfloat(0u),asfloat(0u),asfloat(0u))) : (r0.zwzz)).xy;
+    // 21: max o0.xy, r0.xyxx, l(0.000000, 0.000000, 0.000000, 0.000000)
+    output.xy = (max(r0.xyxx,float4(0.000000,0.000000,0.000000,0.000000))).xy;
+    // 22: min r0.xy, r0.xyxx, l(0.000000, 0.000000, 0.000000, 0.000000)
+    r0.xy = (min(r0.xyxx,float4(0.000000,0.000000,0.000000,0.000000))).xy;
+    // 23: mov o0.zw, -r0.xxxy
+    output.zw = (-(r0.xxxy)).zw;
+    return output;
+}
+#endif
+
+#if !defined(EFFECT_NATIVE_MESH_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
+#ifndef ARTIST_NATIVE_MODEL_ONLY
+// Installed source-identical native reuse
+float4 ArtistNative3061(ARTIST_NATIVE_INPUT input)
+{
+    float4 source[8]; [unroll] for (uint i=0u; i<8u; ++i) source[i]=0.f;
+    source[0].x=1.f; // Project engine opacity multiplier.
+    float4 output=0.f;
+    source[1] = g_ArtistSourceMaterialParameters[6u];
+    source[2] = g_ArtistSourceMaterialParameters[5u];
+    source[3].x = (g_ArtistSourceMaterialParameters[1u].zzzz).x;
+    source[3].y = (g_ArtistSourceMaterialTime.xxxx).x;
+    source[3].z = (g_ArtistSourceMaterialParameters[0u].zzzz).x;
+    source[3].w = (g_ArtistSourceMaterialParameters[1u].xxxx).x;
+    source[4].x = (g_ArtistSourceMaterialParameters[2u].xxxx).x;
+    source[4].y = (g_ArtistSourceMaterialParameters[2u].wwww).x;
+    source[4].z = (g_ArtistSourceMaterialParameters[3u].xxxx).x;
+    source[4].w = (g_ArtistSourceMaterialParameters[3u].yyyy).x;
+    source[5].x = (g_ArtistSourceMaterialParameters[0u].xxxx).x;
+    source[5].y = ((float4(1.0, 0.0, 0.0, 0.0)-g_ArtistSourceMaterialParameters[0u].xxxx)).x;
+    source[5].z = (g_ArtistSourceMaterialParameters[4u].xxxx).x;
+    source[5].w = (g_ArtistSourceMaterialParameters[3u].zzzz).x;
+    source[6].x = (g_ArtistSourceMaterialParameters[3u].wwww).x;
+    source[6].y = (g_ArtistSourceMaterialParameters[1u].yyyy).x;
+    source[6].z = (g_ArtistSourceMaterialParameters[0u].yyyy).x;
+    source[6].w = (g_ArtistSourceMaterialParameters[0u].wwww).x;
+    source[7].x = (g_ArtistSourceMaterialParameters[1u].wwww).x;
+    source[7].y = (g_ArtistSourceMaterialParameters[2u].yyyy).x;
+    source[7].z = (g_ArtistSourceMaterialParameters[2u].zzzz).x;
+    float4 passValues[4]; [unroll] for(uint passIndex=0u;passIndex<4u;++passIndex) passValues[passIndex]=0.f;
+    passValues[0]=float4(.5f,-.5f,.5f,.5f);
+    float4 v0 = float4(input.sourceBasisX,0.f); // native texcoord10
+    float4 v1 = float4(input.sourceBasisZ,input.handedness); // native texcoord11
+    float4 v2 = float4(input.uv,float2(0.f,0.f)); // native texcoord0
+    float4 v3 = input.color; // native texcoord1
+    float4 v4 = input.dynamicParameter; // native texcoord2
+    float4 v5 = float4(0.f,0.f,0.f,1.f); // native texcoord4
+    float4 v6 = float4(input.tangentView,1.f); // native texcoord6
+    float4 v7 = float4((input.screenUV*float2(2.f,-2.f)+float2(-1.f,1.f))*input.projectionW,input.projectionZ,input.projectionW); // native texcoord5
+    float4 v8 = asfloat(uint4(input.frontFace ? 0xffffffffu : 0u,0u,0u,0u)); // native sv_isfrontface0
+    float4 r0=0.f, r1=0.f, r2=0.f;
+    // 1: mad r0.xy, v2.xyxx, l(1.000000, 0.500000, 0.000000, 0.000000), l(-0.500000, -0.500000, 0.000000, 0.000000)
+    r0.xy = ((v2.xyxx)*(float4(1.000000,0.500000,0.000000,0.000000))+(float4(-0.500000,-0.500000,0.000000,0.000000))).xy;
+    // 2: max r0.z, |r0.x|, |r0.y|
+    r0.z = (max(abs(r0.xxxx),abs(r0.yyyy))).z;
+    // 3: div r0.z, l(1.000000, 1.000000, 1.000000, 1.000000), r0.z
+    r0.z = ((float4(1.000000,1.000000,1.000000,1.000000))/(r0.zzzz)).z;
+    // 4: min r0.w, |r0.x|, |r0.y|
+    r0.w = (min(abs(r0.xxxx),abs(r0.yyyy))).w;
+    // 5: mul r0.z, r0.z, r0.w
+    r0.z = ((r0.zzzz)*(r0.wwww)).z;
+    // 6: mul r0.w, r0.z, r0.z
+    r0.w = ((r0.zzzz)*(r0.zzzz)).w;
+    // 7: mad r1.x, r0.w, l(0.020835), l(-0.085133)
+    r1.x = ((r0.wwww)*(float4(0.020835,0.020835,0.020835,0.020835))+(float4(-0.085133,-0.085133,-0.085133,-0.085133))).x;
+    // 8: mad r1.x, r0.w, r1.x, l(0.180141)
+    r1.x = ((r0.wwww)*(r1.xxxx)+(float4(0.180141,0.180141,0.180141,0.180141))).x;
+    // 9: mad r1.x, r0.w, r1.x, l(-0.330299)
+    r1.x = ((r0.wwww)*(r1.xxxx)+(float4(-0.330299,-0.330299,-0.330299,-0.330299))).x;
+    // 10: mad r0.w, r0.w, r1.x, l(0.999866)
+    r0.w = ((r0.wwww)*(r1.xxxx)+(float4(0.999866,0.999866,0.999866,0.999866))).w;
+    // 11: mul r1.x, r0.w, r0.z
+    r1.x = ((r0.wwww)*(r0.zzzz)).x;
+    // 12: mad r1.x, r1.x, l(-2.000000), l(1.570796)
+    r1.x = ((r1.xxxx)*(float4(-2.000000,-2.000000,-2.000000,-2.000000))+(float4(1.570796,1.570796,1.570796,1.570796))).x;
+    // 13: lt r1.y, |r0.x|, |r0.y|
+    r1.y = (asfloat((uint4)((abs(r0.xxxx))<(abs(r0.yyyy))) * 0xffffffffu)).y;
+    // 14: and r1.x, r1.y, r1.x
+    r1.x = (asfloat(asuint(r1.yyyy) & asuint(r1.xxxx))).x;
+    // 15: mad r0.z, r0.z, r0.w, r1.x
+    r0.z = ((r0.zzzz)*(r0.wwww)+(r1.xxxx)).z;
+    // 16: lt r0.w, r0.x, -r0.x
+    r0.w = (asfloat((uint4)((r0.xxxx)<(-(r0.xxxx))) * 0xffffffffu)).w;
+    // 17: and r0.w, r0.w, l(0xc0490fdb)
+    r0.w = (asfloat(asuint(r0.wwww) & uint4(0xc0490fdbu,0xc0490fdbu,0xc0490fdbu,0xc0490fdbu))).w;
+    // 18: add r0.z, r0.w, r0.z
+    r0.z = ((r0.wwww)+(r0.zzzz)).z;
+    // 19: min r0.w, r0.x, r0.y
+    r0.w = (min(r0.xxxx,r0.yyyy)).w;
+    // 20: lt r0.w, r0.w, -r0.w
+    r0.w = (asfloat((uint4)((r0.wwww)<(-(r0.wwww))) * 0xffffffffu)).w;
+    // 21: max r1.x, r0.x, r0.y
+    r1.x = (max(r0.xxxx,r0.yyyy)).x;
+    // 22: dp2 r0.x, r0.xyxx, r0.xyxx
+    r0.x = (dot((r0.xyxx).xy,(r0.xyxx).xy).xxxx).x;
+    // 23: sqrt r0.x, r0.x
+    r0.x = (sqrt(r0.xxxx)).x;
+    // 24: ge r0.y, r1.x, -r1.x
+    r0.y = (asfloat((uint4)((r1.xxxx)>=(-(r1.xxxx))) * 0xffffffffu)).y;
+    // 25: and r0.y, r0.y, r0.w
+    r0.y = (asfloat(asuint(r0.yyyy) & asuint(r0.wwww))).y;
+    // 26: movc r0.y, r0.y, -r0.z, r0.z
+    r0.y = ((asuint(r0.yyyy) != 0u) ? (-(r0.zzzz)) : (r0.zzzz)).y;
+    // 27: mad r0.yz, r0.yyyy, l(0.000000, 0.159155, 0.159155, 0.000000), l(0.000000, 0.500000, 0.250000, 0.000000)
+    r0.yz = ((r0.yyyy)*(float4(0.000000,0.159155,0.159155,0.000000))+(float4(0.000000,0.500000,0.250000,0.000000))).yz;
+    // 28: mad r0.z, -|r0.z|, l(4.000000), l(1.000000)
+    r0.z = ((-(abs(r0.zzzz)))*(float4(4.000000,4.000000,4.000000,4.000000))+(float4(1.000000,1.000000,1.000000,1.000000))).z;
+    // 29: add r1.x, r0.y, r0.y
+    r1.x = ((r0.yyyy)+(r0.yyyy)).x;
+    // 30: mov_sat r0.y, v4.x
+    r0.y = (saturate(v4.xxxx)).y;
+    // 31: add r0.y, -r0.y, l(1.000000)
+    r0.y = ((-(r0.yyyy))+(float4(1.000000,1.000000,1.000000,1.000000))).y;
+    // 32: add r0.w, -r0.y, r0.z
+    r0.w = ((-(r0.yyyy))+(r0.zzzz)).w;
+    // 33: add r0.z, r0.z, -cb0[5].y
+    r0.z = ((r0.zzzz)+(-(source[5].yyyy))).z;
+    // 34: mul_sat r0.z, r0.z, cb0[5].z
+    r0.z = (saturate((r0.zzzz)*(source[5].zzzz))).z;
+    // 35: add r0.y, -r0.y, l(1.000000)
+    r0.y = ((-(r0.yyyy))+(float4(1.000000,1.000000,1.000000,1.000000))).y;
+    // 36: div r0.y, l(1.000000, 1.000000, 1.000000, 1.000000), r0.y
+    r0.y = ((float4(1.000000,1.000000,1.000000,1.000000))/(r0.yyyy)).y;
+    // 37: mul_sat r0.y, r0.y, r0.w
+    r0.y = (saturate((r0.yyyy)*(r0.wwww))).y;
+    // 38: mul r0.y, r0.y, l(10.000000)
+    r0.y = ((r0.yyyy)*(float4(10.000000,10.000000,10.000000,10.000000))).y;
+    // 39: min r0.y, r0.y, l(1.000000)
+    r0.y = (min(r0.yyyy,float4(1.000000,1.000000,1.000000,1.000000))).y;
+    // 40: mul r0.y, r0.y, r0.z
+    r0.y = ((r0.yyyy)*(r0.zzzz)).y;
+    // 41: mad r0.z, -r0.x, l(2.000000), l(1.000000)
+    r0.z = ((-(r0.xxxx))*(float4(2.000000,2.000000,2.000000,2.000000))+(float4(1.000000,1.000000,1.000000,1.000000))).z;
+    // 42: max r0.z, r0.z, l(0.000000)
+    r0.z = (max(r0.zzzz,float4(0.000000,0.000000,0.000000,0.000000))).z;
+    // 43: add r0.w, -r0.z, l(1.000000)
+    r0.w = ((-(r0.zzzz))+(float4(1.000000,1.000000,1.000000,1.000000))).w;
+    // 44: mul_sat r0.z, r0.z, cb0[5].w
+    r0.z = (saturate((r0.zzzz)*(source[5].wwww))).z;
+    // 45: mul r0.z, r0.z, r0.w
+    r0.z = ((r0.zzzz)*(r0.wwww)).z;
+    // 46: log r0.w, r0.z
+    r0.w = (log2(r0.zzzz)).w;
+    // 47: lt r0.z, r0.z, l(0.000001)
+    r0.z = (asfloat((uint4)((r0.zzzz)<(float4(0.000001,0.000001,0.000001,0.000001))) * 0xffffffffu)).z;
+    // 48: mul r0.w, r0.w, cb0[6].x
+    r0.w = ((r0.wwww)*(source[6].xxxx)).w;
+    // 49: exp r0.w, r0.w
+    r0.w = (exp2(r0.wwww)).w;
+    // 50: mul r0.y, r0.w, r0.y
+    r0.y = ((r0.wwww)*(r0.yyyy)).y;
+    // 51: movc r0.y, r0.z, l(0), r0.y
+    r0.y = ((asuint(r0.zzzz) != 0u) ? (float4(asfloat(0u),asfloat(0u),asfloat(0u),asfloat(0u))) : (r0.yyyy)).y;
+    // 52: add r0.z, r0.x, r0.x
+    r0.z = ((r0.xxxx)+(r0.xxxx)).z;
+    // 53: lt r0.x, r0.x, l(0.000000)
+    r0.x = (asfloat((uint4)((r0.xxxx)<(float4(0.000000,0.000000,0.000000,0.000000))) * 0xffffffffu)).x;
+    // 54: log r0.z, r0.z
+    r0.z = (log2(r0.zzzz)).z;
+    // 55: mul r0.z, r0.z, v4.y
+    r0.z = ((r0.zzzz)*(v4.yyyy)).z;
+    // 56: exp r0.z, r0.z
+    r0.z = (exp2(r0.zzzz)).z;
+    // 57: movc r1.y, r0.x, l(0), r0.z
+    r1.y = ((asuint(r0.xxxx) != 0u) ? (float4(asfloat(0u),asfloat(0u),asfloat(0u),asfloat(0u))) : (r0.zzzz)).y;
+    // 58: mul r0.xz, r1.xxyx, cb0[6].zzwz
+    r0.xz = ((r1.xxyx)*(source[6].zzwz)).xz;
+    // 59: mul r1.xy, r1.xyxx, cb0[3].zwzz
+    r1.xy = ((r1.xyxx)*(source[3].zwzz)).xy;
+    // 60: mad r2.x, cb0[3].y, cb0[6].y, r0.x
+    r2.x = ((source[3].yyyy)*(source[6].yyyy)+(r0.xxxx)).x;
+    // 61: mad r2.y, cb0[3].y, cb0[7].x, r0.z
+    r2.y = ((source[3].yyyy)*(source[7].xxxx)+(r0.zzzz)).y;
+    // 62: sample_b_indexable(texture2d)(float,float,float,float) r0.x, r2.xyxx, t0.yxzw, s1, l(0.000000)
+    r0.x = (ArtistNativeSample1((r2.xyxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x, false).yxzw).x;
+    // 63: mov_sat r0.z, v3.w
+    r0.z = (saturate(v3.wwww)).z;
+    // 64: add r0.z, -r0.z, l(1.000000)
+    r0.z = ((-(r0.zzzz))+(float4(1.000000,1.000000,1.000000,1.000000))).z;
+    // 65: add r0.x, -r0.z, r0.x
+    r0.x = ((-(r0.zzzz))+(r0.xxxx)).x;
+    // 66: mul_sat r0.x, r0.x, cb0[7].y
+    r0.x = (saturate((r0.xxxx)*(source[7].yyyy))).x;
+    // 67: log r0.z, r0.x
+    r0.z = (log2(r0.xxxx)).z;
+    // 68: lt r0.x, r0.x, l(0.000001)
+    r0.x = (asfloat((uint4)((r0.xxxx)<(float4(0.000001,0.000001,0.000001,0.000001))) * 0xffffffffu)).x;
+    // 69: mul r0.z, r0.z, cb0[7].z
+    r0.z = ((r0.zzzz)*(source[7].zzzz)).z;
+    // 70: exp r0.z, r0.z
+    r0.z = (exp2(r0.zzzz)).z;
+    // 71: movc r0.x, r0.x, l(0), r0.z
+    r0.x = ((asuint(r0.xxxx) != 0u) ? (float4(asfloat(0u),asfloat(0u),asfloat(0u),asfloat(0u))) : (r0.zzzz)).x;
+    // 72: mul r0.x, r0.x, r0.y
+    r0.x = ((r0.xxxx)*(r0.yyyy)).x;
+    // 73: mul_sat r0.x, r0.x, v3.w
+    r0.x = (saturate((r0.xxxx)*(v3.wwww))).x;
+    // 74: mul r0.x, r0.x, cb0[0].x
+    r0.x = ((r0.xxxx)*(source[0].xxxx)).x;
+    // 75: mad r2.x, cb0[3].y, cb0[3].x, r1.x
+    r2.x = ((source[3].yyyy)*(source[3].xxxx)+(r1.xxxx)).x;
+    // 76: mad r2.y, cb0[3].y, cb0[4].x, r1.y
+    r2.y = ((source[3].yyyy)*(source[4].xxxx)+(r1.yyyy)).y;
+    // 77: sample_b_indexable(texture2d)(float,float,float,float) r0.yzw, r2.xyxx, t1.wxyz, s0, l(0.000000)
+    r0.yzw = (ArtistNativeSample0((r2.xyxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x, false).wxyz).yzw;
+    // 78: dp3 r1.x, r0.yzwy, l(0.300000, 0.590000, 0.110000, 0.000000)
+    r1.x = (dot((r0.yzwy).xyz,(float4(0.300000,0.590000,0.110000,0.000000)).xyz).xxxx).x;
+    // 79: add r1.xyz, -r0.yzwy, r1.xxxx
+    r1.xyz = ((-(r0.yzwy))+(r1.xxxx)).xyz;
+    // 80: mad r0.yzw, cb0[4].yyyy, r1.xxyz, r0.yyzw
+    r0.yzw = ((source[4].yyyy)*(r1.xxyz)+(r0.yyzw)).yzw;
+    // 81: max r0.yzw, |r0.yyzw|, l(0.000000, 0.000001, 0.000001, 0.000001)
+    r0.yzw = (max(abs(r0.yyzw),float4(0.000000,0.000001,0.000001,0.000001))).yzw;
+    // 82: log r0.yzw, r0.yyzw
+    r0.yzw = (log2(r0.yyzw)).yzw;
+    // 83: mul r0.yzw, r0.yyzw, cb0[4].zzzz
+    r0.yzw = ((r0.yyzw)*(source[4].zzzz)).yzw;
+    // 84: exp r0.yzw, r0.yyzw
+    r0.yzw = (exp2(r0.yyzw)).yzw;
+    // 85: mul r0.yzw, r0.yyzw, cb0[4].wwww
+    r0.yzw = ((r0.yyzw)*(source[4].wwww)).yzw;
+    // 86: mul r1.xyz, cb0[2].xyzx, cb0[2].wwww
+    r1.xyz = ((source[2].xyzx)*(source[2].wwww)).xyz;
+    // 87: mul r0.yzw, r0.yyzw, r1.xxyz
+    r0.yzw = ((r0.yyzw)*(r1.xxyz)).yzw;
+    // 88: mad r0.yzw, r0.yyzw, v3.xxyz, cb0[1].xxyz
+    r0.yzw = ((r0.yyzw)*(v3.xxyz)+(source[1].xxyz)).yzw;
+    // 89: mul r0.yzw, r0.yyzw, v5.wwww
+    r0.yzw = ((r0.yyzw)*(v5.wwww)).yzw;
+    // 90: mul o0.xyz, r0.xxxx, r0.yzwy
+    output.xyz = ((r0.xxxx)*(r0.yzwy)).xyz;
+    // 91: mov o0.w, l(0)
+    output.w = (float4(asfloat(0u),asfloat(0u),asfloat(0u),asfloat(0u))).w;
+    return output;
+}
+#endif
+#endif
+
 #if !defined(ARTIST_NATIVE_MODEL_ONLY) && !defined(EFFECT_NATIVE_MESH_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
 float4 ArtistNative3061Distortion(ARTIST_NATIVE_INPUT input)
 {
@@ -11237,21 +10852,203 @@ float4 ArtistNative3061Distortion(ARTIST_NATIVE_INPUT input)
 }
 #endif
 
-#if !defined(ARTIST_NATIVE_MODEL_ONLY) && !defined(EFFECT_NATIVE_PARTICLE_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
-float4 ArtistNative3065Distortion(ARTIST_NATIVE_INPUT input)
+#if !defined(EFFECT_NATIVE_MESH_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
+#ifndef ARTIST_NATIVE_MODEL_ONLY
+// Installed source-identical native reuse
+float4 ArtistNative3042(ARTIST_NATIVE_INPUT input)
+{
+    float4 source[7]; [unroll] for (uint i=0u; i<7u; ++i) source[i]=0.f;
+    source[0].x=1.f; // Project engine opacity multiplier.
+    float4 output=0.f;
+    source[1] = g_ArtistSourceMaterialParameters[4u];
+    source[2].x = (g_ArtistSourceMaterialParameters[1u].yyyy).x;
+    source[2].y = (g_ArtistSourceMaterialParameters[3u].xxxx).x;
+    source[2].z = (g_ArtistSourceMaterialTime.xxxx).x;
+    source[2].w = (g_ArtistSourceMaterialParameters[3u].zzzz).x;
+    source[3].x = (g_ArtistSourceMaterialParameters[3u].yyyy).x;
+    source[3].y = (g_ArtistSourceMaterialParameters[2u].wwww).x;
+    source[3].z = (g_ArtistSourceMaterialParameters[0u].wwww).x;
+    source[3].w = (g_ArtistSourceMaterialParameters[1u].xxxx).x;
+    source[4].x = (g_ArtistSourceMaterialParameters[0u].xxxx).x;
+    source[4].y = (g_ArtistSourceMaterialParameters[0u].yyyy).x;
+    source[4].z = (g_ArtistSourceMaterialParameters[2u].xxxx).x;
+    source[4].w = (g_ArtistSourceMaterialParameters[2u].zzzz).x;
+    source[5].x = (g_ArtistSourceMaterialParameters[2u].yyyy).x;
+    source[5].y = (g_ArtistSourceMaterialParameters[1u].zzzz).x;
+    source[5].z = ((float4(-0.100000001, 0.0, 0.0, 0.0)*g_ArtistSourceMaterialParameters[1u].zzzz)).x;
+    source[5].w = (g_ArtistSourceMaterialParameters[0u].zzzz).x;
+    source[6].x = (g_ArtistSourceMaterialParameters[1u].wwww).x;
+    source[6].y = ((float4(-1.0, 0.0, 0.0, 0.0)*g_ArtistSourceMaterialParameters[1u].wwww)).x;
+    float4 passValues[4]; [unroll] for(uint passIndex=0u;passIndex<4u;++passIndex) passValues[passIndex]=0.f;
+    passValues[0]=float4(.5f,-.5f,.5f,.5f);
+    float4 v0 = float4(input.sourceBasisX,0.f); // native texcoord10
+    float4 v1 = float4(input.sourceBasisZ,input.handedness); // native texcoord11
+    float4 v2 = float4(input.uv,float2(0.f,0.f)); // native texcoord0
+    float4 v3 = input.color; // native texcoord1
+    float4 v4 = input.dynamicParameter; // native texcoord2
+    float4 v5 = float4(0.f,0.f,0.f,1.f); // native texcoord4
+    float4 v6 = float4(input.tangentView,1.f); // native texcoord6
+    float4 v7 = float4((input.screenUV*float2(2.f,-2.f)+float2(-1.f,1.f))*input.projectionW,input.projectionZ,input.projectionW); // native texcoord5
+    float4 v8 = asfloat(uint4(input.frontFace ? 0xffffffffu : 0u,0u,0u,0u)); // native sv_isfrontface0
+    float4 r0=0.f, r1=0.f, r2=0.f, r3=0.f, r4=0.f, r5=0.f;
+    // 1: add r0.x, v4.x, cb0[5].z
+    r0.x = ((v4.xxxx)+(source[5].zzzz)).x;
+    // 2: add r0.y, cb0[2].x, l(-1.000000)
+    r0.y = ((source[2].xxxx)+(float4(-1.000000,-1.000000,-1.000000,-1.000000))).y;
+    // 3: mul r0.y, r0.y, l(0.500000)
+    r0.y = ((r0.yyyy)*(float4(0.500000,0.500000,0.500000,0.500000))).y;
+    // 4: mad r0.yz, cb0[2].xxxx, v2.xxyx, -r0.yyyy
+    r0.yz = ((source[2].xxxx)*(v2.xxyx)+(-(r0.yyyy))).yz;
+    // 5: add r1.xy, r0.yzyy, l(-0.500000, -0.500000, 0.000000, 0.000000)
+    r1.xy = ((r0.yzyy)+(float4(-0.500000,-0.500000,0.000000,0.000000))).xy;
+    // 6: dp2 r0.w, r1.xyxx, r1.xyxx
+    r0.w = (dot((r1.xyxx).xy,(r1.xyxx).xy).xxxx).w;
+    // 7: sqrt r0.w, r0.w
+    r0.w = (sqrt(r0.wwww)).w;
+    // 8: mad r0.w, r0.w, l(2.000000), l(1.000000)
+    r0.w = ((r0.wwww)*(float4(2.000000,2.000000,2.000000,2.000000))+(float4(1.000000,1.000000,1.000000,1.000000))).w;
+    // 9: add r0.x, -r0.x, r0.w
+    r0.x = ((-(r0.xxxx))+(r0.wwww)).x;
+    // 10: add_sat r0.x, r0.x, r0.x
+    r0.x = (saturate((r0.xxxx)+(r0.xxxx))).x;
+    // 11: mul r1.xy, r0.yzyy, cb0[4].wwww
+    r1.xy = ((r0.yzyy)*(source[4].wwww)).xy;
+    // 12: mad r2.x, cb0[2].z, cb0[4].z, r1.x
+    r2.x = ((source[2].zzzz)*(source[4].zzzz)+(r1.xxxx)).x;
+    // 13: mad r2.y, cb0[2].z, cb0[5].x, r1.y
+    r2.y = ((source[2].zzzz)*(source[5].xxxx)+(r1.yyyy)).y;
+    // 14: sample_b_indexable(texture2d)(float,float,float,float) r1.xyz, r2.xyxx, t2.xyzw, s2, l(0.000000)
+    r1.xyz = (ArtistNativeSample2((r2.xyxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x, false).xyzw).xyz;
+    // 15: mad r2.xyz, r0.xxxx, r1.xyzx, r0.xxxx
+    r2.xyz = ((r0.xxxx)*(r1.xyzx)+(r0.xxxx)).xyz;
+    // 16: max r2.xyz, |r2.xyzx|, l(0.000001, 0.000001, 0.000001, 0.000000)
+    r2.xyz = (max(abs(r2.xyzx),float4(0.000001,0.000001,0.000001,0.000000))).xyz;
+    // 17: mul r3.xyz, r2.xyzx, r2.xyzx
+    r3.xyz = ((r2.xyzx)*(r2.xyzx)).xyz;
+    // 18: mul r3.xyz, r3.xyzx, r3.xyzx
+    r3.xyz = ((r3.xyzx)*(r3.xyzx)).xyz;
+    // 19: mul r2.xyz, r2.xyzx, r3.xyzx
+    r2.xyz = ((r2.xyzx)*(r3.xyzx)).xyz;
+    // 20: min r2.xyz, r2.xyzx, l(1.000000, 1.000000, 1.000000, 0.000000)
+    r2.xyz = (min(r2.xyzx,float4(1.000000,1.000000,1.000000,0.000000))).xyz;
+    // 21: add r0.x, r0.w, -v4.x
+    r0.x = ((r0.wwww)+(-(v4.xxxx))).x;
+    // 22: add_sat r0.x, r0.x, r0.x
+    r0.x = (saturate((r0.xxxx)+(r0.xxxx))).x;
+    // 23: mad r3.xyz, r0.xxxx, r1.xyzx, r0.xxxx
+    r3.xyz = ((r0.xxxx)*(r1.xyzx)+(r0.xxxx)).xyz;
+    // 24: max r3.xyz, |r3.xyzx|, l(0.000001, 0.000001, 0.000001, 0.000000)
+    r3.xyz = (max(abs(r3.xyzx),float4(0.000001,0.000001,0.000001,0.000000))).xyz;
+    // 25: mul r4.xyz, r3.xyzx, r3.xyzx
+    r4.xyz = ((r3.xyzx)*(r3.xyzx)).xyz;
+    // 26: mul r4.xyz, r4.xyzx, r4.xyzx
+    r4.xyz = ((r4.xyzx)*(r4.xyzx)).xyz;
+    // 27: mul r3.xyz, r3.xyzx, r4.xyzx
+    r3.xyz = ((r3.xyzx)*(r4.xyzx)).xyz;
+    // 28: min r3.xyz, r3.xyzx, l(1.000000, 1.000000, 1.000000, 0.000000)
+    r3.xyz = (min(r3.xyzx,float4(1.000000,1.000000,1.000000,0.000000))).xyz;
+    // 29: add r2.xyz, r2.xyzx, -r3.xyzx
+    r2.xyz = ((r2.xyzx)+(-(r3.xyzx))).xyz;
+    // 30: max r2.xyz, |r2.xyzx|, l(0.000001, 0.000001, 0.000001, 0.000000)
+    r2.xyz = (max(abs(r2.xyzx),float4(0.000001,0.000001,0.000001,0.000000))).xyz;
+    // 31: mul r4.xyz, r2.xyzx, r2.xyzx
+    r4.xyz = ((r2.xyzx)*(r2.xyzx)).xyz;
+    // 32: mul r4.xyz, r4.xyzx, r4.xyzx
+    r4.xyz = ((r4.xyzx)*(r4.xyzx)).xyz;
+    // 33: mul r2.xyz, r2.xyzx, r4.xyzx
+    r2.xyz = ((r2.xyzx)*(r4.xyzx)).xyz;
+    // 34: mul r4.xy, r0.yzyy, cb0[2].wwww
+    r4.xy = ((r0.yzyy)*(source[2].wwww)).xy;
+    // 35: mad r5.x, cb0[2].z, cb0[2].y, r4.x
+    r5.x = ((source[2].zzzz)*(source[2].yyyy)+(r4.xxxx)).x;
+    // 36: mad r5.y, cb0[2].z, cb0[3].x, r4.y
+    r5.y = ((source[2].zzzz)*(source[3].xxxx)+(r4.yyyy)).y;
+    // 37: sample_b_indexable(texture2d)(float,float,float,float) r4.xy, r5.xyxx, t0.xyzw, s0, l(0.000000)
+    r4.xy = (ArtistNativeSample0((r5.xyxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x, false).xyzw).xy;
+    // 38: mad r4.xy, r4.xyxx, l(2.000000, 2.000000, 0.000000, 0.000000), l(-1.000000, -1.000000, 0.000000, 0.000000)
+    r4.xy = ((r4.xyxx)*(float4(2.000000,2.000000,0.000000,0.000000))+(float4(-1.000000,-1.000000,0.000000,0.000000))).xy;
+    // 39: mad r0.xy, cb0[3].yyyy, r4.xyxx, r0.yzyy
+    r0.xy = ((source[3].yyyy)*(r4.xyxx)+(r0.yzyy)).xy;
+    // 40: add r0.xy, r0.xyxx, l(-0.500000, -0.500000, 0.000000, 0.000000)
+    r0.xy = ((r0.xyxx)+(float4(-0.500000,-0.500000,0.000000,0.000000))).xy;
+    // 41: mad r0.xy, r0.xyxx, cb0[3].zwzz, l(0.500000, 0.500000, 0.000000, 0.000000)
+    r0.xy = ((r0.xyxx)*(source[3].zwzz)+(float4(0.500000,0.500000,0.000000,0.000000))).xy;
+    // 42: sample_b_indexable(texture2d)(float,float,float,float) r0.xyz, r0.xyxx, t1.xyzw, s1, l(0.000000)
+    r0.xyz = (ArtistNativeSample1((r0.xyxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x, false).xyzw).xyz;
+    // 43: dp3 r1.w, r0.xyzx, l(0.300000, 0.590000, 0.110000, 0.000000)
+    r1.w = (dot((r0.xyzx).xyz,(float4(0.300000,0.590000,0.110000,0.000000)).xyz).xxxx).w;
+    // 44: add r4.xyz, -r0.xyzx, r1.wwww
+    r4.xyz = ((-(r0.xyzx))+(r1.wwww)).xyz;
+    // 45: mad r0.xyz, cb0[4].xxxx, r4.xyzx, r0.xyzx
+    r0.xyz = ((source[4].xxxx)*(r4.xyzx)+(r0.xyzx)).xyz;
+    // 46: mul r0.xyz, r0.xyzx, cb0[4].yyyy
+    r0.xyz = ((r0.xyzx)*(source[4].yyyy)).xyz;
+    // 47: mad r0.xyz, r3.xyzx, -r0.xyzx, r0.xyzx
+    r0.xyz = ((r3.xyzx)*(-(r0.xyzx))+(r0.xyzx)).xyz;
+    // 48: mul r2.xyz, r2.xyzx, r0.xyzx
+    r2.xyz = ((r2.xyzx)*(r0.xyzx)).xyz;
+    // 49: mad r0.xyz, cb0[5].wwww, r2.xyzx, r0.xyzx
+    r0.xyz = ((source[5].wwww)*(r2.xyzx)+(r0.xyzx)).xyz;
+    // 50: add r1.w, v4.x, cb0[6].y
+    r1.w = ((v4.xxxx)+(source[6].yyyy)).w;
+    // 51: add r0.w, r0.w, -r1.w
+    r0.w = ((r0.wwww)+(-(r1.wwww))).w;
+    // 52: add_sat r0.w, r0.w, r0.w
+    r0.w = (saturate((r0.wwww)+(r0.wwww))).w;
+    // 53: mad r1.xyz, r0.wwww, r1.xyzx, r0.wwww
+    r1.xyz = ((r0.wwww)*(r1.xyzx)+(r0.wwww)).xyz;
+    // 54: max r1.xyz, |r1.xyzx|, l(0.000001, 0.000001, 0.000001, 0.000000)
+    r1.xyz = (max(abs(r1.xyzx),float4(0.000001,0.000001,0.000001,0.000000))).xyz;
+    // 55: mul r2.xyz, r1.xyzx, r1.xyzx
+    r2.xyz = ((r1.xyzx)*(r1.xyzx)).xyz;
+    // 56: mul r2.xyz, r2.xyzx, r2.xyzx
+    r2.xyz = ((r2.xyzx)*(r2.xyzx)).xyz;
+    // 57: mul r1.xyz, r1.xyzx, r2.xyzx
+    r1.xyz = ((r1.xyzx)*(r2.xyzx)).xyz;
+    // 58: min r1.xyz, r1.xyzx, l(1.000000, 1.000000, 1.000000, 0.000000)
+    r1.xyz = (min(r1.xyzx,float4(1.000000,1.000000,1.000000,0.000000))).xyz;
+    // 59: mul r0.xyz, r0.xyzx, r1.xyzx
+    r0.xyz = ((r0.xyzx)*(r1.xyzx)).xyz;
+    // 60: dp3 r0.w, r0.xyzx, l(0.300000, 0.590000, 0.110000, 0.000000)
+    r0.w = (dot((r0.xyzx).xyz,(float4(0.300000,0.590000,0.110000,0.000000)).xyz).xxxx).w;
+    // 61: mad r0.xyz, v3.xyzx, r0.xyzx, cb0[1].xyzx
+    r0.xyz = ((v3.xyzx)*(r0.xyzx)+(source[1].xyzx)).xyz;
+    // 62: mad o0.xyz, r0.xyzx, v5.wwww, v5.xyzx
+    output.xyz = ((r0.xyzx)*(v5.wwww)+(v5.xyzx)).xyz;
+    // 63: log r0.x, |r0.w|
+    r0.x = (log2(abs(r0.wwww))).x;
+    // 64: lt r0.y, |r0.w|, l(0.000001)
+    r0.y = (asfloat((uint4)((abs(r0.wwww))<(float4(0.000001,0.000001,0.000001,0.000001))) * 0xffffffffu)).y;
+    // 65: mul r0.x, r0.x, v4.y
+    r0.x = ((r0.xxxx)*(v4.yyyy)).x;
+    // 66: exp r0.x, r0.x
+    r0.x = (exp2(r0.xxxx)).x;
+    // 67: mul_sat r0.x, r0.x, v3.w
+    r0.x = (saturate((r0.xxxx)*(v3.wwww))).x;
+    // 68: mul r0.x, r0.x, cb0[0].x
+    r0.x = ((r0.xxxx)*(source[0].xxxx)).x;
+    // 69: movc o0.w, r0.y, l(0), r0.x
+    output.w = ((asuint(r0.yyyy) != 0u) ? (float4(asfloat(0u),asfloat(0u),asfloat(0u),asfloat(0u))) : (r0.xxxx)).w;
+    return output;
+}
+#endif
+#endif
+
+#if !defined(ARTIST_NATIVE_MODEL_ONLY) && !defined(EFFECT_NATIVE_MESH_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
+float4 ArtistNative3042Distortion(ARTIST_NATIVE_INPUT input)
 {
     float4 source[3]; [unroll] for (uint i=0u; i<3u; ++i) source[i]=0.f;
     source[0].x=1.f; // Project engine opacity multiplier.
     float4 output=0.f;
-    source[1]=input.color; // Native mesh particle color prefix.
     float4 passValues[4]; [unroll] for(uint passIndex=0u;passIndex<4u;++passIndex) passValues[passIndex]=0.f;
     passValues[0]=float4(.5f,-.5f,.5f,.5f);
-    float4 v0 = input.vertexColor; // native color0
-    float4 v1 = float4(0.f,0.f,0.f,0.f); // native color1
-    float4 v2 = float4(input.uv,input.uv1); // native texcoord0
-    float4 v3 = float4((input.screenUV*float2(2.f,-2.f)+float2(-1.f,1.f))*input.projectionW,input.projectionZ,input.projectionW); // native texcoord5
-    float4 v4 = float4(input.tangentView,1.f); // native texcoord6
-    float4 v5 = asfloat(uint4(input.frontFace ? 0xffffffffu : 0u,0u,0u,0u)); // native sv_isfrontface0
+    float4 v0 = float4(input.sourceBasisX,0.f); // native texcoord10
+    float4 v1 = float4(input.uv,float2(0.f,0.f)); // native texcoord0
+    float4 v2 = input.color; // native texcoord1
+    float4 v3 = input.dynamicParameter; // native texcoord2
+    float4 v4 = float4((input.screenUV*float2(2.f,-2.f)+float2(-1.f,1.f))*input.projectionW,input.projectionZ,input.projectionW); // native texcoord5
+    float4 v5 = float4(input.tangentView,1.f); // native texcoord6
+    float4 v6 = asfloat(uint4(input.frontFace ? 0xffffffffu : 0u,0u,0u,0u)); // native sv_isfrontface0
     float4 r0=0.f, r1=0.f;
     // 1: mad r0.xyzw, cb2[0].xyxy, l(-1.000000, 1.000000, -1.000000, 1.000000), cb2[0].wzwz
     r0.xyzw = ((passValues[0].xyxy)*(float4(-1.000000,1.000000,-1.000000,1.000000))+(passValues[0].wzwz)).xyzw;
@@ -11263,8 +11060,8 @@ float4 ArtistNative3065Distortion(ARTIST_NATIVE_INPUT input)
     r1.x = (asfloat((uint4)((r1.xxxx)<(float4(0.000000,0.000000,0.000000,0.000000))) * 0xffffffffu)).x;
     // 5: discard_nz r1.x
     if ((asuint(r1.xxxx)).x != 0u) return 0.f;
-    // 6: div r1.xy, v3.xyxx, v3.wwww
-    r1.xy = ((v3.xyxx)/(v3.wwww)).xy;
+    // 6: div r1.xy, v4.xyxx, v4.wwww
+    r1.xy = ((v4.xyxx)/(v4.wwww)).xy;
     // 7: mad r1.xy, r1.xyxx, cb2[0].xyxx, cb2[0].wzww
     r1.xy = ((r1.xyxx)*(passValues[0].xyxx)+(passValues[0].wzww)).xy;
     // 8: mad r0.xy, r0.xyxx, l(0.003922, -0.003922, 0.000000, 0.000000), r1.xyxx
@@ -11281,8 +11078,8 @@ float4 ArtistNative3065Distortion(ARTIST_NATIVE_INPUT input)
     r0.x = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, (r0.xyxx).xy, 0.f).y * 100000.f;
     // Native 15-18: reconstructed view depth is supplied by the runtime adapter.
     r0.x = r0.x;
-    // 19: ge r0.x, v3.w, r0.x
-    r0.x = (asfloat((uint4)((v3.wwww)>=(r0.xxxx)) * 0xffffffffu)).x;
+    // 19: ge r0.x, v4.w, r0.x
+    r0.x = (asfloat((uint4)((v4.wwww)>=(r0.xxxx)) * 0xffffffffu)).x;
     // 20: movc r0.xy, r0.xxxx, l(0,0,0,0), r0.zwzz
     r0.xy = ((asuint(r0.xxxx) != 0u) ? (float4(asfloat(0u),asfloat(0u),asfloat(0u),asfloat(0u))) : (r0.zwzz)).xy;
     // 21: max o0.xy, r0.xyxx, l(0.000000, 0.000000, 0.000000, 0.000000)
@@ -11293,4 +11090,207 @@ float4 ArtistNative3065Distortion(ARTIST_NATIVE_INPUT input)
     output.zw = (-(r0.xxxy)).zw;
     return output;
 }
+#endif
+
+#if !defined(EFFECT_NATIVE_MESH_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
+#ifndef ARTIST_NATIVE_MODEL_ONLY
+// Installed source-identical native reuse
+float4 ArtistNative3041(ARTIST_NATIVE_INPUT input)
+{
+    float4 source[3]; [unroll] for (uint i=0u; i<3u; ++i) source[i]=0.f;
+    source[0].x=1.f; // Project engine opacity multiplier.
+    float4 output=0.f;
+    source[1] = g_ArtistSourceMaterialParameters[0u];
+    source[2].x = (((float4(1.70000005, 0.0, 0.0, 0.0)+sin((g_ArtistSourceMaterialTime.xxxx*float4(20.9439507, 0.0, 0.0, 0.0))))*float4(0.600000024, 0.0, 0.0, 0.0))).x;
+    source[2].y = ((((float4(1.70000005, 0.0, 0.0, 0.0)+sin((g_ArtistSourceMaterialTime.xxxx*float4(20.9439507, 0.0, 0.0, 0.0))))*float4(0.600000024, 0.0, 0.0, 0.0))*((float4(1.70000005, 0.0, 0.0, 0.0)+cos((g_ArtistSourceMaterialTime.xxxx*float4(8.9759798, 0.0, 0.0, 0.0))))*float4(0.600000024, 0.0, 0.0, 0.0)))).x;
+    source[2].z = (clamp((((float4(1.70000005, 0.0, 0.0, 0.0)+sin((g_ArtistSourceMaterialTime.xxxx*float4(20.9439507, 0.0, 0.0, 0.0))))*float4(0.600000024, 0.0, 0.0, 0.0))*((float4(1.70000005, 0.0, 0.0, 0.0)+cos((g_ArtistSourceMaterialTime.xxxx*float4(8.9759798, 0.0, 0.0, 0.0))))*float4(0.600000024, 0.0, 0.0, 0.0))),float4(0.0, 0.0, 0.0, 0.0),float4(1.0, 0.0, 0.0, 0.0))).x;
+    float4 passValues[4]; [unroll] for(uint passIndex=0u;passIndex<4u;++passIndex) passValues[passIndex]=0.f;
+    passValues[0]=float4(.5f,-.5f,.5f,.5f);
+    float4 v0 = float4(input.sourceBasisX,0.f); // native texcoord10
+    float4 v1 = float4(input.sourceBasisZ,input.handedness); // native texcoord11
+    float4 v2 = float4(input.uv,float2(0.f,0.f)); // native texcoord0
+    float4 v3 = input.color; // native texcoord1
+    float4 v4 = float4(0.f,0.f,0.f,0.f); // native texcoord2
+    float4 v5 = float4(0.f,0.f,0.f,1.f); // native texcoord4
+    float4 v6 = float4(input.tangentView,1.f); // native texcoord6
+    float4 v7 = float4((input.screenUV*float2(2.f,-2.f)+float2(-1.f,1.f))*input.projectionW,input.projectionZ,input.projectionW); // native texcoord5
+    float4 v8 = asfloat(uint4(input.frontFace ? 0xffffffffu : 0u,0u,0u,0u)); // native sv_isfrontface0
+    float4 r0=0.f;
+    // 1: add r0.xy, v2.xyxx, l(-0.500000, -0.500000, 0.000000, 0.000000)
+    r0.xy = ((v2.xyxx)+(float4(-0.500000,-0.500000,0.000000,0.000000))).xy;
+    // 2: mul r0.xy, r0.xyxx, r0.xyxx
+    r0.xy = ((r0.xyxx)*(r0.xyxx)).xy;
+    // 3: add r0.x, r0.y, r0.x
+    r0.x = ((r0.yyyy)+(r0.xxxx)).x;
+    // 4: add r0.x, -r0.x, l(1.000000)
+    r0.x = ((-(r0.xxxx))+(float4(1.000000,1.000000,1.000000,1.000000))).x;
+    // 5: log r0.y, |r0.x|
+    r0.y = (log2(abs(r0.xxxx))).y;
+    // 6: lt r0.x, |r0.x|, l(0.000001)
+    r0.x = (asfloat((uint4)((abs(r0.xxxx))<(float4(0.000001,0.000001,0.000001,0.000001))) * 0xffffffffu)).x;
+    // 7: mul r0.yz, r0.yyyy, l(0.000000, 15.000000, 30.000000, 0.000000)
+    r0.yz = ((r0.yyyy)*(float4(0.000000,15.000000,30.000000,0.000000))).yz;
+    // 8: exp r0.yz, r0.yyzy
+    r0.yz = (exp2(r0.yyzy)).yz;
+    // 9: mul r0.y, r0.y, l(3.000000)
+    r0.y = ((r0.yyyy)*(float4(3.000000,3.000000,3.000000,3.000000))).y;
+    // 10: min r0.yz, r0.yyzy, l(0.000000, 1.000000, 1.000000, 0.000000)
+    r0.yz = (min(r0.yyzy,float4(0.000000,1.000000,1.000000,0.000000))).yz;
+    // 11: movc r0.z, r0.x, l(-0.000000), -r0.z
+    r0.z = ((asuint(r0.xxxx) != 0u) ? (float4(-0.000000,-0.000000,-0.000000,-0.000000)) : (-(r0.zzzz))).z;
+    // 12: movc r0.x, r0.x, l(0), r0.y
+    r0.x = ((asuint(r0.xxxx) != 0u) ? (float4(asfloat(0u),asfloat(0u),asfloat(0u),asfloat(0u))) : (r0.yyyy)).x;
+    // 13: add r0.x, r0.z, r0.x
+    r0.x = ((r0.zzzz)+(r0.xxxx)).x;
+    // 14: max r0.x, r0.x, l(0.000000)
+    r0.x = (max(r0.xxxx,float4(0.000000,0.000000,0.000000,0.000000))).x;
+    // 15: mul r0.y, r0.x, r0.x
+    r0.y = ((r0.xxxx)*(r0.xxxx)).y;
+    // 16: lt r0.x, r0.x, l(0.000001)
+    r0.x = (asfloat((uint4)((r0.xxxx)<(float4(0.000001,0.000001,0.000001,0.000001))) * 0xffffffffu)).x;
+    // 17: mad r0.z, cb0[2].z, l(0.500000), l(0.500000)
+    r0.z = ((source[2].zzzz)*(float4(0.500000,0.500000,0.500000,0.500000))+(float4(0.500000,0.500000,0.500000,0.500000))).z;
+    // 18: mul r0.y, r0.z, r0.y
+    r0.y = ((r0.zzzz)*(r0.yyyy)).y;
+    // 19: mul r0.yzw, r0.yyyy, v3.xxyz
+    r0.yzw = ((r0.yyyy)*(v3.xxyz)).yzw;
+    // 20: movc r0.xyz, r0.xxxx, l(0,0,0,0), r0.yzwy
+    r0.xyz = ((asuint(r0.xxxx) != 0u) ? (float4(asfloat(0u),asfloat(0u),asfloat(0u),asfloat(0u))) : (r0.yzwy)).xyz;
+    // 21: add r0.xyz, r0.xyzx, cb0[1].xyzx
+    r0.xyz = ((r0.xyzx)+(source[1].xyzx)).xyz;
+    // 22: mul r0.xyz, r0.xyzx, v5.wwww
+    r0.xyz = ((r0.xyzx)*(v5.wwww)).xyz;
+    // 23: mul r0.w, v3.w, cb0[0].x
+    r0.w = ((v3.wwww)*(source[0].xxxx)).w;
+    // 24: mul o0.xyz, r0.wwww, r0.xyzx
+    output.xyz = ((r0.wwww)*(r0.xyzx)).xyz;
+    // 25: mov o0.w, l(0)
+    output.w = (float4(asfloat(0u),asfloat(0u),asfloat(0u),asfloat(0u))).w;
+    return output;
+}
+#endif
+#endif
+
+#if !defined(EFFECT_NATIVE_MESH_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
+#ifndef ARTIST_NATIVE_MODEL_ONLY
+// Installed source-identical native reuse
+float4 ArtistNative3018(ARTIST_NATIVE_INPUT input)
+{
+    float4 source[5]; [unroll] for (uint i=0u; i<5u; ++i) source[i]=0.f;
+    source[0].x=1.f; // Project engine opacity multiplier.
+    float4 output=0.f;
+    source[1] = g_ArtistSourceMaterialParameters[2u];
+    source[2] = ArtistNativeAppend(ArtistNativePeriodic(((g_ArtistSourceMaterialTime.xxxx*g_ArtistSourceMaterialParameters[0u].wwww)*float4(0.0, 0.0, 0.0, 0.0))),ArtistNativePeriodic(((g_ArtistSourceMaterialTime.xxxx*g_ArtistSourceMaterialParameters[0u].wwww)*float4(-0.699999988, 0.0, 0.0, 0.0))),1u);
+    source[3].x = (g_ArtistSourceMaterialParameters[0u].zzzz).x;
+    source[3].y = (g_ArtistSourceMaterialParameters[0u].xxxx).x;
+    source[3].z = (g_ArtistSourceMaterialParameters[0u].wwww).x;
+    source[3].w = (g_ArtistSourceMaterialTime.xxxx).x;
+    source[4].x = (ArtistNativePeriodic(((g_ArtistSourceMaterialTime.xxxx*g_ArtistSourceMaterialParameters[0u].wwww)*float4(0.0, 0.0, 0.0, 0.0)))).x;
+    source[4].y = (g_ArtistSourceMaterialParameters[1u].xxxx).x;
+    source[4].z = (g_ArtistSourceMaterialParameters[0u].yyyy).x;
+    float4 passValues[4]; [unroll] for(uint passIndex=0u;passIndex<4u;++passIndex) passValues[passIndex]=0.f;
+    passValues[0]=float4(.5f,-.5f,.5f,.5f);
+    float4 v0 = float4(input.sourceBasisX,0.f); // native texcoord10
+    float4 v1 = float4(input.sourceBasisZ,input.handedness); // native texcoord11
+    float4 v2 = float4(input.uv,float2(0.f,0.f)); // native texcoord0
+    float4 v3 = input.color; // native texcoord1
+    float4 v4 = input.dynamicParameter; // native texcoord2
+    float4 v5 = float4(0.f,0.f,0.f,1.f); // native texcoord4
+    float4 v6 = float4(input.tangentView,1.f); // native texcoord6
+    float4 v7 = float4((input.screenUV*float2(2.f,-2.f)+float2(-1.f,1.f))*input.projectionW,input.projectionZ,input.projectionW); // native texcoord5
+    float4 v8 = asfloat(uint4(input.frontFace ? 0xffffffffu : 0u,0u,0u,0u)); // native sv_isfrontface0
+    float4 r0=0.f, r1=0.f;
+    // 1: add r0.xy, v2.xyxx, l(-0.500000, -0.500000, 0.000000, 0.000000)
+    r0.xy = ((v2.xyxx)+(float4(-0.500000,-0.500000,0.000000,0.000000))).xy;
+    // 2: dp2 r0.x, r0.xyxx, r0.xyxx
+    r0.x = (dot((r0.xyxx).xy,(r0.xyxx).xy).xxxx).x;
+    // 3: sqrt r0.x, r0.x
+    r0.x = (sqrt(r0.xxxx)).x;
+    // 4: mad r0.x, -r0.x, l(2.000000), l(1.000000)
+    r0.x = ((-(r0.xxxx))*(float4(2.000000,2.000000,2.000000,2.000000))+(float4(1.000000,1.000000,1.000000,1.000000))).x;
+    // 5: max r0.x, r0.x, l(0.000000)
+    r0.x = (max(r0.xxxx,float4(0.000000,0.000000,0.000000,0.000000))).x;
+    // 6: log r0.y, r0.x
+    r0.y = (log2(r0.xxxx)).y;
+    // 7: mul r0.y, r0.y, v4.z
+    r0.y = ((r0.yyyy)*(v4.zzzz)).y;
+    // 8: exp r0.y, r0.y
+    r0.y = (exp2(r0.yyyy)).y;
+    // 9: mul r0.y, r0.y, v4.y
+    r0.y = ((r0.yyyy)*(v4.yyyy)).y;
+    // 10: lt r0.z, r0.x, l(0.000001)
+    r0.z = (asfloat((uint4)((r0.xxxx)<(float4(0.000001,0.000001,0.000001,0.000001))) * 0xffffffffu)).z;
+    // 11: movc r0.y, r0.z, l(0), r0.y
+    r0.y = ((asuint(r0.zzzz) != 0u) ? (float4(asfloat(0u),asfloat(0u),asfloat(0u),asfloat(0u))) : (r0.yyyy)).y;
+    // 12: add r0.zw, v2.xxxy, cb0[2].xxxy
+    r0.zw = ((v2.xxxy)+(source[2].xxxy)).zw;
+    // 13: sample_b_indexable(texture2d)(float,float,float,float) r0.z, r0.zwzz, t0.yzxw, s1, l(0.000000)
+    r0.z = (ArtistNativeSample1((r0.zwzz).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x, false).yzxw).z;
+    // 14: mul r0.w, r0.z, cb0[4].y
+    r0.w = ((r0.zzzz)*(source[4].yyyy)).w;
+    // 15: add_sat r0.z, r0.z, v3.w
+    r0.z = (saturate((r0.zzzz)+(v3.wwww))).z;
+    // 16: mad r1.xy, cb0[3].yyyy, v2.xyxx, r0.wwww
+    r1.xy = ((source[3].yyyy)*(v2.xyxx)+(r0.wwww)).xy;
+    // 17: sample_b_indexable(texture2d)(float,float,float,float) r0.w, r1.xyxx, t2.yzwx, s2, l(0.000000)
+    r0.w = (ArtistNativeSample2((r1.xyxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x, false).yzwx).w;
+    // 18: mul r0.w, r0.w, cb0[4].z
+    r0.w = ((r0.wwww)*(source[4].zzzz)).w;
+    // 19: mad_sat r0.x, r0.w, r0.x, r0.y
+    r0.x = (saturate((r0.wwww)*(r0.xxxx)+(r0.yyyy))).x;
+    // 20: add r0.x, r0.x, v4.x
+    r0.x = ((r0.xxxx)+(v4.xxxx)).x;
+    // 21: mul r0.xy, r0.xxxx, l(0.800000, 5.026548, 0.000000, 0.000000)
+    r0.xy = ((r0.xxxx)*(float4(0.800000,5.026548,0.000000,0.000000))).xy;
+    // 22: sincos null, r0.y, r0.y
+    r0.y = (cos(r0.yyyy)).y;
+    // 23: max r0.y, r0.y, l(0.000000)
+    r0.y = (max(r0.yyyy,float4(0.000000,0.000000,0.000000,0.000000))).y;
+    // 24: sample_b_indexable(texture2d)(float,float,float,float) r0.w, v2.xyxx, t1.yzwx, s0, l(0.000000)
+    r0.w = (ArtistNativeSample0((v2.xyxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x, false).yzwx).w;
+    // 25: mul r1.x, r0.w, cb0[3].x
+    r1.x = ((r0.wwww)*(source[3].xxxx)).x;
+    // 26: mad r0.x, r0.w, cb0[3].x, r0.x
+    r0.x = ((r0.wwww)*(source[3].xxxx)+(r0.xxxx)).x;
+    // 27: add r0.x, r0.x, l(-1.000000)
+    r0.x = ((r0.xxxx)+(float4(-1.000000,-1.000000,-1.000000,-1.000000))).x;
+    // 28: mul_sat r0.x, r0.x, v4.w
+    r0.x = (saturate((r0.xxxx)*(v4.wwww))).x;
+    // 29: add r0.x, -r0.x, l(1.000000)
+    r0.x = ((-(r0.xxxx))+(float4(1.000000,1.000000,1.000000,1.000000))).x;
+    // 30: mul r0.y, r0.y, r1.x
+    r0.y = ((r0.yyyy)*(r1.xxxx)).y;
+    // 31: mul r0.w, r0.x, r0.x
+    r0.w = ((r0.xxxx)*(r0.xxxx)).w;
+    // 32: mul r0.w, r0.w, r0.w
+    r0.w = ((r0.wwww)*(r0.wwww)).w;
+    // 33: mul r0.w, r0.w, r0.x
+    r0.w = ((r0.wwww)*(r0.xxxx)).w;
+    // 34: lt r0.x, r0.x, l(0.000001)
+    r0.x = (asfloat((uint4)((r0.xxxx)<(float4(0.000001,0.000001,0.000001,0.000001))) * 0xffffffffu)).x;
+    // 35: frc r0.w, r0.w
+    r0.w = (frac(r0.wwww)).w;
+    // 36: movc r0.x, r0.x, l(0), r0.w
+    r0.x = ((asuint(r0.xxxx) != 0u) ? (float4(asfloat(0u),asfloat(0u),asfloat(0u),asfloat(0u))) : (r0.wwww)).x;
+    // 37: mul r0.y, r0.y, r0.x
+    r0.y = ((r0.yyyy)*(r0.xxxx)).y;
+    // 38: mul r0.x, r0.x, r0.z
+    r0.x = ((r0.xxxx)*(r0.zzzz)).x;
+    // 39: mul r0.x, r0.x, v3.w
+    r0.x = ((r0.xxxx)*(v3.wwww)).x;
+    // 40: mul r0.x, r0.x, cb0[0].x
+    r0.x = ((r0.xxxx)*(source[0].xxxx)).x;
+    // 41: mul r0.y, r0.y, l(3.000000)
+    r0.y = ((r0.yyyy)*(float4(3.000000,3.000000,3.000000,3.000000))).y;
+    // 42: mad r0.yzw, r0.yyyy, v3.xxyz, cb0[1].xxyz
+    r0.yzw = ((r0.yyyy)*(v3.xxyz)+(source[1].xxyz)).yzw;
+    // 43: mul r0.yzw, r0.yyzw, v5.wwww
+    r0.yzw = ((r0.yyzw)*(v5.wwww)).yzw;
+    // 44: mul o0.xyz, r0.xxxx, r0.yzwy
+    output.xyz = ((r0.xxxx)*(r0.yzwy)).xyz;
+    // 45: mov o0.w, l(0)
+    output.w = (float4(asfloat(0u),asfloat(0u),asfloat(0u),asfloat(0u))).w;
+    return output;
+}
+#endif
 #endif

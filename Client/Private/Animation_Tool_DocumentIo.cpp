@@ -1,6 +1,8 @@
 #include "imgui.h"
 #include "Animation_Tool_Internal.h"
 #include "Animation.h"
+#include "AnimationTargetService.h"
+#include "BoneAnimationDocument.h"
 #include "AnimationPreviewAssets.h"
 #include "BinaryAsset/WModelDecoder.h"
 #include "Effect_Catalog.h"
@@ -91,6 +93,31 @@ bool_t Client::CAnimation_Tool::Read_CompositionAnimationResources(
 			}
 		}
 	}
+    // Saved authored clips are admitted against the actual selected skeleton and
+    // CModel source composition. A missing/invalid document contributes no rows.
+    // The native inventory above remains independent of the preview selection.
+    if (CAnimationTargetService::Resolve_AssetName() == "Valtan")
+    {
+        const auto model = CAnimationTargetService::Resolve_Model();
+        CBoneAnimationDocument document; std::string status;
+        if (model && document.Load("Valtan", *model, status))
+        {
+            const auto body = std::find_if(ANIMATION_PREVIEW_ASSETS.begin(), ANIMATION_PREVIEW_ASSETS.end(),
+                [](const auto& value) { return std::string_view(value.pAssetName) == "Valtan"; });
+            if (body != ANIMATION_PREVIEW_ASSETS.end()) for (const auto& clip : document.clips)
+            {
+                COMPOSITION_ANIMATION_RESOURCE row;
+                row.strTargetAssetName = row.strProfileId = "Valtan";
+                row.strModelAssetId = body->pModelAssetId;
+                row.strSourceAssetId = "Data/Animation/Authored/Valtan/Valtan.boneclips.json";
+                row.strRuntimeClip = clip.name; row.iDurationMs = clip.durationMs;
+                row.fTicksPerSecond = Engine::CAnimation::COOKED_TICK_RATE;
+                row.fDurationTicks = clip.durationMs * .001f * row.fTicksPerSecond;
+                resources.push_back(std::move(row));
+            }
+        }
+        else if (model) { succeeded = false; diagnostics += "Valtan authored clips rejected: " + status; }
+    }
 	std::sort(resources.begin(), resources.end(), [](const auto& left, const auto& right) {
 		return std::tie(left.strTargetAssetName, left.strRuntimeClip, left.strSourceAssetId) <
 			std::tie(right.strTargetAssetName, right.strRuntimeClip, right.strSourceAssetId);
@@ -98,7 +125,7 @@ bool_t Client::CAnimation_Tool::Read_CompositionAnimationResources(
 	m_CompositionAnimationResources = std::move(resources);
 	outResources = m_CompositionAnimationResources;
 	outStatus = std::to_string(outResources.size()) +
-		" physical animation clips / 6 model targets. " + diagnostics;
+		" animation clips / " + std::to_string(COMPOSITION_ANIMATION_TARGET_ASSET_NAMES.size()) + " model targets. " + diagnostics;
 	m_strCompositionAnimationResourceStatus = outStatus;
 	return succeeded;
 }

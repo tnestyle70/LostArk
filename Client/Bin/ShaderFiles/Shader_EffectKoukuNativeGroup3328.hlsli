@@ -1,133 +1,4 @@
 // Original Kouku material programs 3328..3391; native IDs and expressions are unchanged.
-#if !defined(EFFECT_NATIVE_MESH_CARRIER) && !defined(EFFECT_NATIVE_PARTICLE_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER)
-#ifndef ARTIST_NATIVE_MODEL_ONLY
-// fx_c_pa_zoomblur_01_tr: 3fc4c0de7f119c49b1e0478e97872fc9; selected map d759fa1ad738c7c8c48ad5775499deb1dafee1b7c91903e48fb751adeb6a9a0d.
-float4 ArtistNative3328(ARTIST_NATIVE_INPUT input)
-{
-    float4 source[3]; [unroll] for (uint i=0u; i<3u; ++i) source[i]=0.f;
-    source[0].x=1.f; // Project engine opacity multiplier.
-    float4 output=0.f;
-    source[1] = g_ArtistSourceMaterialParameters[1u];
-    source[2].x = (g_ArtistSourceMaterialParameters[0u].xxxx).x;
-    source[2].y = (g_ArtistSourceMaterialParameters[0u].yyyy).x;
-    source[2].z = (g_ArtistSourceMaterialParameters[0u].zzzz).x;
-    float4 passValues[4]; [unroll] for(uint passIndex=0u;passIndex<4u;++passIndex) passValues[passIndex]=0.f;
-    passValues[0]=float4(.5f,-.5f,.5f,.5f);
-    float4 v0 = float4(input.sourceBasisX,0.f); // native texcoord10
-    float4 v1 = float4(input.sourceBasisZ,input.handedness); // native texcoord11
-    float4 v2 = float4(input.uv,float2(0.f,0.f)); // native texcoord0
-    float4 v3 = input.color; // native texcoord1
-    float4 v4 = input.dynamicParameter; // native texcoord2
-    float4 v5 = float4(0.f,0.f,0.f,1.f); // native texcoord4
-    float4 v6 = float4(input.tangentView,1.f); // native texcoord6
-    float4 v7 = float4((input.screenUV*float2(2.f,-2.f)+float2(-1.f,1.f))*input.projectionW,input.projectionZ,input.projectionW); // native texcoord5
-    float4 v8 = asfloat(uint4(input.frontFace ? 0xffffffffu : 0u,0u,0u,0u)); // native sv_isfrontface0
-    float4 r0=0.f, r1=0.f, r2=0.f, r3=0.f, r4=0.f, r5=0.f, r6=0.f;
-    // 1: dp3 r0.x, v1.xyzx, v1.xyzx
-    r0.x = (dot((v1.xyzx).xyz,(v1.xyzx).xyz).xxxx).x;
-    // 2: rsq r0.x, r0.x
-    r0.x = (rsqrt(r0.xxxx)).x;
-    // 3: mul r0.xyz, r0.xxxx, v1.xyzx
-    r0.xyz = ((r0.xxxx)*(v1.xyzx)).xyz;
-    // 4: dp3 r0.w, v0.xyzx, v0.xyzx
-    r0.w = (dot((v0.xyzx).xyz,(v0.xyzx).xyz).xxxx).w;
-    // 5: rsq r0.w, r0.w
-    r0.w = (rsqrt(r0.wwww)).w;
-    // 6: mul r1.xyz, r0.wwww, v0.xyzx
-    r1.xyz = ((r0.wwww)*(v0.xyzx)).xyz;
-    // 7: mul r0.w, r0.y, r1.x
-    r0.w = ((r0.yyyy)*(r1.xxxx)).w;
-    // 8: mad r0.w, r0.x, r1.y, -r0.w
-    r0.w = ((r0.xxxx)*(r1.yyyy)+(-(r0.wwww))).w;
-    // 9: mul r0.y, r0.w, v1.w
-    r0.y = ((r0.wwww)*(v1.wwww)).y;
-    // 10: add r2.xyzw, v2.xyxy, l(-0.500000, -0.500000, -0.500000, -0.500000)
-    r2.xyzw = ((v2.xyxy)+(float4(-0.500000,-0.500000,-0.500000,-0.500000))).xyzw;
-    // 11: mul r1.xy, r2.xyxx, r2.xyxx
-    r1.xy = ((r2.xyxx)*(r2.xyxx)).xy;
-    // 12: add r0.w, r1.y, r1.x
-    r0.w = ((r1.yyyy)+(r1.xxxx)).w;
-    // 13: add r0.w, -r0.w, l(1.000000)
-    r0.w = ((-(r0.wwww))+(float4(1.000000,1.000000,1.000000,1.000000))).w;
-    // 14: lt r1.x, |r0.w|, l(0.000001)
-    r1.x = (asfloat((uint4)((abs(r0.wwww))<(float4(0.000001,0.000001,0.000001,0.000001))) * 0xffffffffu)).x;
-    // 15: log r0.w, |r0.w|
-    r0.w = (log2(abs(r0.wwww))).w;
-    // 16: mul r0.w, r0.w, cb0[2].x
-    r0.w = ((r0.wwww)*(source[2].xxxx)).w;
-    // 17: exp r0.w, r0.w
-    r0.w = (exp2(r0.wwww)).w;
-    // 18: mul_sat r0.w, r0.w, cb0[2].y
-    r0.w = (saturate((r0.wwww)*(source[2].yyyy))).w;
-    // 19: movc r0.w, r1.x, l(0), r0.w
-    r0.w = ((asuint(r1.xxxx) != 0u) ? (float4(asfloat(0u),asfloat(0u),asfloat(0u),asfloat(0u))) : (r0.wwww)).w;
-    // 20: mul r1.x, r0.w, v3.w
-    r1.x = ((r0.wwww)*(v3.wwww)).x;
-    // 21: mul o0.w, r1.x, cb0[0].x
-    output.w = ((r1.xxxx)*(source[0].xxxx)).w;
-    // 22: div r1.xy, v7.xyxx, v7.wwww
-    r1.xy = ((v7.xyxx)/(v7.wwww)).xy;
-    // 23: mad r1.xy, r1.xyxx, cb2[0].xyxx, cb2[0].wzww
-    r1.xy = ((r1.xyxx)*(passValues[0].xyxx)+(passValues[0].wzww)).xy;
-    // 24: sample_indexable(texture2d)(float,float,float,float) r3.xyz, r1.xyxx, t0.xyzw, s0 (project resolved HDR SceneColor snapshot adapter)
-    r3.xyz = (Read_EffectSceneColor(LinearClampUVSampler, (r1.xyxx).xy).xyzw).xyz;
-    // 25: mul r1.w, v4.x, l(-0.010000)
-    r1.w = ((v4.xxxx)*(float4(-0.010000,-0.010000,-0.010000,-0.010000))).w;
-    // 26: sample_b_indexable(texture2d)(float,float,float,float) r4.xyz, r1.xyxx, t0.xyzw, s0, l(0.000000) (project resolved HDR SceneColor snapshot adapter)
-    r4.xyz = (Read_EffectSceneColorBias(LinearClampUVSampler, (r1.xyxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x).xyzw).xyz;
-    // 27: dp2 r2.x, r2.zwzz, r2.zwzz
-    r2.x = (dot((r2.zwzz).xy,(r2.zwzz).xy).xxxx).x;
-    // 28: rsq r2.x, r2.x
-    r2.x = (rsqrt(r2.xxxx)).x;
-    // 29: mul r5.xy, r2.xxxx, r2.zwzz
-    r5.xy = ((r2.xxxx)*(r2.zwzz)).xy;
-    // 30: mad r2.xy, -r2.zwzz, r2.xxxx, r2.zwzz
-    r2.xy = ((-(r2.zwzz))*(r2.xxxx)+(r2.zwzz)).xy;
-    // 31: mad r2.xy, r2.xyxx, l(0.900000, 0.900000, 0.000000, 0.000000), r5.xyxx
-    r2.xy = ((r2.xyxx)*(float4(0.900000,0.900000,0.000000,0.000000))+(r5.xyxx)).xy;
-    // 32: mul r2.xy, r1.wwww, r2.xyxx
-    r2.xy = ((r1.wwww)*(r2.xyxx)).xy;
-    // 33: mad r2.xy, r2.xyxx, l(2.000000, -2.000000, 0.000000, 0.000000), l(-1.000000, 1.000000, 0.000000, 0.000000)
-    r2.xy = ((r2.xyxx)*(float4(2.000000,-2.000000,0.000000,0.000000))+(float4(-1.000000,1.000000,0.000000,0.000000))).xy;
-    // 34: mad r2.xy, r2.xyxx, cb2[0].xyxx, cb2[0].wzww
-    r2.xy = ((r2.xyxx)*(passValues[0].xyxx)+(passValues[0].wzww)).xy;
-    // 35: mov r5.xyz, r4.xyzx
-    r5.xyz = (r4.xyzx).xyz;
-    // 36: mov r2.zw, r1.xxxy
-    r2.zw = (r1.xxxy).zw;
-    // 37: mov r1.w, l(0)
-    r1.w = (float4(asfloat(0u),asfloat(0u),asfloat(0u),asfloat(0u))).w;
-    // 38: loop
-    [loop] while (true) {
-    // 39: ge r3.w, r1.w, l(3.000000)
-    r3.w = (asfloat((uint4)((r1.wwww)>=(float4(3.000000,3.000000,3.000000,3.000000))) * 0xffffffffu)).w;
-    // 40: breakc_nz r3.w
-    if ((asuint(r3.wwww)).x != 0u) break;
-    // 41: add r2.zw, r2.xxxy, r2.zzzw
-    r2.zw = ((r2.xxxy)+(r2.zzzw)).zw;
-    // 42: sample_b_indexable(texture2d)(float,float,float,float) r6.xyz, r2.zwzz, t0.xyzw, s0, l(0.000000) (project resolved HDR SceneColor snapshot adapter)
-    r6.xyz = (Read_EffectSceneColorBias(LinearClampUVSampler, (r2.zwzz).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x).xyzw).xyz;
-    // 43: add r5.xyz, r5.xyzx, r6.xyzx
-    r5.xyz = ((r5.xyzx)+(r6.xyzx)).xyz;
-    // 44: add r1.w, r1.w, l(1.000000)
-    r1.w = ((r1.wwww)+(float4(1.000000,1.000000,1.000000,1.000000))).w;
-    // 45: endloop
-    }
-    // 46: mad r1.xyw, r5.xyxz, l(0.250000, 0.250000, 0.000000, 0.250000), -r3.xyxz
-    r1.xyw = ((r5.xyxz)*(float4(0.250000,0.250000,0.000000,0.250000))+(-(r3.xyxz))).xyw;
-    // 47: mul r1.xyw, r0.wwww, r1.xyxw
-    r1.xyw = ((r0.wwww)*(r1.xyxw)).xyw;
-    // 48: mad r1.xyw, cb0[2].zzzz, r1.xyxw, r3.xyxz
-    r1.xyw = ((source[2].zzzz)*(r1.xyxw)+(r3.xyxz)).xyw;
-    // 49: mad r1.xyw, v3.xyxz, r1.xyxw, cb0[1].xyxz
-    r1.xyw = ((v3.xyxz)*(r1.xyxw)+(source[1].xyxz)).xyw;
-    // 50: mad o0.xyz, r1.xywx, v5.wwww, v5.xyzx
-    output.xyz = ((r1.xywx)*(v5.wwww)+(v5.xyzx)).xyz;
-    return output;
-}
-#endif
-#endif
-
 #if !defined(EFFECT_NATIVE_MESH_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
 #ifndef ARTIST_NATIVE_MODEL_ONLY
 // fx_q_grass_02: 3c75890c1e848a43ae2e96d93272d7a5; selected map b44c47d98eeef6b31ae244a317bffe98b35a7e3a4e6ecbfdcb97d8da1c3d18ed.
@@ -3042,4 +2913,133 @@ float4 ArtistNative3346Distortion(ARTIST_NATIVE_INPUT input)
     output.zw = (-(r0.xxxy)).zw;
     return output;
 }
+#endif
+
+#if !defined(EFFECT_NATIVE_MESH_CARRIER) && !defined(EFFECT_NATIVE_PARTICLE_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER)
+#ifndef ARTIST_NATIVE_MODEL_ONLY
+// Installed source-identical native reuse
+float4 ArtistNative3328(ARTIST_NATIVE_INPUT input)
+{
+    float4 source[3]; [unroll] for (uint i=0u; i<3u; ++i) source[i]=0.f;
+    source[0].x=1.f; // Project engine opacity multiplier.
+    float4 output=0.f;
+    source[1] = g_ArtistSourceMaterialParameters[1u];
+    source[2].x = (g_ArtistSourceMaterialParameters[0u].xxxx).x;
+    source[2].y = (g_ArtistSourceMaterialParameters[0u].yyyy).x;
+    source[2].z = (g_ArtistSourceMaterialParameters[0u].zzzz).x;
+    float4 passValues[4]; [unroll] for(uint passIndex=0u;passIndex<4u;++passIndex) passValues[passIndex]=0.f;
+    passValues[0]=float4(.5f,-.5f,.5f,.5f);
+    float4 v0 = float4(input.sourceBasisX,0.f); // native texcoord10
+    float4 v1 = float4(input.sourceBasisZ,input.handedness); // native texcoord11
+    float4 v2 = float4(input.uv,float2(0.f,0.f)); // native texcoord0
+    float4 v3 = input.color; // native texcoord1
+    float4 v4 = input.dynamicParameter; // native texcoord2
+    float4 v5 = float4(0.f,0.f,0.f,1.f); // native texcoord4
+    float4 v6 = float4(input.tangentView,1.f); // native texcoord6
+    float4 v7 = float4((input.screenUV*float2(2.f,-2.f)+float2(-1.f,1.f))*input.projectionW,input.projectionZ,input.projectionW); // native texcoord5
+    float4 v8 = asfloat(uint4(input.frontFace ? 0xffffffffu : 0u,0u,0u,0u)); // native sv_isfrontface0
+    float4 r0=0.f, r1=0.f, r2=0.f, r3=0.f, r4=0.f, r5=0.f, r6=0.f;
+    // 1: dp3 r0.x, v1.xyzx, v1.xyzx
+    r0.x = (dot((v1.xyzx).xyz,(v1.xyzx).xyz).xxxx).x;
+    // 2: rsq r0.x, r0.x
+    r0.x = (rsqrt(r0.xxxx)).x;
+    // 3: mul r0.xyz, r0.xxxx, v1.xyzx
+    r0.xyz = ((r0.xxxx)*(v1.xyzx)).xyz;
+    // 4: dp3 r0.w, v0.xyzx, v0.xyzx
+    r0.w = (dot((v0.xyzx).xyz,(v0.xyzx).xyz).xxxx).w;
+    // 5: rsq r0.w, r0.w
+    r0.w = (rsqrt(r0.wwww)).w;
+    // 6: mul r1.xyz, r0.wwww, v0.xyzx
+    r1.xyz = ((r0.wwww)*(v0.xyzx)).xyz;
+    // 7: mul r0.w, r0.y, r1.x
+    r0.w = ((r0.yyyy)*(r1.xxxx)).w;
+    // 8: mad r0.w, r0.x, r1.y, -r0.w
+    r0.w = ((r0.xxxx)*(r1.yyyy)+(-(r0.wwww))).w;
+    // 9: mul r0.y, r0.w, v1.w
+    r0.y = ((r0.wwww)*(v1.wwww)).y;
+    // 10: add r2.xyzw, v2.xyxy, l(-0.500000, -0.500000, -0.500000, -0.500000)
+    r2.xyzw = ((v2.xyxy)+(float4(-0.500000,-0.500000,-0.500000,-0.500000))).xyzw;
+    // 11: mul r1.xy, r2.xyxx, r2.xyxx
+    r1.xy = ((r2.xyxx)*(r2.xyxx)).xy;
+    // 12: add r0.w, r1.y, r1.x
+    r0.w = ((r1.yyyy)+(r1.xxxx)).w;
+    // 13: add r0.w, -r0.w, l(1.000000)
+    r0.w = ((-(r0.wwww))+(float4(1.000000,1.000000,1.000000,1.000000))).w;
+    // 14: lt r1.x, |r0.w|, l(0.000001)
+    r1.x = (asfloat((uint4)((abs(r0.wwww))<(float4(0.000001,0.000001,0.000001,0.000001))) * 0xffffffffu)).x;
+    // 15: log r0.w, |r0.w|
+    r0.w = (log2(abs(r0.wwww))).w;
+    // 16: mul r0.w, r0.w, cb0[2].x
+    r0.w = ((r0.wwww)*(source[2].xxxx)).w;
+    // 17: exp r0.w, r0.w
+    r0.w = (exp2(r0.wwww)).w;
+    // 18: mul_sat r0.w, r0.w, cb0[2].y
+    r0.w = (saturate((r0.wwww)*(source[2].yyyy))).w;
+    // 19: movc r0.w, r1.x, l(0), r0.w
+    r0.w = ((asuint(r1.xxxx) != 0u) ? (float4(asfloat(0u),asfloat(0u),asfloat(0u),asfloat(0u))) : (r0.wwww)).w;
+    // 20: mul r1.x, r0.w, v3.w
+    r1.x = ((r0.wwww)*(v3.wwww)).x;
+    // 21: mul o0.w, r1.x, cb0[0].x
+    output.w = ((r1.xxxx)*(source[0].xxxx)).w;
+    // 22: div r1.xy, v7.xyxx, v7.wwww
+    r1.xy = ((v7.xyxx)/(v7.wwww)).xy;
+    // 23: mad r1.xy, r1.xyxx, cb2[0].xyxx, cb2[0].wzww
+    r1.xy = ((r1.xyxx)*(passValues[0].xyxx)+(passValues[0].wzww)).xy;
+    // 24: sample_indexable(texture2d)(float,float,float,float) r3.xyz, r1.xyxx, t0.xyzw, s0 (project resolved HDR SceneColor snapshot adapter)
+    r3.xyz = (Read_EffectSceneColor(LinearClampUVSampler, (r1.xyxx).xy).xyzw).xyz;
+    // 25: mul r1.w, v4.x, l(-0.010000)
+    r1.w = ((v4.xxxx)*(float4(-0.010000,-0.010000,-0.010000,-0.010000))).w;
+    // 26: sample_b_indexable(texture2d)(float,float,float,float) r4.xyz, r1.xyxx, t0.xyzw, s0, l(0.000000) (project resolved HDR SceneColor snapshot adapter)
+    r4.xyz = (Read_EffectSceneColorBias(LinearClampUVSampler, (r1.xyxx).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x).xyzw).xyz;
+    // 27: dp2 r2.x, r2.zwzz, r2.zwzz
+    r2.x = (dot((r2.zwzz).xy,(r2.zwzz).xy).xxxx).x;
+    // 28: rsq r2.x, r2.x
+    r2.x = (rsqrt(r2.xxxx)).x;
+    // 29: mul r5.xy, r2.xxxx, r2.zwzz
+    r5.xy = ((r2.xxxx)*(r2.zwzz)).xy;
+    // 30: mad r2.xy, -r2.zwzz, r2.xxxx, r2.zwzz
+    r2.xy = ((-(r2.zwzz))*(r2.xxxx)+(r2.zwzz)).xy;
+    // 31: mad r2.xy, r2.xyxx, l(0.900000, 0.900000, 0.000000, 0.000000), r5.xyxx
+    r2.xy = ((r2.xyxx)*(float4(0.900000,0.900000,0.000000,0.000000))+(r5.xyxx)).xy;
+    // 32: mul r2.xy, r1.wwww, r2.xyxx
+    r2.xy = ((r1.wwww)*(r2.xyxx)).xy;
+    // 33: mad r2.xy, r2.xyxx, l(2.000000, -2.000000, 0.000000, 0.000000), l(-1.000000, 1.000000, 0.000000, 0.000000)
+    r2.xy = ((r2.xyxx)*(float4(2.000000,-2.000000,0.000000,0.000000))+(float4(-1.000000,1.000000,0.000000,0.000000))).xy;
+    // 34: mad r2.xy, r2.xyxx, cb2[0].xyxx, cb2[0].wzww
+    r2.xy = ((r2.xyxx)*(passValues[0].xyxx)+(passValues[0].wzww)).xy;
+    // 35: mov r5.xyz, r4.xyzx
+    r5.xyz = (r4.xyzx).xyz;
+    // 36: mov r2.zw, r1.xxxy
+    r2.zw = (r1.xxxy).zw;
+    // 37: mov r1.w, l(0)
+    r1.w = (float4(asfloat(0u),asfloat(0u),asfloat(0u),asfloat(0u))).w;
+    // 38: loop
+    [loop] while (true) {
+    // 39: ge r3.w, r1.w, l(3.000000)
+    r3.w = (asfloat((uint4)((r1.wwww)>=(float4(3.000000,3.000000,3.000000,3.000000))) * 0xffffffffu)).w;
+    // 40: breakc_nz r3.w
+    if ((asuint(r3.wwww)).x != 0u) break;
+    // 41: add r2.zw, r2.xxxy, r2.zzzw
+    r2.zw = ((r2.xxxy)+(r2.zzzw)).zw;
+    // 42: sample_b_indexable(texture2d)(float,float,float,float) r6.xyz, r2.zwzz, t0.xyzw, s0, l(0.000000) (project resolved HDR SceneColor snapshot adapter)
+    r6.xyz = (Read_EffectSceneColorBias(LinearClampUVSampler, (r2.zwzz).xy, (float4(0.000000,0.000000,0.000000,0.000000)).x).xyzw).xyz;
+    // 43: add r5.xyz, r5.xyzx, r6.xyzx
+    r5.xyz = ((r5.xyzx)+(r6.xyzx)).xyz;
+    // 44: add r1.w, r1.w, l(1.000000)
+    r1.w = ((r1.wwww)+(float4(1.000000,1.000000,1.000000,1.000000))).w;
+    // 45: endloop
+    }
+    // 46: mad r1.xyw, r5.xyxz, l(0.250000, 0.250000, 0.000000, 0.250000), -r3.xyxz
+    r1.xyw = ((r5.xyxz)*(float4(0.250000,0.250000,0.000000,0.250000))+(-(r3.xyxz))).xyw;
+    // 47: mul r1.xyw, r0.wwww, r1.xyxw
+    r1.xyw = ((r0.wwww)*(r1.xyxw)).xyw;
+    // 48: mad r1.xyw, cb0[2].zzzz, r1.xyxw, r3.xyxz
+    r1.xyw = ((source[2].zzzz)*(r1.xyxw)+(r3.xyxz)).xyw;
+    // 49: mad r1.xyw, v3.xyxz, r1.xyxw, cb0[1].xyxz
+    r1.xyw = ((v3.xyxz)*(r1.xyxw)+(source[1].xyxz)).xyw;
+    // 50: mad o0.xyz, r1.xywx, v5.wwww, v5.xyzx
+    output.xyz = ((r1.xywx)*(v5.wwww)+(v5.xyzx)).xyz;
+    return output;
+}
+#endif
 #endif

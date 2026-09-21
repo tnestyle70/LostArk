@@ -31,7 +31,8 @@ SOURCE_MESHES = {'Terpeion': ('MN_PMSTG_01', 'mesh.mn_pmstg_01_sk'),
     'RainbowMokoboard': ('MN_PMSMK_00', 'mesh.mn_pmsmk_00_sk'),
     'Aufstehen': ('MN_PMSHE_00', 'mesh.mn_pmshe_00_sk'),
     'SeaUnicornTube': ('MN_PMSUT_00', 'mesh.mn_pmsut_00_sk'),
-    'AncientMyth': ('MN_PMSDZ_00', 'mesh.mn_pmsdz_00_sk')}
+    'AncientMyth': ('MN_PMSDZ_00', 'mesh.mn_pmsdz_00_sk'),
+    'AncientSea': ('MN_PMSDZ_00', 'mesh.mn_pmsdz_00_sk')}
 
 
 def vehicle_skins():
@@ -309,6 +310,14 @@ def decode_vehicle_cue(decode, payload, contract):
     return cue
 
 
+def projection_action_id(vehicle_id, skill_id, stage_index):
+    # Extraction identities are scoped to a variant. Shared original skill IDs
+    # (for example Ancient Myth/Sea) must not overwrite one another's notifies.
+    import hashlib
+    key = f'vehicle:{vehicle_id}/skill:{skill_id}/stage:{stage_index}'.encode('ascii')
+    return int.from_bytes(hashlib.sha256(key).digest()[:4], 'little') & 0x7fffffff
+
+
 def selected_actions(actions_root, evidence):
     spec = source.read(SPEC)
     skins = vehicle_skins()
@@ -359,12 +368,17 @@ def selected_actions(actions_root, evidence):
                     row['serializedPayload'].update(vehicleName=vehicle['name'], vehicleSkin=skin,
                         vehicleParticleSystem=system, vehicleSelection=selection)
                     notifies.append(row)
+                for notify in notifies:
+                    original_notify_id = notify['notifyId']
+                    notify['serializedPayload']['sourceNotifyId'] = original_notify_id
+                    notify['notifyId'] = f"vehicle-{vehicle['vehicleId']}/{original_notify_id}"
                 stage_rows.append(dict(vehicle=vehicle['name'], vehicleId=vehicle['vehicleId'], skillId=skill['skillId'],
                     inputSlot=skill['inputSlot'], stageIndex=stage['stageIndex'], clip=clip,
                     clipIndex=clip_names[skill['skillId']].index(clip), particleNotifies=len(notifies)))
                 if not notifies:
                     continue
-                identity = skill['skillId'] * 10 + stage['stageIndex']
+                identity = projection_action_id(vehicle['vehicleId'], skill['skillId'], stage['stageIndex'])
+                assert identity not in selected, ('vehicle projection identity collision', identity)
                 actions.append(dict(actionId=identity, stages=[dict(stageIndex=0, animationClips=[], notifies=notifies)]))
                 selected[identity] = ([0], f"{vehicle['name']} {skill['inputSlot']} stage {stage['stageIndex']}")
     path = evidence / 'selected_source_actions.json'
@@ -961,12 +975,14 @@ def played_stages(evidence):
     # clip takes its first source stage. Later repeats and branches stay out.
     kept, skipped, seen = {}, [], set()
     for row in source.read(evidence / 'source_stages.json'):
-        key = (row['skillId'], row['clip'])
+        key = (row['vehicleId'], row['skillId'], row['clip'])
         if key in seen:
             skipped.append(dict(row, reason='CLIP_ALREADY_PLAYED_BY_EARLIER_STAGE'))
             continue
         seen.add(key)
-        kept[row['skillId'] * 10 + row['stageIndex']] = row
+        identity = projection_action_id(row['vehicleId'], row['skillId'], row['stageIndex'])
+        assert identity not in kept, ('vehicle projection identity collision', identity)
+        kept[identity] = row
     return kept, skipped
 
 
@@ -1306,7 +1322,7 @@ def write_skill_cues(evidence):
     kept, _ = played_stages(evidence)
     effects = collections.defaultdict(list)
     for document in installation['documents']:
-        effects[document['skillId']].append(dict(clipIndex=document['clipIndex'], effectAssetId=document['effectAssetId'],
+        effects[(document['vehicleId'], document['skillId'])].append(dict(clipIndex=document['clipIndex'], effectAssetId=document['effectAssetId'],
             startMs=0, stopPolicy='NATURAL'))
     sounds = collections.defaultdict(list)
     spec = source.read(SPEC)
@@ -1314,7 +1330,7 @@ def write_skill_cues(evidence):
         actions = {a['actionId']: a for a in source.read(evidence / 'actions' / (vehicle['name'] + '.action-effects.json'))['actions']}
         for skill in vehicle['skills']:
             for stage in actions[skill['skillId']]['stages']:
-                row = kept.get(skill['skillId'] * 10 + stage['stageIndex'])
+                row = kept.get(projection_action_id(vehicle['vehicleId'], skill['skillId'], stage['stageIndex']))
                 if row is None:
                     continue
                 for notify in stage['notifies']:
@@ -1322,17 +1338,27 @@ def write_skill_cues(evidence):
                         continue
                     events = [r['objectPath'] for r in notify['assetReferences'] if r['className'] == 'AkEvent']
                     assert len(events) == 1, notify['notifyId']
-                    sounds[skill['skillId']].append(dict(clipIndex=row['clipIndex'], event=events[0].split('.', 1)[1],
+                    sounds[(vehicle['vehicleId'], skill['skillId'])].append(dict(clipIndex=row['clipIndex'], event=events[0].split('.', 1)[1],
                         startMs=round(notify['localTimeSeconds'] * 1000)))
     catalog = source.read(CATALOG)
+    owned_skills = {(vehicle['vehicleId'], skill['skillId'])
+                    for vehicle in spec['vehicles'] for skill in vehicle['skills']}
     for vehicle in catalog['vehicles']:
         for skill in vehicle['skills']:
-            skill['effectCues'] = sorted(effects[skill['skillId']], key=lambda c: (c['clipIndex'], c['startMs']))
-            skill['soundCues'] = sorted(sounds[skill['skillId']], key=lambda c: (c['clipIndex'], c['startMs'], c['event']))
-    catalog['formatVersion'] = 3
-    build_vehicle_skills.write_catalog(catalog)
+            if (vehicle['vehicleId'], skill['skillId']) not in owned_skills:
+                continue
+            skill['effectCues'] = sorted(effects[(vehicle['vehicleId'], skill['skillId'])], key=lambda c: (c['clipIndex'], c['startMs']))
+            skill['soundCues'] = sorted(sounds[(vehicle['vehicleId'], skill['skillId'])], key=lambda c: (c['clipIndex'], c['startMs'], c['event']))
+    catalog['formatVersion'] = max(3, catalog['formatVersion'])
+    previous_catalog_path = build_vehicle_skills.CATALOG
+    try:
+        build_vehicle_skills.CATALOG = CATALOG
+        build_vehicle_skills.write_catalog(catalog)
+    finally:
+        build_vehicle_skills.CATALOG = previous_catalog_path
     counts = dict(effectCues=sum(len(v) for v in effects.values()), soundCues=sum(len(v) for v in sounds.values()))
-    source.write(evidence / 'catalog_cues.json', dict(counts, effects=effects, sounds=sounds))
+    source.write(evidence / 'catalog_cues.json', dict(counts, effects={f'{v}:{s}': cues for (v, s), cues in effects.items()},
+        sounds={f'{v}:{s}': cues for (v, s), cues in sounds.items()}))
     print(json.dumps(counts))
 
 

@@ -1,0 +1,456 @@
+[
+  {
+    "skillId": 49400,
+    "stage": 1,
+    "notifies": [
+      {
+        "notifyId": "action-49400/stage-001/notify-006",
+        "sourceType": "PlaySkeletalMesh",
+        "category": "mesh",
+        "authority": "PRESENTATION",
+        "resolutionStatus": "SOURCE_ASSET_EXPLICIT",
+        "localTimeSeconds": 0.0,
+        "sourceEndSeconds": 0.0,
+        "durationSeconds": 1.5333329439163208,
+        "sourceOffset": 3443039,
+        "assetReferences": [
+          {
+            "className": "SkeletalMesh",
+            "objectPath": "SK_DDK_DRR_00.Mesh.SK_DDK_DRR_00_SK"
+          },
+          {
+            "className": "AnimSet",
+            "objectPath": "SK_DDK_DRR_00.Ani.SK_DDK_DRR_00_Ani"
+          },
+          {
+            "className": "MaterialInstanceConstant",
+            "objectPath": "SK_DDK_DRR_00.Mat.SK_DDK_DRR_00_head_MI"
+          },
+          {
+            "className": "MaterialInstanceConstant",
+            "objectPath": "SK_DDK_DRR_00.Mat.SK_DDK_DRR_00_neck_MI"
+          },
+          {
+            "className": "MaterialInstanceConstant",
+            "objectPath": "SK_DDK_DRR_00.Mat.SK_DDK_DRR_00_body_MI"
+          },
+          {
+            "className": "ParticleSystem",
+            "objectPath": "FX_PC_DDK_05.Par_K_DDK_Embereth_dissolve_01"
+          }
+        ],
+        "serializedPayload": {
+          "encoding": "base64",
+          "byteOffset": 3443039,
+          "byteSize": 913,
+          "sha256": "7bb76d8555ac90640e82896a2ed7a25eba7a9594ac1fbedb599f84adeadb9ed7",
+          "data": "Q0VGQWN0aW9uTm90aWZ5X1BsYXlTa2VsZXRhbE1lc2gAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAQUTEPwAAAAABAAAAAAAAAA4AAABEcmFnb25fU2tlbDAxAAMAAABGWABkAAAAAAAAAAAAAAABAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAABAAAAAgAAADEABQAAAE5vbmUAMgAAAFNrZWxldGFsTWVzaCdTS19EREtfRFJSXzAwLk1lc2guU0tfRERLX0RSUl8wMF9TSycALQAAAEFuaW1TZXQnU0tfRERLX0RSUl8wMC5BbmkuU0tfRERLX0RSUl8wMF9BbmknAAMAAABCAAAATWF0ZXJpYWxJbnN0YW5jZUNvbnN0YW50J1NLX0RES19EUlJfMDAuTWF0LlNLX0RES19EUlJfMDBfaGVhZF9NSScAQgAAAE1hdGVyaWFsSW5zdGFuY2VDb25zdGFudCdTS19EREtfRFJSXzAwLk1hdC5TS19EREtfRFJSXzAwX25lY2tfTUknAEIAAABNYXRlcmlhbEluc3RhbmNlQ29uc3RhbnQnU0tfRERLX0RSUl8wMC5NYXQuU0tfRERLX0RSUl8wMF9ib2R5X01JJwAAAAAAAQAAABYAAABTS19QcmF5Rm9yRW1iZXJldGhfMDIAAACAPwEAAAAPAAAAQ0VGQU5fUGFydGljbGUAAQAAAAAAAAAAAAAAAAAAAJqZmT4AAAAAEAAAAENFRlBhcnRpY2xlRGF0YQAAAAAAAAAAAAAAAAA8AAAAUGFydGljbGVTeXN0ZW0nRlhfUENfRERLXzA1LlBhcl9LX0RES19FbWJlcmV0aF9kaXNzb2x2ZV8wMScAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUAAAAKAAAAQl9OZWNrXzAxAAoAAABCX05lY2tfMDIACgAAAEJfTmVja18wMwAKAAAAQl9OZWNrXzA0AAoAAABCX0hlYWRfMDEAAAAAAAAAAAAAAAAAAACAPwAAgD8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIA/AACAPwAAgD8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADAAAAMQAAAA=="
+        },
+        "serializedLabels": [
+          "Dragon_Skel01",
+          "FX",
+          "1",
+          "SkeletalMesh'SK_DDK_DRR_00.Mesh.SK_DDK_DRR_00_SK'",
+          "AnimSet'SK_DDK_DRR_00.Ani.SK_DDK_DRR_00_Ani'",
+          "MaterialInstanceConstant'SK_DDK_DRR_00.Mat.SK_DDK_DRR_00_head_MI'",
+          "MaterialInstanceConstant'SK_DDK_DRR_00.Mat.SK_DDK_DRR_00_neck_MI'",
+          "MaterialInstanceConstant'SK_DDK_DRR_00.Mat.SK_DDK_DRR_00_body_MI'",
+          "SK_PrayForEmbereth_02",
+          "CEFAN_Particle",
+          "CEFParticleData",
+          "ParticleSystem'FX_PC_DDK_05.Par_K_DDK_Embereth_dissolve_01'",
+          "B_Neck_01",
+          "B_Neck_02",
+          "B_Neck_03",
+          "B_Neck_04",
+          "B_Head_01"
+        ]
+      },
+      {
+        "notifyId": "action-49400/stage-001/notify-007",
+        "sourceType": "AnimEvent_MaterialParamterScalar",
+        "category": "material",
+        "authority": "PRESENTATION",
+        "resolutionStatus": "SOURCE_PARAMETERS_SERIALIZED",
+        "localTimeSeconds": 1.6631257495523585e+22,
+        "sourceEndSeconds": -0.0,
+        "durationSeconds": 8.828180325246348e-44,
+        "sourceOffset": 3443952,
+        "assetReferences": [],
+        "serializedPayload": {
+          "encoding": "base64",
+          "byteOffset": 3443952,
+          "byteSize": 82,
+          "sha256": "63517252eb1e09ff7007865279616d773416bcf19569337d651b14cbad8cc84b",
+          "data": "Q0VGQWN0aW9uTm90aWZ5X0FuaW1FdmVudF9NYXRlcmlhbFBhcmFtdGVyU2NhbGFyAAEAAAAAAAAAzcxMPgUAAABEZWFkAAAAgD8AAAAAMQAAAA=="
+        },
+        "serializedLabels": [
+          "Dead"
+        ]
+      },
+      {
+        "notifyId": "action-49400/stage-001/notify-008",
+        "sourceType": "AnimEvent_MaterialParamterScalar",
+        "category": "material",
+        "authority": "PRESENTATION",
+        "resolutionStatus": "SOURCE_PARAMETERS_SERIALIZED",
+        "localTimeSeconds": 1.849397914777567e+31,
+        "sourceEndSeconds": 7.272795934606166e+22,
+        "durationSeconds": 7.555565380951607e+31,
+        "sourceOffset": 3444034,
+        "assetReferences": [],
+        "serializedPayload": {
+          "encoding": "base64",
+          "byteOffset": 3444034,
+          "byteSize": 96,
+          "sha256": "081a2624d7399854e7cb00568211810ca6eab136da4d1a9a643391b55b6561c0",
+          "data": "Q0VGQWN0aW9uTm90aWZ5X0FuaW1FdmVudF9NYXRlcmlhbFBhcmFtdGVyU2NhbGFyAAEAAADNzEw+AACAPxMAAABFbWlzc2l2ZV9pbnRlbnNpdHkAAACAPwAAIEE2AAAA"
+        },
+        "serializedLabels": [
+          "Emissive_intensity"
+        ]
+      },
+      {
+        "notifyId": "action-49400/stage-001/notify-009",
+        "sourceType": "AnimEvent_MaterialParamterLinearColor",
+        "category": "material",
+        "authority": "PRESENTATION",
+        "resolutionStatus": "SOURCE_PARAMETERS_SERIALIZED",
+        "localTimeSeconds": 1.7443085358005817e+28,
+        "sourceEndSeconds": 1.1576116261810758e+27,
+        "durationSeconds": 4.1051038512395516e-41,
+        "sourceOffset": 3444130,
+        "assetReferences": [],
+        "serializedPayload": {
+          "encoding": "base64",
+          "byteOffset": 3444130,
+          "byteSize": 208,
+          "sha256": "efd729d66d7b92d9424208f0ffbd6a366aee344502e654e5c908cb0061e461e6",
+          "data": "Q0VGQWN0aW9uTm90aWZ5X0FuaW1FdmVudF9NYXRlcmlhbFBhcmFtdGVyTGluZWFyQ29sb3IAAQAAAAAAAD8AAIA/CwAAAFRyYW5zY29sb3IAAAAAAAAAAAAAAAAAAACAPwAAgD9qT+k9QnpKPQAAgD8BAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAPwAAgD8AAIA/AAAAAAAAAAAAAAAACwAAAEVmZmVjdFJvb3QAAAAAAAAAAAAAAAAAIwAAAA=="
+        },
+        "serializedLabels": [
+          "Transcolor",
+          "EffectRoot"
+        ]
+      }
+    ]
+  },
+  {
+    "skillId": 49400,
+    "stage": 2,
+    "notifies": [
+      {
+        "notifyId": "action-49400/stage-002/notify-006",
+        "sourceType": "PlaySkeletalMesh",
+        "category": "mesh",
+        "authority": "PRESENTATION",
+        "resolutionStatus": "SOURCE_ASSET_EXPLICIT",
+        "localTimeSeconds": 0.0,
+        "sourceEndSeconds": 0.0,
+        "durationSeconds": 2.5999999046325684,
+        "sourceOffset": 3456615,
+        "assetReferences": [
+          {
+            "className": "SkeletalMesh",
+            "objectPath": "SK_DDK_DRR_00.Mesh.SK_DDK_DRR_00_SK"
+          },
+          {
+            "className": "AnimSet",
+            "objectPath": "SK_DDK_DRR_00.Ani.SK_DDK_DRR_00_Ani"
+          },
+          {
+            "className": "MaterialInstanceConstant",
+            "objectPath": "SK_DDK_DRR_00.Mat.SK_DDK_DRR_00_head_MI"
+          },
+          {
+            "className": "MaterialInstanceConstant",
+            "objectPath": "SK_DDK_DRR_00.Mat.SK_DDK_DRR_00_neck_MI"
+          },
+          {
+            "className": "MaterialInstanceConstant",
+            "objectPath": "SK_DDK_DRR_00.Mat.SK_DDK_DRR_00_body_MI"
+          },
+          {
+            "className": "ParticleSystem",
+            "objectPath": "FX_PC_DDK_05.Par_K_DDK_Embereth_dissolve_02"
+          }
+        ],
+        "serializedPayload": {
+          "encoding": "base64",
+          "byteOffset": 3456615,
+          "byteSize": 916,
+          "sha256": "6a2024ef550513101a4691998a44c902d102553397570840240697e8d043ffbb",
+          "data": "Q0VGQWN0aW9uTm90aWZ5X1BsYXlTa2VsZXRhbE1lc2gAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAZmYmQAAAAAABAAAAAAAAAA4AAABEcmFnb25fU2tlbDAxAAMAAABGWABkAAAAAAAAAAAAAAABAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAABAAAABQAAAE5vbmUABQAAAE5vbmUAMgAAAFNrZWxldGFsTWVzaCdTS19EREtfRFJSXzAwLk1lc2guU0tfRERLX0RSUl8wMF9TSycALQAAAEFuaW1TZXQnU0tfRERLX0RSUl8wMC5BbmkuU0tfRERLX0RSUl8wMF9BbmknAAMAAABCAAAATWF0ZXJpYWxJbnN0YW5jZUNvbnN0YW50J1NLX0RES19EUlJfMDAuTWF0LlNLX0RES19EUlJfMDBfaGVhZF9NSScAQgAAAE1hdGVyaWFsSW5zdGFuY2VDb25zdGFudCdTS19EREtfRFJSXzAwLk1hdC5TS19EREtfRFJSXzAwX25lY2tfTUknAEIAAABNYXRlcmlhbEluc3RhbmNlQ29uc3RhbnQnU0tfRERLX0RSUl8wMC5NYXQuU0tfRERLX0RSUl8wMF9ib2R5X01JJwAAAAAAAQAAABYAAABTS19QcmF5Rm9yRW1iZXJldGhfMDMAAACAPwEAAAAPAAAAQ0VGQU5fUGFydGljbGUAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAENFRlBhcnRpY2xlRGF0YQAAAAAAAAAAAAAAAAA8AAAAUGFydGljbGVTeXN0ZW0nRlhfUENfRERLXzA1LlBhcl9LX0RES19FbWJlcmV0aF9kaXNzb2x2ZV8wMicAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUAAAAKAAAAQl9OZWNrXzAyAAoAAABCX05lY2tfMDMACgAAAEJfTmVja18wNAAKAAAAQl9IZWFkXzAxAAoAAABCX05lY2tfMDEAAAAAAAAAAAAAAAAAAACAPwAAgD8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIA/AACAPwAAgD8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADAAAAMQAAAA=="
+        },
+        "serializedLabels": [
+          "Dragon_Skel01",
+          "FX",
+          "SkeletalMesh'SK_DDK_DRR_00.Mesh.SK_DDK_DRR_00_SK'",
+          "AnimSet'SK_DDK_DRR_00.Ani.SK_DDK_DRR_00_Ani'",
+          "MaterialInstanceConstant'SK_DDK_DRR_00.Mat.SK_DDK_DRR_00_head_MI'",
+          "MaterialInstanceConstant'SK_DDK_DRR_00.Mat.SK_DDK_DRR_00_neck_MI'",
+          "MaterialInstanceConstant'SK_DDK_DRR_00.Mat.SK_DDK_DRR_00_body_MI'",
+          "SK_PrayForEmbereth_03",
+          "CEFAN_Particle",
+          "CEFParticleData",
+          "ParticleSystem'FX_PC_DDK_05.Par_K_DDK_Embereth_dissolve_02'",
+          "B_Neck_02",
+          "B_Neck_03",
+          "B_Neck_04",
+          "B_Head_01",
+          "B_Neck_01"
+        ]
+      },
+      {
+        "notifyId": "action-49400/stage-002/notify-007",
+        "sourceType": "AnimEvent_MaterialParamterScalar",
+        "category": "material",
+        "authority": "PRESENTATION",
+        "resolutionStatus": "SOURCE_PARAMETERS_SERIALIZED",
+        "localTimeSeconds": 1.6631293524320604e+22,
+        "sourceEndSeconds": 0.0,
+        "durationSeconds": -0.0,
+        "sourceOffset": 3457531,
+        "assetReferences": [],
+        "serializedPayload": {
+          "encoding": "base64",
+          "byteOffset": 3457531,
+          "byteSize": 82,
+          "sha256": "d66ce80620840e662fd530c124f4ec9356ec5bc6cf4205194e0d8877e6ddf87d",
+          "data": "Q0VGQWN0aW9uTm90aWZ5X0FuaW1FdmVudF9NYXRlcmlhbFBhcmFtdGVyU2NhbGFyAAEAAAAAAAAAMzOzPgUAAABkZWFkAAAAAAAAAIA/MQAAAA=="
+        },
+        "serializedLabels": [
+          "dead"
+        ]
+      },
+      {
+        "notifyId": "action-49400/stage-002/notify-008",
+        "sourceType": "AnimEvent_MaterialParamterScalar",
+        "category": "material",
+        "authority": "PRESENTATION",
+        "resolutionStatus": "SOURCE_PARAMETERS_SERIALIZED",
+        "localTimeSeconds": 1.849397914777567e+31,
+        "sourceEndSeconds": 7.272795934606166e+22,
+        "durationSeconds": 7.555565380951607e+31,
+        "sourceOffset": 3457613,
+        "assetReferences": [],
+        "serializedPayload": {
+          "encoding": "base64",
+          "byteOffset": 3457613,
+          "byteSize": 96,
+          "sha256": "ba6fa59170283c072b0943928f2a11b93ff6e8f25f96724dc0eab04a3369fb5d",
+          "data": "Q0VGQWN0aW9uTm90aWZ5X0FuaW1FdmVudF9NYXRlcmlhbFBhcmFtdGVyU2NhbGFyAAEAAAAAAAAACtcjPBMAAABFbWlzc2l2ZV9pbnRlbnNpdHkAAAAgQQAAIEE2AAAA"
+        },
+        "serializedLabels": [
+          "Emissive_intensity"
+        ]
+      },
+      {
+        "notifyId": "action-49400/stage-002/notify-009",
+        "sourceType": "AnimEvent_MaterialParamterLinearColor",
+        "category": "material",
+        "authority": "PRESENTATION",
+        "resolutionStatus": "SOURCE_PARAMETERS_SERIALIZED",
+        "localTimeSeconds": 1.7443085358005817e+28,
+        "sourceEndSeconds": 1.1576116261810758e+27,
+        "durationSeconds": 4.1051038512395516e-41,
+        "sourceOffset": 3457709,
+        "assetReferences": [],
+        "serializedPayload": {
+          "encoding": "base64",
+          "byteOffset": 3457709,
+          "byteSize": 202,
+          "sha256": "3892c16633bf4990c1831456bafb54c3c2b6b12877574001c20568f345318d0a",
+          "data": "Q0VGQWN0aW9uTm90aWZ5X0FuaW1FdmVudF9NYXRlcmlhbFBhcmFtdGVyTGluZWFyQ29sb3IAAQAAAAAAAADNzEw+CwAAAFRyYW5zY29sb3IAAACAP2pP6T1Ceko9AACAPwAAoEBxOxQ/AACAPgAAgD8BAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAPwAAgD8AAIA/AAAAAAAAAAAAAAAABQAAAE5vbmUACtcjPAAAAAAAAAAAIgAAAA=="
+        },
+        "serializedLabels": [
+          "Transcolor"
+        ]
+      }
+    ]
+  },
+  {
+    "skillId": 49420,
+    "stage": 0,
+    "notifies": [
+      {
+        "notifyId": "action-49420/stage-000/notify-024",
+        "sourceType": "PlaySkeletalMesh",
+        "category": "mesh",
+        "authority": "PRESENTATION",
+        "resolutionStatus": "SOURCE_ASSET_EXPLICIT",
+        "localTimeSeconds": 0.019999999552965164,
+        "sourceEndSeconds": 0.019999999552965164,
+        "durationSeconds": 3.7799999713897705,
+        "sourceOffset": 3475885,
+        "assetReferences": [
+          {
+            "className": "SkeletalMesh",
+            "objectPath": "SK_DDK_DRG_00.Mesh.SK_DDK_DRG_00_SK"
+          },
+          {
+            "className": "AnimSet",
+            "objectPath": "SK_DDK_DRG_00.Ani.SK_DDK_DRG_00_Ani"
+          },
+          {
+            "className": "MaterialInstanceConstant",
+            "objectPath": "SK_DDK_DRG_00.Mat.SK_DDK_DRG_00_head_MI_Dead"
+          },
+          {
+            "className": "MaterialInstanceConstant",
+            "objectPath": "SK_DDK_DRG_00.Mat.SK_DDK_DRG_00_neck_MI_Dead"
+          },
+          {
+            "className": "MaterialInstanceConstant",
+            "objectPath": "SK_DDK_DRG_00.Mat.SK_DDK_DRG_00_wing_MI_Dead"
+          },
+          {
+            "className": "MaterialInstanceConstant",
+            "objectPath": "SK_DDK_DRG_00.Mat.SK_DDK_DRG_00_body_MI_Dead"
+          },
+          {
+            "className": "MaterialInstanceConstant",
+            "objectPath": "SK_DDK_DRG_00.Mat.SK_DDK_DRG_00_wing1_MI_Dead"
+          },
+          {
+            "className": "ParticleSystem",
+            "objectPath": "FX_PC_DDK_00.Par_J_DDK_SOE_DragonSmoke_01"
+          }
+        ],
+        "serializedPayload": {
+          "encoding": "base64",
+          "byteOffset": 3475885,
+          "byteSize": 1036,
+          "sha256": "9e6f34869f769e3f949b4bdcffe8565fecfbf3b218317a39bd80ea8afa25172f",
+          "data": "Q0VGQWN0aW9uTm90aWZ5X1BsYXlTa2VsZXRhbE1lc2gAAAAAAAAAAAAAAAAAAQAAAArXozwK16M8hetxQAAAAAABAAAAAAAAAA4AAABEcmFnb25fU2tlbDAxAAoAAABGWC1VTFRPRkYAZAAAAAAAAAAAAAAAAQAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAEAAAABAAAAAQAAAAUAAABOb25lAAUAAABOb25lADIAAABTa2VsZXRhbE1lc2gnU0tfRERLX0RSR18wMC5NZXNoLlNLX0RES19EUkdfMDBfU0snAC0AAABBbmltU2V0J1NLX0RES19EUkdfMDAuQW5pLlNLX0RES19EUkdfMDBfQW5pJwAFAAAARwAAAE1hdGVyaWFsSW5zdGFuY2VDb25zdGFudCdTS19EREtfRFJHXzAwLk1hdC5TS19EREtfRFJHXzAwX2hlYWRfTUlfRGVhZCcARwAAAE1hdGVyaWFsSW5zdGFuY2VDb25zdGFudCdTS19EREtfRFJHXzAwLk1hdC5TS19EREtfRFJHXzAwX25lY2tfTUlfRGVhZCcARwAAAE1hdGVyaWFsSW5zdGFuY2VDb25zdGFudCdTS19EREtfRFJHXzAwLk1hdC5TS19EREtfRFJHXzAwX3dpbmdfTUlfRGVhZCcARwAAAE1hdGVyaWFsSW5zdGFuY2VDb25zdGFudCdTS19EREtfRFJHXzAwLk1hdC5TS19EREtfRFJHXzAwX2JvZHlfTUlfRGVhZCcASAAAAE1hdGVyaWFsSW5zdGFuY2VDb25zdGFudCdTS19EREtfRFJHXzAwLk1hdC5TS19EREtfRFJHXzAwX3dpbmcxX01JX0RlYWQnAAAAAAABAAAAHgAAAFNLX1N1cGVyX1NhbmN0dW1PZkVtYmVyZXRoXzAxAOF6VD8BAAAADwAAAENFRkFOX1BhcnRpY2xlAAEAAAAAAAAAAAAAAAAAAADNzMw9zcxsQBAAAABDRUZQYXJ0aWNsZURhdGEAAAAAAAAAAAAAAAAAOgAAAFBhcnRpY2xlU3lzdGVtJ0ZYX1BDX0RES18wMC5QYXJfSl9EREtfU09FX0RyYWdvblNtb2tlXzAxJwAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAcAAABCX01fMDAAAAAAAAAAAAAAAAAAAACAPwAAgD8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIA/AACAPwAAgD8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAAAMQAAAA=="
+        },
+        "serializedLabels": [
+          "Dragon_Skel01",
+          "FX-ULTOFF",
+          "SkeletalMesh'SK_DDK_DRG_00.Mesh.SK_DDK_DRG_00_SK'",
+          "AnimSet'SK_DDK_DRG_00.Ani.SK_DDK_DRG_00_Ani'",
+          "MaterialInstanceConstant'SK_DDK_DRG_00.Mat.SK_DDK_DRG_00_head_MI_Dead'",
+          "MaterialInstanceConstant'SK_DDK_DRG_00.Mat.SK_DDK_DRG_00_neck_MI_Dead'",
+          "MaterialInstanceConstant'SK_DDK_DRG_00.Mat.SK_DDK_DRG_00_wing_MI_Dead'",
+          "MaterialInstanceConstant'SK_DDK_DRG_00.Mat.SK_DDK_DRG_00_body_MI_Dead'",
+          "MaterialInstanceConstant'SK_DDK_DRG_00.Mat.SK_DDK_DRG_00_wing1_MI_Dead'",
+          "SK_Super_SanctumOfEmbereth_01",
+          "CEFAN_Particle",
+          "CEFParticleData",
+          "ParticleSystem'FX_PC_DDK_00.Par_J_DDK_SOE_DragonSmoke_01'",
+          "B_M_00"
+        ]
+      },
+      {
+        "notifyId": "action-49420/stage-000/notify-025",
+        "sourceType": "AnimEvent_MaterialParamterScalar",
+        "category": "material",
+        "authority": "PRESENTATION",
+        "resolutionStatus": "SOURCE_PARAMETERS_SERIALIZED",
+        "localTimeSeconds": 1.8494017833401898e+31,
+        "sourceEndSeconds": 7.272795934606166e+22,
+        "durationSeconds": 7.555565380951607e+31,
+        "sourceOffset": 3476921,
+        "assetReferences": [],
+        "serializedPayload": {
+          "encoding": "base64",
+          "byteOffset": 3476921,
+          "byteSize": 96,
+          "sha256": "69f4837dd96893326085f864714d72296b40cdfe972a0946d78949ff31c22fd9",
+          "data": "Q0VGQWN0aW9uTm90aWZ5X0FuaW1FdmVudF9NYXRlcmlhbFBhcmFtdGVyU2NhbGFyAAEAAADNzMw/AABAQBMAAABlbWlzc2l2ZV9pbnRlbnNpdHkAAAAAAAAAwEAxAAAA"
+        },
+        "serializedLabels": [
+          "emissive_intensity"
+        ]
+      },
+      {
+        "notifyId": "action-49420/stage-000/notify-026",
+        "sourceType": "AnimEvent_MaterialParamterScalar",
+        "category": "material",
+        "authority": "PRESENTATION",
+        "resolutionStatus": "SOURCE_PARAMETERS_SERIALIZED",
+        "localTimeSeconds": 1.8494017833401898e+31,
+        "sourceEndSeconds": 7.272795934606166e+22,
+        "durationSeconds": 7.555565380951607e+31,
+        "sourceOffset": 3477017,
+        "assetReferences": [],
+        "serializedPayload": {
+          "encoding": "base64",
+          "byteOffset": 3477017,
+          "byteSize": 96,
+          "sha256": "1638400149db4ba817b55bc23322689f54a492c752bbfb715a47406bddaf6d2e",
+          "data": "Q0VGQWN0aW9uTm90aWZ5X0FuaW1FdmVudF9NYXRlcmlhbFBhcmFtdGVyU2NhbGFyAAEAAAAAAAAACtcjPBMAAABlbWlzc2l2ZV9pbnRlbnNpdHkAAAAAAAAAAAA2AAAA"
+        },
+        "serializedLabels": [
+          "emissive_intensity"
+        ]
+      },
+      {
+        "notifyId": "action-49420/stage-000/notify-027",
+        "sourceType": "AnimEvent_MaterialParamterLinearColor",
+        "category": "material",
+        "authority": "PRESENTATION",
+        "resolutionStatus": "SOURCE_PARAMETERS_SERIALIZED",
+        "localTimeSeconds": 1.849397914777567e+31,
+        "sourceEndSeconds": 7.272795934606166e+22,
+        "durationSeconds": 1.1570056875317426e+27,
+        "sourceOffset": 3477113,
+        "assetReferences": [],
+        "serializedPayload": {
+          "encoding": "base64",
+          "byteOffset": 3477113,
+          "byteSize": 121,
+          "sha256": "e8ea6ff352c0438a313e7b5cc35d168023f5ebb5866af88c668f98ff41e53c55",
+          "data": "Q0VGQWN0aW9uTm90aWZ5X0FuaW1FdmVudF9NYXRlcmlhbFBhcmFtdGVyTGluZWFyQ29sb3IAAQAAAM3MzD8AAABADwAAAEVtaXNzaXZlX0NvbG9yAAAAgD+OBhA/ayu2PgAAgD8AAEBAH4XrPrgehT4AAIA/MQAAAA=="
+        },
+        "serializedLabels": [
+          "Emissive_Color"
+        ]
+      },
+      {
+        "notifyId": "action-49420/stage-000/notify-028",
+        "sourceType": "AnimEvent_MaterialParamterScalar",
+        "category": "material",
+        "authority": "PRESENTATION",
+        "resolutionStatus": "SOURCE_PARAMETERS_SERIALIZED",
+        "localTimeSeconds": 1.6631257495523585e+22,
+        "sourceEndSeconds": -0.0,
+        "durationSeconds": -8.828180325246348e-44,
+        "sourceOffset": 3477234,
+        "assetReferences": [],
+        "serializedPayload": {
+          "encoding": "base64",
+          "byteOffset": 3477234,
+          "byteSize": 82,
+          "sha256": "3a3e5eb52b6c25b22c71b49d7b43a4971736ff1971d2afc2d5ba0af26021734f",
+          "data": "Q0VGQWN0aW9uTm90aWZ5X0FuaW1FdmVudF9NYXRlcmlhbFBhcmFtdGVyU2NhbGFyAAEAAAAAAAAACtcjPAUAAABEZWFkAAAAgD8AAIA/MQAAAA=="
+        },
+        "serializedLabels": [
+          "Dead"
+        ]
+      },
+      {
+        "notifyId": "action-49420/stage-000/notify-029",
+        "sourceType": "AnimEvent_MaterialParamterScalar",
+        "category": "material",
+        "authority": "PRESENTATION",
+        "resolutionStatus": "SOURCE_PARAMETERS_SERIALIZED",
+        "localTimeSeconds": 1.6631257495523585e+22,
+        "sourceEndSeconds": -0.0,
+        "durationSeconds": 8.828180325246348e-44,
+        "sourceOffset": 3477316,
+        "assetReferences": [],
+        "serializedPayload": {
+          "encoding": "base64",
+          "byteOffset": 3477316,
+          "byteSize": 167,
+          "sha256": "dac5ba139e02137393ec808f06532649bf3bec7b26fdf3f0b7d3712c1a8ec12a",
+          "data": "Q0VGQWN0aW9uTm90aWZ5X0FuaW1FdmVudF9NYXRlcmlhbFBhcmFtdGVyU2NhbGFyAAEAAAAAAKA/CtcjPAUAAABEZWFkAAAAgD8AAAAAAQAAAAAAAAAAAAAAAQAAAACAicQAACDCAABIw8L2///k+P//bAEAAAAAwD8AAMA/AADAPwAAAAAAAAAAAAAAAAUAAABOb25lAAAAAAAAAAAAAAAAACMAAAA="
+        },
+        "serializedLabels": [
+          "Dead"
+        ]
+      }
+    ]
+  }
+]

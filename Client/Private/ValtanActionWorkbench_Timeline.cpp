@@ -1,3 +1,4 @@
+#include "CompositionTimeline.h"
 #include "ValtanActionWorkbench.h"
 #include "BalanceTool.h"
 
@@ -406,4 +407,24 @@ bool_t Client::CValtanActionWorkbench::Apply_AuxiliaryTimelineTiming(
     }
     status = "This timeline row is owned by a separate typed editor.";
     return false;
+}
+
+bool_t Client::CValtanActionWorkbench::Trim_AnimationOccurrence(
+    const VALTAN_PATTERN_VIEW& Pattern, const VALTAN_STAGE_VIEW& Stage,
+    const std::string& occurrenceId, bool_t startEdge, int64_t wallDeltaMs,
+    std::string& status)
+{
+    if (!m_pBalanceTool || !m_pAnimationTool) { status = "Animation owner is unavailable."; return false; }
+    CBalanceTool::PATTERN_STAGE_EDIT draft;
+    if (!m_pBalanceTool->Get_ValtanStageDraft(Pattern.strPatternId, Stage.strStageId, draft, status)) return false;
+    const auto slot = std::find_if(draft.animationSlots.begin(), draft.animationSlots.end(),
+        [&](const auto& value) { return value.clipOccurrenceId == occurrenceId; });
+    if (slot == draft.animationSlots.end() || slot->repeatUntilStageEnd)
+    { status = "Source edge trim requires one finite animation occurrence."; return false; }
+    uint32_t nativeDuration = 0u, start = 0u, play = 0u;
+    if (!m_pAnimationTool->Resolve_ValtanCompositionNativeClipDurationMs(slot->clip, nativeDuration, status)) return false;
+    if (!CompositionTimeline::TrimSequentialSourceWindow(slot->sourceStartMs, slot->playMs,
+            nativeDuration, slot->playRate, startEdge, wallDeltaMs, start, play))
+    { status = "The source window or play rate no longer admits an edge trim."; return false; }
+    return Apply_AnimationOccurrenceTiming(Pattern, Stage, occurrenceId, start, play, status);
 }

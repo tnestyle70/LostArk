@@ -483,18 +483,25 @@ bool_t CRenderingProfileService::Restore_PresentationEnvironment(string& status)
 }
 
 bool_t CRenderingProfileService::Apply_CameraEnvironment(f32_t deltaSeconds, string& status,
-    const bool_t suppressFog, const LIGHT_DESC* directionalOverride)
+    const bool_t suppressFog, const LIGHT_DESC* directionalOverride,
+    const f32_t directionalBrightnessMultiplier, const float4_t* directionalColor)
 {
     // Region transitions must sample the underlying scene, never last frame's
     // cinematic light/fog. Ending or cancelling a shot restores that same scene.
     if (!Restore_PresentationEnvironment(status) ||
         !Apply_CameraRegionEnvironment(deltaSeconds, status)) return false;
-    if (!Get_ActiveProfile() || (!suppressFog && !directionalOverride && !m_ComparisonOptions.bActive)) return true;
+    if (!std::isfinite(directionalBrightnessMultiplier) || directionalBrightnessMultiplier < 0.f || directionalBrightnessMultiplier > 16.f)
+    { status = "Presentation directional brightness is invalid."; return false; }
+    if(directionalColor && (!std::isfinite(directionalColor->x)||!std::isfinite(directionalColor->y)||!std::isfinite(directionalColor->z)||
+        !std::isfinite(directionalColor->w)||directionalColor->w<0.f||directionalColor->w>1.f))
+    {status="Presentation directional color is invalid.";return false;}
+    const bool colorOverride=directionalColor&&directionalColor->w>0.f;
+    if (!Get_ActiveProfile() || (!suppressFog && !directionalOverride && !colorOverride && directionalBrightnessMultiplier == 1.f && !m_ComparisonOptions.bActive)) return true;
     auto& game = CGameInstance::Get();
     const auto fog = game.Get_HeightFogSettings();
     const auto& lights = game.Get_SceneLights();
     const bool_t compareLight = m_ComparisonOptions.bActive && !m_ComparisonOptions.bDirectionalEnabled;
-    const bool_t overrideLight = directionalOverride || compareLight;
+    const bool_t overrideLight = directionalOverride || compareLight || colorOverride || directionalBrightnessMultiplier != 1.f;
     if (overrideLight && lights.size() != 1u)
     { status = "Presentation directional override requires one scene light."; return false; }
     auto presentationFog = fog;
@@ -503,6 +510,20 @@ bool_t CRenderingProfileService::Apply_CameraEnvironment(f32_t deltaSeconds, str
     { status = "Presentation fog override rejected; current scene preserved."; return false; }
     const auto light = overrideLight ? lights.front() : LIGHT_DESC{};
     auto desiredLight = directionalOverride ? *directionalOverride : light;
+    if(colorOverride)
+    {
+        const float weight=directionalColor->w;
+        for(float4_t* color:{&desiredLight.vDiffuse,&desiredLight.vSpecular})
+        {color->x+=(directionalColor->x-color->x)*weight;color->y+=(directionalColor->y-color->y)*weight;color->z+=(directionalColor->z-color->z)*weight;}
+    }
+    // The documented PROJECT_ADAPTER uses a unit scene-light baseline.
+    // Restore_PresentationEnvironment above prevents per-frame compounding.
+    desiredLight.vDiffuse.x *= directionalBrightnessMultiplier;
+    desiredLight.vDiffuse.y *= directionalBrightnessMultiplier;
+    desiredLight.vDiffuse.z *= directionalBrightnessMultiplier;
+    desiredLight.vSpecular.x *= directionalBrightnessMultiplier;
+    desiredLight.vSpecular.y *= directionalBrightnessMultiplier;
+    desiredLight.vSpecular.z *= directionalBrightnessMultiplier;
     if (compareLight)
     {
         desiredLight.vDiffuse = { 0.f, 0.f, 0.f, desiredLight.vDiffuse.w };

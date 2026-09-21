@@ -134,6 +134,16 @@ REPOSITORY_PRODUCT_ARTIFACTS = (
     "Data/Valtan/Published/Valtan.patternsoundcues.json",
 )
 
+BONE_SOURCE_REL = "Data/Animation/Authored/Valtan/Valtan.boneclips.json"
+BONE_PRODUCT_REL = "Data/Valtan/Published/Valtan.boneclips.json"
+
+
+def repository_product_artifacts(root: Path) -> tuple[str, ...]:
+    # An existing Product cannot silently survive deletion of its source.
+    return REPOSITORY_PRODUCT_ARTIFACTS + ((BONE_PRODUCT_REL,) if
+        (root / BONE_SOURCE_REL).exists() or (root / BONE_PRODUCT_REL).exists() else ())
+
+
 LEGACY_AUTHORING_ARTIFACTS = (
     GAMEPLAY_AUTHORING_REL,
     PRESENTATION_AUTHORING_REL,
@@ -7574,6 +7584,10 @@ def project_v2_products(
         sound_bytes = docs.get(PATTERN_SOUND_CUES_REL) or repo_path(root, PATTERN_SOUND_CUES_REL).read_bytes()
         _validate_pattern_sound_dependencies_against_candidate_products(root, outputs, sound_source_bytes=sound_bytes)
         outputs["Data/Valtan/Published/Valtan.patternsoundcues.json"] = sound_bytes.decode("utf-8-sig")
+        if BONE_PRODUCT_REL in repository_product_artifacts(root):
+            # Inventory validation includes owner/skeleton/keys/source cycles.
+            validate_valtan_native_animation_source(root, _presentation)
+            outputs[BONE_PRODUCT_REL] = read_text(repo_path(root, BONE_SOURCE_REL))
     return outputs
 
 
@@ -7637,7 +7651,7 @@ def stage_repository_product_projection(
         raise PipelineError("Valtan sources changed during Product projection")
 
     artifacts = []
-    for relative in REPOSITORY_PRODUCT_ARTIFACTS:
+    for relative in repository_product_artifacts(root):
         text = outputs[relative]
         parsed = json.loads(text, object_pairs_hook=_reject_duplicate_pairs)
         if not isinstance(parsed, dict):
@@ -7709,7 +7723,8 @@ def source_manifest(root: Path) -> dict[str, Any]:
 
     def snapshot_entries() -> list[dict[str, Any]]:
         entries = []
-        for relative in sorted(paths):
+        optional = (BONE_SOURCE_REL,) if (root / BONE_SOURCE_REL).exists() else ()
+        for relative in sorted((*paths, *optional)):
             sha256, byte_count = source_text_identity(repo_path(root, relative))
             entries.append(
                 {
@@ -12766,8 +12781,8 @@ def _client_presentation_compatibility(
         staged_path = stage / relative
         source_path = repo_path(root, relative)
         staged_sha = sha256_file(staged_path)
-        source_sha = sha256_file(source_path)
-        if staged_path.read_bytes() != source_path.read_bytes() or staged_sha != source_sha:
+        source_sha = sha256_file(source_path) if source_path.is_file() else ""
+        if not source_path.is_file() or staged_path.read_bytes() != source_path.read_bytes() or staged_sha != source_sha:
             requires_reentry = True
         artifacts.append(
             {

@@ -29,18 +29,23 @@ namespace
 bool Client::CSkeletalAfterimage::Configure(const SETTINGS& settings)
 {
     if (!std::isfinite(settings.sampleIntervalSeconds) || settings.sampleIntervalSeconds < .005f ||
-        settings.sampleIntervalSeconds > .5f || !std::isfinite(settings.sampleLifetimeSeconds) ||
+        settings.sampleIntervalSeconds > 2.f || !std::isfinite(settings.sampleLifetimeSeconds) ||
         settings.sampleLifetimeSeconds < .005f || settings.sampleLifetimeSeconds > 2.f ||
-        !settings.maxSamples || settings.maxSamples > 16u ||
+        !settings.maxSamples || settings.maxSamples > 64u ||
         !std::isfinite(settings.color.x) || !std::isfinite(settings.color.y) ||
         !std::isfinite(settings.color.z) || !std::isfinite(settings.color.w) ||
         settings.color.x < 0.f || settings.color.y < 0.f || settings.color.z < 0.f ||
         settings.color.w < 0.f || settings.color.w > 1.f) return false;
+    if (!std::isfinite(settings.sourceColorIntensity) || settings.sourceColorIntensity < 0.f || settings.sourceColorIntensity > 100.f) return false;
+    for (const float value : {settings.endColor.x, settings.endColor.y, settings.endColor.z, settings.endColor.w})
+        if (!std::isfinite(value) || value < 0.f) return false;
     if (settings.sampleIntervalSeconds != m_Settings.sampleIntervalSeconds ||
         settings.sampleLifetimeSeconds != m_Settings.sampleLifetimeSeconds || settings.maxSamples != m_Settings.maxSamples ||
         settings.color.x != m_Settings.color.x || settings.color.y != m_Settings.color.y ||
         settings.color.z != m_Settings.color.z || settings.color.w != m_Settings.color.w ||
-        settings.capturePoseChanges != m_Settings.capturePoseChanges)
+        settings.capturePoseChanges != m_Settings.capturePoseChanges || settings.interpolateColor != m_Settings.interpolateColor ||
+        settings.endColor.x != m_Settings.endColor.x || settings.endColor.y != m_Settings.endColor.y ||
+        settings.endColor.z != m_Settings.endColor.z || settings.endColor.w != m_Settings.endColor.w || settings.sourceColorIntensity != m_Settings.sourceColorIntensity)
     {
         Reset();
         m_Settings = settings;
@@ -69,7 +74,7 @@ void Client::CSkeletalAfterimage::Suppress_FailedPresentation()
 void Client::CSkeletalAfterimage::Update(const float deltaSeconds, const bool emitting,
     const std::shared_ptr<Engine::CModel>& model, const float4x4_t& world)
 {
-    if (!model || !model->Is_Skinned() || !Finite(world) ||
+    if (!model || (!model->Is_Skinned() && !m_View.socketed) || !Finite(world) ||
         !std::isfinite(deltaSeconds) || deltaSeconds < 0.f)
     {
         Reset();
@@ -133,11 +138,28 @@ bool Client::CSkeletalAfterimage::Capture_Sample(const std::shared_ptr<Engine::C
     const float4x4_t& world, SAMPLE& sample)
 {
     sample.world = world;
+    const bool supplied = m_View.model == model;
+    sample.hiddenMeshMask = supplied ? m_View.hiddenMeshMask : 0u;
     sample.palettes.resize(model->Get_NumMeshes());
+    if (supplied && m_View.socketed) return !sample.palettes.empty();
+    const auto palette = supplied && m_View.paletteModel ? m_View.paletteModel : model;
     for (uint32_t mesh = 0u; mesh < model->Get_NumMeshes(); ++mesh)
-        if (!model->Capture_BoneMatrices(mesh, sample.palettes[mesh]))
+        if (!palette->Capture_BoneMatrices(palette == model ? mesh : 0u, sample.palettes[mesh]))
         { Suppress_FailedPresentation(); return false; }
     return !sample.palettes.empty();
+}
+
+bool Client::CSkeletalAfterimage::Capture_Initial(const MODEL_VIEW& view, const float ageSeconds)
+{
+    if (!view.model || !Finite(view.world) || !std::isfinite(ageSeconds) || ageSeconds < 0.f ||
+        ageSeconds >= m_Settings.sampleLifetimeSeconds) return false;
+    if (m_Model.lock() != view.model) Reset();
+    m_View = view; m_Model = view.model;
+    SAMPLE sample;
+    if (!Capture_Sample(view.model, view.world, sample)) return false;
+    sample.ageSeconds = ageSeconds; m_Samples.push_back(std::move(sample));
+    while (m_Samples.size() > m_Settings.maxSamples) m_Samples.pop_front();
+    return true;
 }
 
 void Client::CSkeletalAfterimage::Sample_Pulse(const float elapsedSeconds,
@@ -176,6 +198,7 @@ HRESULT Client::CSkeletalAfterimage::Render(const std::shared_ptr<Engine::CModel
         Reset();
         return S_FALSE;
     }
+    const bool socketed = m_View.model == model && m_View.socketed;
     auto& game = Engine::CGameInstance::Get();
     HRESULT result = game.Bind_Transform(shader, "g_ViewMatrix", Engine::D3DTS::VIEW);
     if (SUCCEEDED(result)) result = game.Bind_Transform(shader, "g_ProjMatrix", Engine::D3DTS::PROJ);
@@ -187,23 +210,44 @@ HRESULT Client::CSkeletalAfterimage::Render(const std::shared_ptr<Engine::CModel
         if (FAILED(result)) break;
         if (sample.palettes.size() != model->Get_NumMeshes()) { result = E_FAIL; break; }
         const float life = std::clamp(1.f - sample.ageSeconds / m_Settings.sampleLifetimeSeconds, 0.f, 1.f);
-        const float4_t color{m_Settings.color.x, m_Settings.color.y, m_Settings.color.z,
-            m_Settings.color.w * life * life};
+        const float blend = m_Settings.interpolateColor ? 1.f - life : 0.f;
+        const float4_t color{
+            std::lerp(m_Settings.color.x, m_Settings.endColor.x, blend),
+            std::lerp(m_Settings.color.y, m_Settings.endColor.y, blend),
+            std::lerp(m_Settings.color.z, m_Settings.endColor.z, blend),
+            std::lerp(m_Settings.color.w, m_Settings.endColor.w, blend) * life * life};
         result = shader->Bind_Matrix("g_WorldMatrix", &sample.world);
         if (SUCCEEDED(result)) result = shader->Bind_RawValue("g_ChargeAfterimageColor", &color, sizeof(color));
         for (uint32_t mesh = 0u; SUCCEEDED(result) && mesh < model->Get_NumMeshes(); ++mesh)
         {
+            if (mesh < 32u && (sample.hiddenMeshMask & (1u << mesh))) continue;
             const auto& palette = sample.palettes[mesh];
-            result = shader->Bind_Matrices("g_BoneMatrices", palette.data(), static_cast<uint32_t>(palette.size()));
-            if (SUCCEEDED(result)) result = shader->Begin(AFTERIMAGE_PASS);
+            if (!socketed) result = shader->Bind_Matrices("g_BoneMatrices", palette.data(), static_cast<uint32_t>(palette.size()));
+            if (socketed)
+            {
+                auto normal = XMLoadFloat4x4(&sample.world); normal.r[3] = XMVectorSet(0,0,0,1);
+                float4x4_t inverse; XMStoreFloat4x4(&inverse, XMMatrixTranspose(XMMatrixInverse(nullptr, normal)));
+                result = shader->Bind_Matrix("g_WorldInvTransposeMatrix", &inverse);
+            }
+            if (SUCCEEDED(result)) result = shader->Bind_RawValue("g_ChargeAfterimageSourceIntensity", &m_Settings.sourceColorIntensity, sizeof(float));
+            if (SUCCEEDED(result) && m_Settings.sourceColorIntensity > 0.f)
+                result = model->Bind_Material(shader, "g_DiffuseTexture", mesh, aiTextureType_DIFFUSE, 0);
+            if (SUCCEEDED(result)) result = shader->Begin(socketed ? 23u : AFTERIMAGE_PASS);
             if (SUCCEEDED(result)) result = model->Render(mesh);
         }
     }
     // Bind history only to the GPU. The actor's pose/cache/cursor never changed.
     // Restore this shader's live draw inputs even if a history draw failed.
     const HRESULT worldResult = shader->Bind_Matrix("g_WorldMatrix", &liveWorld);
-    const HRESULT poseResult = model->Get_NumMeshes() > 0u ?
-        model->Bind_BoneMatrices(shader, "g_BoneMatrices", model->Get_NumMeshes() - 1u) : E_FAIL;
+    const auto livePalette = m_View.model == model && m_View.paletteModel ? m_View.paletteModel : model;
+    HRESULT poseResult = !socketed && livePalette->Get_NumMeshes() > 0u ?
+        livePalette->Bind_BoneMatrices(shader, "g_BoneMatrices", livePalette == model ? model->Get_NumMeshes() - 1u : 0u) : S_OK;
+    if (socketed)
+    {
+        auto normal = XMLoadFloat4x4(&liveWorld); normal.r[3] = XMVectorSet(0,0,0,1);
+        float4x4_t inverse; XMStoreFloat4x4(&inverse, XMMatrixTranspose(XMMatrixInverse(nullptr, normal)));
+        poseResult = shader->Bind_Matrix("g_WorldInvTransposeMatrix", &inverse);
+    }
     if (FAILED(result) || FAILED(worldResult) || FAILED(poseResult))
     {
         Suppress_FailedPresentation();

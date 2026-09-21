@@ -151,7 +151,6 @@ namespace
         if (profile.materialName.empty() || profile.materialName.size() > 63u ||
             !Is_ValidUtf8DisplayText(profile.materialName) || profile.sourceMaterial.empty() ||
             profile.sourceMaterial.size() > 512u || !Is_ValidUtf8DisplayText(profile.sourceMaterial) ||
-            profile.family != "source.character.monster-pbr-masked.v1" ||
             !SourceCharacterMaterial::Configure(profile.family, profile.parameters, packed)) return false;
         for (const auto& [name, values] : profile.parameters)
             for (const auto value : values)
@@ -2294,6 +2293,11 @@ bool_t Client::CWorldSequenceDocument::Is_ValidStableId(
 			return 0 != std::isalnum(character) || character == '_' ||
 				character == '-' || character == '.';
 		});
+}
+
+bool_t Client::CWorldSequenceDocument::Is_ValidMaterialProfile(const WORLD_SEQUENCE_MATERIAL_PROFILE& profile)
+{
+    return Validate_MaterialProfile(profile);
 }
 
 bool_t Client::CWorldSequenceDocument::Build_MaterialOverride(const WORLD_SEQUENCE_MATERIAL_PROFILE& profile,

@@ -858,6 +858,14 @@ namespace
 			return false;
 		}
 		std::map<std::string, std::string> expected = FIXED_ARTIFACTS;
+        // Optional product-only authored clips join the same animation closure.
+        // Source bone drafts are never admitted as a published boss artifact.
+        std::error_code boneError;
+        const std::string bonePath = "Data/Valtan/Published/Valtan.boneclips.json";
+        if (std::filesystem::is_regular_file(root / bonePath, boneError))
+            expected.emplace(bonePath, "ANIMATION");
+        else if (boneError && boneError != std::errc::no_such_file_or_directory)
+        { status = "Cannot inspect published Valtan bone clips"; return false; }
 		std::set<std::string> expectedPaths;
 		for (const auto& [path, lane] : expected)
 			expectedPaths.insert(path);

@@ -108,8 +108,16 @@ def command_extract(arguments):
         loaded = package(name)
         entry = find_export(loaded, relative)
         serial = loaded.logical[entry.serial_offset:entry.serial_offset + entry.serial_size]
+        cls = package_ref_name(entry.class_index, loaded.imports, loaded.exports)
+        if cls.lower() == 'objectredirector':
+            if len(serial) != 16 or loaded.names[struct.unpack_from('<i', serial, 4)[0]].lower() != 'none' or struct.unpack_from('<i', serial, 8)[0] != 0:
+                fail(f'{path} has unsupported ObjectRedirector serialization')
+            destination = full_reference(name, loaded, struct.unpack_from('<i', serial, 12)[0])
+            if destination.casefold() == path.casefold():
+                fail(f'{path} redirects to itself')
+            return export(destination)
         properties, end = parse_tagged_properties(serial, loaded.names, loaded.summary.version)
-        return dict(package=name, className=package_ref_name(entry.class_index, loaded.imports, loaded.exports),
+        return dict(package=name, className=cls,
                     properties=properties, tail=serial[end:])
 
     @functools.lru_cache(None)
@@ -351,7 +359,7 @@ def parameter_names(node, found):
     return found
 
 
-FOLD = {0: ('+', 'add'), 1: ('-', 'subtract'), 2: ('*', 'multiply')}
+FOLD = {0: ('+', 'add'), 1: ('-', 'subtract'), 2: ('*', 'multiply'), 3: ('/', 'divide')}
 
 
 def hlsl(node, time_parameter):
@@ -453,6 +461,22 @@ def emit_function(document, family, number, stage):
             lines.append(f'    source[{row}]={hlsl(node, time_parameter)};')
         else:
             lines.append(f'    source[{row}].{"xyzw"[lane]}=({hlsl(node, time_parameter)}).x;')
+    # Same scene-owned reflection ABI as the existing SourceCharacter PBR families.
+    environment_rows = {
+        '14c753dc7e67da47b5fd1f7628119996': (36, 37),
+        '548bfcb45fdddb4b91812819ce2a60fc': (29, 30),
+        'fe38b50e0f8656448805e1fc88f67c83': (30, 31),
+        'fcf2ae320f020d48b6a207cedc870d36': (37, 38),
+        '824358517f0ef0448e57d8ac93e923da': (31, 32),
+    }
+    if stage == 'base' and program['shaderId'] in environment_rows:
+        color, rotation = environment_rows[program['shaderId']]
+        trailing = program['bindings']['constantBufferClosure']['trailingUnownedConstantBuffer0Slots']
+        if trailing[:2] != [color, rotation]:
+            fail('Source PBR environment register evidence changed')
+        lines += ['    if (g_SourceCharacterEnvironmentEnabled != 0u)', '    {',
+                  f'        source[{color}] = g_SourceCharacterEnvironmentColor;',
+                  f'        source[{rotation}] = g_SourceCharacterEnvironmentRotation;', '    }']
     if stage == 'light':
         trailing = program['bindings']['constantBufferClosure']['trailingUnownedConstantBuffer0Slots']
         lines.append(f'    source[{trailing[0]}]=float4(input.lightColor,1.0);')
@@ -471,7 +495,7 @@ def emit_function(document, family, number, stage):
 
 def emit_configure(document, family, number):
     time_parameter = time_parameter_of(document)
-    lines = [f'    else if (family == "{family}")', '    {', f'        staged.program = {number}u;']
+    lines = [f'    else if (family == "{family}")', '    {', '        [&]() {', f'        staged.program = {number}u;']
     if time_parameter is not None:
         lines.append(f'        staged.baseConstants[{TIME_PARAMETER_ROW}] = vector(parameter("{time_parameter}"));')
         lines.append(f'        staged.lightConstants[{TIME_PARAMETER_ROW}] = vector(parameter("{time_parameter}"));')
@@ -488,7 +512,7 @@ def emit_configure(document, family, number):
             else:
                 lanes = [(cpp(node) + '[0]') if node is not None else '0.f' for _lane, node in entries]
                 lines.append(f'        staged.{stage}Constants[{row}] = float4_t({",".join(lanes)});')
-    lines.append('    }')
+    lines.extend(['        }();', '    }'])
     return '\n'.join(lines) + '\n'
 
 
@@ -579,15 +603,143 @@ def install_program(path, function, number, stage):
     return text.replace(last_case, last_case + f'    case {number}u: return {name}(input);\n')
 
 
+NAMED_VECTOR_HELPER_BEGIN = '// BEGIN GENERATED SOURCE CHARACTER NAMED VECTOR PATCH'
+NAMED_VECTOR_HELPER_END = '// END GENERATED SOURCE CHARACTER NAMED VECTOR PATCH'
+NAMED_VECTOR_PARAMETERS = ('transcolor', 'buffcolor')
+
+
+def named_vector_bindings(header):
+    """Trace only direct vector writes/copies; never infer a source register."""
+    begin = header.index('inline bool Configure(const std::string& family, const PARAMETER_VALUES& parameters,')
+    end = header.index('inline bool Configure(const std::string& family, const DATA_JSON_VALUE& parameters,', begin)
+    configure = header[begin:end]
+    families = list(re.finditer(r'^    (?:else )?if \(family == "[^"]+"\)\n    \{\n(.*?)^    \}', configure, re.M | re.S))
+    if not families:
+        fail('named-vector patch found no generated source families')
+    states = {}
+    handled = set()
+    target = re.compile(r'parameter\("(transcolor|buffcolor)"\)')
+
+    def apply(body, programs):
+        for line in body.splitlines():
+            line = line.strip()
+            if not line or line.startswith('//'):
+                continue
+            whole = re.fullmatch(r'staged\.(base|light)Constants\s*=\s*staged\.(base|light)Constants;', line)
+            assignment = re.fullmatch(r'staged\.(base|light)Constants\[(\d+)\](\.[xyzw])?\s*=\s*(.*);', line)
+            if whole:
+                for program in programs:
+                    states[program][whole[1]] = states[program][whole[2]].copy()
+                continue
+            if assignment:
+                stage, index, component, expression = assignment.groups()
+                index = int(index)
+                if index >= 64:
+                    fail('named-vector patch constant index exceeds source ABI')
+                direct = re.fullmatch(r'vector\(parameter\("(transcolor|buffcolor)"\)\)', expression)
+                copied = re.fullmatch(r'staged\.(base|light)Constants\[(\d+)\]', expression)
+                if target.search(expression) and (not direct or component):
+                    fail(f'named-vector patch requires non-direct expression support: {line}')
+                for program in programs:
+                    values = states[program]
+                    if not copied:
+                        for source_stage, source_index in re.findall(r'staged\.(base|light)Constants\[(\d+)\]', expression):
+                            if int(source_index) in values[source_stage]:
+                                fail(f'named-vector patch encountered a non-direct vector copy: {line}')
+                    if component:
+                        # A lane write cannot be reproduced by a whole-vector patch.
+                        if index in values[stage] or (copied and int(copied[2]) in values[copied[1]]):
+                            fail(f'named-vector patch encountered a partial vector overwrite: {line}')
+                        continue
+                    parameter = direct[1] if direct else values[copied[1]].get(int(copied[2])) if copied else None
+                    values[stage].pop(index, None)
+                    if parameter:
+                        values[stage][index] = parameter
+                continue
+            if target.search(line):
+                fail(f'named-vector patch encountered an unhandled parameter expression: {line}')
+
+    for family in families:
+        programs = re.findall(r'staged\.program = (\d+)u;', family[1])
+        if len(programs) != 1 or int(programs[0]) in states:
+            fail('named-vector patch requires unique fixed source program IDs')
+        program = int(programs[0])
+        states[program] = {'base': {}, 'light': {}}
+        apply(family[1], [program])
+        handled.update(range(family.start(), family.end()))
+    # Older source families append reviewed shared packing after their branch.
+    for common in re.finditer(r'^    if \(staged\.program (== (\d+)u|>= (\d+)u && staged\.program <= (\d+)u)\)\n    \{\n(.*?)^    \}', configure, re.M | re.S):
+        lower = int(common[2] or common[3])
+        upper = int(common[2] or common[4])
+        programs = [p for p in states if lower <= p <= upper]
+        if not programs:
+            fail('named-vector patch shared block has no known source program')
+        apply(common[5], programs)
+        handled.update(range(common.start(), common.end()))
+    for mention in target.finditer(configure):
+        if mention.start() not in handled:
+            fail('named-vector patch parameter is outside a recognized source packing block')
+    return {program: {parameter: {stage: sorted(i for i, name in values[stage].items() if name == parameter)
+                                 for stage in ('base', 'light')}
+                      for parameter in NAMED_VECTOR_PARAMETERS}
+            for program, values in sorted(states.items())}
+
+
+def emit_named_vector_patch(header):
+    bindings = named_vector_bindings(header)
+    lines = [NAMED_VECTOR_HELPER_BEGIN,
+             '// Generated from exact direct named-vector packing, including subsequent copies.',
+             '// AUTO/map programs and parameters absent from the selected source program are no-ops.',
+             'inline bool Patch_NamedVector(Engine::MODEL_SOURCE_CHARACTER_PARAMETERS& material,',
+             '    std::string_view parameter, const float4_t& value)',
+             '{',
+             '    if (parameter != "transcolor" && parameter != "buffcolor") return false;',
+             '    for (const float component : {value.x, value.y, value.z, value.w})',
+             '        if (!std::isfinite(component) || std::abs(component) > 1000000.0f) return false;',
+             '    struct Binding { uint32_t program; uint64_t baseTrans, lightTrans, baseBuff, lightBuff; };',
+             '    static constexpr Binding bindings[] = {']
+    for program, parameters in bindings.items():
+        masks = [sum(1 << i for i in parameters[name][stage])
+                 for name in NAMED_VECTOR_PARAMETERS for stage in ('base', 'light')]
+        if any(masks):
+            lines.append('        {' + str(program) + 'u, ' + ', '.join(f'0x{mask:016x}ull' for mask in masks) + '},')
+    lines.extend(['    };',
+                  '    for (const auto& binding : bindings) {',
+                  '        if (binding.program != material.program) continue;',
+                  '        const bool trans = parameter == "transcolor";',
+                  '        const uint64_t base = trans ? binding.baseTrans : binding.baseBuff;',
+                  '        const uint64_t light = trans ? binding.lightTrans : binding.lightBuff;',
+                  '        if (base == 0u && light == 0u) return false;',
+                  '        for (size_t index = 0u; index < 64u; ++index) {',
+                  '            const uint64_t bit = uint64_t{1} << index;',
+                  '            if ((base & bit) != 0u) material.baseConstants[index] = value;',
+                  '            if ((light & bit) != 0u) material.lightConstants[index] = value;',
+                  '        }',
+                  '        return true;',
+                  '    }',
+                  '    return false;',
+                  '}', NAMED_VECTOR_HELPER_END])
+    return '\n'.join(lines) + '\n'
+
+
+def refresh_named_vector_patch(header):
+    generated = emit_named_vector_patch(header)
+    if NAMED_VECTOR_HELPER_BEGIN in header:
+        if header.count(NAMED_VECTOR_HELPER_BEGIN) != 1 or header.count(NAMED_VECTOR_HELPER_END) != 1:
+            fail('named-vector patch generated markers changed')
+        start = header.index(NAMED_VECTOR_HELPER_BEGIN)
+        end = header.index(NAMED_VECTOR_HELPER_END, start) + len(NAMED_VECTOR_HELPER_END) + 1
+        return header[:start] + generated + header[end:]
+    anchor = 'inline bool Configure(const std::string& family, const DATA_JSON_VALUE& parameters,'
+    if header.count(anchor) != 1:
+        fail('named-vector patch insertion anchor changed')
+    return header.replace(anchor, generated + '\n' + anchor)
+
+
 def command_install(arguments):
     base = (arguments.generated / f'base{arguments.program}.hlsli').read_text(encoding='utf8')
     light = (arguments.generated / f'light{arguments.program}.hlsli').read_text(encoding='utf8')
     configure = (arguments.generated / f'configure{arguments.program}.h').read_text(encoding='utf8')
-    for path, function, stage in ((BASE_PROGRAMS, base, 'base'), (LIGHT_PROGRAMS, light, 'light')):
-        from native_shader_dispatch import write_partitioned_source_character_stage, write_if_changed
-        leaves = write_partitioned_source_character_stage(path, install_program(path, function, arguments.program, stage))
-        for name in (path.name, *leaves):
-            write_if_changed(CLIENT_SHADER_DIR / name, (path.parent / name).read_text(encoding='utf8'))
     header = read_text(PARAMETER_HEADER)
     existing = installed_configure(arguments.family)
     if existing is None:
@@ -595,9 +747,15 @@ def command_install(arguments):
         if header.count(anchor) != 1:
             fail('SourceCharacterMaterialParameters.h family anchor changed')
         header = header.replace(anchor, configure + anchor)
-        write_preserving_newlines(PARAMETER_HEADER, header)
     elif existing != configure:
         fail(f'{arguments.family} is already installed with a different packing')
+    header = refresh_named_vector_patch(header)
+    for path, function, stage in ((BASE_PROGRAMS, base, 'base'), (LIGHT_PROGRAMS, light, 'light')):
+        from native_shader_dispatch import write_partitioned_source_character_stage, write_if_changed
+        leaves = write_partitioned_source_character_stage(path, install_program(path, function, arguments.program, stage))
+        for name in (path.name, *leaves):
+            write_if_changed(CLIENT_SHADER_DIR / name, (path.parent / name).read_text(encoding='utf8'))
+    write_preserving_newlines(PARAMETER_HEADER, header)
     print('installed program', arguments.program)
 
 

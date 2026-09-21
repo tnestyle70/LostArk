@@ -2819,3 +2819,51 @@ lease에 연결한다. 저장된 DURATION은 timing 존재와 PRODUCT 의미의 
 ### V1 bounded source loop에 포함된 보조 light
 
 원본 Cascade source가 `EmitterLoops=0` sprite/mesh/ribbon emitter와 같은 source visual program의 `LIGHT`/`light` carrier를 함께 가질 수 있다. bounded source-loop 검증은 반복 방출을 수행하는 admitted particle/ribbon carrier를 최소 하나 요구하되, 그 보조 light를 particle/ribbon이 아니라는 이유로 거절해서는 안 된다. 반대로 light만으로 loop0 조건을 만족시키면 안 된다. `effect.valtan.cinematic.trash.actor106.at667`이 이 경우이며, 원본 emitter count나 `loopEffectToDuration`을 변경해 우회하지 않는다.
+
+- **유령 native84 표시 검증은 alpha/coverage와 실제 RGB를 나눠야 한다.** 조명 없이 검은 반투명 mesh도 clear와 다른 픽셀을 만들므로 changed-pixel 성공은 표시 성공이 아니다. actual catalog model+donor+scene profile로 RGB 양수/finite를 확인하고, 별도로 CValtan dormant/GHOST_HIDDEN/body-window/cinematic-suppression 및 BLEND pass10의 HRESULT를 확인한다. local Workbench는 저장된 authoringPhase를 part 선택에 연결하고 교체 뒤 CModel/target generation을 함께 갱신한다. [검증과 남은 화면 경계](09-22/2026-09-22_VALTAN_EDITOR_VISIBILITY_RESULT.md).
+
+
+### Bone Clips와 순차 timeline 소유권
+
+- 본 편집기의 Stop은 자신이 manual pose를 소유할 때만 pause한다. 비활성 본 패널이 매 frame 다른 Sequencer의 CModel 재생을 정지시키면 안 된다.
+- authored animation은 native WModel section의 39-byte name 제한 대신 별도 stable ID를 쓰며 native clip과 index를 저장 ID로 공유하지 않는다. exact skeletonHash/bone/source clip DAG와 finite quaternion·시간 범위를 모두 검증한 후 전체 채널을 교체한다.
+- 발탄 Bone Clips source는 prototype이 직접 읽지 않는다. PublishV2가 검증한 optional Published bone 문서와 generation closure를 사용한다. source 변경은 publisher CAS read set에 포함하고 실패 시 이전 Product를 보존한다.
+- 발탄 순차 clip의 앞 trim은 독립 시작 offset이 아니다. sourceStart를 옮기고 길이를 줄여 후속 clip을 당기며 서버 stage 시간은 유지한다. preview donor는 BossCatalog의 Cinematic donor와 일치해야 entrance/phase2/finale/trash 4 clip이 빠지지 않는다.
+
+
+### 2026-09-22 native sincos와 실제 sampling 비교
+
+DXBC `sincos`는 두 destination을 쓰기 전에 source를 한 번 읽는다. `sincos r0.x, r1.x, r0.x`를 sine/cosine 순차 대입하면 cosine이 변경된 r0.x를 읽는다. generator는 sourceAngle 지역 상수를 먼저 만든다. 신규 Guardian/Sea program만 검토한 source 명령에서 재생성하고 기존 무관 program을 일괄 교체하지 않는다. 단색 1×1 shader 비교는 UV·sampler 오류를 증명하지 못하므로 화면 sampling 복원에는 공간적으로 변하는 texture, 실제 camera 행렬·깊이, 유색 출력과 non-finite 검사를 사용한다. 모션 블러 108조건 결과는 09-22 AncientSea/Guardian RESULT에 있으며 유령 발탄 전투 증상과 원인을 혼동하지 않는다.
+
+
+### Live TrailGhost 대상과 첫 샘플
+
+원본 TrailGhost의 emission duration이 sampling interval보다 짧을 수 있다. 누적 간격만 기다리면 source notify가 정상이어도 한 장도 나오지 않으므로 첫 실제 owner pose를 별도로 기록하고 child lifetime으로 종료한다. 모델 이름이 같아도 고정 갑옷 clone으로 현재 outfit을 대체하지 않는다. own/shared bone palette, 실제 class weapon socket, hidden mask와 only-local flag를 typed owner callback에서 읽는다. generic mount preview가 선택돼 있을 때 scene Character로 fallback하지 않는다. source enum NONE과 원본 rim/fade shader 의미가 미복구라면 PROJECT_AUTHORED projection이라고 구분한다. 실제 Guardian socket은 b_wp_1이며 없는 본의 identity 반환을 렌더 성공으로 기록하지 않는다.
+
+
+- 탈것 lifetime FX는 스킬 종료와 소유 기간이 다르다. ambient MOUNT_END / spawn NATURAL을 main-thread 준비 큐와 같은 Character의 vehicle handle owner에 연결하고 mount commit 실패·동일 snapshot·해제·교체 경계를 확인한다.
+- CModel clone이 CMaterial을 공유하는지 실물 두 clone과 prototype으로 확인한다. source constant/texture override 및 clear는 GPU texture/geometry 공유를 유지하며 material 상태만 copy-on-write로 분리해야 한다. 이름·행 수 검사만으로 타 인스턴스 보존을 증명하지 않는다.
+- PostProcessChain의 material Opacity와 EFPPMESkillValue가 구동하는 engine opacity는 별개다. 원본 CB0 prefix와 native texture expression을 검증하고, 원본 재질 파라미터를 action fade로 덮어쓰지 않는다. scene brightness도 복원된 원래 light에서 계산해야 반복 누적 곱을 피한다.
+
+### 후처리 material의 S_FALSE는 draw 생략이다
+
+native screen-post가 퇴화한 camera projection을 S_FALSE로 격리하면 renderer도 그리기·장면 복사·ping-pong target 진행을 생략해야 한다. FAILED만 검사하면 Begin하지 않은 이전 shader state로 그릴 수 있다. 정상/생략/정상 및 생략-only를 실제 render method·CShader·VB로 검사하고 draw primitive 수, 최종 target, RGB 보존을 함께 확인한다. [통합 검증](09-22/2026-09-22_ANCIENT_SEA_GUARDIAN_INTEGRATION_RESULT.md).
+
+### WModel 기본 재질 의존성과 source lifetime 0
+
+- native material override의 JSON texture closure가 완전해도 CModel은 WModel의 기본 diffuse/normal을 먼저 로드한다. 실제 decoder의 material path와 native register texture를 합쳐 설치·SHA256을 검사하고, 전체 source material section의 CModel 생성/variant/원복을 실행한다. JSON parse 성공으로 실제 모델 로드 성공을 대신하지 않는다.
+- 원본 Cascade lifetime 0은 임의 1ms 수명으로 바꾸지 않는다. 해당 원본 carrier의 normalized age 0을 유지하되 생성한 notify occurrence가 끝나면 입자를 정리한다. 다른 긴 cue가 같은 문서를 계속 살려도 원래 occurrence의 입자가 남지 않는지 실제 clip·bone으로 검증한다.
+
+
+### Effect owner 제어는 저장 경로와 취소 원복까지 확인한다
+
+- `ownerControls`를 codec에만 추가하면 component split/compile 또는 catalog assembly에서 사라질 수 있다. Effect 문서 → assembly → 문서 왕복과 최종 owner consumer를 함께 확인한다. control-only 문서는 가짜 particle을 넣지 않고 control 마지막 key까지 수명을 계산한다. v15는 빈 경우에도 정식 runtimeExtensions 객체가 필요하다.
+- 재질·visibility 제어는 effect occurrence token과 action-start identity에 귀속한다. effect가 살아 있어도 action이 교체되면 이전 token을 해제한다. hide/reset/실패/owner 변경/소멸 경로도 자기 token을 제거하고 남은 제어를 재평가한다. 원복은 제어 전 실제 native constants 및 기존 stance/장비 visibility를 보존해야 하며 전체 override 초기화로 대체하지 않는다. 저장만 성공하거나 finite 값만 나온 검사를 실제 취소 원복의 증거로 사용하지 않는다.
+- 범용 소비 계약은 [렌더링·이펙트 복원 V2의 OwnerControls](렌더링이펙트복원V2.md), 개별 검증은 [Guardian 결과](09-22/2026-09-22_GUARDIANKNIGHT_NATIVE_EFFECT_RESTORATION_RESULT.md)를 따른다.
+
+
+### 원본 재질 packing이 커질 때 Debug 스택과 부분 색 변경
+
+원본 native family를 generated Configure 한 함수에 계속 추가하면 Debug의 모든 분기 임시값이 같은 스택 프레임에 잡힐 수 있다. Shader 비교나 작은 최적화 probe 통과로 실제 Character 초기화 성공을 대신하지 않는다. 기본 1MB 스택의 Product 객체에서 실제 catalog/Character 소비를 검사하며, 계산식은 유지한 family별 call frame으로 분리한다. /STACK 증가로 생성기의 구조적 문제를 숨기지 않는다.
+
+TransColor/BuffColor는 현재 native program의 실제 direct packing 및 후속 copy에서 생성한 register 연결만 바꾼다. catalog에 없는 이름을 추측하거나 다른 상수를 다시 채우지 않는다. AUTO 또는 source parameter가 없는 program은 변경하지 않는다. 기존 튜닝값·peer/prototype·중첩 owner 및 취소 원복을 실제 CModel로 검사한다. 상세 근거는 [Guardian owner control 결과](09-22/2026-09-22_GUARDIAN_OWNER_CONTROL_RESULT.md)를 따른다.

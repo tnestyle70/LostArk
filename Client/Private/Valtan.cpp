@@ -1779,7 +1779,8 @@ bool_t CValtan::Sync_LocalPatternCombatObjectPreview(
 
 bool_t CValtan::Stage_LocalPatternAuthoringPreview(
 	const Client::VALTAN_PATTERN_VIEW& Pattern,
-	std::string& strOutStatus)
+	std::string& strOutStatus,
+	const bool_t selectAuthoredPhasePresentation)
 {
 	if (m_isServerAuthoritative || nullptr == m_pBodyModelCom ||
 		nullptr == m_pTransformCom ||
@@ -2145,6 +2146,16 @@ bool_t CValtan::Stage_LocalPatternAuthoringPreview(
 		}
 	}
 
+	// The authored phase is the same explicit phase used by Server audition.
+	// Validate the staged model before swapping any live body/weapon parts.
+	if (selectAuthoredPhasePresentation)
+	{
+		const bool_t ghost = Pattern.iAuthoringPhase != 0u ?
+			Pattern.iAuthoringPhase >= 3u : Pattern.iMinimumPhase >= 3u;
+		if (!Replace_PresentationPartGroup(
+				ghost ? "BOSS_VALTAN_GHOST" : "BOSS_VALTAN", strOutStatus, &Pattern))
+			return false;
+	}
 	if (m_bLocalPatternAuthoringPreview)
 		Reset_LocalPatternPreviewTransport();
 	m_LocalPreviewClipByActionId = std::move(StagedBindings);
@@ -3766,6 +3777,20 @@ void CValtan::Update_DefaultParticles(const f32_t /*fTimeDelta*/)
 	}
 }
 
+std::string CValtan::Get_PresentationDiagnostic() const
+{
+    std::string status = "archetype=" + m_strArchetypeId + " | parts=" + m_strPresentationPartArchetypeId;
+    status += " | phase=" + std::to_string(m_hasBossCombatState ? m_BossCombatState.iGameplayPhase : 0u);
+    if (m_isReplicationDormant) status += " | hidden: dormant replication";
+    if (m_isGhostPresentationHidden) status += " | hidden: Server GHOST_HIDDEN";
+    if (m_isPatternBodyHidden) status += " | hidden: authored pattern window";
+    if (m_isCinematicPresentationSuppressed) status += " | hidden: source cinematic owns presentation";
+    const auto body = m_PartObjects.find(BODY_PART_TAG);
+    if (body == m_PartObjects.end()) return status + " | body part is absent";
+    const auto part = dynamic_pointer_cast<const CBody_Valtan>(body->second);
+    return status + " | " + (part ? part->Get_RenderDiagnostic() : "body part type is invalid");
+}
+
 void CValtan::Set_CinematicPresentationSuppressed(const bool_t suppressed)
 {
     if (m_isCinematicPresentationSuppressed == suppressed) return;
@@ -4005,7 +4030,8 @@ bool_t CValtan::Set_LocalPreviewGhostPresentation(bool_t ghost, std::string& sta
 
 bool_t CValtan::Replace_PresentationPartGroup(
 	const std::string_view presentationArchetypeId,
-	std::string& strOutStatus)
+	std::string& strOutStatus,
+	const Client::VALTAN_PATTERN_VIEW* requiredPattern)
 {
 	strOutStatus.clear();
 	if (presentationArchetypeId.empty())
@@ -4070,6 +4096,40 @@ bool_t CValtan::Replace_PresentationPartGroup(
 		strOutStatus = "Valtan presentation body components are incomplete: " +
 			std::string(presentationArchetypeId) + ".";
 		return false;
+	}
+	if (requiredPattern)
+	{
+		for (const auto& stage : requiredPattern->Stages)
+		{
+			std::vector<Client::BOSS_PATTERN_ANIMATION_CLIP> clips;
+			for (const auto& source : stage.ClipOccurrences)
+			{
+				Client::BOSS_PATTERN_ANIMATION_CLIP clip;
+				clip.strClipName = source.strClipName;
+				clip.iSourceStartMs = source.iSourceStartMs;
+				clip.iPlayMs = source.iPlayMs;
+				clip.fPlayRate = source.fPlayRate;
+				clip.bLoop = source.bLoop;
+				clips.push_back(std::move(clip));
+			}
+			std::vector<Client::ACTION_PRESENTATION_CLIP_TIMING> timings;
+			if (!stage.bSuppressAnimation && !Build_PatternTimeline(
+					StagedBodyModel, std::span<const Client::BOSS_PATTERN_ANIMATION_CLIP>(clips), timings))
+			{
+				strOutStatus = "Authored phase model rejected the clip/source clock for " + stage.strActionId + ".";
+				return false;
+			}
+			for (const auto& cue : stage.ProductCues)
+			{
+				if (!Is_ArenaCenterCueAnchor(cue.strAnchorSlotId) &&
+					!Is_PatternTargetSnapshotCueAnchor(cue.strAnchorSlotId) &&
+					"root" != cue.strAnchorSlotId && !StagedBodyModel->Has_Bone(cue.strAnchorSlotId.c_str()))
+				{
+					strOutStatus = "Authored phase model has no Effect anchor: " + cue.strAnchorSlotId + ".";
+					return false;
+				}
+			}
+		}
 	}
 	StagedBodyModel->Enable_RootMotionSuppression(
 		ROOT_MOTION_BONE,

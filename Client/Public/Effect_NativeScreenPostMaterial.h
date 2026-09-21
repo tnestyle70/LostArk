@@ -39,6 +39,9 @@ struct EFFECT_NATIVE_SCREEN_POST_SNAPSHOT final
     float4_t vSourceColor = { 1.f, 1.f, 1.f, 1.f };
     float4_t vDynamicParameter = { 1.f, 1.f, 1.f, 1.f };
     f32_t fProjectionW = 0.f;
+    f32_t fProjectionZ = 0.f;
+    std::array<float4_t, 3u> SourceLocalToWorld{};
+    std::array<float4_t, 3u> SourceWorldToView{};
     f32_t fLocalTimeSeconds = 0.f;
     f32_t fBloomIntensity = 1.3f;
     // Authored screen transition; it does not impersonate a native material ID.

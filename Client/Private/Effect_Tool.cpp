@@ -1316,6 +1316,9 @@ void Client::CEffect_Tool::Recalculate_PreviewDuration(
                 Effect_ModelCueEndSeconds(Cue));
         }
     }
+    for (const auto& control : Document.OwnerControls)
+        if (!control.Keys.empty())
+            fEffectDurationSeconds = (std::max)(fEffectDurationSeconds, control.fStartSeconds + control.Keys.back().fSeconds);
     m_fPreviewDurationSeconds = fEffectDurationSeconds;
     if (m_ProductPreview.has_value())
     {

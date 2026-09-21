@@ -1,4 +1,4 @@
-LOSTARK_ANIM_EVENTS 3 "GuardianKnight" 2203
+LOSTARK_ANIM_EVENTS 6 "GuardianKnight" 2247
 "ddk_att_battle_1_01" CANCEL startms=0 endms=1400 payload="비늘 갑옷" src=orig
 "ddk_att_battle_1_01" SOUND startms=10 payload="PC_DRAGONKNIGHT_F.PC_DragonKnight_F_Att_Battle1_1" src=orig
 "ddk_att_battle_1_01" CANCEL startms=200 endms=520 payload="[선스]" src=orig
@@ -779,7 +779,7 @@ LOSTARK_ANIM_EVENTS 3 "GuardianKnight" 2203
 "ddk_sk_deepimpact_03" SUPERARMOR startms=0 endms=700 payload="" src=orig
 "ddk_sk_deepimpact_03" CANCEL startms=100 endms=720 payload="[선이]" src=orig
 "ddk_sk_deepimpact_03" CANCEL startms=100 endms=720 payload="[선스]" src=orig
-"ddk_sk_deepimpact_03" SOUND startms=200 payload="PC_DRAGONKNIGHT_F.PC_DragonKnight_F_SK_DeepImpact1_FX000_3" src=orig
+"ddk_sk_deepimpact_03" SOUND startms=180 payload="PC_DRAGONKNIGHT_F.PC_DragonKnight_F_SK_DeepImpact1_FX000_3" src=orig
 "ddk_sk_deepimpact_03" EFFECT startms=250 payload="" src=orig
 "ddk_sk_deepimpact_03" EFFECT startms=250 payload="FX_PC_DDK_00.Par_J_DDK_DeepImpact_01_3" src=orig
 "ddk_sk_deepimpact_03" EFFECT startms=250 payload="FX_PC_DDK_00.Par_J_DDK_DeepImpact_02_2" src=orig
@@ -1155,10 +1155,10 @@ LOSTARK_ANIM_EVENTS 3 "GuardianKnight" 2203
 "ddk_sk_eurosloof_03" CANCEL startms=0 endms=1500 payload="회피캔슬" src=orig
 "ddk_sk_eurosloof_03" CANCEL startms=0 endms=1500 payload="비늘 갑옷" src=orig
 "ddk_sk_eurosloof_03" SUPERARMOR startms=0 endms=1000 payload="" src=orig
-"ddk_sk_eurosloof_03" SOUND startms=1 payload="PC_DRAGONKNIGHT_F.PC_DragonKnight_F_SK_EurosLoop1_Vox1_2" src=orig
+"ddk_sk_eurosloof_03" SOUND startms=200 payload="PC_DRAGONKNIGHT_F.PC_DragonKnight_F_SK_EurosLoop1_Vox1_2" src=orig
 "ddk_sk_eurosloof_03" CANCEL startms=100 endms=800 payload="[선스]" src=orig
 "ddk_sk_eurosloof_03" CANCEL startms=100 endms=1000 payload="[선이]" src=orig
-"ddk_sk_eurosloof_03" SOUND startms=100 payload="PC_DRAGONKNIGHT_F.PC_DragonKnight_F_SK_EurosLoop1_FX000_3" src=orig
+"ddk_sk_eurosloof_03" SOUND startms=0 payload="PC_DRAGONKNIGHT_F.PC_DragonKnight_F_SK_EurosLoop1_FX000_3" src=orig
 "ddk_sk_eurosloof_03" EFFECT startms=200 payload="FX_PC_DDK_04.Par_M_DDK_EurosLoop_AnimTrail_01" src=orig
 "ddk_sk_eurosloof_03" EFFECT startms=400 payload="FX_Post.FX_Par.Par_C_ZoomBlur_02" src=orig
 "ddk_sk_eurosloof_03" EFFECT startms=400 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
@@ -2023,7 +2023,7 @@ LOSTARK_ANIM_EVENTS 3 "GuardianKnight" 2203
 "ddk_sk_wildupper_03" CANCEL startms=200 endms=820 payload="[선스]" src=orig
 "ddk_sk_wildupper_03" EFFECT startms=200 payload="FX_PC_DDK_03.Par_S_DDK_WildUpper_06_Rib_01" src=orig
 "ddk_sk_wildupper_03" SOUND startms=250 payload="PC_DRAGONKNIGHT_F.PC_DragonKnight_F_SK_WildUpper1_FX000_2" src=orig
-"ddk_sk_wildupper_03" SOUND startms=250 payload="PC_DRAGONKNIGHT_F.PC_DragonKnight_F_SK_WildUpper1_Vox1_2" src=orig
+"ddk_sk_wildupper_03" SOUND startms=150 payload="PC_DRAGONKNIGHT_F.PC_DragonKnight_F_SK_WildUpper1_Vox1_2" src=orig
 "ddk_sk_wildupper_03" HIT startms=393 endms=594 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=0 pushr=0 area=2 ar=280 aa=180 ah=180 ax=20 arem=0 maxt=0 src=orig
 "ddk_sk_wildupper_03" EFFECT startms=450 payload="" src=orig
 "ddk_sk_wildupper_03" EFFECT startms=450 payload="FX_PC_DDK_03.Par_S_DDK_WildUpper_00_03" src=orig
@@ -2202,3 +2202,47 @@ LOSTARK_ANIM_EVENTS 3 "GuardianKnight" 2203
 "ddk_sk_super_sanctumofembereth" HIT startms=300 endms=300 rep=1 repms=0 fz=1000 fzin=250 fzout=350 push=80 pushr=10 area=2 ar=800 aa=550 ah=225 ax=0 arem=0 maxt=0 src=orig
 "ddk_sk_revenge_02" HIT startms=300 endms=363 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=0 pushr=0 area=2 ar=350 aa=250 ah=180 ax=0 arem=0 maxt=0 src=orig
 "ddk_sk_brutalmarch_03" HIT startms=300 endms=363 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=0 pushr=0 area=2 ar=350 aa=250 ah=180 ax=0 arem=0 maxt=0 src=orig
+"ddk_att_battle_1_01" EFFECT startms=0 payload="effect.guardianknight.skill.49000.clip.0.full.restore" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"ddk_att_battle_1_02" EFFECT startms=0 payload="effect.guardianknight.skill.49000.clip.1.full.restore" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"ddk_att_battle_1_03" EFFECT startms=0 payload="effect.guardianknight.skill.49000.clip.2.full.restore" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"ddk_att_identity1_1_01" EFFECT startms=0 payload="effect.guardianknight.skill.49001.clip.0.full.restore" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"ddk_att_identity1_1_02" EFFECT startms=0 payload="effect.guardianknight.skill.49001.clip.1.full.restore" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"ddk_att_identity1_1_03" EFFECT startms=0 payload="effect.guardianknight.skill.49001.clip.2.full.restore" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"ddk_sk_lunge" EFFECT startms=0 payload="effect.guardianknight.skill.49020.clip.0.full.restore" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"ddk_sk_flying_01" EFFECT startms=0 payload="effect.guardianknight.skill.49021.clip.0.full.restore" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"ddk_sk_flying_02" EFFECT startms=0 payload="effect.guardianknight.skill.49021.clip.1.full.restore" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"ddk_sk_flying_03" EFFECT startms=0 payload="effect.guardianknight.skill.49021.clip.4.full.restore" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"ddk_sk_transformdragon" EFFECT startms=0 payload="effect.guardianknight.skill.49040.clip.0.full.restore" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"ddk_sk_transformhuman" EFFECT startms=0 payload="effect.guardianknight.skill.49041.clip.0.full.restore" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"ddk_sk_cleave" EFFECT startms=0 payload="effect.guardianknight.skill.49100.clip.0.full.restore" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"ddk_sk_wildupper_02" EFFECT startms=0 payload="effect.guardianknight.skill.49110.clip.1.full.restore" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"ddk_sk_wildupper_03" EFFECT startms=0 payload="effect.guardianknight.skill.49110.clip.2.full.restore" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"ddk_sk_thrust_02" EFFECT startms=0 payload="effect.guardianknight.skill.49120.clip.1.full.restore" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"ddk_sk_thrust_03" EFFECT startms=0 payload="effect.guardianknight.skill.49120.clip.2.full.restore" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"ddk_sk_guillotinespin_02" EFFECT startms=0 payload="effect.guardianknight.skill.49130.clip.1.full.restore" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"ddk_sk_guillotinespin_03" EFFECT startms=0 payload="effect.guardianknight.skill.49130.clip.2.full.restore" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"ddk_sk_revenge_01" EFFECT startms=0 payload="effect.guardianknight.skill.49200.clip.0.full.restore" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"ddk_sk_revenge_04" EFFECT startms=0 payload="effect.guardianknight.skill.49200.clip.1.full.restore" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"ddk_sk_revenge_02" EFFECT startms=0 payload="effect.guardianknight.skill.49200.clip.2.full.restore" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"ddk_sk_brutalmarch_01" EFFECT startms=0 payload="effect.guardianknight.skill.49210.clip.0.full.restore" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"ddk_sk_brutalmarch_02" EFFECT startms=0 payload="effect.guardianknight.skill.49210.clip.1.full.restore" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"ddk_sk_brutalmarch_03" EFFECT startms=0 payload="effect.guardianknight.skill.49210.clip.2.full.restore" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"ddk_sk_flame_scale_01" EFFECT startms=0 payload="effect.guardianknight.skill.49220.clip.0.full.restore" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"ddk_sk_flame_scale_02" EFFECT startms=0 payload="effect.guardianknight.skill.49220.clip.1.full.restore" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"ddk_sk_abaddonflame_01" EFFECT startms=0 payload="effect.guardianknight.skill.49230.clip.0.full.restore" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"ddk_sk_abaddonflame_02" EFFECT startms=0 payload="effect.guardianknight.skill.49230.clip.1.full.restore" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"ddk_sk_grandfinale_02" EFFECT startms=0 payload="effect.guardianknight.skill.49150.clip.1.full.restore" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"ddk_sk_grandfinale_03" EFFECT startms=0 payload="effect.guardianknight.skill.49150.clip.2.full.restore" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"ddk_sk_eurosloof_01" EFFECT startms=0 payload="effect.guardianknight.skill.49260.clip.0.full.restore" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"ddk_sk_eurosloof_02" EFFECT startms=0 payload="effect.guardianknight.skill.49260.clip.1.full.restore" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"ddk_sk_eurosloof_03" EFFECT startms=0 payload="effect.guardianknight.skill.49260.clip.2.full.restore" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"ddk_sk_eurosflash_01" EFFECT startms=0 payload="effect.guardianknight.skill.49270.clip.0.full.restore" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"ddk_sk_eurosflash_02" EFFECT startms=0 payload="effect.guardianknight.skill.49270.clip.1.full.restore" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"ddk_sk_eurosflash_03" EFFECT startms=0 payload="effect.guardianknight.skill.49270.clip.2.full.restore" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"ddk_sk_deepimpact_01" EFFECT startms=0 payload="effect.guardianknight.skill.49330.clip.0.full.restore" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"ddk_sk_deepimpact_03" EFFECT startms=0 payload="effect.guardianknight.skill.49330.clip.2.full.restore" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"ddk_sk_prayforembereth_01" EFFECT startms=0 payload="effect.guardianknight.skill.49400.clip.0.full.restore" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"ddk_sk_prayforembereth_02" EFFECT startms=0 payload="effect.guardianknight.skill.49400.clip.1.full.restore" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"ddk_sk_prayforembereth_03" EFFECT startms=0 payload="effect.guardianknight.skill.49400.clip.2.full.restore" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"ddk_sk_super_sanctumofembereth" EFFECT startms=0 payload="effect.guardianknight.skill.49420.clip.0.full.restore" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"ddk_sk_deepimpact_02" EFFECT startms=0 payload="effect.guardianknight.skill.49330.clip.1.full.restore" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1

@@ -1143,6 +1143,7 @@ Client::CEffect_Tool::Build_PreviewDocument(
                 // A stale selection must never expose the complete Effect.
                 Preview.Elements.clear();
                 Preview.ModelCues.clear();
+                Preview.OwnerControls.clear();
                 return Preview;
             }
             std::erase_if(Preview.Elements, [this](const EFFECT_ELEMENT_DESC& Element)
@@ -1161,7 +1162,7 @@ Client::CEffect_Tool::Build_PreviewDocument(
         if (!bGroupExists)
         {
             if (EFFECT_PREVIEW_FILTER::SOLO_SELECTED_GROUP == m_ePreviewFilter)
-            { Preview.Elements.clear(); Preview.ModelCues.clear(); }
+            { Preview.Elements.clear(); Preview.ModelCues.clear(); Preview.OwnerControls.clear(); }
             return Preview;
         }
         std::erase_if(Preview.Elements,
@@ -1188,7 +1189,7 @@ Client::CEffect_Tool::Build_PreviewDocument(
     if (!bSelectionExists)
     {
         if (EFFECT_PREVIEW_FILTER::SOLO_SELECTED == m_ePreviewFilter)
-        { Preview.Elements.clear(); Preview.ModelCues.clear(); }
+        { Preview.Elements.clear(); Preview.ModelCues.clear(); Preview.OwnerControls.clear(); }
         return Preview;
     }
     std::erase_if(Preview.Elements,

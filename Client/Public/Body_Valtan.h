@@ -40,12 +40,15 @@ public:
 	virtual HRESULT Render() override;
 	virtual HRESULT Render_Group(RENDERGROUP group) override;
 	virtual HRESULT Render_Shadow() override;
+    std::string Get_RenderDiagnostic() const;
     void Reset_ChargeAfterimage() { m_ChargeAfterimage.Reset(); }
 
 private:
 	shared_ptr<CShader> m_pShaderCom = { nullptr };
 	shared_ptr<CModel> m_pModelCom = { nullptr };
 	bool_t m_hasTranslucentMeshes = { false };
+    uint32_t m_iTranslucentDrawCount = 0u;
+    std::string m_strTranslucentRenderFailure;
     const bool* m_pChargeAfterimageEnabled = nullptr;
     CSkeletalAfterimage m_ChargeAfterimage;
 	const uint32_t* m_pParentState = { nullptr };

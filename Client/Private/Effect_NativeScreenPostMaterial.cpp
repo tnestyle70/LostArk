@@ -56,7 +56,7 @@ HRESULT Client::EFFECT_SCENE_CAPTURE_STATE::Capture_Once(
 
 bool Client::Is_NativeScreenPostShaderProfile(const uint32_t iProfile)
 {
-    if (iProfile >= 2304u && iProfile <= 3967u)
+    if (iProfile >= 2304u && iProfile <= 4543u)
         return std::ranges::any_of(ARTIST_PROGRAMS, [iProfile](const auto& Program)
             { return Program.iProfileIndex == iProfile && Program.strRendererShape == "screenPost"; });
     return iProfile == 68u || iProfile == 76u || iProfile == 155u ||
@@ -178,6 +178,25 @@ HRESULT Client::CEffectNativeScreenPostMaterial::Bind(
     BindRaw("g_PostSourceColor", State.vSourceColor);
     BindRaw("g_PostSourceDynamicParameter", State.vDynamicParameter);
     BindRaw("g_PostSourceProjectionW", State.fProjectionW);
+    BindRaw("g_PostSourceProjectionZ", State.fProjectionZ);
+    if (State.iProfile == 4006u || State.iProfile == 4060u)
+    {
+        if (!std::isfinite(State.fProjectionZ) || std::abs(State.fProjectionZ) < 1.e-6f) return S_FALSE;
+        for (const auto& Row : State.SourceLocalToWorld) if (!IsFinite(Row)) return E_INVALIDARG;
+        for (const auto& Row : State.SourceWorldToView) if (!IsFinite(Row)) return E_INVALIDARG;
+        const auto& Forward = State.SourceLocalToWorld[0];
+        const auto& View0 = State.SourceWorldToView[0];
+        const auto& View1 = State.SourceWorldToView[1];
+        const auto& View2 = State.SourceWorldToView[2];
+        const float ScreenX = -(Forward.x * View0.x + Forward.y * View1.x + Forward.z * View2.x);
+        const float ScreenY = -(Forward.x * View0.y + Forward.y * View1.y + Forward.z * View2.y);
+        // The source atan polynomial divides by max(abs(x), abs(y)).
+        // A forward vector exactly along the camera has no screen direction.
+        if (!std::isfinite(ScreenX) || !std::isfinite(ScreenY)) return E_INVALIDARG;
+        if (std::max(std::abs(ScreenX), std::abs(ScreenY)) < 1.e-6f) return S_FALSE;
+        BindRaw("g_ArtistSourceLocalToWorld", State.SourceLocalToWorld);
+        BindRaw("g_ArtistSourceWorldToView", State.SourceWorldToView);
+    }
     const float Emissive = 1.f;
     const float ColorClip = 0.f;
     BindRaw("g_EmissiveIntensity", Emissive);
@@ -199,7 +218,7 @@ HRESULT Client::CEffectNativeScreenPostMaterial::Bind(
     }
     else if ((State.iProfile == 876u || State.iProfile == 894u ||
         State.iProfile == 1619u || State.iProfile == 1623u || State.iProfile == 1648u ||
-        (State.iProfile >= 2304u && State.iProfile <= 3967u)))
+        (State.iProfile >= 2304u && State.iProfile <= 4543u)))
     {
         BindRaw("g_ArtistSourceMaterialParameters", State.Parameters);
         BindRaw("g_ArtistSourceMaterialTime", State.fLocalTimeSeconds);

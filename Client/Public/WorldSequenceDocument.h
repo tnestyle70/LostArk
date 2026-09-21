@@ -405,6 +405,7 @@ public:
 		return m_Instances;
 	}
 
+    static bool_t Is_ValidMaterialProfile(const WORLD_SEQUENCE_MATERIAL_PROFILE& profile);
     static bool_t Build_MaterialOverride(const WORLD_SEQUENCE_MATERIAL_PROFILE& profile,
         const std::filesystem::path& resourceRoot, Engine::MODEL_MATERIAL_OVERRIDE& out);
 

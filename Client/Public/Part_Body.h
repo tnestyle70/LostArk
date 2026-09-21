@@ -2,6 +2,7 @@
 
 #include "Client_Defines.h"
 #include "PartObject.h"
+#include "SkeletalAfterimage.h"
 
 NS_BEGIN(Engine)
 class CShader;
@@ -42,6 +43,12 @@ public:
 	void Set_HiddenMeshes(uint32_t iHiddenMeshMask) {
 		m_iHiddenMeshMask = iHiddenMeshMask;
 	}
+    bool Get_AfterimageView(CSkeletalAfterimage::MODEL_VIEW& view) const
+    {
+        if (!m_pModelCom || !Try_Get_PresentationRootMatrix(&view.world)) return false;
+        view.model = view.paletteModel = m_pModelCom; view.shader = m_pShaderCom;
+        view.hiddenMeshMask = m_iHiddenMeshMask; view.socketed = false; return true;
+    }
 	void Set_WeaponReplacementBody(const shared_ptr<CModel>& body) { m_WeaponReplacementBody = body; }
 	bool_t Set_Animation(const char_t* pClipName, bool_t isLoop);
 	/* Uses the same local x parent composition as the rendered body, including

@@ -251,7 +251,7 @@ inline constexpr std::array ANIMATION_PREVIEW_ASSETS =
 	ANIMATION_PREVIEW_ASSET
 	{
 		"boss.valtan",
-		"[Boss] Valtan - MN_RPBF_01 + AnimSet (173 clips)",
+		"[Boss] Valtan - MN_RPBF_01 + Cinematic AnimSet (177 clips)",
 		"Valtan",
 		"Character/Valtan/MN_RPBF_01.wmodel",
 		L"Prototype_Component_Model_AnimationPreview_Boss_Valtan",
@@ -260,12 +260,12 @@ inline constexpr std::array ANIMATION_PREVIEW_ASSETS =
 		-90.f,
 		true,
 		"BOSS_VALTAN",
-		"Character/Valtan/AnimSets/MN_RPBF_01_AnimSet.wmodel"
+		"Character/Valtan/Cinematics/MN_RPBF_01_CinematicAnimSet.wmodel"
 	},
 	ANIMATION_PREVIEW_ASSET
 	{
 		"boss.valtan.ghost",
-		"[Boss] Ghost Valtan - MN_RPBF_02 + AnimSet (286 clips)",
+		"[Boss] Ghost Valtan - MN_RPBF_02 + Cinematic AnimSet (290 clips)",
 		"Valtan_Ghost_MN_RPBF_02",
 		"Character/Valtan/Ghost/MN_RPBF_02.wmodel",
 		L"Prototype_Component_Model_AnimationPreview_Boss_Valtan_Ghost",
@@ -279,7 +279,7 @@ inline constexpr std::array ANIMATION_PREVIEW_ASSETS =
 		rescaled to its units, keeping the product mesh_* names. With it
 		attached both Valtan bodies answer to one clip vocabulary, so a chain
 		authored on either plays on the other with no rename step. */
-		"Character/Valtan/Ghost/MN_RPBF_02_AnimSet.wmodel",
+		"Character/Valtan/Cinematics/MN_RPBF_02_CinematicAnimSet.wmodel",
 		/* The ghost body carries the same 87-bone rig and the same b_wp_r_01
 		hand socket as the product body, so it holds the product axe rather than
 		a second authored asset. MN_RPBF_02 is authored 100x smaller than

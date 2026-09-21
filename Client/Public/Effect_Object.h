@@ -17,6 +17,8 @@
 
 NS_BEGIN(Client)
 
+class CCharacter;
+
 class CEffectObject final : public CGameObject, public IPresentationProvider
 {
 public:
@@ -35,6 +37,10 @@ public:
 		bool_t bAutoPlay = true;
 		bool_t bRequirePreparedResources = false;
 		f32_t fPlaybackRate = 1.f;
+        std::weak_ptr<CCharacter> pControlOwner;
+        bool_t bExplicitControlOwner = false;
+        bool_t bControlPreview = true;
+        uint32_t iControlActionStartTick = 0u;
 	};
 
 private:
@@ -109,6 +115,8 @@ public:
 	void Set_ReconstructedDiagnosticSolo(
 		RECONSTRUCTED_DIAGNOSTIC_SOLO eSolo);
 	void Use_ExternalModelCueAnchors();
+    void Set_PresentationControlOwner(const std::weak_ptr<CCharacter>& owner, bool_t preview, uint32_t actionStartTick = 0u);
+    void Set_AfterimageOwnerProvider(CEffectDocumentRenderer::AFTERIMAGE_OWNER_PROVIDER provider);
 	bool_t Select_OccurrenceElement(std::string_view elementId, std::string& status);
 	// Product source-local visibility reuses the same object-local submission mask.
 	// Evaluation and the admitted document remain unchanged.
@@ -273,6 +281,14 @@ private:
 		bool_t bPreserveFailedResult);
 	void Reset_RenderFailureIsolation();
 	void Bind_ModelCueAnchorProvider();
+    void Update_PresentationOwnerControls();
+    void Release_PresentationOwnerControls();
+    uint64_t m_iOwnerControlToken = 0u;
+    std::vector<EFFECT_OWNER_CONTROL_DESC> m_OwnerControls;
+    std::weak_ptr<CCharacter> m_ControlOwner, m_LastControlRecipient;
+    bool_t m_bControlOwnerBound = false, m_bControlPreview = true;
+    uint32_t m_iControlActionStartTick = 0u;
+
 
 private:
 	unique_ptr<CEffectDocumentRenderer> m_pRenderer;

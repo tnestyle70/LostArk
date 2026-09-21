@@ -91,6 +91,25 @@ def write_empty_product_contract(root: Path, animation_asset_id: str) -> None:
 
 
 class EffectComponentTests(unittest.TestCase):
+    def test_owner_control_only_and_particle_assembly_preserve_curves(self) -> None:
+        controls = [{"controlId": "guardian.owner.material", "kind": "MATERIAL_VECTOR",
+                     "parameter": "transcolor", "mappingBasis": "PROJECT_ADAPTER",
+                     "sourceTargetType": 4, "onlyLocalPlayer": True, "startSeconds": .25,
+                     "keys": [{"seconds": 0., "value": [1., .5, .25, 1.]},
+                              {"seconds": 1., "value": [0., 0., 0., 0.]}]}]
+        for rows in ([], [element("slash", "hit01", 0.)]):
+            document = {"schema": "lostark.effect-authoring", "version": 13,
+                        "effectAssetId": "effect.guardianknight.skill.49120.clip.0.controls",
+                        "displayName": "Guardian owner control", "particleSystem": {},
+                        "modelCues": [], "ownerControls": copy.deepcopy(controls), "elements": rows}
+            assembly, outputs = split_document(document, "GuardianKnight")
+            compiled = compile_assembly(assembly, {item["componentAssetId"]: item for _, item in outputs})
+            self.assertEqual(compiled["ownerControls"], controls)
+            self.assertEqual(len(compiled["elements"]), len(rows))
+            assembly["ownerControls"][0]["keys"][1]["value"][3] = .75
+            self.assertEqual(document["ownerControls"], controls)
+            self.assertEqual(compiled["ownerControls"], controls)
+
     def test_generated_component_display_name_obeys_runtime_utf8_limit(self) -> None:
         effect_id = (
             "effect.dimensionmaster.skill.2050240."

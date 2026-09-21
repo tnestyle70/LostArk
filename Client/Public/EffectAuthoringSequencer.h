@@ -56,6 +56,13 @@ public:
         std::unordered_map<std::string, float4x4_t>& anchors, std::string& error) const;
     void Set_V2SnapshotProvider(V2_SNAPSHOT_PROVIDER provider);
     void Render_WorkbenchDetail() { Render_BoxDetail(true); }
+    void Render_WorkbenchResources() { Render_CompositionResources(true); }
+    bool Is_Dirty() const { return m_Dirty; }
+    bool Open_CharacterModelSequence(const std::string& sequenceId);
+    bool Export_CharacterModelAction(ANIMATION_SKILL_BINDING& binding,
+        ANIMATION_EFFECT_CUE_DOCUMENT& cues, const std::string& soundOwner, std::string& status);
+    void Refresh_ModelResources() { m_ResourceModelGeneration = ~std::uint64_t{0u}; }
+
     void Render_ModelView(); // Contents inside the existing Model View window.
     void Render_PreviewPlacementControls();
     bool Update_PreviewPlacementInput(bool active);
@@ -65,7 +72,8 @@ public:
         std::optional<std::uint32_t> stageIndex = std::nullopt);
     bool Stage_CharacterAction(const std::string& asset, const ANIMATION_SKILL_BINDING& binding,
         const ANIMATION_EFFECT_CUE_DOCUMENT& cues, const std::vector<CHARACTER_ACTION_COMBAT_ROW>& combat,
-        std::optional<std::uint32_t> stageIndex = std::nullopt);
+        std::optional<std::uint32_t> stageIndex = std::nullopt, const std::string& soundOwner = {},
+        const ANIMATION_EFFECT_CUE_DOCUMENT* externalOwnerCues = nullptr);
     void Render_PreviewOverlays() { Render_Colliders(); }
     std::uint32_t Preview_DurationMs() const { return DurationMs(); }
     bool Select_KoukuEffect(const std::string& assetId, bool requiresSourceModel, bool reusePlayerAnchor = false,
@@ -139,6 +147,7 @@ private:
         bool screenPost = false;
         // Product cue projection only; these values are owned by animevents.
         bool productNaturalDuration = false, productSnapshot = false, productActionFacing = false;
+        bool productExternalOwner = false; // Vehicle lifetime projection; saved sequence never rewrites a skill cue owner.
         std::optional<std::uint32_t> productStopDuration;
         std::optional<float4x4_t> productSpawnPivot, productSpawnOwner;
         float productFacingDegrees = 0.f;
@@ -197,7 +206,7 @@ private:
     bool Sample_Sounds(bool forceSeek = false);
     void Stop_Sounds();
     void Render_Colliders();
-    void Render_CompositionResources();
+    void Render_CompositionResources(bool embedded = false);
     void Render_BoxDetail(bool embedded = false);
     bool Refresh_CompositionResourceInventory();
     void Rebuild_CompositionResourceTrees();

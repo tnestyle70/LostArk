@@ -9,7 +9,7 @@ import argparse, copy, hashlib, json, re
 from native_material_tables import read_material_bytes, read_material_source, write_material_source
 
 ROOT=Path(__file__).resolve().parents[2]
-FIRST,LAST=2304,3967
+FIRST,LAST=2304,4543
 def read(path):return json.loads(path.read_text(encoding='utf-8-sig'))
 def write(path,value):
     path.parent.mkdir(parents=True,exist_ok=True)
@@ -18,7 +18,8 @@ def quote(value):return json.dumps(value,ensure_ascii=False)
 def profile_id(parent):
     slug=re.sub('[^a-z0-9]+','.',parent.lower()).strip('.')
     return 'ue3.material.'+slug[:72]+'.'+hashlib.sha256(parent.encode()).hexdigest()[:12]
-def install(contract_path,evidence,header_path):
+def install(contract_path,evidence,header_path,resource_root=None):
+    resources = resource_root or ROOT / "Client/Bin/Resources"
     contract=read(contract_path);programs=copy.deepcopy(contract['programs'])
     assert not contract.get('deferredPrograms'),('native programs are incomplete',contract.get('deferredPrograms'))
     owned={p['program'] for p in programs}
@@ -44,7 +45,7 @@ def install(contract_path,evidence,header_path):
             render='OPAQUE_BACK_DEPTH_WRITE'
         textures=p['textures'];parameters=p['parameters'];switches=p['staticSwitches']
         for texture in textures:
-            assert (ROOT/'Client/Bin/Resources'/texture['assetId']).is_file(),texture
+            assert (resources/texture['assetId']).is_file(),texture
         assert len({v['name'] for v in parameters})==len(parameters)
         arrays.append(f'inline constexpr std::array<std::string_view,{len(textures)}> ARTIST_TEXTURES_{i} = {{{{'+','.join(quote(t['name']) for t in textures)+'}};\n')
         arrays.append(f'inline constexpr std::array<ARTIST_PARAMETER_DESC,{len(parameters)}> ARTIST_PARAMETERS_{i} = {{{{\n'+''.join('    {'+quote(v['name'])+f', {v["row"]}u, {v["lane"] or 0}u, '+str(v['kind']=='vector').lower()+'},\n' for v in parameters)+'}};\n')

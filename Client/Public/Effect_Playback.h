@@ -169,6 +169,7 @@ struct EFFECT_EVALUATED_SCREEN_POST final
 	float4_t vSourceColor = { 1.f, 1.f, 1.f, 1.f };
 	float4_t vSourceDynamicParameter = { 1.f, 1.f, 1.f, 1.f };
 	float4x4_t SourceWorld{};
+	float4x4_t SourceEmitterWorld{};
 	f32_t fSourceCameraOffset = 0.f;
 	f32_t fNormalizedLife = 0.f;
 };
@@ -292,6 +293,7 @@ private:
 		f32_t fSpawnEmitterTimeSeconds = 0.f;
 		f32_t fAgeSeconds = 0.f;
 		f32_t fLifeTimeSeconds = 1.f;
+		bool_t bSourceZeroLifetime = false;
 		uint64_t iSpawnSimulationStep = 0u;
         float3_t vSourceCollisionPreviousPosition{};
         float3_t vSourceCollisionDamping{};

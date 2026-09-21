@@ -2674,7 +2674,7 @@ HRESULT Client::CEffectDocumentRenderer::Stage_ModelCueResource(
 		Cue.strSuppressHorizontalRootMotionBone + "\n" + std::to_string(Cue.iRootMotionVerticalAxis) +
         "\n" + std::to_string(Cue.fRootMotionVerticalScale);
 	shared_ptr<Engine::CModel> Model;
-	if (nullptr != pSharedAssets)
+	if (nullptr != pSharedAssets && !Cue.SourceMaterialProfile)
 	{
 		const auto Cached =
 			pSharedAssets->AnimatedModelPrototypes.find(CacheKey);
@@ -2690,6 +2690,14 @@ HRESULT Client::CEffectDocumentRenderer::Stage_ModelCueResource(
 		Engine::MODEL_ASSET_LOAD_DESC ModelLoad;
 		if (!CActorCatalog::Build_ModelLoadDescription(Cue.strModelAssetId, ModelLoad, strOutError))
 			return E_FAIL;
+        if (Cue.SourceMaterialProfile)
+        {
+            Engine::MODEL_MATERIAL_OVERRIDE material;
+            if (!CWorldSequenceDocument::Build_MaterialOverride(*Cue.SourceMaterialProfile, ModelLoad.assetRoot, material) ||
+                !ModelLoad.materialOverrides.empty())
+            { strOutError = "Model Cue source material conflicts with its catalog owner: " + Cue.strCueId; return E_INVALIDARG; }
+            ModelLoad.materialOverrides.push_back(std::move(material));
+        }
 		unique_ptr<Engine::CModel> Loaded = Engine::CModel::Create(
 			m_pDevice, m_pContext, MODEL::ANIM, ModelLoad, PreTransform);
 		if (nullptr != Loaded)
@@ -2736,7 +2744,7 @@ HRESULT Client::CEffectDocumentRenderer::Stage_ModelCueResource(
 			iAnimation, fPosition, fDurationTicks) ||
 		!std::isfinite(fDurationTicks) || fDurationTicks <= 0.f ||
 		(!Cue.bLoop && !Cue.bHoldLastFrame &&
-		 Cue.fDurationSeconds > fDurationTicks / fTicksPerSecond + 0.001f))
+		 Cue.fDurationSeconds * Cue.fClipPlayRate > fDurationTicks / fTicksPerSecond + 0.001f))
 	{
 		strOutError = "Animated Model Cue duration exceeds its source clip: " +
 			Cue.strCueId;
@@ -2744,7 +2752,7 @@ HRESULT Client::CEffectDocumentRenderer::Stage_ModelCueResource(
 	}
 	Model->Set_AnimTrackPosition(iAnimation, 0.f);
 	Model->Play_Animation(0.f);
-	if (nullptr != pSharedAssets)
+	if (nullptr != pSharedAssets && !Cue.SourceMaterialProfile)
 		pSharedAssets->AnimatedModelPrototypes.emplace(CacheKey, Model);
 
 	std::shared_ptr<const ELEMENT_RESOURCE> MaterialResource;

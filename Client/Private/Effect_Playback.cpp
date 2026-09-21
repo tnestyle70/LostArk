@@ -3531,6 +3531,10 @@ bool_t Client::CEffectPlayback::Stage_PrevalidatedDocumentInternal(
 		}
 	}
 
+    for (const auto& control : pStagedDocument->OwnerControls)
+        if (!control.Keys.empty())
+            fStagedDuration = (std::max)(fStagedDuration, control.fStartSeconds + control.Keys.back().fSeconds);
+
 	m_Document = nullptr == pImmutableDocument ?
 		std::move(StagedOwnedDocument) : EFFECT_DOCUMENT_DESC{};
 	m_pPreparedResources = std::move(pPreparedResources);
@@ -4974,7 +4978,14 @@ void Client::CEffectPlayback::Spawn_Particles(
 		Particle.vVelocity = Add3(
 			Particle.vVelocity, Particle.vInheritedParentVelocity);
 		Particle.vBaseVelocity = Particle.vVelocity;
-		if (Particle.fLifeTimeSeconds <= 0.f)
+		// UE Lifetime=0 retains RelativeTime=0 until the owning system stops.
+		// Keep a finite storage bound for existing kill/death comparisons; all
+		// normalized-age consumers use the explicit source lifetime state.
+		Particle.bSourceZeroLifetime = Element.SourceRecipe.bEnabled &&
+			Particle.fLifeTimeSeconds <= 0.f;
+		if (Particle.bSourceZeroLifetime)
+			Particle.fLifeTimeSeconds = (std::numeric_limits<f32_t>::max)();
+		else if (Particle.fLifeTimeSeconds <= 0.f)
 			Particle.fLifeTimeSeconds = Random_Range(
 				State, Desc.vLifeTimeSeconds.x, Desc.vLifeTimeSeconds.y);
 		Particle.fLifeTimeSeconds = (std::max)(
@@ -6130,6 +6141,17 @@ void Client::CEffectPlayback::Update_Particles(
 {
 	if (State.Particles.empty())
 		return;
+	// Zero-Lifetime particles have no natural death, but their original
+	// occurrence still ends at its authored notify boundary. Owner-sustained
+	// ambience instead ends through the existing runtime owner contract.
+	const f32_t fSourceZeroEnd = m_bOwnerSustainedSourceLoops ?
+		(m_fSourceLoopEndSeconds > 0.f ? m_fSourceLoopEndSeconds :
+		 (std::numeric_limits<f32_t>::max)()) :
+		Element.Detail.Timing.fStartDelaySeconds + Element.Detail.Timing.fLifeTimeSeconds;
+	if (m_fSampleTimeSeconds >= fSourceZeroEnd)
+		std::erase_if(State.Particles, [](const PARTICLE_STATE& Particle) {
+			return Particle.bSourceZeroLifetime;
+		});
 	const f32_t fEmitterElapsed = (std::max)(0.f,
 		m_fSampleTimeSeconds -
 		Element.Detail.Timing.fStartDelaySeconds -
@@ -6210,7 +6232,7 @@ void Client::CEffectPlayback::Update_Particles(
 		if (bBirthStep && bDeferEnhancedNativeBirthIntegration)
 			continue;
 		const f32_t fNormalizedAge = Clamp01(
-			Particle.fAgeSeconds / Particle.fLifeTimeSeconds);
+			(Particle.bSourceZeroLifetime ? 0.f : Particle.fAgeSeconds / Particle.fLifeTimeSeconds));
 		if (Element.SourceRecipe.bEnabled)
 		{
 			Apply_SourceUpdateModules(Element, State, Particle, fEmitterTime,
@@ -7022,7 +7044,7 @@ void Client::CEffectPlayback::Sample_Trail(
             const auto matrix = XMLoadFloat4x4(Element.Detail.Particle.bLocalSpace ? &world : &particle.SpawnRootWorld);
             EFFECT_EVALUATED_TRAIL_POINT point;
             point.vWorldPosition = Transform_Coord(particle.vPosition, matrix);
-            point.fNormalizedAge = (std::min)(.999999f, particle.fAgeSeconds / particle.fLifeTimeSeconds);
+            point.fNormalizedAge = (std::min)(.999999f, (particle.bSourceZeroLifetime ? 0.f : particle.fAgeSeconds / particle.fLifeTimeSeconds));
             point.fSourceWidth = std::abs(particle.vSize.x) * XMVectorGetX(XMVector3Length(matrix.r[0]));
             point.vSourceColor = particle.vColor;
             point.vDynamicParameter = particle.vDynamicParameter;
@@ -7793,7 +7815,19 @@ float4x4_t Client::CEffectPlayback::Evaluate_ElementWorld(
 			Attachment.fSnapshotRootSourceBasisYawDegrees));
 	}
 	float4x4_t Result{};
-	XMStoreFloat4x4(&Result, Local * SnapshotRootSourceBasis * Parent);
+	matrix_t World = Local * SnapshotRootSourceBasis * Parent;
+	if (Element.eKind == EFFECT_ELEMENT_KIND::MESH && !Detail.Mesh.bInheritParentRotation)
+	{
+		// bApplyLocalRotation=false changes the basis, not the attached position.
+		const vector_t PositionWorld = World.r[3];
+		const matrix_t ParentScale = XMMatrixScaling(
+			XMVectorGetX(XMVector3Length(Parent.r[0])),
+			XMVectorGetX(XMVector3Length(Parent.r[1])),
+			XMVectorGetX(XMVector3Length(Parent.r[2])));
+		World = Local * SnapshotRootSourceBasis * ParentScale;
+		World.r[3] = PositionWorld;
+	}
+	XMStoreFloat4x4(&Result, World);
 	return Result;
 }
 
@@ -8251,6 +8285,8 @@ void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld,
 					"alphascaleoverlife", T, fStableRandom, 1.f) * AuthoredColor.w };
 			Post.SourceWorld = Evaluate_ElementWorld(
 				Element, m_fSampleTimeSeconds, RootWorld);
+			XMStoreFloat4x4(&Post.SourceEmitterWorld, Element.Detail.Particle.bLocalSpace ?
+				XMLoadFloat4x4(&Post.SourceWorld) : XMMatrixIdentity());
 			const float3_t SourceLocation = UE3_CentimetersToClient(
 				Evaluate_SourceVector(Element, "particlemodulelocation",
 					"startlocation", 0.f, fStableRandom, float3_t{}));
@@ -8374,7 +8410,7 @@ void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld,
 		for (const PARTICLE_STATE& Particle : State.Particles)
 		{
 			const f32_t ParticleT = Clamp01(
-				Particle.fAgeSeconds / Particle.fLifeTimeSeconds);
+				(Particle.bSourceZeroLifetime ? 0.f : Particle.fAgeSeconds / Particle.fLifeTimeSeconds));
 			const float3_t Size = Element.SourceRecipe.bEnabled ?
 				Particle.vSize : float3_t(
 					Element.Detail.Particle.vStartSize.x +
@@ -8941,7 +8977,7 @@ float3_t Client::CEffectPlayback::Sample_AuthoredInitialVelocity(
 bool_t Client::CEffectPlayback::Enable_OwnerSustainedSourceLoops(std::string& strOutError)
 {
 	const auto& document = Get_StagedDocument();
-	if (m_fSourceLoopEndSeconds > 0.f || document.Elements.empty() || !document.ModelCues.empty() ||
+	if (m_fSourceLoopEndSeconds > 0.f || document.Elements.empty() || !document.ModelCues.empty() || !document.OwnerControls.empty() ||
 		std::any_of(document.Elements.begin(), document.Elements.end(),
 			[this](const EFFECT_ELEMENT_DESC& element)
 			{
@@ -8980,7 +9016,7 @@ bool_t Client::CEffectPlayback::Set_SourceLoopEndSeconds(
 	if (fEndSeconds > 0.f)
 	{
 		const auto& document = Get_StagedDocument();
-		if (document.Elements.empty() || !document.ModelCues.empty() ||
+		if (document.Elements.empty() || !document.ModelCues.empty() || !document.OwnerControls.empty() ||
 			std::any_of(document.Elements.begin(), document.Elements.end(),
 				[this](const EFFECT_ELEMENT_DESC& element)
 				{
