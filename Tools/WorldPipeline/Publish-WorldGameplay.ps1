@@ -338,7 +338,10 @@ function Get-EncounterProfiles {
             }
 			if ($null -ne $pattern.PSObject.Properties['bossMotion']) {
 				$bossMotion = $pattern.bossMotion
-				Assert-ExactProperties $bossMotion @('startMs','endMs','startPosition','endPosition','yawDegrees') 'KoukuSaydon bossMotion'
+				$motionProperties = @('startMs','endMs','startPosition','endPosition','yawDegrees')
+				$hasMotionKeys = $null -ne $bossMotion.PSObject.Properties['keys']
+				if ($hasMotionKeys) { $motionProperties += 'keys' }
+				Assert-ExactProperties $bossMotion $motionProperties 'KoukuSaydon bossMotion'
 				Assert-JsonInteger $bossMotion.startMs 'KoukuSaydon bossMotion startMs' 0 600000
 				Assert-JsonInteger $bossMotion.endMs 'KoukuSaydon bossMotion endMs' 1 $bossMotionPatternDurationMs
 				Assert-JsonNumber $bossMotion.yawDegrees 'KoukuSaydon bossMotion yawDegrees'
@@ -353,7 +356,27 @@ function Get-EncounterProfiles {
 						if ([Math]::Abs([double]$component) -gt 100000) { throw 'KoukuSaydon bossMotion position exceeds bounds' }
 					}
 				}
-				if ([double]$bossMotion.startPosition[1] -ne [double]$bossMotion.endPosition[1]) { throw 'KoukuSaydon bossMotion base Y must remain constant' }
+				if (-not $hasMotionKeys -and [double]$bossMotion.startPosition[1] -ne [double]$bossMotion.endPosition[1]) { throw 'KoukuSaydon bossMotion base Y must remain constant' }
+				if ($hasMotionKeys) {
+					if ($bossMotion.keys -isnot [Array] -or @($bossMotion.keys).Count -lt 2 -or @($bossMotion.keys).Count -gt 512) { throw 'Boss motion requires 2..512 keys' }
+					$previousTime = -1
+					foreach ($key in $bossMotion.keys) {
+						Assert-ExactProperties $key @('timeMs','position') 'Boss motion key'
+						Assert-JsonInteger $key.timeMs 'Boss motion key time' $bossMotion.startMs $bossMotion.endMs
+						if ($key.timeMs -le $previousTime -or $key.position -isnot [Array] -or @($key.position).Count -ne 3) { throw 'Boss motion keys require increasing times and XYZ' }
+						foreach ($coordinate in $key.position) {
+							Assert-JsonNumber $coordinate 'Boss motion key coordinate'
+							if ([Math]::Abs([double]$coordinate) -gt 100000) { throw 'Boss motion key exceeds world bounds' }
+						}
+						$previousTime = $key.timeMs
+					}
+					$firstKey = $bossMotion.keys[0]; $lastKey = $bossMotion.keys[-1]
+					if ($firstKey.timeMs -ne $bossMotion.startMs -or $lastKey.timeMs -ne $bossMotion.endMs) { throw 'Boss motion keys must match endpoint times' }
+					for ($axis = 0; $axis -lt 3; ++$axis) {
+						if ([double]$firstKey.position[$axis] -ne [double]$bossMotion.startPosition[$axis] -or
+							[double]$lastKey.position[$axis] -ne [double]$bossMotion.endPosition[$axis]) { throw 'Boss motion keys must match endpoint positions' }
+					}
+				}
 				if (@($pattern.mechanicTriggers | Where-Object { $_.kind -cin @('REAL_GAZE_TELEPORT','BOSS_TELEPORT_XZ','BOSS_TELEPORT_GROUNDED') }).Count -gt 0) { throw 'KoukuSaydon bossMotion cannot also teleport the boss' }
 			}
 		}

@@ -389,6 +389,13 @@ HRESULT Client::CEffectDocumentRenderer::Build_NativeScreenPost(
     for (auto& Texture : Snapshot.SourceTextures) if (!Texture) Texture=m_pBlackTexture;
     Snapshot.Parameters=Lance ? Resource->LanceVASourceMaterialParameters : Artist ? Resource->ArtistSourceMaterialParameters :
         ALTV ? Resource->ALTVSourceMaterialParameters : Resource->VSourceMaterialParameters;
+    // Material curves use the document source clock, as the world carriers do.
+    // The helper adds the authored source-time origin exactly once.
+    if (!Resource->ArtistMaterialTrackBindings.empty() &&
+        (!Artist || !Element.SourceTransformTrack ||
+         !Apply_ArtistMaterialTrackSamples(*Element.SourceTransformTrack, Resource->ArtistMaterialTrackBindings,
+             Frame.fSampleTimeSeconds, Snapshot.Parameters)))
+    { strOutError="Native screen-post material parameter track sample is invalid: "+Element.strElementId; return E_INVALIDARG; }
     Snapshot.iProfile=Resource->iSourceMaterialProfile;
     Snapshot.iTextureMask=Resource->iSourceTextureMask;
     Snapshot.iClampUMask=Resource->iSourceTextureClampUMask;
@@ -625,8 +632,8 @@ HRESULT Client::CEffectDocumentRenderer::Render_ModelCues(
 				default: iPass = 7u; break;
 				}
 			}
-			// The exact T summon keeps its depth/mask path without receiving map light.
-			if (bCharacterSurface) iPass = 11u;
+			// The exact T summon keeps its depth/mask path and receives normal map lighting.
+			if (bCharacterSurface) iPass = 0u;
 			hResult = Bind_BloomInputs(m_pAnimatedModelShader);
 			if (FAILED(hResult)) return hResult;
 			hResult = m_pAnimatedModelShader->Begin(iPass);

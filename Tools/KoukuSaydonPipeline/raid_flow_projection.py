@@ -16,15 +16,18 @@ def project_raid_gates(action: dict[str, Any], sequence: dict[str, Any]) -> list
     for gate, intro_number, clear_number, primary in (
         ("GATE1", 4, None, "boss.kakulsaydon.g1.saydon"),
         ("GATE2", 3, None, "boss.kakulsaydon.g2.kouku"),
-        ("GATE3", 7, None, "boss.kakulsaydon.g3.saydon"),
-        ("BINGO", None, 9, "boss.kakulsaydon.bingo.saydon"),
+        ("GATE3", 5, None, "boss.kakulsaydon.g3.saydon"),
+        ("BINGO", 10, 9, "boss.kakulsaydon.bingo.saydon"),
     ):
         flow = flows.get(gate)
         if not flow or not flow["entries"]:
             continue
         intro = sequences[f"KAKULSAYDON_G1_PATTERN_{intro_number}"] if intro_number else None
         clear = sequences[f"KAKULSAYDON_G1_PATTERN_{clear_number}"] if clear_number else None
-        if intro is not None and (intro.get("gateId") != gate or not intro.get("enterCombatOnFinish", False)):
+        # Gate 2's complete exit movie includes the Gate 3 arrival; keep its
+        # source actor/gate identity while assigning the combat handoff to Gate 3.
+        intro_gate = "GATE2" if gate == "GATE3" else gate
+        if intro is not None and (intro.get("gateId") != intro_gate or not intro.get("enterCombatOnFinish", False)):
             raise ValueError(f"{gate} raid intro must be its authored combat handoff sequence")
         entries = []
         for row in flow["entries"]:
@@ -57,7 +60,7 @@ def project_raid_gates(action: dict[str, Any], sequence: dict[str, Any]) -> list
                 arrivals.append({"phase": phase, "occurrenceId": box["occurrenceId"], "playerSlot": slot,
                                  "startMs": box["startMs"], "position": list(position)})
             if phase == "INTRO":
-                intro_ready = slots == set(range(4))
+                intro_ready = (not slots) if gate == "BINGO" else slots == set(range(4))
         # Unfinished arrival authoring must not advertise a runnable raid gate or
         # prevent independent saved patterns from being published.
         if not intro_ready:

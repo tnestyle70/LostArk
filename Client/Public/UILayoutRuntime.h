@@ -32,6 +32,9 @@ public:
 		uint32_t iGameObjectLevelIndex, const wstring_t& strLayerTag,
 		const wstring_t& strDocumentPath);
 	~CUILayoutRuntime();
+	/* Explicit owner teardown: hide and remove only this view's sprites. Safe after the
+	Level already cleared its layers and on repeated calls; shared texture prototypes stay. */
+	void Release_Sprites();
 
 public:
 	/* Reference-resolution rect of the authored slot with this JSON "id", or false if no such

@@ -547,6 +547,8 @@ namespace LostArk::Server
 			LostArk::Shared::NET_ENTITY_ID iPrimaryBossId = LostArk::Shared::INVALID_NET_ENTITY_ID;
 			std::uint32_t iAuditionRequestSequence = 0u, iAuditionEpoch = 0u, iNextEntryTick = 0u;
 			bool bClearCinematic = false, bEntryRunning = false, bGate3CombatEntered = false;
+            bool bClearedGate3Preparation = false;
+            std::uint32_t iGate3ClearTick = 0u;
 		};
 		KOUKU_RAID_RUN m_KoukuRaid;
 		std::uint32_t m_iNextKoukuRaidEpoch = 1u;
@@ -557,7 +559,7 @@ namespace LostArk::Server
 		void Update_KoukuRaid(std::uint32_t tick);
 		void Notify_KoukuRaidBossDeath(const SERVER_WORLD_ENTITY& boss, std::uint32_t tick);
 		void Stop_KoukuRaid(std::string reason, bool completed = false);
-		bool Begin_KoukuRaidPreparation(SESSION_ID sessionId, const LostArk::Shared::C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST& request, std::string& reason);
+		bool Begin_KoukuRaidPreparation(SESSION_ID sessionId, const LostArk::Shared::C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST& request, std::string& reason, bool clearedGate3 = false);
 		bool Apply_KoukuRaidReadiness(SESSION_ID sessionId, const LostArk::Shared::C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST& request, std::string& reason);
 		bool Begin_KoukuRaidCinematic(const std::string& gateId, bool clear, std::uint32_t tick);
 		bool Advance_KoukuRaidGate(std::uint8_t nextGate, bool restart);

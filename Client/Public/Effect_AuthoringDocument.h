@@ -1170,6 +1170,7 @@ enum class EFFECT_SCREEN_POST_PROFILE : uint8_t
 	MOTION_BLUR_RECONSTRUCTED_V1,
 	SCENE_COLLAPSE_CAPTURE_V1,
 	SCENE_CAPTURE_CUBE_V1,
+	CHROMATIC_ABERRATION_RECONSTRUCTED_V1,
 	END
 };
 
@@ -1211,6 +1212,9 @@ struct EFFECT_SCREEN_POST_DETAIL_DESC final
 	EFFECT_PRESENTATION_RUNTIME_STATUS eStatus =
 		EFFECT_PRESENTATION_RUNTIME_STATUS::END;
 	f32_t fIntensity = 0.f;
+	// Optional authored base fade; existing source curves retain their precedence.
+	bool_t bIntensityLerp = false;
+	f32_t fIntensityEnd = 0.f;
 	f32_t fSecondaryIntensity = 0.f;
 	f32_t fFrequency = 1.f;
 	float4_t vTint = { 1.f, 1.f, 1.f, 1.f };

@@ -353,7 +353,15 @@ def prepare(evidence, first, last, reuse_roots=()):
                 shape = 'beam'
             row = by_material[occurrence['sourceMaterial']]
             component = occurrence.get('sourceStaticMeshComponent')
-            if component:
+            post_track = occurrence.get('sourcePostRenderMaterialTrack')
+            if post_track:
+                # Matinee post-render materials use the original full-screen
+                # LocalVF quad, not a fabricated Cascade required module.
+                assert shape == 'screenPost' and not component
+                assert records[post_track]['classPath'].endswith('.efinterptrackpostrendermaterial')
+                required = post_track
+                properties = norm(records[post_track]['properties'])
+            elif component:
                 assert shape == 'mesh' and records[component]['classPath'] == 'engine.staticmeshcomponent'
                 required = component
                 properties = norm(records[component]['properties'])
@@ -361,7 +369,7 @@ def prepare(evidence, first, last, reuse_roots=()):
                 required = next(p for p in occurrence['moduleOrder'] if 'particlemodulerequired' in p)
                 properties = effective(required)
             dynamic = any('parameterdynamic' in p for p in occurrence['moduleOrder'])
-            if shape == 'mesh':
+            if shape == 'mesh' or post_track:
                 vf = 'flocalvertexfactory'
             elif shape == 'decal':
                 vf = 'flocaldecalvertexfactory'

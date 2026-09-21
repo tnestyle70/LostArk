@@ -2613,6 +2613,33 @@
     <None Include="..\..\Data\Navigation\LV_LUT_MIDNIGHTC_ED.navsource">
       <Filter>96.DataFiles\Navigation</Filter>
     </None>
+    <None Include="..\..\Data\Navigation\LV_LUT_MIDNIGHTC_ED.StartFine.navsource">
+      <Filter>96.DataFiles\Navigation</Filter>
+    </None>
+    <None Include="..\..\Data\Navigation\LV_LUT_MIDNIGHTC_ED.StartFine.navpaint">
+      <Filter>96.DataFiles\Navigation</Filter>
+    </None>
+    <None Include="..\..\Data\Navigation\LV_LUT_MIDNIGHTC_ED.Gate1Fine.navsource">
+      <Filter>96.DataFiles\Navigation</Filter>
+    </None>
+    <None Include="..\..\Data\Navigation\LV_LUT_MIDNIGHTC_ED.Gate1Fine.navpaint">
+      <Filter>96.DataFiles\Navigation</Filter>
+    </None>
+    <None Include="..\..\Data\Navigation\LV_LUT_MIDNIGHTC_ED.Gate2Fine.navsource">
+      <Filter>96.DataFiles\Navigation</Filter>
+    </None>
+    <None Include="..\..\Data\Navigation\LV_LUT_MIDNIGHTC_ED.Gate2Fine.navpaint">
+      <Filter>96.DataFiles\Navigation</Filter>
+    </None>
+    <None Include="..\..\Data\Navigation\LV_LUT_MIDNIGHTC_ED.Gate3Fine.navsource">
+      <Filter>96.DataFiles\Navigation</Filter>
+    </None>
+    <None Include="..\..\Data\Navigation\LV_LUT_MIDNIGHTC_ED.Gate3Fine.navpaint">
+      <Filter>96.DataFiles\Navigation</Filter>
+    </None>
+    <None Include="..\..\Data\Navigation\LV_LUT_MIDNIGHTC_ED.navregions">
+      <Filter>96.DataFiles\Navigation</Filter>
+    </None>
     <None Include="..\..\Data\UI\BossUI\BossUI.json">
       <Filter>96.DataFiles\UI</Filter>
     </None>
@@ -5069,5 +5096,12 @@
   </ItemGroup>
   <ItemGroup>
     <Manifest Include="Client.manifest" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.bingo.hammer.warning.original.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.bingo.encore.glass.screen.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.bingo.encore.glass.spark0.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.bingo.encore.glass.spark.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.sequence.lv_lut_midnightc_ed_scene01b.efseqact_matinee_0.1.effect.json"><Filter>96.DataFiles</Filter></None>
   </ItemGroup>
 </Project>

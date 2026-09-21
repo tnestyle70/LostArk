@@ -271,6 +271,7 @@ public:
 	bool_t Consume_DebugReturnToStartSucceeded() { return std::exchange(m_bDebugStartSucceeded, false); }
 	void Debug_RetireGateActivation(const std::string& reason);
 	size_t Get_ActiveDebugGate() const { return m_iActiveDebugGate; }
+	bool_t Is_DebugGateApprovedForServerPlay(size_t gateIndex) const;
 	// Changes whenever a new gate activation is submitted, including the same gate.
 	std::uint32_t Get_DebugGateGeneration() const { return m_iNextDebugGateRequestSequence; }
     bool Debug_PrepareCompletePlayResources(const std::vector<std::string>& patternIds,
@@ -685,8 +686,8 @@ private:
 	f32_t m_fCameraBlendElapsed = 0.f;
 	bool_t m_bCameraShotHeld = false;
 	std::string m_strCameraShotStatus;
-	/* Index into Get_DebugGates() of the gate whose bosses are raised now;
-	   that button stays disabled until another gate or Despawn is chosen. */
+	/* Presented gate; a completed Server raid can retain this scene after
+	   despawning its bosses. Debug approval is tracked separately below. */
 	size_t m_iActiveDebugGate = NO_ACTIVE_DEBUG_GATE;
 	string m_strGatePresentationProfileId;
     size_t m_iGateLightingIndex = NO_ACTIVE_DEBUG_GATE;
@@ -706,6 +707,12 @@ private:
 	bool m_bDebugGazeView = false;
 	float m_fDebugGazeHalfAngle = 45.f;
 	float m_fDebugGazeDistance = 30.f;
+	struct DEBUG_GATE_APPROVAL_SCOPE
+	{
+		std::uint64_t iWorldGeneration = 0u;
+		std::uint32_t iRaidEpoch = 0u;
+	};
+	DEBUG_GATE_APPROVAL_SCOPE m_PendingDebugGateApproval, m_DebugGateApproval;
 	std::uint32_t m_iNextDebugGateRequestSequence = 1u;
 	size_t m_iPendingDebugGate = NO_ACTIVE_DEBUG_GATE;
 	std::map<std::string, std::uint64_t> m_DebugGatePendingPlacements;
@@ -740,6 +747,7 @@ private:
 	unique_ptr<CUILayoutRuntime> m_pRaidClearView;
 	/* Negative until a clear starts. */
 	f32_t m_fRaidClearElapsedSeconds = -1.f;
+	bool_t m_bRaidClearShowMvp = true;
 	void Update_RaidClear(f32_t fTimeDelta);
 	/* Commander raid gate progress. The Server owns the cleared mask, the vote and the gate
 	   switch (S2C_GATE_PROGRESS_STATE); this Level shows the panel, starts the clear mark

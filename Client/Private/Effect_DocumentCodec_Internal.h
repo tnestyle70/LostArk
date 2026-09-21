@@ -245,7 +245,8 @@ namespace Client::EffectDocumentCodecDetail
 		"screen.film-noise.reconstructed.v1",
 		"screen.motion-blur.reconstructed.v1",
 		"screen.scene-collapse.capture.v1",
-		"screen.scene-capture.cube.v1"
+		"screen.scene-capture.cube.v1",
+		"screen.chromatic-aberration.reconstructed.v1"
 	};
 	inline constexpr const char_t* SOURCE_PRESENTATION_STATUS_TOKENS[] =
 	{

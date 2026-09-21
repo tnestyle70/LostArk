@@ -191,7 +191,11 @@ bool_t CWorldSequencePlayer::Load_Area(
 	Stop_All(targets, true);
 	Clear_PreparedObjects();
 	m_ObjectModels.clear();
-	m_EffectSnapshots.clear();
+	// Area leaves are Loader-owned Server effects, independent of sequence tracks.
+	// Keep their immutable CPU snapshots when refreshing this same Area.
+	const bool sameArea = m_Document.Get_AreaId() == areaId;
+	std::erase_if(m_EffectSnapshots, [sameArea](const auto& entry)
+		{ return !sameArea || !entry.first.starts_with("AREA_LEAF:"); });
 	m_Document = std::move(staged);
 	m_Status = "World sequence loaded: " +
 		std::to_string(m_Document.Get_Instances().size()) + " instances";

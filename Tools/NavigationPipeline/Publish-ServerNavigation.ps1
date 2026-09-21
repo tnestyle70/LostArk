@@ -66,6 +66,19 @@ namespace LostArk.NavigationPublish
             return cells;
         }
 
+        public static byte[] SerializeSurface(byte[] grid, byte[] resolved)
+        {
+            ulong hash = 14695981039346656037UL;
+            unchecked { foreach (byte value in grid) { hash ^= value; hash *= 1099511628211UL; } }
+            using (var stream = new MemoryStream(20 + resolved.Length))
+            using (var writer = new BinaryWriter(stream))
+            {
+                writer.Write((uint)0x4652534e); writer.Write((uint)1); writer.Write(hash);
+                writer.Write((uint)resolved.Length); writer.Write(resolved); writer.Flush();
+                return stream.ToArray();
+            }
+        }
+
         public static byte[] Serialize(uint width, uint height, float cellSize, float originX, float originZ,
             byte[] resolved, byte[] walkable, float[] heights, byte[] overrides)
         {
@@ -191,6 +204,8 @@ function New-UniformNavigationGrid {
         return [pscustomobject]@{
             AreaId = [string]$source.areaId
             Bytes = $stream.ToArray()
+            SurfaceBytes = [LostArk.NavigationPublish.CellBuffer]::SerializeSurface(
+                $stream.ToArray(), [byte[]](1..$cellCount | ForEach-Object { 1 }))
             WorldPath = "Data/Worlds/$($source.areaId)/Gameplay.world.json"
             RuntimeMaximumStepHeight = $RuntimeMaximumStepHeight
         }
@@ -522,11 +537,12 @@ function Convert-NavigationAuthoringGrid {
         }
     }
 
+    $gridBytes = [LostArk.NavigationPublish.CellBuffer]::Serialize(
+        $width, $height, $cellSize, $originX, $originZ, $resolved, $baseWalkable, $heights, $overrides)
     return [pscustomobject]@{
         AreaId = $areaId
-        Bytes = [LostArk.NavigationPublish.CellBuffer]::Serialize(
-            $width, $height, $cellSize, $originX, $originZ,
-            $resolved, $baseWalkable, $heights, $overrides)
+        Bytes = $gridBytes
+        SurfaceBytes = [LostArk.NavigationPublish.CellBuffer]::SerializeSurface($gridBytes, $resolved)
         WorldPath = "Data/Worlds/$areaId/Gameplay.world.json"
         MaximumStepHeight = $MaximumStepHeight
         RuntimeMaximumStepHeight = $RuntimeMaximumStepHeight
@@ -997,6 +1013,22 @@ function Invoke-NavigationPaintContractTest {
 }
 
 function Invoke-NavigationCellContractTest {
+    # A blocked cell still has physical floor; a missing surface does not.
+    $surfaceCells = [LostArk.NavigationPublish.CellBuffer]::Parse(
+        [string[]]@('header', '0 0 1 0 0', '1 0 0 0 0'), 2, 2, 1, 'surface-contract')
+    $surfaceGrid = [LostArk.NavigationPublish.CellBuffer]::Serialize(
+        2, 1, 1, 0, 0, $surfaceCells.Resolved, $surfaceCells.Walkable, $surfaceCells.Heights, [byte[]]@(0,0))
+    $surface = [LostArk.NavigationPublish.CellBuffer]::SerializeSurface($surfaceGrid, $surfaceCells.Resolved)
+    if ($surface.Length -ne 22 -or [BitConverter]::ToUInt32($surface, 0) -ne 0x4652534e -or
+        [BitConverter]::ToUInt32($surface, 4) -ne 1 -or [BitConverter]::ToUInt32($surface, 16) -ne 2 -or
+        $surface[20] -ne 1 -or $surface[21] -ne 0 -or $surfaceGrid[20] -ne 0 -or $surfaceGrid[21] -ne 0) {
+        throw 'Navigation surface sidecar conflated blocked ground and missing floor'
+    }
+    $changedGrid = [byte[]]$surfaceGrid.Clone(); $changedGrid[22] = $changedGrid[22] -bxor 1
+    $changedSurface = [LostArk.NavigationPublish.CellBuffer]::SerializeSurface($changedGrid, $surfaceCells.Resolved)
+    if ([BitConverter]::ToUInt64($surface, 8) -eq [BitConverter]::ToUInt64($changedSurface, 8)) {
+        throw 'Navigation surface sidecar lost grid generation binding'
+    }
     # Source v1/v2, quoted tokens and row order must produce the same bytes.
     # The second cell has no surface: its authored height must stay discarded.
     $expected = $null
@@ -1150,6 +1182,7 @@ if ($Mode -eq 'Publish') {
         [IO.Directory]::CreateDirectory($clientRoot) | Out-Null
         $token = [Guid]::NewGuid().ToString('N')
         $targets = [Collections.Generic.List[object]]::new()
+        $targets.Add(@{ Destination=(Join-Path $root "$($entry.Grid.AreaId).navsurface"); Bytes=[byte[]]$entry.Grid.SurfaceBytes })
         $targets.Add(@{ Destination=(Join-Path $root "$($entry.Grid.AreaId).navgrid"); Bytes=[byte[]]$entry.Grid.Bytes })
         $targets.Add(@{ Destination=(Join-Path $root "$($entry.Grid.AreaId).navblockers"); Lines=[string[]]$entry.BlockerLines })
         $targets.Add(@{ Destination=(Join-Path $root "$($entry.Grid.AreaId).navpolicy"); Lines=[string[]]$entry.PolicyLines })
@@ -1158,6 +1191,7 @@ if ($Mode -eq 'Publish') {
         $targets.Add(@{ Destination=(Join-Path $clientRoot "$($entry.Grid.AreaId).navpolicy"); Lines=[string[]]$entry.PolicyLines })
         foreach ($regionEntry in @($entry.Regions)) {
             $regionGridId = $regionEntry.Grid.AreaId
+            $targets.Add(@{ Destination=(Join-Path $root "$regionGridId.navsurface"); Bytes=[byte[]]$regionEntry.Grid.SurfaceBytes })
             $targets.Add(@{ Destination=(Join-Path $root "$regionGridId.navgrid"); Bytes=[byte[]]$regionEntry.Grid.Bytes })
             $targets.Add(@{ Destination=(Join-Path $root "$regionGridId.navblockers"); Lines=[string[]]$regionEntry.BlockerLines })
             $targets.Add(@{ Destination=(Join-Path $root "$regionGridId.navpolicy"); Lines=[string[]]$regionEntry.PolicyLines })

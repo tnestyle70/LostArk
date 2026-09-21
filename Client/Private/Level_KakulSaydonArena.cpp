@@ -1790,7 +1790,9 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 	if (m_iPendingDebugGate != NO_ACTIVE_DEBUG_GATE && m_DebugGatePendingPlacements.empty() &&
 		!m_PlayerController.Is_DebugPlayerPlacementPending())
 	{
-		if (!m_bDebugGateFailed && (m_bDebugGatePreservesPlayerPosition || m_PlayerController.Did_DebugPlayerPlacementSucceed()))
+		if (!m_bDebugGateFailed && (m_bDebugGatePreservesPlayerPosition || m_PlayerController.Did_DebugPlayerPlacementSucceed()) &&
+		m_PendingDebugGateApproval.iWorldGeneration == CNetworkManager::Get().Get_WorldInboundGeneration() &&
+		m_PendingDebugGateApproval.iRaidEpoch == Get_KoukuRaidState().iRunEpoch)
 		{
 			const KAKUL_DEBUG_GATE& gate = Get_DebugGates()[m_iPendingDebugGate];
 			CCombatHUDViewModel::Get().Set_BossFocusArchetype(
@@ -1802,6 +1804,7 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 				nullptr != gate.pAuditionPlacementId ? gate.pAuditionPlacementId : "",
 				nullptr != gate.pHudFocusArchetypeId ? gate.pHudFocusArchetypeId : "");
 			m_iActiveDebugGate = m_iPendingDebugGate;
+			m_DebugGateApproval = m_PendingDebugGateApproval;
             std::string gatePresentationStatus;
             if (Debug_CommitGateObjects(m_iActiveDebugGate, gatePresentationStatus))
             {
@@ -1827,6 +1830,7 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 			m_strDebugGateStatus += "\nGate activation failed; correct the reported cause and retry.";
 		}
 		m_iPendingDebugGate = NO_ACTIVE_DEBUG_GATE;
+		m_PendingDebugGateApproval = {};
 		m_bDebugGatePreservesPlayerPosition = false;
 		CKoukuSaydonPatternAuditionService::Get().Set_TargetTransitionPending(false);
 	}
@@ -2064,12 +2068,25 @@ void Client::CLevel_KakulSaydonArena::Update_StatusEffectText(const f32_t fTimeD
 	   ASCII bytes its codepage needs, exactly like the card maze suit names below. */
 	static const std::wstring FEAR_WORD = L"\uACF5\uD3EC";
 	constexpr std::uint32_t FEAR_COLOR_RGB = 0x8041D9u;
+	static const std::wstring SAFE_ZONE_WORD = L"\uBB34\uC801";
+	constexpr std::uint32_t SAFE_ZONE_COLOR_RGB = 0x3399FFu;
 
 	std::vector<KOUKU_BOSS_PRESENTATION_VIEW> bosses;
 	std::vector<KOUKU_CARD_PRESENTATION_VIEW> players;
 	Collect_KoukuPresentationViews(bosses, players);
 	for (const KOUKU_CARD_PRESENTATION_VIEW& view : players)
 	{
+		if (view.Snapshot.iCurrentHp != 0u && view.Snapshot.iInvulnerabilityZonePulseTick != 0u)
+		{
+			CStatusEffectTextView::REQUEST safeZone{};
+			safeZone.iOwnerEntityId = view.Snapshot.iNetEntityId;
+			// Entry and the two-second repeat are Server occurrences, not Client timers.
+			safeZone.iOccurrenceKey = view.Snapshot.iInvulnerabilityZonePulseTick;
+			safeZone.strWord = SAFE_ZONE_WORD;
+			safeZone.iColorRgb = SAFE_ZONE_COLOR_RGB;
+			safeZone.pAnchor = view.pCharacter;
+			m_StatusEffectTextView.Submit(safeZone);
+		}
 		if (LostArk::Shared::PLAYER_ACTION_STATE::FEAR != view.Snapshot.eAction ||
 			0u == view.Snapshot.iCurrentHp || 0u == view.Snapshot.iActionStartTick)
 		{
@@ -2534,6 +2551,8 @@ namespace
 	   Document-to-document sequencing lives in the client's C++ and is not in the .gfx, so
 	   this one number is measured rather than extracted. */
 	constexpr f32_t CLEAR_END_FRAME = 243.f;
+	// Gate 3 runs the complete clear mark, then the Server starts the encore at 8s.
+	constexpr f32_t ENCORE_CLEAR_END_FRAME = 320.f;
 
 	/* Layer entry, position, size, alpha and tint all live in the keyframe document now,
 	   so nothing is listed here. The one thing the document cannot carry is the caption:
@@ -2572,7 +2591,8 @@ void Client::CLevel_KakulSaydonArena::Update_RaidClear(const f32_t fTimeDelta)
 	const f32_t fPrevious = m_fRaidClearElapsedSeconds;
 	m_fRaidClearElapsedSeconds += fTimeDelta;
 	const f32_t fFrame = m_fRaidClearElapsedSeconds * CLEAR_FPS;
-	const bool_t isShowing = fFrame < CLEAR_END_FRAME;
+	const f32_t endFrame = m_bRaidClearShowMvp ? CLEAR_END_FRAME : ENCORE_CLEAR_END_FRAME;
+	const bool_t isShowing = fFrame < endFrame;
 
 	if (0.f == fPrevious)
 	{
@@ -2604,15 +2624,16 @@ void Client::CLevel_KakulSaydonArena::Update_RaidClear(const f32_t fTimeDelta)
 
 	/* callbackFrameActionEnd: the document hides itself at its last frame and hands the
 	   screen to whatever comes next. */
-	if (fPrevious * CLEAR_FPS < CLEAR_END_FRAME && fFrame >= CLEAR_END_FRAME)
+	if (fPrevious * CLEAR_FPS < endFrame && fFrame >= endFrame)
 	{
 		m_pRaidClearView->Set_AllSlotsVisible(false);
-		Show_MvpResult(false);
+		if (m_bRaidClearShowMvp) Show_MvpResult(false);
 	}
 }
 
 void Client::CLevel_KakulSaydonArena::Trigger_RaidClear()
 {
+	m_bRaidClearShowMvp = true;
 	m_fRaidClearElapsedSeconds = 0.f;
 }
 
@@ -2639,7 +2660,8 @@ bool_t Client::CLevel_KakulSaydonArena::Can_InteractGateProgress() const
 	const auto phase = Get_KoukuRaidState().ePhase;
     if (m_bLocalSequencePlaybackActive) return false;
 	if (!Is_LocalGateParticipant() || (Is_ServerRaidActive() &&
-		(phase == KOUKUSAYDON_RAID_PHASE::PREPARING || phase == KOUKUSAYDON_RAID_PHASE::CINEMATIC))) return false;
+		(phase == KOUKUSAYDON_RAID_PHASE::PREPARING || phase == KOUKUSAYDON_RAID_PHASE::CINEMATIC ||
+            (phase == KOUKUSAYDON_RAID_PHASE::WAIT_GATE && Get_KoukuRaidState().strGateId == "GATE3" && Get_KoukuRaidState().iEndTick)))) return false;
 	// The clear mark hands over to MVP before offering the next gate vote.
 	return !(m_fRaidClearElapsedSeconds >= 0.f && m_fRaidClearElapsedSeconds * CLEAR_FPS < CLEAR_END_FRAME) &&
 		(!m_pMvpResultView || !m_pMvpResultView->Is_Visible());
@@ -2737,6 +2759,7 @@ void Client::CLevel_KakulSaydonArena::Apply_GateProgressState(
 				m_pMvpResultView->Hide();
 			m_bGateVoteAnswered = false;
 			Trigger_RaidClear();
+            m_bRaidClearShowMvp = !(State.iCurrentGate == 3u && Is_ServerRaidActive());
 		}
 	}
 	/* Vote: a member gets the accept / decline prompt once; the proposer waits. */
@@ -3144,6 +3167,16 @@ bool_t Client::CLevel_KakulSaydonArena::Debug_ReturnToStart(std::string& outStat
 	return true;
 }
 
+bool_t Client::CLevel_KakulSaydonArena::Is_DebugGateApprovedForServerPlay(const size_t gateIndex) const
+{
+	// A retained raid scene is not a spawn receipt. A new raid invalidates
+	// the old Debug approval even before its final despawn is presented.
+	return gateIndex != NO_ACTIVE_DEBUG_GATE && m_iActiveDebugGate == gateIndex &&
+		m_DebugGateApproval.iWorldGeneration != 0u &&
+		m_DebugGateApproval.iWorldGeneration == CNetworkManager::Get().Get_WorldInboundGeneration() &&
+		m_DebugGateApproval.iRaidEpoch == Get_KoukuRaidState().iRunEpoch;
+}
+
 bool_t Client::CLevel_KakulSaydonArena::Debug_ActivateGate(
 	const size_t gateIndex, std::string& outStatus, const bool_t preservePlayerPosition)
 {
@@ -3212,6 +3245,8 @@ bool_t Client::CLevel_KakulSaydonArena::Debug_ActivateGate(
 	CKoukuSaydonPatternAuditionService::Get().Set_TargetTransitionPending(true);
 	m_iActiveDebugGate = NO_ACTIVE_DEBUG_GATE;
 	m_iPendingDebugGate = gateIndex;
+	m_DebugGateApproval = {};
+	m_PendingDebugGateApproval = { CNetworkManager::Get().Get_WorldInboundGeneration(), Get_KoukuRaidState().iRunEpoch };
 	m_bDebugGatePreservesPlayerPosition = preservePlayerPosition;
 	m_fDebugGatePendingSeconds = 0.f;
 	m_bDebugGateFailed = false;
@@ -5782,6 +5817,11 @@ bool Client::CLevel_KakulSaydonArena::Debug_PrepareCompletePlayResources(
         m_CompletePlayPreparation->selectedBundles != bundleIds || m_CompletePlayPreparation->sourceRevision != sourceRevision ||
         m_CompletePlayPreparation->wholeRaid != wholeRaid)
     {
+        // A publish can finish after arena entry. Refresh the idle runtime base once
+        // per new request; active cues and editor drafts retain their own snapshots.
+        if (m_SequencePlayer.Has_ActiveInstances())
+        { status = "Stop the active WORLD sequence before preparing a new Complete Play."; return false; }
+        if (!Reload_WorldObjectRuntime(status)) return false;
         COMPLETE_PLAY_PREPARATION staged;
         staged.selectedPatterns = patternIds; staged.selectedBundles = bundleIds; staged.sourceRevision = sourceRevision;
         if (!CKoukuSaydonPresentationAssetService::Collect_CompletePlayResources(patternIds, bundleIds,

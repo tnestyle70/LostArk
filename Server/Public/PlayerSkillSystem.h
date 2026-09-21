@@ -62,7 +62,7 @@ namespace LostArk::Server
 		negative range, toward) the hit source, and optionally KNOCKDOWN until
 		downMs expires. A window or knockdown already running keeps the new hit
 		from re-arming, and DEAD or TRIGGER_MOVE players are never armed. */
-		static bool Can_ArmPlayerHitReaction(const SERVER_PLAYER& player, std::uint32_t serverTick);
+		static bool Can_ArmPlayerHitReaction(const SERVER_PLAYER& player, std::uint32_t serverTick, bool forcePush = false);
 		static void Arm_PlayerHitReaction(
 			SERVER_PLAYER& player,
 			float sourceX,
@@ -71,7 +71,8 @@ namespace LostArk::Server
 			std::uint32_t pushMs,
 			bool knockdown,
 			std::uint32_t downMs,
-			std::uint32_t serverTick);
+			std::uint32_t serverTick,
+			bool forcePush = false, bool pushCanLeaveArena = false, bool pushBallistic = false);
 
 		/* A stance-setting skill's authored cancel windows open after the swap has
 		already happened on screen, so every exit from its action commits the

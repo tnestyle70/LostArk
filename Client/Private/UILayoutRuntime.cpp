@@ -30,6 +30,30 @@ Client::CUILayoutRuntime::~CUILayoutRuntime()
 {
 }
 
+void Client::CUILayoutRuntime::Release_Sprites()
+{
+	const auto release = [this](shared_ptr<CUI_Sprite>& sprite)
+	{
+		if (!sprite)
+			return;
+		// A renderer may still hold this sprite for the current frame.
+		sprite->Set_Visible(false);
+		(void)CGameInstance::Get().Remove_GameObject_from_Layer(
+			m_iGameObjectLevelIndex, m_strLayerTag, sprite);
+		sprite.reset();
+	};
+	for (RUNTIME_SLOT& slot : m_Slots)
+	{
+		release(slot.pSprite);
+		for (auto& sprite : slot.ExtraLayerSprites)
+			release(sprite);
+		for (auto& sprite : slot.KeyframeSprites)
+			release(sprite);
+	}
+	m_Slots.clear();
+	m_SlotIndices.clear();
+}
+
 shared_ptr<Client::CUI_Sprite> Client::CUILayoutRuntime::Create_Sprite(
 	f32_t fRectX, f32_t fRectY, f32_t fRectWidth, f32_t fRectHeight,
 	const string& strTexturePath)

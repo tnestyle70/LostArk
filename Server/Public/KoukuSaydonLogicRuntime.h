@@ -205,7 +205,8 @@ namespace LostArk::Server
 			const CGameplayCatalog& catalog,
 			const BOSS_ENCOUNTER_MADNESS_POLICY* pMadnessPolicy,
 			std::uint32_t serverTick,
-			std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents);
+			std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents,
+			const std::array<float, 2u>* pContactCenter = nullptr);
 		/* The gauge reached its maximum or a RESULT asked for it: the player
 		presents the clown body until the hold expires. durationMs 0 takes the
 		encounter policy hold. */
@@ -231,6 +232,9 @@ namespace LostArk::Server
 			const std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players);
 		static void Reveal_CardMazeEntryPlayers(const KOUKUSAYDON_LOGIC_LEDGER& ledger,
 			std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players);
+		static bool Stage_CardMazeEntryPlayers(const BOSS_PATTERN_MECHANIC_TRIGGER& trigger,
+			KOUKUSAYDON_LOGIC_LEDGER& ledger, std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
+			const CServerNavigation* navigation, const CServerCollisionSystem* collision, std::string& outStatus);
 		static bool Enter_CardMaze(const BOSS_PATTERN_MECHANIC_TRIGGER& trigger,
 			KOUKUSAYDON_LOGIC_LEDGER& ledger, std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
 			const CServerNavigation* navigation, const CServerCollisionSystem* collision, std::string& outStatus);
@@ -255,7 +259,9 @@ namespace LostArk::Server
 			const BOSS_ENCOUNTER_MADNESS_POLICY* pMadnessPolicy,
 			std::uint32_t serverTick,
 			std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents,
-			KOUKUSAYDON_LOGIC_OUTPUT& outOutput);
+			KOUKUSAYDON_LOGIC_OUTPUT& outOutput,
+			const std::set<LostArk::Shared::PLAYER_ID>& invulnerablePlayers,
+			const std::array<float, 2u>* pContactCenter = nullptr);
 		static KOUKUSAYDON_LOGIC_ANSWER Judge_Roulette(
 			const BOSS_PATTERN_LOGIC_WINDOW& window,
 			const SERVER_WORLD_ENTITY& boss,

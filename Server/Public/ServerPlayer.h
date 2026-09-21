@@ -233,6 +233,13 @@ namespace LostArk::Server
 		float fKnockbackDirectionZ = 0.f;
 		float fKnockbackSpeed = 0.f;
 		float fKnockbackRemainingSeconds = 0.f;
+		// Explicit authored push policy; ordinary knockback still stops at navigation edges.
+		bool bKnockbackCanLeaveArena = false;
+		// Explicit mechanic flight; normal knockback remains constrained to walking ground.
+		bool bKnockbackBallistic = false;
+		float fKnockbackVelocityY = 0.f;
+		float fKnockbackLaunchY = 0.f;
+		static constexpr float KNOCKBACK_GRAVITY_MPS2 = 9.8f;
 		/* Typed release policy for the existing knockback integrator. Only arena
 		ejection ignores nav/collision and ends in the ordinary FALLING state. */
 		bool bArenaEjectionActive = false;
@@ -243,6 +250,9 @@ namespace LostArk::Server
 		std::uint32_t iKnockdownEndTick = 0;
 		std::uint32_t iFearEndTick = 0u;
 		std::string strFearPresentationId;
+		// Current-tick zone contact expires presentation on exit; protection stays in the pattern runtime.
+		std::uint32_t iInvulnerabilityZoneContactTick = 0u;
+		std::uint32_t iInvulnerabilityZonePulseTick = 0u;
 		/* Get-up grace: until this tick no new hit reaction arms (damage still
 		lands), so a boss cannot chain the player from one knockdown straight
 		into the next. Set when a knockdown ends by expiry or by the STANDUP
@@ -414,6 +424,9 @@ namespace LostArk::Server
 		void Clear_Attachment()
 		{
 			bArenaEjectionActive = false;
+			bKnockbackCanLeaveArena = false;
+			bKnockbackBallistic = false;
+			fKnockbackVelocityY = 0.f;
 			iEjectionOwnerNetEntityId = LostArk::Shared::INVALID_NET_ENTITY_ID;
 			iAttachmentOwnerNetEntityId =
 				LostArk::Shared::INVALID_NET_ENTITY_ID;

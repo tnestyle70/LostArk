@@ -2660,6 +2660,7 @@ bool_t Client::CKoukuSaydonActionWorkbench::Repeat_ParentCycle(
   copy.strDisplayName += " (cycle)";
   for (auto& id : copy.RegionIds) remap(id);
   for (auto& id : copy.TargetWorldOccurrenceIds) remap(id);
+  for (auto& id : copy.PlayerEntryEffectOccurrenceIds) remap(id);
   for (auto& motion : copy.ContactMotions) remap(motion.strTargetWorldOccurrenceId);
   remap(copy.strSummonOccurrenceId);
   remap(copy.strTargetLogicOccurrenceId);
@@ -5114,14 +5115,15 @@ bool_t Client::CKoukuSaydonActionWorkbench::Request_SelectedServerPlay(std::stri
 		m_strPendingServerPlayPatternId = patternId;
 		m_iPendingServerPlaySourceRevision = m_Draft.iRevision;
 		m_bServerPlayRequestPending = true;
-		const auto* pattern = Find_Pattern(m_Draft, patternId);
-		m_strServerFollowRootPatternId = pattern && Follows_ServerClock(m_Draft, *pattern) ? patternId : std::string{};
+		// Every explicit Server Play needs its admission/failure status, including
+		// ordinary patterns whose local Preview does not follow a Server clock.
+		m_strServerFollowRootPatternId = patternId;
 		m_strServerFollowLivePatternId.clear();
 		m_iServerFollowPreviousRequest = CKoukuSaydonPatternAuditionService::Get().Get_Snapshot().iRequestSequence;
 		m_bServerSelectionFollowSuspended = false;
 	}
-	outStatus = m_strStatus = "Requested the saved " + std::string(bundleSelected ? "Bundle" : "Pattern") +
-		" on the Server. Collider and Logic execution follows Server admission.";
+	outStatus = m_strStatus = "Preparing the saved " + std::string(bundleSelected ? "Bundle" : "Pattern") +
+		" for Server Play. Waiting for Gate and resource preparation before submitting playback.";
 	return true;
 }
 
@@ -6125,6 +6127,9 @@ bool_t Client::CKoukuSaydonActionWorkbench::Request_CompleteSequencePlay(std::st
 	const std::string gate = gateId.empty() ? m_strSelectedGateId : std::string(gateId);
 	if (!CKoukuSaydonCompositionDocument::Is_KnownGate(gate))
 	{ outStatus = m_strStatus = "Unknown Gate for Complete Play."; return false; }
+	// The Server plan owns gate intros, including cross-gate movies and Bingo.
+	if (m_CompleteSequenceAdmission)
+	{ const bool submitted = m_CompleteSequenceAdmission(gate, outStatus); m_strStatus = outStatus; return submitted; }
 	for (const auto& pattern : m_Draft.Patterns)
 	{
 		if (pattern.strGateId != gate || !pattern.bEnterCombatOnFinish) continue;
@@ -6134,8 +6139,6 @@ bool_t Client::CKoukuSaydonActionWorkbench::Request_CompleteSequencePlay(std::st
 	}
 	if (patternIds.size() != 1u)
 	{ outStatus = m_strStatus = "Complete Play requires exactly one valid combat entry sequence in this Gate."; return false; }
-	if (m_CompleteSequenceAdmission)
-	{ const bool submitted = m_CompleteSequenceAdmission(gate, outStatus); m_strStatus = outStatus; return submitted; }
 	return Queue_CompleteSequenceItem(std::move(patternIds), 0u, outStatus);
 }
 
@@ -6204,11 +6207,13 @@ void Client::CKoukuSaydonActionWorkbench::Render_CompleteSequenceTransport()
 {
 	if (!m_bSequenceWorkspace) return;
 	ImGui::BeginDisabled(!m_bHasDraft);
-	if (ImGui::Button("Complete Play"))
+	if (ImGui::Button(m_strSelectedGateId == "BINGO" ? "Complete Play - Bingo Loop" : "Complete Play"))
 	{ std::string status; (void)Request_CompleteSequencePlay(status); }
 	ImGui::EndDisabled();
 	if (ImGui::IsItemHovered())
-		ImGui::SetTooltip("Play this Gate's combat entry from 0 ms, enter its Server arena, then start its Saved Pattern Flow.");
+		ImGui::SetTooltip(m_strSelectedGateId == "BINGO" ?
+			"Start the Server Bingo combat loop. Select a cutscene and use Play below to preview that cutscene." :
+			"Play this Gate's Server raid entry, then start its Saved Pattern Flow.");
 	if (!Is_CompleteSequencePlaying()) return;
 	ImGui::SameLine();
 	ImGui::BeginDisabled(!m_PreviewState.bPlaying && !m_bPatternPreviewRequestPending);
@@ -7299,7 +7304,8 @@ bool_t Client::CKoukuSaydonActionWorkbench::Copy_TimelineSelection(
 		clipboard.Logics.push_back(*logic);
 		for (const auto& visual : logic->PursuitVisualIds) if (!captureResource(visual)) return false;
 		return captureResource(logic->strContactVisualId) && captureResource(logic->strEffectResourceId) &&
-			captureResource(logic->strLightResourceId) && captureScene(logic->strSceneProfileId);
+			captureResource(logic->strLightResourceId) && captureResource(logic->strSoundResourceId) &&
+			captureScene(logic->strSceneProfileId);
 	};
 	auto& counts = clipboard.Counts;
 	counts[0] = stageIds.size(); counts[1] = animations.size();
@@ -7617,6 +7623,8 @@ bool_t Client::CKoukuSaydonActionWorkbench::Clone_TimelineSelectionInto(
 		auto& motion = *pattern->BossMotion;
 		if (motion.iStartMs >= insertMs) { motion.iStartMs += static_cast<std::uint32_t>(delta); motion.iEndMs += static_cast<std::uint32_t>(delta); }
 		else if (motion.iEndMs > insertMs) motion.iEndMs += static_cast<std::uint32_t>(delta);
+		if (motion.iEndMs > insertMs)
+			for (auto& key : motion.Keys) if (key.iTimeMs >= insertMs) key.iTimeMs += static_cast<std::uint32_t>(delta);
 	}
 	const auto shiftLane = [&](auto& rows) {
 		for (auto& row : rows)
@@ -7699,6 +7707,7 @@ bool_t Client::CKoukuSaydonActionWorkbench::Clone_TimelineSelectionInto(
 		if (found == candidate.Logics.end()) return false;
 		auto copy = *found;
 		for (auto& target : copy.TargetWorldOccurrenceIds) remap(target, ids);
+		for (auto& target : copy.PlayerEntryEffectOccurrenceIds) remap(target, ids);
 		for (auto& target : copy.ContactMotions) remap(target.strTargetWorldOccurrenceId, ids);
 		remap(copy.strSummonOccurrenceId, ids);
 		remap(copy.strTargetLogicOccurrenceId, ids); remap(copy.strContactTargetWorldOccurrenceId, ids);
@@ -7869,6 +7878,10 @@ bool_t Client::CKoukuSaydonActionWorkbench::Delete_TimelineSelection(
 		// positions and yaw. The same time mapping already retimes other lanes.
 		motion.iStartMs = static_cast<std::uint32_t>(startMs);
 		motion.iEndMs = static_cast<std::uint32_t>(endMs);
+		for (auto& key : motion.Keys) key.iTimeMs = static_cast<std::uint32_t>(mappedTime(key.iTimeMs));
+		for (std::size_t i = 1u; i < motion.Keys.size(); ++i)
+			if (motion.Keys[i].iTimeMs <= motion.Keys[i - 1u].iTimeMs)
+				return reject("Delete collapses sampled Boss Motion keys. Keep their timeline interval or disable Move boss during Pattern first.");
 	}
 	if (pattern->iDurationMs && !removed.empty()) pattern->iDurationMs = static_cast<std::uint32_t>(mappedTime(pattern->iDurationMs));
 	std::erase_if(pattern->Stages, [&](const auto& stage) { return stages.contains(stage.strStageId); });
@@ -9525,6 +9538,10 @@ bool_t Client::CKoukuSaydonActionWorkbench::Set_LogicDefinitionValues(
 				if (box.strLogicId == logicId && found->strTriggerKind != "ENTER_AREA") box.strHoldLogicOccurrenceId.clear();
 				if (const auto* hold = Find_LogicBox(pattern, box.strHoldLogicOccurrenceId);
 					hold && hold->strLogicId == logicId && found->strJudgementKind != "ATTACHMENT_HOLD") box.strHoldLogicOccurrenceId.clear();
+				if (box.strLogicId == logicId && found->strJudgementKind == "INVULNERABILITY_ZONE")
+				{
+					box.OnSuccessLogicIds.clear(); box.OnFailLogicIds.clear(); box.OnTimeoutLogicIds.clear();
+				}
 				if (box.strLogicId == logicId && (found->strJudgementKind == "ATTACHMENT_HOLD" || found->strJudgementKind == "SHOWTIME_PLAYER_TARGETS" || found->strJudgementKind == "BOSS_TRACK_TARGET" || found->strJudgementKind == "CROSS_DIRECTION_CLONES" || found->strJudgementKind == "PURSUIT_PROJECTILES" || found->strJudgementKind == "BINGO_BOARD"))
 				{
 					box.OnSuccessLogicIds.clear(); box.OnFailLogicIds.clear(); box.OnTimeoutLogicIds.clear();
@@ -11125,10 +11142,15 @@ bool_t Client::CKoukuSaydonActionWorkbench::Set_ColliderTriggerDamage(
 	if (settings.iPercent < 1 || settings.iPercent > 100 ||
 		(settings.bRearmOnExit && settings.bRepeatAfterKnockback) ||
 		(settings.bRepeatAfterKnockback && settings.fPushRangeM <= 0.0) ||
-		!std::isfinite(settings.fPushRangeM) || settings.fPushRangeM < 0.0 || settings.fPushRangeM > 20.0 ||
+		!std::isfinite(settings.fPushRangeM) || settings.fPushRangeM < 0.0 ||
+		settings.fPushRangeM > (settings.bPushBallistic ? 100.0 : 20.0) ||
 		settings.iPushMs > MAX_EDITOR_TIME_MS || ((settings.fPushRangeM == 0.0) != (settings.iPushMs == 0u)) ||
-		(settings.strPushDirection != "AWAY_FROM_BOSS" && settings.strPushDirection != "BOSS_FORWARD") ||
-		(settings.strPushDirection == "BOSS_FORWARD" && settings.fPushRangeM == 0.0))
+		(settings.strPushDirection != "AWAY_FROM_BOSS" && settings.strPushDirection != "BOSS_FORWARD" && settings.strPushDirection != "AWAY_FROM_CONTACT") ||
+		(settings.strPushDirection != "AWAY_FROM_BOSS" && settings.fPushRangeM <= 0.0) ||
+		((settings.bForcePush || settings.bPushCanLeaveArena) && settings.fPushRangeM <= 0.0) ||
+		(settings.bPushBallistic && (settings.fPushRangeM <= 0.0 || settings.iPushMs < 100u || settings.iPushMs > 5000u || !settings.bPushCanLeaveArena)) ||
+		!std::isfinite(settings.fPushYawOffsetDegrees) || std::abs(settings.fPushYawOffsetDegrees) > 360.0 ||
+		(settings.fPushYawOffsetDegrees != 0.0 && (settings.strPushDirection != "BOSS_FORWARD" || settings.fPushRangeM <= 0.0)))
 	{ outStatus = m_strStatus = "Damage settings require bounded paired push values and one repeat policy."; return false; }
 	auto candidate = m_Draft;
 	auto* pattern = Find_Pattern(candidate, patternId);
@@ -11202,8 +11224,13 @@ bool_t Client::CKoukuSaydonActionWorkbench::Set_ColliderTriggerDamage(
 	if (damageSlot == linked->OnSuccessLogicIds.end() && linked->OnSuccessLogicIds.size() >= 4u)
 	{ outStatus = m_strStatus = "Success already has four Results; remove one before adding damage."; return false; }
 	auto damage = std::find_if(candidate.Logics.begin(), candidate.Logics.end(), [&](const auto& row) {
-		return row.strLogicType == "RESULT" && row.strOutcomeKind == "MAX_HP_PERCENT_DAMAGE" && row.iPercent == percent &&
-			row.fPushRangeM == settings.fPushRangeM && row.iPushMs == settings.iPushMs && row.strPushDirection == settings.strPushDirection; });
+		KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION desired;
+		desired.strLogicId = row.strLogicId; desired.strDisplayName = row.strDisplayName;
+		desired.strLogicType = "RESULT"; desired.strOutcomeKind = "MAX_HP_PERCENT_DAMAGE"; desired.iPercent = percent;
+		desired.fPushRangeM = settings.fPushRangeM; desired.iPushMs = settings.iPushMs; desired.strPushDirection = settings.strPushDirection;
+		desired.bForcePush = settings.bForcePush; desired.bPushCanLeaveArena = settings.bPushCanLeaveArena;
+		desired.bPushBallistic = settings.bPushBallistic; desired.fPushYawOffsetDegrees = settings.fPushYawOffsetDegrees;
+		return row == desired; });
 	if (damage == candidate.Logics.end())
 	{
 		if (candidate.iNextLogicOrdinal >= 1000000u)
@@ -11213,6 +11240,8 @@ bool_t Client::CKoukuSaydonActionWorkbench::Set_ColliderTriggerDamage(
 		result.strDisplayName = resource->strDisplayName + " Damage " + std::to_string(percent) + "% max HP";
 		result.strLogicType = "RESULT"; result.strOutcomeKind = "MAX_HP_PERCENT_DAMAGE"; result.iPercent = percent;
 		result.fPushRangeM = settings.fPushRangeM; result.iPushMs = settings.iPushMs; result.strPushDirection = settings.strPushDirection;
+		result.bForcePush = settings.bForcePush; result.bPushCanLeaveArena = settings.bPushCanLeaveArena;
+		result.bPushBallistic = settings.bPushBallistic; result.fPushYawOffsetDegrees = settings.fPushYawOffsetDegrees;
 		candidate.Logics.push_back(std::move(result));
 		damage = std::prev(candidate.Logics.end());
 	}
@@ -12743,6 +12772,10 @@ void Client::CKoukuSaydonActionWorkbench::Render_PresentationBoxDetails(
 						m_ColliderDamageSettings.fPushRangeM = result->fPushRangeM;
 						m_ColliderDamageSettings.iPushMs = result->iPushMs;
 						m_ColliderDamageSettings.strPushDirection = result->strPushDirection;
+						m_ColliderDamageSettings.bForcePush = result->bForcePush;
+						m_ColliderDamageSettings.bPushCanLeaveArena = result->bPushCanLeaveArena;
+						m_ColliderDamageSettings.bPushBallistic = result->bPushBallistic;
+						m_ColliderDamageSettings.fPushYawOffsetDegrees = result->fPushYawOffsetDegrees;
 						m_bColliderDamageMode = linkedLogic && linkedLogic->strTriggerKind == "ENTER_AREA";
 						break;
 					}
@@ -12772,19 +12805,43 @@ void Client::CKoukuSaydonActionWorkbench::Render_PresentationBoxDetails(
 			if (ImGui::Checkbox("Push on hit", &push))
 			{
 				damage.fPushRangeM = push ? 2.0 : 0.0; damage.iPushMs = push ? 242u : 0u;
-				if (!push) { damage.strPushDirection = "AWAY_FROM_BOSS"; damage.bRepeatAfterKnockback = false; }
+				if (!push) { damage.strPushDirection = "AWAY_FROM_BOSS"; damage.bRepeatAfterKnockback = false; damage.bForcePush = false; damage.bPushCanLeaveArena = false; damage.bPushBallistic = false; damage.fPushYawOffsetDegrees = 0.0; }
 				m_bColliderDamageDirty = true;
 			}
 			if (push)
 			{
+				if (ImGui::Checkbox("Ballistic push", &damage.bPushBallistic))
+				{
+					if (damage.bPushBallistic) damage.bPushCanLeaveArena = true;
+					damage.fPushRangeM = std::clamp(damage.fPushRangeM, .01, damage.bPushBallistic ? 100.0 : 20.0);
+					damage.iPushMs = std::clamp(damage.iPushMs, damage.bPushBallistic ? 100u : 1u, damage.bPushBallistic ? 5000u : MAX_EDITOR_TIME_MS);
+					m_bColliderDamageDirty = true;
+				}
+				const float maxDistance = damage.bPushBallistic ? 100.f : 20.f;
+				const int minTime = damage.bPushBallistic ? 100 : 1;
+				const int maxTime = damage.bPushBallistic ? 5000 : static_cast<int>(MAX_EDITOR_TIME_MS);
 				float distance = static_cast<float>(damage.fPushRangeM); int time = static_cast<int>(damage.iPushMs);
-				if (ImGui::DragFloat("Push distance (m)", &distance, .05f, .01f, 20.f))
-				{ damage.fPushRangeM = std::clamp(distance, .01f, 20.f); m_bColliderDamageDirty = true; }
+				if (ImGui::DragFloat("Push distance (m)", &distance, .05f, .01f, maxDistance))
+				{ damage.fPushRangeM = std::clamp(distance, .01f, maxDistance); m_bColliderDamageDirty = true; }
 				if (ImGui::InputInt("Push time (ms)", &time, 10, 100))
-				{ damage.iPushMs = static_cast<std::uint32_t>(std::clamp(time, 1, static_cast<int>(MAX_EDITOR_TIME_MS))); m_bColliderDamageDirty = true; }
-				int direction = damage.strPushDirection == "BOSS_FORWARD" ? 1 : 0;
-				if (ImGui::Combo("Push direction", &direction, "Away from boss\0Boss current forward\0"))
-				{ damage.strPushDirection = direction == 1 ? "BOSS_FORWARD" : "AWAY_FROM_BOSS"; m_bColliderDamageDirty = true; }
+				{ damage.iPushMs = static_cast<std::uint32_t>(std::clamp(time, minTime, maxTime)); m_bColliderDamageDirty = true; }
+				int direction = damage.strPushDirection == "BOSS_FORWARD" ? 1 : damage.strPushDirection == "AWAY_FROM_CONTACT" ? 2 : 0;
+				if (ImGui::Combo("Push direction", &direction, "Away from boss\0Boss current forward\0Away from contact\0"))
+				{
+					damage.strPushDirection = direction == 1 ? "BOSS_FORWARD" : direction == 2 ? "AWAY_FROM_CONTACT" : "AWAY_FROM_BOSS";
+					if (direction != 1) damage.fPushYawOffsetDegrees = 0.0;
+					m_bColliderDamageDirty = true;
+				}
+				if (direction == 1)
+				{
+					float yaw = static_cast<float>(damage.fPushYawOffsetDegrees);
+					if (ImGui::InputFloat("Push yaw offset (deg)##Collider", &yaw, 1.f, 15.f, "%.1f"))
+					{ damage.fPushYawOffsetDegrees = std::clamp(yaw, -360.f, 360.f); m_bColliderDamageDirty = true; }
+				}
+				m_bColliderDamageDirty |= ImGui::Checkbox("Force knockback reaction##Collider", &damage.bForcePush);
+				ImGui::BeginDisabled(damage.bPushBallistic);
+				m_bColliderDamageDirty |= ImGui::Checkbox("Allow arena-edge fall##Collider", &damage.bPushCanLeaveArena);
+				ImGui::EndDisabled();
 			}
 			ImGui::TextDisabled("Apply saves contact, damage and push together for this box.");
 		}
@@ -13844,6 +13901,8 @@ void Client::CKoukuSaydonActionWorkbench::Render_LogicDefinitionValues(
 		}
 		else if ("ATTACHMENT_HOLD" == draft.strJudgementKind)
 			ImGui::TextWrapped("Keeps captured players attached until this window ends. It has no Collider or outcome slots. Select this window in the capture Trigger's Hold connection.");
+		else if ("INVULNERABILITY_ZONE" == draft.strJudgementKind)
+			ImGui::TextWrapped("Linked Colliders block instant death, fear and percentage damage from this Pattern during the window. The Server repeats the blue immunity word every two seconds. This window has no Result slots.");
 		else if ("AREA_OVERLAP" == draft.strJudgementKind)
 		{
 			if (ImGui::BeginCombo("Inside outcome", draft.strInsideOutcome.c_str()))
@@ -13953,19 +14012,41 @@ void Client::CKoukuSaydonActionWorkbench::Render_LogicDefinitionValues(
 			{
 				draft.fPushRangeM = knockback ? 2.0 : 0.0;
 				draft.iPushMs = knockback ? 242u : 0u;
-				if (!knockback) draft.strPushDirection = "AWAY_FROM_BOSS";
+				if (!knockback) { draft.strPushDirection = "AWAY_FROM_BOSS"; draft.bForcePush = false; draft.bPushCanLeaveArena = false; draft.bPushBallistic = false; draft.fPushYawOffsetDegrees = 0.0; }
 			}
 			if (knockback)
 			{
+				if (ImGui::Checkbox("Ballistic push##Logic", &draft.bPushBallistic))
+				{
+					if (draft.bPushBallistic) draft.bPushCanLeaveArena = true;
+					draft.fPushRangeM = std::clamp(draft.fPushRangeM, .01, draft.bPushBallistic ? 100.0 : 20.0);
+					draft.iPushMs = std::clamp(draft.iPushMs, draft.bPushBallistic ? 100u : 1u, draft.bPushBallistic ? 5000u : MAX_EDITOR_TIME_MS);
+				}
+				const float maxDistance = draft.bPushBallistic ? 100.f : 20.f;
+				const int minTime = draft.bPushBallistic ? 100 : 1;
+				const int maxTime = draft.bPushBallistic ? 5000 : static_cast<int>(MAX_EDITOR_TIME_MS);
 				float distance = static_cast<float>(draft.fPushRangeM);
 				int timeMs = static_cast<int>(draft.iPushMs);
 				if (ImGui::InputFloat("Knockback distance (m)", &distance, .1f, 1.f, "%.2f"))
-					draft.fPushRangeM = std::clamp(distance, .01f, 20.f);
+					draft.fPushRangeM = std::clamp(distance, .01f, maxDistance);
 				if (ImGui::InputInt("Knockback time (ms)", &timeMs, 10, 100))
-					draft.iPushMs = static_cast<std::uint32_t>(std::clamp(timeMs, 1, static_cast<int>(MAX_EDITOR_TIME_MS)));
-				int direction = draft.strPushDirection == "BOSS_FORWARD" ? 1 : 0;
-				if (ImGui::Combo("Push direction##Logic", &direction, "Away from boss\0Boss current forward\0"))
-					draft.strPushDirection = direction == 1 ? "BOSS_FORWARD" : "AWAY_FROM_BOSS";
+					draft.iPushMs = static_cast<std::uint32_t>(std::clamp(timeMs, minTime, maxTime));
+				int direction = draft.strPushDirection == "BOSS_FORWARD" ? 1 : draft.strPushDirection == "AWAY_FROM_CONTACT" ? 2 : 0;
+				if (ImGui::Combo("Push direction##Logic", &direction, "Away from boss\0Boss current forward\0Away from contact\0"))
+				{
+					draft.strPushDirection = direction == 1 ? "BOSS_FORWARD" : direction == 2 ? "AWAY_FROM_CONTACT" : "AWAY_FROM_BOSS";
+					if (direction != 1) draft.fPushYawOffsetDegrees = 0.0;
+				}
+				if (direction == 1)
+				{
+					float yaw = static_cast<float>(draft.fPushYawOffsetDegrees);
+					if (ImGui::InputFloat("Push yaw offset (deg)", &yaw, 1.f, 15.f, "%.1f"))
+						draft.fPushYawOffsetDegrees = std::clamp(yaw, -360.f, 360.f);
+				}
+				ImGui::Checkbox("Force knockback reaction", &draft.bForcePush);
+				ImGui::BeginDisabled(draft.bPushBallistic);
+				ImGui::Checkbox("Allow arena-edge fall", &draft.bPushCanLeaveArena);
+				ImGui::EndDisabled();
 				ImGui::TextWrapped("Uses the Server hit reaction, navigation and collision rules.");
 			}
 		}
@@ -14028,13 +14109,24 @@ void Client::CKoukuSaydonActionWorkbench::Render_LogicDefinitionValues(
 						draft.strEffectResourceId = item.strResourceId;
 				ImGui::EndCombo();
 			}
+			const auto* sound = Find_PresentationResource(m_Draft, draft.strSoundResourceId);
+			if (ImGui::BeginCombo("Fear Sound", sound ? sound->strDisplayName.c_str() :
+				(draft.strSoundResourceId.empty() ? "(none)" : "(missing saved Sound)")))
+			{
+				if (ImGui::Selectable("(none)", draft.strSoundResourceId.empty())) draft.strSoundResourceId.clear();
+				for (const auto& item : m_Draft.PresentationResources)
+					if (item.eKind == KOUKU_SAYDON_PRESENTATION_KIND::SOUND &&
+						ImGui::Selectable((item.strDisplayName + "##" + item.strResourceId).c_str(), draft.strSoundResourceId == item.strResourceId))
+						draft.strSoundResourceId = item.strResourceId;
+				ImGui::EndCombo();
+			}
 			ImGui::BeginDisabled(draft.strEffectResourceId.empty());
 			int delayMs = static_cast<int>(draft.iEffectDelayMs);
 			if (ImGui::InputInt("Effect delay from Fear start ms", &delayMs, 100, 1000))
 				draft.iEffectDelayMs = static_cast<std::uint32_t>(std::clamp(delayMs, 0,
 					(std::max)(0, static_cast<int>(draft.iDurationMs) - 1)));
 			ImGui::EndDisabled();
-			ImGui::TextWrapped("Server Fear locks movement and skills and plays the character's fear animation. The affected local player sees this Scene Profile and optional delayed Effect for the same duration. A full-screen face belongs to a Screen Effect resource.");
+			ImGui::TextWrapped("Server Fear locks movement and skills and plays the character's fear animation. The affected local player sees this Scene Profile and optional delayed Effect for the same duration. The optional Sound plays once when the delayed Effect starts. A full-screen face belongs to a Screen Effect resource.");
 		}
 		if ("FOLLOWUP_PATTERN" == draft.strOutcomeKind)
 		{
@@ -14182,13 +14274,14 @@ void Client::CKoukuSaydonActionWorkbench::Render_LogicDefinitionValues(
 	}
 	else if ("TRIGGER" == logic.strLogicType)
 	{
-		const std::array<std::pair<const char*, const char*>, 15u> triggerKinds = {{
+		const std::array<std::pair<const char*, const char*>, 16u> triggerKinds = {{
 			{"", "(choose what activates this Trigger)"},
 			{"ANIMATION_BLEND", "Animation clip blending (ANIMATION_BLEND)"},
 			{"ROOM_PLAYER_ARRIVAL", "Sequence player arrival (ROOM_PLAYER_ARRIVAL)"},
 			{"ENTER_AREA", "Player contact (ENTER_AREA)"},
 			{"OBJECT_CONTACT", "World object contact (OBJECT_CONTACT)"},
 			{"HUD_ENTER", "Switch player HUD at start (HUD_ENTER)"},
+			{"CARD_MAZE_STAGE_PLAYERS", "Place players at card maze entry Effects (CARD_MAZE_STAGE_PLAYERS)"},
 			{"CARD_MAZE_HIDE_NEXT", "Hide next player from the right (CARD_MAZE_HIDE_NEXT)"},
 			{"CARD_MAZE_ENTER", "Move entry participants into the card maze (CARD_MAZE_ENTER)"},
 			{"ALBION_AIRBORNE", "Albion jump, player appearance and landing (ALBION_AIRBORNE)"},
@@ -14337,6 +14430,44 @@ void Client::CKoukuSaydonActionWorkbench::Render_LogicDefinitionValues(
 			if (ImGui::InputInt("Effect lifetime (ms)", &lifetime))
 				draft.iEffectLifetimeMs = static_cast<std::uint32_t>(std::clamp(lifetime, 1, 600000));
 			ImGui::TextWrapped("Player circles stay at the positions selected when the Trigger starts. Arena circles use navigable ground around the boss spawn position, within the radius and height tolerance, with spacing between arena circles. The Server creates the whole set together after validating every position. The existing Effect includes its warning, explosion and tail; this Trigger adds no damage.");
+		}
+		else if (draft.strTriggerKind == "CARD_MAZE_STAGE_PLAYERS")
+		{
+			const auto* pattern = Find_Pattern(m_Draft, m_strSelectedPatternId);
+			std::uint32_t latestTriggerStartMs = 0u;
+			if (pattern) for (const auto& box : pattern->LogicOccurrences)
+				if (box.strLogicId == logic.strLogicId) latestTriggerStartMs = (std::max)(latestTriggerStartMs, box.iStartMs);
+			ImGui::TextWrapped("Choose 1..4 entry Effects in player-slot order. Their MAP positions are used when this Trigger starts; each Effect must start at or after the Trigger. Coordinates stay owned by the Effect boxes.");
+			for (std::size_t i = 0u; i < draft.PlayerEntryEffectOccurrenceIds.size();)
+			{
+				ImGui::PushID(static_cast<int>(i));
+				ImGui::Text("Player %zu: %s", i + 1u, draft.PlayerEntryEffectOccurrenceIds[i].c_str());
+				ImGui::SameLine();
+				if (ImGui::SmallButton("Remove"))
+				{ draft.PlayerEntryEffectOccurrenceIds.erase(draft.PlayerEntryEffectOccurrenceIds.begin() + i); ImGui::PopID(); continue; }
+				ImGui::SameLine(); ImGui::BeginDisabled(i == 0u);
+				if (ImGui::SmallButton("Up")) std::swap(draft.PlayerEntryEffectOccurrenceIds[i], draft.PlayerEntryEffectOccurrenceIds[i - 1u]);
+				ImGui::EndDisabled(); ImGui::SameLine(); ImGui::BeginDisabled(i + 1u == draft.PlayerEntryEffectOccurrenceIds.size());
+				if (ImGui::SmallButton("Down")) std::swap(draft.PlayerEntryEffectOccurrenceIds[i], draft.PlayerEntryEffectOccurrenceIds[i + 1u]);
+				ImGui::EndDisabled(); ImGui::PopID(); ++i;
+			}
+			ImGui::BeginDisabled(!pattern || draft.PlayerEntryEffectOccurrenceIds.size() >= 4u);
+			if (ImGui::BeginCombo("Add entry Effect", "Choose a fixed MAP Effect"))
+			{
+				if (pattern) for (const auto& box : pattern->PresentationOccurrences)
+				{
+					const auto* resource = Find_PresentationResource(m_Draft, box.strResourceId);
+					if (!resource || resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT ||
+						box.strAnchorKind != "MAP" || box.bFollowBoss || !box.strBone.empty() || box.strBoneTarget != "BODY" ||
+						!box.strWorldId.empty() || !box.strWorldOccurrenceId.empty() || box.iWorldEmissionIndex != 0u ||
+						!box.strLogicOccurrenceId.empty() || box.iStartMs < latestTriggerStartMs ||
+						std::find(draft.PlayerEntryEffectOccurrenceIds.begin(), draft.PlayerEntryEffectOccurrenceIds.end(), box.strOccurrenceId) != draft.PlayerEntryEffectOccurrenceIds.end()) continue;
+					const std::string label = resource->strDisplayName + " | " + std::to_string(box.iStartMs) + " ms | " + box.strOccurrenceId;
+					if (ImGui::Selectable(label.c_str())) draft.PlayerEntryEffectOccurrenceIds.push_back(box.strOccurrenceId);
+				}
+				ImGui::EndCombo();
+			}
+			ImGui::EndDisabled();
 		}
 		else if (draft.strTriggerKind == "CARD_MAZE_HIDE_NEXT")
 			ImGui::TextWrapped("Each occurrence hides one participant. The first occurrence fixes the order by world X descending, then PlayerId. Stop restores visibility.");
@@ -14996,18 +15127,26 @@ void Client::CKoukuSaydonActionWorkbench::Render_Details()
 		float startXZ[2] = {float(motion.StartPosition[0]), float(motion.StartPosition[2])};
 		float endXZ[2] = {float(motion.EndPosition[0]), float(motion.EndPosition[2])};
 		float baseY = float(motion.StartPosition[1]), yaw = float(motion.fYawDegrees);
+		const bool sampled = !motion.Keys.empty();
+		ImGui::BeginDisabled(sampled);
 		bool changed = ImGui::DragInt("Move start (ms)", &startMs, 1.f, 0, (std::max)(0, endMs - 1));
 		changed = ImGui::DragInt("Move end (ms)", &endMs, 1.f, startMs + 1, int(Pattern_DurationMs(*pattern))) || changed;
 		changed = ImGui::DragFloat2("Boss start XZ", startXZ, 0.05f, -100000.f, 100000.f) || changed;
 		changed = ImGui::DragFloat2("Boss end XZ", endXZ, 0.05f, -100000.f, 100000.f) || changed;
 		changed = ImGui::DragFloat("Boss base Y", &baseY, 0.05f, -100000.f, 100000.f) || changed;
+		ImGui::EndDisabled();
+		if (sampled) ImGui::TextDisabled("%zu imported position keys; timeline and XYZ are preserved on Save.", motion.Keys.size());
 		changed = ImGui::DragFloat("Boss motion yaw", &yaw, 0.1f, -360.f, 360.f, "%.4f") || changed;
 		ImGui::TextDisabled("Holds the end position. Original animation supplies vertical pose.");
 		if (changed)
 		{
-			motion.iStartMs = std::uint32_t(startMs); motion.iEndMs = std::uint32_t(endMs);
-			motion.StartPosition = {startXZ[0], baseY, startXZ[1]};
-			motion.EndPosition = {endXZ[0], baseY, endXZ[1]}; motion.fYawDegrees = yaw;
+			if (!sampled)
+			{
+				motion.iStartMs = std::uint32_t(startMs); motion.iEndMs = std::uint32_t(endMs);
+				motion.StartPosition = {startXZ[0], baseY, startXZ[1]};
+				motion.EndPosition = {endXZ[0], baseY, endXZ[1]};
+			}
+			motion.fYawDegrees = yaw;
 			auto candidate = m_Draft;
 			auto* edited = Find_Pattern(candidate, patternId);
 			if (edited)

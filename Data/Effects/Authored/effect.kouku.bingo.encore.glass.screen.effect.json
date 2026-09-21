@@ -1,0 +1,522 @@
+{
+  "schema": "lostark.effect-authoring",
+  "version": 13,
+  "effectAssetId": "effect.kouku.bingo.encore.glass.screen",
+  "displayName": "빙고 앵콜 / 원본 화면 유리 균열",
+  "particleSystem": {
+    "uniformScaleMultiplier": 1,
+    "yawOffsetDegrees": 0,
+    "directionYawDegrees": 0,
+    "initialSpeedMultiplier": 1
+  },
+  "modelCues": [],
+  "elements": [
+    {
+      "id": "kouku.encore.glass.screen",
+      "displayName": "Encore original broken glass",
+      "groupId": "effect.kouku.bingo.encore.glass.screen",
+      "sourceNode": "theworld.persistentlevel.main_sequence.interpdata_23.interpgroupdirector_0.efinterptrackpostrendermaterial_0",
+      "visible": true,
+      "kind": "screenPost",
+      "resources": [],
+      "material": {
+        "templateId": "effect.source_material",
+        "sourceMaterialPath": "bfx_mi_bg_00.fx_mi.fx_d_brokenglass_01_tr",
+        "renderProfile": "alpha_one_sided_depth_read",
+        "sourceProfile": {
+          "enabled": true,
+          "profileId": "ue3.material.bfx.mi.bg.00.fx.d.brokenglass.tr.73ebb2a17386",
+          "runtimeShaderProfileId": "effect.ue3.kouku-2627-native.v1",
+          "parentMaterialPath": "bfx_mi_bg_00.fx_d_brokenglass_tr",
+          "semanticStatus": "reconstructed_profile",
+          "textures": [
+            {
+              "name": "native_texture_0",
+              "sourceObjectPath": "fx_tex_02.fx_d_normal_097",
+              "assetId": "Effect/KoukuSaydon/FullRestore/Textures/fx_tex_02/fx_d_normal_097.dds",
+              "addressU": "clamp",
+              "addressV": "clamp",
+              "colorSpace": "linear",
+              "samplingEvidence": "source-texture-tags-and-project-class-default.v1"
+            },
+            {
+              "name": "native_texture_1",
+              "sourceObjectPath": "fx_tex_00.fx_b_atypical_004",
+              "assetId": "Effect/KoukuSaydon/Textures/FX_TEX_00/fx_b_atypical_004.dds",
+              "addressU": "wrap",
+              "addressV": "wrap",
+              "colorSpace": "srgb",
+              "samplingEvidence": "source-texture-tags-and-project-class-default.v1"
+            },
+            {
+              "name": "native_texture_2",
+              "sourceObjectPath": "fx_tex_nomipmap_00.fx_d_environ_072_nomipmap",
+              "assetId": "Effect/DimensionMaster/Textures/FX_TEX_NOMIPMAP_00/fx_d_environ_072_nomipmap.dds",
+              "addressU": "clamp",
+              "addressV": "clamp",
+              "colorSpace": "srgb",
+              "samplingEvidence": "source-texture-tags-and-project-class-default.v1"
+            },
+            {
+              "name": "native_texture_3",
+              "sourceObjectPath": "fx_tex_nomipmap_00.fx_d_environ_073_nomipmap",
+              "assetId": "Effect/KoukuSaydon/FullRestore/Textures/fx_tex_nomipmap_00/fx_d_environ_073_nomipmap.dds",
+              "addressU": "clamp",
+              "addressV": "clamp",
+              "colorSpace": "srgb",
+              "samplingEvidence": "source-texture-tags-and-project-class-default.v1"
+            }
+          ],
+          "scalars": [
+            {
+              "name": "type",
+              "group": "None",
+              "value": 0.0
+            },
+            {
+              "name": "opacity",
+              "group": "None",
+              "value": 1.0
+            }
+          ],
+          "vectors": [
+            {
+              "name": "selectioncolor",
+              "group": "None",
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            }
+          ],
+          "staticSwitches": [],
+          "dynamicParameterSemantics": [
+            "unbound",
+            "unbound",
+            "unbound",
+            "unbound"
+          ],
+          "subUVMode": "none"
+        }
+      },
+      "actionCueAttachment": {
+        "enabled": false,
+        "follow": false,
+        "sourceAnchorSlotId": "",
+        "runtimeAnchorSlotId": "",
+        "runtimeBoneName": "",
+        "socketLocalTransform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      },
+      "transformInheritance": {
+        "enabled": false,
+        "masterElementId": ""
+      },
+      "detail": {
+        "transform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "revolutionDegreesPerSecond": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "velocityPerSecond": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "color": {
+          "offset": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "multiply": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "clip": 0.0,
+          "emissiveIntensity": 1,
+          "distortionIntensity": 0.0,
+          "distortionOnBaseMaterial": false,
+          "radialTime": 0.0,
+          "radialIntensity": 0.0
+        },
+        "uv": {
+          "start": [
+            0,
+            0
+          ],
+          "speed": [
+            0,
+            0
+          ],
+          "wave": false,
+          "waveAmplitude": [
+            0.0,
+            0.0
+          ],
+          "waveFrequency": 1.0,
+          "sequence": false,
+          "loop": true,
+          "sequenceTerm": 0.1,
+          "tileColumns": 1,
+          "tileRows": 1,
+          "tileIndex": 0
+        },
+        "timing": {
+          "startDelaySeconds": 12.500000953674316,
+          "lifeTimeSeconds": 2.933333396911621,
+          "afterImageSeconds": 0,
+          "dissolveStartNormalized": 1.0
+        },
+        "mesh": {
+          "useModelMaterial": true
+        },
+        "sprite": {
+          "billboard": true
+        },
+        "decal": {
+          "size": [
+            15.0,
+            0.01
+          ],
+          "depth": 0.25
+        },
+        "linearLerp": {
+          "position": false,
+          "endPosition": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": false,
+          "endRotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "revolution": false,
+          "endRevolutionDegreesPerSecond": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": false,
+          "endScale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "velocity": false,
+          "endVelocityPerSecond": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "colorOffset": false,
+          "endColorOffset": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "colorMultiply": false,
+          "endColorMultiply": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "emissiveIntensity": false,
+          "endEmissiveIntensity": 1.0
+        },
+        "particle": {
+          "maxParticles": 3,
+          "spawnRatePerSecond": 0.0,
+          "burstCount": 0,
+          "randomSeed": 15,
+          "lifeTimeSeconds": [
+            0.30000001192092896,
+            0.30000001192092896
+          ],
+          "initialPositionMin": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "initialPositionMax": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "initialVelocityMin": [
+            -0.1,
+            0.5,
+            -0.1
+          ],
+          "initialVelocityMax": [
+            0.1,
+            1.0,
+            0.1
+          ],
+          "acceleration": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "startSize": [
+            15.0,
+            0.01
+          ],
+          "endSize": [
+            0.0,
+            0.0
+          ],
+          "localSpace": true,
+          "billboard": true,
+          "authoringApproximate": false,
+          "sourceScale": {
+            "count": 1,
+            "size": 1,
+            "lifeTime": 1,
+            "speed": 1,
+            "rotation": 1,
+            "alpha": 1,
+            "spawnDelay": 1
+          }
+        },
+        "trail": {
+          "maxPoints": 64,
+          "pointLifeTimeSeconds": 0.35,
+          "sampleIntervalSeconds": 0.0166667,
+          "minimumDistance": 0.01,
+          "startWidth": 0.2,
+          "endWidth": 0.0,
+          "faceCamera": true
+        },
+        "afterImage": {
+          "sampleIntervalSeconds": 0.05,
+          "maxCopies": 16,
+          "alphaExponent": 1.0
+        },
+        "light": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "range": 0.0,
+          "intensity": 0.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "ambient": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "falloffExponent": 0.0
+        },
+        "screenPost": {
+          "enabled": true,
+          "profileId": "screen.zoom-blur.reconstructed.v1",
+          "status": "reconstructed_profile",
+          "intensity": 1,
+          "secondaryIntensity": 0,
+          "frequency": 1,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "randomSeed": 1
+        }
+      },
+      "sourceRecipe": {
+        "enabled": true,
+        "rendererShape": "screenPost",
+        "emitterDelaySeconds": 0,
+        "emitterDurationSeconds": 2.933333396911621,
+        "emitterLoopCount": 1,
+        "bursts": [],
+        "modules": []
+      },
+      "sourcePresentation": {
+        "enabled": false,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": "",
+        "status": "unresolved",
+        "sourceObjectPath": "theworld.persistentlevel.main_sequence.interpdata_23.interpgroupdirector_0.efinterptrackpostrendermaterial_0",
+        "sourceActionCueId": "effect.kouku.bingo.encore.glass.screen",
+        "sourceEventId": "effect.kouku.bingo.encore.glass.screen",
+        "sourceOccurrenceIndex": 0,
+        "sourceTimeSeconds": 12.500000953674316,
+        "parameters": []
+      },
+      "sourceTransformTrack": {
+        "sourceOccurrenceId": "theworld.persistentlevel.main_sequence.interpdata_23.interpgroupdirector_0.efinterptrackpostrendermaterial_0",
+        "sourceTimeOriginSeconds": 0,
+        "previewOriginUE3Cm": [
+          0,
+          0,
+          0
+        ],
+        "nodes": [
+          {
+            "sourceObjectPath": "theworld.persistentlevel.main_sequence.interpdata_23.interpgroupdirector_0.efinterptrackpostrendermaterial_0",
+            "frame": "WORLD",
+            "initialPositionUE3Cm": [
+              0,
+              0,
+              0
+            ],
+            "initialEulerDegrees": [
+              0,
+              0,
+              0
+            ],
+            "scaleUE3": [
+              1,
+              1,
+              1
+            ],
+            "positionKeys": [],
+            "eulerKeys": []
+          }
+        ],
+        "materialParameterTracks": [
+          {
+            "name": "opacity",
+            "kind": "SCALAR",
+            "keys": [
+              {
+                "timeSeconds": 12.466667175292969,
+                "value": [
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 12.500000953674316,
+                "value": [
+                  1.0
+                ],
+                "arriveTangent": [
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 15.40000057220459,
+                "value": [
+                  1.0
+                ],
+                "arriveTangent": [
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 15.433334350585938,
+                "value": [
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0
+                ],
+                "interpolation": "constant"
+              }
+            ]
+          },
+          {
+            "name": "type",
+            "kind": "SCALAR",
+            "keys": [
+              {
+                "timeSeconds": 12.500000953674316,
+                "value": [
+                  0.0
+                ],
+                "arriveTangent": [
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0
+                ],
+                "interpolation": "constant"
+              },
+              {
+                "timeSeconds": 13.533333778381348,
+                "value": [
+                  1.0
+                ],
+                "arriveTangent": [
+                  0.0
+                ],
+                "leaveTangent": [
+                  0.0
+                ],
+                "interpolation": "constant"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

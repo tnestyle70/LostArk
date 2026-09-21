@@ -36,10 +36,228 @@ using namespace LostArk::Shared;
 
 
 
+void CServerGameplayContractRunner::Run_KoukuPushContracts(TESTS& tests, const CGameplayCatalog& catalog)
+{
+    auto boss = std::make_unique<SERVER_WORLD_ENTITY>(); boss->iPatternSequence = 1u;
+    const auto player = [] { SERVER_PLAYER p{}; p.iPlayerId = 1u; p.iNetEntityId = 101u;
+        p.iCurrentHp = p.iMaximumHp = 100u; p.isCombatReady = true; p.fPositionX = 1.f; return p; };
+    BOSS_PATTERN_LOGIC_RESULT push{}; push.eKind = BOSS_PATTERN_LOGIC_RESULT_KIND::MAX_HP_PERCENT_DAMAGE;
+    push.iPercent = 10u; push.fPushRangeM = 16.f; push.iPushMs = 242u; push.bForcePush = true; push.bPushCanLeaveArena = true;
+    std::vector<DAMAGE_EVENT> events;
+    for (unsigned state = 0u; state < 4u; ++state)
+    {
+        auto p = player();
+        if (state == 0u) { p.eAction = PLAYER_ACTION_STATE::FEAR; p.iFearEndTick = 200u; p.strFearPresentationId = "push.fear"; }
+        if (state == 1u) { p.eAction = PLAYER_ACTION_STATE::KNOCKDOWN; p.iKnockdownEndTick = 200u; }
+        if (state == 2u) p.iHitReactionGraceEndTick = 200u;
+        if (state == 3u) { p.fKnockbackRemainingSeconds = 1.f; p.fKnockbackSpeed = 1.f; }
+        auto ordinary = p; auto normal = push; normal.bForcePush = false;
+        CKoukuSaydonLogicRuntime::Apply_Result(ordinary, normal, *boss, catalog, nullptr, 100u, events);
+        CKoukuSaydonLogicRuntime::Apply_Result(p, push, *boss, catalog, nullptr, 100u, events);
+        tests.Require(ordinary.fKnockbackSpeed <= 1.f && p.iCurrentHp == 90u && p.eAction == PLAYER_ACTION_STATE::NONE &&
+            p.iFearEndTick == 0u && p.iKnockdownEndTick == 0u && p.iHitReactionGraceEndTick == 0u &&
+            std::abs(p.fKnockbackSpeed * p.fKnockbackRemainingSeconds - 16.f) < .0001f && p.bKnockbackCanLeaveArena,
+            "Explicit force push replaces fear/down/grace/previous reaction; ordinary push preserves resistance");
+    }
+    for (const auto action : {PLAYER_ACTION_STATE::DEAD, PLAYER_ACTION_STATE::FALLING, PLAYER_ACTION_STATE::GRABBED, PLAYER_ACTION_STATE::TRIGGER_MOVE})
+    {
+        auto p = player(); p.eAction = action;
+        if (action == PLAYER_ACTION_STATE::DEAD) p.iCurrentHp = 0u;
+        CKoukuSaydonLogicRuntime::Apply_Result(p, push, *boss, catalog, nullptr, 100u, events);
+        tests.Require(p.eAction == action && p.fKnockbackRemainingSeconds == 0.f,
+            "Force push never replaces death, falling, attachment or world transfer");
+    }
+    auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+    const auto arenaNavigation = room->m_ServerNavigation;
+    room->m_ServerNavigation = CServerNavigation{};
+    std::string status; room->m_ServerCollisionSystem.Initialize({}, status); room->m_ServerCollisionSystem.Set_BlockingBodies({});
+    for (const float distance : {6.f, 16.f})
+    {
+        auto p = player(); auto effect = push; effect.fPushRangeM = distance;
+        effect.ePushDirection = BOSS_LOGIC_PUSH_DIRECTION::BOSS_FORWARD; effect.fPushYawOffsetDegrees = 90.f;
+        boss->fYawDegrees = 0.f;
+        CKoukuSaydonLogicRuntime::Apply_Result(p, effect, *boss, catalog, nullptr, 100u, events);
+        for (unsigned tick = 0u; tick < 8u; ++tick) room->Advance_PlayerKnockback(p, 1.f / 30.f);
+        tests.Require(std::abs(p.fPositionX - (1.f + distance)) < .0001f && std::abs(p.fPositionZ) < .0001f &&
+            p.fKnockbackRemainingSeconds == 0.f && !p.bKnockbackCanLeaveArena && p.iCurrentHp == 90u,
+            "Six and sixteen metre pushes consume exact authored distance; laser local X uses yaw offset once");
+    }
+    {
+        auto p = player(); auto effect = push;
+        effect.fPushRangeM = 30.f; effect.iPushMs = 1500u; effect.bPushBallistic = true;
+        effect.ePushDirection = BOSS_LOGIC_PUSH_DIRECTION::AWAY_FROM_CONTACT;
+        const std::array<float, 2u> contactCenter{0.f, 0.f};
+        boss->fPositionX = 50.f;
+        CKoukuSaydonLogicRuntime::Apply_Result(p, effect, *boss, catalog, nullptr, 100u, events, &contactCenter);
+        tests.Require(p.eAction == PLAYER_ACTION_STATE::KNOCKDOWN && p.bKnockbackBallistic &&
+            p.fKnockbackDirectionX > .999f && std::abs(p.fKnockbackVelocityY - 7.35f) < .0001f,
+            "Ballistic result launches away from contacted circle, independently of distant boss position");
+        room->Advance_PlayerKnockback(p, .75f);
+        tests.Require(std::abs(p.fPositionX - 16.f) < .0001f && std::abs(p.fPositionY - 2.75625f) < .0001f,
+            "Thirty metre 1500ms ballistic push reaches expected halfway position and gravity apex");
+        room->Advance_PlayerKnockback(p, .75f);
+        tests.Require(std::abs(p.fPositionX - 31.f) < .0001f && std::abs(p.fPositionY) < .0001f &&
+            !p.bKnockbackBallistic && p.fKnockbackRemainingSeconds == 0.f && p.eAction != PLAYER_ACTION_STATE::FALLING,
+            "Ballistic movement lands after its authored distance without a navigation system");
+        p = player(); const auto beforeEvents = events.size();
+        CKoukuSaydonLogicRuntime::Apply_Result(p, effect, *boss, catalog, nullptr, 100u, events);
+        tests.Require(p.iCurrentHp == 100u && events.size() == beforeEvents,
+            "Missing contact centre cannot silently substitute the boss origin");
+        boss->fPositionX = 0.f;
+    }
+    {
+        BOSS_PATTERN_DEFINITION repeatPattern{}; repeatPattern.strPatternId = "laser.reentry";
+        BOSS_PATTERN_LOGIC_WINDOW repeat{}; repeat.strWindowId = "laser.contact";
+        repeat.eKind = BOSS_PATTERN_LOGIC_KIND::ENTER_AREA; repeat.iDurationMs = 231u;
+        repeat.bRearmOnExit = true; repeat.OnSuccess = {push};
+        BOSS_LOGIC_REGION r{}; r.strRegionId = "laser.circle"; r.bCircle = true; r.fRadiusM = 4.f;
+        r.eAnchor = BOSS_LOGIC_REGION_ANCHOR::WORLD; repeat.CardRegions = {r}; repeatPattern.LogicWindows = {repeat};
+        std::map<PLAYER_ID, SERVER_PLAYER> players{{1u, player()}};
+        KOUKUSAYDON_LOGIC_LEDGER repeatLedger{}; KOUKUSAYDON_LOGIC_OUTPUT repeatOutput{};
+        std::vector<DAMAGE_EVENT> repeatEvents;
+        CKoukuSaydonLogicRuntime::Build(repeatPattern, *boss, 100u, repeatLedger);
+        const auto update = [&](unsigned tick) { CKoukuSaydonLogicRuntime::Update(*boss, repeatPattern,
+            repeatLedger, players, catalog, nullptr, tick, repeatEvents, repeatOutput); };
+        update(100u); update(101u);
+        players.at(1u).fPositionX = 10.f; update(102u);
+        players.at(1u).fPositionX = -1.f; update(103u); update(104u);
+        tests.Require(players.at(1u).iCurrentHp == 80u && repeatEvents.size() == 2u &&
+            players.at(1u).fKnockbackDirectionX < -.999f && players.at(1u).fKnockbackRemainingSeconds > .24f,
+            "Short laser contact rearms on real reentry during previous push and stays latched between exits");
+    }
+    {
+        const auto hookPattern = [](bool grip, bool sweep, bool hidden) {
+            BOSS_PATTERN_DEFINITION p{}; p.strPatternId = "hook.body";
+            BOSS_PATTERN_LOGIC_WINDOW w{}; w.strWindowId = "hook.capture";
+            w.eKind = BOSS_PATTERN_LOGIC_KIND::ENTER_AREA; w.iDurationMs = 1000u;
+            BOSS_PATTERN_LOGIC_RESULT result{}; result.eKind = BOSS_PATTERN_LOGIC_RESULT_KIND::GRAB_TO_WORLD_OBJECT;
+            w.OnSuccess = {result}; BOSS_LOGIC_REGION r{}; r.strRegionId = "hook.tip";
+            r.eAnchor = BOSS_LOGIC_REGION_ANCHOR::WORLD; r.fHalfX = .25f; r.fHalfY = .35f; r.fHalfZ = .2f;
+            r.WorldTrack.bEnabled = true; r.WorldTrack.iDurationMs = 1000u; r.WorldTrack.fPlaybackSpeed = 1.f;
+            for (const unsigned time : {0u, 33u, 1000u})
+            {
+                BOSS_LOGIC_WORLD_TRANSFORM_KEY key{}; key.iTimeMs = time;
+                key.fOffsetX = sweep ? (time ? -2.f : 2.f) : 0.f; key.fOffsetY = 2.2f;
+                key.bHasGripPosition = grip; key.GripPosition = {key.fOffsetX, key.fOffsetY, 0.f};
+                key.bVisible = !hidden || time != 0u; r.WorldTrack.Keys.push_back(key);
+            }
+            w.CardRegions = {r}; p.LogicWindows = {w}; return p;
+        };
+        const auto capture = [&](float x, float y, float z, bool grip, bool sweep, bool hidden) {
+            auto p = player(); p.fPositionX = x; p.fPositionY = y; p.fPositionZ = z;
+            auto definition = hookPattern(grip, sweep, hidden);
+            auto owner = std::make_unique<SERVER_WORLD_ENTITY>(); owner->iNetEntityId = 201u; owner->iPatternSequence = 3u;
+            std::map<PLAYER_ID, SERVER_PLAYER> players{{1u, p}};
+            KOUKUSAYDON_LOGIC_LEDGER ledger{}; KOUKUSAYDON_LOGIC_OUTPUT output{}; std::vector<DAMAGE_EVENT> damage;
+            CKoukuSaydonLogicRuntime::Build(definition, *owner, 100u, ledger);
+            CKoukuSaydonLogicRuntime::Update(*owner, definition, ledger, players, catalog, nullptr,
+                sweep ? 101u : 100u, damage, output);
+            const auto& caught = players.at(1u);
+            return caught.eAction == PLAYER_ACTION_STATE::GRABBED && caught.eAttachmentSlot == PLAYER_ATTACHMENT_SLOT::WORLD_HOOK_TIP;
+        };
+        tests.Require(capture(0.f, 1.3f, 0.f, true, false, false), "Hook body contact captures even when the feet miss its vertical box");
+        tests.Require(capture(.55f, 1.3f, 0.f, true, false, false), "Hook side contact uses the existing player body radius");
+        tests.Require(capture(.7005f, 1.3f, 0.f, true, false, false), "Hook admits the common contact margin at body tangency");
+        tests.Require(!capture(.702f, 1.3f, 0.f, true, false, false), "Separated hook and body do not capture");
+        tests.Require(!capture(.6f, 1.3f, .6f, true, false, false), "Hook rounded corner test rejects expanded-box false positives");
+        tests.Require(!capture(0.f, -1.f, 0.f, true, false, false), "Overhead hook cannot capture a vertically separated body");
+        tests.Require(capture(0.f, 1.3f, .55f, true, true, false), "Fast hook sweep catches the body between fixed ticks");
+        tests.Require(!capture(0.f, 1.3f, .66f, true, true, false), "Swept hook outside player radius does not capture");
+        tests.Require(!capture(0.f, 1.3f, .55f, true, true, true), "Hidden hook intervals do not create swept contact");
+        tests.Require(!capture(.55f, 1.3f, 0.f, false, false, false), "Legacy point regions retain their prior footprint");
+        tests.Require(capture(0.f, 1.3f, 0.f, false, false, false), "Legacy point capture still works at its centre");
+    }
+    // Protection intercepts the complete result before either damage or forced movement.
+    BOSS_PATTERN_DEFINITION pattern{}; pattern.strPatternId = "push.protected";
+    BOSS_PATTERN_LOGIC_WINDOW contact{}, zone{}; contact.strWindowId = "push.contact";
+    contact.eKind = BOSS_PATTERN_LOGIC_KIND::ENTER_AREA; contact.iDurationMs = 1000u; contact.OnSuccess = {push};
+    BOSS_LOGIC_REGION circle{}; circle.strRegionId = "push.circle"; circle.bCircle = true; circle.fRadiusM = 4.f;
+    circle.eAnchor = BOSS_LOGIC_REGION_ANCHOR::WORLD; contact.CardRegions = {circle}; zone = contact;
+    zone.strWindowId = "push.zone"; zone.eKind = BOSS_PATTERN_LOGIC_KIND::INVULNERABILITY_ZONE; zone.OnSuccess.clear();
+    pattern.LogicWindows = {contact, zone}; std::map<PLAYER_ID, SERVER_PLAYER> protectedPlayers{{1u, player()}};
+    KOUKUSAYDON_LOGIC_LEDGER ledger{}; KOUKUSAYDON_LOGIC_OUTPUT output{};
+    CKoukuSaydonLogicRuntime::Build(pattern, *boss, 100u, ledger);
+    CKoukuSaydonLogicRuntime::Update(*boss, pattern, ledger, protectedPlayers, catalog, nullptr, 100u, events, output);
+    tests.Require(protectedPlayers.at(1u).iCurrentHp == 100u && protectedPlayers.at(1u).fKnockbackRemainingSeconds == 0.f,
+        "Same Pattern invulnerability zone suppresses damage and force push together");
+    room->m_ServerNavigation = arenaNavigation;
+    SERVER_NAV_POINT center{}; bool foundDeck = arenaNavigation.Is_PointWalkableExact(4.66f, 322.94f) && arenaNavigation.Sample_Position(4.66f, 322.94f, center);
+    float lastGroundX = center.x; bool interiorGap = false, returnedGround = false; float gapStartX = center.x;
+    for (float x = 4.66f; foundDeck && x <= 132.66f; x += .125f)
+    {
+        SERVER_NAV_POINT ground{};
+        const bool same = arenaNavigation.Is_PointWalkableExact(x, 322.94f) && arenaNavigation.Sample_Position(x, 322.94f, ground);
+        if (same) { if (interiorGap) returnedGround = true; lastGroundX = x; }
+        else if (!interiorGap) { interiorGap = true; gapStartX = x - .125f; }
+    }
+    tests.Require(foundDeck && lastGroundX > 4.66f, "Actual Gate 2 navigation provides a bounded outer deck edge");
+    if (foundDeck)
+    {
+        SERVER_NAV_POINT edgeGround{}; arenaNavigation.Sample_Position(lastGroundX, 322.94f, edgeGround);
+        for (const float distance : {6.f, 16.f})
+        {
+            auto p = player(); p.fPositionX = center.x; p.fPositionY = center.y; p.fPositionZ = center.z;
+            boss->fPositionX = p.fPositionX; boss->fPositionZ = p.fPositionZ - 1.f;
+            auto effect = push; effect.fPushRangeM = distance;
+            CKoukuSaydonLogicRuntime::Apply_Result(p, effect, *boss, catalog, nullptr, 100u, events);
+            for (unsigned tick = 0u; tick < 8u; ++tick) room->Advance_PlayerKnockback(p, 1.f / 30.f);
+            tests.Require(p.eAction != PLAYER_ACTION_STATE::FALLING && p.iCurrentHp == 90u &&
+                p.fKnockbackRemainingSeconds == 0.f && arenaNavigation.Is_PointWalkableExact(p.fPositionX, p.fPositionZ),
+                "Finite six/sixteen metre push from actual centre survives navigation height clamp");
+        }
+        for (const bool mayExit : {false, true})
+        {
+            auto p = player(); p.fPositionX = lastGroundX; p.fPositionY = edgeGround.y; p.fPositionZ = 322.94f;
+            boss->fPositionX = p.fPositionX - 1.f; boss->fPositionZ = p.fPositionZ;
+            auto effect = push; effect.bPushCanLeaveArena = mayExit; effect.fPushRangeM = 6.f;
+            CKoukuSaydonLogicRuntime::Apply_Result(p, effect, *boss, catalog, nullptr, 100u, events);
+            room->m_iServerTick = 100u; room->Advance_PlayerKnockback(p, .242f);
+            tests.Require(mayExit ? p.eAction == PLAYER_ACTION_STATE::FALLING && p.iFallDeathTick != 0u :
+                p.eAction != PLAYER_ACTION_STATE::FALLING && arenaNavigation.Is_PointWalkableExact(p.fPositionX, p.fPositionZ),
+                "Only authored arena-exit push crosses the actual deck edge and begins ordinary falling");
+            if (mayExit)
+            {
+                room->Update_PlayerFall(p, 1.f / 30.f, p.iFallDeathTick);
+                tests.Require(p.iCurrentHp == 0u && p.eAction == PLAYER_ACTION_STATE::DEAD, "Arena-exit push completes existing falling death lifecycle");
+            }
+        }
+        WORLD_BOOTSTRAP_PLACEMENT wall{}; wall.strPlacementId = "push.wall"; wall.eKind = WORLD_BOOTSTRAP_KIND::COLLISION_BOX;
+        wall.fPositionX = lastGroundX + .5f; wall.fPositionY = edgeGround.y; wall.fPositionZ = 322.94f;
+        wall.fHalfExtentX = .1f; wall.fHalfExtentY = wall.fHalfExtentZ = 10.f; room->m_ServerCollisionSystem.Initialize({wall}, status);
+        auto p = player(); p.fPositionX = lastGroundX - 1.f; p.fPositionY = edgeGround.y; p.fPositionZ = 322.94f;
+        boss->fPositionX = p.fPositionX - 1.f; boss->fPositionZ = p.fPositionZ;
+        CKoukuSaydonLogicRuntime::Apply_Result(p, push, *boss, catalog, nullptr, 100u, events); room->Advance_PlayerKnockback(p, .242f);
+        tests.Require(p.eAction != PLAYER_ACTION_STATE::FALLING && p.fPositionX < wall.fPositionX && p.fKnockbackRemainingSeconds == 0.f,
+            "Forced arena-exit policy still respects swept static collision walls");
+        room->m_ServerCollisionSystem.Initialize({}, status);
+        SERVER_BLOCKING_BODY body{}; body.fX = lastGroundX + .5f; body.fZ = 322.94f; body.fRadius = .6f;
+        room->m_ServerCollisionSystem.Set_BlockingBodies({body});
+        p = player(); p.fPositionX = lastGroundX - 1.f; p.fPositionY = edgeGround.y; p.fPositionZ = 322.94f;
+        float slideX = 0.f, slideY = 0.f, slideZ = 0.f; bool slideBlocked = true;
+        const bool slideResolves = room->m_ServerCollisionSystem.Resolve_PlayerMove(p, lastGroundX + .125f,
+            edgeGround.y, 322.94f, slideX, slideY, slideZ, slideBlocked);
+        boss->fPositionX = p.fPositionX - 1.f; boss->fPositionZ = p.fPositionZ;
+        CKoukuSaydonLogicRuntime::Apply_Result(p, push, *boss, catalog, nullptr, 100u, events);
+        room->Advance_PlayerKnockback(p, .242f);
+        tests.Require(slideResolves && !slideBlocked && arenaNavigation.Is_PointWalkableExact(slideX, slideZ) &&
+            p.eAction != PLAYER_ACTION_STATE::FALLING && arenaNavigation.Is_PointWalkableExact(p.fPositionX, p.fPositionZ),
+            "Body slide returning an attempted exit to ground cannot start falling");
+        room->m_ServerCollisionSystem.Set_BlockingBodies({});
+        if (interiorGap && returnedGround)
+        {
+            p = player(); p.fPositionX = gapStartX; p.fPositionY = edgeGround.y; p.fPositionZ = 322.94f;
+            boss->fPositionX = p.fPositionX - 1.f; boss->fPositionZ = p.fPositionZ;
+            CKoukuSaydonLogicRuntime::Apply_Result(p, push, *boss, catalog, nullptr, 100u, events); room->Advance_PlayerKnockback(p, .242f);
+            tests.Require(p.eAction != PLAYER_ACTION_STATE::FALLING, "Interior navigation/height seam with further same-deck ground is not an arena exit");
+        }
+    }
+}
+
 int LostArk::Server::Run_ServerKoukuObjectOverlapContractTests()
 {
 	TESTS tests;
 	const CGameplayCatalog catalog;
+	CServerGameplayContractRunner::Run_KoukuPushContracts(tests, catalog);
 	Run_KoukuObjectOverlapContracts(tests, catalog);
 	Run_KoukuObjectContactContracts(tests, catalog);
 	Run_KoukuFearAndCounterContracts(tests, catalog);

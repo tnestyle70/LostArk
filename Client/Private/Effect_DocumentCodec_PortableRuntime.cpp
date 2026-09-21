@@ -725,14 +725,16 @@ namespace Client::EffectDocumentCodecDetail
 							return false;
 						}
 						// Offset has a per-tick base reset and can sample over life.
-						// Variable rotation/rate updates still need their own phase state.
+						// Single-chain rate updates integrate into the particle phase below.
+						// Rotation updates and multiple mutable chains remain rejected.
 						if (Literal.eKind != EFFECT_SOURCE_LITERAL_KIND::BOOLEAN)
 							return true;
 						const std::string_view Option = Path.substr(Path.find('.') + 1u);
 						if (Option == "bprocessduringspawn" || Option == "buseemittertime")
 							return false;
 						if (Option == "bprocessduringupdate")
-							return Literal.bBoolean && !Path.starts_with("offsetoptions.");
+							return Literal.bBoolean && !Path.starts_with("offsetoptions.") &&
+								!Path.starts_with("rotationrateoptions.");
 						return true;
 					}))
 			{

@@ -498,9 +498,10 @@ bool Client::CKoukuSaydonBossTool::Prepare_ServerPlay(const std::string_view gat
 	pending.iGateIndex = gateIndex;
 	pending.iDeadlineMilliseconds = GetTickCount64() + 20000u;
 	pending.Submit = std::move(submit);
-	// An already approved gate may still be constructing its replicated NPC.
-	// Wait for that presentation without despawning or teleporting it again.
-	if (arena->Get_ActiveDebugGate() != gateIndex && !arena->Debug_ActivateGate(gateIndex, status))
+	// Only a Debug approval from this world and raid epoch can be reused.
+	// Full-raid Stop keeps the scene but removes its bosses; slow NPC
+	// construction after a real Debug approval still waits without respawning.
+	if (!arena->Is_DebugGateApprovedForServerPlay(gateIndex) && !arena->Debug_ActivateGate(gateIndex, status))
 	{ m_strStatus = status; return false; }
 	pending.iGateGeneration = arena->Get_DebugGateGeneration();
 	m_PlayPreparation = std::move(pending);
@@ -549,8 +550,8 @@ void Client::CKoukuSaydonBossTool::Update()
         return;
     }
 	if (arena->Is_DebugGatePending()) return;
-	if (arena->Get_ActiveDebugGate() != pending.iGateIndex)
-	{ fail(arena->Get_DebugGateStatus()); return; }
+	if (!arena->Is_DebugGateApprovedForServerPlay(pending.iGateIndex))
+	{ fail("the Server gate approval was replaced. " + arena->Get_DebugGateStatus()); return; }
 	if (!std::all_of(pending.TargetPlacementIds.begin(), pending.TargetPlacementIds.end(), [&](const auto& target) {
 		return arena->Debug_FindArenaBossNpc(CKoukuSaydonCompositionDocument::Resolve_BossArchetypeId(target)) != nullptr;
 	})) return;

@@ -31,6 +31,14 @@ bool Is_KoukuBossMotionNavigable(const BOSS_PATTERN_DEFINITION& pattern,
 	{
 		if (!pattern.BossMotion) return true;
 		const auto& motion = *pattern.BossMotion;
+		if (!motion.Keys.empty())
+		{
+			SERVER_NAV_POINT ground{};
+			// Explicit cinematic keys may leave the deck; admission still starts on its authored floor.
+			return navigation.Is_PointWalkableExact(motion.StartPosition[0], motion.StartPosition[2]) &&
+				navigation.Sample_Position(motion.StartPosition[0], motion.StartPosition[2], ground) &&
+				std::abs(ground.y - motion.StartPosition[1]) <= 1.f;
+		}
 		return navigation.Is_PointWalkableExact(motion.StartPosition[0], motion.StartPosition[2]) &&
 			navigation.Is_PointWalkableExact(motion.EndPosition[0], motion.EndPosition[2]) &&
 			navigation.Has_LineOfSight(motion.StartPosition[0], motion.StartPosition[2],
