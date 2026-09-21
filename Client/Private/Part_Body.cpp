@@ -19,7 +19,7 @@ namespace
 		if (nullptr == surface || surface->family != Engine::MODEL_SURFACE_FAMILY::SOURCE_CHARACTER)
 			return 0u;
 		const uint32_t program = surface->sourceCharacter.program;
-		return 6u == program || 7u == program || 18u == program ?
+		return 6u == program || 7u == program || 18u == program || 99u == program ?
 			SOURCE_TRANSLUCENT_TWO_SIDED_PASS : 0u;
 	}
 }

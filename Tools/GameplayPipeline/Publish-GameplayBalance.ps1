@@ -1481,6 +1481,71 @@ foreach ($targeting in @($targetingDocument.skills)) {
 		$(if ([bool]$targeting.requiresWalkable) { 1 } else { 0 })) -join "`t"))
 }
 
+# Guardian Knight's Embereth resources. The orb gauge is the class identity
+# gauge (PlayerProfiles maximumIdentity); this document owns how it fills (per
+# landed hit), how long the dragon form runs it down, the ember socket pool and
+# each skill's ember spend or refill. It is an optional join document like
+# PlayerSkillTargeting.json, so it sits outside the provenance receipt.
+$emberDocument = Read-JsonDocument 'Data/Balance/GuardianKnightEmber.json'
+Assert-ExactProperties $emberDocument @(
+	'schema','formatVersion','characterClass','orbGauge','ember','skills') 'guardian knight ember document'
+Assert-JsonString $emberDocument.schema 'guardian knight ember schema'
+Assert-JsonInteger $emberDocument.formatVersion 'guardian knight ember formatVersion' 1 1
+Assert-JsonString $emberDocument.characterClass 'guardian knight ember characterClass'
+if ([string]$emberDocument.schema -cne 'lostark.guardian-knight-ember' -or
+	[uint32]$emberDocument.formatVersion -ne 1 -or
+	$emberDocument.skills -isnot [Array]) {
+	throw 'Guardian knight ember header is invalid.'
+}
+$emberClass = [string]$emberDocument.characterClass
+$emberOwnerProfile = @($playerDocument.players | Where-Object {
+	[string]$_.characterClass -ceq $emberClass })
+if ($emberClass -cne 'GUARDIANKNIGHT' -or $emberOwnerProfile.Count -ne 1 -or
+	[uint32]$emberOwnerProfile[0].maximumIdentity -eq 0) {
+	throw "Guardian knight ember class has no identity gauge profile: $emberClass"
+}
+Assert-ExactProperties $emberDocument.orbGauge @('gainPerHit','dragonDurationMs') 'ember orbGauge'
+Assert-ExactProperties $emberDocument.ember @('maximumSockets','damageBonusPercentPerOrb') 'ember pool'
+Assert-JsonInteger $emberDocument.orbGauge.gainPerHit 'ember gainPerHit' 1 ([uint32]$emberOwnerProfile[0].maximumIdentity)
+Assert-JsonInteger $emberDocument.orbGauge.dragonDurationMs 'ember dragonDurationMs' 1000 600000
+Assert-JsonInteger $emberDocument.ember.maximumSockets 'ember maximumSockets' 1 64
+Assert-JsonInteger $emberDocument.ember.damageBonusPercentPerOrb 'ember damageBonusPercentPerOrb' 0 1000
+$emberMaximumSockets = [uint32]$emberDocument.ember.maximumSockets
+$emberSkillIds = [Collections.Generic.HashSet[uint32]]::new()
+foreach ($emberSkill in @($emberDocument.skills)) {
+	Assert-ExactProperties $emberSkill @('skillId','emberGain','emberCost','locksSocket') 'ember skill row'
+	Assert-JsonInteger $emberSkill.skillId 'ember skillId' 1 ([uint32]::MaxValue)
+	Assert-JsonInteger $emberSkill.emberGain "ember $($emberSkill.skillId) emberGain" 0 $emberMaximumSockets
+	Assert-JsonInteger $emberSkill.emberCost "ember $($emberSkill.skillId) emberCost" 0 $emberMaximumSockets
+	if ($emberSkill.locksSocket -isnot [bool]) {
+		throw "Ember locksSocket must be a JSON Boolean: $($emberSkill.skillId)"
+	}
+	$emberSkillId = [uint32]$emberSkill.skillId
+	$emberOwners = @($skillDocument.skills | Where-Object { [uint32]$_.skillId -eq $emberSkillId })
+	$emberGain = [uint32]$emberSkill.emberGain
+	$emberCost = [uint32]$emberSkill.emberCost
+	if (-not $emberSkillIds.Add($emberSkillId) -or $emberOwners.Count -ne 1 -or
+		[string]$emberOwners[0].characterClass -cne $emberClass -or
+		($emberGain -eq 0) -eq ($emberCost -eq 0)) {
+		throw "Ember skill row has no owner, is duplicated, or must either refill or spend: $emberSkillId"
+	}
+	# A locked socket is the price of a human-form expression skill; the dragon
+	# form spends ember freely and the refill skills never lock.
+	if ([bool]$emberSkill.locksSocket -and
+		($emberCost -eq 0 -or [string]$emberOwners[0].requiredStance -cne 'GUARDIANKNIGHT_HUMAN')) {
+		throw "Ember socket lock needs a human-form spending skill: $emberSkillId"
+	}
+	$skillRows.Add((@(
+		'SKILLEMBER', $emberSkillId, $emberGain, $emberCost,
+		$(if ([bool]$emberSkill.locksSocket) { 1 } else { 0 })) -join "`t"))
+}
+$playerRows.Add((@(
+	'PLAYEREMBER', $emberClass,
+	[uint32]$emberDocument.orbGauge.gainPerHit,
+	[uint32]$emberDocument.orbGauge.dragonDurationMs,
+	$emberMaximumSockets,
+	[uint32]$emberDocument.ember.damageBonusPercentPerOrb) -join "`t"))
+
 $classesWithIdentitySkillCost = [Collections.Generic.HashSet[string]]::new()
 foreach ($skill in @($skillDocument.skills)) {
     if ([uint32]$skill.identityCost -gt 0) {
@@ -1492,6 +1557,7 @@ foreach ($player in @($playerDocument.players)) {
         [uint32]$player.identityDrainPerSecond -eq 0 -and
         [uint32]$player.identityStanceSwitchCost -eq 0 -and
         [uint32]$player.identityCyclic -eq 0 -and
+        [string]$player.characterClass -cne $emberClass -and
         -not $classesWithIdentitySkillCost.Contains([string]$player.characterClass)) {
         # A gauge that never drains, never charges a switch, never wraps, and
         # backs no skill's identityCost would just sit there once full, which

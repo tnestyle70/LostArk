@@ -1667,6 +1667,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 	m_BossPatternBundles.clear();
 	m_ValtanTimelines.clear();
 	m_Players.clear();
+	m_EmberProfiles.clear();
 	m_KoukuMadnessPolicies.clear();
 	m_DamageRatePercentByProfileId.clear();
 	m_ValtanPresentationGenerationId = {};
@@ -1710,6 +1711,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 	actually retuned carries a row, so this set is never checked for coverage. */
 	std::unordered_set<LostArk::Shared::SKILL_ID> skillRootMotionScaleOwners;
 	std::unordered_set<LostArk::Shared::SKILL_ID> skillTargetOwners;
+	std::unordered_set<LostArk::Shared::SKILL_ID> emberSkillOwners;
 	std::unordered_set<std::string> patternPolicyOwners;
 	std::unordered_set<std::string> patternSourceOwners;
 	std::unordered_set<std::string> patternVerticalOffsetOwners;
@@ -1905,6 +1907,42 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 				LostArk::Shared::SKILL_TARGET_INTENT_KIND::GROUND_POINT;
 			owner->second.fTargetMaximumRange = maximumRange;
 			owner->second.requiresWalkableTarget = true;
+		}
+		else if (!fields.empty() && "SKILLEMBER" == fields[0])
+		{
+			LostArk::Shared::SKILL_ID ownerSkillId =
+				LostArk::Shared::INVALID_SKILL_ID;
+			std::uint32_t gain = 0u;
+			std::uint32_t cost = 0u;
+			std::uint32_t locks = 0u;
+			if (5u != fields.size() ||
+				!ParseNumber(fields[1], ownerSkillId) ||
+				!ParseNumber(fields[2], gain) ||
+				!ParseNumber(fields[3], cost) ||
+				!ParseNumber(fields[4], locks) ||
+				locks > 1u || (0u == gain) == (0u == cost) ||
+				(1u == locks && 0u == cost))
+			{
+				m_strStatus = "Player ember skill row is invalid";
+				return false;
+			}
+			/* Bounds against the socket pool and the owner's class wait for the
+			PLAYEREMBER row, which arrives after every skill: see the post-load
+			pass. */
+			const auto owner = m_Skills.find(ownerSkillId);
+			if (m_Skills.end() == owner ||
+				!emberSkillOwners.insert(ownerSkillId).second ||
+				(1u == locks &&
+					LostArk::Shared::PLAYER_STANCE_ID::GUARDIANKNIGHT_HUMAN !=
+						owner->second.eRequiredStance))
+			{
+				m_strStatus =
+					"Player ember skill has no owner, is duplicated, or locks outside the human form";
+				return false;
+			}
+			owner->second.iEmberGain = gain;
+			owner->second.iEmberCost = cost;
+			owner->second.locksEmberSocket = 1u == locks;
 		}
 		else if (!fields.empty() && "SKILLSTAGE" == fields[0])
 		{
@@ -5795,6 +5833,27 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 				return false;
 			}
 		}
+		else if (!fields.empty() && "PLAYEREMBER" == fields[0])
+		{
+			LostArk::Shared::CHARACTER_CLASS_ID characterClass =
+				LostArk::Shared::CHARACTER_CLASS_ID::END;
+			GUARDIAN_EMBER_PROFILE ember{};
+			if (6u != fields.size() ||
+				!ParseCharacterClass(fields[1], characterClass) ||
+				!ParseNumber(fields[2], ember.iGaugeGainPerHit) ||
+				!ParseNumber(fields[3], ember.iDragonDurationMs) ||
+				!ParseNumber(fields[4], ember.iMaximumSockets) ||
+				!ParseNumber(fields[5], ember.iDamageBonusPercentPerOrb) ||
+				0u == ember.iGaugeGainPerHit || ember.iDragonDurationMs < 1000u ||
+				ember.iDragonDurationMs > 600000u ||
+				0u == ember.iMaximumSockets || ember.iMaximumSockets > 64u ||
+				ember.iDamageBonusPercentPerOrb > 1000u ||
+				!m_EmberProfiles.emplace(characterClass, ember).second)
+			{
+				m_strStatus = "Player ember profile row is invalid";
+				return false;
+			}
+		}
 		else
 		{
 			m_strStatus = "Unknown gameplay bootstrap row kind";
@@ -5931,13 +5990,39 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 	}
 	for (const auto& [characterClass, player] : m_Players)
 	{
+		/* An ember class spends its gauge by running the dragon form down. */
 		if (0u != player.iMaximumIdentity &&
 			0u == player.iIdentityDrainPerSecond &&
 			0u == player.iIdentityStanceSwitchCost &&
 			0u == player.iIdentityCyclic &&
+			!m_EmberProfiles.contains(characterClass) &&
 			!classesWithIdentitySkillCost.contains(characterClass))
 		{
 			m_strStatus = "Player identity gauge never spends";
+			return false;
+		}
+	}
+	for (const auto& [characterClass, ember] : m_EmberProfiles)
+	{
+		const PLAYER_RUNTIME_PROFILE* owner = Find_Player(characterClass);
+		if (nullptr == owner || 0u == owner->iMaximumIdentity ||
+			ember.iGaugeGainPerHit > owner->iMaximumIdentity)
+		{
+			m_strStatus = "Player ember profile has no identity gauge to fill";
+			return false;
+		}
+	}
+	for (const auto& [skillId, skill] : m_Skills)
+	{
+		(void)skillId;
+		if (0u == skill.iEmberGain && 0u == skill.iEmberCost)
+			continue;
+		const GUARDIAN_EMBER_PROFILE* ember =
+			Find_EmberProfile(skill.eCharacterClass);
+		if (nullptr == ember || skill.iEmberGain > ember->iMaximumSockets ||
+			skill.iEmberCost > ember->iMaximumSockets)
+		{
+			m_strStatus = "Player ember skill belongs to a class without an ember profile";
 			return false;
 		}
 	}
@@ -7635,6 +7720,14 @@ LostArk::Server::CGameplayCatalog::Find_Player(
 {
 	const auto iter = m_Players.find(characterClass);
 	return m_Players.end() == iter ? nullptr : &iter->second;
+}
+
+const LostArk::Server::GUARDIAN_EMBER_PROFILE*
+LostArk::Server::CGameplayCatalog::Find_EmberProfile(
+	const LostArk::Shared::CHARACTER_CLASS_ID characterClass) const
+{
+	const auto iter = m_EmberProfiles.find(characterClass);
+	return m_EmberProfiles.end() == iter ? nullptr : &iter->second;
 }
 
 const LostArk::Server::PLAYER_SKILL_DEFINITION*

@@ -41,6 +41,10 @@ namespace Client
 		HUD draws nothing for it. */
 		std::uint32_t iCurrentIdentity = 0;
 		std::uint32_t iMaximumIdentity = 0;
+		/* Guardian Knight ember pool; a maximum of 0 means the class has none. */
+		std::uint32_t iEmberOrbs = 0;
+		std::uint32_t iEmberLockedSockets = 0;
+		std::uint32_t iEmberMaximumSockets = 0;
 		/* KoukuSaydon madness gauge and the avatar form the Server replicates
 		for it. A maximum of 0 means no Saydon encounter owns the gauge. */
 		std::uint32_t iCurrentMadness = 0;

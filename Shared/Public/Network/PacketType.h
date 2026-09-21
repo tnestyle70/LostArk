@@ -97,7 +97,9 @@ namespace LostArk::Shared
 	// owns the original Valtan TrackMove position samples; the Client uses this
 	// distinct state to keep an idle presentation instead of playing a terrain hop.
 	// Earlier peers do not know the appended action identity.
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 101;
+	// 102 joins the Guardian Knight ember orbs, locked sockets and pool size
+	// with the wave re-summon and wall-climb wire contracts.
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 102;
 
 	enum class WORLD_ID : std::uint16_t
 	{

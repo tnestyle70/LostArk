@@ -98,7 +98,7 @@ SOURCE_CHARACTER_NATIVE_INPUT MakeSourceCharacterInput(float2 uv, float4 extraUV
     if (g_SourceCharacterProgram == 6u || g_SourceCharacterProgram == 7u ||
         g_SourceCharacterProgram == 18u || g_SourceCharacterProgram == 20u ||
         g_SourceCharacterProgram == 29u || g_SourceCharacterProgram == 84u ||
-        g_SourceCharacterProgram == 88u)
+        g_SourceCharacterProgram == 88u || g_SourceCharacterProgram == 99u)
     {
         input.values[5] = float4(0.f, 0.f, 0.f, 1.f); // Source fog identity.
         input.values[6] = g_SourceCharacterProgram == 6u ? 0.f : float4(tangentView, 1.f);
@@ -154,7 +154,8 @@ SOURCE_CHARACTER_GBUFFER EvaluateSourceCharacterGeometry(float2 uv, float4 extra
     // ordered coverage until its source sorted-translucency passes are present.
     if (g_SourceCharacterProgram == 6u || g_SourceCharacterProgram == 7u ||
         g_SourceCharacterProgram == 18u || g_SourceCharacterProgram == 20u ||
-        g_SourceCharacterProgram == 29u || g_SourceCharacterProgram == 84u)
+        g_SourceCharacterProgram == 29u || g_SourceCharacterProgram == 84u ||
+        g_SourceCharacterProgram == 99u)
     {
         static const float threshold[16] = {
             .5f, 8.5f, 2.5f, 10.5f, 12.5f, 4.5f, 14.5f, 6.5f,

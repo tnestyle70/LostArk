@@ -163,6 +163,8 @@ namespace
 			0 != snapshot.iMaximumResource &&
 			snapshot.iCurrentResource <= snapshot.iMaximumResource &&
 			snapshot.iCurrentIdentity <= snapshot.iMaximumIdentity &&
+			static_cast<std::uint32_t>(snapshot.iEmberOrbs) +
+				snapshot.iEmberLockedSockets <= snapshot.iEmberMaximumSockets &&
 			snapshot.iCurrentMadness <= snapshot.iMaximumMadness &&
 			Is_Valid_PlayerMadnessForm(snapshot.eMadnessForm) &&
 			(LostArk::Shared::INVALID_VEHICLE_ID == snapshot.iVehicleId ||
@@ -3083,6 +3085,9 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
 		writer.Write_U32(player.iMaximumResource);
 		writer.Write_U32(player.iCurrentIdentity);
 		writer.Write_U32(player.iMaximumIdentity);
+		writer.Write_U8(player.iEmberOrbs);
+		writer.Write_U8(player.iEmberLockedSockets);
+		writer.Write_U8(player.iEmberMaximumSockets);
 		writer.Write_U32(player.iCurrentMadness);
 		writer.Write_U32(player.iMaximumMadness);
 		writer.Write_U8(static_cast<std::uint8_t>(player.eMadnessForm));
@@ -3352,6 +3357,9 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 			!reader.Read_U32(player.iMaximumResource) ||
 			!reader.Read_U32(player.iCurrentIdentity) ||
 			!reader.Read_U32(player.iMaximumIdentity) ||
+			!reader.Read_U8(player.iEmberOrbs) ||
+			!reader.Read_U8(player.iEmberLockedSockets) ||
+			!reader.Read_U8(player.iEmberMaximumSockets) ||
 			!reader.Read_U32(player.iCurrentMadness) ||
 			!reader.Read_U32(player.iMaximumMadness) ||
 			!reader.Read_U8(rawMadnessForm) ||

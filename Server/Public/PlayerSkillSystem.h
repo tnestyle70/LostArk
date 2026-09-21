@@ -97,6 +97,27 @@ namespace LostArk::Server
 			SERVER_PLAYER& player,
 			const PLAYER_RUNTIME_PROFILE& profile);
 
+		/* Guardian Knight orb gauge in place of Update_Identity: it never
+		regenerates on its own, only landed hits fill it (Gain_EmberGauge), and
+		the dragon stance runs it from full to empty over the profile duration
+		and drops the stance at zero. */
+		static void Update_EmberGauge(
+			SERVER_PLAYER& player,
+			const PLAYER_RUNTIME_PROFILE& profile,
+			const GUARDIAN_EMBER_PROFILE& ember);
+
+		/* Spawn, revive and class change put every gauge where the class starts:
+		an ember class starts empty with a full, unlocked ember pool, every other
+		class starts with its identity gauge full. */
+		static void Reset_Gauges(
+			SERVER_PLAYER& player,
+			const CGameplayCatalog& catalog);
+
+		/* One landed hit of a default-stance action adds the profile gain. */
+		static void Gain_EmberGauge(
+			SERVER_PLAYER& player,
+			const CGameplayCatalog& catalog);
+
 		/* outDamageEvents collects every hit this call resolves so the room can
 		ship the amounts in the same tick's snapshot. The room owns the vector's
 		lifetime; a combo emits once per stage that lands. */
@@ -139,6 +160,13 @@ namespace LostArk::Server
 			float startY = NAVIGATION_HEIGHT_UNKNOWN);
 
 	private:
+		/* The ember side of a successful Try_Start: spend what the skill asks
+		and the player holds, lock a socket for a human-form expression skill,
+		then refill. Skills of other classes leave the player untouched. */
+		static void Apply_EmberOnStart(
+			SERVER_PLAYER& player,
+			const PLAYER_SKILL_DEFINITION& skill,
+			const CGameplayCatalog& catalog);
 		bool Try_StartInternal(
 			SERVER_PLAYER& player,
 			const LostArk::Shared::C2S_USE_SKILL& command,

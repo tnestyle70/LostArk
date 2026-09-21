@@ -1,0 +1,27 @@
+{
+  "schema": "lostark.guardian-knight-ember",
+  "formatVersion": 1,
+  "characterClass": "GUARDIANKNIGHT",
+  "orbGauge": {
+    "gainPerHit": 4,
+    "dragonDurationMs": 15000
+  },
+  "ember": {
+    "maximumSockets": 10,
+    "damageBonusPercentPerOrb": 10
+  },
+  "skills": [
+    { "skillId": 49100, "emberGain": 2, "emberCost": 0, "locksSocket": false },
+    { "skillId": 49110, "emberGain": 3, "emberCost": 0, "locksSocket": false },
+    { "skillId": 49120, "emberGain": 3, "emberCost": 0, "locksSocket": false },
+    { "skillId": 49130, "emberGain": 4, "emberCost": 0, "locksSocket": false },
+    { "skillId": 49150, "emberGain": 6, "emberCost": 0, "locksSocket": false },
+    { "skillId": 49200, "emberGain": 0, "emberCost": 4, "locksSocket": true },
+    { "skillId": 49220, "emberGain": 0, "emberCost": 4, "locksSocket": true },
+    { "skillId": 49260, "emberGain": 0, "emberCost": 5, "locksSocket": true },
+    { "skillId": 49210, "emberGain": 0, "emberCost": 4, "locksSocket": false },
+    { "skillId": 49230, "emberGain": 0, "emberCost": 4, "locksSocket": false },
+    { "skillId": 49270, "emberGain": 0, "emberCost": 5, "locksSocket": false },
+    { "skillId": 49330, "emberGain": 0, "emberCost": 6, "locksSocket": false }
+  ]
+}

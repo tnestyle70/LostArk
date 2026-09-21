@@ -213,6 +213,9 @@ void Client::CCombatHUDViewModel::Apply_LocalPlayer(
 	m_Player.iMaximumResource = snapshot.iMaximumResource;
 	m_Player.iCurrentIdentity = snapshot.iCurrentIdentity;
 	m_Player.iMaximumIdentity = snapshot.iMaximumIdentity;
+	m_Player.iEmberOrbs = snapshot.iEmberOrbs;
+	m_Player.iEmberLockedSockets = snapshot.iEmberLockedSockets;
+	m_Player.iEmberMaximumSockets = snapshot.iEmberMaximumSockets;
 	m_Player.iCurrentMadness = snapshot.iCurrentMadness;
 	m_Player.iMaximumMadness = snapshot.iMaximumMadness;
 	m_Player.eMadnessForm = snapshot.eMadnessForm;

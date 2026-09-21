@@ -10508,10 +10508,3806 @@
       "animationSetModels": [
         "Character/GuardianKnight/AnimSets/GuardianKnight_EstherAnimSet.wmodel",
         "Character/GuardianKnight/AnimSets/GuardianKnight_CustomizingAnimSet.wmodel",
+        "Character/GuardianKnight/AnimSets/GuardianKnight_RideHorseAnimSet.wmodel",
+        "Character/GuardianKnight/AnimSets/GuardianKnight_RideSwingAnimSet.wmodel",
+        "Character/GuardianKnight/AnimSets/GuardianKnight_RideHoverboardAnimSet.wmodel",
+        "Character/GuardianKnight/AnimSets/GuardianKnight_RideHeavywalkerBm9AnimSet.wmodel",
+        "Character/GuardianKnight/AnimSets/GuardianKnight_RideTubeAnimSet.wmodel",
+        "Character/GuardianKnight/AnimSets/GuardianKnight_RideDragon2AnimSet.wmodel",
+        "Character/GuardianKnight/AnimSets/GuardianKnight_MazeHammerAnimSet.wmodel",
         "Character/GuardianKnight/AnimSets/GuardianKnight_TerrainJumpAnimSet.wmodel"
       ],
       "animationSetId": "ANIM_GUARDIANKNIGHT",
-      "runtimeStatus": "supported"
+      "runtimeStatus": "supported",
+      "modelMaterialOverrides": [
+        {
+          "modelAssetId": "Character/GuardianKnight/GuardianKnight_Upper.wmodel",
+          "materialName": "pc_ddk_00_upper_mi",
+          "sourceMaterial": "pc_ddk_00.mat.pc_ddk_00_upper_mi",
+          "family": "source.character.realpbr-avatar-ddk.v1",
+          "parameters": {
+            "auto_pbr_oc_max": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "auto_pbr_oc_min": [
+              0.30000001192092896,
+              0.30000001192092896,
+              0.30000001192092896,
+              0.30000001192092896
+            ],
+            "basecolor_color": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "buffcolor": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "diffusecolor_a": [
+              0.0427197702229023,
+              0.04051397740840912,
+              0.04972192645072937,
+              1.0
+            ],
+            "diffusecolor_b": [
+              0.12506848573684692,
+              0.13037224113941193,
+              0.13259179890155792,
+              1.0
+            ],
+            "diffusecolor_c": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "dye_roughness_power_tensition": [
+              0.15000000596046448,
+              0.15000000596046448,
+              0.15000000596046448,
+              0.15000000596046448
+            ],
+            "fx_color_desaturation_actiontool": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fx_color_desaturation_buffsettool": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fx_color_intensity_actiontool": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "fx_color_intensity_buffsettool": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "hit_color": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "mask_variation_visible": [
+              1.0,
+              1.0,
+              0.0,
+              0.0
+            ],
+            "metallic_power": [
+              0.30000001192092896,
+              0.30000001192092896,
+              0.30000001192092896,
+              0.30000001192092896
+            ],
+            "normaltex_intensity": [
+              1.2000000476837158,
+              1.2000000476837158,
+              1.2000000476837158,
+              1.2000000476837158
+            ],
+            "occlusion_brightness": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "occlusion_color": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "occlusion_power": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "occlusionbasecolor_blend_intensity": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "pbr_add_basecolor_to_emissive": [
+              0.05000000074505806,
+              0.05000000074505806,
+              0.05000000074505806,
+              0.05000000074505806
+            ],
+            "pbr_specular": [
+              0.5,
+              0.5,
+              0.5,
+              0.5
+            ],
+            "roughness_power": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "roughness_power_a": [
+              5.0,
+              5.0,
+              5.0,
+              5.0
+            ],
+            "roughness_power_b": [
+              5.0,
+              5.0,
+              5.0,
+              5.0
+            ],
+            "roughness_power_c": [
+              5.0,
+              5.0,
+              5.0,
+              5.0
+            ],
+            "selectioncolor": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "ssslocalthickness": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "ssstintcolor": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "state": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "trans_rim_hard": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "trans_rim_inradius": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "transcolor": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "transcolor_rimlight ": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ]
+          },
+          "textures": [
+            {
+              "expressionIndex": 0,
+              "assetId": "Character/GuardianKnight/textures/pc_ddk_00_upper_n.tga",
+              "colorSpace": "linear"
+            },
+            {
+              "expressionIndex": 1,
+              "assetId": "Character/GuardianKnight/textures/pc_ddk_00_upper_d.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 2,
+              "assetId": "Character/GuardianKnight/textures/pc_ddk_00_upper_orm.tga",
+              "colorSpace": "linear"
+            },
+            {
+              "expressionIndex": 3,
+              "assetId": "Character/GuardianKnight/textures/pc_ddk_00_upper_cm.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 4,
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/statefx_default.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 5,
+              "assetId": "Character/GuardianKnight/textures/pc_ddk_00_upper_m.tga",
+              "colorSpace": "srgb"
+            }
+          ]
+        },
+        {
+          "modelAssetId": "Character/GuardianKnight/GuardianKnight_Upper.wmodel",
+          "materialName": "pc_ddk_00_upper1_mi",
+          "sourceMaterial": "pc_ddk_00.mat.pc_ddk_00_upper1_mi",
+          "family": "source.character.realpbr-avatar-ddk.v1",
+          "parameters": {
+            "auto_pbr_oc_max": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "auto_pbr_oc_min": [
+              0.30000001192092896,
+              0.30000001192092896,
+              0.30000001192092896,
+              0.30000001192092896
+            ],
+            "basecolor_color": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "buffcolor": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "diffusecolor_a": [
+              0.04239398613572121,
+              0.03615809977054596,
+              0.05524658411741257,
+              1.0
+            ],
+            "diffusecolor_b": [
+              0.12474094331264496,
+              0.13035227358341217,
+              0.13035227358341217,
+              1.0
+            ],
+            "diffusecolor_c": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "dye_roughness_power_tensition": [
+              0.15000000596046448,
+              0.15000000596046448,
+              0.15000000596046448,
+              0.15000000596046448
+            ],
+            "fx_color_desaturation_actiontool": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fx_color_desaturation_buffsettool": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fx_color_intensity_actiontool": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "fx_color_intensity_buffsettool": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "hit_color": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "mask_variation_visible": [
+              0.0,
+              1.0,
+              0.0,
+              0.0
+            ],
+            "metallic_power": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "normaltex_intensity": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "occlusion_brightness": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "occlusion_color": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "occlusion_power": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "occlusionbasecolor_blend_intensity": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "pbr_add_basecolor_to_emissive": [
+              0.05000000074505806,
+              0.05000000074505806,
+              0.05000000074505806,
+              0.05000000074505806
+            ],
+            "pbr_specular": [
+              0.5,
+              0.5,
+              0.5,
+              0.5
+            ],
+            "roughness_power": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "roughness_power_a": [
+              5.0,
+              5.0,
+              5.0,
+              5.0
+            ],
+            "roughness_power_b": [
+              5.0,
+              5.0,
+              5.0,
+              5.0
+            ],
+            "roughness_power_c": [
+              5.0,
+              5.0,
+              5.0,
+              5.0
+            ],
+            "selectioncolor": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "ssslocalthickness": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "ssstintcolor": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "state": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "trans_rim_hard": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "trans_rim_inradius": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "transcolor": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "transcolor_rimlight ": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ]
+          },
+          "textures": [
+            {
+              "expressionIndex": 0,
+              "assetId": "Character/GuardianKnight/textures/pc_ddk_00_upper1_n.tga",
+              "colorSpace": "linear"
+            },
+            {
+              "expressionIndex": 1,
+              "assetId": "Character/GuardianKnight/textures/pc_ddk_00_upper1_d.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 2,
+              "assetId": "Character/GuardianKnight/textures/pc_ddk_00_upper1_orm.tga",
+              "colorSpace": "linear"
+            },
+            {
+              "expressionIndex": 3,
+              "assetId": "Character/GuardianKnight/textures/pc_ddk_00_upper1_cm.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 4,
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/statefx_default.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 5,
+              "assetId": "Character/GuardianKnight/textures/pc_ddk_00_upper1_m.tga",
+              "colorSpace": "srgb"
+            }
+          ]
+        },
+        {
+          "modelAssetId": "Character/GuardianKnight/GuardianKnight_Upper.wmodel",
+          "materialName": "pc_ddk_00_upper2_mi",
+          "sourceMaterial": "pc_ddk_00.mat.pc_ddk_00_upper2_mi",
+          "family": "source.character.realpbr-avatar-ddk.v1",
+          "parameters": {
+            "auto_pbr_oc_max": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "auto_pbr_oc_min": [
+              0.30000001192092896,
+              0.30000001192092896,
+              0.30000001192092896,
+              0.30000001192092896
+            ],
+            "basecolor_color": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "buffcolor": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "diffusecolor_a": [
+              0.041451890021562576,
+              0.03561437129974365,
+              0.054592277854681015,
+              1.0
+            ],
+            "diffusecolor_b": [
+              0.13259179890155792,
+              0.12074054777622223,
+              0.0988403707742691,
+              1.0
+            ],
+            "diffusecolor_c": [
+              0.018912984058260918,
+              0.017936432734131813,
+              0.022012995555996895,
+              1.0
+            ],
+            "dye_roughness_power_tensition": [
+              0.15000000596046448,
+              0.15000000596046448,
+              0.15000000596046448,
+              0.15000000596046448
+            ],
+            "fx_color_desaturation_actiontool": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fx_color_desaturation_buffsettool": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fx_color_intensity_actiontool": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "fx_color_intensity_buffsettool": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "hit_color": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "mask_variation_visible": [
+              0.0,
+              1.0,
+              0.0,
+              0.0
+            ],
+            "metallic_power": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "normaltex_intensity": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "occlusion_brightness": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "occlusion_color": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "occlusion_power": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "occlusionbasecolor_blend_intensity": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "pbr_add_basecolor_to_emissive": [
+              0.05000000074505806,
+              0.05000000074505806,
+              0.05000000074505806,
+              0.05000000074505806
+            ],
+            "pbr_specular": [
+              0.5,
+              0.5,
+              0.5,
+              0.5
+            ],
+            "roughness_power": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "roughness_power_a": [
+              5.0,
+              5.0,
+              5.0,
+              5.0
+            ],
+            "roughness_power_b": [
+              5.0,
+              5.0,
+              5.0,
+              5.0
+            ],
+            "roughness_power_c": [
+              5.0,
+              5.0,
+              5.0,
+              5.0
+            ],
+            "selectioncolor": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "ssslocalthickness": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "ssstintcolor": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "state": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "trans_rim_hard": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "trans_rim_inradius": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "transcolor": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "transcolor_rimlight ": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ]
+          },
+          "textures": [
+            {
+              "expressionIndex": 0,
+              "assetId": "Character/GuardianKnight/textures/pc_ddk_00_upper2_n.tga",
+              "colorSpace": "linear"
+            },
+            {
+              "expressionIndex": 1,
+              "assetId": "Character/GuardianKnight/textures/pc_ddk_00_upper2_d.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 2,
+              "assetId": "Character/GuardianKnight/textures/pc_ddk_00_upper2_orm.tga",
+              "colorSpace": "linear"
+            },
+            {
+              "expressionIndex": 3,
+              "assetId": "Character/GuardianKnight/textures/pc_ddk_00_upper2_cm.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 4,
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/statefx_default.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 5,
+              "assetId": "Character/GuardianKnight/textures/pc_ddk_00_upper2_m.tga",
+              "colorSpace": "srgb"
+            }
+          ]
+        },
+        {
+          "modelAssetId": "Character/GuardianKnight/GuardianKnight_Upper.wmodel",
+          "materialName": "pc_ddk_00_upper3_mi",
+          "sourceMaterial": "pc_ddk_00.mat.pc_ddk_00_upper3_mi",
+          "family": "source.character.realpbr-avatar-ddk.v1",
+          "parameters": {
+            "auto_pbr_oc_max": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "auto_pbr_oc_min": [
+              0.30000001192092896,
+              0.30000001192092896,
+              0.30000001192092896,
+              0.30000001192092896
+            ],
+            "basecolor_color": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "buffcolor": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "diffusecolor_a": [
+              0.022360507398843765,
+              0.019077172502875328,
+              0.027623292058706284,
+              1.0
+            ],
+            "diffusecolor_b": [
+              0.018912984058260918,
+              0.017936432734131813,
+              0.022012995555996895,
+              1.0
+            ],
+            "diffusecolor_c": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "dye_roughness_power_tensition": [
+              0.15000000596046448,
+              0.15000000596046448,
+              0.15000000596046448,
+              0.15000000596046448
+            ],
+            "fx_color_desaturation_actiontool": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fx_color_desaturation_buffsettool": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fx_color_intensity_actiontool": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "fx_color_intensity_buffsettool": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "hit_color": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "mask_variation_visible": [
+              1.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "metallic_power": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "normaltex_intensity": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "occlusion_brightness": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "occlusion_color": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "occlusion_power": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "occlusionbasecolor_blend_intensity": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "pbr_add_basecolor_to_emissive": [
+              0.05000000074505806,
+              0.05000000074505806,
+              0.05000000074505806,
+              0.05000000074505806
+            ],
+            "pbr_specular": [
+              0.5,
+              0.5,
+              0.5,
+              0.5
+            ],
+            "roughness_power": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "roughness_power_a": [
+              5.0,
+              5.0,
+              5.0,
+              5.0
+            ],
+            "roughness_power_b": [
+              5.0,
+              5.0,
+              5.0,
+              5.0
+            ],
+            "roughness_power_c": [
+              5.0,
+              5.0,
+              5.0,
+              5.0
+            ],
+            "selectioncolor": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "ssslocalthickness": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "ssstintcolor": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "state": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "trans_rim_hard": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "trans_rim_inradius": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "transcolor": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "transcolor_rimlight ": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ]
+          },
+          "textures": [
+            {
+              "expressionIndex": 0,
+              "assetId": "Character/GuardianKnight/textures/pc_ddk_00_upper3_n.tga",
+              "colorSpace": "linear"
+            },
+            {
+              "expressionIndex": 1,
+              "assetId": "Character/GuardianKnight/textures/pc_ddk_00_upper3_d.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 2,
+              "assetId": "Character/GuardianKnight/textures/pc_ddk_00_upper3_orm.tga",
+              "colorSpace": "linear"
+            },
+            {
+              "expressionIndex": 3,
+              "assetId": "Character/GuardianKnight/textures/pc_ddk_00_upper3_cm.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 4,
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/statefx_default.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 5,
+              "assetId": "Character/GuardianKnight/textures/pc_ddk_00_upper3_m.tga",
+              "colorSpace": "srgb"
+            }
+          ]
+        },
+        {
+          "modelAssetId": "Character/GuardianKnight/GuardianKnight_Upper.wmodel",
+          "materialName": "pc_dk_av_base_upper_mi",
+          "sourceMaterial": "pc_dk_av_basebody.mat.pc_dk_av_base_upper_mi",
+          "family": "source.character.classic-skin.v1",
+          "parameters": {
+            "1.use_dyeing_sp": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "beckmannspecular_constant_max": [
+              3.3499999046325684,
+              3.3499999046325684,
+              3.3499999046325684,
+              3.3499999046325684
+            ],
+            "buffcolor": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "diffusecolor": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "fresnel_radius": [
+              0.949999988079071,
+              0.949999988079071,
+              0.949999988079071,
+              0.949999988079071
+            ],
+            "fresnel_rimlightintensity": [
+              0.5,
+              0.5,
+              0.5,
+              0.5
+            ],
+            "fx_color_desaturation_actiontool": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fx_color_desaturation_buffsettool": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fx_color_intensity_actiontool": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "fx_color_intensity_buffsettool": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "half_lambert_skin": [
+              1.0,
+              0.1173890009522438,
+              0.1080550029873848,
+              1.0
+            ],
+            "hit_color": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "ibl_color_bottom": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "ibl_color_top": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "ibl_exposer": [
+              5.0,
+              5.0,
+              5.0,
+              5.0
+            ],
+            "ibl_intensity": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "ibl_normal_smooth": [
+              0.699999988079071,
+              0.699999988079071,
+              0.699999988079071,
+              0.699999988079071
+            ],
+            "ibl_reflect_lodbias": [
+              80.0,
+              80.0,
+              80.0,
+              80.0
+            ],
+            "ibl_skinlodscale": [
+              0.800000011920929,
+              0.800000011920929,
+              0.800000011920929,
+              0.800000011920929
+            ],
+            "metalicness_power": [
+              0.20000000298023224,
+              0.20000000298023224,
+              0.20000000298023224,
+              0.20000000298023224
+            ],
+            "normaltex_intensity": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "orennayar": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "orennayar_brightness": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "pbr_specular_intensity": [
+              10.0,
+              10.0,
+              10.0,
+              10.0
+            ],
+            "pbr_specular_power": [
+              6.0,
+              6.0,
+              6.0,
+              6.0
+            ],
+            "roughness_power": [
+              3.0,
+              3.0,
+              3.0,
+              3.0
+            ],
+            "selectioncolor": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "shadowfactor": [
+              0.5,
+              0.5,
+              0.5,
+              0.5
+            ],
+            "skin_metalicness_power": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "skin_normal_intensity": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "skin_roughness_power": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "skin_specular_intensity": [
+              0.4000000059604645,
+              0.4000000059604645,
+              0.4000000059604645,
+              0.4000000059604645
+            ],
+            "skin_specular_intensity_min": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "skin_specular_power": [
+              20.0,
+              20.0,
+              20.0,
+              20.0
+            ],
+            "skin_specular_power_min": [
+              5.0,
+              5.0,
+              5.0,
+              5.0
+            ],
+            "specular_power_limit": [
+              0.9200000166893005,
+              0.9200000166893005,
+              0.9200000166893005,
+              0.9200000166893005
+            ],
+            "state": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "state_noise": [
+              1.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "trans_rim_hard": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "trans_rim_inradius": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "transcolor": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "transcolor_rimlight ": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "var_base_skincolor_ui": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "var_base_skinnormalintensity_ui": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "var_base_skinspecularintensity_ui": [
+              0.6000000238418579,
+              0.6000000238418579,
+              0.6000000238418579,
+              0.6000000238418579
+            ],
+            "var_base_skinspecularpower_ui": [
+              0.5,
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "textures": [
+            {
+              "expressionIndex": 0,
+              "assetId": "Character/GuardianKnight/textures/pc_dk_av_base_upper_n_loc_int.tga",
+              "colorSpace": "linear"
+            },
+            {
+              "expressionIndex": 1,
+              "assetId": "Character/GuardianKnight/textures/pc_dk_av_base_upper_cm.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 2,
+              "assetId": "Character/GuardianKnight/textures/pc_dk_av_base_upper_s.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 3,
+              "assetId": "Character/GuardianKnight/textures/pc_dk_av_base_upper_d.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 4,
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 5,
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/statefx_default.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 6,
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+              "colorSpace": "linear"
+            }
+          ]
+        },
+        {
+          "modelAssetId": "Character/GuardianKnight/GuardianKnight_Lower.wmodel",
+          "materialName": "pc_ddk_00_lower_mi",
+          "sourceMaterial": "pc_ddk_00.mat.pc_ddk_00_lower_mi",
+          "family": "source.character.realpbr-avatar-ddk.v1",
+          "parameters": {
+            "auto_pbr_oc_max": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "auto_pbr_oc_min": [
+              0.30000001192092896,
+              0.30000001192092896,
+              0.30000001192092896,
+              0.30000001192092896
+            ],
+            "basecolor_color": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "buffcolor": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "diffusecolor_a": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "diffusecolor_b": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "diffusecolor_c": [
+              0.022012995555996895,
+              0.022012995555996895,
+              0.022012995555996895,
+              1.0
+            ],
+            "dye_roughness_power_tensition": [
+              0.15000000596046448,
+              0.15000000596046448,
+              0.15000000596046448,
+              0.15000000596046448
+            ],
+            "fx_color_desaturation_actiontool": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fx_color_desaturation_buffsettool": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fx_color_intensity_actiontool": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "fx_color_intensity_buffsettool": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "hit_color": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "mask_variation_visible": [
+              0.0,
+              1.0,
+              0.0,
+              0.0
+            ],
+            "metallic_power": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "normaltex_intensity": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "occlusion_brightness": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "occlusion_color": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "occlusion_power": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "occlusionbasecolor_blend_intensity": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "pbr_add_basecolor_to_emissive": [
+              0.05000000074505806,
+              0.05000000074505806,
+              0.05000000074505806,
+              0.05000000074505806
+            ],
+            "pbr_specular": [
+              0.5,
+              0.5,
+              0.5,
+              0.5
+            ],
+            "roughness_power": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "roughness_power_a": [
+              5.0,
+              5.0,
+              5.0,
+              5.0
+            ],
+            "roughness_power_b": [
+              5.0,
+              5.0,
+              5.0,
+              5.0
+            ],
+            "roughness_power_c": [
+              5.0,
+              5.0,
+              5.0,
+              5.0
+            ],
+            "selectioncolor": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "ssslocalthickness": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "ssstintcolor": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "state": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "trans_rim_hard": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "trans_rim_inradius": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "transcolor": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "transcolor_rimlight ": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ]
+          },
+          "textures": [
+            {
+              "expressionIndex": 0,
+              "assetId": "Character/GuardianKnight/textures/pc_ddk_00_lower_n.tga",
+              "colorSpace": "linear"
+            },
+            {
+              "expressionIndex": 1,
+              "assetId": "Character/GuardianKnight/textures/pc_ddk_00_lower_d.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 2,
+              "assetId": "Character/GuardianKnight/textures/pc_ddk_00_lower_orm.tga",
+              "colorSpace": "linear"
+            },
+            {
+              "expressionIndex": 3,
+              "assetId": "Character/GuardianKnight/textures/pc_ddk_00_lower_cm.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 4,
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/statefx_default.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 5,
+              "assetId": "Character/GuardianKnight/textures/pc_ddk_00_lower_m.tga",
+              "colorSpace": "srgb"
+            }
+          ]
+        },
+        {
+          "modelAssetId": "Character/GuardianKnight/GuardianKnight_Lower.wmodel",
+          "materialName": "pc_ddk_00_lower1_mi",
+          "sourceMaterial": "pc_ddk_00.mat.pc_ddk_00_lower1_mi",
+          "family": "source.character.realpbr-avatar-ddk.v1",
+          "parameters": {
+            "auto_pbr_oc_max": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "auto_pbr_oc_min": [
+              0.30000001192092896,
+              0.30000001192092896,
+              0.30000001192092896,
+              0.30000001192092896
+            ],
+            "basecolor_color": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "buffcolor": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "diffusecolor_a": [
+              0.196884885430336,
+              0.13958270847797394,
+              0.22651098668575287,
+              1.0
+            ],
+            "diffusecolor_b": [
+              0.06629589945077896,
+              0.06629589945077896,
+              0.06629589945077896,
+              1.0
+            ],
+            "diffusecolor_c": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "dye_roughness_power_tensition": [
+              0.15000000596046448,
+              0.15000000596046448,
+              0.15000000596046448,
+              0.15000000596046448
+            ],
+            "fx_color_desaturation_actiontool": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fx_color_desaturation_buffsettool": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fx_color_intensity_actiontool": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "fx_color_intensity_buffsettool": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "hit_color": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "mask_variation_visible": [
+              1.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "metallic_power": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "normaltex_intensity": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "occlusion_brightness": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "occlusion_color": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "occlusion_power": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "occlusionbasecolor_blend_intensity": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "pbr_add_basecolor_to_emissive": [
+              0.05000000074505806,
+              0.05000000074505806,
+              0.05000000074505806,
+              0.05000000074505806
+            ],
+            "pbr_specular": [
+              0.5,
+              0.5,
+              0.5,
+              0.5
+            ],
+            "roughness_power": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "roughness_power_a": [
+              5.0,
+              5.0,
+              5.0,
+              5.0
+            ],
+            "roughness_power_b": [
+              5.0,
+              5.0,
+              5.0,
+              5.0
+            ],
+            "roughness_power_c": [
+              5.0,
+              5.0,
+              5.0,
+              5.0
+            ],
+            "selectioncolor": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "ssslocalthickness": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "ssstintcolor": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "state": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "trans_rim_hard": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "trans_rim_inradius": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "transcolor": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "transcolor_rimlight ": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ]
+          },
+          "textures": [
+            {
+              "expressionIndex": 0,
+              "assetId": "Character/GuardianKnight/textures/pc_ddk_00_lower1_n.tga",
+              "colorSpace": "linear"
+            },
+            {
+              "expressionIndex": 1,
+              "assetId": "Character/GuardianKnight/textures/pc_ddk_00-1_lower1_d.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 2,
+              "assetId": "Character/GuardianKnight/textures/pc_ddk_00_lower1_orm.tga",
+              "colorSpace": "linear"
+            },
+            {
+              "expressionIndex": 3,
+              "assetId": "Character/GuardianKnight/textures/pc_ddk_00_lower1_cm.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 4,
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/statefx_default.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 5,
+              "assetId": "Character/GuardianKnight/textures/pc_ddk_00_lower1_m.tga",
+              "colorSpace": "srgb"
+            }
+          ]
+        },
+        {
+          "modelAssetId": "Character/GuardianKnight/GuardianKnight_Arm.wmodel",
+          "materialName": "pc_ddk_00_arm_mi",
+          "sourceMaterial": "pc_ddk_00.mat.pc_ddk_00_arm_mi",
+          "family": "source.character.realpbr-avatar-ddk.v1",
+          "parameters": {
+            "auto_pbr_oc_max": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "auto_pbr_oc_min": [
+              0.30000001192092896,
+              0.30000001192092896,
+              0.30000001192092896,
+              0.30000001192092896
+            ],
+            "basecolor_color": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "buffcolor": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "diffusecolor_a": [
+              0.0915183499455452,
+              0.07805658876895905,
+              0.11926401406526566,
+              1.0
+            ],
+            "diffusecolor_b": [
+              0.39225074648857117,
+              0.39225074648857117,
+              0.39225074648857117,
+              1.0
+            ],
+            "diffusecolor_c": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "dye_roughness_power_tensition": [
+              0.15000000596046448,
+              0.15000000596046448,
+              0.15000000596046448,
+              0.15000000596046448
+            ],
+            "fx_color_desaturation_actiontool": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fx_color_desaturation_buffsettool": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fx_color_intensity_actiontool": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "fx_color_intensity_buffsettool": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "hit_color": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "mask_variation_visible": [
+              1.0,
+              1.0,
+              0.0,
+              0.0
+            ],
+            "metallic_power": [
+              0.5,
+              0.5,
+              0.5,
+              0.5
+            ],
+            "normaltex_intensity": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "occlusion_brightness": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "occlusion_color": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "occlusion_power": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "occlusionbasecolor_blend_intensity": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "pbr_add_basecolor_to_emissive": [
+              0.05000000074505806,
+              0.05000000074505806,
+              0.05000000074505806,
+              0.05000000074505806
+            ],
+            "pbr_specular": [
+              0.5,
+              0.5,
+              0.5,
+              0.5
+            ],
+            "roughness_power": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "roughness_power_a": [
+              5.0,
+              5.0,
+              5.0,
+              5.0
+            ],
+            "roughness_power_b": [
+              5.0,
+              5.0,
+              5.0,
+              5.0
+            ],
+            "roughness_power_c": [
+              5.0,
+              5.0,
+              5.0,
+              5.0
+            ],
+            "selectioncolor": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "ssslocalthickness": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "ssstintcolor": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "state": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "trans_rim_hard": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "trans_rim_inradius": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "transcolor": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "transcolor_rimlight ": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ]
+          },
+          "textures": [
+            {
+              "expressionIndex": 0,
+              "assetId": "Character/GuardianKnight/textures/pc_ddk_00_arm_n.tga",
+              "colorSpace": "linear"
+            },
+            {
+              "expressionIndex": 1,
+              "assetId": "Character/GuardianKnight/textures/pc_ddk_00_arm_d.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 2,
+              "assetId": "Character/GuardianKnight/textures/pc_ddk_00_arm_orm.tga",
+              "colorSpace": "linear"
+            },
+            {
+              "expressionIndex": 3,
+              "assetId": "Character/GuardianKnight/textures/pc_ddk_00_arm_cm.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 4,
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/statefx_default.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 5,
+              "assetId": "Character/GuardianKnight/textures/pc_ddk_00_arm_m.tga",
+              "colorSpace": "srgb"
+            }
+          ]
+        },
+        {
+          "modelAssetId": "Character/GuardianKnight/GuardianKnight_Arm.wmodel",
+          "materialName": "pc_dk_av_base_upper_mi",
+          "sourceMaterial": "pc_dk_av_basebody.mat.pc_dk_av_base_upper_mi",
+          "family": "source.character.classic-skin.v1",
+          "parameters": {
+            "1.use_dyeing_sp": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "beckmannspecular_constant_max": [
+              3.3499999046325684,
+              3.3499999046325684,
+              3.3499999046325684,
+              3.3499999046325684
+            ],
+            "buffcolor": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "diffusecolor": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "fresnel_radius": [
+              0.949999988079071,
+              0.949999988079071,
+              0.949999988079071,
+              0.949999988079071
+            ],
+            "fresnel_rimlightintensity": [
+              0.5,
+              0.5,
+              0.5,
+              0.5
+            ],
+            "fx_color_desaturation_actiontool": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fx_color_desaturation_buffsettool": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fx_color_intensity_actiontool": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "fx_color_intensity_buffsettool": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "half_lambert_skin": [
+              1.0,
+              0.1173890009522438,
+              0.1080550029873848,
+              1.0
+            ],
+            "hit_color": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "ibl_color_bottom": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "ibl_color_top": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "ibl_exposer": [
+              5.0,
+              5.0,
+              5.0,
+              5.0
+            ],
+            "ibl_intensity": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "ibl_normal_smooth": [
+              0.699999988079071,
+              0.699999988079071,
+              0.699999988079071,
+              0.699999988079071
+            ],
+            "ibl_reflect_lodbias": [
+              80.0,
+              80.0,
+              80.0,
+              80.0
+            ],
+            "ibl_skinlodscale": [
+              0.800000011920929,
+              0.800000011920929,
+              0.800000011920929,
+              0.800000011920929
+            ],
+            "metalicness_power": [
+              0.20000000298023224,
+              0.20000000298023224,
+              0.20000000298023224,
+              0.20000000298023224
+            ],
+            "normaltex_intensity": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "orennayar": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "orennayar_brightness": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "pbr_specular_intensity": [
+              10.0,
+              10.0,
+              10.0,
+              10.0
+            ],
+            "pbr_specular_power": [
+              6.0,
+              6.0,
+              6.0,
+              6.0
+            ],
+            "roughness_power": [
+              3.0,
+              3.0,
+              3.0,
+              3.0
+            ],
+            "selectioncolor": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "shadowfactor": [
+              0.5,
+              0.5,
+              0.5,
+              0.5
+            ],
+            "skin_metalicness_power": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "skin_normal_intensity": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "skin_roughness_power": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "skin_specular_intensity": [
+              0.4000000059604645,
+              0.4000000059604645,
+              0.4000000059604645,
+              0.4000000059604645
+            ],
+            "skin_specular_intensity_min": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "skin_specular_power": [
+              20.0,
+              20.0,
+              20.0,
+              20.0
+            ],
+            "skin_specular_power_min": [
+              5.0,
+              5.0,
+              5.0,
+              5.0
+            ],
+            "specular_power_limit": [
+              0.9200000166893005,
+              0.9200000166893005,
+              0.9200000166893005,
+              0.9200000166893005
+            ],
+            "state": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "state_noise": [
+              1.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "trans_rim_hard": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "trans_rim_inradius": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "transcolor": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "transcolor_rimlight ": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "var_base_skincolor_ui": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "var_base_skinnormalintensity_ui": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "var_base_skinspecularintensity_ui": [
+              0.6000000238418579,
+              0.6000000238418579,
+              0.6000000238418579,
+              0.6000000238418579
+            ],
+            "var_base_skinspecularpower_ui": [
+              0.5,
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "textures": [
+            {
+              "expressionIndex": 0,
+              "assetId": "Character/GuardianKnight/textures/pc_dk_av_base_upper_n_loc_int.tga",
+              "colorSpace": "linear"
+            },
+            {
+              "expressionIndex": 1,
+              "assetId": "Character/GuardianKnight/textures/pc_dk_av_base_upper_cm.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 2,
+              "assetId": "Character/GuardianKnight/textures/pc_dk_av_base_upper_s.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 3,
+              "assetId": "Character/GuardianKnight/textures/pc_dk_av_base_upper_d.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 4,
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/hdr07_1.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 5,
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/statefx_default.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 6,
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/brdf_beckmann_spec.dds",
+              "colorSpace": "linear"
+            }
+          ]
+        },
+        {
+          "modelAssetId": "Character/GuardianKnight/GuardianKnight_Shoulder.wmodel",
+          "materialName": "pc_ddk_00_shoulder_mi",
+          "sourceMaterial": "pc_ddk_00.mat.pc_ddk_00_shoulder_mi",
+          "family": "source.character.realpbr-avatar-ddk-plate.v1",
+          "parameters": {
+            "1.use_emissive_flickerspeed_fixed": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "auto_pbr_oc_max": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "auto_pbr_oc_min": [
+              0.30000001192092896,
+              0.30000001192092896,
+              0.30000001192092896,
+              0.30000001192092896
+            ],
+            "basecolor_color": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "buffcolor": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "diffusecolor_a": [
+              0.059966303408145905,
+              0.06265414506196976,
+              0.6795330047607422,
+              1.0
+            ],
+            "diffusecolor_b": [
+              0.03994717076420784,
+              0.038472745567560196,
+              0.038472745567560196,
+              1.0
+            ],
+            "diffusecolor_c": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "dye_roughness_power_tensition": [
+              0.15000000596046448,
+              0.15000000596046448,
+              0.15000000596046448,
+              0.15000000596046448
+            ],
+            "emissive_color": [
+              0.24611802399158478,
+              0.13346587121486664,
+              0.9828262329101562,
+              1.0
+            ],
+            "emissive_flicker_speed": [
+              0.5,
+              0.5,
+              0.5,
+              0.5
+            ],
+            "emissive_intensity": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "emissive_intensitymin": [
+              2.0,
+              2.0,
+              2.0,
+              2.0
+            ],
+            "fx_color_desaturation_actiontool": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fx_color_desaturation_buffsettool": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fx_color_intensity_actiontool": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "fx_color_intensity_buffsettool": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "hit_color": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "mask_variation_visible": [
+              1.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "metallic_power": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "normaltex_intensity": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "occlusion_brightness": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "occlusion_color": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "occlusion_power": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "occlusionbasecolor_blend_intensity": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "pbr_add_basecolor_to_emissive": [
+              0.05000000074505806,
+              0.05000000074505806,
+              0.05000000074505806,
+              0.05000000074505806
+            ],
+            "pbr_specular": [
+              0.5,
+              0.5,
+              0.5,
+              0.5
+            ],
+            "roughness_power": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "roughness_power_a": [
+              5.0,
+              5.0,
+              5.0,
+              5.0
+            ],
+            "roughness_power_b": [
+              5.0,
+              5.0,
+              5.0,
+              5.0
+            ],
+            "roughness_power_c": [
+              5.0,
+              5.0,
+              5.0,
+              5.0
+            ],
+            "selectioncolor": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "ssslocalthickness": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "ssstintcolor": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "state": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "trans_rim_hard": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "trans_rim_inradius": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "transcolor": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "transcolor_rimlight ": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ]
+          },
+          "textures": [
+            {
+              "expressionIndex": 0,
+              "assetId": "Character/GuardianKnight/textures/pc_ddk_00_shoulder_n.tga",
+              "colorSpace": "linear"
+            },
+            {
+              "expressionIndex": 1,
+              "assetId": "Character/GuardianKnight/textures/pc_ddk_00_shoulder_d.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 2,
+              "assetId": "Character/GuardianKnight/textures/pc_ddk_00_shoulder_orm.tga",
+              "colorSpace": "linear"
+            },
+            {
+              "expressionIndex": 3,
+              "assetId": "Character/GuardianKnight/textures/pc_ddk_00_shoulder_cm.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 4,
+              "assetId": "Character/GuardianKnight/textures/pc_ddk_00_shoulder_e.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 5,
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/statefx_default.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 6,
+              "assetId": "Character/GuardianKnight/textures/pc_ddk_00_shoulder_m.tga",
+              "colorSpace": "srgb"
+            }
+          ]
+        },
+        {
+          "modelAssetId": "Character/GuardianKnight/GuardianKnight_Helmet.wmodel",
+          "materialName": "pc_ddk_00_helmet_mi",
+          "sourceMaterial": "pc_ddk_00.mat.pc_ddk_00_helmet_mi",
+          "family": "source.character.realpbr-avatar-ddk-plate.v1",
+          "parameters": {
+            "1.use_emissive_flickerspeed_fixed": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "auto_pbr_oc_max": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "auto_pbr_oc_min": [
+              0.30000001192092896,
+              0.30000001192092896,
+              0.30000001192092896,
+              0.30000001192092896
+            ],
+            "basecolor_color": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "buffcolor": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "diffusecolor_a": [
+              0.058187179267406464,
+              0.06190747395157814,
+              0.6730490922927856,
+              1.0
+            ],
+            "diffusecolor_b": [
+              0.04972192645072937,
+              0.04972192645072937,
+              0.04972192645072937,
+              1.0
+            ],
+            "diffusecolor_c": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "dye_roughness_power_tensition": [
+              0.15000000596046448,
+              0.15000000596046448,
+              0.15000000596046448,
+              0.15000000596046448
+            ],
+            "emissive_color": [
+              0.16936607658863068,
+              0.048904187977313995,
+              0.9828262329101562,
+              1.0
+            ],
+            "emissive_flicker_speed": [
+              0.699999988079071,
+              0.699999988079071,
+              0.699999988079071,
+              0.699999988079071
+            ],
+            "emissive_intensity": [
+              1.5,
+              1.5,
+              1.5,
+              1.5
+            ],
+            "emissive_intensitymin": [
+              3.0,
+              3.0,
+              3.0,
+              3.0
+            ],
+            "fx_color_desaturation_actiontool": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fx_color_desaturation_buffsettool": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fx_color_intensity_actiontool": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "fx_color_intensity_buffsettool": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "hit_color": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "mask_variation_visible": [
+              1.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "metallic_power": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "normaltex_intensity": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "occlusion_brightness": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "occlusion_color": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "occlusion_power": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "occlusionbasecolor_blend_intensity": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "pbr_add_basecolor_to_emissive": [
+              0.05000000074505806,
+              0.05000000074505806,
+              0.05000000074505806,
+              0.05000000074505806
+            ],
+            "pbr_specular": [
+              0.5,
+              0.5,
+              0.5,
+              0.5
+            ],
+            "roughness_power": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "roughness_power_a": [
+              5.0,
+              5.0,
+              5.0,
+              5.0
+            ],
+            "roughness_power_b": [
+              5.0,
+              5.0,
+              5.0,
+              5.0
+            ],
+            "roughness_power_c": [
+              5.0,
+              5.0,
+              5.0,
+              5.0
+            ],
+            "selectioncolor": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "ssslocalthickness": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "ssstintcolor": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "state": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "trans_rim_hard": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "trans_rim_inradius": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "transcolor": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "transcolor_rimlight ": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ]
+          },
+          "textures": [
+            {
+              "expressionIndex": 0,
+              "assetId": "Character/GuardianKnight/textures/pc_ddk_00_helmet_n.tga",
+              "colorSpace": "linear"
+            },
+            {
+              "expressionIndex": 1,
+              "assetId": "Character/GuardianKnight/textures/pc_ddk_00_helmet_d.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 2,
+              "assetId": "Character/GuardianKnight/textures/pc_ddk_00_helmet_orm.tga",
+              "colorSpace": "linear"
+            },
+            {
+              "expressionIndex": 3,
+              "assetId": "Character/GuardianKnight/textures/pc_ddk_00_helmet_cm.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 4,
+              "assetId": "Character/GuardianKnight/textures/pc_ddk_00_helmet_e.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 5,
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/statefx_default.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 6,
+              "assetId": "Character/GuardianKnight/textures/pc_ddk_00_helmet_m.tga",
+              "colorSpace": "srgb"
+            }
+          ]
+        },
+        {
+          "modelAssetId": "Character/GuardianKnight/GuardianKnight_Wing.wmodel",
+          "materialName": "sk_ddk_win_00_mi",
+          "sourceMaterial": "sk_ddk_win_00.mat.sk_ddk_win_00_mi",
+          "family": "source.character.realpbr-wing-ddk.v1",
+          "parameters": {
+            "1.use_emissive_flickerspeed_fixed": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "auto_pbr_oc_max": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "auto_pbr_oc_min": [
+              0.30000001192092896,
+              0.30000001192092896,
+              0.30000001192092896,
+              0.30000001192092896
+            ],
+            "basecolor_color": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "buffcolor": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "emissive_color": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "emissive_flicker_speed": [
+              0.6000000238418579,
+              0.6000000238418579,
+              0.6000000238418579,
+              0.6000000238418579
+            ],
+            "emissive_intensity": [
+              0.5,
+              0.5,
+              0.5,
+              0.5
+            ],
+            "emissive_intensitymin": [
+              0.10000000149011612,
+              0.10000000149011612,
+              0.10000000149011612,
+              0.10000000149011612
+            ],
+            "fx_color_desaturation_actiontool": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fx_color_desaturation_buffsettool": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fx_color_intensity_actiontool": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "fx_color_intensity_buffsettool": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "fx_distortion_intensity": [
+              0.05000000074505806,
+              0.05000000074505806,
+              0.05000000074505806,
+              0.05000000074505806
+            ],
+            "fx_panning_color": [
+              1.0,
+              0.08107441663742065,
+              0.0,
+              0.800000011920929
+            ],
+            "fx_panning_intensity": [
+              3.0,
+              3.0,
+              3.0,
+              3.0
+            ],
+            "fx_panningspeed_tiling": [
+              0.03999999910593033,
+              -0.15000000596046448,
+              5.0,
+              0.0
+            ],
+            "hit_color": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "metallic_power": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "normaltex_intensity": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "occlusion_brightness": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "occlusion_color": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "occlusion_power": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "occlusionbasecolor_blend_intensity": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "pbr_add_basecolor_to_emissive": [
+              0.05000000074505806,
+              0.05000000074505806,
+              0.05000000074505806,
+              0.05000000074505806
+            ],
+            "pbr_specular": [
+              0.20000000298023224,
+              0.20000000298023224,
+              0.20000000298023224,
+              0.20000000298023224
+            ],
+            "roughness_power": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "selectioncolor": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "ssslocalthickness": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "ssstintcolor": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "state": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "trans_rim_hard": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "trans_rim_inradius": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "transcolor": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "transcolor_rimlight ": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ]
+          },
+          "textures": [
+            {
+              "expressionIndex": 0,
+              "assetId": "Character/GuardianKnight/textures/sk_ddk_win_00_n.tga",
+              "colorSpace": "linear"
+            },
+            {
+              "expressionIndex": 1,
+              "assetId": "Character/GuardianKnight/textures/sk_ddk_win_00_d.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 2,
+              "assetId": "Character/GuardianKnight/textures/sk_ddk_win_00_orm.tga",
+              "colorSpace": "linear"
+            },
+            {
+              "expressionIndex": 3,
+              "assetId": "Character/GuardianKnight/textures/sk_ddk_win_00_e.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 4,
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/fx_d_noise_033_ta.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 5,
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/flat_black.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 6,
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/statefx_default.tga",
+              "colorSpace": "srgb"
+            }
+          ]
+        },
+        {
+          "modelAssetId": "Character/GuardianKnight/GuardianKnight_Wing.wmodel",
+          "materialName": "sk_ddk_win_00-1_mi",
+          "sourceMaterial": "sk_ddk_win_00.mat.sk_ddk_win_00-1_mi",
+          "family": "source.character.realpbr-wing-ddk-membrane.v1",
+          "parameters": {
+            "auto_pbr_oc_max": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "auto_pbr_oc_min": [
+              0.30000001192092896,
+              0.30000001192092896,
+              0.30000001192092896,
+              0.30000001192092896
+            ],
+            "basecolor_color": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "buffcolor": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "fx_color_desaturation_actiontool": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fx_color_desaturation_buffsettool": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fx_color_intensity_actiontool": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "fx_color_intensity_buffsettool": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "hit_color": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "metallic_power": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "normaltex_intensity": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "occlusion_brightness": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "occlusion_color": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "occlusion_power": [
+              3.0,
+              3.0,
+              3.0,
+              3.0
+            ],
+            "occlusionbasecolor_blend_intensity": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "pbr_add_basecolor_to_emissive": [
+              0.05000000074505806,
+              0.05000000074505806,
+              0.05000000074505806,
+              0.05000000074505806
+            ],
+            "pbr_specular": [
+              0.5,
+              0.5,
+              0.5,
+              0.5
+            ],
+            "roughness_power": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "selectioncolor": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "ssslocalthickness": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "ssstintcolor": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "state": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "trans_rim_hard": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "trans_rim_inradius": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "transcolor": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "transcolor_rimlight ": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ]
+          },
+          "textures": [
+            {
+              "expressionIndex": 0,
+              "assetId": "Character/GuardianKnight/textures/sk_ddk_win_00-1_n.tga",
+              "colorSpace": "linear"
+            },
+            {
+              "expressionIndex": 1,
+              "assetId": "Character/GuardianKnight/textures/sk_ddk_win_00-1_d.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 2,
+              "assetId": "Character/GuardianKnight/textures/sk_ddk_win_00-1_orm.tga",
+              "colorSpace": "linear"
+            },
+            {
+              "expressionIndex": 3,
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/flat_black.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 4,
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/statefx_default.tga",
+              "colorSpace": "srgb"
+            }
+          ]
+        },
+        {
+          "modelAssetId": "Character/WP_WDDK_04/WP_WDDK_04.wmodel",
+          "materialName": "wp_wddk_04_mi",
+          "sourceMaterial": "wp_wddk_04.mat.wp_wddk_04_mi",
+          "family": "source.character.realpbr-weapon-ddk.v1",
+          "parameters": {
+            "1.use_emissive_flickerspeed_fixed": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "basecolor_color": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "buffcolor": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "diffusecolor_a": [
+              0.06003160774707794,
+              0.003302703145891428,
+              0.0,
+              1.0
+            ],
+            "diffusecolor_b": [
+              0.40982574224472046,
+              0.20471012592315674,
+              0.17677432298660278,
+              1.0
+            ],
+            "diffusecolor_c": [
+              0.027623292058706284,
+              0.0015197257744148374,
+              0.0,
+              1.0
+            ],
+            "dye_roughness_power_tensition": [
+              0.15000000596046448,
+              0.15000000596046448,
+              0.15000000596046448,
+              0.15000000596046448
+            ],
+            "emissive_color": [
+              0.5137932300567627,
+              0.01421158853918314,
+              0.015861021354794502,
+              1.0
+            ],
+            "emissive_flicker_speed": [
+              0.20000000298023224,
+              0.20000000298023224,
+              0.20000000298023224,
+              0.20000000298023224
+            ],
+            "emissive_intensity": [
+              2.0,
+              2.0,
+              2.0,
+              2.0
+            ],
+            "emissive_intensitymin": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "fx_color_desaturation_actiontool": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fx_color_desaturation_buffsettool": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fx_color_intensity_actiontool": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "fx_color_intensity_buffsettool": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "hit_color": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "metallic_power": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "normaltex_intensity": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "occlusion_brightness": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "occlusion_color": [
+              0.02416141703724861,
+              0.053579725325107574,
+              0.1546904295682907,
+              1.0
+            ],
+            "occlusion_power": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "occlusionbasecolor_blend_intensity": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "pbr_add_basecolor_to_emissive": [
+              0.05000000074505806,
+              0.05000000074505806,
+              0.05000000074505806,
+              0.05000000074505806
+            ],
+            "pbr_specular": [
+              0.30000001192092896,
+              0.30000001192092896,
+              0.30000001192092896,
+              0.30000001192092896
+            ],
+            "roughness_power": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "roughness_power_a": [
+              5.0,
+              5.0,
+              5.0,
+              5.0
+            ],
+            "roughness_power_b": [
+              5.0,
+              5.0,
+              5.0,
+              5.0
+            ],
+            "roughness_power_c": [
+              5.0,
+              5.0,
+              5.0,
+              5.0
+            ],
+            "selectioncolor": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "ssslocalthickness": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "ssstintcolor": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "state": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "trans_rim_hard": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "trans_rim_inradius": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "transcolor": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "transcolor_rimlight ": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ]
+          },
+          "textures": [
+            {
+              "expressionIndex": 0,
+              "assetId": "Character/WP_WDDK_04/textures/wp_wddk_04_n.tga",
+              "colorSpace": "linear"
+            },
+            {
+              "expressionIndex": 1,
+              "assetId": "Character/WP_WDDK_04/textures/wp_wddk_04_d.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 2,
+              "assetId": "Character/WP_WDDK_04/textures/wp_wddk_04_orm.tga",
+              "colorSpace": "linear"
+            },
+            {
+              "expressionIndex": 3,
+              "assetId": "Character/WP_WDDK_04/textures/wp_wddk_04_cm.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 4,
+              "assetId": "Character/WP_WDDK_04/textures/wp_wddk_04_e.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 5,
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/statefx_default.tga",
+              "colorSpace": "srgb"
+            }
+          ]
+        },
+        {
+          "modelAssetId": "Character/GuardianKnight/GuardianKnight.wmodel",
+          "materialName": "pc_ft_15_hair_mi",
+          "sourceMaterial": "pc_ft_15_hair.mat.pc_ft_15_hair_mi",
+          "family": "source.character.hair-ddk.v1",
+          "parameters": {
+            "buffcolor": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "customshade_shadowdiffuselighting": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fx_color_desaturation_actiontool": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fx_color_desaturation_buffsettool": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "fx_color_intensity_actiontool": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "fx_color_intensity_buffsettool": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "hairtwotone_color_switch": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "hit_color": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rimlight_color": [
+              0.08241420239210129,
+              0.08021926134824753,
+              0.08241420239210129,
+              1.0
+            ],
+            "rimlight_power": [
+              3.0,
+              3.0,
+              3.0,
+              3.0
+            ],
+            "selectioncolor": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "specular_intensity": [
+              4.5,
+              4.5,
+              4.5,
+              4.5
+            ],
+            "specular_offset": [
+              0.8999999761581421,
+              0.8999999761581421,
+              0.8999999761581421,
+              0.8999999761581421
+            ],
+            "specular_power": [
+              50.0,
+              50.0,
+              50.0,
+              50.0
+            ],
+            "state": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "state_noise": [
+              1.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "subspecular_intensity": [
+              2.0,
+              2.0,
+              2.0,
+              2.0
+            ],
+            "subspecular_power": [
+              40.0,
+              40.0,
+              40.0,
+              40.0
+            ],
+            "trans_rim_hard": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "trans_rim_inradius": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "transcolor": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "transcolor_rimlight ": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "var_base_haircolor_base_ui": [
+              1.0,
+              0.839,
+              0.863,
+              1.0
+            ],
+            "var_base_hairspecularintensity_ui": 0.804,
+            "var_base_hairspecularpower_ui": 0.898,
+            "var_base_hairtwotone_bool_ui": 1.0,
+            "var_base_hairtwotonecolor_ui": [
+              0.658,
+              0.638,
+              0.584,
+              1.0
+            ],
+            "var_base_hairtwotonerange_bool_ui": 1.0,
+            "var_base_hairtwotonerangea_ui": 0.42,
+            "var_base_hairtwotonerangeb_ui": 0.546,
+            "var_base_hairtwotonerangeedge_ui": 1.0,
+            "var_base_hairtwotonerangehardness_ui": 0.5
+          },
+          "textures": [
+            {
+              "expressionIndex": 0,
+              "assetId": "Character/GuardianKnight/textures/pc_ft_15_hair_n.tga",
+              "colorSpace": "linear"
+            },
+            {
+              "expressionIndex": 1,
+              "assetId": "Character/GuardianKnight/textures/pc_ft_15_hair_d.tga",
+              "colorSpace": "srgb"
+            },
+            {
+              "expressionIndex": 2,
+              "assetId": "Character/SourceMaterials/efmaster_material_prologue/statefx_default.tga",
+              "colorSpace": "srgb"
+            }
+          ]
+        }
+      ]
     }
   ]
 }

@@ -147,7 +147,7 @@ bool LostArk::Server::CGameRoom::Is_MoveCancellableAction(
 	}
 	const PLAYER_SKILL_DEFINITION* skill =
 		m_GameplayCatalog.Find_Skill(player.iCurrentSkillId);
-	return nullptr != skill &&
+	return nullptr != skill && !Is_DodgeSkill(*skill) &&
 		Is_InsideCancelWindow(
 			*skill, player.iComboStage, player.fActionElapsedSeconds,
 			PLAYER_CANCEL_INPUT::MOVE);
@@ -454,8 +454,7 @@ void LostArk::Server::CGameRoom::Handle_RevivePlayer(
 	player.iCurrentHp = player.iMaximumHp;
 	player.iCurrentResource = player.iMaximumResource;
 	player.iResourceAccumulator = 0u;
-	player.iCurrentIdentity = player.iMaximumIdentity;
-	player.iIdentityAccumulator = 0u;
+	CPlayerSkillSystem::Reset_Gauges(player, m_GameplayCatalog);
 	player.iCurrentMadness = 0u;
 	player.iMaximumMadness = SERVER_PLAYER::MADNESS_GAUGE_MAXIMUM;
 	player.eMadnessForm = PLAYER_MADNESS_FORM::NORMAL;

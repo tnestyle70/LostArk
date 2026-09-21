@@ -1542,6 +1542,11 @@ namespace LostArk::Shared
 		// the HUD then has nothing to draw.
 		std::uint32_t iCurrentIdentity = 0;
 		std::uint32_t iMaximumIdentity = 0;
+		/* Guardian Knight ember (protocol 100). A maximum of 0 says the class has
+		no ember pool. Orbs held plus locked sockets never exceed the maximum. */
+		std::uint8_t iEmberOrbs = 0;
+		std::uint8_t iEmberLockedSockets = 0;
+		std::uint8_t iEmberMaximumSockets = 0;
 		/* KoukuSaydon madness gauge and the avatar it drives. Both are Server
 		truth: a maximum of 0 means no Saydon encounter owns the gauge, and the
 		form says which body the Client presents for this player. */

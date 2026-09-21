@@ -1957,6 +1957,9 @@
     <None Include="..\..\Data\Animation\Authored\GuardianKnight\GuardianKnight.skillbindings.json">
       <Filter>96.DataFiles\Animation\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Animation\Authored\GuardianKnight\GuardianKnight.interactionbindings.json">
+      <Filter>96.DataFiles\Animation\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Animation\Reference\GuardianKnight\GuardianKnight.animnotify">
       <Filter>96.DataFiles\Animation\Reference</Filter>
     </None>
@@ -2144,6 +2147,9 @@
       <Filter>96.DataFiles\Balance</Filter>
     </None>
 	<None Include="..\..\Data\Balance\PlayerSkillTargeting.json">
+	  <Filter>96.DataFiles\Balance</Filter>
+	</None>
+	<None Include="..\..\Data\Balance\GuardianKnightEmber.json">
 	  <Filter>96.DataFiles\Balance</Filter>
 	</None>
     <None Include="..\..\Data\Balance\ValtanBossParts.json">

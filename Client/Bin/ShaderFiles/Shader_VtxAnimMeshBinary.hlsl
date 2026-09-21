@@ -634,7 +634,7 @@ SCENE_COLOR_BLOOM_OUT PS_MAIN_SOURCE_CHARACTER_TRANSLUCENT(VS_OUT input, bool fr
 {
     if (6u != g_SourceCharacterProgram && 7u != g_SourceCharacterProgram &&
         18u != g_SourceCharacterProgram && 84u != g_SourceCharacterProgram &&
-        88u != g_SourceCharacterProgram) discard;
+        88u != g_SourceCharacterProgram && 99u != g_SourceCharacterProgram) discard;
     const float3 camera = -mul((float3x3)g_ViewMatrix, g_ViewMatrix[3].xyz);
     float3 ambient = 0.f;
     [loop] for (uint ambientIndex = 0u; ambientIndex < g_SourceMapForwardLightCount; ++ambientIndex)
@@ -683,6 +683,8 @@ SCENE_COLOR_BLOOM_OUT PS_MAIN_SOURCE_CHARACTER_TRANSLUCENT(VS_OUT input, bool fr
             lit = SourceCharacterLight84(lightInput);
         else if (88u == g_SourceCharacterProgram)
             lit = SourceCharacterLight88(lightInput);
+        else if (99u == g_SourceCharacterProgram)
+            lit = SourceCharacterLight99(lightInput);
 #endif
         if (!lit.discarded) direct += lit.targets[0].rgb * attenuation;
     }

@@ -76,6 +76,17 @@
         "HANDS": null,
         "WEAPON": null
       }
+    },
+    {
+      "classId": "GUARDIANKNIGHT",
+      "slotSelections": {
+        "HEAD": null,
+        "SHOULDER": null,
+        "UPPER": null,
+        "LOWER": null,
+        "HANDS": null,
+        "WEAPON": null
+      }
     }
   ]
 }

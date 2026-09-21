@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 namespace
 {
@@ -388,15 +389,15 @@ bool LostArk::Server::CPlayerSkillSystem::Try_StartInternal(
 
 	The Space dodge is its own input in the original: its window usually opens
 	before, and always covers, the skill window. So the dodge answers to either
-	list while every other skill still answers to the skill list alone. */
-	const bool isDodge = PLAYER_SKILL_KIND::ACTIVE == skill->eSkillKind &&
-		"SPACE" == skill->strInputSlot;
+	list while every other skill still answers to the skill list alone. A
+	running dodge itself is never cut short by another skill. */
+	const bool isDodge = Is_DodgeSkill(*skill);
 	if (!isStandup && PLAYER_ACTION_STATE::NONE != player.eAction)
 	{
 		const PLAYER_SKILL_DEFINITION* running =
 			PLAYER_ACTION_STATE::SKILL == player.eAction ?
 				catalog.Find_Skill(player.iCurrentSkillId) : nullptr;
-		if (nullptr != running &&
+		if (nullptr != running && !Is_DodgeSkill(*running) &&
 			command.iSkillId != player.iCurrentSkillId &&
 			(Is_InsideCancelWindow(
 				*running, player.iComboStage,
@@ -458,6 +459,20 @@ bool LostArk::Server::CPlayerSkillSystem::Try_StartInternal(
 	{
 		return false;
 	}
+	/* An ember class leaves its default stance only on a full orb gauge. */
+	if (nullptr != catalog.Find_EmberProfile(player.eCharacterClass) &&
+		PLAYER_STANCE_ID::NONE != skill->eSetsStance)
+	{
+		const PLAYER_RUNTIME_PROFILE* emberOwner =
+			catalog.Find_Player(player.eCharacterClass);
+		if (nullptr != emberOwner &&
+			skill->eSetsStance != emberOwner->eDefaultStance &&
+			player.eStance == emberOwner->eDefaultStance &&
+			player.iCurrentIdentity < player.iMaximumIdentity)
+		{
+			return false;
+		}
+	}
 	/* A pair of opposite-direction stance-swap skills (LanceMaster's 34000/34500)
 	sit on their own independent CooldownEndTickBySkillId entries, so the reverse
 	skill is otherwise free to fire the instant the first one's action completes
@@ -505,6 +520,7 @@ bool LostArk::Server::CPlayerSkillSystem::Try_StartInternal(
 	player.iSpawnedProjectileMask = 0;
 	player.iCurrentResource -= skill->iResourceCost;
 	player.iCurrentIdentity -= skill->iIdentityCost;
+	Apply_EmberOnStart(player, *skill, catalog);
 	player.CooldownEndTickBySkillId.insert_or_assign(
 		command.iSkillId,
 		player.iActionStartTick + MillisecondsToTicks(skill->iCooldownMs));
@@ -549,6 +565,23 @@ void LostArk::Server::CPlayerSkillSystem::Commit_StanceChange(
 			{
 				player.iCurrentIdentity -=
 					stanceProfile->iIdentityStanceSwitchCost;
+			}
+			/* Entering the dragon form reopens every socket and refills the
+			ember pool; leaving it, by the toggle or by the gauge running out,
+			empties the gauge so the form has to be earned again. */
+			if (const GUARDIAN_EMBER_PROFILE* ember =
+				catalog.Find_EmberProfile(player.eCharacterClass))
+			{
+				if (skill.eSetsStance == stanceProfile->eDefaultStance)
+				{
+					player.iCurrentIdentity = 0u;
+				}
+				else
+				{
+					player.iEmberLockedSockets = 0u;
+					player.iEmberOrbs = ember->iMaximumSockets;
+				}
+				player.iIdentityAccumulator = 0u;
 			}
 		}
 	}
@@ -618,6 +651,97 @@ void LostArk::Server::CPlayerSkillSystem::Update_Identity(
 		player.eStance = profile.eDefaultStance;
 		player.iIdentityAccumulator = 0u;
 	}
+}
+
+void LostArk::Server::CPlayerSkillSystem::Update_EmberGauge(
+	SERVER_PLAYER& player,
+	const PLAYER_RUNTIME_PROFILE& profile,
+	const GUARDIAN_EMBER_PROFILE& ember)
+{
+	if (0u == profile.iMaximumIdentity)
+		return;
+	if (player.eStance == profile.eDefaultStance)
+	{
+		player.iIdentityAccumulator = 0u;
+		return;
+	}
+	/* The full gauge drains over exactly iDragonDurationMs: one gauge unit
+	per (durationTicks / maximum) ticks, carried as maximum per tick against
+	a durationTicks threshold so integers never drift. */
+	const std::uint32_t durationTicks = (std::max)(1u,
+		static_cast<std::uint32_t>(
+			static_cast<std::uint64_t>(ember.iDragonDurationMs) *
+			SERVER_TICK_HZ / 1000ull));
+	player.iIdentityAccumulator += player.iMaximumIdentity;
+	while (player.iIdentityAccumulator >= durationTicks &&
+		0u != player.iCurrentIdentity)
+	{
+		player.iIdentityAccumulator -= durationTicks;
+		--player.iCurrentIdentity;
+	}
+	if (0u == player.iCurrentIdentity)
+	{
+		player.eStance = profile.eDefaultStance;
+		player.iIdentityAccumulator = 0u;
+	}
+}
+
+void LostArk::Server::CPlayerSkillSystem::Reset_Gauges(
+	SERVER_PLAYER& player,
+	const CGameplayCatalog& catalog)
+{
+	player.iIdentityAccumulator = 0u;
+	player.iEmberSpentOnAction = 0u;
+	if (const GUARDIAN_EMBER_PROFILE* ember =
+		catalog.Find_EmberProfile(player.eCharacterClass))
+	{
+		player.iCurrentIdentity = 0u;
+		player.iEmberOrbs = ember->iMaximumSockets;
+		player.iEmberLockedSockets = 0u;
+		return;
+	}
+	player.iCurrentIdentity = player.iMaximumIdentity;
+	player.iEmberOrbs = 0u;
+	player.iEmberLockedSockets = 0u;
+}
+
+void LostArk::Server::CPlayerSkillSystem::Gain_EmberGauge(
+	SERVER_PLAYER& player,
+	const CGameplayCatalog& catalog)
+{
+	const GUARDIAN_EMBER_PROFILE* ember =
+		catalog.Find_EmberProfile(player.eCharacterClass);
+	const PLAYER_RUNTIME_PROFILE* profile =
+		catalog.Find_Player(player.eCharacterClass);
+	if (nullptr == ember || nullptr == profile ||
+		player.eStance != profile->eDefaultStance)
+		return;
+	player.iCurrentIdentity = (std::min)(player.iMaximumIdentity,
+		player.iCurrentIdentity + ember->iGaugeGainPerHit);
+}
+
+void LostArk::Server::CPlayerSkillSystem::Apply_EmberOnStart(
+	SERVER_PLAYER& player,
+	const PLAYER_SKILL_DEFINITION& skill,
+	const CGameplayCatalog& catalog)
+{
+	const GUARDIAN_EMBER_PROFILE* ember =
+		catalog.Find_EmberProfile(player.eCharacterClass);
+	if (nullptr == ember)
+		return;
+	/* A spending skill is never refused for lack of ember (original rule): it
+	takes what is there and only that much boosts its damage. */
+	const std::uint32_t spent = (std::min)(player.iEmberOrbs, skill.iEmberCost);
+	player.iEmberOrbs -= spent;
+	player.iEmberSpentOnAction = spent;
+	if (skill.locksEmberSocket)
+	{
+		player.iEmberLockedSockets = (std::min)(
+			ember->iMaximumSockets, player.iEmberLockedSockets + 1u);
+	}
+	const std::uint32_t capacity =
+		ember->iMaximumSockets - player.iEmberLockedSockets;
+	player.iEmberOrbs = (std::min)(capacity, player.iEmberOrbs + skill.iEmberGain);
 }
 
 void LostArk::Server::CPlayerSkillSystem::Update_Projectiles(
@@ -908,7 +1032,11 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 	if (const PLAYER_RUNTIME_PROFILE* identityProfile =
 		catalog.Find_Player(player.eCharacterClass))
 	{
-		Update_Identity(player, *identityProfile);
+		if (const GUARDIAN_EMBER_PROFILE* ember =
+			catalog.Find_EmberProfile(player.eCharacterClass))
+			Update_EmberGauge(player, *identityProfile, *ember);
+		else
+			Update_Identity(player, *identityProfile);
 	}
 	Update_Projectiles(player, worldEntities, catalog, fixedDeltaSeconds,
 		serverTick, outDamageEvents);
@@ -1100,9 +1228,19 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 	{
 		const PLAYER_RUNTIME_PROFILE* playerProfile =
 			catalog.Find_Player(player.eCharacterClass);
-		return CGameplayCatalog::Resolve_Damage(
+		const std::uint32_t base = CGameplayCatalog::Resolve_Damage(
 			nullptr == playerProfile ? 0u : playerProfile->iAttackPower,
 			catalog.Find_DamageRatePercent(skill->strDamageProfileId));
+		/* Each ember orb the action spent adds the profile percent. */
+		const GUARDIAN_EMBER_PROFILE* ember =
+			catalog.Find_EmberProfile(player.eCharacterClass);
+		if (nullptr == ember || 0u == player.iEmberSpentOnAction)
+			return base;
+		const std::uint64_t boosted = static_cast<std::uint64_t>(base) *
+			(100ull + static_cast<std::uint64_t>(ember->iDamageBonusPercentPerOrb) *
+				player.iEmberSpentOnAction) / 100ull;
+		return static_cast<std::uint32_t>((std::min)(boosted,
+			static_cast<std::uint64_t>((std::numeric_limits<std::uint32_t>::max)())));
 	};
 
 	if (dealsDamage && (!shapeHits.empty() || !projectiles.empty()))
@@ -1232,6 +1370,8 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 					targets.resize(hit.iMaxTargets);
 				for (auto& [distanceSquared, target] : targets)
 					applyDamage(*target, ownsDamage ? damageOfSubHit(subHitIndex) : 0u, &hit);
+				if (!targets.empty())
+					Gain_EmberGauge(player, catalog);
 			}
 		}
 		const std::uint16_t expectedProjectileMask = projectiles.empty() ? 0u :
@@ -1271,7 +1411,10 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 			}
 		}
 		if (nullptr != closestBoss)
+		{
 			applyDamage(*closestBoss, resolveRawDamage(), nullptr);
+			Gain_EmberGauge(player, catalog);
+		}
 		player.hasAppliedSkillDamage = true;
 	}
 
