@@ -45,6 +45,8 @@ HRESULT CPart_Equipment::Initialize(void* pArg)
 
 	const auto pDesc = static_cast<PART_EQUIPMENT_DESC*>(pArg);
 	m_iHiddenMeshMask = pDesc->iHiddenMeshMask;
+    m_isWeaponPart = pDesc->isWeaponPart;
+    m_isIdentityPart = pDesc->isIdentityPart;
 	m_pSkeletonModelCom = pDesc->pSkeletonModel;
 	m_strSocketBoneName = nullptr != pDesc->pSocketBoneName ?
 		pDesc->pSocketBoneName : "";
@@ -127,7 +129,7 @@ void CPart_Equipment::Update(f32_t fTimeDelta)
 
 void CPart_Equipment::Late_Update(f32_t fTimeDelta)
 {
-	if (!m_isVisible)
+	if (!Is_Visible())
 		return;
 	CGameInstance::Get().Add_RenderObject(
 		RENDERGROUP::NONBLEND,
@@ -158,7 +160,7 @@ HRESULT CPart_Equipment::Render_Group(RENDERGROUP group)
 
 HRESULT CPart_Equipment::Render_Translucent()
 {
-	if (!m_isVisible || !m_strSocketBoneName.empty())
+	if (!Is_Visible() || !m_strSocketBoneName.empty())
 		return S_OK;
 	if (FAILED(Bind_ShaderResources()) ||
 		FAILED(CMapAssetRenderUtils::Bind_SourceCharacterForwardLights(m_pShaderCom)))
@@ -200,6 +202,7 @@ HRESULT CPart_Equipment::Render_Translucent()
 HRESULT CPart_Equipment::Render_Pass(
 	uint32_t iSkinnedPassIndex, uint32_t iSocketedPassIndex)
 {
+    if (!Is_Visible()) return S_OK;
 	const uint32_t iPassIndex =
 		m_strSocketBoneName.empty() ? iSkinnedPassIndex : iSocketedPassIndex;
 	if (FAILED(Bind_ShaderResources()))
@@ -258,6 +261,7 @@ HRESULT CPart_Equipment::Render_Pass(
 
 HRESULT CPart_Equipment::Render_Shadow()
 {
+    if (!Is_Visible()) return S_OK;
 	constexpr uint32_t ANIMATED_SHADOW_PASS = 1u;
 	constexpr uint32_t STATIC_SHADOW_PASS = 12u;
 	if (FAILED(Bind_ShadowShaderResources()))
@@ -338,6 +342,18 @@ HRESULT CPart_Equipment::Ready_Components(const PART_EQUIPMENT_DESC* pDesc)
 		return E_FAIL;
 
 	return S_OK;
+}
+
+bool CPart_Equipment::Get_AfterimageView(CSkeletalAfterimage::MODEL_VIEW& view)
+{
+    if (!Is_Visible() || !m_pModelCom || !m_pShaderCom) return false;
+    if (m_hasOwnBones && m_strSocketBoneName.empty()) m_pModelCom->Pose_BonesFrom(*m_pSkeletonModelCom);
+    // Recompute the same socket/root composition for post-update tool pose edits.
+    Update(0.f);
+    view.model = m_pModelCom; view.shader = m_pShaderCom; view.world = m_CombinedWorldMatrix;
+    view.socketed = !m_strSocketBoneName.empty(); view.hiddenMeshMask = m_iHiddenMeshMask;
+    view.paletteModel = m_hasOwnBones ? m_pModelCom : m_pSkeletonModelCom;
+    return true;
 }
 
 HRESULT CPart_Equipment::Bind_ShaderResources()

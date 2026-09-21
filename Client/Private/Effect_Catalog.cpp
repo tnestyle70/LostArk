@@ -789,6 +789,7 @@ namespace
 		HeaderFields.emplace("displayName", *pDisplayName);
 		HeaderFields.emplace("particleSystem", *pParticleSystem);
 		HeaderFields.emplace("modelCues", *pModelCues);
+        if (const auto* controls = Value.Find("ownerControls")) HeaderFields.emplace("ownerControls", *controls);
 		HeaderFields.emplace("elements", DATA_JSON_VALUE::Array({}));
 		EFFECT_DOCUMENT_DESC HeaderDocument;
 		if (!CEffectDocumentCodec::Parse_Value(
@@ -806,6 +807,7 @@ namespace
 		Staged.strSourceDocumentFileSha256 = pSourceFileSha->Get_String();
 		Staged.ParticleSystem = HeaderDocument.ParticleSystem;
 		Staged.ModelCues = std::move(HeaderDocument.ModelCues);
+        Staged.OwnerControls = std::move(HeaderDocument.OwnerControls);
 		std::unordered_set<std::string> CueIds;
 		std::unordered_set<std::string> ComponentIds;
 		for (const DATA_JSON_VALUE& CueValue : pComponentCues->Get_Array())
@@ -917,6 +919,7 @@ namespace
 		Staged.strDisplayName = Assembly.strDisplayName;
 		Staged.ParticleSystem = Assembly.ParticleSystem;
 		Staged.ModelCues = Assembly.ModelCues;
+        Staged.OwnerControls = Assembly.OwnerControls;
 		Staged.Elements.reserve(IndexedElements.size());
 		for (INDEXED_ELEMENT& Indexed : IndexedElements)
 			Staged.Elements.push_back(std::move(Indexed.Element));

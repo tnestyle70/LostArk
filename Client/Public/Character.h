@@ -6,6 +6,7 @@
 #include "ContainerObject.h"
 #include "ActorCatalog.h"
 #include "CharacterSpec.h"
+#include "SkeletalAfterimage.h"
 #include "DeferredMaterialRenderUtils.h"
 #include "EstherActionSoundCueDocument.h"
 #include "FaceCustomizeApplier.h"
@@ -70,6 +71,7 @@ public:
 		std::string runtimePartId;
 		wstring_t modelPrototypeTag;
 		bool_t isSocketed = false;
+        bool_t isWeaponPart = false;
 		std::string socketBoneId;
 		f32_t socketYawDegrees = 0.f;
 		LostArk::Shared::PLAYER_STANCE_ID requiredStance =
@@ -119,6 +121,7 @@ public:
 	bool_t Is_AvatarPartVisible(EQUIPMENT_SLOT_KIND eKind) const;
 	void Set_AvatarPartVisible(EQUIPMENT_SLOT_KIND eKind, bool_t isVisible);
 	shared_ptr<Engine::CModel> Get_BodyModel() const;
+    bool Collect_PresentationAfterimageModels(uint32_t sourcePartType, std::vector<CSkeletalAfterimage::MODEL_VIEW>& output);
 	/* Effective visual scale: catalog admission times this map's size control.
 	Bone-space measurements use the same product as the body and equipment root. */
 	f32_t Get_PresentationScale() const;
@@ -139,6 +142,11 @@ public:
 	/* The mounted vehicle part's model and world; null/false while on foot. */
 	shared_ptr<Engine::CModel> Get_VehicleModel() const;
 	bool_t Try_Get_VehicleWorldMatrix(float4x4_t& outWorld) const;
+    f32_t Get_VehicleDirectionalBrightness() const;
+    void Apply_PresentationOwnerControls(uint64_t token, const std::vector<EFFECT_OWNER_CONTROL_DESC>& controls, f32_t time, bool_t preview);
+    void Remove_PresentationOwnerControls(uint64_t token);
+    bool_t Get_PresentationDirectionalControl(f32_t& brightness, float4_t& color) const;
+
 
 	const std::string& Get_NickName() const
 	{
@@ -196,6 +204,8 @@ public:
 	bool_t Try_Get_SkillTargetRoot(float4x4_t& outWorld) const;
 	void Apply_NetworkStance(LostArk::Shared::PLAYER_STANCE_ID stance);
 	void Apply_NetworkPresentationHidden(bool_t hidden) { m_isNetworkPresentationHidden = hidden; }
+    // Transient cue overlays never replace replicated stance or user part visibility.
+    void Set_PresentationVisibilityControls(bool_t all, bool_t weapon, bool_t identity);
 	/* Replication hands over the replicated vehicle. Zero dismounts. A vehicle
 	whose presentation is not admitted leaves the character on foot and logs
 	once; gameplay truth stays on the Server either way. */
@@ -401,6 +411,7 @@ private:
 	f32_t m_fPendingIdleSeconds = { -1.f };
 	wstring_t m_strNavigationPrototypeTag;
 	bool_t m_isNetworkPresentationHidden = false;
+    bool_t m_isSourcePawnHidden = false, m_isSourceWeaponHidden = false, m_isSourceIdentityHidden = false;
 	std::uint32_t m_iVehicleId = 0u;
 	std::uint32_t m_iRejectedVehicleId = 0u;
 	shared_ptr<class CPart_Vehicle> m_pVehiclePart;
@@ -471,6 +482,27 @@ private:
 	f32_t m_fPreviousSoundCueStageWallSeconds = -1.f;
 	f32_t m_fPreviousShakeCueStageWallSeconds = -1.f;
 	f32_t m_fPreviousVehicleCueAgeSeconds = -1.f;
+    f32_t m_fVehicleEffectAgeSeconds = 0.f;
+    uint32_t m_iVehicleControlSkillId = 0u;
+    f32_t m_fVehicleControlAgeSeconds = 0.f;
+    struct OWNER_CONTROL_SAMPLE final { EFFECT_OWNER_CONTROL_DESC Control; float4_t Value; };
+    struct OWNER_MATERIAL_BASELINE final
+    {
+        std::weak_ptr<Engine::CModel> Model;
+        std::string MaterialName;
+        Engine::MODEL_SOURCE_CHARACTER_PARAMETERS Parameters;
+    };
+    std::map<uint64_t,std::vector<OWNER_CONTROL_SAMPLE>> m_PresentationOwnerControls;
+    std::vector<OWNER_MATERIAL_BASELINE> m_PresentationMaterialBaselines;
+    f32_t m_fPresentationDirectionalBrightness = 1.f;
+    float4_t m_PresentationDirectionalColor{};
+    bool_t m_bPresentationDirectionalControl = false;
+    void Rebuild_PresentationOwnerControls();
+    f32_t m_fVehicleDirectionalBrightness = 1.f;
+    bool m_bVehicleMaterialControlsApplied = false;
+    uint32_t m_iVehicleEffectGeneration = 0u;
+    std::vector<uint8_t> m_VehicleAmbientCueStates;
+    std::vector<uint8_t> m_VehicleMountCueStates;
 	std::uint32_t m_iEffectActionStartTick = 0u;
 	f32_t m_fEffectActionFacingYawDegrees = 0.f;
 	bool_t m_bHasEffectActionFacingYaw = false;
@@ -641,6 +673,8 @@ private:
 	void Update_VehicleSkillCues(const VEHICLE_SKILL_ENTRY& skill,
 		std::uint32_t actionStartTick, f32_t actionAgeSeconds);
 	void Update_VehicleLocomotionSoundCues();
+    void Update_VehicleLifetimeEffects(f32_t deltaSeconds);
+    void Update_VehiclePresentationControls(f32_t deltaSeconds);
 	void Queue_VehicleSkillEffects(const VEHICLE_ACTOR_ENTRY& vehicle) const;
 	void Spawn_FallbackEffect(LostArk::Shared::SKILL_ID iSkillId);
 	f32_t Get_EffectPlaybackRate() const;

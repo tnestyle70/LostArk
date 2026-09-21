@@ -18,6 +18,8 @@ namespace Client
 class CAnimation_Tool;
 class CCharacterPreviewPanel;
 class CEffectAuthoringSequencer;
+class CBoneAnimationWorkbench;
+class CCharacterModelWorkbench;
 
 class CCharacterActionWorkbench final : public ICompositionWorkbenchSession
 {
@@ -28,6 +30,7 @@ public:
     void Begin_WorkbenchFrame() override;
     void Render_WorkbenchPane(COMPOSITION_WORKBENCH_PANE pane) override;
     void End_WorkbenchFrame() override;
+    COMPOSITION_WORKBENCH_VIEW_REQUEST Consume_WorkbenchViewRequest() override;
     void On_WorkbenchDeactivated() override;
     void On_LevelChanged();
     void Update(float dt, bool active);
@@ -71,6 +74,7 @@ private:
     void Render_Timeline();
     void Render_Resources();
     void Render_AnimationResources();
+    void Open_LaneResources(LANE lane);
     void Render_LogicResources();
     void Render_EffectResources();
     void Render_ColliderResources();
@@ -120,6 +124,9 @@ private:
     std::shared_ptr<CCharacterPreviewPanel> m_Panel;
     std::shared_ptr<CEffectAuthoringSequencer> m_Sequencer;
     CAnimation_Tool* m_AnimationTool = nullptr;
+    std::unique_ptr<CBoneAnimationWorkbench> m_BoneEditor;
+    std::unique_ptr<CCharacterModelWorkbench> m_ModelEditor;
+    bool m_ModelMode = false;
     std::function<void(const std::string&)> m_OpenEffect;
     ANIMATION_SKILL_BINDING_DOCUMENT m_Bindings;
     ANIMATION_EFFECT_CUE_DOCUMENT m_Cues;
@@ -147,7 +154,9 @@ private:
     bool m_SaveBindings = false, m_SaveCombat = false, m_Reload = false;
     bool m_EffectInventoryLoaded = false, m_TimingsLoaded = false, m_CombatPublishPending = false;
     bool m_AddCollider = false;
-    char m_Search[160]{};
+    char m_Search[160]{}, m_AnimationSearch[160]{};
+    int m_RequestedResourceTab = -1;
+    COMPOSITION_WORKBENCH_VIEW_REQUEST m_ViewRequest;
     std::string m_DragId;
     ROW_KIND m_DragKind = ROW_KIND::ANIMATION;
     int m_DragGesture = 0;

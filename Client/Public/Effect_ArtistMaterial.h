@@ -168,6 +168,24 @@ inline bool Apply_ArtistMaterialTrackSamples(const EFFECT_SOURCE_TRANSFORM_TRACK
     return true;
 }
 
+inline bool Validate_SourceCharacterModelCueMaterialTracks(const EFFECT_MODEL_CUE_DESC& Cue, std::string& Error)
+{
+    if (!Cue.SourceMaterialProfile || Cue.MaterialParameterTracks.size() > 64u) return false;
+    std::vector<std::string_view> names;
+    for (const auto& track : Cue.MaterialParameterTracks)
+    {
+        const auto count = track.Values.iComponentCount;
+        if (!Cue.SourceMaterialProfile->parameters.contains(track.strName) ||
+            std::find(names.begin(), names.end(), track.strName) != names.end() ||
+            track.Values.Keys.empty() || track.Values.iOperation != 1u ||
+            (track.bVector ? (count != 3u && count != 4u) : count != 1u) ||
+            !CEffectDistribution::Validate(track.Values, Error))
+        { if (Error.empty()) Error = "Invalid CMaterial parameter track: " + track.strName; return false; }
+        names.push_back(track.strName);
+    }
+    return true;
+}
+
 // Model Cue scalar curves (PlaySkeletalMesh material fades) sampled at cue-local time.
 inline bool Build_ArtistModelCueMaterialTrackBindings(const EFFECT_MODEL_CUE_DESC& Cue,
     std::vector<ARTIST_PARAMETER_DESC>& Bindings, std::string& Error)
@@ -218,7 +236,11 @@ inline bool Has_ArtistMaterialContract(const EFFECT_ELEMENT_DESC& Element)
     if (!Program || Program->bModelCue || Element.Material.Execution.bEnabled || Element.Material.Execution.bFailClosed ||
         Element.Material.eRenderProfile!=Program->eRenderProfile ||
         Element.Material.strSourceMaterialPath!=Program->strSourceMaterialPath) return false;
-    const bool bStaticAction = Program->strRendererShape == "staticMesh";
+    // Recovered CEF PlayStaticMesh actors share the native mesh draw path, but
+    // must not enter the Cascade emitter carrier merely because its VF is mesh.
+    const bool bGuardianStaticAction = Program->bMesh && Program->strRendererShape == "mesh" &&
+        (Program->iProfileIndex == 4530u || Program->iProfileIndex == 4531u);
+    const bool bStaticAction = Program->strRendererShape == "staticMesh" || bGuardianStaticAction;
     if (Program->bSourceTransformMesh)
     {
         if (!Program->bMesh || Program->strRendererShape != "mesh" || Element.eKind != EFFECT_ELEMENT_KIND::MESH ||
@@ -234,8 +256,17 @@ inline bool Has_ArtistMaterialContract(const EFFECT_ELEMENT_DESC& Element)
             Attachment.strSourceAnchorSlotId != "EffectRoot" || Attachment.strRuntimeAnchorSlotId != "root" ||
             !Attachment.strRuntimeBoneName.empty() || Attachment.fSnapshotRootSourceBasisYawDegrees != -90.f ||
             Element.Detail.Mesh.bUseModelMaterial || Element.Detail.Mesh.fModelPreScale != .01f) return false;
-        if (std::count_if(Element.ResourceBindings.begin(),Element.ResourceBindings.end(),[](const auto& B)
-            { return B.strSlotId=="meshModel" && B.strAssetId=="Effect/Artist/Meshes/Native/LV_MATTE/sky_mirror_sm.wmodel"; }) != 1) return false;
+        if (bGuardianStaticAction && (!Element.SourceTransformTrack || Element.SourceTransformTrack->Nodes.empty())) return false;
+        if (std::count_if(Element.ResourceBindings.begin(),Element.ResourceBindings.end(),[&](const auto& B)
+            {
+                if (B.strSlotId != "meshModel") return false;
+                if (!bGuardianStaticAction)
+                    return B.strAssetId == "Effect/Artist/Meshes/Native/LV_MATTE/sky_mirror_sm.wmodel";
+                if (Program->iProfileIndex == 4530u)
+                    return B.strAssetId == "Effect/GuardianKnight/FullRestore/StaticActors/sky_seamless_sm.wmodel";
+                return B.strAssetId == "Effect/GuardianKnight/FullRestore/StaticActors/bg_chs_stone_foothold01_sm_lkj.wmodel" ||
+                    B.strAssetId == "Effect/GuardianKnight/FullRestore/StaticActors/bg_chs_stone_foothold02_sm_lkj.wmodel";
+            }) != 1) return false;
     }
     else if (Program->strRuntimeProfileId.starts_with("effect.ue3.kouku-") &&
         Program->strRendererShape == "animationTrail")

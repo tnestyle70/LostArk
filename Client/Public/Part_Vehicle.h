@@ -2,6 +2,7 @@
 
 #include "Client_Defines.h"
 #include "PartObject.h"
+#include "SkeletalAfterimage.h"
 
 #include <string>
 #include <vector>
@@ -50,6 +51,13 @@ public:
 	bool_t Try_Get_LocomotionClipTime(std::string& outClip,
 		f32_t& outSeconds, f32_t& outDurationSeconds) const;
 	shared_ptr<CModel> Get_Model() const { return m_pModelCom; }
+    bool Get_AfterimageView(CSkeletalAfterimage::MODEL_VIEW& view) const
+    {
+        if (!m_pModelCom || !m_pShaderCom) return false;
+        view.model = view.paletteModel = m_pModelCom; view.shader = m_pShaderCom;
+        view.world = m_CombinedWorldMatrix; view.hiddenMeshMask = 0u; view.socketed = false;
+        return true;
+    }
 	const float4x4_t& Get_CombinedWorldMatrix() const { return m_CombinedWorldMatrix; }
 
 public:

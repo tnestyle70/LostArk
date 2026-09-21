@@ -1,0 +1,418 @@
+{
+  "schema": "lostark.model-action-catalog",
+  "formatVersion": 1,
+  "assetName": "Vehicle_9523",
+  "soundOwner": "Vehicle",
+  "actions": [
+    {
+      "actionId": "source.0.stage.0",
+      "category": "Idle",
+      "label": "npc_idle_normal_1 / source 0:0",
+      "clips": [
+        {
+          "clip": "npc_idle_normal_1",
+          "playRate": 1,
+          "sourceStartMs": 0,
+          "playMs": 0
+        }
+      ],
+      "effectCues": [],
+      "soundCues": []
+    },
+    {
+      "actionId": "source.0.stage.2",
+      "category": "Idle",
+      "label": "npc_idle_normal_1_1 / source 0:2",
+      "clips": [
+        {
+          "clip": "npc_idle_normal_1_1",
+          "playRate": 1,
+          "sourceStartMs": 0,
+          "playMs": 0
+        }
+      ],
+      "effectCues": [],
+      "soundCues": []
+    },
+    {
+      "actionId": "source.0.stage.3",
+      "category": "Idle",
+      "label": "npc_idle_normal_1_2 / source 0:3",
+      "clips": [
+        {
+          "clip": "npc_idle_normal_1_2",
+          "playRate": 1,
+          "sourceStartMs": 0,
+          "playMs": 0
+        }
+      ],
+      "effectCues": [],
+      "soundCues": []
+    },
+    {
+      "actionId": "source.1.stage.0",
+      "category": "Movement",
+      "label": "npc_run_normal_1 / source 1:0",
+      "clips": [
+        {
+          "clip": "npc_run_normal_1",
+          "playRate": 1,
+          "sourceStartMs": 0,
+          "playMs": 0
+        }
+      ],
+      "effectCues": [],
+      "soundCues": [
+        {
+          "clipIndex": 0,
+          "event": "S_Vehicle_AncientDragon1_FootStep1",
+          "startMs": 80
+        },
+        {
+          "clipIndex": 0,
+          "event": "S_Vehicle_AncientDragon1_FootStep1",
+          "startMs": 540
+        }
+      ]
+    },
+    {
+      "actionId": "source.4.stage.0",
+      "category": "Movement",
+      "label": "npc_idle_normal_1 / source 4:0",
+      "clips": [
+        {
+          "clip": "npc_idle_normal_1",
+          "playRate": 1,
+          "sourceStartMs": 0,
+          "playMs": 0
+        }
+      ],
+      "effectCues": [],
+      "soundCues": []
+    },
+    {
+      "actionId": "source.5.stage.0",
+      "category": "Movement",
+      "label": "npc_run_normal_1 / source 5:0",
+      "clips": [
+        {
+          "clip": "npc_run_normal_1",
+          "playRate": 1,
+          "sourceStartMs": 0,
+          "playMs": 0
+        }
+      ],
+      "effectCues": [],
+      "soundCues": []
+    },
+    {
+      "actionId": "source.98520.stage.0",
+      "category": "Skills",
+      "label": "npc_sk_dash / source 98520:0",
+      "clips": [
+        {
+          "clip": "npc_sk_dash",
+          "playRate": 1,
+          "sourceStartMs": 0,
+          "playMs": 0
+        }
+      ],
+      "effectCues": [
+        {
+          "clipIndex": 0,
+          "effectAssetId": "effect.vehicle.vehicle_ancient_sea.98520.0.full.restore",
+          "startMs": 0,
+          "stopPolicy": "NATURAL",
+          "followPolicy": "FOLLOW"
+        }
+      ],
+      "soundCues": [
+        {
+          "clipIndex": 0,
+          "event": "S_Vehicle_AncientDragon1_Dash1",
+          "startMs": 1
+        }
+      ]
+    },
+    {
+      "actionId": "source.98521.stage.0",
+      "category": "Skills",
+      "label": "npc_sk_roar / source 98521:0",
+      "clips": [
+        {
+          "clip": "npc_sk_roar",
+          "playRate": 1,
+          "sourceStartMs": 0,
+          "playMs": 0
+        }
+      ],
+      "effectCues": [
+        {
+          "clipIndex": 0,
+          "effectAssetId": "effect.vehicle.vehicle_ancient_sea.98521.0.full.restore",
+          "startMs": 0,
+          "stopPolicy": "NATURAL",
+          "followPolicy": "FOLLOW"
+        }
+      ],
+      "soundCues": [
+        {
+          "clipIndex": 0,
+          "event": "S_Vehicle_AncientDragon1_Skill1",
+          "startMs": 1
+        },
+        {
+          "clipIndex": 0,
+          "event": "S_Vehicle_AncientDragon1_Skill1_Vox1",
+          "startMs": 1
+        }
+      ]
+    },
+    {
+      "actionId": "source.98522.stage.0",
+      "category": "Skills",
+      "label": "npc_sk_breath_01 / source 98522:0",
+      "clips": [
+        {
+          "clip": "npc_sk_breath_01",
+          "playRate": 1,
+          "sourceStartMs": 0,
+          "playMs": 0
+        }
+      ],
+      "effectCues": [
+        {
+          "clipIndex": 0,
+          "effectAssetId": "effect.vehicle.vehicle_ancient_sea.98522.0.full.restore",
+          "startMs": 0,
+          "stopPolicy": "NATURAL",
+          "followPolicy": "FOLLOW"
+        }
+      ],
+      "soundCues": [
+        {
+          "clipIndex": 0,
+          "event": "S_Vehicle_AncientDragon1_Skill2_1",
+          "startMs": 1
+        },
+        {
+          "clipIndex": 0,
+          "event": "S_Vehicle_AncientDragon1_Skill2_Vox1",
+          "startMs": 1
+        }
+      ]
+    },
+    {
+      "actionId": "source.98522.stage.1",
+      "category": "Skills",
+      "label": "npc_sk_breath_02 / source 98522:1",
+      "clips": [
+        {
+          "clip": "npc_sk_breath_02",
+          "playRate": 1,
+          "sourceStartMs": 0,
+          "playMs": 0
+        }
+      ],
+      "effectCues": [
+        {
+          "clipIndex": 0,
+          "effectAssetId": "effect.vehicle.vehicle_ancient_sea.98522.1.full.restore",
+          "startMs": 0,
+          "stopPolicy": "NATURAL",
+          "followPolicy": "FOLLOW"
+        }
+      ],
+      "soundCues": [
+        {
+          "clipIndex": 0,
+          "event": "S_Vehicle_AncientDragon1_Skill2_2",
+          "startMs": 0
+        }
+      ]
+    },
+    {
+      "actionId": "source.98522.stage.2",
+      "category": "Skills",
+      "label": "npc_sk_breath_02 / source 98522:2",
+      "clips": [
+        {
+          "clip": "npc_sk_breath_02",
+          "playRate": 1,
+          "sourceStartMs": 0,
+          "playMs": 0
+        }
+      ],
+      "effectCues": [],
+      "soundCues": [
+        {
+          "clipIndex": 0,
+          "event": "S_Vehicle_AncientDragon1_Skill2_2",
+          "startMs": 0
+        }
+      ]
+    },
+    {
+      "actionId": "source.98523.stage.0",
+      "category": "Skills",
+      "label": "npc_sk_look / source 98523:0",
+      "clips": [
+        {
+          "clip": "npc_sk_look",
+          "playRate": 1,
+          "sourceStartMs": 0,
+          "playMs": 0
+        }
+      ],
+      "effectCues": [
+        {
+          "clipIndex": 0,
+          "effectAssetId": "effect.vehicle.vehicle_ancient_sea.98523.0.full.restore",
+          "startMs": 0,
+          "stopPolicy": "NATURAL",
+          "followPolicy": "FOLLOW"
+        }
+      ],
+      "soundCues": [
+        {
+          "clipIndex": 0,
+          "event": "S_Vehicle_AncientDragon1_Skill3_Vox1",
+          "startMs": 1
+        },
+        {
+          "clipIndex": 0,
+          "event": "S_Vehicle_AncientDragon1_Skill3",
+          "startMs": 500
+        },
+        {
+          "clipIndex": 0,
+          "event": "S_Vehicle_AncientDragon1_FootStep1",
+          "startMs": 4350
+        },
+        {
+          "clipIndex": 0,
+          "event": "S_Vehicle_AncientDragon1_FootStep1",
+          "startMs": 4450
+        }
+      ]
+    },
+    {
+      "actionId": "authored.example.flight",
+      "category": "Authored examples",
+      "label": "Authored example / flight (visual review pending)",
+      "clips": [
+        {
+          "clip": "authored.example.flight",
+          "playRate": 1,
+          "sourceStartMs": 0,
+          "playMs": 0
+        }
+      ],
+      "effectCues": [],
+      "soundCues": []
+    },
+    {
+      "actionId": "authored.example.glide",
+      "category": "Authored examples",
+      "label": "Authored example / glide (visual review pending)",
+      "clips": [
+        {
+          "clip": "authored.example.glide",
+          "playRate": 1,
+          "sourceStartMs": 0,
+          "playMs": 0
+        }
+      ],
+      "effectCues": [],
+      "soundCues": []
+    },
+    {
+      "actionId": "authored.example.ascent",
+      "category": "Authored examples",
+      "label": "Authored example / ascent (visual review pending)",
+      "clips": [
+        {
+          "clip": "authored.example.ascent",
+          "playRate": 1,
+          "sourceStartMs": 0,
+          "playMs": 0
+        }
+      ],
+      "effectCues": [],
+      "soundCues": []
+    },
+    {
+      "actionId": "source.lookinfo.mount",
+      "category": "Mount",
+      "label": "Mount / original LookInfo",
+      "clips": [
+        {
+          "clip": "npc_idle_normal_1",
+          "playRate": 1,
+          "sourceStartMs": 0,
+          "playMs": 3500
+        }
+      ],
+      "effectCues": [
+        {
+          "clipIndex": 0,
+          "effectAssetId": "effect.vehicle.ancient-sea.lookinfo.spawn",
+          "startMs": 0,
+          "stopPolicy": "NATURAL",
+          "followPolicy": "FOLLOW"
+        }
+      ],
+      "soundCues": [
+        {
+          "clipIndex": 0,
+          "event": "S_Vehicle_AncientDragon1_GetOn1",
+          "startMs": 0
+        }
+      ]
+    },
+    {
+      "actionId": "source.lookinfo.ambient",
+      "category": "Mount",
+      "label": "Mounted ambient / original LookInfo",
+      "clips": [
+        {
+          "clip": "npc_idle_normal_1",
+          "playRate": 1,
+          "sourceStartMs": 0,
+          "playMs": 0
+        }
+      ],
+      "effectCues": [
+        {
+          "clipIndex": 0,
+          "effectAssetId": "effect.vehicle.ancient-sea.lookinfo.ambient",
+          "startMs": 0,
+          "stopPolicy": "NATURAL",
+          "followPolicy": "FOLLOW"
+        }
+      ],
+      "soundCues": []
+    },
+    {
+      "actionId": "source.lookinfo.dismount",
+      "category": "Mount",
+      "label": "Dismount sound / original LookInfo",
+      "clips": [
+        {
+          "clip": "npc_idle_normal_1",
+          "playRate": 1,
+          "sourceStartMs": 0,
+          "playMs": 0
+        }
+      ],
+      "effectCues": [],
+      "soundCues": [
+        {
+          "clipIndex": 0,
+          "event": "S_Vehicle_AncientDragon1_GetOff1",
+          "startMs": 0
+        }
+      ]
+    }
+  ]
+}

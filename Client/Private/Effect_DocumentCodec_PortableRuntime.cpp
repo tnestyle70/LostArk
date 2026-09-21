@@ -173,11 +173,12 @@ namespace Client::EffectDocumentCodecDetail
 		};
 
 
-	constexpr std::array<std::pair<std::string_view, size_t>, 23u>
+	constexpr std::array<std::pair<std::string_view, size_t>, 24u>
 		PORTABLE_AUTHORED_PARTICLE_MODULE_MAX_COUNTS = {
 			std::pair{ "particlemoduleacceleration", 2u },
 			std::pair{ "particlemodulecameraoffset", 2u },
-			std::pair{ "particlemodulecolor", 3u },
+			std::pair{ "particlemodulecolor", 4u },
+			std::pair{ "particlemodulecoloroverlife", 2u },
 			std::pair{ "particlemodulecolorscaleoverlife", 5u },
 			std::pair{ "particlemoduleeventgenerator", 2u },
 			std::pair{ "particlemodulelifetime", 2u },
@@ -194,7 +195,7 @@ namespace Client::EffectDocumentCodecDetail
 			std::pair{ "particlemoduleorbit", 2u },
 			std::pair{ "particlemodulerotation", 3u },
 			std::pair{ "particlemodulerotationrate", 2u },
-			std::pair{ "particlemodulerotationratemultiplylife", 2u },
+			std::pair{ "particlemodulerotationratemultiplylife", 4u },
 			std::pair{ "particlemodulesize", 2u },
 			std::pair{ "particlemodulesizemultiplylife", 5u },
 			std::pair{ "particlemodulevelocity", 2u },
@@ -897,9 +898,10 @@ namespace Client::EffectDocumentCodecDetail
 			const bool_t bAdmittedDecalTypeData = bDecal &&
 				NormalizedClass == "particlemoduletypedatadecal";
 			// Its static slot array is consumed by the existing CModel material
-			// stage; it contributes no second simulation or distribution state.
-			const bool_t bAdmittedMeshMaterial = bMesh &&
-				!Element.Detail.Mesh.SourceMaterialSlots.empty() &&
+			// stage; on a sprite the same source module has no mesh consumer.
+			// It contributes no simulation or distribution state.
+			const bool_t bAdmittedMeshMaterial = (bSprite ||
+				(bMesh && !Element.Detail.Mesh.SourceMaterialSlots.empty())) &&
 				Module.strClassName == "particlemodulemeshmaterial";
 			const bool_t bAdmittedRibbonTypeData = bRibbon && NormalizedClass == "particlemoduletypedataribbon";
             if ((!bAdmittedDecalTypeData && !bAdmittedMeshMaterial && !bAdmittedRibbonTypeData && std::ranges::find(
@@ -1050,7 +1052,6 @@ namespace Client::EffectDocumentCodecDetail
 			const bool_t bDecalOnly =
 				ClassName == "particlemoduletypedatadecal";
 			const bool_t bSpriteOnly =
-				ClassName == "particlemodulerotationratemultiplylife" ||
 				((ClassName == "particlemodulesubuv" || ClassName == "particlemodulesubuvmovie") && !(bMesh &&
 					(Has_ArtistMaterialContract(Element) || Has_WarlordNativeMaterialContract(Element) ||
 						Has_LanceMasterVAMaterialContract(Element))));
@@ -1306,8 +1307,8 @@ namespace Client::EffectDocumentCodecDetail
 				NormalizedClass == "particlemoduletypedatadecal";
 			const bool_t bAdmittedMeshMaterial =
 				eExpectedKind == EFFECT_ELEMENT_KIND::PARTICLE &&
-				strExpectedShape == "mesh" &&
-				!SourceElement.Detail.Mesh.SourceMaterialSlots.empty() &&
+				(strExpectedShape == "sprite" || (strExpectedShape == "mesh" &&
+				 !SourceElement.Detail.Mesh.SourceMaterialSlots.empty())) &&
 				Module.strClassName == "particlemodulemeshmaterial";
 			if ((!bAdmittedDecalTypeData && !bAdmittedMeshMaterial && std::ranges::find(
 					PORTABLE_AUTHORED_PARTICLE_MODULE_CLASSES,

@@ -108,7 +108,7 @@ def install_partitioned_groups(shader_text, case_text):
         assert len(names) == 1, 'A carrier block must contain one native function'
         name, number = names[0]
         number = int(number)
-        assert 2304 <= number <= 3967 and name not in functions, name
+        assert 2304 <= number <= 4543 and name not in functions, name
         assert not re.search(r'\bprojection\[', block) or re.search(r'float4\s+projection\[4\]', block), (
             'Stale generated projection adapter; regenerate this source cohort with '
             'generate_artist_native_runtime_shader.py before installing', name)
@@ -239,13 +239,13 @@ def color_case(row):
     return f'    case {identifier}u: nativeColor=ArtistNative{identifier}(input); opaqueCoverage={opaque}; break;\n'
 
 
-def append_reviewed(source_dir):
+def append_reviewed(source_dir, resource_root=None):
     """Add a bounded reviewed cohort while preserving installed shader bodies."""
     contract = json.loads((source_dir / 'native_runtime_contract.json').read_bytes())
     rows = contract['programs']
     assert rows and not contract.get('deferredPrograms')
     owned = {row['program'] for row in rows}
-    assert len(owned) == len(rows) and owned <= set(range(2304, 3968))
+    assert len(owned) == len(rows) and owned <= set(range(2304, 4544))
     merged_path = source_dir / 'merged_native_runtime_contract.json'
     if merged_path.is_file():
         merged = json.loads(merged_path.read_bytes())
@@ -317,7 +317,7 @@ def append_reviewed(source_dir):
     reviewed_evidence = source_dir / 'append_reviewed'
     reviewed_contract = reviewed_evidence / 'native_runtime_contract.json'
     materials.write(reviewed_contract, dict(contract, programs=rows))
-    materials.install(reviewed_contract, reviewed_evidence, ROOT / 'Client/Public/Effect_ArtistMaterial.h')
+    materials.install(reviewed_contract, reviewed_evidence, ROOT / 'Client/Public/Effect_ArtistMaterial.h', resource_root=resource_root)
     return install_partitioned_groups('\n'.join(previous_blocks), ''.join(case_blocks))
 
 
@@ -337,7 +337,7 @@ def install(source_dir, append_source_dir=None):
         rows += additional["programs"]
         source += "\n" + (directory / "Shader_EffectArtistNative.hlsli").read_text(encoding="utf8")
     identifiers = {r["program"] for r in rows}
-    assert len(identifiers) == len(rows) and set(range(2304, 2342)) <= identifiers <= set(range(2304, 3968))
+    assert len(identifiers) == len(rows) and set(range(2304, 2342)) <= identifiers <= set(range(2304, 4544))
     # A newly recovered pass may belong to a byte-identical program reused from
     # an older cohort. Join that pass by its original material/VS/PS identity;
     # the older base-color function and stable program ID remain authoritative.
@@ -449,7 +449,7 @@ def install(source_dir, append_source_dir=None):
         def extend_dispatch(text):
             pattern = r'g_SourceMaterialProfile >= 2304u && g_SourceMaterialProfile <= \d+u'
             assert len(re.findall(pattern, text)) == expected, name
-            return re.sub(pattern, 'g_SourceMaterialProfile >= 2304u && g_SourceMaterialProfile <= 3967u', text)
+            return re.sub(pattern, 'g_SourceMaterialProfile >= 2304u && g_SourceMaterialProfile <= 4543u', text)
         update(shaders / name, extend_dispatch)
 
     print(f"Installed {summary[0]} Kouku native programs in {summary[1]} groups and {summary[2]} existing-family shader carriers.")
@@ -462,10 +462,11 @@ if __name__ == "__main__":
     source.add_argument("--regroup-installed", action="store_true")
     source.add_argument('--append-reviewed-dir', type=Path)
     parser.add_argument("--append-source-dir", type=Path, action="append", default=[])
+    parser.add_argument('--resource-root', type=Path, help='Explicit staged Resources root for descriptor admission.')
     args = parser.parse_args()
     if args.append_reviewed_dir:
         assert not args.append_source_dir
-        print('Appended reviewed programs/groups/carriers:', append_reviewed(args.append_reviewed_dir.resolve()))
+        print('Appended reviewed programs/groups/carriers:', append_reviewed(args.append_reviewed_dir.resolve(), resource_root=args.resource_root))
     elif args.regroup_installed:
         assert not args.append_source_dir, "Regroup consumes installed shader bodies only"
         print("Regrouped programs/groups/carriers:", regroup_installed())

@@ -276,6 +276,7 @@ public:
 	// Authoring clones may select the same complete phase presentation as the Server.
 	bool_t Set_LocalPreviewGhostPresentation(bool_t ghost, std::string& status);
 	void Set_CinematicPresentationSuppressed(bool_t suppressed);
+    std::string Get_PresentationDiagnostic() const;
 	/* Warp portal bindings use Server-locked virtual anchors instead of the
 	current interpolated body root, which may already be mid-rush when a
 	coalesced Stage snapshot is first applied. */
@@ -331,7 +332,8 @@ public:
 	   and is accepted only by a non-authoritative preview boss. */
 	bool_t Stage_LocalPatternAuthoringPreview(
 		const VALTAN_PATTERN_VIEW& Pattern,
-		std::string& strOutStatus);
+		std::string& strOutStatus,
+		bool_t selectAuthoredPhasePresentation = false);
 	/* Effect Tool-only combat-object clock. The staged Product topology is
 	   reused, but boss animation, Product cues, hit debug, and Effect V2 stage
 	   playback remain untouched so an independent world-root lifecycle can be
@@ -701,7 +703,8 @@ private:
 	void Ready_ArmorParts();
 	bool_t Replace_PresentationPartGroup(
 		std::string_view presentationArchetypeId,
-		std::string& strOutStatus);
+		std::string& strOutStatus,
+		const VALTAN_PATTERN_VIEW* requiredPattern = nullptr);
 	/* Hides exactly the plates the Server reports broken. Presentation never
 	decides this: a plate comes off because durability reached zero. */
 	void Set_ArmorPartVisible(uint32_t iStateMask, bool_t isVisible);

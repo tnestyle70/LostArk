@@ -1,4 +1,6 @@
 #include "Effect_Object.h"
+#include "AnimationTargetService.h"
+#include "Character.h"
 #include "EffectFailureDiagnostic.h"
 #include "Engine_RenderTypes.h"
 
@@ -11,6 +13,7 @@
 #include "Profiler.h"
 
 #include <algorithm>
+#include <atomic>
 #include <cmath>
 #include <cstdio>
 #include <cstdint>
@@ -132,10 +135,12 @@ Client::CEffectObject::CEffectObject(
 	  m_pRenderer(make_unique<CEffectDocumentRenderer>(
 		  std::move(pDevice), std::move(pContext)))
 {
+    static std::atomic<uint64_t> nextControlToken{1u};
+    m_iOwnerControlToken=nextControlToken.fetch_add(1u);
 	XMStoreFloat4x4(&m_RootWorld, XMMatrixIdentity());
 }
 
-Client::CEffectObject::~CEffectObject() = default;
+Client::CEffectObject::~CEffectObject() { Release_PresentationOwnerControls(); }
 
 HRESULT Client::CEffectObject::Initialize_Prototype()
 {
@@ -157,6 +162,10 @@ HRESULT Client::CEffectObject::Initialize(void* pArg)
 	{
 		return E_FAIL;
 	}
+    m_ControlOwner=Desc.pControlOwner;
+    m_bControlOwnerBound=Desc.bExplicitControlOwner;
+    m_bControlPreview=Desc.bControlPreview;
+    m_iControlActionStartTick=Desc.iControlActionStartTick;
 	m_RootWorld = Desc.RootWorld;
 	m_bPlaying = Desc.bAutoPlay;
 	m_fPlaybackRate = Desc.fPlaybackRate;
@@ -236,6 +245,7 @@ bool_t Client::CEffectObject::Stage_Document(
 	m_bReconstructedDiagnosticActive = false;
 	m_bSourceVisualProgramActive = false;
 	m_bReconstructedSourceRuntimeActive = false;
+    m_OwnerControls=Document.OwnerControls;
 	CONFIGURED_PRESENTATION_COUNTS Counts =
 		Collect_ConfiguredPresentation(Document);
 	m_iConfiguredLightCount = Counts.iLights;
@@ -243,6 +253,7 @@ bool_t Client::CEffectObject::Stage_Document(
 	m_SceneColorElementIds = std::move(Counts.SceneColorElementIds);
 	m_LastPresentationSubmissionStats = {};
 	m_Playback.Seek(0.f, m_RootWorld);
+    Update_PresentationOwnerControls();
 	Reset_RenderFailureIsolation();
 	m_strStatus = "Effect Document staged.";
 	strOutError.clear();
@@ -275,6 +286,7 @@ bool_t Client::CEffectObject::Stage_PreparedDocument(
 	m_bReconstructedDiagnosticActive = false;
 	m_bSourceVisualProgramActive = false;
 	m_bReconstructedSourceRuntimeActive = false;
+    m_OwnerControls=Document.OwnerControls;
 	CONFIGURED_PRESENTATION_COUNTS Counts =
 		Collect_ConfiguredPresentation(Document);
 	m_iConfiguredLightCount = Counts.iLights;
@@ -326,6 +338,7 @@ bool_t Client::CEffectObject::Stage_PrevalidatedVisualProgramDocument(
 	m_bReconstructedDiagnosticActive = false;
 	m_bSourceVisualProgramActive = bSourceVisualProgramActive;
 	m_bReconstructedSourceRuntimeActive = false;
+    m_OwnerControls=Document.OwnerControls;
 	CONFIGURED_PRESENTATION_COUNTS Counts =
 		Collect_ConfiguredPresentation(Document);
 	m_iConfiguredLightCount = Counts.iLights;
@@ -457,6 +470,7 @@ bool_t Client::CEffectObject::Stage_ReconstructedSourceRuntime(
 	m_bReconstructedDiagnosticActive = false;
 	m_bSourceVisualProgramActive = true;
 	m_bReconstructedSourceRuntimeActive = true;
+    m_OwnerControls=Document.OwnerControls;
 	CONFIGURED_PRESENTATION_COUNTS Counts =
 		Collect_ConfiguredPresentation(Document);
 	m_iConfiguredLightCount = Counts.iLights;
@@ -465,6 +479,7 @@ bool_t Client::CEffectObject::Stage_ReconstructedSourceRuntime(
 	m_LastPresentationSubmissionStats = {};
 	m_bVisible = true;
 	m_Playback.Seek(0.f, m_RootWorld);
+    Update_PresentationOwnerControls();
 	Reset_RenderFailureIsolation();
 	m_strStatus =
 		"Artist F core renderer preview staged; Product remains blocked.";
@@ -533,6 +548,7 @@ bool_t Client::CEffectObject::
 	m_bReconstructedDiagnosticActive = false;
 	m_bSourceVisualProgramActive = true;
 	m_bReconstructedSourceRuntimeActive = true;
+    m_OwnerControls=pProjection->Get_Document().OwnerControls;
 	CONFIGURED_PRESENTATION_COUNTS Counts =
 		Collect_ConfiguredPresentation(pProjection->Get_Document());
 	m_iConfiguredLightCount = Counts.iLights;
@@ -541,6 +557,7 @@ bool_t Client::CEffectObject::
 	m_LastPresentationSubmissionStats = {};
 	m_bVisible = true;
 	m_Playback.Seek(0.f, m_RootWorld);
+    Update_PresentationOwnerControls();
 	Reset_RenderFailureIsolation();
 	m_strStatus =
 		"Reconstructed source runtime staged with immutable visual adapter.";
@@ -742,6 +759,35 @@ bool_t Client::CEffectObject::Should_SubmitPreviewElement(
 			Isolation.ElementIds.end(), pElement->strElementId));
 }
 
+void Client::CEffectObject::Set_PresentationControlOwner(const std::weak_ptr<CCharacter>& owner,bool_t preview,uint32_t actionStartTick)
+{
+    Release_PresentationOwnerControls();m_ControlOwner=owner;m_bControlOwnerBound=true;m_bControlPreview=preview;
+    m_iControlActionStartTick=actionStartTick;
+    Update_PresentationOwnerControls();
+}
+void Client::CEffectObject::Release_PresentationOwnerControls()
+{
+    if(const auto owner=m_LastControlRecipient.lock())owner->Remove_PresentationOwnerControls(m_iOwnerControlToken);
+    m_LastControlRecipient.reset();
+}
+void Client::CEffectObject::Update_PresentationOwnerControls()
+{
+    if(!m_bVisible || m_bRenderFailureIsolated || m_OwnerControls.empty())
+    {Release_PresentationOwnerControls();return;}
+    const auto owner=m_bControlOwnerBound?m_ControlOwner.lock():CAnimationTargetService::Resolve_Character();
+    if(owner!=m_LastControlRecipient.lock())Release_PresentationOwnerControls();
+    if(!owner)return;
+    if(!m_bControlPreview && m_iControlActionStartTick && !owner->Is_EffectActionCurrent(m_iControlActionStartTick))
+    {Release_PresentationOwnerControls();return;}
+    owner->Apply_PresentationOwnerControls(m_iOwnerControlToken,m_OwnerControls,m_Playback.Get_Frame().fSampleTimeSeconds,m_bControlPreview);
+    m_LastControlRecipient=owner;
+}
+
+void Client::CEffectObject::Set_AfterimageOwnerProvider(CEffectDocumentRenderer::AFTERIMAGE_OWNER_PROVIDER provider)
+{
+    if (m_pRenderer) m_pRenderer->Set_AfterimageOwnerProvider(std::move(provider));
+}
+
 void Client::CEffectObject::Use_ExternalModelCueAnchors()
 {
 	m_Playback.Set_ModelCueAnchorProvider({});
@@ -750,6 +796,13 @@ void Client::CEffectObject::Use_ExternalModelCueAnchors()
 
 void Client::CEffectObject::Bind_ModelCueAnchorProvider()
 {
+    Release_PresentationOwnerControls();
+    m_OwnerControls.clear();
+    // Standalone Effect/Action preview obtains its actual complete Character.
+    // Product spawn replaces this with a weak typed owner callback below.
+    Set_AfterimageOwnerProvider([](uint32_t part, bool_t, std::vector<CSkeletalAfterimage::MODEL_VIEW>& views) {
+        return CAnimationTargetService::Resolve_PresentationAfterimageModels(part, views);
+    });
 	m_Playback.Set_ModelCueAnchorProvider([this](const f32_t Time,
 		const float4x4_t& Root, std::unordered_map<std::string, float4x4_t>& Anchors,
 		std::string& Error) -> bool_t
@@ -788,6 +841,7 @@ void Client::CEffectObject::Set_SampleTime(const f32_t fSampleTimeSeconds)
 		return;
 	m_bPlaying = false;
 	m_Playback.Seek(fSampleTimeSeconds, m_RootWorld);
+    Update_PresentationOwnerControls();
     if (m_pRenderer) m_pRenderer->Reset_ModelCueAfterimages();
 	if (nullptr != m_pScreenOverlayPresentation)
 		(void)m_pScreenOverlayPresentation->Seek(fSampleTimeSeconds);
@@ -799,6 +853,7 @@ void Client::CEffectObject::Advance_Preview(const f32_t fTimeDelta)
 		return;
 	const f32_t fCommittedDelta = (std::max)(0.f, fTimeDelta);
 	m_Playback.Update(fCommittedDelta, m_RootWorld);
+    Update_PresentationOwnerControls();
 	if (nullptr != m_pScreenOverlayPresentation)
 		(void)m_pScreenOverlayPresentation->Update(fCommittedDelta);
 }
@@ -812,6 +867,7 @@ void Client::CEffectObject::Advance_Preview(
 		return;
 	const f32_t fCommittedDelta = (std::max)(0.f, fTimeDelta);
 	m_Playback.Update(fCommittedDelta, m_RootWorld);
+    Update_PresentationOwnerControls();
 	if (nullptr != m_pScreenOverlayPresentation)
 		(void)m_pScreenOverlayPresentation->Update(fCommittedDelta);
 }
@@ -839,6 +895,7 @@ bool_t Client::CEffectObject::Set_SampleTimeWithTransformHistory(
 		return false;
 	}
 	m_RootWorld = m_Playback.Get_Frame().RootWorld;
+    Update_PresentationOwnerControls();
     if (m_pRenderer) m_pRenderer->Reset_ModelCueAfterimages();
 	m_bPlaying = false;
 	if (nullptr != m_pScreenOverlayPresentation)
@@ -863,6 +920,7 @@ bool_t Client::CEffectObject::Advance_PreviewWithTransformHistory(
 		return false;
 	}
 	m_RootWorld = m_Playback.Get_Frame().RootWorld;
+    Update_PresentationOwnerControls();
 	if (nullptr != m_pScreenOverlayPresentation)
 		(void)m_pScreenOverlayPresentation->Update(fTimeDelta);
 	return true;
@@ -899,6 +957,7 @@ void Client::CEffectObject::Set_Visible(const bool_t bVisible)
 	if (m_bRenderFailureIsolated && bVisible)
 		return;
 	m_bVisible = bVisible;
+    Update_PresentationOwnerControls();
     if (!bVisible && m_pRenderer) m_pRenderer->Reset_ModelCueAfterimages();
 	if (!bVisible && nullptr != m_pScreenOverlayPresentation)
 		m_pScreenOverlayPresentation->Cancel();
@@ -909,6 +968,7 @@ void Client::CEffectObject::Reset()
 	if (m_bReconstructedDiagnosticActive)
 		return;
 	m_Playback.Seek(0.f, m_RootWorld);
+    Update_PresentationOwnerControls();
     if (m_pRenderer) m_pRenderer->Reset_ModelCueAfterimages();
 	if (nullptr != m_pScreenOverlayPresentation)
 		(void)m_pScreenOverlayPresentation->Seek(0.f);
@@ -934,6 +994,7 @@ void Client::CEffectObject::Update(const f32_t fTimeDelta)
 		const f32_t fCommittedDelta =
 			(std::max)(0.f, fTimeDelta) * m_fPlaybackRate;
 		m_Playback.Update(fCommittedDelta, m_RootWorld);
+    Update_PresentationOwnerControls();
 		if (nullptr != m_pScreenOverlayPresentation)
 			(void)m_pScreenOverlayPresentation->Update(fCommittedDelta);
 	}
@@ -949,6 +1010,7 @@ void Client::CEffectObject::Late_Update(const f32_t fTimeDelta)
 
 HRESULT Client::CEffectObject::Submit_RenderGroups()
 {
+    Update_PresentationOwnerControls();
 	CProfilerScope profile(
 		CGameInstance::Get().Get_Profiler(), "Effect.Occurrence.LateUpdate");
 	m_bNonBlendModelCuePassPending = false;
@@ -1382,6 +1444,7 @@ HRESULT Client::CEffectObject::Complete_LocalEffectFailure(
 		m_bPresentationFailureIsolated = bPreserveFailedResult;
 		m_hRenderFailure = hResult;
 		m_bVisible = false;
+        Release_PresentationOwnerControls();
 		m_bPlaying = false;
 		if (nullptr != m_pScreenOverlayPresentation)
 			m_pScreenOverlayPresentation->Cancel();

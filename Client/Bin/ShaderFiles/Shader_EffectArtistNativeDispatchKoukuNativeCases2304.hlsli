@@ -173,7 +173,14 @@
     case 2340u: nativeColor=ArtistNative2340(input); opaqueCoverage=false; break;
 #endif
 #if (!defined(EFFECT_NATIVE_PROFILE_GROUP) || EFFECT_NATIVE_PROFILE_GROUP == 2304) && !defined(EFFECT_NATIVE_MESH_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
-    case 2341u: nativeColor=ArtistNative2341(input); opaqueCoverage=false; break;
+    case 2341u:
+    {
+        nativeColor=ArtistNative2341(input);
+        const float4 accumulated=ArtistNative2341Distortion(input);
+        output.SceneColor=float4(nativeColor.rgb*g_EmissiveIntensity,nativeColor.a);
+        output.Distortion=float4(accumulated.xy-accumulated.zw,0.f,0.f);
+        return output;
+    }
 #endif
 #if (!defined(EFFECT_NATIVE_PROFILE_GROUP) || EFFECT_NATIVE_PROFILE_GROUP == 2304) && !defined(EFFECT_NATIVE_MESH_CARRIER) && !defined(EFFECT_NATIVE_DECAL_CARRIER) && !defined(EFFECT_NATIVE_TRAIL_CARRIER) && !defined(EFFECT_NATIVE_SCREEN_POST_CARRIER)
     case 2342u: nativeColor=ArtistNative2342(input); opaqueCoverage=false; break;

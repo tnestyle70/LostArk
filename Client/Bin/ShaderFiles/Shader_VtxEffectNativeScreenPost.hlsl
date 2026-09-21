@@ -12,6 +12,7 @@ float4x4 g_ProjMatrix;
 float4 g_PostSourceColor;
 float4 g_PostSourceDynamicParameter;
 float g_PostSourceProjectionW;
+float g_PostSourceProjectionZ;
 
 struct VS_IN
 {
@@ -72,13 +73,14 @@ float4 Evaluate_NativeScreenPost(VS_OUT input, float2 screenUV)
             g_SourceMaterialProfile == 1619u ? ArtistNative1619(n) :
             g_SourceMaterialProfile == 1623u ? ArtistNative1623(n) : ArtistNative1648(n);
     }
-    else if (g_SourceMaterialProfile >= 2304u && g_SourceMaterialProfile <= 3967u)
+    else if (g_SourceMaterialProfile >= 2304u && g_SourceMaterialProfile <= 4543u)
     {
         ARTIST_NATIVE_INPUT n = (ARTIST_NATIVE_INPUT)0;
         n.uv = input.uv; n.screenUV = screenUV;
         n.projectionW = g_PostSourceProjectionW * 100.f;
         n.color = g_PostSourceColor; n.dynamicParameter = g_PostSourceDynamicParameter;
         n.frontFace = true;
+        n.projectionZ = g_PostSourceProjectionZ * 100.f;
         nativeColor = Shade_EffectArtistNative(g_SourceMaterialProfile, n).SceneColor;
     }
     else if (g_SourceMaterialProfile == 659u || g_SourceMaterialProfile == 1228u || g_SourceMaterialProfile == 1255u)

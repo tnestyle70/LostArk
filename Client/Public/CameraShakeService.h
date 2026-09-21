@@ -22,6 +22,8 @@ struct CAMERA_SHAKE_OSCILLATOR final
 struct CAMERA_SHAKE_SPEC final
 {
 	f32_t fDurationSeconds = 0.f;
+	// Optional source notify end; zero preserves the natural shake envelope.
+	f32_t fStopAfterSeconds = 0.f;
 	f32_t fBlendInSeconds = 0.f;
 	f32_t fBlendOutSeconds = 0.f;
 	CAMERA_SHAKE_OSCILLATOR Forward;

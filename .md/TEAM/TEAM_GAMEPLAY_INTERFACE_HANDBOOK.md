@@ -322,6 +322,8 @@ walkable nav cell 경계와 별개로, 투사체·지연 장판·보스 이동 �
 
 ### 4.1 F1 아레나 카메라와 플레이어 위치 작업
 
+발탄 F1 `Valtan Arena`의 Start Position / Before Entrance / Arena Start는 기존 typed player teleport를 사용한다. `Despawn Valtan Boss`는 Debug Server에서 ENCOUNTER_VALTAN primary와 owner 종속체만 제거하고 일반 NPC/웨이브 몬스터를 보존한다. 이후 Boss Play Pattern은 disabled placement `boss.valtan.center`를 Server에 준비 요청하고 replicated primary 도착 후 기존 revision/sound/presentation admission을 다시 통과해야 실행된다. spawn 대기는 local boss 생성으로 우회하지 않는다.
+
 발탄·쿠크 아레나에서 F1 `Arena Camera / Player`는 현재 아레나의 자유 카메라 속도를 조절한다.
 기본은 모두 20m/s이며 범위는 0.1~400m/s다. Shift는 30배 이동이다. 설정은 아레나별로 이번
 프로세스에서 유지되고 같은 아레나에 재입장해도 보존하며 프로그램 종료 후 디스크에 저장하지 않는다.
@@ -1850,3 +1852,15 @@ Gameplay bootstrap의 `PATTERNLOGICPUSH`는 기존8/9필드를 계속 읽는다.
 Composition Result의 optional pushBallistic은 기존 직선 push 기본값을 유지한다. 활성화 시 pushRangeM은0초과100m이하, pushDurationMs는100~5000, pushCanLeaveArena=true가 필수다. AWAY_FROM_CONTACT는 실제 판정에 쓰인 장판 중심→플레이어 방향이며 BOSS_FORWARD만 yaw offset을 허용한다. Client 편집→projector→publisher→Server parser가 동일 정책을 보존한다. Server 비행은 gravity와 원본 navigation surface를 소비하여 착지와 낙사를 구분한다.
 
 Character Size Save/Reload는 계속 선택 맵별 camera JSON을 소유한다. 카메라 컷신 재생 여부가 크기 적용을 막지 않는다. Test/Training/Maharaka 공용 Development는 CharacterSelect의 저장된 크기만 읽고 기존 카메라 포즈를 유지한다. 현재 맵들의 Artist/DimensionMaster 배율을 동일하게 맞춘 값은 각 Data/Camera 문서가 정본이며 모델 자체 catalog scale은 별개다.
+
+
+### 탈것 presentation lifetime와 원본 스킬 제어
+
+VehicleCatalog formatVersion 4는 optional ambientEffectCues(MOUNT_END), mountEffectCues(NATURAL), mountSoundEvent, dismountSoundEvent를 Character mount commit에서 소비한다. skill의 optional shakeCues/directionalLightCues/materialVectorCues는 기존 clipIndex와 Server action clock을 사용한다. Client presentation만 소유하며 gameplay 이동·판정은 변경하지 않는다. Light는 로컬 플레이어의 일시 scene-relative 배율이고 매 프레임 원래 RenderingProfile을 복원한 뒤 적용한다. material vector는 실제 clone의 named source parameter를 재구성하며 종료하면 원래 상수로 복원한다. CModel source material mutation은 copy-on-write로 다른 clone·prototype을 보존한다. 새 optional 배열은 generator와 Workbench의 최신 subtree 저장에서 보존한다.
+
+
+### Effect owner presentation 제어
+
+Effect 저작 문서의 optional ownerControls는 재질·로컬 방향광·일시 가시성을 저장한다. Effect Tool과 component assembly 변환은 같은 배열과 stable control ID를 보존하고, 제어만 있는 문서도 기존 Effect playback clock으로 재생한다. 범용 저장·원복 규칙은 [렌더링·이펙트 복원 V2](../GB/렌더링이펙트복원V2.md)의 OwnerControls 항목을 따른다.
+
+`CEffectObject`는 weak Character owner와 effect occurrence token, 제품 action-start identity를 전달한다. `CCharacter`는 활성 key sample만 적용하며 취소·숨김·실패·owner 변경·종료 때 해당 token을 해제한다. 재질은 제어 전 실제 CModel 값을 복원하고 일시 visibility flag는 기존 stance/장비 상태와 분리한다. 서로 다른 occurrence나 사용자 재질 변경을 전체 Clear로 지우지 않는다. UI는 이 기존 경계로만 제어를 제출하며 Shared/Server gameplay state나 판정 권위를 추가하지 않는다.

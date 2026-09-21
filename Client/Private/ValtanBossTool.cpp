@@ -632,24 +632,30 @@ bool_t Client::CValtanBossTool::Submit_SelectedPattern()
 		return false;
 	}
 
-	std::string Status;
-	LostArk::Shared::GameplayDataRevision expectedActiveRevision{};
-	VALTAN_PATTERN_SOUND_SOURCE_RECEIPT PinnedSoundReceipt;
-	CValtanPatternSoundSourceReadAdmission SoundAdmission;
-	if (!Acquire_ServerPlaybackAdmission(
-			expectedActiveRevision, PinnedSoundReceipt,
-			SoundAdmission, Status))
-	{
-		m_strStatus = std::move(Status);
-		if (m_bRepeat)
-		{
-			m_bRepeat = false;
-			m_strRepeatPatternId.clear();
-		}
-		return false;
-	}
     auto* arena = CLevel_ValtanArena::Get_Active();
     if (!arena) { m_strStatus = "Complete Play requires Valtan Arena."; return false; }
+    if (m_PlayPreparation || CValtanPatternAuditionService::Get().Has_PlaybackOwnership() ||
+        CValtanPatternFlowService::Get().Has_PlaybackOwnership())
+    { m_strStatus = "Another Valtan playback or preparation owns the command."; return false; }
+    std::string Status;
+    LostArk::Shared::GameplayDataRevision expectedActiveRevision{};
+    VALTAN_PATTERN_SOUND_SOURCE_RECEIPT PinnedSoundReceipt;
+    CValtanPatternSoundSourceReadAdmission SoundAdmission;
+    // A missing boss may be prepared, but exact consumer admission remains
+    // mandatory after its reliable spawn and again before Pattern submission.
+    const bool admitted = arena->Has_DebugValtanBoss() ?
+        Acquire_ServerPlaybackAdmission(expectedActiveRevision, PinnedSoundReceipt, SoundAdmission, Status) :
+        (Get_ServerActivePatternRevision(expectedActiveRevision, Status) &&
+            SoundAdmission.Acquire(PinnedSoundReceipt, Status));
+    if (!admitted)
+    {
+        m_strStatus = std::move(Status);
+        m_bRepeat = false; m_strRepeatPatternId.clear();
+        return false;
+    }
+    bool_t bossReady = false;
+    if (!arena->Debug_EnsureValtanBossForPlay(bossReady, Status, true))
+    { m_strStatus = std::move(Status); return false; }
     arena->Debug_ResetCompletePlayPreparation();
     PLAY_PREPARATION pending;
     pending.patternId = m_strSelectedPatternId; pending.revision = expectedActiveRevision;
@@ -689,6 +695,11 @@ void Client::CValtanBossTool::Update_PlayPreparation()
     { Cancel_PlayPreparation("The saved/admitted revision changed. " + reason); return; }
     if (GetTickCount64() - pending.startTick > 20ull*60ull*1000ull)
     { Cancel_PlayPreparation("Resource preparation exceeded 20 minutes. " + m_strPreparationStatus); return; }
+    bool_t bossReady = false;
+    if (!arena->Debug_EnsureValtanBossForPlay(bossReady, reason))
+    { Cancel_PlayPreparation(reason); return; }
+    if (!bossReady)
+    { m_strPreparationStatus = m_strStatus = std::move(reason); return; }
     bool_t ready = false;
     if (!arena->Debug_PrepareCompletePlayResources(*pattern,ready,reason))
     { Cancel_PlayPreparation(reason); return; }
@@ -877,6 +888,18 @@ bool_t Client::CValtanBossTool::Can_Play_ServerPattern(
 	{
 		return false;
 	}
+    if (m_PlayPreparation || CValtanPatternAuditionService::Get().Has_PlaybackOwnership() ||
+        CValtanPatternFlowService::Get().Has_PlaybackOwnership())
+    { strOutStatus = "Another Valtan playback or preparation owns the command."; return false; }
+    if (const auto* arena = CLevel_ValtanArena::Get_Active(); arena && !arena->Has_DebugValtanBoss())
+    {
+        LostArk::Shared::GameplayDataRevision revision{};
+        VALTAN_PATTERN_SOUND_SOURCE_RECEIPT sound;
+        CValtanPatternSoundSourceReadAdmission admission;
+        if (!Get_ServerActivePatternRevision(revision, strOutStatus) || !admission.Acquire(sound, strOutStatus)) return false;
+        strOutStatus = "Play Pattern will prepare the Server Valtan before exact presentation admission.";
+        return true;
+    }
 	LostArk::Shared::GameplayDataRevision Revision{};
 	VALTAN_PATTERN_SOUND_SOURCE_RECEIPT SoundReceipt;
 	CValtanPatternSoundSourceReadAdmission SoundAdmission;

@@ -42,6 +42,29 @@ inline BoxGesture HitBoxGesture(const float mouseX, const float startX,
 	return start ? BoxGesture::TRIM_START : BoxGesture::MOVE;
 }
 
+// A sequential playlist has no independently saved wall-clock offset. Left
+// trim advances its source start and ripples later slots; the source end stays
+// fixed. Right trim moves only the source end. Callers retain Stage authority.
+inline bool TrimSequentialSourceWindow(const std::uint32_t sourceStartMs,
+    const std::uint32_t sourcePlayMs, const std::uint32_t nativeDurationMs,
+    const double playRate, const bool startEdge, const std::int64_t wallDeltaMs,
+    std::uint32_t& nextStartMs, std::uint32_t& nextPlayMs)
+{
+    if (!std::isfinite(playRate) || playRate < .01 || playRate > 16.0 ||
+        !nativeDurationMs || nativeDurationMs > 600000u || sourceStartMs >= nativeDurationMs ||
+        sourcePlayMs > nativeDurationMs - sourceStartMs) return false;
+    const std::uint32_t sourceEnd = sourcePlayMs ? sourceStartMs + sourcePlayMs : nativeDurationMs;
+    const auto delta = std::llround(static_cast<double>((std::clamp)(wallDeltaMs,
+        std::int64_t{-600000}, std::int64_t{600000})) * playRate);
+    const auto begin = startEdge ? (std::clamp)(std::int64_t(sourceStartMs) + delta,
+        std::int64_t{0}, std::int64_t(sourceEnd) - 1) : std::int64_t(sourceStartMs);
+    const auto end = startEdge ? std::int64_t(sourceEnd) : (std::clamp)(std::int64_t(sourceEnd) + delta,
+        begin + 1, std::int64_t(nativeDurationMs));
+    nextStartMs = static_cast<std::uint32_t>(begin);
+    nextPlayMs = static_cast<std::uint32_t>(end - begin);
+    return true;
+}
+
 inline void DrawRuler(ImDrawList* draw, const ImVec2 min, const ImVec2 max,
 	const std::uint32_t durationMs, const float pxPerSecond)
 {

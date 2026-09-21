@@ -62,6 +62,7 @@ bool_t Client::CCameraShakeService::Parse_PayloadSpec(
 	bool bHasRight = false;
 	bool bHasUp = false;
 	bool bHasFov = false;
+	bool bHasStop = false;
 	size_t Cursor = 0u;
 	while (Cursor <= Payload.size())
 	{
@@ -87,6 +88,13 @@ bool_t Client::CCameraShakeService::Parse_PayloadSpec(
 			bHasDuration = true;
 			bParsed = Parse_Number(Value, Staged.fDurationSeconds) &&
 				Staged.fDurationSeconds > 0.f;
+		}
+		else if ("stop" == Key)
+		{
+			bDuplicate = bHasStop;
+			bHasStop = true;
+			bParsed = Parse_Number(Value, Staged.fStopAfterSeconds) &&
+				Staged.fStopAfterSeconds > 0.f;
 		}
 		else if ("in" == Key)
 		{
@@ -162,7 +170,8 @@ bool_t Client::CCameraShakeService::Evaluate(
 	OutSample = {};
 	if (!std::isfinite(fElapsedSeconds) || fElapsedSeconds < 0.f ||
 		Spec.fDurationSeconds <= 0.f ||
-		fElapsedSeconds >= Spec.fDurationSeconds)
+		fElapsedSeconds >= Spec.fDurationSeconds ||
+		(Spec.fStopAfterSeconds > 0.f && fElapsedSeconds >= Spec.fStopAfterSeconds))
 	{
 		return false;
 	}
@@ -185,7 +194,8 @@ void Client::CCameraShakeService::Trigger(
 {
 	if (!std::isfinite(fInitialElapsedSeconds) || fInitialElapsedSeconds < 0.f ||
 		Spec.fDurationSeconds <= 0.f ||
-		fInitialElapsedSeconds >= Spec.fDurationSeconds)
+		fInitialElapsedSeconds >= Spec.fDurationSeconds ||
+		(Spec.fStopAfterSeconds > 0.f && fInitialElapsedSeconds >= Spec.fStopAfterSeconds))
 	{
 		return;
 	}

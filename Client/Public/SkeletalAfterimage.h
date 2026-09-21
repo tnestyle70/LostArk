@@ -15,6 +15,14 @@ namespace Client
 class CSkeletalAfterimage final
 {
 public:
+    struct MODEL_VIEW final
+    {
+        std::shared_ptr<Engine::CModel> model, paletteModel;
+        std::shared_ptr<Engine::CShader> shader;
+        float4x4_t world{};
+        uint32_t hiddenMeshMask = 0u;
+        bool socketed = false;
+    };
     struct SETTINGS final
     {
         float sampleIntervalSeconds = .05f;
@@ -22,8 +30,13 @@ public:
         uint32_t maxSamples = 6u;
         float4_t color{1.8f, 1.8f, 1.8f, .38f};
         bool capturePoseChanges = false;
+        bool interpolateColor = false;
+        float sourceColorIntensity = 0.f;
+        float4_t endColor{1.f, 1.f, 1.f, 1.f};
     };
     bool Configure(const SETTINGS& settings);
+    void Set_PresentationView(const MODEL_VIEW& view) { m_View = view; }
+    bool Capture_Initial(const MODEL_VIEW& view, float ageSeconds);
     void Update(float deltaSeconds, bool emitting,
         const std::shared_ptr<Engine::CModel>& model, const float4x4_t& world);
     // Presentation-clock pulse: one full pose per period, then a fully hidden gap.
@@ -40,7 +53,9 @@ private:
         float4x4_t world{};
         std::vector<std::vector<float4x4_t>> palettes;
         float ageSeconds = 0.f;
+        uint32_t hiddenMeshMask = 0u;
     };
+    MODEL_VIEW m_View;
     SETTINGS m_Settings;
     std::deque<SAMPLE> m_Samples;
     std::weak_ptr<Engine::CModel> m_Model;

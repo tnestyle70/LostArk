@@ -258,6 +258,7 @@ private:
 		f32_t fSampledTrackRequest = 0.f;
 		bool_t bHasSampledPose = false;
         CSkeletalAfterimage Afterimage;
+        std::unordered_map<const Engine::CModel*, CSkeletalAfterimage> OwnerAfterimages;
         f32_t fAfterimageSampleTime = -1.f;
 	};
 
@@ -606,6 +607,8 @@ public:
 		std::unordered_map<std::string, float4x4_t>& InOutAnchorWorlds,
 		std::string& strOutError);
 	void Set_ModelCueRenderingEnabled(bool_t enabled) { m_bModelCueRenderingEnabled = enabled; if (!enabled) Reset_ModelCueAfterimages(); }
+    using AFTERIMAGE_OWNER_PROVIDER = std::function<bool_t(uint32_t, bool_t, std::vector<CSkeletalAfterimage::MODEL_VIEW>&)>;
+    void Set_AfterimageOwnerProvider(AFTERIMAGE_OWNER_PROVIDER provider) { m_AfterimageOwnerProvider = std::move(provider); Reset_ModelCueAfterimages(); }
 	bool_t Has_NonBlendModelCues() const;
 	bool_t Has_WorldMarkElements() const;
 	bool_t Has_ActiveSceneBackdrop(const EFFECT_EVALUATED_FRAME& Frame) const;
@@ -860,6 +863,7 @@ private:
 	CEffectReconstructedRuntimeBoundary m_ReconstructedRuntimeBoundary;
 	std::unordered_map<std::string, MODEL_CUE_RESOURCE> m_ModelCueResources;
 	bool_t m_bModelCueRenderingEnabled = true;
+    AFTERIMAGE_OWNER_PROVIDER m_AfterimageOwnerProvider;
 	std::array<shared_ptr<Engine::CShader>, EFFECT_SHADER_PROGRAMS.size()> m_ShaderPrograms;
 	shared_ptr<Engine::CShader> m_pMeshShader;
 	shared_ptr<Engine::CShader> m_pAnimatedModelShader;

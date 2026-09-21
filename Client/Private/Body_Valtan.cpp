@@ -124,28 +124,62 @@ HRESULT CBody_Valtan::Render_Group(RENDERGROUP group)
     return m_hasTranslucentMeshes ? Render_Translucent() : S_OK;
 }
 
+std::string CBody_Valtan::Get_RenderDiagnostic() const
+{
+    std::string status = m_hasTranslucentMeshes ? "BLEND pass 10" : "NONBLEND pass 0";
+    status += " | submitted translucent meshes=" + std::to_string(m_iTranslucentDrawCount);
+    if (m_pModelCom)
+        for (uint32_t mesh = 0u; mesh < m_pModelCom->Get_NumMeshes(); ++mesh)
+        {
+            const auto* surface = m_pModelCom->Get_MaterialSurface(mesh);
+            status += " | " + m_pModelCom->Get_MaterialName(mesh) + ":program=" +
+                std::to_string(surface ? surface->sourceCharacter.program : 0u);
+        }
+    if (!m_strTranslucentRenderFailure.empty()) status += " | " + m_strTranslucentRenderFailure;
+    return status;
+}
+
 HRESULT CBody_Valtan::Render_Translucent()
 {
-	constexpr uint32_t SOURCE_TRANSLUCENT_ONE_SIDED_PASS = 10u;
-	if (FAILED(Bind_ShaderResources()) ||
-		FAILED(CMapAssetRenderUtils::Bind_SourceCharacterForwardLights(m_pShaderCom)))
-		return E_FAIL;
+    constexpr uint32_t SOURCE_TRANSLUCENT_ONE_SIDED_PASS = 10u;
+    m_iTranslucentDrawCount = 0u;
+    const auto checked = [this](HRESULT result, const std::string& stage)
+    {
+        if (FAILED(result))
+            m_strTranslucentRenderFailure = stage + " failed, HRESULT=" +
+                std::to_string(static_cast<int32_t>(result));
+        return result;
+    };
+    HRESULT result = checked(Bind_ShaderResources(), "world/view/projection binding");
+    if (FAILED(result)) return result;
+    result = checked(CMapAssetRenderUtils::Bind_SourceCharacterForwardLights(m_pShaderCom),
+        "scene forward light/fog binding");
+    if (FAILED(result)) return result;
 
-	for (uint32_t i = 0; i < m_pModelCom->Get_NumMeshes(); ++i)
-	{
-		if (!Is_SourceGhostSurface(m_pModelCom->Get_MaterialSurface(i)))
-			continue;
-		const DEFERRED_MATERIAL_PROFILE profile = Resolve_DeferredMaterialProfile(
-			"material.valtan.monster-base.v1", m_pModelCom->Get_MaterialName(i));
-		if (FAILED(Bind_DeferredMaterialInputs(
-				*m_pModelCom, m_pShaderCom, i, profile, m_pEmissiveOverride)) ||
-			FAILED(m_pModelCom->Bind_SourceCharacterForwardLight(m_pShaderCom, i)) ||
-			FAILED(m_pModelCom->Bind_BoneMatrices(m_pShaderCom, "g_BoneMatrices", i)) ||
-			FAILED(m_pShaderCom->Begin(SOURCE_TRANSLUCENT_ONE_SIDED_PASS)) ||
-			FAILED(m_pModelCom->Render(i)))
-			return E_FAIL;
-	}
-	return S_OK;
+    for (uint32_t i = 0; i < m_pModelCom->Get_NumMeshes(); ++i)
+    {
+        if (!Is_SourceGhostSurface(m_pModelCom->Get_MaterialSurface(i))) continue;
+        const std::string label = " mesh=" + std::to_string(i);
+        const DEFERRED_MATERIAL_PROFILE profile = Resolve_DeferredMaterialProfile(
+            "material.valtan.monster-base.v1", m_pModelCom->Get_MaterialName(i));
+        result = checked(Bind_DeferredMaterialInputs(*m_pModelCom, m_pShaderCom, i,
+            profile, m_pEmissiveOverride), "source base material" + label);
+        if (FAILED(result)) return result;
+        result = checked(m_pModelCom->Bind_SourceCharacterForwardLight(m_pShaderCom, i),
+            "source light material" + label);
+        if (FAILED(result)) return result;
+        result = checked(m_pModelCom->Bind_BoneMatrices(m_pShaderCom, "g_BoneMatrices", i),
+            "bone palette" + label);
+        if (FAILED(result)) return result;
+        result = checked(m_pShaderCom->Begin(SOURCE_TRANSLUCENT_ONE_SIDED_PASS),
+            "native84 variant/pass10" + label);
+        if (FAILED(result)) return result;
+        result = checked(m_pModelCom->Render(i), "mesh submission" + label);
+        if (FAILED(result)) return result;
+        ++m_iTranslucentDrawCount;
+    }
+    m_strTranslucentRenderFailure.clear();
+    return S_OK;
 }
 
 HRESULT CBody_Valtan::Render_Shadow()

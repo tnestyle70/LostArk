@@ -309,10 +309,12 @@ void LostArk::Server::CGameRoom::Handle_DespawnAllWorldEntities(
 #ifdef _DEBUG
 	if (Is_KoukuRaidRunning()) return;
 	const bool koukuGateWorld = WORLD_ID::KAKULSAYDON_ARENA == m_eWorldId;
+    const bool valtanWorld = WORLD_ID::VALTAN_ARENA == m_eWorldId;
 #else
 	const bool koukuGateWorld = false;
+    const bool valtanWorld = false;
 #endif
-	if ((WORLD_ID::CHARACTER_SELECT_ARENA != m_eWorldId && !koukuGateWorld) ||
+	if ((WORLD_ID::CHARACTER_SELECT_ARENA != m_eWorldId && !koukuGateWorld && !valtanWorld) ||
 		!m_PlayerIdBySessionId.contains(sessionId))
 	{
 		return;
@@ -326,6 +328,58 @@ void LostArk::Server::CGameRoom::Handle_DespawnAllWorldEntities(
 			player->second.Clear_KoukuAssignedCard();
 		return;
 	}
+
+#ifdef _DEBUG
+    if (valtanWorld)
+    {
+        std::vector<NET_ENTITY_ID> removed;
+        for (const auto& entity : m_WorldEntities)
+            if (entity.eKind == WORLD_BOOTSTRAP_KIND::BOSS &&
+                entity.strArchetypeId == "BOSS_VALTAN" && entity.strEncounterId == "ENCOUNTER_VALTAN" &&
+                entity.iOwnerBossNetEntityId == INVALID_NET_ENTITY_ID)
+                removed.push_back(entity.iNetEntityId);
+        for (bool changed = true; changed;)
+        {
+            changed = false;
+            for (const auto& entity : m_WorldEntities)
+                if (std::find(removed.begin(), removed.end(), entity.iNetEntityId) == removed.end() &&
+                    std::find(removed.begin(), removed.end(), entity.iOwnerBossNetEntityId) != removed.end())
+                { removed.push_back(entity.iNetEntityId); changed = true; }
+        }
+        if (removed.empty()) return;
+        // Preserve wave monsters, NPCs, player effects, arena destruction and
+        // per-session request receipts. Only the Valtan ownership tree retires.
+        Cancel_ValtanPatternIdAudition("Valtan despawned by the arena editor");
+        if (Is_ValtanPatternFlowRunning())
+            Queue_ValtanPatternFlowLifecycle(VALTAN_PATTERN_FLOW_LIFECYCLE_STATE::ABORTED,
+                Find_AuditionBoss(), "Valtan despawned by the arena editor");
+        m_ValtanPatternFlowAudition = {};
+        (void)Stop_ValtanTimelineRow(false);
+        m_ValtanFightPageStart = {};
+        m_iValtanAuditionArmedHealthBar = 0u;
+        const uint32_t despawnTick = m_iServerTick ? m_iServerTick : 1u;
+        for (auto id = removed.rbegin(); id != removed.rend(); ++id)
+        {
+            const auto entity = std::find_if(m_WorldEntities.begin(), m_WorldEntities.end(),
+                [id](const auto& candidate) { return candidate.iNetEntityId == *id; });
+            if (entity == m_WorldEntities.end()) continue;
+            if (entity->eKind == WORLD_BOOTSTRAP_KIND::BOSS)
+            {
+                Clear_ValtanGhostRelocationState(*entity);
+                (void)Release_PlayerAttachments(*id, 0.f, 0u, false, 0u, despawnTick);
+            }
+            m_CombatObjectRuntime.Cancel_Source(*id);
+            if (!Broadcast_CombatObjectLifecycle())
+            { Mark_RuntimeFailure("despawn-valtan.combat-object-lifecycle"); return; }
+            Broadcast_WorldEntityDespawned(*id);
+            m_WorldEntities.erase(entity);
+        }
+        if (!Flush_ValtanPatternIdAuditionLifecycle() || !Flush_ValtanPatternFlowLifecycle())
+            Mark_RuntimeFailure("despawn-valtan.audition-lifecycle");
+        m_strStatus = "Valtan and its dependents despawned: " + std::to_string(removed.size());
+        return;
+    }
+#endif
 
 	// Character Select Arena's own placements have no statically-enabled
 	// MONSTER/BOSS entries (confirmed: only 4 disabled playerSpawn + one disabled

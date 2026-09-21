@@ -14,7 +14,7 @@ Preview와 toolbar는 공통 shell이 소유하고 각 세션은 자기 문서·
 
 - Boss는 기존 Valtan과 Kouku 관문·Parent·Pattern을 사용한다. Sequence는 독립 저장 문서와 기존
   Complete Play의 `enterCombatOnFinish`/전투 handoff를 유지한다. Boss와 Sequence의 관문 선택은 독립이다.
-- Character는 `PlayerSkills.json`의 여섯 class와 LMB/SPACE/ALT_V/ACTIVE 입력을 나열한다. action
+- Character는 `PlayerSkills.json`의 일곱 class(GuardianKnight 포함)와 LMB/SPACE/ALT_V/ACTIVE 입력을 나열한다. action
   Parent와 combo stage에서 실제 clip, Effect/Sound/Shake cue, Collider → AREA_OVERLAP Logic → Result
   행을 본다. animation은 source start/length/rate와 순서를 기존 skillbindings에 저장한다.
   `clipOccurrenceId`가 없는 legacy clip은 편집 세션에서 ID를 받고 저장 시 보존한다.
@@ -1533,3 +1533,12 @@ Action Workbench의 Summon Box Detail에서 `World Preview`를 누르면 해당 
 World sequence가 animation을 소유한 연출은 Animation lane에 `World: <clip>` 읽기전용 행으로 표시한다. 클릭하면 World Box Detail의 clip, model, 시각 구간, source in, speed를 확인하며 `Edit This Motion`에서 기존 World animation 저작에 진입한다. 별도 Composition Animation을 복제하지 않으므로 같은 배우가 중복 생성되지 않는다. 저장 catalog의 metadata cache를 쓰며 타임라인 draw마다 파일을 읽지 않는다.
 
 단독 Effect Preview의 `loopEffectToDuration`은 Product/Composition과 같은 정책으로 동작한다. 원본 무한 emitter는 지정 수명까지 방출을 연장하고 finite source는 자연 주기를 반복한다. 반복 시 particle source 나이만 되감으며 본/owner 시계는 occurrence 나이를 유지한다. 한 공통 불뿜기를 서로 다른 occurrence 수명으로 재사용하므로 수명만 다른 asset 복제는 필요 없다.
+
+
+## 본 클립과 Character 모델 액션
+
+Character는 playable class 외에 광기 광대(POLYMORPH), Mario, 카드미로 및 VehicleCatalog 탈것을 같은 Sequencer로 선택한다. 광대는 기존 interaction binding의 mode+slot, 탈것은 vehicleId+skillId 또는 source action stable ID로 구분한다. Stage/clip/effect/sound/논리 행의 순서·trim·선택·저장은 기존 owner를 사용한다. mount의 상시/탑승 cue는 별도 Mount effects action으로 저장하고 idle/run timeline에는 외부 owner cue로 합성한다.
+
+Bone Clips는 실제 preview의 골격 본과 무기 socket 본을 선택해 local position/rotation/scale key를 편집한다. native clip 참조 segment와 본 key를 `<Asset>.boneclips.json`에 저장하고 기존 CModel animation channel로 재생한다. 회전은 normalize quaternion slerp다. 원본 WModel/native clip은 수정하지 않는다. playable/vehicle 제품 모델도 prototype admission 전에 이를 로드하므로 skillbinding의 `authored.*` 이름을 같은 소비자가 재생한다. 바다의 flight/glide/ascent는 새 authored 예시이며 원본 추출 clip이 아니다.
+
+발탄은 Bone Clips source Save 후 Pattern source revision을 Reload하고 Composition Resources를 Refresh하여 새 `authored.*` clip을 추가한다. Pattern Save는 source, PublishV2는 검증된 `Valtan/Published/Valtan.boneclips.json`과 기존 Pattern Product를 함께 게시한다. published bone clip도 presentation generation hash closure에 포함된다. 재입장 시 prototype을 다시 로드하며 클립 이름으로 재생한다. invalid source/키/골격/의존 cycle은 저장·게시를 거부하고 기존 모델/Product를 보존한다.

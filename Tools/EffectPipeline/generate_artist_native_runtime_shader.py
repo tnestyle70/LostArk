@@ -5,10 +5,12 @@ Engine depth reconstruction is an explicit centimetre adapter. Original source
 expressions, named leaves, sample modes, masks and operation order are retained.
 """
 from pathlib import Path
-import argparse, json, re, math, hashlib, copy
+import argparse, json, re, math, hashlib, copy, struct
 
 ROOT = Path(__file__).resolve().parents[2]
 parser=argparse.ArgumentParser(description='Generate bounded Artist native HLSL from extracted source shader maps and Resources mappings.')
+parser.add_argument('--resource-root', type=Path, default=ROOT/'Client/Bin/Resources',
+    help='Validate texture identities against this explicit staged Resources root.')
 parser.add_argument('--source-dir',type=Path,default=ROOT/'out/ArtistCoreRestore20260909')
 parser.add_argument('--selection-file', type=Path,
     help='Read an explicitly selected companion pass list from this file.')
@@ -142,11 +144,14 @@ def translated(ins, textureMap, stage):
     elif op in ['deriv_rtx_coarse', 'deriv_rty_coarse']:
         value = ('ddx_coarse' if 'rtx' in op else 'ddy_coarse') + '(' + src[0] + ')'
     elif op == 'sincos':
-        parts = []
+        # DXBC reads the source once before either destination is written.
+        # An aliased sine destination must not change cosine's input.
+        parts = ['{ const float4 sourceAngle = ' + operand(a[2]) + ';']
         if a[0] != 'null':
-            parts.append(result_mask(a[0], 'sin(' + operand(a[2]) + ')'))
+            parts.append(result_mask(a[0], 'sin(sourceAngle)'))
         if a[1] != 'null':
-            parts.append(result_mask(a[1], 'cos(' + operand(a[2]) + ')'))
+            parts.append(result_mask(a[1], 'cos(sourceAngle)'))
+        parts.append('}')
         return ' '.join(parts)
     else:
         raise ValueError((op, ins))
@@ -189,7 +194,13 @@ prefix = '''// Artist native RT0 material programs, generated from exact source 
 
 float4 g_ArtistSourceMaterialParameters[32];
 float g_ArtistSourceMaterialTime = 0.f;
+// Native2893 lit paper mesh only. Capacity matches CLight_Manager::Replace_SceneLights (16).
+uint g_KoukuDoveDirectionalCount = 0u;
+float4 g_KoukuDoveDirectionalDirections[16];
+float4 g_KoukuDoveDirectionalColors[16];
 float4 g_ArtistSourceWorldToLocal[3];
+float4 g_ArtistSourceLocalToWorld[3];
+float4 g_ArtistSourceWorldToView[3];
 
 float4 ArtistNativeAppend(float4 a, float4 b, uint n)
 {
@@ -237,6 +248,37 @@ for i in range(10):
         prefix += f'    {conditional}return explicitLod ? g_SourceTexture{i}.SampleLevel({sampler}, uv, lod) : g_SourceTexture{i}.SampleBias({sampler}, uv, lod);\n'
     prefix += '}\n'
 
+KOUKU_DOVE_DIRECT_LIGHT_ADAPTER = '''    // Native2893 also writes diffuse (o3), specular (o5), and two-sided
+    // normals (82-99) for deferred lighting. Its forward effect carrier must
+    // consume them; RT0 alone contains only ambient/sky and transition glow.
+    const float3 doveDiffuse = r1.xyz;
+    const float3 doveSpecular = r4.xyz * 10.f; // Inverse native RT5 sqrt/.1 encoding.
+    const float dovePower = saturate(source[8].z * .002f) * 500.f;
+    const float3 doveTangentNormal = r2.xyz * (input.frontFace ? 1.f : -1.f) * source[0].x;
+    const float3 doveBasisX = input.sourceBasisX * rsqrt(max(dot(input.sourceBasisX, input.sourceBasisX), 1e-12f));
+    const float3 doveBasisZ = input.sourceBasisZ * rsqrt(max(dot(input.sourceBasisZ, input.sourceBasisZ), 1e-12f));
+    const float3 doveBasisY = cross(doveBasisZ, doveBasisX) * input.handedness;
+    float3 doveNormal = float3(dot(doveBasisX, doveTangentNormal),
+        dot(doveBasisY, doveTangentNormal), dot(doveBasisZ, doveTangentNormal));
+    doveNormal *= rsqrt(max(dot(doveNormal, doveNormal), 1e-12f));
+    float3 doveView = input.sourceCameraPosition - input.sourceWorldPosition;
+    doveView *= rsqrt(max(dot(doveView, doveView), 1e-12f));
+    [loop] for (uint lightIndex = 0u; lightIndex < g_KoukuDoveDirectionalCount; ++lightIndex)
+    {
+        // Directions and normals use the same UE source basis (X,-Z,Y).
+        float3 toLight = -g_KoukuDoveDirectionalDirections[lightIndex].xyz;
+        toLight *= rsqrt(max(dot(toLight, toLight), 1e-12f));
+        float3 halfVector = toLight + doveView;
+        halfVector *= rsqrt(max(dot(halfVector, halfVector), 1e-12f));
+        const float ndoth = abs(dot(doveNormal, halfVector));
+        const float lobe = ndoth < .000001f ? 0.f : min(pow(ndoth, dovePower), 1.f);
+        // Existing recovered source-map Lambert/Blinn direct-light contract.
+        // No extra ambient, fabricated exposure, shadow, or source SH here.
+        output.rgb += g_KoukuDoveDirectionalColors[lightIndex].rgb *
+            (doveDiffuse * saturate(dot(doveNormal, toLight)) + clamp(doveSpecular * lobe, 0.f, 2.f));
+    }
+'''
+
 rows = []
 program_code = []
 selections=json.loads((arguments.selection_file or OUT/'selected_runtime_material_programs.json').read_text(encoding='utf-8-sig'))['programs']
@@ -245,6 +287,7 @@ for ordinal, selection in enumerate(selections):
     program=selection.get('program', arguments.program_start+ordinal if arguments.program_start is not None else (460+ordinal if ordinal<100 else 820+ordinal-100))
     try:
         r=byid[selection['resolvedMaterial']]
+        source_motion_blur = selection['sourcePS'] == 'b9fc10ac51695c41b71ae1807fe6a47d'
         if r['sourceMaterial'] in ('fx_mastermaterial.fx_mi.fx_mm_onelayerdistortion_02_01_ad','fx_m_mi_j_00.fx_mi.fx_j_pa_hologram_01_01_tr'):
             errors.append({'program':program,'material':r['sourceMaterial'],'occurrences':selection['occurrences'],'reason':'Explicit new engine/VF input requires closure: OneLayer clipZ and cb0[10].x; Hologram source-world varying, cb0[0].xyz origin and .w opacity, distinct source VS.'});continue
 
@@ -263,6 +306,20 @@ for ordinal, selection in enumerate(selections):
                 node['parameterName']=node['parameterName']+'_'+str(node['parameterNameNumber']-1)
                 node['parameterNameNumber']=0
         bindings = p['bindings']
+        if source_motion_blur:
+            assert arguments.profile_domain == 'kouku' and selection['rendererShape'] == 'screenPost'
+            assert selection['sourceVF'] == 'fparticledynamicparametervertexfactory'
+            assert selection['sourceVS'] == '5825675b4ffbc840ad691ec56973cf7e'
+            assert bindings['constantBufferClosure']['unownedConstantBuffer0Slots'] == list(range(7))
+            # FMaterialShaderParameters serializes its three uniform arrays,
+            # then LocalToWorld, WorldToLocal and WorldToView FShaderParameter
+            # records (base byte, byte extent, CB index). Cross-checked against
+            # the previously recovered spider WorldToLocal record at +6.
+            wire = (OUT/'shader_objects'/(sid+'.bin')).read_bytes()
+            at = bindings['bindingArraysOffsetInShaderObject'] + bindings['bindingArraysByteSize']
+            assert struct.unpack_from('<HHH',wire,at) == (16,44,0)
+            assert struct.unpack_from('<H',wire,at+8)[0] == 0
+            assert struct.unpack_from('<HHH',wire,at+12) == (64,44,0)
         numeric=r['effectiveNumericOverrides']
         overrides={('scalarparameter',k):v['value'] for k,v in numeric['scalars'].items()}
         overrides.update({('vectorparameter',k):v['value'] for k,v in numeric['vectors'].items()})
@@ -279,6 +336,20 @@ for ordinal, selection in enumerate(selections):
                            'name':node['parameterName'], 'default':node['defaultValue']}
         fixedNodeDefaults={k:v for k,v in distinctDefaults.items() if k not in overrides}
         for key in fixedNodeDefaults:params.pop(key)
+        action_post_opacity = (arguments.profile_domain == 'kouku' and sid in (
+            '1000024695759244a7297e6a1c0a53e1',
+            '599a6ad60ea6494a83850077e6cd3356', '5a405d04c4e0fa42a1342f8da1615ca0'))
+        if action_post_opacity:
+            assert selection['rendererShape'] == 'screenPost'
+            assert selection['sourceVF'] == 'flocalvertexfactory'
+            assert selection['sourceVS'] == '8562847977cf324b900feff85799f43a'
+            assert bindings['constantBufferClosure']['unownedConstantBuffer0Slots'] == [0]
+            # The action SkillValue owns this engine input separately from the
+            # original material's Opacity parameter. Existing material tracks
+            # sample its envelope without changing any material expression.
+            assert ('scalarparameter', 'source_effect_opacity') not in params
+            params[('scalarparameter', 'source_effect_opacity')] = {
+                'kind': 'scalar', 'name': 'source_effect_opacity', 'default': 1.0}
         scalar_count = sum(k[0] == 'scalarparameter' for k in params)
         scalar_slot = 0
         vector_slot = (scalar_count + 3) // 4
@@ -328,7 +399,7 @@ for ordinal, selection in enumerate(selections):
                  'samplingEvidence':'source-texture-tags-and-project-class-default.v1',
                  'nativeFormat':prop.get('format',{}).get('value'),
                  'colorSpaceEvidence':'EXPLICIT_NATIVE_SRGB_FALSE' if normal else 'PROJECT_INTERPRETED_CLASS_DEFAULT_SRGB',
-                 'exists':(ROOT/'Client/Bin/Resources'/asset(x['sourceObjectPath'])).is_file()})
+                 'exists':(arguments.resource_root/asset(x['sourceObjectPath'])).is_file()})
         texture_map={x['baseIndex']:x['expressionIndexOrGroup'] for x in bindings['textures']}
         declarations=p['disassembly']['declarations'];instructions=p['disassembly']['instructions']
         last_rt0=max(i for i,line in enumerate(instructions) if re.search(r'\bo0\.',line))
@@ -383,6 +454,9 @@ for ordinal, selection in enumerate(selections):
             # Valtan destruction's masked monster section uses the original
             # actor/world-position prefix and tangent-space sky at rows 25..27.
             '9ae9112a9f0431448e28da5cf85ef088': ('239396ffe9f57b47a19ee2955207d2e8', 25, 'actor', [0, 1, 2, 25, 26, 27]),
+            'a60e035ff9e41d4099cdebe220d8e302': ('70a7b0749eb5904898747857eecc9da2', 4, 'opacity', [0, 4, 5, 6]),
+            # Guardian ALT_V snow-rock StaticMesh: source LocalVF tangent-up and sky rows 7..9.
+            'e5fe14836f42f94aad7d43d0499acdb7': ('0c1413bd3ee54d449ce7fdac8c7f1542', 7, 'none', [7, 8, 9]),
         }.get(sid) if arguments.profile_domain=='kouku' and not model else None
         # Valtan phase-two dust uses the same source tangent-up/sky carrier
         # with dynamic-parameter and sub-UV sprite VS permutations. Their
@@ -402,6 +476,9 @@ for ordinal, selection in enumerate(selections):
         if kouku_lit:
             assert selection['sourceVS'] == kouku_lit[0], ('Kouku lit vertex shader mismatch', selection['sourceVS'], kouku_lit[0])
             assert bindings['constantBufferClosure']['unownedConstantBuffer0Slots'] == kouku_lit[3], ('Kouku lit engine rows mismatch', bindings['constantBufferClosure']['unownedConstantBuffer0Slots'], kouku_lit[3])
+        if sid == 'e5fe14836f42f94aad7d43d0499acdb7':
+            assert mesh and selection['sourceVF'] == 'flocalvertexfactory'
+            assert p['disassembly']['instructionSha256'] == '5ece5a292f333a290266bebdc61c7c1abda019271de855a285603749fd4359ef'
         # Additional original LocalDecal prefixes share the same depth/opacity
         # and tangent-up inputs. Assert both the bytecode pair and all unowned
         # engine rows before assigning the existing scene adapter.
@@ -430,6 +507,15 @@ for ordinal, selection in enumerate(selections):
             # prefix, with the same tangent-up sky expression at rows 12..14.
             # Rows 10/11 are declared engine suffix padding, unused by this PS.
             'b6cb82f89e22c24ebcdfdca8be587e9c': ('5d79421dc8571c45aa49790f50274f51', 12, [0, 1, 2, 10, 11, 12, 13, 14]),
+            # Guardian exact LocalDecal pairs: projection/opacity and native sky suffix.
+            '68bdce842c4e27469535a3c35ed0178f': ('5d79421dc8571c45aa49790f50274f51', 16, [0, 1, 2, 14, 15, 16, 17, 18]),
+            '84ec8bb0a0305b4cb321d09f45bacb1c': ('5d79421dc8571c45aa49790f50274f51', 18, [0, 1, 2, 16, 17, 18, 19, 20]),
+            'fd3e09c786366d44bad4a65ad9235917': ('5d79421dc8571c45aa49790f50274f51', 8, [0, 1, 2, 6, 7, 8, 9, 10]),
+            '1b2f0475be98b446b3bbd35d354270e5': ('5d79421dc8571c45aa49790f50274f51', 12, [0, 1, 2, 10, 11, 12, 13, 14]),
+            'df0f7ee6f8887648a9eb10a9ee209133': ('5d79421dc8571c45aa49790f50274f51', 15, [0, 1, 2, 13, 14, 15, 16, 17]),
+            'da323567908fb948a423cf24a1eaae89': ('5d79421dc8571c45aa49790f50274f51', 9, [0, 1, 2, 7, 8, 9, 10, 11]),
+            '015fa6f730aec44fb0479a94935919a7': ('5d79421dc8571c45aa49790f50274f51', 16, [0, 1, 2, 14, 15, 16, 17, 18]),
+            '4c80ea0c0cb28e41b7cc44920bd162a5': ('5d79421dc8571c45aa49790f50274f51', 12, [0, 1, 2, 10, 11, 12, 13, 14]),
         }.get(sid) if decal else None
         if kouku_decal:
             assert selection['sourceVS'] == kouku_decal[0]
@@ -476,6 +562,9 @@ for ordinal, selection in enumerate(selections):
         if arguments.profile_domain == 'artist' and sid == '390b1fe8a7081c45bf96c8afc4bf11e9':
             masked_color_vertex_shader = 'd17daa101dec2b4493fce2f510407f32'
         opacity_prefix = '    source[0].x=1.f; // Project engine opacity multiplier.'
+        if action_post_opacity:
+            parameter = params[('scalarparameter', 'source_effect_opacity')]
+            opacity_prefix = f'    source[0].x=g_ArtistSourceMaterialParameters[{parameter["row"]}].{"xyzw"[parameter["lane"]]}; // Source action SkillValue opacity.'
         if masked_color_vertex_shader:
             assert mesh and selection['sourceVF'] == 'flocalvertexfactory'
             assert selection['sourceVS'] == masked_color_vertex_shader, 'Masked particle color vertex shader mismatch'
@@ -511,6 +600,9 @@ for ordinal, selection in enumerate(selections):
                f'    float4 source[{max(3, source_cb_count)}]; [unroll] for (uint i=0u; i<{max(3, source_cb_count)}u; ++i) source[i]=0.f;',
                opacity_prefix,
                '    float4 output=0.f;']
+        if source_motion_blur:
+            lines += ['    // Original local forward projected into the active source camera basis.',
+                      '    [unroll] for(uint row=0u;row<3u;++row) { source[1u+row]=g_ArtistSourceLocalToWorld[row]; source[4u+row]=g_ArtistSourceWorldToView[row]; }']
         if kouku_fire_world and len(kouku_fire_world[1]) == 4:
             lines += ['    source[1]=g_ArtistSourceWorldToLocal[0];',
                       '    source[2]=g_ArtistSourceWorldToLocal[1];',
@@ -624,6 +716,15 @@ for ordinal, selection in enumerate(selections):
             assert bindings['constantBufferClosure']['unownedConstantBuffer0Slots'] == [0]
             assert 'div r0.x, cb2[6].x, cb2[6].y' in instructions
             assert 'mul o0.w, r0.w, cb0[0].x' in instructions
+        action_post_rt0 = (arguments.profile_domain == 'kouku' and sid in (
+            '599a6ad60ea6494a83850077e6cd3356', '5a405d04c4e0fa42a1342f8da1615ca0'))
+        if action_post_rt0:
+            # Typed action material effect on the same full-screen LocalVF.
+            # Only RT0 is composited; preserve auxiliary native MRTs in archive.
+            assert selection['rendererShape'] == 'screenPost'
+            assert selection['sourceVF'] == 'flocalvertexfactory'
+            assert selection['sourceVS'] == '8562847977cf324b900feff85799f43a'
+            assert bindings['constantBufferClosure']['unownedConstantBuffer0Slots'] == [0]
         pass_count = max(4, next((int(re.search(r'CB2\[(\d+)\]', d)[1]) for d in declarations if d.startswith('dcl_constantbuffer CB2[')), 0))
         if pass_count > 4:
             assert kouku_glass_post or screen_space_mesh or (arguments.profile_domain == 'kouku' and sid in (
@@ -717,7 +818,7 @@ for ordinal, selection in enumerate(selections):
                 skip.add(sampleIndex+1);skip.update(range(reconstructionIndex+1,reconstructionIndex+4));break
             else:raise ValueError(('unclosed native depth sample',sid,sampleInstruction))
         for i,ins in enumerate(instructions):
-            if (model or decal or kouku_lit or kouku_ice or kouku_glass_post) and re.search(r'\bo[1-9]\.',ins):continue # Existing forward carrier consumes RT0; other native MRT writes remain recorded in the source archive.
+            if (model or decal or kouku_lit or kouku_ice or kouku_glass_post or source_motion_blur or action_post_rt0) and re.search(r'\bo[1-9]\.',ins):continue # Existing forward carrier consumes RT0; other native MRT writes remain recorded in the source archive.
             if i in skip:continue
             if i in depthReconstruct:
                 raw,dst=depthReconstruct[i]
@@ -752,6 +853,13 @@ for ordinal, selection in enumerate(selections):
             translated=re.sub(r'\bo0\b','output',translated)
             assert not re.search(r'\bo[1-9]\b',translated)
             lines += [f'    // {i+1}: {ins}','    '+translated]
+        if arguments.profile_domain == 'kouku' and program == 2893:
+            assert sid == '1eb6e82b0befd243ba7ffc9e49b6d067'
+            assert r['sourceMaterial'] == 'fx_m_mi_l_00.fx_mi.fx_l_me_sy_12_3_ma'
+            assert p['disassembly']['instructions'][73] == 'sqrt o5.xyz, r4.xyzx'
+            assert p['disassembly']['instructions'][79] == 'mov o3.xyz, r1.xyzx'
+            assert p['disassembly']['instructions'][108] == 'mul_sat o3.w, cb0[8].z, l(0.002000)'
+            lines += KOUKU_DOVE_DIRECT_LIGHT_ADAPTER.splitlines()
         lines+=['    return output;','}']
         program_code += (lines if model else ['#ifndef ARTIST_NATIVE_MODEL_ONLY']+lines+['#endif'])+['']
         row={'program':program,'runtimeShaderProfileId':f'effect.ue3.{arguments.profile_domain}-{program}-native.v1',

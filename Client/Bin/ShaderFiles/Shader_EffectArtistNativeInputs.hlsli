@@ -11,4 +11,6 @@ float4 g_KoukuSourceActorPosition;
 float4x4 g_KoukuSourceProjection;
 float4 g_ArtistSourceMacroUV;
 float4 g_ArtistSourceWorldToLocal[3];
+float4 g_ArtistSourceLocalToWorld[3];
+float4 g_ArtistSourceWorldToView[3];
 

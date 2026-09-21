@@ -2102,6 +2102,7 @@ void Client::CEffect_Tool::Render_ActiveAuthoredEffectTree()
 	{
 		return;
 	}
+    Render_OwnerControlEditor();
     const bool hasElements = !m_ActiveDocument->Elements.empty();
     if (hasElements) ImGui::Checkbox("Group by anchor", &m_bCurrentEffectGroupByAnchor);
     if (hasElements && m_bCurrentEffectGroupByAnchor)
@@ -4798,4 +4799,145 @@ void Client::CEffect_Tool::Render_DataFilesWindow()
             ImGui::SetTooltip("%s", m_strDocumentStatus.c_str());
     }
     ImGui::End();
+}
+
+
+void Client::CEffect_Tool::Render_OwnerControlEditor()
+{
+    if (!m_ActiveDocument) return;
+    const bool open = ImGui::TreeNodeEx("Owner Controls", ImGuiTreeNodeFlags_DefaultOpen);
+    ImGui::SameLine();
+    const bool locked = Has_UnappliedDetailDraft() || m_bOccurrenceTuningDirty;
+    ImGui::BeginDisabled(locked);
+    if (ImGui::SmallButton("Add##owner-control") && m_ActiveDocument->OwnerControls.size() < 64u)
+    {
+        EFFECT_DOCUMENT_DESC staged = *m_ActiveDocument;
+        EFFECT_OWNER_CONTROL_DESC cue;
+        for (uint32_t ordinal = 1u;; ++ordinal)
+        {
+            cue.strControlId = "owner.control." + std::to_string(ordinal);
+            if (std::none_of(staged.OwnerControls.begin(), staged.OwnerControls.end(),
+                [&](const auto& other) { return other.strControlId == cue.strControlId; })) break;
+        }
+        cue.strKind = "MATERIAL_VECTOR";
+        cue.strParameter = "transcolor";
+        cue.Keys = { {0.f, {1.f,1.f,1.f,1.f}}, {1.f, {1.f,1.f,1.f,1.f}} };
+        const std::string id = cue.strControlId;
+        staged.OwnerControls.push_back(std::move(cue));
+        if (Try_CommitDocument(std::move(staged))) m_strSelectedOwnerControlId = id;
+    }
+    ImGui::EndDisabled();
+    if (!open) return;
+    ImGui::TextDisabled("Owner material, light and visibility curves share this Effect's Save and preview clock.");
+    for (const auto& cue : m_ActiveDocument->OwnerControls)
+    {
+        const std::string label = cue.strControlId + " | " + cue.strKind;
+        if (ImGui::Selectable(label.c_str(), m_strSelectedOwnerControlId == cue.strControlId))
+            m_strSelectedOwnerControlId = cue.strControlId;
+    }
+    const auto selected = std::find_if(m_ActiveDocument->OwnerControls.begin(), m_ActiveDocument->OwnerControls.end(),
+        [&](const auto& cue) { return cue.strControlId == m_strSelectedOwnerControlId; });
+    if (selected != m_ActiveDocument->OwnerControls.end())
+    {
+        EFFECT_OWNER_CONTROL_DESC edited = *selected;
+        bool changed = false, deleted = false;
+        if (!edited.SourceValues.empty() && ImGui::TreeNode("Original source values"))
+        {
+            for (size_t i = 0u; i < edited.SourceValues.size(); ++i)
+                ImGui::Text("[%zu] %.6g", i, edited.SourceValues[i]);
+            ImGui::TreePop();
+        }
+        ImGui::PushID(edited.strControlId.c_str());
+        ImGui::BeginDisabled(locked);
+        if (ImGui::SmallButton("Delete Control")) deleted = true;
+        const char* kinds[] = {"MATERIAL_VECTOR", "DIRECTIONAL_BRIGHTNESS", "DIRECTIONAL_COLOR", "IDENTITY_VISIBILITY", "PAWN_VISIBILITY"};
+        if (ImGui::BeginCombo("Kind", edited.strKind.c_str()))
+        {
+            for (const char* kind : kinds) if (ImGui::Selectable(kind, edited.strKind == kind))
+            {
+                edited.strKind = kind;
+                edited.strParameter = edited.strKind == "MATERIAL_VECTOR" ? "transcolor" :
+                    edited.strKind == "IDENTITY_VISIBILITY" ? "identity" :
+                    edited.strKind == "PAWN_VISIBILITY" ? "visibility" : "";
+                edited.iSourceTargetType = edited.strKind == "IDENTITY_VISIBILITY" ? 12u :
+                    edited.strKind == "PAWN_VISIBILITY" ? 0u : 4u;
+                for (auto& key : edited.Keys) key.Value = {1.f,1.f,1.f,1.f};
+                changed = true;
+            }
+            ImGui::EndCombo();
+        }
+        if (edited.strKind == "MATERIAL_VECTOR")
+        {
+            if (ImGui::BeginCombo("Parameter", edited.strParameter.c_str()))
+            {
+                for (const char* parameter : {"transcolor", "buffcolor"})
+                    if (ImGui::Selectable(parameter, edited.strParameter == parameter))
+                    { edited.strParameter = parameter; changed = true; }
+                ImGui::EndCombo();
+            }
+        }
+        if (edited.strKind == "IDENTITY_VISIBILITY")
+            ImGui::TextDisabled("Target: Identity parts");
+        else if (edited.strKind == "PAWN_VISIBILITY")
+        {
+            int recipient = edited.iSourceTargetType == 9u ? 1 : 0;
+            if (ImGui::Combo("Target", &recipient, "Whole pawn\0Weapon\0"))
+            { edited.iSourceTargetType = recipient ? 9u : 0u; changed = true; }
+        }
+        else
+        {
+            int recipient = static_cast<int>(edited.iSourceTargetType);
+            if (ImGui::Combo("Target", &recipient, "Armor\0Weapon\0Armor and Weapon\0Default Mesh\0All\0"))
+            { edited.iSourceTargetType = static_cast<uint32_t>(recipient); changed = true; }
+        }
+        changed |= ImGui::Checkbox("Local player only", &edited.bOnlyLocalPlayer);
+        changed |= ImGui::DragFloat("Start (seconds)", &edited.fStartSeconds, .01f, 0.f, 600.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+        ImGui::TextDisabled("Key times are relative to the control start. The first key stays at zero.");
+        size_t deleteKey = edited.Keys.size();
+        for (size_t i = 0u; i < edited.Keys.size(); ++i)
+        {
+            auto& key = edited.Keys[i];
+            ImGui::PushID(static_cast<int>(i));
+            ImGui::BeginDisabled(i == 0u);
+            const float minimum = i ? edited.Keys[i - 1u].fSeconds + .001f : 0.f;
+            const float maximum = i + 1u < edited.Keys.size() ? edited.Keys[i + 1u].fSeconds - .001f : 600.f;
+            changed |= ImGui::DragFloat("Time", &key.fSeconds, .01f, minimum, maximum, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+            ImGui::EndDisabled();
+            if (edited.strKind == "DIRECTIONAL_BRIGHTNESS")
+                changed |= ImGui::DragFloat("Multiplier", &key.Value.x, .01f, 0.f, 16.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+            else if (edited.strKind == "IDENTITY_VISIBILITY" || edited.strKind == "PAWN_VISIBILITY")
+            {
+                bool visible = key.Value.x > .5f;
+                if (ImGui::Checkbox("Visible", &visible))
+                { key.Value.x = visible ? 1.f : 0.f; changed = true; }
+            }
+            else
+                changed |= ImGui::DragFloat4("Value", &key.Value.x, .01f, -65536.f, 65536.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+            ImGui::BeginDisabled(i == 0u || edited.Keys.size() <= 2u);
+            if (ImGui::SmallButton("Delete Key")) deleteKey = i;
+            ImGui::EndDisabled();
+            ImGui::PopID();
+        }
+        if (deleteKey < edited.Keys.size())
+        { edited.Keys.erase(edited.Keys.begin() + deleteKey); changed = true; }
+        ImGui::BeginDisabled(edited.Keys.size() >= 128u || edited.Keys.empty() || edited.Keys.back().fSeconds >= 599.999f);
+        if (ImGui::SmallButton("Add Key"))
+        {
+            auto key = edited.Keys.back();
+            key.fSeconds = (std::min)(600.f, key.fSeconds + .25f);
+            edited.Keys.push_back(key); changed = true;
+        }
+        ImGui::EndDisabled();
+        if (changed || deleted)
+        {
+            EFFECT_DOCUMENT_DESC staged = *m_ActiveDocument;
+            const auto target = std::find_if(staged.OwnerControls.begin(), staged.OwnerControls.end(),
+                [&](const auto& cue) { return cue.strControlId == edited.strControlId; });
+            if (deleted) staged.OwnerControls.erase(target); else *target = std::move(edited);
+            if (Try_CommitDocument(std::move(staged)) && deleted) m_strSelectedOwnerControlId.clear();
+        }
+        ImGui::EndDisabled();
+        ImGui::PopID();
+    }
+    ImGui::TreePop();
 }

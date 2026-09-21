@@ -1,6 +1,8 @@
 #include "Effect_DocumentRenderer_Internal.h"
 #include "Effect_Catalog.h"
 #include "Model.h"
+#include "ActorCatalog.h"
+#include "BinaryAsset/ModelAssetData.h"
 #include <d3d11sdklayers.h>
 #include <algorithm>
 #include <bit>
@@ -36,10 +38,19 @@ bool_t Client::CEffectDocumentRenderer::Clone_ModelCueResources(
 				CueId;
 			return false;
 		}
-		const std::shared_ptr<CPrototype> CloneBase =
-			Prototype.pModel->Clone(nullptr);
-		const std::shared_ptr<Engine::CModel> Model =
-			std::dynamic_pointer_cast<Engine::CModel>(CloneBase);
+        std::shared_ptr<Engine::CModel> Model;
+        const auto cue = std::find_if(Prepared.ResourceDocument.ModelCues.begin(), Prepared.ResourceDocument.ModelCues.end(),
+            [&](const auto& value) { return value.strCueId == CueId; });
+        if (cue != Prepared.ResourceDocument.ModelCues.end() && cue->SourceMaterialProfile)
+        {
+            Engine::MODEL_ASSET_LOAD_DESC load;
+            Engine::MODEL_MATERIAL_OVERRIDE material;
+            if (!CActorCatalog::Build_ModelLoadDescription(cue->strModelAssetId, load, strOutError) ||
+                !CWorldSequenceDocument::Build_MaterialOverride(*cue->SourceMaterialProfile, load.assetRoot, material)) return false;
+            load.materialOverrides = {std::move(material)};
+            Model = Engine::CModel::Create_MaterialVariant(*Prototype.pModel, load);
+        }
+        else Model = std::dynamic_pointer_cast<Engine::CModel>(Prototype.pModel->Clone(nullptr));
 		if (nullptr == Model)
 		{
 			strOutError = "Prepared animated Model Cue clone failed: " + CueId;

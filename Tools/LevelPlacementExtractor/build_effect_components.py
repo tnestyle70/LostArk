@@ -513,8 +513,8 @@ def split_document(
         if not STABLE_ID.fullmatch(group_id):
             raise ValueError(f"invalid component group ID: {group_id}")
         groups.setdefault(group_id, []).append((source_index, element))
-    if not groups:
-        raise ValueError("Effect has no elements")
+    if not groups and not document.get("ownerControls"):
+        raise ValueError("Effect has no elements or owner controls")
 
     ordered = sorted(
         groups.items(),
@@ -618,6 +618,7 @@ def split_document(
         "sourceAuthoringVersion": int(document.get("version", 0)),
         "particleSystem": copy.deepcopy(document.get("particleSystem", {})),
         "modelCues": copy.deepcopy(document.get("modelCues", [])),
+        **({"ownerControls": copy.deepcopy(document["ownerControls"])} if "ownerControls" in document else {}),
         "componentCues": cue_rows,
         "sourceDocumentSha256": sha256_json(document),
     }
@@ -676,6 +677,7 @@ def compile_assembly(
         "displayName": assembly["displayName"],
         "particleSystem": copy.deepcopy(assembly.get("particleSystem", {})),
         "modelCues": copy.deepcopy(assembly.get("modelCues", [])),
+        **({"ownerControls": copy.deepcopy(assembly["ownerControls"])} if "ownerControls" in assembly else {}),
         "elements": [row for _, row in staged_elements],
     }
 

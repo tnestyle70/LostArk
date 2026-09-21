@@ -56,8 +56,11 @@ class ValtanCanonicalTypedPatchTransactionTests(unittest.TestCase):
             "Client/Bin/Resources/Character/Valtan/MN_RPBF_01.wmodel",
             "Client/Bin/Resources/Character/Valtan/AnimSets/"
             "MN_RPBF_01_AnimSet.wmodel",
+            "Client/Bin/Resources/Character/Valtan/Cinematics/"
+            "MN_RPBF_01_CinematicAnimSet.wmodel",
         ):
-            source = REPOSITORY_ROOT / relative
+            resource_root = Path(os.environ.get("LOSTARK_RESOURCE_ROOT", str(REPOSITORY_ROOT / "Client/Bin/Resources")))
+            source = resource_root / relative.removeprefix("Client/Bin/Resources/")
             target = self.root / relative
             target.parent.mkdir(parents=True, exist_ok=True)
             try:
@@ -76,8 +79,8 @@ class ValtanCanonicalTypedPatchTransactionTests(unittest.TestCase):
         self.authoring_root = self.root / "Intermediate/ValtanTuningAuthoring"
         self.environment = dict(os.environ)
         self.environment["PYTHONDONTWRITEBYTECODE"] = "1"
-        self.environment["LOSTARK_RESOURCE_ROOT"] = str(
-            REPOSITORY_ROOT / "Client/Bin/Resources"
+        self.environment["LOSTARK_RESOURCE_ROOT"] = os.environ.get(
+            "LOSTARK_RESOURCE_ROOT", str(REPOSITORY_ROOT / "Client/Bin/Resources")
         )
         self.repository_revision = self.source_manifest()["sourceRevision"]
 

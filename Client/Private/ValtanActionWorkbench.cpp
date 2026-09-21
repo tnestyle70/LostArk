@@ -10,6 +10,9 @@
 
 #include "Animation_Tool.h"
 #include "AnimationPreviewAssets.h"
+#include "AnimationTargetService.h"
+#include "Model.h"
+#include "Valtan.h"
 #include "BalanceTool.h"
 #include "ValtanBossTool.h"
 #include "CameraTool.h"
@@ -3450,10 +3453,33 @@ bool_t Client::CValtanActionWorkbench::Apply_AnimationOccurrenceTiming(
 	/* The stable occurrence identity, clip, mapping, order, play rate and loop
 	   policy are intentionally untouched. Native source-window and every
 	   clip-qualified Effect/Sound/Shake dependency are admitted before the
-	   shared Balance draft can change. Stage duration/end policy are never
-	   inferred from a source trim. */
+	   shared Balance draft can change. Stage duration stays fixed; a newly
+	   shortened EXACT playlist explicitly becomes HOLD_LAST_POSE below. */
 	Found->sourceStartMs = iSourceStartMs;
 	Found->playMs = iPlayMs;
+    // Shortening a finite playlist keeps the authored Server clock. Its tail
+    // holds the last pose instead of leaving an invalid EXACT gap.
+    bool holdTail = false;
+    if (Draft.animationEndPolicy == "EXACT")
+    {
+        uint64_t wall = 0u;
+        for (const auto& slot : Draft.animationSlots)
+        {
+            if (slot.repeatUntilStageEnd || !std::isfinite(slot.playRate) || slot.playRate <= 0.0)
+            { strOutStatus = "Finite source trim lost its exact playlist clock."; return false; }
+            uint32_t play = slot.playMs;
+            if (!play)
+            {
+                uint32_t native = 0u;
+                if (!m_pAnimationTool->Resolve_ValtanCompositionNativeClipDurationMs(slot.clip, native, strOutStatus) ||
+                    slot.sourceStartMs >= native) return false;
+                play = native - slot.sourceStartMs;
+            }
+            wall += static_cast<uint64_t>(std::llround(static_cast<double>(play) / slot.playRate));
+        }
+        holdTail = wall < Draft.durationMs;
+        if (holdTail) Draft.animationEndPolicy = "HOLD_LAST_POSE";
+    }
 	if (!SetValtanStageDraftWithSoundDependencyAdmission(
 			m_pAnimationTool, m_pBalanceTool,
 			m_bPatternShakesReady ? &m_PatternShakes : nullptr,
@@ -3461,9 +3487,10 @@ bool_t Client::CValtanActionWorkbench::Apply_AnimationOccurrenceTiming(
 	{
 		return false;
 	}
-	strOutStatus = "Staged Animation occurrence timing for " +
-		strClipOccurrenceId +
-		". Use Save to commit the source.";
+	strOutStatus = "Staged Animation source trim for " + strClipOccurrenceId +
+        ". Following clips ripple inside the unchanged Server Stage clock. Use Save to commit.";
+    if (holdTail) strOutStatus += " End Policy changed to HOLD_LAST_POSE for the remaining Stage tail.";
+    Refresh_PatternLocalPreviewAfterMutation(&Pattern, strOutStatus);
 	return true;
 }
 
@@ -3521,7 +3548,7 @@ void Client::CValtanActionWorkbench::Render_SelectedAnimationTiming(
 	ImGui::SameLine();
 	ImGui::TextDisabled("| %s", Found->clipOccurrenceId.c_str());
 	ImGui::TextDisabled(
-		"Source Start trims into the native clip. Play Duration controls this occurrence wall block without changing the Server Stage clock.");
+		"Source Start and Source Duration are native clip milliseconds. Wall duration = Source Duration / Play Rate. Edge trims ripple later clips inside the unchanged Server Stage; a shortened EXACT playlist holds its last pose.");
 	int32_t iSourceStartMs = static_cast<int32_t>(Found->sourceStartMs);
 	int32_t iPlayMs = static_cast<int32_t>(Found->playMs);
 	ImGui::PushID("##SelectedAnimationOccurrenceTiming");
@@ -3531,7 +3558,7 @@ void Client::CValtanActionWorkbench::Render_SelectedAnimationTiming(
 	const bool_t bSourceChanged = ImGui::IsItemDeactivatedAfterEdit();
 	ImGui::BeginDisabled(Found->repeatUntilStageEnd);
 	(void)ImGui::InputInt(
-		"Play Duration (ms)", &iPlayMs, 5, 100);
+		"Source Duration (ms)", &iPlayMs, 5, 100);
 	const bool_t bPlayChanged = ImGui::IsItemDeactivatedAfterEdit();
 	ImGui::EndDisabled();
 	if (bSourceChanged || bPlayChanged)
@@ -3590,6 +3617,7 @@ bool_t Client::CValtanActionWorkbench::Play_EffectivePreview(
 	const VALTAN_PATTERN_VIEW& Pattern,
 	std::string& status)
 {
+    m_BoneEditor.Stop();
 	if (nullptr == m_pAnimationTool)
 	{
 		status = "Animation preview owner is unavailable.";
@@ -7891,7 +7919,7 @@ void Client::CValtanActionWorkbench::Render_AnimationStageDetails(
 				iSourceStartMs, 0, 600000));
 			bChanged = true;
 		}
-		(void)ImGui::InputInt("Play Duration (ms)", &iPlayMs, 5, 100);
+		(void)ImGui::InputInt("Source Duration (ms)", &iPlayMs, 5, 100);
 		if (ImGui::IsItemDeactivatedAfterEdit())
 		{
 			Slot.playMs = static_cast<uint32_t>((std::clamp)(
@@ -8240,12 +8268,52 @@ void Client::CValtanActionWorkbench::Render_Details(
 	const bool_t bPatternMutationAdmitted)
 {
 	ImGui::SeparatorText("Box Detail");
+    const bool saveReady = pPattern && bPatternMutationAdmitted && m_pBalanceTool &&
+        !m_pBalanceTool->Is_ValtanSaveJobBlockingAuthoring() && !m_pBalanceTool->Is_ServerRuntimeSetPublishRunning() &&
+        (m_bAuthoringDraftDirty || m_bPatternSoundDependencyDirty || CEffectV2Catalog::Get().Has_BossValtanBindingDraft());
+    ImGui::BeginDisabled(!saveReady);
+    if (ImGui::Button("Save##ValtanBoxDetail")) m_bSavePatternRequested = true;
+    ImGui::EndDisabled();
+    if (saveReady && ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) &&
+        !ImGui::GetIO().WantTextInput && ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_S, false))
+        m_bSavePatternRequested = true;
+    ImGui::SameLine();
 	ImGui::Text("Owner: %s", Owner_Label(m_eDetailOwner));
 	if (nullptr == pPattern)
 	{
 		ImGui::TextDisabled("Select one canonical Pattern.");
 		return;
 	}
+    if (ImGui::CollapsingHeader("Bone / weapon animation"))
+    {
+        const auto boss = CAnimationTargetService::Resolve_Boss();
+        if (!boss || CAnimationTargetService::Resolve_AssetName() != "Valtan")
+        {
+            ImGui::TextWrapped("Stage the local Valtan Model View in Preview, then edit its body or b_wp_r_01 axe socket here.");
+        }
+        else
+        {
+            m_BoneEditor.Select("Valtan", boss->Get_BodyModel());
+            const bool wasActive = m_BoneEditor.Is_Active();
+            m_BoneEditor.Render();
+            if (m_BoneEditor.Consume_Installed() && m_pAnimationTool)
+            {
+                std::vector<COMPOSITION_ANIMATION_RESOURCE> resources;
+                std::string status;
+                m_pAnimationTool->Read_CompositionAnimationResources(resources, status);
+            }
+            if (m_BoneEditor.Is_Active())
+            {
+                if (!wasActive && m_pAnimationTool)
+                {
+                    std::string stopStatus; m_pAnimationTool->Stop_ValtanCompositionPattern(stopStatus);
+                    m_BoneEditor.Update(0.f);
+                }
+                m_bPreviewOwnerClaimRequested = true;
+            }
+            ImGui::TextWrapped("Bone Clips saves authored model animation separately. The axe follows b_wp_r_01. After saving, refresh Composition Resources and reload the Pattern source revision before adding the authored clip. Publish installs a validated copy for Server Pattern presentation; re-enter the arena to reload model prototypes.");
+        }
+    }
 	if (pStage && Render_AuxiliaryDetails(*pPattern, *pStage, bPatternMutationAdmitted)) return;
 	bool_t bPatternSoundDirty = false;
 	std::string PatternSoundStatus;
@@ -10017,12 +10085,24 @@ void Client::CValtanActionWorkbench::Render_Timeline(
 	const bool_t bMutationAdmitted,
 	const bool_t bPatternMutationAdmitted)
 {
+    if ((m_bTimelineMoveActive || m_bTimelineTrimActive) &&
+        (ImGui::IsKeyPressed(ImGuiKey_Escape) || !m_pBalanceTool ||
+         m_iTimelineGestureDraftGeneration != m_pBalanceTool->Get_ValtanDraftGeneration() ||
+         m_iTimelineGestureSoundGeneration != (m_pAnimationTool ? m_pAnimationTool->Get_ValtanCompositionPatternSoundDraftGeneration() : 0u) ||
+         m_iTimelineGestureEffectRevision != CEffectV2Catalog::Get().Get_Revision()))
+    {
+        m_bTimelineMoveActive = m_bTimelineTrimActive = false;
+        m_strStatus = "Timeline gesture canceled because Escape was pressed or its source draft changed; timing preserved.";
+    }
 	const bool_t bHasUnsavedChanges = m_bAuthoringDraftDirty || m_bPatternSoundDependencyDirty ||
 		CEffectV2Catalog::Get().Has_BossValtanBindingDraft();
 	const bool_t bSaveJobBlocking = m_pBalanceTool &&
 		(m_pBalanceTool->Is_ValtanSaveJobBlockingAuthoring() || m_pBalanceTool->Is_ServerRuntimeSetPublishRunning());
 	ImGui::BeginDisabled(!pPattern || !bPatternMutationAdmitted || !bHasUnsavedChanges || bSaveJobBlocking);
 	if (ImGui::Button("Save##CompositionSequencer")) m_bSavePatternRequested = true;
+    const bool keyboard = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) && !ImGui::GetIO().WantTextInput;
+    if (keyboard && ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_S, false) &&
+        pPattern && bPatternMutationAdmitted && bHasUnsavedChanges && !bSaveJobBlocking) m_bSavePatternRequested = true;
 	ImGui::EndDisabled();
 	CAnimation_Tool::COMPOSITION_PREVIEW_STATE Preview;
 	if (m_pAnimationTool)
@@ -10038,7 +10118,10 @@ void Client::CValtanActionWorkbench::Render_Timeline(
 	if (ImGui::Button(Preview.bPlaying && !Preview.bPaused ? "Pause" : "Play"))
 	{
 		if (sourcePreview)
+        {
+            m_BoneEditor.Stop();
 			(void)m_pAnimationTool->Seek_ValtanCompositionSourceSequence(Preview.bPaused && Preview.iPositionMs >= Preview.iDurationMs ? 0u : Preview.iPositionMs, !Preview.bPaused, m_strStatus);
+        }
 		else if (Preview.bPlaying)
 			(void)Seek_EffectivePreview(*pPattern, Preview.iPositionMs, !Preview.bPaused, m_strStatus);
 		else
@@ -10333,7 +10416,7 @@ void Client::CValtanActionWorkbench::Render_Timeline(
 	{
 		ImGui::SameLine();
 		ImGui::BeginDisabled(!bSelectedBoxMutationAdmitted);
-		if (ImGui::Button("Duplicate Box"))
+		if (ImGui::Button("Duplicate Box") || (keyboard && bSelectedBoxMutationAdmitted && ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_D, false)))
 		{
 			std::string Status;
 			(void)Duplicate_SelectedTimelineBox(
@@ -10346,7 +10429,7 @@ void Client::CValtanActionWorkbench::Render_Timeline(
 	{
 		ImGui::SameLine();
 		ImGui::BeginDisabled(!bSelectedBoxMutationAdmitted);
-		if (ImGui::Button("Delete Box"))
+		if (ImGui::Button("Delete Box") || (keyboard && bSelectedBoxMutationAdmitted && ImGui::IsKeyPressed(ImGuiKey_Delete, false)))
 		{
 			std::string Status;
 			(void)Delete_SelectedTimelineBox(
@@ -10667,7 +10750,9 @@ void Client::CValtanActionWorkbench::Render_Timeline(
 			(DETAIL_OWNER::GAMEPLAY_STAGE == Item.eOwner &&
 			 ((TIMELINE_LANE::STAGE == Item.eLane && Item.iStartMs != 0u) ||
 			  Item.strStableId.find("/action/") != std::string::npos)));
-		const bool_t bStartTrimOwner = bColliderCanResize || bAuxiliaryTimed;
+        const bool_t bAnimationSourceTrim = DETAIL_OWNER::ANIMATION == Item.eOwner &&
+            Item.bEditable && !Item.bLoopsToStageEnd && ItemStage != pPattern->Stages.end();
+        const bool_t bStartTrimOwner = bColliderCanResize || bAuxiliaryTimed || bAnimationSourceTrim || bEffectRightTrim;
 		const bool_t bTrimOwner =
 			(DETAIL_OWNER::GAMEPLAY_STAGE == Item.eOwner &&
 			 (TIMELINE_LANE::STAGE == Item.eLane || bCounterLogic ||
@@ -10724,7 +10809,9 @@ void Client::CValtanActionWorkbench::Render_Timeline(
 			const int64_t delta = mouseMs - static_cast<int64_t>(bThisMoveActive ? m_iTimelineMoveMouseStartMs : m_iTimelineTrimMouseStartMs);
 			int64_t start = Item.iStartMs, end = Item.iEndMs;
 			if (bThisMoveActive) { start += delta; end += delta; }
-			else if (m_bTimelineTrimStartEdge) start = (std::min)(start + delta, end - 1);
+			else if (m_bTimelineTrimStartEdge && bAnimationSourceTrim)
+            { end = (std::max)(start + 1, end - delta); }
+            else if (m_bTimelineTrimStartEdge) start = (std::min)(start + delta, end - 1);
 			else end = (std::max)(end + delta, start + 1);
 			const float x1 = RowMin.x + static_cast<float>((std::max)(int64_t{0}, start)) * m_fTimelinePixelsPerSecond * .001f;
 			const float x2 = (std::max)(x1 + 4.f, RowMin.x + static_cast<float>((std::max)(int64_t{0}, end)) * m_fTimelinePixelsPerSecond * .001f);
@@ -10761,6 +10848,12 @@ void Client::CValtanActionWorkbench::Render_Timeline(
 			{
 				Select_Stage(*pPattern, *pStage, Item.eOwner, Item.strStableId);
 			}
+            if ((bTrimHandleHovered && bTrimMutationAdmitted) || (bMoveOwner && bMoveMutationAdmitted))
+            {
+                m_iTimelineGestureDraftGeneration = m_pBalanceTool ? m_pBalanceTool->Get_ValtanDraftGeneration() : 0u;
+                m_iTimelineGestureSoundGeneration = m_pAnimationTool ? m_pAnimationTool->Get_ValtanCompositionPatternSoundDraftGeneration() : 0u;
+                m_iTimelineGestureEffectRevision = CEffectV2Catalog::Get().Get_Revision();
+            }
 			if (bTrimHandleHovered && bTrimMutationAdmitted)
 			{
 				bool_t bBeginTrim = true;
@@ -10836,9 +10929,10 @@ void Client::CValtanActionWorkbench::Render_Timeline(
 			const float fMouseTimelineMs = (std::max)(
 				0.f, ImGui::GetIO().MousePos.x - RowMin.x) * 1000.f /
 				m_fTimelinePixelsPerSecond;
-			const uint32_t iNewWallMs = static_cast<uint32_t>((std::clamp)(
-				fMouseTimelineMs - static_cast<float>(Item.iStartMs),
-				1.f, 120000.f));
+            const int64_t trimDelta = static_cast<int64_t>(std::llround(fMouseTimelineMs)) - m_iTimelineTrimMouseStartMs;
+            const uint32_t iNewWallMs = static_cast<uint32_t>((std::clamp)(
+                static_cast<int64_t>(Item.iEndMs - Item.iStartMs) + trimDelta,
+                int64_t{1}, int64_t{120000}));
 			std::string Status;
 			bool_t bApplied = false;
 			if (bAuxiliaryTimed)
@@ -10907,15 +11001,8 @@ void Client::CValtanActionWorkbench::Render_Timeline(
 						!Slot->repeatUntilStageEnd &&
 						std::isfinite(Slot->playRate) && Slot->playRate > 0.0)
 					{
-						const uint64_t iSourcePlayMs = static_cast<uint64_t>(
-							std::llround(static_cast<double>(iNewWallMs) *
-								Slot->playRate));
-						bApplied = Apply_AnimationOccurrenceTiming(
-							*pPattern, *ItemStage, Item.strStableId,
-							Slot->sourceStartMs,
-							static_cast<uint32_t>((std::clamp)(
-								iSourcePlayMs, uint64_t{ 1u }, uint64_t{ 600000u })),
-							Status);
+                        bApplied = Trim_AnimationOccurrence(*pPattern, *ItemStage,
+                            Item.strStableId, m_bTimelineTrimStartEdge, trimDelta, Status);
 					}
 					else if (Draft.animationSlots.end() != Slot &&
 						Slot->repeatUntilStageEnd)
@@ -10976,6 +11063,17 @@ void Client::CValtanActionWorkbench::Render_Timeline(
 				if (ItemStage->ClipOccurrences.end() != Clip &&
 					std::isfinite(Clip->fPlayRate) && Clip->fPlayRate > 0.f)
 				{
+                    if (m_bTimelineTrimStartEdge)
+                    {
+                        const auto delta = std::llround(static_cast<double>(trimDelta) * Clip->fPlayRate);
+                        const auto start = static_cast<uint32_t>((std::clamp)(
+                            static_cast<int64_t>(pEffectCue->iSourceStartMs) + delta,
+                            static_cast<int64_t>(Clip->iSourceStartMs), static_cast<int64_t>(pEffectCue->iSourceEndMs) - 1));
+                        bApplied = Apply_EffectOccurrenceTiming(*pPattern, *ItemStage, *pEffectCue,
+                            start, pEffectCue->iSourceEndMs, Status);
+                    }
+                    else
+                    {
 					const uint64_t iRequestedSourceEnd =
 						static_cast<uint64_t>(pEffectCue->iSourceStartMs) +
 						static_cast<uint64_t>(std::llround(
@@ -10993,6 +11091,7 @@ void Client::CValtanActionWorkbench::Render_Timeline(
 						*pPattern, *ItemStage, *pEffectCue,
 						pEffectCue->iSourceStartMs, iCandidateSourceEnd,
 						Status);
+                    }
 				}
 				else
 				{
@@ -12778,6 +12877,7 @@ void Client::CValtanActionWorkbench::Render_ResourcesPane(
 
 void Client::CValtanActionWorkbench::On_WorkbenchDeactivated()
 {
+    m_BoneEditor.Stop();
 	m_bPreviewOwnerActive = false;
 	m_bPreviewOwnerClaimRequested = false;
 	// The shared Sequence window can stay active while its boss changes. Stop
@@ -12798,6 +12898,14 @@ void Client::CValtanActionWorkbench::Begin_WorkbenchFrame()
 {
 	if (m_bWorkbenchFrameActive)
 		return;
+    if (const auto previewBoss = CAnimationTargetService::Resolve_Boss(); previewBoss &&
+        CAnimationTargetService::Resolve_AssetName() == "Valtan")
+    {
+        m_BoneEditor.Select("Valtan", previewBoss->Get_BodyModel());
+        if (m_bPreviewOwnerActive) m_BoneEditor.Update(ImGui::GetIO().DeltaTime);
+        else m_BoneEditor.Stop();
+    }
+    else m_BoneEditor.Stop();
 	if (!m_bWorkbenchBossLoadAttempted && nullptr != m_pValtanBossTool)
 	{
 		m_bWorkbenchBossLoadAttempted = true;
@@ -13067,7 +13175,8 @@ bool Client::CValtanActionWorkbench::Can_AppendCompositionAnimationResource(
 		[](const auto& candidate) { return std::string_view("Valtan") == candidate.pAssetName; });
 	if (asset == ANIMATION_PREVIEW_ASSETS.end() || resource.strModelAssetId != asset->pModelAssetId ||
 		(resource.strSourceAssetId != asset->pModelAssetId &&
-		 (nullptr == asset->pAnimationSetAssetId || resource.strSourceAssetId != asset->pAnimationSetAssetId)))
+		 (nullptr == asset->pAnimationSetAssetId || resource.strSourceAssetId != asset->pAnimationSetAssetId) &&
+         !(resource.strSourceAssetId == "Data/Animation/Authored/Valtan/Valtan.boneclips.json" && resource.strRuntimeClip.starts_with("authored."))))
 	{
 		status = "The physical clip does not belong to the Valtan body or its animation package.";
 		return false;

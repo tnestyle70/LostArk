@@ -76,6 +76,9 @@ public:
 	bool_t Set_SourceCharacterTextureOverride(
 		uint32_t iRegister, ComPtr<ID3D11ShaderResourceView> pTexture);
 	void Clear_SourceCharacterOverrides();
+    // Constants and override maps are instance-owned; GPU texture views stay shared.
+    shared_ptr<CMaterial> Clone_ForOverrides() const
+    { return shared_ptr<CMaterial>(new CMaterial(*this)); }
 	bool_t Has_SourceCharacterProgram() const
 	{
 		return m_Surface.family == MODEL_SURFACE_FAMILY::SOURCE_CHARACTER;

@@ -373,6 +373,50 @@ def decode_post_process_chain_payload(
     }
 
 
+
+def decode_post_process_skill_envelope(
+    payload: dict[str, Any],
+    asset_references: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    """Read the EFPostProcessMaterialEffectSkill value struct after its tables.
+
+    EFGame.u reflection identifies EFPPMESkillValue's four fields; the action
+    wire format stores that struct before bOnlyPlayLocalPlayer. The next notify
+    length is outside this block and is deliberately not consumed.
+    """
+    decoded = decode_post_process_chain_payload(payload, asset_references)
+    raw = base64.b64decode(str(payload.get("data") or ""), validate=True)
+    cursor = decoded["unresolvedTrailingByteOffset"]
+    if cursor + 4 > len(raw):
+        raise ValueError("PostProcessChain material effect type is truncated")
+    material_effect_type = struct.unpack_from("<I", raw, cursor)[0]
+    cursor += 4
+    if material_effect_type != 3:
+        raise ValueError("PostProcessChain material effect is not Skill")
+    description, cursor = read_payload_string(raw, cursor, allow_empty=True)
+    if cursor + 4 > len(raw):
+        raise ValueError("PostProcessChain group priority is truncated")
+    priority = struct.unpack_from("<i", raw, cursor)[0]
+    cursor += 4
+    keyword, cursor = read_payload_string(raw, cursor, allow_empty=True)
+    if cursor + 20 > len(raw):
+        raise ValueError("PostProcessChain SkillValue is truncated")
+    fade_in, play_time, fade_out, maximum_opacity, local_only = struct.unpack_from("<ffffI", raw, cursor)
+    cursor += 20
+    if not all(math.isfinite(value) and value >= 0.0 for value in
+               (fade_in, play_time, fade_out, maximum_opacity)) or maximum_opacity > 1.0 or local_only not in (0, 1):
+        raise ValueError("PostProcessChain SkillValue is invalid")
+    if fade_in + play_time + fade_out <= 0.0:
+        raise ValueError("PostProcessChain SkillValue has no lifetime")
+    decoded.update(skillEnvelope={"fadeInSeconds": fade_in, "playSeconds": play_time,
+        "fadeOutSeconds": fade_out, "maxOpacity": maximum_opacity,
+        "onlyLocalPlayer": bool(local_only), "groupPriority": priority,
+        "keyword": keyword, "description": description},
+        sourceTypedBlockEnd=cursor, unresolvedTrailingByteOffset=cursor,
+        unresolvedTrailingByteCount=len(raw)-cursor)
+    return decoded
+
+
 def decode_typed_payload(
     source_type: str,
     payload: dict[str, Any],
@@ -434,7 +478,9 @@ def decode_typed_payload(
         # A standalone skeletal cue owns one CEFParticleData block.  Compound
         # cues may append particle attachments with additional blocks and stay
         # fail-closed until their nested table is decoded independently.
-        if len(particle_data_markers) != 1:
+        if len(particle_data_markers) != 1 or b"CEFAN_Particle\x00" in raw:
+            # A single nested particle block is still not the enclosing mesh
+            # transform. Its tail can follow separate AnimEvent records.
             return result
         marker_end = particle_data_markers[0].end()
         transform_start = marker_end + 72
@@ -637,6 +683,20 @@ def decode_typed_payload(
                 "type": "scalar",
                 "scalarValue": scalar_value,
                 "sourceValueByteOffset": parameter_cursor + 4,
+            })
+        elif source_type_code == 2:
+            # UE3 FParticleSysParam PSPT_ScalarRand preserves Scalar and Scalar_Low.
+            scalar_value, scalar_low = struct.unpack_from("<ff", raw, parameter_cursor + 4)
+            if not all(math.isfinite(value) for value in (scalar_value, scalar_low)):
+                raise ValueError("CEFParticleData scalar random parameter contains a non-finite bound")
+            if scalar_low > scalar_value:
+                raise ValueError("CEFParticleData scalar random parameter has reversed bounds")
+            parameter.update({
+                "type": "scalarRandom",
+                "scalarValue": scalar_value,
+                "scalarLow": scalar_low,
+                "sourceValueByteOffset": parameter_cursor + 4,
+                "sourceLowByteOffset": parameter_cursor + 8,
             })
         elif source_type_code == 3:
             vector_value = list(

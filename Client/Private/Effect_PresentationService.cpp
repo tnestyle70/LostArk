@@ -4185,6 +4185,7 @@ bool_t Client::CEffectPresentationService::Requires_SourceBoneImportScaleNormali
 	// Vehicle models (admission 0.0001, rig root 100) measure the same 0.01 basis.
 	// The Esther Silian NPC body is cooked through the same NPC pipeline.
 	return strEffectAssetId.starts_with("effect.vehicle.") ||
+		strEffectAssetId.starts_with("effect.guardianknight.") ||
 		strEffectAssetId.starts_with("effect.esther.silian.") ||
 		(strEffectAssetId.starts_with("effect.valtan.action.") &&
 		strEffectAssetId.ends_with(".full.restore")) ||
@@ -4996,10 +4997,11 @@ bool_t Client::CEffectPresentationService::Spawn(
 			 Desc.iLevelOwnerIndex == CGameInstance::Get().Get_CurrentLevelID() &&
 			 !Desc.strLevelPlacementId.empty())) &&
 		(!Desc.bExternallySampled || Desc.bLevelOwned) &&
-		(!Desc.bOwnerSustainedSourceLoops ||
-			(Desc.bUseWorldRoot && !Desc.bExternallySampled && !Owner.pCharacter &&
-				(Desc.bLevelOwned || Owner.pBoss) && (!Desc.bLevelOwned || !Owner.pBoss) &&
-				Desc.eStopPolicy == EFFECT_STOP_POLICY::NATURAL));
+        (!Desc.bOwnerSustainedSourceLoops ||
+            (!Desc.bExternallySampled && Desc.eStopPolicy == EFFECT_STOP_POLICY::NATURAL &&
+                ((Desc.bUseWorldRoot && !Owner.pCharacter &&
+                    (Desc.bLevelOwned || Owner.pBoss) && (!Desc.bLevelOwned || !Owner.pBoss)) ||
+                 (!Desc.bUseWorldRoot && Desc.bVehicleModelAnchors && Owner.pCharacter && Owner.Get_Model()))));
 	if (!bDescriptorValid)
 	{
 		strOutStatus = "Effect spawn descriptor is invalid or not admitted.";
@@ -5548,11 +5550,11 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
 			(nullptr == Owner.pCharacter || Desc.bUseWorldRoot || nullptr == Owner.Get_Model())) ||
 		(nullptr != Owner.pNpcAnchors &&
 			(!Desc.bLevelOwned || !Desc.bUseWorldRoot || nullptr == Owner.Get_Model())) ||
-		(Desc.bOwnerSustainedSourceLoops &&
-			(!Desc.bUseWorldRoot || Desc.bExternallySampled || Owner.pCharacter ||
-				(!Desc.bLevelOwned && !Owner.pBoss) ||
-				(Desc.bLevelOwned && Owner.pBoss) ||
-				Desc.eStopPolicy != EFFECT_STOP_POLICY::NATURAL)))
+        (Desc.bOwnerSustainedSourceLoops &&
+            (Desc.bExternallySampled || Desc.eStopPolicy != EFFECT_STOP_POLICY::NATURAL ||
+                !((Desc.bUseWorldRoot && !Owner.pCharacter &&
+                    (Desc.bLevelOwned || Owner.pBoss) && (!Desc.bLevelOwned || !Owner.pBoss)) ||
+                  (!Desc.bUseWorldRoot && Desc.bVehicleModelAnchors && Owner.pCharacter && Owner.Get_Model())))))
     {
         strOutStatus = "Effect spawn descriptor is invalid or not admitted.";
         g_strStatus = strOutStatus;
@@ -5650,6 +5652,10 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
     std::vector<SOURCE_ANCHOR_REQUEST> SourceAnchorRequests =
         Collect_SourceAnchorRequests(*pDocument);
     CEffectObject::EFFECT_OBJECT_DESC ObjectDesc{};
+    ObjectDesc.pControlOwner=Owner.pCharacter;
+    ObjectDesc.bExplicitControlOwner=true;
+    ObjectDesc.bControlPreview=Desc.bExternallySampled;
+    ObjectDesc.iControlActionStartTick=Desc.bVehicleModelAnchors?0u:Desc.iActionStartTick;
 	const std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
 		pVisualProjection = CEffectCatalog::Find_VisualProjection(
 			Desc.strEffectAssetId);
@@ -5718,6 +5724,21 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
         CGameInstance::Get().Remove_GameObject_from_Layer(iLevelIndex, EFFECT_LAYER, pGameObject);
         g_strStatus = strOutStatus;
         return false;
+    }
+    if (Owner.pCharacter)
+    {
+        const std::weak_ptr<Client::CCharacter> weak = Owner.pCharacter;
+        const bool preview = Desc.bExternallySampled;
+        pEffect->Set_PresentationControlOwner(weak, preview, Desc.bVehicleModelAnchors?0u:Desc.iActionStartTick);
+        pEffect->Set_AfterimageOwnerProvider([weak, preview](uint32_t part, bool_t onlyLocal,
+            std::vector<Client::CSkeletalAfterimage::MODEL_VIEW>& views) -> bool_t {
+            const auto character = weak.lock();
+            if (!character) return false;
+            if (onlyLocal && !character->Is_LocallyControlled() &&
+                !preview)
+            { views.clear(); return true; }
+            return character->Collect_PresentationAfterimageModels(part, views);
+        });
     }
     if (Desc.bExternalModelCueAnchors) pEffect->Use_ExternalModelCueAnchors();
     if (!Desc.strElementId.empty() && !pEffect->Select_OccurrenceElement(Desc.strElementId, strOutStatus))
@@ -6056,6 +6077,19 @@ void Client::CEffectPresentationService::Synchronize_FollowAnchors()
 		}
 		Effect.pObject->Set_RootWorldForNextUpdate(Root);
     }
+}
+
+void Client::CEffectPresentationService::Stop_VehicleOwner(
+    const std::shared_ptr<CCharacter>& owner)
+{
+    if (!owner) return;
+    g_PendingEffectSpawns.erase(std::remove_if(g_PendingEffectSpawns.begin(), g_PendingEffectSpawns.end(),
+        [&owner](const PENDING_EFFECT_SPAWN& pending) {
+            return pending.Desc.bVehicleModelAnchors && pending.Desc.pOwner.lock() == owner;
+        }), g_PendingEffectSpawns.end());
+    for (size_t index = g_ActiveEffects.size(); index-- > 0u;)
+        if (g_ActiveEffects[index].bVehicleModelAnchors && g_ActiveEffects[index].pOwner.lock() == owner)
+            Remove_At(index);
 }
 
 void Client::CEffectPresentationService::Stop_Owner(

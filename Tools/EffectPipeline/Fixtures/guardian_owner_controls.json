@@ -1,0 +1,1095 @@
+{
+  "rows": [
+    {
+      "skillId": 49330,
+      "sourceStageIndex": 0,
+      "bound": [
+        {
+          "skillId": 49330,
+          "boundOrdinal": 0,
+          "clipName": "ddk_sk_deepimpact_01",
+          "sourceStageIndex": 0,
+          "repeatedByBinding": false,
+          "candidates": [
+            0,
+            4,
+            7
+          ],
+          "selection": "FIRST_ORDERED_BASE_ACTION_STAGE_EXACT_CLIP"
+        }
+      ],
+      "notify": {
+        "notifyId": "action-49330/stage-000/notify-003",
+        "sourceType": "IdentityParts",
+        "category": "other",
+        "authority": "REFERENCE_ONLY",
+        "resolutionStatus": "TIMING_OR_STATE_ONLY",
+        "localTimeSeconds": 0.0,
+        "sourceEndSeconds": 0.0,
+        "durationSeconds": 0.7333329916000366,
+        "sourceOffset": 2895931,
+        "assetReferences": [],
+        "serializedPayload": {
+          "encoding": "base64",
+          "byteOffset": 2895931,
+          "byteSize": 105,
+          "sha256": "addcc3e7c02d54fcb9f366720c3d30cca9aa7f58af8c5bf945710f8e4300a21a",
+          "data": "Q0VGQWN0aW9uTm90aWZ5X0lkZW50aXR5UGFydHMAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAtrs7PwAAAAABAAAAAAAAAAAAAAAHAAAATm90aWZ5AGQAAAAAAAAAAQAAAAEAAAAjAAAA"
+        }
+      }
+    },
+    {
+      "skillId": 49330,
+      "sourceStageIndex": 0,
+      "bound": [
+        {
+          "skillId": 49330,
+          "boundOrdinal": 0,
+          "clipName": "ddk_sk_deepimpact_01",
+          "sourceStageIndex": 0,
+          "repeatedByBinding": false,
+          "candidates": [
+            0,
+            4,
+            7
+          ],
+          "selection": "FIRST_ORDERED_BASE_ACTION_STAGE_EXACT_CLIP"
+        }
+      ],
+      "notify": {
+        "notifyId": "action-49330/stage-000/notify-023",
+        "sourceType": "HidePawn",
+        "category": "visibility",
+        "authority": "PRESENTATION",
+        "resolutionStatus": "SOURCE_PARAMETERS_SERIALIZED",
+        "localTimeSeconds": 0.6278060078620911,
+        "sourceEndSeconds": 0.6278060078620911,
+        "durationSeconds": 0.10552699863910675,
+        "sourceOffset": 2907368,
+        "assetReferences": [],
+        "serializedPayload": {
+          "encoding": "base64",
+          "byteOffset": 2907368,
+          "byteSize": 328,
+          "sha256": "91ccd44dfb10966b634f588cf9347b776138bfdbba925be473e47d2ac209a694",
+          "data": "Q0VGQWN0aW9uTm90aWZ5X0hpZGVQYXduAAAAAAAAAAAAAAAAAAEAAADltyA/5bcgP4oe2D0AAAAAAQAAAAAAAAAAAAAAAwAAAEZYAGQAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPazJkEAAAAAAAAAANbGFL8AAAAAAAAAALa7Oz8JAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAJB4IQQAAAAAAAAAA9rMmQQAAAAAAAAAAS8IbQQAAAAAAAAAAgzTYQAAAAAAAAAAACMeMQAAAAAAAAAAAMbQRQAAAAAAAAAAAMbQRQAAAAAAAAAAAAAAAAAkAAADRMNdAlmMaQb7aDUFt1/JAIIn1QL4DX0FajTJDoCxtRE2Wj0S2uzs/AAAAAAAAAAAAAAAADwAAAA=="
+        },
+        "serializedLabels": [
+          "FX"
+        ]
+      }
+    },
+    {
+      "skillId": 49330,
+      "sourceStageIndex": 1,
+      "bound": [
+        {
+          "skillId": 49330,
+          "boundOrdinal": 1,
+          "clipName": "ddk_sk_deepimpact_02",
+          "sourceStageIndex": 1,
+          "repeatedByBinding": false,
+          "candidates": [
+            1,
+            2,
+            5,
+            8,
+            9
+          ],
+          "selection": "FIRST_ORDERED_BASE_ACTION_STAGE_EXACT_CLIP"
+        }
+      ],
+      "notify": {
+        "notifyId": "action-49330/stage-001/notify-004",
+        "sourceType": "HidePawn",
+        "category": "visibility",
+        "authority": "PRESENTATION",
+        "resolutionStatus": "SOURCE_PARAMETERS_SERIALIZED",
+        "localTimeSeconds": 0.0,
+        "sourceEndSeconds": 0.0,
+        "durationSeconds": 1.0,
+        "sourceOffset": 2908604,
+        "assetReferences": [],
+        "serializedPayload": {
+          "encoding": "base64",
+          "byteOffset": 2908604,
+          "byteSize": 120,
+          "sha256": "b5bc6c4dc3a1dac242235a3a6191d06da783cbd09fdebbadaf60ceda399355ae",
+          "data": "Q0VGQWN0aW9uTm90aWZ5X0hpZGVQYXduAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAgD8AAAAAAQAAAAAAAAAAAAAAAwAAAEZYAGQAAAABAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAXAAAA"
+        },
+        "serializedLabels": [
+          "FX"
+        ]
+      }
+    },
+    {
+      "skillId": 49330,
+      "sourceStageIndex": 3,
+      "bound": [
+        {
+          "skillId": 49330,
+          "boundOrdinal": 2,
+          "clipName": "ddk_sk_deepimpact_03",
+          "sourceStageIndex": 3,
+          "repeatedByBinding": false,
+          "candidates": [
+            3,
+            6,
+            10
+          ],
+          "selection": "FIRST_ORDERED_BASE_ACTION_STAGE_EXACT_CLIP"
+        }
+      ],
+      "notify": {
+        "notifyId": "action-49330/stage-003/notify-003",
+        "sourceType": "IdentityParts",
+        "category": "other",
+        "authority": "REFERENCE_ONLY",
+        "resolutionStatus": "TIMING_OR_STATE_ONLY",
+        "localTimeSeconds": 0.0,
+        "sourceEndSeconds": 0.0,
+        "durationSeconds": 0.29913899302482605,
+        "sourceOffset": 2910782,
+        "assetReferences": [],
+        "serializedPayload": {
+          "encoding": "base64",
+          "byteOffset": 2910782,
+          "byteSize": 105,
+          "sha256": "d6592c80964b24ff851f9faa46c1209ac67f844893c58471c735f15453c70628",
+          "data": "Q0VGQWN0aW9uTm90aWZ5X0lkZW50aXR5UGFydHMAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAvyiZPgAAAAABAAAAAAAAAAAAAAAHAAAATm90aWZ5AGQAAAAAAAAAAQAAAAEAAAAjAAAA"
+        }
+      }
+    },
+    {
+      "skillId": 49330,
+      "sourceStageIndex": 3,
+      "bound": [
+        {
+          "skillId": 49330,
+          "boundOrdinal": 2,
+          "clipName": "ddk_sk_deepimpact_03",
+          "sourceStageIndex": 3,
+          "repeatedByBinding": false,
+          "candidates": [
+            3,
+            6,
+            10
+          ],
+          "selection": "FIRST_ORDERED_BASE_ACTION_STAGE_EXACT_CLIP"
+        }
+      ],
+      "notify": {
+        "notifyId": "action-49330/stage-003/notify-006",
+        "sourceType": "HidePawn",
+        "category": "visibility",
+        "authority": "PRESENTATION",
+        "resolutionStatus": "SOURCE_PARAMETERS_SERIALIZED",
+        "localTimeSeconds": 0.0,
+        "sourceEndSeconds": 0.0,
+        "durationSeconds": 0.2995480000972748,
+        "sourceOffset": 2912631,
+        "assetReferences": [],
+        "serializedPayload": {
+          "encoding": "base64",
+          "byteOffset": 2912631,
+          "byteSize": 128,
+          "sha256": "2361e522609e4bdb622747879cfbc55a4cc2bbe7882f33bf1d8712cca124b6b1",
+          "data": "Q0VGQWN0aW9uTm90aWZ5X0hpZGVQYXduAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAFtemT4AAAAAAQAAAAAAAAAAAAAAAwAAAEZYAGQAAAABAAAAAAAAAAAAAAABAAAAAQAAAAAAAAAAAAAAAAAAAAEAAAAJAAAA/////xoAAAA="
+        },
+        "serializedLabels": [
+          "FX"
+        ]
+      }
+    },
+    {
+      "skillId": 49260,
+      "sourceStageIndex": 0,
+      "bound": [
+        {
+          "skillId": 49260,
+          "boundOrdinal": 0,
+          "clipName": "ddk_sk_eurosloof_01",
+          "sourceStageIndex": 0,
+          "repeatedByBinding": false,
+          "candidates": [
+            0,
+            3
+          ],
+          "selection": "FIRST_ORDERED_BASE_ACTION_STAGE_EXACT_CLIP"
+        }
+      ],
+      "notify": {
+        "notifyId": "action-49260/stage-000/notify-011",
+        "sourceType": "IdentityParts",
+        "category": "other",
+        "authority": "REFERENCE_ONLY",
+        "resolutionStatus": "TIMING_OR_STATE_ONLY",
+        "localTimeSeconds": 0.10000000149011612,
+        "sourceEndSeconds": 0.10000000149011612,
+        "durationSeconds": 0.4000000059604645,
+        "sourceOffset": 3267035,
+        "assetReferences": [],
+        "serializedPayload": {
+          "encoding": "base64",
+          "byteOffset": 3267035,
+          "byteSize": 105,
+          "sha256": "1bc5e5a03c6e9cefe35243c4f4b4ec0b87edce17188aba9b39fe3fc3c55a4ace",
+          "data": "Q0VGQWN0aW9uTm90aWZ5X0lkZW50aXR5UGFydHMAAAAAAAAAAAAAAAAAAQAAAM3MzD3NzMw9zczMPgAAAAABAAAAAAAAAAAAAAAHAAAATm90aWZ5AGQAAAAAAAAAAQAAAAEAAAAYAAAA"
+        }
+      }
+    },
+    {
+      "skillId": 49260,
+      "sourceStageIndex": 1,
+      "bound": [
+        {
+          "skillId": 49260,
+          "boundOrdinal": 1,
+          "clipName": "ddk_sk_eurosloof_02",
+          "sourceStageIndex": 1,
+          "repeatedByBinding": false,
+          "candidates": [
+            1,
+            4
+          ],
+          "selection": "FIRST_ORDERED_BASE_ACTION_STAGE_EXACT_CLIP"
+        }
+      ],
+      "notify": {
+        "notifyId": "action-49260/stage-001/notify-013",
+        "sourceType": "IdentityParts",
+        "category": "other",
+        "authority": "REFERENCE_ONLY",
+        "resolutionStatus": "TIMING_OR_STATE_ONLY",
+        "localTimeSeconds": 0.0,
+        "sourceEndSeconds": 0.0,
+        "durationSeconds": 0.5,
+        "sourceOffset": 3273869,
+        "assetReferences": [],
+        "serializedPayload": {
+          "encoding": "base64",
+          "byteOffset": 3273869,
+          "byteSize": 105,
+          "sha256": "a9f6cc61ec1192946cfeae1f4d5f64dda1849001e36268bfe57b788e39ef19e5",
+          "data": "Q0VGQWN0aW9uTm90aWZ5X0lkZW50aXR5UGFydHMAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAPwAAAAABAAAAAAAAAAAAAAAHAAAATm90aWZ5AGQAAAAAAAAAAQAAAAEAAAAcAAAA"
+        }
+      }
+    },
+    {
+      "skillId": 49260,
+      "sourceStageIndex": 2,
+      "bound": [
+        {
+          "skillId": 49260,
+          "boundOrdinal": 2,
+          "clipName": "ddk_sk_eurosloof_03",
+          "sourceStageIndex": 2,
+          "repeatedByBinding": false,
+          "candidates": [
+            2,
+            5
+          ],
+          "selection": "FIRST_ORDERED_BASE_ACTION_STAGE_EXACT_CLIP"
+        }
+      ],
+      "notify": {
+        "notifyId": "action-49260/stage-002/notify-006",
+        "sourceType": "IdentityParts",
+        "category": "other",
+        "authority": "REFERENCE_ONLY",
+        "resolutionStatus": "TIMING_OR_STATE_ONLY",
+        "localTimeSeconds": 0.0,
+        "sourceEndSeconds": 0.0,
+        "durationSeconds": 0.4000000059604645,
+        "sourceOffset": 3277671,
+        "assetReferences": [],
+        "serializedPayload": {
+          "encoding": "base64",
+          "byteOffset": 3277671,
+          "byteSize": 105,
+          "sha256": "d4e3b415634d48ddd0062fc0c1740b5fa27048068c6e01f14520413b952cef86",
+          "data": "Q0VGQWN0aW9uTm90aWZ5X0lkZW50aXR5UGFydHMAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAzczMPgAAAAABAAAAAAAAAAAAAAAHAAAATm90aWZ5AGQAAAAAAAAAAQAAAAEAAAAcAAAA"
+        }
+      }
+    },
+    {
+      "skillId": 49400,
+      "sourceStageIndex": 0,
+      "bound": [
+        {
+          "skillId": 49400,
+          "boundOrdinal": 0,
+          "clipName": "ddk_sk_prayforembereth_01",
+          "sourceStageIndex": 0,
+          "repeatedByBinding": false,
+          "candidates": [
+            0
+          ],
+          "selection": "FIRST_ORDERED_BASE_ACTION_STAGE_EXACT_CLIP"
+        }
+      ],
+      "notify": {
+        "notifyId": "action-49400/stage-000/notify-020",
+        "sourceType": "IdentityParts",
+        "category": "other",
+        "authority": "REFERENCE_ONLY",
+        "resolutionStatus": "TIMING_OR_STATE_ONLY",
+        "localTimeSeconds": 0.3199999928474426,
+        "sourceEndSeconds": 0.3199999928474426,
+        "durationSeconds": 0.34666699171066284,
+        "sourceOffset": 3437655,
+        "assetReferences": [],
+        "serializedPayload": {
+          "encoding": "base64",
+          "byteOffset": 3437655,
+          "byteSize": 101,
+          "sha256": "505a3d4e66711637515f66a66cf6ad74b5c969005931c821c56a968b4473d4ab",
+          "data": "Q0VGQWN0aW9uTm90aWZ5X0lkZW50aXR5UGFydHMAAAAAAAAAAAAAAAAAAQAAAArXoz4K16M+Vn6xPgAAAAABAAAAAAAAAAAAAAADAAAARlgAZAAAAAAAAAABAAAAAQAAACMAAAA="
+        },
+        "serializedLabels": [
+          "FX"
+        ]
+      }
+    },
+    {
+      "skillId": 49400,
+      "sourceStageIndex": 1,
+      "bound": [
+        {
+          "skillId": 49400,
+          "boundOrdinal": 1,
+          "clipName": "ddk_sk_prayforembereth_02",
+          "sourceStageIndex": 1,
+          "repeatedByBinding": false,
+          "candidates": [
+            1
+          ],
+          "selection": "FIRST_ORDERED_BASE_ACTION_STAGE_EXACT_CLIP"
+        }
+      ],
+      "notify": {
+        "notifyId": "action-49400/stage-001/notify-014",
+        "sourceType": "IdentityParts",
+        "category": "other",
+        "authority": "REFERENCE_ONLY",
+        "resolutionStatus": "TIMING_OR_STATE_ONLY",
+        "localTimeSeconds": 0.0,
+        "sourceEndSeconds": 0.0,
+        "durationSeconds": 1.5333329439163208,
+        "sourceOffset": 3447002,
+        "assetReferences": [],
+        "serializedPayload": {
+          "encoding": "base64",
+          "byteOffset": 3447002,
+          "byteSize": 101,
+          "sha256": "ae4e80cc2e6aff5ba9ab6f81bdbb42e88f07e2c50f20555a3894c42b1b645d2d",
+          "data": "Q0VGQWN0aW9uTm90aWZ5X0lkZW50aXR5UGFydHMAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAQUTEPwAAAAABAAAAAAAAAAAAAAADAAAARlgAZAAAAAAAAAABAAAAAQAAABcAAAA="
+        },
+        "serializedLabels": [
+          "FX"
+        ]
+      }
+    },
+    {
+      "skillId": 49400,
+      "sourceStageIndex": 2,
+      "bound": [
+        {
+          "skillId": 49400,
+          "boundOrdinal": 2,
+          "clipName": "ddk_sk_prayforembereth_03",
+          "sourceStageIndex": 2,
+          "repeatedByBinding": false,
+          "candidates": [
+            2
+          ],
+          "selection": "FIRST_ORDERED_BASE_ACTION_STAGE_EXACT_CLIP"
+        }
+      ],
+      "notify": {
+        "notifyId": "action-49400/stage-002/notify-011",
+        "sourceType": "IdentityParts",
+        "category": "other",
+        "authority": "REFERENCE_ONLY",
+        "resolutionStatus": "TIMING_OR_STATE_ONLY",
+        "localTimeSeconds": 0.0,
+        "sourceEndSeconds": 0.0,
+        "durationSeconds": 0.6110389828681946,
+        "sourceOffset": 3458335,
+        "assetReferences": [],
+        "serializedPayload": {
+          "encoding": "base64",
+          "byteOffset": 3458335,
+          "byteSize": 101,
+          "sha256": "48b7bb028da4f712e08f83e2261b253e6f9c704d8989e02532cc99b7097a9c05",
+          "data": "Q0VGQWN0aW9uTm90aWZ5X0lkZW50aXR5UGFydHMAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAADW0cPwAAAAABAAAAAAAAAAAAAAADAAAARlgAZAAAAAAAAAABAAAAAQAAABgAAAA="
+        },
+        "serializedLabels": [
+          "FX"
+        ]
+      }
+    },
+    {
+      "skillId": 49420,
+      "sourceStageIndex": 0,
+      "bound": [
+        {
+          "skillId": 49420,
+          "boundOrdinal": 0,
+          "clipName": "ddk_sk_super_sanctumofembereth",
+          "sourceStageIndex": 0,
+          "repeatedByBinding": false,
+          "candidates": [
+            0
+          ],
+          "selection": "FIRST_ORDERED_BASE_ACTION_STAGE_EXACT_CLIP"
+        }
+      ],
+      "notify": {
+        "notifyId": "action-49420/stage-000/notify-006",
+        "sourceType": "UltimateSkillCameraControl",
+        "category": "camera",
+        "authority": "PRESENTATION",
+        "resolutionStatus": "SOURCE_PARAMETERS_SERIALIZED",
+        "localTimeSeconds": 0.0,
+        "sourceEndSeconds": 0.0,
+        "durationSeconds": 0.0,
+        "sourceOffset": 3468289,
+        "assetReferences": [],
+        "serializedPayload": {
+          "encoding": "base64",
+          "byteOffset": 3468289,
+          "byteSize": 162,
+          "sha256": "a40374f9fd572af76b7638155a1789e8b2536affddec01e8f9db73e771c241c1",
+          "data": "Q0VGQWN0aW9uTm90aWZ5X1VsdGltYXRlU2tpbGxDYW1lcmFDb250cm9sAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAACgAAAEZYLVVMVE9GRgBkAAAAAQAAABkAAABTa2lsbENhbV9EcmFnb25LbmlnaHRfMDIAAAAAAAAAAAABAAAAAAAAAAAAAAAYAAAA"
+        },
+        "serializedLabels": [
+          "FX-ULTOFF",
+          "SkillCam_DragonKnight_02"
+        ]
+      }
+    },
+    {
+      "skillId": 49420,
+      "sourceStageIndex": 0,
+      "bound": [
+        {
+          "skillId": 49420,
+          "boundOrdinal": 0,
+          "clipName": "ddk_sk_super_sanctumofembereth",
+          "sourceStageIndex": 0,
+          "repeatedByBinding": false,
+          "candidates": [
+            0
+          ],
+          "selection": "FIRST_ORDERED_BASE_ACTION_STAGE_EXACT_CLIP"
+        }
+      ],
+      "notify": {
+        "notifyId": "action-49420/stage-000/notify-033",
+        "sourceType": "IdentityParts",
+        "category": "other",
+        "authority": "REFERENCE_ONLY",
+        "resolutionStatus": "TIMING_OR_STATE_ONLY",
+        "localTimeSeconds": 0.10000000149011612,
+        "sourceEndSeconds": 0.10000000149011612,
+        "durationSeconds": 3.700000047683716,
+        "sourceOffset": 3479301,
+        "assetReferences": [],
+        "serializedPayload": {
+          "encoding": "base64",
+          "byteOffset": 3479301,
+          "byteSize": 105,
+          "sha256": "d5639887fae57d8b1ee1f559767c29800095ffe36b89c6e6d9e4cbdf56f636d8",
+          "data": "Q0VGQWN0aW9uTm90aWZ5X0lkZW50aXR5UGFydHMAAAAAAAAAAAAAAAAAAQAAAM3MzD3NzMw9zcxsQAAAAAABAAAAAAAAAAAAAAAHAAAATm90aWZ5AGQAAAAAAAAAAQAAAAEAAAAXAAAA"
+        }
+      }
+    },
+    {
+      "skillId": 49420,
+      "sourceStageIndex": 0,
+      "bound": [
+        {
+          "skillId": 49420,
+          "boundOrdinal": 0,
+          "clipName": "ddk_sk_super_sanctumofembereth",
+          "sourceStageIndex": 0,
+          "repeatedByBinding": false,
+          "candidates": [
+            0
+          ],
+          "selection": "FIRST_ORDERED_BASE_ACTION_STAGE_EXACT_CLIP"
+        }
+      ],
+      "notify": {
+        "notifyId": "action-49420/stage-000/notify-052",
+        "sourceType": "UltimateSkillCameraControl",
+        "category": "camera",
+        "authority": "PRESENTATION",
+        "resolutionStatus": "SOURCE_PARAMETERS_SERIALIZED",
+        "localTimeSeconds": 3.799999952316284,
+        "sourceEndSeconds": 3.799999952316284,
+        "durationSeconds": 0.0,
+        "sourceOffset": 3485657,
+        "assetReferences": [],
+        "serializedPayload": {
+          "encoding": "base64",
+          "byteOffset": 3485657,
+          "byteSize": 162,
+          "sha256": "2eeaef71fb1113071fece1be8feee84920fe3b95a044751a26ce7011dd96af8c",
+          "data": "Q0VGQWN0aW9uTm90aWZ5X1VsdGltYXRlU2tpbGxDYW1lcmFDb250cm9sAAAAAAAAAAAAAAAAAAEAAAAzM3NAMzNzQAAAAAAAAAAAAQAAAAAAAAAAAAAACgAAAEZYLVVMVE9GRgBkAAAAAgAAABkAAABTa2lsbENhbV9EcmFnb25LbmlnaHRfMDIAAAAAAAAAAAAAAAAAAAAAAAAAAAAhAAAA"
+        },
+        "serializedLabels": [
+          "FX-ULTOFF",
+          "SkillCam_DragonKnight_02"
+        ]
+      }
+    }
+  ],
+  "camera": {
+    "rows": {
+      "31": {
+        "cls": "interpdata",
+        "name": "standard_skillcam_dragonknight.theworld.persistentlevel.main_sequence.interpdata_9",
+        "p": {
+          "interplength": 4.012922763824463,
+          "interpgroups": [
+            56,
+            49,
+            50,
+            51,
+            52,
+            48
+          ],
+          "edsectionend": 4.012922763824463,
+          "objinstanceversion": 1,
+          "parentsequence": 124,
+          "drawwidth": 32,
+          "drawheight": 32
+        }
+      },
+      "99": {
+        "cls": "interptrackmove",
+        "name": "standard_skillcam_dragonknight.theworld.persistentlevel.main_sequence.interpdata_9.interpgroup_35.interptrackmove_1",
+        "p": {
+          "postrack": {
+            "points": [
+              {
+                "inval": 0.0,
+                "outval": {
+                  "x": -0.0009769999887794256,
+                  "y": 0.0009769999887794256,
+                  "z": 6.0999998822808266e-05
+                },
+                "arrivetangent": {
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "leavetangent": {
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "interpmode": "cim_curveautoclamped"
+              }
+            ]
+          },
+          "eulertrack": {
+            "points": [
+              {
+                "inval": 0.0,
+                "outval": {
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 90.0
+                },
+                "arrivetangent": {
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "leavetangent": {
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "interpmode": "cim_curveautoclamped"
+              }
+            ]
+          },
+          "lookuptrack": {
+            "size": 104,
+            "hex": "d400000000000000110000000000000048000000000000000100000091000000"
+          },
+          "bshowtranslationoncurveed": false,
+          "bshowrotationoncurveed": true,
+          "bdisabletrack": true
+        }
+      },
+      "100": {
+        "cls": "interptrackmove",
+        "name": "standard_skillcam_dragonknight.theworld.persistentlevel.main_sequence.interpdata_9.interpgroup_36.interptrackmove_2",
+        "p": {
+          "postrack": {
+            "points": [
+              {
+                "inval": 0.0,
+                "outval": {
+                  "x": -10.757080078125,
+                  "y": 0.000244140625,
+                  "z": 9.1552734375e-05
+                },
+                "arrivetangent": {
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "leavetangent": {
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "interpmode": "cim_curveautoclamped"
+              }
+            ]
+          },
+          "eulertrack": {
+            "points": [
+              {
+                "inval": 0.0,
+                "outval": {
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": -65.01708984375
+                },
+                "arrivetangent": {
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "leavetangent": {
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "interpmode": "cim_curveautoclamped"
+              }
+            ]
+          },
+          "lookuptrack": {
+            "size": 104,
+            "hex": "d400000000000000110000000000000048000000000000000100000091000000"
+          },
+          "bshowrotationoncurveed": true
+        }
+      },
+      "102": {
+        "cls": "interptrackmove",
+        "name": "standard_skillcam_dragonknight.theworld.persistentlevel.main_sequence.interpdata_9.interpgroup_39.interptrackmove_0",
+        "p": {
+          "postrack": {
+            "points": [
+              {
+                "inval": 0.0,
+                "outval": {
+                  "x": 77.4967041015625,
+                  "y": 179.0419921875,
+                  "z": 104.26104736328125
+                },
+                "arrivetangent": {
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "leavetangent": {
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "interpmode": "cim_curveautoclamped"
+              },
+              {
+                "inval": 1.5000134706497192,
+                "outval": {
+                  "x": 89.0054931640625,
+                  "y": 204.3212890625,
+                  "z": 87.80210876464844
+                },
+                "arrivetangent": {
+                  "x": 23.853126525878906,
+                  "y": 52.26414489746094,
+                  "z": -32.789798736572266
+                },
+                "leavetangent": {
+                  "x": 23.853126525878906,
+                  "y": 52.26414489746094,
+                  "z": -32.789798736572266
+                },
+                "interpmode": "cim_curveautoclamped"
+              },
+              {
+                "inval": 2.000612258911133,
+                "outval": {
+                  "x": 319.7674560546875,
+                  "y": 683.94482421875,
+                  "z": -83.5079574584961
+                },
+                "arrivetangent": {
+                  "x": 17.77405548095703,
+                  "y": 42.90374755859375,
+                  "z": -27.519901275634766
+                },
+                "leavetangent": {
+                  "x": 17.77405548095703,
+                  "y": 42.90374755859375,
+                  "z": -27.519901275634766
+                },
+                "interpmode": "cim_curveautoclamped"
+              },
+              {
+                "inval": 4.013113975524902,
+                "outval": {
+                  "x": 330.710205078125,
+                  "y": 710.5361328125,
+                  "z": -101.2414779663086
+                },
+                "arrivetangent": {
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "leavetangent": {
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "interpmode": "cim_curveautoclamped"
+              }
+            ]
+          },
+          "eulertrack": {
+            "points": [
+              {
+                "inval": 0.0,
+                "outval": {
+                  "x": 0.0,
+                  "y": -0.50537109375,
+                  "z": 245.3466796875
+                },
+                "arrivetangent": {
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "leavetangent": {
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "interpmode": "cim_curveautoclamped"
+              },
+              {
+                "inval": 1.5000134706497192,
+                "outval": {
+                  "x": 0.0,
+                  "y": -0.005543217062950134,
+                  "z": 245.5224609375
+                },
+                "arrivetangent": {
+                  "x": 0.0,
+                  "y": 1.0679302215576172,
+                  "z": 0.3539714217185974
+                },
+                "leavetangent": {
+                  "x": 0.0,
+                  "y": 1.0679302215576172,
+                  "z": 0.3539714217185974
+                },
+                "interpmode": "cim_curveautoclamped"
+              },
+              {
+                "inval": 2.000612258911133,
+                "outval": {
+                  "x": 0.0,
+                  "y": 31.66259765625,
+                  "z": 247.6318359375
+                },
+                "arrivetangent": {
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "leavetangent": {
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "interpmode": "cim_curveautoclamped"
+              },
+              {
+                "inval": 4.013113975524902,
+                "outval": {
+                  "x": 0.0,
+                  "y": 31.66259765625,
+                  "z": 247.6318359375
+                },
+                "arrivetangent": {
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "leavetangent": {
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "interpmode": "cim_curveautoclamped"
+              }
+            ]
+          },
+          "lookuptrack": {
+            "size": 308,
+            "hex": "d400000000000000110000000000000014010000000000000400000091000000"
+          },
+          "bshowtranslationoncurveed": false,
+          "bshowrotationoncurveed": true,
+          "bhide3dtrack": true
+        }
+      },
+      "81": {
+        "cls": "interptrackfloatprop",
+        "name": "standard_skillcam_dragonknight.theworld.persistentlevel.main_sequence.interpdata_9.interpgroup_39.interptrackfloatprop_0",
+        "p": {
+          "propertyname": "fovangle",
+          "floattrack": {
+            "points": [
+              {
+                "inval": 0.0,
+                "outval": 30.0,
+                "arrivetangent": 0.0,
+                "leavetangent": 0.0,
+                "interpmode": "cim_curveautoclamped"
+              },
+              {
+                "inval": 1.5000134706497192,
+                "outval": 38.0,
+                "arrivetangent": 15.206171989440918,
+                "leavetangent": 15.206171989440918,
+                "interpmode": "cim_curveautoclamped"
+              },
+              {
+                "inval": 2.000612258911133,
+                "outval": 90.0,
+                "arrivetangent": 1.6631889343261719,
+                "leavetangent": 1.6631889343261719,
+                "interpmode": "cim_curveautoclamped"
+              },
+              {
+                "inval": 4.013806343078613,
+                "outval": 91.0,
+                "arrivetangent": 0.0,
+                "leavetangent": 0.0,
+                "interpmode": "cim_curveautoclamped"
+              }
+            ]
+          },
+          "tracktitle": "FOVAngle"
+        }
+      },
+      "123": {
+        "cls": "seqevent_remoteevent",
+        "name": "standard_skillcam_dragonknight.theworld.persistentlevel.main_sequence.seqevent_remoteevent_4",
+        "p": {
+          "eventname": "skillcam_dragonknight_02",
+          "maxwidth": 296,
+          "outputlinks": [
+            {
+              "links": [
+                {
+                  "linkedop": 110,
+                  "inputlinkidx": 0
+                }
+              ],
+              "linkdesc": "Out",
+              "bhasimpulse": false,
+              "bdisabled": false,
+              "bdisabledpie": false,
+              "linkedop": 0,
+              "activatedelay": 0.0,
+              "drawy": 1034,
+              "bhidden": false,
+              "bclampedmax": false,
+              "bclampedmin": false,
+              "overridedelta": 0,
+              "buseconnectioncolor": false,
+              "connectioncolor": {
+                "r": 0,
+                "g": 0,
+                "b": 0,
+                "a": 0
+              }
+            }
+          ],
+          "variablelinks": [
+            {
+              "expectedtype": -29,
+              "linkedvariables": [],
+              "linkdesc": "Instigator",
+              "linkvar": "none",
+              "propertyname": "none",
+              "bwriteable": true,
+              "bsequenceneverreadsonlywritestothisvar": false,
+              "bmodifieslinkedobject": false,
+              "bhidden": false,
+              "minvars": 1,
+              "maxvars": 255,
+              "drawx": 363,
+              "ballowanytype": false,
+              "bclampedmax": false,
+              "bclampedmin": false,
+              "overridedelta": 0,
+              "buseconnectorcolor": false,
+              "connectorcolor": {
+                "r": 0,
+                "g": 0,
+                "b": 0,
+                "a": 0
+              }
+            }
+          ],
+          "objinstanceversion": 2,
+          "parentsequence": 124,
+          "drawwidth": 168,
+          "drawheight": 130
+        }
+      },
+      "110": {
+        "cls": "seqact_attachtoactor",
+        "name": "standard_skillcam_dragonknight.theworld.persistentlevel.main_sequence.seqact_attachtoactor_8",
+        "p": {
+          "buserelativeoffset": true,
+          "buserelativerotation": true,
+          "inputlinks": [
+            {
+              "linkdesc": "In",
+              "bhasimpulse": false,
+              "queuedactivations": 0,
+              "bdisabled": false,
+              "bdisabledpie": false,
+              "linkedop": 0,
+              "drawy": 1146,
+              "bhidden": false,
+              "activatedelay": 0.0,
+              "bclampedmax": false,
+              "bclampedmin": false,
+              "overridedelta": 0
+            }
+          ],
+          "outputlinks": [
+            {
+              "links": [
+                {
+                  "linkedop": 116,
+                  "inputlinkidx": 0
+                }
+              ],
+              "linkdesc": "Out",
+              "bhasimpulse": false,
+              "bdisabled": false,
+              "bdisabledpie": false,
+              "linkedop": 0,
+              "activatedelay": 0.0,
+              "drawy": 1146,
+              "bhidden": false,
+              "bclampedmax": false,
+              "bclampedmin": false,
+              "overridedelta": 0,
+              "buseconnectioncolor": false,
+              "connectioncolor": {
+                "r": 0,
+                "g": 0,
+                "b": 0,
+                "a": 0
+              }
+            }
+          ],
+          "variablelinks": [
+            {
+              "expectedtype": -29,
+              "linkedvariables": [
+                168
+              ],
+              "linkdesc": "Target",
+              "linkvar": "none",
+              "propertyname": "targets",
+              "bwriteable": false,
+              "bsequenceneverreadsonlywritestothisvar": false,
+              "bmodifieslinkedobject": false,
+              "bhidden": false,
+              "minvars": 1,
+              "maxvars": 255,
+              "drawx": 589,
+              "ballowanytype": false,
+              "bclampedmax": false,
+              "bclampedmin": false,
+              "overridedelta": 0,
+              "buseconnectorcolor": false,
+              "connectorcolor": {
+                "r": 0,
+                "g": 0,
+                "b": 0,
+                "a": 0
+              }
+            },
+            {
+              "expectedtype": -29,
+              "linkedvariables": [
+                151
+              ],
+              "linkdesc": "Attachment",
+              "linkvar": "none",
+              "propertyname": "none",
+              "bwriteable": false,
+              "bsequenceneverreadsonlywritestothisvar": false,
+              "bmodifieslinkedobject": false,
+              "bhidden": false,
+              "minvars": 1,
+              "maxvars": 255,
+              "drawx": 663,
+              "ballowanytype": false,
+              "bclampedmax": false,
+              "bclampedmin": false,
+              "overridedelta": 0,
+              "buseconnectorcolor": false,
+              "connectorcolor": {
+                "r": 0,
+                "g": 0,
+                "b": 0,
+                "a": 0
+              }
+            }
+          ],
+          "objinstanceversion": 2,
+          "parentsequence": 124,
+          "drawwidth": 164,
+          "drawheight": 63
+        }
+      },
+      "66": {
+        "cls": "interptrackdirector",
+        "name": "standard_skillcam_dragonknight.theworld.persistentlevel.main_sequence.interpdata_9.interpgroupdirector_3.interptrackdirector_0",
+        "p": {
+          "cuttrack": [
+            {
+              "time": -0.051223017275333405,
+              "transitiontime": 0.0,
+              "targetcamgroup": "cm02",
+              "shotnumber": 20
+            }
+          ]
+        }
+      }
+    }
+  }
+}

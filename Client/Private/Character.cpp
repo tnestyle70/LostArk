@@ -1,4 +1,5 @@
 #include "Character.h"
+#include "BoneAnimationDocument.h"
 #pragma push_macro("new")
 #undef new
 #include "DirectXTK/DDSTextureLoader.h"
@@ -192,6 +193,13 @@ HRESULT CCharacter::Initialize(void* pArg)
 	IDLE/RUN, or the Animation Tool repair target from existing. Approved skill
 	actions remain valid network state even when their optional clip mapping is
 	unavailable. */
+    if (m_pBodyModel && m_pSpec && m_pSpec->pAssetName)
+    {
+        std::string authoredStatus;
+        const std::string authoredAsset = m_pSpec == CCharacterCatalog::Find_ClownSpec() ? "MN_RPCZ_00-1" : m_pSpec->pAssetName;
+        if (!CBoneAnimationDocument::Load_IntoModel(*m_pBodyModel, authoredAsset, authoredStatus))
+            OutputDebugStringA(("[Character authored clips] " + authoredStatus + "\n").c_str());
+    }
 	Load_ClipChains();
 	Load_InteractionAnimationBindings();
 	Load_EffectCues();
@@ -921,6 +929,17 @@ void CCharacter::Update_VehicleSkillCues(
 				(preparation.empty() ? std::string{} : " Preparation: " + preparation) + "\n").c_str());
 		}
 	}
+    if (m_isLocallyControlled && CUserSettings::Get().Is_SkillCameraShakeOn())
+    {
+        for (const auto& cue : skill.shakeCues)
+        {
+            f32_t clipStart = 0.f, clipDuration = 0.f;
+            if (!m_pVehiclePart->Try_Get_SkillClipWindow(skill.vehicleClips, cue.clipIndex, clipStart, clipDuration)) continue;
+            const f32_t start = clipStart + static_cast<f32_t>(cue.startMs) * .001f;
+            if (start > previous && start <= actionAgeSeconds)
+                CCameraShakeService::Trigger(cue.Spec, actionAgeSeconds - start);
+        }
+    }
 	for (const VEHICLE_SKILL_SOUND_CUE& cue : skill.soundCues)
 	{
 		f32_t clipStart = 0.f;
@@ -983,9 +1002,229 @@ void CCharacter::Update_VehicleLocomotionSoundCues()
 	}
 }
 
+
+void CCharacter::Apply_PresentationOwnerControls(uint64_t token,
+    const std::vector<EFFECT_OWNER_CONTROL_DESC>& controls, f32_t time, bool_t preview)
+{
+    if (!token || !std::isfinite(time)) return;
+    std::vector<OWNER_CONTROL_SAMPLE> active;
+    for (const auto& control:controls)
+    {
+        const float age=time-control.fStartSeconds;
+        if ((control.bOnlyLocalPlayer && !m_isLocallyControlled && !preview) ||
+            control.Keys.size()<2u || age<0.f || age>=control.Keys.back().fSeconds) continue;
+        const auto upper=std::upper_bound(control.Keys.begin(),control.Keys.end(),age,
+            [](float t,const auto& key){return t<key.fSeconds;});
+        const auto& right=upper==control.Keys.end()?control.Keys.back():*upper;
+        const auto& left=upper==control.Keys.begin()?*upper:*(upper-1);
+        const float ratio=right.fSeconds>left.fSeconds?(age-left.fSeconds)/(right.fSeconds-left.fSeconds):0.f;
+        float4_t value;
+        XMStoreFloat4(&value,XMVectorLerp(XMLoadFloat4(&left.Value),XMLoadFloat4(&right.Value),ratio));
+        active.push_back({control,value});
+    }
+    if(active.empty())m_PresentationOwnerControls.erase(token);
+    else m_PresentationOwnerControls[token]=std::move(active);
+    Rebuild_PresentationOwnerControls();
+}
+
+void CCharacter::Remove_PresentationOwnerControls(uint64_t token)
+{
+    if (m_PresentationOwnerControls.erase(token)) Rebuild_PresentationOwnerControls();
+}
+
+bool_t CCharacter::Get_PresentationDirectionalControl(f32_t& brightness,float4_t& color) const
+{
+    brightness=m_fPresentationDirectionalBrightness;color=m_PresentationDirectionalColor;
+    return m_bPresentationDirectionalControl;
+}
+
+void CCharacter::Rebuild_PresentationOwnerControls()
+{
+    m_fPresentationDirectionalBrightness=1.f;m_PresentationDirectionalColor={};m_bPresentationDirectionalControl=false;
+    // Restore exact pre-cue constants first, preserving customization and native
+    // textures. Removing one occurrence then rebuilds its active siblings.
+    for(const auto& baseline:m_PresentationMaterialBaselines)
+        if(const auto model=baseline.Model.lock())
+            model->Override_SourceCharacterConstants(baseline.MaterialName.c_str(),baseline.Parameters);
+    bool materialActive=false;
+    bool hideAll=false,hideWeapon=false,hideIdentity=false;
+    for(const auto& [token,samples]:m_PresentationOwnerControls)
+    {
+        (void)token;
+        for(const auto& sample:samples)
+        {
+            const auto& cue=sample.Control;
+            if(cue.strKind=="IDENTITY_VISIBILITY") {hideIdentity|=sample.Value.x<.5f;continue;}
+            if(cue.strKind=="PAWN_VISIBILITY")
+            {if(cue.iSourceTargetType==9u)hideWeapon|=sample.Value.x<.5f;else hideAll|=sample.Value.x<.5f;continue;}
+            if(cue.strKind=="DIRECTIONAL_BRIGHTNESS")
+            {m_fPresentationDirectionalBrightness=std::clamp(sample.Value.x,0.f,16.f);m_bPresentationDirectionalControl=true;continue;}
+            if(cue.strKind=="DIRECTIONAL_COLOR")
+            {m_PresentationDirectionalColor=sample.Value;m_bPresentationDirectionalControl=true;continue;}
+            if(cue.strKind!="MATERIAL_VECTOR")continue;
+            std::vector<std::shared_ptr<CModel>> models;
+            for(const auto& [id,part]:m_PartObjects)
+            {
+                (void)id;
+                if(auto* body=dynamic_cast<CPart_Body*>(part.get()))
+                {
+                    if((cue.iSourceTargetType==3u||cue.iSourceTargetType==4u)&&body->Get_Model())models.push_back(body->Get_Model());
+                }
+                else if(auto* equipment=dynamic_cast<CPart_Equipment*>(part.get()))
+                {
+                    const bool weapon=equipment->Is_WeaponPart();
+                    const bool wanted=cue.iSourceTargetType==4u||cue.iSourceTargetType==2u||
+                        (weapon?cue.iSourceTargetType==1u:cue.iSourceTargetType==0u);
+                    if(wanted&&equipment->Is_Visible()&&equipment->Get_Model())models.push_back(equipment->Get_Model());
+                }
+            }
+            for(const auto& model:models)
+                for(uint32_t mesh=0u;mesh<model->Get_NumMeshes();++mesh)
+                {
+                    const auto* surface=model->Get_MaterialSurface(mesh);
+                    if(!surface||surface->family!=Engine::MODEL_SURFACE_FAMILY::SOURCE_CHARACTER)continue;
+                    const auto& name=model->Get_MaterialName(mesh);
+                    auto combined=surface->sourceCharacter;
+                    if(!SourceCharacterMaterial::Patch_NamedVector(combined,cue.strParameter,sample.Value))continue;
+                    auto saved=std::find_if(m_PresentationMaterialBaselines.begin(),m_PresentationMaterialBaselines.end(),
+                        [&](const auto& entry){return entry.Model.lock()==model&&entry.MaterialName==name;});
+                    if(saved==m_PresentationMaterialBaselines.end())
+                        m_PresentationMaterialBaselines.push_back({model,name,surface->sourceCharacter});
+                    materialActive|=0u!=model->Override_SourceCharacterConstants(name.c_str(),combined);
+                }
+        }
+    }
+    if(!materialActive)m_PresentationMaterialBaselines.clear();
+    Set_PresentationVisibilityControls(hideAll,hideWeapon,hideIdentity);
+}
+
+f32_t CCharacter::Get_VehicleDirectionalBrightness() const
+{
+    return m_isLocallyControlled && m_pVehiclePart &&
+        m_eNetworkAction == LostArk::Shared::PLAYER_ACTION_STATE::VEHICLE_SKILL ?
+        m_fVehicleDirectionalBrightness : 1.f;
+}
+
+void CCharacter::Update_VehiclePresentationControls(const f32_t deltaSeconds)
+{
+    m_fVehicleDirectionalBrightness = 1.f;
+    if (!m_pVehiclePart) return;
+    const auto model = m_pVehiclePart->Get_Model();
+    const auto* vehicle = CActorCatalog::Find_Vehicle(m_iVehicleId);
+    const auto* skill = vehicle && m_eNetworkAction == LostArk::Shared::PLAYER_ACTION_STATE::VEHICLE_SKILL ?
+        vehicle->Find_Skill(m_iVehicleControlSkillId) : nullptr;
+    const auto restore = [&]()
+    {
+        if (model && m_bVehicleMaterialControlsApplied) model->Clear_SourceCharacterOverrides();
+        m_bVehicleMaterialControlsApplied = false;
+    };
+    if (!skill || !model) { restore(); return; }
+    if (std::isfinite(deltaSeconds) && deltaSeconds > 0.f) m_fVehicleControlAgeSeconds += deltaSeconds;
+    const auto cueAge = [&](const uint32_t clipIndex, const uint32_t startMs, float& age)
+    {
+        float start=0.f, duration=0.f;
+        if (!m_pVehiclePart->Try_Get_SkillClipWindow(skill->vehicleClips,clipIndex,start,duration)) return false;
+        age=m_fVehicleControlAgeSeconds-start-static_cast<float>(startMs)*.001f;
+        return age>=0.f;
+    };
+    if (m_isLocallyControlled)
+        for (const auto& cue : skill->directionalLightCues)
+        {
+            float age=0.f;
+            if (!cueAge(cue.clipIndex,cue.startMs,age)) continue;
+            const float holdEnd=cue.fadeInSeconds+cue.holdSeconds;
+            if (age>=holdEnd+cue.fadeOutSeconds) continue;
+            float weight=1.f;
+            if (cue.fadeInSeconds>0.f && age<cue.fadeInSeconds) weight=age/cue.fadeInSeconds;
+            else if (cue.fadeOutSeconds>0.f && age>holdEnd) weight=1.f-(age-holdEnd)/cue.fadeOutSeconds;
+            m_fVehicleDirectionalBrightness=1.f+(cue.brightnessMultiplier-1.f)*std::clamp(weight,0.f,1.f);
+        }
+    auto materials=vehicle->modelMaterialParameters;
+    bool changed=false;
+    for (const auto& cue : skill->materialVectorCues)
+    {
+        float age=0.f;
+        if (!cueAge(cue.clipIndex,cue.startMs,age) || age>=cue.keys.back().seconds) continue;
+        const auto upper=std::upper_bound(cue.keys.begin(),cue.keys.end(),age,
+            [](const float time,const auto& key){return time<key.seconds;});
+        const auto& right=upper==cue.keys.end()?cue.keys.back():*upper;
+        const auto& left=upper==cue.keys.begin()?*upper:*(upper-1);
+        const float blend=right.seconds>left.seconds?(age-left.seconds)/(right.seconds-left.seconds):0.f;
+        std::array<float,4> value{};
+        for (size_t i=0u;i<4u;++i) value[i]=left.value[i]+(right.value[i]-left.value[i])*blend;
+        for (auto& material : materials)
+            if (auto parameter=material.values.find(cue.parameter);parameter!=material.values.end())
+            {parameter->second=value;changed=true;}
+    }
+    if (!changed) {restore();return;}
+    // Repack full source families before touching the clone. A bad vector cannot
+    // partially replace the live model's native material constants.
+    std::vector<std::pair<std::string,Engine::MODEL_SOURCE_CHARACTER_PARAMETERS>> packed;
+    for (const auto& material : materials)
+    {
+        Engine::MODEL_SOURCE_CHARACTER_PARAMETERS parameters{};
+        if (!SourceCharacterMaterial::Configure(material.family,material.values,parameters)) return;
+        packed.emplace_back(material.materialName,parameters);
+    }
+    for (const auto& [name,parameters] : packed)
+        model->Override_SourceCharacterConstants(name.c_str(),parameters);
+    m_bVehicleMaterialControlsApplied=true;
+}
+
+void CCharacter::Update_VehicleLifetimeEffects(const f32_t deltaSeconds)
+{
+    const auto* vehicle = m_pVehiclePart && m_iVehicleId ? CActorCatalog::Find_Vehicle(m_iVehicleId) : nullptr;
+    if (!vehicle) return;
+    if (std::isfinite(deltaSeconds) && deltaSeconds > 0.f)
+        m_fVehicleEffectAgeSeconds = (std::min)(m_fVehicleEffectAgeSeconds + deltaSeconds, 86400.f);
+    const auto owner = static_pointer_cast<CCharacter>(shared_from_this());
+    const auto sample = [&](const std::vector<VEHICLE_LIFETIME_EFFECT_CUE>& cues,
+        std::vector<uint8_t>& states, const bool_t ambient)
+    {
+        states.resize(cues.size(), 0u);
+        for (size_t index = 0u; index < cues.size(); ++index)
+        {
+            const auto& cue = cues[index];
+            const f32_t start = static_cast<f32_t>(cue.startMs) * .001f;
+            if (states[index] || m_fVehicleEffectAgeSeconds < start) continue;
+            f32_t duration = 0.f;
+            if (!CEffectPresentationService::Try_Get_PreparedProductDurationSeconds(cue.effectAssetId, duration))
+            {
+                const auto failure = CEffectPresentationService::Get_ProductCuePreparationFailure(cue.effectAssetId);
+                if (!failure.empty())
+                {
+                    states[index] = 2u;
+                    OutputDebugStringA(("[VehicleLifetime] " + cue.effectAssetId + ": " + failure + "\n").c_str());
+                }
+                continue; // A pending prepare is retried, never marked consumed.
+            }
+            EFFECT_SPAWN_DESC desc;
+            desc.strEffectAssetId = cue.effectAssetId;
+            desc.pOwner = owner;
+            desc.bVehicleModelAnchors = true;
+            desc.bOwnerSustainedSourceLoops = ambient;
+            desc.strOccurrenceId = "vehicle:" + std::to_string(m_iVehicleId) +
+                (ambient ? "/ambient:" : "/mount:") + std::to_string(index);
+            desc.iActionStartTick = m_iVehicleEffectGeneration;
+            // Mount presentation has no replicated action clock. A cold prepare
+            // starts the one-shot once ready, instead of consuming it invisibly.
+            desc.fInitialSampleTimeSeconds = 0.f;
+            std::string status;
+            states[index] = CEffectPresentationService::Spawn(desc, status) ? 1u : 2u;
+            if (states[index] == 2u)
+                OutputDebugStringA(("[VehicleLifetime] " + cue.effectAssetId + ": " + status + "\n").c_str());
+        }
+    };
+    sample(vehicle->ambientEffectCues, m_VehicleAmbientCueStates, true);
+    sample(vehicle->mountEffectCues, m_VehicleMountCueStates, false);
+}
+
 void CCharacter::Queue_VehicleSkillEffects(const VEHICLE_ACTOR_ENTRY& vehicle) const
 {
 	std::vector<std::string> targets;
+    for (const auto& cue : vehicle.ambientEffectCues) targets.push_back(cue.effectAssetId);
+    for (const auto& cue : vehicle.mountEffectCues)
+        if (std::find(targets.begin(), targets.end(), cue.effectAssetId) == targets.end()) targets.push_back(cue.effectAssetId);
 	for (const VEHICLE_SKILL_ENTRY& skill : vehicle.skills)
 		for (const VEHICLE_SKILL_EFFECT_CUE& cue : skill.effectCues)
 			if (std::find(targets.begin(), targets.end(), cue.effectAssetId) == targets.end())
@@ -2107,6 +2346,8 @@ bool_t CCharacter::Apply_NetworkAction(
 		{
 			(void)m_pVehiclePart->Seek_SkillChain(vehicleSkill->vehicleClips, age);
 			Update_VehicleSkillCues(*vehicleSkill, actionStartTick, age);
+            m_iVehicleControlSkillId = skillId;
+            m_fVehicleControlAgeSeconds = age;
 		}
 		m_eNetworkAction = action;
 		return true;
@@ -2715,6 +2956,8 @@ bool_t CCharacter::Apply_EquipmentPreview(
 		equipmentDesc.strShaderTag = part.isSocketed ?
 			m_pSpec->pWeaponShaderTag : m_pSpec->pShaderTag;
 		equipmentDesc.iHiddenMeshMask = part.hiddenMeshMask;
+        equipmentDesc.isWeaponPart = part.isWeaponPart;
+        equipmentDesc.isIdentityPart = !part.isWeaponPart && part.requiredStance != LostArk::Shared::PLAYER_STANCE_ID::NONE;
 		equipmentDesc.pSkeletonModel = m_pBodyModel;
 		equipmentDesc.pSocketBoneName = part.isSocketed ?
 			part.socketBoneId.c_str() : nullptr;
@@ -3093,6 +3336,32 @@ void CCharacter::Apply_NetworkVehicle(const std::uint32_t vehicleId)
 	if (FAILED(__super::Replace_PartObjectGroup(VEHICLE_PART_TAG, std::move(candidates))))
 		return reject("vehicle part group replacement failed");
 
+    // A failed clone/group commit above leaves the old mount and its cues live.
+    // Stop only this Character's vehicle cues after a successful replacement.
+    CEffectPresentationService::Stop_VehicleOwner(static_pointer_cast<CCharacter>(shared_from_this()));
+    m_VehicleAmbientCueStates.clear();
+    m_VehicleMountCueStates.clear();
+    m_iVehicleControlSkillId = 0u;
+    m_fVehicleControlAgeSeconds = 0.f;
+    m_fVehicleDirectionalBrightness = 1.f;
+    m_bVehicleMaterialControlsApplied = false;
+    m_fVehicleEffectAgeSeconds = 0.f;
+    m_iVehicleEffectGeneration = m_iVehicleEffectGeneration == UINT32_MAX ? 1u : m_iVehicleEffectGeneration + 1u;
+    // Snapshot equality and failed staging returned above: each committed
+    // mount transition owns exactly one old dismount and one new mount event.
+    const auto playVehicleEvent = [](const std::string& event)
+    {
+        if (event.empty()) return;
+        const auto& variants = CSoundCueCatalog::Find_Variants("Vehicle", event);
+        if (variants.empty()) return;
+        const std::size_t variant = variants.size() == 1u ? 0u :
+            static_cast<std::size_t>(std::rand()) % variants.size();
+        CGameInstance::Get().Play_Sound(CRuntimeAssetRoot::Resolve(variants[variant]).wstring(), 1.f);
+    };
+    if (const auto* previous = CActorCatalog::Find_Vehicle(m_iVehicleId))
+        playVehicleEvent(previous->dismountSoundEvent);
+    if (const auto* next = CActorCatalog::Find_Vehicle(vehicleId))
+        playVehicleEvent(next->mountSoundEvent);
 	m_iVehicleId = vehicleId;
 	m_iRejectedVehicleId = 0u;
 	m_pVehiclePart = pPart;
@@ -3227,6 +3496,8 @@ void CCharacter::Update(f32_t fTimeDelta)
 	Update_EffectCues();
 	Update_SoundCues();
 	Update_VehicleLocomotionSoundCues();
+    Update_VehicleLifetimeEffects(fTimeDelta);
+    Update_VehiclePresentationControls(fTimeDelta);
 	Update_CameraShakeCues();
 }
 
@@ -3570,7 +3841,8 @@ void CCharacter::Load_FaceMorphs()
 void CCharacter::Late_Update(f32_t fTimeDelta)
 {
 	// Skip the composite part render queues without changing equipment visibility.
-	if (m_isNetworkPresentationHidden) return;
+    Set_PresentationVisibilityControls(m_isSourcePawnHidden, m_isSourceWeaponHidden, m_isSourceIdentityHidden);
+	if (m_isNetworkPresentationHidden || m_isSourcePawnHidden) return;
 	__super::Late_Update(fTimeDelta);
 
 	/* Face sliders compose onto whatever the animation posed this frame; they
@@ -3882,9 +4154,52 @@ HRESULT CCharacter::Render_PreviewParts(
 	return hResult;
 }
 
+void CCharacter::Set_PresentationVisibilityControls(const bool_t all,
+    const bool_t weapon, const bool_t identity)
+{
+    m_isSourcePawnHidden = all; m_isSourceWeaponHidden = weapon; m_isSourceIdentityHidden = identity;
+    for (const auto& [id, part] : m_PartObjects)
+        if (auto* equipment = dynamic_cast<CPart_Equipment*>(part.get()))
+            equipment->Set_PresentationSuppressed(all ||
+                (weapon && equipment->Is_WeaponPart()) || (identity && equipment->Is_IdentityPart()));
+}
+
+bool CCharacter::Collect_PresentationAfterimageModels(const uint32_t sourcePartType,
+    std::vector<CSkeletalAfterimage::MODEL_VIEW>& output)
+{
+    // EFGame EFTrailGhostPartType: NONE=0 (base mesh), WP=1, ALL=2.
+    if (sourcePartType > 2u) return false;
+    if (m_isSourcePawnHidden || m_isNetworkPresentationHidden) { output.clear(); return true; }
+    std::vector<CSkeletalAfterimage::MODEL_VIEW> staged;
+    if (m_pVehiclePart && sourcePartType != 1u)
+    {
+        CSkeletalAfterimage::MODEL_VIEW view;
+        if (!m_pVehiclePart->Get_AfterimageView(view)) return false;
+        staged.push_back(std::move(view)); output = std::move(staged); return true;
+    }
+    for (const auto& [id, part] : m_PartObjects)
+    {
+        CSkeletalAfterimage::MODEL_VIEW view;
+        if (auto* body = dynamic_cast<CPart_Body*>(part.get()))
+        {
+            if (sourcePartType != 1u && body->Get_AfterimageView(view)) staged.push_back(std::move(view));
+        }
+        else if (auto* equipment = dynamic_cast<CPart_Equipment*>(part.get()))
+        {
+            const bool weapon = equipment->Is_WeaponPart();
+            if ((sourcePartType == 2u || (sourcePartType == 1u) == weapon) && equipment->Get_AfterimageView(view))
+                staged.push_back(std::move(view));
+        }
+        if (staged.size() > 32u) return false;
+    }
+    output = std::move(staged); return true;
+}
+
 HRESULT CCharacter::Render_PreviewPartsInternal(
 	uint32_t iSkinnedPassIndex, uint32_t iSocketedPassIndex)
 {
+    Set_PresentationVisibilityControls(m_isSourcePawnHidden, m_isSourceWeaponHidden, m_isSourceIdentityHidden);
+    if (m_isSourcePawnHidden) return S_OK;
 	for (auto& Pair : m_PartObjects)
 	{
 		if (CPart_Body* pBody = dynamic_cast<CPart_Body*>(Pair.second.get()))
@@ -3988,6 +4303,7 @@ HRESULT CCharacter::Ready_PartObjects()
 		equipmentDesc.pParentMatrix = &m_PresentationRootMatrix;
 		equipmentDesc.iPrototypeLevelIndex = m_iPrototypeLevelIndex;
 		equipmentDesc.strModelTag = m_pSpec->pEquipment[i].pModelTag;
+        equipmentDesc.isIdentityPart = m_pSpec->pEquipment[i].eRequiredStance != LostArk::Shared::PLAYER_STANCE_ID::NONE;
 		equipmentDesc.strShaderTag = m_pSpec->pShaderTag;
 		equipmentDesc.iHiddenMeshMask = m_pSpec->pEquipment[i].iHiddenMeshMask;
 		equipmentDesc.pSkeletonModel = m_pBodyModel;
@@ -4018,6 +4334,7 @@ HRESULT CCharacter::Ready_PartObjects()
 		weaponDesc.pParentMatrix = &m_PresentationRootMatrix;
 		weaponDesc.iPrototypeLevelIndex = m_iPrototypeLevelIndex;
 		weaponDesc.strModelTag = m_pSpec->pWeapons[i].pModelTag;
+        weaponDesc.isWeaponPart = true;
 		weaponDesc.strShaderTag = m_pSpec->pWeaponShaderTag;
 		weaponDesc.pSkeletonModel = m_pBodyModel;
 		weaponDesc.pSocketBoneName = m_pSpec->pWeapons[i].pSocketBone;

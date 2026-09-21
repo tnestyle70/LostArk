@@ -27,7 +27,7 @@ namespace
 	reference (2/3 x the document's own enlargement), so every retail px offset below goes
 	through m_fRetailScale, read from the VH_WinBg slot against this retail width. */
 	constexpr f32_t TEXT_BOOST = 1.15f;
-	constexpr int32_t ROW_COUNT = 6;
+	constexpr int32_t MAX_LAYOUT_ROWS = 64;
 	/* VehicleListItem text placement (retail px inside the row): name (99,10), description
 	(99,32), additionalStat right-aligned to x 427 -- see the 09-14 extraction doc 3.2. */
 	constexpr f32_t ROW_X = 14.f;
@@ -48,9 +48,7 @@ namespace
 	constexpr f32_t ROW_W = WINDOW_WIDTH - ROW_X * 2.f;
 	constexpr f32_t ROW_TEXT_RIGHT_PAD = 10.f;
 	constexpr f32_t HINT_X = 17.f;
-	/* Under the last row (build_vehicle_ui.py HINT_Y / BUTTON_Y). */
-	constexpr f32_t HINT_Y = ROW_Y0 + ROW_PITCH * ROW_COUNT + 10.f;
-	constexpr f32_t BUTTON_Y = HINT_Y + 30.f;
+
 	constexpr f32_t BUTTON_W = 103.f;
 	constexpr f32_t BUTTON_H = 36.f;
 	constexpr f32_t MOUNT_BUTTON_X = 259.f;
@@ -134,6 +132,15 @@ Client::CVehicleWindowView::CVehicleWindowView(
 	f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
 	if (m_pView->Get_SlotRect("VH_WinBg", fX, fY, fWidth, fHeight) && fWidth > 0.f)
 		m_fRetailScale = fWidth / WINDOW_WIDTH;
+    // The authored layout owns row capacity; adding a catalog entry never
+    // silently loses it behind a second, hardcoded six-row limit.
+    for (; m_iLayoutRowCount < MAX_LAYOUT_ROWS; ++m_iLayoutRowCount)
+    {
+        bool_t complete = true;
+        for (const char* suffix : {"Bg", "Over", "Selected", "Equip", "Icon", "Slot", "Star"})
+            complete &= m_pView->Get_SlotRect(Row_Slot(m_iLayoutRowCount, suffix), fX, fY, fWidth, fHeight);
+        if (!complete) break;
+    }
 	Load_Catalog();
 	/* Same reason as CInventoryView: LEVEL::STATIC sprites are visible from construction. */
 	Hide();
@@ -143,7 +150,8 @@ Client::CVehicleWindowView::~CVehicleWindowView() = default;
 
 void Client::CVehicleWindowView::Load_Catalog()
 {
-	m_Rows.clear();
+	if (m_iLayoutRowCount <= 0) return;
+	std::vector<VEHICLE_ROW> stagedRows;
 	const filesystem::path DataPath =
 		CProjectDataRoot::Resolve(L"UI/Vehicle/VehicleUiCatalog.json");
 	ifstream Stream(DataPath, ios::binary);
@@ -216,10 +224,11 @@ void Client::CVehicleWindowView::Load_Catalog()
 				Row.Skills.push_back(std::move(Entry));
 			}
 		}
-		m_Rows.push_back(std::move(Row));
-		if (static_cast<int32_t>(m_Rows.size()) >= ROW_COUNT)
+		stagedRows.push_back(std::move(Row));
+		if (static_cast<int32_t>(stagedRows.size()) >= m_iLayoutRowCount)
 			break;
 	}
+    m_Rows = std::move(stagedRows);
 }
 
 void Client::CVehicleWindowView::Update(const f32_t fTimeDelta,
@@ -289,7 +298,7 @@ void Client::CVehicleWindowView::Update_Rows(const std::shared_ptr<CCharacter>& 
 	m_bSelectedIsMounted = false;
 	m_iMountedVehicleId = Player.iVehicleId;
 
-	for (int32_t iRow = 0; iRow < ROW_COUNT; ++iRow)
+	for (int32_t iRow = 0; iRow < m_iLayoutRowCount; ++iRow)
 	{
 		const bool_t bHasRow = iRow < static_cast<int32_t>(m_Rows.size());
 		for (const char* pSuffix : { "Bg", "Over", "Selected", "Equip", "Icon", "Slot", "Star" })
@@ -443,6 +452,8 @@ void Client::CVehicleWindowView::Render_Text()
 			ROW_FONT_PX, COLOR_DESC, vTopLeft);
 	}
 
+    const f32_t HINT_Y = ROW_Y0 + ROW_PITCH * static_cast<f32_t>(m_iLayoutRowCount) + 10.f;
+    const f32_t BUTTON_Y = HINT_Y + 30.f;
 	Draw_Label(FONT_YG760, m_strHint, HINT_X, HINT_Y, ROW_FONT_PX, COLOR_DESC, vTopLeft);
 	Draw_Label(FONT_YOON, m_bSelectedIsMounted ? m_strDismount : m_strMount,
 		MOUNT_BUTTON_X + BUTTON_W * 0.5f, BUTTON_Y + BUTTON_H * 0.5f, BUTTON_PX,

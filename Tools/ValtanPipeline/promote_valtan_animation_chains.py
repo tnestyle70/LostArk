@@ -1753,7 +1753,7 @@ def _load_v2_pipeline(repo_root: Path) -> Any:
 
 def _product_projection_relatives(repo_root: Path) -> tuple[str, ...]:
     pipeline = _load_v2_pipeline(repo_root)
-    return pipeline.REPOSITORY_PRODUCT_ARTIFACTS
+    return pipeline.repository_product_artifacts(repo_root)
 
 
 
@@ -3306,7 +3306,8 @@ def commit_projected_products(
             baseline = _read_bytes_or_none(target)
             if projected_payload is None or (baseline is None and relative_text not in (
                 "Data/Valtan/Published/BOSS_VALTAN.effectv2bindings.json",
-                "Data/Valtan/Published/Valtan.patternsoundcues.json")) :
+                "Data/Valtan/Published/Valtan.patternsoundcues.json",
+                "Data/Valtan/Published/Valtan.boneclips.json")) :
                 raise PromotionError(
                     f"Valtan Product projection/target is missing: {relative_text}"
                 )

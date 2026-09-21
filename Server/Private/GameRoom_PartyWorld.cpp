@@ -1243,11 +1243,13 @@ void LostArk::Server::CGameRoom::Handle_SpawnWorldEntity(
 		return;
 	}
 	const bool koukuGateWorld = WORLD_ID::KAKULSAYDON_ARENA == m_eWorldId;
+    const bool valtanWorld = WORLD_ID::VALTAN_ARENA == m_eWorldId;
 #else
 	const bool koukuGateWorld = false;
+    const bool valtanWorld = false;
 #endif
 	const bool debugSpawnWorld =
-		WORLD_ID::CHARACTER_SELECT_ARENA == m_eWorldId || koukuGateWorld;
+		WORLD_ID::CHARACTER_SELECT_ARENA == m_eWorldId || koukuGateWorld || valtanWorld;
 	if (!debugSpawnWorld ||
 		!m_PlayerIdBySessionId.contains(sessionId) || nullptr == session)
 	{
@@ -1321,7 +1323,10 @@ void LostArk::Server::CGameRoom::Handle_SpawnWorldEntity(
 		return;
 	}
 
-	const bool admittedPlacement =
+	const bool admittedPlacement = valtanWorld ?
+        (!placement->isEnabled && placement->strPlacementId == "boss.valtan.center" &&
+            placement->eKind == WORLD_BOOTSTRAP_KIND::BOSS && placement->strArchetypeId == "BOSS_VALTAN" &&
+            placement->strEncounterId == "ENCOUNTER_VALTAN") :
 		WORLD_ID::CHARACTER_SELECT_ARENA == m_eWorldId ?
 			(!placement->isEnabled &&
 			 WORLD_BOOTSTRAP_KIND::BOSS == placement->eKind &&
@@ -1379,6 +1384,14 @@ void LostArk::Server::CGameRoom::Handle_SpawnWorldEntity(
 		return;
 	}
 
+#ifdef _DEBUG
+    if (valtanWorld)
+    {
+        staged.bIntroPatternConsumed = true;
+        staged.bAutomaticPatternSequenceAuditionOverride = true;
+        staged.bAutomaticPatternSequenceAuditionHold = true;
+    }
+#endif
 	++m_iNextNetEntityId;
 	m_WorldEntities.push_back(std::move(staged));
 	if (auto player = m_Players.find(m_PlayerIdBySessionId.at(sessionId)); player != m_Players.end())

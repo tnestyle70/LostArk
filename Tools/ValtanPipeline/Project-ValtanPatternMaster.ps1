@@ -612,6 +612,10 @@ if ($Mode -eq 'PublishV2') {
             'Data/Valtan/Published/BOSS_VALTAN.effectv2bindings.json',
             'Data/Valtan/Published/Valtan.patternsoundcues.json'
         )
+        if ([IO.File]::Exists((Join-Path $repoRoot 'Data/Animation/Authored/Valtan/Valtan.boneclips.json')) -or
+            [IO.File]::Exists((Join-Path $repoRoot 'Data/Valtan/Published/Valtan.boneclips.json'))) {
+            $expectedRelativePaths += 'Data/Valtan/Published/Valtan.boneclips.json'
+        }
         [string[]]$actualRelativePaths = @(
             $projectResult.payload.files | ForEach-Object { [string]$_.path })
         [Array]::Sort($expectedRelativePaths, [StringComparer]::Ordinal)

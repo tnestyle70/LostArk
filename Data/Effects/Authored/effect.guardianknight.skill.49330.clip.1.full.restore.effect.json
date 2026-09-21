@@ -1,0 +1,49 @@
+{
+  "schema": "lostark.effect-authoring",
+  "version": 15,
+  "effectAssetId": "effect.guardianknight.skill.49330.clip.1.full.restore",
+  "displayName": "Guardian Knight 49330 ddk_sk_deepimpact_02",
+  "particleSystem": {
+    "uniformScaleMultiplier": 1,
+    "yawOffsetDegrees": 0,
+    "directionYawDegrees": 0,
+    "initialSpeedMultiplier": 1
+  },
+  "modelCues": [],
+  "elements": [],
+  "ownerControls": [
+    {
+      "controlId": "action-49330.stage-001.notify-004.visibility",
+      "kind": "PAWN_VISIBILITY",
+      "parameter": "visibility",
+      "mappingBasis": "PROJECT_ADAPTER",
+      "sourceTargetType": 0,
+      "onlyLocalPlayer": false,
+      "startSeconds": 0.0,
+      "keys": [
+        {
+          "seconds": 0,
+          "value": [
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "seconds": 1.0,
+          "value": [
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    }
+  ],
+  "runtimeExtensions": {
+    "formatVersion": 1,
+    "bakedEdgeHistories": []
+  }
+}

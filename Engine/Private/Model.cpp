@@ -110,6 +110,7 @@ CModel::CModel(const CModel& Prototype)
     , m_iCurrentAnimIndex { Prototype.m_iCurrentAnimIndex }
     , m_iNumAnimations { Prototype.m_iNumAnimations}
     // , m_Animations { Prototype.m_Animations }
+    , m_AuthoredAnimationNames { Prototype.m_AuthoredAnimationNames }
     , m_isAnimLoop { Prototype.m_isAnimLoop }
 	, m_isAnimPaused { Prototype.m_isAnimPaused }
 	, m_fAnimationSpeed { Prototype.m_fAnimationSpeed }
@@ -1401,6 +1402,7 @@ uint32_t CModel::Override_SourceCharacterConstants(
         if (nullptr == pMaterial || !pMaterial->Has_SourceCharacterProgram() ||
             !MaterialNameContains(pMaterial->Get_Name(), fragment))
             continue;
+        if (pMaterial.use_count() > 1) pMaterial = pMaterial->Clone_ForOverrides();
         if (pMaterial->Set_SourceCharacterConstants(parameters))
             ++matched;
     }
@@ -1421,6 +1423,7 @@ uint32_t CModel::Override_SourceCharacterTexture(
         if (nullptr == pMaterial || !pMaterial->Has_SourceCharacterProgram() ||
             !MaterialNameContains(pMaterial->Get_Name(), fragment))
             continue;
+        if (pMaterial.use_count() > 1) pMaterial = pMaterial->Clone_ForOverrides();
         if (pMaterial->Set_SourceCharacterTextureOverride(iRegister, pTexture))
             ++matched;
     }
@@ -1431,8 +1434,11 @@ void CModel::Clear_SourceCharacterOverrides()
 {
     for (auto& pMaterial : m_Materials)
     {
-        if (nullptr != pMaterial)
+        if (nullptr != pMaterial && pMaterial->Has_SourceCharacterProgram())
+        {
+            if (pMaterial.use_count() > 1) pMaterial = pMaterial->Clone_ForOverrides();
             pMaterial->Clear_SourceCharacterOverrides();
+        }
     }
 }
 
@@ -1826,7 +1832,7 @@ HRESULT CModel::Apply_MaterialOverrides(MODEL_MATERIAL_SOURCE& materialSource, c
         {
             const auto& source = replacement.surface.sourceCharacter;
             const uint32_t mask = source.baseTextureMask | source.lightTextureMask;
-            if (source.program == 0u || source.program > 99u || (source.program > 65u && source.program < 80u) ||
+            if (source.program == 0u || source.program > 108u || (source.program > 65u && source.program < 80u) ||
                 (mask == 0u && source.program != 64u && source.program != 65u) ||
                 ((source.program == 64u || source.program == 65u) && mask != 0u) || source.requiredExtraUVMask > 3u ||
                 (mask >> SOURCE_CHARACTER_TEXTURE_COUNT) != 0u ||
@@ -2637,6 +2643,99 @@ HRESULT CModel::Attach_AnimationSet(const CModel& animationSet)
 	return S_OK;
 }
 
+bool_t CModel::Sample_AnimationLocalTransforms(const char_t* name,
+    const f32_t seconds, vector<float4x4_t>& output) const
+{
+    if (!name || !std::isfinite(seconds) || seconds < 0.f || m_Bones.empty() ||
+        m_BoneRestLocalTransforms.size() != m_Bones.size()) return false;
+    const CAnimation* selected = nullptr;
+    for (const auto& animation : m_Animations)
+        if (animation && animation->Compare_Name(name))
+        {
+            if (selected) return false;
+            selected = animation.get();
+        }
+    if (!selected || selected->Get_TickPerSecond() <= 0.f) return false;
+    const auto ticks = seconds * selected->Get_TickPerSecond();
+    if (!std::isfinite(ticks) || ticks > selected->Get_Duration() + .001f) return false;
+    auto staged = m_BoneRestLocalTransforms;
+    if (!selected->Sample_LocalBoneTransforms((std::min)(ticks, selected->Get_Duration()), staged)) return false;
+    for (const auto& local : staged) if (!Is_FiniteMatrix(local)) return false;
+    output = std::move(staged); return true;
+}
+
+bool_t CModel::Install_AuthoredAnimations(const vector<MODEL_ANIMATION_DATA>& input, string& status)
+{
+    try
+    {
+        if (MODEL::ANIM != m_eType || !m_iSkeletonHash || m_Bones.empty() || input.size() > 32u)
+            throw std::runtime_error("Authored clips need an admitted animated skeleton");
+        auto staged = m_Animations;
+        auto names = m_AuthoredAnimationNames;
+        std::set<string> incoming;
+        size_t totalKeys = 0u;
+        for (auto animation : input)
+        {
+            if (!animation.name.starts_with("authored.") || animation.name.size() >= 128u ||
+                !std::all_of(animation.name.begin(), animation.name.end(), [](unsigned char c) {
+                    return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+                        (c >= '0' && c <= '9') || c == '.' || c == '_' || c == '-'; }) ||
+                !incoming.insert(animation.name).second || animation.skeletonHash != m_iSkeletonHash ||
+                !std::isfinite(animation.durationTicks) || animation.durationTicks <= 0.f || animation.durationTicks > 1800.f ||
+                animation.ticksPerSecond != CAnimation::COOKED_TICK_RATE || animation.channels.size() != m_Bones.size())
+                throw std::runtime_error("Invalid authored clip identity, skeleton or duration");
+            std::set<int32_t> bones;
+            for (auto& channel : animation.channels)
+            {
+                if (channel.resolvedBoneIndex < 0 || channel.resolvedBoneIndex >= static_cast<int32_t>(m_Bones.size()) ||
+                    !bones.insert(channel.resolvedBoneIndex).second || channel.positionKeys.empty() ||
+                    channel.rotationKeys.empty() || channel.scaleKeys.empty()) throw std::runtime_error("Invalid authored bone channels");
+                const auto validateTimes = [&](const auto& keys)
+                {
+                    float previous = -1.f;
+                    if (keys.size() > 8192u) throw std::runtime_error("Authored key count exceeds limit");
+                    totalKeys += keys.size();
+                    if (totalKeys > 6000000u) throw std::runtime_error("Authored clip key budget exceeded");
+                    for (const auto& key : keys)
+                    {
+                        if (!std::isfinite(key.timeTicks) || key.timeTicks < 0.f || key.timeTicks <= previous ||
+                            key.timeTicks > animation.durationTicks + .001f) throw std::runtime_error("Invalid authored key time");
+                        previous = key.timeTicks;
+                    }
+                };
+                validateTimes(channel.positionKeys); validateTimes(channel.scaleKeys); validateTimes(channel.rotationKeys);
+                for (const auto& key : channel.positionKeys)
+                    if (!std::isfinite(key.value.x) || !std::isfinite(key.value.y) || !std::isfinite(key.value.z))
+                        throw std::runtime_error("Nonfinite authored translation");
+                for (const auto& key : channel.scaleKeys)
+                    if (!std::isfinite(key.value.x) || !std::isfinite(key.value.y) || !std::isfinite(key.value.z) ||
+                        std::abs(key.value.x) <= .000001f || std::abs(key.value.y) <= .000001f || std::abs(key.value.z) <= .000001f) throw std::runtime_error("Invalid authored scale");
+                for (auto& key : channel.rotationKeys)
+                {
+                    auto q = XMLoadFloat4(&key.value);
+                    const auto length = XMVectorGetX(XMVector4LengthSq(q));
+                    if (!std::isfinite(length) || length <= .000001f) throw std::runtime_error("Invalid authored quaternion");
+                    XMStoreFloat4(&key.value, XMQuaternionNormalize(q));
+                }
+            }
+            const auto existing = std::find_if(staged.begin(), staged.end(), [&](const auto& clip) {
+                return clip && clip->Compare_Name(animation.name.c_str()); });
+            if (existing != staged.end() && !names.contains(animation.name))
+                throw std::runtime_error("Authored animation cannot replace a native clip");
+            auto compiled = CAnimation::Create(animation, m_Bones);
+            if (!compiled) throw std::runtime_error("Authored animation channel creation failed");
+            if (existing == staged.end()) staged.push_back(std::move(compiled));
+            else *existing = std::move(compiled);
+            names.insert(animation.name);
+        }
+        m_Animations.swap(staged); m_AuthoredAnimationNames.swap(names);
+        m_iNumAnimations = static_cast<uint32_t>(m_Animations.size());
+        status = "Authored animation channels installed"; return true;
+    }
+    catch (const std::exception& error) { status = error.what(); return false; }
+}
+
+
 unique_ptr<CModel> CModel::Create(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext, MODEL eType, const char_t* pModelFilePath, fmatrix_t PreTransformMatrix,
     const bool_t bRetainOrderedStaticGeometry)
 {
@@ -2676,7 +2775,7 @@ unique_ptr<CModel> CModel::Create(
 unique_ptr<CModel> CModel::Create_MaterialVariant(const CModel& prototype,
     const MODEL_ASSET_LOAD_DESC& loadDesc)
 {
-    if (prototype.m_eType != MODEL::NONANIM || !prototype.m_pMaterialSource) return nullptr;
+    if (!prototype.m_pMaterialSource) return nullptr;
     const auto& identity = prototype.m_pMaterialSource->identity;
     if (identity.assetRoot.lexically_normal() != loadDesc.assetRoot.lexically_normal() ||
         identity.meshPath.lexically_normal() != loadDesc.meshPath.lexically_normal() ||

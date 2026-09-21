@@ -5188,7 +5188,9 @@
     "Sound/Vehicle/S_Vehicle_AncientDragon1_FootStep1__203524812.wav",
     "Sound/Vehicle/S_Vehicle_AncientDragon1_FootStep1__331706164.wav",
     "Sound/Vehicle/S_Vehicle_AncientDragon1_FootStep1__123686701.wav"
-   ]
+   ],
+   "S_Vehicle_AncientDragon1_GetOff1": ["Sound/Vehicle/S_Vehicle_AncientDragon1_GetOff1__191109686.wav", "Sound/Vehicle/S_Vehicle_AncientDragon1_GetOff1__232768592.wav", "Sound/Vehicle/S_Vehicle_AncientDragon1_GetOff1__89483797.wav"],
+   "S_Vehicle_AncientDragon1_GetOn1": ["Sound/Vehicle/S_Vehicle_AncientDragon1_GetOn1__191109686.wav", "Sound/Vehicle/S_Vehicle_AncientDragon1_GetOn1__89483797.wav", "Sound/Vehicle/S_Vehicle_AncientDragon1_GetOn1__232768592.wav"]
   },
   "KoukuSaydon": {
    "s_bgm_commanderraid.bgm_midnightc_ed_m02_scene_movetocircus": [
