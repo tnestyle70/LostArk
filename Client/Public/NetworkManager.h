@@ -227,6 +227,10 @@ public:
 	bool Send_DebugBingoFill(std::uint32_t sequence, std::uint32_t cellMask, bool reset);
 	bool Send_DebugBingoBomb(std::uint32_t sequence);
 	bool Send_DebugBingoHammer(std::uint32_t sequence);
+	/* Debug F1 "Normal Monster 1/2" in the Kouku or Valtan arena. The monsters come
+	back on the world snapshot, so there is no result to wait for. */
+	bool Send_DebugResummonWaveMonsters(std::uint32_t sequence,
+		LostArk::Shared::WAVE_MONSTER_BUTTON button);
 	bool Try_Consume_DebugKoukuHudModeResult(
 		LostArk::Shared::S2C_DEBUG_SET_KOUKU_HUD_MODE_RESULT& result);
 	bool Try_Consume_DebugMadnessFormResult(

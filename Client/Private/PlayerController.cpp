@@ -1374,6 +1374,16 @@ bool_t Client::CPlayerController::Request_DebugBingoHammer()
  return true;
 }
 
+bool_t Client::CPlayerController::Request_DebugResummonWaveMonsters(
+ const LostArk::Shared::WAVE_MONSTER_BUTTON button)
+{
+ if (m_pLocalCharacter.expired() || nullptr == m_pCommandSink ||
+  !m_pCommandSink->Request_DebugResummonWaveMonsters(m_iNextActionSequence, button))
+  return false;
+ if (0u == ++m_iNextActionSequence) m_iNextActionSequence = 1u;
+ return true;
+}
+
 bool_t Client::CPlayerController::Request_DebugKoukuHudMode(
  const LostArk::Shared::KOUKU_HUD_MODE mode)
 {

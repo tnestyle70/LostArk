@@ -495,6 +495,9 @@ private:
 	/* F1 "KoukuSaydon Arena": gate buttons that ask the Server to raise the
 	   gate bosses, move only this player and point the HUD at the gate boss. */
 	void RenderKoukuSaydonArenaControls();
+	/* F1 "Valtan Arena": the "Normal Monster 1/2" buttons that ask the Server to
+	   re-summon the Stage_1 / Stage_2 corridor waves. Shown only inside the arena. */
+	void RenderValtanArenaControls();
 	void OpenDebugResourceFile(size_t iFile);
 	void RefreshCompletePlayPatternOptions();
 	void RenderCompletePlayControls();

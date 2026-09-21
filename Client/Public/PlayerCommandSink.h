@@ -66,6 +66,11 @@ public:
 	/* Debug bingo hammer. The Server rolls the anchor and owns the phase
 	clock, so the request names nothing. */
 	virtual bool Request_DebugBingoHammer(std::uint32_t sequence) = 0;
+	/* Debug wave-monster re-summon (F1 "Normal Monster 1/2"). The Server maps the
+	button to its fixed spawn group and the monsters come back on the world
+	snapshot, so the request names no group and there is no result to consume. */
+	virtual bool Request_DebugResummonWaveMonsters(std::uint32_t sequence,
+		LostArk::Shared::WAVE_MONSTER_BUTTON button) = 0;
 	virtual bool Consume_DebugKoukuHudModeResult(
 		LostArk::Shared::S2C_DEBUG_SET_KOUKU_HUD_MODE_RESULT& result) = 0;
 
