@@ -13,6 +13,8 @@
 #include "WorldBootstrap.h"
 #include "WorldDestructionRuntime.h"
 #include "WorldDestructionBootstrapContractTests.h"
+#include "Network/PacketReader.h"
+#include "Network/PacketWriter.h"
 #include <Windows.h>
 #include <process.h>
 #include <algorithm>
@@ -1250,3 +1252,536 @@ void LostArk::Server::CServerGameplayContractRunner::Run_SpawnGroups(TESTS& test
 	}
 }
 
+void LostArk::Server::CServerGameplayContractRunner::Run_WaveMonsterButtons(TESTS& tests)
+{
+	/* Debug F1 "Normal Monster 1/2": the wire request, the Debug room that hands the four
+	   wave boxes (Kouku Book1/Book2, Valtan Stage_1/Stage_2) to the buttons, and the
+	   Release room that keeps raising them when a player steps in. The room-level cases
+	   compile differently per configuration on purpose: Debug proves suppression plus
+	   re-summon, Release proves nothing changed. */
+	struct WAVE_CASE final
+	{
+		WORLD_ID eWorld;
+		WAVE_MONSTER_BUTTON eButton;
+		const char* pTrigger;
+		const char* pGroup;
+		std::uint32_t iMaxAlive;
+	};
+	const WAVE_CASE cases[] =
+	{
+		{ WORLD_ID::KAKULSAYDON_ARENA, WAVE_MONSTER_BUTTON::NORMAL_MONSTER_1, "Book1_Monsters", "spawn.kouku.book1", 22u },
+		{ WORLD_ID::KAKULSAYDON_ARENA, WAVE_MONSTER_BUTTON::NORMAL_MONSTER_2, "Book2_Monsters", "spawn.kouku.book2", 15u },
+		{ WORLD_ID::VALTAN_ARENA, WAVE_MONSTER_BUTTON::NORMAL_MONSTER_1, "Stage_1", "spawn.valtan.stage01", 10u },
+		{ WORLD_ID::VALTAN_ARENA, WAVE_MONSTER_BUTTON::NORMAL_MONSTER_2, "Stage_2", "spawn.valtan.stage03", 10u },
+	};
+	const auto named = [](const char* what, const char* trigger)
+	{
+		return std::string(what) + " (" + trigger + ")";
+	};
+
+	{
+		/* Wire: one new client-to-server packet, appended after the last known one. */
+		tests.Require(
+			NETWORK_PROTOCOL_VERSION >= 99u &&
+			Is_Known_Packet_Type(PACKET_TYPE::C2S_DEBUG_RESUMMON_WAVE_MONSTERS) &&
+			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_RESUMMON_WAVE_MONSTERS) ==
+				static_cast<std::uint16_t>(PACKET_TYPE::C2S_SET_EQUIPMENT) + 1u,
+			"Wave monster re-summon bumps the protocol past 98 and the packet type is appended after the last known one");
+		bool roundTrips = true;
+		for (const WAVE_CASE& c : cases)
+		{
+			C2S_DEBUG_RESUMMON_WAVE_MONSTERS request{};
+			request.iRequestSequence = 41u;
+			request.eWorldId = c.eWorld;
+			request.eButton = c.eButton;
+			CPacketWriter writer;
+			C2S_DEBUG_RESUMMON_WAVE_MONSTERS decoded{};
+			const bool wrote = Write_Message(writer, request) && 7u == writer.Get_Buffer().size();
+			CPacketReader reader{ std::span<const std::uint8_t>(writer.Get_Buffer()) };
+			roundTrips = roundTrips && wrote && Read_Message(reader, decoded) &&
+				0u == reader.Get_RemainingSize() &&
+				decoded.iRequestSequence == 41u && decoded.eWorldId == c.eWorld &&
+				decoded.eButton == c.eButton;
+		}
+		tests.Require(roundTrips,
+			"Wave monster re-summon request round-trips as seven bytes for every world and button");
+
+		C2S_DEBUG_RESUMMON_WAVE_MONSTERS request{};
+		request.iRequestSequence = 1u;
+		request.eWorldId = WORLD_ID::VALTAN_ARENA;
+		request.eButton = WAVE_MONSTER_BUTTON::NORMAL_MONSTER_1;
+		CPacketWriter scratch;
+		C2S_DEBUG_RESUMMON_WAVE_MONSTERS zeroSequence = request;
+		zeroSequence.iRequestSequence = 0u;
+		C2S_DEBUG_RESUMMON_WAVE_MONSTERS unknownWorld = request;
+		unknownWorld.eWorldId = WORLD_ID::END;
+		C2S_DEBUG_RESUMMON_WAVE_MONSTERS unknownButton = request;
+		unknownButton.eButton = WAVE_MONSTER_BUTTON::END;
+		tests.Require(
+			!Write_Message(scratch, zeroSequence) && !Write_Message(scratch, unknownWorld) &&
+			!Write_Message(scratch, unknownButton),
+			"Wave monster re-summon refuses to encode a zero sequence, an unknown world or an unknown button");
+
+		const auto decodeRaw = [](const std::uint32_t sequence, const std::uint16_t world,
+			const std::uint8_t button, const bool truncate)
+		{
+			CPacketWriter raw;
+			raw.Write_U32(sequence);
+			raw.Write_U16(world);
+			if (!truncate)
+				raw.Write_U8(button);
+			CPacketReader reader{ std::span<const std::uint8_t>(raw.Get_Buffer()) };
+			C2S_DEBUG_RESUMMON_WAVE_MONSTERS decoded{};
+			return Read_Message(reader, decoded);
+		};
+		const std::uint16_t valtan = static_cast<std::uint16_t>(WORLD_ID::VALTAN_ARENA);
+		tests.Require(
+			decodeRaw(1u, valtan, 1u, false) &&
+			!decodeRaw(0u, valtan, 1u, false) &&
+			!decodeRaw(1u, 0xFFFFu, 1u, false) &&
+			!decodeRaw(1u, valtan, 2u, false) &&
+			!decodeRaw(1u, valtan, 0xFFu, false) &&
+			!decodeRaw(1u, valtan, 0u, true),
+			"Wave monster re-summon decoder rejects a zero sequence, an unknown world, an out-of-range button and a truncated payload");
+	}
+
+	{
+		/* The (world, button) table is the only pairing the Server trusts. */
+		bool tableMatches = true;
+		for (const WAVE_CASE& c : cases)
+		{
+			const WAVE_MONSTER_BUTTON_ROW* row =
+				CServerTriggerSystem::Find_WaveMonsterButton(c.eWorld, c.eButton);
+			tableMatches = tableMatches && nullptr != row &&
+				std::string_view(row->pTriggerPlacementId) == c.pTrigger &&
+				std::string_view(row->pSpawnGroupId) == c.pGroup;
+		}
+		tests.Require(tableMatches,
+			"Wave monster buttons map Kouku 1/2 to Book1/Book2 and Valtan 1/2 to Stage_1/Stage_2");
+		tests.Require(
+			nullptr == CServerTriggerSystem::Find_WaveMonsterButton(WORLD_ID::BERN, WAVE_MONSTER_BUTTON::NORMAL_MONSTER_1) &&
+			nullptr == CServerTriggerSystem::Find_WaveMonsterButton(WORLD_ID::CHARACTER_SELECT_ARENA, WAVE_MONSTER_BUTTON::NORMAL_MONSTER_2) &&
+			nullptr == CServerTriggerSystem::Find_WaveMonsterButton(WORLD_ID::TRAINING_GROUND, WAVE_MONSTER_BUTTON::NORMAL_MONSTER_1) &&
+			nullptr == CServerTriggerSystem::Find_WaveMonsterButton(WORLD_ID::VALTAN_ARENA, WAVE_MONSTER_BUTTON::END),
+			"Worlds without wave monster buttons and the END button map to nothing");
+	}
+
+	/* Trigger system: the suppression flag changes exactly the four boxes and nothing else,
+	   measured against the authored bootstrap of both worlds. */
+	struct TRIGGER_OUTCOME final
+	{
+		std::vector<std::string> Activations;
+		std::vector<std::string> Prompts;
+		std::size_t iTransfers = 0u;
+		std::uint32_t iKeyUses = 0u;
+		bool bInteract = false;
+		bool operator==(const TRIGGER_OUTCOME&) const = default;
+	};
+	const auto evaluate = [](const WORLD_ID world,
+		const std::vector<WORLD_BOOTSTRAP_PLACEMENT>& placements,
+		const WORLD_BOOTSTRAP_PLACEMENT& at, const bool suppress,
+		TRIGGER_OUTCOME& outcome, bool& inside)
+	{
+		CServerTriggerSystem system;
+		system.Set_WorldId(world);
+		system.Set_SuppressWaveMonsterTriggers(suppress);
+		std::string status;
+		if (!system.Initialize(placements, status))
+			return false;
+		std::map<PLAYER_ID, SERVER_PLAYER> players;
+		SERVER_PLAYER& player = players[1u];
+		player.iPlayerId = 1u;
+		player.iNetEntityId = 2u;
+		player.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+		player.iCurrentHp = player.iMaximumHp = 1000u;
+		player.fPositionX = at.fPositionX;
+		player.fPositionY = at.fPositionY - WorldCollision::PLAYER_CENTER_OFFSET_Y;
+		player.fPositionZ = at.fPositionZ;
+		inside = CServerTriggerSystem::Contains_Placement(at, player);
+		const auto activate = [&outcome](const WORLD_TRIGGER_ACTION_KIND kind, const std::string& target)
+		{
+			outcome.Activations.push_back(std::to_string(static_cast<int>(kind)) + ":" + target);
+			return true;
+		};
+		std::vector<SERVER_WORLD_TRANSFER_REQUEST> transfers;
+		std::vector<SERVER_INTERACT_PROMPT_EDGE> edges;
+		system.Evaluate_Entries(players, 100u, transfers, activate, edges);
+		for (const SERVER_INTERACT_PROMPT_EDGE& edge : edges)
+			outcome.Prompts.push_back(edge.strTriggerPlacementId + (edge.bAvailable ? "+" : "-"));
+		outcome.iTransfers = transfers.size();
+		outcome.iKeyUses = system.Activate_Here(1u, players, 200u, transfers, activate);
+		outcome.bInteract = system.Activate_Interact(1u, at.strPlacementId, players, 300u, transfers, activate);
+		return true;
+	};
+	const std::string spawnGroupKind =
+		std::to_string(static_cast<int>(WORLD_TRIGGER_ACTION_KIND::ACTIVATE_SPAWN_GROUP)) + ":";
+	for (const WORLD_ID world : { WORLD_ID::KAKULSAYDON_ARENA, WORLD_ID::VALTAN_ARENA })
+	{
+		auto roomStorage = std::make_unique<CGameRoom>(world);
+		CGameRoom& room = *roomStorage;
+		const auto& placements = room.m_WorldBootstrap.Get_Placements();
+		bool everyOtherBoxUnchanged = room.Is_Ready();
+		bool everyWaveBoxQuiet = true;
+		bool everyGatedWaveBoxQuiet = true;
+		std::size_t waveBoxes = 0u;
+		std::size_t otherBoxes = 0u;
+		for (const WORLD_BOOTSTRAP_PLACEMENT& placement : placements)
+		{
+			if (!placement.isEnabled || WORLD_BOOTSTRAP_KIND::TRIGGER_BOX != placement.eKind)
+				continue;
+			TRIGGER_OUTCOME plain;
+			TRIGGER_OUTCOME held;
+			bool insidePlain = false;
+			bool insideHeld = false;
+			if (!evaluate(world, placements, placement, false, plain, insidePlain) ||
+				!evaluate(world, placements, placement, true, held, insideHeld) ||
+				!insidePlain || !insideHeld)
+			{
+				if (CServerTriggerSystem::Is_WaveMonsterTrigger(world, placement))
+					everyWaveBoxQuiet = false;
+				continue;
+			}
+			if (!CServerTriggerSystem::Is_WaveMonsterTrigger(world, placement))
+			{
+				++otherBoxes;
+				everyOtherBoxUnchanged = everyOtherBoxUnchanged && plain == held;
+				continue;
+			}
+			++waveBoxes;
+			const std::string wave = spawnGroupKind + placement.TriggerActions.front().strTargetId;
+			TRIGGER_OUTCOME expected = plain;
+			const std::size_t before = expected.Activations.size();
+			expected.Activations.erase(
+				std::remove(expected.Activations.begin(), expected.Activations.end(), wave),
+				expected.Activations.end());
+			everyWaveBoxQuiet = everyWaveBoxQuiet &&
+				before != expected.Activations.size() && expected == held &&
+				std::find(held.Activations.begin(), held.Activations.end(), wave) == held.Activations.end();
+
+			/* The same box authored as G-only: without the flag it offers itself and G raises
+			   the group; with the flag it offers nothing and G cannot raise it either. */
+			std::vector<WORLD_BOOTSTRAP_PLACEMENT> gatedPlacements = placements;
+			WORLD_BOOTSTRAP_PLACEMENT gatedBox = placement;
+			gatedBox.requiresInteract = true;
+			for (WORLD_BOOTSTRAP_PLACEMENT& candidate : gatedPlacements)
+				if (candidate.strPlacementId == placement.strPlacementId)
+					candidate = gatedBox;
+			TRIGGER_OUTCOME gatedPlain;
+			TRIGGER_OUTCOME gatedHeld;
+			bool insideGatedPlain = false;
+			bool insideGatedHeld = false;
+			const bool gatedRan =
+				evaluate(world, gatedPlacements, gatedBox, false, gatedPlain, insideGatedPlain) &&
+				evaluate(world, gatedPlacements, gatedBox, true, gatedHeld, insideGatedHeld);
+			const auto raises = [&wave](const TRIGGER_OUTCOME& outcome)
+			{
+				return std::find(outcome.Activations.begin(), outcome.Activations.end(), wave) !=
+					outcome.Activations.end();
+			};
+			const auto offers = [&placement](const TRIGGER_OUTCOME& outcome)
+			{
+				return std::find(outcome.Prompts.begin(), outcome.Prompts.end(),
+					placement.strPlacementId + "+") != outcome.Prompts.end();
+			};
+			everyGatedWaveBoxQuiet = everyGatedWaveBoxQuiet && gatedRan &&
+				insideGatedPlain && insideGatedHeld &&
+				offers(gatedPlain) && raises(gatedPlain) && gatedPlain.bInteract &&
+				!offers(gatedHeld) && !raises(gatedHeld) && !gatedHeld.bInteract;
+		}
+		const std::string worldName = WORLD_ID::VALTAN_ARENA == world ? "Valtan" : "Kouku";
+		tests.Require(2u == waveBoxes && everyWaveBoxQuiet,
+			(worldName + ": with the flag set, stepping into or pressing G in the two wave boxes raises nothing and offers nothing, while flag off raises their spawn group").c_str());
+		tests.Require(2u == waveBoxes && everyGatedWaveBoxQuiet,
+			(worldName + ": a wave box authored as G-only offers and raises its group without the flag, and with the flag offers nothing and G cannot raise it").c_str());
+		tests.Require(otherBoxes > 0u && everyOtherBoxUnchanged,
+			(worldName + ": the flag leaves every other authored trigger box's entry, prompt, G and transfer outcome identical").c_str());
+	}
+
+	/* Room level. Every case stands one player in the wave box of a real room. */
+	static constexpr SESSION_ID SESSION = 9401u;
+	static constexpr PLAYER_ID PLAYER = 94001u;
+	const auto addPlayer = [](CGameRoom& room, const float x, const float y, const float z)
+	{
+		SERVER_PLAYER player{};
+		player.iPlayerId = PLAYER;
+		player.iNetEntityId = 94002u;
+		player.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+		player.iCurrentHp = player.iMaximumHp = 1000000000u;
+		player.isCombatReady = true;
+		player.fPositionX = x;
+		player.fPositionY = y;
+		player.fPositionZ = z;
+		room.m_Players.emplace(player.iPlayerId, player);
+		room.m_PlayerIdByEntityId.emplace(player.iNetEntityId, player.iPlayerId);
+		room.m_PlayerIdBySessionId.emplace(SESSION, player.iPlayerId);
+	};
+	const auto tickRoom = [](CGameRoom& room, const int ticks)
+	{
+		for (int tick = 0; tick < ticks && room.Is_Ready(); ++tick)
+			room.Tick(1.f / 30.f);
+	};
+
+	for (const WAVE_CASE& c : cases)
+	{
+		auto stepRoom = std::make_unique<CGameRoom>(c.eWorld);
+		const WORLD_BOOTSTRAP_PLACEMENT* box = stepRoom->Find_Placement(c.pTrigger);
+		const auto& groups = stepRoom->m_SpawnGroupBootstrap.Get_Groups();
+		const auto definition = std::find_if(groups.begin(), groups.end(),
+			[&c](const SPAWN_GROUP_DEFINITION& group) { return group.strSpawnGroupId == c.pGroup; });
+		const bool dataPresent = stepRoom->Is_Ready() && nullptr != box &&
+			groups.end() != definition && definition->iMaxAlive == c.iMaxAlive &&
+			WORLD_BOOTSTRAP_KIND::TRIGGER_BOX == box->eKind && box->isEnabled &&
+			1u == box->TriggerActions.size() &&
+			WORLD_TRIGGER_ACTION_KIND::ACTIVATE_SPAWN_GROUP == box->TriggerActions.front().eKind &&
+			box->TriggerActions.front().strTargetId == c.pGroup;
+		tests.Require(dataPresent,
+			named("Authored wave box is an enabled activateSpawnGroup on the mapped group with the tooltip's max alive", c.pTrigger).c_str());
+		if (!dataPresent)
+			continue;
+
+		addPlayer(*stepRoom, box->fPositionX, box->fPositionY - WorldCollision::PLAYER_CENTER_OFFSET_Y, box->fPositionZ);
+		const bool standingInside =
+			CServerTriggerSystem::Contains_Placement(*box, stepRoom->m_Players.at(PLAYER));
+		tests.Require(standingInside,
+			named("Fixture player stands inside the wave box", c.pTrigger).c_str());
+		tickRoom(*stepRoom, 45);
+		const std::string group = c.pGroup;
+#ifdef _DEBUG
+		tests.Require(
+			!stepRoom->m_SpawnGroupRuntime.Is_ActiveOrCompleted(group) &&
+			0u == stepRoom->Count_SpawnGroupEntities(group),
+			named("Debug room: a player standing in the wave box does not raise the wave", c.pTrigger).c_str());
+		/* Control: the same player in the same room raises it once the flag is cleared, so the
+		   silence above came from the suppression and not from the player missing the box. */
+		stepRoom->m_ServerTriggerSystem.Set_SuppressWaveMonsterTriggers(false);
+		tickRoom(*stepRoom, 45);
+		tests.Require(
+			stepRoom->m_SpawnGroupRuntime.Is_ActiveOrCompleted(group) &&
+			stepRoom->Count_SpawnGroupEntities(group) > 0u,
+			named("Debug room control: clearing the flag lets the same player raise the wave", c.pTrigger).c_str());
+#else
+		tests.Require(
+			stepRoom->m_SpawnGroupRuntime.Is_ActiveOrCompleted(group) &&
+			stepRoom->Count_SpawnGroupEntities(group) > 0u &&
+			stepRoom->Count_SpawnGroupEntities(group) <= c.iMaxAlive,
+			named("Release room: a player stepping into the wave box raises the wave as before", c.pTrigger).c_str());
+#endif
+	}
+
+	/* Buttons. The player waits at the world's first authored spawn, away from every wave box. */
+	for (const WORLD_ID world : { WORLD_ID::KAKULSAYDON_ARENA, WORLD_ID::VALTAN_ARENA })
+	{
+		auto roomStorage = std::make_unique<CGameRoom>(world);
+		CGameRoom& room = *roomStorage;
+		const WAVE_CASE* first = nullptr;
+		const WAVE_CASE* second = nullptr;
+		for (const WAVE_CASE& c : cases)
+		{
+			if (c.eWorld != world)
+				continue;
+			(nullptr == first ? first : second) = &c;
+		}
+		const auto& placements = room.m_WorldBootstrap.Get_Placements();
+		const auto spawn = std::find_if(placements.begin(), placements.end(),
+			[](const WORLD_BOOTSTRAP_PLACEMENT& placement)
+			{
+				return placement.isEnabled && WORLD_BOOTSTRAP_KIND::PLAYER_SPAWN == placement.eKind;
+			});
+		const bool ready = room.Is_Ready() && placements.end() != spawn &&
+			nullptr != first && nullptr != second;
+		tests.Require(ready, "Button fixture room is ready with an authored player spawn");
+		if (!ready)
+			continue;
+		addPlayer(room, spawn->fPositionX, spawn->fPositionY, spawn->fPositionZ);
+		const std::string worldName = WORLD_ID::VALTAN_ARENA == world ? "Valtan" : "Kouku";
+		bool awayFromBoxes = true;
+		for (const WAVE_CASE* c : { first, second })
+			awayFromBoxes = awayFromBoxes && !CServerTriggerSystem::Contains_Placement(
+				*room.Find_Placement(c->pTrigger), room.m_Players.at(PLAYER));
+		tests.Require(awayFromBoxes, (worldName + ": button fixture player is outside both wave boxes").c_str());
+
+		const auto press = [&room](const WAVE_MONSTER_BUTTON button, const WORLD_ID requestWorld)
+		{
+			C2S_DEBUG_RESUMMON_WAVE_MONSTERS request{};
+			request.iRequestSequence = 1u;
+			request.eWorldId = requestWorld;
+			request.eButton = button;
+			room.Handle_DebugResummonWaveMonsters(SESSION, request);
+		};
+		const std::string groupOne = first->pGroup;
+		const std::string groupTwo = second->pGroup;
+		const auto groupIds = [&room](const std::string& group)
+		{
+			std::set<NET_ENTITY_ID> ids;
+			for (const SERVER_WORLD_ENTITY& entity : room.m_WorldEntities)
+				if (WORLD_BOOTSTRAP_KIND::MONSTER == entity.eKind && entity.strSpawnGroupId == group)
+					ids.insert(entity.iNetEntityId);
+			return ids;
+		};
+		tickRoom(room, 30);
+		tests.Require(
+			!room.m_SpawnGroupRuntime.Is_ActiveOrCompleted(groupOne) &&
+			!room.m_SpawnGroupRuntime.Is_ActiveOrCompleted(groupTwo) &&
+			0u == room.Count_SpawnGroupEntities(groupOne) && 0u == room.Count_SpawnGroupEntities(groupTwo),
+			(worldName + ": both wave groups start dormant with no monsters while nobody steps in and nobody presses").c_str());
+
+#ifdef _DEBUG
+		/* Two bystanders the press must never remove: a monster of another group and a
+		non-monster entity carrying this group's id. They are present only across a press
+		(never across a Tick), so the monster brain never simulates them. */
+		const auto injectBystanders = [&room](const std::string& group)
+		{
+			SERVER_WORLD_ENTITY otherGroup{};
+			otherGroup.iNetEntityId = 94900u;
+			otherGroup.eKind = WORLD_BOOTSTRAP_KIND::MONSTER;
+			otherGroup.strSpawnGroupId = "spawn.test.foreign";
+			SERVER_WORLD_ENTITY sameGroupNpc{};
+			sameGroupNpc.iNetEntityId = 94901u;
+			sameGroupNpc.eKind = WORLD_BOOTSTRAP_KIND::NPC;
+			sameGroupNpc.strSpawnGroupId = group;
+			room.m_WorldEntities.push_back(otherGroup);
+			room.m_WorldEntities.push_back(sameGroupNpc);
+		};
+		const auto bystandersPresent = [&room]()
+		{
+			return std::count_if(room.m_WorldEntities.begin(), room.m_WorldEntities.end(),
+				[](const SERVER_WORLD_ENTITY& entity) { return 94900u == entity.iNetEntityId || 94901u == entity.iNetEntityId; });
+		};
+		const auto removeBystanders = [&room]()
+		{
+			std::erase_if(room.m_WorldEntities,
+				[](const SERVER_WORLD_ENTITY& entity) { return 94900u == entity.iNetEntityId || 94901u == entity.iNetEntityId; });
+		};
+		/* Refusals change nothing. */
+		const WORLD_ID otherWorld = WORLD_ID::VALTAN_ARENA == world ? WORLD_ID::KAKULSAYDON_ARENA : WORLD_ID::VALTAN_ARENA;
+		press(first->eButton, otherWorld);
+		press(WAVE_MONSTER_BUTTON::END, world);
+		{
+			C2S_DEBUG_RESUMMON_WAVE_MONSTERS request{};
+			request.iRequestSequence = 1u;
+			request.eWorldId = world;
+			request.eButton = first->eButton;
+			room.Handle_DebugResummonWaveMonsters(SESSION + 1u, request);
+		}
+		tests.Require(
+			!room.m_SpawnGroupRuntime.Is_ActiveOrCompleted(groupOne) &&
+			0u == room.Count_SpawnGroupEntities(groupOne),
+			(worldName + ": a request naming another world, an unknown button or a session without a player is refused").c_str());
+		if (WORLD_ID::VALTAN_ARENA == world)
+		{
+			room.m_ValtanTimelineAudition.ePhase = CGameRoom::VALTAN_TIMELINE_AUDITION_PHASE::READY;
+			press(first->eButton, world);
+			room.m_ValtanTimelineAudition.ePhase = CGameRoom::VALTAN_TIMELINE_AUDITION_PHASE::INACTIVE;
+			tests.Require(!room.m_SpawnGroupRuntime.Is_ActiveOrCompleted(groupOne),
+				"Valtan: the button is refused while the pattern audition owns the arena");
+		}
+
+		/* Accepted: the group starts and its monsters appear at the authored anchors. */
+		injectBystanders(groupOne);
+		press(first->eButton, world);
+		tests.Require(room.m_SpawnGroupRuntime.Is_ActiveOrCompleted(groupOne) &&
+			!room.m_SpawnGroupRuntime.Is_ActiveOrCompleted(groupTwo) && 2 == bystandersPresent(),
+			(worldName + ": Normal Monster 1 starts only its own group and removes no bystander").c_str());
+		removeBystanders();
+		tickRoom(room, 60);
+		const std::set<NET_ENTITY_ID> firstRun = groupIds(groupOne);
+		bool atAnchors = !firstRun.empty();
+		const auto groupDefinition = std::find_if(room.m_SpawnGroupBootstrap.Get_Groups().begin(),
+			room.m_SpawnGroupBootstrap.Get_Groups().end(),
+			[&groupOne](const SPAWN_GROUP_DEFINITION& group) { return group.strSpawnGroupId == groupOne; });
+		for (const SERVER_WORLD_ENTITY& entity : room.m_WorldEntities)
+		{
+			if (entity.strSpawnGroupId != groupOne)
+				continue;
+			float nearest = (std::numeric_limits<float>::max)();
+			for (const SPAWN_GROUP_WAVE& wave : groupDefinition->Waves)
+				for (const SPAWN_GROUP_ENTRY& entry : wave.Entries)
+					if (const SPAWN_GROUP_ANCHOR* anchor = room.m_SpawnGroupBootstrap.Find_Anchor(entry.strAnchorId))
+						nearest = (std::min)(nearest, std::hypot(
+							entity.fSpawnPositionX - anchor->fPositionX, entity.fSpawnPositionZ - anchor->fPositionZ));
+			atAnchors = atAnchors && nearest <= 6.f;
+		}
+		tests.Require(
+			!firstRun.empty() && firstRun.size() <= first->iMaxAlive && atAnchors &&
+			0u == room.Count_SpawnGroupEntities(groupTwo),
+			(worldName + ": the summoned monsters stay within max alive at the group's authored anchors, wherever the player stands, and the other group stays empty").c_str());
+
+		/* Re-summon with survivors: the old monsters go, a fresh wave starts from the beginning. */
+		injectBystanders(groupOne);
+		press(first->eButton, world);
+		const std::set<NET_ENTITY_ID> straightAfter = groupIds(groupOne);
+		tests.Require(straightAfter.empty() && room.m_SpawnGroupRuntime.Is_ActiveOrCompleted(groupOne) &&
+			!room.m_SpawnGroupRuntime.Is_Completed(groupOne) && 2 == bystandersPresent(),
+			(worldName + ": pressing again removes every surviving monster of the group, restarts it and leaves the bystanders").c_str());
+		removeBystanders();
+		tickRoom(room, 60);
+		const std::set<NET_ENTITY_ID> secondRun = groupIds(groupOne);
+		bool disjoint = !secondRun.empty();
+		for (const NET_ENTITY_ID id : secondRun)
+			disjoint = disjoint && !firstRun.contains(id);
+		tests.Require(disjoint && secondRun.size() <= first->iMaxAlive,
+			(worldName + ": the re-summoned wave is made of new monsters within max alive").c_str());
+
+		/* A finished ONCE group is summoned again as well. */
+		bool completed = false;
+		for (int tick = 0; tick < 1800 && !completed && room.Is_Ready(); ++tick)
+		{
+			for (auto entity = room.m_WorldEntities.begin(); entity != room.m_WorldEntities.end();)
+				entity = (WORLD_BOOTSTRAP_KIND::MONSTER == entity->eKind && entity->strSpawnGroupId == groupOne) ?
+					room.m_WorldEntities.erase(entity) : std::next(entity);
+			room.Tick(1.f / 30.f);
+			completed = room.m_SpawnGroupRuntime.Is_Completed(groupOne);
+		}
+		tests.Require(completed,
+			(worldName + ": fixture drives the group to COMPLETED by clearing its monsters").c_str());
+		press(first->eButton, world);
+		tickRoom(room, 60);
+		tests.Require(
+			room.m_SpawnGroupRuntime.Is_ActiveOrCompleted(groupOne) && !room.m_SpawnGroupRuntime.Is_Completed(groupOne) &&
+			room.Count_SpawnGroupEntities(groupOne) > 0u,
+			(worldName + ": pressing a COMPLETED group summons its wave again").c_str());
+
+		/* Normal Monster 2 is its own group, independent of the first. */
+		const std::set<NET_ENTITY_ID> firstBeforeSecond = groupIds(groupOne);
+		press(second->eButton, world);
+		tickRoom(room, 60);
+		tests.Require(
+			!groupIds(groupTwo).empty() && groupIds(groupTwo).size() <= second->iMaxAlive &&
+			firstBeforeSecond.size() == groupIds(groupOne).size() &&
+			std::all_of(firstBeforeSecond.begin(), firstBeforeSecond.end(),
+				[&groupIds, &groupOne](const NET_ENTITY_ID id) { return groupIds(groupOne).contains(id); }),
+			(worldName + ": Normal Monster 2 summons its own group and leaves the first group's monsters alone").c_str());
+#else
+		/* Release: the button does nothing. */
+		press(first->eButton, world);
+		press(second->eButton, world);
+		tickRoom(room, 60);
+		tests.Require(
+			!room.m_SpawnGroupRuntime.Is_ActiveOrCompleted(groupOne) &&
+			!room.m_SpawnGroupRuntime.Is_ActiveOrCompleted(groupTwo) &&
+			0u == room.Count_SpawnGroupEntities(groupOne) && 0u == room.Count_SpawnGroupEntities(groupTwo),
+			(worldName + ": Release ignores the wave monster button request").c_str());
+#endif
+	}
+
+#ifdef _DEBUG
+	/* Only the four boxes are handed over: the Valtan mini boss box still fires when stepped on. */
+	{
+		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+		CGameRoom& room = *roomStorage;
+		const WORLD_BOOTSTRAP_PLACEMENT* miniBoss = room.Find_Placement("Stage_MiniBoss_Spawn");
+		const bool present = room.Is_Ready() && nullptr != miniBoss && 1u == miniBoss->TriggerActions.size();
+		tests.Require(present, "Valtan mini boss spawn box is authored");
+		if (present)
+		{
+			const std::string group = miniBoss->TriggerActions.front().strTargetId;
+			addPlayer(room, miniBoss->fPositionX, miniBoss->fPositionY - WorldCollision::PLAYER_CENTER_OFFSET_Y, miniBoss->fPositionZ);
+			tickRoom(room, 45);
+			tests.Require(
+				CServerTriggerSystem::Contains_Placement(*miniBoss, room.m_Players.at(PLAYER)) &&
+				room.m_SpawnGroupRuntime.Is_ActiveOrCompleted(group),
+				"Debug room: the Stage_MiniBoss_Spawn box still raises its group when stepped on (not handed to the buttons)");
+		}
+	}
+#endif
+}

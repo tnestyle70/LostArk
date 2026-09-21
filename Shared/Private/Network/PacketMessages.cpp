@@ -2551,6 +2551,42 @@ bool LostArk::Shared::Read_Message(
 }
 
 bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer, const C2S_DEBUG_RESUMMON_WAVE_MONSTERS& message)
+{
+	if (0u == message.iRequestSequence ||
+		!Is_Known_World_Id(message.eWorldId) ||
+		message.eButton >= WAVE_MONSTER_BUTTON::END)
+	{
+		return false;
+	}
+	writer.Write_U32(message.iRequestSequence);
+	writer.Write_U16(static_cast<std::uint16_t>(message.eWorldId));
+	writer.Write_U8(static_cast<std::uint8_t>(message.eButton));
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader, C2S_DEBUG_RESUMMON_WAVE_MONSTERS& message)
+{
+	C2S_DEBUG_RESUMMON_WAVE_MONSTERS decoded{};
+	std::uint16_t rawWorldId = 0u;
+	std::uint8_t rawButton = 0u;
+	if (!reader.Read_U32(decoded.iRequestSequence) ||
+		0u == decoded.iRequestSequence ||
+		!reader.Read_U16(rawWorldId) ||
+		!Is_Known_World_Id(static_cast<WORLD_ID>(rawWorldId)) ||
+		!reader.Read_U8(rawButton) ||
+		rawButton >= static_cast<std::uint8_t>(WAVE_MONSTER_BUTTON::END))
+	{
+		return false;
+	}
+	decoded.eWorldId = static_cast<WORLD_ID>(rawWorldId);
+	decoded.eButton = static_cast<WAVE_MONSTER_BUTTON>(rawButton);
+	message = decoded;
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
 	CPacketWriter& writer, const C2S_DEBUG_SET_MADNESS_FORM& message)
 {
 	if (0u == message.iRequestSequence || !Is_Known_World_Id(message.eWorldId) ||

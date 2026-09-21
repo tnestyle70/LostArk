@@ -758,6 +758,31 @@ namespace LostArk::Shared
 	bool Read_Message(CPacketReader& reader,
 		C2S_DEBUG_BINGO_HAMMER& message);
 
+	/* Which of the two wave-monster buttons the F1 tool pressed. The Server maps
+	(world, button) to a fixed spawn group, so the request never names a group id:
+	Kouku 1/2 = Book1_Monsters/Book2_Monsters, Valtan 1/2 = Stage_1/Stage_2. */
+	enum class WAVE_MONSTER_BUTTON : std::uint8_t
+	{
+		NORMAL_MONSTER_1,
+		NORMAL_MONSTER_2,
+		END
+	};
+
+	/* Debug F1 "Normal Monster 1/2": removes that wave group's live monsters and
+	re-summons it from the start at its authored anchors. Release ignores it. The
+	monsters come back on the world snapshot, so there is no result message. */
+	struct C2S_DEBUG_RESUMMON_WAVE_MONSTERS
+	{
+		std::uint32_t iRequestSequence = 0u;
+		WORLD_ID eWorldId = WORLD_ID::END;
+		WAVE_MONSTER_BUTTON eButton = WAVE_MONSTER_BUTTON::END;
+	};
+
+	bool Write_Message(CPacketWriter& writer,
+		const C2S_DEBUG_RESUMMON_WAVE_MONSTERS& message);
+	bool Read_Message(CPacketReader& reader,
+		C2S_DEBUG_RESUMMON_WAVE_MONSTERS& message);
+
 	struct C2S_DEBUG_SET_MADNESS_FORM
 	{
 		std::uint32_t iRequestSequence = 0u;

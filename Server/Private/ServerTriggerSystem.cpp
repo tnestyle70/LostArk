@@ -54,6 +54,59 @@ namespace
 	   already up, so a raid does not have to walk in one by one. */
 	constexpr const char* VALTAN_BOSS_START_TRIGGER_ID = "Stage_Boss";
 	constexpr const char* VALTAN_ARENA_ENTRY_TRIGGER_ID = "Stage_Boss_ArenaEntry";
+
+	/* Debug F1 "Normal Monster 1/2". Only these four boxes are handed to the buttons;
+	   Stage_MiniBoss_Spawn, Stage_3 (a movePlayer, unrelated to Stage_2's group
+	   spawn.valtan.stage03), Stage_Boss and every other box keep firing. */
+	constexpr LostArk::Server::WAVE_MONSTER_BUTTON_ROW WAVE_MONSTER_BUTTON_ROWS[] =
+	{
+		{ LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA, LostArk::Shared::WAVE_MONSTER_BUTTON::NORMAL_MONSTER_1, "Book1_Monsters", "spawn.kouku.book1" },
+		{ LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA, LostArk::Shared::WAVE_MONSTER_BUTTON::NORMAL_MONSTER_2, "Book2_Monsters", "spawn.kouku.book2" },
+		{ LostArk::Shared::WORLD_ID::VALTAN_ARENA, LostArk::Shared::WAVE_MONSTER_BUTTON::NORMAL_MONSTER_1, "Stage_1", "spawn.valtan.stage01" },
+		{ LostArk::Shared::WORLD_ID::VALTAN_ARENA, LostArk::Shared::WAVE_MONSTER_BUTTON::NORMAL_MONSTER_2, "Stage_2", "spawn.valtan.stage03" },
+	};
+}
+
+const LostArk::Server::WAVE_MONSTER_BUTTON_ROW*
+LostArk::Server::CServerTriggerSystem::Find_WaveMonsterButton(
+	const LostArk::Shared::WORLD_ID worldId,
+	const LostArk::Shared::WAVE_MONSTER_BUTTON button)
+{
+	const auto found = std::find_if(
+		std::begin(WAVE_MONSTER_BUTTON_ROWS), std::end(WAVE_MONSTER_BUTTON_ROWS),
+		[worldId, button](const WAVE_MONSTER_BUTTON_ROW& row)
+		{
+			return row.eWorld == worldId && row.eButton == button;
+		});
+	return std::end(WAVE_MONSTER_BUTTON_ROWS) == found ? nullptr : &*found;
+}
+
+bool LostArk::Server::CServerTriggerSystem::Is_WaveMonsterTrigger(
+	const LostArk::Shared::WORLD_ID worldId,
+	const WORLD_BOOTSTRAP_PLACEMENT& placement)
+{
+	if (WORLD_BOOTSTRAP_KIND::TRIGGER_BOX != placement.eKind ||
+		1u != placement.TriggerActions.size() ||
+		WORLD_TRIGGER_ACTION_KIND::ACTIVATE_SPAWN_GROUP !=
+			placement.TriggerActions.front().eKind)
+	{
+		return false;
+	}
+	return std::any_of(
+		std::begin(WAVE_MONSTER_BUTTON_ROWS), std::end(WAVE_MONSTER_BUTTON_ROWS),
+		[worldId, &placement](const WAVE_MONSTER_BUTTON_ROW& row)
+		{
+			return row.eWorld == worldId &&
+				placement.strPlacementId == row.pTriggerPlacementId &&
+				placement.TriggerActions.front().strTargetId == row.pSpawnGroupId;
+		});
+}
+
+bool LostArk::Server::CServerTriggerSystem::Is_WaveMonsterSuppressed(
+	const RUNTIME_TRIGGER& trigger) const
+{
+	return m_bSuppressWaveMonsterTriggers &&
+		Is_WaveMonsterTrigger(m_eWorldId, trigger.Definition);
 }
 
 bool LostArk::Server::CServerTriggerSystem::Initialize(
@@ -307,6 +360,7 @@ bool LostArk::Server::CServerTriggerSystem::Activate_Interact(
 		if (trigger.Definition.strPlacementId != triggerPlacementId ||
 			trigger.Definition.TriggerActions.empty() ||
 			Fires_OnEntry(trigger) ||
+			Is_WaveMonsterSuppressed(trigger) ||
 			WORLD_TRIGGER_ACTION_KIND::CLAIM_CARD_MAZE_TELESCOPE ==
 				trigger.Definition.TriggerActions.front().eKind ||
 			(trigger.Definition.isTriggerOnce && trigger.hasFired))
@@ -354,6 +408,7 @@ std::uint32_t LostArk::Server::CServerTriggerSystem::Activate_Here(
 			WORLD_TRIGGER_ACTION_KIND::CLAIM_CARD_MAZE_TELESCOPE ==
 				trigger.Definition.TriggerActions.front().eKind ||
 			Fires_OnEntry(trigger) ||
+			Is_WaveMonsterSuppressed(trigger) ||
 			(trigger.Definition.isTriggerOnce && trigger.hasFired) ||
 			!Contains(trigger, found->second))
 		{
@@ -547,6 +602,10 @@ void LostArk::Server::CServerTriggerSystem::Evaluate_Entries(
 		{
 			continue;
 		}
+		/* Debug rooms hand the four wave-monster boxes to the F1 buttons: walking
+		   in neither raises the wave nor offers G. Release never sets the flag. */
+		if (Is_WaveMonsterSuppressed(trigger))
+			continue;
 		/* A box that does not fire on entry only offers itself: the player presses
 		   G inside it and the Server checks the volume again. */
 		const bool firesOnEntry = Fires_OnEntry(trigger);
