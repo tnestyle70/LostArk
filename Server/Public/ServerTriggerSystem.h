@@ -65,6 +65,19 @@ namespace LostArk::Server
 	using SERVER_TRIGGER_MOVE_ENTRY_HANDLER = std::function<SERVER_TRIGGER_MOVE_ENTRY_RESULT(
 		const WORLD_BOOTSTRAP_PLACEMENT&, SERVER_PLAYER&, std::uint32_t)>;
 
+	/* Debug F1 "Normal Monster 1/2" pairs one wave-monster button of one world with
+	   the trigger box that used to raise the wave and the spawn group it raised.
+	   This table is the only place that pairing lives: a Debug room reads it to
+	   keep the box quiet, and the room's re-summon handler reads it to find the
+	   group the button owns. */
+	struct WAVE_MONSTER_BUTTON_ROW final
+	{
+		LostArk::Shared::WORLD_ID eWorld;
+		LostArk::Shared::WAVE_MONSTER_BUTTON eButton;
+		const char* pTriggerPlacementId;
+		const char* pSpawnGroupId;
+	};
+
 	class CServerTriggerSystem final
 	{
 	public:
@@ -134,6 +147,23 @@ namespace LostArk::Server
 		   A test that verifies the latch mechanism itself opts back in, before
 		   Initialize. */
 		void Set_HonourTriggerOnce(const bool honour) { m_bHonourTriggerOnce = honour; }
+		/* Debug rooms hand the four wave-monster boxes (WAVE_MONSTER_BUTTON_ROW) to the
+		   F1 "Normal Monster 1/2" buttons: stepping in neither fires them nor offers
+		   G, and G cannot run them. Release rooms never call this, so the flag stays
+		   false and every box behaves exactly as authored. Every other box, and
+		   Debug_Activate, are untouched either way. */
+		void Set_SuppressWaveMonsterTriggers(const bool suppress) { m_bSuppressWaveMonsterTriggers = suppress; }
+		/* The row a (world, button) pair owns, or null when that world has no such
+		   button. */
+		static const WAVE_MONSTER_BUTTON_ROW* Find_WaveMonsterButton(
+			LostArk::Shared::WORLD_ID worldId,
+			LostArk::Shared::WAVE_MONSTER_BUTTON button);
+		/* True only for one of the table's boxes in its own world whose single
+		   action is that row's spawn group activation; a box that merely shares an
+		   id but authors something else is not one. */
+		static bool Is_WaveMonsterTrigger(
+			LostArk::Shared::WORLD_ID worldId,
+			const WORLD_BOOTSTRAP_PLACEMENT& placement);
 		/* Minimum server ticks between two G activations by one player (0.3 s at
 		   30 Hz), so mashing the key cannot flood the room. */
 		static constexpr std::uint32_t KEY_ACTIVATION_DEBOUNCE_TICKS = 9u;
@@ -202,6 +232,8 @@ namespace LostArk::Server
 		   no, otherwise AUTO_ENTRY_RULES (top of the .cpp) decides by world and
 		   action kind. Every other box only offers itself and waits for G. */
 		bool Fires_OnEntry(const RUNTIME_TRIGGER& trigger) const;
+		/* True for a wave-monster box in a room that handed it to the F1 buttons. */
+		bool Is_WaveMonsterSuppressed(const RUNTIME_TRIGGER& trigger) const;
 		/* What a G press runs for one box: the authored action, or in Debug the
 		   Valtan corridor shortcut. Stepping in never reaches this. */
 		bool Run_Trigger(
@@ -234,6 +266,7 @@ namespace LostArk::Server
 		std::vector<RUNTIME_TRIGGER> m_Triggers;
 		bool m_bDebugValtanStageBypass = false;
 		bool m_bHonourTriggerOnce = false;
+		bool m_bSuppressWaveMonsterTriggers = false;
 		LostArk::Shared::WORLD_ID m_eWorldId = LostArk::Shared::WORLD_ID::END;
 		/* Tick of each player's last accepted G activation (debounce). */
 		std::unordered_map<LostArk::Shared::PLAYER_ID, std::uint32_t> m_LastKeyActivationTick;

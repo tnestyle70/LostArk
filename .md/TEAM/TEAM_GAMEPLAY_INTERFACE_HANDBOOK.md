@@ -106,7 +106,7 @@ Client project만 시작한다. 자동 판정이 예상과 다르면 IP 어댑�
 
 #### pull 후 공유 Server에 들어가는 순서
 
-Server PC와 Client PC는 먼저 같은 commit과 생성 데이터를 맞춘다. 기능 브랜치를 검증할 때도 양쪽이 같은 변경을 사용해야 한다. `pull`만 하고 예전 실행 파일을 쓰면 현재 protocol v85 또는 Debug gameplay revision이 달라 Server가 연결을 종료할 수 있다. Server/Client/Shared는 항상 같은 protocol version으로 다시 빌드한다.
+Server PC와 Client PC는 먼저 같은 commit과 생성 데이터를 맞춘다. 기능 브랜치를 검증할 때도 양쪽이 같은 변경을 사용해야 한다. `pull`만 하고 예전 실행 파일을 쓰면 현재 protocol v99 또는 Debug gameplay revision이 달라 Server가 연결을 종료할 수 있다. Server/Client/Shared는 항상 같은 protocol version으로 다시 빌드한다.
 
 ```powershell
 git switch main
@@ -337,7 +337,7 @@ walkable nav cell 경계와 별개로, 투사체·지연 장판·보스 이동 �
 중복 요청은 이전 응답만 돌려주며 재이동하지 않는다. Release Server는 이 명령을 거절한다.
 UI 위 클릭은 ImGui와 제품 UI의 같은 프레임 mouse claim 모두에서 차단한다.
 
-현재 Shared protocol 86의 Server/Client를 함께 빌드·재시작한다. 새 기능을 이전 실행 파일로 확인하지 않는다.
+현재 Shared protocol 99의 Server/Client를 함께 빌드·재시작한다. 새 기능을 이전 실행 파일로 확인하지 않는다.
 
 F1 Sequence Viewer는 모든 Debug Level에서 쿠크/발탄 목록을 읽고, 아레나 실행은
 `IPlayerCommandSink -> C2S_DEBUG_WORLD_PLAYBACK -> Room command -> ServerTriggerSystem`
@@ -377,6 +377,30 @@ Level이 생성·class 변경·follow 복귀에 소비한다. Valtan/Kouku 연�
 마리오·카드미로·컷신의 개별 카메라와 기존 presentation priority는 유지한다. Character Select의
 `Move Player`는 계속 비활성이며 Bern 카메라 패널은 플레이어 배치 명령을 추가하지 않는다.
 새 Server command와 Resources 전달물은 없다.
+
+### 4.1.1 Debug 웨이브 몬스터 버튼 (Kouku Book1/Book2, Valtan Stage_1/Stage_2)
+
+Kouku의 `Book1_Monsters`/`Book2_Monsters`와 Valtan의 `Stage_1`/`Stage_2` 트리거 상자는 각각
+`spawn.kouku.book1`/`spawn.kouku.book2`, `spawn.valtan.stage01`/`spawn.valtan.stage03` 그룹을 시작한다.
+Release Server는 예전처럼 플레이어가 밟으면 그룹을 시작한다. Debug Server는 이 네 상자를 밟아도 G를 눌러도
+시작하지 않고 안내도 보내지 않는다. 대신 F1에서 버튼으로 다시 소환한다.
+
+- 쿠크: F1 `KoukuSaydon Arena` → `Bingo Board` 아래 `Normal Monster 1`(=Book1_Monsters, max alive 22),
+  `Normal Monster 2`(=Book2_Monsters, max alive 15).
+- 발탄: 발탄 아레나 안에서만 보이는 `Valtan Arena` 헤더의 `Normal Monster 1`(=Stage_1, max alive 10),
+  `Normal Monster 2`(=Stage_2, max alive 10). Stage_2는 `spawn.valtan.stage03`을 시작하며 G로 움직이는
+  `Stage_3` 이동 상자와 다른 기능이다.
+- 버튼에 마우스를 올리면 매핑된 trigger 이름, spawn group ID, max alive가 툴팁으로 나온다.
+
+경계는 `CPlayerController -> IPlayerCommandSink -> C2S_DEBUG_RESUMMON_WAVE_MONSTERS(protocol 99) -> CGameRoom`이다.
+요청은 group ID를 싣지 않고 (world, button)만 싣는다. Server는 `CServerTriggerSystem::Find_WaveMonsterButton`의 고정 표로만
+그룹을 고른다. 요청이 이 방의 world와 다르거나, 그 world에 그 버튼이 없거나, 이 session에 player가 없거나, 발탄
+패턴 audition이 진행 중이면 아무것도 바꾸지 않는다. 받아들이면 그 그룹의 살아 있는 monster(죽어서 남은 것 포함)를
+제거하고 그룹을 초기화해 첫 wave부터 다시 시작한다. monster는 플레이어 위치와 무관하게 그룹의 저작 anchor에 나타난다.
+결과 메시지는 없고 monster는 world snapshot으로 온다. 거절 사유는 Server 콘솔의 `[WaveMonsters]` 줄에 남는다.
+
+Release Server는 이 명령을 무시한다. `Stage_MiniBoss_Spawn`, `Stage_3`, `Stage_Boss`, 다른 월드의 트리거는 Debug에서도
+예전처럼 동작한다. 다른 protocol의 Server/Client를 섞어 실행하지 않는다. 이 브랜치의 protocol 99는 origin/main의 99(`f291f886`, 무적 구역 연출 펄스)와 다른 wire다. main을 병합할 때 `PacketType.h`의 버전 줄이 충돌하며 병합 결과의 올바른 번호는 100이고, 이 문서의 "protocol 99"와 새 contract test도 그때 함께 맞춘다.
 
 ### 4.2 마리오 변신·방향키 조작·Debug 점프
 

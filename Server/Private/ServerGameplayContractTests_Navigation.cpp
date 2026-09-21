@@ -473,6 +473,168 @@ int LostArk::Server::Run_ServerNavigationContractTests()
 			"REGION \"overlap\" 0.75\n") &&
 		!overlappingNavigation.Load("NAV_REGION_CONTRACT"),
 		"Reject two regions whose footprints overlap");
+	/* Stacked height layers: two regions may share one XZ footprint, and the
+	   height hint of a query tells them apart. */
+	const auto writeLayer = [&](
+		const wchar_t* gridStem,
+		const char* gridId,
+		const float cellHeight,
+		const float step)
+	{
+		return writeRegionGrid(gridStem, 4u, 4u, 0.5f, 1.f, 1.f, cellHeight) &&
+			writeRegionPolicy(gridStem, gridId, step);
+	};
+	const auto punchGroundHole = [&](
+		const wchar_t* gridStem, const std::streamoff cellIndex)
+	{
+		std::fstream grid(
+			invalidPolicyRoot / L"Navigation" /
+				(std::wstring(gridStem) + L".navgrid"),
+			std::ios::binary | std::ios::in | std::ios::out);
+		const char blocked = 0;
+		grid.seekp(20 + cellIndex);
+		grid.write(&blocked, 1);
+		grid.close();
+		return grid.good();
+	};
+	const auto loadLayerPair = [&](
+		const char* firstId,
+		const char* secondId,
+		const float step,
+		CServerNavigation& navigation)
+	{
+		const std::string stepText = std::to_string(step);
+		const std::string manifest =
+			"LOSTARK_NAVGRID_REGIONS 1 \"NAV_REGION_CONTRACT\" 2\n"
+			"REGION \"" + std::string(firstId) + "\" " + stepText + "\n"
+			"REGION \"" + std::string(secondId) + "\" " + stepText + "\n";
+		return writeRegionManifest(manifest.c_str()) &&
+			navigation.Load("NAV_REGION_CONTRACT");
+	};
+	const auto sampleLayerAt = [&](
+		const CServerNavigation& navigation,
+		const float x, const float z, const float hintY, SERVER_NAV_POINT& out)
+	{ return navigation.Sample_Position(x, z, out, hintY); };
+	const auto stepLayerFrom = [&](
+		const CServerNavigation& navigation,
+		const float fromX, const float fromZ, const float toX, const float toZ,
+		const float fromY, SERVER_NAV_POINT& out)
+	{ return navigation.Resolve_TraversalStep(fromX, fromZ, toX, toZ, out, fromY); };
+	const auto pathLayerFrom = [&](
+		const CServerNavigation& navigation,
+		const float startX, const float startZ, const float goalX, const float goalZ,
+		const float startY, std::vector<SERVER_NAV_POINT>& out)
+	{ return navigation.Find_Path(startX, startZ, goalX, goalZ, out, startY); };
+	const auto walkableLayerAt = [&](
+		const CServerNavigation& navigation,
+		const float x, const float z, const float hintY)
+	{ return navigation.Is_PointWalkableExact(x, z, hintY); };
+	const auto projectLayerAt = [&](
+		const CServerNavigation& navigation,
+		const float x, const float z, const float hintY, SERVER_NAV_POINT& out)
+	{ return navigation.Project_Point(x, z, out, hintY); };
+	const auto losLayerFrom = [&](
+		const CServerNavigation& navigation,
+		const float startX, const float startZ, const float endX, const float endZ,
+		const float startY)
+	{ return navigation.Has_LineOfSight(startX, startZ, endX, endZ, startY); };
+	const bool layersReady = regionFixtureReady &&
+		writeLayer(L"NAV_REGION_CONTRACT.upper", "NAV_REGION_CONTRACT.upper", 10.f, 0.75f) &&
+		writeLayer(L"NAV_REGION_CONTRACT.lower", "NAV_REGION_CONTRACT.lower", 2.f, 0.75f);
+	CServerNavigation layeredNavigation;
+	const bool layersLoaded = layersReady &&
+		loadLayerPair("upper", "lower", 0.75f, layeredNavigation);
+	tests.Require(
+		layersLoaded && 2u == layeredNavigation.Get_RegionCount(),
+		"Load two regions that share one XZ footprint as separate height layers");
+	SERVER_NAV_POINT upperGround{};
+	SERVER_NAV_POINT lowerGround{};
+	SERVER_NAV_POINT unhintedGround{};
+	tests.Require(
+		layersLoaded &&
+		sampleLayerAt(layeredNavigation, 1.25f, 1.25f, 10.3f, upperGround) &&
+		std::abs(upperGround.y - 10.f) < 0.000001f &&
+		sampleLayerAt(layeredNavigation, 1.25f, 1.25f, 1.7f, lowerGround) &&
+		std::abs(lowerGround.y - 2.f) < 0.000001f &&
+		layeredNavigation.Sample_Position(1.25f, 1.25f, unhintedGround) &&
+		std::abs(unhintedGround.y - 10.f) < 0.000001f,
+		"Answer a stacked query from the layer nearest its height hint, and from the first declared layer without one");
+	SERVER_NAV_POINT upperStep{};
+	SERVER_NAV_POINT lowerStep{};
+	tests.Require(
+		layersLoaded &&
+		stepLayerFrom(layeredNavigation, 1.25f, 1.25f, 1.75f, 1.25f, 10.f, upperStep) &&
+		std::abs(upperStep.y - 10.f) < 0.000001f &&
+		stepLayerFrom(layeredNavigation, 1.25f, 1.25f, 1.75f, 1.25f, 2.f, lowerStep) &&
+		std::abs(lowerStep.y - 2.f) < 0.000001f,
+		"Walk a live step on the layer that carries the mover's height");
+	std::vector<SERVER_NAV_POINT> upperPath;
+	std::vector<SERVER_NAV_POINT> lowerPath;
+	bool layerPathsStayPut = layersLoaded &&
+		pathLayerFrom(layeredNavigation, 1.25f, 1.25f, 2.75f, 2.75f, 10.f, upperPath) &&
+		!upperPath.empty() &&
+		pathLayerFrom(layeredNavigation, 1.25f, 1.25f, 2.75f, 2.75f, 2.f, lowerPath) &&
+		!lowerPath.empty();
+	for (const SERVER_NAV_POINT& point : upperPath)
+		layerPathsStayPut = layerPathsStayPut && std::abs(point.y - 10.f) < 0.000001f;
+	for (const SERVER_NAV_POINT& point : lowerPath)
+		layerPathsStayPut = layerPathsStayPut && std::abs(point.y - 2.f) < 0.000001f;
+	tests.Require(
+		layerPathsStayPut,
+		"Path on the layer chosen by the start height and never hop to the other layer");
+	SERVER_NAV_POINT projectedLower{};
+	tests.Require(
+		layersLoaded &&
+		walkableLayerAt(layeredNavigation, 1.25f, 1.25f, 10.f) &&
+		walkableLayerAt(layeredNavigation, 1.25f, 1.25f, 2.f) &&
+		losLayerFrom(layeredNavigation, 1.25f, 1.25f, 2.25f, 1.25f, 2.f) &&
+		projectLayerAt(layeredNavigation, 1.25f, 1.25f, 2.f, projectedLower) &&
+		std::abs(projectedLower.y - 2.f) < 0.000001f,
+		"Project, probe and sight-check on the layer chosen by the height hint");
+	CServerNavigation reversedLayers;
+	SERVER_NAV_POINT reversedUnhinted{};
+	SERVER_NAV_POINT reversedHinted{};
+	tests.Require(
+		layersReady && loadLayerPair("lower", "upper", 0.75f, reversedLayers) &&
+		reversedLayers.Sample_Position(1.25f, 1.25f, reversedUnhinted) &&
+		std::abs(reversedUnhinted.y - 2.f) < 0.000001f &&
+		sampleLayerAt(reversedLayers, 1.25f, 1.25f, 10.3f, reversedHinted) &&
+		std::abs(reversedHinted.y - 10.f) < 0.000001f,
+		"Keep manifest order as the only tie-break: reordering flips an unhinted query but never a hinted one");
+	CServerNavigation holeLayers;
+	SERVER_NAV_POINT holeFallback{};
+	SERVER_NAV_POINT holeSolid{};
+	tests.Require(
+		layersReady && punchGroundHole(L"NAV_REGION_CONTRACT.upper", 0) &&
+		loadLayerPair("upper", "lower", 0.75f, holeLayers) &&
+		sampleLayerAt(holeLayers, 1.25f, 1.25f, 10.3f, holeFallback) &&
+		std::abs(holeFallback.y - 2.f) < 0.000001f &&
+		sampleLayerAt(holeLayers, 1.75f, 1.25f, 10.3f, holeSolid) &&
+		std::abs(holeSolid.y - 10.f) < 0.000001f,
+		"Prefer the layer that has ground at the XZ over a nearer layer that has none");
+	const auto layersLoadWith = [&](
+		const float upperHeight, const float lowerHeight, const float step)
+	{
+		CServerNavigation navigation;
+		return writeLayer(
+				L"NAV_REGION_CONTRACT.upper", "NAV_REGION_CONTRACT.upper",
+				upperHeight, step) &&
+			writeLayer(
+				L"NAV_REGION_CONTRACT.lower", "NAV_REGION_CONTRACT.lower",
+				lowerHeight, step) &&
+			loadLayerPair("upper", "lower", step, navigation);
+	};
+	tests.Require(
+		regionFixtureReady &&
+		!layersLoadWith(3.f, 2.f, 0.75f) &&
+		!layersLoadWith(3.9f, 2.f, 0.75f) &&
+		layersLoadWith(4.f, 2.f, 0.75f),
+		"Reject stacked layers closer than 2 m and accept them from exactly 2 m");
+	tests.Require(
+		regionFixtureReady &&
+		!layersLoadWith(4.5f, 2.f, 1.5f) &&
+		layersLoadWith(5.f, 2.f, 1.5f),
+		"Scale the required layer separation to twice the larger step policy");
 	bool blockerFixtureReady = regionFixtureReady && writeRegionManifest(
 		"LOSTARK_NAVGRID_REGIONS 1 \"NAV_REGION_CONTRACT\" 1\n"
 		"REGION \"fine\" 0.75\n");

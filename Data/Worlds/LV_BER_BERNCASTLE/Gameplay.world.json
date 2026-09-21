@@ -2,7 +2,7 @@
   "schema": "lostark.world-gameplay",
   "formatVersion": 6,
   "areaId": "LV_BER_BERNCASTLE",
-  "revision": 891,
+  "revision": 921,
   "placements": [
     {
       "placementId": "castle",
@@ -13,7 +13,7 @@
       "halfExtents": [1, 1, 1],
       "triggerOnce": false,
       "events": [
-        { "type": "movePlayer", "targetPosition": [53.5649986, 37.0986061, 367.517609], "durationSeconds": 0.05, "arcHeight": 0 }
+        { "type": "movePlayer", "targetPosition": [53.5649986, 37.0986061, 367.517609], "durationSeconds": 0.0500000007, "arcHeight": 0 }
       ]
     },
     {
@@ -25,7 +25,7 @@
       "halfExtents": [3.20000005, 1, 1],
       "triggerOnce": false,
       "events": [
-        { "type": "movePlayer", "targetPosition": [137.009995, 54.04319, -168.600006], "durationSeconds": 0.05, "arcHeight": 0 }
+        { "type": "movePlayer", "targetPosition": [137.009995, 54.04319, -168.600006], "durationSeconds": 0.0500000007, "arcHeight": 0 }
       ]
     },
     {
@@ -45,7 +45,7 @@
       "halfExtents": [1, 0.5, 1],
       "triggerOnce": false,
       "events": [
-        { "type": "movePlayer", "targetPosition": [41.7480011, 35.8277779, 167.568085], "durationSeconds": 0.05, "arcHeight": 0 }
+        { "type": "movePlayer", "targetPosition": [41.7480011, 35.8277779, 167.568085], "durationSeconds": 0.0500000007, "arcHeight": 0 }
       ]
     },
     {
@@ -57,7 +57,7 @@
       "halfExtents": [2.0999999, 1, 1],
       "triggerOnce": false,
       "events": [
-        { "type": "movePlayer", "targetPosition": [110.569, 52.7690468, -169.77121], "durationSeconds": 0.05, "arcHeight": 0 }
+        { "type": "movePlayer", "targetPosition": [110.569, 52.7690468, -169.77121], "durationSeconds": 0.0500000007, "arcHeight": 0 }
       ]
     },
     {
@@ -999,6 +999,18 @@
       "position": [137.271729, 42.2683754, -20.2455158],
       "yawDegrees": 0,
       "enabled": true
+    },
+    {
+      "placementId": "ship",
+      "kind": "triggerBox",
+      "position": [251.658997, 15.8385897, -171.360001],
+      "yawDegrees": 0,
+      "enabled": false,
+      "halfExtents": [1, 1, 1],
+      "triggerOnce": true,
+      "events": [
+        { "type": "movePlayer", "targetPosition": [251.658997, 15.8385897, -171.360001], "durationSeconds": 1, "arcHeight": 0 }
+      ]
     },
     {
       "placementId": "squarehole.1",

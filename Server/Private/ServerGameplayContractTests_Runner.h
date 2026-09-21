@@ -48,6 +48,7 @@ private:
     static void Run_WorldTriggers(TESTS& tests, CGameplayCatalog& catalog);
     static void Run_SkillStages(TESTS& tests, CGameplayCatalog& catalog);
     static void Run_SpawnGroups(TESTS& tests, CGameplayCatalog& catalog);
+    static void Run_WaveMonsterButtons(TESTS& tests);
     static void Run_ValtanDash(TESTS& tests, CGameplayCatalog& catalog, const char* VALTAN_WALL_COLLISION_STATE, float VALTAN_WALL_CENTER_X, float VALTAN_WALL_CENTER_Y, float VALTAN_WALL_CENTER_Z);
     static void Run_ValtanAudition(TESTS& tests);
     static void Run_ValtanResetlessNext(TESTS& tests, const char* VALTAN_WALL_COLLISION_STATE);

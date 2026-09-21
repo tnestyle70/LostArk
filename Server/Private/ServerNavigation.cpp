@@ -102,6 +102,8 @@ bool LostArk::Server::CServerNavigation::Load(const std::string& areaId)
 	m_fOriginX = 0.f;
 	m_fOriginZ = 0.f;
 	m_fMaximumTraversalStepHeight = 0.f;
+	m_fWalkableMinY = (std::numeric_limits<float>::max)();
+	m_fWalkableMaxY = std::numeric_limits<float>::lowest();
 	m_Walkable.clear();
 	m_Surface.clear();
 	m_Heights.clear();
@@ -162,7 +164,9 @@ bool LostArk::Server::CServerNavigation::Load(const std::string& areaId)
 
 	m_Walkable = std::move(walkable);
 	m_Heights = std::move(heights);
-	if (!Load_SurfaceMask(areaId) || !Load_RuntimePolicy(areaId) || !Load_RuntimeBlockers(areaId) ||
+	Compute_WalkableBand();
+	if (!Load_SurfaceMask(areaId) || !Load_RuntimePolicy(areaId) ||
+		!Load_RuntimeBlockers(areaId) ||
 		!Load_Regions(areaId))
 	{
 		// Loading is transactional: a malformed sidecar must never leave a
@@ -398,6 +402,8 @@ bool LostArk::Server::CServerNavigation::Load_Regions(const std::string& areaId)
 	std::vector<CServerNavigation> regions;
 	std::set<std::string> regionIds;
 	regions.reserve(regionCount);
+	std::vector<std::string> loadedRegionIds;
+	loadedRegionIds.reserve(regionCount);
 	for (std::uint32_t regionIndex = 0u; regionIndex < regionCount;
 		++regionIndex)
 	{
@@ -441,15 +447,24 @@ bool LostArk::Server::CServerNavigation::Load_Regions(const std::string& areaId)
 				"its manifest row: " + regionId;
 			return false;
 		}
-		for (const CServerNavigation& other : regions)
+		for (std::size_t otherIndex = 0u; otherIndex < regions.size(); ++otherIndex)
 		{
-			if (region.Overlaps_Grid(other))
+			const CServerNavigation& other = regions[otherIndex];
+			if (!region.Overlaps_Grid(other))
+				continue;
+			/* Stacked height layers may share an XZ footprint because a query's
+			height hint tells them apart. Reject a pair only when some XZ position
+			has ground on both layers closer together than a hint can separate. */
+			std::string ambiguity;
+			if (region.Find_AmbiguousLayerOverlap(other, ambiguity))
 			{
-				m_strStatus = "Server navigation regions overlap: " + regionId;
+				m_strStatus = "Server navigation regions overlap: " + regionId +
+					" and " + loadedRegionIds[otherIndex] + " (" + ambiguity + ")";
 				return false;
 			}
 		}
 		regions.push_back(std::move(region));
+		loadedRegionIds.push_back(regionId);
 	}
 	input >> std::ws;
 	if (!input.eof())
@@ -466,14 +481,143 @@ bool LostArk::Server::CServerNavigation::Load_Regions(const std::string& areaId)
 const LostArk::Server::CServerNavigation*
 LostArk::Server::CServerNavigation::Select_Region(
 	const float x,
-	const float z) const
+	const float z,
+	const float hintY) const
 {
+	const CServerNavigation* first = nullptr;
+	std::size_t candidateCount = 0u;
 	for (const CServerNavigation& region : m_Regions)
 	{
-		if (region.Contains_Point(x, z))
-			return &region;
+		if (!region.Contains_Point(x, z))
+			continue;
+		if (nullptr == first)
+			first = &region;
+		++candidateCount;
 	}
-	return nullptr;
+	// Zero or one footprint: the rule from before stacked layers existed.
+	if (candidateCount <= 1u)
+		return first;
+
+	const CServerNavigation* best = nullptr;
+	bool bestHasGround = false;
+	float bestDistance = 0.f;
+	for (const CServerNavigation& region : m_Regions)
+	{
+		if (!region.Contains_Point(x, z))
+			continue;
+		float groundY = 0.f;
+		const bool hasGround = region.Get_WalkableHeightAt(x, z, groundY);
+		float distance = 0.f;
+		if (std::isfinite(hintY))
+		{
+			distance = hasGround ? std::abs(groundY - hintY) :
+				region.Get_DistanceToWalkableBand(hintY);
+		}
+		// Strict comparisons: a tie keeps the region declared first.
+		const bool better = nullptr == best ||
+			(hasGround && !bestHasGround) ||
+			(hasGround == bestHasGround && distance < bestDistance);
+		if (better)
+		{
+			best = &region;
+			bestHasGround = hasGround;
+			bestDistance = distance;
+		}
+	}
+	return best;
+}
+
+void LostArk::Server::CServerNavigation::Compute_WalkableBand()
+{
+	m_fWalkableMinY = (std::numeric_limits<float>::max)();
+	m_fWalkableMaxY = std::numeric_limits<float>::lowest();
+	for (std::size_t index = 0u; index < m_Walkable.size(); ++index)
+	{
+		if (0u == m_Walkable[index])
+			continue;
+		m_fWalkableMinY = (std::min)(m_fWalkableMinY, m_Heights[index]);
+		m_fWalkableMaxY = (std::max)(m_fWalkableMaxY, m_Heights[index]);
+	}
+}
+
+bool LostArk::Server::CServerNavigation::Get_WalkableHeightAt(
+	const float x,
+	const float z,
+	float& outY) const
+{
+	if (!Contains_Point(x, z))
+		return false;
+	const std::uint32_t cellX = static_cast<std::uint32_t>(
+		std::floor((x - m_fOriginX) / m_fCellSize));
+	const std::uint32_t cellZ = static_cast<std::uint32_t>(
+		std::floor((z - m_fOriginZ) / m_fCellSize));
+	if (cellX >= m_iWidth || cellZ >= m_iHeight)
+		return false;
+	const std::uint32_t index = cellZ * m_iWidth + cellX;
+	if (index >= m_Walkable.size() || 0u == m_Walkable[index])
+		return false;
+	outY = m_Heights[index];
+	return true;
+}
+
+float LostArk::Server::CServerNavigation::Get_DistanceToWalkableBand(
+	const float y) const
+{
+	if (m_fWalkableMinY > m_fWalkableMaxY)
+		return (std::numeric_limits<float>::infinity)();
+	return (std::max)({ m_fWalkableMinY - y, 0.f, y - m_fWalkableMaxY });
+}
+
+/* Two regions may share an XZ footprint only as separate height layers. A query
+tells them apart by its height hint, which is off by up to one step on a real
+deck, so the ground of the two layers at one XZ must be more than twice the larger
+step policy apart (never less than 2 m). Every walkable cell of either grid is
+checked against the other grid's cell under its centre. */
+bool LostArk::Server::CServerNavigation::Find_AmbiguousLayerOverlap(
+	const CServerNavigation& other,
+	std::string& outDetail) const
+{
+	constexpr float LAYER_MINIMUM_SEPARATION = 2.f;
+	const float minimumSeparation = (std::max)(
+		LAYER_MINIMUM_SEPARATION,
+		2.f * (std::max)(
+			m_fMaximumTraversalStepHeight,
+			other.m_fMaximumTraversalStepHeight));
+	const auto scan = [&](
+		const CServerNavigation& from,
+		const CServerNavigation& to,
+		std::string& detail)
+	{
+		for (std::uint32_t cellZ = 0u; cellZ < from.m_iHeight; ++cellZ)
+		{
+			const float centerZ = from.m_fOriginZ +
+				(static_cast<float>(cellZ) + 0.5f) * from.m_fCellSize;
+			for (std::uint32_t cellX = 0u; cellX < from.m_iWidth; ++cellX)
+			{
+				const std::uint32_t index = cellZ * from.m_iWidth + cellX;
+				if (0u == from.m_Walkable[index])
+					continue;
+				const float centerX = from.m_fOriginX +
+					(static_cast<float>(cellX) + 0.5f) * from.m_fCellSize;
+				float otherY = 0.f;
+				if (!to.Get_WalkableHeightAt(centerX, centerZ, otherY))
+					continue;
+				const float separation = std::abs(from.m_Heights[index] - otherY);
+				if (separation < minimumSeparation)
+				{
+					detail = "ground at x=" + std::to_string(centerX) +
+						" z=" + std::to_string(centerZ) + " is " +
+						std::to_string(from.m_Heights[index]) + " and " +
+						std::to_string(otherY) + ", only " +
+						std::to_string(separation) + " m apart, need at least " +
+						std::to_string(minimumSeparation) + " m";
+					return true;
+				}
+			}
+		}
+		return false;
+	};
+	return scan(*this, other, outDetail) || scan(other, *this, outDetail);
 }
 
 bool LostArk::Server::CServerNavigation::Is_InSameDetailRegion(
@@ -694,10 +838,11 @@ bool LostArk::Server::CServerNavigation::Set_RuntimeSupportSurfaces(
 bool LostArk::Server::CServerNavigation::Project_Point(
 	const float x,
 	const float z,
-	SERVER_NAV_POINT& outPoint) const
+	SERVER_NAV_POINT& outPoint,
+	const float hintY) const
 {
-	if (const CServerNavigation* region = Select_Region(x, z))
-		return region->Project_Point(x, z, outPoint);
+	if (const CServerNavigation* region = Select_Region(x, z, hintY))
+		return region->Project_Point(x, z, outPoint, hintY);
 	CNavigationQueryTimer queryTimer(m_PerformanceMetrics.ProjectPoint);
 	if (!Is_Loaded() || x < m_fOriginX || z < m_fOriginZ ||
 		x >= m_fOriginX + static_cast<float>(m_iWidth) * m_fCellSize ||
@@ -715,10 +860,11 @@ bool LostArk::Server::CServerNavigation::Project_Point(
 bool LostArk::Server::CServerNavigation::Project_PointOnSameLevel(
 	const float x,
 	const float z,
-	SERVER_NAV_POINT& outPoint) const
+	SERVER_NAV_POINT& outPoint,
+	const float hintY) const
 {
-	if (const CServerNavigation* region = Select_Region(x, z))
-		return region->Project_PointOnSameLevel(x, z, outPoint);
+	if (const CServerNavigation* region = Select_Region(x, z, hintY))
+		return region->Project_PointOnSameLevel(x, z, outPoint, hintY);
 	CNavigationQueryTimer queryTimer(m_PerformanceMetrics.ProjectPoint);
 	/* A collapsed cell keeps the baked height of the floor that used to be
 	there, so the hole itself carries the deck to come back to. Measured against
@@ -800,10 +946,11 @@ bool LostArk::Server::CServerNavigation::Sample_SurfacePosition(
 bool LostArk::Server::CServerNavigation::Sample_Position(
 	const float x,
 	const float z,
-	SERVER_NAV_POINT& outPoint) const
+	SERVER_NAV_POINT& outPoint,
+	const float hintY) const
 {
-	if (const CServerNavigation* region = Select_Region(x, z))
-		return region->Sample_Position(x, z, outPoint);
+	if (const CServerNavigation* region = Select_Region(x, z, hintY))
+		return region->Sample_Position(x, z, outPoint, hintY);
 	if (!Is_Loaded() || !std::isfinite(x) || !std::isfinite(z))
 		return false;
 	const int cellX = static_cast<int>(std::floor((x - m_fOriginX) / m_fCellSize));
@@ -827,10 +974,11 @@ bool LostArk::Server::CServerNavigation::Resolve_TraversalStep(
 	const float fromZ,
 	const float toX,
 	const float toZ,
-	SERVER_NAV_POINT& outPoint) const
+	SERVER_NAV_POINT& outPoint,
+	const float fromY) const
 {
-	if (const CServerNavigation* region = Select_Region(fromX, fromZ))
-		return region->Resolve_TraversalStep(fromX, fromZ, toX, toZ, outPoint);
+	if (const CServerNavigation* region = Select_Region(fromX, fromZ, fromY))
+		return region->Resolve_TraversalStep(fromX, fromZ, toX, toZ, outPoint, fromY);
 	CNavigationQueryTimer queryTimer(m_PerformanceMetrics.TraversalStep);
 	SERVER_NAV_POINT fromGround{};
 	SERVER_NAV_POINT toGround{};
@@ -849,10 +997,11 @@ bool LostArk::Server::CServerNavigation::Has_LineOfSight(
 	const float startX,
 	const float startZ,
 	const float endX,
-	const float endZ) const
+	const float endZ,
+	const float startY) const
 {
-	if (const CServerNavigation* region = Select_Region(startX, startZ))
-		return region->Has_LineOfSight(startX, startZ, endX, endZ);
+	if (const CServerNavigation* region = Select_Region(startX, startZ, startY))
+		return region->Has_LineOfSight(startX, startZ, endX, endZ, startY);
 	CNavigationQueryTimer queryTimer(m_PerformanceMetrics.LineOfSight);
 	constexpr double LOS_HEIGHT_TOLERANCE = 1.000001;
 	constexpr double CORNER_TOLERANCE = 0.000000000001;
@@ -983,10 +1132,11 @@ bool LostArk::Server::CServerNavigation::Find_Path(
 	const float startZ,
 	const float goalX,
 	const float goalZ,
-	std::vector<SERVER_NAV_POINT>& outPath) const
+	std::vector<SERVER_NAV_POINT>& outPath,
+	const float startY) const
 {
-	if (const CServerNavigation* region = Select_Region(startX, startZ))
-		return region->Find_Path(startX, startZ, goalX, goalZ, outPath);
+	if (const CServerNavigation* region = Select_Region(startX, startZ, startY))
+		return region->Find_Path(startX, startZ, goalX, goalZ, outPath, startY);
 	CNavigationQueryTimer queryTimer(m_PerformanceMetrics.FindPath, &outPath);
 	outPath.clear();
 	std::uint32_t start = 0;
@@ -1108,11 +1258,12 @@ void LostArk::Server::CServerNavigation::Smooth_Path(
 	const float startZ,
 	const float goalX,
 	const float goalZ,
-	std::vector<SERVER_NAV_POINT>& path) const
+	std::vector<SERVER_NAV_POINT>& path,
+	const float startY) const
 {
-	if (const CServerNavigation* region = Select_Region(startX, startZ))
+	if (const CServerNavigation* region = Select_Region(startX, startZ, startY))
 	{
-		region->Smooth_Path(startX, startZ, goalX, goalZ, path);
+		region->Smooth_Path(startX, startZ, goalX, goalZ, path, startY);
 		return;
 	}
 	CNavigationQueryTimer queryTimer(m_PerformanceMetrics.SmoothPath, &path);
@@ -1157,13 +1308,14 @@ bool LostArk::Server::CServerNavigation::Find_PathToReachablePointWithinRadius(
 	const float centerZ,
 	const float radius,
 	const float minimumDestinationDistance,
-	std::vector<SERVER_NAV_POINT>& outPath) const
+	std::vector<SERVER_NAV_POINT>& outPath,
+	const float startY) const
 {
-	if (const CServerNavigation* region = Select_Region(startX, startZ))
+	if (const CServerNavigation* region = Select_Region(startX, startZ, startY))
 	{
 		return region->Find_PathToReachablePointWithinRadius(
 			startX, startZ, centerX, centerZ, radius,
-			minimumDestinationDistance, outPath);
+			minimumDestinationDistance, outPath, startY);
 	}
 	CNavigationQueryTimer queryTimer(m_PerformanceMetrics.ReachablePath, &outPath);
 	outPath.clear();
@@ -1401,10 +1553,11 @@ LostArk::Server::CServerNavigation::Get_ActiveBlockerRegionCount() const
 
 bool LostArk::Server::CServerNavigation::Is_PointWalkableExact(
 	const float x,
-	const float z) const
+	const float z,
+	const float hintY) const
 {
-	if (const CServerNavigation* region = Select_Region(x, z))
-		return region->Is_PointWalkableExact(x, z);
+	if (const CServerNavigation* region = Select_Region(x, z, hintY))
+		return region->Is_PointWalkableExact(x, z, hintY);
 	if (!Is_Loaded() || !std::isfinite(x) || !std::isfinite(z) ||
 		x < m_fOriginX || z < m_fOriginZ ||
 		x >= m_fOriginX + static_cast<float>(m_iWidth) * m_fCellSize ||

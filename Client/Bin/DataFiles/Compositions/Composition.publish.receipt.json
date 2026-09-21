@@ -4,7 +4,7 @@
   "sourceManifest": {
     "schema": "lostark.composition-source-manifest",
     "formatVersion": 1,
-    "sourceManifestId": "fdbe84c7e994c3dc9409a4aff1588c2f38fc67ea2558a25024a54d5dfd57be2d",
+    "sourceManifestId": "ad47b5bf6977f5b301f260d3a89964c68fa9324d6b600b68b49080b369def04e",
     "files": [
       {
         "path": "Data/Animation/Authored/KoukuSaydon/MN_RPCT_05.actionbindings.json",
@@ -453,8 +453,8 @@
       },
       {
         "path": "Data/Effects/EffectCatalog.json",
-        "sha256": "5bbd3fb84c9c25e7d53ef1a3b28d9c052cf6acfef60ed7e57a21fc200f624e59",
-        "bytes": 311162
+        "sha256": "38ee69fbcc21c50c689e38b42a2e282db103247d57240531522589a5108de354",
+        "bytes": 270863
       },
       {
         "path": "Data/Effects/V2/Authored/bingo.bomb.mark_1.effectv2.json",
@@ -1998,43 +1998,43 @@
       },
       {
         "path": "Data/Effects/V2/Groups/cardmaze.exit.club.effectv2group.json",
-        "sha256": "a072039053f46e76048e9cb4c4e3ab024b5d0af24d173c500aca6c107168e708",
-        "bytes": 623
+        "sha256": "89cf6108f64bfacb817f3c0567a0c4c04b81d29d9aa4ab5938d5912bd03b01b4",
+        "bytes": 588
       },
       {
         "path": "Data/Effects/V2/Groups/cardmaze.exit.diamond.effectv2group.json",
-        "sha256": "e9bc56ce7d229d1da3744d68c718ae36674e237d69e06ecc4007868474b36934",
-        "bytes": 629
+        "sha256": "2e8dbc9831174a85e194d7c92c875a8a2c58f482d9d3e8961536b3f9c7bec350",
+        "bytes": 594
       },
       {
         "path": "Data/Effects/V2/Groups/cardmaze.exit.heart.effectv2group.json",
-        "sha256": "58580c49f47a41b6b82fead40de69dfdb4f701d0f3d4d29ba45811bde55e8c54",
-        "bytes": 625
+        "sha256": "55c31beaccb9a68c4c13e3d4a4b3ccd8e74f88c715a9489add339b8d0e4a0c2b",
+        "bytes": 590
       },
       {
         "path": "Data/Effects/V2/Groups/cardmaze.exit.spade.effectv2group.json",
-        "sha256": "84ce034725d6ccfaf1a1cbc56a704d49ce0baebc07271ce7127fd3b5de877b9a",
-        "bytes": 625
+        "sha256": "bf674d4dce7d6457c8f848b2a19a3d9b3f179106553e58b0a964364acde4d7c1",
+        "bytes": 590
       },
       {
         "path": "Data/Effects/V2/Groups/cardmaze.mark.club.effectv2group.json",
-        "sha256": "46f066480e8d04458438a3955d72a8e498fa86d14051553c6fceed5ec013924b",
-        "bytes": 623
+        "sha256": "745b5f6a1775b6a2cf374b3132aeb90dabebad554b1cc569ea736f8c456b7aa0",
+        "bytes": 588
       },
       {
         "path": "Data/Effects/V2/Groups/cardmaze.mark.diamond.effectv2group.json",
-        "sha256": "1637ea349b2cedddb263cc8fdfc2bb13e218f96bebd61b75f9fdc0bce686505a",
-        "bytes": 629
+        "sha256": "a7e3e1c2ec8b299ac7dc52fd19417e08e4af47fd5385421d907986a1af9cd135",
+        "bytes": 594
       },
       {
         "path": "Data/Effects/V2/Groups/cardmaze.mark.heart.effectv2group.json",
-        "sha256": "b1398794e86391051a8b26ddf673ee4056adca1b3fd3d7ae25fab778e94a5555",
-        "bytes": 625
+        "sha256": "55858a72041a9170c41df4a3ace4f5c88527afcfa112c1fff53962ef09ea2f6e",
+        "bytes": 590
       },
       {
         "path": "Data/Effects/V2/Groups/cardmaze.mark.spade.effectv2group.json",
-        "sha256": "5cb293201ddd381b962147b0d8d9ee390dfe56d1aea549d02ddc11648fff8ca7",
-        "bytes": 625
+        "sha256": "6a1883843f805fbb29ecdf77513a2424c5688fcf6ff6cc92a1a3089fafd5e07e",
+        "bytes": 590
       },
       {
         "path": "Data/Effects/V2/Groups/kouku.gate2.intro.fade.effectv2group.json",
@@ -2068,13 +2068,13 @@
       },
       {
         "path": "Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.worldsequences.json",
-        "sha256": "a726bc73e114e185674132f779c6102dfcc233e9b2d27559bcac67f24e713da8",
-        "bytes": 8146718
+        "sha256": "f68024daa091792230b55a7f02bd84f055148ec8f78df08bc413d641ac2f0555",
+        "bytes": 13539602
       },
       {
         "path": "Data/Rendering/Authored/RenderingProfiles.json",
-        "sha256": "c2cd57116ffe0d6ec3b81359d2f6e2280c00602e8dd38fc85aff519bb7cd5022",
-        "bytes": 236672
+        "sha256": "dcfa794f4f0630b49316fb52f077d487ee2f16d8856654ce8ebf21bd6829f359",
+        "bytes": 120347
       },
       {
         "path": "Data/Sound/CharacterSoundCatalog.json",
@@ -2116,13 +2116,13 @@
     },
     {
       "path": "Bosses/Valtan.bosscomposition.json",
-      "sha256": "715c530672daadd814d876ac1bc5ddacc78f7fb1709ca957c1b8a9dd84e22df4",
+      "sha256": "60fdb24250dd23b67ee19ade768527d695cbe2d7515999c20db6115cb20ae2ac",
       "bytes": 3806198
     },
     {
       "path": "Sequences/KoukuSaydonArena.sequencer.json",
-      "sha256": "a90d701f7f630c3aebc0ee4e69e77ca31cebf96e10717d354e712524faac6d96",
-      "bytes": 2151
+      "sha256": "6589bae919521dec5ea584feb673ba105df537f360a3908164a382b7a2a37163",
+      "bytes": 2152
     },
     {
       "path": "Sequences/ValtanArena.sequencer.json",

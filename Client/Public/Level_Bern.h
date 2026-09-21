@@ -127,7 +127,7 @@ private:
 	/* Loads the Bern authoring document once and keeps only the two known
 	Valtan-entry guide NPCs' authored positions (npc.bern.beda.guide,
 	npc.bern.aylara) -- the same static, server-uninvolved position lookup
-	Ready_DebugLevelChangeTriggers already does for its own trigger boxes, just
+	Ready_DebugLevelChangeTriggers already does for the enabled trigger boxes, just
 	not _DEBUG-only since the interaction it drives is a real product path. */
 	bool_t Ready_ValtanEntryNpcs(const std::string& areaId);
 	/* Right-click hit-test against m_ValtanEntryNpcs using a world-ray-vs-sphere

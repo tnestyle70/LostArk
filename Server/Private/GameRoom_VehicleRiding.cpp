@@ -269,7 +269,7 @@ void LostArk::Server::CGameRoom::Update_VehicleSkill(
 			bool wasClamped = false;
 			CPlayerSkillSystem::Clamp_StepToWalkable(
 				m_ServerNavigation, player.fPositionX, player.fPositionZ,
-				nextX, nextZ, reachable, wasClamped);
+				nextX, nextZ, reachable, wasClamped, player.fPositionY);
 		}
 		float resolvedX = reachable.x;
 		float resolvedY = reachable.y;

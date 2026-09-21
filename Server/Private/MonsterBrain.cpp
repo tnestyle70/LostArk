@@ -585,7 +585,8 @@ bool LostArk::Server::CMonsterBrain::Advance_Knockback(
 		desiredX,
 		desiredZ,
 		reachable,
-		wasClamped);
+		wasClamped,
+		monster.fPositionY);
 	float resolvedX = reachable.x;
 	float resolvedY = reachable.y;
 	float resolvedZ = reachable.z;

@@ -1364,6 +1364,11 @@ bool_t CWorldSequencePlayer::Apply_ObjectEffects(ACTIVE_INSTANCE& active,
                                         spawn.bExternalModelCueAnchors = !document->ModelCues.empty();
                                         EFFECT_WORLD_ROOT_HANDLE handle;
                                         if (!CEffectPresentationService::Spawn_LevelPlacement(spawn, handle, m_Status)) return false;
+                                        /* The normal runtime keeps new requests pending until MainApp finishes
+                                           Object Manager update. MapTool runs after that seam and seeks this
+                                           exact frame, so commit only this editor-owned world root now. */
+                                        if (targets.bCommitWorldRootEffectsAfterSpawn)
+                                            CEffectPresentationService::Commit_PendingWorldRootSpawns({handle});
                                         active.effects.push_back({key, 0u, handle.iValue, document});
                                     }
                                     else

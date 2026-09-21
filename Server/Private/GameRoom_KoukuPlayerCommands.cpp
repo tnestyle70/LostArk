@@ -1207,7 +1207,9 @@ void LostArk::Server::CGameRoom::Update_MarioControlState(SERVER_PLAYER& player)
 		return;
 	}
 	if (player.bPatternBound || INVALID_NET_ENTITY_ID != player.iAttachmentOwnerNetEntityId ||
-		(PLAYER_ACTION_STATE::NONE != player.eAction && PLAYER_ACTION_STATE::TRIGGER_MOVE != player.eAction))
+		(PLAYER_ACTION_STATE::NONE != player.eAction &&
+			PLAYER_ACTION_STATE::TRIGGER_MOVE != player.eAction &&
+			PLAYER_ACTION_STATE::WALL_CLIMB != player.eAction))
 		return;
 	// Returning directly from an Intro box must not immediately admit that stage again.
 	if (player.TriggerMove.isActive && std::any_of(MARIO_LANES.begin(), MARIO_LANES.end(), [&player](const auto& lane) {

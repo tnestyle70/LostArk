@@ -1154,7 +1154,8 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Apply_Result(
 	case BOSS_PATTERN_LOGIC_RESULT_KIND::FEAR:
         if (Is_Judgeable(player) && !player.bPatternBound &&
             PLAYER_ACTION_STATE::GRABBED != player.eAction &&
-            PLAYER_ACTION_STATE::TRIGGER_MOVE != player.eAction &&
+			PLAYER_ACTION_STATE::TRIGGER_MOVE != player.eAction &&
+			PLAYER_ACTION_STATE::WALL_CLIMB != player.eAction &&
             PLAYER_ACTION_STATE::FEAR != player.eAction)
         {
             player.eAction = PLAYER_ACTION_STATE::FEAR;

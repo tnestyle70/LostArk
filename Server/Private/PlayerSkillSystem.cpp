@@ -291,7 +291,7 @@ namespace
 			return false;
 		if (skill.requiresWalkableTarget)
 			return navigation->Sample_Position(
-				command.fAimX, command.fAimZ, outTarget);
+				command.fAimX, command.fAimZ, outTarget, player.fPositionY);
 		outTarget = { command.fAimX, player.fPositionY, command.fAimZ };
 		return true;
 	}
@@ -790,11 +790,12 @@ void LostArk::Server::CPlayerSkillSystem::Clamp_StepToWalkable(
 	const float desiredX,
 	const float desiredZ,
 	SERVER_NAV_POINT& outPoint,
-	bool& outWasClamped)
+	bool& outWasClamped,
+	const float startY)
 {
 	outWasClamped = false;
 	SERVER_NAV_POINT start{};
-	if (!navigation.Sample_Position(startX, startZ, start))
+	if (!navigation.Sample_Position(startX, startZ, start, startY))
 	{
 		/* Standing off the grid already; refuse the step rather than snap to a
 		cell the player never walked to. */
@@ -833,7 +834,8 @@ void LostArk::Server::CPlayerSkillSystem::Clamp_StepToWalkable(
 			reachable.z,
 			sampleX,
 			sampleZ,
-			sampled))
+			sampled,
+			reachable.y))
 		{
 			blockedRatio = ratio;
 			wasBlocked = true;
@@ -862,7 +864,8 @@ void LostArk::Server::CPlayerSkillSystem::Clamp_StepToWalkable(
 			reachable.z,
 			startX + deltaX * midRatio,
 			startZ + deltaZ * midRatio,
-			sampled))
+			sampled,
+			reachable.y))
 		{
 			reachableRatio = midRatio;
 			reachable = sampled;
@@ -1021,7 +1024,8 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 				nextX,
 				nextZ,
 				reachable,
-				wasClamped);
+				wasClamped,
+				player.fPositionY);
 		}
 		float resolvedX = reachable.x;
 		float resolvedY = reachable.y;
@@ -1424,10 +1428,12 @@ bool LostArk::Server::CPlayerSkillSystem::Can_ArmPlayerHitReaction(
 	if (forcePush)
 		return player.iCurrentHp != 0u && player.isCombatReady && !player.bPatternBound && !player.bArenaEjectionActive &&
 			player.eAction != PLAYER_ACTION_STATE::DEAD && player.eAction != PLAYER_ACTION_STATE::FALLING &&
-			player.eAction != PLAYER_ACTION_STATE::GRABBED && player.eAction != PLAYER_ACTION_STATE::TRIGGER_MOVE;
+			player.eAction != PLAYER_ACTION_STATE::GRABBED && player.eAction != PLAYER_ACTION_STATE::TRIGGER_MOVE &&
+			player.eAction != PLAYER_ACTION_STATE::WALL_CLIMB;
 	return !(0u == player.iCurrentHp ||
 		PLAYER_ACTION_STATE::DEAD == player.eAction ||
 		PLAYER_ACTION_STATE::TRIGGER_MOVE == player.eAction ||
+		PLAYER_ACTION_STATE::WALL_CLIMB == player.eAction ||
 		PLAYER_ACTION_STATE::KNOCKDOWN == player.eAction ||
 		PLAYER_ACTION_STATE::FEAR == player.eAction ||
 		player.fKnockbackRemainingSeconds > 0.f ||

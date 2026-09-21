@@ -929,8 +929,23 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanAudition(TESTS& t
 		liveAuditionPlayer.PendingCommand.iSkillId = 34010u;
 		liveAuditionPlayer.PendingCommand.fX = 10.f;
 		liveAuditionPlayer.PendingCommand.fZ = 11.f;
-		liveAuditionPlayer.TriggerMove = SERVER_TRIGGER_MOVE{
-			{}, 1.f, 2.f, 3.f, 4.f, 5.f, 6.f, 0.75f, 0.25f, 1.5f, KOUKU_HUD_MODE::END, true };
+		/* Keep this fixture name-addressed: SERVER_TRIGGER_MOVE gained authored
+		TrackMove samples for the Stage_3 wall climb, so positional aggregate
+		initialisation would silently couple this unrelated audition test to its
+		field order. */
+		SERVER_TRIGGER_MOVE preservedTriggerMove{};
+		preservedTriggerMove.fStartX = 1.f;
+		preservedTriggerMove.fStartY = 2.f;
+		preservedTriggerMove.fStartZ = 3.f;
+		preservedTriggerMove.fTargetX = 4.f;
+		preservedTriggerMove.fTargetY = 5.f;
+		preservedTriggerMove.fTargetZ = 6.f;
+		preservedTriggerMove.fDurationSeconds = .75f;
+		preservedTriggerMove.fElapsedSeconds = .25f;
+		preservedTriggerMove.fArcHeight = 1.5f;
+		preservedTriggerMove.eKoukuHudModeOnArrival = KOUKU_HUD_MODE::END;
+		preservedTriggerMove.isActive = true;
+		liveAuditionPlayer.TriggerMove = std::move(preservedTriggerMove);
 		const SERVER_PLAYER playerBeforeFailedRestart = liveAuditionPlayer;
 		const SERVER_WORLD_ENTITY bossBeforeFailedRestart = *auditionBoss;
 		const CGameRoom::VALTAN_PATTERN_ID_AUDITION_STATE

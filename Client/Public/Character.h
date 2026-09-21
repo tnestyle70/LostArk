@@ -567,6 +567,15 @@ private:
 	previous locomotion loop for a server movePlayer instead of failing. */
 	bool_t m_hasTerrainJumpClip = false;
 	CLIP_STEP m_TerrainJumpClip{};
+	/* Valtan TrackMove owns the 6-second world position.  These two optional
+	   clips only present that server-authoritative motion: loop while climbing,
+	   then the native ledge finish. */
+	bool_t m_hasWallClimbClips = false;
+	CLIP_STEP m_WallClimbLoopClip{};
+	CLIP_STEP m_WallClimbEndClip{};
+	f32_t m_fWallClimbEndStartSeconds = 4.f;
+	bool_t m_isWallClimbEndClipActive = false;
+	bool_t m_isWallClimbRootMotionSuppressed = false;
 	LostArk::Shared::KOUKU_HUD_MODE m_eInteractionMode = LostArk::Shared::KOUKU_HUD_MODE::NONE;
 	std::uint32_t m_iInteractionIndex = UINT32_MAX;
 	void Commit_PendingClipChains();

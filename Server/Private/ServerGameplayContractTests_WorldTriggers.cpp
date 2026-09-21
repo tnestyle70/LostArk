@@ -195,6 +195,55 @@ void LostArk::Server::CServerGameplayContractRunner::Run_WorldTriggers(TESTS& te
 			!triggerBootstrap.Load(WORLD_ID::VALTAN_ARENA) &&
 			4u == triggerBootstrap.Get_Placements().size(),
 			"Reject invalid trigger bootstrap without replacing committed world");
+
+		const auto writeWallClimbBootstrap =
+			[&bootstrapPath](const std::uint32_t finalTimeMs)
+			{
+				std::ofstream bootstrap(bootstrapPath, std::ios::binary);
+				bootstrap <<
+					"LOSTARK_WORLD_BOOTSTRAP\t11\tVALTAN_ARENA\tLV_LUT_HEARTRB_ED\t3\t2\n"
+					"player.spawn.wall\tplayerSpawn\t-\t-\t0\t0\t0\t0\t1\n"
+					"trigger.wall\ttriggerBox\t-\t-\t0\t0\t0\t0\t1\t1\t1\t1\t0\t1\t0"
+					"\tmovePlayer\t20\t2\t4\t0\t0.1\t0\tWALL_CLIMB\t88.33\t3"
+					"\t0\t0\t0\t0\t50\t1\t2\t0\t" << finalTimeMs << "\t2\t4\t0\n";
+			};
+		writeWallClimbBootstrap(100u);
+		tests.Require(
+			triggerBootstrap.Load(WORLD_ID::VALTAN_ARENA) &&
+			2u == triggerBootstrap.Get_Placements().size() &&
+			WORLD_TRIGGER_MOVE_STYLE::WALL_CLIMB ==
+				triggerBootstrap.Get_Placements()[1].TriggerActions.front().eMoveStyle &&
+			3u == triggerBootstrap.Get_Placements()[1].TriggerActions.front().TrackSamples.size(),
+			"Parse an authoritative wall climb TrackMove from the world bootstrap");
+		const WORLD_TRIGGER_ACTION& wallAction =
+			triggerBootstrap.Get_Placements()[1].TriggerActions.front();
+		SERVER_PLAYER wallPlayer{};
+		wallPlayer.iCurrentHp = wallPlayer.iMaximumHp = 100u;
+		tests.Require(
+			CServerTriggerSystem::Begin_MovePlayer(wallPlayer, wallAction, 1u) &&
+			PLAYER_ACTION_STATE::WALL_CLIMB == wallPlayer.eAction &&
+			std::abs(wallPlayer.fYawDegrees - 88.33f) < .001f &&
+			std::abs(wallPlayer.fPositionX) < .001f &&
+			std::abs(wallPlayer.fPositionY) < .001f,
+			"Wall climb snaps to its authored first sample with the authored facing");
+		CServerTriggerSystem wallTriggerSystem;
+		wallTriggerSystem.Update_PlayerMotion(wallPlayer, .025f);
+		tests.Require(
+			std::abs(wallPlayer.fPositionX - .5f) < .001f &&
+			std::abs(wallPlayer.fPositionY - 1.f) < .001f &&
+			PLAYER_ACTION_STATE::WALL_CLIMB == wallPlayer.eAction,
+			"Wall climb linearly interpolates only between adjacent authored samples");
+		wallTriggerSystem.Update_PlayerMotion(wallPlayer, .075f);
+		tests.Require(
+			PLAYER_ACTION_STATE::NONE == wallPlayer.eAction &&
+			std::abs(wallPlayer.fPositionX - 2.f) < .001f &&
+			std::abs(wallPlayer.fPositionY - 4.f) < .001f,
+			"Wall climb lands exactly on its final authored sample");
+		writeWallClimbBootstrap(80u);
+		tests.Require(
+			!triggerBootstrap.Load(WORLD_ID::VALTAN_ARENA) &&
+			2u == triggerBootstrap.Get_Placements().size(),
+			"Reject a wall climb whose final sample time disagrees with its move duration without replacing the committed world");
 		SetEnvironmentVariableW(L"LOSTARK_SERVER_DATA_ROOT",
 			0u == previousLength || previousLength >= std::size(previousRoot) ?
 				nullptr : previousRoot);

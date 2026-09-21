@@ -107,6 +107,8 @@ bool CMainApp::UpdateMapEffectPlacementInput()
             arena->Get_DebugPlayerController().Cancel_DebugPlayerPlacement();
         if (auto* arena = CLevel_ValtanArena::Get_Active())
             arena->Get_DebugPlayerController().Cancel_DebugPlayerPlacement();
+        if (auto* bern = CLevel_Bern::Get_Active())
+            bern->Get_PlayerController().Cancel_DebugPlayerPlacement();
         m_pMapEffectPlacementRequest = std::make_unique<KOUKU_MAP_EFFECT_PLACEMENT_REQUEST>(request);
         m_eMapEffectPlacementOwner = owner;
         m_iMapEffectPlacementLevel = currentLevel;
@@ -324,6 +326,8 @@ void CMainApp::RenderWorldLevelTool()
                 arena->Get_DebugPlayerController().Cancel_DebugPlayerPlacement();
             if (auto* select = CLevel_CharacterSelect::Get_Active())
                 select->Get_DebugPlayerController().Cancel_DebugPlayerPlacement();
+            if (auto* bern = CLevel_Bern::Get_Active())
+                bern->Get_PlayerController().Cancel_DebugPlayerPlacement();
             m_bWorldLevelPickArmed = true;
             m_iWorldLevelPickLevel = CGameInstance::Get().Get_CurrentLevelID();
             m_bWorldLevelPickLeftDown = true;

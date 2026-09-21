@@ -1321,6 +1321,10 @@ void Client::CMapTool::Handle_LevelTransition(
 	/* The cutscene session's actors and camera claim belonged to the Level
 	   being left; drop the tool's references before its containers go. */
 	Abandon_EditorCutscene("Cutscene preview stopped: the authoring Level changed.");
+	/* The old Level owns the Deploy overlay targets and may already be torn
+	   down. Do not carry that preview request into the next Area. */
+	m_bCameraPreviewSurroundingsCleared = false;
+	m_CameraPreviewSuppressedDeployPlacementIds.clear();
 	// Old level ownership is already gone during a Level transition. Never clear borrowed containers.
 	m_bRuntimeAuthoring = false;
 	m_RuntimePlacementDraft.clear();

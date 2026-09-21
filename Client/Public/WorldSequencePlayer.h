@@ -72,6 +72,9 @@ public:
 		// Level-owned preparation, borrowed only during the call. Live clones retain
 		// a separate return token so level teardown never dereferences this owner.
 		CWorldSequencePlayer* objectPreparationOwner = nullptr;
+		// MapTool samples after MainApp's normal post-update Effect commit. It may
+		// commit only the newly-created world roots before seeking that editor frame.
+		bool_t bCommitWorldRootEffectsAfterSpawn = false;
 		std::function<std::vector<PLAYER_ANCHOR>()> playerAnchors;
 		// Live BODY bone pose; separate from a frozen projectile emission origin.
 		std::function<bool_t(const std::string&, const std::string&, PLAYER_ANCHOR&, std::string&)> bossAnchor;

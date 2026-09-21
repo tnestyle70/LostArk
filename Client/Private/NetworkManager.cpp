@@ -1697,6 +1697,23 @@ bool CNetworkManager::Send_DebugBingoHammer(std::uint32_t sequence)
  return Build_Packet_Frame(PACKET_TYPE::C2S_DEBUG_BINGO_HAMMER, writer.Get_Buffer(), frame) && Send_All(frame);
 }
 
+bool CNetworkManager::Send_DebugResummonWaveMonsters(std::uint32_t sequence,
+ LostArk::Shared::WAVE_MONSTER_BUTTON button)
+{
+ using namespace LostArk::Shared;
+ if (!Is_Connected() || INVALID_PLAYER_ID == m_iLocalPlayerId ||
+  (WORLD_ID::KAKULSAYDON_ARENA != m_eWorldId && WORLD_ID::VALTAN_ARENA != m_eWorldId))
+  return false;
+ C2S_DEBUG_RESUMMON_WAVE_MONSTERS message{};
+ message.iRequestSequence = sequence;
+ message.eWorldId = m_eWorldId;
+ message.eButton = button;
+ CPacketWriter writer;
+ if (!Write_Message(writer, message)) return false;
+ std::vector<std::uint8_t> frame;
+ return Build_Packet_Frame(PACKET_TYPE::C2S_DEBUG_RESUMMON_WAVE_MONSTERS, writer.Get_Buffer(), frame) && Send_All(frame);
+}
+
 bool CNetworkManager::Send_DebugKoukuHudMode(std::uint32_t sequence,
  LostArk::Shared::KOUKU_HUD_MODE mode)
 {

@@ -54,6 +54,59 @@ namespace
 	   already up, so a raid does not have to walk in one by one. */
 	constexpr const char* VALTAN_BOSS_START_TRIGGER_ID = "Stage_Boss";
 	constexpr const char* VALTAN_ARENA_ENTRY_TRIGGER_ID = "Stage_Boss_ArenaEntry";
+
+	/* Debug F1 "Normal Monster 1/2". Only these four boxes are handed to the buttons;
+	   Stage_MiniBoss_Spawn, Stage_3 (a movePlayer, unrelated to Stage_2's group
+	   spawn.valtan.stage03), Stage_Boss and every other box keep firing. */
+	constexpr LostArk::Server::WAVE_MONSTER_BUTTON_ROW WAVE_MONSTER_BUTTON_ROWS[] =
+	{
+		{ LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA, LostArk::Shared::WAVE_MONSTER_BUTTON::NORMAL_MONSTER_1, "Book1_Monsters", "spawn.kouku.book1" },
+		{ LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA, LostArk::Shared::WAVE_MONSTER_BUTTON::NORMAL_MONSTER_2, "Book2_Monsters", "spawn.kouku.book2" },
+		{ LostArk::Shared::WORLD_ID::VALTAN_ARENA, LostArk::Shared::WAVE_MONSTER_BUTTON::NORMAL_MONSTER_1, "Stage_1", "spawn.valtan.stage01" },
+		{ LostArk::Shared::WORLD_ID::VALTAN_ARENA, LostArk::Shared::WAVE_MONSTER_BUTTON::NORMAL_MONSTER_2, "Stage_2", "spawn.valtan.stage03" },
+	};
+}
+
+const LostArk::Server::WAVE_MONSTER_BUTTON_ROW*
+LostArk::Server::CServerTriggerSystem::Find_WaveMonsterButton(
+	const LostArk::Shared::WORLD_ID worldId,
+	const LostArk::Shared::WAVE_MONSTER_BUTTON button)
+{
+	const auto found = std::find_if(
+		std::begin(WAVE_MONSTER_BUTTON_ROWS), std::end(WAVE_MONSTER_BUTTON_ROWS),
+		[worldId, button](const WAVE_MONSTER_BUTTON_ROW& row)
+		{
+			return row.eWorld == worldId && row.eButton == button;
+		});
+	return std::end(WAVE_MONSTER_BUTTON_ROWS) == found ? nullptr : &*found;
+}
+
+bool LostArk::Server::CServerTriggerSystem::Is_WaveMonsterTrigger(
+	const LostArk::Shared::WORLD_ID worldId,
+	const WORLD_BOOTSTRAP_PLACEMENT& placement)
+{
+	if (WORLD_BOOTSTRAP_KIND::TRIGGER_BOX != placement.eKind ||
+		1u != placement.TriggerActions.size() ||
+		WORLD_TRIGGER_ACTION_KIND::ACTIVATE_SPAWN_GROUP !=
+			placement.TriggerActions.front().eKind)
+	{
+		return false;
+	}
+	return std::any_of(
+		std::begin(WAVE_MONSTER_BUTTON_ROWS), std::end(WAVE_MONSTER_BUTTON_ROWS),
+		[worldId, &placement](const WAVE_MONSTER_BUTTON_ROW& row)
+		{
+			return row.eWorld == worldId &&
+				placement.strPlacementId == row.pTriggerPlacementId &&
+				placement.TriggerActions.front().strTargetId == row.pSpawnGroupId;
+		});
+}
+
+bool LostArk::Server::CServerTriggerSystem::Is_WaveMonsterSuppressed(
+	const RUNTIME_TRIGGER& trigger) const
+{
+	return m_bSuppressWaveMonsterTriggers &&
+		Is_WaveMonsterTrigger(m_eWorldId, trigger.Definition);
 }
 
 bool LostArk::Server::CServerTriggerSystem::Initialize(
@@ -116,7 +169,8 @@ bool LostArk::Server::CServerTriggerSystem::Update_PlayerMotion(
 	const float fixedDeltaSeconds) const
 {
 	using namespace LostArk::Shared;
-	if (PLAYER_ACTION_STATE::TRIGGER_MOVE != player.eAction)
+	if (PLAYER_ACTION_STATE::TRIGGER_MOVE != player.eAction &&
+		PLAYER_ACTION_STATE::WALL_CLIMB != player.eAction)
 	{
 		return false;
 	}
@@ -148,13 +202,39 @@ bool LostArk::Server::CServerTriggerSystem::Update_PlayerMotion(
 		move.fDurationSeconds,
 		move.fElapsedSeconds + fixedDeltaSeconds);
 	const float ratio = move.fElapsedSeconds / move.fDurationSeconds;
-	player.fPositionX = move.fStartX +
-		(move.fTargetX - move.fStartX) * ratio;
-	player.fPositionY = move.fStartY +
-		(move.fTargetY - move.fStartY) * ratio +
-		4.f * move.fArcHeight * ratio * (1.f - ratio);
-	player.fPositionZ = move.fStartZ +
-		(move.fTargetZ - move.fStartZ) * ratio;
+	if (move.TrackSamples.empty())
+	{
+		player.fPositionX = move.fStartX +
+			(move.fTargetX - move.fStartX) * ratio;
+		player.fPositionY = move.fStartY +
+			(move.fTargetY - move.fStartY) * ratio +
+			4.f * move.fArcHeight * ratio * (1.f - ratio);
+		player.fPositionZ = move.fStartZ +
+			(move.fTargetZ - move.fStartZ) * ratio;
+	}
+	else
+	{
+		/* TrackMove samples are absolute original positions.  The Server owns
+		interpolation between them so every recipient sees its replicated truth,
+		rather than a Client-side spline approximation. */
+		const float elapsedMs = move.fElapsedSeconds * 1000.f;
+		const SERVER_TRIGGER_MOVE_SAMPLE* before = &move.TrackSamples.front();
+		const SERVER_TRIGGER_MOVE_SAMPLE* after = &move.TrackSamples.back();
+		for (std::size_t index = 1u; index < move.TrackSamples.size(); ++index)
+		{
+			if (elapsedMs <= static_cast<float>(move.TrackSamples[index].iTimeMs))
+			{
+				after = &move.TrackSamples[index];
+				before = &move.TrackSamples[index - 1u];
+				break;
+			}
+		}
+		const float spanMs = static_cast<float>(after->iTimeMs - before->iTimeMs);
+		const float local = spanMs > 0.f ? (elapsedMs - static_cast<float>(before->iTimeMs)) / spanMs : 1.f;
+		player.fPositionX = before->fPositionX + (after->fPositionX - before->fPositionX) * local;
+		player.fPositionY = before->fPositionY + (after->fPositionY - before->fPositionY) * local;
+		player.fPositionZ = before->fPositionZ + (after->fPositionZ - before->fPositionZ) * local;
+	}
 
 	if (ratio >= 1.f)
 	{
@@ -307,6 +387,7 @@ bool LostArk::Server::CServerTriggerSystem::Activate_Interact(
 		if (trigger.Definition.strPlacementId != triggerPlacementId ||
 			trigger.Definition.TriggerActions.empty() ||
 			Fires_OnEntry(trigger) ||
+			Is_WaveMonsterSuppressed(trigger) ||
 			WORLD_TRIGGER_ACTION_KIND::CLAIM_CARD_MAZE_TELESCOPE ==
 				trigger.Definition.TriggerActions.front().eKind ||
 			(trigger.Definition.isTriggerOnce && trigger.hasFired))
@@ -354,6 +435,7 @@ std::uint32_t LostArk::Server::CServerTriggerSystem::Activate_Here(
 			WORLD_TRIGGER_ACTION_KIND::CLAIM_CARD_MAZE_TELESCOPE ==
 				trigger.Definition.TriggerActions.front().eKind ||
 			Fires_OnEntry(trigger) ||
+			Is_WaveMonsterSuppressed(trigger) ||
 			(trigger.Definition.isTriggerOnce && trigger.hasFired) ||
 			!Contains(trigger, found->second))
 		{
@@ -531,7 +613,8 @@ void LostArk::Server::CServerTriggerSystem::Evaluate_Entries(
 	{
 		for (const auto& [playerId, player] : players)
 		{
-			if (LostArk::Shared::PLAYER_ACTION_STATE::TRIGGER_MOVE == player.eAction)
+				if (LostArk::Shared::PLAYER_ACTION_STATE::TRIGGER_MOVE == player.eAction ||
+					LostArk::Shared::PLAYER_ACTION_STATE::WALL_CLIMB == player.eAction)
 				m_TriggerMoveInFlight.insert(playerId);
 			else if (0u != m_TriggerMoveInFlight.erase(playerId))
 				landed.insert(playerId);
@@ -547,6 +630,10 @@ void LostArk::Server::CServerTriggerSystem::Evaluate_Entries(
 		{
 			continue;
 		}
+		/* Debug rooms hand the four wave-monster boxes to the F1 buttons: walking
+		   in neither raises the wave nor offers G. Release never sets the flag. */
+		if (Is_WaveMonsterSuppressed(trigger))
+			continue;
 		/* A box that does not fire on entry only offers itself: the player presses
 		   G inside it and the Server checks the volume again. */
 		const bool firesOnEntry = Fires_OnEntry(trigger);
@@ -602,7 +689,8 @@ void LostArk::Server::CServerTriggerSystem::Evaluate_Entries(
 				/* A Bern move can finish before the next evaluation sees it in flight, so the
 				   landing is recorded the moment it starts. */
 				if (LostArk::Shared::WORLD_ID::BERN == m_eWorldId &&
-					LostArk::Shared::PLAYER_ACTION_STATE::TRIGGER_MOVE == player.eAction)
+					(LostArk::Shared::PLAYER_ACTION_STATE::TRIGGER_MOVE == player.eAction ||
+					 LostArk::Shared::PLAYER_ACTION_STATE::WALL_CLIMB == player.eAction))
 				{
 					m_TriggerMoveInFlight.insert(playerId);
 				}
@@ -616,6 +704,7 @@ void LostArk::Server::CServerTriggerSystem::Evaluate_Entries(
 			}
 			else if (LostArk::Shared::PLAYER_ACTION_STATE::NONE != player.eAction &&
 				LostArk::Shared::PLAYER_ACTION_STATE::TRIGGER_MOVE != player.eAction &&
+				LostArk::Shared::PLAYER_ACTION_STATE::WALL_CLIMB != player.eAction &&
 				(WORLD_TRIGGER_ACTION_KIND::MOVE_PLAYER ==
 					trigger.Definition.TriggerActions.front().eKind ||
 				WORLD_TRIGGER_ACTION_KIND::CHANGE_LEVEL ==
@@ -772,22 +861,38 @@ bool LostArk::Server::CServerTriggerSystem::Begin_MovePlayer(
 	player.hasBufferedComboInput = false;
 	player.PendingCommand.Clear();
 	player.TriggerMove = {};
-	player.TriggerMove.fStartX = player.fPositionX;
-	player.TriggerMove.fStartY = player.fPositionY;
-	player.TriggerMove.fStartZ = player.fPositionZ;
-	player.TriggerMove.fTargetX = action.fTargetX;
-	player.TriggerMove.fTargetY = action.fTargetY;
-	player.TriggerMove.fTargetZ = action.fTargetZ;
-	player.TriggerMove.fDurationSeconds = action.fDurationSeconds;
+	const bool wallClimb = WORLD_TRIGGER_MOVE_STYLE::WALL_CLIMB == action.eMoveStyle;
+	if (wallClimb && action.TrackSamples.size() < 2u)
+		return false;
+	player.TriggerMove.fStartX = wallClimb ? action.TrackSamples.front().fPositionX : player.fPositionX;
+	player.TriggerMove.fStartY = wallClimb ? action.TrackSamples.front().fPositionY : player.fPositionY;
+	player.TriggerMove.fStartZ = wallClimb ? action.TrackSamples.front().fPositionZ : player.fPositionZ;
+	player.TriggerMove.fTargetX = wallClimb ? action.TrackSamples.back().fPositionX : action.fTargetX;
+	player.TriggerMove.fTargetY = wallClimb ? action.TrackSamples.back().fPositionY : action.fTargetY;
+	player.TriggerMove.fTargetZ = wallClimb ? action.TrackSamples.back().fPositionZ : action.fTargetZ;
+	player.TriggerMove.fDurationSeconds = wallClimb ?
+		static_cast<float>(action.TrackSamples.back().iTimeMs) / 1000.f : action.fDurationSeconds;
 	player.TriggerMove.fElapsedSeconds = 0.f;
-	player.TriggerMove.fArcHeight = action.fArcHeight;
+	player.TriggerMove.fArcHeight = wallClimb ? 0.f : action.fArcHeight;
+	if (wallClimb)
+	{
+		player.TriggerMove.TrackSamples.reserve(action.TrackSamples.size());
+		for (const WORLD_TRIGGER_MOVE_SAMPLE& sample : action.TrackSamples)
+			player.TriggerMove.TrackSamples.push_back({ sample.iTimeMs,
+				sample.fPositionX, sample.fPositionY, sample.fPositionZ });
+		player.fPositionX = player.TriggerMove.fStartX;
+		player.fPositionY = player.TriggerMove.fStartY;
+		player.fPositionZ = player.TriggerMove.fStartZ;
+		player.fYawDegrees = action.fFacingYawDegrees;
+	}
 	player.TriggerMove.eKoukuHudModeOnArrival = action.eKoukuHudModeOnArrival;
 	player.TriggerMove.isActive = true;
 	const float deltaX = action.fTargetX - player.fPositionX;
 	const float deltaZ = action.fTargetZ - player.fPositionZ;
-	if (deltaX * deltaX + deltaZ * deltaZ > 0.000001f)
+	if (!wallClimb && deltaX * deltaX + deltaZ * deltaZ > 0.000001f)
 		player.fYawDegrees = std::atan2(deltaX, deltaZ) * RADIANS_TO_DEGREES;
-	player.eAction = PLAYER_ACTION_STATE::TRIGGER_MOVE;
+	player.eAction = wallClimb ? PLAYER_ACTION_STATE::WALL_CLIMB :
+		PLAYER_ACTION_STATE::TRIGGER_MOVE;
 	player.iActionStartTick = actionStartTick;
 	return true;
 }

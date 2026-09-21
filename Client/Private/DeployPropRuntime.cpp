@@ -6,6 +6,7 @@
 #include "Model.h"
 
 #include <algorithm>
+#include <unordered_set>
 #include <utility>
 
 namespace
@@ -455,6 +456,53 @@ bool_t CDeployPropRuntime::Set_State_All(const DEPLOY_PROP_STATE state)
 		return false;
 	}
 	return true;
+}
+
+bool_t CDeployPropRuntime::Set_CameraPreviewSuppressed(
+	const std::vector<uint64_t>& placementIds,
+	const bool_t suppressed)
+{
+	if (placementIds.empty())
+	{
+		m_Status = "DeployProp camera preview selection is empty";
+		return false;
+	}
+
+	std::unordered_set<uint64_t> uniqueIds;
+	uniqueIds.reserve(placementIds.size());
+	std::vector<shared_ptr<CDeployPropObject>> targets;
+	targets.reserve(placementIds.size());
+	for (const uint64_t placementId : placementIds)
+	{
+		const auto iter = m_EntryIndex.find(placementId);
+		if (0u == placementId || !uniqueIds.emplace(placementId).second ||
+			iter == m_EntryIndex.end() || iter->second >= m_Entries.size() ||
+			nullptr == m_Entries[iter->second].object)
+		{
+			m_Status = "DeployProp camera preview has an unknown or duplicate member";
+			return false;
+		}
+		targets.push_back(m_Entries[iter->second].object);
+	}
+
+	for (const shared_ptr<CDeployPropObject>& target : targets)
+		target->Set_CameraPreviewSuppressed(suppressed);
+	m_Status = std::string("DeployProp camera preview ") +
+		(suppressed ? "hidden: " : "restored: ") +
+		std::to_string(targets.size()) + " placements";
+	return true;
+}
+
+void CDeployPropRuntime::Collect_PlacementIds(
+	std::vector<uint64_t>& outPlacementIds) const
+{
+	outPlacementIds.clear();
+	outPlacementIds.reserve(m_Entries.size());
+    for (const DEPLOY_RUNTIME_ENTRY& entry : m_Entries)
+    {
+        if (0u != entry.placement.runtimePlacementId && nullptr != entry.object)
+            outPlacementIds.push_back(entry.placement.runtimePlacementId);
+    }
 }
 
 shared_ptr<CDeployPropObject> CDeployPropRuntime::Find(

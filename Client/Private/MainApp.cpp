@@ -70,6 +70,7 @@
 #include "HonorTitleWindowView.h"
 #include "WorldMapWindowView.h"
 #include "SongCastGaugeView.h"
+#include "Network/PacketMessages.h"
 #include "InventoryView.h"
 #include "QuickSlotDragView.h"
 #include "SkillWindowView.h"
@@ -5651,6 +5652,15 @@ void CMainApp::Update_Minimap(const f32_t fTimeDelta)
 			if (nullptr == pController || !pController->Request_UseSquareHole(iHoleId))
 				OutputDebugStringA("[Client][WorldMapWindow] Square hole request not sent (no controller, or the player is busy).\n");
 		}
+		if (m_pWorldMapWindowView->Take_ShipTravelRequest())
+		{
+			CPlayerController* pController = Find_ActivePlayerController();
+			if (nullptr == pController || !pController->Request_UseSquareHole(
+				LostArk::Shared::WORLD_MAP_SHIP_TRAVEL_DESTINATION_ID))
+			{
+				OutputDebugStringA("[Client][WorldMapWindow] Ship travel request not sent (no controller, or the player is busy).\n");
+			}
+		}
 	}
 	if (nullptr != m_pSongCastGaugeView)
 		m_pSongCastGaugeView->Update(fTimeDelta, CCombatHUDViewModel::Get().Get_Player(),
@@ -9830,6 +9840,7 @@ void CMainApp::RenderArenaCameraAndPlayerControls()
 	else if (nullptr != bern)
 	{
 		camera = bern->Get_DebugCamera();
+		controller = &bern->Get_PlayerController();
 		mapName = "Bern";
 	}
 	else if (nullptr != development)
@@ -9851,7 +9862,8 @@ void CMainApp::RenderArenaCameraAndPlayerControls()
 		{
 			const std::shared_ptr<CCharacter> pDebugLocal =
 				nullptr != valtan ? valtan->Get_LocalCharacter() :
-				(nullptr != kouku ? kouku->Get_LocalCharacter() : nullptr);
+				(nullptr != kouku ? kouku->Get_LocalCharacter() :
+					(nullptr != bern ? bern->Get_LocalCharacter() : nullptr));
 			if (nullptr != pDebugLocal && nullptr != pDebugLocal->Get_Transform())
 			{
 				float3_t vPlayer{};
@@ -9877,7 +9889,8 @@ void CMainApp::RenderArenaCameraAndPlayerControls()
 		ImGui::TextDisabled(valtan || kouku ? "Free-camera speed is saved per arena for this session." :
 			"Free-camera speed lasts for this map visit.");
 
-		// Server player placement remains confined to the two existing arena owners.
+		// The Server projects every request onto this active world's authored navigation.
+		// Bern needs this same Debug-only path to inspect the separate Bern3 deck.
 		if (controller)
 		{
 			const bool_t freeCamera = !camera->Is_FollowRequested() &&
@@ -9887,7 +9900,8 @@ void CMainApp::RenderArenaCameraAndPlayerControls()
 			if (ImGui::Button("Move Player"))
 			{
 				const auto world = nullptr != valtan ? LostArk::Shared::WORLD_ID::VALTAN_ARENA :
-					LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA;
+					(nullptr != bern ? LostArk::Shared::WORLD_ID::BERN :
+						LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA);
 				if (controller->Begin_DebugPlayerPlacement(world))
 					camera->Set_MouseLookEnabled(false);
 			}
@@ -11056,6 +11070,76 @@ namespace
 }
 #endif
 
+namespace
+{
+	/* One F1 "Normal Monster 1/2" button. The trigger name, spawn group and maxAlive
+	   mirror the Server's WAVE_MONSTER_BUTTON_ROW table and the authored group; the
+	   tooltip is their only consumer. A press only asks the Server, which owns the
+	   mapping, the removal of the live monsters and the wave itself. */
+	struct DEBUG_WAVE_MONSTER_BUTTON final
+	{
+		LostArk::Shared::WAVE_MONSTER_BUTTON eButton;
+		const char* pLabel;
+		const char* pTriggerName;
+		const char* pSpawnGroupId;
+		uint32_t iMaxAlive;
+	};
+
+	constexpr DEBUG_WAVE_MONSTER_BUTTON KOUKU_WAVE_MONSTER_BUTTONS[] =
+	{
+		{ LostArk::Shared::WAVE_MONSTER_BUTTON::NORMAL_MONSTER_1, "Normal Monster 1##KoukuWave", "Book1_Monsters", "spawn.kouku.book1", 22u },
+		{ LostArk::Shared::WAVE_MONSTER_BUTTON::NORMAL_MONSTER_2, "Normal Monster 2##KoukuWave", "Book2_Monsters", "spawn.kouku.book2", 15u },
+	};
+
+	constexpr DEBUG_WAVE_MONSTER_BUTTON VALTAN_WAVE_MONSTER_BUTTONS[] =
+	{
+		{ LostArk::Shared::WAVE_MONSTER_BUTTON::NORMAL_MONSTER_1, "Normal Monster 1##ValtanWave", "Stage_1", "spawn.valtan.stage01", 10u },
+		{ LostArk::Shared::WAVE_MONSTER_BUTTON::NORMAL_MONSTER_2, "Normal Monster 2##ValtanWave", "Stage_2", "spawn.valtan.stage03", 10u },
+	};
+
+	template <size_t COUNT>
+	void Render_DebugWaveMonsterButtons(
+		CPlayerController& controller,
+		const DEBUG_WAVE_MONSTER_BUTTON (&buttons)[COUNT])
+	{
+		for (size_t iButton = 0; iButton < COUNT; ++iButton)
+		{
+			const DEBUG_WAVE_MONSTER_BUTTON& button = buttons[iButton];
+			if (0 != iButton)
+				ImGui::SameLine();
+			if (ImGui::Button(button.pLabel, ImVec2(160.f, 0.f)))
+				(void)controller.Request_DebugResummonWaveMonsters(button.eButton);
+			if (ImGui::IsItemHovered())
+			{
+				ImGui::SetTooltip(
+					"Trigger %s -> spawn group %s (max alive %u)\n"
+					"Asks the Server to remove that group's live monsters and summon the wave again at its authored anchors.\n"
+					"Debug only: stepping into the trigger no longer raises it.",
+					button.pTriggerName, button.pSpawnGroupId, button.iMaxAlive);
+			}
+		}
+	}
+}
+
+void CMainApp::RenderValtanArenaControls()
+{
+	/* Hidden outside the arena so the hub does not carry an empty header there. */
+	if (ETOUI(LEVEL::VALTAN_ARENA) != CGameInstance::Get().Get_CurrentLevelID())
+		return;
+	Engine::CProfilerScope panelScope(CGameInstance::Get().Get_Profiler(), "ImGui.Hub.ValtanArena");
+	ImGui::SeparatorText("Valtan Arena / Wave Monsters");
+	CLevel_ValtanArena* pArena = CLevel_ValtanArena::Get_Active();
+	if (nullptr == pArena)
+	{
+		ImGui::TextDisabled("Valtan Arena Level instance is unavailable.");
+		return;
+	}
+	ImGui::SeparatorText("Wave Monsters");
+	ImGui::TextDisabled(
+		"Debug builds no longer raise the Stage_1 / Stage_2 corridor waves when you step into their trigger; these buttons summon them again.");
+	Render_DebugWaveMonsterButtons(pArena->Get_DebugPlayerController(), VALTAN_WAVE_MONSTER_BUTTONS);
+}
+
 void CMainApp::RenderKoukuSaydonArenaControls()
 {
 	Engine::CProfilerScope panelScope(CGameInstance::Get().Get_Profiler(), "ImGui.Hub.KoukuArena");
@@ -11132,6 +11216,10 @@ void CMainApp::RenderKoukuSaydonArenaControls()
 		swept. */
 		if (ImGui::Button("Bingo_Hammer", ImVec2(160.f, 0.f)))
 			(void)bingoController.Request_DebugBingoHammer();
+		/* Wave monsters: Debug builds no longer raise Book1_Monsters / Book2_Monsters
+		when a player steps into the trigger, so these two buttons ask the Server to
+		summon them again. */
+		Render_DebugWaveMonsterButtons(bingoController, KOUKU_WAVE_MONSTER_BUTTONS);
 		const auto& board = CCombatHUDViewModel::Get().Get_BingoBoard();
 		ImGui::TextDisabled("white 0x%07X   red 0x%07X   bombs %u",
 			board.iWhiteMask, board.iRedMask,
@@ -12293,6 +12381,7 @@ void CMainApp::RenderDeveloperTools()
 	RenderDebugLevelNavigation();
 	RenderArenaCameraAndPlayerControls();
 	RenderKoukuSaydonArenaControls();
+	RenderValtanArenaControls();
 	RenderCompletePlayControls();
 	RenderKoukuSaydonCompletePlayControls();
 	RenderServerArenaActiveControls();

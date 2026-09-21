@@ -474,6 +474,11 @@ private:
 	void Render_CameraTrackTimeline(EDITOR_CAMERA_SHOT& shot);
 	void Render_CameraShotSection();
 	void End_CameraShotPreview();
+	/* Preview-only Valtan Arena outer-wall overlay. It addresses the exact
+	   destruction-owned Deploy ring and remains independent from Server state,
+	   cutscene sampling, floor, water and all ordinary map placements. */
+	bool_t Set_CameraPreviewSurroundingsCleared(bool_t cleared);
+	bool_t Refresh_CameraPreviewSurroundings();
 	/* Picks rendered surface height, including cells with no baked floor.
 	   Failed picks explain their cause through m_NavigationStatus. */
 	bool_t Try_PickNavigationCell(
@@ -1002,6 +1007,9 @@ private:
 	size_t m_iSelectedCameraShot = 0u;
 	std::string m_CameraShotStatus = "No camera shot document for this Area";
 	bool_t m_bCameraShotPreviewActive = false;
+	/* Never saved. Closing Map Tool always clears this overlay. */
+	bool_t m_bCameraPreviewSurroundingsCleared = false;
+	std::vector<uint64_t> m_CameraPreviewSuppressedDeployPlacementIds;
 	/* Area cutscenes. Loaded from the same camera document, so a file without
 	   them keeps the previous single-shot editing untouched. */
 	std::vector<EDITOR_CUTSCENE> m_Cutscenes;

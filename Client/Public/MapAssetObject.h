@@ -83,6 +83,12 @@ public:
 	   through this flag and clears it when the cinematic ends. */
 	bool_t Is_StageSuppressed() const { return m_bStageSuppressed; }
 	void Set_StageSuppressed(bool_t suppressed) { m_bStageSuppressed = suppressed; }
+	/* Map Tool's camera inspection overlay is independent from a cutscene
+	   stage overlay, so restoring the inspection view never revives an object
+	   a sequence intentionally keeps hidden. */
+	bool_t Is_CameraPreviewSuppressed() const { return m_bCameraPreviewSuppressed; }
+	void Set_CameraPreviewSuppressed(bool_t suppressed)
+	{ m_bCameraPreviewSuppressed = suppressed; }
 	void Set_PresentationOpacityMultiplier(f32_t multiplier);
 	void Set_PresentationVortexProfile(
 		PRESENTATION_VORTEX_PROFILE profile,
@@ -99,7 +105,9 @@ private:
 	bool_t m_bApplyBottomCenter = false;
 	bool_t m_bVisible = true;
 	bool_t m_bStageSuppressed = false;
-	bool_t Is_Rendered() const { return m_bVisible && !m_bStageSuppressed; }
+	bool_t m_bCameraPreviewSuppressed = false;
+	bool_t Is_Rendered() const
+	{ return m_bVisible && !m_bStageSuppressed && !m_bCameraPreviewSuppressed; }
 	bool_t m_bMirrored = false;
 	//Frustum Culling을 위한 멤버 변수 추가 
 	bool_t m_bHasLocalCullBounds = false;

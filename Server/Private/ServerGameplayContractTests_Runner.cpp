@@ -1644,6 +1644,8 @@ int LostArk::Server::CServerGameplayContractRunner::Run(
 
 	Run_SpawnGroups(tests, catalog);
 
+	Run_WaveMonsterButtons(tests);
+
 	Run_ValtanDash(tests, catalog, VALTAN_WALL_COLLISION_STATE, VALTAN_WALL_CENTER_X, VALTAN_WALL_CENTER_Y, VALTAN_WALL_CENTER_Z);
 
 	Run_ValtanAudition(tests);

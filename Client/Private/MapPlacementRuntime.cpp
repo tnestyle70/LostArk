@@ -648,6 +648,23 @@ bool_t CMapPlacementRuntime::Set_RuntimeSuppressed(
 	return false;
 }
 
+bool_t CMapPlacementRuntime::Set_RuntimeCameraPreviewSuppressed(
+	MAP_RUNTIME_PLACED_ENTRY& entry,
+	const bool_t suppressed)
+{
+	if (nullptr != entry.object)
+	{
+		entry.object->Set_CameraPreviewSuppressed(suppressed);
+		return true;
+	}
+	if (nullptr != entry.batch)
+	{
+		return SUCCEEDED(entry.batch->Set_InstanceCameraPreviewSuppressed(
+			entry.record.placementId, suppressed));
+	}
+	return false;
+}
+
 #ifdef _DEBUG
 bool_t CMapPlacementRuntime::Replace_DebugPlacementPreview(
 	const std::vector<MAP_DEBUG_PLACEMENT_PREVIEW>& previews,

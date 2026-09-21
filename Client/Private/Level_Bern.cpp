@@ -478,14 +478,6 @@ HRESULT CLevel_Bern::Initialize()
 	m_PartyInteraction.Initialize(m_pDevice, m_pContext, ETOUI(LEVEL::BERN));
 	m_ChatBubbleView.Initialize(m_pDevice, m_pContext, ETOUI(LEVEL::BERN));
 
-#ifdef _DEBUG
-	if (!Ready_DebugLevelChangeTriggers(pEntry->pMapAreaId))
-	{
-		OutputDebugStringA(
-			"[Level_Bern] Debug changeLevel Trigger Box presentation failed.\n");
-	}
-#endif
-
 	const std::filesystem::path musicPath =
 		CRuntimeAssetRoot::Resolve(BERN_CASTLE_BGM_ASSET_ID);
 	if (!musicPath.empty() && std::filesystem::is_regular_file(musicPath) &&
@@ -606,7 +598,9 @@ void CLevel_Bern::Update(f32_t fTimeDelta)
 	}
 
 	m_PlayerController.Update(
-		nullptr != m_pCamera && m_pCamera->Is_FollowEnabled());
+		nullptr != m_pCamera && m_pCamera->Is_FollowEnabled(),
+		nullptr != m_pCamera && !m_pCamera->Is_FollowRequested() &&
+			!m_pCamera->Is_PresentationOverrideActive());
 
 }
 
@@ -1381,13 +1375,13 @@ bool_t CLevel_Bern::Ready_DebugLevelChangeTriggers(
 	for (const WORLD_GAMEPLAY_PLACEMENT& placement :
 		document.Get_Placements())
 	{
-		const bool_t isLevelChangeTrigger =
+		/* The debug layer is an authored-location aid, not a product trigger
+		   implementation. Bern's live boxes are movePlayer boxes, so filtering
+		   this to changeLevel made every useful deck-transfer marker disappear. */
+		const bool_t isEnabledTrigger =
 			placement.isEnabled &&
-			WORLD_PLACEMENT_KIND::TRIGGER_BOX == placement.eKind &&
-			1u == placement.triggerEvents.size() &&
-			WORLD_TRIGGER_EVENT_KIND::CHANGE_LEVEL ==
-				placement.triggerEvents.front().eKind;
-		if (!isLevelChangeTrigger)
+			WORLD_PLACEMENT_KIND::TRIGGER_BOX == placement.eKind;
+		if (!isEnabledTrigger)
 			continue;
 
 		CTrigger_Box::TRIGGER_BOX_DESC desc{};
@@ -1428,13 +1422,19 @@ bool_t CLevel_Bern::Ready_DebugLevelChangeTriggers(
 			return false;
 		}
 
-		triggerBox->Set_AuthoringVisible(true);
+		/* These are only non-interactive Debug-layer clones retained for
+		   location diagnostics.  They are not Map Tool outlines: Map Tool owns
+		   its own Layer_TriggerBoxes instances and explicitly reveals those
+		   only while F1 -> World Gameplay is open.  Keeping this runtime copy
+		   visible made every enabled gameplay trigger leak into normal Bern
+		   play in a Debug build. */
+		triggerBox->Set_AuthoringVisible(false);
 		staged.push_back(std::move(triggerBox));
 	}
 
 	m_DebugLevelChangeTriggers = std::move(staged);
 	OutputDebugStringA((
-		"[Level_Bern] Debug changeLevel Trigger Boxes ready: " +
+		"[Level_Bern] Debug enabled Trigger Boxes ready: " +
 		std::to_string(m_DebugLevelChangeTriggers.size()) + "\n").c_str());
 	return true;
 }

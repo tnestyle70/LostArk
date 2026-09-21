@@ -593,6 +593,14 @@ bool_t Client::CWorldMapWindowView::Take_SquareHoleRequest(uint16_t& outHoleId)
 	return true;
 }
 
+bool_t Client::CWorldMapWindowView::Take_ShipTravelRequest()
+{
+	if (!m_bPendingShipTravel)
+		return false;
+	m_bPendingShipTravel = false;
+	return true;
+}
+
 void Client::CWorldMapWindowView::Center_On(const f32_t fClientX, const f32_t fClientZ)
 {
 	if (nullptr == m_pActiveArea)
@@ -862,11 +870,23 @@ void Client::CWorldMapWindowView::Update(const f32_t fTimeDelta, const LEVEL eLe
 		}
 		PanelToggle("WM_ToggleSquareHoleBg", "WM_ToggleSquareHole", PANEL::SQUARE_HOLE, "UI/WorldMap/WorldMap_ToggleSquareHole");
 		PanelToggle("WM_ToggleLegendBg", "WM_ToggleLegend", PANEL::LEGEND, "UI/WorldMap/WorldMap_ToggleLegend");
-		/* Bottom bar (voyage liner, set sail, memo): the renew plates hover; no system behind them. */
-		for (const char* pSlotId : { "WM_BtnLiner", "WM_BtnOcean", "WM_BtnMemo" })
+		/* Liner and memo still have no product flow. Set Sail hands a request to MainApp;
+		it does not move the player locally. */
+		for (const char* pSlotId : { "WM_BtnLiner", "WM_BtnMemo" })
 		{
 			if (Button(pSlotId, "UI/HonorTitle/HonorTitle_Btn_Normal.png", "UI/HonorTitle/HonorTitle_Btn_Over.png"))
 				CMainApp::Play_UIButtonClickSound();
+		}
+		/* This project currently authors the ship landing only in Bern. Other map-capable
+		levels retain the chrome but cannot submit a travel request that has no Server row. */
+		if (Button("WM_BtnOcean", "UI/HonorTitle/HonorTitle_Btn_Normal.png", "UI/HonorTitle/HonorTitle_Btn_Over.png",
+			ETOUI(LEVEL::BERN) == ETOUI(eLevel)))
+		{
+			CMainApp::Play_UIButtonClickSound();
+			m_bPendingShipTravel = true;
+			Close();
+			Hide();
+			return;
 		}
 		m_pView->Set_SlotTint("WM_BtnOcean", TINT_GOLD_PLATE);
 	}

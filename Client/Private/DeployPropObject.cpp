@@ -256,7 +256,7 @@ void CDeployPropObject::Late_Update(f32_t fTimeDelta)
 	const bool_t sourceVisible =
 		(m_State != DEPLOY_PROP_STATE::DESPAWNED || m_bAnimationAuthoringRevealHidden) &&
 		m_SurfacePresentation.fOpacity > 0.0001f &&
-		!Is_BasePresentationSuppressed();
+		!Is_BasePresentationSuppressed() && !m_bCameraPreviewSuppressed;
 	if (!sourceVisible && !Has_VisibleDebrisPreviewInstance())
 		return;
 	CGameInstance::Get().Add_RenderObject(
@@ -283,7 +283,7 @@ HRESULT CDeployPropObject::Render()
 	const bool_t sourceVisible =
 		(m_State != DEPLOY_PROP_STATE::DESPAWNED || m_bAnimationAuthoringRevealHidden) &&
 		m_SurfacePresentation.fOpacity > 0.0001f &&
-		!Is_BasePresentationSuppressed();
+		!Is_BasePresentationSuppressed() && !m_bCameraPreviewSuppressed;
 	if (sourceVisible)
 	{
 		if (FAILED(Bind_CommonShaderResources()))
@@ -311,7 +311,7 @@ HRESULT CDeployPropObject::Render()
 HRESULT CDeployPropObject::Render_DeferredOverlay()
 {
 	if (Should_CullStaticIntact(false)) return S_OK;
-	if (!Should_RenderDeferredEmissiveOverlay())
+	if (m_bCameraPreviewSuppressed || !Should_RenderDeferredEmissiveOverlay())
 		return S_OK;
 	if (FAILED(Bind_CommonShaderResources()))
 		return E_FAIL;
@@ -327,7 +327,7 @@ HRESULT CDeployPropObject::Render_Shadow()
 	const bool_t sourceVisible =
 		(m_State != DEPLOY_PROP_STATE::DESPAWNED || m_bAnimationAuthoringRevealHidden) &&
 		m_SurfacePresentation.fOpacity > 0.0001f &&
-		!Is_BasePresentationSuppressed();
+		!Is_BasePresentationSuppressed() && !m_bCameraPreviewSuppressed;
 	if (sourceVisible)
 	{
 		if (FAILED(Bind_ShadowShaderResources(
@@ -368,7 +368,7 @@ bool_t CDeployPropObject::Try_GetStaticShadowRevision(uint64_t& outRevision) con
 		m_SurfacePresentation.fOpacity != 1.f ||
 		m_bPhysicsPreviewActive || m_bAnimationAuthoringPreviewActive ||
 		m_bAnimationAuthoringPoseActive || m_bDebrisPreviewActive ||
-		Is_BasePresentationSuppressed() ||
+		Is_BasePresentationSuppressed() || m_bCameraPreviewSuppressed ||
 		!CGameInstance::Get().Get_MaterialRenderSettings().bUseSourceMaterials)
 		return reject();
 
@@ -483,6 +483,20 @@ bool_t CDeployPropObject::Set_State(DEPLOY_PROP_STATE state)
 	}
 	m_State = state;
 	return true;
+}
+
+void CDeployPropObject::Set_CameraPreviewSuppressed(const bool_t suppressed)
+{
+	if (m_bCameraPreviewSuppressed == suppressed)
+		return;
+
+	m_bCameraPreviewSuppressed = suppressed;
+	/* Static shadows cache the intact source mesh. Invalidate that cache so a
+	   hidden inspection wall cannot remain baked into the next shadow frame. */
+	m_bStaticShadowSnapshotValid = false;
+	m_bStaticCullBoundsValid = false;
+	if (m_iStaticShadowRevision != (std::numeric_limits<uint64_t>::max)())
+		++m_iStaticShadowRevision;
 }
 
 bool_t CDeployPropObject::Apply_SurfacePresentation(
