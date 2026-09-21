@@ -10488,6 +10488,30 @@
           ]
         }
       ]
+    },
+    {
+      "archetypeId": "PLAYER_GUARDIANKNIGHT",
+      "networkClassId": "GUARDIANKNIGHT",
+      "assetId": "GuardianKnight",
+      "bodyModel": "Character/GuardianKnight/GuardianKnight.wmodel",
+      "equipmentModels": [
+        "Character/GuardianKnight/GuardianKnight_Upper.wmodel",
+        "Character/GuardianKnight/GuardianKnight_Lower.wmodel",
+        "Character/GuardianKnight/GuardianKnight_Arm.wmodel",
+        "Character/GuardianKnight/GuardianKnight_Shoulder.wmodel",
+        "Character/GuardianKnight/GuardianKnight_Helmet.wmodel",
+        "Character/GuardianKnight/GuardianKnight_Wing.wmodel"
+      ],
+      "weaponModels": [
+        "Character/WP_WDDK_04/WP_WDDK_04.wmodel"
+      ],
+      "animationSetModels": [
+        "Character/GuardianKnight/AnimSets/GuardianKnight_EstherAnimSet.wmodel",
+        "Character/GuardianKnight/AnimSets/GuardianKnight_CustomizingAnimSet.wmodel",
+        "Character/GuardianKnight/AnimSets/GuardianKnight_TerrainJumpAnimSet.wmodel"
+      ],
+      "animationSetId": "ANIM_GUARDIANKNIGHT",
+      "runtimeStatus": "supported"
     }
   ]
 }

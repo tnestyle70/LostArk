@@ -73,6 +73,7 @@ namespace
 		else if ("ARTIST" == value) output = CHARACTER_CLASS_ID::ARTIST;
 		else if ("DIMENSIONMASTER" == value) output = CHARACTER_CLASS_ID::DIMENSIONMASTER;
 		else if ("WARLORD" == value) output = CHARACTER_CLASS_ID::WARLORD;
+		else if ("GUARDIANKNIGHT" == value) output = CHARACTER_CLASS_ID::GUARDIANKNIGHT;
 		else return false;
 		return true;
 	}

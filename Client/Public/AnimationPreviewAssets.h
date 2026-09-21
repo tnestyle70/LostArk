@@ -115,6 +115,15 @@ inline constexpr std::array ANIMATION_PREVIEW_ASSETS =
 	},
 	ANIMATION_PREVIEW_ASSET
 	{
+		"guardianknight.character",
+		"Guardian Knight Character (165 clips)",
+		"GuardianKnight",
+		"Character/GuardianKnight/GuardianKnight.wmodel",
+		L"Prototype_Component_Model_GuardianKnight",
+		true
+	},
+	ANIMATION_PREVIEW_ASSET
+	{
 		"monster.480001.mn-padd-01",
 		"[Monster] Normal 01 - MN_PADD_01 (36 clips)",
 		"Monster_480001_MN_PADD_01",

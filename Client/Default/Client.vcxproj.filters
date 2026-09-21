@@ -187,6 +187,9 @@
     <Filter Include="02.GameObjects\00. Character\05. Warlord">
       <UniqueIdentifier>{7b3c1d68-9f24-4a51-8e07-2c9d61af5d34}</UniqueIdentifier>
     </Filter>
+    <Filter Include="02.GameObjects\00. Character\06. GuardianKnight">
+      <UniqueIdentifier>{b653d5e3-89cd-4b68-a235-88f0129d94bd}</UniqueIdentifier>
+    </Filter>
     <Filter Include="02.GameObjects\01. Npc">
       <UniqueIdentifier>{52dc0b5e-f812-4835-a4c9-d7896396ef00}</UniqueIdentifier>
     </Filter>
@@ -761,6 +764,9 @@
     </ClCompile>
     <ClCompile Include="..\Private\Logic_Warlord.cpp">
       <Filter>02.GameObjects\00. Character\05. Warlord</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Logic_GuardianKnight.cpp">
+      <Filter>02.GameObjects\00. Character\06. GuardianKnight</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\Npc.cpp">
       <Filter>02.GameObjects\01. Npc</Filter>
@@ -1450,6 +1456,9 @@
     <ClInclude Include="..\Public\Logic_Warlord.h">
       <Filter>02.GameObjects\00. Character\05. Warlord</Filter>
     </ClInclude>
+    <ClInclude Include="..\Public\Logic_GuardianKnight.h">
+      <Filter>02.GameObjects\00. Character\06. GuardianKnight</Filter>
+    </ClInclude>
     <ClInclude Include="..\Public\Npc.h">
       <Filter>02.GameObjects\01. Npc</Filter>
     </ClInclude>
@@ -1942,10 +1951,31 @@
     <None Include="..\..\Data\Animation\Reference\Warlord\Warlord.skilltiming">
       <Filter>96.DataFiles\Animation\Reference</Filter>
     </None>
+    <None Include="..\..\Data\Animation\Authored\GuardianKnight\GuardianKnight.animevents">
+      <Filter>96.DataFiles\Animation\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Animation\Authored\GuardianKnight\GuardianKnight.skillbindings.json">
+      <Filter>96.DataFiles\Animation\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Animation\Reference\GuardianKnight\GuardianKnight.animnotify">
+      <Filter>96.DataFiles\Animation\Reference</Filter>
+    </None>
+    <None Include="..\..\Data\Animation\Reference\GuardianKnight\GuardianKnight.clipmap">
+      <Filter>96.DataFiles\Animation\Reference</Filter>
+    </None>
+    <None Include="..\..\Data\Animation\Reference\GuardianKnight\GuardianKnight.clipseq">
+      <Filter>96.DataFiles\Animation\Reference</Filter>
+    </None>
+    <None Include="..\..\Data\Animation\Reference\GuardianKnight\GuardianKnight.skilltiming">
+      <Filter>96.DataFiles\Animation\Reference</Filter>
+    </None>
     <None Include="..\..\Data\Animation\RootMotion\LanceMaster.rootmotion.json">
       <Filter>96.DataFiles\Animation\RootMotion</Filter>
     </None>
     <None Include="..\..\Data\Animation\RootMotion\Warlord.rootmotion.json">
+      <Filter>96.DataFiles\Animation\RootMotion</Filter>
+    </None>
+    <None Include="..\..\Data\Animation\RootMotion\GuardianKnight.rootmotion.json">
       <Filter>96.DataFiles\Animation\RootMotion</Filter>
     </None>
     <None Include="..\..\Data\Animation\RootMotion\Artist.rootmotion.json">
@@ -1958,6 +1988,9 @@
       <Filter>96.DataFiles\Animation\HitShapes</Filter>
     </None>
     <None Include="..\..\Data\Animation\HitShapes\Warlord.hitshapes.json">
+      <Filter>96.DataFiles\Animation\HitShapes</Filter>
+    </None>
+    <None Include="..\..\Data\Animation\HitShapes\GuardianKnight.hitshapes.json">
       <Filter>96.DataFiles\Animation\HitShapes</Filter>
     </None>
     <None Include="..\..\Data\Animation\HitShapes\Artist.hitshapes.json">

@@ -149,7 +149,8 @@ bool LostArk::Server::CGameRoom::Is_MoveCancellableAction(
 		m_GameplayCatalog.Find_Skill(player.iCurrentSkillId);
 	return nullptr != skill &&
 		Is_InsideCancelWindow(
-			*skill, player.iComboStage, player.fActionElapsedSeconds, true);
+			*skill, player.iComboStage, player.fActionElapsedSeconds,
+			PLAYER_CANCEL_INPUT::MOVE);
 }
 
 bool LostArk::Server::CGameRoom::Is_BufferableComboAction(

@@ -91,7 +91,7 @@ namespace
 			std::string_view Prefix;
 			CHARACTER_CLASS_ID eClass = CHARACTER_CLASS_ID::END;
 		};
-		static constexpr std::array<OWNER_PREFIX, 6u> Prefixes = {
+		static constexpr std::array<OWNER_PREFIX, 7u> Prefixes = {
 			OWNER_PREFIX{ "effect.artist.skill.", CHARACTER_CLASS_ID::ARTIST },
 			OWNER_PREFIX{ "effect.dimensionmaster.skill.",
 				CHARACTER_CLASS_ID::DIMENSIONMASTER },
@@ -102,7 +102,9 @@ namespace
 			OWNER_PREFIX{ "effect.slayer.skill.",
 				CHARACTER_CLASS_ID::SLAYER },
 			OWNER_PREFIX{ "effect.warlord.skill.",
-				CHARACTER_CLASS_ID::WARLORD }
+				CHARACTER_CLASS_ID::WARLORD },
+			OWNER_PREFIX{ "effect.guardianknight.skill.",
+				CHARACTER_CLASS_ID::GUARDIANKNIGHT }
 		};
 		for (const OWNER_PREFIX& Owner : Prefixes)
 		{

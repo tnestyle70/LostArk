@@ -35,7 +35,8 @@ if ($rewardsDocument.schema -ne 'lostark.valtan-clear-rewards' -or $rewardsDocum
 # CHARACTER_CLASS_ID names -> the item catalog's characterClass spelling.
 $classCatalogNames = @{
     'LANCE_MASTER' = 'LanceMaster'; 'GUNSLINGER' = 'Gunslinger'; 'SLAYER' = 'Slayer';
-    'ARTIST' = 'Artist'; 'DIMENSIONMASTER' = 'DimensionMaster'; 'WARLORD' = 'Warlord'
+    'ARTIST' = 'Artist'; 'DIMENSIONMASTER' = 'DimensionMaster'; 'WARLORD' = 'Warlord';
+    'GUARDIANKNIGHT' = 'GuardianKnight'
 }
 
 # Cross-reference every itemId against the real item catalog -- a reward list

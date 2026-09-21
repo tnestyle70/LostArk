@@ -998,10 +998,11 @@ $supportedPlayerClasses = @(
 	'SLAYER',
 	'ARTIST',
 	'DIMENSIONMASTER',
-	'WARLORD'
+	'WARLORD',
+	'GUARDIANKNIGHT'
 )
 $knownStances = @('NONE', 'LANCE_MASTER_LONG_SPEAR', 'LANCE_MASTER_SHORT_SPEAR',
-	'WARLORD_NORMAL', 'WARLORD_DEFENSE')
+	'WARLORD_NORMAL', 'WARLORD_DEFENSE', 'GUARDIANKNIGHT_HUMAN', 'GUARDIANKNIGHT_DRAGON')
 foreach ($player in @($playerDocument.players)) {
 	Assert-ExactProperties $player @(
 		'characterClass','maximumHp','maximumResource','resourceRegenPerSecond',
@@ -6969,7 +6970,7 @@ foreach ($path in @(Get-ChildItem -LiteralPath (Join-Path $repoRoot 'Data\Animat
     Assert-ExactProperties $document @(
         'schema','formatVersion','animationAssetId','characterClass','skills') 'cancel window document'
     if ($document.schema -ne 'lostark.animation-cancel-windows' -or
-        [uint32]$document.formatVersion -ne 1) {
+        [uint32]$document.formatVersion -ne 2) {
         throw "Cancel window header is invalid: $($path.Name)"
     }
 	$documentClass = [string]$document.characterClass
@@ -6996,14 +6997,18 @@ foreach ($path in @(Get-ChildItem -LiteralPath (Join-Path $repoRoot 'Data\Animat
             }
             $seenStages = [Collections.Generic.HashSet[int]]::new()
             foreach ($stage in @($entry.stages)) {
-                Assert-ExactProperties $stage @('stageIndex','skillCancel','moveCancel') 'cancel window stage'
+                Assert-ExactProperties $stage @('stageIndex','skillCancel','moveCancel','dodgeCancel') 'cancel window stage'
                 $stageIndex = [int]$stage.stageIndex
                 if ($stageIndex -lt 0 -or $stageIndex -ge $stageDurations.Count -or
                     -not $seenStages.Add($stageIndex)) {
                     throw "Cancel window stage index is invalid or duplicated: $id"
                 }
-                foreach ($kind in @('SKILL','MOVE')) {
-                    $windows = @(if ($kind -ceq 'SKILL') { $stage.skillCancel } else { $stage.moveCancel })
+                foreach ($kind in @('SKILL','MOVE','DODGE')) {
+                    $windows = @(switch ($kind) {
+                        'SKILL' { $stage.skillCancel }
+                        'MOVE' { $stage.moveCancel }
+                        'DODGE' { $stage.dodgeCancel }
+                    })
                     if ($windows.Count -eq 0) { continue }
                     $packed = Format-CancelWindows -Windows $windows -SkillId $id `
                         -LimitMs $stageDurations[$stageIndex]
@@ -7013,12 +7018,16 @@ foreach ($path in @(Get-ChildItem -LiteralPath (Join-Path $repoRoot 'Data\Animat
             }
             continue
         }
-        Assert-ExactProperties $entry @('skillId','skillCancel','moveCancel') 'cancel window skill'
+        Assert-ExactProperties $entry @('skillId','skillCancel','moveCancel','dodgeCancel') 'cancel window skill'
         if (@($skillStageDurationsById[$id]).Count -ne 0) {
             throw "A staged skill must carry per-stage cancel windows: $id"
         }
-        foreach ($kind in @('SKILL','MOVE')) {
-            $windows = @(if ($kind -ceq 'SKILL') { $entry.skillCancel } else { $entry.moveCancel })
+        foreach ($kind in @('SKILL','MOVE','DODGE')) {
+            $windows = @(switch ($kind) {
+                'SKILL' { $entry.skillCancel }
+                'MOVE' { $entry.moveCancel }
+                'DODGE' { $entry.dodgeCancel }
+            })
             if ($windows.Count -eq 0) { continue }
             $packed = Format-CancelWindows -Windows $windows -SkillId $id `
                 -LimitMs $skillDurationById[$id]

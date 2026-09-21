@@ -130,6 +130,7 @@ namespace LostArk::Shared
 		DESTROYER = 4,
 		DIMENSIONMASTER = 5,
 		WARLORD = 6,
+		GUARDIANKNIGHT = 7,
 		END
 	};
 
@@ -165,7 +166,8 @@ namespace LostArk::Shared
 			CHARACTER_CLASS_ID::SLAYER == characterClass ||
 			CHARACTER_CLASS_ID::ARTIST == characterClass ||
 			CHARACTER_CLASS_ID::DIMENSIONMASTER == characterClass ||
-			CHARACTER_CLASS_ID::WARLORD == characterClass;
+			CHARACTER_CLASS_ID::WARLORD == characterClass ||
+			CHARACTER_CLASS_ID::GUARDIANKNIGHT == characterClass;
 	}
 
 	enum class PACKET_TYPE : std::uint16_t

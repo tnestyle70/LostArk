@@ -29,6 +29,7 @@ namespace
 		case CHARACTER_CLASS_ID::ARTIST: return "Artist";
 		case CHARACTER_CLASS_ID::DIMENSIONMASTER: return "DimensionMaster";
 		case CHARACTER_CLASS_ID::WARLORD: return "Warlord";
+		case CHARACTER_CLASS_ID::GUARDIANKNIGHT: return "GuardianKnight";
 		default: return nullptr;
 		}
 	}
