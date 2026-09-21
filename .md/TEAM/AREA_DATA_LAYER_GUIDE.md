@@ -489,6 +489,12 @@ Visual runtime은 `Publish-MapAuthoring.ps1`, world bootstrap은
 Server navigation publisher는 optional `-AreaId <AreaId>`로 해당 Area의 source/paint/regions만
 검증·게시한다. 생략하면 기존 모든 Area를 처리하며 알 수 없는 ID는 쓰기 전에 거부한다.
 Client/Server의 navgrid·navpolicy·navblockers는 기존 Area별 transaction으로 함께 교체한다.
+Server 전용 `.navsurface`도 같은 transaction으로 게시한다. NSRF version 1은 해당
+`.navgrid` 전체 바이트의 FNV-1a 64-bit hash와 cell 수, source/paint resolved surface mask를
+저장한다. 보행 불가 셀에도 바닥은 있을 수 있으므로 ballistic 착지는 이 mask와 height를
+사용하고, 일반 보행은 기존 walkable·blocker 계약을 유지한다. 명시 void condition만 바닥을
+제거한다. sidecar가 없는 구버전 grid는 기존 walkable 집합을 바닥으로 간주하며, sidecar가
+존재하지만 hash·개수·bit가 잘못되면 전체 navigation load를 실패시킨다. Client 파일 형식은 같다.
 실행 중 프로그램은 재시작해야 새 데이터를 읽는다. 예를 들어 Character Select만 갱신할 때는
 `powershell -ExecutionPolicy Bypass -File Tools/NavigationPipeline/Publish-ServerNavigation.ps1 -AreaId LV_LOBBY_CLASSSELECT_SL00 -Mode Validate` 후 같은 명령의 `-Mode Publish`를 실행한다.
 

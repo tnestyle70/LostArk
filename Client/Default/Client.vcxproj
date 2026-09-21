@@ -919,6 +919,15 @@
     <None Include="..\..\Data\Navigation\LV_LUT_MIDNIGHTC_ED.navpaint" />
     <None Include="..\..\Data\Navigation\LV_LUT_MIDNIGHTC_ED.Mario4.navpaint" />
     <None Include="..\..\Data\Navigation\LV_LUT_MIDNIGHTC_ED.navsource" />
+    <None Include="..\..\Data\Navigation\LV_LUT_MIDNIGHTC_ED.StartFine.navsource" />
+    <None Include="..\..\Data\Navigation\LV_LUT_MIDNIGHTC_ED.StartFine.navpaint" />
+    <None Include="..\..\Data\Navigation\LV_LUT_MIDNIGHTC_ED.Gate1Fine.navsource" />
+    <None Include="..\..\Data\Navigation\LV_LUT_MIDNIGHTC_ED.Gate1Fine.navpaint" />
+    <None Include="..\..\Data\Navigation\LV_LUT_MIDNIGHTC_ED.Gate2Fine.navsource" />
+    <None Include="..\..\Data\Navigation\LV_LUT_MIDNIGHTC_ED.Gate2Fine.navpaint" />
+    <None Include="..\..\Data\Navigation\LV_LUT_MIDNIGHTC_ED.Gate3Fine.navsource" />
+    <None Include="..\..\Data\Navigation\LV_LUT_MIDNIGHTC_ED.Gate3Fine.navpaint" />
+    <None Include="..\..\Data\Navigation\LV_LUT_MIDNIGHTC_ED.navregions" />
     <None Include="..\..\Data\UI\BossUI\BossUI.json" />
     <None Include="..\..\Data\UI\BossUI\ImmuneGauge_Layout.json" />
     <None Include="..\..\Data\UI\Esther\EstherUI.json" />
@@ -3516,5 +3525,12 @@
     <None Include="..\..\Data\Effects\Authored\effect.valtan.cinematic.trash.actor100.at667.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.cinematic.trash.actor104.at667.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.cinematic.trash.actor106.at667.effect.json" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.bingo.hammer.warning.original.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.bingo.encore.glass.screen.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.bingo.encore.glass.spark0.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.bingo.encore.glass.spark.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.sequence.lv_lut_midnightc_ed_scene01b.efseqact_matinee_0.1.effect.json"></None>
   </ItemGroup>
 </Project>

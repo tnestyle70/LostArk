@@ -103,11 +103,14 @@ bool LostArk::Server::CServerNavigation::Load(const std::string& areaId)
 	m_fOriginZ = 0.f;
 	m_fMaximumTraversalStepHeight = 0.f;
 	m_Walkable.clear();
+	m_Surface.clear();
 	m_Heights.clear();
 	m_RuntimeSupportSurfaces.clear();
 	m_RuntimeBlockerRegions.clear();
 	m_ConditionValues.clear();
 	m_BlockCounts.clear();
+	m_VoidConditionIds.clear();
+	m_VoidCounts.clear();
 	m_iRevision = 0u;
 	m_Regions.clear();
 
@@ -159,12 +162,13 @@ bool LostArk::Server::CServerNavigation::Load(const std::string& areaId)
 
 	m_Walkable = std::move(walkable);
 	m_Heights = std::move(heights);
-	if (!Load_RuntimePolicy(areaId) || !Load_RuntimeBlockers(areaId) ||
+	if (!Load_SurfaceMask(areaId) || !Load_RuntimePolicy(areaId) || !Load_RuntimeBlockers(areaId) ||
 		!Load_Regions(areaId))
 	{
 		// Loading is transactional: a malformed sidecar must never leave a
 		// partially usable grid behind for callers that inspect Is_Loaded().
 		m_Walkable.clear();
+		m_Surface.clear();
 		m_Heights.clear();
 		m_RuntimeBlockerRegions.clear();
 		m_ConditionValues.clear();
@@ -178,6 +182,40 @@ bool LostArk::Server::CServerNavigation::Load(const std::string& areaId)
 		"x" + std::to_string(m_iHeight) + ", runtime blockers=" +
 		std::to_string(m_RuntimeBlockerRegions.size()) + ", regions=" +
 		std::to_string(m_Regions.size());
+	return true;
+}
+
+bool LostArk::Server::CServerNavigation::Load_SurfaceMask(const std::string& areaId)
+{
+	const auto root = Resolve_DataRoot() / L"Navigation";
+	const auto path = root / std::filesystem::path(areaId + ".navsurface");
+	if (!std::filesystem::exists(path))
+	{
+		// Legacy grids have no independent floor contract; preserve their existing support set.
+		m_Surface = m_Walkable;
+		return true;
+	}
+	std::ifstream input(path, std::ios::binary);
+	std::uint32_t magic = 0u, version = 0u, count = 0u;
+	std::uint64_t expectedHash = 0u;
+	if (!ReadValue(input, magic) || !ReadValue(input, version) || !ReadValue(input, expectedHash) ||
+		!ReadValue(input, count) || magic != 0x4652534eu || version != 1u || count != m_Walkable.size())
+	{ m_strStatus = "Navigation surface header is invalid"; return false; }
+	std::vector<std::uint8_t> surface(count);
+	char trailing = 0;
+	if (!input.read(reinterpret_cast<char*>(surface.data()), surface.size()) || input.read(&trailing, 1))
+	{ m_strStatus = "Navigation surface payload is truncated or has trailing bytes"; return false; }
+	std::ifstream grid(root / std::filesystem::path(areaId + ".navgrid"), std::ios::binary);
+	if (!grid) { m_strStatus = "Navigation surface grid is missing"; return false; }
+	std::uint64_t actualHash = 14695981039346656037ull;
+	char value = 0;
+	while (grid.get(value)) { actualHash ^= static_cast<std::uint8_t>(value); actualHash *= 1099511628211ull; }
+	if (actualHash != expectedHash)
+	{ m_strStatus = "Navigation surface belongs to a different grid generation"; return false; }
+	for (std::size_t index = 0u; index < surface.size(); ++index)
+		if (surface[index] > 1u || m_Walkable[index] > surface[index])
+		{ m_strStatus = "Navigation surface contains invalid floor cells"; return false; }
+	m_Surface = std::move(surface);
 	return true;
 }
 
@@ -744,6 +782,19 @@ bool LostArk::Server::CServerNavigation::Project_PointOnSameLevel(
 			return true;
 	}
 	return false;
+}
+
+bool LostArk::Server::CServerNavigation::Sample_SurfacePosition(
+	const float x, const float z, SERVER_NAV_POINT& outPoint) const
+{
+	if (const auto* region = Select_Region(x, z)) return region->Sample_SurfacePosition(x, z, outPoint);
+	if (!Is_Loaded() || !std::isfinite(x) || !std::isfinite(z) || !Contains_Point(x, z)) return false;
+	const auto cellX = static_cast<std::uint32_t>(std::floor((x - m_fOriginX) / m_fCellSize));
+	const auto cellZ = static_cast<std::uint32_t>(std::floor((z - m_fOriginZ) / m_fCellSize));
+	const auto index = cellZ * m_iWidth + cellX;
+	if (index >= m_Surface.size() || m_Surface[index] == 0u || Is_CellVoid(index)) return false;
+	outPoint = { x, Effective_Height(index, x, z), z };
+	return true;
 }
 
 bool LostArk::Server::CServerNavigation::Sample_Position(

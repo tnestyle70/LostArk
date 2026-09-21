@@ -19,8 +19,8 @@ function Add-KoukuRaidRows([object]$Encounter, [object]$Rows) {
             Assert-StableId $gate.$field "Kouku raid $field"
         }
         Assert-JsonInteger $gate.sequenceRevision 'Kouku raid sequence revision' 1 ([uint32]::MaxValue)
-        if ($gate.gateId -ceq 'BINGO') {
-            if ($gate.introPatternId -cne '' -or $gate.introDurationMs -ne 0 -or @($gate.arrivals).Count -ne 0) { throw 'Bingo enters combat without a cinematic or arrivals.' }
+        if ($gate.gateId -ceq 'BINGO' -and $gate.introPatternId -ceq '') {
+            if ($gate.introDurationMs -ne 0) { throw 'A missing Bingo intro must have zero duration.' }
         } else {
             Assert-StableId $gate.introPatternId 'Kouku raid intro pattern'
             Assert-JsonInteger $gate.introDurationMs 'Kouku raid intro duration' 1 600000

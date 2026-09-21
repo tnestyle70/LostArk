@@ -302,6 +302,6 @@ LostArk::Server::CServerCombatHitRuntime::Apply_WorldToPlayer(
 		hit.iPushMs,
 		hit.bKnockdown,
 		hit.iDownMs,
-		hit.iServerTick);
+		hit.iServerTick, hit.bForcePush, hit.bPushCanLeaveArena, hit.bPushBallistic);
 	return SERVER_COMBAT_HIT_RESULT::LANDED;
 }

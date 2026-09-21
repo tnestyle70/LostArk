@@ -768,3 +768,19 @@ StartSize/detail scale로 공통 원이 커지지 않는다. 비유한·비affin
 coverage는 native 계산 뒤 RT0 alpha와 RT1에 적용하고, 그 결과로 Bloom을 만든다.
 straight RGB는 유지하며 지원하는 carrier의 매 draw에서 enabled를 초기화한다.
 수치 검증·설치·사용자 화면 판정의 증거는 09-17 세이튼 카드 RESULT G29에 둔다.
+
+### V1 ScreenPost의 수동 강도 보간과 색수차
+
+V1 `detail.screenPost`는 `screen.chromatic-aberration.reconstructed.v1`을 기존 Engine `CHROMATIC_ABERRATION_RECONSTRUCTED` 프로필로 제출한다. 기존 프로필 번호는 유지한다. optional `intensityLerp`의 기본값은 false, `intensityEnd`는 0이다. 보간을 켜면 `intensity`에서 `intensityEnd`까지 기존 Timing lifetime의 정규화 시간으로 선형 보간한다. 종료 강도는 유한한 비음수여야 한다. 기존 source dynamic intensity가 있으면 그 값이 우선하고 alpha-over-life는 기존대로 곱한다. 필드가 없는 문서의 재생·직렬화는 유지한다.
+
+V2의 화면 효과를 V1으로 옮길 때 프로필 이름만 복사하지 않는다. 실제 parser, lifetime, 강도 곡선, Engine 제출 프로필을 함께 연결하고 원래 요소와 occurrence를 보존한다. 현재 추가 계약은 단순 선형 보간이며 V2의 keyed/smoothstep 곡선 전체를 이식한 계약은 아니다.
+
+### CubeSample의 optional project clarity
+
+`effect.ue3.cubesample-01-scene.v1`은 기존 sourceProfile.scalars의 `project_clarity_strength`를 선택적으로 소비한다. 생략/0은 기존 shader와 alpha/clip을 유지하며 값은 유한한 0~1이다. codec 공통 material 검증과 staging이 범위를 검사한다. 기존 `g_SourceScalars0.w`를 사용하므로 CBuffer/schema/profile ID와 carrier ABI는 바뀌지 않는다. 이 필드는 원본 MIC에서 회수한 값이 아닌 프로젝트 저작 보정이다.
+
+활성화한 재질만 배경 transmission을 제한하고, 원본 particle의 정규화 chroma를 흡수와 자체 면 발광에 적용한다. 원래 caustic·edge는 유지하며 자체 발광을 배경 highlight 제한에 넣지 않는다. 밝은 배경의 중간 alpha coverage를 보정하되 fade0/1과 원본 clip을 유지한다. 자체 발광은 SceneColor/SceneBloom/black 평가에 동일하게 들어가므로 기존 per-effect Bloom 추출을 소비한다. 배경 전달의 gain·alpha도 세 평가에서 고정하며 억제된 배경 Bloom을 새로 만들지 않는다. 강도1의 보정분은 입력 SceneBloom을 선형으로 전달한다. 연결 범위는 차원술사 Q 두 저작 문서의 해당 CubeSample 요소이며 다른 동일 재질은 기본0이다. 실제 Q 색·원본 텍스처·현재 tone을 포함한 수치 검증과 사용자 화면 판정은 별도다.
+
+### Native ScreenPost source material curves
+
+Admitted Artist/Kouku SCREEN_POST carrier도 기존 SourceTransformTrack의 materialParameterTracks binding을 검증한다. Build_NativeScreenPost는 문서 sample time과 source time origin으로 곡선을 평가한 parameter array를 snapshot에 복사한다. 정적 material 배열만 전달하면 원본 opacity/type 변화가 유실된다. Full-screen post의 LocalVF UV0와 viewport aspect를 실제 원본 VS/PS 식별자로 검토하며 일반 Particle/mesh 프로그램에 보정을 퍼뜨리지 않는다.

@@ -174,6 +174,9 @@ void CImGuiLayer::CancelFrame()
 		return;
 
 	ImGui::EndFrame();
+	// Platform frame bookkeeping is required even when draw submission is cancelled.
+	if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+		ImGui::UpdatePlatformWindows();
 
 	m_bFrameStarted = false;
 }

@@ -42,6 +42,13 @@ BASIS = np.array([[1., 0., 0.], [0., 0., 1.], [0., -1., 0.]])
 BONE_MODELS = {}
 
 
+def bind_bone_model(actor, model, group, clip_name):
+    matches = [animation for animation in model.animations if animation.name == clip_name]
+    if len(matches) != 1:
+        raise ValueError('Bone attachment requires one named clip: ' + clip_name)
+    BONE_MODELS[actor] = (model, group, matches[0], {})
+
+
 def read(path):
     return json.loads(Path(path).read_text(encoding="utf-8-sig"))
 
@@ -177,8 +184,7 @@ def world_pose(rows, group, actor, seconds, matinee=329, interp_data=394):
     track_base_rotation = None
     attached = p.get('base') in BONE_MODELS and p.get('basebonename')
     if attached:
-        parent, parent_group, cache = BONE_MODELS[p['base']]
-        anim = parent.animations[0]
+        parent, parent_group, anim, cache = BONE_MODELS[p['base']]
         sample_time=min(anim.duration_ticks/anim.ticks_per_second,max(0.,seconds))
         cache_key=round(sample_time*1000000)
         if cache_key not in cache:
@@ -343,6 +349,7 @@ def write_clip(source, destination, model, samples, name, label):
     header = list(wm.MODEL_HEADER.unpack_from(data, wm.FILE_HEADER.size))
     sections = []
     skeleton_trailer = None
+    animation_minor = None
     for i in range(header[1]):
         kind, index, offset, size, raw_name = wm.SECTION_DESC.unpack_from(
             data, wm.FILE_HEADER.size+wm.MODEL_HEADER.size+i*wm.SECTION_DESC.size)
@@ -352,6 +359,7 @@ def write_clip(source, destination, model, samples, name, label):
                 section = visible_table_mesh(section)
             sections.append([kind, index, raw_name, section])
         elif skeleton_trailer is None:
+            animation_minor = wm.FILE_HEADER.unpack_from(data, 16 + offset)[2]
             skeleton_trailer = data[16+offset+size-8:16+offset+size]
     key_bytes = bytearray()
     channel_bytes = bytearray()
@@ -366,7 +374,8 @@ def write_clip(source, destination, model, samples, name, label):
     assert skeleton_trailer is not None
     payload = (wm.ANIMATION_HEADER.pack(b"WANM",len(model.skeleton_bones),float(n-1),30.,n*3*len(model.skeleton_bones),0,0,b"\0"*7)
                +channel_bytes+key_bytes+skeleton_trailer)
-    payload = wm.FILE_HEADER.pack(b"WINT",1,file_header[2],0,len(payload))+payload
+    # Geometry upgrades change the outer WMOD version, not the WANM format.
+    payload = wm.FILE_HEADER.pack(b"WINT",1,animation_minor,0,len(payload))+payload
     sections.append([4,0,name.encode().ljust(40,b"\0"),payload])
     header[1], header[2] = len(sections), 1
     table = bytearray()
@@ -389,8 +398,30 @@ def write_clip(source, destination, model, samples, name, label):
     return check
 
 
+def read_bake_model(source, rows, group, baked_clip):
+    metadata = wm.read_wmodel(source, include_geometry=False, animation_names=())
+    if any(animation.name == baked_clip for animation in metadata.animations):
+        names = (baked_clip,)
+    else:
+        referenced = {key['animseqname'] for track in active_tracks(rows, group)
+                      if track['cls'] == 'interptrackanimcontrol'
+                      for key in track['p'].get('animseqs', [])}
+        names = tuple(animation.name for animation in metadata.animations
+                      if clip_name(animation.name) in referenced)
+    # Character owns many clips; sample only this Matinee's channels.
+    return wm.read_wmodel(source, include_geometry=False, animation_names=names)
+
+
 def bake_actor(rows, group, source, label):
-    model = wm.read_wmodel(source)
+    # The shared WModel writer imports this module for pose sampling.
+    from bake_character_cinematic_clips import DONOR_TO_BODY, install_baked_clip
+    model = read_bake_model(source, rows, group, 'gate2_intro_27s')
+    donor_asset = f"Map/KakulSaydon/Gate2Intro/{label}/{label}.wmodel"
+    canonical = DONOR_TO_BODY.get(donor_asset)
+    if canonical and any(a.name == 'gate2_intro_27s' for a in model.animations):
+        if source.resolve() != (RESOURCES / canonical).resolve():
+            raise ValueError('Unexpected cinematic body: ' + str(source))
+        return canonical, model
     animations = {clip_name(a.name): a for a in model.animations}
     tracks = {r["p"]["slotname"]: r["p"] for r in active_tracks(rows, group)
               if r["cls"] == "interptrackanimcontrol" and r["p"].get("animseqs")}
@@ -436,9 +467,12 @@ def bake_actor(rows, group, source, label):
             if 'bonescale' in control:s=s*(1-alpha+alpha*control['bonescale'])
             a[index]=(p,q,s)
         samples.append(a)
-    destination = RESOURCES / f"Map/KakulSaydon/Gate2Intro/{label}/{label}.wmodel"
+    destination = ((EVIDENCE / 'CharacterClipDonors') if canonical else RESOURCES) / donor_asset
     checked = write_clip(source,destination,model,samples,"gate2_intro_27s",label)
-    return destination.relative_to(RESOURCES).as_posix(), checked
+    if canonical:
+        asset = install_baked_clip(RESOURCES, donor_asset, 'gate2_intro_27s', donor_path=destination)
+        return asset, wm.read_wmodel(RESOURCES / asset, include_geometry=False, animation_names=('gate2_intro_27s',))
+    return donor_asset, checked
 
 
 def source_times(rows, group, start=0, end=DURATION, step=150):
@@ -745,7 +779,7 @@ def build(install):
     resources=[];templates=[];instances=[];worlds=[]
     for label,group,actor,source in defs:
         model,checked=bake_actor(rows,group,source,label)
-        BONE_MODELS[actor]=(checked,group,{})
+        bind_bone_model(actor, checked, group, 'gate2_intro_27s')
         material_source=source.relative_to(RESOURCES).as_posix() if source.is_relative_to(RESOURCES) else ''
         resource=object_resource(label,model,True,material_source=material_source)
         if label in ('Book','HandBook'):

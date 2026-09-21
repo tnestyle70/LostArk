@@ -3,9 +3,9 @@
   "formatVersion": 1,
   "areaId": "LV_LUT_MIDNIGHTC_ED",
   "positionOffset": [
-    -8.0,
-    11.213708498984762,
-    8.0
+    -8,
+    11.2137089,
+    8
   ],
   "rotationDegrees": [
     45,
@@ -13,8 +13,33 @@
     0
   ],
   "focusDistance": 16,
-  "fovYDegrees": 29.39495760413827,
+  "fovYDegrees": 29.3949585,
   "followResponse": 12,
+  "useSourceCameraRegions": true,
   "characterSizeMultiplier": 1,
-  "useSourceCameraRegions": true
+  "classSizeMultipliers": {
+    "LANCE_MASTER": 1,
+    "GUNSLINGER": 1,
+    "SLAYER": 1,
+    "ARTIST": 0.717000008,
+    "DIMENSIONMASTER": 0.987999976,
+    "WARLORD": 1
+  },
+  "clownSizeMultiplier": 0.699999988,
+  "marioSizeMultiplier": 1,
+  "mazeHammerPositionCm": [
+    2.29999995,
+    8.10000038,
+    13.6999998
+  ],
+  "mazeHammerRotationDegrees": [
+    156.75,
+    8.75,
+    62
+  ],
+  "mazeHammerScale": [
+    1,
+    1,
+    1
+  ]
 }

@@ -748,6 +748,13 @@ namespace Client::EffectDocumentCodecDetail
 					strOutError = "Effect source Material scalar is invalid.";
 					return false;
 				}
+				if (SourceMaterial.strRuntimeShaderProfileId == EFFECT_CUBESAMPLE_SCENE_RUNTIME_PROFILE_ID &&
+					Scalar.strName == "project_clarity_strength" &&
+					(Scalar.fValue < 0.f || Scalar.fValue > 1.f))
+				{
+					strOutError = "CubeSample project_clarity_strength must be in [0, 1].";
+					return false;
+				}
 			}
 			std::unordered_set<std::string> VectorNames;
 			for (const EFFECT_NAMED_FLOAT4_DESC& Vector :

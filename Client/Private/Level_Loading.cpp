@@ -85,18 +85,37 @@ CLevel_Loading::~CLevel_Loading()
 		CEffectPresentationService::Cancel_LoadingProductCuePreparation(
 			m_pLoader->Get_EffectLoadJob(), m_iEffectLoadJobEpoch);
 	}
+	if (m_pRecoveryView)
+		m_pRecoveryView->Release_Sprites();
+	for (const auto& sprite : m_ChromeSprites)
+	{
+		// Hide queued draws too; normal Change_Level may already have removed the layer.
+		sprite->Set_Visible(false);
+		(void)CGameInstance::Get().Remove_GameObject_from_Layer(
+			ETOUI(LEVEL::LOADING), TEXT("Layer_Chrome"), sprite);
+	}
 }
 
 HRESULT CLevel_Loading::Initialize(
 	const LEVEL eNextLevelID,
 	const LOBBY_COMMAND_TOKEN lobbyCommandToken)
 {
-	if (FAILED(__super::Initialize()))
-		return E_FAIL;
+	const auto reject = [](const HRESULT result, const std::string_view source,
+		const std::string_view detail)
+	{
+		CLevelTransitionService::Report_Recovery(
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::CLIENT_LOADING_START_FAILED,
+			source, detail, result);
+		return result;
+	};
+	const HRESULT baseResult = __super::Initialize();
+	if (FAILED(baseResult))
+		return reject(baseResult, "loading.initialize.base", "Base Level initialization failed.");
 	if (INVALID_LOBBY_COMMAND_TOKEN != lobbyCommandToken &&
 		LEVEL::LOBBY != eNextLevelID)
 	{
-		return E_INVALIDARG;
+		return reject(E_INVALIDARG, "loading.initialize.command",
+			"A Lobby command token cannot target a non-Lobby Level.");
 	}
 
 	m_eNextLevelID = eNextLevelID;
@@ -146,8 +165,9 @@ HRESULT CLevel_Loading::Initialize(
 		m_strTipText = L"\xC81C 1\xB300 \xC774\xD399\xD2B8 \xB2F4\xB2F9\xC790\xB294 \xADF9\xC2EC\xD55C \xC6B0\xC6B8\xC99D\xC744 \xD638\xC18C\xD558\xBA70 \xC774\xD399\xD2B8 \xB2F4\xB2F9\xC9C1\xC744 \xC0AC\xD1F4\xD588\xC2B5\xB2C8\xB2E4";
 	}
 
-	if (FAILED(Ready_Layer_Chrome()))
-		return E_FAIL;
+	const HRESULT chromeResult = Ready_Layer_Chrome();
+	if (FAILED(chromeResult))
+		return reject(chromeResult, "loading.initialize.chrome", "Loading chrome initialization failed.");
 	m_pRecoveryView = std::make_unique<CUILayoutRuntime>(
 		m_pDevice, m_pContext, ETOUI(LEVEL::LOADING), TEXT("Layer_UI"),
 		L"UI/Loading/LoadingRecovery.json");
@@ -163,10 +183,11 @@ HRESULT CLevel_Loading::Initialize(
 		m_iEffectLoadJobEpoch =
 			CEffectPresentationService::Allocate_ProductPreparationEpoch();
 		if (0u == m_iEffectLoadJobEpoch)
-			return E_FAIL;
+			return reject(E_FAIL, "loading.initialize.effect-epoch",
+				"Effect preparation did not allocate a valid epoch.");
 		iEffectCatalogRevision = CEffectCatalog::Get_RuntimeRevision();
 		if (0u == iEffectCatalogRevision)
-			return E_FAIL;
+			return reject(E_FAIL, "loading.initialize.effect-catalog", CEffectCatalog::Get_Status());
 	}
 	m_pLoader = CLoader::Create(
 		m_pDevice, m_pContext, m_eNextLevelID,
@@ -1138,6 +1159,8 @@ HRESULT CLevel_Loading::Ready_Layer_Chrome()
 	if (nullptr == pSlots || !pSlots->Is_Array())
 		return S_OK;
 
+	// Reserve before cloning so tracking a committed sprite cannot allocate and lose it.
+	m_ChromeSprites.reserve(m_ChromeSprites.size() + pSlots->Get_Array().size());
 	for (const DATA_JSON_VALUE& slot : pSlots->Get_Array())
 	{
 		const DATA_JSON_VALUE* pId = slot.Find("id");
@@ -1240,6 +1263,7 @@ HRESULT CLevel_Loading::Ready_Layer_Chrome()
 			continue;
 		}
 
+		m_ChromeSprites.push_back(static_pointer_cast<CUI_Sprite>(pObject));
 		if (bFlipX)
 			static_pointer_cast<CUI_Sprite>(pObject)->Set_FlipX(true);
 

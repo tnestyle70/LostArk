@@ -1310,6 +1310,25 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
             with self.subTest(identity=identity), self.assertRaises(subject.CompositionError):
                 check(invalid)
 
+    def test_raid_projection_rejects_unreferenced_sequence_world_identity_mismatch(self):
+        sequence = {"nextWorldOrdinal": 40, "worlds": [{
+            "worldId": "world.kouku.gate2.intro.35", "displayName": "Ending actor",
+            "sequenceInstanceId": "world.sequence.instance.kouku.bingo.ending.saydon1"}]}
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            path = root / "Data/Compositions/Sequences/KoukuSaydonSequenceComposition.json"
+            path.parent.mkdir(parents=True)
+            path.write_text(json.dumps(sequence), encoding="utf-8")
+            with mock.patch.object(subject, "_publication_memo", return_value=({}, {})), \
+                 mock.patch("raid_flow_projection.project_raid_gates", return_value=[]) as project:
+                with self.assertRaisesRegex(subject.CompositionError, "worldId must use"):
+                    subject.projected_outputs({}, root)
+                project.assert_not_called()
+                sequence["worlds"][0]["worldId"] = "kakulsaydon.g1.world.35"
+                path.write_text(json.dumps(sequence), encoding="utf-8")
+                self.assertIn(subject.ENCOUNTER_PATH, subject.projected_outputs({}, root))
+                project.assert_called_once_with({}, sequence)
+
     def test_saved_pattern_flow_keeps_pattern_bundle_order_and_repeated_targets(self):
         source = {"patterns": [{"patternId": "pattern.1", "gateId": "GATE1"}],
             "bundles": [{"bundleId": "bundle.1", "gateId": "GATE1"}],
@@ -3607,13 +3626,66 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
         client = subject.project_presentation(document)["fearPresentations"][0]
         self.assertEqual(document["sceneProfiles"][0]["renderingProfileId"], client["sceneProfileId"])
         self.assertIsNone(client["effectResource"])
+        self.assertIsNone(client["soundResource"])
         for change in ({"durationMs": 0}, {"sceneProfileId": "missing"},
                        {"effectResourceId": "missing"}, {"effectDelayMs": 1000},
-                       {"lightResourceId": "missing"}):
+                       {"lightResourceId": "missing"}, {"soundResourceId": "missing"}):
             invalid = copy.deepcopy(document)
             next(row for row in invalid["logics"] if row["logicId"] == logic["logicId"]).update(change)
             with self.subTest(change=change), self.assertRaises(subject.CompositionError):
                 self.validate(invalid)
+
+    def test_fear_sound_uses_saved_sound_reference_and_shared_face_delay(self):
+        sound = dict(resourceId="fear.sound", displayName="Fear sound", kind="SOUND",
+                     assetId="Sound/KoukuSaydon/fear.wav", resourceKind="", durationMs=1200,
+                     soundEvent="fear.event")
+        effect = dict(resourceId="fear.effect", displayName="Fear face", kind="EFFECT",
+                      assetId="effect.fear", resourceKind="V1_EFFECT", durationMs=1000)
+        logic = dict(logicId="kakulsaydon.g1.logic.1", displayName="Fear", logicType="RESULT",
+                     outcomeKind="FEAR", durationMs=3000, effectDelayMs=1000,
+                     effectResourceId=effect["resourceId"], soundResourceId=sound["resourceId"])
+        document = dict(logics=[logic], presentationResources=[sound, effect])
+        subject._validate_presentation_resources(document)
+        subject._validate_logic_definition(logic, "fear sound", 2)
+        projected = subject._project_fear_presentations(document)[0]
+        self.assertEqual(1000, projected["effectDelayMs"])
+        self.assertEqual("fear.sound", projected["soundResource"]["resourceId"])
+        self.assertEqual("fear.event", projected["soundResource"]["soundEvent"])
+        self.assertEqual(1200, projected["soundResource"]["resourceDurationMs"])
+        self.assertEqual("Sound/KoukuSaydon/fear.wav", projected["soundResource"]["assetId"])
+        self.assertEqual({"kind": "FEAR", "percent": 0, "durationMs": 3000,
+                          "patternId": "", "presentationId": logic["logicId"]},
+                         subject._project_outcomes({logic["logicId"]: logic}, [logic["logicId"]])[0])
+
+        # The saved resource is shared by stable ID; removal and a wrong kind both fail.
+        for resource_id in ("missing", effect["resourceId"]):
+            invalid = copy.deepcopy(document)
+            invalid["logics"][0]["soundResourceId"] = resource_id
+            with self.subTest(resource_id=resource_id), self.assertRaisesRegex(
+                    subject.CompositionError, "Sound resource"):
+                subject._project_fear_presentations(invalid)
+        deleted = copy.deepcopy(document)
+        deleted["presentationResources"] = [effect]
+        with self.assertRaisesRegex(subject.CompositionError, "Sound resource"):
+            subject._project_fear_presentations(deleted)
+        for invalid_id in (None, 7, [], "Sound/fear.wav", ".."):
+            invalid = {**logic, "soundResourceId": invalid_id}
+            with self.subTest(invalid_id=invalid_id), self.assertRaises(subject.CompositionError):
+                subject._validate_logic_definition(invalid, "fear sound", 2)
+        for value in ("", sound["resourceId"]):
+            invalid = dict(logicId="kakulsaydon.g1.logic.1", displayName="Other", logicType="RESULT",
+                           outcomeKind="INSTANT_DEATH", soundResourceId=value)
+            with self.subTest(non_fear_value=value), self.assertRaisesRegex(
+                    subject.CompositionError, "only FEAR"):
+                subject._validate_logic_definition(invalid, "fear sound", 2)
+        for value in (None, ""):
+            compatible = copy.deepcopy(document)
+            if value is None:
+                compatible["logics"][0].pop("soundResourceId")
+            else:
+                compatible["logics"][0]["soundResourceId"] = value
+            subject._validate_logic_definition(compatible["logics"][0], "fear sound", 2)
+            self.assertIsNone(subject._project_fear_presentations(compatible)[0]["soundResource"])
 
     def test_gaze_facing_outcome_projects_and_preserves_default(self):
         document = copy.deepcopy(self.document)
@@ -4457,6 +4529,96 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
         with self.assertRaisesRegex(subject.CompositionError, "TARGET_YAW or BONE"):
             validate()
 
+    def invulnerability_zone_document(self, count=2):
+        document = copy.deepcopy(self.document)
+        for row in document["patterns"]:
+            row["authoringStatus"] = "DRAFT"
+        pattern = self.strip_lanes(self.first_product(document))
+        pattern["authoringStatus"] = "PRODUCT"
+        pattern.pop("bossMotion", None)
+        document["playAllPatternIds"] = [pattern["patternId"]]
+        ordinal = document["nextLogicOrdinal"]
+        logic_id = f"kakulsaydon.g1.logic.{ordinal}"
+        result_id = f"kakulsaydon.g1.logic.{ordinal + 1}"
+        document["nextLogicOrdinal"] += 2
+        document["logics"].extend([
+            dict(logicId=logic_id, displayName="Safe zone", logicType="DURATION",
+                 judgementKind="INVULNERABILITY_ZONE"),
+            dict(logicId=result_id, displayName="Forbidden Result", logicType="RESULT",
+                 outcomeKind="INSTANT_DEATH"),
+        ])
+        resource_id = "collider.invulnerability.zone.test"
+        document["presentationResources"].append(dict(
+            resourceId=resource_id, displayName="Safe circle", kind="COLLIDER", assetId="",
+            shape="CIRCLE", radiusM=2))
+        window_id = pattern["patternId"] + ".logic.1"
+        pattern["nextLogicOccurrenceOrdinal"] = 2
+        pattern["logicOccurrences"] = [dict(occurrenceId=window_id, logicId=logic_id,
+            startMs=100, durationMs=700, enabled=True)]
+        pattern["nextPresentationOccurrenceOrdinal"] = count + 1
+        pattern["presentationOccurrences"] = [dict(
+            occurrenceId=pattern["patternId"] + f".presentation.{index + 1}", resourceId=resource_id,
+            startMs=100, durationMs=700, logicOccurrenceId=window_id, anchorKind="MAP", followBoss=False,
+            positionOffset=[index * 5, 1.5, 321.25]) for index in range(count)]
+        return document, pattern, result_id
+
+    def test_invulnerability_zone_projects_fixed_map_regions_without_results(self):
+        for count in (1, 2, 64):
+            document, pattern, _ = self.invulnerability_zone_document(count)
+            before = copy.deepcopy(document)
+            with self.subTest(count=count):
+                self.validate(document)
+                projected = next(row for row in subject.project_encounter(document)["patterns"]
+                                 if row["patternId"] == pattern["patternId"])
+                window, = projected["logicWindows"]
+                self.assertEqual(("INVULNERABILITY_ZONE", 100, 700),
+                                 (window["kind"], window["startMs"], window["durationMs"]))
+                self.assertEqual(count, len(window["cardRegions"]))
+                for index, region in enumerate(window["cardRegions"]):
+                    self.assertEqual("WORLD", region["anchorKind"])
+                    self.assertEqual("CIRCLE", region["shape"])
+                    self.assertEqual([index * 5, 1.5, 321.25], region["center"])
+                    self.assertEqual(2, region["radiusM"])
+                    self.assertNotIn("worldTrack", region)
+                for slot in ("onSuccess", "onFail", "onTimeout"):
+                    self.assertEqual([], window[slot])
+                self.assertEqual(before, document)
+
+    def test_invulnerability_zone_rejects_results_missing_or_excess_colliders(self):
+        document, pattern, result_id = self.invulnerability_zone_document()
+        for slot in ("onSuccessLogicIds", "onFailLogicIds", "onTimeoutLogicIds"):
+            invalid = copy.deepcopy(document)
+            self.first_product(invalid)["logicOccurrences"][0][slot] = [result_id]
+            with self.subTest(slot=slot), self.assertRaisesRegex(subject.CompositionError, "outcome"):
+                self.validate(invalid)
+        for count in (0, 65):
+            invalid, _, _ = self.invulnerability_zone_document(count)
+            with self.subTest(count=count), self.assertRaisesRegex(subject.CompositionError, "1..64"):
+                self.validate(invalid)
+        draft, owner, _ = self.invulnerability_zone_document(0)
+        owner["authoringStatus"] = "DRAFT"
+        draft["playAllPatternIds"] = []
+        self.validate(draft)
+
+    def test_invulnerability_zone_rejects_moving_or_mismatched_geometry(self):
+        document, pattern, _ = self.invulnerability_zone_document()
+        for change in ({"anchorKind": "BOSS", "followBoss": True}, {"followBoss": True},
+                       {"bone": "b_root"}, {"boneTarget": "WEAPON0"},
+                       {"startMs": 101}, {"durationMs": 699}, {"scale": [0, 1, 1]}):
+            invalid = copy.deepcopy(document)
+            self.first_product(invalid)["presentationOccurrences"][0].update(change)
+            with self.subTest(change=change), self.assertRaises(subject.CompositionError):
+                self.validate(invalid)
+                subject.project_encounter(invalid)
+        for change in ({"radiusM": 0}, {"kind": "EFFECT", "assetId": "effect.invalid.safe", "resourceKind": "GROUP"}):
+            invalid = copy.deepcopy(document)
+            resource = next(row for row in invalid["presentationResources"]
+                            if row["resourceId"] == "collider.invulnerability.zone.test")
+            resource.update(change)
+            with self.subTest(resource_change=change), self.assertRaises(subject.CompositionError):
+                self.validate(invalid)
+                subject.project_encounter(invalid)
+
     def test_linked_map_collider_projects_absolute_world_anchor(self):
         pattern_id = "KAKULSAYDON_G1_PATTERN_34"
         logic_box = dict(occurrenceId=pattern_id + ".logic.3", startMs=2998, durationMs=21160)
@@ -4691,6 +4853,70 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
             self.assertNotIn("pushMs", legacy["onSuccess"][0])
             self.assertEqual(10, legacy["onSuccess"][0]["percent"])
 
+    def test_damage_push_flags_and_forward_yaw_project_without_changing_damage(self):
+        document = self.reenter_damage_document()
+        result = document["logics"][-1]
+        for force_push in (False, True):
+            for can_leave in (False, True):
+                for yaw in (-360, 0, 90, 360):
+                    with self.subTest(forcePush=force_push, pushCanLeaveArena=can_leave, yaw=yaw):
+                        result.update(pushRangeM=16, pushMs=242, pushDirection="BOSS_FORWARD",
+                                      forcePush=force_push, pushCanLeaveArena=can_leave,
+                                      pushYawOffsetDegrees=yaw)
+                        self.validate(document)
+                        projected = subject._project_outcomes({result["logicId"]: result}, [result["logicId"]])[0]
+                        self.assertEqual((10, 16, 242, "BOSS_FORWARD"),
+                            tuple(projected[key] for key in ("percent", "pushRangeM", "pushMs", "pushDirection")))
+                        self.assertEqual(force_push, projected.get("forcePush", False))
+                        self.assertEqual(can_leave, projected.get("pushCanLeaveArena", False))
+                        self.assertEqual(yaw, projected.get("pushYawOffsetDegrees", 0))
+        result.update(pushDirection="AWAY_FROM_BOSS", pushYawOffsetDegrees=0)
+        self.validate(document)
+        for key in ("forcePush", "pushCanLeaveArena", "pushYawOffsetDegrees"):
+            result.pop(key)
+        projected = subject._project_outcomes({result["logicId"]: result}, [result["logicId"]])[0]
+        self.assertFalse(projected.get("forcePush", False))
+        self.assertFalse(projected.get("pushCanLeaveArena", False))
+        self.assertEqual(0, projected.get("pushYawOffsetDegrees", 0))
+
+    def test_damage_push_flags_and_yaw_reject_invalid_types_owners_and_zero_push(self):
+        document = self.reenter_damage_document()
+        result = document["logics"][-1]
+        invalid_rows = []
+        for field in ("forcePush", "pushCanLeaveArena"):
+            invalid_rows.extend(dict(result, **{field: value}) for value in (0, 1, "true", None))
+            invalid_rows.append(dict(result, pushRangeM=0, pushMs=0, **{field: True}))
+            invalid_rows.append(dict(result, outcomeKind="INSTANT_DEATH", percent=0, **{field: True}))
+        forward = dict(result, pushDirection="BOSS_FORWARD")
+        invalid_rows.extend(dict(forward, pushYawOffsetDegrees=value)
+                            for value in (-360.01, 360.01, float("inf"), float("nan"), True, "90", None))
+        invalid_rows.extend((dict(result, pushYawOffsetDegrees=90),
+                             dict(forward, pushRangeM=0, pushMs=0, pushYawOffsetDegrees=90),
+                             dict(forward, outcomeKind="INSTANT_DEATH", percent=0, pushYawOffsetDegrees=90)))
+        for row in invalid_rows:
+            with self.subTest(row=row), self.assertRaises(subject.CompositionError):
+                subject._validate_logic_definition(row, "Push policy fixture", document["nextLogicOrdinal"])
+
+    def test_ballistic_contact_push_projects_and_rejects_unsafe_policies(self):
+        document = self.reenter_damage_document()
+        result = document["logics"][-1]
+        result.update(pushRangeM=30, pushMs=1500, pushDirection="AWAY_FROM_CONTACT",
+                      forcePush=True, pushCanLeaveArena=True, pushBallistic=True)
+        self.validate(document)
+        projected = subject._project_outcomes({result["logicId"]: result}, [result["logicId"]])[0]
+        self.assertEqual((30, 1500, "AWAY_FROM_CONTACT", True), tuple(projected[key]
+            for key in ("pushRangeM", "pushMs", "pushDirection", "pushBallistic")))
+        for field, value in (("pushBallistic", 1), ("pushBallistic", False),
+                             ("pushCanLeaveArena", False), ("pushRangeM", 100.01),
+                             ("pushRangeM", 0), ("pushMs", 99), ("pushMs", 5001),
+                             ("pushYawOffsetDegrees", 90), ("outcomeKind", "INSTANT_DEATH")):
+            invalid = dict(result, **{field: value})
+            with self.subTest(field=field, value=value), self.assertRaises(subject.CompositionError):
+                subject._validate_logic_definition(invalid, "Ballistic policy", document["nextLogicOrdinal"])
+        for duration in (100, 5000):
+            subject._validate_logic_definition(dict(result, pushRangeM=100, pushMs=duration),
+                                               "Ballistic bounds", document["nextLogicOrdinal"])
+
     def test_contact_repeats_after_knockback_with_one_positive_push_result(self):
         document = self.reenter_damage_document()
         trigger, result = document["logics"][-2:]
@@ -4774,6 +5000,21 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
             self.assertEqual(9, len(next(row for row in forward_rows if row[0] == "PATTERNLOGICPUSH")))
             self.assertEqual(["0.6", "12"], next(row for row in forward_rows if row[0] == "PATTERNLOGICREGION")[-2:])
             self.assertEqual(21, len(next(row for row in forward_rows if row[0] == "PATTERNLOGICREGION")))
+            ballistic = copy.deepcopy(projected)
+            ballistic["logicWindows"][0]["onSuccess"][0].update(pushRangeM=30, pushMs=1500,
+                pushDirection="AWAY_FROM_CONTACT", forcePush=True, pushCanLeaveArena=True, pushBallistic=True)
+            response = run(ballistic)
+            self.assertEqual(0, response.returncode, response.stderr)
+            ballistic_rows = [row.split("\t") for row in json.loads(response.stdout)]
+            push = next(row for row in ballistic_rows if row[0] == "PATTERNLOGICPUSH")
+            self.assertEqual(13, len(push))
+            self.assertEqual(["30", "1500", "AWAY_FROM_CONTACT", "1", "1", "0", "1"], push[-7:])
+            for field, value in (("pushBallistic", 1), ("pushCanLeaveArena", False),
+                                 ("pushRangeM", 100.01), ("pushMs", 99), ("pushMs", 5001),
+                                 ("pushYawOffsetDegrees", 90)):
+                invalid = copy.deepcopy(ballistic)
+                invalid["logicWindows"][0]["onSuccess"][0][field] = value
+                with self.subTest(ballisticField=field): self.assertNotEqual(0, run(invalid).returncode)
             for field, value in (("radiusXM", 0), ("radiusZM", -1), ("shape", "CIRCLE"), ("halfAngleDegrees", 180.1)):
                 invalid = copy.deepcopy(forward)
                 invalid["logicWindows"][0]["cardRegions"][0][field] = value

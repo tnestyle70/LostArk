@@ -958,6 +958,8 @@ bool_t Client::CEffectDocumentCodec::Validate(
 						EFFECT_PRESENTATION_RUNTIME_STATUS::RECONSTRUCTED_PROFILE &&
 					std::isfinite(D.ScreenPost.fIntensity) &&
 					D.ScreenPost.fIntensity >= 0.f &&
+					std::isfinite(D.ScreenPost.fIntensityEnd) &&
+					D.ScreenPost.fIntensityEnd >= 0.f &&
 					std::isfinite(D.ScreenPost.fSecondaryIntensity) &&
 					D.ScreenPost.fSecondaryIntensity >= 0.f &&
 					std::isfinite(D.ScreenPost.fFrequency) &&

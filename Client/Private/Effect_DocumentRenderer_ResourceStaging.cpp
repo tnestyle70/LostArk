@@ -525,16 +525,20 @@ HRESULT Client::CEffectDocumentRenderer::Stage_ElementResource(
 	if (42u == Staged.iSourceMaterialProfile)
 	{
 		// Selected native PS CB0[5].xyz and CB0[3]/[4], packed by semantic name.
+		// The spare w lane is an opt-in project correction, absent from the source MIC.
 		Staged.vSourceScalars0 = { SourceScalar(SourceMaterial, "spec_str", 10.f),
 			SourceScalar(SourceMaterial, "edge_line", 20.f),
-			SourceScalar(SourceMaterial, "edge_str", 5.f), 0.f };
+			SourceScalar(SourceMaterial, "edge_str", 5.f),
+			SourceScalar(SourceMaterial, "project_clarity_strength", 0.f) };
 		Staged.vSourceVector0 = SourceVector(SourceMaterial, "color", { 1.f, 1.f, 1.f, 1.f });
 		Staged.vSourceVector1 = SourceVector(SourceMaterial, "meshemitterdynamicparameter", { 1.f, 1.f, 1.f, 1.f });
 		if (!std::isfinite(Staged.vSourceScalars0.x) || Staged.vSourceScalars0.x < 0.f ||
 			!std::isfinite(Staged.vSourceScalars0.y) || Staged.vSourceScalars0.y < 0.f ||
-			!std::isfinite(Staged.vSourceScalars0.z) || Staged.vSourceScalars0.z < 0.f)
+			!std::isfinite(Staged.vSourceScalars0.z) || Staged.vSourceScalars0.z < 0.f ||
+			!std::isfinite(Staged.vSourceScalars0.w) ||
+			Staged.vSourceScalars0.w < 0.f || Staged.vSourceScalars0.w > 1.f)
 		{
-			strOutError = "CubeSample material has invalid spec/edge parameters: " + Element.strElementId;
+			strOutError = "CubeSample material has invalid spec/edge or project clarity parameters: " + Element.strElementId;
 			return E_INVALIDARG;
 		}
 	}

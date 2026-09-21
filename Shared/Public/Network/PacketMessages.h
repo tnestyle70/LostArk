@@ -1556,6 +1556,8 @@ namespace LostArk::Shared
 		// FEAR uses iActionStartTick and a Server-owned deadline.
 		std::uint32_t iFearEndTick = 0u;
 		std::string strFearPresentationId;
+		// Latest Server zone entry/2-second pulse, or zero while outside the active zone.
+		std::uint32_t iInvulnerabilityZonePulseTick = 0u;
 		// 0 outside a staged action, 1-based stage index while one runs: combo
 		// stages, and start/loop/end for a HOLD skill. The server owns it; the
 		// client must not count stages itself.
