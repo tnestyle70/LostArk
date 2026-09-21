@@ -55,6 +55,9 @@ enum class EQUIPMENT_SLOT_KIND
 	DEFAULT_HELMET,
 	AVATAR_HEAD,
 	AVATAR_ARMOR,
+	/* A stance-owned piece such as the Guardian Knight wings: never covered by an
+	avatar set, shown only while eRequiredStance is the active stance. */
+	IDENTITY,
 };
 
 /* Authored replacement slot for one default presentation part. This is
@@ -97,6 +100,10 @@ struct EQUIPMENT_PART_SPEC
 	EQUIPMENT_SLOT_KIND eSlotKind = EQUIPMENT_SLOT_KIND::DEFAULT;
 	EQUIPMENT_PRESENTATION_SLOT ePresentationSlot =
 		EQUIPMENT_PRESENTATION_SLOT::END;
+	/* NONE draws in every stance; otherwise the piece is visible only in this one,
+	the same rule WEAPON_PART_SPEC uses. */
+	LostArk::Shared::PLAYER_STANCE_ID eRequiredStance =
+		LostArk::Shared::PLAYER_STANCE_ID::NONE;
 };
 
 /* A piece that rides one bone instead of the whole palette. Classes differ in how

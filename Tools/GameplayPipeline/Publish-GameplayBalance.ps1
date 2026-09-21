@@ -998,10 +998,11 @@ $supportedPlayerClasses = @(
 	'SLAYER',
 	'ARTIST',
 	'DIMENSIONMASTER',
-	'WARLORD'
+	'WARLORD',
+	'GUARDIANKNIGHT'
 )
 $knownStances = @('NONE', 'LANCE_MASTER_LONG_SPEAR', 'LANCE_MASTER_SHORT_SPEAR',
-	'WARLORD_NORMAL', 'WARLORD_DEFENSE')
+	'WARLORD_NORMAL', 'WARLORD_DEFENSE', 'GUARDIANKNIGHT_HUMAN', 'GUARDIANKNIGHT_DRAGON')
 foreach ($player in @($playerDocument.players)) {
 	Assert-ExactProperties $player @(
 		'characterClass','maximumHp','maximumResource','resourceRegenPerSecond',

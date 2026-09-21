@@ -1273,8 +1273,23 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 
 	const bool holdLeavesLoop = isHold && 2u == player.iComboStage &&
 		player.hasReleasedHold;
-	const bool holdSkipsLoop = isHold && 1u == player.iComboStage &&
+	/* A start stage whose comboAdvanceMs ends before its own motion is a
+	branching take-off (Guardian Knight glide): held past that point it hands
+	off to the loop right there, released before it the motion plays out to its
+	own landing and the action ends without the loop or the end stage. A start
+	stage advancing at its full length keeps the charge contract, where an
+	early release still fires the end stage. */
+	const bool holdBranchStart = isHold && 1u == player.iComboStage &&
+		comboAdvanceMs < durationMs;
+	const bool holdBranchesToLoop = holdBranchStart &&
+		!player.hasReleasedHold &&
+		player.fActionElapsedSeconds >=
+			static_cast<float>(comboAdvanceMs) * MILLISECONDS_TO_SECONDS;
+	const bool holdEndsAfterStart = holdBranchStart &&
 		player.hasReleasedHold &&
+		player.fActionElapsedSeconds >= durationSeconds;
+	const bool holdSkipsLoop = isHold && 1u == player.iComboStage &&
+		!holdBranchStart && player.hasReleasedHold &&
 		player.fActionElapsedSeconds >= durationSeconds;
 
 	/* A counter never advances on its own clock: only a hit taken inside the
@@ -1316,9 +1331,10 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 		(!hasPendingExplicit || defersPendingThroughAutomaticChain);
 
 	if (advancesComboStage || commitsPendingExplicit || holdLeavesLoop ||
+		holdBranchesToLoop ||
 		player.fActionElapsedSeconds >= durationSeconds)
 	{
-		if (!commitsPendingExplicit && hasNextStage)
+		if (!commitsPendingExplicit && hasNextStage && !holdEndsAfterStart)
 		{
 			/* The press that bought this stage aimed somewhere, and that is where
 			the stage plays: facing and root motion both turn to it. A hold

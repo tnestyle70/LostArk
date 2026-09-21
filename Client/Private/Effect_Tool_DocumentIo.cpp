@@ -1721,7 +1721,8 @@ bool_t Client::CEffect_Tool::Refresh_AllEffects(
         LostArk::Shared::CHARACTER_CLASS_ID::SLAYER,
         LostArk::Shared::CHARACTER_CLASS_ID::ARTIST,
         LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONMASTER,
-        LostArk::Shared::CHARACTER_CLASS_ID::WARLORD };
+        LostArk::Shared::CHARACTER_CLASS_ID::WARLORD,
+        LostArk::Shared::CHARACTER_CLASS_ID::GUARDIANKNIGHT };
     size_t iProductCueCount = 0u;
     size_t iProductSkillCount = 0u;
     size_t iSourceReferenceCount = 0u;

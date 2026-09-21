@@ -23,6 +23,7 @@
 #include "Logic_LanceMaster.h"
 #include "Logic_Slayer.h"
 #include "Logic_Warlord.h"
+#include "Logic_GuardianKnight.h"
 #include "MainApp.h"
 #include "Model.h"
 #include <algorithm>
@@ -879,6 +880,8 @@ namespace EffectToolDetail
 			return "LANCE_MASTER_SHORT_SPEAR";
 		case PLAYER_STANCE_ID::WARLORD_NORMAL: return "WARLORD_NORMAL";
 		case PLAYER_STANCE_ID::WARLORD_DEFENSE: return "WARLORD_DEFENSE";
+		case PLAYER_STANCE_ID::GUARDIANKNIGHT_HUMAN: return "GUARDIANKNIGHT_HUMAN";
+		case PLAYER_STANCE_ID::GUARDIANKNIGHT_DRAGON: return "GUARDIANKNIGHT_DRAGON";
 		case PLAYER_STANCE_ID::END:
 		default: return "INVALID";
 		}
@@ -2038,6 +2041,7 @@ namespace EffectToolDetail
         case CHARACTER_CLASS_ID::ARTIST: return "Artist";
         case CHARACTER_CLASS_ID::DIMENSIONMASTER: return "Dimension Master";
         case CHARACTER_CLASS_ID::WARLORD: return "Warlord";
+        case CHARACTER_CLASS_ID::GUARDIANKNIGHT: return "Guardian Knight";
         case CHARACTER_CLASS_ID::END:
         default: return "Invalid";
         }
@@ -2055,6 +2059,7 @@ namespace EffectToolDetail
         case CHARACTER_CLASS_ID::ARTIST: return "Artist";
         case CHARACTER_CLASS_ID::DIMENSIONMASTER: return "DimensionMaster";
         case CHARACTER_CLASS_ID::WARLORD: return "Warlord";
+        case CHARACTER_CLASS_ID::GUARDIANKNIGHT: return "GuardianKnight";
         case CHARACTER_CLASS_ID::END:
         default: return nullptr;
         }
@@ -2093,6 +2098,7 @@ namespace EffectToolDetail
             { "effect.artist.", "Artist" },
             { "effect.dimensionmaster.", "DimensionMaster" },
             { "effect.warlord.", "Warlord" },
+            { "effect.guardianknight.", "GuardianKnight" },
             { "effect.valtan.", "Valtan" },
             { "effect.kouku.", "KoukuSaydon" },
             { "effect.world.", "World" }
@@ -2169,6 +2175,7 @@ namespace EffectToolDetail
         case CHARACTER_CLASS_ID::ARTIST: return "Artist";
         case CHARACTER_CLASS_ID::DIMENSIONMASTER: return "DimensionMaster";
         case CHARACTER_CLASS_ID::WARLORD: return "Warlord";
+        case CHARACTER_CLASS_ID::GUARDIANKNIGHT: return "GuardianKnight";
         case CHARACTER_CLASS_ID::END:
         default: return nullptr;
         }
@@ -3311,7 +3318,8 @@ namespace EffectToolDetail
             &Client::Spec_Slayer,
             &Client::Spec_Artist,
             &Client::Spec_DimensionMaster,
-            &Client::Spec_Warlord
+            &Client::Spec_Warlord,
+            &Client::Spec_GuardianKnight
         };
         for (const Client::CHARACTER_SPEC* pSpec : specs)
         {

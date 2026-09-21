@@ -26,6 +26,10 @@ namespace Client
 		uint32_t iSourceStartMs = 0u;
 		/* Optional on legacy v3 input; once authored, identity survives reordering. */
 		std::string strClipOccurrenceId;
+		/* A HOLD loop-stage clip that is a raise-and-stay motion rather than a
+		cycle: it plays once and the last pose is held until the release, instead
+		of looping back to its first frame. */
+		bool_t isHoldPose = false;
 
 		bool operator==(const ANIMATION_SKILL_CLIP&) const = default;
 	};

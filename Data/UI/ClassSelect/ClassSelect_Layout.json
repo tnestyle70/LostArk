@@ -2,7 +2,7 @@
   "schema": "lostark.ui-layout",
   "formatVersion": 1,
   "resolution": { "width": 1280, "height": 720 },
-  "classes": ["Default", "Warlord", "Slayer", "LanceMaster", "Gunslinger", "Artist", "DimensionMaster"],
+  "classes": ["Default", "Warlord", "Slayer", "LanceMaster", "Gunslinger", "Artist", "DimensionMaster", "GuardianKnight"],
   "slots": [
     {
       "id": "PanelBgLeft",
@@ -913,6 +913,19 @@
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
+      "id": "ClassList_Row6",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 950, "y": 390, "width": 280, "height": 48 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/Common/Category.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
       "id": "ClassList_Symbol0",
       "ownerClass": null,
       "type": 0,
@@ -986,6 +999,19 @@
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
         { "path": "UI/ClassSelect/Common/CategorySymbol_Specialist_M.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "ClassList_Symbol6",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 958, "y": 396, "width": 36, "height": 36 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/Common/Category.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }

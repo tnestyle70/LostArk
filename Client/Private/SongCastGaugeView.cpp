@@ -46,6 +46,7 @@ namespace
 		case LostArk::Shared::CHARACTER_CLASS_ID::SLAYER:
 		case LostArk::Shared::CHARACTER_CLASS_ID::DESTROYER:
 		case LostArk::Shared::CHARACTER_CLASS_ID::WARLORD:
+		case LostArk::Shared::CHARACTER_CLASS_ID::GUARDIANKNIGHT:
 		default:
 			return L"Sound/UI/SquareHole/squarehole_song_warrior.wav";
 		}

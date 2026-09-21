@@ -129,6 +129,7 @@ namespace
 		if (value == "ARTIST") return CHARACTER_CLASS_ID::ARTIST;
 		if (value == "DIMENSIONMASTER") return CHARACTER_CLASS_ID::DIMENSIONMASTER;
 		if (value == "WARLORD") return CHARACTER_CLASS_ID::WARLORD;
+		if (value == "GUARDIANKNIGHT") return CHARACTER_CLASS_ID::GUARDIANKNIGHT;
 		return CHARACTER_CLASS_ID::END;
 	}
 
@@ -146,6 +147,10 @@ namespace
 			output = PLAYER_STANCE_ID::WARLORD_NORMAL;
 		else if (value == "WARLORD_DEFENSE")
 			output = PLAYER_STANCE_ID::WARLORD_DEFENSE;
+		else if (value == "GUARDIANKNIGHT_HUMAN")
+			output = PLAYER_STANCE_ID::GUARDIANKNIGHT_HUMAN;
+		else if (value == "GUARDIANKNIGHT_DRAGON")
+			output = PLAYER_STANCE_ID::GUARDIANKNIGHT_DRAGON;
 		else
 			return false;
 		return true;

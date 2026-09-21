@@ -180,6 +180,8 @@ namespace
 			output = CHARACTER_CLASS_ID::DIMENSIONMASTER;
 		else if ("WARLORD" == value)
 			output = CHARACTER_CLASS_ID::WARLORD;
+		else if ("GUARDIANKNIGHT" == value)
+			output = CHARACTER_CLASS_ID::GUARDIANKNIGHT;
 		else
 			return false;
 		return true;
@@ -200,6 +202,10 @@ namespace
 			output = PLAYER_STANCE_ID::WARLORD_NORMAL;
 		else if ("WARLORD_DEFENSE" == value)
 			output = PLAYER_STANCE_ID::WARLORD_DEFENSE;
+		else if ("GUARDIANKNIGHT_HUMAN" == value)
+			output = PLAYER_STANCE_ID::GUARDIANKNIGHT_HUMAN;
+		else if ("GUARDIANKNIGHT_DRAGON" == value)
+			output = PLAYER_STANCE_ID::GUARDIANKNIGHT_DRAGON;
 		else
 			return false;
 		return true;

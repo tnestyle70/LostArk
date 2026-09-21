@@ -101,6 +101,7 @@ namespace
 		case CHARACTER_CLASS_ID::ARTIST: return "Artist";
 		case CHARACTER_CLASS_ID::DIMENSIONMASTER: return "DimensionMaster";
 		case CHARACTER_CLASS_ID::WARLORD: return "Warlord";
+		case CHARACTER_CLASS_ID::GUARDIANKNIGHT: return "GuardianKnight";
 		default: return nullptr;
 		}
 	}
@@ -236,7 +237,8 @@ void Client::CCharacterInfoWindowView::Load_DisplayData()
 		constexpr CHARACTER_CLASS_ID CLASSES[] = {
 			CHARACTER_CLASS_ID::LANCE_MASTER, CHARACTER_CLASS_ID::GUNSLINGER,
 			CHARACTER_CLASS_ID::SLAYER, CHARACTER_CLASS_ID::ARTIST,
-			CHARACTER_CLASS_ID::DIMENSIONMASTER, CHARACTER_CLASS_ID::WARLORD };
+			CHARACTER_CLASS_ID::DIMENSIONMASTER, CHARACTER_CLASS_ID::WARLORD,
+			CHARACTER_CLASS_ID::GUARDIANKNIGHT };
 		for (const CHARACTER_CLASS_ID eClass : CLASSES)
 		{
 			const DATA_JSON_VALUE* pClass = pClasses->Find(Class_DisplayKey(eClass));

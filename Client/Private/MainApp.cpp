@@ -356,6 +356,8 @@ namespace
 			return "DimensionMaster";
 		case CHARACTER_CLASS_ID::WARLORD:
 			return "Warlord";
+		case CHARACTER_CLASS_ID::GUARDIANKNIGHT:
+			return "GuardianKnight";
 		default:
 			return "Default";
 		}
@@ -381,6 +383,8 @@ namespace
 			return "DimensionMaster";
 		case CHARACTER_CLASS_ID::WARLORD:
 			return "Warlord";
+		case CHARACTER_CLASS_ID::GUARDIANKNIGHT:
+			return "GuardianKnight";
 		default:
 			return "";
 		}
@@ -7615,6 +7619,11 @@ void CMainApp::Update_ChargeGauge()
 	constexpr f32_t FULL_BARREL_CANNON_PUMP_MS = 300.f;
 	constexpr std::uint32_t FULL_BARREL_CANNON_PUMP_COUNT = 3u;
 	constexpr f32_t SERVER_TICK_HZ = 30.f;
+	/* A branching HOLD (Guardian Knight glide): the start stage hands off to the
+	loop at comboAdvanceMs, before its own motion ends, and the loop is the part
+	the player is actually holding. The gauge is that loop's remaining time, so it
+	shows only during stage 2 and never treats the cut start stage as a cancel. */
+	constexpr std::uint8_t BRANCHING_HOLD_LOOP_STAGE = 2u;
 
 	bool_t bCharging = false;
 	f32_t fChargeProgress = 0.f;
@@ -7648,6 +7657,23 @@ void CMainApp::Update_ChargeGauge()
 			bCharging = true;
 		}
 		// Stage 1 (windup) and stage 3 (firing) show no gauge at all for this skill.
+	}
+	else if (3u == pSkill->ComboStages.size() &&
+		pSkill->ComboStages[0].iComboAdvanceMs < pSkill->ComboStages[0].iActionDurationMs)
+	{
+		if (BRANCHING_HOLD_LOOP_STAGE == player.iComboStage)
+		{
+			f32_t fStageAgeSeconds = 0.f;
+			CActionPresentationTimeline::Try_ResolveActionAgeSeconds(
+				player.iServerTick, player.iActionStartTick, SERVER_TICK_HZ, fStageAgeSeconds);
+			const f32_t fLoopMs = static_cast<f32_t>(
+				pSkill->ComboStages[BRANCHING_HOLD_LOOP_STAGE - 1u].iActionDurationMs);
+			if (fLoopMs > 0.f)
+			{
+				fChargeProgress = std::clamp(fStageAgeSeconds * 1000.f / fLoopMs, 0.f, 1.f);
+				bCharging = true;
+			}
+		}
 	}
 	else
 	{
@@ -7761,6 +7787,13 @@ void CMainApp::RenderChargeGaugeText()
 	constexpr LostArk::Shared::SKILL_ID FULL_BARREL_CANNON_SKILL_ID = 17240;
 	if (FULL_BARREL_CANNON_SKILL_ID == pSkill->iSkillId)
 	{
+		if (2u != player.iComboStage)
+			return;
+	}
+	else if (3u == pSkill->ComboStages.size() &&
+		pSkill->ComboStages[0].iComboAdvanceMs < pSkill->ComboStages[0].iActionDurationMs)
+	{
+		// Branching HOLD: the gauge (and this label) exist only while the loop is held.
 		if (2u != player.iComboStage)
 			return;
 	}
@@ -10050,7 +10083,7 @@ void CMainApp::RenderArenaFollowCameraSettings()
 	{
 		edited |= ImGui::SliderFloat("All characters", &draft.characterSizeMultiplier,
 			0.25f, 4.f, "%.3f x", ImGuiSliderFlags_AlwaysClamp);
-		const char* classNames[] = { "Lance Master", "Gunslinger", "Slayer", "Artist", nullptr, "DimensionMaster", "Warlord" };
+		const char* classNames[] = { "Lance Master", "Gunslinger", "Slayer", "Artist", nullptr, "DimensionMaster", "Warlord", "Guardian Knight" };
 		for (size_t i = 0u; i < draft.classSizeMultipliers.size(); ++i)
 			if (classNames[i]) edited |= ImGui::SliderFloat(classNames[i], &draft.classSizeMultipliers[i],
 				0.25f, 4.f, "%.3f x", ImGuiSliderFlags_AlwaysClamp);

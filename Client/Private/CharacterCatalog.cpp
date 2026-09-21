@@ -7,6 +7,7 @@
 #include "Logic_LanceMaster.h"
 #include "Logic_Slayer.h"
 #include "Logic_Warlord.h"
+#include "Logic_GuardianKnight.h"
 
 namespace
 {
@@ -95,6 +96,8 @@ const CHARACTER_SPEC* Client::CCharacterCatalog::Find_Spec(
 		return &Spec_DimensionMaster;
 	case LostArk::Shared::CHARACTER_CLASS_ID::WARLORD:
 		return &Spec_Warlord;
+	case LostArk::Shared::CHARACTER_CLASS_ID::GUARDIANKNIGHT:
+		return &Spec_GuardianKnight;
 	//case LostArk::Shared::CHARACTER_CLASS_ID::DESTROYER:
 	//	break;
 	case LostArk::Shared::CHARACTER_CLASS_ID::END:

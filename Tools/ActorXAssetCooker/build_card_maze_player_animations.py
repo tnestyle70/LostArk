@@ -20,6 +20,7 @@ SOURCES = {
     "LanceMaster": "PC_FT_00", "GunSlinger": "PC_GN_F_00",
     "Slayer": "PC_WR_F_00", "Artist": "PC_SP_00",
     "DimensionMaster": "PC_SP_M_00", "Warlord": "PC_WR_00",
+    "GuardianKnight": "PC_DL_00",
 }
 CLIPS = {"maze_hammer_lmb": "pr_it_gstfp_00_att_1_01",
          "maze_hammer_q": "pr_it_gstfp_00_att_2_01"}

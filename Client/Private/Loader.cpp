@@ -133,6 +133,8 @@ namespace
 			return TEXT("DimensionMaster");
 		case CHARACTER_CLASS_ID::WARLORD:
 			return TEXT("Warlord");
+		case CHARACTER_CLASS_ID::GUARDIANKNIGHT:
+			return TEXT("GuardianKnight");
 		default:
 			return TEXT("Unknown");
 		}
@@ -1445,7 +1447,8 @@ HRESULT CLoader::Ready_AnimationPreviewModels(
 		TEXT("Prototype_Component_Model_Slayer"),
 		TEXT("Prototype_Component_Model_Artist"),
 		TEXT("Prototype_Component_Model_DimensionMaster"),
-		TEXT("Prototype_Component_Model_Warlord")
+		TEXT("Prototype_Component_Model_Warlord"),
+		TEXT("Prototype_Component_Model_GuardianKnight")
 	};
 
 	for (const ANIMATION_PREVIEW_ASSET& asset :

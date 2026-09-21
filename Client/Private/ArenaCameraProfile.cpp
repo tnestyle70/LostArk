@@ -18,8 +18,8 @@ namespace
 {
 	constexpr const char* SCHEMA = "lostark.arena-camera";
 	constexpr uint32_t FORMAT_VERSION = 1u;
-	constexpr std::array<const char*, 7u> CLASS_SIZE_KEYS{
-		"LANCE_MASTER", "GUNSLINGER", "SLAYER", "ARTIST", nullptr, "DIMENSIONMASTER", "WARLORD" };
+	constexpr std::array<const char*, 8u> CLASS_SIZE_KEYS{
+		"LANCE_MASTER", "GUNSLINGER", "SLAYER", "ARTIST", nullptr, "DIMENSIONMASTER", "WARLORD", "GUARDIANKNIGHT" };
 
 	const char* AreaId(const ARENA_CAMERA_MAP map)
 	{
@@ -114,8 +114,8 @@ namespace
 		}
 		if (const auto* sizes = root.Find("classSizeMultipliers"))
 		{
-			if (!sizes->Is_Object() || sizes->Get_Object().size() != 6u)
-			{ status = "Class size tuning requires exactly the six playable class names."; return false; }
+			if (!sizes->Is_Object() || sizes->Get_Object().size() != 7u)
+			{ status = "Class size tuning requires exactly the seven playable class names."; return false; }
 			for (size_t i = 0u; i < CLASS_SIZE_KEYS.size(); ++i)
 				if (CLASS_SIZE_KEYS[i] && !ReadFloat(sizes->Find(CLASS_SIZE_KEYS[i]), staged.classSizeMultipliers[i]))
 				{ status = "Class size tuning has an unknown/missing class or nonfinite multiplier."; return false; }

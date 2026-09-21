@@ -9544,7 +9544,8 @@ bool Client::CBalanceTool::ValidateDraft(std::string& status) const
 	{
 		return value == "NONE" || value == "LANCE_MASTER_LONG_SPEAR" ||
 			value == "LANCE_MASTER_SHORT_SPEAR" || value == "WARLORD_NORMAL" ||
-			value == "WARLORD_DEFENSE";
+			value == "WARLORD_DEFENSE" || value == "GUARDIANKNIGHT_HUMAN" ||
+			value == "GUARDIANKNIGHT_DRAGON";
 	};
 	std::uint32_t maximumPlayerResource = 0u;
 	std::uint32_t maximumPlayerIdentity = 0u;
