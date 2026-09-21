@@ -241,6 +241,19 @@ void LostArk::Server::CServerGameplayContractRunner::Run_PlayerActions(TESTS& te
 		tests.Require(
 			startedThird && refusedSkillOutsideItsWindow && dodgeAdmitted,
 			"Admit the Space dodge inside the dodge window while other skills stay held");
+
+		/* The dodge's own clips carry a 400-900ms skill window, but a running
+		dodge is never cut short: 600ms in, the next skill still waits. */
+		SERVER_PLAYER dodging = makePlayer();
+		const bool startedDodge =
+			skills.Try_Start(dodging, press(1u, 34020u), catalog, 100u);
+		skills.Update(dodging, noTargets, catalog, nullptr, nullptr, 0.6f, 118u, events);
+		const bool heldDodge =
+			!skills.Try_Start(dodging, press(2u, 34090u), catalog, 119u) &&
+			34020u == dodging.iCurrentSkillId &&
+			PLAYER_ACTION_STATE::SKILL == dodging.eAction;
+		tests.Require(startedDodge && heldDodge,
+			"Refuse another skill inside a running dodge's own cancel window");
 	}
 
 	{

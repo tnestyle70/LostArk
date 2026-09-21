@@ -388,15 +388,15 @@ bool LostArk::Server::CPlayerSkillSystem::Try_StartInternal(
 
 	The Space dodge is its own input in the original: its window usually opens
 	before, and always covers, the skill window. So the dodge answers to either
-	list while every other skill still answers to the skill list alone. */
-	const bool isDodge = PLAYER_SKILL_KIND::ACTIVE == skill->eSkillKind &&
-		"SPACE" == skill->strInputSlot;
+	list while every other skill still answers to the skill list alone. A
+	running dodge itself is never cut short by another skill. */
+	const bool isDodge = Is_DodgeSkill(*skill);
 	if (!isStandup && PLAYER_ACTION_STATE::NONE != player.eAction)
 	{
 		const PLAYER_SKILL_DEFINITION* running =
 			PLAYER_ACTION_STATE::SKILL == player.eAction ?
 				catalog.Find_Skill(player.iCurrentSkillId) : nullptr;
-		if (nullptr != running &&
+		if (nullptr != running && !Is_DodgeSkill(*running) &&
 			command.iSkillId != player.iCurrentSkillId &&
 			(Is_InsideCancelWindow(
 				*running, player.iComboStage,

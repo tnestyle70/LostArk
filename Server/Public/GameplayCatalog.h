@@ -1533,6 +1533,16 @@ namespace LostArk::Server
 		std::string m_strStatus;
 	};
 
+	/* The Space slot is the class dodge (the original's ActionType 2): a press
+	that dashes, or a hold that glides. It is the one action no move goal or
+	other skill may cut short, whatever cancel windows its clips carry. */
+	inline bool Is_DodgeSkill(const PLAYER_SKILL_DEFINITION& skill)
+	{
+		return "SPACE" == skill.strInputSlot &&
+			(LostArk::Shared::PLAYER_SKILL_KIND::ACTIVE == skill.eSkillKind ||
+				LostArk::Shared::PLAYER_SKILL_KIND::HOLD == skill.eSkillKind);
+	}
+
 	/* A running action normally holds every other input to its end. Inside an
 	authored window it releases that hold, so the next skill or move goal starts
 	where the original lets it instead of after the recovery pose. A staged skill

@@ -147,7 +147,7 @@ bool LostArk::Server::CGameRoom::Is_MoveCancellableAction(
 	}
 	const PLAYER_SKILL_DEFINITION* skill =
 		m_GameplayCatalog.Find_Skill(player.iCurrentSkillId);
-	return nullptr != skill &&
+	return nullptr != skill && !Is_DodgeSkill(*skill) &&
 		Is_InsideCancelWindow(
 			*skill, player.iComboStage, player.fActionElapsedSeconds,
 			PLAYER_CANCEL_INPUT::MOVE);
