@@ -2278,6 +2278,24 @@
       ],
       "subtitleTracks": [
         {
+          "subtitleTrackId": "subtitle.custom.1",
+          "stringId": "subtitle.custom.1",
+          "text": "일어나라, 발탄...",
+          "position": "NORMAL",
+          "slotId": "",
+          "startMs": 2270,
+          "durationMs": 3265
+        },
+        {
+          "subtitleTrackId": "subtitle.custom.2",
+          "stringId": "subtitle.custom.2",
+          "text": "그 찢긴 영혼을 적의 피와 살로 채워라.",
+          "position": "NORMAL",
+          "slotId": "",
+          "startMs": 9100,
+          "durationMs": 5758
+        },
+        {
           "subtitleTrackId": "subtitle.valtan.cin.37053_03_01",
           "stringId": "cin.37053_03_01",
           "text": "나, 는...",
@@ -3989,7 +4007,7 @@
           "subtitleTrackId": "subtitle.valtan.cin.37053_09_01",
           "stringId": "cin.37053_09_01",
           "text": "이 버러지들...",
-          "position": "UPPER",
+          "position": "NORMAL",
           "slotId": "",
           "startMs": 623,
           "durationMs": 1800
@@ -3998,7 +4016,7 @@
           "subtitleTrackId": "subtitle.valtan.cin.37053_09_02",
           "stringId": "cin.37053_09_02",
           "text": "다... 짓뭉개주마!",
-          "position": "UPPER",
+          "position": "NORMAL",
           "slotId": "",
           "startMs": 3276,
           "durationMs": 2500

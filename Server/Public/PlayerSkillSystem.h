@@ -146,7 +146,9 @@ namespace LostArk::Server
 		/* Root motion advances by clip delta, so it has to answer the same
 		question a walk step does: how far along this tick's displacement can the
 		player actually stand. Returns the reachable point, which is the start
-		itself when the very first sample off the start is already blocked. */
+		itself when the very first sample off the start is already blocked.
+		startY is the mover's height: it picks the layer under the start when
+		detail regions are stacked, and later steps follow that layer's ground. */
 		static void Clamp_StepToWalkable(
 			const CServerNavigation& navigation,
 			float startX,
@@ -154,7 +156,8 @@ namespace LostArk::Server
 			float desiredX,
 			float desiredZ,
 			SERVER_NAV_POINT& outPoint,
-			bool& outWasClamped);
+			bool& outWasClamped,
+			float startY = NAVIGATION_HEIGHT_UNKNOWN);
 
 	private:
 		/* The ember side of a successful Try_Start: spend what the skill asks

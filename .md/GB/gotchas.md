@@ -2719,6 +2719,13 @@ lease에 연결한다. 저장된 DURATION은 timing 존재와 PRODUCT 의미의 
 - **main과 병합할 때 두 브랜치가 같은 "다음 번호"를 쓰면 ID가 조용히 겹친다 (2026-09-20 쿠크 `PATTERN_94`, `world.40`).** 쿠크 Composition은 저장할 때 `nextPatternOrdinal`/`nextWorldOrdinal`을 올리므로, 같은 기준에서 갈라진 두 브랜치가 각자 새 패턴·월드를 만들면 서로 다른 내용이 같은 ID(`KAKULSAYDON_G1_PATTERN_94` 메두사공포 대 앵콜컷신, `kakulsaydon.g1.world.40` 뿅망치 대 앵콜 세이튼)를 갖는다. git은 텍스트 충돌만 보여 주므로 JSON을 ID 기준으로 비교해 "양쪽이 같은 ID를 추가했고 내용이 다름"부터 찾고, 한쪽을 새 번호로 옮기면서 그 ID를 참조하는 모든 파일(Composition, Encounter, patternbindings)을 함께 바꾼다. 생성 출력물(`KoukuSaydonEncounter.json`, `KoukuSaydon.patternbindings.json`)은 손으로 합치지 말고 병합된 Composition으로 재생성한다. 재생성 전에는 `sourceRevision`이 Composition `revision`보다 낮은 오래된 상태다.
 - **병합 충돌 해결 때의 함정 세 가지 (2026-09-20).** (1) 해결 스크립트가 실패해도 `;`로 이어 둔 `git add`는 실행되어 충돌 마커가 남은 파일이 "해결됨"으로 스테이징된다. 해결 명령은 `&&`로만 잇고 스테이징 뒤 `git show :0:<파일> | grep -c "^<<<<<<<"`로 0개를 확인한다. (2) autocrlf 때문에 작업 사본은 CRLF, 인덱스 blob은 LF라 바이트 앵커를 쓰는 해결 스크립트는 줄끝부터 감지해야 한다. main의 `gotchas.md`처럼 `CR CR LF`로 저장된 파일은 main 원본 바이트를 그대로 두고 우리 줄만 같은 줄끝으로 붙인다. (3) `git status`가 내용이 같은 파일을 계속 M으로 표시할 수 있다. `git update-index --refresh` 뒤에도 남으면 blob 해시와 `cmp`로 같음을 확인한 뒤 `git checkout -- <파일>`로 정리한다.
 
+### 쿠크 Composition 프로젝터 검증·테스트를 돌릴 때 (2026-09-20 앵콜 자막 작업)
+
+- `project_kouku_saydon_composition.py`는 같은 폴더의 `raid_flow_projection`을 이름만으로 불러오고, 단위 테스트는 `Tools.KoukuSaydonPipeline...`로 불러온다. 테스트는 `Tools/KoukuSaydonPipeline`에서 `PYTHONPATH=<저장소 루트>`를 주고 실행한다. 루트에서만, 또는 폴더에서만 실행하면 `ModuleNotFoundError`로 수십 개가 오류가 되어 자막·데이터 문제로 오해하기 쉽다.
+- `project_raid_gates`나 `projected_outputs`를 원본 JSON에 직접 호출하면 `GATE1 flow cannot admit unavailable KAKULSAYDON_G1_PATTERN_1`이 병합 전 버전에서도 난다. 생성 결과가 필요하면 `prepare_publication(source, root)`를 거쳐 `projected_outputs(document, root, inventory)`를 호출한다(실제 `_run`과 같은 경로, 디스크 쓰기 없음).
+- 원본 Composition을 고친 뒤 `--mode validate`는 `projected Product is stale: ...KoukuSaydonEncounter.json`으로 끝난다. 생성 단계는 통과한 것이고 게시로 산출물을 갱신하라는 안내다. 자막 오류가 아니다.
+- 프로젝터가 원본을 읽는 중에 같은 파일을 `git stash`나 편집으로 바꾸면 `Summon Pattern must be another same-Gate, same-actor Pattern` 같은 엉뚱한 오류가 난다(경합). 검증 도중에는 원본을 건드리지 않고, 다시 돌려 같은 오류가 나는지 확인한다.
+- 쿠크 자막 배치는 `presentationOccurrences`에 `{occurrenceId, resourceId(subtitle.kouku.<GameMsg id>), startMs, durationMs, anchorKind: "MAP", followBoss: false}`이다. 자막 리소스는 이미 등록돼 있어도 배치가 없으면 화면에 안 나온다. 저장은 revision을 1 올리고 해당 패턴의 `nextPresentationOccurrenceOrdinal`을 함께 올린다.
 ### Debug JSON 로딩은 빈 컨테이너 생성과 전체 consumer ABI를 함께 본다
 
 - 같은 /O2라도 /MDd와 Debug STL의 할당 비용은 남는다. DATA_JSON_VALUE의 모든 scalar에 string/vector/map/order를 생성하던 구조를 활성 payload만 생성하도록 바꿔 실제 119개 입력의 parse·digest·해제에서 약57~59% 감소를 확인했다. 전체 맵 입장이나 GPU 개선율로 확대하지 않는다. 상세 수치는 `09-21/2026-09-21_DEBUG_LOADING_CPU_RESULT.md`를 따른다.
@@ -2796,3 +2803,19 @@ lease에 연결한다. 저장된 DURATION은 timing 존재와 PRODUCT 의미의 
 - 원본 SkelControl translation의 cm와 설치 Character 본 로컬 단위를 구분한다. armature scale100을 실측한 본체에서는 해당 translation에0.01을 적용하고, 회전·scale·다른 clip은 보존한다. 얼굴이 늘어나는 현상을 애니메이션 누락이나 Character 경로 오류로 단정하지 않는다.
 - 검증 도중 수정된 후보가 이전 통합 staging에 자동 반영되지는 않는다. 최종 검증한 파일 SHA와 설치 직전 staging·설치 후 파일 SHA를 연결한다. 형식 version 숫자만 바꾼 effect는 필수 root 누락으로 거부되며 admission 완화로 우회하지 않는다.
 - 결과와 설치 증거는 `09-21/2026-09-21_KOUKU_COMPLETE_PLAY_WORLD_AND_BINGO_RESULT.md`의G06/G07을 따른다. 실제 화면·음향과 프레임 시간은 사용자 확인 전 자동 검사 성공으로 대신 기록하지 않는다.
+
+### Debug Server 웨이브 트리거와 수동 재소환
+
+- Kouku `Book1_Monsters`/`Book2_Monsters`와 Valtan `Stage_1`/`Stage_2`는 Debug Server에서 밟아도, G를 눌러도 시작하지 않는다. 대신 F1 `Normal Monster 1/2`(쿠크는 `KoukuSaydon Arena`의 `Bingo Board` 아래, 발탄은 아레나 안에서만 보이는 `Valtan Arena` 헤더)로 다시 소환한다. Release Server는 이전처럼 밟으면 시작한다. Debug에서 "밟았는데 안 나온다"를 트리거 데이터나 navigation 결함으로 조사하기 전에 빌드 구성을 확인한다.
+- `Stage_MiniBoss_Spawn`(`spawn.valtan.stage02.miniboss`)은 이 네 개에 속하지 않아 Debug에서도 밟으면 시작한다. `Stage_2`가 시작하는 그룹은 `spawn.valtan.stage03`이며 G로 움직이는 `Stage_3` 이동 상자와 다른 기능이다.
+- 억제는 컴파일 시 `_DEBUG`이고 `CGameRoom`이 `CServerTriggerSystem::Set_SuppressWaveMonsterTriggers(true)`를 Debug에서만 호출한다. 이 상자들의 제품 동작은 Release 빌드에서 확인한다. 무엇이 나오지 않았는지 볼 때 `[Trigger] Fire Trigger=...` 줄이 Server 콘솔에 찍혔는지가 첫 단서다.
+- `C2S_DEBUG_RESUMMON_WAVE_MONSTERS`는 protocol 100에 추가됐다. protocol 99의 무적 구역 연출 펄스와 별개이므로, 두 기능을 함께 가진 Client와 Server는 같은 protocol 100으로 빌드해야 한다.
+- 근거와 검증 범위는 `09-21/2026-09-21_DEBUG_WAVE_MONSTER_BUTTONS_RESULT.md`에 기록한다.
+
+### MapTool 컷신에서 새 V1 월드 이펙트를 즉시 seek할 때
+
+- MapTool은 MainApp의 일반 `Commit_PendingSpawns` 뒤에 컷신을 seek한다. 같은 editor frame에서 태어난 V1 world-root 이펙트를 다음 frame까지 pending으로 남긴 채 root/외부 시계 sample을 실패로 처리하면, 하나의 effect 실패가 컷신 배우 전체 해제로 확대된다. `TARGET_SET`의 명시적 editor-only flag로 해당 handle만 scoped commit한 뒤 seek하고, 게임 Level/전투 consumer의 post-update 경계를 전역으로 바꾸지 않는다. `Queued admitted Effect`는 resource/document 실패 증거가 아니라 commit 전 상태일 수 있다.
+
+### V1 bounded source loop에 포함된 보조 light
+
+원본 Cascade source가 `EmitterLoops=0` sprite/mesh/ribbon emitter와 같은 source visual program의 `LIGHT`/`light` carrier를 함께 가질 수 있다. bounded source-loop 검증은 반복 방출을 수행하는 admitted particle/ribbon carrier를 최소 하나 요구하되, 그 보조 light를 particle/ribbon이 아니라는 이유로 거절해서는 안 된다. 반대로 light만으로 loop0 조건을 만족시키면 안 된다. `effect.valtan.cinematic.trash.actor106.at667`이 이 경우이며, 원본 emitter count나 `loopEffectToDuration`을 변경해 우회하지 않는다.

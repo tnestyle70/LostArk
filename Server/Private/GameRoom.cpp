@@ -98,6 +98,11 @@ LostArk::Server::CGameRoom::CGameRoom(
 		return;
 	}
 	m_ServerTriggerSystem.Set_WorldId(worldId);
+#ifdef _DEBUG
+	/* Debug rooms hand the Kouku Book1/Book2 and Valtan Stage_1/Stage_2 wave boxes to
+	the F1 "Normal Monster 1/2" buttons. Release never sets it. */
+	m_ServerTriggerSystem.Set_SuppressWaveMonsterTriggers(true);
+#endif
 	m_ServerTriggerSystem.Set_FireLog([](const std::string& line)
 	{
 		std::cout << line << '\n';
@@ -886,6 +891,10 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds,
 			break;
 		case ROOM_COMMAND_TYPE::DEBUG_BINGO_HAMMER:
 			Handle_DebugBingoHammer(command.iSessionId, command.DebugBingoHammer);
+			break;
+		case ROOM_COMMAND_TYPE::DEBUG_RESUMMON_WAVE_MONSTERS:
+			Handle_DebugResummonWaveMonsters(
+				command.iSessionId, command.DebugResummonWaveMonsters);
 			break;
 		case ROOM_COMMAND_TYPE::DEBUG_SET_MADNESS_FORM:
 			Handle_DebugSetMadnessForm(

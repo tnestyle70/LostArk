@@ -110,12 +110,23 @@ struct WORLD_NPC_BEHAVIOR
 
 struct WORLD_TRIGGER_EVENT
 {
+	struct TRACK_MOVE_SAMPLE
+	{
+		uint32_t timeMs = 0u;
+		float3_t position = {};
+	};
+
 	WORLD_TRIGGER_EVENT_KIND eKind = WORLD_TRIGGER_EVENT_KIND::MOVE_PLAYER;
 	float3_t targetPosition = {};
 	f32_t durationSeconds = 0.8f;
 	f32_t arcHeight = 0.f;
 	// Optional mode committed by the Server when this move reaches its destination.
 	std::string koukuHudMode;
+	/* Optional original TrackMove.  This is authoring data; the publisher
+	serializes it into the Server bootstrap, which alone advances the player. */
+	std::string trackMoveStyle;
+	f32_t trackMoveFacingYawDegrees = 0.f;
+	std::vector<TRACK_MOVE_SAMPLE> trackMoveSamples;
 	LostArk::Shared::WORLD_ID eTargetWorldId =
 		LostArk::Shared::WORLD_ID::END;
 	std::string targetId;

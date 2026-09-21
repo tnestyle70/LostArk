@@ -8984,20 +8984,36 @@ bool_t Client::CEffectPlayback::Set_SourceLoopEndSeconds(
 			std::any_of(document.Elements.begin(), document.Elements.end(),
 				[this](const EFFECT_ELEMENT_DESC& element)
 				{
+					const bool_t bSourceVisualElement =
+						Is_SourceVisualProgramElementAdmitted(element);
 					const bool_t bNativeParticle = Is_ParticleSimulationElement(element,
-						Is_SourceVisualProgramElementAdmitted(element)) &&
+						bSourceVisualElement) &&
 						(element.SourceRecipe.strRendererShape == "sprite" ||
 						 element.SourceRecipe.strRendererShape == "mesh" ||
 						 Is_PortableAuthoredRibbonCarrier(element));
-					return !Is_PlaybackElementAdmitted(element) || !bNativeParticle ||
+					// Source lights are supplemental carriers of a valid looping
+					// particle system. They use the same bounded presentation window,
+					// but do not themselves spawn particles.
+					// Direct-authored source effects have no source-visual-program
+					// projection, but their admitted light carriers still use the
+					// reconstructed source light recipe.
+					const bool_t bSourceLight =
+						element.eKind == EFFECT_ELEMENT_KIND::LIGHT &&
+						element.SourceRecipe.strRendererShape == "light";
+					return !Is_PlaybackElementAdmitted(element) ||
+						(!bNativeParticle && !bSourceLight) ||
 						!element.SourceRecipe.bEnabled ||
 						!std::isfinite(element.SourceRecipe.fEmitterDurationSeconds) ||
 						element.SourceRecipe.fEmitterDurationSeconds <= 0.f;
 				}) ||
 			std::none_of(document.Elements.begin(), document.Elements.end(),
-				[](const EFFECT_ELEMENT_DESC& element)
+				[this](const EFFECT_ELEMENT_DESC& element)
 				{
-					return element.SourceRecipe.iEmitterLoopCount == 0u;
+					return Is_PlaybackElementAdmitted(element) &&
+						Is_ParticleSimulationElement(element,
+							Is_SourceVisualProgramElementAdmitted(element)) &&
+						element.SourceRecipe.bEnabled &&
+						element.SourceRecipe.iEmitterLoopCount == 0u;
 				}))
 		{
 			strOutError = "Bounded source loops require admitted source sprite/mesh or native Cascade Ribbon emitters and EmitterLoops=0.";

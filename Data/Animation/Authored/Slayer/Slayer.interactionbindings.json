@@ -3,6 +3,11 @@
   "formatVersion": 1,
   "characterAssetId": "Slayer",
   "bodyAssetId": "Character/Slayer/Slayer.wmodel",
+  "wallClimb": {
+    "loop": { "clip": "wall_climb_loop", "playRate": 1 },
+    "end": { "clip": "wall_climb_end", "playRate": 1 },
+    "endStartSeconds": 4
+  },
   "modes": [
     {
       "mode": "MAZE",

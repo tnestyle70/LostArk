@@ -9,6 +9,21 @@
 
 namespace LostArk::Server
 {
+	enum class WORLD_TRIGGER_MOVE_STYLE : std::uint8_t
+	{
+		DIRECT,
+		WALL_CLIMB,
+		END
+	};
+
+	struct WORLD_TRIGGER_MOVE_SAMPLE
+	{
+		std::uint32_t iTimeMs = 0u;
+		float fPositionX = 0.f;
+		float fPositionY = 0.f;
+		float fPositionZ = 0.f;
+	};
+
 	enum class WORLD_BOOTSTRAP_KIND
 	{
 		PLAYER_SPAWN,
@@ -108,6 +123,9 @@ namespace LostArk::Server
 		float fTargetZ = 0.f;
 		float fDurationSeconds = 0.f;
 		float fArcHeight = 0.f;
+		WORLD_TRIGGER_MOVE_STYLE eMoveStyle = WORLD_TRIGGER_MOVE_STYLE::DIRECT;
+		float fFacingYawDegrees = 0.f;
+		std::vector<WORLD_TRIGGER_MOVE_SAMPLE> TrackSamples;
 		LostArk::Shared::KOUKU_HUD_MODE eKoukuHudModeOnArrival = LostArk::Shared::KOUKU_HUD_MODE::END;
 		LostArk::Shared::WORLD_ID eTargetWorldId =
 			LostArk::Shared::WORLD_ID::END;

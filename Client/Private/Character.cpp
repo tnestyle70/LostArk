@@ -268,6 +268,53 @@ void CCharacter::Load_InteractionAnimationBindings()
   m_TerrainJumpClip = std::move(step);
   m_hasTerrainJumpClip = true;
  }
+ /* The Valtan Stage_3 TrackMove is position-authoritative on the Server.
+    This optional pair merely maps its one explicit WALL_CLIMB action onto
+    the two original player clips.  Keep this separate from terrainJump:
+    ordinary movePlayer crossings remain a one-shot terrain jump. */
+ m_hasWallClimbClips = false;
+ m_WallClimbLoopClip = {};
+ m_WallClimbEndClip = {};
+ m_fWallClimbEndStartSeconds = 4.f;
+ if (const auto* wallClimb = root.Find("wallClimb"))
+ {
+  if (!wallClimb->Is_Object())
+  { status = "invalid wallClimb binding"; fail(); return; }
+  const auto readWallClimbStep = [&status](const DATA_JSON_VALUE* value,
+   const bool_t loop, CLIP_STEP& outStep) -> bool_t
+  {
+   const auto* clip = value && value->Is_Object() ? value->Find("clip") : nullptr;
+   if (!clip || !clip->Is_String() || clip->Get_String().empty())
+   { status = "invalid wallClimb clip"; return false; }
+   CLIP_STEP step{};
+   step.clip = clip->Get_String();
+   step.loop = loop;
+   step.playRate = 1.f;
+   if (const auto* rate = value->Find("playRate"))
+   {
+    if (!rate->Is_Number() || !std::isfinite(rate->Get_Number()) ||
+     rate->Get_Number() <= 0.0 || rate->Get_Number() > 8.0)
+    { status = "invalid wallClimb play rate"; return false; }
+    step.playRate = static_cast<float>(rate->Get_Number());
+   }
+   outStep = std::move(step);
+   return true;
+  };
+  const auto* endStart = wallClimb->Find("endStartSeconds");
+  if (!endStart || !endStart->Is_Number() ||
+   !std::isfinite(endStart->Get_Number()) || endStart->Get_Number() <= 0.0 ||
+   endStart->Get_Number() >= 10.0 ||
+   !readWallClimbStep(wallClimb->Find("loop"), true, m_WallClimbLoopClip) ||
+   !readWallClimbStep(wallClimb->Find("end"), false, m_WallClimbEndClip))
+  { if (status.empty()) status = "invalid wallClimb timing"; fail(); return; }
+  std::uint32_t loopAnimation = UINT32_MAX, endAnimation = UINT32_MAX;
+  float loopDuration = 0.f, endDuration = 0.f;
+  if (!Resolve_ClipTiming(m_WallClimbLoopClip, loopAnimation, loopDuration) ||
+   !Resolve_ClipTiming(m_WallClimbEndClip, endAnimation, endDuration))
+  { status = "model has no wallClimb clip"; fail(); return; }
+  m_fWallClimbEndStartSeconds = static_cast<float>(endStart->Get_Number());
+  m_hasWallClimbClips = true;
+ }
  std::array<std::vector<CLIP_STEP>, 5> staged;
  std::array<std::vector<std::string>, 5> effects;
  for (const auto& mode : modes->Get_Array())
@@ -1953,6 +2000,13 @@ bool_t CCharacter::Apply_NetworkAction(
 	{
 		return false;
 	}
+	if (PLAYER_ACTION_STATE::WALL_CLIMB != action &&
+		m_isWallClimbRootMotionSuppressed)
+	{
+		(void)m_pBodyModel->Set_RootMotionVerticalScale(1.f);
+		m_isWallClimbRootMotionSuppressed = false;
+		m_isWallClimbEndClipActive = false;
+	}
 	if (PLAYER_ACTION_STATE::INTERACTION == action)
 	{
 		if (!Is_Valid_KoukuHudMode(interactionMode) || interactionMode == KOUKU_HUD_MODE::NONE ||
@@ -2132,7 +2186,8 @@ bool_t CCharacter::Apply_NetworkAction(
 		Spawn_FallbackEffect(skillId);
 		m_iLastNetworkActionStartTick = actionStartTick;
 	}
-	else if (PLAYER_ACTION_STATE::TRIGGER_MOVE == action)
+	else if (PLAYER_ACTION_STATE::TRIGGER_MOVE == action ||
+		PLAYER_ACTION_STATE::WALL_CLIMB == action)
 	{
 		if (INVALID_SKILL_ID != skillId || 0u == actionStartTick)
 			return false;
@@ -2149,9 +2204,53 @@ bool_t CCharacter::Apply_NetworkAction(
 			m_fActionPresentationSeconds = 0.f;
 			Commit_PendingClipChains();
 		}
+		/* Valtan's TrackMove owns the world position.  The Client only seeks the
+		   original visual pair over that same six-second Server action clock. */
+		if (PLAYER_ACTION_STATE::WALL_CLIMB == action)
+		{
+			f32_t age = 0.f;
+			const bool_t hasAge = CActionPresentationTimeline::Try_ResolveActionAgeSeconds(
+				serverTick, actionStartTick, SERVER_TICK_HZ, age);
+			const bool_t playEnd = hasAge &&
+				age >= m_fWallClimbEndStartSeconds;
+			if (m_hasWallClimbClips && hasAge)
+			{
+				const CLIP_STEP& step = playEnd ?
+					m_WallClimbEndClip : m_WallClimbLoopClip;
+				std::uint32_t animation = UINT32_MAX;
+				float duration = 0.f;
+				if (Resolve_ClipTiming(step, animation, duration) &&
+					(!same || m_isWallClimbEndClipActive != playEnd) &&
+					Start_Clip(step))
+				{
+					m_isWallClimbEndClipActive = playEnd;
+				}
+				if (Resolve_ClipTiming(step, animation, duration))
+				{
+					const float sourceSeconds = playEnd ?
+						(std::min)((std::max)(0.f,
+							age - m_fWallClimbEndStartSeconds) * step.playRate,
+							(std::max)(0.f, duration - .0001f)) :
+						std::fmod(age * step.playRate, duration);
+					m_pBodyModel->Set_AnimTrackPosition(animation,
+						sourceSeconds * m_pBodyModel->Get_AnimationTickPerSecond(animation));
+					m_pBodyModel->Play_Animation(0.f);
+					if (m_pBodyModel->Set_RootMotionVerticalScale(0.f))
+						m_isWallClimbRootMotionSuppressed = true;
+				}
+			}
+			else if (!same)
+			{
+				Set_Animation(CHARACTER_ANIM::IDLE, true);
+				m_isWallClimbEndClipActive = false;
+			}
+			m_iLastNetworkActionStartTick = actionStartTick;
+		}
 		/* The native jump clip is authored longer than most crossings, so it is
 		seeked on the server's own action clock and held on its last frame
 		rather than looped: the landing pose is what the arc ends on. */
+		else
+		{
 		std::uint32_t animation; float duration; f32_t age = 0.f;
 		if (m_hasTerrainJumpClip &&
 			CActionPresentationTimeline::Try_ResolveActionAgeSeconds(
@@ -2175,6 +2274,7 @@ bool_t CCharacter::Apply_NetworkAction(
 		if (same)
 			return true;
 		m_iLastNetworkActionStartTick = actionStartTick;
+		}
 	}
 	else if (PLAYER_ACTION_STATE::GRABBED == action)
 	{
@@ -2376,6 +2476,8 @@ bool_t CCharacter::Apply_NetworkAction(
 	}
 	else if (PLAYER_ACTION_STATE::INTERACTION == m_eNetworkAction ||
 		PLAYER_ACTION_STATE::SKILL == m_eNetworkAction ||
+		PLAYER_ACTION_STATE::TRIGGER_MOVE == m_eNetworkAction ||
+		PLAYER_ACTION_STATE::WALL_CLIMB == m_eNetworkAction ||
 		PLAYER_ACTION_STATE::ESTHER_CAST == m_eNetworkAction ||
 		PLAYER_ACTION_STATE::SQUAREHOLE_SONG == m_eNetworkAction ||
 		PLAYER_ACTION_STATE::FEAR == m_eNetworkAction ||
@@ -3972,6 +4074,8 @@ void CCharacter::Commit_Locomotion(bool_t isMoving)
 		LostArk::Shared::PLAYER_ACTION_STATE::INTERACTION == m_eNetworkAction ||
 		LostArk::Shared::PLAYER_ACTION_STATE::ESTHER_CAST == m_eNetworkAction ||
 		LostArk::Shared::PLAYER_ACTION_STATE::SQUAREHOLE_SONG == m_eNetworkAction ||
+		LostArk::Shared::PLAYER_ACTION_STATE::TRIGGER_MOVE == m_eNetworkAction ||
+		LostArk::Shared::PLAYER_ACTION_STATE::WALL_CLIMB == m_eNetworkAction ||
 		LostArk::Shared::PLAYER_ACTION_STATE::VEHICLE_SKILL == m_eNetworkAction)
 	{
 		return;

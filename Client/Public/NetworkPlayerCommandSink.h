@@ -56,6 +56,8 @@ public:
 		std::uint32_t cellMask, bool reset) override;
 	bool Request_DebugBingoBomb(std::uint32_t sequence) override;
 	bool Request_DebugBingoHammer(std::uint32_t sequence) override;
+	bool Request_DebugResummonWaveMonsters(std::uint32_t sequence,
+		LostArk::Shared::WAVE_MONSTER_BUTTON button) override;
 	bool Request_DebugKoukuHudMode(std::uint32_t sequence,
 		LostArk::Shared::KOUKU_HUD_MODE mode) override;
 	bool Consume_DebugKoukuHudModeResult(

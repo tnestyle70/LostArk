@@ -26,9 +26,6 @@
 #include <unordered_set>
 #include "Model.h"
 
-
-
-
 void Client::CMapTool::Render_CameraTrackTimeline(EDITOR_CAMERA_SHOT& shot)
 {
 	/* The span the ruler covers. An authored duration wins; otherwise the last
@@ -2227,6 +2224,105 @@ void Client::CMapTool::End_CameraShotPreview()
 	m_bCameraShotPreviewActive = false;
 }
 
+bool_t Client::CMapTool::Set_CameraPreviewSurroundingsCleared(const bool_t cleared)
+{
+	if (!cleared && m_CameraPreviewSuppressedDeployPlacementIds.empty())
+	{
+		m_bCameraPreviewSurroundingsCleared = false;
+		return true;
+	}
+	const bool_t previous = m_bCameraPreviewSurroundingsCleared;
+	m_bCameraPreviewSurroundingsCleared = cleared;
+	if (Refresh_CameraPreviewSurroundings())
+		return true;
+	m_bCameraPreviewSurroundingsCleared = previous;
+	return false;
+}
+
+bool_t Client::CMapTool::Refresh_CameraPreviewSurroundings()
+{
+	const CWorldSequencePlayer::TARGET_SET targets = Runtime_AuthoringTargets();
+	if (nullptr == targets.pCatalog || nullptr == targets.pDeployRuntime ||
+		"LV_LUT_HEARTRB_ED" != targets.pCatalog->Get_AreaId())
+	{
+		m_CameraShotStatus =
+			"Valtan Arena Deploy runtime is unavailable; structural props were not changed.";
+		return false;
+	}
+
+	if (m_bCameraPreviewSurroundingsCleared)
+	{
+		std::vector<uint64_t> floorPlacementIds;
+		/* The earlier overlay only selected outerwall109's 54 pieces.  The
+		   walls standing on the Arena floor are the rest of the same Valtan
+		   Deploy set, including the ungrouped structural props.  Keep only the
+		   six explicit floor/rail props visible. */
+		for (const DESTRUCTION_GROUP& group : m_DestructionDocument.Get_Groups())
+		{
+			if (!group.groupId.starts_with("destroyable.group.valtan.floor"))
+				continue;
+			floorPlacementIds.insert(floorPlacementIds.end(),
+				group.memberPlacementIds.begin(), group.memberPlacementIds.end());
+		}
+		std::sort(floorPlacementIds.begin(), floorPlacementIds.end());
+		if (6u != floorPlacementIds.size() ||
+			floorPlacementIds.end() != std::adjacent_find(
+				floorPlacementIds.begin(), floorPlacementIds.end()))
+		{
+			m_CameraShotStatus =
+				"Arena floor source is incomplete: expected 6 unique Deploy placements.";
+			return false;
+		}
+		targets.pDeployRuntime->Collect_PlacementIds(
+			m_CameraPreviewSuppressedDeployPlacementIds);
+		std::sort(m_CameraPreviewSuppressedDeployPlacementIds.begin(),
+			m_CameraPreviewSuppressedDeployPlacementIds.end());
+		if (145u != m_CameraPreviewSuppressedDeployPlacementIds.size() ||
+			m_CameraPreviewSuppressedDeployPlacementIds.end() !=
+				std::adjacent_find(m_CameraPreviewSuppressedDeployPlacementIds.begin(),
+					m_CameraPreviewSuppressedDeployPlacementIds.end()))
+		{
+			m_CameraShotStatus =
+				"Arena structure source is incomplete: expected 145 unique Deploy placements.";
+			m_CameraPreviewSuppressedDeployPlacementIds.clear();
+			return false;
+		}
+		m_CameraPreviewSuppressedDeployPlacementIds.erase(
+			std::remove_if(m_CameraPreviewSuppressedDeployPlacementIds.begin(),
+				m_CameraPreviewSuppressedDeployPlacementIds.end(),
+				[&floorPlacementIds](const uint64_t placementId)
+				{
+					return std::binary_search(floorPlacementIds.begin(),
+						floorPlacementIds.end(), placementId);
+				}),
+			m_CameraPreviewSuppressedDeployPlacementIds.end());
+		if (139u != m_CameraPreviewSuppressedDeployPlacementIds.size())
+		{
+			m_CameraShotStatus =
+				"Arena structure selection is incomplete: expected 139 non-floor Deploy props.";
+			m_CameraPreviewSuppressedDeployPlacementIds.clear();
+			return false;
+		}
+	}
+
+	if (m_CameraPreviewSuppressedDeployPlacementIds.empty() ||
+		!targets.pDeployRuntime->Set_CameraPreviewSuppressed(
+			m_CameraPreviewSuppressedDeployPlacementIds,
+			m_bCameraPreviewSurroundingsCleared))
+	{
+		m_CameraShotStatus = "Arena structure preview failed: " +
+			targets.pDeployRuntime->Get_Status();
+		return false;
+	}
+
+	m_CameraShotStatus = m_bCameraPreviewSurroundingsCleared ?
+		"Hidden 139 Valtan Arena structural Deploy props; the 6 floor props remain." :
+		"Restored 139 Valtan Arena structural Deploy props.";
+	if (!m_bCameraPreviewSurroundingsCleared)
+		m_CameraPreviewSuppressedDeployPlacementIds.clear();
+	return true;
+}
+
 void Client::CMapTool::Render_CameraShotSection()
 {
 	const EDITOR_AREA_DESCRIPTOR* descriptor = Get_ActiveEditorArea();
@@ -2305,6 +2401,26 @@ void Client::CMapTool::Render_CameraShotSection()
 		{
 			(void)Load_CameraShots(*descriptor);
 		}
+	}
+	const CWorldSequencePlayer::TARGET_SET runtimeTargets = Runtime_AuthoringTargets();
+	const bool_t canHideArenaWalls = nullptr != runtimeTargets.pCatalog &&
+		nullptr != runtimeTargets.pDeployRuntime &&
+		"LV_LUT_HEARTRB_ED" == runtimeTargets.pCatalog->Get_AreaId();
+	ImGui::SameLine();
+	ImGui::BeginDisabled(!canHideArenaWalls);
+	if (ImGui::Button(m_bCameraPreviewSurroundingsCleared ?
+		"Restore Arena Outer Walls" : "Hide Arena Outer Walls"))
+	{
+		(void)Set_CameraPreviewSurroundingsCleared(
+			!m_bCameraPreviewSurroundingsCleared);
+	}
+	ImGui::EndDisabled();
+	if (ImGui::IsItemHovered())
+	{
+		ImGui::SetTooltip(
+			"Valtan only. Hides all 139 non-floor Arena Deploy props.\n"
+			"The six Arena floor/rail props, water, stage, actors, Server state and saved data stay unchanged.\n"
+			"The walls stay hidden while a cutscene changes their Deploy state.");
 	}
 	if (m_bCameraShotPreviewActive)
 	{

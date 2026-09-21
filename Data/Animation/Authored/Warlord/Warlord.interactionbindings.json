@@ -7,6 +7,11 @@
     "clip": "terrain_jump_short",
     "playRate": 1
   },
+  "wallClimb": {
+    "loop": { "clip": "wall_climb_loop", "playRate": 1 },
+    "end": { "clip": "wall_climb_end", "playRate": 1 },
+    "endStartSeconds": 4
+  },
   "modes": [
     {
       "mode": "MAZE",

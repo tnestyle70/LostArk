@@ -495,6 +495,9 @@ private:
 	/* F1 "KoukuSaydon Arena": gate buttons that ask the Server to raise the
 	   gate bosses, move only this player and point the HUD at the gate boss. */
 	void RenderKoukuSaydonArenaControls();
+	/* F1 "Valtan Arena": the "Normal Monster 1/2" buttons that ask the Server to
+	   re-summon the Stage_1 / Stage_2 corridor waves. Shown only inside the arena. */
+	void RenderValtanArenaControls();
 	void OpenDebugResourceFile(size_t iFile);
 	void RefreshCompletePlayPatternOptions();
 	void RenderCompletePlayControls();
@@ -784,9 +787,15 @@ private:
 		hunter's card maze shard count instead. */
 		LostArk::Shared::MECHANIC_CARD_SYMBOL eCardMazeSuit =
 			LostArk::Shared::MECHANIC_CARD_SYMBOL::NONE;
-		/* Picks the retail DamageTextWnd colour for this number. */
+		/* Picks the retail DamageTextWnd colour and timeline for this number. */
 		LostArk::Shared::DAMAGE_HIT_FLAG eHitFlag =
 			LostArk::Shared::DAMAGE_HIT_FLAG::NORMAL;
+		/* Reference px away from the anchor. Retail's DamageTextElement carries a randValue
+		and a direction the native side fills in so several hits on one target do not stack,
+		and the spread it produces is wider than the status words'. The values are not in the
+		movie, so these are the project's. */
+		f32_t fScatterX = 0.f;
+		f32_t fScatterY = 0.f;
 	};
 	vector<FLOATING_DAMAGE_NUMBER> m_FloatingDamageNumbers;
 	/* Update_BossHealthBar's own edge-detect state, matching two real effects confirmed from the

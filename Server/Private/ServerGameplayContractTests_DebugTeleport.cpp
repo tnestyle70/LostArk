@@ -74,6 +74,15 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 			tests.Require(!room->Resolve_SquareHoleDestination(base, 0u, unused) &&
 				!room->Resolve_SquareHoleDestination(base, 4u, unused),
 				"An unknown square hole id has no destination, so no song starts");
+			const auto* ship = room->Find_Placement("ship");
+			SERVER_NAV_POINT shipLanding{};
+			const bool shipResolved = room->Resolve_SquareHoleDestination(
+				base, WORLD_MAP_SHIP_TRAVEL_DESTINATION_ID, shipLanding);
+			tests.Require(nullptr != ship && 1u == ship->TriggerActions.size() && shipResolved &&
+				std::abs(shipLanding.x - ship->TriggerActions.front().fTargetX) < 0.001f &&
+				std::abs(shipLanding.y - ship->TriggerActions.front().fTargetY) < 0.001f &&
+				std::abs(shipLanding.z - ship->TriggerActions.front().fTargetZ) < 0.001f,
+				"World-map Set Sail resolves the authored ship landing");
 
 			constexpr std::uint32_t SONG_TICKS = (SQUAREHOLE_SONG_DURATION_MS * 30u + 999u) / 1000u;
 			constexpr std::uint32_t LOCK_TICKS =
@@ -125,7 +134,7 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 			room->Finish_SquareHoleSong(live);
 			tests.Require(0u == live.iSquareHoleId && live.fPositionX == start.x &&
 				live.fPositionZ == start.z &&
-				std::string::npos != room->m_strStatus.find("Square hole landing was refused"),
+				std::string::npos != room->m_strStatus.find("World map travel landing was refused"),
 				"A landing blocked during the song leaves the player where they stand");
 		}
 		auto koukuRoom = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
@@ -136,7 +145,7 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 			!koukuRoom->Resolve_SquareHoleDestination(*koukuStorage, 1u, noLanding),
 			"A world without square hole rows refuses the request, so no song starts");
 	}
-		for (const WORLD_ID world : { WORLD_ID::KAKULSAYDON_ARENA, WORLD_ID::VALTAN_ARENA })
+		for (const WORLD_ID world : { WORLD_ID::BERN, WORLD_ID::KAKULSAYDON_ARENA, WORLD_ID::VALTAN_ARENA })
 		{
 			auto room = std::make_unique<CGameRoom>(world);
 			const auto* spawn = room->Find_AvailablePlayerSpawn();
@@ -194,7 +203,8 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 				player.fPositionX == ground.x + 2.f,
 				"Stale sequence cannot reset position");
 			request.iRequestSequence = 3u;
-			request.eWorldId = WORLD_ID::BERN;
+			request.eWorldId = WORLD_ID::BERN == world ?
+				WORLD_ID::VALTAN_ARENA : WORLD_ID::BERN;
 			verdict = room->Apply_DebugTeleportToPosition(player, request);
 			tests.Require(verdict.eResult == DEBUG_TELEPORT_RESULT::REJECTED_WRONG_WORLD,
 				"Cross-world teleport intent is refused");

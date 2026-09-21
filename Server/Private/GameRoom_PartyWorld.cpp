@@ -287,6 +287,78 @@ bool LostArk::Server::CGameRoom::Activate_SpawnGroupFromTrigger(
 		});
 }
 
+void LostArk::Server::CGameRoom::Handle_DebugResummonWaveMonsters(
+	const SESSION_ID sessionId,
+	const LostArk::Shared::C2S_DEBUG_RESUMMON_WAVE_MONSTERS& request)
+{
+#ifdef _DEBUG
+	using namespace LostArk::Shared;
+	const auto report = [this](std::string line)
+	{
+		m_strStatus = std::move(line);
+		std::cout << "[WaveMonsters] " << m_strStatus << '\n';
+	};
+	/* The request names this room's own world, that world has a button for it, and
+	the session owns a player here. The Valtan pattern audition owns its arena while
+	it runs (the trigger boxes are not evaluated then either), so the wave waits. */
+	const WAVE_MONSTER_BUTTON_ROW* row =
+		CServerTriggerSystem::Find_WaveMonsterButton(m_eWorldId, request.eButton);
+	if (request.eWorldId != m_eWorldId || nullptr == row ||
+		!m_PlayerIdBySessionId.contains(sessionId))
+	{
+		report("Wave monster re-summon refused: wrong world, no such button or no player in this room");
+		return;
+	}
+	if (WORLD_ID::VALTAN_ARENA == m_eWorldId &&
+		VALTAN_TIMELINE_AUDITION_PHASE::INACTIVE != m_ValtanTimelineAudition.ePhase)
+	{
+		report("Wave monster re-summon refused: the Valtan pattern audition is running");
+		return;
+	}
+	const std::string groupId = row->pSpawnGroupId;
+	const auto& groups = m_SpawnGroupBootstrap.Get_Groups();
+	if (std::none_of(groups.begin(), groups.end(),
+		[&groupId](const SPAWN_GROUP_DEFINITION& definition)
+		{
+			return definition.strSpawnGroupId == groupId;
+		}))
+	{
+		report("Wave monster re-summon refused: spawn group is missing: " + groupId);
+		return;
+	}
+	/* Remove what is still alive, then start the group over from its first wave. The
+	monsters appear on the next spawn-group update at the group's authored anchors,
+	wherever the player stands. */
+	for (auto entity = m_WorldEntities.begin(); entity != m_WorldEntities.end();)
+	{
+		if (WORLD_BOOTSTRAP_KIND::MONSTER != entity->eKind ||
+			entity->strSpawnGroupId != groupId)
+		{
+			++entity;
+			continue;
+		}
+		m_CombatObjectRuntime.Cancel_Source(entity->iNetEntityId);
+		Broadcast_WorldEntityDespawned(entity->iNetEntityId);
+		entity = m_WorldEntities.erase(entity);
+	}
+	if (!Broadcast_CombatObjectLifecycle())
+	{
+		Mark_RuntimeFailure("wave-resummon.combat-object-lifecycle");
+		return;
+	}
+	if (!m_SpawnGroupRuntime.Reset_Group(groupId) ||
+		!m_SpawnGroupRuntime.Activate(groupId))
+	{
+		report("Wave monster re-summon failed to restart the group: " + groupId);
+		return;
+	}
+	report("Wave monsters re-summoned: " + groupId);
+#else
+	(void)sessionId;
+	(void)request;
+#endif
+}
+
 void LostArk::Server::CGameRoom::Handle_InteractTrigger(
 	const SESSION_ID sessionId,
 	const LostArk::Shared::C2S_INTERACT_TRIGGER& request)

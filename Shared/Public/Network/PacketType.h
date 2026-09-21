@@ -92,9 +92,14 @@ namespace LostArk::Shared
 	// 98 carries the retail damage-text hit flag on every damage event, so a potion
 	// heal draws in its own colour instead of reading as an ordinary hit.
 	// 99 adds the Server-authoritative invulnerability-zone presentation pulse.
-	// 100 appends the Guardian Knight ember orbs, locked sockets and pool size to
-	// player snapshots.
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 100;
+	// 100 adds the Debug-only wave-monster re-summon request (F1 "Normal Monster 1/2").
+	// 101 appends WALL_CLIMB to the replicated player action state.  The Server
+	// owns the original Valtan TrackMove position samples; the Client uses this
+	// distinct state to keep an idle presentation instead of playing a terrain hop.
+	// Earlier peers do not know the appended action identity.
+	// 102 joins the Guardian Knight ember orbs, locked sockets and pool size
+	// with the wave re-summon and wall-climb wire contracts.
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 102;
 
 	enum class WORLD_ID : std::uint16_t
 	{
@@ -385,7 +390,10 @@ namespace LostArk::Shared
 		// gate's bosses.
 		S2C_RAID_MVP_RESULT,
 		// Right-click equip / unequip between the bag and the equipment slots.
-		C2S_SET_EQUIPMENT
+		C2S_SET_EQUIPMENT,
+		// Debug F1 "Normal Monster 1/2": removes a wave spawn group's live monsters and
+		// re-summons it from the start. Release ignores it; there is no result message.
+		C2S_DEBUG_RESUMMON_WAVE_MONSTERS
 	};
 
 	//TCP는 메시지 경계를 보존하지 않기 때문에, payload앞에 header를 둔다.
@@ -499,6 +507,7 @@ namespace LostArk::Shared
 		case PACKET_TYPE::S2C_GATE_PROGRESS_STATE:
 		case PACKET_TYPE::S2C_RAID_MVP_RESULT:
 		case PACKET_TYPE::C2S_SET_EQUIPMENT:
+		case PACKET_TYPE::C2S_DEBUG_RESUMMON_WAVE_MONSTERS:
 			return true;
 		default:
 			return  false;

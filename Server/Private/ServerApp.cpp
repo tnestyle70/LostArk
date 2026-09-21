@@ -3030,6 +3030,17 @@ void LostArk::Server::CServerApp::On_SessionFrame(
 		command.eType = ROOM_COMMAND_TYPE::DEBUG_BINGO_HAMMER;
 		command.DebugBingoHammer = request;
 	}
+	else if (frame.ePacketType == PACKET_TYPE::C2S_DEBUG_RESUMMON_WAVE_MONSTERS)
+	{
+		C2S_DEBUG_RESUMMON_WAVE_MONSTERS request{};
+		if (!Read_Message(reader, request) || 0u != reader.Get_RemainingSize())
+		{
+			closeMalformedPayload("C2S_DEBUG_RESUMMON_WAVE_MONSTERS");
+			return;
+		}
+		command.eType = ROOM_COMMAND_TYPE::DEBUG_RESUMMON_WAVE_MONSTERS;
+		command.DebugResummonWaveMonsters = request;
+	}
 	else if (frame.ePacketType == PACKET_TYPE::C2S_DEBUG_SET_MADNESS_FORM)
 	{
 		C2S_DEBUG_SET_MADNESS_FORM request{};

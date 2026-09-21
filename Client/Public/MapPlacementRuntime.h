@@ -203,6 +203,11 @@ public:
 	static bool_t Set_RuntimeSuppressed(
 		MAP_RUNTIME_PLACED_ENTRY& entry,
 		bool_t suppressed);
+	/* Map Tool camera inspection overlay. This leaves both authored visibility
+	   and the cinematic stage overlay unchanged. */
+	static bool_t Set_RuntimeCameraPreviewSuppressed(
+		MAP_RUNTIME_PLACED_ENTRY& entry,
+		bool_t suppressed);
 #ifdef _DEBUG
 	/* Stages ordinary CMapAssetObjects and commits only after both material and
 	visibility operations succeed. The original placement order stays stable. */

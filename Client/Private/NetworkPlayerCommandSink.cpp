@@ -144,6 +144,12 @@ bool Client::CNetworkPlayerCommandSink::Request_DebugBingoHammer(
  return CNetworkManager::Get().Send_DebugBingoHammer(sequence);
 }
 
+bool Client::CNetworkPlayerCommandSink::Request_DebugResummonWaveMonsters(
+ std::uint32_t sequence, LostArk::Shared::WAVE_MONSTER_BUTTON button)
+{
+ return CNetworkManager::Get().Send_DebugResummonWaveMonsters(sequence, button);
+}
+
 bool Client::CNetworkPlayerCommandSink::Request_DebugKoukuHudMode(
  std::uint32_t sequence, LostArk::Shared::KOUKU_HUD_MODE mode)
 {

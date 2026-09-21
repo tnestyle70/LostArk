@@ -31,14 +31,6 @@ namespace
 			z < desc.fOriginZ + desc.iHeight * desc.fCellSize;
 	}
 
-	bool Overlaps(const CNavGrid::NAVGRID_DESC& left, const CNavGrid::NAVGRID_DESC& right)
-	{
-		return left.fOriginX < right.fOriginX + right.iWidth * right.fCellSize &&
-			right.fOriginX < left.fOriginX + left.iWidth * left.fCellSize &&
-			left.fOriginZ < right.fOriginZ + right.iHeight * right.fCellSize &&
-			right.fOriginZ < left.fOriginZ + left.iHeight * left.fCellSize;
-	}
-
 	// CMapNavigationContract::Read_RegionManifest reads authoring. The overlay
 	// instead inspects the published manifest beside the actual .navgrid files.
 	bool ReadPublishedRegions(const MAP_NAVIGATION_CONTRACT& base,
@@ -169,11 +161,8 @@ bool Client::CLevelNavigationDebug::Reload()
 			{ m_Status = "Reload failed; previous same-area snapshot retained. " + contract.runtimePath.string() + " " + status; return false; }
 			if (gridIndex > 0 && std::fabs(grid.maximumStepHeight - regions[gridIndex - 1].stepHeight) > .000001f)
 			{ m_Status = "Reload failed: published detail policy differs from manifest. Previous snapshot retained."; return false; }
-			for (size_t other = 1; other < staged.size(); ++other)
-			{
-				if (Overlaps(grid.runtime.Get_Desc(), staged[other].runtime.Get_Desc()))
-				{ m_Status = "Reload failed: published detail grids overlap. Previous snapshot retained."; return false; }
-			}
+			// Detail grids may share an XZ footprint as stacked height layers; each is drawn at its own
+			// heights. The publisher and the Server load already reject layers too close to tell apart.
 			const auto& desc = grid.runtime.Get_Desc();
 			CNavGridPaintDocument source;
 			bool matches = source.Load(contract.sourcePath, contract.paintPath, grid.sourceStatus);

@@ -324,7 +324,9 @@ bool LostArk::Server::CWorldBootstrap::Load(
 				WORLD_TRIGGER_ACTION action{};
 				if ("movePlayer" == fields[actionCursor])
 				{
-					if ((5u != payloadCount && 6u != payloadCount) ||
+					const bool wallClimbPayload = payloadCount >= 16u &&
+						"WALL_CLIMB" == fields[actionCursor + 7u];
+					if ((5u != payloadCount && 6u != payloadCount && !wallClimbPayload) ||
 						!ParseNumber(fields[actionCursor + 2u], action.fTargetX) ||
 						!ParseNumber(fields[actionCursor + 3u], action.fTargetY) ||
 						!ParseNumber(fields[actionCursor + 4u], action.fTargetZ) ||
@@ -345,7 +347,56 @@ bool LostArk::Server::CWorldBootstrap::Load(
 							std::to_string(index);
 						return false;
 					}
-					if (6u == payloadCount)
+					if (wallClimbPayload)
+					{
+						std::uint32_t sampleCount = 0u;
+						if (worldId != LostArk::Shared::WORLD_ID::VALTAN_ARENA ||
+							!ParseNumber(fields[actionCursor + 8u], action.fFacingYawDegrees) ||
+							!ParseNumber(fields[actionCursor + 9u], sampleCount) ||
+							sampleCount < 2u || sampleCount > 181u ||
+							payloadCount != 8u + 4u * sampleCount ||
+							!std::isfinite(action.fFacingYawDegrees) ||
+							std::abs(action.fFacingYawDegrees) > 360.f)
+						{
+							m_strStatus = "World movePlayer wall climb header is invalid";
+							return false;
+						}
+						action.eMoveStyle = WORLD_TRIGGER_MOVE_STYLE::WALL_CLIMB;
+						action.TrackSamples.reserve(sampleCount);
+						std::uint32_t previousTimeMs = 0u;
+						for (std::uint32_t sampleIndex = 0u; sampleIndex < sampleCount; ++sampleIndex)
+						{
+							WORLD_TRIGGER_MOVE_SAMPLE sample{};
+							const std::size_t sampleCursor = actionCursor + 10u + 4u * sampleIndex;
+							if (!ParseNumber(fields[sampleCursor], sample.iTimeMs) ||
+								!ParseNumber(fields[sampleCursor + 1u], sample.fPositionX) ||
+								!ParseNumber(fields[sampleCursor + 2u], sample.fPositionY) ||
+								!ParseNumber(fields[sampleCursor + 3u], sample.fPositionZ) ||
+								!std::isfinite(sample.fPositionX) || !std::isfinite(sample.fPositionY) ||
+								!std::isfinite(sample.fPositionZ) ||
+								(0u == sampleIndex ? sample.iTimeMs != 0u : sample.iTimeMs <= previousTimeMs))
+							{
+								m_strStatus = "World movePlayer wall climb sample is invalid";
+								return false;
+							}
+							previousTimeMs = sample.iTimeMs;
+							action.TrackSamples.push_back(sample);
+						}
+						if (std::abs(action.fDurationSeconds - static_cast<float>(previousTimeMs) / 1000.f) > .001f)
+						{
+							m_strStatus = "World movePlayer wall climb duration is invalid";
+							return false;
+						}
+						const WORLD_TRIGGER_MOVE_SAMPLE& lastSample = action.TrackSamples.back();
+						if (std::abs(action.fTargetX - lastSample.fPositionX) > .001f ||
+							std::abs(action.fTargetY - lastSample.fPositionY) > .001f ||
+							std::abs(action.fTargetZ - lastSample.fPositionZ) > .001f)
+						{
+							m_strStatus = "World movePlayer wall climb target is invalid";
+							return false;
+						}
+					}
+					else if (6u == payloadCount)
 					{
 						const auto mode = fields[actionCursor + 7u];
 						if (worldId != LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA ||

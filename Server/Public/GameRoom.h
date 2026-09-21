@@ -428,6 +428,13 @@ namespace LostArk::Server
 		void Handle_DebugBingoHammer(
 			SESSION_ID sessionId,
 			const LostArk::Shared::C2S_DEBUG_BINGO_HAMMER& request);
+		/* Debug F1 "Normal Monster 1/2" (Kouku Book1/Book2, Valtan Stage_1/Stage_2):
+		removes the mapped wave group's live monsters, resets the group and starts it
+		over at its authored anchors. Release ignores it; the monsters ride the world
+		snapshot, so there is no result message. */
+		void Handle_DebugResummonWaveMonsters(
+			SESSION_ID sessionId,
+			const LostArk::Shared::C2S_DEBUG_RESUMMON_WAVE_MONSTERS& request);
 		void Handle_DebugSetMadnessForm(
 			SESSION_ID sessionId,
 			const LostArk::Shared::C2S_DEBUG_SET_MADNESS_FORM& request);

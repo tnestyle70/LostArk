@@ -212,9 +212,19 @@ MapTool의 저장 대상은 Data 원본뿐이다.
 `Data/Navigation/<AreaId>.navregions`에 `REGION "<regionId>" <stepHeight>` 행을 두면
 MapTool의 Navigation 패널에서 그 영역을 골라 별도 Nav Bounds와 Cell Size로 Bake한다.
 영역은 자기가 덮는 스테이지의 걷는 범위 전체를 덮어야 한다. 플레이어가 걸어서 영역
-밖으로 나가는 지형에는 쓰지 않는다. 영역끼리 겹치면 publisher와 Server가 모두 거부하고,
-영역에는 runtime blocker를 둘 수 없다. 매니페스트가 없으면 Area는 기본 격자 하나로
-종전과 동일하게 동작한다.
+밖으로 나가는 지형에는 쓰지 않는다. 영역에는 runtime blocker를 둘 수 없다. 매니페스트가
+없으면 Area는 기본 격자 하나로 종전과 동일하게 동작한다.
+
+위아래로 겹치는 층(예: 떠 있는 상층과 그 아래 지면)은 별도 영역으로 Bake하며 두 영역의
+XZ 범위가 겹쳐도 된다. 겹친 XZ에서 양쪽 모두 걸을 수 있는 셀의 지면 높이 차가
+max(2m, 두 영역 step 정책 중 큰 값의 2배)보다 작으면 질의의 높이 힌트로 층을 구분할 수
+없으므로 publisher와 Server가 모두 거부한다. 층 사이는 걸어서 이어지지 않고 movePlayer 같은
+저작된 이동으로만 오간다. Server가 겹친 XZ의 질의에 답하는 층은 다음 순서로 정한다: 그 XZ에
+걸을 수 있는 셀이 있는 영역, 그중 지면이 질의의 높이 힌트에 가장 가까운 영역, 동률이면 매니페스트
+순서. 이 선택은 `CServerNavigation::Select_Region` 한 곳이 소유한다. 플레이어·NPC·스킬 이동 같은
+Server 질의는 자기 높이(`player.fPositionY` 등)를 마지막 인자(`startY`/`hintY`/`fromY`)로 넘겨야
+하고, 힌트가 없는 질의는 겹친 구간에서 매니페스트 순서 첫 번째 영역이 답한다. 겹치지 않는 영역과
+영역이 없는 Area는 종전과 같다. Client 제품 Loader는 영역 격자를 읽지 않고 기본 격자만 쓴다.
 
 쿠크 2관문의 `BOSS_KAKULSAYDON_G2_BIG_SAYDON`은 저장한 높이에서 서는 보스다.
 Navigation publisher도 Server `Build_WorldEntity`와 같은 해당 Area/archetype의 높이 정책을 사용하며,

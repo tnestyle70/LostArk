@@ -70,6 +70,7 @@
 #include "HonorTitleWindowView.h"
 #include "WorldMapWindowView.h"
 #include "SongCastGaugeView.h"
+#include "Network/PacketMessages.h"
 #include "InventoryView.h"
 #include "QuickSlotDragView.h"
 #include "SkillWindowView.h"
@@ -5653,6 +5654,15 @@ void CMainApp::Update_Minimap(const f32_t fTimeDelta)
 			if (nullptr == pController || !pController->Request_UseSquareHole(iHoleId))
 				OutputDebugStringA("[Client][WorldMapWindow] Square hole request not sent (no controller, or the player is busy).\n");
 		}
+		if (m_pWorldMapWindowView->Take_ShipTravelRequest())
+		{
+			CPlayerController* pController = Find_ActivePlayerController();
+			if (nullptr == pController || !pController->Request_UseSquareHole(
+				LostArk::Shared::WORLD_MAP_SHIP_TRAVEL_DESTINATION_ID))
+			{
+				OutputDebugStringA("[Client][WorldMapWindow] Ship travel request not sent (no controller, or the player is busy).\n");
+			}
+		}
 	}
 	if (nullptr != m_pSongCastGaugeView)
 		m_pSongCastGaugeView->Update(fTimeDelta, CCombatHUDViewModel::Get().Get_Player(),
@@ -8272,18 +8282,30 @@ void CMainApp::RenderDamageNumbers()
 	if (nullptr != m_pSkillWindowView && m_pSkillWindowView->Is_Open())
 		return;
 
-	/* Retail damagetext.gfx (EFUI_DAMAGE, class DamageTextCBT2): $YoonGasiIIM 32px centered text
-	on the 1080p stage, driven by two linear tweens. The native side passes the tween values and
-	no shipped data table carries them, so the factory defaults in the decompiled AS3 are the
-	evidence used here: phase 0 (450 ms) holds 32px and drifts 15px up; phase 1 (70 ms) shrinks
-	to 19px, drifts on to 100px up and fades to 0. Stage pixels scale with the viewport height. */
-	constexpr f64_t DAMAGE_PHASE0_SECONDS = 0.45;
-	constexpr f64_t DAMAGE_PHASE1_SECONDS = 0.07;
-	constexpr f64_t DAMAGE_NUMBER_LIFETIME_SECONDS = DAMAGE_PHASE0_SECONDS + DAMAGE_PHASE1_SECONDS;
+	/* Retail damagetext.gfx (EFUI_DAMAGE): $YoonGasiIIM 32px centred text on the 1080p stage.
+	What animates it is DamageTextElement's own timeline, which DamageTextWnd starts per hit
+	kind (gotoAndPlay "playerDamageType0" / "critical" / "heal") -- not DamageTextCBT2's tween
+	parameters, which only a test harness drives. The movie runs at 30 fps and the frames below
+	are its scaleX keys, so a number punches out to 2.65x within five frames and settles back
+	onto 1.0 by frame 18. It does not travel: the timeline has no translation and no alpha. */
+	constexpr f32_t DAMAGE_TIMELINE_FPS = 30.f;
+	constexpr f32_t DAMAGE_SCALE_NORMAL[] = {
+		1.00f, 1.25f, 2.00f, 2.33f, 2.65f, 2.60f, 2.55f, 2.50f, 2.17f,
+		1.83f, 1.50f, 1.37f, 1.26f, 1.16f, 1.09f, 1.04f, 1.01f, 1.00f };
+	/* "critical": a bigger punch to 4.0 that settles on 3.0 and stays there. */
+	constexpr f32_t DAMAGE_SCALE_CRITICAL[] = {
+		1.01f, 1.19f, 1.75f, 2.69f, 4.00f, 3.50f, 3.00f };
+	/* "heal" holds 1.5 for its whole run. */
+	constexpr f32_t DAMAGE_SCALE_HEAL = 1.5f;
 	constexpr f32_t DAMAGE_FONT_PX_START = 32.f;
-	constexpr f32_t DAMAGE_FONT_PX_END = 19.f;
-	constexpr f32_t DAMAGE_RISE_PX_PHASE0 = 15.f;
-	constexpr f32_t DAMAGE_RISE_PX_END = 100.f;
+	/* The timeline ends on its last key and the host then drops the element. How long the
+	settled number is held and how it leaves are native values the movie does not carry, so
+	the number rests where it landed and fades from there. */
+	constexpr f64_t DAMAGE_HOLD_SECONDS = 0.25;
+	constexpr f64_t DAMAGE_FADE_SECONDS = 0.25;
+	constexpr f64_t DAMAGE_NUMBER_LIFETIME_SECONDS =
+		std::size(DAMAGE_SCALE_NORMAL) / DAMAGE_TIMELINE_FPS +
+		DAMAGE_HOLD_SECONDS + DAMAGE_FADE_SECONDS;
 	/* DamageTextTween.DAMAGE_ANI_LIMIT: retail animates at most 20 numbers at once. */
 	constexpr size_t MAX_FLOATING_DAMAGE_NUMBERS = 20u;
 
@@ -8322,6 +8344,16 @@ void CMainApp::RenderDamageNumbers()
 		number.isOutgoing = damageEvent.Event.isOutgoing;
 		number.eCardMazeSuit = damageEvent.Event.eCardMazeSuit;
 		number.eHitFlag = damageEvent.Event.eHitFlag;
+		/* Retail fills DamageTextElement's randValue/direction per hit so a burst does not
+		stack on one point; the spread reads wider than the status words' 26x18. The values
+		are native, so the range is the project's. */
+		{
+			static std::mt19937 scatterRandom{ std::random_device{}() };
+			std::uniform_real_distribution<f32_t> spreadX(-42.f, 42.f);
+			std::uniform_real_distribution<f32_t> spreadY(-26.f, 12.f);
+			number.fScatterX = spreadX(scatterRandom);
+			number.fScatterY = spreadY(scatterRandom);
+		}
 		m_dLastDamageSeconds = number.dSpawnSeconds;
 		m_FloatingDamageNumbers.push_back(number);
 	}
@@ -8384,21 +8416,29 @@ void CMainApp::RenderDamageNumbers()
 	for (const FLOATING_DAMAGE_NUMBER& number : m_FloatingDamageNumbers)
 	{
 		const f64_t dAge = dNow - number.dSpawnSeconds;
-		f32_t fFontPx = DAMAGE_FONT_PX_START;
-		f32_t fRisePx = 0.f;
-		f32_t fAlpha = 1.f;
-		if (dAge < DAMAGE_PHASE0_SECONDS)
+		/* Walk the element's own frames: hold the last key once the timeline has run out. */
+		const bool_t isCritical =
+			LostArk::Shared::DAMAGE_HIT_FLAG::CRITICAL == number.eHitFlag;
+		const bool_t isHeal = LostArk::Shared::DAMAGE_HIT_FLAG::HEAL == number.eHitFlag;
+		const f32_t* pCurve = isCritical ? DAMAGE_SCALE_CRITICAL : DAMAGE_SCALE_NORMAL;
+		const size_t iCurveKeys = isCritical ?
+			std::size(DAMAGE_SCALE_CRITICAL) : std::size(DAMAGE_SCALE_NORMAL);
+		const f32_t fFrame = static_cast<f32_t>(dAge) * DAMAGE_TIMELINE_FPS;
+		f32_t fTimelineScale = DAMAGE_SCALE_HEAL;
+		if (!isHeal)
 		{
-			fRisePx = DAMAGE_RISE_PX_PHASE0 * static_cast<f32_t>(dAge / DAMAGE_PHASE0_SECONDS);
+			const size_t iKey = (std::min)(static_cast<size_t>((std::max)(fFrame, 0.f)),
+				iCurveKeys - 1u);
+			const size_t iNext = (std::min)(iKey + 1u, iCurveKeys - 1u);
+			const f32_t fBlend = (std::clamp)(fFrame - static_cast<f32_t>(iKey), 0.f, 1.f);
+			fTimelineScale = pCurve[iKey] + (pCurve[iNext] - pCurve[iKey]) * fBlend;
 		}
-		else
-		{
-			const f32_t t = (std::clamp)(
-				static_cast<f32_t>((dAge - DAMAGE_PHASE0_SECONDS) / DAMAGE_PHASE1_SECONDS), 0.f, 1.f);
-			fFontPx = DAMAGE_FONT_PX_START + (DAMAGE_FONT_PX_END - DAMAGE_FONT_PX_START) * t;
-			fRisePx = DAMAGE_RISE_PX_PHASE0 + (DAMAGE_RISE_PX_END - DAMAGE_RISE_PX_PHASE0) * t;
-			fAlpha = 1.f - t;
-		}
+		const f32_t fFontPx = DAMAGE_FONT_PX_START * fTimelineScale;
+		/* The number stays where it landed; only the tail fades. */
+		const f64_t dTimeline = iCurveKeys / DAMAGE_TIMELINE_FPS;
+		const f32_t fAlpha = dAge <= dTimeline + DAMAGE_HOLD_SECONDS ? 1.f :
+			1.f - (std::clamp)(static_cast<f32_t>(
+				(dAge - dTimeline - DAMAGE_HOLD_SECONDS) / DAMAGE_FADE_SECONDS), 0.f, 1.f);
 		/* Anchored a little above the hit point (the event carries the target's ground position);
 		the tween moves it in screen space from there, like retail's canvas does. */
 		const vector_t vProjected = XMVector3Project(
@@ -8444,7 +8484,8 @@ void CMainApp::RenderDamageNumbers()
 		if (isShard)
 			vColor = XMVectorSet(1.f, 1.f, 1.f, fAlpha);
 		const float2_t vDrawPosition(
-			XMVectorGetX(vProjected), XMVectorGetY(vProjected) - fRisePx * stageScale);
+			XMVectorGetX(vProjected) + number.fScatterX * stageScale,
+			XMVectorGetY(vProjected) + number.fScatterY * stageScale);
 		/* textContainer carries a GLOWFILTER (blur 5, strength 1, opaque black) in retail, which
 		is what keeps a number readable over a bright floor. A sprite font cannot blur, so the
 		same black is stamped around the glyphs once per direction before the coloured pass. */
@@ -9842,6 +9883,7 @@ void CMainApp::RenderArenaCameraAndPlayerControls()
 	else if (nullptr != bern)
 	{
 		camera = bern->Get_DebugCamera();
+		controller = &bern->Get_PlayerController();
 		mapName = "Bern";
 	}
 	else if (nullptr != development)
@@ -9863,7 +9905,8 @@ void CMainApp::RenderArenaCameraAndPlayerControls()
 		{
 			const std::shared_ptr<CCharacter> pDebugLocal =
 				nullptr != valtan ? valtan->Get_LocalCharacter() :
-				(nullptr != kouku ? kouku->Get_LocalCharacter() : nullptr);
+				(nullptr != kouku ? kouku->Get_LocalCharacter() :
+					(nullptr != bern ? bern->Get_LocalCharacter() : nullptr));
 			if (nullptr != pDebugLocal && nullptr != pDebugLocal->Get_Transform())
 			{
 				float3_t vPlayer{};
@@ -9889,7 +9932,8 @@ void CMainApp::RenderArenaCameraAndPlayerControls()
 		ImGui::TextDisabled(valtan || kouku ? "Free-camera speed is saved per arena for this session." :
 			"Free-camera speed lasts for this map visit.");
 
-		// Server player placement remains confined to the two existing arena owners.
+		// The Server projects every request onto this active world's authored navigation.
+		// Bern needs this same Debug-only path to inspect the separate Bern3 deck.
 		if (controller)
 		{
 			const bool_t freeCamera = !camera->Is_FollowRequested() &&
@@ -9899,7 +9943,8 @@ void CMainApp::RenderArenaCameraAndPlayerControls()
 			if (ImGui::Button("Move Player"))
 			{
 				const auto world = nullptr != valtan ? LostArk::Shared::WORLD_ID::VALTAN_ARENA :
-					LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA;
+					(nullptr != bern ? LostArk::Shared::WORLD_ID::BERN :
+						LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA);
 				if (controller->Begin_DebugPlayerPlacement(world))
 					camera->Set_MouseLookEnabled(false);
 			}
@@ -11068,6 +11113,76 @@ namespace
 }
 #endif
 
+namespace
+{
+	/* One F1 "Normal Monster 1/2" button. The trigger name, spawn group and maxAlive
+	   mirror the Server's WAVE_MONSTER_BUTTON_ROW table and the authored group; the
+	   tooltip is their only consumer. A press only asks the Server, which owns the
+	   mapping, the removal of the live monsters and the wave itself. */
+	struct DEBUG_WAVE_MONSTER_BUTTON final
+	{
+		LostArk::Shared::WAVE_MONSTER_BUTTON eButton;
+		const char* pLabel;
+		const char* pTriggerName;
+		const char* pSpawnGroupId;
+		uint32_t iMaxAlive;
+	};
+
+	constexpr DEBUG_WAVE_MONSTER_BUTTON KOUKU_WAVE_MONSTER_BUTTONS[] =
+	{
+		{ LostArk::Shared::WAVE_MONSTER_BUTTON::NORMAL_MONSTER_1, "Normal Monster 1##KoukuWave", "Book1_Monsters", "spawn.kouku.book1", 22u },
+		{ LostArk::Shared::WAVE_MONSTER_BUTTON::NORMAL_MONSTER_2, "Normal Monster 2##KoukuWave", "Book2_Monsters", "spawn.kouku.book2", 15u },
+	};
+
+	constexpr DEBUG_WAVE_MONSTER_BUTTON VALTAN_WAVE_MONSTER_BUTTONS[] =
+	{
+		{ LostArk::Shared::WAVE_MONSTER_BUTTON::NORMAL_MONSTER_1, "Normal Monster 1##ValtanWave", "Stage_1", "spawn.valtan.stage01", 10u },
+		{ LostArk::Shared::WAVE_MONSTER_BUTTON::NORMAL_MONSTER_2, "Normal Monster 2##ValtanWave", "Stage_2", "spawn.valtan.stage03", 10u },
+	};
+
+	template <size_t COUNT>
+	void Render_DebugWaveMonsterButtons(
+		CPlayerController& controller,
+		const DEBUG_WAVE_MONSTER_BUTTON (&buttons)[COUNT])
+	{
+		for (size_t iButton = 0; iButton < COUNT; ++iButton)
+		{
+			const DEBUG_WAVE_MONSTER_BUTTON& button = buttons[iButton];
+			if (0 != iButton)
+				ImGui::SameLine();
+			if (ImGui::Button(button.pLabel, ImVec2(160.f, 0.f)))
+				(void)controller.Request_DebugResummonWaveMonsters(button.eButton);
+			if (ImGui::IsItemHovered())
+			{
+				ImGui::SetTooltip(
+					"Trigger %s -> spawn group %s (max alive %u)\n"
+					"Asks the Server to remove that group's live monsters and summon the wave again at its authored anchors.\n"
+					"Debug only: stepping into the trigger no longer raises it.",
+					button.pTriggerName, button.pSpawnGroupId, button.iMaxAlive);
+			}
+		}
+	}
+}
+
+void CMainApp::RenderValtanArenaControls()
+{
+	/* Hidden outside the arena so the hub does not carry an empty header there. */
+	if (ETOUI(LEVEL::VALTAN_ARENA) != CGameInstance::Get().Get_CurrentLevelID())
+		return;
+	Engine::CProfilerScope panelScope(CGameInstance::Get().Get_Profiler(), "ImGui.Hub.ValtanArena");
+	ImGui::SeparatorText("Valtan Arena / Wave Monsters");
+	CLevel_ValtanArena* pArena = CLevel_ValtanArena::Get_Active();
+	if (nullptr == pArena)
+	{
+		ImGui::TextDisabled("Valtan Arena Level instance is unavailable.");
+		return;
+	}
+	ImGui::SeparatorText("Wave Monsters");
+	ImGui::TextDisabled(
+		"Debug builds no longer raise the Stage_1 / Stage_2 corridor waves when you step into their trigger; these buttons summon them again.");
+	Render_DebugWaveMonsterButtons(pArena->Get_DebugPlayerController(), VALTAN_WAVE_MONSTER_BUTTONS);
+}
+
 void CMainApp::RenderKoukuSaydonArenaControls()
 {
 	Engine::CProfilerScope panelScope(CGameInstance::Get().Get_Profiler(), "ImGui.Hub.KoukuArena");
@@ -11144,6 +11259,10 @@ void CMainApp::RenderKoukuSaydonArenaControls()
 		swept. */
 		if (ImGui::Button("Bingo_Hammer", ImVec2(160.f, 0.f)))
 			(void)bingoController.Request_DebugBingoHammer();
+		/* Wave monsters: Debug builds no longer raise Book1_Monsters / Book2_Monsters
+		when a player steps into the trigger, so these two buttons ask the Server to
+		summon them again. */
+		Render_DebugWaveMonsterButtons(bingoController, KOUKU_WAVE_MONSTER_BUTTONS);
 		const auto& board = CCombatHUDViewModel::Get().Get_BingoBoard();
 		ImGui::TextDisabled("white 0x%07X   red 0x%07X   bombs %u",
 			board.iWhiteMask, board.iRedMask,
@@ -12305,6 +12424,7 @@ void CMainApp::RenderDeveloperTools()
 	RenderDebugLevelNavigation();
 	RenderArenaCameraAndPlayerControls();
 	RenderKoukuSaydonArenaControls();
+	RenderValtanArenaControls();
 	RenderCompletePlayControls();
 	RenderKoukuSaydonCompletePlayControls();
 	RenderServerArenaActiveControls();

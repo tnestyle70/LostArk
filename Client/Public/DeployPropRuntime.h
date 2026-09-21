@@ -63,6 +63,14 @@ public:
 		uint64_t runtimePlacementId,
 		DEPLOY_SURFACE_PRESENTATION_PACKET& outPacket) const;
 	bool_t Set_State_All(DEPLOY_PROP_STATE state);
+	/* Applies a presentation-only camera inspection overlay to one exact,
+	   stable set of Deploy placement IDs. It never changes Deploy state. */
+	bool_t Set_CameraPreviewSuppressed(
+		const std::vector<uint64_t>& placementIds,
+		bool_t suppressed);
+	/* Snapshot of this Level's stable Deploy placement IDs.  Consumers use this
+	   only to build a fully validated presentation-only selection. */
+	void Collect_PlacementIds(std::vector<uint64_t>& outPlacementIds) const;
 	shared_ptr<CDeployPropObject> Find(uint64_t runtimePlacementId) const;
 
 	const CDeployPropCatalog& Get_Catalog() const { return m_Catalog; }
