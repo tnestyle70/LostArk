@@ -3,9 +3,9 @@
   "formatVersion": 1,
   "areaId": "LV_LUT_HEARTRB_ED",
   "positionOffset": [
-    -9.0,
-    12.627922061357857,
-    9.0
+    -9,
+    12.6279221,
+    9
   ],
   "rotationDegrees": [
     45,
@@ -13,7 +13,33 @@
     0
   ],
   "focusDistance": 18,
-  "fovYDegrees": 32.64206322821485,
+  "fovYDegrees": 32.6420631,
   "followResponse": 18,
-  "characterSizeMultiplier": 1
+  "useSourceCameraRegions": false,
+  "characterSizeMultiplier": 1,
+  "classSizeMultipliers": {
+    "LANCE_MASTER": 1,
+    "GUNSLINGER": 1,
+    "SLAYER": 1,
+    "ARTIST": 0.717000008,
+    "DIMENSIONMASTER": 0.987999976,
+    "WARLORD": 1
+  },
+  "clownSizeMultiplier": 1.02900004,
+  "marioSizeMultiplier": 1,
+  "mazeHammerPositionCm": [
+    0,
+    0,
+    0
+  ],
+  "mazeHammerRotationDegrees": [
+    0,
+    0,
+    0
+  ],
+  "mazeHammerScale": [
+    1,
+    1,
+    1
+  ]
 }

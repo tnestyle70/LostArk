@@ -15,6 +15,7 @@ from pathlib import Path
 import numpy as np
 from scipy.spatial.transform import Rotation
 import build_source_sequences as sequences
+from bake_character_cinematic_clips import BODIES
 from build_gate2_intro_backdrops import reduced_indices
 
 ROOT, OUT, base = sequences.ROOT, sequences.OUT, sequences.base
@@ -26,14 +27,17 @@ def bone_transform(occurrence, rows, duration):
     actor=occurrence['actorExport'];parent=rows[actor]['p']['base']
     matinee,data=occurrence['matineeExport'],occurrence['dataExport']
     if matinee==328:
-        asset='Map/KakulSaydon/SourceSequences/kouku.gate2.maze/Kouku/Kouku.wmodel'
+        asset=BODIES['kouku']
+        clip='kouku.gate2.maze.kouku'
         parent_group=397
         rows[parent]['p']['drawscale']=.012053/.01
     else:
         assert matinee==329 and parent==333
-        asset='Map/KakulSaydon/Gate2Intro/Saydon/Saydon.wmodel'
+        asset=BODIES['saydon']
+        clip='gate2_intro_27s'
         parent_group=467
-    base.BONE_MODELS[parent]=(base.wm.read_wmodel(base.RESOURCES/asset),parent_group,{})
+    model=base.wm.read_wmodel(base.RESOURCES/asset,include_geometry=False,animation_names=(clip,))
+    base.bind_bone_model(parent,model,parent_group,clip)
     times=np.array(sorted({round(t*1000/30)for t in range(math.ceil(duration*.03)+1)}|{duration}))
     times=times[times<=duration]
     poses=[base.world_pose(rows,occurrence['groupExport'],actor,t/1000.,matinee,data)for t in times]

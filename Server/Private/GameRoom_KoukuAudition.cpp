@@ -311,7 +311,7 @@ LostArk::Server::CGameRoom::Evaluate_KoukuSaydonPatternAudition(
 				return reject(RESULT::REJECTED_UNSUPPORTED_PATTERN, "KoukuSaydon spawn reset is not on active navigation");
 			for (const auto& trigger : pattern->MechanicTriggers)
 				member.bOwnsPlayerMode = member.bOwnsPlayerMode || trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::HUD_ENTER ||
-					trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::CARD_MAZE_HIDE_NEXT || trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::CARD_MAZE_ENTER;
+					trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::CARD_MAZE_HIDE_NEXT || trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::CARD_MAZE_ENTER || trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::CARD_MAZE_STAGE_PLAYERS;
 			for (const auto& window : pattern->LogicWindows)
 			{
 				for (const auto& candidate : window.PatternIds) toCheck.push_back(candidate);

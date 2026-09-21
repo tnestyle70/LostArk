@@ -18,26 +18,26 @@ def documents():
     action = {"patterns": [], "bundles": [], "patternFlows": []}
     sequence = {"compositionId": "sequence.test", "revision": 7, "patterns": [],
                 "logics": [{"logicId": "arrival", "triggerKind": "ROOM_PLAYER_ARRIVAL"}]}
-    for gate, number in (("GATE1", 4), ("GATE2", 3), ("GATE3", 7)):
+    for gate, number in (("GATE1", 4), ("GATE2", 3), ("GATE3", 5)):
         pattern_id = f"pattern.{gate}"
         action["patterns"].append({"patternId": pattern_id, "gateId": gate, "authoringStatus": "PRODUCT"})
         action["patternFlows"].append({"gateId": gate, "flowId": f"flow.{gate}", "entries": [
             {"entryId": f"entry.{gate}", "kind": "PATTERN", "targetId": pattern_id, "waitAfterMs": 19}]})
-        sequence["patterns"].append({"patternId": PREFIX + str(number), "gateId": gate,
+        sequence["patterns"].append({"patternId": PREFIX + str(number), "gateId": "GATE2" if gate == "GATE3" else gate,
             "enterCombatOnFinish": True, "durationMs": 0, "stages": [{"durationMs": 1000}],
             "logicOccurrences": [{"occurrenceId": f"arrival.{gate}.{slot}", "logicId": "arrival",
                 "startMs": 999, "roomPlayerArrival": {"playerSlot": slot, "position": [slot, 1, 2]}}
                 for slot in range(4)]})
-    sequence["patterns"].append({"patternId": PREFIX + "5", "gateId": "GATE2",
-        "stages": [{"durationMs": 500}], "logicOccurrences": []})
     return action, sequence
 
 
 class RaidProjectionTests(unittest.TestCase):
-    def test_bingo_reuses_saved_flow_without_inventing_an_intro(self):
+    def test_bingo_reuses_saved_encore_intro_then_combat_and_ending(self):
         action, sequence = documents()
         sequence["patterns"].append({"patternId": PREFIX + "9", "gateId": "BINGO",
             "durationMs": 51285, "stages": [{"durationMs": 49083}], "logicOccurrences": []})
+        sequence["patterns"].append({"patternId": PREFIX + "10", "gateId": "BINGO",
+            "enterCombatOnFinish": True, "stages": [{"durationMs": 23333}], "logicOccurrences": []})
         action["patterns"].append({"patternId": "parent.bingo", "gateId": "BINGO", "authoringStatus": "PRODUCT"})
         flow = {"gateId": "BINGO", "flowId": "flow.bingo", "entries": [
             {"entryId": "bingo.parent", "kind": "PATTERN", "targetId": "parent.bingo", "waitAfterMs": 0}]}
@@ -45,7 +45,7 @@ class RaidProjectionTests(unittest.TestCase):
         bingo = subject.project_raid_gates(action, sequence)[-1]
         self.assertEqual("BINGO", bingo["gateId"])
         self.assertEqual("boss.kakulsaydon.bingo.saydon", bingo["primaryBossPlacementId"])
-        self.assertEqual(("", 0, []), (bingo["introPatternId"], bingo["introDurationMs"], bingo["arrivals"]))
+        self.assertEqual((PREFIX + "10", 23333, []), (bingo["introPatternId"], bingo["introDurationMs"], bingo["arrivals"]))
         self.assertEqual(flow["entries"], bingo["entries"])
         self.assertEqual((PREFIX + "9", 51285), (bingo["clearPatternId"], bingo["clearDurationMs"]))
         self.assertEqual((sequence["compositionId"], sequence["revision"]),
@@ -70,7 +70,7 @@ class RaidProjectionTests(unittest.TestCase):
         action, sequence = documents()
         before = copy.deepcopy((action, sequence))
         gates = subject.project_raid_gates(action, sequence)
-        self.assertEqual([4, 3, 7], [int(g["introPatternId"].removeprefix(PREFIX)) for g in gates])
+        self.assertEqual([4, 3, 5], [int(g["introPatternId"].removeprefix(PREFIX)) for g in gates])
         self.assertEqual([1000] * 3, [g["introDurationMs"] for g in gates])
         self.assertEqual("", gates[1]["clearPatternId"])
         self.assertEqual(0, gates[1]["clearDurationMs"])
@@ -85,12 +85,14 @@ class RaidProjectionTests(unittest.TestCase):
                 else: action["patternFlows"].pop(1)
                 self.assertEqual(["GATE1", "GATE3"], [g["gateId"] for g in subject.project_raid_gates(action, sequence)])
 
-    def test_gate2_clear_is_independent_from_the_raid_transition(self):
+    def test_gate2_complete_movie_owns_gate3_handoff_without_changing_source_gate(self):
         action, sequence = documents()
-        sequence["patterns"].pop()
         gates = subject.project_raid_gates(action, sequence)
         self.assertEqual("", gates[1]["clearPatternId"])
-        self.assertEqual(PREFIX + "7", gates[2]["introPatternId"])
+        self.assertEqual(PREFIX + "5", gates[2]["introPatternId"])
+        sequence["patterns"][2]["gateId"] = "GATE3"
+        with self.assertRaisesRegex(ValueError, "authored combat handoff"):
+            subject.project_raid_gates(action, sequence)
 
     def test_duplicate_arrival_slot_is_rejected(self):
         action, sequence = documents()

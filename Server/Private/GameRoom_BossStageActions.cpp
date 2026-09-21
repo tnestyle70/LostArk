@@ -1111,8 +1111,9 @@ bool LostArk::Server::CGameRoom::Commit_BossPatternPlayerStageActions(
 				{
 					boss.fYawDegrees =
 						std::atan2(deltaX, deltaZ) * RADIANS_TO_DEGREES;
-					// The catalog Big Saydon face/hammer forward is measured +X, while yaw faces +Z.
-					if (boss.strArchetypeId == "BOSS_KAKULSAYDON_G2_BIG_SAYDON")
+					// Both Gate 2 bodies author attacks along model +X; the yaw basis faces +Z.
+					if (boss.strArchetypeId == "BOSS_KAKULSAYDON_G2_BIG_SAYDON" ||
+						boss.strArchetypeId == "BOSS_KAKULSAYDON_G2_KOUKU")
 						boss.fYawDegrees -= 90.f;
 				}
 			}

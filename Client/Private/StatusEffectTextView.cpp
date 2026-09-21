@@ -139,10 +139,11 @@ void Client::CStatusEffectTextView::Submit(const REQUEST& Request)
 	if (!CUserSettings::Get().Is_ConditionMessageShown())
 		return;
 
-	const auto Spawned = m_SpawnedKeyByOwner.find(Request.iOwnerEntityId);
+	const auto ownerWord = std::make_pair(Request.iOwnerEntityId, Request.strWord);
+	const auto Spawned = m_SpawnedKeyByOwner.find(ownerWord);
 	if (m_SpawnedKeyByOwner.end() != Spawned && Spawned->second == Request.iOccurrenceKey)
 		return;
-	m_SpawnedKeyByOwner[Request.iOwnerEntityId] = Request.iOccurrenceKey;
+	m_SpawnedKeyByOwner[ownerWord] = Request.iOccurrenceKey;
 
 	/* Words stack on one head, so only anchors that are already gone leave here. */
 	m_Occurrences.erase(

@@ -66,6 +66,9 @@ private:
 	uint32_t m_iEffectPreparationPreparedCount = 0u;
 	uint32_t m_iEffectPreparationFailedCount = 0u;
 
+	/* This instance's exact Chrome clones, including partially initialized screens. A failed
+	Create must not clear another Loading instance that shares the same Level/Layer index. */
+	std::vector<shared_ptr<class CUI_Sprite>> m_ChromeSprites;
 	/* The progress fill/glow are repositioned every frame, so they are kept separately from the
 	rest of the (static, place-once) chrome pieces. */
 	shared_ptr<class CUI_Sprite>	m_pProgressFill = { nullptr };

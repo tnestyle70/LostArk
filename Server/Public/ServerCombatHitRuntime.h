@@ -43,6 +43,9 @@ namespace LostArk::Server
 		float fPushRangeM = 0.f;
 		std::uint32_t iPushMs = 0u;
 		bool bUsePushDirection = false;
+		bool bForcePush = false;
+		bool bPushCanLeaveArena = false;
+		bool bPushBallistic = false;
 		float fPushDirectionX = 0.f, fPushDirectionZ = 1.f;
 		bool bKnockdown = false;
 		std::uint32_t iDownMs = 0u;

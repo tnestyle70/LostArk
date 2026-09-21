@@ -1,5 +1,15 @@
 # LostArk merge 회귀 방지 정본
 
+### 보스 연출 클립의 Character 계약과 로딩 초기화 rollback
+
+- BossCatalog의 bodyModel·animationSetId는 Client ActorCatalog가 허용하는 `Character/.../*.wmodel`이어야 한다. 같은 골격의 Map 전용 연출 모델을 직접 열 수 있다는 이유로 catalog ID에 넣으면 전체 catalog 초기화가 실패해 다른 Level 입장도 막힌다. publisher의 donor 지원도 같은 경로 계약으로 검증한다.
+- 연출 클립은 기존 Character WModel에 WANM section만 병합한다. skeleton/rest basis 일치와 이름 충돌을 확인하고 기존 geometry·material·skeleton·clip section을 보존한다. animation index 0이나 단일 클립 모델을 가정하지 말고 이름으로 찾는다. 재생성 도구도 canonical Character 경로를 반환해야 한다.
+- 모델 단독 로드·Server publisher 성공만으로 Client 입장을 검증했다고 기록하지 않는다. 실제 Client ActorCatalog reader와 WorldSequence reader를 확인한다. 연출 이관은 실제 CModel 본 행렬 대조와 Resources 배포 목록을 함께 남긴다.
+- Loading UI를 Layer에 먼저 등록한 뒤 Loader 초기화가 실패하면 Level이 교체되지 않아 Lobby 글자와 orphan Loading 배경이 겹칠 수 있다. 생성한 instance의 sprite만 hide/remove하고 최초 실패 source/detail을 보존한다. 실패 cleanup에 전체 Level 자원 clear를 사용하지 않는다.
+- ImGui ViewportsEnable 상태에서는 취소한 프레임도 EndFrame 뒤 UpdatePlatformWindows를 호출해야 다음 NewFrame이 유효하다. 로딩 UI를 강제로 Cancel하는 우회로 폰트·모델 실패를 가리지 않는다. 취소 시 RenderPlatformWindowsDefault draw는 필요 없다.
+- 이번 연결 범위와 근거: [Character 연출 이관 결과](09-21/2026-09-21_KOUKU_CHARACTER_CINEMATICS_RESULT.md), [리소스 목록](09-21/2026-09-21_KOUKU_CHARACTER_CINEMATICS_RESOURCES.md).
+
+
 ### 게시 데이터의 Git 전달과 bootstrap schema 불일치
 
 - `Client/Bin/DataFiles`, `Server/Bin/DataFiles`의 게시 snapshot은 정본·publisher·소비 schema와 같은 PR로 전달한다. 수신 PC에서 전체 publish나 navigation bake를 반복하는 것을 기본 절차로 두지 않는다. 생성물 수동 편집 금지는 Git 전달 금지와 다른 규칙이다. 신규 출력도 일반 `git add`에 포함하며 Resources·컴파일 산출물·staging/rollback·로컬 cache는 계속 제외한다.
@@ -2690,6 +2700,7 @@ lease에 연결한다. 저장된 DURATION은 timing 존재와 PRODUCT 의미의 
 
 - 고정 장판의 생성 위치를 유지하려면 BOSS anchor를 MAP으로 바꾸기 전에 follow 정책을 확인한다. 기존 BOSS pivot의 생성 시점 snapshot과 followBoss=false 경로는 위치·회전·크기를 보존한다. exact asset의 내부 transform/attachment도 끝단 decal world까지 확인하고 정상인 다른 색/shape 행은 바꾸지 않는다.
 - 동적 발판의 Server Y가 맞아도 Client 정적 navigation 기반 이동 예측이 매 frame 덮을 수 있다. Server support 포함 판정과 snapshot.canPredictMove, Character의 예측/보간 분기를 같이 확인한다. 입력 command 송신과 로컬 예측 허용은 별개 계약이다.
+- 세부 navgrid를 재베이크해도 Client의 CNavigation 예측이 기본 격자만 읽으면 이동 경계와 높이가 어긋난다. detail 소비자와 snapshot.canPredictMove를 함께 확인한다. 최상단 삼각형 baker는 머리 위 장식·의자·접힌 종이도 선택할 수 있으므로 셀 크기 축소만으로 완료하지 않고 실제 바닥과 머리 공간을 실측한다. 복층 아레나는 실제 입장점의 연결 성분이 전투 바닥에만 머무는지 확인하며, 하부를 상판 높이로 메우지 않는다. 쿠크 5구역의 근거는 `09-21/2026-09-21_KOUKU_FINE_NAVIGATION_RESULT.md`를 따른다.
 - XZ teleport는 기존 높이를 유지하는 계약이다. 바닥 착지가 필요한 한 occurrence만 별도 typed policy로 분리하고 공유 logic definition의 다른 소비자를 확인한다. 현재 root Y만 보정하면 다음 Stage가 잔여 offset을 origin으로 캡처할 수 있으므로 실제 마지막 curve와 Stage/Pattern 종료 높이까지 검사한다.
 
 ### 2026-09-20 Sound 리소스 목록과 구간 편집
@@ -2728,3 +2739,67 @@ lease에 연결한다. 저장된 DURATION은 timing 존재와 PRODUCT 의미의 
 - raw queue 전체를 typed queue로 옮긴 뒤 소비자를 실행하면, raw 4096 한도보다 작은 lifecycle 64 한도가 정상 backlog를 연결 오류로 바꿀 수 있다. 한 Update의 dispatch를 제한하고, 다음 목적지 queue가 차면 FIFO head를 보존한 채 소비자에게 반환한다. reliable lifecycle을 버리거나 snapshot처럼 합치지 않는다.
 - ENTER_ACCEPTED의 world reset 뒤 같은 수신 배치의 spawn/snapshot은 새 world 입력이다. session 종료의 전체 폐기와 world 전환의 typed state 정리를 구분해 검증한다. 기록된 queue overflow와 반복 이펙트 의심은 각각의 증거로 조사한다.
 - 수정·재게시와 실제 화면 재생 완료를 구분한다. 근거와 실행 범위는 `09-21/2026-09-21_KOUKU_COMPLETE_PLAY_RECEIVE_RESULT.md`에 기록한다.
+
+### Play Pattern 준비 결과와 공포의 조건부 사운드
+
+- Play Pattern 버튼의 enqueue 안내는 Server 송신·승인 증거가 아니다. 일반 Pattern도 MainApp/BossTool의 Gate·리소스 준비 실패와 exact audition 상태를 Workbench에 전달한다. completion-chain/Mario 전용 local Preview 정책으로 명시적 Server Play 상태 추적을 제한하지 않는다.
+- 게시 P15의 실제 Server admission·collider FEAR 성공과 실행 중 Client의 준비 실패를 구분한다. 사운드를 패턴 전체 timeline에 추가하면 회피한 플레이어도 듣는다. 피격자 전용 사운드는 FEAR result의 optional soundResourceId와 기존 local FEAR session으로 연결한다.
+- 원본 FEAR buff에 AkEvent가 없으면 같은 거미 동작의 보이스 재사용을 원작 얼굴 사운드 복원이라고 기록하지 않는다. effectDelayMs에서 한 번 재생하고, 반복 얼굴 펄스마다 중첩시키지 않는다. 근거는 09-21 KOUKU_SPIDER_PLAY_AND_FEAR_SOUND_RESULT에 둔다.
+
+
+### 쿠크 안전존·돌진·컷씬 파생 모델
+
+- 안전존을 플레이어의 전역 무적 또는 지난 tick의 접촉 여부로 구현하지 않는다. 해당 Pattern의 현재 활성 Collider를 Result 이전에 모으고 같은 실행의 즉사·체력 비례 피해·공포만 차단한다. 표시 pulse는 입장 및 2초마다 Server가 발행한다. 공포와 무적이 같은 플레이어에게 표현될 수 있으므로 텍스트 dedup key는 owner만으로 공유하지 않는다.
+- MAP 기준 폭발과 BOSS 기준 collider는 보스의 이전 yaw가 같을 때만 우연히 겹칠 수 있다. 실제 V1 mesh 변환·각 폭발 occurrence의 위치·시각·yaw를 측정해서 같은 기준으로 판정을 생성한다. 강제 밀림 거리만 늘려도 잘못 연결한 collider는 고쳐지지 않는다.
+- 기존 배우에 컷씬 animation set을 붙일 때는 원본 WORLD 경로와 b_root 변위를 분리해 확인한다. 무대 밖 경로를 일반 root 이동에 맡기면 navigation에서 막힌다. 명시 bossMotion keys로 합성한 경우 body root 억제를 함께 적용하고 같은 skeleton·clip 충돌·실제 weighted bone world 위치를 확인한다. 정수 ms key의 보간 오차와 최종 화면 판정은 구분한다.
+- 패턴 시작 위치 복원은 yaw 복원을 뜻하지 않는다. 고정 방향 찍기는 authored resetBossYawDegrees까지 지정하고 플레이어 조준은 실제 모델 전방(+X/+Z)과 Server retarget·시각·collider가 일치하는지 네 방향으로 검증한다.
+- 네비게이션 이탈을 막으려고 `animationRootHorizontalScale`과 `bossChargeDistanceM`을 모두 0으로 만들면 휠윈드 이동 경로가 사라진다. 기존 target capture·navigation/body collision clamp를 유지하고 실제 원본 전방과 charge yaw를 각각 확인한다.
+- `materialSourceModelAssetId`는 컷씬 파생 WModel의 geometry를 교체하지 않는다. 본체가 smooth normal/tangent 복구됐어도 worldsequences의 별도 modelAssetId를 전수 확인한다. Character WModel 전체를 복사하면 컷씬 전용 animation이 손실되므로 indexed corner 기준 basis만 복구하고 나머지 section bytes를 보존한다. 근거는09-21 KOUKU_SAFE_ZONE_CHARGE_CUTSCENE_RESULT를 따른다.
+
+
+### 쿠크 밀침 방향과 낙사 경계
+
+- BOSS_FORWARD는 body local+Z다. 콜라이더가 local+X인 레이저·바주카는 중앙+90도, 사선은 각자의 저작 yaw까지 포함해 Result 방향을 설정한다. 공유 Result의 수치를 직접 바꾸면 무관한 팡파레까지 바뀌므로 요청 접촉만 복제 Result로 연결한다.
+- 높이 차이만으로 외곽 낙사를 판정하지 않는다. 명시된 arena-exit 밀림만 원본 바닥·runtime blocker·진행 방향의 내부 틈을 구분하고 collision 해결 후 최종 위치를 재검증한다. body slide가 안전 바닥이나 내부 장애물로 방향을 바꿀 수 있으므로 충돌 전 외곽 후보를 그대로 낙사에 사용하지 않는다. 실제 경계에 도달하지 않은 유한 거리 밀림을 즉사로 바꾸지 않는다.
+- 강제 밀림은 기존 FEAR·다운·grace·밀림을 교체하는 명시 Result 정책이며 전역 충돌·사망·잡힘 제한을 제거하지 않는다. 같은 Pattern 안전존은 피해와 그 결과의 밀림을 함께 차단한다. 근거는09-21 KOUKU_SAFE_ZONE_CHARGE_CUTSCENE_RESULT의G06을 따른다.
+
+### V2에서 V1으로 옮긴 ScreenPost의 실제 재생 계약
+
+- V2 profile 이름과 시작 강도만 복사하면 V1에서 색수차가 거절되거나 fade가 사라질 수 있다. codec 토큰·typed profile·lifetime·강도 곡선·Engine 제출을 같이 확인하고 원래 요소와 occurrence는 유지한다. optional `intensityLerp=false` 기본값과 기존 source dynamic/alpha 우선순위는 보존한다. 문서 struct를 늘린 native 검증은 같은 헤더로 소비자 OBJ를 재컴파일하며, CPU 수치 성공을 GPU 화면 성공으로 기록하지 않는다.
+
+### CubeSample의 밝은 배경과 선택적 재질 보정
+
+- 배경을 읽는 CubeSample의 `5*C^5` 본체가 tone shoulder에 몰리면 Bloom 증폭만으로 면과 모서리 대비를 복구할 수 없다. 실제 blend 상태와 배경 샘플 식을 구분하고, 대응 skillbinding/cue가 쓰는 저작 문서와 Tool 비교본을 모두 확인한다.
+- CubeSample의 선택적 `project_clarity_strength`는 기존 named scalar와 `SourceScalars0.w`를 사용한다. 생략/0은 기존 계산이며 유한한 0~1만 허용한다. Parse/Save가 통과하는 공통 MaterialValidation과 resource staging에서 검증하고 다른 재질에 전파하지 않는다.
+- SceneColor를 보정하는 gain과 coverage는 Bloom/black 보조 평가에서도 실제 SceneHDR로 고정한다. 억제된 배경 Bloom을 HDR에서 다시 생성하지 않는다. 큰 HDR 값의 `lerp(큰 값, 작은 값, 1)`은 상쇄될 수 있으므로 보정 transmission은 가중합으로 계산한다. alpha clip은 원본 alpha로 판정한다.
+- opt-off 동일성, 어두운 배경, 밝은 유색 HDR, alpha 끝값과 Bloom 운반 수치 검사는 실제 맵 화면의 선명도 승인과 구분한다. Q 적용 범위·검증·남은 단계는 `09-21/2026-09-21_DIMENSIONMASTER_Q_CUBE_CLARITY_IMPLEMENTATION_RESULT.md`를 따른다.
+- 배경 의존 본체는 `F(black)`에서0이므로 본체 밝기 제한을 조정하거나 Bloom intensity만 올려도 자기 발광은 생기지 않는다. 독립 발광을 추가할 때는 세 scene read mode에서 같은 값을 더하고 `F(SceneBloom)-F(black)+Write_SceneBloom(F(black))`를 유지한다. 광도 압축만 하고 alpha를 높이면 밝은 배경을 어두운 면으로 더 많이 교체하는 회귀가 생긴다.
+- 합성 보라색 입력의 shader 검사로 실제 Q의 금색을 검증했다고 기록하지 않는다. 실제 particle `(7,6,1,.6)`, MIC tint, 원본 DDS, face/edge UV, 활성 tone과 alpha 합성을 사용한다. `R>G>B`만으로 금색이 충분히 남았다고 판단하지 말고 백색화 정도도 비교한다. Character Select의 LUT OFF는 source tone OFF가 아니며 directional OFF도 baked 배경을 제거하지 않는다.
+- unlit·자체 RGB·개별 Bloom은 최종 맵 tone/LUT 제외를 뜻하지 않는다. 보라색이 특정 맵에서 청색으로 바뀌면 실제 활성 region/LUT와 동일 HDR 입력의 후처리를 먼저 비교한다. 원본 추출이 검증된 LUT도 의도적으로 큰 색 회전을 만들 수 있으므로 재질 누락이나 잘못된 텍스처로 단정하지 않는다.
+- 3D 투명 이펙트의 색을 보호할 때 이미 섞인 pixel 전체에서 LUT를 끄면 배경까지 바뀐다. 원본 SceneColor 투과와 자체 발광을 구분하고 depth·반투명 정렬·distortion·Bloom을 포함한 합성을 검토한다. 화면 overlay를 3D 유리의 우회 경로로 사용하지 않는다.
+
+### 차원술사 유리의 coverage와 T의 환경 조명 경로
+
+- 큰 유리 면이 불투명하게 보일 때 particle HDR 색만 보고 최종 pixel을 추정하지 않는다. 실제 native 함수·DDS·alpha와 설치 mesh의 view/normal을 대조한다. V 시작 native66의 세 occurrence는 기존 Fresnel 지수만0.2→0.5로 조정해 정면 coverage를 낮추고 grazing rim을 보존했다. 원본 MIC 오류 수정이나 전체 native family 보정으로 확대하지 않는다.
+- T 소환체의 환경 조명 수신 여부는 최종 tone/LUT와 별개다. 정확한 ModelCue의 pass 선택과 NONBLEND/mask를 함께 확인한다. 현재 사용자 요청에 따라 T exact predicate의 pass11을 정상 pass0으로 복구했으며 전체 shader pass 재배열이나 다른 cue 변경은 하지 않았다. T 전체 particle full restore 완료와도 구분한다.
+
+### 2026-09-21 쿠크 연출·빙고·크기 반영 경계
+
+- Composition World ID는 첫 행의 접두사로 추측하지 않는다. `world.kouku.gate2.intro.*`는 동일 suffix의 `world.sequence.instance.kouku.gate2.intro.*`와 한 쌍인 source 전용 ID다. 새 저작 행은 `kakulsaydon.g1.world.<ordinal>`을 쓰고 nextWorldOrdinal·모든 occurrence 참조를 함께 갱신한다. Action뿐 아니라 Sequence도 Python 게시 진입점과 실제 Client codec으로 검증한다.
+- Effect 고정 월드 좌표는 MAP anchor다. WORLD는 실재 World resource ID가 필요한 오브젝트 추적이다. 카메라의 WORLD 허용을 Effect에 그대로 옮기지 않는다.
+- V1 World Object effect는 부모 scale을 보존한다. 원본 fixed-axis sprite의 XY 크기가 바닥면으로 재배치되므로 offset·최종 quad 폭/길이/높이를 실제 renderer 행렬로 검사한다. 필요한 요소에만 followEmitterAxisRotation을 적용한다.
+- Native ScreenPost의 원본 재질 곡선은 authoring binding 검증과 GPU 제출 snapshot 양쪽에 연결해야 한다. 시간별 수치 검사와 FXC 성공을 실제 화면 확인으로 기록하지 않는다.
+- Character Size는 선택 맵의 Camera profile에 저장된다. 다른 맵 값과 전체 배율을 함께 비교한다. 컷신의 카메라 preview 제한 때문에 크기 적용/Reload까지 막지 않으며, Development 진입에서도 크기를 명시적으로 초기화한다.
+- 게시 도중 Product admission의 transaction lock 거부는 종료·재실행·재빌드로 우회하지 않는다. owner publish 완료 후 실제 CGameplayCatalog::Load_PublishedKoukuProduct 결과와 정확한 status를 확인한다.
+
+### 빙고 Sequence 격리와 실행 중 WORLD 게시
+
+- P10 앵콜은 BINGO + enterCombatOnFinish=true다. Server/publisher만 이를 허용하고 Client가 GATE1~3만 허용하면 행이 격리돼 0ms/0stage가 된다. MAP SOUND의 고정 음향 anchor도 source codec·Product reader·publisher에 함께 연결해야 하며 조명 오류 문구만으로 Light resource를 수정하지 않는다.
+- 아레나 입장 뒤 WORLD를 게시하면 저장 Product와 Level의 이전 WORLD snapshot이 달라질 수 있다. 새 Complete Play 준비에서 idle base를 공식 Load 경로로 갱신하며 미저장 draft와 독립 cue는 보존한다. 같은 Area refresh에서 Loader의 AREA_LEAF CPU snapshot을 지우면 마리오 연기가 사라지므로 sequence 전용 cache와 구분한다.
+- Client가 새 EXE로 시작됐는지, source row가 실제 reader에서 격리되지 않는지, 사용자가 컷씬을 본 결과를 구분한다. 수정·검증은 [빙고 재생 결과](09-21/2026-09-21_KOUKU_COMPLETE_PLAY_WORLD_AND_BINGO_RESULT.md)를 따른다.
+
+### 컷씬 본 단위와 검증 후보의 실제 설치
+
+- 원본 SkelControl translation의 cm와 설치 Character 본 로컬 단위를 구분한다. armature scale100을 실측한 본체에서는 해당 translation에0.01을 적용하고, 회전·scale·다른 clip은 보존한다. 얼굴이 늘어나는 현상을 애니메이션 누락이나 Character 경로 오류로 단정하지 않는다.
+- 검증 도중 수정된 후보가 이전 통합 staging에 자동 반영되지는 않는다. 최종 검증한 파일 SHA와 설치 직전 staging·설치 후 파일 SHA를 연결한다. 형식 version 숫자만 바꾼 effect는 필수 root 누락으로 거부되며 admission 완화로 우회하지 않는다.
+- 결과와 설치 증거는 `09-21/2026-09-21_KOUKU_COMPLETE_PLAY_WORLD_AND_BINGO_RESULT.md`의G06/G07을 따른다. 실제 화면·음향과 프레임 시간은 사용자 확인 전 자동 검사 성공으로 대신 기록하지 않는다.

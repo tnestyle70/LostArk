@@ -1474,6 +1474,10 @@ namespace Client::EffectDocumentCodecDetail
 				return false;
 		}
 
+		if (pScreenPost->Find("intensityLerp") &&
+			!Read_Bool(*pScreenPost, "intensityLerp", Out.ScreenPost.bIntensityLerp, strOutError)) return false;
+		if (pScreenPost->Find("intensityEnd") &&
+			!Read_Float(*pScreenPost, "intensityEnd", Out.ScreenPost.fIntensityEnd, strOutError)) return false;
         if (pScreenPost->Find("captureShrinkSeconds") &&
             !Read_Float(*pScreenPost, "captureShrinkSeconds", Out.ScreenPost.fCaptureShrinkSeconds, strOutError)) return false;
         if (pScreenPost->Find("captureEdgeSpeed") &&
@@ -1588,6 +1592,10 @@ namespace Client::EffectDocumentCodecDetail
 			Write_Float4(Output, Detail.ScreenPost.vTint);
 			Output << ", \"randomSeed\": "
 				<< Detail.ScreenPost.iRandomSeed;
+			if (Detail.ScreenPost.bIntensityLerp)
+				Output << ", \"intensityLerp\": true";
+			if (Detail.ScreenPost.bIntensityLerp || Detail.ScreenPost.fIntensityEnd != 0.f)
+				Output << ", \"intensityEnd\": " << Detail.ScreenPost.fIntensityEnd;
             if (Detail.ScreenPost.fCaptureShrinkSeconds != 0.f)
                 Output << ", \"captureShrinkSeconds\": " << Detail.ScreenPost.fCaptureShrinkSeconds;
             const auto& EdgeSpeed = Detail.ScreenPost.vCaptureEdgeSpeed;

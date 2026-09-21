@@ -1,8 +1,8 @@
 """Project source Matinees into existing Camera/WorldSequence/Composition JSON.
 
-Source packages and previously authored rows are read-only inputs. Resource
-output is confined to new per-sequence directories; installation checks a byte
-baseline before merging additions into the user's authoring documents.
+Source packages and previously authored rows are read-only inputs. Boss WANM
+clips append atomically to their Character bodies; standalone map props retain
+their per-sequence directories. Authoring installation checks byte baselines.
 """
 from __future__ import annotations
 import argparse
@@ -17,6 +17,7 @@ from pathlib import Path
 import numpy as np
 from scipy.spatial.transform import Rotation
 import build_gate2_intro_composition as base
+from bake_character_cinematic_clips import DONOR_TO_BODY, install_baked_clip
 import bake_reflected_static_props as reflected
 from build_gate2_intro_backdrops import reduced_indices
 
@@ -147,15 +148,28 @@ def animation_tracks(rows, group, model):
 
 
 def bake(config, rows, group, source, label):
-    model = base.wm.read_wmodel(base.RESOURCES / source)
-    tracks, clips = animation_tracks(rows, group, model)
-    duration = config['duration']-config['start']
-    destination = base.RESOURCES / f'Map/KakulSaydon/SourceSequences/{config["prefix"]}/{label}/{label}.wmodel'
     clip = config['prefix'] + '.' + label.lower()
+    model = base.read_bake_model(base.RESOURCES / source, rows, group, clip)
+    duration = config['duration']-config['start']
+    donor_asset = f'Map/KakulSaydon/SourceSequences/{config["prefix"]}/{label}/{label}.wmodel'
+    canonical = DONOR_TO_BODY.get(donor_asset)
+    destination = ((OUT / 'CharacterClipDonors') if canonical else base.RESOURCES) / donor_asset
+    if canonical:
+        if source != canonical:
+            raise ValueError('Unexpected cinematic body: ' + source)
+        if any(a.name == clip for a in model.animations):
+            return canonical, clip
+        # Historical single-clip models are read-only offline donors. New boss
+        # bakes are staged under out and appended atomically to Character.
+        legacy = base.RESOURCES / donor_asset
+        if not destination.exists() and legacy.exists():
+            destination = legacy
     if destination.exists():
         checked = base.wm.read_wmodel(destination)
         assert len(checked.animations) == 1 and checked.animations[0].name == clip
-        return destination.relative_to(base.RESOURCES).as_posix(), clip
+        asset = install_baked_clip(base.RESOURCES, donor_asset, clip, donor_path=destination) if canonical else donor_asset
+        return asset, clip
+    tracks, clips = animation_tracks(rows, group, model)
     samples = []
     for frame in range(math.ceil(duration * .03)+1):
         seconds = min(config['duration']/1000., config['start']/1000.+frame/30.)
@@ -169,7 +183,8 @@ def bake(config, rows, group, source, label):
                     for (ap, aq, asc), (bp, bq, bs) in zip(pose, other)]
         samples.append(pose)
     base.write_clip(base.RESOURCES/source, destination, model, samples, clip, label)
-    return destination.relative_to(base.RESOURCES).as_posix(), clip
+    asset = install_baked_clip(base.RESOURCES, donor_asset, clip, donor_path=destination) if canonical else donor_asset
+    return asset, clip
 
 
 def actor_world(config, rows, group, source, label, pre_scale, source_scale, material_source=''):
@@ -187,7 +202,7 @@ def actor_world(config, rows, group, source, label, pre_scale, source_scale, mat
         original = base.read(AREA/(base.AREA+'.worldsequences.json'))
         obj['mapMaterialBindings'] = copy.deepcopy(next(r for r in original['objectResources']
             if r['objectId']=='world.object.kouku.popup.book')['mapMaterialBindings'])
-        base.BONE_MODELS[actor] = (base.wm.read_wmodel(base.RESOURCES/asset), group, {})
+        base.bind_bone_model(actor, base.wm.read_wmodel(base.RESOURCES/asset), group, clip)
     duration = config['duration']-config['start']
     keys = []
     # All original property boundaries, with a 200ms upper sampling interval.

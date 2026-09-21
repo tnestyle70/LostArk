@@ -238,13 +238,23 @@ bool LostArk::Server::CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
 		const auto& motion = *pattern.BossMotion;
 		bool valid = !pattern.bResetBossToSpawn && !pattern.ResetBossYawDegrees &&
 			motion.iStartMs < motion.iEndMs && motion.iEndMs <= patternDurationMs &&
-			motion.StartPosition[1] == motion.EndPosition[1] &&
+			(!motion.Keys.empty() || motion.StartPosition[1] == motion.EndPosition[1]) &&
 			std::isfinite(motion.fYawDegrees) && std::abs(motion.fYawDegrees) <= 360.f;
 		for (std::size_t axis = 0u; axis < 3u; ++axis)
 			valid = valid && std::isfinite(motion.StartPosition[axis]) && std::isfinite(motion.EndPosition[axis]) &&
 				std::abs(motion.StartPosition[axis]) <= 100000.f && std::abs(motion.EndPosition[axis]) <= 100000.f;
+		if (!motion.Keys.empty())
+		{
+			valid = valid && motion.Keys.size() >= 2u && motion.Keys.size() <= 512u &&
+				motion.Keys.front().iTimeMs == motion.iStartMs && motion.Keys.back().iTimeMs == motion.iEndMs &&
+				motion.Keys.front().Position == motion.StartPosition && motion.Keys.back().Position == motion.EndPosition;
+			for (std::size_t i = 0u; i < motion.Keys.size(); ++i)
+				valid = valid && (i == 0u || motion.Keys[i - 1u].iTimeMs < motion.Keys[i].iTimeMs) &&
+					std::all_of(motion.Keys[i].Position.begin(), motion.Keys[i].Position.end(), [](float value) {
+						return std::isfinite(value) && std::abs(value) <= 100000.f; });
+		}
 		if (!valid)
-		{ status = "KoukuSaydon Boss Motion interval, base height or reset policy is invalid"; return false; }
+		{ status = "KoukuSaydon Boss Motion interval, keys, base height or reset policy is invalid"; return false; }
 	}
 	std::unordered_set<std::string> triggerIds;
 	for (const auto& trigger : pattern.MechanicTriggers)
@@ -376,6 +386,11 @@ bool LostArk::Server::CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
 				{ status = "Summon Pattern spawn identity or transform is invalid"; return false; }
 			}
 		}
+		if ((trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::CARD_MAZE_STAGE_PLAYERS) != !trigger.PlayerEntryPositions.empty() ||
+			trigger.PlayerEntryPositions.size() > 4u ||
+			std::any_of(trigger.PlayerEntryPositions.begin(), trigger.PlayerEntryPositions.end(), [](const auto& position) {
+				return std::any_of(position.begin(), position.end(), [](const float value) { return !std::isfinite(value) || std::abs(value) > 100000.f; }); }))
+		{ status = "Card maze staging requires one to four finite destinations on its own trigger"; return false; }
 		if (trigger.strTriggerId.empty() || !triggerIds.insert(trigger.strTriggerId).second ||
 			trigger.iStartMs >= patternDurationMs || 0u == trigger.iDurationMs ||
 			static_cast<std::uint64_t>(trigger.iStartMs) + trigger.iDurationMs > patternDurationMs ||
@@ -419,6 +434,13 @@ bool LostArk::Server::CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
 		case BOSS_PATTERN_LOGIC_KIND::ROULETTE_CARD_MATCH:
 			valuesValid = window.CardRegions.size() == 8u || (window.iSectorCount >= 2u &&
 				window.SectorSymbols.size() == window.iSectorCount && window.fOuterRadiusM > 0.f);
+			break;
+		case BOSS_PATTERN_LOGIC_KIND::INVULNERABILITY_ZONE:
+			valuesValid = !window.CardRegions.empty() && window.OnSuccess.empty() && window.OnFail.empty() &&
+				window.OnTimeout.empty() && !window.bEndsPatternOnSuccess &&
+				std::all_of(window.CardRegions.begin(), window.CardRegions.end(), [](const auto& region) {
+					return region.eAnchor == BOSS_LOGIC_REGION_ANCHOR::WORLD && !region.WorldTrack.bEnabled;
+				});
 			break;
 		case BOSS_PATTERN_LOGIC_KIND::AREA_OVERLAP:
 		case BOSS_PATTERN_LOGIC_KIND::ENTER_AREA:
@@ -498,11 +520,18 @@ bool LostArk::Server::CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
 				return false;
 			for (const BOSS_PATTERN_LOGIC_RESULT& result : results)
 			{
-				if (!std::isfinite(result.fPushRangeM) || result.fPushRangeM < 0.f || result.fPushRangeM > 20.f ||
-					(result.ePushDirection != BOSS_LOGIC_PUSH_DIRECTION::AWAY_FROM_BOSS && result.ePushDirection != BOSS_LOGIC_PUSH_DIRECTION::BOSS_FORWARD) ||
+				if (!std::isfinite(result.fPushRangeM) || result.fPushRangeM < 0.f || result.fPushRangeM > (result.bPushBallistic ? 100.f : 20.f) ||
+					(result.ePushDirection != BOSS_LOGIC_PUSH_DIRECTION::AWAY_FROM_BOSS && result.ePushDirection != BOSS_LOGIC_PUSH_DIRECTION::BOSS_FORWARD && result.ePushDirection != BOSS_LOGIC_PUSH_DIRECTION::AWAY_FROM_CONTACT) ||
 					(result.ePushDirection == BOSS_LOGIC_PUSH_DIRECTION::BOSS_FORWARD && result.fPushRangeM <= 0.f) ||
-					result.iPushMs > 600000u || ((result.fPushRangeM > 0.f) != (result.iPushMs > 0u)) ||
-					(result.fPushRangeM > 0.f && result.eKind != BOSS_PATTERN_LOGIC_RESULT_KIND::MAX_HP_PERCENT_DAMAGE))
+					result.iPushMs > (result.bPushBallistic ? 5000u : 600000u) ||
+					(result.bPushBallistic && (result.iPushMs < 100u || !result.bPushCanLeaveArena)) ||
+					(result.ePushDirection == BOSS_LOGIC_PUSH_DIRECTION::AWAY_FROM_CONTACT &&
+						(result.fPushRangeM <= 0.f || &results == &window.OnTimeout || window.CardRegions.empty() ||
+						 (window.eKind != BOSS_PATTERN_LOGIC_KIND::ENTER_AREA && window.eKind != BOSS_PATTERN_LOGIC_KIND::AREA_OVERLAP))) || ((result.fPushRangeM > 0.f) != (result.iPushMs > 0u)) ||
+					(result.fPushRangeM > 0.f && result.eKind != BOSS_PATTERN_LOGIC_RESULT_KIND::MAX_HP_PERCENT_DAMAGE) ||
+					((result.bForcePush || result.bPushCanLeaveArena) && result.fPushRangeM <= 0.f) ||
+					!std::isfinite(result.fPushYawOffsetDegrees) || std::abs(result.fPushYawOffsetDegrees) > 360.f ||
+					(result.fPushYawOffsetDegrees != 0.f && (result.ePushDirection != BOSS_LOGIC_PUSH_DIRECTION::BOSS_FORWARD || result.fPushRangeM <= 0.f)))
 					return false;
 				const bool worldMotion = BOSS_PATTERN_LOGIC_RESULT_KIND::PLAY_WORLD_OBJECT_MOTION == result.eKind;
 				if ((worldMotion && (result.strTargetWorldInstanceId.empty() || result.strMotionInstanceId.empty() ||
@@ -992,6 +1021,19 @@ std::array<float, 3u> LostArk::Server::CKoukuSaydonBrain::Sample_BossMotion(
 {
     if (motion.iEndMs <= motion.iStartMs) return motion.StartPosition;
     const double timeMs = static_cast<double>(elapsedTicks) * 1000.0 / SERVER_TICK_HZ;
+    if (!motion.Keys.empty())
+    {
+        if (timeMs <= motion.Keys.front().iTimeMs) return motion.Keys.front().Position;
+        if (timeMs >= motion.Keys.back().iTimeMs) return motion.Keys.back().Position;
+        const auto next = std::upper_bound(motion.Keys.begin(), motion.Keys.end(), timeMs,
+            [](double time, const auto& key) { return time < key.iTimeMs; });
+        const auto& previous = *(next - 1);
+        const double alpha = (timeMs - previous.iTimeMs) / (next->iTimeMs - previous.iTimeMs);
+        std::array<float, 3u> position{};
+        for (std::size_t axis = 0u; axis < position.size(); ++axis)
+            position[axis] = static_cast<float>(previous.Position[axis] + (next->Position[axis] - previous.Position[axis]) * alpha);
+        return position;
+    }
     const double alpha = (std::clamp)((timeMs - motion.iStartMs) /
         static_cast<double>(motion.iEndMs - motion.iStartMs), 0.0, 1.0);
     return {

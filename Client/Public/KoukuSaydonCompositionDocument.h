@@ -65,8 +65,8 @@ namespace Client
 	/* The judgement a DURATION Logic runs and the outcome a RESULT Logic
 	   applies. Both are the Server's typed vocabulary; a definition that is
 	   only a name keeps the kind empty and stays DRAFT-only. */
-	inline constexpr std::array<const char_t*, 16u> KOUKU_SAYDON_JUDGEMENT_KINDS = {
-		"CARD_DICE_BIND", "ROULETTE_CARD_MATCH", "GAZE_REAL_BOSS", "POSE_INPUT", "STAGGER_WINDOW", "COUNTER_WINDOW", "AREA_OVERLAP", "OBJECT_OVERLAP", "EXTERNAL_SIGNAL", "ATTACHMENT_HOLD", "PATTERN_COMPLETION_COUNT", "SHOWTIME_PLAYER_TARGETS", "BOSS_TRACK_TARGET", "CROSS_DIRECTION_CLONES", "PURSUIT_PROJECTILES", "BINGO_BOARD" };
+	inline constexpr std::array<const char_t*, 17u> KOUKU_SAYDON_JUDGEMENT_KINDS = {
+		"CARD_DICE_BIND", "ROULETTE_CARD_MATCH", "GAZE_REAL_BOSS", "POSE_INPUT", "STAGGER_WINDOW", "COUNTER_WINDOW", "AREA_OVERLAP", "OBJECT_OVERLAP", "EXTERNAL_SIGNAL", "ATTACHMENT_HOLD", "PATTERN_COMPLETION_COUNT", "SHOWTIME_PLAYER_TARGETS", "BOSS_TRACK_TARGET", "CROSS_DIRECTION_CLONES", "PURSUIT_PROJECTILES", "BINGO_BOARD", "INVULNERABILITY_ZONE" };
 	inline constexpr std::array<const char_t*, 12u> KOUKU_SAYDON_OUTCOME_KINDS = {
 		"INSTANT_DEATH", "MAX_HP_PERCENT_DAMAGE", "MADNESS_GAUGE_ADD_PERCENT",
 		"CLOWN_TRANSFORM", "FEAR", "FOLLOWUP_PATTERN", "PLAY_WORLD_OBJECT_MOTION",
@@ -96,7 +96,7 @@ namespace Client
 		const std::string_view judgementKind,
 		const KOUKU_SAYDON_OUTCOME_SLOT slot)
 	{
-		if (judgementKind == "CARD_DICE_BIND" || judgementKind == "ATTACHMENT_HOLD" || judgementKind == "SHOWTIME_PLAYER_TARGETS" || judgementKind == "BOSS_TRACK_TARGET" || judgementKind == "CROSS_DIRECTION_CLONES" || judgementKind == "PURSUIT_PROJECTILES" || judgementKind == "BINGO_BOARD") return false;
+		if (judgementKind == "CARD_DICE_BIND" || judgementKind == "ATTACHMENT_HOLD" || judgementKind == "SHOWTIME_PLAYER_TARGETS" || judgementKind == "BOSS_TRACK_TARGET" || judgementKind == "CROSS_DIRECTION_CLONES" || judgementKind == "PURSUIT_PROJECTILES" || judgementKind == "BINGO_BOARD" || judgementKind == "INVULNERABILITY_ZONE") return false;
 		if (judgementKind == "PATTERN_COMPLETION_COUNT") return slot == KOUKU_SAYDON_OUTCOME_SLOT::SUCCESS;
 		if (KOUKU_SAYDON_OUTCOME_SLOT::TIMEOUT == slot)
 			return judgementKind != "GAZE_REAL_BOSS" && judgementKind != "OBJECT_CONTACT";
@@ -169,11 +169,16 @@ namespace Client
 		double fPushRangeM = 0.0;
 		std::string strPushDirection = "AWAY_FROM_BOSS";
 		std::uint32_t iPushMs = 0u;
+		bool_t bForcePush = false;
+		bool_t bPushCanLeaveArena = false;
+		bool_t bPushBallistic = false;
+		double fPushYawOffsetDegrees = 0.0;
 		std::string strFollowupPatternId;
 		std::uint32_t iMarioEntryStage = 0u; // MARIO_ENTER only, 0 = live room counter
 		std::string strSceneProfileId;
 		std::string strEffectResourceId;
 		std::string strLightResourceId;
+		std::string strSoundResourceId; // FEAR-only optional SOUND, starts at iEffectDelayMs.
 		std::uint32_t iEffectDelayMs = 0u;
 		std::string strAttachmentSlot;
 		// Metres in the owner's facing basis: forward, up, right.
@@ -183,6 +188,8 @@ namespace Client
 		double fTargetRadiusM = 0.0;
 		/* TRIGGER values are projected to Server mechanic cues. */
 		std::string strTriggerKind;
+		// Ordered same-pattern MAP Effect IDs; publishing resolves their positions.
+		std::vector<std::string> PlayerEntryEffectOccurrenceIds;
 		std::uint32_t iCountPerPlayer = 0u;
 		double fPlayerEffectRadiusM = 0.0;
 		std::uint32_t iEffectLifetimeMs = 0u;
@@ -218,7 +225,7 @@ namespace Client
 
 	inline bool_t Kouku_LogicOwnsOutcomes(const KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION& logic)
 	{
-		return (logic.strLogicType == "DURATION" && logic.strJudgementKind != "CARD_DICE_BIND" && logic.strJudgementKind != "ATTACHMENT_HOLD" && logic.strJudgementKind != "SHOWTIME_PLAYER_TARGETS" && logic.strJudgementKind != "BOSS_TRACK_TARGET" && logic.strJudgementKind != "CROSS_DIRECTION_CLONES" && logic.strJudgementKind != "PURSUIT_PROJECTILES" && logic.strJudgementKind != "BINGO_BOARD") ||
+		return (logic.strLogicType == "DURATION" && logic.strJudgementKind != "CARD_DICE_BIND" && logic.strJudgementKind != "ATTACHMENT_HOLD" && logic.strJudgementKind != "SHOWTIME_PLAYER_TARGETS" && logic.strJudgementKind != "BOSS_TRACK_TARGET" && logic.strJudgementKind != "CROSS_DIRECTION_CLONES" && logic.strJudgementKind != "PURSUIT_PROJECTILES" && logic.strJudgementKind != "BINGO_BOARD" && logic.strJudgementKind != "INVULNERABILITY_ZONE") ||
 			(logic.strLogicType == "TRIGGER" && (logic.strTriggerKind == "ENTER_AREA" || logic.strTriggerKind == "OBJECT_CONTACT"));
 	}
 	inline bool_t Kouku_LogicAcceptsColliders(const KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION& logic)
@@ -478,6 +485,13 @@ namespace Client
 	inline constexpr std::array<const char_t*, 3u> KOUKU_SAYDON_LOGIC_TYPES = {
 		"DURATION", "TRIGGER", "RESULT" };
 
+	struct KOUKU_SAYDON_BOSS_MOTION_KEY final
+	{
+		std::uint32_t iTimeMs = 0u;
+		std::array<double, 3u> Position{};
+		bool operator==(const KOUKU_SAYDON_BOSS_MOTION_KEY&) const = default;
+	};
+
 	// Absolute world base transform; animation keeps its original vertical pose.
 	struct KOUKU_SAYDON_BOSS_MOTION final
 	{
@@ -486,6 +500,8 @@ namespace Client
 		std::array<double, 3u> StartPosition{};
 		std::array<double, 3u> EndPosition{};
 		double fYawDegrees = 0.0;
+		// Empty preserves the existing straight segment; otherwise holds 2..512 absolute samples.
+		std::vector<KOUKU_SAYDON_BOSS_MOTION_KEY> Keys;
 		bool operator==(const KOUKU_SAYDON_BOSS_MOTION&) const = default;
 	};
 

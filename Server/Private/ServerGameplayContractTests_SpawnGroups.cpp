@@ -1282,11 +1282,11 @@ void LostArk::Server::CServerGameplayContractRunner::Run_WaveMonsterButtons(TEST
 	{
 		/* Wire: one new client-to-server packet, appended after the last known one. */
 		tests.Require(
-			NETWORK_PROTOCOL_VERSION >= 99u &&
+			NETWORK_PROTOCOL_VERSION == 100u &&
 			Is_Known_Packet_Type(PACKET_TYPE::C2S_DEBUG_RESUMMON_WAVE_MONSTERS) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_RESUMMON_WAVE_MONSTERS) ==
 				static_cast<std::uint16_t>(PACKET_TYPE::C2S_SET_EQUIPMENT) + 1u,
-			"Wave monster re-summon bumps the protocol past 98 and the packet type is appended after the last known one");
+			"Wave monster re-summon bumps the protocol from 99 to 100 and the packet type is appended after the last known one");
 		bool roundTrips = true;
 		for (const WAVE_CASE& c : cases)
 		{

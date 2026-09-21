@@ -163,6 +163,8 @@ namespace LostArk::Server
 			std::string& outStatus);
 		bool Is_PointInVoidRegion(float x, float z) const;
 		std::uint64_t Get_Revision() const noexcept { return m_iRevision; }
+		// Physical floor for airborne landing; static/runtime walking obstacles do not remove it.
+		bool Sample_SurfacePosition(float x, float z, SERVER_NAV_POINT& outPoint) const;
 		bool Sample_Position(
 			float x,
 			float z,
@@ -238,6 +240,7 @@ namespace LostArk::Server
 			std::uint32_t fromIndex,
 			std::uint32_t toIndex) const;
 		bool Is_CellVoid(std::uint32_t index) const;
+		bool Load_SurfaceMask(const std::string& areaId);
 		bool Load_RuntimePolicy(const std::string& areaId);
 		bool Load_RuntimeBlockers(const std::string& areaId);
 		void Rebuild_InitialRuntimeBlockers() noexcept;
@@ -277,6 +280,7 @@ namespace LostArk::Server
 		float m_fWalkableMinY = (std::numeric_limits<float>::max)();
 		float m_fWalkableMaxY = std::numeric_limits<float>::lowest();
 		std::vector<std::uint8_t> m_Walkable;
+		std::vector<std::uint8_t> m_Surface;
 		std::vector<float> m_Heights;
 		std::vector<SERVER_NAVIGATION_SUPPORT_SURFACE> m_RuntimeSupportSurfaces;
 		std::vector<RUNTIME_BLOCKER_REGION> m_RuntimeBlockerRegions;

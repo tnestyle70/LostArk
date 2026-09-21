@@ -551,7 +551,8 @@ bool LostArk::Server::CGameRoom::Update_PlayerFall(
 	const std::uint32_t updateTick)
 {
 	using namespace LostArk::Shared;
-	if (player.bArenaEjectionActive && 0u != player.iCurrentHp)
+	if ((player.bArenaEjectionActive ||
+		(player.bKnockbackBallistic && player.fKnockbackRemainingSeconds > 0.f)) && 0u != player.iCurrentHp)
 		return false;
 	if (PLAYER_ACTION_STATE::FALLING == player.eAction)
 	{
@@ -1100,6 +1101,44 @@ void LostArk::Server::CGameRoom::Advance_PlayerKnockback(
 		player.fKnockbackDirectionX * player.fKnockbackSpeed * step;
 	float desiredZ = player.fPositionZ +
 		player.fKnockbackDirectionZ * player.fKnockbackSpeed * step;
+	if (player.bKnockbackBallistic)
+	{
+		// XZ is deliberately unconstrained during this authored flight. Its Y uses
+		// the same gravity as FALLING and tests physical floor, never walkability.
+		player.fPositionX = desiredX;
+		player.fPositionZ = desiredZ;
+		player.fPositionY += player.fKnockbackVelocityY * step -
+			0.5f * SERVER_PLAYER::KNOCKBACK_GRAVITY_MPS2 * step * step;
+		player.fKnockbackVelocityY -= SERVER_PLAYER::KNOCKBACK_GRAVITY_MPS2 * step;
+		player.fKnockbackRemainingSeconds = (std::max)(0.f, player.fKnockbackRemainingSeconds - step);
+		SERVER_NAV_POINT floor{ desiredX, player.fKnockbackLaunchY, desiredZ };
+		const bool hasFloor = !m_ServerNavigation.Is_Loaded() ||
+			m_ServerNavigation.Sample_SurfacePosition(desiredX, desiredZ, floor);
+		if (player.fKnockbackVelocityY <= 0.f && hasFloor && player.fPositionY <= floor.y + 0.0001f)
+		{
+			player.fPositionY = floor.y;
+			player.fKnockbackRemainingSeconds = player.fKnockbackSpeed = player.fKnockbackVelocityY = 0.f;
+			player.bKnockbackBallistic = player.bKnockbackCanLeaveArena = false;
+		}
+		else if (player.fKnockbackRemainingSeconds <= 0.00001f)
+		{
+			if (hasFloor)
+			{
+				// A lower deck takes longer than the nominal same-height flight.
+				// Keep descending at the endpoint without snapping down to that deck.
+				player.fKnockbackSpeed = 0.f;
+				player.fKnockbackRemainingSeconds = fixedDeltaSeconds;
+			}
+			else
+			{
+				const float velocityY = player.fKnockbackVelocityY;
+				const std::uint32_t tick = (std::numeric_limits<std::uint32_t>::max)() == m_iServerTick ? 1u : m_iServerTick + 1u;
+				Begin_PlayerFall(player, 0.f, tick);
+				player.fFallVelocityY = velocityY;
+			}
+		}
+		return;
+	}
 	Project_MarioRailPoint(player, desiredX, desiredZ);
 	if (player.bArenaEjectionActive)
 	{
@@ -1121,9 +1160,53 @@ void LostArk::Server::CGameRoom::Advance_PlayerKnockback(
 		}
 		return;
 	}
+	bool arenaExitStep = false;
+	const float sampleStep = std::clamp(m_ServerNavigation.Get_CellSize() * .5f, .05f, .25f);
+	const auto outsideArena = [&](const float x, const float z) {
+		if (m_ServerNavigation.Is_PointInVoidRegion(x, z)) return true;
+		if (m_ServerNavigation.Is_PointWalkableExact(x, z)) return false;
+		SERVER_NAV_POINT ground{};
+		// A runtime obstacle still has authored ground. Height changes, in either
+		// direction, never establish an edge: navigation keeps its usual step guard.
+		if (m_ServerNavigation.Sample_Position(x, z, ground)) return false;
+		// A base-grid gap with further ground is an interior obstruction. Only the
+		// outward boundary of the published walkable footprint permits a fall.
+		for (float ahead = sampleStep; ; ahead += sampleStep)
+		{
+			const float probeX = x + player.fKnockbackDirectionX * ahead;
+			const float probeZ = z + player.fKnockbackDirectionZ * ahead;
+			if (m_ServerNavigation.Sample_Position(probeX, probeZ, ground)) return false;
+			if (!m_ServerNavigation.Is_InSameNavigationGrid(x, z, probeX, probeZ)) return true;
+		}
+	};
+	if (player.bKnockbackCanLeaveArena && m_eWorldId == LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA &&
+		player.iMarioStage == 0u && m_ServerNavigation.Is_Loaded())
+	{
+		const float distance = player.fKnockbackSpeed * step;
+		const auto count = static_cast<std::uint32_t>((std::max)(1.f, std::ceil(distance / sampleStep)));
+		float previousX = player.fPositionX, previousZ = player.fPositionZ;
+		for (std::uint32_t sample = 1u; sample <= count; ++sample)
+		{
+			const float fraction = static_cast<float>(sample) / count;
+			const float x = player.fPositionX + (desiredX - player.fPositionX) * fraction;
+			const float z = player.fPositionZ + (desiredZ - player.fPositionZ) * fraction;
+			SERVER_NAV_POINT ground{};
+			if (!m_ServerNavigation.Is_PointWalkableExact(x, z))
+			{
+				if (outsideArena(x, z))
+				{
+					arenaExitStep = true;
+					desiredX = x; desiredZ = z;
+				}
+				break;
+			}
+			if (!m_ServerNavigation.Resolve_TraversalStep(previousX, previousZ, x, z, ground)) break;
+			previousX = x; previousZ = z;
+		}
+	}
 	SERVER_NAV_POINT reachable{ desiredX, player.fPositionY, desiredZ };
 	bool wasClamped = false;
-	if (m_ServerNavigation.Is_Loaded())
+	if (m_ServerNavigation.Is_Loaded() && !arenaExitStep)
 	{
 		CPlayerSkillSystem::Clamp_StepToWalkable(
 			m_ServerNavigation,
@@ -1177,14 +1260,37 @@ void LostArk::Server::CGameRoom::Advance_PlayerKnockback(
 		}
 		resolvedY = railGround.y;
 	}
+	const bool resolvedArenaExit = arenaExitStep && !wasBlocked && outsideArena(resolvedX, resolvedZ);
+	if (arenaExitStep && !resolvedArenaExit)
+	{
+		SERVER_NAV_POINT slideGround{};
+		// A body tangent may return this attempted exit to ground, or deflect it
+		// into an obstruction. Admit the final ground position before committing it.
+		if (!m_ServerNavigation.Is_PointWalkableExact(resolvedX, resolvedZ) ||
+			!m_ServerNavigation.Has_LineOfSight(player.fPositionX, player.fPositionZ, resolvedX, resolvedZ) ||
+			!m_ServerNavigation.Resolve_TraversalStep(player.fPositionX, player.fPositionZ, resolvedX, resolvedZ, slideGround))
+		{
+			player.fKnockbackRemainingSeconds = player.fKnockbackSpeed = 0.f;
+			player.bKnockbackCanLeaveArena = false;
+			return;
+		}
+		resolvedY = slideGround.y;
+	}
 	player.fPositionX = resolvedX;
 	player.fPositionY = resolvedY;
 	player.fPositionZ = resolvedZ;
+	if (resolvedArenaExit)
+	{
+		const std::uint32_t updateTick = (std::numeric_limits<std::uint32_t>::max)() == m_iServerTick ? 1u : m_iServerTick + 1u;
+		Begin_PlayerFall(player, fixedDeltaSeconds, updateTick);
+		return;
+	}
 	player.fKnockbackRemainingSeconds = (wasClamped || wasBlocked) ?
 		0.f : player.fKnockbackRemainingSeconds - step;
 	if (player.fKnockbackRemainingSeconds <= 0.f)
 	{
 		player.fKnockbackRemainingSeconds = 0.f;
 		player.fKnockbackSpeed = 0.f;
+		player.bKnockbackCanLeaveArena = false;
 	}
 }

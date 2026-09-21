@@ -1373,7 +1373,7 @@ void CMainApp::UpdateKoukuGateCompletePlay()
             sequences.Get_LastGood().strCompositionId != state.strSequenceCompositionId ||
             CNetworkManager::Get().Get_GameplayRevisionState().ServerActiveRevision != state.PinnedGameplayRevision))
         { ready = false; preparationError = "Saved Action/Sequence or gameplay revision differs from the Server pin"; }
-        if (ready && state.strGateId != "BINGO")
+        if (ready)
         {
             // Preload and validate immutable documents only. No playback, spawn, camera or teleport occurs here.
             for (const auto& pattern : sequences.Get_LastGood().Patterns)
@@ -1408,7 +1408,7 @@ void CMainApp::UpdateKoukuGateCompletePlay()
             }
             bool resourcesReady = false;
             if (ready && !arena->Debug_PrepareCompletePlayResources(m_KoukuRaidResourcePatternIds, {},
-                state.iActionSourceRevision, resourcesReady, preparationError, state.strGateId != "BINGO")) ready = false;
+                state.iActionSourceRevision, resourcesReady, preparationError, true)) ready = false;
             if (ready && !resourcesReady)
             {
                 m_strKoukuCompletePlayStatus = preparationError + " Waiting for all raid participants.";
@@ -1901,7 +1901,8 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		if (preparing) m_strKoukuCompletePlayStatus = m_pKoukuSaydonBossTool->Get_Status();
 		if (m_pKoukuSaydonActionWorkbench)
 			m_pKoukuSaydonActionWorkbench->Set_ServerPlayPreparationPending(
-				m_pKoukuSaydonBossTool->Is_PlayPreparationPending());
+				m_pKoukuSaydonBossTool->Is_PlayPreparationPending(),
+				preparing ? std::string_view(m_pKoukuSaydonBossTool->Get_Status()) : std::string_view{});
 	}
 #endif
 	{
@@ -2366,6 +2367,17 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		auto* workbench = route.workbench;
 		auto* shell = route.shell;
 		if (!workbench) continue;
+		// Observe publisher completion even while the Server raid owns playback.
+		workbench->Tick_Background();
+		if (route.owner == DEBUG_TOOL::SEQUENCER && m_bKoukuFlowPublishPending && !workbench->Is_PublishRunning())
+		{
+			m_bKoukuFlowPublishPending = false;
+			m_strKoukuCompletePlayStatus = workbench->Get_Status();
+			if (m_pKoukuSaydonBossTool) m_pKoukuSaydonBossTool->Set_Status(m_strKoukuCompletePlayStatus);
+		}
+		if (workbench->Consume_ProductInventoryRefreshRequest() &&
+			route.owner == DEBUG_TOOL::SEQUENCER && m_pKoukuSaydonBossTool)
+			(void)m_pKoukuSaydonBossTool->Reload(m_strKoukuCompletePlayStatus);
         if (!m_strKoukuCompletePlayFlowGate.empty())
         {
             // Reset/Play must not disappear behind the active raid guard. Stop
@@ -2443,16 +2455,6 @@ void CMainApp::Update(const f32_t fTimeDelta)
     };
 	if (nullptr != workbench)
 	{
-		workbench->Tick_Background();
-		if (route.owner == DEBUG_TOOL::SEQUENCER && m_bKoukuFlowPublishPending && !workbench->Is_PublishRunning())
-		{
-			m_bKoukuFlowPublishPending = false;
-			m_strKoukuCompletePlayStatus = workbench->Get_Status();
-			if (m_pKoukuSaydonBossTool) m_pKoukuSaydonBossTool->Set_Status(m_strKoukuCompletePlayStatus);
-		}
-		if (workbench->Consume_ProductInventoryRefreshRequest() &&
-			route.owner == DEBUG_TOOL::SEQUENCER && m_pKoukuSaydonBossTool)
-			(void)m_pKoukuSaydonBossTool->Reload(m_strKoukuCompletePlayStatus);
 		KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE occurrence;
 		if (workbench->Consume_AnimationPreviewRequest(
 				occurrence))
@@ -2512,7 +2514,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
 			ClaimCompositionPreviewOwner(DEBUG_TOOL::NONE);
 			if (!m_pKoukuSaydonBossTool) m_pKoukuSaydonBossTool = make_unique<CKoukuSaydonBossTool>();
 			(void)m_pKoukuSaydonBossTool->Play_BundleById(serverBundleId, bundleRevision, m_strToolStatus);
-			workbench->Set_ServerPlayPreparationPending(m_pKoukuSaydonBossTool->Is_PlayPreparationPending());
+			workbench->Set_ServerPlayPreparationPending(m_pKoukuSaydonBossTool->Is_PlayPreparationPending(), m_strToolStatus);
 		}
 		KOUKU_SAYDON_COMPOSITION_PATTERN pattern;
 		std::uint32_t startClockMs = 0u;
@@ -2822,7 +2824,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
 				SetDebugToolVisible(DEBUG_TOOL::KOUKU_SAYDON_BOSS, true);
 				(void)m_pKoukuSaydonBossTool->Play_PatternById(
 					serverPatternId, sourceRevision, m_strToolStatus);
-				workbench->Set_ServerPlayPreparationPending(m_pKoukuSaydonBossTool->Is_PlayPreparationPending());
+				workbench->Set_ServerPlayPreparationPending(m_pKoukuSaydonBossTool->Is_PlayPreparationPending(), m_strToolStatus);
 				m_eDebugInputOwner = DEBUG_TOOL::KOUKU_SAYDON_BOSS;
 				m_eDebugWindowFocusPending = DEBUG_TOOL::KOUKU_SAYDON_BOSS;
 			}
@@ -2830,6 +2832,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
 			{
 				m_strToolStatus =
 					"KoukuSaydon Boss Tool could not open for Server Play.";
+				workbench->Set_ServerPlayPreparationPending(false, m_strToolStatus);
 			}
 		}
 	}
@@ -10073,6 +10076,17 @@ void CMainApp::RenderArenaFollowCameraSettings()
 		else
 			status = savedStatus + " Current map could not apply the profile: " + status;
 	};
+	const auto reload = [&]()
+	{
+		if (!CArenaCameraProfile::Load(map, draft, status, &baseline)) return;
+		const std::string loadedStatus = status;
+		if (!active)
+			status += " Loaded for the selected map; enter it to apply these settings.";
+		else if (applyProfile())
+			status = loadedStatus + " Character sizes applied to the current map.";
+		else
+			status = loadedStatus + " Current map could not apply the profile: " + status;
+	};
 	bool edited = false;
 	if (map == ARENA_CAMERA_MAP::KOUKU_SAYDON)
 	{
@@ -10130,15 +10144,16 @@ void CMainApp::RenderArenaFollowCameraSettings()
 	ImGui::TextDisabled("Distance moves the camera toward or away from the same focus. Pitch changes the ground angle; yaw circles the focus.");
 	if (ImGui::TreeNodeEx("Character Size", ImGuiTreeNodeFlags_DefaultOpen))
 	{
-		edited |= ImGui::SliderFloat("All characters", &draft.characterSizeMultiplier,
+		bool sizeEdited = false;
+		sizeEdited |= ImGui::SliderFloat("All characters", &draft.characterSizeMultiplier,
 			0.25f, 4.f, "%.3f x", ImGuiSliderFlags_AlwaysClamp);
 		const char* classNames[] = { "Lance Master", "Gunslinger", "Slayer", "Artist", nullptr, "DimensionMaster", "Warlord" };
 		for (size_t i = 0u; i < draft.classSizeMultipliers.size(); ++i)
-			if (classNames[i]) edited |= ImGui::SliderFloat(classNames[i], &draft.classSizeMultipliers[i],
+			if (classNames[i]) sizeEdited |= ImGui::SliderFloat(classNames[i], &draft.classSizeMultipliers[i],
 				0.25f, 4.f, "%.3f x", ImGuiSliderFlags_AlwaysClamp);
-		edited |= ImGui::SliderFloat("Madness clown", &draft.clownSizeMultiplier,
+		sizeEdited |= ImGui::SliderFloat("Madness clown", &draft.clownSizeMultiplier,
 			0.25f, 4.f, "%.3f x", ImGuiSliderFlags_AlwaysClamp);
-		edited |= ImGui::SliderFloat("Mario clown", &draft.marioSizeMultiplier,
+		sizeEdited |= ImGui::SliderFloat("Mario clown", &draft.marioSizeMultiplier,
 			0.25f, 4.f, "%.3f x", ImGuiSliderFlags_AlwaysClamp);
 		if (ImGui::Button("Requested size defaults"))
 		{
@@ -10147,24 +10162,37 @@ void CMainApp::RenderArenaFollowCameraSettings()
 			draft.classSizeMultipliers = defaults.classSizeMultipliers;
 			draft.clownSizeMultiplier = defaults.clownSizeMultiplier;
 			draft.marioSizeMultiplier = defaults.marioSizeMultiplier;
-			edited = true;
+			sizeEdited = true;
 		}
+		// Size tuning does not transfer camera ownership or enable F6 follow.
+		if (sizeEdited && applyProfile())
+			status = "Character sizes applied live. Save to keep the selected map's settings.";
 		if (ImGui::Button("Save##CharacterSize")) save();
+		ImGui::SameLine();
+		if (ImGui::Button("Reload saved##CharacterSize")) reload();
 		ImGui::TextWrapped("Class values multiply the current catalog model. Artist 1.6x, DimensionMaster 0.7x and madness clown 0.7x are the requested defaults. Mario 1x keeps its 1.5m admission height.");
-		ImGui::TextDisabled("Save stores this map's settings and applies the sizes to its local and remote characters.");
+		ImGui::Text("Save / Reload target: %s", names[index]);
+		ImGui::TextDisabled("Sizes apply during camera sequences too. Save keeps this map's settings for local and remote characters.");
 		ImGui::TreePop();
 	}
 	if (ImGui::TreeNodeEx("Card Maze Player Hammer", ImGuiTreeNodeFlags_DefaultOpen))
 	{
-		edited |= ImGui::DragFloat3("Hammer position (cm)", &draft.mazeHammerPositionCm.x, .1f, -1000.f, 1000.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-		edited |= ImGui::DragFloat3("Hammer rotation (deg)", &draft.mazeHammerRotationDegrees.x, .25f, -3600.f, 3600.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-		edited |= ImGui::DragFloat3("Hammer size", &draft.mazeHammerScale.x, .01f, .05f, 8.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+		bool hammerEdited = ImGui::DragFloat3("Hammer position (cm)", &draft.mazeHammerPositionCm.x, .1f, -1000.f, 1000.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+		hammerEdited |= ImGui::DragFloat3("Hammer rotation (deg)", &draft.mazeHammerRotationDegrees.x, .25f, -3600.f, 3600.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+		hammerEdited |= ImGui::DragFloat3("Hammer size", &draft.mazeHammerScale.x, .01f, .05f, 8.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
 		if (ImGui::Button("Reset player hammer"))
 		{
 			draft.mazeHammerPositionCm = {}; draft.mazeHammerRotationDegrees = {};
-			draft.mazeHammerScale = { 1.f, 1.f, 1.f }; edited = true;
+			draft.mazeHammerScale = { 1.f, 1.f, 1.f }; hammerEdited = true;
 		}
-		ImGui::TextWrapped("Offsets from each class's right hand. Size 1 keeps the 1.120 m source hammer before character size. Save / Reload below stores this map's player hammer settings.");
+		// The maze owns an override camera. Its camera preview gate must not
+		// suppress the profile consumed by the player's attached hammer.
+		if (hammerEdited && applyProfile())
+			status = "Player hammer changes applied live. Save to keep this map's settings.";
+		ImGui::SameLine();
+		if (ImGui::Button("Save player hammer")) save();
+		ImGui::TextWrapped("Offsets from each class's right hand. Changes apply live while holding the Card Maze hammer, including during the maze camera. Size 1 keeps the 1.120 m source hammer before character size.");
+		ImGui::TextDisabled("Save keeps these values in the selected map's profile for the next entry.");
 		ImGui::TreePop();
 	}
 	shared_ptr<CCharacter> character;
@@ -10240,7 +10268,7 @@ void CMainApp::RenderArenaFollowCameraSettings()
 		ImGui::TextDisabled("Live follow-camera preview is unavailable during a camera sequence.");
 	if (ImGui::Button("Save camera settings")) save();
 	ImGui::SameLine();
-	if (ImGui::Button("Reload saved") && CArenaCameraProfile::Load(map, draft, status, &baseline)) preview();
+	if (ImGui::Button("Reload saved")) reload();
 	ImGui::TextWrapped("%s", CArenaCameraProfile::Path(map).generic_string().c_str());
 	if (!status.empty()) ImGui::TextWrapped("%s", status.c_str());
 	ImGui::PopID();
@@ -11111,7 +11139,6 @@ void CMainApp::RenderKoukuSaydonArenaControls()
 	/* Bingo board check. Play1 paints cells 0, 1 and 2 white; Play2 paints 3
 	and 4, which completes the first row and turns those five red. The Server
 	owns both masks, so these only ask. */
-	Render_KoukuEncoreRotation(*pArena);
 	if (ImGui::TreeNode("Kouku Whirlwind Hammer Transform"))
 	{
 		if ((m_pKoukuSaydonActionWorkbench || SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::SEQUENCER))) && m_pKoukuSaydonActionWorkbench)
@@ -11230,6 +11257,11 @@ void CMainApp::RenderKoukuSaydonArenaControls()
 				nullptr != gate.pHudFocusArchetypeId ?
 					gate.pHudFocusArchetypeId : "(none)");
 		}
+#ifdef _DEBUG
+		if (gate.pAuditionPlacementId &&
+			std::string_view(gate.pAuditionPlacementId) == "boss.kakulsaydon.bingo.saydon")
+			Render_KoukuEncoreRotation(*pArena);
+#endif
 		ImGui::PopID();
 	}
 	ImGui::BeginDisabled(placementPending);
@@ -12699,14 +12731,10 @@ void CMainApp::RenderRenderingWorkbench()
     }
     ImGui::BeginDisabled(m_pRenderingBenchmark && m_pRenderingBenchmark->Is_Capturing());
     bool_t comparisonChanged = ImGui::Checkbox("Directional light##LiveCompare", &comparison.bDirectionalEnabled);
-    ImGui::TextUnformatted("Exposure multiplier");
-    for (const auto& preset : std::array<std::pair<const char*, f32_t>, 3>{{
-        { "0.5x##CompareExposure", 0.5f }, { "1x##CompareExposure", 1.f }, { "2x##CompareExposure", 2.f } }})
-    {
-        if (preset.second != 0.5f) ImGui::SameLine();
-        if (ImGui::RadioButton(preset.first, comparison.fExposureMultiplier == preset.second))
-        { comparison.fExposureMultiplier = preset.second; comparisonChanged = true; }
-    }
+    comparisonChanged |= ImGui::SliderFloat("Exposure multiplier##LiveCompare",
+        &comparison.fExposureMultiplier, 0.5f, 2.f, "%.3fx", ImGuiSliderFlags_AlwaysClamp);
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("Updates the current view while dragging. Ctrl+click to enter an exact multiplier.");
     comparisonChanged |= ImGui::Checkbox("LUT grading##LiveCompare", &comparison.bLutEnabled);
     ImGui::SameLine();
     comparisonChanged |= ImGui::Checkbox("FXAA##LiveCompare", &comparison.bFXAAEnabled);

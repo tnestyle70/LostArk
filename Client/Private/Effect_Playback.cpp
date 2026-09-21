@@ -6865,10 +6865,15 @@ void Client::CEffectPlayback::Apply_SourceUpdateModules(
 			{
 				const f32_t fTime = PreparedModule.UseEmitterTime[2u] ?
 					fEmitterTimeSeconds : fNormalizedAge;
-				Particle.vSourceOrbitRotationRateDegreesPerSecond = Add3(
-					Particle.vSourceOrbitRotationRateDegreesPerSecond,
-					Scale3(Evaluate_ModuleVector(State, Module,
-						PreparedModule.Distribution(Module, 2u), fTime, float3_t{}), 360.f));
+                // Cascade adds the sampled per-second rate to the orbit phase
+                // each tick. Multiplying the latest rate by the entire age would
+                // jump backwards on changing curves and re-count prior turns.
+                // The birth frame owns age zero, just as a spawn-only rate does.
+                const f32_t delta = Particle.iSpawnSimulationStep == m_iSimulationStep ? 0.f : fFixedDelta;
+                Particle.vSourceOrbitRotationDegrees = Add3(
+                    Particle.vSourceOrbitRotationDegrees,
+                    Scale3(Evaluate_ModuleVector(State, Module,
+                        PreparedModule.Distribution(Module, 2u), fTime, float3_t{}), 360.f * delta));
 			}
 		}
         else if (Kind == SOURCE_UPDATE_MODULE_KIND::KILL_HEIGHT)
@@ -8219,7 +8224,10 @@ void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld,
 			Post.iSourceOrder = static_cast<uint32_t>(iElement);
 			Post.iRandomSeed = Element.Detail.ScreenPost.iRandomSeed;
 			Post.fSampleTimeSeconds = fPresentationTime;
-			Post.fIntensity = Element.Detail.ScreenPost.fIntensity;
+			const EFFECT_SCREEN_POST_DETAIL_DESC& PostDetail = Element.Detail.ScreenPost;
+			Post.fIntensity = PostDetail.bIntensityLerp ?
+				PostDetail.fIntensity + (PostDetail.fIntensityEnd - PostDetail.fIntensity) * T :
+				PostDetail.fIntensity;
 			Post.fSecondaryIntensity =
 				Element.Detail.ScreenPost.fSecondaryIntensity;
 			Post.fFrequency = Element.Detail.ScreenPost.fFrequency;

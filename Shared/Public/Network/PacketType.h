@@ -91,9 +91,10 @@ namespace LostArk::Shared
 	// the inventory entry's equipped slot and the C2S_SET_EQUIPMENT request.
 	// 98 carries the retail damage-text hit flag on every damage event, so a potion
 	// heal draws in its own colour instead of reading as an ordinary hit.
-	// 99 adds the Debug-only wave-monster re-summon request (F1 "Normal Monster 1/2");
-	// earlier peers do not know the packet.
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 99;
+	// 99 adds the Server-authoritative invulnerability-zone presentation pulse.
+	// 100 adds the Debug-only wave-monster re-summon request (F1 "Normal Monster 1/2").
+	// Earlier peers do not know the appended packet identity.
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 100;
 
 	enum class WORLD_ID : std::uint16_t
 	{

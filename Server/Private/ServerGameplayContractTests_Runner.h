@@ -21,6 +21,7 @@ class CServerGameplayContractRunner final
 public:
     static int Run(ServerGameplayContractDetail::CONTRACT_TEST_RUN_CONTEXT& context);
     static void Run_RuntimeSupportPrediction(TESTS& tests, const CServerNavigation& navigation);
+    static void Run_KoukuPushContracts(TESTS& tests, const CGameplayCatalog& catalog);
 
 private:
     static int Run_WorldPlayback(TESTS& tests);
