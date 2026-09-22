@@ -362,6 +362,90 @@
             "logicType": "RESULT",
             "resultKind": "STAGGER"
           }
+        },
+        {
+          "timeMs": 1000,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 3,
+          "range": 1.9,
+          "angle": 90,
+          "width": 0.0,
+          "height": 1.5,
+          "offset": -0.5,
+          "inner": 0.0,
+          "maxTargets": 0,
+          "pushMs": 20,
+          "pushRange": 0.2,
+          "colliderId": "skill38050.stage0.caster.hit2.damage.collider",
+          "logic": {
+            "logicId": "skill38050.stage0.caster.hit2.damage.logic",
+            "logicType": "DURATION",
+            "judgementKind": "AREA_OVERLAP",
+            "colliderId": "skill38050.stage0.caster.hit2.damage.collider",
+            "resultId": "skill38050.stage0.caster.hit2.damage.result"
+          },
+          "result": {
+            "resultId": "skill38050.stage0.caster.hit2.damage.result",
+            "logicType": "RESULT",
+            "resultKind": "DAMAGE"
+          }
+        },
+        {
+          "timeMs": 1000,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 3,
+          "range": 1.9,
+          "angle": 90,
+          "width": 0.0,
+          "height": 1.5,
+          "offset": -0.5,
+          "inner": 0.0,
+          "maxTargets": 0,
+          "pushMs": 20,
+          "pushRange": 0.2,
+          "colliderId": "skill38050.stage0.caster.hit2.counter.collider",
+          "logic": {
+            "logicId": "skill38050.stage0.caster.hit2.counter.logic",
+            "logicType": "DURATION",
+            "judgementKind": "AREA_OVERLAP",
+            "colliderId": "skill38050.stage0.caster.hit2.counter.collider",
+            "resultId": "skill38050.stage0.caster.hit2.counter.result"
+          },
+          "result": {
+            "resultId": "skill38050.stage0.caster.hit2.counter.result",
+            "logicType": "RESULT",
+            "resultKind": "COUNTER"
+          }
+        },
+        {
+          "timeMs": 1000,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 3,
+          "range": 1.9,
+          "angle": 90,
+          "width": 0.0,
+          "height": 1.5,
+          "offset": -0.5,
+          "inner": 0.0,
+          "maxTargets": 0,
+          "pushMs": 20,
+          "pushRange": 0.2,
+          "colliderId": "skill38050.stage0.caster.hit2.stagger.collider",
+          "logic": {
+            "logicId": "skill38050.stage0.caster.hit2.stagger.logic",
+            "logicType": "DURATION",
+            "judgementKind": "AREA_OVERLAP",
+            "colliderId": "skill38050.stage0.caster.hit2.stagger.collider",
+            "resultId": "skill38050.stage0.caster.hit2.stagger.result"
+          },
+          "result": {
+            "resultId": "skill38050.stage0.caster.hit2.stagger.result",
+            "logicType": "RESULT",
+            "resultKind": "STAGGER"
+          }
         }
       ]
     },
@@ -448,6 +532,179 @@
           },
           "result": {
             "resultId": "skill38140.stage0.caster.hit1.stagger.result",
+            "logicType": "RESULT",
+            "resultKind": "STAGGER"
+          }
+        },
+        {
+          "timeMs": 1000,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 3,
+          "range": 0.45,
+          "angle": 360,
+          "width": 0.0,
+          "height": 1.0,
+          "offset": 0.5,
+          "inner": 0.0,
+          "maxTargets": 0,
+          "pushMs": 20,
+          "pushRange": 0.2,
+          "colliderId": "skill38140.stage0.caster.hit2.damage.collider",
+          "logic": {
+            "logicId": "skill38140.stage0.caster.hit2.damage.logic",
+            "logicType": "DURATION",
+            "judgementKind": "AREA_OVERLAP",
+            "colliderId": "skill38140.stage0.caster.hit2.damage.collider",
+            "resultId": "skill38140.stage0.caster.hit2.damage.result"
+          },
+          "result": {
+            "resultId": "skill38140.stage0.caster.hit2.damage.result",
+            "logicType": "RESULT",
+            "resultKind": "DAMAGE"
+          }
+        },
+        {
+          "timeMs": 1000,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 3,
+          "range": 0.45,
+          "angle": 360,
+          "width": 0.0,
+          "height": 1.0,
+          "offset": 0.5,
+          "inner": 0.0,
+          "maxTargets": 0,
+          "pushMs": 20,
+          "pushRange": 0.2,
+          "colliderId": "skill38140.stage0.caster.hit2.counter.collider",
+          "logic": {
+            "logicId": "skill38140.stage0.caster.hit2.counter.logic",
+            "logicType": "DURATION",
+            "judgementKind": "AREA_OVERLAP",
+            "colliderId": "skill38140.stage0.caster.hit2.counter.collider",
+            "resultId": "skill38140.stage0.caster.hit2.counter.result"
+          },
+          "result": {
+            "resultId": "skill38140.stage0.caster.hit2.counter.result",
+            "logicType": "RESULT",
+            "resultKind": "COUNTER"
+          }
+        },
+        {
+          "timeMs": 1000,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 3,
+          "range": 0.45,
+          "angle": 360,
+          "width": 0.0,
+          "height": 1.0,
+          "offset": 0.5,
+          "inner": 0.0,
+          "maxTargets": 0,
+          "pushMs": 20,
+          "pushRange": 0.2,
+          "colliderId": "skill38140.stage0.caster.hit2.stagger.collider",
+          "logic": {
+            "logicId": "skill38140.stage0.caster.hit2.stagger.logic",
+            "logicType": "DURATION",
+            "judgementKind": "AREA_OVERLAP",
+            "colliderId": "skill38140.stage0.caster.hit2.stagger.collider",
+            "resultId": "skill38140.stage0.caster.hit2.stagger.result"
+          },
+          "result": {
+            "resultId": "skill38140.stage0.caster.hit2.stagger.result",
+            "logicType": "RESULT",
+            "resultKind": "STAGGER"
+          }
+        }
+      ]
+    },
+    {
+      "skillId": 38180,
+      "hits": [
+        {
+          "timeMs": 1000,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 1,
+          "range": 1.7,
+          "angle": 0,
+          "width": 0.0,
+          "height": 1.5,
+          "offset": 0.0,
+          "inner": 0.0,
+          "maxTargets": 0,
+          "pushMs": 5,
+          "pushRange": 0.05,
+          "colliderId": "skill38180.stage0.caster.hit1.damage.collider",
+          "logic": {
+            "logicId": "skill38180.stage0.caster.hit1.damage.logic",
+            "logicType": "DURATION",
+            "judgementKind": "AREA_OVERLAP",
+            "colliderId": "skill38180.stage0.caster.hit1.damage.collider",
+            "resultId": "skill38180.stage0.caster.hit1.damage.result"
+          },
+          "result": {
+            "resultId": "skill38180.stage0.caster.hit1.damage.result",
+            "logicType": "RESULT",
+            "resultKind": "DAMAGE"
+          }
+        },
+        {
+          "timeMs": 1000,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 1,
+          "range": 1.7,
+          "angle": 0,
+          "width": 0.0,
+          "height": 1.5,
+          "offset": 0.0,
+          "inner": 0.0,
+          "maxTargets": 0,
+          "pushMs": 5,
+          "pushRange": 0.05,
+          "colliderId": "skill38180.stage0.caster.hit1.counter.collider",
+          "logic": {
+            "logicId": "skill38180.stage0.caster.hit1.counter.logic",
+            "logicType": "DURATION",
+            "judgementKind": "AREA_OVERLAP",
+            "colliderId": "skill38180.stage0.caster.hit1.counter.collider",
+            "resultId": "skill38180.stage0.caster.hit1.counter.result"
+          },
+          "result": {
+            "resultId": "skill38180.stage0.caster.hit1.counter.result",
+            "logicType": "RESULT",
+            "resultKind": "COUNTER"
+          }
+        },
+        {
+          "timeMs": 1000,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 1,
+          "range": 1.7,
+          "angle": 0,
+          "width": 0.0,
+          "height": 1.5,
+          "offset": 0.0,
+          "inner": 0.0,
+          "maxTargets": 0,
+          "pushMs": 5,
+          "pushRange": 0.05,
+          "colliderId": "skill38180.stage0.caster.hit1.stagger.collider",
+          "logic": {
+            "logicId": "skill38180.stage0.caster.hit1.stagger.logic",
+            "logicType": "DURATION",
+            "judgementKind": "AREA_OVERLAP",
+            "colliderId": "skill38180.stage0.caster.hit1.stagger.collider",
+            "resultId": "skill38180.stage0.caster.hit1.stagger.result"
+          },
+          "result": {
+            "resultId": "skill38180.stage0.caster.hit1.stagger.result",
             "logicType": "RESULT",
             "resultKind": "STAGGER"
           }
@@ -978,96 +1235,6 @@
           },
           "result": {
             "resultId": "skill38120.stage0.caster.hit1.stagger.result",
-            "logicType": "RESULT",
-            "resultKind": "STAGGER"
-          }
-        }
-      ]
-    },
-    {
-      "skillId": 38180,
-      "sourceBasis": "EXISTING_SERVER_MAXIMUM_RANGE",
-      "hits": [
-        {
-          "timeMs": 1000,
-          "repeatCount": 1,
-          "repeatMs": 0,
-          "areaType": 1,
-          "range": 4.0,
-          "angle": 0,
-          "width": 0.0,
-          "height": 1.5,
-          "offset": 0.0,
-          "inner": 0.0,
-          "maxTargets": 1,
-          "pushMs": 0,
-          "pushRange": 0.0,
-          "colliderId": "skill38180.stage0.caster.hit1.damage.collider",
-          "logic": {
-            "logicId": "skill38180.stage0.caster.hit1.damage.logic",
-            "logicType": "DURATION",
-            "judgementKind": "AREA_OVERLAP",
-            "colliderId": "skill38180.stage0.caster.hit1.damage.collider",
-            "resultId": "skill38180.stage0.caster.hit1.damage.result"
-          },
-          "result": {
-            "resultId": "skill38180.stage0.caster.hit1.damage.result",
-            "logicType": "RESULT",
-            "resultKind": "DAMAGE"
-          }
-        },
-        {
-          "timeMs": 1000,
-          "repeatCount": 1,
-          "repeatMs": 0,
-          "areaType": 1,
-          "range": 4.0,
-          "angle": 0,
-          "width": 0.0,
-          "height": 1.5,
-          "offset": 0.0,
-          "inner": 0.0,
-          "maxTargets": 1,
-          "pushMs": 0,
-          "pushRange": 0.0,
-          "colliderId": "skill38180.stage0.caster.hit1.counter.collider",
-          "logic": {
-            "logicId": "skill38180.stage0.caster.hit1.counter.logic",
-            "logicType": "DURATION",
-            "judgementKind": "AREA_OVERLAP",
-            "colliderId": "skill38180.stage0.caster.hit1.counter.collider",
-            "resultId": "skill38180.stage0.caster.hit1.counter.result"
-          },
-          "result": {
-            "resultId": "skill38180.stage0.caster.hit1.counter.result",
-            "logicType": "RESULT",
-            "resultKind": "COUNTER"
-          }
-        },
-        {
-          "timeMs": 1000,
-          "repeatCount": 1,
-          "repeatMs": 0,
-          "areaType": 1,
-          "range": 4.0,
-          "angle": 0,
-          "width": 0.0,
-          "height": 1.5,
-          "offset": 0.0,
-          "inner": 0.0,
-          "maxTargets": 1,
-          "pushMs": 0,
-          "pushRange": 0.0,
-          "colliderId": "skill38180.stage0.caster.hit1.stagger.collider",
-          "logic": {
-            "logicId": "skill38180.stage0.caster.hit1.stagger.logic",
-            "logicType": "DURATION",
-            "judgementKind": "AREA_OVERLAP",
-            "colliderId": "skill38180.stage0.caster.hit1.stagger.collider",
-            "resultId": "skill38180.stage0.caster.hit1.stagger.result"
-          },
-          "result": {
-            "resultId": "skill38180.stage0.caster.hit1.stagger.result",
             "logicType": "RESULT",
             "resultKind": "STAGGER"
           }

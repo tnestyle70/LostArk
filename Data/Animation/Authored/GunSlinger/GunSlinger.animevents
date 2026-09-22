@@ -1,4 +1,4 @@
-LOSTARK_ANIM_EVENTS 3 "GunSlinger" 2326
+LOSTARK_ANIM_EVENTS 3 "GunSlinger" 2329
 "gdh_att_battle_1_01" CANCEL startms=0 endms=324 payload="[선스]" src=orig
 "gdh_att_battle_1_01" CANCEL startms=0 endms=418 payload="[선이]" src=orig
 "gdh_att_battle_1_01" SOUND startms=0 payload="PC_DEVILHUNTER_F.PC_DevilHunter_F_Att_Pistol1_1" src=orig
@@ -2323,5 +2323,8 @@ LOSTARK_ANIM_EVENTS 3 "GunSlinger" 2326
 "gdh_sk_tripleshot_04" SOUND startms=1300 payload="PC_DEVILHUNTER_F.PC_DevilHunter_F_SK_TripleShot1_FX000_5" src=orig
 "gdh_sk_hallucination_02" HIT startms=100 endms=100 rep=3 repms=150 fz=1300 fzin=150 fzout=300 push=5 pushr=5 area=2 ar=500 aa=120 ah=150 ax=-30 arem=0 maxt=0 src=orig
 "gdh_sk_timeofjudgement" HIT startms=1000 endms=1000 rep=1 repms=0 fz=600 fzin=150 fzout=300 push=20 pushr=20 area=1 ar=80 aa=0 ah=150 ax=0 arem=0 maxt=0 src=orig
+"gdh_sk_timeofjudgement" HIT startms=1000 endms=1000 rep=1 repms=0 fz=400 fzin=150 fzout=250 push=20 pushr=20 area=3 ar=190 aa=90 ah=150 ax=-50 arem=0 maxt=0 src=orig
 "gdh_sk_plasmabullet" HIT startms=1000 endms=1000 rep=1 repms=0 fz=400 fzin=150 fzout=250 push=20 pushr=20 area=3 ar=90 aa=360 ah=100 ax=50 arem=0 maxt=0 src=orig
+"gdh_sk_plasmabullet" HIT startms=1000 endms=1000 rep=1 repms=0 fz=400 fzin=150 fzout=250 push=20 pushr=20 area=3 ar=45 aa=360 ah=100 ax=50 arem=0 maxt=0 src=orig
 "gdh_sk_super_eyeoftwilight_01" HIT startms=1451 endms=1471 rep=1 repms=0 fz=780 fzin=200 fzout=450 push=0 pushr=0 area=2 ar=1000 aa=500 ah=200 ax=-20 arem=0 maxt=0 src=orig
+"gdh_sk_spiralchaser" HIT startms=1000 endms=1000 rep=3 repms=300 fz=850 fzin=200 fzout=300 push=5 pushr=5 area=1 ar=170 aa=0 ah=150 ax=0 arem=0 maxt=0 src=orig

@@ -4,6 +4,8 @@
 """
 import io, json, os, re, struct, sys
 
+from migrate_player_hit_results import migrate
+
 REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 RESOURCES = os.path.join(REPO, 'Client', 'Bin', 'Resources')
 TICK_RATE = 30.0
@@ -124,13 +126,22 @@ def stage_hits(entries, clip_ticks, clip_hits, limit_ms, label):
         if play_ms:
             source_ms = min(source_ms, float(play_ms))
         for h in clip_hits.get(name, []):
-            time_ms = elapsed_ms + h['startMs'] / rate
+            fire_ms = min(int(round(elapsed_ms + h['startMs'] / rate)), limit_ms)
+            repeat_ms = int(round(h['repMs'] / rate))
+            repeat = h['rep']
+            # The source can author more repeats than the bound action is long.
+            # Keep the ones that still fire inside it: dropping the overhang costs
+            # the tail of one skill, rejecting the row costs the whole publish.
+            if repeat > 1 and repeat_ms > 0:
+                repeat = max(1, min(repeat, (limit_ms - fire_ms) // repeat_ms + 1))
+            if repeat == 1:
+                repeat_ms = 0
             # Official AreaType: 1 circle/ring, 2 forward box whose AreaAngle
             # is the width in cm, 3 fan whose AreaAngle is the sweep in degrees.
             out.append({
-                'timeMs': min(int(round(time_ms)), limit_ms),
-                'repeatCount': h['rep'],
-                'repeatMs': int(round(h['repMs'] / rate)),
+                'timeMs': fire_ms,
+                'repeatCount': repeat,
+                'repeatMs': repeat_ms,
                 'areaType': h['area'],
                 'range': round(h['ar'] * UNITS_TO_METERS, 2),
                 'angle': min(max(h['aa'], 0), 360) if h['area'] == AREA_FAN else 0,
@@ -211,13 +222,15 @@ def main(argv):
         raise SystemExit(__doc__)
     out_dir = os.path.join(REPO, 'Data', 'Animation', 'HitShapes')
     os.makedirs(out_dir, exist_ok=True)
+    balance = json.load(io.open(os.path.join(REPO, 'Data', 'Balance', 'PlayerSkills.json'), encoding='utf-8'))
     for asset in assets:
-        document = build(asset)
+        # build() owns the geometry; migrate() owns the v4 result channels and the
+        # maximumRange import for a damage skill the animation gives no shape, so
+        # regenerating keeps both instead of dropping one of them.
+        document = migrate(build(asset), balance['skills'])
         text = json.dumps(document, indent=2, ensure_ascii=False) + '\n'
         path = os.path.join(out_dir, asset + '.hitshapes.json')
         old = io.open(path, encoding='utf-8').read() if os.path.exists(path) else None
-        if old and json.loads(old).get('formatVersion') == 4:
-            raise SystemExit('%s: v4 Collider/Logic/Result edits are owned by Action Workbench; legacy intake cannot overwrite them' % asset)
         skill_count = len(document['skills'])
         hit_count = sum(len(s.get('hits', [])) + sum(len(st['hits']) for st in s.get('stages', [])) for s in document['skills'])
         projectile_count = sum(len(s.get('projectiles', [])) + sum(len(st.get('projectiles', [])) for st in s.get('stages', []))

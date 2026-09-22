@@ -1,4 +1,4 @@
-LOSTARK_ANIM_EVENTS 6 "GuardianKnight" 2249
+LOSTARK_ANIM_EVENTS 6 "GuardianKnight" 2250
 "ddk_att_battle_1_01" CANCEL startms=0 endms=1400 payload="비늘 갑옷" src=orig
 "ddk_att_battle_1_01" SOUND startms=10 payload="PC_DRAGONKNIGHT_F.PC_DragonKnight_F_Att_Battle1_1" src=orig
 "ddk_att_battle_1_01" CANCEL startms=200 endms=520 payload="[선스]" src=orig
@@ -2196,8 +2196,8 @@ LOSTARK_ANIM_EVENTS 6 "GuardianKnight" 2249
 "ddk_sk_wingstinger_custom_5_03" SHAKE startms=0 payload="dur=1;in=0;out=0;x=1,70;y=1,70;z=1,70;fov=0,0" src=orig
 "ddk_sk_wingstinger_custom_5_03" SUPERARMOR startms=0 endms=1000 payload="" src=orig
 "ddk_sk_wingstinger_custom_5_03" SOUND startms=1 payload="PC_DRAGONKNIGHT_F.PC_DragonKnight_F_SK_WingStinger1_FX005_2" src=orig
-"ddk_sk_abaddonflame_01" HIT startms=300 endms=363 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=0 pushr=0 area=1 ar=275 aa=0 ah=180 ax=0 arem=0 maxt=0 src=orig
 "ddk_sk_deepimpact_01" HIT startms=300 endms=316 rep=1 repms=0 fz=600 fzin=200 fzout=300 push=0 pushr=0 area=1 ar=400 aa=0 ah=180 ax=0 arem=0 maxt=0 src=orig
+"ddk_sk_deepimpact_01" HIT startms=300 endms=316 rep=1 repms=0 fz=600 fzin=200 fzout=300 push=0 pushr=0 area=1 ar=480 aa=0 ah=180 ax=0 arem=0 maxt=0 src=orig
 "ddk_sk_flame_scale_01" HIT startms=300 endms=300 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=0 pushr=0 area=1 ar=130 aa=0 ah=180 ax=0 arem=0 maxt=0 src=orig
 "ddk_sk_super_sanctumofembereth" HIT startms=300 endms=300 rep=1 repms=0 fz=1000 fzin=250 fzout=350 push=80 pushr=10 area=2 ar=800 aa=550 ah=225 ax=0 arem=0 maxt=0 src=orig
 "ddk_sk_revenge_02" HIT startms=300 endms=363 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=0 pushr=0 area=2 ar=350 aa=250 ah=180 ax=0 arem=0 maxt=0 src=orig
@@ -2248,3 +2248,4 @@ LOSTARK_ANIM_EVENTS 6 "GuardianKnight" 2249
 "ddk_sk_deepimpact_02" EFFECT startms=0 payload="effect.guardianknight.skill.49330.clip.1.full.restore" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
 "ddk_sk_dragonicresonance_01" EFFECT startms=0 payload="effect.guardianknight.skill.49220.source.49290.clip.0.full.restore" effectref=asset anchor="skill_target" follow=snapshot stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
 "ddk_sk_dragonicresonance_02" EFFECT startms=0 payload="effect.guardianknight.skill.49220.source.49290.clip.1.full.restore" effectref=asset anchor="skill_target" follow=snapshot stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"ddk_sk_dragonicresonance_02" HIT startms=0 endms=63 rep=1 repms=0 fz=450 fzin=150 fzout=250 push=0 pushr=0 area=1 ar=275 aa=0 ah=180 ax=0 arem=0 maxt=0 src=orig
