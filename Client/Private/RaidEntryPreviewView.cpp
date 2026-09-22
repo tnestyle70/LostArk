@@ -163,11 +163,13 @@ namespace
 			{ "UI/Esther/esther_icon_3.png",
 			  "UI/Esther/esther_portrait_wei.png",
 			  "UI/Esther/esther_icon_4.png" },
-			{ "UI/Items/LanceMaster/destinyblaze_helmet.png", "UI/Items/LanceMaster/destinyblaze_shoulder.png",
-			  "UI/Items/LanceMaster/destinyblaze_top.png", "UI/Items/LanceMaster/destinyblaze_pants.png",
-			  "UI/Items/LanceMaster/destinyblaze_gloves.png", "UI/Items/LanceMaster/destinyblaze_weapon.png",
-			  "UI/Items/LanceMaster/destinyblaze_helmet.png", "UI/Items/LanceMaster/destinyblaze_weapon.png" },
-			{ 5, 5, 5, 5, 5, 5, 4, 4 },
+			/* Kakul drops the one item, so the remaining seven entries stay null and their
+			   slots are hidden rather than padded with a repeat. Grade 4 is the relic
+			   background (see GRADE_BACKGROUNDS -- the file names do not match the retail
+			   grade names, but the colours run normal/고급/희귀/영웅/전설/유물/아바타 in
+			   that order, so 유물 is the one named "unique"). */
+			{ "UI/Items/Common/portfolio.png" },
+			{ 4 },
 			"UI/RaidEntry/RaidEntry_BG_Kukusaton/RaidEntry_BG_Kukusaton", 300,
 			LostArk::Shared::RAID_ENTRY_TARGET::KAKULSAYDON,
 		},
@@ -194,11 +196,12 @@ namespace
 			{ "UI/Esther/esther_portrait_sillian.png",
 			  "UI/Esther/esther_portrait_wei.png",
 			  "UI/Esther/esther_portrait_bahuntur.png" },
-			{ "UI/Items/LanceMaster/destinyblaze_weapon.png", "UI/Items/LanceMaster/destinyblaze_helmet.png",
-			  "UI/Items/LanceMaster/destinyblaze_top.png", "UI/Items/LanceMaster/destinyblaze_gloves.png",
-			  "UI/Items/LanceMaster/destinyblaze_shoulder.png", "UI/Items/LanceMaster/destinyblaze_pants.png",
-			  "UI/Items/LanceMaster/destinyblaze_weapon.png", "UI/Items/LanceMaster/destinyblaze_helmet.png" },
-			{ 4, 4, 4, 4, 4, 4, 3, 3 },
+			/* Valtan's row is the honour-whisper set, one slot per piece. The set has six,
+			   so the last two entries stay null and their slots hide. */
+			{ "UI/Items/LanceMaster/honorwhisper_weapon.png", "UI/Items/LanceMaster/honorwhisper_helmet.png",
+			  "UI/Items/LanceMaster/honorwhisper_top.png", "UI/Items/LanceMaster/honorwhisper_gloves.png",
+			  "UI/Items/LanceMaster/honorwhisper_shoulder.png", "UI/Items/LanceMaster/honorwhisper_pants.png" },
+			{ 4, 4, 4, 4, 4, 4 },
 			"UI/RaidEntry/RaidEntry_BG_Valtan/RaidEntry_BG_Valtan", 300,
 			LostArk::Shared::RAID_ENTRY_TARGET::VALTAN,
 		},
@@ -313,6 +316,19 @@ void CRaidEntryPreviewView::Apply_RaidSelection()
 	}
 	for (int32_t i = 0; i < 8; ++i)
 	{
+		/* A raid lists as many rewards as it has; the rest of the eight authored slots are
+		   left null and hidden, so a short row reads as a short row instead of repeating an
+		   icon to fill the strip. */
+		const bool_t bHasReward = nullptr != Raid.pRewardIcons[i];
+		(void)sprintf_s(szSlot, "RaidEntry_RewardIcon_%d", i);
+		m_pView->Set_SlotVisible(szSlot, bHasReward);
+		(void)sprintf_s(szSlot, "RaidEntry_RewardSlotBg_%d", i);
+		m_pView->Set_SlotVisible(szSlot, bHasReward);
+		(void)sprintf_s(szSlot, "RaidEntry_RewardSlotBorder_%d", i);
+		m_pView->Set_SlotVisible(szSlot, bHasReward);
+		if (!bHasReward)
+			continue;
+
 		(void)sprintf_s(szSlot, "RaidEntry_RewardIcon_%d", i);
 		m_pView->Set_SlotTexture(szSlot, Raid.pRewardIcons[i]);
 
