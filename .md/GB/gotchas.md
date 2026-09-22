@@ -2820,6 +2820,7 @@ lease에 연결한다. 저장된 DURATION은 timing 존재와 PRODUCT 의미의 
 
 원본 Cascade source가 `EmitterLoops=0` sprite/mesh/ribbon emitter와 같은 source visual program의 `LIGHT`/`light` carrier를 함께 가질 수 있다. bounded source-loop 검증은 반복 방출을 수행하는 admitted particle/ribbon carrier를 최소 하나 요구하되, 그 보조 light를 particle/ribbon이 아니라는 이유로 거절해서는 안 된다. 반대로 light만으로 loop0 조건을 만족시키면 안 된다. `effect.valtan.cinematic.trash.actor106.at667`이 이 경우이며, 원본 emitter count나 `loopEffectToDuration`을 변경해 우회하지 않는다.
 
+
 ### 투명 배경막을 통과할 때만 캐릭터가 밝아지는 경우
 
 포인트 광원 추가가 보이지 않고 카메라가 이펙트 안으로 들어갈 때만 배우가 밝아지면,
@@ -2893,6 +2894,7 @@ TransColor/BuffColor는 현재 native program의 실제 direct packing 및 후�
 
 `.navregions`에 새 REGION을 추가하면 같은 게시 단위의 `<Area>.<Region>.navgrid`, `.navpolicy`, `.navblockers`와 Server의 `.navsurface`도 Git 전달 대상인지 확인한다. 목록만 추적하고 신규 출력이 빠지면 Server는 해당 영역을 방문하기 전에도 world 초기화에서 실패한다. Product의 기본 파일 존재 검사만으로 세부 영역 준비 완료를 판단하지 않는다. Product는 게시 목록 참조, grid header/정확한 byte 길이와 필수 sidecar header를 읽기 전용으로 확인하고 실패 경로를 runtimeDataChecks에 남긴다. 좌표·정책은 소비자와 같은 float32로 파싱해 큰 소수 원점의 roundtrip을 오탐하지 않는다. 이 검사는 셀별 높이·층 겹침·world admission이나 원본 bake를 대체하지 않는다. 누락은 해당 Area의 공식 publisher로 복구하고 생성물을 임의 작성하거나 목록에서 영역을 제거해 숨기지 않는다.
 
+
 ### 클래스 미리보기의 파츠 입장과 재질 소비자
 
 stance 전용 IDENTITY 파츠는 교체 가능한 의상 slot을 소유하지 않아 END를 사용할 수 있다.
@@ -2916,3 +2918,4 @@ clamp 상한보다 올려도 이미 잘리는 부분은 복구되지 않는다. 
 가로채지 않는지 검사한다. 허용된 portable mesh carrier의 명시 간격만 기존 생성기를
 사용하고 source 위치·이동 module과 섞지 않는다. 1.2배 외형 변경은 mesh 크기에만 적용하고
 birth center·간격·Server cover와 폭발 시점은 유지한다.
+
