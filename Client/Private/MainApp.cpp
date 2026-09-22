@@ -6917,9 +6917,13 @@ void CMainApp::Update_GuardianKnightIdentity()
 	const bool_t bDragon =
 		LostArk::Shared::PLAYER_STANCE_ID::GUARDIANKNIGHT_DRAGON == player.eStance;
 
-	/* ark.controls.Progress: target.width = percent * trackLength, so the orb reveals its own
-	art left to right at native scale rather than being squashed -- Set_SlotFillRatio. The fill
-	art itself is Gauge_Track's per-stance frame (1 human / 2 dragon), which is what
+	/* ark.controls.Progress fills by target.width, but the orb is placed rotated: orbGauge's
+	own matrix is (scaleX/Y ~0, rotateSkew0 -1, rotateSkew1 1), which maps local +X to screen
+	-Y, and the track inside carries the opposite turn so its art still stands upright. So the
+	gauge rises from the bottom and drains downward on screen, not left to right. Reproduced
+	here by revealing the bottom slice of the orb -- rect shrunk to it and the texture window
+	moved with it, so the art keeps its own scale instead of squashing. The fill art itself is
+	Gauge_Track's per-stance frame (1 human / 2 dragon), which is what
 	DragonKnightSkinFrame.inMarkGaugeState() switches. */
 	const f32_t fIdentityRatio = 0u != player.iMaximumIdentity ?
 		std::clamp(static_cast<f32_t>(player.iCurrentIdentity) /
@@ -6927,23 +6931,33 @@ void CMainApp::Update_GuardianKnightIdentity()
 	m_pHUDRuntimeView->Set_SlotTexture("GK_Id_OrbFill", bDragon ?
 		"UI/HUD/GuardianKnight/Orb_Fill_Dragon.png" :
 		"UI/HUD/GuardianKnight/Orb_Fill_Human.png");
-	m_pHUDRuntimeView->Set_SlotFillRatio("GK_Id_OrbFill", fIdentityRatio);
 	m_pHUDRuntimeView->Set_SlotVisible("GK_Id_OrbFill", fIdentityRatio > 0.f);
 
-	/* Progress::updateMark: x = target.x + target.width, y centred on the track, and
-	useAutoHideMark hides it at exactly empty and exactly full. */
+	/* The empty orb is never moved, so it stays the reference both the fill slice and the mark
+	are measured against -- reading the fill's own rect back would compound each frame. */
 	f32_t fOrbX = 0.f, fOrbY = 0.f, fOrbWidth = 0.f, fOrbHeight = 0.f;
-	f32_t fMarkX = 0.f, fMarkY = 0.f, fMarkWidth = 0.f, fMarkHeight = 0.f;
-	const bool_t bMarkVisible = fIdentityRatio > 0.f && fIdentityRatio < 1.f;
-	if (bMarkVisible &&
-		m_pHUDRuntimeView->Get_SlotRect("GK_Id_OrbEmpty", fOrbX, fOrbY, fOrbWidth, fOrbHeight) &&
-		m_pHUDRuntimeView->Get_SlotRect("GK_Id_OrbMark", fMarkX, fMarkY, fMarkWidth, fMarkHeight))
+	if (fIdentityRatio > 0.f &&
+		m_pHUDRuntimeView->Get_SlotRect("GK_Id_OrbEmpty", fOrbX, fOrbY, fOrbWidth, fOrbHeight))
 	{
-		m_pHUDRuntimeView->Set_SlotPosition("GK_Id_OrbMark",
-			fOrbX + fOrbWidth * fIdentityRatio - fMarkWidth * 0.5f,
-			fOrbY + fOrbHeight * 0.5f - fMarkHeight * 0.5f);
+		const f32_t fFillHeight = fOrbHeight * fIdentityRatio;
+		m_pHUDRuntimeView->Set_SlotRect("GK_Id_OrbFill",
+			fOrbX, fOrbY + fOrbHeight - fFillHeight, fOrbWidth, fFillHeight);
+		m_pHUDRuntimeView->Set_SlotUVWindow("GK_Id_OrbFill",
+			0.f, 1.f - fIdentityRatio, 1.f, fIdentityRatio);
+
+		/* Progress::updateMark rides the fill edge and useAutoHideMark hides it at exactly
+		empty and exactly full. After the rotation above that edge is the liquid level, so the
+		mark travels vertically and stays centred across the orb. */
+		f32_t fMarkX = 0.f, fMarkY = 0.f, fMarkWidth = 0.f, fMarkHeight = 0.f;
+		if (m_pHUDRuntimeView->Get_SlotRect("GK_Id_OrbMark", fMarkX, fMarkY, fMarkWidth, fMarkHeight))
+		{
+			m_pHUDRuntimeView->Set_SlotPosition("GK_Id_OrbMark",
+				fOrbX + fOrbWidth * 0.5f - fMarkWidth * 0.5f,
+				fOrbY + fOrbHeight - fFillHeight - fMarkHeight * 0.5f);
+		}
 	}
-	m_pHUDRuntimeView->Set_SlotVisible("GK_Id_OrbMark", bMarkVisible);
+	m_pHUDRuntimeView->Set_SlotVisible("GK_Id_OrbMark",
+		fIdentityRatio > 0.f && fIdentityRatio < 1.f);
 
 	/* skillKey_bg carries the Z label drawn in the text pass; the label's own colour rule lives
 	there (DragonKnightSkinFrame.draw(): white while full or transformed, 0x686C20 otherwise). */

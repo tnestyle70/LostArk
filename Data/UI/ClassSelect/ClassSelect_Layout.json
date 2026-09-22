@@ -422,7 +422,7 @@
       "id": "Warlord_IdentityID",
       "ownerClass": "Warlord",
       "type": 0,
-      "rect": { "x": 6.42850351, "y": 499.428406, "width": 250, "height": 57 },
+      "rect": { "x": 2.0, "y": 498.785, "width": 248.0, "height": 56.0 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -483,7 +483,7 @@
       "id": "LanceMaster_IdentityID",
       "ownerClass": "LanceMaster",
       "type": 0,
-      "rect": { "x": 10.7142181, "y": 486.57132, "width": 217, "height": 71 },
+      "rect": { "x": 24.0, "y": 493.785, "width": 204.0, "height": 66.0 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -544,7 +544,7 @@
       "id": "Artist_IdentityID",
       "ownerClass": "Artist",
       "type": 0,
-      "rect": { "x": 50.7142143, "y": 485.142822, "width": 125, "height": 94 },
+      "rect": { "x": 87.5, "y": 492.785, "width": 77.0, "height": 68.0 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -605,7 +605,7 @@
       "id": "DimensionMaster_IdentityID",
       "ownerClass": "DimensionMaster",
       "type": 0,
-      "rect": { "x": 62.5166893, "y": 478.787598, "width": 125, "height": 94 },
+      "rect": { "x": 72.4859, "y": 485.0, "width": 107.0282, "height": 83.57 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -1161,7 +1161,7 @@
       "id": "Slayer_IdentityID",
       "ownerClass": "Slayer",
       "type": 0,
-      "rect": { "x": 6.42850351, "y": 499.428406, "width": 250, "height": 57 },
+      "rect": { "x": 62.5851, "y": 485.0, "width": 126.8298, "height": 83.57 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -1287,7 +1287,7 @@
       "id": "Gunslinger_IdentityID",
       "ownerClass": "Gunslinger",
       "type": 0,
-      "rect": { "x": 6.42850351, "y": 499.428406, "width": 250, "height": 57 },
+      "rect": { "x": 75.5855, "y": 485.0, "width": 100.829, "height": 83.57 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -1426,7 +1426,7 @@
       "id": "GuardianKnight_IdentityID",
       "ownerClass": "GuardianKnight",
       "type": 0,
-      "rect": { "x": 6.42850351, "y": 499.428406, "width": 250, "height": 57 },
+      "rect": { "x": 1.0, "y": 485.2792, "width": 250.0, "height": 83.0116 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
