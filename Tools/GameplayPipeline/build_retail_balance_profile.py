@@ -329,7 +329,9 @@ def main() -> int:
     }
 
     output.parent.mkdir(parents=True, exist_ok=True)
-    with output.open("w", encoding="utf-8", newline="\n") as stream:
+    # core.autocrlf is true in this repository, so write what Git checks out and a
+    # regenerated profile stays byte-identical instead of showing up as a change.
+    with output.open("w", encoding="utf-8", newline="\r\n") as stream:
         json.dump(profile, stream, ensure_ascii=False, indent=2)
         stream.write("\n")
     print(
