@@ -16,7 +16,15 @@ private:
 	enum class ENTRY_STATE
 	{
 		IDLE,
+		WAITING_FOR_LOCAL_SERVER,
 		WAITING_FOR_APPROVAL
+	};
+
+	enum class ENTRY_REQUEST_RESULT
+	{
+		SENT,
+		CONNECTION_UNAVAILABLE,
+		SEND_FAILED
 	};
 
 private:
@@ -38,6 +46,10 @@ private:
 		LostArk::Shared::WORLD_ID eWorldId,
 		LEVEL eTargetLevel,
 		LOBBY_COMMAND_PURPOSE purpose);
+	ENTRY_REQUEST_RESULT Submit_PendingNetworkEntry();
+	void Begin_LocalServerStartupWait();
+	void Update_LocalServerStartupWait();
+	void Reset_PendingEntryState();
 	bool_t Resolve_Stage(
 		LOBBY_STAGE eStage,
 		LOBBY_COMMAND_PURPOSE purpose,
@@ -60,8 +72,15 @@ private:
 	LEVEL m_ePendingLevel = LEVEL::END;
 	LOBBY_COMMAND_PURPOSE m_ePendingPurpose =
 		LOBBY_COMMAND_PURPOSE::GAMEPLAY;
+	LostArk::Shared::CHARACTER_CLASS_ID m_ePendingCharacterClass =
+		LostArk::Shared::CHARACTER_CLASS_ID::END;
+	string m_strPendingNickname;
+	string m_strPendingServerHost;
 	bool_t m_hasPendingCharacterCreationEntry = false;
 	std::chrono::steady_clock::time_point m_ApprovalDeadline{};
+	std::chrono::steady_clock::time_point m_LocalServerStartupDeadline{};
+	std::chrono::steady_clock::time_point m_NextLocalServerConnectAttempt{};
+	uint32_t m_iLocalServerConnectAttemptCount = 0u;
 	bool_t m_hasRecoveryDiagnostic = false;
 	CLIENT_RECOVERY_DIAGNOSTIC m_RecoveryDiagnostic;
 	string m_strStatus =

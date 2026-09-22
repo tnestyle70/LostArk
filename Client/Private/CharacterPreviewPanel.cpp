@@ -70,12 +70,14 @@ namespace
 	}
 
 	bool_t Try_ResolveRaidPreviewPlacement(const uint32_t currentLevel,
-		float3_t& position, std::string& status)
+		float3_t& position, f32_t& yawDegrees, std::string& status)
 	{
+		yawDegrees = 0.f;
 		if (currentLevel == ETOUI(LEVEL::VALTAN_ARENA))
 		{
 			const auto* arena = Client::CLevel_ValtanArena::Get_Active();
-			if (nullptr != arena) return arena->Try_Get_AuthoringPreviewPlacement(position, status);
+			if (nullptr != arena) return arena->Try_Get_AuthoringPreviewPlacement(
+				position, yawDegrees, status);
 		}
 		else if (currentLevel == ETOUI(LEVEL::KAKULSAYDON_ARENA))
 		{
@@ -223,8 +225,10 @@ bool_t Client::CCharacterPreviewPanel::Select_TargetAsset(
 		// Recenter an existing clone using the level's replication owner too;
 		// AnimationTargetService's optional scene binding is not a raid roster.
 		float3_t placement{};
+		f32_t placementYawDegrees = 0.f;
 		std::string placementSource;
-		if (!Try_ResolveRaidPreviewPlacement(currentLevel, placement, placementSource))
+		if (!Try_ResolveRaidPreviewPlacement(
+				currentLevel, placement, placementYawDegrees, placementSource))
 		{
 			m_Status = "Arena preview placement unavailable: " + placementSource + ".";
 			return false;
@@ -232,8 +236,25 @@ bool_t Client::CCharacterPreviewPanel::Select_TargetAsset(
 		const shared_ptr<CValtan> previewBoss =
 			dynamic_pointer_cast<CValtan>(m_pPreviewObject.lock());
 		if (nullptr != previewBoss && nullptr != previewBoss->Get_Transform())
-			previewBoss->Get_Transform()->Set_State(STATE::POSITION,
-				XMVectorSetW(XMLoadFloat3(&placement), 1.f));
+		{
+			const matrix_t previous =
+				XMLoadFloat4x4(previewBoss->Get_Transform()->Get_WorldMatrixPtr());
+			const float3_t scale(
+				XMVectorGetX(XMVector3Length(previous.r[0])),
+				XMVectorGetX(XMVector3Length(previous.r[1])),
+				XMVectorGetX(XMVector3Length(previous.r[2])));
+			matrix_t world = XMMatrixRotationY(
+				XMConvertToRadians(placementYawDegrees));
+			world.r[0] *= scale.x;
+			world.r[1] *= scale.y;
+			world.r[2] *= scale.z;
+			world.r[3] = XMVectorSet(
+				placement.x, placement.y, placement.z, 1.f);
+			previewBoss->Get_Transform()->Set_State(STATE::RIGHT, world.r[0]);
+			previewBoss->Get_Transform()->Set_State(STATE::UP, world.r[1]);
+			previewBoss->Get_Transform()->Set_State(STATE::LOOK, world.r[2]);
+			previewBoss->Get_Transform()->Set_State(STATE::POSITION, world.r[3]);
+		}
 		else
 		{
 			const shared_ptr<CPart_Body> body = dynamic_pointer_cast<CPart_Body>(m_pPreviewObject.lock());
@@ -243,7 +264,9 @@ bool_t Client::CCharacterPreviewPanel::Select_TargetAsset(
 				return false;
 			}
 			float4x4_t& root = m_PreviewParentMatrices[m_iPreviewParentMatrixIndex];
-			XMStoreFloat4x4(&root, XMMatrixTranslation(placement.x, placement.y, placement.z));
+			XMStoreFloat4x4(&root,
+				XMMatrixRotationY(XMConvertToRadians(placementYawDegrees)) *
+				XMMatrixTranslation(placement.x, placement.y, placement.z));
 			m_PreviewUnscaledParentMatrix = root;
 			m_PreviewRootMotionOffset = {};
 			CAnimationTargetService::Bind_Preview(body->Get_Model(), asset->pAssetName, root);
@@ -446,13 +469,15 @@ bool_t Client::CCharacterPreviewPanel::Select_Asset(
 	}
 
 	vector_t previewPosition = XMVectorSet(2.5f, 0.f, 0.f, 1.f);
+	f32_t previewYawDegrees = 0.f;
 	std::string strPlacementSource = "scene character / world-right";
 	const shared_ptr<CCharacter> character =
 		CAnimationTargetService::Resolve_SceneCharacter();
 	if (bRaidCompositionPreview)
 	{
 		float3_t placement{};
-		if (!Try_ResolveRaidPreviewPlacement(currentLevel, placement, strPlacementSource))
+		if (!Try_ResolveRaidPreviewPlacement(
+				currentLevel, placement, previewYawDegrees, strPlacementSource))
 		{
 			m_Status = "Arena preview placement unavailable: " + strPlacementSource + ".";
 			return false;
@@ -472,6 +497,9 @@ bool_t Client::CCharacterPreviewPanel::Select_Asset(
 		m_PreviewParentMatrices[stagedParentMatrixIndex];
 	XMStoreFloat4x4(
 		&stagedParentMatrix,
+		(bRaidCompositionPreview ?
+			XMMatrixRotationY(XMConvertToRadians(previewYawDegrees)) :
+			XMMatrixIdentity()) *
 		XMMatrixTranslationFromVector(previewPosition));
 
 	shared_ptr<CGameObject> stagedObject;

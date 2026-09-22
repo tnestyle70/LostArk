@@ -546,6 +546,14 @@ namespace Client
 		// Presentation basis only. The replicated Mario stage owns input mode.
 
 	private:
+		/* Normal player clicks may carry an exact depth-tested surface point for
+		   presentation.  The public move request remains available to interaction
+		   callers that only own a navigation goal. */
+		bool_t Request_MoveToPointResolved(
+			const float3_t& goal,
+			bool_t playClickEffect,
+			const float3_t* pExactClickSurface);
+
 		bool_t Update_MarioControls(bool_t gameplayCommandsEnabled);
 		//실질적인 navigation picking을 통한 이동으로 교체
 		bool_t Should_SendMoveGoal(

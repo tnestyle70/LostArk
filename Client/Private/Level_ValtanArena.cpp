@@ -181,6 +181,10 @@ CLevel_ValtanArena::CLevel_ValtanArena(
 
 CLevel_ValtanArena::~CLevel_ValtanArena()
 {
+#ifdef _DEBUG
+	Debug_StopActionWorkbenchCinematic();
+	m_ActionWorkbenchCinematicPlayer.Clear();
+#endif
 	if (this == s_pActiveInstance)
 		s_pActiveInstance = nullptr;
 #ifdef _DEBUG
@@ -719,90 +723,332 @@ void CLevel_ValtanArena::Update(f32_t fTimeDelta)
 
 bool_t CLevel_ValtanArena::Try_Get_AuthoringPreviewPlacement(
 	float3_t& OutPosition,
+	f32_t& fOutYawDegrees,
 	std::string& strOutSource) const
 {
 	OutPosition = {};
+	fOutYawDegrees = 0.f;
 	strOutSource.clear();
 
-	/* Screen-right keeps the clone next to the actor from the current camera's
-	   point of view instead of using world +X. Flattening it prevents a pitched
-	   raid camera from moving the model above/below the floor. */
-	vector_t vScreenRight = XMVectorSet(1.f, 0.f, 0.f, 0.f);
-	if (nullptr != m_pCamera)
+	static constexpr std::string_view AREA_ID = "LV_LUT_HEARTRB_ED";
+	static constexpr std::string_view BOSS_PLACEMENT_ID =
+		"boss.valtan.center";
+	CWorldGameplayDocument document;
+	std::string loadStatus;
+	if (!document.Load(
+			CProjectDataRoot::Resolve(
+				std::filesystem::path("Worlds") /
+				std::string(AREA_ID) / "Gameplay.world.json"),
+			std::string(AREA_ID), loadStatus))
 	{
-		const shared_ptr<CTransform> pCameraTransform =
-			dynamic_pointer_cast<CTransform>(
-				m_pCamera->Get_Component(g_strTransformComTag));
-		if (nullptr != pCameraTransform)
+		strOutSource = "canonical Valtan gameplay placement load failed: " +
+			loadStatus;
+		return false;
+	}
+	const WORLD_GAMEPLAY_PLACEMENT* const placement =
+		document.Find(std::string(BOSS_PLACEMENT_ID));
+	if (nullptr == placement || WORLD_PLACEMENT_KIND::BOSS != placement->eKind ||
+		placement->archetypeId != "BOSS_VALTAN" ||
+		!std::isfinite(placement->position.x) ||
+		!std::isfinite(placement->position.y) ||
+		!std::isfinite(placement->position.z) ||
+		!std::isfinite(placement->yawDegrees))
+	{
+		strOutSource =
+			"canonical boss.valtan.center placement is missing or invalid";
+		return false;
+	}
+	OutPosition = placement->position;
+	fOutYawDegrees = placement->yawDegrees;
+	strOutSource =
+		"Gameplay.world.json / boss.valtan.center / Server audition transform";
+	return true;
+}
+
+#ifdef _DEBUG
+bool_t CLevel_ValtanArena::Debug_SampleActionWorkbenchCinematic(
+	const std::string_view patternId,
+	const uint32_t patternClockMs,
+	const shared_ptr<CValtan>& previewBoss,
+	std::string& status)
+{
+	struct SOURCE_CINEMATIC_PREVIEW final
+	{
+		std::string_view patternId;
+		std::string_view suffix;
+		std::string_view firstStageId;
+		uint32_t stageOffsetMs;
+	};
+	static constexpr std::array<SOURCE_CINEMATIC_PREVIEW, 5u> PREVIEWS = {{
+		{ "VALTAN_ENTRANCE_CINEMATIC", "entrance", "ESTABLISH", 0u },
+		{ "VALTAN_ARENA_BREAK_109", "phase2", "IMPACT_HOLD", 600u },
+		{ "VALTAN_SIX_PIZZA_106", "roar", "STEP_04", 0u },
+		{ "VALTAN_TRASH", "trash", "STEP_05", 0u },
+		{ "VALTAN_GHOST_DEATH_AUDITION", "finale", "STEP_01", 0u },
+	}};
+	const auto preview = std::find_if(PREVIEWS.begin(), PREVIEWS.end(),
+		[&](const SOURCE_CINEMATIC_PREVIEW& value)
+		{ return value.patternId == patternId; });
+	if (preview == PREVIEWS.end())
+	{
+		Debug_StopActionWorkbenchCinematic();
+		return true;
+	}
+	if (!previewBoss || !previewBoss->Is_LocalPatternAuthoringPreview() ||
+		nullptr == previewBoss->Get_Transform())
+	{
+		status = "Action Workbench cinematic requires its non-authoritative Valtan arena clone.";
+		Debug_StopActionWorkbenchCinematic();
+		return false;
+	}
+	if (!m_strSourceCinematic.empty())
+	{
+		status = "Action Workbench cinematic yielded to the active Server source cinematic.";
+		Debug_StopActionWorkbenchCinematic();
+		return false;
+	}
+	if (!m_bSourceCinematicsReady)
+	{
+		if (m_bSourceCinematicsPreparationPending)
+			Ready_SourceCinematics();
+		if (!m_bSourceCinematicsReady)
 		{
-			vector_t vCandidate = pCameraTransform->Get_State(STATE::RIGHT);
-			vCandidate = XMVectorSetY(vCandidate, 0.f);
-			vCandidate = XMVectorSetW(vCandidate, 0.f);
-			if (XMVectorGetX(XMVector3LengthSq(vCandidate)) > 0.000001f)
-				vScreenRight = XMVector3Normalize(vCandidate);
+			status = "Action Workbench cinematic source is unavailable: " +
+				m_strSourceCinematicPreparationStatus;
+			Debug_StopActionWorkbenchCinematic();
+			return false;
+		}
+	}
+	const auto targets = SourceCinematicTargets();
+	if (m_ActionWorkbenchCinematicPlayer.Get_Document().Get_AreaId().empty())
+	{
+		/* Ready_SourceCinematics consumes the one Loader-prepared Area when it
+		   admits m_SourceCinematicPlayer.  Trying Load_PreparedArea again here
+		   therefore always failed and silently left the Workbench on its ordinary
+		   Pattern model while the original world-space camera kept playing.  Admit
+		   an independent player from that already validated document instead. */
+		std::string admissionStatus;
+		if (!m_ActionWorkbenchCinematicPlayer.Set_Document(
+				m_SourceCinematicPlayer.Get_Document(), targets, admissionStatus))
+		{
+			status = "Action Workbench cinematic document is unavailable: " +
+				admissionStatus;
+			Debug_StopActionWorkbenchCinematic();
+			return false;
 		}
 	}
 
-	const shared_ptr<CCharacter> pLocalCharacter =
-		m_Replication.Get_LocalCharacter();
-	if (nullptr != pLocalCharacter &&
-		nullptr != pLocalCharacter->Get_Transform())
+	const std::string instanceId =
+		"world.sequence.instance.valtan.source-preview." +
+		std::string(preview->suffix);
+	const CWorldSequenceDocument& document =
+		m_ActionWorkbenchCinematicPlayer.Get_Document();
+	const WORLD_SEQUENCE_INSTANCE* instance = document.Find_Instance(instanceId);
+	const WORLD_SEQUENCE_TEMPLATE* sequence = nullptr == instance ? nullptr :
+		document.Find_Template(instance->templateId);
+	const WORLD_SEQUENCE_TRACK* actorTrack = nullptr;
+	if (nullptr != sequence)
 	{
-		const vector_t vPlayerPosition =
-			pLocalCharacter->Get_Transform()->Get_State(STATE::POSITION);
-		constexpr f32_t PREVIEW_OFFSET_METERS = 3.25f;
-		const array<f32_t, 2u> Directions = { 1.f, -1.f };
-		for (const f32_t fDirection : Directions)
+		const auto found = std::find_if(sequence->tracks.begin(), sequence->tracks.end(),
+			[](const WORLD_SEQUENCE_TRACK& track) { return track.slotId == "actor"; });
+		if (found != sequence->tracks.end()) actorTrack = &*found;
+	}
+	const ENCOUNTER_PATTERN_REFERENCE* pattern =
+		m_ValtanEncounterReference.Find_Pattern(std::string(patternId));
+	const ENCOUNTER_STAGE_REFERENCE* firstStage = nullptr;
+	if (nullptr != pattern)
+	{
+		const auto found = std::find_if(pattern->stages.begin(), pattern->stages.end(),
+			[&](const ENCOUNTER_STAGE_REFERENCE& stage)
+			{ return stage.stageId == preview->firstStageId; });
+		if (found != pattern->stages.end()) firstStage = &*found;
+	}
+	if (nullptr == instance || nullptr == sequence || nullptr == actorTrack ||
+		actorTrack->keys.empty() || nullptr == firstStage)
+	{
+		status = "Action Workbench cinematic source contract is incomplete: " +
+			std::string(patternId) + ".";
+		Debug_StopActionWorkbenchCinematic();
+		return false;
+	}
+	const uint64_t sourceStartMs =
+		static_cast<uint64_t>(firstStage->iStartOffsetMs) +
+		preview->stageOffsetMs;
+
+	const shared_ptr<CValtan> previousBoss =
+		m_pActionWorkbenchCinematicBoss.lock();
+	if (m_strActionWorkbenchCinematicPatternId != patternId ||
+		previousBoss != previewBoss)
+	{
+		/* Match editor.cutscene.valtan.entrance exactly.  The Map Tool row owns
+		   only the main and colorless Valtan instances; Actor64 is separate source
+		   extraction data and must not be injected into this comparison preview. */
+		constexpr std::array<std::string_view, 1u> entranceCompanions = {
+			"entrance.colorless" };
+		if (!m_ActionWorkbenchCinematicPlayer.Prepare_InstanceResources(
+				instanceId, targets) ||
+			!m_ActionWorkbenchCinematicPlayer.Prewarm_ObjectInstances(
+				instanceId, preview->suffix == "entrance" ? 2u : 1u, targets))
 		{
-			const vector_t vCandidate = XMVectorSetW(
-				vPlayerPosition +
-				vScreenRight * (PREVIEW_OFFSET_METERS * fDirection),
-				1.f);
-			float3_t Candidate{};
-			XMStoreFloat3(&Candidate, vCandidate);
-			float3_t Sampled{};
-			if (pLocalCharacter->Try_SampleTargetGround(
-					Candidate.x, Candidate.z, Sampled))
+			status = "Action Workbench cinematic resource preparation failed: " +
+				m_ActionWorkbenchCinematicPlayer.Get_Status();
+			Debug_StopActionWorkbenchCinematic();
+			return false;
+		}
+		if (preview->suffix == "entrance")
+		{
+			for (const std::string_view suffix : entranceCompanions)
 			{
-				OutPosition = Sampled;
-				strOutSource = fDirection > 0.f ?
-					"replicated local player / camera-right / Navigation" :
-					"replicated local player / camera-left / Navigation";
-				return true;
+				const std::string companionId =
+					"world.sequence.instance.valtan.source-preview." +
+					std::string(suffix);
+				if (!m_ActionWorkbenchCinematicPlayer.Prepare_InstanceResources(
+						companionId, targets) ||
+					!m_ActionWorkbenchCinematicPlayer.Prewarm_ObjectInstances(
+						companionId, 2u, targets))
+				{
+					status = "Action Workbench entrance companion preparation failed: " +
+						m_ActionWorkbenchCinematicPlayer.Get_Status();
+					Debug_StopActionWorkbenchCinematic();
+					return false;
+				}
 			}
 		}
-
-		/* A missing Client Navigation component must not make the explicitly
-		   requested Model View disappear. The replicated player point is still a
-		   valid arena anchor; only the optional floor clamp was unavailable. */
-		const vector_t vFallback = XMVectorSetW(
-			vPlayerPosition + vScreenRight * PREVIEW_OFFSET_METERS, 1.f);
-		XMStoreFloat3(&OutPosition, vFallback);
-		strOutSource =
-			"replicated local player / camera-right / unclamped fallback";
-		return true;
+		Debug_StopActionWorkbenchCinematic();
+		m_strActionWorkbenchCinematicPatternId.assign(patternId);
+		m_pActionWorkbenchCinematicBoss = previewBoss;
+		m_ActionWorkbenchCinematicRestoreWorld =
+			*previewBoss->Get_Transform()->Get_WorldMatrixPtr();
+		m_bActionWorkbenchCinematicRestoreValid = true;
 	}
 
-	const VALTAN_PRESENTATION_STATE& Boss =
-		m_Replication.Get_ValtanPresentationState();
-	if (Boss.isValid &&
-		std::isfinite(Boss.vPosition.x) &&
-		std::isfinite(Boss.vPosition.y) &&
-		std::isfinite(Boss.vPosition.z))
+	const f32_t sourceClockMs = patternClockMs <= sourceStartMs ? 0.f :
+		static_cast<f32_t>((std::min)(
+			static_cast<uint64_t>(patternClockMs) - sourceStartMs,
+			static_cast<uint64_t>(sequence->durationMs)));
+	const WORLD_SEQUENCE_TRANSFORM_KEY sample =
+		CWorldSequencePlayer::Sample_Track(*sequence, *actorTrack, sourceClockMs);
+	constexpr std::array<std::string_view, 1u> entranceCompanions = {
+		"entrance.colorless" };
+	if (patternClockMs < sourceStartMs &&
+		m_bActionWorkbenchCinematicSourcePlaying)
 	{
-		const vector_t vBossPosition = XMLoadFloat3(&Boss.vPosition);
-		const vector_t vFallback = XMVectorSetW(
-			vBossPosition + vScreenRight * 4.5f, 1.f);
-		XMStoreFloat3(&OutPosition, vFallback);
-		strOutSource =
-			"primary replicated Valtan / camera-right fallback";
-		return true;
+		m_ActionWorkbenchCinematicPlayer.Stop_All(targets, true);
+		m_bActionWorkbenchCinematicSourcePlaying = false;
 	}
-
-	strOutSource =
-		"waiting for the replicated local player or primary Valtan";
-	return false;
+	if (patternClockMs >= sourceStartMs &&
+		!m_bActionWorkbenchCinematicSourcePlaying)
+	{
+		bool_t played = m_ActionWorkbenchCinematicPlayer.Play(instanceId, targets);
+		if (played && preview->suffix == "entrance")
+		{
+			for (const std::string_view suffix : entranceCompanions)
+			{
+				const std::string companionId =
+					"world.sequence.instance.valtan.source-preview." +
+					std::string(suffix);
+				if (!m_ActionWorkbenchCinematicPlayer.Play(companionId, targets))
+				{
+					played = false;
+					break;
+				}
+			}
+		}
+		if (!played)
+		{
+			status = "Action Workbench cinematic play failed: " +
+				m_ActionWorkbenchCinematicPlayer.Get_Status();
+			Debug_StopActionWorkbenchCinematic();
+			return false;
+		}
+		m_bActionWorkbenchCinematicSourcePlaying = true;
+	}
+	if (m_bActionWorkbenchCinematicSourcePlaying)
+	{
+		bool_t sampled = m_ActionWorkbenchCinematicPlayer.Seek_InstanceToMs(
+			instanceId, sourceClockMs, targets, false);
+		if (sampled && preview->suffix == "entrance")
+		{
+			for (const std::string_view suffix : entranceCompanions)
+			{
+				const std::string companionId =
+					"world.sequence.instance.valtan.source-preview." +
+					std::string(suffix);
+				if (!m_ActionWorkbenchCinematicPlayer.Seek_InstanceToMs(
+						companionId, sourceClockMs, targets, false))
+				{
+					sampled = false;
+					break;
+				}
+			}
+		}
+		if (!sampled)
+		{
+			status = "Action Workbench cinematic sample failed: " +
+				m_ActionWorkbenchCinematicPlayer.Get_Status();
+			Debug_StopActionWorkbenchCinematic();
+			return false;
+		}
+	}
+	const matrix_t restoreWorld =
+		XMLoadFloat4x4(&m_ActionWorkbenchCinematicRestoreWorld);
+	const float3_t scale(
+		XMVectorGetX(XMVector3Length(restoreWorld.r[0])),
+		XMVectorGetX(XMVector3Length(restoreWorld.r[1])),
+		XMVectorGetX(XMVector3Length(restoreWorld.r[2])));
+	const vector_t quaternion = XMQuaternionNormalize(
+		XMLoadFloat4(&sample.rotationQuaternion));
+	matrix_t world = XMMatrixRotationQuaternion(quaternion);
+	world.r[0] *= scale.x * sample.scaleMultiplier.x;
+	world.r[1] *= scale.y * sample.scaleMultiplier.y;
+	world.r[2] *= scale.z * sample.scaleMultiplier.z;
+	world.r[3] = XMVectorSet(
+		instance->position.x + sample.positionOffset.x,
+		instance->position.y + sample.positionOffset.y,
+		instance->position.z + sample.positionOffset.z,
+		1.f);
+	const shared_ptr<CTransform> transform = previewBoss->Get_Transform();
+	transform->Set_State(STATE::RIGHT, world.r[0]);
+	transform->Set_State(STATE::UP, world.r[1]);
+	transform->Set_State(STATE::LOOK, world.r[2]);
+	transform->Set_State(STATE::POSITION, world.r[3]);
+	/* The isolated source player renders the exact cinematic body, animation,
+	   attachments and effects.  The local Pattern clone remains only as the
+	   non-authoritative tracking root consumed by Stage camera cues. */
+	previewBoss->Set_CinematicPresentationSuppressed(
+		m_bActionWorkbenchCinematicSourcePlaying);
+	return true;
 }
+
+void CLevel_ValtanArena::Debug_StopActionWorkbenchCinematic()
+{
+	if (m_strActionWorkbenchCinematicPatternId.empty() &&
+		m_pActionWorkbenchCinematicBoss.expired() &&
+		!m_bActionWorkbenchCinematicRestoreValid &&
+		!m_bActionWorkbenchCinematicSourcePlaying)
+		return;
+	m_ActionWorkbenchCinematicPlayer.Stop_All(
+		SourceCinematicTargets(), true);
+	if (const shared_ptr<CValtan> boss =
+			m_pActionWorkbenchCinematicBoss.lock())
+	{
+		boss->Set_CinematicPresentationSuppressed(false);
+		if (m_bActionWorkbenchCinematicRestoreValid && boss->Get_Transform())
+		{
+			const matrix_t restore =
+				XMLoadFloat4x4(&m_ActionWorkbenchCinematicRestoreWorld);
+			boss->Get_Transform()->Set_State(STATE::RIGHT, restore.r[0]);
+			boss->Get_Transform()->Set_State(STATE::UP, restore.r[1]);
+			boss->Get_Transform()->Set_State(STATE::LOOK, restore.r[2]);
+			boss->Get_Transform()->Set_State(STATE::POSITION, restore.r[3]);
+		}
+	}
+	m_strActionWorkbenchCinematicPatternId.clear();
+	m_pActionWorkbenchCinematicBoss.reset();
+	m_bActionWorkbenchCinematicRestoreValid = false;
+	m_bActionWorkbenchCinematicSourcePlaying = false;
+}
+#endif
 
 bool_t CLevel_ValtanArena::Reload_PrimaryValtanPresentationAuthoring(
 	const LostArk::Shared::GameplayDataRevision& ExpectedRevision,
@@ -2824,7 +3070,7 @@ bool_t CLevel_ValtanArena::Debug_PrepareCompletePlayResources(
             staged.worldIds.emplace_back(std::string("world.sequence.instance.valtan.source-preview.") + suffix);
         };
         if (pattern.strPatternId == "VALTAN_ENTRANCE_CINEMATIC")
-            for (const char* suffix : {"entrance","entrance.colorless","entrance.actor64.body.0","entrance.actor64.weapon.0","entrance.actor64.weapon.1"}) addCinema(suffix);
+            for (const char* suffix : {"entrance","entrance.colorless"}) addCinema(suffix);
         else if (pattern.strPatternId == "VALTAN_TRASH") addCinema("trash");
         else if (pattern.strPatternId == "VALTAN_SIX_PIZZA_106") addCinema("roar");
         else if (pattern.strPatternId == "VALTAN_GHOST_DEATH_AUDITION") addCinema("finale");
@@ -2925,8 +3171,7 @@ void CLevel_ValtanArena::Ready_SourceCinematics()
         OutputDebugStringA(("[ValtanSourceCinema] " + m_strSourceCinematicPreparationStatus + "\n").c_str());
         return;
     }
-    constexpr std::array<const char*, 9> suffixes = { "entrance", "entrance.colorless", "entrance.actor64.body.0",
-        "entrance.actor64.weapon.0", "entrance.actor64.weapon.1", "trash", "roar", "finale", "phase2" };
+    constexpr std::array<const char*, 6> suffixes = { "entrance", "entrance.colorless", "trash", "roar", "finale", "phase2" };
     std::vector<std::string> effects;
     const auto& document = m_SourceCinematicPlayer.Get_Document();
     for (const char* suffix : suffixes)
@@ -3058,8 +3303,7 @@ bool_t CLevel_ValtanArena::Update_SourceCinematic(const VALTAN_CINEMATIC_CAMERA_
     }
     const auto targets = SourceCinematicTargets();
     const std::string prefix = "world.sequence.instance.valtan.source-preview.";
-    constexpr std::array<std::string_view, 4> entranceCompanions = { "entrance.colorless",
-        "entrance.actor64.body.0", "entrance.actor64.weapon.0", "entrance.actor64.weapon.1" };
+    constexpr std::array<std::string_view, 1> entranceCompanions = { "entrance.colorless" };
     const bool changed = selected != m_strSourceCinematic ||
         m_iSourceCinematicSequence != input.iPatternSequence || m_iSourceCinematicEntity != input.iNetEntityId;
     if (changed)

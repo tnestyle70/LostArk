@@ -3123,15 +3123,37 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	}
 	// Re-sample after this frame's typed Seek/Stop so model, environment and
 	// camera agree before Render. Always retire the camera override on handoff.
+	const auto valtanPreview = m_pAnimationTool ?
+		m_pAnimationTool->Get_ValtanCompositionPreviewState() :
+		CAnimation_Tool::COMPOSITION_PREVIEW_STATE{};
+	const bool activeValtanSession = m_pSequencerTool && m_pSequencerTool->Uses_ValtanSession() &&
+		m_bDeveloperToolsVisible && IsDebugToolVisible(DEBUG_TOOL::SEQUENCER) &&
+		m_pAnimationTool && valtanPreview.bPlaying;
+	if (auto* arena = CLevel_ValtanArena::Get_Active())
+	{
+		if (activeValtanSession)
+		{
+			std::string cinematicStatus;
+			if (!arena->Debug_SampleActionWorkbenchCinematic(
+				valtanPreview.strPatternId, valtanPreview.iPositionMs,
+				CAnimationTargetService::Resolve_Boss(), cinematicStatus) &&
+				!cinematicStatus.empty())
+				m_strToolStatus = std::move(cinematicStatus);
+		}
+		else arena->Debug_StopActionWorkbenchCinematic();
+	}
 	std::vector<BOSS_STAGE_ENVIRONMENT_SAMPLE> currentValtanSamples;
 	CValtan::Collect_StageEnvironmentSamples(currentValtanSamples);
 	if (m_pKoukuPresentationPlayer)
 		m_pKoukuPresentationPlayer->Update_BossStageEnvironments(currentValtanSamples);
+	/* Action Workbench owns a real camera-preview lane even when the standalone
+	   Camera Tool window has never been opened.  Lazily create its document/
+	   sampler owner on the first active Valtan preview; opening another tool is
+	   not a hidden prerequisite for camera playback. */
+	if (activeValtanSession && nullptr == m_pCameraTool)
+		m_pCameraTool = make_unique<CCameraTool>();
 	if (m_pCameraTool)
 	{
-		const bool activeValtanSession = m_pSequencerTool && m_pSequencerTool->Uses_ValtanSession() &&
-			m_bDeveloperToolsVisible && IsDebugToolVisible(DEBUG_TOOL::SEQUENCER) &&
-			m_pAnimationTool && m_pAnimationTool->Get_ValtanCompositionPreviewState().bPlaying;
 		const auto local = std::find_if(currentValtanSamples.begin(), currentValtanSamples.end(),
 			[](const auto& sample) { return sample.bPreview; });
 		if (activeValtanSession && local != currentValtanSamples.end())

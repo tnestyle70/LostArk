@@ -403,13 +403,17 @@ private:
 	bool_t Play_EffectivePreview(
 		const VALTAN_PATTERN_VIEW& Pattern,
 		std::string& status);
+	bool_t Play_ServerVerification(
+		const VALTAN_PATTERN_VIEW& Pattern,
+		std::string& status);
 	void Render_AnimationStageDetails(
 		const VALTAN_PATTERN_VIEW& Pattern,
 		const VALTAN_STAGE_VIEW& Stage,
 		bool_t bMutationAdmitted);
 	void Render_Preview(
 		const VALTAN_PATTERN_VIEW* pPattern,
-		bool_t bLocalPreviewAdmitted);
+		bool_t bLocalPreviewAdmitted,
+		bool_t bServerVerificationAdmitted);
 	void Render_Details(
 		const VALTAN_PATTERN_VIEW* pPattern,
 		const VALTAN_STAGE_VIEW* pStage,
@@ -480,7 +484,8 @@ private:
 		bool_t bPatternMutationAdmitted);
 	void Render_PreviewWindow(
 		const VALTAN_PATTERN_VIEW* pPattern,
-		bool_t bLocalPreviewAdmitted);
+		bool_t bLocalPreviewAdmitted,
+		bool_t bServerVerificationAdmitted);
 	void Render_SequencerWindow(
 		const VALTAN_PATTERN_VIEW* pPattern,
 		bool_t bLocalPreviewAdmitted,

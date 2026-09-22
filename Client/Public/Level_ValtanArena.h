@@ -58,7 +58,15 @@ public:
 	bool_t Is_CinematicCameraActive() const { return m_bCinematicCameraApplied; }
     const std::string& Get_SourceCinematicPreparationStatus() const { return m_strSourceCinematicPreparationStatus; }
     void Collect_SourceCinematicSubtitles(std::vector<WORLD_SEQUENCE_SUBTITLE_SAMPLE>& out) const
-    { m_SourceCinematicPlayer.Collect_Subtitles(out); }
+    {
+        m_SourceCinematicPlayer.Collect_Subtitles(out);
+#ifdef _DEBUG
+        /* Action Workbench owns a separate WorldSequencePlayer.  Its original
+           subtitle tracks must reach the same product subtitle renderer used
+           by Map Tool and Server source cinematics. */
+        m_ActionWorkbenchCinematicPlayer.Collect_Subtitles(out);
+#endif
+    }
 
 	// Product UI and editor commands share the level-owned typed controller.
 	CPlayerController& Get_DebugPlayerController() { return m_PlayerController; }
@@ -66,6 +74,15 @@ public:
 #ifdef _DEBUG
     bool_t Debug_DespawnValtanBoss(std::string& status);
     bool_t Debug_EnsureValtanBossForPlay(bool_t& ready, std::string& status, bool_t retryFailed = false);
+    /* Source-cinematic patterns replace the canonical-center local editing
+       clone with their authored actor track so the original world-space camera
+       remains editable against the moving subject. */
+    bool_t Debug_SampleActionWorkbenchCinematic(
+        std::string_view patternId,
+        uint32_t patternClockMs,
+        const shared_ptr<CValtan>& previewBoss,
+        std::string& status);
+    void Debug_StopActionWorkbenchCinematic();
     bool_t Has_DebugValtanBoss() const;
     bool_t Is_DebugValtanBossCommandPending() const { return m_bDebugValtanDespawnPending || m_iDebugValtanSpawnToken != 0u; }
     const std::string& Get_DebugValtanBossCommandStatus() const { return m_strDebugValtanBossCommandStatus; }
@@ -135,13 +152,13 @@ public:
 	{
 		return m_pPlayerCommandSink;
 	}
-	/* Local-only authoring placement. The caller receives a point beside the
-	   replicated local player, sampled against that player's Navigation when it
-	   is available. If the player presentation has not arrived yet, the primary
-	   replicated boss is the visible arena fallback. This never exposes or
-	   mutates either authoritative actor. */
+	/* Local-only authoring placement. Valtan pattern editing uses the same
+	   stable boss.valtan.center transform that the Server rebuilds for an
+	   authoritative audition.  The placement is read from Gameplay.world.json;
+	   it is never inferred from the local player or a transient replicated pose. */
 	bool_t Try_Get_AuthoringPreviewPlacement(
 		float3_t& OutPosition,
+		f32_t& fOutYawDegrees,
 		std::string& strOutSource) const;
 	/* Workbench authoring must reload the replicated primary Server consumer,
 	   not only the Development preview target. These wrappers keep the Level's
@@ -316,6 +333,14 @@ private:
     VALTAN_CINEMATIC_CAMERA_INPUT m_LastSourceCinematicInput{};
     VALTAN_CINEMATIC_CAMERA_INPUT m_SourceDeathInput{};
     weak_ptr<CValtan> m_pSourceCinematicBoss;
+#ifdef _DEBUG
+    CWorldSequencePlayer m_ActionWorkbenchCinematicPlayer;
+    std::string m_strActionWorkbenchCinematicPatternId;
+    weak_ptr<CValtan> m_pActionWorkbenchCinematicBoss;
+    float4x4_t m_ActionWorkbenchCinematicRestoreWorld{};
+    bool_t m_bActionWorkbenchCinematicRestoreValid = false;
+    bool_t m_bActionWorkbenchCinematicSourcePlaying = false;
+#endif
 	shared_ptr<CMapLightPresentationRuntime> m_pMapLightPresentation;
 	bool_t m_bMapLightSubmissionFailureReported = false;
 	shared_ptr<CCamera_Free> m_pCamera = { nullptr };

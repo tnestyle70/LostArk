@@ -334,6 +334,10 @@ public:
 		const VALTAN_PATTERN_VIEW& Pattern,
 		std::string& strOutStatus,
 		bool_t selectAuthoredPhasePresentation = false);
+	bool_t Is_LocalPatternAuthoringPreview() const
+	{
+		return !m_isServerAuthoritative && m_bLocalPatternAuthoringPreview;
+	}
 	/* Effect Tool-only combat-object clock. The staged Product topology is
 	   reused, but boss animation, Product cues, hit debug, and Effect V2 stage
 	   playback remain untouched so an independent world-root lifecycle can be
