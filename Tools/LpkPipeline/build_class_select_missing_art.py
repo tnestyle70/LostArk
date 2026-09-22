@@ -46,6 +46,13 @@ CATEGORY_CRESTS = [("HunterFemale", 30), ("DragonKnight", 38)]
 # EFTable_PC PrimaryKey -> folder, for the classes IconInfo puts on ClassSelectImg_once_0
 # (512 Devilhunter_Female, 612 DimensionMaster, 702 DragonKnight).
 ONCE_FOLDERS = {512: "Gunslinger", 612: "DimensionMaster", 702: "GuardianKnight"}
+# Folder -> the componentsv2 class_<n> frame whose identity export is that class's emblem.
+# The four older folders were cut at 0.71x..1.23x of their export instead of 1.00x, which is
+# why their emblems did not line up with each other and why the two that were scaled the
+# furthest (Artist down, DimensionMaster up) read as blurry. Re-cut at native size here; which
+# export each frame carries is read from componentsv2, not written down.
+IDENTITY_FRAMES = {"Warlord": 9, "Artist": 23, "LanceMaster": 25, "Gunslinger": 30,
+                   "Slayer": 32, "GuardianKnight": 38, "DimensionMaster": 41}
 
 BIG_CELL = (396, 374)
 BIG_COLUMNS = 2
@@ -310,6 +317,18 @@ def main() -> int:
             continue
         if cut_measured(page, cell, folder / "IllustrationSmall.png"):
             print("작은 초상화 재단: %s" % name)
+
+    # Every class's identity emblem at its export's own size, so the seven sit at one scale.
+    for name, frame in sorted(IDENTITY_FRAMES.items()):
+        folder = panel / name
+        if not folder.is_dir():
+            continue
+        export = emblems.get(frame)
+        if not export:
+            print("class_%d 에 emblem 바인딩 없음: %s" % (frame, name))
+            continue
+        if share.save(export, folder / "NameID.png"):
+            print("아이덴티티 문양 원본 크기로 재단: %-16s %s" % (name, export))
 
     for label, frame in CATEGORY_CRESTS:
         crest = crests.get(frame)
