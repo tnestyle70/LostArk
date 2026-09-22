@@ -64,7 +64,7 @@ def duration_ms(document) -> int:
         active = f32(timing['lifeTimeSeconds'])
         if recipe['enabled'] and recipe['emitterDurationSeconds'] > 0 and recipe['emitterLoopCount']:
             active = f32(f32(recipe['emitterDurationSeconds']) * recipe['emitterLoopCount'])
-        tail = 0 if element['kind'] == 'light' else f32(max(particle['lifeTimeSeconds']) * particle['sourceScale']['lifeTime'])
+        tail = 0 if element['kind'] == 'light' else f32(max(particle['lifeTimeSeconds']) * particle.get('sourceScale', {}).get('lifeTime', 1))
         end = f32(timing['startDelaySeconds'])
         for value in (recipe['emitterDelaySeconds'], active, timing['afterImageSeconds'], tail):
             end = f32(end + f32(value))

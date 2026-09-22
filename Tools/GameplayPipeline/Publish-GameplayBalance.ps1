@@ -442,7 +442,7 @@ function New-KoukuShowtimeTargetRows([object]$Pattern, [string]$EncounterId,
     $ids = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
     $rows = [Collections.Generic.List[string]]::new()
     foreach ($target in @($Pattern.showtimeTargets)) {
-        $randomKeys = @('randomVolleys','randomSpawnIntervalMs','randomArenaRadiusM','randomArenaHeightToleranceM')
+        $randomKeys = @('randomVolleys','randomSpawnIntervalMs','randomArenaRadiusM','randomArenaHeightToleranceM','randomAnchorKind','randomScaleMin','randomScaleMax')
         $hasRandom = @($randomKeys | Where-Object { $null -ne $target.PSObject.Properties[$_] }).Count
         if ($hasRandom -ne 0 -and $hasRandom -ne $randomKeys.Count) { throw 'Kouku random volleys require their pool, interval and arena bounds together.' }
         Assert-ExactProperties $target (@('occurrenceId','startMs','durationMs','fixedVisualId','trackingVisualId',
@@ -460,7 +460,7 @@ function New-KoukuShowtimeTargetRows([object]$Pattern, [string]$EncounterId,
             @($Pattern.logicWindows | Where-Object { $_.windowId -ceq $target.occurrenceId }).Count -ne 0 -or
             ([uint64]$target.startMs + [uint64]$target.durationMs) -gt $PatternDurationMs -or
             $target.followSpeedScale -lt .01 -or $target.followSpeedScale -gt 10 -or
-            (-not $target.fixedVisualId -and -not $target.trackingVisualId) -or
+            (-not $target.fixedVisualId -and -not $target.trackingVisualId -and -not $hasRandom) -or
             (-not $target.fixedVisualId -and $target.fixedLifetimeMs -ne 0)) {
             throw 'Kouku SHOWTIME target identity, window, selection or movement is invalid.'
         }
@@ -494,6 +494,11 @@ function New-KoukuShowtimeTargetRows([object]$Pattern, [string]$EncounterId,
                 $target.randomArenaHeightToleranceM -le 0 -or $target.randomArenaHeightToleranceM -gt 10) { throw 'Kouku random arena bounds are invalid.' }
             $radius = Format-InvariantFloat $target.randomArenaRadiusM 'Kouku random arena radius'
             $height = Format-InvariantFloat $target.randomArenaHeightToleranceM 'Kouku random arena height'
+            Assert-JsonNumber $target.randomScaleMin 'Kouku minimum scale'
+            Assert-JsonNumber $target.randomScaleMax 'Kouku maximum scale'
+            if ($target.randomAnchorKind -cnotin @('BOSS_SPAWN','BOSS') -or $target.randomScaleMin -lt .01 -or $target.randomScaleMax -gt 10 -or $target.randomScaleMax -lt $target.randomScaleMin) { throw 'Kouku random scale or anchor is invalid.' }
+            $minScale = Format-InvariantFloat $target.randomScaleMin 'Kouku minimum scale'
+            $maxScale = Format-InvariantFloat $target.randomScaleMax 'Kouku maximum scale'
             $ordinal = 0
             foreach ($volley in @($target.randomVolleys)) {
                 Assert-ExactProperties $volley (@('clientVisualId','lifetimeMs') + $(if ($null -ne $volley.PSObject.Properties['hits']) { @('hits') } else { @() })) 'Kouku random volley'
@@ -506,7 +511,7 @@ function New-KoukuShowtimeTargetRows([object]$Pattern, [string]$EncounterId,
                     throw 'Kouku random volley does not exact-join a finite fixed Client template.'
                 }
                 $rows.Add((@('PATTERNSHOWTIMERANDOM',$EncounterId,$Pattern.patternId,$target.occurrenceId,$ordinal,
-                    $volley.clientVisualId,$volley.lifetimeMs,$target.randomSpawnIntervalMs,$radius,$height) -join "`t"))
+                    $volley.clientVisualId,$volley.lifetimeMs,$target.randomSpawnIntervalMs,$radius,$height,$target.randomAnchorKind,$minScale,$maxScale) -join "`t"))
                 foreach ($hitRow in @(New-KoukuAttackHitRows $volley.hits $EncounterId $Pattern.patternId $target.occurrenceId 'RANDOM' $ordinal $volley.lifetimeMs)) { $rows.Add($hitRow) }
                 ++$ordinal
             }
@@ -4600,7 +4605,7 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 		$modes = @('NONE','POLYMORPH','MARIO','DANCE','MAZE')
 		$triggerHudMode = [Array]::IndexOf($modes, [string]$trigger.hudMode)
 		if (-not $triggerIds.Add([string]$trigger.triggerId) -or $triggerHudMode -lt 0 -or
-			$trigger.kind -cnotin @('REAL_GAZE_TELEPORT','BOSS_TELEPORT_FACE_CENTER','MARIO_PHASE2_PLAYERS','BOSS_TELEPORT_XZ','BOSS_TELEPORT_GROUNDED','BOSS_TRACK_TARGET','BINGO_BOARD','HUD_ENTER','CARD_MAZE_HIDE_NEXT','CARD_MAZE_ENTER','CARD_MAZE_STAGE_PLAYERS','ALBION_BLUE_CIRCLE','SUMMON_PATTERNS','ALBION_AIRBORNE') -or
+			$trigger.kind -cnotin @('REAL_GAZE_TELEPORT','BOSS_TELEPORT_FACE_CENTER','MARIO_PHASE2_PLAYERS','BOSS_TELEPORT_XZ','BOSS_TELEPORT_GROUNDED','BOSS_TRACK_TARGET','BINGO_BOARD','HUD_ENTER','CARD_RAIN_SOLDIERS','CARD_MAZE_HIDE_NEXT','CARD_MAZE_ENTER','CARD_MAZE_STAGE_PLAYERS','ALBION_BLUE_CIRCLE','SUMMON_PATTERNS','ALBION_AIRBORNE') -or
 			([uint64]$trigger.startMs + [uint64]$trigger.durationMs) -gt $koukuPatternDurationMs -or
 			$trigger.teleportPosition -isnot [Array] -or @($trigger.teleportPosition).Count -ne 3 -or
 			$trigger.clockHours -isnot [Array]) {
@@ -4609,9 +4614,9 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 		$position = @($trigger.teleportPosition)
 		foreach ($coordinate in $position) { Assert-JsonNumber $coordinate 'KoukuSaydon teleport coordinate' }
 		if ($trigger.kind -cin @('BOSS_TELEPORT_XZ','BOSS_TELEPORT_GROUNDED') -and @($position | Where-Object { [Math]::Abs([double]$_) -gt 100000 }).Count -ne 0) { throw 'Boss XZ teleport coordinates exceed the world bounds' }
-		if ($trigger.kind -cin @('CARD_MAZE_HIDE_NEXT','CARD_MAZE_ENTER','CARD_MAZE_STAGE_PLAYERS','BOSS_TELEPORT_FACE_CENTER','MARIO_PHASE2_PLAYERS','BOSS_TELEPORT_XZ','BOSS_TELEPORT_GROUNDED','BOSS_TRACK_TARGET','BINGO_BOARD') -and
+		if ($trigger.kind -cin @('CARD_RAIN_SOLDIERS','CARD_MAZE_HIDE_NEXT','CARD_MAZE_ENTER','CARD_MAZE_STAGE_PLAYERS','BOSS_TELEPORT_FACE_CENTER','MARIO_PHASE2_PLAYERS','BOSS_TELEPORT_XZ','BOSS_TELEPORT_GROUNDED','BOSS_TRACK_TARGET','BINGO_BOARD') -and
 			($triggerHudMode -ne 0 -or $trigger.faceCenterYawOffsetDegrees -ne 0 -or
-			 ($trigger.kind -cin @('CARD_MAZE_HIDE_NEXT','CARD_MAZE_STAGE_PLAYERS','BOSS_TRACK_TARGET','BINGO_BOARD') -and @($position | Where-Object { $_ -ne 0 }).Count -ne 0))) {
+			 ($trigger.kind -cin @('CARD_RAIN_SOLDIERS','CARD_MAZE_HIDE_NEXT','CARD_MAZE_STAGE_PLAYERS','BOSS_TRACK_TARGET','BINGO_BOARD') -and @($position | Where-Object { $_ -ne 0 }).Count -ne 0))) {
 			throw "KoukuSaydon card maze trigger carries unrelated values"
 		}
 		Assert-JsonInteger $trigger.countPerPlayer 'KoukuSaydon circles per player' 0 8

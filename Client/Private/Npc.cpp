@@ -856,6 +856,17 @@ void CNpc::Late_Update(f32_t fTimeDelta)
     if (m_bNativeBinaryBasePass)
     {
         CSkeletalAfterimage::SETTINGS settings;
+        if (m_BackstepAfterimageStyle)
+        {
+            // Action 4219951/stage004 TrailGhost: source 5ms samples, 500ms tail.
+            // White translucent exposure is requested authoring, not native rim ABI.
+            settings.sampleIntervalSeconds = .005f;
+            settings.sampleLifetimeSeconds = .5f;
+            settings.maxSamples = 64u;
+            settings.sourceColorIntensity = 1.f;
+            settings.capturePoseChanges = true;
+            settings.color = { 1.f, 1.f, 1.f, .38f };
+        }
         if (m_CounterAfterimageEnabled)
         {
             // Project-authored counter cue; the live native materials stay intact.
@@ -863,6 +874,7 @@ void CNpc::Late_Update(f32_t fTimeDelta)
             settings.sampleLifetimeSeconds = .16f;
             settings.maxSamples = 1u;
             settings.color = { .12f, .7f, 2.4f, .7f };
+            settings.sourceColorIntensity = 0.f;
         }
         (void)m_BodyAfterimage.Configure(settings);
         (void)m_WeaponAfterimage.Configure(settings);

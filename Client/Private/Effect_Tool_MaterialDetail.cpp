@@ -1052,7 +1052,7 @@ void Client::CEffect_Tool::Render_KindDetail(
 
 			ImGui::SeparatorText("Particle Lifetime and Shape");
 			if (DragFloat2("Particle Life Min/Max",
-			Detail.Particle.vLifeTimeSeconds, 0.01f, 0.001f, 30.f))
+			Detail.Particle.vLifeTimeSeconds, 0.01f, 0.001f, Element.SourceRecipe.bEnabled ? 120.f : 30.f))
 		{
             Detail.Particle.vLifeTimeSeconds.y = (std::max)(
                 Detail.Particle.vLifeTimeSeconds.x,

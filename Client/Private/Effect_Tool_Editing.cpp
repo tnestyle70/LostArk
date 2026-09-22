@@ -1253,6 +1253,7 @@ bool_t Client::CEffect_Tool::Try_DeleteSelectedElement()
     Staged.Elements.erase(NewEnd, Staged.Elements.end());
     // Keep selection and marks until the document/preview transaction succeeds.
     const auto previousIsolationIds = m_PreviewIsolationElementIds;
+    const auto previousIsolationFamily = m_ePreviewIsolationAuthoringFamily;
     std::erase_if(m_PreviewIsolationElementIds, [&](const auto& id) { return Targets.contains(id); });
 	const EFFECT_PREVIEW_FILTER ePreviousFilter = m_ePreviewFilter;
     if (!previousIsolationIds.empty() && m_PreviewIsolationElementIds.empty() &&
@@ -1264,6 +1265,16 @@ bool_t Client::CEffect_Tool::Try_DeleteSelectedElement()
 		m_strPreviewIsolationElementId;
 	const std::string strPreviousIsolationGroup =
 		m_strPreviewIsolationGroupId;
+    // The last member of a family can be deleted while its Solo filter is set.
+    // Do not send an empty filtered document to the preview transaction.
+    if (m_ePreviewFilter == EFFECT_PREVIEW_FILTER::SOLO_AUTHORING_FAMILY &&
+        std::none_of(Staged.Elements.begin(), Staged.Elements.end(),
+            [this](const EFFECT_ELEMENT_DESC& element)
+            { return Resolve_AuthoringFamily(element) == m_ePreviewIsolationAuthoringFamily; }))
+    {
+        m_ePreviewFilter = EFFECT_PREVIEW_FILTER::COMPLETE;
+        m_ePreviewIsolationAuthoringFamily = EFFECT_AUTHORING_FAMILY::END;
+    }
 	if (!m_strPreviewIsolationElementId.empty() &&
 		std::none_of(Staged.Elements.begin(), Staged.Elements.end(),
 			[this](const EFFECT_ELEMENT_DESC& Element)
@@ -1300,6 +1311,7 @@ bool_t Client::CEffect_Tool::Try_DeleteSelectedElement()
 		m_strPreviewIsolationElementId = strPreviousIsolationElement;
 		m_strPreviewIsolationGroupId = strPreviousIsolationGroup;
         m_PreviewIsolationElementIds = previousIsolationIds;
+        m_ePreviewIsolationAuthoringFamily = previousIsolationFamily;
         return false;
 	}
     m_MarkedElementIds.clear();
@@ -3231,7 +3243,12 @@ bool_t Client::CEffect_Tool::Try_CommitDocument(
             DrawableError;
         return true;
     }
-    if (!Stage_WorldPreview(Staged))
+    // Open is CPU-only. Editing that document must not require a preview model,
+    // source bones, or GPU resources until the user explicitly starts playback.
+    // A live preview still stages before commit and preserves the old state on failure.
+    const bool_t bRefreshPreview = m_bPreviewVisibleRequested ||
+        (m_pAuthoringSequencer && m_pAuthoringSequencer->Is_Active());
+    if (bRefreshPreview && !Stage_WorldPreview(Staged))
     {
         m_strElementStatus =
             "Change rejected; active Document and preview were preserved: " +
@@ -3244,6 +3261,9 @@ bool_t Client::CEffect_Tool::Try_CommitDocument(
     m_bDocumentDirty = true;
     m_bActiveDocumentMatchesRuntime = false;
     Recalculate_PreviewDuration();
+    if (!bRefreshPreview)
+        m_strPreviewStatus =
+            "Document edit committed; preview resources are deferred until Play.";
     return true;
 }
 

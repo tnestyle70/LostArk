@@ -221,7 +221,8 @@ bool CCharacterModelWorkbench::Refresh()
                     ACTION action = base; action.modeSlot = static_cast<uint32_t>(index);
                     action.id = "character." + action.asset + "." + action.mode + "." + std::to_string(index);
                     static const char* slots[] = {"Q", "W", "E", "R"};
-                    action.label = (action.mode == "MAZE" ? "LMB / Q" : slots[(std::min)(index, size_t{3u})]) + std::string(" | ") + Text(skills[index], "clip");
+                    const char* input = action.mode == "MAZE" ? (index == 0u ? "Q" : "LMB") : slots[(std::min)(index, size_t{3u})];
+                    action.label = input + std::string(" | ") + Text(skills[index], "clip");
                     actions.push_back(std::move(action));
                 }
             }

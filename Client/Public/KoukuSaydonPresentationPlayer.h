@@ -323,6 +323,7 @@ private:
         LostArk::Shared::GameplayDataRevision pinnedRevision{};
         std::uint32_t spawnTick = 0u, serverTick = 0u;
         double elapsedMs = 0.0;
+        float uniformScale = 1.f;
         std::uint64_t cycle = 0u;
         float4x4_t root{};
         bool finished = false;
@@ -417,6 +418,16 @@ private:
     void Sync_MazeMark(CARD& mark, const std::string& asset, const float4x4_t& pivot);
     void Update_FearPresentation(float dt, const std::vector<KOUKU_CARD_PRESENTATION_VIEW>& players);
     void Update_MazeMarks(const std::vector<KOUKU_CARD_PRESENTATION_VIEW>& players);
+    struct DICE_BIND_VISUAL final
+    {
+        SESSION session;
+        KOUKU_SAYDON_COMPOSITION_DOCUMENT document;
+        KOUKU_SAYDON_COMPOSITION_PATTERN pattern;
+        std::uint32_t endTick = 0u;
+        float clockMs = 0.f;
+        bool releasing = false;
+    };
+    void Update_DiceBindVisuals(float dt, const std::vector<KOUKU_CARD_PRESENTATION_VIEW>& players);
     void Sample(SESSION& session, const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
         const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern, float clockMs, bool paused,
         const float4x4_t& pivot, const std::shared_ptr<Engine::CModel>& model,
@@ -461,6 +472,7 @@ private:
     std::map<std::uint32_t, SESSION> m_ChildBossSessions;
     std::map<std::uint32_t, SESSION> m_MarioEntrySessions;
     std::map<std::uint32_t, CARD> m_Cards;
+    std::map<std::uint32_t, DICE_BIND_VISUAL> m_DiceBindVisuals;
     std::map<std::uint32_t, CARD> m_MazeExits;
     std::map<std::uint32_t, CARD> m_MazePlayerMarks;
     std::map<std::uint32_t, CARD> m_MazeTargetMarks;

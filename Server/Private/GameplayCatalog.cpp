@@ -3422,9 +3422,10 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 					std::abs(trigger.fTeleportY) > 100000.f || std::abs(trigger.fTeleportZ) > 100000.f)
 				{ m_strStatus = "Boss XZ teleport carries invalid coordinates or unrelated values"; return false; }
 			}
-			else if (fields[4] == "CARD_MAZE_HIDE_NEXT" || fields[4] == "CARD_MAZE_ENTER" || fields[4] == "CARD_MAZE_STAGE_PLAYERS")
+			else if (fields[4] == "CARD_RAIN_SOLDIERS" || fields[4] == "CARD_MAZE_HIDE_NEXT" || fields[4] == "CARD_MAZE_ENTER" || fields[4] == "CARD_MAZE_STAGE_PLAYERS")
 			{
-				trigger.eKind = fields[4] == "CARD_MAZE_STAGE_PLAYERS" ? BOSS_PATTERN_MECHANIC_TRIGGER_KIND::CARD_MAZE_STAGE_PLAYERS :
+				trigger.eKind = fields[4] == "CARD_RAIN_SOLDIERS" ? BOSS_PATTERN_MECHANIC_TRIGGER_KIND::CARD_RAIN_SOLDIERS :
+					fields[4] == "CARD_MAZE_STAGE_PLAYERS" ? BOSS_PATTERN_MECHANIC_TRIGGER_KIND::CARD_MAZE_STAGE_PLAYERS :
 					fields[4] == "CARD_MAZE_HIDE_NEXT" ? BOSS_PATTERN_MECHANIC_TRIGGER_KIND::CARD_MAZE_HIDE_NEXT : BOSS_PATTERN_MECHANIC_TRIGGER_KIND::CARD_MAZE_ENTER;
 				if (mode != 0u || fields[11] != "-" || fields[12] != "0" || fields[13] != "0" || fields[14] != "0" ||
 					trigger.fFaceCenterYawOffsetDegrees != 0.f ||
@@ -3561,7 +3562,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			if (fields.size() != 11u || !IsStableId(fields[1]) || !IsStableId(fields[2]) || !IsStableId(fields[3]) ||
 				!ParseNumber(fields[4], trigger.iStartMs) || !ParseNumber(fields[5], trigger.iDurationMs) ||
 				trigger.iDurationMs == 0u || trigger.iDurationMs > 600000u ||
-				(fields[6] != "-" && !IsStableId(fields[6])) || (fields[7] != "-" && !IsStableId(fields[7])) || fields[6] == fields[7] ||
+				(fields[6] != "-" && !IsStableId(fields[6])) || (fields[7] != "-" && !IsStableId(fields[7])) || (fields[6] != "-" && fields[6] == fields[7]) ||
 				!ParseNumber(fields[8], trigger.iFixedLifetimeMs) || (fields[6] == "-") != (trigger.iFixedLifetimeMs == 0u) || trigger.iFixedLifetimeMs > 600000u ||
 				!ParseNumber(fields[9], trigger.iSpawnIntervalMs) || trigger.iSpawnIntervalMs == 0u || trigger.iSpawnIntervalMs > 600000u ||
 				!ParseNumber(fields[10], trigger.fFollowSpeedScale) || !std::isfinite(trigger.fFollowSpeedScale) ||
@@ -3585,14 +3586,22 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 		{
 			BOSS_SHOWTIME_RANDOM_VOLLEY volley;
 			std::uint32_t ordinal = 0u, interval = 0u;
-			float radius = 0.f, height = 0.f;
-			if (fields.size() != 10u || !IsStableId(fields[1]) || !IsStableId(fields[2]) || !IsStableId(fields[3]) ||
+			float radius = 0.f, height = 0.f, minScale = 1.f, maxScale = 1.f;
+			std::string anchor = "BOSS_SPAWN";
+			if ((fields.size() != 10u && fields.size() != 13u) || !IsStableId(fields[1]) || !IsStableId(fields[2]) || !IsStableId(fields[3]) ||
 				!ParseNumber(fields[4], ordinal) || ordinal >= 32u || !IsStableId(fields[5]) ||
 				!ParseNumber(fields[6], volley.iLifetimeMs) || volley.iLifetimeMs == 0u || volley.iLifetimeMs > 600000u ||
 				!ParseNumber(fields[7], interval) || interval == 0u || interval > 600000u ||
 				!ParseNumber(fields[8], radius) || !std::isfinite(radius) || radius <= 0.f || radius > 1000.f ||
 				!ParseNumber(fields[9], height) || !std::isfinite(height) || height <= 0.f || height > 10.f)
 			{ m_strStatus = "Showtime random volley row is invalid"; return false; }
+            if (fields.size() == 13u)
+            {
+                anchor = fields[10];
+                if ((anchor != "BOSS_SPAWN" && anchor != "BOSS") || !ParseNumber(fields[11], minScale) || !ParseNumber(fields[12], maxScale) ||
+                    !std::isfinite(minScale) || !std::isfinite(maxScale) || minScale < .01f || maxScale > 10.f || maxScale < minScale)
+                { m_strStatus = "Showtime random anchor or scale is invalid"; return false; }
+            }
 			const auto owners = m_BossPatterns.find(std::string(fields[1]));
 			if (owners == m_BossPatterns.end())
 			{ m_strStatus = "Showtime random volley encounter is missing"; return false; }
@@ -3604,10 +3613,12 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 				[&](const auto& row) { return row.strTriggerId == fields[3]; });
 			if (trigger == pattern->MechanicTriggers.end() || trigger->eKind != BOSS_PATTERN_MECHANIC_TRIGGER_KIND::SHOWTIME_PLAYER_TARGETS ||
 				trigger->RandomVolleys.size() != ordinal || (!trigger->RandomVolleys.empty() &&
-				(trigger->iRandomSpawnIntervalMs != interval || trigger->fRandomArenaRadiusM != radius || trigger->fRandomArenaHeightToleranceM != height)))
+				(trigger->iRandomSpawnIntervalMs != interval || trigger->fRandomArenaRadiusM != radius || trigger->fRandomArenaHeightToleranceM != height ||
+                 trigger->strRandomAnchorKind != anchor || trigger->fRandomScaleMin != minScale || trigger->fRandomScaleMax != maxScale)))
 			{ m_strStatus = "Showtime random volley owner, order or repeated settings do not match"; return false; }
 			volley.strClientVisualId = fields[5];
 			trigger->iRandomSpawnIntervalMs = interval; trigger->fRandomArenaRadiusM = radius; trigger->fRandomArenaHeightToleranceM = height;
+			trigger->strRandomAnchorKind = anchor; trigger->fRandomScaleMin = minScale; trigger->fRandomScaleMax = maxScale;
 			trigger->RandomVolleys.push_back(std::move(volley));
 		}
 		else if (!fields.empty() && "PATTERNATTACKHIT" == fields[0])

@@ -809,7 +809,8 @@ namespace LostArk::Server
 		PURSUIT_PROJECTILES,
 		BINGO_BOARD,
 		BOSS_TELEPORT_GROUNDED,
-		CARD_MAZE_STAGE_PLAYERS
+		CARD_MAZE_STAGE_PLAYERS,
+		CARD_RAIN_SOLDIERS
 	};
 
 	enum class ALBION_AIRBORNE_PHASE : std::uint8_t
@@ -870,6 +871,8 @@ namespace LostArk::Server
 		std::vector<LostArk::Shared::ATTACK_HIT_TEMPLATE> FixedHits, TrackingHits, ProjectileHits;
 		std::uint32_t iRandomSpawnIntervalMs = 0u;
 		float fRandomArenaRadiusM = 0.f, fRandomArenaHeightToleranceM = 0.f;
+		std::string strRandomAnchorKind = "BOSS_SPAWN";
+		float fRandomScaleMin = 1.f, fRandomScaleMax = 1.f;
 		ALBION_AIRBORNE_PHASE eAirbornePhase = ALBION_AIRBORNE_PHASE::NONE;
 		float fAirborneHeightM = 0.f;
 		std::uint32_t iAirborneDurationMs = 0u;

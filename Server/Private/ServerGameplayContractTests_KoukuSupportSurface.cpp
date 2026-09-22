@@ -1018,6 +1018,28 @@ REGION "blocked" "closed" 0 1
 		tests.Require(randomObjects().size() == 3u && randomObjects().back().strClientVisualId == "test.random.b" &&
 			showtimeLedger.PlayerTargetWindows.front().iNextRandomTick == 9105u,
 			"Restoring navigable ground retries the unconsumed ordered volley once on the next tick");
+        beginRandom(1u, 9500u, 2000u);
+        auto& rain = showtime.MechanicTriggers.front();
+        rain.strFixedVisualId.clear(); rain.strTrackingVisualId.clear(); rain.iFixedLifetimeMs = 0u;
+        rain.strRandomAnchorKind = "BOSS"; rain.fRandomScaleMin = 1.f; rain.fRandomScaleMax = 2.f;
+        rain.fRandomArenaRadiusM = .5f;
+        ATTACK_HIT_TEMPLATE cardHit; cardHit.strHitId = "cardrain.impact"; cardHit.iAtMs = 1650u;
+        for (auto& volley : rain.RandomVolleys) volley.Hits = {cardHit};
+        albionOwner.fPositionX = 12.f; albionOwner.fYawDegrees = 37.f;
+        CKoukuSaydonLogicRuntime::Build(showtime, albionOwner, 9500u, showtimeLedger);
+        updateTargets(9500u); updateTargets(9515u);
+        auto rainObjects = randomObjects();
+        bool rainValid = rainObjects.size() == 2u && countTargetObjects(true) == 0u && albionOwner.fYawDegrees == 37.f;
+        for (const auto& object : rainObjects)
+        {
+            const auto& pose = object.LiveState.CurrentPose;
+            rainValid = rainValid && std::hypot(pose.fPositionX - 12.f, pose.fPositionZ - 8.f) <= .5001f &&
+                room->m_ServerNavigation.Is_PointWalkableExact(pose.fPositionX, pose.fPositionZ) &&
+                object.fUniformScale >= 1.f && object.fUniformScale <= 2.f && object.Hits.size() == 1u;
+        }
+        tests.Require(rainValid, "Card rain owns one nav-projected random object per interval around current Saydon with scale 1..2 and no target-facing mutation");
+        tests.Require(rainObjects.size() == 2u && rainObjects[0].fUniformScale != rainObjects[1].fUniformScale,
+            "Card rain scale changes deterministically between independently spawned groups");
 		beginRandom(2u, 10000u, 2000u);
 		auto secondWindow = showtime.MechanicTriggers.front(); secondWindow.strTriggerId += ".second"; secondWindow.iStartMs = 250u; secondWindow.iDurationMs = 1500u;
 		showtime.MechanicTriggers.push_back(secondWindow); CKoukuSaydonLogicRuntime::Build(showtime, albionOwner, 10000u, showtimeLedger);

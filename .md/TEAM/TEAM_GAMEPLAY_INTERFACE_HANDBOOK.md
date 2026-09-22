@@ -1883,3 +1883,16 @@ VehicleCatalog formatVersion 4는 optional ambientEffectCues(MOUNT_END), mountEf
 Effect 저작 문서의 optional ownerControls는 재질·로컬 방향광·일시 가시성을 저장한다. Effect Tool과 component assembly 변환은 같은 배열과 stable control ID를 보존하고, 제어만 있는 문서도 기존 Effect playback clock으로 재생한다. 범용 저장·원복 규칙은 [렌더링·이펙트 복원 V2](../GB/렌더링이펙트복원V2.md)의 OwnerControls 항목을 따른다.
 
 `CEffectObject`는 weak Character owner와 effect occurrence token, 제품 action-start identity를 전달한다. `CCharacter`는 활성 key sample만 적용하며 취소·숨김·실패·owner 변경·종료 때 해당 token을 해제한다. 재질은 제어 전 실제 CModel 값을 복원하고 일시 visibility flag는 기존 stance/장비 상태와 분리한다. 서로 다른 occurrence나 사용자 재질 변경을 전체 Clear로 지우지 않는다. UI는 이 기존 경계로만 제어를 제출하며 Shared/Server gameplay state나 판정 권위를 추가하지 않는다.
+
+### Ctrl 핑 표시 입력
+
+`CPlayerController`는 Ctrl 새 press부터 다음 물리 좌클릭 한 번을 로컬 핑으로 소비한다. Ctrl 해제·다른 키/우클릭·UI/focus/capture 차단은 대기를 취소한다. 대기 과녁은 실제 캐릭터 머리를 따라가고, 핑은 기존 피킹 XZ와 Character navigation 높이에 3초 표시한다. 기존 `CClickMoveEffect -> CEffectPresentationService`의 준비·수명 경계를 재사용한다. 이 표시에는 이동·공격·MAZE command나 party broadcast가 없으며 Ctrl+Z/X/C Esther 명령은 기존 typed sink를 사용한다.
+
+
+### 쿠크 카드비·관문 음악 소비 계약
+
+SHOWTIME_PLAYER_TARGETS의 random volley는 fixed/tracking template 없이 단독으로 사용할 수 있다. 기존4개 random 필드는 함께 저장하며 optional `randomAnchorKind`는 `BOSS_SPAWN`(기본값) 또는 현재 `BOSS`, `randomScaleMin/Max`는 기본1과 finite[.01,10]의정렬된범위를 사용한다. Action Workbench가 저장·표시하고 projector→Gameplay publisher→Server가 동일 값으로 소비한다. Server가 navigation에서 확정한 occurrence scale은 Shared protocol103의 S2C_COMBAT_OBJECT_SPAWNED에 불변값으로 포함되며 Client 재시도·late join과 타격 primitive에 동일하게 적용한다. UI가 scale·위치를 독립 추첨하지 않는다.
+
+`CARD_RAIN_SOLDIERS`는 추가 매개변수가 없는 typed trigger다. 기존 MonsterCatalog/CardMaze profile의 CLUB·HEART·DIAMOND를 Server Spawn_Monster에서 생성하며 maze 진행 상태에는 등록하지 않는다. owner 패턴/sequence 종료·owner 제거 및30초상한에 정리된다. 원본NPC 모델 대응과 프로젝트 수량·수명 조정은 대응RESULT에 기록한다.
+
+쿠크 Level의 단일 BGM owner가 Ready Terrace·GATE1/2/3·Mario1~4·Card Maze·Bingo를 승인된 player/raid 상태에서 선택한다. 시퀀스와컷씬/카메라 재생 중에는 BGM을 중지하고 같은 state의 반복 snapshot은 음악을 재시작하지 않는다. 원본 intro/loop 구간은 WAV smpl metadata를 소비한다. cue sound는 기존 pattern presentation 경로를 사용한다.

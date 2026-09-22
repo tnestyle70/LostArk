@@ -141,6 +141,8 @@ namespace Client
 		std::uint32_t iRandomSpawnIntervalMs = 0u;
 		double fRandomArenaRadiusM = 0.0;
 		double fRandomArenaHeightToleranceM = 0.0;
+		std::string strRandomAnchorKind = "BOSS_SPAWN";
+		double fRandomScaleMin = 1.0, fRandomScaleMax = 1.0;
 		// Ordered front/back/left/right choices; the Server owns the actual selection.
 		std::vector<std::string> DirectionPatternIds;
 		std::string strCloneEndStageId;

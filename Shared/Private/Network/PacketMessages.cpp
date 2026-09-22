@@ -1586,6 +1586,7 @@ bool LostArk::Shared::Write_Message(
 		!std::isfinite(spawned.fPositionY) ||
 		!std::isfinite(spawned.fPositionZ) ||
 		!std::isfinite(spawned.fYawDegrees) ||
+		!std::isfinite(spawned.fUniformScale) || spawned.fUniformScale < .01f || spawned.fUniformScale > 10.f ||
 		!spawned.PinnedDefinitionRevision.Is_Valid())
 	{
 		return false;
@@ -1608,6 +1609,7 @@ bool LostArk::Shared::Write_Message(
 	writer.Write_F32(spawned.fPositionY);
 	writer.Write_F32(spawned.fPositionZ);
 	writer.Write_F32(spawned.fYawDegrees);
+	writer.Write_F32(spawned.fUniformScale);
 	return Write_GameplayDataRevision(
 		writer, spawned.PinnedDefinitionRevision);
 }
@@ -1631,6 +1633,7 @@ bool LostArk::Shared::Read_Message(
 		!reader.Read_F32(decoded.fPositionY) ||
 		!reader.Read_F32(decoded.fPositionZ) ||
 		!reader.Read_F32(decoded.fYawDegrees) ||
+		!reader.Read_F32(decoded.fUniformScale) ||
 		!Read_GameplayDataRevision(
 			reader, decoded.PinnedDefinitionRevision) ||
 		INVALID_COMBAT_OBJECT_ID == decoded.iCombatObjectId ||
@@ -1644,6 +1647,7 @@ bool LostArk::Shared::Read_Message(
 		!std::isfinite(decoded.fPositionY) ||
 		!std::isfinite(decoded.fPositionZ) ||
 		!std::isfinite(decoded.fYawDegrees) ||
+		!std::isfinite(decoded.fUniformScale) || decoded.fUniformScale < .01f || decoded.fUniformScale > 10.f ||
 		!decoded.PinnedDefinitionRevision.Is_Valid())
 	{
 		return false;

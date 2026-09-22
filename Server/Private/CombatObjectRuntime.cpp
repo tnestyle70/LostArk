@@ -1273,6 +1273,7 @@ LostArk::Server::CCombatObjectRuntime::To_SpawnedMessage(
 	message.fPositionY = object.LiveState.CurrentPose.fPositionY;
 	message.fPositionZ = object.LiveState.CurrentPose.fPositionZ;
 	message.fYawDegrees = object.LiveState.CurrentPose.fYawDegrees;
+	message.fUniformScale = object.fUniformScale;
 	message.PinnedDefinitionRevision = object.PinnedDefinitionRevision;
 	return message;
 }

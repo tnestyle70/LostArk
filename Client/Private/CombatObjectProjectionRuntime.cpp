@@ -54,6 +54,7 @@ bool_t Client::CCombatObjectProjectionRuntime::Stage_Spawn(
 		!std::isfinite(message.fPositionY) ||
 		!std::isfinite(message.fPositionZ) ||
 		!std::isfinite(message.fYawDegrees) ||
+		!std::isfinite(message.fUniformScale) || message.fUniformScale < .01f || message.fUniformScale > 10.f ||
 		!message.PinnedDefinitionRevision.Is_Valid())
 	{
 		outStatus = "Combat-object spawn is malformed";
@@ -71,6 +72,7 @@ bool_t Client::CCombatObjectProjectionRuntime::Stage_Spawn(
 			record.strCombatObjectArchetypeId ==
 				message.strCombatObjectArchetypeId &&
 			record.strClientVisualId == message.strClientVisualId &&
+			record.fUniformScale == message.fUniformScale &&
 			record.Snapshot.fPositionX == message.fPositionX &&
 			record.Snapshot.fPositionY == message.fPositionY &&
 			record.Snapshot.fPositionZ == message.fPositionZ &&
@@ -95,6 +97,7 @@ bool_t Client::CCombatObjectProjectionRuntime::Stage_Spawn(
 	outRecord.strCombatObjectArchetypeId =
 		message.strCombatObjectArchetypeId;
 	outRecord.strClientVisualId = message.strClientVisualId;
+	outRecord.fUniformScale = message.fUniformScale;
 	outRecord.Snapshot.iCombatObjectId = message.iCombatObjectId;
 	outRecord.Snapshot.iSourceNetEntityId = message.iSourceNetEntityId;
 	outRecord.Snapshot.fPositionX = message.fPositionX;

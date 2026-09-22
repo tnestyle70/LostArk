@@ -51,6 +51,7 @@ struct COMBAT_OBJECT_PROJECTION_RECORD final
 	uint8_t iPresentationAttemptCount = 0u;
 	std::string strCombatObjectArchetypeId;
 	std::string strClientVisualId;
+	float fUniformScale = 1.f;
 	LostArk::Shared::COMBAT_OBJECT_SNAPSHOT Snapshot{};
 	COMBAT_OBJECT_PRESENTATION_HANDLE PresentationHandle;
 };
@@ -134,6 +135,7 @@ public:
 				retry.fPositionY = objects[index].fPositionY;
 				retry.fPositionZ = objects[index].fPositionZ;
 				retry.fYawDegrees = objects[index].fYawDegrees;
+				retry.fUniformScale = record->second.fUniformScale;
 				retry.PinnedDefinitionRevision =
 					record->second.Snapshot.PinnedDefinitionRevision;
 				std::string retryStatus;

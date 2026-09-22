@@ -10,7 +10,9 @@
     "kouku.gate3.intro.fade.black",
     "kouku.gate1.authored.p4.popup.transition.fade",
     "bingo.hammer.warning.arrow",
-    "kouku.bingo.encore.fade.black"
+    "kouku.bingo.encore.fade.black",
+    "boss.kouku.dj.cardrain",
+    "boss.kouku.dj.delivery"
   ],
   "groups": [
     "cardmaze.mark.heart",

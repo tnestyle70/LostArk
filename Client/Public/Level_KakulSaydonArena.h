@@ -773,16 +773,16 @@ private:
 	void Show_MvpResult(bool_t bReplayLast);
 	std::uint32_t m_iNextGateRequestSequence = 1u;
 	// Attempt once on each playback edge; missing media never retries every frame.
-	bool_t m_bReadyTerraceBgmInitialized = false;
-	bool_t m_bReadyTerraceBgmWanted = false;
+	bool_t m_bRaidBgmInitialized = false;
+	std::wstring m_strRaidBgmWanted;
 	bool_t m_bLocalSequencePlaybackActive = false;
-	bool_t m_bReadyTerraceBgmStarted = false;
+	bool_t m_bRaidBgmStarted = false;
 	std::uint32_t m_iReadyTerraceObservedRunEpoch = 0u;
 	LostArk::Shared::KOUKUSAYDON_RAID_PHASE m_eReadyTerraceObservedPhase = LostArk::Shared::KOUKUSAYDON_RAID_PHASE::INACTIVE;
 	bool_t Try_GetReplicatedLocalPlayerPosition(float3_t& outPosition) const;
-	void Start_ReadyTerraceBgm();
-	void Stop_ReadyTerraceBgm();
-	void Update_ReadyTerraceBgm();
+	void Start_RaidBgm(const wchar_t* assetId);
+	void Stop_RaidBgm();
+	void Update_RaidBgm();
 	void Update_GateProgress(f32_t fTimeDelta);
 	void Apply_GateProgressState(const LostArk::Shared::S2C_GATE_PROGRESS_STATE& State);
 	/* Both Server gate routes share the same object / lighting commit. Active Raid

@@ -4,6 +4,7 @@
 #include "CombatHUDViewModel.h"
 #include "GameInstance.h"
 #include "Transform.h"
+#include "WorldPlayerNameplateView.h"
 
 #include <cmath>
 
@@ -12,6 +13,9 @@ namespace
 	constexpr const char* CLICK_EFFECT_ID = "effect.world.mouse_click";
 	constexpr const char* DESTINATION_EFFECT_ID = "effect.world.move_destination";
 	constexpr f32_t CLICK_DURATION_SECONDS = 1.2f;
+	constexpr const char* PING_EFFECT_ID = "effect.world.ping";
+	constexpr const char* PENDING_EFFECT_ID = "effect.world.target_reticle";
+	constexpr f32_t PING_DURATION_SECONDS = 3.f;
 }
 
 bool_t Client::CClickMoveEffect::Uses_LevelMarkers(const LEVEL level)
@@ -27,7 +31,7 @@ std::vector<std::string> Client::CClickMoveEffect::Queue_LevelResources(const LE
 	if (!Uses_LevelMarkers(level)) return accepted;
 	// Register each optional decoration independently: one missing asset must
 	// neither hide the other nor fail the playable Level's admission.
-	for (const char* id : { CLICK_EFFECT_ID, DESTINATION_EFFECT_ID })
+	for (const char* id : { CLICK_EFFECT_ID, DESTINATION_EFFECT_ID, PING_EFFECT_ID, PENDING_EFFECT_ID })
 	{
 		if (id == DESTINATION_EFFECT_ID &&
 			LEVEL::KAKULSAYDON_ARENA != level && LEVEL::VALTAN_ARENA != level)
@@ -99,16 +103,69 @@ void Client::CClickMoveEffect::Play(const float3_t& worldPosition,
 		Report_Failure(status);
 }
 
+bool_t Client::CClickMoveEffect::Spawn_Marker(const char* effectId,
+	const char* placementId, const float3_t& position,
+	EFFECT_WORLD_ROOT_HANDLE& handle, const bool_t sustained)
+{
+	if (!std::isfinite(position.x) || !std::isfinite(position.y) || !std::isfinite(position.z))
+		return false;
+	EFFECT_LEVEL_PLACEMENT_SPAWN_DESC desc;
+	desc.iLevelIndex = m_iLevelIndex;
+	desc.strPlacementId = placementId;
+	desc.strEffectAssetId = effectId;
+	desc.bOwnerSustainedSourceLoops = sustained;
+	XMStoreFloat4x4(&desc.RootWorld, XMMatrixTranslation(position.x, position.y, position.z));
+	EFFECT_WORLD_ROOT_HANDLE staged;
+	std::string status;
+	if (!CEffectPresentationService::Spawn_LevelPlacement(desc, staged, status))
+	{
+		Report_Failure(status);
+		return false;
+	}
+	CEffectPresentationService::Stop_WorldRoot(handle);
+	handle = staged;
+	return true;
+}
+
+void Client::CClickMoveEffect::Play_Ping(const float3_t& worldPosition,
+	const shared_ptr<CCharacter>& character)
+{
+	if (!character || CGameInstance::Get().Get_CurrentLevelID() != m_iLevelIndex) return;
+	const float3_t position{ worldPosition.x, worldPosition.y + 0.035f, worldPosition.z };
+	if (Spawn_Marker(PING_EFFECT_ID, "player.ping", position, m_PingHandle))
+	{
+		m_pCharacter = character;
+		m_fPingSeconds = 0.f;
+	}
+}
+
+void Client::CClickMoveEffect::Set_PingPending(const bool_t pending,
+	const shared_ptr<CCharacter>& character)
+{
+	m_bPingPending = pending && character != nullptr;
+	if (m_bPingPending) m_pCharacter = character;
+	else
+	{
+		CEffectPresentationService::Stop_WorldRoot(m_PendingHandle);
+		m_PendingHandle = {};
+	}
+}
+
 void Client::CClickMoveEffect::Clear()
 {
 	CEffectPresentationService::Stop_WorldRoot(m_ClickHandle);
 	m_ClickHandle = {};
+	CEffectPresentationService::Stop_WorldRoot(m_PingHandle);
+	CEffectPresentationService::Stop_WorldRoot(m_PendingHandle);
+	m_PingHandle = {};
+	m_PendingHandle = {};
+	m_bPingPending = false;
 	m_pCharacter.reset();
 }
 
 void Client::CClickMoveEffect::Late_Update(const f32_t fTimeDelta)
 {
-	if (!m_ClickHandle.Is_Valid()) return;
+	if (!m_ClickHandle.Is_Valid() && !m_PingHandle.Is_Valid() && !m_bPingPending) return;
 	const shared_ptr<CCharacter> character = m_pCharacter.lock();
 	const auto& player = CCombatHUDViewModel::Get().Get_Player();
 	if (!character || CGameInstance::Get().Get_CurrentLevelID() != m_iLevelIndex ||
@@ -117,8 +174,34 @@ void Client::CClickMoveEffect::Late_Update(const f32_t fTimeDelta)
 		Clear();
 		return;
 	}
+	if (m_bPingPending)
+	{
+		float3_t head{};
+		if (CWorldPlayerNameplateView::Try_GetHeadAnchor(*character, head))
+		{
+			head.y += 0.55f;
+			if (!m_PendingHandle.Is_Valid())
+				(void)Spawn_Marker(PENDING_EFFECT_ID, "player.ping.pending", head, m_PendingHandle, true);
+			else
+			{
+				float4x4_t world{};
+				XMStoreFloat4x4(&world, XMMatrixTranslation(head.x, head.y, head.z));
+				if (!CEffectPresentationService::Update_WorldRoot(m_PendingHandle, world))
+				{
+					CEffectPresentationService::Stop_WorldRoot(m_PendingHandle);
+					m_PendingHandle = {};
+				}
+			}
+		}
+	}
 	if (!std::isfinite(fTimeDelta) || fTimeDelta < 0.f) return;
 	m_fClickSeconds += fTimeDelta;
+	m_fPingSeconds += fTimeDelta;
+	if (m_PingHandle.Is_Valid() && m_fPingSeconds >= PING_DURATION_SECONDS)
+	{
+		CEffectPresentationService::Stop_WorldRoot(m_PingHandle);
+		m_PingHandle = {};
+	}
 	if (m_ClickHandle.Is_Valid() && m_fClickSeconds >= CLICK_DURATION_SECONDS)
 	{
 		CEffectPresentationService::Stop_WorldRoot(m_ClickHandle);

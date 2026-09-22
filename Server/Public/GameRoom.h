@@ -1401,7 +1401,7 @@ namespace LostArk::Server
 			const BOSS_COMBAT_OBJECT_DEFINITION& definition,
 			std::uint32_t spawnWaveOrdinal,
 			std::vector<SERVER_COMBAT_OBJECT_LOCKED_TARGET>& outOrigins,
-			float explicitMinimumSpacingM = 0.f);
+			float explicitMinimumSpacingM = 0.f, const SERVER_NAV_POINT* anchorOverride = nullptr);
 		bool Broadcast_CombatObjectLifecycle();
 		void Drain_BossCombatEvents();
 		bool Apply_WorldDestructionStageEntry(
@@ -1487,6 +1487,8 @@ namespace LostArk::Server
 		/* Card maze. The telescope claim deals the suits and raises the
 		targets; the MAZE hammer press judges its swing once, at the runtime's
 		hit tick, against those targets. */
+		bool Spawn_KoukuCardRainSoldiers(LostArk::Shared::NET_ENTITY_ID ownerId, std::uint32_t tick);
+		void Update_KoukuCardRainSoldiers(std::uint32_t tick);
 		bool Begin_CardMaze(LostArk::Shared::PLAYER_ID claimantId);
 		void Reset_CardMaze();
 		void Despawn_CardMazeTargets();
@@ -1664,6 +1666,12 @@ namespace LostArk::Server
 		// Popped source-ball slots per Mario stage (index 1..4), bit = bootstrap slot.
 		std::uint16_t m_MarioPoppedBalls[5] = {};
 		std::uint8_t m_iNextMarioEntryStage = 1u;
+		struct KOUKU_CARD_RAIN_SOLDIER_STATE final
+		{
+			LostArk::Shared::NET_ENTITY_ID ownerId = LostArk::Shared::INVALID_NET_ENTITY_ID;
+			std::uint32_t patternSequence = 0u, expiresAt = 0u;
+		};
+		std::map<LostArk::Shared::NET_ENTITY_ID, KOUKU_CARD_RAIN_SOLDIER_STATE> m_KoukuCardRainSoldiers;
 		CKoukuCardMazeRuntime m_KoukuCardMaze;
 		CKoukuBingoRuntime m_KoukuBingo;
         struct KOUKU_BINGO_DURATION final

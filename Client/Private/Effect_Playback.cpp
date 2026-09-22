@@ -4841,7 +4841,15 @@ void Client::CEffectPlayback::Spawn_Particles(
 			static_cast<f32_t>(UINT32_MAX);
 		if (Element.SourceRecipe.bEnabled)
 		{
-			Particle.vPosition = nullptr == pSourceEvent ? float3_t{} :
+			/* LocationDirect supplies the child emitter's absolute local position.
+			   A spawn event is only its trigger: adding the parent's event position
+			   again doubles a falling card's height. Other event receivers retain
+			   the original event origin and ordinary source spawn modules. */
+			const bool_t bEventDirectLocation = nullptr != pSourceEvent &&
+				std::any_of(PreparedRecipe.Modules.begin(), PreparedRecipe.Modules.end(),
+					[](const SOURCE_SPAWN_RECIPE::MODULE& Module)
+					{ return Module.eKind == SOURCE_SPAWN_MODULE_KIND::LOCATION_DIRECT; });
+			Particle.vPosition = nullptr == pSourceEvent || bEventDirectLocation ? float3_t{} :
 				Transform_Coord(pSourceEvent->vPosition, InverseElementWorld);
 			Particle.vVelocity = nullptr == pSourceEvent ? float3_t{} :
 				Transform_Normal(pSourceEvent->vVelocity, InverseElementWorld);
