@@ -1497,6 +1497,28 @@ bool_t Client::CPlayerController::Request_DebugMadnessForm(
 	return true;
 }
 
+bool_t Client::CPlayerController::Request_DebugUseEsther(
+	const LostArk::Shared::ESTHER_ID esther)
+{
+	const shared_ptr<CCharacter> character = m_pLocalCharacter.lock();
+	if (nullptr == character || nullptr == m_pCommandSink ||
+		!LostArk::Shared::Is_Valid_EstherId(esther))
+		return false;
+	const shared_ptr<CTransform> transform = character->Get_Transform();
+	if (nullptr == transform)
+		return false;
+	const vector_t position = transform->Get_State(STATE::POSITION);
+	const vector_t look = XMVector3Normalize(transform->Get_State(STATE::LOOK));
+	if (!m_pCommandSink->Request_DebugUseEsther(
+		m_iNextActionSequence,
+		esther,
+		XMVectorGetX(position) + XMVectorGetX(look) * 5.f,
+		XMVectorGetZ(position) + XMVectorGetZ(look) * 5.f))
+		return false;
+	if (0u == ++m_iNextActionSequence) m_iNextActionSequence = 1u;
+	return true;
+}
+
 #endif
 
 bool_t Client::CPlayerController::Update_DebugMarioJump(const bool_t gameplayCommandsEnabled)

@@ -37,6 +37,7 @@ namespace LostArk::Server
 		DEBUG_BINGO_BOMB,
 		DEBUG_BINGO_HAMMER,
 		DEBUG_RESUMMON_WAVE_MONSTERS,
+		DEBUG_USE_ESTHER,
 		INTERACTION_SLOT,
 		DEBUG_SET_KOUKU_HUD_MODE,
 		CHANGE_CHARACTER_CLASS,
@@ -112,6 +113,7 @@ namespace LostArk::Server
 		LostArk::Shared::C2S_DEBUG_BINGO_BOMB DebugBingoBomb;
 		LostArk::Shared::C2S_DEBUG_BINGO_HAMMER DebugBingoHammer;
 		LostArk::Shared::C2S_DEBUG_RESUMMON_WAVE_MONSTERS DebugResummonWaveMonsters;
+		LostArk::Shared::C2S_DEBUG_USE_ESTHER DebugUseEsther;
 		LostArk::Shared::C2S_INTERACTION_SLOT InteractionSlot;
 		LostArk::Shared::C2S_DEBUG_SET_KOUKU_HUD_MODE DebugSetKoukuHudMode;
 		LostArk::Shared::C2S_CHANGE_CHARACTER_CLASS ChangeCharacterClass;

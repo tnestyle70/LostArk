@@ -2600,6 +2600,50 @@ bool LostArk::Shared::Read_Message(
 }
 
 bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer, const C2S_DEBUG_USE_ESTHER& message)
+{
+	if (0u == message.iRequestSequence ||
+		!Is_Known_World_Id(message.eWorldId) ||
+		!Is_Valid_EstherId(message.eEsther) ||
+		!std::isfinite(message.fAimX) ||
+		!std::isfinite(message.fAimZ))
+	{
+		return false;
+	}
+	writer.Write_U32(message.iRequestSequence);
+	writer.Write_U16(static_cast<std::uint16_t>(message.eWorldId));
+	writer.Write_U8(static_cast<std::uint8_t>(message.eEsther));
+	writer.Write_F32(message.fAimX);
+	writer.Write_F32(message.fAimZ);
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader, C2S_DEBUG_USE_ESTHER& message)
+{
+	C2S_DEBUG_USE_ESTHER decoded{};
+	std::uint16_t rawWorldId = 0u;
+	std::uint8_t rawEsther = 0u;
+	if (!reader.Read_U32(decoded.iRequestSequence) ||
+		0u == decoded.iRequestSequence ||
+		!reader.Read_U16(rawWorldId) ||
+		!Is_Known_World_Id(static_cast<WORLD_ID>(rawWorldId)) ||
+		!reader.Read_U8(rawEsther) ||
+		!Is_Valid_EstherId(static_cast<ESTHER_ID>(rawEsther)) ||
+		!reader.Read_F32(decoded.fAimX) ||
+		!reader.Read_F32(decoded.fAimZ) ||
+		!std::isfinite(decoded.fAimX) ||
+		!std::isfinite(decoded.fAimZ))
+	{
+		return false;
+	}
+	decoded.eWorldId = static_cast<WORLD_ID>(rawWorldId);
+	decoded.eEsther = static_cast<ESTHER_ID>(rawEsther);
+	message = decoded;
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
 	CPacketWriter& writer, const C2S_DEBUG_SET_MADNESS_FORM& message)
 {
 	if (0u == message.iRequestSequence || !Is_Known_World_Id(message.eWorldId) ||

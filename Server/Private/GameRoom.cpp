@@ -896,6 +896,9 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds,
 			Handle_DebugResummonWaveMonsters(
 				command.iSessionId, command.DebugResummonWaveMonsters);
 			break;
+		case ROOM_COMMAND_TYPE::DEBUG_USE_ESTHER:
+			Handle_DebugUseEsther(command.iSessionId, command.DebugUseEsther);
+			break;
 		case ROOM_COMMAND_TYPE::DEBUG_SET_MADNESS_FORM:
 			Handle_DebugSetMadnessForm(
 				command.iSessionId, command.DebugSetMadnessForm);

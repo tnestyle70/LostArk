@@ -12873,10 +12873,34 @@ void CMainApp::RenderDeveloperTools()
 
 	RenderSequenceViewer();
 
-	if (ImGui::CollapsingHeader("Esther Cutin (Debug)"))
+	if (ImGui::CollapsingHeader("Esther Skill (Debug)"))
 	{
 		ImGui::TextDisabled(
-			"Replays the full-screen cutin movie (NpcCatalog cutinMovie) once.");
+			"Summon asks the Server for that Esther by name: no gauge, no roster slot,"
+			" same cast and summon as Ctrl+Z/X/C. Needs a live player standing idle.");
+		CPlayerController* const pEstherController = Find_ActivePlayerController();
+		ImGui::BeginDisabled(nullptr == pEstherController);
+		const auto summonButton = [pEstherController](
+			const char_t* pLabel, const LostArk::Shared::ESTHER_ID esther)
+		{
+			if (ImGui::Button(pLabel) && nullptr != pEstherController)
+				(void)pEstherController->Request_DebugUseEsther(esther);
+		};
+		summonButton("Summon Sillian", LostArk::Shared::ESTHER_ID::SILLIAN);
+		ImGui::SameLine();
+		summonButton("Summon Wei", LostArk::Shared::ESTHER_ID::WEI);
+		ImGui::SameLine();
+		summonButton("Summon Bahuntur", LostArk::Shared::ESTHER_ID::BAHUNTUR);
+		ImGui::SameLine();
+		summonButton("Summon Ninav", LostArk::Shared::ESTHER_ID::NINAV);
+		ImGui::SameLine();
+		summonButton("Summon Inanna", LostArk::Shared::ESTHER_ID::INANNA);
+		ImGui::EndDisabled();
+		if (nullptr == pEstherController)
+			ImGui::TextDisabled("No Server-driven player in this level.");
+
+		ImGui::TextDisabled(
+			"Preview replays the full-screen cutin movie (NpcCatalog cutinMovie) once.");
 		const auto previewButton = [](
 			const char_t* pLabel, const char_t* pArchetypeId)
 		{
