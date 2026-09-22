@@ -678,6 +678,10 @@ namespace LostArk::Server
 			std::uint32_t iCompletionChainCompleted = 0u;
 			std::string strCompletionChainSuccessPatternId;
 			bool bCompletionChainStarted = false;
+            bool bParentSequenceStarted = false;
+            bool bParentSequenceLoops = false;
+            std::size_t iParentLoopIndex = 0u;
+            std::size_t iParentLastIndex = 0u;
 			bool bCompletionChainAwaitingReturn = false;
 			bool bCompletionChainSuccessQueued = false;
 			std::uint32_t iNextWorldCue = 1u;
@@ -724,6 +728,8 @@ namespace LostArk::Server
 		SERVER_WORLD_ENTITY* Find_KoukuOccurrenceOwner(LostArk::Shared::NET_ENTITY_ID bossId, std::uint32_t patternSequence);
 		bool Retain_KoukuPatternTail(KOUKUSAYDON_PATTERN_AUDITION_MEMBER& member,
 			const SERVER_WORLD_ENTITY& sourceOwner, const BOSS_PATTERN_DEFINITION& pattern, std::uint32_t serverTick);
+        bool Start_KoukuParentSequence(KOUKUSAYDON_PATTERN_AUDITION_MEMBER& member,
+            SERVER_WORLD_ENTITY& boss, const BOSS_PATTERN_DEFINITION& pattern, std::uint32_t serverTick);
 		bool Start_KoukuCompletionChain(KOUKUSAYDON_PATTERN_AUDITION_MEMBER& member,
 			SERVER_WORLD_ENTITY& boss, const BOSS_PATTERN_DEFINITION& pattern, std::uint32_t serverTick);
 		void Update_KoukuMarioEntry(KOUKUSAYDON_PATTERN_AUDITION_MEMBER& member, std::uint32_t serverTick);

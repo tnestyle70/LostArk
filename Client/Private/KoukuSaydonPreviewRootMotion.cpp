@@ -154,10 +154,11 @@ bool CKoukuSaydonPreviewRootMotion::Sample_Window(const WINDOW& window,
     if (!model->Sample_AnimationRootTranslation(window.row.strRuntimeClip.c_str(),
         (std::min)(window.nativeTicks, float((window.sourceStart + local) * window.ticksPerSecond * .001)), m_RootIndex,
         2, m_VerticalScale, sampled)) return false;
-    const double x = (cycles * window.cycle.x + sampled.x - window.baseline.x) * m_HorizontalScale;
+    const double horizontalScale = window.trackingOwnsHorizontal ? 0.0 : m_HorizontalScale;
+    const double x = (cycles * window.cycle.x + sampled.x - window.baseline.x) * horizontalScale;
     const double y = cycles * window.cycle.y + sampled.y - window.baseline.y +
         (window.maxAgeMs > 0.0 ? window.albionTakeoffUp * (std::clamp)(ageMs / window.maxAgeMs, 0.0, 1.0) : 0.0);
-    const double z = (cycles * window.cycle.z + sampled.z - window.baseline.z) * m_HorizontalScale;
+    const double z = (cycles * window.cycle.z + sampled.z - window.baseline.z) * horizontalScale;
     if (!std::isfinite(x) || !std::isfinite(y) || !std::isfinite(z) ||
         (std::max)({std::abs(x), std::abs(y), std::abs(z)}) > 100000.0) return false;
     output = {float(x), float(y), float(z)};
@@ -213,11 +214,13 @@ bool CKoukuSaydonPreviewRootMotion::Prepare_Airborne(
         const auto logic = std::find_if(document.Logics.begin(), document.Logics.end(),
             [&](const auto& row) { return row.strLogicId == box.strLogicId; });
         if (logic == document.Logics.end() || (logic->strTriggerKind != "ALBION_AIRBORNE" &&
-            logic->strTriggerKind != "BOSS_TELEPORT_XZ" && logic->strTriggerKind != "BOSS_TELEPORT_GROUNDED")) continue;
+            logic->strTriggerKind != "BOSS_TELEPORT_XZ" && logic->strTriggerKind != "BOSS_TELEPORT_GROUNDED" &&
+            logic->strTriggerKind != "BOSS_TELEPORT_FACE_CENTER")) continue;
         AIRBORNE_EVENT event;
         event.occurrenceId = box.strOccurrenceId;
         event.phase = logic->strTriggerKind == "BOSS_TELEPORT_XZ" ? "TELEPORT_XZ" :
-            logic->strTriggerKind == "BOSS_TELEPORT_GROUNDED" ? "TELEPORT_GROUNDED" : logic->strAirbornePhase;
+            logic->strTriggerKind == "BOSS_TELEPORT_GROUNDED" ? "TELEPORT_GROUNDED" :
+            logic->strTriggerKind == "BOSS_TELEPORT_FACE_CENTER" ? "TELEPORT_FACE_CENTER" : logic->strAirbornePhase;
         event.clockMs = box.iStartMs; event.durationMs = logic->iAirborneDurationMs;
         event.targetPositionPolicy = logic->strAirborneTargetPositionPolicy;
         event.selectedEffectGroupId = logic->strSelectedEffectGroupId;
@@ -233,10 +236,10 @@ bool CKoukuSaydonPreviewRootMotion::Prepare_Airborne(
     bool jump = false;
     for (auto& event : staged)
     {
-        if (event.phase == "TELEPORT_XZ" || event.phase == "TELEPORT_GROUNDED")
+        if (event.phase == "TELEPORT_XZ" || event.phase == "TELEPORT_GROUNDED" || event.phase == "TELEPORT_FACE_CENTER")
         {
             if (!std::isfinite(event.destination.x) || !std::isfinite(event.destination.z) ||
-                (event.phase == "TELEPORT_GROUNDED" && !std::isfinite(event.destination.y)))
+                (event.phase != "TELEPORT_XZ" && !std::isfinite(event.destination.y)))
             { status = "Teleport preview requires finite destination XZ."; return false; }
             continue;
         }
@@ -274,6 +277,36 @@ bool CKoukuSaydonPreviewRootMotion::Prepare_Airborne(
         if (event.phase == "SLAM" && event.sourceUp - event.remainingMinimumUp <= .000001)
         { status = "Albion SLAM needs a remaining downward native source curve."; return false; }
     }
+    // A moving pursuit that owns a whole stage supplies that stage's XZ.
+    // Keep the source Y and match the publisher's per-stage root-motion policy.
+    auto stagedWindows = m_Windows;
+    uint64_t stageStart = 0u;
+    for (const auto& stage : pattern.Stages)
+    {
+        const uint64_t stageEnd = stageStart + stage.iDurationMs;
+        const bool trackingOwnsHorizontal = std::any_of(pattern.LogicOccurrences.begin(), pattern.LogicOccurrences.end(), [&](const auto& box) {
+            if (!box.bEnabled || box.iStartMs > stageStart || uint64_t(box.iStartMs) + box.iDurationMs < stageEnd) return false;
+            const auto logic = std::find_if(document.Logics.begin(), document.Logics.end(),
+                [&](const auto& row) { return row.strLogicId == box.strLogicId; });
+            return logic != document.Logics.end() && logic->strJudgementKind == "BOSS_TRACK_TARGET" && logic->fFollowSpeedScale > 0.0;
+        });
+        for (auto& window : stagedWindows)
+        {
+            if (window.row.iPoseStartMs < stageStart || window.row.iPoseStartMs >= stageEnd ||
+                window.trackingOwnsHorizontal == trackingOwnsHorizontal) continue;
+            window.trackingOwnsHorizontal = trackingOwnsHorizontal;
+            if (trackingOwnsHorizontal) window.completed.x = window.completed.z = 0.f;
+            else
+            {
+                float3_t restored;
+                if (!Sample_Window(window, window.maxAgeMs, restored))
+                { status = "Root motion cannot restore the source XZ after pursuit editing."; return false; }
+                window.completed.x = restored.x; window.completed.z = restored.z;
+            }
+        }
+        stageStart = stageEnd;
+    }
+    m_Windows = std::move(stagedWindows);
     m_AirborneEvents = std::move(staged);
     status.clear();
     return true;
@@ -300,7 +333,7 @@ bool CKoukuSaydonPreviewRootMotion::Sample_AirbornePosition(const double clockMs
             y = initial.y + delta.y; return true;
         }
         const auto& phase = active->phase;
-        if (phase == "TELEPORT_GROUNDED")
+        if (phase == "TELEPORT_GROUNDED" || phase == "TELEPORT_FACE_CENTER")
         {
             // Local authoring uses the reference floor; product playback uses Server navigation.
             // A new row begins at that floor, while the current row keeps only its remaining Up.
@@ -351,15 +384,15 @@ bool CKoukuSaydonPreviewRootMotion::Sample_AirbornePosition(const double clockMs
         if (event.clockMs > clockMs) break;
         if (event.phase == "SELECT_PLAYER")
         { selected = selections[i]; continue; }
-        if (event.phase == "TELEPORT_XZ" || event.phase == "TELEPORT_GROUNDED")
+        if (event.phase == "TELEPORT_XZ" || event.phase == "TELEPORT_GROUNDED" || event.phase == "TELEPORT_FACE_CENTER")
         {
             float3_t atEvent;
             if (!Sample_Displacement(event.clockMs, rowYawDegrees, atEvent)) return false;
             offsetX = event.destination.x - initial.x - atEvent.x;
             offsetZ = event.destination.z - initial.z - atEvent.z;
-            if (event.phase == "TELEPORT_GROUNDED")
+            if (event.phase != "TELEPORT_XZ")
             { floor = event.destination.y; active = &event; }
-            // Both relocations retain the source clock and facing; XZ also preserves airborne Y.
+            // Position keeps the source clock; the presentation owner applies face-center yaw.
             continue;
         }
         if (!heightAt(event.clockMs, phaseStartY)) return false;

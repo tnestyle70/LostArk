@@ -214,7 +214,10 @@
     {"id": "kouku.category.640642272b865e9b3dac", "parentId": "kouku.category.3e091ff8fbdf231618e6", "kind": "CATEGORY", "displayName": "쿠크_나팔액션"},
     {"id": "kouku.category.366e01c9b67db7271b5d", "parentId": "kouku.category.3e091ff8fbdf231618e6", "kind": "CATEGORY", "displayName": "저글링"},
     {"id": "kouku.category.b3abd70c93b1e1f3d2e8", "parentId": "kouku.category.3e091ff8fbdf231618e6", "kind": "CATEGORY", "displayName": "세이튼등장"},
-    {"id": "kouku.category.6b40cd40d436ca481b79", "parentId": "kouku.category.3e091ff8fbdf231618e6", "kind": "CATEGORY", "displayName": "파1빨2"}
+    {"id": "kouku.category.6b40cd40d436ca481b79", "parentId": "kouku.category.3e091ff8fbdf231618e6", "kind": "CATEGORY", "displayName": "파1빨2"},
+    {"id": "kouku.category.6b60be807c01ec5694a2", "parentId": "kouku.category.f20d85c12b1f39e952da", "kind": "CATEGORY", "displayName": "메두사 공격"},
+    {"id": "kouku.category.67dec3f19dcbca4bb613", "parentId": "kouku.category.f20d85c12b1f39e952da", "kind": "CATEGORY", "displayName": "블랙홀·폭발·그로기"},
+    {"id": "kouku.category.269040f204e0cec40579", "parentId": "kouku.category.f20d85c12b1f39e952da", "kind": "CATEGORY", "displayName": "블랙홀 중앙 구체·폭발"}
   ],
   "references": [
     {"kind": "V1", "assetId": "effect.kouku.gate3.showtime.sector.warning.shot", "displayName": "부채꼴 예고·사격 (저작 조합)", "parentId": "kouku.category.d767402008919487db6b"},
@@ -1086,6 +1089,9 @@
     {"kind": "V1", "assetId": "effect.kouku.gate2.safezone.blue.full.restore", "displayName": "파란안전구체", "parentId": "kouku.category.6b40cd40d436ca481b79"},
     {"kind": "V1", "assetId": "effect.kouku.gate2.bigsaydon.yellow-eye-warning.full.restore", "displayName": "세이튼노란시선", "parentId": "kouku.category.6b40cd40d436ca481b79"},
     {"kind": "V1", "assetId": "effect.guardianknight.skill.49000.clip.0.full.restore", "displayName": "Guardian Knight 49000 ddk_att_battle_1_01", "parentId": "root.v1"},
-    {"kind": "V1", "assetId": "effect.guardianknight.skill.49420.clip.0.full.restore", "displayName": "Guardian Knight 49420 ddk_sk_super_sanctumofembereth", "parentId": "root.v1"}
+    {"kind": "V1", "assetId": "effect.guardianknight.skill.49420.clip.0.full.restore", "displayName": "Guardian Knight 49420 ddk_sk_super_sanctumofembereth", "parentId": "root.v1"},
+    {"kind": "V1", "assetId": "effect.kouku.bingo.medusa.attack.full.restore", "displayName": "빙고 | 메두사 공격", "parentId": "kouku.category.6b60be807c01ec5694a2"},
+    {"kind": "V1", "assetId": "effect.kouku.bingo.blackhole.full.restore", "displayName": "빙고 | 블랙홀 시전자·광선·그로기", "parentId": "kouku.category.67dec3f19dcbca4bb613"},
+    {"kind": "V1", "assetId": "effect.kouku.bingo.blackhole.center.full.restore", "displayName": "빙고 | 블랙홀 중앙 구체·폭발", "parentId": "kouku.category.269040f204e0cec40579"}
   ]
 }

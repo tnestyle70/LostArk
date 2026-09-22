@@ -364,6 +364,7 @@ private:
         float initialTicks = 0.f;
         float initialYawDegrees = 0.f;
         float3_t initialPosition{};
+        float3_t arenaCenterPosition{};
         std::unique_ptr<CKoukuSaydonPreviewRootMotion> rootMotion;
         struct TARGET_TRACKING_WINDOW final
         {

@@ -52,6 +52,7 @@ private:
         float ticksPerSecond = 0.f, nativeTicks = 0.f;
         float3_t baseline{}, cycle{}, completed{};
         double albionTakeoffUp = 0.0;
+        bool trackingOwnsHorizontal = false;
     };
     bool Sample_Window(const WINDOW& window, double ageMs, float3_t& output) const;
     bool Sample_AirborneUp(size_t windowIndex, double clockMs, double& output) const;

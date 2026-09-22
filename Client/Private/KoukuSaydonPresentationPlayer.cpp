@@ -3603,6 +3603,7 @@ bool Client::CKoukuSaydonPresentationPlayer::Prepare_CloneSplitPreview(
         clone.actor->Set_PresentationVisible(false);
         if (!clone.actor->Apply_NetworkState(position, yaw)) return false;
         clone.initialPosition = position; clone.initialYawDegrees = yaw;
+        clone.arenaCenterPosition = position;
         const auto model = clone.actor->Get_Model();
         clone.initialAnimation = model->Get_CurrentAnimIndex();
         float ignored = 0.f;
@@ -3806,6 +3807,7 @@ bool Client::CKoukuSaydonPresentationPlayer::Begin_BundlePreview(
         if (!sourcePlacement || sourcePlacement->eKind != WORLD_PLACEMENT_KIND::BOSS)
             return fail("Preview source boss placement is unavailable: " + source->strTargetBossPlacementId);
         member.sourceArchetypeId = sourcePlacement->archetypeId;
+        member.arenaCenterPosition = sourcePlacement->position;
         member.facingStages = source->Stages;
         if (!CKoukuSaydonCompositionDocument::Try_ResolveAnimationBlendWindows(document, *source,
             member.pattern.AnimationBlendWindows, status)) return fail(status);
@@ -3856,7 +3858,8 @@ bool Client::CKoukuSaydonPresentationPlayer::Begin_BundlePreview(
                 [&](const auto& logic) { return logic.strLogicId == box.strLogicId; });
             if (definition == document.Logics.end()) continue;
             airborne |= definition->strTriggerKind == "ALBION_AIRBORNE";
-            spatialLogic |= (definition->strTriggerKind == "BOSS_TELEPORT_XZ" || definition->strTriggerKind == "BOSS_TELEPORT_GROUNDED");
+            spatialLogic |= (definition->strTriggerKind == "BOSS_TELEPORT_XZ" || definition->strTriggerKind == "BOSS_TELEPORT_GROUNDED" ||
+                definition->strTriggerKind == "BOSS_TELEPORT_FACE_CENTER");
             if (definition->strJudgementKind == "BOSS_TRACK_TARGET" ||
                 (definition->strJudgementKind == "SHOWTIME_PLAYER_TARGETS" &&
                  (definition->strFixedSelectionGroupId.empty() || !definition->strTrackingPresentationOccurrenceId.empty())))
@@ -4299,6 +4302,7 @@ bool Client::CKoukuSaydonPresentationPlayer::Sample_BundlePreviewPose(
         const KOUKU_SAYDON_COMPOSITION_STAGE* stage = nullptr;
         BUNDLE_PREVIEW_MEMBER::TARGET_TRACKING_WINDOW* tracking = nullptr;
         uint32_t tick = 0u, remainingTicks = 0u;
+        const CKoukuSaydonPreviewRootMotion::AIRBORNE_EVENT* teleport = nullptr;
     };
     std::vector<FACING_EVENT> facingEvents;
     uint32_t stageStartMs = 0u;
@@ -4307,6 +4311,10 @@ bool Client::CKoukuSaydonPresentationPlayer::Sample_BundlePreviewPose(
         if (stageStartMs > completedClock && stageStartMs <= localMs) facingEvents.push_back({double(stageStartMs), &stage});
         stageStartMs += stage.iDurationMs;
     }
+    if (member.rootMotion)
+        for (const auto& teleport : member.rootMotion->Airborne_Events())
+            if (teleport.phase == "TELEPORT_FACE_CENTER" && teleport.clockMs > completedClock && teleport.clockMs <= localMs)
+                facingEvents.push_back({double(teleport.clockMs), nullptr, nullptr, 0u, 0u, &teleport});
     for (auto& window : member.targetTracking)
     {
         const auto begin = (uint64_t(window.startMs) * 30u + 999u) / 1000u;
@@ -4319,7 +4327,8 @@ bool Client::CKoukuSaydonPresentationPlayer::Sample_BundlePreviewPose(
     }
     std::stable_sort(facingEvents.begin(), facingEvents.end(), [](const auto& a, const auto& b) {
         if (a.clock != b.clock) return a.clock < b.clock;
-        return a.stage != nullptr && b.stage == nullptr;
+        if ((a.stage != nullptr) != (b.stage != nullptr)) return a.stage != nullptr;
+        return a.teleport != nullptr && b.teleport == nullptr;
     });
     double pendingClock = -1.0;
     const auto commitCheckpoint = [&] {
@@ -4334,8 +4343,29 @@ bool Client::CKoukuSaydonPresentationPlayer::Sample_BundlePreviewPose(
             commitCheckpoint();
             pendingClock = event.clock;
         }
+        // An absolute relocation supersedes pursuit accumulated before this event.
+        if (event.teleport) followOffset = {};
         float3_t origin;
         if (!positionAt(event.clock, origin)) return false;
+        if (event.teleport)
+        {
+            const float dx = member.arenaCenterPosition.x - event.teleport->destination.x;
+            const float dz = member.arenaCenterPosition.z - event.teleport->destination.z;
+            if (dx * dx + dz * dz > .000001f)
+            {
+                const auto& archetype = member.sourceArchetypeId;
+                const bool saydon = archetype == "BOSS_KAKULSAYDON_G1_SAYDON" ||
+                    archetype == "BOSS_KAKULSAYDON_G3_SAYDON" ||
+                    archetype == "BOSS_KAKULSAYDON_BINGO_SAYDON" ||
+                    archetype == "BOSS_KAKULSAYDON_G2_BIG_SAYDON";
+                yaw = XMConvertToDegrees(std::atan2(dx, dz)) - (saydon ? 90.f : 0.f);
+            }
+            size_t activeRow = 0u;
+            for (size_t i = 0u; i < member.animations.size(); ++i)
+                if (member.animations[i].iPoseStartMs <= event.clock) activeRow = i;
+            for (size_t i = activeRow; i < rowYaws.size(); ++i) rowYaws[i] = yaw;
+            continue;
+        }
         if (event.stage)
         {
             const auto& stage = *event.stage;

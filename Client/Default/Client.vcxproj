@@ -3912,4 +3912,11 @@
       <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
     </FxCompile>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.bingo.blackhole.full.restore.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.bingo.medusa.attack.full.restore.effect.json"></None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.bingo.blackhole.center.full.restore.effect.json"></None>
+  </ItemGroup>
 </Project>

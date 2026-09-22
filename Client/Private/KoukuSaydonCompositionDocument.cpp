@@ -1253,11 +1253,81 @@ namespace
         return true;
     }
 
+    bool Tracking_OwnsAllStages(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
+        const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern)
+    {
+        if (pattern.Stages.empty()) return false;
+        std::uint64_t origin = 0u;
+        for (const auto& stage : pattern.Stages)
+        {
+            const auto end = origin + stage.iDurationMs;
+            const bool covered = std::any_of(pattern.LogicOccurrences.begin(), pattern.LogicOccurrences.end(), [&](const auto& box) {
+                if (!box.bEnabled || box.iStartMs > origin || std::uint64_t(box.iStartMs) + box.iDurationMs < end) return false;
+                return std::any_of(document.Logics.begin(), document.Logics.end(), [&](const auto& logic) {
+                    return logic.strLogicId == box.strLogicId && logic.strJudgementKind == "BOSS_TRACK_TARGET" && logic.fFollowSpeedScale > 0.0;
+                });
+            });
+            if (!covered) return false;
+            origin = end;
+        }
+        return true;
+    }
+
     bool_t Validate_PatternChildren(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
         const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern, std::string& status)
     {
         if (!pattern.strLoadError.empty()) return true;
         if (!Validate_CrossDirectionWindows(document, pattern, status)) return false;
+        if (!pattern.strLoopStartPatternOccurrenceId.empty() || pattern.bPlayChildrenSequentially)
+        {
+            const bool loop = !pattern.strLoopStartPatternOccurrenceId.empty();
+            const auto reject = [&](const char* reason) { status = reason; return false; };
+            if (loop && (pattern.strGateId != "BINGO" || pattern.strTargetBossPlacementId != "boss.kakulsaydon.bingo.saydon" ||
+                pattern.PatternOccurrences.empty() || pattern.BossMotion || pattern.bResetBossToSpawn || pattern.bEnterCombatOnFinish ||
+                !pattern.SummonOccurrences.empty() || !pattern.WorldOccurrences.empty() ||
+                !pattern.PresentationOccurrences.empty() || !pattern.SceneProfileOccurrences.empty()))
+                return reject("Looping Parent owns the Bingo board; place actor actions on its children.");
+            if (loop && std::any_of(pattern.Stages.begin(), pattern.Stages.end(), [&](const auto& stage) {
+                return stage.strActionId != pattern.strPatternId + ".parent-owner" || stage.iDurationMs != 34u; }))
+                return reject("Looping Parent cannot own Animation stages.");
+            if (loop && (pattern.LogicOccurrences.size() != 1u || !pattern.LogicOccurrences.front().bEnabled ||
+                pattern.LogicOccurrences.front().iStartMs != 0u || pattern.LogicOccurrences.front().iDurationMs != pattern.iDurationMs))
+                return reject("Looping Parent needs one continuous Bingo board Logic.");
+            const auto board = std::find_if(document.Logics.begin(), document.Logics.end(), [&](const auto& logic) {
+                return !pattern.LogicOccurrences.empty() && logic.strLogicId == pattern.LogicOccurrences.front().strLogicId && logic.strJudgementKind == "BINGO_BOARD"; });
+            if (loop && board == document.Logics.end()) return reject("Looping Parent board Logic is missing.");
+            auto rows = pattern.PatternOccurrences;
+            std::sort(rows.begin(), rows.end(), [](const auto& a, const auto& b) { return a.iStartMs < b.iStartMs; });
+            bool foundLoop = !loop; std::uint64_t end = 0u;
+            if (!loop) for (const auto& stage : pattern.Stages) end += stage.iDurationMs;
+            if (rows.empty()) return reject("Sequential Parent requires children.");
+            for (const auto& row : rows)
+            {
+                foundLoop = foundLoop || row.strOccurrenceId == pattern.strLoopStartPatternOccurrenceId;
+                const auto child = std::find_if(document.Patterns.begin(), document.Patterns.end(), [&](const auto& p) { return p.strPatternId == row.strPatternId; });
+                if (child == document.Patterns.end() || !child->strLoadError.empty() || child->strPatternId == pattern.strPatternId ||
+                    !child->PatternOccurrences.empty() || !child->strLoopStartPatternOccurrenceId.empty() || child->bPlayChildrenSequentially ||
+                    child->strGateId != pattern.strGateId || child->strActorProfileId != pattern.strActorProfileId ||
+                    child->strTargetBossPlacementId != pattern.strTargetBossPlacementId || row.bRepeat ||
+                    row.iDurationMs != Pattern_Lifetime(*child) || row.iStartMs < end)
+                    return reject("Looping Parent needs ordered complete independent children on the same boss.");
+                for (const auto& box : child->LogicOccurrences) if (box.bEnabled)
+                {
+                    for (const auto& definition : document.Logics)
+                    {
+                        if (definition.strLogicId == box.strLogicId && definition.strJudgementKind == "PATTERN_COMPLETION_COUNT")
+                            return reject("Looping Parent cannot contain a dynamic child chain.");
+                        for (const auto* outcomes : {&box.OnSuccessLogicIds, &box.OnFailLogicIds, &box.OnTimeoutLogicIds})
+                            if (std::find(outcomes->begin(), outcomes->end(), definition.strLogicId) != outcomes->end() &&
+                                ((loop && definition.strOutcomeKind == "FOLLOWUP_PATTERN") || definition.strOutcomeKind == "MARIO_ENTER"))
+                                return reject("Looping Parent cannot contain dynamic follow-up children.");
+                    }
+                }
+                end = std::uint64_t(row.iStartMs) + row.iDurationMs;
+            }
+            if (!foundLoop || end != pattern.iDurationMs) return reject("Parent loop start or first-pass duration is invalid.");
+            return true;
+        }
         if (pattern.PatternOccurrences.empty()) return true;
         const auto fail = [&](const std::string& reason) { status = "Parent " + pattern.strPatternId + ": " + reason; return false; };
         if (std::none_of(document.Folders.begin(), document.Folders.end(), [&](const auto& folder) {
@@ -1273,8 +1343,7 @@ namespace
             if (child == document.Patterns.end() || !child->strLoadError.empty())
                 return fail("Missing or invalid child Pattern: " + row.strPatternId);
             if (child->strPatternId == pattern.strPatternId || !child->PatternOccurrences.empty() ||
-                std::any_of(document.Folders.begin(), document.Folders.end(), [&](const auto& folder) {
-                    return folder.strTimelinePatternId == child->strPatternId; }))
+                !child->strLoopStartPatternOccurrenceId.empty())
                 return fail("Nested Parent or cyclic Pattern reference: " + row.strPatternId);
             const bool encore = pattern.strGateId == "BINGO" && pattern.strTargetBossPlacementId == "boss.kakulsaydon.bingo.saydon" &&
                 child->strGateId == "GATE3" && child->strTargetBossPlacementId == "boss.kakulsaydon.g3.saydon" &&
@@ -3575,7 +3644,7 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 				  "nextSummonOccurrenceOrdinal", "summonOccurrences",
 				  "nextWorldOccurrenceOrdinal", "worldOccurrences",
 				  "nextSceneProfileOccurrenceOrdinal", "sceneProfileOccurrences",
-				  "nextPresentationOccurrenceOrdinal", "presentationOccurrences", "enterCombatOnFinish", "resetBossToSpawn", "resetBossYawDegrees", "bossMotion", "animationRootVerticalScale", "animationRootHorizontalScale", "gateId", "targetBossPlacementId", "folderId", "durationMs", "nextPatternOccurrenceOrdinal", "patternOccurrences" }) :
+				  "nextPresentationOccurrenceOrdinal", "presentationOccurrences", "enterCombatOnFinish", "resetBossToSpawn", "resetBossYawDegrees", "bossMotion", "animationRootVerticalScale", "animationRootHorizontalScale", "gateId", "targetBossPlacementId", "folderId", "durationMs", "nextPatternOccurrenceOrdinal", "patternOccurrences", "loopStartPatternOccurrenceId", "playChildrenSequentially" }) :
 			Has_Properties(patternValue,
 				{ "patternId", "actorProfileId", "displayName", "authoringStatus", "category",
 				  "nextStageOrdinal", "nextAnimationOrdinal", "stages" },
@@ -3583,7 +3652,7 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 				  "nextSummonOccurrenceOrdinal", "summonOccurrences",
 				  "nextWorldOccurrenceOrdinal", "worldOccurrences",
 				  "nextSceneProfileOccurrenceOrdinal", "sceneProfileOccurrences",
-				  "nextPresentationOccurrenceOrdinal", "presentationOccurrences", "enterCombatOnFinish", "resetBossToSpawn", "resetBossYawDegrees", "bossMotion", "animationRootVerticalScale", "animationRootHorizontalScale", "gateId", "targetBossPlacementId", "folderId", "durationMs", "nextPatternOccurrenceOrdinal", "patternOccurrences" });
+				  "nextPresentationOccurrenceOrdinal", "presentationOccurrences", "enterCombatOnFinish", "resetBossToSpawn", "resetBossYawDegrees", "bossMotion", "animationRootVerticalScale", "animationRootHorizontalScale", "gateId", "targetBossPlacementId", "folderId", "durationMs", "nextPatternOccurrenceOrdinal", "patternOccurrences", "loopStartPatternOccurrenceId", "playChildrenSequentially" });
 		if (!validProperties)
 		{
 			outStatus = "KoukuSaydon Pattern has unexpected properties.";
@@ -4093,6 +4162,17 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
         if (const auto* value = patternValue.Find("durationMs"))
             if (!Try_ParseUnsigned(*value, MAX_TIME_MS, stagedPattern.iDurationMs))
             { outStatus = "Invalid Pattern durationMs."; return false; }
+        if (const auto* sequential = patternValue.Find("playChildrenSequentially"))
+        {
+            if (!sequential->Is_Boolean()) { outStatus = "Parent sequential playback must be boolean."; return false; }
+            stagedPattern.bPlayChildrenSequentially = sequential->Get_Boolean();
+        }
+        if (const auto* loop = patternValue.Find("loopStartPatternOccurrenceId"))
+        {
+            if (!loop->Is_String() || loop->Get_String().empty())
+            { outStatus = "Parent loop start must be a nonempty child occurrence ID."; return false; }
+            stagedPattern.strLoopStartPatternOccurrenceId = loop->Get_String();
+        }
         if (const auto* value = patternValue.Find("nextPatternOccurrenceOrdinal"))
             if (!Try_ParseUnsigned(*value, MAX_NEXT_ORDINAL, stagedPattern.iNextPatternOccurrenceOrdinal) ||
                 !stagedPattern.iNextPatternOccurrenceOrdinal)
@@ -4824,6 +4904,9 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
         if (!pattern.strFolderId.empty())
             output << "      \"folderId\": \"" << CDataJson::Escape(pattern.strFolderId) << "\",\n";
         if (pattern.iDurationMs) output << "      \"durationMs\": " << pattern.iDurationMs << ",\n";
+        if (pattern.bPlayChildrenSequentially) output << "      \"playChildrenSequentially\": true,\n";
+        if (!pattern.strLoopStartPatternOccurrenceId.empty())
+            output << "      \"loopStartPatternOccurrenceId\": \"" << CDataJson::Escape(pattern.strLoopStartPatternOccurrenceId) << "\",\n";
         if (!pattern.PatternOccurrences.empty() || pattern.iNextPatternOccurrenceOrdinal != 1u)
         {
             output << "      \"nextPatternOccurrenceOrdinal\": " << pattern.iNextPatternOccurrenceOrdinal
@@ -5446,6 +5529,28 @@ bool_t Client::CKoukuSaydonCompositionDocument::Try_ExpandPatternDocument(
     if (!Validate_Shape(source, outStatus)) return false;
     if (!Validate_PatternChildren(source, *selected, outStatus)) return false;
     const auto lifetime = Pattern_Lifetime(*selected);
+    if (selected->bPlayChildrenSequentially && selected->strLoopStartPatternOccurrenceId.empty())
+    { outDocument = source; outStatus.clear(); return true; }
+    if (!selected->strLoopStartPatternOccurrenceId.empty())
+    {
+        // Server schedules the child Patterns through the existing audition member.
+        // Keep their authored references and individual root-motion ownership.
+        auto staged = source;
+        auto& owner = staged.Patterns[static_cast<size_t>(selected - source.Patterns.begin())];
+        KOUKU_SAYDON_COMPOSITION_STAGE stage;
+        stage.strStageId = "STAGE_1"; stage.strActionId = owner.strPatternId + ".parent-owner";
+        stage.strStageKind = "ACTIVE"; stage.iDurationMs = 34u;
+        KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE animation;
+        animation.strOccurrenceId = owner.strPatternId + ".idle.1";
+        animation.strProfileId = owner.strActorProfileId; animation.strSourceStageId = "RAW";
+        animation.strSourceSlotId = animation.strRuntimeClip = "rpct00_idle_battle_1";
+        animation.iPlayMs = 34u; animation.fPlayRate = 1.f; animation.strEndPolicy = "LOOP_TO_WINDOW";
+        stage.AnimationOccurrences.push_back(std::move(animation));
+        owner.Stages = {std::move(stage)};
+        owner.iNextStageOrdinal = (std::max)(2u, owner.iNextStageOrdinal);
+        owner.iNextAnimationOrdinal = (std::max)(2u, owner.iNextAnimationOrdinal);
+        outDocument = std::move(staged); outStatus.clear(); return true;
+    }
     if (lifetime > MAX_TIME_MS) return fail("Timeline exceeds 600 seconds.");
     if (selected->PatternOccurrences.empty())
     {
@@ -5560,7 +5665,8 @@ bool_t Client::CKoukuSaydonCompositionDocument::Try_ExpandPatternDocument(
         }
         if (child.fAnimationRootVerticalScale != selected->fAnimationRootVerticalScale)
             return fail("Child animation root vertical scale differs from Parent: " + child.strPatternId);
-        if (child.fAnimationRootHorizontalScale != selected->fAnimationRootHorizontalScale)
+        if (child.fAnimationRootHorizontalScale != selected->fAnimationRootHorizontalScale &&
+            !(child.fAnimationRootHorizontalScale == 0.0 && Tracking_OwnsAllStages(source, child)))
             return fail("Child animation root horizontal scale differs from Parent: " + child.strPatternId);
         const auto childDuration = static_cast<std::uint32_t>(Pattern_Lifetime(child));
         const auto slotEnd = slot.iStartMs + slot.iDurationMs;

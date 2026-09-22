@@ -312,6 +312,7 @@ LostArk::Server::CGameRoom::Evaluate_KoukuSaydonPatternAudition(
 			for (const auto& trigger : pattern->MechanicTriggers)
 				member.bOwnsPlayerMode = member.bOwnsPlayerMode || trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::HUD_ENTER ||
 					trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::CARD_MAZE_HIDE_NEXT || trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::CARD_MAZE_ENTER || trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::CARD_MAZE_STAGE_PLAYERS;
+			for (const auto& child : pattern->ParentChildren) toCheck.push_back(child.strPatternId);
 			for (const auto& window : pattern->LogicWindows)
 			{
 				for (const auto& candidate : window.PatternIds) toCheck.push_back(candidate);
@@ -530,7 +531,7 @@ bool LostArk::Server::CGameRoom::Retain_KoukuPatternTail(
 	KOUKU_PATTERN_TAIL tail;
 	tail.pOwner = std::make_shared<SERVER_WORLD_ENTITY>(sourceOwner);
 	tail.pOwner->KoukuRetainedLogicOwners.clear();
-	tail.Member = member; tail.iEndTick = deadline; tail.iLastUpdateTick = serverTick;
+	tail.Member = member; tail.iEndTick = pattern.strParentLoopStartOccurrenceId.empty() ? deadline : 0u; tail.iLastUpdateTick = serverTick;
 	for (auto& live : m_WorldEntities)
 		if (live.iNetEntityId == sourceOwner.iNetEntityId)
 		{
@@ -562,7 +563,7 @@ void LostArk::Server::CGameRoom::Update_KoukuPatternTails(const std::uint32_t se
 	{
 		auto& tail = *it;
 		if (tail.iLastUpdateTick == serverTick) { ++it; continue; }
-		if (CKoukuSaydonLogicRuntime::Has_ReachedTick(tail.iLastUpdateTick, tail.iEndTick))
+		if (tail.iEndTick && CKoukuSaydonLogicRuntime::Has_ReachedTick(tail.iLastUpdateTick, tail.iEndTick))
 		{
 			Clear_KoukuPlayerTargets(*tail.pOwner, tail.Member.LogicLedger);
 			CKoukuSaydonLogicRuntime::Discard(tail.Member.LogicLedger, m_Players, tail.pOwner.get());
@@ -579,6 +580,9 @@ void LostArk::Server::CGameRoom::Update_KoukuPatternTails(const std::uint32_t se
 		tail.pOwner->fPositionX = live->fPositionX; tail.pOwner->fPositionY = live->fPositionY;
 		tail.pOwner->fPositionZ = live->fPositionZ; tail.pOwner->fYawDegrees = live->fYawDegrees;
 		tail.pOwner->iCurrentHp = live->iCurrentHp;
+        // The retained Parent's board has an unbounded run lifetime. Its one entry
+        // trigger has already committed; only the child owns new actor/Logic ticks.
+        if (!tail.iEndTick) { ++it; continue; }
 		KOUKUSAYDON_LOGIC_OUTPUT output;
 		CKoukuSaydonLogicRuntime::Update(*tail.pOwner, *pattern, tail.Member.LogicLedger, m_Players, *base,
 			product->Find_KoukuMadnessPolicy(tail.pOwner->strEncounterId), serverTick, m_TickDamageEvents,
@@ -1037,7 +1041,7 @@ void LostArk::Server::CGameRoom::Prepare_KoukuAuditionTick(const std::uint32_t s
 			start.member->iMarioEntrantSessionId = INVALID_SESSION_ID;
 			start.member->iMarioEntrantNetEntityId = INVALID_NET_ENTITY_ID;
 			start.member->bMarioReturnCompleted = false;
-			start.member->bCompletionChainStarted = false;
+			start.member->bCompletionChainStarted = !definition->ParentChildren.empty();
 			start.member->bCompletionChainAwaitingReturn = false;
 			start.member->bCompletionChainSuccessQueued = false;
 			start.member->strCompletionChainSuccessPatternId = authored ? authored->strPatternId : std::string{};
@@ -1049,6 +1053,58 @@ void LostArk::Server::CGameRoom::Prepare_KoukuAuditionTick(const std::uint32_t s
 		Queue_KoukuSaydonPatternAuditionLifecycle(start.live->strPatternId, start.live->iPatternSequence, start.live->iPatternStageIndex,
 			KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::ACTIVE, {}, start.live->iNetEntityId);
 	if (!starts.empty()) Broadcast_KoukuBundleState(KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::ACTIVE);
+}
+
+bool LostArk::Server::CGameRoom::Start_KoukuParentSequence(
+    KOUKUSAYDON_PATTERN_AUDITION_MEMBER& member, SERVER_WORLD_ENTITY& boss,
+    const BOSS_PATTERN_DEFINITION& pattern, const std::uint32_t serverTick)
+{
+    if (pattern.ParentChildren.empty() || member.bParentSequenceStarted) return false;
+    const auto* catalog = Resolve_KoukuProductCatalog();
+    if (!catalog) return false;
+    const bool looping = !pattern.strParentLoopStartOccurrenceId.empty();
+    std::uint32_t introMs = 0u;
+    if (!looping)
+    {
+        for (const auto& stage : pattern.Stages) introMs += stage.iDurationMs;
+        if (CKoukuSaydonBrain::Pattern_ElapsedMs(boss, serverTick) < introMs) return false;
+    }
+    const auto first = member.iPatternIndex + 1u;
+    std::vector<std::string> ids;
+    std::vector<std::uint32_t> waits;
+    std::string status;
+    for (std::size_t i = 0u; i < pattern.ParentChildren.size(); ++i)
+    {
+        const auto& entry = pattern.ParentChildren[i];
+        const auto* child = CKoukuSaydonBrain::Find_AnimationOnlyPattern(*catalog, entry.strPatternId, status);
+        if (!child) return false; // Admission pins and validates the whole closure.
+        std::uint32_t stageMs = 0u;
+        for (const auto& stage : child->Stages) stageMs += stage.iDurationMs;
+        const auto nextStart = i + 1u < pattern.ParentChildren.size() ? pattern.ParentChildren[i + 1u].iStartMs : pattern.iTimelineDurationMs;
+        const auto after = nextStart - entry.iStartMs - (std::min)(stageMs, entry.iDurationMs);
+        ids.push_back(entry.strPatternId);
+        waits.push_back((std::max)(1u, CKoukuSaydonLogicRuntime::Ticks_FromMs(after)));
+        if (entry.strOccurrenceId == pattern.strParentLoopStartOccurrenceId) member.iParentLoopIndex = first + i;
+    }
+    member.TransitionTicks.resize(member.PatternIds.size(), 1u);
+    member.PatternIds.insert(member.PatternIds.begin() + first, ids.begin(), ids.end());
+    member.TransitionTicks.insert(member.TransitionTicks.begin() + first, waits.begin(), waits.end());
+    member.TransitionTicks[member.iPatternIndex] = (std::max)(1u,
+        CKoukuSaydonLogicRuntime::Ticks_FromMs(pattern.ParentChildren.front().iStartMs - (std::min)(introMs, pattern.ParentChildren.front().iStartMs)));
+    for (std::size_t i = 0; i < waits.size(); ++i) member.TransitionTicks[first + i] = waits[i];
+    member.iParentLastIndex = first + ids.size() - 1u;
+    member.bParentSequenceStarted = true;
+    member.bParentSequenceLoops = looping;
+    if (!looping)
+    {
+        member.bCompletionChainStarted = true;
+        member.iCompletionChainFirstIndex = first;
+        member.iCompletionChainCount = static_cast<std::uint32_t>(ids.size());
+        member.iCompletionChainCompleted = 0u;
+        member.bCompletionChainAwaitingReturn = false;
+    }
+    m_KoukuSaydonBrain.Complete_Pattern(boss, serverTick);
+    return true;
 }
 
 bool LostArk::Server::CGameRoom::Start_KoukuCompletionChain(
@@ -1271,6 +1327,13 @@ void LostArk::Server::CGameRoom::Queue_KoukuCompletionChainSuccess(
 {
 	using namespace LostArk::Shared;
 	if (!member.bCompletionChainAwaitingReturn || member.bCompletionChainSuccessQueued) return;
+    // Entry/solo return may happen before the authored Parent combat finishes.
+    // Only a real terminal receipt releases the actor for phase 2.
+    const auto active = std::find_if(m_WorldEntities.begin(), m_WorldEntities.end(), [&](const auto& boss) {
+        return boss.iNetEntityId == member.iBossEntityId && !boss.strPatternId.empty(); });
+    if (active != m_WorldEntities.end()) return;
+    if (member.bParentSequenceStarted && (member.iCompletionChainCompleted < member.iCompletionChainCount ||
+        !CKoukuSaydonLogicRuntime::Has_ReachedTick(serverTick, member.iNextStartTick))) return;
 	if (!member.bMarioEntryConsumed && member.MarioEntryAnchor)
 	{
 		const auto* catalog = Resolve_KoukuProductCatalog(); std::string status;
@@ -1297,6 +1360,7 @@ void LostArk::Server::CGameRoom::Queue_KoukuCompletionChainSuccess(
 	member.TransitionTicks.insert(member.TransitionTicks.begin() + completedIndex, 1u);
 	member.bCompletionChainSuccessQueued = true;
 	member.bCompletionChainAwaitingReturn = false;
+    member.bParentSequenceStarted = false;
 	++member.iPatternIndex;
 	member.ePhase = KOUKUSAYDON_PATTERN_AUDITION_PHASE::PENDING;
 	member.iNextStartTick = serverTick;
@@ -1365,10 +1429,11 @@ bool LostArk::Server::CGameRoom::Update_KoukuSaydonBoss(SERVER_WORLD_ENTITY& bos
         &m_ServerNavigation, &m_ServerCollisionSystem);
 	Update_KoukuMarioEntry(*member, serverTick);
 	Update_KoukuPlayerTargets(boss, *pattern, member->LogicLedger, *baseCatalog, serverTick);
-	const bool outputCompleted = Apply_KoukuLogicOutput(output, boss, serverTick);
-	const bool chainStarted = !outputCompleted && Start_KoukuCompletionChain(*member, boss, *pattern, serverTick);
-	const bool early = outputCompleted || chainStarted;
 	const auto sourceOwner = boss;
+	const bool outputCompleted = Apply_KoukuLogicOutput(output, boss, serverTick);
+    const bool parentStarted = !outputCompleted && Start_KoukuParentSequence(*member, boss, *pattern, serverTick);
+	const bool chainStarted = !outputCompleted && !parentStarted && Start_KoukuCompletionChain(*member, boss, *pattern, serverTick);
+	const bool early = outputCompleted || chainStarted || parentStarted;
 	const auto update = early ? KOUKUSAYDON_BRAIN_UPDATE_RESULT::PATTERN_COMPLETED : m_KoukuSaydonBrain.Update(boss, *catalog, serverTick, status);
 	if (update == KOUKUSAYDON_BRAIN_UPDATE_RESULT::STAGE_CHANGED)
 	{
@@ -1380,7 +1445,7 @@ bool LostArk::Server::CGameRoom::Update_KoukuSaydonBoss(SERVER_WORLD_ENTITY& bos
 	if (update == KOUKUSAYDON_BRAIN_UPDATE_RESULT::ABORTED_INVALID_DEFINITION || update == KOUKUSAYDON_BRAIN_UPDATE_RESULT::ABORTED_BOSS_DEAD)
 	{ m_strStatus = status; Clear_KoukuSaydonPatternAudition(); return true; }
 	if (update != KOUKUSAYDON_BRAIN_UPDATE_RESULT::PATTERN_COMPLETED) return true;
-	const bool retained = !early && Retain_KoukuPatternTail(*member, sourceOwner, *pattern, serverTick);
+	const bool retained = (!early || parentStarted) && Retain_KoukuPatternTail(*member, sourceOwner, *pattern, serverTick);
 	if (!retained)
 	{
 		(void)Release_PlayerAttachments(boss.iNetEntityId, 0.f, 0u, false, 0u, serverTick);
@@ -1408,6 +1473,8 @@ bool LostArk::Server::CGameRoom::Update_KoukuSaydonBoss(SERVER_WORLD_ENTITY& bos
 			// Prepare closes it and schedules success after the solo return gate.
 			if (!member->strCompletionChainSuccessPatternId.empty())
 			{
+                if (member->bParentSequenceStarted)
+                    member->iNextStartTick = Add_ServerTicksSkippingReservedZero(serverTick, member->TransitionTicks[completedIndex]);
 				member->bCompletionChainAwaitingReturn = true;
 				Broadcast_KoukuBundleState(KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::ACTIVE);
 				return true;
@@ -1431,7 +1498,16 @@ bool LostArk::Server::CGameRoom::Update_KoukuSaydonBoss(SERVER_WORLD_ENTITY& bos
 		member->MarioEntryAnchor.reset();
 		std::erase_if(m_PendingKoukuMarioEntries, [&](const auto& entry) { return entry.strMemberId == member->strMemberId; });
 	}
-	if (completedIndex + 1u < member->PatternIds.size())
+    if (member->bParentSequenceStarted && member->bParentSequenceLoops && completedIndex == member->iParentLastIndex)
+    {
+        member->iPatternIndex = member->iParentLoopIndex;
+        member->ePhase = KOUKUSAYDON_PATTERN_AUDITION_PHASE::PENDING;
+        member->iNextStartTick = Add_ServerTicksSkippingReservedZero(serverTick, member->TransitionTicks[completedIndex]);
+        Queue_KoukuSaydonPatternAuditionLifecycle(member->PatternIds[member->iPatternIndex], 0u, 0u,
+            KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::PENDING, {}, boss.iNetEntityId);
+        m_KoukuSaydonPatternAudition.ePhase = KOUKUSAYDON_PATTERN_AUDITION_PHASE::PENDING;
+    }
+	else if (completedIndex + 1u < member->PatternIds.size())
 	{
 		++member->iPatternIndex; member->ePhase = KOUKUSAYDON_PATTERN_AUDITION_PHASE::PENDING;
 		member->iNextStartTick = Add_ServerTicksSkippingReservedZero(serverTick, (std::max)(1u, member->TransitionTicks[completedIndex]));

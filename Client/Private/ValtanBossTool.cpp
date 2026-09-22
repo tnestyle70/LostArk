@@ -617,6 +617,10 @@ void Client::CValtanBossTool::Refresh_PresentationFreshness(const bool_t bForce)
 
 bool_t Client::CValtanBossTool::Submit_SelectedPattern()
 {
+#ifndef _DEBUG
+    m_strStatus = "Valtan authoring playback requires a Debug build.";
+    return false;
+#else
 	m_bReviveFeedbackPending = false;
 	m_strActionFeedback.clear();
 	if (Is_RuntimePublishMutationBlocked(
@@ -666,6 +670,7 @@ bool_t Client::CValtanBossTool::Submit_SelectedPattern()
     m_strPreparationPatternId = m_strSelectedPatternId;
     m_strPreparationStatus = m_strStatus = "Preparing selected Valtan pattern resources; Server playback has not started.";
     return true;
+#endif
 }
 
 void Client::CValtanBossTool::Cancel_PlayPreparation(const std::string& reason)
@@ -680,6 +685,9 @@ void Client::CValtanBossTool::Cancel_PlayPreparation(const std::string& reason)
 
 void Client::CValtanBossTool::Update_PlayPreparation()
 {
+#ifndef _DEBUG
+    return;
+#else
     if (!m_PlayPreparation) return;
     const auto pending = *m_PlayPreparation;
     auto* arena = CLevel_ValtanArena::Get_Active();
@@ -723,6 +731,7 @@ void Client::CValtanBossTool::Update_PlayPreparation()
     }
     m_strRepeatPatternId = m_bRepeat ? pending.patternId : std::string{};
     m_bFollowLive = true; m_strStatus = std::move(reason);
+#endif
 }
 
 
@@ -883,6 +892,10 @@ bool_t Client::CValtanBossTool::Queue_NextServerPattern(
 bool_t Client::CValtanBossTool::Can_Play_ServerPattern(
 	std::string& strOutStatus) const
 {
+#ifndef _DEBUG
+    strOutStatus = "Valtan authoring playback requires a Debug build.";
+    return false;
+#else
 	if (Is_RuntimePublishMutationBlocked(
 			m_pBalanceTool, "Pattern Play", strOutStatus))
 	{
@@ -905,6 +918,7 @@ bool_t Client::CValtanBossTool::Can_Play_ServerPattern(
 	CValtanPatternSoundSourceReadAdmission SoundAdmission;
 	return Acquire_ServerPlaybackAdmission(
 		Revision, SoundReceipt, SoundAdmission, strOutStatus);
+#endif
 }
 
 bool_t Client::CValtanBossTool::Get_ServerActivePatternRevision(

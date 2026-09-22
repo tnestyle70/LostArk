@@ -1222,6 +1222,14 @@ namespace LostArk::Server
 		std::vector<BOSS_PATTERN_BOSS_MOTION_KEY> Keys;
 	};
 
+    struct BOSS_PATTERN_PARENT_CHILD final
+    {
+        std::string strOccurrenceId;
+        std::string strPatternId;
+        std::uint32_t iStartMs = 0u;
+        std::uint32_t iDurationMs = 0u;
+    };
+
 	struct BOSS_PATTERN_DEFINITION
 	{
 		std::string strEncounterId;
@@ -1282,6 +1290,9 @@ namespace LostArk::Server
 		bool bFixedTimelineClock = false;
         // Zero is legacy Stage sum. Independent row tails never delay a Stage.
         std::uint32_t iTimelineDurationMs = 0u;
+        // Retained Parent uses the existing member scheduler, not expanded animation stages.
+        std::vector<BOSS_PATTERN_PARENT_CHILD> ParentChildren;
+        std::string strParentLoopStartOccurrenceId;
 		std::optional<float> ResetBossYawDegrees;
 		std::optional<BOSS_PATTERN_BOSS_MOTION> BossMotion;
 		std::vector<BOSS_PATTERN_MECHANIC_TRIGGER> MechanicTriggers;

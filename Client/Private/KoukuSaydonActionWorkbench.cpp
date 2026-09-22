@@ -684,6 +684,7 @@ namespace
 	bool Has_CompletionChain(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
 		const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern)
 	{
+		if (!pattern.strLoopStartPatternOccurrenceId.empty() || pattern.bPlayChildrenSequentially) return true;
 		return std::any_of(pattern.LogicOccurrences.begin(), pattern.LogicOccurrences.end(), [&](const auto& box) {
 			const auto* logic = Find_Logic(document, box.strLogicId);
 			return box.bEnabled && logic && logic->strJudgementKind == "PATTERN_COMPLETION_COUNT";
