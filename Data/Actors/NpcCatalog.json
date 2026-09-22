@@ -646,6 +646,12 @@
           "npc_att_battle_10"
         ]
       },
+      "cutinMovie": {
+        "framePrefix": "UI/EstherCutin/Ninave/Ninave",
+        "frameCount": 116,
+        "fps": 30,
+        "delayMs": 0
+      },
       "shaderProfile": "esther"
     },
     {
@@ -662,6 +668,12 @@
           "npc_att_battle_1_02",
           "npc_att_battle_1_03"
         ]
+      },
+      "cutinMovie": {
+        "framePrefix": "UI/EstherCutin/Inanna/Inanna",
+        "frameCount": 111,
+        "fps": 30,
+        "delayMs": 0
       },
       "shaderProfile": "esther"
     },

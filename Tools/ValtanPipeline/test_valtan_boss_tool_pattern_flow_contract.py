@@ -1117,6 +1117,25 @@ class ValtanValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
             self.assertIn(
                 f"CValtanPatternFlowDocument::{method}", self.source
             )
+        insert_body = self.source[
+            self.source.index(
+                "bool_t Client::CValtanPatternFlowDocument::Insert_Node_After("
+            ) : self.source.index(
+                "bool_t Client::CValtanPatternFlowDocument::Remove_Node("
+            )
+        ]
+        for marker in (
+            "OPTIONAL_ENTRY_PATTERN_ID == patternId",
+            "previousEntryId = flow.strEntryNodeId",
+            "flow.strEntryNodeId = insertedNodeId",
+            "previousEntryId,",
+            "Build_LegacyProjection(flow)",
+            "Validate(staged, admittedPatternIds, outStatus)",
+        ):
+            self.assertIn(marker, insert_body)
+        self.assertNotIn(
+            "can only be the existing Flow entry node", insert_body
+        )
         self.assertGreaterEqual(
             self.source.count(
                 "VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT staged = m_Draft"

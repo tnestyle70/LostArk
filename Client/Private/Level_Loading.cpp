@@ -732,7 +732,7 @@ bool_t CLevel_Loading::Advance_TargetEffectPreparation()
 		{
 			std::vector<std::string> EstherEffectAssetIds;
 			for (const char* pEstherArchetypeId :
-				{ "NPC_59030", "NPC_58700", "NPC_59060" })
+				{ "NPC_59030", "NPC_58700", "NPC_59060", "NPC_59620", "NPC_59504" })
 			{
 				if (!CNpcActionEffectCueDocument::Load(pEstherArchetypeId, Status))
 					return IsolateFailure(Status);

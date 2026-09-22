@@ -1407,6 +1407,30 @@ bool CNetworkManager::Send_EstherSkill(
 		frameBytes) && Send_All(frameBytes);
 }
 
+bool CNetworkManager::Send_DebugUseEsther(
+	const std::uint32_t requestSequence,
+	const LostArk::Shared::ESTHER_ID esther,
+	const float aimX,
+	const float aimZ)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected() || !Is_Known_World_Id(m_eWorldId) ||
+		INVALID_PLAYER_ID == m_iLocalPlayerId)
+		return false;
+	C2S_DEBUG_USE_ESTHER message{};
+	message.iRequestSequence = requestSequence;
+	message.eWorldId = m_eWorldId;
+	message.eEsther = esther;
+	message.fAimX = aimX;
+	message.fAimZ = aimZ;
+	CPacketWriter writer;
+	if (!Write_Message(writer, message))
+		return false;
+	std::vector<std::uint8_t> frame;
+	return Build_Packet_Frame(PACKET_TYPE::C2S_DEBUG_USE_ESTHER,
+		writer.Get_Buffer(), frame) && Send_All(frame);
+}
+
 bool CNetworkManager::Send_UseSquareHole(
 	const std::uint32_t clientSequence,
 	const std::uint16_t holeId)

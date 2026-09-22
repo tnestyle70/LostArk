@@ -6615,6 +6615,31 @@
       "effectAssetId": "effect.classselect.guardianknight.fx_q_w_03.fx_par_01.par_q_watersplash_01",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
       "authoringPath": "Effects/Authored/effect.classselect.guardianknight.fx_q_w_03.fx_par_01.par_q_watersplash_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.esther.inanna.npc_att_battle_1_01.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.esther.inanna.npc_att_battle_1_01.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.esther.inanna.npc_att_battle_1_02.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.esther.inanna.npc_att_battle_1_02.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.esther.inanna.npc_att_battle_1_03.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.esther.inanna.npc_att_battle_1_03.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.esther.inanna.cameo.npc_sk_magicshield.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.esther.inanna.cameo.npc_sk_magicshield.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.esther.ninave.cameo.npc_sk_parkunas.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.esther.ninave.cameo.npc_sk_parkunas.full.restore.effect.json"
     }
   ]
 }

@@ -363,7 +363,7 @@ HRESULT Client::CEffectDocumentRenderer::Bind_MaterialInputs(
     }
     // Fixed decal/trail carriers share the admitted native parameter packet.
     const bool bKoukuFixedNative = nullptr == pShaderProgram &&
-        Resource.iSourceMaterialProfile >= 2304u && Resource.iSourceMaterialProfile <= 4607u &&
+        Resource.iSourceMaterialProfile >= 2304u && Resource.iSourceMaterialProfile <= 4671u &&
         (pShader == m_pDecalShader || pShader == m_pTrailShader);
     if (bKoukuFixedNative)
     {
@@ -440,7 +440,7 @@ HRESULT Client::CEffectDocumentRenderer::Bind_MaterialInputs(
         case EFFECT_SHADER_FAMILY::ARTIST:
         {
             NativeBindFailed = BindNativePacket("g_ArtistSourceMaterialParameters", "g_ArtistSourceMaterialTime", *artistParameters);
-            if (Resource.iSourceMaterialProfile >= 2304u && Resource.iSourceMaterialProfile <= 4607u)
+            if (Resource.iSourceMaterialProfile >= 2304u && Resource.iSourceMaterialProfile <= 4671u)
             {
                 float4_t SceneAmbient{0.f, 0.f, 0.f, 1.f};
                 for (const auto& Light : CGameInstance::Get().Get_SceneLights())

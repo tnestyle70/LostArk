@@ -532,6 +532,9 @@ namespace Client
 		/* Debug F1 "Normal Monster 1/2"; the Server re-summons the mapped wave group. */
 		bool_t Request_DebugResummonWaveMonsters(LostArk::Shared::WAVE_MONSTER_BUTTON button);
 		bool_t Request_DebugMadnessForm(LostArk::Shared::PLAYER_MADNESS_FORM form);
+		/* F1 Esther summon by name, aimed a few metres ahead of the local
+		character; the Server owns the cast, the gauge is untouched. */
+		bool_t Request_DebugUseEsther(LostArk::Shared::ESTHER_ID esther);
 		bool_t Is_DebugMadnessFormPending() const { return 0u != m_pendingDebugMadnessFormSequence; }
 		const std::string& Get_DebugMadnessFormStatus() const { return m_debugMadnessFormStatus; }
 		void Set_DebugMarioJumpEnabled(bool_t enabled) { m_debugMarioJumpEnabled = enabled; }
@@ -575,6 +578,14 @@ namespace Client
 		// Presentation basis only. The replicated Mario stage owns input mode.
 
 	private:
+		/* Normal player clicks may carry an exact depth-tested surface point for
+		   presentation.  The public move request remains available to interaction
+		   callers that only own a navigation goal. */
+		bool_t Request_MoveToPointResolved(
+			const float3_t& goal,
+			bool_t playClickEffect,
+			const float3_t* pExactClickSurface);
+
 		bool_t Update_MarioControls(bool_t gameplayCommandsEnabled);
 		//실질적인 navigation picking을 통한 이동으로 교체
 		bool_t Should_SendMoveGoal(

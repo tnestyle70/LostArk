@@ -1,7 +1,9 @@
 #pragma once
 
+#include "Network/PacketMessages.h"
 #include "Network/PacketType.h"
 
+#include <array>
 #include <cstdint>
 #include <string>
 
@@ -30,23 +32,50 @@ namespace LostArk::Server
 	this long before the room returns the player to NONE. */
 	inline constexpr std::uint32_t ESTHER_CAST_DURATION_MS = 1500u;
 
-	/* Valtan roster order is Sillian, Wei, Bahuntur. Every summon's authored
-	clip carries its own entrance and exit (Sillian
-	npc_evt1_sk_swordofchampion_bk 157 frames at 30 fps, Wei npc_sk_dochul 213,
-	Bahuntur npc_sk_breathofarcturus 121), so the summon spawns straight into
-	the strike and despawns the moment its clip ends. */
+	/* Every summonable Esther. Each authored clip carries its own entrance and
+	exit (Sillian npc_evt1_sk_swordofchampion_bk 157 frames at 30 fps, Wei
+	npc_sk_dochul 213, Bahuntur npc_sk_breathofarcturus 121, Ninav
+	npc_sk_parkunas 145, Inanna npc_sk_magicshield 121), so the summon spawns
+	straight into the strike and despawns the moment its clip ends. */
 	struct ESTHER_ROSTER_ENTRY
 	{
-		std::uint8_t iSlotIndex;
+		LostArk::Shared::ESTHER_ID eEstherId;
 		const char* pArchetypeId;
 		std::uint32_t iStrikeMs;
 	};
-	inline constexpr ESTHER_ROSTER_ENTRY ESTHER_ROSTER[] =
+	inline constexpr ESTHER_ROSTER_ENTRY ESTHER_DEFINITIONS[] =
 	{
-		{ 1u, "NPC_59030", 5300u },
-		{ 2u, "NPC_58700", 7100u },
-		{ 3u, "NPC_59060", 4100u },
+		{ LostArk::Shared::ESTHER_ID::SILLIAN, "NPC_59030", 5300u },
+		{ LostArk::Shared::ESTHER_ID::WEI, "NPC_58700", 7100u },
+		{ LostArk::Shared::ESTHER_ID::BAHUNTUR, "NPC_59060", 4100u },
+		{ LostArk::Shared::ESTHER_ID::NINAV, "NPC_59504", 4900u },
+		{ LostArk::Shared::ESTHER_ID::INANNA, "NPC_59620", 4100u },
 	};
+
+	/* Slot order per world: Valtan is Sillian, Wei, Bahuntur and KoukuSaydon is
+	Ninav, Wei, Inanna. The Character Select test arena keeps the Valtan order
+	so Ctrl+Z/X/C behave as they always have there; the F1 Debug summon names an
+	Esther directly for the other two. */
+	inline constexpr std::size_t ESTHER_ROSTER_SLOT_COUNT =
+		LostArk::Shared::MAX_ESTHER_SLOT_INDEX -
+		LostArk::Shared::MIN_ESTHER_SLOT_INDEX + 1u;
+	using ESTHER_WORLD_ROSTER =
+		std::array<LostArk::Shared::ESTHER_ID, ESTHER_ROSTER_SLOT_COUNT>;
+	inline constexpr ESTHER_WORLD_ROSTER ESTHER_ROSTER_VALTAN =
+	{
+		LostArk::Shared::ESTHER_ID::SILLIAN,
+		LostArk::Shared::ESTHER_ID::WEI,
+		LostArk::Shared::ESTHER_ID::BAHUNTUR,
+	};
+	inline constexpr ESTHER_WORLD_ROSTER ESTHER_ROSTER_KOUKUSAYDON =
+	{
+		LostArk::Shared::ESTHER_ID::NINAV,
+		LostArk::Shared::ESTHER_ID::WEI,
+		LostArk::Shared::ESTHER_ID::INANNA,
+	};
+
+	[[nodiscard]] const ESTHER_ROSTER_ENTRY* Find_EstherDefinition(
+		LostArk::Shared::ESTHER_ID estherId);
 
 	enum class ESTHER_USE_REJECTION : std::uint8_t
 	{
@@ -59,10 +88,11 @@ namespace LostArk::Server
 	class CEstherSkillSystem final
 	{
 	public:
-		// The Valtan raid room owns the Esther roster; the private Character
-		// Select test arena also enables it so a summon (and its client cutin)
-		// can be exercised without a raid. Every other world keeps the maximum
-		// at 0, which the snapshot contract reads as "no Esther here".
+		// The Valtan and KoukuSaydon raid rooms own an Esther roster; the
+		// private Character Select test arena also enables it so a summon (and
+		// its client cutin) can be exercised without a raid. Every other world
+		// keeps the maximum at 0, which the snapshot contract reads as "no
+		// Esther here".
 		void Initialize(LostArk::Shared::WORLD_ID worldId);
 
 		[[nodiscard]] bool Is_Enabled() const { return m_isEnabled; }
@@ -90,6 +120,7 @@ namespace LostArk::Server
 		static constexpr float REGEN_PER_SECOND = 200.f;
 
 		bool m_isEnabled = false;
+		ESTHER_WORLD_ROSTER m_Roster{};
 		std::uint32_t m_iGauge = 0u;
 		// Sub-point remainder so a 30 Hz tick loses nothing to truncation.
 		float m_fRegenRemainder = 0.f;

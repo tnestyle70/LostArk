@@ -1946,7 +1946,7 @@ Gate3 진입 오라는 원본 Prop300010 사각형의 회전과 실측 크기를
 ### 고대의 바다 비행 입력과 presentation
 
 vehicle9523 고대의 바다는 `CPlayerController -> IPlayerCommandSink -> C2S_MOVE`의
-typed flight intent와 Server snapshot phase/startTick/duration을 사용한다(Shared protocol104).
+typed flight intent와 Server snapshot phase/startTick/duration을 사용한다(Shared protocol105). 동일 protocol에는 F1 에스더 지정 소환 command도 포함되므로 Client/Server를 함께 갱신한다.
 E는 이륙/착륙 전환, WASD는 비행 이동, Space/Ctrl hold는 상승/하강이며 서버가 고도와
 XZ navigation/collision을 확정한다. WASD 조합을 유지하는 동안 카메라 기준을 고정해
 용 회전과 카메라 추종이 서로 입력을 되먹이지 않게 한다. UI/free-camera/focus 전환은

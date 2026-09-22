@@ -56,7 +56,7 @@ HRESULT Client::EFFECT_SCENE_CAPTURE_STATE::Capture_Once(
 
 bool Client::Is_NativeScreenPostShaderProfile(const uint32_t iProfile)
 {
-    if (iProfile >= 2304u && iProfile <= 4607u)
+    if (iProfile >= 2304u && iProfile <= 4671u)
         return std::ranges::any_of(ARTIST_PROGRAMS, [iProfile](const auto& Program)
             { return Program.iProfileIndex == iProfile && Program.strRendererShape == "screenPost"; });
     return iProfile == 68u || iProfile == 76u || iProfile == 155u ||
@@ -218,7 +218,7 @@ HRESULT Client::CEffectNativeScreenPostMaterial::Bind(
     }
     else if ((State.iProfile == 876u || State.iProfile == 894u ||
         State.iProfile == 1619u || State.iProfile == 1623u || State.iProfile == 1648u ||
-        (State.iProfile >= 2304u && State.iProfile <= 4607u)))
+        (State.iProfile >= 2304u && State.iProfile <= 4671u)))
     {
         BindRaw("g_ArtistSourceMaterialParameters", State.Parameters);
         BindRaw("g_ArtistSourceMaterialTime", State.fLocalTimeSeconds);

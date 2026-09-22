@@ -254,6 +254,16 @@ bool Client::CNetworkPlayerCommandSink::Request_EstherSkill(
 		clientSequence, slotIndex, aimX, aimZ);
 }
 
+bool Client::CNetworkPlayerCommandSink::Request_DebugUseEsther(
+	const std::uint32_t requestSequence,
+	const LostArk::Shared::ESTHER_ID esther,
+	const float aimX,
+	const float aimZ)
+{
+	return CNetworkManager::Get().Send_DebugUseEsther(
+		requestSequence, esther, aimX, aimZ);
+}
+
 bool Client::CNetworkPlayerCommandSink::Request_UseSquareHole(
 	const std::uint32_t clientSequence,
 	const std::uint16_t holeId)

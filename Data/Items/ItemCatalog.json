@@ -53,6 +53,7 @@
     { "itemId": "ACC_ABILITYSTONE_A", "displayName": "어빌리티 스톤", "maxStack": 1, "iconPath": "UI/Items/Common/abilitystone_a.png", "healPercent": 0, "category": "combat", "equipSlot": "stone", "grade": "relic", "startingEquippedSlot": "stone" },
     { "itemId": "ACC_BRACELET_A", "displayName": "팔찌", "maxStack": 1, "iconPath": "UI/Items/Common/bracelet_a.png", "healPercent": 0, "category": "combat", "equipSlot": "bracelet", "grade": "relic", "startingEquippedSlot": "bracelet" },
     { "itemId": "AVATAR_LANCEMASTER_MOKOKO_HEAD", "displayName": "즐거운 모코코 머리 아바타", "maxStack": 1, "iconPath": "UI/Items/LanceMaster/mokoko_pleasant_head.png", "healPercent": 0, "category": "combat", "equipSlot": "avatarHead", "characterClass": "LanceMaster", "grade": "avatar" },
-    { "itemId": "AVATAR_LANCEMASTER_MOKOKO_OUTFIT", "displayName": "즐거운 모코코 의상 아바타", "maxStack": 1, "iconPath": "UI/Items/LanceMaster/mokoko_pleasant_outfit.png", "healPercent": 0, "category": "combat", "equipSlot": "avatarOutfit", "characterClass": "LanceMaster", "grade": "avatar" }
+    { "itemId": "AVATAR_LANCEMASTER_MOKOKO_OUTFIT", "displayName": "즐거운 모코코 의상 아바타", "maxStack": 1, "iconPath": "UI/Items/LanceMaster/mokoko_pleasant_outfit.png", "healPercent": 0, "category": "combat", "equipSlot": "avatarOutfit", "characterClass": "LanceMaster", "grade": "avatar" },
+    { "itemId": "ITEM_PORTFOLIO", "displayName": "취업용 포트폴리오", "maxStack": 1, "iconPath": "UI/Items/Common/portfolio.png", "healPercent": 0, "category": "combat", "grade": "relic" }
   ]
 }

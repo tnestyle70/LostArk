@@ -1,0 +1,127 @@
+{
+ "schema": "lostark.guardianknight-identity-hud",
+ "formatVersion": 1,
+ "source": {
+  "identity": "EFUI_IDENTITYDRAGONKNIGHT DragonKnightSkinFrame",
+  "embereth": "EFUI_IDENTITYDRAGONKNIGHTEMBERETHGAUGE IdentityDragonKnightEmberethGauge",
+  "mapping": "retail 1920x1080 stage -> 1280x720 reference: emblem 960<->673.5, Q row top 974<->644.7, 2/3 scale"
+ },
+ "orb": {
+  "fill": "Set_SlotFillRatio(GK_Id_OrbFill, identity/maximum) -- Progress.target.width",
+  "stanceTexture": {
+   "GUARDIANKNIGHT_HUMAN": "UI/HUD/GuardianKnight/Orb_Fill_Human.png",
+   "GUARDIANKNIGHT_DRAGON": "UI/HUD/GuardianKnight/Orb_Fill_Dragon.png"
+  },
+  "markHiddenAt": [
+   "minimum",
+   "maximum"
+  ]
+ },
+ "skillKeyColor": {
+  "usable": "#FFFFFF",
+  "unusable": "#686C20",
+  "usableWhen": "gauge full, or the dragon stance is held"
+ },
+ "embereth": {
+  "socketCount": 10,
+  "note": "retail invokeDragonKnightBloodGauge(filled, unlocked): sockets [0,unlocked) are lit or empty, sockets past `unlocked` wear the padlock.",
+  "filled": "HUD_PLAYER_STATE.iEmberOrbs",
+  "unlocked": "iEmberMaximumSockets - iEmberLockedSockets (the server's own capacity expression in CPlayerSkillSystem)"
+ },
+ "skillIcons": {
+  "49020": {
+   "asset": "UI/Skill/GuardianKnight/49020_Lunge.png",
+   "icon": "DDK_Skill_01_1",
+   "page": "DDK_Skill_1"
+  },
+  "49021": {
+   "asset": "UI/Skill/GuardianKnight/49021_Glide.png",
+   "icon": "DDK_Skill_01_2",
+   "page": "DDK_Skill_1"
+  },
+  "49040": {
+   "asset": "UI/Skill/GuardianKnight/49040_DragonAvatar.png",
+   "icon": "DDK_Skill_01_23",
+   "page": "DDK_Skill_1"
+  },
+  "49041": {
+   "asset": "UI/Skill/GuardianKnight/49041_DragonAvatarRelease.png",
+   "icon": "DDK_Skill_01_24",
+   "page": "DDK_Skill_1"
+  },
+  "49100": {
+   "asset": "UI/Skill/GuardianKnight/49100_Cleave.png",
+   "icon": "DDK_Skill_01_5",
+   "page": "DDK_Skill_1"
+  },
+  "49110": {
+   "asset": "UI/Skill/GuardianKnight/49110_WildStrike.png",
+   "icon": "DDK_Skill_01_6",
+   "page": "DDK_Skill_1"
+  },
+  "49120": {
+   "asset": "UI/Skill/GuardianKnight/49120_Ignite.png",
+   "icon": "DDK_Skill_01_7",
+   "page": "DDK_Skill_1"
+  },
+  "49130": {
+   "asset": "UI/Skill/GuardianKnight/49130_ValiantCharge.png",
+   "icon": "DDK_Skill_01_8",
+   "page": "DDK_Skill_1"
+  },
+  "49150": {
+   "asset": "UI/Skill/GuardianKnight/49150_QuakeSmash.png",
+   "icon": "DDK_Skill_01_10",
+   "page": "DDK_Skill_1"
+  },
+  "49200": {
+   "asset": "UI/Skill/GuardianKnight/49200_DragonsBlow.png",
+   "icon": "DDK_Skill_01_13",
+   "page": "DDK_Skill_1"
+  },
+  "49210": {
+   "asset": "UI/Skill/GuardianKnight/49210_DragonsSpear.png",
+   "icon": "DDK_Skill_01_14",
+   "page": "DDK_Skill_1"
+  },
+  "49220": {
+   "asset": "UI/Skill/GuardianKnight/49220_BurningFlame.png",
+   "icon": "DDK_Skill_01_15",
+   "page": "DDK_Skill_1"
+  },
+  "49230": {
+   "asset": "UI/Skill/GuardianKnight/49230_AbaddonFlame.png",
+   "icon": "DDK_Skill_01_16",
+   "page": "DDK_Skill_1"
+  },
+  "49260": {
+   "asset": "UI/Skill/GuardianKnight/49260_InfernoStrike.png",
+   "icon": "DDK_Skill_01_19",
+   "page": "DDK_Skill_1"
+  },
+  "49270": {
+   "asset": "UI/Skill/GuardianKnight/49270_InfernoFlame.png",
+   "icon": "DDK_Skill_01_20",
+   "page": "DDK_Skill_1"
+  },
+  "49330": {
+   "asset": "UI/Skill/GuardianKnight/49330_FireBreath.png",
+   "icon": "DDK_Skill_01_29",
+   "page": "DDK_Skill_1"
+  },
+  "49400": {
+   "asset": "UI/Skill/GuardianKnight/49400_DragonRampage.png",
+   "icon": "DDK_Skill_01_31",
+   "page": "DDK_Skill_1"
+  },
+  "49420": {
+   "asset": "UI/Skill/GuardianKnight/49420_BreathOfDestruction.png",
+   "icon": "DDK_Skill_01_33",
+   "page": "DDK_Skill_1"
+  }
+ },
+ "notInstalled": {
+  "slotAni_0/slotAni_1": "ark-passive slots; retail hides them in both stances we have",
+  "stanceMc transform": "the 52-frame dragon / 20-frame dragon_off clips are not baked; only the static normal pose is installed"
+ }
+}

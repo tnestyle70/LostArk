@@ -3652,6 +3652,32 @@ bool_t Client::CValtanActionWorkbench::Play_EffectivePreview(
 	return true;
 }
 
+bool_t Client::CValtanActionWorkbench::Play_ServerVerification(
+	const VALTAN_PATTERN_VIEW& Pattern,
+	std::string& status)
+{
+#ifdef _DEBUG
+	CMainApp* const app = CMainApp::Get_Active();
+	if (nullptr == app)
+	{
+		status = "Server-exact Pattern verification owner is unavailable.";
+		return false;
+	}
+	if (!app->Debug_SelectCompletePlayPattern(Pattern.strPatternId))
+	{
+		status =
+			"The selected Pattern is absent from the Server-admitted verification inventory.";
+		return false;
+	}
+	return app->Debug_CompletePlaySelected(status);
+#else
+	(void)Pattern;
+	status =
+		"Server-exact Pattern verification is unavailable outside a Debug Client.";
+	return false;
+#endif
+}
+
 void Client::CValtanActionWorkbench::
 Refresh_EffectV2LocalPreviewAfterMutation(
 	const VALTAN_PATTERN_VIEW* const pPattern,
@@ -5495,20 +5521,7 @@ bool_t Client::CValtanActionWorkbench::Render_Toolbar(
 		if (ImGui::Button("Play on Server", ImVec2(-1.f, 0.f)))
 		{
 			std::string Status;
-#ifdef _DEBUG
-			if (CMainApp* const pApp = CMainApp::Get_Active();
-				nullptr != pApp &&
-				pApp->Debug_SelectCompletePlayPattern(pPattern->strPatternId))
-			{
-				(void)pApp->Debug_CompletePlaySelected(Status);
-			}
-			else
-			{
-				Status = "Complete Play selection was rejected by the admitted inventory.";
-			}
-#else
-			Status = "Complete Play authoring control is unavailable outside a Debug Client.";
-#endif
+			(void)Play_ServerVerification(*pPattern, Status);
 			m_strStatus = std::move(Status);
 		}
 		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled) &&
@@ -6244,9 +6257,29 @@ void Client::CValtanActionWorkbench::Render_SequenceBrowser(
 
 void Client::CValtanActionWorkbench::Render_Preview(
 	const VALTAN_PATTERN_VIEW* const pPattern,
-	const bool_t bLocalPreviewAdmitted)
+	const bool_t bLocalPreviewAdmitted,
+	const bool_t bServerVerificationAdmitted)
 {
-	ImGui::SeparatorText("Valtan Preview / Common Transport");
+	ImGui::SeparatorText("Server-Exact Pattern Verification");
+	ImGui::TextWrapped(
+		"Use this Play for Pattern order verification. It resets the authoritative Valtan from boss.valtan.center and runs the saved Server stages, movement, combat objects, animation, Effect, Sound, camera and world events.");
+	ImGui::BeginDisabled(nullptr == pPattern || !bServerVerificationAdmitted);
+	if (ImGui::Button("Play (Server Exact)", ImVec2(-1.f, 0.f)))
+	{
+		std::string Status;
+		(void)Play_ServerVerification(*pPattern, Status);
+		m_strStatus = std::move(Status);
+	}
+	ImGui::EndDisabled();
+	if (!bServerVerificationAdmitted)
+	{
+		ImGui::TextDisabled(
+			"Save and publish the selected Pattern, start the Debug Server, enter Valtan, and keep a living combat-ready player in the arena.");
+	}
+
+	ImGui::SeparatorText("Local Timeline Editing Preview");
+	ImGui::TextDisabled(
+		"This transport supports pause, seek and unsaved draft inspection. It is not Server verification; its clone uses the canonical arena boss transform instead of the player position.");
 	CAnimation_Tool::COMPOSITION_PREVIEW_STATE Preview;
 	if (nullptr != m_pAnimationTool)
 	{
@@ -6315,7 +6348,8 @@ void Client::CValtanActionWorkbench::Render_Preview(
 	ImGui::EndDisabled();
 	ImGui::SameLine();
 	ImGui::BeginDisabled(!bTransportReady);
-	if (ImGui::Button(Preview.bPlaying && !Preview.bPaused ? "Pause" : "Play"))
+	if (ImGui::Button(Preview.bPlaying && !Preview.bPaused ?
+			"Pause Local Timeline" : "Play Local Timeline"))
 	{
 		std::string Status;
 		if (bSourcePreview)
@@ -6344,7 +6378,7 @@ void Client::CValtanActionWorkbench::Render_Preview(
 	   already-running local preview and must remain available after admission
 	   flips to STALE_PRESERVED. */
 	ImGui::BeginDisabled(nullptr == m_pAnimationTool || !Preview.bPlaying);
-	if (ImGui::Button("Stop"))
+	if (ImGui::Button("Stop Local Timeline"))
 	{
 		std::string Status;
 		m_pAnimationTool->Stop_ValtanCompositionPattern(Status);
@@ -6353,7 +6387,7 @@ void Client::CValtanActionWorkbench::Render_Preview(
 	ImGui::EndDisabled();
 	ImGui::SameLine();
 	ImGui::BeginDisabled(!bTransportReady);
-	if (ImGui::Button("Restart Preview"))
+	if (ImGui::Button("Restart Local Timeline"))
 	{
 		std::string Status;
 		if (bSourcePreview)
@@ -11828,7 +11862,8 @@ void Client::CValtanActionWorkbench::Render_PatternsPane(
 
 void Client::CValtanActionWorkbench::Render_PreviewWindow(
 	const VALTAN_PATTERN_VIEW* const pPattern,
-	const bool_t bLocalPreviewAdmitted)
+	const bool_t bLocalPreviewAdmitted,
+	const bool_t bServerVerificationAdmitted)
 {
 	if (!m_bPreviewWindowVisible)
 		return;
@@ -11844,7 +11879,8 @@ void Client::CValtanActionWorkbench::Render_PreviewWindow(
 			&m_bPreviewWindowVisible, ImGuiWindowFlags_MenuBar))
 	{
 		Render_WindowMenu();
-		Render_Preview(pPattern, bLocalPreviewAdmitted);
+		Render_Preview(
+			pPattern, bLocalPreviewAdmitted, bServerVerificationAdmitted);
 	}
 	else
 	{
@@ -13121,7 +13157,8 @@ void Client::CValtanActionWorkbench::Render_WorkbenchPane(
 		break;
 	case COMPOSITION_WORKBENCH_PANE::PREVIEW:
 		Render_Preview(m_pWorkbenchFramePattern,
-			m_bWorkbenchFrameLocalPreviewAdmitted);
+			m_bWorkbenchFrameLocalPreviewAdmitted,
+			m_bWorkbenchFramePatternMutationAdmitted);
 		break;
 	case COMPOSITION_WORKBENCH_PANE::BOSS_PATTERN:
 		Render_BossPatternPane(m_pWorkbenchFramePattern,
@@ -13308,7 +13345,8 @@ void Client::CValtanActionWorkbench::Render()
 			bMutationAdmitted, bPatternMutationAdmitted);
 		Render_PatternsWindow(
 			pPattern, pStage, bPatternMutationAdmitted);
-		Render_PreviewWindow(pPattern, bLocalPreviewAdmitted);
+		Render_PreviewWindow(
+			pPattern, bLocalPreviewAdmitted, bPatternMutationAdmitted);
 		Render_DetailsWindow(
 			pPattern, pStage, bMutationAdmitted, bPatternMutationAdmitted);
 		Render_ResourcesWindow(

@@ -99,7 +99,12 @@ namespace LostArk::Shared
 	// Earlier peers do not know the appended action identity.
 	// 102 joins the Guardian Knight ember orbs, locked sockets and pool size
 	// with the wave re-summon and wall-climb wire contracts.
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 104;
+	// 104 appends the Debug-only F1 Esther summon request that names one Esther
+	// (Sillian, Wei, Bahuntur, Ninav, Inanna) outside the world's roster slots.
+	// 105 combines vehicle-flight move/snapshot fields with the Debug Esther request.
+	// The flight branch and main each used 104 for incompatible wire contracts.
+	// Both peers must use 105; all existing packet identities are preserved.
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 105;
 
 	enum class WORLD_ID : std::uint16_t
 	{
@@ -393,7 +398,10 @@ namespace LostArk::Shared
 		C2S_SET_EQUIPMENT,
 		// Debug F1 "Normal Monster 1/2": removes a wave spawn group's live monsters and
 		// re-summons it from the start. Release ignores it; there is no result message.
-		C2S_DEBUG_RESUMMON_WAVE_MONSTERS
+		C2S_DEBUG_RESUMMON_WAVE_MONSTERS,
+		// Debug F1 Esther summon by name, bypassing the gauge and the world roster
+		// slot order. Release ignores it; the summon rides the world snapshot.
+		C2S_DEBUG_USE_ESTHER
 	};
 
 	//TCP는 메시지 경계를 보존하지 않기 때문에, payload앞에 header를 둔다.
@@ -508,6 +516,7 @@ namespace LostArk::Shared
 		case PACKET_TYPE::S2C_RAID_MVP_RESULT:
 		case PACKET_TYPE::C2S_SET_EQUIPMENT:
 		case PACKET_TYPE::C2S_DEBUG_RESUMMON_WAVE_MONSTERS:
+		case PACKET_TYPE::C2S_DEBUG_USE_ESTHER:
 			return true;
 		default:
 			return  false;

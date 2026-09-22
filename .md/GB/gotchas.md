@@ -3274,3 +3274,7 @@ Lifetime0을 구분하고, 입자의 원본 나이와 owner 종료 창을 유지
 ### V2 ScreenPost PNG의 존재와 실제 decoder를 구분한다
 
 V2 `Acquire_Texture`는 DDS와 WIC(PNG 등)를 확장자로 분기하고 두 경로에 같은 FORCE/IGNORE_SRGB 정책을 적용한다. 정상 PNG를 DDS 전용 loader에 전달하면 파일 존재 검사를 통과해도 prewarm은 실패한다. 확장자를 DDS로 바꾸거나 원본 PNG를 변환해 로더 누락을 숨기지 않는다. 설치 파일의 실제 decode·SRV 형식·ScreenPost alpha coverage admission까지 확인하며 JSON/CPU 재생 성공으로 대체하지 않는다. 구체적인 수정과 검증은 [카드비·DJ 결과](09-22/2026-09-22_KOUKU_CARDRAIN_DJ_EFFECT_RESULT.md)를 따른다.
+
+### 병렬 native material ID 발급 뒤 병합
+
+충돌 없는 숫자처럼 보여도 양쪽 branch가 같은 native program ID를 다른 material/PS/layout에 발급했는지 base와 양 parent를 비교한다. 다른 의미라면 한 cohort에 미사용 ID를 배정하고 authored runtimeShaderProfileId, C++ table, group HLSLI 함수, dispatch, selected switch를 함께 옮긴다. 같은 숫자의 main 효과까지 전역 치환하지 않으며 기존 material 식·texture·TRS와 지원 group 범위를 유지한다. PR449의 Guardian/Esther 충돌과 protocol104 결합 검증은 [병합 결과](09-22/2026-09-22_PR449_MAIN_MERGE_RESULT.md)에 기록한다.

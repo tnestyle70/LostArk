@@ -1,0 +1,16 @@
+{
+  "schema": "lostark.npc-action-effect-cues",
+  "formatVersion": 1,
+  "archetypeId": "NPC_59504",
+  "cues": [
+    {
+      "cueId": "npc_59504.npc_sk_parkunas",
+      "effectAssetId": "effect.esther.ninave.cameo.npc_sk_parkunas.full.restore",
+      "clip": "npc_sk_parkunas",
+      "startMs": 0,
+      "durationMs": 7200,
+      "bone": "b_effectroot",
+      "followBone": false
+    }
+  ]
+}

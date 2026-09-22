@@ -1263,15 +1263,54 @@ bool_t Client::CValtanPatternFlowDocument::Insert_Node_After(
 			"Valtan Boss Flow cannot insert this Pattern or has reached its graph limits.";
 		return false;
 	}
-	if (OPTIONAL_ENTRY_PATTERN_ID == patternId)
-	{
-		outStatus =
-			"The optional entrance cinematic can only be the existing Flow entry node.";
-		return false;
-	}
-
 	VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT staged = m_Draft;
 	VALTAN_PATTERN_FLOW_DEFINITION& flow = staged.Flows.front();
+	if (OPTIONAL_ENTRY_PATTERN_ID == patternId)
+	{
+		const auto existingEntrance = std::find_if(
+			flow.Nodes.begin(), flow.Nodes.end(),
+			[](const VALTAN_PATTERN_FLOW_NODE& node)
+			{
+				return OPTIONAL_ENTRY_PATTERN_ID == node.strPatternId;
+			});
+		if (flow.Nodes.end() != existingEntrance)
+		{
+			outStatus =
+				"The optional entrance cinematic is already the Flow entry node.";
+			return false;
+		}
+
+		/* The entrance is not an ordinary repeatable combat node. Insert it
+		   ahead of the current entry and preserve the complete existing graph
+		   behind one deterministic COMPLETED edge. */
+		const std::string insertedNodeId = Build_OrdinalId(
+			flow.strFlowId, "node", flow.iNextNodeOrdinal++);
+		const std::string insertedEdgeId = Build_OrdinalId(
+			flow.strFlowId, "edge", flow.iNextEdgeOrdinal++);
+		const std::string previousEntryId = flow.strEntryNodeId;
+		flow.Nodes.insert(
+			flow.Nodes.begin(),
+			{ insertedNodeId, std::string(patternId),
+				DEFAULT_NODE_WATCHDOG_MS });
+		flow.Edges.push_back({
+			insertedEdgeId,
+			insertedNodeId,
+			VALTAN_PATTERN_FLOW_EDGE_OUTCOME::COMPLETED,
+			previousEntryId,
+			flow.iDefaultPursuitMs,
+			std::nullopt });
+		flow.strEntryNodeId = insertedNodeId;
+		(void)Build_LegacyProjection(flow);
+		if (!Validate(staged, admittedPatternIds, outStatus))
+			return false;
+
+		m_Draft = std::move(staged);
+		outNodeId = insertedNodeId;
+		outStatus = "Inserted " + std::string(patternId) +
+			" as the Flow entry node before " + previousEntryId + ".";
+		return true;
+	}
+
 	auto after = flow.Nodes.end();
 	if (!afterNodeId.empty())
 	{

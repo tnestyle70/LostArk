@@ -490,6 +490,42 @@ namespace LostArk::Shared
 		CPacketReader& reader,
 		C2S_USE_ESTHER_SKILL& message);
 
+	/* Every Esther the Server can summon, independent of which three a world's
+	roster exposes on the slots above. The Server owns the archetype behind
+	each name. */
+	enum class ESTHER_ID : std::uint8_t
+	{
+		NONE,
+		SILLIAN,
+		WEI,
+		BAHUNTUR,
+		NINAV,
+		INANNA,
+		END
+	};
+
+	constexpr bool Is_Valid_EstherId(const ESTHER_ID id) noexcept
+	{
+		return id > ESTHER_ID::NONE && id < ESTHER_ID::END;
+	}
+
+	/* Debug F1 Esther summon: names one Esther directly, skips the gauge and
+	the roster slot order so Ninav/Inanna can be tested outside the Kouku raid.
+	Release ignores it; the caster cast and the summon ride the world snapshot. */
+	struct C2S_DEBUG_USE_ESTHER
+	{
+		std::uint32_t iRequestSequence = 0u;
+		WORLD_ID eWorldId = WORLD_ID::END;
+		ESTHER_ID eEsther = ESTHER_ID::NONE;
+		float fAimX = 0.f;
+		float fAimZ = 0.f;
+	};
+
+	bool Write_Message(CPacketWriter& writer,
+		const C2S_DEBUG_USE_ESTHER& message);
+	bool Read_Message(CPacketReader& reader,
+		C2S_DEBUG_USE_ESTHER& message);
+
 	/* World-map travel. Normal ids are the 1-based rows of the zone's square-hole
 	document; WORLD_MAP_SHIP_TRAVEL_DESTINATION_ID is reserved for the map's Set Sail
 	button and resolves to the disabled "ship" triggerBox. Every destination owns one

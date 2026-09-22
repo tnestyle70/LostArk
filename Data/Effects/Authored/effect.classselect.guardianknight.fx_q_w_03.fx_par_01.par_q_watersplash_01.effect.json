@@ -26,7 +26,7 @@
         "sourceProfile": {
           "enabled": true,
           "profileId": "ue3.material.fx.q.w.03.fx.m.fx.q.pa.atypical.01.ad.d9de852c246f",
-          "runtimeShaderProfileId": "effect.ue3.kouku-4583-native.v1",
+          "runtimeShaderProfileId": "effect.ue3.kouku-4645-native.v1",
           "parentMaterialPath": "fx_q_w_03.fx_m.fx_q_pa_atypical_01_ad",
           "semanticStatus": "reconstructed_profile",
           "textures": [
@@ -1795,7 +1795,7 @@
         "sourceProfile": {
           "enabled": true,
           "profileId": "ue3.material.bfx.m.mi.00.bfx.m.bfx.d.pa.spla.01.tr.316c6e8d71a0",
-          "runtimeShaderProfileId": "effect.ue3.kouku-4584-native.v1",
+          "runtimeShaderProfileId": "effect.ue3.kouku-4646-native.v1",
           "parentMaterialPath": "bfx_m_mi_00.bfx_m.bfx_d_pa_spla_01_tr",
           "semanticStatus": "reconstructed_profile",
           "textures": [
@@ -3691,7 +3691,7 @@
         "sourceProfile": {
           "enabled": true,
           "profileId": "ue3.material.fx.q.w.03.fx.m.fx.q.m.dust.01.tr.c39ab4419cda",
-          "runtimeShaderProfileId": "effect.ue3.kouku-4585-native.v1",
+          "runtimeShaderProfileId": "effect.ue3.kouku-4647-native.v1",
           "parentMaterialPath": "fx_q_w_03.fx_m.fx_q_m_dust_01_tr",
           "semanticStatus": "reconstructed_profile",
           "textures": [

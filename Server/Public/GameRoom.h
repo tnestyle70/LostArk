@@ -342,6 +342,21 @@ namespace LostArk::Server
 		void Handle_UseEstherSkill(
 			SESSION_ID sessionId,
 			const LostArk::Shared::C2S_USE_ESTHER_SKILL& useEstherSkill);
+		/* Debug F1 Esther summon by name: same caster lock and summon timeline as
+		the slot path, without the gauge or the world roster. Release ignores it. */
+		void Handle_DebugUseEsther(
+			SESSION_ID sessionId,
+			const LostArk::Shared::C2S_DEBUG_USE_ESTHER& request);
+		/* The caster the session owns, if it may start an Esther call right now:
+		bound, idle, on its feet and not riding. */
+		SERVER_PLAYER* Find_EstherCaster(SESSION_ID sessionId, const char* pCommandName);
+		/* Queues the summon forward along the aim and locks the caster into
+		ESTHER_CAST. The gauge decision is the caller's. */
+		void Begin_EstherCall(
+			SERVER_PLAYER& caster,
+			const ESTHER_ROSTER_ENTRY& rosterEntry,
+			float aimX,
+			float aimZ);
 		void Handle_UseSquareHole(
 			SESSION_ID sessionId,
 			const LostArk::Shared::C2S_USE_SQUAREHOLE& useSquareHole);

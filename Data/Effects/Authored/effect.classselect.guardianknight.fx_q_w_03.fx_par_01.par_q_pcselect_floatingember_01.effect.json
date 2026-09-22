@@ -31,7 +31,7 @@
         "sourceProfile": {
           "enabled": true,
           "profileId": "ue3.material.bfx.m.mi.00.bfx.m.bfx.d.me.ember.01.msk.302f266f9215",
-          "runtimeShaderProfileId": "effect.ue3.kouku-4582-native.v1",
+          "runtimeShaderProfileId": "effect.ue3.kouku-4644-native.v1",
           "parentMaterialPath": "bfx_m_mi_00.bfx_m.bfx_d_me_ember_01_msk",
           "semanticStatus": "reconstructed_profile",
           "textures": [
@@ -2311,7 +2311,7 @@
         "sourceProfile": {
           "enabled": true,
           "profileId": "ue3.material.bfx.m.mi.00.bfx.m.bfx.d.me.ember.01.msk.302f266f9215",
-          "runtimeShaderProfileId": "effect.ue3.kouku-4582-native.v1",
+          "runtimeShaderProfileId": "effect.ue3.kouku-4644-native.v1",
           "parentMaterialPath": "bfx_m_mi_00.bfx_m.bfx_d_me_ember_01_msk",
           "semanticStatus": "reconstructed_profile",
           "textures": [

@@ -3120,15 +3120,37 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	}
 	// Re-sample after this frame's typed Seek/Stop so model, environment and
 	// camera agree before Render. Always retire the camera override on handoff.
+	const auto valtanPreview = m_pAnimationTool ?
+		m_pAnimationTool->Get_ValtanCompositionPreviewState() :
+		CAnimation_Tool::COMPOSITION_PREVIEW_STATE{};
+	const bool activeValtanSession = m_pSequencerTool && m_pSequencerTool->Uses_ValtanSession() &&
+		m_bDeveloperToolsVisible && IsDebugToolVisible(DEBUG_TOOL::SEQUENCER) &&
+		m_pAnimationTool && valtanPreview.bPlaying;
+	if (auto* arena = CLevel_ValtanArena::Get_Active())
+	{
+		if (activeValtanSession)
+		{
+			std::string cinematicStatus;
+			if (!arena->Debug_SampleActionWorkbenchCinematic(
+				valtanPreview.strPatternId, valtanPreview.iPositionMs,
+				CAnimationTargetService::Resolve_Boss(), cinematicStatus) &&
+				!cinematicStatus.empty())
+				m_strToolStatus = std::move(cinematicStatus);
+		}
+		else arena->Debug_StopActionWorkbenchCinematic();
+	}
 	std::vector<BOSS_STAGE_ENVIRONMENT_SAMPLE> currentValtanSamples;
 	CValtan::Collect_StageEnvironmentSamples(currentValtanSamples);
 	if (m_pKoukuPresentationPlayer)
 		m_pKoukuPresentationPlayer->Update_BossStageEnvironments(currentValtanSamples);
+	/* Action Workbench owns a real camera-preview lane even when the standalone
+	   Camera Tool window has never been opened.  Lazily create its document/
+	   sampler owner on the first active Valtan preview; opening another tool is
+	   not a hidden prerequisite for camera playback. */
+	if (activeValtanSession && nullptr == m_pCameraTool)
+		m_pCameraTool = make_unique<CCameraTool>();
 	if (m_pCameraTool)
 	{
-		const bool activeValtanSession = m_pSequencerTool && m_pSequencerTool->Uses_ValtanSession() &&
-			m_bDeveloperToolsVisible && IsDebugToolVisible(DEBUG_TOOL::SEQUENCER) &&
-			m_pAnimationTool && m_pAnimationTool->Get_ValtanCompositionPreviewState().bPlaying;
 		const auto local = std::find_if(currentValtanSamples.begin(), currentValtanSamples.end(),
 			[](const auto& sample) { return sample.bPreview; });
 		if (activeValtanSession && local != currentValtanSamples.end())
@@ -4363,6 +4385,11 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 	if (LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER == player.eCharacterClass)
 		Update_LanceMasterIdentityGauge();
 
+	/* The class-owned slots are already gated by Set_ActiveOwnerClass; this only drives the
+	dynamic part (orb fill, stance art, socket count) when the class is actually the local one. */
+	if (LostArk::Shared::CHARACTER_CLASS_ID::GUARDIANKNIGHT == player.eCharacterClass)
+		Update_GuardianKnightIdentity();
+
 	Update_ChargeGauge();
 	Update_SkillIcons();
 	Update_SkillSlotMarks();
@@ -4585,6 +4612,33 @@ void CMainApp::RenderQuickSlotKeyLabels()
 	}
 	if (m_bHudSpecialSlotShown)
 		DrawKeyLabel("Special_Space", L"Space");
+
+	/* GuardianKnight's identity toggle key. Unlike the Artist/Warlord Z/X cases below, this one
+	does have a real non-keyframe anchor to read -- skillKey_bg is an ordinary slot with its own
+	authored rect -- so the label can be centred on it. Colour follows
+	DragonKnightSkinFrame.draw(): white once the gauge is full or the dragon stance is held,
+	0x686C20 otherwise, which is how retail says "you can press this now". */
+	if (LostArk::Shared::CHARACTER_CLASS_ID::GUARDIANKNIGHT == keyLabelPlayer.eCharacterClass)
+	{
+		f32_t fKeyX = 0.f, fKeyY = 0.f, fKeyWidth = 0.f, fKeyHeight = 0.f;
+		if (m_pHUDRuntimeView->Get_SlotRect("GK_Id_SkillKeyBg", fKeyX, fKeyY, fKeyWidth, fKeyHeight))
+		{
+			const bool_t bGaugeFull = 0u != keyLabelPlayer.iMaximumIdentity &&
+				keyLabelPlayer.iCurrentIdentity >= keyLabelPlayer.iMaximumIdentity;
+			const bool_t bUsable = bGaugeFull ||
+				LostArk::Shared::PLAYER_STANCE_ID::GUARDIANKNIGHT_DRAGON == keyLabelPlayer.eStance;
+			const float2_t vKeyMeasured =
+				CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), L"Z");
+			const f32_t fKeyScale = (vKeyMeasured.y > 0.f) ?
+				(fKeyHeight * 0.82f / vKeyMeasured.y) : 1.f;
+			CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), L"Z",
+				float2_t((fKeyX + fKeyWidth * 0.5f) * textScaleX,
+					(fKeyY + fKeyHeight * 0.5f) * textScaleY),
+				bUsable ? Colors::White :
+					XMVectorSet(0x68 / 255.f, 0x6C / 255.f, 0x20 / 255.f, 1.f),
+				0.f, float2_t(0.5f, 0.5f), fKeyScale * textUiScale);
+		}
+	}
 
 	/* Artist's Z ("저무는 달") and Warlord's X/Z ("전장의 방패"/"방어 태세 전환") are not drawn
 	here. The only "Skill_Z" slot in HUD_Layout.json is Warlord-owned, KEYFRAME_ANIMATION type
@@ -6878,6 +6932,128 @@ void CMainApp::Update_LanceMasterIdentityGauge()
 	}
 }
 
+void CMainApp::Update_GuardianKnightIdentity()
+{
+	Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "UI.Runtime.GuardianKnightIdentity.Update");
+	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
+	if (!player.isValid || nullptr == m_pHUDRuntimeView)
+		return;
+
+	/* Retail replaces the mana bar outright with the Embereth socket bar, which is authored at
+	the same place; leaving both on would stack two bars in one strip. */
+	m_pHUDRuntimeView->Set_SlotVisible("ManaBar_BG", false);
+	m_pHUDRuntimeView->Set_SlotVisible("ManaBar", false);
+	m_pHUDRuntimeView->Set_SlotVisible("ManaBar_Fill", false);
+
+	const bool_t bDragon =
+		LostArk::Shared::PLAYER_STANCE_ID::GUARDIANKNIGHT_DRAGON == player.eStance;
+
+	/* ark.controls.Progress fills by target.width, but the orb is placed rotated: orbGauge's
+	own matrix is (scaleX/Y ~0, rotateSkew0 -1, rotateSkew1 1), which maps local +X to screen
+	-Y, and the track inside carries the opposite turn so its art still stands upright. So the
+	gauge rises from the bottom and drains downward on screen, not left to right. Reproduced
+	here by revealing the bottom slice of the orb -- rect shrunk to it and the texture window
+	moved with it, so the art keeps its own scale instead of squashing. The fill art itself is
+	Gauge_Track's per-stance frame (1 human / 2 dragon), which is what
+	DragonKnightSkinFrame.inMarkGaugeState() switches. */
+	const f32_t fIdentityRatio = 0u != player.iMaximumIdentity ?
+		std::clamp(static_cast<f32_t>(player.iCurrentIdentity) /
+			static_cast<f32_t>(player.iMaximumIdentity), 0.f, 1.f) : 0.f;
+	m_pHUDRuntimeView->Set_SlotTexture("GK_Id_OrbFill", bDragon ?
+		"UI/HUD/GuardianKnight/Orb_Fill_Dragon.png" :
+		"UI/HUD/GuardianKnight/Orb_Fill_Human.png");
+	m_pHUDRuntimeView->Set_SlotVisible("GK_Id_OrbFill", fIdentityRatio > 0.f);
+
+	/* The empty orb is never moved, so it stays the reference both the fill slice and the mark
+	are measured against -- reading the fill's own rect back would compound each frame. */
+	f32_t fOrbX = 0.f, fOrbY = 0.f, fOrbWidth = 0.f, fOrbHeight = 0.f;
+	if (fIdentityRatio > 0.f &&
+		m_pHUDRuntimeView->Get_SlotRect("GK_Id_OrbEmpty", fOrbX, fOrbY, fOrbWidth, fOrbHeight))
+	{
+		const f32_t fFillHeight = fOrbHeight * fIdentityRatio;
+		m_pHUDRuntimeView->Set_SlotRect("GK_Id_OrbFill",
+			fOrbX, fOrbY + fOrbHeight - fFillHeight, fOrbWidth, fFillHeight);
+		m_pHUDRuntimeView->Set_SlotUVWindow("GK_Id_OrbFill",
+			0.f, 1.f - fIdentityRatio, 1.f, fIdentityRatio);
+
+		/* Progress::updateMark rides the fill edge and useAutoHideMark hides it at exactly
+		empty and exactly full. After the rotation above that edge is the liquid level, so the
+		mark travels vertically and stays centred across the orb. */
+		f32_t fMarkX = 0.f, fMarkY = 0.f, fMarkWidth = 0.f, fMarkHeight = 0.f;
+		if (m_pHUDRuntimeView->Get_SlotRect("GK_Id_OrbMark", fMarkX, fMarkY, fMarkWidth, fMarkHeight))
+		{
+			/* Centred on the level line, but kept inside the orb: at the very top the line is
+			the orb's own rim, and a mark centred there would hang half of itself above the
+			sphere. */
+			const f32_t fLevelY = fOrbY + fOrbHeight - fFillHeight - fMarkHeight * 0.5f;
+			m_pHUDRuntimeView->Set_SlotPosition("GK_Id_OrbMark",
+				fOrbX + fOrbWidth * 0.5f - fMarkWidth * 0.5f,
+				std::clamp(fLevelY, fOrbY, fOrbY + fOrbHeight - fMarkHeight));
+		}
+	}
+	/* useAutoHideMark hides it at the two ends. The ratio is a float division, so "full" is
+	tested with a tolerance rather than an exact 1 -- otherwise a gauge sitting at its maximum
+	leaves the mark drawn on the rim. */
+	constexpr f32_t MARK_END_EPSILON = 0.001f;
+	m_pHUDRuntimeView->Set_SlotVisible("GK_Id_OrbMark",
+		fIdentityRatio > MARK_END_EPSILON && fIdentityRatio < 1.f - MARK_END_EPSILON);
+
+	/* skillKey_bg carries the Z label drawn in the text pass; the label's own colour rule lives
+	there (DragonKnightSkinFrame.draw(): white while full or transformed, 0x686C20 otherwise). */
+	m_pHUDRuntimeView->Set_SlotVisible("GK_Id_SkillKeyBg", true);
+
+	/* skillStatusList is visible in both stances this project has (its own visibility rule is
+	_localStance < NORMAL_AP13). The 8 dots are the class's skill slots, and a red one marks a
+	slot carrying an awakening skill -- DragonKnightSkillStatusList just does
+	_useList[i].visible = isUse over a plain dark plate, so a slot without one shows the plate
+	through. Which slots those are has no source in this project's data, so the set is the
+	user's own call: the bottom row's 1st, 2nd and 4th. Index 0..3 is the top row. */
+	constexpr bool_t AWAKENING_SLOT_DOTS[8] =
+		{ false, false, false, false, true, true, false, true };
+	m_pHUDRuntimeView->Set_SlotVisible("GK_Id_StatusPlate", true);
+	for (int32_t i = 0; i < 8; ++i)
+	{
+		m_pHUDRuntimeView->Set_SlotVisible(
+			string("GK_Id_StatusDot") + std::to_string(i), AWAKENING_SLOT_DOTS[i]);
+	}
+
+	/* invokeDragonKnightBloodGauge(filled, unlocked) walks all 10 sockets: those below `unlocked`
+	are lit or empty by the filled count, and the rest wear the padlock. `unlocked` is the very
+	capacity expression the server already spends against (iMaximumSockets - locked), so this
+	reads the ember pool rather than deriving a count of its own. */
+	constexpr int32_t SOCKET_COUNT = 10;
+	const int32_t iUnlockedSockets = std::clamp(
+		static_cast<int32_t>(player.iEmberMaximumSockets) -
+		static_cast<int32_t>(player.iEmberLockedSockets), 0, SOCKET_COUNT);
+	const int32_t iFilledSockets =
+		(std::min)(static_cast<int32_t>(player.iEmberOrbs), iUnlockedSockets);
+	const bool_t bHasEmberPool = 0u != player.iEmberMaximumSockets;
+	m_pHUDRuntimeView->Set_SlotVisible("GK_Embereth_Frame", bHasEmberPool);
+	for (int32_t i = 0; i < SOCKET_COUNT; ++i)
+	{
+		const string strIndex = std::to_string(i);
+		m_pHUDRuntimeView->Set_SlotVisible("GK_Embereth_Socket" + strIndex, bHasEmberPool);
+
+		const string strStateSlot = "GK_Embereth_State" + strIndex;
+		m_pHUDRuntimeView->Set_SlotVisible(strStateSlot, bHasEmberPool);
+		if (!bHasEmberPool)
+		{
+			m_EmberSocketStates[i].clear();
+			continue;
+		}
+		/* invokeDragonKnightBloodGauge's own branch: a socket whose state changed plays that
+		label's transition -- the gem's pop, the ember rising away, the padlock settling -- and
+		one that did not change holds the label's end frame instead of replaying it. */
+		const string strState = i >= iUnlockedSockets ? "lock" :
+			(i < iFilledSockets ? "show" : "hide");
+		if (m_EmberSocketStates[i] != strState)
+		{
+			m_pHUDRuntimeView->Play_KeyframeAnimation(strStateSlot, strState);
+			m_EmberSocketStates[i] = strState;
+		}
+	}
+}
+
 void CMainApp::Update_SkillCooldowns()
 {
 	Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "UI.Runtime.SkillCooldowns.Update");
@@ -8130,12 +8306,33 @@ namespace
 		{ 2050500, "UI/Skill/DimensionMaster/2050500_KarmaBoundary.png" },
 		/* DimensionMaster -- V (awakening) */
 		{ 2050520, "UI/Skill/DimensionMaster/2050520_TimeShackles.png" },
+		/* GuardianKnight -- human stance */
+		{ 49100, "UI/Skill/GuardianKnight/49100_Cleave.png" },
+		{ 49110, "UI/Skill/GuardianKnight/49110_WildStrike.png" },
+		{ 49120, "UI/Skill/GuardianKnight/49120_Ignite.png" },
+		{ 49130, "UI/Skill/GuardianKnight/49130_ValiantCharge.png" },
+		{ 49150, "UI/Skill/GuardianKnight/49150_QuakeSmash.png" },
+		{ 49200, "UI/Skill/GuardianKnight/49200_DragonsBlow.png" },
+		{ 49220, "UI/Skill/GuardianKnight/49220_BurningFlame.png" },
+		{ 49260, "UI/Skill/GuardianKnight/49260_InfernoStrike.png" },
+		/* GuardianKnight -- dragon stance */
+		{ 49210, "UI/Skill/GuardianKnight/49210_DragonsSpear.png" },
+		{ 49230, "UI/Skill/GuardianKnight/49230_AbaddonFlame.png" },
+		{ 49270, "UI/Skill/GuardianKnight/49270_InfernoFlame.png" },
+		{ 49330, "UI/Skill/GuardianKnight/49330_FireBreath.png" },
+		/* GuardianKnight -- stance-free, and the Z toggle in both directions */
+		{ 49400, "UI/Skill/GuardianKnight/49400_DragonRampage.png" },
+		{ 49420, "UI/Skill/GuardianKnight/49420_BreathOfDestruction.png" },
+		{ 49040, "UI/Skill/GuardianKnight/49040_DragonAvatar.png" },
+		{ 49041, "UI/Skill/GuardianKnight/49041_DragonAvatarRelease.png" },
 		/* Move (Space) skills, cut by build_quickslot_hud_ui.py for the special slot. */
 		{ 34020, "UI/Skill/LanceMaster/34020_Space.png" },
 		{ 34520, "UI/Skill/LanceMaster/34520_Space.png" },
 		{ 17020, "UI/Skill/Warlord/17020_Space.png" },
 		{ 31020, "UI/Skill/Artist/31020_Space.png" },
 		{ 2050020, "UI/Skill/DimensionMaster/2050020_Space.png" },
+		{ 49020, "UI/Skill/GuardianKnight/49020_Lunge.png" },
+		{ 49021, "UI/Skill/GuardianKnight/49021_Glide.png" },
 	};
 
 	const char* Find_HudSkillIcon(const LostArk::Shared::SKILL_ID iSkillId)
@@ -8172,16 +8369,47 @@ void CMainApp::Update_SkillIcons()
 		stripped from the base slot) draws over both -- the same border-above-icon stacking the
 		old redraw achieved. */
 		const char* pIconPath = nullptr;
+		bool_t bUsableInStance = true;
 		if (const PLAYER_SKILL_DEFINITION* pSkill = CPlayerSkillCatalog::Find_BySlot(
 			player.eCharacterClass, pInputSlot, player.eStance))
 		{
 			pIconPath = Find_HudSkillIcon(pSkill->iSkillId);
+		}
+		else if (LostArk::Shared::CHARACTER_CLASS_ID::GUARDIANKNIGHT == player.eCharacterClass &&
+			0 == std::strcmp(pInputSlot, "T"))
+		{
+			/* GuardianKnight's T is the dragon-form breath, so in the human stance the slot
+			resolves to nothing and used to sit empty. Retail keeps the icon there and dims it
+			until the stance makes it usable. Only this one slot is scoped that way: every
+			other GuardianKnight slot either exists in both stances or in neither, and the
+			other stance classes are left as they are. */
+			for (const PLAYER_SKILL_DEFINITION& Skill : CPlayerSkillCatalog::Get_Skills())
+			{
+				if (Skill.eCharacterClass != player.eCharacterClass ||
+					Skill.strInputSlot != pInputSlot ||
+					LostArk::Shared::PLAYER_STANCE_ID::NONE == Skill.eRequiredStance)
+				{
+					continue;
+				}
+				pIconPath = Find_HudSkillIcon(Skill.iSkillId);
+				if (nullptr != pIconPath)
+				{
+					bUsableInStance = false;
+					break;
+				}
+			}
 		}
 
 		const string strIconSlot = string("Skill_") + pInputSlot + "_Icon";
 		if (nullptr != pIconPath)
 		{
 			m_pHUDRuntimeView->Set_SlotTexture(strIconSlot, pIconPath);
+			/* There is no greyed copy of a skill icon in the data -- IconInfo has one DDK_Skill
+			page and no gray variant. Retail dims at draw time: ARKNewSlot sets its content
+			canvas to ColorTransform(1,1,1,1) while active and ColorTransform(0.3,0.3,0.3,1)
+			otherwise, so this is that same flat 0.3 multiply on RGB with alpha untouched. */
+			m_pHUDRuntimeView->Set_SlotTint(strIconSlot, bUsableInStance ?
+				float4_t(1.f, 1.f, 1.f, 1.f) : float4_t(0.3f, 0.3f, 0.3f, 1.f));
 			m_pHUDRuntimeView->Set_SlotVisible(strIconSlot, true);
 		}
 		else
@@ -8254,14 +8482,11 @@ void CMainApp::RenderCombatHUDText()
 	{
 		const wstring hp = std::to_wstring(player.iCurrentHp) +
 			L" / " + std::to_wstring(player.iMaximumHp);
-		const wstring mana = 0u != player.iEmberMaximumSockets ?
-			/* Guardian Knight: orb gauge percent and ember orbs over the open
-			sockets, in place of mana until the class HUD art exists. */
-			L"\uC624\uBE0C " + std::to_wstring(0u == player.iMaximumIdentity ? 0u :
-				player.iCurrentIdentity * 100u / player.iMaximumIdentity) +
-			L"%  \uAE30\uC6B4 " + std::to_wstring(player.iEmberOrbs) + L" / " +
-			std::to_wstring(player.iEmberMaximumSockets - player.iEmberLockedSockets) :
-			std::to_wstring(player.iCurrentResource) +
+		/* A class with an ember pool draws its own gauge art over this strip -- the orb and the
+		10 sockets (Update_GuardianKnightIdentity) -- so the numeric stand-in that stood here
+		until that art existed would now just sit on top of the sockets. */
+		const bool_t bHasEmberPool = 0u != player.iEmberMaximumSockets;
+		const wstring mana = std::to_wstring(player.iCurrentResource) +
 			L" / " + std::to_wstring(player.iMaximumResource);
 		/* Positions/size follow the same 0.75 anchor-scale (around 673.675, 747.092) and -12
 		vertical shift applied to the whole bottom HUD in HUD_Layout.json -- these two labels
@@ -8269,8 +8494,11 @@ void CMainApp::RenderCombatHUDText()
 		they drift off the now-smaller HP/mana bars. */
 		CGameInstance::Get().Draw_Text(TEXT("Font_YG760"), hp.c_str(),
 			position(504.419f, 635.273f), Colors::White, 0.f, float2_t(0.5f, 0.5f), 0.315f * textScale);
-		CGameInstance::Get().Draw_Text(TEXT("Font_YG760"), mana.c_str(),
-			position(835.169f, 635.273f), Colors::White, 0.f, float2_t(0.5f, 0.5f), 0.315f * textScale);
+		if (!bHasEmberPool)
+		{
+			CGameInstance::Get().Draw_Text(TEXT("Font_YG760"), mana.c_str(),
+				position(835.169f, 635.273f), Colors::White, 0.f, float2_t(0.5f, 0.5f), 0.315f * textScale);
+		}
 	}
 	/* Boss HP number/name/grade text moved into RenderBossHealthBarText() -- the decompiled
 	targetstatus_loc_int.gfx places them relative to the bar's own real position (see that
@@ -12734,10 +12962,34 @@ void CMainApp::RenderDeveloperTools()
 
 	RenderSequenceViewer();
 
-	if (ImGui::CollapsingHeader("Esther Cutin (Debug)"))
+	if (ImGui::CollapsingHeader("Esther Skill (Debug)"))
 	{
 		ImGui::TextDisabled(
-			"Replays the full-screen cutin movie (NpcCatalog cutinMovie) once.");
+			"Summon asks the Server for that Esther by name: no gauge, no roster slot,"
+			" same cast and summon as Ctrl+Z/X/C. Needs a live player standing idle.");
+		CPlayerController* const pEstherController = Find_ActivePlayerController();
+		ImGui::BeginDisabled(nullptr == pEstherController);
+		const auto summonButton = [pEstherController](
+			const char_t* pLabel, const LostArk::Shared::ESTHER_ID esther)
+		{
+			if (ImGui::Button(pLabel) && nullptr != pEstherController)
+				(void)pEstherController->Request_DebugUseEsther(esther);
+		};
+		summonButton("Summon Sillian", LostArk::Shared::ESTHER_ID::SILLIAN);
+		ImGui::SameLine();
+		summonButton("Summon Wei", LostArk::Shared::ESTHER_ID::WEI);
+		ImGui::SameLine();
+		summonButton("Summon Bahuntur", LostArk::Shared::ESTHER_ID::BAHUNTUR);
+		ImGui::SameLine();
+		summonButton("Summon Ninav", LostArk::Shared::ESTHER_ID::NINAV);
+		ImGui::SameLine();
+		summonButton("Summon Inanna", LostArk::Shared::ESTHER_ID::INANNA);
+		ImGui::EndDisabled();
+		if (nullptr == pEstherController)
+			ImGui::TextDisabled("No Server-driven player in this level.");
+
+		ImGui::TextDisabled(
+			"Preview replays the full-screen cutin movie (NpcCatalog cutinMovie) once.");
 		const auto previewButton = [](
 			const char_t* pLabel, const char_t* pArchetypeId)
 		{

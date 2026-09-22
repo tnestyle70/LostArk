@@ -454,6 +454,15 @@ private:
 	(Gauge0/1/2Fill.json) plus the one-shot ignite -> sustain-loop burn flourish, driven off
 	iCurrentIdentity exactly as the decompiled LanceMasterProgress.as formula prescribes. */
 	void Update_LanceMasterIdentityGauge();
+	/* GuardianKnight's identity frame, orb gauge and the 10-socket Embereth bar that stands
+	where every other class draws its mana bar. Presentation only: the gauge, the stance and
+	the socket count are all read from the server snapshot, so this shows an empty orb until
+	that data exists rather than inventing a local value. */
+	void Update_GuardianKnightIdentity();
+	/* Last state each ember socket was driven to ("show"/"hide"/"lock"), so a change plays the
+	socket's own transition and an unchanged state holds its end frame -- the same pair of calls
+	invokeDragonKnightBloodGauge makes. Empty means nothing has been driven yet. */
+	string m_EmberSocketStates[10];
 	/* Floating combat-log numbers at each DAMAGE_EVENT's real hit position (Get_DamageEvents(),
 	server-authoritative). Positions are world-space and captured at hit time, so a number stays
 	where the hit landed instead of following the target. Already pure CGameInstance::Draw_Text

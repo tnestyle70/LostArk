@@ -1094,6 +1094,56 @@ namespace
 				*Document.Get_DefaultFlow()),
 			"watchdog graph remained exposed as a legacy-playable slot projection");
 
+		CValtanPatternFlowDocument EntranceEditor;
+		Require(EntranceEditor.Load_CanonicalSequence(
+				"sequence.valtan.server-authored.v1",
+				"ORDERED_ONCE_THEN_IDLE", 1000u,
+				SequenceTransitionPursuitMs,
+				SequencePatternIds, AdmittedPatternIds, Status),
+			"entrance editor contract could not stage the canonical sequence");
+		const VALTAN_PATTERN_FLOW_DEFINITION* EntranceFlow =
+			EntranceEditor.Get_DefaultFlow();
+		Require(nullptr != EntranceFlow && !EntranceFlow->Nodes.empty(),
+			"entrance editor contract loaded no nodes");
+		const std::string PreviousEntranceId = EntranceFlow->strEntryNodeId;
+		const std::size_t BeforeEntranceNodeCount = EntranceFlow->Nodes.size();
+		const std::size_t BeforeEntranceEdgeCount = EntranceFlow->Edges.size();
+		std::string EntranceNodeId;
+		Require(EntranceEditor.Insert_Node_After(
+				PreviousEntranceId, "VALTAN_ENTRANCE_CINEMATIC",
+				AdmittedPatternIds, EntranceNodeId, Status),
+			"graph editor rejected the optional entrance cinematic");
+		EntranceFlow = EntranceEditor.Get_DefaultFlow();
+		Require(nullptr != EntranceFlow &&
+			EntranceFlow->strEntryNodeId == EntranceNodeId &&
+			BeforeEntranceNodeCount + 1u == EntranceFlow->Nodes.size() &&
+			BeforeEntranceEdgeCount + 1u == EntranceFlow->Edges.size() &&
+			EntranceFlow->Nodes.front().strNodeId == EntranceNodeId &&
+			EntranceFlow->Nodes.front().strPatternId ==
+				"VALTAN_ENTRANCE_CINEMATIC" &&
+			CValtanPatternFlowDocument::Has_LegacyLinearProjection(*EntranceFlow),
+			"graph editor did not install the entrance cinematic as Pattern 01");
+		const auto EntranceEdge = std::find_if(
+			EntranceFlow->Edges.begin(), EntranceFlow->Edges.end(),
+			[&EntranceNodeId](const VALTAN_PATTERN_FLOW_EDGE& Edge)
+			{
+				return Edge.strFromNodeId == EntranceNodeId;
+			});
+		Require(EntranceFlow->Edges.end() != EntranceEdge &&
+			EntranceEdge->strToNodeId == PreviousEntranceId &&
+			!EntranceEdge->iMaxTraversals.has_value() &&
+			CValtanPatternFlowDocument::Validate(
+				EntranceEditor.Get_Draft(), AdmittedPatternIds, Status),
+			"entrance cinematic did not preserve the previous Flow behind one edge");
+		const VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT BeforeDuplicateEntrance =
+			EntranceEditor.Get_Draft();
+		std::string DuplicateEntranceNodeId;
+		Require(!EntranceEditor.Insert_Node_After(
+				EntranceNodeId, "VALTAN_ENTRANCE_CINEMATIC",
+				AdmittedPatternIds, DuplicateEntranceNodeId, Status) &&
+			EntranceEditor.Get_Draft() == BeforeDuplicateEntrance,
+			"duplicate entrance rejection partially changed the staged Flow");
+
 		CValtanPatternFlowDocument GraphEditor;
 		Require(GraphEditor.Load_CanonicalSequence(
 				"sequence.valtan.server-authored.v1",
