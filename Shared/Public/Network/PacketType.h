@@ -99,7 +99,7 @@ namespace LostArk::Shared
 	// Earlier peers do not know the appended action identity.
 	// 102 joins the Guardian Knight ember orbs, locked sockets and pool size
 	// with the wave re-summon and wall-climb wire contracts.
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 102;
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 103;
 
 	enum class WORLD_ID : std::uint16_t
 	{

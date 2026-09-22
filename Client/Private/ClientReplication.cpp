@@ -3253,9 +3253,10 @@ bool Client::CClientReplication::Spawn_CombatObjectPresentation(
 	}
 
 	EFFECT_WORLD_ROOT_SPAWN_DESC desc;
-	const float4x4_t rootWorld = visual->Make_WorldRoot(
+	float4x4_t rootWorld = visual->Make_WorldRoot(
 		float3_t(spawned.fPositionX, spawned.fPositionY, spawned.fPositionZ),
 		spawned.fYawDegrees);
+	XMStoreFloat4x4(&rootWorld, XMMatrixScaling(spawned.fUniformScale, spawned.fUniformScale, spawned.fUniformScale) * XMLoadFloat4x4(&rootWorld));
 	if (BOSS_COMBAT_OBJECT_ACTIVE_EFFECT_KIND::EFFECT_V2_GROUP ==
 		visual->activeEffectKind)
 	{
@@ -3365,9 +3366,10 @@ bool Client::CClientReplication::Update_CombatObjectPresentation(
 			record->strCombatObjectArchetypeId, record->strClientVisualId);
 	if (nullptr == visual)
 		return false;
-	const float4x4_t rootWorld = visual->Make_WorldRoot(
+	float4x4_t rootWorld = visual->Make_WorldRoot(
 		float3_t(snapshot.fPositionX, snapshot.fPositionY, snapshot.fPositionZ),
 		snapshot.fYawDegrees);
+	XMStoreFloat4x4(&rootWorld, XMMatrixScaling(record->fUniformScale, record->fUniformScale, record->fUniformScale) * XMLoadFloat4x4(&rootWorld));
 	if (COMBAT_OBJECT_PRESENTATION_KIND::EFFECT_V2_GROUP == handle.eKind)
 	{
 		if (BOSS_COMBAT_OBJECT_ACTIVE_EFFECT_KIND::EFFECT_V2_GROUP !=

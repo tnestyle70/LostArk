@@ -31,12 +31,20 @@ public:
 	bool_t Initialize_Effects(uint32_t levelIndex);
 	void Play(const float3_t& worldPosition,
 		const shared_ptr<CCharacter>& character);
+	void Play_Ping(const float3_t& worldPosition, const shared_ptr<CCharacter>& character);
+	void Set_PingPending(bool_t pending, const shared_ptr<CCharacter>& character);
 	void Clear();
 
 private:
 	void Report_Failure(const std::string& status);
+	bool_t Spawn_Marker(const char* effectId, const char* placementId,
+		const float3_t& position, EFFECT_WORLD_ROOT_HANDLE& handle, bool_t sustained = false);
 	uint32_t m_iLevelIndex = ETOUI(LEVEL::END);
 	EFFECT_WORLD_ROOT_HANDLE m_ClickHandle;
+	EFFECT_WORLD_ROOT_HANDLE m_PingHandle;
+	EFFECT_WORLD_ROOT_HANDLE m_PendingHandle;
+	bool_t m_bPingPending = false;
+	f32_t m_fPingSeconds = 0.f;
 	weak_ptr<CCharacter> m_pCharacter;
 	f32_t m_fClickSeconds = 0.f;
 	std::string m_strLastFailure;

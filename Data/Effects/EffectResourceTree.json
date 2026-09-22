@@ -204,7 +204,37 @@
     {"id": "kouku.category.88ac8170ded48f59f993", "parentId": "kouku.category.f20d85c12b1f39e952da", "kind": "CATEGORY", "displayName": "연출 복원"},
     {"id": "kouku.category.b6f740155366f05132f0", "parentId": "kouku.category.394c65517271abf468a9", "kind": "CATEGORY", "displayName": "GATE3"},
     {"id": "kouku.category.616e5303c332c207e0cd", "parentId": "kouku.category.b6f740155366f05132f0", "kind": "CATEGORY", "displayName": "연출"},
-    {"id": "kouku.category.953729eb46ac64f62d2d", "parentId": "kouku.category.616e5303c332c207e0cd", "kind": "CATEGORY", "displayName": "마지막 연출"}
+    {"id": "kouku.category.953729eb46ac64f62d2d", "parentId": "kouku.category.616e5303c332c207e0cd", "kind": "CATEGORY", "displayName": "마지막 연출"},
+    {
+      "id": "kouku.category.clown.polymorph",
+      "parentId": "kouku.category.394c65517271abf468a9",
+      "kind": "CATEGORY",
+      "displayName": "Clown / POLYMORPH"
+    },
+    {
+      "id": "kouku.category.05356c1b649d0a09fc8b",
+      "parentId": "kouku.category.d9def6e601e406cf41f1",
+      "kind": "CATEGORY",
+      "displayName": "백스텝 후 불 뿜기"
+    },
+    {
+      "id": "kouku.category.c329c1bfb16e5f1bf408",
+      "parentId": "kouku.category.d9def6e601e406cf41f1",
+      "kind": "CATEGORY",
+      "displayName": "카드비·회전카드"
+    },
+    {
+      "id": "kouku.category.ebc70720966b4037d8e8",
+      "parentId": "root.v2",
+      "kind": "CATEGORY",
+      "displayName": "KoukuSaydon"
+    },
+    {
+      "id": "kouku.category.8f953e1b90ae2c06ad92",
+      "parentId": "kouku.category.ebc70720966b4037d8e8",
+      "kind": "CATEGORY",
+      "displayName": "DJ 쿠크"
+    }
   ],
   "references": [
     {"kind": "V1", "assetId": "effect.kouku.gate3.showtime.sector.warning.shot", "displayName": "부채꼴 예고·사격 (저작 조합)", "parentId": "kouku.category.d767402008919487db6b"},
@@ -1042,6 +1072,120 @@
     {"kind": "V1", "assetId": "effect.kouku.sequence.lv_lut_midnightc_ed_scene01b.efseqact_matinee_0.1", "displayName": "마지막 연출", "parentId": "kouku.category.953729eb46ac64f62d2d"},
     {"kind": "V1", "assetId": "effect.kouku.gate2.bigsaydon.wind.full.restore", "displayName": "대형세이튼 | 바람불기", "parentId": "kouku.category.21b77063d62ab216089c"},
     {"kind": "V1", "assetId": "effect.kouku.gate2.bigsaydon.yellow-gaze.full.restore", "displayName": "대형세이튼 | 노란시선", "parentId": "kouku.category.21b77063d62ab216089c"},
-    {"kind": "V1", "assetId": "effect.vehicle.vehicle_ancient_myth.98520.0.full.restore", "displayName": "VEHICLE_ANCIENT_MYTH SPACE sk_dash", "parentId": "root.v1"}
+    {"kind": "V1", "assetId": "effect.vehicle.vehicle_ancient_myth.98520.0.full.restore", "displayName": "VEHICLE_ANCIENT_MYTH SPACE sk_dash", "parentId": "root.v1"},
+    {
+      "kind": "V1",
+      "assetId": "effect.kouku.clown.polymorph.q",
+      "displayName": "Clown / POLYMORPH / Q / 폭탄 던지기",
+      "parentId": "kouku.category.clown.polymorph"
+    },
+    {
+      "kind": "V1",
+      "assetId": "effect.kouku.clown.polymorph.w",
+      "displayName": "Clown / POLYMORPH / W / 공",
+      "parentId": "kouku.category.clown.polymorph"
+    },
+    {
+      "kind": "V1",
+      "assetId": "effect.kouku.clown.polymorph.e",
+      "displayName": "Clown / POLYMORPH / E / 선물상자와 하얀 폭발",
+      "parentId": "kouku.category.clown.polymorph"
+    },
+    {
+      "kind": "V1",
+      "assetId": "effect.world.target_reticle",
+      "displayName": "Ctrl / 머리 위 과녁",
+      "parentId": "world"
+    },
+    {
+      "kind": "V1",
+      "assetId": "effect.world.ping",
+      "displayName": "Ctrl / 지면 핑",
+      "parentId": "world"
+    },
+    {
+      "kind": "V1",
+      "assetId": "effect.kouku.card.match.bind.floor",
+      "displayName": "주사위 속박 원형 문양·버블",
+      "parentId": "kouku.category.202f8db593933bdfffb9"
+    },
+    {
+      "kind": "V1",
+      "assetId": "effect.kouku.card.match.bind.release",
+      "displayName": "주사위 속박 해제",
+      "parentId": "kouku.category.202f8db593933bdfffb9"
+    },
+    {
+      "kind": "V1",
+      "assetId": "effect.kouku.gate1.stagger.shield.full.restore",
+      "displayName": "무력화 원본 방패",
+      "parentId": "kouku.category.cdef6f5c47c6e9a619ed"
+    },
+    {
+      "kind": "V1",
+      "assetId": "effect.kouku.gate1.stagger.explosion.full.restore",
+      "displayName": "무력화 원본 무지개 폭발",
+      "parentId": "kouku.category.cdef6f5c47c6e9a619ed"
+    },
+    {
+      "kind": "V1",
+      "assetId": "effect.kouku.card.match.dice.full.restore",
+      "displayName": "주사위 준비·다이아 폭발 원본",
+      "parentId": "kouku.category.202f8db593933bdfffb9"
+    },
+    {
+      "kind": "V1",
+      "assetId": "effect.kouku.card.match.prepare.full.restore",
+      "displayName": "카드 준비 원본 전체",
+      "parentId": "kouku.category.202f8db593933bdfffb9"
+    },
+    {
+      "kind": "V1",
+      "assetId": "effect.kouku.card.match.emit.full.restore",
+      "displayName": "카드 출력 원본 전체",
+      "parentId": "kouku.category.202f8db593933bdfffb9"
+    },
+    {
+      "kind": "V1",
+      "assetId": "effect.kouku.gate1.stagger.star.draw.full.restore",
+      "displayName": "무력화 원본 별 그리기",
+      "parentId": "kouku.category.cdef6f5c47c6e9a619ed"
+    },
+    {
+      "kind": "V1",
+      "assetId": "effect.kouku.gate1.backstep.afterimage",
+      "displayName": "백스텝 흰색 실제 모델 잔상",
+      "parentId": "kouku.category.05356c1b649d0a09fc8b"
+    },
+    {
+      "kind": "V1",
+      "assetId": "effect.kouku.gate1.cardrain.drop",
+      "displayName": "세이튼_카드비_노란장판과낙하폭발",
+      "parentId": "kouku.category.c329c1bfb16e5f1bf408"
+    },
+    {
+      "kind": "V1",
+      "assetId": "effect.kouku.common.spinning.card.overhead",
+      "displayName": "세이튼_빙글빙글_머리위카드",
+      "parentId": "kouku.category.c329c1bfb16e5f1bf408"
+    },
+    {
+      "kind": "V1",
+      "assetId": "effect.kouku.common.spinning.card.flying",
+      "displayName": "세이튼_빙글빙글_카드던지기_준비카드분리",
+      "parentId": "kouku.category.c329c1bfb16e5f1bf408"
+    },
+    {
+      "kind": "V2_LEAF",
+      "assetId": "boss.kouku.dj.cardrain",
+      "displayName": "DJ쿠크_쏟아져라, 카드 비!",
+      "parentId": "kouku.category.8f953e1b90ae2c06ad92"
+    },
+    {
+      "kind": "V2_LEAF",
+      "assetId": "boss.kouku.dj.delivery",
+      "displayName": "DJ쿠크_특급 배송 출발!",
+      "parentId": "kouku.category.8f953e1b90ae2c06ad92"
+    }
   ]
 }

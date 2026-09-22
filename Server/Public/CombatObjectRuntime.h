@@ -129,6 +129,7 @@ namespace LostArk::Server
 		std::uint32_t iSpawnTick = 0u;
 		std::string strCombatObjectArchetypeId;
 		std::string strClientVisualId;
+		float fUniformScale = 1.f;
 		LostArk::Shared::GameplayDataRevision PinnedDefinitionRevision{};
 		bool bReplicated = false;
 		bool bTrackLockedTargetUntilFirstPulse = false;

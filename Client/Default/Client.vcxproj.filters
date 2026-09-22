@@ -2322,6 +2322,63 @@
     <None Include="..\..\Data\Effects\Authored\effect.world.move_destination.effect.json">
       <Filter>96.DataFiles\Effects</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.clown.polymorph.q.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.clown.polymorph.w.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.clown.polymorph.e.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.world.target_reticle.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.card.match.bind.floor.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.card.match.bind.release.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.stagger.shield.full.restore.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.stagger.explosion.full.restore.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.card.match.dice.full.restore.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.card.match.prepare.full.restore.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.card.match.emit.full.restore.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.stagger.star.draw.full.restore.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.backstep.afterimage.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate1.cardrain.drop.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.common.spinning.card.overhead.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.common.spinning.card.flying.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\Authored\boss.kouku.dj.cardrain.effectv2.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\V2\Authored\boss.kouku.dj.delivery.effectv2.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.world.ping.effect.json">
+      <Filter>96.DataFiles</Filter>
+    </None>
     <None Include="..\..\Data\Effects\V2\Authored\kouku.gate2.intro.fade.black.effectv2.json">
       <Filter>96.DataFiles</Filter>
     </None>

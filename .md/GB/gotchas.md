@@ -2950,3 +2950,34 @@ clamp 상한보다 올려도 이미 잘리는 부분은 복구되지 않는다. 
 가로채지 않는지 검사한다. 허용된 portable mesh carrier의 명시 간격만 기존 생성기를
 사용하고 source 위치·이동 module과 섞지 않는다. 1.2배 외형 변경은 mesh 크기에만 적용하고
 birth center·간격·Server cover와 폭발 시점은 유지한다.
+
+### Ctrl 핑의 물리 클릭과 UI 소유권
+
+Ctrl 핑은 물리 좌클릭을 사용하며 mouse-button swap과 독립이다. raw edge는 UI·focus·capture 분기 전부터 관찰하되, 실제 소비 시에는 전역 차단뿐 아니라 버튼별 filtered LB와 UIInputRouter의 같은 프레임 claim도 확인한다. 소비한 press는 release까지 이동·평타·MAZE LMB·ground-target confirm에서 제외한다. Ctrl+Z/X/C의 typed Esther 명령은 유지한다. 과녁과 핑의 native source texture 및 로컬 표시 검증은 [Clown·MAZE 결과](09-22/2026-09-22_CLOWN_MAZE_MARKERS_RESULT.md)를 따른다.
+
+### 비활성 Effect 문서의 삭제와 preview 준비
+
+CPU-only Open 문서의 Element 삭제·편집은 선택 모델·source bone·GPU 준비를 요구하지 않는다. 활성 preview만 stage 후 commit하며 실패하면 문서·선택·필터를 보존한다. 마지막 Solo Family 삭제 뒤 남은 문서가 있으면 COMPLETE로 조정하고, 실패 시 기존 family도 복원한다. 실제 코드 재현 범위는 [삭제 결과](09-22/2026-09-22_EFFECT_ELEMENT_DELETE_RESULT.md)에 기록한다.
+
+### 화염파동 바닥과 수동 그룹 식별
+
+발광만 남은 바닥은 bloom부터 바꾸지 말고 실제 source ground carrier가 문서에 있는지 확인한다. WandDecal 착지 섬광은 FireWave의 지면 고정 화염과 별개다. Element groupId가 있어도 Effect Tool 수동 그룹은 manual. 접두어를 요구하므로 독립 위치 편집을 의도한 파생 문서에서 이를 명시한다. 원본 disabled notify, 기존 사용자 occurrence offset·수명과 독립 저작 파생의 추가를 구분한다.
+
+### 신규 SourceCharacter Light program의 입력 ABI
+
+MN_PPPP_00 선물상자 native109는 Base와 Light가 다른 varying 배치를 쓴다. shader 함수와 material row만 추가하면 `MakeSourceCharacterInput`의 Light 2/3/5/6 분기에서 빠져 UV·조명 방향을 상수로 읽을 수 있다. 새 program은 원본 Base/Light DXBC 선언과 실제 input builder 양쪽을 대조하고 필요한 program만 해당 분기에 등록한다. 기존 program의 ABI를 통째로 바꾸지 않는다. Engine/Client mirror와 실제 FxCompile wrapper도 함께 확인한다.
+
+### 원본 버프 수명·Beam2 carrier·백스텝 잔상
+
+Source leaf 존재와 finite 성공만으로 제품 복원을 판단하지 않는다. 속박은 Server bound 상태의 실제 소비자·해제·사망·Reset까지 연결한다. 원본 particle lifetime이 30초를 넘을 수 있으므로 source recipe는 finite 120초, 수동 particle은 30초를 허용하며 UI와 Codec 범위, 기존 particle capacity를 함께 유지한다. Required EmitterLoops 생략값0을1로 가정하면 지속 방패가 중간에 꺼진다. 원본 반복을 복원하고 기존 loopEffectToDuration의 소유자 window로 종료한다.
+
+Action occurrence를 source leaf로 보강할 때 material/runtimeCarrier만 복사하지 않는다. 원본 TypeData에 맞는 kind·rendererShape·Detail.Trail도 대조한다. Beam2를 particle/sprite로 남긴 채 carrier만 연결하면 drawable admission이 실패한다. native3008의 별 선 sprite 지원은 동일 원본 재질 ABI에 한정하며 기존 ribbon 경로를 바꾸지 않는다.
+
+TrailGhost의 원본5ms는 float에서 .004999999888이므로 decoder 경계에 최소 float 오차만 허용한다. 실제 설치 모델·preScale·본·socket TRS로 검증하고, 흰 반투명 appearance의 PROJECT_AUTHORED 경계와 사용자 화면 판정을 분리한다. FX_Buff_01을 actor-ground translation으로 대응한 것은 실제 본 부착 검증이 아니다. 자세한 증거는 [주사위·무력화·백스텝 결과](09-22/2026-09-22_KOUKU_DICE_STAGGER_BACKSTEP_RESULT.md)를 따른다.
+
+
+### EventReceiver와 LocationDirect의 위치 소유권
+
+EventReceiverSpawn은 일반적으로 source event 위치를 상속하지만, 활성 LocationDirect가 emitter-local 절대 위치를 지정하면 같은 부모 높이를 다시 더해서는 안 된다. `Spawn_Particles`의 prepared recipe에 활성 `LOCATION_DIRECT`가 있는 경우에만 event origin을 0으로 시작하고, 일반 event receiver의 위치·속도 상속은 유지한다. 비활성 module 이름이나 문서 전체에 LocationDirect가 있다는 이유로 모든 event origin을 제거하지 않는다.
+
+원본 낙하가 사라진 경우에는 기존 nested RawDistribution/CDO 절차를 먼저 적용한다. ScaleFactor 누락을 복구한 뒤 event 부모·자식 각각의 실제 world 위치도 비교해야 두 결함을 구분할 수 있다. 카드비에서는 원본 CDO 상속 복구와 자식의 중복 7m 제거를 별도로 검증했다. 동일 문서의 일반 입자와 LocationDirect가 없는 controlled event-receiver fixture도 이전 playback과 대조했다. 이 CPU 수치 성공을 GPU 발광·실제 화면 성공으로 기록하지 않는다. [카드비·DJ 결과](09-22/2026-09-22_KOUKU_CARDRAIN_DJ_EFFECT_RESULT.md)를 따른다.

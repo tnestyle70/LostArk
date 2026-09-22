@@ -348,15 +348,18 @@ bool LostArk::Server::CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
 		const bool hasRandomVolleys = !trigger.RandomVolleys.empty();
 		if (hasRandomVolleys ?
 			(trigger.eKind != BOSS_PATTERN_MECHANIC_TRIGGER_KIND::SHOWTIME_PLAYER_TARGETS || trigger.RandomVolleys.size() > 32u ||
+             (trigger.strRandomAnchorKind != "BOSS_SPAWN" && trigger.strRandomAnchorKind != "BOSS") ||
+             !std::isfinite(trigger.fRandomScaleMin) || !std::isfinite(trigger.fRandomScaleMax) ||
+             trigger.fRandomScaleMin < .01f || trigger.fRandomScaleMax > 10.f || trigger.fRandomScaleMax < trigger.fRandomScaleMin ||
 			 trigger.iRandomSpawnIntervalMs == 0u || trigger.iRandomSpawnIntervalMs > 600000u ||
 			 !std::isfinite(trigger.fRandomArenaRadiusM) || trigger.fRandomArenaRadiusM <= 0.f || trigger.fRandomArenaRadiusM > 1000.f ||
 			 !std::isfinite(trigger.fRandomArenaHeightToleranceM) || trigger.fRandomArenaHeightToleranceM <= 0.f || trigger.fRandomArenaHeightToleranceM > 10.f ||
 			 std::any_of(trigger.RandomVolleys.begin(), trigger.RandomVolleys.end(), [](const auto& volley) {
 				return volley.strClientVisualId.empty() || volley.iLifetimeMs == 0u || volley.iLifetimeMs > 600000u; })) :
-			(trigger.iRandomSpawnIntervalMs != 0u || trigger.fRandomArenaRadiusM != 0.f || trigger.fRandomArenaHeightToleranceM != 0.f))
+			(trigger.iRandomSpawnIntervalMs != 0u || trigger.fRandomArenaRadiusM != 0.f || trigger.fRandomArenaHeightToleranceM != 0.f || trigger.strRandomAnchorKind != "BOSS_SPAWN" || trigger.fRandomScaleMin != 1.f || trigger.fRandomScaleMax != 1.f))
 		{ status = "Showtime random volley pool, cadence or arena contract is invalid"; return false; }
 		if (trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::SHOWTIME_PLAYER_TARGETS &&
-			(trigger.strFixedVisualId == trigger.strTrackingVisualId ||
+			((trigger.strFixedVisualId == trigger.strTrackingVisualId && (!hasRandomVolleys || !trigger.strFixedVisualId.empty())) ||
 			 trigger.strFixedVisualId.empty() != (trigger.iFixedLifetimeMs == 0u) || trigger.iFixedLifetimeMs > 600000u ||
 			 trigger.iSpawnIntervalMs == 0u || trigger.iSpawnIntervalMs > 600000u ||
 			 !std::isfinite(trigger.fFollowSpeedScale) || trigger.fFollowSpeedScale < .01f || trigger.fFollowSpeedScale > 10.f))

@@ -75,8 +75,10 @@ float Counter_AfterimageAgeSeconds(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& docu
     return -1.f;
 }
 
-bool Charge_AfterimageActive(const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern, const float clockMs)
+bool Charge_AfterimageActive(const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern, const float clockMs,
+    bool& backstep)
 {
+    backstep = false;
     if (pattern.strActorProfileId != "MN_RPCT_05" || !std::isfinite(clockMs)) return false;
     double stageStart = 0.0;
     for (const auto& stage : pattern.Stages)
@@ -87,6 +89,11 @@ bool Charge_AfterimageActive(const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern, co
             const double notifyMs = animation.strRuntimeClip == "rpct00_att_battle_22_01" ? 209.004 :
                 animation.strRuntimeClip == "rpct00_att_battle_22_04" ? 198.055 : -1.0;
             const double localMs = clockMs - stageStart - animation.iStartOffsetMs;
+            const double sourceMs = animation.iSourceStartMs + localMs * animation.fPlayRate;
+            // Original TrailGhost at clip 34_04 time 0, emission duration 50ms.
+            if (animation.strRuntimeClip == "rpct00_att_battle_34_04" &&
+                localMs >= 0.0 && localMs < animation.iPlayMs && sourceMs >= 0.0 && sourceMs < 50.0)
+            { backstep = true; return true; }
             if (notifyMs >= 0.0 && localMs >= 0.0 && localMs < animation.iPlayMs &&
                 animation.iSourceStartMs + localMs * animation.fPlayRate >= notifyMs) return true;
         }
@@ -1285,7 +1292,8 @@ bool Client::CKoukuSaydonPresentationPlayer::Start_TargetedCombatVisual(
 {
     if (!Is_TargetedCombatObjectArchetype(spawn.strCombatObjectArchetypeId) ||
         !spawn.iCombatObjectId || !spawn.iSourceNetEntityId || !spawn.PinnedDefinitionRevision.Is_Valid() ||
-        !std::isfinite(spawn.fPositionX) || !std::isfinite(spawn.fPositionY) || !std::isfinite(spawn.fPositionZ) || !std::isfinite(spawn.fYawDegrees))
+        !std::isfinite(spawn.fPositionX) || !std::isfinite(spawn.fPositionY) || !std::isfinite(spawn.fPositionZ) || !std::isfinite(spawn.fYawDegrees) ||
+        !std::isfinite(spawn.fUniformScale) || spawn.fUniformScale < .01f || spawn.fUniformScale > 10.f)
     { status = "Targeted combat visual spawn identity or position is invalid."; return false; }
     float age = 0.f;
     if (!CActionPresentationTimeline::Try_ResolveActionAgeSeconds(spawn.iServerTick, spawn.iSpawnTick, 30.f, age))
@@ -1316,10 +1324,12 @@ bool Client::CKoukuSaydonPresentationPlayer::Start_TargetedCombatVisual(
     candidate.spawnTick = spawn.iSpawnTick;
     candidate.serverTick = spawn.iServerTick;
     candidate.elapsedMs = double(age) * 1000.0;
+    candidate.uniformScale = spawn.fUniformScale;
     candidate.playback.key = "targeted:" + std::to_string(spawn.iCombatObjectId) + ":" +
         std::to_string(spawn.iSpawnTick);
     candidate.sourceBossPlayback.key = candidate.playback.key + ":source-boss";
     XMStoreFloat4x4(&candidate.root,
+        XMMatrixScaling(spawn.fUniformScale, spawn.fUniformScale, spawn.fUniformScale) *
         XMMatrixRotationY(spawn.strCombatObjectArchetypeId == "combatobject.kouku.pursuit" ? XMConvertToRadians(spawn.fYawDegrees) : 0.f) *
         XMMatrixTranslation(spawn.fPositionX, spawn.fPositionY, spawn.fPositionZ));
     const auto [entry, inserted] = m_TargetedCombatSessions.emplace(spawn.iCombatObjectId, std::move(candidate));
@@ -1352,6 +1362,7 @@ bool Client::CKoukuSaydonPresentationPlayer::Update_TargetedCombatVisual(
     session.elapsedMs = (std::max)(session.elapsedMs, double(age) * 1000.0);
     if (session.definition->loop)
         XMStoreFloat4x4(&session.root,
+            XMMatrixScaling(session.uniformScale, session.uniformScale, session.uniformScale) *
             XMMatrixRotationY(session.definition->archetypeId == "combatobject.kouku.pursuit" ? XMConvertToRadians(snapshot.fYawDegrees) : 0.f) *
             XMMatrixTranslation(snapshot.fPositionX, snapshot.fPositionY, snapshot.fPositionZ));
     // MainApp samples all child groups once per presentation frame after the
@@ -1925,7 +1936,7 @@ bool Client::CKoukuSaydonPresentationPlayer::Collect_ProductEffectTargets(
     const auto started = GetTickCount64();
     try
     {
-        std::set<std::string> v1;
+        std::set<std::string> v1{ "effect.kouku.card.match.bind.floor", "effect.kouku.card.match.bind.release" };
         std::set<std::pair<std::string, std::string>> v2;
         const auto add = [&](const std::string& kind, const std::string& id) {
             if (!CEffectV2Document::Is_ValidEffectId(id))
@@ -2228,6 +2239,73 @@ void Client::CKoukuSaydonPresentationPlayer::Stop_Session(SESSION& session)
     session.effectAnchorHistories.clear();
     session.rootRecordedSeconds = -1.f;
     session.lastClockMs = -1.f;
+}
+
+void Client::CKoukuSaydonPresentationPlayer::Update_DiceBindVisuals(float dt,
+    const std::vector<KOUKU_CARD_PRESENTATION_VIEW>& players)
+{
+    if (!std::isfinite(dt) || dt < 0.f) return;
+    std::set<std::uint32_t> live;
+    for (const auto& view : players)
+    {
+        const auto character = view.pCharacter.lock();
+        const auto& snapshot = view.Snapshot;
+        if (!character || !character->Get_Transform() || !snapshot.iCurrentHp) continue;
+        const auto id = snapshot.iNetEntityId;
+        auto found = m_DiceBindVisuals.find(id);
+        if (!snapshot.isPatternBound && found == m_DiceBindVisuals.end()) continue;
+        live.insert(id);
+        bool restart = found == m_DiceBindVisuals.end();
+        if (restart) found = m_DiceBindVisuals.try_emplace(id).first;
+        auto& visual = found->second;
+        restart |= snapshot.isPatternBound && (visual.releasing || visual.endTick != snapshot.iPatternBindEndTick);
+        restart |= !snapshot.isPatternBound && !visual.releasing;
+        if (restart)
+        {
+            Stop_Session(visual.session);
+            visual.document = {};
+            visual.pattern = {};
+            visual.clockMs = 0.f;
+            visual.releasing = !snapshot.isPatternBound;
+            visual.endTick = snapshot.iPatternBindEndTick;
+            visual.session.key = "dice-bind:" + std::to_string(id) + ":" +
+                std::to_string(visual.endTick) + (visual.releasing ? ":release" : ":hold");
+            auto& resource = visual.document.PresentationResources.emplace_back();
+            resource.strResourceId = "dice.bind.visual";
+            resource.strResourceKind = "V1_EFFECT";
+            resource.strAssetId = visual.releasing ? "effect.kouku.card.match.bind.release" :
+                "effect.kouku.card.match.bind.floor";
+            resource.iDurationMs = visual.releasing ? 6000u : 60000u;
+            visual.pattern.strPatternId = "dice.bind.visual";
+            visual.pattern.iDurationMs = resource.iDurationMs;
+            auto& box = visual.pattern.PresentationOccurrences.emplace_back();
+            box.strOccurrenceId = "dice.bind.visual";
+            box.strResourceId = resource.strResourceId;
+            box.iDurationMs = resource.iDurationMs;
+            // The original floor lives at the actor origin; player yaw/scale
+            // must not rotate or scale the circular ground projection.
+            box.bFollowBoss = true;
+        }
+        else visual.clockMs += dt * 1000.f;
+        if (visual.releasing && visual.clockMs >= visual.pattern.iDurationMs)
+        {
+            Stop_Session(visual.session);
+            m_DiceBindVisuals.erase(found);
+            continue;
+        }
+        const auto& world = *character->Get_Transform()->Get_WorldMatrixPtr();
+        float4x4_t pivot;
+        XMStoreFloat4x4(&pivot, XMMatrixTranslation(world._41, world._42, world._43));
+        // The Server bound bit owns removal, including early card-match release.
+        // No locally predicted deadline changes gameplay or restarts the cue.
+        Sample(visual.session, visual.document, visual.pattern, visual.clockMs, false, pivot, nullptr);
+    }
+    for (auto it = m_DiceBindVisuals.begin(); it != m_DiceBindVisuals.end();)
+    {
+        if (live.contains(it->first)) { ++it; continue; }
+        Stop_Session(it->second.session);
+        it = m_DiceBindVisuals.erase(it);
+    }
 }
 
 void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
@@ -3129,7 +3207,9 @@ void Client::CKoukuSaydonPresentationPlayer::Update(float dt,
             (std::max)(seconds * 1000.f, session.lastClockMs + dt * 1000.f);
         ANIMATION_MODEL_TARGET_VIEW weaponView;
         const bool hasWeapon = npc->Try_GetAnimationModelTarget(ANIMATION_BONE_TARGET::WEAPON, weaponView);
-        npc->Set_ChargeAfterimageEnabled(Charge_AfterimageActive(product->second.pattern, clock));
+        bool backstepAfterimage = false;
+        const bool chargeAfterimage = Charge_AfterimageActive(product->second.pattern, clock, backstepAfterimage);
+        npc->Set_ChargeAfterimageEnabled(chargeAfterimage, backstepAfterimage);
         Sample(session, product->second.document, product->second.pattern,
             (std::min)(clock, float(product->second.durationMs)), false,
             *npc->Get_Transform()->Get_WorldMatrixPtr(), npc->Get_Model(), hasWeapon ? &weaponView : nullptr);
@@ -3194,7 +3274,9 @@ void Client::CKoukuSaydonPresentationPlayer::Update(float dt,
             (std::max)(seconds * 1000.f, session.lastClockMs + dt * 1000.f);
         ANIMATION_MODEL_TARGET_VIEW weaponView;
         const bool hasWeapon = npc->Try_GetAnimationModelTarget(ANIMATION_BONE_TARGET::WEAPON, weaponView);
-        if (Charge_AfterimageActive(child->second.pattern, clock)) npc->Set_ChargeAfterimageEnabled(true);
+        bool backstepAfterimage = false;
+        if (Charge_AfterimageActive(child->second.pattern, clock, backstepAfterimage))
+            npc->Set_ChargeAfterimageEnabled(true, backstepAfterimage);
         Sample(session, child->second.document, child->second.pattern,
             (std::min)(clock, float(child->second.durationMs)), false,
             *npc->Get_Transform()->Get_WorldMatrixPtr(), npc->Get_Model(), hasWeapon ? &weaponView : nullptr);
@@ -3277,6 +3359,7 @@ void Client::CKoukuSaydonPresentationPlayer::Update(float dt,
         if (card->second.handle) CEffectV2Runtime::Stop_Group(card->second.handle);
         card = m_Cards.erase(card);
     }
+    Update_DiceBindVisuals(dt, players);
     Update_MazeMarks(players);
     Update_BingoMarks(dt);
     Update_FearPresentation(dt, players);
@@ -5220,6 +5303,8 @@ void Client::CKoukuSaydonPresentationPlayer::Reset()
     for (const auto& [id, card] : m_Cards)
         if (card.handle) CEffectV2Runtime::Stop_Group(card.handle);
     m_Cards.clear();
+    for (auto& [id, visual] : m_DiceBindVisuals) Stop_Session(visual.session);
+    m_DiceBindVisuals.clear();
     m_BingoMarks.clear();
     m_BingoWorldDocument.reset();
     for (const auto& [slot, bomb] : m_BingoBombs)

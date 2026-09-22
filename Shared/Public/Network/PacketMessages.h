@@ -247,6 +247,8 @@ namespace LostArk::Shared
 		float fPositionY = 0.f;
 		float fPositionZ = 0.f;
 		float fYawDegrees = 0.f;
+		// Immutable occurrence scale, authoritative for presentation and attack geometry.
+		float fUniformScale = 1.f;
 		GameplayDataRevision PinnedDefinitionRevision{};
 	};
 

@@ -52,7 +52,7 @@ def decode_trail_ghost(row: Mapping[str, Any]) -> dict[str, Any]:
         pivotBone=pivot, materialReference=material, replaceParameterReference=replacement,
         fieldByteOffset=start, ordinal=ordinal, label=label, category=category, priority=priority,
         sourceSha256=payload['sha256'])
-    if not (0 < fields[4] <= 30 and .005 <= fields[5] <= 2 and .005 <= fields[6] <= 2 and 0 <= fields[8] <= 1):
+    if not (0 < fields[4] <= 30 and .005 - 1e-8 <= fields[5] <= 2 and .005 - 1e-8 <= fields[6] <= 2 and 0 <= fields[8] <= 1):
         raise ValueError('TrailGhost time/alpha bounds')
     return result
 

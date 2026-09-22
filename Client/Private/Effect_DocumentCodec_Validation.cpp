@@ -724,7 +724,7 @@ bool_t Client::CEffectDocumentCodec::Validate(
 			D.Particle.fFixedCenterSpacingWorldUnits <= 1000.f &&
 			Is_Finite(D.Particle.vLifeTimeSeconds) &&
 			(D.Particle.vLifeTimeSeconds.x > 0.f ||
-			 (Element.SourceRecipe.bEnabled && D.Particle.vLifeTimeSeconds.x == 0.f)) && D.Particle.vLifeTimeSeconds.y >= D.Particle.vLifeTimeSeconds.x && D.Particle.vLifeTimeSeconds.y <= 30.f &&
+			 (Element.SourceRecipe.bEnabled && D.Particle.vLifeTimeSeconds.x == 0.f)) && D.Particle.vLifeTimeSeconds.y >= D.Particle.vLifeTimeSeconds.x && D.Particle.vLifeTimeSeconds.y <= (Element.SourceRecipe.bEnabled ? 120.f : 30.f) &&
 			Is_Finite(D.Particle.vInitialPositionMin) && Is_Finite(D.Particle.vInitialPositionMax) &&
 			D.Particle.vInitialPositionMax.x >= D.Particle.vInitialPositionMin.x &&
 			D.Particle.vInitialPositionMax.y >= D.Particle.vInitialPositionMin.y &&

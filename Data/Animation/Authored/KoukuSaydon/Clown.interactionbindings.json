@@ -8,15 +8,18 @@
       "skills": [
         {
           "clip": "rpcz00p_att_battle_1_01",
-          "playRate": 1.0
+          "playRate": 1.0,
+          "effectAssetId": "effect.kouku.clown.polymorph.q"
         },
         {
           "clip": "rpcz00p_att_battle_2_01",
-          "playRate": 1.0
+          "playRate": 1.0,
+          "effectAssetId": "effect.kouku.clown.polymorph.w"
         },
         {
           "clip": "rpcz00p_att_battle_4_01",
-          "playRate": 1.0
+          "playRate": 1.0,
+          "effectAssetId": "effect.kouku.clown.polymorph.e"
         }
       ]
     },
@@ -59,7 +62,13 @@
       "skills": [
         {
           "clip": "rpcz00p_project_tuned_hammer",
-          "playRate": 1.0
+          "playRate": 1.0,
+          "effectAssetId": "effect.kouku.cardmaze.q"
+        },
+        {
+          "clip": "rpcz00p_project_tuned_hammer",
+          "playRate": 1.0,
+          "effectAssetId": "effect.kouku.cardmaze.lmb"
         }
       ]
     }

@@ -1240,6 +1240,7 @@ namespace
 		source.fPositionY = 22.97f;
 		source.fPositionZ = -121.75f;
 		source.fYawDegrees = 225.f;
+		source.fUniformScale = 1.75f;
 		source.PinnedDefinitionRevision = Make_GameplayDataRevision(3u);
 
 		std::vector<std::uint8_t> payload;
@@ -1262,10 +1263,26 @@ namespace
 			decoded.fPositionY == source.fPositionY &&
 			decoded.fPositionZ == source.fPositionZ &&
 			decoded.fYawDegrees == source.fYawDegrees &&
+			decoded.fUniformScale == source.fUniformScale &&
 			decoded.PinnedDefinitionRevision ==
 				source.PinnedDefinitionRevision,
 			"Combat Object Spawned Round Trip");
 
+        for (const float scale : {.01f, 1.f, 2.f, 10.f})
+        {
+            auto scaled = source; scaled.fUniformScale = scale;
+            CPacketWriter writer; const bool written = Write_Message(writer, scaled);
+            CPacketReader scaledReader{writer.Get_Buffer()}; S2C_COMBAT_OBJECT_SPAWNED roundtrip{};
+            testRunner.Require(written && Read_Message(scaledReader, roundtrip) && roundtrip.fUniformScale == scale,
+                "Immutable combat scale includes both admitted boundaries");
+        }
+        for (const float scale : {0.f, -.5f, .009f, 10.01f, std::numeric_limits<float>::quiet_NaN(), std::numeric_limits<float>::infinity()})
+        {
+            auto scaled = source; scaled.fUniformScale = scale;
+            CPacketWriter writer;
+            testRunner.Require(!Write_Message(writer, scaled) && writer.Get_Buffer().empty(),
+                "Invalid combat scale rejects before writing any payload bytes");
+        }
 		S2C_COMBAT_OBJECT_SPAWNED invalid = source;
 		invalid.iCombatObjectId = INVALID_COMBAT_OBJECT_ID;
 		CPacketWriter invalidIdWriter;
@@ -2284,10 +2301,10 @@ namespace
 				unchanged.eDirection == request.eDirection,
 				"Malformed Mario direction or stop preserves output");
 		}
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 102u && Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_MOVE) &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 103u && Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_MOVE) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_MARIO_MOVE) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) + 1u,
-			"Mario direction packet retains its appended identity in protocol 102");
+			"Mario direction packet retains its appended identity in protocol 103");
 	}
 
     void Test_FearSnapshotProtocol(TEST_RUNNER& testRunner)
@@ -2685,11 +2702,11 @@ namespace
 				unchanged.eWorldId == WORLD_ID::BERN && unchanged.eResult == MARIO_RETURN_RESULT::REJECTED_DESTINATION,
 				"Invalid Mario return verdict preserves caller output");
 		}
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 102u &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 103u &&
 			Is_Known_Packet_Type(PACKET_TYPE::C2S_MARIO_RETURN) && Is_Known_Packet_Type(PACKET_TYPE::S2C_MARIO_RETURN_RESULT) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_MARIO_RETURN) == static_cast<std::uint16_t>(PACKET_TYPE::S2C_SET_VEHICLE_RIDING_RESULT) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_MARIO_RETURN_RESULT) == static_cast<std::uint16_t>(PACKET_TYPE::C2S_MARIO_RETURN) + 1u,
-			"Protocol 102 preserves Mario return packet identities");
+			"Protocol 103 preserves Mario return packet identities");
 	}
 
 	void Test_DebugMarioJumpProtocol(TEST_RUNNER& testRunner)
@@ -2806,14 +2823,14 @@ namespace
 				unchanged.eResult == DEBUG_MARIO_JUMP_RESULT::REJECTED_DISABLED,
 				"Mario invalid or truncated verdict preserves caller output");
 		}
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 102u &&
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 103u &&
 			Is_Known_Packet_Type(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) &&
 			Is_Known_Packet_Type(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_SCENE_PROFILE_APPLY) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) + 1u,
-			"Protocol 102 preserves Mario jump packet identities without renumbering existing peers");
+			"Protocol 103 preserves Mario jump packet identities without renumbering existing peers");
 	}
 
 	void Test_DebugMadnessFormProtocol(TEST_RUNNER& testRunner)
@@ -2963,14 +2980,14 @@ namespace
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_BINGO_HAMMER) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_SET_VEHICLE_RIDING_RESULT) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_SET_VEHICLE_RIDING) + 1u &&
-			NETWORK_PROTOCOL_VERSION == 102u,
+			NETWORK_PROTOCOL_VERSION == 103u,
 			"Riding packet identities append without renumbering peers");
 	}
 
 	void Test_WorldObjectMotionProtocol(TEST_RUNNER& testRunner)
 	{
 		using namespace LostArk::Shared;
-		testRunner.Require(NETWORK_PROTOCOL_VERSION == 102u, "World Object owner lifecycle, fear, zone pulse, wave re-summon, wall climb and ember use protocol 102");
+		testRunner.Require(NETWORK_PROTOCOL_VERSION == 103u, "World Object owner lifecycle, fear, zone pulse, wave re-summon, wall climb and ember use protocol 102");
 		testRunner.Require(
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_DEBUG_MARIO_JUMP) == 72u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_DEBUG_MARIO_JUMP_RESULT) == 73u &&
@@ -3330,8 +3347,8 @@ namespace
 			static_cast<std::uint16_t>(PACKET_TYPE::S2C_INTERACT_PROMPT) + 1u &&
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_INTERACTION_SLOT) ==
 			static_cast<std::uint16_t>(PACKET_TYPE::C2S_INTERACT_TRIGGER) + 1u &&
-			NETWORK_PROTOCOL_VERSION == 102u,
-			"Protocol 102 preserves main trigger identities with WORLD occurrence placement");
+			NETWORK_PROTOCOL_VERSION == 103u,
+			"Protocol 103 preserves main trigger identities with WORLD occurrence placement");
 	}
 
 	void Test_KakulAuthoringCommandProtocol(TEST_RUNNER& testRunner)

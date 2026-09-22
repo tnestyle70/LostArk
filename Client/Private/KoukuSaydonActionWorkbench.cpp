@@ -13890,9 +13890,13 @@ void Client::CKoukuSaydonActionWorkbench::Render_LogicDefinitionValues(
 				if (ImGui::InputInt("Arena spawn interval (ms)", &randomInterval, 100, 1000)) draft.iRandomSpawnIntervalMs = static_cast<std::uint32_t>(std::clamp(randomInterval, 1, 600000));
 				ImGui::InputDouble("Arena search radius (m)", &draft.fRandomArenaRadiusM, 1, 10, "%.3f");
 				ImGui::InputDouble("Arena height tolerance (m)", &draft.fRandomArenaHeightToleranceM, .1, 1, "%.3f");
+                bool aroundBoss = draft.strRandomAnchorKind == "BOSS";
+                if (ImGui::Checkbox("Follow current boss position", &aroundBoss)) draft.strRandomAnchorKind = aroundBoss ? "BOSS" : "BOSS_SPAWN";
+                ImGui::InputDouble("Random scale minimum", &draft.fRandomScaleMin, .1, 1, "%.3f");
+                ImGui::InputDouble("Random scale maximum", &draft.fRandomScaleMax, .1, 1, "%.3f");
 				ImGui::TextDisabled("Each set needs a MAP row; radius (0,1000] m and height tolerance (0,10] m are required.");
 			}
-			else { draft.iRandomSpawnIntervalMs = 0u; draft.fRandomArenaRadiusM = 0.0; draft.fRandomArenaHeightToleranceM = 0.0; }
+			else { draft.iRandomSpawnIntervalMs = 0u; draft.fRandomArenaRadiusM = 0.0; draft.fRandomArenaHeightToleranceM = 0.0; draft.strRandomAnchorKind = "BOSS_SPAWN"; draft.fRandomScaleMin = draft.fRandomScaleMax = 1.0; }
 
 		}
         else if ("CROSS_DIRECTION_CLONES" == draft.strJudgementKind)
@@ -14325,13 +14329,14 @@ void Client::CKoukuSaydonActionWorkbench::Render_LogicDefinitionValues(
 	}
 	else if ("TRIGGER" == logic.strLogicType)
 	{
-		const std::array<std::pair<const char*, const char*>, 17u> triggerKinds = {{
+		const std::array<std::pair<const char*, const char*>, 18u> triggerKinds = {{
 			{"", "(choose what activates this Trigger)"},
 			{"ANIMATION_BLEND", "Animation clip blending (ANIMATION_BLEND)"},
 			{"ROOM_PLAYER_ARRIVAL", "Sequence player arrival (ROOM_PLAYER_ARRIVAL)"},
 			{"ENTER_AREA", "Player contact (ENTER_AREA)"},
 			{"OBJECT_CONTACT", "World object contact (OBJECT_CONTACT)"},
 			{"HUD_ENTER", "Switch player HUD at start (HUD_ENTER)"},
+			{"CARD_RAIN_SOLDIERS", "Spawn three card-rain soldiers (CARD_RAIN_SOLDIERS)"},
 			{"CARD_MAZE_STAGE_PLAYERS", "Place players at card maze entry Effects (CARD_MAZE_STAGE_PLAYERS)"},
 			{"CARD_MAZE_HIDE_NEXT", "Hide next player from the right (CARD_MAZE_HIDE_NEXT)"},
 			{"CARD_MAZE_ENTER", "Move entry participants into the card maze (CARD_MAZE_ENTER)"},
@@ -14524,6 +14529,8 @@ void Client::CKoukuSaydonActionWorkbench::Render_LogicDefinitionValues(
 			}
 			ImGui::EndDisabled();
 		}
+		else if (draft.strTriggerKind == "CARD_RAIN_SOLDIERS")
+			ImGui::TextWrapped("Spawns one club, heart and diamond soldier on navigation near this boss. They leave when the Pattern ends or after 30 seconds.");
 		else if (draft.strTriggerKind == "CARD_MAZE_HIDE_NEXT")
 			ImGui::TextWrapped("Each occurrence hides one participant. The first occurrence fixes the order by world X descending, then PlayerId. Stop restores visibility.");
 		else if (draft.strTriggerKind == "CARD_MAZE_ENTER")

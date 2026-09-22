@@ -51,6 +51,91 @@
     {"effectAssetId":"effect.guardianknight.skill.49400.clip.1.full.restore","payloadKind":"DIRECT_AUTHORED_DOCUMENT","authoringPath":"Effects/Authored/effect.guardianknight.skill.49400.clip.1.full.restore.effect.json"},
     {"effectAssetId":"effect.guardianknight.skill.49400.clip.2.full.restore","payloadKind":"DIRECT_AUTHORED_DOCUMENT","authoringPath":"Effects/Authored/effect.guardianknight.skill.49400.clip.2.full.restore.effect.json"},
     {"effectAssetId":"effect.guardianknight.skill.49420.clip.0.full.restore","payloadKind":"DIRECT_AUTHORED_DOCUMENT","authoringPath":"Effects/Authored/effect.guardianknight.skill.49420.clip.0.full.restore.effect.json"},
-    {"effectAssetId":"effect.guardianknight.skill.49330.clip.1.full.restore","payloadKind":"DIRECT_AUTHORED_DOCUMENT","authoringPath":"Effects/Authored/effect.guardianknight.skill.49330.clip.1.full.restore.effect.json"}
+    {"effectAssetId":"effect.guardianknight.skill.49330.clip.1.full.restore","payloadKind":"DIRECT_AUTHORED_DOCUMENT","authoringPath":"Effects/Authored/effect.guardianknight.skill.49330.clip.1.full.restore.effect.json"},
+    {
+      "effectAssetId": "effect.kouku.clown.polymorph.q",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.clown.polymorph.q.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.clown.polymorph.w",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.clown.polymorph.w.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.clown.polymorph.e",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.clown.polymorph.e.effect.json"
+    },
+    {
+      "effectAssetId": "effect.world.target_reticle",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.world.target_reticle.effect.json"
+    },
+    {
+      "effectAssetId": "effect.world.ping",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.world.ping.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.card.match.bind.floor",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.card.match.bind.floor.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.card.match.bind.release",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.card.match.bind.release.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate1.stagger.shield.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate1.stagger.shield.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate1.stagger.explosion.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate1.stagger.explosion.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.card.match.dice.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.card.match.dice.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.card.match.prepare.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.card.match.prepare.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.card.match.emit.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.card.match.emit.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate1.stagger.star.draw.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate1.stagger.star.draw.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate1.backstep.afterimage",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate1.backstep.afterimage.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate1.cardrain.drop",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate1.cardrain.drop.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.common.spinning.card.overhead",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.common.spinning.card.overhead.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.common.spinning.card.flying",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.common.spinning.card.flying.effect.json"
+    }
   ]
 }
