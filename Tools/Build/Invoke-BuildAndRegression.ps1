@@ -363,6 +363,112 @@ function Assert-RuntimeLayout {
     }
 }
 
+function Test-ProductNavigationInputs {
+    param($NavigationDomain)
+
+    # Inspect published dependencies only. Baking and world admission stay with
+    # the navigation publisher and Server; this must not mutate either root.
+    $grids = [ordered]@{}
+    foreach ($relative in $NavigationDomain.requiredOutputPatterns) {
+        if ($relative -match '^(Server|Client)/Bin/DataFiles/Navigation/[^/]+\.navgrid$') {
+            $grids[[string]$relative] = $null
+        }
+    }
+    foreach ($side in @('Server', 'Client')) {
+        $relativeRoot = "$side/Bin/DataFiles/Navigation"
+        foreach ($manifest in @(Get-ChildItem -LiteralPath (Join-Path $repoRoot $relativeRoot) `
+            -Filter '*.navregions' -File -ErrorAction SilentlyContinue)) {
+            $timer = [Diagnostics.Stopwatch]::StartNew()
+            $relative = "$relativeRoot/$($manifest.Name)"
+            try {
+                $lines = @([IO.File]::ReadAllLines($manifest.FullName) | Where-Object { $_.Trim() })
+                $area = $manifest.BaseName
+                if ($area -notmatch '^[A-Za-z0-9_-]+$' -or $lines.Count -eq 0 -or
+                    $lines[0] -cnotmatch ('^LOSTARK_NAVGRID_REGIONS 1 "' + [regex]::Escape($area) + '" ([0-9]+)$')) {
+                    throw 'Invalid navigation region manifest header'
+                }
+                $count = [uint64]$Matches[1]
+                if ($count -gt 64 -or $lines.Count -ne $count + 1) { throw 'Truncated or invalid navigation region manifest' }
+                $grids["$relativeRoot/$area.navgrid"] = $null
+                $seen = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+                foreach ($line in @($lines | Select-Object -Skip 1)) {
+                    if ($line -cnotmatch '^REGION "([A-Za-z0-9_-]{1,32})" (\S+)$') { throw 'Invalid navigation region row' }
+                    $region = $Matches[1]
+                    $step = [single]::Parse($Matches[2], [Globalization.CultureInfo]::InvariantCulture)
+                    if (-not $seen.Add($region) -or [double]::IsNaN($step) -or [double]::IsInfinity($step) -or $step -lt 0) {
+                        throw 'Duplicate region or invalid navigation step policy'
+                    }
+                    $grids["$relativeRoot/$area.$region.navgrid"] = $step
+                }
+            }
+            catch {
+                [pscustomobject]@{ path=$relative; publisher='Tools/NavigationPipeline/Publish-ServerNavigation.ps1';
+                    result='FAIL'; elapsedMs=$timer.ElapsedMilliseconds; details=$_.Exception.Message }
+            }
+            finally { $timer.Stop() }
+        }
+    }
+    foreach ($entry in $grids.GetEnumerator()) {
+        $timer = [Diagnostics.Stopwatch]::StartNew()
+        $relative = [string]$entry.Key
+        $result = 'FAIL'
+        $details = ''
+        try {
+            $path = Join-Path $repoRoot $relative
+            $stream = [IO.File]::OpenRead($path)
+            $reader = [IO.BinaryReader]::new($stream)
+            try {
+                if ($stream.Length -lt 20) { throw 'Truncated navigation grid header (expected 20 bytes)' }
+                $width = $reader.ReadUInt32(); $height = $reader.ReadUInt32()
+                $cellSize = $reader.ReadSingle(); $originX = $reader.ReadSingle(); $originZ = $reader.ReadSingle()
+                $cells = [uint64]$width * [uint64]$height
+                if ($width -eq 0 -or $height -eq 0 -or $cells -gt 1000000 -or $cellSize -le 0 -or
+                    [single]::IsNaN($cellSize) -or [single]::IsInfinity($cellSize) -or
+                    [single]::IsNaN($originX) -or [single]::IsInfinity($originX) -or
+                    [single]::IsNaN($originZ) -or [single]::IsInfinity($originZ)) { throw 'Invalid navigation grid header' }
+                if ($stream.Length -ne 20 + 5 * $cells) { throw 'Truncated navigation grid payload or unexpected trailing bytes' }
+            }
+            finally { $reader.Dispose() }
+            $stem = [IO.Path]::GetFileNameWithoutExtension($path)
+            foreach ($extension in @('navpolicy', 'navblockers')) {
+                $relative = [IO.Path]::ChangeExtension([string]$entry.Key, $extension).Replace('\', '/')
+                $sidecar = Join-Path $repoRoot $relative
+                if (-not (Test-Path -LiteralPath $sidecar -PathType Leaf) -or (Get-Item -LiteralPath $sidecar).Length -eq 0) {
+                    throw 'Missing or empty navigation sidecar'
+                }
+                $header = [IO.File]::ReadLines($sidecar) | Select-Object -First 1
+                $tokens = [regex]::Matches($header, '"[^"]*"|\S+') | ForEach-Object { $_.Value.Trim('"') }
+                if ($tokens.Count -lt 3 -or $tokens[1] -cne '1' -or $tokens[2] -cne $stem) { throw 'Invalid navigation sidecar identity' }
+                if ($extension -eq 'navpolicy') {
+                    if ($tokens.Count -ne 4 -or $tokens[0] -cne 'LOSTARK_NAVIGATION_POLICY') { throw 'Invalid navigation policy header' }
+                    $step = [single]::Parse($tokens[3], [Globalization.CultureInfo]::InvariantCulture)
+                    if ([double]::IsNaN($step) -or [double]::IsInfinity($step) -or $step -lt 0 -or
+                        ($null -ne $entry.Value -and [Math]::Abs($step - $entry.Value) -gt 0.000001)) { throw 'Navigation policy differs from region manifest' }
+                }
+                else {
+                    if ($tokens.Count -ne 9 -or $tokens[0] -cne 'LOSTARK_NAVGRID_BLOCKERS' -or
+                        [uint32]$tokens[3] -ne $width -or [uint32]$tokens[4] -ne $height -or [uint32]$tokens[8] -gt 256) {
+                        throw 'Invalid navigation blocker header'
+                    }
+                    for ($index = 0; $index -lt 3; ++$index) {
+                        $value = [single]::Parse($tokens[5 + $index], [Globalization.CultureInfo]::InvariantCulture)
+                        if ([double]::IsNaN($value) -or [double]::IsInfinity($value) -or
+                            [Math]::Abs($value - @($cellSize, $originX, $originZ)[$index]) -gt 0.000001) { throw 'Navigation blocker grid differs from payload' }
+                    }
+                    if ($null -ne $entry.Value -and [uint32]$tokens[8] -ne 0) { throw 'Detail navigation region declares runtime blockers' }
+                }
+            }
+            $relative = [string]$entry.Key
+            $result = 'PASS'
+            $details = 'Published grid byte length and required sidecar headers are complete'
+        }
+        catch { $details = $_.Exception.Message }
+        finally { $timer.Stop() }
+        [pscustomobject]@{ path=$relative; publisher='Tools/NavigationPipeline/Publish-ServerNavigation.ps1';
+            result=$result; elapsedMs=$timer.ElapsedMilliseconds; details=$details }
+    }
+}
+
 function Test-ProductPublishedCatalogs {
     # These small publishers own their expected serialized format. Compare their
     # current source projection without publishing, hashing the full tree, or
@@ -565,7 +671,10 @@ try {
             Write-Host 'powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildDomainOwner.ps1 -Owner Server'
             Write-Host 'powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildDomainOwner.ps1 -Owner Client'
         }
-        $script:runtimeDataChecks = @(Test-ProductPublishedCatalogs)
+        $script:runtimeDataChecks = @(
+            Test-ProductPublishedCatalogs
+            Test-ProductNavigationInputs (Get-BuildDomainById $runtimeInputManifest 'navigation')
+        )
         $invalidRuntimeInputs = @($script:runtimeDataChecks | Where-Object result -ne 'PASS' |
             ForEach-Object { $_.path })
         foreach ($check in $script:runtimeDataChecks | Where-Object result -ne 'PASS') {
@@ -575,7 +684,7 @@ try {
         $script:buildRunTimer.Stop()
         Write-ProductCompileEvidence 'PASS' @($missingRuntimeInputs) @($invalidRuntimeInputs)
         Write-Host "Product compile/deploy completed: $Configuration (SkipBuild=$([bool]$SkipBuild))"
-        Write-Host 'Runtime file presence and Item/Valtan reward catalog content were checked; no data was published. Other runtime domains and visual/audio review remain separate.'
+        Write-Host 'Runtime file presence, Navigation references and Item/Valtan reward catalog content were checked; no data was published. Other runtime domains and visual/audio review remain separate.'
         return
     }
 

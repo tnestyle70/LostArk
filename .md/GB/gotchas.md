@@ -2867,3 +2867,8 @@ native screen-post가 퇴화한 camera projection을 S_FALSE로 격리하면 ren
 원본 native family를 generated Configure 한 함수에 계속 추가하면 Debug의 모든 분기 임시값이 같은 스택 프레임에 잡힐 수 있다. Shader 비교나 작은 최적화 probe 통과로 실제 Character 초기화 성공을 대신하지 않는다. 기본 1MB 스택의 Product 객체에서 실제 catalog/Character 소비를 검사하며, 계산식은 유지한 family별 call frame으로 분리한다. /STACK 증가로 생성기의 구조적 문제를 숨기지 않는다.
 
 TransColor/BuffColor는 현재 native program의 실제 direct packing 및 후속 copy에서 생성한 register 연결만 바꾼다. catalog에 없는 이름을 추측하거나 다른 상수를 다시 채우지 않는다. AUTO 또는 source parameter가 없는 program은 변경하지 않는다. 기존 튜닝값·peer/prototype·중첩 owner 및 취소 원복을 실제 CModel로 검사한다. 상세 근거는 [Guardian owner control 결과](09-22/2026-09-22_GUARDIAN_OWNER_CONTROL_RESULT.md)를 따른다.
+
+
+### Navigation 영역 목록과 게시 파일은 함께 전달
+
+`.navregions`에 새 REGION을 추가하면 같은 게시 단위의 `<Area>.<Region>.navgrid`, `.navpolicy`, `.navblockers`와 Server의 `.navsurface`도 Git 전달 대상인지 확인한다. 목록만 추적하고 신규 출력이 빠지면 Server는 해당 영역을 방문하기 전에도 world 초기화에서 실패한다. Product의 기본 파일 존재 검사만으로 세부 영역 준비 완료를 판단하지 않는다. Product는 게시 목록 참조, grid header/정확한 byte 길이와 필수 sidecar header를 읽기 전용으로 확인하고 실패 경로를 runtimeDataChecks에 남긴다. 좌표·정책은 소비자와 같은 float32로 파싱해 큰 소수 원점의 roundtrip을 오탐하지 않는다. 이 검사는 셀별 높이·층 겹침·world admission이나 원본 bake를 대체하지 않는다. 누락은 해당 Area의 공식 publisher로 복구하고 생성물을 임의 작성하거나 목록에서 영역을 제거해 숨기지 않는다.

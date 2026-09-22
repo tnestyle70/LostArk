@@ -12,7 +12,9 @@ Visual Studio Solution Build:
 - `-Profile Product` (default): Engine, Shared, Server and Client compilation and
   normal MSBuild deployment. Data publishing, source/resource fingerprints and broad
   diagnostics do not run. A read-only Item and Valtan reward `CheckPublished`
-  comparison reports stale/malformed runtime catalogs alongside missing files;
+  comparison reports stale/malformed runtime catalogs alongside missing files.
+  Navigation checks also follow published region manifests and validate grid
+  byte lengths and required policy/blocker headers without baking or publishing;
   compile success does not certify that every runtime domain is ready.
   `Client.vcxproj` is the single owner of EngineSDK,
   compiled-shader and Client runtime dependency deployment.
