@@ -1,4 +1,5 @@
 import copy
+import json
 from pathlib import Path
 from types import SimpleNamespace
 import unittest
@@ -28,6 +29,42 @@ def fixture():
 
 
 class AnimationBlendProjectionTests(unittest.TestCase):
+    def bake_tip(self, position):
+        document, pattern = fixture()
+        before = copy.deepcopy(document)
+        windows = subject.resolve_animation_blend_windows(document, pattern)
+        model = SimpleNamespace(skeleton_bones=[SimpleNamespace(name="tip")],
+            animations=[SimpleNamespace(name=name, duration_ticks=2000, ticks_per_second=1000)
+                        for name in ("a", "b", "c")])
+        actor = dict(actorProfileId="MN_RPCT_05", body=model, weapon=None)
+        matrix = [1., 0, 0, 0, 0, 1., 0, 0, 0, 0, 1., 0, *position, 1.]
+        original_matrix = list(matrix)
+        with mock.patch.object(subject, "_load_bone_bake_actor", return_value=actor), \
+             mock.patch.object(subject, "_sample_bone_bake_pose", return_value=[matrix]):
+            track = subject._build_bone_collider_track(pattern, dict(startMs=800, durationMs=400),
+                dict(bone="tip", anchorKind="BOSS", followBoss=True), Path.cwd(), {}, False, windows)
+        self.assertEqual(before, document)
+        self.assertEqual(original_matrix, matrix)
+        return track
+
+    def test_bone_bake_last_bit_drift_has_stable_bytes_but_retains_movement(self):
+        # The two source calculations differed in the committed P13 collider bake.
+        first = self.bake_tip([-5.951950796742617, -1e-14, -0.16951724332097345])
+        second = self.bake_tip([-5.951950796742618, -1e-14, -0.16951724332097368])
+        self.assertEqual(json.dumps(first), json.dumps(second))
+        self.assertNotIn("-0.0", json.dumps(first))
+        moved = self.bake_tip([-5.950950796742617, -1e-14, -0.16951724332097345])
+        self.assertNotEqual(json.dumps(first), json.dumps(moved))
+        self.assertEqual([key["timeMs"] for key in first["keys"]],
+                         [key["timeMs"] for key in moved["keys"]])
+        self.assertEqual([key["visible"] for key in first["keys"]],
+                         [key["visible"] for key in moved["keys"]])
+
+    def test_bone_bake_rejects_raw_invalid_coordinates_before_rounding(self):
+        for value in (float("nan"), float("inf"), 100000.0000000001):
+            with self.subTest(value=value), self.assertRaises(subject.CompositionError):
+                self.bake_tip([value, 0., 0.])
+
     def test_exact_pair_timing_and_crop_descriptor(self):
         document, pattern = fixture()
         before = copy.deepcopy(document)

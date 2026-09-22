@@ -1,4 +1,5 @@
 import copy
+import json
 from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
@@ -54,6 +55,44 @@ class ObjectColliderTests(unittest.TestCase):
         self.assertEqual(rows[0]["durationMs"],600)
         self.assertEqual(rows[0]["region"]["worldTrack"]["durationMs"],1000)
         self.assertIn("gripPosition",rows[0]["region"]["worldTrack"]["keys"][0])
+
+    def test_hook_last_bit_drift_has_stable_bytes_but_retains_movement(self):
+        def bake_at(position):
+            f = self.fixture("HOOK_CAPTURE")
+            f[0]["templates"][0]["objectMotion"]["velocity"] = [0, 0, 0]
+            f[0]["instances"][0]["position"] = [position, -1e-14, 0]
+            before = copy.deepcopy(f)
+            result = self.bake(f)
+            self.assertEqual(before, f)
+            return result
+        # This pair was observed in the committed P33 hook position and grip.
+        first = bake_at(-0.21475658548803747)
+        second = bake_at(-0.21475658548803744)
+        self.assertEqual(json.dumps(first), json.dumps(second))
+        self.assertNotIn("-0.0", json.dumps(first))
+        moved = bake_at(-0.21375658548803747)
+        self.assertNotEqual(json.dumps(first), json.dumps(moved))
+        self.assertEqual(first[0]["occurrenceId"], moved[0]["occurrenceId"])
+        first_keys = first[0]["region"]["worldTrack"]["keys"]
+        moved_keys = moved[0]["region"]["worldTrack"]["keys"]
+        self.assertEqual([(key["timeMs"], key["visible"]) for key in first_keys],
+                         [(key["timeMs"], key["visible"]) for key in moved_keys])
+        self.assertTrue(all(key["positionOffset"] == key["gripPosition"] for key in first_keys))
+
+    def test_generated_position_precision_preserves_positive_tiny_scale(self):
+        f = self.fixture("HOOK_CAPTURE")
+        f[0]["objectResources"][0]["scale"] = [1e-10, 1, 1]
+        before = copy.deepcopy(f)
+        keys = self.bake(f)[0]["region"]["worldTrack"]["keys"]
+        self.assertTrue(all(key["scaleMultiplier"] == [1e-10, 1, 1] for key in keys))
+        self.assertEqual(before, f)
+
+    def test_object_bake_rejects_raw_invalid_coordinates_before_rounding(self):
+        for value in (float("nan"), float("inf"), 100000.0000000001):
+            f = self.fixture("HOOK_CAPTURE")
+            f[0]["instances"][0]["position"] = [value, 0, 0]
+            with self.subTest(value=value), self.assertRaises(subject.ColliderBakeError):
+                self.bake(f)
 
     def test_hide_then_reappear_creates_independent_capture(self):
         f=self.fixture("HOOK_CAPTURE");s=f[0]["templates"][0];s["colliderTracks"][0]["durationMs"]=1000

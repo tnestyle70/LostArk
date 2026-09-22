@@ -5515,4 +5515,11 @@
   <ItemGroup>
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshKouku4608.hlsl"><Filter>97.ShaderFiles</Filter></FxCompile>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.bingo.blackhole.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.bingo.medusa.attack.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.bingo.blackhole.center.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
+  </ItemGroup>
 </Project>

@@ -1857,7 +1857,9 @@ Presentation Player의 읽기 전용 활성 자막 목록을 MainApp이 기존 �
 
 BINGO는 기존 saved Flow의 Pattern/Bundle 경로로 실행하며 새 별도 시퀀서나 보스 런타임을 만들지 않는다. BINGO Parent가 G3 MN_RPCT_05 Pattern을 재사용할 때만 `boss.kakulsaydon.g3.saydon` → `boss.kakulsaydon.bingo.saydon` child 참조를 허용한다. 그 외 관문/owner 불일치는 계속 거부한다. `DURATION / BINGO_BOARD`는 결과·collider를 소유하지 않는 1~600,000ms 서버 주기 기믹이다. 해당 행이 끝나면 신규 발생을 멈추며 기존 폭탄 표식·fuse는 완료한다. 같은 Complete Play run의 반복 Parent는 보드와 다음 bomb/hammer/madness deadline을 유지한다. run restart/exit/아레나 시작점 복귀는 모두 초기화한다.
 
-BINGO Flow는 intro Pattern과 arrival를 생성하지 않고 Action/Sequence revision을 그대로 pin한다. 준비와 목적지 admission을 마친 서버 전투만 소비한다. 부모 50,000ms 안의 5개 공격은 기존 P62 블랙홀 빔, P94 메두사, P60 기분나빠, P67 3방향 화염, P40 십자 화염 폭발이다. 공격 사이 1,000ms로 마지막 공격은40,477ms에 끝나며 나머지9,523ms에는 기믹만 계속된다. 다음 Parent도 같은 Flow 항목을 반복한다.
+BINGO 직접 시작 Flow는 Action/Sequence revision을 pin하고 준비와 목적지 admission을 마친 서버 전투를 소비한다. Parent의 선택적 `loopStartPatternOccurrenceId`는 자기 자식 occurrence ID를 참조한다. Server는 자식을 실제 완료 순서로 실행하고 마지막 자식 뒤 해당 기점으로 돌아간다. 최초 구간 24개와 반복 구간 14개가 같은 P96 안에 있으며, BINGO_BOARD의 소유권과 주기 deadline은 Parent를 다시 시작하지 않고 유지한다. Stop·사망·관문 종료는 기존 실행 정리 경로를 사용한다.
+
+Mario Parent의 선택적 `playChildrenSequentially: true`는 원래 입장 애니메이션 뒤 자식을 순서대로 실행한다. 자식의 카운터 후속 그로기와 완료, 플레이어의 Mario 복귀가 끝나야 기존 2페이즈 후속 Pattern을 시작한다. 두 옵션은 Client 문서 codec, projector, `PATTERNPARENTCHILD` 게시 행과 Server catalog/scheduler가 함께 소비한다. 옵션 없는 기존 Parent는 기존 유한 펼치기를 유지하며, 새 옵션의 중첩 자식 Parent와 잘못된 반복 ID는 거부한다.
 
 보드는 처음 일반 해골2칸,5초마다 살아 있는 보드 위 플레이어1명 표식,5초 후 현재 칸 중심에 폭탄 설치,3초 후 중심+상하좌우를 일반해골로 만든다. 기존 일반해골은 빨간해골로 승격하며 빨간해골은 유지한다. 기존 완성 line 승격도 보존한다. 두 해골 모두 초당 광기3이며 최대 도달 시 기존 광대 변신 policy를 소비한다. 10초마다 같은 축의 서로 최소2칸 떨어진 두 무작위 경로를 선택한다. 원본4.69m 망치 머리 폭보다 넓은6.08m 이상 간격으로 실제 머리도 겹치지 않는다. UV 화살표3초 뒤 원본 하강1.4초+이동1.6초를 소비하고 머리의 swept XZ만 서버 즉사 판정한다. 높은 사슬은 판정하지 않는다.
 

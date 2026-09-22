@@ -3309,3 +3309,32 @@ V2 `Acquire_Texture`는 DDS와 WIC(PNG 등)를 확장자로 분기하고 두 경
 ### 병렬 native material ID 발급 뒤 병합
 
 충돌 없는 숫자처럼 보여도 양쪽 branch가 같은 native program ID를 다른 material/PS/layout에 발급했는지 base와 양 parent를 비교한다. 다른 의미라면 한 cohort에 미사용 ID를 배정하고 authored runtimeShaderProfileId, C++ table, group HLSLI 함수, dispatch, selected switch를 함께 옮긴다. 같은 숫자의 main 효과까지 전역 치환하지 않으며 기존 material 식·texture·TRS와 지원 group 범위를 유지한다. PR449의 Guardian/Esther 충돌과 protocol104 결합 검증은 [병합 결과](09-22/2026-09-22_PR449_MAIN_MERGE_RESULT.md)에 기록한다.
+
+### 쿠크 반복 Parent와 원본 이름·좌표의 독립 검증
+
+표시 이름을 원본 action/clip identity로 간주하지 않는다. 레이저에 블랙홀 이름이 붙어 있어도
+실제 source action·animation·notify와 설치 모델의 clip을 대조한 뒤 복원한다. 보스 기준 광선과
+고정 월드 구체는 서로 다른 occurrence anchor를 쓰며, 중앙과 보스 시작 위치도 구분한다.
+Saydon의 +X 전방은 world +Z heading과 90도 차이가 있다. 전체 effect asset을 돌리지 않고
+실제 teleport/face-center 소비자와 해당 occurrence만 보정한다.
+
+긴 Parent를 64-stage 배열에 펼치거나 유한 보드 시간을 반복 시작하는 것으로 순차 반복을
+대신하지 않는다. 실제 자식 완료·카운터 후속·tail 뒤 다음 자식을 시작하고 Parent의 보드
+소유권을 유지한다. 원래 대기 slot을 보존하도록 자식과 transition slot을 함께 삽입한다.
+Mario 입장 Logic 시간을 바꾸면 연결된 collider occurrence 시간도 함께 맞춘다.
+Release 검증은 Debug 전용 test body가 생략되지 않았는지 먼저 확인하고 pending mechanic
+trigger commit까지 실제 tick 순서로 실행한다.
+
+
+### 쿠크 생성 좌표의 정밀도와 리소스 없는 worktree
+
+쿠크 본 콜라이더·오브젝트 갈고리의 계산 위치는 raw finite/bounds 검증 후 소수점9자리로
+저장한다. Object의 refine/reduce는 raw 값을 사용하며 마지막 출력 위치·grip만 정규화한다.
+저작값·scale·yaw·시간과 actual byte freshness 검사는 유지한다. 극히 작은 부동소수점 끝자리
+차이를 원본 변경이나 패턴 손실로 오인해 전체 검증을 끄지 않는다.
+Resources 없는 worktree에서는 모델 의존 패턴이 unavailable로 격리돼2개만 남을 수 있다.
+Git clean 여부와 물리 Resources 준비는 다르므로 후보 patternInventory의 unavailableReason을
+확인하고 의도하지 않은 패턴 감소를 그대로 게시하지 않는다.
+통합 후 최신 저장본으로 projector와 Gameplay publisher를 다시 실행하며, 이전 main 기준
+검증용 생성물로 진행 중인 쿠크 저작·게시 데이터를 덮어쓰지 않는다. 근거와 인계는
+09-23/2026-09-23_KOUKU_PUBLISH_PRECISION_RESULT.md와 같은 주제 HANDOFF에 둔다.

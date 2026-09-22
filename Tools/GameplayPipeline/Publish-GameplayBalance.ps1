@@ -1157,11 +1157,14 @@ foreach ($skill in @($skillDocument.skills)) {
 	if ($dealsDamage) {
 		Assert-StableId $damageProfileId 'serverDamageProfileId'
 	}
-	# Initial boss-interaction tuning is deliberately per landed damaging hit.
-	# Multi-hit skills therefore contribute once for each hit that the Server
-	# actually admits, rather than receiving a hidden whole-skill multiplier.
-	$expectedStaggerDamage = if ($dealsDamage) { [uint32]10 } else { [uint32]0 }
-	$expectedPartDamage = if ($dealsDamage) { [uint32]100 } else { [uint32]0 }
+	# Authored power applies per hit admitted by the Server, including each
+	# admitted multi-hit. Match the existing SKILLCOMBATTRAITS reader bounds.
+	foreach ($traitField in @('staggerDamage', 'partDamage')) {
+		Assert-JsonInteger $skill.$traitField "skill $($skill.skillId) $traitField" 0 1000000
+		if (-not $dealsDamage -and [uint32]$skill.$traitField -ne 0) {
+			throw "Non-damaging skill $($skill.skillId) must have zero $traitField."
+		}
+	}
 	# Counter power is a capability today: BossCombatRuntime tests nonzero and
 	# does not accumulate a strength threshold. Every damaging Q/W/E/R hit and
 	# the authored Lance Master A guard therefore use the canonical value 1.
@@ -1172,9 +1175,7 @@ foreach ($skill in @($skillDocument.skills)) {
 	} else {
 		[uint32]0
 	}
-	if ([uint32]$skill.staggerDamage -ne $expectedStaggerDamage -or
-		[uint32]$skill.partDamage -ne $expectedPartDamage -or
-		[uint32]$skill.counterPower -ne $expectedCounterPower -or
+	if ([uint32]$skill.counterPower -ne $expectedCounterPower -or
 		([uint32]$skill.counterPower -gt 0 -and
 		 [string]$skill.skillKind -cne 'COUNTER' -and
 		 -not $isQuickCounterSlot)) {
@@ -3634,6 +3635,7 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 	if ($null -ne $koukuPattern.PSObject.Properties['folderId']) { $koukuOptionalProperties += 'folderId' }
 	if ($null -ne $koukuPattern.PSObject.Properties['fixedTimeline']) { $koukuOptionalProperties += 'fixedTimeline' }
 	if ($null -ne $koukuPattern.PSObject.Properties['timelineDurationMs']) { $koukuOptionalProperties += 'timelineDurationMs' }
+	if ($null -ne $koukuPattern.PSObject.Properties['parentPatternSequence']) { $koukuOptionalProperties += 'parentPatternSequence' }
 	if ($null -ne $koukuPattern.PSObject.Properties['showtimeTargets']) { $koukuOptionalProperties += 'showtimeTargets' }
 	if ($null -ne $koukuPattern.PSObject.Properties['pursuitProjectiles']) { $koukuOptionalProperties += 'pursuitProjectiles' }
 	Assert-ExactProperties $koukuPattern (@(
@@ -3899,6 +3901,39 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 	foreach ($koukuStage in @($koukuPattern.stages)) {
 		$koukuPatternDurationMs += [uint64]$koukuStage.durationMs
 	}
+    if ($null -ne $koukuPattern.PSObject.Properties['parentPatternSequence']) {
+        $parent = $koukuPattern.parentPatternSequence
+        Assert-ExactProperties $parent @('loopStartOccurrenceId','entries') 'Parent sequence'
+        if ($parent.loopStartOccurrenceId -isnot [string]) { throw 'Parent loop start must be a string.' }
+        if (([string]$parent.loopStartOccurrenceId -ne '' -and $koukuPattern.gateId -cne 'BINGO') -or $parent.entries -isnot [Array] -or
+            @($parent.entries).Count -lt 1 -or @($parent.entries).Count -gt 128) { throw 'Invalid retained Bingo Parent sequence.' }
+        $parentEntryIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+        [uint64]$parentEnd = 0
+        foreach ($entry in @($parent.entries)) {
+            Assert-ExactProperties $entry @('occurrenceId','patternId','startMs','durationMs','repeat') 'Parent child'
+            Assert-JsonString $entry.occurrenceId 'Parent child occurrence ID'
+            Assert-JsonString $entry.patternId 'Parent child Pattern ID'
+            Assert-JsonInteger $entry.startMs 'Parent child start' 0 600000
+            Assert-JsonInteger $entry.durationMs 'Parent child duration' 1 600000
+            if (-not $parentEntryIds.Add([string]$entry.occurrenceId) -or $entry.repeat -isnot [bool] -or $entry.repeat -or
+                [uint64]$entry.startMs -lt $parentEnd) { throw 'Parent children overlap or repeat an invalid identity.' }
+            $child = @($koukuEncounterDocument.patterns | Where-Object { $_.patternId -ceq $entry.patternId })
+            if ($child.Count -ne 1 -or $child[0].patternId -ceq $koukuPattern.patternId -or
+                $null -ne $child[0].PSObject.Properties['parentPatternSequence'] -or
+                $child[0].gateId -cne $koukuPattern.gateId -or $child[0].targetBossPlacementId -cne $koukuPattern.targetBossPlacementId -or
+                $child[0].actorProfileId -cne $koukuPattern.actorProfileId) { throw 'Parent child must be an independent Pattern on the same boss.' }
+            [uint64]$childMs = 0
+            foreach ($stage in @($child[0].stages)) { $childMs += [uint64]$stage.durationMs }
+            if ($null -ne $child[0].PSObject.Properties['timelineDurationMs']) { $childMs = [Math]::Max($childMs, [uint64]$child[0].timelineDurationMs) }
+            if ([uint64]$entry.durationMs -ne $childMs) { throw 'Parent child must retain its complete authored duration.' }
+            $parentEnd = [uint64]$entry.startMs + [uint64]$entry.durationMs
+            $isLoop = [int]([string]$entry.occurrenceId -ceq [string]$parent.loopStartOccurrenceId)
+            $patternRows.Add((@('PATTERNPARENTCHILD', $koukuEncounterDocument.encounterId, $koukuPattern.patternId,
+                $entry.occurrenceId, $entry.patternId, $entry.startMs, $entry.durationMs, $isLoop) -join "`t"))
+        }
+        if (([string]$parent.loopStartOccurrenceId -ne '' -and -not $parentEntryIds.Contains([string]$parent.loopStartOccurrenceId)) -or
+            $parentEnd -ne [uint64]$koukuPattern.timelineDurationMs) { throw 'Parent loop reference or total duration is invalid.' }
+    }
     if ($null -ne $koukuPattern.PSObject.Properties['timelineDurationMs']) {
         Assert-JsonInteger $koukuPattern.timelineDurationMs 'KoukuSaydon timelineDurationMs' 1 600000
         if ([uint64]$koukuPattern.timelineDurationMs -lt $koukuPatternDurationMs) { throw 'KoukuSaydon timelineDurationMs cannot trim Stage clocks' }

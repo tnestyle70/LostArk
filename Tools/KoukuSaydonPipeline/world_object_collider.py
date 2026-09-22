@@ -16,6 +16,15 @@ class ColliderBakeError(ValueError):
     pass
 
 
+def canonicalize_baked_position(position):
+    """Stabilize validated generated metres, well below the 0.5 mm bake tolerance.
+
+    Keep raw samples for curve refinement and bounds checks. Only serialized
+    positions use this precision; authored values and positive scales keep theirs.
+    """
+    return [round(value, 9) or 0.0 for value in position]
+
+
 def reduce_keys(keys, tolerance=.0005):
     """Simplify a baked curve without crossing a visibility discontinuity."""
     fields=("positionOffset","scaleMultiplier") + (("gripPosition",) if "gripPosition" in keys[0] else ())
@@ -327,6 +336,10 @@ def bake_windows(sequences, worlds, boxes, load_model, *, pattern_end_ms=None, s
                             initial=sorted(times)
                             for a,b in zip(initial,initial[1:]): refine(a,b)
                             keys=reduce_keys([sample(time)[0] for time in sorted(times)])
+                            keys=[{**key,
+                                   "positionOffset":canonicalize_baked_position(key["positionOffset"]),
+                                   **({"gripPosition":canonicalize_baked_position(key["gripPosition"])}
+                                      if "gripPosition" in key else {})} for key in keys]
                             yaw=sample(0)[1]
                             identity = hashlib.sha256((box["occurrenceId"]+'|'+instance["instanceId"]+'|'+row["colliderTrackId"]+f'|{cycle}|{emitter}|{visible_start}').encode()).hexdigest()[:32]
                             region={"regionId":"object.collider.region."+identity,"shape":"BOX","anchorKind":"WORLD","center":[0,0,0],

@@ -247,6 +247,12 @@ void LostArk::Server::CGameRoom::Begin_KoukuBingoDuration(const SERVER_WORLD_ENT
     auto& duration = m_KoukuBingoDuration;
     duration.iOwnerId = owner.iNetEntityId; duration.iPatternSequence = owner.iPatternSequence;
     duration.iEndTick = Add_ServerTicksSkippingReservedZero(tick, CKoukuSaydonLogicRuntime::Ticks_FromMs(trigger.iDurationMs));
+    if (const auto* catalog = Resolve_KoukuProductCatalog())
+    {
+        std::string status;
+        const auto* pattern = CKoukuSaydonBrain::Find_AnimationOnlyPattern(*catalog, owner.strPatternId, status);
+        if (pattern && !pattern->strParentLoopStartOccurrenceId.empty()) duration.iEndTick = 0u;
+    }
     if (!duration.iNextBombTick) duration.iNextBombTick = Add_ServerTicksSkippingReservedZero(tick, CKoukuSaydonLogicRuntime::Ticks_FromMs(KOUKU_BINGO_BOMB_INTERVAL_MS));
     if (!duration.iNextHammerTick) duration.iNextHammerTick = Add_ServerTicksSkippingReservedZero(tick, CKoukuSaydonLogicRuntime::Ticks_FromMs(KOUKU_BINGO_HAMMER_INTERVAL_MS));
     if (!duration.iNextMadnessTick) duration.iNextMadnessTick = Add_ServerTicksSkippingReservedZero(tick, SERVER_TICK_HZ);
@@ -260,7 +266,7 @@ void LostArk::Server::CGameRoom::Update_KoukuBingo(const std::uint32_t tick)
 
     auto& duration = m_KoukuBingoDuration;
     const auto* owner = duration.iOwnerId ? Find_KoukuOccurrenceOwner(duration.iOwnerId, duration.iPatternSequence) : nullptr;
-    if (duration.iOwnerId && (!owner || !owner->iCurrentHp || Has_ReachedServerTick(tick, duration.iEndTick)))
+    if (duration.iOwnerId && (!owner || !owner->iCurrentHp || (duration.iEndTick && Has_ReachedServerTick(tick, duration.iEndTick))))
     { Stop_KoukuBingoDuration(false); owner = nullptr; }
     if (owner)
     {
@@ -790,6 +796,14 @@ bool LostArk::Server::CGameRoom::Apply_KoukuLogicOutput(
 			scheduleMember->PatternIds.begin() + insertAt, followup);
 		scheduleMember->TransitionTicks.insert(
 			scheduleMember->TransitionTicks.begin() + (insertAt - 1u), 1u);
+        if (scheduleMember->bParentSequenceStarted && !scheduleMember->bParentSequenceLoops &&
+            scheduleMember->iPatternIndex <= scheduleMember->iParentLastIndex)
+        {
+            // A counter's authored groggy follow-up is another child completion,
+            // not permission to skip the rest of Mario's Parent.
+            ++scheduleMember->iParentLastIndex;
+            ++scheduleMember->iCompletionChainCount;
+        }
 		++insertAt;
 	}
 	if (resumeCompleted)

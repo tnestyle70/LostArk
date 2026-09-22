@@ -3705,6 +3705,27 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			spawn.strSpawnId = std::string(fields[4]); spawn.strPatternId = std::string(fields[5]);
 			trigger->PatternSpawns.push_back(std::move(spawn));
 		}
+        else if (!fields.empty() && "PATTERNPARENTCHILD" == fields[0])
+        {
+            BOSS_PATTERN_PARENT_CHILD child; std::uint32_t loop = 0u;
+            if (fields.size() != 8u || fields[1] != "ENCOUNTER_KAKULSAYDON_G1" ||
+                !IsStableId(fields[2]) || !IsStableId(fields[3]) || !IsStableId(fields[4]) || fields[2] == fields[4] ||
+                !ParseNumber(fields[5], child.iStartMs) || !ParseNumber(fields[6], child.iDurationMs) ||
+                !child.iDurationMs || std::uint64_t(child.iStartMs) + child.iDurationMs > 600000u ||
+                !ParseNumber(fields[7], loop) || loop > 1u)
+            { m_strStatus = "Retained Parent child row is invalid"; return false; }
+            const auto owners = m_BossPatterns.find(std::string(fields[1]));
+            if (owners == m_BossPatterns.end()) { m_strStatus = "Parent encounter is missing"; return false; }
+            const auto owner = std::find_if(owners->second.begin(), owners->second.end(), [&](const auto& row) { return row.strPatternId == fields[2]; });
+            if (owner == owners->second.end() || owner->ParentChildren.size() >= 128u ||
+                (loop && !owner->strParentLoopStartOccurrenceId.empty()) ||
+                std::any_of(owner->ParentChildren.begin(), owner->ParentChildren.end(), [&](const auto& row) { return row.strOccurrenceId == fields[3]; }) ||
+                (!owner->ParentChildren.empty() && std::uint64_t(owner->ParentChildren.back().iStartMs) + owner->ParentChildren.back().iDurationMs > child.iStartMs))
+            { m_strStatus = "Parent child owner, order or loop is invalid"; return false; }
+            child.strOccurrenceId = fields[3]; child.strPatternId = fields[4];
+            if (loop) owner->strParentLoopStartOccurrenceId = child.strOccurrenceId;
+            owner->ParentChildren.push_back(std::move(child));
+        }
 		else if (!fields.empty() && "PATTERNTIMELINE" == fields[0])
         {
             std::uint32_t lifetime = 0u;
@@ -7216,6 +7237,41 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 	{
 		(void)encounterId;
 		patternCount += patterns.size();
+        for (const auto& parent : patterns) if (!parent.ParentChildren.empty())
+        {
+            const auto failParent = [&](const char* reason) { m_strStatus = "Parent " + parent.strPatternId + ": " + reason; return false; };
+            const bool repeating = !parent.strParentLoopStartOccurrenceId.empty();
+            if (repeating && (parent.strGateId != "BINGO" || parent.strTargetBossPlacementId != "boss.kakulsaydon.bingo.saydon" ||
+                parent.BossMotion || parent.bResetBossToSpawn ||
+                !parent.LogicWindows.empty() || !parent.WorldSequences.empty() || !parent.SceneProfiles.empty() ||
+                parent.MechanicTriggers.size() != 1u || parent.MechanicTriggers.front().eKind != BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BINGO_BOARD ||
+                parent.MechanicTriggers.front().iStartMs != 0u || parent.MechanicTriggers.front().iDurationMs != parent.iTimelineDurationMs))
+                return failParent("Retained owner must contain only one continuous Bingo board");
+            bool loop = !repeating; std::uint64_t end = 0u;
+            if (!repeating) for (const auto& stage : parent.Stages) end += stage.iDurationMs;
+            for (const auto& entry : parent.ParentChildren)
+            {
+                loop = loop || entry.strOccurrenceId == parent.strParentLoopStartOccurrenceId;
+                const auto child = std::find_if(patterns.begin(), patterns.end(), [&](const auto& row) { return row.strPatternId == entry.strPatternId; });
+                if (child == patterns.end() || child->Stages.empty() || !child->ParentChildren.empty() ||
+                    child->strPatternId == parent.strPatternId || child->strGateId != parent.strGateId ||
+                    child->strTargetBossPlacementId != parent.strTargetBossPlacementId || child->AuditionBossArchetypeIds != parent.AuditionBossArchetypeIds)
+                    return failParent("Child must be a complete independent Pattern on the same boss");
+                std::uint32_t stageMs = 0u; for (const auto& stage : child->Stages) stageMs += stage.iDurationMs;
+                if (entry.iDurationMs != (std::max)(stageMs, child->iTimelineDurationMs) || entry.iStartMs < end)
+                    return failParent("Child window must preserve its complete source duration");
+                for (const auto& window : child->LogicWindows)
+                {
+                    if (window.eKind == BOSS_PATTERN_LOGIC_KIND::PATTERN_COMPLETION_COUNT) return failParent("Nested completion chains are unsupported");
+                    for (const auto* outcomes : {&window.OnSuccess, &window.OnFail, &window.OnTimeout})
+                        for (const auto& outcome : *outcomes)
+                            if ((repeating && outcome.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::FOLLOWUP_PATTERN) || outcome.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::MARIO_ENTER)
+                                return failParent("Child cannot insert another chain");
+                }
+                end = std::uint64_t(entry.iStartMs) + entry.iDurationMs;
+            }
+            if (!loop || end != parent.iTimelineDurationMs) return failParent("Missing loop start or invalid Parent duration");
+        }
 		for (const auto& pattern : patterns)
 			for (const auto& window : pattern.LogicWindows)
 			{

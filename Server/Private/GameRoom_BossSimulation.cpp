@@ -1428,10 +1428,11 @@ void LostArk::Server::CGameRoom::Commit_KoukuMechanicTriggers(const std::uint32_
 			if (trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_TELEPORT_FACE_CENTER)
 			{
 				owner->fPositionY = trigger.fTeleportY;
+				const bool bingo = owner->strArchetypeId == "BOSS_KAKULSAYDON_BINGO_SAYDON";
 				const float dx = owner->fSpawnPositionX - owner->fPositionX, dz = owner->fSpawnPositionZ - owner->fPositionZ;
 				if (dx * dx + dz * dz > .000001f)
 					owner->fYawDegrees = std::atan2(dx, dz) * RADIANS_TO_DEGREES -
-						(owner->strArchetypeId == "BOSS_KAKULSAYDON_G1_SAYDON" ||
+						(bingo || owner->strArchetypeId == "BOSS_KAKULSAYDON_G1_SAYDON" ||
 						 owner->strArchetypeId == "BOSS_KAKULSAYDON_G3_SAYDON" ||
 						 owner->strArchetypeId == "BOSS_KAKULSAYDON_G2_BIG_SAYDON" ? 90.f : 0.f);
 				owner->fPatternStageOriginYawDegrees = owner->fYawDegrees;

@@ -541,6 +541,9 @@ namespace Client
 		// Zero preserves the legacy sum of Stage durations.
 		std::uint32_t iDurationMs = 0u;
 		std::vector<KOUKU_SAYDON_COMPOSITION_PATTERN_OCCURRENCE> PatternOccurrences;
+		// Server-owned child sequence; the prefix plays once, then this child repeats through the end.
+		std::string strLoopStartPatternOccurrenceId;
+		bool_t bPlayChildrenSequentially = false;
 		// Entry sequence only: after playback, admit the same Server gate as F1.
 		bool_t bEnterCombatOnFinish = false;
 		bool_t bResetBossToSpawn = false;

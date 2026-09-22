@@ -36,7 +36,9 @@ from Tools.RenderingPipeline.light_resources_pipeline import (
 )
 from Tools.ModelAssetConverter import verify_dimensionmaster_summon_bind_pose as wmodel_pose
 from Tools.KoukuSaydonPipeline.combat_hit_templates import validate_hits, validate_logic_hits
-from Tools.KoukuSaydonPipeline.world_object_collider import bake_windows as bake_object_collider_windows, ColliderBakeError
+from Tools.KoukuSaydonPipeline.world_object_collider import (
+    bake_windows as bake_object_collider_windows, canonicalize_baked_position, ColliderBakeError,
+)
 
 SOURCE_PATH = Path("Data/KoukuSaydon/Gate1/KoukuSaydonComposition.json")
 ENCOUNTER_PATH = Path(
@@ -129,7 +131,7 @@ ROOT_OPTIONAL_KEYS = {
     "nextFolderOrdinal", "nextBundleOrdinal", "folders", "bundles", "patternFlows",
 }
 PATTERN_OPTIONAL_KEYS = {
-    "durationMs", "patternOccurrences", "nextPatternOccurrenceOrdinal",
+    "durationMs", "patternOccurrences", "nextPatternOccurrenceOrdinal", "loopStartPatternOccurrenceId", "playChildrenSequentially",
     "nextLogicOccurrenceOrdinal",
     "logicOccurrences",
     "nextSummonOccurrenceOrdinal",
@@ -1186,7 +1188,78 @@ def _derived_occurrence(identity: str, pattern_id: str, kind: str) -> bool:
                              re.escape(kind) + r"\.[1-9][0-9]*", identity))
 
 
+def _tracking_covers_stage(document, pattern, start, end):
+    definitions = {row["logicId"]: row for row in document.get("logics", [])}
+    return any(row.get("enabled", True) and row["startMs"] <= start and row["startMs"] + row["durationMs"] >= end
+        and definitions.get(row["logicId"], {}).get("judgementKind") == "BOSS_TRACK_TARGET"
+        and definitions.get(row["logicId"], {}).get("followSpeedScale", 0) > 0
+        for row in pattern.get("logicOccurrences", []))
+
+
+def _tracking_owns_all_stages(document, pattern):
+    origin = 0
+    if not pattern.get("stages"):
+        return False
+    for stage in pattern["stages"]:
+        if not _tracking_covers_stage(document, pattern, origin, origin + stage["durationMs"]):
+            return False
+        origin += stage["durationMs"]
+    return True
+
+
+def _validate_looping_parent(document, parent):
+    """A retained Bingo owner schedules complete children without flattening their actor clocks."""
+    loop = parent.get("loopStartPatternOccurrenceId", "")
+    if not isinstance(loop, str) or ("loopStartPatternOccurrenceId" in parent and not loop):
+        raise CompositionError("Looping Parent requires a nonempty stable occurrence ID")
+    children = parent.get("patternOccurrences", [])
+    if not children or len(children) > 128 or (loop and loop not in {row["occurrenceId"] for row in children}):
+        raise CompositionError("Looping Parent start must reference its own child occurrence")
+    if loop and (parent.get("gateId") != "BINGO" or parent.get("targetBossPlacementId") != "boss.kakulsaydon.bingo.saydon"):
+        raise CompositionError("Retained Parent playback currently requires the Bingo board owner")
+    if loop and any(parent.get(key) for key in ("bossMotion", "resetBossToSpawn", "enterCombatOnFinish", "summonOccurrences",
+                                      "worldOccurrences", "presentationOccurrences", "sceneProfileOccurrences")):
+        raise CompositionError("Looping Parent owns the Bingo board only; put actor actions on children")
+    for stage in parent.get("stages", []) if loop else []:
+        if stage.get("actionId") != parent["patternId"] + ".parent-owner" or stage.get("durationMs") != 34:
+            raise CompositionError("Looping Parent must have no authored Animation stages")
+    definitions = {row["logicId"]: row for row in document.get("logics", [])}
+    boxes = parent.get("logicOccurrences", [])
+    if loop and (len(boxes) != 1 or not boxes[0].get("enabled", True) or boxes[0]["startMs"] != 0 or
+            definitions.get(boxes[0]["logicId"], {}).get("judgementKind") != "BINGO_BOARD"):
+        raise CompositionError("Looping Parent needs one active Bingo board at time zero")
+    patterns = {row["patternId"]: row for row in document["patterns"]}
+    seen, end = set(), 0 if loop else sum(stage["durationMs"] for stage in parent["stages"])
+    for box in sorted(children, key=lambda row: (row["startMs"], row["occurrenceId"])):
+        _exact_keys(box, {"occurrenceId", "patternId", "startMs", "durationMs", "repeat"}, "Looping Parent child")
+        identity = _stable_id(box["occurrenceId"], "Looping Parent child ID")
+        match = re.fullmatch(re.escape(parent["patternId"]) + r"\.pattern\.([1-9][0-9]*)", identity)
+        if not match or int(match[1]) >= parent.get("nextPatternOccurrenceOrdinal", 1) or identity in seen:
+            raise CompositionError("Looping Parent child identity/ordinal is invalid")
+        seen.add(identity)
+        child = patterns.get(box["patternId"])
+        if child is None or child is parent or child.get("patternOccurrences") or child.get("loopStartPatternOccurrenceId"):
+            raise CompositionError("Looping Parent children must be independent nonrecursive Patterns")
+        if _pattern_target_metadata(child) != _pattern_target_metadata(parent):
+            raise CompositionError("Looping Parent child Gate/body/placement must match")
+        if box["repeat"] or box["durationMs"] != _pattern_duration(child) or box["startMs"] < end:
+            raise CompositionError("Looping Parent requires ordered complete nonrepeating child windows")
+        if any(definitions.get(row["logicId"], {}).get("judgementKind") == "PATTERN_COMPLETION_COUNT" or
+               any(definitions.get(result, {}).get("outcomeKind") in ({"FOLLOWUP_PATTERN", "MARIO_ENTER"} if loop else {"MARIO_ENTER"})
+                   for slot in OUTCOME_SLOTS for result in outcome_logic_ids(row, slot))
+               for row in child.get("logicOccurrences", []) if row.get("enabled", True)):
+            raise CompositionError("Looping Parent cannot contain a dynamic child chain")
+        end = box["startMs"] + box["durationMs"]
+    if end != parent.get("durationMs") or (loop and boxes[0]["durationMs"] != end) or end > MAX_TIMELINE_MS:
+        raise CompositionError("Looping Parent board and timeline must cover its first complete pass")
+
+
 def _validate_pattern_children(document: dict[str, Any], parent: dict[str, Any]) -> None:
+    if "playChildrenSequentially" in parent:
+        _boolean(parent["playChildrenSequentially"], "Parent sequential playback")
+    if "loopStartPatternOccurrenceId" in parent or parent.get("playChildrenSequentially", False):
+        _validate_looping_parent(document, parent)
+        return
     patterns = {row["patternId"]: row for row in document["patterns"]}
     logics = {row["logicId"]: row for row in document.get("logics", [])}
     ordinal = _integer(parent.get("nextPatternOccurrenceOrdinal", 1), "nextPatternOccurrenceOrdinal", 1, MAX_ORDINAL)
@@ -1241,7 +1314,8 @@ def _validate_pattern_children(document: dict[str, Any], parent: dict[str, Any])
                 raise CompositionError(f"Child Pattern {child_id} uses {key}; keep this action on the Parent or a separate Pattern")
         if child.get("animationRootVerticalScale", 1.0) != parent.get("animationRootVerticalScale", 1.0):
             raise CompositionError("Child animationRootVerticalScale must match the Parent: " + child_id)
-        if child.get("animationRootHorizontalScale", 1.0) != parent.get("animationRootHorizontalScale", 1.0):
+        if child.get("animationRootHorizontalScale", 1.0) != parent.get("animationRootHorizontalScale", 1.0) and not (
+                child.get("animationRootHorizontalScale") == 0 and _tracking_owns_all_stages(document, child)):
             raise CompositionError("Child animationRootHorizontalScale must match the Parent: " + child_id)
         for row in child.get("logicOccurrences", []):
             if not row.get("enabled", True): continue
@@ -1288,6 +1362,18 @@ def _expand_pattern_document(source, pattern_id, document):
     parent = next((row for row in document["patterns"] if row["patternId"] == pattern_id), None)
     if parent is None: raise CompositionError("Parent Pattern is missing: " + pattern_id)
     _validate_pattern_children(document, parent)
+    if parent.get("playChildrenSequentially") and not parent.get("loopStartPatternOccurrenceId"):
+        return document
+    if parent.get("loopStartPatternOccurrenceId"):
+        parent["stages"] = [{"stageId": "STAGE_1", "actionId": pattern_id + ".parent-owner",
+            "stageKind": "ACTIVE", "durationMs": 34, "animationOccurrences": [{
+                "occurrenceId": pattern_id + ".idle.1", "profileId": parent["actorProfileId"],
+                "sourceActionId": 0, "sourceStageId": "RAW", "sourceSlotId": "rpct00_idle_battle_1",
+                "referenceRevision": "", "runtimeClip": "rpct00_idle_battle_1", "startOffsetMs": 0,
+                "sourceStartMs": 0, "playMs": 34, "playRate": 1.0, "endPolicy": "LOOP_TO_WINDOW"}]}]
+        parent["nextStageOrdinal"] = max(2, parent.get("nextStageOrdinal", 1))
+        parent["nextAnimationOrdinal"] = max(2, parent.get("nextAnimationOrdinal", 1))
+        return document
     if not parent.get("patternOccurrences"):
         if not parent.get("durationMs"):
             return document
@@ -3838,13 +3924,16 @@ def _project_pattern_root_motion(document, pattern, root, cache):
                 {stage["animationOccurrences"][0]["runtimeClip"] for stage in pattern["stages"]})
         except (OSError, ValueError, IndexError, KeyError, struct.error) as error:
             raise CompositionError(f"Cannot read Animation root motion clips: {error}") from error
+        stage_origin = 0
         for stage in pattern["stages"]:
             animations = stage["animationOccurrences"]
             diagnostics = {}
+            horizontal_scale = 0.0 if _tracking_covers_stage(document, pattern, stage_origin, stage_origin + stage["durationMs"]) else pattern.get("animationRootHorizontalScale", 1.0)
+            stage_origin += stage["durationMs"]
             try:
                 samples = _build_animation_root_motion_samples(actor, animations[0], stage["durationMs"],
                     pattern.get("animationRootVerticalScale", 1.0),
-                    horizontal_scale=pattern.get("animationRootHorizontalScale", 1.0), diagnostics=diagnostics)
+                    horizontal_scale=horizontal_scale, diagnostics=diagnostics)
             except (ValueError, IndexError, KeyError, ZeroDivisionError) as error:
                 raise CompositionError(f"Cannot bake Animation root motion {pattern['patternId']}/{stage['stageId']}: {error}") from error
             session = _PUBLICATION_INPUTS.get()
@@ -3865,6 +3954,8 @@ def _project_pattern_root_motion(document, pattern, root, cache):
 
 def resolve_animation_blend_windows(document, pattern):
     """Resolve explicit Logic windows without rewriting either source clip clock."""
+    if pattern.get("loopStartPatternOccurrenceId") or pattern.get("playChildrenSequentially"):
+        return []
     if pattern.get("patternOccurrences"):
         expanded = expand_pattern_document(document, pattern["patternId"])
         return resolve_animation_blend_windows(expanded, next(p for p in expanded["patterns"]
@@ -4210,6 +4301,7 @@ def _build_bone_collider_track(pattern, logic_box, collider, root, cache, suppre
             matrix = wmodel_pose.matrix_multiply(weapon_pose[bone_indices[0]], body_pose[socket_indices[0]])
         position = matrix[12:15]
         _vector3(position, "Bone Collider boss-local tip", -100000, 100000)
+        position = canonicalize_baked_position(position)
         keys.append({"timeMs": local_ms, "positionOffset": position, "rotationY": 0.0, "rotationW": 1.0,
                      "scaleMultiplier": [1.0, 1.0, 1.0], "visible": True})
     return {"startMs": start, "startDelayMs": 0, "durationMs": duration, "playbackSpeed": 1.0,
@@ -4642,6 +4734,10 @@ def project_encounter(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
                 **({"resetBossYawDegrees": float(source["resetBossYawDegrees"])}
                    if "resetBossYawDegrees" in source else {}),
                 **({"bossMotion": copy.deepcopy(source["bossMotion"])} if "bossMotion" in source else {}),
+                **({"parentPatternSequence": {
+                    "loopStartOccurrenceId": source.get("loopStartPatternOccurrenceId", ""),
+                    "entries": [dict(row) for row in sorted(source["patternOccurrences"], key=lambda row: (row["startMs"], row["occurrenceId"]))]}}
+                   if source.get("loopStartPatternOccurrenceId") or source.get("playChildrenSequentially") else {}),
                 "logicWindows": logic_windows,
                 **({"pursuitProjectiles": _project_pursuit_projectiles(document, source)[0]}
                    if _project_pursuit_projectiles(document, source)[0] else {}),

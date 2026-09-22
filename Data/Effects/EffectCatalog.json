@@ -6640,6 +6640,21 @@
       "effectAssetId": "effect.esther.ninave.cameo.npc_sk_parkunas.full.restore",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
       "authoringPath": "Effects/Authored/effect.esther.ninave.cameo.npc_sk_parkunas.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.bingo.blackhole.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.bingo.blackhole.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.bingo.medusa.attack.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.bingo.medusa.attack.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.bingo.blackhole.center.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.bingo.blackhole.center.full.restore.effect.json"
     }
   ]
 }

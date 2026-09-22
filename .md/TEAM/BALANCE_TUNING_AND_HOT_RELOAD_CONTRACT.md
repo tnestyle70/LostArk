@@ -19,6 +19,12 @@ Data/Balance JSON
 Valtan 전용 candidate transaction에 포함되지 않는 Player/skill/item/world 일반 변경은 Publish 뒤 Server를
 재시작한다. Client HUD나 GameObject만 JSON을 다시 읽어 Server 판정과 다른 값을 표시하지 않는다.
 
+`PlayerSkills.json`의 `staggerDamage`, `partDamage`는 각각 0..1,000,000 정수로 튜닝한다.
+Server가 승인한 적중마다 적용되므로 다단 히트는 승인된 각 히트가 기여한다. 피해 profile이 없는
+스킬은 두 값을 0으로 유지하며, `counterPower`의 기존 0/1 capability와 슬롯 정책은 별도 계약이다.
+원본 수치를 바꾸면 `Update-BalanceProvenanceReceipt.ps1`로 receipt를 동기화한 뒤 게시한다.
+기존 필드의 수치 변경은 `SKILLCOMBATTRAITS` 행이나 bootstrap schema 버전을 바꾸지 않는다.
+
 ## 2. Valtan 저작 정본
 
 발탄은 다음 물리 정본을 하나의 joined revision으로 다룬다.
