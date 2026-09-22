@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import struct
@@ -20,6 +21,7 @@ ELEMENT = 'kouku.action.233d0d5adbba2933178bf071'
 SOURCE = 'Effect/KoukuSaydon/FullRestore/Meshes/fm_b_cylinder_002.wmodel'
 TARGET = 'Effect/KoukuSaydon/FullRestore/Meshes/fm_b_cylinder_002_gate2_clear_inward.wmodel'
 OUTPUT = Path('out/KoukuPortalLighting20260922/candidate')
+LEGACY_BROKEN_SHA256 = '6d2e9d058dc42e8b0779492e24992f65490363bc5b18dc3968eae95771499dba'
 
 
 def require(condition: bool, message: str) -> None:
@@ -40,8 +42,23 @@ def make_backdrop(source: bytes) -> bytes:
     offset = 16 + meshes[0][2] + 16
     header = struct.unpack_from('<4sIIIIIIIB3s', source, offset)
     require(header[:8] == (b'WMSH', 1, 0, 47, 48, 26, 72, 2), 'Original cylinder layout changed')
+    require(header[8] == 1 and source[offset - 16:offset - 12] == b'WINT',
+            'Original geometry bounds or nested WINT missing')
     vertices = offset + 36 + header[1] * 48
     indices = vertices + header[4] * header[5]
+    bounds = indices + header[6] * header[7]
+    metadata = bounds + 40
+    require(metadata + 348 == 16 + meshes[0][2] + meshes[0][3],
+            'Unexpected WMSH geometry trailer layout')
+    prefix = struct.unpack_from('<4sHHIIIff', source, metadata)
+    require(prefix[:4] == (b'WGEO', 1, 0, 348) and prefix[5] == metadata - offset,
+            'Original geometry metadata layout changed')
+    require(prefix[4] & ((1 << 11) | (1 << 12) | (1 << 13)) == 0,
+            'Do not propagate authenticated source geometry claims into a tuned derivative')
+    require(hashlib.sha256(source[offset:metadata]).digest() == source[metadata + 28:metadata + 60],
+            'Original geometry payload SHA256 mismatch')
+    require(hashlib.sha256(source[metadata:metadata + 316]).digest() == source[metadata + 316:metadata + 348],
+            'Original geometry metadata SHA256 mismatch')
     result = bytearray(source)
     # Enclose the actors without changing the coloured portal's shape or scale.
     # This uncapped cylinder has horizontal normals; radial expansion preserves them.
@@ -54,6 +71,21 @@ def make_backdrop(source: bytes) -> bytes:
         address = indices + i * header[7]
         a, b, c = struct.unpack_from('<3H', source, address)
         struct.pack_into('<3H', result, address, a, c, b)
+    # The runtime validates both vertex-derived bounds and the WGEO digests.
+    # Preserving the source trailer after editing vertices makes CModel reject
+    # the entire mesh, which aborts preparation of the whole effect document.
+    positions = [struct.unpack_from('<3f', result, vertices + i * header[4])
+                 for i in range(header[5])]
+    minimum = [min(p[axis] for p in positions) for axis in range(3)]
+    maximum = [max(p[axis] for p in positions) for axis in range(3)]
+    center = [(a + b) * .5 for a, b in zip(minimum, maximum)]
+    radius = max(math.dist(p, center) for p in positions)
+    struct.pack_into('<10f', result, bounds, *minimum, *maximum, *center, radius)
+    result[metadata + 28:metadata + 60] = hashlib.sha256(result[offset:metadata]).digest()
+    # The remaining source digests describe the input lineage, not exactness of
+    # the tuned output. Identify the generator that actually made this payload.
+    result[metadata + 220:metadata + 252] = hashlib.sha256(Path(__file__).read_bytes()).digest()
+    result[metadata + 316:metadata + 348] = hashlib.sha256(result[metadata:metadata + 316]).digest()
     require(len(result) == len(source), 'WModel size changed')
     return bytes(result)
 
@@ -118,26 +150,37 @@ def main() -> None:
     receipt = {'status': 'candidate', 'elementId': ELEMENT, 'sourceAssetId': SOURCE,
                'targetAssetId': TARGET, 'sourceSha256': digest(source), 'targetSha256': digest(mesh),
                'bytes': len(mesh), 'radialScale': 2, 'winding': 'inward',
+               'provenance': 'PROJECT_TUNED derivative; preserved source digests identify input lineage',
+               'geometryContract': 'recomputed bounds, payloadSha256, geometryToolSha256, metadataSha256',
                'documentBeforeSha256': digest(original), 'documentAfterSha256': digest(candidate)}
     if args.apply:
         target = resource_root / TARGET
         existing = target.read_bytes() if target.exists() else None
-        require(existing in (None, mesh), 'Existing derivative differs; preserve it')
+        require(existing in (None, mesh) or digest(existing) == LEGACY_BROKEN_SHA256,
+                'Existing derivative differs from the known broken or generated file; preserve it')
         require((resource_root / SOURCE).read_bytes() == source, 'Source mesh changed')
         backup = output / ('document-before-' + digest(original) + '.json')
         backup.write_bytes(original)
+        mesh_backup = None
+        if existing is not None:
+            mesh_backup = output / ('mesh-before-' + digest(existing) + '.wmodel')
+            mesh_backup.write_bytes(existing)
         installed = False
         try:
-            if existing is None:
-                atomic_replace(target, mesh, None)
+            if existing != mesh:
+                atomic_replace(target, mesh, existing)
                 installed = True
             atomic_replace(ROOT / DOCUMENT, candidate, original)
         except Exception:
             if installed and target.exists() and target.read_bytes() == mesh:
-                target.unlink()
+                if existing is None:
+                    target.unlink()
+                else:
+                    atomic_replace(target, existing, mesh)
             raise
         receipt['status'] = 'installed-disk-only'
         receipt['backup'] = str(backup)
+        receipt['meshBackup'] = str(mesh_backup) if mesh_backup else None
     (output / 'receipt.json').write_text(json.dumps(receipt, indent=2) + '\n', encoding='utf-8')
     print(json.dumps(receipt, ensure_ascii=False, indent=2))
 

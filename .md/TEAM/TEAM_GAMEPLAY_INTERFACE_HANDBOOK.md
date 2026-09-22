@@ -1811,6 +1811,13 @@ Kouku Product의 게시 가능한 pattern 개수 상한은 Shared `MAX_VALTAN_PA
 
 Composition presentation resource의 `kind=SUBTITLE`은 `subtitleText`와 `subtitlePosition` (`NORMAL` / `UPPER`)을 소유한다. 텍스트는 1~4096 byte valid UTF-8 plain text이며 줄바꿈 LF를 허용하고 markup/control은 거부한다. `assetId`는 원본 GameMsg stable ID이고 이미지 파일 경로가 아니다. resource/occurrence는 MAP anchor와 `followBoss=false`를 사용하며 기존 occurrence의 `startMs`/`durationMs`로 시간을 편집한다. 기존 Save/Reload/Seek/Stop 경로가 같은 데이터를 소비한다.
 
+SUBTITLE occurrence의 `positionOffset` X/Y는 높이 1080 기준 화면 pixel offset이며 양수 Y가
+아래 방향이다. `scale` X는 균일 글자 배율이고 Box Detail의 `Text scale`이 XYZ를 함께
+설정한다. `Screen X / Y`와 `Text scale`은 같은 preview clock의 활성 자막에 즉시 반영되며
+Preview/Apply/Save와 제품 재생이 같은 값을 소비한다. rotation/Z offset은 자막 배치에
+사용하지 않는다. zero offset/unit scale은 기존 NORMAL/UPPER 배치를 유지한다. 화면 폭을
+넘는 문구에는 기존 폰트의 폭 맞춤 축소가 적용된다.
+
 Presentation Player의 읽기 전용 활성 자막 목록을 MainApp이 기존 한글 폰트와 UI text layer로 그린다. cinematic HUD 숨김과 자막 숨김은 분리된다. 이 계약은 현재 한국어 문구를 직접 저장하며 언어별 catalog 선택이나 다국어 font fallback 구현을 뜻하지 않는다. 원본 시간/문구가 없는 구간은 임의 대사를 만들지 않는다.
 
 

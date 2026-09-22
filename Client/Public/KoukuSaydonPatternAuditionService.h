@@ -60,9 +60,9 @@ namespace Client
 		// remains stoppable until explicitly stopped or replaced by another run.
 		[[nodiscard]] bool Can_Stop() const noexcept
 		{
-			return iRoomAuditionEpoch != 0u &&
-				eOperation != LostArk::Shared::KOUKUSAYDON_PATTERN_AUDITION_OPERATION::STOP &&
-				(Is_InFlight() || KOUKU_SAYDON_PATTERN_AUDITION_STATE::COMPLETED == eState);
+			return eOperation != LostArk::Shared::KOUKUSAYDON_PATTERN_AUDITION_OPERATION::STOP &&
+				(Is_InFlight() || (iRoomAuditionEpoch != 0u &&
+					KOUKU_SAYDON_PATTERN_AUDITION_STATE::COMPLETED == eState));
 		}
 
 		[[nodiscard]] bool Is_Live(
@@ -205,7 +205,7 @@ namespace Client
 		std::uint64_t m_iFlowNextStartAtMilliseconds = 0u;
 		bool m_bSubmittingFlowEntry = false;
 		bool m_bFlowEntryCompleted = false;
-		bool m_bStopFlowWhenAdmitted = false;
+		bool m_bStopWhenAdmitted = false;
 	};
 
 	const char* Describe_KoukuSaydonPatternAuditionState(

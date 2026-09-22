@@ -24,6 +24,26 @@ class SceneSubtitleTests(unittest.TestCase):
         self.assertEqual("UPPER", result["subtitlePosition"])
         self.assertEqual((689, 2300), (result["startMs"], result["durationMs"]))
 
+    def test_subtitle_screen_layout_survives_product_projection(self):
+        row = self.resource()
+        resources = self.validate(row)
+        box = dict(occurrenceId="P1.presentation.1", resourceId=row["resourceId"], startMs=689,
+                   durationMs=2300, anchorKind="MAP", followBoss=False,
+                   positionOffset=[12, 60, 0], scale=[2, 2, 2])
+        pattern = dict(patternId="P1", nextPresentationOccurrenceOrdinal=2, presentationOccurrences=[box])
+        original = copy.deepcopy(pattern)
+        product._validate_presentation_occurrences(pattern, resources, 5000, {})
+        projected = product._project_presentation_occurrence({}, pattern, box, row)
+        self.assertEqual([12, 60, 0], projected["positionOffset"])
+        self.assertEqual([2, 2, 2], projected["scale"])
+        self.assertEqual(row["subtitleText"], projected["subtitleText"])
+        self.assertEqual(original, pattern)
+        for patch in ({"positionOffset": [0, float("nan"), 0]}, {"scale": [0, 2, 2]}):
+            with self.subTest(patch=patch), self.assertRaises(product.CompositionError):
+                product._validate_presentation_occurrences(
+                    {**pattern, "presentationOccurrences": [{**box, **patch}]}, resources, 5000, {})
+        self.assertEqual(original, pattern)
+
     def test_subtitle_occurrence_anchor_and_owner_lifetime(self):
         row = self.resource()
         resources = self.validate(row)

@@ -80,7 +80,12 @@ P4의 수치 근거: 원본 SCENE03A의 음향 이벤트는 0.7초 시작이고 
 
 타이밍만 고칠 때는 JSON을 직접 편집할 필요가 없다. 문구도 고쳐야 한다면 미저장 편집을 먼저 저장하고 현재 파일의 정확한 resource ID를 기준으로 변경한 뒤 Reload해야 한다. Reload는 미저장 draft를 버리는 동작이므로 남은 편집이 있을 때 누르지 않는다. 직접 JSON을 바꾸는 경우 revision 및 저장·게시 freshness 계약까지 맞춰야 하므로 두 문서 전체를 이전 사본으로 덮어쓰지 않는다.
 
-범용 Subtitle Box에 보이는 3D Position / Rotation / Scale은 자막의 화면 좌표나 글자 크기를 조절하지 않는다. `NORMAL`은 아래, `UPPER`는 위다. 현재 글자 크기·색상·화면 비율 위치는 공통 C++ 렌더러가 정하며 도구의 자막 박스로 세밀하게 바꿀 수 없다.
+09-21 조사 당시에는 범용 Subtitle Box의 3D Position / Rotation / Scale이 최종 자막
+렌더러에 전달되지 않았다. 이 누락은 [09-22 자막 배치 수정](../09-22/2026-09-22_KOUKU_SUBTITLE_LAYOUT_RESULT.md)에서
+연결했다. 현재 Kouku Subtitle Box Detail의 `Screen X / Y`는 1080 높이 기준 pixel offset
+(양수 Y 아래), `Text scale`은 균일 글자 배율이며 Preview/Apply/Save가 보존한다.
+NORMAL/UPPER 기준점과 색상은 공통 렌더러가 유지한다. 이 교정은 해당 쿠크 자막 경로의
+계약이며 World/Valtan 자막에 새 배치 필드를 추가했다는 뜻은 아니다.
 
 ## G4. 발탄 시간·문구 편집 순서
 

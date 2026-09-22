@@ -8517,7 +8517,8 @@ void CMainApp::RenderCinematicSubtitles()
 {
     const auto viewport = CGameInstance::Get().Get_ViewportSize();
     if (viewport.x <= 0.f || viewport.y <= 0.f) return;
-    std::array<std::vector<std::wstring>, 2> lines;
+    struct SUBTITLE_LINE { std::wstring text; float2_t offset{}; f32_t scale = 1.f; };
+    std::array<std::vector<SUBTITLE_LINE>, 2> lines;
     const auto splitLines = [](const std::string& utf8, std::vector<std::wstring>& target)
     {
         std::wstring text;
@@ -8533,10 +8534,18 @@ void CMainApp::RenderCinematicSubtitles()
             begin = end + 1u;
         }
     };
+    const auto appendLines = [&](const std::string& text, const bool upper,
+        const float2_t offset = {}, const f32_t scale = 1.f)
+    {
+        if (!std::isfinite(offset.x) || !std::isfinite(offset.y) || !std::isfinite(scale) || scale <= 0.f) return;
+        std::vector<std::wstring> parsed;
+        splitLines(text, parsed);
+        for (auto& line : parsed) lines[upper ? 1u : 0u].push_back({std::move(line), offset, scale});
+    };
     if (m_pKoukuPresentationPlayer &&
         CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::KAKULSAYDON_ARENA))
         for (const auto& subtitle : m_pKoukuPresentationPlayer->Collect_Subtitles())
-            splitLines(subtitle.strText, lines[subtitle.bUpper ? 1u : 0u]);
+            appendLines(subtitle.strText, subtitle.bUpper, subtitle.vScreenOffset, subtitle.fTextScale);
 
     std::vector<WORLD_SEQUENCE_SUBTITLE_SAMPLE> worldSubtitles;
     if (auto* arena = CLevel_ValtanArena::Get_Active())
@@ -8550,7 +8559,7 @@ void CMainApp::RenderCinematicSubtitles()
     {
         if (!seen.emplace(subtitle.instanceId, subtitle.subtitleTrackId).second) continue;
         if (subtitle.position == "BALLOON") balloons.push_back(subtitle);
-        else splitLines(subtitle.text, lines[subtitle.position == "UPPER" ? 1u : 0u]);
+        else appendLines(subtitle.text, subtitle.position == "UPPER");
     }
     if (lines[0].empty() && lines[1].empty() && balloons.empty()) return;
     const CUITextLayerScope subtitleLayer(UI_TEXT_LAYER::PAGE);
@@ -8558,22 +8567,24 @@ void CMainApp::RenderCinematicSubtitles()
     const f32_t fontHeight = 26.f * uiScale;
     const f32_t lineStep = 34.f * uiScale;
     const f32_t shadow = std::max(1.f, std::round(2.f * uiScale));
-    const auto drawLine = [&](const std::wstring& line, f32_t x, f32_t y, f32_t width)
+    const auto drawLine = [&](const std::wstring& line, f32_t x, f32_t y, f32_t width, f32_t height)
     {
         UILabelFont::Draw_Centered(TEXT("Font_YoonGasiIIM"), line.c_str(),
-            x + shadow, y + shadow, fontHeight,
+            x + shadow, y + shadow, height,
             XMVectorSet(0.f, 0.f, 0.f, 0.95f), width);
         UILabelFont::Draw_Centered(TEXT("Font_YoonGasiIIM"), line.c_str(),
-            x, y, fontHeight, XMVectorSet(1.f, 1.f, 1.f, 1.f), width);
+            x, y, height, XMVectorSet(1.f, 1.f, 1.f, 1.f), width);
     };
     for (size_t side = 0u; side < lines.size(); ++side)
     {
-        f32_t y = side == 1u ? viewport.y * 0.10f :
-            viewport.y * 0.90f - lineStep * static_cast<f32_t>(lines[side].size());
+        f32_t blockHeight = 0.f;
+        for (const auto& line : lines[side]) blockHeight += lineStep * line.scale;
+        f32_t y = side == 1u ? viewport.y * 0.10f : viewport.y * 0.90f - blockHeight;
         for (const auto& line : lines[side])
         {
-            drawLine(line, viewport.x * 0.5f, y, viewport.x * 0.84f);
-            y += lineStep;
+            drawLine(line.text, viewport.x * 0.5f + line.offset.x * uiScale,
+                y + line.offset.y * uiScale, viewport.x * 0.84f, fontHeight * line.scale);
+            y += lineStep * line.scale;
         }
     }
     const matrix_t view = XMLoadFloat4x4(CGameInstance::Get().Get_Transform(D3DTS::VIEW));
@@ -8593,7 +8604,7 @@ void CMainApp::RenderCinematicSubtitles()
         f32_t textY = y - lineStep * static_cast<f32_t>(bubbleLines.size()) - 12.f * uiScale;
         for (const auto& line : bubbleLines)
         {
-            drawLine(line, x, textY, viewport.x * 0.42f);
+            drawLine(line, x, textY, viewport.x * 0.42f, fontHeight);
             textY += lineStep;
         }
     }

@@ -40,9 +40,15 @@ P21에 `kakulsaydon.g1.logic.65` 추적 window를 추가해 같은 Server 권위
 - `effect.kouku.gate2.bigsaydon.yellow-gaze.full.restore`
 
 두 문서는 `Data/Effects/Authored`, `EffectCatalog`, `EffectResourceTree`, Client project/filter에
-등록했고 Composition의 stable resource/occurrence로 연결했다. P11의 기존 저장 partial
+등록했고 최초 설치 때 Composition의 stable resource/occurrence로 연결했다. P11의 기존 저장 partial
 occurrences는 보존했다. P99의 잘못된 MAP rectangle은 바람 effect로 교체하고 새 collider는
 source hit geometry 입력이 없던 경계에서 6m/35도 project-tuned sector로 명시했다.
+
+09-22 현재 revision 2166 및 PR #440 feature/병합/main 재확인 결과, 노란 시선 full restore의
+P11 `.presentation.34`는 이미 없고 해당 resource의 Pattern occurrence 참조도 0개다.
+정의·Catalog/Tree 등록이 남아 있는 상태이며 충돌 해결로 재생 연결이 되살아난 것은 아니다.
+자세한 현재 상태는 같은 날짜의 `KOUKU_SAYDON_SOURCE_EFFECT_FULL_RESTORE_RESULT.md`
+첫 절을 따른다. 아래 revision 2043 게시 수치는 최초 설치 당시 증거다.
 
 Composition revision 2043을 publish/validate했고, generated `Data/Encounters`와
 `Server/Bin/DataFiles/Gameplay/Gameplay.bootstrap`도 같은 revision으로 갱신했다.

@@ -1682,7 +1682,7 @@
             {
               "name": "09.gap_offset",
               "group": "None",
-              "value": 0.17499999701976776
+              "value": 0.25
             }
           ],
           "vectors": [
@@ -1974,9 +1974,9 @@
             0.0
           ],
           "scale": [
-            1,
-            1,
-            1
+            1.2,
+            1.2,
+            1.2
           ],
           "velocityPerSecond": [
             0.0,
@@ -3818,6 +3818,17 @@
         "sourceOccurrenceIndex": 0,
         "sourceTimeSeconds": 0.0,
         "parameters": []
+      },
+      "authoringOverrides": {
+        "resources": [],
+        "scalars": [
+          {
+            "name": "09.gap_offset",
+            "value": 0.25,
+            "compilerValue": 0.17499999701976776
+          }
+        ],
+        "colors": []
       }
     },
     {
@@ -4029,7 +4040,7 @@
             {
               "name": "09.gap_offset",
               "group": "None",
-              "value": 0.17499999701976776
+              "value": 0.25
             }
           ],
           "vectors": [
@@ -4321,9 +4332,9 @@
             0.0
           ],
           "scale": [
-            1,
-            1,
-            1
+            1.2,
+            1.2,
+            1.2
           ],
           "velocityPerSecond": [
             0.0,
@@ -5915,6 +5926,17 @@
         "sourceOccurrenceIndex": 0,
         "sourceTimeSeconds": 0.0,
         "parameters": []
+      },
+      "authoringOverrides": {
+        "resources": [],
+        "scalars": [
+          {
+            "name": "09.gap_offset",
+            "value": 0.25,
+            "compilerValue": 0.17499999701976776
+          }
+        ],
+        "colors": []
       }
     },
     {

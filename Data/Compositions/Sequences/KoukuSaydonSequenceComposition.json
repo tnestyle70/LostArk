@@ -1,7 +1,7 @@
 {
   "schema": "lostark.kouku-saydon-composition",
   "formatVersion": 3,
-  "revision": 165,
+  "revision": 167,
   "compositionId": "boss.composition.kakulsaydon.sequencer",
   "encounterId": "ENCOUNTER_KAKULSAYDON_G1",
   "bossArchetypeId": "BOSS_KAKULSAYDON_G1_KOUKU",
@@ -2443,12 +2443,240 @@
         {"occurrenceId": "KAKULSAYDON_G1_PATTERN_5.presentation.25", "resourceId": "sound.kouku.1173cbbbfbe657c7cf76", "startMs": 10, "durationMs": 35358, "positionOffset": [0, 0, 0], "rotationDegrees": [0, 0, 0], "scale": [1, 1, 1], "fadeInMs": 0, "fadeOutMs": 0, "dissolveStart": 0.84999999999999998, "dissolveEnd": 1, "brightnessMultiplier": 1, "volume": 1, "soundSourceStartMs": 0, "followBoss": false, "debugRender": true, "bone": "", "boneTarget": "BODY", "regionId": "", "cardSymbol": "NONE", "cardColor": "NONE", "anchorKind": "WORLD", "worldId": "", "logicOccurrenceId": "", "worldOccurrenceId": ""},
         {"occurrenceId": "KAKULSAYDON_G1_PATTERN_5.presentation.26", "resourceId": "sound.kouku.346651f08b94dfc93f4b", "startMs": 0, "durationMs": 35368, "positionOffset": [0, 0, 0], "rotationDegrees": [0, 0, 0], "scale": [1, 1, 1], "fadeInMs": 0, "fadeOutMs": 0, "dissolveStart": 0.84999999999999998, "dissolveEnd": 1, "brightnessMultiplier": 1, "volume": 1, "soundSourceStartMs": 0, "followBoss": false, "debugRender": true, "bone": "", "boneTarget": "BODY", "regionId": "", "cardSymbol": "NONE", "cardColor": "NONE", "anchorKind": "WORLD", "worldId": "", "logicOccurrenceId": "", "worldOccurrenceId": ""},
         {"occurrenceId": "KAKULSAYDON_G1_PATTERN_5.presentation.27", "resourceId": "sound.kouku.cff016512cb6e8224404", "startMs": 35201, "durationMs": 167, "positionOffset": [0, 0, 0], "rotationDegrees": [0, 0, 0], "scale": [1, 1, 1], "fadeInMs": 0, "fadeOutMs": 0, "dissolveStart": 0.84999999999999998, "dissolveEnd": 1, "brightnessMultiplier": 1, "volume": 1, "soundSourceStartMs": 0, "followBoss": false, "debugRender": true, "bone": "", "boneTarget": "BODY", "regionId": "", "cardSymbol": "NONE", "cardColor": "NONE", "anchorKind": "WORLD", "worldId": "", "logicOccurrenceId": "", "worldOccurrenceId": ""},
-        {"occurrenceId": "KAKULSAYDON_G1_PATTERN_5.presentation.28", "resourceId": "subtitle.kouku.cin.37081_31_01", "startMs": 1343, "durationMs": 1700, "positionOffset": [0, 0, 0], "rotationDegrees": [0, 0, 0], "scale": [1, 1, 1], "fadeInMs": 0, "fadeOutMs": 0, "dissolveStart": 0.84999999999999998, "dissolveEnd": 1, "brightnessMultiplier": 1, "volume": 1, "soundSourceStartMs": 0, "followBoss": false, "debugRender": true, "bone": "", "boneTarget": "BODY", "regionId": "", "cardSymbol": "NONE", "cardColor": "NONE", "anchorKind": "MAP", "worldId": "", "logicOccurrenceId": "", "worldOccurrenceId": ""},
-        {"occurrenceId": "KAKULSAYDON_G1_PATTERN_5.presentation.29", "resourceId": "subtitle.kouku.cin.37081_31_03", "startMs": 8942, "durationMs": 1500, "positionOffset": [0, 0, 0], "rotationDegrees": [0, 0, 0], "scale": [1, 1, 1], "fadeInMs": 0, "fadeOutMs": 0, "dissolveStart": 0.84999999999999998, "dissolveEnd": 1, "brightnessMultiplier": 1, "volume": 1, "soundSourceStartMs": 0, "followBoss": false, "debugRender": true, "bone": "", "boneTarget": "BODY", "regionId": "", "cardSymbol": "NONE", "cardColor": "NONE", "anchorKind": "MAP", "worldId": "", "logicOccurrenceId": "", "worldOccurrenceId": ""},
-        {"occurrenceId": "KAKULSAYDON_G1_PATTERN_5.presentation.30", "resourceId": "subtitle.kouku.cin.37081_31_04", "startMs": 10991, "durationMs": 3000, "positionOffset": [0, 0, 0], "rotationDegrees": [0, 0, 0], "scale": [1, 1, 1], "fadeInMs": 0, "fadeOutMs": 0, "dissolveStart": 0.84999999999999998, "dissolveEnd": 1, "brightnessMultiplier": 1, "volume": 1, "soundSourceStartMs": 0, "followBoss": false, "debugRender": true, "bone": "", "boneTarget": "BODY", "regionId": "", "cardSymbol": "NONE", "cardColor": "NONE", "anchorKind": "MAP", "worldId": "", "logicOccurrenceId": "", "worldOccurrenceId": ""},
-        {"occurrenceId": "KAKULSAYDON_G1_PATTERN_5.presentation.31", "resourceId": "subtitle.kouku.cin.37081_31_05", "startMs": 14568, "durationMs": 3200, "positionOffset": [0, 0, 0], "rotationDegrees": [0, 0, 0], "scale": [1, 1, 1], "fadeInMs": 0, "fadeOutMs": 0, "dissolveStart": 0.84999999999999998, "dissolveEnd": 1, "brightnessMultiplier": 1, "volume": 1, "soundSourceStartMs": 0, "followBoss": false, "debugRender": true, "bone": "", "boneTarget": "BODY", "regionId": "", "cardSymbol": "NONE", "cardColor": "NONE", "anchorKind": "MAP", "worldId": "", "logicOccurrenceId": "", "worldOccurrenceId": ""},
-        {"occurrenceId": "KAKULSAYDON_G1_PATTERN_5.presentation.32", "resourceId": "subtitle.kouku.cin.37081_31_02", "startMs": 3576, "durationMs": 3000, "positionOffset": [0, 0, 0], "rotationDegrees": [0, 0, 0], "scale": [1, 1, 1], "fadeInMs": 0, "fadeOutMs": 0, "dissolveStart": 0.84999999999999998, "dissolveEnd": 1, "brightnessMultiplier": 1, "volume": 1, "soundSourceStartMs": 0, "followBoss": false, "debugRender": true, "bone": "", "boneTarget": "BODY", "regionId": "", "cardSymbol": "NONE", "cardColor": "NONE", "anchorKind": "MAP", "worldId": "", "logicOccurrenceId": "", "worldOccurrenceId": ""},
-        {"occurrenceId": "KAKULSAYDON_G1_PATTERN_5.presentation.33", "resourceId": "subtitle.kouku.cin.37081_31_06", "startMs": 26445, "durationMs": 4000, "positionOffset": [0, 0, 0], "rotationDegrees": [0, 0, 0], "scale": [1, 1, 1], "fadeInMs": 0, "fadeOutMs": 0, "dissolveStart": 0.84999999999999998, "dissolveEnd": 1, "brightnessMultiplier": 1, "volume": 1, "soundSourceStartMs": 0, "followBoss": false, "debugRender": true, "bone": "", "boneTarget": "BODY", "regionId": "", "cardSymbol": "NONE", "cardColor": "NONE", "anchorKind": "MAP", "worldId": "", "logicOccurrenceId": "", "worldOccurrenceId": ""}
+        {
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_5.presentation.28",
+          "resourceId": "subtitle.kouku.cin.37081_31_01",
+          "startMs": 1343,
+          "durationMs": 1700,
+          "positionOffset": [
+            0,
+            90,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            2,
+            2,
+            2
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "brightnessMultiplier": 1,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "debugRender": true,
+          "bone": "",
+          "boneTarget": "BODY",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "MAP",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "worldOccurrenceId": ""
+        },
+        {
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_5.presentation.29",
+          "resourceId": "subtitle.kouku.cin.37081_31_03",
+          "startMs": 8942,
+          "durationMs": 1500,
+          "positionOffset": [
+            0,
+            90,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            2,
+            2,
+            2
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "brightnessMultiplier": 1,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "debugRender": true,
+          "bone": "",
+          "boneTarget": "BODY",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "MAP",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "worldOccurrenceId": ""
+        },
+        {
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_5.presentation.30",
+          "resourceId": "subtitle.kouku.cin.37081_31_04",
+          "startMs": 10991,
+          "durationMs": 3000,
+          "positionOffset": [
+            0,
+            90,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            2,
+            2,
+            2
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "brightnessMultiplier": 1,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "debugRender": true,
+          "bone": "",
+          "boneTarget": "BODY",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "MAP",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "worldOccurrenceId": ""
+        },
+        {
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_5.presentation.31",
+          "resourceId": "subtitle.kouku.cin.37081_31_05",
+          "startMs": 14568,
+          "durationMs": 3200,
+          "positionOffset": [
+            0,
+            90,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            2,
+            2,
+            2
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "brightnessMultiplier": 1,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "debugRender": true,
+          "bone": "",
+          "boneTarget": "BODY",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "MAP",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "worldOccurrenceId": ""
+        },
+        {
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_5.presentation.32",
+          "resourceId": "subtitle.kouku.cin.37081_31_02",
+          "startMs": 3576,
+          "durationMs": 3000,
+          "positionOffset": [
+            0,
+            90,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            2,
+            2,
+            2
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "brightnessMultiplier": 1,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "debugRender": true,
+          "bone": "",
+          "boneTarget": "BODY",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "MAP",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "worldOccurrenceId": ""
+        },
+        {
+          "occurrenceId": "KAKULSAYDON_G1_PATTERN_5.presentation.33",
+          "resourceId": "subtitle.kouku.cin.37081_31_06",
+          "startMs": 26445,
+          "durationMs": 4000,
+          "positionOffset": [
+            0,
+            90,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            2,
+            2,
+            2
+          ],
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "dissolveStart": 0.85,
+          "dissolveEnd": 1,
+          "brightnessMultiplier": 1,
+          "volume": 1,
+          "soundSourceStartMs": 0,
+          "followBoss": false,
+          "debugRender": true,
+          "bone": "",
+          "boneTarget": "BODY",
+          "regionId": "",
+          "cardSymbol": "NONE",
+          "cardColor": "NONE",
+          "anchorKind": "MAP",
+          "worldId": "",
+          "logicOccurrenceId": "",
+          "worldOccurrenceId": ""
+        }
       ]
     },
     {
