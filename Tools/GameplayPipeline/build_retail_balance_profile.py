@@ -79,14 +79,22 @@ PROJECT_POLICY = {
     # it.  The ratio is unchanged, which keeps resource pacing identical.
     "resourcePool": 10000,
     "resourceRegenPerSecond": 5000,
-    # Skill.StiffnessTooltipType is a display grade, not a number: the amount is
-    # computed server-side from the grade and the player's stagger stat.  These map the
-    # grade onto the original 40000 gauge so four players clear a window with two
-    # stagger skills each.
-    "staggerByGrade": {0: 0, 1: 1500, 2: 3000, 3: 4500, 4: 7000, 5: 12000},
+    # Skill.StiffnessTooltipType is a display grade, not a number, and the amount is
+    # computed server-side.  The step between grades is official though: every EFTable_
+    # SkillFeature Type 48 tripod that raises a skill one grade gives +40% stagger
+    # damage (하->중 x16, 중->중상 x35, 중상->상 x26, 상->최상 x12 rows) and every
+    # two-grade tripod gives +96% = 1.4 x 1.4, so one grade is x1.4.  Only the base of
+    # the series is a project choice: 1800 puts four players' three best stagger skills
+    # at 38,790 against the original 40,000 gauge.
+    "staggerLowBase": 1800,
+    "staggerGradeStep": 1.4,
     # Authored SET_STAGGER_GAUGE values are 30 and 100; x400 makes the large window the
     # original 40000 of NpcBalance.ParalyzationPointMax.
     "staggerGaugeScale": 400,
+    # ZoneContentsGauge 3708100 has no passive fill, so the original Kouku madness gauge
+    # only rises through a skill effect or accumulate_damage_ratio.  The Server now charges
+    # it from the share of maximum HP a hit took, so the authored fixed step retires.
+    "madnessGaugeAddPercent": 0,
     # Skill.PartsAttackLevelTooltip is the original part-break level 1..3 and 0 for a
     # skill that cannot break a part at all.  The Server subtracts partDamage straight
     # from a plate's durability, so the level is the amount and the authored plate
@@ -189,15 +197,24 @@ def build_players(pcs: sqlite3.Connection, authored: list[dict]) -> list[dict]:
     return players
 
 
+def stagger_by_grade() -> dict[int, int]:
+    """Grade 0 stages nothing; 1..5 are the official x1.4 series off the chosen base."""
+    base = PROJECT_POLICY["staggerLowBase"]
+    step = PROJECT_POLICY["staggerGradeStep"]
+    return {0: 0} | {
+        grade: int(round(base * step ** (grade - 1))) for grade in range(1, 6)
+    }
+
+
 def build_skills(skills: sqlite3.Connection, authored: list[dict]) -> list[dict]:
-    stagger_by_grade = PROJECT_POLICY["staggerByGrade"]
+    stagger = stagger_by_grade()
     part_damage_by_level = PROJECT_POLICY["partDamageByLevel"]
     rows = []
     for entry in authored:
         skill_id = int(entry["skillId"])
         official = skill_row(skills, skill_id)
         grade = int(official["StiffnessTooltipType"])
-        if grade not in stagger_by_grade:
+        if grade not in stagger:
             raise ValueError(f"Skill {skill_id} has unknown stagger grade {grade}")
         part_level = int(official["PartsAttackLevelTooltip"])
         if part_level not in part_damage_by_level:
@@ -206,7 +223,7 @@ def build_skills(skills: sqlite3.Connection, authored: list[dict]) -> list[dict]
             "skillId": skill_id,
             "cooldownMs": int(official["Cooltime"]),
             "resourceCost": int(official["CostMp"]),
-            "staggerDamage": stagger_by_grade[grade],
+            "staggerDamage": stagger[grade],
             "partDamage": part_damage_by_level[part_level],
         })
     return rows
@@ -298,6 +315,7 @@ def main() -> int:
         "profileId": PROFILE_ID,
         "displayName": "원작 수치 (발탄 1415 / 쿠크세이튼 1475, 기준 스펙 아이템 레벨 1500)",
         "staggerGaugeScale": PROJECT_POLICY["staggerGaugeScale"],
+        "madnessGaugeAddPercent": PROJECT_POLICY["madnessGaugeAddPercent"],
         "players": build_players(pcs, players_document["players"]),
         "skills": build_skills(skills, skills_document["skills"]),
         "bosses": build_bosses(balances, stats, bosses_document["bosses"]),

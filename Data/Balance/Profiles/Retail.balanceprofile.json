@@ -4,6 +4,7 @@
   "profileId": "Retail",
   "displayName": "원작 수치 (발탄 1415 / 쿠크세이튼 1475, 기준 스펙 아이템 레벨 1500)",
   "staggerGaugeScale": 400,
+  "madnessGaugeAddPercent": 0,
   "players": [
     {
       "characterClass": "LANCE_MASTER",
@@ -88,7 +89,7 @@
       "skillId": 34090,
       "cooldownMs": 10000,
       "resourceCost": 276,
-      "staggerDamage": 1500,
+      "staggerDamage": 1800,
       "partDamage": 0
     },
     {
@@ -109,49 +110,49 @@
       "skillId": 34140,
       "cooldownMs": 15000,
       "resourceCost": 347,
-      "staggerDamage": 1500,
+      "staggerDamage": 1800,
       "partDamage": 0
     },
     {
       "skillId": 34120,
       "cooldownMs": 10000,
       "resourceCost": 276,
-      "staggerDamage": 1500,
+      "staggerDamage": 1800,
       "partDamage": 1
     },
     {
       "skillId": 34110,
       "cooldownMs": 18000,
       "resourceCost": 386,
-      "staggerDamage": 3000,
+      "staggerDamage": 2520,
       "partDamage": 2
     },
     {
       "skillId": 34150,
       "cooldownMs": 24000,
       "resourceCost": 456,
-      "staggerDamage": 4500,
+      "staggerDamage": 3528,
       "partDamage": 0
     },
     {
       "skillId": 34650,
       "cooldownMs": 55000,
       "resourceCost": 734,
-      "staggerDamage": 7000,
+      "staggerDamage": 4939,
       "partDamage": 0
     },
     {
       "skillId": 34610,
       "cooldownMs": 300000,
       "resourceCost": 0,
-      "staggerDamage": 7000,
+      "staggerDamage": 4939,
       "partDamage": 0
     },
     {
       "skillId": 34630,
       "cooldownMs": 300000,
       "resourceCost": 0,
-      "staggerDamage": 12000,
+      "staggerDamage": 6915,
       "partDamage": 0
     },
     {
@@ -179,14 +180,14 @@
       "skillId": 38050,
       "cooldownMs": 30000,
       "resourceCost": 518,
-      "staggerDamage": 1500,
+      "staggerDamage": 1800,
       "partDamage": 0
     },
     {
       "skillId": 45050,
       "cooldownMs": 12000,
       "resourceCost": 349,
-      "staggerDamage": 3000,
+      "staggerDamage": 2520,
       "partDamage": 0
     },
     {
@@ -249,21 +250,21 @@
       "skillId": 38290,
       "cooldownMs": 50000,
       "resourceCost": 695,
-      "staggerDamage": 4500,
+      "staggerDamage": 3528,
       "partDamage": 0
     },
     {
       "skillId": 38250,
       "cooldownMs": 300000,
       "resourceCost": 0,
-      "staggerDamage": 4500,
+      "staggerDamage": 3528,
       "partDamage": 2
     },
     {
       "skillId": 38320,
       "cooldownMs": 300000,
       "resourceCost": 0,
-      "staggerDamage": 7000,
+      "staggerDamage": 4939,
       "partDamage": 2
     },
     {
@@ -277,56 +278,56 @@
       "skillId": 45620,
       "cooldownMs": 15000,
       "resourceCost": 397,
-      "staggerDamage": 3000,
+      "staggerDamage": 2520,
       "partDamage": 0
     },
     {
       "skillId": 45210,
       "cooldownMs": 16000,
       "resourceCost": 412,
-      "staggerDamage": 3000,
+      "staggerDamage": 2520,
       "partDamage": 0
     },
     {
       "skillId": 45300,
       "cooldownMs": 22000,
       "resourceCost": 495,
-      "staggerDamage": 7000,
+      "staggerDamage": 4939,
       "partDamage": 2
     },
     {
       "skillId": 45070,
       "cooldownMs": 24000,
       "resourceCost": 521,
-      "staggerDamage": 3000,
+      "staggerDamage": 2520,
       "partDamage": 0
     },
     {
       "skillId": 45190,
       "cooldownMs": 24000,
       "resourceCost": 521,
-      "staggerDamage": 3000,
+      "staggerDamage": 2520,
       "partDamage": 0
     },
     {
       "skillId": 45600,
       "cooldownMs": 27000,
       "resourceCost": 557,
-      "staggerDamage": 4500,
+      "staggerDamage": 3528,
       "partDamage": 0
     },
     {
       "skillId": 45810,
       "cooldownMs": 300000,
       "resourceCost": 0,
-      "staggerDamage": 12000,
+      "staggerDamage": 6915,
       "partDamage": 0
     },
     {
       "skillId": 45820,
       "cooldownMs": 300000,
       "resourceCost": 0,
-      "staggerDamage": 7000,
+      "staggerDamage": 4939,
       "partDamage": 3
     },
     {
@@ -375,35 +376,35 @@
       "skillId": 34550,
       "cooldownMs": 16000,
       "resourceCost": 361,
-      "staggerDamage": 1500,
+      "staggerDamage": 1800,
       "partDamage": 0
     },
     {
       "skillId": 34560,
       "cooldownMs": 24000,
       "resourceCost": 456,
-      "staggerDamage": 7000,
+      "staggerDamage": 4939,
       "partDamage": 0
     },
     {
       "skillId": 34570,
       "cooldownMs": 24000,
       "resourceCost": 456,
-      "staggerDamage": 3000,
+      "staggerDamage": 2520,
       "partDamage": 0
     },
     {
       "skillId": 34580,
       "cooldownMs": 20000,
       "resourceCost": 410,
-      "staggerDamage": 3000,
+      "staggerDamage": 2520,
       "partDamage": 0
     },
     {
       "skillId": 34590,
       "cooldownMs": 24000,
       "resourceCost": 456,
-      "staggerDamage": 3000,
+      "staggerDamage": 2520,
       "partDamage": 0
     },
     {
@@ -431,77 +432,77 @@
       "skillId": 17030,
       "cooldownMs": 5000,
       "resourceCost": 211,
-      "staggerDamage": 1500,
+      "staggerDamage": 1800,
       "partDamage": 0
     },
     {
       "skillId": 17040,
       "cooldownMs": 10000,
       "resourceCost": 315,
-      "staggerDamage": 7000,
+      "staggerDamage": 4939,
       "partDamage": 1
     },
     {
       "skillId": 17060,
       "cooldownMs": 7000,
       "resourceCost": 256,
-      "staggerDamage": 3000,
+      "staggerDamage": 2520,
       "partDamage": 1
     },
     {
       "skillId": 17080,
       "cooldownMs": 16000,
       "resourceCost": 412,
-      "staggerDamage": 4500,
+      "staggerDamage": 3528,
       "partDamage": 1
     },
     {
       "skillId": 17090,
       "cooldownMs": 24000,
       "resourceCost": 521,
-      "staggerDamage": 1500,
+      "staggerDamage": 1800,
       "partDamage": 0
     },
     {
       "skillId": 17100,
       "cooldownMs": 12000,
       "resourceCost": 349,
-      "staggerDamage": 4500,
+      "staggerDamage": 3528,
       "partDamage": 1
     },
     {
       "skillId": 17110,
       "cooldownMs": 16000,
       "resourceCost": 412,
-      "staggerDamage": 3000,
+      "staggerDamage": 2520,
       "partDamage": 0
     },
     {
       "skillId": 17140,
       "cooldownMs": 20000,
       "resourceCost": 469,
-      "staggerDamage": 4500,
+      "staggerDamage": 3528,
       "partDamage": 0
     },
     {
       "skillId": 17170,
       "cooldownMs": 300000,
       "resourceCost": 0,
-      "staggerDamage": 7000,
+      "staggerDamage": 4939,
       "partDamage": 0
     },
     {
       "skillId": 17240,
       "cooldownMs": 75000,
       "resourceCost": 907,
-      "staggerDamage": 7000,
+      "staggerDamage": 4939,
       "partDamage": 2
     },
     {
       "skillId": 17250,
       "cooldownMs": 300000,
       "resourceCost": 0,
-      "staggerDamage": 7000,
+      "staggerDamage": 4939,
       "partDamage": 0
     },
     {
@@ -522,7 +523,7 @@
       "skillId": 17820,
       "cooldownMs": 90000,
       "resourceCost": 0,
-      "staggerDamage": 4500,
+      "staggerDamage": 3528,
       "partDamage": 0
     },
     {
@@ -536,77 +537,77 @@
       "skillId": 31200,
       "cooldownMs": 8000,
       "resourceCost": 277,
-      "staggerDamage": 3000,
+      "staggerDamage": 2520,
       "partDamage": 0
     },
     {
       "skillId": 31430,
       "cooldownMs": 14000,
       "resourceCost": 382,
-      "staggerDamage": 4500,
+      "staggerDamage": 3528,
       "partDamage": 1
     },
     {
       "skillId": 31480,
       "cooldownMs": 24000,
       "resourceCost": 521,
-      "staggerDamage": 4500,
+      "staggerDamage": 3528,
       "partDamage": 0
     },
     {
       "skillId": 31210,
       "cooldownMs": 16000,
       "resourceCost": 412,
-      "staggerDamage": 3000,
+      "staggerDamage": 2520,
       "partDamage": 0
     },
     {
       "skillId": 31460,
       "cooldownMs": 16000,
       "resourceCost": 412,
-      "staggerDamage": 1500,
+      "staggerDamage": 1800,
       "partDamage": 0
     },
     {
       "skillId": 31420,
       "cooldownMs": 24000,
       "resourceCost": 521,
-      "staggerDamage": 3000,
+      "staggerDamage": 2520,
       "partDamage": 1
     },
     {
       "skillId": 31490,
       "cooldownMs": 30000,
       "resourceCost": 592,
-      "staggerDamage": 4500,
+      "staggerDamage": 3528,
       "partDamage": 1
     },
     {
       "skillId": 31470,
       "cooldownMs": 25000,
       "resourceCost": 533,
-      "staggerDamage": 4500,
+      "staggerDamage": 3528,
       "partDamage": 0
     },
     {
       "skillId": 31950,
       "cooldownMs": 72000,
       "resourceCost": 903,
-      "staggerDamage": 3000,
+      "staggerDamage": 2520,
       "partDamage": 0
     },
     {
       "skillId": 31910,
       "cooldownMs": 300000,
       "resourceCost": 0,
-      "staggerDamage": 4500,
+      "staggerDamage": 3528,
       "partDamage": 0
     },
     {
       "skillId": 31930,
       "cooldownMs": 300000,
       "resourceCost": 0,
-      "staggerDamage": 4500,
+      "staggerDamage": 3528,
       "partDamage": 0
     },
     {
@@ -655,70 +656,70 @@
       "skillId": 2050120,
       "cooldownMs": 18000,
       "resourceCost": 441,
-      "staggerDamage": 3000,
+      "staggerDamage": 2520,
       "partDamage": 0
     },
     {
       "skillId": 2050160,
       "cooldownMs": 28000,
       "resourceCost": 569,
-      "staggerDamage": 1500,
+      "staggerDamage": 1800,
       "partDamage": 0
     },
     {
       "skillId": 2050180,
       "cooldownMs": 40000,
       "resourceCost": 698,
-      "staggerDamage": 3000,
+      "staggerDamage": 2520,
       "partDamage": 0
     },
     {
       "skillId": 2050210,
       "cooldownMs": 55000,
       "resourceCost": 839,
-      "staggerDamage": 4500,
+      "staggerDamage": 3528,
       "partDamage": 0
     },
     {
       "skillId": 2050220,
       "cooldownMs": 40000,
       "resourceCost": 698,
-      "staggerDamage": 3000,
+      "staggerDamage": 2520,
       "partDamage": 1
     },
     {
       "skillId": 2050230,
       "cooldownMs": 55000,
       "resourceCost": 839,
-      "staggerDamage": 4500,
+      "staggerDamage": 3528,
       "partDamage": 0
     },
     {
       "skillId": 2050240,
       "cooldownMs": 50000,
       "resourceCost": 794,
-      "staggerDamage": 1500,
+      "staggerDamage": 1800,
       "partDamage": 1
     },
     {
       "skillId": 2050500,
       "cooldownMs": 120000,
       "resourceCost": 938,
-      "staggerDamage": 7000,
+      "staggerDamage": 4939,
       "partDamage": 1
     },
     {
       "skillId": 2050520,
       "cooldownMs": 300000,
       "resourceCost": 0,
-      "staggerDamage": 12000,
+      "staggerDamage": 6915,
       "partDamage": 1
     },
     {
       "skillId": 2050540,
       "cooldownMs": 300000,
       "resourceCost": 0,
-      "staggerDamage": 12000,
+      "staggerDamage": 6915,
       "partDamage": 0
     },
     {
@@ -788,91 +789,91 @@
       "skillId": 49110,
       "cooldownMs": 8000,
       "resourceCost": 0,
-      "staggerDamage": 1500,
+      "staggerDamage": 1800,
       "partDamage": 1
     },
     {
       "skillId": 49120,
       "cooldownMs": 8000,
       "resourceCost": 0,
-      "staggerDamage": 1500,
+      "staggerDamage": 1800,
       "partDamage": 0
     },
     {
       "skillId": 49130,
       "cooldownMs": 24000,
       "resourceCost": 0,
-      "staggerDamage": 4500,
+      "staggerDamage": 3528,
       "partDamage": 1
     },
     {
       "skillId": 49200,
       "cooldownMs": 15000,
       "resourceCost": 0,
-      "staggerDamage": 3000,
+      "staggerDamage": 2520,
       "partDamage": 0
     },
     {
       "skillId": 49210,
       "cooldownMs": 21000,
       "resourceCost": 0,
-      "staggerDamage": 3000,
+      "staggerDamage": 2520,
       "partDamage": 0
     },
     {
       "skillId": 49220,
       "cooldownMs": 10000,
       "resourceCost": 0,
-      "staggerDamage": 1500,
+      "staggerDamage": 1800,
       "partDamage": 0
     },
     {
       "skillId": 49230,
       "cooldownMs": 18000,
       "resourceCost": 0,
-      "staggerDamage": 3000,
+      "staggerDamage": 2520,
       "partDamage": 0
     },
     {
       "skillId": 49150,
       "cooldownMs": 40000,
       "resourceCost": 0,
-      "staggerDamage": 12000,
+      "staggerDamage": 6915,
       "partDamage": 2
     },
     {
       "skillId": 49260,
       "cooldownMs": 24000,
       "resourceCost": 0,
-      "staggerDamage": 4500,
+      "staggerDamage": 3528,
       "partDamage": 0
     },
     {
       "skillId": 49270,
       "cooldownMs": 24000,
       "resourceCost": 0,
-      "staggerDamage": 4500,
+      "staggerDamage": 3528,
       "partDamage": 0
     },
     {
       "skillId": 49330,
       "cooldownMs": 90000,
       "resourceCost": 0,
-      "staggerDamage": 12000,
+      "staggerDamage": 6915,
       "partDamage": 1
     },
     {
       "skillId": 49400,
       "cooldownMs": 300000,
       "resourceCost": 0,
-      "staggerDamage": 12000,
+      "staggerDamage": 6915,
       "partDamage": 0
     },
     {
       "skillId": 49420,
       "cooldownMs": 300000,
       "resourceCost": 0,
-      "staggerDamage": 12000,
+      "staggerDamage": 6915,
       "partDamage": 0
     }
   ],

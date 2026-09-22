@@ -283,6 +283,24 @@ LostArk::Server::CServerCombatHitRuntime::Apply_WorldToPlayer(
 			hit.iRawDamage, nullptr == playerProfile ? 0u : playerProfile->iDefense);
 	target.iCurrentHp = damage >= target.iCurrentHp ?
 		0u : target.iCurrentHp - damage;
+	/* The original madness gauge has no passive fill: it only moves through a
+	skill effect or accumulate_damage_ratio, so the share of a player's maximum
+	HP a hit took is the share of the gauge it charges. A world without a
+	madness policy carries a 0 maximum and charges nothing. */
+	if (0u != target.iMaximumMadness && 0u != damage &&
+		LostArk::Shared::PLAYER_MADNESS_FORM::NORMAL == target.eMadnessForm &&
+		nullptr != playerProfile && 0u != playerProfile->iMaximumHp)
+	{
+		const std::uint64_t charge =
+			static_cast<std::uint64_t>(target.iMaximumMadness) *
+			(std::min)(static_cast<std::uint64_t>(damage),
+				static_cast<std::uint64_t>(playerProfile->iMaximumHp)) /
+			static_cast<std::uint64_t>(playerProfile->iMaximumHp);
+		const std::uint64_t charged =
+			static_cast<std::uint64_t>(target.iCurrentMadness) + charge;
+		target.iCurrentMadness = static_cast<std::uint32_t>(
+			(std::min<std::uint64_t>)(charged, target.iMaximumMadness));
+	}
 	PushDamageEvent(
 		target.iNetEntityId, damage,
 		target.fPositionX, target.fPositionY, target.fPositionZ,

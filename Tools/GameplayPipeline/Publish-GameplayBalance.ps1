@@ -989,12 +989,14 @@ $balanceProfilePlayers = @{}
 $balanceProfileSkills = @{}
 $balanceProfileBosses = @{}
 $balanceProfileStaggerScale = 0
+$balanceProfileMadnessAddPercent = -1
 if (-not [string]::IsNullOrWhiteSpace($BalanceProfile)) {
     $profileRelativePath = "Data/Balance/Profiles/$BalanceProfile.balanceprofile.json"
     $balanceProfileDocument = Read-JsonDocument $profileRelativePath
     Assert-ExactProperties $balanceProfileDocument @(
         'schema','formatVersion','profileId','displayName','staggerGaugeScale',
-        'players','skills','bosses','monsters') 'balance profile document'
+        'players','skills','bosses','monsters',
+        'madnessGaugeAddPercent') 'balance profile document'
     Assert-JsonString $balanceProfileDocument.schema 'balance profile schema'
     Assert-JsonInteger $balanceProfileDocument.formatVersion 'balance profile formatVersion' 1 1
     if ($balanceProfileDocument.schema -ne 'lostark.balance-profile' -or
@@ -1004,6 +1006,10 @@ if (-not [string]::IsNullOrWhiteSpace($BalanceProfile)) {
     Assert-JsonInteger $balanceProfileDocument.staggerGaugeScale `
         'balance profile staggerGaugeScale' 1 100000
     $balanceProfileStaggerScale = [uint32]$balanceProfileDocument.staggerGaugeScale
+    Assert-JsonInteger $balanceProfileDocument.madnessGaugeAddPercent `
+        'balance profile madnessGaugeAddPercent' 0 100
+    $balanceProfileMadnessAddPercent =
+        [int]$balanceProfileDocument.madnessGaugeAddPercent
     foreach ($entry in @($balanceProfileDocument.players)) {
         Assert-StableId $entry.characterClass 'balance profile player characterClass'
         if ($balanceProfilePlayers.ContainsKey([string]$entry.characterClass)) {
@@ -4607,10 +4613,18 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 					$koukuCaptureGrip = $gripKey
 				}
 				$followupText = if ($hasFollowup) { $followup } else { '-' }
+				# The original gauge charges from the damage a hit took, not in fixed
+				# steps, so a profile may retire the authored percent without editing
+				# the composition source that owns the logic.
+				$outcomePercent = [uint32]$outcome.percent
+				if ($outcomeKind -ceq 'MADNESS_GAUGE_ADD_PERCENT' -and
+					$balanceProfileMadnessAddPercent -ge 0) {
+					$outcomePercent = [uint32]$balanceProfileMadnessAddPercent
+				}
 				$patternRows.Add((@(
 					'PATTERNLOGICOUTCOME', $koukuEncounterDocument.encounterId,
 					$koukuPattern.patternId, $window.windowId, $slotName, $ordinal,
-					$outcomeKind, [uint32]$outcome.percent, [uint32]$outcome.durationMs,
+					$outcomeKind, $outcomePercent, [uint32]$outcome.durationMs,
 					$followupText) + $motionIds -join "`t"))
 				if ($outcomePushRangeM -gt 0) {
 					$patternRows.Add((@('PATTERNLOGICPUSH', $koukuEncounterDocument.encounterId,
