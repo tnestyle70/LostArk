@@ -6546,7 +6546,35 @@
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
       "authoringPath": "Effects/Authored/effect.kouku.common.spinning.card.casting.effect.json"
     },
-    {"effectAssetId":"effect.guardianknight.skill.49220.source.49290.clip.0.full.restore","payloadKind":"DIRECT_AUTHORED_DOCUMENT","authoringPath":"Effects/Authored/effect.guardianknight.skill.49220.source.49290.clip.0.full.restore.effect.json"},
-    {"effectAssetId":"effect.guardianknight.skill.49220.source.49290.clip.1.full.restore","payloadKind":"DIRECT_AUTHORED_DOCUMENT","authoringPath":"Effects/Authored/effect.guardianknight.skill.49220.source.49290.clip.1.full.restore.effect.json"}
+    {
+      "effectAssetId": "effect.guardianknight.skill.49220.source.49290.clip.0.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.guardianknight.skill.49220.source.49290.clip.0.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.guardianknight.skill.49220.source.49290.clip.1.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.guardianknight.skill.49220.source.49290.clip.1.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.esther.inanna.npc_att_battle_1_01.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.esther.inanna.npc_att_battle_1_01.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.esther.inanna.npc_att_battle_1_02.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.esther.inanna.npc_att_battle_1_02.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.esther.inanna.npc_att_battle_1_03.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.esther.inanna.npc_att_battle_1_03.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.esther.inanna.cameo.npc_sk_magicshield.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.esther.inanna.cameo.npc_sk_magicshield.full.restore.effect.json"
+    }
   ]
 }

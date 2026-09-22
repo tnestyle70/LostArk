@@ -3754,4 +3754,10 @@
     <None Include="..\..\Data\Effects\Authored\effect.guardianknight.skill.49220.source.49290.clip.0.full.restore.effect.json"></None>
     <None Include="..\..\Data\Effects\Authored\effect.guardianknight.skill.49220.source.49290.clip.1.full.restore.effect.json"></None>
   </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshKouku4352.hlsl">
+      <DisableOptimizations Condition="'$(Platform)'=='x64'">false</DisableOptimizations>
+      <AdditionalOptions Condition="'$(Platform)'=='x64'">/O1 %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+  </ItemGroup>
 </Project>

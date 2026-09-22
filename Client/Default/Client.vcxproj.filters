@@ -5347,4 +5347,7 @@
     <None Include="..\..\Data\Effects\Authored\effect.guardianknight.skill.49220.source.49290.clip.0.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
     <None Include="..\..\Data\Effects\Authored\effect.guardianknight.skill.49220.source.49290.clip.1.full.restore.effect.json"><Filter>96.DataFiles</Filter></None>
   </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshKouku4352.hlsl"><Filter>97.ShaderFiles</Filter></FxCompile>
+  </ItemGroup>
 </Project>
