@@ -4,67 +4,17 @@
 
 #include <algorithm>
 #include <cmath>
-#include <d3dcompiler.h>
-#include <filesystem>
 #include <limits>
-#include <mutex>
-#include <unordered_map>
+#include <stdexcept>
 
 NS_BEGIN(Engine)
-
-struct STATIC_MESH_LOD_PROGRAM final
-{
-    ComPtr<ID3D11ComputeShader> shader;
-};
-
-namespace
-{
-    HRESULT LoadProgram(ID3D11Device* device,
-        std::shared_ptr<STATIC_MESH_LOD_PROGRAM>& result)
-    {
-        static std::mutex mutex;
-        static std::unordered_map<ID3D11Device*, std::weak_ptr<STATIC_MESH_LOD_PROGRAM>> programs;
-        std::lock_guard lock(mutex);
-        if (auto existing = programs[device].lock())
-        {
-            result = std::move(existing);
-            return S_OK;
-        }
-        wchar_t module[32768]{};
-        const DWORD length = GetModuleFileNameW(nullptr, module, _countof(module));
-        if (0u == length || length >= _countof(module)) return E_FAIL;
-        const auto path = std::filesystem::path(module).parent_path() / L"Shader_MeshLod.cso";
-        std::error_code error;
-        const auto bytes = std::filesystem::file_size(path, error);
-        if (error || bytes == 0u || bytes > 1024u * 1024u) return HRESULT_FROM_WIN32(ERROR_FILE_INVALID);
-        ComPtr<ID3DBlob> code;
-        HRESULT hr = D3DReadFileToBlob(path.c_str(), &code);
-        if (FAILED(hr)) return hr;
-        auto staged = std::make_shared<STATIC_MESH_LOD_PROGRAM>();
-        hr = device->CreateComputeShader(code->GetBufferPointer(), code->GetBufferSize(), nullptr, &staged->shader);
-        if (FAILED(hr)) return hr;
-        programs[device] = staged;
-        result = std::move(staged);
-        return S_OK;
-    }
-
-    struct alignas(16) SELECTION_CONSTANTS final
-    {
-        uint32_t ranges[3][4]{};
-        float4_t errorsAndScale{};
-        float4_t viewBounds{};
-        float4_t projectionNearError{};
-        uint32_t instanceAndRangeCount[4]{};
-    };
-    static_assert(sizeof(SELECTION_CONSTANTS) == 112u);
-}
 
 HRESULT CStaticMeshLod::Create(ID3D11Device* device, std::span<const VTXMESH> vertices,
     std::span<const uint32_t> indices, std::shared_ptr<CStaticMeshLod>& result)
 {
     result.reset();
-    // Small meshes keep the original direct draw; dispatch/indirect overhead can
-    // exceed their vertex work. Generation is also bounded at asset load time.
+    // Keep generation bounded at asset load time. Selection and drawing reuse
+    // these immutable ranges without per-draw compute work or GPU readback.
     constexpr size_t minimumIndices = 24576u;
     constexpr size_t maximumIndices = 3u * 1024u * 1024u;
     if (!device || vertices.empty() || indices.size() % 3u != 0u) return E_INVALIDARG;
@@ -125,35 +75,13 @@ HRESULT CStaticMeshLod::Create(ID3D11Device* device, std::span<const VTXMESH> ve
             combined.insert(combined.end(), reduced.begin(), reduced.begin() + count);
         }
         if (staged->m_RangeCount == 1u) return S_FALSE;
-        HRESULT hr = LoadProgram(device, staged->m_Program);
-        if (FAILED(hr)) return hr;
         D3D11_BUFFER_DESC desc{};
         desc.ByteWidth = static_cast<UINT>(combined.size() * sizeof(uint32_t));
         desc.Usage = D3D11_USAGE_IMMUTABLE;
         desc.BindFlags = D3D11_BIND_INDEX_BUFFER;
         D3D11_SUBRESOURCE_DATA initial{};
         initial.pSysMem = combined.data();
-        hr = device->CreateBuffer(&desc, &initial, &staged->m_IndexBuffer);
-        if (FAILED(hr)) return hr;
-        desc = {};
-        desc.ByteWidth = sizeof(SELECTION_CONSTANTS);
-        desc.Usage = D3D11_USAGE_DEFAULT;
-        desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-        hr = device->CreateBuffer(&desc, nullptr, &staged->m_Constants);
-        if (FAILED(hr)) return hr;
-        desc = {};
-        desc.ByteWidth = sizeof(D3D11_DRAW_INDEXED_INSTANCED_INDIRECT_ARGS);
-        desc.Usage = D3D11_USAGE_DEFAULT;
-        desc.BindFlags = D3D11_BIND_UNORDERED_ACCESS;
-        desc.MiscFlags = D3D11_RESOURCE_MISC_DRAWINDIRECT_ARGS | D3D11_RESOURCE_MISC_BUFFER_ALLOW_RAW_VIEWS;
-        hr = device->CreateBuffer(&desc, nullptr, &staged->m_DrawArguments);
-        if (FAILED(hr)) return hr;
-        D3D11_UNORDERED_ACCESS_VIEW_DESC uav{};
-        uav.Format = DXGI_FORMAT_R32_TYPELESS;
-        uav.ViewDimension = D3D11_UAV_DIMENSION_BUFFER;
-        uav.Buffer.NumElements = desc.ByteWidth / sizeof(uint32_t);
-        uav.Buffer.Flags = D3D11_BUFFER_UAV_FLAG_RAW;
-        hr = device->CreateUnorderedAccessView(staged->m_DrawArguments.Get(), &uav, &staged->m_ArgumentsUAV);
+        const HRESULT hr = device->CreateBuffer(&desc, &initial, &staged->m_IndexBuffer);
         if (FAILED(hr)) return hr;
         result = std::move(staged);
         return S_OK;
@@ -162,44 +90,48 @@ HRESULT CStaticMeshLod::Create(ID3D11Device* device, std::span<const VTXMESH> ve
     catch (const std::length_error&) { return E_OUTOFMEMORY; }
 }
 
-HRESULT CStaticMeshLod::Prepare(ID3D11DeviceContext* context, const MESH_SCREEN_LOD_DESC& view,
-    uint32_t instanceCount)
+HRESULT CStaticMeshLod::Select_Range(const MESH_SCREEN_LOD_DESC& view,
+    SELECTION& result) const
 {
     const float values[] = { view.viewBounds.x, view.viewBounds.y, view.viewBounds.z,
         view.viewBounds.w, view.projectionPixels.x, view.projectionPixels.y,
         view.maximumScale, view.nearPlane, view.maximumPixelError };
-    if (!context || !m_Program || !instanceCount || m_RangeCount < 2u ||
+    if (!m_IndexBuffer || m_RangeCount < 2u ||
         std::any_of(std::begin(values), std::end(values), [](float f) { return !std::isfinite(f); }) ||
         view.viewBounds.w <= 0.f || view.projectionPixels.x <= 0.f || view.projectionPixels.y <= 0.f ||
         view.maximumScale <= 0.f || view.nearPlane <= 0.f ||
         view.maximumPixelError <= 0.f || view.maximumPixelError > 1.f)
         return E_INVALIDARG;
-    SELECTION_CONSTANTS constants{};
-    for (uint32_t i = 0u; i < m_RangeCount; ++i)
+
+    if (view.hasTightViewBounds &&
+        (!std::isfinite(view.maximumAbsViewXY.x) || !std::isfinite(view.maximumAbsViewXY.y) ||
+         !std::isfinite(view.minimumViewDepth) || view.maximumAbsViewXY.x < 0.f || view.maximumAbsViewXY.y < 0.f))
+        return E_INVALIDARG;
+
+    uint32_t selected = 0u;
+    const double nearestZ = view.hasTightViewBounds ? view.minimumViewDepth :
+        double(view.viewBounds.z) - view.viewBounds.w;
+    if (nearestZ > view.nearPlane)
     {
-        constants.ranges[i][0] = m_Ranges[i].count;
-        constants.ranges[i][1] = m_Ranges[i].first;
-        (&constants.errorsAndScale.x)[i] = m_Ranges[i].error;
+        const double largestX = view.hasTightViewBounds ? view.maximumAbsViewXY.x :
+            std::abs(double(view.viewBounds.x)) + view.viewBounds.w;
+        const double largestY = view.hasTightViewBounds ? view.maximumAbsViewXY.y :
+            std::abs(double(view.viewBounds.y)) + view.viewBounds.w;
+        for (uint32_t level = 1u; level < m_RangeCount; ++level)
+        {
+            const double error = double(m_Ranges[level].error) * view.maximumScale;
+            const double safeZ = nearestZ - error;
+            if (safeZ <= view.nearPlane) continue;
+            // Same conservative off-axis bound and 10% margin as the former
+            // compute selector. All inputs already live on the render thread.
+            const double pixelX = view.projectionPixels.x * error * (1. + largestX / nearestZ) / safeZ;
+            const double pixelY = view.projectionPixels.y * error * (1. + largestY / nearestZ) / safeZ;
+            if (std::isfinite(pixelX) && std::isfinite(pixelY) &&
+                (std::max)(pixelX, pixelY) <= double(view.maximumPixelError) * .9)
+                selected = level;
+        }
     }
-    constants.errorsAndScale.w = view.maximumScale;
-    constants.viewBounds = view.viewBounds;
-    constants.projectionNearError = { view.projectionPixels.x, view.projectionPixels.y,
-        view.nearPlane, view.maximumPixelError };
-    constants.instanceAndRangeCount[0] = instanceCount;
-    constants.instanceAndRangeCount[1] = m_RangeCount;
-    context->UpdateSubresource(m_Constants.Get(), 0u, nullptr, &constants, 0u, 0u);
-    ID3D11Buffer* buffer = m_Constants.Get();
-    ID3D11UnorderedAccessView* uav = m_ArgumentsUAV.Get();
-    context->CSSetConstantBuffers(0u, 1u, &buffer);
-    context->CSSetUnorderedAccessViews(0u, 1u, &uav, nullptr);
-    context->CSSetShader(m_Program->shader.Get(), nullptr, 0u);
-    context->Dispatch(1u, 1u, 1u);
-    // End ownership before the arguments become an indirect-draw input.
-    uav = nullptr;
-    buffer = nullptr;
-    context->CSSetUnorderedAccessViews(0u, 1u, &uav, nullptr);
-    context->CSSetConstantBuffers(0u, 1u, &buffer);
-    context->CSSetShader(nullptr, nullptr, 0u);
+    result = { m_Ranges[selected].count, m_Ranges[selected].first, selected };
     return S_OK;
 }
 

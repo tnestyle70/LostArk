@@ -2,6 +2,7 @@
 #include "AnimationSkillBindingDocument.h"
 #include "CompositionWorkbenchSession.h"
 #include "DataJson.h"
+#include <array>
 #include <filesystem>
 #include <memory>
 
@@ -35,6 +36,9 @@ private:
     bool Refresh_Monsters();
     bool Select_Monster(const ACTION& action);
     bool Save_Product();
+    bool Save_FlightLogic();
+    void Render_FlightLogic();
+    bool Save_Composition();
     const DATA_JSON_VALUE* Find_Action(const DATA_JSON_VALUE& root, const ACTION& action) const;
     bool Replace_Action(DATA_JSON_VALUE& root, const ACTION& action, DATA_JSON_VALUE replacement) const;
     std::filesystem::path Owner_Path(const ACTION& action) const;
@@ -46,5 +50,8 @@ private:
     std::string m_Status;
     bool m_Loaded = false, m_MonstersLoaded = false;
     std::string m_MonsterStatus;
+    std::array<float, 3> m_FlightWindow{};
+    float m_FlightClipSeconds = 0.f;
+    bool m_HasFlightWindow = false, m_FlightDirty = false;
 };
 }

@@ -67,6 +67,7 @@ float4 g_vCamPosition;
 
 // Optional source skeletal material shares this shader's existing skinned VS.
 uint g_ArtistModelCueProfile = 0u;
+uint g_ALTVCaptureBoneIndex = 0xffffffffu;
 float4 g_ArtistModelAmbient = 0.f;
 uint g_SourceTextureClampUMask = 0u;
 uint g_SourceTextureClampVMask = 0u;
@@ -132,7 +133,15 @@ struct VS_OUT
     float4 vWorldPos : TEXCOORD1;
     float4 vProjPos : TEXCOORD2;
     float4 vSourceExtraUV : TEXCOORD3;
+    float fALTVCaptureWeight : TEXCOORD4;
 };
+
+float ALTVCaptureBoneWeight(uint4 indices, float4 weights, uint captureBoneIndex)
+{
+    return saturate(dot(weights, float4(indices.x == captureBoneIndex ? 1.f : 0.f,
+        indices.y == captureBoneIndex ? 1.f : 0.f, indices.z == captureBoneIndex ? 1.f : 0.f,
+        indices.w == captureBoneIndex ? 1.f : 0.f)));
+}
 
 VS_OUT VS_MAIN(VS_IN input)
 {
@@ -160,6 +169,7 @@ VS_OUT VS_MAIN(VS_IN input)
     output.vWorldPos = mul(position, g_WorldMatrix);
     output.vProjPos = output.vPosition;
     output.vSourceExtraUV = float4(input.vTexcoord1, input.vTexcoord2);
+    output.fALTVCaptureWeight = ALTVCaptureBoneWeight(input.vBlendIndices, input.vBlendWeights, g_ALTVCaptureBoneIndex);
     return output;
 }
 
@@ -497,7 +507,7 @@ float4 Evaluate_EffectModelCueNative(VS_OUT input, bool frontFace : SV_IsFrontFa
         captureInput.color = nativeInput.color;
         captureInput.dynamicParameter = g_ALTVSourceMaterialParameters[8u];
         captureInput.frontFace = frontFace;
-        color = ALTVNative178(captureInput);
+        color = ALTVNative178(captureInput, input.fALTVCaptureWeight);
     }
     else if ((g_ArtistModelCueProfile >= 560u && g_ArtistModelCueProfile <= 659u) ||
         (g_ArtistModelCueProfile >= 720u && g_ArtistModelCueProfile <= 819u) ||
@@ -588,113 +598,7 @@ SCENE_COLOR_BLOOM_OUT PS_MAIN_EFFECT_MODEL_CUE_NATIVE(VS_OUT input, bool frontFa
 
 #endif // SOURCE_CHARACTER_PROGRAM_GROUP == 0
 
-// Source BLEND_Translucent surfaces drawn after scene lighting. The same native base
-// and light programs as the deferred marker-5 path run here per forward light.
-float4 g_SourceCharacterLightConstants[64];
-#include "Shader_SourceCharacterLightPrograms.hlsli"
-#include "Shader_SceneHeightFog.hlsli"
-
-SOURCE_CHARACTER_NATIVE_INPUT MakeSourceCharacterForwardLightInput(VS_OUT input,
-    float3 cameraPosition, float3 lightDirection, float3 lightColor)
-{
-    SOURCE_CHARACTER_NATIVE_INPUT light = (SOURCE_CHARACTER_NATIVE_INPUT)0;
-    float3 t = SourceCharacterSafeUnit(input.vTangent.xyz);
-    const float3 n = SourceCharacterSafeUnit(input.vNormal.xyz);
-    t = SourceCharacterSafeUnit(t - n * dot(t, n));
-    const float3 b = SourceCharacterSafeUnit(-input.vBinormal.xyz);
-    const float3 view = SourceCharacterSafeUnit(cameraPosition - input.vWorldPos.xyz);
-    const float3 direction = SourceCharacterSafeUnit(lightDirection);
-    const float4x4 viewProjection = mul(g_ViewMatrix, g_ProjMatrix);
-    light.values[0] = float4(t.x, b.x, n.x, 0.f);
-    light.values[1] = float4(t.y, b.y, n.y,
-        dot(cross(t.xzy, b.xzy), n.xzy) < 0.f ? -1.f : 1.f);
-    light.values[2] = 1.f;
-    light.values[4] = float4(input.vTexcoord, input.vSourceExtraUV.yx);
-    light.values[5] = float4(dot(t, direction), dot(b, direction), dot(n, direction), 1.f);
-    light.values[7] = float4(dot(t, view), dot(b, view), dot(n, view), 1.f);
-    light.values[8] = float4(input.vWorldPos.xzy * 100.f, 1.f);
-    if (84u == g_SourceCharacterProgram)
-    {
-        // Ghost's native direct VS uses UV/light/view/position in 2/3/5/6.
-        light.values[2] = float4(input.vTexcoord, 0.f, 0.f);
-        light.values[3] = light.values[5];
-        light.values[5] = light.values[7];
-        light.values[6] = light.values[8];
-    }
-    light.projection[0] = viewProjection[0] * 0.01f;
-    light.projection[1] = viewProjection[2] * 0.01f;
-    light.projection[2] = viewProjection[1] * 0.01f;
-    light.projection[3] = viewProjection[3];
-    light.lightColor = lightColor;
-    light.shadow = 1.f;
-    return light;
-}
-
-SCENE_COLOR_BLOOM_OUT PS_MAIN_SOURCE_CHARACTER_TRANSLUCENT(VS_OUT input, bool frontFace : SV_IsFrontFace)
-{
-    if (6u != g_SourceCharacterProgram && 7u != g_SourceCharacterProgram &&
-        18u != g_SourceCharacterProgram && 84u != g_SourceCharacterProgram &&
-        88u != g_SourceCharacterProgram && 99u != g_SourceCharacterProgram) discard;
-    const float3 camera = -mul((float3x3)g_ViewMatrix, g_ViewMatrix[3].xyz);
-    float3 ambient = 0.f;
-    [loop] for (uint ambientIndex = 0u; ambientIndex < g_SourceMapForwardLightCount; ++ambientIndex)
-    {
-        float3 unusedDirection;
-        const float attenuation = SourceCharacterForwardLightAttenuation(ambientIndex,
-            input.vWorldPos.xyz, input.vNormal.xyz, unusedDirection);
-        if (attenuation > 0.f)
-            ambient += g_SourceMapForwardLightColorExponent[ambientIndex].rgb *
-                g_SourceMapForwardLightAmbient[ambientIndex].rgb * attenuation;
-    }
-    // Base programs never read lightColor; program 88 takes the scene ambient
-    // through it as its unbound engine sky-light rows.
-    const SOURCE_CHARACTER_NATIVE_INPUT baseInput = MakeSourceCharacterInput(input.vTexcoord,
-        input.vSourceExtraUV, input.vWorldPos.xyz, input.vTangent.xyz, input.vBinormal.xyz,
-        input.vNormal.xyz, camera, input.vProjPos, mul(g_ViewMatrix, g_ProjMatrix),
-        float3(0.f, 1.f, 0.f), ambient, 1.f, frontFace);
-    const SOURCE_CHARACTER_NATIVE_OUTPUT base = EvaluateSourceCharacterBase(baseInput);
-    const float opacity = saturate(base.targets[0].a);
-    if (base.discarded || opacity <= 1e-4f) discard;
-
-    float3 direct = 0.f;
-    [loop] for (uint index = 0u; index < g_SourceMapForwardLightCount; ++index)
-    {
-        const float4 colorExponent = g_SourceMapForwardLightColorExponent[index];
-        float3 direction;
-        const float attenuation = SourceCharacterForwardLightAttenuation(index,
-            input.vWorldPos.xyz, input.vNormal.xyz, direction);
-        if (attenuation <= 0.f) continue;
-        const SOURCE_CHARACTER_NATIVE_INPUT lightInput =
-            MakeSourceCharacterForwardLightInput(input, camera, direction, colorExponent.rgb);
-        SOURCE_CHARACTER_NATIVE_OUTPUT lit = (SOURCE_CHARACTER_NATIVE_OUTPUT)0;
-        lit.discarded = true;
-#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 1
-        if (6u == g_SourceCharacterProgram)
-            lit = SourceCharacterLight6(lightInput);
-        else if (7u == g_SourceCharacterProgram)
-            lit = SourceCharacterLight7(lightInput);
-#endif
-#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 17
-        if (18u == g_SourceCharacterProgram)
-            lit = SourceCharacterLight18(lightInput);
-#endif
-#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 84
-        if (84u == g_SourceCharacterProgram)
-            lit = SourceCharacterLight84(lightInput);
-        else if (88u == g_SourceCharacterProgram)
-            lit = SourceCharacterLight88(lightInput);
-        else if (99u == g_SourceCharacterProgram)
-            lit = SourceCharacterLight99(lightInput);
-#endif
-        if (!lit.discarded) direct += lit.targets[0].rgb * attenuation;
-    }
-
-    float3 color = base.targets[3].rgb * ambient + direct;
-    const float4 fog = EvaluateSceneFog(input.vWorldPos.xyz, camera);
-    color = color * fog.w + fog.rgb + base.targets[0].rgb;
-    return Write_SceneColorAndBloom(float4(color, opacity));
-}
-
+#include "Shader_SourceCharacterForward.hlsli"
 
 // Opt-in Effect model casters share the exact visible native coverage/dissolve.
 uint g_EffectModelCueShadowAlphaClip = 1u;

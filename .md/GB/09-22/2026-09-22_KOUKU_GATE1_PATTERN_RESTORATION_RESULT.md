@@ -103,6 +103,8 @@ G1 화염파동은14개 그룹의 전체 중심과 기존 방향을 유지한 �
 
 ## G08. Interaction 준비·취소 후속 검증
 
+후속 소규모 오디오 요청: `Level_CharacterSelect.cpp`의 Initialize 성공 직전에 로비와 동일한 `Sound/BGM/Lobby/bgm_wallpaperin.wav`를 `CRuntimeAssetRoot::Resolve → CGameInstance::Play_Music(...,1.f)`로 연결했다. 기존 WAV를 재사용하므로 추가 Resources는 없다. 해당 TU의 Debug scratch compile과 diff check PASS(`out/CharacterSelectBgm20260922/compile.log`); 이 후속 변경의 Product 재링크·청취는 수행하지 않았다.
+
 Clown/MAZE 첫 action의 비동기 리소스 준비 지연을 실제 Server action age 안에서 재시도하도록 보완했다. queue가 수락한 action은 중복 제출하지 않고 clip/playRate, Server lock, Effect duration을 지난 요청은 버린다. 선택적 typed weak `PendingAdmission`을 Character가 action 동안 소유하며 새 action·취소·사망·class/form 교체 시 해제한다. service의 두 pending commit 경로도 만료 여부를 확인하므로 같은 프레임에 취소된 이전 action이 뒤늦게 생성되지 않는다. active E의 자연 꼬리와 기존 nullopt 호출자는 유지한다.
 
 현재 실제 branch·age/lock 함수·commit guard를 추출한 C++ probe는87검사 실패0이다. 모델과 queue 주변은 test double이며 실제 GPU 검증과 구분한다. source SHA 및 로그는 `out/Gate1EffectReaudit20260922/interaction-retry-source-receipt.json`과 `clown-maze-ping-review.md`를 따른다. 이5개 CPP/H를 포함한 공식 Debug Product 빌드는 위 receipt에서 통과했다.

@@ -55,6 +55,14 @@ public:
     bool Save(Engine::CModel& model, std::string& status);
     bool Sample(const Engine::CModel& model, const std::string& clip, float timeMs,
         std::vector<float4x4_t>& pose, std::string& status) const;
+    bool Create_FromSourceRange(const Engine::CModel& model, const std::string& name,
+        const std::string& source, uint32_t sourceStartMs, uint32_t sourceEndMs,
+        float playRate, std::string& status);
+    bool Create_HeldPose(const Engine::CModel& model, const std::string& name,
+        const std::string& source, uint32_t sourceTimeMs, uint32_t durationMs, std::string& status);
+    bool Create_AncientSeaFlightStudies(const Engine::CModel& model, std::string& status);
+    bool Retime_Clip(const Engine::CModel& model, const std::string& name,
+        uint32_t durationMs, std::string& status);
 private:
     std::string m_Baseline;
     bool m_Existed = false;

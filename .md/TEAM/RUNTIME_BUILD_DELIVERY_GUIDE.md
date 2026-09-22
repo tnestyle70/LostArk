@@ -24,6 +24,9 @@ Resources 폴더 자체를 선택할 수도 있다. 받는 PC의 portable 폴더
 [Release ZIP 안내](../../Release/zipRelease.md)에서 관리한다. 이번 VS 빌드 캡처를 새 Product pipeline
 실행 receipt로 대신 기록하지 않는다. ZIP 파일 검증과 실제 4인 화면·레이드 준비 성공은 구분한다.
 기존 v5 ZIP은 보존한다.
+현재 팀 LAN 정본은 사용자 데스크탑 `192.168.0.22:7777`이다. 위 v6 ZIP의 파일명·hash와
+launcher의 `192.168.0.14`는 당시 배포본의 기록이며, 문서 수정만으로 기존 ZIP/launcher가 갱신되지는 않는다.
+현재 소스 실행은 [네트워크 연결 가이드](네트워크연결가이드.md)의 endpoint sync와 빌드를 따른다.
 
 | 포함 경로 | 소비 계약 |
 |---|---|

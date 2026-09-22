@@ -1155,6 +1155,27 @@ def _validate_product_effect_reachability(
                         )
                     )
 
+    # CClassSelectionPresentation reads this optional authoring document through
+    # CProjectDataRoot and spawns each phase effect via the ordinary catalog.
+    class_selection_path = root / "Data/Camera/ClassSelection.cinematics.json"
+    if class_selection_path.is_file():
+        class_selection, _ = _read_json(class_selection_path)
+        if (class_selection.get("schema") != "lostark.class-selection-cinematics"
+                or class_selection.get("formatVersion") != 1
+                or not isinstance(class_selection.get("scenes"), list)):
+            raise ContractError("ClassSelection cinematic Effect consumer is invalid")
+        for scene in class_selection["scenes"]:
+            if not isinstance(scene, dict):
+                raise ContractError("ClassSelection scene must be an object")
+            for phase_name in ("intro", "loop"):
+                phase = scene.get(phase_name)
+                if not isinstance(phase, dict) or not isinstance(phase.get("effects", []), list):
+                    raise ContractError(f"ClassSelection {phase_name} Effect list is invalid")
+                for index, effect in enumerate(phase.get("effects", [])):
+                    reachable_ids.add(_require_stable_id(
+                        effect.get("assetId") if isinstance(effect, dict) else None,
+                        f"ClassSelection {phase_name}.effects[{index}].assetId"))
+
     missing_product = sorted(reachable_ids - product_effect_ids)
     if missing_product:
         raise ContractError(

@@ -288,6 +288,9 @@ struct VEHICLE_SKILL_ENTRY final
 	std::uint32_t skillId = 0u;
 	std::string inputSlot;
 	std::vector<std::string> vehicleClips;
+	f32_t flightLoopStartSeconds = 0.f;
+	f32_t flightLoopEndSeconds = 0.f;
+	f32_t flightLandingStartSeconds = 0.f;
 	std::vector<VEHICLE_SKILL_RIDER_ENTRY> riders;
 	std::vector<VEHICLE_SKILL_EFFECT_CUE> effectCues;
 	std::vector<VEHICLE_SKILL_SOUND_CUE> soundCues;

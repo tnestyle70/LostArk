@@ -1,4 +1,4 @@
-﻿[CmdletBinding()]
+[CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)]
     [ValidatePattern('^[A-Za-z0-9_.-]+$')]
@@ -1380,6 +1380,34 @@ function Read-MapWaterDocument {
     return @([IO.File]::ReadAllLines($Path, [Text.Encoding]::UTF8))
 }
 
+function Get-SequenceNativeMaterialContract {
+    param([string]$Family)
+    # Read the generated Client packer so publisher admission follows the same
+    # named inputs and texture expressions as CWorldSequenceDocument::Validate.
+    if ($null -eq $script:sequenceNativeContracts) { $script:sequenceNativeContracts = @{} }
+    if ($script:sequenceNativeContracts.ContainsKey($Family)) { return $script:sequenceNativeContracts[$Family] }
+    $header = Join-Path $ProjectRoot 'Client\Public\SourceCharacterMaterialParameters.h'
+    $source = [IO.File]::ReadAllText($header, [Text.Encoding]::UTF8)
+    $pattern = '(?ms)^    if \(staged\.program == 0u && family == "' + [regex]::Escape($Family) + '"\)\s*\{(?<body>.*?)^    \}'
+    $blocks = [regex]::Matches($source, $pattern)
+    if ($blocks.Count -ne 1) { throw "World object native family has no unique generated Client contract: $Family" }
+    $body = $blocks[0].Groups['body'].Value
+    $program = [regex]::Match($body, 'staged\.program = ([0-9]+)u;')
+    if (-not $program.Success -or [int]$program.Groups[1].Value -in 80..83) {
+        throw "World object native family requires an unsupported post-pack contract: $Family"
+    }
+    $names = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    foreach ($match in [regex]::Matches($body, 'parameter\("([^"\r\n]+)"\)')) { [void]$names.Add($match.Groups[1].Value) }
+    $mask = 0
+    foreach ($match in [regex]::Matches($body, 'staged\.(?:base|light)TextureMask = ([0-9]+)u;')) {
+        $mask = $mask -bor [int]$match.Groups[1].Value
+    }
+    if ($names.Count -eq 0 -or $mask -lt 0 -or $mask -gt 65535) { throw "Invalid generated native material contract: $Family" }
+    $contract = @{ ParameterNames = @($names); TextureMask = $mask }
+    $script:sequenceNativeContracts[$Family] = $contract
+    return $contract
+}
+
 function Read-WorldSequenceDocument {
     param([string]$Path)
     if ([IO.FileInfo]::new($Path).Length -gt 16777216) { throw 'World sequence source exceeds the Client 16 MiB admission limit' }
@@ -1608,11 +1636,11 @@ function Read-WorldSequenceDocument {
                 if ($material.materialName -isnot [string] -or [Text.Encoding]::UTF8.GetByteCount($material.materialName) -notin 1..63 -or
                     $material.sourceMaterial -isnot [string] -or [Text.Encoding]::UTF8.GetByteCount($material.sourceMaterial) -notin 1..512 -or
                     $material.materialName -match '[\x00-\x1f\x7f]' -or $material.sourceMaterial -match '[\x00-\x1f\x7f]' -or
-                    $material.family -cne 'source.character.monster-pbr-masked.v1') {
+                    $material.family -isnot [string] -or $material.family -cnotmatch '^source\.character\.[a-z0-9.-]+\.v1$') {
                     throw 'World object material identity or native family is invalid'
                 }
-                # Exact named inputs of the selected native Base/Light pair, program 21.
-                $parameterNames = @('1.use_dyeing_sp','1.use_emissive_flickerspeed_fixed','beckmannspecular_constant_max','buffcolor','constantoutline','constantoutline_blink','constantoutline_color','diffusecolor','emissive_color','emissive_flicker_speed','emissive_intensity','emissive_intensitymin','fresnel_radius','fresnel_rimlightintensity','fx_color_desaturation_actiontool','fx_color_desaturation_buffsettool','fx_color_intensity_actiontool','fx_color_intensity_buffsettool','hit_color','ibl_color_bottom','ibl_color_top','ibl_exposer','ibl_intensity','ibl_normal_smooth','ibl_reflect_lodbias','metalicness_power','normaltex_intensity','orennayar','orennayar_brightness','pbr_specular_intensity','pbr_specular_power','roughness_power','selectioncolor','shadowfactor','specular_power_limit','state','state_noise','trans_rim_hard','trans_rim_inradius','transcolor','transcolor_rimlight ')
+                $nativeContract = Get-SequenceNativeMaterialContract $material.family
+                $parameterNames = $nativeContract.ParameterNames
                 Assert-ExactJsonProperties $material.parameters $parameterNames 'World object native material parameters'
                 foreach ($name in $parameterNames) {
                     $value = $material.parameters.$name
@@ -1626,13 +1654,13 @@ function Read-WorldSequenceDocument {
                         }
                     }
                 }
-                if ($material.textures -isnot [array] -or $material.textures.Count -ne 8) {
-                    throw 'World object native material requires eight texture expressions'
+                if ($material.textures -isnot [array] -or $material.textures.Count -gt 16) {
+                    throw 'World object native material texture expression count is invalid'
                 }
                 $textureMask = 0
                 foreach ($texture in $material.textures) {
                     Assert-ExactJsonProperties $texture @('expressionIndex','assetId','colorSpace') 'World object native material texture'
-                    if (-not (Test-JsonNumber $texture.expressionIndex) -or [double]$texture.expressionIndex % 1 -ne 0 -or $texture.expressionIndex -notin 0..7 -or
+                    if (-not (Test-JsonNumber $texture.expressionIndex) -or [double]$texture.expressionIndex % 1 -ne 0 -or $texture.expressionIndex -notin 0..15 -or
                         $texture.assetId -isnot [string] -or $texture.colorSpace -cnotin @('srgb','linear')) {
                         throw 'Invalid world object native material texture'
                     }
@@ -1644,7 +1672,7 @@ function Read-WorldSequenceDocument {
                         throw "World object material texture is missing: $($texture.assetId)"
                     }
                 }
-                if ($textureMask -ne 255) { throw 'World object native texture coverage is incomplete' }
+                if ($textureMask -ne $nativeContract.TextureMask) { throw 'World object native texture coverage is incomplete' }
             }
             $objectResources[$resource.objectId] = $resource
         }
@@ -1741,7 +1769,7 @@ function Read-WorldSequenceDocument {
                 throw "World sequence track is invalid: $($template.sequenceId)"
             }
             $keys = @($track.keys)
-            if ($keys.Count -lt 2 -or $keys.Count -gt 256) {
+            if ($keys.Count -lt 2 -or $keys.Count -gt 4096) {
                 throw "World sequence key count is invalid: $($template.sequenceId)/$($track.slotId)"
             }
             $previous = -1
@@ -2823,7 +2851,7 @@ function Read-MapMaterialDocument {
             if ($document.formatVersion -ne 2) { throw 'Native map material requires formatVersion 2' }
             $nativeFields = @('assetId','materialName','sourceMaterial','family','parameters','textures')
             if ($null -ne $row.PSObject.Properties['bakedLighting']) {
-                $supportsNativeBaked = $row.family -cin @('source.character.monster-862fa1000fe2.v1','source.character.monster-3c300c108ac5.v1','source.character.monster-7373ec8df226.v1','source.character.monster-a2e0ec089348.v1')
+                $supportsNativeBaked = $row.family -cin @('source.character.monster-862fa1000fe2.v1','source.character.monster-3c300c108ac5.v1','source.character.monster-7373ec8df226.v1','source.character.monster-a2e0ec089348.v1','source.map.emissive-reflection.v1','source.character.static-map-real-pbr-masked.v1')
                 if ($row.family -cmatch '^source\.map\.translucent-(\d+)\.v1$') {
                     $nativeProgram = [int]$Matches[1]
                     $supportsNativeBaked = $nativeProgram -ge 44 -and $nativeProgram -le 63 -and $nativeProgram -notin @(47,53,55)
@@ -2831,6 +2859,10 @@ function Read-MapMaterialDocument {
                 elseif ($row.family -cmatch '^source\.map\.water-(\d+)\.v1$') {
                     $nativeProgram = [int]$Matches[1]
                     $supportsNativeBaked = $nativeProgram -ge 40 -and $nativeProgram -le 43
+                }
+                elseif ($row.family -cmatch '^source\.character\.static-map-native-(\d+)\.v1$') {
+                    $nativeProgram = [int]$Matches[1]
+                    $supportsNativeBaked = ($nativeProgram -ge 214 -and $nativeProgram -le 234) -or $nativeProgram -eq 237
                 }
                 if (-not $supportsNativeBaked) { throw 'Unsupported native baked lighting family' }
                 $nativeFields += 'bakedLighting'

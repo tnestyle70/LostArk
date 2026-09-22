@@ -40,13 +40,17 @@ PATTERN_ID = "KAKULSAYDON_G1_PATTERN_3"
 PREFIX = "kouku.gate2.intro"
 BASIS = np.array([[1., 0., 0.], [0., 0., 1.], [0., -1., 0.]])
 BONE_MODELS = {}
+BONE_MODEL_PRE_SCALES = {}
 
 
-def bind_bone_model(actor, model, group, clip_name):
+def bind_bone_model(actor, model, group, clip_name, model_pre_scale=.01):
     matches = [animation for animation in model.animations if animation.name == clip_name]
     if len(matches) != 1:
         raise ValueError('Bone attachment requires one named clip: ' + clip_name)
     BONE_MODELS[actor] = (model, group, matches[0], {})
+    if not math.isfinite(model_pre_scale) or model_pre_scale <= 0.:
+        raise ValueError('Bone attachment requires a positive model pre-scale')
+    BONE_MODEL_PRE_SCALES[actor] = model_pre_scale
 
 
 def read(path):
@@ -192,7 +196,7 @@ def world_pose(rows, group, actor, seconds, matinee=329, interp_data=394):
             local=[wm.affine_matrix(s,q,t)for t,q,s in sampled]
             cache[cache_key]=[np.array(x).reshape(4,4)for x in wm.combined_transforms(parent.skeleton_bones,local)]
         idx=next(i for i,b in enumerate(parent.skeleton_bones)if b.name.lower()==p['basebonename'].lower())
-        bone=cache[cache_key][idx].copy();bone[3,:3]*=.01
+        bone=cache[cache_key][idx].copy();bone[3,:3]*=BONE_MODEL_PRE_SCALES.get(p['base'],.01)
         bone_rot=bone[:3,:3].T
         bone_rot/=np.linalg.norm(bone_rot,axis=0)
         pp,pr=world_pose(rows,parent_group,p['base'],seconds,matinee,interp_data)

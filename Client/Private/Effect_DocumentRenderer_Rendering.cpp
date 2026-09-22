@@ -470,6 +470,24 @@ HRESULT Client::CEffectDocumentRenderer::Bind_ModelCueNativeMaterial(const EFFEC
 		Ambient.z += Light.vAmbient.z;
 	}
 	const auto& Shader = m_pAnimatedModelShader;
+    uint32_t captureBoneIndex = UINT32_MAX;
+    if (Resource.iSourceMaterialProfile == 178u)
+    {
+        // This exact source mesh contains one central cube and 24 satellite cubes.
+        // Only the named central rigid skin island transports the frozen scene.
+        const auto model = m_ModelCueResources.find(Cue.strCueId);
+        if (Cue.strCueId != "altv.source.notify036.cube" || Cue.strModelAssetId !=
+                "Effect/DimensionMaster/Models/SK_SWP_CUB_00/sk_swp_cub_00_sk.wmodel" ||
+            model == m_ModelCueResources.end() || !model->second.pModel)
+            return Fail_RenderOperation("Capture cube requires its exact source model cue.", E_FAIL, true);
+        const int32_t bone = model->second.pModel->Find_BoneIndex("b_cube_1_02");
+        if (bone < 0 || bone >= 512)
+            return Fail_RenderOperation("Capture cube central bone is unavailable.", E_FAIL, true);
+        // The installed exact WModel preserves the same named skeleton/skin palette order.
+        captureBoneIndex = static_cast<uint32_t>(bone);
+    }
+    if (FAILED(Shader->Bind_RawValue("g_ALTVCaptureBoneIndex", &captureBoneIndex, sizeof(captureBoneIndex))))
+        return Fail_RenderOperation("Capture cube bone mask binding failed.", E_FAIL, true);
 	// Vehicle PlaySkeletalMesh skins add their native directional light PS per forward light.
 	if ((Resource.iSourceMaterialProfile == 3828u ||
 		(Resource.iSourceMaterialProfile >= 3831u && Resource.iSourceMaterialProfile <= 3833u)) &&
@@ -594,7 +612,6 @@ HRESULT Client::CEffectDocumentRenderer::Render_ShadowModelCues(
             return FailShadow(std::move(poseError));
         HRESULT result = Apply_ModelCueSourceMaterialTracks(cue, model, local);
         if (FAILED(result)) return FailShadow(m_strRenderFailureDetail);
-        const uint32_t sceneReadMode = 0u;
         const uint32_t alphaClip = cue.eAlphaMode == EFFECT_MODEL_CUE_ALPHA_MODE::MASKED_SURFACE ? 1u : 0u;
         if (FAILED(m_pAnimatedModelShader->Bind_Matrix("g_WorldMatrix", &world)) ||
             FAILED(CGameInstance::Get().Bind_Transform(m_pAnimatedModelShader, "g_ViewMatrix", D3DTS::VIEW)) ||
@@ -602,7 +619,6 @@ HRESULT Client::CEffectDocumentRenderer::Render_ShadowModelCues(
             FAILED(CGameInstance::Get().Bind_ShadowLight_ShaderResource(m_pAnimatedModelShader, "g_EffectModelCueShadowLightViewMatrix", D3DTS::VIEW)) ||
             FAILED(CGameInstance::Get().Bind_ShadowLight_ShaderResource(m_pAnimatedModelShader, "g_EffectModelCueShadowLightProjMatrix", D3DTS::PROJ)) ||
             FAILED(m_pAnimatedModelShader->Bind_RawValue("g_vCamPosition", camera, sizeof(*camera))) ||
-            FAILED(m_pAnimatedModelShader->Bind_RawValue("g_EffectSceneReadMode", &sceneReadMode, sizeof(sceneReadMode))) ||
             FAILED(m_pAnimatedModelShader->Bind_RawValue("g_EffectModelCueShadowAlphaClip", &alphaClip, sizeof(alphaClip))) ||
             FAILED(m_pAnimatedModelShader->Bind_RawValue("g_EffectModelCueColorMultiply", &cue.vColorMultiply, sizeof(cue.vColorMultiply))) ||
             FAILED(m_pAnimatedModelShader->Bind_RawValue("g_EffectModelCueOpacity", &cue.fOpacity, sizeof(cue.fOpacity))))

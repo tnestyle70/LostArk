@@ -207,6 +207,91 @@ int LostArk::Server::Run_ServerVehicleRidingContractTests()
 		INVALID_VEHICLE_ID == rider.iVehicleId,
 		"Dismount clears the vehicle");
 
+    // The same authority path drives all four phases; no Client transform is involved.
+    const auto* sea = bern->m_VehicleCatalog.Find_Vehicle(ANCIENT_SEA_VEHICLE_ID);
+    tests.Require(sea && sea->Has_Flight() && sea->fFlightMaximumHeight > sea->fFlightHoverHeight,
+        "Ancient Sea loads published flight bounds and phase durations");
+    if (sea && sea->Has_Flight())
+    {
+        tests.Require(bern->Apply_SetVehicleRiding(rider,
+            Make_VehicleRequest(7u, WORLD_ID::BERN, ANCIENT_SEA_VEHICLE_ID)).eResult == VEHICLE_RIDING_RESULT::ACCEPTED,
+            "Ancient Sea mounts through the existing authority contract");
+        const float ground = rider.fPositionY;
+        C2S_USE_SKILL toggle{}; toggle.iSkillId = 98523u; toggle.iClientSequence = 20u;
+        tests.Require(bern->Try_StartVehicleSkill(rider, toggle) && rider.eVehicleFlightPhase == VEHICLE_FLIGHT_PHASE::TAKEOFF,
+            "E starts authoritative takeoff");
+        const auto flyTicks = [&](unsigned count)
+        {
+            while (count--) { ++bern->m_iServerTick; bern->Update_VehicleSkill(rider, TICK_SECONDS); }
+        };
+        flyTicks(60u);
+        tests.Require(rider.eVehicleFlightPhase == VEHICLE_FLIGHT_PHASE::FLYING &&
+            Near(rider.fPositionY, ground + sea->fFlightHoverHeight), "Takeoff becomes sustained flight at hover height");
+        flyTicks(240u);
+        tests.Require(rider.eVehicleFlightPhase == VEHICLE_FLIGHT_PHASE::FLYING,
+            "Flight continues past the original E action duration");
+        C2S_MOVE input{}; input.eIntent = PLAYER_MOVE_INTENT::VEHICLE_FLIGHT;
+        input.iClientSequence = rider.iLastMoveSequence + 1u; input.fVerticalInput = 1.f;
+        bern->Handle_Move(RIDER_SESSION, input);
+        flyTicks(6u);
+        tests.Require(rider.fPositionY > ground + sea->fFlightHoverHeight, "Space input ascends on the Server");
+        for (unsigned i = 0u; i < 220u; ++i)
+        {
+            ++input.iClientSequence; bern->Handle_Move(RIDER_SESSION, input); flyTicks(1u);
+        }
+        tests.Require(Near(rider.fPositionY, ground + sea->fFlightMaximumHeight), "Flight clamps at the authored altitude ceiling");
+        const float top = rider.fPositionY;
+        input.fVerticalInput = -1.f; ++input.iClientSequence;
+        bern->Handle_Move(RIDER_SESSION, input); flyTicks(8u);
+        tests.Require(rider.fPositionY < top, "Ctrl input descends without ending the wing loop");
+        flyTicks(90u);
+        const float stopped = rider.fPositionY; flyTicks(30u);
+        tests.Require(std::abs(rider.fPositionY - stopped) < .001f,
+            "Missing or focus-lost input expires instead of drifting indefinitely");
+        const auto lastSequence = rider.iLastMoveSequence;
+        input.fVerticalInput = 1.f; bern->Handle_Move(RIDER_SESSION, input);
+        tests.Require(rider.iLastMoveSequence == lastSequence && rider.fVehicleFlightInputY == -1.f,
+            "Replayed flight input cannot replace the last accepted intent");
+        const float startX = rider.fPositionX, startZ = rider.fPositionZ;
+        bool movedHorizontally = false;
+        bool turnWasBounded = true;
+        for (unsigned direction = 0u; direction < 4u && !movedHorizontally; ++direction)
+        {
+            input.fVerticalInput = 0.f;
+            input.fGoalX = direction == 0u ? 1.f : (direction == 1u ? -1.f : 0.f);
+            input.fGoalZ = direction == 2u ? 1.f : (direction == 3u ? -1.f : 0.f);
+            for (unsigned tick = 0u; tick < 8u; ++tick)
+            {
+                ++input.iClientSequence; bern->Handle_Move(RIDER_SESSION, input);
+                const float previousYaw = rider.fYawDegrees;
+                flyTicks(1u);
+                turnWasBounded &= std::abs(std::remainder(rider.fYawDegrees - previousYaw, 360.f)) <= 5.001f;
+            }
+            movedHorizontally = std::hypot(rider.fPositionX - startX, rider.fPositionZ - startZ) > .02f;
+        }
+        tests.Require(movedHorizontally && turnWasBounded,
+            "Typed WASD moves along authoritative walkable ground with bounded heading turns");
+        input.fGoalX = input.fGoalZ = 0.f;
+        ++input.iClientSequence; bern->Handle_Move(RIDER_SESSION, input); flyTicks(30u);
+        const float landingGround = rider.fVehicleFlightGroundY;
+        toggle.iClientSequence = 21u;
+        tests.Require(bern->Try_StartVehicleSkill(rider, toggle) && rider.eVehicleFlightPhase == VEHICLE_FLIGHT_PHASE::LANDING,
+            "A second E starts landing without an old skill cooldown blocking it");
+        tests.Require(!bern->Try_StartVehicleSkill(rider, toggle), "A duplicate E cannot restart the landing clock");
+        flyTicks(240u);
+        tests.Require(rider.eVehicleFlightPhase == VEHICLE_FLIGHT_PHASE::GROUNDED &&
+            rider.eAction == PLAYER_ACTION_STATE::NONE && Near(rider.fPositionY, landingGround) &&
+            rider.iVehicleFlightPhaseStartTick == 0u, "Landing commits the validated ground and clears flight state");
+        toggle.iClientSequence = 22u;
+        bern->Try_StartVehicleSkill(rider, toggle); flyTicks(60u);
+        rider.eAction = PLAYER_ACTION_STATE::KNOCKDOWN;
+        bern->Enforce_VehicleRidingState();
+        tests.Require(rider.iVehicleId == INVALID_VEHICLE_ID &&
+            rider.eVehicleFlightPhase == VEHICLE_FLIGHT_PHASE::GROUNDED &&
+            rider.eAction == PLAYER_ACTION_STATE::KNOCKDOWN && Near(rider.fPositionY, landingGround),
+            "Forced dismount restores ground without erasing the Server forced action");
+    }
+
 	auto valtan = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
 	tests.Require(valtan->Is_Ready(), "Valtan room loads");
 	if (valtan->Is_Ready())
@@ -222,9 +307,27 @@ int LostArk::Server::Run_ServerVehicleRidingContractTests()
 		raider.iVehicleId = GOLDEN_TERPEION;
 		valtan->Enforce_VehicleRidingState();
 		tests.Require(INVALID_VEHICLE_ID == raider.iVehicleId,
-			"A raid arena never replicates a mounted player");
+			"A raid arena never replicates an ordinary mounted player");
+        tests.Require(VEHICLE_RIDING_RESULT::ACCEPTED == valtan->Apply_SetVehicleRiding(raider,
+            Make_VehicleRequest(2u, WORLD_ID::VALTAN_ARENA, ANCIENT_SEA_VEHICLE_ID)).eResult,
+            "Valtan admits only the explicit Ancient Sea exception");
+        valtan->Enforce_VehicleRidingState();
+        tests.Require(raider.iVehicleId == ANCIENT_SEA_VEHICLE_ID, "Valtan snapshot enforcement retains Ancient Sea");
 	}
 
+    auto kouku = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+    tests.Require(kouku->Is_Ready(), "Kouku room loads for the Ancient Sea exception");
+    if (kouku->Is_Ready())
+    {
+        SERVER_PLAYER& raider = kouku->m_Players[RIDER_PLAYER];
+        raider.iPlayerId = RIDER_PLAYER; raider.iCurrentHp = raider.iMaximumHp = 50000u;
+        tests.Require(kouku->Apply_SetVehicleRiding(raider, Make_VehicleRequest(1u,
+            WORLD_ID::KAKULSAYDON_ARENA, GOLDEN_TERPEION)).eResult == VEHICLE_RIDING_RESULT::REJECTED_WORLD_NOT_ALLOWED,
+            "Kouku still rejects ordinary vehicles");
+        tests.Require(kouku->Apply_SetVehicleRiding(raider, Make_VehicleRequest(2u,
+            WORLD_ID::KAKULSAYDON_ARENA, ANCIENT_SEA_VEHICLE_ID)).eResult == VEHICLE_RIDING_RESULT::ACCEPTED,
+            "Kouku admits Ancient Sea");
+    }
 	std::cout << "vehicle riding failures: " << tests.failures << '\n';
 	return 0 == tests.failures ? 0 : 1;
 }

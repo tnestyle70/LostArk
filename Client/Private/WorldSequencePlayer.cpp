@@ -233,7 +233,8 @@ bool_t CWorldSequencePlayer::Prepare_AreaLoad(const uint32_t levelIndex,
 	};
 	if (levelIndex >= ETOUI(LEVEL::END) || areaId.empty())
 		return fail("World sequence preparation Area or level is invalid");
-	const auto path = CMapAssetCatalog::Get_MapDataRoot() /
+	const auto mapRoot = CMapAssetCatalog::Get_MapDataRoot();
+	const auto path = mapRoot /
 		(std::filesystem::path(areaId).wstring() + L".worldsequences.json");
 	std::error_code fileError;
 	if (!std::filesystem::exists(path, fileError))
@@ -255,41 +256,56 @@ bool_t CWorldSequencePlayer::Prepare_AreaLoad(const uint32_t levelIndex,
 				record.signedScale, asset && asset->renderProfile.renderMode != MAP_ASSET_RENDER_MODE::BACKGROUND });
 		}
 		if (cancelled()) return false;
-		CDeployPropCatalog deployCatalog;
-		if (!deployCatalog.Load_Default(areaId)) return fail(deployCatalog.Get_Status());
-		std::unordered_map<std::string, WORLD_SEQUENCE_DEPLOY_INFO> assetClips;
-		for (const auto& asset : deployCatalog.Get_Assets())
+		// Deploy is an optional Area layer. A missing pair has no targets; a
+		// partial/corrupt pair must still fail, and document validation rejects
+		// any DEPLOY_PLACEMENT binding against an absent layer.
+		const auto areaPath = std::filesystem::path(areaId).wstring();
+		const bool hasDeployCatalog = std::filesystem::exists(
+			mapRoot / (areaPath + L".deployassets"), fileError);
+		if (fileError) return fail("Could not inspect world sequence Deploy catalog");
+		const bool hasDeployPlacements = std::filesystem::exists(
+			mapRoot / (areaPath + L".deployplacements"), fileError);
+		if (fileError) return fail("Could not inspect world sequence Deploy placements");
+		if (hasDeployCatalog != hasDeployPlacements)
+			return fail("World sequence Deploy layer is incomplete: catalog and placements must both exist");
+		if (hasDeployCatalog)
 		{
-			if (cancelled()) return false;
-			WORLD_SEQUENCE_DEPLOY_INFO info;
-			if (asset.kind == DEPLOY_PROP_MODEL_KIND::ANIM)
+			CDeployPropCatalog deployCatalog;
+			if (!deployCatalog.Load_Default(areaId)) return fail(deployCatalog.Get_Status());
+			std::unordered_map<std::string, WORLD_SEQUENCE_DEPLOY_INFO> assetClips;
+			for (const auto& asset : deployCatalog.Get_Assets())
 			{
-				// Clone shares mesh/material resources and never creates a live object
-				// or submits context commands. Only its immutable clip metadata is read.
-				const auto model = std::dynamic_pointer_cast<CModel>(CGameInstance::Get().Clone_Prototype(
-					levelIndex, asset.intactPrototypeTag));
-				if (!model) return fail("World sequence Deploy model is not prepared: " + asset.id);
-				info.animationClips.reserve(model->Get_NumAnimations());
-				for (uint32_t index = 0u; index < model->Get_NumAnimations(); ++index)
+				if (cancelled()) return false;
+				WORLD_SEQUENCE_DEPLOY_INFO info;
+				if (asset.kind == DEPLOY_PROP_MODEL_KIND::ANIM)
 				{
-					const char_t* name = model->Get_AnimationName(index);
-					f32_t position = 0.f, duration = 0.f;
-					const f32_t rate = model->Get_AnimationTickPerSecond(index);
-					// Same admission as CDeployPropObject::Get_AnimationClips().
-					if (name && name[0] && model->Get_AnimationProgress(index, position, duration) &&
-						std::isfinite(duration) && duration >= 0.f && std::isfinite(rate) && rate > 0.f)
-						info.animationClips.emplace_back(name);
+					// Clone shares mesh/material resources and never creates a live object
+					// or submits context commands. Only its immutable clip metadata is read.
+					const auto model = std::dynamic_pointer_cast<CModel>(CGameInstance::Get().Clone_Prototype(
+						levelIndex, asset.intactPrototypeTag));
+					if (!model) return fail("World sequence Deploy model is not prepared: " + asset.id);
+					info.animationClips.reserve(model->Get_NumAnimations());
+					for (uint32_t index = 0u; index < model->Get_NumAnimations(); ++index)
+					{
+						const char_t* name = model->Get_AnimationName(index);
+						f32_t position = 0.f, duration = 0.f;
+						const f32_t rate = model->Get_AnimationTickPerSecond(index);
+						// Same admission as CDeployPropObject::Get_AnimationClips().
+						if (name && name[0] && model->Get_AnimationProgress(index, position, duration) &&
+							std::isfinite(duration) && duration >= 0.f && std::isfinite(rate) && rate > 0.f)
+							info.animationClips.emplace_back(name);
+					}
+					info.animationTargetSupported = !info.animationClips.empty();
 				}
-				info.animationTargetSupported = !info.animationClips.empty();
+				assetClips.emplace(asset.id, std::move(info));
 			}
-			assetClips.emplace(asset.id, std::move(info));
-		}
-		staged->deploy.reserve(deployCatalog.Get_Placements().size());
-		for (const auto& placement : deployCatalog.Get_Placements())
-		{
-			const auto found = assetClips.find(placement.assetId);
-			if (found == assetClips.end()) return fail("World sequence Deploy asset metadata is missing");
-			staged->deploy.emplace(placement.runtimePlacementId, found->second);
+			staged->deploy.reserve(deployCatalog.Get_Placements().size());
+			for (const auto& placement : deployCatalog.Get_Placements())
+			{
+				const auto found = assetClips.find(placement.assetId);
+				if (found == assetClips.end()) return fail("World sequence Deploy asset metadata is missing");
+				staged->deploy.emplace(placement.runtimePlacementId, found->second);
+			}
 		}
 	}
 	if (cancelled()) return false;

@@ -2,6 +2,7 @@
 #include "EffectAuthoringSequencer.h"
 #include "EffectAuthoringResourceTree.h"
 #include "EffectEditingSession.h"
+#include "CompositionAnimationResource.h"
 #include "Model.h"
 #include "RuntimeAssetRoot.h"
 
@@ -52,13 +53,17 @@ void ReadAnimationRows(Rows& rows, const Kind animationKind)
     const auto model = CAnimationTargetService::Resolve_Model();
     if (!model) return;
     const auto asset = CAnimationTargetService::Resolve_AssetName();
+    const auto displayNames = Read_CompositionAnimationDisplayNames(asset);
     std::set<std::string> names;
     for (std::uint32_t i = 0; i < model->Get_NumAnimations(); ++i)
     {
         const auto* name = model->Get_AnimationName(i);
         if (!name || !*name) continue;
-        typename Rows::value_type row; row.kind = animationKind; row.id = row.label = name;
-        row.category = asset;
+        typename Rows::value_type row; row.kind = animationKind; row.id = name;
+        const auto display = displayNames.find(name);
+        row.label = display == displayNames.end() ? name : display->second + " | " + name;
+        for (const auto& segment : CompositionAnimationCategory(asset))
+        { if (!row.category.empty()) row.category += '/'; row.category += segment; }
         float position = 0.f, duration = 0.f;
         const float rate = model->Get_AnimationTickPerSecond(i);
         if (!names.insert(row.id).second) row.status = "The model contains an ambiguous clip name.";
@@ -68,6 +73,31 @@ void ReadAnimationRows(Rows& rows, const Kind animationKind)
         else row.durationMs = static_cast<std::uint32_t>(std::ceil(duration / rate * 1000.f));
         rows.push_back(std::move(row));
     }
+}
+
+std::string SavedEffectCategory(const CEffectAuthoringResourceTree::RESOURCE& source)
+{
+    const std::pair<const char*, const char*> families[] = {
+        {"effect.lancemaster.", "Character/LanceMaster"}, {"effect.gunslinger.", "Character/Gunslinger"},
+        {"effect.slayer.", "Character/Slayer"}, {"effect.artist.", "Character/Artist"},
+        {"effect.dimensionmaster.", "Character/DimensionMaster"}, {"effect.warlord.", "Character/Warlord"},
+        {"effect.guardianknight.", "Character/GuardianKnight"}, {"effect.valtan.", "Boss/Valtan"},
+        {"effect.kouku.", "Boss/KoukuSaydon"}, {"effect.vehicle.", "Character Transform/Mounts"},
+        {"effect.world.", "World"}, {"effect.bern.", "World/Bern"}, {"effect.esther.", "World/Esther"},
+        {"boss.kouku.", "Boss/KoukuSaydon"}, {"kouku.", "Boss/KoukuSaydon"},
+        {"bingo.", "Boss/KoukuSaydon/Bingo"}, {"cardmaze.", "Boss/KoukuSaydon/Card Maze"},
+        {"boss.valtan.", "Boss/Valtan"}, {"esther.", "World/Esther"} };
+    std::string fallback = "Other Effects";
+    for (const auto& [prefix, category] : families)
+        if (source.strAssetId.starts_with(prefix)) { fallback = category; break; }
+    if (source.CategoryPath.empty()) return fallback;
+    std::string result;
+    const auto& root = source.CategoryPath.front();
+    if (root == "KoukuSaydon" || root == "Valtan") result = "Boss";
+    else if (fallback.starts_with("Character/")) result = "Character";
+    for (const auto& segment : source.CategoryPath)
+    { if (!result.empty()) result += '/'; result += segment; }
+    return result;
 }
 
 bool ReadColliderDefinitions(std::vector<KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE>& rows,
@@ -139,14 +169,30 @@ bool CEffectAuthoringSequencer::Refresh_CompositionResourceInventory()
     std::vector<CEffectAuthoringResourceTree::RESOURCE> authored;
     std::string error;
     if (CEffectAuthoringResourceTree::Read_V1Inventory(authored, error))
+    {
+        std::vector<CEffectAuthoringResourceTree::RESOURCE> organization;
+        std::string organizationError;
+        if (CEffectAuthoringResourceTree::Read_V1Organization(organization, organizationError))
+        {
+            std::unordered_map<std::string, const CEffectAuthoringResourceTree::RESOURCE*> byId;
+            for (const auto& row : organization) byId.emplace(row.strAssetId, &row);
+            for (auto& source : authored)
+                if (const auto found = byId.find(source.strAssetId); found != byId.end())
+                {
+                    source.CategoryPath = found->second->CategoryPath;
+                    if (!found->second->strDisplayName.empty()) source.strDisplayName = found->second->strDisplayName;
+                }
+        }
+        else { complete = false; problems += "Effect categories: " + organizationError; }
         for (const auto& source : authored)
         {
             RESOURCE_ENTRY row; row.kind = TRACK_KIND::EFFECT;
             row.key = {source.eKind, source.strAssetId}; row.id = "authored:" + source.strAssetId;
             row.label = source.strDisplayName.empty() ? source.strAssetId : source.strDisplayName;
-            row.category = "Saved Effects"; row.status = source.strStatus;
+            row.category = SavedEffectCategory(source); row.status = source.strStatus;
             staged.push_back(std::move(row));
         }
+    }
     else
     {
         complete = false; problems += "Saved Effects: " + error;
@@ -166,7 +212,9 @@ bool CEffectAuthoringSequencer::Refresh_CompositionResourceInventory()
                 EFFECT_RESOURCE_OWNER_KIND::V2_LEAF, source.strResourceId};
             row.id = std::string(source.eKind == EFFECT_V2_RESOURCE_KIND::GROUP ? "group:" : "effect:") + source.strResourceId;
             row.label = source.strDisplayName.empty() ? source.strResourceId : source.strDisplayName;
-            row.category = source.strCategory; row.status = source.strStatus; row.durationMs = source.iDurationMs;
+            CEffectAuthoringResourceTree::RESOURCE owner; owner.strAssetId = source.strResourceId;
+            row.category = SavedEffectCategory(owner) + "/V2/" + source.strCategory;
+            row.status = source.strStatus; row.durationMs = source.iDurationMs;
             staged.push_back(std::move(row));
         }
     else
@@ -246,6 +294,28 @@ void CEffectAuthoringSequencer::Rebuild_CompositionResourceTrees()
             if (!ResourceMatches(row.label, query) && !ResourceMatches(row.id, query) && !ResourceMatches(row.category, query)) continue;
             InsertResourceTree(m_ResourceTrees[family], ResourceSegments(row.category), i);
         }
+        if (family == static_cast<std::size_t>(TRACK_KIND::EFFECT) && m_ResourceQueries[family].empty())
+        {
+            auto& tree = m_ResourceTrees[family];
+            auto characters = std::find_if(tree.Children.begin(), tree.Children.end(),
+                [](const auto& node) { return node.strSegment == "Character"; });
+            if (characters == tree.Children.end())
+            {
+                COMPOSITION_RESOURCE_TREE_NODE node; node.strSegment = node.strStablePath = "Character";
+                tree.Children.push_back(std::move(node)); characters = std::prev(tree.Children.end());
+            }
+            for (std::size_t index = 0u; index < 7u; ++index)
+            {
+                const auto category = CompositionAnimationCategory(COMPOSITION_ANIMATION_TARGET_ASSET_NAMES[index]);
+                if (std::none_of(characters->Children.begin(), characters->Children.end(),
+                    [&](const auto& node) { return node.strSegment == category.back(); }))
+                {
+                    COMPOSITION_RESOURCE_TREE_NODE node; node.strSegment = category.back();
+                    node.strStablePath = "Character/" + node.strSegment;
+                    characters->Children.push_back(std::move(node));
+                }
+            }
+        }
         FinalizeResourceTree(m_ResourceTrees[family]);
     }
 }
@@ -291,11 +361,18 @@ void CEffectAuthoringSequencer::Render_CompositionResources(const bool embedded)
                     if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s%s%s", row.key.Is_Valid() ? row.key.strStableId.c_str() : row.id.c_str(),
                         row.status.empty() ? "" : "\n", row.status.c_str());
                     ImGui::PopID();
-                });
+                }, family == static_cast<std::size_t>(TRACK_KIND::EFFECT) ? "No saved effects." : nullptr);
             ImGui::EndChild();
             const auto selected = std::find_if(m_CompositionResources.begin(), m_CompositionResources.end(), [&](const auto& row)
                 { return static_cast<std::size_t>(row.kind) == family && row.id == m_SelectedResourceIds[family]; });
             ImGui::BeginDisabled(selected == m_CompositionResources.end() || !selected->status.empty());
+            if (selected != m_CompositionResources.end() &&
+                (selected->kind == TRACK_KIND::EFFECT || selected->kind == TRACK_KIND::SCREEN_POST))
+            {
+                if (ImGui::Button("Play Effect"))
+                    Preview(selected->key, selected->key.eOwnerKind == EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT ? 0u : selected->durationMs);
+                ImGui::SameLine();
+            }
             if (ImGui::Button("Add / Append"))
             {
                 bool added = false;

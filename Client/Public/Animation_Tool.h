@@ -85,6 +85,10 @@ public:
         uint64_t expectedGeneration, const std::string& clip, std::string& status,
         bool_t explicitSourceSelection = false);
     bool_t Has_CharacterActionCueChanges(const std::string& asset) const;
+    bool_t Save_CharacterActionCompositionCues(const std::string& asset,
+        const ANIMATION_SKILL_BINDING& previous, const ANIMATION_SKILL_BINDING& proposed,
+        const ANIMATION_EFFECT_CUE_DOCUMENT& cues, const std::string& expectedBytes,
+        std::string& committedBytes, std::string& status, bool validateOnly = false);
     /* Atomic .animevents SOUND row authoring for the Character Action
        Workbench.  This class stays the one owner of the cue document: each
        call refuses while any Animation Tool draft is dirty, then validates and

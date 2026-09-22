@@ -29,7 +29,7 @@ ClickMoveEffect의 optional prewarm에3개 asset을 추가했고 Level owner가 
 
 정상 통합 Product Debug 빌드의 최신 분할 codec/material/playback object로 기존 World marker CPU 진단을 세 문서에 한정해 다시 링크했다. 녹색4·파랑2·리스폰14의 모든 원본20 emitter가 유한한 transform/color와 함께 출력됐다. 각727/727/787 fixed-step 샘플, serialize/parse roundtrip, Save_Atomic, corrupt parse·duplicate stage 실패 시 기존 상태 보존, rewind 및 world root translation 검증을 통과했다. 유한 preview는12/12/13초 후 정리되며 owner-sustained는20초에서도 각각4/3/39개 particle 출력을 유지했다. 로그는 out/Gate3Aura20260922/cpu_probe_run.log다.
 
-통합 Product 빌드 로그는 out/GuardianPlaybackRepair20260922/build/20260922T042238189Z-Client-Debug.log를 따른다. Client/UI는 실행하지 않았으며 최종 원본 유사도·GPU 표시·트리거 화면 판정은 사용자 확인 대상이다.
+통합 Product Debug 빌드 및 실제 Server entry/respawn/아래층/NaN 검사는 `2026-09-22_GUARDIAN_PLAYBACK_REPAIR_RESULT.md`의 최종 검증 기록을 따른다. Client/UI는 실행하지 않았으며 최종 원본 유사도·GPU 표시·트리거 화면 판정은 사용자 확인 대상이다.
 
 ## 재현 경로
 

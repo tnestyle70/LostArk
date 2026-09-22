@@ -23,7 +23,7 @@ enum class COMPOSITION_WORKBENCH_BOSS : std::uint8_t
 // The target selects an authoring owner; gameplay class and boss IDs remain separate.
 enum class COMPOSITION_WORKBENCH_TARGET : std::uint8_t
 {
-    BOSS, CHARACTER, OBJECT, SEQUENCE
+    BOSS, CHARACTER, OBJECT, SEQUENCE, WORLD
 };
 
 // Shared resource ordering is independent from each document's typed owner.

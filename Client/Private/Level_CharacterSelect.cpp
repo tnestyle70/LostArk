@@ -35,6 +35,7 @@
 #include "NetworkWorldEntityCommandSink.h"
 #include "PlayableCharacterAssetService.h"
 #include "RaidEntryPreviewView.h"
+#include "RuntimeAssetRoot.h"
 #include "Transform.h"
 #include "UIInputRouter.h"
 #include "UILayoutRuntime.h"
@@ -141,6 +142,8 @@ CLevel_CharacterSelect::CLevel_CharacterSelect(
 
 CLevel_CharacterSelect::~CLevel_CharacterSelect()
 {
+	m_ClassSelectionPresentation.Clear();
+	m_ClassCinemaMap.Clear();
 	// Stop the owner before clearing level/catalog/replication state it observes.
 	m_pClassAssetPreparation.reset();
 	if (this == s_pActiveInstance)
@@ -224,6 +227,37 @@ HRESULT CLevel_CharacterSelect::Initialize()
 	if (FAILED(Ready_Camera()))
 		return E_FAIL;
 
+	CWorldSequencePlayer::TARGET_SET selectionTargets;
+	selectionTargets.levelIndex = ETOUI(LEVEL::CHARACTER_SELECT);
+	selectionTargets.pCatalog = &m_MapRuntime.Get_Catalog();
+	selectionTargets.pPlacements = &m_MapRuntime.Get_MutablePlacements();
+	selectionTargets.pDeployRuntime = &m_MapAuthoringDeploy;
+	selectionTargets.device = m_pDevice;
+	selectionTargets.context = m_pContext;
+	m_strClassCinemaPreparationFailure.clear();
+	bool_t cinemaBackgroundReady = false;
+	if (!CClassSelectionPresentation::Is_Configured())
+		m_strClassCinemaPreparationFailure = "Class selection manifest is missing: Data/Camera/ClassSelection.cinematics.json";
+	else if (!entry->pPresentationMapAreaId)
+		m_strClassCinemaPreparationFailure = "Class selection presentation background Area is not configured.";
+	else
+	{
+		cinemaBackgroundReady = m_ClassCinemaMap.Load_Area(ETOUI(LEVEL::CHARACTER_SELECT),
+			entry->pPresentationMapAreaId, entry->PresentationMapLoadScope);
+		if (!cinemaBackgroundReady)
+			m_strClassCinemaPreparationFailure = "Class selection background " +
+				std::string(entry->pPresentationMapAreaId) + ": " + m_ClassCinemaMap.Get_Status();
+	}
+	for (auto& placement : m_ClassCinemaMap.Get_MutablePlacements())
+		(void)CMapPlacementRuntime::Set_RuntimeSuppressed(placement, true);
+	if (!cinemaBackgroundReady)
+		OutputDebugStringA(("[Level_CharacterSelect][ClassCinema] " +
+			m_strClassCinemaPreparationFailure + "\n").c_str());
+	if (cinemaBackgroundReady &&
+		!m_ClassSelectionPresentation.Initialize(entry->pMapAreaId, selectionTargets, m_pCamera))
+		OutputDebugStringA(("[Level_CharacterSelect][ClassCinema] " +
+			m_ClassSelectionPresentation.Get_Status() + "\n").c_str());
+
 	m_pClassSelectView = std::make_unique<CUILayoutRuntime>(
 		m_pDevice, m_pContext, ETOUI(LEVEL::CHARACTER_SELECT), TEXT("Layer_UI"),
 		L"UI/ClassSelect/ClassSelect_Layout.json");
@@ -251,6 +285,10 @@ HRESULT CLevel_CharacterSelect::Initialize()
 		std::chrono::steady_clock::now() + CONNECTION_TIMEOUT;
 	m_strStatus =
 		"Lobby-approved Server Arena; waiting for replicated character...";
+
+	const filesystem::path bgmPath = CRuntimeAssetRoot::Resolve(
+		L"Sound/BGM/Lobby/bgm_wallpaperin.wav");
+	CGameInstance::Get().Play_Music(bgmPath.wstring(), 1.f);
 	return S_OK;
 }
 
@@ -306,6 +344,20 @@ void CLevel_CharacterSelect::Update(const f32_t fTimeDelta)
 		Update_ArenaSpawnButtons();
 	}
 	Update_Customizing(fTimeDelta);
+	if (!Can_PlayClassCinematic())
+		m_ClassSelectionPresentation.Stop();
+	else
+		m_ClassSelectionPresentation.Update(fTimeDelta);
+	if (m_ClassSelectionPresentation.Is_Active() &&
+		CGameInstance::Get().Get_DIKeyPressed(DIK_F6))
+		m_ClassSelectionPresentation.Stop();
+	const bool_t cinemaVisible = m_ClassSelectionPresentation.Is_Active();
+	if (cinemaVisible != m_isClassCinemaBackgroundVisible)
+	{
+		m_isClassCinemaBackgroundVisible = cinemaVisible;
+		for (auto& placement : m_ClassCinemaMap.Get_MutablePlacements())
+			(void)CMapPlacementRuntime::Set_RuntimeSuppressed(placement, !cinemaVisible);
+	}
 }
 
 HRESULT CLevel_CharacterSelect::Render()
@@ -536,6 +588,7 @@ bool_t CLevel_CharacterSelect::Bind_CameraTarget(
 
 bool_t CLevel_CharacterSelect::Request_ClassChange(const size_t index)
 {
+	m_ClassSelectionPresentation.Stop();
 	if (m_isCreateCharacterModalOpen || Is_CustomizingOpen() ||
 		MODE::SERVER_ARENA != m_eMode || CLevelTransitionService::Is_Pending() ||
 		index >= SUPPORTED_CLASSES.size() || nullptr == m_pPlayerCommandSink)
@@ -1146,7 +1199,7 @@ void CLevel_CharacterSelect::Update_ServerArena()
 	Advance_ClassAssetPreparation();
 	if (Is_ProductPointerHovered())
 		CGameInstance::Get().SetMouseButtonBlocked(DIM::LB, true);
-	if (!m_isCreateCharacterModalOpen && !Is_CustomizingOpen() &&
+	if (!m_isCreateCharacterModalOpen && !Is_ProductPresentationOpen() &&
 		!Is_AuthoritativeClassReplacementPending())
 	{
 		m_PlayerController.Update(
@@ -1211,6 +1264,7 @@ void CLevel_CharacterSelect::Return_ServerArenaToLobby(
 	const string& reason,
 	const char_t* pTransitionSource)
 {
+	m_ClassSelectionPresentation.Stop();
 	if (m_pClassAssetPreparation) m_pClassAssetPreparation->Cancel_AsyncPreparation();
 	m_iRequestedClassIndex.reset();
 	CAnimationTargetService::Unbind(m_pActiveCharacter);
@@ -1685,6 +1739,7 @@ void CLevel_CharacterSelect::Render_CreateCharacterModal()
 
 bool_t CLevel_CharacterSelect::Enter_Stage(const LOBBY_STAGE stage)
 {
+	m_ClassSelectionPresentation.Stop();
 	const char_t* stageName = Get_StageName(stage);
 	const char_t* transitionSource = Get_StageTransitionSource(stage);
 	if (MODE::SERVER_ARENA != m_eMode || nullptr == transitionSource ||
@@ -1771,6 +1826,16 @@ void CLevel_CharacterSelect::Render_CreateCharacterProductInputHost()
 	the modal is now CUI_Sprite art + CUIInputRouter WM_CHAR capture with no ImGui in it, so
 	only the click-consume and per-frame modal drive remain. */
 	Render_CreateCharacterModal();
+}
+
+bool_t CLevel_CharacterSelect::Can_PlayClassCinematic() const
+{
+	if (MODE::SERVER_ARENA != m_eMode || Is_CustomizingOpen() ||
+		m_isCreateCharacterModalOpen || CLevelTransitionService::Is_Pending()) return false;
+#ifdef _DEBUG
+	if (Is_DebugRaidEntryPreviewOpen()) return false;
+#endif
+	return true;
 }
 
 bool_t CLevel_CharacterSelect::Is_CustomizingOpen() const
@@ -1970,6 +2035,7 @@ void CLevel_CharacterSelect::Apply_CustomizingHair()
 
 void CLevel_CharacterSelect::Open_Customizing()
 {
+	m_ClassSelectionPresentation.Stop();
 	if (nullptr == m_pCustomizingView)
 		return;
 	m_pCustomizingView->Open();
@@ -2099,7 +2165,7 @@ void CLevel_CharacterSelect::Render_ProductStatus()
 	Drawn with the LOA font like every other product label -- ImGui is Debug-tool-only, and
 	this is the one product screen element that used to draw through it in Release builds. */
 #ifndef _DEBUG
-	if (nullptr == m_pClassSelectView || m_isCreateCharacterModalOpen || m_strStatus.empty())
+	if (nullptr == m_pClassSelectView || m_isCreateCharacterModalOpen || Is_ClassCinematicActive() || m_strStatus.empty())
 		return;
 
 	f32_t fX = 300.f;
@@ -2178,6 +2244,16 @@ void CLevel_CharacterSelect::Render_SelectionPanel()
 	else if (isReturning)
 		ImGui::TextDisabled("Returning to Lobby...");
 
+	ImGui::Separator();
+	ImGui::TextUnformatted("Class selection cinematic");
+	ImGui::TextWrapped("%s", Get_ClassCinematicStatus().c_str());
+	ImGui::BeginDisabled(!Can_PlayClassCinematic() ||
+		!m_ClassSelectionPresentation.Has_Class("GUARDIANKNIGHT"));
+	if (ImGui::Button("Play Guardian Knight intro / loop"))
+		(void)m_ClassSelectionPresentation.Play("GUARDIANKNIGHT");
+	ImGui::EndDisabled();
+	if (m_ClassSelectionPresentation.Is_Active() && ImGui::Button("Stop class cinematic"))
+		m_ClassSelectionPresentation.Stop();
 	ImGui::Separator();
 	ImGui::TextUnformatted("Playable class");
 	ImGui::BeginDisabled(!isServerArena || transitionPending ||
@@ -2586,6 +2662,13 @@ bool_t CLevel_CharacterSelect::Is_ProductPointerHovered() const
 
 namespace
 {
+	const char* Get_CinematicClassId(const size_t index)
+	{
+		constexpr const char* ids[] = {"LANCE_MASTER", "GUNSLINGER", "SLAYER", "ARTIST",
+			"DIMENSIONMASTER", "WARLORD", "GUARDIANKNIGHT"};
+		return index < std::size(ids) ? ids[index] : "";
+	}
+
 	string Get_SelectedJsonClassName(const size_t iSelectedClassIndex)
 	{
 		for (const CLASS_LIST_ENTRY& Entry : CLASS_LIST_ENTRIES)
@@ -2633,17 +2716,21 @@ void CLevel_CharacterSelect::Update_ClassList()
 		: string{};
 
 	for (const char* pId : ALWAYS_VISIBLE_CLASS_LIST_CHROME)
-		m_pClassSelectView->Set_SlotVisible(pId, true);
+		m_pClassSelectView->Set_SlotVisible(pId, !Is_ClassCinematicActive() ||
+			0 == std::strcmp(pId, "PanelBgRight") || 0 == std::strcmp(pId, "PanelBgRightBottom") ||
+			0 == std::strcmp(pId, "Frame"));
 	/* ownerClass filter CHUDRuntimeView's own Render(strSelectedClass, revision) used to apply
 	automatically -- CUILayoutRuntime has no such pass, so this shows only the selected class's
 	own right-panel slots and hides every other class's. */
 	for (const CLASS_OWNED_SLOT& Slot : CLASS_OWNED_SLOTS)
-		m_pClassSelectView->Set_SlotVisible(Slot.pSlotId, strSelectedClass == Slot.pOwnerClass);
+		m_pClassSelectView->Set_SlotVisible(Slot.pSlotId,
+			!Is_ClassCinematicActive() && strSelectedClass == Slot.pOwnerClass);
 
 	const bool_t hasCompleteProductButtons =
 		Has_CompleteProductButtonSlots(m_pClassSelectView.get());
 	for (const CHARACTER_SELECT_PRODUCT_SLOT& Slot : PRODUCT_BUTTON_SLOTS)
-		m_pClassSelectView->Set_SlotVisible(Slot.pSlotId, hasCompleteProductButtons);
+		m_pClassSelectView->Set_SlotVisible(Slot.pSlotId, hasCompleteProductButtons &&
+			(!Is_ClassCinematicActive() || 0 == std::strcmp(Slot.pSlotId, "GoBackIcon")));
 
 	CUIInputRouter& Router = CUIInputRouter::Get();
 	const f32_t fRefWidth = m_pClassSelectView->Get_ResolutionWidth();
@@ -2706,6 +2793,13 @@ void CLevel_CharacterSelect::Update_ClassList()
 			{
 				CMainApp::Play_UIButtonClickSound();
 				m_iExpandedCategory = bExpanded ? -1 : i;
+				if (!bExpanded && m_ClassSelectionPresentation.Has_Class(Get_CinematicClassId(Entry.iSupportedClassIndex)))
+				{
+					if (!m_ClassSelectionPresentation.Play(Get_CinematicClassId(Entry.iSupportedClassIndex)))
+						m_strStatus = m_ClassSelectionPresentation.Get_Status();
+				}
+				else
+					m_ClassSelectionPresentation.Stop();
 			}
 		}
 
@@ -2853,7 +2947,7 @@ void CLevel_CharacterSelect::Render_ClassListText()
 	the tags, so no text is drawn there. */
 	for (const CLASS_LIST_ENTRY& Entry : CLASS_LIST_ENTRIES)
 	{
-		if (Entry.iSupportedClassIndex != m_iSelectedClassIndex)
+		if (Is_ClassCinematicActive() || Entry.iSupportedClassIndex != m_iSelectedClassIndex)
 			continue;
 
 		/* Aligned against Warlord_NameSymbol's current rect (50x50 at y=191.29): text sits to
@@ -2951,7 +3045,7 @@ void CLevel_CharacterSelect::Update_ArenaSpawnButtons()
 	const f32_t fRefWidth = m_pClassSelectView->Get_ResolutionWidth();
 	const f32_t fRefHeight = m_pClassSelectView->Get_ResolutionHeight();
 	const bool_t bInteractable = MODE::SERVER_ARENA == m_eMode &&
-		!m_isCreateCharacterModalOpen &&
+		!m_isCreateCharacterModalOpen && !Is_ClassCinematicActive() &&
 		!Is_ClassPresentationPreparationPending() &&
 		!CLevelTransitionService::Is_Pending();
 
@@ -3113,6 +3207,7 @@ void CLevel_CharacterSelect::Update_ArenaSpawnButtons()
 
 void CLevel_CharacterSelect::Render_ArenaSpawnLabels()
 {
+	if (Is_ClassCinematicActive()) return;
 	/* Same MODE::SERVER_ARENA gate as Update_ClassList/Update_ArenaSpawnButtons -- these are
 	just the text captions for that same button art, so they must disappear and reappear
 	together with it instead of floating on screen without their buttons underneath. */

@@ -13,6 +13,7 @@
 #include "VIBuffer_Rect.h"
 
 #include "DirectXTK/DDSTextureLoader.h"
+#include "DirectXTK/WICTextureLoader.h"
 
 #include <algorithm>
 #include <cmath>
@@ -435,12 +436,21 @@ HRESULT Client::CEffectV2Object::Acquire_Texture(
 		if (Path.empty() || !std::filesystem::is_regular_file(Path))
 			return E_FAIL;
 		ComPtr<ID3D11ShaderResourceView> pView;
-		if (FAILED(DirectX::CreateDDSTextureFromFileEx(
-			pDevice.Get(), Path.c_str(), 0u, D3D11_USAGE_DEFAULT,
-			D3D11_BIND_SHADER_RESOURCE, 0u, 0u,
-			bSRGB ? DirectX::DDS_LOADER_FORCE_SRGB : DirectX::DDS_LOADER_IGNORE_SRGB,
-			nullptr, &pView)))
-			return E_FAIL;
+		// Screen overlays can reference PNGs; keep both decoders on the same color policy.
+		const bool_t bDDS = 0 == _wcsicmp(Path.extension().c_str(), L".dds");
+		const HRESULT hResult = bDDS ?
+			DirectX::CreateDDSTextureFromFileEx(
+				pDevice.Get(), Path.c_str(), 0u, D3D11_USAGE_DEFAULT,
+				D3D11_BIND_SHADER_RESOURCE, 0u, 0u,
+				bSRGB ? DirectX::DDS_LOADER_FORCE_SRGB : DirectX::DDS_LOADER_IGNORE_SRGB,
+				nullptr, &pView) :
+			DirectX::CreateWICTextureFromFileEx(
+				pDevice.Get(), Path.c_str(), 0u, D3D11_USAGE_DEFAULT,
+				D3D11_BIND_SHADER_RESOURCE, 0u, 0u,
+				bSRGB ? DirectX::WIC_LOADER_FORCE_SRGB : DirectX::WIC_LOADER_IGNORE_SRGB,
+				nullptr, &pView);
+		if (FAILED(hResult))
+			return hResult;
 		Found = g_TextureCache.emplace(strCacheKey, std::move(pView)).first;
 	}
 	OutView = Found->second;

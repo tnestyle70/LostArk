@@ -236,11 +236,14 @@ PS_OUT PS_MAIN(VS_OUT input)
     }
     if (g_SourceCharacterProgram != 0u)
     {
+        const float4 localPrimitive = g_SourceCharacterBaseConstants[62];
+        const float3 primitiveCenter = mul(float4(localPrimitive.xyz,1.f),g_WorldMatrix).xyz;
+        const float primitiveRadius = localPrimitive.w * max(length(g_WorldMatrix[0].xyz),max(length(g_WorldMatrix[1].xyz),length(g_WorldMatrix[2].xyz)));
         SOURCE_CHARACTER_GBUFFER source = EvaluateSourceCharacterGeometry(input.vTexcoord,
-            0.f, input.vWorldPos.xyz, input.vTangent.xyz, input.vBinormal.xyz,
+            IsSourceStaticMapSL10() ? input.vColor : 0.f, input.vWorldPos.xyz, input.vTangent.xyz, input.vBinormal.xyz,
             input.vNormal.xyz, input.vProjPos, input.vPosition, g_ViewMatrix, g_ProjMatrix, true,
             input.vLightmapUV, input.vLightmapAverageScale, input.vLightmapDirectionalScale,
-            input.vStaticShadowUV);
+            input.vStaticShadowUV, float4(primitiveCenter.x,-primitiveCenter.z,primitiveCenter.y,primitiveRadius)*100.f);
         output.vDiffuse = source.diffuse;
         output.vNormal = source.normal;
         output.vDepth = source.depth;
@@ -323,12 +326,20 @@ PS_OUT PS_MAIN(VS_OUT input)
             output.vPickPos.w = EncodeMapSurfaceGeometricNormal(input.vNormal.xyz,
                 g_HasBakedLighting != 0u && input.vLightmapAverageScale.w != 0.f);
         output.vPickPos.w = EncodeMapStaticShadowChannel(output.vPickPos.w);
-        // MRT4 carries already shaded source indirect light for selected families.
-        // Final resolve adds it as radiance; it is not an emissive material flag.
-        output.vEmissive = float4(EvaluateMapSourceIndirectLighting(surface,
+        float3 environmentSpecular;
+        const float3 indirect = EvaluateMapSourceIndirectLighting(surface,
             input.vLightmapUV, input.vLightmapAverageScale,
             input.vLightmapDirectionalScale, input.vWorldPos.xyz,
-            input.vTangent.xyz, input.vBinormal.xyz, input.vNormal.xyz) +
+            input.vTangent.xyz, input.vBinormal.xyz, input.vNormal.xyz, environmentSpecular);
+        // Marker 3 has no character geometry payload. Carry RNM/IBL separately
+        // so AO and moving-caster shadows never attenuate actual emission.
+        if (pbr)
+        {
+            output.vCharacterGeometry = float4(indirect, 0.f);
+            // PBR leaves RT6 free: preserve IBL for independent contribution views.
+            output.vCharacterSurface = float4(environmentSpecular, 0.f);
+        }
+        output.vEmissive = float4((pbr ? 0.f : indirect) +
             EvaluateMapSurfaceEmissive(input.vRawTexcoord),
             1.f - EvaluateMapStaticShadow(input.vStaticShadowUV));
         if (sourceBG) output.vCharacterSurface =
@@ -853,6 +864,33 @@ float4 PS_MAIN_SCREEN_CUTIN(VS_OUT input) : SV_TARGET0
     return float4(color, 1.f);
 }
 
+float4 g_SourceMapForwardLightAmbient[400];
+float SourceCharacterForwardLightAttenuation(uint index, float3 worldPosition, float3 normal,
+    out float3 direction)
+{
+    const float4 directionType = g_SourceMapForwardLightDirectionType[index];
+    direction = -directionType.xyz;
+    if (directionType.w <= 1.f)
+        return 1.f;
+    const float4 positionRange = g_SourceMapForwardLightPositionRange[index];
+    const float3 delta = positionRange.xyz - worldPosition;
+    const float distance = length(delta);
+    direction = distance > 1e-6f ? delta / distance : normal;
+    float attenuation = pow(saturate((positionRange.w - distance) /
+        max(positionRange.w, 1e-6f)), g_SourceMapForwardLightColorExponent[index].w);
+    if (directionType.w > 2.f)
+    {
+        const float4 coneShadow = g_SourceMapForwardLightConeShadow[index];
+        const float cone = saturate((dot(-direction, SourceCharacterSafeUnit(directionType.xyz)) -
+            coneShadow.y) / max(coneShadow.x - coneShadow.y, .0001f));
+        attenuation *= cone * cone;
+    }
+    return attenuation;
+}
+
+#define SOURCE_CHARACTER_FORWARD_CONSTANTS_PRESENT 1
+#include "Shader_SourceCharacterForward.hlsli"
+
 // BEGIN SHARED MODEL PASS PROGRAMS
 // Identical entry/profile/arguments compile once; pass states and indices stay unchanged.
 VertexShader BinaryMeshVS = compile vs_5_0 VS_MAIN();
@@ -862,6 +900,7 @@ VertexShader BinaryMeshSkyVS = compile vs_5_0 VS_MAIN_SKY();
 PixelShader BinaryMeshSkyPS = compile ps_5_0 PS_MAIN_SKY();
 PixelShader BinaryMeshShadowPS = compile ps_5_0 PS_MAIN_SHADOW();
 PixelShader BinaryMeshWaterPS = compile ps_5_0 PS_MAIN_WATER();
+PixelShader BinaryMeshSourceTranslucentPS = compile ps_5_0 PS_MAIN_SOURCE_CHARACTER_TRANSLUCENT();
 // END SHARED MODEL PASS PROGRAMS
 
 // Identical entry/profile/arguments compile once; pass states and indices stay unchanged.
@@ -1114,5 +1153,15 @@ technique11 DefaultTechnique
         VertexShader = BinaryMeshVS;
         GeometryShader = NULL;
         PixelShader = ChargeAfterimagePS;
+    }
+    // Index 24: native alpha materials on socketed equipment.
+    pass SourceCharacterTranslucentTwoSided
+    {
+        SetRasterizerState(RS_Cull_None);
+        SetDepthStencilState(DSS_ReadOnly, 0);
+        SetBlendState(BS_AlphaBlend, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = BinaryMeshVS;
+        GeometryShader = NULL;
+        PixelShader = BinaryMeshSourceTranslucentPS;
     }
 }

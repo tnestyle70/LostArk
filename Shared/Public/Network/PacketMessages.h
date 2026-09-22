@@ -371,12 +371,19 @@ namespace LostArk::Shared
 		END
 	};
 	//client->server move
+	enum class PLAYER_MOVE_INTENT : std::uint8_t { GROUND_GOAL, VEHICLE_FLIGHT, END };
+	enum class VEHICLE_FLIGHT_PHASE : std::uint8_t { GROUNDED, TAKEOFF, FLYING, LANDING, END };
+	inline constexpr VEHICLE_ID ANCIENT_SEA_VEHICLE_ID = 9523u;
+
 	struct C2S_MOVE
 	{
 		std::uint32_t iClientSequence = 0;
 
 		float fGoalX = 0.f;
 		float fGoalZ = 0.f;
+		// Flight mode carries a unit world XZ direction and vertical input, never position.
+		PLAYER_MOVE_INTENT eIntent = PLAYER_MOVE_INTENT::GROUND_GOAL;
+		float fVerticalInput = 0.f;
 	};
 	//근데 read가 const가 붙어야 하는 거 아닌가?
 	bool Write_Message(
@@ -1595,6 +1602,9 @@ namespace LostArk::Shared
 		A ridden vehicle implies a living, idle, normal-form player outside Mario
 		and pattern bind; the Server dismounts before any other action is sent. */
 		VEHICLE_ID iVehicleId = INVALID_VEHICLE_ID;
+		VEHICLE_FLIGHT_PHASE eVehicleFlightPhase = VEHICLE_FLIGHT_PHASE::GROUNDED;
+		std::uint32_t iVehicleFlightPhaseStartTick = 0u;
+		float fVehicleFlightPhaseDurationSeconds = 0.f;
 		/* Honor title worn over the head (protocol 89); INVALID_HONOR_TITLE_ID = none. */
 		HONOR_TITLE_ID iHonorTitleId = INVALID_HONOR_TITLE_ID;
 		/* KoukuSaydon interaction state. The card is the symbol a roulette

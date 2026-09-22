@@ -900,6 +900,8 @@ SOURCE_CHARACTER_NATIVE_OUTPUT SourceMapForward37(SOURCE_CHARACTER_NATIVE_INPUT 
     return output;
 }
 
+#include "Shader_SourceMapCharacterSelectPrograms.hlsli"
+
 #include "Shader_SourceMapWaterPrograms.hlsli"
 
 float4 EvaluateSourceMapWater(float2 uv,float3 worldPosition,float3 tangent,float3 binormal,
@@ -943,6 +945,7 @@ float4 EvaluateSourceMapWater(float2 uv,float3 worldPosition,float3 tangent,floa
 }
 
 #include "Shader_SourceMapTranslucentPrograms.hlsli"
+#include "Shader_SourceMapSL10Forward.hlsli"
 
 float4 EvaluateSourceMapTranslucent(float2 uv,float3 worldPosition,float3 tangent,float3 binormal,
     float3 normal,float4 clipPosition,float4 vertexColor,float4 extraUV,float2 lightmapUV,float3 cameraPosition)
@@ -966,8 +969,27 @@ float4 EvaluateSourceMapTranslucent(float2 uv,float3 worldPosition,float3 tangen
     input.projection[0]=vp[0];input.projection[1]=-vp[2];
     input.projection[2]=vp[1];input.projection[3]=vp[3]*100.f;
     SOURCE_CHARACTER_NATIVE_OUTPUT output=(SOURCE_CHARACTER_NATIVE_OUTPUT)0;
+    if (g_SourceCharacterProgram >= 214u)
+    {
+        input.hasBakedLighting = g_HasBakedLighting != 0u;
+        if(input.hasBakedLighting)
+        {
+            input.bakedAverage = g_BakedAverageTexture.Sample(SourceCharacterLookupSampler,lightmapUV).rgb * g_LightmapAverageScale.rgb;
+            input.bakedCoefficients = g_BakedDirectionalTexture.Sample(SourceCharacterLookupSampler,lightmapUV).rgb * g_LightmapDirectionalScale.rgb;
+        }
+        switch(g_SourceCharacterProgram)
+        {
+        case 224u: if(input.hasBakedLighting) output=SourceMapSL10Baked224(input);else output=SourceMapSL10Base224(input);break;
+        case 225u: if(input.hasBakedLighting) output=SourceMapSL10Baked225(input);else output=SourceMapSL10Base225(input);break;
+        case 226u: if(input.hasBakedLighting) output=SourceMapSL10Baked226(input);else output=SourceMapSL10Base226(input);break;
+        case 237u: if(input.hasBakedLighting) output=SourceMapSL10Baked237(input);else output=SourceMapSL10Base237(input);break;
+        }
+        if(output.discarded) discard;
+        return output.targets[0];
+    }
     switch(g_SourceCharacterProgram)
     {
+    case 209u:if(g_HasBakedLighting!=0u)output=SourceMapForward209Baked(input);else output=SourceMapForward209(input);break;
     case 44u:if(g_HasBakedLighting!=0u)output=SourceMapTranslucent44Baked(input);else output=SourceMapTranslucent44Base(input);break;
     case 45u:if(g_HasBakedLighting!=0u)output=SourceMapTranslucent45Baked(input);else output=SourceMapTranslucent45Base(input);break;
     case 46u:if(g_HasBakedLighting!=0u)output=SourceMapTranslucent46Baked(input);else output=SourceMapTranslucent46Base(input);break;
@@ -1010,7 +1032,7 @@ cbuffer SourceMapForwardLighting
 float3 EvaluateSourceMapDirect(float2 uv,float4 extraUV,float3 worldPosition,float3 tangent,
     float3 binormal,float3 normal,float4 clipPosition,float4 vertexColor,float3 cameraPosition)
 {
-    if(!(g_SourceCharacterProgram==40u || g_SourceCharacterProgram==41u || g_SourceCharacterProgram==42u || g_SourceCharacterProgram==43u || g_SourceCharacterProgram==44u || g_SourceCharacterProgram==45u || g_SourceCharacterProgram==46u || g_SourceCharacterProgram==48u || g_SourceCharacterProgram==49u || g_SourceCharacterProgram==50u || g_SourceCharacterProgram==51u || g_SourceCharacterProgram==52u || g_SourceCharacterProgram==54u || g_SourceCharacterProgram==56u || g_SourceCharacterProgram==57u || g_SourceCharacterProgram==58u || g_SourceCharacterProgram==59u || g_SourceCharacterProgram==60u || g_SourceCharacterProgram==61u || g_SourceCharacterProgram==62u || g_SourceCharacterProgram==63u))return 0.f;
+    if(!(g_SourceCharacterProgram==40u || g_SourceCharacterProgram==41u || g_SourceCharacterProgram==42u || g_SourceCharacterProgram==43u || g_SourceCharacterProgram==44u || g_SourceCharacterProgram==45u || g_SourceCharacterProgram==46u || g_SourceCharacterProgram==48u || g_SourceCharacterProgram==49u || g_SourceCharacterProgram==50u || g_SourceCharacterProgram==51u || g_SourceCharacterProgram==52u || g_SourceCharacterProgram==54u || g_SourceCharacterProgram==56u || g_SourceCharacterProgram==57u || g_SourceCharacterProgram==58u || g_SourceCharacterProgram==59u || g_SourceCharacterProgram==60u || g_SourceCharacterProgram==61u || g_SourceCharacterProgram==62u || g_SourceCharacterProgram==63u || g_SourceCharacterProgram==209u || g_SourceCharacterProgram==224u || g_SourceCharacterProgram==225u || g_SourceCharacterProgram==226u || g_SourceCharacterProgram==237u))return 0.f;
     const float3 t=SourceCharacterSafeUnit(tangent),b=SourceCharacterSafeUnit(binormal),n=SourceCharacterSafeUnit(normal);
     const float3 view=cameraPosition-worldPosition;
     const float4 tangentView=float4(dot(t,view),dot(b,view),dot(n,view),1.f);
@@ -1047,6 +1069,42 @@ float3 EvaluateSourceMapDirect(float2 uv,float4 extraUV,float3 worldPosition,flo
         SOURCE_CHARACTER_NATIVE_OUTPUT output=(SOURCE_CHARACTER_NATIVE_OUTPUT)0;
         switch(g_SourceCharacterProgram)
         {
+        case 224u:
+            input.values[0]=vertexColor;
+            input.values[2]=float4(uv,0.f,0.f);
+            input.values[3]=tangentLight;
+            input.values[5]=tangentView;
+            input.values[6]=clipPosition*100.f;
+            output=SourceMapSL10Direct224(input);break;
+        case 225u:
+            input.values[0]=vertexColor;
+            input.values[2]=float4(uv,0.f,0.f);
+            input.values[3]=tangentLight;
+            input.values[5]=tangentView;
+            input.values[6]=clipPosition*100.f;
+            output=SourceMapSL10Direct225(input);break;
+        case 226u:
+            input.values[0]=vertexColor;
+            input.values[2]=float4(uv,0.f,0.f);
+            input.values[3]=tangentLight;
+            input.values[5]=tangentView;
+            input.values[6]=clipPosition*100.f;
+            output=SourceMapSL10Direct226(input);break;
+        case 237u:
+            input.values[0]=vertexColor;
+            input.values[2]=float4(uv,0.f,0.f);
+            input.values[3]=tangentLight;
+            input.values[5]=tangentView;
+            input.values[6]=clipPosition*100.f;
+            output=SourceMapSL10Direct237(input);break;
+        case 209u:
+            input.values[0]=float4(t.x,b.x,n.x,0.f);
+            input.values[1]=float4(t.y,b.y,n.y,dot(cross(t,b),n)<0.f?-1.f:1.f);
+            input.values[4]=float4(uv,0.f,0.f);
+            input.values[5]=tangentLight;
+            input.values[7]=tangentView;
+            input.values[8]=sourcePosition;
+            output=SourceMapDirect209(input);break;
         case 40u:
             input.values[0].xyzw=(vertexColor).xyzw;
             input.values[1].xy=(float4(0.f,0.f,0.f,0.f)).xy;
@@ -1254,7 +1312,7 @@ float SourceMapShadowModulation(float sceneDepthCm, float clipWCm, float fogTran
     float strength = base < 0.000001f ? 0.f : exp2(log2(base)*depthPower);
     return fogTransmission*fogTransmission*(saturate(strength)-1.f)+1.f;
 }
-bool IsSourceMapForward() { return (g_SourceCharacterProgram>=33u && g_SourceCharacterProgram<=63u) || g_SourceCharacterProgram==65u; }
+bool IsSourceMapForward() { return (g_SourceCharacterProgram>=33u && g_SourceCharacterProgram<=63u) || g_SourceCharacterProgram==65u || g_SourceCharacterProgram==209u; }
 float4 EvaluateSourceMapForward(float2 uv,float3 worldPosition,float3 tangent,float3 binormal,
     float3 normal,float4 clipPosition,float4 vertexColor,float4 extraUV,float2 lightmapUV)
 {

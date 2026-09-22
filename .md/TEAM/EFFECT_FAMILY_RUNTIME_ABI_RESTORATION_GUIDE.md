@@ -790,3 +790,27 @@ V2의 화면 효과를 V1으로 옮길 때 프로필 이름만 복사하지 않�
 ### Native ScreenPost source material curves
 
 Admitted Artist/Kouku SCREEN_POST carrier도 기존 SourceTransformTrack의 materialParameterTracks binding을 검증한다. Build_NativeScreenPost는 문서 sample time과 source time origin으로 곡선을 평가한 parameter array를 snapshot에 복사한다. 정적 material 배열만 전달하면 원본 opacity/type 변화가 유실된다. Full-screen post의 LocalVF UV0와 viewport aspect를 실제 원본 VS/PS 식별자로 검토하며 일반 Particle/mesh 프로그램에 보정을 퍼뜨리지 않는다.
+
+### ModelCue optional castsShadow
+
+ModelCue의 optional boolean `castsShadow` 기본값은false다. true는 기존 CModel의 opaque/masked
+surface에만 허용하며 afterimage, Effect-native material, translucent surface는 validation에서
+거부한다. 같은 evaluated frame의 pose/root와 source material tracks를 surface/shadow가 공유한다.
+animated mesh pass15는 기존0~14의 인덱스를 보존한다. native coverage에는 scene View/Proj와
+camera를 유지하고 SV_POSITION에만 별도 light View/Proj를 사용한다. 별도 원본 decal element는
+이 모델 shadow 정책으로 대체하지 않는다. legacy default·malformed type·compiled cohort의
+pass/입력 계약과 최종 화면 판정은 서로 구분해 검증한다.
+
+
+### 정적 ambient의 화면 밖 시계 정책
+
+Map world placement의 LEVEL_ACTIVE + SOURCE_LOOP만 offscreen pause를 요청할 수 있다.
+서비스는 외부 owner/anchor/control이 없고 전체 source sprite bound를 증명한 occurrence에 한해
+최종 camera에서 simulation과 draw 제출을 생략한다. particle/RNG 상태는 보존하지만 hidden wall
+time은 누적하지 않으므로 재진입 시 연속 재생과 ambient 위상이 달라질 수 있다. 기존 draw-distance
+Stop/respawn, Server lifecycle, externally sampled trigger marker의 시간 계약은 유지한다.
+
+bound helper는 stationary affine root와 rigid camera를 요구한다. root 변이·non-rigid camera·
+미지원 source module·mesh/trail/light/screen/control은 fail-open한다. 새 source 기능이나 sprite VS
+변형을 추가할 때 이 admission을 함께 검토하고 모르는 변형을 기존 sphere에 조용히 포함하지 않는다.
+상세 지원 범위와 검증 증거는 [공통 최적화 RESULT](../GB/09-22/2026-09-22_BERN_RELEASE_PROFILER_OPTIMIZATION_RESULT.md)의 G07에 둔다.

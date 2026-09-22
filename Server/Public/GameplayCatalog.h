@@ -1200,6 +1200,7 @@ namespace LostArk::Server
 		std::string strEncounterId, strGateId, strFlowId, strSequenceCompositionId;
 		std::string strIntroPatternId, strClearPatternId, strPrimaryBossPlacementId;
 		std::string strEntrySequenceInstanceId;
+		std::string strLoopStartEntryId;
 		std::uint32_t iSequenceRevision = 0u, iIntroDurationMs = 0u, iClearDurationMs = 0u, iExpectedEntryCount = 0u;
 		std::vector<KOUKU_RAID_FLOW_ENTRY> Entries;
 		std::vector<KOUKU_RAID_ARRIVAL> Arrivals;

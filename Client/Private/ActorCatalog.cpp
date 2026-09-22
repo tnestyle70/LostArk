@@ -1,4 +1,5 @@
 #include "ActorCatalog.h"
+#include "Network/PacketMessages.h"
 
 #include "DataJson.h"
 #include "ProjectDataRoot.h"
@@ -22,6 +23,7 @@ namespace
 	std::vector<BOSS_ACTOR_ENTRY> g_Bosses;
 	using ModelMaterials = std::map<std::string, std::vector<Engine::MODEL_MATERIAL_OVERRIDE>, std::less<>>;
 	ModelMaterials g_BossModelMaterials;
+	ModelMaterials g_EquipmentModelMaterials;
 	std::vector<NPC_ACTOR_ENTRY> g_Npcs;
 	std::vector<MONSTER_ACTOR_ENTRY> g_Monsters;
 	std::vector<VEHICLE_ACTOR_ENTRY> g_Vehicles;
@@ -205,11 +207,12 @@ namespace
 
     bool_t ParseModelMaterialOverrides(const DATA_JSON_VALUE& row,
         ModelMaterials& replacements, CHARACTER_ACTOR_ENTRY* character = nullptr,
-        std::vector<CHARACTER_MATERIAL_PARAMETERS>* retainedParameters = nullptr)
+        std::vector<CHARACTER_MATERIAL_PARAMETERS>* retainedParameters = nullptr,
+        const size_t maximumRows = 128u)
     {
         const auto* definitions = row.Find("modelMaterialOverrides");
         if (!definitions) return true;
-        if (!definitions->Is_Array() || definitions->Get_Array().size() > 128u) return false;
+        if (!definitions->Is_Array() || definitions->Get_Array().size() > maximumRows) return false;
         std::set<std::pair<std::string,std::string>> names;
         for (const auto& definition : definitions->Get_Array())
         {
@@ -378,6 +381,27 @@ namespace
 			}
 			staged.push_back(std::move(entry));
 		}
+        // Optional named surfaces for lazily loaded customization parts. They are
+        // not default equipment and must not change a character's loadout/ownership.
+        ModelMaterials stagedEquipment;
+        if (!ParseModelMaterialOverrides(root, stagedEquipment, nullptr, nullptr, 4096u))
+            return false;
+        for (const auto& [asset, materials] : stagedEquipment)
+        {
+            if (!asset.starts_with("Character/") || asset.find("/Equipment/") == std::string::npos)
+                return false;
+            for (const auto& actor : staged)
+            {
+                if (asset == actor.bodyModel ||
+                    std::find(actor.equipmentModels.begin(), actor.equipmentModels.end(), asset) != actor.equipmentModels.end() ||
+                    std::find(actor.weaponModels.begin(), actor.weaponModels.end(), asset) != actor.weaponModels.end())
+                    return false;
+            }
+            for (const auto& material : materials)
+                if (material.surface.family != Engine::MODEL_SURFACE_FAMILY::SOURCE_CHARACTER)
+                    return false;
+        }
+        g_EquipmentModelMaterials = std::move(stagedEquipment);
 		g_Characters = std::move(staged);
 		return !g_Characters.empty();
 	}
@@ -1223,7 +1247,8 @@ namespace
 				const std::size_t optionalShake = hasLocomotionCues ?
                     (skillValue.Find("shakeCues") ? 1u : 0u) +
                     (skillValue.Find("directionalLightCues") ? 1u : 0u) +
-                    (skillValue.Find("materialVectorCues") ? 1u : 0u) : 0u;
+                    (skillValue.Find("materialVectorCues") ? 1u : 0u) +
+                    (skillValue.Find("flightWindow") ? 1u : 0u) : 0u;
 				if (!skillValue.Is_Object() || (hasSkillCues ? 6u : 4u) + optionalShake != skillValue.Get_Object().size() ||
 					!ReadRequiredU32(skillValue, "skillId", skill.skillId) ||
 					0u == skill.skillId ||
@@ -1259,6 +1284,17 @@ namespace
 				}
 				if (hasSkillCues && !ParseVehicleSkillCues(skillValue, skill))
 					return false;
+				if (const auto* window = skillValue.Find("flightWindow"))
+				{
+					if (entry.vehicleId != LostArk::Shared::ANCIENT_SEA_VEHICLE_ID || skill.inputSlot != "E" ||
+						!window->Is_Object() || window->Get_Object().size() != 3u || skill.vehicleClips.size() != 1u ||
+						!ReadRequiredNumber(*window, "loopStartSeconds", skill.flightLoopStartSeconds) ||
+						!ReadRequiredNumber(*window, "loopEndSeconds", skill.flightLoopEndSeconds) ||
+						!ReadRequiredNumber(*window, "landingStartSeconds", skill.flightLandingStartSeconds) ||
+						skill.flightLoopStartSeconds <= 0.f || skill.flightLoopEndSeconds <= skill.flightLoopStartSeconds ||
+						skill.flightLandingStartSeconds < skill.flightLoopEndSeconds || skill.flightLandingStartSeconds > 60.f)
+						return false;
+				}
 				entry.skills.push_back(std::move(skill));
 			}
 			if (!ParseModelMaterialOverrides(value, stagedMaterials, nullptr, &entry.modelMaterialParameters))
@@ -1300,6 +1336,7 @@ bool_t Client::CActorCatalog::Initialize()
 		g_Characters.clear();
 		g_Bosses.clear();
 		g_BossModelMaterials.clear();
+		g_EquipmentModelMaterials.clear();
 		g_Npcs.clear();
 		g_Monsters.clear();
 		g_Vehicles.clear();
@@ -1366,7 +1403,11 @@ bool_t Client::CActorCatalog::Build_ModelLoadDescription(
     {
         const auto found = g_BossModelMaterials.find(asset);
         const auto vehicle = g_VehicleModelMaterials.find(asset);
-        if (found != g_BossModelMaterials.end() && vehicle != g_VehicleModelMaterials.end())
+        const auto equipment = g_EquipmentModelMaterials.find(asset);
+        const unsigned int owners = unsigned(found != g_BossModelMaterials.end()) +
+            unsigned(vehicle != g_VehicleModelMaterials.end()) +
+            unsigned(equipment != g_EquipmentModelMaterials.end());
+        if (owners > 1u)
         {
             outStatus = "Model material ownership is ambiguous: " + asset;
             return false;
@@ -1375,6 +1416,8 @@ bool_t Client::CActorCatalog::Build_ModelLoadDescription(
             staged.materialOverrides = found->second;
         else if (vehicle != g_VehicleModelMaterials.end())
             staged.materialOverrides = vehicle->second;
+        else if (equipment != g_EquipmentModelMaterials.end())
+            staged.materialOverrides = equipment->second;
     }
 	outDesc = std::move(staged);
 	outStatus.clear();

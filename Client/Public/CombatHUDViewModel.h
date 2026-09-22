@@ -53,6 +53,7 @@ namespace Client
 			LostArk::Shared::PLAYER_MADNESS_FORM::NORMAL;
 		// The vehicle the Server has this player riding; 0 on foot.
 		std::uint32_t iVehicleId = 0u;
+		LostArk::Shared::VEHICLE_FLIGHT_PHASE eVehicleFlightPhase = LostArk::Shared::VEHICLE_FLIGHT_PHASE::GROUNDED;
 		// The honor title the Server has this player wearing; 0 = none.
 		std::uint32_t iHonorTitleId = 0u;
 		LostArk::Shared::KOUKU_HUD_MODE eKoukuHudMode = LostArk::Shared::KOUKU_HUD_MODE::NONE;

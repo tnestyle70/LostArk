@@ -463,10 +463,13 @@ function Assert-RenderingProfileDocument([object]$Document) {
         Assert-Color $light.specular "$profileId.light.specular"
 
         $shadow = $profile.shadow
-        Assert-ExactProperties $shadow @(
-            'enabled', 'focus', 'distance', 'orthographicWidth',
-            'orthographicHeight', 'near', 'far', 'depthBias',
-            'normalBias', 'strength') "$profileId.shadow"
+        $shadowFields = @('enabled', 'focus', 'distance', 'orthographicWidth',
+            'orthographicHeight', 'near', 'far', 'depthBias', 'normalBias', 'strength')
+        if ($shadow.PSObject.Properties.Name -contains 'dynamicBakedStrength') {
+            $shadowFields += 'dynamicBakedStrength'
+            Assert-FiniteFloatRange $shadow.dynamicBakedStrength 0.0 1.0 "$profileId.shadow.dynamicBakedStrength"
+        }
+        Assert-ExactProperties $shadow $shadowFields "$profileId.shadow"
         if ($shadow.enabled -isnot [bool]) {
             throw "$profileId.shadow.enabled must be boolean."
         }

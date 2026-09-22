@@ -139,6 +139,11 @@ public:
 	static void Collect_ValidationTargets(const TARGET_SET& targets,
 		WORLD_SEQUENCE_PLACEMENT_MAP& placements, WORLD_SEQUENCE_DEPLOY_MAP& deploy);
 	bool_t Has_ActiveInstances() const { return !m_Active.empty(); }
+    // Presentation controllers pack source-native parameters; only the named
+    // Object clone receives the constants. Shared prototypes remain immutable.
+    bool_t Set_ObjectMaterialConstants(const std::string& instanceId,
+        const std::string& slotId, const std::string& materialName,
+        const Engine::MODEL_SOURCE_CHARACTER_PARAMETERS& parameters);
     // Append read-only samples from the last successful World clock. Hidden or
     // missing Object targets suppress only their actor-bound balloon subtitle.
     void Collect_Subtitles(std::vector<WORLD_SEQUENCE_SUBTITLE_SAMPLE>& out) const;

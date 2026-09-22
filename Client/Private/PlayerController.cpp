@@ -150,6 +150,11 @@ void Client::CPlayerController::Set_LocalCharacter(const shared_ptr<CCharacter>&
 	m_BasicAttackPressEdgeGate.Reset();
 	m_BasicAttackResendGate.Reset();
 	m_CaptureInputGate.Reset();
+	m_VehicleFlightInputGate.Reset();
+	m_VehicleFlightDirection = {};
+	m_iVehicleFlightAxes = 0;
+	m_VehicleFlightInputSentAt = {};
+	m_LastVehicleFlightInput = {};
 	m_PingInputGate.Reset();
 	m_wasPingKeyDown.fill(false);
 	m_LastMoveGoalSentAt = {};
@@ -200,6 +205,7 @@ void Client::CPlayerController::Update(
 			!ImGui::GetIO().WantTextInput && !CUIInputRouter::Get().Is_TextInputActive() &&
 			(useRawVehicleKeyboard || !CGameInstance::Get().IsKeyboardInputBlocked());
 		Update_VehicleRiding(vehicleInputAllowed, useRawVehicleKeyboard);
+		Update_VehicleFlightInput(vehicleInputAllowed, useRawVehicleKeyboard);
 	}
 	Update_HonorTitle();
 	/* One-shot, consumed here regardless of which branch below actually
@@ -235,6 +241,7 @@ void Client::CPlayerController::Update(
 	}
 	const auto& pingPlayer = CCombatHUDViewModel::Get().Get_Player();
 	const bool_t pingEnabled = gameplayCommandsEnabled && !isControlCaptured && !marioControlsActive &&
+		pingPlayer.iVehicleId != LostArk::Shared::ANCIENT_SEA_VEHICLE_ID &&
 		!isMoveClickSuppressed && !m_pLocalCharacter.expired() && pingPlayer.isValid &&
 		0u != pingPlayer.iCurrentHp && !CGameInstance::Get().IsMouseInputBlocked() &&
 		!CUIInputRouter::Get().Is_MouseClaimedThisFrame() &&
@@ -431,6 +438,9 @@ void Client::CPlayerController::Update(
 	}
 
 	if (gameplayCommandsEnabled && isRightMouseDown &&
+		CCombatHUDViewModel::Get().Get_Player().eVehicleFlightPhase == LostArk::Shared::VEHICLE_FLIGHT_PHASE::GROUNDED &&
+		!(CCombatHUDViewModel::Get().Get_Player().iVehicleId == LostArk::Shared::ANCIENT_SEA_VEHICLE_ID &&
+		  Move_MouseButton() == Engine::DIM::LB) &&
 		!isMoveClickSuppressed &&
 		nullptr != character &&
 		nullptr != commandSink)
@@ -980,6 +990,71 @@ bool_t Client::CPlayerController::Send_VehicleRidingRequest(const std::uint32_t 
 	return true;
 }
 
+void Client::CPlayerController::Update_VehicleFlightInput(bool_t inputAllowed, bool_t useRawKeyboard)
+{
+    using namespace LostArk::Shared;
+    constexpr uint8_t flightKeys[] = { DIK_W, DIK_A, DIK_S, DIK_D, DIK_SPACE, DIK_LCONTROL, DIK_RCONTROL };
+    for (const uint8_t key : flightKeys)
+        m_VehicleFlightInputGate.Observe(key,
+            0 != (CGameInstance::Get().Get_DIKeyStateRaw(key) & 0x80), !inputAllowed);
+    const auto& player = CCombatHUDViewModel::Get().Get_Player();
+    if (!m_pCommandSink || player.iVehicleId != ANCIENT_SEA_VEHICLE_ID ||
+        player.eVehicleFlightPhase != VEHICLE_FLIGHT_PHASE::FLYING)
+    {
+        m_VehicleFlightInputSentAt = {};
+        m_LastVehicleFlightInput = {};
+        m_VehicleFlightDirection = {};
+        m_iVehicleFlightAxes = 0;
+        return;
+    }
+    const auto down = [&](uint8_t key)
+    {
+        if (!inputAllowed || m_VehicleFlightInputGate.Is_Blocked(key) ||
+            m_CaptureInputGate.Is_Blocked(key)) return false;
+        return 0 != ((useRawKeyboard ? CGameInstance::Get().Get_DIKeyStateRaw(key) :
+            CGameInstance::Get().Get_DIKeyState(key)) & 0x80);
+    };
+    const float right = static_cast<float>(down(DIK_D)) - static_cast<float>(down(DIK_A));
+    const float forward = static_cast<float>(down(DIK_W)) - static_cast<float>(down(DIK_S));
+    const float vertical = static_cast<float>(down(DIK_SPACE)) -
+        static_cast<float>(down(DIK_LCONTROL) || down(DIK_RCONTROL));
+    // Latch camera-relative direction when the WASD combination changes. Camera
+    // heading follow and manual orbit must not feed rotation back into held movement.
+    const int axes = static_cast<int>(right) + 3 * static_cast<int>(forward);
+    if (axes != m_iVehicleFlightAxes)
+    {
+        m_iVehicleFlightAxes = axes;
+        m_VehicleFlightDirection = {};
+        const matrix_t cameraWorld = XMMatrixInverse(nullptr,
+            XMLoadFloat4x4(CGameInstance::Get().Get_Transform(D3DTS::VIEW)));
+        vector_t cameraForward = XMVectorSetY(cameraWorld.r[2], 0.f);
+        vector_t cameraRight = XMVectorSetY(cameraWorld.r[0], 0.f);
+        if (XMVectorGetX(XMVector3LengthSq(cameraForward)) > .0001f &&
+            XMVectorGetX(XMVector3LengthSq(cameraRight)) > .0001f)
+        {
+            vector_t direction = XMVector3Normalize(cameraRight) * right +
+                XMVector3Normalize(cameraForward) * forward;
+            const float length = XMVectorGetX(XMVector3Length(direction));
+            if (std::isfinite(length) && length > .0001f)
+                XMStoreFloat3(&m_VehicleFlightDirection, direction / (std::max)(1.f, length));
+        }
+    }
+    float3_t input = m_VehicleFlightDirection;
+    input.y = vertical;
+    const auto now = std::chrono::steady_clock::now();
+    const bool changed = std::abs(input.x - m_LastVehicleFlightInput.x) > .001f ||
+        std::abs(input.y - m_LastVehicleFlightInput.y) > .001f || std::abs(input.z - m_LastVehicleFlightInput.z) > .001f;
+    if (!changed && now - m_VehicleFlightInputSentAt < std::chrono::milliseconds(100)) return;
+    if (changed && now - m_VehicleFlightInputSentAt < std::chrono::milliseconds(33) &&
+        (input.x != 0.f || input.y != 0.f || input.z != 0.f)) return;
+    if (m_pCommandSink->Request_VehicleFlightInput(m_iNextMoveSequence, input.x, input.z, input.y))
+    {
+        if (!++m_iNextMoveSequence) m_iNextMoveSequence = 1u;
+        m_VehicleFlightInputSentAt = now;
+        m_LastVehicleFlightInput = input;
+    }
+}
+
 void Client::CPlayerController::Poll_VehicleSkillSlots(
 	const bool_t isKeyboardBlocked,
 	const bool_t useRawKeyboard,
@@ -1016,6 +1091,8 @@ void Client::CPlayerController::Poll_VehicleSkillSlots(
 		{
 			continue;
 		}
+		if (player.eVehicleFlightPhase != LostArk::Shared::VEHICLE_FLIGHT_PHASE::GROUNDED &&
+			slot.byKeyCode != DIK_E) continue;
 		const VEHICLE_SKILL_ENTRY* skill = vehicle->Find_SkillBySlot(slot.pInputSlot);
 		const shared_ptr<CTransform> transform = character->Get_Transform();
 		if (nullptr == skill || nullptr == transform)

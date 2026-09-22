@@ -1,6 +1,8 @@
 #include "EquipmentPresentationService.h"
 
 #include "Character.h"
+#include "ActorCatalog.h"
+#include "BinaryAsset/ModelAssetData.h"
 #include "GameInstance.h"
 #include "Model.h"
 #include "RuntimeAssetRoot.h"
@@ -216,11 +218,14 @@ bool_t Client::CEquipmentPresentationService::Apply_Preview(
 			XMMatrixScaling(characterScale, characterScale, characterScale) *
 				XMMatrixRotationY(XMConvertToRadians(-90.f)) :
 			XMMatrixIdentity();
+        Engine::MODEL_ASSET_LOAD_DESC description;
+        if (!CActorCatalog::Build_ModelLoadDescription(assetId, description, outError))
+            return false;
 		unique_ptr<CPrototype> model = CModel::Create(
 			m_pDevice,
 			m_pContext,
 			isSkinned ? MODEL::ANIM : MODEL::NONANIM,
-			path.string().c_str(),
+			description,
 			preTransform);
 		if (nullptr == model)
 		{

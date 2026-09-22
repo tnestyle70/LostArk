@@ -267,7 +267,7 @@ baseline이 Save 직전과 다르면 stale editor 저장을 거부한다. sequen
 
 WorldSequence 문서의 template 상한은 512개, instance 상한은 2048개다. C++ codec과
 World Tool, Effect Composition resolver, Map publisher와 Composition validator가 같은
-상한을 소비한다. template당 모든 lane을 합한 track 64개, track당 key 256개와 문서 16 MiB 제한은 별도로
+상한을 소비한다. template당 모든 lane을 합한 track 64개, track당 key 4096개와 문서 16 MiB 제한은 별도로
 유지한다. JSON array와 stable ID 계약은 그대로이며 template 수를 늘려도 wire 형식은 바뀌지 않는다.
 
 WorldSequence v3의 optional `soundTracks`는 `{ soundTrackId, assetId, startMs, durationMs, volume }`을
@@ -566,6 +566,12 @@ Rendering Workbench의 Map 목록은 player 위치를 기준으로 point/spot을
 Default Directional Light는 Scene Profile의 기존 방향광을 편집하는 목록 행이다. maplights에 별도 기본광을 추가하지 않는다.
 활성 RenderingProfiles의 optional `mapLightIntensityMultiplier`(0~4, 기본 1)는 실제 Map light 제출 때 brightness에 곱한다.
 이 배율은 기존 v1/v2 맵 배치와 그 저작 preview에 적용하며 원본 brightness를 바꾸지 않는다. 패턴의 LIGHT occurrence에는 적용하지 않는다.
+
+RenderingProfiles의 optional `shadow.dynamicBakedStrength`는 0~1이며 생략 기본값은0이다.
+PBR map(marker3)의 RNM/IBL을 실제 emissive와 분리하고 SSAO 및 이 강도의 동적 차폐를 적용한다.
+동적 차폐는 유효한 static-only shadow cache와 최종 depth의 차이를 이용하는 프로젝트 근사다.
+기존 RNM 정적 그림자를 다시 적용하지 않으며 cache가 없으면 해당 추가 차폐만 끈다.
+캐릭터 재질·실제 발광·기존 marker의 조명 계약은 유지한다. profile 저장·publisher·benchmark hash는 이 값을 보존한다.
 
 map light의 optional `receiver`는 `ALL`, `SOURCE_CHARACTER`, `UNBAKED`다. `UNBAKED`는
 구운 조명이 없는 캐릭터·움직이는 맵 표면에 원본 광원을 적용하며, RNM이나 native baked 표식이

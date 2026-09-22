@@ -101,7 +101,10 @@ namespace LostArk::Shared
 	// with the wave re-summon and wall-climb wire contracts.
 	// 104 appends the Debug-only F1 Esther summon request that names one Esther
 	// (Sillian, Wei, Bahuntur, Ninav, Inanna) outside the world's roster slots.
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 104;
+	// 105 combines vehicle-flight move/snapshot fields with the Debug Esther request.
+	// The flight branch and main each used 104 for incompatible wire contracts.
+	// Both peers must use 105; all existing packet identities are preserved.
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 105;
 
 	enum class WORLD_ID : std::uint16_t
 	{

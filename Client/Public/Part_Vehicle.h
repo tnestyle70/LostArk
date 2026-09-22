@@ -3,6 +3,7 @@
 #include "Client_Defines.h"
 #include "PartObject.h"
 #include "SkeletalAfterimage.h"
+#include "Network/PacketMessages.h"
 
 #include <string>
 #include <vector>
@@ -43,6 +44,11 @@ public:
 	back and the last one held. Locomotion switches are ignored until Resume. */
 	bool_t Seek_SkillChain(const std::vector<std::string>& clips, f32_t actionAgeSeconds);
 	void Resume_Locomotion();
+	bool Set_FlightPlayback(const std::vector<std::string>& clips, LostArk::Shared::VEHICLE_FLIGHT_PHASE phase,
+		f32_t phaseAge, f32_t phaseDuration, f32_t loopStart, f32_t loopEnd, f32_t landingStart);
+	void Clear_FlightPlayback();
+	f32_t Get_FlightClipSeconds() const;
+	bool Pose_FlightRider(const shared_ptr<CModel>& model, uint32_t animation) const;
 	/* Start and length of one chain clip on the same clock Seek_SkillChain uses. */
 	bool_t Try_Get_SkillClipWindow(const std::vector<std::string>& clips, std::size_t clipIndex,
 		f32_t& outStartSeconds, f32_t& outDurationSeconds) const;
@@ -81,12 +87,21 @@ private:
 	bool_t m_hasTranslucentMeshes = { false };
 	bool_t m_hasRestSeatRotation = { false };
 	float4x4_t m_RestSeatRotationInverse = {};
+	LostArk::Shared::VEHICLE_FLIGHT_PHASE m_FlightPhase = LostArk::Shared::VEHICLE_FLIGHT_PHASE::GROUNDED;
+	uint32_t m_iFlightAnimation = UINT32_MAX;
+	f32_t m_fFlightAge = 0.f, m_fFlightDuration = 0.f, m_fFlightClipDuration = 0.f;
+	f32_t m_fFlightLoopStart = 0.f, m_fFlightLoopEnd = 0.f, m_fFlightLandingStart = 0.f;
+	f32_t m_fFlightSteerYaw = 0.f, m_fFlightSteerPitch = 0.f;
+	f32_t m_fFlightPreviousHeading = 0.f, m_fFlightPreviousY = 0.f;
+	bool m_bFlightSteeringInitialized = false;
 
 private:
 	HRESULT Ready_Components(const PART_VEHICLE_DESC* pDesc);
 	HRESULT Bind_ShaderResources();
 	HRESULT Bind_ShadowShaderResources();
 	HRESULT Render_Translucent();
+	void Apply_FlightHeadIK(f32_t deltaSeconds);
+	void Resolve_FlightPoseTimes(f32_t& sourceSeconds, f32_t& targetSeconds, f32_t& blend) const;
 
 public:
 	static unique_ptr<CPart_Vehicle> Create(ComPtr<ID3D11Device> pDevice,

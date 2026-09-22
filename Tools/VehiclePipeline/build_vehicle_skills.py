@@ -196,7 +196,7 @@ def main():
         # Presentation cues belong to the effect/source projection; keep them.
         previous = {skill['skillId']: skill for skill in entry.get('skills', [])}
         for skill in catalog_skills:
-            for key in ('effectCues', 'soundCues', 'shakeCues', 'directionalLightCues', 'materialVectorCues'):
+            for key in ('effectCues', 'soundCues', 'shakeCues', 'directionalLightCues', 'materialVectorCues', 'flightWindow'):
                 if key in previous.get(skill['skillId'], {}):
                     skill[key] = previous[skill['skillId']][key]
         rebuilt = {}
@@ -242,6 +242,8 @@ def write_catalog(catalog):
                     lines.append(f'          "skillId": {skill["skillId"]},')
                     lines.append(f'          "inputSlot": {json.dumps(skill["inputSlot"])},')
                     lines.append(f'          "vehicleClips": {inline(skill["vehicleClips"])},')
+                    if 'flightWindow' in skill:
+                        lines.append(f'          "flightWindow": {inline(skill["flightWindow"])},')
                     lines.append('          "riders": [')
                     lines += [f'            {inline(r)}' + (',' if i + 1 < len(skill['riders']) else '') for i, r in enumerate(skill['riders'])]
                     cues = [key for key in ('effectCues', 'soundCues', 'shakeCues', 'directionalLightCues', 'materialVectorCues') if key in skill]

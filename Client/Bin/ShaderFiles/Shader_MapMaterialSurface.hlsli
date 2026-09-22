@@ -4,6 +4,11 @@
 uint g_SourceBgUnlit = 0u;
 uint g_SurfacePBRMasked = 0u;
 
+// Rendering Benchmark controls only recovered map PBR contributions.
+float4 g_MapPBRContributionScale = float4(1.f, 1.f, 1.f, 1.f);
+// Normal strength, roughness offset, legacy unbalanced RNM comparison.
+float4 g_MapPBRDiagnosticParameters = float4(1.f, 0.f, 0.f, 0.f);
+
 // A source-evidenced parallel N/T has a zero bitangent. Keep it finite and
 // preserve zero; never manufacture a normal axis for that native input.
 float3 MapGeometryNormalizeOrZero(float3 value)
@@ -443,7 +448,8 @@ MAP_SURFACE_SAMPLE EvaluateMapPBRSurface(float2 meshUV, float3 worldPosition,
     const float2 rawXY = encodedNormal.rg * 2.f - 1.f;
     const float rawZ = sqrt(max(1.f - dot(rawXY, rawXY), 0.f)) + 0.00001f;
     float3 tangentNormal = normalize(float3((rawXY * g_SurfaceNormalIntensity +
-        detailXY * g_SurfaceDetailNormalIntensity) * g_SurfaceVertexAlpha, rawZ));
+        detailXY * g_SurfaceDetailNormalIntensity) * g_SurfaceVertexAlpha *
+        max(g_MapPBRDiagnosticParameters.x, 0.f), rawZ));
     // The seamless permutation explicitly removes near-flat normal noise.
     if (g_SurfaceProgram == 3u && tangentNormal.z >= 0.99985f)
         tangentNormal = float3(0.f, 0.f, 1.f);
@@ -480,7 +486,7 @@ MAP_SURFACE_SAMPLE EvaluateMapPBRSurface(float2 meshUV, float3 worldPosition,
         g_SurfaceMetallicPower));
     result.roughness = saturate(max(g_SurfaceMinimumRoughness,
         MapSurfaceSafePow(orm.g * clamp(g_SurfaceRoughnessIntensity, 0.f, 100.f),
-            g_SurfaceRoughnessPower)));
+            g_SurfaceRoughnessPower)) + g_MapPBRDiagnosticParameters.y);
     result.ambientOcclusion = saturate(MapSurfaceSafePow(orm.r * g_SurfaceAOIntensity,
         g_SurfaceAOPower));
     // Native hit/selection color and engine global material adjustments use
@@ -537,8 +543,9 @@ float3 EvaluateMapSourceBGIndirectLighting(MAP_SURFACE_SAMPLE surface, float2 li
 
 float3 EvaluateMapSourceIndirectLighting(MAP_SURFACE_SAMPLE surface, float2 lightmapUV,
     float4 averageScale, float4 directionalScale, float3 worldPosition,
-    float3 tangent, float3 binormal, float3 normal)
+    float3 tangent, float3 binormal, float3 normal, out float3 environmentSpecular)
 {
+    environmentSpecular = 0.f;
     if (IsMapSurfaceSourceFoliage())
     {
         const bool grass = g_SurfaceProgram == 10u;
@@ -590,12 +597,18 @@ float3 EvaluateMapSourceIndirectLighting(MAP_SURFACE_SAMPLE surface, float2 ligh
         lightmapUV).rgb * directionalScale.rgb;
     const float3 n = surface.tangentNormal;
     const float normalIrradiance = MapSourceDirectionalLightmapWeight(n, direction);
-    // Native directional-lightmap BasePass adds this term before applying
-    // material AO's color-dependent bounce. The source term has no (1-M).
+    // Native directional-lightmap PBR diffuse contains both the metallic
+    // mask and reflection-BRDF energy weight. The old partial reconstruction
+    // omitted both. Keep an explicit comparison of that previous equation.
+    const bool legacyUnbalancedRNM = g_MapPBRDiagnosticParameters.z > 0.5f;
     float3 indirect = surface.diffuse.rgb * average * normalIrradiance *
         MapSourceAOMultiBounce(surface.ambientOcclusion, surface.diffuse.rgb);
+    if (!legacyUnbalancedRNM)
+        indirect *= 1.f - surface.metallic;
+    // Rows without a recovered/bound lookup retain that unresolved input;
+    // do not synthesize a Fresnel value or an environment texture.
     if (g_HasEnvironmentCube == 0u || g_HasEnvironmentBRDFLookup == 0u)
-        return indirect;
+        return indirect * g_MapPBRContributionScale.z;
 
     const float3x3 tangentToWorld = float3x3(MapGeometryNormalizeOrZero(tangent),
         MapGeometryNormalizeOrZero(binormal), MapGeometryNormalizeOrZero(normal));
@@ -614,6 +627,8 @@ float3 EvaluateMapSourceIndirectLighting(MAP_SURFACE_SAMPLE surface, float2 ligh
         (max((1.f - roughnessAA).xxx, surface.specular) - surface.specular);
     const float3 reflectionBRDF = (lookup.g * surface.specular + lookup.r * fresnelDelta) *
         (1.f + surface.specular * (rcp(max(lookup.g, 0.000001f)) - 1.f));
+    if (!legacyUnbalancedRNM)
+        indirect *= 1.f - reflectionBRDF;
 
     const float3 worldReflection = mul(reflection, tangentToWorld);
     // UE->runtime is (x,z,-y). Source CB13 rotates UE XY before the cube's XZY
@@ -631,12 +646,13 @@ float3 EvaluateMapSourceIndirectLighting(MAP_SURFACE_SAMPLE surface, float2 ligh
     const float specularAO = saturate(MapSurfaceSafePow(surface.ambientOcclusion + lookupView,
         roughnessAA * roughnessAA) + surface.ambientOcclusion - 1.f);
     const float f0Luminance = dot(surface.specular, float3(0.3f, 0.59f, 0.11f));
-    indirect += environment * specularIrradiance * reflectionBRDF *
-        MapSourceAOMultiBounce(specularAO, f0Luminance.xxx);
+    environmentSpecular = environment * specularIrradiance * reflectionBRDF *
+        MapSourceAOMultiBounce(specularAO, f0Luminance.xxx) * g_MapPBRContributionScale.w;
     // Native hemisphere CB22/23/24 and SH9->CB packing are unresolved. They are
-    // not replaced by a synthetic ambient tint: only the bound baked irradiance
-    // drives this explicitly partial environment reconstruction.
-    return indirect;
+    // not replaced by a synthetic ambient tint. Native diffuse also multiplies
+    // packed SH color and adds hemisphere irradiance; those owner inputs remain
+    // unresolved, so this is still a partial reconstruction after energy repair.
+    return indirect * g_MapPBRContributionScale.z + environmentSpecular;
 }
 
 struct MAP_STONE_GBUFFER

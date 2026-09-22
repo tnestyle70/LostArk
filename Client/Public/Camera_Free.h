@@ -85,6 +85,9 @@ public:
 private:
 	void Update_Shortcuts();
 	void Update_FollowCamera(f32_t fTimeDelta);
+	void Update_VehicleOrbitInput();
+	void Update_VehicleOrbitOffsets(f32_t fTimeDelta, const shared_ptr<CTransform>& target,
+		float3_t& positionOffset, float3_t& lookOffset);
 	void Apply_FollowRoll();
 	void Update_FreeCamera(f32_t fTimeDelta);
 	void Remove_AppliedCameraShake();
@@ -109,6 +112,14 @@ private:
 	bool_t				m_allowCapturedKeyboardInput = false;
 	float3_t			m_vAppliedShakeOffset = {};
 	f32_t				m_fBaseFovy = 60.f;
+	// Session-only orbit; authored follow profiles remain unchanged on dismount.
+	bool_t m_isVehicleOrbitActive = false;
+	bool_t m_isVehicleOrbitDragging = false;
+	bool_t m_wasVehicleOrbitLeftDown = false;
+	f32_t m_fVehicleOrbitYaw = 0.f;
+	f32_t m_fVehicleOrbitPitch = 0.f;
+	f32_t m_fVehicleOrbitRadius = 0.f;
+	f32_t m_fVehiclePreviousHeading = 0.f;
 
 public:
 	static unique_ptr<CCamera_Free> Create(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext);

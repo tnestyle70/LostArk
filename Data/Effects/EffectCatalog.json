@@ -6557,6 +6557,66 @@
       "authoringPath": "Effects/Authored/effect.guardianknight.skill.49220.source.49290.clip.1.full.restore.effect.json"
     },
     {
+      "effectAssetId": "effect.kouku.gate2.fanfare.circle.six-rays",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate2.fanfare.circle.six-rays.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate2.fanfare.front.music",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate2.fanfare.front.music.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate2.fanfare.rectangle.warning",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate2.fanfare.rectangle.warning.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate2.juggling.three.balls",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate2.juggling.three.balls.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate2.entrance.rope.trail",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate2.entrance.rope.trail.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate2.entrance.drop.ball",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate2.entrance.drop.ball.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate2.safezone.blue.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate2.safezone.blue.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.kouku.gate2.bigsaydon.yellow-eye-warning.full.restore",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.kouku.gate2.bigsaydon.yellow-eye-warning.full.restore.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.guardianknight.fx_pc_ddk_04.par_m_ddk_guillotinespin_trail_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.guardianknight.fx_pc_ddk_04.par_m_ddk_guillotinespin_trail_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.guardianknight.fx_post.fx_par.par_c_zoomblur_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.guardianknight.fx_post.fx_par.par_c_zoomblur_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.guardianknight.fx_q_w_03.fx_par_01.par_q_pcselect_floatingember_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.guardianknight.fx_q_w_03.fx_par_01.par_q_pcselect_floatingember_01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.classselect.guardianknight.fx_q_w_03.fx_par_01.par_q_watersplash_01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.classselect.guardianknight.fx_q_w_03.fx_par_01.par_q_watersplash_01.effect.json"
+    },
+    {
       "effectAssetId": "effect.esther.inanna.npc_att_battle_1_01.full.restore",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
       "authoringPath": "Effects/Authored/effect.esther.inanna.npc_att_battle_1_01.full.restore.effect.json"

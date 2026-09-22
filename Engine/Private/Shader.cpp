@@ -444,7 +444,7 @@ HRESULT CShader::Stage_ProgramVariants(const tchar_t* pShaderFilePath,
 		for (auto& variable : pBindings->Variables)
 			if (variable.strName == "g_SourceCharacterProgram") staged->pProgram = &variable;
 		if (nullptr == staged->pProgram) return E_FAIL;
-		constexpr uint32_t ranges[][2] = { {1u,8u}, {9u,16u}, {17u,24u}, {25u,32u}, {80u,83u}, {84u,111u} };
+		constexpr uint32_t ranges[][2] = { {1u,8u}, {9u,16u}, {17u,24u}, {25u,32u}, {80u,83u}, {84u,112u}, {160u,175u}, {176u,191u}, {192u,200u}, {208u,213u}, {214u,223u}, {224u,234u}, {235u,236u}, {237u,237u} };
 		staged->Groups.reserve(std::size(ranges));
 		for (const auto& range : ranges)
 		{
@@ -698,7 +698,7 @@ HRESULT CShader::Begin(uint32_t iPassIndex)
 		uint32_t program = 0u;
 		if (FAILED(m_pProgramVariants->pProgram->pVariable->GetRawValue(&program, 0u, sizeof(program)))) return E_FAIL;
 		// Forward-only map/vehicle programs retain their existing independent evaluator.
-		if (program != 0u && !(program >= 33u && program <= 65u))
+		if (program != 0u && !(program >= 33u && program <= 65u) && program != 209u)
 			return Apply_ProgramVariant(program, iPassIndex);
 	}
 	m_pContext->IASetInputLayout(m_InputLayouts[iPassIndex].Get());

@@ -31,6 +31,7 @@ namespace
         uint32_t NameId;
         uint32_t Depth;
         uint64_t BeginTick;
+        uint64_t CaptureEpoch;
     };
 
     /* Each thread owns its own nesting stack. A token is the index into this
@@ -74,8 +75,20 @@ void CProfiler::Begin_Frame()
     // Counts real main-loop frame boundaries even while capture is paused.
     // Query latency must not be synthesized by advancing the capture number.
     ++m_PollFrameNumber;
-    if (!m_Enabled.load(std::memory_order_relaxed))
-        return;
+    if (m_ResetRequested.exchange(false, std::memory_order_relaxed))
+        Reset_History();
+    const bool enabled = m_Enabled.load(std::memory_order_relaxed);
+    const bool previous = m_Collecting.exchange(enabled, std::memory_order_relaxed);
+    if (previous != enabled)
+    {
+        m_CaptureEpoch.fetch_add(1, std::memory_order_relaxed);
+        m_PreviousFrameBeginTick = 0;
+        for (auto& counter : m_AtomicCounters) counter.store(0, std::memory_order_relaxed);
+        std::lock_guard lock(m_Mutex);
+        m_PendingScopes.clear();
+        m_PendingDroppedCpuScopes = 0;
+    }
+    if (!enabled) return;
 
     m_FrameActive = true;
     ++m_FrameNumber;
@@ -85,6 +98,9 @@ void CProfiler::Begin_Frame()
     }
     m_CurrentFrame = {};
     m_CurrentFrame.FrameNumber = m_FrameNumber;
+    const bool detail = m_RequestedDetailedScopes.load(std::memory_order_relaxed);
+    m_DetailedScopes.store(detail, std::memory_order_relaxed);
+    m_CurrentFrame.DetailedCpuScopes = detail;
     m_CurrentFrame.GpuScopesSupported = m_GpuScopeQueriesAvailable;
     m_ModelAnimationWork.clear();
     m_SubmittedModels.clear();
@@ -134,6 +150,8 @@ void CProfiler::End_Frame()
         /* Every scope that ended since the previous frame, on any thread,
            belongs to this frame. */
         std::lock_guard lock(m_Mutex);
+        m_CurrentFrame.DroppedCpuScopes = m_PendingDroppedCpuScopes;
+        m_PendingDroppedCpuScopes = 0;
         m_CurrentFrame.CpuScopes = std::move(m_PendingScopes);
         m_PendingScopes.clear();
         if (m_History.size() < MAX_HISTORY_FRAMES)
@@ -147,19 +165,7 @@ void CProfiler::End_Frame()
 
 void CProfiler::Set_Enabled(bool enabled) noexcept
 {
-    const bool previous = m_Enabled.exchange(
-        enabled, std::memory_order_relaxed);
-    if (previous == enabled)
-        return;
-    m_PreviousFrameBeginTick = 0;
-
-    for (std::atomic_uint64_t& counter : m_AtomicCounters)
-        counter.store(0, std::memory_order_relaxed);
-    if (!enabled)
-    {
-        std::lock_guard lock(m_Mutex);
-        m_PendingScopes.clear();
-    }
+    m_Enabled.store(enabled, std::memory_order_relaxed);
 }
 
 bool CProfiler::Is_Enabled() const noexcept
@@ -169,11 +175,19 @@ bool CProfiler::Is_Enabled() const noexcept
 
 void CProfiler::Reset_History()
 {
+    if (m_FrameActive.load(std::memory_order_relaxed))
+    {
+        m_ResetRequested.store(true, std::memory_order_relaxed);
+        return;
+    }
+    m_CaptureEpoch.fetch_add(1, std::memory_order_relaxed);
     std::lock_guard lock(m_Mutex);
     m_History.clear();
     m_PendingScopes.clear();
     m_LongOperations.clear();
     m_DroppedCpuScopes = 0;
+    m_PendingDroppedCpuScopes = 0;
+    m_PreviousFrameBeginTick = 0;
     m_DroppedGpuFrames = 0;
     m_DroppedGpuScopes = 0;
     m_DroppedModelAnimationSamples = 0;
@@ -181,13 +195,14 @@ void CProfiler::Reset_History()
 
 uint32_t CProfiler::Begin_Scope(std::string_view name)
 {
-    if (!m_Enabled.load(std::memory_order_relaxed))
+    if (!m_Collecting.load(std::memory_order_relaxed))
         return UINT32_MAX;
     FOpenScopeStack& openScopes = t_OpenScopes;
     if (openScopes.Count >= MAX_OPEN_SCOPES_PER_THREAD)
     {
         std::lock_guard lock(m_Mutex);
         ++m_DroppedCpuScopes;
+        ++m_PendingDroppedCpuScopes;
         return UINT32_MAX;
     }
 
@@ -195,6 +210,7 @@ uint32_t CProfiler::Begin_Scope(std::string_view name)
     open.NameId = Intern_Name(name);
     open.Depth = openScopes.Count;
     open.BeginTick = Query_Tick();
+    open.CaptureEpoch = m_CaptureEpoch.load(std::memory_order_relaxed);
     openScopes.Scopes[openScopes.Count] = open;
     return openScopes.Count++;
 }
@@ -210,7 +226,8 @@ void CProfiler::End_Scope(uint32_t token) noexcept
     /* Unwinding to the token also closes any inner scope whose End_Scope was
        skipped, so a mismatched pair cannot corrupt later depths. */
     openScopes.Count = token;
-    if (!m_Enabled.load(std::memory_order_relaxed))
+    if (!m_Collecting.load(std::memory_order_relaxed) ||
+        open.CaptureEpoch != m_CaptureEpoch.load(std::memory_order_relaxed))
         return;
 
     FProfilerScopeSample sample{};
@@ -222,6 +239,9 @@ void CProfiler::End_Scope(uint32_t token) noexcept
     const double durationMs = Ticks_ToMs(endTick - open.BeginTick);
 
     std::lock_guard lock(m_Mutex);
+    // A worker may have waited while the frame owner reset the capture.
+    if (!m_Collecting.load(std::memory_order_relaxed) ||
+        open.CaptureEpoch != m_CaptureEpoch.load(std::memory_order_relaxed)) return;
     size_t sampleLimit = MAX_SCOPES_PER_FRAME - MAIN_PASS_SCOPE_RESERVE;
     if (sample.ThreadId == m_MainThreadId)
     {
@@ -240,7 +260,10 @@ void CProfiler::End_Scope(uint32_t token) noexcept
         m_PendingScopes.push_back(sample);
     }
     else
+    {
         ++m_DroppedCpuScopes;
+        ++m_PendingDroppedCpuScopes;
+    }
     if (durationMs >= LONG_OPERATION_THRESHOLD_MS)
     {
         FProfilerLongOperation operation{};
@@ -258,7 +281,7 @@ void CProfiler::End_Scope(uint32_t token) noexcept
 uint32_t CProfiler::Begin_GpuScope(std::string_view name, bool collectPipeline)
 {
     if (GetCurrentThreadId() != m_MainThreadId ||
-        !m_Enabled.load(std::memory_order_relaxed) ||
+        !m_Collecting.load(std::memory_order_relaxed) ||
         !m_FrameActive || !m_GpuScopeQueriesAvailable ||
         m_ActiveGpuSlot == UINT32_MAX)
         return UINT32_MAX;
@@ -316,7 +339,7 @@ void CProfiler::End_GpuScope(uint32_t token) noexcept
 FProfilerModelAnimationToken CProfiler::Begin_ModelAnimation() const noexcept
 {
     if (GetCurrentThreadId() != m_MainThreadId || !m_FrameActive ||
-        !m_Enabled.load(std::memory_order_relaxed))
+        !m_Collecting.load(std::memory_order_relaxed))
         return {};
     return {Query_Tick(), m_FrameNumber};
 }
@@ -354,7 +377,7 @@ void CProfiler::End_ModelAnimation(const void* model, FProfilerModelAnimationTok
 void CProfiler::Record_ModelSubmitted(const void* model)
 {
     if (!model || GetCurrentThreadId() != m_MainThreadId || !m_FrameActive ||
-        !m_Enabled.load(std::memory_order_relaxed) ||
+        !m_Collecting.load(std::memory_order_relaxed) ||
         m_SubmittedModels.find(model) != m_SubmittedModels.end())
         return;
     if (m_SubmittedModels.size() >= MAX_ANIMATION_MODELS_PER_FRAME)
@@ -370,7 +393,7 @@ void CProfiler::Record_ModelSubmitted(const void* model)
 void CProfiler::Add_Counter(
     EProfilerCounter counter, uint64_t value) noexcept
 {
-    if (!m_Enabled.load(std::memory_order_relaxed) || !m_FrameActive)
+    if (!m_Collecting.load(std::memory_order_relaxed) || !m_FrameActive)
         return;
     const size_t index = static_cast<size_t>(counter);
     if (index < m_AtomicCounters.size())
@@ -380,19 +403,20 @@ void CProfiler::Add_Counter(
 void CProfiler::Set_Counter(
     EProfilerCounter counter, uint64_t value) noexcept
 {
-    if (!m_Enabled.load(std::memory_order_relaxed) || !m_FrameActive)
+    if (!m_Collecting.load(std::memory_order_relaxed) || !m_FrameActive)
         return;
     const size_t index = static_cast<size_t>(counter);
     if (index < m_AtomicCounters.size())
         m_AtomicCounters[index].store(value, std::memory_order_relaxed);
 }
 
-FProfilerCaptureSnapshot CProfiler::Snapshot() const
+FProfilerCaptureSnapshot CProfiler::Snapshot(size_t frameWindow) const
 {
     std::lock_guard lock(m_Mutex);
     FProfilerCaptureSnapshot snapshot{};
     snapshot.ScopeNames = m_ScopeNames;
-    snapshot.Frames.assign(m_History.begin(), m_History.end());
+    const size_t count = (std::min)(frameWindow, m_History.size());
+    snapshot.Frames.assign(m_History.end() - count, m_History.end());
     snapshot.DroppedCpuScopes = m_DroppedCpuScopes;
     snapshot.DroppedGpuFrames = m_DroppedGpuFrames;
     snapshot.DroppedGpuScopes = m_DroppedGpuScopes;
@@ -417,6 +441,8 @@ bool CProfiler::Get_LiveStats(FProfilerLiveStats& outStats) const
 
     const FProfilerFrame& latest = m_History.back();
     outStats.FrameNumber = latest.FrameNumber;
+    outStats.DroppedCpuScopes = latest.DroppedCpuScopes;
+    outStats.DetailedCpuScopes = latest.DetailedCpuScopes;
     outStats.CpuFrameMs = latest.CpuFrameMs;
     outStats.FrameIntervalMs = latest.FrameIntervalMs;
     outStats.Animation = latest.Animation;

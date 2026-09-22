@@ -61,6 +61,8 @@ Texture2D g_SourceMapMonsterDirectionalTexture;
 
 struct SOURCE_CHARACTER_NATIVE_INPUT
 {
+    float3 sourceCameraPosition;
+    float4 sourcePrimitiveBounds;
     bool hasBakedLighting;
     float3 bakedAverage;
     float3 bakedCoefficients;

@@ -159,7 +159,8 @@ bool Client::CKoukuSaydonPatternAuditionService::Play_Bundle(
 
 bool Client::CKoukuSaydonPatternAuditionService::Play_Flow(
 	const std::string_view gateId, const std::vector<KOUKU_SAYDON_PATTERN_FLOW_ENTRY>& entries,
-	const LostArk::Shared::GameplayDataRevision& revision, const std::uint32_t sourceRevision, std::string& status)
+	const LostArk::Shared::GameplayDataRevision& revision, const std::uint32_t sourceRevision, std::string& status,
+	const std::string_view loopStartEntryId)
 {
 	Update();
 	if (m_FlowSnapshot.bActive || m_Snapshot.Is_InFlight() || m_bTargetTransitionPending)
@@ -173,6 +174,9 @@ bool Client::CKoukuSaydonPatternAuditionService::Play_Flow(
 			entry.strPatternId.empty() == entry.strBundleId.empty() ||
 			entry.strBossPlacementId.empty() || entry.strBossArchetypeId.empty() || entry.iWaitAfterMs > 600000u)
 		{ status = "Pattern Flow entry has an invalid execution identity or wait."; return false; }
+	if (!loopStartEntryId.empty() && !ids.contains(std::string(loopStartEntryId)))
+	{ status = "Pattern Flow loop start must reference one of its saved entries."; return false; }
+	m_strFlowLoopStartEntryId = loopStartEntryId;
 	m_FlowSnapshot = {};
 	m_FlowSnapshot.bActive = true; m_FlowSnapshot.strGateId = gateId; m_FlowSnapshot.iEntryCount = entries.size();
 	m_FlowEntries = entries; m_FlowRevision = revision; m_iFlowSourceRevision = sourceRevision;
@@ -207,6 +211,7 @@ void Client::CKoukuSaydonPatternAuditionService::Cancel_Flow(std::string status)
 	m_FlowSnapshot.bActive = false;
 	m_FlowSnapshot.strStatus = std::move(status);
 	m_FlowEntries.clear();
+	m_strFlowLoopStartEntryId.clear();
 	m_bFlowEntryCompleted = false;
 }
 
@@ -224,15 +229,22 @@ void Client::CKoukuSaydonPatternAuditionService::Update_Flow()
 	if (m_Snapshot.eState != KOUKU_SAYDON_PATTERN_AUDITION_STATE::COMPLETED) return;
 	if (!m_bFlowEntryCompleted)
 	{
-		if (m_FlowSnapshot.iEntryIndex + 1u == m_FlowEntries.size() && m_FlowSnapshot.strGateId != "GATE1")
+		if (m_FlowSnapshot.iEntryIndex + 1u == m_FlowEntries.size() && m_FlowSnapshot.strGateId != "GATE1" && m_strFlowLoopStartEntryId.empty())
 		{ Cancel_Flow("Pattern Flow completed; every selected Pattern and Bundle finished on the Server."); return; }
 		m_iFlowNextStartAtMilliseconds = Now_Milliseconds() + m_FlowEntries[m_FlowSnapshot.iEntryIndex].iWaitAfterMs;
 		m_bFlowEntryCompleted = true;
 	}
 	if (Now_Milliseconds() < m_iFlowNextStartAtMilliseconds) return;
 	++m_FlowSnapshot.iEntryIndex;
-	if (m_FlowSnapshot.strGateId == "GATE1" && m_FlowSnapshot.iEntryIndex == m_FlowEntries.size())
-		m_FlowSnapshot.iEntryIndex = 0u;
+	if (m_FlowSnapshot.iEntryIndex == m_FlowEntries.size())
+	{
+		const auto loopStart = std::find_if(m_FlowEntries.begin(), m_FlowEntries.end(),
+			[&](const auto& entry) { return entry.strEntryId == m_strFlowLoopStartEntryId; });
+		if (!m_strFlowLoopStartEntryId.empty() && loopStart == m_FlowEntries.end())
+		{ Cancel_Flow("Pattern Flow loop start is no longer available."); return; }
+		m_FlowSnapshot.iEntryIndex = m_strFlowLoopStartEntryId.empty() ? 0u :
+			static_cast<std::size_t>(loopStart - m_FlowEntries.begin());
+	}
 	std::string status;
 	Submit_FlowEntry(status);
 }

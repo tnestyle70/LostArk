@@ -1165,9 +1165,55 @@ bool LostArk::Server::CServerNavigation::Find_Path(
 		bool operator<(const OPEN_NODE& other) const { return score > other.score; }
 	};
 	const std::size_t count = m_Walkable.size();
-	std::vector<float> costs(count, (std::numeric_limits<float>::max)());
-	std::vector<std::uint32_t> parents(count, (std::numeric_limits<std::uint32_t>::max)());
-	std::vector<std::uint8_t> closed(count, 0u);
+	struct PATH_SEARCH_SCRATCH final
+	{
+		std::vector<float> Costs;
+		std::vector<std::uint32_t> Parents;
+		std::vector<std::uint32_t> States;
+		std::uint32_t Generation = 0u;
+		bool InUse = false;
+
+		void Begin(const std::size_t cellCount)
+		{
+			if (States.size() < cellCount)
+			{
+				// Grow transactionally to exactly this grid size. Load bounds a grid
+				// at 1,000,000 cells, so retained scratch is at most 12 MB per thread.
+				std::vector<float> costs(cellCount);
+				std::vector<std::uint32_t> parents(cellCount);
+				std::vector<std::uint32_t> states(cellCount, 0u);
+				Costs.swap(costs);
+				Parents.swap(parents);
+				States.swap(states);
+				Generation = 0u;
+			}
+			Generation += 2u;
+			if (Generation == 0u)
+			{
+				std::fill(States.begin(), States.end(), 0u);
+				Generation = 2u;
+			}
+		}
+	};
+	// Detail-region dispatch already returned above. Rooms/grids on one
+	// thread reuse capacity, never query results; each query gets a fresh stamp.
+	// Different room threads cannot share this storage. Preserve nested calls
+	// with a local fallback instead of invalidating an active search.
+	static thread_local PATH_SEARCH_SCRATCH threadScratch;
+	PATH_SEARCH_SCRATCH nestedScratch;
+	PATH_SEARCH_SCRATCH& scratch = threadScratch.InUse ? nestedScratch : threadScratch;
+	struct SCRATCH_LEASE final
+	{
+		PATH_SEARCH_SCRATCH& Scratch;
+		explicit SCRATCH_LEASE(PATH_SEARCH_SCRATCH& value) : Scratch(value) { Scratch.InUse = true; }
+		~SCRATCH_LEASE() { Scratch.InUse = false; }
+	} lease(scratch);
+	scratch.Begin(count);
+	auto& costs = scratch.Costs;
+	auto& parents = scratch.Parents;
+	auto& states = scratch.States;
+	const std::uint32_t generation = scratch.Generation;
+	const std::uint32_t closedGeneration = generation | 1u;
 	std::priority_queue<OPEN_NODE> open;
 	const auto heuristic = [this, goal](const std::uint32_t index)
 	{
@@ -1178,6 +1224,8 @@ bool LostArk::Server::CServerNavigation::Find_Path(
 		return std::hypot(static_cast<float>(goalX - x),
 			static_cast<float>(goalZ - z));
 	};
+	states[start] = generation;
+	parents[start] = (std::numeric_limits<std::uint32_t>::max)();
 	costs[start] = 0.f;
 	open.push({ heuristic(start), start });
 	constexpr int DIRECTIONS[8][2] = {
@@ -1188,9 +1236,9 @@ bool LostArk::Server::CServerNavigation::Find_Path(
 	{
 		const std::uint32_t current = open.top().index;
 		open.pop();
-		if (closed[current])
+		if (states[current] == closedGeneration)
 			continue;
-		closed[current] = 1u;
+		states[current] = closedGeneration;
 		++m_PerformanceMetrics.FindPath.iExpandedNodes;
 		if (current == goal)
 		{
@@ -1210,7 +1258,7 @@ bool LostArk::Server::CServerNavigation::Find_Path(
 			}
 			const std::uint32_t next = static_cast<std::uint32_t>(
 				nextZ * static_cast<int>(m_iWidth) + nextX);
-			if (!Is_CellTraversalAllowed(current, next) || closed[next])
+			if (!Is_CellTraversalAllowed(current, next) || states[next] == closedGeneration)
 				continue;
 			const bool diagonal = 0 != direction[0] && 0 != direction[1];
 			if (diagonal)
@@ -1226,8 +1274,9 @@ bool LostArk::Server::CServerNavigation::Find_Path(
 					continue;
 			}
 			const float candidate = costs[current] + (diagonal ? 1.41421356f : 1.f);
-			if (candidate >= costs[next])
+			if (states[next] == generation && candidate >= costs[next])
 				continue;
+			states[next] = generation;
 			costs[next] = candidate;
 			parents[next] = current;
 			open.push({ candidate + heuristic(next), next });
@@ -1239,7 +1288,7 @@ bool LostArk::Server::CServerNavigation::Find_Path(
 	std::vector<std::uint32_t> reversePath;
 	for (std::uint32_t current = goal; current != start; current = parents[current])
 	{
-		if (current >= parents.size() ||
+		if (current >= count || (states[current] != generation && states[current] != closedGeneration) ||
 			parents[current] == (std::numeric_limits<std::uint32_t>::max)())
 		{
 			return false;

@@ -603,6 +603,16 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 		snapshot.iMaximumMadness = player.iMaximumMadness;
 		snapshot.eMadnessForm = player.eMadnessForm;
 		snapshot.iVehicleId = player.iVehicleId;
+		snapshot.eVehicleFlightPhase = player.eVehicleFlightPhase;
+		snapshot.iVehicleFlightPhaseStartTick = player.iVehicleFlightPhaseStartTick;
+		if (const auto* vehicle = m_VehicleCatalog.Find_Vehicle(player.iVehicleId))
+		{
+			if (player.eVehicleFlightPhase == VEHICLE_FLIGHT_PHASE::TAKEOFF)
+				snapshot.fVehicleFlightPhaseDurationSeconds = vehicle->fFlightTakeoffSeconds;
+			else if (player.eVehicleFlightPhase == VEHICLE_FLIGHT_PHASE::LANDING && vehicle->fFlightVerticalSpeed > 0.f)
+				snapshot.fVehicleFlightPhaseDurationSeconds = (std::max)(vehicle->fFlightLandingSeconds,
+					player.fVehicleFlightStartHeight / vehicle->fFlightVerticalSpeed);
+		}
 		snapshot.iHonorTitleId = player.iHonorTitleId;
 		snapshot.eMechanicCardSymbol = player.eMechanicCardSymbol;
 		snapshot.eMechanicCardColor = player.eMechanicCardColor;

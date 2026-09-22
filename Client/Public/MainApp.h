@@ -194,6 +194,7 @@ private:
 			INVALID_LOBBY_COMMAND_TOKEN);
 	void Apply_LevelRequest();
 	HRESULT ReadyImGuiRuntime();
+	void UpdateProfilerRuntime();
 	/* Drives every real CUI_Sprite (CUILayoutRuntime) state for the always-on combat HUD
 	(HUD_Layout.json) from Update(): the per-class ownerClass slot filter (the old
 	Render(strOwnerClass, 0) pass), every per-class identity block (LanceMaster stance/gauge,
@@ -604,6 +605,9 @@ private:
 	CLightResourceCatalog m_LightResources;
 	unique_ptr<CKoukuSaydonPresentationPlayer> m_pKoukuPresentationPlayer;
 	unique_ptr<Engine::CImGuiLayer> m_pImGuiLayer = { nullptr };
+	unique_ptr<CProfilerTool> m_pProfilerTool;
+	bool_t m_bRuntimeProfilerVisible = false;
+	bool_t m_bF7Down = false;
 	/* Not _DEBUG-gated: the runtime HUD art must render in Release too. Real CUI_Sprite
 	GameObjects under LEVEL::STATIC (Update_CombatHUD drives them), created before every other
 	STATIC UI document so the always-on HUD draws underneath all of them. */
@@ -955,7 +959,6 @@ private:
 	DEBUG_TOOL m_eColliderAuthoringOwner = DEBUG_TOOL::NONE;
 	uint64_t m_iColliderAuthoringDraftGeneration = UINT64_MAX;
 	uint64_t m_iColliderAuthoringSerial = 0;
-	unique_ptr<CProfilerTool> m_pProfilerTool = { nullptr };
 	unique_ptr<CRenderingBenchmark> m_pRenderingBenchmark = { nullptr };
 	bool_t m_bF1Down = false;
 	bool_t m_bDeveloperToolsVisible = false;

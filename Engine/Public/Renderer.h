@@ -75,6 +75,7 @@ private:
     };
     // Weak ownership prevents a cached map from retaining an unloaded Level.
     ComPtr<ID3D11Texture2D> m_pStaticShadowDepthTexture;
+    ComPtr<ID3D11ShaderResourceView> m_pStaticShadowSRV;
     vector<STATIC_SHADOW_CASTER> m_StaticShadowCasters;
     vector<STATIC_SHADOW_CASTER> m_CandidateStaticShadowCasters;
     vector<uint8_t> m_StaticShadowFlags;

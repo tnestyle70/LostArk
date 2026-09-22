@@ -333,6 +333,55 @@ namespace
             if (FAILED(presentation.Add_TransientLight(saved))) return false;
         std::cout << "Deferred floor RGB WARP pixels: " << specularCases
             << " cases, " << specularFailures << " channel failures\n";
+        // Exercise the product combine pass: true emission is independent of
+        // AO, static RNM is not shadowed twice, and a nearer moving caster can
+        // modulate baked light without changing legacy/character pixels.
+        const auto scalar = [&](const char* name, const auto value) {
+            return SUCCEEDED(shader->Bind_RawValue(name, &value, sizeof(value)));
+        };
+        const float2_t texel(0.f, 0.f);
+        if (FAILED(shader->Bind_Matrix("g_LightViewMatrix", &identity)) ||
+            FAILED(shader->Bind_Matrix("g_LightProjMatrix", &identity)) ||
+            !scalar("g_iHeightFogEnabled", 0u) || !scalar("g_fShadowDepthBias", 0.f) ||
+            !scalar("g_fShadowNormalBias", 0.f) || !scalar("g_vShadowTexelSize", texel) ||
+            !scalar("g_fDynamicBakedShadowStrength", .75f) ||
+            !texture("g_DiffuseTexture", {.2f,.2f,.2f,1.f}) ||
+            !texture("g_ShadeTexture", {.3f,.3f,.3f,0.f}) ||
+            !texture("g_SpecularTexture", {.1f,.1f,.1f,0.f}) ||
+            !texture("g_EmissiveTexture", {.5f,.5f,.5f,0.f}) ||
+            !texture("g_SSAOTexture", {.4f,.4f,.4f,1.f}) ||
+            !texture("g_GeometricNormalTexture", {0.f,0.f,.5f,0.f}) ||
+            !texture("g_LightDepthTexture", {.25f,0.f,0.f,0.f})) return false;
+        unsigned combineCases = 0u;
+        for (float marker : {0.f, 3.f, 5.f})
+          for (bool ao : {false, true})
+           for (bool cache : {false, true})
+            for (bool moving : {false, true})
+             for (float indirect : {0.f, 2.f})
+             {
+                if (!texture("g_DepthTexture", {.5f,.001f,0.f,marker}) ||
+                    !texture("g_CharacterGeometryTexture", {indirect,indirect,indirect,0.f}) ||
+                    !texture("g_StaticLightDepthTexture", {moving ? .75f : .25f,0.f,0.f,0.f}) ||
+                    !scalar("g_iSSAOEnabled", ao ? 1u : 0u) ||
+                    !scalar("g_iDynamicBakedShadowEnabled", cache ? 1u : 0u)) return false;
+                context->ClearRenderTargetView(views[0], clear);
+                if (FAILED(shader->Begin(ETOUI(DEFERRED::COMBINED))) || FAILED(buffer->Render())) return false;
+                context->CopyResource(staging.Get(), result[0].Get());
+                D3D11_MAPPED_SUBRESOURCE mapped{};
+                if (FAILED(context->Map(staging.Get(), 0u, D3D11_MAP_READ, 0u, &mapped))) return false;
+                const float actual = static_cast<const float*>(mapped.pData)[0];
+                context->Unmap(staging.Get(), 0u);
+                const float expected = .66f + (marker == 3.f ? indirect *
+                    (ao ? .4f : 1.f) * (cache && moving ? .25f : 1.f) : 0.f);
+                if (!std::isfinite(actual) || std::abs(actual - expected) > .00002f)
+                {
+                    std::cerr << "PBR combine mismatch " << marker << '/' << ao << '/' << cache
+                        << '/' << moving << '/' << indirect << ": " << actual << " expected " << expected << '\n';
+                    return false;
+                }
+                ++combineCases;
+             }
+        std::cout << "PBR baked AO/dynamic shadow/emission WARP: " << combineCases << " cases passed\n";
         return specularFailures == 0u;
     }
 

@@ -50,7 +50,8 @@ void LostArk::Server::CGameRoom::Handle_Move(
 
 	SERVER_PLAYER& player = playerIter->second;
 	if (entryTerraceMove &&
-		(!LostArk::Shared::Is_KoukuGate3EntryTerrace(player.fPositionX, player.fPositionY, player.fPositionZ) ||
+		(move.eIntent != LostArk::Shared::PLAYER_MOVE_INTENT::GROUND_GOAL ||
+		 !LostArk::Shared::Is_KoukuGate3EntryTerrace(player.fPositionX, player.fPositionY, player.fPositionZ) ||
 		 !LostArk::Shared::Is_KoukuGate3EntryTerrace(move.fGoalX, player.fPositionY, move.fGoalZ))) return;
 	std::string validationFailure;
 	if (!Is_NewerSequence(move.iClientSequence, player.iLastMoveSequence))
@@ -99,6 +100,20 @@ void LostArk::Server::CGameRoom::Handle_Move(
 		return;
 	}
 #endif
+	if (move.eIntent == LostArk::Shared::PLAYER_MOVE_INTENT::VEHICLE_FLIGHT)
+	{
+		if (player.iVehicleId == LostArk::Shared::ANCIENT_SEA_VEHICLE_ID && Can_RideVehicle(player) &&
+			player.eVehicleFlightPhase == LostArk::Shared::VEHICLE_FLIGHT_PHASE::FLYING &&
+			std::isfinite(move.fVerticalInput) && std::abs(move.fVerticalInput) <= 1.f &&
+			move.fGoalX * move.fGoalX + move.fGoalZ * move.fGoalZ <= 1.0001f)
+		{
+			player.fVehicleFlightInputX = move.fGoalX;
+			player.fVehicleFlightInputZ = move.fGoalZ;
+			player.fVehicleFlightInputY = move.fVerticalInput;
+			player.fVehicleFlightInputAge = 0.f;
+		}
+		return;
+	}
 	/* Walking away is the hunter's own input, so it ends a spent hammer swing
 	instead of being refused for the rest of the pose. */
 	(void)Cancel_MazeHammerRecovery(player, m_iServerTick);
@@ -1058,6 +1073,7 @@ LostArk::Server::CGameRoom::Apply_CharacterClassChange(
 	staged.iMaximumMadness = SERVER_PLAYER::MADNESS_GAUGE_MAXIMUM;
 	staged.Clear_MarioControl();
 	staged.eMadnessForm = PLAYER_MADNESS_FORM::NORMAL;
+	End_VehicleSkill(staged);
 	staged.iVehicleId = INVALID_VEHICLE_ID;
 	staged.Clear_KoukuInteractionState();
 	staged.eAction = PLAYER_ACTION_STATE::NONE;

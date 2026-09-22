@@ -2,6 +2,7 @@
 
 #include "Client_Defines.h"
 #include "Profiler.h"
+#include "Engine_RenderTypes.h"
 
 #include <array>
 #include <filesystem>
@@ -61,6 +62,7 @@ public:
 
 private:
 	bool_t Render_RestorationSection(CRenderingProfileService& Profiles);
+	bool_t Render_PixelInputs();
 	bool_t Activate_RestorationProfile(CRenderingProfileService& Profiles, const string& strProfileId);
 	bool_t Return_ToEntryProfile(CRenderingProfileService& Profiles);
 	void Release_RestorationOwnership();
@@ -73,6 +75,10 @@ private:
 
 private:
 	bool_t m_bCapturing = false;
+	bool_t m_bPixelDiagnosticsActive = false;
+	uint32_t m_iPixelDiagnosticsLevel = 0u;
+	string m_strPixelMaterialKey;
+	Engine::MATERIAL_RENDER_SETTINGS m_PixelEntrySettings;
 	bool_t m_bProfilerWasEnabled = false;
 	bool_t m_bSkipActivationFrame = false;
 	uint64_t m_iStartFrame = 0u;

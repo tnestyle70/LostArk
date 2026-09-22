@@ -51,7 +51,8 @@ std::size_t Client::FinalizeResourceTree(COMPOSITION_RESOURCE_TREE_NODE& Node)
 
 void Client::RenderResourceTree(
 	const COMPOSITION_RESOURCE_TREE_NODE& Node,
-	const std::function<void(std::size_t)>& RenderLeaf)
+	const std::function<void(std::size_t)>& RenderLeaf,
+	const char* emptyMessage)
 {
 	for (const COMPOSITION_RESOURCE_TREE_NODE& Child : Node.Children)
 	{
@@ -60,11 +61,13 @@ void Client::RenderResourceTree(
 		if (ImGui::TreeNodeEx("##ResourceCategory", ImGuiTreeNodeFlags_SpanAvailWidth,
 				"%s (%zu)", Child.strSegment.c_str(), Child.iRecursiveLeafCount))
 		{
-			RenderResourceTree(Child, RenderLeaf);
+			RenderResourceTree(Child, RenderLeaf, emptyMessage);
 			ImGui::TreePop();
 		}
 		ImGui::PopID();
 	}
 	for (const std::size_t iLeafIndex : Node.LeafIndices)
 		RenderLeaf(iLeafIndex);
+	if (emptyMessage && Node.iRecursiveLeafCount == 0u)
+		ImGui::TextDisabled("%s", emptyMessage);
 }

@@ -75,7 +75,9 @@ struct EFFECT_SPAWN_DESC final
 	bool_t bExternallySampled = false;
 	// A real boss/level world-root or mounted Character sustains only source EmitterLoops=0.
 	bool_t bOwnerSustainedSourceLoops = false;
-	// External occurrence end for native infinite source emitters; zero keeps authored timing.
+	// LEVEL_ACTIVE ambient only: bounded static visual state pauses outside the camera.
+	bool_t bAllowOffscreenPause = false;
+	// External occurrence end for source loops and Lifetime=0 bursts; zero keeps authored timing.
 	f32_t fSourceLoopEndSeconds = 0.f;
 	// The owning Object supplies the model and every model-cue bone anchor.
 	bool_t bExternalModelCueAnchors = false;
@@ -117,6 +119,8 @@ struct EFFECT_LEVEL_PLACEMENT_SPAWN_DESC final
 	bool_t bExternallySampled = false;
 	// Native infinite emitters advance naturally until the level releases the handle.
 	bool_t bOwnerSustainedSourceLoops = false;
+	// LEVEL_ACTIVE ambient only: bounded static visual state pauses outside the camera.
+	bool_t bAllowOffscreenPause = false;
 	// External occurrence end for native infinite source emitters; zero keeps authored timing.
 	f32_t fSourceLoopEndSeconds = 0.f;
 	// The owning Object supplies the model and every model-cue bone anchor.
@@ -388,6 +392,10 @@ public:
 	static bool_t Update_WorldRoot(
 		EFFECT_WORLD_ROOT_HANDLE Handle,
 		const float4x4_t& RootWorld);
+	// External cinematic clocks can extend an admitted source playback window
+	// without restarting its particles at a camera-loop boundary.
+	static bool_t Set_WorldRootSourceLoopEndSeconds(
+		EFFECT_WORLD_ROOT_HANDLE Handle, f32_t fEndSeconds, std::string& strOutStatus);
 	static bool_t Seek_WorldRoot(
 		EFFECT_WORLD_ROOT_HANDLE Handle,
 		f32_t fSampleTimeSeconds,
@@ -397,6 +405,12 @@ public:
 	// The owner calls once after the final camera, before rendering the world.
 	// Level-owned external placements keep their objects while hidden; visible
 	// samples commit before using the ordinary Effect rendergroup submission.
+	// Conservative presentation-only sphere, queried after the final camera.
+	// Invalid inputs retain visibility. No gameplay or lifetime is changed.
+	// Final-camera phase; consumes each admitted ambient tick at most once.
+	static void Submit_VisibleLevelPresentations();
+	static bool_t Is_WorldPresentationVisible(const float3_t& center,
+		f32_t radius, bool_t recentlyVisible);
 	static HRESULT Submit_LevelPlacementSample(
 		EFFECT_WORLD_ROOT_HANDLE Handle, bool_t visible);
 	// Completes only this external preview handle after its final WORLD sample.

@@ -5,6 +5,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <unordered_map>
 
 namespace Client
 {
@@ -24,6 +25,8 @@ struct COMPOSITION_ANIMATION_RESOURCE final
 	// iDurationMs. Save admission never depends on the selected preview rig.
 	float fDurationTicks = 0.f;
 	float fTicksPerSecond = 0.f;
+	// Display-only; native clip and package identity remain the append key.
+	std::string strDisplayName;
 };
 
 struct COMPOSITION_ANIMATION_SEQUENCE_RESOURCE final
@@ -35,8 +38,9 @@ struct COMPOSITION_ANIMATION_SEQUENCE_RESOURCE final
 	std::vector<COMPOSITION_ANIMATION_RESOURCE> Clips;
 };
 
-inline constexpr std::array<const char*, 21u>
+inline constexpr std::array<const char*, 28u>
 	COMPOSITION_ANIMATION_TARGET_ASSET_NAMES = {
+		"LanceMaster", "GunSlinger", "Slayer", "Artist", "DimensionMaster", "Warlord", "GuardianKnight",
 		"Valtan", "Valtan_Ghost_MN_RPBF_02",
 		"MN_RPCT_00", "MN_RPCT_03", "MN_RPCT_05", "MN_RPCT_06", "MN_RPCZ_00", "MN_RPCZ_00-1",
 		"Monster_480001_MN_PADD_01",
@@ -52,6 +56,26 @@ inline constexpr std::array<const char*, 21u>
 		"Monster_Card_Diamond",
 		"Monster_Card_Club",
 		"Monster_Card_Spade" };
+
+// Optional source labels never determine which clips exist or can be played.
+std::unordered_map<std::string, std::string> Read_CompositionAnimationDisplayNames(
+    const std::string& assetName);
+
+inline std::vector<std::string> CompositionAnimationCategory(const std::string& assetName)
+{
+    for (std::size_t i = 0u; i < 7u; ++i)
+        if (assetName == COMPOSITION_ANIMATION_TARGET_ASSET_NAMES[i])
+            return {"Character", assetName == "GunSlinger" ? "Gunslinger" : assetName};
+    if (assetName == "MN_RPCZ_00-1") return {"Character Transform", "Mario / Clown"};
+    if (assetName == "Valtan") return {"Boss", "Valtan"};
+    if (assetName == "Valtan_Ghost_MN_RPBF_02") return {"Boss", "Ghost Valtan"};
+    if (assetName == "MN_RPCT_00") return {"Boss", "Saydon"};
+    if (assetName == "MN_RPCT_03") return {"Boss", "Saydon (colorless)"};
+    if (assetName == "MN_RPCT_05") return {"Boss", "Saydon (Gate 3 / Encore)"};
+    if (assetName == "MN_RPCT_06") return {"Boss", "Large Saydon"};
+    if (assetName == "MN_RPCZ_00") return {"Boss", "Kouku"};
+    return {"Other models", assetName};
+}
 
 inline bool Is_CompositionAnimationTargetAsset(const std::string_view name)
 {

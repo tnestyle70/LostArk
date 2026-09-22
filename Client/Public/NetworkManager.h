@@ -160,6 +160,7 @@ public:
 		LostArk::Shared::CHARACTER_CLASS_ID characterClass,
 		std::string_view nickName);
 	//playercontroller�� ��ǥ XZ�� �����ϴ� public ���
+	bool Send_VehicleFlightInput(std::uint32_t sequence, float x, float z, float vertical);
 	bool Send_MoveGoal(
 		std::uint32_t clientSequence,
 		float goalX,

@@ -62,6 +62,29 @@ enum class EProfilerCounter : uint16_t
     PickingReadbackBytes,
     IndirectDrawCalls,
     IndirectIndexUpperBound,
+    ShadowCacheHits,
+    ShadowCacheMisses,
+    ShadowStaticCasters,
+    ShadowDynamicCasters,
+    MapCullingCandidates,
+    MapCullingVisible,
+    MapLod0Draws,
+    MapLod1Draws,
+    MapLod2Draws,
+    MapLodSourceIndices,
+    MapLodSubmittedIndices,
+    LightRecords,
+    LightDrawCalls,
+    LightUploadBytes,
+    MapLodAvailableDraws,
+    LightCullingCandidates,
+    LightCullingRejected,
+    EffectBoundsCandidates,
+    EffectBoundsCulled,
+    EffectMarkerSamples,
+    EffectMarkerHistoryRequests,
+    EffectAmbientSuspended,
+    EffectAmbientAdvanced,
     Count
 };
 
@@ -123,6 +146,9 @@ struct FProfilerModelAnimationToken final
 struct FProfilerFrame final
 {
     uint64_t FrameNumber = 0;
+    // Dropped completions attributed to this frame; excludes deliberately disabled detail scopes.
+    uint64_t DroppedCpuScopes = 0;
+    bool DetailedCpuScopes = false;
     double CpuFrameMs = 0.0;
     double FrameIntervalMs = 0.0;
     FProfilerAnimationStats Animation{};
@@ -158,6 +184,8 @@ struct FProfilerLiveStats final
     uint64_t TotalDroppedGpuFrames = 0;
     uint64_t TotalDroppedGpuScopes = 0;
     uint64_t TotalDroppedModelAnimationSamples = 0;
+    uint64_t DroppedCpuScopes = 0;
+    bool DetailedCpuScopes = false;
     uint64_t FrameNumber = 0;
     double CpuFrameMs = 0.0;
     double FrameIntervalMs = 0.0;
@@ -231,6 +259,11 @@ public:
     void Set_Enabled(bool enabled) noexcept;
     bool Is_Enabled() const noexcept;
 
+    // Requested UI policy is applied at the next frame boundary.
+    void Set_DetailedScopesEnabled(bool enabled) noexcept { m_RequestedDetailedScopes.store(enabled, std::memory_order_relaxed); }
+    bool Is_DetailedScopesEnabled() const noexcept { return m_RequestedDetailedScopes.load(std::memory_order_relaxed); }
+    bool Is_CollectingDetailedScopes() const noexcept { return m_DetailedScopes.load(std::memory_order_relaxed); }
+
     void Reset_History();
 
     /* Thread-safe. Nesting is tracked per thread, so a scope may begin and end
@@ -252,7 +285,7 @@ public:
     void Add_Counter(EProfilerCounter counter, uint64_t value = 1) noexcept;
     void Set_Counter(EProfilerCounter counter, uint64_t value) noexcept;
 
-    FProfilerCaptureSnapshot Snapshot() const;
+    FProfilerCaptureSnapshot Snapshot(size_t frameWindow = MAX_HISTORY_FRAMES) const;
     bool Get_LiveStats(FProfilerLiveStats& outStats) const;
 
     uint32_t Get_MainThreadId() const noexcept { return m_MainThreadId; }
@@ -327,7 +360,13 @@ private:
     ComPtr<ID3D11Device> m_pDevice;
     ComPtr<ID3D11DeviceContext> m_pContext;
     LARGE_INTEGER m_Frequency{};
+    // UI requests are latched at Begin_Frame so a capture never starts mid-frame.
     std::atomic_bool m_Enabled = false;
+    std::atomic_bool m_Collecting = false;
+    std::atomic_bool m_ResetRequested = false;
+    std::atomic_uint64_t m_CaptureEpoch = 0;
+    std::atomic_bool m_RequestedDetailedScopes = false;
+    std::atomic_bool m_DetailedScopes = false;
     uint64_t m_FrameNumber = 0;
     uint64_t m_PollFrameNumber = 0;
     uint64_t m_FrameBeginTick = 0;
@@ -352,6 +391,7 @@ private:
     std::vector<std::string> m_ScopeNames;
     std::unordered_map<std::string, uint32_t> m_ScopeNameLookup;
     uint64_t m_DroppedCpuScopes = 0;
+    uint64_t m_PendingDroppedCpuScopes = 0;
     uint64_t m_DroppedGpuFrames = 0;
     uint64_t m_DroppedGpuScopes = 0;
     uint64_t m_DroppedModelAnimationSamples = 0;
@@ -384,6 +424,18 @@ public:
 private:
     CProfiler* m_pProfiler = nullptr;
     uint32_t m_Token = UINT32_MAX;
+};
+
+// High-frequency per-draw CPU work is opt-in; pass timing and counters stay available.
+class CProfilerDetailScope final
+{
+public:
+    CProfilerDetailScope(CProfiler* profiler, std::string_view name)
+        : m_Scope(profiler && profiler->Is_CollectingDetailedScopes() ? profiler : nullptr, name) {}
+    CProfilerDetailScope(const CProfilerDetailScope&) = delete;
+    CProfilerDetailScope& operator=(const CProfilerDetailScope&) = delete;
+private:
+    CProfilerScope m_Scope;
 };
 
 class ENGINE_DLL CProfilerGpuScope final

@@ -4908,8 +4908,9 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 		else if (!fields.empty() && "RAIDGATE" == fields[0])
 		{
 			KOUKU_RAID_GATE_DEFINITION gate;
-			if ((fields.size() != 12u && fields.size() != 13u) ||
-				(fields.size() == 13u && fields[12] != "NONE" && (fields[2] != "GATE1" || !IsStableId(fields[12]))) ||
+			if ((fields.size() != 12u && fields.size() != 13u && fields.size() != 14u) ||
+				(fields.size() >= 13u && fields[12] != "NONE" && (fields[2] != "GATE1" || !IsStableId(fields[12]))) ||
+				(fields.size() == 14u && !IsStableId(fields[13])) ||
 				!IsStableId(fields[1]) || (fields[2] != "GATE1" && fields[2] != "GATE2" && fields[2] != "GATE3" && fields[2] != "BINGO") ||
 				!IsStableId(fields[3]) || !IsStableId(fields[4]) || !ParseNumber(fields[5], gate.iSequenceRevision) || !gate.iSequenceRevision ||
 				(fields[6] != "NONE" && !IsStableId(fields[6])) || !ParseNumber(fields[7], gate.iIntroDurationMs) || gate.iIntroDurationMs > 600000u ||
@@ -4922,7 +4923,8 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			{ m_strStatus = "Kouku raid gate metadata is invalid or duplicated"; return false; }
 			gate.strEncounterId = fields[1]; gate.strGateId = fields[2]; gate.strFlowId = fields[3]; gate.strSequenceCompositionId = fields[4];
 			if (fields[6] != "NONE") gate.strIntroPatternId = fields[6]; if (fields[8] != "NONE") gate.strClearPatternId = fields[8]; gate.strPrimaryBossPlacementId = fields[10];
-			if (fields.size() == 13u && fields[12] != "NONE") gate.strEntrySequenceInstanceId = fields[12];
+			if (fields.size() >= 13u && fields[12] != "NONE") gate.strEntrySequenceInstanceId = fields[12];
+			if (fields.size() == 14u) gate.strLoopStartEntryId = fields[13];
 			m_KoukuRaidGates.emplace(gate.strGateId, std::move(gate));
 		}
 		else if (!fields.empty() && "RAIDFLOWSTEP" == fields[0])
@@ -7693,6 +7695,9 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 	{
 		if (gate.Entries.size() != gate.iExpectedEntryCount || gate.strEncounterId != "ENCOUNTER_KAKULSAYDON_G1")
 		{ m_strStatus = "Kouku raid flow is incomplete or outside its encounter"; return false; }
+		if (!gate.strLoopStartEntryId.empty() && std::none_of(gate.Entries.begin(), gate.Entries.end(),
+			[&](const auto& entry) { return entry.strEntryId == gate.strLoopStartEntryId; }))
+		{ m_strStatus = "Kouku raid loop start is not an entry of its flow"; return false; }
 		for (const auto& entry : gate.Entries)
 		{
 			if (entry.bBundle)
