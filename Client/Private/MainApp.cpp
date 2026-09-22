@@ -8344,12 +8344,14 @@ void CMainApp::Update_SkillIcons()
 		{
 			pIconPath = Find_HudSkillIcon(pSkill->iSkillId);
 		}
-		else
+		else if (LostArk::Shared::CHARACTER_CLASS_ID::GUARDIANKNIGHT == player.eCharacterClass &&
+			0 == std::strcmp(pInputSlot, "T"))
 		{
-			/* A slot the class fills only in its other stance (GuardianKnight's T, which is
-			the dragon-form breath) keeps showing that skill greyed out rather than going
-			blank, so the row does not change shape when the stance flips. Searching the
-			catalog rather than naming the pair keeps this true for any stance class. */
+			/* GuardianKnight's T is the dragon-form breath, so in the human stance the slot
+			resolves to nothing and used to sit empty. Retail keeps the icon there and dims it
+			until the stance makes it usable. Only this one slot is scoped that way: every
+			other GuardianKnight slot either exists in both stances or in neither, and the
+			other stance classes are left as they are. */
 			for (const PLAYER_SKILL_DEFINITION& Skill : CPlayerSkillCatalog::Get_Skills())
 			{
 				if (Skill.eCharacterClass != player.eCharacterClass ||
@@ -8371,10 +8373,12 @@ void CMainApp::Update_SkillIcons()
 		if (nullptr != pIconPath)
 		{
 			m_pHUDRuntimeView->Set_SlotTexture(strIconSlot, pIconPath);
-			/* Retail greys an out-of-stance icon instead of hiding it; a flat multiply keeps
-			the art readable while reading as unavailable at a glance. */
+			/* There is no greyed copy of a skill icon in the data -- IconInfo has one DDK_Skill
+			page and no gray variant. Retail dims at draw time: ARKNewSlot sets its content
+			canvas to ColorTransform(1,1,1,1) while active and ColorTransform(0.3,0.3,0.3,1)
+			otherwise, so this is that same flat 0.3 multiply on RGB with alpha untouched. */
 			m_pHUDRuntimeView->Set_SlotTint(strIconSlot, bUsableInStance ?
-				float4_t(1.f, 1.f, 1.f, 1.f) : float4_t(0.32f, 0.32f, 0.36f, 1.f));
+				float4_t(1.f, 1.f, 1.f, 1.f) : float4_t(0.3f, 0.3f, 0.3f, 1.f));
 			m_pHUDRuntimeView->Set_SlotVisible(strIconSlot, true);
 		}
 		else
