@@ -2913,11 +2913,10 @@ bool_t CCharacter::Apply_EquipmentPreview(
 	}
 	for (uint32_t index = 0u; index < m_pSpec->iNumEquipment; ++index)
 	{
-		const EQUIPMENT_PRESENTATION_SLOT slot =
-			m_pSpec->pEquipment[index].ePresentationSlot;
-		if (slot >= EQUIPMENT_PRESENTATION_SLOT::WEAPON)
+		if (!Is_ValidEquipmentPresentationPart(
+			m_pSpec->pEquipment[index], m_pSpec->eCharacterClass))
 		{
-			outError = "Default equipment has no authored presentation slot.";
+			outError = "Default equipment has an invalid presentation slot or stance.";
 			return false;
 		}
 	}

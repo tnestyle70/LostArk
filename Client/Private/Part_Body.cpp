@@ -9,6 +9,7 @@
 namespace
 {
 	constexpr uint32_t SOURCE_TRANSLUCENT_TWO_SIDED_PASS = 9u;
+	constexpr uint32_t SOURCE_TRANSLUCENT_ONE_SIDED_PASS = 10u;
 
 	/* Programs 7 and 18 are the source two-sided translucent hair and program 6
 	the eyelash/eye-AO shell. The deferred two-sided pass resolves their coverage
@@ -19,6 +20,9 @@ namespace
 		if (nullptr == surface || surface->family != Engine::MODEL_SURFACE_FAMILY::SOURCE_CHARACTER)
 			return 0u;
 		const uint32_t program = surface->sourceCharacter.program;
+		// The generic ghost preview uses the same forward material pass as CBody_Valtan.
+		if (84u == program)
+			return SOURCE_TRANSLUCENT_ONE_SIDED_PASS;
 		return 6u == program || 7u == program || 18u == program || 99u == program ?
 			SOURCE_TRANSLUCENT_TWO_SIDED_PASS : 0u;
 	}

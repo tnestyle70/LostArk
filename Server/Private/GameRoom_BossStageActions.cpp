@@ -40,6 +40,22 @@ LostArk::Server::SERVER_PLAYER* LostArk::Server::CGameRoom::Select_BossRandomAli
 		candidates.push_back(&player);
 	}
 	if (candidates.empty()) return nullptr;
+	if ("boss.target.nearest" == targetId)
+	{
+		return *std::min_element(candidates.begin(), candidates.end(),
+			[&boss](const SERVER_PLAYER* left, const SERVER_PLAYER* right)
+			{
+				const float leftDx = left->fPositionX - boss.fPositionX;
+				const float leftDz = left->fPositionZ - boss.fPositionZ;
+				const float rightDx = right->fPositionX - boss.fPositionX;
+				const float rightDz = right->fPositionZ - boss.fPositionZ;
+				const float leftDistanceSquared = leftDx * leftDx + leftDz * leftDz;
+				const float rightDistanceSquared = rightDx * rightDx + rightDz * rightDz;
+				if (leftDistanceSquared != rightDistanceSquared)
+					return leftDistanceSquared < rightDistanceSquared;
+				return left->iNetEntityId < right->iNetEntityId;
+			});
+	}
 	const std::uint64_t seed = Mix_DeterministicRandom(
 		Hash_StableId(actionId) ^ Hash_StableId(targetId) ^
 		(static_cast<std::uint64_t>(boss.iNetEntityId) << 32u) ^
@@ -818,7 +834,8 @@ bool LostArk::Server::CGameRoom::Stage_BossPatternStageActions(
 		}
 		case BOSS_PATTERN_STAGE_ACTION_KIND::RETARGET_RANDOM_ALIVE:
 			if (BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER != trigger ||
-				"boss.target.pattern" != action.strTargetId ||
+				("boss.target.pattern" != action.strTargetId &&
+					"boss.target.nearest" != action.strTargetId) ||
 				1u != action.iValue || 0u != action.iDurationMs ||
 				BOSS_GRABBED_RELEASE_MODE::NONE != action.eReleaseMode ||
 				0.f != action.fReleaseSpeedMps ||

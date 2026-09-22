@@ -4382,7 +4382,14 @@ bool_t Client::CEffectPlayback::Step(
 				(m_bOwnerSustainedSourceLoops && Element.SourceRecipe.bEnabled &&
 					Element.SourceRecipe.iEmitterLoopCount == 0u)))
 		{
-			if (Element.SourceRecipe.bEnabled)
+			if (Is_PortableAuthoredParticleCarrier(Element) &&
+				Element.Detail.Particle.fFixedCenterSpacingWorldUnits > 0.f)
+			{
+				// Authored spacing owns births; source modules own each particle payload.
+				// Do not also consume the recipe burst/rate at the same lattice points.
+				Spawn_FixedCenterSpacingParticles(Element, State, RootWorld);
+			}
+			else if (Element.SourceRecipe.bEnabled)
 			{
 				const EFFECT_CASCADE_RECIPE_DESC& Recipe = Element.SourceRecipe;
 				const f32_t fEmitterDuration =

@@ -2225,6 +2225,35 @@ float4 ArtistNative2893(ARTIST_NATIVE_INPUT input)
     output.xyz = ((r1.xyzx)*(source[12].xyzx)+(r0.xyzx)).xyz;
     // 81: mov o0.w, l(0)
     output.w = (float4(asfloat(0u),asfloat(0u),asfloat(0u),asfloat(0u))).w;
+    // Native2893 also writes diffuse (o3), specular (o5), and two-sided
+    // normals (82-99) for deferred lighting. Its forward effect carrier must
+    // consume them; RT0 alone contains only ambient/sky and transition glow.
+    const float3 doveDiffuse = r1.xyz;
+    const float3 doveSpecular = r4.xyz * 10.f; // Inverse native RT5 sqrt/.1 encoding.
+    const float dovePower = saturate(source[8].z * .002f) * 500.f;
+    const float3 doveTangentNormal = r2.xyz * (input.frontFace ? 1.f : -1.f) * source[0].x;
+    const float3 doveBasisX = input.sourceBasisX * rsqrt(max(dot(input.sourceBasisX, input.sourceBasisX), 1e-12f));
+    const float3 doveBasisZ = input.sourceBasisZ * rsqrt(max(dot(input.sourceBasisZ, input.sourceBasisZ), 1e-12f));
+    const float3 doveBasisY = cross(doveBasisZ, doveBasisX) * input.handedness;
+    float3 doveNormal = float3(dot(doveBasisX, doveTangentNormal),
+        dot(doveBasisY, doveTangentNormal), dot(doveBasisZ, doveTangentNormal));
+    doveNormal *= rsqrt(max(dot(doveNormal, doveNormal), 1e-12f));
+    float3 doveView = input.sourceCameraPosition - input.sourceWorldPosition;
+    doveView *= rsqrt(max(dot(doveView, doveView), 1e-12f));
+    [loop] for (uint lightIndex = 0u; lightIndex < g_KoukuDoveDirectionalCount; ++lightIndex)
+    {
+        // Directions and normals use the same UE source basis (X,-Z,Y).
+        float3 toLight = -g_KoukuDoveDirectionalDirections[lightIndex].xyz;
+        toLight *= rsqrt(max(dot(toLight, toLight), 1e-12f));
+        float3 halfVector = toLight + doveView;
+        halfVector *= rsqrt(max(dot(halfVector, halfVector), 1e-12f));
+        const float ndoth = abs(dot(doveNormal, halfVector));
+        const float lobe = ndoth < .000001f ? 0.f : min(pow(ndoth, dovePower), 1.f);
+        // Existing recovered source-map Lambert/Blinn direct-light contract.
+        // No extra ambient, fabricated exposure, shadow, or source SH here.
+        output.rgb += g_KoukuDoveDirectionalColors[lightIndex].rgb *
+            (doveDiffuse * saturate(dot(doveNormal, toLight)) + clamp(doveSpecular * lobe, 0.f, 2.f));
+    }
     return output;
 }
 #endif

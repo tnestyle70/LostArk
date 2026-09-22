@@ -124,6 +124,16 @@ void LostArk::Server::CGameRoom::Begin_PlayerFall(
 	player.fKnockbackDirectionZ = 0.f;
 	player.fKnockbackSpeed = 0.f;
 	player.fKnockbackRemainingSeconds = 0.f;
+	/* The ejection/ballistic phase ends at this boundary.  Keep the ordinary
+	   FALLING integrator authoritative after the edge crossing; leaving either
+	   typed flight flag set would make Update_PlayerFall return early forever
+	   and the player could never reach the dead-zone deadline. */
+	player.bArenaEjectionActive = false;
+	player.iEjectionOwnerNetEntityId = INVALID_NET_ENTITY_ID;
+	player.bKnockbackCanLeaveArena = false;
+	player.bKnockbackBallistic = false;
+	player.fKnockbackVelocityY = 0.f;
+	player.fKnockbackLaunchY = 0.f;
 	player.iKnockdownEndTick = 0u;
 	player.Clear_Attachment();
 	/* Every boss and monster gate already refuses a player that is not combat
@@ -1112,8 +1122,17 @@ void LostArk::Server::CGameRoom::Advance_PlayerKnockback(
 		player.fKnockbackVelocityY -= SERVER_PLAYER::KNOCKBACK_GRAVITY_MPS2 * step;
 		player.fKnockbackRemainingSeconds = (std::max)(0.f, player.fKnockbackRemainingSeconds - step);
 		SERVER_NAV_POINT floor{ desiredX, player.fKnockbackLaunchY, desiredZ };
-		const bool hasFloor = !m_ServerNavigation.Is_Loaded() ||
+		bool hasFloor = !m_ServerNavigation.Is_Loaded() ||
 			m_ServerNavigation.Sample_SurfacePosition(desiredX, desiredZ, floor);
+		/* A ballistic player may cross an overlapping upper deck while leaving an
+		   arena.  That deck is not a landing surface for a flight launched from
+		   below it: accepting it would snap Y upward and turn the dead-zone fall
+		   into a nav teleport.  Lower floors remain valid and are handled by the
+		   normal gravity/dead-zone path. */
+		constexpr float maximumLandingRiseM = 0.01f;
+		if (hasFloor && std::isfinite(floor.y) &&
+			floor.y > player.fKnockbackLaunchY + maximumLandingRiseM)
+			hasFloor = false;
 		if (player.fKnockbackVelocityY <= 0.f && hasFloor && player.fPositionY <= floor.y + 0.0001f)
 		{
 			player.fPositionY = floor.y;

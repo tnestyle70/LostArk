@@ -106,6 +106,33 @@ struct EQUIPMENT_PART_SPEC
 		LostArk::Shared::PLAYER_STANCE_ID::NONE;
 };
 
+/* Both model-view admission and costume replacement validate the same base
+part inventory. Identity wings have no replaceable clothing slot; their exact
+class/stance contract must not make END valid for ordinary equipment. */
+constexpr bool_t Is_ValidEquipmentPresentationPart(
+	const EQUIPMENT_PART_SPEC& part,
+	const LostArk::Shared::CHARACTER_CLASS_ID characterClass)
+{
+	using LostArk::Shared::CHARACTER_CLASS_ID;
+	using LostArk::Shared::PLAYER_STANCE_ID;
+	switch (part.eSlotKind)
+	{
+	case EQUIPMENT_SLOT_KIND::IDENTITY:
+		return CHARACTER_CLASS_ID::GUARDIANKNIGHT == characterClass &&
+			EQUIPMENT_PRESENTATION_SLOT::END == part.ePresentationSlot &&
+			PLAYER_STANCE_ID::GUARDIANKNIGHT_DRAGON == part.eRequiredStance;
+	case EQUIPMENT_SLOT_KIND::DEFAULT:
+	case EQUIPMENT_SLOT_KIND::DEFAULT_HELMET:
+	case EQUIPMENT_SLOT_KIND::AVATAR_HEAD:
+	case EQUIPMENT_SLOT_KIND::AVATAR_ARMOR:
+		return part.ePresentationSlot >= EQUIPMENT_PRESENTATION_SLOT::HEAD &&
+			part.ePresentationSlot < EQUIPMENT_PRESENTATION_SLOT::WEAPON &&
+			PLAYER_STANCE_ID::NONE == part.eRequiredStance;
+	default:
+		return false;
+	}
+}
+
 /* A piece that rides one bone instead of the whole palette. Classes differ in how
 many they carry and what the bone is called -- LanceMaster holds one lance at
 b_weapon_rhand, GunSlinger dual-wields at b_wp_1 and b_wp_2 -- so this is a list,

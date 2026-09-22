@@ -133,7 +133,7 @@ bool Client::CKoukuSaydonPresentationPlayer::Collect_LogicPreviewEffects(
         {
             const auto pursuit = std::find_if(document.Logics.begin(), document.Logics.end(),
                 [&](const auto& row) { return row.strLogicId == occurrence.strLogicId &&
-                    row.strJudgementKind == "PURSUIT_PROJECTILES"; });
+                    (row.strJudgementKind == "PURSUIT_PROJECTILES" || row.strTriggerKind == "PURSUIT_PROJECTILES"); });
             if (pursuit != document.Logics.end())
             {
                 auto ids = pursuit->PursuitVisualIds;
@@ -180,7 +180,7 @@ void Client::CKoukuSaydonPresentationPlayer::Sample_LogicPreview(SESSION& owner,
         {
             const auto pursuit = std::find_if(document.Logics.begin(), document.Logics.end(),
                 [&](const auto& row) { return row.strLogicId == occurrence.strLogicId &&
-                    row.strJudgementKind == "PURSUIT_PROJECTILES"; });
+                    (row.strJudgementKind == "PURSUIT_PROJECTILES" || row.strTriggerKind == "PURSUIT_PROJECTILES"); });
             if (pursuit != document.Logics.end())
             {
                 Sample_PursuitPreview(owner, document, pattern, *pursuit, occurrence, clockMs, paused);
@@ -343,7 +343,7 @@ void Client::CKoukuSaydonPresentationPlayer::Sample_PursuitPreview(SESSION& owne
     };
     if (!trigger.captured)
     {
-        if (double(clockMs) >= authoredStart + occurrence.iDurationMs) return;
+        if (logic.strLogicType != "TRIGGER" && double(clockMs) >= authoredStart + occurrence.iDurationMs) return;
         const KOUKU_CARD_PRESENTATION_VIEW* selected = nullptr;
         for (const auto& player : m_LogicPreviewPlayers)
             if (eligible(player) && (!selected || player.Snapshot.iNetEntityId < selected->Snapshot.iNetEntityId))
@@ -351,7 +351,7 @@ void Client::CKoukuSaydonPresentationPlayer::Sample_PursuitPreview(SESSION& owne
         if (!selected || (trigger.awaitingPlayer && paused))
         {
             trigger.awaitingPlayer = true;
-            m_strStatus = "Pursuit Preview has no eligible player at its observed birth; waiting within this Duration.";
+            m_strStatus = "Pursuit Preview has no eligible player at its observed birth; waiting for an eligible target.";
             return;
         }
         const std::size_t plannedProjectiles = std::size_t(waveCount) * logic.iCountPerWave;
@@ -407,8 +407,8 @@ void Client::CKoukuSaydonPresentationPlayer::Sample_PursuitPreview(SESSION& owne
             projectile.contact.key = identity + ":contact";
             projectile.targetId = selected->Snapshot.iNetEntityId;
             projectile.birthTickOffset = wave * intervalTicks;
-            // Same slot-zero bearing the room uses, GameRoom_BossSimulation.cpp:901.
-            constexpr float bodyFrontYaw = XM_2PI * .75f;
+            // Same Saydon +X body-front bearing as the Server (180 degrees from the old back-facing origin).
+            constexpr float bodyFrontYaw = XM_PIDIV2;
             const float yaw = bossYaw + bodyFrontYaw + XM_2PI * float(ordinal) / float(logic.iCountPerWave);
             float4x4_t pose;
             XMStoreFloat4x4(&pose, XMMatrixRotationY(yaw) * XMMatrixTranslation(

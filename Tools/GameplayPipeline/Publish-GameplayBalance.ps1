@@ -3222,7 +3222,7 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 					}
 					'RETARGET_RANDOM_ALIVE' {
 						$validTypedAction = $actionTrigger -ceq 'ENTER' -and
-							$actionTargetId -ceq 'boss.target.pattern' -and
+							$actionTargetId -cin @('boss.target.pattern','boss.target.nearest') -and
 							$actionValue -eq 1
 					}
 					'RETURN_TO_ARENA_CENTER' {
@@ -3803,7 +3803,7 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 			Assert-JsonInteger $koukuStageRetarget.durationMs 'KoukuSaydon stage retarget durationMs' 0 0
 			if ($koukuStageRetarget.trigger -cne 'ENTER' -or
 				$koukuStageRetarget.kind -cne 'RETARGET_RANDOM_ALIVE' -or
-				$koukuStageRetarget.targetId -cne 'boss.target.pattern') {
+				$koukuStageRetarget.targetId -cnotin @('boss.target.pattern','boss.target.nearest')) {
 				throw 'KoukuSaydon stage retarget identity is invalid'
 			}
 		}

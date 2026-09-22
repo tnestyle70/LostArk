@@ -1798,7 +1798,7 @@ Patterns 창의 Delete Selected Pattern 또는 Pattern 우클릭 Delete는 같�
 
 ### Kouku 추적·회전 카드의 생성과 접촉
 
-Composition DURATION의 `PURSUIT_PROJECTILES`는 `visualIds` 1~4개와 `contactVisualId`로 저장된 V1_EFFECT resource를 참조한다. `speedMps`는 .01~100m/s, `contactRadiusM`은 .01~10m, `spawnRadiusM`은 0~100m다. `spawnIntervalMs=0`은 한번 생성, `countPerWave` 생략은 문양 개수만큼 생성한다. 명시 개수는 1~16이다. `maxDistanceM`은 선택 필드이며0~1000m다. 생략/0이면 이동 거리는 기존 수명·접촉으로 제한하고, 양수이면 생성 위치부터 누적 이동 거리를 제한한다. `homing=true`와 한번 생성, 거리 제한0일 때만 `lifetimeMs=0`을 허용한다. 0보다 큰 수명과 발사 간격은 최대600000ms다. Logic occurrence duration은 생성 창이며 무한 객체의 자연 종료 시각이 아니다.
+Composition DURATION 또는 TRIGGER의 `PURSUIT_PROJECTILES`는 `visualIds` 1~4개와 `contactVisualId`로 저장된 V1_EFFECT resource를 참조한다. `speedMps`는 .01~100m/s, `contactRadiusM`은 .01~10m, `spawnRadiusM`은 0~100m다. `spawnIntervalMs=0`은 한번 생성, `countPerWave` 생략은 문양 개수만큼 생성한다. 명시 개수는 1~16이다. `maxDistanceM`은 선택 필드이며0~1000m다. 생략/0이면 이동 거리는 기존 수명·접촉으로 제한하고, 양수이면 생성 위치부터 누적 이동 거리를 제한한다. `homing=true`와 한번 생성, 거리 제한0일 때만 `lifetimeMs=0`을 허용한다. 0보다 큰 수명과 발사 간격은 최대600000ms다. Logic occurrence duration은 생성 창이며 무한 객체의 자연 종료 시각이 아니다.
 
 Server가 대상 선택·이동·Shared XZ swept circle 접촉과 객체 종료를 소유한다. 접촉 반경에는 대상 player body radius를 더한다. 무한 객체는 접촉 전 시간으로 만료하지 않으며 명시 Stop·owner/target 소멸에서 정리한다. 유한 직선 객체는 접촉·수명·양수 최대 거리 중 먼저 도달한 종료 조건에서 같은 폭발 event를 한 번 보낸다. 기존18열 bootstrap은 그대로 읽고, 양수 최대 거리는 선택적인19번째 열로 전달한다. 이 Logic은 damage나 RESULT 판정을 임의로 추가하지 않는다.
 
@@ -1849,9 +1849,21 @@ Gameplay bootstrap의 `PATTERNLOGICPUSH`는 기존8/9필드를 계속 읽는다.
 
 ### 쿠크 포물선 넉백과 크기 프로필 보완
 
-Composition Result의 optional pushBallistic은 기존 직선 push 기본값을 유지한다. 활성화 시 pushRangeM은0초과100m이하, pushDurationMs는100~5000, pushCanLeaveArena=true가 필수다. AWAY_FROM_CONTACT는 실제 판정에 쓰인 장판 중심→플레이어 방향이며 BOSS_FORWARD만 yaw offset을 허용한다. Client 편집→projector→publisher→Server parser가 동일 정책을 보존한다. Server 비행은 gravity와 원본 navigation surface를 소비하여 착지와 낙사를 구분한다.
+Composition Result의 optional pushBallistic은 기존 직선 push 기본값을 유지한다. 활성화 시 pushRangeM은0초과100m이하, pushMs는100~5000, pushCanLeaveArena=true가 필수다. AWAY_FROM_CONTACT는 실제 판정에 쓰인 장판 중심→플레이어 방향이며 BOSS_FORWARD만 yaw offset을 허용한다. Client 편집→projector→publisher→Server parser가 동일 정책을 보존한다. Server 비행은 gravity와 원본 navigation surface를 소비하여 착지와 낙사를 구분한다.
 
 Character Size Save/Reload는 계속 선택 맵별 camera JSON을 소유한다. 카메라 컷신 재생 여부가 크기 적용을 막지 않는다. Test/Training/Maharaka 공용 Development는 CharacterSelect의 저장된 크기만 읽고 기존 카메라 포즈를 유지한다. 현재 맵들의 Artist/DimensionMaster 배율을 동일하게 맞춘 값은 각 Data/Camera 문서가 정본이며 모델 자체 catalog scale은 별개다.
+
+
+
+### 쿠크 추적 카드 Trigger와 접촉 Preview
+
+`TRIGGER / PURSUIT_PROJECTILES`는 각 Logic Box의 `startMs`에 한 번 생성하며 `spawnIntervalMs=0`이다. 박스 길이는 이미 생성한 카드의 수명이 아니다. `lifetimeMs=0`, homing과 거리 제한0은 기존 room-owned 추적으로 접촉 전까지 유지하며 명시 Stop·대상 무효·방 정리는 기존 소유권 경로로 종료한다. `DURATION`의 기존 순차 생성은 계속 지원한다. 두 종류 모두 설치된 세이튼 +X 전방을 body yaw+90도로 해석한다. 영구 추적의 전체 수명 CONTACT는 임시 최대시간을 실제 만료로 사용하지 않으며 명시한 짧은 판정 창은 보존한다.
+
+피해 Result의 양수 밀림 또는 추적 카드를 가진 Pattern의 `Play Preview`도 기존 Server audition을 사용한다. Parent와 Bundle은 포함된 Pattern을 확인한다. 저장·Publish 뒤 실행하며 Server가 접촉·상승/하강·navigation을 무시하는 ballistic XZ 이동·바닥 이탈의 FALLING/DEAD를 소유한다. Client에 별도 피해·낙사 판정을 만들지 않는다.
+
+자연 완료된 audition의 영구 추적은 계속 유지한다. 남아 있는 같은 epoch의 `Stop`은 sequencer와 F1에서 제출할 수 있으며 기존 Server 소유권 검증 후 잔여 카드를 정리한다. 자연 완료 자체를 Stop으로 바꾸거나 Client가 카드를 임의 삭제하지 않는다.
+
+본이 지정된 `ENTER_AREA`, `OBJECT_OVERLAP`, `OBJECT_CONTACT` Collider는 같은 installed WModel clip·preScale·socket·occurrence TRS를 bake한 track을 게시한다. 피해 collider의 bone을 읽지 않고 boss root로 대체하지 않는다. MAP 고정 경고 범위와 WEAPON 본 추적 범위는 서로 다른 anchor로 유지한다.
 
 
 ### 탈것 presentation lifetime와 원본 스킬 제어

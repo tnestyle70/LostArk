@@ -446,6 +446,28 @@ HRESULT Client::CEffectDocumentRenderer::Bind_MaterialInputs(
                 for (const auto& Light : CGameInstance::Get().Get_SceneLights())
                     if (Light.eType == LIGHT::DIRECTIONAL)
                     { SceneAmbient.x += Light.vAmbient.x; SceneAmbient.y += Light.vAmbient.y; SceneAmbient.z += Light.vAmbient.z; }
+                if (Resource.iSourceMaterialProfile == 2893u &&
+                    pShaderProgram->eCarrier == EFFECT_SHADER_CARRIER::MESH)
+                {
+                    // Native lit paper exports material MRTs; this forward carrier
+                    // must receive direct lighting in addition to its RT0 ambient.
+                    std::array<float4_t, 16> Directions{}, Colors{};
+                    uint32_t Count = 0u;
+                    for (const auto& Light : CGameInstance::Get().Get_SceneLights())
+                    {
+                        if (Light.eType != LIGHT::DIRECTIONAL ||
+                            Light.eReceiver == LIGHT_RECEIVER::SOURCE_CHARACTER)
+                            continue;
+                        if (Count == Directions.size()) { NativeBindFailed = true; break; }
+                        // Client to UE source basis; source world/view use it too.
+                        Directions[Count] = { Light.vDirection.x, -Light.vDirection.z, Light.vDirection.y, 0.f };
+                        Colors[Count] = Light.vDiffuse;
+                        ++Count;
+                    }
+                    NativeBindFailed = BindFailed(pShader->Bind_RawValue("g_KoukuDoveDirectionalCount", &Count, sizeof(Count))) || NativeBindFailed;
+                    NativeBindFailed = BindFailed(pShader->Bind_RawValue("g_KoukuDoveDirectionalDirections", Directions.data(), sizeof(Directions))) || NativeBindFailed;
+                    NativeBindFailed = BindFailed(pShader->Bind_RawValue("g_KoukuDoveDirectionalColors", Colors.data(), sizeof(Colors))) || NativeBindFailed;
+                }
                 NativeBindFailed = BindFailed(pShader->Bind_RawValue("g_KoukuSourceAmbient", &SceneAmbient, sizeof(SceneAmbient))) || NativeBindFailed;
                 NativeBindFailed = BindFailed(pShader->Bind_RawValue("g_KoukuSourceActorPosition", &m_vSourceActorPosition, sizeof(m_vSourceActorPosition))) || NativeBindFailed;
                 // UE source world is centimeters in X,Z,-Y. Source clip W is

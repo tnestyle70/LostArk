@@ -727,7 +727,8 @@ namespace
 					0u == durationMs;
 			else if (kind == "RETARGET_RANDOM_ALIVE")
 				validKind = trigger == "ENTER" &&
-					targetId == "boss.target.pattern" && 1u == value &&
+					(targetId == "boss.target.pattern" || targetId == "boss.target.nearest") &&
+					1u == value &&
 					0u == durationMs;
 			else if (kind == "RETURN_TO_ARENA_CENTER")
 				validKind = trigger == "ENTER" &&

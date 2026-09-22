@@ -559,9 +559,13 @@ REGION "blocked" "closed" 0 1
 		std::vector<S2C_COMBAT_OBJECT_PRESENTATION_EVENT> expiredEvents;
 		std::vector<S2C_COMBAT_OBJECT_DESPAWNED> expiredObjects;
 		room->m_CombatObjectRuntime.Drain_Lifecycle(expiredSpawns, expiredEvents, expiredObjects);
-		tests.Require(expiredEvents.size() == 12u && expiredObjects.size() == 12u &&
-			std::all_of(expiredEvents.begin(), expiredEvents.end(), [&](const auto& event) { return event.strHitId == pursuit.strContactVisualId; }),
-			"Every finite card emits its shared burst exactly once at lifetime end");
+		// The same drain includes the admitted birth pulses, not just terminal bursts.
+		tests.Require(expiredEvents.size() == 24u && expiredObjects.size() == 12u &&
+			std::count_if(expiredEvents.begin(), expiredEvents.end(), [](const auto& event) {
+				return event.strHitId == "combatpresentation.kouku.pursuit.started"; }) == 12 &&
+			std::count_if(expiredEvents.begin(), expiredEvents.end(), [&](const auto& event) {
+				return event.strHitId == pursuit.strContactVisualId; }) == 12,
+			"Every finite card emits one birth pulse and its shared burst exactly once at lifetime end");
 		room->m_CombatObjectRuntime.Discard_PendingLifecycle();
 		// Source Speed is 8 m/s; MaxDistance is independent of its five-second lifetime.
 		pursuit.iDurationMs = 4100u; pursuit.fProjectileSpeedMps = 8.f; pursuit.fProjectileMaxDistanceM = 15.f;
@@ -597,6 +601,10 @@ REGION "blocked" "closed" 0 1
 		std::vector<S2C_COMBAT_OBJECT_SPAWNED> spawned; std::vector<S2C_COMBAT_OBJECT_PRESENTATION_EVENT> events;
 		std::vector<S2C_COMBAT_OBJECT_DESPAWNED> despawned;
 		room->m_CombatObjectRuntime.Drain_Lifecycle(spawned, events, despawned);
+		tests.Require(events.size() == 2u && std::count_if(events.begin(), events.end(), [](const auto& event) {
+			return event.strHitId == "combatpresentation.kouku.pursuit.started"; }) == 1,
+			"Swept card contact preserves its single birth pulse alongside the terminal burst");
+		std::erase_if(events, [](const auto& event) { return event.strHitId == "combatpresentation.kouku.pursuit.started"; });
 		tests.Require(events.size() == 1u && events.front().strHitId == pursuit.strContactVisualId && despawned.size() == 1u &&
 			events.front().fPositionX == target.fPositionX && events.front().fPositionZ == target.fPositionZ &&
 			room->m_CombatObjectRuntime.Get_LiveObjects().empty() && damage.empty(), "Swept card contact emits one pinned reliable explosion and retires the object");
@@ -639,6 +647,42 @@ REGION "blocked" "closed" 0 1
 		room->Update_KoukuPlayerTargets(albionOwner, pattern, ledger, room->m_GameplayCatalog, 6300u);
 		room->m_CombatObjectRuntime.Cancel_Source(albionOwner.iNetEntityId);
 		tests.Require(room->m_CombatObjectRuntime.Get_LiveObjects().empty(), "Explicit Stop uses source cancellation for surviving cards");
+		room->m_CombatObjectRuntime.Reset(); room->m_CombatObjectRuntime.Discard_PendingLifecycle();
+		pursuit.iStartMs = 913u; pursuit.iDurationMs = 1u; pursuit.iProjectileLifetimeMs = 0u;
+		pursuit.iSpawnIntervalMs = 0u; pursuit.iProjectileCountPerWave = 1u; pursuit.bProjectileHoming = true;
+		pursuit.fProjectileMaxDistanceM = 0.f; pursuit.fProjectileSpeedMps = 1.f;
+		albionOwner.fYawDegrees = 0.f; albionOwner.fPositionX = albionOwner.fPositionZ = 0.f;
+		target.fPositionX = target.fPositionZ = 10000.f; target.iCurrentHp = 100u;
+		LostArk::Shared::ATTACK_HIT_TEMPLATE fullHit;
+		fullHit.strHitId = "card.full-lifetime"; fullHit.strTrigger = "CONTACT";
+		fullHit.iEndMs = 600000u; fullHit.fRadiusM = .4; fullHit.iDamagePercent = 10u;
+		auto shortHit = fullHit; shortHit.strHitId = "card.short-window"; shortHit.iEndMs = 1000u;
+		pursuit.ProjectileHits = { fullHit, shortHit };
+		pattern.MechanicTriggers = { pursuit }; CKoukuSaydonLogicRuntime::Build(pattern, albionOwner, 6400u, ledger);
+		room->Update_KoukuPlayerTargets(albionOwner, pattern, ledger, room->m_GameplayCatalog, 6427u);
+		tests.Require(room->m_CombatObjectRuntime.Get_LiveObjects().empty(), "Sub-tick pursuit Trigger never emits before its authored start");
+		room->Update_KoukuPlayerTargets(albionOwner, pattern, ledger, room->m_GameplayCatalog, 6428u);
+		const auto& persistentCards = room->m_CombatObjectRuntime.Get_LiveObjects();
+		tests.Require(persistentCards.size() == 1u, "One-ms Trigger produces one card on its quantized birth tick");
+		if (!persistentCards.empty())
+		{
+			const auto& card = persistentCards.front();
+			tests.Require(std::abs(card.LiveState.CurrentPose.fPositionX - pursuit.fProjectileSpawnRadiusM) < .001f &&
+				std::abs(card.LiveState.CurrentPose.fPositionZ) < .001f, "Pursuit spawn is Saydon +X front, 180 degrees opposite the old rear origin");
+			tests.Require(card.Hits.size() == 2u && card.Hits[0].iEndMs == 0u && card.Hits[1].iEndMs == 1000u,
+				"Persistent pursuit extends only full-lifetime CONTACT hits and preserves shorter authored windows");
+			room->Update_KoukuPlayerTargets(albionOwner, pattern, ledger, room->m_GameplayCatalog, 6429u);
+			damage.clear();
+			room->m_CombatObjectRuntime.Update(room->m_Players, room->m_WorldEntities, room->m_GameplayCatalog, 601.f, 6430u, damage);
+			if (!room->m_CombatObjectRuntime.Get_LiveObjects().empty())
+			{
+				const auto pose = room->m_CombatObjectRuntime.Get_LiveObjects().front().LiveState.CurrentPose;
+				target.fPositionX = pose.fPositionX; target.fPositionY = pose.fPositionY; target.fPositionZ = pose.fPositionZ;
+				room->m_CombatObjectRuntime.Update(room->m_Players, room->m_WorldEntities, room->m_GameplayCatalog, 1.f / 30.f, 6431u, damage);
+			}
+			tests.Require(damage.size() == 1u && room->m_CombatObjectRuntime.Get_LiveObjects().empty(),
+				"Persistent card still damages and despawns on contact after ten minutes");
+		}
 		room->m_CombatObjectRuntime.Reset(); room->m_CombatObjectRuntime.Discard_PendingLifecycle(); room->m_Players.clear();
 	}
 	// Showtime duration uses the same room-owned roster, clock, ground and object lifecycle.
@@ -690,14 +734,23 @@ REGION "blocked" "closed" 0 1
 			[](const auto& object) { return object.Hits.empty() && object.LiveState.CurrentPose.fPositionY == 1.f && object.LiveState.CurrentPose.fYawDegrees == 0.f; }),
 		"Showtime tick zero creates a fixed group and one independent grounded tracker for every living player, with no damage or boss yaw");
 	const auto firstTracker = trackingIds.at(1u), secondTracker = trackingIds.at(2u);
+	const auto firstBirth = targetPose(firstTracker), secondBirth = targetPose(secondTracker);
+	tests.Require(firstBirth.fPositionX == albionOwner.fSpawnPositionX && firstBirth.fPositionZ == albionOwner.fSpawnPositionZ &&
+		secondBirth.fPositionX == albionOwner.fSpawnPositionX && secondBirth.fPositionZ == albionOwner.fSpawnPositionZ,
+		"Each Showtime tracker starts at the authored arena centre rather than at its player");
 	room->m_Players[1u].fPositionX = 9.f; room->m_Players[2u].fPositionX = 13.f;
 	updateTargets(2001u);
-	tests.Require(std::abs(targetPose(firstTracker).fPositionX - 6.1f) < .0001f &&
-		std::abs(targetPose(secondTracker).fPositionX - 10.2f) < .0001f,
-		"Each tracker advances by half its own player's effective speed per 30 Hz tick");
+	const auto firstStep = targetPose(firstTracker), secondStep = targetPose(secondTracker);
+	tests.Require(std::abs(std::hypot(firstStep.fPositionX - firstBirth.fPositionX, firstStep.fPositionZ - firstBirth.fPositionZ) - .1f) < .0001f &&
+		std::abs(std::hypot(secondStep.fPositionX - secondBirth.fPositionX, secondStep.fPositionZ - secondBirth.fPositionZ) - .2f) < .0001f &&
+		std::hypot(9.f - firstStep.fPositionX, 6.f - firstStep.fPositionZ) < std::hypot(9.f - firstBirth.fPositionX, 6.f - firstBirth.fPositionZ) &&
+		std::hypot(13.f - secondStep.fPositionX, 6.f - secondStep.fPositionZ) < std::hypot(13.f - secondBirth.fPositionX, 6.f - secondBirth.fPositionZ),
+		"Each tracker advances toward its own player by half that player's effective speed per 30 Hz tick");
 	updateTargets(2001u);
-	tests.Require(std::abs(targetPose(firstTracker).fPositionX - 6.1f) < .0001f && countTargetObjects(false) == 2,
-		"Repeating the same server tick neither moves trackers twice nor duplicates a fixed volley");
+	tests.Require(targetPose(firstTracker).fPositionX == firstStep.fPositionX && targetPose(firstTracker).fPositionZ == firstStep.fPositionZ &&
+		targetPose(secondTracker).fPositionX == secondStep.fPositionX && targetPose(secondTracker).fPositionZ == secondStep.fPositionZ &&
+		countTargetObjects(false) == 2 && countTargetObjects(true) == 2,
+		"Repeating the same server tick neither moves either tracker twice nor duplicates a fixed volley");
 	room->m_CombatObjectRuntime.Build_LiveSpawnMessages(2001u, restored);
 	wireValid = restored.size() == 4u && room->m_CombatObjectRuntime.Build_Snapshots(snapshots) && snapshots.size() == 4u;
 	for (const auto& spawn : restored)

@@ -25,13 +25,7 @@ PRODUCT_CUES_PATH = (
     REPOSITORY_ROOT
     / "Data/Animation/Authored/Valtan/Valtan.patterneffectcues.json"
 )
-STONE_MODEL = "Effect/Valtan/Meshes/FX_SM_00/fm_d_stoneparts_003.wmodel"
-# Project-tuned 2026-09-04 in the Effect Tool: the cross stones share the
-# ground-roar rock base so both rock families read as the same material.
-STONE_BASE = "Effect/Valtan/Textures/FX_TEX_05/fx_k_turtlespec_01.dds"
-STONE_NOISE = "Effect/Valtan/Textures/FX_TEX_02/fx_d_stoneparts_002.dds"
-STONE_MASK = "Effect/Valtan/Textures/FX_TEX_02/fx_d_fluid_020.dds"
-STONE_DISSOLVE = "Effect/Valtan/Textures/FX_TEX_04/fx_h_noise_001.dds"
+STONE_MODEL = "Effect/KoukuSaydon/FullRestore/Meshes/fm_d_stoneparts_003.wmodel"
 STONE_MATERIAL = "fx_m_mi_n_00.fx_mi.fx_n_me_dissolve_01_04_ma"
 SMOKE_BASE = "Effect/Valtan/Textures/FX_TEX_03/fx_e_atypical_005_cl.dds"
 SMOKE_NOISE = "Effect/Valtan/Textures/FX_TEX_01/fx_c_noise_008.dds"
@@ -179,9 +173,12 @@ class ValtanCrossRockWaveEffectTests(unittest.TestCase):
         for direction in EXPECTED_DIRECTIONS:
             stone_detail = stones[direction]["detail"]
             smoke_detail = smoke[direction]["detail"]
-            self.assertEqual(
-                smoke_detail["transform"], stone_detail["transform"]
-            )
+            for field, value in smoke_detail["transform"].items():
+                if field == "scale":
+                    for old, new in zip(value, stone_detail["transform"][field]):
+                        self.assertAlmostEqual(old * 1.2, new, places=6)
+                else:
+                    self.assertEqual(value, stone_detail["transform"][field])
             self.assertEqual(
                 smoke_detail["timing"]["startDelaySeconds"],
                 stone_detail["timing"]["startDelaySeconds"],
@@ -332,11 +329,16 @@ class ValtanCrossRockWaveEffectTests(unittest.TestCase):
             }
             if "meshModel" in resources:
                 self.assertEqual(resources["meshModel"], STONE_MODEL)
-                self.assertEqual(resources["base"], STONE_BASE)
-                self.assertEqual(resources["noise"], STONE_NOISE)
-                self.assertEqual(resources["mask"], STONE_MASK)
-                self.assertNotIn("emissive", resources)
-                self.assertEqual(resources["dissolve"], STONE_DISSOLVE)
+                self.assertEqual({"meshModel"}, set(resources))
+                native = element["material"]["sourceProfile"]
+                self.assertTrue(native["enabled"])
+                self.assertEqual("effect.ue3.kouku-2391-native.v1",
+                                 native["runtimeShaderProfileId"])
+                self.assertEqual(0.25, next(row["value"] for row in native["scalars"]
+                                            if row["name"] == "09.gap_offset"))
+                self.assertEqual([], element["sourceRecipe"]["bursts"])
+                self.assertEqual(0.5, element["sourceRecipe"]["emitterDurationSeconds"])
+                self.assertEqual(1, element["sourceRecipe"]["emitterLoopCount"])
                 self.assertAlmostEqual(
                     detail["mesh"]["modelPreScale"], 0.01
                 )
@@ -347,7 +349,7 @@ class ValtanCrossRockWaveEffectTests(unittest.TestCase):
                 self.assertFalse(detail["particle"]["billboard"])
                 self.assertEqual(
                     element["material"]["renderProfile"],
-                    "opaque_back_depth_write",
+                    "alpha_one_sided_depth_read",
                 )
                 self.assertEqual(
                     element["material"]["sourceMaterialPath"],

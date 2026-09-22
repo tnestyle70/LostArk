@@ -380,7 +380,8 @@ namespace
 		std::string& outStatus)
 	{
 		const bool hitShowtime = logic.strLogicType == "DURATION" && logic.strJudgementKind == "SHOWTIME_PLAYER_TARGETS";
-		const bool hitPursuit = logic.strLogicType == "DURATION" && logic.strJudgementKind == "PURSUIT_PROJECTILES";
+		const bool hitPursuit = ((logic.strLogicType == "DURATION" && logic.strJudgementKind == "PURSUIT_PROJECTILES") ||
+            (logic.strLogicType == "TRIGGER" && logic.strTriggerKind == "PURSUIT_PROJECTILES"));
 		const bool hitAlbion = logic.strLogicType == "TRIGGER" && logic.strTriggerKind == "ALBION_BLUE_CIRCLE";
 		if ((!hitShowtime && (!logic.TrackingHits.empty() || !logic.RandomVolleyHits.empty())) ||
 			(!hitShowtime && !hitAlbion && !logic.FixedHits.empty()) ||
@@ -418,7 +419,8 @@ namespace
 				{ outStatus = "SHOWTIME random volley has an invalid or duplicate occurrence ID."; return false; }
 			}
 		}
-        const bool pursuit = logic.strLogicType == "DURATION" && logic.strJudgementKind == "PURSUIT_PROJECTILES";
+        const bool pursuit = ((logic.strLogicType == "DURATION" && logic.strJudgementKind == "PURSUIT_PROJECTILES") ||
+            (logic.strLogicType == "TRIGGER" && logic.strTriggerKind == "PURSUIT_PROJECTILES"));
         const bool hasPursuitValues = !logic.PursuitVisualIds.empty() || !logic.strContactVisualId.empty() ||
             logic.fPursuitSpeedMps != 0.0 || logic.fPursuitMaxDistanceM != 0.0 || logic.fContactRadiusM != 0.0 || logic.fSpawnRadiusM != 0.0 ||
             logic.iPursuitLifetimeMs != 0u || logic.iCountPerWave != 0u || logic.bPursuitHoming;
@@ -458,7 +460,7 @@ namespace
                 [&](const auto& id) { return Is_StableId(id) && directionIds.insert(id).second; }))) ||
             (!cross && (!logic.DirectionPatternIds.empty() || !logic.strCloneEndStageId.empty() || !logic.strSummonOccurrenceId.empty())))
         { outStatus = "Cross direction Logic needs four unique Pattern IDs, a clone end Stage ID and its Summon occurrence."; return false; }
-		const bool_t hasDurationValues = hasPursuitValues || !logic.DirectionPatternIds.empty() || !logic.strCloneEndStageId.empty() || !logic.strSummonOccurrenceId.empty() || hasShowtimeValues || !logic.PatternIds.empty() || logic.iCompletionCount != 0u || !logic.strJudgementKind.empty() ||
+		const bool_t hasDurationValues = (hasPursuitValues && logic.strLogicType != "TRIGGER") || !logic.DirectionPatternIds.empty() || !logic.strCloneEndStageId.empty() || !logic.strSummonOccurrenceId.empty() || hasShowtimeValues || !logic.PatternIds.empty() || logic.iCompletionCount != 0u || !logic.strJudgementKind.empty() ||
 			0u != logic.iSectorCount || !logic.SectorSymbols.empty() || !logic.RegionIds.empty() ||
 			0.0 != logic.fCenterX || 0.0 != logic.fCenterZ || 0.0 != logic.fOuterRadiusM ||
 			!logic.strWorldSequenceInstanceId.empty() || 0.0 != logic.fHalfAngleDegrees ||
@@ -693,7 +695,15 @@ namespace
 		{
 			if (hasTriggerValues) { outStatus = "Trigger values need a triggerKind."; return false; }
 		}
-		else if (stagePlayers)
+		else if (logic.strTriggerKind == "PURSUIT_PROJECTILES")
+        {
+            if (logic.iSpawnIntervalMs != 0u || hasPlayerEffectValues || hasContactValues ||
+                logic.bRearmOnExit || logic.bRepeatAfterKnockback || logic.fBossChargeDistanceM != 0.0 ||
+                !logic.strHudMode.empty() || !logic.strClonePatternId.empty() || !logic.ClockHours.empty() ||
+                logic.fFaceCenterYawOffsetDegrees != 0.0 || logic.TeleportPosition != std::array<double, 3>{})
+            { outStatus = "PURSUIT_PROJECTILES Trigger spawns once and carries only projectile values."; return false; }
+        }
+        else if (stagePlayers)
 		{
 			std::unordered_set<std::string> ids;
 			if (logic.PlayerEntryEffectOccurrenceIds.empty() || logic.PlayerEntryEffectOccurrenceIds.size() > 4u ||
@@ -1691,7 +1701,7 @@ namespace
 		std::size_t totalOccurrences = 0u;
         for (const auto& logic : document.Logics)
         {
-            if (logic.strJudgementKind == "PURSUIT_PROJECTILES")
+            if (logic.strJudgementKind == "PURSUIT_PROJECTILES" || logic.strTriggerKind == "PURSUIT_PROJECTILES")
             {
                 auto ids = logic.PursuitVisualIds;
                 ids.push_back(logic.strContactVisualId);
@@ -3131,6 +3141,7 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 			const DATA_JSON_VALUE* const repeatAfterKnockback = logicValue.Find("repeatAfterKnockback");
 			const DATA_JSON_VALUE* const randomPlayerOnly = logicValue.Find("randomPlayerOnly");
 			if (!optionalText("judgementKind", stagedLogic.strJudgementKind) ||
+                !optionalText("triggerKind", stagedLogic.strTriggerKind) ||
 				!optionalText("fixedSelectionGroupId", stagedLogic.strFixedSelectionGroupId) ||
 				!optionalText("trackingPresentationOccurrenceId", stagedLogic.strTrackingPresentationOccurrenceId) ||
 				!optionalUnsigned("spawnIntervalMs", MAX_TIME_MS, stagedLogic.iSpawnIntervalMs) ||
@@ -3156,7 +3167,7 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 				!optionalText("worldSequenceInstanceId", stagedLogic.strWorldSequenceInstanceId) ||
 				!optionalFinite("halfAngleDegrees", 0.0, 180.0, stagedLogic.fHalfAngleDegrees) ||
 				!optionalFinite("maxDistanceM", 0.0, 1000.0,
-                    stagedLogic.strJudgementKind == "PURSUIT_PROJECTILES" ? stagedLogic.fPursuitMaxDistanceM : stagedLogic.fMaxDistanceM) ||
+                    (stagedLogic.strJudgementKind == "PURSUIT_PROJECTILES" || stagedLogic.strTriggerKind == "PURSUIT_PROJECTILES") ? stagedLogic.fPursuitMaxDistanceM : stagedLogic.fMaxDistanceM) ||
 				!Try_ParseTextList(logicValue.Find("directionPatternIds"), 4u, stagedLogic.DirectionPatternIds) ||
 				!optionalText("cloneEndStageId", stagedLogic.strCloneEndStageId) ||
                 !optionalText("summonOccurrenceId", stagedLogic.strSummonOccurrenceId) ||
@@ -3231,7 +3242,8 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
             if (logicValue.Find("soundResourceId") &&
                 (stagedLogic.strLogicType != "RESULT" || stagedLogic.strOutcomeKind != "FEAR"))
             { outStatus = "Only FEAR owns soundResourceId."; return false; }
-            const bool pursuit = stagedLogic.strLogicType == "DURATION" && stagedLogic.strJudgementKind == "PURSUIT_PROJECTILES";
+            const bool pursuit = ((stagedLogic.strLogicType == "DURATION" && stagedLogic.strJudgementKind == "PURSUIT_PROJECTILES") ||
+                (stagedLogic.strLogicType == "TRIGGER" && stagedLogic.strTriggerKind == "PURSUIT_PROJECTILES"));
             for (const char* key : { "visualIds", "contactVisualId", "speedMps", "contactRadiusM", "spawnRadiusM", "lifetimeMs", "homing" })
                 if (pursuit != (logicValue.Find(key) != nullptr))
                 { outStatus = "PURSUIT_PROJECTILES fields must be supplied together on that judgement kind."; return false; }
@@ -4488,21 +4500,7 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 				if (logic.fFollowSpeedScale != 0.0)
 					output << ",\n      \"followSpeedScale\": " << logic.fFollowSpeedScale;
 			}
-            else if ("PURSUIT_PROJECTILES" == logic.strJudgementKind)
-            {
-                output << ",\n      \"visualIds\": [";
-                for (std::size_t i = 0; i < logic.PursuitVisualIds.size(); ++i)
-                    output << (i ? ", \"" : "\"") << CDataJson::Escape(logic.PursuitVisualIds[i]) << "\"";
-                output << "],\n      \"contactVisualId\": \"" << CDataJson::Escape(logic.strContactVisualId)
-                    << "\",\n      \"speedMps\": " << logic.fPursuitSpeedMps
-                    << ",\n      \"contactRadiusM\": " << logic.fContactRadiusM
-                    << ",\n      \"spawnRadiusM\": " << logic.fSpawnRadiusM
-                    << ",\n      \"lifetimeMs\": " << logic.iPursuitLifetimeMs
-                    << ",\n      \"spawnIntervalMs\": " << logic.iSpawnIntervalMs
-                    << ",\n      \"homing\": " << (logic.bPursuitHoming ? "true" : "false");
-                if (logic.iCountPerWave) output << ",\n      \"countPerWave\": " << logic.iCountPerWave;
-                if (logic.fPursuitMaxDistanceM > 0.0) output << ",\n      \"maxDistanceM\": " << logic.fPursuitMaxDistanceM;
-            }
+
 			else if ("CROSS_DIRECTION_CLONES" == logic.strJudgementKind)
             {
                 output << ",\n      \"cloneEndStageId\": \"" << CDataJson::Escape(logic.strCloneEndStageId) << "\",\n";
@@ -4668,6 +4666,21 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 				output << "]";
 			}
 		}
+            if (logic.strJudgementKind == "PURSUIT_PROJECTILES" || logic.strTriggerKind == "PURSUIT_PROJECTILES")
+            {
+                output << ",\n      \"visualIds\": [";
+                for (std::size_t i = 0; i < logic.PursuitVisualIds.size(); ++i)
+                    output << (i ? ", \"" : "\"") << CDataJson::Escape(logic.PursuitVisualIds[i]) << "\"";
+                output << "],\n      \"contactVisualId\": \"" << CDataJson::Escape(logic.strContactVisualId)
+                    << "\",\n      \"speedMps\": " << logic.fPursuitSpeedMps
+                    << ",\n      \"contactRadiusM\": " << logic.fContactRadiusM
+                    << ",\n      \"spawnRadiusM\": " << logic.fSpawnRadiusM
+                    << ",\n      \"lifetimeMs\": " << logic.iPursuitLifetimeMs
+                    << ",\n      \"spawnIntervalMs\": " << logic.iSpawnIntervalMs
+                    << ",\n      \"homing\": " << (logic.bPursuitHoming ? "true" : "false");
+                if (logic.iCountPerWave) output << ",\n      \"countPerWave\": " << logic.iCountPerWave;
+                if (logic.fPursuitMaxDistanceM > 0.0) output << ",\n      \"maxDistanceM\": " << logic.fPursuitMaxDistanceM;
+            }
 		output << "\n    }" << (logicIndex + 1u < document.Logics.size() ? "," : "") << "\n";
 	}
 	output << "  ],\n  \"summons\": [\n";

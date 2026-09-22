@@ -184,6 +184,10 @@ void LostArk::Server::CKoukuSaydonLogicRuntime::Build(
 			state.iTriggerIndex = static_cast<std::uint32_t>(index);
 			state.iStartTick = Add_Ticks(startTick, Ticks_FromMs(trigger.iStartMs));
 			state.iEndTick = Add_Ticks(startTick, Ticks_FromMs(trigger.iStartMs + trigger.iDurationMs));
+			// A one-shot pursuit Trigger owns a birth tick, even when its visual box is shorter than one tick.
+			if (trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::PURSUIT_PROJECTILES && trigger.iSpawnIntervalMs == 0u &&
+				!Has_ReachedTick(state.iEndTick, Add_Ticks(state.iStartTick, 1u)))
+				state.iEndTick = Add_Ticks(state.iStartTick, 1u);
 			state.iNextFixedTick = state.iStartTick;
 			state.iNextRandomTick = state.iStartTick;
 			ledger.PlayerTargetWindows.push_back(std::move(state));

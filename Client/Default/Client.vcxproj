@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -3114,6 +3114,8 @@
     <None Include="..\..\Data\Effects\Authored\effect.kouku.source.fx_mn_rpct_05_x.par_x_rpct_timebomb_02_01.effect.json"></None>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.source.fx_mn_rpct_05_x.par_x_rpct_timebomb_02_02.effect.json"></None>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_aura_01_01_loc_int.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate2.bigsaydon.wind.full.restore.effect.json"></None>
+    <None Include="..\..\Data\Effects\Authored\effect.kouku.gate2.bigsaydon.yellow-gaze.full.restore.effect.json"></None>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_cast_02_01_loc_int.effect.json"></None>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_cast_03_01.effect.json"></None>
     <None Include="..\..\Data\Effects\Authored\effect.kouku.source.fx_mn_rpct_06_x.par_x_rpct_cast_04_01.effect.json"></None>

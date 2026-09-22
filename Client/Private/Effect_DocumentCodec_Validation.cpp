@@ -750,9 +750,26 @@ bool_t Client::CEffectDocumentCodec::Validate(
 			D.Particle.InitialVelocity;
 		const bool_t bFixedCenterSpacingEnabled =
 			D.Particle.fFixedCenterSpacingWorldUnits > 0.f;
+		const bool_t bPortableFixedSpacingMesh = bMeshParticle &&
+			bDirectHandAuthored && Element.SourceRecipe.bEnabled &&
+			Element.SourceRecipe.strRendererShape == "mesh" &&
+			!Element.SourcePresentation.bEnabled &&
+			Element.Renderer.eType == EFFECT_RENDERER_TYPE::END &&
+			Element.Renderer.eSourceSpace == EFFECT_SOURCE_SPACE::END &&
+			std::ranges::all_of(Element.SourceRecipe.Modules,
+				[](const EFFECT_SOURCE_MODULE_DESC& Module)
+				{
+					// Source position/motion modules would move the authored birth centers.
+					return Module.strClassName == "particlemodulerequired" ||
+						Module.strClassName == "particlemodulespawn" ||
+						Module.strClassName == "particlemodulelifetime" ||
+						Module.strClassName == "particlemoduletypedatamesh" ||
+						Module.strClassName == "particlemodulesize" ||
+						Module.strClassName == "particlemoduleparameterdynamic";
+				});
 		const bool_t bFixedCenterSpacingValid =
 			!bFixedCenterSpacingEnabled ||
-			(bManualParticle && !D.Particle.bLocalSpace &&
+			((bManualParticle || bPortableFixedSpacingMesh) && !D.Particle.bLocalSpace &&
 			 D.Particle.fSpawnRatePerSecond == 0.f &&
 			 D.Particle.iBurstCount == 0u &&
 			 D.Particle.vInitialPositionMin.x == 0.f &&

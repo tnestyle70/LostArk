@@ -822,7 +822,8 @@ namespace
 		if (BOSS_PATTERN_STAGE_ACTION_KIND::RETARGET_RANDOM_ALIVE == kind)
 		{
 			return BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER == trigger &&
-				"boss.target.pattern" == targetId && 1u == value;
+				("boss.target.pattern" == targetId || "boss.target.nearest" == targetId) &&
+				1u == value;
 		}
 		if (BOSS_PATTERN_STAGE_ACTION_KIND::DAMAGE_GRABBED_PLAYERS == kind ||
 			BOSS_PATTERN_STAGE_ACTION_KIND::EXECUTE_GRABBED_PLAYERS == kind)

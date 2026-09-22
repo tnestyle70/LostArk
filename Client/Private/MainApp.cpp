@@ -11689,7 +11689,7 @@ void CMainApp::RenderKoukuSaydonCompletePlayControls()
 		}
 	}
 	ImGui::EndDisabled(); ImGui::SameLine();
-	ImGui::BeginDisabled(!arena || (!sequencePlaying && !flow.bActive && !audition.Is_InFlight() && !preparing));
+	ImGui::BeginDisabled(!arena || (!sequencePlaying && !flow.bActive && !audition.Can_Stop() && !preparing));
 	if (ImGui::Button("Stop Complete Play"))
 	{
 		if (preparing)
