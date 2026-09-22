@@ -1739,7 +1739,8 @@ bool_t Client::CKoukuSaydonActionWorkbench::Save(std::string& outStatus)
 			const auto* source = pattern ? Find_PresentationBox(*pattern, edit.Occurrence.strOccurrenceId) : nullptr;
 			const auto* resource = source ? Find_PresentationResource(candidate, source->strResourceId) : nullptr;
 			if (!source || source->strResourceId != edit.Occurrence.strResourceId || !resource ||
-				(resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT && resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER) ||
+				(resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT && resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER &&
+				 resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::SUBTITLE) ||
 				!Valid_PresentationPlacement(*resource, edit.Occurrence))
 			{
 				outStatus = m_strStatus = "Save rejected: correct or revert the pending presentation placement. Applied draft and source are unchanged.";
@@ -6394,8 +6395,9 @@ bool_t Client::CKoukuSaydonActionWorkbench::Request_PresentationGeometryPreview(
 	const auto* source = Find_PresentationBox(*pattern, value.strOccurrenceId);
 	const auto* resource = Find_PresentationResource(m_Draft, value.strResourceId);
 	if (!source || source->strResourceId != value.strResourceId || !resource ||
-		(resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER && resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT))
-		return reject("Presentation geometry preview needs an owned Collider or Effect box.");
+		(resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER && resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT &&
+		 resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::SUBTITLE))
+		return reject("Presentation geometry preview needs an owned Collider, Effect or Subtitle box.");
 	const bool effect = resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT;
 	auto placement = *source;
 	Copy_PresentationPlacement(value, placement, effect);
@@ -6420,7 +6422,7 @@ bool_t Client::CKoukuSaydonActionWorkbench::Request_PresentationGeometryPreview(
 	if (!Valid_GameplayColliderScale(*resource, placement))
 		return reject("Collider scale must be finite and positive. Adjust Scale / size; pending edits and previous source are preserved.");
 
-	// Stage Effect placement and Collider geometry; timing, fades and Logic still require Apply.
+	// Stage Effect placement, Collider geometry and Subtitle layout; timing/fades still require Apply.
 	KOUKU_PRESENTATION_GEOMETRY_PREVIEW_REQUEST request{ std::string(patternId), placement };
 	const auto containsPattern = [&](const std::string_view ownerId) {
 		if (ownerId == patternId) return true;
@@ -6433,7 +6435,8 @@ bool_t Client::CKoukuSaydonActionWorkbench::Request_PresentationGeometryPreview(
 		m_PreviewState.bPlaying && containsPattern(m_PreviewState.strPatternId);
 	if (!hasOwner)
 	{
-		const auto clockMs = m_strCursorPatternId == patternId ? m_iCursorMs : 0u;
+		const auto clockMs = resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::SUBTITLE ? source->iStartMs :
+			(m_strCursorPatternId == patternId ? m_iCursorMs : 0u);
 		if (!Request_PatternPreview(patternId, clockMs, outStatus, true)) return false;
 	}
 	if (m_strPresentationGeometryPreviewPatternId != patternId ||
@@ -6452,7 +6455,7 @@ bool_t Client::CKoukuSaydonActionWorkbench::Request_PresentationGeometryPreview(
 		[&](const auto& row) { return row.strPatternId == patternId && row.Occurrence.strOccurrenceId == value.strOccurrenceId; });
 	if (queued == m_PendingPresentationGeometryPreviews.end()) m_PendingPresentationGeometryPreviews.push_back(std::move(request));
 	else *queued = std::move(request);
-	outStatus = m_strStatus = "Presentation placement updated at the actor cursor. Save keeps Effect placement and Collider geometry.";
+	outStatus = m_strStatus = "Presentation placement updated at the preview cursor. Save keeps Effect placement, Collider geometry and Subtitle layout.";
 	return true;
 }
 
@@ -12681,7 +12684,19 @@ void Client::CKoukuSaydonActionWorkbench::Render_PresentationBoxDetails(
 		for (std::size_t i = 0u; i < 3u; ++i) values[i] = v[i];
 		return true;
 	};
-	bool geometryChanged = vectorControl(edit.strAnchorKind == "MAP" ? "World X / Y / Z (m)##PresentationBox" : "Position offset (m)##PresentationBox", edit.PositionOffset, -100000.f, 100000.f);
+	const bool subtitleBox = definition.eKind == KOUKU_SAYDON_PRESENTATION_KIND::SUBTITLE;
+	bool geometryChanged = false;
+	if (subtitleBox)
+	{
+		float offset[2] = { float(edit.PositionOffset[0]), float(edit.PositionOffset[1]) };
+		if (ImGui::DragFloat2("Screen X / Y (px at 1080p)##SubtitleBox", offset, 1.f, -100000.f, 100000.f, "%.1f"))
+		{ edit.PositionOffset[0] = offset[0]; edit.PositionOffset[1] = offset[1]; geometryChanged = true; }
+		float textScale = float(edit.Scale[0]);
+		if (ImGui::DragFloat("Text scale##SubtitleBox", &textScale, .01f, .001f, 10000.f, "%.2f"))
+		{ edit.Scale = { textScale, textScale, textScale }; geometryChanged = true; }
+		ImGui::TextDisabled("Positive Y moves down. Scale 2 doubles the text height. Preview and Save keep layout edits.");
+	}
+	else geometryChanged = vectorControl(edit.strAnchorKind == "MAP" ? "World X / Y / Z (m)##PresentationBox" : "Position offset (m)##PresentationBox", edit.PositionOffset, -100000.f, 100000.f);
 	const bool gameplayCollider = definition.eKind == KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER &&
 		(!edit.strLogicOccurrenceId.empty() || !m_strColliderLogicDefinitionId.empty() || (m_strColliderExecutionEditId == occurrenceId && m_bColliderDamageMode));
 	if (gameplayCollider)
@@ -12696,14 +12711,14 @@ void Client::CKoukuSaydonActionWorkbench::Render_PresentationBoxDetails(
 			{ edit.RotationDegrees[0] = edit.RotationDegrees[2] = 0.0; geometryChanged = true; }
 		}
 	}
-	else if (!cameraBox) geometryChanged |= vectorControl("Rotation (degrees)##PresentationBox", edit.RotationDegrees, -36000.f, 36000.f);
+	else if (!cameraBox && !subtitleBox) geometryChanged |= vectorControl("Rotation (degrees)##PresentationBox", edit.RotationDegrees, -36000.f, 36000.f);
 	const bool light = definition.eKind == KOUKU_SAYDON_PRESENTATION_KIND::LIGHT;
-	if (!light && !cameraBox) geometryChanged |= vectorControl("Scale / size##PresentationBox", edit.Scale, 0.001f, 10000.f);
+	if (!light && !cameraBox && !subtitleBox) geometryChanged |= vectorControl("Scale / size##PresentationBox", edit.Scale, 0.001f, 10000.f);
 	const auto previewGeometry = [&]() {
 		std::string status;
 		(void)Request_PresentationGeometryPreview(patternId, edit, status);
 	};
-	if (geometryChanged && definition.eKind == KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER) previewGeometry();
+	if (geometryChanged && (definition.eKind == KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER || subtitleBox)) previewGeometry();
 	if (light)
 	{
 		const char* kinds[] = { "MAP", "PLAYER", "BOSS", "WORLD" };
@@ -13126,16 +13141,16 @@ void Client::CKoukuSaydonActionWorkbench::Render_PresentationBoxDetails(
 	}
 	ImGui::SameLine();
 	if (ImGui::Button("Preview##PresentationBox")) Queue_PresentationPreview(definition, &edit);
-	if (definition.eKind == KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER || definition.eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT)
+	if (definition.eKind == KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER || definition.eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT || subtitleBox)
 	{
 		ImGui::SameLine();
-		if (ImGui::Button(definition.eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT ? "Revert placement##PresentationBox" : "Revert geometry##PresentationBox"))
+		if (ImGui::Button(subtitleBox ? "Revert layout##PresentationBox" : definition.eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT ? "Revert placement##PresentationBox" : "Revert geometry##PresentationBox"))
 		{
 			std::string status;
 			(void)Request_PresentationGeometryPreview(patternId, *box, status);
 			Copy_PresentationPlacement(*box, edit, definition.eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT);
 		}
-		ImGui::TextDisabled("Preview and Save keep Effect placement (transform and anchor) and Collider geometry. Apply keeps timing, fades and other fields.");
+		ImGui::TextDisabled("Preview and Save keep Effect placement, Collider geometry and Subtitle layout. Apply keeps timing, fades and other fields.");
 	}
 	ImGui::SameLine();
 	if (ImGui::Button("Delete##PresentationBox"))

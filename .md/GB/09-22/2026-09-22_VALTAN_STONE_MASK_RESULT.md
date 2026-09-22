@@ -2,13 +2,18 @@
 
 ## G00. 현재 상태
 
-사용자가 최종 저장본 반영 질문에 **아직 편집 중이니 반영 대기**라고 응답했다.
-돌 JSON 7개는 후보로만 준비했으며 원본 데이터 교체, GameplayBalance 게시,
-새 Client 실행 파일 링크는 수행하지 않았다. 미저장 Tool draft와 디스크 후보를 구분한다.
+초기에는 사용자의 편집 중 반영 대기 요청에 따라 후보만 보관했다. 이후 사용자가
+**발탄 돌이랑 같이 전부 다 수정하고 빌드까지 돌려줘. exe 종료했어**로 반영을 승인했다.
+최신 저장본을 다시 읽어 stable ID/필드 기준 병합과 hash 재확인 후 돌 JSON 7개를
+원자적으로 교체했다. 실제 설치 내역은 `out/ValtanStoneMask20260922/transaction/installed.json`이다.
+GameplayBalance와 Composition 공식 게시를 완료했고 통합 Debug Product 빌드도 통과했다.
 
 관련 유령 발탄과 가디언의 C++ 수정은 소스에 반영됐고 Client 전체 Debug x64
-`MSBuild /t:ClCompile`이 exit 0으로 완료됐다. 실행 중 Client는 기존 실행 파일이다.
-전체 컴파일 로그는 `out/ValtanStoneMask20260922/client-clcompile.log`에 있다.
+`MSBuild /t:ClCompile`이 exit 0으로 완료됐다. 이후 Engine/Shared/Server/Client 제품 빌드와
+배포까지 exit 0으로 완료했다. 최종 receipt는
+`out/BuildPipeline/runs/20260922T011037720Z-debug-product.json`이며 missing/invalid runtime
+input은 0이다. Client/UI는 실행하지 않았다. 초기 전체 컴파일 로그는
+`out/ValtanStoneMask20260922/client-clcompile.log`에 있다.
 
 ## G01. 실제 원인과 교정 후보
 
@@ -52,8 +57,9 @@ Product의 기존 birth center·개수·수명과 1.2배 mesh scale 검사가 �
 - GPU 요약/원시값/입력 hash: `out/ValtanStoneMask20260922/summary.json`, `gpu_result.json`, `inputs.json`
 - 최신 디스크와 stable ID/필드 기준 병합 준비: `out/ValtanStoneMask20260922/transaction/prepared.json`
 
-병합 dry-run은 7문서에 성공했다. 최종 승인을 받으면 최신 저장본을 다시 읽고 같은 필드의
-실제 충돌만 보고한다. 교체 직전 hash 재확인·원자적 교체·실패 시 자기 변경 rollback을
-준비했다. cross는 Valtan presentation generation hash에 포함되므로 반영 후 공식
-GameplayBalance publisher로 bootstrap/generation을 갱신하고 실제 사용하는 Server의
-재시작을 구분해 안내해야 한다. 사용자 화면 확인은 미실행이다.
+병합 dry-run과 승인 후 실제 설치는 7문서에 성공했다. 별도 병합 검사는 무관한 필드·새
+stable ID 보존과 같은 필드 충돌 거부를 확인했다. 설치된 문서를 대상으로 기존 cross 6개와
+rock-pillar 계약 8개, 합계 14개 테스트가 통과했다. cross는 Valtan presentation generation hash에 포함되므로 공식
+GameplayBalance publisher로 bootstrap/generation을 갱신했다. 최종 generation은
+`7bd856b1673bfe1d75c891e58e0ad208ec3bcc51f9998118eafb2cc821e5853f`다. 실제 사용하는
+Server가 새 게시 데이터를 읽는 재시작과 사용자 화면 확인은 별도이며 아직 수행하지 않았다.

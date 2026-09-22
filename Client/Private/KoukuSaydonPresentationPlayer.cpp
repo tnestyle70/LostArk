@@ -2421,6 +2421,8 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
         row.assetId = resource.strAssetId;
         row.subtitleText = resource.strSubtitleText;
         row.subtitleUpper = resource.strSubtitlePosition == "UPPER";
+        row.subtitleScreenOffset = { float(box.PositionOffset[0]), float(box.PositionOffset[1]) };
+        row.subtitleTextScale = float(box.Scale[0]);
         row.cameraOffset = { float(box.PositionOffset[0]), float(box.PositionOffset[1]), float(box.PositionOffset[2]) };
         if (resource.eKind == KIND::LIGHT)
         {
@@ -2745,8 +2747,12 @@ std::vector<Client::KOUKU_SUBTITLE_VIEW> Client::CKoukuSaydonPresentationPlayer:
         {
             if (row.kind != KIND::SUBTITLE || row.failed || row.subtitleText.empty()) continue;
             if (std::none_of(result.begin(), result.end(), [&](const auto& value) {
-                return value.strText == row.subtitleText && value.bUpper == row.subtitleUpper;
-            })) result.push_back({row.subtitleText, row.subtitleUpper});
+                return value.strText == row.subtitleText && value.bUpper == row.subtitleUpper &&
+                    value.vScreenOffset.x == row.subtitleScreenOffset.x &&
+                    value.vScreenOffset.y == row.subtitleScreenOffset.y &&
+                    value.fTextScale == row.subtitleTextScale;
+            })) result.push_back({row.subtitleText, row.subtitleUpper,
+                row.subtitleScreenOffset, row.subtitleTextScale});
         }
     };
     if (m_bPreviewPlaying)
@@ -5475,12 +5481,23 @@ bool Client::CKoukuSaydonPresentationPlayer::Preview_PresentationGeometry(
         if (box == pattern.PresentationOccurrences.end()) return false;
         const auto resource = std::find_if(m_PreviewDocument.PresentationResources.begin(), m_PreviewDocument.PresentationResources.end(),
             [&](const auto& value) { return value.strResourceId == box->strResourceId &&
-                (value.eKind == KIND::COLLIDER || value.eKind == KIND::EFFECT); });
+                (value.eKind == KIND::COLLIDER || value.eKind == KIND::EFFECT || value.eKind == KIND::SUBTITLE); });
         if (resource == m_PreviewDocument.PresentationResources.end()) return false;
         auto edited = *box;
         edited.PositionOffset = occurrence.PositionOffset;
         edited.RotationDegrees = occurrence.RotationDegrees;
         edited.Scale = occurrence.Scale;
+        if (resource->eKind == KIND::SUBTITLE)
+        {
+            // Screen layout edits do not restart audio, animation or the subtitle clock.
+            if (const auto active = session.rows.find(box->strOccurrenceId); active != session.rows.end())
+            {
+                active->second.subtitleScreenOffset = { float(edited.PositionOffset[0]), float(edited.PositionOffset[1]) };
+                active->second.subtitleTextScale = float(edited.Scale[0]);
+            }
+            *box = std::move(edited);
+            return true;
+        }
         bool anchorChanged = Is_CenteredWorldCircle(*resource, edited) != Is_CenteredWorldCircle(*resource, *box);
         if (resource->eKind == KIND::EFFECT)
         {

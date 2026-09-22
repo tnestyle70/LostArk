@@ -215,7 +215,7 @@
             {
               "name": "09.gap_offset",
               "group": "None",
-              "value": 0.17499999701976776
+              "value": 0.25
             }
           ],
           "vectors": [
@@ -508,9 +508,9 @@
             0
           ],
           "scale": [
-            0.600000024,
-            0.600000024,
-            0.600000024
+            0.7200000287999999,
+            0.7200000287999999,
+            0.7200000287999999
           ],
           "velocityPerSecond": [
             0,
@@ -1508,6 +1508,17 @@
       },
       "sourcePresentation": {
         "enabled": false
+      },
+      "authoringOverrides": {
+        "resources": [],
+        "colors": [],
+        "scalars": [
+          {
+            "name": "09.gap_offset",
+            "value": 0.25,
+            "compilerValue": 0.17499999701976776
+          }
+        ]
       }
     },
     {

@@ -7,11 +7,13 @@
 두 첨부 이미지의 자막 `cin.37081_31_03`으로 Sequence `KAKULSAYDON_G1_PATTERN_5`
 (`2관문_클리어`)의 8,942~10,442ms 구간을 찾았다.
 
-현재는 **원인 확인·수정 검증·최신 디스크 저장본 반영 완료, 사용자 화면 확인 전**이다. 사용자에게 같은 시각·카메라·라이트를
+현재는 **포탈 전체 소실의 WMSH 계약 위반 재현·수리 설치·실제 문서 resource staging 통과,
+사용자 화면 확인 전**이다. G05~G08은 최초 수정 당시의 조사 기록이며, 당시 제품 모델 로드를
+검사하지 못한 결함과 후속 교정은 G09에 기록한다. 사용자에게 같은 시각·카메라·라이트를
 유지하고 포탈 이펙트만 숨기는 비교를 요청했다. 사용자는 실행 후 결과를 알려주겠다고
 답했다. 이후 받은 두 이미지는 같은 장면의 바깥/안쪽 비교이며 포탈 OFF 결과라고 간주하지 않았다.
 추가 조사와 검증은 아래 G05 이후에 기록한다. 사용자의 `전체다 반영해` 승인 후
-파생 Resources 하나와 저작 JSON의 meshModel binding 한 곳을 반영했다.
+파생 Resources 하나와 저작 JSON의 meshModel binding 한 곳을 처음 반영했다.
 제품 C++/HLSL 및 별도 게시 데이터는 변경하지 않았으며, 생성용 Python 도구와 문서를 추가했다.
 
 ## G01. 실제 연결 확인
@@ -153,6 +155,8 @@ perDoc.ok=true를 확인했다. 후보용 Resources에61개 기존 asset을 읽�
 연결해 검사했고 원본 파일은 수정하지 않았다. 첫 검사의 texture invalid는 resource root를
 설정하지 않은 fixture 오류이며 실제 root를 연결한 재실행이 통과했다.
 ModelAssetConverter info에서도2sections,0animations,static mesh/material을 확인했다.
+이 검사는 실제 CModel decode를 수행하지 않았고 WGEO payload digest·bounds 검증 실패를
+놓쳤다. 당시 이 결과를 제품 resource staging 성공의 근거로 사용한 판단은 잘못이었다.
 
 기존 native admission은 meshModel 하나의 유효 경로를 요구하며 이 profile의 경로를
 원본 이름으로 고정하지 않는다. `ResourceStaging -> CRuntimeAssetRoot -> CModel`과
@@ -193,3 +197,59 @@ clean 상태에서 Save는 비활성이므로 단순 Load Saved→Play를 Produc
 사용자가 다른 편집을 저장한 뒤 Client를 재실행하여 컷신을 새로 재생하면 설치본을 읽는다.
 Server 재시작은 필요하지 않다. 파일 반영 자체는 Client 실행 중에 이미 완료했다.
 Resources는 Git 제외 새 파일이므로 다른 PC에는 위 asset을 기존 팀 Drive 경로로 별도 전달해야 한다.
+
+## G09. 포탈 전체 소실 재현과 WMSH 수리
+
+최초 반영 뒤 사용자가 포탈 전체 소실을 보고했다. 현재 Resources에는 파생 파일이 있으므로
+단순 파일 누락이 아니었다. 현재 저장본의 대상 요소는 visible=true, native3330,
+`alpha_one_sided_depth_read`, mesh preScale=.01을 유지하고 있었다. 저장된 start는
+8.139344431459904초, life는8.935094833374023초였다. 이 최신 시간은 이번 수리에서 보존했다.
+
+`prepare_gate2_clear_portal_backdrop.py`의 기존 `make_backdrop`은 vertex X/Z와 index를
+바꾼 뒤 원본의 embedded bounds와 WGEO payloadSha256/metadataSha256을 그대로 두었다.
+제품 `CWMeshReader::ValidateGeometryMetadata`가 이를 거부한다.
+`Effect_DocumentRenderer_ResourceStaging.cpp`의 `CModel::Create` 실패가
+`Effect_DocumentRenderer_PreparedDocument.cpp`의 `Build_PreparedDocument` 실패로 전달되어,
+해당 원통뿐 아니라 같은 문서의 포탈 요소 전체가 준비되지 못한다. cull/pass 적용 전의 실패다.
+
+현재 설치 Engine.dll, 현재 WMeshReader 소스와 D3D11 WARP 장치로 실제 파일을 읽었다.
+별도로 현재 프로젝트에 등록된 Client Debug object만 묶은 console probe에서 실제
+`CEffectDocumentRenderer::Stage_Document`를 호출했다. 창·swapchain·Client 실행은 없었다.
+
+| 입력 | CWMeshReader / CModel | 실제 91-element 문서 staging |
+|---|---|---|
+| 공유 원본 cylinder | 성공 / 성공 | 원본 복구는 불필요하여 별도 검사하지 않음 |
+| 최초 파생 설치본 | 실패 / 실패: geometry payload SHA-256 불일치 | 실패: 해당 파생 CModel load failed |
+| SHA만 고친 음성 대조 | 실패 / 실패: embedded bounds와 정점-derived bounds 불일치 | 수행하지 않음 |
+| bounds와 SHA를 함께 고친 후보 | 성공 / 성공 | 성공 |
+| 승인 후 실제 설치본 | 성공 / 성공 | 성공 |
+
+수정 도구는 입력 payload/metadata digest를 먼저 확인하고, 파생 정점의 min/max/center/radius,
+payloadSha256, geometryToolSha256, metadataSha256을 갱신한다. 나머지 source digest는
+입력 계보로 유지하며 원본 geometry와의 동일성 인증으로 사용하지 않는다. evidenceFlags의
+원본 정확성 인증 bit는0이고 이 파생은 계속 PROJECT_TUNED다. 알려진 최초 손상 SHA 또는
+동일 생성 결과만 교체를 허용한다. 최신 원본 hash·교체 대상 bytes를 확인하고 JSON/mesh
+백업과 atomic replace를 사용하며 후속 실패 시 자기 mesh 교체를 rollback한다.
+
+최초 손상본 대비 변경은105bytes이며 embedded bounds와 위3개 digest에만 한정된다.
+26개 정점·72개 index·UV/normal/tangent·material section은 최초 파생과 완전히 같다.
+따라서 이번 수리는 반경·winding·shader·cull/pass·색·배우·조명·카메라·시간을 다시 바꾸지 않는다.
+최초 합성 삼각형 WARP는 one-sided/pass의 제한된 근거로만 남고 실제 파생 파일 로드 근거를
+대체하지 않는다. 이번 headless 검증도 전체 컷신 draw나 사용자 화면 PASS가 아니다.
+
+사용자의 `발탄 돌이랑 같이 전부 다 수정하고 빌드까지 돌려줘. exe 종료했어` 승인 후 설치했다.
+
+- 수리 설치 파생 SHA256: `5620d75d1031ac09cc48ca960a3f39b0496fb5edc3786a967118b368d1d96ec1`.
+- 공유 원본 SHA256: `226868c59498af8d33ec6be625db3bae2f4b1ee17055dee238bc261da907c96d`, 변경 없음.
+- 저작 JSON SHA256: `81b0cf4579a700eed10a64ed5c7604fa67975e85e8b077b018f038bc7add1b4a`, 전후 동일.
+- 손상본 백업: `out/KoukuPortalLighting20260922/candidate/mesh-before-6d2e9d058dc42e8b0779492e24992f65490363bc5b18dc3968eae95771499dba.wmodel`.
+- 증거: `out/KoukuPortalLoader20260922/before.log`, `digest-only.log`, `candidate.log`,
+  `installed.log`, `stage-before.log`, `stage-candidate.log`, `stage-installed.log`,
+  `repair-audit.json`, `installed-receipt.json`.
+
+Python syntax와 대상 diff whitespace 검사도 통과했다. 독립 probe 컴파일의 기존 헤더
+문자집합 경고와 Debug object의 EDITANDCONTINUE 무시 경고는 기록했으며 제품 소스를
+바꾸지 않았다. 통합 Engine/Shared/Server/Client Debug Product 빌드와 배포는 exit 0으로
+완료했다. receipt는 `out/BuildPipeline/runs/20260922T011037720Z-debug-product.json`이며
+missing/invalid runtime input은 0이다.
+사용자 재실행 뒤 화면 판정과 다른 PC의 수리된 Resources 전달은 아직 별도다.

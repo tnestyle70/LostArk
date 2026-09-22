@@ -59,6 +59,9 @@ struct KOUKU_SUBTITLE_VIEW final
 {
     std::string strText;
     bool bUpper = false;
+    // Screen pixels at 1080 reference height; positive Y moves down.
+    float2_t vScreenOffset{};
+    float fTextScale = 1.f;
 };
 
 // The Server supplies identity and time. This owner only samples presentation
@@ -184,6 +187,8 @@ private:
         std::string assetId;
         std::string subtitleText;
         bool subtitleUpper = false;
+        float2_t subtitleScreenOffset{};
+        float subtitleTextScale = 1.f;
         float3_t cameraOffset{};
         HIT_AREA_SHAPE wire{};
         float4x4_t placementAnchor{};

@@ -2,10 +2,11 @@
 
 ## G00. 반영 상태
 
-사용자가 편집 중이므로 최종 데이터 반영을 기다린다. 이 작업은 C++ 소비자 최소 변경과
-out 후보 준비·자동 검증까지 끝냈다. Data/Effects/Authored와 게시 데이터는 교체하지 않았고
-Client/Server 실행·UI 조작·link·commit/push를 하지 않았다. 통합 담당은 사용자 대기 요청
-이전에 Client /t:ClCompile Debug x64를 완료했다고 보고했다. 이후 link와 publish는 보류한다.
+초기에는 편집 중 반영 대기 요청에 따라 후보만 준비했다. 이후 사용자가 발탄 돌까지
+전부 반영하고 빌드하도록 승인하고 EXE 종료를 알렸다. 통합 담당이 최신 저장본을 다시
+읽어 아래 7문서를 원자적으로 설치했다. 설치된 source 대상 cross 6개와 rock-pillar 8개
+계약 테스트가 통과했다. GameplayBalance/Composition 게시와 통합 Debug 제품 빌드도 통과했다.
+Client/Server 실행과 UI 조작은 하지 않았다.
 
 최종 적용 후보는 두 manifest의 합계7문서다.
 
@@ -38,8 +39,8 @@ cross generic base/mask override는 교체된 native material에 더 이상 존�
 해당 material 교체와 함께 제거한다. 연기4개의 source byte는 유지한다.
 
 Tools/EffectPipeline/test_valtan_cross_rock_wave_effect.py의 기존 Product 계약은 native2391,
-새 material/mesh, gap.25와 돌만1.2배인 관계를 검사하도록 맞췄다. 아직 Data 설치 전이므로
-이 테스트는 후보 경로를 지정하여 실행했으며 저장소 원문 대상으로는 설치 후 다시 확인한다.
+새 material/mesh, gap.25와 돌만1.2배인 관계를 검사하도록 맞췄다. 최초 후보 검사 후
+사용자 승인으로 설치한 저장소 원문을 대상으로 다시 실행해 6개 모두 통과했다.
 
 ## G02. 실제 자동 검증
 
@@ -71,10 +72,17 @@ d2aca7336ddc43a42a73b08a1a410e1f64392b5f2b5dd050714b06ef288acf80이었고 cross 
 7bd856b1673bfe1d75c891e58e0ad208ec3bcc51f9998118eafb2cc821e5853f로 바뀌었다.
 실제 적용 때는 최신 저장본·다른 변경에 따라 generation이 달라지므로 이 값을 고정하지 않는다.
 
-저장본 적용 후 최소 Publish-GameplayBalance.ps1 -Mode Publish로 Gameplay.bootstrap과
-해당 generation manifest를 생성해야 한다. 현재 writer는 pattern cue closure를 수집하므로
+저장본 적용 후 Publish-GameplayBalance.ps1 -Mode Publish로 Gameplay.bootstrap과
+위 `7bd856b1...` generation manifest를 생성했다. Publish-Compositions.ps1 -Mode Publish도
+완료했다. 두 로그는 `out/KoukuUrgentFix20260922/`의 `gameplay-publish.log`와
+`composition-publish.log`다. 현재 writer는 pattern cue closure를 수집하므로
 BossCatalog의 persistent active/explode만 있는6문서는 기존 generation hash 대상이 아니다.
-이 사실을 publisher 지원 확대나 이미 설치된 상태로 설명하지 않는다.
+이 사실을 publisher 지원 확대로 설명하지 않는다. 대상 7문서의 디스크 설치는 완료했다.
+
+Engine/Shared/Server/Client Debug Product 빌드와 배포는 exit 0이며
+`out/BuildPipeline/runs/20260922T011037720Z-debug-product.json`의 result는 PASS다.
+missing/invalid runtime input은 0이다. 실제 사용하는 Server의 새 bootstrap 로드와
+Client 재실행 뒤 화면 검증은 사용자 확인으로 남긴다.
 
 ## G04. 버러지와 발악의 구분
 
@@ -91,6 +99,5 @@ map source-preview.trash의8effect track도 cast/light/helix를 사용하며 돌
 Server CCombatObjectRuntime은 기존 combat object를 자기 lifetime 동안 유지하고 source 사망·
 소멸을 따로 처리한다. 다른 패턴에서 생긴 돌을 버러지 동안 볼 가능성은 있으나 실행 로그나
 사용자 occurrence 식별 없이 그것이라고 확정하지 않는다. 현재 확정된4archetype의 shared
-visual은 후보에 포함됐고, 별도 버러지 돌 generator는 발견되지 않았다. 사용자 편집이 끝난
-최신 저장본이나 실제 선택한 occurrence로 다음 반영 때 재확인한다. 버러지 전체 완료로
-기록하지 않는다.
+visual은 설치됐고, 별도 버러지 돌 generator는 발견되지 않았다. 사용자 화면에서 지칭하는
+돌의 실제 occurrence가 식별되기 전까지 별도 버러지 돌 교체를 완료로 기록하지 않는다.

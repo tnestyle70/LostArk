@@ -4,7 +4,7 @@
   "sourceManifest": {
     "schema": "lostark.composition-source-manifest",
     "formatVersion": 1,
-    "sourceManifestId": "6c288103e37fb4c6cf8f71a7e48f30141e64ac808d1f1932f1cf7816274aedf6",
+    "sourceManifestId": "4e6cfa077b0d4d8aff14da3332ecdf20feee8e1b073a10e04ce742353c5c5c71",
     "files": [
       {
         "path": "Data/Animation/Authored/KoukuSaydon/MN_RPCT_05.actionbindings.json",
@@ -438,8 +438,8 @@
       },
       {
         "path": "Data/Effects/Authored/effect.valtan.sequence.cross.effect.json",
-        "sha256": "854c0d89c95c3efa96711ef6056216c7a30a3ca1101c2bce1de2639a7c4b5697",
-        "bytes": 33990
+        "sha256": "699fe43a4a1e11065c3ce72c7f0ac7d6afb69f8d8baa83e92b4c61b14a9c5541",
+        "bytes": 187970
       },
       {
         "path": "Data/Effects/Authored/effect.valtan.sequence.roar-charge.effect.json",
@@ -453,8 +453,8 @@
       },
       {
         "path": "Data/Effects/EffectCatalog.json",
-        "sha256": "8c502e6e533fe266653b168f138455b5dfb4dd32678f889f949947b432975c8a",
-        "bytes": 271281
+        "sha256": "e56923819c60025b60dfb73e9c2a9372591bda3654a961d85fdf6c326de1ac05",
+        "bytes": 282531
       },
       {
         "path": "Data/Effects/V2/Authored/bingo.bomb.mark_1.effectv2.json",
@@ -2078,8 +2078,8 @@
       },
       {
         "path": "Data/Sound/CharacterSoundCatalog.json",
-        "sha256": "2d8179edff80e17c09581d3d63a3276723dc4528232d57d9a48399955e00af23",
-        "bytes": 722778
+        "sha256": "bd62e411af3339b13ccb0be0f794fed9818aa35a9fd8687d957702f5b27d7998",
+        "bytes": 723246
       },
       {
         "path": "Data/Valtan/Valtan.combatobjects.json",
@@ -2116,8 +2116,8 @@
     },
     {
       "path": "Bosses/Valtan.bosscomposition.json",
-      "sha256": "c509d37bddf5b7281d809568db47d926cee1a5e9e58d584f37bc73cdde684609",
-      "bytes": 3806198
+      "sha256": "4dc4c21aaae1bd404009a1fd14e4fe0efeddbf11c01ba0be300243c7e0dfeb3b",
+      "bytes": 3806199
     },
     {
       "path": "Sequences/KoukuSaydonArena.sequencer.json",

@@ -177,7 +177,7 @@ bool Client::CKoukuSaydonPatternAuditionService::Play_Flow(
 	m_FlowSnapshot.bActive = true; m_FlowSnapshot.strGateId = gateId; m_FlowSnapshot.iEntryCount = entries.size();
 	m_FlowEntries = entries; m_FlowRevision = revision; m_iFlowSourceRevision = sourceRevision;
 	m_iFlowWorldGeneration = CNetworkManager::Get().Get_WorldInboundGeneration();
-	m_bFlowEntryCompleted = false; m_bStopFlowWhenAdmitted = false;
+	m_bFlowEntryCompleted = false; m_bStopWhenAdmitted = false;
 	return Submit_FlowEntry(status);
 }
 
@@ -241,8 +241,8 @@ bool Client::CKoukuSaydonPatternAuditionService::Stop(std::string& status)
 	if (flow) Cancel_Flow("Pattern Flow stopped; remaining entries were cancelled.");
 	const auto snapshot = m_Snapshot;
 	if (flow && !snapshot.Is_InFlight() && !snapshot.Can_Stop()) { status = m_FlowSnapshot.strStatus; return true; }
-	if (flow && snapshot.Is_InFlight() && !snapshot.iRoomAuditionEpoch)
-	{ m_bStopFlowWhenAdmitted = true; status = "Remaining Flow entries cancelled; Stop will follow the pending Server admission."; return true; }
+	if (snapshot.Is_InFlight() && !snapshot.iRoomAuditionEpoch)
+	{ m_bStopWhenAdmitted = true; status = m_Snapshot.strStatus = "Stop requested; waiting for the exact Server admission before stopping its run."; return true; }
 	if (!snapshot.Can_Stop()) { status = "No admitted Server run or retained projectiles to stop."; return false; }
 	return Submit(LostArk::Shared::KOUKUSAYDON_PATTERN_AUDITION_OPERATION::STOP, {}, snapshot.ExpectedGameplayRevision,
 		snapshot.iExpectedSourceRevision, status, snapshot.strBundleId, snapshot.strGateId, snapshot.iRoomAuditionEpoch);
@@ -386,19 +386,21 @@ void Client::CKoukuSaydonPatternAuditionService::Update()
 		now - m_iStateStartedAtMilliseconds > timeout &&
 		KOUKU_SAYDON_PATTERN_AUDITION_STATE::ACTIVE != m_Snapshot.eState)
 	{
-		Set_Terminal(
-			KOUKU_SAYDON_PATTERN_AUDITION_STATE::ABORTED,
-			"KoukuSaydon Server Play timed out before an exact ACTIVE lifecycle arrived.");
+		// A blocked main pump or a bounded receive batch may delay an already
+		// accepted run. Keep its exact identity until the Server resolves it.
+		m_Snapshot.strStatus = m_bStopWhenAdmitted ?
+			"Stop requested; still waiting for the exact Server admission before stopping its run." :
+			"KoukuSaydon Server Play response is delayed; still waiting for this request's exact Server lifecycle.";
 	}
-	if (m_bStopFlowWhenAdmitted && !m_bSubmittingFlowEntry)
+	if (m_bStopWhenAdmitted && !m_bSubmittingFlowEntry)
 	{
-		if (!m_Snapshot.Is_InFlight()) m_bStopFlowWhenAdmitted = false;
-		else if (m_Snapshot.iRoomAuditionEpoch != 0u)
+		if (m_Snapshot.Can_Stop() && m_Snapshot.iRoomAuditionEpoch != 0u)
 		{
-			m_bStopFlowWhenAdmitted = false;
+			m_bStopWhenAdmitted = false;
 			std::string status;
 			Stop(status);
 		}
+		else if (!m_Snapshot.Is_InFlight()) m_bStopWhenAdmitted = false;
 	}
 	Update_Flow();
 }
@@ -576,7 +578,7 @@ void Client::CKoukuSaydonPatternAuditionService::Reset(
 	m_bRunHasStarted = false;
 	Cancel_Flow({});
 	m_FlowSnapshot = {};
-	m_bStopFlowWhenAdmitted = false;
+	m_bStopWhenAdmitted = false;
 	m_bTargetTransitionPending = false;
 	Set_TargetBoss({}, {});
 	if (!reason.empty())

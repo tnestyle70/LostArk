@@ -2229,6 +2229,12 @@ FXC가 `#include`의 문자열 macro를 확장하지 못해 X1500을 내면 이�
 
 Effect Tool이 직접 읽는 Authored 파일과 Pattern이 CEffectCatalog로 읽는 경로는 등록 계약이 다르다. Tree에 V1을 공개할 때 exact DIRECT_AUTHORED_DOCUMENT metadata도 함께 stage하고 lazy payload validation은 유지한다. metadata 등록 성공과 payload/화면 성공을 구분한다. sync_kouku_effect_tree.py는 두 catalog의 기준 bytes와 Authored SHA를 확인하며 편집 중 등록을 강행하지 않는다.
 
+EffectCatalog의 긴 JSON 줄에 이름이 남아 있는 것과 Pattern에서 재생하는 occurrence가 남아
+있는 것은 다르다. 충돌 검토는 양쪽 parent/base의 stable asset ID와 기존 필드를 구조적으로
+비교하고, resource 정의부터 현재 occurrence 참조까지 별도로 확인한다. 삭제된 재생 연결을
+과거 RESULT의 설치 기록으로 복원하지 않으며, 재사용 가능한 library 정의를 참조 없이
+남겼다는 이유만으로 삭제 실패나 병합 회귀로 판정하지 않는다.
+
 ### 선택한 플레이어 위치에 고정한 Effect 그룹과 airborne의 원점
 
 `selectionGroupId` 자체는 재생 pivot이 아니다. Play 시점 고정 요청은 SELECT 시점 navigation ground XYZ를 저장하고 APPEAR와 fixed targeted visual이 같은 점을 소비해야 한다. MAP 멤버의 공통 원점은 XZ뿐 아니라 Y도 빼야 떠 있는 오프셋이 중복되지 않는다. 멤버의 원래 absolute 시작 시각은 유지하고 일반 Effect lane 중복 재생은 제외한다. 기존 Albion의 APPEAR 시점 추적은 optional SELECT 정책과 구분한다. transaction 실패는 이전 선택·좌표·시각 객체를 함께 보존한다.
@@ -2827,10 +2833,36 @@ lease에 연결한다. 저장된 DURATION은 timing 존재와 PRODUCT 의미의 
 재질의 조명 지원 여부와 조명 이후 alpha 합성을 구분한다. RGB0·alpha1인 unlit 막은
 이미 계산된 배우 색을 덮으며 one-sided 외벽은 내부 camera에서 컬링된다. 원래 camera,
 실제 skinned pose, effect geometry의 교차를 검사하고 emitter root나 광원 gizmo만으로 판단하지 않는다.
-검은 원본 particle color가 CDO에서도0이면 흰색 기본값으로 바꾸지 않는다. 배경막 용도로
-튜닝할 때는 해당 occurrence만 파생 geometry를 사용하고 외벽 방향과 배우 전체 포함 범위를
-함께 확인한다. source 복원과 PROJECT_TUNED 수정, 후보 검사와 설치·화면 판정을 구분한다.
-근거: [쿠크 포탈 조사/후보 결과](09-22/2026-09-22_KOUKU_PORTAL_LIGHTING_RESULT.md).
+검은 원본 particle color가 CDO에서도0이면 흰색 기본값으로 바꾸지 않는다. 해당 occurrence의
+배경막을 튜닝하면 외벽 방향과 배우 전체 포함 범위를 확인한다. 파생 WModel의 정점/index를
+바꾸면 WGEO payload SHA, geometry bounds, 생성 도구 식별과 metadata SHA를 함께 재생성한다.
+해시가 이전 payload를 가리키면 CWMeshReader가 거부하고, CModel 생성 실패가 같은 문서의
+포탈 전체 staging 실패로 이어질 수 있다. reader의 무결성 검사를 완화해 우회하지 않는다.
+
+JSON Parse/Validate_Drawable와 원시 geometry 광선 검사는 CModel 로드 검증이 아니다.
+원본·기존 설치본·수정 후보를 실제 CWMeshReader/CModel과 해당 effect ResourceStaging까지
+연결해 대조한다. 단일 삼각형의 GPU culling 검사를 포탈 전체 로드·표시 성공으로 기록하지
+않는다. source 복원과 PROJECT_TUNED 수정, 설치 및 사용자 화면 판정을 구분한다.
+이 누락으로 이전 파생 파일이 제품 로더에서 거부된 회귀와 수정 증거는
+[쿠크 포탈 결과](09-22/2026-09-22_KOUKU_PORTAL_LIGHTING_RESULT.md)에 기록한다.
+
+### 자막 Box Detail은 최종 화면 소비자까지 연결한다
+
+occurrence의 offset/scale이 저장돼도 active row와 typed subtitle view가 전달하지 않거나
+MainApp이 고정 값을 사용하면 Preview에는 반영되지 않는다. Kouku SUBTITLE은 높이1080 기준
+화면 X/Y pixel offset(+Y 아래)과 Scale X의 균일 글자 배율을 같은 preview clock으로 전달한다.
+Preview/Apply/Save, 종료·재시작·잘못된 입력의 이전 값 보존을 함께 검사한다. 글자 높이 요청과
+최종 UILabelFont의 폭 맞춤·baked font snapping을 구분하고 실제 설치 폰트로 확인한다.
+
+### Server Play deadline과 늦은 exact lifecycle
+
+bounded raw FIFO를 사용하는 Client의 wall-clock deadline은 Server 거절 증거가 아니다.
+느린 resource 준비나 main pump 뒤 exact receipt/lifecycle이 다음 batch에 남을 수 있다.
+deadline에는 지연 안내를 표시하고 요청 소유권은 실제 typed 응답, 명시 Stop 또는 session
+종료까지 보존한다. 요청 ID/scope/revision/epoch 검사는 유지한다. 승인 전 Stop은 epoch가
+도착한 뒤 같은 run에 전달한다. ACTIVE부터 COMPLETED까지 같은 batch에서 처리한 경우
+완료 뒤 presentation을 다시 시작하지 않는지 검사한다. 개별 검증은
+[쿠크 lifecycle 결과](09-22/2026-09-22_KOUKU_PATTERN_LATE_LIFECYCLE_RESULT.md)에 둔다.
 
 
 ### 세이튼 카드와 망치 접촉 재생
@@ -2918,4 +2950,3 @@ clamp 상한보다 올려도 이미 잘리는 부분은 복구되지 않는다. 
 가로채지 않는지 검사한다. 허용된 portable mesh carrier의 명시 간격만 기존 생성기를
 사용하고 source 위치·이동 module과 섞지 않는다. 1.2배 외형 변경은 mesh 크기에만 적용하고
 birth center·간격·Server cover와 폭발 시점은 유지한다.
-

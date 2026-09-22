@@ -1,11 +1,23 @@
 # 쿠크·세이튼 원본 액션 이펙트 full restore 결과
 
+## 09-22 병합 후 현재 연결 재확인
+
+PR #440의 feature `583e4b5bb`, 충돌 해결 `fb9501f5c`, 최종 main `1b5361a2d`와 현재
+Composition revision 2166에는 노란 시선 full restore의 P11 `.presentation.34`가 없다.
+`kakulsaydon.effect.ab269d3dda5ae03d6ae7` 정의는 남아 있지만 전체 Pattern occurrence
+참조는 0개다. 아래 표의 P11 연결은 최초 설치 당시 기록이며 현재 재생 연결이 아니다.
+이번 병합은 삭제된 occurrence를 복구하지 않았다.
+
+EffectCatalog의 main 쪽 기존 1,286개 항목은 모두 동일하게 보존됐고, feature에서 추가한
+wind/yellow-gaze full restore 2개를 포함해 최종 1,288개다. 중복·기존 ID 삭제·기존 필드 변경은
+없다. 카탈로그 줄 끝의 이름만으로 패턴 재생 복구나 삭제 실패라고 판단하지 않는다.
+
 ## 적용 범위
 
 사용자 재지정에 따라 2관문 대형 세이튼의 불어날리기 바람과 노란 시선만 설치했다.
 1관문 무력화와 파1빨2 광선은 조사만 하고 변경하지 않았다.
 
-## 설치 결과
+## 최초 설치 결과
 
 | 대상 | 설치 문서 | stable resource | 연결 pattern |
 |---|---|---|---|
