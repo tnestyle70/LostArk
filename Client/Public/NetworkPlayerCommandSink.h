@@ -99,6 +99,11 @@ public:
 		std::uint8_t slotIndex,
 		float aimX,
 		float aimZ) override;
+	bool Request_DebugUseEsther(
+		std::uint32_t requestSequence,
+		LostArk::Shared::ESTHER_ID esther,
+		float aimX,
+		float aimZ) override;
 	bool Request_UseSquareHole(
 		std::uint32_t clientSequence,
 		std::uint16_t holeId) override;

@@ -2,6 +2,18 @@
 
 #include <cmath>
 
+const LostArk::Server::ESTHER_ROSTER_ENTRY*
+LostArk::Server::Find_EstherDefinition(
+	const LostArk::Shared::ESTHER_ID estherId)
+{
+	for (const ESTHER_ROSTER_ENTRY& entry : ESTHER_DEFINITIONS)
+	{
+		if (entry.eEstherId == estherId)
+			return &entry;
+	}
+	return nullptr;
+}
+
 void LostArk::Server::CEstherSkillSystem::Initialize(
 	const LostArk::Shared::WORLD_ID worldId)
 {
@@ -9,6 +21,8 @@ void LostArk::Server::CEstherSkillSystem::Initialize(
 		LostArk::Shared::WORLD_ID::VALTAN_ARENA == worldId ||
 		LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA == worldId ||
 		LostArk::Shared::WORLD_ID::CHARACTER_SELECT_ARENA == worldId;
+	m_Roster = LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA == worldId ?
+		ESTHER_ROSTER_KOUKUSAYDON : ESTHER_ROSTER_VALTAN;
 	Reset();
 }
 
@@ -44,15 +58,13 @@ LostArk::Server::CEstherSkillSystem::Try_Consume(
 {
 	if (!m_isEnabled)
 		return ESTHER_USE_REJECTION::DISABLED_WORLD;
-	const ESTHER_ROSTER_ENTRY* pEntry = nullptr;
-	for (const ESTHER_ROSTER_ENTRY& entry : ESTHER_ROSTER)
+	if (slotIndex < LostArk::Shared::MIN_ESTHER_SLOT_INDEX ||
+		slotIndex > LostArk::Shared::MAX_ESTHER_SLOT_INDEX)
 	{
-		if (entry.iSlotIndex == slotIndex)
-		{
-			pEntry = &entry;
-			break;
-		}
+		return ESTHER_USE_REJECTION::UNSUPPORTED_SLOT;
 	}
+	const ESTHER_ROSTER_ENTRY* pEntry = Find_EstherDefinition(
+		m_Roster[slotIndex - LostArk::Shared::MIN_ESTHER_SLOT_INDEX]);
 	if (nullptr == pEntry)
 		return ESTHER_USE_REJECTION::UNSUPPORTED_SLOT;
 	if (m_iGauge < GAUGE_MAXIMUM)
