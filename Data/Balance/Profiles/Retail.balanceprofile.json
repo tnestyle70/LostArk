@@ -1189,6 +1189,69 @@
       "damageAddend": 111
     }
   ],
+  "skillBuffs": [
+    {
+      "skillId": 17170,
+      "buffId": 171702,
+      "displayName": "가디언의 수호",
+      "target": "ALLY",
+      "kind": "BUFF",
+      "durationMs": 10000,
+      "iconAsset": "UI/HUD/Buff/buff_warlord_guardian.png",
+      "damageTakenPercent": -40
+    },
+    {
+      "skillId": 17250,
+      "buffId": 172500,
+      "displayName": "수호의 맹세",
+      "target": "ALLY",
+      "kind": "BUFF",
+      "durationMs": 10000,
+      "iconAsset": "UI/HUD/Buff/buff_warlord_oath.png",
+      "damageTakenPercent": -40
+    },
+    {
+      "skillId": 31050,
+      "buffId": 310501,
+      "displayName": "저무는 달",
+      "target": "ALLY",
+      "kind": "BUFF",
+      "durationMs": 10000,
+      "iconAsset": "UI/HUD/Buff/buff_artist_setting_moon.png",
+      "damageDealtPercent": 10
+    },
+    {
+      "skillId": 31950,
+      "buffId": 319503,
+      "displayName": "미르 새김",
+      "target": "ALLY",
+      "kind": "BUFF",
+      "durationMs": 12000,
+      "iconAsset": "UI/HUD/Buff/buff_artist_mir.png",
+      "damageDealtPercent": 10
+    },
+    {
+      "skillId": 34510,
+      "buffId": 345003,
+      "displayName": "난무 2단계",
+      "target": "SELF",
+      "kind": "BUFF",
+      "durationMs": 20000,
+      "iconAsset": "UI/HUD/Buff/buff_lancemaster_short_spear.png",
+      "attackSpeedPercent": 10,
+      "damageDealtPercent": 10
+    },
+    {
+      "skillId": 49040,
+      "buffId": 490407,
+      "displayName": "파티 : 피해 증폭",
+      "target": "ENEMY",
+      "kind": "DEBUFF",
+      "durationMs": 10000,
+      "iconAsset": "UI/HUD/Buff/buff_guardianknight_dragon_mark.png",
+      "damageTakenPercent": 6
+    }
+  ],
   "bosses": [
     {
       "archetypeId": "BOSS_VALTAN",

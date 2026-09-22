@@ -74,6 +74,37 @@ TOOLTIP_MACRO = re.compile(r"<\$MACRO\s+(\w+)\s+@1:(\d+)")
 TOOLTIP_REPEAT = re.compile(r"<FONT[^>]*>(\d+)</FONT>\s*회")
 TOOLTIP_DAMAGE_MACRO = re.compile(r"^(physic|magic)", re.IGNORECASE)
 
+# The buffs the Server applies, and what each one modifies.  Duration, percent and the
+# target come from the original tables: EFTable_SkillBuff.Duration and
+# PassiveOptionValue (hundredths of a percent), and EFTable_SkillEffect.Target on the
+# add_status_effect row -- 0 self, 1 ally, 2 enemy.  The field a buff drives is named
+# here because PassiveOptionType is 2 for both directions; the sign alone would not say
+# whether it is damage dealt or damage taken.
+SKILL_BUFFS = [
+    # skillId, buffId, icon asset name
+    (17170, 171702, "warlord_guardian"),
+    (17250, 172500, "warlord_oath"),
+    (31050, 310501, "artist_setting_moon"),
+    (31950, 319503, "artist_mir"),
+    (34510, 345003, "lancemaster_short_spear"),
+    (49040, 490407, "guardianknight_dragon_mark"),
+]
+# EFTable_SkillBuff.PassiveOptionKeyStat names the stat a buff drives, resolved through
+# the stattype enum: 144 physical_inc_sub_rate_2, 146 magical_inc_sub_rate_2 (both the
+# damage the holder takes) and 148 skill_damage_sub_rate_2 (the damage it deals).
+BUFF_STAT_FIELD = {
+    141: "damageDealtPercent", 142: "damageDealtPercent",   # attack_power_sub_rate
+    143: "damageTakenPercent", 144: "damageTakenPercent",   # physical_inc_sub_rate
+    145: "damageTakenPercent", 146: "damageTakenPercent",   # magical_inc_sub_rate
+    147: "damageDealtPercent", 148: "damageDealtPercent",   # skill_damage_sub_rate
+    78: "attackSpeedPercent",                               # attack_speed_rate
+}
+BUFF_TARGET = {0: "SELF", 1: "ALLY", 2: "ENEMY"}
+# EFTable_SkillBuff.Duration is -1 for a buff the original ends on a condition rather
+# than a clock (the Gunlancer guardians).  The Server needs a window, so these hold for
+# ten seconds, which is this project's choice and not an official cell.
+CONDITION_BUFF_DURATION_MS = 10000
+
 PROJECT_POLICY = {
     # The client tables ship no final player attack power: EFTable_PCStat is published
     # with its payload columns removed, so this is a project number, not an official
@@ -356,6 +387,62 @@ def build_skills(
     return rows
 
 
+def build_skill_buffs(
+    effects: sqlite3.Connection,
+    buffs: sqlite3.Connection,
+    messages: sqlite3.Connection,
+) -> list[dict]:
+    rows = []
+    for skill_id, buff_id, icon in SKILL_BUFFS:
+        buff = buffs.execute("SELECT * FROM SkillBuff WHERE PrimaryKey = ?",
+                             (buff_id,)).fetchone()
+        if buff is None:
+            raise ValueError(f"EFTable_SkillBuff has no row {buff_id}")
+        effect = effects.execute(
+            "SELECT Target FROM SkillEffect WHERE PrimaryKey BETWEEN ? AND ? "
+            "AND Key = 7 AND ValueA = ? LIMIT 1",
+            (skill_id * 10, skill_id * 10 + 9, buff_id)).fetchone()
+        if effect is None:
+            raise ValueError(f"Skill {skill_id} does not apply buff {buff_id}")
+        target = BUFF_TARGET.get(int(effect["Target"]))
+        if target is None:
+            raise ValueError(f"Buff {buff_id} has unknown target {effect['Target']}")
+        # A passive-option buff names its stat and carries hundredths of a percent in
+        # up to four slots; the damage-amplify archetype names no stat and puts the same
+        # hundredths in ValueH, because it only raises the damage its holder takes.
+        # Two slots of the same stat family (physical and magical) are one field.
+        fields: dict[str, int] = {}
+        for slot in range(4):
+            if int(buff[f"PassiveOptionType{slot}"] or 0) == 0:
+                continue
+            key_stat = int(buff[f"PassiveOptionKeyStat{slot}"] or 0)
+            field = BUFF_STAT_FIELD.get(key_stat)
+            if field is None:
+                raise ValueError(f"Buff {buff_id} drives unknown stat {key_stat}")
+            percent = round(int(buff[f"PassiveOptionValue{slot}"] or 0) / 100)
+            if field in fields and fields[field] != percent:
+                raise ValueError(f"Buff {buff_id} sets {field} twice with different values")
+            fields[field] = percent
+        if not fields:
+            fields["damageTakenPercent"] = round(int(buff["ValueH"] or 0) / 100)
+        if not any(fields.values()):
+            raise ValueError(f"Buff {buff_id} has no percent to apply")
+        duration = int(buff["Duration"])
+        name = messages.execute(
+            "SELECT MSG FROM GameMsg WHERE KEY = ?", (str(buff["Name"]),)).fetchone()
+        rows.append({
+            "skillId": skill_id,
+            "buffId": buff_id,
+            "displayName": "" if name is None else str(name["MSG"]),
+            "target": target,
+            "kind": "DEBUFF" if target == "ENEMY" else "BUFF",
+            "durationMs": CONDITION_BUFF_DURATION_MS if duration < 0 else duration,
+            "iconAsset": f"UI/HUD/Buff/buff_{icon}.png",
+            **fields,
+        })
+    return rows
+
+
 def build_bosses(
     balances: sqlite3.Connection,
     stats: sqlite3.Connection,
@@ -438,6 +525,7 @@ def main() -> int:
     pcs = connect(args.table_root, "PC")
     skills = connect(args.table_root, "Skill")
     effects = connect(args.table_root, "SkillEffect")
+    buffs = connect(args.table_root, "SkillBuff")
     messages = connect(args.message_root, "GameMsg")
     balances = connect(args.table_root, "NpcBalance")
     stats = connect(args.table_root, "NpcStat")
@@ -452,6 +540,7 @@ def main() -> int:
         "players": build_players(pcs, players_document["players"]),
         "skills": build_skills(skills, effects, messages, skills_document["skills"]),
         "damageProfiles": [],
+        "skillBuffs": build_skill_buffs(effects, buffs, messages),
         "bosses": build_bosses(balances, stats, bosses_document["bosses"]),
         "monsters": build_monsters(
             balances, stats, monsters_document["profiles"],
