@@ -259,6 +259,7 @@ bool_t Client::CEquipmentPresentationService::Apply_Preview(
 			previewPart.socketBoneId = part.socketBoneId;
 			previewPart.socketYawDegrees = part.socketYawDegrees;
 			previewPart.requiredStance = part.requiredStance;
+            previewPart.isWeaponPart = set->primarySlot == EQUIPMENT_SLOT_ID::WEAPON;
 			previewPart.hiddenMeshMask = part.hiddenMeshMask;
 			previewParts.push_back(std::move(previewPart));
 		}

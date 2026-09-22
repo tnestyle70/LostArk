@@ -94,6 +94,7 @@ STAGE_KEYS = {
     "durationMs",
     "animationOccurrences",
 }
+STAGE_OPTIONAL_KEYS = {"retargetOnEnter", "retargetTarget"}
 OCCURRENCE_KEYS = {
     "occurrenceId",
     "profileId",
@@ -658,7 +659,13 @@ def _validate_logic_definition(
         return logic_id, definition
     if logic_type == "TRIGGER" and extra:
         kind = logic.get("triggerKind")
-        if kind == "HUD_ENTER":
+        if kind == "PURSUIT_PROJECTILES":
+            if (extra - {"triggerKind"}) - LOGIC_KIND_VALUE_KEYS[kind]:
+                raise CompositionError(f"{context} pursuit Trigger carries unrelated values")
+            definition.update(_pursuit_fields(logic, context))
+            if definition["spawnIntervalMs"] != 0:
+                raise CompositionError(f"{context} pursuit Trigger spawns once; spawnIntervalMs must be zero")
+        elif kind == "HUD_ENTER":
             if extra != {"triggerKind", "hudMode"} or logic["hudMode"] not in {
                 "NONE", "POLYMORPH", "MARIO", "DANCE", "MAZE"
             }:
@@ -2192,8 +2199,13 @@ def validate_document(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
         pattern_duration_ms = 0
         for stage_index, stage in enumerate(stages):
             stage_context = f"{context}.stages[{stage_index}]"
-            _exact_keys(stage, STAGE_KEYS | ({"retargetOnEnter"} if "retargetOnEnter" in stage else set()), stage_context)
+            _exact_keys(stage, STAGE_KEYS | (STAGE_OPTIONAL_KEYS & set(stage)), stage_context)
             retarget = _boolean(stage.get("retargetOnEnter", False), f"{stage_context} retargetOnEnter")
+            retarget_target = stage.get("retargetTarget", "RANDOM_ALIVE")
+            if retarget_target not in {"RANDOM_ALIVE", "NEAREST_ALIVE"}:
+                raise CompositionError(f"{stage_context} retargetTarget is invalid")
+            if not retarget and "retargetTarget" in stage:
+                raise CompositionError(f"{stage_context} retargetTarget requires retargetOnEnter")
             if retarget and "bossMotion" in pattern:
                 raise CompositionError(f"{stage_context} retargetOnEnter cannot share bossMotion yaw")
             stage_id = _stable_id(stage["stageId"], f"{stage_context} stageId")
@@ -2715,7 +2727,8 @@ def _project_stage(stage: dict[str, Any], root_motion_samples=None) -> dict[str,
         "durationMs": stage["durationMs"],
         **({"rootMotionSamples": root_motion_samples} if root_motion_samples else {}),
         **({"actions": [{"trigger": "ENTER", "kind": "RETARGET_RANDOM_ALIVE",
-                        "targetId": "boss.target.pattern", "value": 1, "durationMs": 0}]}
+                        "targetId": "boss.target.nearest" if stage.get("retargetTarget", "RANDOM_ALIVE") == "NEAREST_ALIVE" else "boss.target.pattern",
+                        "value": 1, "durationMs": 0}]}
            if stage.get("retargetOnEnter", False) else {}),
         "hitShape": "NONE",
         "hitOuterRadius": 0.0,
@@ -4237,7 +4250,7 @@ def _project_collider_regions(document, pattern, logic_box, logic, sequences, ro
             raise CompositionError("Annular Collider needs equal X/Z scale; hollow ellipses are unsupported")
         anchor = "WORLD" if row["anchorKind"] == "MAP" else "BOSS_CURRENT"
         world_track = None
-        if kind == "OBJECT_CONTACT" and row["bone"]:
+        if kind in {"ENTER_AREA", "OBJECT_OVERLAP", "OBJECT_CONTACT"} and row["bone"]:
             try:
                 world_track = _project_bone_collider_track(pattern, logic_box, row, root,
                     bone_cache if bone_cache is not None else {}, suppress_root_motion,
@@ -4513,7 +4526,7 @@ def project_encounter(document: dict[str, Any], root: Path = REPOSITORY_ROOT) ->
                 continue
             logic = logics[box["logicId"]]
             kind = logic.get("judgementKind") if logic["logicType"] == "DURATION" else logic.get("triggerKind")
-            if kind not in {"BOSS_TRACK_TARGET", "CROSS_DIRECTION_CLONES", "BINGO_BOARD"} and (logic["logicType"] != "TRIGGER" or kind in {None, "ENTER_AREA", "OBJECT_CONTACT", "ANIMATION_BLEND"}):
+            if kind not in {"BOSS_TRACK_TARGET", "CROSS_DIRECTION_CLONES", "BINGO_BOARD"} and (logic["logicType"] != "TRIGGER" or kind in {None, "ENTER_AREA", "OBJECT_CONTACT", "ANIMATION_BLEND", "PURSUIT_PROJECTILES"}):
                 continue
             clone_id = logic.get("clonePatternId", "")
             if clone_id and not any(p["patternId"] == clone_id and p["authoringStatus"] == "PRODUCT"
@@ -4949,7 +4962,7 @@ def _project_pursuit_projectiles(document: dict[str, Any], pattern: dict[str, An
     rows, templates = [], {}
     for box in pattern.get("logicOccurrences", []):
         logic = definitions.get(box["logicId"], {})
-        if not box.get("enabled", True) or logic.get("judgementKind") != "PURSUIT_PROJECTILES":
+        if not box.get("enabled", True) or logic.get("judgementKind", logic.get("triggerKind")) != "PURSUIT_PROJECTILES":
             continue
         if any(outcome_logic_ids(box, slot) for slot in OUTCOME_SLOTS) or box.get("holdLogicOccurrenceId"):
             raise CompositionError("PURSUIT_PROJECTILES cannot carry judgement outcomes or Hold references")

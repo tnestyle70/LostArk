@@ -1,5 +1,8 @@
 #include "imgui.h"
 #include "CharacterActionWorkbench.h"
+#include "BoneAnimationWorkbench.h"
+#include "BoneAnimationDocument.h"
+#include "CharacterModelWorkbench.h"
 #include "ActionPresentationTimeline.h"
 #include "AnimationTargetService.h"
 #include "ActorCatalog.h"
@@ -21,6 +24,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cctype>
 #include <cstdio>
 #include <fstream>
 #include <iterator>
@@ -34,13 +38,14 @@ namespace
 {
 using CLASS = LostArk::Shared::CHARACTER_CLASS_ID;
 struct CLASS_ENTRY { CLASS id; const char* asset; const char* label; };
-constexpr std::array<CLASS_ENTRY, 6> CLASSES{{
+constexpr std::array<CLASS_ENTRY, 7> CLASSES{{
     {CLASS::LANCE_MASTER, "LanceMaster", "Lance Master"},
     {CLASS::GUNSLINGER, "GunSlinger", "Gunslinger"},
     {CLASS::SLAYER, "Slayer", "Slayer"},
     {CLASS::ARTIST, "Artist", "Artist"},
     {CLASS::DIMENSIONMASTER, "DimensionMaster", "Dimension Master"},
-    {CLASS::WARLORD, "Warlord", "Warlord"}
+    {CLASS::WARLORD, "Warlord", "Warlord"},
+    {CLASS::GUARDIANKNIGHT, "GuardianKnight", "Guardian Knight"}
 }};
 // Same category order as the Boss workbench, minus the boss-only families.
 constexpr std::array<const char*, 7> RESOURCE_CATEGORIES{{"Animation", "Logic", "Effect", "Collider", "Sound", "Camera", "Pattern"}};
@@ -135,7 +140,9 @@ void Help_Marker(const char* text)
 
 CCharacterActionWorkbench::CCharacterActionWorkbench(std::shared_ptr<CCharacterPreviewPanel> panel,
     std::shared_ptr<CEffectAuthoringSequencer> sequencer, CAnimation_Tool* animationTool)
-    : m_Panel(std::move(panel)), m_Sequencer(std::move(sequencer)), m_AnimationTool(animationTool)
+    : m_Panel(std::move(panel)), m_Sequencer(std::move(sequencer)), m_AnimationTool(animationTool),
+      m_BoneEditor(std::make_unique<CBoneAnimationWorkbench>()),
+      m_ModelEditor(std::make_unique<CCharacterModelWorkbench>(m_Panel, m_Sequencer))
 {
 }
 CCharacterActionWorkbench::~CCharacterActionWorkbench()
@@ -150,7 +157,9 @@ void CCharacterActionWorkbench::Set_Camera(const std::shared_ptr<Engine::CCamera
 void CCharacterActionWorkbench::Update(const float dt, const bool active)
 {
     if (!m_Sequencer) return;
-    m_Sequencer->Update(dt, active);
+    if (m_BoneEditor && m_BoneEditor->Is_Active()) m_Sequencer->Stop();
+    else m_Sequencer->Update(dt, active);
+    if (m_BoneEditor) m_BoneEditor->Update(active ? dt : 0.f);
     if (!m_PreviewDirty) m_PreviewClock = m_Sequencer->ClockMs();
 }
 bool CCharacterActionWorkbench::Consume_InteractionRequest()
@@ -168,6 +177,7 @@ void CCharacterActionWorkbench::On_WorkbenchDeactivated()
         m_Sequencer->Stop();
     }
     Stop_SoundPreview();
+    if (m_BoneEditor) m_BoneEditor->Stop();
     m_CueEditorClip.clear();
     m_PreviewDirty = true;
 }
@@ -204,7 +214,8 @@ bool CCharacterActionWorkbench::Restore_PreviewTarget()
 }
 bool CCharacterActionWorkbench::Has_Draft() const
 {
-    return m_BindingsDirty || m_CombatDirty ||
+    return m_BindingsDirty || m_CombatDirty || (m_BoneEditor && m_BoneEditor->Is_Dirty()) ||
+        (m_ModelMode && m_ModelEditor && m_ModelEditor->Is_Dirty()) ||
         (m_AnimationTool && m_AnimationTool->Has_CharacterActionCueChanges(m_Asset));
 }
 void CCharacterActionWorkbench::Begin_WorkbenchFrame()
@@ -213,7 +224,18 @@ void CCharacterActionWorkbench::Begin_WorkbenchFrame()
     // One read per session; Reload re-reads it. A failed read leaves timing rows out with a status.
     if (m_CatalogLoaded && !m_TimingsLoaded) { m_TimingsLoaded = true; Load_SkillTimings(); }
     if (m_Panel) m_Panel->Refresh_Level();
-    if (m_RowsDirty && Target_IsCurrent()) Rebuild_Rows();
+    if (m_BoneEditor && m_Panel && m_Panel->Is_PreviewActive())
+        m_BoneEditor->Select(CAnimationTargetService::Resolve_AssetName(), CAnimationTargetService::Resolve_Model());
+    if (m_BoneEditor && m_BoneEditor->Consume_Installed())
+    {
+        m_ClipNames.clear();
+        if (const auto model = CAnimationTargetService::Resolve_Model())
+            for (uint32_t index = 0u; index < model->Get_NumAnimations(); ++index)
+                if (const char* name = model->Get_AnimationName(index)) m_ClipNames.emplace_back(name);
+        if (m_Sequencer) m_Sequencer->Refresh_ModelResources();
+        m_RowsDirty = m_PreviewDirty = true;
+    }
+    if (!m_ModelMode && m_RowsDirty && Target_IsCurrent()) Rebuild_Rows();
 }
 void CCharacterActionWorkbench::End_WorkbenchFrame()
 {
@@ -223,11 +245,17 @@ void CCharacterActionWorkbench::End_WorkbenchFrame()
     if (m_SaveCombat) { m_SaveCombat = false; Save_Combat(); }
     if (m_Reload) { m_Reload = false; Reload_Selected(); }
     if (m_Panel) m_Panel->Set_SessionLock(CHARACTER_PREVIEW_LOCK_OWNER::CHARACTER_ACTION_WORKBENCH,
-        m_BindingsDirty || m_CombatDirty, "Save the Character action draft before changing its preview model.");
+        Has_Draft(), "Save the Character action draft before changing its preview model.");
 }
 void CCharacterActionWorkbench::Render_WorkbenchPane(const COMPOSITION_WORKBENCH_PANE pane)
 {
     if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows)) m_Interaction = true;
+    if (m_ModelMode && pane != COMPOSITION_WORKBENCH_PANE::PATTERNS)
+    {
+        if (pane == COMPOSITION_WORKBENCH_PANE::DETAILS && m_BoneEditor &&
+            ImGui::CollapsingHeader("Bone & Animation Edit", ImGuiTreeNodeFlags_DefaultOpen)) m_BoneEditor->Render();
+        m_ModelEditor->Render(pane); return;
+    }
     switch (pane)
     {
     case COMPOSITION_WORKBENCH_PANE::PATTERNS: Render_Actions(); break;
@@ -289,6 +317,8 @@ void CCharacterActionWorkbench::Render_Actions()
         }
         ImGui::PopID();
     }
+    if (m_ModelEditor->Render_Actions(Has_Draft()))
+    { On_WorkbenchDeactivated(); m_ModelMode = true; }
     ImGui::TextWrapped("%s", m_Status.c_str());
 }
 
@@ -379,6 +409,19 @@ bool CCharacterActionWorkbench::Load_Class(const int classIndex)
         if (!Engine::CWModelDecoder::Read_AnimationCatalog(CRuntimeAssetRoot::Resolve(source), sourceClips, m_Status)) return false;
         for (const auto& clip : sourceClips) { names.push_back(clip.name); metadata.push_back(clip); }
     }
+    const auto authoredPath = CBoneAnimationDocument::Path(entry.asset);
+    if (std::filesystem::is_regular_file(authoredPath))
+    {
+        std::string authoredBytes; CBoneAnimationDocument authored;
+        if (!Read_Source(authoredPath, authoredBytes) || !authored.Parse(authoredBytes, m_Status) || authored.asset != entry.asset) return false;
+        for (const auto& clip : authored.clips)
+        {
+            if (std::find(names.begin(), names.end(), clip.name) != names.end()) { m_Status = "Authored clip collides with a native clip"; return false; }
+            names.push_back(clip.name);
+            Engine::MODEL_ANIMATION_CATALOG_ENTRY value{}; value.name = clip.name;
+            value.durationTicks = clip.durationMs * .03f; metadata.push_back(std::move(value));
+        }
+    }
     if (!CAnimationSkillBindingDocument::Validate(bindings, entry.asset, entry.id, CPlayerSkillCatalog::Get_Skills(), names, m_Status)) return false;
     for (const auto& binding : bindings.Bindings)
         for (const auto& stage : binding.Stages)
@@ -423,10 +466,12 @@ bool CCharacterActionWorkbench::Load_Class(const int classIndex)
 bool CCharacterActionWorkbench::Select_Action(const int classIndex, const std::uint32_t skillId,
     const std::optional<std::uint32_t> stage)
 {
-    if (m_ClassIndex != classIndex && !Load_Class(classIndex)) return false;
+    if (m_ModelMode && Has_Draft()) { m_Status = "Save the model sequence/bone draft before switching actions"; return false; }
+    if ((m_ModelMode || m_ClassIndex != classIndex) && !Load_Class(classIndex)) return false;
     if (!Restore_PreviewTarget()) return false;
     const auto* definition = CPlayerSkillCatalog::Find_ById(skillId);
     if (!definition || definition->eCharacterClass != CLASSES[classIndex].id) return false;
+    m_ModelMode = false;
     On_WorkbenchDeactivated();
     m_SkillId = skillId; m_Stage = stage; m_SelectedRow.clear(); m_PreviewDirty = true; m_PreviewClock = 0u;
     if (!Selected_Binding()) { m_Status = "The selected skill is missing its Product animation binding."; return false; }
@@ -656,7 +701,8 @@ void CCharacterActionWorkbench::Render_Timeline()
     ImGui::TextDisabled("Animation: drag reorders, edges trim source. Collider: drag moves the hit time, right edge stretches the repeat run. Sound: drag moves the .animevents cue. Stage / Post-delay / Timing mirror PlayerSkills (read-only).");
     if (ImGui::BeginChild("CharacterActionTimeline", {0.f, 0.f}, ImGuiChildFlags_Borders, ImGuiWindowFlags_HorizontalScrollbar))
     {
-        constexpr float labelWidth = 120.f, rowHeight = 26.f, rulerHeight = 26.f;
+        constexpr float labelWidth = CompositionTimeline::LabelWidth;
+        constexpr float rowHeight = CompositionTimeline::LaneHeight, rulerHeight = CompositionTimeline::LaneHeight;
         constexpr std::size_t laneCount = static_cast<std::size_t>(LANE::COUNT);
         const float scale = m_Zoom * .001f;
         const std::uint32_t canvasMs = (std::max)(m_Duration, m_CanvasMs);
@@ -685,6 +731,13 @@ void CCharacterActionWorkbench::Render_Timeline()
             const float y = origin.y + rulerHeight + rowHeight * static_cast<float>(laneFirstRow[lane]);
             draw->AddLine({origin.x, y}, {origin.x + width, y}, IM_COL32(60, 64, 72, 255));
             draw->AddText({origin.x + 4.f, y + 5.f}, IM_COL32(200, 204, 212, 255), LANE_LABELS[lane]);
+            const ImVec2 restoreCursor = ImGui::GetCursorScreenPos();
+            ImGui::SetCursorScreenPos({origin.x + labelWidth - 28.f, y + 1.f});
+            ImGui::PushID(static_cast<int>(lane));
+            if (ImGui::SmallButton("+##CharacterLaneResources")) Open_LaneResources(static_cast<LANE>(lane));
+            if (ImGui::IsItemHovered()) ImGui::SetTooltip("Open %s resources for this action.", LANE_LABELS[lane]);
+            ImGui::PopID();
+            ImGui::SetCursorScreenPos(restoreCursor);
         }
         const bool windowHovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows);
         const ImVec2 mouse = ImGui::GetMousePos();
@@ -814,6 +867,7 @@ void CCharacterActionWorkbench::Move_Clip(const std::string& id, const int direc
 
 void CCharacterActionWorkbench::Render_Details()
 {
+    if (m_BoneEditor && ImGui::CollapsingHeader("Bone & Animation Edit", ImGuiTreeNodeFlags_DefaultOpen)) m_BoneEditor->Render();
     const auto found = std::find_if(m_Rows.begin(), m_Rows.end(), [&](const auto& row) { return row.id == m_SelectedRow; });
     if (found == m_Rows.end()) { ImGui::TextDisabled("Select a Stage, Animation, Timing, Effect, Collider, Logic, Result, Sound or Camera box."); return; }
     const ROW row = *found;
@@ -1039,9 +1093,12 @@ void CCharacterActionWorkbench::Render_CombatDetail(const ROW& row)
 void CCharacterActionWorkbench::Render_Resources()
 {
     if (!ImGui::BeginTabBar("##CharacterResourceCategories")) return;
-    for (const char* category : RESOURCE_CATEGORIES)
+    for (std::size_t index = 0u; index < RESOURCE_CATEGORIES.size(); ++index)
     {
-        if (!ImGui::BeginTabItem(category)) continue;
+        const char* category = RESOURCE_CATEGORIES[index];
+        const bool requested = m_RequestedResourceTab == static_cast<int>(index);
+        if (!ImGui::BeginTabItem(category, nullptr, requested ? ImGuiTabItemFlags_SetSelected : 0)) continue;
+        if (requested) m_RequestedResourceTab = -1;
         const std::string_view name = category;
         if (name == "Animation") Render_AnimationResources();
         else if (name == "Logic") Render_LogicResources();
@@ -1054,19 +1111,85 @@ void CCharacterActionWorkbench::Render_Resources()
     }
     ImGui::EndTabBar();
 }
+COMPOSITION_WORKBENCH_VIEW_REQUEST CCharacterActionWorkbench::Consume_WorkbenchViewRequest()
+{
+    const auto request = m_ViewRequest;
+    m_ViewRequest = {};
+    return request;
+}
+
+void CCharacterActionWorkbench::Open_LaneResources(const LANE lane)
+{
+    constexpr std::array<int, static_cast<std::size_t>(LANE::COUNT)> tabs{{0, 0, 1, 2, 3, 4, 5}};
+    m_RequestedResourceTab = tabs[static_cast<std::size_t>(lane)];
+    m_ViewRequest.showResources = m_ViewRequest.focusResources = m_ViewRequest.expandResources = true;
+}
+
 void CCharacterActionWorkbench::Render_AnimationResources()
 {
     ImGui::Text("%s | %zu actual model clips", m_Asset.c_str(), m_ClipNames.size());
+    ImGui::InputTextWithHint("##CharacterAnimationSearch", "Search slot, skill, stage or clip", m_AnimationSearch, sizeof(m_AnimationSearch));
+    const auto matches = [&](const std::string& value)
+    {
+        std::string text = value, query = m_AnimationSearch;
+        const auto lower = [](const unsigned char c) { return static_cast<char>(std::tolower(c)); };
+        std::transform(text.begin(), text.end(), text.begin(), lower);
+        std::transform(query.begin(), query.end(), query.begin(), lower);
+        return query.empty() || text.find(query) != std::string::npos;
+    };
+    COMPOSITION_RESOURCE_TREE_NODE tree;
+    std::vector<std::string> resources;
+    std::set<std::string> linked;
+    for (const auto& binding : m_Bindings.Bindings)
+    {
+        const auto* skill = CPlayerSkillCatalog::Find_ById(binding.iSkillId);
+        const std::string action = skill ? skill->strInputSlot + " | " + skill->strDisplayName + " | " + std::to_string(binding.iSkillId) : std::to_string(binding.iSkillId);
+        for (std::size_t stage = 0u; stage < binding.Stages.size(); ++stage)
+            for (const auto& clip : binding.Stages[stage].Clips)
+            {
+                linked.insert(clip.strClipName);
+                const std::string stageLabel = "Stage " + std::to_string(stage + 1u);
+                if (!matches(action + " " + stageLabel + " " + clip.strClipName)) continue;
+                InsertResourceTree(tree, {"Skill actions", action, stageLabel}, resources.size());
+                resources.push_back(clip.strClipName);
+            }
+    }
     for (const auto& name : m_ClipNames)
     {
+        if (linked.contains(name) || !matches(name)) continue;
+        InsertResourceTree(tree, {"Other model clips"}, resources.size());
+        resources.push_back(name);
+    }
+    FinalizeResourceTree(tree);
+    if (resources.empty()) ImGui::TextDisabled("No matching clips in this model.");
+    RenderResourceTree(tree, [&](const std::size_t index)
+    {
+        const auto& name = resources[index];
+        ImGui::PushID(static_cast<int>(index));
         if (ImGui::Selectable(name.c_str(), m_SelectedResource == name)) m_SelectedResource = name;
         if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
         {
             COMPOSITION_ANIMATION_RESOURCE resource; resource.strTargetAssetName = m_Asset; resource.strRuntimeClip = name;
             Append_CompositionAnimationResource(resource, false, m_Status);
         }
-    }
+        ImGui::PopID();
+    });
+    COMPOSITION_ANIMATION_RESOURCE selected;
+    selected.strTargetAssetName = m_Asset;
+    selected.strRuntimeClip = m_SelectedResource;
+    std::string appendStatus, replaceStatus;
+    const bool canAppend = Can_AppendCompositionAnimationResource(selected, false, appendStatus);
+    const bool canReplace = Can_AppendCompositionAnimationResource(selected, true, replaceStatus);
+    ImGui::BeginDisabled(!canAppend);
+    if (ImGui::Button("Append Clip")) Append_CompositionAnimationResource(selected, false, m_Status);
+    ImGui::EndDisabled();
+    ImGui::SameLine();
+    ImGui::BeginDisabled(!canReplace);
+    if (ImGui::Button("Replace selected Animation")) Append_CompositionAnimationResource(selected, true, m_Status);
+    ImGui::EndDisabled();
+    ImGui::TextWrapped("Select an action and a resource clip. Append adds it to the selected Stage; Replace changes the selected Animation box. Save Animation stores the binding.");
 }
+
 void CCharacterActionWorkbench::Render_LogicResources()
 {
     const auto* skill = CPlayerSkillCatalog::Find_ById(m_SkillId);

@@ -1,6 +1,7 @@
 #include "ServerGameplayContractTests_Runner.h"
 #include "ServerGameplayContractTests.h"
 #include "BossCombatRuntime.h"
+#include "ClientSession.h"
 #include "GameplayCatalog.h"
 #include "GameRoom.h"
 #include "PlayerSkillSystem.h"
@@ -1919,5 +1920,57 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanPinnedGeneration(
 		fs::remove(exitBootstrap, variantError);
 		fs::remove(exitDirectory, variantError);
 	}
+#ifdef _DEBUG
+    {
+        constexpr SESSION_ID owner = 92201u;
+        auto room = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+        auto session = std::make_shared<CClientSession>(owner, INVALID_SOCKET,
+            CClientSession::FRAME_HANDLER{}, CClientSession::CLOSED_HANDLER{});
+        session->m_isSendRunning.store(true);
+        room->m_Sessions.emplace(owner, session);
+        room->m_PlayerIdBySessionId.emplace(owner, 92202u);
+        room->m_WorldEntities.clear();
+        SERVER_WORLD_ENTITY primary{};
+        const auto* placement = room->Find_Placement("boss.valtan.center");
+        const bool fixtureReady = placement && room->Build_WorldEntity(*placement, 92300u, primary);
+        tests.Require(fixtureReady, "Valtan editor despawn fixture admits the real disabled boss placement");
+        if (fixtureReady)
+        {
+            auto ghost = primary; ghost.iNetEntityId = 92301u; ghost.iOwnerBossNetEntityId = primary.iNetEntityId;
+            ghost.strArchetypeId = "BOSS_VALTAN_GHOST"; ghost.strPlacementId = "contract.ghost";
+            auto child = ghost; child.iNetEntityId = 92302u; child.iOwnerBossNetEntityId = ghost.iNetEntityId;
+            child.strPlacementId = "contract.ghost.child";
+            SERVER_WORLD_ENTITY npc{}; npc.iNetEntityId = 92303u; npc.eKind = WORLD_BOOTSTRAP_KIND::NPC;
+            npc.strPlacementId = "contract.npc"; npc.iCurrentHp = 71u;
+            SERVER_WORLD_ENTITY monster{}; monster.iNetEntityId = 92304u; monster.eKind = WORLD_BOOTSTRAP_KIND::MONSTER;
+            monster.strPlacementId = "contract.wave.monster"; monster.iCurrentHp = 83u;
+            room->m_WorldEntities = { child, npc, ghost, monster, primary };
+            room->m_iNextNetEntityId = 92400u;
+            C2S_DESPAWN_ALL_WORLD_ENTITIES despawn{}; despawn.iRequestSequence = 1u;
+            room->Handle_DespawnAllWorldEntities(owner + 1u, despawn);
+            tests.Require(room->m_WorldEntities.size() == 5u,
+                "Valtan editor despawn rejects a session outside this room");
+            room->Handle_DespawnAllWorldEntities(owner, despawn);
+            const auto preserved = [&room](NET_ENTITY_ID id, uint32_t hp) {
+                return std::any_of(room->m_WorldEntities.begin(), room->m_WorldEntities.end(),
+                    [=](const auto& entity) { return entity.iNetEntityId == id && entity.iCurrentHp == hp; });
+            };
+            tests.Require(room->m_WorldEntities.size() == 2u && preserved(npc.iNetEntityId,71u) &&
+                preserved(monster.iNetEntityId,83u),
+                "Valtan despawn closes reversed owner dependencies and preserves unrelated NPC/wave entities");
+            C2S_SPAWN_WORLD_ENTITY spawn{}; spawn.strPlacementId = "boss.valtan.center";
+            room->Handle_SpawnWorldEntity(owner, spawn);
+            const auto* respawned = room->Find_AuditionBoss("boss.valtan.center");
+            tests.Require(respawned && respawned->iNetEntityId == 92400u &&
+                respawned->bIntroPatternConsumed && respawned->bAutomaticPatternSequenceAuditionOverride &&
+                respawned->bAutomaticPatternSequenceAuditionHold && room->m_WorldEntities.size() == 3u,
+                "Play preparation respawns the canonical Valtan idle and holds it until authoritative Pattern Play");
+            room->Handle_SpawnWorldEntity(owner, spawn);
+            tests.Require(room->m_WorldEntities.size() == 3u && room->m_iNextNetEntityId == 92401u,
+                "Repeated Valtan preparation preserves one boss identity and does not duplicate the spawn");
+        }
+    }
+#endif
+
 }
 

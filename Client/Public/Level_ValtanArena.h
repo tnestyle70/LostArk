@@ -35,6 +35,7 @@ class EFFECT_V2_CATALOG_SNAPSHOT;
 class CCamera_Free;
 class CCharacter;
 class IPlayerCommandSink;
+class IWorldEntityCommandSink;
 class CMapAssetObject;
 class CUILayoutRuntime;
 class CMvpResultView;
@@ -55,6 +56,7 @@ public:
 
 	static CLevel_ValtanArena* Get_Active() { return s_pActiveInstance; }
 	bool_t Is_CinematicCameraActive() const { return m_bCinematicCameraApplied; }
+    const std::string& Get_SourceCinematicPreparationStatus() const { return m_strSourceCinematicPreparationStatus; }
     void Collect_SourceCinematicSubtitles(std::vector<WORLD_SEQUENCE_SUBTITLE_SAMPLE>& out) const
     { m_SourceCinematicPlayer.Collect_Subtitles(out); }
 
@@ -62,7 +64,13 @@ public:
 	CPlayerController& Get_DebugPlayerController() { return m_PlayerController; }
 
 #ifdef _DEBUG
-	/* Map Tool borrows this arena's live map the same way the Kouku arena lends
+    bool_t Debug_DespawnValtanBoss(std::string& status);
+    bool_t Debug_EnsureValtanBossForPlay(bool_t& ready, std::string& status, bool_t retryFailed = false);
+    bool_t Has_DebugValtanBoss() const;
+    bool_t Is_DebugValtanBossCommandPending() const { return m_bDebugValtanDespawnPending || m_iDebugValtanSpawnToken != 0u; }
+    const std::string& Get_DebugValtanBossCommandStatus() const { return m_strDebugValtanBossCommandStatus; }
+    std::string Get_DebugValtanPresentationDiagnostic() const;
+    /* Map Tool borrows this arena's live map the same way the Kouku arena lends
 	   it. The level keeps ownership; the tool only edits placements in place. */
 	CMapPlacementRuntime& Get_MapAuthoringRuntime() { return m_MapRuntime; }
 	CDeployPropRuntime& Get_MapAuthoringDeploy() { return m_DeployRuntime; }
@@ -262,6 +270,7 @@ private:
 	void End_ReferenceCamera(bool_t toggleFollowRequested);
 	const char_t* Get_ReferenceCameraViewName() const;
 	void Update_AuditionTransaction();
+    void Update_DebugValtanBossCommand();
 	bool_t Submit_Audition(
 		LostArk::Shared::VALTAN_AUDITION_OPERATION operation,
 		uint32_t explicitCommandPayload = 0u);
@@ -300,6 +309,8 @@ private:
     uint32_t m_iSourceCinematicSequence = 0u;
     uint64_t m_iSourceCinematicEntity = 0u;
     bool_t m_bSourceCinematicsReady = false;
+    bool_t m_bSourceCinematicsPreparationPending = false;
+    std::string m_strSourceCinematicPreparationStatus;
     bool_t m_bSourceDeathStarted = false;
     bool_t m_bSourceDeathFinished = false;
     VALTAN_CINEMATIC_CAMERA_INPUT m_LastSourceCinematicInput{};
@@ -413,6 +424,13 @@ private:
 	bool_t m_bReferenceSpaceHoleVisible = false;
 	REFERENCE_CAMERA_VIEW m_eReferenceCameraView =
 		REFERENCE_CAMERA_VIEW::NONE;
+    shared_ptr<IWorldEntityCommandSink> m_pWorldEntityCommandSink;
+    uint32_t m_iNextDebugValtanRequestSequence = 1u;
+    uint64_t m_iDebugValtanSpawnToken = 0u;
+    uint64_t m_iDebugValtanCommandStartedMs = 0u;
+    bool_t m_bDebugValtanDespawnPending = false;
+    bool_t m_bDebugValtanCommandFailed = false;
+    std::string m_strDebugValtanBossCommandStatus;
 	uint32_t m_iNextAuditionRequestSequence = 1u;
 	AUDITION_PENDING_REQUEST m_PendingAuditionRequest;
 	std::string m_strAuditionStatus;

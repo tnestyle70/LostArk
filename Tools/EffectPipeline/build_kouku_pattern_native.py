@@ -104,6 +104,17 @@ def obj(path):
             exportIndex=entry.index, sourcePackagePhysicalPath=str(package.path))
     entry = restore.find_export(package, relative)
     class_name = restore.ue3.package_ref_name(entry.class_index, package.imports, package.exports)
+    if class_name.lower() == 'objectredirector':
+        raw = package.logical[entry.serial_offset:entry.serial_offset + entry.serial_size]
+        assert len(raw) == 16, ('unreviewed ObjectRedirector size', path, len(raw))
+        name_index, number, target_index = struct.unpack_from('<IIi', raw, 4)
+        assert package.names[name_index].lower() == 'none' and number == 0 and target_index != 0
+        target = fullref(package_name, package, target_index)
+        assert target != path
+        result = copy.deepcopy(obj(target))
+        result['sourceRedirectorPath'] = path
+        result['sourceRedirectorSha256'] = hashlib.sha256(raw).hexdigest()
+        return result
     if class_name.lower() != 'locassetredirector':
         return _source_object(path)
     raw = package.logical[entry.serial_offset:entry.serial_offset + entry.serial_size]
@@ -132,27 +143,38 @@ def native_key(program):
             bool(program.get('sourceTransformMesh', False)))
 
 
-def reuse_native_programs(selected, roots):
+def reuse_native_programs(selected, roots, source_materials=None):
     previous = {}
     for root in roots:
         contract = restore.read(root / 'native_runtime_contract.json')
         assert not contract.get('deferredPrograms'), (root, 'incomplete native reuse input')
         for program in contract['programs']:
-            key = native_key(program)
-            if key in previous:
-                # Identical source programs can have historical duplicate IDs.
-                # Prefer the first explicitly supplied source pack.
-                old = previous[key]
-                for field in ('textures', 'parameters', 'staticSwitches', 'parentMaterial'):
-                    assert old[field] == program[field], (key, 'native reuse contract differs', field)
-            else:
-                previous[key] = program
+            previous.setdefault(native_key(program), []).append(program)
     fresh, reused = [], []
     for selection in selected:
-        old = previous.get(native_key(selection))
-        if old is None:
+        candidates = previous.get(native_key(selection), [])
+        if source_materials is not None:
+            current = source_materials[selection['resolvedMaterial']]
+            textures = {row['index']: row for row in current['effectiveTextures']}
+            def same_source(program):
+                same_textures = all(texture['sourceObjectPath'].casefold() ==
+                    textures.get(texture['index'], {}).get('sourceObjectPath', '').casefold()
+                    for texture in program['textures'])
+                same_parameters = all(current['effectiveNumericOverrides'][parameter['kind'] + 's']
+                    .get(parameter['name'], {}).get('value', parameter['default']) == parameter['effective']
+                    for parameter in program['parameters'])
+                return same_textures and same_parameters
+            # A historical MIC may retain the same shaders while its texture or
+            # numeric inputs changed. Disqualify that version before comparing
+            # the remaining source-exact candidates with one another.
+            candidates = [program for program in candidates if same_source(program)]
+        if not candidates:
             fresh.append(selection)
         else:
+            old = candidates[0]
+            for duplicate in candidates[1:]:
+                for field in ('textures', 'parameters', 'staticSwitches', 'parentMaterial'):
+                    assert old[field] == duplicate[field], (native_key(selection), 'native reuse contract differs', field)
             row = copy.deepcopy(old)
             row['occurrences'] = list(selection['occurrences'])
             reused.append(row)
@@ -170,7 +192,7 @@ def copy_native_cache(out, roots, refs):
                     target.parent.mkdir(parents=True, exist_ok=True)
                     shutil.copyfile(source, target)
 
-def prepare(evidence, first, last, reuse_roots=()):
+def prepare(evidence, first, last, reuse_roots=(), resource_root=None):
     out = evidence / 'native'
     out.mkdir(parents=True, exist_ok=True)
     write = lambda name, value: restore.write(out / name, value)
@@ -353,12 +375,12 @@ def prepare(evidence, first, last, reuse_roots=()):
                 shape = 'beam'
             row = by_material[occurrence['sourceMaterial']]
             component = occurrence.get('sourceStaticMeshComponent')
-            post_track = occurrence.get('sourcePostRenderMaterialTrack')
+            post_track = occurrence.get('sourcePostRenderMaterialTrack') or occurrence.get('sourceActionPostMaterial')
             if post_track:
                 # Matinee post-render materials use the original full-screen
                 # LocalVF quad, not a fabricated Cascade required module.
                 assert shape == 'screenPost' and not component
-                assert records[post_track]['classPath'].endswith('.efinterptrackpostrendermaterial')
+                assert records[post_track]['classPath'].rsplit('.', 1)[-1] in ('efinterptrackpostrendermaterial', 'efpostprocessmaterialeffectskill')
                 required = post_track
                 properties = norm(records[post_track]['properties'])
             elif component:
@@ -438,7 +460,7 @@ def prepare(evidence, first, last, reuse_roots=()):
             source_failures.append(dict(sourceMaterial=occurrence['sourceMaterial'], stage='SOURCE_VERTEX_FACTORY_SELECTION',
                 occurrences=[occurrence['elementId']], reason=f'{type(error).__name__}: {error}'))
     write('source_material_failures.json', source_failures)
-    fresh, reused = reuse_native_programs(list(selected.values()), reuse_roots)
+    fresh, reused = reuse_native_programs(list(selected.values()), reuse_roots, {row['sourceMaterial']: row for row in resolved_rows})
     assert len(fresh) <= last - first + 1, ('native program range exhausted', len(fresh), first, last)
     write('selected_runtime_material_programs.json', dict(programs=fresh, errors=[]))
     write('reused_native_programs.json', dict(programs=reused,
@@ -500,15 +522,26 @@ def prepare(evidence, first, last, reuse_roots=()):
                     # the exact DXBC identity and complete native wire closure
                     # distinguish those reads from a missing material texture.
                     reviewed_scene_bias = {
+                        # Guardian action PostProcessChain: exact original PS and native sampler closure.
+                        '599a6ad60ea6494a83850077e6cd3356': ('95bba2769a4da159253987811d98093ff2af583cddf8f139ec7ca1dbcc12d502', ['t3/s0'], ['t0/s2', 't1/s1', 't2/s3']),
+                        '5a405d04c4e0fa42a1342f8da1615ca0': ('e988fd2b5a355d2ff582c6937a52ed713bf584b6409c42ff29aae49d38fa67a0', ['t3/s0'], ['t0/s2', 't1/s1', 't2/s3', 't4/s4']),
+                        # Dragon Look original PS: reviewed SceneColor bias reads.
+                        '1000024695759244a7297e6a1c0a53e1': ('938247dc2c5216a2ae240972720393e10aac69a82ecee180f1aeace8446b3a0a', ['t0/s0'], ['t1/s1']),
                         '7f34a1fedf7a614cbcd4e656c906fe5e':
                             ('13ada0f252499b71e4aaeaf4988c6631790041a07f0132dbb68419915da0b66f', ['t1/s0'], ['t0/s2', 't2/s1']),
                         'a43001dc99c4224bbab23b82863a4bc7':
                             ('064645dda06795824e16ba8fa900acc4d4ed52790694e3c1bfe8ab13091a6adc', ['t0/s0'], ['t1/s1']),
+                        '3fc4c0de7f119c49b1e0478e97872fc9':
+                            ('bc1f4c2b5ee13676838fe5a1397e720ddbf52d75ca1ad8aa59d654b55f9ca08e', ['t0/s0'], []),
+                        'd7c41b166d92df4bbdbdd2d52910bb43':
+                            ('2176e2951142dbb388b7b81b65374506d08950c8021e0028d793341e36fa0020', ['t1/s0'], ['t0/s2', 't2/s1']),
+                        'b9fc10ac51695c41b71ae1807fe6a47d':
+                            ('7cb228db6767cfb62296b31cd8fb9b0c0c8ae3febeb69bea791217b19f3466d0', ['t0/s0'], [], [0, 1, 2, 3, 4, 5, 6]),
                     }.get(sid)
                     if reviewed_scene_bias:
                         assert declaration['instructionSha256'] == reviewed_scene_bias[0]
                         candidates = [candidate for candidate in candidates
-                            if candidate['constantBufferClosure']['unownedConstantBuffer0Slots'] == [0]
+                            if candidate['constantBufferClosure']['unownedConstantBuffer0Slots'] == (reviewed_scene_bias[3] if len(reviewed_scene_bias) > 3 else [0])
                             and candidate['textureSampleClosure']['unownedEngineSamplePairs'] == reviewed_scene_bias[1]
                             and candidate['textureSampleClosure']['materialSamplePairs'] == reviewed_scene_bias[2]]
                     bias_pairs = {f"{sample['textureRegister']}/{sample['samplerRegister']}"
@@ -548,10 +581,10 @@ def prepare(evidence, first, last, reuse_roots=()):
                 source_failures.append(dict(sourceShader=reference['shaderIdHex'], stage='ORIGINAL_SHADER_BINDING_CLOSURE',
                     reason=f'{type(error).__name__}: {error}'))
         write('source_material_failures.json', source_failures)
-    generate_native(evidence, first, last)
+    generate_native(evidence, first, last, resource_root=resource_root)
 
 
-def generate_native(evidence, first, last):
+def generate_native(evidence, first, last, resource_root=None):
     """Lower a previously extracted original cohort without reopening packages."""
     out = evidence / 'native'
     write = lambda name, value: restore.write(out / name, value)
@@ -560,7 +593,8 @@ def generate_native(evidence, first, last):
     companion = restore.read(out / 'selected_distortion_programs.json')['programs']
     prepare_textures(evidence, out)
     subprocess.run([sys.executable, str(ROOT / 'Tools/EffectPipeline/generate_artist_native_runtime_shader.py'),
-        '--source-dir', str(out), '--program-start', str(first), '--profile-domain', 'kouku'], check=True)
+        '--source-dir', str(out), '--program-start', str(first), '--profile-domain', 'kouku'] +
+        (['--resource-root', str(resource_root)] if resource_root else []), check=True)
     import install_kouku_gate1_native_materials as tables
     generated = restore.read(out / 'native_runtime_contract.json')
     if source_failures:
@@ -568,21 +602,22 @@ def generate_native(evidence, first, last):
         write('native_runtime_contract.json', generated)
     merged = dict(generated, programs=generated['programs'] + reused)
     if companion:
-        prepare_distortion(out, merged, first)
+        prepare_distortion(out, merged, first, resource_root=resource_root)
     write('merged_native_runtime_contract.json', merged)
     tables.FIRST = min([first] + [p['program'] for p in reused])
     tables.LAST = max([last] + [p['program'] for p in reused])
     candidate = out / 'Effect_ArtistMaterial.candidate.h'
     candidate.write_bytes(read_material_bytes(ROOT / 'Client/Public/Effect_ArtistMaterial.h'))
-    tables.install(out / 'merged_native_runtime_contract.json', out, candidate)
+    tables.install(out / 'merged_native_runtime_contract.json', out, candidate, resource_root=resource_root)
 
 
-def prepare_distortion(out, merged, first):
+def prepare_distortion(out, merged, first, resource_root=None):
     """Reuse the source accumulation pass in the existing signed distortion MRT."""
     folder = out / 'distortion'
     subprocess.run([sys.executable, str(ROOT / 'Tools/EffectPipeline/generate_artist_native_runtime_shader.py'),
         '--source-dir', str(out), '--selection-file', str(out / 'selected_distortion_programs.json'),
-        '--output-dir', str(folder), '--program-start', str(first), '--profile-domain', 'kouku'], check=True)
+        '--output-dir', str(folder), '--program-start', str(first), '--profile-domain', 'kouku'] +
+        (['--resource-root', str(resource_root)] if resource_root else []), check=True)
     distortion = restore.read(folder / 'native_runtime_contract.json')
     merged['deferredPrograms'].extend(dict(error, stage='ORIGINAL_DISTORTION_PASS') for error in distortion['deferredPrograms'])
     source = (folder / 'Shader_EffectArtistNative.hlsli').read_text(encoding='utf8')
@@ -595,6 +630,23 @@ def prepare_distortion(out, merged, first):
         if number not in rows:
             continue
         color = rows[number]
+        # Resource aliases are interchangeable only with identical source inputs
+        # and byte-identical DDS data. Retain the installed color program's ID.
+        aliases = []
+        resources = resource_root or ROOT / 'Client/Bin/Resources'
+        for source_texture, companion_texture in zip(color['textures'], row['textures']):
+            if source_texture['assetId'] == companion_texture['assetId']:
+                continue
+            first_texture = {key: value for key, value in source_texture.items() if key != 'assetId'}
+            second_texture = {key: value for key, value in companion_texture.items() if key != 'assetId'}
+            first_path, second_path = resources / source_texture['assetId'], resources / companion_texture['assetId']
+            assert first_texture == second_texture and first_path.is_file() and second_path.is_file(), ('distortion texture alias inputs differ', number)
+            source_hash = hashlib.sha256(first_path.read_bytes()).hexdigest()
+            assert source_hash == hashlib.sha256(second_path.read_bytes()).hexdigest(), ('distortion texture alias bytes differ', number)
+            aliases.append(dict(sourceAssetId=companion_texture['assetId'], canonicalAssetId=source_texture['assetId'], sha256=source_hash))
+            companion_texture['assetId'] = source_texture['assetId']
+        if aliases:
+            color['verifiedDistortionTextureAliases'] = aliases
         assert color['parameters'] == row['parameters'] and color['textures'] == row['textures'], ('color/distortion material ABI differs', number)
         block = blocks[number].replace(f'ArtistNative{number}(', f'ArtistNative{number}Distortion(')
         # The two original passes discard independently. Zero accumulation

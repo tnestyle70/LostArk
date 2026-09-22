@@ -250,12 +250,15 @@ void CEffectAuthoringSequencer::Rebuild_CompositionResourceTrees()
     }
 }
 
-void CEffectAuthoringSequencer::Render_CompositionResources()
+void CEffectAuthoringSequencer::Render_CompositionResources(const bool embedded)
 {
-    if (!m_ResourcesOpen) return;
+    if (!embedded && !m_ResourcesOpen) return;
     const std::string title = "Composition Resources###EffectCompositionResources." + std::to_string(reinterpret_cast<std::uintptr_t>(this));
-    ImGui::SetNextWindowSize({470.f, 570.f}, ImGuiCond_FirstUseEver);
-    if (!ImGui::Begin(title.c_str(), &m_ResourcesOpen)) { ImGui::End(); return; }
+    if (!embedded)
+    {
+        ImGui::SetNextWindowSize({470.f, 570.f}, ImGuiCond_FirstUseEver);
+        if (!ImGui::Begin(title.c_str(), &m_ResourcesOpen)) { ImGui::End(); return; }
+    }
     if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows)) m_Interaction = true;
     if (!m_ResourcesLoaded) Refresh_CompositionResourceInventory();
     if (ImGui::Button("Refresh Resources")) Refresh_CompositionResourceInventory();
@@ -346,7 +349,7 @@ void CEffectAuthoringSequencer::Render_CompositionResources()
         }
         ImGui::EndTabBar();
     }
-    ImGui::End();
+    if (!embedded) ImGui::End();
 }
 
 void CEffectAuthoringSequencer::Render_BoxDetail(const bool embedded)

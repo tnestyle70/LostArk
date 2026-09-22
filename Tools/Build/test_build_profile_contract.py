@@ -13,6 +13,7 @@ from pathlib import Path
 import json
 import re
 import subprocess
+import struct
 import tempfile
 import unittest
 import xml.etree.ElementTree as ET
@@ -54,6 +55,71 @@ class BuildProfileContractTests(unittest.TestCase):
             )
             self.assertEqual(0, result.returncode, result.stdout + result.stderr)
             self.assertEqual("3", result.stdout.strip())
+
+    def test_product_navigation_region_dependencies_are_checked_without_writes(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="lostark-nav-readiness-") as directory:
+            fixture = Path(directory)
+            nav = fixture / "Server/Bin/DataFiles/Navigation"
+            nav.mkdir(parents=True)
+            area = "LV_BER_BERNCASTLE"
+            originals = {}
+            for stem in (area, area + ".Bern3"):
+                originals[nav / (stem + ".navgrid")] = struct.pack("<IIfff", 2, 2, .5, 1000.1239, -250.9876) + bytes([1] * 4) + struct.pack("<ffff", 0, 0, 0, 0)
+                originals[nav / (stem + ".navpolicy")] = f'LOSTARK_NAVIGATION_POLICY 1 "{stem}" 1\n'.encode()
+                originals[nav / (stem + ".navblockers")] = f'LOSTARK_NAVGRID_BLOCKERS 1 "{stem}" 2 2 0.5 1000.1239 -250.9876 0\n'.encode()
+            manifest = nav / (area + ".navregions")
+            originals[manifest] = f'LOSTARK_NAVGRID_REGIONS 1 "{area}" 1\nREGION "Bern3" 1\n'.encode()
+            script = fixture / "check.ps1"
+            script.write_text(
+                "param([string]$RunnerPath, [string]$FixtureRoot)\n"
+                "$ErrorActionPreference = 'Stop'\n"
+                "$ast = [Management.Automation.Language.Parser]::ParseFile($RunnerPath, [ref]$null, [ref]$null)\n"
+                "$function = $ast.Find({ param($node) $node -is [Management.Automation.Language.FunctionDefinitionAst] "
+                "-and $node.Name -eq 'Test-ProductNavigationInputs' }, $false)\n"
+                "Invoke-Expression $function.Extent.Text\n"
+                "$repoRoot = $FixtureRoot\n"
+                "$domain = @{requiredOutputPatterns=@('Server/Bin/DataFiles/Navigation/LV_BER_BERNCASTLE.navgrid')}\n"
+                "@(Test-ProductNavigationInputs $domain) | ConvertTo-Json -Depth 4\n", encoding="utf-8")
+            region_grid = nav / (area + ".Bern3.navgrid")
+            scenarios = (
+                ("normal", None, None, None),
+                ("missing region", region_grid, None, ".Bern3.navgrid"),
+                ("truncated header", region_grid, originals[region_grid][:12], ".Bern3.navgrid"),
+                ("truncated payload", region_grid, originals[region_grid][:-1], ".Bern3.navgrid"),
+                ("missing base", nav / (area + ".navgrid"), None, area + ".navgrid"),
+                ("missing policy", nav / (area + ".Bern3.navpolicy"), None, ".Bern3.navpolicy"),
+                ("missing blockers", nav / (area + ".Bern3.navblockers"), None, ".Bern3.navblockers"),
+                ("policy mismatch", nav / (area + ".Bern3.navpolicy"), f'LOSTARK_NAVIGATION_POLICY 1 "{area}.Bern3" 2\n'.encode(), ".Bern3.navpolicy"),
+                ("unsafe region", manifest, f'LOSTARK_NAVGRID_REGIONS 1 "{area}" 1\nREGION "../Bern3" 1\n'.encode(), ".navregions"),
+                ("manifest truncated", manifest, f'LOSTARK_NAVGRID_REGIONS 1 "{area}" 2\nREGION "Bern3" 1\n'.encode(), ".navregions"),
+            )
+            for label, changed, replacement, failure_path in scenarios:
+                with self.subTest(label=label):
+                    for path, data in originals.items():
+                        path.write_bytes(data)
+                    if changed is not None:
+                        if replacement is None:
+                            changed.unlink()
+                        else:
+                            changed.write_bytes(replacement)
+                    before = {p.name: p.read_bytes() for p in nav.iterdir()}
+                    result = subprocess.run(
+                        ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(script),
+                         "-RunnerPath", str(ROOT / "Tools/Build/Invoke-BuildAndRegression.ps1"),
+                         "-FixtureRoot", str(fixture)], text=True, capture_output=True, timeout=20, check=False)
+                    self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+                    rows = json.loads(result.stdout)
+                    if isinstance(rows, dict):
+                        rows = [rows]
+                    failed = [row for row in rows if row["result"] != "PASS"]
+                    if failure_path is None:
+                        self.assertEqual(2, len(rows))
+                        self.assertEqual([], failed)
+                    else:
+                        self.assertTrue(any(row["path"].endswith(failure_path) for row in failed), result.stdout)
+                    self.assertEqual(before, {p.name: p.read_bytes() for p in nav.iterdir()})
+        runner = read("Tools/Build/Invoke-BuildAndRegression.ps1")
+        self.assertIn("Test-ProductNavigationInputs (Get-BuildDomainById $runtimeInputManifest 'navigation')", runner)
 
     def test_product_catalog_check_preserves_failure_without_publishing(self) -> None:
         # Run the real check function with small publisher fixtures. A publisher

@@ -561,10 +561,11 @@ bool_t Client::CAnimation_Tool::Build_ValtanPatternMasterTimeline(
 }
 
 bool_t Client::CAnimation_Tool::Start_ValtanPatternMasterPreview(
-	const shared_ptr<Engine::CModel>& pModel,
+	const shared_ptr<Engine::CModel>& initialModel,
 	const VALTAN_PATTERN_VIEW& Pattern,
 	const VALTAN_PATTERN_PREVIEW_PATH ePath)
 {
+	auto pModel = initialModel;
 	const bool_t bExplicitDraft = m_bValtanCompositionDraftPreviewReady &&
 		&Pattern == &m_ValtanCompositionDraftPreview;
 	if (!bExplicitDraft && !Can_MutateValtanView(m_eValtanPatternMasterAdmission))
@@ -601,12 +602,19 @@ bool_t Client::CAnimation_Tool::Start_ValtanPatternMasterPreview(
 	if (m_bKoukuSaydonPatternPreviewPlaying)
 		Stop_KoukuSaydonPatternPreview(m_KoukuSaydonPatternPreviewModel.lock(),
 			"Preview handed to Valtan composition.");
-	if (!PreviewBoss->Stage_LocalPatternAuthoringPreview(Pattern, Status))
+	if (!PreviewBoss->Stage_LocalPatternAuthoringPreview(Pattern, Status, true))
 	{
 		m_strValtanPatternMasterStatus =
 			"Valtan Pattern Master play rejected; effective draft preview staging failed: " +
 			Status;
 		return false;
+	}
+
+	if (pModel != PreviewBoss->Get_BodyModel())
+	{
+		pModel = PreviewBoss->Get_BodyModel();
+		CAnimationTargetService::Clear_Preview();
+		CAnimationTargetService::Bind_Preview(PreviewBoss, "Valtan");
 	}
 
 	const uint32_t iPreviousAnimation = pModel->Get_CurrentAnimIndex();

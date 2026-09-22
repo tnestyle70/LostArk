@@ -150,7 +150,6 @@ bool LostArk::Server::CVehicleCatalog::Load()
 		return false;
 	}
 
-	std::vector<LostArk::Shared::SKILL_ID> skillIds;
 	for (std::uint32_t row = 0u; row < rowCount; ++row)
 	{
 		if (!std::getline(input, line))
@@ -175,6 +174,7 @@ bool LostArk::Server::CVehicleCatalog::Load()
 			return false;
 		}
 		std::uint8_t usedSlots = 0u;
+		std::vector<LostArk::Shared::SKILL_ID> skillIds;
 		for (std::uint32_t skillRow = 0u; skillRow < skillCount; ++skillRow)
 		{
 			if (!std::getline(input, line))

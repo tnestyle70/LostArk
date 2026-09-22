@@ -106,7 +106,6 @@ LOCAL = [
 WINDOW_SCALE = 1.2
 RETAIL_SCALE = 2.0 / 3.0 * WINDOW_SCALE
 WINDOW_W = 480.0                                   # WindowBG_V2 330 * 1.455
-WINDOW_H = 60.0 + 60.0 * 6 + 10.0 + 30.0 + 50.0    # header + rows + hint + buttons (= 510)
 # vehicleWnd sits at stage (1376,186): keep that top edge and its right margin (1920-1376-480)
 # so the enlarged window still ends where the retail one did.
 WINDOW_STAGE_Y = 186.0
@@ -115,9 +114,6 @@ WINDOW_STAGE_X = 1920.0 - (1920.0 - 1376.0 - 480.0) - WINDOW_W * WINDOW_SCALE
 # (user request) so the list fills the panel.
 ROW_X, ROW_Y0, ROW_PITCH, ROW_H = 14.0, 60.0, 60.0, 60.0
 ROW_W = WINDOW_W - ROW_X * 2
-ROW_COUNT = 6                                      # every Data/Actors/VehicleCatalog.json vehicle
-HINT_Y = ROW_Y0 + ROW_PITCH * ROW_COUNT + 10.0     # desc_lb, under the last row
-BUTTON_Y = HINT_Y + 30.0                           # confirmBtn / closeBtnDummy row
 
 
 def layout_slot(slot_id, x, y, w, h, path):
@@ -137,9 +133,13 @@ def layout_slot(slot_id, x, y, w, h, path):
 
 
 def build_layout(rows):
+    # The catalog controls row count; keep the original row and chrome sizes.
+    hint_y = ROW_Y0 + ROW_PITCH * len(rows) + 10.0
+    button_y = hint_y + 30.0
+    window_h = button_y + 50.0
     A = "UI/Vehicle/"
     slots = [
-        layout_slot("VH_WinBg", 0, 0, WINDOW_W, WINDOW_H, A + "Vehicle_WindowBg.png"),
+        layout_slot("VH_WinBg", 0, 0, WINDOW_W, window_h, A + "Vehicle_WindowBg.png"),
         # V2WindowDeco (77,30) in retail; under the title in the shorter header band here.
         layout_slot("VH_TopDeco", 77, 40, 326, 18, A + "Vehicle_TopDeco.png"),
         layout_slot("VH_Close", WINDOW_W - 19 - 12, 10, 19, 15, A + "Vehicle_Close_Normal.png"),
@@ -157,8 +157,8 @@ def build_layout(rows):
             layout_slot("VH_Row%d_Star" % i, ROW_X + 4, y + 16, 24, 22, A + "Vehicle_Star_Normal.png"),
         ]
     slots += [
-        layout_slot("VH_MountBtn", 259, BUTTON_Y, 103, 36, A + "Vehicle_Btn_Normal.png"),
-        layout_slot("VH_CloseBtn", 365, BUTTON_Y, 103, 36, A + "Vehicle_Btn_Normal.png"),
+        layout_slot("VH_MountBtn", 259, button_y, 103, 36, A + "Vehicle_Btn_Normal.png"),
+        layout_slot("VH_CloseBtn", 365, button_y, 103, 36, A + "Vehicle_Btn_Normal.png"),
     ]
     return {"schema": "lostark.ui-layout", "formatVersion": 1,
             "resolution": {"width": 1280, "height": 720}, "classes": ["Default"], "slots": slots}

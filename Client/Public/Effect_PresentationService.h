@@ -67,7 +67,7 @@ struct EFFECT_SPAWN_DESC final
 	bool_t bLevelOwned = false;
 	uint32_t iLevelOwnerIndex = ETOUI(LEVEL::END);
 	bool_t bExternallySampled = false;
-	// A real boss or level world-root owner sustains only source EmitterLoops=0.
+	// A real boss/level world-root or mounted Character sustains only source EmitterLoops=0.
 	bool_t bOwnerSustainedSourceLoops = false;
 	// External occurrence end for native infinite source emitters; zero keeps authored timing.
 	f32_t fSourceLoopEndSeconds = 0.f;
@@ -563,6 +563,7 @@ public:
     static void Update(f32_t fTimeDelta);
     static void Synchronize_FollowAnchors();
     static void Stop_Owner(const std::shared_ptr<CCharacter>& pOwner);
+    static void Stop_VehicleOwner(const std::shared_ptr<CCharacter>& pOwner);
 	/* A replicated boss stage owns every queued cue and every active cue created
 	   from its non-zero actionStartTick.  Stage replacement cancels queued work
 	   and active CUE_END work; an already-active NATURAL cue keeps updating until

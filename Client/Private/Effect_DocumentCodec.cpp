@@ -1,6 +1,7 @@
 #include "Effect_DocumentCodec_Internal.h"
 #include "Effect_MaterialTemplate.h"
 #include "RuntimeAssetRoot.h"
+#include "SourceCharacterMaterialParameters.h"
 
 #include <algorithm>
 #include <atomic>
@@ -320,7 +321,7 @@ bool_t Client::CEffectDocumentCodec::Parse_Value(
 			!pRuntimeExtensions->Is_Object() ||
 			!Validate_ExactFields(Root,
 				{ "schema", "version", "effectAssetId", "displayName", "bloomIntensity",
-					"particleSystem", "modelCues", "sourceModelPreview", "runtimeExtensions",
+					"particleSystem", "modelCues", "sourceModelPreview", "ownerControls", "runtimeExtensions",
 					"elements" },
 				"Effect authored-v15 document", strOutError))
 		{
@@ -382,6 +383,45 @@ bool_t Client::CEffectDocumentCodec::Parse_Value(
 			return false;
 		}
 	}
+    if (const auto* controls = Root.Find("ownerControls"))
+    {
+        if (!controls->Is_Array() || controls->Get_Array().size() > 64u)
+        { strOutError = "Effect ownerControls must contain at most 64 rows."; return false; }
+        for (const auto& value : controls->Get_Array())
+        {
+            EFFECT_OWNER_CONTROL_DESC cue;
+            if (!Validate_ExactFields(value,{"controlId","kind","parameter","mappingBasis","sourceTargetType","onlyLocalPlayer","startSeconds","keys","sourceValues"},
+                "Effect owner control",strOutError) ||
+                !Read_String(value,"controlId",cue.strControlId,strOutError) ||
+                !Read_String(value,"kind",cue.strKind,strOutError) ||
+                !Read_String(value,"parameter",cue.strParameter,strOutError) ||
+                !Read_String(value,"mappingBasis",cue.strMappingBasis,strOutError) ||
+                !Read_UInt(value,"sourceTargetType",cue.iSourceTargetType,strOutError) ||
+                !Read_Bool(value,"onlyLocalPlayer",cue.bOnlyLocalPlayer,strOutError) ||
+                !Read_Float(value,"startSeconds",cue.fStartSeconds,strOutError)) return false;
+            const auto* keys=value.Find("keys");
+            if (!keys || !keys->Is_Array() || keys->Get_Array().size()<2u || keys->Get_Array().size()>128u)
+            { strOutError="Effect owner control needs 2-128 keys."; return false; }
+            for (const auto& entry:keys->Get_Array())
+            {
+                EFFECT_OWNER_CONTROL_KEY key;
+                if (!Validate_ExactFields(entry,{"seconds","value"},"Effect owner control key",strOutError) ||
+                    !Read_Float(entry,"seconds",key.fSeconds,strOutError) ||
+                    !Read_Array(entry,"value",&key.Value.x,4u,strOutError)) return false;
+                cue.Keys.push_back(key);
+            }
+            if (const auto* raw=value.Find("sourceValues"))
+            {
+                if(!raw->Is_Array()||raw->Get_Array().size()>32u){strOutError="Owner control raw source values exceed 32.";return false;}
+                for(const auto& number:raw->Get_Array())
+                {
+                    if(!number.Is_Number()||!std::isfinite(number.Get_Number())){strOutError="Owner control source value is invalid.";return false;}
+                    cue.SourceValues.push_back(static_cast<float>(number.Get_Number()));
+                }
+            }
+            Staged.OwnerControls.push_back(std::move(cue));
+        }
+    }
     if (const auto* value = Root.Find("sourceModelPreview"))
     {
         EFFECT_SOURCE_MODEL_PREVIEW preview;
@@ -424,10 +464,10 @@ bool_t Client::CEffectDocumentCodec::Parse_Value(
 			if (!CueValue.Is_Object() ||
 				(bSourceContract && !Validate_ExactFields(CueValue,
 					{ "cueId", "modelAssetId", "animationSetAssetId", "clipName",
-						"startDelaySeconds", "durationSeconds", "alphaMode",
+						"startDelaySeconds", "durationSeconds", "clipPlayRate", "alphaMode",
 						"opacity", "colorMultiply", "holdLastFrame", "loop", "visible",
 						"suppressHorizontalRootMotionBone", "rootMotionVerticalAxis", "rootMotionVerticalScale", "afterimage",
-						"localTransform", "assetPreTransform", "material", "materialParameterTracks" },
+						"localTransform", "assetPreTransform", "material", "materialParameterTracks", "sourceMaterialProfile" },
 					"Effect source-contract Model Cue", strOutError)))
 			{
 				strOutError = "Effect Model Cue must be an object.";
@@ -448,6 +488,7 @@ bool_t Client::CEffectDocumentCodec::Parse_Value(
 					Cue.fStartDelaySeconds, strOutError) ||
 				!Read_Float(CueValue, "durationSeconds",
 					Cue.fDurationSeconds, strOutError) ||
+                !Read_OptionalFloat(CueValue, "clipPlayRate", Cue.fClipPlayRate, strOutError) ||
 				!Read_OptionalFloat(CueValue, "opacity", Cue.fOpacity,
 					strOutError) ||
 				!Read_OptionalArray(CueValue, "colorMultiply",
@@ -487,6 +528,37 @@ bool_t Client::CEffectDocumentCodec::Parse_Value(
 					return false;
 				Cue.Material = std::move(Material);
 			}
+            if (const auto* value = CueValue.Find("sourceMaterialProfile"))
+            {
+                WORLD_SEQUENCE_MATERIAL_PROFILE profile;
+                const auto* parameters = value->Find("parameters");
+                const auto* textures = value->Find("textures");
+                if (!value->Is_Object() || !Validate_ExactFields(*value,
+                    {"materialName", "sourceMaterial", "family", "parameters", "textures"},
+                    "Model Cue source material", strOutError) ||
+                    !Read_String(*value, "materialName", profile.materialName, strOutError) ||
+                    !Read_String(*value, "sourceMaterial", profile.sourceMaterial, strOutError) ||
+                    !Read_String(*value, "family", profile.family, strOutError) ||
+                    !parameters || !SourceCharacterMaterial::Read(*parameters, profile.parameters) ||
+                    !textures || !textures->Is_Array() || textures->Get_Array().size() > 16u)
+                { strOutError = "Model Cue source material fields are invalid."; return false; }
+                for (const auto& texture : textures->Get_Array())
+                {
+                    WORLD_SEQUENCE_MATERIAL_TEXTURE input;
+                    std::string colorSpace;
+                    if (!texture.Is_Object() || !Validate_ExactFields(texture,
+                        {"expressionIndex", "assetId", "colorSpace"}, "Model Cue source texture", strOutError) ||
+                        !Read_UInt(texture, "expressionIndex", input.expressionIndex, strOutError) ||
+                        !Read_String(texture, "assetId", input.assetId, strOutError) ||
+                        !Read_String(texture, "colorSpace", colorSpace, strOutError) ||
+                        (colorSpace != "srgb" && colorSpace != "linear")) return false;
+                    input.srgb = colorSpace == "srgb";
+                    profile.textures.push_back(std::move(input));
+                }
+                if (!CWorldSequenceDocument::Is_ValidMaterialProfile(profile))
+                { strOutError = "Model Cue source material input contract failed."; return false; }
+                Cue.SourceMaterialProfile = std::move(profile);
+            }
 			if (const DATA_JSON_VALUE* pTracks = CueValue.Find("materialParameterTracks"))
 			{
 				if (!Read_MaterialParameterTracks(*pTracks, Cue.MaterialParameterTracks, strOutError))
@@ -500,13 +572,24 @@ bool_t Client::CEffectDocumentCodec::Parse_Value(
                 EFFECT_MODEL_CUE_AFTERIMAGE_DESC history;
                 if (!value->Is_Object() || !Validate_ExactFields(*value,
                     {"emissionStartSeconds", "emissionEndSeconds", "sampleIntervalSeconds",
-                     "sampleLifetimeSeconds", "maxSamples", "appearanceBasis"}, "Model Cue afterimage", strOutError) ||
+                     "sampleLifetimeSeconds", "maxSamples", "appearanceBasis", "liveOwnerPose", "onlyLocalPlayer", "captureInitialPose", "sourcePartType", "endColor", "sourceColorIntensity"}, "Model Cue afterimage", strOutError) ||
                     !Read_Float(*value, "emissionStartSeconds", history.fEmissionStartSeconds, strOutError) ||
                     !Read_Float(*value, "emissionEndSeconds", history.fEmissionEndSeconds, strOutError) ||
                     !Read_Float(*value, "sampleIntervalSeconds", history.fSampleIntervalSeconds, strOutError) ||
                     !Read_Float(*value, "sampleLifetimeSeconds", history.fSampleLifetimeSeconds, strOutError) ||
                     !Read_UInt(*value, "maxSamples", history.iMaxSamples, strOutError) ||
                     !Read_String(*value, "appearanceBasis", history.strAppearanceBasis, strOutError)) return false;
+                if (!Read_OptionalBool(*value, "liveOwnerPose", history.bLiveOwnerPose, strOutError) ||
+                    !Read_OptionalBool(*value, "onlyLocalPlayer", history.bOnlyLocalPlayer, strOutError) ||
+                    !Read_OptionalBool(*value, "captureInitialPose", history.bCaptureInitialPose, strOutError) ||
+                    !Read_OptionalUInt(*value, "sourcePartType", history.iSourcePartType, strOutError) ||
+                    !Read_OptionalFloat(*value, "sourceColorIntensity", history.fSourceColorIntensity, strOutError)) return false;
+                if (value->Find("endColor"))
+                {
+                    float4_t color;
+                    if (!Read_Array(*value, "endColor", &color.x, 4u, strOutError)) return false;
+                    history.EndColor = color;
+                }
                 Cue.Afterimage = std::move(history);
             }
 			Cue.bVisible = pVisible->Get_Boolean();
@@ -795,6 +878,32 @@ std::string Client::CEffectDocumentCodec::Serialize(
 		<< "  \"version\": " << iSerializedVersion << ",\n";
 	if (bSourceContract)
 		Output << "  \"purpose\": \"source_contract\",\n";
+    if (!Document.OwnerControls.empty())
+    {
+        Output << "  \"ownerControls\": [";
+        for (size_t i=0u;i<Document.OwnerControls.size();++i)
+        {
+            const auto& cue=Document.OwnerControls[i];
+            Output << (i?",":"") << "{\"controlId\":\"" << CDataJson::Escape(cue.strControlId)
+                << "\",\"kind\":\"" << CDataJson::Escape(cue.strKind) << "\",\"parameter\":\"" << CDataJson::Escape(cue.strParameter)
+                << "\",\"mappingBasis\":\"" << CDataJson::Escape(cue.strMappingBasis) << "\",\"sourceTargetType\":" << cue.iSourceTargetType
+                << ",\"onlyLocalPlayer\":" << (cue.bOnlyLocalPlayer?"true":"false") << ",\"startSeconds\":" << cue.fStartSeconds << ",\"keys\":[";
+            for(size_t k=0u;k<cue.Keys.size();++k)
+            {
+                const auto& key=cue.Keys[k];
+                Output << (k?",":"") << "{\"seconds\":" << key.fSeconds << ",\"value\":[" << key.Value.x << ',' << key.Value.y << ',' << key.Value.z << ',' << key.Value.w << "]}";
+            }
+            Output << "]";
+            if(!cue.SourceValues.empty())
+            {
+                Output << ",\"sourceValues\":[";
+                for(size_t s=0u;s<cue.SourceValues.size();++s)Output<<(s?",":"")<<cue.SourceValues[s];
+                Output << "]";
+            }
+            Output << "}";
+        }
+        Output << "],\n";
+    }
     if (Document.SourceModelPreview)
     {
         const auto& preview = *Document.SourceModelPreview;
@@ -834,6 +943,7 @@ std::string Client::CEffectDocumentCodec::Serialize(
 			<< CDataJson::Escape(Cue.strClipName)
 			<< "\", \"startDelaySeconds\": " << Cue.fStartDelaySeconds
 			<< ", \"durationSeconds\": " << Cue.fDurationSeconds
+            << ", \"clipPlayRate\": " << Cue.fClipPlayRate
 			<< ", \"opacity\": " << Cue.fOpacity
 			<< ", \"colorMultiply\": ";
 		Write_Float4(Output, Cue.vColorMultiply);
@@ -854,7 +964,13 @@ std::string Client::CEffectDocumentCodec::Serialize(
                 << ", \"sampleIntervalSeconds\": " << history.fSampleIntervalSeconds
                 << ", \"sampleLifetimeSeconds\": " << history.fSampleLifetimeSeconds
                 << ", \"maxSamples\": " << history.iMaxSamples
-                << ", \"appearanceBasis\": \"" << CDataJson::Escape(history.strAppearanceBasis) << "\" }";
+                << ", \"appearanceBasis\": \"" << CDataJson::Escape(history.strAppearanceBasis) << "\""
+                << ", \"liveOwnerPose\": " << (history.bLiveOwnerPose ? "true" : "false")
+                << ", \"onlyLocalPlayer\": " << (history.bOnlyLocalPlayer ? "true" : "false")
+                << ", \"captureInitialPose\": " << (history.bCaptureInitialPose ? "true" : "false")
+                << ", \"sourcePartType\": " << history.iSourcePartType << ", \"sourceColorIntensity\": " << history.fSourceColorIntensity;
+            if (history.EndColor) { Output << ", \"endColor\": "; Write_Float4(Output, *history.EndColor); }
+            Output << " }";
         }
 		Output << ", \"holdLastFrame\": "
 			<< (Cue.bHoldLastFrame ? "true" : "false")
@@ -883,6 +999,30 @@ std::string Client::CEffectDocumentCodec::Serialize(
 			Output << ", \"material\": ";
 			Write_Material(Output, *Cue.Material);
 		}
+        if (Cue.SourceMaterialProfile)
+        {
+            const auto& profile = *Cue.SourceMaterialProfile;
+            Output << ", \"sourceMaterialProfile\": { \"materialName\": \"" << CDataJson::Escape(profile.materialName)
+                << "\", \"sourceMaterial\": \"" << CDataJson::Escape(profile.sourceMaterial)
+                << "\", \"family\": \"" << CDataJson::Escape(profile.family) << "\", \"parameters\": {";
+            bool first = true;
+            for (const auto& [name, values] : profile.parameters)
+            {
+                Output << (first ? "" : ",") << "\"" << CDataJson::Escape(name) << "\": ["
+                    << values[0] << "," << values[1] << "," << values[2] << "," << values[3] << "]";
+                first = false;
+            }
+            Output << "}, \"textures\": [";
+            first = true;
+            for (const auto& texture : profile.textures)
+            {
+                Output << (first ? "" : ",") << "{\"expressionIndex\":" << texture.expressionIndex
+                    << ",\"assetId\":\"" << CDataJson::Escape(texture.assetId) << "\",\"colorSpace\":\""
+                    << (texture.srgb ? "srgb" : "linear") << "\"}";
+                first = false;
+            }
+            Output << "]}";
+        }
 		if (!Cue.MaterialParameterTracks.empty())
 		{
 			Output << ", \"materialParameterTracks\": ";
@@ -1379,6 +1519,8 @@ void Client::CEffectDocumentCodec::Collect_ResourceAssetIds(
 	{
 		Unique.insert(Cue.strModelAssetId);
         if (!Cue.strAnimationSetAssetId.empty()) Unique.insert(Cue.strAnimationSetAssetId);
+        if (Cue.SourceMaterialProfile)
+            for (const auto& texture : Cue.SourceMaterialProfile->textures) Unique.insert(texture.assetId);
 		if (Cue.Material)
 			for (const EFFECT_NAMED_TEXTURE_DESC& Texture : Cue.Material->SourceMaterial.Textures)
 				if (!Texture.strAssetId.empty()) Unique.insert(Texture.strAssetId);

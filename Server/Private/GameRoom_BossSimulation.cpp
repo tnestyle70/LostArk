@@ -897,6 +897,12 @@ void LostArk::Server::CGameRoom::Update_KoukuPursuitProjectiles(
 		auto& object = transaction.Objects.back();
 		object.iLockedTargetNetEntityId = target->iNetEntityId;
 		object.bPersistentLifetime = trigger.iProjectileLifetimeMs == 0u;
+		// The staging lifetime bounds authoring; a full-lifetime contact hit follows
+		// the persistent card itself. Explicitly shorter authored hit windows stay finite.
+		if (object.bPersistentLifetime)
+			for (auto& hit : object.Hits)
+				if (hit.eTrigger == SERVER_COMBAT_OBJECT_HIT_TRIGGER::CONTACT && hit.iEndMs == definition.iLifeMs)
+					hit.iEndMs = 0u;
 		object.bRoomOwnedTracking = true;
 		object.bHoming = trigger.bProjectileHoming;
 		object.bExpireOnDistanceEnd = trigger.fProjectileMaxDistanceM > 0.f;
@@ -906,10 +912,10 @@ void LostArk::Server::CGameRoom::Update_KoukuPursuitProjectiles(
 		object.fSpeedMps = trigger.fProjectileSpeedMps;
 		object.fContactPresentationRadiusM = trigger.fProjectileContactRadiusM;
 		object.strContactPresentationId = trigger.strContactVisualId;
-		/* Slot zero sits at the boss body's visual front, which the Kouku rig carries
-		three quarter turns from the yaw basis. Keep this in step with the Tool preview
+		/* Saydon faces model +X: slot zero is one quarter turn from the yaw basis,
+		180 degrees opposite the old back-facing spawn. Keep this in step with the Tool preview
 		copy in Client/Private/KoukuSaydonPresentationPlayer_LogicPreview.cpp. */
-		constexpr float PURSUIT_BODY_FRONT_YAW_DEGREES = 270.f;
+		constexpr float PURSUIT_BODY_FRONT_YAW_DEGREES = 90.f;
 		const float angle = trigger.bProjectileHoming ? (boss.fYawDegrees + PURSUIT_BODY_FRONT_YAW_DEGREES + 360.f * ordinal / trigger.iProjectileCountPerWave) : sample(ordinal) * 360.f;
 		const float radians = angle * .0174532925f;
 		auto& pose = object.LiveState.CurrentPose;

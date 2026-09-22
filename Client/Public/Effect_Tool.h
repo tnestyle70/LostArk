@@ -568,6 +568,7 @@ private:
 	void Render_ActiveAuthoredEffectTree();
     void Render_ActiveAuthoredElementRow(const EFFECT_ELEMENT_DESC& element, size_t ordinal);
     void Render_CurrentEffectAttachmentGroups();
+    void Render_OwnerControlEditor();
     bool_t Try_TranslateAttachmentGroup(const std::string& groupKey, const float3_t& delta);
     bool_t Try_SetAttachmentGroupAnchor(const std::string& groupKey, const float3_t& position, const float3_t& rotationDegrees);
     bool_t Try_RotateAttachmentGroup(const std::string& groupKey, const float3_t& rotationDegrees,
@@ -1342,6 +1343,7 @@ private:
     bool_t m_bCurrentEffectGroupByAnchor = true;
     string m_strSelectedElementGroupId;
 	string m_strSelectedModelCueId;
+    string m_strSelectedOwnerControlId;
 	string m_strPreviewIsolationElementId;
 	string m_strPreviewIsolationGroupId;
 	std::vector<std::string> m_PreviewIsolationElementIds;

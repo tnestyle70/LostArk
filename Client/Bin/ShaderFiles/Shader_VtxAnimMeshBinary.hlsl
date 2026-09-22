@@ -766,11 +766,15 @@ float4 PS_MAIN_SCREEN_CUTIN(VS_OUT input) : SV_TARGET0
 // PROJECT_AUTHORED white pose echo. TrailGhost notify identity/timing is source
 // evidence; this presentation shader is not claimed as its native material ABI.
 float4 g_ChargeAfterimageColor = 0.f;
+float g_ChargeAfterimageSourceIntensity = 0.f;
 SCENE_COLOR_BLOOM_OUT PS_MAIN_CHARGE_AFTERIMAGE(VS_OUT input)
 {
     const float3 view = normalize(g_vCamPosition.xyz - input.vWorldPos.xyz);
     const float rim = pow(1.f - saturate(abs(dot(normalize(input.vNormal.xyz), view))), 2.f);
-    return Write_SceneColorAndBloom(float4(g_ChargeAfterimageColor.rgb,
+    float3 source = 0.f;
+    if (g_ChargeAfterimageSourceIntensity > 0.f)
+        source = g_DiffuseTexture.Sample(MaterialAnisotropicSampler, input.vTexcoord).rgb * g_ChargeAfterimageSourceIntensity;
+    return Write_SceneColorAndBloom(float4(source + g_ChargeAfterimageColor.rgb,
         g_ChargeAfterimageColor.a * lerp(.3f, 1.f, rim)));
 }
 

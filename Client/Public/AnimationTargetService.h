@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Client_Defines.h"
+#include "SkeletalAfterimage.h"
 // float4x4_t and the anchor query's math types come from here; the target
 // contract used to be pointer-only and did not need it.
 #include "Engine_Defines.h"
@@ -21,6 +22,7 @@ namespace Client
 
 class CCharacter;
 class CValtan;
+class CPart_Body;
 
 enum class ANIMATION_BONE_TARGET : uint8_t { BODY, WEAPON };
 
@@ -98,6 +100,10 @@ public:
 	// different target with the same asset name.
 	static void Clear_Preview();
 
+    static void Bind_PreviewAfterimageParts(const std::shared_ptr<CPart_Body>& body,
+        const std::shared_ptr<CPart_Body>& weapon);
+    static bool_t Resolve_PresentationAfterimageModels(uint32_t sourcePartType,
+        std::vector<CSkeletalAfterimage::MODEL_VIEW>& views);
 	static std::shared_ptr<CCharacter> Resolve_Character();
 	/* Resolve_Character() prefers a selected playable preview. This accessor is
 	   only for positioning a new preview beside the actual scene character. */

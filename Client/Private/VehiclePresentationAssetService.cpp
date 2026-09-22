@@ -1,4 +1,5 @@
 #include "VehiclePresentationAssetService.h"
+#include "BoneAnimationDocument.h"
 
 #include "ActorCatalog.h"
 #include "GameInstance.h"
@@ -68,6 +69,9 @@ HRESULT Client::CVehiclePresentationAssetService::Ensure_Prototypes(
 		XMMatrixRotationY(XMConvertToRadians(-90.f)));
 	if (nullptr == model || 0u == model->Get_NumMeshes() || !model->Has_Animations())
 		return Reject("Vehicle model has no usable animated geometry: " + vehicle->modelAssetId);
+	std::string authoredClipStatus;
+	if (!CBoneAnimationDocument::Load_IntoModel(*model, "Vehicle_" + std::to_string(vehicleId), authoredClipStatus))
+		OutputDebugStringA(("[AuthoredAnimation] " + authoredClipStatus + "\n").c_str());
 	if (!model->Has_Bone(vehicle->seatBone.c_str()) ||
 		!Has_Clip(*model, vehicle->vehicleIdleClip) ||
 		!Has_Clip(*model, vehicle->vehicleRunClip))

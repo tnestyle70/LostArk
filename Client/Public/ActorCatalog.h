@@ -2,6 +2,7 @@
 
 #include "Client_Defines.h"
 #include "Engine_Defines.h"
+#include "CameraShakeService.h"
 #include "Network/PacketType.h"
 #include "BinaryAsset/ModelAssetData.h"
 
@@ -255,6 +256,33 @@ struct VEHICLE_LOCOMOTION_SOUND_CUE final
 	std::string event;
 };
 
+struct VEHICLE_SKILL_SHAKE_CUE final
+{
+    std::uint32_t clipIndex = 0u;
+    std::uint32_t startMs = 0u;
+    std::string payload;
+    CAMERA_SHAKE_SPEC Spec;
+};
+
+struct VEHICLE_DIRECTIONAL_LIGHT_CUE final
+{
+    std::uint32_t clipIndex = 0u, startMs = 0u;
+    f32_t fadeInSeconds = 0.f, holdSeconds = 0.f, fadeOutSeconds = 0.f;
+    f32_t brightnessMultiplier = 1.f;
+};
+
+struct VEHICLE_MATERIAL_VECTOR_KEY final
+{
+    f32_t seconds = 0.f;
+    std::array<f32_t, 4> value{};
+};
+struct VEHICLE_MATERIAL_VECTOR_CUE final
+{
+    std::uint32_t clipIndex = 0u, startMs = 0u;
+    std::string parameter;
+    std::vector<VEHICLE_MATERIAL_VECTOR_KEY> keys;
+};
+
 struct VEHICLE_SKILL_ENTRY final
 {
 	std::uint32_t skillId = 0u;
@@ -263,6 +291,9 @@ struct VEHICLE_SKILL_ENTRY final
 	std::vector<VEHICLE_SKILL_RIDER_ENTRY> riders;
 	std::vector<VEHICLE_SKILL_EFFECT_CUE> effectCues;
 	std::vector<VEHICLE_SKILL_SOUND_CUE> soundCues;
+    std::vector<VEHICLE_SKILL_SHAKE_CUE> shakeCues;
+    std::vector<VEHICLE_DIRECTIONAL_LIGHT_CUE> directionalLightCues;
+    std::vector<VEHICLE_MATERIAL_VECTOR_CUE> materialVectorCues;
 
 	const VEHICLE_SKILL_RIDER_ENTRY* Find_Rider(
 		const LostArk::Shared::CHARACTER_CLASS_ID characterClass) const
@@ -272,6 +303,14 @@ struct VEHICLE_SKILL_ENTRY final
 				return &rider;
 		return nullptr;
 	}
+};
+
+/* Presentation cues use time since a successful mount. Ambient source loops
+   live until this vehicle is replaced; mount cues play once naturally. */
+struct VEHICLE_LIFETIME_EFFECT_CUE final
+{
+    std::string effectAssetId;
+    std::uint32_t startMs = 0u;
 };
 
 /* A rideable vehicle's presentation. vehicleId is the EFTable_Vehicle key the
@@ -288,6 +327,11 @@ struct VEHICLE_ACTOR_ENTRY final
 	std::vector<VEHICLE_RIDER_ENTRY> riders;
 	std::vector<VEHICLE_SKILL_ENTRY> skills;
 	std::vector<VEHICLE_LOCOMOTION_SOUND_CUE> locomotionSoundCues;
+    std::vector<VEHICLE_LIFETIME_EFFECT_CUE> ambientEffectCues;
+    std::vector<VEHICLE_LIFETIME_EFFECT_CUE> mountEffectCues;
+    std::string mountSoundEvent;
+    std::string dismountSoundEvent;
+    std::vector<CHARACTER_MATERIAL_PARAMETERS> modelMaterialParameters;
 	std::string runtimeStatus;
 	bool_t seatBoneRotatesRider = false;
 

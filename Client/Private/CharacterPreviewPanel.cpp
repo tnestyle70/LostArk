@@ -3,6 +3,7 @@
 #include "CharacterPreviewPanel.h"
 
 #include "AnimationPreviewAssets.h"
+#include "BoneAnimationDocument.h"
 #include "AnimationTargetService.h"
 #include "ActorCatalog.h"
 #include "Character.h"
@@ -86,6 +87,34 @@ namespace
 	}
 }
 
+struct Client::CCharacterPreviewPanel::OWNED_PREVIEW_ASSET final
+{
+    ANIMATION_PREVIEW_ASSET value;
+    std::string id, label, asset, model;
+    std::wstring tag;
+};
+
+bool_t Client::CCharacterPreviewPanel::Select_TargetVehicle(uint32_t vehicleId)
+{
+    const auto* vehicle = CActorCatalog::Find_Vehicle(vehicleId);
+    if (!vehicle || vehicle->runtimeStatus != "supported")
+    { m_Status = "The selected vehicle is not admitted in VehicleCatalog"; return false; }
+    const auto assetName = "Vehicle_" + std::to_string(vehicleId);
+    if (m_pPreviewAsset && assetName == m_pPreviewAsset->pAssetName && !m_pPreviewObject.expired()) return true;
+    for (size_t i = 0u; i < m_SessionLocks.size(); ++i)
+        if (m_SessionLocks[i]) { m_Status = m_SessionLockReasons[i]; return false; }
+    auto candidate = std::make_shared<OWNED_PREVIEW_ASSET>();
+    candidate->id = "vehicle." + std::to_string(vehicleId); candidate->asset = assetName;
+    candidate->label = vehicle->archetypeId; candidate->model = vehicle->modelAssetId;
+    candidate->tag = L"Prototype_Component_Model_AnimationPreview_Vehicle_" + std::to_wstring(vehicleId);
+    candidate->value.pId = candidate->id.c_str(); candidate->value.pAssetName = candidate->asset.c_str();
+    candidate->value.pLabel = candidate->label.c_str(); candidate->value.pModelAssetId = candidate->model.c_str();
+    candidate->value.pPrototypeTag = candidate->tag.c_str(); candidate->value.fPreviewScale = vehicle->modelPreScale;
+    candidate->value.bPlaybackOnly = true;
+    if (!Select_Asset(candidate->value)) return false;
+    m_DynamicPreviewAsset = std::move(candidate); return true;
+}
+
 Client::CCharacterPreviewPanel::~CCharacterPreviewPanel()
 {
 	/* The owning tool may outlive the level the body was staged into, so the
@@ -153,6 +182,17 @@ void Client::CCharacterPreviewPanel::Set_SessionLock(
 bool_t Client::CCharacterPreviewPanel::Select_TargetAsset(
 	const string& strAnimationAssetName)
 {
+	if (strAnimationAssetName.starts_with("Vehicle_"))
+	{
+		try
+        {
+            const auto suffix = strAnimationAssetName.substr(8u); size_t consumed = 0u;
+            const auto id = std::stoul(suffix, &consumed);
+            if (consumed != suffix.size() || id == 0u || id > UINT32_MAX) return false;
+            return Select_TargetVehicle(static_cast<uint32_t>(id));
+        }
+		catch (...) { m_Status = "Invalid vehicle target identity"; return false; }
+	}
 	if (strAnimationAssetName.empty())
 	{
 		m_Status = "Preview target asset name is empty.";
@@ -391,7 +431,8 @@ bool_t Client::CCharacterPreviewPanel::Select_Asset(
 	const bool_t bRaidCompositionPreview =
 		(currentLevel == ETOUI(LEVEL::VALTAN_ARENA) ||
 		 currentLevel == ETOUI(LEVEL::KAKULSAYDON_ARENA)) &&
-		nullptr != asset.pAssetName && Is_CompositionAnimationTargetAsset(asset.pAssetName);
+		nullptr != asset.pAssetName && (Is_CompositionAnimationTargetAsset(asset.pAssetName) ||
+		std::string_view(asset.pAssetName).starts_with("Vehicle_"));
 	if (currentLevel != ETOUI(LEVEL::CHARACTER_SELECT) &&
 		currentLevel != ETOUI(LEVEL::DEVELOPMENT) && !bRaidCompositionPreview)
 	{
@@ -579,7 +620,7 @@ bool_t Client::CCharacterPreviewPanel::Select_Asset(
 	else
 	{
 		if ((currentLevel == ETOUI(LEVEL::CHARACTER_SELECT) ||
-			 bRaidCompositionPreview) &&
+			 currentLevel == ETOUI(LEVEL::DEVELOPMENT) || bRaidCompositionPreview) &&
 			!m_PreparedGenericPreviewAssetIds.contains(asset.pId))
 		{
 			const std::filesystem::path modelPath =
@@ -842,6 +883,15 @@ bool_t Client::CCharacterPreviewPanel::Select_Asset(
 		}
 	}
 
+    const auto authoredModel = stagedCharacter ? stagedCharacter->Get_BodyModel() :
+        stagedValtan ? stagedValtan->Get_BodyModel() : stagedBody ? stagedBody->Get_Model() : nullptr;
+    if (authoredModel)
+    {
+        std::string authoredStatus;
+        if (!CBoneAnimationDocument::Load_IntoModel(*authoredModel, asset.pAssetName, authoredStatus))
+            OutputDebugStringA(("[AuthoredAnimation] " + authoredStatus + "\n").c_str());
+    }
+
 	/* The new body is staged before the old one is dropped, so a failure above
 	   leaves the previous target published and editable. */
 	Release(true);
@@ -876,6 +926,7 @@ bool_t Client::CCharacterPreviewPanel::Select_Asset(
 			stagedBody->Get_Model(),
 			asset.pAssetName,
 			stagedParentMatrix);
+        CAnimationTargetService::Bind_PreviewAfterimageParts(stagedBody, dynamic_pointer_cast<CPart_Body>(stagedWeapon));
 		m_Status = bRaidCompositionPreview ?
 			string("Target=LOCAL ARENA REFERENCE | ") + asset.pLabel +
 			" | anchor=" + strPlacementSource + " | collision=OFF | Server boss=UNCHANGED." :

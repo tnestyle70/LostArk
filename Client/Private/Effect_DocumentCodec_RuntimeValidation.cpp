@@ -760,10 +760,10 @@ bool_t Client::CEffectDocumentCodec::Validate_Drawable(
 		{
 			return Cue.bVisible;
 		});
-	if (!bHasVisibleElement && !bHasVisibleModelCue)
+	if (!bHasVisibleElement && !bHasVisibleModelCue && Document.OwnerControls.empty())
 	{
 		strOutError =
-			"Effect has no visible Element or Model / Summon to preview.";
+			"Effect has no visible Element, Model / Summon, or Owner Control to preview.";
 		return false;
 	}
 	for (const EFFECT_ELEMENT_DESC& Element : Document.Elements)

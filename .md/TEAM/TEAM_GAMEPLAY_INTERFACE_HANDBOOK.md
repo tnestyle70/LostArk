@@ -322,6 +322,8 @@ walkable nav cell 경계와 별개로, 투사체·지연 장판·보스 이동 �
 
 ### 4.1 F1 아레나 카메라와 플레이어 위치 작업
 
+발탄 F1 `Valtan Arena`의 Start Position / Before Entrance / Arena Start는 기존 typed player teleport를 사용한다. `Despawn Valtan Boss`는 Debug Server에서 ENCOUNTER_VALTAN primary와 owner 종속체만 제거하고 일반 NPC/웨이브 몬스터를 보존한다. 이후 Boss Play Pattern은 disabled placement `boss.valtan.center`를 Server에 준비 요청하고 replicated primary 도착 후 기존 revision/sound/presentation admission을 다시 통과해야 실행된다. spawn 대기는 local boss 생성으로 우회하지 않는다.
+
 발탄·쿠크 아레나에서 F1 `Arena Camera / Player`는 현재 아레나의 자유 카메라 속도를 조절한다.
 기본은 모두 20m/s이며 범위는 0.1~400m/s다. Shift는 30배 이동이다. 설정은 아레나별로 이번
 프로세스에서 유지되고 같은 아레나에 재입장해도 보존하며 프로그램 종료 후 디스크에 저장하지 않는다.
@@ -1796,7 +1798,7 @@ Patterns 창의 Delete Selected Pattern 또는 Pattern 우클릭 Delete는 같�
 
 ### Kouku 추적·회전 카드의 생성과 접촉
 
-Composition DURATION의 `PURSUIT_PROJECTILES`는 `visualIds` 1~4개와 `contactVisualId`로 저장된 V1_EFFECT resource를 참조한다. `speedMps`는 .01~100m/s, `contactRadiusM`은 .01~10m, `spawnRadiusM`은 0~100m다. `spawnIntervalMs=0`은 한번 생성, `countPerWave` 생략은 문양 개수만큼 생성한다. 명시 개수는 1~16이다. `maxDistanceM`은 선택 필드이며0~1000m다. 생략/0이면 이동 거리는 기존 수명·접촉으로 제한하고, 양수이면 생성 위치부터 누적 이동 거리를 제한한다. `homing=true`와 한번 생성, 거리 제한0일 때만 `lifetimeMs=0`을 허용한다. 0보다 큰 수명과 발사 간격은 최대600000ms다. Logic occurrence duration은 생성 창이며 무한 객체의 자연 종료 시각이 아니다.
+Composition DURATION 또는 TRIGGER의 `PURSUIT_PROJECTILES`는 `visualIds` 1~4개와 `contactVisualId`로 저장된 V1_EFFECT resource를 참조한다. `speedMps`는 .01~100m/s, `contactRadiusM`은 .01~10m, `spawnRadiusM`은 0~100m다. `spawnIntervalMs=0`은 한번 생성, `countPerWave` 생략은 문양 개수만큼 생성한다. 명시 개수는 1~16이다. `maxDistanceM`은 선택 필드이며0~1000m다. 생략/0이면 이동 거리는 기존 수명·접촉으로 제한하고, 양수이면 생성 위치부터 누적 이동 거리를 제한한다. `homing=true`와 한번 생성, 거리 제한0일 때만 `lifetimeMs=0`을 허용한다. 0보다 큰 수명과 발사 간격은 최대600000ms다. Logic occurrence duration은 생성 창이며 무한 객체의 자연 종료 시각이 아니다.
 
 Server가 대상 선택·이동·Shared XZ swept circle 접촉과 객체 종료를 소유한다. 접촉 반경에는 대상 player body radius를 더한다. 무한 객체는 접촉 전 시간으로 만료하지 않으며 명시 Stop·owner/target 소멸에서 정리한다. 유한 직선 객체는 접촉·수명·양수 최대 거리 중 먼저 도달한 종료 조건에서 같은 폭발 event를 한 번 보낸다. 기존18열 bootstrap은 그대로 읽고, 양수 최대 거리는 선택적인19번째 열로 전달한다. 이 Logic은 damage나 RESULT 판정을 임의로 추가하지 않는다.
 
@@ -1847,6 +1849,29 @@ Gameplay bootstrap의 `PATTERNLOGICPUSH`는 기존8/9필드를 계속 읽는다.
 
 ### 쿠크 포물선 넉백과 크기 프로필 보완
 
-Composition Result의 optional pushBallistic은 기존 직선 push 기본값을 유지한다. 활성화 시 pushRangeM은0초과100m이하, pushDurationMs는100~5000, pushCanLeaveArena=true가 필수다. AWAY_FROM_CONTACT는 실제 판정에 쓰인 장판 중심→플레이어 방향이며 BOSS_FORWARD만 yaw offset을 허용한다. Client 편집→projector→publisher→Server parser가 동일 정책을 보존한다. Server 비행은 gravity와 원본 navigation surface를 소비하여 착지와 낙사를 구분한다.
+Composition Result의 optional pushBallistic은 기존 직선 push 기본값을 유지한다. 활성화 시 pushRangeM은0초과100m이하, pushMs는100~5000, pushCanLeaveArena=true가 필수다. AWAY_FROM_CONTACT는 실제 판정에 쓰인 장판 중심→플레이어 방향이며 BOSS_FORWARD만 yaw offset을 허용한다. Client 편집→projector→publisher→Server parser가 동일 정책을 보존한다. Server 비행은 gravity와 원본 navigation surface를 소비하여 착지와 낙사를 구분한다.
 
 Character Size Save/Reload는 계속 선택 맵별 camera JSON을 소유한다. 카메라 컷신 재생 여부가 크기 적용을 막지 않는다. Test/Training/Maharaka 공용 Development는 CharacterSelect의 저장된 크기만 읽고 기존 카메라 포즈를 유지한다. 현재 맵들의 Artist/DimensionMaster 배율을 동일하게 맞춘 값은 각 Data/Camera 문서가 정본이며 모델 자체 catalog scale은 별개다.
+
+
+### 쿠크 추적 카드 Trigger와 접촉 Preview
+
+`TRIGGER / PURSUIT_PROJECTILES`는 각 Logic Box의 `startMs`에 한 번 생성하며 `spawnIntervalMs=0`이다. 박스 길이는 이미 생성한 카드의 수명이 아니다. `lifetimeMs=0`, homing과 거리 제한0은 기존 room-owned 추적으로 접촉 전까지 유지하며 명시 Stop·대상 무효·방 정리는 기존 소유권 경로로 종료한다. `DURATION`의 기존 순차 생성은 계속 지원한다. 두 종류 모두 설치된 세이튼 +X 전방을 body yaw+90도로 해석한다. 영구 추적의 전체 수명 CONTACT는 임시 최대시간을 실제 만료로 사용하지 않으며 명시한 짧은 판정 창은 보존한다.
+
+피해 Result의 양수 밀림 또는 추적 카드를 가진 Pattern의 `Play Preview`도 기존 Server audition을 사용한다. Parent와 Bundle은 포함된 Pattern을 확인한다. 저장·Publish 뒤 실행하며 Server가 접촉·상승/하강·navigation을 무시하는 ballistic XZ 이동·바닥 이탈의 FALLING/DEAD를 소유한다. Client에 별도 피해·낙사 판정을 만들지 않는다.
+
+자연 완료된 audition의 영구 추적은 계속 유지한다. 남아 있는 같은 epoch의 `Stop`은 sequencer와 F1에서 제출할 수 있으며 기존 Server 소유권 검증 후 잔여 카드를 정리한다. 자연 완료 자체를 Stop으로 바꾸거나 Client가 카드를 임의 삭제하지 않는다.
+
+본이 지정된 `ENTER_AREA`, `OBJECT_OVERLAP`, `OBJECT_CONTACT` Collider는 같은 installed WModel clip·preScale·socket·occurrence TRS를 bake한 track을 게시한다. 피해 collider의 bone을 읽지 않고 boss root로 대체하지 않는다. MAP 고정 경고 범위와 WEAPON 본 추적 범위는 서로 다른 anchor로 유지한다.
+
+
+### 탈것 presentation lifetime와 원본 스킬 제어
+
+VehicleCatalog formatVersion 4는 optional ambientEffectCues(MOUNT_END), mountEffectCues(NATURAL), mountSoundEvent, dismountSoundEvent를 Character mount commit에서 소비한다. skill의 optional shakeCues/directionalLightCues/materialVectorCues는 기존 clipIndex와 Server action clock을 사용한다. Client presentation만 소유하며 gameplay 이동·판정은 변경하지 않는다. Light는 로컬 플레이어의 일시 scene-relative 배율이고 매 프레임 원래 RenderingProfile을 복원한 뒤 적용한다. material vector는 실제 clone의 named source parameter를 재구성하며 종료하면 원래 상수로 복원한다. CModel source material mutation은 copy-on-write로 다른 clone·prototype을 보존한다. 새 optional 배열은 generator와 Workbench의 최신 subtree 저장에서 보존한다.
+
+
+### Effect owner presentation 제어
+
+Effect 저작 문서의 optional ownerControls는 재질·로컬 방향광·일시 가시성을 저장한다. Effect Tool과 component assembly 변환은 같은 배열과 stable control ID를 보존하고, 제어만 있는 문서도 기존 Effect playback clock으로 재생한다. 범용 저장·원복 규칙은 [렌더링·이펙트 복원 V2](../GB/렌더링이펙트복원V2.md)의 OwnerControls 항목을 따른다.
+
+`CEffectObject`는 weak Character owner와 effect occurrence token, 제품 action-start identity를 전달한다. `CCharacter`는 활성 key sample만 적용하며 취소·숨김·실패·owner 변경·종료 때 해당 token을 해제한다. 재질은 제어 전 실제 CModel 값을 복원하고 일시 visibility flag는 기존 stance/장비 상태와 분리한다. 서로 다른 occurrence나 사용자 재질 변경을 전체 Clear로 지우지 않는다. UI는 이 기존 경계로만 제어를 제출하며 Shared/Server gameplay state나 판정 권위를 추가하지 않는다.

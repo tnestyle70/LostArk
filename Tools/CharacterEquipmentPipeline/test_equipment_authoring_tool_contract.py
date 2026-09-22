@@ -24,7 +24,7 @@ LOGIC_CPP = {
     name: ROOT / "Client" / "Private" / f"Logic_{name}.cpp"
     for name in (
         "LanceMaster", "GunSlinger", "Slayer", "Artist",
-        "DimensionMaster", "Warlord",
+        "DimensionMaster", "Warlord", "GuardianKnight",
     )
 }
 
@@ -229,6 +229,29 @@ class EquipmentAuthoringToolContractTests(unittest.TestCase):
         ET.parse(PROJECT)
         ET.parse(FILTERS)
 
+    def test_identity_equipment_uses_shared_admission_before_staging(self):
+        contract = (ROOT / "Client/Private/PlayableCharacterPreviewContract.cpp").read_text(
+            encoding="utf-8-sig"
+        )
+        self.assertIn(
+            "!Is_ValidEquipmentPresentationPart(Part, Spec.eCharacterClass)", contract
+        )
+        apply = self.character_cpp.split("bool_t CCharacter::Apply_EquipmentPreview(", 1)[1]
+        apply = apply.split("void CCharacter::Apply_DefaultEquipmentVisibility(", 1)[0]
+        self.assertLess(
+            apply.index("!Is_ValidEquipmentPresentationPart("),
+            apply.index("PART_OBJECT_MAP StagedParts;"),
+        )
+        self.assertIn(
+            "m_pSpec->pEquipment[index], m_pSpec->eCharacterClass", apply
+        )
+        self.assertRegex(
+            self.logic_cpp["GuardianKnight"],
+            r"EQUIPMENT_SLOT_KIND::IDENTITY,\s*"
+            r"EQUIPMENT_PRESENTATION_SLOT::END,\s*"
+            r"LostArk::Shared::PLAYER_STANCE_ID::GUARDIANKNIGHT_DRAGON",
+        )
+
     def test_default_parts_have_authored_preview_slots_and_runtime_uses_mask(self):
         self.assertIn("enum class EQUIPMENT_PRESENTATION_SLOT", self.character_spec_h)
         self.assertIn("ePresentationSlot", self.character_spec_h)
@@ -259,6 +282,10 @@ class EquipmentAuthoringToolContractTests(unittest.TestCase):
             "Warlord": {
                 "HEAD": 2, "SHOULDER": 1, "UPPER": 1,
                 "LOWER": 1, "HANDS": 1,
+            },
+            "GuardianKnight": {
+                "HEAD": 1, "SHOULDER": 1, "UPPER": 1,
+                "LOWER": 1, "HANDS": 1, "END": 1,
             },
         }
         for class_name, counts in expected_slots.items():

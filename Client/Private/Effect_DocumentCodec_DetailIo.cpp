@@ -454,6 +454,8 @@ namespace Client::EffectDocumentCodecDetail
 			Read_Float(*pTiming, "dissolveStartNormalized", Out.Timing.fDissolveStartNormalized, strOutError) &&
 			Read_SourceMaterialSlots(*pMesh, Out.Mesh.SourceMaterialSlots, strOutError) &&
 			Read_Bool(*pMesh, "useModelMaterial", Out.Mesh.bUseModelMaterial, strOutError) &&
+			Read_OptionalBool(*pMesh, "inheritParentRotation",
+				Out.Mesh.bInheritParentRotation, strOutError) &&
 			Read_OptionalFloat(*pMesh, "modelPreScale",
 				Out.Mesh.fModelPreScale, strOutError) &&
 			Read_OptionalArray(*pMesh, "sourceTypeDataRotationDegrees",
@@ -792,6 +794,8 @@ namespace Client::EffectDocumentCodecDetail
 		/* Keep legacy v12/v13 typed-codec identities byte-stable. The optional
 		   field is emitted only when an imported WModel carrier actually needs a
 		   non-default scale such as Artist F's 0.01. */
+		if (!Detail.Mesh.bInheritParentRotation)
+			Output << ", \"inheritParentRotation\": false";
 		if (Detail.Mesh.fModelPreScale != 1.f)
 			Output << ", \"modelPreScale\": " << Detail.Mesh.fModelPreScale;
 		if (!Detail.Mesh.SourceMaterialSlots.empty())

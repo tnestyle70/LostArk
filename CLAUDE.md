@@ -209,7 +209,9 @@ powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildDomainOwner.ps1
 
 정본 Product runner는 compile/deploy 뒤 필수 runtime 파일의 존재와 Items·Valtan ClearRewards의
 현재 정본 대비 게시 내용을 읽기 전용으로 검사한다. 두 publisher의 `CheckPublished`는 schema와
-전체 생성 행을 비교하며 파일을 재게시하지 않는다. 결과의 `missingRuntimeInputs`,
+전체 생성 행을 비교하며 파일을 재게시하지 않는다. Navigation은 게시된 영역 목록이 참조하는
+기본·세부 격자의 파일 길이와 필수 policy/blocker 헤더도 검사하며 bake나 publish는 실행하지 않는다.
+결과의 `missingRuntimeInputs`,
 `invalidRuntimeInputs`, `runtimeDataChecks`를 확인한다. 컴파일 `PASS`와 실행 데이터 준비 상태는
 별개이며 다른 domain의 전체 내용 검증이나 실제 Server 시작 성공을 대신하지 않는다.
 

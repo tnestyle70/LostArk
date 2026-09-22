@@ -3,6 +3,7 @@
 #include "Client_Defines.h"
 #include "Engine_Defines.h"
 #include "Effect_Distribution.h"
+#include "WorldSequenceDocument.h"
 
 #include <algorithm>
 #include <array>
@@ -621,6 +622,8 @@ struct EFFECT_SOURCE_MATERIAL_SLOT_DESC final
 struct EFFECT_MESH_DETAIL_DESC final
 {
 	bool_t bUseModelMaterial = true;
+	// Source static actors can keep their authored rotation in world axes.
+	bool_t bInheritParentRotation = true;
 	/* Geometry import scale applied by CModel exactly once before particle
 	   StartSize/Element Transform. Track A WModel carriers use 0.01. */
 	f32_t fModelPreScale = 1.f;
@@ -1968,6 +1971,12 @@ struct EFFECT_MODEL_CUE_AFTERIMAGE_DESC final
     uint32_t iMaxSamples = 6u;
     // Only source notify timing is recovered; appearance remains authored.
     std::string strAppearanceBasis = "PROJECT_AUTHORED";
+    bool_t bLiveOwnerPose = false;
+    bool_t bOnlyLocalPlayer = false;
+    bool_t bCaptureInitialPose = false;
+    uint32_t iSourcePartType = 0u;
+    std::optional<float4_t> EndColor;
+    f32_t fSourceColorIntensity = 0.f;
 };
 
 struct EFFECT_MODEL_CUE_DESC final
@@ -1985,6 +1994,7 @@ struct EFFECT_MODEL_CUE_DESC final
     std::optional<EFFECT_MODEL_CUE_AFTERIMAGE_DESC> Afterimage;
 	f32_t fStartDelaySeconds = 0.f;
 	f32_t fDurationSeconds = 1.f;
+    f32_t fClipPlayRate = 1.f;
 	EFFECT_TRANSFORM_DESC LocalTransform;
 	float3_t vAssetPreScale = { 1.f, 1.f, 1.f };
 	float3_t vAssetPreRotationDegrees = { 0.f, 0.f, 0.f };
@@ -1998,6 +2008,8 @@ struct EFFECT_MODEL_CUE_DESC final
 	bool_t bVisible = true;
 	// Absent preserves the cooked CMaterial; present owns the recovered skeletal material.
 	std::optional<EFFECT_MATERIAL_DESC> Material;
+    // Reuse CModel/CMaterial source input for a recovered masked skeletal surface.
+    std::optional<WORLD_SEQUENCE_MATERIAL_PROFILE> SourceMaterialProfile;
 	// Native material parameter curves sampled at cue-local time; requires Material.
 	std::vector<EFFECT_SOURCE_MATERIAL_PARAMETER_TRACK> MaterialParameterTracks;
 };
@@ -2038,6 +2050,25 @@ inline bool_t Is_ValidEffectBloomIntensity(const f32_t value) noexcept
 	return std::isfinite(value) && value >= 0.f && value <= 16.f;
 }
 
+// Source notify data; the bounded envelope/recipient adapter remains explicit.
+struct EFFECT_OWNER_CONTROL_KEY final
+{
+    f32_t fSeconds = 0.f;
+    float4_t Value{};
+};
+struct EFFECT_OWNER_CONTROL_DESC final
+{
+    std::string strControlId;
+    std::string strKind; // MATERIAL_VECTOR / DIRECTIONAL_BRIGHTNESS / DIRECTIONAL_COLOR
+    std::string strParameter;
+    std::string strMappingBasis = "PROJECT_ADAPTER";
+    uint32_t iSourceTargetType = 4u;
+    bool_t bOnlyLocalPlayer = false;
+    f32_t fStartSeconds = 0.f;
+    std::vector<EFFECT_OWNER_CONTROL_KEY> Keys;
+    std::vector<f32_t> SourceValues; // Optional raw notify numbers, never silently normalized.
+};
+
 struct EFFECT_DOCUMENT_DESC final
 {
 	uint32_t iFormatVersion = EFFECT_AUTHORING_FORMAT_VERSION;
@@ -2050,6 +2081,7 @@ struct EFFECT_DOCUMENT_DESC final
 	EFFECT_PARTICLE_SYSTEM_DESC ParticleSystem;
 	std::vector<EFFECT_MODEL_CUE_DESC> ModelCues;
 	std::optional<EFFECT_SOURCE_MODEL_PREVIEW> SourceModelPreview;
+    std::vector<EFFECT_OWNER_CONTROL_DESC> OwnerControls;
 	EFFECT_AUTHORED_RUNTIME_EXTENSIONS_DESC RuntimeExtensions;
 	std::vector<EFFECT_ELEMENT_DESC> Elements;
 };

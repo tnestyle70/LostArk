@@ -867,6 +867,28 @@ PixelShader BinaryMeshWaterPS = compile ps_5_0 PS_MAIN_WATER();
 // Identical entry/profile/arguments compile once; pass states and indices stay unchanged.
 VertexShader BinaryMeshShadowOpaqueVS = compile vs_5_0 VS_SHADOW_OPAQUE();
 
+// PROJECT_AUTHORED pose echo; source TrailGhost native material ABI is unrecovered.
+float4 g_ChargeAfterimageColor = 0.f;
+float g_ChargeAfterimageSourceIntensity = 0.f;
+SCENE_COLOR_BLOOM_OUT PS_MAIN_CHARGE_AFTERIMAGE(VS_OUT input)
+{
+    const float3 view = normalize(g_vCamPosition.xyz - input.vWorldPos.xyz);
+    const float rim = pow(1.f - saturate(abs(dot(normalize(input.vNormal.xyz), view))), 2.f);
+    float3 source = 0.f;
+    if (g_ChargeAfterimageSourceIntensity > 0.f)
+        source = g_DiffuseTexture.Sample(SurfaceAnisotropicSampler, input.vTexcoord).rgb * g_ChargeAfterimageSourceIntensity;
+    return Write_SceneColorAndBloom(float4(source + g_ChargeAfterimageColor.rgb,
+        g_ChargeAfterimageColor.a * lerp(.3f, 1.f, rim)));
+}
+
+#if SOURCE_CHARACTER_PROGRAM_GROUP == 0
+PixelShader ChargeAfterimagePS = compile ps_5_0 PS_MAIN_CHARGE_AFTERIMAGE();
+#define BINARY_STATIC_AFTERIMAGE_PASS_POLICY 1
+#else
+PixelShader ChargeAfterimagePS = NULL;
+#define BINARY_STATIC_AFTERIMAGE_PASS_POLICY 2
+#endif
+
 technique11 DefaultTechnique
 {
     pass DefaultPass
@@ -1081,5 +1103,16 @@ technique11 DefaultTechnique
         VertexShader = BinaryMeshShadowOpaqueVS;
         GeometryShader = NULL;
         PixelShader = NULL;
+    }
+    // Index 23: same bounded pose history for socketed live equipment.
+    pass ChargeAfterimage
+    < int ProgramVariantPass = BINARY_STATIC_AFTERIMAGE_PASS_POLICY; >
+    {
+        SetRasterizerState(RS_Default);
+        SetDepthStencilState(DSS_ReadOnly, 0);
+        SetBlendState(BS_AlphaBlend, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = BinaryMeshVS;
+        GeometryShader = NULL;
+        PixelShader = ChargeAfterimagePS;
     }
 }

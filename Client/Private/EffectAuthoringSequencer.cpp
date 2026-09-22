@@ -11,6 +11,7 @@
 #include "CompositionTimeline.h"
 #include "DataJson.h"
 #include "EffectEditingSession.h"
+#include "EffectRecoveryCamera.h"
 #include "Effect_Object.h"
 #include "Effect_DocumentCodec.h"
 #include "Effect_PresentationService.h"
@@ -378,20 +379,24 @@ bool CEffectAuthoringSequencer::Select_CharacterSkill(const std::string& asset, 
 
 bool CEffectAuthoringSequencer::Stage_CharacterAction(const std::string& asset,
     const ANIMATION_SKILL_BINDING& binding, const ANIMATION_EFFECT_CUE_DOCUMENT& cues,
-    const std::vector<CHARACTER_ACTION_COMBAT_ROW>& combat, const std::optional<std::uint32_t> stageIndex)
+    const std::vector<CHARACTER_ACTION_COMBAT_ROW>& combat, const std::optional<std::uint32_t> stageIndex, const std::string& soundOwner,
+    const ANIMATION_EFFECT_CUE_DOCUMENT* externalOwnerCues)
 {
     const auto model = CAnimationTargetService::Resolve_Model();
     const auto generation = CAnimationTargetService::Resolve_TargetGeneration();
     if (!model || !m_Panel || !m_Panel->Is_PreviewActive() || asset != CAnimationTargetService::Resolve_AssetName() ||
         (stageIndex && *stageIndex >= binding.Stages.size()))
     { m_Status = "Character action needs its exact admitted preview model and stage."; return false; }
+    std::vector<ANIMATION_EFFECT_CUE> allCues = cues.Cues;
+    if (externalOwnerCues) allCues.insert(allCues.end(), externalOwnerCues->Cues.begin(), externalOwnerCues->Cues.end());
     std::vector<CLIP> animations;
     std::vector<EFFECT_ROW> effects;
     std::vector<SOUND_ROW> sounds;
     std::vector<COLLIDER_ROW> colliders;
+    std::vector<CAMERA_ROW> cameras;
     CSoundCueCatalog::EVENT_VARIANTS variants;
     std::string soundStatus;
-    CSoundCueCatalog::Load_ClassSnapshot(asset, variants, soundStatus);
+    CSoundCueCatalog::Load_ClassSnapshot(soundOwner.empty() ? asset : soundOwner, variants, soundStatus);
     std::uint32_t clock = 0u;
     for (std::size_t stage = 0u; stage < binding.Stages.size(); ++stage)
     {
@@ -416,12 +421,61 @@ bool CEffectAuthoringSequencer::Stage_CharacterAction(const std::string& asset,
             const auto sourceEnd = source.iSourceStartMs + static_cast<std::uint32_t>(std::ceil(sourceDuration * 1000.f));
             const auto within = [&](std::uint32_t ms) { return ms >= source.iSourceStartMs && ms < sourceEnd; };
             const auto local = [&](std::uint32_t ms) { return static_cast<std::uint32_t>((ms - source.iSourceStartMs) / source.fPlayRate); };
-            for (const auto& cue : cues.Cues)
+            for (std::size_t cueIndex = 0u; cueIndex < allCues.size(); ++cueIndex)
             {
-                if (cue.strClipName != source.strClipName || !within(cue.iStartMs)) continue;
+                const auto& cue = allCues[cueIndex];
+                if (cue.strClipName != source.strClipName) continue;
+                if (cue.strEffectAssetId.ends_with(".restore"))
+                {
+                    EFFECT_RECOVERY_CAMERA_DOCUMENT recovery;
+                    if (!CEffectRecoveryCamera::Load(cue.strEffectAssetId, recovery, m_Status)) return false;
+                    if (recovery.exists && !recovery.rows.empty())
+                    {
+                        if (recovery.asset != asset || recovery.sequence != "skill." + std::to_string(binding.iSkillId))
+                        { m_Status = "Character camera does not match the admitted skill owner."; return false; }
+                        for (const auto& camera : recovery.rows)
+                        {
+                            const auto cameraStart = cue.iStartMs + camera.startMs;
+                            const auto begin = (std::max)(source.iSourceStartMs, cameraStart);
+                            const auto end = (std::min)(sourceEnd, cameraStart + camera.cue.iDurationMs);
+                            if (end <= begin) continue;
+                            CAMERA_ROW staged = camera;
+                            staged.id = CEffectEditingSession::New_Id("character.camera.preview.");
+                            staged.startMs = clock + local(begin);
+                            staged.cue.iDurationMs = (std::max)(1u, static_cast<std::uint32_t>((end - begin) / source.fPlayRate));
+                            staged.cue.Keyframes.clear(); staged.upVectors.clear();
+                            std::set<std::uint32_t> sampleTimes{begin, end};
+                            for (const auto& key : camera.cue.Keyframes)
+                            {
+                                const auto time = cameraStart + key.iTimeMs;
+                                if (time > begin && time < end) sampleTimes.insert(time);
+                            }
+                            float4x4_t identity; XMStoreFloat4x4(&identity, XMMatrixIdentity());
+                            auto localCamera = camera; localCamera.modelRelative = false;
+                            // The final stored key is valid for authoring even though the live
+                            // row stops before that boundary. Extend only this sampling copy.
+                            ++localCamera.cue.iDurationMs;
+                            for (const auto time : sampleTimes)
+                            {
+                                VALTAN_CINEMATIC_CAMERA_POSE pose; float3_t up;
+                                if (!CEffectRecoveryCamera::Sample(localCamera, time - cue.iStartMs, identity, 1.f, pose, up, m_Status)) return false;
+                                auto key = camera.cue.Keyframes.front();
+                                key.iTimeMs = time == end ? staged.cue.iDurationMs : static_cast<std::uint32_t>((time - begin) / source.fPlayRate);
+                                key.strSceneId = staged.id + ".key." + std::to_string(key.iTimeMs);
+                                key.vEye = pose.vEye; key.vLookAt = pose.vLookAt; key.fFovYDegrees = pose.fFovYDegrees;
+                                if (!staged.cue.Keyframes.empty() && staged.cue.Keyframes.back().iTimeMs == key.iTimeMs)
+                                { staged.cue.Keyframes.back() = key; staged.upVectors.back() = up; }
+                                else { staged.cue.Keyframes.push_back(key); staged.upVectors.push_back(up); }
+                            }
+                            cameras.push_back(std::move(staged));
+                        }
+                    }
+                }
+                if (!within(cue.iStartMs)) continue;
                 EFFECT_ROW row; row.id = CEffectEditingSession::New_Id("character.effect.preview.");
                 row.key = {EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT, cue.strEffectAssetId};
                 row.startMs = clock + local(cue.iStartMs);
+                row.productExternalOwner = cueIndex >= cues.Cues.size();
                 row.productNaturalDuration = cue.eStopPolicy == EFFECT_STOP_POLICY::NATURAL;
                 row.productSnapshot = cue.eFollowPolicy == EFFECT_FOLLOW_POLICY::SNAPSHOT;
                 row.productActionFacing = cue.eOrientationPolicy == EFFECT_ORIENTATION_POLICY::ACTION_FACING;
@@ -472,13 +526,83 @@ bool CEffectAuthoringSequencer::Stage_CharacterAction(const std::string& asset,
             colliders.push_back(std::move(row));
         }
     }
-    if (animations.empty() || !Validate_AnimationRows(animations) || generation != CAnimationTargetService::Resolve_TargetGeneration()) return false;
+    if (animations.empty() || !Validate_AnimationRows(animations) || !Validate_CameraRows(cameras) || generation != CAnimationTargetService::Resolve_TargetGeneration()) return false;
     Stop();
     m_AnimationRows = std::move(animations); m_Effects = std::move(effects); m_Sounds = std::move(sounds); m_Colliders = std::move(colliders);
-    m_CameraRows.clear(); m_CustomAnimation = true; m_UseKouku = false; m_SelectedSequence.clear();
+    m_CameraRows = std::move(cameras); m_CustomAnimation = true; m_UseKouku = false; m_SelectedSequence.clear();
     m_AssetName = asset; m_InventoryGeneration = generation; m_ModelRoot = true; m_ClockMs = 0; m_Dirty = false;
     m_Status = "Character Product preview prepared. Save remains with animation, cue and combat document owners.";
     return true;
+}
+
+bool CEffectAuthoringSequencer::Open_CharacterModelSequence(const std::string& sequenceId)
+{
+    if (m_Dirty || !CEffectV2Document::Is_ValidEffectId(sequenceId) || sequenceId.size() >= sizeof(m_SequenceId))
+    { m_Status = "Save the current sequence before selecting another action"; return false; }
+    std::snprintf(m_SequenceId, sizeof(m_SequenceId), "%s", sequenceId.c_str());
+    m_SequenceBaseline.clear(); m_SequenceExisted = false; m_PersistedSequenceId = sequenceId;
+    const auto path = CProjectDataRoot::Resolve(std::filesystem::path("Effects/Sequences") / (sequenceId + ".effectsequence.json"));
+    std::string bytes; bool exists = false;
+    if (!Read_SequenceText(path, bytes, exists, m_Status)) return false;
+    if (!exists) return true;
+    return Load_Sequence();
+}
+
+bool CEffectAuthoringSequencer::Export_CharacterModelAction(ANIMATION_SKILL_BINDING& binding,
+    ANIMATION_EFFECT_CUE_DOCUMENT& cues, const std::string& soundOwner, std::string& status)
+{
+    if (!m_CustomAnimation || m_AnimationRows.empty() || !Validate_AnimationRows(m_AnimationRows))
+    { status = "Select a valid model action before saving its Product binding"; return false; }
+    if (!m_Colliders.empty() || !m_CameraRows.empty())
+    { status = "Collider and Camera rows belong to Save Effect Sequence; this Product binding has no combat/camera authority"; return false; }
+    auto rows = m_AnimationRows;
+    std::stable_sort(rows.begin(), rows.end(), [](const auto& a, const auto& b) { return a.startMs < b.startMs; });
+    ANIMATION_SKILL_BINDING staged; staged.iSkillId = binding.iSkillId; staged.Stages.push_back({});
+    ANIMATION_EFFECT_CUE_DOCUMENT events; events.strAnimationAssetId = m_AssetName;
+    uint32_t end = 0u;
+    for (const auto& row : rows)
+    {
+        if (row.muted || row.loop || row.startMs != end)
+        { status = "Product chains require consecutive, unmuted, non-looping animation rows; save gaps/loops as a sequence or bake them into an authored bone clip"; return false; }
+        staged.Stages.front().Clips.push_back({row.clipName, row.sourcePlayMs, row.playRate, row.sourceStartMs, row.id});
+        end += row.durationMs;
+    }
+    const auto source = [&](uint32_t clock) -> const CLIP* {
+        for (const auto& row : rows) if (clock >= row.startMs && clock < row.startMs + row.durationMs) return &row;
+        return nullptr;
+    };
+    for (const auto& row : m_Effects)
+    {
+        if (row.muted || row.productExternalOwner) continue;
+        const auto* clip = source(row.startMs);
+        if (!clip || row.screenPost || row.worldAnchor || row.key.eOwnerKind != EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT)
+        { status = "Product cues require a V1 Effect anchored to a playing model clip"; return false; }
+        ANIMATION_EFFECT_CUE cue; cue.strClipName = clip->clipName;
+        cue.iStartMs = clip->sourceStartMs + static_cast<uint32_t>(std::llround((row.startMs - clip->startMs) * clip->playRate));
+        cue.iEndMs = cue.iStartMs + static_cast<uint32_t>(std::llround(row.durationMs * clip->playRate));
+        cue.strEffectAssetId = row.key.strStableId; cue.strAnchorSlotId = row.anchorSlotId;
+        cue.LocalTransform.vPosition = row.offset; cue.LocalTransform.vRotationDegrees = row.rotation; cue.LocalTransform.vScale = row.scale;
+        cue.eFollowPolicy = row.productSnapshot ? EFFECT_FOLLOW_POLICY::SNAPSHOT : EFFECT_FOLLOW_POLICY::FOLLOW;
+        cue.eStopPolicy = row.productNaturalDuration ? EFFECT_STOP_POLICY::NATURAL : EFFECT_STOP_POLICY::CUE_END;
+        events.Cues.push_back(std::move(cue));
+    }
+    CSoundCueCatalog::EVENT_VARIANTS variants; std::string soundStatus;
+    if (!m_Sounds.empty() && !CSoundCueCatalog::Load_ClassSnapshot(soundOwner, variants, soundStatus))
+    { status = soundStatus; return false; }
+    for (const auto& row : m_Sounds)
+    {
+        if (row.muted) continue;
+        const auto* clip = source(row.startMs);
+        if (!clip || row.sourceStartMs || std::abs(row.volume - 1.f) > .0001f)
+        { status = "Product sound cues require full catalog events at unit volume"; return false; }
+        std::string event;
+        for (const auto& [name, assets] : variants)
+            if (std::find(assets.begin(), assets.end(), row.assetId) != assets.end())
+            { if (!event.empty() && event != name) { status = "Sound asset belongs to multiple events; select an unambiguous event"; return false; } event = name; }
+        if (event.empty()) { status = "Sound is not in this action's sound catalog"; return false; }
+        events.Sounds.push_back({clip->clipName, clip->sourceStartMs + static_cast<uint32_t>(std::llround((row.startMs - clip->startMs) * clip->playRate)), event});
+    }
+    binding = std::move(staged); cues = std::move(events); return true;
 }
 
 bool CEffectAuthoringSequencer::Resolve_ScenePreviewPlacement(float4x4_t& root)
@@ -2081,6 +2205,9 @@ bool CEffectAuthoringSequencer::Save_Sequence()
             << ", \"offset\": [" << row.offset.x << ", " << row.offset.y << ", " << row.offset.z << "], \"muted\": " << (row.muted ? "true" : "false")
             << ", \"screenPost\": " << (row.screenPost ? "true" : "false")
             << ", \"worldAnchor\": " << (row.worldAnchor ? "true" : "false")
+            << ", \"productNaturalDuration\": " << (row.productNaturalDuration ? "true" : "false")
+            << ", \"productSnapshot\": " << (row.productSnapshot ? "true" : "false")
+            << ", \"productExternalOwner\": " << (row.productExternalOwner ? "true" : "false")
             << ", \"rotationDegrees\": [" << row.rotation.x << ", " << row.rotation.y << ", " << row.rotation.z << "]"
             << ", \"scale\": [" << row.scale.x << ", " << row.scale.y << ", " << row.scale.z << "]}";
     }
@@ -2171,6 +2298,14 @@ bool CEffectAuthoringSequencer::Load_Sequence(const bool discard)
         else { m_Status = "Unknown saved Effect owner; current timeline preserved."; return false; }
         if (!row.key.Is_Valid() || (row.screenPost && row.key.eOwnerKind != EFFECT_RESOURCE_OWNER_KIND::V2_LEAF))
         { m_Status = "Invalid typed Effect ID or Screen Post owner; current timeline preserved."; return false; }
+        for (const auto& field : {std::pair<const char*, bool*>{"productNaturalDuration", &row.productNaturalDuration},
+            {"productSnapshot", &row.productSnapshot}, {"productExternalOwner", &row.productExternalOwner}})
+            if (const auto* policy = value.Find(field.first))
+            {
+                if (!policy->Is_Boolean()) { m_Status = "Invalid saved Product cue policy"; return false; }
+                *field.second = policy->Get_Boolean();
+            }
+        if (!row.productNaturalDuration) row.productStopDuration = row.durationMs;
         row.muted = muted->Get_Boolean(); staged.push_back(std::move(row));
     }
     if (kind == "MODEL_SEQUENCE" && (customAnimation || !sequenceId.empty()))

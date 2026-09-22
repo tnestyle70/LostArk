@@ -50510,7 +50510,7 @@
       "resources": [
         {
           "slotId": "meshModel",
-          "assetId": "Effect/KoukuSaydon/FullRestore/Meshes/fm_b_cylinder_002.wmodel"
+          "assetId": "Effect/KoukuSaydon/FullRestore/Meshes/fm_b_cylinder_002_gate2_clear_inward.wmodel"
         }
       ],
       "material": {

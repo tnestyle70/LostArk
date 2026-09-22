@@ -3,6 +3,7 @@
 #include "Character.h"
 #include "Model.h"
 #include "Valtan.h"
+#include "Part_Body.h"
 
 #include <cmath>
 
@@ -20,6 +21,7 @@ uint64_t Client::CAnimationTargetService::s_TargetGeneration = 1u;
 
 namespace
 {
+    std::weak_ptr<Client::CPart_Body> s_AfterimagePreviewBody, s_AfterimagePreviewWeapon;
 	void Advance_TargetGeneration(uint64_t& targetGeneration)
 	{
 		++targetGeneration;
@@ -144,6 +146,7 @@ void Client::CAnimationTargetService::Unbind_Preview(
 
 void Client::CAnimationTargetService::Clear_Preview()
 {
+    s_AfterimagePreviewBody.reset(); s_AfterimagePreviewWeapon.reset();
 	if (s_PreviewCharacter.expired() && s_PreviewBoss.expired() &&
 		s_PreviewModel.expired() &&
 		s_PreviewAssetName.empty())
@@ -156,6 +159,34 @@ void Client::CAnimationTargetService::Clear_Preview()
 	s_PreviewWeaponBody.reset();
 	XMStoreFloat4x4(&s_PreviewRootMatrix, XMMatrixIdentity());
 	Advance_TargetGeneration(s_TargetGeneration);
+}
+
+void Client::CAnimationTargetService::Bind_PreviewAfterimageParts(
+    const shared_ptr<CPart_Body>& body, const shared_ptr<CPart_Body>& weapon)
+{
+    s_AfterimagePreviewBody = body; s_AfterimagePreviewWeapon = weapon;
+}
+
+bool_t Client::CAnimationTargetService::Resolve_PresentationAfterimageModels(
+    const uint32_t part, std::vector<CSkeletalAfterimage::MODEL_VIEW>& views)
+{
+    if (part > 2u) return false;
+    if (const auto character = s_PreviewCharacter.lock())
+        return character->Collect_PresentationAfterimageModels(part, views);
+    if (const auto model = s_PreviewModel.lock())
+    {
+        const auto body = s_AfterimagePreviewBody.lock();
+        if (!body || body->Get_Model() != model) return false;
+        std::vector<CSkeletalAfterimage::MODEL_VIEW> staged;
+        CSkeletalAfterimage::MODEL_VIEW view;
+        if (part != 1u && body->Get_AfterimageView(view)) staged.push_back(view);
+        if (part != 0u) if (const auto weapon = s_AfterimagePreviewWeapon.lock())
+            if (weapon->Get_AfterimageView(view)) staged.push_back(view);
+        views = std::move(staged); return true;
+    }
+    if (!s_PreviewBoss.expired() || !s_PreviewAssetName.empty()) return false;
+    const auto character = s_Target.lock();
+    return character && character->Collect_PresentationAfterimageModels(part, views);
 }
 
 shared_ptr<Client::CCharacter>

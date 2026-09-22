@@ -70,6 +70,7 @@ public:
 	// Effect Tool uses this to replace a retained preview-only prop (for example
 	// Dimension Core) with the playable class body that owns the loaded skill.
 	bool_t Select_TargetAsset(const string& strAnimationAssetName);
+	bool_t Select_TargetVehicle(uint32_t vehicleId);
 	// Changes only this panel's selected generic preview root. The multiplier
 	// always starts from the selected/recentered baseline, never the last scale.
 	bool_t Set_PreviewScaleMultiplier(
@@ -111,6 +112,8 @@ private:
 	   rides; an empty slot simply means the target declares no weapon. */
 	weak_ptr<Engine::CGameObject> m_pPreviewWeaponObject;
 	const ANIMATION_PREVIEW_ASSET* m_pPreviewAsset = nullptr;
+	struct OWNED_PREVIEW_ASSET;
+	std::shared_ptr<OWNED_PREVIEW_ASSET> m_DynamicPreviewAsset;
 	uint32_t m_iPreviewLevelIndex = UINT32_MAX;
 	/* Generic CPart_Body previews retain a raw parent pointer. The inactive slot
 	   is staged first and becomes active only after the new object validates, so

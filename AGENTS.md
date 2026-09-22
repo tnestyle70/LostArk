@@ -281,7 +281,7 @@ Product 빌드: Engine → Shared → Server → Client (SDK·shader·runtime DL
 - 일반 수정·pull·merge 후에는 `Build`를 사용한다. 원인 확인 없이 `Rebuild`, CleanBuild, `.tlog`/`.lastbuildstate`/OBJ/PCH 삭제를 반복하지 않는다. 배포 CSO 존재만으로 현재 소스가 빌드됐다고 간주하거나, timestamp/추적 기록 조작 및 전체 FxCompile 비활성화로 최신 여부를 위장하지 않는다.
 - 변경하지 않은 셰이더가 반복 컴파일되면 다음 전체 빌드를 추가하기 전에 기존 Product 결과와 tracking/command/include 기록을 확인한다. 필요한 한 번의 빌드에만 `-BuildLogDirectory`를 사용한다. 과거 명령·전후 로그가 없는 다른 PC의 원인을 현재 설정 하나로 확정하지 않는다.
 - 완료 보고는 변경 입력, 실제 컴파일·링크/CSO 변경 범위, 성공·실패, 현재 실행 파일 경로를 구분한다. 무변경 재실행은 빌드 설정을 바꾼 경우에만 증분 상태 확인에 사용하고 일반 수정마다 전체 진단을 반복하지 않는다. 무빌드 바로가기 실행과 설치기 재실행은 다르며, 설치기는 로컬 수정 빌드와 runtime DataFiles를 배포본으로 교체할 수 있다.
-- 정본 Product runner의 컴파일 PASS와 runtime 준비 상태를 구분한다. 기본 경로는 파일 존재와 Items·Valtan ClearRewards의 `CheckPublished`만 읽기 전용으로 검사하고 `missingRuntimeInputs`, `invalidRuntimeInputs`, `runtimeDataChecks`로 기록한다. 다른 domain 내용이나 실제 Server 시작은 별도로 확인하며, 경고를 없애려고 매 빌드 전체 게시를 켜지 않는다.
+- 정본 Product runner의 컴파일 PASS와 runtime 준비 상태를 구분한다. 기본 경로는 파일 존재, Items·Valtan ClearRewards의 `CheckPublished`, Navigation 영역 목록의 참조 격자 길이와 필수 policy/blocker 헤더를 읽기 전용으로 검사하고 `missingRuntimeInputs`, `invalidRuntimeInputs`, `runtimeDataChecks`로 기록한다. 다른 domain 내용이나 실제 Server 시작은 별도로 확인하며, 경고를 없애려고 매 빌드 전체 게시를 켜지 않는다.
 - runtime 데이터는 저작 정본·publisher·schema를 변경한 작성자가 해당 domain의 publisher 또는 `Tools/Build/Invoke-BuildDomainOwner.ps1 -Owner <Client|Server|KoukuSaydon>`으로 명시 생성해 함께 전달한다. 받는 PC에서 누락·이전 schema가 확인되면 원인을 먼저 확인하고 해당 domain만 복구한다. VS pre-build publish가 필요한 경우에만 `LostArkPublishRuntimeData=true`를 설정하며 매 pull/build의 필수 단계로 켜지 않는다. 생성물 누락은 목록 편집을 막지 않으며 실제 Server 실행 전 준비한다. 수동 smoke의 Client 작업 디렉터리는 `Client/Default`다.
 
 - Engine public header를 바꿨다면 Product 빌드로 Engine SDK 반영과 Client 컴파일까지 확인한다.

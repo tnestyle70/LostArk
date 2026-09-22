@@ -752,6 +752,8 @@ bool_t Client::CEffect_Tool::Try_PromoteImportedDocument()
 		ExpectedCanonicalDocument = CEffectDocumentCodec::Serialize(Existing);
 		if (Staged.ModelCues.empty())
 			Staged.ModelCues = std::move(Existing.ModelCues);
+        if (Staged.OwnerControls.empty())
+            Staged.OwnerControls = std::move(Existing.OwnerControls);
     }
     if (!CEffectDocumentCodec::Validate_Drawable(Staged, Error))
     {

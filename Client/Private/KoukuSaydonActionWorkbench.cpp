@@ -721,7 +721,31 @@ namespace
 	bool Follows_ServerClock(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
 		const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern)
 	{
-		return Has_CompletionChain(document, pattern) || Has_ServerMarioEntry(document, pattern);
+		const auto ownsServerCombat = [&](const KOUKU_SAYDON_COMPOSITION_DOCUMENT& source,
+			const KOUKU_SAYDON_COMPOSITION_PATTERN& owner) {
+			return std::any_of(owner.LogicOccurrences.begin(), owner.LogicOccurrences.end(), [&](const auto& box) {
+				if (!box.bEnabled) return false;
+				const auto* logic = Find_Logic(source, box.strLogicId);
+				if (logic && (logic->strTriggerKind == "PURSUIT_PROJECTILES" ||
+					logic->strJudgementKind == "PURSUIT_PROJECTILES")) return true;
+				const auto hasPush = [&](const auto& ids) {
+					return std::any_of(ids.begin(), ids.end(), [&](const auto& id) {
+						const auto* result = Find_Logic(source, id);
+						return result && result->strOutcomeKind == "MAX_HP_PERCENT_DAMAGE" &&
+							result->fPushRangeM > 0.0 && result->iPushMs > 0u;
+					});
+				};
+				return hasPush(box.OnSuccessLogicIds) || hasPush(box.OnFailLogicIds) || hasPush(box.OnTimeoutLogicIds);
+			});
+		};
+		if (Has_CompletionChain(document, pattern) || Has_ServerMarioEntry(document, pattern) ||
+			ownsServerCombat(document, pattern)) return true;
+		if (pattern.PatternOccurrences.empty()) return false;
+		KOUKU_SAYDON_COMPOSITION_DOCUMENT expanded;
+		std::string status;
+		if (!CKoukuSaydonCompositionDocument::Try_ExpandPatternDocument(document, pattern.strPatternId, expanded, status)) return false;
+		const auto* row = Find_Pattern(expanded, pattern.strPatternId);
+		return row && ownsServerCombat(expanded, *row);
 	}
 
 	KOUKU_SAYDON_COMPOSITION_LOGIC_OCCURRENCE* Find_LogicBox(
@@ -5304,7 +5328,15 @@ void Client::CKoukuSaydonActionWorkbench::Render_BundleTransport()
 	bool ready = bundle->strLoadError.empty() && !bundle->Members.empty();
 	for (const auto& member : bundle->Members) { const auto* p = Find_Pattern(m_Draft, member.strPatternId); ready &= p && p->strLoadError.empty() && Pattern_DurationMs(*p) > 0; }
 	ImGui::BeginDisabled(!ready);
-	if (ImGui::Button("Play Bundle")) (void)Request_BundlePreview(m_iCursorMs);
+	if (ImGui::Button("Play Bundle"))
+	{
+		const bool server = std::any_of(bundle->Members.begin(), bundle->Members.end(), [&](const auto& member) {
+			const auto* pattern = Find_Pattern(m_Draft, member.strPatternId);
+			return pattern && Follows_ServerClock(m_Draft, *pattern);
+		});
+		if (server) { std::string status; (void)Request_SelectedServerPlay(status); }
+		else (void)Request_BundlePreview(m_iCursorMs);
+	}
 	ImGui::EndDisabled(); ImGui::SameLine();
 	ImGui::BeginDisabled(!active);
 	if (ImGui::Button(m_PreviewState.bPaused ? "Resume" : "Pause"))
@@ -6616,7 +6648,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_Transport()
 			(void)Request_PatternPreview(pattern->strPatternId, m_iCursorMs, status);
 	}
 	if (!m_bSequenceWorkspace && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
-		ImGui::SetTooltip("Local preview of the authored lanes.\nPatterns with a completion chain or a Mario entry (ENTER_AREA Success -> MARIO_ENTER)\nplay on the Server instead: Save, then finish Publish All Patterns first.");
+		ImGui::SetTooltip("Preview the authored lanes.\nPursuit projectiles, knockback, completion chains and Mario entry use Server playback so hit, launch and falling match Play Pattern.\nSave, then finish Publish All Patterns before playing those Patterns.");
 	ImGui::SameLine();
 	const auto* selectedOccurrence = patternReady ? Find_Occurrence(*pattern, m_strSelectedOccurrenceId) : nullptr;
 	ImGui::BeginDisabled(nullptr == selectedOccurrence);
@@ -8111,6 +8143,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 		m_PreviewState.strPatternId == patternId;
 	const bool_t serverPlayback = !m_strServerFollowRootPatternId.empty() &&
 		CKoukuSaydonPatternAuditionService::Get().Get_Snapshot().Is_InFlight();
+	const bool_t canStopServer = CKoukuSaydonPatternAuditionService::Get().Get_Snapshot().Can_Stop();
 	const bool_t canPlayPattern = patternReady && durationMs > 0u && !serverPlayback && !m_bServerPlayPreparationPending;
 	if (serverPlayback && m_bServerSelectionFollowSuspended)
 		ImGui::TextDisabled("Server playback continues. Automatic selection is paused to preserve editor input.");
@@ -8130,12 +8163,12 @@ void Client::CKoukuSaydonActionWorkbench::Render_Timeline()
 	}
 	ImGui::EndDisabled();
 	ImGui::SameLine();
-	ImGui::BeginDisabled(!m_bServerPlayPreparationPending && !serverPlayback && !m_PreviewState.bPlaying &&
+	ImGui::BeginDisabled(!m_bServerPlayPreparationPending && !canStopServer && !m_PreviewState.bPlaying &&
 		!m_bPatternPreviewRequestPending && !m_bPreviewRequestPending);
 	if (ImGui::Button("Stop##KoukuSequencer"))
 	{
 		if (m_bServerPlayPreparationPending) m_bServerPlayCancelRequested = true;
-		else if (serverPlayback) (void)CKoukuSaydonPatternAuditionService::Get().Stop(m_strStatus);
+		else if (canStopServer) (void)CKoukuSaydonPatternAuditionService::Get().Stop(m_strStatus);
 		else (void)Request_PreviewPause();
 	}
 	ImGui::SameLine();
@@ -13607,6 +13640,52 @@ void Client::CKoukuSaydonActionWorkbench::Render_LogicDefinitionValues(
 		draft = logic;
 		draftId = logic.strLogicId;
 	}
+    const auto renderPursuit = [&]()
+    {
+            const auto choose = [&](const char* label, std::string& id) {
+                const auto* selected = Find_PresentationResource(m_Draft, id);
+                if (ImGui::BeginCombo(label, selected ? selected->strDisplayName.c_str() : "(choose Effect)"))
+                {
+                    for (const auto& resource : m_Draft.PresentationResources)
+                        if (resource.eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT && resource.strResourceKind == "V1_EFFECT" &&
+                            ImGui::Selectable((resource.strDisplayName + "##" + resource.strResourceId).c_str(), resource.strResourceId == id))
+                            id = resource.strResourceId;
+                    ImGui::EndCombo();
+                }
+            };
+            for (std::size_t i = 0; i < draft.PursuitVisualIds.size();)
+            {
+                ImGui::PushID(static_cast<int>(i));
+                choose("Card Effect", draft.PursuitVisualIds[i]);
+                ImGui::SameLine();
+                const bool remove = ImGui::SmallButton("Remove");
+                ImGui::PopID();
+                if (remove) draft.PursuitVisualIds.erase(draft.PursuitVisualIds.begin() + i);
+                else ++i;
+            }
+            if (draft.PursuitVisualIds.size() < 4u && ImGui::Button("Add card Effect")) draft.PursuitVisualIds.emplace_back();
+            choose("Contact explosion", draft.strContactVisualId);
+            ImGui::Checkbox("Follow selected player", &draft.bPursuitHoming);
+            const auto number = [](const char* label, double& value, float low, float high) {
+                float edit = static_cast<float>(value);
+                if (ImGui::InputFloat(label, &edit, .1f, 1.f)) value = std::clamp(edit, low, high);
+            };
+            number("Travel speed (m/s)", draft.fPursuitSpeedMps, .01f, 100.f);
+            number("Travel limit (m, 0 = none)", draft.fPursuitMaxDistanceM, 0.f, 1000.f);
+            number("Contact radius (m)", draft.fContactRadiusM, .01f, 10.f);
+            number("Spawn radius (m)", draft.fSpawnRadiusM, 0.f, 100.f);
+            const auto integer = [](const char* label, std::uint32_t& value, int maximum) {
+                int edit = static_cast<int>(value);
+                if (ImGui::InputInt(label, &edit)) value = static_cast<std::uint32_t>(std::clamp(edit, 0, maximum));
+            };
+            integer("Lifetime (ms, 0 = until contact)", draft.iPursuitLifetimeMs, 600000);
+            if (draft.strLogicType == "DURATION")
+                integer("Spawn interval (ms, 0 = once)", draft.iSpawnIntervalMs, 600000);
+            else ImGui::TextWrapped("This Trigger emits one wave at the box Start ms. Box length does not end the cards.");
+            integer("Cards per wave (0 = all types)", draft.iCountPerWave, 16);
+            Render_AttackHitTemplates("Projectile attack hits", draft.ProjectileHits);
+            ImGui::TextWrapped("The Server selects targets, moves cards and detects contact. Card animation loops until the object ends. Zero lifetime requires one homing volley without a travel limit; Stop clears it.");
+            };
 	ImGui::SeparatorText("DURATION" == logic.strLogicType ? "Judgement" : "TRIGGER" == logic.strLogicType ? "Trigger" : "Outcome");
 	if ("DURATION" == logic.strLogicType)
 	{
@@ -13708,50 +13787,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_LogicDefinitionValues(
 			ImGui::Checkbox("End Pattern on counter success", &draft.bEndsPatternOnSuccess);
 			ImGui::TextWrapped("A Server-approved counter hit during this window runs Success. Connect a FOLLOWUP_PATTERN Result to play groggy; without a counter the window runs Timeout.");
 		}
-        else if ("PURSUIT_PROJECTILES" == draft.strJudgementKind)
-        {
-            const auto choose = [&](const char* label, std::string& id) {
-                const auto* selected = Find_PresentationResource(m_Draft, id);
-                if (ImGui::BeginCombo(label, selected ? selected->strDisplayName.c_str() : "(choose Effect)"))
-                {
-                    for (const auto& resource : m_Draft.PresentationResources)
-                        if (resource.eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT && resource.strResourceKind == "V1_EFFECT" &&
-                            ImGui::Selectable((resource.strDisplayName + "##" + resource.strResourceId).c_str(), resource.strResourceId == id))
-                            id = resource.strResourceId;
-                    ImGui::EndCombo();
-                }
-            };
-            for (std::size_t i = 0; i < draft.PursuitVisualIds.size();)
-            {
-                ImGui::PushID(static_cast<int>(i));
-                choose("Card Effect", draft.PursuitVisualIds[i]);
-                ImGui::SameLine();
-                const bool remove = ImGui::SmallButton("Remove");
-                ImGui::PopID();
-                if (remove) draft.PursuitVisualIds.erase(draft.PursuitVisualIds.begin() + i);
-                else ++i;
-            }
-            if (draft.PursuitVisualIds.size() < 4u && ImGui::Button("Add card Effect")) draft.PursuitVisualIds.emplace_back();
-            choose("Contact explosion", draft.strContactVisualId);
-            ImGui::Checkbox("Follow selected player", &draft.bPursuitHoming);
-            const auto number = [](const char* label, double& value, float low, float high) {
-                float edit = static_cast<float>(value);
-                if (ImGui::InputFloat(label, &edit, .1f, 1.f)) value = std::clamp(edit, low, high);
-            };
-            number("Travel speed (m/s)", draft.fPursuitSpeedMps, .01f, 100.f);
-            number("Travel limit (m, 0 = none)", draft.fPursuitMaxDistanceM, 0.f, 1000.f);
-            number("Contact radius (m)", draft.fContactRadiusM, .01f, 10.f);
-            number("Spawn radius (m)", draft.fSpawnRadiusM, 0.f, 100.f);
-            const auto integer = [](const char* label, std::uint32_t& value, int maximum) {
-                int edit = static_cast<int>(value);
-                if (ImGui::InputInt(label, &edit)) value = static_cast<std::uint32_t>(std::clamp(edit, 0, maximum));
-            };
-            integer("Lifetime (ms, 0 = until contact)", draft.iPursuitLifetimeMs, 600000);
-            integer("Spawn interval (ms, 0 = once)", draft.iSpawnIntervalMs, 600000);
-            integer("Cards per wave (0 = all types)", draft.iCountPerWave, 16);
-            Render_AttackHitTemplates("Projectile attack hits", draft.ProjectileHits);
-            ImGui::TextWrapped("The Server selects targets, moves cards and detects contact. Card animation loops until the object ends. Zero lifetime requires one homing volley without a travel limit; Stop clears it.");
-        }
+        else if ("PURSUIT_PROJECTILES" == draft.strJudgementKind) renderPursuit();
 		else if ("SHOWTIME_PLAYER_TARGETS" == draft.strJudgementKind)
 		{
 			const auto* pattern = Find_Pattern(m_Draft, colliderPatternId.empty() ? m_strSelectedPatternId : colliderPatternId);
@@ -14274,7 +14310,7 @@ void Client::CKoukuSaydonActionWorkbench::Render_LogicDefinitionValues(
 	}
 	else if ("TRIGGER" == logic.strLogicType)
 	{
-		const std::array<std::pair<const char*, const char*>, 16u> triggerKinds = {{
+		const std::array<std::pair<const char*, const char*>, 17u> triggerKinds = {{
 			{"", "(choose what activates this Trigger)"},
 			{"ANIMATION_BLEND", "Animation clip blending (ANIMATION_BLEND)"},
 			{"ROOM_PLAYER_ARRIVAL", "Sequence player arrival (ROOM_PLAYER_ARRIVAL)"},
@@ -14290,7 +14326,8 @@ void Client::CKoukuSaydonActionWorkbench::Render_LogicDefinitionValues(
 			{"BOSS_TELEPORT_FACE_CENTER", "Teleport boss and face arena center"},
 			{"MARIO_PHASE2_PLAYERS", "Mario: place non-entrants at Iron Maiden"},
 			{"REAL_GAZE_TELEPORT", "Teleport real Saydon and spawn decoys (REAL_GAZE_TELEPORT)"},
-			{"ALBION_BLUE_CIRCLE", "Albion player and arena circles (ALBION_BLUE_CIRCLE)"}
+			{"ALBION_BLUE_CIRCLE", "Albion player and arena circles (ALBION_BLUE_CIRCLE)"},
+            {"PURSUIT_PROJECTILES", "Spawn tracking cards once (PURSUIT_PROJECTILES)"}
 		}};
 		const auto selectedKind = std::find_if(triggerKinds.begin(), triggerKinds.end(),
 			[&](const auto& entry) { return draft.strTriggerKind == entry.first; });
@@ -14304,6 +14341,8 @@ void Client::CKoukuSaydonActionWorkbench::Render_LogicDefinitionValues(
 				{
 					draft = KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION{ logic.strLogicId, logic.strDisplayName, logic.strLogicType };
 					draft.strTriggerKind = kind;
+                    if (draft.strTriggerKind == "PURSUIT_PROJECTILES")
+                    { draft.fPursuitSpeedMps = 3.0; draft.fContactRadiusM = .5; draft.fSpawnRadiusM = 3.0; draft.bPursuitHoming = true; draft.iCountPerWave = 1u; }
 					if (draft.strTriggerKind == "ALBION_AIRBORNE") draft.strAirbornePhase = "SELECT_PLAYER";
 					if (draft.strTriggerKind == "HUD_ENTER") draft.strHudMode = "NONE";
 					if (draft.strTriggerKind == "ALBION_BLUE_CIRCLE")
@@ -14320,7 +14359,8 @@ void Client::CKoukuSaydonActionWorkbench::Render_LogicDefinitionValues(
 		}
 		if (collider)
 			ImGui::TextWrapped("This Collider supplies the contact shape, position and size. Apply Values also matches the linked Trigger's start/lifetime to the Collider. HUD and teleport Triggers are placed on the Logic lane without a Collider.");
-		if (draft.strTriggerKind == "ANIMATION_BLEND")
+		if (draft.strTriggerKind == "PURSUIT_PROJECTILES") renderPursuit();
+		else if (draft.strTriggerKind == "ANIMATION_BLEND")
 			ImGui::TextWrapped("The Logic box defines the actual 1..1000 ms clip transition, including time before the next clip starts. Place it across exactly one consecutive pose-owner boundary. Both source ranges keep their own delay, crop, rate and hold/loop policy. Overlapping Logic/clip transitions are rejected.");
 		else if (draft.strTriggerKind == "ROOM_PLAYER_ARRIVAL")
 			ImGui::TextWrapped("Each Logic box selects a player slot 1..4 and a destination. Play sends it once to the Server; Pause and scrub do not move players. Empty room slots are skipped.");

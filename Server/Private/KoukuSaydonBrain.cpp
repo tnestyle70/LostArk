@@ -164,7 +164,8 @@ bool LostArk::Server::CKoukuSaydonBrain::Validate_AnimationOnlyPattern(
 				const auto& action = stage.Actions.front();
 				return action.eTrigger == BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER &&
 					action.eKind == BOSS_PATTERN_STAGE_ACTION_KIND::RETARGET_RANDOM_ALIVE &&
-					action.strTargetId == "boss.target.pattern" && action.iValue == 1u &&
+					(action.strTargetId == "boss.target.pattern" ||
+					 action.strTargetId == "boss.target.nearest") && action.iValue == 1u &&
 					action.iDurationMs == 0u && action.eReleaseMode == BOSS_GRABBED_RELEASE_MODE::NONE &&
 					action.fReleaseSpeedMps == 0.f && action.fReleaseYawOffsetDegrees == 0.f &&
 					action.Volley.ePolicy == BOSS_COMBAT_OBJECT_VOLLEY_POLICY::NONE;

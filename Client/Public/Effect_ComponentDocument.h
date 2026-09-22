@@ -51,6 +51,7 @@ struct EFFECT_ASSEMBLY_DESC final
 	std::string strSourceDocumentFileSha256;
 	EFFECT_PARTICLE_SYSTEM_DESC ParticleSystem;
 	std::vector<EFFECT_MODEL_CUE_DESC> ModelCues;
+    std::vector<EFFECT_OWNER_CONTROL_DESC> OwnerControls;
 	std::vector<EFFECT_COMPONENT_CUE_DESC> ComponentCues;
 };
 

@@ -2,6 +2,7 @@
 
 #include "Client_Defines.h"
 #include "PartObject.h"
+#include "SkeletalAfterimage.h"
 
 NS_BEGIN(Engine)
 class CShader;
@@ -35,6 +36,7 @@ public:
 
 		/* Bit i hides submesh i: the body already draws that content. */
 		uint32_t iHiddenMeshMask = {};
+        bool_t isWeaponPart = false, isIdentityPart = false;
 
 		/* nullptr means the piece is skinned to the body's skeleton. */
 		const char_t* pSocketBoneName = { nullptr };
@@ -76,10 +78,17 @@ public:
 
 public:
 	void Set_Visible(bool_t isVisible) { m_isVisible = isVisible; }
-	bool_t Is_Visible() const { return m_isVisible; }
+	bool_t Is_Visible() const { return m_isVisible && !m_isPresentationSuppressed; }
+    void Set_PresentationSuppressed(bool_t value) { m_isPresentationSuppressed = value; }
+    bool_t Is_WeaponPart() const { return m_isWeaponPart; }
+    bool_t Is_IdentityPart() const { return m_isIdentityPart; }
+    bool Is_Socketed() const { return !m_strSocketBoneName.empty(); }
+    bool Get_AfterimageView(CSkeletalAfterimage::MODEL_VIEW& view);
 
 private:
 	bool_t m_isVisible = true;
+    bool_t m_isPresentationSuppressed = false;
+    bool_t m_isWeaponPart = false, m_isIdentityPart = false;
 	uint32_t m_iHiddenMeshMask = {};
 	shared_ptr<CShader> m_pShaderCom = { nullptr };
 	shared_ptr<CModel> m_pModelCom = { nullptr };

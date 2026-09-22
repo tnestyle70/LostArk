@@ -59,6 +59,7 @@
         { "skillId": 98522, "inputSlot": "W", "vehicleColumn": "SkillId1", "cooldownMs": 8000, "clips": [ { "clip": "sk_breath_01", "ms": 2100 }, { "clip": "sk_breath_02", "ms": 4900 } ] },
         { "skillId": 98523, "inputSlot": "E", "vehicleColumn": "SkillId2", "cooldownMs": 8000, "clips": [ { "clip": "sk_look", "ms": 5333 } ] }
       ]
-    }
+    },
+    {"vehicleId":9523,"name":"AncientSea","animPackage":"MN_PMSDZ_00","action":"MN_PMSDZ_00.loa","ridingMode":"dragon_2","riderSource":"vehicle","skills":[{"skillId":98520,"inputSlot":"SPACE","vehicleColumn":"MovingSkill","cooldownMs":10000,"clips":[{"clip":"sk_dash","ms":1200}]},{"skillId":98521,"inputSlot":"Q","vehicleColumn":"SkillId0","cooldownMs":8000,"clips":[{"clip":"sk_roar","ms":6000}]},{"skillId":98522,"inputSlot":"W","vehicleColumn":"SkillId1","cooldownMs":8000,"clips":[{"clip":"sk_breath_01","ms":2100},{"clip":"sk_breath_02","ms":4900}]},{"skillId":98523,"inputSlot":"E","vehicleColumn":"SkillId2","cooldownMs":8000,"clips":[{"clip":"sk_look","ms":5333}]}]}
   ]
 }

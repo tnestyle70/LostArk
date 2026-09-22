@@ -8,6 +8,7 @@
 
 #include <array>
 #include <span>
+#include <set>
 
 struct aiScene;
 struct aiNode;
@@ -16,6 +17,7 @@ namespace Assimp { class Importer; }
 NS_BEGIN(Engine)
 
 struct MODEL_ASSET_DATA;
+struct MODEL_ANIMATION_DATA;
 struct MODEL_MATERIAL_SOURCE;
 struct MODEL_MESH_DATA;
 struct MODEL_ASSET_LOAD_DESC;
@@ -215,6 +217,10 @@ public:
 		return m_iSkeletonHash;
 	}
 	HRESULT Attach_AnimationSet(const CModel& animationSet);
+	// Source sampling never changes the model cursor or live pose. Time is seconds.
+	bool_t Sample_AnimationLocalTransforms(const char_t* name, f32_t seconds, vector<float4x4_t>& output) const;
+	// Stages every channel before one commit; native names are immutable.
+	bool_t Install_AuthoredAnimations(const vector<MODEL_ANIMATION_DATA>& animations, string& status);
 
 public:
 	virtual HRESULT Initialize_Prototype(MODEL eType, const char_t* pModelFilePath, fmatrix_t PreTransformMatrix);
@@ -390,6 +396,7 @@ private:
 	uint32_t								m_iCurrentAnimIndex = {};
 	uint32_t								m_iNumAnimations = {};
 	vector<shared_ptr<class CAnimation>>	m_Animations;
+	std::set<string> m_AuthoredAnimationNames;
 	bool_t									m_isAnimLoop = { false };
 	bool_t									m_isAnimPaused = { false };
 	f32_t									m_fAnimationSpeed = { 1.f };
@@ -456,7 +463,7 @@ public:
 		const MODEL_ASSET_LOAD_DESC& loadDesc,
 		fmatrix_t PreTransformMatrix,
 		bool_t bRetainOrderedStaticGeometry = false);
-    // Reuses immutable static GPU geometry and stages independent materials.
+    // Reuses immutable GPU geometry and clones the pose with independent materials.
     // Load identity must match the prototype; this cannot retarget geometry.
     static unique_ptr<CModel> Create_MaterialVariant(const CModel& prototype,
         const MODEL_ASSET_LOAD_DESC& loadDesc);

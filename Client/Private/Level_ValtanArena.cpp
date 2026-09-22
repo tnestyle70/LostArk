@@ -28,6 +28,7 @@ below is a real Release-build feature, so the include is no longer guarded. */
 #include "MapAssetRenderUtils.h"
 #include "NetworkManager.h"
 #include "NetworkPlayerCommandSink.h"
+#include "NetworkWorldEntityCommandSink.h"
 #include "ProjectDataRoot.h"
 #include "RuntimeAssetRoot.h"
 #include "Transform.h"
@@ -370,6 +371,9 @@ HRESULT CLevel_ValtanArena::Initialize()
 	}
 
 	m_pPlayerCommandSink = make_shared<CNetworkPlayerCommandSink>();
+#ifdef _DEBUG
+    m_pWorldEntityCommandSink = make_shared<CNetworkWorldEntityCommandSink>();
+#endif
 	m_PlayerController.Set_CommandSink(m_pPlayerCommandSink);
 	if (!m_PlayerController.Initialize_TargetingPreview(
 			ETOUI(LEVEL::VALTAN_ARENA)))
@@ -487,6 +491,19 @@ void CLevel_ValtanArena::Handle_WorldEntityDespawned(
 	const std::string_view placementId,
 	const std::string_view archetypeId)
 {
+#ifdef _DEBUG
+    if (placementId == "boss.valtan.center" && m_bDebugValtanDespawnPending)
+    {
+        End_CinematicCamera();
+        m_bDebugValtanDespawnPending = false;
+        m_iDebugValtanCommandStartedMs = 0u;
+        m_LastSourceCinematicInput = {};
+        m_SourceDeathInput = {};
+        m_bSourceDeathStarted = false;
+        m_bSourceDeathFinished = true;
+        m_strDebugValtanBossCommandStatus = "Server despawned Valtan; Play Pattern can prepare it again.";
+    }
+#endif
 	if (RAID_PRELUDE_BGM_STATE::M01_PROGRESS !=
 			m_eRaidPreludeBgmState ||
 		VALTAN_STAGE_TWO_ARCHETYPE_ID != archetypeId ||
@@ -605,6 +622,7 @@ void CLevel_ValtanArena::Update(f32_t fTimeDelta)
 
 #ifdef _DEBUG
 	Update_AuditionTransaction();
+    Update_DebugValtanBossCommand();
 #endif
 	Update_WorldDestructionPresentation(fTimeDelta);
 	Bind_CameraToLocalCharacter();
@@ -1037,6 +1055,92 @@ const char_t* CLevel_ValtanArena::Get_ReferenceCameraViewName() const
 	default:
 		return "none";
 	}
+}
+
+bool_t CLevel_ValtanArena::Has_DebugValtanBoss() const
+{
+    return nullptr != m_Replication.Find_PrimaryValtanPresentation();
+}
+
+std::string CLevel_ValtanArena::Get_DebugValtanPresentationDiagnostic() const
+{
+    const auto primary = m_Replication.Find_PrimaryValtanPresentation();
+    return primary ? primary->Get_PresentationDiagnostic() : "No replicated primary Valtan presentation.";
+}
+
+void CLevel_ValtanArena::Update_DebugValtanBossCommand()
+{
+    using namespace LostArk::Shared;
+    S2C_WORLD_ENTITY_SPAWN_RESULT result{};
+    uint64_t token = 0u;
+    while (CNetworkManager::Get().Try_Consume_WorldEntitySpawnResult(result, &token))
+    {
+        if (!m_iDebugValtanSpawnToken || token != m_iDebugValtanSpawnToken ||
+            result.strPlacementId != "boss.valtan.center") continue;
+        if (result.eResult == WORLD_ENTITY_SPAWN_RESULT::REJECTED)
+        {
+            m_iDebugValtanSpawnToken = 0u;
+            m_iDebugValtanCommandStartedMs = 0u;
+            m_bDebugValtanCommandFailed = true;
+            m_strDebugValtanBossCommandStatus = "Server rejected the Valtan spawn request.";
+        }
+    }
+    if (m_iDebugValtanSpawnToken && Has_DebugValtanBoss())
+    {
+        m_iDebugValtanSpawnToken = 0u;
+        m_iDebugValtanCommandStartedMs = 0u;
+        m_strDebugValtanBossCommandStatus = "Valtan Server spawn and primary presentation are ready.";
+    }
+    if (Is_DebugValtanBossCommandPending() &&
+        GetTickCount64() - m_iDebugValtanCommandStartedMs > 10000u)
+    {
+        m_iDebugValtanSpawnToken = 0u;
+        m_bDebugValtanDespawnPending = false;
+        m_iDebugValtanCommandStartedMs = 0u;
+        m_bDebugValtanCommandFailed = true;
+        m_strDebugValtanBossCommandStatus = "Valtan command timed out before its replicated result; retry the command.";
+    }
+}
+
+bool_t CLevel_ValtanArena::Debug_DespawnValtanBoss(std::string& status)
+{
+    Update_DebugValtanBossCommand();
+    if (Is_DebugValtanBossCommandPending())
+    { status = "Wait for the pending Valtan spawn/despawn command."; return false; }
+    if (!Has_DebugValtanBoss())
+    { status = m_strDebugValtanBossCommandStatus = "Valtan is already despawned."; return true; }
+    if (!m_pWorldEntityCommandSink || !m_iNextDebugValtanRequestSequence)
+    { status = m_strDebugValtanBossCommandStatus = "Valtan command sink or sequence is unavailable."; return false; }
+    const auto sequence = m_iNextDebugValtanRequestSequence;
+    if (!m_pWorldEntityCommandSink->Request_DespawnAllWorldEntities(sequence))
+    { status = m_strDebugValtanBossCommandStatus = "Valtan despawn request could not be sent."; return false; }
+    m_iNextDebugValtanRequestSequence = sequence == UINT32_MAX ? 0u : sequence + 1u;
+    m_bDebugValtanDespawnPending = true;
+    m_bDebugValtanCommandFailed = false;
+    m_iDebugValtanCommandStartedMs = GetTickCount64();
+    status = m_strDebugValtanBossCommandStatus = "Waiting for Server Valtan and dependent despawns.";
+    return true;
+}
+
+bool_t CLevel_ValtanArena::Debug_EnsureValtanBossForPlay(bool_t& ready, std::string& status, bool_t retryFailed)
+{
+    ready = false;
+    Update_DebugValtanBossCommand();
+    if (retryFailed) m_bDebugValtanCommandFailed = false;
+    if (m_bDebugValtanCommandFailed)
+    { status = m_strDebugValtanBossCommandStatus; return false; }
+    if (m_bDebugValtanDespawnPending)
+    { status = m_strDebugValtanBossCommandStatus; return true; }
+    if (Has_DebugValtanBoss())
+    { ready = true; status = "The replicated Valtan presentation is available."; return true; }
+    if (m_iDebugValtanSpawnToken)
+    { status = m_strDebugValtanBossCommandStatus; return true; }
+    if (!m_pWorldEntityCommandSink ||
+        !m_pWorldEntityCommandSink->Request_SpawnWorldEntity("boss.valtan.center", &m_iDebugValtanSpawnToken))
+    { status = m_strDebugValtanBossCommandStatus = "Valtan spawn request could not be sent."; return false; }
+    m_iDebugValtanCommandStartedMs = GetTickCount64();
+    status = m_strDebugValtanBossCommandStatus = "Preparing Valtan: waiting for Server spawn and primary presentation.";
+    return true;
 }
 
 void CLevel_ValtanArena::Update_AuditionTransaction()
@@ -2726,8 +2830,9 @@ bool_t CLevel_ValtanArena::Debug_PrepareCompletePlayResources(
         else if (pattern.strPatternId == "VALTAN_GHOST_DEATH_AUDITION") addCinema("finale");
         else if (pattern.strPatternId == "VALTAN_ARENA_BREAK_109") addCinema("phase2");
         const auto& world = m_SourceCinematicPlayer.Get_Document();
+        if (!staged.worldIds.empty() && !m_bSourceCinematicsReady && m_bSourceCinematicsPreparationPending) Ready_SourceCinematics();
         if (!staged.worldIds.empty() && !m_bSourceCinematicsReady)
-        { status = "Complete Play source cinematic assembly is unavailable: " + m_SourceCinematicPlayer.Get_Status(); return false; }
+        { status = "Complete Play source cinematic assembly: " + m_strSourceCinematicPreparationStatus; return m_bSourceCinematicsPreparationPending; }
         for (const auto& id : staged.worldIds)
         {
             const auto* instance = world.Find_Instance(id);
@@ -2810,29 +2915,78 @@ bool_t CLevel_ValtanArena::Debug_PrepareCompletePlayResources(
 
 void CLevel_ValtanArena::Ready_SourceCinematics()
 {
+    if (m_bSourceCinematicsReady) return;
+    m_bSourceCinematicsPreparationPending = false;
     const auto targets = SourceCinematicTargets();
-    if (!m_SourceCinematicPlayer.Load_PreparedArea("LV_LUT_HEARTRB_ED", targets))
+    if (m_SourceCinematicPlayer.Get_Document().Get_AreaId().empty() &&
+        !m_SourceCinematicPlayer.Load_PreparedArea("LV_LUT_HEARTRB_ED", targets))
     {
-        OutputDebugStringA(("[ValtanSourceCinema] " + m_SourceCinematicPlayer.Get_Status() + "\n").c_str());
+        m_strSourceCinematicPreparationStatus = m_SourceCinematicPlayer.Get_Status();
+        OutputDebugStringA(("[ValtanSourceCinema] " + m_strSourceCinematicPreparationStatus + "\n").c_str());
         return;
     }
-    for (const char* suffix : { "entrance", "entrance.colorless", "entrance.actor64.body.0",
-        "entrance.actor64.weapon.0", "entrance.actor64.weapon.1", "trash", "roar", "finale", "phase2" })
+    constexpr std::array<const char*, 9> suffixes = { "entrance", "entrance.colorless", "entrance.actor64.body.0",
+        "entrance.actor64.weapon.0", "entrance.actor64.weapon.1", "trash", "roar", "finale", "phase2" };
+    std::vector<std::string> effects;
+    const auto& document = m_SourceCinematicPlayer.Get_Document();
+    for (const char* suffix : suffixes)
+    {
+        const std::string id = std::string("world.sequence.instance.valtan.source-preview.") + suffix;
+        const auto* instance = document.Find_Instance(id);
+        const auto* sequence = instance ? document.Find_Template(instance->templateId) : nullptr;
+        if (!instance || !instance->enabled || !sequence)
+        { m_strSourceCinematicPreparationStatus = "Source cinematic instance is absent or disabled: " + id; return; }
+        for (const auto& effect : sequence->effectTracks)
+            if (effect.resourceKind == "V1_EFFECT") effects.push_back(effect.resourceId);
+    }
+    std::sort(effects.begin(), effects.end());
+    effects.erase(std::unique(effects.begin(), effects.end()), effects.end());
+    if (!effects.empty())
+    {
+        std::vector<std::string> registered;
+        if (!CEffectPresentationService::Queue_ProductTargets_Priority(effects, registered,
+            m_strSourceCinematicPreparationStatus)) return;
+        const auto probe = CEffectPresentationService::Get_ProductCuePreparationProbe(effects);
+        if (probe.iFailedCount || probe.iUnavailableCount || !probe.strBlockingFailure.empty())
+        {
+            m_strSourceCinematicPreparationStatus = "Source cinematic effect preparation failed: " + probe.strBlockingFailure;
+            for (const auto& effect : effects)
+            {
+                const auto failure = CEffectPresentationService::Get_ProductCuePreparationFailure(effect);
+                if (!failure.empty()) m_strSourceCinematicPreparationStatus += " " + effect + ": " + failure;
+            }
+            return;
+        }
+        if (!probe.bCatalogRevisionCurrent || !probe.bSettled || probe.iPreparedCount != effects.size())
+        {
+            // A normal asynchronous prepare is not an invalid scene. Keep its
+            // admitted document/pools and retry against the same action clock.
+            m_bSourceCinematicsPreparationPending = true;
+            m_strSourceCinematicPreparationStatus = "Preparing source cinematic effects " +
+                std::to_string(probe.iPreparedCount) + "/" + std::to_string(effects.size());
+            return;
+        }
+    }
+    for (const char* suffix : suffixes)
     {
         const std::string id = std::string("world.sequence.instance.valtan.source-preview.") + suffix;
         if (!m_SourceCinematicPlayer.Prepare_InstanceResources(id, targets) ||
             !m_SourceCinematicPlayer.Prewarm_ObjectInstances(id, std::string_view(suffix).starts_with("entrance") ? 2u : 1u, targets))
         {
-            OutputDebugStringA(("[ValtanSourceCinema] " + id + " / " + m_SourceCinematicPlayer.Get_Status() + "\n").c_str());
-            m_SourceCinematicPlayer.Clear();
+            // Preserve the exact resource failure for the Workbench. Clear()
+            // would discard both the admitted scene and its actionable status.
+            m_strSourceCinematicPreparationStatus = id + " / " + m_SourceCinematicPlayer.Get_Status();
+            OutputDebugStringA(("[ValtanSourceCinema] " + m_strSourceCinematicPreparationStatus + "\n").c_str());
             return;
         }
     }
     m_bSourceCinematicsReady = true;
+    m_strSourceCinematicPreparationStatus = "Source cinematic models, clips and effects are prepared.";
 }
 
 void CLevel_ValtanArena::Prepare_SourceCinematicInput(VALTAN_CINEMATIC_CAMERA_INPUT& input)
 {
+    if (!m_bSourceCinematicsReady && m_bSourceCinematicsPreparationPending) Ready_SourceCinematics();
     if (!m_bSourceCinematicsReady) return;
     if (input.isValid && input.iNetEntityId && !input.isBossDead)
     {
@@ -2885,6 +3039,7 @@ bool_t CLevel_ValtanArena::Update_SourceCinematic(const VALTAN_CINEMATIC_CAMERA_
         Stop_SourceCinematic(true);
         return true;
     }
+    if (!m_bSourceCinematicsReady && m_bSourceCinematicsPreparationPending) Ready_SourceCinematics();
     if (!m_bSourceCinematicsReady) return false;
     if (!input.isBossDead)
     {

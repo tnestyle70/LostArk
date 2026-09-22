@@ -1,0 +1,93 @@
+{
+  "schema": "lostark.trailghost-source-notify-fixture",
+  "source": "GuardianKnight/AncientSea original action payload; field order EFGame reflection",
+  "cases": [
+    {
+      "notify": {
+        "skillId": 49220,
+        "clipName": "ddk_sk_flame_scale_01",
+        "notifyId": "action-49220/stage-000/notify-003",
+        "sourceType": "TrailGhostEffect",
+        "category": "trail",
+        "authority": "PRESENTATION",
+        "resolutionStatus": "SOURCE_PARAMETERS_SERIALIZED",
+        "localTimeSeconds": 0.1510310024023056,
+        "sourceEndSeconds": 0.1510310024023056,
+        "durationSeconds": 0.0,
+        "sourceOffset": 2571482,
+        "assetReferences": [],
+        "serializedPayload": {
+          "encoding": "base64",
+          "byteOffset": 2571482,
+          "byteSize": 233,
+          "sha256": "be84bd31ace55883d8f7cb419385e948bd738f2b05cc777000a8eed5ba90ca30",
+          "data": "Q0VGQWN0aW9uTm90aWZ5X1RyYWlsR2hvc3RFZmZlY3QAAAAAAAAAAAAAAAAAAQAAAN+nGj7fpxo+AAAAAAAAAAAGAAAAzczMPQAAAAADAAAARlgAZAAAAAAAAAAAAAAAAAAAAAEAAAAK1yM8mpkZPjMzsz4AAAAAmpkZPwAAAAAAAAA/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/AAAAAAAAAAAAAAAAAAAA/wAAAAAAgD8AAIA/AAAAAAAAAAAFAAAATm9uZQAAAAAAAAAAACMAAAA="
+        },
+        "serializedLabels": [
+          "FX"
+        ]
+      },
+      "expectedPart": 0,
+      "expectedOnlyLocal": true,
+      "expectedInitialAlpha": 0.6000000238418579
+    },
+    {
+      "notify": {
+        "skillId": 49150,
+        "clipName": "ddk_sk_grandfinale_02",
+        "notifyId": "action-49150/stage-002/notify-023",
+        "sourceType": "TrailGhostEffect",
+        "category": "trail",
+        "authority": "PRESENTATION",
+        "resolutionStatus": "SOURCE_PARAMETERS_SERIALIZED",
+        "localTimeSeconds": 0.7012389898300171,
+        "sourceEndSeconds": 0.7012389898300171,
+        "durationSeconds": 1.0320940017700195,
+        "sourceOffset": 1518892,
+        "assetReferences": [],
+        "serializedPayload": {
+          "encoding": "base64",
+          "byteOffset": 1518892,
+          "byteSize": 233,
+          "sha256": "5de0a5da1f9864b61ce7a40e95880abaa0d21e61e30c69ed878af0698b623dce",
+          "data": "Q0VGQWN0aW9uTm90aWZ5X1RyYWlsR2hvc3RFZmZlY3QAAAAAAAAAAAAAAAAAAQAAAGaEMz9mhDM/qBuEPwAAAAABAAAAAAAAAAAAAAADAAAARlgAZAAAAAAAAAABAAAAAAAAAAAAAADNzEw/CtcjPAAAAD8BAAAAAAAAPwAAAAAAAAA/AAAAAAAAAAAAAAAA/wAAAAAAAAAAAAAAAAAAAP8AAACaAAAAugAAAGgAAAD/AAAAjQAAALoAAABiAAAA/wAAAAAAgD8AAIA/AAAAAAAAAAAFAAAATm9uZQAAAAAAAAAAABgAAAA="
+        },
+        "serializedLabels": [
+          "FX"
+        ]
+      },
+      "expectedPart": 1,
+      "expectedOnlyLocal": false,
+      "expectedInitialAlpha": 0.5
+    },
+    {
+      "notify": {
+        "notifyId": "action-98520/stage-000/notify-008",
+        "sourceType": "TrailGhostEffect",
+        "category": "trail",
+        "authority": "PRESENTATION",
+        "resolutionStatus": "SOURCE_PARAMETERS_SERIALIZED",
+        "localTimeSeconds": 0.11999999731779099,
+        "sourceEndSeconds": 0.11999999731779099,
+        "durationSeconds": 0.0,
+        "sourceOffset": 17274,
+        "assetReferences": [],
+        "serializedPayload": {
+          "encoding": "base64",
+          "byteOffset": 17274,
+          "byteSize": 233,
+          "sha256": "10368cb2e10bc58be0f5bc1edb2b85ce7cc27a19c0638738f1d190719c3cbac9",
+          "data": "Q0VGQWN0aW9uTm90aWZ5X1RyYWlsR2hvc3RFZmZlY3QAAAAAAAAAAAAAAAAAAQAAAI/C9T2PwvU9AAAAAAAAAAADAAAAzczMPQAAAAADAAAARlgAZAAAAAAAAAAAAAAAAAAAAAAAAADNzMw9zcxMPs3MzD4AAAAAzcxMPwAAAAAAAIA/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/AAAAAAAAAAAAAAAAAAAA/wAAAAAAgD8AAIA/AAAAAAAAAAAFAAAATm9uZQAAAAAAAAAAACMAAAA="
+        },
+        "serializedLabels": [
+          "FX"
+        ],
+        "skillId": 98520,
+        "clipName": "npc_sk_dash"
+      },
+      "expectedPart": 0,
+      "expectedOnlyLocal": false,
+      "expectedInitialAlpha": 0.8
+    }
+  ]
+}

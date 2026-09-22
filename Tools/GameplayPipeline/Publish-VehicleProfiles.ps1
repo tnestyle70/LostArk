@@ -50,7 +50,7 @@ if ($document.schema -cne 'lostark.vehicle-profiles' -or $document.formatVersion
     throw 'Vehicle profile header is invalid.'
 }
 $skillSlots = @('SPACE', 'Q', 'W', 'E')
-$skillIds = [Collections.Generic.HashSet[uint32]]::new()
+$skillCount = 0
 $vehicles = @($document.vehicles)
 if ($vehicles.Count -eq 0 -or $vehicles.Count -gt 4096) {
     throw "Vehicle profile count is out of range: $($vehicles.Count)"
@@ -82,6 +82,7 @@ foreach ($vehicle in $vehicles) {
     }
     $rows.Add((@('VEHICLE', [uint32]$vehicle.vehicleId, (Format-Invariant $speed), $skills.Count) -join "`t"))
     $usedSlots = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    $skillIds = [Collections.Generic.HashSet[uint32]]::new()
     foreach ($skill in $skills) {
         $context = "vehicle $($vehicle.vehicleId) skill $($skill.skillId)"
         Assert-ExactProperties $skill @('skillId', 'inputSlot', 'cooldownMs', 'actionDurationMs', 'source', 'rootMotionSamples') $context
@@ -97,8 +98,9 @@ foreach ($vehicle in $vehicles) {
             throw "$context source is invalid."
         }
         if (-not $skillIds.Add([uint32]$skill.skillId)) {
-            throw "Duplicate vehicle skill ID: $($skill.skillId)"
+            throw "Duplicate skill ID within vehicle $($vehicle.vehicleId): $($skill.skillId)"
         }
+        ++$skillCount
         $samples = @($skill.rootMotionSamples)
         $packed = '-'
         if ($samples.Count -gt 0) {
@@ -128,7 +130,7 @@ foreach ($vehicle in $vehicles) {
 }
 
 if ($Mode -eq 'Validate') {
-    Write-Output "Vehicle profile Validate succeeded: $($vehicleIds.Count) vehicles, $($skillIds.Count) skills."
+    Write-Output "Vehicle profile Validate succeeded: $($vehicleIds.Count) vehicles, $skillCount skills."
     return
 }
 
@@ -159,7 +161,7 @@ try {
     }
     [IO.File]::Move($staged, $destination)
     if ($hadPrevious) { [IO.File]::Delete($rollback) }
-    Write-Output "Vehicle profile Publish succeeded: $($vehicleIds.Count) vehicles, $($skillIds.Count) skills -> $destination"
+    Write-Output "Vehicle profile Publish succeeded: $($vehicleIds.Count) vehicles, $skillCount skills -> $destination"
 }
 catch {
     if ([IO.File]::Exists($staged)) { [IO.File]::Delete($staged) }

@@ -81,6 +81,7 @@ PLAYER_EFFECT_EVENT_PATHS = (
     "Data/Animation/Authored/DimensionMaster/DimensionMaster.animevents",
     "Data/Animation/Authored/LanceMaster/LanceMaster.animevents",
     "Data/Animation/Authored/Warlord/Warlord.animevents",
+    "Data/Animation/Authored/GuardianKnight/GuardianKnight.animevents",
 )
 VALTAN_CUE_PATH = "Data/Animation/Authored/Valtan/Valtan.patterneffectcues.json"
 VALTAN_V1_ALIAS_PATH = (
@@ -1135,6 +1136,16 @@ def _validate_product_effect_reachability(
     if (root / VEHICLE_CATALOG_PATH).is_file():
         vehicle_document, _ = _read_json(root / VEHICLE_CATALOG_PATH)
         for vehicle in vehicle_document.get("vehicles", []):
+            if not isinstance(vehicle, dict):
+                raise ContractError("VehicleCatalog vehicle must be an object")
+            for field in ("ambientEffectCues", "mountEffectCues"):
+                for index, cue in enumerate(vehicle.get(field, [])):
+                    reachable_ids.add(
+                        _require_stable_id(
+                            cue.get("effectAssetId") if isinstance(cue, dict) else None,
+                            f"VehicleCatalog vehicle {vehicle.get('vehicleId')} {field}[{index}].effectAssetId",
+                        )
+                    )
             for skill in vehicle.get("skills", []) if isinstance(vehicle, dict) else []:
                 for index, cue in enumerate(skill.get("effectCues", []) if isinstance(skill, dict) else []):
                     reachable_ids.add(

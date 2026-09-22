@@ -1,6 +1,7 @@
 #include "imgui.h"
 #include "EffectAuthoringSequencer.h"
 #include "Camera.h"
+#include "Camera_Free.h"
 #include "CameraTool.h"
 #include "CompositionTimeline.h"
 #include "DataJson.h"
@@ -172,6 +173,8 @@ bool CEffectAuthoringSequencer::Sample_Camera(const std::uint32_t clockMs, const
     if (!active) { Release_Camera(); return true; }
     const auto camera = m_Camera.lock();
     if (!camera) { m_Status = "This Level has not supplied an authoring camera."; return false; }
+    const auto followCamera = std::dynamic_pointer_cast<CCamera_Free>(camera);
+    if (followCamera && !followCamera->Is_FollowEnabled()) { Release_Camera(); return true; }
     if (m_CameraOwned && !camera->Is_PresentationOverrideOwnedBy(CAMERA_OWNER))
     { m_CameraOwned = false; m_Status = "Effect camera was preempted by another presentation owner."; return false; }
     VALTAN_CINEMATIC_CAMERA_POSE pose; float3_t up;

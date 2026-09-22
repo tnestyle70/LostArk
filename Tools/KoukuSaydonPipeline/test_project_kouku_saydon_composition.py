@@ -410,6 +410,25 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
             self.assertEqual("MAP", template["occurrences"][0]["anchorKind"])
         self.assertEqual(before, document)
 
+    def test_pursuit_trigger_preserves_authored_birth_and_is_a_single_persistent_volley(self):
+        document = self.pursuit_document()
+        logic = document["logics"][0]
+        logic["triggerKind"] = logic.pop("judgementKind")
+        logic.update(logicType="TRIGGER", visualIds=logic["visualIds"][:1], countPerWave=1)
+        box = document["patterns"][0]["logicOccurrences"][0]
+        box.update(startMs=913, durationMs=1)
+        self.validate(document)
+        projected = self.first_product(subject.project_encounter(document))
+        self.assertEqual([], projected["logicWindows"])
+        self.assertFalse(any(row["kind"] == "PURSUIT_PROJECTILES" for row in projected.get("mechanicTriggers", [])))
+        row = projected["pursuitProjectiles"][0]
+        self.assertEqual((913, 1, 0, 0, 1, True),
+                         tuple(row[key] for key in ("startMs", "durationMs", "lifetimeMs", "spawnIntervalMs", "countPerWave", "homing")))
+        for interval in (1, 500):
+            logic.update(lifetimeMs=1000, spawnIntervalMs=interval)
+            with self.assertRaises(subject.CompositionError):
+                self.validate(document)
+
     def test_pursuit_invalid_resource_and_unbounded_repeat_preserve_document(self):
         for field, value in (("visualIds", []), ("visualIds", ["missing.effect"]), ("contactVisualId", "missing.effect"),
                              ("speedMps", 0), ("contactRadiusM", float("nan")), ("spawnIntervalMs", 100),
@@ -434,7 +453,7 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
         publisher = (ROOT / "Tools/GameplayPipeline/Publish-GameplayBalance.ps1").read_text(encoding="utf-8-sig")
         definitions = [re.search(r"(?ms)^function " + name + r"\b.*?^\}", publisher).group(0)
                        for name in ("Assert-ExactProperties", "Assert-StableId", "Assert-JsonString", "Assert-JsonInteger",
-                                    "Assert-JsonNumber", "Format-InvariantFloat", "Get-KoukuTargetedVisualIndex", "New-KoukuPursuitProjectileRows")]
+                                    "Assert-JsonNumber", "Format-InvariantFloat", "Get-KoukuTargetedVisualIndex", "New-KoukuAttackHitRows", "New-KoukuPursuitProjectileRows")]
         with tempfile.TemporaryDirectory() as temporary:
             folder = Path(temporary)
             script = "$ErrorActionPreference='Stop'\n$stableIdPattern='^[A-Za-z0-9_.-]{1,128}$'\n" + "\n".join(definitions)

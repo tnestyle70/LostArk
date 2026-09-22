@@ -194,6 +194,40 @@ bool_t Client::CEffectDocumentCodec::Validate(
             previousEnd = animation.iStartOffsetMs + animation.iPlayMs;
         }
     }
+    if (Document.OwnerControls.size()>64u)
+    { strOutError="Effect owner control count exceeds 64."; return false; }
+    std::unordered_set<std::string> controlIds;
+    for (const auto& cue:Document.OwnerControls)
+    {
+        const bool material=cue.strKind=="MATERIAL_VECTOR";
+        const bool brightness=cue.strKind=="DIRECTIONAL_BRIGHTNESS";
+        const bool color=cue.strKind=="DIRECTIONAL_COLOR";
+        const bool identity=cue.strKind=="IDENTITY_VISIBILITY";
+        const bool visibility=cue.strKind=="PAWN_VISIBILITY";
+        if ((!material&&!brightness&&!color&&!identity&&!visibility) || cue.strControlId.empty() || !controlIds.insert(cue.strControlId).second ||
+            cue.strMappingBasis!="PROJECT_ADAPTER" || !std::isfinite(cue.fStartSeconds) || cue.fStartSeconds<0.f || cue.fStartSeconds>600.f ||
+            (identity ? cue.iSourceTargetType!=12u : visibility ? (cue.iSourceTargetType!=0u&&cue.iSourceTargetType!=9u) : cue.iSourceTargetType>4u) ||
+            (material && cue.strParameter!="transcolor" && cue.strParameter!="buffcolor") ||
+            (identity&&cue.strParameter!="identity") || (visibility&&cue.strParameter!="visibility") ||
+            ((brightness||color) && !cue.strParameter.empty()) || cue.Keys.size()<2u || cue.Keys.size()>128u || cue.Keys.front().fSeconds!=0.f)
+        { strOutError="Effect owner control identity/kind/recipient/timing is invalid."; return false; }
+        if(cue.SourceValues.size()>32u || std::any_of(cue.SourceValues.begin(),cue.SourceValues.end(),[](float v){return !std::isfinite(v);}))
+        {strOutError="Effect owner control raw source values are invalid.";return false;}
+        float previous=-1.f;
+        for(const auto& key:cue.Keys)
+        {
+            if(!std::isfinite(key.fSeconds)||key.fSeconds<=previous||key.fSeconds>600.f)
+            { strOutError="Effect owner control keys must be finite and strictly ordered.";return false; }
+            previous=key.fSeconds;
+            for(const float v:{key.Value.x,key.Value.y,key.Value.z,key.Value.w})
+                if(!std::isfinite(v)||std::abs(v)>65536.f)
+                {strOutError="Effect owner control value is invalid.";return false;}
+            if(color && (key.Value.w<0.f || key.Value.w>1.f))
+            {strOutError="Effect directional color weight must be normalized 0-1.";return false;}
+            if(brightness && (key.Value.x<0.f || key.Value.x>16.f))
+            {strOutError="Effect directional brightness must be a normalized 0-16 multiplier.";return false;}
+        }
+    }
 	if (Document.ModelCues.size() > MAX_MODEL_CUES)
 	{
 		strOutError = "Effect Model Cue count exceeds 16.";
@@ -226,6 +260,7 @@ bool_t Client::CEffectDocumentCodec::Validate(
             (!Cue.strAnimationSetAssetId.empty() && !Is_SafeModelCueAssetId(Cue.strAnimationSetAssetId)) ||
 			!std::isfinite(Cue.fStartDelaySeconds) ||
 			Cue.fStartDelaySeconds < 0.f ||
+            !std::isfinite(Cue.fClipPlayRate) || Cue.fClipPlayRate <= 0.f || Cue.fClipPlayRate > 16.f ||
 			!std::isfinite(Cue.fDurationSeconds) ||
 			Cue.fDurationSeconds <= 0.f || Cue.fDurationSeconds > 30.f ||
 			Cue.eAlphaMode >= EFFECT_MODEL_CUE_ALPHA_MODE::END ||
@@ -248,14 +283,22 @@ bool_t Client::CEffectDocumentCodec::Validate(
         if (Cue.Afterimage)
         {
             const auto& history = *Cue.Afterimage;
+            if (!std::isfinite(history.fSourceColorIntensity) || history.fSourceColorIntensity < 0.f || history.fSourceColorIntensity > 100.f)
+            { strOutError = "Afterimage source color intensity is invalid"; return false; }
+            if (history.EndColor)
+                for (const float value : {history.EndColor->x, history.EndColor->y, history.EndColor->z, history.EndColor->w})
+                    if (!std::isfinite(value) || value < 0.f || value > 1000.f)
+                    { strOutError = "Afterimage end color is invalid"; return false; }
+            if (!history.bLiveOwnerPose && (history.bOnlyLocalPlayer || history.iSourcePartType != 0u))
+            { strOutError = "Afterimage source owner flags require live owner pose"; return false; }
             if (history.strAppearanceBasis != "PROJECT_AUTHORED" || Cue.Material || !Cue.MaterialParameterTracks.empty() ||
                 !std::isfinite(history.fEmissionStartSeconds) || history.fEmissionStartSeconds < 0.f ||
                 !std::isfinite(history.fEmissionEndSeconds) || history.fEmissionEndSeconds <= history.fEmissionStartSeconds ||
                 history.fEmissionEndSeconds > Cue.fDurationSeconds ||
                 !std::isfinite(history.fSampleIntervalSeconds) || history.fSampleIntervalSeconds < .005f ||
-                history.fSampleIntervalSeconds > .5f || !std::isfinite(history.fSampleLifetimeSeconds) ||
-                history.fSampleLifetimeSeconds < history.fSampleIntervalSeconds || history.fSampleLifetimeSeconds > 2.f ||
-                !history.iMaxSamples || history.iMaxSamples > 16u ||
+                history.fSampleIntervalSeconds > 2.f || !std::isfinite(history.fSampleLifetimeSeconds) ||
+                history.fSampleLifetimeSeconds < .005f || history.fSampleLifetimeSeconds > 2.f ||
+                !history.iMaxSamples || history.iMaxSamples > 64u || history.iSourcePartType > 2u ||
                 Cue.vColorMultiply.x < 0.f || Cue.vColorMultiply.y < 0.f || Cue.vColorMultiply.z < 0.f ||
                 Cue.vColorMultiply.w < 0.f || Cue.vColorMultiply.w > 1.f)
             { strOutError = "Model Cue afterimage timing, appearance, or bounds are invalid: " + Cue.strCueId; return false; }
@@ -266,6 +309,12 @@ bool_t Client::CEffectDocumentCodec::Validate(
 				Cue.strCueId;
 			return false;
 		}
+        if (Cue.SourceMaterialProfile &&
+            (Cue.Material || Cue.Afterimage ||
+             Cue.eAlphaMode != EFFECT_MODEL_CUE_ALPHA_MODE::MASKED_SURFACE ||
+             !CWorldSequenceDocument::Is_ValidMaterialProfile(*Cue.SourceMaterialProfile) ||
+             !Validate_SourceCharacterModelCueMaterialTracks(Cue, strOutError)))
+        { strOutError = "Model Cue source CMaterial contract is invalid: " + Cue.strCueId; return false; }
 		if (Cue.Material)
 		{
 			EFFECT_ELEMENT_DESC Metadata;
@@ -283,7 +332,7 @@ bool_t Client::CEffectDocumentCodec::Validate(
 			}
 		}
 		std::vector<ARTIST_PARAMETER_DESC> MaterialTrackBindings;
-		if (!Build_ArtistModelCueMaterialTrackBindings(Cue, MaterialTrackBindings, strOutError))
+		if (!Cue.SourceMaterialProfile && !Build_ArtistModelCueMaterialTrackBindings(Cue, MaterialTrackBindings, strOutError))
 			return false;
 	}
 
@@ -673,7 +722,9 @@ bool_t Client::CEffectDocumentCodec::Validate(
 			(D.Particle.fFixedCenterSpacingWorldUnits == 0.f ||
 			 D.Particle.fFixedCenterSpacingWorldUnits >= 0.001f) &&
 			D.Particle.fFixedCenterSpacingWorldUnits <= 1000.f &&
-			Is_Finite(D.Particle.vLifeTimeSeconds) && D.Particle.vLifeTimeSeconds.x > 0.f && D.Particle.vLifeTimeSeconds.y >= D.Particle.vLifeTimeSeconds.x && D.Particle.vLifeTimeSeconds.y <= 30.f &&
+			Is_Finite(D.Particle.vLifeTimeSeconds) &&
+			(D.Particle.vLifeTimeSeconds.x > 0.f ||
+			 (Element.SourceRecipe.bEnabled && D.Particle.vLifeTimeSeconds.x == 0.f)) && D.Particle.vLifeTimeSeconds.y >= D.Particle.vLifeTimeSeconds.x && D.Particle.vLifeTimeSeconds.y <= 30.f &&
 			Is_Finite(D.Particle.vInitialPositionMin) && Is_Finite(D.Particle.vInitialPositionMax) &&
 			D.Particle.vInitialPositionMax.x >= D.Particle.vInitialPositionMin.x &&
 			D.Particle.vInitialPositionMax.y >= D.Particle.vInitialPositionMin.y &&
@@ -699,9 +750,26 @@ bool_t Client::CEffectDocumentCodec::Validate(
 			D.Particle.InitialVelocity;
 		const bool_t bFixedCenterSpacingEnabled =
 			D.Particle.fFixedCenterSpacingWorldUnits > 0.f;
+		const bool_t bPortableFixedSpacingMesh = bMeshParticle &&
+			bDirectHandAuthored && Element.SourceRecipe.bEnabled &&
+			Element.SourceRecipe.strRendererShape == "mesh" &&
+			!Element.SourcePresentation.bEnabled &&
+			Element.Renderer.eType == EFFECT_RENDERER_TYPE::END &&
+			Element.Renderer.eSourceSpace == EFFECT_SOURCE_SPACE::END &&
+			std::ranges::all_of(Element.SourceRecipe.Modules,
+				[](const EFFECT_SOURCE_MODULE_DESC& Module)
+				{
+					// Source position/motion modules would move the authored birth centers.
+					return Module.strClassName == "particlemodulerequired" ||
+						Module.strClassName == "particlemodulespawn" ||
+						Module.strClassName == "particlemodulelifetime" ||
+						Module.strClassName == "particlemoduletypedatamesh" ||
+						Module.strClassName == "particlemodulesize" ||
+						Module.strClassName == "particlemoduleparameterdynamic";
+				});
 		const bool_t bFixedCenterSpacingValid =
 			!bFixedCenterSpacingEnabled ||
-			(bManualParticle && !D.Particle.bLocalSpace &&
+			((bManualParticle || bPortableFixedSpacingMesh) && !D.Particle.bLocalSpace &&
 			 D.Particle.fSpawnRatePerSecond == 0.f &&
 			 D.Particle.iBurstCount == 0u &&
 			 D.Particle.vInitialPositionMin.x == 0.f &&

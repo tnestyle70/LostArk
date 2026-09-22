@@ -519,12 +519,15 @@ namespace Client::EffectDocumentCodecDetail
             const auto& K = Curve.Keys[i];
             Output << (i ? ", " : "") << "{ \"timeSeconds\": " << K.fTime << ", \"value\": ";
             if (Curve.iComponentCount == 1u) Output << '[' << K.vMinimum.x << ']';
+            else if (Curve.iComponentCount == 4u) Write_Float4(Output, K.vMinimum);
             else Write_Float3(Output, {K.vMinimum.x,K.vMinimum.y,K.vMinimum.z});
             Output << ", \"arriveTangent\": ";
             if (Curve.iComponentCount == 1u) Output << '[' << K.vArriveTangentMinimum.x << ']';
+            else if (Curve.iComponentCount == 4u) Write_Float4(Output, K.vArriveTangentMinimum);
             else Write_Float3(Output, {K.vArriveTangentMinimum.x,K.vArriveTangentMinimum.y,K.vArriveTangentMinimum.z});
             Output << ", \"leaveTangent\": ";
             if (Curve.iComponentCount == 1u) Output << '[' << K.vLeaveTangentMinimum.x << ']';
+            else if (Curve.iComponentCount == 4u) Write_Float4(Output, K.vLeaveTangentMinimum);
             else Write_Float3(Output, {K.vLeaveTangentMinimum.x,K.vLeaveTangentMinimum.y,K.vLeaveTangentMinimum.z});
             Output << ", \"interpolation\": \"" << DISTRIBUTION_INTERPOLATION_TOKENS[static_cast<size_t>(K.eInterpolation)] << "\" }";
         }
@@ -599,11 +602,11 @@ namespace Client::EffectDocumentCodecDetail
             std::string Kind;
             if (!Validate_ExactFields(Parameter, {"name", "kind", "keys"}, "Model Cue material parameter track", Error) ||
                 !Read_String(Parameter, "name", Track.strName, Error) || !Read_String(Parameter, "kind", Kind, Error) ||
-                (Kind != "SCALAR" && Kind != "VECTOR"))
-            { if (Error.empty()) Error = "Model Cue material parameter kind must be SCALAR or VECTOR."; return false; }
-            Track.bVector = Kind == "VECTOR";
+                (Kind != "SCALAR" && Kind != "VECTOR" && Kind != "COLOR"))
+            { if (Error.empty()) Error = "Model Cue material parameter kind must be SCALAR, VECTOR or COLOR."; return false; }
+            Track.bVector = Kind != "SCALAR";
             const auto* Keys = Find_Field(Parameter, "keys", DATA_JSON_TYPE::ARRAY, Error);
-            if (!Keys || !Read_SourceTransformCurve(*Keys, Track.Values, Track.strName.c_str(), Error, Track.bVector ? 3u : 1u)) return false;
+            if (!Keys || !Read_SourceTransformCurve(*Keys, Track.Values, Track.strName.c_str(), Error, Kind == "COLOR" ? 4u : (Track.bVector ? 3u : 1u))) return false;
             Out.push_back(std::move(Track));
         }
         return true;
@@ -618,7 +621,7 @@ namespace Client::EffectDocumentCodecDetail
         {
             const auto& Parameter = Tracks[i];
             Output << (i ? ", " : "") << "{ \"name\": \"" << Client::CDataJson::Escape(Parameter.strName)
-                << "\", \"kind\": \"" << (Parameter.bVector ? "VECTOR" : "SCALAR") << "\", \"keys\": ";
+                << "\", \"kind\": \"" << (Parameter.Values.iComponentCount == 4u ? "COLOR" : (Parameter.bVector ? "VECTOR" : "SCALAR")) << "\", \"keys\": ";
             Write_SourceTransformCurve(Output, Parameter.Values);
             Output << " }";
         }

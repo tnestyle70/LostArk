@@ -164,6 +164,33 @@ SOURCE_CHARACTER_NATIVE_OUTPUT EvaluateSourceCharacterBase(SOURCE_CHARACTER_NATI
 #if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 84
     case 99u: return SourceCharacterBase99(input);
 #endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 84
+    case 100u: return SourceCharacterBase100(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 84
+    case 101u: return SourceCharacterBase101(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 84
+    case 102u: return SourceCharacterBase102(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 84
+    case 103u: return SourceCharacterBase103(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 84
+    case 104u: return SourceCharacterBase104(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 84
+    case 105u: return SourceCharacterBase105(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 84
+    case 106u: return SourceCharacterBase106(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 84
+    case 107u: return SourceCharacterBase107(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
+#if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 84
+    case 108u: return SourceCharacterBase108(input);
+#endif // SOURCE_CHARACTER_PROGRAM_GROUP
 #if !defined(SOURCE_CHARACTER_PROGRAM_GROUP) || SOURCE_CHARACTER_PROGRAM_GROUP == 80
     case 80u: { if (input.hasBakedLighting) return SourceMapMonsterBaked80(input); return SourceCharacterBase80(input); }
 #endif // SOURCE_CHARACTER_PROGRAM_GROUP

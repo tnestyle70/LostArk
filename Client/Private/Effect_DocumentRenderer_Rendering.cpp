@@ -4,6 +4,7 @@
 #include "GameInstance.h"
 #include "MapAssetRenderUtils.h"
 #include "Model.h"
+#include "SourceCharacterMaterialParameters.h"
 #include "Shader.h"
 #include "VIBuffer_ParticleRect.h"
 #include <d3d11sdklayers.h>
@@ -41,7 +42,7 @@ void Client::CEffectDocumentRenderer::Reset_ModelCueAfterimages()
 {
     for (auto& [id, resource] : m_ModelCueResources)
     {
-        resource.Afterimage.Reset();
+        resource.Afterimage.Reset(); resource.OwnerAfterimages.clear();
         resource.fAfterimageSampleTime = -1.f;
     }
 }
@@ -135,10 +136,11 @@ bool_t Client::CEffectDocumentRenderer::Sample_ModelCuePose(
 	// Seek from the effect clock so scrubbing and replay use the same loop phase.
 	// Authored translation uses cue time. Optional root suppression is already
 	// configured on this clone so source X/Z locomotion cannot rewind at a wrap.
+	const f32_t fClipTime = fLocalTime * Cue.fClipPlayRate;
 	const f32_t fAnimationTime = Cue.bLoop ?
-		std::fmod(fLocalTime, Resource.fDurationSeconds) :
-		(Cue.bHoldLastFrame ? (std::min)(fLocalTime, Resource.fDurationSeconds) :
-		 fLocalTime);
+		std::fmod(fClipTime, Resource.fDurationSeconds) :
+		(Cue.bHoldLastFrame ? (std::min)(fClipTime, Resource.fDurationSeconds) :
+		 fClipTime);
 	const f32_t fTrackRequest = fAnimationTime * Resource.fTicksPerSecond;
 	// Each occurrence owns this clone. Only this function changes its pose;
 	// anchors and rendering can therefore share an identical explicit seek.
@@ -419,6 +421,21 @@ HRESULT Client::CEffectDocumentRenderer::Build_NativeScreenPost(
     const vector_t Clip=XMVector4Transform(Position,
         XMLoadFloat4x4(View)*XMLoadFloat4x4(Projection));
     Snapshot.fProjectionW=XMVectorGetW(Clip);
+    Snapshot.fProjectionZ=XMVectorGetZ(Clip);
+    if (Snapshot.iProfile == 4006u || Snapshot.iProfile == 4060u)
+    {
+        // Source world uses (X,-Z,Y); view XY remains the camera screen basis.
+        const matrix_t ClientToSource = XMMatrixRotationX(XM_PIDIV2);
+        const matrix_t SourceToClient = XMMatrixTranspose(ClientToSource);
+        const matrix_t LocalToWorld = SourceToClient *
+            XMLoadFloat4x4(&Evaluated.SourceEmitterWorld) * ClientToSource;
+        const matrix_t WorldToView = SourceToClient * XMLoadFloat4x4(View);
+        for (size_t row = 0u; row < 3u; ++row)
+        {
+            XMStoreFloat4(&Snapshot.SourceLocalToWorld[row], LocalToWorld.r[row]);
+            XMStoreFloat4(&Snapshot.SourceWorldToView[row], WorldToView.r[row]);
+        }
+    }
     if (!std::isfinite(Snapshot.fProjectionW) ||
         !std::isfinite(Snapshot.fLocalTimeSeconds) || Snapshot.fLocalTimeSeconds<0.f)
     { strOutError="Native screen-post source sample is invalid."; return E_INVALIDARG; }
@@ -524,7 +541,7 @@ HRESULT Client::CEffectDocumentRenderer::Render_ModelCues(
             auto& resource = found->second;
             if (!Cue.bVisible || fLocalTime < 0.f || Frame.fSampleTimeSeconds > Effect_ModelCueEndSeconds(Cue))
             {
-                resource.Afterimage.Reset(); resource.fAfterimageSampleTime = -1.f;
+                resource.Afterimage.Reset(); resource.OwnerAfterimages.clear(); resource.fAfterimageSampleTime = -1.f;
                 continue;
             }
             const auto& history = *Cue.Afterimage;
@@ -535,6 +552,38 @@ HRESULT Client::CEffectDocumentRenderer::Render_ModelCues(
             settings.color = Cue.vColorMultiply;
             settings.color.w *= Cue.fOpacity;
             settings.capturePoseChanges = true;
+            settings.interpolateColor = history.EndColor.has_value();
+            settings.sourceColorIntensity = history.fSourceColorIntensity;
+            settings.endColor = history.EndColor.value_or(Cue.vColorMultiply);
+            if (history.bLiveOwnerPose)
+            {
+                std::vector<CSkeletalAfterimage::MODEL_VIEW> views;
+                if (!m_AfterimageOwnerProvider || !m_AfterimageOwnerProvider(history.iSourcePartType, history.bOnlyLocalPlayer, views))
+                { resource.OwnerAfterimages.clear(); resource.fAfterimageSampleTime = -1.f; continue; }
+                const bool first = resource.fAfterimageSampleTime < 0.f || Frame.fSampleTimeSeconds < resource.fAfterimageSampleTime;
+                const float previousLocal = resource.fAfterimageSampleTime - Cue.fStartDelaySeconds;
+                const float delta = first ? 0.f : Frame.fSampleTimeSeconds - resource.fAfterimageSampleTime;
+                if (first) resource.OwnerAfterimages.clear();
+                resource.fAfterimageSampleTime = Frame.fSampleTimeSeconds;
+                std::unordered_set<const Engine::CModel*> present;
+                for (const auto& view : views)
+                {
+                    if (!view.model || !view.shader || !present.insert(view.model.get()).second) continue;
+                    auto& echo = resource.OwnerAfterimages[view.model.get()];
+                    if (!echo.Configure(settings)) return Fail_RenderOperation("Live owner afterimage settings rejected", E_INVALIDARG, true);
+                    echo.Set_PresentationView(view);
+                    bool capturedInitial = false;
+                    if ((first || previousLocal < history.fEmissionStartSeconds) && history.bCaptureInitialPose && fLocalTime >= history.fEmissionStartSeconds &&
+                        fLocalTime < history.fEmissionStartSeconds + history.fSampleLifetimeSeconds)
+                        capturedInitial = echo.Capture_Initial(view, fLocalTime - history.fEmissionStartSeconds);
+                    echo.Update(capturedInitial ? 0.f : (std::max)(0.f, delta), fLocalTime >= history.fEmissionStartSeconds && fLocalTime < history.fEmissionEndSeconds,
+                        view.model, view.world);
+                    const auto result = echo.Render(view.model, view.shader, view.world);
+                    if (FAILED(result)) return Fail_RenderOperation("Live owner pose history render failed", result, true);
+                }
+                std::erase_if(resource.OwnerAfterimages, [&](const auto& item) { return !present.contains(item.first); });
+                continue;
+            }
             if (!resource.Afterimage.Configure(settings))
                 return Fail_RenderOperation("Afterimage Model Cue settings are invalid.", E_INVALIDARG, true);
             float4x4_t world{};
@@ -600,6 +649,25 @@ HRESULT Client::CEffectDocumentRenderer::Render_ModelCues(
 		if (FAILED(hResult))
 			return Fail_RenderOperation(
 				"Animated model-cue bind failed: opacity.", hResult);
+        if (Cue.SourceMaterialProfile && !Cue.MaterialParameterTracks.empty())
+        {
+            auto parameters = Cue.SourceMaterialProfile->parameters;
+            for (const auto& track : Cue.MaterialParameterTracks)
+            {
+                const auto value = CEffectDistribution::Evaluate(track.Values, fLocalTime, 0.f);
+                auto& output = parameters.at(track.strName);
+                if (!track.bVector) output.fill(value.x);
+                else
+                {
+                    output[0] = value.x; output[1] = value.y; output[2] = value.z;
+                    if (track.Values.iComponentCount == 4u) output[3] = value.w;
+                }
+            }
+            Engine::MODEL_SOURCE_CHARACTER_PARAMETERS packed;
+            if (!SourceCharacterMaterial::Configure(Cue.SourceMaterialProfile->family, parameters, packed) ||
+                !Model.Override_SourceCharacterConstants(Cue.SourceMaterialProfile->materialName.c_str(), packed))
+                return Fail_RenderOperation("Model Cue CMaterial sample failed: " + Cue.strCueId, E_FAIL, true);
+        }
 		for (uint32_t iMesh = 0u; iMesh < Model.Get_NumMeshes(); ++iMesh)
 		{
 			hResult = Resource->second.pMaterialResource ?
@@ -633,7 +701,7 @@ HRESULT Client::CEffectDocumentRenderer::Render_ModelCues(
 				}
 			}
 			// The exact T summon keeps its depth/mask path and receives normal map lighting.
-			if (bCharacterSurface) iPass = 0u;
+			if (bCharacterSurface || Cue.SourceMaterialProfile) iPass = 0u;
 			hResult = Bind_BloomInputs(m_pAnimatedModelShader);
 			if (FAILED(hResult)) return hResult;
 			hResult = m_pAnimatedModelShader->Begin(iPass);

@@ -240,10 +240,10 @@ bool Client::CKoukuSaydonPatternAuditionService::Stop(std::string& status)
 	const bool flow = m_FlowSnapshot.bActive;
 	if (flow) Cancel_Flow("Pattern Flow stopped; remaining entries were cancelled.");
 	const auto snapshot = m_Snapshot;
-	if (flow && !snapshot.Is_InFlight()) { status = m_FlowSnapshot.strStatus; return true; }
+	if (flow && !snapshot.Is_InFlight() && !snapshot.Can_Stop()) { status = m_FlowSnapshot.strStatus; return true; }
 	if (flow && snapshot.Is_InFlight() && !snapshot.iRoomAuditionEpoch)
 	{ m_bStopFlowWhenAdmitted = true; status = "Remaining Flow entries cancelled; Stop will follow the pending Server admission."; return true; }
-	if (!snapshot.Is_InFlight() || !snapshot.iRoomAuditionEpoch) { status = "No admitted Server run to stop."; return false; }
+	if (!snapshot.Can_Stop()) { status = "No admitted Server run or retained projectiles to stop."; return false; }
 	return Submit(LostArk::Shared::KOUKUSAYDON_PATTERN_AUDITION_OPERATION::STOP, {}, snapshot.ExpectedGameplayRevision,
 		snapshot.iExpectedSourceRevision, status, snapshot.strBundleId, snapshot.strGateId, snapshot.iRoomAuditionEpoch);
 }

@@ -490,12 +490,27 @@ void Client::CEffect_Tool::Render_ModelCueDetail()
         ImGui::TextDisabled("PROJECT_AUTHORED appearance; source notify controls emission timing.");
         bChanged |= ImGui::DragFloat("Emission Start (Cue Seconds)", &history.fEmissionStartSeconds, .001f, 0.f, 30.f, "%.4f");
         bChanged |= ImGui::DragFloat("Emission End (Cue Seconds)", &history.fEmissionEndSeconds, .001f, 0.f, 30.f, "%.4f");
-        bChanged |= ImGui::DragFloat("Sample Interval (Seconds)", &history.fSampleIntervalSeconds, .005f, .005f, .5f, "%.3f");
+        bChanged |= ImGui::DragFloat("Sample Interval (Seconds)", &history.fSampleIntervalSeconds, .005f, .005f, 2.f, "%.3f");
         bChanged |= ImGui::DragFloat("Sample Lifetime (Seconds)", &history.fSampleLifetimeSeconds, .01f, .005f, 2.f, "%.3f");
         int count = static_cast<int>(history.iMaxSamples);
-        if (ImGui::SliderInt("Maximum Afterimages", &count, 1, 16))
+        if (ImGui::SliderInt("Maximum Afterimages", &count, 1, 64))
         { history.iMaxSamples = static_cast<uint32_t>(count); bChanged = true; }
         bChanged |= ImGui::ColorEdit4("Afterimage Color / Alpha", &Draft.vColorMultiply.x,
+            ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float);
+        bChanged |= ImGui::Checkbox("Sample Live Owner Outfit", &history.bLiveOwnerPose);
+        if (history.bLiveOwnerPose)
+        {
+            bChanged |= ImGui::Checkbox("Only Local Player", &history.bOnlyLocalPlayer);
+            bChanged |= ImGui::Checkbox("Capture First Pose", &history.bCaptureInitialPose);
+            int part = static_cast<int>(history.iSourcePartType);
+            if (ImGui::Combo("Source Part Type", &part, "NONE / base outfit\0WP / socketed weapon\0ALL / outfit and weapon\0"))
+            { history.iSourcePartType = static_cast<uint32_t>(part); bChanged = true; }
+        }
+        bChanged |= ImGui::DragFloat("Source Surface Color Intensity", &history.fSourceColorIntensity, .01f, 0.f, 100.f);
+        bool endColor = history.EndColor.has_value();
+        if (ImGui::Checkbox("Interpolate End Color", &endColor))
+        { if (endColor) history.EndColor = Draft.vColorMultiply; else history.EndColor.reset(); bChanged = true; }
+        if (history.EndColor) bChanged |= ImGui::ColorEdit4("Afterimage End Color", &history.EndColor->x,
             ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float);
         int axis = static_cast<int>(Draft.iRootMotionVerticalAxis);
         if (ImGui::SliderInt("Source Root Vertical Axis", &axis, 0, 2))
@@ -2960,6 +2975,9 @@ void Client::CEffect_Tool::Render_SizeDetail(
 			Resolve_AuthoringFamily(Element) ==
 				EFFECT_AUTHORING_FAMILY::MESH_PARTICLE))
 	{
+		if (Element.eKind == EFFECT_ELEMENT_KIND::MESH)
+			bChanged |= ImGui::Checkbox("Inherit Parent Rotation",
+				&Element.Detail.Mesh.bInheritParentRotation);
 		bChanged |= ImGui::DragFloat("Model Import Scale",
 			&Element.Detail.Mesh.fModelPreScale, 0.001f, 0.0001f, 100.f,
 			"%.4f", ImGuiSliderFlags_AlwaysClamp);

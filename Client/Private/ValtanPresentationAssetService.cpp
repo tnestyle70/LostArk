@@ -3,6 +3,7 @@
 #include "ActorCatalog.h"
 #include "BinaryAsset/ModelDecoderRegistry.h"
 #include "Body_Valtan.h"
+#include "BoneAnimationDocument.h"
 #include "EffectV2_Runtime.h"
 #include "GameInstance.h"
 #include "Model.h"
@@ -169,6 +170,12 @@ HRESULT Client::CValtanPresentationAssetService::Ensure_Prototypes(
 				pActor->animationSetId);
 		}
 	}
+    if (archetypeId == "BOSS_VALTAN")
+    {
+        std::string authoredStatus;
+        if (!CBoneAnimationDocument::Load_PublishedValtan(*bodyModel, authoredStatus))
+            OutputDebugStringA(("[ValtanPresentation] Optional authored clips retained native animation: " + authoredStatus + "\n").c_str());
+    }
 	if (!bodyModel->Has_Animations())
 		return RejectAsset(archetypeId, "combined body has no animation clips");
 	if ("BOSS_VALTAN" != archetypeId)

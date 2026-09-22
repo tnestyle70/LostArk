@@ -56,6 +56,15 @@ namespace Client
 				KOUKU_SAYDON_PATTERN_AUDITION_STATE::ACTIVE == eState;
 		}
 
+		// Natural completion retains room-owned projectiles. Their admitted epoch
+		// remains stoppable until explicitly stopped or replaced by another run.
+		[[nodiscard]] bool Can_Stop() const noexcept
+		{
+			return iRoomAuditionEpoch != 0u &&
+				eOperation != LostArk::Shared::KOUKUSAYDON_PATTERN_AUDITION_OPERATION::STOP &&
+				(Is_InFlight() || KOUKU_SAYDON_PATTERN_AUDITION_STATE::COMPLETED == eState);
+		}
+
 		[[nodiscard]] bool Is_Live(
 			std::string_view patternId,
 			std::uint32_t localSourceRevision) const noexcept

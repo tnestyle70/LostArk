@@ -568,6 +568,9 @@ def build_presentation_generation(
         overlay_root = overlay_root.resolve(strict=True)
 
     rows: list[tuple[str, str]] = list(FIXED_ARTIFACTS)
+    bone_relative = "Data/Valtan/Published/Valtan.boneclips.json"
+    if (overlay_root is not None and (overlay_root / bone_relative).exists()) or (repository_root / bone_relative).exists():
+        rows.append(("ANIMATION", bone_relative))
     rows.extend(
         ("EFFECT", relative)
         for relative in _effect_artifact_paths(repository_root, overlay_root)

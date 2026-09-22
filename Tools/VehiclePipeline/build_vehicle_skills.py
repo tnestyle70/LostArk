@@ -193,10 +193,10 @@ def main():
                            samples[-1]['forward'] if samples else 0.0, len(samples)))
         profile_by_id[vehicle['vehicleId']]['skills'] = profile_skills
         entry = catalog_by_id[vehicle['vehicleId']]
-        # effectCues/soundCues belong to build_vehicle_skill_effects.py; keep them.
+        # Presentation cues belong to the effect/source projection; keep them.
         previous = {skill['skillId']: skill for skill in entry.get('skills', [])}
         for skill in catalog_skills:
-            for key in ('effectCues', 'soundCues'):
+            for key in ('effectCues', 'soundCues', 'shakeCues', 'directionalLightCues', 'materialVectorCues'):
                 if key in previous.get(skill['skillId'], {}):
                     skill[key] = previous[skill['skillId']][key]
         rebuilt = {}
@@ -244,7 +244,7 @@ def write_catalog(catalog):
                     lines.append(f'          "vehicleClips": {inline(skill["vehicleClips"])},')
                     lines.append('          "riders": [')
                     lines += [f'            {inline(r)}' + (',' if i + 1 < len(skill['riders']) else '') for i, r in enumerate(skill['riders'])]
-                    cues = [key for key in ('effectCues', 'soundCues') if key in skill]
+                    cues = [key for key in ('effectCues', 'soundCues', 'shakeCues', 'directionalLightCues', 'materialVectorCues') if key in skill]
                     lines.append('          ]' + (',' if cues else ''))
                     for ci, key in enumerate(cues):
                         rows = skill[key]
